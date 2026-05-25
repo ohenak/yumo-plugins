@@ -1,0 +1,7 @@
+{
+  "name": "pdlc",
+  "displayName": "PDLC Pipeline",
+  "version": "0.1.0",
+  "description": "Product Development Lifecycle orchestration: REQ → FSPEC → TSPEC → PLAN → PROPERTIES → implementation, with parallel cross-reviews, evaluator-optimizer feedback loops, and parallel TDD implementation. The canonical skill-set that the Ptah engine orchestrates.",
+  "author": { "name": "Kane Ho" }
+}
