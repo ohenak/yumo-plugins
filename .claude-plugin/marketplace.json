@@ -10,7 +10,7 @@
   "plugins": [
     {
       "name": "pdlc",
-      "source": "ohenak/yumo-plugins/pdlc",
+      "source": "./pdlc",
       "description": "Product Development Lifecycle orchestration: REQ → FSPEC → TSPEC → PLAN → PROPERTIES → implementation, with parallel cross-reviews, evaluator-optimizer feedback loops, parallel TDD implementation, and a cross-feature learning loop (harvest → consolidate). The canonical skill-set the Ptah engine references."
     }
   ]
