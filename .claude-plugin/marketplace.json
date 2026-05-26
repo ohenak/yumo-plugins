@@ -1,0 +1,17 @@
+{
+  "name": "yumo-plugins",
+  "owner": {
+    "name": "Kane Ho",
+    "url": "https://github.com/ohenak/yumo-plugins"
+  },
+  "metadata": {
+    "description": "Plugins for the Ptah PDLC ecosystem — the spec-driven, multi-role development pipeline the Ptah engine orchestrates."
+  },
+  "plugins": [
+    {
+      "name": "pdlc",
+      "source": "ohenak/yumo-plugins/pdlc",
+      "description": "Product Development Lifecycle orchestration: REQ → FSPEC → TSPEC → PLAN → PROPERTIES → implementation, with parallel cross-reviews, evaluator-optimizer feedback loops, parallel TDD implementation, and a cross-feature learning loop (harvest → consolidate). The canonical skill-set the Ptah engine references."
+    }
+  ]
+}
