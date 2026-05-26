@@ -84,8 +84,8 @@ claude --plugin-dir ./pdlc
 claude plugin validate ./pdlc --strict
 
 # Install in another repo from the marketplace
-claude plugin marketplace add ohenak/yumo
-claude plugin install pdlc@ptah
+claude plugin marketplace add ohenak/yumo-plugins
+claude plugin install pdlc
 
 # Run the pipeline
 /pdlc:orchestrate-dev docs/{feature-name}/REQ-{feature-name}.md
@@ -98,6 +98,14 @@ claude plugin install pdlc@ptah
 | `guard-harvest-before-delete` | Before any `rm`/`del` Bash call | Blocks deletion of `CROSS-REVIEW-*` files unless `LEARNINGS-{feature}.md` exists on the branch |
 | `check-scope-field` | After Write or Edit | Warns if a skill output doc is missing the `Scope:` field |
 | `nudge-consolidation` | Session start | Reminds to run `consolidate-learnings` when stale LEARNINGS files are detected |
+
+---
+
+## Marketplace
+
+This repo exposes a marketplace manifest at `.claude-plugin/marketplace.json`. It lists every plugin in the repo so Claude Code can discover and install them by source path.
+
+When you add a new plugin, add an entry to `.claude-plugin/marketplace.json` alongside the plugin directory itself.
 
 ---
 
