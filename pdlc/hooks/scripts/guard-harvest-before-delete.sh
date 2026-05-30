@@ -7,7 +7,19 @@ set -uo pipefail
 
 input="$(cat)"
 
-python3 - "$input" <<'PY'
+# Pick a usable Python interpreter. On Windows `python3` is absent and bare `python` may
+# resolve to the Microsoft Store stub (prints a notice, exits non-zero), so probe each
+# candidate by running it. If none is available, fail open (allow) rather than erroring.
+PY_BIN=""
+for cand in python3 python py; do
+  if command -v "$cand" >/dev/null 2>&1 && "$cand" -c "import sys" >/dev/null 2>&1; then
+    PY_BIN="$cand"
+    break
+  fi
+done
+[ -z "$PY_BIN" ] && exit 0
+
+"$PY_BIN" - "$input" <<'PY'
 import sys, json, os, glob, re
 
 raw = sys.argv[1] if len(sys.argv) > 1 else ""

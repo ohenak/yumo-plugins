@@ -7,9 +7,20 @@ set -uo pipefail
 
 input="$(cat)"
 
-# Extract the written file path from the hook's tool_input. python3 is always present
-# in this toolchain; fall back to empty (no-op) if parsing fails.
-fp="$(printf '%s' "$input" | python3 -c '
+# Pick a usable Python interpreter. On Windows `python3` is absent and bare `python` may
+# resolve to the Microsoft Store stub (prints a notice, exits non-zero), so probe each
+# candidate by running it. No-op if none is available.
+PY_BIN=""
+for cand in python3 python py; do
+  if command -v "$cand" >/dev/null 2>&1 && "$cand" -c "import sys" >/dev/null 2>&1; then
+    PY_BIN="$cand"
+    break
+  fi
+done
+[ -z "$PY_BIN" ] && exit 0
+
+# Extract the written file path from the hook's tool_input; fall back to empty (no-op) if parsing fails.
+fp="$(printf '%s' "$input" | "$PY_BIN" -c '
 import sys, json
 try:
     d = json.load(sys.stdin)
