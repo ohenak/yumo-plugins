@@ -1,7 +1,7 @@
 ---
 Status: Draft
 Author: pm-author
-Version: 1.0
+Version: 1.1
 Feature: orchestrate-dev-workflow
 ---
 
@@ -9,7 +9,7 @@ Feature: orchestrate-dev-workflow
 |---|---|
 | Upstream | **REQ** |
 | Downstream | FSPEC, TSPEC, PROPERTIES |
-| Cross-Reviews | (pending) |
+| Cross-Reviews | CROSS-REVIEW-software-engineer-REQ.md, CROSS-REVIEW-test-engineer-REQ.md |
 | LEARNINGS | docs/orchestrate-dev-workflow/LEARNINGS-orchestrate-dev-workflow.md |
 
 # REQ — orchestrate-dev-workflow
@@ -30,7 +30,7 @@ Dynamic workflows execute as a JavaScript script in the background. The plan (lo
 
 ### In Scope
 
-- Rewrite the orchestration logic as a dynamic workflow script (`pdlc/workflows/orchestrate-dev.js`)
+- Rewrite the orchestration logic as a dynamic workflow script. The canonical plugin source is `pdlc/workflows/orchestrate-dev.js`; the runtime-loaded copy that Claude Code executes is `.claude/workflows/orchestrate-dev.js` in the consumer repo. The plugin source is the single source of truth; the consumer copy is generated/updated from it.
 - Absorb `tech-lead`'s DAG-parse / topological-batch / parallel-dispatch / merge / test-gate logic into the script
 - Add an additive verdict trailer to `se-review`, `te-review`, and `pm-review` skills (backward-compatible)
 - Rewrite `orchestrate-dev/SKILL.md` as a pointer/contract document
@@ -110,13 +110,13 @@ Dynamic workflows execute as a JavaScript script in the background. The plan (lo
 #### REQ-PIPELINE-03
 **Title:** Resumable run
 
-**Description:** A pipeline run that is paused or interrupted SHALL be resumable within the same session by re-invoking Workflow with `resumeFromRunId`. Completed agents SHALL return their cached results; only new or edited calls SHALL re-run.
+**Description:** A pipeline run that is paused or interrupted SHALL be resumable within the same session by re-invoking Workflow with `resumeFromRunId`. Per-agent call caching is a runtime-provided guarantee: the runtime returns the cached result for any agent call that already completed; the script does not implement its own caching layer. When the workflow resumes mid-`reviewLoop`, the iteration count does not restart from 1 — the script relies on the runtime's per-agent caching to skip already-completed reviewer and optimizer calls, advancing to the first incomplete iteration. The script emits `log("Resuming from iteration N")` (where N is the current loop iteration) when it detects it is continuing an in-progress loop on resume.
 
 **Acceptance criteria:**
 - **Who:** Developer
-- **Given:** A pipeline run has been stopped or paused mid-execution
+- **Given:** A pipeline run has been stopped or paused mid-execution inside a `reviewLoop`
 - **When:** Developer resumes the run using the run ID
-- **Then:** The pipeline continues from where it stopped; already-completed agent calls do not re-execute
+- **Then:** (1) The pipeline continues from where it stopped; already-completed agent calls do not re-execute; (2) the `/workflows` progress view shows a `log()` entry of the form `"Resuming from iteration N"` where N matches the iteration the loop was on when interrupted; (3) the iteration cap counter does not reset to 1 on resume
 
 **Priority:** P1
 **Phase:** 1
@@ -130,13 +130,13 @@ Dynamic workflows execute as a JavaScript script in the background. The plan (lo
 #### REQ-GATE-01
 **Title:** Script-owned gate decisions
 
-**Description:** All approval gate decisions SHALL be made by the workflow script, not by Claude's reasoning in a conversation turn. The script SHALL branch on `Approved | Approved with minor changes → pass` and `Needs revision → trigger optimizer`, using the `VERDICT:` line returned by reviewer agents.
+**Description:** All approval gate decisions SHALL be made by the workflow script, not by Claude's reasoning in a conversation turn. The script SHALL branch on `Approved | Approved with minor changes → pass` and `Needs revision → trigger optimizer`, by inspecting the `result` string/object returned by the `agent()` call for each reviewer — not by reading files on disk. The exact VERDICT format the script parses is defined in REQ-COMPAT-01 (the shared data contract).
 
 **Acceptance criteria:**
-- **Who:** Workflow runtime
+- **Who:** Workflow script
 - **Given:** Both reviewers for a phase have completed
 - **When:** The script evaluates gate state
-- **Then:** The gate decision is determined solely from the return values of the reviewer agents (not from reading files on disk); execution branches correctly based on those verdicts
+- **Then:** (1) The script reads the `result` returned by the `agent()` call (not any file on disk) to extract the `VERDICT:` value per the format defined in REQ-COMPAT-01; (2) a verdict of `Approved` or `Approved with minor changes` causes the gate to pass; (3) a verdict of `Needs revision` triggers the optimizer; (4) a missing or malformed VERDICT is treated as `Needs revision` per REQ-GATE-05
 
 **Priority:** P0
 **Phase:** 1
@@ -150,11 +150,15 @@ Dynamic workflows execute as a JavaScript script in the background. The plan (lo
 
 **Description:** Each review phase SHALL implement an evaluator-optimizer loop: two reviewers run in parallel, the script checks both verdicts, and if either fails it invokes the optimizer skill. The loop SHALL cap at 5 iterations. A single reusable `reviewLoop` construct SHALL serve all review phases (REQ, FSPEC, TSPEC, DECISIONS, PLAN, PROPERTIES, IMPLEMENTATION) so the loop logic is not duplicated across phases.
 
+**DECISIONS conditional branch:** The script determines whether DECISIONS is warranted by inspecting the return value of the TSPEC author agent, which SHALL include a boolean field `decisionsWarranted: true | false` after reviewing its own TSPEC cross-reviews. When `decisionsWarranted` is `false`, the DECISIONS phase is skipped entirely — the script branches outside the `reviewLoop` and does not pass through a zero-iteration loop. The skip is logged as `log("Phase D skipped — no load-bearing alternatives")` and appears in the final report as Phase D: ⏭ Skipped.
+
+**Partial-iteration reviewer failure:** If one reviewer agent crashes or times out during an iteration, that reviewer's verdict is treated as `Needs revision` for that iteration. The other reviewer's verdict is preserved. The iteration count increments normally. The optimizer is invoked if either verdict is non-passing (including the failure-treated-as-revision).
+
 **Acceptance criteria:**
 - **Who:** Workflow script
 - **Given:** A review phase has begun
 - **When:** The loop runs through iterations
-- **Then:** (1) Both reviewers execute in parallel per iteration; (2) the optimizer runs only when at least one reviewer fails; (3) the loop terminates when both reviewers pass or 5 iterations are exhausted; (4) all review phases use the same `reviewLoop` construct
+- **Then:** (1) Both reviewers execute in parallel per iteration; (2) the optimizer runs only when at least one reviewer fails or crashes; (3) the loop terminates when both reviewers pass or 5 iterations are exhausted; (4) all review phases use the same `reviewLoop` construct; (5) when DECISIONS is skipped, the `/workflows` progress view shows `"Phase D skipped — no load-bearing alternatives"` and the script does not call `reviewLoop` for that phase; (6) a crashed or timed-out reviewer increments the iteration count and triggers the optimizer without halting the pipeline
 
 **Priority:** P0
 **Phase:** 1
@@ -166,13 +170,13 @@ Dynamic workflows execute as a JavaScript script in the background. The plan (lo
 #### REQ-GATE-03
 **Title:** Auto-approved implementation batch plan with observability
 
-**Description:** The computed implementation batch plan (topological sort of PLAN tasks by dependency) SHALL execute automatically without requiring user approval. The batch plan SHALL be emitted to the `/workflows` progress view via `log()` before any `se-implement` agent is dispatched.
+**Description:** The computed implementation batch plan (topological sort of PLAN tasks by dependency) SHALL execute automatically without requiring user approval. The batch plan SHALL be emitted to the `/workflows` progress view before any `se-implement` agent is dispatched. The preferred mechanism is `log()` per confirmed runtime capability at implementation-authoring time; if `log()` does not surface structured data in the `/workflows` view, the fallback is a `phase()` label that includes the batch plan summary in the label text.
 
 **Acceptance criteria:**
 - **Who:** Developer
 - **Given:** PROPERTIES are approved and the implementation phase begins
 - **When:** The script computes the batch plan
-- **Then:** (1) The batch plan is logged to the `/workflows` progress view before any `se-implement` agent is dispatched; (2) implementation proceeds automatically without waiting for user input
+- **Then:** (1) The batch plan is visible in the `/workflows` progress view (via `log()` if available, otherwise via `phase()` label) before any `se-implement` agent is dispatched; (2) implementation proceeds automatically without waiting for user input
 
 **Priority:** P0
 **Phase:** 1
@@ -184,13 +188,13 @@ Dynamic workflows execute as a JavaScript script in the background. The plan (lo
 #### REQ-GATE-04
 **Title:** Non-convergence POSTMORTEM before halt
 
-**Description:** When any review loop reaches the 5-iteration limit without converging, the script SHALL invoke an agent to write `docs/{feature}/POSTMORTEM-{phase}-{feature}.md` before the run halts. The run SHALL halt with a report listing the unresolved findings and the reviewers who did not approve.
+**Description:** When any review loop reaches the 5-iteration limit without converging, the script SHALL invoke an agent to write `docs/{feature}/POSTMORTEM-{phase}-{feature}.md` before the run halts. The run SHALL halt with a report listing the unresolved findings and the reviewers who did not approve. The required POSTMORTEM content sections (Phase, Iterations, Reviewers, Pattern of Disagreement, Best-Guess Root Cause, Recommendation) are specified in the `orchestrate-dev` SKILL.md template; this REQ defers content structure to that template.
 
 **Acceptance criteria:**
 - **Who:** Workflow script
 - **Given:** A review loop has completed 5 iterations and at least one reviewer still returns "Needs revision"
 - **When:** The loop limit is reached
-- **Then:** (1) An agent writes `POSTMORTEM-{phase}-{feature}.md` with the pattern-of-disagreement analysis; (2) the workflow halts; (3) the final report identifies which phase failed, which reviewers did not approve, and all unresolved High/Medium findings
+- **Then:** (1) An agent writes `POSTMORTEM-{phase}-{feature}.md` containing the sections enumerated in the SKILL.md POSTMORTEM template (Phase, Iterations, Reviewers, Pattern of Disagreement, Best-Guess Root Cause, Recommendation); (2) the workflow halts; (3) the final report identifies which phase failed, which reviewers did not approve, and all unresolved High/Medium findings
 
 **Priority:** P0
 **Phase:** 1
@@ -199,18 +203,52 @@ Dynamic workflows execute as a JavaScript script in the background. The plan (lo
 
 ---
 
+#### REQ-GATE-05
+**Title:** Missing or malformed VERDICT treated as "Needs revision"
+
+**Description:** When a reviewer agent returns output that does not contain a `VERDICT:` line — due to agent crash, truncated output, an un-patched skill, or any other cause — the script SHALL treat the result as `Needs revision` and log a warning rather than crashing or stalling. This prevents silent mis-branching and ensures the loop continues to make forward progress.
+
+**Acceptance criteria:**
+- **Who:** Workflow script
+- **Given:** A reviewer agent has returned output that contains no parseable `VERDICT:` line
+- **When:** The script attempts to extract the verdict
+- **Then:** (1) The script treats the missing/malformed verdict as `Needs revision`; (2) the script emits a `log()` warning of the form `"WARNING: reviewer <skill> returned no VERDICT — treating as Needs revision"`; (3) the pipeline does not crash or stall; (4) the iteration count increments and the optimizer is invoked as normal
+
+**Priority:** P0
+**Phase:** 1
+**Source:** US-02, US-06
+**Dependencies:** REQ-GATE-01, REQ-COMPAT-01
+
+---
+
 ### Domain: COMPAT — Backward Compatibility
 
 #### REQ-COMPAT-01
-**Title:** Verdict trailer added to review skills
+**Title:** Verdict trailer data contract (shared specification)
 
-**Description:** The `se-review`, `te-review`, and `pm-review` skills SHALL each receive an additive instruction: after writing their `CROSS-REVIEW-*.md` file to disk, they SHALL end their final message with exactly: `VERDICT: <Approved | Approved with minor changes | Needs revision>` followed by a JSON object `{"high": N, "medium": N, "low": N}`. This SHALL be backward-compatible — interactive callers that do not parse the trailer are unaffected.
+**Description:** The `se-review`, `te-review`, and `pm-review` skills SHALL each receive an additive instruction: after writing their `CROSS-REVIEW-*.md` file to disk, they SHALL end their final message with the VERDICT trailer defined below. This is the shared data contract consumed by REQ-GATE-01 and REQ-GATE-05.
+
+**VERDICT trailer format (normative):**
+
+```
+VERDICT: <verdict>
+{"high": N, "medium": N, "low": N}
+```
+
+- The verdict value is exactly one of (case-sensitive): `Approved`, `Approved with minor changes`, `Needs revision`
+- The VERDICT line and the JSON object are on separate consecutive lines with no intervening text
+- No text appears between the VERDICT line and the JSON object
+- N values are non-negative integers
+- The JSON object uses exactly the keys `high`, `medium`, `low` with no additional keys
+- If the output is malformed (wrong casing, extra text between lines, missing JSON, invalid JSON) the consuming script treats the result as `Needs revision` per REQ-GATE-05
+
+This trailer is backward-compatible — interactive callers that do not parse it see no functional change.
 
 **Acceptance criteria:**
 - **Who:** Review skill
 - **Given:** A review skill has completed its cross-review document
 - **When:** The skill's final message is produced
-- **Then:** The final message ends with a `VERDICT:` line and a finding-count JSON object; the cross-review file on disk is unchanged from today's format
+- **Then:** (1) The final message ends with a `VERDICT:` line using one of the three exact case-sensitive verdict strings; (2) the JSON object `{"high": N, "medium": N, "low": N}` appears on the immediately following line with no intervening text; (3) the cross-review file on disk is unchanged from today's format
 
 **Priority:** P0
 **Phase:** 1
@@ -229,6 +267,8 @@ Dynamic workflows execute as a JavaScript script in the background. The plan (lo
 - **Given:** An agent writes a pdlc artifact or attempts to delete a `CROSS-REVIEW-*` file
 - **When:** The tool call executes
 - **Then:** (1) `check-scope-field` fires after any Write/Edit to a pdlc artifact; (2) `guard-harvest-before-delete` blocks any `CROSS-REVIEW-*` deletion until `LEARNINGS-{feature}.md` exists on the branch
+
+**Verifiable scenario (concrete):** Given a workflow harvest agent attempts to delete a `CROSS-REVIEW-*` file on a branch where `LEARNINGS-*.md` does not yet exist, the `guard-harvest-before-delete` PreToolUse hook fires, the hook script exits non-zero, and the agent's Bash call exits non-zero. This is observable as a non-zero exit code in the agent result and constitutes the halt condition per REQ-ARTIFACTS-02.
 
 **Priority:** P0
 **Phase:** 1
@@ -280,11 +320,13 @@ Dynamic workflows execute as a JavaScript script in the background. The plan (lo
 
 **Description:** In Phase H, the harvest agent SHALL write and push `LEARNINGS-{feature}.md` before deleting any `CROSS-REVIEW-*` files. The `guard-harvest-before-delete` hook provides a second enforcement layer; the workflow's own prompt ordering is the primary guarantee.
 
+**Hook-block error propagation:** When the `guard-harvest-before-delete` hook fires and blocks a deletion, the propagation chain is: hook script exits non-zero → agent's Bash call exits non-zero → the agent's return value contains the guard hook's error message text → the workflow script detects the non-zero exit in the agent result and treats it as a halt condition. The halt is observable in the final report as a named guard-triggered failure identifying the blocked file path.
+
 **Acceptance criteria:**
 - **Who:** Harvest agent
 - **Given:** Final codebase review is approved
 - **When:** Phase H executes
-- **Then:** (1) `LEARNINGS-{feature}.md` is committed and pushed before any `CROSS-REVIEW-*` file is deleted; (2) if the guard hook blocks a deletion, the run halts with an error rather than silently skipping the delete
+- **Then:** (1) `LEARNINGS-{feature}.md` is committed and pushed before any `CROSS-REVIEW-*` file is deleted; (2) if the guard hook blocks a deletion, the harvest agent's Bash call exits non-zero, the agent result contains the hook's error message, the workflow script halts, and the final report identifies the guard-triggered failure with the blocked file path
 
 **Priority:** P0
 **Phase:** 1
@@ -298,13 +340,13 @@ Dynamic workflows execute as a JavaScript script in the background. The plan (lo
 #### REQ-OBS-01
 **Title:** Phase-by-phase progress in /workflows view
 
-**Description:** The workflow SHALL use `phase()` calls to label each PDLC phase in the `/workflows` progress view. Each agent within a phase SHALL be labeled to identify the skill and document type being processed (e.g., `review:se-review:REQ`, `optimize:pm-author:REQ`, `create:se-author:TSPEC`).
+**Description:** The workflow SHALL use `phase()` calls to label each PDLC phase in the `/workflows` progress view. Per-agent labeling (e.g., `review:se-review:REQ`, `optimize:pm-author:REQ`, `create:se-author:TSPEC`) is the preferred observability level, conditioned on the runtime API supporting per-agent metadata at implementation-authoring time. If the runtime only exposes phase-level labels and not per-agent descriptors, the fallback is phase-level labels only; per-agent labels are best-effort in that case. Loop iteration numbers within a phase SHALL be emitted via `log()` regardless of whether per-agent labeling is available.
 
 **Acceptance criteria:**
 - **Who:** Developer monitoring the pipeline
 - **Given:** A pipeline run is active
 - **When:** Developer opens `/workflows`
-- **Then:** Each PDLC phase is visible as a labeled group; each agent within a phase is labeled with its skill and document; loop iteration numbers are shown for review phases
+- **Then:** (1) Each PDLC phase is visible as a labeled group via `phase()`; (2) loop iteration numbers are logged for review phases; (3) per-agent labels are present if the runtime API supports them; (4) if per-agent labeling is unavailable, phase labels are sufficient and the requirement is met
 
 **Priority:** P1
 **Phase:** 1
@@ -358,11 +400,23 @@ Dynamic workflows execute as a JavaScript script in the background. The plan (lo
 
 **Description:** The workflow SHALL never exceed 16 concurrent agents at any point. A full feature pipeline SHALL stay well under the 1,000-agent-per-run cap. The maximum fan-out per implementation batch SHALL be 5 `se-implement` agents (matching the existing tech-lead convention).
 
+**Worst-case agent count formula:**
+- 1 (initial guard / REQ validation agent)
+- + 7 phases × 5 iterations × 3 agents (2 reviewers + 1 optimizer) = 105
+- + 5 implementation agents × 5 batches = 25
+- + 1 (PROPERTIES test run agent)
+- + 1 (final codebase review agent)
+- + 1 (harvest agent)
+- + up to 8 POSTMORTEM agents (one per non-converging phase, worst case)
+- **= ~142 agents worst case**, well under the 1,000-agent-per-run cap
+
+This formula is the analytical basis for the cap compliance acceptance criterion.
+
 **Acceptance criteria:**
 - **Who:** Workflow runtime
 - **Given:** A pipeline run is in progress
 - **When:** Implementation batches execute
-- **Then:** No more than 5 `se-implement` agents run concurrently per batch; total agents for a typical feature remain under 100
+- **Then:** (1) No more than 5 `se-implement` agents run concurrently per batch; (2) no more than 16 agents run concurrently at any point; (3) the total agent count for any pipeline run does not exceed the worst-case formula of ~142 agents (analytically verified against the 1,000-agent-per-run cap)
 
 **Priority:** P0
 **Phase:** 1
@@ -374,13 +428,13 @@ Dynamic workflows execute as a JavaScript script in the background. The plan (lo
 #### REQ-NFR-02
 **Title:** Context isolation
 
-**Description:** Intermediate results (cross-review content, reviewer verdicts, optimizer outputs) SHALL live in script variables, not in the main conversation context. Only the final report (Step 10 in SKILL.md) SHALL enter the orchestrator's context.
+**Description:** Intermediate results (cross-review content, reviewer verdicts, optimizer outputs) SHALL live in script-local variables, not in the main conversation context. Only the final pipeline report (returned by the workflow's top-level `return` statement) SHALL enter the orchestrator's context. This is a structural guarantee the script provides: agent result objects are stored in script-local variables and are never passed as arguments to `log()` calls that surface in the main context.
 
 **Acceptance criteria:**
-- **Who:** Developer's main session
-- **Given:** A pipeline run has completed
-- **When:** The conversation context is inspected
-- **Then:** No individual CROSS-REVIEW document content, per-reviewer findings, or per-phase intermediate outputs are visible in the main conversation; only the final report is present
+- **Who:** Workflow script (code-reviewable structural guarantee)
+- **Given:** The workflow script is examined
+- **When:** All `log()` call sites are inspected
+- **Then:** (1) No `log()` call receives an agent result object containing CROSS-REVIEW document content, per-reviewer findings, or per-phase intermediate output as its argument; (2) agent results are held in script-local variables scoped to the phase or loop in which they are used; (3) the only value returned to the main conversation context is the final structured pipeline report
 
 **Priority:** P1
 **Phase:** 1
@@ -394,10 +448,10 @@ Dynamic workflows execute as a JavaScript script in the background. The plan (lo
 | User Story | Requirements |
 |---|---|
 | US-01 | REQ-PIPELINE-01, REQ-PIPELINE-02, REQ-OBS-02, REQ-NFR-02 |
-| US-02 | REQ-PIPELINE-01, REQ-GATE-01, REQ-GATE-02, REQ-NFR-01 |
+| US-02 | REQ-PIPELINE-01, REQ-GATE-01, REQ-GATE-02, REQ-GATE-05, REQ-NFR-01 |
 | US-03 | REQ-PIPELINE-03 |
 | US-04 | REQ-OBS-01, REQ-OBS-02 |
-| US-05 | REQ-GATE-04 |
+| US-05 | REQ-GATE-04, REQ-GATE-05 |
 | US-06 | REQ-PIPELINE-02, REQ-COMPAT-01, REQ-COMPAT-02, REQ-COMPAT-03, REQ-ARTIFACTS-01, REQ-ARTIFACTS-02, REQ-SKILL-01 |
 | US-07 | REQ-GATE-03 |
 
