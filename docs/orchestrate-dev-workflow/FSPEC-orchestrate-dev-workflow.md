@@ -1,7 +1,7 @@
 ---
 Status: Draft
 Author: pm-author
-Version: 1.0
+Version: 1.1
 Feature: orchestrate-dev-workflow
 ---
 
@@ -9,8 +9,8 @@ Feature: orchestrate-dev-workflow
 |---|---|
 | Upstream | REQ → **FSPEC** |
 | Downstream | TSPEC, PROPERTIES |
-| Scope | Behavioral flows for: reviewLoop mechanics, VERDICT trailer parsing, DECISIONS conditional, implementation phase DAG execution, harvest ordering, and all named error paths |
-| Cross-Reviews | — |
+| Scope | Behavioral flows for: pipeline phase dispatch, reviewLoop mechanics, VERDICT trailer parsing, DECISIONS conditional, implementation phase DAG execution, harvest ordering, and all named error paths |
+| Cross-Reviews | CROSS-REVIEW-software-engineer-FSPEC.md, CROSS-REVIEW-test-engineer-FSPEC.md |
 | LEARNINGS | docs/orchestrate-dev-workflow/LEARNINGS-orchestrate-dev-workflow.md |
 
 # FSPEC — orchestrate-dev-workflow
@@ -21,15 +21,50 @@ Functional specification for the behavioral rules, branching logic, and business
 
 ## Scope of This Document
 
-This FSPEC covers five behavioral subsystems and their error paths:
+This FSPEC covers six behavioral subsystems and their error paths:
 
-1. **`reviewLoop`** — entry, parallel reviewer dispatch, verdict checking, optimizer invocation, iteration counting, resume behavior, 5-iteration cap, and POSTMORTEM branch
+0. **Pipeline phase dispatch** — which creator agent is invoked for each phase, inputs, and expected outputs
+1. **`reviewLoop`** — phase-to-reviewer mapping, entry, parallel reviewer dispatch, verdict checking, optimizer invocation, iteration counting, resume behavior, 5-iteration cap, and POSTMORTEM branch
 2. **VERDICT trailer contract** — exact parsing rules, malformed/absent VERDICT handling, and script branching on each verdict value
 3. **DECISIONS conditional** — how `decisionsWarranted` is determined, format spec, missing-field fallback, skip vs. full path, and `/workflows` representation
-4. **Implementation phase** — PLAN DAG parsing, topological batching, batch plan logging, parallel `se-implement` dispatch, per-batch test gate, and halt on failure
+4. **Implementation phase** — PLAN DAG parsing, topological batching, batch plan logging, parallel `se-implement` dispatch, worktree merge-back, per-batch test gate, and halt on failure
 5. **Harvest phase** — LEARNINGS write ordering, guard hook interaction, and halt on guard block
 
 Error flows specific to each subsystem are embedded within the relevant section. Cross-cutting error flows (REQ path missing/unparseable, general agent crash propagation) are in §7.
+
+---
+
+## 0. FSPEC-DISPATCH: Pipeline Phase Dispatch
+
+**Linked requirements:** REQ-PIPELINE-01, REQ-PIPELINE-02, REQ-GATE-02
+
+This section specifies the creator agent invocation for every phase that requires document creation before a `reviewLoop` begins. Phase R (REQ review) has no creator call — the REQ is an input, not created by the workflow.
+
+### 0.1 Phase Dispatch Table
+
+| Phase | Creator Skill | Input(s) | Expected Output Path | reviewLoop Reviewers | Optimizer |
+|-------|--------------|----------|---------------------|----------------------|-----------|
+| R | _(none — REQ is the input)_ | — | — | `se-review`, `te-review` | `pm-author` |
+| F | `pm-author` | `REQ-{feature}.md` | `docs/{feature}/FSPEC-{feature}.md` | `se-review`, `te-review` | `pm-author` |
+| T | `se-author` | `REQ-{feature}.md`, `FSPEC-{feature}.md` | `docs/{feature}/TSPEC-{feature}.md` | `pm-review`, `te-review` | `se-author` |
+| D | `se-author` | `REQ-{feature}.md`, `FSPEC-{feature}.md`, `TSPEC-{feature}.md` | `docs/{feature}/DECISIONS-{feature}.md` | `pm-review`, `te-review` | `se-author` |
+| P | `se-author` | `REQ-{feature}.md`, `FSPEC-{feature}.md`, `TSPEC-{feature}.md`, `DECISIONS-{feature}.md` (if present) | `docs/{feature}/PLAN-{feature}.md` | `pm-review`, `te-review` | `se-author` |
+| PR | `te-author` | `REQ-{feature}.md`, `FSPEC-{feature}.md`, `TSPEC-{feature}.md`, `PLAN-{feature}.md` | `docs/{feature}/PROPERTIES-{feature}.md` | `pm-review`, `se-review` | `te-author` |
+| CR | _(no creation step — reviews the implementation on-branch)_ | — | — | `pm-review`, `te-review` | `se-author` |
+
+### 0.2 Creator Agent Invocation Rules
+
+1. The creator agent is invoked once per phase before `reviewLoop` is entered.
+2. The creator agent receives all listed input paths as context. The script passes these as agent call parameters.
+3. The creator agent must write and commit the output document to the feature branch before returning.
+4. If the creator agent fails (crashes, non-zero exit, or returns an error signal), the pipeline halts with: `"Error: creator agent {skill} failed to produce {output-path} for phase {phase}"`. The subsequent `reviewLoop` is not entered.
+5. The script does not attempt to distinguish "creator succeeded but document is missing from disk" from "creator never ran" — both are detected by the `reviewLoop` entry precondition check in §1.1 (document absent → halt with §7.2 error). The halt message in §7.2 is diagnostic; the direct failure path is §0.2 step 4.
+
+### 0.3 Phase CR and Phase H: No Creator Call
+
+Phase CR reviews the implementation already on the feature branch. There is no document to create. The script passes `docs/{feature}/` (the feature directory) as the `docPath` for Phase CR's `reviewLoop` call (see §4.8).
+
+Phase H (harvest) has no creator call and no `reviewLoop`. It is a single-agent harvest invocation (see §5).
 
 ---
 
@@ -44,12 +79,12 @@ Error flows specific to each subsystem are embedded within the relevant section.
 | Parameter | Type | Description |
 |---|---|---|
 | `phase` | string | Phase label (e.g., `"R"`, `"F"`, `"T"`, `"D"`, `"P"`, `"PR"`, `"CR"`) |
-| `docPath` | string | Path to the document under review |
-| `reviewers` | array[skill] | Exactly two reviewer skills to dispatch in parallel |
-| `optimizer` | skill | The optimizer skill to invoke on failure |
+| `docPath` | string | Path to the document under review (or feature directory for Phase CR — see §4.8) |
+| `reviewers` | array[skill] | Exactly two reviewer skills to dispatch in parallel (see Phase Dispatch Table in §0.1) |
+| `optimizer` | skill | The optimizer skill to invoke on failure (see Phase Dispatch Table in §0.1) |
 | `featureName` | string | Feature name extracted from the REQ path |
 
-Entry precondition: the upstream document at `docPath` exists and has been committed on the feature branch. If the document is absent, `reviewLoop` does not start — control returns to the caller with a halt error (see §7.2).
+Entry precondition: for all phases except CR, the upstream document at `docPath` exists and has been committed on the feature branch. If the document is absent, `reviewLoop` does not start — control returns to the caller with a halt error (see §7.2). For Phase CR, the precondition is that the feature directory at `docPath` exists (always true after Phase I completes).
 
 ### 1.2 Parallel Reviewer Dispatch
 
@@ -90,7 +125,7 @@ The loop exits. Execution continues with the next pipeline phase. The phase is r
 - Iteration 1 produces cross-review files with no version suffix: `CROSS-REVIEW-{skill}-{doc-type}.md`
 - Iteration 2 produces `-v2` suffix; iteration N produces `-vN` suffix for N ≥ 2.
 - The iteration counter is a script-local variable initialized to 1 at loop entry.
-- The counter increments after every optimizer invocation (i.e., after every FAIL gate), before the next parallel dispatch.
+- The counter increments **after** every optimizer invocation (i.e., after every FAIL gate), immediately before returning to §1.2 for the next parallel dispatch.
 - The optimizer always reads all versions (no-suffix through current `-vN`) before addressing feedback.
 
 ### 1.7 Resume Behavior Inside a Loop
@@ -99,24 +134,25 @@ When a run is resumed from a `runId` after interruption mid-loop:
 
 1. The runtime returns cached results for all completed agent calls; those calls do not re-execute.
 2. The script continues executing from the first incomplete agent call.
-3. The iteration counter does **not** reset to 1.
-4. When the script detects it is continuing an in-progress loop (i.e., cached results exist for some but not all agents in the current iteration), it emits:
+3. The iteration counter does **not** reset to 1; the runtime's per-agent caching preserves the iteration state across resumption.
+4. At the start of every iteration, the script emits:
    ```
    log("Resuming from iteration N")
    ```
-   where `N` is the current iteration number (the iteration that was active when the run was interrupted, not the next iteration to execute).
+   where `N` is the current iteration number (the iteration that was active when the run was interrupted, not the next iteration to execute). This log is emitted unconditionally before each parallel reviewer dispatch — resume is not distinguished from a fresh run in log output, so a fresh start at iteration 1 also emits `"Resuming from iteration 1"`. No cache-state query API is required; the log reflects the current value of the iteration counter.
 
 Resume behavior for implementation phase batches and the harvest phase follows the same runtime per-agent caching guarantee: completed agent calls are not re-executed regardless of which phase was interrupted.
 
 ### 1.8 5-Iteration Cap
 
 - The loop runs a maximum of 5 iterations.
-- If the iteration counter would exceed 5 and the gate state is still FAIL, the script does **not** invoke the optimizer again.
-- Instead, it branches to the POSTMORTEM path (§1.9) before halting.
+- After iteration 5's optimizer invocation, the iteration counter increments to 6.
+- The cap check occurs at the start of each iteration: if the counter exceeds 5 and the gate state from the most recent verdict check is FAIL, the script does **not** dispatch reviewers again.
+- Instead, it branches to the POSTMORTEM path (§1.9).
 
 ### 1.9 POSTMORTEM Branch (Non-Convergence)
 
-Trigger: iteration counter reaches 5 and gate state is FAIL.
+Trigger: iteration counter reaches 6 (i.e., 5 review iterations have occurred) and the most recent gate state was FAIL.
 
 1. The script invokes the **phase optimizer skill** as a POSTMORTEM-writing agent with the following instruction:
 
@@ -155,7 +191,7 @@ Rules:
 | `<verdict-value>` is one of three exact strings | `Approved`, `Approved with minor changes`, `Needs revision` (case-sensitive) |
 | The JSON object appears on the **immediately following line** | Required |
 | No text between the VERDICT line and the JSON line | Required |
-| The JSON object uses exactly the keys `high`, `medium`, `low` | Required |
+| The JSON object uses exactly the keys `high`, `medium`, `low` | Required (set equality, order-independent — any key ordering is valid) |
 | All N values are non-negative integers | Required |
 | No additional JSON keys are present | Required |
 | A trailing newline after the JSON object is **permitted** | Parsers must not anchor to end-of-string; a trailing `\n` is not an error |
@@ -164,30 +200,39 @@ Rules:
 
 The script uses the following extraction algorithm against the `result` string returned by each `agent()` call (not against any file on disk):
 
-1. Find the **last occurrence** of a line matching `/^VERDICT:\s+(.+)$/` in the result string. Using the last occurrence handles any intermediate VERDICT mentions in the cross-review body.
-2. Extract the captured group as the raw verdict string.
-3. Trim leading and trailing whitespace from the raw verdict string.
-4. Check that the trimmed value is exactly one of: `Approved`, `Approved with minor changes`, `Needs revision`. Comparison is case-sensitive.
-5. Read the line immediately following the VERDICT line (no blank lines permitted between them).
-6. Parse that line as JSON. Validate that the parsed object has exactly the keys `high`, `medium`, `low` with non-negative integer values and no other keys.
-7. If all checks pass: return the verdict value and the findings counts as structured data.
+1. Split the result string on newlines (`\n`) into an array of lines.
+2. Iterate the lines array **in reverse order** (from last line to first).
+3. For each line, perform a **case-sensitive exact-string check**: does the line, after trimming leading and trailing whitespace, start with `VERDICT:` followed by one or more whitespace characters and then the remainder? Specifically: trim the line, check if it starts with `"VERDICT: "` (the literal string `VERDICT:` followed by a single space minimum). This is not a regex evaluation — it is a prefix check on the trimmed line.
+4. On the first matching line found (i.e., the last occurrence in forward order), extract everything after `"VERDICT: "` as the raw verdict string, then trim it.
+5. Check that the trimmed value is exactly one of: `Approved`, `Approved with minor changes`, `Needs revision`. This check is case-sensitive and uses exact string equality (not regex).
+6. Identify the index of the VERDICT line in the original lines array. Scan forward from that index to find the next non-empty line (a line that, after trimming, is not empty). If the VERDICT line is the last line of output, or if all lines after the VERDICT line are empty, there is no following non-empty line — apply the truncated-output handling defined in §2.3.
+7. Parse the first non-empty line after the VERDICT line as JSON. Validate that the parsed object has a key set equal to `{"high", "medium", "low"}` (set equality, order-independent) with non-negative integer values and no other keys.
+8. If all checks pass: return the verdict value and the findings counts as structured data.
 
-### 2.3 Missing, Malformed, or Crashed Reviewer Handling
+**`DECISIONS_WARRANTED` parsing uses the same split-and-iterate strategy:** split the result string on newlines, iterate in reverse, find the last line whose trimmed value starts with `"DECISIONS_WARRANTED: "`, extract the remainder, trim it, and compare case-insensitively to `"true"` or `"false"` using exact string equality.
+
+### 2.3 Missing, Malformed, Crashed, or Truncated Reviewer Handling
 
 Any of the following conditions triggers the **fallback path**:
 
 | Condition | Description |
 |---|---|
-| No `VERDICT:` line found | Agent output contains no line starting with `VERDICT:` |
+| No `VERDICT:` line found | No line in the result starts with `VERDICT:` after trimming |
 | Wrong casing | Verdict string casing does not exactly match one of the three valid values |
 | Intervening text | One or more non-empty lines exist between the VERDICT line and the JSON line |
-| Missing JSON | No JSON object on the line following the VERDICT line |
-| Invalid JSON | The following line is not valid JSON |
-| Wrong JSON keys | The JSON object has keys other than exactly `high`, `medium`, `low` |
+| Missing JSON | No non-empty line follows the VERDICT line (truncated output) |
+| Invalid JSON | The following non-empty line is not valid JSON |
+| Wrong JSON keys | The JSON object's key set is not exactly `{"high", "medium", "low"}` |
 | Negative values | Any N value is negative |
 | Agent crash / timeout | The agent call threw an exception or timed out before returning |
 
-Fallback behavior for **every** condition above:
+**Truncated-output special case:** If the VERDICT line is found but there is no subsequent non-empty line (the agent message ends immediately after the VERDICT line, or is followed only by empty lines), the script does **not** treat this as a malformed-VERDICT fallback. Instead:
+- The verdict value is accepted as parsed (it passed the exact-string check in step 5).
+- The findings count JSON is treated as `{"high": 0, "medium": 0, "low": 0}` (zero counts, no error).
+- No fallback warning is emitted.
+- The gate proceeds on the verdict value alone.
+
+Fallback behavior for **every other** condition above:
 
 1. Treat the verdict as `Needs revision`.
 2. Emit a `log()` warning in exactly this format:
@@ -233,14 +278,16 @@ DECISIONS_WARRANTED: <value>
 - The line appears after the agent's prose summary and before any commit confirmation
 - No JSON object is required; this is a single-line trailer
 
-**Parsing:** The script finds the last occurrence of a line matching `/^DECISIONS_WARRANTED:\s+(true|false)$/i` and treats the value case-insensitively (`True`, `TRUE`, `true` are all accepted as `true`; `False`, `FALSE`, `false` as `false`).
+**Parsing:** The script applies the split-and-iterate strategy described in §2.2 (final paragraph): split result on newlines, iterate in reverse, find the last line whose trimmed value starts with `"DECISIONS_WARRANTED: "`, extract the remainder, trim it, and compare case-insensitively using exact string equality (`true`, `True`, `TRUE` → `true`; `false`, `False`, `FALSE` → `false`).
+
+**Injection mechanism:** The `DECISIONS_WARRANTED:` trailer is an additive instruction injected by the workflow script at TSPEC-optimizer invocation time. It is not baked into the `se-author` SKILL.md. The `se-author` skill is otherwise behaviorally unchanged; only this specific workflow invocation appends the return-value instruction to the agent call.
 
 **Missing or malformed field:** If the TSPEC optimizer agent's result contains no `DECISIONS_WARRANTED:` line, or the value is not one of `true`/`false`, the script treats the field as `true` (safe default — include DECISIONS rather than silently skip it). The script emits:
 ```
 log("WARNING: DECISIONS_WARRANTED field absent or malformed — defaulting to true")
 ```
 
-**Compatibility note:** This trailer is an additive return convention for the TSPEC optimizer invocation only. It does not change the TSPEC document on disk. The `se-author` skill is otherwise behaviorally unchanged; only the TSPEC-optimizer invocation within this workflow appends the assessment trailer.
+**Compatibility note:** This trailer is an additive return convention for the TSPEC optimizer invocation only. It does not change the TSPEC document on disk.
 
 ### 3.2 Skip Path (`decisionsWarranted = false`)
 
@@ -258,7 +305,7 @@ When `decisionsWarranted` is `false`:
 
 ### 3.3 Full Path (`decisionsWarranted = true`)
 
-When `decisionsWarranted` is `true`:
+When `decisionsWarranted` is `true` (whether from an explicit return value or a missing-field default):
 
 1. The script invokes `se-author` to create `docs/{featureName}/DECISIONS-{featureName}.md`.
 2. The DECISIONS document is committed and pushed before reviews begin.
@@ -268,6 +315,8 @@ When `decisionsWarranted` is `true`:
    - Cross-review output files: `CROSS-REVIEW-product-manager-DECISIONS[-vN].md`, `CROSS-REVIEW-test-engineer-DECISIONS[-vN].md`
 4. The same 5-iteration cap and POSTMORTEM path applies (see §1.8, §1.9).
 5. On loop PASS, execution continues to Phase P.
+
+In the `/workflows` progress view, Phase D appears as an active phase when the full path is taken: `"Phase D: DECISIONS Review"`.
 
 ### 3.4 `/workflows` Representation
 
@@ -297,7 +346,10 @@ The script reads `PLAN-{featureName}.md` and extracts the task table. Each task 
 | Dependencies | Comma-separated list of task IDs this task depends on |
 | Phase/batch hint | If the PLAN already groups tasks, this is advisory — the script re-derives batches from dependencies |
 
-The dependency graph is treated as a DAG (directed acyclic graph). If the PLAN's stated groupings are inconsistent with the dependency edges (e.g., a task in batch 2 depends on a task also in batch 2), the script uses the dependency-derived order, ignoring the PLAN's batch labels.
+The dependency graph is treated as a DAG (directed acyclic graph). If the PLAN's stated groupings are inconsistent with the dependency edges (e.g., a task in batch 2 depends on a task also in batch 2), the script uses the dependency-derived order, ignoring the PLAN's batch labels. When an override occurs, the script logs the discrepancy before dispatching:
+```
+log("WARNING: PLAN batch labels inconsistent with dependency edges — re-deriving topological batches")
+```
 
 ### 4.3 Topological Batching
 
@@ -306,9 +358,9 @@ The script performs a topological sort to compute execution batches:
 1. A task is **ready** if all its dependencies have completed.
 2. A **batch** is the maximal set of ready tasks at each step of the sort.
 3. Batches are numbered from 1.
-4. A single batch contains at most 5 tasks (the `se-implement` agent fan-out cap). If a batch would contain more than 5 ready tasks, the script splits it into sub-batches of up to 5, preserving topological ordering within each sub-batch.
+4. A single batch contains at most 5 tasks (the `se-implement` agent fan-out cap). If a batch would contain more than 5 ready tasks, the script splits it into sub-batches of up to 5. Sub-batch ordering within a topological level is determined by document order in the PLAN task table (deterministic). Sub-batches at the same topological level execute sequentially (sub-batch 1a completes before sub-batch 1b starts), preserving the concurrency cap.
 
-**Example:** 8 tasks, all ready at step 1 → sub-batch 1a (5 tasks), sub-batch 1b (3 tasks), both run before any dependent tasks.
+**Example:** 8 tasks, all ready at step 1 → sub-batch 1a (5 tasks, tasks 1–5 in PLAN order), sub-batch 1b (3 tasks, tasks 6–8 in PLAN order). Sub-batch 1a runs and completes before sub-batch 1b starts. Both run before any dependent tasks.
 
 ### 4.4 Batch Plan Logging
 
@@ -322,7 +374,7 @@ log("  ...")
 log("  Total: N tasks in M batches")
 ```
 
-This log output appears **before** the first `agent()` call for any `se-implement` task. Developers can see the entire planned execution order in `/workflows` before any implementation begins.
+This log output appears **before** the first `agent()` call for any `se-implement` task. The call ordering requirement is: the `log()` call for the batch plan string is a sequential statement that precedes the first `agent()` call for that batch — verifiable by inspecting the script's sequential statement order. Developers can see the entire planned execution order in `/workflows` before any implementation begins.
 
 The preferred mechanism is `log()`. If `log()` does not surface structured data in the `/workflows` view at implementation time, the fallback is a `phase()` label whose label text includes the batch summary (e.g., `"Phase I: Batch 1/3 — [task-1, task-2, task-3]"`).
 
@@ -336,17 +388,23 @@ For each batch:
    - Path to `TSPEC-{featureName}.md`
    - Path to `PROPERTIES-{featureName}.md`
 3. The script waits for all agents in the batch to complete before evaluating the batch gate.
-4. Worktrees are merged back to the feature branch after each batch completes (before the next batch dispatches).
+4. After all agents in the batch complete, each worktree is merged back to the feature branch (`feat-{featureName}`) using `git merge --no-ff`. This produces a merge commit for each worktree, preserving the worktree's commit history.
+5. **Merge conflict handling:** If a `git merge --no-ff` call produces a conflict, the script immediately aborts the merge (`git merge --abort`), leaves the conflicting worktree in place, halts the pipeline, and emits: `"Error: merge conflict merging worktree for task {task-id} into feat-{featureName} — conflicting files: {file-list}. Pipeline halted."`. Subsequent worktrees in the same batch are not merged. The developer must resolve the conflict manually.
+6. Merging proceeds worktree-by-worktree in PLAN document order. All worktrees from a batch must merge successfully before the per-batch test gate runs.
 
 Maximum concurrent agents per batch: **5** (enforced by the sub-batch splitting in §4.3).
 
 ### 4.6 Per-Batch Test Gate
 
-After all agents in a batch complete and worktrees are merged:
+After all agents in a batch complete and all worktrees are merged:
 
-1. The script inspects each agent's result for test failure signals.
-2. A batch **passes** if all agents report test suite passing.
-3. A batch **fails** if any agent reports test failure or a non-zero exit code.
+1. The script inspects each agent's result for test result signals.
+2. A batch **passes** if no agent's result contains a test failure marker.
+3. A batch **fails** if any agent's result contains a test failure marker.
+
+**Test result signal format (normative):** The script uses the following deterministic signal detection:
+- **Failure marker:** any line in the agent's result string matching the pattern `Tests: N failed` (where N is a positive integer) or the presence of `non-zero exit` in the result string (case-insensitive). These are the canonical failure signals produced by `se-implement` agents.
+- **Pass determination:** the batch passes if and only if no agent result contains a failure marker as defined above. The absence of a failure marker is the positive pass signal; no structured pass trailer is required.
 
 **On batch failure:**
 
@@ -375,7 +433,7 @@ Phase CR uses the standard `reviewLoop` construct with:
 
 - Reviewers: `pm-review`, `te-review`
 - Optimizer: `se-author` (addresses implementation review feedback, not a document author)
-- Document context: REQ acceptance criteria + PROPERTIES + current feature branch
+- `docPath`: `docs/{featureName}/` (the feature directory). Reviewers are instructed to inspect the codebase on the current feature branch rather than a single document. The §1.1 entry precondition for Phase CR checks that the feature directory exists (not a single file), which is always satisfied after Phase I.
 - Cross-review output files: `CROSS-REVIEW-product-manager-IMPLEMENTATION[-vN].md`, `CROSS-REVIEW-test-engineer-IMPLEMENTATION[-vN].md`
 - Same 5-iteration cap and POSTMORTEM path applies
 
@@ -391,7 +449,19 @@ Phase CR counts as one of the 8 review phases in the agent count formula (see RE
 
 Phase H begins after Phase CR `reviewLoop` passes. All `CROSS-REVIEW-*` and `POSTMORTEM-*` files written by worktree agents must have merged onto the feature branch before harvest reads them.
 
-> **Gating prerequisite (carried from SKILL.md):** Do not enable Phase H until the feature-branch-consistency fix has landed (artifacts written in worktrees must survive merge before harvest reads them). Until then, skip Phase H and leave cross-reviews in place.
+**Phase H gating prerequisite:** Phase H has a compile-time enable flag:
+
+```js
+const PHASE_H_ENABLED = true; // Set to false until feature-branch-consistency fix lands
+```
+
+If `PHASE_H_ENABLED` is `false`:
+1. The script logs: `"Phase H skipped — prerequisite not yet landed"`.
+2. Phase H appears in the `/workflows` view as: `"Phase H: ⏭ Skipped (prerequisite)"`.
+3. Phase H is listed in the final report as: `Phase H: ⏭ Skipped (prerequisite not yet landed)`.
+4. The pipeline completes without invoking the harvest agent.
+
+This flag is the scripted representation of the SKILL.md §9.5 caveat. When the feature-branch-consistency fix lands, `PHASE_H_ENABLED` is set to `true` and the harvest path becomes active.
 
 ### 5.2 LEARNINGS Write Ordering
 
@@ -466,9 +536,9 @@ The canonical phase execution order is:
 | I | Implementation | DAG batch dispatch | Always |
 | PT | PROPERTIES Tests | Single agent | Always |
 | CR | Final Codebase Review | `reviewLoop` | Always |
-| H | Harvest | Single agent | Always (pending gating prerequisite) |
+| H | Harvest | Single agent | Always (subject to `PHASE_H_ENABLED` flag) |
 
-No phase may be skipped except Phase D (per the DECISIONS conditional in §3). No phase may be reordered.
+No phase may be skipped except Phase D (per the DECISIONS conditional in §3) and Phase H (per the `PHASE_H_ENABLED` flag in §5.1). No phase may be reordered.
 
 ---
 
@@ -498,7 +568,7 @@ If a reviewer agent crashes or times out during an iteration:
 4. The iteration count increments and the optimizer is invoked if gate state is FAIL.
 5. The pipeline does **not** halt — it continues the loop.
 
-Exception: if **both** reviewers crash in the same iteration, both are treated as `Needs revision`, the optimizer is invoked, and the iteration count increments. The 5-iteration cap still applies.
+Exception: if **both** reviewers crash in the same iteration, both are treated as `Needs revision` (two warning log lines are emitted, one per crashed reviewer), gate state is FAIL, the optimizer is invoked once, and the iteration count increments. The 5-iteration cap still applies.
 
 ### 7.4 Optimizer Agent Failure
 
@@ -561,6 +631,24 @@ The `nudge-consolidation` hook fires on SessionStart. It fires once for the top-
 - **When:** Gate state is evaluated
 - **Then:** Warning logged in the format `"WARNING: reviewer {skill} returned no VERDICT — treating as Needs revision"`; gate state is FAIL; optimizer invoked; iteration counter increments
 
+### AT-LOOP-05: POSTMORTEM Agent Failure Produces Warning Note
+- **Who:** Workflow script
+- **Given:** Both reviewers return `Needs revision` for all 5 iterations; the POSTMORTEM-writing agent itself fails (crashes or returns non-zero exit)
+- **When:** Iteration 5 completes, POSTMORTEM agent is invoked and fails
+- **Then:** Pipeline halts; final report contains `"WARNING: POSTMORTEM agent failed — artifact not written for phase {phase}"`; no POSTMORTEM file is written; the pipeline does not retry the POSTMORTEM agent
+
+### AT-LOOP-06: reviewLoop Precondition Failure (Document Absent)
+- **Who:** Workflow script
+- **Given:** A review phase is dispatched but its target document (`docPath`) does not exist on disk
+- **When:** `reviewLoop` is called
+- **Then:** No reviewer agents are dispatched; the script halts with `"Error: {docPath} does not exist — cannot enter reviewLoop for phase {phase}"`; the exact document path and phase label appear in the error message
+
+### AT-LOOP-07: Optimizer Agent Failure Halts Pipeline
+- **Who:** Workflow script
+- **Given:** Phase R reviewLoop: one reviewer returns `Needs revision` on iteration 1; the optimizer agent fails (non-zero exit) during its invocation
+- **When:** Optimizer failure is detected
+- **Then:** Pipeline halts immediately; the script does not proceed to iteration 2; final report contains `"Error: optimizer agent {optimizer-skill} failed during phase {phase}, iteration {N} — pipeline halted. Document at {docPath} may be in an inconsistent state."`
+
 ### AT-VERDICT-01: Valid Approved Trailer Parsed
 - **Who:** Workflow script (parser unit)
 - **Given:** Agent result ends with `VERDICT: Approved\n{"high": 0, "medium": 0, "low": 0}\n`
@@ -585,6 +673,12 @@ The `nudge-consolidation` hook fires on SessionStart. It fires once for the top-
 - **When:** Parser runs
 - **Then:** Fallback triggered; treated as `Needs revision`; warning logged
 
+### AT-VERDICT-05: Truncated Output — VERDICT Line Is Last Line
+- **Who:** Workflow script (parser unit)
+- **Given:** Agent result ends with `VERDICT: Approved` (the VERDICT line is the very last line; no line follows it)
+- **When:** Parser runs
+- **Then:** Verdict value `Approved` is accepted; findings count defaults to `{"high": 0, "medium": 0, "low": 0}`; no fallback warning is emitted; gate proceeds on the `Approved` verdict
+
 ### AT-DECISIONS-01: Skip Path Logged and Reported
 - **Who:** Workflow script
 - **Given:** TSPEC optimizer returns `DECISIONS_WARRANTED: false`
@@ -597,17 +691,35 @@ The `nudge-consolidation` hook fires on SessionStart. It fires once for the top-
 - **When:** Script evaluates DECISIONS gate
 - **Then:** `log("WARNING: DECISIONS_WARRANTED field absent or malformed — defaulting to true")` emitted; `reviewLoop` for Phase D is entered
 
+### AT-DECISIONS-03: Explicit True Enters Full DECISIONS Path
+- **Who:** Workflow script
+- **Given:** TSPEC optimizer returns `DECISIONS_WARRANTED: true` (explicit positive value)
+- **When:** Script evaluates DECISIONS gate
+- **Then:** `reviewLoop` for Phase D is entered; the absent-field warning log (`"WARNING: DECISIONS_WARRANTED field absent or malformed — defaulting to true"`) is NOT emitted; Phase D appears as an active phase (`"Phase D: DECISIONS Review"`) in `/workflows`
+
+### AT-RESUME-01: Resume Iteration Counter Semantics
+- **Who:** Workflow script
+- **Given:** A `reviewLoop` for any phase was interrupted during iteration 3 (some but not all agents in iteration 3 had completed); the run is resumed
+- **When:** The script continues from the resumed run
+- **Then:** The first `log()` call after resume emits `"Resuming from iteration 3"` (not `"Resuming from iteration 4"`); the runtime does not re-invoke already-completed agents from iteration 3; the iteration cap counter is not reset to 1
+
 ### AT-IMPL-01: Batch Plan Logged Before Dispatch
 - **Who:** Developer observing `/workflows`
 - **Given:** PROPERTIES are approved; PLAN contains 4 tasks with dependency edges
 - **When:** Implementation phase begins
-- **Then:** `log("Implementation batch plan: ...")` appears in `/workflows` before any `se-implement` agent is dispatched; plan correctly reflects topological ordering
+- **Then:** `log("Implementation batch plan: ...")` appears in `/workflows` before any `se-implement` agent is dispatched; plan correctly reflects topological ordering. Call-order assertion: the script's `log()` statement for the batch plan string is a sequential statement that appears before the first `agent()` call for any `se-implement` task, verifiable by inspecting the script's statement order.
 
 ### AT-IMPL-02: Batch Failure Halts Pipeline
 - **Who:** Workflow script
-- **Given:** Batch 1 dispatches 3 agents; one agent returns non-zero exit (test failure)
+- **Given:** Batch 1 dispatches 3 agents; one agent's result contains the line `Tests: 2 failed`
 - **When:** Batch 1 gate is evaluated
-- **Then:** Pipeline halts; Batch 2 is not dispatched; final report names the failing agent and task ID
+- **Then:** Pipeline halts; Batch 2 is not dispatched; final report names the failing agent and task ID; the test failure summary from the failing agent's result is included
+
+### AT-IMPL-03: DAG Inconsistency Override Logged
+- **Who:** Workflow script
+- **Given:** PLAN contains a task labeled as batch 2 that has a dependency on another task also labeled as batch 2 (contradictory batch labels)
+- **When:** Implementation phase begins and the DAG is parsed
+- **Then:** The script re-derives topological batches from dependency edges; the PLAN's stated batch labels are ignored; `log("WARNING: PLAN batch labels inconsistent with dependency edges — re-deriving topological batches")` is emitted before any `se-implement` agent is dispatched; the resulting batch plan correctly places the prerequisite task in an earlier batch than the dependent task
 
 ### AT-HARVEST-01: LEARNINGS Written Before Delete
 - **Who:** Harvest agent (ordering verifiable by log sequence)
@@ -641,7 +753,7 @@ The `nudge-consolidation` hook fires on SessionStart. It fires once for the top-
 |----|----------|--------|
 | OQ-01 | Does the workflow runtime's `resumeFromRunId` parameter name match what is assumed in REQ-PIPELINE-03, or is the resume mechanism invoked differently (e.g., a flag on the initial call, a separate primitive)? This should be verified against the live runtime before TSPEC authoring. | Affects TSPEC's resume interface specification |
 | OQ-02 | Is the VERDICT trailer a permanent addition to each reviewer SKILL.md, or is it injected by the workflow script at invocation time? Baking it into SKILL.md means Ptah engine and interactive callers always receive the trailer; script-injection isolates it to the workflow path. | Affects which files change in Phase 1 vs. which are workflow-script-only changes |
-| OQ-03 | The `decisionsWarranted` assessment is described as part of the TSPEC optimizer invocation. Is this the same `se-author` agent call that addresses TSPEC cross-review findings, or a separate dedicated call? A combined call is more efficient; a separate call is more testable. | Affects TSPEC agent configuration and Phase T agent count |
+| OQ-03 | **Resolved:** The `DECISIONS_WARRANTED` trailer is a workflow-script-injected instruction appended to the TSPEC-optimizer agent call. It is not baked into the `se-author` SKILL.md. See §3.1. | Closed |
 | OQ-04 | REQ-NFR-01's worst-case formula ("7 phases" in the original, Phase CR correction noted in CROSS-REVIEW-SE-REQ-v2 F-13) should be reconciled to "8 review phases" before TSPEC authoring. The compliance conclusion is unchanged; the formula should be corrected for accuracy. | Does not block FSPEC; should be resolved in REQ before TSPEC |
 | OQ-05 | The sync mechanism for `pdlc/workflows/orchestrate-dev.js` → `.claude/workflows/orchestrate-dev.js` in consumer repos is unspecified in the REQ. This FSPEC defers that mechanism to an implementation decision. If a `pdlc install` script or similar is required, it should be scoped as a separate requirement before TSPEC authoring. | May require a new REQ entry; does not block FSPEC behavioral specification |
 
@@ -651,6 +763,7 @@ The `nudge-consolidation` hook fires on SessionStart. It fires once for the top-
 
 | FSPEC Section | Linked Requirements |
 |---|---|
+| §0 Pipeline Phase Dispatch | REQ-PIPELINE-01, REQ-PIPELINE-02, REQ-GATE-02 |
 | §1 reviewLoop | REQ-GATE-01, REQ-GATE-02, REQ-GATE-04, REQ-GATE-05, REQ-PIPELINE-03 |
 | §2 VERDICT Contract | REQ-COMPAT-01, REQ-GATE-01, REQ-GATE-05 |
 | §3 DECISIONS Conditional | REQ-GATE-02, REQ-COMPAT-03 |
