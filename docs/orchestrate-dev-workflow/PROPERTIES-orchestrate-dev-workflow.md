@@ -1,7 +1,7 @@
 ---
 Status: Draft
 Author: te-author
-Version: 1.0
+Version: 1.1
 Feature: orchestrate-dev-workflow
 ---
 
@@ -9,7 +9,7 @@ Feature: orchestrate-dev-workflow
 |---|---|
 | Upstream | REQ → FSPEC → TSPEC → PLAN → **PROPERTIES** |
 | Downstream | IMPL tests |
-| Scope | Testable system properties for the orchestrate-dev dynamic workflow: VERDICT and DECISIONS_WARRANTED parsing, reviewLoop convergence and loop control, pipeline entry validation, implementation phase DAG/batching/dispatch/gate, harvest ordering and guard-hook enforcement, SKILL.md rewrite content, and backward-compatibility invariants |
+| Scope | Testable system properties for the orchestrate-dev dynamic workflow: VERDICT and DECISIONS_WARRANTED parsing, reviewLoop convergence and loop control, pipeline entry validation, pipeline wiring (happy path, phase sequence, final report), implementation phase DAG/batching/dispatch/gate, harvest ordering and guard-hook enforcement, SKILL.md rewrite content, artifact naming conventions, observability, NFR concurrency ceiling, and backward-compatibility invariants |
 | Cross-Reviews | — |
 | LEARNINGS | docs/orchestrate-dev-workflow/LEARNINGS-orchestrate-dev-workflow.md |
 
@@ -75,11 +75,13 @@ These properties cover the `reviewLoop` function (TSPEC-LOOP-01 through TSPEC-LO
 
 ### 2.1 Resume Semantics Properties
 
+Tests for PROP-LOOP-13/14/15 use the `runtimeCacheMock` helper (see Section 8 — Test Infrastructure) to simulate per-agent-call caching: calls with index ≤ N return cached results instantly; calls with index > N execute normally.
+
 | ID | Description | Category | Test Level | Test File | FSPEC AT | TSPEC Ref |
 |---|---|---|---|---|---|---|
-| PROP-LOOP-13 | `reviewLoop` must emit `"Resuming from iteration 3"` (not `"Resuming from iteration 4"` and not `"Starting iteration 3"`) as the first log call after a run is resumed mid-iteration-3; the runtime must not re-invoke already-completed iteration-3 agents; the iteration cap counter must not reset to 1. | Functional | Unit | `pdlc/workflows/__tests__/reviewLoop.test.js` | AT-RESUME-01 | TSPEC-LOOP-05, TSPEC-LOOP-06 |
-| PROP-LOOP-14 | `reviewLoop` must emit `"Starting iteration 1"` (not `"Resuming from iteration 1"`) before dispatching the first reviewer pair on a fresh (non-resumed) run at iteration 1. | Functional | Unit | `pdlc/workflows/__tests__/reviewLoop.test.js` | AT-RESUME-02 | TSPEC-LOOP-05 |
-| PROP-LOOP-15 | `reviewLoop` must emit `"Resuming from iteration 2"` (not `"Starting iteration 2"`) before dispatching the reviewer pair for iteration 2 on a fresh run where iteration 1 did not converge and the optimizer was invoked. | Functional | Unit | `pdlc/workflows/__tests__/reviewLoop.test.js` | AT-RESUME-03 | TSPEC-LOOP-05 |
+| PROP-LOOP-13 | `reviewLoop` must emit `"Resuming from iteration 3"` (not `"Resuming from iteration 4"` and not `"Starting iteration 3"`) as the first log call after a run is resumed mid-iteration-3; the `runtimeCacheMock` must not re-invoke already-completed iteration-3 agents; the iteration cap counter must not reset to 1. Simulated via `runtimeCacheMock` with completed-call index set to cover iterations 1 and 2. | Functional | Unit | `pdlc/workflows/__tests__/reviewLoop.test.js` | AT-RESUME-01 | TSPEC-LOOP-05, TSPEC-LOOP-06 |
+| PROP-LOOP-14 | `reviewLoop` must emit `"Starting iteration 1"` (not `"Resuming from iteration 1"`) before dispatching the first reviewer pair on a fresh (non-resumed) run at iteration 1. Simulated via `runtimeCacheMock` with no pre-completed calls. | Functional | Unit | `pdlc/workflows/__tests__/reviewLoop.test.js` | AT-RESUME-02 | TSPEC-LOOP-05 |
+| PROP-LOOP-15 | `reviewLoop` must emit `"Resuming from iteration 2"` (not `"Starting iteration 2"`) before dispatching the reviewer pair for iteration 2 on a fresh run where iteration 1 did not converge and the optimizer was invoked. Simulated via `runtimeCacheMock` with iteration-1 reviewer-pair and optimizer calls marked as completed. | Functional | Unit | `pdlc/workflows/__tests__/reviewLoop.test.js` | AT-RESUME-03 | TSPEC-LOOP-05 |
 | PROP-LOOP-16 | The iteration-start log (`"Starting iteration 1"` or `"Resuming from iteration N"`) must be emitted **before** the `parallel()` call for that iteration's reviewers — it is a sequential statement preceding the parallel dispatch in the loop body. | Contract | Unit | `pdlc/workflows/__tests__/reviewLoop.test.js` | — | TSPEC-LOOP-05 |
 
 ---
@@ -97,6 +99,16 @@ These properties cover pipeline entry validation (TSPEC-ENTRY-01 through TSPEC-E
 | PROP-ENTRY-05 | The feature name extracted by the entry regex must be the string captured by group 1 of `/^docs\/([^/]+)\/REQ-\1\.md$/` — the directory segment and the filename segment must match (backreference enforced). Paths where directory and filename segments differ must fail the pattern check. | Contract | Unit | `pdlc/workflows/__tests__/orchestrate-dev.test.js` | — | TSPEC-ENTRY-02 |
 | PROP-ENTRY-06 | The REQ file existence check must use the guard `agent()` call, NOT `fs.existsSync` or any direct filesystem API — the workflow script has no direct filesystem access per the runtime model. | Contract | Unit | `pdlc/workflows/__tests__/orchestrate-dev.test.js` | — | TSPEC-ENTRY-03 |
 
+### 3.1 Pipeline Wiring — Happy Path and Phase Sequence
+
+These properties cover the affirmative pipeline execution path (REQ-PIPELINE-01) and the end-to-end phase sequence (REQ-PIPELINE-02). Tests live in `pipelineWiring.test.js`.
+
+| ID | Description | Category | Test Level | Test File | FSPEC AT | TSPEC Ref |
+|---|---|---|---|---|---|---|
+| PROP-PIPELINE-01 | Given the pipeline script is invoked with a valid REQ path, the guard agent returns `ok: true`, and the script proceeds to Phase R without halting. No error is emitted; the first `phase()` call records Phase R. | Functional | Unit | `pdlc/workflows/__tests__/pipelineWiring.test.js` | AT-ENTRY-02 (negation: valid path) | TSPEC-ENTRY-01, TSPEC-ENTRY-03 |
+| PROP-PIPELINE-02 | The final `return` value of the pipeline script is the sole output — no intermediate cross-review agent result content is included in it. The top-level function returns exactly one value; agent results are held in script-local variables and never surfaced via `return` mid-pipeline. | Contract | Unit | `pdlc/workflows/__tests__/pipelineWiring.test.js` | — | TSPEC-NFR-03, REQ-PIPELINE-01 |
+| PROP-PIPELINE-03 | The pipeline top-level function calls `phase()` with each of the ten defined phase labels (R, F, T, D-skip or D, P, PR, I, PT, CR, H) in the defined order. Verified by call-order inspection: the test wraps `phase` in a recording proxy and asserts the captured sequence matches the canonical ten-phase order. | Contract | Unit | `pdlc/workflows/__tests__/pipelineWiring.test.js` | — | TSPEC-LOOP-01, REQ-PIPELINE-02 |
+
 ---
 
 ## 4. IMPL Properties — Implementation Phase
@@ -105,14 +117,14 @@ These properties cover the implementation phase (TSPEC-IMPL-01 through TSPEC-IMP
 
 | ID | Description | Category | Test Level | Test File | FSPEC AT | TSPEC Ref |
 |---|---|---|---|---|---|---|
-| PROP-IMPL-01 | The batch plan `log()` statements (in the format `"Implementation batch plan:"`, `"  Batch N: [task-id-1, task-id-2, ...]"`, `"  Total: N tasks in M batches"`) must appear as sequential statements in the script that precede the first `agent()` call for any `se-implement` task — verifiable by inspecting the script's statement order. | Contract | Unit | `pdlc/workflows/__tests__/implPhase.test.js` | AT-IMPL-01 | TSPEC-IMPL-03 |
+| PROP-IMPL-01 | The batch plan `log()` statements (in the format `"Implementation batch plan:"`, `"  Batch N: [task-id-1, task-id-2, ...]"`, `"  Total: N tasks in M batches"`) must appear as sequential statements in the script that precede the first `agent()` call for any `se-implement` task. Verified by a unit test using call-order instrumentation: wraps `log` and `agent` in recording proxies and asserts that the first `agent()` call for a batch occurs after the `log()` call for that batch's plan, verified by inspecting the call sequence recorded by the proxy. | Contract | Unit | `pdlc/workflows/__tests__/implPhase.test.js` | AT-IMPL-01 | TSPEC-IMPL-03 |
 | PROP-IMPL-02 | The pipeline must halt immediately, not dispatch Batch 2, and include the failing agent's task ID and test failure summary in the final report when any `se-implement` agent's result contains a line matching `Tests: N failed` (where N is a positive integer). | Functional | Unit | `pdlc/workflows/__tests__/implPhase.test.js` | AT-IMPL-02 | TSPEC-IMPL-06 |
 | PROP-IMPL-03 | When the PLAN's stated batch labels contradict the dependency edges, the script must re-derive topological batches from dependency edges (ignoring PLAN labels), emit `log("WARNING: PLAN batch labels inconsistent with dependency edges — re-deriving topological batches")` before dispatching any `se-implement` agent, and correctly place the prerequisite task in an earlier batch than the dependent task. | Functional | Unit | `pdlc/workflows/__tests__/implPhase.test.js` | AT-IMPL-03 | TSPEC-IMPL-02 |
 | PROP-IMPL-04 | The pipeline must emit `log("Batch N complete — all tests passing")` and proceed to dispatch the next batch (or Phase PT if this was the final batch) when all agents in a batch complete and no agent result contains a failure marker (`Tests: N failed` or `non-zero exit`). The pipeline must NOT halt on a clean batch. | Functional | Unit | `pdlc/workflows/__tests__/implPhase.test.js` | AT-IMPL-04 | TSPEC-IMPL-06 |
 | PROP-IMPL-05 | The pipeline must treat a `se-implement` batch agent returning `null`, `undefined`, an empty string, or a whitespace-only string as a batch failure; halt immediately; NOT scan for `Tests: N failed` or `non-zero exit`; and include `"Error: Batch N agent returned empty result — treating as failure"` in the final report (where N is the batch number). | Error Handling | Unit | `pdlc/workflows/__tests__/implPhase.test.js` | AT-IMPL-05 | TSPEC-IMPL-06 |
 | PROP-IMPL-06 | Topological batching must detect a dependency cycle in the PLAN task graph and halt with `"Error: PLAN dependency graph contains a cycle — cannot compute topological batches"` — no `se-implement` agents must be dispatched. | Error Handling | Unit | `pdlc/workflows/__tests__/implPhase.test.js` | — | TSPEC-IMPL-02 |
 | PROP-IMPL-07 | `se-implement` agents within a batch must be dispatched in parallel via `parallel()` with `isolation: "worktree"`; the max concurrent agents per batch must not exceed 5 (sub-batch splitting enforced at 5 tasks per topological level). | Contract | Unit | `pdlc/workflows/__tests__/implPhase.test.js` | — | TSPEC-IMPL-04, TSPEC-NFR-01 |
-| PROP-IMPL-08 | When `git merge --no-ff` exits non-zero during worktree merge-back, the script must: (1) run `git diff --name-only --diff-filter=U` to capture conflicting files **before** aborting, (2) run `git merge --abort`, (3) halt the pipeline with `"Error: merge conflict merging worktree for task {task-id} into feat-{featureName} — conflicting files: {fileList}. Pipeline halted."`, and (4) NOT attempt to merge remaining worktrees in the same batch. | Error Handling | Integration | `pdlc/workflows/__tests__/implPhase.test.js` | — | TSPEC-IMPL-05 |
+| PROP-IMPL-08 | When `git merge --no-ff` exits non-zero during worktree merge-back, the script must: (1) run `git diff --name-only --diff-filter=U` to capture conflicting files **before** aborting, (2) run `git merge --abort`, (3) halt the pipeline with `"Error: merge conflict merging worktree for task {task-id} into feat-{featureName} — conflicting files: {fileList}. Pipeline halted."`, and (4) NOT attempt to merge remaining worktrees in the same batch. Integration test uses the `tmp-git-fixture` helper (defined in PLAN TASK-P3-05) that creates a temporary git repo with two conflicting branches. Tests invoke `runMergeBack(worktreePath, targetBranch, tmpRepo)` against the fixture. | Error Handling | Integration | `pdlc/workflows/__tests__/implPhase.test.js` | — | TSPEC-IMPL-05 |
 | PROP-IMPL-09 | Worktree merge-back must proceed in PLAN document order (array index order of tasks in the batch) — not by task ID alphabetical order or any other ordering — and all worktrees in a batch must merge successfully before the per-batch test gate runs. | Contract | Unit | `pdlc/workflows/__tests__/implPhase.test.js` | — | TSPEC-IMPL-05 |
 | PROP-IMPL-10 | The PLAN DAG parsing agent must be called exactly once, must return structured JSON matching `{tasks: [{id, description, dependencies, planBatch}]}`, and must cause the script to halt with `"Error: PLAN parsing agent failed to return structured task list"` on an empty or non-JSON result. | Error Handling | Unit | `pdlc/workflows/__tests__/implPhase.test.js` | — | TSPEC-IMPL-01 |
 | PROP-IMPL-11 | The per-batch test gate (both `evaluateBatchGate` and `evaluateSingleAgentGate`) must also treat a result containing `non-zero exit` (case-insensitive) as a failure — the failure detection must not be limited to `Tests: N failed` alone. | Contract | Unit | `pdlc/workflows/__tests__/implPhase.test.js` | — | TSPEC-IMPL-06 |
@@ -127,9 +139,9 @@ These properties cover the harvest phase (TSPEC-HARVEST-01 through TSPEC-HARVEST
 | ID | Description | Category | Test Level | Test File | FSPEC AT | TSPEC Ref |
 |---|---|---|---|---|---|---|
 | PROP-HARVEST-01 | The harvest agent must be invoked with a prompt that orders operations as: (1) read CROSS-REVIEW-*.md files, (2) read POSTMORTEM-*.md files, (3) write LEARNINGS-{featureName}.md, (4) commit and push LEARNINGS before any delete, (5) delete CROSS-REVIEW-* files only after LEARNINGS commit is confirmed on remote, (6) commit and push deletions. The LEARNINGS commit must appear before any deletion commit in git log. | Functional | Integration | `pdlc/workflows/__tests__/harvestPhase.test.js` | AT-HARVEST-01 | TSPEC-HARVEST-02 |
-| PROP-HARVEST-02 | When the harvest agent's result contains the substring `"pdlc guard: refusing to delete CROSS-REVIEW files"`, the workflow script must halt immediately, include `"Phase H halted: guard-harvest-before-delete blocked deletion of {blocked-file-path}"` in the final report, and NOT retry the deletion or attempt other deletions. | Error Handling | Unit | `pdlc/workflows/__tests__/harvestPhase.test.js` | AT-HARVEST-02 | TSPEC-HARVEST-03, TSPEC-HARVEST-04 |
-| PROP-HARVEST-03 | When `PHASE_H_ENABLED` is `false`, the script must: emit `log("Phase H skipped — prerequisite not yet landed")`, emit a `phase("Phase H: ⏭ Skipped (prerequisite)")` label, include `"Phase H: ⏭ Skipped (prerequisite not yet landed)"` in the final report, and NOT invoke any harvest agent. | Functional | Unit | `pdlc/workflows/__tests__/harvestPhase.test.js` | — | TSPEC-HARVEST-01, PLAN AT-HARVEST-03 |
-| PROP-HARVEST-04 | The `guard-harvest-before-delete` PreToolUse hook script must detect the guard block via the canonical substring `"pdlc guard: refusing to delete CROSS-REVIEW files"` in the harvest agent result — not by the exit code alone. The detection must identify the specific blocked file path from the agent result to include in the final report. | Contract | Unit | `pdlc/workflows/__tests__/harvestPhase.test.js` | AT-HARVEST-02 | TSPEC-HARVEST-03, TSPEC-HARVEST-04 |
+| PROP-HARVEST-02 | When the harvest agent's result contains the substring `"pdlc guard: refusing to delete CROSS-REVIEW files"`, the workflow script must halt immediately, include `"Phase H halted: guard-harvest-before-delete blocked deletion of {blocked-file-path}"` in the final report, and NOT retry the deletion or attempt other deletions. The `{blocked-file-path}` is extracted from the agent result by searching for the sentinel string `"pdlc guard: refusing to delete CROSS-REVIEW files"` and using the directory path extracted from the bracketed `[{dir}]` segment of the guard hook's canonical error message as the blocked location. | Error Handling | Unit | `pdlc/workflows/__tests__/harvestPhase.test.js` | AT-HARVEST-02 | TSPEC-HARVEST-03, TSPEC-HARVEST-04 |
+| PROP-HARVEST-03 | When `PHASE_H_ENABLED` is `false`, the script must: emit `log("Phase H skipped — prerequisite not yet landed")`, emit a `phase("Phase H: ⏭ Skipped (prerequisite)")` label, include `"Phase H: ⏭ Skipped (prerequisite not yet landed)"` in the final report, and NOT invoke any harvest agent. | Functional | Unit | `pdlc/workflows/__tests__/harvestPhase.test.js` | — (TE-F06, PLAN TASK-P4-01) | TSPEC-HARVEST-01, PLAN AT-HARVEST-03 |
+| PROP-HARVEST-04 | The `guard-harvest-before-delete` PreToolUse hook script detects the guard block via the canonical sentinel substring `"pdlc guard: refusing to delete CROSS-REVIEW files"` in the harvest agent result — not by the exit code alone. The workflow script extracts the blocked file path from the agent result via string search on this sentinel: it locates the bracketed `[{dir}]` segment adjacent to the sentinel in the guard hook's canonical error message format, uses that directory path as `{blocked-file-path}` in the halt report, and falls back to `"(path not parseable)"` when the pattern is not matched. | Contract | Unit | `pdlc/workflows/__tests__/harvestPhase.test.js` | AT-HARVEST-02 | TSPEC-HARVEST-03, TSPEC-HARVEST-04 |
 | PROP-HARVEST-05 | The PHASE_H_ENABLED flag must be declared at the top of the script body before any executable logic and must have a boolean value — the script must not evaluate harvest-phase logic when the flag is `false`. | Contract | Unit | `pdlc/workflows/__tests__/harvestPhase.test.js` | — | TSPEC-HARVEST-01 |
 
 ---
@@ -160,59 +172,115 @@ These properties cover backward-compatibility invariants (REQ-COMPAT-02, REQ-COM
 | PROP-COMPAT-01 | The `pdlc/hooks/scripts/guard-harvest-before-delete.sh` file must exist and be unmodified from the repo baseline — the guard hook is not changed by this feature. | Contract | Unit | `pdlc/workflows/__tests__/harvestPhase.test.js` | — | REQ-COMPAT-02, PLAN TASK-P4-01 |
 | PROP-COMPAT-02 | The `pdlc/hooks/scripts/check-scope-field.sh` file must exist and be unmodified from the repo baseline — the scope-field hook is not changed by this feature. | Contract | Unit | `pdlc/workflows/__tests__/harvestPhase.test.js` | — | REQ-COMPAT-02, PLAN TASK-P4-01 |
 | PROP-COMPAT-03 | The `pdlc/hooks/scripts/nudge-consolidation.sh` file must exist and be unmodified from the repo baseline — the nudge-consolidation hook is not changed by this feature. | Contract | Unit | `pdlc/workflows/__tests__/harvestPhase.test.js` | — | REQ-COMPAT-02, PLAN TASK-P4-01 |
-| PROP-COMPAT-04 | The worker SKILL.md files for `pm-author`, `se-author`, `te-author`, `se-implement`, `harvest-learnings`, `consolidate-learnings`, `tech-lead`, and `tech-lead-python` must be unmodified from the repo baseline — this feature does not change any worker skill other than the additive VERDICT trailer on the three review skills. | Contract | Unit | `pdlc/workflows/__tests__/skillFiles.test.js` | — | REQ-COMPAT-03, TSPEC-NFR-05 |
-| PROP-COMPAT-05 | `tech-lead` and `tech-lead-python` SKILL.md files must exist and be unmodified — these skills remain in the repo for standalone/interactive use; the workflow script does NOT route through them (DAG-parse/batch/dispatch logic is implemented directly in the script). | Contract | Unit | `pdlc/workflows/__tests__/skillFiles.test.js` | — | REQ-COMPAT-03, TSPEC-NFR-05 |
-| PROP-COMPAT-06 | The VERDICT trailer appended to `se-review`, `te-review`, and `pm-review` SKILL.md files must NOT change any prose preceding it — only additive content (new section after `---` separator) is permitted. An interactive caller who ignores the final lines of the skill's response must see no functional change. | Contract | Unit | `pdlc/workflows/__tests__/skillFiles.test.js` | — | REQ-COMPAT-01, TSPEC-NFR-04 |
-| PROP-COMPAT-07 | The workflow script must NOT use `require()` (CommonJS) — it must use ESM `import` syntax exclusively. No `module.exports` is permitted. | Contract | Unit | `pdlc/workflows/__tests__/orchestrate-dev.test.js` | — | TSPEC-SCRIPT-02 |
+| PROP-COMPAT-04 | Given a workflow agent makes a Write or Edit tool call producing an artifact file that is missing the `Scope:` field, the `check-scope-field` PostToolUse hook fires and exits non-zero. Verified by running the hook script directly against a test artifact file missing the `Scope:` field and asserting exit code ≠ 0. | Integration | Integration | `pdlc/workflows/__tests__/hookCompatibility.test.js` | — | REQ-COMPAT-02 |
+| PROP-COMPAT-05 | Given a workflow agent Bash call attempts to delete a `CROSS-REVIEW-*.md` file and no `LEARNINGS-*.md` file is present on the branch, the `guard-harvest-before-delete` PreToolUse hook exits non-zero. Verified by invoking the hook script directly in a test fixture directory that contains a `CROSS-REVIEW-*.md` file but no `LEARNINGS-*.md` file, and asserting exit code ≠ 0. | Integration | Integration | `pdlc/workflows/__tests__/hookCompatibility.test.js` | — | REQ-COMPAT-02 |
+| PROP-COMPAT-06 | The file `pdlc/workflows/__tests__/helpers/guardAgentDouble.js` must exist and export `createGuardAgentDouble({ ok, reason })`. Every test file in the PROPERTIES suite that exercises a guard-agent call path (including tests for PROP-ENTRY-02, PROP-ENTRY-04, PROP-ENTRY-06, and PROP-LOOP-06) must import from this canonical path — no per-test ad-hoc guard-agent stub is permitted. Verified by a static import-path check in `guardAgentDouble.test.js`. | Contract | Unit | `pdlc/workflows/__tests__/guardAgentDouble.test.js` | — | DEC-ODW-03, PLAN TASK-P2-03 |
+| PROP-COMPAT-07 | The worker SKILL.md files for `pm-author`, `se-author`, `te-author`, `se-implement`, `harvest-learnings`, `consolidate-learnings`, `tech-lead`, and `tech-lead-python` must be unmodified from the repo baseline — this feature does not change any worker skill other than the additive VERDICT trailer on the three review skills. | Contract | Unit | `pdlc/workflows/__tests__/skillFiles.test.js` | — | REQ-COMPAT-03, TSPEC-NFR-05 |
+| PROP-COMPAT-08 | `tech-lead` and `tech-lead-python` SKILL.md files must exist and be unmodified — these skills remain in the repo for standalone/interactive use; the workflow script does NOT route through them (DAG-parse/batch/dispatch logic is implemented directly in the script). | Contract | Unit | `pdlc/workflows/__tests__/skillFiles.test.js` | — | REQ-COMPAT-03, TSPEC-NFR-05 |
+| PROP-COMPAT-09 | The VERDICT trailer appended to `se-review`, `te-review`, and `pm-review` SKILL.md files must NOT change any prose preceding it — only additive content (new section after `---` separator) is permitted. An interactive caller who ignores the final lines of the skill's response must see no functional change. | Contract | Unit | `pdlc/workflows/__tests__/skillFiles.test.js` | — | REQ-COMPAT-01, TSPEC-NFR-04 |
+| PROP-COMPAT-10 | The workflow script must NOT use `require()` (CommonJS) — it must use ESM `import` syntax exclusively. No `module.exports` is permitted. | Contract | Unit | `pdlc/workflows/__tests__/orchestrate-dev.test.js` | — | TSPEC-SCRIPT-02 |
 
 ---
 
-## 8. Coverage Matrix
+## 8. ARTIFACTS Properties — Artifact Naming Conventions
+
+These properties cover artifact naming compliance across all workflow-produced outputs (REQ-ARTIFACTS-01).
+
+| ID | Description | Category | Test Level | Test File | FSPEC AT | TSPEC Ref |
+|---|---|---|---|---|---|---|
+| PROP-ARTIFACTS-01 | The pipeline script constructs artifact paths using the `docs/{feature}/` prefix and the naming conventions defined in CLAUDE.md. Test: given `feature = 'test-feat'`, the cross-review path constructed by the script equals `docs/test-feat/CROSS-REVIEW-{role}-{doc}.md` with the role and doc-type segments substituted. Verified by unit test with `feature = 'test-feat'` and asserting the constructed path string. | Contract | Unit | `pdlc/workflows/__tests__/pipelineWiring.test.js` | — | REQ-ARTIFACTS-01 |
+| PROP-ARTIFACTS-02 | The POSTMORTEM path constructed by the script follows `POSTMORTEM-{PHASE}-{feature}.md` under `docs/{feature}/`. Test: given `feature = 'test-feat'` and `phase = 'F'`, the POSTMORTEM path equals `docs/test-feat/POSTMORTEM-F-test-feat.md`. Verified by unit test asserting the constructed path string. | Contract | Unit | `pdlc/workflows/__tests__/pipelineWiring.test.js` | — | REQ-ARTIFACTS-01 |
+
+---
+
+## 9. OBS Properties — Observability
+
+These properties cover the `phase()` labeling requirement for each PDLC phase (REQ-OBS-01) and the final report structure (REQ-OBS-02).
+
+| ID | Description | Category | Test Level | Test File | FSPEC AT | TSPEC Ref |
+|---|---|---|---|---|---|---|
+| PROP-OBS-01 | Each of the ten phase dispatch calls in the pipeline top-level function is preceded by a `phase()` call with the matching label. The ten required `phase()` calls — one per phase (R, F, T, D-skip or D, P, PR, I, PT, CR, H) — must appear in the sequential statement list of the pipeline function. Verified by the same call-order proxy used in PROP-PIPELINE-03. | Contract | Unit | `pdlc/workflows/__tests__/pipelineWiring.test.js` | — | REQ-OBS-01 |
+| PROP-OBS-02 | The final report object returned by the pipeline contains: (1) a `phases` array with a status entry per phase, (2) an `artifactPaths` array, (3) a `testSummary` field, and (4) a `harvestStatus` field. Verified by asserting the shape of the object returned by the pipeline top-level function in the happy-path scenario. | Contract | Unit | `pdlc/workflows/__tests__/pipelineWiring.test.js` | — | REQ-OBS-02, TSPEC-ERROR-03 |
+
+---
+
+## 10. NFR Properties — Non-Functional Requirements
+
+These properties cover the concurrency ceiling (REQ-NFR-01) and context-isolation constraints (REQ-NFR-02).
+
+| ID | Description | Category | Test Level | Test File | FSPEC AT | TSPEC Ref |
+|---|---|---|---|---|---|---|
+| PROP-NFR-01 | The maximum number of concurrent `agent()` calls at any single `parallel()` or `pipeline()` call site in the script is ≤ 5 (reviewer pairs: 2; implementation batches: ≤ 5). Verified by static analysis of the script's `parallel()` call sites: the test reads the workflow script source, enumerates all `parallel([...])` call sites, and asserts that no single call site passes more than 5 arguments. | Contract | Unit | `pdlc/workflows/__tests__/pipelineWiring.test.js` | — | REQ-NFR-01, TSPEC-NFR-01 |
+
+---
+
+## 11. Test Infrastructure (Section 8 in prior draft)
+
+### Test Infrastructure Notes
+
+The following test helpers and fixtures are defined in the PLAN and must exist before properties that depend on them can be verified:
+
+| Helper / Fixture | Defined In | Used By | Description |
+|---|---|---|---|
+| `guardAgentDouble.js` | PLAN TASK-P2-03; `pdlc/workflows/__tests__/helpers/guardAgentDouble.js` | PROP-ENTRY-02, PROP-ENTRY-04, PROP-ENTRY-06, PROP-LOOP-06, PROP-COMPAT-06 | Exports `createGuardAgentDouble({ ok, reason })`. All guard-agent test paths import from this canonical path — no per-test ad-hoc stubs. |
+| `runtimeCacheMock` | PLAN TASK-P2-06; defined inline in `reviewLoop.test.js` setup | PROP-LOOP-13, PROP-LOOP-14, PROP-LOOP-15 | Simulates `resumeFromRunId` behavior by tracking which `agent()` calls have been executed by call index. On simulated resume, calls with index ≤ N return their cached results instantly; calls with index > N execute normally. The mock is injected into the `reviewLoop` call as a runtime context override. |
+| `tmp-git-fixture` | PLAN TASK-P3-05; defined in `pdlc/workflows/__tests__/fixtures/tmpGitFixture.js` | PROP-IMPL-08 | Creates a temporary git repository with two conflicting branches for merge-conflict integration testing. Tests invoke `runMergeBack(worktreePath, targetBranch, tmpRepo)` against the fixture. Fixture is set up in `beforeEach` and torn down in `afterEach`. |
+
+---
+
+## 12. Coverage Matrix
 
 | Requirement | Properties Covering It |
 |---|---|
-| REQ-PIPELINE-01 | PROP-ENTRY-03, PROP-ENTRY-04, PROP-ENTRY-05, PROP-ENTRY-06 |
-| REQ-PIPELINE-02 | PROP-IMPL-01, PROP-IMPL-07, PROP-IMPL-09 |
+| REQ-PIPELINE-01 | PROP-ENTRY-03, PROP-ENTRY-04, PROP-ENTRY-05, PROP-ENTRY-06, PROP-PIPELINE-01, PROP-PIPELINE-02 |
+| REQ-PIPELINE-02 | PROP-IMPL-01, PROP-IMPL-07, PROP-IMPL-09, PROP-PIPELINE-03 |
 | REQ-PIPELINE-03 | PROP-LOOP-13, PROP-LOOP-14, PROP-LOOP-15, PROP-LOOP-16 |
 | REQ-GATE-01 | PROP-PARSE-01, PROP-PARSE-02, PROP-LOOP-01, PROP-LOOP-02 |
 | REQ-GATE-02 | PROP-LOOP-03, PROP-LOOP-12, PROP-PARSE-13 through PROP-PARSE-19 |
 | REQ-GATE-03 | PROP-IMPL-01, PROP-IMPL-04, PROP-IMPL-07 |
 | REQ-GATE-04 | PROP-LOOP-03, PROP-LOOP-05, PROP-LOOP-11, PROP-LOOP-12 |
 | REQ-GATE-05 | PROP-PARSE-02, PROP-PARSE-09, PROP-LOOP-04, PROP-LOOP-08 |
-| REQ-COMPAT-01 | PROP-SKILL-01 through PROP-SKILL-04, PROP-COMPAT-06 |
-| REQ-COMPAT-02 | PROP-COMPAT-01, PROP-COMPAT-02, PROP-COMPAT-03 |
-| REQ-COMPAT-03 | PROP-COMPAT-04, PROP-COMPAT-05, PROP-COMPAT-06 |
-| REQ-ARTIFACTS-01 | PROP-ENTRY-01 (naming-convention halt path) |
+| REQ-COMPAT-01 | PROP-SKILL-01 through PROP-SKILL-04, PROP-COMPAT-09 |
+| REQ-COMPAT-02 | PROP-COMPAT-01, PROP-COMPAT-02, PROP-COMPAT-03, PROP-COMPAT-04, PROP-COMPAT-05 |
+| REQ-COMPAT-03 | PROP-COMPAT-07, PROP-COMPAT-08, PROP-COMPAT-09 |
+| REQ-ARTIFACTS-01 | PROP-ENTRY-01 (naming-convention halt path), PROP-ARTIFACTS-01, PROP-ARTIFACTS-02 |
 | REQ-ARTIFACTS-02 | PROP-HARVEST-01, PROP-HARVEST-02, PROP-HARVEST-04 |
-| REQ-OBS-01 | PROP-LOOP-14, PROP-LOOP-15, PROP-LOOP-16, PROP-IMPL-01 |
-| REQ-OBS-02 | (structural — verified by FinalReport type shape; no independent property needed) |
+| REQ-OBS-01 | PROP-LOOP-14, PROP-LOOP-15, PROP-LOOP-16, PROP-IMPL-01, PROP-OBS-01 |
+| REQ-OBS-02 | PROP-OBS-02 |
 | REQ-SKILL-01 | PROP-SKILL-05, PROP-SKILL-06, PROP-SKILL-07, PROP-SKILL-08 |
-| REQ-NFR-01 | PROP-IMPL-07 (5-agent fan-out cap enforced at batch dispatch) |
-| REQ-NFR-02 | PROP-LOOP-10 (agent results not passed to log()) |
+| REQ-NFR-01 | PROP-IMPL-07, PROP-NFR-01 |
+| REQ-NFR-02 | PROP-LOOP-10, PROP-PIPELINE-02 |
 
 ---
 
-## 9. Test File Index
+## 13. Test File Index
 
 | Test File | Properties Covered |
 |---|---|
 | `pdlc/workflows/__tests__/parseVerdict.test.js` | PROP-PARSE-01 through PROP-PARSE-12 |
 | `pdlc/workflows/__tests__/parseDecisionsWarranted.test.js` | PROP-PARSE-13 through PROP-PARSE-19 |
 | `pdlc/workflows/__tests__/reviewLoop.test.js` | PROP-LOOP-01 through PROP-LOOP-16 |
-| `pdlc/workflows/__tests__/orchestrate-dev.test.js` | PROP-ENTRY-01 through PROP-ENTRY-06, PROP-COMPAT-07 |
+| `pdlc/workflows/__tests__/orchestrate-dev.test.js` | PROP-ENTRY-01 through PROP-ENTRY-06, PROP-COMPAT-10 |
+| `pdlc/workflows/__tests__/pipelineWiring.test.js` | PROP-PIPELINE-01 through PROP-PIPELINE-03, PROP-ARTIFACTS-01, PROP-ARTIFACTS-02, PROP-OBS-01, PROP-OBS-02, PROP-NFR-01 |
 | `pdlc/workflows/__tests__/implPhase.test.js` | PROP-IMPL-01 through PROP-IMPL-12 |
 | `pdlc/workflows/__tests__/harvestPhase.test.js` | PROP-HARVEST-01 through PROP-HARVEST-05, PROP-COMPAT-01 through PROP-COMPAT-03 |
-| `pdlc/workflows/__tests__/skillFiles.test.js` | PROP-SKILL-01 through PROP-SKILL-04, PROP-COMPAT-04 through PROP-COMPAT-06 |
+| `pdlc/workflows/__tests__/skillFiles.test.js` | PROP-SKILL-01 through PROP-SKILL-04, PROP-COMPAT-07 through PROP-COMPAT-09 |
 | `pdlc/workflows/__tests__/orchestrateDevSkill.test.js` | PROP-SKILL-05 through PROP-SKILL-08 |
+| `pdlc/workflows/__tests__/hookCompatibility.test.js` | PROP-COMPAT-04, PROP-COMPAT-05 |
+| `pdlc/workflows/__tests__/guardAgentDouble.test.js` | PROP-COMPAT-06 |
 
 ---
 
-## 10. Gaps and Notes
+## 14. Gaps and Notes
 
-1. **REQ-OBS-02 (final report schema):** No independent property is defined because the `FinalReport` type shape (TSPEC-ERROR-03) is verified structurally by the pipeline-wiring tests in `pipelineWiring.test.js` — all phases contributing `PhaseReport` entries, the `testSummary` and `harvestStatus` fields, and the optional `haltReason`. This is adequately covered as a contract property of `TSPEC-ERROR-03` tested in TASK-P4-04 rather than a separate PROPERTIES test.
+1. **REQ-OBS-02 (final report schema):** Promoted to formal property PROP-OBS-02 in Section 9, verified by `pipelineWiring.test.js`. The `FinalReport` type shape (TSPEC-ERROR-03) is now covered by a named property with full traceability.
 
-2. **REQ-NFR-01 (worst-case agent count):** The analytical 156-agent formula is verified by the concurrent-agent ceiling analysis code comment (PLAN TASK-P4-04 [PM-F02]), not by a runtime test. The fan-out cap (≤5 concurrent per batch, ≤2 for reviewer pairs) is enforced by PROP-IMPL-07 and PROP-LOOP-09.
+2. **REQ-NFR-01 (worst-case agent count):** The analytical 156-agent formula is captured in the code comment (PLAN TASK-P4-04 [PM-F02]). PROP-NFR-01 adds a structural/static-analysis property verifying that no single `parallel()` call site exceeds 5 concurrent agents. Together with PROP-IMPL-07 (5-agent batch cap), both acceptance criteria of REQ-NFR-01 are covered.
 
-3. **AT-HARVEST-03 scope:** The FSPEC does not define a named AT-HARVEST-03; the AT referenced in PLAN TASK-P4-01 is a TE-F06 addition. PROP-HARVEST-03 covers it.
+3. **AT-HARVEST-03 scope:** The FSPEC does not define a named AT-HARVEST-03; the AT referenced in PLAN TASK-P4-01 is a TE-F06 addition. PROP-HARVEST-03 covers it. The FSPEC AT column for PROP-HARVEST-03 is annotated as `— (TE-F06, PLAN TASK-P4-01)` accordingly.
 
-4. **DECISIONS conditional integration testing:** PROP-PARSE-13 through PROP-PARSE-19 are defined at unit level. A Phase-level integration property for the full DECISIONS skip/full-path pipeline wiring is covered by `pipelineWiring.test.js` tests per PLAN TASK-P4-02 — not added as a separate PROPERTIES entry to avoid duplication.
+4. **DECISIONS conditional integration testing:** PROP-PARSE-13 through PROP-PARSE-19 cover the `parseDecisionsWarranted` function at unit level. The full DECISIONS skip/full-path pipeline wiring is covered by PROP-PIPELINE-03 and the `pipelineWiring.test.js` Phase D conditional path — not duplicated as a separate property to avoid redundancy.
+
+5. **PROP-COMPAT-01/02/03 baseline:** These properties verify file existence and non-modification. The baseline is the git commit SHA at the start of this feature branch. Tests compare the file hash against the baseline SHA recorded in the test fixture setup. If the hooks did not exist at branch creation, the test will fail with a descriptive message requiring the baseline to be established.
+
+6. **PROP-IMPL-08 integration harness:** `tmp-git-fixture` is defined in PLAN TASK-P3-05 and creates a temporary git repository with two conflicting branches. `implPhase.test.js` contains both unit-level tests (mocked shell layer) and this one integration-level test (real git operations). The integration test is guarded by an environment-aware skip if `git` is not available in the test runner.
