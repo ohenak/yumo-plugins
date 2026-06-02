@@ -1,7 +1,7 @@
 ---
 Status: Draft
 Author: pm-author
-Version: 1.2
+Version: 1.3
 Feature: orchestrate-dev-workflow
 ---
 
@@ -10,7 +10,7 @@ Feature: orchestrate-dev-workflow
 | Upstream | REQ → **FSPEC** |
 | Downstream | TSPEC, PROPERTIES |
 | Scope | Behavioral flows for: pipeline phase dispatch, reviewLoop mechanics, VERDICT trailer parsing, DECISIONS conditional, implementation phase DAG execution, harvest ordering, and all named error paths |
-| Cross-Reviews | CROSS-REVIEW-software-engineer-FSPEC.md, CROSS-REVIEW-test-engineer-FSPEC.md, CROSS-REVIEW-software-engineer-FSPEC-v2.md, CROSS-REVIEW-test-engineer-FSPEC-v2.md |
+| Cross-Reviews | CROSS-REVIEW-software-engineer-FSPEC.md, CROSS-REVIEW-test-engineer-FSPEC.md, CROSS-REVIEW-software-engineer-FSPEC-v2.md, CROSS-REVIEW-test-engineer-FSPEC-v2.md, CROSS-REVIEW-software-engineer-FSPEC-v3.md, CROSS-REVIEW-test-engineer-FSPEC-v3.md |
 | LEARNINGS | docs/orchestrate-dev-workflow/LEARNINGS-orchestrate-dev-workflow.md |
 
 # FSPEC — orchestrate-dev-workflow
@@ -148,6 +148,8 @@ When a run is resumed from a `runId` after interruption mid-loop:
 
    **Reconciliation with REQ-PIPELINE-03:** REQ-PIPELINE-03's acceptance criterion scopes the `"Resuming from iteration N"` log to resumed runs. This FSPEC is the normative behavioral specification: the implementation emits `"Starting iteration 1"` on a fresh run and `"Resuming from iteration N"` on resume or on iteration N ≥ 2. REQ-PIPELINE-03's `"Resuming from iteration N"` wording captures the resumed-run case; the `"Starting iteration 1"` variant for fresh runs is the FSPEC-level refinement.
 
+   **REQ traceability for `"Starting iteration 1"`:** The `"Starting iteration 1"` log is an observable under **REQ-OBS-01** (phase-by-phase progress). REQ-OBS-01 covers iteration-number visibility; this log message is its implementation for the fresh-run, first-iteration case. No new requirement is needed — REQ-OBS-01 is the parent. AT-RESUME-02 is therefore classified as an REQ-OBS-01 property for PROPERTIES authoring.
+
 Resume behavior for implementation phase batches and the harvest phase follows the same runtime per-agent caching guarantee: completed agent calls are not re-executed regardless of which phase was interrupted.
 
 ### 1.8 5-Iteration Cap
@@ -244,9 +246,9 @@ Fallback behavior for **every other** condition above:
 1. Treat the verdict as `Needs revision`.
 2. Emit a `log()` warning in exactly this format:
    ```
-   WARNING: reviewer <skill-name> returned no VERDICT — treating as Needs revision
+   WARNING: reviewer {skill-name} returned no VERDICT — treating as Needs revision
    ```
-   where `<skill-name>` is the reviewer's skill identifier (e.g., `se-review`, `te-review`, `pm-review`).
+   where `{skill-name}` is the reviewer's skill identifier (e.g., `se-review`, `te-review`, `pm-review`).
 3. Do **not** crash or stall the pipeline.
 4. Increment the iteration counter and invoke the optimizer as normal.
 
@@ -639,7 +641,7 @@ The `nudge-consolidation` hook fires on SessionStart. It fires once for the top-
 - **Who:** Workflow script
 - **Given:** One reviewer crashes mid-iteration (exception thrown); the other returns `Approved`
 - **When:** Gate state is evaluated
-- **Then:** Warning logged in the format `"WARNING: reviewer {skill} returned no VERDICT — treating as Needs revision"`; gate state is FAIL; optimizer invoked; iteration counter increments
+- **Then:** Warning logged in the format `"WARNING: reviewer {skill-name} returned no VERDICT — treating as Needs revision"`; gate state is FAIL; optimizer invoked; iteration counter increments
 
 ### AT-LOOP-05: POSTMORTEM Agent Failure Produces Warning Note
 - **Who:** Workflow script
@@ -663,7 +665,7 @@ The `nudge-consolidation` hook fires on SessionStart. It fires once for the top-
 - **Who:** Workflow script
 - **Given:** Both reviewer agents in the same iteration throw exceptions (or time out) before returning any output — no VERDICT line is present in either result
 - **When:** Gate state is evaluated after both agents complete (via exception)
-- **Then:** The script emits two individual warning log lines — one for each crashed reviewer — in the format `"WARNING: reviewer {skill-name} returned no VERDICT — treating as Needs revision"` (one for each reviewer's skill identifier); both are treated as `Needs revision`; gate state is FAIL; the optimizer is invoked exactly once (not twice); the iteration counter increments by 1; the pipeline does not halt (continues the loop normally)
+- **Then:** The script emits two warning log entries (in any order), one for each crashed reviewer, each in the format `"WARNING: reviewer {skill-name} returned no VERDICT — treating as Needs revision"` (with the respective reviewer's skill identifier substituted); both are treated as `Needs revision`; gate state is FAIL; the optimizer is invoked exactly once (not twice); the iteration counter increments by 1; the pipeline does not halt (continues the loop normally). The assertion checks set presence (both warning strings present, any order) — not relative ordering.
 
 ### AT-VERDICT-01: Valid Approved Trailer Parsed
 - **Who:** Workflow script (parser unit)
@@ -701,6 +703,12 @@ The `nudge-consolidation` hook fires on SessionStart. It fires once for the top-
 - **When:** Parser runs
 - **Then:** Verdict value `Needs revision` is accepted; findings count defaults to `{"high": 0, "medium": 0, "low": 0}`; no fallback warning is emitted; gate state is FAIL (the `Needs revision` verdict is acted on, not the zero count)
 
+### AT-VERDICT-07: Truncated Output — VERDICT Followed by Blank Lines Then EOF
+- **Who:** Workflow script (parser unit)
+- **Given:** Agent result ends with `VERDICT: Approved` followed by one or more blank lines and then EOF (e.g., `"VERDICT: Approved\n\n\n"` — the VERDICT line is the last non-empty line and all remaining lines are blank or whitespace)
+- **When:** Parser runs
+- **Then:** The parser treats this identically to AT-VERDICT-05 — verdict value `Approved` is accepted; findings count defaults to `{"high": 0, "medium": 0, "low": 0}`; no fallback warning is emitted; gate proceeds on the `Approved` verdict. (The §2.2 step 6 "all lines after the VERDICT line are empty" sub-case is equivalent to the "VERDICT line is the very last line" sub-case for truncated-output purposes.)
+
 ### AT-DECISIONS-01: Skip Path Logged and Reported
 - **Who:** Workflow script
 - **Given:** TSPEC optimizer returns `DECISIONS_WARRANTED: false`
@@ -719,6 +727,12 @@ The `nudge-consolidation` hook fires on SessionStart. It fires once for the top-
 - **When:** Script evaluates DECISIONS gate
 - **Then:** `reviewLoop` for Phase D is entered; the absent-field warning log (`"WARNING: DECISIONS_WARRANTED field absent or malformed — defaulting to true"`) is NOT emitted; Phase D appears as an active phase (`"Phase D: DECISIONS Review"`) in `/workflows`
 
+### AT-DECISIONS-04: Case-Insensitive DECISIONS_WARRANTED Parsing (Skip Path)
+- **Who:** Workflow script
+- **Given:** TSPEC optimizer returns `DECISIONS_WARRANTED: False` (mixed case — capital F, lowercase alse)
+- **When:** Script parses the `DECISIONS_WARRANTED` value
+- **Then:** The value is treated as `false` (case-insensitive parsing is applied); Phase D is skipped; `log("Phase D skipped — no load-bearing alternatives")` is emitted; the absent-field warning (`"WARNING: DECISIONS_WARRANTED field absent or malformed — defaulting to true"`) is NOT emitted; execution continues to Phase P
+
 ### AT-RESUME-01: Resume Iteration Counter Semantics
 - **Who:** Workflow script
 - **Given:** A `reviewLoop` for any phase was interrupted during iteration 3 (some but not all agents in iteration 3 had completed); the run is resumed
@@ -730,6 +744,12 @@ The `nudge-consolidation` hook fires on SessionStart. It fires once for the top-
 - **Given:** A fresh pipeline run (not a resumed run) starts a `reviewLoop` for any phase; iteration 1 is about to begin
 - **When:** The script emits its iteration-start log before dispatching the first parallel reviewer pair
 - **Then:** The log message is `"Starting iteration 1"` — not `"Resuming from iteration 1"`
+
+### AT-RESUME-03: Fresh Run Iteration 2 Emits "Resuming from iteration 2"
+- **Who:** Workflow script
+- **Given:** A fresh pipeline run (not a resumed run) where a `reviewLoop`'s iteration 1 did not converge — the gate state was FAIL, the optimizer was invoked, and the iteration counter incremented to 2; iteration 2 is now beginning
+- **When:** The script emits its iteration-start log before dispatching the parallel reviewer pair for iteration 2
+- **Then:** The log message is `"Resuming from iteration 2"` — not `"Starting iteration 2"`. (`"Starting iteration N"` is emitted only on iteration 1 of a fresh run; all subsequent iterations, including fresh-run iteration 2, emit `"Resuming from iteration N"` per §1.7.)
 
 ### AT-IMPL-01: Batch Plan Logged Before Dispatch
 - **Who:** Developer observing `/workflows`
