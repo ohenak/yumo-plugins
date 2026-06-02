@@ -1,7 +1,7 @@
 ---
 Status: Draft
 Author: se-author
-Version: 1.0
+Version: 1.1
 Feature: orchestrate-dev-workflow
 ---
 
@@ -10,7 +10,7 @@ Feature: orchestrate-dev-workflow
 | Upstream | REQ → FSPEC → **TSPEC** |
 | Downstream | DECISIONS, PLAN, PROPERTIES, IMPL |
 | Scope | Workflow script architecture, Phase Dispatch Table, `reviewLoop` algorithm, VERDICT and `DECISIONS_WARRANTED` parsing, pipeline entry validation, implementation phase DAG execution, harvest phase, error handling, and non-functional constraints |
-| Cross-Reviews | — |
+| Cross-Reviews | CROSS-REVIEW-product-manager-TSPEC.md, CROSS-REVIEW-test-engineer-TSPEC.md |
 | LEARNINGS | docs/orchestrate-dev-workflow/LEARNINGS-orchestrate-dev-workflow.md |
 
 # TSPEC — orchestrate-dev-workflow
@@ -187,7 +187,7 @@ async function reviewLoop({ doc, phase, reviewers, optimizer, feature, iteration
 
 Before dispatching any agent, `reviewLoop` checks the entry precondition:
 
-- For all phases except `CR`: the file at `doc` must exist on disk. If it does not, `reviewLoop` returns immediately without dispatching any agent and the caller halts with:
+- For all phases except `CR`: the file existence is verified by the initial guard agent's return value (`ok: false` with `reason: "file_not_found"` | `"file_empty"` | `"path_invalid"` indicates the document is absent or invalid). The workflow script has no direct filesystem access per the REQ constraint — existence checking uses the agent approach as specified in TSPEC-ENTRY-03, not `fs.existsSync`. If the guard agent indicates the document is absent, `reviewLoop` returns immediately without dispatching any agent and the caller halts with:
   ```
   Error: {doc} does not exist — cannot enter reviewLoop for phase {phase}
   ```
@@ -217,17 +217,20 @@ loop:
   // (d) Evaluate gate
   gateState ← (isPass(verdict1) AND isPass(verdict2)) ? "PASS" : "FAIL"
 
-  // (e) Branch
+  // (e) Branch on PASS
   if gateState === "PASS":
     return { converged: true, iterations: iteration }
 
-  // iteration cap check
-  if iteration >= 5:
-    // invoke POSTMORTEM branch (§3.6)
+  // gateState is FAIL — check iteration cap BEFORE invoking optimizer
+  if iteration === 5:
+    // POSTMORTEM trigger: n === 5 AND both reviewers have returned verdicts
+    //   AND at least one is "Needs revision" (i.e., gateState is FAIL)
+    // Invoke POSTMORTEM agent BEFORE returning {converged: false}
     await writePostmortem({ phase, feature, iteration, verdict1, verdict2, result1, result2, reviewers })
-    halt with non-convergence report
+    // writePostmortem is awaited; pipeline halts after it completes (or on failure)
     return { converged: false, iterations: iteration }
 
+  // iteration < 5: invoke optimizer and loop
   // (f) Invoke optimizer
   optimizerResult ← await agent(optimizer, optimizerPrompt(doc, phase, feature, iteration))
   if optimizerFailed(optimizerResult):
@@ -235,6 +238,10 @@ loop:
 
   iteration ← iteration + 1
   // loop back to (a)
+  // Counter-value-to-action table:
+  //   iteration 1–4, FAIL: invoke optimizer, increment counter, loop
+  //   iteration 5, FAIL:   invoke POSTMORTEM, return {converged: false}
+  //   any iteration, PASS: return {converged: true}
 ```
 
 `isPass(verdict)` returns `true` if and only if `verdict === "Approved" || verdict === "Approved with minor changes"`.
@@ -271,7 +278,7 @@ The script needs no explicit resume-detection logic. The iteration counter's cur
 
 ### TSPEC-LOOP-07: POSTMORTEM Branch
 
-Triggered when `iteration >= 5` and gate state is FAIL after iteration 5's optimizer invocation (i.e., the cap check fires at the start of iteration 6).
+**Trigger condition (normative):** POSTMORTEM is triggered when `iteration === 5` AND both reviewers have returned their verdict for iteration 5 AND at least one verdict is `Needs revision` (i.e., gate state is FAIL after iteration 5's reviewer pair completes). The POSTMORTEM agent is invoked immediately — **before** `return { converged: false }`. No optimizer invocation occurs at iteration 5; the cap check fires on FAIL at `iteration === 5` before the optimizer path is reached.
 
 The script invokes the optimizer skill as a POSTMORTEM-writing agent with this prompt:
 
@@ -385,6 +392,17 @@ if any of parsed.high, parsed.medium, parsed.low is not a non-negative integer:
 return { verdict: rawVerdict, high: parsed.high, medium: parsed.medium, low: parsed.low }
 ```
 
+**Code path anchors (explicit test inputs for each branching case):**
+
+| Path | Representative input | Expected outcome |
+|---|---|---|
+| (a) No VERDICT line → fallback | `"Some review text.\nNo verdict here."` | `{ verdict: "Needs revision", high: 0, medium: 0, low: 0 }` + warning log emitted |
+| (b) VERDICT line + valid JSON → normal path | `"Review text.\nVERDICT: Approved\n{\"high\": 1, \"medium\": 2, \"low\": 0}\n"` | `{ verdict: "Approved", high: 1, medium: 2, low: 0 }` + no warning |
+| (c) VERDICT line + truncated (no next non-empty line, only blanks/EOF) → zero counts accepted | `"Review text.\nVERDICT: Approved\n\n\n"` | `{ verdict: "Approved", high: 0, medium: 0, low: 0 }` + no warning |
+| (d) VERDICT line + text-then-JSON (intervening text present) → fallback | `"Review text.\nVERDICT: Approved\nSome extra line\n{\"high\": 0, \"medium\": 0, \"low\": 0}\n"` | `{ verdict: "Needs revision", high: 0, medium: 0, low: 0 }` + warning log emitted |
+
+Path (c) is the truncated-output special case: `nextNonEmpty` is `null` because no non-empty line follows the VERDICT line. Path (d) is the intervening-text case: `nextNonEmpty` picks `"Some extra line"`, `JSON.parse("Some extra line")` throws, and the fallback fires. These two paths are distinct branches in the algorithm and must not be conflated.
+
 ### TSPEC-PARSE-02: Intervening Text Handling
 
 The "next non-empty line" scan picks the **first** non-empty line after the VERDICT line. If intervening non-empty text (that is not valid JSON) appears before the JSON object, `JSON.parse()` on that text fails, and the fallback is triggered. There is no code path that scans past intervening text to find JSON further down.
@@ -470,12 +488,12 @@ The main function receives `reqPath` as its first argument. Validation sequence:
 
 3. featureName ← match[1]   // captured group from the regex
 
-4. Check file existence: invoke file-existence agent or filesystem check
-   if file does not exist:
+4. Check file existence: invoke the guard agent (see TSPEC-ENTRY-03)
+   if agent returns ok: false with reason "file_not_found" | "path_invalid":
      halt("Error: REQ file not found at {reqPath}")
 
 5. Check file is non-empty:
-   if file content is empty:
+   if agent returns ok: false with reason "file_empty":
      halt("Error: REQ file at {reqPath} is empty")
 ```
 
@@ -491,9 +509,15 @@ The `featureName` is the string captured by group 1 of the regex `/^docs\/([^/]+
 
 ### TSPEC-ENTRY-03: File-Existence Check
 
-The file-existence check is implemented as a single `agent()` call with a minimal instruction to check whether the path exists and return "EXISTS" or "NOT FOUND". This avoids direct filesystem access from the script body where the workflow runtime may not expose Node.js `fs` directly.
+REQ file existence is verified by the initial guard agent's return value. The guard agent is invoked as a minimal `agent()` call that checks whether the path exists and is non-empty, then returns a structured result:
 
-Alternatively, if the runtime exposes a `readFile()` utility or the `agent()` call can read a file synchronously, the existence check and content check are combined in a single step. The implementation chooses the minimal approach available at authoring time.
+```json
+{ "ok": true }
+// or
+{ "ok": false, "reason": "file_not_found" | "file_empty" | "path_invalid" }
+```
+
+The workflow script has no direct filesystem access (the workflow runtime does not expose Node.js `fs` to script bodies). The `agent()` call is therefore the **authoritative** existence-check mechanism — there is no `fs.existsSync()` alternative. The guard agent combines the existence check and the non-empty check in a single call, returning the appropriate `reason` value for each failure mode.
 
 ---
 
@@ -545,10 +569,18 @@ loop:
   if any task in `ready` has planBatch <= max planBatch of already-completed tasks:
     log("WARNING: PLAN batch labels inconsistent with dependency edges — re-deriving topological batches")
 
-  // Sort ready tasks by their order in the original PLAN task table (document order)
-  ready.sort(byPlanDocumentOrder)
+  // Sort ready tasks by document order (array index in the tasks[] returned by the DAG agent)
+  // "Document order" === index order of the tasks[] array returned by TSPEC-IMPL-01.
+  // The DAG-parsing agent preserves PLAN task-table order in the array, so array index
+  // is the canonical tie-breaker. No additional sort step is needed if the agent returns
+  // tasks in document order (which the agent prompt must specify).
+  ready.sort(byArrayIndexInOriginalTaskList)
 
   // Split into sub-batches of at most 5
+  // When >5 tasks are ready simultaneously at the same topological level:
+  //   Sub-batch A = first 5 tasks in document order
+  //   Sub-batch B = remaining tasks in document order
+  //   Sub-batch A runs first; sub-batch B runs only after sub-batch A passes its test gate.
   subBatches ← chunk(ready, 5)
   for each subBatch in subBatches:
     batches.append(subBatch)
@@ -578,6 +610,8 @@ log(`  Total: ${tasks.length} tasks in ${batches.length} batches`);
 ```
 
 The `log()` statements for the batch plan are sequential statements in the script that precede the first `agent()` call for any `se-implement` task. This is a call-order guarantee verifiable by reading the script's statement sequence.
+
+**Sub-batch ordering when >5 tasks are ready simultaneously:** When a topological level contains more than 5 ready tasks, they are split into sub-batches by document order (array index in the `tasks[]` returned by the DAG-parsing agent, which preserves PLAN task-table order). The first 5 tasks in document order form sub-batch A; the remaining tasks form sub-batch B (and so on if >10 tasks). Sub-batch A is logged and dispatched first; sub-batch B runs only after sub-batch A passes its per-batch test gate. The batch plan log reflects this split: sub-batch A and sub-batch B each appear as separate `Batch N` entries.
 
 Fallback: if `log()` does not surface structured data in `/workflows`, the script emits a `phase()` label per batch: `"Phase I: Batch N/M — [task-1, task-2, ...]"`.
 
@@ -613,17 +647,24 @@ Each `se-implement` agent receives:
 ```
 for each task in batch (in PLAN document order):
   result of mergeWorktree(task, featureName):
+    // Step 1: run merge
     invoke: git merge --no-ff <worktree-branch-for-task> onto feat-{featureName}
-    if merge exits with conflict:
+    if merge exits with non-zero (conflict):
+      // Step 2: extract file list BEFORE aborting
+      fileList ← stdout of: git diff --name-only --diff-filter=U
+      // Step 3: abort merge
       invoke: git merge --abort
+      // Step 4: halt with report
       leave conflicting worktree in place
       halt pipeline with:
         "Error: merge conflict merging worktree for task {task.id} into feat-{featureName}
-         — conflicting files: {file-list}. Pipeline halted."
+         — conflicting files: {fileList}. Pipeline halted."
       do NOT merge remaining worktrees in this batch
     if merge succeeds:
       continue to next worktree
 ```
+
+**Exact command sequence on conflict:** (1) run `git merge --no-ff`; (2) if non-zero exit: run `git diff --name-only --diff-filter=U` to capture the list of conflicting files; (3) run `git merge --abort`; (4) halt the pipeline with the report including the captured file list. `git merge --abort` is called **after** the file-list extraction — extracting after abort would find no conflicts. `{fileList}` in the error message is the newline-joined output of step 2.
 
 The runtime does **not** auto-merge worktrees. Each worktree requires an explicit `git merge --no-ff` call. All worktrees in a batch must merge successfully before the per-batch test gate runs.
 
@@ -743,12 +784,22 @@ The `guard-harvest-before-delete` PreToolUse hook fires when the harvest agent's
 
 **Block path:** Hook does not find `LEARNINGS-{featureName}.md` → exits non-zero → the harvest agent's Bash call exits non-zero → the agent result contains the guard hook's error message text.
 
+**Guard hook error message (testable anchor):** The hook script (`hooks/scripts/guard-harvest-before-delete.sh`) writes the following to stderr when it blocks a deletion:
+
+```
+pdlc guard: refusing to delete CROSS-REVIEW files in [{dir}] — no LEARNINGS-*.md exists there yet. Run /pdlc:harvest-learnings and commit LEARNINGS first (harvest-then-delete).
+```
+
+where `{dir}` is the directory path of the blocked CROSS-REVIEW file (e.g., `docs/my-feature`).
+
+The harvest agent's return value **must contain** the substring `"pdlc guard: refusing to delete CROSS-REVIEW files"` when the block fires. The workflow script checks the agent result for this substring to distinguish a guard-block failure from other agent failures. Detection via this canonical substring is the authoritative method — the exact directory value in the message varies per feature.
+
 ### TSPEC-HARVEST-04: Halt on Guard Block
 
-The script detects a guard block by inspecting `harvestResult` for non-zero exit signals in the result string. Guard block detection:
+The script detects a guard block by inspecting `harvestResult` for the canonical guard-hook error substring defined in TSPEC-HARVEST-03. Guard block detection:
 
 ```js
-if (harvestResult contains indicators of non-zero exit or guard hook error message):
+if (harvestResult.includes("pdlc guard: refusing to delete CROSS-REVIEW files")):
   halt("Phase H halted: guard-harvest-before-delete blocked deletion of {blocked-file-path}")
 ```
 
@@ -770,10 +821,10 @@ The following table maps every error scenario from FSPEC §7 to the concrete scr
 |---|---|---|---|
 | **§6.1** REQ path absent | `reqPath` falsy | `"Error: no REQ path provided. Usage: /pdlc:orchestrate-dev docs/{feature}/REQ-{feature}.md"` | Immediate; no agents dispatched |
 | **§6.1** REQ path pattern mismatch | regex returns `null` | `"Error: REQ path does not match expected pattern docs/{feature}/REQ-{feature}.md — got: {reqPath}"` | Immediate; no agents dispatched |
-| **§6.1** REQ file not found | file-existence agent returns NOT FOUND | `"Error: REQ file not found at {reqPath}"` | Immediate; no agents dispatched |
-| **§6.1** REQ file empty | content length === 0 | `"Error: REQ file at {reqPath} is empty"` | Immediate; no agents dispatched |
+| **§6.1** REQ file not found | guard agent returns `ok: false, reason: "file_not_found"` or `"path_invalid"` | `"Error: REQ file not found at {reqPath}"` | Immediate; no agents dispatched |
+| **§6.1** REQ file empty | guard agent returns `ok: false, reason: "file_empty"` | `"Error: REQ file at {reqPath} is empty"` | Immediate; no agents dispatched |
 | **§0.2** Creator agent failure | agent result contains error signal or is empty | `"Error: creator agent {skill} failed to produce {outputPath} for phase {phase}"` | Halt before reviewLoop entry |
-| **§7.2** Document absent before reviewLoop | `fs.existsSync(doc)` false (non-CR phases) | `"Error: {doc} does not exist — cannot enter reviewLoop for phase {phase}"` | Halt at reviewLoop entry; no reviewers dispatched |
+| **§7.2** Document absent before reviewLoop | guard agent returns `ok: false` with `reason: "file_not_found"` \| `"file_empty"` \| `"path_invalid"` (non-CR phases) | `"Error: {doc} does not exist — cannot enter reviewLoop for phase {phase}"` | Halt at reviewLoop entry; no reviewers dispatched |
 | **§7.3** Reviewer agent crash/timeout | result is null/empty/no VERDICT | `"WARNING: reviewer {skillName} returned no VERDICT — treating as Needs revision"` | No halt; treat as Needs revision, loop continues |
 | **§7.3** Both reviewers crash same iteration | Both results trigger fallback | Two warning logs (one per reviewer, in any order) | No halt; optimizer invoked once; loop continues |
 | **§7.4** Optimizer agent failure | result contains non-zero exit or error signal | `"Error: optimizer agent {optimizer} failed during phase {phase}, iteration {N} — pipeline halted. Document at {doc} may be in an inconsistent state."` | Immediate halt; no retry |
@@ -781,9 +832,10 @@ The following table maps every error scenario from FSPEC §7 to the concrete scr
 | **§4.5** Merge conflict | `git merge` exits with conflict | `"Error: merge conflict merging worktree for task {taskId} into feat-{featureName} — conflicting files: {fileList}. Pipeline halted."` | Immediate halt; `git merge --abort` called; remaining worktrees not merged |
 | **§4.6** Batch agent empty result | result is null/undefined/empty/whitespace | `"Error: Batch {N} agent returned empty result — treating as failure"` | Immediate halt; subsequent batches not dispatched |
 | **§4.6** Test failure marker | result contains `Tests: N failed` or `non-zero exit` | Final report: batch number, failing task IDs, failure summary from agent result | Immediate halt; subsequent batches not dispatched |
+| **§3.1** Post-PASS `se-author` failure | postPassResult is null/undefined/empty string | `"Warning: TSPEC post-PASS agent failed — defaulting decisionsWarranted to true"` + proceed to Phase D | No halt; safe default applied; Phase D entered |
 | **§4.3** DAG cycle | no ready tasks while incomplete tasks remain | `"Error: PLAN dependency graph contains a cycle — cannot compute topological batches"` | Immediate halt |
 | **§4.2** PLAN parse failure | agent returns non-JSON or empty | `"Error: PLAN parsing agent failed to return structured task list"` | Immediate halt |
-| **§5.4** Guard hook block | harvest agent result contains non-zero exit / hook error | `"Phase H halted: guard-harvest-before-delete blocked deletion of {blockedFilePath}"` | Immediate halt; no retry |
+| **§5.4** Guard hook block | harvest agent result contains `"pdlc guard: refusing to delete CROSS-REVIEW files"` (canonical guard substring per TSPEC-HARVEST-03) | `"Phase H halted: guard-harvest-before-delete blocked deletion of {blockedFilePath}"` | Immediate halt; no retry |
 | **§7.5** Other hook-triggered non-zero exit | agent Bash call exits non-zero due to hook | Named in final report with hook name, blocked tool call, file path | Immediate halt (no specific recovery path defined) |
 
 ### TSPEC-ERROR-02: Error Detection in Agent Results
@@ -850,6 +902,18 @@ The prompt appends the `DECISIONS_WARRANTED` return-value instruction:
 const decisionsWarranted = parseDecisionsWarranted(postPassResult);
 // parseDecisionsWarranted algorithm is defined in TSPEC-PARSE-05
 ```
+
+**Post-PASS agent failure path:** If the post-PASS `se-author` call fails (result is `null`, `undefined`, or empty string — meaning the agent returned no content), the script defaults `decisionsWarranted = true`, logs a warning, and proceeds to Phase D:
+
+```js
+if (postPassResult === null || postPassResult === undefined || postPassResult.trim() === "") {
+  log("Warning: TSPEC post-PASS agent failed — defaulting decisionsWarranted to true");
+  decisionsWarranted = true;
+  // proceed to Phase D (safe default: include DECISIONS rather than silently skip)
+}
+```
+
+This is the safe default — including DECISIONS when uncertain is preferable to silently skipping it. This path is separate from the `parseDecisionsWarranted` absent-field default: agent failure (empty result) is caught before `parseDecisionsWarranted` is called; the absent-field default fires when the agent returned a non-empty result but omitted the `DECISIONS_WARRANTED:` field.
 
 When `decisionsWarranted` is `false` → skip Phase D:
 
@@ -923,28 +987,83 @@ Per REQ-COMPAT-03, `tech-lead` and `tech-lead-python` remain in the repo unchang
 
 ---
 
+## 10.1 SKILL.md Modifications
+
+### TSPEC-SKILL-01: VERDICT Trailer Addition to Review SKILL.md Files
+
+**Implements:** REQ-COMPAT-01
+
+Three SKILL.md files require a permanent additive modification: `pdlc/skills/se-review/SKILL.md`, `pdlc/skills/te-review/SKILL.md`, and `pdlc/skills/pm-review/SKILL.md`.
+
+**Exact text to append** (identical for all three files):
+
+```
+---
+
+## VERDICT Trailer (required — workflow data contract)
+
+After writing your cross-review file and before ending your final message, append the following two lines as the last content of your response:
+
+```
+VERDICT: <verdict-value>
+{"high": N, "medium": N, "low": N}
+```
+
+- `<verdict-value>` is exactly one of (case-sensitive): `Approved`, `Approved with minor changes`, `Needs revision`
+- The JSON object appears on the immediately following line with no intervening text
+- N values are the count of High / Medium / Low findings in your cross-review
+- Trailing newline after the JSON object is permitted
+```
+
+**Placement:** Append at the end of each SKILL.md file, after the existing final section (currently "Communication Style" in all three files). Insert a `---` horizontal rule separator before the new section header.
+
+**Verification criterion:** After the change, each of the three SKILL.md files:
+1. Contains the `## VERDICT Trailer (required — workflow data contract)` section header
+2. Contains the exact VERDICT format block as specified above
+3. An interactive caller who ignores the last lines of the skill's response is unaffected — the trailer is additive and appended after the prose summary (backwards-compatible per REQ-COMPAT-01)
+
+### TSPEC-SKILL-02: `orchestrate-dev` SKILL.md Rewrite as Pointer/Contract Document
+
+**Implements:** REQ-SKILL-01 (Phase 2 deliverable)
+
+`pdlc/skills/orchestrate-dev/SKILL.md` is rewritten from a step-by-step runbook into a concise pointer/contract document. The rewritten document must contain the following sections (in this order):
+
+| Section | Required content |
+|---|---|
+| **Invocation contract** | The exact invocation syntax (`/pdlc:orchestrate-dev docs/{feature}/REQ-{feature}.md`), input requirements (path must match `docs/{feature}/REQ-{feature}.md` pattern), and what is returned (final pipeline report in main context) |
+| **Preconditions** | The REQ file must exist and be non-empty; the feature branch `feat-{feature}` should exist or be created before invocation |
+| **What the workflow does** | A concise summary (not a step-by-step runbook) of the PDLC phase sequence: REQ review → FSPEC → TSPEC → DECISIONS (conditional) → PLAN → PROPERTIES → Implementation batches → PROPERTIES tests → Final codebase review → Harvest |
+| **Auto-approved batching decision** | States that implementation batches execute automatically without user approval; includes the rationale: the batch plan is logged to `/workflows` before dispatch so the developer can observe it, and auto-approval eliminates the human-in-the-loop latency that would stall background execution |
+| **Two-workflow split (known alternative)** | Documents the rejected `orchestrate-spec` / `orchestrate-impl` two-workflow split as the known alternative — why it was not chosen: it would require the developer to manually invoke the second workflow after the first completes, reintroducing manual coordination that the single-workflow approach eliminates |
+| **Artifact conventions** | Reference to CLAUDE.md §pdlc specifics for naming conventions; states that all artifacts live under `docs/{feature}/` |
+| **Workflow script path** | The canonical plugin source path (`pdlc/workflows/orchestrate-dev.js`) and the runtime-loaded consumer path (`.claude/workflows/orchestrate-dev.js`) |
+
+**Length guidance:** The rewritten SKILL.md should be substantially shorter than the current runbook (target: under 100 lines). The step-by-step phase instructions, reviewer dispatch blocks, and loop mechanics prose are removed — they live in the workflow script, not the SKILL.md.
+
+---
+
 ## 11. Requirements Traceability
 
-| Requirement | TSPEC Item(s) |
-|---|---|
-| REQ-PIPELINE-01 | TSPEC-SCRIPT-01 – 05, TSPEC-ENTRY-01 – 03 |
-| REQ-PIPELINE-02 | TSPEC-DISPATCH-01, TSPEC-IMPL-07, TSPEC-IMPL-08 |
-| REQ-PIPELINE-03 | TSPEC-LOOP-06, TSPEC-LOOP-05 |
-| REQ-GATE-01 | TSPEC-LOOP-03, TSPEC-PARSE-01 |
-| REQ-GATE-02 | TSPEC-LOOP-03 – 08, TSPEC-DECISIONS-01 – 03 |
-| REQ-GATE-03 | TSPEC-IMPL-03, TSPEC-IMPL-04 |
-| REQ-GATE-04 | TSPEC-LOOP-07 |
-| REQ-GATE-05 | TSPEC-PARSE-01, TSPEC-PARSE-04, TSPEC-ERROR-01 |
-| REQ-COMPAT-01 | TSPEC-PARSE-01, TSPEC-NFR-04 |
-| REQ-COMPAT-02 | TSPEC-HARVEST-03, TSPEC-HARVEST-04 |
-| REQ-COMPAT-03 | TSPEC-NFR-05 |
-| REQ-ARTIFACTS-01 | TSPEC-DISPATCH-01 (path templates) |
-| REQ-ARTIFACTS-02 | TSPEC-HARVEST-02, TSPEC-HARVEST-03, TSPEC-HARVEST-04 |
-| REQ-OBS-01 | TSPEC-LOOP-05, TSPEC-IMPL-03, TSPEC-SCRIPT-05 |
-| REQ-OBS-02 | TSPEC-ERROR-03 |
-| REQ-SKILL-01 | (addressed in SKILL.md rewrite — Phase 2 deliverable) |
-| REQ-NFR-01 | TSPEC-NFR-01, TSPEC-NFR-02 |
-| REQ-NFR-02 | TSPEC-NFR-03 |
+| Requirement | TSPEC Item(s) | FSPEC AT(s) implemented |
+|---|---|---|
+| REQ-PIPELINE-01 | TSPEC-SCRIPT-01 – 05, TSPEC-ENTRY-01 – 03 | AT-ENTRY-01, AT-ENTRY-02 |
+| REQ-PIPELINE-02 | TSPEC-DISPATCH-01, TSPEC-IMPL-07, TSPEC-IMPL-08 | AT-IMPL-01, AT-IMPL-02 |
+| REQ-PIPELINE-03 | TSPEC-LOOP-05, TSPEC-LOOP-06 | AT-RESUME-01, AT-RESUME-02, AT-RESUME-03 |
+| REQ-GATE-01 | TSPEC-LOOP-03, TSPEC-PARSE-01 | AT-LOOP-01, AT-LOOP-02, AT-VERDICT-01 – 07 |
+| REQ-GATE-02 | TSPEC-LOOP-03 – 08, TSPEC-DECISIONS-01 – 03 | AT-LOOP-01 – 08, AT-DECISIONS-01 – 05 |
+| REQ-GATE-03 | TSPEC-IMPL-03, TSPEC-IMPL-04 | AT-IMPL-01, AT-IMPL-03 |
+| REQ-GATE-04 | TSPEC-LOOP-07 | AT-LOOP-03, AT-LOOP-05 |
+| REQ-GATE-05 | TSPEC-PARSE-01, TSPEC-PARSE-04, TSPEC-ERROR-01 | AT-LOOP-04, AT-LOOP-08, AT-VERDICT-02 – 04 |
+| REQ-COMPAT-01 | TSPEC-PARSE-01, TSPEC-NFR-04, TSPEC-SKILL-01 | AT-VERDICT-01 – 07 |
+| REQ-COMPAT-02 | TSPEC-HARVEST-03, TSPEC-HARVEST-04 | AT-HARVEST-01, AT-HARVEST-02 |
+| REQ-COMPAT-03 | TSPEC-NFR-05 | — (static property; verified by code inspection) |
+| REQ-ARTIFACTS-01 | TSPEC-DISPATCH-01 (path templates) | — (naming convention; verified by artifact inspection) |
+| REQ-ARTIFACTS-02 | TSPEC-HARVEST-02, TSPEC-HARVEST-03, TSPEC-HARVEST-04 | AT-HARVEST-01, AT-HARVEST-02 |
+| REQ-OBS-01 | TSPEC-LOOP-05, TSPEC-IMPL-03, TSPEC-SCRIPT-05 | AT-RESUME-02, AT-RESUME-03, AT-IMPL-01 |
+| REQ-OBS-02 | TSPEC-ERROR-03 | — (structural type property; verified by report schema inspection) |
+| REQ-SKILL-01 | TSPEC-SKILL-02 | — (Phase 2 deliverable; verified by SKILL.md content inspection) |
+| REQ-NFR-01 | TSPEC-NFR-01, TSPEC-NFR-02 | — (formula-based constraint; verified analytically) |
+| REQ-NFR-02 | TSPEC-NFR-03 | — (structural guarantee; verified by log() call-site inspection) |
 
 ---
 
