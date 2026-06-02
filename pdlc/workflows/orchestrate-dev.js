@@ -280,6 +280,39 @@ function isPass(verdict) {
   return verdict === "Approved" || verdict === "Approved with minor changes";
 }
 
+// ─── REQ-GATE-04: Non-convergence halt helper ─────────────────────────────────
+
+/**
+ * If the reviewLoop result did not converge, throw a haltError that identifies
+ * the phase, the non-approving reviewers, and their unresolved finding counts.
+ * Also records the phase as ❌ in the phases array (PM-F03 / REQ-OBS-02).
+ *
+ * @param {{ converged: boolean, iterations: number, lastResults?: Array }} loopResult
+ * @param {string} phaseId  - e.g. "R"
+ * @param {string} phaseLabel - human-readable phase label
+ * @param {Function} recordPhase - the local recordPhase callback
+ */
+function checkConverged(loopResult, phaseId, phaseLabel, recordPhase) {
+  if (loopResult.converged !== false) return;
+
+  // Build reviewer detail string (PM-F02)
+  let reviewerDetail = "";
+  if (Array.isArray(loopResult.lastResults) && loopResult.lastResults.length > 0) {
+    const details = loopResult.lastResults
+      .filter((r) => !isPass(r.verdict))
+      .map((r) => `${r.skill} (high:${r.high}, medium:${r.medium}, low:${r.low})`)
+      .join("; ");
+    reviewerDetail = details ? ` — non-approving reviewers: [${details}]` : "";
+  }
+
+  const postmortemPath = `docs/{feature}/POSTMORTEM-${phaseId}-{feature}.md`;
+  recordPhase(phaseId, phaseLabel, "❌", `Non-convergence after 5 iterations${reviewerDetail}`, 5);
+
+  throw haltError(
+    `Phase ${phaseId} did not converge after 5 iterations${reviewerDetail}. POSTMORTEM written.`
+  );
+}
+
 // ─── TSPEC-LOOP-01 through TSPEC-LOOP-08: reviewLoop ─────────────────────────
 
 /**
@@ -352,7 +385,13 @@ export async function reviewLoop({
         );
       }
 
-      return { converged: false, iterations: 5 };
+      // Build lastResults from the final iteration's reviewer verdicts (PM-F02)
+      const lastResults = [
+        { skill: reviewers[0], ...parseVerdict(result1, reviewers[0]) },
+        { skill: reviewers[1], ...parseVerdict(result2, reviewers[1]) },
+      ];
+
+      return { converged: false, iterations: 5, lastResults };
     }
 
     // (b) Emit iteration log
@@ -737,6 +776,7 @@ export default async function main({
         _parallel: parallelFn,
         _guardAgent: guardAgentFn,
       });
+      checkConverged(rLoop, "R", PHASE_DISPATCH.R.label, recordPhase);
       recordPhase("R", PHASE_DISPATCH.R.label, "✅", `Approved (${rLoop.iterations} iteration${rLoop.iterations !== 1 ? "s" : ""})`, rLoop.iterations);
 
       // ─── Phase F: FSPEC Creation + Review ───────────────────────────────
@@ -762,6 +802,7 @@ export default async function main({
         _parallel: parallelFn,
         _guardAgent: guardAgentFn,
       });
+      checkConverged(fLoop, "F", PHASE_DISPATCH.F.label, recordPhase);
       recordPhase("F", PHASE_DISPATCH.F.label, "✅", `Approved (${fLoop.iterations} iterations)`, fLoop.iterations);
 
       // ─── Phase T: TSPEC Creation + Review ───────────────────────────────
@@ -787,6 +828,7 @@ export default async function main({
         _parallel: parallelFn,
         _guardAgent: guardAgentFn,
       });
+      checkConverged(tLoop, "T", PHASE_DISPATCH.T.label, recordPhase);
       recordPhase("T", PHASE_DISPATCH.T.label, "✅", `Approved (${tLoop.iterations} iterations)`, tLoop.iterations);
 
       // ─── TSPEC-DECISIONS-01: Post-PASS TSPEC Finalization ────────────────
@@ -838,6 +880,7 @@ export default async function main({
           _parallel: parallelFn,
           _guardAgent: guardAgentFn,
         });
+        checkConverged(dLoop, "D", PHASE_DISPATCH.D.label, recordPhase);
         recordPhase("D", PHASE_DISPATCH.D.label, "✅", `Approved (${dLoop.iterations} iterations)`, dLoop.iterations);
       }
 
@@ -866,6 +909,7 @@ export default async function main({
         _parallel: parallelFn,
         _guardAgent: guardAgentFn,
       });
+      checkConverged(pLoop, "P", PHASE_DISPATCH.P.label, recordPhase);
       recordPhase("P", PHASE_DISPATCH.P.label, "✅", `Approved (${pLoop.iterations} iterations)`, pLoop.iterations);
 
       // ─── Phase PR: PROPERTIES Creation + Review ──────────────────────────
@@ -891,6 +935,7 @@ export default async function main({
         _parallel: parallelFn,
         _guardAgent: guardAgentFn,
       });
+      checkConverged(prLoop, "PR", PHASE_DISPATCH.PR.label, recordPhase);
       recordPhase("PR", PHASE_DISPATCH.PR.label, "✅", `Approved (${prLoop.iterations} iterations)`, prLoop.iterations);
 
       // ─── Phase I: Implementation ─────────────────────────────────────────
@@ -988,6 +1033,7 @@ export default async function main({
         _parallel: parallelFn,
         _guardAgent: guardAgentFn,
       });
+      checkConverged(crResult, "CR", PHASE_DISPATCH.CR.label, recordPhase);
       recordPhase("CR", PHASE_DISPATCH.CR.label, "✅", `Approved (${crResult.iterations} iterations)`, crResult.iterations);
 
       // ─── Phase H: Harvest ────────────────────────────────────────────────

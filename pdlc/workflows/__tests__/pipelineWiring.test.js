@@ -206,6 +206,115 @@ describe("PROP-NFR-01: No single parallel() call dispatches more than 5 agents",
   });
 });
 
+// ─── PROP-GATE-01: main() halts when reviewLoop returns converged: false ────────
+describe("PROP-GATE-01: main() halts when Phase R reviewLoop returns converged: false", () => {
+  it("returns halted outcome and does not proceed to Phase F when Phase R does not converge", async () => {
+    // Agent returns Needs revision every time to exhaust the 5-iteration cap
+    const mockAgent = async (skill, prompt) => {
+      if (skill === "guard") return { ok: true };
+      if (skill === "se-review" || skill === "te-review") {
+        return `Review with issues.\nVERDICT: Needs revision\n{"high": 1, "medium": 0, "low": 0}\n`;
+      }
+      if (skill === "pm-author") {
+        if (typeof prompt === "string" && prompt.includes("POSTMORTEM")) {
+          return "POSTMORTEM written.";
+        }
+        return "Optimizer addressed feedback.";
+      }
+      return "Success.";
+    };
+
+    const phasesCalled = [];
+    const mockPhase = (label) => phasesCalled.push(label);
+
+    const result = await main({
+      reqPath: "docs/test-feat/REQ-test-feat.md",
+      _agent: mockAgent,
+      _parallel: (promises) => Promise.all(promises),
+      _guardAgent: createGuardAgentDouble({ ok: true }),
+      _phase: mockPhase,
+      _pipeline: async (l, fn) => fn(),
+    });
+
+    expect(result.outcome).toBe("halted");
+    expect(result.haltReason).toMatch(/phase R|Phase R/i);
+    // Phase F should NOT have been entered
+    expect(phasesCalled.some((p) => p.includes("Phase F"))).toBe(false);
+  });
+
+  it("Phase R non-convergence records phase R with ❌ status in the final report", async () => {
+    const mockAgent = async (skill, prompt) => {
+      if (skill === "guard") return { ok: true };
+      if (skill === "se-review" || skill === "te-review") {
+        return `Review with issues.\nVERDICT: Needs revision\n{"high": 1, "medium": 0, "low": 0}\n`;
+      }
+      if (skill === "pm-author") return "Optimizer addressed feedback.";
+      return "Success.";
+    };
+
+    const result = await main({
+      reqPath: "docs/test-feat/REQ-test-feat.md",
+      _agent: mockAgent,
+      _parallel: (promises) => Promise.all(promises),
+      _guardAgent: createGuardAgentDouble({ ok: true }),
+      _phase: () => {},
+      _pipeline: async (l, fn) => fn(),
+    });
+
+    expect(result.outcome).toBe("halted");
+    const phaseR = result.phases.find((p) => p.phase === "R");
+    expect(phaseR).toBeTruthy();
+    expect(phaseR.status).toBe("❌");
+  });
+
+  it("halt message includes non-approving reviewer skill names (PM-F02)", async () => {
+    const mockAgent = async (skill, prompt) => {
+      if (skill === "guard") return { ok: true };
+      if (skill === "se-review" || skill === "te-review") {
+        return `Review with issues.\nVERDICT: Needs revision\n{"high": 2, "medium": 1, "low": 0}\n`;
+      }
+      if (skill === "pm-author") return "Optimizer addressed feedback.";
+      return "Success.";
+    };
+
+    const result = await main({
+      reqPath: "docs/test-feat/REQ-test-feat.md",
+      _agent: mockAgent,
+      _parallel: (promises) => Promise.all(promises),
+      _guardAgent: createGuardAgentDouble({ ok: true }),
+      _phase: () => {},
+      _pipeline: async (l, fn) => fn(),
+    });
+
+    expect(result.outcome).toBe("halted");
+    // haltReason must mention the reviewer skill names
+    expect(result.haltReason).toMatch(/se-review|te-review/);
+  });
+});
+
+// ─── PROP-LOOP-10: log() never receives agent result objects ──────────────────
+describe("PROP-LOOP-10: log() is never called with an agent result variable (REQ-NFR-02)", () => {
+  it("static analysis: no log() call site passes a variable assigned from await agent()", () => {
+    const scriptPath = resolve(__dirname, "../orchestrate-dev.js");
+    const content = readFileSync(scriptPath, "utf8");
+
+    // Collect variable names assigned from await agent() / await agentFn() / await _agent()
+    const resultVarPattern = /(?:const|let)\s+(\w+)\s*=\s*await\s+(?:agent|agentFn|_agent)\s*\(/g;
+    const resultVars = new Set();
+    let m;
+    while ((m = resultVarPattern.exec(content)) !== null) {
+      resultVars.add(m[1]);
+    }
+
+    // For each result variable, assert there is no log(<varName>) call in the source
+    for (const varName of resultVars) {
+      // Match: log(varName) or emit(varName) — direct pass of result object to log
+      const directPassPattern = new RegExp(`(?:log|emit)\\s*\\(\\s*${varName}\\s*[,)]`);
+      expect(content).not.toMatch(directPassPattern);
+    }
+  });
+});
+
 // ─── PROP-PIPELINE-03: Phase sequence ─────────────────────────────────────────
 describe("PROP-PIPELINE-03: phase() called with correct labels in order", () => {
   it("all 10 phase labels emitted in correct order", async () => {
