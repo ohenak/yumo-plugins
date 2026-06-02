@@ -1,7 +1,7 @@
 ---
 Status: Draft
 Author: se-author
-Version: 1.1
+Version: 1.2
 Feature: orchestrate-dev-workflow
 ---
 
@@ -10,7 +10,7 @@ Feature: orchestrate-dev-workflow
 | Upstream | REQ → FSPEC → **TSPEC** |
 | Downstream | DECISIONS, PLAN, PROPERTIES, IMPL |
 | Scope | Workflow script architecture, Phase Dispatch Table, `reviewLoop` algorithm, VERDICT and `DECISIONS_WARRANTED` parsing, pipeline entry validation, implementation phase DAG execution, harvest phase, error handling, and non-functional constraints |
-| Cross-Reviews | CROSS-REVIEW-product-manager-TSPEC.md, CROSS-REVIEW-test-engineer-TSPEC.md |
+| Cross-Reviews | CROSS-REVIEW-product-manager-TSPEC.md, CROSS-REVIEW-test-engineer-TSPEC.md, CROSS-REVIEW-product-manager-TSPEC-v2.md, CROSS-REVIEW-test-engineer-TSPEC-v2.md |
 | LEARNINGS | docs/orchestrate-dev-workflow/LEARNINGS-orchestrate-dev-workflow.md |
 
 # TSPEC — orchestrate-dev-workflow
@@ -198,40 +198,40 @@ Before dispatching any agent, `reviewLoop` checks the entry precondition:
 ```
 iteration ← 1
 loop:
-  // (a) Emit iteration log
+  // (a) Check iteration cap at loop-top (fires after n=5 optimizer increments counter to 6)
+  if iteration > 5:
+    // POSTMORTEM trigger: loop exhaustion after n=5 optimizer completed and counter reached 6.
+    // All 5 review–optimize cycles have run. The POSTMORTEM is triggered by loop exhaustion,
+    // not by detecting a FAIL at iteration 5 before the optimizer runs.
+    await writePostmortem({ phase, feature, iteration: 5, verdict1, verdict2, result1, result2, reviewers })
+    // writePostmortem is awaited; pipeline halts after it completes (or on failure)
+    return { converged: false, iterations: 5 }
+
+  // (b) Emit iteration log
   if iteration === 1 and not resumed:
     log("Starting iteration 1")
   else:
     log("Resuming from iteration " + iteration)
 
-  // (b) Dispatch reviewers in parallel
+  // (c) Dispatch reviewers in parallel
   [result1, result2] ← await parallel([
     agent(reviewers[0], reviewerPrompt(doc, phase, feature, iteration)),
     agent(reviewers[1], reviewerPrompt(doc, phase, feature, iteration)),
   ])
 
-  // (c) Parse verdicts
+  // (d) Parse verdicts
   verdict1 ← parseVerdict(result1, reviewers[0])
   verdict2 ← parseVerdict(result2, reviewers[1])
 
-  // (d) Evaluate gate
+  // (e) Evaluate gate
   gateState ← (isPass(verdict1) AND isPass(verdict2)) ? "PASS" : "FAIL"
 
-  // (e) Branch on PASS
+  // (f) Branch on PASS
   if gateState === "PASS":
     return { converged: true, iterations: iteration }
 
-  // gateState is FAIL — check iteration cap BEFORE invoking optimizer
-  if iteration === 5:
-    // POSTMORTEM trigger: n === 5 AND both reviewers have returned verdicts
-    //   AND at least one is "Needs revision" (i.e., gateState is FAIL)
-    // Invoke POSTMORTEM agent BEFORE returning {converged: false}
-    await writePostmortem({ phase, feature, iteration, verdict1, verdict2, result1, result2, reviewers })
-    // writePostmortem is awaited; pipeline halts after it completes (or on failure)
-    return { converged: false, iterations: iteration }
-
-  // iteration < 5: invoke optimizer and loop
-  // (f) Invoke optimizer
+  // gateState is FAIL — invoke optimizer for ALL iterations 1–5
+  // (g) Invoke optimizer
   optimizerResult ← await agent(optimizer, optimizerPrompt(doc, phase, feature, iteration))
   if optimizerFailed(optimizerResult):
     halt with: "Error: optimizer agent {optimizer} failed during phase {phase}, iteration {iteration} — pipeline halted. Document at {doc} may be in an inconsistent state."
@@ -239,9 +239,10 @@ loop:
   iteration ← iteration + 1
   // loop back to (a)
   // Counter-value-to-action table:
-  //   iteration 1–4, FAIL: invoke optimizer, increment counter, loop
-  //   iteration 5, FAIL:   invoke POSTMORTEM, return {converged: false}
-  //   any iteration, PASS: return {converged: true}
+  //   iteration 1–5, FAIL: invoke optimizer, increment counter, loop back to cap check
+  //   iteration 6 (cap check): invoke POSTMORTEM, return {converged: false}
+  //   any iteration, PASS:     return {converged: true}
+  // This means 5 reviewer-pair dispatches and 5 optimizer invocations occur before POSTMORTEM.
 ```
 
 `isPass(verdict)` returns `true` if and only if `verdict === "Approved" || verdict === "Approved with minor changes"`.
@@ -278,7 +279,7 @@ The script needs no explicit resume-detection logic. The iteration counter's cur
 
 ### TSPEC-LOOP-07: POSTMORTEM Branch
 
-**Trigger condition (normative):** POSTMORTEM is triggered when `iteration === 5` AND both reviewers have returned their verdict for iteration 5 AND at least one verdict is `Needs revision` (i.e., gate state is FAIL after iteration 5's reviewer pair completes). The POSTMORTEM agent is invoked immediately — **before** `return { converged: false }`. No optimizer invocation occurs at iteration 5; the cap check fires on FAIL at `iteration === 5` before the optimizer path is reached.
+**Trigger condition (normative):** POSTMORTEM is triggered by loop exhaustion — specifically, when the iteration counter reaches 6 at the loop-top cap check (TSPEC-LOOP-03 step a). This occurs after all 5 full review–optimize cycles complete: iterations 1 through 5 each dispatch a reviewer pair and, on FAIL, invoke the optimizer; after the n=5 optimizer completes the counter increments to 6; the cap check `iteration > 5` fires; and the POSTMORTEM branch executes. The POSTMORTEM agent is invoked immediately — **before** `return { converged: false }`. The optimizer IS invoked at iteration 5 (same as iterations 1–4); the POSTMORTEM fires only after that iteration-5 optimizer completes and the counter increments to 6. AT-LOOP-03 boundary: 5 reviewer pairs dispatched, 5 optimizer invocations completed, then POSTMORTEM.
 
 The script invokes the optimizer skill as a POSTMORTEM-writing agent with this prompt:
 
@@ -1051,7 +1052,7 @@ VERDICT: <verdict-value>
 | REQ-PIPELINE-03 | TSPEC-LOOP-05, TSPEC-LOOP-06 | AT-RESUME-01, AT-RESUME-02, AT-RESUME-03 |
 | REQ-GATE-01 | TSPEC-LOOP-03, TSPEC-PARSE-01 | AT-LOOP-01, AT-LOOP-02, AT-VERDICT-01 – 07 |
 | REQ-GATE-02 | TSPEC-LOOP-03 – 08, TSPEC-DECISIONS-01 – 03 | AT-LOOP-01 – 08, AT-DECISIONS-01 – 05 |
-| REQ-GATE-03 | TSPEC-IMPL-03, TSPEC-IMPL-04 | AT-IMPL-01, AT-IMPL-03 |
+| REQ-GATE-03 | TSPEC-IMPL-03, TSPEC-IMPL-04, TSPEC-IMPL-06 | AT-IMPL-01, AT-IMPL-03, AT-IMPL-04, AT-IMPL-05 |
 | REQ-GATE-04 | TSPEC-LOOP-07 | AT-LOOP-03, AT-LOOP-05 |
 | REQ-GATE-05 | TSPEC-PARSE-01, TSPEC-PARSE-04, TSPEC-ERROR-01 | AT-LOOP-04, AT-LOOP-08, AT-VERDICT-02 – 04 |
 | REQ-COMPAT-01 | TSPEC-PARSE-01, TSPEC-NFR-04, TSPEC-SKILL-01 | AT-VERDICT-01 – 07 |
