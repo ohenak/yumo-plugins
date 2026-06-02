@@ -3,12 +3,13 @@
  * PROP-IMPL-01 through PROP-IMPL-12
  */
 
-import {
+import main, {
   computeTopologicalBatches,
   evaluateBatchGate,
   evaluateSingleAgentGate,
   mergeWorktree,
 } from "../orchestrate-dev.js";
+import { createGuardAgentDouble } from "./helpers/guardAgentDouble.js";
 import { execSync } from "child_process";
 import { createConflictingWorktree } from "./fixtures/tmpGitFixture.js";
 
@@ -290,33 +291,93 @@ describe("PROP-IMPL-08: mergeWorktree detects merge conflict and returns { ok: f
   );
 });
 
-// ─── Batch plan log format ────────────────────────────────────────────────────
-describe("PROP-IMPL-01: Batch plan log format", () => {
-  it("log includes Implementation batch plan header", () => {
-    // Test by importing and running the computation with mock log
-    const tasks = [
-      { id: "T1", dependencies: [], planBatch: 1 },
-      { id: "T2", dependencies: ["T1"], planBatch: 2 },
+// ─── PROP-IMPL-01: Batch plan logged before first agent() call (recording proxy) ──
+describe("PROP-IMPL-01: batch plan log precedes first agent() dispatch (recording proxy)", () => {
+  it("log('Implementation batch plan:') for each batch occurs before the first agent() call for that batch", async () => {
+    // Build a two-batch PLAN: T1 (batch 1) → T2 (batch 2)
+    const mockTasks = [
+      { id: "T1", description: "First task", dependencies: [], planBatch: 1 },
+      { id: "T2", description: "Second task", dependencies: ["T1"], planBatch: 2 },
     ];
 
-    // Simulate what the script does for batch logging
-    const batches = computeTopologicalBatches(tasks);
-    const mockLogs = [];
+    // Recording call-sequence array: entries are { type: "log"|"agent", value: string }
+    const callSequence = [];
 
-    mockLogs.push("Implementation batch plan:");
-    for (let i = 0; i < batches.length; i++) {
-      const deps = batches[i].some((t) => t.dependencies.length > 0)
-        ? `  (depends on: Batch ${i})`
-        : "";
-      mockLogs.push(
-        `  Batch ${i + 1}: [${batches[i].map((t) => t.id).join(", ")}]${deps}`
-      );
+    // Recording spy for _log
+    const spyLog = (message) => {
+      callSequence.push({ type: "log", value: message });
+    };
+
+    const okGuard = createGuardAgentDouble({ ok: true });
+
+    // Recording spy for _agent — handles all skills the pipeline needs
+    const spyAgent = async (skill, prompt, opts) => {
+      callSequence.push({ type: "agent", skill, prompt: String(prompt).slice(0, 80) });
+
+      if (skill === "guard") return { ok: true };
+      if (skill === "se-review" || skill === "te-review" || skill === "pm-review") {
+        return `Review complete.\nVERDICT: Approved\n{"high": 0, "medium": 0, "low": 0}\n`;
+      }
+      if (skill === "pm-author" || skill === "te-author") {
+        return "Created/updated document successfully.";
+      }
+      if (skill === "se-author") {
+        if (typeof prompt === "string" && prompt.includes("DECISIONS_WARRANTED")) {
+          return "Finalized TSPEC.\nDECISIONS_WARRANTED: false";
+        }
+        // DAG parsing agent returns two-batch task list
+        if (typeof prompt === "string" && prompt.includes("Return a JSON object")) {
+          return JSON.stringify({ tasks: mockTasks });
+        }
+        return "Done.";
+      }
+      if (skill === "se-implement") {
+        return "Tests: 5 passed, 0 failed.";
+      }
+      if (skill === "harvest-learnings") {
+        return "Harvest complete.";
+      }
+      return "Success.";
+    };
+
+    await main({
+      reqPath: "docs/test-feat/REQ-test-feat.md",
+      _agent: spyAgent,
+      _parallel: (promises) => Promise.all(promises),
+      _guardAgent: okGuard,
+      _log: spyLog,
+      _phase: () => {},
+      _pipeline: async (l, fn) => fn(),
+      _mergeWorktree: async () => ({ ok: true }),
+    });
+
+    // Find the index of "Implementation batch plan:" log entry
+    const batchPlanLogIdx = callSequence.findIndex(
+      (e) => e.type === "log" && e.value === "Implementation batch plan:"
+    );
+    expect(batchPlanLogIdx).toBeGreaterThan(-1);
+
+    // Find the index of the first se-implement agent call (Batch 1, task T1)
+    const firstBatch1AgentIdx = callSequence.findIndex(
+      (e) => e.type === "agent" && e.skill === "se-implement"
+    );
+    expect(firstBatch1AgentIdx).toBeGreaterThan(-1);
+
+    // The batch plan log must come BEFORE the first se-implement agent call
+    expect(batchPlanLogIdx).toBeLessThan(firstBatch1AgentIdx);
+
+    // Also verify the batch plan log entries appear for both batches
+    const batchLogs = callSequence.filter(
+      (e) =>
+        e.type === "log" &&
+        (e.value.includes("Batch 1:") || e.value.includes("Batch 2:"))
+    );
+    expect(batchLogs.length).toBe(2); // one entry per batch
+
+    // Both batch log entries must come before the first se-implement dispatch
+    for (const batchLog of batchLogs) {
+      const batchLogIdx = callSequence.indexOf(batchLog);
+      expect(batchLogIdx).toBeLessThan(firstBatch1AgentIdx);
     }
-    mockLogs.push(`  Total: ${tasks.length} tasks in ${batches.length} batches`);
-
-    expect(mockLogs[0]).toBe("Implementation batch plan:");
-    expect(mockLogs[1]).toContain("Batch 1: [T1]");
-    expect(mockLogs[2]).toContain("Batch 2: [T2]");
-    expect(mockLogs[3]).toContain("Total: 2 tasks in 2 batches");
   });
 });
