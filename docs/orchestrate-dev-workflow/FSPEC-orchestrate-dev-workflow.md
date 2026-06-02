@@ -1,7 +1,7 @@
 ---
 Status: Draft
 Author: pm-author
-Version: 1.1
+Version: 1.2
 Feature: orchestrate-dev-workflow
 ---
 
@@ -10,7 +10,7 @@ Feature: orchestrate-dev-workflow
 | Upstream | REQ → **FSPEC** |
 | Downstream | TSPEC, PROPERTIES |
 | Scope | Behavioral flows for: pipeline phase dispatch, reviewLoop mechanics, VERDICT trailer parsing, DECISIONS conditional, implementation phase DAG execution, harvest ordering, and all named error paths |
-| Cross-Reviews | CROSS-REVIEW-software-engineer-FSPEC.md, CROSS-REVIEW-test-engineer-FSPEC.md |
+| Cross-Reviews | CROSS-REVIEW-software-engineer-FSPEC.md, CROSS-REVIEW-test-engineer-FSPEC.md, CROSS-REVIEW-software-engineer-FSPEC-v2.md, CROSS-REVIEW-test-engineer-FSPEC-v2.md |
 | LEARNINGS | docs/orchestrate-dev-workflow/LEARNINGS-orchestrate-dev-workflow.md |
 
 # FSPEC — orchestrate-dev-workflow
@@ -135,11 +135,18 @@ When a run is resumed from a `runId` after interruption mid-loop:
 1. The runtime returns cached results for all completed agent calls; those calls do not re-execute.
 2. The script continues executing from the first incomplete agent call.
 3. The iteration counter does **not** reset to 1; the runtime's per-agent caching preserves the iteration state across resumption.
-4. At the start of every iteration, the script emits:
-   ```
-   log("Resuming from iteration N")
-   ```
-   where `N` is the current iteration number (the iteration that was active when the run was interrupted, not the next iteration to execute). This log is emitted unconditionally before each parallel reviewer dispatch — resume is not distinguished from a fresh run in log output, so a fresh start at iteration 1 also emits `"Resuming from iteration 1"`. No cache-state query API is required; the log reflects the current value of the iteration counter.
+4. At the start of every iteration, the script emits one of two log messages (no cache-state query API is required — the log is derived from the current value of the iteration counter and whether this is the first iteration of a fresh run):
+   - **Fresh run, iteration 1:**
+     ```
+     log("Starting iteration 1")
+     ```
+   - **All other iterations** (N ≥ 2, or any iteration in a resumed run):
+     ```
+     log("Resuming from iteration N")
+     ```
+   where `N` is the current iteration number (the iteration that was active when the run was interrupted on a resumed run, not the next iteration to execute). This gives two distinct observable messages: a fresh start at iteration 1 emits `"Starting iteration 1"`, while any resumed or subsequent iteration emits `"Resuming from iteration N"`. No cache-state query API is required.
+
+   **Reconciliation with REQ-PIPELINE-03:** REQ-PIPELINE-03's acceptance criterion scopes the `"Resuming from iteration N"` log to resumed runs. This FSPEC is the normative behavioral specification: the implementation emits `"Starting iteration 1"` on a fresh run and `"Resuming from iteration N"` on resume or on iteration N ≥ 2. REQ-PIPELINE-03's `"Resuming from iteration N"` wording captures the resumed-run case; the `"Starting iteration 1"` variant for fresh runs is the FSPEC-level refinement.
 
 Resume behavior for implementation phase batches and the harvest phase follows the same runtime per-agent caching guarantee: completed agent calls are not re-executed regardless of which phase was interrupted.
 
@@ -389,6 +396,9 @@ For each batch:
    - Path to `PROPERTIES-{featureName}.md`
 3. The script waits for all agents in the batch to complete before evaluating the batch gate.
 4. After all agents in the batch complete, each worktree is merged back to the feature branch (`feat-{featureName}`) using `git merge --no-ff`. This produces a merge commit for each worktree, preserving the worktree's commit history.
+
+   **Worktree auto-merge note:** The runtime does **NOT** auto-merge worktrees on agent completion for `isolation: "worktree"` agents. Each worktree persists after its agent completes and must be explicitly merged by the script via `git merge --no-ff` per steps 4–6. If the runtime auto-merge behavior changes in a future runtime version, the explicit merge in steps 4–6 must be guarded accordingly (e.g., skip the explicit merge if the worktree is already merged).
+
 5. **Merge conflict handling:** If a `git merge --no-ff` call produces a conflict, the script immediately aborts the merge (`git merge --abort`), leaves the conflicting worktree in place, halts the pipeline, and emits: `"Error: merge conflict merging worktree for task {task-id} into feat-{featureName} — conflicting files: {file-list}. Pipeline halted."`. Subsequent worktrees in the same batch are not merged. The developer must resolve the conflict manually.
 6. Merging proceeds worktree-by-worktree in PLAN document order. All worktrees from a batch must merge successfully before the per-batch test gate runs.
 
@@ -649,6 +659,12 @@ The `nudge-consolidation` hook fires on SessionStart. It fires once for the top-
 - **When:** Optimizer failure is detected
 - **Then:** Pipeline halts immediately; the script does not proceed to iteration 2; final report contains `"Error: optimizer agent {optimizer-skill} failed during phase {phase}, iteration {N} — pipeline halted. Document at {docPath} may be in an inconsistent state."`
 
+### AT-LOOP-08: Both Reviewers Crash in Same Iteration
+- **Who:** Workflow script
+- **Given:** Both reviewer agents in the same iteration throw exceptions (or time out) before returning any output — no VERDICT line is present in either result
+- **When:** Gate state is evaluated after both agents complete (via exception)
+- **Then:** The script emits two individual warning log lines — one for each crashed reviewer — in the format `"WARNING: reviewer {skill-name} returned no VERDICT — treating as Needs revision"` (one for each reviewer's skill identifier); both are treated as `Needs revision`; gate state is FAIL; the optimizer is invoked exactly once (not twice); the iteration counter increments by 1; the pipeline does not halt (continues the loop normally)
+
 ### AT-VERDICT-01: Valid Approved Trailer Parsed
 - **Who:** Workflow script (parser unit)
 - **Given:** Agent result ends with `VERDICT: Approved\n{"high": 0, "medium": 0, "low": 0}\n`
@@ -679,6 +695,12 @@ The `nudge-consolidation` hook fires on SessionStart. It fires once for the top-
 - **When:** Parser runs
 - **Then:** Verdict value `Approved` is accepted; findings count defaults to `{"high": 0, "medium": 0, "low": 0}`; no fallback warning is emitted; gate proceeds on the `Approved` verdict
 
+### AT-VERDICT-06: Truncated Output — VERDICT: Needs Revision as Last Line
+- **Who:** Workflow script (parser unit)
+- **Given:** Agent result ends with `VERDICT: Needs revision` (the VERDICT line is the very last line; no non-empty line follows it)
+- **When:** Parser runs
+- **Then:** Verdict value `Needs revision` is accepted; findings count defaults to `{"high": 0, "medium": 0, "low": 0}`; no fallback warning is emitted; gate state is FAIL (the `Needs revision` verdict is acted on, not the zero count)
+
 ### AT-DECISIONS-01: Skip Path Logged and Reported
 - **Who:** Workflow script
 - **Given:** TSPEC optimizer returns `DECISIONS_WARRANTED: false`
@@ -701,7 +723,13 @@ The `nudge-consolidation` hook fires on SessionStart. It fires once for the top-
 - **Who:** Workflow script
 - **Given:** A `reviewLoop` for any phase was interrupted during iteration 3 (some but not all agents in iteration 3 had completed); the run is resumed
 - **When:** The script continues from the resumed run
-- **Then:** The first `log()` call after resume emits `"Resuming from iteration 3"` (not `"Resuming from iteration 4"`); the runtime does not re-invoke already-completed agents from iteration 3; the iteration cap counter is not reset to 1
+- **Then:** The first `log()` call after resume emits `"Resuming from iteration 3"` (not `"Resuming from iteration 4"`, and not `"Starting iteration 3"`); the runtime does not re-invoke already-completed agents from iteration 3; the iteration cap counter is not reset to 1
+
+### AT-RESUME-02: Fresh Run Emits "Starting iteration 1"
+- **Who:** Workflow script
+- **Given:** A fresh pipeline run (not a resumed run) starts a `reviewLoop` for any phase; iteration 1 is about to begin
+- **When:** The script emits its iteration-start log before dispatching the first parallel reviewer pair
+- **Then:** The log message is `"Starting iteration 1"` — not `"Resuming from iteration 1"`
 
 ### AT-IMPL-01: Batch Plan Logged Before Dispatch
 - **Who:** Developer observing `/workflows`
@@ -720,6 +748,12 @@ The `nudge-consolidation` hook fires on SessionStart. It fires once for the top-
 - **Given:** PLAN contains a task labeled as batch 2 that has a dependency on another task also labeled as batch 2 (contradictory batch labels)
 - **When:** Implementation phase begins and the DAG is parsed
 - **Then:** The script re-derives topological batches from dependency edges; the PLAN's stated batch labels are ignored; `log("WARNING: PLAN batch labels inconsistent with dependency edges — re-deriving topological batches")` is emitted before any `se-implement` agent is dispatched; the resulting batch plan correctly places the prerequisite task in an earlier batch than the dependent task
+
+### AT-IMPL-04: Batch Pass — Pipeline Continues to Next Batch
+- **Who:** Workflow script
+- **Given:** A `se-implement` batch completes and no agent's result contains a line matching `Tests: N failed` (where N is a positive integer) and no agent's result contains `non-zero exit` (case-insensitive)
+- **When:** The per-batch test gate is evaluated
+- **Then:** The script treats the batch as passed; it does NOT halt; it emits `log("Batch N complete — all tests passing")`; it proceeds to dispatch the next batch (or, if this was the final batch, proceeds to Phase PT)
 
 ### AT-HARVEST-01: LEARNINGS Written Before Delete
 - **Who:** Harvest agent (ordering verifiable by log sequence)
@@ -752,7 +786,7 @@ The `nudge-consolidation` hook fires on SessionStart. It fires once for the top-
 | ID | Question | Impact |
 |----|----------|--------|
 | OQ-01 | Does the workflow runtime's `resumeFromRunId` parameter name match what is assumed in REQ-PIPELINE-03, or is the resume mechanism invoked differently (e.g., a flag on the initial call, a separate primitive)? This should be verified against the live runtime before TSPEC authoring. | Affects TSPEC's resume interface specification |
-| OQ-02 | Is the VERDICT trailer a permanent addition to each reviewer SKILL.md, or is it injected by the workflow script at invocation time? Baking it into SKILL.md means Ptah engine and interactive callers always receive the trailer; script-injection isolates it to the workflow path. | Affects which files change in Phase 1 vs. which are workflow-script-only changes |
+| OQ-02 | **Resolved:** The VERDICT trailer is a **permanent addition to the SKILL.md files** of `se-review`, `te-review`, and `pm-review`. It is NOT injected by the workflow script at runtime. The trailer is baked into each reviewer skill's SKILL.md so that Ptah engine and interactive callers always receive the trailer — this is the desired behavior per REQ-COMPAT-01, which specifies the trailer as a shared data contract available to all callers. Script-injection would isolate the trailer to the workflow path only, preventing interactive callers from benefiting. The three SKILL.md changes are Phase 1 deliverables alongside the workflow script. | Closed |
 | OQ-03 | **Resolved:** The `DECISIONS_WARRANTED` trailer is a workflow-script-injected instruction appended to the TSPEC-optimizer agent call. It is not baked into the `se-author` SKILL.md. See §3.1. | Closed |
 | OQ-04 | REQ-NFR-01's worst-case formula ("7 phases" in the original, Phase CR correction noted in CROSS-REVIEW-SE-REQ-v2 F-13) should be reconciled to "8 review phases" before TSPEC authoring. The compliance conclusion is unchanged; the formula should be corrected for accuracy. | Does not block FSPEC; should be resolved in REQ before TSPEC |
 | OQ-05 | The sync mechanism for `pdlc/workflows/orchestrate-dev.js` → `.claude/workflows/orchestrate-dev.js` in consumer repos is unspecified in the REQ. This FSPEC defers that mechanism to an implementation decision. If a `pdlc install` script or similar is required, it should be scoped as a separate requirement before TSPEC authoring. | May require a new REQ entry; does not block FSPEC behavioral specification |
