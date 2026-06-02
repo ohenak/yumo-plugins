@@ -1,7 +1,7 @@
 ---
 Status: Draft
 Author: pm-author
-Version: 1.3
+Version: 1.4
 Feature: orchestrate-dev-workflow
 ---
 
@@ -10,7 +10,7 @@ Feature: orchestrate-dev-workflow
 | Upstream | REQ → **FSPEC** |
 | Downstream | TSPEC, PROPERTIES |
 | Scope | Behavioral flows for: pipeline phase dispatch, reviewLoop mechanics, VERDICT trailer parsing, DECISIONS conditional, implementation phase DAG execution, harvest ordering, and all named error paths |
-| Cross-Reviews | CROSS-REVIEW-software-engineer-FSPEC.md, CROSS-REVIEW-test-engineer-FSPEC.md, CROSS-REVIEW-software-engineer-FSPEC-v2.md, CROSS-REVIEW-test-engineer-FSPEC-v2.md, CROSS-REVIEW-software-engineer-FSPEC-v3.md, CROSS-REVIEW-test-engineer-FSPEC-v3.md |
+| Cross-Reviews | CROSS-REVIEW-software-engineer-FSPEC.md, CROSS-REVIEW-test-engineer-FSPEC.md, CROSS-REVIEW-software-engineer-FSPEC-v2.md, CROSS-REVIEW-test-engineer-FSPEC-v2.md, CROSS-REVIEW-software-engineer-FSPEC-v3.md, CROSS-REVIEW-test-engineer-FSPEC-v3.md, CROSS-REVIEW-software-engineer-FSPEC-v4.md, CROSS-REVIEW-test-engineer-FSPEC-v4.md |
 | LEARNINGS | docs/orchestrate-dev-workflow/LEARNINGS-orchestrate-dev-workflow.md |
 
 # FSPEC — orchestrate-dev-workflow
@@ -273,7 +273,11 @@ Gate state is FAIL if **either** reviewer's vote is failing. Gate state is PASS 
 
 ### 3.1 How `decisionsWarranted` Is Determined
 
-After the TSPEC review loop passes (both reviewers approve), the script invokes the `se-author` agent to address the TSPEC cross-review findings and finalize the TSPEC. This same agent invocation also assesses whether a DECISIONS document is warranted by examining the cross-review content.
+After the TSPEC review loop passes (both reviewers approve), the script **always** invokes the `se-author` agent to address the TSPEC cross-review findings and finalize the TSPEC. This post-PASS invocation is **mandatory regardless of how many iterations the TSPEC reviewLoop ran** — including when the loop passed on iteration 1 (in which case no in-loop optimizer call occurred, making this the only `se-author` call for the TSPEC phase). This same post-PASS agent invocation also assesses whether a DECISIONS document is warranted by examining the cross-review content.
+
+**Relationship to reviewLoop §1.5:** The §1.5 optimizer is invoked on FAIL iterations only. The post-PASS `se-author` call is a separate, additional step that occurs after the loop exits with PASS. It is not part of the loop body.
+
+**`DECISIONS_WARRANTED:` injection scope:** The `DECISIONS_WARRANTED:` trailer instruction is injected **only on the post-PASS call** — not on any in-loop FAIL-iteration optimizer calls. The script uses the post-PASS result exclusively to determine `decisionsWarranted`. Results from FAIL-iteration optimizer calls do not contain the `DECISIONS_WARRANTED:` field and are not inspected for it.
 
 **The `decisionsWarranted` return value format (normative):**
 
@@ -416,7 +420,8 @@ After all agents in a batch complete and all worktrees are merged:
 
 **Test result signal format (normative):** The script uses the following deterministic signal detection:
 - **Failure marker:** any line in the agent's result string matching the pattern `Tests: N failed` (where N is a positive integer) or the presence of `non-zero exit` in the result string (case-insensitive). These are the canonical failure signals produced by `se-implement` agents.
-- **Pass determination:** the batch passes if and only if no agent result contains a failure marker as defined above. The absence of a failure marker is the positive pass signal; no structured pass trailer is required.
+- **Crash / empty-result detection:** if a `se-implement` batch agent's result is `null`, `undefined`, an empty string, or a string containing only whitespace characters, the script treats that agent as having **failed** — the absence of any output is not treated as a pass. The batch is failed immediately. The script halts and emits: `"Error: Batch N agent returned empty result — treating as failure"` (where N is the batch number). This rule is evaluated **before** the failure-marker scan; an empty result short-circuits to failure without scanning for `Tests: N failed` or `non-zero exit`.
+- **Pass determination:** the batch passes if and only if every agent result is non-empty and no agent result contains a failure marker as defined above. The absence of a failure marker in a non-empty result is the positive pass signal; no structured pass trailer is required.
 
 **On batch failure:**
 
@@ -437,7 +442,7 @@ After all implementation batches pass:
 
 1. The script invokes a single `se-implement` agent to implement any PROPERTIES tests not yet covered.
 2. The agent runs the full test suite; all tests must pass before committing.
-3. If the test suite fails, the pipeline halts with the same halt behavior as §4.6 (batch failure).
+3. The PT agent's result is evaluated using the same failure marker detection defined in §4.6, including the crash/empty-result fallback rule: a null, undefined, empty-string, or whitespace-only result from the PT agent is treated as a test failure, not a pass. If the test suite fails or the agent returns an empty result, the pipeline halts with the same halt behavior as §4.6 (batch failure).
 
 ### 4.8 Phase CR: Final Codebase Review
 
@@ -541,7 +546,7 @@ The canonical phase execution order is:
 |---|---|---|---|
 | R | REQ Cross-Review | `reviewLoop` | Always |
 | F | FSPEC Creation + Review | Create then `reviewLoop` | Always |
-| T | TSPEC Creation + Review | Create then `reviewLoop` | Always |
+| T | TSPEC Creation + Review + Post-PASS `se-author` | Create then `reviewLoop`, then mandatory post-PASS `se-author` call (see §3.1) | Always |
 | D | DECISIONS Creation + Review | Create then `reviewLoop` | Only if `decisionsWarranted = true` |
 | P | PLAN Creation + Review | Create then `reviewLoop` | Always |
 | PR | PROPERTIES Creation + Review | Create then `reviewLoop` | Always |
@@ -733,6 +738,12 @@ The `nudge-consolidation` hook fires on SessionStart. It fires once for the top-
 - **When:** Script parses the `DECISIONS_WARRANTED` value
 - **Then:** The value is treated as `false` (case-insensitive parsing is applied); Phase D is skipped; `log("Phase D skipped — no load-bearing alternatives")` is emitted; the absent-field warning (`"WARNING: DECISIONS_WARRANTED field absent or malformed — defaulting to true"`) is NOT emitted; execution continues to Phase P
 
+### AT-DECISIONS-05: Case-Insensitive DECISIONS_WARRANTED Parsing (Full Path — All-Uppercase TRUE)
+- **Who:** Workflow script
+- **Given:** TSPEC post-PASS optimizer returns `DECISIONS_WARRANTED: TRUE` (all uppercase)
+- **When:** Script parses the `DECISIONS_WARRANTED` value
+- **Then:** The value is treated as `true` (case-insensitive parsing is applied); `reviewLoop` for Phase D is entered; the absent-field warning (`"WARNING: DECISIONS_WARRANTED field absent or malformed — defaulting to true"`) is NOT emitted; Phase D appears as an active phase (`"Phase D: DECISIONS Review"`) in `/workflows`
+
 ### AT-RESUME-01: Resume Iteration Counter Semantics
 - **Who:** Workflow script
 - **Given:** A `reviewLoop` for any phase was interrupted during iteration 3 (some but not all agents in iteration 3 had completed); the run is resumed
@@ -775,6 +786,12 @@ The `nudge-consolidation` hook fires on SessionStart. It fires once for the top-
 - **When:** The per-batch test gate is evaluated
 - **Then:** The script treats the batch as passed; it does NOT halt; it emits `log("Batch N complete — all tests passing")`; it proceeds to dispatch the next batch (or, if this was the final batch, proceeds to Phase PT)
 
+### AT-IMPL-05: Empty Agent Result Treated as Batch Failure
+- **Who:** Workflow script
+- **Given:** A `se-implement` batch is dispatched; one agent returns an empty string result (no output at all — null, undefined, empty string, or whitespace-only)
+- **When:** The per-batch test gate is evaluated
+- **Then:** The script treats the batch as failed (not passed); the pipeline halts; the script does NOT dispatch subsequent batches; the final report contains `"Error: Batch N agent returned empty result — treating as failure"` (where N is the batch number); no scan for `Tests: N failed` or `non-zero exit` is performed against the empty result
+
 ### AT-HARVEST-01: LEARNINGS Written Before Delete
 - **Who:** Harvest agent (ordering verifiable by log sequence)
 - **Given:** Final codebase review approved; CROSS-REVIEW-* files exist on branch
@@ -808,7 +825,7 @@ The `nudge-consolidation` hook fires on SessionStart. It fires once for the top-
 | OQ-01 | Does the workflow runtime's `resumeFromRunId` parameter name match what is assumed in REQ-PIPELINE-03, or is the resume mechanism invoked differently (e.g., a flag on the initial call, a separate primitive)? This should be verified against the live runtime before TSPEC authoring. | Affects TSPEC's resume interface specification |
 | OQ-02 | **Resolved:** The VERDICT trailer is a **permanent addition to the SKILL.md files** of `se-review`, `te-review`, and `pm-review`. It is NOT injected by the workflow script at runtime. The trailer is baked into each reviewer skill's SKILL.md so that Ptah engine and interactive callers always receive the trailer — this is the desired behavior per REQ-COMPAT-01, which specifies the trailer as a shared data contract available to all callers. Script-injection would isolate the trailer to the workflow path only, preventing interactive callers from benefiting. The three SKILL.md changes are Phase 1 deliverables alongside the workflow script. | Closed |
 | OQ-03 | **Resolved:** The `DECISIONS_WARRANTED` trailer is a workflow-script-injected instruction appended to the TSPEC-optimizer agent call. It is not baked into the `se-author` SKILL.md. See §3.1. | Closed |
-| OQ-04 | REQ-NFR-01's worst-case formula ("7 phases" in the original, Phase CR correction noted in CROSS-REVIEW-SE-REQ-v2 F-13) should be reconciled to "8 review phases" before TSPEC authoring. The compliance conclusion is unchanged; the formula should be corrected for accuracy. | Does not block FSPEC; should be resolved in REQ before TSPEC |
+| OQ-04 | **Closed.** REQ-NFR-01's original worst-case formula used 7 review phases; §6.2 defines 8 review phases (R, F, T, D, P, PR, CR, and the implementation/PT/CR sequence counts CR as the 8th). The corrected worst-case formula is: 1 (guard) + 8 phases × 5 iterations × 3 agents + 5 impl agents × max 5 batches + 1 (PT) + 1 (harvest) = 1 + 120 + 25 + 1 + 1 = **~148 agents worst-case** (well under 1,000). Phase CR counts as one of the 8 review phases per §4.8. The compliance conclusion from REQ-NFR-01 is unchanged; the REQ formula should be corrected to reference 8 phases before TSPEC authoring, but this does not block the FSPEC. | Closed |
 | OQ-05 | The sync mechanism for `pdlc/workflows/orchestrate-dev.js` → `.claude/workflows/orchestrate-dev.js` in consumer repos is unspecified in the REQ. This FSPEC defers that mechanism to an implementation decision. If a `pdlc install` script or similar is required, it should be scoped as a separate requirement before TSPEC authoring. | May require a new REQ entry; does not block FSPEC behavioral specification |
 
 ---
