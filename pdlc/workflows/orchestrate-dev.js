@@ -685,6 +685,7 @@ export default async function main({
   _guardAgent: guardAgentFn = null,
   _phase: phaseFn = phase,
   _pipeline: pipelineFn = pipeline,
+  _mergeWorktree: mergeWorktreeFn = mergeWorktree,
 } = {}) {
   // Override module-level log for injection
   const emit = logFn;
@@ -995,11 +996,20 @@ export default async function main({
         );
 
         // TSPEC-IMPL-05: Worktree merge-back
+        // The Claude Code runtime handles worktree isolation and merge-back automatically
+        // when agents are called with { isolation: "worktree" } (Assumption A2).
+        // mergeWorktree() is the testable implementation for environments where the
+        // runtime does not handle this transparently.
         for (let i = 0; i < batch.length; i++) {
           const task = batch[i];
-          // In production: git merge --no-ff <worktree-branch>
-          // Conflict detection via exit code, then git diff --name-only --diff-filter=U, then git merge --abort
-          await mergeWorktree(task, featureName, agentFn);
+          const worktreeBranch = `feat-${featureName}-${task.id}-worktree`;
+          const mergeResult = await mergeWorktreeFn(".", worktreeBranch, `feat-${featureName}`);
+          if (mergeResult && mergeResult.ok === false) {
+            const fileList = (mergeResult.conflictingFiles || []).join(", ") || "(unknown)";
+            throw haltError(
+              `Error: merge conflict merging worktree for task ${task.id} into feat-${featureName} — conflicting files: ${fileList}. Pipeline halted.`
+            );
+          }
         }
 
         // TSPEC-IMPL-06: Per-batch test gate
@@ -1102,14 +1112,57 @@ export default async function main({
   });
 }
 
-// ─── Merge worktree helper (production: real git; tests: mocked) ──────────────
+// ─── Merge worktree helper (TSPEC-IMPL-05) ────────────────────────────────────
 
-async function mergeWorktree(task, featureName, agentFn) {
-  // In production this would call git commands; in workflow context, the runtime handles worktrees.
-  // This stub is overridden in integration tests via dependency injection.
-  void task;
-  void featureName;
-  void agentFn;
+/**
+ * Merges a worktree branch into the current HEAD of the given repo directory.
+ *
+ * Steps:
+ *   1. Run `git merge --no-ff {worktreeBranch}` in {repoPath}.
+ *   2. On non-zero exit: run `git diff --name-only --diff-filter=U` to get conflicting files.
+ *   3. Run `git merge --abort`.
+ *   4. Return `{ ok: false, conflictingFiles: string[] }`.
+ *   On success: return `{ ok: true }`.
+ *
+ * @param {string} repoPath       - Path to the git repo (cwd for git commands)
+ * @param {string} worktreeBranch - Branch name to merge (e.g. "feat-task-01-worktree")
+ * @param {string} [targetBranch] - Target branch name (informational only; repo must already be on it)
+ * @param {{ execFn?: function }} [opts] - Injection point for tests (override execSync)
+ * @returns {Promise<{ ok: true } | { ok: false, conflictingFiles: string[] }>}
+ */
+export async function mergeWorktree(repoPath, worktreeBranch, targetBranch, { execFn } = {}) {
+  const { execSync: realExecSync } = await import("child_process");
+  const exec = execFn ?? ((cmd, opts) => realExecSync(cmd, opts));
+
+  const execOpts = { cwd: repoPath, stdio: "pipe", encoding: "utf8" };
+
+  try {
+    exec(`git merge --no-ff ${worktreeBranch}`, execOpts);
+    return { ok: true };
+  } catch {
+    // Non-zero exit: capture conflicting files before aborting
+    let conflictingFiles = [];
+    try {
+      const diffOutput = exec(
+        "git diff --name-only --diff-filter=U",
+        execOpts
+      );
+      conflictingFiles = diffOutput
+        .trim()
+        .split("\n")
+        .filter((line) => line.length > 0);
+    } catch {
+      // If diff fails (e.g. nothing staged), return empty list
+    }
+
+    try {
+      exec("git merge --abort", execOpts);
+    } catch {
+      // Abort may fail if merge wasn't in progress — ignore
+    }
+
+    return { ok: false, conflictingFiles };
+  }
 }
 
 // ─── Final report builder ─────────────────────────────────────────────────────

@@ -61,6 +61,10 @@ function makeParallel() {
   return (promises) => Promise.all(promises);
 }
 
+// No-op mergeWorktree for unit tests — the runtime handles worktree merge-back;
+// real git is not available in the test environment.
+const noopMergeWorktree = async () => ({ ok: true });
+
 const okGuard = createGuardAgentDouble({ ok: true });
 
 // ─── PROP-PIPELINE-01: Valid path proceeds to Phase R ─────────────────────────
@@ -77,6 +81,7 @@ describe("PROP-PIPELINE-01: Valid path and guard ok → proceeds to Phase R", ()
       _guardAgent: okGuard,
       _phase: mockPhase,
       _pipeline: mockPipeline,
+      _mergeWorktree: noopMergeWorktree,
     });
 
     expect(result.outcome).toBe("success");
@@ -96,6 +101,7 @@ describe("PROP-PIPELINE-02: main() returns only the final report object", () => 
       _guardAgent: okGuard,
       _phase: () => {},
       _pipeline: async (l, fn) => fn(),
+      _mergeWorktree: noopMergeWorktree,
     });
 
     // FinalReport shape check (TSPEC-ERROR-03)
@@ -118,6 +124,7 @@ describe("PROP-OBS-02: FinalReport object has correct shape", () => {
       _guardAgent: okGuard,
       _phase: () => {},
       _pipeline: async (l, fn) => fn(),
+      _mergeWorktree: noopMergeWorktree,
     });
 
     expect(result).toHaveProperty("feature");
@@ -145,6 +152,7 @@ describe("PROP-ARTIFACTS-01: Artifact paths follow docs/{feature}/ prefix", () =
       _guardAgent: okGuard,
       _phase: () => {},
       _pipeline: async (l, fn) => fn(),
+      _mergeWorktree: noopMergeWorktree,
     });
 
     expect(result.artifactPaths).toContain("docs/test-feat/REQ-test-feat.md");
@@ -158,6 +166,7 @@ describe("PROP-ARTIFACTS-01: Artifact paths follow docs/{feature}/ prefix", () =
       _guardAgent: okGuard,
       _phase: () => {},
       _pipeline: async (l, fn) => fn(),
+      _mergeWorktree: noopMergeWorktree,
     });
 
     // Check paths contain feature name
@@ -328,6 +337,7 @@ describe("PROP-PIPELINE-03: phase() called with correct labels in order", () => 
       _guardAgent: okGuard,
       _phase: mockPhase,
       _pipeline: async (l, fn) => fn(),
+      _mergeWorktree: noopMergeWorktree,
     });
 
     // Phase labels should appear in canonical order

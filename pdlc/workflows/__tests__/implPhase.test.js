@@ -7,7 +7,10 @@ import {
   computeTopologicalBatches,
   evaluateBatchGate,
   evaluateSingleAgentGate,
+  mergeWorktree,
 } from "../orchestrate-dev.js";
+import { execSync } from "child_process";
+import { createConflictingWorktree } from "./fixtures/tmpGitFixture.js";
 
 let logMessages = [];
 const originalLog = console.log;
@@ -231,6 +234,60 @@ describe("computeTopologicalBatches — TSPEC-IMPL-02", () => {
     const batches = computeTopologicalBatches(tasks);
     expect(batches[0].map((t) => t.id)).toEqual(["A", "B", "C"]);
   });
+});
+
+// ─── PROP-IMPL-08: mergeWorktree conflict detection (integration) ─────────────
+describe("PROP-IMPL-08: mergeWorktree detects merge conflict and returns { ok: false, conflictingFiles }", () => {
+  // Skip if git is not available (e.g. restricted CI environments)
+  const gitAvailable = (() => {
+    try {
+      execSync("git --version", { stdio: "pipe" });
+      return true;
+    } catch {
+      return false;
+    }
+  })();
+
+  (gitAvailable ? it : it.skip)(
+    "returns { ok: false, conflictingFiles: ['conflict.txt'] } when merging a conflicting branch",
+    async () => {
+      const { repoPath, worktreeBranch, targetBranch, cleanup } =
+        createConflictingWorktree();
+
+      try {
+        const result = await mergeWorktree(repoPath, worktreeBranch, targetBranch);
+        expect(result.ok).toBe(false);
+        expect(Array.isArray(result.conflictingFiles)).toBe(true);
+        expect(result.conflictingFiles).toContain("conflict.txt");
+      } finally {
+        cleanup();
+      }
+    }
+  );
+
+  (gitAvailable ? it : it.skip)(
+    "returns { ok: true } when merging a non-conflicting branch",
+    async () => {
+      const { repoPath, cleanup } = createConflictingWorktree();
+
+      try {
+        // Create a branch that only adds a new file — no conflict with main
+        const execOpts = { cwd: repoPath, stdio: "pipe" };
+        execSync("git checkout -b clean-branch", execOpts);
+        const { writeFileSync } = await import("fs");
+        const { join } = await import("path");
+        writeFileSync(join(repoPath, "new-file.txt"), "no conflict here\n");
+        execSync("git add new-file.txt", execOpts);
+        execSync('git commit -m "clean addition"', execOpts);
+        execSync("git checkout main", execOpts);
+
+        const result = await mergeWorktree(repoPath, "clean-branch", "main");
+        expect(result.ok).toBe(true);
+      } finally {
+        cleanup();
+      }
+    }
+  );
 });
 
 // ─── Batch plan log format ────────────────────────────────────────────────────
