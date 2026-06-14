@@ -56,7 +56,7 @@ Before creating or revising TSPEC, DECISIONS, or PLAN, read `docs/_decisions/DEC
 **Input:** Requirements document and optional functional specification.
 
 1. Read all input documents. Understand acceptance criteria, behavioral flows, edge cases, and dependencies.
-2. Review the existing codebase for integration points, patterns, shared utilities, and test infrastructure.
+2. Review the existing codebase for integration points, patterns, shared utilities, and test infrastructure. For every claim in the TSPEC asserting a fact about existing code — signature, return type, field/attribute existence, enum membership, "the existing code already does X" — cite the actual source file and line number. Collect all such claims in a single pass before writing the spec; do not carry one unverified claim per review round.
 3. Research libraries, frameworks, and APIs via web search.
 4. Design the technical architecture:
    - Technology stack and new dependencies (with rationale)
@@ -114,6 +114,8 @@ Create `docs/{feature-name}/PLAN-{feature-name}.md` with:
 - Summary of what's being built
 - Phased task list with columns: `#`, `Task`, `Test File`, `Source File`, `Status`
 - Status key: ⬚ Not Started | 🔴 Red | 🟢 Green | 🔵 Refactored | ✅ Done
+- **`[Fake first]` convention:** Test-double creation tasks are labelled `[Fake first]` and must precede all production-implementation tasks for the same component. Every implementation task row must have a corresponding red-test row referencing the same test file and ≥1 named acceptance test (AT). Verify TDD order before submitting for review — order violations are the author's responsibility.
+- **Prior-phase baseline pre-flight (when applicable):** If this feature extends symbols from a prior-phase baseline, add a `P2-00 pre-flight gate` task as the **first** task in the PLAN. The gate asserts that every `BL-PREREQ` symbol is importable / `hasattr`-present at HEAD and promotes any absent symbol to blocking work before dependent tasks run. The gate must only assert baseline-symbol *existence* — never the new shape created by a dependent task.
 - Task dependency notes
 - Integration points
 - Definition of Done checklist
@@ -145,6 +147,8 @@ When feedback arrives on your TSPEC, DECISIONS, or PLAN:
 
 ### PLAN
 - [ ] Every task has test file and source file specified
+- [ ] Every implementation task has a preceding red-test row referencing the same test file and ≥1 named AT (`[Fake first]` order)
+- [ ] P2-00 pre-flight gate is the first task when extending a prior-phase baseline
 - [ ] Dependencies documented
 - [ ] Definition of Done criteria listed
 

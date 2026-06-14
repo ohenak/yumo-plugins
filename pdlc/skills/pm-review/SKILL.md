@@ -51,6 +51,7 @@ Before issuing a recommendation, read `docs/_constraints/DOMAIN-CONSTRAINTS.md` 
 - Are any product decisions being made that belong in the REQ/FSPEC?
 - Are acceptance criteria preserved accurately in the technical mapping?
 - Are edge cases handled in line with UX goals?
+- Diff every public enum value, numeric range, scale, and return type in the engineering types against the corresponding REQ definition. Flag any divergence or unmarked internal variant as a **High** finding (contract-fidelity violation).
 
 ### Reviewing DECISIONS
 - Does each decision trace to a real product, scope, or business constraint (not just engineering preference)?
@@ -73,6 +74,7 @@ Before issuing a recommendation, read `docs/_constraints/DOMAIN-CONSTRAINTS.md` 
 - Is any out-of-scope behavior present in the code or UI?
 - Are acceptance criteria satisfied as written?
 - Are edge cases handled per the REQ?
+- **Dead-config check:** For every config artifact (dict, map, rules JSON, catalog entry) introduced in implementation, confirm that ≥1 production code path imports **and** executes it. A config object that is only imported by tests is dead config — its behavior is untested in production. Flag as a **Medium** finding if no production caller is wired.
 
 ---
 
@@ -87,6 +89,8 @@ Every finding gets a **Scope** tag alongside its severity. Scope determines what
 | `Process` | Reveals that a skill prompt, review checklist, or workflow phase needs updating | Routed to process learnings during harvest |
 
 When unsure, default to `Local`. Do not inflate severity to attract attention — use `Cross-Feature` or `Process` to flag durable signal instead.
+
+> **Mandatory from the first review pass:** Scope tags are required on every finding in every review iteration — TSPEC, DECISIONS, PLAN, PROPERTIES, and IMPLEMENTATION alike. Do not leave findings untagged. Early tagging allows harvest to route findings mechanically without having to infer scope.
 
 ---
 

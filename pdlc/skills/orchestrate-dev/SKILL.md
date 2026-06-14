@@ -192,7 +192,10 @@ Wait for both agents to complete.
 
 Read both cross-review files. Check the `Recommendation:` line in each.
 
-- **Both Approved or Approved with minor changes** → exit loop, proceed to Step 3.
+- **Both Approved or Approved with minor changes** → before exiting the gate, confirm:
+  - **Infra/deployment-governance posture** is either settled (a deployment DECISIONS doc exists or the REQ covers it as an NFR) or explicitly scoped as a separate workstream with a named owner.
+  - **Product naming** is finalized — all major entities, modules, and public APIs have definitive names. Ambiguous or unresolved naming at REQ sign-off ripples through FSPEC, TSPEC, PLAN, and PROPERTIES. If either is unresolved, add it as a High finding and loop back to 2c before proceeding to Step 3.
+  - Then → proceed to Step 3.
 - **Either Needs revision** → proceed to 2c.
 
 Report gate status to user: which reviewers approved/failed, summary of critical findings.
@@ -316,6 +319,8 @@ Input: docs/{feature-name}/REQ-{feature-name}.md
 Output: docs/{feature-name}/PLAN-{feature-name}.md
 Commit and push.
 ```
+
+If this feature extends symbols from a prior-phase baseline, instruct se-author to add a `P2-00 pre-flight gate` task as the **first** PLAN task (see se-author PLAN conventions).
 
 #### 5b. PLAN Cross-Review Loop
 
@@ -504,6 +509,10 @@ Ready for PR. Run /review to generate a pull request review.
 ---
 
 ## Loop Mechanics
+
+### Shared High Finding Fast-Path
+
+When the **same finding** (by finding ID, description, or clear semantic equivalence) is raised **High** by **both** reviewers in the same iteration, treat it as a priority-0 resolution item: the spec documents being reviewed contain an upstream spec-internal contradiction. Dispatch the optimizer immediately to resolve the contradiction **before** processing other findings from that iteration. Two independent reviewers raising the identical High finding almost always indicates that two spec docs contradict each other (e.g., FSPEC says `list`, TSPEC says `tuple`) — cheapest to fix, most expensive to defer.
 
 ### Iteration Versioning
 

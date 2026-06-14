@@ -67,6 +67,8 @@ Before issuing a recommendation, read `docs/_constraints/DOMAIN-CONSTRAINTS.md` 
 - Are integration boundaries covered — every cross-module interaction has an integration test?
 - Are there missing negative tests or error injection scenarios?
 - Is there enough detail for an engineer to write tests without further clarification?
+- Diff every public enum value, numeric range, scale, and return type in the engineering types against the corresponding REQ definition. Flag any divergence or unmarked internal variant as a **High** finding (contract-fidelity violation).
+- If the spec introduces a **coverage-mode gate** or **execution-routing branch** (e.g., benchmark-only suppression, future-candidate filtering, conditional model-invocation routing): is there ≥1 workflow-level integration test that runs the full execution path end-to-end and asserts the terminal status? Guard-method-only tests are insufficient — the routing path itself must be verified.
 
 ### Reviewing DECISIONS
 - Are the re-evaluation triggers observable — could a test or monitor detect the condition that should reopen the decision?
@@ -76,6 +78,7 @@ Before issuing a recommendation, read `docs/_constraints/DOMAIN-CONSTRAINTS.md` 
 ### Reviewing PLAN
 - Does every implementation task have a corresponding test task?
 - Is TDD order enforced — test tasks precede implementation tasks?
+- Is the `[Fake first]` convention observed? Test-double creation tasks must be labelled `[Fake first]` and must precede all production-implementation tasks for the same component. Every implementation task row must have a preceding red-test row referencing the same test file and ≥1 named AT. Flag any violation as a **High** finding.
 - Are integration test tasks present at cross-module boundaries?
 - Is the definition of done sufficient (includes test passage criteria)?
 
@@ -85,6 +88,9 @@ Before issuing a recommendation, read `docs/_constraints/DOMAIN-CONSTRAINTS.md` 
 - Are negative properties tested?
 - Are integration boundaries tested with real module interactions?
 - Are there gaps between what PROPERTIES specifies and what tests assert?
+- For any coverage-mode gate or execution-routing branch in the implementation: is there ≥1 workflow-level integration test asserting the end status after traversing the full path?
+- **Dead-config check:** For every config artifact (dict, map, rules JSON, catalog entry) introduced in implementation, confirm that ≥1 production code path imports **and** executes it. A config object that is only imported by tests is dead config — its behavior is untested in production. Flag as a **Medium** finding if no production caller is wired.
+- **Absence-based oracle check:** Any test that asserts only `status != X` (or equivalently `not in [...]`) is an unfalsifiable oracle — any non-X status, including accidental states, would pass. Every blocked/held/degraded invariant must have three positive conjuncts: (1) exact status value, (2) named reason code, (3) retention or audit-trail assertion. A test asserting only `status == PUBLISHED` without reading a lineage field (e.g., `last_contributing_inputs`) is also incomplete. Flag absence-only oracles as a **High** finding.
 
 ---
 
@@ -99,6 +105,8 @@ Every finding gets a **Scope** tag alongside its severity. Scope determines what
 | `Process` | Reveals that a skill prompt, review checklist, or workflow phase needs updating | Routed to process learnings during harvest |
 
 When unsure, default to `Local`. Do not inflate severity to attract attention — use `Cross-Feature` or `Process` to flag durable signal instead.
+
+> **Mandatory from the first review pass:** Scope tags are required on every finding in every review iteration — REQ, FSPEC, TSPEC, PLAN, PROPERTIES, and IMPLEMENTATION alike. Do not leave findings untagged because the phase is early. Early tagging allows harvest to route findings mechanically without having to infer scope.
 
 ---
 

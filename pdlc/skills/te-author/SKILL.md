@@ -60,6 +60,12 @@ Before creating or revising PROPERTIES, read `docs/_constraints/DOMAIN-CONSTRAIN
 3. Derive properties from requirements and specifications. Each property is a testable statement:
    > **PROP-{DOMAIN}-{NUMBER}:** {Component} {must/must not} {observable behavior} {when/given condition}.
 
+   **String and fixture ownership:** When exact user-facing strings appear in the REQ or FSPEC, the test fixture must use the **normative string verbatim** — not a paraphrase or abbreviated form. If a lower layer (PROPERTIES or TSPEC) pins a literal string, upper layers must reference it rather than duplicate it. Lexicon-dependent fixtures (e.g., sentiment keywords, event-type labels) must be cross-checked against the normative lexicon table before the property is finalized.
+
+   **Absence-based oracle rule:** A property asserting `status != X` or `not in [...]` alone is unfalsifiable — any non-X status, including accidental states, would pass. Every blocked/held/degraded invariant must include three positive conjuncts: (1) exact status value, (2) named reason code, (3) retention or audit-trail assertion. Similarly, a property asserting only `status == PUBLISHED` is incomplete without a lineage conjunct (e.g., `last_contributing_inputs` contains the expected snapshot ID).
+
+   **Coverage-mode gates and routing branches:** If the spec introduces a coverage-mode gate or execution-routing branch (e.g., benchmark-only suppression, conditional model dispatch), derive ≥1 workflow-level integration property that runs the full execution path and asserts the terminal status. Guard-only unit tests are insufficient — the routing path itself must be verified.
+
 4. Classify each property:
 
    | Category | Description | Test Level |
@@ -147,7 +153,9 @@ Max 3-5 E2E tests per feature. If you need more, the feature needs decomposition
 - [ ] Every requirement has at least one property
 - [ ] Every property traces to a requirement or TSPEC section
 - [ ] Properties classified by category and test level
-- [ ] Negative properties included
+- [ ] Negative properties included — every blocked/held/degraded invariant has exact status + named reason code + audit assertion (not merely `!= X`)
+- [ ] Coverage-mode gates and routing branches each have ≥1 workflow-level integration property
+- [ ] Fixture strings match the normative source verbatim; lexicon-dependent fixtures cross-checked against the normative lexicon table
 - [ ] Coverage matrix shows no unexplained gaps
 
 ---
