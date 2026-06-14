@@ -48,12 +48,17 @@ Before issuing a recommendation, read `docs/_constraints/DOMAIN-CONSTRAINTS.md` 
 
 ## Review Scope by Document
 
+### Cross-Cutting: Existing-Code Claim Verification (apply to every document type)
+
+Every spec sentence that asserts a fact about *existing* code — signature, return type, field/attribute existence, enum membership, or "the existing code already does X" — must cite the actual source file and line number. When reviewing, collect **all** such claims in a single pass and diff them against the real codebase before writing findings. Do not surface one claim per review round; batching them ends the one-claim-per-iteration tax.
+
 ### Reviewing REQ
 - Are acceptance criteria technically implementable and unambiguous?
 - Are non-functional requirements realistic and measurable (response times, limits)?
 - Are there missing technical constraints (auth, rate limits, concurrency)?
 - Are loading, error, and empty states addressed?
 - Are API or data contract implications considered?
+- For every acceptance criterion that cites a "configured" threshold (staleness window, penalty value, fallback order, enum set, numeric cutoff): is the threshold declared in config with a named owner and a default value? Missing threshold declarations are a **High** finding — they must be resolved before FSPEC authoring begins.
 
 ### Reviewing FSPEC
 - Are behavioral flows technically implementable with the current architecture?
@@ -68,6 +73,9 @@ Before issuing a recommendation, read `docs/_constraints/DOMAIN-CONSTRAINTS.md` 
 - Are test double designs (protocol-based fakes) correct and sufficient?
 - Are integration boundaries properly covered?
 - Are negative properties present for every failure mode?
+- Diff every public enum value, numeric range, scale, and return type in the engineering types against the corresponding REQ definition. Flag any divergence or unmarked internal variant as a **High** finding (contract-fidelity violation).
+- Does the owning test for each property / AT use the **normative fixture body verbatim** (not a paraphrase or abbreviated form)? Lexicon-dependent fixtures must be cross-checked against the normative lexicon table before the review is accepted.
+- Are exact user-facing strings owned by the lowest layer that pins them (PROPERTIES or TSPEC)? If a lower layer pins a literal string, upper layers must reference it — not duplicate it.
 
 ### Reviewing Implementation
 - Are all acceptance criteria from the REQ satisfied?
@@ -88,6 +96,8 @@ Every finding gets a **Scope** tag alongside its severity. Scope determines what
 | `Process` | Reveals that a skill prompt, review checklist, or workflow phase needs updating | Routed to process learnings during harvest |
 
 When unsure, default to `Local`. Do not inflate severity to attract attention — use `Cross-Feature` or `Process` to flag durable signal instead.
+
+> **Mandatory from the first review pass:** Scope tags are required on every finding in every review iteration — REQ, FSPEC, PROPERTIES, and IMPLEMENTATION alike. Do not leave findings untagged because the phase is early. Early tagging allows harvest to route findings mechanically without having to infer scope.
 
 ---
 

@@ -60,6 +60,14 @@ Before creating or revising any REQ or FSPEC, read `docs/_constraints/DOMAIN-CON
 3. Ask clarification questions if the input is ambiguous or incomplete — do not guess.
 4. Define user stories with unique IDs (`US-XX`).
 5. Derive requirements from user stories. Every requirement traces to at least one user story.
+5a. **Threshold-declaration obligation:** For every acceptance criterion that cites a "configured" threshold — staleness window, penalty value, fallback order, enum membership set, or numeric cutoff — declare the threshold in the REQ: name it, state the default value, and name the config owner. Thresholds not declared before FSPEC acceptance become silent product assumptions; treat any undeclared threshold as a blocking gap.
+5b. **Upstream dependency table:** If the REQ has upstream dependencies on other features — deferred tasks from prior phases, shared contracts, or open questions (OQs) whose resolution is a pre-condition — promote all such dependencies into a **§ Prerequisites** section with a hard-prerequisite table:
+
+   | # | Dependency | Resolution form | Gating logic |
+   |---|---|---|---|
+   | BL-01 | {symbol / contract / decision} | {PR merged / decision doc / config value} | Must exist at HEAD before FSPEC authoring |
+
+   Soft notes ("see prior phase") are not sufficient — every upstream dependency must be checkable at gate time.
 6. Structure requirements by domain with metadata:
    - **ID** — `REQ-{DOMAIN}-{NUMBER}` (e.g., `REQ-AUTH-01`)
    - **Title, Description**
@@ -148,6 +156,10 @@ docs/
 - [ ] Every requirement has acceptance criteria in Who/Given/When/Then format
 - [ ] Every requirement has a priority (P0/P1/P2)
 - [ ] Non-functional requirements are included
+- [ ] Every AC citing a configured threshold has a named threshold declaration with default value and config owner
+- [ ] Upstream dependencies on other features are in a hard-prerequisite table (not soft notes)
+- [ ] Infra/deployment-governance posture is settled or explicitly scoped as a separate workstream with a named owner
+- [ ] Product naming is finalized — all major entities, modules, and public APIs have definitive names
 - [ ] Dependencies documented, scope boundaries defined
 
 ### Functional Specification
