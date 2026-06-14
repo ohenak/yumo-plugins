@@ -33,6 +33,7 @@ Every plugin follows this layout:
 
 | Skill | File | Role |
 |---|---|---|
+| `orchestrate-queue` | `skills/orchestrate-queue/SKILL.md` | Serial queue driver — picks next ready REQ from `docs/_queue/QUEUE.md`, runs `orchestrate-dev` for it; built to be driven by `/loop` |
 | `orchestrate-dev` | `skills/orchestrate-dev/SKILL.md` | Top-level pipeline orchestrator |
 | `pm-author` | `skills/pm-author/SKILL.md` | Authors REQ, FSPEC; addresses feedback |
 | `pm-review` | `skills/pm-review/SKILL.md` | Reviews from product lens |
@@ -61,7 +62,9 @@ pdlc expects:
 - Cross-review files: `CROSS-REVIEW-{role}-{doc-type}[-v{N}].md`
 - Post-mortems (non-convergence): `POSTMORTEM-{phase}-{feature-name}.md`
 - Project-level context: `docs/_constraints/`, `docs/_decisions/`
-- Entry: `feat-{feature-name}` branch, start with `/pdlc:orchestrate-dev docs/{feature-name}/REQ-{feature-name}.md`
+- Serial work queue (for `orchestrate-queue`): `docs/_queue/QUEUE.md` — a markdown table of `Order | Status | Feature | REQ Path | Depends-On`. REQs opt in to auto-pickup via `ready: true` in their frontmatter; effective deps are the union of the queue's Depends-On column and the REQ's `depends-on`. Status lifecycle: `pending → in-progress → awaiting-merge → done` (human sets `done` after merge) | `halted` | `blocked`.
+- Entry (single feature): `feat-{feature-name}` branch, start with `/pdlc:orchestrate-dev docs/{feature-name}/REQ-{feature-name}.md`
+- Entry (queue, multi-feature): `/loop run /pdlc:orchestrate-queue` — one ready feature per iteration, dependency-ordered
 
 ### Ptah engine integration
 

@@ -12,6 +12,7 @@ Invoked as `/pdlc:<skill>`:
 
 | Skill | Role |
 |---|---|
+| `orchestrate-queue` | Serial queue driver — picks the next ready REQ and runs `orchestrate-dev` for it (drives the whole queue via `/loop`) |
 | `orchestrate-dev` | Pipeline orchestrator (REQ → FSPEC → TSPEC → PLAN → PROPERTIES → IMPL) |
 | `pm-author` / `pm-review` | Product Manager — authors REQ/FSPEC; reviews from product lens |
 | `se-author` / `se-review` | Senior Engineer — authors TSPEC/PLAN; reviews from technical lens |
@@ -26,6 +27,10 @@ Invoked as `/pdlc:<skill>`:
 - Project-level context lives under `docs/_constraints/` and `docs/_decisions/`.
 - A run starts from `/pdlc:orchestrate-dev docs/{feature}/REQ-{feature}.md` on branch
   `feat-{feature}`.
+- For unattended, multi-feature delivery, copy `templates/QUEUE.md` to
+  `docs/_queue/QUEUE.md`, then run `/loop run /pdlc:orchestrate-queue` — it picks the next
+  ready REQ in dependency order, one feature per iteration. See
+  `skills/orchestrate-queue/SKILL.md` for the queue format and status lifecycle.
 
 ## Local development
 
