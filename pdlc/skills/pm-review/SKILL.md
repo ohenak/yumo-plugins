@@ -147,3 +147,19 @@ Write to `docs/{feature-name}/CROSS-REVIEW-product-manager-{DOCUMENT-TYPE}[-v{N}
 - Reference specific requirement IDs for every finding.
 - Lead with the highest-severity findings.
 - When recommending Needs revision, list exactly what must change.
+
+---
+
+## VERDICT Trailer (required — workflow data contract)
+
+After writing your cross-review file and before ending your final message, append the following two lines as the last content of your response:
+
+```
+VERDICT: <verdict-value>
+{"high": N, "medium": N, "low": N}
+```
+
+- `<verdict-value>` is exactly one of (case-sensitive): `Approved`, `Approved with minor changes`, `Needs revision`
+- The JSON object appears on the immediately following line with no intervening text
+- N values are the count of High / Medium / Low findings in your cross-review
+- Trailing newline after the JSON object is permitted
