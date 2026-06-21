@@ -82,6 +82,7 @@ Every spec sentence that asserts a fact about *existing* code — signature, ret
 - Are there regressions in existing behavior?
 - Is the implementation consistent with the TSPEC architecture?
 - Are error cases handled correctly?
+- **Reinvention check (cite-and-reuse the sibling):** Does the implementation reinvent a cross-cutting mechanism a sibling module already ships — a driver-free failure-mode test harness, atomic-write lock discipline, `(store, closer)` lifecycle, shared point-in-time selector — instead of reusing the shipped precedent? A novel black-box re-implementation of a solved cross-cutting obligation (and any divergence from the established pattern it should have reused) is a **High** finding: cite the precedent it should adopt. (Consuming repo: `docs/_constraints/DOMAIN-CONSTRAINTS.md` DC-08; `docs/_decisions/`.)
 
 ---
 

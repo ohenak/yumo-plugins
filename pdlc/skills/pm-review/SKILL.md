@@ -75,6 +75,7 @@ Before issuing a recommendation, read `docs/_constraints/DOMAIN-CONSTRAINTS.md` 
 - Are acceptance criteria satisfied as written?
 - Are edge cases handled per the REQ?
 - **Dead-config check:** For every config artifact (dict, map, rules JSON, catalog entry) introduced in implementation, confirm that ≥1 production code path imports **and** executes it. A config object that is only imported by tests is dead config — its behavior is untested in production. Flag as a **Medium** finding if no production caller is wired.
+- **Builder-not-wired sweep (final codebase review):** Trace every "produced/published artifact contains X" or "input drives output" AC to a test that drives the **production assembler / CLI / predict path**, not an isolated builder. Mechanically walk **AC → production caller → served artifact**, and grep for new seams with **zero production callers** (a builder unit-tested but never assembled). When the new component is a thin adapter over a fatter dependency, confirm the proof traverses the dependency's interface with a runtime call-count assertion — a fake of the outer interface false-greens a never-wired regression. Flag a missing production-path test or a zero-caller seam as a **High** finding. (Consuming repo: `docs/_constraints/DOMAIN-CONSTRAINTS.md` DC-07.)
 
 ---
 
