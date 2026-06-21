@@ -236,6 +236,18 @@ Before marking the phase complete:
 - [ ] Edge cases in the TSPEC are handled and tested
 - [ ] Implementation matches the approved TSPEC (protocols, algorithms, error handling)
 - [ ] No behavior implemented that is not in the specification
+- [ ] **Production-path test (builder-not-wired):** any AC of the form "the produced/published
+      artifact contains X" or "input Y drives output Z" is exercised by a test that drives the
+      **production assembler / CLI / predict path** (the real `main()` / public entrypoint), not
+      only an isolated builder unit test — a builder can be fully green yet never called by any
+      production caller. When the new component is a **thin adapter over a fatter dependency**,
+      the proof traverses the new component over a **real (or real-Protocol-fake) instance of the
+      dependency's interface** and asserts a **runtime oracle** (e.g. a call-count spy: the
+      dependency method is invoked ≥1 on the served-value flow) — a fake of the *outer/higher-level*
+      interface bypasses the new component and false-greens. A "value served / loop is live" proof
+      additionally asserts the served result is in its **healthy** state (e.g. `AVAILABLE`), not
+      merely `!= some-degraded-state`. Wiring deliberately deferred is bound to a **named** successor
+      REQ. (Consuming repo: `docs/_constraints/DOMAIN-CONSTRAINTS.md` DC-07.)
 
 ### Frontend (if applicable)
 - [ ] Renders correctly at mobile, tablet, and desktop breakpoints

@@ -61,6 +61,21 @@ Build a DAG from the parsed edges. Validate:
 4. Apply concurrency cap: max 5 phases per sub-batch.
 5. If no phases remain → report "All phases already Done" and halt.
 
+**Validate the DAG mechanically before dispatch** (the dispatcher reads the `Batch` column, not
+the prose — a desynced column silently runs terminal tasks before their dependencies land):
+
+- **Re-derive every batch from its edge set.** For each task, compute `batch == max(batch of deps) + 1`
+  (sources = batch 1, or the first batch after completed phases). Assert the re-derived batch equals
+  the declared `Batch` column for every row; assert the graph is acyclic, task ids are unique, and
+  every dependency reference resolves. A mismatch (e.g. a task in batch 7 with a batch-9 dependency)
+  is a **halt** condition — fix the PLAN or escalate, do not dispatch.
+- **Same-new-file authoring guard.** No two tasks in the same batch may **create or append the same
+  new file** (test file or source file). Concurrent `se-implement` agents are last-writer-wins on a
+  shared new file and silently drop the other's content — which the green test gate cannot detect.
+  Serialize such tasks across batches (add a dependency edge) before dispatch.
+
+(Consuming repo: `docs/_decisions/CONSOLIDATION-PROPOSAL-2026-06-22.md` P4.)
+
 ### Step 4: Assign Skills to Phases
 
 All phases are assigned to **se-implement**. This is the dedicated implementation skill for TypeScript full-stack work — backend and frontend — following strict TDD.

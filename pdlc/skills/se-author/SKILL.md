@@ -58,6 +58,14 @@ Before creating or revising TSPEC, DECISIONS, or PLAN, read `docs/_decisions/DEC
 1. Read all input documents. Understand acceptance criteria, behavioral flows, edge cases, and dependencies.
 2. Review the existing codebase for integration points, patterns, shared utilities, and test infrastructure. For every claim in the TSPEC asserting a fact about existing code — signature, return type, field/attribute existence, enum membership, "the existing code already does X" — cite the actual source file and line number. Collect all such claims in a single pass before writing the spec; do not carry one unverified claim per review round.
 3. Research libraries, frameworks, and APIs via web search.
+3a. **Cite-and-reuse the sibling.** Before designing a mechanism for a cross-cutting obligation
+   that a sibling module already solves — a driver-free failure-mode test harness, an atomic-write
+   lock discipline, a `(store, closer)` connection lifecycle, a shared point-in-time selector — find
+   the shipped precedent and **cite and reuse it** in the TSPEC (name the file and the pattern), do
+   not reinvent it as a novel mechanism. Reinventing a solved cross-cutting obligation (e.g. a
+   black-box sub-pytest where the repo already ships an in-process `_RAN`-ledger meta-oracle) is a
+   review-blocking finding. (Consuming repo: `docs/_constraints/DOMAIN-CONSTRAINTS.md` DC-08 and the
+   `docs/_decisions/DECISIONS-*.md` set record the standing precedents.)
 4. Design the technical architecture:
    - Technology stack and new dependencies (with rationale)
    - Project structure (new and modified files)

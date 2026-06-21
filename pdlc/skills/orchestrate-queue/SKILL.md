@@ -132,6 +132,21 @@ pending ──pick──▶ in-progress ──pipeline success──▶ awaiting
       - `ready` → **pick this one**, run the pipeline, stop.
       - `blocked` → skip (a dependency isn't merged yet), try next.
       - `needs-human` (also the default when the verdict is missing) → skip, try next.
+   d. **Re-grounding gate (stale-REQ check).** A queued REQ is authored against the
+      codebase as it stood at authoring time; if any dependency merged *after* that, the
+      REQ's grounding is presumed stale. When a declared dependency is present in the base
+      (step c `ready`) **and** merged after the REQ's authoring date, the triage must
+      re-diff the REQ against HEAD before the pipeline enters: every load-bearing
+      `file:line` citation, **and** every claimed dependency surface — accessor names,
+      return types, migration numbers, schema/serialization conventions, reuse-pattern
+      targets. If any dependency-surface claim is stale, emit **`needs-human`** (not
+      `ready`) with the specific stale claims, and skip. Rationale: three consecutive
+      queue features entered the pipeline with stale REQ premises (a dependency's
+      migration number, accessor signature, and reuse target all changed on merge) that
+      were caught only at REQ review — burning a review iteration the readiness check
+      should have pre-empted. (See `docs/_decisions/DECISIONS-pdlc-process.md` DEC-01 in
+      the consuming repo.) Citations are drift-prone hints: re-confirm symbols against
+      HEAD, do not trust line literals.
 4. If no candidate became ready → `idle` with the list of skip reasons.
 
 ---
