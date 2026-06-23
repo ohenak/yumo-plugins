@@ -253,6 +253,27 @@ The following test helpers and fixtures are defined in the PLAN and must exist b
 
 ---
 
+## 12.5 SHIP Properties — Phase PUB (Raise PR & Verify CI)
+
+These properties cover the `parsePrUrl` / `parseCiStatus` parsers and the `raisePrAndVerifyCi` poll loop (TSPEC-SHIP-01 through TSPEC-SHIP-05) and the `ship-pr` skill contract (REQ-SHIP-01 through REQ-SHIP-03).
+
+| ID | Description | Category | Test Level | Test File | TSPEC Ref |
+|---|---|---|---|---|---|
+| PROP-SHIP-01 | `parsePrUrl` must return the URL from the last `PR_URL: <url>` trailer line, and return `null` for `PR_URL: none`, a missing trailer, or empty/nullish input. | Functional | Unit | `pdlc/workflows/__tests__/shipPhase.test.js` | TSPEC-SHIP-03 |
+| PROP-SHIP-02 | `parseCiStatus` must map `CI_STATUS: none\|pending\|passed\|failed` to the matching token (case-insensitive on the value, ignoring trailing prose), and return `"unknown"` for missing/malformed/empty input. | Functional | Unit | `pdlc/workflows/__tests__/shipPhase.test.js` | TSPEC-SHIP-03 |
+| PROP-SHIP-03 | `raisePrAndVerifyCi` must halt with `"…PR creation failed…"` when the create step returns no `PR_URL` (or `PR_URL: none`). | Error Handling | Unit | `pdlc/workflows/__tests__/shipPhase.test.js` | TSPEC-SHIP-04 |
+| PROP-SHIP-04 | `raisePrAndVerifyCi` must return `{ prUrl, ciStatus: "passed" }` and perform no further polling once a poll reports `passed`. | Functional | Unit | `pdlc/workflows/__tests__/shipPhase.test.js` | TSPEC-SHIP-04 |
+| PROP-SHIP-05 | `raisePrAndVerifyCi` must halt with `"…GHA checks failed…"` when a poll reports `failed`. | Error Handling | Unit | `pdlc/workflows/__tests__/shipPhase.test.js` | TSPEC-SHIP-04 |
+| PROP-SHIP-06 | `raisePrAndVerifyCi` must continue polling while status is `pending` and resolve to `passed` once checks complete successfully. | Functional | Unit | `pdlc/workflows/__tests__/shipPhase.test.js` | TSPEC-SHIP-04 |
+| PROP-SHIP-07 | `raisePrAndVerifyCi` must return `{ ciStatus: "no-checks" }` when no checks appear within the no-checks window (`none`/`unknown` for the whole 10-minute window). | Functional | Unit | `pdlc/workflows/__tests__/shipPhase.test.js` | TSPEC-SHIP-02, TSPEC-SHIP-04 |
+| PROP-SHIP-08 | `raisePrAndVerifyCi` must halt when registered checks never complete before the overall completion cap. | Error Handling | Unit | `pdlc/workflows/__tests__/shipPhase.test.js` | TSPEC-SHIP-02, TSPEC-SHIP-04 |
+| PROP-SHIP-09 | A successful `main()` run must record a Phase PUB entry with `✅` status and surface `prUrl` and `ciStatus` on the final report. | Functional | Integration | `pdlc/workflows/__tests__/shipPhase.test.js` | TSPEC-SHIP-05, TSPEC-ERROR-03 |
+| PROP-SHIP-10 | `main()` must halt the pipeline when Phase PUB reports CI failure or PR-creation failure. | Error Handling | Integration | `pdlc/workflows/__tests__/shipPhase.test.js` | TSPEC-SHIP-04, TSPEC-SHIP-05 |
+| PROP-SHIP-11 | The workflow script must declare the `PHASE_PUB_ENABLED` boolean flag and the 10-minute `CI_NO_CHECKS_TIMEOUT_MS` constant, and never pass a `ship-pr` agent result variable to `log()`/`emit()`. | Contract | Static | `pdlc/workflows/__tests__/shipPhase.test.js` | TSPEC-SHIP-01, TSPEC-SHIP-02, TSPEC-NFR-03 |
+| PROP-SHIP-12 | The `ship-pr` SKILL.md must exist and document both the `PR_URL:` and `CI_STATUS:` trailer contracts. | Contract | Static | `pdlc/workflows/__tests__/shipPhase.test.js` | TSPEC-SHIP-06 |
+
+---
+
 ## 13. Test File Index
 
 | Test File | Properties Covered |
@@ -268,6 +289,7 @@ The following test helpers and fixtures are defined in the PLAN and must exist b
 | `pdlc/workflows/__tests__/orchestrateDevSkill.test.js` | PROP-SKILL-05 through PROP-SKILL-08 |
 | `pdlc/workflows/__tests__/hookCompatibility.test.js` | PROP-COMPAT-04, PROP-COMPAT-05 |
 | `pdlc/workflows/__tests__/guardAgentDouble.test.js` | PROP-COMPAT-06 |
+| `pdlc/workflows/__tests__/shipPhase.test.js` | PROP-SHIP-01 through PROP-SHIP-12 |
 
 ---
 

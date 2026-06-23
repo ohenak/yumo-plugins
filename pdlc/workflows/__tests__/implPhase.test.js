@@ -337,6 +337,12 @@ describe("PROP-IMPL-01: batch plan log precedes first agent() dispatch (recordin
       if (skill === "harvest-learnings") {
         return "Harvest complete.";
       }
+      if (skill === "ship-pr") {
+        if (typeof prompt === "string" && prompt.includes("Raise a pull request")) {
+          return "PR opened.\nPR_URL: https://github.com/acme/repo/pull/42";
+        }
+        return "Checks complete.\nCI_STATUS: passed";
+      }
       return "Success.";
     };
 

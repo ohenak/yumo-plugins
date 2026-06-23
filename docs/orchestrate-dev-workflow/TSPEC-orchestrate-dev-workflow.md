@@ -812,6 +812,90 @@ On guard block:
 
 ---
 
+## 7.5 Phase PUB — Raise PR & Verify CI
+
+**Implements:** REQ-SHIP-01, REQ-SHIP-02, REQ-SHIP-03
+
+Phase PUB runs **after** Phase H so the PR captures the complete feature branch, including the harvested `LEARNINGS`. PR creation and CI status reporting are delegated to a new worker skill `ship-pr`; the poll cadence and all gate decisions live in the workflow script.
+
+### TSPEC-SHIP-01: `PHASE_PUB_ENABLED` Compile-Time Flag
+
+At the top of the script, alongside `PHASE_H_ENABLED`:
+
+```js
+const PHASE_PUB_ENABLED = true; // Set to false to skip auto-PR + CI verification
+```
+
+When `false`, the script emits `phase("Phase PUB: ⏭ Skipped")`, logs `"Phase PUB skipped — auto-PR disabled"`, records the phase as `⏭`, and returns without raising a PR.
+
+### TSPEC-SHIP-02: CI Poll Timing Constants
+
+```js
+const CI_NO_CHECKS_TIMEOUT_MS = 10 * 60 * 1000; // 10 min — no checks ⇒ assume none configured
+const CI_POLL_INTERVAL_MS = 30 * 1000;          // 30 s between status polls
+const CI_COMPLETION_TIMEOUT_MS = 30 * 60 * 1000; // 30 min — overall cap once checks are running
+```
+
+All three are overridable as named parameters to `raisePrAndVerifyCi` for testing. The clock (`_now`) and sleep (`_sleep`) are injectable; in production `_now = () => Date.now()` and `_sleep` is a real `setTimeout`-based delay.
+
+### TSPEC-SHIP-03: Trailer Parsers
+
+```js
+parsePrUrl(result)   // → string URL, or null for "PR_URL: none" / missing / empty
+parseCiStatus(result) // → "none" | "pending" | "passed" | "failed" | "unknown"
+```
+
+Both reverse-scan for the last matching trailer line (`PR_URL: ` / `CI_STATUS: `), mirroring `parseVerdict`. `parseCiStatus` lowercases the value, takes the first whitespace-delimited token (so trailing prose is ignored), and maps anything outside the four valid tokens — or a missing/empty result — to `"unknown"`.
+
+### TSPEC-SHIP-04: `raisePrAndVerifyCi` Algorithm
+
+```
+prResult ← agent("ship-pr", createPrPrompt(feature))
+prUrl ← parsePrUrl(prResult)
+if prUrl is null:
+  halt("Error: Phase PUB — PR creation failed for feature {feature} (no PR_URL returned)")
+
+start ← now()
+checksSeen ← false
+loop:
+  status ← parseCiStatus(agent("ship-pr", pollCiPrompt(feature, prUrl)))
+  elapsed ← now() - start
+  if status === "passed":  return { prUrl, ciStatus: "passed" }
+  if status === "failed":  halt("Error: Phase PUB — GHA checks failed for PR {prUrl}")
+  if status === "pending": checksSeen ← true
+
+  if checksSeen:
+    if elapsed ≥ CI_COMPLETION_TIMEOUT_MS:
+      halt("Error: Phase PUB — GHA checks did not complete within {N} minutes for PR {prUrl}")
+  else if elapsed ≥ CI_NO_CHECKS_TIMEOUT_MS:
+    // no checks ever appeared (none/unknown) — assume repo has no PR checks
+    return { prUrl, ciStatus: "no-checks" }
+
+  sleep(CI_POLL_INTERVAL_MS)
+```
+
+`none` and `unknown` are treated identically while no checks have been seen — both keep the loop in the no-checks window. Once any poll returns `pending`, the loop switches to the completion window. The agent performs **one** status read per invocation and never sleeps; the loop owns the cadence.
+
+### TSPEC-SHIP-05: Pipeline Wiring and Report Fields
+
+In `main()`, after Phase H:
+
+```js
+phase("Phase PUB: Raise PR & Verify CI");
+const pubResult = await raisePrAndVerifyCi({ feature: featureName, _agent, _log, _now, _sleep });
+prUrl = pubResult.prUrl;
+ciStatus = pubResult.ciStatus;
+recordPhase("PUB", "Raise PR & Verify CI", "✅", ciDetail);
+```
+
+`raisePrAndVerifyCi` is injectable via `_raisePrAndVerifyCi` for pipeline-wiring tests. The `FinalReport` (TSPEC-ERROR-03) gains two optional fields: `prUrl?: string` and `ciStatus?: "passed" | "no-checks"`. A halt inside Phase PUB is caught by the existing `main()` try/catch and surfaced as `outcome: "halted"` with the halt reason.
+
+### TSPEC-SHIP-06: `ship-pr` SKILL.md
+
+`pdlc/skills/ship-pr/SKILL.md` documents the two jobs (create-PR, report-CI) and the `PR_URL:` / `CI_STATUS:` trailer contracts. The skill performs one discrete action per invocation and never merges the PR or loops on CI itself. Added to the CLAUDE.md skills table.
+
+---
+
 ## 8. Error Handling
 
 ### TSPEC-ERROR-01: Error Response Mapping
@@ -861,11 +945,13 @@ type FinalReport = {
   artifactPaths: string[];
   testSummary: string;        // "All tests passing" or failure description
   harvestStatus: string;      // "Harvested" | "Skipped (prerequisite)" | "Halted: ..."
+  prUrl?: string;             // Phase PUB — the raised/reused PR URL (when reached)
+  ciStatus?: "passed" | "no-checks"; // Phase PUB — resolved CI verification status
   haltReason?: string;        // Present only when outcome === "halted"
 };
 
 type PhaseReport = {
-  phase: string;              // "R", "F", "T", "D", "P", "PR", "I", "PT", "CR", "H"
+  phase: string;              // "R", "F", "T", "D", "P", "PR", "I", "PT", "CR", "H", "PUB"
   label: string;
   status: "✅" | "❌" | "⏭";
   iterations?: number;        // Present for reviewLoop phases
@@ -1065,6 +1151,9 @@ VERDICT: <verdict-value>
 | REQ-SKILL-01 | TSPEC-SKILL-02 | — (Phase 2 deliverable; verified by SKILL.md content inspection) |
 | REQ-NFR-01 | TSPEC-NFR-01, TSPEC-NFR-02 | — (formula-based constraint; verified analytically) |
 | REQ-NFR-02 | TSPEC-NFR-03 | — (structural guarantee; verified by log() call-site inspection) |
+| REQ-SHIP-01 | TSPEC-SHIP-01, TSPEC-SHIP-04, TSPEC-SHIP-05 | — (verified by shipPhase.test.js: PROP-SHIP-03/04/09/10) |
+| REQ-SHIP-02 | TSPEC-SHIP-02, TSPEC-SHIP-03, TSPEC-SHIP-04 | — (verified by shipPhase.test.js: PROP-SHIP-02/05/06/07/08) |
+| REQ-SHIP-03 | TSPEC-SHIP-03, TSPEC-SHIP-05, TSPEC-SHIP-06 | — (verified by shipPhase.test.js: PROP-SHIP-01/11/12) |
 
 ---
 

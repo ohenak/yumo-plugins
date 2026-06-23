@@ -35,6 +35,7 @@ Dynamic workflows execute as a JavaScript script in the background. The plan (lo
 - Add an additive verdict trailer to `se-review`, `te-review`, and `pm-review` skills (backward-compatible)
 - Rewrite `orchestrate-dev/SKILL.md` as a pointer/contract document
 - Preserve all existing artifact conventions, file-naming, and hook behaviors
+- Add a final phase (Phase PUB) that automatically raises/reuses the feature PR and verifies GHA checks pass, with a new `ship-pr` worker skill (see Domain: SHIP)
 
 ### Out of Scope
 
@@ -64,6 +65,7 @@ Dynamic workflows execute as a JavaScript script in the background. The plan (lo
 | US-05 | As a developer, I want non-converging review loops to automatically produce a POSTMORTEM artifact before halting, so that the failure signal is captured and available to Phase H. |
 | US-06 | As a developer, I want all existing worker skills, artifact conventions, and hooks to work identically in the workflow context, so that existing guarantees around harvest ordering, scope-field nudging, and artifact naming are preserved. |
 | US-07 | As a developer invoking the pipeline, I want the computed implementation batch plan emitted to the `/workflows` progress view before execution begins, so that I can see what the script will run even though I cannot pause to approve it interactively. |
+| US-08 | As a developer, I want the pipeline to automatically raise a PR once all implementation and test automation is done and confirm the GHA checks pass, so that a finished feature lands in review without me running the publish-and-watch-CI steps by hand. |
 
 ---
 
@@ -393,6 +395,62 @@ This trailer is backward-compatible — interactive callers that do not parse it
 
 ---
 
+### Domain: SHIP — Automatic PR & CI Verification
+
+#### REQ-SHIP-01
+**Title:** Auto-raise PR when implementation and test automation are done
+
+**Description:** After all implementation and test automation has completed (and Harvest has run), the workflow SHALL automatically raise a pull request for the `feat-{feature}` branch into the repository's default branch. If a PR is already open for the branch, the workflow SHALL reuse it rather than open a duplicate. The PR SHALL run **last** so it captures the complete branch, including harvested `LEARNINGS`. The workflow SHALL NOT merge the PR — `awaiting-merge → done` remains a human step. PR creation is delegated to a worker skill (`ship-pr`); the orchestration belongs to the workflow script.
+
+**Acceptance criteria:**
+- **Who:** Workflow script
+- **Given:** A pipeline run has completed implementation, PROPERTIES tests, final codebase review, and harvest
+- **When:** Phase PUB executes
+- **Then:** (1) a PR is opened (or an existing PR reused) from `feat-{feature}` into the default branch; (2) the PR is not merged; (3) the final report carries the PR URL (`prUrl`); (4) if the PR cannot be created, the pipeline halts with a PR-creation failure
+
+**Priority:** P0
+**Phase:** 1
+**Source:** US-08
+**Dependencies:** REQ-PIPELINE-02, REQ-ARTIFACTS-02
+
+---
+
+#### REQ-SHIP-02
+**Title:** Verify GHA checks pass, with a no-checks timeout
+
+**Description:** After raising the PR, the workflow SHALL verify that all GitHub Actions checks on the PR pass. GHA checks usually register within ~5 minutes. The workflow SHALL poll the PR for checks: if **no** checks appear within **10 minutes**, the workflow SHALL conclude the repo has no PR checks configured and treat the phase as a pass (`ciStatus: no-checks`). Once checks appear, the workflow SHALL wait for them to complete; if every check succeeds the phase passes (`ciStatus: passed`); if any check fails the pipeline SHALL halt and identify the failing PR. The poll cadence and all timeouts SHALL live in the workflow script (not the agent), so the gate decision is code-owned and observable.
+
+**Acceptance criteria:**
+- **Who:** Workflow script
+- **Given:** A PR has been raised for the feature branch
+- **When:** The workflow polls the PR's GHA checks
+- **Then:** (1) if no checks appear within the 10-minute window, the phase passes with `ciStatus: no-checks`; (2) if checks appear and all pass, the phase passes with `ciStatus: passed`; (3) if any check fails, the pipeline halts with the failing PR identified; (4) the polling timing logic is implemented in the script, not delegated to the agent
+
+**Priority:** P0
+**Phase:** 1
+**Source:** US-08
+**Dependencies:** REQ-SHIP-01
+
+---
+
+#### REQ-SHIP-03
+**Title:** `ship-pr` worker skill and report fields
+
+**Description:** A new worker skill `ship-pr` SHALL perform exactly one discrete action per invocation — create/reuse the PR, or report the PR's current CI status — and SHALL communicate results to the script via machine-readable trailers (`PR_URL:` and `CI_STATUS:`), mirroring the VERDICT-trailer data-contract pattern. The final pipeline report SHALL include `prUrl` and `ciStatus`. The phase SHALL be controllable via a compile-time `PHASE_PUB_ENABLED` flag in the workflow script.
+
+**Acceptance criteria:**
+- **Who:** Developer / workflow script
+- **Given:** The feature has shipped
+- **When:** The `ship-pr` skill is invoked by Phase PUB
+- **Then:** (1) each invocation performs one action and ends with the appropriate trailer; (2) the script parses `PR_URL:`/`CI_STATUS:` from the agent result (not from disk); (3) the final report includes `prUrl` and `ciStatus`; (4) setting `PHASE_PUB_ENABLED = false` skips the phase
+
+**Priority:** P1
+**Phase:** 1
+**Source:** US-08
+**Dependencies:** REQ-SHIP-01, REQ-SHIP-02
+
+---
+
 ### Non-Functional Requirements
 
 #### REQ-NFR-01
@@ -454,6 +512,7 @@ This formula is the analytical basis for the cap compliance acceptance criterion
 | US-05 | REQ-GATE-04, REQ-GATE-05 |
 | US-06 | REQ-PIPELINE-02, REQ-COMPAT-01, REQ-COMPAT-02, REQ-COMPAT-03, REQ-ARTIFACTS-01, REQ-ARTIFACTS-02, REQ-SKILL-01 |
 | US-07 | REQ-GATE-03 |
+| US-08 | REQ-SHIP-01, REQ-SHIP-02, REQ-SHIP-03 |
 
 ---
 

@@ -161,6 +161,25 @@ This plan delivers five phases of work:
 
 ---
 
+### Phase 6 — Auto-PR & CI Verification (Phase PUB)
+
+**Dependencies:** Phase 4 complete (Phase PUB is wired into `main()` after Phase H). Independent of Phase 5.
+
+| # | ID | Title | Description | Test File | Source File | Complexity | Status |
+|---|---|---|---|---|---|---|---|
+| 25 | TASK-P6-01 | Add `ship-pr` worker skill | Create `pdlc/skills/ship-pr/SKILL.md` per TSPEC-SHIP-06: documents the two jobs (create/reuse PR, report CI) and the `PR_URL:` / `CI_STATUS:` trailer contracts; one discrete action per invocation; never merges or self-loops. Add the skill to the CLAUDE.md skills table. **TDD:** assert the skill file exists and documents both trailers. | `pdlc/workflows/__tests__/shipPhase.test.js` | `pdlc/skills/ship-pr/SKILL.md` | S | ✅ |
+| 26 | TASK-P6-02 | Implement `parsePrUrl` / `parseCiStatus` | Implement TSPEC-SHIP-03: reverse-scan trailer parsers mirroring `parseVerdict`. `parsePrUrl` → URL or null (`none`/missing/empty); `parseCiStatus` → `none\|pending\|passed\|failed\|unknown` (case-insensitive value, ignore trailing prose). | `pdlc/workflows/__tests__/shipPhase.test.js` | `pdlc/workflows/orchestrate-dev.js` | S | ✅ |
+| 27 | TASK-P6-03 | Implement `raisePrAndVerifyCi` poll loop | Implement TSPEC-SHIP-01/02/04: `PHASE_PUB_ENABLED` flag, timing constants (`CI_NO_CHECKS_TIMEOUT_MS = 10 min`, poll interval, completion cap), create-PR halt path, poll loop with no-checks window → `no-checks`, pending → completion window, `failed` → halt, all timing injectable via `_now`/`_sleep`/named params. | `pdlc/workflows/__tests__/shipPhase.test.js` | `pdlc/workflows/orchestrate-dev.js` | M | ✅ |
+| 28 | TASK-P6-04 | Wire Phase PUB into `main()` and final report | Implement TSPEC-SHIP-05: add Phase PUB after Phase H, `_raisePrAndVerifyCi` injection point, record the PUB phase, add `prUrl`/`ciStatus` to `FinalReport`. Update orchestrate-dev SKILL.md, CLAUDE.md, and the dogfooded REQ/FSPEC/TSPEC/PROPERTIES. | `pdlc/workflows/__tests__/shipPhase.test.js`, `pdlc/workflows/__tests__/pipelineWiring.test.js` | `pdlc/workflows/orchestrate-dev.js` | M | ✅ |
+
+**Acceptance criteria (Phase 6):**
+- `raisePrAndVerifyCi` halts on PR-creation failure and on CI failure; resolves to `passed` when checks pass and `no-checks` when none appear within the 10-minute window.
+- The poll-timing logic lives in the script (not the agent); the agent does one status read per invocation.
+- A successful `main()` run records a `PUB` phase and surfaces `prUrl` + `ciStatus`.
+- `PROP-SHIP-01` through `PROP-SHIP-12` pass in `shipPhase.test.js`.
+
+---
+
 ## Task Dependency Graph
 
 ```
