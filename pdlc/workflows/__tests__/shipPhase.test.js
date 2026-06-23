@@ -1,0 +1,342 @@
+/**
+ * Tests for Phase PUB — raise PR + verify GHA checks (TSPEC-SHIP-01..04).
+ * Covers parsePrUrl, parseCiStatus, the raisePrAndVerifyCi poll loop, and main() wiring.
+ */
+
+import main, {
+  parsePrUrl,
+  parseCiStatus,
+  raisePrAndVerifyCi,
+} from "../orchestrate-dev.js";
+import { readFileSync } from "fs";
+import { resolve, dirname } from "path";
+import { fileURLToPath } from "url";
+import { createGuardAgentDouble } from "./helpers/guardAgentDouble.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+let logMessages = [];
+const originalLog = console.log;
+
+beforeEach(() => {
+  logMessages = [];
+  console.log = (...args) => logMessages.push(args.join(" "));
+});
+
+afterEach(() => {
+  console.log = originalLog;
+});
+
+// ─── parsePrUrl ───────────────────────────────────────────────────────────────
+describe("parsePrUrl", () => {
+  it("extracts the URL from the trailer", () => {
+    expect(
+      parsePrUrl("PR opened.\nPR_URL: https://github.com/a/b/pull/7")
+    ).toBe("https://github.com/a/b/pull/7");
+  });
+
+  it("returns the last PR_URL line when several are present", () => {
+    expect(
+      parsePrUrl("PR_URL: https://x/pull/1\nmore\nPR_URL: https://x/pull/2")
+    ).toBe("https://x/pull/2");
+  });
+
+  it("returns null for PR_URL: none", () => {
+    expect(parsePrUrl("could not open\nPR_URL: none")).toBeNull();
+  });
+
+  it("returns null when no trailer present", () => {
+    expect(parsePrUrl("Success.")).toBeNull();
+  });
+
+  it("returns null for empty / nullish input", () => {
+    expect(parsePrUrl("")).toBeNull();
+    expect(parsePrUrl(null)).toBeNull();
+    expect(parsePrUrl(undefined)).toBeNull();
+  });
+});
+
+// ─── parseCiStatus ──────────────────────────────────────────────────────────
+describe("parseCiStatus", () => {
+  it("parses each valid status", () => {
+    expect(parseCiStatus("CI_STATUS: none")).toBe("none");
+    expect(parseCiStatus("CI_STATUS: pending")).toBe("pending");
+    expect(parseCiStatus("CI_STATUS: passed")).toBe("passed");
+    expect(parseCiStatus("CI_STATUS: failed")).toBe("failed");
+  });
+
+  it("ignores trailing prose after the status token", () => {
+    expect(parseCiStatus("CI_STATUS: passed   — all checks succeeded")).toBe(
+      "passed"
+    );
+  });
+
+  it("is case-insensitive on the value", () => {
+    expect(parseCiStatus("CI_STATUS: Passed")).toBe("passed");
+  });
+
+  it("returns unknown for missing / malformed / empty", () => {
+    expect(parseCiStatus("no trailer here")).toBe("unknown");
+    expect(parseCiStatus("CI_STATUS: wat")).toBe("unknown");
+    expect(parseCiStatus("")).toBe("unknown");
+    expect(parseCiStatus(null)).toBe("unknown");
+  });
+});
+
+// ─── raisePrAndVerifyCi ─────────────────────────────────────────────────────
+describe("raisePrAndVerifyCi", () => {
+  function makeShipAgent(pollResponses) {
+    let pollIdx = 0;
+    return async (skill, prompt) => {
+      if (skill !== "ship-pr") return "Success.";
+      if (prompt.includes("Raise a pull request")) {
+        return "PR opened.\nPR_URL: https://github.com/a/b/pull/9";
+      }
+      const r = pollResponses[Math.min(pollIdx, pollResponses.length - 1)];
+      pollIdx += 1;
+      return r;
+    };
+  }
+
+  it("halts when PR creation returns no URL", async () => {
+    const agent = async () => "could not push\nPR_URL: none";
+    await expect(
+      raisePrAndVerifyCi({ feature: "feat", _agent: agent, _log: () => {} })
+    ).rejects.toThrow(/PR creation failed/);
+  });
+
+  it("returns passed when checks pass on first poll (no sleep needed)", async () => {
+    let sleeps = 0;
+    const result = await raisePrAndVerifyCi({
+      feature: "feat",
+      _agent: makeShipAgent(["CI_STATUS: passed"]),
+      _log: () => {},
+      _sleep: async () => {
+        sleeps += 1;
+      },
+    });
+    expect(result).toEqual({
+      prUrl: "https://github.com/a/b/pull/9",
+      ciStatus: "passed",
+    });
+    expect(sleeps).toBe(0);
+  });
+
+  it("halts when a check fails", async () => {
+    await expect(
+      raisePrAndVerifyCi({
+        feature: "feat",
+        _agent: makeShipAgent(["CI_STATUS: failed"]),
+        _log: () => {},
+        _sleep: async () => {},
+      })
+    ).rejects.toThrow(/GHA checks failed/);
+  });
+
+  it("keeps polling through pending until checks pass", async () => {
+    let sleeps = 0;
+    const result = await raisePrAndVerifyCi({
+      feature: "feat",
+      _agent: makeShipAgent([
+        "CI_STATUS: pending",
+        "CI_STATUS: pending",
+        "CI_STATUS: passed",
+      ]),
+      _log: () => {},
+      _now: () => 0,
+      _sleep: async () => {
+        sleeps += 1;
+      },
+    });
+    expect(result.ciStatus).toBe("passed");
+    expect(sleeps).toBe(2); // two pending iterations slept
+  });
+
+  it("returns no-checks when none appear within the no-checks window", async () => {
+    // Clock advances by pollIntervalMs on every sleep.
+    let t = 0;
+    const pollIntervalMs = 1000;
+    const noChecksTimeoutMs = 5000;
+    const result = await raisePrAndVerifyCi({
+      feature: "feat",
+      _agent: makeShipAgent(["CI_STATUS: none"]),
+      _log: () => {},
+      _now: () => t,
+      _sleep: async () => {
+        t += pollIntervalMs;
+      },
+      pollIntervalMs,
+      noChecksTimeoutMs,
+    });
+    expect(result.ciStatus).toBe("no-checks");
+  });
+
+  it("treats unknown (malformed) status like no-checks until the window expires", async () => {
+    let t = 0;
+    const result = await raisePrAndVerifyCi({
+      feature: "feat",
+      _agent: makeShipAgent(["garbage with no trailer"]),
+      _log: () => {},
+      _now: () => t,
+      _sleep: async () => {
+        t += 1000;
+      },
+      pollIntervalMs: 1000,
+      noChecksTimeoutMs: 3000,
+    });
+    expect(result.ciStatus).toBe("no-checks");
+  });
+
+  it("halts if checks never complete before the overall completion cap", async () => {
+    let t = 0;
+    await expect(
+      raisePrAndVerifyCi({
+        feature: "feat",
+        _agent: makeShipAgent(["CI_STATUS: pending"]),
+        _log: () => {},
+        _now: () => t,
+        _sleep: async () => {
+          t += 1000;
+        },
+        pollIntervalMs: 1000,
+        completionTimeoutMs: 4000,
+      })
+    ).rejects.toThrow(/did not complete within/);
+  });
+});
+
+// ─── main() wiring ──────────────────────────────────────────────────────────
+describe("Phase PUB wiring in main()", () => {
+  function makeSuccessAgent() {
+    return async (skill, prompt) => {
+      if (skill === "guard") return { ok: true };
+      if (["se-review", "te-review", "pm-review"].includes(skill)) {
+        return `Review.\nVERDICT: Approved\n{"high": 0, "medium": 0, "low": 0}\n`;
+      }
+      if (["pm-author", "se-author", "te-author"].includes(skill)) {
+        if (typeof prompt === "string" && prompt.includes("DECISIONS_WARRANTED")) {
+          return "Finalized.\nDECISIONS_WARRANTED: false";
+        }
+        if (typeof prompt === "string" && prompt.includes("Return a JSON object")) {
+          return JSON.stringify({
+            tasks: [{ id: "T1", description: "x", dependencies: [], planBatch: 1 }],
+          });
+        }
+        return "Document created.";
+      }
+      if (skill === "se-implement") return "Tests: 3 passed, 0 failed.";
+      if (skill === "harvest-learnings") return "Harvest complete.";
+      if (skill === "ship-pr") {
+        if (prompt.includes("Raise a pull request")) {
+          return "PR opened.\nPR_URL: https://github.com/acme/repo/pull/42";
+        }
+        return "Checks.\nCI_STATUS: passed";
+      }
+      return "Success.";
+    };
+  }
+
+  const baseArgs = () => ({
+    reqPath: "docs/test-feat/REQ-test-feat.md",
+    _agent: makeSuccessAgent(),
+    _parallel: (p) => Promise.all(p),
+    _guardAgent: createGuardAgentDouble({ ok: true }),
+    _phase: () => {},
+    _pipeline: async (l, fn) => fn(),
+    _mergeWorktree: async () => ({ ok: true }),
+  });
+
+  it("success run records Phase PUB and reports prUrl + ciStatus", async () => {
+    const result = await main(baseArgs());
+    expect(result.outcome).toBe("success");
+    expect(result.prUrl).toBe("https://github.com/acme/repo/pull/42");
+    expect(result.ciStatus).toBe("passed");
+    const pub = result.phases.find((p) => p.phase === "PUB");
+    expect(pub).toBeTruthy();
+    expect(pub.status).toBe("✅");
+  });
+
+  it("halts the pipeline when GHA checks fail", async () => {
+    const args = baseArgs();
+    const inner = args._agent;
+    args._agent = async (skill, prompt) => {
+      if (skill === "ship-pr" && !prompt.includes("Raise a pull request")) {
+        return "Checks.\nCI_STATUS: failed";
+      }
+      return inner(skill, prompt);
+    };
+    const result = await main(args);
+    expect(result.outcome).toBe("halted");
+    expect(result.haltReason).toMatch(/GHA checks failed/);
+  });
+
+  it("halts when the PR cannot be created", async () => {
+    const args = baseArgs();
+    const inner = args._agent;
+    args._agent = async (skill, prompt) => {
+      if (skill === "ship-pr" && prompt.includes("Raise a pull request")) {
+        return "push failed\nPR_URL: none";
+      }
+      return inner(skill, prompt);
+    };
+    const result = await main(args);
+    expect(result.outcome).toBe("halted");
+    expect(result.haltReason).toMatch(/PR creation failed/);
+  });
+
+  it("passes injected _raisePrAndVerifyCi and surfaces its result", async () => {
+    const args = baseArgs();
+    let called = false;
+    const result = await main({
+      ...args,
+      _raisePrAndVerifyCi: async ({ feature }) => {
+        called = true;
+        expect(feature).toBe("test-feat");
+        return { prUrl: "https://x/pull/1", ciStatus: "no-checks" };
+      },
+    });
+    expect(called).toBe(true);
+    expect(result.outcome).toBe("success");
+    expect(result.ciStatus).toBe("no-checks");
+  });
+});
+
+// ─── Static guarantees ──────────────────────────────────────────────────────
+describe("Phase PUB static guarantees", () => {
+  const scriptPath = resolve(__dirname, "../orchestrate-dev.js");
+
+  it("declares the PHASE_PUB_ENABLED compile-time boolean flag", () => {
+    const content = readFileSync(scriptPath, "utf8");
+    expect(content).toMatch(/const PHASE_PUB_ENABLED = (true|false)/);
+  });
+
+  it("declares the 10-minute no-checks timeout", () => {
+    const content = readFileSync(scriptPath, "utf8");
+    expect(content).toContain("CI_NO_CHECKS_TIMEOUT_MS = 10 * 60 * 1000");
+  });
+
+  it("ship-pr SKILL.md exists and documents the PR_URL and CI_STATUS trailers", () => {
+    const skillPath = resolve(__dirname, "../../skills/ship-pr/SKILL.md");
+    const content = readFileSync(skillPath, "utf8");
+    expect(content.length).toBeGreaterThan(0);
+    expect(content).toContain("PR_URL:");
+    expect(content).toContain("CI_STATUS:");
+    expect(content).toContain("name: ship-pr");
+  });
+
+  it("never passes a ship-pr agent result variable to log()/emit()", () => {
+    const content = readFileSync(scriptPath, "utf8");
+    const resultVarPattern =
+      /(?:const|let)\s+(\w+)\s*=\s*await\s+(?:agent|agentFn|_agent)\s*\(/g;
+    const resultVars = new Set();
+    let m;
+    while ((m = resultVarPattern.exec(content)) !== null) {
+      resultVars.add(m[1]);
+    }
+    for (const varName of resultVars) {
+      const directPass = new RegExp(`(?:log|emit)\\s*\\(\\s*${varName}\\s*[,)]`);
+      expect(content).not.toMatch(directPass);
+    }
+  });
+});

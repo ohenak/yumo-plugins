@@ -15,6 +15,16 @@
 // TSPEC-HARVEST-01: compile-time flag
 const PHASE_H_ENABLED = true; // Set to false until feature-branch-consistency fix lands
 
+// TSPEC-SHIP-01: compile-time flag for the PR-raise / CI-verify phase (Phase PUB)
+const PHASE_PUB_ENABLED = true; // Set to false to skip auto-PR + CI verification
+
+// TSPEC-SHIP-02: CI poll timing (milliseconds). All overridable via main() injection.
+// Checks usually register within ~5 min; if none appear within the no-checks window
+// we conclude the repo has no PR checks configured and treat the phase as a pass.
+const CI_NO_CHECKS_TIMEOUT_MS = 10 * 60 * 1000; // 10 min — no checks ⇒ assume none configured
+const CI_POLL_INTERVAL_MS = 30 * 1000; // 30 s between status polls
+const CI_COMPLETION_TIMEOUT_MS = 30 * 60 * 1000; // 30 min — overall cap once checks are running
+
 // TSPEC-SCRIPT-03: Exported meta object
 export const meta = {
   name: "orchestrate-dev",
@@ -499,6 +509,159 @@ function harvestPrompt(featureName) {
   );
 }
 
+// ─── TSPEC-SHIP: PR-raise + CI-verify (Phase PUB) ─────────────────────────────
+
+function createPrPrompt(featureName) {
+  return (
+    `Raise a pull request for feature ${featureName}.\n` +
+    `1. Ensure the feat-${featureName} branch is pushed to origin.\n` +
+    `2. Open a pull request from feat-${featureName} into the default branch. ` +
+    `If a PR is already open for this branch, reuse it — do not open a duplicate.\n` +
+    `3. Base the PR title and description on the feature's REQ/FSPEC.\n` +
+    `Do NOT merge the PR. End your final message with this trailer as the last line:\n` +
+    `PR_URL: <the full https URL of the pull request>\n` +
+    `If the PR could not be created, end instead with: PR_URL: none`
+  );
+}
+
+function pollCiPrompt(featureName, prUrl) {
+  return (
+    `Report the current GitHub Actions check status for the pull request at ${prUrl} ` +
+    `(feature ${featureName}). Inspect the PR's checks once and report the current state — ` +
+    `do not wait, sleep, or poll yourself; the workflow owns the polling cadence. ` +
+    `End your final message with exactly one of these trailer lines:\n` +
+    `CI_STATUS: none     — no GHA checks are registered on the PR yet\n` +
+    `CI_STATUS: pending  — one or more checks exist and are still queued/running\n` +
+    `CI_STATUS: passed   — all checks have completed and every one succeeded\n` +
+    `CI_STATUS: failed   — at least one check has completed with a failure/error`
+  );
+}
+
+/**
+ * Extract the PR URL from a ship-pr create result's trailer.
+ * @param {string | null | undefined} result
+ * @returns {string | null}  the URL, or null if absent / "none"
+ */
+export function parsePrUrl(result) {
+  if (result == null || (typeof result === "string" && result.trim() === "")) {
+    return null;
+  }
+  const lines = result.split("\n");
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const trimmed = lines[i].trim();
+    if (trimmed.startsWith("PR_URL: ")) {
+      const value = trimmed.slice("PR_URL: ".length).trim();
+      if (value === "" || value.toLowerCase() === "none") return null;
+      return value;
+    }
+  }
+  return null;
+}
+
+/**
+ * Extract the CI status from a ship-pr poll result's trailer.
+ * @param {string | null | undefined} result
+ * @returns {"none" | "pending" | "passed" | "failed" | "unknown"}
+ */
+export function parseCiStatus(result) {
+  const VALID = ["none", "pending", "passed", "failed"];
+  if (result == null || (typeof result === "string" && result.trim() === "")) {
+    return "unknown";
+  }
+  const lines = result.split("\n");
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const trimmed = lines[i].trim();
+    if (trimmed.startsWith("CI_STATUS: ")) {
+      const token = trimmed
+        .slice("CI_STATUS: ".length)
+        .trim()
+        .toLowerCase()
+        .split(/\s/)[0];
+      return VALID.includes(token) ? token : "unknown";
+    }
+  }
+  return "unknown";
+}
+
+/**
+ * Phase PUB: raise (or reuse) the PR for the feature branch, then poll GHA checks
+ * until they pass, fail, or the no-checks window expires. The poll-timing logic
+ * lives here (in the script), not in the agent — the agent only reports the
+ * current state. Returns the PR URL and the resolved CI status.
+ *
+ * @param {object} params
+ * @param {string} params.feature
+ * @param {function} [params._agent]
+ * @param {function} [params._log]
+ * @param {function} [params._now]   - clock (ms); injectable for tests
+ * @param {function} [params._sleep] - async sleep(ms); injectable for tests
+ * @param {number} [params.noChecksTimeoutMs]
+ * @param {number} [params.pollIntervalMs]
+ * @param {number} [params.completionTimeoutMs]
+ * @returns {Promise<{ prUrl: string, ciStatus: "passed" | "no-checks" }>}
+ */
+export async function raisePrAndVerifyCi({
+  feature,
+  _agent = agent,
+  _log = log,
+  _now = () => Date.now(),
+  _sleep = sleep,
+  noChecksTimeoutMs = CI_NO_CHECKS_TIMEOUT_MS,
+  pollIntervalMs = CI_POLL_INTERVAL_MS,
+  completionTimeoutMs = CI_COMPLETION_TIMEOUT_MS,
+}) {
+  // 1. Create (or reuse) the PR.
+  const prResult = await _agent("ship-pr", createPrPrompt(feature));
+  const prUrl = parsePrUrl(prResult);
+  if (!prUrl) {
+    throw haltError(
+      `Error: Phase PUB — PR creation failed for feature ${feature} (no PR_URL returned)`
+    );
+  }
+  _log(`PR raised: ${prUrl}`);
+
+  // 2. Poll GHA checks. The script owns the cadence and the timeouts.
+  const start = _now();
+  let checksSeen = false;
+  while (true) {
+    const statusResult = await _agent("ship-pr", pollCiPrompt(feature, prUrl));
+    const status = parseCiStatus(statusResult);
+    const elapsed = _now() - start;
+
+    if (status === "passed") {
+      _log(`GHA checks passed for PR ${prUrl}`);
+      return { prUrl, ciStatus: "passed" };
+    }
+    if (status === "failed") {
+      throw haltError(`Error: Phase PUB — GHA checks failed for PR ${prUrl}`);
+    }
+    if (status === "pending") {
+      checksSeen = true;
+    }
+
+    if (checksSeen) {
+      // Checks are registered and running — wait for completion up to the overall cap.
+      if (elapsed >= completionTimeoutMs) {
+        throw haltError(
+          `Error: Phase PUB — GHA checks did not complete within ` +
+            `${Math.round(completionTimeoutMs / 60000)} minutes for PR ${prUrl}`
+        );
+      }
+    } else if (elapsed >= noChecksTimeoutMs) {
+      // No checks ever appeared (status none/unknown) within the window —
+      // assume the repo has no PR checks configured and treat the phase as a pass.
+      _log(
+        `No GHA checks detected within ${Math.round(
+          noChecksTimeoutMs / 60000
+        )} minutes — assuming repo has no PR checks configured`
+      );
+      return { prUrl, ciStatus: "no-checks" };
+    }
+
+    await _sleep(pollIntervalMs);
+  }
+}
+
 // ─── TSPEC-IMPL-06: Per-batch test gate helpers ───────────────────────────────
 
 /**
@@ -670,6 +833,11 @@ function log(message) {
   }
 }
 
+// Real wall-clock sleep used by Phase PUB's poll loop. Injectable in tests via _sleep.
+async function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 // ─── TSPEC-SCRIPT-04: main() ──────────────────────────────────────────────────
 
 /**
@@ -686,6 +854,9 @@ export default async function main({
   _phase: phaseFn = phase,
   _pipeline: pipelineFn = pipeline,
   _mergeWorktree: mergeWorktreeFn = mergeWorktree,
+  _raisePrAndVerifyCi: raisePrAndVerifyCiFn = raisePrAndVerifyCi,
+  _now,
+  _sleep,
 } = {}) {
   // Override module-level log for injection
   const emit = logFn;
@@ -762,6 +933,8 @@ export default async function main({
   const artifactPaths = [reqPath];
   let testSummary = "Not run";
   let harvestStatus = "Not run";
+  let prUrl;
+  let ciStatus;
 
   try {
     await pipelineFn("PDLC Pipeline", async () => {
@@ -1085,6 +1258,31 @@ export default async function main({
         harvestStatus = "Harvested";
         recordPhase("H", "Harvest", "✅", "Learnings harvested");
       }
+
+      // ─── Phase PUB: Raise PR & Verify CI ─────────────────────────────────
+      // Runs last so the PR captures the complete feature branch, including the
+      // harvested LEARNINGS. The poll-timing logic lives in raisePrAndVerifyCi.
+      if (!PHASE_PUB_ENABLED) {
+        phaseFn("Phase PUB: ⏭ Skipped");
+        emit("Phase PUB skipped — auto-PR disabled");
+        recordPhase("PUB", "Raise PR & Verify CI", "⏭", "Skipped — auto-PR disabled");
+      } else {
+        phaseFn("Phase PUB: Raise PR & Verify CI");
+        const pubResult = await raisePrAndVerifyCiFn({
+          feature: featureName,
+          _agent: agentFn,
+          _log: emit,
+          _now,
+          _sleep,
+        });
+        prUrl = pubResult.prUrl;
+        ciStatus = pubResult.ciStatus;
+        const ciDetail =
+          ciStatus === "passed"
+            ? `PR ${prUrl} — all GHA checks passed`
+            : `PR ${prUrl} — no GHA checks detected within timeout (assumed none configured)`;
+        recordPhase("PUB", "Raise PR & Verify CI", "✅", ciDetail);
+      }
     });
   } catch (err) {
     haltReason = err.message;
@@ -1098,6 +1296,8 @@ export default async function main({
       artifactPaths,
       testSummary,
       harvestStatus: harvestStatus === "Not run" ? "Not run" : harvestStatus,
+      prUrl,
+      ciStatus,
       haltReason,
     });
   }
@@ -1109,6 +1309,8 @@ export default async function main({
     artifactPaths,
     testSummary,
     harvestStatus,
+    prUrl,
+    ciStatus,
   });
 }
 
@@ -1174,6 +1376,8 @@ function buildFinalReport({
   artifactPaths,
   testSummary,
   harvestStatus,
+  prUrl,
+  ciStatus,
   haltReason,
 }) {
   return {
@@ -1183,6 +1387,8 @@ function buildFinalReport({
     artifactPaths,
     testSummary,
     harvestStatus,
+    ...(prUrl ? { prUrl } : {}),
+    ...(ciStatus ? { ciStatus } : {}),
     ...(haltReason ? { haltReason } : {}),
   };
 }

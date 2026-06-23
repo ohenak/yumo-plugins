@@ -520,6 +520,33 @@ When a guard block is detected:
 
 ---
 
+## 5.5 FSPEC-SHIP: Phase PUB — Raise PR & Verify CI
+
+**Linked requirements:** REQ-SHIP-01, REQ-SHIP-02, REQ-SHIP-03
+
+### 5.5.1 Entry Condition
+
+Phase PUB runs after Phase H (Harvest), as the final phase, so the PR captures the complete feature branch including harvested `LEARNINGS`. Gated by the compile-time `PHASE_PUB_ENABLED` flag; when `false`, the phase is skipped and recorded as `⏭` in the final report.
+
+### 5.5.2 Raise the PR
+
+The script invokes the `ship-pr` skill to push `feat-{feature}` and open a PR (or reuse an open one) into the default branch. The agent replies with a `PR_URL:` trailer. If the URL is absent or `none`, the pipeline halts with a PR-creation failure. The PR is never auto-merged.
+
+### 5.5.3 Verify CI
+
+The script polls the PR's GHA checks via repeated `ship-pr` status reads (the agent does one read per call; the script owns the cadence):
+
+- **`passed`** → phase passes with `ciStatus: passed`.
+- **`failed`** → pipeline halts, identifying the failing PR.
+- **`pending`** → keep polling until completion (up to an overall completion cap).
+- **No checks (`none`/`unknown`) for the full 10-minute window** → conclude the repo has no PR checks configured; phase passes with `ciStatus: no-checks`.
+
+### 5.5.4 Report Fields
+
+The `FinalReport` gains `prUrl` and `ciStatus`. A `PUB` `PhaseReport` entry records the outcome. `awaiting-merge → done` remains a human step (see CLAUDE.md queue lifecycle).
+
+---
+
 ## 6. FSPEC-ENTRY: Pipeline Entry and Initial Validation
 
 **Linked requirements:** REQ-PIPELINE-01, REQ-PIPELINE-02
