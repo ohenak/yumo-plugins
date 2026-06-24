@@ -98,3 +98,56 @@ The following are candidates for `consolidate-learnings` to promote. They are fl
 | Skill update: `se-author` TSPEC — loops with caps must show counter placement + cap check position + counter-value-to-action table explicitly | `pdlc/skills/se-author/SKILL.md` |
 | Skill update: DECISIONS document template — add `Testability:` field; `te-review` DECISIONS skill — flag missing testability notes as Medium | `pdlc/skills/se-author/SKILL.md`, `pdlc/skills/te-review/SKILL.md` |
 | Skill update: `se-author` PLAN — require named test fixture file paths and enforcement ACs for every Integration-level property and every canonical test double mandated by DECISIONS | `pdlc/skills/se-author/SKILL.md` |
+
+---
+
+## 6. Phase PUB Retroactive Cross-Review (2026-06-24)
+
+Phase PUB (auto-raise PR + verify CI) was added to this feature **after** the original PDLC cycle and the Phase H harvest, with implementation and tests landed in a single commit but **without any cross-reviews**. A retroactive mini-cycle was run over the PUB delta only (REQ → FSPEC → TSPEC → PROPERTIES) to retire that review debt.
+
+### 6a. The headline learning: a post-harvest addition inherits zero review coverage
+
+Running the cross-reviews retroactively surfaced real, durable gaps that had shipped unreviewed:
+
+| Gap surfaced | Where it should have lived | Severity at v1 |
+|---|---|---|
+| 30-min CI completion cap (`CI_COMPLETION_TIMEOUT_MS`) had **no REQ-level requirement** — it was a TSPEC-invented constant with no traceable parent | REQ-SHIP-02 | High (SE + TE) |
+| FSPEC §5.5 had **zero AT-SHIP-* acceptance tests** for 9–10 behavioral branches | FSPEC §8 | High (SE + TE) |
+| FSPEC traceability matrix and §6.2 phase-sequence table **omitted Phase PUB entirely** | FSPEC | High/Medium |
+| PROPERTIES §12 coverage matrix **omitted all three REQ-SHIP rows**; FSPEC AT column blank for all PROP-SHIP | PROPERTIES | High |
+| `PHASE_H_ENABLED=false` entry-condition policy for Phase PUB was **unspecified** | REQ-SHIP-01 | High |
+
+The single largest gap — the missing AT-SHIP-* series — is the **exact failure predicted by LEARNINGS §4a** ("the FSPEC acceptance-test gap is the highest-leverage review debt in this pipeline"). The same class of debt recurred verbatim the moment a new phase was added without the AT discipline. This is strong validation of §4a as a standing risk, not a one-off.
+
+### 6b. Convergence pattern
+
+| Doc | Iterations | High trajectory | Nature of residual at convergence |
+|---|---|---|---|
+| REQ | 2 | 2 High (SE) / 2 High (TE) → 0 | Doc gaps (completion cap, four-status vocabulary, AC splits) — fully closed in-doc |
+| FSPEC | 2 | 3 High (SE+TE combined) → 0 | Doc gaps (AT-SHIP series, traceability rows, state-transition rules) — fully closed in-doc |
+| TSPEC | 2 | 0 High throughout | **Implementation/test gaps**, not doc gaps — spec corrected, tests still absent |
+| PROPERTIES | 2 | 2 High → 0 | **Implementation/test gaps** — doc fully traceable, tests mandated but not yet written |
+
+REQ and FSPEC converged by fixing the documents. TSPEC and PROPERTIES converged with the *documents* correct but pushing newly-mandated coverage downstream as implementation work.
+
+### 6c. Key cross-feature finding: tests-and-impl-in-one-commit inverts where gaps appear
+
+When a feature is implemented **before** its specs are cross-reviewed, the review does not surface "missing behavior" — the behavior is already correct in the code. Instead it surfaces gaps as **"tests that should exist but don't"** and **"spec contracts the code happens to satisfy but never declared."** Concretely:
+
+- PROP-SHIP-13 (the `pending`-at-no-checks-boundary case) and PROP-SHIP-14 (the `PHASE_PUB_ENABLED=false` runtime skip path) were mandated by the converged PROPERTIES but had **no implementing tests**.
+- PROP-SHIP-14 additionally exposed a real **implementability gap**: `PHASE_PUB_ENABLED` was a module-level `const` with no injection seam, so the skip path was unreachable from a unit test.
+
+The fix was **retroactive TDD**: write the 4 missing tests and add a `_phasePubEnabled` injection parameter to `main()` (mirroring the existing `_raisePrAndVerifyCi` seam) so the disabled path became testable. The retroactive review therefore did double duty — it both documented the contract and forced a (small) design change to make the contract verifiable.
+
+### 6d. Reusable process signal
+
+> **Any phase added to an existing pipeline after the original PDLC cycle MUST get its own mini cross-review cycle (REQ → FSPEC → TSPEC → PROPERTIES delta), or it inherits zero review coverage.** "Tests pass" is not a substitute: an unreviewed phase whose tests were written by the same pass that wrote its code will have correct happy-path behavior and silent gaps at exactly the boundaries a fresh reviewer probes (timeout caps, skip paths, injection seams, traceability rows).
+
+### 6e. DECISIONS delta (closed)
+
+The **DECISIONS document initially lacked** Phase PUB decisions — the retroactive cycle first covered REQ/FSPEC/TSPEC/PROPERTIES only. This was closed in DECISIONS v1.2 with two new entries, each carrying a `Testability:` field per the §4c signal:
+
+- **DEC-ODW-05** — CI-poll ownership: the script owns the poll cadence and timeouts; `ship-pr` does one read per call (mirrors DEC-ODW-03's gate-ownership principle).
+- **DEC-ODW-06** — CI-verification timeout policy (the two-window 10-min/30-min model) and the `PHASE_PUB_ENABLED = true` default with its consumer-side disablement mechanism. The no-merge guarantee and its `"Do NOT merge"` enforcement anchor in `createPrPrompt()` are recorded in DEC-ODW-06's testability note and PROP-SHIP-15.
+
+That the gap appeared at all repeats the §4c pattern (DECISIONS omitting decisions with non-obvious testability consequences) — reinforcing the §4c signal that a `Testability:` field belongs in every decision from the start.

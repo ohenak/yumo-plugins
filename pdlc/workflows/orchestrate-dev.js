@@ -622,11 +622,10 @@ export async function raisePrAndVerifyCi({
 
   // 2. Poll GHA checks. The script owns the cadence and the timeouts.
   const start = _now();
-  let checksSeen = false;
+  let completionStart = null;
   while (true) {
     const statusResult = await _agent("ship-pr", pollCiPrompt(feature, prUrl));
     const status = parseCiStatus(statusResult);
-    const elapsed = _now() - start;
 
     if (status === "passed") {
       _log(`GHA checks passed for PR ${prUrl}`);
@@ -635,19 +634,22 @@ export async function raisePrAndVerifyCi({
     if (status === "failed") {
       throw haltError(`Error: Phase PUB — GHA checks failed for PR ${prUrl}`);
     }
-    if (status === "pending") {
-      checksSeen = true;
+    if (status === "pending" && completionStart === null) {
+      // First time checks register — start the completion budget from here so
+      // slow-registering checks get a full window regardless of registration latency.
+      completionStart = _now();
     }
 
-    if (checksSeen) {
-      // Checks are registered and running — wait for completion up to the overall cap.
-      if (elapsed >= completionTimeoutMs) {
+    if (completionStart !== null) {
+      // Checks are registered and running — wait for completion up to the overall
+      // cap, measured from when checks first appeared (not from PR-raise).
+      if (_now() - completionStart >= completionTimeoutMs) {
         throw haltError(
           `Error: Phase PUB — GHA checks did not complete within ` +
             `${Math.round(completionTimeoutMs / 60000)} minutes for PR ${prUrl}`
         );
       }
-    } else if (elapsed >= noChecksTimeoutMs) {
+    } else if (_now() - start >= noChecksTimeoutMs) {
       // No checks ever appeared (status none/unknown) within the window —
       // assume the repo has no PR checks configured and treat the phase as a pass.
       _log(
@@ -855,6 +857,7 @@ export default async function main({
   _pipeline: pipelineFn = pipeline,
   _mergeWorktree: mergeWorktreeFn = mergeWorktree,
   _raisePrAndVerifyCi: raisePrAndVerifyCiFn = raisePrAndVerifyCi,
+  _phasePubEnabled: phasePubEnabled = PHASE_PUB_ENABLED,
   _now,
   _sleep,
 } = {}) {
@@ -1262,7 +1265,7 @@ export default async function main({
       // ─── Phase PUB: Raise PR & Verify CI ─────────────────────────────────
       // Runs last so the PR captures the complete feature branch, including the
       // harvested LEARNINGS. The poll-timing logic lives in raisePrAndVerifyCi.
-      if (!PHASE_PUB_ENABLED) {
+      if (!phasePubEnabled) {
         phaseFn("Phase PUB: ⏭ Skipped");
         emit("Phase PUB skipped — auto-PR disabled");
         recordPhase("PUB", "Raise PR & Verify CI", "⏭", "Skipped — auto-PR disabled");

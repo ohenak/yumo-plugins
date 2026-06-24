@@ -1,7 +1,7 @@
 ---
 Status: Draft
 Author: pm-author
-Version: 1.1
+Version: 1.2
 Feature: orchestrate-dev-workflow
 ---
 
@@ -400,13 +400,13 @@ This trailer is backward-compatible — interactive callers that do not parse it
 #### REQ-SHIP-01
 **Title:** Auto-raise PR when implementation and test automation are done
 
-**Description:** After all implementation and test automation has completed (and Harvest has run), the workflow SHALL automatically raise a pull request for the `feat-{feature}` branch into the repository's default branch. If a PR is already open for the branch, the workflow SHALL reuse it rather than open a duplicate. The PR SHALL run **last** so it captures the complete branch, including harvested `LEARNINGS`. The workflow SHALL NOT merge the PR — `awaiting-merge → done` remains a human step. PR creation is delegated to a worker skill (`ship-pr`); the orchestration belongs to the workflow script.
+**Description:** After Phase H (Harvest) completes — or after Phase H's skip notice if `PHASE_H_ENABLED=false` — the workflow SHALL automatically raise a pull request for the `feat-{feature}` branch into the repository's default branch. Phase PUB runs last so the PR captures the complete feature branch; when Phase H is skipped, the PR is raised against whatever is on the branch at that point (the skip is intentional and acceptable). If a PR is already open for the branch, the workflow SHALL reuse it rather than open a duplicate. The workflow SHALL NOT merge the PR — `awaiting-merge → done` remains a human step. PR creation is delegated to a worker skill (`ship-pr`); the orchestration belongs to the workflow script.
 
 **Acceptance criteria:**
 - **Who:** Workflow script
-- **Given:** A pipeline run has completed implementation, PROPERTIES tests, final codebase review, and harvest
+- **Given:** A pipeline run has completed implementation, Phase PT (PROPERTIES test run), final codebase review, and Phase H (or Phase H's skip notice when `PHASE_H_ENABLED=false`)
 - **When:** Phase PUB executes
-- **Then:** (1) a PR is opened (or an existing PR reused) from `feat-{feature}` into the default branch; (2) the PR is not merged; (3) the final report carries the PR URL (`prUrl`); (4) if the PR cannot be created, the pipeline halts with a PR-creation failure
+- **Then:** (1) a PR is opened (or an existing PR reused) from `feat-{feature}` into the default branch — the observable for the reuse path is that the number of open PRs for `feat-{feature}` does not increase during Phase PUB; (2) the PR is not merged; (3) the final report carries the PR URL (`prUrl`); (4) if the `ship-pr` skill returns no `PR_URL:` trailer or returns `PR_URL: none`, the pipeline halts with a PR-creation failure and `haltReason` in the final report identifies the failing feature
 
 **Priority:** P0
 **Phase:** 1
@@ -416,15 +416,21 @@ This trailer is backward-compatible — interactive callers that do not parse it
 ---
 
 #### REQ-SHIP-02
-**Title:** Verify GHA checks pass, with a no-checks timeout
+**Title:** Verify GHA checks pass, with a no-checks timeout and a completion timeout
 
-**Description:** After raising the PR, the workflow SHALL verify that all GitHub Actions checks on the PR pass. GHA checks usually register within ~5 minutes. The workflow SHALL poll the PR for checks: if **no** checks appear within **10 minutes**, the workflow SHALL conclude the repo has no PR checks configured and treat the phase as a pass (`ciStatus: no-checks`). Once checks appear, the workflow SHALL wait for them to complete; if every check succeeds the phase passes (`ciStatus: passed`); if any check fails the pipeline SHALL halt and identify the failing PR. The poll cadence and all timeouts SHALL live in the workflow script (not the agent), so the gate decision is code-owned and observable.
+**Description:** After raising the PR, the workflow SHALL verify that all GitHub Actions checks on the PR pass. The `ship-pr` skill reports CI status using exactly four status values: `none` (no checks registered yet), `pending` (checks in progress), `passed` (all checks complete and green), and `failed` (at least one check failed). The workflow implements a **three-state polling model**:
+
+1. **No-checks window (10 minutes):** While no checks have been seen (`none`/`unknown` responses), the script polls up to 10 minutes. If the window expires without any check registering, the workflow concludes the repo has no PR checks configured and treats the phase as a pass (`ciStatus: no-checks`).
+2. **Completion window (30 minutes):** Once any poll returns `pending`, the no-checks window no longer applies. The script switches to the completion window and waits for checks to reach a terminal state, subject to an overall 30-minute completion cap. A `pending` response that first appears at the end of the no-checks window resets the timeout semantic — the completion cap takes over immediately.
+3. **Terminal state:** A `passed` response causes the phase to pass (`ciStatus: passed`). A `failed` response causes the pipeline to halt and identify the failing PR.
+
+The poll cadence and all timeouts SHALL live in the workflow script (not the agent), so the gate decision is code-owned and observable.
 
 **Acceptance criteria:**
 - **Who:** Workflow script
 - **Given:** A PR has been raised for the feature branch
 - **When:** The workflow polls the PR's GHA checks
-- **Then:** (1) if no checks appear within the 10-minute window, the phase passes with `ciStatus: no-checks`; (2) if checks appear and all pass, the phase passes with `ciStatus: passed`; (3) if any check fails, the pipeline halts with the failing PR identified; (4) the polling timing logic is implemented in the script, not delegated to the agent
+- **Then:** (1) if no checks appear within the 10-minute no-checks window, the phase passes with `ciStatus: no-checks`; (2) if checks appear (`pending`) and all subsequently pass, the phase passes with `ciStatus: passed`; (3) if any check fails, the pipeline halts with the failing PR identified; (4) if checks appear but are still running after the 30-minute completion cap, the pipeline halts and identifies the failing PR; (5) once any check is registered as in-progress (`pending`), the no-checks window no longer applies — the completion window governs from that point; (6) the polling timing logic is implemented in the script, not delegated to the agent
 
 **Priority:** P0
 **Phase:** 1
@@ -436,13 +442,13 @@ This trailer is backward-compatible — interactive callers that do not parse it
 #### REQ-SHIP-03
 **Title:** `ship-pr` worker skill and report fields
 
-**Description:** A new worker skill `ship-pr` SHALL perform exactly one discrete action per invocation — create/reuse the PR, or report the PR's current CI status — and SHALL communicate results to the script via machine-readable trailers (`PR_URL:` and `CI_STATUS:`), mirroring the VERDICT-trailer data-contract pattern. The final pipeline report SHALL include `prUrl` and `ciStatus`. The phase SHALL be controllable via a compile-time `PHASE_PUB_ENABLED` flag in the workflow script.
+**Description:** A new worker skill `ship-pr` (located at `pdlc/skills/ship-pr/SKILL.md`) SHALL perform exactly one discrete action per invocation — either Job 1 (create/reuse the PR) or Job 2 (report the PR's current CI status) — and SHALL communicate results to the script via machine-readable trailers, mirroring the VERDICT-trailer data-contract pattern. Job 1 ends with a `PR_URL:` trailer; Job 2 ends with a `CI_STATUS:` trailer. The `PR_URL:` and `CI_STATUS:` trailer definitions in `pdlc/skills/ship-pr/SKILL.md` are normative for this data contract. The final pipeline report SHALL include `prUrl` and `ciStatus`. Phase PUB SHALL be controllable at configuration time so it can be disabled without changing the workflow logic.
 
 **Acceptance criteria:**
 - **Who:** Developer / workflow script
 - **Given:** The feature has shipped
 - **When:** The `ship-pr` skill is invoked by Phase PUB
-- **Then:** (1) each invocation performs one action and ends with the appropriate trailer; (2) the script parses `PR_URL:`/`CI_STATUS:` from the agent result (not from disk); (3) the final report includes `prUrl` and `ciStatus`; (4) setting `PHASE_PUB_ENABLED = false` skips the phase
+- **Then:** (1a) each invocation performs exactly one discrete action; (1b) Job 1 (create/reuse PR) ends with `PR_URL: <url>` or `PR_URL: none`; Job 2 (report CI status) ends with `CI_STATUS: <status>`; (2) the script parses `PR_URL:`/`CI_STATUS:` from the agent result (not from disk); (3) the final report includes `prUrl` and `ciStatus`; (4) Phase PUB can be disabled at configuration time, causing the phase to be skipped and recorded as `⏭ Skipped` in the final report with `prUrl` and `ciStatus` absent
 
 **Priority:** P1
 **Phase:** 1
@@ -460,13 +466,16 @@ This trailer is backward-compatible — interactive callers that do not parse it
 
 **Worst-case agent count formula:**
 - 1 (initial guard / REQ validation agent)
-- + 7 phases × 5 iterations × 3 agents (2 reviewers + 1 optimizer) = 105
+- + 8 phases × 5 iterations × 3 agents (2 reviewers + 1 optimizer) = 120
 - + 5 implementation agents × 5 batches = 25
-- + 1 (PROPERTIES test run agent)
-- + 1 (final codebase review agent)
+- + 1 (Phase PT: PROPERTIES test run agent)
 - + 1 (harvest agent)
 - + up to 8 POSTMORTEM agents (one per non-converging phase, worst case)
-- **= ~142 agents worst case**, well under the 1,000-agent-per-run cap
+- + 1 (Phase PUB: PR creation agent)
+- + up to 60 (Phase PUB: CI poll agents at 30 s cadence over the 30-minute completion window)
+- **= ~217 agents worst case**, well under the 1,000-agent-per-run cap
+
+Note: the 8 review phases are R, F, T, D, P, PR, CR, and the mandatory post-PASS TSPEC `se-author` call. Phase D is counted conservatively as always present; the skip path yields a lower count. Phase PUB's 60 CI poll agents represent the worst case (30-minute completion window at a 30-second cadence); typical runs see far fewer polls.
 
 This formula is the analytical basis for the cap compliance acceptance criterion.
 
@@ -474,7 +483,7 @@ This formula is the analytical basis for the cap compliance acceptance criterion
 - **Who:** Workflow runtime
 - **Given:** A pipeline run is in progress
 - **When:** Implementation batches execute
-- **Then:** (1) No more than 5 `se-implement` agents run concurrently per batch; (2) no more than 16 agents run concurrently at any point; (3) the total agent count for any pipeline run does not exceed the worst-case formula of ~142 agents (analytically verified against the 1,000-agent-per-run cap)
+- **Then:** (1) No more than 5 `se-implement` agents run concurrently per batch; (2) no more than 16 agents run concurrently at any point; (3) the total agent count for any pipeline run does not exceed the worst-case formula of ~217 agents (analytically verified against the 1,000-agent-per-run cap)
 
 **Priority:** P0
 **Phase:** 1
@@ -512,7 +521,7 @@ This formula is the analytical basis for the cap compliance acceptance criterion
 | US-05 | REQ-GATE-04, REQ-GATE-05 |
 | US-06 | REQ-PIPELINE-02, REQ-COMPAT-01, REQ-COMPAT-02, REQ-COMPAT-03, REQ-ARTIFACTS-01, REQ-ARTIFACTS-02, REQ-SKILL-01 |
 | US-07 | REQ-GATE-03 |
-| US-08 | REQ-SHIP-01, REQ-SHIP-02, REQ-SHIP-03 |
+| US-08 | REQ-SHIP-01, REQ-SHIP-02 (including CI completion timeout), REQ-SHIP-03 |
 
 ---
 

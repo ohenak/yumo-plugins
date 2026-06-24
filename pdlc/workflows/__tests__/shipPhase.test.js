@@ -46,6 +46,12 @@ describe("parsePrUrl", () => {
     expect(parsePrUrl("could not open\nPR_URL: none")).toBeNull();
   });
 
+  // PROP-SHIP-01: empty / whitespace-only value after the prefix is null
+  it("returns null for an empty PR_URL value after the prefix", () => {
+    expect(parsePrUrl("PR_URL: ")).toBeNull();
+    expect(parsePrUrl("PR_URL:    ")).toBeNull();
+  });
+
   it("returns null when no trailer present", () => {
     expect(parsePrUrl("Success.")).toBeNull();
   });
@@ -204,6 +210,69 @@ describe("raisePrAndVerifyCi", () => {
       })
     ).rejects.toThrow(/did not complete within/);
   });
+
+  // PROP-SHIP-13 / AT-SHIP-08: pending arriving at or after the no-checks
+  // boundary must NOT exit via the no-checks path — it activates the
+  // completion window. `none` polls advance the clock past the no-checks
+  // timeout, then `pending` appears; the loop must reach `passed`, never
+  // return `no-checks`.
+  it("activates the completion window when pending arrives at the no-checks boundary", async () => {
+    let t = 0;
+    const pollIntervalMs = 1000;
+    const noChecksTimeoutMs = 3000;
+    const result = await raisePrAndVerifyCi({
+      feature: "feat",
+      // none, none, none → clock reaches the boundary; then pending, passed
+      _agent: makeShipAgent([
+        "CI_STATUS: none",
+        "CI_STATUS: none",
+        "CI_STATUS: none",
+        "CI_STATUS: pending",
+        "CI_STATUS: passed",
+      ]),
+      _log: () => {},
+      _now: () => t,
+      _sleep: async () => {
+        t += pollIntervalMs;
+      },
+      pollIntervalMs,
+      noChecksTimeoutMs,
+      completionTimeoutMs: 60000,
+    });
+    expect(result.ciStatus).toBe("passed");
+  });
+
+  // PROP-SHIP-08 (corrected): the completion cap is measured from the FIRST
+  // pending, not from PR-raise. Slow-registering checks get a full budget.
+  it("measures the completion cap from the first pending, not from PR raise", async () => {
+    let t = 0;
+    const pollIntervalMs = 1000;
+    // Checks register at t=2000 (poll 3). Under from-start semantics a pending
+    // poll at t=5000 (poll 6) would halt (elapsed >= completionTimeoutMs).
+    // Under from-first-pending the budget runs until now-2000 >= 5000 (t=7000),
+    // so the `passed` poll at t=6000 must succeed.
+    const result = await raisePrAndVerifyCi({
+      feature: "feat",
+      _agent: makeShipAgent([
+        "CI_STATUS: none",
+        "CI_STATUS: none",
+        "CI_STATUS: pending",
+        "CI_STATUS: pending",
+        "CI_STATUS: pending",
+        "CI_STATUS: pending",
+        "CI_STATUS: passed",
+      ]),
+      _log: () => {},
+      _now: () => t,
+      _sleep: async () => {
+        t += pollIntervalMs;
+      },
+      pollIntervalMs,
+      noChecksTimeoutMs: 3000,
+      completionTimeoutMs: 5000,
+    });
+    expect(result.ciStatus).toBe("passed");
+  });
 });
 
 // ─── main() wiring ──────────────────────────────────────────────────────────
@@ -300,6 +369,28 @@ describe("Phase PUB wiring in main()", () => {
     expect(result.outcome).toBe("success");
     expect(result.ciStatus).toBe("no-checks");
   });
+
+  // PROP-SHIP-14 / AT-SHIP-01: PHASE_PUB_ENABLED=false skip path. The phase
+  // is recorded as ⏭, no ship-pr work runs, and prUrl/ciStatus are absent.
+  it("skips Phase PUB when disabled, without invoking raisePrAndVerifyCi", async () => {
+    const args = baseArgs();
+    let called = false;
+    const result = await main({
+      ...args,
+      _phasePubEnabled: false,
+      _raisePrAndVerifyCi: async () => {
+        called = true;
+        throw new Error("raisePrAndVerifyCi must not be called when disabled");
+      },
+    });
+    expect(called).toBe(false);
+    expect(result.outcome).toBe("success");
+    expect(result.prUrl).toBeUndefined();
+    expect(result.ciStatus).toBeUndefined();
+    const pub = result.phases.find((p) => p.phase === "PUB");
+    expect(pub).toBeTruthy();
+    expect(pub.status).toBe("⏭");
+  });
 });
 
 // ─── Static guarantees ──────────────────────────────────────────────────────
@@ -314,6 +405,13 @@ describe("Phase PUB static guarantees", () => {
   it("declares the 10-minute no-checks timeout", () => {
     const content = readFileSync(scriptPath, "utf8");
     expect(content).toContain("CI_NO_CHECKS_TIMEOUT_MS = 10 * 60 * 1000");
+  });
+
+  // PROP-SHIP-15 / PM-L-02: the no-merge constraint is a testable anchor —
+  // createPrPrompt() must instruct the agent not to merge the PR.
+  it("createPrPrompt instructs the ship-pr agent not to merge the PR", () => {
+    const content = readFileSync(scriptPath, "utf8");
+    expect(content).toMatch(/Do NOT merge the PR/i);
   });
 
   it("ship-pr SKILL.md exists and documents the PR_URL and CI_STATUS trailers", () => {
