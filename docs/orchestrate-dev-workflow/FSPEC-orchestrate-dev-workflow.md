@@ -1,7 +1,7 @@
 ---
 Status: Draft
 Author: pm-author
-Version: 1.4
+Version: 1.5
 Feature: orchestrate-dev-workflow
 ---
 
@@ -10,7 +10,7 @@ Feature: orchestrate-dev-workflow
 | Upstream | REQ → **FSPEC** |
 | Downstream | TSPEC, PROPERTIES |
 | Scope | Behavioral flows for: pipeline phase dispatch, reviewLoop mechanics, VERDICT trailer parsing, DECISIONS conditional, implementation phase DAG execution, harvest ordering, and all named error paths |
-| Cross-Reviews | CROSS-REVIEW-software-engineer-FSPEC.md, CROSS-REVIEW-test-engineer-FSPEC.md, CROSS-REVIEW-software-engineer-FSPEC-v2.md, CROSS-REVIEW-test-engineer-FSPEC-v2.md, CROSS-REVIEW-software-engineer-FSPEC-v3.md, CROSS-REVIEW-test-engineer-FSPEC-v3.md, CROSS-REVIEW-software-engineer-FSPEC-v4.md, CROSS-REVIEW-test-engineer-FSPEC-v4.md |
+| Cross-Reviews | CROSS-REVIEW-software-engineer-FSPEC.md, CROSS-REVIEW-test-engineer-FSPEC.md, CROSS-REVIEW-software-engineer-FSPEC-v2.md, CROSS-REVIEW-test-engineer-FSPEC-v2.md, CROSS-REVIEW-software-engineer-FSPEC-v3.md, CROSS-REVIEW-test-engineer-FSPEC-v3.md, CROSS-REVIEW-software-engineer-FSPEC-v4.md, CROSS-REVIEW-test-engineer-FSPEC-v4.md, CROSS-REVIEW-software-engineer-FSPEC-PUB.md, CROSS-REVIEW-test-engineer-FSPEC-PUB.md |
 | LEARNINGS | docs/orchestrate-dev-workflow/LEARNINGS-orchestrate-dev-workflow.md |
 
 # FSPEC — orchestrate-dev-workflow
@@ -524,26 +524,68 @@ When a guard block is detected:
 
 **Linked requirements:** REQ-SHIP-01, REQ-SHIP-02, REQ-SHIP-03
 
+> TSPEC implementation: §7.5 Phase PUB.
+
 ### 5.5.1 Entry Condition
 
-Phase PUB runs after Phase H (Harvest), as the final phase, so the PR captures the complete feature branch including harvested `LEARNINGS`. Gated by the compile-time `PHASE_PUB_ENABLED` flag; when `false`, the phase is skipped and recorded as `⏭` in the final report.
+Phase PUB runs after Phase H (Harvest), as the final phase, so the PR captures the complete feature branch including harvested `LEARNINGS`. Gated by the compile-time `PHASE_PUB_ENABLED` flag; when `false`, the phase is skipped and recorded as `⏭` in the final report. On skip the script emits:
+
+```
+log("Phase PUB skipped — auto-PR disabled")
+```
+
+Phase PUB appears in the `/workflows` view as `"Phase PUB: ⏭ Skipped"` and in the final report as `Phase PUB: ⏭ Skipped`. No `ship-pr` agent is invoked; `prUrl` and `ciStatus` are absent from the final report.
 
 ### 5.5.2 Raise the PR
 
-The script invokes the `ship-pr` skill to push `feat-{feature}` and open a PR (or reuse an open one) into the default branch. The agent replies with a `PR_URL:` trailer. If the URL is absent or `none`, the pipeline halts with a PR-creation failure. The PR is never auto-merged.
+The script invokes the `ship-pr` skill to push `feat-{feature}` and open a PR (or reuse an open one) into the default branch. The agent replies with a `PR_URL:` trailer. If the URL is absent or `none`, the pipeline halts with:
+
+```
+Error: Phase PUB — PR creation failed for feature {feature} (no PR_URL returned)
+```
+
+On this halt, `prUrl` is absent from the final report (it was never set), and `ciStatus` is also absent. No CI polling begins.
+
+The PR is never auto-merged. The observable for the no-merge constraint is that `feat-{feature}` is not merged to the default branch during Phase PUB.
 
 ### 5.5.3 Verify CI
 
-The script polls the PR's GHA checks via repeated `ship-pr` status reads (the agent does one read per call; the script owns the cadence):
+The script polls the PR's GHA checks via repeated `ship-pr` status reads (the agent does one read per call; the script owns the cadence).
+
+The `ship-pr` skill emits exactly one of four `CI_STATUS:` trailer values: `none`, `pending`, `passed`, `failed`. The parser function `parseCiStatus` normalises any unrecognised or empty trailer value to `"unknown"` — `unknown` is a parser artifact and is **not** a value emitted by `ship-pr`. Both `none` and `unknown` are treated identically by the polling loop: they indicate no checks have been seen yet.
+
+**State-transition rules (normative):**
+
+1. **No-checks window:** While `ciStatus` is `none` or `unknown` on every poll, the script remains in the no-checks window. If this window elapses (10 minutes) without ever receiving a `pending` response, the script concludes the repo has no PR checks configured and exits with `ciStatus: no-checks`.
+
+2. **Transition to completion window:** The first poll returning `pending` switches the script to the completion window **immediately**, regardless of how much of the no-checks window has elapsed. Even if `pending` first appears at or after the 10-minute no-checks boundary, the no-checks timeout does not fire — the completion window takes over.
+
+3. **Completion window:** Once `checksSeen` is true (at least one `pending` response received), the script waits for `passed` or `failed` up to the 30-minute completion cap. Subsequent `none` or `unknown` responses do not re-trigger the no-checks path.
+
+**Terminal outcomes:**
 
 - **`passed`** → phase passes with `ciStatus: passed`.
-- **`failed`** → pipeline halts, identifying the failing PR.
-- **`pending`** → keep polling until completion (up to an overall completion cap).
-- **No checks (`none`/`unknown`) for the full 10-minute window** → conclude the repo has no PR checks configured; phase passes with `ciStatus: no-checks`.
+- **`failed`** → pipeline halts with:
+  ```
+  Error: Phase PUB — GHA checks failed for PR {prUrl}
+  ```
+  On this halt, `prUrl` is present in the final report (the PR was successfully raised), but `ciStatus` is absent.
+- **No checks (`none`/`unknown`) for the full 10-minute no-checks window** → phase passes with `ciStatus: no-checks`.
+- **Completion cap (30 minutes) exceeded with checks still `pending`** → pipeline halts with:
+  ```
+  Error: Phase PUB — GHA checks did not complete within {N} minutes for PR {prUrl}
+  ```
+  where `{N}` is the completion cap in whole minutes (30). On this halt, `prUrl` is present in the final report but `ciStatus` is absent. This is a distinct halt path from the `failed` halt above.
 
 ### 5.5.4 Report Fields
 
-The `FinalReport` gains `prUrl` and `ciStatus`. A `PUB` `PhaseReport` entry records the outcome. `awaiting-merge → done` remains a human step (see CLAUDE.md queue lifecycle).
+The `FinalReport` gains `prUrl` and `ciStatus`. A `PUB` `PhaseReport` entry records the outcome.
+
+- `ciStatus` takes one of two values on success: `"passed"` (all GHA checks completed green) or `"no-checks"` (no checks registered within the 10-minute no-checks window).
+- When Phase PUB halts (PR creation failure, CI failure, or completion-cap timeout), `ciStatus` is absent from the final report and the halt reason is captured in `haltReason`.
+- `prUrl` is absent from the final report when PR creation fails (no URL was ever obtained). When Phase PUB halts after PR creation succeeds (CI failure or completion-cap timeout), `prUrl` is present but `ciStatus` is absent.
+
+`awaiting-merge → done` remains a human step (see CLAUDE.md queue lifecycle).
 
 ---
 
@@ -581,8 +623,9 @@ The canonical phase execution order is:
 | PT | PROPERTIES Tests | Single agent | Always |
 | CR | Final Codebase Review | `reviewLoop` | Always |
 | H | Harvest | Single agent | Always (subject to `PHASE_H_ENABLED` flag) |
+| PUB | Raise PR & Verify CI | Single agent (ship-pr) | Always (subject to `PHASE_PUB_ENABLED` flag) |
 
-No phase may be skipped except Phase D (per the DECISIONS conditional in §3) and Phase H (per the `PHASE_H_ENABLED` flag in §5.1). No phase may be reordered.
+No phase may be skipped except Phase D (per the DECISIONS conditional in §3), Phase H (per the `PHASE_H_ENABLED` flag in §5.1), and Phase PUB (per the `PHASE_PUB_ENABLED` flag in §5.5.1). No phase may be reordered.
 
 ---
 
@@ -831,6 +874,69 @@ The `nudge-consolidation` hook fires on SessionStart. It fires once for the top-
 - **When:** guard-harvest-before-delete hook fires
 - **Then:** Hook exits non-zero; agent Bash call exits non-zero; workflow halts; final report contains `"Phase H halted: guard-harvest-before-delete blocked deletion of {file-path}"`
 
+### AT-SHIP-01: PUB Skip Path — `PHASE_PUB_ENABLED = false`
+- **Who:** Workflow script
+- **Given:** `PHASE_PUB_ENABLED` is `false`
+- **When:** The main pipeline reaches Phase PUB
+- **Then:** `phase("Phase PUB: ⏭ Skipped")` is emitted; `log("Phase PUB skipped — auto-PR disabled")` is emitted; Phase PUB appears as `⏭ Skipped` in the final report; `prUrl` and `ciStatus` are absent from the final report; no `ship-pr` agent is invoked
+- **REQ linkage:** REQ-SHIP-03
+
+### AT-SHIP-02: PR Raised Successfully — Happy Path
+- **Who:** Workflow script
+- **Given:** `PHASE_PUB_ENABLED` is `true`; the `ship-pr` agent (create-PR job) returns a `PR_URL: https://…` trailer with a valid URL
+- **When:** Phase PUB invokes the `ship-pr` create-PR job
+- **Then:** The PR URL is extracted from the trailer; `prUrl` is populated in the final report; CI polling begins; the `feat-{feature}` branch is not merged to the default branch during Phase PUB
+- **REQ linkage:** REQ-SHIP-01, REQ-SHIP-02
+
+### AT-SHIP-03: PR Creation Failure — No `PR_URL` Trailer
+- **Who:** Workflow script
+- **Given:** `PHASE_PUB_ENABLED` is `true`; the `ship-pr` agent returns output with no `PR_URL:` trailer, or returns `PR_URL: none`
+- **When:** Phase PUB attempts to raise the PR
+- **Then:** Pipeline halts with `"Error: Phase PUB — PR creation failed for feature {feature} (no PR_URL returned)"`; no CI polling begins; `prUrl` is absent from the final report; `ciStatus` is absent from the final report; `haltReason` appears in the final report
+- **REQ linkage:** REQ-SHIP-01, REQ-SHIP-03
+
+### AT-SHIP-04: CI Checks Pass — `ciStatus: passed`
+- **Who:** Workflow script
+- **Given:** A PR has been raised; a CI status poll returns `CI_STATUS: passed`
+- **When:** The poll loop evaluates the status
+- **Then:** The poll loop exits; `ciStatus: passed` is set; Phase PUB is recorded as `✅` in the final report; no further polling occurs; `prUrl` is present in the final report
+- **REQ linkage:** REQ-SHIP-02, REQ-SHIP-03
+
+### AT-SHIP-05: CI Checks Fail — `ciStatus: failed`
+- **Who:** Workflow script
+- **Given:** A PR has been raised; a CI status poll returns `CI_STATUS: failed`
+- **When:** The poll loop evaluates the status
+- **Then:** Pipeline halts with `"Error: Phase PUB — GHA checks failed for PR {prUrl}"`; the failing PR URL appears in the halt message; `prUrl` is present in the final report; `ciStatus` is absent from the final report; `haltReason` is set
+- **REQ linkage:** REQ-SHIP-02, REQ-SHIP-03
+
+### AT-SHIP-06: No-Checks Window Expires — `ciStatus: no-checks`
+- **Who:** Workflow script
+- **Given:** A PR has been raised; all CI status polls return `none` or `unknown` for the full 10-minute no-checks window; no poll has ever returned `pending`
+- **When:** The 10-minute no-checks window elapses
+- **Then:** The poll loop concludes the repo has no PR checks configured; Phase PUB passes with `ciStatus: no-checks`; final report records `✅` for Phase PUB; `prUrl` is present in the final report
+- **REQ linkage:** REQ-SHIP-02, REQ-SHIP-03
+
+### AT-SHIP-07: Completion Cap Exceeded — Pending Checks Never Complete
+- **Who:** Workflow script
+- **Given:** A PR has been raised; at least one CI status poll returned `pending` (no-checks window has closed; `checksSeen` is `true`); checks remain in `pending` state past the 30-minute completion cap
+- **When:** The 30-minute completion cap elapses
+- **Then:** Pipeline halts with `"Error: Phase PUB — GHA checks did not complete within 30 minutes for PR {prUrl}"`; `prUrl` is present in the final report; `ciStatus` is absent from the final report; `haltReason` is set; this is a distinct halt path from AT-SHIP-05 (failed checks) and AT-SHIP-06 (no-checks window)
+- **REQ linkage:** REQ-SHIP-02, REQ-SHIP-03
+
+### AT-SHIP-08: Transition from No-Checks Window to Completion Window
+- **Who:** Workflow script
+- **Given:** A PR has been raised; initial polls return `none` or `unknown` (within the 10-minute no-checks window); a subsequent poll returns `pending` before the no-checks window expires
+- **When:** The first `pending` status is received
+- **Then:** The no-checks window timeout is no longer evaluated; the script switches to the completion window (30-minute cap); subsequent `none` or `unknown` responses do not trigger the no-checks path; only `passed`, `failed`, or completion-cap-exceeded can terminate the loop; if `pending` first appears at or after the no-checks timeout boundary, the completion window still takes over — the no-checks timeout does not fire
+- **REQ linkage:** REQ-SHIP-02
+
+### AT-SHIP-09: Phase PUB Wired After Phase H in Pipeline Sequence
+- **Who:** Workflow script
+- **Given:** A complete pipeline run where Phase H executes (or is skipped via `PHASE_H_ENABLED = false`)
+- **When:** The pipeline reaches Phase PUB
+- **Then:** Phase PUB executes after Phase H (or Phase H's skip notice); the PR captures the full feature branch state after harvest; Phase PUB appears as the final phase in the `/workflows` progress view and final report
+- **REQ linkage:** REQ-SHIP-01, REQ-SHIP-02, REQ-SHIP-03
+
 ### AT-ENTRY-01: Malformed Path Halts at Entry
 - **Who:** Workflow script
 - **Given:** Developer invokes `/pdlc:orchestrate-dev docs/my-feature/REQ.md` (missing feature name in filename)
@@ -867,5 +973,6 @@ The `nudge-consolidation` hook fires on SessionStart. It fires once for the top-
 | §3 DECISIONS Conditional | REQ-GATE-02, REQ-COMPAT-03 |
 | §4 Implementation Phase | REQ-GATE-03, REQ-NFR-01, REQ-PIPELINE-02, REQ-COMPAT-03 |
 | §5 Harvest Phase | REQ-ARTIFACTS-02, REQ-COMPAT-02 |
-| §6 Pipeline Entry | REQ-PIPELINE-01, REQ-PIPELINE-02 |
+| §5.5 Phase PUB (FSPEC-SHIP) | REQ-SHIP-01, REQ-SHIP-02, REQ-SHIP-03 |
+| §6 Pipeline Entry | REQ-PIPELINE-01, REQ-PIPELINE-02, REQ-SHIP-01 |
 | §7 Error Flows | REQ-GATE-01, REQ-GATE-02, REQ-GATE-05, REQ-ARTIFACTS-02, REQ-COMPAT-02 |

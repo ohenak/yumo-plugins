@@ -1,7 +1,7 @@
 ---
 Status: Draft
 Author: se-author
-Version: 1.2
+Version: 1.4
 Feature: orchestrate-dev-workflow
 ---
 
@@ -828,6 +828,10 @@ const PHASE_PUB_ENABLED = true; // Set to false to skip auto-PR + CI verificatio
 
 When `false`, the script emits `phase("Phase PUB: ⏭ Skipped")`, logs `"Phase PUB skipped — auto-PR disabled"`, records the phase as `⏭`, and returns without raising a PR.
 
+A developer wishing to disable Phase PUB edits the consumer runtime copy at `.claude/workflows/orchestrate-dev.js` and sets `PHASE_PUB_ENABLED = false`. The plugin source at `pdlc/workflows/orchestrate-dev.js` should not be edited for per-consumer configuration.
+
+The runtime skip behavior must be tested end-to-end via `main()` with `_raisePrAndVerifyCi` injected as a spy. See PROP-SHIP-14 in PROPERTIES §12.5.
+
 ### TSPEC-SHIP-02: CI Poll Timing Constants
 
 ```js
@@ -847,6 +851,10 @@ parseCiStatus(result) // → "none" | "pending" | "passed" | "failed" | "unknown
 
 Both reverse-scan for the last matching trailer line (`PR_URL: ` / `CI_STATUS: `), mirroring `parseVerdict`. `parseCiStatus` lowercases the value, takes the first whitespace-delimited token (so trailing prose is ignored), and maps anything outside the four valid tokens — or a missing/empty result — to `"unknown"`.
 
+Both parsers extract from the agent result string returned by `agent()` — not from any file on disk. This satisfies REQ-SHIP-03 AC(2).
+
+`parsePrUrl` also returns `null` when the value after `PR_URL: ` prefix is empty or whitespace-only (e.g., `PR_URL: ` with nothing after the space). This is the same treatment as `PR_URL: none`.
+
 ### TSPEC-SHIP-04: `raisePrAndVerifyCi` Algorithm
 
 ```
@@ -856,25 +864,33 @@ if prUrl is null:
   halt("Error: Phase PUB — PR creation failed for feature {feature} (no PR_URL returned)")
 
 start ← now()
-checksSeen ← false
+completionStart ← null
 loop:
   status ← parseCiStatus(agent("ship-pr", pollCiPrompt(feature, prUrl)))
-  elapsed ← now() - start
   if status === "passed":  return { prUrl, ciStatus: "passed" }
   if status === "failed":  halt("Error: Phase PUB — GHA checks failed for PR {prUrl}")
-  if status === "pending": checksSeen ← true
+  if status === "pending" and completionStart is null:
+    completionStart ← now()   // first pending — start the completion budget here
 
-  if checksSeen:
-    if elapsed ≥ CI_COMPLETION_TIMEOUT_MS:
+  if completionStart is not null:
+    if now() - completionStart ≥ CI_COMPLETION_TIMEOUT_MS:
       halt("Error: Phase PUB — GHA checks did not complete within {N} minutes for PR {prUrl}")
-  else if elapsed ≥ CI_NO_CHECKS_TIMEOUT_MS:
+  else if now() - start ≥ CI_NO_CHECKS_TIMEOUT_MS:
     // no checks ever appeared (none/unknown) — assume repo has no PR checks
     return { prUrl, ciStatus: "no-checks" }
 
   sleep(CI_POLL_INTERVAL_MS)
 ```
 
+The completion cap is measured from the first `pending` poll (when `completionStart` is set), giving checks a full `CI_COMPLETION_TIMEOUT_MS` budget regardless of registration latency — not from PR-raise time. The no-checks window remains measured from PR-raise (`start`).
+
 `none` and `unknown` are treated identically while no checks have been seen — both keep the loop in the no-checks window. Once any poll returns `pending`, the loop switches to the completion window. The agent performs **one** status read per invocation and never sleeps; the loop owns the cadence.
+
+**No-merge constraint (normative):** The `createPrPrompt()` function MUST include explicit "do not merge" instruction text. The implementation at line 521 of `orchestrate-dev.js` contains `"Do NOT merge the PR."` — this exact phrase is the testable anchor. The PROPERTIES author should add a static property asserting that the prompt string returned by `createPrPrompt()` contains this instruction. The PR is never auto-merged.
+
+**Boundary case — `pending` at or after no-checks timeout boundary:** If a poll returns `pending` on the same iteration where `now() - start >= CI_NO_CHECKS_TIMEOUT_MS`, `completionStart` is set and the completion window activates. The no-checks timeout does NOT fire on that iteration — the `completionStart` assignment happens before the timeout guards in the evaluation order, and the `completionStart is not null` branch takes precedence over the no-checks branch. This edge case is named separately because a naive implementation that evaluates the no-checks guard before the `completionStart` assignment would fail it.
+
+**`none`/`unknown` after `checksSeen` is true:** When `checksSeen` is `true`, a subsequent `none` or `unknown` status is silently ignored — the loop sleeps and polls again. It does NOT exit via the no-checks path.
 
 ### TSPEC-SHIP-05: Pipeline Wiring and Report Fields
 
@@ -888,7 +904,9 @@ ciStatus = pubResult.ciStatus;
 recordPhase("PUB", "Raise PR & Verify CI", "✅", ciDetail);
 ```
 
-`raisePrAndVerifyCi` is injectable via `_raisePrAndVerifyCi` for pipeline-wiring tests. The `FinalReport` (TSPEC-ERROR-03) gains two optional fields: `prUrl?: string` and `ciStatus?: "passed" | "no-checks"`. A halt inside Phase PUB is caught by the existing `main()` try/catch and surfaced as `outcome: "halted"` with the halt reason.
+`raisePrAndVerifyCi` is injectable via `_raisePrAndVerifyCi` for pipeline-wiring tests. The `PHASE_PUB_ENABLED` module constant is the default for the `_phasePubEnabled` parameter of `main()`; tests inject `_phasePubEnabled: false` to exercise the skip path end-to-end (PROP-SHIP-14) without editing the module-level constant. The `FinalReport` (TSPEC-ERROR-03) gains two optional fields: `prUrl?: string` and `ciStatus?: "passed" | "no-checks"`. A halt inside Phase PUB is caught by the existing `main()` try/catch and surfaced as `outcome: "halted"` with the halt reason.
+
+**Static check scope note (PROP-SHIP-11):** The static check in `shipPhase.test.js` catches direct variable references to agent results passed to `log()`; indirect string interpolation (e.g., template literals containing result variables) is outside the static check's scope and is trusted to follow the same convention as the rest of the script per TSPEC-NFR-03.
 
 ### TSPEC-SHIP-06: `ship-pr` SKILL.md
 
@@ -1037,7 +1055,7 @@ No `parallel()` call in the script dispatches more than 5 agents simultaneously.
 
 ### TSPEC-NFR-02: Worst-Case Agent Count
 
-The closed-form formula for maximum total agent count per run (from FSPEC OQ-04, corrected from REQ-NFR-01):
+The closed-form formula for maximum total agent count per run (from FSPEC OQ-04, corrected from REQ-NFR-01 v1.2):
 
 ```
 1  (entry validation agent)
@@ -1046,11 +1064,13 @@ The closed-form formula for maximum total agent count per run (from FSPEC OQ-04,
 + 1          (PT agent)
 + 1          (harvest agent)
 + 8          (POSTMORTEM agents — one per non-converging review phase, worst case)
-= 1 + 120 + 25 + 1 + 1 + 8
-= 156 agents worst case
++ 1          (Phase PUB: PR creation agent)
++ up to 60   (Phase PUB: CI poll agents — 30-min cap at 30-s cadence; typical runs see far fewer)
+= 1 + 120 + 25 + 1 + 1 + 8 + 1 + 60
+= ~217 agents worst case
 ```
 
-156 is well under the 1,000-agent-per-run cap. (The REQ states ~148; the FSPEC OQ-04 correction yields 148 excluding the post-PASS se-author call; with 8 post-PASS se-author calls at 1 each the total is ~156. In all cases the cap is not approached.)
+217 is well under the 1,000-agent-per-run cap. (The pre-PUB formula yielded 156; Phase PUB adds 1 PR-creation agent and up to 60 CI-poll agents, raising the worst-case total to ~217. In all cases the cap is not approached.)
 
 Note: the 8 review phases are R, F, T, D, P, PR, CR, and the post-PASS TSPEC call also counts. The formula counts Phase D conservatively (as if always present). In the skip path, the count is lower.
 
@@ -1151,9 +1171,9 @@ VERDICT: <verdict-value>
 | REQ-SKILL-01 | TSPEC-SKILL-02 | — (Phase 2 deliverable; verified by SKILL.md content inspection) |
 | REQ-NFR-01 | TSPEC-NFR-01, TSPEC-NFR-02 | — (formula-based constraint; verified analytically) |
 | REQ-NFR-02 | TSPEC-NFR-03 | — (structural guarantee; verified by log() call-site inspection) |
-| REQ-SHIP-01 | TSPEC-SHIP-01, TSPEC-SHIP-04, TSPEC-SHIP-05 | — (verified by shipPhase.test.js: PROP-SHIP-03/04/09/10) |
-| REQ-SHIP-02 | TSPEC-SHIP-02, TSPEC-SHIP-03, TSPEC-SHIP-04 | — (verified by shipPhase.test.js: PROP-SHIP-02/05/06/07/08) |
-| REQ-SHIP-03 | TSPEC-SHIP-03, TSPEC-SHIP-05, TSPEC-SHIP-06 | — (verified by shipPhase.test.js: PROP-SHIP-01/11/12) |
+| REQ-SHIP-01 | TSPEC-SHIP-01, TSPEC-SHIP-04, TSPEC-SHIP-05 | AT-SHIP-01, AT-SHIP-02, AT-SHIP-03, AT-SHIP-09 |
+| REQ-SHIP-02 | TSPEC-SHIP-02, TSPEC-SHIP-03, TSPEC-SHIP-04 | AT-SHIP-04, AT-SHIP-05, AT-SHIP-06, AT-SHIP-07, AT-SHIP-08 |
+| REQ-SHIP-03 | TSPEC-SHIP-03, TSPEC-SHIP-05, TSPEC-SHIP-06 | AT-SHIP-01, AT-SHIP-09 |
 
 ---
 
