@@ -44,13 +44,13 @@ After the Final Codebase Review and before Harvest, the workflow runs a mechanic
 3. **No mock data in production** — no hardcoded test/fake data outside test files
 4. **Branch coverage ≥ 85%** — all new modules must meet the coverage floor via property-based testing
 
-If violations are found, the `se-implement` optimizer addresses them and the verifier re-runs. The loop caps at 3 iterations; if violations persist, the pipeline halts. Set `PHASE_DOD_ENABLED = false` in the workflow script to skip this phase.
+The `dod-verify` skill is self-remediating — it both identifies and fixes violations in a single invocation, then commits and pushes. The workflow re-invokes it up to 3 times; if violations persist, the pipeline halts. Set `PHASE_DOD_ENABLED = false` in the workflow script to skip this phase.
 
 ---
 
 ## Auto-PR & CI Verification (Phase PUB)
 
-After Harvest, the workflow automatically raises a pull request for `feat-{feature}` (reusing an open PR if one exists) and then verifies CI. The PR runs **last** so it captures the complete branch, including harvested `LEARNINGS`. PR creation and CI reporting are delegated to the `ship-pr` skill; the **poll-timing logic lives in the workflow script**, not the agent.
+After Harvest, the workflow automatically raises a pull request for `feat-{feature}` (reusing an open PR if one exists) and then verifies CI. Before creating the PR, `ship-pr` rebases the feature branch onto the latest remote default branch to ensure a conflict-free merge. If the rebase produces conflicts, the pipeline halts — conflicts must be resolved manually. The PR runs **last** so it captures the complete branch, including harvested `LEARNINGS`. PR creation and CI reporting are delegated to the `ship-pr` skill; the **poll-timing logic lives in the workflow script**, not the agent.
 
 CI verification rule: the script polls the PR's GitHub Actions checks. Checks usually register within ~5 minutes. If **no** checks appear within **10 minutes**, the script concludes the repo has no PR checks configured and treats the phase as a pass (`ciStatus: no-checks`). Once checks appear, the script waits for completion: all-pass ⇒ ✅; any failure ⇒ the pipeline halts with the failing PR identified. The final report carries `prUrl` and `ciStatus`. Set `PHASE_PUB_ENABLED = false` in the workflow script to skip this phase.
 

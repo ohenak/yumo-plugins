@@ -116,7 +116,6 @@ export const PHASE_DISPATCH = {
     phase: "DOD",
     label: "Definition of Done Verification",
     verifier: "dod-verify",
-    optimizer: "se-implement",
   },
 };
 
@@ -526,13 +525,22 @@ function harvestPrompt(featureName) {
 function createPrPrompt(featureName) {
   return (
     `Raise a pull request for feature ${featureName}.\n` +
-    `1. Ensure the feat-${featureName} branch is pushed to origin.\n` +
-    `2. Open a pull request from feat-${featureName} into the default branch. ` +
+    `1. Fetch the latest default branch from remote: git fetch origin <default-branch>.\n` +
+    `2. Rebase feat-${featureName} onto origin/<default-branch>: git rebase origin/<default-branch>.\n` +
+    `   If the rebase conflicts, abort it (git rebase --abort) and report the conflict.\n` +
+    `3. Force-push the rebased branch: git push --force-with-lease origin feat-${featureName}.\n` +
+    `4. Open a pull request from feat-${featureName} into the default branch. ` +
     `If a PR is already open for this branch, reuse it — do not open a duplicate.\n` +
-    `3. Base the PR title and description on the feature's REQ/FSPEC.\n` +
-    `Do NOT merge the PR. End your final message with this trailer as the last line:\n` +
+    `5. Base the PR title and description on the feature's REQ/FSPEC.\n` +
+    `Do NOT merge the PR. End your final message with these trailers as the last lines:\n` +
+    `REBASE_STATUS: clean\n` +
     `PR_URL: <the full https URL of the pull request>\n` +
-    `If the PR could not be created, end instead with: PR_URL: none`
+    `If the rebase conflicted, end instead with:\n` +
+    `REBASE_STATUS: conflict\n` +
+    `PR_URL: none\n` +
+    `If the PR could not be created (but rebase was clean), end with:\n` +
+    `REBASE_STATUS: clean\n` +
+    `PR_URL: none`
   );
 }
 
@@ -568,6 +576,31 @@ export function parsePrUrl(result) {
     }
   }
   return null;
+}
+
+/**
+ * Extract the REBASE_STATUS from a ship-pr create result's trailer.
+ * @param {string | null | undefined} result
+ * @returns {"clean" | "conflict" | "unknown"}
+ */
+export function parseRebaseStatus(result) {
+  const VALID = ["clean", "conflict"];
+  if (result == null || (typeof result === "string" && result.trim() === "")) {
+    return "unknown";
+  }
+  const lines = result.split("\n");
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const trimmed = lines[i].trim();
+    if (trimmed.startsWith("REBASE_STATUS: ")) {
+      const token = trimmed
+        .slice("REBASE_STATUS: ".length)
+        .trim()
+        .toLowerCase()
+        .split(/\s/)[0];
+      return VALID.includes(token) ? token : "unknown";
+    }
+  }
+  return "unknown";
 }
 
 /**
@@ -699,34 +732,22 @@ export function parseDodStatus(result) {
 
 function dodVerifyPrompt(featureName) {
   return (
-    `Verify the Definition of Done for feature ${featureName}.\n` +
+    `Verify and fix the Definition of Done for feature ${featureName}.\n` +
     `Scan all production code on this branch (non-test files changed by this feature) for:\n` +
     `1. Stubs, TODOs, placeholders, NotImplementedError in production code\n` +
     `2. Unwired integrations — unused imports, dead config, placeholder URLs\n` +
     `3. Mock/fake data in production code — hardcoded test data, mock variables outside test files\n` +
     `4. Branch coverage ≥85% for all new modules, with property-based tests for parameterisable components\n` +
     `Use git diff --name-only against the default branch to scope the scan.\n` +
+    `Fix every violation you find, run tests, then commit and push.\n` +
     `End with the DOD_STATUS trailer.`
   );
 }
 
-function dodFixPrompt(featureName, dodResult) {
-  return (
-    `Fix the Definition of Done violations for feature ${featureName}.\n` +
-    `The dod-verify agent found the following issues:\n\n` +
-    `${dodResult}\n\n` +
-    `Address every violation:\n` +
-    `- Replace stubs/TODOs with real implementations\n` +
-    `- Wire all integrations (remove unused imports or connect them)\n` +
-    `- Remove mock/fake data from production code (move to test fixtures if needed)\n` +
-    `- Add property-based tests and increase branch coverage to ≥85% for any module below threshold\n` +
-    `Follow TDD. Run tests. All tests must pass before committing. Commit and push.`
-  );
-}
-
 /**
- * Phase DOD: verify the Definition of Done, remediate if needed, re-verify.
- * Caps at DOD_MAX_ITERATIONS remediation cycles.
+ * Phase DOD: verify the Definition of Done, fix violations, re-verify.
+ * The dod-verify skill both scans and remediates in a single invocation.
+ * Caps at DOD_MAX_ITERATIONS cycles.
  *
  * @param {object} params
  * @param {string} params.feature
@@ -756,25 +777,14 @@ export async function dodVerifyLoop({
       _log("WARNING: dod-verify returned no DOD_STATUS — treating as failed");
     }
 
-    const totalViolations = status.stubs + status.mock_data + status.unwired_integrations + (status.coverage_below_threshold ? 1 : 0);
     _log(
-      `DoD violations: stubs=${status.stubs}, mock_data=${status.mock_data}, ` +
+      `DoD violations remaining: stubs=${status.stubs}, mock_data=${status.mock_data}, ` +
       `unwired=${status.unwired_integrations}, coverage_gap=${status.coverage_below_threshold} ` +
       `(branch_coverage=${status.branch_coverage_pct}%)`
     );
 
     if (iteration === maxIterations) {
       return { passed: false, iterations: iteration, lastStatus: status };
-    }
-
-    // Dispatch optimizer to fix violations
-    const fixResult = await _agent(
-      PHASE_DISPATCH.DOD.optimizer,
-      dodFixPrompt(feature, verifyResult)
-    );
-
-    if (fixResult == null || (typeof fixResult === "string" && fixResult.trim() === "")) {
-      _log("WARNING: DoD optimizer returned empty result");
     }
   }
 
@@ -809,8 +819,19 @@ export async function raisePrAndVerifyCi({
   pollIntervalMs = CI_POLL_INTERVAL_MS,
   completionTimeoutMs = CI_COMPLETION_TIMEOUT_MS,
 }) {
-  // 1. Create (or reuse) the PR.
+  // 1. Create (or reuse) the PR — includes rebase onto latest default branch.
   const prResult = await _agent("ship-pr", createPrPrompt(feature));
+
+  // 1a. Check rebase status first.
+  const rebaseStatus = parseRebaseStatus(prResult);
+  if (rebaseStatus === "conflict") {
+    throw haltError(
+      `Error: Phase PUB — rebase conflict for feature ${feature}. ` +
+      `The feature branch cannot be cleanly rebased onto the default branch. ` +
+      `Resolve conflicts manually and re-run.`
+    );
+  }
+
   const prUrl = parsePrUrl(prResult);
   if (!prUrl) {
     throw haltError(

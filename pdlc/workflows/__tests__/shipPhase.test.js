@@ -1,11 +1,12 @@
 /**
  * Tests for Phase PUB — raise PR + verify GHA checks (TSPEC-SHIP-01..04).
- * Covers parsePrUrl, parseCiStatus, the raisePrAndVerifyCi poll loop, and main() wiring.
+ * Covers parsePrUrl, parseCiStatus, parseRebaseStatus, the raisePrAndVerifyCi poll loop, and main() wiring.
  */
 
 import main, {
   parsePrUrl,
   parseCiStatus,
+  parseRebaseStatus,
   raisePrAndVerifyCi,
 } from "../orchestrate-dev.js";
 import { readFileSync } from "fs";
@@ -90,6 +91,33 @@ describe("parseCiStatus", () => {
   });
 });
 
+// ─── parseRebaseStatus ─────────────────────────────────────────────────────
+describe("parseRebaseStatus", () => {
+  it("parses clean status", () => {
+    expect(parseRebaseStatus("REBASE_STATUS: clean")).toBe("clean");
+  });
+
+  it("parses conflict status", () => {
+    expect(parseRebaseStatus("Conflicting files: a.ts, b.ts\nREBASE_STATUS: conflict")).toBe("conflict");
+  });
+
+  it("is case-insensitive on the value", () => {
+    expect(parseRebaseStatus("REBASE_STATUS: Clean")).toBe("clean");
+    expect(parseRebaseStatus("REBASE_STATUS: CONFLICT")).toBe("conflict");
+  });
+
+  it("returns unknown for missing / malformed / empty", () => {
+    expect(parseRebaseStatus("no trailer here")).toBe("unknown");
+    expect(parseRebaseStatus("REBASE_STATUS: maybe")).toBe("unknown");
+    expect(parseRebaseStatus("")).toBe("unknown");
+    expect(parseRebaseStatus(null)).toBe("unknown");
+  });
+
+  it("finds the last REBASE_STATUS line when several are present", () => {
+    expect(parseRebaseStatus("REBASE_STATUS: conflict\nretried\nREBASE_STATUS: clean")).toBe("clean");
+  });
+});
+
 // ─── raisePrAndVerifyCi ─────────────────────────────────────────────────────
 describe("raisePrAndVerifyCi", () => {
   function makeShipAgent(pollResponses) {
@@ -97,7 +125,7 @@ describe("raisePrAndVerifyCi", () => {
     return async (skill, prompt) => {
       if (skill !== "ship-pr") return "Success.";
       if (prompt.includes("Raise a pull request")) {
-        return "PR opened.\nPR_URL: https://github.com/a/b/pull/9";
+        return "Rebased.\nREBASE_STATUS: clean\nPR opened.\nPR_URL: https://github.com/a/b/pull/9";
       }
       const r = pollResponses[Math.min(pollIdx, pollResponses.length - 1)];
       pollIdx += 1;
@@ -105,8 +133,15 @@ describe("raisePrAndVerifyCi", () => {
     };
   }
 
+  it("halts when rebase produces a conflict", async () => {
+    const agent = async () => "Conflicting files: a.ts\nREBASE_STATUS: conflict\nPR_URL: none";
+    await expect(
+      raisePrAndVerifyCi({ feature: "feat", _agent: agent, _log: () => {} })
+    ).rejects.toThrow(/rebase conflict/);
+  });
+
   it("halts when PR creation returns no URL", async () => {
-    const agent = async () => "could not push\nPR_URL: none";
+    const agent = async () => "REBASE_STATUS: clean\ncould not push\nPR_URL: none";
     await expect(
       raisePrAndVerifyCi({ feature: "feat", _agent: agent, _log: () => {} })
     ).rejects.toThrow(/PR creation failed/);
@@ -299,7 +334,7 @@ describe("Phase PUB wiring in main()", () => {
       if (skill === "dod-verify") return "Clean.\nDOD_STATUS: passed";
       if (skill === "ship-pr") {
         if (prompt.includes("Raise a pull request")) {
-          return "PR opened.\nPR_URL: https://github.com/acme/repo/pull/42";
+          return "Rebased.\nREBASE_STATUS: clean\nPR opened.\nPR_URL: https://github.com/acme/repo/pull/42";
         }
         return "Checks.\nCI_STATUS: passed";
       }
@@ -346,13 +381,27 @@ describe("Phase PUB wiring in main()", () => {
     const inner = args._agent;
     args._agent = async (skill, prompt) => {
       if (skill === "ship-pr" && prompt.includes("Raise a pull request")) {
-        return "push failed\nPR_URL: none";
+        return "REBASE_STATUS: clean\npush failed\nPR_URL: none";
       }
       return inner(skill, prompt);
     };
     const result = await main(args);
     expect(result.outcome).toBe("halted");
     expect(result.haltReason).toMatch(/PR creation failed/);
+  });
+
+  it("halts when rebase conflicts are detected", async () => {
+    const args = baseArgs();
+    const inner = args._agent;
+    args._agent = async (skill, prompt) => {
+      if (skill === "ship-pr" && prompt.includes("Raise a pull request")) {
+        return "Conflicting files: src/main.ts\nREBASE_STATUS: conflict\nPR_URL: none";
+      }
+      return inner(skill, prompt);
+    };
+    const result = await main(args);
+    expect(result.outcome).toBe("halted");
+    expect(result.haltReason).toMatch(/rebase conflict/);
   });
 
   it("passes injected _raisePrAndVerifyCi and surfaces its result", async () => {
@@ -415,13 +464,30 @@ describe("Phase PUB static guarantees", () => {
     expect(content).toMatch(/Do NOT merge the PR/i);
   });
 
-  it("ship-pr SKILL.md exists and documents the PR_URL and CI_STATUS trailers", () => {
+  it("ship-pr SKILL.md exists and documents the PR_URL, CI_STATUS, and REBASE_STATUS trailers", () => {
     const skillPath = resolve(__dirname, "../../skills/ship-pr/SKILL.md");
     const content = readFileSync(skillPath, "utf8");
     expect(content.length).toBeGreaterThan(0);
     expect(content).toContain("PR_URL:");
     expect(content).toContain("CI_STATUS:");
+    expect(content).toContain("REBASE_STATUS:");
     expect(content).toContain("name: ship-pr");
+  });
+
+  it("createPrPrompt instructs the ship-pr agent to rebase before pushing", () => {
+    const content = readFileSync(scriptPath, "utf8");
+    const start = content.indexOf("function createPrPrompt");
+    const nextFn = content.indexOf("\nfunction ", start + 1);
+    const promptFn = content.slice(start, nextFn > start ? nextFn : start + 2000);
+    expect(promptFn).toContain("rebase");
+    expect(promptFn).toContain("REBASE_STATUS");
+    expect(promptFn).toContain("force-with-lease");
+  });
+
+  it("raisePrAndVerifyCi checks rebase status and halts on conflict", () => {
+    const content = readFileSync(scriptPath, "utf8");
+    expect(content).toContain("parseRebaseStatus");
+    expect(content).toContain("rebase conflict");
   });
 
   it("never passes a ship-pr agent result variable to log()/emit()", () => {

@@ -58,7 +58,7 @@ function makeSuccessAgent(feature = "test-feat") {
     }
     if (skill === "ship-pr") {
       if (typeof prompt === "string" && prompt.includes("Raise a pull request")) {
-        return "PR opened.\nPR_URL: https://github.com/acme/repo/pull/42";
+        return "Rebased.\nREBASE_STATUS: clean\nPR opened.\nPR_URL: https://github.com/acme/repo/pull/42";
       }
       return "Checks complete.\nCI_STATUS: passed";
     }
