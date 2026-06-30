@@ -15,6 +15,12 @@
 // TSPEC-HARVEST-01: compile-time flag
 const PHASE_H_ENABLED = true; // Set to false until feature-branch-consistency fix lands
 
+// DOD-01: compile-time flag for Definition of Done verification (Phase DOD)
+const PHASE_DOD_ENABLED = true; // Set to false to skip DoD verification gate
+
+// DOD-02: maximum remediation iterations before halt
+const DOD_MAX_ITERATIONS = 3;
+
 // TSPEC-SHIP-01: compile-time flag for the PR-raise / CI-verify phase (Phase PUB)
 const PHASE_PUB_ENABLED = true; // Set to false to skip auto-PR + CI verification
 
@@ -105,6 +111,12 @@ export const PHASE_DISPATCH = {
     creatorOutputPath: null,
     reviewers: ["pm-review", "te-review"],
     optimizer: "se-author",
+  },
+  DOD: {
+    phase: "DOD",
+    label: "Definition of Done Verification",
+    verifier: "dod-verify",
+    optimizer: "se-implement",
   },
 };
 
@@ -583,6 +595,193 @@ export function parseCiStatus(result) {
   return "unknown";
 }
 
+// ─── DOD-03: parseDodStatus ──────────────────────────────────────────────────
+
+/**
+ * Extract DOD_STATUS from a dod-verify agent result string.
+ * @param {string | null | undefined} result - Raw agent result
+ * @returns {{ status: "passed" | "failed" | "unknown", stubs: number, mock_data: number, unwired_integrations: number, coverage_below_threshold: boolean, branch_coverage_pct: number }}
+ */
+export function parseDodStatus(result) {
+  const fallback = {
+    status: "unknown",
+    stubs: 0,
+    mock_data: 0,
+    unwired_integrations: 0,
+    coverage_below_threshold: false,
+    branch_coverage_pct: 0,
+  };
+
+  if (result == null || (typeof result === "string" && result.trim() === "")) {
+    return fallback;
+  }
+
+  const lines = result.split("\n");
+
+  let statusLine = null;
+  let statusLineIndex = -1;
+
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const trimmed = lines[i].trim();
+    if (trimmed.startsWith("DOD_STATUS: ")) {
+      statusLine = trimmed;
+      statusLineIndex = i;
+      break;
+    }
+  }
+
+  if (statusLine === null) {
+    return fallback;
+  }
+
+  const rawStatus = statusLine.slice("DOD_STATUS: ".length).trim().toLowerCase();
+
+  if (rawStatus === "passed") {
+    return {
+      status: "passed",
+      stubs: 0,
+      mock_data: 0,
+      unwired_integrations: 0,
+      coverage_below_threshold: false,
+      branch_coverage_pct: 100,
+    };
+  }
+
+  if (rawStatus !== "failed") {
+    return fallback;
+  }
+
+  // Find next non-empty line after the DOD_STATUS line
+  let nextNonEmpty = null;
+  for (let j = statusLineIndex + 1; j < lines.length; j++) {
+    if (lines[j].trim() !== "") {
+      nextNonEmpty = lines[j].trim();
+      break;
+    }
+  }
+
+  if (nextNonEmpty === null) {
+    return {
+      status: "failed",
+      stubs: 0,
+      mock_data: 0,
+      unwired_integrations: 0,
+      coverage_below_threshold: false,
+      branch_coverage_pct: 0,
+    };
+  }
+
+  let parsed = null;
+  try {
+    parsed = JSON.parse(nextNonEmpty);
+  } catch {
+    return {
+      status: "failed",
+      stubs: 0,
+      mock_data: 0,
+      unwired_integrations: 0,
+      coverage_below_threshold: false,
+      branch_coverage_pct: 0,
+    };
+  }
+
+  return {
+    status: "failed",
+    stubs: Number.isInteger(parsed.stubs) && parsed.stubs >= 0 ? parsed.stubs : 0,
+    mock_data: Number.isInteger(parsed.mock_data) && parsed.mock_data >= 0 ? parsed.mock_data : 0,
+    unwired_integrations: Number.isInteger(parsed.unwired_integrations) && parsed.unwired_integrations >= 0 ? parsed.unwired_integrations : 0,
+    coverage_below_threshold: parsed.coverage_below_threshold === true,
+    branch_coverage_pct: typeof parsed.branch_coverage_pct === "number" && parsed.branch_coverage_pct >= 0 ? parsed.branch_coverage_pct : 0,
+  };
+}
+
+// ─── DOD-04: dodVerifyLoop ───────────────────────────────────────────────────
+
+function dodVerifyPrompt(featureName) {
+  return (
+    `Verify the Definition of Done for feature ${featureName}.\n` +
+    `Scan all production code on this branch (non-test files changed by this feature) for:\n` +
+    `1. Stubs, TODOs, placeholders, NotImplementedError in production code\n` +
+    `2. Unwired integrations — unused imports, dead config, placeholder URLs\n` +
+    `3. Mock/fake data in production code — hardcoded test data, mock variables outside test files\n` +
+    `4. Branch coverage ≥85% for all new modules, with property-based tests for parameterisable components\n` +
+    `Use git diff --name-only against the default branch to scope the scan.\n` +
+    `End with the DOD_STATUS trailer.`
+  );
+}
+
+function dodFixPrompt(featureName, dodResult) {
+  return (
+    `Fix the Definition of Done violations for feature ${featureName}.\n` +
+    `The dod-verify agent found the following issues:\n\n` +
+    `${dodResult}\n\n` +
+    `Address every violation:\n` +
+    `- Replace stubs/TODOs with real implementations\n` +
+    `- Wire all integrations (remove unused imports or connect them)\n` +
+    `- Remove mock/fake data from production code (move to test fixtures if needed)\n` +
+    `- Add property-based tests and increase branch coverage to ≥85% for any module below threshold\n` +
+    `Follow TDD. Run tests. All tests must pass before committing. Commit and push.`
+  );
+}
+
+/**
+ * Phase DOD: verify the Definition of Done, remediate if needed, re-verify.
+ * Caps at DOD_MAX_ITERATIONS remediation cycles.
+ *
+ * @param {object} params
+ * @param {string} params.feature
+ * @param {number} [params.maxIterations]
+ * @param {function} [params._agent]
+ * @param {function} [params._log]
+ * @returns {Promise<{ passed: boolean, iterations: number, lastStatus?: object }>}
+ */
+export async function dodVerifyLoop({
+  feature,
+  maxIterations = DOD_MAX_ITERATIONS,
+  _agent = agent,
+  _log = log,
+}) {
+  for (let iteration = 1; iteration <= maxIterations; iteration++) {
+    _log(`DoD verification — iteration ${iteration}`);
+
+    const verifyResult = await _agent("dod-verify", dodVerifyPrompt(feature));
+    const status = parseDodStatus(verifyResult);
+
+    if (status.status === "passed") {
+      _log("DoD verification passed");
+      return { passed: true, iterations: iteration };
+    }
+
+    if (status.status === "unknown") {
+      _log("WARNING: dod-verify returned no DOD_STATUS — treating as failed");
+    }
+
+    const totalViolations = status.stubs + status.mock_data + status.unwired_integrations + (status.coverage_below_threshold ? 1 : 0);
+    _log(
+      `DoD violations: stubs=${status.stubs}, mock_data=${status.mock_data}, ` +
+      `unwired=${status.unwired_integrations}, coverage_gap=${status.coverage_below_threshold} ` +
+      `(branch_coverage=${status.branch_coverage_pct}%)`
+    );
+
+    if (iteration === maxIterations) {
+      return { passed: false, iterations: iteration, lastStatus: status };
+    }
+
+    // Dispatch optimizer to fix violations
+    const fixResult = await _agent(
+      PHASE_DISPATCH.DOD.optimizer,
+      dodFixPrompt(feature, verifyResult)
+    );
+
+    if (fixResult == null || (typeof fixResult === "string" && fixResult.trim() === "")) {
+      _log("WARNING: DoD optimizer returned empty result");
+    }
+  }
+
+  // Should not reach here, but guard
+  return { passed: false, iterations: maxIterations };
+}
+
 /**
  * Phase PUB: raise (or reuse) the PR for the feature branch, then poll GHA checks
  * until they pass, fail, or the no-checks window expires. The poll-timing logic
@@ -856,7 +1055,9 @@ export default async function main({
   _phase: phaseFn = phase,
   _pipeline: pipelineFn = pipeline,
   _mergeWorktree: mergeWorktreeFn = mergeWorktree,
+  _dodVerifyLoop: dodVerifyLoopFn = dodVerifyLoop,
   _raisePrAndVerifyCi: raisePrAndVerifyCiFn = raisePrAndVerifyCi,
+  _phaseDodEnabled: phaseDodEnabled = PHASE_DOD_ENABLED,
   _phasePubEnabled: phasePubEnabled = PHASE_PUB_ENABLED,
   _now,
   _sleep,
@@ -1221,6 +1422,31 @@ export default async function main({
       });
       checkConverged(crResult, "CR", PHASE_DISPATCH.CR.label, recordPhase);
       recordPhase("CR", PHASE_DISPATCH.CR.label, "✅", `Approved (${crResult.iterations} iterations)`, crResult.iterations);
+
+      // ─── Phase DOD: Definition of Done Verification ─────────────────────
+      if (!phaseDodEnabled) {
+        phaseFn("Phase DOD: ⏭ Skipped");
+        emit("Phase DOD skipped — DoD verification disabled");
+        recordPhase("DOD", PHASE_DISPATCH.DOD.label, "⏭", "Skipped — DoD verification disabled");
+      } else {
+        phaseFn("Phase DOD: Definition of Done Verification");
+        const dodResult = await dodVerifyLoopFn({
+          feature: featureName,
+          _agent: agentFn,
+          _log: emit,
+        });
+        if (!dodResult.passed) {
+          const detail =
+            dodResult.lastStatus
+              ? `stubs=${dodResult.lastStatus.stubs}, mock_data=${dodResult.lastStatus.mock_data}, unwired=${dodResult.lastStatus.unwired_integrations}, coverage_gap=${dodResult.lastStatus.coverage_below_threshold}`
+              : "verification failed";
+          recordPhase("DOD", PHASE_DISPATCH.DOD.label, "❌", `Failed after ${dodResult.iterations} iterations — ${detail}`, dodResult.iterations);
+          throw haltError(
+            `Phase DOD failed after ${dodResult.iterations} iterations — Definition of Done not met. ${detail}`
+          );
+        }
+        recordPhase("DOD", PHASE_DISPATCH.DOD.label, "✅", `Passed (${dodResult.iterations} iteration${dodResult.iterations !== 1 ? "s" : ""})`, dodResult.iterations);
+      }
 
       // ─── Phase H: Harvest ────────────────────────────────────────────────
       // check-scope-field fires PostToolUse:Write|Edit on all workflow agent writes;

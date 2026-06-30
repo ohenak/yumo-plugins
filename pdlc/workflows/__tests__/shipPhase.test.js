@@ -296,6 +296,7 @@ describe("Phase PUB wiring in main()", () => {
       }
       if (skill === "se-implement") return "Tests: 3 passed, 0 failed.";
       if (skill === "harvest-learnings") return "Harvest complete.";
+      if (skill === "dod-verify") return "Clean.\nDOD_STATUS: passed";
       if (skill === "ship-pr") {
         if (prompt.includes("Raise a pull request")) {
           return "PR opened.\nPR_URL: https://github.com/acme/repo/pull/42";
