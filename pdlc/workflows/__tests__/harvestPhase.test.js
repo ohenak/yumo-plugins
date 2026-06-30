@@ -121,6 +121,7 @@ describe("PROP-HARVEST-01: Harvest prompt instructs correct operation order", ()
     expect(harvestIdx).toBeGreaterThan(-1);
     const promptBody = content.slice(harvestIdx, harvestIdx + 1000);
     expect(promptBody).toContain("CROSS-REVIEW");
+    expect(promptBody).toContain("CODE_REVIEW");
     expect(promptBody).toContain("POSTMORTEM");
     expect(promptBody).toContain("LEARNINGS");
     expect(promptBody).toContain("Commit and push LEARNINGS before any delete");
