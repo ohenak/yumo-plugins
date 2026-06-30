@@ -6,7 +6,6 @@
 import main, {
   parseDodStatus,
   dodVerifyLoop,
-  rebaseOntoDefault,
 } from "../orchestrate-dev.js";
 import { readFileSync } from "fs";
 import { resolve, dirname } from "path";
@@ -36,13 +35,12 @@ describe("parseDodStatus", () => {
     expect(result.stubs).toBe(0);
     expect(result.coverage_below_threshold).toBe(false);
     expect(result.branch_coverage_pct).toBe(100);
-    expect(result.req_gaps).toBe(0);
   });
 
-  it("parses a failed status with JSON detail including req_gaps", () => {
+  it("parses a failed status with JSON detail", () => {
     const input =
       "Found issues.\nDOD_STATUS: failed\n" +
-      '{"stubs": 3, "mock_data": 1, "unwired_integrations": 2, "coverage_below_threshold": true, "branch_coverage_pct": 72, "req_gaps": 4}';
+      '{"stubs": 3, "mock_data": 1, "unwired_integrations": 2, "coverage_below_threshold": true, "branch_coverage_pct": 72}';
     const result = parseDodStatus(input);
     expect(result.status).toBe("failed");
     expect(result.stubs).toBe(3);
@@ -50,22 +48,6 @@ describe("parseDodStatus", () => {
     expect(result.unwired_integrations).toBe(2);
     expect(result.coverage_below_threshold).toBe(true);
     expect(result.branch_coverage_pct).toBe(72);
-    expect(result.req_gaps).toBe(4);
-  });
-
-  it("defaults req_gaps to 0 when omitted from JSON", () => {
-    const input =
-      "Found issues.\nDOD_STATUS: failed\n" +
-      '{"stubs": 1, "mock_data": 0, "unwired_integrations": 0, "coverage_below_threshold": false, "branch_coverage_pct": 90}';
-    const result = parseDodStatus(input);
-    expect(result.req_gaps).toBe(0);
-  });
-
-  it("clamps negative req_gaps to 0", () => {
-    const input =
-      "DOD_STATUS: failed\n" +
-      '{"stubs": 0, "mock_data": 0, "unwired_integrations": 0, "coverage_below_threshold": false, "branch_coverage_pct": 90, "req_gaps": -2}';
-    expect(parseDodStatus(input).req_gaps).toBe(0);
   });
 
   it("returns failed with zeros when JSON is missing after failed trailer", () => {
@@ -163,7 +145,7 @@ describe("dodVerifyLoop", () => {
       if (skill === "dod-verify") {
         return (
           "Stubs remain.\nDOD_STATUS: failed\n" +
-          '{"stubs": 1, "mock_data": 0, "unwired_integrations": 0, "coverage_below_threshold": false, "branch_coverage_pct": 90, "req_gaps": 2}'
+          '{"stubs": 1, "mock_data": 0, "unwired_integrations": 0, "coverage_below_threshold": false, "branch_coverage_pct": 90}'
         );
       }
       return "Attempted fix.";
@@ -178,7 +160,6 @@ describe("dodVerifyLoop", () => {
     expect(result.iterations).toBe(3);
     expect(result.lastStatus).toBeDefined();
     expect(result.lastStatus.stubs).toBe(1);
-    expect(result.lastStatus.req_gaps).toBe(2);
   });
 
   it("treats unknown/missing DOD_STATUS as failed", async () => {
@@ -202,7 +183,7 @@ describe("dodVerifyLoop", () => {
     expect(logs.some((m) => m.includes("no DOD_STATUS"))).toBe(true);
   });
 
-  it("dispatches se-implement to remediate between verify passes", async () => {
+  it("only invokes dod-verify (no separate optimizer) — self-remediating", async () => {
     const skillsCalled = [];
     const mockAgent = async (skill) => {
       skillsCalled.push(skill);
@@ -212,7 +193,7 @@ describe("dodVerifyLoop", () => {
           '{"stubs": 1, "mock_data": 0, "unwired_integrations": 0, "coverage_below_threshold": false, "branch_coverage_pct": 90}'
         );
       }
-      return "Remediated.";
+      return "Unexpected.";
     };
     await dodVerifyLoop({
       feature: "test-feat",
@@ -220,70 +201,33 @@ describe("dodVerifyLoop", () => {
       _agent: mockAgent,
       _log: () => {},
     });
-    // iter1: verify(fail) → remediate; iter2: verify(fail) → (max reached, no remediate)
-    expect(skillsCalled).toEqual(["dod-verify", "se-implement", "dod-verify"]);
+    expect(skillsCalled.every((s) => s === "dod-verify")).toBe(true);
+    expect(skillsCalled.length).toBe(2);
   });
 
-  it("the remediator reads the matching CODE_REVIEW version", async () => {
-    const remediatePrompts = [];
-    const mockAgent = async (skill, prompt) => {
+  it("fixes then passes on second iteration (dod-verify handles its own fixes)", async () => {
+    let callCount = 0;
+    const mockAgent = async (skill) => {
       if (skill === "dod-verify") {
-        return (
-          "DOD_STATUS: failed\n" +
-          '{"stubs": 1, "mock_data": 0, "unwired_integrations": 0, "coverage_below_threshold": false, "branch_coverage_pct": 90}'
-        );
-      }
-      if (skill === "se-implement") remediatePrompts.push(prompt);
-      return "Remediated.";
-    };
-    await dodVerifyLoop({
-      feature: "test-feat",
-      maxIterations: 3,
-      _agent: mockAgent,
-      _log: () => {},
-    });
-    // Two remediation rounds (after v1 and v2), each pointed at its own CODE_REVIEW version.
-    expect(remediatePrompts).toHaveLength(2);
-    expect(remediatePrompts[0]).toContain("CODE_REVIEW-test-feat-v1.md");
-    expect(remediatePrompts[1]).toContain("CODE_REVIEW-test-feat-v2.md");
-  });
-
-  it("dod-verify is asked to document (not fix) a versioned CODE_REVIEW", async () => {
-    const verifyPrompts = [];
-    const mockAgent = async (skill, prompt) => {
-      if (skill === "dod-verify") {
-        verifyPrompts.push(prompt);
-        return "Clean.\nDOD_STATUS: passed";
+        callCount++;
+        if (callCount === 1) {
+          return (
+            "Found stubs. Fixed them. Committed.\nDOD_STATUS: failed\n" +
+            '{"stubs": 1, "mock_data": 0, "unwired_integrations": 0, "coverage_below_threshold": false, "branch_coverage_pct": 90}'
+          );
+        }
+        return "All clean after fixes.\nDOD_STATUS: passed";
       }
       return "Unexpected.";
     };
-    await dodVerifyLoop({ feature: "test-feat", _agent: mockAgent, _log: () => {} });
-    expect(verifyPrompts[0]).toContain("CODE_REVIEW-test-feat-v1.md");
-    expect(verifyPrompts[0]).toMatch(/Do NOT fix/i);
-  });
-});
-
-// ─── rebaseOntoDefault ───────────────────────────────────────────────────────
-describe("rebaseOntoDefault", () => {
-  it("returns clean when ship-pr reports a clean rebase", async () => {
-    const agent = async (skill) =>
-      skill === "ship-pr" ? "Rebased.\nREBASE_STATUS: clean" : "x";
-    const status = await rebaseOntoDefault({
+    const result = await dodVerifyLoop({
       feature: "test-feat",
-      _agent: agent,
+      _agent: mockAgent,
       _log: () => {},
     });
-    expect(status).toBe("clean");
-  });
-
-  it("returns conflict when ship-pr reports a rebase conflict", async () => {
-    const agent = async () => "Conflicts: a.ts\nREBASE_STATUS: conflict";
-    const status = await rebaseOntoDefault({
-      feature: "test-feat",
-      _agent: agent,
-      _log: () => {},
-    });
-    expect(status).toBe("conflict");
+    expect(result.passed).toBe(true);
+    expect(result.iterations).toBe(2);
+    expect(callCount).toBe(2);
   });
 });
 
@@ -310,11 +254,8 @@ describe("Phase DOD wiring in main()", () => {
       if (skill === "harvest-learnings") return "Harvest complete.";
       if (skill === "dod-verify") return "Clean.\nDOD_STATUS: passed";
       if (skill === "ship-pr") {
-        if (prompt.includes("Rebase the feature branch")) {
-          return "Rebased.\nREBASE_STATUS: clean";
-        }
         if (prompt.includes("Raise a pull request")) {
-          return "PR opened.\nPR_URL: https://github.com/acme/repo/pull/42";
+          return "Rebased.\nREBASE_STATUS: clean\nPR opened.\nPR_URL: https://github.com/acme/repo/pull/42";
         }
         return "Checks.\nCI_STATUS: passed";
       }
@@ -352,7 +293,6 @@ describe("Phase DOD wiring in main()", () => {
           mock_data: 0,
           unwired_integrations: 1,
           coverage_below_threshold: true,
-          req_gaps: 3,
         },
       }),
     });
@@ -362,39 +302,6 @@ describe("Phase DOD wiring in main()", () => {
     const dod = result.phases.find((p) => p.phase === "DOD");
     expect(dod).toBeTruthy();
     expect(dod.status).toBe("❌");
-  });
-
-  it("halts in Phase DOD when the rebase onto default branch conflicts", async () => {
-    let dodCalled = false;
-    const result = await main({
-      ...baseArgs(),
-      _rebaseOntoDefault: async () => "conflict",
-      _dodVerifyLoop: async () => {
-        dodCalled = true;
-        return { passed: true, iterations: 1 };
-      },
-    });
-    expect(result.outcome).toBe("halted");
-    expect(result.haltReason).toMatch(/rebase conflict/);
-    expect(dodCalled).toBe(false); // verification must not run after a conflicted rebase
-    const dod = result.phases.find((p) => p.phase === "DOD");
-    expect(dod.status).toBe("❌");
-  });
-
-  it("rebases onto the default branch before verifying (DOD step 0)", async () => {
-    const order = [];
-    await main({
-      ...baseArgs(),
-      _rebaseOntoDefault: async () => {
-        order.push("rebase");
-        return "clean";
-      },
-      _dodVerifyLoop: async () => {
-        order.push("verify");
-        return { passed: true, iterations: 1 };
-      },
-    });
-    expect(order).toEqual(["rebase", "verify"]);
   });
 
   it("skips Phase DOD when disabled", async () => {
@@ -457,16 +364,16 @@ describe("Phase DOD static guarantees", () => {
     expect(content).toMatch(/const DOD_MAX_ITERATIONS = \d+/);
   });
 
-  it("PHASE_DISPATCH includes DOD entry with dod-verify verifier and se-implement remediator", () => {
+  it("PHASE_DISPATCH includes DOD entry with dod-verify (self-remediating, no optimizer)", () => {
     const content = readFileSync(scriptPath, "utf8");
     expect(content).toContain('"dod-verify"');
     expect(content).toContain('phase: "DOD"');
-    // DOD phase is an evaluator→optimizer loop: dod-verify documents, se-implement fixes.
+    // DOD phase should not have an optimizer — dod-verify fixes its own findings
     const dodBlock = content.slice(
       content.indexOf('phase: "DOD"'),
       content.indexOf("}", content.indexOf('phase: "DOD"')) + 1
     );
-    expect(dodBlock).toContain('remediator: "se-implement"');
+    expect(dodBlock).not.toContain("optimizer");
   });
 
   it("dod-verify SKILL.md exists and documents the DOD_STATUS trailer", () => {
@@ -477,7 +384,7 @@ describe("Phase DOD static guarantees", () => {
     expect(content).toContain("name: dod-verify");
   });
 
-  it("dod-verify SKILL.md documents all five DoD criteria", () => {
+  it("dod-verify SKILL.md documents all four DoD criteria", () => {
     const skillPath = resolve(__dirname, "../../skills/dod-verify/SKILL.md");
     const content = readFileSync(skillPath, "utf8");
     expect(content).toContain("No Stubs in Production Code");
@@ -486,36 +393,5 @@ describe("Phase DOD static guarantees", () => {
     expect(content).toContain("Branch Coverage");
     expect(content).toContain("85%");
     expect(content).toContain("property-based");
-    // Criterion 5: requirements traceability
-    expect(content).toContain("Requirements Delivered");
-    expect(content).toContain("req_gaps");
-    expect(content).toContain("REQ");
-    expect(content).toContain("FSPEC");
-    expect(content).toContain("PROPERTIES");
-  });
-
-  it("dod-verify SKILL.md has bar-raiser persona", () => {
-    const skillPath = resolve(__dirname, "../../skills/dod-verify/SKILL.md");
-    const content = readFileSync(skillPath, "utf8");
-    // Must establish bar-raiser mindset — not a passive scanner
-    expect(content).toContain("## Bar-Raiser");
-    expect(content).toMatch(/bar-raiser|burden of proof/i);
-  });
-
-  it("dodVerifyPrompt includes req_gaps in the trailer instruction", () => {
-    const content = readFileSync(scriptPath, "utf8");
-    const start = content.indexOf("function dodVerifyPrompt");
-    const nextFn = content.indexOf("\nfunction ", start + 1);
-    const promptFn = content.slice(start, nextFn > start ? nextFn : start + 3000);
-    expect(promptFn).toContain("req_gaps");
-    expect(promptFn).toContain("REQ");
-    expect(promptFn).toContain("FSPEC");
-    expect(promptFn).toContain("PROPERTIES");
-  });
-
-  it("parseDodStatus returns req_gaps field on passed and failed statuses", () => {
-    const content = readFileSync(scriptPath, "utf8");
-    // req_gaps must appear in both the passed-return and the failed-return of parseDodStatus
-    expect(content).toMatch(/req_gaps.*0/); // passed returns 0
   });
 });
