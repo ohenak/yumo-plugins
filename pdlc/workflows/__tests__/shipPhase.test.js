@@ -133,15 +133,8 @@ describe("raisePrAndVerifyCi", () => {
     };
   }
 
-  it("halts when rebase produces a conflict", async () => {
-    const agent = async () => "Conflicting files: a.ts\nREBASE_STATUS: conflict\nPR_URL: none";
-    await expect(
-      raisePrAndVerifyCi({ feature: "feat", _agent: agent, _log: () => {} })
-    ).rejects.toThrow(/rebase conflict/);
-  });
-
   it("halts when PR creation returns no URL", async () => {
-    const agent = async () => "REBASE_STATUS: clean\ncould not push\nPR_URL: none";
+    const agent = async () => "could not push\nPR_URL: none";
     await expect(
       raisePrAndVerifyCi({ feature: "feat", _agent: agent, _log: () => {} })
     ).rejects.toThrow(/PR creation failed/);
@@ -333,8 +326,11 @@ describe("Phase PUB wiring in main()", () => {
       if (skill === "harvest-learnings") return "Harvest complete.";
       if (skill === "dod-verify") return "Clean.\nDOD_STATUS: passed";
       if (skill === "ship-pr") {
+        if (prompt.includes("Rebase the feature branch")) {
+          return "Rebased.\nREBASE_STATUS: clean";
+        }
         if (prompt.includes("Raise a pull request")) {
-          return "Rebased.\nREBASE_STATUS: clean\nPR opened.\nPR_URL: https://github.com/acme/repo/pull/42";
+          return "PR opened.\nPR_URL: https://github.com/acme/repo/pull/42";
         }
         return "Checks.\nCI_STATUS: passed";
       }
@@ -381,27 +377,13 @@ describe("Phase PUB wiring in main()", () => {
     const inner = args._agent;
     args._agent = async (skill, prompt) => {
       if (skill === "ship-pr" && prompt.includes("Raise a pull request")) {
-        return "REBASE_STATUS: clean\npush failed\nPR_URL: none";
+        return "push failed\nPR_URL: none";
       }
       return inner(skill, prompt);
     };
     const result = await main(args);
     expect(result.outcome).toBe("halted");
     expect(result.haltReason).toMatch(/PR creation failed/);
-  });
-
-  it("halts when rebase conflicts are detected", async () => {
-    const args = baseArgs();
-    const inner = args._agent;
-    args._agent = async (skill, prompt) => {
-      if (skill === "ship-pr" && prompt.includes("Raise a pull request")) {
-        return "Conflicting files: src/main.ts\nREBASE_STATUS: conflict\nPR_URL: none";
-      }
-      return inner(skill, prompt);
-    };
-    const result = await main(args);
-    expect(result.outcome).toBe("halted");
-    expect(result.haltReason).toMatch(/rebase conflict/);
   });
 
   it("passes injected _raisePrAndVerifyCi and surfaces its result", async () => {
@@ -474,9 +456,19 @@ describe("Phase PUB static guarantees", () => {
     expect(content).toContain("name: ship-pr");
   });
 
-  it("createPrPrompt instructs the ship-pr agent to rebase before pushing", () => {
+  it("createPrPrompt does NOT rebase — rebase moved to Phase DOD", () => {
     const content = readFileSync(scriptPath, "utf8");
     const start = content.indexOf("function createPrPrompt");
+    const nextFn = content.indexOf("\nfunction ", start + 1);
+    const promptFn = content.slice(start, nextFn > start ? nextFn : start + 2000);
+    expect(promptFn).not.toContain("REBASE_STATUS");
+    expect(promptFn).not.toContain("force-with-lease");
+    expect(promptFn).toMatch(/do NOT rebase again/i);
+  });
+
+  it("rebasePrompt instructs the ship-pr agent to rebase and emit REBASE_STATUS", () => {
+    const content = readFileSync(scriptPath, "utf8");
+    const start = content.indexOf("function rebasePrompt");
     const nextFn = content.indexOf("\nfunction ", start + 1);
     const promptFn = content.slice(start, nextFn > start ? nextFn : start + 2000);
     expect(promptFn).toContain("rebase");

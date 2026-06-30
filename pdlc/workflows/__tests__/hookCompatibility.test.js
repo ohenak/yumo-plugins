@@ -128,6 +128,28 @@ describe("PROP-COMPAT-04: check-scope-field.sh warns when Scope tag is absent", 
       expect(stdout.trim()).toBe("");
     }
   );
+
+  (hasBash ? it : it.skip)(
+    "outputs advisory JSON when a CODE_REVIEW-*.md file lacks a Scope tag",
+    () => {
+      const codeReviewFile = join(tmpDir, "CODE_REVIEW-my-feature-v1.md");
+      writeFileSync(
+        codeReviewFile,
+        "# Code Review\n\n## Findings\n\n| # | Criterion | Severity | Finding |\n|---|---|---|---|\n| 1 | Stub | high | TODO left |\n"
+      );
+      const toolInput = JSON.stringify({
+        tool_input: { file_path: codeReviewFile },
+      });
+
+      const { exitCode, stdout } = runHookScript(CHECK_SCOPE_SCRIPT, toolInput, {
+        cwd: tmpDir,
+      });
+
+      expect(exitCode).toBe(0);
+      expect(stdout).toContain("hookSpecificOutput");
+      expect(stdout).toContain("Scope");
+    }
+  );
 });
 
 // ─── PROP-COMPAT-05: guard-harvest-before-delete.sh ──────────────────────────
@@ -198,6 +220,25 @@ describe("PROP-COMPAT-05: guard-harvest-before-delete.sh blocks deletion when no
 
       // LEARNINGS exists → guard should allow (exit 0)
       expect(exitCode).toBe(0);
+    }
+  );
+
+  (hasBash ? it : it.skip)(
+    "exits non-zero when trying to delete CODE_REVIEW-*.md and no LEARNINGS-*.md exists",
+    () => {
+      const codeReviewPath = join(tmpDir, "CODE_REVIEW-my-feature-v1.md");
+      writeFileSync(codeReviewPath, "# Code Review\nDoD findings.\n");
+      const toolInput = JSON.stringify({
+        tool_input: { command: `rm ${codeReviewPath}` },
+      });
+
+      const { exitCode, stderr } = runHookScript(GUARD_HARVEST_SCRIPT, toolInput, {
+        cwd: tmpDir,
+        env: { CLAUDE_PROJECT_DIR: tmpDir },
+      });
+
+      expect(exitCode).not.toBe(0);
+      expect(stderr).toContain("pdlc guard");
     }
   );
 });

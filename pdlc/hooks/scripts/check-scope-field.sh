@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # pdlc advisory PostToolUse hook.
-# When a CROSS-REVIEW-*.md file is written/edited without a "Scope" tag, nudge the
-# agent to add one (Local | Cross-Feature | Process) so the harvest phase can later
-# preserve durable signal. Never blocks — always exits 0.
+# When a CROSS-REVIEW-*.md or CODE_REVIEW-*.md file is written/edited without a "Scope"
+# tag, nudge the agent to add one (Local | Cross-Feature | Process) so the harvest phase
+# can later preserve durable signal. Never blocks — always exits 0.
 set -uo pipefail
 
 input="$(cat)"
@@ -31,6 +31,7 @@ except Exception:
 
 case "$fp" in
   *CROSS-REVIEW-*.md) ;;
+  *CODE_REVIEW-*.md) ;;
   *) exit 0 ;;
 esac
 

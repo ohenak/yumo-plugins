@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # pdlc blocking PreToolUse hook (matcher: Bash).
-# Refuses to delete any CROSS-REVIEW-*.md file until a sibling LEARNINGS-*.md exists
-# in the same feature directory — enforcing harvest-then-delete (Phase H).
+# Refuses to delete any CROSS-REVIEW-*.md or CODE_REVIEW-*.md file until a sibling
+# LEARNINGS-*.md exists in the same feature directory — enforcing harvest-then-delete
+# (Phase H). CODE_REVIEW-* are the DoD verifier's process artifacts (Phase DOD).
 # Exit 2 blocks the tool call and feeds stderr back to the agent. Exit 0 allows.
 set -uo pipefail
 
@@ -30,16 +31,16 @@ except Exception:
 
 cmd = (data.get("tool_input", {}) or {}).get("command", "") or ""
 
-# Only a removal command that touches cross-review files is in scope.
-if "CROSS-REVIEW" not in cmd:
+# Only a removal command that touches review process artifacts is in scope.
+if "CROSS-REVIEW" not in cmd and "CODE_REVIEW" not in cmd:
     sys.exit(0)
 if not re.search(r'(?:^|\s|;|&|\|)(?:rm|unlink)\b|\bgit\s+rm\b', cmd):
     sys.exit(0)
 
 proj = os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
 
-# Pull out the CROSS-REVIEW path tokens and the dirs they live in.
-tokens = re.findall(r'\S*CROSS-REVIEW-[\w.\-]*', cmd)
+# Pull out the CROSS-REVIEW / CODE_REVIEW path tokens and the dirs they live in.
+tokens = re.findall(r'\S*(?:CROSS-REVIEW|CODE_REVIEW)-[\w.\-]*', cmd)
 dirs = set()
 for t in tokens:
     t = t.strip('\'"')
@@ -55,7 +56,8 @@ if blocked:
     sys.stderr.write(
         "pdlc guard: refusing to delete CROSS-REVIEW files in [%s] — no LEARNINGS-*.md "
         "exists there yet. Run /pdlc:harvest-learnings and commit LEARNINGS first "
-        "(harvest-then-delete).\n" % ", ".join(blocked)
+        "(harvest-then-delete). This guard also covers CODE_REVIEW-* files.\n"
+        % ", ".join(blocked)
     )
     sys.exit(2)
 
