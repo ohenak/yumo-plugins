@@ -78,11 +78,11 @@ describe("Review SKILL.md VERDICT trailers (TSPEC-SKILL-01)", () => {
         expect(commToVerdict).toContain("---");
       });
 
-      // PROP-SKILL-BAR-RAISER: each reviewer must have a bar-raiser section
-      it("has a Bar-Raiser section establishing high-standard review mindset", () => {
-        expect(content).toContain("## Bar-Raiser");
-        // Must establish burden of proof on the artifact, not the reviewer
-        expect(content).toMatch(/bar-raiser|burden of proof/i);
+      // PROP-SKILL-CHALLENGER: each reviewer must have an adversarial challenger persona
+      it("has a Challenger persona section establishing hostile auditor mindset", () => {
+        expect(content).toContain("## Persona: The Challenger");
+        // Must frame the reviewer as adversarial, not passive
+        expect(content).toMatch(/hostile|burden of proof|default position/i);
         // Must make "Needs revision" the default, not "Approved"
         expect(content).toMatch(/Needs revision.*default|default.*Needs revision/i);
       });
