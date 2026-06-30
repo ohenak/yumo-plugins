@@ -1,0 +1,390 @@
+/**
+ * Tests for Phase DOD — Definition of Done verification (DOD-01..04).
+ * Covers parseDodStatus, dodVerifyLoop, and main() wiring.
+ */
+
+import main, {
+  parseDodStatus,
+  dodVerifyLoop,
+} from "../orchestrate-dev.js";
+import { readFileSync } from "fs";
+import { resolve, dirname } from "path";
+import { fileURLToPath } from "url";
+import { createGuardAgentDouble } from "./helpers/guardAgentDouble.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+let logMessages = [];
+const originalLog = console.log;
+
+beforeEach(() => {
+  logMessages = [];
+  console.log = (...args) => logMessages.push(args.join(" "));
+});
+
+afterEach(() => {
+  console.log = originalLog;
+});
+
+// ─── parseDodStatus ──────────────────────────────────────────────────────────
+describe("parseDodStatus", () => {
+  it("parses a passed status", () => {
+    const result = parseDodStatus("All checks pass.\nDOD_STATUS: passed");
+    expect(result.status).toBe("passed");
+    expect(result.stubs).toBe(0);
+    expect(result.coverage_below_threshold).toBe(false);
+    expect(result.branch_coverage_pct).toBe(100);
+  });
+
+  it("parses a failed status with JSON detail", () => {
+    const input =
+      "Found issues.\nDOD_STATUS: failed\n" +
+      '{"stubs": 3, "mock_data": 1, "unwired_integrations": 2, "coverage_below_threshold": true, "branch_coverage_pct": 72}';
+    const result = parseDodStatus(input);
+    expect(result.status).toBe("failed");
+    expect(result.stubs).toBe(3);
+    expect(result.mock_data).toBe(1);
+    expect(result.unwired_integrations).toBe(2);
+    expect(result.coverage_below_threshold).toBe(true);
+    expect(result.branch_coverage_pct).toBe(72);
+  });
+
+  it("returns failed with zeros when JSON is missing after failed trailer", () => {
+    const result = parseDodStatus("DOD_STATUS: failed");
+    expect(result.status).toBe("failed");
+    expect(result.stubs).toBe(0);
+    expect(result.mock_data).toBe(0);
+  });
+
+  it("returns failed with zeros when JSON is malformed", () => {
+    const result = parseDodStatus("DOD_STATUS: failed\nnot json");
+    expect(result.status).toBe("failed");
+    expect(result.stubs).toBe(0);
+  });
+
+  it("returns unknown for empty/nullish input", () => {
+    expect(parseDodStatus("").status).toBe("unknown");
+    expect(parseDodStatus(null).status).toBe("unknown");
+    expect(parseDodStatus(undefined).status).toBe("unknown");
+  });
+
+  it("returns unknown when no trailer present", () => {
+    expect(parseDodStatus("All good.").status).toBe("unknown");
+  });
+
+  it("returns unknown for unrecognized status value", () => {
+    expect(parseDodStatus("DOD_STATUS: maybe").status).toBe("unknown");
+  });
+
+  it("finds the last DOD_STATUS line when several are present", () => {
+    const input = "DOD_STATUS: failed\nmore text\nDOD_STATUS: passed";
+    expect(parseDodStatus(input).status).toBe("passed");
+  });
+
+  it("clamps negative integers to zero", () => {
+    const input =
+      "DOD_STATUS: failed\n" +
+      '{"stubs": -1, "mock_data": 0, "unwired_integrations": 0, "coverage_below_threshold": false, "branch_coverage_pct": -5}';
+    const result = parseDodStatus(input);
+    expect(result.stubs).toBe(0);
+    expect(result.branch_coverage_pct).toBe(0);
+  });
+
+  it("treats non-boolean coverage_below_threshold as false", () => {
+    const input =
+      "DOD_STATUS: failed\n" +
+      '{"stubs": 0, "mock_data": 0, "unwired_integrations": 0, "coverage_below_threshold": "yes", "branch_coverage_pct": 80}';
+    const result = parseDodStatus(input);
+    expect(result.coverage_below_threshold).toBe(false);
+  });
+});
+
+// ─── dodVerifyLoop ───────────────────────────────────────────────────────────
+describe("dodVerifyLoop", () => {
+  it("returns passed on first iteration when dod-verify reports passed", async () => {
+    const mockAgent = async (skill) => {
+      if (skill === "dod-verify") return "Clean.\nDOD_STATUS: passed";
+      return "Fixed.";
+    };
+    const result = await dodVerifyLoop({
+      feature: "test-feat",
+      _agent: mockAgent,
+      _log: () => {},
+    });
+    expect(result.passed).toBe(true);
+    expect(result.iterations).toBe(1);
+  });
+
+  it("remediates and re-verifies on failure, then passes", async () => {
+    let verifyCount = 0;
+    const mockAgent = async (skill) => {
+      if (skill === "dod-verify") {
+        verifyCount++;
+        if (verifyCount === 1) {
+          return (
+            "Found stubs.\nDOD_STATUS: failed\n" +
+            '{"stubs": 2, "mock_data": 0, "unwired_integrations": 0, "coverage_below_threshold": false, "branch_coverage_pct": 90}'
+          );
+        }
+        return "Clean.\nDOD_STATUS: passed";
+      }
+      return "Fixed stubs.";
+    };
+    const result = await dodVerifyLoop({
+      feature: "test-feat",
+      _agent: mockAgent,
+      _log: () => {},
+    });
+    expect(result.passed).toBe(true);
+    expect(result.iterations).toBe(2);
+  });
+
+  it("returns failed after max iterations when violations persist", async () => {
+    const mockAgent = async (skill) => {
+      if (skill === "dod-verify") {
+        return (
+          "Stubs remain.\nDOD_STATUS: failed\n" +
+          '{"stubs": 1, "mock_data": 0, "unwired_integrations": 0, "coverage_below_threshold": false, "branch_coverage_pct": 90}'
+        );
+      }
+      return "Attempted fix.";
+    };
+    const result = await dodVerifyLoop({
+      feature: "test-feat",
+      maxIterations: 3,
+      _agent: mockAgent,
+      _log: () => {},
+    });
+    expect(result.passed).toBe(false);
+    expect(result.iterations).toBe(3);
+    expect(result.lastStatus).toBeDefined();
+    expect(result.lastStatus.stubs).toBe(1);
+  });
+
+  it("treats unknown/missing DOD_STATUS as failed", async () => {
+    let verifyCount = 0;
+    const mockAgent = async (skill) => {
+      if (skill === "dod-verify") {
+        verifyCount++;
+        if (verifyCount === 1) return "No trailer here.";
+        return "DOD_STATUS: passed";
+      }
+      return "Fixed.";
+    };
+    const logs = [];
+    const result = await dodVerifyLoop({
+      feature: "test-feat",
+      _agent: mockAgent,
+      _log: (msg) => logs.push(msg),
+    });
+    expect(result.passed).toBe(true);
+    expect(result.iterations).toBe(2);
+    expect(logs.some((m) => m.includes("no DOD_STATUS"))).toBe(true);
+  });
+
+  it("handles empty optimizer result without crashing", async () => {
+    let verifyCount = 0;
+    const mockAgent = async (skill) => {
+      if (skill === "dod-verify") {
+        verifyCount++;
+        if (verifyCount <= 2) {
+          return (
+            "DOD_STATUS: failed\n" +
+            '{"stubs": 1, "mock_data": 0, "unwired_integrations": 0, "coverage_below_threshold": false, "branch_coverage_pct": 90}'
+          );
+        }
+        return "DOD_STATUS: passed";
+      }
+      return "";
+    };
+    const logs = [];
+    const result = await dodVerifyLoop({
+      feature: "test-feat",
+      _agent: mockAgent,
+      _log: (msg) => logs.push(msg),
+    });
+    expect(result.passed).toBe(true);
+    expect(logs.some((m) => m.includes("empty result"))).toBe(true);
+  });
+
+  it("does not invoke optimizer on the final iteration", async () => {
+    let optimizerCalls = 0;
+    const mockAgent = async (skill) => {
+      if (skill === "dod-verify") {
+        return (
+          "DOD_STATUS: failed\n" +
+          '{"stubs": 1, "mock_data": 0, "unwired_integrations": 0, "coverage_below_threshold": false, "branch_coverage_pct": 90}'
+        );
+      }
+      optimizerCalls++;
+      return "Tried.";
+    };
+    await dodVerifyLoop({
+      feature: "test-feat",
+      maxIterations: 2,
+      _agent: mockAgent,
+      _log: () => {},
+    });
+    expect(optimizerCalls).toBe(1);
+  });
+});
+
+// ─── main() wiring ──────────────────────────────────────────────────────────
+describe("Phase DOD wiring in main()", () => {
+  function makeSuccessAgent() {
+    return async (skill, prompt) => {
+      if (skill === "guard") return { ok: true };
+      if (["se-review", "te-review", "pm-review"].includes(skill)) {
+        return 'Review.\nVERDICT: Approved\n{"high": 0, "medium": 0, "low": 0}\n';
+      }
+      if (["pm-author", "se-author", "te-author"].includes(skill)) {
+        if (typeof prompt === "string" && prompt.includes("DECISIONS_WARRANTED")) {
+          return "Finalized.\nDECISIONS_WARRANTED: false";
+        }
+        if (typeof prompt === "string" && prompt.includes("Return a JSON object")) {
+          return JSON.stringify({
+            tasks: [{ id: "T1", description: "x", dependencies: [], planBatch: 1 }],
+          });
+        }
+        return "Document created.";
+      }
+      if (skill === "se-implement") return "Tests: 3 passed, 0 failed.";
+      if (skill === "harvest-learnings") return "Harvest complete.";
+      if (skill === "dod-verify") return "Clean.\nDOD_STATUS: passed";
+      if (skill === "ship-pr") {
+        if (prompt.includes("Raise a pull request")) {
+          return "PR opened.\nPR_URL: https://github.com/acme/repo/pull/42";
+        }
+        return "Checks.\nCI_STATUS: passed";
+      }
+      return "Success.";
+    };
+  }
+
+  const baseArgs = () => ({
+    reqPath: "docs/test-feat/REQ-test-feat.md",
+    _agent: makeSuccessAgent(),
+    _parallel: (p) => Promise.all(p),
+    _guardAgent: createGuardAgentDouble({ ok: true }),
+    _phase: () => {},
+    _pipeline: async (l, fn) => fn(),
+    _mergeWorktree: async () => ({ ok: true }),
+    _raisePrAndVerifyCi: async () => ({ prUrl: "https://x/pull/1", ciStatus: "passed" }),
+  });
+
+  it("success run records Phase DOD as passed", async () => {
+    const result = await main(baseArgs());
+    expect(result.outcome).toBe("success");
+    const dod = result.phases.find((p) => p.phase === "DOD");
+    expect(dod).toBeTruthy();
+    expect(dod.status).toBe("✅");
+  });
+
+  it("halts the pipeline when DoD verification fails", async () => {
+    const result = await main({
+      ...baseArgs(),
+      _dodVerifyLoop: async () => ({
+        passed: false,
+        iterations: 3,
+        lastStatus: {
+          stubs: 2,
+          mock_data: 0,
+          unwired_integrations: 1,
+          coverage_below_threshold: true,
+        },
+      }),
+    });
+    expect(result.outcome).toBe("halted");
+    expect(result.haltReason).toMatch(/Phase DOD failed/);
+    expect(result.haltReason).toMatch(/Definition of Done not met/);
+    const dod = result.phases.find((p) => p.phase === "DOD");
+    expect(dod).toBeTruthy();
+    expect(dod.status).toBe("❌");
+  });
+
+  it("skips Phase DOD when disabled", async () => {
+    let dodCalled = false;
+    const result = await main({
+      ...baseArgs(),
+      _phaseDodEnabled: false,
+      _dodVerifyLoop: async () => {
+        dodCalled = true;
+        throw new Error("dodVerifyLoop must not be called when disabled");
+      },
+    });
+    expect(dodCalled).toBe(false);
+    expect(result.outcome).toBe("success");
+    const dod = result.phases.find((p) => p.phase === "DOD");
+    expect(dod).toBeTruthy();
+    expect(dod.status).toBe("⏭");
+  });
+
+  it("Phase DOD runs after Phase CR and before Phase H", async () => {
+    const result = await main(baseArgs());
+    expect(result.outcome).toBe("success");
+    const phaseIds = result.phases.map((p) => p.phase);
+    const crIdx = phaseIds.indexOf("CR");
+    const dodIdx = phaseIds.indexOf("DOD");
+    const hIdx = phaseIds.indexOf("H");
+    expect(crIdx).toBeGreaterThanOrEqual(0);
+    expect(dodIdx).toBeGreaterThanOrEqual(0);
+    expect(hIdx).toBeGreaterThanOrEqual(0);
+    expect(dodIdx).toBeGreaterThan(crIdx);
+    expect(dodIdx).toBeLessThan(hIdx);
+  });
+
+  it("passes injected _dodVerifyLoop and surfaces its result", async () => {
+    let called = false;
+    const result = await main({
+      ...baseArgs(),
+      _dodVerifyLoop: async ({ feature }) => {
+        called = true;
+        expect(feature).toBe("test-feat");
+        return { passed: true, iterations: 1 };
+      },
+    });
+    expect(called).toBe(true);
+    expect(result.outcome).toBe("success");
+  });
+});
+
+// ─── Static guarantees ──────────────────────────────────────────────────────
+describe("Phase DOD static guarantees", () => {
+  const scriptPath = resolve(__dirname, "../orchestrate-dev.js");
+
+  it("declares the PHASE_DOD_ENABLED compile-time boolean flag", () => {
+    const content = readFileSync(scriptPath, "utf8");
+    expect(content).toMatch(/const PHASE_DOD_ENABLED = (true|false)/);
+  });
+
+  it("declares the DOD_MAX_ITERATIONS constant", () => {
+    const content = readFileSync(scriptPath, "utf8");
+    expect(content).toMatch(/const DOD_MAX_ITERATIONS = \d+/);
+  });
+
+  it("PHASE_DISPATCH includes DOD entry with dod-verify and se-implement", () => {
+    const content = readFileSync(scriptPath, "utf8");
+    expect(content).toContain('"dod-verify"');
+    expect(content).toContain('phase: "DOD"');
+  });
+
+  it("dod-verify SKILL.md exists and documents the DOD_STATUS trailer", () => {
+    const skillPath = resolve(__dirname, "../../skills/dod-verify/SKILL.md");
+    const content = readFileSync(skillPath, "utf8");
+    expect(content.length).toBeGreaterThan(0);
+    expect(content).toContain("DOD_STATUS:");
+    expect(content).toContain("name: dod-verify");
+  });
+
+  it("dod-verify SKILL.md documents all four DoD criteria", () => {
+    const skillPath = resolve(__dirname, "../../skills/dod-verify/SKILL.md");
+    const content = readFileSync(skillPath, "utf8");
+    expect(content).toContain("No Stubs in Production Code");
+    expect(content).toContain("All Integrations Wired");
+    expect(content).toContain("No Mock/Fake Data in Production Code");
+    expect(content).toContain("Branch Coverage");
+    expect(content).toContain("85%");
+    expect(content).toContain("property-based");
+  });
+});

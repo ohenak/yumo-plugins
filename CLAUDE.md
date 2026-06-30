@@ -42,6 +42,7 @@ Every plugin follows this layout:
 | `se-implement` | `skills/se-implement/SKILL.md` | TDD implementation (supplements: SKILL-typescript.md, SKILL-python.md) |
 | `te-author` | `skills/te-author/SKILL.md` | Authors PROPERTIES; addresses feedback |
 | `te-review` | `skills/te-review/SKILL.md` | Reviews from testing lens |
+| `dod-verify` | `skills/dod-verify/SKILL.md` | Definition of Done verification gate — scans production code for stubs, unwired integrations, mock data, and coverage gaps; driven by orchestrate-dev Phase DOD |
 | `ship-pr` | `skills/ship-pr/SKILL.md` | Raises/reuses the feature PR and reports GHA check status; driven by orchestrate-dev Phase PUB (script owns poll timing) |
 | `tech-lead` | `skills/tech-lead/SKILL.md` | Parses PLAN, dispatches parallel se-implement agents (TypeScript) |
 | `tech-lead-python` | `skills/tech-lead-python/SKILL.md` | Same as tech-lead for Python repos |

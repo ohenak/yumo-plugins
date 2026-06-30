@@ -31,7 +31,20 @@ This skill delegates to a workflow script. It does not run the pipeline itself.
 
 Phase sequence (not a runbook — see workflow script for mechanics):
 
-`REQ review → FSPEC → TSPEC → DECISIONS (conditional) → PLAN → PROPERTIES → Implementation batches → PROPERTIES tests → Final codebase review → Harvest → Raise PR & Verify CI`
+`REQ review → FSPEC → TSPEC → DECISIONS (conditional) → PLAN → PROPERTIES → Implementation batches → PROPERTIES tests → Final codebase review → Definition of Done verification → Harvest → Raise PR & Verify CI`
+
+---
+
+## Definition of Done Verification (Phase DOD)
+
+After the Final Codebase Review and before Harvest, the workflow runs a mechanical Definition of Done gate. The `dod-verify` skill scans all production code on the feature branch for four criteria:
+
+1. **No stubs** — no TODOs, placeholders, `NotImplementedError`, or stub implementations in production code
+2. **All integrations wired** — no unused imports, dead config, or placeholder URLs
+3. **No mock data in production** — no hardcoded test/fake data outside test files
+4. **Branch coverage ≥ 85%** — all new modules must meet the coverage floor via property-based testing
+
+If violations are found, the `se-implement` optimizer addresses them and the verifier re-runs. The loop caps at 3 iterations; if violations persist, the pipeline halts. Set `PHASE_DOD_ENABLED = false` in the workflow script to skip this phase.
 
 ---
 

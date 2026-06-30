@@ -53,6 +53,9 @@ function makeSuccessAgent(feature = "test-feat") {
     if (skill === "harvest-learnings") {
       return "Harvest complete. LEARNINGS written and committed.";
     }
+    if (skill === "dod-verify") {
+      return "Clean.\nDOD_STATUS: passed";
+    }
     if (skill === "ship-pr") {
       if (typeof prompt === "string" && prompt.includes("Raise a pull request")) {
         return "PR opened.\nPR_URL: https://github.com/acme/repo/pull/42";
@@ -332,7 +335,7 @@ describe("PROP-LOOP-10: log() is never called with an agent result variable (REQ
 
 // ─── PROP-PIPELINE-03: Phase sequence ─────────────────────────────────────────
 describe("PROP-PIPELINE-03: phase() called with correct labels in order", () => {
-  it("all 10 phase labels emitted in correct order", async () => {
+  it("all 11 phase labels emitted in correct order", async () => {
     const phaseCalls = [];
     const mockPhase = (label) => phaseCalls.push(label);
 
@@ -358,6 +361,7 @@ describe("PROP-PIPELINE-03: phase() called with correct labels in order", () => 
     expect(phaseLabels).toMatch(/Phase I/);
     expect(phaseLabels).toMatch(/Phase PT/);
     expect(phaseLabels).toMatch(/Phase CR/);
+    expect(phaseLabels).toMatch(/Phase DOD/);
     expect(phaseLabels).toMatch(/Phase H/);
     expect(phaseLabels).toMatch(/Phase PUB/);
   });
