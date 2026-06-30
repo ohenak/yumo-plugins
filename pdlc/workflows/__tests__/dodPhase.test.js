@@ -183,42 +183,17 @@ describe("dodVerifyLoop", () => {
     expect(logs.some((m) => m.includes("no DOD_STATUS"))).toBe(true);
   });
 
-  it("handles empty optimizer result without crashing", async () => {
-    let verifyCount = 0;
+  it("only invokes dod-verify (no separate optimizer) — self-remediating", async () => {
+    const skillsCalled = [];
     const mockAgent = async (skill) => {
-      if (skill === "dod-verify") {
-        verifyCount++;
-        if (verifyCount <= 2) {
-          return (
-            "DOD_STATUS: failed\n" +
-            '{"stubs": 1, "mock_data": 0, "unwired_integrations": 0, "coverage_below_threshold": false, "branch_coverage_pct": 90}'
-          );
-        }
-        return "DOD_STATUS: passed";
-      }
-      return "";
-    };
-    const logs = [];
-    const result = await dodVerifyLoop({
-      feature: "test-feat",
-      _agent: mockAgent,
-      _log: (msg) => logs.push(msg),
-    });
-    expect(result.passed).toBe(true);
-    expect(logs.some((m) => m.includes("empty result"))).toBe(true);
-  });
-
-  it("does not invoke optimizer on the final iteration", async () => {
-    let optimizerCalls = 0;
-    const mockAgent = async (skill) => {
+      skillsCalled.push(skill);
       if (skill === "dod-verify") {
         return (
           "DOD_STATUS: failed\n" +
           '{"stubs": 1, "mock_data": 0, "unwired_integrations": 0, "coverage_below_threshold": false, "branch_coverage_pct": 90}'
         );
       }
-      optimizerCalls++;
-      return "Tried.";
+      return "Unexpected.";
     };
     await dodVerifyLoop({
       feature: "test-feat",
@@ -226,7 +201,33 @@ describe("dodVerifyLoop", () => {
       _agent: mockAgent,
       _log: () => {},
     });
-    expect(optimizerCalls).toBe(1);
+    expect(skillsCalled.every((s) => s === "dod-verify")).toBe(true);
+    expect(skillsCalled.length).toBe(2);
+  });
+
+  it("fixes then passes on second iteration (dod-verify handles its own fixes)", async () => {
+    let callCount = 0;
+    const mockAgent = async (skill) => {
+      if (skill === "dod-verify") {
+        callCount++;
+        if (callCount === 1) {
+          return (
+            "Found stubs. Fixed them. Committed.\nDOD_STATUS: failed\n" +
+            '{"stubs": 1, "mock_data": 0, "unwired_integrations": 0, "coverage_below_threshold": false, "branch_coverage_pct": 90}'
+          );
+        }
+        return "All clean after fixes.\nDOD_STATUS: passed";
+      }
+      return "Unexpected.";
+    };
+    const result = await dodVerifyLoop({
+      feature: "test-feat",
+      _agent: mockAgent,
+      _log: () => {},
+    });
+    expect(result.passed).toBe(true);
+    expect(result.iterations).toBe(2);
+    expect(callCount).toBe(2);
   });
 });
 
@@ -254,7 +255,7 @@ describe("Phase DOD wiring in main()", () => {
       if (skill === "dod-verify") return "Clean.\nDOD_STATUS: passed";
       if (skill === "ship-pr") {
         if (prompt.includes("Raise a pull request")) {
-          return "PR opened.\nPR_URL: https://github.com/acme/repo/pull/42";
+          return "Rebased.\nREBASE_STATUS: clean\nPR opened.\nPR_URL: https://github.com/acme/repo/pull/42";
         }
         return "Checks.\nCI_STATUS: passed";
       }
@@ -363,10 +364,16 @@ describe("Phase DOD static guarantees", () => {
     expect(content).toMatch(/const DOD_MAX_ITERATIONS = \d+/);
   });
 
-  it("PHASE_DISPATCH includes DOD entry with dod-verify and se-implement", () => {
+  it("PHASE_DISPATCH includes DOD entry with dod-verify (self-remediating, no optimizer)", () => {
     const content = readFileSync(scriptPath, "utf8");
     expect(content).toContain('"dod-verify"');
     expect(content).toContain('phase: "DOD"');
+    // DOD phase should not have an optimizer — dod-verify fixes its own findings
+    const dodBlock = content.slice(
+      content.indexOf('phase: "DOD"'),
+      content.indexOf("}", content.indexOf('phase: "DOD"')) + 1
+    );
+    expect(dodBlock).not.toContain("optimizer");
   });
 
   it("dod-verify SKILL.md exists and documents the DOD_STATUS trailer", () => {
