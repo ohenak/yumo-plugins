@@ -11,10 +11,10 @@
 
 | Order | Status  | Feature                  | REQ Path                                                      | Depends-On             |
 |-------|---------|--------------------------|---------------------------------------------------------------|------------------------|
-| 1     | pending | harden-harvest-guard     | docs/harden-harvest-guard/REQ-harden-harvest-guard.md         | —                      |
-| 2     | pending | agent-trailer-contracts  | docs/agent-trailer-contracts/REQ-agent-trailer-contracts.md   | —                      |
-| 3     | pending | pipeline-entry-guards    | docs/pipeline-entry-guards/REQ-pipeline-entry-guards.md       | —                      |
-| 4     | pending | skill-prompt-consistency | docs/skill-prompt-consistency/REQ-skill-prompt-consistency.md | —                      |
-| 5     | pending | harvest-after-pub        | docs/harvest-after-pub/REQ-harvest-after-pub.md               | harden-harvest-guard   |
-| 6     | pending | dod-loop-hardening       | docs/dod-loop-hardening/REQ-dod-loop-hardening.md             | agent-trailer-contracts |
-| 7     | pending | queue-recovery           | docs/queue-recovery/REQ-queue-recovery.md                     | —                      |
+| 1     | in-progress | harden-harvest-guard     | docs/harden-harvest-guard/REQ-harden-harvest-guard.md         | —                                           |
+| 2     | pending | agent-trailer-contracts  | docs/agent-trailer-contracts/REQ-agent-trailer-contracts.md   | —                                           |
+| 3     | pending | pipeline-entry-guards    | docs/pipeline-entry-guards/REQ-pipeline-entry-guards.md       | agent-trailer-contracts                     |
+| 4     | pending | skill-prompt-consistency | docs/skill-prompt-consistency/REQ-skill-prompt-consistency.md | pipeline-entry-guards                       |
+| 5     | pending | harvest-after-pub        | docs/harvest-after-pub/REQ-harvest-after-pub.md               | harden-harvest-guard, skill-prompt-consistency |
+| 6     | pending | dod-loop-hardening       | docs/dod-loop-hardening/REQ-dod-loop-hardening.md             | agent-trailer-contracts, harvest-after-pub  |
+| 7     | pending | queue-recovery           | docs/queue-recovery/REQ-queue-recovery.md                     | —                                           |
