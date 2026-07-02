@@ -1,7 +1,7 @@
 ---
 Status: Draft
 Author: pm-author
-Version: 1.0
+Version: 1.1
 Feature: harden-harvest-guard
 ---
 
@@ -9,16 +9,16 @@ Feature: harden-harvest-guard
 |---|---|
 | Upstream | REQ → **FSPEC** |
 | Downstream | TSPEC, PLAN, PROPERTIES |
-| Cross-Reviews | — (none yet for this document) |
+| Cross-Reviews | [CROSS-REVIEW-software-engineer-FSPEC.md](CROSS-REVIEW-software-engineer-FSPEC.md), [CROSS-REVIEW-test-engineer-FSPEC.md](CROSS-REVIEW-test-engineer-FSPEC.md) |
 | LEARNINGS | docs/harden-harvest-guard/LEARNINGS-harden-harvest-guard.md |
 
 # FSPEC — harden-harvest-guard
 
-Functional specification for the fail-closed rewrite of `guard-harvest-before-delete.sh` and the anchored `Scope:` detection in `check-scope-field.sh`. Source: [REQ-harden-harvest-guard.md](REQ-harden-harvest-guard.md) **Version 1.3** (approved with minor changes by SE and TE iteration-4 reviews; the three minor carry-forwards are resolved in this document — see § Carry-Forward Resolutions).
+Functional specification for the fail-closed rewrite of `guard-harvest-before-delete.sh` and the anchored `Scope:` detection in `check-scope-field.sh`. Source: [REQ-harden-harvest-guard.md](REQ-harden-harvest-guard.md) **Version 1.4** (v1.3 approved with minor changes by SE and TE iteration-4 reviews — the three minor carry-forwards are resolved in this document, see § Carry-Forward Resolutions; v1.4 is the matrix extension driven by this FSPEC's iteration-1 review, landed in the same commit as this revision — no requirement semantics changed).
 
 This FSPEC specifies **behavior only**. Script structure, regexes beyond those the REQ already fixes, and exact block-message prose are TSPEC territory.
 
-**Acceptance-test oracle:** the REQ's **Canonical Block/Allow Matrix (M01–M65, S01–S06)** is the acceptance-test suite for every flow below. This document does **not** duplicate the matrix — each FSPEC section cites its rows. This FSPEC adds exactly one row, **M66** (see § Acceptance Tests), closing the oracle gap filed as TE v4 F4-01.
+**Acceptance-test oracle:** the REQ's **Canonical Block/Allow Matrix (M01–M79, S01–S07)** is the acceptance-test suite for every flow below. This document does **not** duplicate the matrix — each FSPEC section cites its rows. Matrix rows are REQ-owned: the rows this FSPEC's authoring and review produced (M66, closing TE v4 F4-01; M67–M79 and S07, closing the iteration-1 FSPEC findings) are promoted into the REQ matrix (v1.4, same commit) rather than held here — per the TE F-09 process rule that behavior-defining resolutions must amend the matrix, not just prose. § Acceptance Tests retains M66's full acceptance statement.
 
 ---
 
@@ -26,14 +26,14 @@ This FSPEC specifies **behavior only**. Script structure, regexes beyond those t
 
 | FSPEC | Title | Linked requirements | Matrix rows |
 |---|---|---|---|
-| FSPEC-GUARD-01 | Deletion-guard decision flow (parsing steps 1–5, decision points D1–D4) | REQ-GUARD-01, REQ-GUARD-02, REQ-GUARD-NFR-01 | M01–M08, M17–M32, M44–M51, M55, M60, M63–M66 |
-| FSPEC-GUARD-02 | `mv` resulting-path rule and redirection classification | REQ-GUARD-02 | M09–M16, M52–M54, M56, M61–M62 |
-| FSPEC-GUARD-03 | Git-state verification flow (G1–G10) | REQ-GUARD-03 | M33–M40, M57–M59 |
-| FSPEC-GUARD-04 | Degraded-mode flow (interpreter missing, stdin unparseable) | REQ-GUARD-06 | M41–M43 |
-| FSPEC-GUARD-05 | Scope-field check flow | REQ-GUARD-04 | S01–S06 |
+| FSPEC-GUARD-01 | Deletion-guard decision flow (parsing steps 1–5, decision points D1–D4) | REQ-GUARD-01, REQ-GUARD-02, REQ-GUARD-NFR-01 | M01–M08, M17–M32, M44–M51, M55, M60, M63–M66, M73 |
+| FSPEC-GUARD-02 | `mv` resulting-path rule and redirection classification | REQ-GUARD-02 | M09–M16, M52–M54, M56, M61–M62, M67, M74, M79 |
+| FSPEC-GUARD-03 | Git-state verification flow (G1–G10) | REQ-GUARD-03 | M33–M40, M57–M59, M75–M77 |
+| FSPEC-GUARD-04 | Degraded-mode flow (interpreter missing, stdin unparseable) | REQ-GUARD-06 | M41–M43, M68–M72, M78 |
+| FSPEC-GUARD-05 | Scope-field check flow | REQ-GUARD-04 | S01–S07 |
 | FSPEC-GUARD-06 | Block-message emission (reason-code selection) | REQ-GUARD-07 | reason-code column of every BLOCK row |
 
-REQ-GUARD-05 (tests) has no behavioral flow of its own; it binds the matrix carried forward in § Acceptance Tests, including M66.
+REQ-GUARD-05 (tests) has no behavioral flow of its own; it binds the matrix carried forward in § Acceptance Tests, including the FSPEC-driven extension rows M66–M79 and S07.
 
 ---
 
@@ -50,9 +50,9 @@ The guard runs as PreToolUse: Bash. One invocation processes one hook stdin JSON
 3. **Step 2 — Verb identification (REQ-GUARD-01 step 2).** Per segment, the verb is the first word after skipping `NAME=value` assignments and transparent prefixes (`command`, `env`, `sudo`, `nice`, `time`). `xargs <verb>` exposes `<verb>` as the effective verb with always-indeterminate operands (the piped input stream). `find` with `-delete` or `-exec <deletion-verb>` is a deletion form whose operands are `find`'s path roots. The defended deletion-verb set is exactly REQ-GUARD-02's enumeration (including the redirection truncation family, classified in FSPEC-GUARD-02).
 4. **Decision point D1 — no visible deletion verb → ALLOW.** If no deletion verb appears in executable position in any segment, including all recursively parsed opaque payloads, exit 0 unconditionally. D1 has absolute precedence: it is the mechanism by which REQ-GUARD-NFR-01 (no false blocks) and the fail-closed rules coexist — free text, `git commit -m "..."` messages, `echo` arguments, and heredoc bodies can never trigger a block. (Rows M26–M31; RR-3.)
 5. **Step 3 — Operand scoping (REQ-GUARD-01 step 3).** For each deletion segment, collect its operands (non-flag argv tokens) and redirection targets as candidate paths. Tokens inside arguments of non-deletion verbs are never candidates.
-6. **Step 4 — Effective-cwd resolution (REQ-GUARD-01 step 4, union rule).** For segment 1's static relative operands and globs, resolve against **both candidate roots**: **(A)** the stdin `cwd` field when present, else `CLAUDE_PROJECT_DIR` (repo root); and **(B)** the hook process's own working directory. A hit through **either** root is a hit (conservative union; residual drift is RR-5). Within the compound command, a `cd <static-path>` segment updates the effective cwd for subsequent segments; `cd <indeterminate>` makes all subsequent relative operands indeterminate. (Rows M17, M64, M65, and FSPEC-added M66.)
+6. **Step 4 — Effective-cwd resolution (REQ-GUARD-01 step 4, union rule).** For segment 1's static relative operands and globs, resolve against **both candidate roots**: **(A)** the stdin `cwd` field when present, else `CLAUDE_PROJECT_DIR` (repo root); and **(B)** the hook process's own working directory. A hit through **either** root is a hit (conservative union; residual drift is RR-5). The initial effective cwd (the union of both candidate roots) applies to **every** segment — not only segment 1 — until a `cd` segment updates it: segment position never changes the resolution root (so the deletion in `echo done && rm docs/f/*.md`, M18, resolves against the same union as a segment-1 deletion). Within the compound command, a `cd <static-path>` segment updates the effective cwd for subsequent segments; `cd <indeterminate>` makes all subsequent relative operands indeterminate. (Rows M17, M18, M64, M65, M66.)
 7. **Step 5 — Operand classification (REQ-GUARD-01 step 5).** An operand is **static** iff, before quote removal, it contains no expansion-active `$`, backtick, `$(`, or `<(` — where *expansion-active* means neither single-quoted nor backslash-escaped (double quotes do **not** suppress expansion: `"$D"` is indeterminate; `'$D'` and `\$D` are static). Static operands and globs resolve/expand against the effective cwd(s) of step 6. Anything else is **indeterminate**.
-8. **Guarded-state lookup.** Enumerate guarded directories (top-level `docs/{feature}/` whose subtree contains a `CROSS-REVIEW-*.md` / `CODE_REVIEW-*.md`, per REQ Definitions) and classify each as Verified or unverified via the FSPEC-GUARD-03 flow. This state feeds decision points D2–D4.
+8. **Guarded-state lookup.** The lookup opens with FSPEC-GUARD-03's **G-DP1 repo check as an eager early exit**: if the cwd is not a git repository, BLOCK `NO_REPO` immediately — D2–D4 are never evaluated. Only deletion-shaped commands reach this point (D1 has already passed), so the eager exit cannot touch REQ-GUARD-NFR-01. (Rows M37, M75, M76.) Otherwise enumerate guarded directories (top-level `docs/{feature}/` whose subtree contains a `CROSS-REVIEW-*.md` / `CODE_REVIEW-*.md`, per REQ Definitions) — enumeration is anchored at the **repo root**: `CLAUDE_PROJECT_DIR` when set, else `git rev-parse --show-toplevel`, never the process or stdin cwd — and classify each as Verified or unverified via the FSPEC-GUARD-03 flow. This state feeds decision points D2–D4.
 9. **Decision points D2–D4 (in order; first match wins; D1 already passed).**
    - **D2 — static guarded target → BLOCK.** A deletion verb with a static operand that resolves to, or globs over: (i) a guarded file; (ii) any path inside an unverified guarded directory; (iii) an unverified guarded directory itself; or — for recursive-capable forms only (`rm -r/-R/--recursive` incl. combined spellings, `find <root> … -delete`/`-exec <deletion-verb>`, `git clean` with pathspec, `mv` of a directory) — (iv) any ancestor of an unverified guarded directory (`docs`, `.`, `..`, repo root, `/`). Reason code comes from the FSPEC-GUARD-03 state of the affected feature. Non-recursive forms aimed at an ancestor fall through.
    - **D3 — indeterminate deletion, docs-referencing → BLOCK `INDETERMINATE`,** iff (a) the deletion segment itself references `docs/` through one of the four dataflow channels (own operands/redirection targets; assignment RHS its operands expand; piped-producer segment; `cd` context that sets its effective cwd) — quote-independent literal test — AND (b) at least one unverified guarded directory exists. `docs/` tokens in sibling segments with no dataflow into the deletion segment do not satisfy (a) (rows M55–M56; RR-2).
@@ -61,7 +61,7 @@ The guard runs as PreToolUse: Bash. One invocation processes one hook stdin JSON
 
 ### Business rules
 
-- BR-01-1: First-match-wins ordering D1 → D2 → D3 → D4 → allow is normative; no other precedence exists.
+- BR-01-1: First-match-wins ordering D1 → G-DP1 eager `NO_REPO` exit → D2 → D3 → D4 → allow is normative; no other precedence exists. The ordering binds every deletion form, including the `mv` flow in FSPEC-GUARD-02: static-source D2 knowledge is consumed before any indeterminacy jump to D3 (M74).
 - BR-01-2: D2/D3/D4 all require an unverified guarded directory to exist; a fully Verified repo allows every row of the matrix's M33 re-run set.
 - BR-01-3: Quote removal precedes classification: quoting a path never hides it (M44/M45); quoting an assignment RHS never defeats the D3(a) literal test (M46).
 - BR-01-4: Block = exit 2 + stderr message per FSPEC-GUARD-06. Allow = exit 0, no output contract.
@@ -70,7 +70,7 @@ The guard runs as PreToolUse: Bash. One invocation processes one hook stdin JSON
 
 | Case | Behavior |
 |---|---|
-| Opaque payload itself contains an opaque payload (`bash -c 'eval "rm docs/f/*.md"'`) | Recursive re-parse applies at every level; depth is unbounded by spec (TSPEC may cap with fail-closed overflow → treat as indeterminate deletion-shaped, D3) |
+| Opaque payload itself contains an opaque payload (`bash -c 'eval "rm docs/f/*.md"'`) | Recursive re-parse applies at every level (depth-2 pinned by row M73); depth is unbounded by spec. TSPEC may cap the depth, but a payload beyond the cap is treated as **opaque** — no visible deletion verb → D1 ALLOW — never as deletion-shaped: an over-cap block would false-block verb-free commands that merely mention `docs/`, violating REQ-GUARD-NFR-01/D1. The over-cap bypass surface is registered residual risk (REQ RR-3, extended in v1.4) |
 | `eval "$CMD"` — payload fully opaque | D1 ALLOW (RR-3, M26) |
 | Deletion verb present but every operand static and unguarded | ALLOW (M03) |
 | `cd` with indeterminate argument followed by `rm *.md` | Subsequent relative operands indeterminate → D3 evaluated |
@@ -84,9 +84,10 @@ The guard runs as PreToolUse: Bash. One invocation processes one hook stdin JSON
 
 ### `mv` behavioral flow (resulting-path rule)
 
-1. Canonicalize source and destination (`.`, `..`, trailing slashes) against the effective cwd (FSPEC-GUARD-01 step 6).
-2. If source or destination is indeterminate → decision point D3 applies (FSPEC-GUARD-01).
-3. If the source is an unverified guarded directory, or (recursive-capable, D2 iv) an ancestor of one → BLOCK.
+0. **Operand shape.** `mv` with more than two operands: the last operand is the destination (a directory); each source is evaluated independently under steps 1–5, and any BLOCK blocks the command (M79).
+1. Canonicalize the static sources and destination (`.`, `..`, trailing slashes) against the effective cwd (FSPEC-GUARD-01 step 6).
+2. **Static-source D2 test — evaluated before any indeterminacy jump (BR-01-1's D2-before-D3 ordering applies inside this flow).** If a static source is an unverified guarded directory itself, or (recursive-capable, D2 iv) an ancestor of one → BLOCK with the affected feature's FSPEC-GUARD-03 reason code (`NOT_COMMITTED` in the default fixture). An indeterminate destination does not divert this case to D3: the source alone establishes the deletion shape and the reason code, and the message tells the agent to harvest/commit rather than reporting an unresolvable operand (M13, M74).
+3. If the source is indeterminate, or the destination is indeterminate while a static source is/globs a guarded file in an unverified guarded directory (resulting path unknowable) → decision point D3 applies (FSPEC-GUARD-01).
 4. Otherwise, if the source is/globs a guarded file in an unverified guarded directory, compute the **resulting file path**: if the destination is a directory (existing, or spelled with a trailing `/`), resulting path = `destination/basename(source)`; otherwise resulting path = destination.
 5. **Decision:** ALLOW iff the resulting path is still under the **same feature's** `docs/{feature}/` subtree (any depth; feature = first path segment under `docs/`) **AND** the resulting basename still matches `CROSS-REVIEW-*.md` / `CODE_REVIEW-*.md`. Everything else → BLOCK (move-out, cross-feature move, and pattern-destroying rename are all deletion). Rows M09–M13, M52.
 
@@ -94,7 +95,7 @@ The guard runs as PreToolUse: Bash. One invocation processes one hook stdin JSON
 
 For each redirection token in a segment, classify then decide:
 
-1. **Fd-operation exclusion.** `2>&1`, `>&2`, `N>&M`, and `>&-` name file descriptors, never paths — excluded before target inspection. **`>&` disambiguation (lexical, at tokenization):** the word after `>&` is an fd-duplication (or `-` = fd-close) **iff it consists entirely of digits, or is exactly `-`**; any other word — including digit-leading non-numeric words such as `2024-notes/CROSS-REVIEW-x.md` — is a truncating file-redirection target. *(Corrects REQ M62's "followed by a digit" phrasing — carry-forward CF-1, SE v4 F-01.)*
+1. **Fd-operation exclusion.** `2>&1`, `>&2`, `N>&M`, and `>&-` name file descriptors, never paths — excluded before target inspection. **`>&` disambiguation (lexical, at tokenization):** the word after `>&` is an fd-duplication (or `-` = fd-close) **iff it consists entirely of digits, or is exactly `-`**; any other word — including digit-leading non-numeric words such as `2024-notes/CROSS-REVIEW-x.md` — is a truncating file-redirection target. *(Corrects REQ M62's "followed by a digit" phrasing — carry-forward CF-1, SE v4 F-01.)* The digit-leading discriminator is pinned by matrix row **M67** (fixture adds nested guarded `docs/f/2024-notes/CROSS-REVIEW-x.md`; `cd docs/f && npm test >& 2024-notes/CROSS-REVIEW-x.md` → BLOCK `NOT_COMMITTED`; in M33's G6 re-run set) — an implementation of the superseded first-char-digit rule fails it.
 2. **Destructive forms.** `>`, `1>`, `>|`, `2>`, `&> <path>`, `>& <path>` (per rule 1) truncate: a static target resolving to a guarded file in an unverified guarded directory → BLOCK (rows M14, M53, M54, M61, M62).
 3. **Non-destructive form.** `>>` (append) → never deletion-shaped → no contribution to any decision (M15).
 4. **Indeterminate target** → deletion-shaped; decision point D3 applies with its segment-scoped docs-reference test (M56).
@@ -112,7 +113,9 @@ For each redirection token in a segment, classify then decide:
 | `mv docs/f/CROSS-REVIEW-x.md docs/f/archive/` (dir exists) | Resulting path `docs/f/archive/CROSS-REVIEW-x.md`, same feature, pattern kept → ALLOW (M52) |
 | `mv docs/f/CROSS-REVIEW-x.md docs/f/CROSS-REVIEW-x-v2.md` | Rename in place, pattern kept → ALLOW (M11) |
 | `mv docs/f/CROSS-REVIEW-x.md docs/f/notes.md` | Pattern destroyed → BLOCK (M12) |
-| `>& 2024-notes/CROSS-REVIEW-x.md` | Word not all-digits → file target → truncation family (CF-1) |
+| `>& 2024-notes/CROSS-REVIEW-x.md` | Word not all-digits → file target → truncation family (CF-1; pinned by M67) |
+| `mv docs/f "$DEST"` (static guarded-dir source, indeterminate destination) | Step 2 fires before the indeterminacy test → BLOCK with G-state reason, not `INDETERMINATE` (M74) |
+| `mv docs/f/CROSS-REVIEW-x.md docs/f/CODE_REVIEW-f-v1.md /tmp/` (multi-source) | Each source evaluated independently; both resulting paths leave the feature subtree → BLOCK (M79) |
 | `>&-` | Fd-close, never a target; static-unguarded allow class, no row needed (per TE v4 scan) |
 
 ---
@@ -125,8 +128,8 @@ Verifies, for a guarded directory `docs/{feature}/`, whether the exact file `LEA
 
 ### Behavioral flow
 
-1. **G-DP1 — repo check.** cwd not a git repository → state **G1**: BLOCK `NO_REPO`. (The pipeline always runs in a checkout; a non-repo cwd cannot prove commit state.)
-2. **G-DP2 — fetch toggle.** If `GUARD_FETCH_BEFORE_CHECK=true` (env var, default `false`/unset), run `git fetch origin {branch}` bounded by `GUARD_FETCH_TIMEOUT_SECS` (default `10`). Fetch failure/timeout changes nothing: proceed with the existing local ref state — network trouble alone never changes the decision class (G10 unreachable-origin row M59).
+1. **G-DP1 — repo check (eager early exit, not a per-feature state).** cwd not a git repository → **G1**: BLOCK `NO_REPO` for **any deletion-shaped command** — D1 has already passed, and D2–D4 are never evaluated (FSPEC-GUARD-01 step 8). Steps 2–5 below, and BR-03-3's per-feature judgment, apply only inside a repo. Pinned consequences: a deletion aimed at an unguarded target in a non-repo cwd still blocks (`rm /tmp/scratch.log` → M75), and a D3-shaped command in a non-repo cwd blocks `NO_REPO`, never `INDETERMINATE` (M76; M37 pins the D2 shape). Failure of repo detection itself (e.g. corrupt `.git/HEAD`) is indistinguishable from a non-repo and takes this same exit. (The pipeline always runs in a checkout; a non-repo cwd cannot prove commit state.)
+2. **G-DP2 — fetch toggle.** If `GUARD_FETCH_BEFORE_CHECK=true` (env var, default `false`/unset) **and the fetch is formable — an `origin` remote and a current branch both exist** (in the no-remote and detached-HEAD states of G-DP3 the fetch is skipped: its arguments do not exist) — run `git fetch origin {branch}` bounded by `GUARD_FETCH_TIMEOUT_SECS` (default `10`). Fetch failure/timeout changes nothing: proceed with the existing local ref state — network trouble alone never changes the decision class (G10 unreachable-origin row M59).
 3. **G-DP3 — remote topology.**
    - No remote configured → **G2 fallback**: `LEARNINGS-{feature}.md` in `HEAD` tree → ALLOW; else BLOCK `NOT_COMMITTED`.
    - Detached HEAD (no current branch) → **G3**: same HEAD-tree fallback as G2 (CI runs detached on already-pushed commits).
@@ -141,13 +144,13 @@ Verifies, for a guarded directory `docs/{feature}/`, whether the exact file `LEA
 
 - BR-03-1: Both thresholds are environment variables read at invocation (unset/empty = default), never script-internal constants: `GUARD_FETCH_BEFORE_CHECK` (default `false`), `GUARD_FETCH_TIMEOUT_SECS` (default `10`). Owner: hook script header.
 - BR-03-2: The G2/G3 HEAD fallback is a documented weakening of the "pushed" guarantee (RR-4); permanent blocking would make remoteless/detached checkouts unusable.
-- BR-03-3: Verification is per-feature: each guarded directory is Verified or unverified independently; a deletion is judged against the state of the feature(s) its targets belong to.
+- BR-03-3: Verification is per-feature: each guarded directory is Verified or unverified independently; a deletion is judged against the state of the feature(s) its targets belong to. This per-feature judgment applies only once G-DP1 has established a repo — in a non-repo cwd the eager `NO_REPO` exit precedes it.
 
 ### Error scenarios
 
 | Scenario | Behavior |
 |---|---|
-| `git` commands fail inside a valid repo (corrupt ref, permission) | Cannot prove commit state → fail closed with the state's reason code (TSPEC picks the nearest G-state; never exit 0 on git error) |
+| `git` query fails after G-DP1 passes (corrupt ref, permission) | Cannot prove commit state → fail closed: BLOCK **`NOT_COMMITTED`** — deterministic, not a TSPEC choice; never exit 0 on git error (row M77). A failure of repo detection itself is the G-DP1 exit → `NO_REPO` |
 | Fetch times out with toggle `true` | Identical to toggle `false` path (M59) |
 
 ---
@@ -162,8 +165,8 @@ Verifies, for a guarded directory `docs/{feature}/`, whether the exact file `LEA
    - Run a **coarse conservative matcher in pure bash over the raw stdin text** (the full JSON blob — no field extraction is attempted).
    - **Decision:** BLOCK with reason `DEGRADED` iff the raw text matches a **degraded deletion-verb token** (set defined below) AND contains `docs/`, `CROSS-REVIEW`, or `CODE_REVIEW`; otherwise ALLOW. The `DEGRADED` message names the missing interpreter and `python3` as the remedy.
    - Degraded mode performs **no git verification** — guarded-looking deletions on a Python-less machine stay blocked until `python3` is installed.
-2. **DG-DP2 — stdin parse.** Interpreter present but stdin JSON unparseable or empty → BLOCK `PARSE_ERROR` (stable hook contract means malformed input signals a harness bug or tampering).
-3. **Precedence.** When both degradations co-occur, DG-DP1 runs first → result is `DEGRADED` (`PARSE_ERROR` detection itself requires the interpreter).
+2. **DG-DP2 — stdin parse.** Interpreter present but stdin JSON unparseable or empty → BLOCK `PARSE_ERROR` (stable hook contract means malformed input signals a harness bug or tampering). Stdin that **parses** but has `tool_input.command` absent or `null` is the same contract violation → BLOCK `PARSE_ERROR` (row M78; supersedes the current script's coerce-to-empty-and-allow at `guard-harvest-before-delete.sh:32`). A present-but-empty-string `command` is a well-formed payload: zero segments → D1 ALLOW.
+3. **Precedence.** When both degradations co-occur (no interpreter AND unparseable/empty stdin), **the DG-DP1 flow governs**: its matcher decides block-vs-allow over the raw stdin text, and a block carries `DEGRADED`, never `PARSE_ERROR` (`PARSE_ERROR` detection itself requires the interpreter). DG-DP1's decision rule is total, so no interpreter + token-matching malformed stdin → BLOCK `DEGRADED` (M71), while no interpreter + empty stdin → ALLOW (empty text matches no token; M72).
 4. `check-scope-field.sh` is exempt: advisory by design; its interpreter-missing path remains a silent no-op.
 
 ### Business rule — degraded deletion-verb token set (CF-2, SE v4 F-02)
@@ -172,9 +175,9 @@ Defined **relative to REQ-GUARD-02's verb enumeration**, adapted to raw-text mat
 
 | Token class | Tokens | Matching rule |
 |---|---|---|
-| Word verbs | `rm`, `unlink`, `mv`, `truncate`, `find` | Word-boundary match anywhere in the raw stdin text. `rm` as a word also covers `git rm` (its second word); `find` covers `find … -delete` / `-exec` forms |
-| Two-word verb | `git clean` | Whitespace-separated two-word sequence; bare `clean` is **not** a token |
-| Redirection operators | `>` (any occurrence of the character) | Lexically covers the whole REQ-GUARD-02 truncation family (`>`, `1>`, `>|`, `2>`, `&>`, `>&`) since each contains `>`; JSON uses `>` only inside string values, so an occurrence always comes from field content |
+| Word verbs | `rm`, `unlink`, `mv`, `truncate`, `find` | Word-boundary match anywhere in the raw stdin text. `rm` as a word also covers `git rm` (its second word); `find` covers `find … -delete` / `-exec` forms. Pinned by M42 (block) / M43 (allow) |
+| Two-word verb | `git clean` | Whitespace-separated two-word sequence; bare `clean` is **not** a token. Pinned by M68 (block) and the M69 negative (`./scripts/clean docs/backup` → ALLOW) |
+| Redirection operators | `>` (any occurrence of the character) | Lexically covers the whole REQ-GUARD-02 truncation family (`>`, `1>`, `>|`, `2>`, `&>`, `>&`) since each contains `>`; JSON uses `>` only inside string values, so an occurrence always comes from field content. Pinned by M70 |
 
 Accepted degraded-mode over-match (same class as the REQ's field-bleed consequence, folded into REQ-GUARD-06's accepted-consequence list): the `>` rule also matches non-destructive `>>` and fd-duplication forms (`2>&1`), and word verbs may match tokens in non-command JSON fields (e.g. the Bash tool `description`). All such matches still require the `docs/` / `CROSS-REVIEW` / `CODE_REVIEW` conjunct to block. REQ-GUARD-NFR-01's no-false-block guarantee is explicitly waived while degraded; over-blocking is the intended fail-closed trade.
 
@@ -185,7 +188,12 @@ Accepted degraded-mode over-match (same class as the REQ's field-bleed consequen
 | No interpreter, command `ls -la src/` | No token match → ALLOW (M43) |
 | No interpreter, command `rm docs/f/CROSS-REVIEW-x.md` | Token + content match → BLOCK `DEGRADED` (M42) |
 | No interpreter, `echo note >> docs/f/CROSS-REVIEW-x.md` | `>` + `docs/` match → BLOCK `DEGRADED` — accepted degraded false block (no matrix row; documented consequence) |
+| No interpreter, `git clean -fd docs/backup` | Two-word token + `docs/` → BLOCK `DEGRADED` (M68) |
+| No interpreter, `./scripts/clean docs/backup` | Bare `clean` is not a token → ALLOW (M69) |
+| No interpreter, stdin `not-json{"cmd":"rm docs/f"}` | DG-DP1 governs the co-occurrence → BLOCK `DEGRADED`, never `PARSE_ERROR` (M71) |
+| No interpreter, empty stdin | Matcher over empty text finds no token → ALLOW (M72) |
 | Empty stdin, interpreter present | BLOCK `PARSE_ERROR` (M41) |
+| Parseable stdin without `tool_input.command` (absent or `null`), interpreter present | BLOCK `PARSE_ERROR` (M78) |
 
 ---
 
@@ -197,13 +205,13 @@ Accepted degraded-mode over-match (same class as the REQ's field-bleed consequen
 
 `check-scope-field.sh` runs as PostToolUse: Write|Edit (advisory — it can never block).
 
-1. Extract `tool_input.file_path`. If the basename does not match `CROSS-REVIEW-*.md` / `CODE_REVIEW-*.md` → silent exit.
+1. Extract `tool_input.file_path`. If the basename does not match `CROSS-REVIEW-*.md` / `CODE_REVIEW-*.md` → silent exit (row S07 — the branch that keeps every non-review Write/Edit noise-free, US-03).
 2. Test the written file's content against the three exact patterns (POSIX ERE, case-sensitive on `Scope`): **P1** `^[[:space:]]*Scope:` (plain field line) · **P2** `^[[:space:]]*\*\*Scope(\*\*:|:\*\*)` (bold markdown, both spellings) · **P3** `\|[[:space:]]*Scope[[:space:]]*\|` (table header cell, any row position — deliberately not line-anchored).
 3. **Decision:** any pattern matches → silent. No pattern matches → emit the missing-`Scope:` warning.
 4. Prose substrings ("telescope", "the scope of this change") and lowercase `scope:` never match (S04–S06).
 5. Interpreter missing → silent no-op (exempt from REQ-GUARD-06 by design).
 
-Acceptance tests: S-rows S01–S06 of the Canonical Matrix.
+Acceptance tests: S-rows S01–S07 of the Canonical Matrix.
 
 ---
 
@@ -218,11 +226,12 @@ Acceptance tests: S-rows S01–S06 of the Canonical Matrix.
 
 | Decision path (this FSPEC) | Reason code |
 |---|---|
+| G-DP1 eager exit — deletion-shaped command (past D1), cwd not a git repo; precedes D2–D4, so no other row can co-match (M37, M75, M76) | `NO_REPO` |
 | D2 hit; feature state G2/G3/G5/G8/G9 | `NOT_COMMITTED` |
 | D2 hit; feature state G4/G7/G10 | `NOT_PUSHED` |
-| D3 or D4 hit | `INDETERMINATE` |
-| G-DP1 non-repo (G1) | `NO_REPO` |
-| DG-DP2 unparseable stdin | `PARSE_ERROR` |
+| Git query failure after G-DP1 passes (state unprovable) | `NOT_COMMITTED` |
+| D3 or D4 hit (reachable only inside a repo — G1 is exhausted by the eager exit above) | `INDETERMINATE` |
+| DG-DP2 — unparseable/empty stdin, or parseable stdin lacking `tool_input.command` | `PARSE_ERROR` |
 | DG-DP1 degraded block | `DEGRADED` |
 
 3. Required message substrings per reason code are fixed by the REQ-GUARD-07 table (e.g. `NOT_COMMITTED` carries `LEARNINGS-{feature}.md` and the `/pdlc:harvest-learnings` instruction; G4 additionally `git push -u origin`; G10 additionally the `git fetch` hint). Exact prose beyond prefix + required substrings is owned by TSPEC; tests assert prefix + substrings, never full prose.
@@ -231,16 +240,15 @@ Acceptance tests: S-rows S01–S06 of the Canonical Matrix.
 
 ## Acceptance Tests
 
-The acceptance-test suite is the REQ v1.3 **Canonical Block/Allow Matrix** — deletion-guard rows **M01–M65** and scope-check rows **S01–S06** — carried forward by reference, under REQ-GUARD-05's one-test-per-row obligation (bulk row M33 expands to one asserting test per referenced row; parameterized acceptable). This FSPEC amends the matrix as follows (CF-3, TE v4 F4-01):
+The acceptance-test suite is the REQ v1.4 **Canonical Block/Allow Matrix** — deletion-guard rows **M01–M79** and scope-check rows **S01–S07** — carried forward by reference, under REQ-GUARD-05's one-test-per-row obligation (bulk row M33 expands to one asserting test per referenced row; parameterized acceptable).
 
-| # | Command / state variation | Decision | Reason code |
-|---|---|---|---|
-| M66 | No cwd signal in hook stdin; hook **process cwd = `docs/f`** (candidate root (B) alone): `rm *.md` | BLOCK | NOT_COMMITTED |
+Matrix rows are **REQ-owned**: the fifteen rows this FSPEC's authoring and review produced — **M66** (CF-3, TE v4 F4-01) and **M67–M79, S07** (iteration-1 FSPEC findings) — live in the REQ matrix, added in v1.4 in the same commit as this revision. M33's G6 re-run expansion set is extended there to include **M66, M67, M73, M74, and M79** (under G6 each resolves against a *Verified* guarded directory → ALLOW). The degraded rows M68–M72, the non-repo rows M75–M76, and the contract rows M77–M78 are git-state-independent or non-G6-constructible and are deliberately outside the re-run set.
+
+M66 retains its full acceptance statement:
 
 - **Who:** any agent / **Given:** default matrix fixture state; hook stdin carries no `cwd` field; the hook process is spawned with working directory `docs/f` / **When:** `rm *.md` / **Then:** exit 2, reason `NOT_COMMITTED` — candidate root (B) alone resolves the glob inside the unverified guarded directory, exercising the union rule's second disjunct (an (A)-only implementation must fail this row).
-- **M33's G6 re-run expansion set is extended to include M66** (under G6 the glob resolves inside a *Verified* guarded directory → ALLOW).
 
-M66 is hermetically writable in the existing jest harness (spawn cwd + stdin content are both controllable), per REQ-GUARD-05's test-environment requirements.
+All fifteen rows are hermetically writable in the existing jest harness (spawn cwd, stdin content, restricted `PATH`, `CLAUDE_PROJECT_DIR`, and fixture-repo git state — including a corruptible `origin/{branch}` ref file for M77 — are all controllable), per REQ-GUARD-05's test-environment requirements.
 
 ---
 
@@ -250,15 +258,39 @@ The iteration-4 reviews approved REQ v1.3 with three Low findings, each explicit
 
 | CF | Source | Finding | Resolution in this FSPEC |
 |---|---|---|---|
-| CF-1 | SE v4 F-01 | `>&` disambiguation stated as "followed by a digit"; bash's rule is "word entirely digits (or `-`)" — a digit-leading non-numeric word (`>& 2024-notes/CROSS-REVIEW-x.md`) was unclassified | FSPEC-GUARD-02 redirection rule 1: fd-duplication iff the word after `>&` **consists entirely of digits or is exactly `-`**; any other word is a truncating file target. Supersedes the REQ M62 phrasing |
-| CF-2 | SE v4 F-02 | Degraded-mode "deletion-verb token" set undefined relative to REQ-GUARD-02's enumeration (which includes redirection operators) | FSPEC-GUARD-04 business rule: explicit token set — word-boundary verbs `rm`, `unlink`, `mv`, `truncate`, `find`; two-word `git clean`; the character `>` covering the whole truncation-redirection family — with the over-match consequences named and folded into the REQ-GUARD-06 accepted-consequence list |
+| CF-1 | SE v4 F-01 | `>&` disambiguation stated as "followed by a digit"; bash's rule is "word entirely digits (or `-`)" — a digit-leading non-numeric word (`>& 2024-notes/CROSS-REVIEW-x.md`) was unclassified | FSPEC-GUARD-02 redirection rule 1: fd-duplication iff the word after `>&` **consists entirely of digits or is exactly `-`**; any other word is a truncating file target. Supersedes the REQ M62 phrasing. *(v1.1: discriminating matrix row M67 added — TE FSPEC F-01.)* |
+| CF-2 | SE v4 F-02 | Degraded-mode "deletion-verb token" set undefined relative to REQ-GUARD-02's enumeration (which includes redirection operators) | FSPEC-GUARD-04 business rule: explicit token set — word-boundary verbs `rm`, `unlink`, `mv`, `truncate`, `find`; two-word `git clean`; the character `>` covering the whole truncation-redirection family — with the over-match consequences named and folded into the REQ-GUARD-06 accepted-consequence list. *(v1.1: token-class and precedence rows M68–M72 added — TE FSPEC F-02/F-03.)* |
 | CF-3 | TE v4 F4-01 | Union rule's "either" disjunction had no matrix row where candidate root (B) alone triggers the block — an (A)-only implementation would pass the whole matrix | § Acceptance Tests adds row **M66** (block via hook process cwd alone) and extends M33's G6 re-run set to include it |
+
+---
+
+## Reviewer Findings Disposition (v1.0 → v1.1)
+
+| Finding | Resolution |
+|---|---|
+| SE F-01 (Medium — `mv` flow evaluated indeterminacy before the static-source guarded-dir test, contradicting BR-01-1 and flipping an observable reason code) | FSPEC-GUARD-02 `mv` flow reordered: static-source D2 test (guarded dir itself / ancestor) now precedes the indeterminacy jump; an indeterminate destination never diverts a static-guarded-dir source to D3; BR-01-1 restated to bind the `mv` flow explicitly; matrix row M74 pins `mv docs/f "$DEST"` → `NOT_COMMITTED` |
+| SE F-02 (Medium — G1 ambiguous between eager early-exit and lazy per-feature state; GUARD-06 table doubly matched D3/D4-in-non-repo) | **Eager** chosen: G-DP1 is an early exit — any deletion-shaped command (past D1) in a non-repo cwd blocks `NO_REPO` before D2–D4 (FSPEC-GUARD-01 step 8; FSPEC-GUARD-03 G-DP1); BR-03-3 scoped to in-repo; GUARD-06 table disambiguated (eager row precedes and exhausts G1, so D3/D4 rows are repo-only); rows M75 (unguarded-target deletion in non-repo → `NO_REPO`) and M76 (D3-shaped in non-repo → `NO_REPO`, not `INDETERMINATE`) |
+| SE F-03 (Medium — recursion-cap latitude licensed D3 treatment of verb-free over-cap payloads, violating REQ-GUARD-NFR-01/D1) | Edge case rewritten: an over-cap payload is treated as **opaque** → D1 ALLOW, never deletion-shaped; REQ RR-3 extended in v1.4 (same commit) to register the over-cap bypass surface; depth-2 row M73 pins minimum recursion |
+| SE F-04 (Low — union rule stated only for segment 1) | Step 6: the initial union cwd applies to every segment until a `cd` segment updates it; M18 cited |
+| SE F-05 (Low — fetch unformable in the states G-DP3 detects) | G-DP2 conditioned on formability (an `origin` remote and a current branch both exist); skipped in no-remote/detached states |
+| SE F-06 (Low — "TSPEC picks the nearest G-state" non-deterministic) | Git-query failure after G-DP1 passes → deterministic `NOT_COMMITTED`; repo-detection failure → `NO_REPO`; GUARD-06 row added; matrix row M77 |
+| SE F-07 (Low — parseable stdin without `tool_input.command` undecided) | Absent/`null` `command` → `PARSE_ERROR` (contract violation, consistent with DG-DP2's rationale; supersedes the current coerce-to-empty-and-allow); empty-string `command` → D1 ALLOW; matrix row M78 |
+| SE Q-01 (degraded "iff" freezes the over-match surface — intended?) | Answered: yes, intended. The over-match surface is normative for oracle stability — allow rows M43/M69/M72 pin the allow side, block rows M42/M68/M70 the block side. Narrowing the surface (e.g. excluding `>>`) is a REQ change, not implementation freedom |
+| TE F-01 (Medium — CF-1's corrected `>&` rule unverifiable from the oracle) | Matrix row M67 (nested guarded `docs/f/2024-notes/CROSS-REVIEW-x.md`; `cd docs/f && npm test >& 2024-notes/CROSS-REVIEW-x.md` → BLOCK `NOT_COMMITTED`); included in M33's G6 re-run set |
+| TE F-02 (Medium — degraded token classes unpinned; DG precedence unpinned) | Rows M68 (`git clean` two-word token), M69 (bare-`clean` negative), M70 (`>` character class), M71 (DG-DP1→DG-DP2 precedence co-occurrence → `DEGRADED`, never `PARSE_ERROR`) |
+| TE F-03 (Low — precedence prose vs DG-DP1's total rule for empty stdin) | Step 3 reworded: the DG-DP1 flow governs the co-occurrence (matcher decides block-vs-allow; a block carries `DEGRADED`); M71 pins the block side, M72 the empty-stdin allow side; REQ-GUARD-06 case-2 prose aligned in v1.4 |
+| TE F-04 (Low — guarded-directory enumeration root unanchored) | Step 8: enumeration anchored at the repo root — `CLAUDE_PROJECT_DIR` when set, else `git rev-parse --show-toplevel` — never the process or stdin cwd |
+| TE F-05 (Low — git-error-in-repo branch rowless) | Row M77 — strengthened beyond the asked-for prefix-only assertion: reason code deterministically `NOT_COMMITTED` (per SE F-06 resolution) |
+| TE F-06 (Low — basename-filter branch has no S-row) | Row S07 (non-matching basename, no Scope pattern → silent) |
+| TE F-07 (Low — multi-source `mv` undecided) | Step 0 generalization: last operand is the destination; each source evaluated independently; any BLOCK blocks; row M79 |
+| TE F-08 (Low — recursion depth ≥ 2 rowless) | Row M73 (`bash -c 'eval "rm docs/f/*.md"'` → BLOCK `NOT_COMMITTED`); in M33's G6 re-run set |
+| TE F-09 (Low, **Process**) | Recorded for harvest into LEARNINGS: **a carry-forward or review resolution that creates or changes decidable behavior must amend the Canonical Matrix in the same edit, not just prose** — applied throughout this revision (every behavior-changing fix above lands with its matrix row) |
 
 ---
 
 ## Open Questions
 
-None. All reviewer questions across four REQ iterations are answered inline in REQ v1.3, and the three v4 carry-forwards are resolved above. Behavior is fully specified by the flows in this document plus the Canonical Matrix M01–M66 / S01–S06.
+None. All reviewer questions across four REQ iterations are answered inline in REQ v1.4, the three v4 carry-forwards are resolved above, and both iteration-1 FSPEC reviews are fully dispositioned (SE Q-01 answered in the disposition table). Behavior is fully specified by the flows in this document plus the Canonical Matrix M01–M79 / S01–S07.
 
 ---
 
@@ -267,3 +299,4 @@ None. All reviewer questions across four REQ iterations are answered inline in R
 | Version | Date | Change |
 |---|---|---|
 | 1.0 | 2026-07-02 | Initial draft from REQ v1.3: decision flows for parsing discipline (D1–D4), `mv` resulting-path rule and redirection classification, git-state verification (G1–G10), degraded mode, scope check, and reason-code emission; matrix carried forward by reference with FSPEC-added row M66; v4 carry-forwards CF-1–CF-3 resolved |
+| 1.1 | 2026-07-02 | Addressed all iteration-1 FSPEC findings (SE: 3 Medium + 4 Low + Q-01; TE: 2 Medium + 7 Low): `mv` flow reordered to honor D2-before-D3 with multi-source generalization; G1 defined as eager `NO_REPO` early exit with GUARD-06 table disambiguated; over-cap opaque recursion resolved to D1-allow under extended RR-3; DG precedence governed by the DG-DP1 flow; deterministic git-error reason code; missing-`tool_input.command` → `PARSE_ERROR`; union-cwd every-segment clarification; enumeration root anchored; fetch formability precondition. Matrix rows M67–M79 and S07 (plus M66's promotion) added to the REQ Canonical Matrix v1.4 in the same commit — matrix rows are REQ-owned; TE F-09 process rule applied and recorded for harvest |

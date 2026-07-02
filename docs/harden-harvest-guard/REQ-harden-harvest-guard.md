@@ -1,7 +1,7 @@
 ---
 Status: Draft
 Author: pm-author
-Version: 1.3
+Version: 1.4
 Feature: harden-harvest-guard
 ready: true
 depends-on: []
@@ -75,7 +75,7 @@ The guard is a backstop, not a sandbox. The first line of defense remains the ha
 | RR-W | Write-tool truncation of a guarded file | PostToolUse hooks cannot veto; would require a new hook event (out of scope). |
 | RR-1 | Deletion via verbs outside the REQ-GUARD-02 set (`rsync --delete`, interpreter one-liners, `cp /dev/null`, `dd of=`, `sed -i`, `shred`, …) | Full coverage requires interpreting arbitrary program semantics. The defended set covers every spelling a harvest agent realistically produces; extending further multiplies false-block surface against NFR-01 (P0). |
 | RR-2 | Indeterminate deletion whose own segment carries no textual `docs` reference — via operands, assignment dataflow, piped producers, or `cd` context (e.g. `rm "$D"/*.md` where `$D` was set in a *previous* Bash tool call, or where the only `docs/` token sits in an unrelated sibling segment like a following `git add docs/f/…`) | Blocking every variable-expanded delete repo-wide would false-block routine work (temp-file cleanup, log redirection in the harvest/commit flow itself) whenever any feature is mid-pipeline — a direct NFR-01 violation. Decision rule D3's segment-scoped `docs`-reference discriminator catches all in-context spellings; the cross-segment-only class is the accepted remainder. |
-| RR-3 | Fully opaque execution with no visible deletion verb (`eval "$CMD"`) | No deletion verb is observable anywhere in executable position; blocking all `eval`/`bash -c` would violate NFR-01. Guaranteed by decision rule D1. |
+| RR-3 | Fully opaque execution with no visible deletion verb (`eval "$CMD"`) — **including opaque payloads nested beyond any implementation-chosen recursion-depth cap**, which are treated as opaque (no visible deletion verb), never as deletion-shaped | No deletion verb is observable anywhere in executable position; blocking all `eval`/`bash -c` would violate NFR-01. Guaranteed by decision rule D1. Treating an over-cap payload as indeterminate-deletion-shaped would false-block verb-free commands that merely mention `docs/` — a direct NFR-01 (P0) violation — so cap exhaustion falls into this accepted class instead. |
 | RR-4 | Remoteless/detached-HEAD fallback (G2/G3) accepts LEARNINGS that is committed to `HEAD` but never pushed — e.g. `git checkout --detach` in one Bash call, then delete in the next, satisfies the guard with a local-only commit | In remoteless/detached contexts, local commit is the strongest verifiable state; permanent blocking would make those checkouts (incl. CI) unusable. Documented weakening of the "pushed" guarantee per REQ-GUARD-03. |
 | RR-5 | Cross-call cwd drift: the Bash tool's shell cwd persists across tool calls (`cd docs/f` in call 1, `rm *.md` in call 2), and when the hook stdin carries no cwd signal that tracks the persisted shell, no candidate root may reflect the real shell cwd — the static relative operand then resolves against the wrong root and the deletion is allowed | The hook cannot observe the persisted shell. Mitigation is the REQ-GUARD-01 step-4 **union rule**: static relative operands are resolved against both candidate roots (stdin `cwd` when present, else repo root; plus the hook process cwd) and blocked if either resolution lands in/over an unverified guarded directory. Whatever drift survives the union (M65) is accepted. |
 
@@ -217,7 +217,7 @@ The G2/G3 fallback to committed-in-`HEAD` is an accepted, documented degradation
 **Description:** The guard's fail-closed posture SHALL survive runtime degradation:
 
 1. **No usable Python interpreter** (current `guard-harvest-before-delete.sh:21` exits 0): the guard SHALL fall back to a **coarse conservative matcher in pure bash** running over the **raw stdin text** (the full JSON blob — without Python the guard cannot extract `tool_input.command`, so no field extraction is attempted): if that raw text matches a deletion-verb token AND contains `docs/`, `CROSS-REVIEW`, or `CODE_REVIEW`, BLOCK with reason `DEGRADED` and a message naming the missing interpreter; otherwise allow. **Accepted consequence (field-bleed):** tokens in other JSON fields (e.g. the Bash tool's `description`) can trigger a degraded block — part of the false-blocks-for-containment trade. Degraded mode also deliberately performs **no git verification**, even though `git cat-file` is bash-feasible: replicating feature-name derivation and path resolution in bash would reintroduce exactly the coarse text-matching guard this REQ retires. The intended operational posture is that guarded-looking deletions on a Python-less machine stay blocked until `python3` is installed. *(Answers reviewer question SE-Q-01, iteration 2.)* REQ-GUARD-NFR-01's no-false-block guarantee applies **only when an interpreter is present**, and the `DEGRADED` message says how to restore full fidelity (install `python3`).
-2. **Unparseable or empty stdin JSON** (current `:30` exits 0): BLOCK with reason `PARSE_ERROR`. The hook stdin contract is stable (see Assumptions), so malformed input signals a harness bug or tampering — fail closed. **Precedence when both degradations co-occur** (no interpreter AND malformed stdin): the interpreter check runs first, so the result is `DEGRADED` — `PARSE_ERROR` detection itself requires the interpreter.
+2. **Unparseable or empty stdin JSON** (current `:30` exits 0): BLOCK with reason `PARSE_ERROR`. Stdin that *parses* but has `tool_input.command` absent or `null` is the same contract violation → BLOCK `PARSE_ERROR` (a present-but-empty-string `command` is a well-formed payload and is allowed by D1). The hook stdin contract is stable (see Assumptions), so malformed input signals a harness bug or tampering — fail closed. **Precedence when both degradations co-occur** (no interpreter AND malformed stdin): the interpreter check runs first, so the DG-degraded flow of case 1 governs — its matcher decides block-vs-allow over the raw text, and a block carries `DEGRADED`, never `PARSE_ERROR` (`PARSE_ERROR` detection itself requires the interpreter).
 3. `check-scope-field.sh` is advisory by design (never blocks); its interpreter-missing path remains a silent no-op. Only the blocking guard is subject to this requirement.
 
 **Acceptance criteria:**
@@ -347,7 +347,7 @@ Default fixture state unless a row says otherwise: `docs/f/` contains `CROSS-REV
 | M30 | `git add docs/f/CROSS-REVIEW-x.md` | ALLOW | — |
 | M31 | `grep CROSS-REVIEW docs/f/*.md` | ALLOW | — |
 | M32 | `rm docs/empty-feature/*.md` (dir has no guarded files) | ALLOW | — |
-| M33 | State G6 (LEARNINGS pushed): re-run M01, M02, M04–M24, M44–M54, M60–M64 — expands to one asserting test per referenced row (parameterized test acceptable) | ALLOW | — |
+| M33 | State G6 (LEARNINGS pushed): re-run M01, M02, M04–M24, M44–M54, M60–M64, M66–M67, M73–M74, M79 — expands to one asserting test per referenced row (parameterized test acceptable) | ALLOW | — |
 | M34 | State G7 (committed, not pushed): `rm docs/f/CROSS-REVIEW-x.md` | BLOCK | NOT_PUSHED |
 | M35 | State G4 (origin exists, branch never pushed, LEARNINGS committed): `rm docs/f/CROSS-REVIEW-x.md` | BLOCK | NOT_PUSHED (`git push -u origin` in message) |
 | M36 | State G9 (`LEARNINGS-other.md` committed, `LEARNINGS-f.md` absent): `rm docs/f/CROSS-REVIEW-x.md` | BLOCK | NOT_COMMITTED |
@@ -380,6 +380,20 @@ Default fixture state unless a row says otherwise: `docs/f/` contains `CROSS-REV
 | M63 | `rm --recursive docs` (long-form recursive flag; ancestor, D2 iv) | BLOCK | NOT_COMMITTED |
 | M64 | Hook stdin `cwd` = `docs/f` (persisted shell cwd from a prior call's `cd docs/f`): `rm *.md` | BLOCK | NOT_COMMITTED |
 | M65 | No cwd signal in hook stdin; hook process cwd = repo root: `rm *.md` | ALLOW | — (RR-5) |
+| M66 | No cwd signal in hook stdin; hook **process cwd = `docs/f`** (candidate root (B) alone): `rm *.md` | BLOCK | NOT_COMMITTED |
+| M67 | Fixture adds nested guarded file `docs/f/2024-notes/CROSS-REVIEW-x.md`: `cd docs/f && npm test >& 2024-notes/CROSS-REVIEW-x.md` (digit-leading non-numeric word after `>&` — file target, not fd-duplication) | BLOCK | NOT_COMMITTED |
+| M68 | No interpreter on PATH: `git clean -fd docs/backup` (two-word degraded token) | BLOCK | DEGRADED |
+| M69 | No interpreter on PATH: `./scripts/clean docs/backup` (bare `clean` is not a degraded token) | ALLOW | — |
+| M70 | No interpreter on PATH: `foo > docs/f/CROSS-REVIEW-x.md` (`>`-character degraded token class) | BLOCK | DEGRADED |
+| M71 | No interpreter on PATH AND stdin `not-json{"cmd":"rm docs/f"}` (both degradations; token + content match) | BLOCK | DEGRADED (never PARSE_ERROR) |
+| M72 | No interpreter on PATH AND empty stdin (both degradations; empty text matches no token) | ALLOW | — |
+| M73 | `bash -c 'eval "rm docs/f/*.md"'` (depth-2 opaque nesting) | BLOCK | NOT_COMMITTED |
+| M74 | `mv docs/f "$DEST"` (static source = unverified guarded dir; indeterminate destination — D2 precedes D3) | BLOCK | NOT_COMMITTED |
+| M75 | State G1 (cwd not a git repo): `rm /tmp/scratch.log` (eager repo check: any deletion-shaped command in a non-repo cwd) | BLOCK | NO_REPO |
+| M76 | State G1: `rm $(find docs/f -name 'CROSS-*')` (eager repo check precedes D3) | BLOCK | NO_REPO |
+| M77 | Git query failure after repo detection passes (fixture: corrupt `.git/refs/remotes/origin/{branch}`): `rm docs/f/CROSS-REVIEW-x.md` | BLOCK | NOT_COMMITTED |
+| M78 | Parseable stdin JSON with `tool_input.command` absent or `null` | BLOCK | PARSE_ERROR |
+| M79 | `mv docs/f/CROSS-REVIEW-x.md docs/f/CODE_REVIEW-f-v1.md /tmp/` (multi-source `mv`; each source evaluated independently) | BLOCK | NOT_COMMITTED |
 
 ### Scope-check rows (REQ-GUARD-04 — `check-scope-field.sh`)
 
@@ -393,6 +407,7 @@ Fixture: a `CROSS-REVIEW-*.md` file written with exactly the stated content; ora
 | S04 | Contains the word "telescope"; no pattern match | Warning |
 | S05 | Contains the prose "the scope of this change"; no pattern match | Warning |
 | S06 | Contains only lowercase `scope: Local` | Warning |
+| S07 | File written to a basename **not** matching `CROSS-REVIEW-*.md` / `CODE_REVIEW-*.md` (e.g. `notes.md`), containing no Scope pattern | Silent (basename filter — deviates from the S-fixture's default filename) |
 
 ---
 
@@ -463,3 +478,4 @@ None — all v1.0, iteration-2, and iteration-3 reviewer questions are answered 
 | 1.1 | 2026-07-02 | Addressed all High/Medium (and all Low) findings from SE and TE cross-reviews, iteration 1: parsing discipline + decision rules D1–D4, `mv`/redirection semantics, git-state matrix G1–G10, degraded-environment policy (REQ-GUARD-06), reason-code message catalog (REQ-GUARD-07), Scope-pattern EREs, canonical block/allow matrix as test oracle, residual-risk register, corrected runtime-dependency assumption |
 | 1.2 | 2026-07-02 | Addressed all High/Medium (and all Low) findings from iteration-2 cross-reviews: quote semantics rewritten as literal-vs-expandable with quote removal before classification (SE F-02/TE F2-01); D2 extended to guarded-dir-itself and ancestor paths for recursive-capable forms (SE F-01); D3 discriminator scoped to the deletion segment's operands/dataflow and fd-duplication excluded (SE F-03); `mv` unified on resulting-path rule with nested-subdir feature derivation (TE F2-02); matrix completed with G5/G10-default/fetch-failure rows (TE F2-03); env-var threshold mechanism, degraded raw-stdin matching + precedence, pinned state rows, RR-4, `1>`/`>\|` classification (Lows); matrix rows M44–M59 |
 | 1.3 | 2026-07-02 | Addressed iteration-3 findings: initial-effective-cwd union rule for static relative operand resolution + RR-5 for cross-call cwd drift, answering SE Q-01 (SE F-01); `&>`/`>& file` truncation forms and `rm --recursive` classified (SE F-02); `unlink` matrix row (SE F-03); scope-check cases converted to Canonical Matrix S-rows S01–S06 bound by REQ-GUARD-05 (TE F3-01); matrix rows M60–M65 |
+| 1.4 | 2026-07-02 | Matrix extension from FSPEC iteration-1 review — no requirement semantics changed. Rows M66–M79 and S07 added: M66 promoted from FSPEC v1.0 (union-rule root-(B) discriminator); M67 `>&` digit-leading-path (TE FSPEC F-01); M68–M72 degraded token classes and DG-precedence (TE FSPEC F-02/F-03); M73 depth-2 recursion (TE FSPEC F-08); M74 mv static-guarded-source/indeterminate-destination (SE FSPEC F-01); M75–M76 eager G1 (SE FSPEC F-02); M77 git-error-in-repo (SE FSPEC F-06/TE FSPEC F-05); M78 missing `tool_input.command` (SE FSPEC F-07); M79 multi-source mv (TE FSPEC F-07); S07 basename filter (TE FSPEC F-06). M33 G6 re-run set extended (M66–M67, M73–M74, M79); RR-3 clarified to register over-cap opaque payloads (SE FSPEC F-03); REQ-GUARD-06 case-2 wording aligned (missing-command contract violation, DG-precedence governed by the degraded flow) |
