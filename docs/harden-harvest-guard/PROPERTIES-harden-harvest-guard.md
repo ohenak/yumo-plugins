@@ -1,7 +1,7 @@
 ---
 Status: Draft
 Author: te-author
-Version: 1.0
+Version: 1.1
 Feature: harden-harvest-guard
 ---
 
@@ -9,7 +9,7 @@ Feature: harden-harvest-guard
 |---|---|
 | Upstream | REQ → FSPEC → TSPEC → DECISIONS → PLAN → **PROPERTIES** |
 | Downstream | IMPL tests |
-| Cross-Reviews | (none yet — created on review) |
+| Cross-Reviews | [CROSS-REVIEW-software-engineer-PROPERTIES.md](CROSS-REVIEW-software-engineer-PROPERTIES.md) · [CROSS-REVIEW-product-manager-PROPERTIES.md](CROSS-REVIEW-product-manager-PROPERTIES.md) |
 | LEARNINGS | docs/harden-harvest-guard/LEARNINGS-harden-harvest-guard.md |
 
 # PROPERTIES — harden-harvest-guard
@@ -24,17 +24,20 @@ Sources: [REQ-harden-harvest-guard.md](REQ-harden-harvest-guard.md) **v1.7** · 
 
 ---
 
-## Deltas to the planned test architecture (binding for se-implement)
+## Deltas to the planned test architecture (input to se-implement task dispatch)
 
-Everything below fits the TSPEC § 6.6 supplementary-layer conventions: non-row test titles, **outside matrix-row accounting** (the § 6.3 self-audit governs only MATRIX ids), zero new dependencies, same files (extends PLAN TASK-05's supplementary suite; greens at TASK-11/TASK-12 with everything else). The REQ-GUARD-05 exactly-one-asserting-test-per-row invariant is untouched — these are variant commands or re-runs with distinct titles, exactly like P-QUOTE.
+**Layer classification (corrected in v1.1 — SE F-04, PM F-03):** Δ2, Δ3, Δ4, and Δ6's test case are genuine TSPEC § 6.6 supplementary-layer additions — non-row test titles, **outside matrix-row accounting** (the § 6.3 self-audit governs only MATRIX ids), zero new dependencies, same files. **Δ1 and Δ5 are not supplementary additions — they amend upstream-specified mechanisms:** Δ1 amends the **TSPEC § 6.2** fixture-library helper contract, and Δ5 amends the **§ 6.3** self-audit mechanism (meta-test 1). Both are behavior-neutral strengthenings; both upstream documents must be read as superseded on those points (recorded per delta below). The REQ-GUARD-05 exactly-one-asserting-test-per-row invariant is untouched throughout — the supplementary cases are variant commands or re-runs with distinct titles, exactly like P-QUOTE.
 
-| Delta | What | Where | Property |
-|---|---|---|---|
-| Δ1 | `expectAllow(res)` strengthened: asserts exit 0 **and empty stdout and empty stderr** (was exit-0-only in TSPEC § 6.2) | `guardFixtures.js` | PROP-MSG-02 |
-| Δ2 | **P-DET** table — determinism double-run: one representative row per verdict class (M01 `NOT_COMMITTED`, M20 `INDETERMINATE`, M37 `NO_REPO`, M41 `PARSE_ERROR`, M42 `DEGRADED`, M03 ALLOW), each invoked twice against one fixture, asserting identical `{exitCode, stdout, stderr}` across the two runs. Titles `P-DET-nn` | `guardMatrix.test.js` | PROP-DEC-02 |
-| Δ3 | **P-DEG** table — degraded-subsumption re-run: mechanically filtered from `MATRIX` (see PROP-DEG-01 derivation rule), each qualifying row re-run under `degradedEnv()` expecting BLOCK `DEGRADED`; floor assertion `P_DEG_MIN = 40` qualifying rows so an emptied filter fails loudly. Titles `P-DEG-<rowid>` | `guardMatrix.test.js` | PROP-DEG-01 |
-| Δ4 | **P-SCOPE-DEG-01** — one case: `check-scope-field.sh` run under `degradedEnv()` on an untagged `CROSS-REVIEW-*.md` → exit 0, empty stdout (advisory channel silent when the interpreter is missing; stderr unconstrained — external-tool resolution noise is not part of the advisory contract) | `hookCompatibility.test.js` | PROP-SCOPE-02 |
-| Δ5 | Meta-conjunct: every `MATRIX` entry's `expect.reason` ∈ the closed six-code catalog (folds into meta-test 1's describe block as one additional assertion; not a fifth meta-test) | `guardMatrix.test.js` | PROP-MSG-03 |
+**Landing-task bindings (SE F-04).** se-implement is dispatched per task with the task table + this document; each delta therefore names the task whose implementer owns it. A TASK-05 attribution for all five (as v1.0 had) would let TASK-02/03/04 implementers legitimately skip Δ1/Δ5/Δ4 — the bindings below are the correction.
+
+| Delta | What | Where | Lands at | Property |
+|---|---|---|---|---|
+| Δ1 | `expectAllow(res)` strengthened: asserts exit 0 **and empty stdout and empty stderr**. **Supersession note:** TSPEC § 6.2 and PLAN TASK-02 both pin `expectAllow` as exit-0-only; this delta supersedes both (behavior-neutral strengthening sanctioned by TSPEC § 3.3's allow-silence contract — see PROP-MSG-02). A future TSPEC/PLAN touch should reconcile the § 6.2 `expectAllow` comment and the TASK-02 helper spec with the strengthened semantics. | `guardFixtures.js` | **TASK-02** (helper contract — so TASK-03's red verification and every ALLOW green checkpoint run under the strengthened oracle) | PROP-MSG-02 |
+| Δ2 | **P-DET** table — determinism double-run: one representative row per verdict class (M01 `NOT_COMMITTED`, M20 `INDETERMINATE`, M37 `NO_REPO`, M41 `PARSE_ERROR`, M42 `DEGRADED`, M03 ALLOW), each invoked twice against one fixture, asserting identical `{exitCode, stdout, stderr}` across the two runs. Titles `P-DET-nn` | `guardMatrix.test.js` | **TASK-05** (supplementary suite) | PROP-DEC-02 |
+| Δ3 | **P-DEG** table — degraded-subsumption re-run: mechanically filtered from `MATRIX` (see PROP-DEG-01 derivation rule), each qualifying row re-run under `degradedEnv()` expecting BLOCK `DEGRADED`; floor assertion `P_DEG_MIN = 40` qualifying rows so an emptied filter fails loudly. Titles `P-DEG-<rowid>` | `guardMatrix.test.js` | **TASK-05** (supplementary suite) | PROP-DEG-01 |
+| Δ4 | **P-SCOPE-DEG-01** — one case: `check-scope-field.sh` run under `degradedEnv()` on an untagged `CROSS-REVIEW-*.md` → exit 0, empty stdout (advisory channel silent when the interpreter is missing; stderr unconstrained — external-tool resolution noise is not part of the advisory contract; see PM Q-01 disposition). **Spawn discipline (SE F-01/SE Q-01):** this case **must not** use `runHookScript`'s by-name `spawnSync("bash", …)` spawn — under `degradedEnv()`'s empty child `PATH`, by-name resolution fails `ENOENT` before the script runs (C17). It routes through `runScopeCheck` (PLAN TASK-02), which for this case spawns via the **`BASH_ABS` absolute-path discipline** of TSPEC § 6.1: `spawnSync(BASH_ABS, [scriptPath], …)` — PLAN TASK-02 does not state `runScopeCheck`'s spawn mechanism, so this delta pins it: `runScopeCheck` spawns via `BASH_ABS` (harmless for the full-runtime S-rows, required for this one). | `hookCompatibility.test.js` (case) + `guardFixtures.js` (`runScopeCheck` spawn pin) | **TASK-04** (red, with the S-rows) / **TASK-07** (green checkpoint); `runScopeCheck` spawn pin lands with the helper at **TASK-02** | PROP-SCOPE-02 |
+| Δ5 | Meta-conjunct: every **block** `MATRIX` entry's (`expect.exit === 2`) `expect.reason` ∈ the closed six-code catalog — scoped to block entries because ALLOW entries carry no reason (SE F-07). Folds into meta-test 1's describe block as one additional assertion; not a fifth meta-test. **Amends § 6.3's meta-test 1**, not the § 6.6 layer. | `guardMatrix.test.js` | **TASK-03** (meta-test family) | PROP-MSG-03 |
+| Δ6 | **P-SORT-01** — sorted-order discriminator (SE F-02): one **mixed two-feature fixture** (`mixed` builder in `guardFixtures.js`): one repo, branch with no upstream; `docs/a/` holds a committed guarded `CROSS-REVIEW-*.md` **and a committed `LEARNINGS-a.md`** (→ `verify_feature(a)` = `NOT_PUSHED`), `docs/b/` holds a committed guarded file with `LEARNINGS-b.md` **disk-only** (→ `verify_feature(b)` = `NOT_COMMITTED`). Single run of `rm -rf docs` (D2 iv ancestor — affects both features) → `expectBlock(res, "NOT_PUSHED", ["git push -u origin"])`. The sorted-first feature `a` decides (TSPEC § 3.5.4 step 4); an iteration-order-dependent implementation emits `NOT_COMMITTED` and fails. | `guardMatrix.test.js` (case) + `guardFixtures.js` (`mixed` builder) | case at **TASK-05** (supplementary suite); `mixed` builder with the fixture library at **TASK-02** | PROP-DEC-02 |
 
 ---
 
@@ -51,20 +54,20 @@ Everything below fits the TSPEC § 6.6 supplementary-layer conventions: non-row 
 
 ### PROP-MSG-02 — Allow silence
 
-> Every ALLOW decision **must** exit 0 and emit **nothing** on stdout and nothing on stderr — under full runtime and under degraded mode alike. The guard never advises, warns, or logs on the allow path (BR-01-4; TSPEC § 3.3 "block messages on stderr only; nothing on stdout").
+> Every ALLOW decision **must** exit 0 and emit **nothing** on stdout and nothing on stderr — under full runtime and under degraded mode alike. The guard never advises, warns, or logs on the allow path (TSPEC § 3.3 "block messages on stderr only; nothing on stdout"; § 3.2's silent degraded-allow).
 
 - **Category / level:** Contract · Integration
 - **Oracle:** strengthened `expectAllow(res)` — exit 0 ∧ `stdout === ""` ∧ `stderr === ""` (Δ1).
 - **Binding:** all ALLOW rows (M03, M11, M15, M25–M32, M38–M40, M43, M52, M55–M56, M65, M69, M72, M81), the entire M33 G6 re-run set, and every P-D1 case — the strengthened helper upgrades all of them at one stroke.
 - **Negative content:** this is the anti-noise property — a guard that prints "allowed" chatter into every Bash tool call violates it even with correct verdicts.
-- **Traces:** BR-01-4, TSPEC § 3.3.
+- **Traces:** TSPEC §§ 3.2–3.3. *Trace correction (PM F-01):* FSPEC BR-01-4 is **not** a source — it states "Allow = exit 0, no output contract," explicitly declining to constrain allow-path output; the silence contract is TSPEC-owned. Δ1 is a TSPEC-§ 3.3-backed strengthening, not an FSPEC mandate.
 
 ### PROP-MSG-03 — Closed reason catalog, exactly one reason per block
 
 > The reason-code catalog is **closed**: `{NOT_COMMITTED, NOT_PUSHED, INDETERMINATE, NO_REPO, PARSE_ERROR, DEGRADED}` and nothing else, per the REQ v1.7 disposition that explicitly declined to extend it. Every block carries **exactly one** reason code, selected mechanically by the decision path (FSPEC-GUARD-06 mapping table); no emission may carry two codes or a code outside the catalog.
 
 - **Category / level:** Contract · Unit (meta) + Integration
-- **Oracle:** (a) meta-conjunct: `MATRIX` `expect.reason` values ⊆ the six-code set (Δ5); (b) runtime: `expectBlock`'s `startsWith` prefix check pins the single leading code on every block row.
+- **Oracle:** (a) meta-conjunct: for every `MATRIX` entry with `expect.exit === 2`, `expect.reason` ∈ the six-code set — scoped to block entries, since ALLOW entries carry no reason field and `undefined ∉ catalog` would fail them spuriously (Δ5, SE F-07); (b) runtime: `expectBlock`'s `startsWith` prefix check pins the single leading code on every block row.
 - **Binding:** meta-test 1 describe block (Δ5) + every BLOCK row.
 - **Traces:** REQ-GUARD-07 (v1.7 catalog-closure disposition, PM TSPEC F-03/TE F-10), FSPEC-GUARD-06.
 
@@ -86,8 +89,10 @@ Everything below fits the TSPEC § 6.6 supplementary-layer conventions: non-row 
 > The guard **must** be a pure function of (stdin bytes, environment variables, filesystem/git fixture state): two invocations with identical inputs and unchanged fixture state produce byte-identical verdicts — same exit code, same stdout (empty), same stderr message. No decision may depend on wall clock, randomness, iteration order of guarded-directory enumeration (multiple affected features resolve in **sorted order**, TSPEC § 3.5.4 step 4), or leftover memoization across processes.
 
 - **Category / level:** Idempotency · Integration
-- **Oracle:** P-DET table (Δ2): for each of the six representative rows (one per verdict class + one full-engine allow), run `runGuard` twice against one fixture and `expect(run2).toEqual(run1)` on `{exitCode, stdout, stderr}`. Excludes state-mutating configurations by construction (G10 + `GUARD_FETCH_BEFORE_CHECK=true` legitimately changes the local ref on first run — M40 stays a single-run row).
-- **Binding:** Δ2 (`P-DET-01`…`P-DET-06`), `guardMatrix.test.js` supplementary layer.
+- **Oracle (two mechanisms — split in v1.1, SE F-02):** the two clauses of the statement are falsified by different oracles, and v1.0 bound both to P-DET, which can falsify only the first:
+  1. **Run-to-run stability** — P-DET table (Δ2): for each of the six representative rows (one per verdict class + one full-engine allow), run `runGuard` twice against one fixture and `expect(run2).toEqual(run1)` on `{exitCode, stdout, stderr}`. Excludes state-mutating configurations by construction (G10 + `GUARD_FETCH_BEFORE_CHECK=true` legitimately changes the local ref on first run — M40 stays a single-run row).
+  2. **Sorted-order enumeration independence** — P-SORT-01 (Δ6): a double-run cannot falsify this clause (a re-run reproduces whatever order the implementation uses), and every § 6.2 fixture holds exactly one guarded feature, so the sorted-first-unverified selection rule is dead code under P-DET alone. Order is observable only when two affected features sit in **different** G-states; Δ6's mixed fixture (`docs/a` `NOT_PUSHED`, `docs/b` `NOT_COMMITTED`, single run of `rm -rf docs`) asserts the sorted-first feature's reason code (`NOT_PUSHED`), which an iteration-order-dependent implementation gets wrong. **Decision — add the case rather than re-scope the clause:** the sorted-order rule is normative in TSPEC § 3.5.4 step 4, and PROP-COV-01's own matrix-row-totality proxy (item 1) claims every specified decision branch has ≥ 1 discriminating case; re-scoping the clause would leave that specified branch untested by the whole suite, contradicting the proxy this document relies on for the coverage waiver. One fixture + one single-run assertion is the cheaper repair.
+- **Binding:** Δ2 (`P-DET-01`…`P-DET-06`) + Δ6 (`P-SORT-01`), `guardMatrix.test.js` supplementary layer; `mixed` builder in `guardFixtures.js`.
 - **Traces:** REQ-GUARD-05 (durable oracle presupposes reproducibility), TSPEC § 3.5.4 sorted-feature determinism clause.
 
 ### PROP-DEC-03 — Quote invariance of static classification
@@ -163,7 +168,7 @@ Everything below fits the TSPEC § 6.6 supplementary-layer conventions: non-row 
 
 ### PROP-DEG-01 — Conservative subsumption (no silent hardening loss)
 
-> Removing the Python interpreter **must never convert a text-identifiable block into an allow**: for every command whose full-runtime verdict is BLOCK with reason ∈ {`NOT_COMMITTED`, `NOT_PUSHED`, `INDETERMINATE`} and whose raw hook stdin (the assembled JSON) contains both a degraded verb token (word-boundary `rm|unlink|mv|truncate|find`, two-word `git clean`, or the `>` character) and a content token (`docs/`, `CROSS-REVIEW`, or `CODE_REVIEW`), the coarse matcher **must** block `DEGRADED`. The accepted under-match remainder is exactly three named classes — nothing else: **(i)** RR-7 (`\/`-escaping producers — not constructible through the harness); **(ii)** ambient-cwd-resolved blocks whose stdin text carries no token (M65/M66/M80 class — the degraded analogue of RR-5); **(iii)** content-token-free spellings — pathspec-less `git clean` (M08) and ancestor forms without a `docs/` substring (`rm -rf docs`, `rm -rf .`, `find . -delete`, `rm --recursive docs` — M48–M51, M63) — which the FSPEC-GUARD-04 conjunction deliberately does not match. Over-blocking while degraded (field-bleed, `>>`, Verified-state blocks) is the intended, normative trade — NFR-01 is explicitly waived without an interpreter.
+> Removing the Python interpreter **must never convert a text-identifiable block into an allow**: for every command whose full-runtime verdict is BLOCK with reason ∈ {`NOT_COMMITTED`, `NOT_PUSHED`, `INDETERMINATE`} and whose raw hook stdin (the assembled JSON) contains both a degraded verb token (word-boundary `rm|unlink|mv|truncate|find`, two-word `git clean`, or the `>` character) and a content token (`docs/`, `CROSS-REVIEW`, or `CODE_REVIEW`), the coarse matcher **must** block `DEGRADED`. The accepted under-match remainder is exactly three named classes — nothing else: **(i)** RR-7 (`\/`-escaping producers — not constructible through the harness); **(ii)** ambient-cwd-resolved blocks whose stdin text carries no token — **M66/M80** (M65 is the corresponding **ALLOW**-side RR-5 row, not a remainder member — SE F-05); **(iii)** content-token-free spellings — pathspec-less `git clean -fd` (M08) and ancestor forms without a `docs/` substring: `rm -rf docs` (M48), `rm -rf .` (M49), `find . -name '*.md' -delete` (M50), `find docs -delete` (M51), `rm --recursive docs` (M63) — which the FSPEC-GUARD-04 conjunction deliberately does not match. (Full remainder set, verbatim against REQ v1.7: {M08, M48–M51, M63, M66, M80}.) Over-blocking while degraded (field-bleed, `>>`, Verified-state blocks) is the intended, normative trade — NFR-01 is explicitly waived without an interpreter.
 
 - **Category / level:** Error Handling · Integration
 - **Oracle:** P-DEG table (Δ3), **derived mechanically, never hand-copied**: filter `MATRIX` entries by (expect = BLOCK) ∧ (reason ∈ {NOT_COMMITTED, NOT_PUSHED, INDETERMINATE}) ∧ (the runGuard-assembled stdin text satisfies the same verb∧content predicate as § 3.2's matcher, reimplemented in the test as a JS filter). Each qualifying row re-runs with its own stdin controls against the default fixture (degraded mode never reaches git, so state variants collapse) under `degradedEnv()`, asserting `expectBlock(res, "DEGRADED", ["python3", "interpreter"])`. Floor: qualifying-set size ≥ `P_DEG_MIN = 40` (the current matrix yields ≈49), so a broken filter or emptied MATRIX fails loudly. The excluded classes fall out of the filter mechanically and are documented at the constant's declaration.
@@ -197,9 +202,10 @@ Everything below fits the TSPEC § 6.6 supplementary-layer conventions: non-row 
 > `check-scope-field.sh` **must never block**: exit 0 on every path — pattern match, pattern miss, non-review basename, missing file, and missing interpreter (REQ-GUARD-06 case 3's silent no-op). Its only output channel is the advisory `hookSpecificOutput` JSON on stdout; it must not exit nonzero even when its own runtime is degraded.
 
 - **Category / level:** Contract (negative) · Integration
-- **Oracle:** every S-row asserts exit 0 on both polarities (already in S01–S07's oracle); the interpreter-missing path gains the one supplementary case P-SCOPE-DEG-01 (Δ4): `degradedEnv()`, untagged review file → exit 0, empty stdout.
+- **Oracle:** every S-row asserts exit 0 on both polarities (already in S01–S07's oracle); the interpreter-missing path gains the one supplementary case P-SCOPE-DEG-01 (Δ4): `degradedEnv()`, untagged review file → exit 0, empty stdout — spawned via `runScopeCheck` with the `BASH_ABS` absolute-path discipline (C17), never `runHookScript`'s by-name spawn, which cannot start under an empty child `PATH` (SE F-01).
+- **"Silent no-op" reading (PM Q-01, answered):** REQ-GUARD-06 case 3's "silent no-op" is interpreted as **advisory-channel silence** — exit 0 + empty stdout — not stderr emptiness. te-author confirms "silent" was never intended to cover stderr: `check-scope-field.sh:8` runs external `$(cat)` **before** the interpreter probe, so under an empty `PATH` stderr resolution noise is unavoidable without a script change TSPEC § 5 deliberately avoids; case 3 also scopes the requirement's blocking obligations to the guard, not the advisory check. Δ4's oracle is therefore exactly as strong as the retained script permits — tightening it to assert empty stderr would require a § 5-out-of-scope rewrite.
 - **Binding:** S-rows + Δ4.
-- **Traces:** REQ-GUARD-06 case 3, C9 (always-exit-0 posture retained).
+- **Traces:** REQ-GUARD-06 case 3, C9 (always-exit-0 posture retained), C17.
 
 ---
 
@@ -235,7 +241,7 @@ These properties are about the **test suite itself** — they make silent covera
 
 ### PROP-TEST-04 — Parser unit floor (self-test) and gate integrity
 
-> The embedded parser **must** carry its own unit corpus: `--self-test` (argv + `GUARD_SELF_TEST=1` conjunction, settable only by the wrapper) exits 0 printing a case count, and the jest binding asserts count ≥ **`SELF_TEST_MIN_CASES = 38`** — the TSPEC § 6.6 corner-class derivation (tokenizer 11 + segmenter 11 + heredoc stripper 5 + verb identifier 11), with the derivation comment mandatory at the declaration so an emptied `SELF_TEST_CASES` table fails loudly (CFD-6). The gate **must not** be forgeable from the hook path: hook stdin that is literally `--self-test` with `GUARD_SELF_TEST=1` exported still routes to intake → `PARSE_ERROR` (the wrapper strips/gates the sentinel — CFD-1), pinned by the CFD-8 test.
+> The embedded parser **must** carry its own unit corpus: `--self-test` (argv + `GUARD_SELF_TEST=1` conjunction, settable only by the wrapper) exits 0 printing a case count, and the jest binding asserts count ≥ **`SELF_TEST_MIN_CASES = 38`** — the corner-class derivation **owned by PLAN v1.1 TASK-05 / CFD-6** (tokenizer 11 + segmenter 11 + heredoc stripper 5 + verb identifier 11; incremental landing split 27+11 across TASK-08/09; TSPEC § 6.6 enumerates the coverage *areas* without counts — SE F-06), with the derivation comment mandatory at the declaration so an emptied `SELF_TEST_CASES` table fails loudly (CFD-6). The gate **must not** be forgeable from the hook path: hook stdin that is literally `--self-test` with `GUARD_SELF_TEST=1` exported still routes to intake → `PARSE_ERROR` (the wrapper strips/gates the sentinel — CFD-1), pinned by the CFD-8 test.
 
 - **Category / level:** Functional (unit floor) + Security (gate) · Unit via self-test, Integration binding
 - **Oracle:** (a) python3-gated binding test: spawn entrypoint with `["--self-test"]` → exit 0 ∧ stdout case count ≥ 38; (b) CFD-8 pin: `runGuard(fixture, {stdinRaw: "--self-test", env: {GUARD_SELF_TEST: "1"}})` → `expectBlock(res, "PARSE_ERROR", ["unparseable"])`.
