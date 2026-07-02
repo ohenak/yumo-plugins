@@ -1,0 +1,49 @@
+# Cross-Review: product-manager — TSPEC
+
+**Reviewer:** product-manager
+**Document reviewed:** docs/harden-harvest-guard/TSPEC-harden-harvest-guard.md (v1.0)
+**Date:** 2026-07-02
+**Iteration:** 1
+
+Upstream baseline: REQ v1.6 + FSPEC v1.3 (both read in full). Lens: requirements traceability, scope compliance, acceptance-criteria fidelity. Existing-code claims C1–C16 were spot-verified against `guard-harvest-before-delete.sh`, `check-scope-field.sh`, `hookCompatibility.test.js`, `package.json`, and `hooks.json` — all checked citations are accurate.
+
+## Findings
+
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | High | Local | **The step-2b hoist (§ 3.5.5 / CF-A) changes REQ-owned observable behavior without an upstream amendment.** REQ v1.6's `mv` table row "Indeterminate source or destination → Decision rule D3 applies" and REQ-GUARD-07's catalog (`INDETERMINATE` fires when "Decision rule D3 or D4") prescribe reason `INDETERMINATE` for the indeterminate-source × static-existing-guarded-destination cell; FSPEC v1.3 step 3 routes it to D3 "**unconditionally**, matching the REQ `mv` table row" (wording deliberately restored by the SE F2-01 disposition). TSPEC step 2b intercepts the cell before step 3 and emits the G-state code (`NOT_COMMITTED`, row T-01), while stating "the REQ matrix is not touched." The block verdict is unchanged and the product outcome (a provable harvest hint instead of an unresolvable-operand message) is genuinely better — SE FSPEC-v4 F4-01 offered the hoist as an option — but the reason code is part of the public oracle (REQ-GUARD-07 AC: stderr "carries exactly the matrix row's reason code"), and as written the REQ/FSPEC prose is now false for a reachable cell. The trigger condition of an acceptance-criteria-bearing catalog entry has been changed downstream. **Required change:** either (a) keep the hoist and have pm-author land REQ v1.7 in the same round — qualify the `mv` "Indeterminate source or destination" row with the static-destination destruction carve-out and promote T-01 into the Canonical Matrix — or (b) take SE F4-01's reword option (keep D3 routing, fix the FSPEC gloss) and drop step 2b. | REQ-GUARD-02 `mv` table; REQ-GUARD-07; FSPEC-GUARD-02 step 3 |
+| F-02 | Medium | Process | **T-01–T-03 are behavior-pinning discriminating rows held TSPEC-side, contravening the pipeline's recorded matrix-ownership rule.** FSPEC v1.3 states "Matrix rows are REQ-owned" and records the TE F-09 process rule ("a carry-forward or review resolution that creates or changes decidable behavior must amend the Canonical Matrix in the same edit, not just prose") — applied in every prior iteration (M66–M86 were all promoted to the REQ in the same commit). TE FSPEC-v4 F4-01/F4-02 explicitly requested "M87-class" rows for the guarded-source and resulting-path arms of the destruction test. TSPEC v1.0 instead creates a parallel TSPEC-owned row namespace and declares the REQ matrix untouched, splitting the durable oracle across two documents. Promote T-01–T-03 as M87–M89 (plus their M33 G6 re-run entries) into REQ v1.7 in the same commit as the TSPEC revision. | REQ-GUARD-05; FSPEC § Acceptance Tests; TE F-09 |
+| F-03 | Medium | Local | **`PARSE_ERROR` is fired outside its REQ-defined condition.** § 3.3 has the top-level Python exception handler emit `pdlc-guard[PARSE_ERROR]: internal guard error (<repr>) — failing closed`. REQ-GUARD-07 defines `PARSE_ERROR` as firing exactly on REQ-GUARD-06 case 2 (unparseable/contract-violating stdin) with required content "statement that hook stdin was unparseable" — the internal-error template carries neither the condition nor the required substring. The fail-closed posture is correct product behavior, but the reason-code catalog is a closed REQ-owned enum with fixed firing conditions; extending a code's semantics is a REQ change. Either add the internal-error condition to REQ-GUARD-07's `PARSE_ERROR` row (REQ v1.7) or emit a message that satisfies the existing required-substring contract. | REQ-GUARD-07; REQ-GUARD-06 case 2 |
+| F-04 | Medium | Local | **The `N>` redirection generalization widens the closed REQ-GUARD-02 enumeration.** § 3.5.1 classifies `N>` (any fd digit) as destructive; REQ-GUARD-02's defended set is "exactly" `>`/`1>`/`>|`/`2>`/`&>`/`>& <path>`, and BR-02-3 (FSPEC) states the verb set is a closed enumeration — anything outside it is RR-1, allowed by D1. Under the REQ, `foo 3> docs/f/CROSS-REVIEW-x.md` contains no defended deletion form and must be allowed (REQ-GUARD-NFR-01, P0); under the TSPEC it is deletion-shaped and blocks. The FSPEC's SE Q-01 disposition made the symmetric point normative: changing the defended surface "is a REQ change, not implementation freedom." Drop `N>` for N ∉ {"", 1, 2} or amend REQ-GUARD-02 (the `&>`/`>&`/`1>`/`>|` additions in v1.2/v1.3 show the sanctioned path). | REQ-GUARD-02; REQ-GUARD-NFR-01; FSPEC BR-02-3 |
+| F-05 | Medium | Local | **A live deletion bypass is accepted downstream without a Residual Risk Register entry.** § 3.5.2 decides that deletion verbs inside `$( … )` operands of non-deletion verbs (e.g. `echo $(rm docs/f/CROSS-REVIEW-x.md)` — which really executes the `rm`) are not re-parsed, filing it as a "residual class adjacent to RR-1/RR-3." The allow itself follows from REQ-GUARD-01 step 3 (arguments of non-deletion verbs never trigger), but the REQ's register exists "so nobody mistakes the guard for a complete containment boundary," and this vector appears in no RR entry. That is a silent re-scope of the accepted-risk surface. Register it upstream (REQ v1.7 RR entry) — or defend it — rather than leaving the acceptance recorded only in TSPEC prose. | REQ Residual Risk Register; REQ-GUARD-01 step 3 / D1 |
+| F-06 | Medium | Local | **The § 6.3 matrix-binding table violates the one-test-per-row obligation on five rows.** (a) Base rows **M74** and **M84** are bound to no describe block — they appear only in the M33 G6 re-run list (their G8 BLOCK tests are unassigned; § 7 claims their coverage, so the document is internally inconsistent). (b) **M17**, **M37**, and **M46** are each bound twice (M17 in "D2 statics… M09–M19" and in "cwd-union rows"; M37 in "Git-state rows M34–M40" and in "Non-repo rows"; M46 in "D2 statics… M44–M54" and in "D3/D4 indeterminates"). REQ-GUARD-05's AC requires **exactly one** asserting test per row; the self-audit meta-test (id-set equality) catches omission but cannot catch duplication. Fix the group ranges (M09–M16+M18–M19; M34–M36+M38–M40; M44–M45+M47–M54) and add M74/M84 to their base groups. | REQ-GUARD-05 AC; TSPEC §§ 6.3, 7 |
+| F-07 | Low | Local | **Two accepted-risk extensions are declared only in TSPEC prose.** (a) § 3.5.3 assigns `pushd`/`popd` same-call cwd drift to "the RR-5 class," but RR-5 as registered covers *cross-call* drift — same-call `pushd docs/f; rm *.md` is a distinct (if obscure) surface. (b) § 3.2 files the degraded matcher's `\/`-escaping defeat under the field-bleed acceptance class. Both calls are reasonable; both should be registered upstream at the next REQ touch (can ride the same v1.7 as F-01/F-02/F-05) so the register stays the single inventory of accepted bypasses. | REQ RR-5; REQ-GUARD-06 accepted consequences |
+
+## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | Given F-01/F-02/F-05/F-07 all resolve via one REQ v1.7 touch (mv-table qualifier, M87–M89 promotion, two RR entries), is that bump planned for this same iteration, or does se-author prefer the F-01(b) reword option to avoid the REQ change entirely? |
+
+## Positive Observations
+
+- Every existing-code claim I checked (C1–C10, C14–C16) is accurate to the file and line cited — the single-pass verification discipline is real, not decorative.
+- The `git show-ref --verify --quiet` + `git ls-tree --name-only` idiom substitution is REQ-conformant (the REQ's `cat-file -e` is explicitly illustrative, "e.g. via") and honors FSPEC-GUARD-03's failure-vs-absence boundary *better* than the illustrative idiom; the M77 fail-open-class pin and the corrupt-ref conformant-routing latitude are preserved exactly as the FSPEC specifies.
+- § 3.7's message catalog carries every REQ-GUARD-07 required substring (G4 `git push -u origin`; G7/G10 `git push` + `git fetch` hint on the shared branch, correctly justified by their indistinguishability; `LEARNINGS-{feature}.md` + `/pdlc:harvest-learnings` on NOT_COMMITTED), and the tests assert prefix + substrings, never prose.
+- § 3.1's builtins-only stdin read is a sharp catch: the current `$(cat)` would silently defeat M42 under the restricted-PATH fixture.
+- The M33 G6 re-run enumeration in § 6.3 matches REQ v1.6's row list token-for-token; the degraded token set in § 3.2 matches the FSPEC-GUARD-04 table including the M69 bare-`clean` negative; the PROP-COMPAT-05 migration (§ 6.5) maps every retired assertion to its successor row as the REQ-GUARD-05 migration note requires.
+- The suite self-audit meta-test is a genuinely product-protective idea — it makes silent coverage loss mechanical to detect (it just needs the duplication check per F-06).
+
+## Recommendation
+
+**Needs revision**
+
+Must change before approval:
+1. F-01 — resolve the step-2b hoist's upstream contradiction: REQ v1.7 amendment (mv-table qualifier + T-01 promoted) or revert to D3 routing with the gloss reword.
+2. F-02 — promote T-01–T-03 into the REQ Canonical Matrix (M87–M89) per the TE F-09 process rule.
+3. F-03 — bring the internal-error catch-all inside the REQ-GUARD-07 catalog (REQ edit or message fix).
+4. F-04 — drop `N>` (N ∉ {"", 1, 2}) from the destructive set or amend REQ-GUARD-02.
+5. F-05 — register the command-substitution bypass in the REQ Residual Risk Register (or defend it).
+6. F-06 — repair the § 6.3 binding table: add M74/M84 base bindings; de-duplicate M17/M37/M46.
+
+> Any High or Medium finding → Needs revision (mandatory).
