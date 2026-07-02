@@ -4,17 +4,17 @@
 
 | User Story | Requirement | FSPEC |
 |---|---|---|
-| US-01 | REQ-GUARD-01 | — |
-| US-01 | REQ-GUARD-03 | — |
-| US-01 | REQ-GUARD-07 | — |
-| US-02 | REQ-GUARD-01 | — |
-| US-02 | REQ-GUARD-02 | — |
-| US-02 | REQ-GUARD-NFR-01 | — |
-| US-03 | REQ-GUARD-04 | — |
-| US-04 | REQ-GUARD-05 | — |
-| US-04 | REQ-GUARD-07 | — |
-| US-05 | REQ-GUARD-06 | — |
-| US-05 | REQ-GUARD-07 | — |
+| US-01 | REQ-GUARD-01 | FSPEC-GUARD-01 |
+| US-01 | REQ-GUARD-03 | FSPEC-GUARD-03 |
+| US-01 | REQ-GUARD-07 | FSPEC-GUARD-06 |
+| US-02 | REQ-GUARD-01 | FSPEC-GUARD-01 |
+| US-02 | REQ-GUARD-02 | FSPEC-GUARD-01, FSPEC-GUARD-02 |
+| US-02 | REQ-GUARD-NFR-01 | FSPEC-GUARD-01 |
+| US-03 | REQ-GUARD-04 | FSPEC-GUARD-05 |
+| US-04 | REQ-GUARD-05 | FSPEC § Acceptance Tests (M01–M66, S01–S06) |
+| US-04 | REQ-GUARD-07 | FSPEC-GUARD-06 |
+| US-05 | REQ-GUARD-06 | FSPEC-GUARD-04 |
+| US-05 | REQ-GUARD-07 | FSPEC-GUARD-06 |
 
 ## agent-trailer-contracts
 
