@@ -1,7 +1,7 @@
 ---
 Status: Draft
 Author: pm-author
-Version: 1.2
+Version: 1.3
 Feature: harden-harvest-guard
 ready: true
 depends-on: []
@@ -11,7 +11,7 @@ depends-on: []
 |---|---|
 | Upstream | **REQ** |
 | Downstream | FSPEC, TSPEC, PROPERTIES |
-| Cross-Reviews | [CROSS-REVIEW-software-engineer-REQ.md](CROSS-REVIEW-software-engineer-REQ.md), [CROSS-REVIEW-test-engineer-REQ.md](CROSS-REVIEW-test-engineer-REQ.md), [CROSS-REVIEW-software-engineer-REQ-v2.md](CROSS-REVIEW-software-engineer-REQ-v2.md), [CROSS-REVIEW-test-engineer-REQ-v2.md](CROSS-REVIEW-test-engineer-REQ-v2.md) |
+| Cross-Reviews | [CROSS-REVIEW-software-engineer-REQ.md](CROSS-REVIEW-software-engineer-REQ.md), [CROSS-REVIEW-test-engineer-REQ.md](CROSS-REVIEW-test-engineer-REQ.md), [CROSS-REVIEW-software-engineer-REQ-v2.md](CROSS-REVIEW-software-engineer-REQ-v2.md), [CROSS-REVIEW-test-engineer-REQ-v2.md](CROSS-REVIEW-test-engineer-REQ-v2.md), [CROSS-REVIEW-software-engineer-REQ-v3.md](CROSS-REVIEW-software-engineer-REQ-v3.md), [CROSS-REVIEW-test-engineer-REQ-v3.md](CROSS-REVIEW-test-engineer-REQ-v3.md) |
 | LEARNINGS | docs/harden-harvest-guard/LEARNINGS-harden-harvest-guard.md |
 
 # REQ — harden-harvest-guard
@@ -77,6 +77,7 @@ The guard is a backstop, not a sandbox. The first line of defense remains the ha
 | RR-2 | Indeterminate deletion whose own segment carries no textual `docs` reference — via operands, assignment dataflow, piped producers, or `cd` context (e.g. `rm "$D"/*.md` where `$D` was set in a *previous* Bash tool call, or where the only `docs/` token sits in an unrelated sibling segment like a following `git add docs/f/…`) | Blocking every variable-expanded delete repo-wide would false-block routine work (temp-file cleanup, log redirection in the harvest/commit flow itself) whenever any feature is mid-pipeline — a direct NFR-01 violation. Decision rule D3's segment-scoped `docs`-reference discriminator catches all in-context spellings; the cross-segment-only class is the accepted remainder. |
 | RR-3 | Fully opaque execution with no visible deletion verb (`eval "$CMD"`) | No deletion verb is observable anywhere in executable position; blocking all `eval`/`bash -c` would violate NFR-01. Guaranteed by decision rule D1. |
 | RR-4 | Remoteless/detached-HEAD fallback (G2/G3) accepts LEARNINGS that is committed to `HEAD` but never pushed — e.g. `git checkout --detach` in one Bash call, then delete in the next, satisfies the guard with a local-only commit | In remoteless/detached contexts, local commit is the strongest verifiable state; permanent blocking would make those checkouts (incl. CI) unusable. Documented weakening of the "pushed" guarantee per REQ-GUARD-03. |
+| RR-5 | Cross-call cwd drift: the Bash tool's shell cwd persists across tool calls (`cd docs/f` in call 1, `rm *.md` in call 2), and when the hook stdin carries no cwd signal that tracks the persisted shell, no candidate root may reflect the real shell cwd — the static relative operand then resolves against the wrong root and the deletion is allowed | The hook cannot observe the persisted shell. Mitigation is the REQ-GUARD-01 step-4 **union rule**: static relative operands are resolved against both candidate roots (stdin `cwd` when present, else repo root; plus the hook process cwd) and blocked if either resolution lands in/over an unverified guarded directory. Whatever drift survives the union (M65) is accepted. |
 
 ---
 
@@ -106,13 +107,13 @@ The guard is a backstop, not a sandbox. The first line of defense remains the ha
 1. **Shell-style tokenization with quote removal, then segmentation.** The command is split into simple commands at unquoted `;`, `&&`, `||`, `|`, `&`, and newlines, and each segment is tokenized shell-style with **quote removal**. Quoting controls whether text is *literal* or *expandable* — **never whether it is inspected**. A quoted operand of a deletion verb is still a candidate path: `rm "docs/f/CROSS-REVIEW-x.md"` and `rm 'docs/f/CROSS-REVIEW-x.md'` are, after quote removal, the same static operand as the unquoted spelling and are classified identically. What is excluded from verb/path scanning is **data by position**, not data by quoting: string arguments of non-deletion verbs (e.g. the message of `git commit -m "..."`) and heredoc bodies never trigger the guard — with one exception: the string payload of an opaque-execution verb (`eval`, `bash -c`, `sh -c`) is code and is recursively re-parsed under this same discipline.
 2. **Verb identification.** The verb of each simple command is its first word after skipping leading `NAME=value` assignments and transparent prefixes (`command`, `env`, `sudo`, `nice`, `time`). `xargs <verb>` exposes `<verb>` as the effective verb whose operands are the piped input (always indeterminate). `find` with `-delete` or `-exec <deletion-verb>` is a deletion form whose operands are `find`'s path roots.
 3. **Operand scoping.** Only operands (non-flag argv tokens) of deletion verbs are inspected as candidate paths. Tokens inside arguments of non-deletion verbs (e.g. the message string of `git commit -m "..."`, arguments to `echo`, `grep` patterns) NEVER trigger the guard.
-4. **Effective-cwd tracking.** `cd <static-path>` segments update the effective cwd for subsequent segments in the same compound command; `cd` with an indeterminate argument makes all subsequent relative operands indeterminate.
+4. **Effective-cwd tracking.** *Initial effective cwd (union rule):* the Bash tool's shell cwd **persists across tool calls**, and the hook cannot observe that shell directly, so the guard SHALL NOT assume a single root when resolving segment 1's static relative operands and globs. It resolves them against **both candidate roots**: **(A)** the `cwd` field of the hook stdin JSON when present, else `CLAUDE_PROJECT_DIR` (the repo root); and **(B)** the hook process's own working directory — and blocks if **either** resolution lands in or over an unverified guarded directory (conservative union; the extra false-block surface is the accepted cost, consistent with the fail-closed posture). The stdin `cwd` field is a **candidate root, not a guarantee**: the hook API does not promise it tracks the Bash tool's *persisted* shell cwd (it may report the session/project directory) *(answers reviewer question SE Q-01, iteration 3)*. Cross-call `cd` drift that no candidate root reflects is residual risk **RR-5**, mitigated by this union rule. *Within* a compound command: `cd <static-path>` segments update the effective cwd for subsequent segments; `cd` with an indeterminate argument makes all subsequent relative operands indeterminate.
 5. **Operand classification (literal vs expandable).** An operand is **static** iff, before quote removal, it contains no **expansion-active** `$`, backtick, `$(`, or `<(`. *Expansion-active* means neither single-quoted nor backslash-escaped — **double quotes do NOT suppress expansion**: `"$D"` is indeterminate, while `'$D'` and `\$D` are the literal characters `$D` and therefore static. A fully double-quoted static string (`"docs/f/x.md"`) contains no expansion construct and is static. Static operands and globs are resolved/expanded against the effective cwd. Any operand containing an expansion-active construct is **indeterminate**.
 
 **Decision rules (in order; first match wins):**
 
 - **D1 — No visible deletion verb → ALLOW.** If no deletion verb appears in executable position in any segment (including recursively scanned opaque payloads), the command is allowed unconditionally. This rule has precedence and is the mechanism by which REQ-GUARD-NFR-01 and REQ-GUARD-01 coexist: free text can never trigger a block.
-- **D2 — Static guarded target → BLOCK.** A deletion verb with a static operand that resolves to, or globs over, **(i)** a guarded file, **(ii)** any path inside an unverified guarded directory, **(iii)** an unverified guarded directory itself, or — for **recursive-capable deletion forms** — **(iv)** any **ancestor** of an unverified guarded directory (`docs`, `.`, `..`, the repo root, `/`) is blocked (reason code per REQ-GUARD-03 state). Recursive-capable forms are: `rm` with `-r`/`-R` (incl. `-rf`), `find <root> … -delete` / `-exec <deletion-verb>` (the operand is `find`'s path root — an ancestor root reaches the guarded subtree regardless of any `-name` filter), `git clean` with a pathspec, and `mv` whose source is a directory. Non-recursive forms aimed at an ancestor directory (e.g. plain `rm docs`) cannot destroy guarded files and fall through.
+- **D2 — Static guarded target → BLOCK.** A deletion verb with a static operand that resolves to, or globs over, **(i)** a guarded file, **(ii)** any path inside an unverified guarded directory, **(iii)** an unverified guarded directory itself, or — for **recursive-capable deletion forms** — **(iv)** any **ancestor** of an unverified guarded directory (`docs`, `.`, `..`, the repo root, `/`) is blocked (reason code per REQ-GUARD-03 state). Recursive-capable forms are: `rm` with `-r`/`-R`/`--recursive` (all spellings of the same flag, incl. combined forms like `-rf`), `find <root> … -delete` / `-exec <deletion-verb>` (the operand is `find`'s path root — an ancestor root reaches the guarded subtree regardless of any `-name` filter), `git clean` with a pathspec, and `mv` whose source is a directory. Non-recursive forms aimed at an ancestor directory (e.g. plain `rm docs`) cannot destroy guarded files and fall through.
 - **D3 — Indeterminate deletion, docs-referencing → BLOCK.** A deletion verb with at least one indeterminate operand (or a deletion-shaped redirection with an indeterminate target) is blocked with reason `INDETERMINATE` iff **(a)** the **deletion segment itself** references `docs/` — a token whose post-quote-removal **literal text** contains the segment `docs/` appears (1) among that simple command's operands or redirection targets, (2) in the RHS of a `NAME=value` assignment, anywhere in the same compound command, whose variable the deletion segment's operands expand (`D=docs/f; rm "$D"/*.md` and `D="docs/f"; rm "$D"/*.md` both qualify — quoting style is irrelevant to the literal test), (3) in a segment whose output is **piped into** the deletion segment (piped input is the deletion verb's operand stream, e.g. `ls docs/f | xargs rm`), or (4) in a `cd` argument that sets the deletion segment's effective cwd — AND **(b)** at least one unverified guarded directory exists in the repo. `docs/` tokens appearing only in **other** segments with no dataflow into the deletion segment (e.g. a following `git add docs/f/…`) do NOT satisfy (a). Otherwise it is allowed (residual risk RR-2).
 - **D4 — Pathspec-less `git clean` → BLOCK.** `git clean` with no pathspec targets every untracked file repo-wide; it is blocked with reason `INDETERMINATE` iff any unverified guarded directory exists. The `docs`-reference qualifier of D3 is waived because the target scope is repo-wide by construction. *(Answers reviewer question TE-Q-02.)*
 
@@ -126,7 +127,9 @@ A deletion verb aimed at a `docs/` directory that contains **no** guarded files 
 - **Who:** harvest agent / **Given:** same state / **When:** it runs `find . -name '*.md' -delete` or `find docs -delete` / **Then:** blocked — `find`'s path root is an ancestor of the unverified guarded directory (D2 iv).
 - **Who:** any agent / **Given:** same state / **When:** it runs `rm src/foo.ts` / **Then:** allowed — no guarded target (D2 miss, no indeterminate operand).
 - **Who:** any agent / **Given:** same state / **When:** `rm /tmp/x.log && git add docs/f/y.md` / **Then:** allowed — the deletion segment's static operand is unguarded; the `docs/` token in the sibling `git add` segment has no dataflow into it (D3(a) unmet).
-- **Who:** harvest agent / **Given:** same state / **When:** `cd docs/f && rm *.md` / **Then:** blocked — effective-cwd tracking resolves `*.md` under `docs/f` (D2).
+- **Who:** harvest agent / **Given:** same state / **When:** `cd docs/f && rm *.md` / **Then:** blocked — same-call effective-cwd tracking resolves `*.md` under `docs/f` (D2).
+- **Who:** harvest agent / **Given:** same state; a **previous** Bash call ran `cd docs/f` and the hook stdin `cwd` field reports `docs/f` / **When:** `rm *.md` / **Then:** blocked — candidate root (A) resolves the glob inside the unverified guarded directory (step-4 union rule, D2).
+- **Who:** any agent / **Given:** same state; hook stdin carries no cwd signal and the hook process cwd is the repo root / **When:** `rm *.md` / **Then:** allowed — neither candidate root resolves into a guarded directory; that the real persisted shell cwd might be `docs/f` is residual risk RR-5.
 - **Who:** harvest agent / **Given:** same state / **When:** `rm $(find docs/f -name 'CROSS-*')` / **Then:** blocked, reason `INDETERMINATE` (D3: command substitution + `docs/` token).
 - **Who:** harvest agent / **Given:** same state / **When:** `ls docs/f | xargs rm` / **Then:** blocked, reason `INDETERMINATE` (D3: `xargs rm` = deletion verb with indeterminate operands + `docs/` token).
 - **Who:** harvest agent / **Given:** same state / **When:** `bash -c 'rm docs/f/*.md'` or `eval "rm docs/f/*.md"` / **Then:** blocked — opaque payload recursively parsed (D2 inside payload).
@@ -139,7 +142,7 @@ A deletion verb aimed at a `docs/` directory that contains **no** guarded files 
 #### REQ-GUARD-02
 **Title:** Deletion-verb coverage, `mv` semantics, and redirection
 
-**Description:** The **defended deletion verbs** are exactly: `rm`, `unlink`, `git rm`, `git clean`, `find … -delete`, `find … -exec <deletion-verb>`, `mv` (per the semantics below), `truncate`, and shell redirection `>` / `1>` / `>|` / `2>` whose target is a guarded file. Verbs may appear in any segment of a compound command (`;`, `&&`, `||`, `|`, `&`, newline) and inside `xargs` / `eval` / `bash -c` / `sh -c` payloads per the REQ-GUARD-01 discipline. This is an enumerated defense, not a completeness claim — undefended verbs are residual risk RR-1 (see Residual Risk Register), and US-01 is scoped accordingly.
+**Description:** The **defended deletion verbs** are exactly: `rm`, `unlink`, `git rm`, `git clean`, `find … -delete`, `find … -exec <deletion-verb>`, `mv` (per the semantics below), `truncate`, and shell redirection `>` / `1>` / `>|` / `2>` / `&>` / `>& <path>` whose target is a guarded file. Verbs may appear in any segment of a compound command (`;`, `&&`, `||`, `|`, `&`, newline) and inside `xargs` / `eval` / `bash -c` / `sh -c` payloads per the REQ-GUARD-01 discipline. This is an enumerated defense, not a completeness claim — undefended verbs are residual risk RR-1 (see Residual Risk Register), and US-01 is scoped accordingly.
 
 **`git clean` rationale:** `git clean` only removes *untracked* files, and guarded files are normally committed — but `CODE_REVIEW-*` files written during Phase DOD and `CROSS-REVIEW-*` files mid-review are legitimately untracked at points in the pipeline. The verb is defended to protect exactly those not-yet-committed review artifacts; TSPEC must not treat its inclusion as arbitrary.
 
@@ -153,7 +156,7 @@ A deletion verb aimed at a `docs/` directory that contains **no** guarded files 
 | Source is an unverified guarded directory itself, or (recursive-capable form, D2 iv) an ancestor of one (`mv docs/f <anywhere>`, `mv docs <anywhere>`) | BLOCK — the path anchor and its LEARNINGS-verification context move |
 | Indeterminate source or destination | Decision rule D3 applies |
 
-**Redirection semantics:** `>`, `1>` (byte-for-byte equivalent to `>`), `>|` (noclobber override — the spelling produced exactly when a plain `>` was refused), or `2>` whose static target resolves to a guarded file in an unverified guarded directory → BLOCK (truncation is deletion). `>>` (append) is not destructive → ALLOW. **Fd-duplication forms (`2>&1`, `>&2`, `N>&M`) name file descriptors, not paths — they are never redirection targets and never deletion-shaped.** Indeterminate redirection target → deletion-shaped, D3 applies (scoped to the segment's own tokens per D3(a): `npm test > "$LOG" 2>&1; git add docs/f/z.md` is allowed).
+**Redirection semantics:** `>`, `1>` (byte-for-byte equivalent to `>`), `>|` (noclobber override — the spelling produced exactly when a plain `>` was refused), `2>`, `&> file` (bash: truncate `file` and redirect both stdout and stderr — same truncation family as `>`), or `>& file` (bash synonym for `&>` when the token after `>&` is not a file descriptor number) whose static target resolves to a guarded file in an unverified guarded directory → BLOCK (truncation is deletion). `>>` (append) is not destructive → ALLOW. **Fd-duplication forms (`2>&1`, `>&2`, `N>&M`) name file descriptors, not paths — they are never redirection targets and never deletion-shaped.** The `>&` disambiguation is lexical: `>&` followed by a digit (`>&2`, `>&1`) is fd-duplication and never a target; `>&` followed by a non-digit word (`>& docs/f/x.md`) is a truncating file redirection. Indeterminate redirection target → deletion-shaped, D3 applies (scoped to the segment's own tokens per D3(a): `npm test > "$LOG" 2>&1; git add docs/f/z.md` is allowed).
 
 **Acceptance criteria:**
 - **Who:** agent / **Given:** guarded files present in `docs/f`, LEARNINGS unverified / **When:** `find docs/f -name 'CROSS-*' -delete`, `find docs/f -name '*.md' -exec rm {} \;`, `git clean -fd docs/f`, `truncate -s 0 docs/f/CROSS-REVIEW-x.md`, or `mv docs/f/CODE_REVIEW-f-v1.md /tmp/` / **Then:** blocked.
@@ -161,7 +164,7 @@ A deletion verb aimed at a `docs/` directory that contains **no** guarded files 
 - **Who:** agent / **Given:** same state / **When:** `mv docs/f/CROSS-REVIEW-x.md docs/f/CROSS-REVIEW-x-v2.md` / **Then:** allowed (rename in place, pattern preserved).
 - **Who:** agent / **Given:** same state, `docs/f/archive/` exists / **When:** `mv docs/f/CROSS-REVIEW-x.md docs/f/archive/` / **Then:** allowed — resulting path `docs/f/archive/CROSS-REVIEW-x.md` is inside the same feature's subtree with basename preserved; the file remains guarded as feature `f`.
 - **Who:** agent / **Given:** same state / **When:** `mv docs/f/CROSS-REVIEW-x.md docs/f/notes.md` or `mv docs/f/CROSS-REVIEW-x.md docs/other-feature/` or `mv docs/f docs/f-old` / **Then:** blocked.
-- **Who:** agent / **Given:** same state / **When:** `> docs/f/CROSS-REVIEW-x.md`, `1> docs/f/CROSS-REVIEW-x.md`, or `>| docs/f/CROSS-REVIEW-x.md` / **Then:** blocked; **When:** `echo note >> docs/f/CROSS-REVIEW-x.md` / **Then:** allowed.
+- **Who:** agent / **Given:** same state / **When:** `> docs/f/CROSS-REVIEW-x.md`, `1> docs/f/CROSS-REVIEW-x.md`, `>| docs/f/CROSS-REVIEW-x.md`, `&> docs/f/CROSS-REVIEW-x.md`, or `>& docs/f/CROSS-REVIEW-x.md` / **Then:** blocked (truncation family); **When:** `echo note >> docs/f/CROSS-REVIEW-x.md` / **Then:** allowed.
 - **Who:** agent / **Given:** same state / **When:** `npm test > "$LOG" 2>&1; git add docs/f/z.md` / **Then:** allowed — `2>&1` is fd-duplication (no target); the indeterminate `"$LOG"` target's own segment carries no literal `docs/` token (D3(a) unmet).
 - **Who:** agent / **Given:** same state / **When:** `echo done && rm docs/f/*.md` or `rm docs/f/*.md || true` / **Then:** blocked (compound-command segments each parsed).
 - **Who:** agent / **Given:** LEARNINGS committed and pushed (Verified) / **When:** any command above / **Then:** allowed.
@@ -274,7 +277,7 @@ Substring matches inside prose (e.g. "telescope", "the scope of this change") SH
 #### REQ-GUARD-05
 **Title:** Hook regression tests driven by the block/allow matrix
 
-**Description:** Both hook scripts SHALL have automated tests asserting **every row of the Canonical Block/Allow Matrix (below)** — command × git-state → expected exit code + reason-code substring. The matrix, carried forward into FSPEC/PROPERTIES, is the durable oracle; "failing-before/passing-after" is a development-process practice during implementation, not an acceptance criterion. Tests live in the existing jest harness (`pdlc/workflows/__tests__/hookCompatibility.test.js` pattern, `runHookScript`) — not a new shell harness *(answers reviewer question TE-Q-03)*.
+**Description:** Both hook scripts SHALL have automated tests asserting **every row of the Canonical Block/Allow Matrix (below) — both the M-rows (deletion guard: command × git-state → expected exit code + reason-code substring) and the S-rows (scope check: file content → warning vs silent)**. The matrix, carried forward into FSPEC/PROPERTIES, is the durable oracle; "failing-before/passing-after" is a development-process practice during implementation, not an acceptance criterion. Tests live in the existing jest harness (`pdlc/workflows/__tests__/hookCompatibility.test.js` pattern, `runHookScript`) — not a new shell harness *(answers reviewer question TE-Q-03)*.
 
 **Test-environment requirements:**
 - Fixtures scaffold real git state hermetically: `git init` working repo + `git init --bare` local `origin`, with commit/push performed in the fixture — **no network access**. Every REQ-GUARD-03 matrix row (G1–G10, including the `GUARD_FETCH_BEFORE_CHECK=true` path) is exercisable against these fixtures.
@@ -282,7 +285,7 @@ Substring matches inside prose (e.g. "telescope", "the scope of this change") SH
 - **Migration note:** the existing PROP-COMPAT-05 assertions in `hookCompatibility.test.js` assume a non-repo tmpdir and assert that disk-only `LEARNINGS-*.md` allows deletion — behavior this REQ inverts (G1 blocks; disk-only is G8, blocks). Those assertions SHALL be migrated to the new matrix rows, not kept alongside them.
 
 **Acceptance criteria:**
-- **Who:** maintainer / **Given:** the repo checkout with bash + python3 / **When:** they run the test suite via a single command / **Then:** every row of the Canonical Block/Allow Matrix has exactly one asserting test, and all pass. Bulk rows (e.g. M33, which re-runs other rows under a different git state) expand to one asserting test per referenced row (a single parameterized test satisfies this).
+- **Who:** maintainer / **Given:** the repo checkout with bash + python3 / **When:** they run the test suite via a single command / **Then:** every row of the Canonical Block/Allow Matrix — M-rows and S-rows alike — has exactly one asserting test, and all pass. Bulk rows (e.g. M33, which re-runs other rows under a different git state) expand to one asserting test per referenced row (a single parameterized test satisfies this).
 - **Who:** maintainer / **Given:** the same checkout / **When:** the suite runs / **Then:** no test performs network I/O (pushed-state rows use the local bare-origin fixture).
 
 **Priority:** P0 · **Phase:** 1 · **Stories:** US-04
@@ -344,7 +347,7 @@ Default fixture state unless a row says otherwise: `docs/f/` contains `CROSS-REV
 | M30 | `git add docs/f/CROSS-REVIEW-x.md` | ALLOW | — |
 | M31 | `grep CROSS-REVIEW docs/f/*.md` | ALLOW | — |
 | M32 | `rm docs/empty-feature/*.md` (dir has no guarded files) | ALLOW | — |
-| M33 | State G6 (LEARNINGS pushed): re-run M01, M02, M04–M24, M44–M54 — expands to one asserting test per referenced row (parameterized test acceptable) | ALLOW | — |
+| M33 | State G6 (LEARNINGS pushed): re-run M01, M02, M04–M24, M44–M54, M60–M64 — expands to one asserting test per referenced row (parameterized test acceptable) | ALLOW | — |
 | M34 | State G7 (committed, not pushed): `rm docs/f/CROSS-REVIEW-x.md` | BLOCK | NOT_PUSHED |
 | M35 | State G4 (origin exists, branch never pushed, LEARNINGS committed): `rm docs/f/CROSS-REVIEW-x.md` | BLOCK | NOT_PUSHED (`git push -u origin` in message) |
 | M36 | State G9 (`LEARNINGS-other.md` committed, `LEARNINGS-f.md` absent): `rm docs/f/CROSS-REVIEW-x.md` | BLOCK | NOT_COMMITTED |
@@ -371,8 +374,25 @@ Default fixture state unless a row says otherwise: `docs/f/` contains `CROSS-REV
 | M57 | State G5 (origin exists, branch never pushed, LEARNINGS not committed): `rm docs/f/CROSS-REVIEW-x.md` | BLOCK | NOT_COMMITTED |
 | M58 | State G10, `GUARD_FETCH_BEFORE_CHECK` unset (default `false`): `rm docs/f/CROSS-REVIEW-x.md` | BLOCK | NOT_PUSHED (`git fetch` hint in message) |
 | M59 | State G10, `GUARD_FETCH_BEFORE_CHECK=true`, origin unreachable (fetch fails/times out): `rm docs/f/CROSS-REVIEW-x.md` | BLOCK | NOT_PUSHED |
+| M60 | `unlink docs/f/CROSS-REVIEW-x.md` | BLOCK | NOT_COMMITTED |
+| M61 | `&> docs/f/CROSS-REVIEW-x.md` | BLOCK | NOT_COMMITTED |
+| M62 | `>& docs/f/CROSS-REVIEW-x.md` (non-digit word after `>&` — file target, not fd-duplication) | BLOCK | NOT_COMMITTED |
+| M63 | `rm --recursive docs` (long-form recursive flag; ancestor, D2 iv) | BLOCK | NOT_COMMITTED |
+| M64 | Hook stdin `cwd` = `docs/f` (persisted shell cwd from a prior call's `cd docs/f`): `rm *.md` | BLOCK | NOT_COMMITTED |
+| M65 | No cwd signal in hook stdin; hook process cwd = repo root: `rm *.md` | ALLOW | — (RR-5) |
 
-Scope-check rows (REQ-GUARD-04): P1/P2/P3 pass cases silent; "telescope"-only, prose-`scope`-only, and lowercase-`scope:`-only cases warn.
+### Scope-check rows (REQ-GUARD-04 — `check-scope-field.sh`)
+
+Fixture: a `CROSS-REVIEW-*.md` file written with exactly the stated content; oracle = warning emitted vs silent. These S-rows are part of the Canonical Matrix for REQ-GUARD-05's one-test-per-row obligation.
+
+| # | File content | Expected |
+|---|---|---|
+| S01 | `Scope: Local` as its own line (P1); no other pattern | Silent |
+| S02 | `**Scope:** Cross-Feature` (P2); no other pattern | Silent |
+| S03 | Only Scope appearance is the findings-table header `\| ID \| Severity \| Scope \| Finding \|` (P3) | Silent |
+| S04 | Contains the word "telescope"; no pattern match | Warning |
+| S05 | Contains the prose "the scope of this change"; no pattern match | Warning |
+| S06 | Contains only lowercase `scope: Local` | Warning |
 
 ---
 
@@ -418,9 +438,20 @@ Scope-check rows (REQ-GUARD-04): P1/P2/P3 pass cases silent; "telescope"-only, p
 
 ---
 
+## Reviewer Findings Disposition (v1.2 → v1.3)
+
+| Finding | Resolution |
+|---|---|
+| SE F-01 (Medium — initial effective cwd for static relative operands unspecified; cross-call cwd drift reopens a static bypass) + SE Q-01 (iter-3 — does stdin `cwd` track the persisted shell cwd?) | REQ-GUARD-01 step 4: **initial-effective-cwd union rule** — static relative operands/globs resolve against both candidate roots (stdin `cwd` when present, else `CLAUDE_PROJECT_DIR`/repo root; plus the hook process cwd); BLOCK if either resolution lands in/over an unverified guarded directory. Q-01 answered: the stdin `cwd` field is a candidate root, not a persisted-shell guarantee — so surviving drift is registered as **RR-5** with the union rule as mitigation. ACs added; matrix rows M64 (union-rule block via stdin `cwd`), M65 (no-cwd-signal RR-5 allow); M17 remains the same-call `cd docs/f && rm *.md` block row |
+| SE F-02 (Low — `&>` / `>& file` truncation and `rm --recursive`/`-R` long form unclassified) | `&>` and non-digit `>& file` added to the defended redirection set (same truncation family as `>`), with the lexical digit/non-digit disambiguation from fd-duplication forms stated; `--recursive` added to the recursive-capable `rm` spellings in D2; redirection AC extended; matrix rows M61–M63 |
+| SE F-03 (Low — `unlink` is the only defended verb with zero matrix rows) | Matrix row M60 (`unlink docs/f/CROSS-REVIEW-x.md` → BLOCK, NOT_COMMITTED); included in M33's G6 re-run set |
+| TE F3-01 (Low — scope-check cases are prose, not bound by REQ-GUARD-05's one-test-per-row oracle) | Scope-check cases enumerated as Canonical Matrix rows S01–S06 (3 silent, 3 warning); REQ-GUARD-05 description and AC now bind M-rows and S-rows alike |
+
+---
+
 ## Open Questions
 
-None — all v1.0 and iteration-2 reviewer questions are answered inline (see Disposition tables); behavior is fully specified by the Canonical Block/Allow Matrix.
+None — all v1.0, iteration-2, and iteration-3 reviewer questions are answered inline (see Disposition tables); behavior is fully specified by the Canonical Block/Allow Matrix.
 
 ---
 
@@ -431,3 +462,4 @@ None — all v1.0 and iteration-2 reviewer questions are answered inline (see Di
 | 1.0 | 2026-07-01 | Initial draft |
 | 1.1 | 2026-07-02 | Addressed all High/Medium (and all Low) findings from SE and TE cross-reviews, iteration 1: parsing discipline + decision rules D1–D4, `mv`/redirection semantics, git-state matrix G1–G10, degraded-environment policy (REQ-GUARD-06), reason-code message catalog (REQ-GUARD-07), Scope-pattern EREs, canonical block/allow matrix as test oracle, residual-risk register, corrected runtime-dependency assumption |
 | 1.2 | 2026-07-02 | Addressed all High/Medium (and all Low) findings from iteration-2 cross-reviews: quote semantics rewritten as literal-vs-expandable with quote removal before classification (SE F-02/TE F2-01); D2 extended to guarded-dir-itself and ancestor paths for recursive-capable forms (SE F-01); D3 discriminator scoped to the deletion segment's operands/dataflow and fd-duplication excluded (SE F-03); `mv` unified on resulting-path rule with nested-subdir feature derivation (TE F2-02); matrix completed with G5/G10-default/fetch-failure rows (TE F2-03); env-var threshold mechanism, degraded raw-stdin matching + precedence, pinned state rows, RR-4, `1>`/`>\|` classification (Lows); matrix rows M44–M59 |
+| 1.3 | 2026-07-02 | Addressed iteration-3 findings: initial-effective-cwd union rule for static relative operand resolution + RR-5 for cross-call cwd drift, answering SE Q-01 (SE F-01); `&>`/`>& file` truncation forms and `rm --recursive` classified (SE F-02); `unlink` matrix row (SE F-03); scope-check cases converted to Canonical Matrix S-rows S01–S06 bound by REQ-GUARD-05 (TE F3-01); matrix rows M60–M65 |
