@@ -1,0 +1,52 @@
+# Cross-Review: test-engineer — FSPEC (v3)
+
+**Reviewer:** test-engineer
+**Document reviewed:** docs/harden-harvest-guard/FSPEC-harden-harvest-guard.md (Version 1.2; oracle: REQ-harden-harvest-guard.md Version 1.5, Canonical Matrix M01–M83 / S01–S07)
+**Date:** 2026-07-02
+**Iteration:** 3
+**Scope:** Testing lens — (1) disposition verification of my two iteration-2 Lows (F2-01 → M80, F2-02 → M81) against the actual REQ v1.5 rows, including re-derivation that each row kills the wrong implementation it was designed for; (2) new-testability-defect scan of the v1.2 deltas: rows M82/M83, the mv-flow step-3 restoration, the G-DP1 root-(A) pin with the unified enumeration anchor, and the M77 failure-vs-absence boundary.
+
+## Prior-Finding Disposition Verification (iteration 2 → v1.2 / REQ v1.5)
+
+| Iter-2 finding | Claimed resolution | Verified against actual sections | Status |
+|---|---|---|---|
+| F2-01 (Low) — every-segment union rule had no discriminating row | Row M80 + M33 re-run inclusion + step-6 citation | REQ M80 exists exactly as requested: no stdin `cwd`, hook process cwd = `docs/f`, `echo done && rm *.md` → BLOCK `NOT_COMMITTED`. Re-derived the kill: a segment-1-only union implementation resolves the segment-2 glob against candidate root (A)/repo root alone — no guarded `*.md` at repo root in the fixture — → ALLOW → fails the row; the correct implementation hits `docs/f/CROSS-REVIEW-x.md` via root (B). M33's re-run list reads `… M79–M80, M82` (M80 included; under G6 the row correctly flips to ALLOW). FSPEC-GUARD-01 step 6 cites M80 with the kill condition stated. Hermetic with the existing M66 spawn-cwd controls. | **Resolved — correctly** |
+| F2-02 (Low) — empty-string-`command` allow branch rowless; Python falsy trap | Row M81 + DG-DP2 citation | REQ M81 exists exactly as requested: parseable stdin, `tool_input.command` present but `""` → ALLOW, with the falsiness-vs-presence kill condition stated in the row itself. Re-derived: `if not payload.get(...).get("command")` cannot distinguish `""` from absent, passes M78, false-blocks M81 → fails. Correctly **excluded** from M33's G6 re-run set (pre-git-state, already an allow row) with the exclusion rationale stated in § Acceptance Tests. REQ-GUARD-06 case 2 and FSPEC-GUARD-04 step 2 / edge-case table both cite the M78/M81 boundary pair. | **Resolved — correctly** |
+
+Cross-checks on the v1.2/v1.5 promotion mechanics: the FSPEC § Acceptance Tests claim ("extended to include M66, M67, M73, M74, M79, M80, and M82") matches REQ M33's list (`M66–M67, M73–M74, M79–M80, M82`) exactly. The stated exclusions all re-derive correctly: M83 is non-G6-constructible in the relevant sense (root (A) is non-repo regardless of LEARNINGS state, so it can never become an allow row), M81 is git-state-independent, M77's corrupt-ref fixture is incompatible with G6 by construction. M82's G6 re-run rationale is correct: with every guarded directory Verified, D3(b) is unmet and the `mv` falls through to ALLOW.
+
+## New-Defect Scan of the v1.2 Deltas
+
+Swept: `mv` step-3 restoration (M82) with re-trace of every existing `mv` row (M09–M13, M52, M74, M79 — none regress: step 2 still fires first for M74's static guarded-dir source; M11/M52 still ALLOW through steps 4–5); G-DP1 root-(A) pin (M83) — discriminating, since a process-cwd-testing implementation reaches D2 against the fixture repo and emits `NOT_COMMITTED`, not `NO_REPO`, and the stderr oracle asserts the reason code; the unified enumeration anchor; the M77 failure-vs-absence operational boundary; the M81/M78 contract pair. The M77 boundary definition is deterministic and honestly annotated (the row pins the fail-open class only; the unpinned corrupt-ref × LEARNINGS-committed cell depends on whether git surfaces the corruption distinguishably from clean absence, which is git-version-dependent — a fixed row there would be non-hermetic, so leaving it row-less with the boundary stated normatively is the defensible call).
+
+One blocking defect and two row-level gaps survive the scan:
+
+## Findings
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F3-01 | Medium | Local | **The fully static `mv`-overwrite cell is undecided — and the restored step 3's own rationale contradicts the fall-through.** `mv /tmp/notes.md docs/f/CROSS-REVIEW-x.md` (static **unguarded** source; static destination = an **existing guarded file** in an unverified guarded directory) destroys the guarded file's content with certainty. Trace through the v1.2 flow: step 2 misses (source not a guarded dir/ancestor); step 3 misses (neither operand indeterminate); steps 4–5 are scoped to guarded **sources** ("if the source is/globs a guarded file…") and never test destination guardedness — so the command falls through to FSPEC-GUARD-01 step 10 ALLOW. Yet M82 blocks the **same overwrite vector** when the destination is merely *indeterminate*, justified in step 3's own words ("the move can still **overwrite** (destroy) a guarded file"), and M14/M16 block truncation of the very same file — possible destruction blocks while certain destruction allows. The alternative reading (FSPEC-GUARD-01 D2(i) over the destination operand → BLOCK) is foreclosed by M11: a guarded static *source* operand ALLOWs there, so `mv` operands are demonstrably not judged by plain D2 — the mv flow is the decision procedure, and it has a hole. No REQ mv-table case covers the unguarded-source/static-guarded-destination cell, no matrix row decides it, and no RR entry accepts it (RR-1 covers overwrite via **undefended** verbs — `cp /dev/null`, `dd of=` — but `mv` is in the defended set). A test for this command has two defensible expected exit codes and cannot be written; TSPEC/PROPERTIES would bind an implementation-chosen verdict on a destruction vector. **Required:** decide the cell — BLOCK with the affected feature's G-state reason code (a static-destination overwrite test in the mv flow, symmetric with the truncation family) is the only reading consistent with M82/M14 and the guard's purpose; alternatively an explicit RR entry, but either way the decision must land as a matrix row (e.g. M84: `mv /tmp/notes.md docs/f/CROSS-REVIEW-x.md` → BLOCK `NOT_COMMITTED`), eligible for M33's G6 re-run set (destination Verified → ALLOW). Fixture is already constructible (default fixture has the destination file on disk). | FSPEC-GUARD-02 steps 2–5, BR-02-1; REQ-GUARD-02 mv table; M82 rationale |
+| F3-02 | Low | Local | **The unified enumeration-anchor fallback (new in v1.2) has no discriminating row.** Step 8 now decides that the `git rev-parse --show-toplevel` fallback resolves from **candidate root (A)** ("the same root G-DP1 just tested — one mechanism"). No row falsifies the anchor choice: an implementation that rev-parses the hook **process cwd** instead passes all 83 M-rows, because every row that exercises enumeration keeps both roots inside the same fixture repo, and M83 exits at G-DP1 before enumeration is reached. Missing row (M85-class): `CLAUDE_PROJECT_DIR` unset; stdin `cwd` = fixture repo X (unverified guarded `docs/f`); hook process cwd = a second git repo Y containing no guarded directories; `rm docs/f/CROSS-REVIEW-x.md` → BLOCK `NOT_COMMITTED`. The wrong-anchor implementation enumerates Y, finds no guarded directories, and ALLOWs via BR-01-2. Hermetic with the existing harness controls (env, spawn cwd, stdin `cwd`, second fixture repo). Same F-09 residue class as my prior F2-01/F2-02: decided behavior, one cheap row. | FSPEC-GUARD-01 step 8; Disposition SE F2-02 |
+| F3-03 | Low | Local | **REQ-GUARD-01 step-4 prose still scopes the union rule to "segment 1's static relative operands"** while M80 and FSPEC step 6 decide every-segment application. v1.5 amended the decision-rule preamble (SE F2-03) but left the step-4 sentence — the exact wording whose literal reading licenses the segment-1-only implementation M80 exists to kill. Not a testability blocker (the matrix is the oracle and M80 decides), but the normative REQ sentence and its own matrix now diverge; align step 4 in the next REQ edit. | REQ-GUARD-01 step 4; FSPEC-GUARD-01 step 6; M80 |
+
+## Questions
+
+| ID | Question |
+|----|---------|
+| — | None. The undecided cell is filed as F3-01 with the required decision named, not asked. |
+
+## Positive Observations
+
+- Both iteration-2 dispositions survive adversarial re-derivation — the M80 and M81 rows each kill exactly the wrong-implementation class they were filed against, and both landed with correct M33 re-run treatment (included and excluded respectively, each with stated rationale).
+- M83 is a genuinely discriminating mixed-root row: the reason-code oracle (`NO_REPO` vs `NOT_COMMITTED`) separates the root-(A)-consulting implementation from the process-cwd-consulting one — the row states the kill condition inline.
+- The M77 failure-vs-absence boundary is the right way to handle a git-version-dependent cell: normative operational boundary, honest annotation that the row pins only the fail-open class, no non-hermetic row forced into the matrix.
+- The mv step-3 restoration itself is correct and regression-free: I re-traced M09–M13, M52, M74, and M79 through the restored flow and none change verdict; M82 is discriminating (the v1.1 source-guardedness qualifier ALLOWs it).
+- The v1.4 revision-history correction (SE F2-03) sets a good precedent: semantic changes mislabeled as row-only extensions are now retroactively flagged rather than papered over.
+
+## Recommendation
+
+**Needs revision**
+
+F3-01 is blocking: v1.2's own M82 rationale establishes overwrite-as-destruction as decided guard semantics, which leaves the fully static overwrite of a guarded file — strictly more destructive, and spelled with a *defended* verb — either allowed by fall-through or undecidable, with no matrix row and no residual-risk registration. The acceptance oracle cannot decide the cell, so the test is unwritable and downstream TSPEC/PROPERTIES would freeze an implementation-chosen verdict on a file-destruction vector. Required change: decide the unguarded-source/static-guarded-destination cell (destination-overwrite test in the mv flow, or explicit RR registration), pin it with a matrix row (M84-class) in the same edit per the F-09 process rule, and update the M33 re-run set if the decision is BLOCK. F3-02/F3-03 are one-row / one-sentence alignments absorbable in the same edit.
+
+> Any High or Medium finding → Needs revision (mandatory).
