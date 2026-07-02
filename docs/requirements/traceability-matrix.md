@@ -6,11 +6,15 @@
 |---|---|---|
 | US-01 | REQ-GUARD-01 | — |
 | US-01 | REQ-GUARD-03 | — |
+| US-01 | REQ-GUARD-07 | — |
 | US-02 | REQ-GUARD-01 | — |
 | US-02 | REQ-GUARD-02 | — |
 | US-02 | REQ-GUARD-NFR-01 | — |
 | US-03 | REQ-GUARD-04 | — |
 | US-04 | REQ-GUARD-05 | — |
+| US-04 | REQ-GUARD-07 | — |
+| US-05 | REQ-GUARD-06 | — |
+| US-05 | REQ-GUARD-07 | — |
 
 ## agent-trailer-contracts
 
