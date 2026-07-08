@@ -37,6 +37,7 @@ describe("parseDodStatus", () => {
     expect(result.coverage_below_threshold).toBe(false);
     expect(result.branch_coverage_pct).toBe(100);
     expect(result.req_gaps).toBe(0);
+    expect(result.boundary_gaps).toBe(0);
   });
 
   it("parses a failed status with JSON detail including req_gaps", () => {
@@ -51,6 +52,34 @@ describe("parseDodStatus", () => {
     expect(result.coverage_below_threshold).toBe(true);
     expect(result.branch_coverage_pct).toBe(72);
     expect(result.req_gaps).toBe(4);
+  });
+
+  it("parses boundary_gaps when present in the JSON detail", () => {
+    const input =
+      "Found issues.\nDOD_STATUS: failed\n" +
+      '{"stubs": 0, "mock_data": 0, "unwired_integrations": 0, "coverage_below_threshold": false, "branch_coverage_pct": 90, "req_gaps": 1, "boundary_gaps": 3}';
+    const result = parseDodStatus(input);
+    expect(result.status).toBe("failed");
+    expect(result.boundary_gaps).toBe(3);
+  });
+
+  it("defaults boundary_gaps to 0 when omitted from JSON (old-format compat)", () => {
+    const input =
+      "Found issues.\nDOD_STATUS: failed\n" +
+      '{"stubs": 1, "mock_data": 0, "unwired_integrations": 0, "coverage_below_threshold": false, "branch_coverage_pct": 90, "req_gaps": 2}';
+    const result = parseDodStatus(input);
+    expect(result.boundary_gaps).toBe(0);
+  });
+
+  it("clamps negative boundary_gaps to 0", () => {
+    const input =
+      "DOD_STATUS: failed\n" +
+      '{"stubs": 0, "mock_data": 0, "unwired_integrations": 0, "coverage_below_threshold": false, "branch_coverage_pct": 90, "boundary_gaps": -4}';
+    expect(parseDodStatus(input).boundary_gaps).toBe(0);
+  });
+
+  it("carries boundary_gaps: 0 on the passed path", () => {
+    expect(parseDodStatus("DOD_STATUS: passed").boundary_gaps).toBe(0);
   });
 
   it("defaults req_gaps to 0 when omitted from JSON", () => {
@@ -73,12 +102,14 @@ describe("parseDodStatus", () => {
     expect(result.status).toBe("failed");
     expect(result.stubs).toBe(0);
     expect(result.mock_data).toBe(0);
+    expect(result.boundary_gaps).toBe(0);
   });
 
   it("returns failed with zeros when JSON is malformed", () => {
     const result = parseDodStatus("DOD_STATUS: failed\nnot json");
     expect(result.status).toBe("failed");
     expect(result.stubs).toBe(0);
+    expect(result.boundary_gaps).toBe(0);
   });
 
   it("returns unknown for empty/nullish input", () => {
@@ -477,7 +508,7 @@ describe("Phase DOD static guarantees", () => {
     expect(content).toContain("name: dod-verify");
   });
 
-  it("dod-verify SKILL.md documents all five DoD criteria", () => {
+  it("dod-verify SKILL.md documents all six DoD criteria", () => {
     const skillPath = resolve(__dirname, "../../skills/dod-verify/SKILL.md");
     const content = readFileSync(skillPath, "utf8");
     expect(content).toContain("No Stubs in Production Code");
@@ -486,12 +517,19 @@ describe("Phase DOD static guarantees", () => {
     expect(content).toContain("Branch Coverage");
     expect(content).toContain("85%");
     expect(content).toContain("property-based");
-    // Criterion 5: requirements traceability
+    // Criterion 5: requirements traceability, hardened with final-artifact tracing
     expect(content).toContain("Requirements Delivered");
     expect(content).toContain("req_gaps");
     expect(content).toContain("REQ");
     expect(content).toContain("FSPEC");
     expect(content).toContain("PROPERTIES");
+    expect(content).toContain("final operator-visible artifact");
+    // Criterion 6: integration-boundary integrity (both checks) + trailer key
+    expect(content).toContain("The Six DoD Criteria");
+    expect(content).toContain("Integration-Boundary Integrity");
+    expect(content).toContain("Adjacent-surface falsification");
+    expect(content).toContain("Deferral binding");
+    expect(content).toContain("boundary_gaps");
   });
 
   it("dod-verify SKILL.md has challenger persona", () => {
@@ -502,20 +540,26 @@ describe("Phase DOD static guarantees", () => {
     expect(content).toMatch(/hostile auditor|challenger|assume.*incomplete|burden of proof/i);
   });
 
-  it("dodVerifyPrompt includes req_gaps in the trailer instruction", () => {
+  it("dodVerifyPrompt includes req_gaps and boundary_gaps in the trailer instruction", () => {
     const content = readFileSync(scriptPath, "utf8");
     const start = content.indexOf("function dodVerifyPrompt");
     const nextFn = content.indexOf("\nfunction ", start + 1);
-    const promptFn = content.slice(start, nextFn > start ? nextFn : start + 3000);
+    const promptFn = content.slice(start, nextFn > start ? nextFn : start + 4000);
     expect(promptFn).toContain("req_gaps");
     expect(promptFn).toContain("REQ");
     expect(promptFn).toContain("FSPEC");
     expect(promptFn).toContain("PROPERTIES");
+    // Criterion 5 hardening + criterion 6 (both checks) present in the scan instruction
+    expect(promptFn).toMatch(/final operator-visible artifact/i);
+    expect(promptFn).toContain("boundary_gaps");
+    expect(promptFn).toContain("Adjacent-surface falsification");
+    expect(promptFn).toContain("Deferral binding");
   });
 
-  it("parseDodStatus returns req_gaps field on passed and failed statuses", () => {
+  it("parseDodStatus returns req_gaps and boundary_gaps fields on passed and failed statuses", () => {
     const content = readFileSync(scriptPath, "utf8");
-    // req_gaps must appear in both the passed-return and the failed-return of parseDodStatus
+    // req_gaps/boundary_gaps must appear in the passed-return and failed-return of parseDodStatus
     expect(content).toMatch(/req_gaps.*0/); // passed returns 0
+    expect(content).toMatch(/boundary_gaps.*0/); // passed returns 0
   });
 });

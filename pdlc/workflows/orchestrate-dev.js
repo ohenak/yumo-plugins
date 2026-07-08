@@ -647,7 +647,7 @@ export function parseCiStatus(result) {
 /**
  * Extract DOD_STATUS from a dod-verify agent result string.
  * @param {string | null | undefined} result - Raw agent result
- * @returns {{ status: "passed" | "failed" | "unknown", stubs: number, mock_data: number, unwired_integrations: number, coverage_below_threshold: boolean, branch_coverage_pct: number, req_gaps: number }}
+ * @returns {{ status: "passed" | "failed" | "unknown", stubs: number, mock_data: number, unwired_integrations: number, coverage_below_threshold: boolean, branch_coverage_pct: number, req_gaps: number, boundary_gaps: number }}
  */
 export function parseDodStatus(result) {
   const fallback = {
@@ -658,6 +658,7 @@ export function parseDodStatus(result) {
     coverage_below_threshold: false,
     branch_coverage_pct: 0,
     req_gaps: 0,
+    boundary_gaps: 0,
   };
 
   if (result == null || (typeof result === "string" && result.trim() === "")) {
@@ -693,6 +694,7 @@ export function parseDodStatus(result) {
       coverage_below_threshold: false,
       branch_coverage_pct: 100,
       req_gaps: 0,
+      boundary_gaps: 0,
     };
   }
 
@@ -717,6 +719,7 @@ export function parseDodStatus(result) {
     coverage_below_threshold: false,
     branch_coverage_pct: 0,
     req_gaps: 0,
+    boundary_gaps: 0,
   };
 
   if (nextNonEmpty === null) {
@@ -738,6 +741,7 @@ export function parseDodStatus(result) {
     coverage_below_threshold: parsed.coverage_below_threshold === true,
     branch_coverage_pct: typeof parsed.branch_coverage_pct === "number" && parsed.branch_coverage_pct >= 0 ? parsed.branch_coverage_pct : 0,
     req_gaps: Number.isInteger(parsed.req_gaps) && parsed.req_gaps >= 0 ? parsed.req_gaps : 0,
+    boundary_gaps: Number.isInteger(parsed.boundary_gaps) && parsed.boundary_gaps >= 0 ? parsed.boundary_gaps : 0,
   };
 }
 
@@ -760,14 +764,26 @@ function dodVerifyPrompt(featureName, version) {
     `3. Mock/fake data in production code — hardcoded test data, mock variables outside test files\n` +
     `4. Branch coverage ≥85% for all new modules with property-based tests for parameterisable components\n` +
     `5. Requirements delivered — for each checklist item: trace it to a production code path AND a test that ` +
-    `would fail if the implementation broke. Missing either one is a gap (req_gaps count). ` +
+    `would fail if the implementation broke. Trace to the FINAL operator-visible artifact (after any ` +
+    `entry-point re-render/overwrite), not the node/builder output; enumerate all writers of the traced ` +
+    `output (grep the filename/key) and confirm no later writer clobbers the AC value without a test pinning ` +
+    `the final artifact. Missing either one is a gap (req_gaps count). ` +
     `An assertion-free test does not count. A stub-backed test does not count.\n` +
+    `6. Integration-boundary integrity (boundary_gaps count) — two checks:\n` +
+    `   (a) Adjacent-surface falsification: does the diff make any existing artifact, disclosure string, ` +
+    `comment, config default, or doc claim FALSE? For every output file the feature writes, grep for other ` +
+    `writers of the same file/key and check for a later overwrite. When the feature touches one member of a ` +
+    `same-shape family (one tools/get_* among several, one writer of a multi-writer artifact), enumerate the ` +
+    `family and require each sibling covered or explicitly out-of-scope in the REQ.\n` +
+    `   (b) Deferral binding: every deferral this feature introduces or leaves in place must name a successor ` +
+    `that exists as a queue row (docs/_queue/QUEUE.md) or a named successor REQ file in docs/. A runbook step, ` +
+    `operator config, or bare prose mention is NOT a successor.\n` +
     `\n` +
-    `Document every finding (all five criteria) with a Scope tag (Local | Cross-Feature | Process) in ` +
+    `Document every finding (all six criteria) with a Scope tag (Local | Cross-Feature | Process) in ` +
     `docs/${featureName}/CODE_REVIEW-${featureName}-v${version}.md — include a §2 Requirements Traceability ` +
     `table listing every criterion with implementation path, test path, and Gap? column. ` +
     `Commit and push the review file. Do NOT fix anything — you are the evaluator, not the optimizer.\n` +
-    `End with the DOD_STATUS trailer including req_gaps in the JSON.`
+    `End with the DOD_STATUS trailer including req_gaps and boundary_gaps in the JSON.`
   );
 }
 
@@ -839,7 +855,8 @@ export async function dodVerifyLoop({
       `DoD findings recorded in CODE_REVIEW-${feature}-v${iteration}: ` +
       `stubs=${status.stubs}, mock_data=${status.mock_data}, ` +
       `unwired=${status.unwired_integrations}, coverage_gap=${status.coverage_below_threshold} ` +
-      `(branch_coverage=${status.branch_coverage_pct}%), req_gaps=${status.req_gaps}`
+      `(branch_coverage=${status.branch_coverage_pct}%), req_gaps=${status.req_gaps}, ` +
+      `boundary_gaps=${status.boundary_gaps}`
     );
 
     if (iteration === maxIterations) {
