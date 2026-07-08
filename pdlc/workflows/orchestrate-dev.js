@@ -31,6 +31,12 @@ const CI_NO_CHECKS_TIMEOUT_MS = 10 * 60 * 1000; // 10 min — no checks ⇒ assu
 const CI_POLL_INTERVAL_MS = 30 * 1000; // 30 s between status polls
 const CI_COMPLETION_TIMEOUT_MS = 30 * 60 * 1000; // 30 min — overall cap once checks are running
 
+// MODEL-01: per-phase model selection. Every phase runs on Opus for reasoning
+// depth EXCEPT the Phase I implementation batches, which run on Sonnet for
+// throughput/cost. Passed to the runtime via the agent() opts.model field.
+const MODEL_DEFAULT = "opus"; // all phases except Phase I
+const MODEL_IMPLEMENTATION = "sonnet"; // Phase I se-implement batches only
+
 // TSPEC-SCRIPT-03: Exported meta object
 export const meta = {
   name: "orchestrate-dev",
@@ -1118,7 +1124,7 @@ async function sleep(ms) {
  */
 export default async function main({
   reqPath,
-  _agent: agentFn = agent,
+  _agent: rawAgentFn = agent,
   _parallel: parallelFn = parallel,
   _log: logFn = log,
   _guardAgent: guardAgentFn = null,
@@ -1135,6 +1141,12 @@ export default async function main({
 } = {}) {
   // Override module-level log for injection
   const emit = logFn;
+
+  // MODEL-01: pin every agent call to Opus by default. Phase I overrides this to
+  // Sonnet at its dispatch site. An explicit opts.model always wins over the default,
+  // so downstream helpers (reviewLoop, dodVerifyLoop, ship/rebase, harvest) inherit Opus.
+  const agentFn = (skill, prompt, opts) =>
+    rawAgentFn(skill, prompt, { model: MODEL_DEFAULT, ...opts });
 
   const phases = [];
   let haltReason;
@@ -1438,7 +1450,7 @@ export default async function main({
             agentFn(
               "se-implement",
               implementPrompt(task, featureName),
-              { isolation: "worktree" }
+              { isolation: "worktree", model: MODEL_IMPLEMENTATION }
             )
           )
         );

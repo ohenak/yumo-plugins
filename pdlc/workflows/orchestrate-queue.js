@@ -53,6 +53,12 @@ export const meta = {
 // Default location of the queue file.
 export const DEFAULT_QUEUE_PATH = "docs/_queue/QUEUE.md";
 
+// MODEL-01: the queue driver's own agent work (the Phase-0 readiness triage) runs
+// on Sonnet — it is a bounded lookup against git/working-tree state, not deep
+// reasoning. The delegated pipeline (orchestrate-dev) pins its OWN models: Opus for
+// every phase except its Phase I implementation batches. See orchestrate-dev.js.
+const MODEL_QUEUE = "sonnet";
+
 // Recognized queue statuses. Only `pending` entries are eligible for pickup.
 // `in-progress` is a crash/active marker; `awaiting-merge`/`done`/`blocked`/`halted`
 // are terminal-for-this-loop and skipped.
@@ -438,7 +444,7 @@ async function defaultWriteFile(path, contents) {
  */
 export default async function main({
   queuePath = DEFAULT_QUEUE_PATH,
-  _agent: agentFn = agent,
+  _agent: rawAgentFn = agent,
   _readFile: readFileFn = defaultReadFile,
   _writeFile: writeFileFn = defaultWriteFile,
   _runPipeline: runPipelineFn = realMain,
@@ -446,6 +452,12 @@ export default async function main({
   _phase: phaseFn = phase,
 } = {}) {
   const emit = logFn;
+
+  // MODEL-01: pin the queue's own agent calls (Phase-0 triage) to Sonnet. The
+  // delegated orchestrate-dev pipeline is invoked without _agent below, so it uses
+  // its OWN runtime agent and its OWN Opus-default model pinning — unaffected by this.
+  const agentFn = (skill, prompt, opts) =>
+    rawAgentFn(skill, prompt, { model: MODEL_QUEUE, ...opts });
 
   // ─── Load queue ─────────────────────────────────────────────────────────
   phaseFn("Queue: Load");

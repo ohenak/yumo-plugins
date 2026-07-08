@@ -35,6 +35,17 @@ Phase sequence (not a runbook — see workflow script for mechanics):
 
 ---
 
+## Model Selection
+
+The workflow pins a model per phase via the runtime `agent()` `model` option:
+
+- **Phase I (Implementation batches — `se-implement`) runs on Sonnet.** The PLAN and PROPERTIES already constrain this TDD work, so it is optimized for throughput/cost.
+- **Every other phase runs on Opus** — REQ/FSPEC/TSPEC/PLAN/PROPERTIES reviews and authoring, PROPERTIES tests, final codebase review, Definition of Done, Harvest, and PR/CI. These are reasoning-heavy.
+
+Model constants live at the top of `pdlc/workflows/orchestrate-dev.js` (`MODEL_DEFAULT = "opus"`, `MODEL_IMPLEMENTATION = "sonnet"`). Agent calls default to Opus; the Phase I dispatch site overrides to Sonnet.
+
+---
+
 ## Definition of Done Verification (Phase DOD)
 
 After the Final Codebase Review and before Harvest, the workflow runs a mechanical Definition of Done gate. It is an **evaluator → optimizer** loop, not a single self-fixing agent:
