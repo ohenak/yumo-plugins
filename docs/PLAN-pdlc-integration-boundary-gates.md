@@ -14,7 +14,10 @@
 - **Do not touch** the untracked `pdlc/workflows/__tests__/guardMatrix.test.js` (someone else's WIP).
 - **Do not rebase or modify** `feat-phase-model-selection`; branch off it.
 - Additive only: the `DOD_STATUS` trailer contract gains one key; existing keys, order-insensitive parsing, and all current tests keep passing.
-- Test runner: `cd pdlc/workflows && npx vitest run` (package.json lives there). All green before done.
+- Test runner: `cd pdlc/workflows && node --experimental-vm-modules node_modules/jest/bin/jest.js`
+  (the package is **Jest-based**; the plan's original `npx vitest run` was a planner error —
+  bare vitest fails on Jest globals. `npx vitest run --globals` also works. Corrected during
+  verification 2026-07-08.) All green before done.
 - Commit style: conventional commits, one commit per change-group is fine.
 
 ## Changes
@@ -143,21 +146,39 @@ handles that repo's commit separately (it has its own in-flight branches).
 
 ## Acceptance criteria (verifier checklist — Fable 5 runs this)
 
-- [ ] AC-1: `dod-verify/SKILL.md` has six criteria; criterion 6 contains both checks (a)
+Verified 2026-07-08 by Fable 5 (implementation: Opus, commits `1dfff39`/`e39d12e`/`3cc1aea`).
+
+- [x] AC-1: `dod-verify/SKILL.md` has six criteria; criterion 6 contains both checks (a)
       adjacent-surface + sibling enumeration, (b) deferral-needs-queue-row; criterion 5
       contains the final-artifact/all-writers clause; trailer JSON documents
-      `boundary_gaps`.
-- [ ] AC-2: `dodVerifyPrompt` mirrors all of AC-1 (6 items + final-artifact clause +
-      boundary_gaps in the trailer instruction).
-- [ ] AC-3: `parseDodStatus` returns `boundary_gaps` on all five return paths (fallback /
-      passed / failed-no-JSON / failed-bad-JSON / failed-parsed), clamped like `req_gaps`;
-      old-format trailers (no `boundary_gaps` key) still parse with 0.
-- [ ] AC-4: `orchestrate-dev/SKILL.md` no longer says four criteria; lists/points to six.
-- [ ] AC-5: `pm-author/SKILL.md` has step 5c + checklist item.
-- [ ] AC-6: README operator-convention paragraph present; plugin.json at 0.8.0.
-- [ ] AC-7: `npx vitest run` green in `pdlc/workflows`; new boundary_gaps tests present
-      (present/omitted/negative/passed paths).
-- [ ] AC-8: regime-ledger consumer copy byte-identical to plugin source
-      (`diff` empty), uncommitted.
-- [ ] AC-9: no diff outside the files named in C1–C8; `guardMatrix.test.js` untouched;
-      base branch unmodified.
+      `boundary_gaps`. *(Verified: §6 at line 124, both checks; §5 clause at line 115;
+      trailer + key description at lines 224/234; zero stale five/four phrases.)*
+- [x] AC-2: `dodVerifyPrompt` mirrors all of AC-1 (6 items + final-artifact clause +
+      boundary_gaps in the trailer instruction). *(Verified in source.)*
+- [x] AC-3: `parseDodStatus` returns `boundary_gaps` on all five return paths (fallback /
+      passed / failed-no-JSON / failed-bad-JSON / failed-parsed — the last two share
+      `failedZeros`), clamped like `req_gaps`; old-format trailers still parse with 0.
+      *(Verified: lines 661/697/722/744 + JSDoc.)*
+- [x] AC-4: `orchestrate-dev/SKILL.md` points to dod-verify SKILL.md as single source of
+      truth + names the six. *(Verified.)*
+- [x] AC-5: `pm-author/SKILL.md` has step 5c + the deferred-capability checklist item.
+      *(Verified.)*
+- [x] AC-6: README "Operator conventions" present; plugin.json at 0.8.0. *(Verified.)*
+- [x] AC-7: Jest suite green — 276/276 tests pass; the single failing *suite* is the
+      pre-existing untracked WIP `guardMatrix.test.js` (module-not-found on its own missing
+      fixture, unrelated). New boundary_gaps tests present: present/omitted-compat/
+      negative-clamp/passed-path + prompt-instruction + field-presence pins. *(Ran by
+      verifier.)*
+- [x] AC-8: regime-ledger consumer copy byte-identical (`diff` empty), tracked-modified,
+      uncommitted. *(Verified.)*
+- [x] AC-9: diff vs base = exactly the C1–C8 file set + this plan; `guardMatrix.test.js`
+      untouched; base `feat-phase-model-selection` still at `1e3bcde`. *(Verified.)*
+
+## Post-verification operator steps (not automated)
+
+1. Push `feat-integration-boundary-gates` + open PR in `yumo-plugins` (target:
+   `feat-phase-model-selection` or `main` per your branch strategy — main is behind the
+   0.7.0 lineage).
+2. Refresh the installed plugin cache to 0.8.0 (reinstall/update; cache dir is versioned).
+3. Commit the synced consumer copy in `regime-ledger`
+   (`.claude/workflows/orchestrate-dev.js`) on a housekeeping branch.
