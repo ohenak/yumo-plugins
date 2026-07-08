@@ -68,6 +68,7 @@ Before creating or revising any REQ or FSPEC, read `docs/_constraints/DOMAIN-CON
    | BL-01 | {symbol / contract / decision} | {PR merged / decision doc / config value} | Must exist at HEAD before FSPEC authoring |
 
    Soft notes ("see prior phase") are not sufficient — every upstream dependency must be checkable at gate time.
+5c. **Deferral binding obligation:** Any capability this REQ explicitly defers must be bound, at REQ acceptance, to a successor that exists as a queue row (draft acceptable) or a named successor REQ file. "Runbook step", "operator config", or prose intent is not a successor — the post-mortem showed those never ship. An unbound deferral is a blocking gap.
 6. Structure requirements by domain with metadata:
    - **ID** — `REQ-{DOMAIN}-{NUMBER}` (e.g., `REQ-AUTH-01`)
    - **Title, Description**
@@ -158,6 +159,7 @@ docs/
 - [ ] Non-functional requirements are included
 - [ ] Every AC citing a configured threshold has a named threshold declaration with default value and config owner
 - [ ] Upstream dependencies on other features are in a hard-prerequisite table (not soft notes)
+- [ ] Every deferred capability is bound to a successor queue row or successor REQ (not a runbook step, operator config, or prose intent)
 - [ ] Infra/deployment-governance posture is settled or explicitly scoped as a separate workstream with a named owner
 - [ ] Product naming is finalized — all major entities, modules, and public APIs have definitive names
 - [ ] Dependencies documented, scope boundaries defined
