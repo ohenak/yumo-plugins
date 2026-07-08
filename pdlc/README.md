@@ -20,6 +20,19 @@ Invoked as `/pdlc:<skill>`:
 | `te-author` / `te-review` | Test Engineer — authors PROPERTIES; reviews from testing lens |
 | `tech-lead` / `tech-lead-python` | Parses PLAN, dispatches parallel se-implement agents |
 
+## Model selection
+
+The workflows pin a model per phase (passed to the runtime via the `agent()` `model` option):
+
+| Work | Model | Why |
+|---|---|---|
+| `orchestrate-dev` Phase I implementation batches (`se-implement`) | **Sonnet** | High-throughput, well-specified TDD work — the PLAN/PROPERTIES already constrain it |
+| `orchestrate-dev` — every other phase (reviews, spec authoring, DoD, harvest, PR/CI) | **Opus** | Reasoning-heavy authoring and evaluation |
+| `orchestrate-queue` Phase-0 readiness triage | **Sonnet** | Bounded lookup against git/working-tree state |
+| `orchestrate-queue` → `orchestrate-dev` delegation | **Opus** (dev pins its own) | The delegated pipeline applies its own per-phase pinning above |
+
+Both workflows default their agent calls to the phase model and let an explicit call-site `model` win, so downstream helpers inherit the default. Constants live at the top of `workflows/orchestrate-dev.js` (`MODEL_DEFAULT` / `MODEL_IMPLEMENTATION`) and `workflows/orchestrate-queue.js` (`MODEL_QUEUE`).
+
 ## Convention contract (what installing pdlc expects of a repo)
 
 - Artifacts live under `docs/{feature}/`: `REQ → FSPEC → TSPEC → PLAN → PROPERTIES`

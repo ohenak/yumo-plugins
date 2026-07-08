@@ -151,6 +151,14 @@ pending ──pick──▶ in-progress ──pipeline success──▶ awaiting
 
 ---
 
+## Model Selection
+
+The queue driver's own agent work — the **Phase-0 readiness triage** — runs on **Sonnet** (`MODEL_QUEUE` in `pdlc/workflows/orchestrate-queue.js`). It is a bounded lookup against git history and the working tree, not deep reasoning.
+
+The delegated pipeline is invoked via `orchestrate-dev`'s `main()` **without** overriding its agent, so it applies its **own** per-phase model pinning — **Opus for every phase except its Phase I implementation batches** (which run on Sonnet). See `orchestrate-dev`'s SKILL.md § Model Selection. In short: queue triage = Sonnet; the triggered `orchestrate-dev` pipeline = Opus (minus its own Phase I).
+
+---
+
 ## Concurrency
 
 Serial by design — one pipeline per invocation, and the `in-progress` guard prevents a
