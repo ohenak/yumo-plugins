@@ -45,6 +45,14 @@ Both workflows default their agent calls to the phase model and let an explicit 
   ready REQ in dependency order, one feature per iteration. See
   `skills/orchestrate-queue/SKILL.md` for the queue format and status lifecycle.
 
+## Operator conventions
+
+Changes that touch an **entry point, a repo-default config, or a shared artifact writer**
+go through the queue (or, minimally, a standalone `dod-verify` pass) — not an ad-hoc
+`feat(...)` commit. The two worst gaps in the post-mortem that motivated the
+integration-boundary criterion shipped exactly that way: in ad-hoc commits with no
+REQ/PLAN/DoD, so nothing ever challenged the adjacent surfaces they silently falsified.
+
 ## Local development
 
 ```bash
