@@ -51,11 +51,7 @@ Model constants live at the top of `pdlc/workflows/orchestrate-dev.js` (`MODEL_D
 After the Final Codebase Review and before Harvest, the workflow runs a mechanical Definition of Done gate. It is an **evaluator → optimizer** loop, not a single self-fixing agent:
 
 1. **Rebase (step 0).** `ship-pr` rebases `feat-{feature}` onto the latest remote default branch so the scan — and the PR raised later in Phase PUB — reflects the real merge state. If the rebase conflicts, the pipeline halts (resolve manually and re-run).
-2. **Verify.** `dod-verify` scans all production code on the branch for four criteria and **documents** every finding (Scope-tagged) in a versioned `CODE_REVIEW-{feature}-v{N}.md` file. It does **not** fix anything.
-   1. **No stubs** — no TODOs, placeholders, `NotImplementedError`, or stub implementations in production code
-   2. **All integrations wired** — no unused imports, dead config, or placeholder URLs
-   3. **No mock data in production** — no hardcoded test/fake data outside test files
-   4. **Branch coverage ≥ 85%** — all new modules must meet the coverage floor via property-based testing
+2. **Verify.** `dod-verify` scans the branch against **six criteria** — see `dod-verify` SKILL.md for the full definitions (single source of truth, so the two files cannot drift) — and **documents** every finding (Scope-tagged) in a versioned `CODE_REVIEW-{feature}-v{N}.md` file. It does **not** fix anything. The six: (1) no stubs in production code, (2) all integrations wired, (3) no mock/fake data in production, (4) branch coverage ≥ 85% via property-based testing, (5) requirements delivered — every REQ/FSPEC/PROPERTIES criterion traceable to the **final operator-visible artifact** and a failing test, (6) integration-boundary integrity — no adjacent surface silently falsified, no unhandled same-shape sibling, every deferral bound to a queue row or successor REQ.
 3. **Remediate.** If `dod-verify` reports findings, the workflow dispatches `se-implement` to address every finding in the latest `CODE_REVIEW` via TDD, then re-verifies (a new `-v{N+1}` review).
 
 The loop alternates verify → remediate up to 3 times; if findings persist, the pipeline halts. The `CODE_REVIEW-{feature}-v{N}.md` files are tracked process artifacts — harvested into `LEARNINGS` and deleted in Phase H, exactly like `CROSS-REVIEW-*`. Set `PHASE_DOD_ENABLED = false` in the workflow script to skip this phase.
