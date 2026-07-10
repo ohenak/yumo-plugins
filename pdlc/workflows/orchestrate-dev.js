@@ -1162,7 +1162,8 @@ function dodReVerifyPrompt(featureName, version) {
     `An assertion-free or stub-backed test does not count as remediation.\n` +
     `\n` +
     `Step 2 — Run \`git diff\` covering the remediation commits since v${prev} and scan ONLY that diff for new ` +
-    `stubs, mock data, unwired integrations, or regressions introduced by the fixes. Do NOT re-scan unchanged ` +
+    `stubs, mock data, unwired integrations, integration-boundary gaps (adjacent surfaces the fixes silently ` +
+    `falsify), or regressions introduced by the fixes. Do NOT re-scan unchanged ` +
     `code you already verified in the previous round.\n` +
     `\n` +
     `Carry the §2 Requirements Traceability table forward from v${prev}, updating only the rows affected by the ` +
@@ -1170,7 +1171,7 @@ function dodReVerifyPrompt(featureName, version) {
     `docs/${featureName}/CODE_REVIEW-${featureName}-v${version}.md with Scope tags (Local | Cross-Feature | Process) ` +
     `as before. Commit and push the review file. Do NOT fix anything — you are the evaluator, not the optimizer.\n` +
     `DOD_STATUS: passed only when every prior finding is verified remediated AND the remediation diff is clean. ` +
-    `End with the DOD_STATUS trailer including req_gaps in the JSON.`
+    `End with the DOD_STATUS trailer including req_gaps and boundary_gaps in the JSON.`
   );
 }
 
