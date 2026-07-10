@@ -167,6 +167,19 @@ A feature can pass criteria 1–5 in isolation and still ship a defect: it can s
 
 ---
 
+## Re-verification Rounds (v2+)
+
+When the orchestrator passes a version ≥2, the feature was already fully scanned in v1 (or the prior round) and then remediated. Do **not** re-run the full five-criteria scan — run a delta re-verify against the same evidence bar:
+
+1. Read `docs/{feature}/CODE_REVIEW-{feature}-v{N-1}.md`. For **each** finding, verify remediation: trace the fix to a production code path **and** a test that would fail if the fix broke. An assertion-free or stub-backed test does not count as remediation.
+2. Run `git diff` covering the remediation commits since v{N-1} and scan **only** that diff for new stubs, mock data, unwired integrations, or regressions the fixes introduced. Do not re-scan unchanged code already verified in the previous round.
+3. Carry the §2 Requirements Traceability table forward from v{N-1}, updating only the rows the remediation touched (the `Gap?` column).
+4. Document the result in `docs/{feature}/CODE_REVIEW-{feature}-v{N}.md` with Scope tags as before. Do **not** fix anything.
+
+`DOD_STATUS: passed` only when **every** prior finding is verified remediated **and** the remediation diff is clean. Any unremediated finding or any new violation in the diff means `DOD_STATUS: failed`. The trailer contract (including `req_gaps`) is unchanged.
+
+---
+
 ## CODE_REVIEW Document Format
 
 Write to `docs/{feature}/CODE_REVIEW-{feature}-v{N}.md`. Every finding carries a **Scope** tag — `Local`, `Cross-Feature`, or `Process`.

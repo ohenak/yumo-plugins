@@ -43,7 +43,7 @@ Every plugin follows this layout:
 | `te-author` | `skills/te-author/SKILL.md` | Authors PROPERTIES; addresses feedback |
 | `te-review` | `skills/te-review/SKILL.md` | Reviews from testing lens |
 | `dod-verify` | `skills/dod-verify/SKILL.md` | Definition of Done verifier — scans production code for stubs, unwired integrations, mock data, and coverage gaps and documents findings in a versioned `CODE_REVIEW-{feature}-v{N}.md` (does NOT fix); orchestrate-dev Phase DOD dispatches se-implement to remediate, then re-verifies |
-| `ship-pr` | `skills/ship-pr/SKILL.md` | Raises/reuses the feature PR and reports GHA check status; driven by orchestrate-dev Phase PUB (script owns poll timing) |
+| `ship-pr` | `skills/ship-pr/SKILL.md` | Rebases the feature branch (Phase DOD) and raises/reuses the feature PR (Phase PUB); the workflow script reads GHA check status directly via `gh` (script owns poll timing) |
 | `tech-lead` | `skills/tech-lead/SKILL.md` | Parses PLAN, dispatches parallel se-implement agents (TypeScript) |
 | `tech-lead-python` | `skills/tech-lead-python/SKILL.md` | Same as tech-lead for Python repos |
 | `harvest-learnings` | `skills/harvest-learnings/SKILL.md` | Distils cross-reviews + post-mortems → LEARNINGS, then deletes harvested files |
@@ -76,7 +76,7 @@ pdlc expects:
 - Entry (single feature): `feat-{feature-name}` branch, start with `/pdlc:orchestrate-dev docs/{feature-name}/REQ-{feature-name}.md`
 - Entry (queue, multi-feature): `/loop run /pdlc:orchestrate-queue` — one ready feature per iteration, dependency-ordered
 - Definition of Done (Phase DOD): runs after the Final Codebase Review, before Harvest. Step 0 rebases `feat-{feature}` onto the latest default branch via `ship-pr` (halts on conflict). Then an evaluator→optimizer loop: `dod-verify` documents findings in `CODE_REVIEW-{feature}-v{N}.md` (does not fix), and `orchestrate-dev` dispatches `se-implement` to remediate them via TDD, re-verifying up to 3 rounds before halting. Set `PHASE_DOD_ENABLED = false` to skip.
-- Auto-PR (Phase PUB): after Harvest, `orchestrate-dev` raises (or reuses) the feature PR via the `ship-pr` skill and verifies GHA checks. The branch was already rebased in Phase DOD, so `ship-pr` does not rebase here. The script polls the PR; if no checks appear within 10 minutes it assumes the repo has no PR checks and passes the phase. Once checks appear, all must pass or the pipeline halts. The final report carries `prUrl` and `ciStatus`. The PR is never auto-merged — `awaiting-merge` → `done` remains a human step.
+- Auto-PR (Phase PUB): after Harvest, `orchestrate-dev` raises (or reuses) the feature PR via the `ship-pr` skill, then polls GitHub checks directly via `gh pr view --json statusCheckRollup` (no agent in the poll loop). The branch was already rebased in Phase DOD, so `ship-pr` does not rebase here. The script polls the PR; if no checks appear within 10 minutes it assumes the repo has no PR checks and passes the phase. Once checks appear, all must pass or the pipeline halts. The final report carries `prUrl` and `ciStatus`. The PR is never auto-merged — `awaiting-merge` → `done` remains a human step.
 
 ### Ptah engine integration
 

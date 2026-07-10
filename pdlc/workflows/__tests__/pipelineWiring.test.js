@@ -7,7 +7,6 @@ import main from "../orchestrate-dev.js";
 import { readFileSync } from "fs";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
-import { createGuardAgentDouble } from "./helpers/guardAgentDouble.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -77,7 +76,7 @@ function makeParallel() {
 // real git is not available in the test environment.
 const noopMergeWorktree = async () => ({ ok: true });
 
-const okGuard = createGuardAgentDouble({ ok: true });
+const okGuard = () => ({ ok: true });
 
 // ─── PROP-PIPELINE-01: Valid path proceeds to Phase R ─────────────────────────
 describe("PROP-PIPELINE-01: Valid path and guard ok → proceeds to Phase R", () => {
@@ -90,10 +89,11 @@ describe("PROP-PIPELINE-01: Valid path and guard ok → proceeds to Phase R", ()
       reqPath: "docs/test-feat/REQ-test-feat.md",
       _agent: makeSuccessAgent("test-feat"),
       _parallel: makeParallel(),
-      _guardAgent: okGuard,
+      _checkFile: okGuard,
       _phase: mockPhase,
       _pipeline: mockPipeline,
       _mergeWorktree: noopMergeWorktree,
+      _checkCi: async () => "passed",
     });
 
     expect(result.outcome).toBe("success");
@@ -110,10 +110,11 @@ describe("PROP-PIPELINE-02: main() returns only the final report object", () => 
       reqPath: "docs/test-feat/REQ-test-feat.md",
       _agent: makeSuccessAgent(),
       _parallel: makeParallel(),
-      _guardAgent: okGuard,
+      _checkFile: okGuard,
       _phase: () => {},
       _pipeline: async (l, fn) => fn(),
       _mergeWorktree: noopMergeWorktree,
+      _checkCi: async () => "passed",
     });
 
     // FinalReport shape check (TSPEC-ERROR-03)
@@ -133,10 +134,11 @@ describe("PROP-OBS-02: FinalReport object has correct shape", () => {
       reqPath: "docs/test-feat/REQ-test-feat.md",
       _agent: makeSuccessAgent(),
       _parallel: makeParallel(),
-      _guardAgent: okGuard,
+      _checkFile: okGuard,
       _phase: () => {},
       _pipeline: async (l, fn) => fn(),
       _mergeWorktree: noopMergeWorktree,
+      _checkCi: async () => "passed",
     });
 
     expect(result).toHaveProperty("feature");
@@ -161,10 +163,11 @@ describe("PROP-ARTIFACTS-01: Artifact paths follow docs/{feature}/ prefix", () =
       reqPath: "docs/test-feat/REQ-test-feat.md",
       _agent: makeSuccessAgent(),
       _parallel: makeParallel(),
-      _guardAgent: okGuard,
+      _checkFile: okGuard,
       _phase: () => {},
       _pipeline: async (l, fn) => fn(),
       _mergeWorktree: noopMergeWorktree,
+      _checkCi: async () => "passed",
     });
 
     expect(result.artifactPaths).toContain("docs/test-feat/REQ-test-feat.md");
@@ -175,10 +178,11 @@ describe("PROP-ARTIFACTS-01: Artifact paths follow docs/{feature}/ prefix", () =
       reqPath: "docs/test-feat/REQ-test-feat.md",
       _agent: makeSuccessAgent(),
       _parallel: makeParallel(),
-      _guardAgent: okGuard,
+      _checkFile: okGuard,
       _phase: () => {},
       _pipeline: async (l, fn) => fn(),
       _mergeWorktree: noopMergeWorktree,
+      _checkCi: async () => "passed",
     });
 
     // Check paths contain feature name
@@ -252,7 +256,7 @@ describe("PROP-GATE-01: main() halts when Phase R reviewLoop returns converged: 
       reqPath: "docs/test-feat/REQ-test-feat.md",
       _agent: mockAgent,
       _parallel: (promises) => Promise.all(promises),
-      _guardAgent: createGuardAgentDouble({ ok: true }),
+      _checkFile: (() => ({ ok: true })),
       _phase: mockPhase,
       _pipeline: async (l, fn) => fn(),
     });
@@ -277,7 +281,7 @@ describe("PROP-GATE-01: main() halts when Phase R reviewLoop returns converged: 
       reqPath: "docs/test-feat/REQ-test-feat.md",
       _agent: mockAgent,
       _parallel: (promises) => Promise.all(promises),
-      _guardAgent: createGuardAgentDouble({ ok: true }),
+      _checkFile: (() => ({ ok: true })),
       _phase: () => {},
       _pipeline: async (l, fn) => fn(),
     });
@@ -302,7 +306,7 @@ describe("PROP-GATE-01: main() halts when Phase R reviewLoop returns converged: 
       reqPath: "docs/test-feat/REQ-test-feat.md",
       _agent: mockAgent,
       _parallel: (promises) => Promise.all(promises),
-      _guardAgent: createGuardAgentDouble({ ok: true }),
+      _checkFile: (() => ({ ok: true })),
       _phase: () => {},
       _pipeline: async (l, fn) => fn(),
     });
@@ -346,10 +350,11 @@ describe("PROP-PIPELINE-03: phase() called with correct labels in order", () => 
       reqPath: "docs/test-feat/REQ-test-feat.md",
       _agent: makeSuccessAgent(),
       _parallel: makeParallel(),
-      _guardAgent: okGuard,
+      _checkFile: okGuard,
       _phase: mockPhase,
       _pipeline: async (l, fn) => fn(),
       _mergeWorktree: noopMergeWorktree,
+      _checkCi: async () => "passed",
     });
 
     // Phase labels should appear in canonical order

@@ -12,6 +12,7 @@ import main, {
   parseTriageVerdict,
   updateQueueStatus,
   selectNextPending,
+  precheckDependencies,
   triagePrompt,
 } from "../orchestrate-queue.js";
 
@@ -220,6 +221,53 @@ describe("selectNextPending", () => {
   });
 });
 
+// ─── precheckDependencies ────────────────────────────────────────────────────
+describe("precheckDependencies", () => {
+  const entries = parseQueue(SAMPLE_QUEUE); // auth-refresh:done, notification-v2:pending, mobile-push:pending
+
+  it("blocks when a dependency is present in the queue and not done", () => {
+    const r = precheckDependencies(["notification-v2"], entries);
+    expect(r.blocked).toBe(true);
+    expect(r.reason).toBe(
+      "dependency notification-v2 is pending in queue (not done)"
+    );
+  });
+
+  it("does not block when the dependency is done in the queue", () => {
+    expect(precheckDependencies(["auth-refresh"], entries)).toEqual({
+      blocked: false,
+    });
+  });
+
+  it("does not block when the dependency is absent from the queue", () => {
+    expect(precheckDependencies(["ghost-feature"], entries)).toEqual({
+      blocked: false,
+    });
+  });
+
+  it("does not block when there are no dependencies", () => {
+    expect(precheckDependencies([], entries)).toEqual({ blocked: false });
+    expect(precheckDependencies(undefined, entries)).toEqual({ blocked: false });
+  });
+
+  it("blocks on the FIRST not-done dependency in a mixed list", () => {
+    const q = updateQueueStatus(SAMPLE_QUEUE, "notification-v2", "awaiting-merge");
+    const mixed = parseQueue(q);
+    // auth-refresh is done, notification-v2 is awaiting-merge → first blocker is notification-v2.
+    const r = precheckDependencies(["auth-refresh", "notification-v2"], mixed);
+    expect(r.blocked).toBe(true);
+    expect(r.reason).toBe(
+      "dependency notification-v2 is awaiting-merge in queue (not done)"
+    );
+  });
+
+  it("passes when every dependency is done or absent (mixed)", () => {
+    expect(
+      precheckDependencies(["auth-refresh", "ghost-feature"], entries)
+    ).toEqual({ blocked: false });
+  });
+});
+
 // ─── triagePrompt ────────────────────────────────────────────────────────────
 describe("triagePrompt", () => {
   it("includes the feature, req path, and declared deps", () => {
@@ -318,8 +366,18 @@ describe("main()", () => {
   });
 
   it("skips a draft REQ (ready:false) and moves to the next candidate", async () => {
+    // mobile-push depends only on the done auth-refresh here so the pre-check does
+    // not (legitimately) fire on it — the point of this test is the draft skip.
+    const queue = `# PDLC Queue
+
+| Order | Status | Feature | REQ Path | Depends-On |
+|-------|--------|---------|----------|------------|
+| 1 | done | auth-refresh | docs/auth-refresh/REQ-auth-refresh.md | — |
+| 2 | pending | notification-v2 | docs/notification-v2/REQ-notification-v2.md | auth-refresh |
+| 3 | pending | mobile-push | docs/mobile-push/REQ-mobile-push.md | auth-refresh |
+`;
     const fs = makeFs({
-      [DEFAULT_QUEUE_PATH]: SAMPLE_QUEUE,
+      [DEFAULT_QUEUE_PATH]: queue,
       "docs/notification-v2/REQ-notification-v2.md": DRAFT_REQ,
       "docs/mobile-push/REQ-mobile-push.md": READY_REQ,
     });
@@ -416,5 +474,48 @@ describe("main()", () => {
       _phase: () => {},
     });
     expect(seenDuringRun).toEqual(["in-progress"]);
+  });
+
+  it("pre-check skips a candidate whose queue dep is not done, without spawning triage", async () => {
+    // dep-a is awaiting-merge; feat-x depends on it → pre-check blocks (no agent).
+    // feat-y has no deps → passes pre-check, gets triaged and picked.
+    const queue = `# PDLC Queue
+
+| Order | Status | Feature | REQ Path | Depends-On |
+|-------|--------|---------|----------|------------|
+| 1 | awaiting-merge | dep-a | docs/dep-a/REQ-dep-a.md | — |
+| 2 | pending | feat-x | docs/feat-x/REQ-feat-x.md | dep-a |
+| 3 | pending | feat-y | docs/feat-y/REQ-feat-y.md | — |
+`;
+    const fs = makeFs({
+      [DEFAULT_QUEUE_PATH]: queue,
+      "docs/feat-x/REQ-feat-x.md": "---\nready: true\ndepends-on: [dep-a]\n---\n# x\n",
+      "docs/feat-y/REQ-feat-y.md": "---\nready: true\n---\n# y\n",
+    });
+
+    const agentPrompts = [];
+    const report = await main({
+      _readFile: fs.readFile,
+      _writeFile: fs.writeFile,
+      _agent: async (_skill, prompt) => {
+        agentPrompts.push(prompt);
+        return "TRIAGE: ready deps merged";
+      },
+      _runPipeline: async () => ({ outcome: "success" }),
+      _log: (m) => logMessages.push(m),
+      _phase: () => {},
+    });
+
+    // feat-x skipped by the deterministic pre-check — no agent spawned for it.
+    expect(agentPrompts.some((p) => p.includes("feat-x"))).toBe(false);
+    expect(report.skipped.some((s) => s.feature === "feat-x")).toBe(true);
+    expect(
+      report.skipped.find((s) => s.feature === "feat-x").reason
+    ).toContain("blocked (pre-check): dependency dep-a is awaiting-merge");
+
+    // feat-y still triaged (exactly one agent call) and picked.
+    expect(agentPrompts).toHaveLength(1);
+    expect(agentPrompts[0]).toContain("feat-y");
+    expect(report.picked).toBe("feat-y");
   });
 });

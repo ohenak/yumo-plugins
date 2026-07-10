@@ -46,6 +46,7 @@ describe("parseVerdict — TSPEC-PARSE-01 through TSPEC-PARSE-04", () => {
       high: 0,
       medium: 0,
       low: 0,
+      malformed: true,
     });
     expect(lastWarning()).toContain("se-review");
     expect(lastWarning()).toContain("no VERDICT");
@@ -59,6 +60,7 @@ describe("parseVerdict — TSPEC-PARSE-01 through TSPEC-PARSE-04", () => {
       high: 0,
       medium: 0,
       low: 0,
+      malformed: true,
     });
     expect(lastWarning()).toContain("te-review");
   });
@@ -72,6 +74,7 @@ describe("parseVerdict — TSPEC-PARSE-01 through TSPEC-PARSE-04", () => {
       high: 0,
       medium: 0,
       low: 0,
+      malformed: true,
     });
     expect(lastWarning()).toContain("pm-review");
   });
@@ -130,6 +133,7 @@ describe("parseVerdict — TSPEC-PARSE-01 through TSPEC-PARSE-04", () => {
       high: 0,
       medium: 0,
       low: 0,
+      malformed: true,
     });
     expect(lastWarning()).toContain("se-review");
   });
@@ -140,6 +144,7 @@ describe("parseVerdict — TSPEC-PARSE-01 through TSPEC-PARSE-04", () => {
       high: 0,
       medium: 0,
       low: 0,
+      malformed: true,
     });
     expect(lastWarning()).toContain("te-review");
   });
@@ -150,6 +155,7 @@ describe("parseVerdict — TSPEC-PARSE-01 through TSPEC-PARSE-04", () => {
       high: 0,
       medium: 0,
       low: 0,
+      malformed: true,
     });
     expect(lastWarning()).toContain("pm-review");
   });
@@ -160,6 +166,7 @@ describe("parseVerdict — TSPEC-PARSE-01 through TSPEC-PARSE-04", () => {
       high: 0,
       medium: 0,
       low: 0,
+      malformed: true,
     });
     expect(lastWarning()).toContain("no VERDICT");
   });
@@ -173,6 +180,7 @@ describe("parseVerdict — TSPEC-PARSE-01 through TSPEC-PARSE-04", () => {
       high: 0,
       medium: 0,
       low: 0,
+      malformed: true,
     });
     expect(lastWarning()).toBeTruthy();
   });
@@ -184,6 +192,7 @@ describe("parseVerdict — TSPEC-PARSE-01 through TSPEC-PARSE-04", () => {
       high: 0,
       medium: 0,
       low: 0,
+      malformed: true,
     });
     expect(lastWarning()).toBeTruthy();
   });
@@ -197,6 +206,7 @@ describe("parseVerdict — TSPEC-PARSE-01 through TSPEC-PARSE-04", () => {
       high: 0,
       medium: 0,
       low: 0,
+      malformed: true,
     });
     expect(lastWarning()).toBeTruthy();
   });
@@ -209,6 +219,7 @@ describe("parseVerdict — TSPEC-PARSE-01 through TSPEC-PARSE-04", () => {
       high: 0,
       medium: 0,
       low: 0,
+      malformed: true,
     });
     expect(lastWarning()).toBeTruthy();
   });
@@ -221,6 +232,7 @@ describe("parseVerdict — TSPEC-PARSE-01 through TSPEC-PARSE-04", () => {
       high: 0,
       medium: 0,
       low: 0,
+      malformed: true,
     });
     expect(lastWarning()).toBeTruthy();
   });
@@ -236,5 +248,35 @@ describe("parseVerdict — TSPEC-PARSE-01 through TSPEC-PARSE-04", () => {
       low: 2,
     });
     expect(lastWarning()).toBeUndefined();
+  });
+});
+
+// ─── malformed flag (cheap trailer recovery signal) ───────────────────────────
+describe("parseVerdict malformed flag", () => {
+  it("sets malformed:true on missing/malformed trailers", () => {
+    expect(parseVerdict(null, "se-review").malformed).toBe(true);
+    expect(parseVerdict("", "se-review").malformed).toBe(true);
+    expect(parseVerdict("no trailer at all", "se-review").malformed).toBe(true);
+    expect(parseVerdict("VERDICT: approved", "se-review").malformed).toBe(true);
+    expect(
+      parseVerdict('VERDICT: Approved\n{high: 0}', "se-review").malformed
+    ).toBe(true);
+    expect(
+      parseVerdict('VERDICT: Approved\n{"high": 0, "medium": 0}', "se-review")
+        .malformed
+    ).toBe(true);
+  });
+
+  it("does NOT set malformed on genuine parses (incl. truncated zero-counts)", () => {
+    const valid = parseVerdict(
+      'VERDICT: Approved\n{"high": 1, "medium": 2, "low": 0}',
+      "se-review"
+    );
+    expect(valid.malformed).toBeUndefined();
+
+    // Truncated output: VERDICT as the last line, valid rawVerdict, zero counts.
+    const truncated = parseVerdict("Review.\nVERDICT: Needs revision", "se-review");
+    expect(truncated.verdict).toBe("Needs revision");
+    expect(truncated.malformed).toBeUndefined();
   });
 });

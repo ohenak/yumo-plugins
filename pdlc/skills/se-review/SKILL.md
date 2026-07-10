@@ -62,6 +62,17 @@ Before issuing a recommendation, read `docs/_constraints/DOMAIN-CONSTRAINTS.md` 
 
 ---
 
+## Delta Re-Review Protocol (iteration ≥2)
+
+When the orchestrator marks the review as iteration ≥2, you are re-reviewing a revised document — do not re-read it from scratch.
+
+1. Read your own previous cross-review file (`CROSS-REVIEW-software-engineer-{DOC-TYPE}-v{N-1}.md`) to recall your prior findings.
+2. Run `git diff` on the document against the commit you last reviewed to see exactly what changed.
+3. Verify each prior finding is resolved; scan **only** the changed sections for new issues. Do not re-litigate unchanged sections you already approved.
+4. The Challenger bar is unchanged: any open High or Medium finding — old or new, anywhere in the document — means **Needs revision**. Write your new cross-review as v{N} and emit the same VERDICT trailer contract.
+
+---
+
 ## Review Scope by Document
 
 ### Cross-Cutting: Existing-Code Claim Verification (apply to every document type)

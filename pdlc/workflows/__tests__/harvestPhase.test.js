@@ -6,7 +6,6 @@
 import { readFileSync, existsSync } from "fs";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
-import { createGuardAgentDouble } from "./helpers/guardAgentDouble.js";
 import main from "../orchestrate-dev.js";
 
 const __filename = fileURLToPath(import.meta.url);
