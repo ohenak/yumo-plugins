@@ -1,18 +1,17 @@
 /**
  * Tests for Phase PUB — raise PR + verify GHA checks (TSPEC-SHIP-01..04).
- * Covers parsePrUrl, parseCiStatus, parseRebaseStatus, the raisePrAndVerifyCi poll loop, and main() wiring.
+ * Covers parsePrUrl, checkPrCi, parseRebaseStatus, the raisePrAndVerifyCi poll loop, and main() wiring.
  */
 
 import main, {
   parsePrUrl,
-  parseCiStatus,
+  checkPrCi,
   parseRebaseStatus,
   raisePrAndVerifyCi,
 } from "../orchestrate-dev.js";
 import { readFileSync } from "fs";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
-import { createGuardAgentDouble } from "./helpers/guardAgentDouble.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -64,30 +63,109 @@ describe("parsePrUrl", () => {
   });
 });
 
-// ─── parseCiStatus ──────────────────────────────────────────────────────────
-describe("parseCiStatus", () => {
-  it("parses each valid status", () => {
-    expect(parseCiStatus("CI_STATUS: none")).toBe("none");
-    expect(parseCiStatus("CI_STATUS: pending")).toBe("pending");
-    expect(parseCiStatus("CI_STATUS: passed")).toBe("passed");
-    expect(parseCiStatus("CI_STATUS: failed")).toBe("failed");
+// ─── checkPrCi — gh statusCheckRollup mapping ────────────────────────────────
+describe("checkPrCi mapping table", () => {
+  // A fake execFn that returns the given JSON string for any command.
+  const execReturning = (json) => () => json;
+  const rollup = (arr) => JSON.stringify({ statusCheckRollup: arr });
+
+  it("empty rollup array → none", async () => {
+    expect(await checkPrCi("url", { execFn: execReturning(rollup([])) })).toBe(
+      "none"
+    );
   });
 
-  it("ignores trailing prose after the status token", () => {
-    expect(parseCiStatus("CI_STATUS: passed   — all checks succeeded")).toBe(
+  it("absent rollup key → none", async () => {
+    expect(
+      await checkPrCi("url", { execFn: execReturning("{}") })
+    ).toBe("none");
+  });
+
+  it("a not-yet-completed CheckRun → pending", async () => {
+    const json = rollup([
+      { __typename: "CheckRun", status: "IN_PROGRESS", conclusion: null },
+      { __typename: "CheckRun", status: "COMPLETED", conclusion: "SUCCESS" },
+    ]);
+    expect(await checkPrCi("url", { execFn: execReturning(json) })).toBe(
+      "pending"
+    );
+  });
+
+  it("a PENDING StatusContext → pending", async () => {
+    const json = rollup([{ __typename: "StatusContext", state: "PENDING" }]);
+    expect(await checkPrCi("url", { execFn: execReturning(json) })).toBe(
+      "pending"
+    );
+  });
+
+  it("all completed and every conclusion success-ish → passed", async () => {
+    const json = rollup([
+      { __typename: "CheckRun", status: "COMPLETED", conclusion: "SUCCESS" },
+      { __typename: "CheckRun", status: "COMPLETED", conclusion: "NEUTRAL" },
+      { __typename: "CheckRun", status: "COMPLETED", conclusion: "SKIPPED" },
+      { __typename: "StatusContext", state: "SUCCESS" },
+    ]);
+    expect(await checkPrCi("url", { execFn: execReturning(json) })).toBe(
       "passed"
     );
   });
 
-  it("is case-insensitive on the value", () => {
-    expect(parseCiStatus("CI_STATUS: Passed")).toBe("passed");
+  it("a completed FAILURE conclusion → failed", async () => {
+    const json = rollup([
+      { __typename: "CheckRun", status: "COMPLETED", conclusion: "SUCCESS" },
+      { __typename: "CheckRun", status: "COMPLETED", conclusion: "FAILURE" },
+    ]);
+    expect(await checkPrCi("url", { execFn: execReturning(json) })).toBe(
+      "failed"
+    );
   });
 
-  it("returns unknown for missing / malformed / empty", () => {
-    expect(parseCiStatus("no trailer here")).toBe("unknown");
-    expect(parseCiStatus("CI_STATUS: wat")).toBe("unknown");
-    expect(parseCiStatus("")).toBe("unknown");
-    expect(parseCiStatus(null)).toBe("unknown");
+  it("a StatusContext ERROR state → failed", async () => {
+    const json = rollup([{ __typename: "StatusContext", state: "ERROR" }]);
+    expect(await checkPrCi("url", { execFn: execReturning(json) })).toBe(
+      "failed"
+    );
+  });
+
+  it("each failure conclusion maps to failed", async () => {
+    for (const c of [
+      "FAILURE",
+      "ERROR",
+      "CANCELLED",
+      "TIMED_OUT",
+      "ACTION_REQUIRED",
+      "STARTUP_FAILURE",
+    ]) {
+      const json = rollup([
+        { __typename: "CheckRun", status: "COMPLETED", conclusion: c },
+      ]);
+      expect(await checkPrCi("url", { execFn: execReturning(json) })).toBe(
+        "failed"
+      );
+    }
+  });
+
+  it("pending dominates a mix of pending + failed", async () => {
+    const json = rollup([
+      { __typename: "CheckRun", status: "IN_PROGRESS", conclusion: null },
+      { __typename: "CheckRun", status: "COMPLETED", conclusion: "FAILURE" },
+    ]);
+    expect(await checkPrCi("url", { execFn: execReturning(json) })).toBe(
+      "pending"
+    );
+  });
+
+  it("exec throwing → unknown", async () => {
+    const throwingExec = () => {
+      throw new Error("gh not installed");
+    };
+    expect(await checkPrCi("url", { execFn: throwingExec })).toBe("unknown");
+  });
+
+  it("unparseable JSON → unknown", async () => {
+    expect(
+      await checkPrCi("url", { execFn: execReturning("not json{") })
+    ).toBe("unknown");
   });
 });
 
@@ -120,15 +198,18 @@ describe("parseRebaseStatus", () => {
 
 // ─── raisePrAndVerifyCi ─────────────────────────────────────────────────────
 describe("raisePrAndVerifyCi", () => {
-  function makeShipAgent(pollResponses) {
-    let pollIdx = 0;
-    return async (skill, prompt) => {
-      if (skill !== "ship-pr") return "Success.";
-      if (prompt.includes("Raise a pull request")) {
-        return "Rebased.\nREBASE_STATUS: clean\nPR opened.\nPR_URL: https://github.com/a/b/pull/9";
-      }
-      const r = pollResponses[Math.min(pollIdx, pollResponses.length - 1)];
-      pollIdx += 1;
+  // The ship-pr agent now only creates the PR — CI status comes from _checkCi.
+  const prAgent = async (skill, prompt) => {
+    if (skill !== "ship-pr") return "Success.";
+    return "PR opened.\nPR_URL: https://github.com/a/b/pull/9";
+  };
+
+  // A _checkCi double that replays the given statuses in order (repeats the last).
+  function makeCheckCi(responses) {
+    let idx = 0;
+    return async () => {
+      const r = responses[Math.min(idx, responses.length - 1)];
+      idx += 1;
       return r;
     };
   }
@@ -144,7 +225,8 @@ describe("raisePrAndVerifyCi", () => {
     let sleeps = 0;
     const result = await raisePrAndVerifyCi({
       feature: "feat",
-      _agent: makeShipAgent(["CI_STATUS: passed"]),
+      _agent: prAgent,
+      _checkCi: makeCheckCi(["passed"]),
       _log: () => {},
       _sleep: async () => {
         sleeps += 1;
@@ -161,7 +243,8 @@ describe("raisePrAndVerifyCi", () => {
     await expect(
       raisePrAndVerifyCi({
         feature: "feat",
-        _agent: makeShipAgent(["CI_STATUS: failed"]),
+        _agent: prAgent,
+        _checkCi: makeCheckCi(["failed"]),
         _log: () => {},
         _sleep: async () => {},
       })
@@ -172,11 +255,8 @@ describe("raisePrAndVerifyCi", () => {
     let sleeps = 0;
     const result = await raisePrAndVerifyCi({
       feature: "feat",
-      _agent: makeShipAgent([
-        "CI_STATUS: pending",
-        "CI_STATUS: pending",
-        "CI_STATUS: passed",
-      ]),
+      _agent: prAgent,
+      _checkCi: makeCheckCi(["pending", "pending", "passed"]),
       _log: () => {},
       _now: () => 0,
       _sleep: async () => {
@@ -194,7 +274,8 @@ describe("raisePrAndVerifyCi", () => {
     const noChecksTimeoutMs = 5000;
     const result = await raisePrAndVerifyCi({
       feature: "feat",
-      _agent: makeShipAgent(["CI_STATUS: none"]),
+      _agent: prAgent,
+      _checkCi: makeCheckCi(["none"]),
       _log: () => {},
       _now: () => t,
       _sleep: async () => {
@@ -210,7 +291,8 @@ describe("raisePrAndVerifyCi", () => {
     let t = 0;
     const result = await raisePrAndVerifyCi({
       feature: "feat",
-      _agent: makeShipAgent(["garbage with no trailer"]),
+      _agent: prAgent,
+      _checkCi: makeCheckCi(["unknown"]),
       _log: () => {},
       _now: () => t,
       _sleep: async () => {
@@ -227,7 +309,8 @@ describe("raisePrAndVerifyCi", () => {
     await expect(
       raisePrAndVerifyCi({
         feature: "feat",
-        _agent: makeShipAgent(["CI_STATUS: pending"]),
+        _agent: prAgent,
+        _checkCi: makeCheckCi(["pending"]),
         _log: () => {},
         _now: () => t,
         _sleep: async () => {
@@ -250,14 +333,9 @@ describe("raisePrAndVerifyCi", () => {
     const noChecksTimeoutMs = 3000;
     const result = await raisePrAndVerifyCi({
       feature: "feat",
+      _agent: prAgent,
       // none, none, none → clock reaches the boundary; then pending, passed
-      _agent: makeShipAgent([
-        "CI_STATUS: none",
-        "CI_STATUS: none",
-        "CI_STATUS: none",
-        "CI_STATUS: pending",
-        "CI_STATUS: passed",
-      ]),
+      _checkCi: makeCheckCi(["none", "none", "none", "pending", "passed"]),
       _log: () => {},
       _now: () => t,
       _sleep: async () => {
@@ -281,14 +359,15 @@ describe("raisePrAndVerifyCi", () => {
     // so the `passed` poll at t=6000 must succeed.
     const result = await raisePrAndVerifyCi({
       feature: "feat",
-      _agent: makeShipAgent([
-        "CI_STATUS: none",
-        "CI_STATUS: none",
-        "CI_STATUS: pending",
-        "CI_STATUS: pending",
-        "CI_STATUS: pending",
-        "CI_STATUS: pending",
-        "CI_STATUS: passed",
+      _agent: prAgent,
+      _checkCi: makeCheckCi([
+        "none",
+        "none",
+        "pending",
+        "pending",
+        "pending",
+        "pending",
+        "passed",
       ]),
       _log: () => {},
       _now: () => t,
@@ -342,7 +421,8 @@ describe("Phase PUB wiring in main()", () => {
     reqPath: "docs/test-feat/REQ-test-feat.md",
     _agent: makeSuccessAgent(),
     _parallel: (p) => Promise.all(p),
-    _guardAgent: createGuardAgentDouble({ ok: true }),
+    _checkFile: () => ({ ok: true }),
+    _checkCi: async () => "passed",
     _phase: () => {},
     _pipeline: async (l, fn) => fn(),
     _mergeWorktree: async () => ({ ok: true }),
@@ -360,13 +440,7 @@ describe("Phase PUB wiring in main()", () => {
 
   it("halts the pipeline when GHA checks fail", async () => {
     const args = baseArgs();
-    const inner = args._agent;
-    args._agent = async (skill, prompt) => {
-      if (skill === "ship-pr" && !prompt.includes("Raise a pull request")) {
-        return "Checks.\nCI_STATUS: failed";
-      }
-      return inner(skill, prompt);
-    };
+    args._checkCi = async () => "failed";
     const result = await main(args);
     expect(result.outcome).toBe("halted");
     expect(result.haltReason).toMatch(/GHA checks failed/);
@@ -446,14 +520,15 @@ describe("Phase PUB static guarantees", () => {
     expect(content).toMatch(/Do NOT merge the PR/i);
   });
 
-  it("ship-pr SKILL.md exists and documents the PR_URL, CI_STATUS, and REBASE_STATUS trailers", () => {
+  it("ship-pr SKILL.md exists and documents the PR_URL and REBASE_STATUS trailers", () => {
     const skillPath = resolve(__dirname, "../../skills/ship-pr/SKILL.md");
     const content = readFileSync(skillPath, "utf8");
     expect(content.length).toBeGreaterThan(0);
     expect(content).toContain("PR_URL:");
-    expect(content).toContain("CI_STATUS:");
     expect(content).toContain("REBASE_STATUS:");
     expect(content).toContain("name: ship-pr");
+    // CI reporting is no longer this skill's job — the workflow reads gh directly.
+    expect(content).not.toContain("CI_STATUS");
   });
 
   it("createPrPrompt does NOT rebase — rebase moved to Phase DOD", () => {

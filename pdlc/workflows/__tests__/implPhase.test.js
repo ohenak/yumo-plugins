@@ -8,8 +8,8 @@ import main, {
   evaluateBatchGate,
   evaluateSingleAgentGate,
   mergeWorktree,
+  parsePlanTasks,
 } from "../orchestrate-dev.js";
-import { createGuardAgentDouble } from "./helpers/guardAgentDouble.js";
 import { execSync } from "child_process";
 import { createConflictingWorktree } from "./fixtures/tmpGitFixture.js";
 
@@ -308,8 +308,6 @@ describe("PROP-IMPL-01: batch plan log precedes first agent() dispatch (recordin
       callSequence.push({ type: "log", value: message });
     };
 
-    const okGuard = createGuardAgentDouble({ ok: true });
-
     // Recording spy for _agent — handles all skills the pipeline needs
     const spyAgent = async (skill, prompt, opts) => {
       callSequence.push({ type: "agent", skill, prompt: String(prompt).slice(0, 80) });
@@ -350,7 +348,8 @@ describe("PROP-IMPL-01: batch plan log precedes first agent() dispatch (recordin
       reqPath: "docs/test-feat/REQ-test-feat.md",
       _agent: spyAgent,
       _parallel: (promises) => Promise.all(promises),
-      _guardAgent: okGuard,
+      _checkFile: () => ({ ok: true }),
+      _checkCi: async () => "passed",
       _log: spyLog,
       _phase: () => {},
       _pipeline: async (l, fn) => fn(),
@@ -385,5 +384,146 @@ describe("PROP-IMPL-01: batch plan log precedes first agent() dispatch (recordin
       const batchLogIdx = callSequence.indexOf(batchLog);
       expect(batchLogIdx).toBeLessThan(firstBatch1AgentIdx);
     }
+  });
+});
+
+// ─── parsePlanTasks — TSPEC-IMPL-01 deterministic PLAN table parse ─────────────
+describe("parsePlanTasks — TSPEC-IMPL-01", () => {
+  it("parses a well-formed task table (happy path)", () => {
+    const md = [
+      "# PLAN",
+      "",
+      "| # | Task | Dependencies | Batch |",
+      "|---|------|--------------|-------|",
+      "| T1 | Build the store | - | 1 |",
+      "| T2 | Wire the API | T1 | 2 |",
+      "| T3 | Add the UI | T1, T2 | 3 |",
+    ].join("\n");
+
+    const result = parsePlanTasks(md);
+    expect(result).not.toBeNull();
+    expect(result.tasks).toEqual([
+      { id: "T1", description: "Build the store", dependencies: [], planBatch: 1 },
+      { id: "T2", description: "Wire the API", dependencies: ["T1"], planBatch: 2 },
+      { id: "T3", description: "Add the UI", dependencies: ["T1", "T2"], planBatch: 3 },
+    ]);
+  });
+
+  it("tolerates column-order variation via header matching", () => {
+    const md = [
+      "| Batch | Dependencies | Task ID | Description |",
+      "|-------|--------------|---------|-------------|",
+      "| 1 | none | T1 | first |",
+      "| 2 | T1 | T2 | second |",
+    ].join("\n");
+
+    const result = parsePlanTasks(md);
+    expect(result.tasks).toEqual([
+      { id: "T1", description: "first", dependencies: [], planBatch: 1 },
+      { id: "T2", description: "second", dependencies: ["T1"], planBatch: 2 },
+    ]);
+  });
+
+  it("treats -, —, none, and empty dependency cells as no dependencies", () => {
+    const md = [
+      "| ID | Task | Deps | Batch |",
+      "|----|------|------|-------|",
+      "| T1 | a | - | 1 |",
+      "| T2 | b | — | 1 |",
+      "| T3 | c | none | 1 |",
+      "| T4 | d |  | 1 |",
+    ].join("\n");
+
+    const result = parsePlanTasks(md);
+    expect(result.tasks.map((t) => t.dependencies)).toEqual([[], [], [], []]);
+  });
+
+  it("returns null when there is no parseable task table", () => {
+    expect(parsePlanTasks("Just some prose, no table here.")).toBeNull();
+    expect(parsePlanTasks(null)).toBeNull();
+    expect(parsePlanTasks("")).toBeNull();
+    // A table with no dependency column can't yield the DAG → null (agent fallback).
+    const noDeps = [
+      "| # | Task | Test File | Source File | Status |",
+      "|---|------|-----------|-------------|--------|",
+      "| 1 | build | a.test.ts | a.ts | ⬚ |",
+    ].join("\n");
+    expect(parsePlanTasks(noDeps)).toBeNull();
+  });
+});
+
+// ─── Phase I DAG parse-first wiring — TSPEC-IMPL-01 ────────────────────────────
+describe("Phase I DAG parsing: parse-first, agent fallback on Haiku", () => {
+  function makeAgent(record) {
+    return async (skill, prompt, opts) => {
+      record.push({ skill, prompt: String(prompt), opts });
+      if (skill === "se-review" || skill === "te-review" || skill === "pm-review") {
+        return `Review.\nVERDICT: Approved\n{"high": 0, "medium": 0, "low": 0}\n`;
+      }
+      if (skill === "pm-author" || skill === "se-author" || skill === "te-author") {
+        if (typeof prompt === "string" && prompt.includes("DECISIONS_WARRANTED")) {
+          return "Finalized.\nDECISIONS_WARRANTED: false";
+        }
+        if (typeof prompt === "string" && prompt.includes("Return a JSON object")) {
+          return JSON.stringify({
+            tasks: [{ id: "T1", description: "x", dependencies: [], planBatch: 1 }],
+          });
+        }
+        return "Document created.";
+      }
+      if (skill === "se-implement") return "Tests: 3 passed, 0 failed.";
+      if (skill === "harvest-learnings") return "Harvest complete.";
+      if (skill === "dod-verify") return "Clean.\nDOD_STATUS: passed";
+      if (skill === "ship-pr") {
+        if (prompt.includes("Raise a pull request")) {
+          return "PR opened.\nPR_URL: https://github.com/a/b/pull/1";
+        }
+        return "Rebased.\nREBASE_STATUS: clean";
+      }
+      return "Success.";
+    };
+  }
+
+  const baseArgs = (record, extra) => ({
+    reqPath: "docs/test-feat/REQ-test-feat.md",
+    _agent: makeAgent(record),
+    _parallel: (p) => Promise.all(p),
+    _checkFile: () => ({ ok: true }),
+    _checkCi: async () => "passed",
+    _phase: () => {},
+    _pipeline: async (l, fn) => fn(),
+    _mergeWorktree: async () => ({ ok: true }),
+    ...extra,
+  });
+
+  it("parses the PLAN table itself and does NOT spawn the DAG agent", async () => {
+    const planMd = [
+      "| # | Task | Dependencies | Batch |",
+      "|---|------|--------------|-------|",
+      "| T1 | first | - | 1 |",
+      "| T2 | second | T1 | 2 |",
+    ].join("\n");
+
+    const record = [];
+    const result = await main(baseArgs(record, { _readFile: () => planMd }));
+    expect(result.outcome).toBe("success");
+
+    const dagAgentCalls = record.filter((c) =>
+      c.prompt.includes("Return a JSON object")
+    );
+    expect(dagAgentCalls.length).toBe(0);
+  });
+
+  it("falls back to the extraction agent on Haiku when the table is not parseable", async () => {
+    const record = [];
+    // _readFile returns null → parsePlanTasks null → agent fallback.
+    const result = await main(baseArgs(record, { _readFile: () => null }));
+    expect(result.outcome).toBe("success");
+
+    const dagAgentCalls = record.filter((c) =>
+      c.prompt.includes("Return a JSON object")
+    );
+    expect(dagAgentCalls.length).toBe(1);
+    expect(dagAgentCalls[0].opts && dagAgentCalls[0].opts.model).toBe("haiku");
   });
 });

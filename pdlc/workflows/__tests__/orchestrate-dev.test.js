@@ -4,7 +4,6 @@
  */
 
 import main, { meta, PHASE_DISPATCH } from "../orchestrate-dev.js";
-import { createGuardAgentDouble } from "./helpers/guardAgentDouble.js";
 import { readFileSync } from "fs";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
@@ -135,7 +134,7 @@ describe("PROP-ENTRY-01: REQ path pattern mismatch", () => {
 // ─── PROP-ENTRY-05: Feature name extraction ───────────────────────────────────
 describe("PROP-ENTRY-05: Feature name extracted from path", () => {
   it("accepts valid path docs/postgres-storage/REQ-postgres-storage.md", async () => {
-    const guardOk = createGuardAgentDouble({ ok: true });
+    const guardOk = (() => ({ ok: true }));
     // We just want to check the path passes validation — halt it via no further agents
     const mockAgent = async (skill, prompt) => {
       if (skill === "guard") return guardOk("guard", prompt);
@@ -143,7 +142,7 @@ describe("PROP-ENTRY-05: Feature name extracted from path", () => {
     };
     const result = await main({
       reqPath: "docs/postgres-storage/REQ-postgres-storage.md",
-      _guardAgent: guardOk,
+      _checkFile: guardOk,
       _agent: mockAgent,
       _parallel: async (p) => Promise.all(p),
       _phase: () => {},
@@ -157,14 +156,11 @@ describe("PROP-ENTRY-05: Feature name extracted from path", () => {
 // ─── PROP-ENTRY-02: File not found ────────────────────────────────────────────
 describe("PROP-ENTRY-02: Guard agent reports file_not_found", () => {
   it("returns halted report with file not found error", async () => {
-    const missingGuard = createGuardAgentDouble({
-      ok: false,
-      reason: "file_not_found",
-    });
+    const missingGuard = (() => ({ ok: false, reason: "file_not_found" }));
 
     const result = await main({
       reqPath: "docs/test-feat/REQ-test-feat.md",
-      _guardAgent: missingGuard,
+      _checkFile: missingGuard,
       _agent: async () => "",
       _phase: () => {},
       _pipeline: async (l, fn) => fn(),
@@ -180,14 +176,11 @@ describe("PROP-ENTRY-02: Guard agent reports file_not_found", () => {
 // ─── PROP-ENTRY-04: File empty ────────────────────────────────────────────────
 describe("PROP-ENTRY-04: Guard agent reports file_empty", () => {
   it("returns halted report with file empty error", async () => {
-    const emptyGuard = createGuardAgentDouble({
-      ok: false,
-      reason: "file_empty",
-    });
+    const emptyGuard = (() => ({ ok: false, reason: "file_empty" }));
 
     const result = await main({
       reqPath: "docs/test-feat/REQ-test-feat.md",
-      _guardAgent: emptyGuard,
+      _checkFile: emptyGuard,
       _agent: async () => "",
       _phase: () => {},
       _pipeline: async (l, fn) => fn(),
@@ -200,13 +193,17 @@ describe("PROP-ENTRY-04: Guard agent reports file_empty", () => {
   });
 });
 
-// ─── PROP-ENTRY-06: No fs.existsSync used ────────────────────────────────────
-describe("PROP-ENTRY-06: Guard agent is used, not fs.existsSync", () => {
-  it("orchestrate-dev.js does not contain fs.existsSync", () => {
+// ─── PROP-ENTRY-06: deterministic fs check, not a guard agent ────────────────
+describe("PROP-ENTRY-06: REQ existence uses a deterministic fs check, not a guard agent", () => {
+  it("orchestrate-dev.js checks the REQ via checkFileNonEmpty, not a check-exists agent", () => {
     const scriptPath = resolve(__dirname, "../orchestrate-dev.js");
     const content = readFileSync(scriptPath, "utf8");
-    expect(content).not.toContain("existsSync");
-    expect(content).not.toContain('require(');
+    // The guard agent's check-exists: call path is gone.
+    expect(content).not.toContain("check-exists:");
+    // Replaced by the deterministic filesystem helper.
+    expect(content).toContain("checkFileNonEmpty");
+    // No CommonJS require() — ESM only (dynamic import() is allowed).
+    expect(content).not.toMatch(/\brequire\s*\(/);
   });
 });
 

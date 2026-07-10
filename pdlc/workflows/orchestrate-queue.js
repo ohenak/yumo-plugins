@@ -27,6 +27,10 @@
  *   3. Readiness  — A Phase-0 triage agent (se-author, which knows the current
  *                   implementation) verifies declared dependencies are actually
  *                   present in the base before the dependent's specs are authored.
+ *                   A deterministic pre-check (precheckDependencies) runs FIRST and
+ *                   short-circuits candidates the queue already proves blocked (a
+ *                   dependency present with a non-`done` status), so no Sonnet triage
+ *                   agent is spawned to rediscover what QUEUE.md already states.
  *
  * Manual single-REQ runs remain available via /pdlc:orchestrate-dev — this wrapper
  * does not replace it, it drives it.
@@ -374,6 +378,47 @@ export function selectNextPending(entries) {
   return { kind: "candidates", candidates };
 }
 
+// ─── precheckDependencies ─────────────────────────────────────────────────────
+
+/**
+ * Deterministic dependency pre-check run BEFORE the Sonnet triage agent.
+ *
+ * The queue file already records the lifecycle status of every feature it knows
+ * about. If a declared dependency is present in the queue with a non-`done` status
+ * it is *definitely* not merged into the base yet — no agent session is needed to
+ * conclude the candidate is blocked. This short-circuits that case to avoid burning
+ * a triage agent spawn on an answer the queue already gives.
+ *
+ * Conservative on purpose: a dependency that is `done`, or one that is absent from
+ * the queue entirely, CANNOT be judged from the queue alone (it may live outside the
+ * queue, or `done` may not yet be reflected in the working tree) — those fall
+ * through to the triage agent, which inspects git/working-tree state.
+ *
+ * @param {string[]} dependsOn - union of QUEUE ∪ REQ-frontmatter dependency names
+ * @param {Array} entries      - parseQueue() output
+ * @returns {{ blocked: boolean, reason?: string }}
+ */
+export function precheckDependencies(dependsOn, entries) {
+  if (!Array.isArray(dependsOn) || dependsOn.length === 0) {
+    return { blocked: false };
+  }
+  const rows = Array.isArray(entries) ? entries : [];
+
+  for (const dep of dependsOn) {
+    const match = rows.find((e) => e.feature === dep);
+    // Present in the queue but not yet done → definitely blocked. First one wins.
+    if (match && match.status !== "done") {
+      return {
+        blocked: true,
+        reason: `dependency ${dep} is ${match.status} in queue (not done)`,
+      };
+    }
+    // Dependency done, or not in the queue at all → inconclusive here; defer to triage.
+  }
+
+  return { blocked: false };
+}
+
 // ─── Prompt helper ───────────────────────────────────────────────────────────
 
 export function triagePrompt(feature, reqPath, dependsOn) {
@@ -523,6 +568,18 @@ export default async function main({
     const dependsOn = Array.from(
       new Set([...(entry.dependsOn || []), ...(fm.dependsOn || [])])
     );
+
+    // Deterministic pre-check: if the queue already shows a dependency as not done,
+    // it is definitely blocked — skip without spawning a (Sonnet) triage agent.
+    const precheck = precheckDependencies(dependsOn, entries);
+    if (precheck.blocked) {
+      emit(`Skip "${entry.feature}": blocked (pre-check) — ${precheck.reason}.`);
+      skipped.push({
+        feature: entry.feature,
+        reason: `blocked (pre-check): ${precheck.reason}`,
+      });
+      continue;
+    }
 
     // Phase-0 readiness triage against the actual codebase.
     const triageResult = await agentFn(

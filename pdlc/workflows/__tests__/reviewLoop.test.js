@@ -4,7 +4,6 @@
  */
 
 import { reviewLoop } from "../orchestrate-dev.js";
-import { createGuardAgentDouble } from "./helpers/guardAgentDouble.js";
 
 let logMessages = [];
 const originalLog = console.log;
@@ -51,7 +50,7 @@ const baseParams = {
 };
 
 // Guard agent that says doc exists
-const existsGuard = createGuardAgentDouble({ ok: true });
+const existsGuard = () => ({ ok: true });
 
 // ─── PROP-LOOP-01: Both pass on iteration 1 ───────────────────────────────────
 describe("PROP-LOOP-01: Both reviewers approve on iteration 1", () => {
@@ -76,10 +75,14 @@ describe("PROP-LOOP-01: Both reviewers approve on iteration 1", () => {
       ...baseParams,
       _agent: mockAgent,
       _parallel: mockParallel,
-      _guardAgent: existsGuard,
+      _checkFile: existsGuard,
     });
 
-    expect(result).toEqual({ converged: true, iterations: 1 });
+    expect(result).toEqual({
+      converged: true,
+      iterations: 1,
+      lastOptimizerResult: null,
+    });
     expect(optimizerCalled).toBe(false);
   });
 });
@@ -111,10 +114,14 @@ describe("PROP-LOOP-02: One reviewer needs revision, then both pass on iteration
       ...baseParams,
       _agent: mockAgent,
       _parallel: mockParallel,
-      _guardAgent: existsGuard,
+      _checkFile: existsGuard,
     });
 
-    expect(result).toEqual({ converged: true, iterations: 2 });
+    expect(result).toEqual({
+      converged: true,
+      iterations: 2,
+      lastOptimizerResult: makeOptimizerResult(),
+    });
     expect(optimizerCallCount).toBe(1);
   });
 });
@@ -149,7 +156,7 @@ describe("PROP-LOOP-03: Both reviewers fail all 5 iterations → POSTMORTEM", ()
       ...baseParams,
       _agent: mockAgent,
       _parallel: mockParallel,
-      _guardAgent: existsGuard,
+      _checkFile: existsGuard,
     });
 
     expect(result).toMatchObject({ converged: false, iterations: 5 });
@@ -183,7 +190,7 @@ describe("PROP-LOOP-04: One reviewer crashes (null result)", () => {
       ...baseParams,
       _agent: mockAgent,
       _parallel: mockParallel,
-      _guardAgent: existsGuard,
+      _checkFile: existsGuard,
     });
 
     const warnings = logsContaining("WARNING");
@@ -216,7 +223,7 @@ describe("PROP-LOOP-05: POSTMORTEM agent fails after cap exhaustion", () => {
       ...baseParams,
       _agent: mockAgent,
       _parallel: mockParallel,
-      _guardAgent: existsGuard,
+      _checkFile: existsGuard,
     });
 
     expect(result).toMatchObject({ converged: false, iterations: 5 });
@@ -229,10 +236,7 @@ describe("PROP-LOOP-05: POSTMORTEM agent fails after cap exhaustion", () => {
 // ─── PROP-LOOP-06: Missing doc → halt at precondition (AT-LOOP-06) ────────────
 describe("PROP-LOOP-06: Guard agent reports doc absent → halt before any reviewer dispatch", () => {
   it("throws halt error with correct message and does not dispatch reviewers", async () => {
-    const missingGuard = createGuardAgentDouble({
-      ok: false,
-      reason: "file_not_found",
-    });
+    const missingGuard = () => ({ ok: false, reason: "file_not_found" });
 
     let reviewerCalled = false;
     const mockAgent = async (skill, prompt) => {
@@ -250,7 +254,7 @@ describe("PROP-LOOP-06: Guard agent reports doc absent → halt before any revie
         ...baseParams,
         _agent: mockAgent,
         _parallel: mockParallel,
-        _guardAgent: missingGuard,
+        _checkFile: missingGuard,
       })
     ).rejects.toThrow(
       "Error: docs/test-feat/TSPEC-test-feat.md does not exist — cannot enter reviewLoop for phase T"
@@ -279,7 +283,7 @@ describe("PROP-LOOP-07: Optimizer agent fails → halt with correct message", ()
         ...baseParams,
         _agent: mockAgent,
         _parallel: mockParallel,
-        _guardAgent: existsGuard,
+        _checkFile: existsGuard,
       })
     ).rejects.toThrow(
       /optimizer agent se-author failed during phase T, iteration 1 — pipeline halted/
@@ -295,12 +299,20 @@ describe("PROP-LOOP-08: Both reviewers crash in same iteration", () => {
 
     const mockAgent = async (skill, prompt) => {
       if (skill === "guard") return existsGuard("guard", prompt);
+      // Recovery re-ask: the reviewer genuinely crashed, so recovery cannot
+      // reconstruct a trailer — return a valid Needs-revision verdict so the
+      // gate still fails and the optimizer runs (original test intent).
+      const isRecovery =
+        typeof prompt === "string" &&
+        prompt.includes("did not end with a machine-readable VERDICT trailer");
       if (skill === "pm-review") {
+        if (isRecovery) return makeNeedsRevisionResult();
         iteration++;
         if (iteration === 1) return null;
         return makeApproveResult();
       }
       if (skill === "te-review") {
+        if (isRecovery) return makeNeedsRevisionResult();
         if (iteration === 1) return null;
         return makeApproveResult();
       }
@@ -317,7 +329,7 @@ describe("PROP-LOOP-08: Both reviewers crash in same iteration", () => {
       ...baseParams,
       _agent: mockAgent,
       _parallel: mockParallel,
-      _guardAgent: existsGuard,
+      _checkFile: existsGuard,
     });
 
     expect(result.converged).toBe(true);
@@ -346,7 +358,7 @@ describe("PROP-LOOP-09: Both reviewers dispatched concurrently via parallel()", 
       ...baseParams,
       _agent: mockAgent,
       _parallel: mockParallel,
-      _guardAgent: existsGuard,
+      _checkFile: existsGuard,
     });
 
     // First parallel call should be for two reviewers
@@ -379,7 +391,7 @@ describe("PROP-LOOP-11: POSTMORTEM agent prompt contains all 6 required section 
       ...baseParams,
       _agent: mockAgent,
       _parallel: mockParallel,
-      _guardAgent: existsGuard,
+      _checkFile: existsGuard,
     });
 
     expect(postmortemPrompt).toContain("Phase");
@@ -422,7 +434,7 @@ describe("PROP-LOOP-12: Cap fires after exactly 5 iterations (reviewer pair + op
       ...baseParams,
       _agent: mockAgent,
       _parallel: mockParallel,
-      _guardAgent: existsGuard,
+      _checkFile: existsGuard,
     });
 
     expect(result).toMatchObject({ converged: false, iterations: 5 });
@@ -447,7 +459,7 @@ describe("Resume semantics — TSPEC-LOOP-05/06", () => {
       iteration: 1,
       _agent: mockAgent,
       _parallel: mockParallel,
-      _guardAgent: existsGuard,
+      _checkFile: existsGuard,
     });
 
     const startLogs = logsContaining("Starting iteration 1");
@@ -467,7 +479,7 @@ describe("Resume semantics — TSPEC-LOOP-05/06", () => {
       iteration: 3,
       _agent: mockAgent,
       _parallel: mockParallel,
-      _guardAgent: existsGuard,
+      _checkFile: existsGuard,
     });
 
     const resumeLogs = logsContaining("Resuming from iteration 3");
@@ -501,7 +513,7 @@ describe("Resume semantics — TSPEC-LOOP-05/06", () => {
       iteration: 1,
       _agent: mockAgent,
       _parallel: mockParallel,
-      _guardAgent: existsGuard,
+      _checkFile: existsGuard,
     });
 
     const resumeLogs = logsContaining("Resuming from iteration 2");
@@ -534,7 +546,7 @@ describe("Resume semantics — TSPEC-LOOP-05/06", () => {
       ...baseParams,
       _agent: mockAgent,
       _parallel: mockParallel,
-      _guardAgent: existsGuard,
+      _checkFile: existsGuard,
     });
 
     console.log = origLog;
@@ -591,7 +603,7 @@ describe("PROP-LOOP-17: when converged is false, lastResults includes reviewer v
       ...baseParams,
       _agent: mockAgent,
       _parallel: mockParallel,
-      _guardAgent: existsGuard,
+      _checkFile: existsGuard,
     });
 
     expect(result.converged).toBe(false);
@@ -631,5 +643,165 @@ describe("Phase CR: skips single-file existence check", () => {
     });
 
     expect(result.converged).toBe(true);
+  });
+});
+
+// ─── lastOptimizerResult on the converged path (DECISIONS_WARRANTED fold) ──────
+describe("reviewLoop returns lastOptimizerResult on convergence", () => {
+  it("returns the last optimizer result when it converges after an optimizer run", async () => {
+    let iteration = 0;
+    const mockAgent = async (skill, prompt) => {
+      if (skill === "pm-review") {
+        iteration++;
+        return iteration <= 1 ? makeNeedsRevisionResult() : makeApproveResult();
+      }
+      if (skill === "te-review") return makeApproveResult();
+      if (skill === "se-author") return "Addressed feedback.\nDECISIONS_WARRANTED: false";
+      return "";
+    };
+
+    const result = await reviewLoop({
+      ...baseParams,
+      _agent: mockAgent,
+      _parallel: (p) => Promise.all(p),
+      _checkFile: existsGuard,
+    });
+
+    expect(result.converged).toBe(true);
+    expect(result.iterations).toBe(2);
+    expect(result.lastOptimizerResult).toBe(
+      "Addressed feedback.\nDECISIONS_WARRANTED: false"
+    );
+  });
+
+  it("returns lastOptimizerResult: null when it converges on iteration 1 (no optimizer run)", async () => {
+    const mockAgent = async (skill) => {
+      if (skill === "pm-review" || skill === "te-review") return makeApproveResult(skill);
+      return "";
+    };
+
+    const result = await reviewLoop({
+      ...baseParams,
+      _agent: mockAgent,
+      _parallel: (p) => Promise.all(p),
+      _checkFile: existsGuard,
+    });
+
+    expect(result.converged).toBe(true);
+    expect(result.iterations).toBe(1);
+    expect(result.lastOptimizerResult).toBeNull();
+  });
+});
+
+// ─── Delta re-review prompt (iteration ≥2) ────────────────────────────────────
+describe("Delta re-review: iteration ≥2 reviewer prompts", () => {
+  it("iteration-1 prompt has no delta instructions; iteration-2 references prior cross-review and diff-only scanning", async () => {
+    const pmPrompts = [];
+    let pmCount = 0;
+
+    const mockAgent = async (skill, prompt) => {
+      if (skill === "pm-review") {
+        pmPrompts.push(prompt);
+        pmCount++;
+        // Valid (not malformed) Needs revision on round 1 → optimizer → round 2.
+        return pmCount === 1 ? makeNeedsRevisionResult() : makeApproveResult();
+      }
+      if (skill === "te-review") return makeApproveResult();
+      if (skill === "se-author") return makeOptimizerResult();
+      return "";
+    };
+
+    await reviewLoop({
+      ...baseParams,
+      _agent: mockAgent,
+      _parallel: (p) => Promise.all(p),
+      _checkFile: existsGuard,
+    });
+
+    // Iteration 1: plain first-pass review, no delta protocol.
+    expect(pmPrompts[0]).not.toMatch(/re-review/i);
+    expect(pmPrompts[0]).not.toMatch(/previous cross-review/i);
+    expect(pmPrompts[0]).not.toMatch(/git diff/i);
+
+    // Iteration 2: delta protocol — prior cross-review + diff-only scan.
+    expect(pmPrompts[1]).toMatch(/previous cross-review/i);
+    expect(pmPrompts[1]).toMatch(/CROSS-REVIEW-product-manager-.*-v1\.md/);
+    expect(pmPrompts[1]).toMatch(/git diff/);
+    expect(pmPrompts[1]).toMatch(/ONLY the changed sections/);
+  });
+});
+
+// ─── Malformed VERDICT trailer recovery ───────────────────────────────────────
+describe("Malformed trailer recovery (Haiku)", () => {
+  it("makes exactly one recovery call on model haiku and uses the recovered verdict (converges without optimizer)", async () => {
+    let recoveryCalls = 0;
+    let recoveryModel = null;
+    let optimizerCount = 0;
+
+    const mockAgent = async (skill, prompt, opts) => {
+      const isRecovery =
+        typeof prompt === "string" &&
+        prompt.includes("did not end with a machine-readable VERDICT trailer");
+      if (skill === "pm-review") {
+        if (isRecovery) {
+          recoveryCalls++;
+          recoveryModel = opts && opts.model;
+          return makeApproveResult(); // recovery succeeds → Approved
+        }
+        return "I reviewed it but forgot the trailer."; // malformed
+      }
+      if (skill === "te-review") return makeApproveResult();
+      if (skill === "se-author") {
+        optimizerCount++;
+        return makeOptimizerResult();
+      }
+      return "";
+    };
+
+    const result = await reviewLoop({
+      ...baseParams,
+      _agent: mockAgent,
+      _parallel: (p) => Promise.all(p),
+      _checkFile: existsGuard,
+    });
+
+    expect(recoveryCalls).toBe(1);
+    expect(recoveryModel).toBe("haiku");
+    expect(result.converged).toBe(true);
+    expect(result.iterations).toBe(1);
+    expect(optimizerCount).toBe(0);
+  });
+
+  it("failed recovery falls back to Needs revision and proceeds to the optimizer", async () => {
+    let optimizerCount = 0;
+    let pmCount = 0;
+
+    const mockAgent = async (skill, prompt) => {
+      const isRecovery =
+        typeof prompt === "string" &&
+        prompt.includes("did not end with a machine-readable VERDICT trailer");
+      if (skill === "pm-review") {
+        if (isRecovery) return "still no trailer"; // recovery also malformed
+        pmCount++;
+        return pmCount === 1 ? "no trailer here" : makeApproveResult();
+      }
+      if (skill === "te-review") return makeApproveResult();
+      if (skill === "se-author") {
+        optimizerCount++;
+        return makeOptimizerResult();
+      }
+      return "";
+    };
+
+    const result = await reviewLoop({
+      ...baseParams,
+      _agent: mockAgent,
+      _parallel: (p) => Promise.all(p),
+      _checkFile: existsGuard,
+    });
+
+    expect(result.converged).toBe(true);
+    expect(result.iterations).toBe(2);
+    expect(optimizerCount).toBe(1);
   });
 });

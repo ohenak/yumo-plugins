@@ -11,7 +11,6 @@ import main, {
 import { readFileSync } from "fs";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
-import { createGuardAgentDouble } from "./helpers/guardAgentDouble.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -292,6 +291,44 @@ describe("dodVerifyLoop", () => {
     expect(verifyPrompts[0]).toContain("CODE_REVIEW-test-feat-v1.md");
     expect(verifyPrompts[0]).toMatch(/Do NOT fix/i);
   });
+
+  it("v1 verify prompt is the full scan; v2 is a delta re-verify referencing v1 and diff-only scanning", async () => {
+    const verifyPrompts = [];
+    let verifyCount = 0;
+    const mockAgent = async (skill) => {
+      if (skill === "dod-verify") {
+        verifyCount++;
+        // Return the prompt-driving verdict; capture happens below by index.
+        if (verifyCount === 1) {
+          return (
+            "Found.\nDOD_STATUS: failed\n" +
+            '{"stubs": 1, "mock_data": 0, "unwired_integrations": 0, "coverage_below_threshold": false, "branch_coverage_pct": 90}'
+          );
+        }
+        return "Clean.\nDOD_STATUS: passed";
+      }
+      return "Remediated.";
+    };
+    // Wrap to capture the actual verify prompts.
+    const capturing = async (skill, prompt) => {
+      if (skill === "dod-verify") verifyPrompts.push(prompt);
+      return mockAgent(skill, prompt);
+    };
+    await dodVerifyLoop({ feature: "test-feat", _agent: capturing, _log: () => {} });
+
+    // v1 — full five-criteria scan, no re-verify language.
+    expect(verifyPrompts[0]).toContain("Read the specs first");
+    expect(verifyPrompts[0]).toContain("CODE_REVIEW-test-feat-v1.md");
+    expect(verifyPrompts[0]).not.toMatch(/re-verification/i);
+
+    // v2 — delta re-verify: reads v1's CODE_REVIEW, scans only the remediation diff.
+    expect(verifyPrompts[1]).toMatch(/re-verification round v2/i);
+    expect(verifyPrompts[1]).toContain("CODE_REVIEW-test-feat-v1.md");
+    expect(verifyPrompts[1]).toContain("CODE_REVIEW-test-feat-v2.md");
+    expect(verifyPrompts[1]).toMatch(/git diff/);
+    expect(verifyPrompts[1]).toMatch(/ONLY that diff/);
+    expect(verifyPrompts[1]).toMatch(/Do NOT fix/i);
+  });
 });
 
 // ─── rebaseOntoDefault ───────────────────────────────────────────────────────
@@ -357,7 +394,7 @@ describe("Phase DOD wiring in main()", () => {
     reqPath: "docs/test-feat/REQ-test-feat.md",
     _agent: makeSuccessAgent(),
     _parallel: (p) => Promise.all(p),
-    _guardAgent: createGuardAgentDouble({ ok: true }),
+    _checkFile: () => ({ ok: true }),
     _phase: () => {},
     _pipeline: async (l, fn) => fn(),
     _mergeWorktree: async () => ({ ok: true }),

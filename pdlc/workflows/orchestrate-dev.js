@@ -12,6 +12,8 @@
  * // nudge-consolidation fires on the top-level SessionStart only — not inside agent sub-sessions.
  */
 
+import * as fs from "fs";
+
 // TSPEC-HARVEST-01: compile-time flag
 const PHASE_H_ENABLED = true; // Set to false until feature-branch-consistency fix lands
 
@@ -139,13 +141,182 @@ function haltError(message) {
   return err;
 }
 
+// ─── Deterministic file-existence check (replaces the guard agent) ────────────
+
+/**
+ * Verify a file exists and is non-empty. Deterministic replacement for the
+ * former `guard` agent's file-existence check — a filesystem read needs no LLM.
+ * A size-0 file, or one whose contents are whitespace-only, counts as empty.
+ * Mirrors mergeWorktree's injectable-dependency style via the `fsMod` param.
+ *
+ * @param {string} path
+ * @param {{ fsMod?: object }} [opts] - injection point for tests (override fs)
+ * @returns {{ ok: true } | { ok: false, reason: "file_missing" | "file_empty" }}
+ */
+export function checkFileNonEmpty(path, { fsMod = fs } = {}) {
+  if (!path || (typeof path === "string" && path.trim() === "")) {
+    return { ok: false, reason: "file_missing" };
+  }
+  try {
+    if (!fsMod.existsSync(path)) {
+      return { ok: false, reason: "file_missing" };
+    }
+    const stat = fsMod.statSync(path);
+    if (stat.size === 0) {
+      return { ok: false, reason: "file_empty" };
+    }
+    const contents = fsMod.readFileSync(path, "utf8");
+    if (typeof contents === "string" && contents.trim() === "") {
+      return { ok: false, reason: "file_empty" };
+    }
+  } catch {
+    return { ok: false, reason: "file_missing" };
+  }
+  return { ok: true };
+}
+
+// ─── TSPEC-IMPL-01: parsePlanTasks — deterministic PLAN task-table parse ───────
+
+/**
+ * Parse a PLAN markdown task table into the DAG task list the implementation
+ * phase batches over. Deterministic replacement for the former se-author DAG
+ * agent — a markdown table needs no LLM to read.
+ *
+ * Header row is matched case-insensitively and tolerates column-order variation
+ * (mirrors parseQueue's header-mapping approach). A parseable table needs at
+ * minimum an id column and a dependencies column; without both this returns null
+ * so the caller can fall back to the agent path. The dependencies cell is a
+ * comma/space separated list of ids, with "-"/"—"/"none"/"" meaning none.
+ *
+ * @param {string | null | undefined} markdown - Raw PLAN.md contents
+ * @returns {{ tasks: Array<{ id: string, description: string, dependencies: string[], planBatch: number|undefined }> } | null}
+ */
+export function parsePlanTasks(markdown) {
+  if (markdown == null || typeof markdown !== "string") return null;
+
+  const rows = markdown
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l.startsWith("|"));
+  if (rows.length === 0) return null;
+
+  const isIdCell = (c) => c === "#" || c.includes("id");
+  const isDepsCell = (c) =>
+    c.includes("depend") || c.includes("deps") || c.includes("prereq");
+  const isDescCell = (c) =>
+    c.includes("desc") ||
+    c.includes("task") ||
+    c.includes("summary") ||
+    c.includes("name") ||
+    c.includes("title");
+  const isBatchCell = (c) =>
+    c.includes("batch") || c.includes("phase") || c.includes("wave");
+
+  // Locate the header row: the first pipe row that carries both an id-like and a
+  // dependencies-like column. Without an explicit dependency column the DAG can't
+  // be derived from the table alone — return null and let the agent path read it.
+  let cols = null;
+  let headerIdx = -1;
+  for (let i = 0; i < rows.length; i++) {
+    const cells = splitPipeRow(rows[i]).map((c) => c.toLowerCase());
+    if (cells.some(isIdCell) && cells.some(isDepsCell)) {
+      cols = cells;
+      headerIdx = i;
+      break;
+    }
+  }
+  if (!cols) return null;
+
+  const findCol = (pred, exclude = -1) => {
+    for (let i = 0; i < cols.length; i++) {
+      if (i === exclude) continue;
+      if (pred(cols[i])) return i;
+    }
+    return -1;
+  };
+
+  const idIdx = findCol(isIdCell);
+  const depsIdx = findCol(isDepsCell);
+  const descIdx = findCol(isDescCell, idIdx);
+  const batchIdx = findCol(isBatchCell);
+  if (idIdx < 0 || depsIdx < 0) return null;
+
+  const tasks = [];
+  for (let i = headerIdx + 1; i < rows.length; i++) {
+    const cells = splitPipeRow(rows[i]);
+    // Skip the markdown separator row (|---|---|).
+    if (cells.every((c) => /^:?-{2,}:?$/.test(c) || c === "")) continue;
+
+    const id = (cells[idIdx] || "").trim();
+    if (!id) continue;
+
+    const description = descIdx >= 0 ? (cells[descIdx] || "").trim() : "";
+    const dependencies = parsePlanDepsCell(cells[depsIdx]);
+
+    let planBatch;
+    if (batchIdx >= 0) {
+      const raw = (cells[batchIdx] || "").trim();
+      const m = raw.match(/\d+/);
+      if (m) planBatch = parseInt(m[0], 10);
+    }
+
+    tasks.push({ id, description, dependencies, planBatch });
+  }
+
+  if (tasks.length === 0) return null;
+  return { tasks };
+}
+
+/** Split a markdown table row on pipes, trimming leading/trailing pipe + cells. */
+function splitPipeRow(row) {
+  return row
+    .replace(/^\|/, "")
+    .replace(/\|$/, "")
+    .split("|")
+    .map((c) => c.trim());
+}
+
+/** Parse a dependencies cell: comma/space list of ids; "-"/"—"/"none"/"" ⇒ []. */
+function parsePlanDepsCell(cell) {
+  if (!cell) return [];
+  const trimmed = cell.trim();
+  if (
+    trimmed === "" ||
+    trimmed === "-" ||
+    trimmed === "—" ||
+    trimmed === "–" ||
+    trimmed.toLowerCase() === "none"
+  ) {
+    return [];
+  }
+  return trimmed
+    .split(/[\s,]+/)
+    .map((d) => d.trim())
+    .filter(
+      (d) =>
+        d &&
+        d !== "-" &&
+        d !== "—" &&
+        d !== "–" &&
+        d.toLowerCase() !== "none"
+    );
+}
+
 // ─── TSPEC-PARSE-01: parseVerdict ─────────────────────────────────────────────
 
 /**
  * Extract VERDICT from a reviewer agent result string.
+ *
+ * When the trailer is missing or malformed (any path that logs the "returned no
+ * VERDICT" warning) the fallback additionally carries `malformed: true` so the
+ * caller can distinguish a genuine "Needs revision" verdict from an unparseable
+ * response and attempt a cheap trailer recovery. Genuine parses — including the
+ * truncated-output zero-counts case — never set `malformed`. The extra field is
+ * additive: existing consumers only read verdict/high/medium/low.
+ *
  * @param {string | null | undefined} result - Raw agent result
  * @param {string} skillName - Reviewer skill identifier for warning messages
- * @returns {{ verdict: string, high: number, medium: number, low: number }}
+ * @returns {{ verdict: string, high: number, medium: number, low: number, malformed?: boolean }}
  */
 export function parseVerdict(result, skillName) {
   const VALID_VERDICTS = [
@@ -158,6 +329,7 @@ export function parseVerdict(result, skillName) {
     high: 0,
     medium: 0,
     low: 0,
+    malformed: true,
   };
 
   if (result == null || (typeof result === "string" && result.trim() === "")) {
@@ -353,8 +525,8 @@ function checkConverged(loopResult, phaseId, phaseLabel, recordPhase) {
  * @param {number} [params.iteration=1] - Starting iteration (always 1 for fresh runs)
  * @param {function} [params._agent] - Injected agent function (for testing)
  * @param {function} [params._parallel] - Injected parallel function (for testing)
- * @param {function} [params._guardAgent] - Injected guard agent (for testing)
- * @returns {Promise<{converged: boolean, iterations: number}>}
+ * @param {function} [params._checkFile] - Injected file-existence check (for testing)
+ * @returns {Promise<{converged: boolean, iterations: number, lastOptimizerResult?: string|null}>}
  */
 export async function reviewLoop({
   doc,
@@ -365,13 +537,12 @@ export async function reviewLoop({
   iteration = 1,
   _agent = agent,
   _parallel = parallel,
-  _guardAgent = null,
+  _checkFile = checkFileNonEmpty,
 }) {
   // TSPEC-LOOP-02: Entry precondition check (skip for Phase CR)
   if (phase !== "CR") {
-    const guardFn = _guardAgent ?? _agent;
-    const guardResult = await guardFn("guard", `check-exists:${doc}`);
-    if (!guardResult.ok) {
+    const checkResult = _checkFile(doc);
+    if (!checkResult.ok) {
       throw haltError(
         `Error: ${doc} does not exist — cannot enter reviewLoop for phase ${phase}`
       );
@@ -379,6 +550,10 @@ export async function reviewLoop({
   }
 
   let result1, result2;
+  // Retain the most recent optimizer result so callers (Phase T) can read the
+  // DECISIONS_WARRANTED trailer without a separate post-PASS agent session. Null
+  // when the loop converges on iteration 1 with no optimizer run.
+  let lastOptimizerResult = null;
 
   // TSPEC-LOOP-03: Iteration loop
   while (true) {
@@ -429,9 +604,11 @@ export async function reviewLoop({
       log(`Resuming from iteration ${iteration}`);
     }
 
-    // (c) Dispatch reviewers in parallel
-    const reviewerPrompt1 = reviewerPrompt(doc, phase, feature, iteration);
-    const reviewerPrompt2 = reviewerPrompt(doc, phase, feature, iteration);
+    // (c) Dispatch reviewers in parallel. On iteration ≥2 each reviewer gets a
+    // delta re-review prompt (read prior cross-review, diff-only scan) — see
+    // reviewerPrompt. Iteration 1 is the full first-pass review.
+    const reviewerPrompt1 = reviewerPrompt(doc, phase, feature, iteration, reviewers[0]);
+    const reviewerPrompt2 = reviewerPrompt(doc, phase, feature, iteration, reviewers[1]);
 
     const [r1, r2] = await _parallel([
       _agent(reviewers[0], reviewerPrompt1),
@@ -440,21 +617,40 @@ export async function reviewLoop({
     result1 = r1;
     result2 = r2;
 
-    // (d) Parse verdicts
-    const verdict1 = parseVerdict(result1, reviewers[0]);
-    const verdict2 = parseVerdict(result2, reviewers[1]);
+    // (d) Parse verdicts. A missing/malformed VERDICT trailer sets malformed:true —
+    // make one cheap Haiku recovery attempt to re-emit the trailer from the reviewer's
+    // own output before paying for a full optimizer + re-review round.
+    let verdict1 = parseVerdict(result1, reviewers[0]);
+    if (verdict1.malformed) {
+      const recovered = await recoverVerdict({
+        reviewer: reviewers[0],
+        rawResult: result1,
+        _agent,
+      });
+      if (recovered) verdict1 = recovered;
+    }
+    let verdict2 = parseVerdict(result2, reviewers[1]);
+    if (verdict2.malformed) {
+      const recovered = await recoverVerdict({
+        reviewer: reviewers[1],
+        rawResult: result2,
+        _agent,
+      });
+      if (recovered) verdict2 = recovered;
+    }
 
     // (e) Evaluate gate
     const gatePass = isPass(verdict1.verdict) && isPass(verdict2.verdict);
 
     // (f) PASS branch
     if (gatePass) {
-      return { converged: true, iterations: iteration };
+      return { converged: true, iterations: iteration, lastOptimizerResult };
     }
 
     // (g) Invoke optimizer (FAIL path)
-    const optPrompt = optimizerPrompt(doc, phase, feature, iteration);
+    const optPrompt = optimizerPrompt(doc, phase, feature, iteration, reviewers);
     const optimizerResult = await _agent(optimizer, optPrompt);
+    lastOptimizerResult = optimizerResult;
 
     if (
       optimizerResult == null ||
@@ -473,18 +669,118 @@ export async function reviewLoop({
 
 // ─── Prompt helpers ───────────────────────────────────────────────────────────
 
-function reviewerPrompt(doc, phase, feature, iteration) {
-  return `Review the document at ${doc} for phase ${phase} of feature ${feature}. This is iteration ${iteration}.`;
+/**
+ * Map a reviewer skill id to the role slug it uses in its cross-review filename
+ * (`CROSS-REVIEW-{role}-{DOC-TYPE}[-v{N}].md`). Slugs are taken from each reviewer
+ * skill's Cross-Review File Format section. Returns null for unknown skills so
+ * prompts degrade to the generic glob rather than an invented path.
+ * @param {string} skill
+ * @returns {string|null}
+ */
+function reviewerRoleSlug(skill) {
+  const MAP = {
+    "se-review": "software-engineer",
+    "pm-review": "product-manager",
+    "te-review": "test-engineer",
+  };
+  return MAP[skill] || null;
 }
 
-function optimizerPrompt(doc, phase, feature, iteration) {
-  return `Address reviewer feedback on ${doc} for phase ${phase} of feature ${feature}. Iteration ${iteration} reviewers found issues. Update and commit.`;
-}
+/**
+ * Build the reviewer dispatch prompt. Iteration 1 is a full first-pass review.
+ * Iteration ≥2 appends the delta re-review protocol so the reviewer reads its own
+ * previous cross-review and scans only the diff instead of re-reviewing the whole
+ * document from scratch — the approval bar and VERDICT contract are unchanged.
+ * @param {string} doc
+ * @param {string} phase
+ * @param {string} feature
+ * @param {number} iteration
+ * @param {string} [reviewer] - reviewer skill id (for the prior-cross-review path)
+ * @returns {string}
+ */
+function reviewerPrompt(doc, phase, feature, iteration, reviewer) {
+  const base = `Review the document at ${doc} for phase ${phase} of feature ${feature}. This is iteration ${iteration}.`;
+  if (iteration < 2) return base;
 
-function postPassTSPECPrompt(featureName) {
+  const prev = iteration - 1;
+  const role = reviewerRoleSlug(reviewer);
+  const priorFile = role
+    ? `docs/${feature}/CROSS-REVIEW-${role}-{DOC-TYPE}-v${prev}.md (your reviewer role is "${role}"; find the file for the previous iteration v${prev} matching this document's type)`
+    : `your own previous cross-review file for this document (docs/${feature}/CROSS-REVIEW-{role}-{DOC-TYPE}-v${prev}.md — find your reviewer role's file for iteration v${prev})`;
+
   return (
-    `Finalize docs/${featureName}/TSPEC-${featureName}.md by addressing all outstanding TSPEC cross-review findings. ` +
-    `After completing your response, end your final message with:\n` +
+    `${base}\n` +
+    `This is a re-review — follow the delta re-review protocol:\n` +
+    `1. First read your own previous cross-review file: ${priorFile}.\n` +
+    `2. Run \`git diff\` on ${doc} against the commit you last reviewed to see exactly what changed.\n` +
+    `3. Verify each of your previous findings is resolved; scan ONLY the changed sections for new issues. ` +
+    `Do not re-review unchanged sections you already approved.\n` +
+    `4. The approval bar is unchanged: any open High or Medium finding anywhere in the document — old or new — means Needs revision.\n` +
+    `Write your new cross-review as v${iteration} and end with the standard VERDICT trailer.`
+  );
+}
+
+function optimizerPrompt(doc, phase, feature, iteration, reviewers = []) {
+  const base = `Address reviewer feedback on ${doc} for phase ${phase} of feature ${feature}. Iteration ${iteration} reviewers found issues. Update and commit.`;
+
+  // Point the optimizer straight at this iteration's cross-review files so it does
+  // not hunt for them. Both reviewer roles' expected paths for v{iteration}.
+  const roles = reviewers.map(reviewerRoleSlug).filter(Boolean);
+  let feedback = "";
+  if (roles.length > 0) {
+    const paths = roles
+      .map((role) => `docs/${feature}/CROSS-REVIEW-${role}-{DOC-TYPE}-v${iteration}.md`)
+      .join(" and ");
+    feedback =
+      `\nRead the reviewers' cross-review files for this iteration directly: ${paths} ` +
+      `(equivalently, all CROSS-REVIEW-*-v${iteration}.md files for this document type in docs/${feature}/). ` +
+      `Address every High and Medium finding in them.`;
+  }
+
+  // Phase T: fold the DECISIONS_WARRANTED signal into the convergence loop so no
+  // separate post-PASS agent session is needed. The last optimizer result carries
+  // the trailer; if the loop converges on iteration 1 the creator result carries it.
+  if (phase === "T") {
+    return `${base}${feedback}\n${decisionsWarrantedTrailerRequirement()}`;
+  }
+  return `${base}${feedback}`;
+}
+
+/**
+ * Cheap trailer recovery for a reviewer whose VERDICT trailer was missing or
+ * malformed. Re-asks the same reviewer — on Haiku — to re-emit ONLY the two
+ * trailer lines from its own prior output (no re-review). Returns the re-parsed
+ * verdict if it now parses cleanly, else null so the caller keeps the original
+ * Needs-revision fallback and proceeds to the optimizer.
+ *
+ * @param {object} params
+ * @param {string} params.reviewer - reviewer skill id
+ * @param {string|null|undefined} params.rawResult - the reviewer's original output
+ * @param {function} params._agent - injected agent function
+ * @returns {Promise<{verdict: string, high: number, medium: number, low: number}|null>}
+ */
+export async function recoverVerdict({ reviewer, rawResult, _agent = agent }) {
+  const recoveryPrompt =
+    `Your previous review response did not end with a machine-readable VERDICT trailer. ` +
+    `Do not redo the review. Based ONLY on the text below (your own previous output), ` +
+    `re-emit exactly the two trailer lines and nothing else:\n` +
+    `VERDICT: <Approved | Approved with minor changes | Needs revision>\n` +
+    `{"high": N, "medium": N, "low": N}\n\n` +
+    `--- previous output ---\n${rawResult ?? ""}`;
+
+  const recovered = await _agent(reviewer, recoveryPrompt, { model: "haiku" });
+  const parsed = parseVerdict(recovered, reviewer);
+  return parsed.malformed ? null : parsed;
+}
+
+/**
+ * The DECISIONS_WARRANTED trailer requirement appended to the Phase T creator and
+ * optimizer prompts (formerly the body of the standalone post-PASS TSPEC session).
+ * @returns {string}
+ */
+function decisionsWarrantedTrailerRequirement() {
+  return (
+    `End your final message with:\n` +
     `DECISIONS_WARRANTED: true if load-bearing architectural alternatives were weighed and rejected during the TSPEC review; ` +
     `DECISIONS_WARRANTED: false if this is a trivial feature with no real alternatives considered.`
   );
@@ -558,17 +854,99 @@ function rebasePrompt(featureName) {
   );
 }
 
-function pollCiPrompt(featureName, prUrl) {
-  return (
-    `Report the current GitHub Actions check status for the pull request at ${prUrl} ` +
-    `(feature ${featureName}). Inspect the PR's checks once and report the current state — ` +
-    `do not wait, sleep, or poll yourself; the workflow owns the polling cadence. ` +
-    `End your final message with exactly one of these trailer lines:\n` +
-    `CI_STATUS: none     — no GHA checks are registered on the PR yet\n` +
-    `CI_STATUS: pending  — one or more checks exist and are still queued/running\n` +
-    `CI_STATUS: passed   — all checks have completed and every one succeeded\n` +
-    `CI_STATUS: failed   — at least one check has completed with a failure/error`
-  );
+/**
+ * Query the current GitHub Actions check status for a PR directly via the `gh`
+ * CLI — no agent needed for a mechanical status read. Uses the same
+ * execSync-with-injectable-execFn pattern as mergeWorktree.
+ *
+ * Maps `gh pr view <url> --json statusCheckRollup` to exactly one of:
+ *   "none"    — the rollup array is empty/absent (no checks registered yet)
+ *   "pending" — at least one check has not completed yet
+ *   "passed"  — all completed and every conclusion is a success (SUCCESS/NEUTRAL/SKIPPED)
+ *   "failed"  — at least one completed check has a failure/error conclusion
+ *   "unknown" — exec threw or the JSON was unparseable
+ *
+ * @param {string} prUrl
+ * @param {{ execFn?: function }} [opts] - injection point for tests (override execSync)
+ * @returns {Promise<"none" | "pending" | "passed" | "failed" | "unknown">}
+ */
+export async function checkPrCi(prUrl, { execFn } = {}) {
+  const { execSync: realExecSync } = await import("child_process");
+  const exec = execFn ?? ((cmd, opts) => realExecSync(cmd, opts));
+
+  let raw;
+  try {
+    raw = exec(`gh pr view ${prUrl} --json statusCheckRollup`, {
+      stdio: "pipe",
+      encoding: "utf8",
+    });
+  } catch {
+    return "unknown";
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return "unknown";
+  }
+
+  const rollup = parsed && parsed.statusCheckRollup;
+  if (!Array.isArray(rollup) || rollup.length === 0) {
+    return "none";
+  }
+
+  let anyPending = false;
+  let anyFailure = false;
+  let allSuccess = true;
+  for (const check of rollup) {
+    const state = classifyCheckRollupEntry(check);
+    if (state === "pending") anyPending = true;
+    if (state === "failure") anyFailure = true;
+    if (state !== "success") allSuccess = false;
+  }
+
+  if (anyPending) return "pending";
+  if (anyFailure) return "failed";
+  if (allSuccess) return "passed";
+  return "unknown";
+}
+
+/**
+ * Classify a single statusCheckRollup entry (CheckRun or StatusContext).
+ * @param {object} check
+ * @returns {"pending" | "success" | "failure" | "other"}
+ */
+function classifyCheckRollupEntry(check) {
+  const SUCCESS = new Set(["SUCCESS", "NEUTRAL", "SKIPPED"]);
+  const FAILURE = new Set([
+    "FAILURE",
+    "ERROR",
+    "CANCELLED",
+    "TIMED_OUT",
+    "ACTION_REQUIRED",
+    "STARTUP_FAILURE",
+  ]);
+
+  if (check && typeof check.status === "string") {
+    // CheckRun: status is QUEUED/IN_PROGRESS/COMPLETED, conclusion is set once done.
+    if (check.status.toUpperCase() !== "COMPLETED") return "pending";
+    const conclusion = (check.conclusion || "").toUpperCase();
+    if (FAILURE.has(conclusion)) return "failure";
+    if (SUCCESS.has(conclusion)) return "success";
+    return "other";
+  }
+
+  if (check && typeof check.state === "string") {
+    // StatusContext: legacy commit-status API.
+    const st = check.state.toUpperCase();
+    if (st === "PENDING" || st === "EXPECTED") return "pending";
+    if (st === "SUCCESS") return "success";
+    if (st === "FAILURE" || st === "ERROR") return "failure";
+    return "other";
+  }
+
+  return "other";
 }
 
 /**
@@ -608,31 +986,6 @@ export function parseRebaseStatus(result) {
     if (trimmed.startsWith("REBASE_STATUS: ")) {
       const token = trimmed
         .slice("REBASE_STATUS: ".length)
-        .trim()
-        .toLowerCase()
-        .split(/\s/)[0];
-      return VALID.includes(token) ? token : "unknown";
-    }
-  }
-  return "unknown";
-}
-
-/**
- * Extract the CI status from a ship-pr poll result's trailer.
- * @param {string | null | undefined} result
- * @returns {"none" | "pending" | "passed" | "failed" | "unknown"}
- */
-export function parseCiStatus(result) {
-  const VALID = ["none", "pending", "passed", "failed"];
-  if (result == null || (typeof result === "string" && result.trim() === "")) {
-    return "unknown";
-  }
-  const lines = result.split("\n");
-  for (let i = lines.length - 1; i >= 0; i--) {
-    const trimmed = lines[i].trim();
-    if (trimmed.startsWith("CI_STATUS: ")) {
-      const token = trimmed
-        .slice("CI_STATUS: ".length)
         .trim()
         .toLowerCase()
         .split(/\s/)[0];
@@ -748,6 +1101,11 @@ export function parseDodStatus(result) {
 // ─── DOD-04: dodVerifyLoop ───────────────────────────────────────────────────
 
 function dodVerifyPrompt(featureName, version) {
+  // Round ≥2 is a delta re-verify after remediation — verify each prior finding is
+  // fixed and scan only the remediation diff, instead of re-running the full scan.
+  if (version >= 2) {
+    return dodReVerifyPrompt(featureName, version);
+  }
   return (
     `Challenge the Definition of Done for feature ${featureName} (review version v${version}). ` +
     `Assume incomplete until the evidence proves otherwise.\n` +
@@ -784,6 +1142,35 @@ function dodVerifyPrompt(featureName, version) {
     `table listing every criterion with implementation path, test path, and Gap? column. ` +
     `Commit and push the review file. Do NOT fix anything — you are the evaluator, not the optimizer.\n` +
     `End with the DOD_STATUS trailer including req_gaps and boundary_gaps in the JSON.`
+  );
+}
+
+/**
+ * Round ≥2 (v2, v3…) delta re-verify prompt. After remediation, the previous
+ * round's CODE_REVIEW findings and the remediation diff are the only things worth
+ * re-reading — the rest of the tree was already verified. The evidence bar and the
+ * DOD_STATUS trailer contract are unchanged from v1.
+ */
+function dodReVerifyPrompt(featureName, version) {
+  const prev = version - 1;
+  return (
+    `This is re-verification round v${version} after remediation for feature ${featureName}. ` +
+    `Assume incomplete until the evidence proves otherwise.\n` +
+    `\n` +
+    `Step 1 — Read docs/${featureName}/CODE_REVIEW-${featureName}-v${prev}.md. For EACH finding in it, ` +
+    `verify remediation: trace the fix to a production code path AND a test that would fail if the fix broke. ` +
+    `An assertion-free or stub-backed test does not count as remediation.\n` +
+    `\n` +
+    `Step 2 — Run \`git diff\` covering the remediation commits since v${prev} and scan ONLY that diff for new ` +
+    `stubs, mock data, unwired integrations, or regressions introduced by the fixes. Do NOT re-scan unchanged ` +
+    `code you already verified in the previous round.\n` +
+    `\n` +
+    `Carry the §2 Requirements Traceability table forward from v${prev}, updating only the rows affected by the ` +
+    `remediation (update the Gap? column). Document the result in ` +
+    `docs/${featureName}/CODE_REVIEW-${featureName}-v${version}.md with Scope tags (Local | Cross-Feature | Process) ` +
+    `as before. Commit and push the review file. Do NOT fix anything — you are the evaluator, not the optimizer.\n` +
+    `DOD_STATUS: passed only when every prior finding is verified remediated AND the remediation diff is clean. ` +
+    `End with the DOD_STATUS trailer including req_gaps in the JSON.`
   );
 }
 
@@ -882,6 +1269,7 @@ export async function dodVerifyLoop({
  * @param {object} params
  * @param {string} params.feature
  * @param {function} [params._agent]
+ * @param {function} [params._checkCi] - (prUrl) => Promise<ci status>; injectable for tests
  * @param {function} [params._log]
  * @param {function} [params._now]   - clock (ms); injectable for tests
  * @param {function} [params._sleep] - async sleep(ms); injectable for tests
@@ -893,6 +1281,7 @@ export async function dodVerifyLoop({
 export async function raisePrAndVerifyCi({
   feature,
   _agent = agent,
+  _checkCi = checkPrCi,
   _log = log,
   _now = () => Date.now(),
   _sleep = sleep,
@@ -912,12 +1301,12 @@ export async function raisePrAndVerifyCi({
   }
   _log(`PR raised: ${prUrl}`);
 
-  // 2. Poll GHA checks. The script owns the cadence and the timeouts.
+  // 2. Poll GHA checks directly via `gh`. The script owns the cadence and the
+  //    timeouts; the poll itself is a mechanical status read, not an agent turn.
   const start = _now();
   let completionStart = null;
   while (true) {
-    const statusResult = await _agent("ship-pr", pollCiPrompt(feature, prUrl));
-    const status = parseCiStatus(statusResult);
+    const status = await _checkCi(prUrl);
 
     if (status === "passed") {
       _log(`GHA checks passed for PR ${prUrl}`);
@@ -1132,11 +1521,21 @@ async function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+// Default file read — real fs, returns null on any error (mirrors orchestrate-queue's
+// defaultReadFile). Injectable in tests via _readFile. Used for PLAN DAG parsing.
+function defaultReadFile(path) {
+  try {
+    return fs.readFileSync(path, "utf8");
+  } catch {
+    return null;
+  }
+}
+
 // ─── TSPEC-SCRIPT-04: main() ──────────────────────────────────────────────────
 
 /**
  * Main pipeline function — runs the full PDLC pipeline from REQ to harvest.
- * @param {{ reqPath: string, _agent?: function, _parallel?: function, _log?: function, _guardAgent?: function, _phase?: function, _pipeline?: function }} params
+ * @param {{ reqPath: string, _agent?: function, _parallel?: function, _log?: function, _checkFile?: function, _readFile?: function, _phase?: function, _pipeline?: function }} params
  * @returns {Promise<FinalReport>}
  */
 export default async function main({
@@ -1144,13 +1543,15 @@ export default async function main({
   _agent: rawAgentFn = agent,
   _parallel: parallelFn = parallel,
   _log: logFn = log,
-  _guardAgent: guardAgentFn = null,
+  _checkFile: checkFileFn = checkFileNonEmpty,
+  _readFile: readFileFn = defaultReadFile,
   _phase: phaseFn = phase,
   _pipeline: pipelineFn = pipeline,
   _mergeWorktree: mergeWorktreeFn = mergeWorktree,
   _rebaseOntoDefault: rebaseOntoDefaultFn = rebaseOntoDefault,
   _dodVerifyLoop: dodVerifyLoopFn = dodVerifyLoop,
   _raisePrAndVerifyCi: raisePrAndVerifyCiFn = raisePrAndVerifyCi,
+  _checkCi: checkCiFn = checkPrCi,
   _phaseDodEnabled: phaseDodEnabled = PHASE_DOD_ENABLED,
   _phasePubEnabled: phasePubEnabled = PHASE_PUB_ENABLED,
   _now,
@@ -1210,13 +1611,12 @@ export default async function main({
 
   const featureName = match[1];
 
-  // ─── TSPEC-ENTRY-03: file existence check via guard agent ─────────────────
+  // ─── TSPEC-ENTRY-03: deterministic REQ file existence check ───────────────
 
-  const guardFn = guardAgentFn ?? agentFn;
-  const guardResult = await guardFn("guard", `check-exists:${reqPath}`);
+  const reqCheck = checkFileFn(reqPath);
 
-  if (!guardResult.ok) {
-    if (guardResult.reason === "file_empty") {
+  if (!reqCheck.ok) {
+    if (reqCheck.reason === "file_empty") {
       haltReason = `Error: REQ file at ${reqPath} is empty`;
     } else {
       haltReason = `Error: REQ file not found at ${reqPath}`;
@@ -1252,7 +1652,7 @@ export default async function main({
         feature: featureName,
         _agent: agentFn,
         _parallel: parallelFn,
-        _guardAgent: guardAgentFn,
+        _checkFile: checkFileFn,
       });
       checkConverged(rLoop, "R", PHASE_DISPATCH.R.label, recordPhase);
       recordPhase("R", PHASE_DISPATCH.R.label, "✅", `Approved (${rLoop.iterations} iteration${rLoop.iterations !== 1 ? "s" : ""})`, rLoop.iterations);
@@ -1278,7 +1678,7 @@ export default async function main({
         feature: featureName,
         _agent: agentFn,
         _parallel: parallelFn,
-        _guardAgent: guardAgentFn,
+        _checkFile: checkFileFn,
       });
       checkConverged(fLoop, "F", PHASE_DISPATCH.F.label, recordPhase);
       recordPhase("F", PHASE_DISPATCH.F.label, "✅", `Approved (${fLoop.iterations} iterations)`, fLoop.iterations);
@@ -1288,7 +1688,7 @@ export default async function main({
       const tspecPath = `docs/${featureName}/TSPEC-${featureName}.md`;
       const tCreatorResult = await agentFn(
         PHASE_DISPATCH.T.creator,
-        creatorPrompt("T", featureName, PHASE_DISPATCH.T.creatorInputs)
+        `${creatorPrompt("T", featureName, PHASE_DISPATCH.T.creatorInputs)}\n${decisionsWarrantedTrailerRequirement()}`
       );
       if (!tCreatorResult || tCreatorResult.trim() === "") {
         throw haltError(
@@ -1304,30 +1704,19 @@ export default async function main({
         feature: featureName,
         _agent: agentFn,
         _parallel: parallelFn,
-        _guardAgent: guardAgentFn,
+        _checkFile: checkFileFn,
       });
       checkConverged(tLoop, "T", PHASE_DISPATCH.T.label, recordPhase);
       recordPhase("T", PHASE_DISPATCH.T.label, "✅", `Approved (${tLoop.iterations} iterations)`, tLoop.iterations);
 
-      // ─── TSPEC-DECISIONS-01: Post-PASS TSPEC Finalization ────────────────
-      phaseFn("Phase T: Post-PASS TSPEC Finalization");
-      let decisionsWarranted = true;
-
-      const postPassResult = await agentFn(
-        "se-author",
-        postPassTSPECPrompt(featureName)
+      // ─── TSPEC-DECISIONS-01: DECISIONS_WARRANTED read from Phase T ─────────
+      // The trailer requirement is appended to the Phase T creator and optimizer
+      // prompts, so its answer arrives inside the convergence loop — no separate
+      // post-PASS agent session. The last optimizer result carries it; if the loop
+      // converged on iteration 1 (no optimizer run) the creator result does.
+      const decisionsWarranted = parseDecisionsWarranted(
+        tLoop.lastOptimizerResult ?? tCreatorResult
       );
-      if (
-        postPassResult == null ||
-        (typeof postPassResult === "string" && postPassResult.trim() === "")
-      ) {
-        emit(
-          "Warning: TSPEC post-PASS agent failed — defaulting decisionsWarranted to true"
-        );
-        decisionsWarranted = true;
-      } else {
-        decisionsWarranted = parseDecisionsWarranted(postPassResult);
-      }
 
       // ─── Phase D: DECISIONS (conditional) ───────────────────────────────
       let decisionsPath = null;
@@ -1356,7 +1745,7 @@ export default async function main({
           feature: featureName,
           _agent: agentFn,
           _parallel: parallelFn,
-          _guardAgent: guardAgentFn,
+          _checkFile: checkFileFn,
         });
         checkConverged(dLoop, "D", PHASE_DISPATCH.D.label, recordPhase);
         recordPhase("D", PHASE_DISPATCH.D.label, "✅", `Approved (${dLoop.iterations} iterations)`, dLoop.iterations);
@@ -1385,7 +1774,7 @@ export default async function main({
         feature: featureName,
         _agent: agentFn,
         _parallel: parallelFn,
-        _guardAgent: guardAgentFn,
+        _checkFile: checkFileFn,
       });
       checkConverged(pLoop, "P", PHASE_DISPATCH.P.label, recordPhase);
       recordPhase("P", PHASE_DISPATCH.P.label, "✅", `Approved (${pLoop.iterations} iterations)`, pLoop.iterations);
@@ -1411,7 +1800,7 @@ export default async function main({
         feature: featureName,
         _agent: agentFn,
         _parallel: parallelFn,
-        _guardAgent: guardAgentFn,
+        _checkFile: checkFileFn,
       });
       checkConverged(prLoop, "PR", PHASE_DISPATCH.PR.label, recordPhase);
       recordPhase("PR", PHASE_DISPATCH.PR.label, "✅", `Approved (${prLoop.iterations} iterations)`, prLoop.iterations);
@@ -1419,25 +1808,34 @@ export default async function main({
       // ─── Phase I: Implementation ─────────────────────────────────────────
       phaseFn("Phase I: Implementation");
 
-      // TSPEC-IMPL-01: PLAN DAG parsing
-      const dagAgentResult = await agentFn(
-        "se-author",
-        `Read docs/${featureName}/PLAN-${featureName}.md and extract the task table. ` +
-          `Return a JSON object with this exact structure: ` +
-          `{"tasks": [{"id": "TASK-01", "description": "...", "dependencies": ["TASK-00"], "planBatch": 1}]}`
-      );
-
+      // TSPEC-IMPL-01: PLAN DAG parsing. Parse the PLAN task table in-script
+      // first — a markdown table needs no LLM. Only if the table is not parseable
+      // (e.g. dependencies live in prose) fall back to the extraction agent, which
+      // runs on Haiku since this is mechanical extraction, not reasoning.
       let tasks;
-      try {
-        const parsed = JSON.parse(dagAgentResult);
-        if (!parsed || !Array.isArray(parsed.tasks)) {
-          throw new Error("Invalid schema");
-        }
-        tasks = parsed.tasks;
-      } catch {
-        throw haltError(
-          "Error: PLAN parsing agent failed to return structured task list"
+      const planParsed = parsePlanTasks(readFileFn(planPath));
+      if (planParsed && Array.isArray(planParsed.tasks) && planParsed.tasks.length > 0) {
+        tasks = planParsed.tasks;
+      } else {
+        const dagAgentResult = await agentFn(
+          "se-author",
+          `Read docs/${featureName}/PLAN-${featureName}.md and extract the task table. ` +
+            `Return a JSON object with this exact structure: ` +
+            `{"tasks": [{"id": "TASK-01", "description": "...", "dependencies": ["TASK-00"], "planBatch": 1}]}`,
+          { model: "haiku" }
         );
+
+        try {
+          const parsed = JSON.parse(dagAgentResult);
+          if (!parsed || !Array.isArray(parsed.tasks)) {
+            throw new Error("Invalid schema");
+          }
+          tasks = parsed.tasks;
+        } catch {
+          throw haltError(
+            "Error: PLAN parsing agent failed to return structured task list"
+          );
+        }
       }
 
       // TSPEC-IMPL-02: Topological batching
@@ -1518,7 +1916,7 @@ export default async function main({
         feature: featureName,
         _agent: agentFn,
         _parallel: parallelFn,
-        _guardAgent: guardAgentFn,
+        _checkFile: checkFileFn,
       });
       checkConverged(crResult, "CR", PHASE_DISPATCH.CR.label, recordPhase);
       recordPhase("CR", PHASE_DISPATCH.CR.label, "✅", `Approved (${crResult.iterations} iterations)`, crResult.iterations);
@@ -1616,6 +2014,7 @@ export default async function main({
         const pubResult = await raisePrAndVerifyCiFn({
           feature: featureName,
           _agent: agentFn,
+          _checkCi: checkCiFn,
           _log: emit,
           _now,
           _sleep,
