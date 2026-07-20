@@ -32,6 +32,7 @@ The argument is the feature's docs directory. Invoked by `orchestrate-dev` in Ph
 
 1. **Inventory.** List every `CROSS-REVIEW-*.md` and `CODE_REVIEW-*.md` (all document types, all `-v{N}` versions) and every `POSTMORTEM-*.md` in `docs/{feature-name}/`. `CODE_REVIEW-*` are the DoD verifier's versioned findings (Phase DOD) — treat them as cross-reviews from the Definition-of-Done lens.
 2. **Read all of them.** For each finding, note its `Scope` tag (from the review skills): `Local`, `Cross-Feature`, or `Process`. Untagged findings: infer scope, and record a Process learning that tagging was missed. For `CODE_REVIEW-*`, the count of `-v{N}` versions is the DoD convergence signal (how many remediation rounds the feature needed to satisfy the Definition of Done).
+   **Under-tagging check** — *(promoted 2026-07-19 consolidation)*: reviewers historically under-tag — treat any `Local`-tagged finding that references a sibling feature or a repo-wide mechanism as candidate `Cross-Feature` signal even though it wasn't tagged that way, and route it to §2 accordingly. If you re-route findings this way, note the tag under-use itself in §4 Process Learnings so consolidation sees the routing gap.
 3. **Count iterations** per phase (how many `-v{N}` versions exist) — this is your convergence signal.
 4. **Distill** into the four content sections below. Use the Scope tags to route findings:
    - `Cross-Feature` findings → §2 Cross-Feature Patterns.

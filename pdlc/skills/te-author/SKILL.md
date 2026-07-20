@@ -66,6 +66,15 @@ Before creating or revising PROPERTIES, read `docs/_constraints/DOMAIN-CONSTRAIN
 
    **Coverage-mode gates and routing branches:** If the spec introduces a coverage-mode gate or execution-routing branch (e.g., benchmark-only suppression, conditional model dispatch), derive ≥1 workflow-level integration property that runs the full execution path and asserts the terminal status. Guard-only unit tests are insufficient — the routing path itself must be verified.
 
+   **Oracle falsifiability checklist** (*promoted 2026-07-19 consolidation*) — before finalizing any property, check it against these failure modes:
+   - **Preservation/byte-identity oracles** must carry a positive-presence conjunct: assert the preserved content is *in the fixture* AND assert it is *present in the output* — an oracle that only checks "output == input" is vacuous on a fixture that never had the content to begin with.
+   - **Regex alternation branches** each need their own positive control (a fixture that actually exercises that branch). Pair any absence-tolerant check (`count <= 1`, `not present`) with a positive-presence oracle proving the pattern *can* match. Whitespace-normalize multi-word sentinels before substring matching — a sentinel straddling a hard newline silently matches zero.
+   - **Identical-envelope behaviors** (retry, dedup, re-fetch): if the result envelope looks the same whether or not the behavior happened, the oracle must be a behavioral call-count (spy/mock invocation count), not a shape assertion — and this applies symmetrically to every member of the behavior family, not just the one under test.
+   - **Exact-value oracles over a real multi-node graph** must derive N×U via a dispatch-count spy; never assume a single dispatch unit U by hand-counting nodes.
+   - **Derived values and absence-shaped distinguishing conjuncts** belong at the whole-pipeline/integration seam, not at an injectable unit that structurally cannot falsify them. Prefer real captured envelopes over hand-built synthetic fixtures at contract boundaries.
+   - **New blocking causes behind a precedence chain**: the oracle must defeat every earlier branch — a fixture where an earlier outcome preempts the new cause would pass even if the new feature were unimplemented. Disk-mediated carry-forward must be proven with a reload between legs, not an in-memory prior.
+   - **Hypothesis strategy hygiene**: bound generators that compute products/magnitudes and add `assume(math.isfinite(...))`; pin boundary-adjacent draws strictly outside `math.isclose` tolerance bands via a relative-offset construction, not an absolute one.
+
 4. Classify each property:
 
    | Category | Description | Test Level |
@@ -156,6 +165,7 @@ Max 3-5 E2E tests per feature. If you need more, the feature needs decomposition
 - [ ] Negative properties included — every blocked/held/degraded invariant has exact status + named reason code + audit assertion (not merely `!= X`)
 - [ ] Coverage-mode gates and routing branches each have ≥1 workflow-level integration property
 - [ ] Fixture strings match the normative source verbatim; lexicon-dependent fixtures cross-checked against the normative lexicon table
+- [ ] Every oracle passes the falsifiability checklist (positive-presence conjuncts, regex-branch controls, behavioral call-counts for identical-envelope behaviors, dispatch-count-derived N×U, whole-pipeline placement for derived/absence-shaped conjuncts, precedence-defeating fixtures, bounded Hypothesis strategies)
 - [ ] Coverage matrix shows no unexplained gaps
 
 ---

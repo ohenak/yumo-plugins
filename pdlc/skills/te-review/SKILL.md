@@ -85,6 +85,12 @@ When the orchestrator marks the review as iteration ≥2, you are re-reviewing a
 - Are negative cases present (what must NOT happen)?
 - Are non-functional requirements measurable (response time thresholds, error rates)?
 
+### REQ/FSPEC Verification Checks (apply to both — *promoted 2026-07-19 consolidation*)
+- For a value-correcting AC: verify the produce site has a non-test caller and the value reaches the operator-visible artifact (grep, don't trust the doc).
+- For an activation/wiring REQ: verify every production input of the activated step has a real HEAD source, and that the claimed missing wiring doesn't already exist at HEAD.
+- Any "X never happens at HEAD" claim needs a mechanism citation plus a cross-check against existing tests that may pin the opposite.
+- Verify cross-feature DEC/DC/REQ citations against the cited file — nonexistent-authority citations have shipped three times.
+
 ### Reviewing FSPEC
 - Are behavioral flows testable at the unit or integration level?
 - Are all decision branches explicitly described (so each can be a separate test)?
@@ -128,6 +134,14 @@ When the orchestrator marks the review as iteration ≥2, you are re-reviewing a
 - **Dead-config check:** For every config artifact (dict, map, rules JSON, catalog entry) introduced in implementation, confirm that ≥1 production code path imports **and** executes it. A config object that is only imported by tests is dead config — its behavior is untested in production. Flag as a **Medium** finding if no production caller is wired.
 - **Absence-based oracle check:** Any test that asserts only `status != X` (or equivalently `not in [...]`) is an unfalsifiable oracle — any non-X status, including accidental states, would pass. Every blocked/held/degraded invariant must have three positive conjuncts: (1) exact status value, (2) named reason code, (3) retention or audit-trail assertion. A test asserting only `status == PUBLISHED` without reading a lineage field (e.g., `last_contributing_inputs`) is also incomplete. Flag absence-only oracles as a **High** finding.
 
+### Oracle-Falsifiability Review Checks (apply to PROPERTIES-derived tests and Implementation review — *promoted 2026-07-19 consolidation*)
+1. Reject preservation/byte-identity oracles lacking a positive-presence conjunct, and absence-only oracles lacking the positive mechanism conjunct (exact status + named reason).
+2. Where result envelopes are behavior-indistinguishable (retry/dedup/re-fetch), require a behavioral call-count oracle for **every** member of the behavior family, not just the first.
+3. Require derived values / absence-shaped conjuncts to be asserted at the integration seam, never an injectable unit that structurally cannot falsify them.
+4. **Precedence-chain false-green check:** an oracle asserting only the terminal state (e.g. "BLOCKED") passes when an earlier branch preempts — require the fixture to defeat every earlier branch.
+5. **Remediation review:** every new invariant introduced by a fix needs its own falsifying test in the same revision ("does the fix itself have a falsifying test?"); at final codebase review, verify load-bearing oracles by mutation (revert the guarded behavior → expect RED).
+6. **Exception-scope check:** before approving a "returns exit-1 / error-envelope" AT for a newly-added computed field, verify the field is computed **inside** the block the try/except actually wraps.
+
 ---
 
 ## Tagging Finding Scope
@@ -141,6 +155,8 @@ Every finding gets a **Scope** tag alongside its severity. Scope determines what
 | `Process` | Reveals that a skill prompt, review checklist, or workflow phase needs updating | Routed to process learnings during harvest |
 
 When unsure, default to `Local`. Do not inflate severity to attract attention — use `Cross-Feature` or `Process` to flag durable signal instead.
+
+**Scope-tagging discipline** *(promoted 2026-07-19 consolidation)*: tag a finding `Cross-Feature` whenever it references a sibling feature, restates a DOMAIN-CONSTRAINT, recurs at more than one phase, or the lesson is reusable regardless of where the fix lands. When multiple reviewers raise the same finding, reconcile Scope tags across reviews before filing.
 
 > **Mandatory from the first review pass:** Scope tags are required on every finding in every review iteration — REQ, FSPEC, TSPEC, PLAN, PROPERTIES, and IMPLEMENTATION alike. Do not leave findings untagged because the phase is early. Early tagging allows harvest to route findings mechanically without having to infer scope.
 
