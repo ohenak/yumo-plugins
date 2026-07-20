@@ -69,6 +69,12 @@ Before creating or revising any REQ or FSPEC, read `docs/_constraints/DOMAIN-CON
 
    Soft notes ("see prior phase") are not sufficient — every upstream dependency must be checkable at gate time.
 5c. **Deferral binding obligation:** Any capability this REQ explicitly defers must be bound, at REQ acceptance, to a successor that exists as a queue row (draft acceptable) or a named successor REQ file. "Runbook step", "operator config", or prose intent is not a successor — the post-mortem showed those never ship. An unbound deferral is a blocking gap.
+5d. **REQ first questions.** Work through this checklist before writing acceptance criteria — *(promoted 2026-07-19 consolidation)*:
+   1. Value-correcting / "make X honest or correct" REQ: grep the produce site for a NON-TEST caller and trace the value to the operator-visible artifact before writing the AC — a builder unit-tested but never assembled in the composition root ships the fix on a surface no one sees.
+   2. Activation / loop-closure / "wire X" REQ: enumerate every production input the activated step needs and confirm each has a real HEAD source (input-provenance triage); also check whether the wiring already exists at HEAD — if so, the deliverable is the proven test + observability + runbook, not new code.
+   3. Any "X never happens at HEAD" claim carries a mechanism citation (file:symbol) plus a cross-check against existing tests that may pin the opposite behavior.
+   4. Verify every cross-feature DEC/DC/REQ citation against the cited file at authoring time — never from memory.
+   5. Size/byte budgets ship with their measured-floor derivation arithmetic from the first draft — never a guessed round number, never a self-referential `measured + N` anchor alone.
 6. Structure requirements by domain with metadata:
    - **ID** — `REQ-{DOMAIN}-{NUMBER}` (e.g., `REQ-AUTH-01`)
    - **Title, Description**
@@ -160,6 +166,7 @@ docs/
 - [ ] Every AC citing a configured threshold has a named threshold declaration with default value and config owner
 - [ ] Upstream dependencies on other features are in a hard-prerequisite table (not soft notes)
 - [ ] Every deferred capability is bound to a successor queue row or successor REQ (not a runbook step, operator config, or prose intent)
+- [ ] REQ first questions checklist worked (value-correcting produce-site trace, activation input-provenance triage + existing-wiring check, mechanism citations for "never happens" claims, cross-feature citations verified against source, byte/size budgets carry measured-floor derivation) — *(promoted 2026-07-19 consolidation)*
 - [ ] Infra/deployment-governance posture is settled or explicitly scoped as a separate workstream with a named owner
 - [ ] Product naming is finalized — all major entities, modules, and public APIs have definitive names
 - [ ] Dependencies documented, scope boundaries defined

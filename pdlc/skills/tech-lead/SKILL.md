@@ -34,7 +34,7 @@ This skill accepts a plan file path as its argument:
 
 1. Read the plan file. If it doesn't exist, is a directory, or is empty — report the error and halt.
 2. Extract all phases from the "Task List" section. Phase headers follow `### Phase {letter} — {title}`.
-3. Extract task tables for each phase (columns: `#`, `Task`, `Test File`, `Source File`, `Status`).
+3. Extract task tables for each phase (columns: `#`, `Task`, `Test File`, `Source File`, `Batch`, `Deps`, `Status`). The `Batch`/`Deps` columns are the dispatcher contract consumed by the PLAN-lint in Step 3.
 4. Extract the "Task Dependency Notes" section. If absent or empty → Sequential Fallback Mode.
 
 ### Step 2: Build the Dependency Graph
@@ -61,20 +61,29 @@ Build a DAG from the parsed edges. Validate:
 4. Apply concurrency cap: max 5 phases per sub-batch.
 5. If no phases remain → report "All phases already Done" and halt.
 
-**Validate the DAG mechanically before dispatch** (the dispatcher reads the `Batch` column, not
-the prose — a desynced column silently runs terminal tasks before their dependencies land):
+**Run the mechanical PLAN-lint before dispatching any batch** (the dispatcher reads the `Batch`
+column and the `Deps` edges, never the §-prose — a desynced column silently runs terminal tasks
+before their dependencies land). Derive everything from the `Deps` column; on any violation **halt
+with the named finding** and fix the PLAN or escalate — do not dispatch:
 
-- **Re-derive every batch from its edge set.** For each task, compute `batch == max(batch of deps) + 1`
-  (sources = batch 1, or the first batch after completed phases). Assert the re-derived batch equals
-  the declared `Batch` column for every row; assert the graph is acyclic, task ids are unique, and
-  every dependency reference resolves. A mismatch (e.g. a task in batch 7 with a batch-9 dependency)
-  is a **halt** condition — fix the PLAN or escalate, do not dispatch.
-- **Same-new-file authoring guard.** No two tasks in the same batch may **create or append the same
-  new file** (test file or source file). Concurrent `se-implement` agents are last-writer-wins on a
-  shared new file and silently drop the other's content — which the green test gate cannot detect.
-  Serialize such tasks across batches (add a dependency edge) before dispatch.
+- **`BATCH-DESYNC`.** Re-derive every batch from its edge set: for each task compute
+  `batch == max(batch of deps) + 1` (sources = batch 1, or the first batch after completed phases).
+  Assert the re-derived batch equals the declared `Batch` column for every row; assert the graph is
+  acyclic, task ids are unique, and every dependency reference resolves. A mismatch (e.g. a task in
+  batch 7 with a batch-9 dependency) halts.
+- **`SHARED-FILE-RACE`.** No two tasks in the same batch may **create or append the same file**
+  (source *or* test). Concurrent `se-implement` agents are last-writer-wins on a shared file and
+  silently drop the other's content — which the green test gate cannot detect (the suite stays green
+  on the surviving subset). Serialize such tasks across batches (require a `Deps` edge) before dispatch.
+- **`RED-GREEN-UNEDGED`.** Every green implementation task must carry an explicit `Deps` edge to its
+  red-test task — red-before-green must not rest on id-order luck. Missing edge halts.
+- **`SHARED-PREREQ-UNOWNED`.** Shared prerequisites (package `__init__.py` markers, shared
+  conftest/fixture modules, pre-refactor golden captures) must be owned by **exactly one** task with
+  explicit downstream edges from every consumer; a shared test helper may only be depended on by tasks
+  strictly downstream of its creator. A prerequisite with zero or multiple owners, or a consumer
+  lacking the edge, halts.
 
-(Consuming repo: `docs/_decisions/CONSOLIDATION-PROPOSAL-2026-06-22.md` P4.)
+(Promoted 2026-07-19 consolidation; supersedes `docs/_decisions/CONSOLIDATION-PROPOSAL-2026-06-22.md` P4.)
 
 ### Step 4: Assign Skills to Phases
 

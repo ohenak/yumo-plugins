@@ -87,6 +87,12 @@ Every spec sentence that asserts a fact about *existing* code — signature, ret
 - Are API or data contract implications considered?
 - For every acceptance criterion that cites a "configured" threshold (staleness window, penalty value, fallback order, enum set, numeric cutoff): is the threshold declared in config with a named owner and a default value? Missing threshold declarations are a **High** finding — they must be resolved before FSPEC authoring begins.
 
+### REQ/FSPEC Verification Checks (apply to both — *promoted 2026-07-19 consolidation*)
+- For a value-correcting AC: verify the produce site has a non-test caller and the value reaches the operator-visible artifact (grep, don't trust the doc).
+- For an activation/wiring REQ: verify every production input of the activated step has a real HEAD source, and that the claimed missing wiring doesn't already exist at HEAD.
+- Any "X never happens at HEAD" claim needs a mechanism citation plus a cross-check against existing tests that may pin the opposite.
+- Verify cross-feature DEC/DC/REQ citations against the cited file — nonexistent-authority citations have shipped three times.
+
 ### Reviewing FSPEC
 - Are behavioral flows technically implementable with the current architecture?
 - Are business rules explicit enough to implement without PM involvement?
@@ -110,6 +116,7 @@ Every spec sentence that asserts a fact about *existing* code — signature, ret
 - Is the implementation consistent with the TSPEC architecture?
 - Are error cases handled correctly?
 - **Reinvention check (cite-and-reuse the sibling):** Does the implementation reinvent a cross-cutting mechanism a sibling module already ships — a driver-free failure-mode test harness, atomic-write lock discipline, `(store, closer)` lifecycle, shared point-in-time selector — instead of reusing the shipped precedent? A novel black-box re-implementation of a solved cross-cutting obligation (and any divergence from the established pattern it should have reused) is a **High** finding: cite the precedent it should adopt. (Consuming repo: `docs/_constraints/DOMAIN-CONSTRAINTS.md` DC-08; `docs/_decisions/`.)
+- **Blast-radius enumeration check** *(promoted 2026-07-19 consolidation)*: when a PLAN/TSPEC claims blast-radius enumeration for a shared seam/constant change, verify it was produced by a repo-wide grep (not memory or a directory-scoped search) and that it includes test doubles/conftest fakes and cross-language fixtures. An enumeration missing any of those categories is a **High** finding.
 
 ---
 
@@ -124,6 +131,8 @@ Every finding gets a **Scope** tag alongside its severity. Scope determines what
 | `Process` | Reveals that a skill prompt, review checklist, or workflow phase needs updating | Routed to process learnings during harvest |
 
 When unsure, default to `Local`. Do not inflate severity to attract attention — use `Cross-Feature` or `Process` to flag durable signal instead.
+
+**Scope-tagging discipline** *(promoted 2026-07-19 consolidation)*: tag a finding `Cross-Feature` whenever it references a sibling feature, restates a DOMAIN-CONSTRAINT, recurs at more than one phase, or the lesson is reusable regardless of where the fix lands. When multiple reviewers raise the same finding, reconcile Scope tags across reviews before filing.
 
 > **Mandatory from the first review pass:** Scope tags are required on every finding in every review iteration — REQ, FSPEC, PROPERTIES, and IMPLEMENTATION alike. Do not leave findings untagged because the phase is early. Early tagging allows harvest to route findings mechanically without having to infer scope.
 

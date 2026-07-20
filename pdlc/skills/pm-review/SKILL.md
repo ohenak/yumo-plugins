@@ -120,6 +120,8 @@ When unsure, default to `Local`. Do not inflate severity to attract attention �
 
 > **Mandatory from the first review pass:** Scope tags are required on every finding in every review iteration — TSPEC, DECISIONS, PLAN, PROPERTIES, and IMPLEMENTATION alike. Do not leave findings untagged. Early tagging allows harvest to route findings mechanically without having to infer scope.
 
+**Tag-selection discipline** — *(promoted 2026-07-19 consolidation)*: tag a finding `Cross-Feature` whenever it references a sibling feature, restates a `DOMAIN-CONSTRAINT`, recurs at more than one phase, or the lesson is reusable regardless of where the fix lands. When more than one reviewer raises the same finding, reconcile the Scope tag across reviewers rather than shipping conflicting `Local`/`Cross-Feature` tags for the same defect — check prior cross-review files for the same finding before finalizing your tag.
+
 ---
 
 ## Cross-Review File Format

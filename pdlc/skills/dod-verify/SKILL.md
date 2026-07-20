@@ -36,6 +36,7 @@ Scan all **non-test** source files on the feature branch for stub indicators:
 - Functions/methods whose body is only `pass`, `return None`, `return null`, `return undefined`, or `return {}` with no logic
 - `placeholder`, `stub`, `dummy` in identifiers or string literals (case-insensitive) — production code only, not test doubles
 - `console.log("TODO")` or similar deferred-work markers
+- `# pragma: no cover` (or equivalent coverage-exemption pragma) on non-SDK production lines that sit on a served flow — a DoD-integrated defect wearing a coverage exemption, not a legitimate exclusion (*promoted 2026-07-19 consolidation*)
 
 **Challenger move:** read every function body, not just its signature. The name may be real; the body may be hollow.
 
@@ -113,6 +114,8 @@ A requirement that has code but no failing test is not delivered — it's untest
 
 **Challenger moves:**
 - Trace each AC to the **final operator-visible artifact** — the file/endpoint/record after the full production path, including any entry-point re-render or post-graph overwrite — **not** to the node/builder output. Enumerate **all** writers of the traced output (`grep` the filename/key); if a later writer can overwrite the traced value, the AC is not delivered unless a test pins the final artifact. (Example class: a writer node emits real `subagent_tokens`, but an entry-point re-render clobbers it with `0`.)
+- Run a **real-config smoke**: exercise the REAL entrypoint with the SHIPPED default config, not node output or a substituted fixture config. A config token the parser rejects can abort the whole production path while CI stays green on a fixture that swapped it out. (*promoted 2026-07-19 consolidation*)
+- On activation/loop-closure paths, check **per-input liveness** separately for each production input feeding the artifact — a liveness proof for one input never certifies a sibling input on the same path. (*promoted 2026-07-19 consolidation*)
 - For each FSPEC user flow: can you walk through the code and follow every step? If a step is missing or delegates to a TODO, that's a gap.
 - For each error/edge case in the FSPEC: is there a test that exercises it? If not, flag it as undelivered.
 - For each PROPERTIES item: does the test actually assert the property, or does it just call the function and expect no exception? An assertion-free test proves nothing.
@@ -129,6 +132,8 @@ A feature can pass criteria 1–5 in isolation and still ship a defect: it can s
 
 - Does this diff make any *existing* artifact, disclosure string, comment, config default, or doc claim **false**? (Example class: a feature implements size caps while a shipped `DEFERRED_SAFETY_GUARDRAILS` constant still discloses them as "not yet implemented".)
 - Does a **same-shape sibling surface** remain unhandled and unacknowledged? When the feature modifies one member of a family — one `tools/get_*` fetch tool among several, one writer of an artifact that has other writers — enumerate the family (`grep`/glob) and require each sibling be either covered or explicitly declared out-of-scope in the REQ.
+- **Stale-disclosure family sweep** (*promoted 2026-07-19 consolidation*): when the diff falsifies a prose disclosure — a module docstring, a runbook section, a comment, possibly authored by an adjacent feature — grep for every other member of that disclosure family and require all of them updated, not just the nearest occurrence.
+- **Re-measure recorded derivations** (*promoted 2026-07-19 consolidation*): byte budgets, measured totals, and "N = measured + margin" comments are claims about the branch tip at the time they were written. Re-measure them against the current branch tip — any later content-growing commit on the same branch silently falsifies them.
 - **Challenger moves:** for every output file the feature writes, `grep` for **other writers of the same file/key** and check whether a later stage overwrites the feature's value; for every constant/disclosure/docstring in touched modules, ask "is this still true after the diff?"
 - **Findings scope-tag:** `Cross-Feature`.
 
@@ -171,7 +176,7 @@ A feature can pass criteria 1–5 in isolation and still ship a defect: it can s
 
 When the orchestrator passes a version ≥2, the feature was already fully scanned in v1 (or the prior round) and then remediated. Do **not** re-run the full six-criteria scan — run a delta re-verify against the same evidence bar:
 
-1. Read `docs/{feature}/CODE_REVIEW-{feature}-v{N-1}.md`. For **each** finding, verify remediation: trace the fix to a production code path **and** a test that would fail if the fix broke. An assertion-free or stub-backed test does not count as remediation.
+1. Read `docs/{feature}/CODE_REVIEW-{feature}-v{N-1}.md`. For **each** finding, verify remediation: trace the fix to a production code path **and** a test that would fail if the fix broke. An assertion-free or stub-backed test does not count as remediation. If the remediation introduces a **new invariant**, it must ship its own falsifying test in the same revision — verify the load-bearing oracle by mutation: revert the guarded behavior and confirm the test goes RED (*promoted 2026-07-19 consolidation*).
 2. Run `git diff` covering the remediation commits since v{N-1} and scan **only** that diff for new stubs, mock data, unwired integrations, integration-boundary gaps (adjacent surfaces the fixes silently falsify), or regressions the fixes introduced. Do not re-scan unchanged code already verified in the previous round.
 3. Carry the §2 Requirements Traceability table forward from v{N-1}, updating only the rows the remediation touched (the `Gap?` column).
 4. Document the result in `docs/{feature}/CODE_REVIEW-{feature}-v{N}.md` with Scope tags as before. Do **not** fix anything.

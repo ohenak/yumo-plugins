@@ -120,13 +120,23 @@ Before writing, read `docs/_decisions/DECISIONS-*.md` (project-level promoted de
 
 Create `docs/{feature-name}/PLAN-{feature-name}.md` with:
 - Summary of what's being built
-- Phased task list with columns: `#`, `Task`, `Test File`, `Source File`, `Status`
+- Phased task list with columns: `#`, `Task`, `Test File`, `Source File`, `Batch`, `Deps`, `Status`
 - Status key: ⬚ Not Started | 🔴 Red | 🟢 Green | 🔵 Refactored | ✅ Done
 - **`[Fake first]` convention:** Test-double creation tasks are labelled `[Fake first]` and must precede all production-implementation tasks for the same component. Every implementation task row must have a corresponding red-test row referencing the same test file and ≥1 named acceptance test (AT). Verify TDD order before submitting for review — order violations are the author's responsibility.
 - **Prior-phase baseline pre-flight (when applicable):** If this feature extends symbols from a prior-phase baseline, add a `P2-00 pre-flight gate` task as the **first** task in the PLAN. The gate asserts that every `BL-PREREQ` symbol is importable / `hasattr`-present at HEAD and promotes any absent symbol to blocking work before dependent tasks run. The gate must only assert baseline-symbol *existence* — never the new shape created by a dependent task.
 - Task dependency notes
 - Integration points
 - Definition of Done checklist
+
+#### Batch-safety rules (normative — dispatcher-enforced)
+
+*Promoted 2026-07-19 consolidation (4th consecutive recurrence, ≥15 features). The tech-lead dispatcher runs a mechanical PLAN-lint on these before every batch and **halts** on violation — prose disclaimers do not exempt a PLAN.*
+
+1. **The `Batch` column is a dispatcher contract, not documentation.** Derive every row mechanically as `batch == max(batch of dependencies) + 1` (sources = batch 1). The dispatcher validates the *column* against the `Deps` edges and halts on mismatch. A prose note ("the column is just a lane label") is dead on arrival — fix the number, not the caption.
+2. **Single-writer-per-batch for every physical file — SOURCE and TEST alike.** No two tasks in the same batch may create or append to the same file. The green gate cannot detect the last-writer-wins race: concurrent agents silently drop each other's content and the suite stays green on the surviving subset. Serialize each shared-file cluster with real `Depends on` edges (which force the batch split via rule 1) — never with prose notes. Include a **per-phase file-ownership manifest** (file → owning task) so the disjointness premise is mechanically auditable.
+3. **Red-before-green is an explicit dependency edge**, never id-order luck: the green implementation task lists its red-test task in `Deps`. RED-terminal TDD batches carry their own gate wording — "new tests fail for the specified reason + pre-existing tests green" — because a blanket "full suite green after every batch" is unsatisfiable when a batch legitimately ends red.
+4. **Shared prerequisites are created serially in batch 1 by a single owning task** — package `__init__.py` markers, shared conftest/fixture modules, pre-refactor golden captures — with explicit downstream edges from every task that needs them. A shared test helper may only be depended on by tasks strictly downstream of its creator.
+5. **Source/Test File columns use subpackage-qualified paths** (`wheel_orchestrator/nodes/writer.py`, not `writer.py`) so they are machine-parseable. Before finalizing, grep the PLAN for bare basenames of files that live under a subpackage.
 
 Commit and push.
 
@@ -154,8 +164,13 @@ When feedback arrives on your TSPEC, DECISIONS, or PLAN:
 - [ ] Responsive and accessibility strategies specified (frontend)
 
 ### PLAN
-- [ ] Every task has test file and source file specified
+- [ ] Every task has test file and source file specified (subpackage-qualified paths, no bare basenames)
 - [ ] Every implementation task has a preceding red-test row referencing the same test file and ≥1 named AT (`[Fake first]` order)
+- [ ] `Batch` column re-derives to `max(dep batches) + 1` for every row
+- [ ] No two same-batch tasks create or append the same file (source or test); shared-file clusters serialized via `Deps` edges
+- [ ] Per-phase file-ownership manifest present
+- [ ] Every green implementation task lists its red-test task in `Deps`; RED-terminal batches carry the split gate wording
+- [ ] Shared prerequisites (package markers, conftest/fixtures, goldens) owned by one batch-1 task with downstream edges
 - [ ] P2-00 pre-flight gate is the first task when extending a prior-phase baseline
 - [ ] Dependencies documented
 - [ ] Definition of Done criteria listed
