@@ -1,27 +1,32 @@
-# Master plan — the engineering loop (PDLC Loop 5)
+# Master plan — closing the PDLC engineering loop
 
 | Field | Value |
 |---|---|
 | Author | Claude (Opus 5) |
 | Date | 2026-07-27 |
 | Status | draft — operator review pending |
-| Scope | `yumo-plugins/pdlc` — the pipeline that builds everything else |
-| Sibling | `regime-ledger-research/docs/design/MASTER-PLAN-wheel-room-company.md` §Loop 5 |
+| Scope | `pdlc` — the delivery pipeline itself |
 
 ---
 
 ## 0. The load-bearing observation
 
-The Wheel Room master plan describes four business loops. All four are *built* by a fifth loop
-that plan does not describe, because it lives in a different repository: the PDLC pipeline in
-`yumo-plugins/pdlc`. Every REQ in the business queue will be delivered by
-`/pdlc:orchestrate-queue` driving `/pdlc:orchestrate-dev`.
+The PDLC pipeline delivers features for whatever repository consumes it: a queue of `ready`
+REQs goes in, reviewed and tested pull requests come out. That is a loop, and it is meant to
+run unattended — `orchestrate-queue`'s stated design is to be driven by `/loop` for
+"unattended, dependency-respecting feature delivery."
 
-That fifth loop is currently **open in four places**. Each break has the same signature: the
-pipeline reaches a point requiring judgment, stops, and waits for a human who is not there. The
-work does not fail — it *idles*, which is worse, because idling is silent and produces no alert.
+It does not currently close. It is **open in four places**, and each break has the same
+signature: the pipeline reaches a point requiring judgment, stops, and waits for a human who is
+not there. The work does not fail — it *idles*, which is worse, because idling is silent and
+produces no alert.
 
-This plan closes it.
+The consequence is that "unattended" is true only for the span of a single feature. Beyond
+that, the pipeline's throughput is bounded by how often its operator sits down, and its quality
+is bounded by improvements that get proposed and never applied.
+
+This plan closes the loop. Nothing in it is specific to any consuming repository; the design
+holds for any repo that installs this plugin.
 
 ---
 
@@ -29,48 +34,61 @@ This plan closes it.
 
 ### Break 1 — merge (the latency break)
 
-`orchestrate-queue` sets a feature to `awaiting-merge` and stops. The SKILL is explicit that this
-is deliberate: "The skill never sets `done` … Marking `done` is the human's acknowledgement that
-the merge happened," because a dependent feature's readiness check looks for the dependency's code
-*in the base branch*, and only a real merge puts it there.
+`orchestrate-queue` sets a feature to `awaiting-merge` and stops. The SKILL is explicit that
+this is deliberate: "The skill never sets `done` … Marking `done` is the human's acknowledgement
+that the merge happened," because a dependent feature's readiness check looks for the
+dependency's code *in the base branch*, and only a real merge puts it there.
 
 The reasoning is correct. The conclusion — that a human must do it — is not. What the invariant
 actually requires is that `done` is written *only after the code is genuinely in the base*. A
-workflow phase that merges the PR and then writes `done` satisfies that invariant exactly as well
-as a human does, and satisfies it in seconds rather than in days.
+workflow phase that merges the PR and then writes `done` satisfies that invariant exactly as
+well as a human does, and satisfies it in seconds rather than in days.
 
-The cost of the break is not one merge. It is that **every dependent feature in the queue stays
-blocked for the duration of the human's absence**, and the queue is a serial chain, so the delay
-compounds down the whole chain.
+The cost of the break is not one merge. The queue is **serial by design**, so while any entry
+sits in `awaiting-merge` the driver reports `blocked` and refuses to pick up new work at all.
+**Every dependent feature stays blocked for the duration of the human's absence**, and because
+the queue is a chain, the delay compounds down its whole length. On a long backlog this is the
+dominant term in time-to-delivery, and it is pure waiting.
+
+There is a second, subtler cost. `awaiting-merge` also requires the human to *edit the queue
+file* after merging. A merge that happens without the edit leaves the queue permanently
+`blocked` on a feature that is already in base — a stall with a misleading cause.
 
 ### Break 2 — learning (the improvement break)
 
-`consolidate-learnings` reads per-feature LEARNINGS and promotes patterns. When a learning says
-*a skill prompt itself should change*, the skill writes
-`docs/_decisions/CONSOLIDATION-PROPOSAL-{date}.md` — a markdown table — **in the consuming repo**.
-The skills it proposes to change live in `yumo-plugins/pdlc/skills/`.
+`consolidate-learnings` reads per-feature LEARNINGS and promotes recurring patterns into
+project-level `DOMAIN-CONSTRAINTS` and `DECISIONS`. When a learning says *a skill prompt itself
+should change*, the skill writes `docs/_decisions/CONSOLIDATION-PROPOSAL-{date}.md` — a markdown
+table — **in the consuming repo**. The skills it proposes to change live in *this* repo.
 
-Nothing carries the proposal across that repository boundary. The proposal is a note to a human
-who must read it, switch repos, and hand-apply the edit. In practice this means the pipeline
-accumulates evidence about its own failure modes and then does nothing with it. The loop that is
-supposed to make the pipeline better is the one loop that is entirely manual.
+Nothing carries the proposal across that repository boundary. It is a note to a human who must
+read it, switch repos, and hand-apply each edit. In practice the pipeline accumulates precise
+evidence about its own failure modes and then does nothing with it. The one loop meant to make
+the pipeline better is the only fully manual one.
+
+The propose-only rule that produces this is itself correct — "agents proposing changes to the
+prompts that govern agents must pass through human judgment." But *propose-only* and
+*hand-transcribed* are different requirements, and the skill currently enforces the second while
+intending only the first.
 
 ### Break 3 — distribution (the silent break)
 
-`SKILL.md` files load live from the installed plugin — `CLAUDE.md` states this explicitly: "edit
-them in interactive Claude Code sessions and the engine picks the change up automatically (no
-copies to sync)."
+`SKILL.md` files load live from the installed plugin — `CLAUDE.md` states it: "edit them here
+and both interactive Claude Code sessions and the Ptah engine pick up the change automatically
+(no copies to sync)."
 
 **Workflow scripts do not.** Both `orchestrate-dev/SKILL.md` and `orchestrate-queue/SKILL.md`
-record the same convention: the canonical source is `pdlc/workflows/*.js`, the runtime-loaded copy
-is `.claude/workflows/*.js` in the consumer repo, and "until a formal `pdlc install` mechanism
-exists, this copy is managed manually."
+record the same convention: the canonical source is `pdlc/workflows/*.js`, the runtime-loaded
+copy is `.claude/workflows/*.js` in the consumer repo, and "until a formal `pdlc install`
+mechanism exists, this copy is managed manually."
 
-So a workflow improvement can land in `yumo-plugins`, be merged, be celebrated, and **never
-execute anywhere**, because no consumer copied it. The two copies happen to be identical today
-(verified 2026-07-27 against `regime-ledger-research`), which is luck, not a mechanism. This is
-the most dangerous of the four breaks because it is the only one with no symptom: the loop *looks*
-closed.
+So a workflow improvement can land here, be reviewed, merged and archived, and **never execute
+anywhere**, because no consumer copied it. Spot-checked 2026-07-27 against a live consuming
+repo: the two copies were byte-identical, last synced five days earlier — a manual copy that
+happened to be current, not a mechanism that keeps it current.
+
+This is the most dangerous of the four breaks because it is the only one with no symptom: the
+loop *looks* closed.
 
 ### Break 4 — advisory halts (the attention break)
 
@@ -84,7 +102,7 @@ Every judgment call in the pipeline is a full stop with no attempt at resolution
 | `ship-pr` rebase conflicts | pipeline halts, branch left unchanged |
 | CI red on the raised PR | pipeline halts |
 
-In each case the operator arrives to an unexplained stop and must reconstruct the situation from
+In each case the operator arrives at an unexplained stop and must reconstruct the situation from
 scratch. The expensive thing is not the decision — it is the **investigation preceding** the
 decision.
 
@@ -103,9 +121,9 @@ QUEUE.md (ready REQ)
    │
    ├─▶ LEARNINGS-{feature}.md
    │        │
-   │        └─▶ CONSOLIDATION (Fable 5, on cadence)                   ← NEW
+   │        └─▶ CONSOLIDATION (advisory model, on cadence)            ← NEW
    │                ├─ project-level: DOMAIN-CONSTRAINTS / DECISIONS in the consuming repo
-   │                └─ pipeline-level: PR against yumo-plugins        ← NEW (cross-repo)
+   │                └─ pipeline-level: PR against this plugin repo    ← NEW (cross-repo)
    │                        │
    │                        └─▶ operator approves (always — self-modification guard)
    │                                │
@@ -120,27 +138,28 @@ throughput; that arrow is *learning*.
 
 ---
 
-## 3. What Fable 5 is for
+## 3. The advisory tier
 
-Fable 5 becomes the **advisory tier**: a third model rung alongside the existing
-`MODEL_DEFAULT = "opus"` (reasoning phases) and `MODEL_IMPLEMENTATION = "sonnet"` (Phase I
-batches), plus `MODEL_QUEUE = "sonnet"` in the queue driver.
+A third model rung is added alongside the existing `MODEL_DEFAULT = "opus"` (reasoning phases),
+`MODEL_IMPLEMENTATION = "sonnet"` (Phase I batches), and `MODEL_QUEUE = "sonnet"` (queue
+triage): `MODEL_ADVISORY`, a high-capability rung for judgment work.
 
-Its job is precisely the work at Break 4 — the judgment calls that currently halt. It is
-**not** there to make the pipeline faster or cheaper. It is there to convert *stops* into either
-resolutions or **pre-analyzed escalations**.
+Its job is precisely the work at Break 4 — the calls that currently halt. It is **not** there to
+make the pipeline faster or cheaper. It is there to convert *stops* into either resolutions or
+**pre-analyzed escalations**.
 
 The distinction that makes this safe:
 
-> Fable does not remove the operator from the loop. It removes the **investigation** from the
-> operator's turn. The operator's involvement becomes approve-or-reject on a decision that has
-> already been reasoned through, with its evidence attached — not "why did this stop?"
+> The advisory tier does not remove the operator from the loop. It removes the
+> **investigation** from the operator's turn. The operator's involvement becomes
+> approve-or-reject on a decision that has already been reasoned through, with its evidence
+> attached — not "why did this stop?"
 
 Three invariants govern every advisory seam:
 
 1. **The advisory tier may never widen its own envelope.** What it is allowed to resolve
-   unattended is declared in configuration and is not inferable, negotiable, or extendable by the
-   agent at runtime.
+   unattended is declared in configuration and is not inferable, negotiable, or extendable by
+   the agent at runtime.
 2. **The advisory tier may never convert a blocking verdict into a passing one.** It cannot mark
    DoD passed, cannot weaken a criterion, cannot set `ready: true` on a REQ, cannot declare CI
    green. It may only *fix the underlying cause* and let the existing deterministic gate re-run
@@ -149,9 +168,8 @@ Three invariants govern every advisory seam:
    escalated — appended to `docs/{feature}/ADVISORY-{feature}.md`. An unrecorded advisory action
    is a defect.
 
-Invariant 2 is the same shape as the discipline the business plan applies to LLMs throughout:
-verdicts are computed deterministically, and the model works on prose and diagnosis, never on the
-verdict itself.
+Invariant 2 is the discipline the pipeline already applies elsewhere: gates compute verdicts,
+agents do the work the verdict is about. An agent that can grade its own output is not gated.
 
 ---
 
@@ -164,9 +182,10 @@ The merge phase uses `gh pr merge --rebase`. The fallback order on failure is
 configuration opt-in that ships off.
 
 Rationale beyond preference: `se-implement` produces a TDD commit sequence (failing test, then
-implementation), `dod-verify` produces versioned `CODE_REVIEW-{feature}-v{N}` remediation commits,
-and `harvest-learnings` reads that history. Squashing destroys the per-commit record that the
-harvest and any future post-mortem depend on. The preference is load-bearing, not cosmetic.
+implementation), `dod-verify` produces versioned `CODE_REVIEW-{feature}-v{N}` remediation
+commits, and `harvest-learnings` reads that history. Squashing destroys the per-commit record
+that the harvest and any future post-mortem depend on. The preference is load-bearing, not
+cosmetic.
 
 The branch is already rebased onto the latest default branch in Phase DOD step 0, so the
 rebase-merge is normally a fast-forward-shaped operation with no surprise.
@@ -194,22 +213,23 @@ Merge requires `ciStatus: passed`. `no-checks` escalates by default, under a con
 
 ### DEC-E4 — Consolidation proposals cross the repo boundary as pull requests
 
-The consolidation agent opens a PR against `ohenak/yumo-plugins` with the concrete edit, instead
-of writing a table that a human must transcribe. Never a direct push. The credential is
-fine-grained: `contents:write` + `pull_requests:write` on `yumo-plugins` only, **no merge
+The consolidation agent opens a PR against this plugin repository with the concrete edit,
+instead of writing a table that a human must transcribe. Never a direct push. The credential is
+fine-grained: `contents:write` + `pull_requests:write` on the plugin repository only, **no merge
 rights** — merge is DEC-E2's operator gate and no automated identity holds it.
 
-This mirrors `ops-calibration-keeper` in the business plan exactly (NFR-5: "PR-creation
-credentials grant no merge rights and the keeper has no write access to the default branch"). Same
-problem — an agent proposing changes to the thresholds that govern it — so the same shape of
-answer.
+The general principle, which applies well beyond this pipeline: an automated identity that
+proposes changes to the rules governing it must not also be able to enact them. Separating
+propose-rights from merge-rights at the credential level makes that structural rather than
+procedural.
 
 ### DEC-E5 — Consolidation must be falsifiable
 
 Every promoted change records the **failure mode it targets**, and the next consolidation pass
 reports whether that failure mode recurred in the intervening features. A consolidation ritual
 that never checks whether its own promotions worked is unfalsifiable, and an unfalsifiable
-improvement process drifts toward ceremony. This is the difference between "continuously
+improvement process drifts toward ceremony: prompts only grow, nobody can say which growth
+helped, and no promotion is ever retired. This is the difference between "continuously
 enhancing" and "continuously editing."
 
 ---
@@ -222,28 +242,28 @@ enhancing" and "continuously editing."
 | 2 | `pdlc-merge-phase` | The largest single latency win, and the enabler for an unattended `/loop` (Break 1). |
 | 3 | `pdlc-advisory-tier` | Converts the five halt seams into resolutions or pre-analyzed escalations (Break 4). Depends on 2 for the merge-time advisory seam. |
 | 4 | `pdlc-consolidation-agent` | Cross-repo learning promotion (Break 2). Depends on 3 for the advisory model rung and on 1, since a promotion that cannot be distributed is not a promotion. |
-| 5 | `pdlc-engineering-loop` | The `/loop` driver, `.claude/loop.md`, and the escalation queue that makes the residual operator surface a single reviewable file. Last, because it is the integration of 1–4. |
+| 5 | `pdlc-engineering-loop` | The `/loop` driver, the loop prompt template, and the escalation queue that makes the residual operator surface a single reviewable file. Last, because it is the integration of 1–4. |
 
 Order 1 before order 2 is deliberate and slightly counter-intuitive: the merge phase is the more
-valuable feature, but it is a *workflow script change*, and shipping a workflow script change into
-a distribution channel known to be manual is how a fix gets merged and never runs.
+valuable feature, but it is a *workflow script change*, and shipping a workflow script change
+into a distribution channel known to be manual is how a fix gets merged and never runs.
 
 ---
 
 ## 6. The residual operator surface
 
 The loop is not intended to reach zero human involvement, and a design claiming it did would be
-lying. After all five features, the operator's engineering-loop involvement is exactly four
-things:
+lying. After all five features, the operator's involvement is exactly four things:
 
 1. **Flip `ready: true` on a REQ.** This is the draft-protection latch and it stays human
    permanently. It is the one signal that says "I have read this and I intend it to be built."
    Automating it would mean an unfinished thought gets implemented.
 2. **Approve any PR that changes the pipeline itself** (DEC-E2). Unconditional.
 3. **Resolve escalations that fell outside the advisory envelope** — read
-   `docs/_queue/ESCALATIONS.md`, each entry carrying the advisory analysis, and approve or reject.
-4. **Business-judgment calls** — the `OQ-*` class in the Wheel Room plan. These are not
-   engineering decisions and no amount of pipeline automation touches them.
+   `docs/_queue/ESCALATIONS.md`, each entry carrying the advisory analysis, and approve or
+   reject.
+4. **Product- and business-judgment calls** — the open questions a REQ defers to its operator.
+   These are not engineering decisions and no amount of pipeline automation touches them.
 
 Items 1 and 4 are inputs to the loop; items 2 and 3 are its only stopping points. Everything
 between a `ready: true` REQ and a merged PR runs unattended.
@@ -252,15 +272,15 @@ between a `ready: true` REQ and a merged PR runs unattended.
 
 ## 7. Known constraints
 
-- **`/loop` is session-scoped.** It fires only while a session is open and idle, and expires after
-  7 days. For continuity beyond that, promote to a Desktop scheduled task (local files, machine
-  must be on) or a Routine (cloud, fresh clone, no local working tree — note the PDLC pipeline
-  authors specs against the working tree, so a Routine is a poor fit for `orchestrate-dev` and a
-  reasonable one for the consolidation cadence).
+- **`/loop` is session-scoped.** It fires only while a session is open and idle, and expires
+  after 7 days. For continuity beyond that, promote to a Desktop scheduled task (local files,
+  machine must be on) or a Routine (cloud, fresh clone, no local working tree — note the PDLC
+  pipeline authors specs against the working tree, so a Routine is a poor fit for
+  `orchestrate-dev` and a reasonable one for the consolidation cadence).
 - **The pipeline is not stateless.** Specs are authored against the codebase as it exists at fire
   time. This is why the queue is serial and why the merge phase matters so much: it is what makes
   the *next* feature's specs correct.
-- **Bootstrapping.** These five features modify the pipeline that builds them. Order 1 and 2 in
+- **Bootstrapping.** These five features modify the pipeline that builds them. Orders 1 and 2 in
   particular change `orchestrate-dev.js` while `orchestrate-dev` is running it. The consumer copy
   is loaded at invocation, so an in-flight run uses the pre-change script; the risk is a run
   started *during* the edit window. Ship pipeline changes between queue iterations, never during
@@ -270,17 +290,17 @@ between a `ready: true` REQ and a merged PR runs unattended.
 
 ## 8. Open questions
 
-- **OQ-E1** — Is `fable` a valid model alias for the workflow runtime's `agent()` `model` option?
-  The existing constants use bare aliases (`"opus"`, `"sonnet"`, `"haiku"`). The alias for Fable 5
-  is unverified. `pdlc-advisory-tier` BL-01 makes this a startup-validated configuration value
-  rather than a hardcoded string in twenty dispatch sites, so a wrong guess fails loudly at
-  startup instead of silently downgrading.
+- **OQ-E1** — Which model alias does the workflow runtime's `agent()` `model` option accept for
+  the advisory rung? The existing constants use bare aliases (`"opus"`, `"sonnet"`, `"haiku"`).
+  `pdlc-advisory-tier` BL-01 makes this a startup-validated configuration value rather than a
+  hardcoded string in twenty dispatch sites, so a wrong value fails loudly at startup instead of
+  silently downgrading the tier.
 - **OQ-E2** — Should the advisory tier's CI-fix seam (A5) be allowed to push commits to a feature
   branch after DoD passed? It fixes the branch *after* the Definition of Done gate has already
-  cleared it. Current design: yes, but the fix triggers a DoD re-verify rather than inheriting the
-  earlier pass.
+  cleared it. Current design: yes, but the fix triggers a DoD re-verify rather than inheriting
+  the earlier pass.
 - **OQ-E3** — Cadence for the consolidation agent. The existing `nudge-consolidation` hook fires
   at ≥5 un-consolidated LEARNINGS. Weekly, threshold-driven, or both?
-- **OQ-E4** — Should `pdlc-engineering-loop` drive more than one consuming repo? Today
-  `regime-ledger-research` is the only real consumer, but the escalation queue and loop prompt are
-  per-repo by construction.
+- **OQ-E4** — Should a single loop drive more than one consuming repo? The escalation queue and
+  loop prompt are per-repo by construction, so multi-repo driving needs its own design rather
+  than falling out of this one.
