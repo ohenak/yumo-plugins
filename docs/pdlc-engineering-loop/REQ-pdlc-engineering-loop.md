@@ -95,8 +95,9 @@ is lying, and an operator who believes it will stop checking.
 - **AC-3.3** — Given the preflight refuses, Then it names the condition and the remediation, and
   the refusal is distinguishable from `idle`.
 
-AC-3.2 is not hypothetical for the current consumer: `regime-ledger-research` presently carries
-15+ uncommitted planning documents on `main`.
+AC-3.2 is not hypothetical for the current consumer: a consuming repo accumulating uncommitted
+planning or scratch work on its default branch is the normal state between working sessions, and
+it is exactly the state in which an unattended loop would start.
 
 ### REQ-LOOP-04 — The escalation file
 
@@ -120,7 +121,7 @@ AC-3.2 is not hypothetical for the current consumer: `regime-ledger-research` pr
 - **AC-5.1** — Given the shipped documentation, Then it states the complete set of things
   requiring a human, and that set is exactly: (1) flipping `ready: true` on a REQ; (2) approving
   any PR that changes `pdlc/skills/**` or `pdlc/workflows/**`; (3) resolving open escalations;
-  (4) business-judgment calls outside the pipeline's scope.
+  (4) product- and business-judgment calls outside the pipeline's scope.
 - **AC-5.2** — Given a condition arises that requires a human and is **not** in that set, Then it
   is a defect in this feature, not an expected mode — an unlisted stop means the surface was
   understated.

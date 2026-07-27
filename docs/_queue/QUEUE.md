@@ -17,7 +17,7 @@ frontmatter is the pickup gate; the `Status` cell tracks lifecycle.
 | 4 | pending | pdlc-consolidation-agent | docs/pdlc-consolidation-agent/REQ-pdlc-consolidation-agent.md | pdlc-workflow-distribution, pdlc-advisory-tier |
 | 5 | pending | pdlc-engineering-loop | docs/pdlc-engineering-loop/REQ-pdlc-engineering-loop.md | pdlc-workflow-distribution, pdlc-merge-phase, pdlc-advisory-tier, pdlc-consolidation-agent |
 
-## Priority rationale (2026-07-27 — engineering loop / Loop 5)
+## Priority rationale (2026-07-27 — closing the engineering loop)
 
 Master plan: `docs/design/MASTER-PLAN-engineering-loop.md` (four breaks, DEC-E1..E5, the
 residual operator surface, OQ-E1..E4).

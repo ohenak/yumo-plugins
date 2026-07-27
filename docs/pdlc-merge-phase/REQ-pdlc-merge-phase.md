@@ -41,7 +41,7 @@ seconds.
 The cost of not doing so is not one delayed merge. The queue is a **serial chain**: while a
 feature sits in `awaiting-merge`, `orchestrate-queue` reports `blocked` and refuses to pick up any
 new work at all. A pipeline that produces a mergeable PR in an hour then idles until the operator
-next sits down. Across a 40-row queue that is the dominant term in delivery time, and it is pure
+next sits down. On a long backlog that is the dominant term in delivery time, and it is pure
 waiting.
 
 There is a second, subtler cost. `awaiting-merge` also requires the human to *edit QUEUE.md* after
@@ -176,9 +176,10 @@ write-back, reporting, configuration flags, tests.
 
 - **BL-01** — `pdlc-workflow-distribution` delivered. This feature is a workflow-script change and
   must not ship into a distribution channel known to be manual.
-- **BL-02** — `gh` authenticated with merge rights in the consuming repo. Verified 2026-07-27 for
-  `regime-ledger-research`: `rebaseMergeAllowed: true`, `mergeCommitAllowed: true`, default branch
-  `main`, no branch protection configured.
+- **BL-02** — `gh` authenticated with merge rights in the consuming repo, and that repo permitting
+  rebase merges. Both are queryable up front (`gh repo view --json rebaseMergeAllowed,
+  mergeCommitAllowed,squashMergeAllowed`) and AC-2.5 requires the phase to read them rather than
+  assume them; a repo that forbids rebase merges is a supported configuration, not a failure.
 - **BL-03** — Existing `ship-pr` skill unchanged. This phase calls `gh` directly rather than adding
   a third job to `ship-pr`, keeping that skill's "one discrete action per invocation, never merges"
   contract intact.

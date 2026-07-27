@@ -173,8 +173,8 @@ halt currently conflates: *diagnosing* the problem, and *authorizing* the resolu
   the feature did not cause it and must not silently own it.
 - **AC-8.5** — Given the log cannot be retrieved, Then it escalates.
 
-AC-8.4 is drawn from a recorded real occurrence: `regime-ledger-research` carries a pre-existing
-`wheel_rationale` failure unrelated to any in-flight feature. An advisory tier that "fixed" such a
+AC-8.4 is drawn from a recorded real occurrence: a consuming repo carried a long-standing test
+failure on its default branch, unrelated to any in-flight feature. An advisory tier that "fixed" such a
 failure inside a feature branch would attribute unrelated work to that feature and hide the real
 defect.
 

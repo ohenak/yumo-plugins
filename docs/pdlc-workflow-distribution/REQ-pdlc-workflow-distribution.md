@@ -22,9 +22,10 @@ depends-on: []
 
 ## 1. Problem
 
-`SKILL.md` files load live from the installed plugin — `CLAUDE.md` states it: "edit them in
-interactive Claude Code sessions and the engine picks the change up automatically (no copies to
-sync)." Workflow scripts do not. Both orchestrator SKILLs record the same convention:
+`SKILL.md` files load live from the installed plugin — `CLAUDE.md` states it: "edit them here
+and both interactive Claude Code sessions and the Ptah engine pick up the change automatically
+(no copies to sync)." Workflow scripts do not. Both orchestrator SKILLs record the same
+convention:
 
 > Canonical plugin source: `pdlc/workflows/orchestrate-dev.js`
 > Runtime-loaded consumer copy: `.claude/workflows/orchestrate-dev.js`
@@ -34,9 +35,9 @@ sync)." Workflow scripts do not. Both orchestrator SKILLs record the same conven
 in `yumo-plugins`, and never run anywhere, because no consumer copied it. There is no check, no
 warning, and no symptom. The pipeline keeps working — on the old script.
 
-Verified 2026-07-27: `regime-ledger-research/.claude/workflows/orchestrate-dev.js` and
-`orchestrate-queue.js` are byte-identical to the plugin sources, last synced 22 July. That is a
-manual copy that happens to be current, not a mechanism that keeps it current.
+Spot-checked 2026-07-27 against a live consuming repo: both `.claude/workflows/orchestrate-dev.js`
+and `orchestrate-queue.js` were byte-identical to the plugin sources, last synced five days
+earlier. That is a manual copy that happened to be current, not a mechanism that keeps it current.
 
 This blocks the whole engineering loop. Every later feature in this plan ends with "and then the
 improved pipeline runs" — which is false while distribution is a human's memory.
@@ -68,12 +69,12 @@ improved pipeline runs" — which is false while distribution is a human's memor
 - **AC-1.4** — Given multiple workflow scripts, Then each is reported independently; one stale
   script does not mask a second stale script.
 - **AC-1.5** — Given a workflow script present in the consumer that has no plugin counterpart
-  (a repo-local workflow, e.g. `orchestrate-wheel.js`), Then it is reported as `not-managed` and
-  is never modified by any operation in this feature.
+  (a workflow the consuming repo authored for its own domain), Then it is reported as
+  `not-managed` and is never modified by any operation in this feature.
 
-AC-1.5 matters concretely: `regime-ledger-research/.claude/workflows/` contains `daily-macro.js`,
-`onboard-symbol.js` and `orchestrate-wheel.js`, none of which come from the plugin. A sync
-operation that touched them would destroy repo-local work.
+AC-1.5 matters concretely: a consuming repo's `.claude/workflows/` directory typically holds
+several domain-specific workflows of its own alongside the plugin's two. A sync operation that
+touched them would destroy repo-local work.
 
 ### REQ-DIST-02 — SessionStart warning
 

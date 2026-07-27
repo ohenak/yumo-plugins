@@ -89,7 +89,7 @@ process that cannot be wrong cannot be trusted to be right.
 ### REQ-CONS-03 — Cross-repo promotion as a pull request
 
 - **AC-3.1** — Given a promotion targets `pdlc/skills/**` or `pdlc/workflows/**`, Then the agent
-  opens a pull request against `ohenak/yumo-plugins` containing the **concrete edit**, not a
+  opens a pull request against the configured plugin repository containing the **concrete edit**, not a
   description of it.
 - **AC-3.2** — Given such a PR, Then its body cites the source LEARNINGS files by feature name, the
   failure mode the edit targets, and the pattern evidence that cleared AC-2.3.
@@ -110,7 +110,7 @@ process that cannot be wrong cannot be trusted to be right.
 ### REQ-CONS-04 — Credential scope
 
 - **AC-4.1** — Given the cross-repo credential, Then it grants `contents:write` and
-  `pull_requests:write` on `ohenak/yumo-plugins` only, and grants **no merge rights**.
+  `pull_requests:write` on the configured plugin repository only, and grants **no merge rights**.
 - **AC-4.2** — Given the credential, Then it is read from a secret store at runtime and is never
   logged, never written into a PR body, and never persisted into any artifact.
 - **AC-4.3** — Given the credential is absent or invalid, Then the pass degrades to AC-3.5's
@@ -119,10 +119,10 @@ process that cannot be wrong cannot be trusted to be right.
 - **AC-4.4** — Given the pass runs locally under the operator's own `gh` authentication, Then that
   is a supported configuration; the scoped credential is required only for unattended execution.
 
-AC-4.1 deliberately mirrors `ops-calibration-keeper` in the sibling business plan (NFR-5:
-"PR-creation credentials grant no merge rights and the keeper has no write access to the default
-branch"). Same problem — an automated identity proposing changes to the rules that govern it —
-so the same shape of answer, and the two should not diverge.
+AC-4.1 states a general principle rather than a local convenience: an automated identity that
+proposes changes to the rules governing it must not also be able to enact them. Separating
+propose-rights from merge-rights at the credential level makes that structural rather than
+procedural — the agent cannot merge its own proposal even if every other control failed.
 
 ### REQ-CONS-05 — Falsifiability
 
