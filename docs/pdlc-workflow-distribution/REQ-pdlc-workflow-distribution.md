@@ -10,16 +10,76 @@ depends-on: []
 |---|---|
 | Upstream | `docs/design/MASTER-PLAN-engineering-loop.md` (Break 3, order 1) |
 | Downstream | `pdlc-merge-phase`, `pdlc-consolidation-agent`, `pdlc-engineering-loop` |
-| Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-REQ-v{1..8}.md` — sixteen files, all on `feat-pdlc-workflow-distribution` |
+| Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-REQ-v{1..9}.md` — eighteen files, all on `feat-pdlc-workflow-distribution` |
 | LEARNINGS | `docs/pdlc-workflow-distribution/LEARNINGS-pdlc-workflow-distribution.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 9.0 | 2026-07-28 |
+| pdlc | draft | Claude | 10.0 | 2026-07-28 |
 
-> **v9.0 is a content revision** addressing the v8 SE review (2H/3M/2L) and v8 TE review (1H/4M/2L);
-> see §10 for the finding-by-finding disposition. The eight blocking answers this revision settles,
-> stated once here so no reader has to reconstruct them from the ACs:
+> **v10.0 is a content revision** addressing the v9 SE review (2H/4M/1L) and v9 TE review (2H/3M/3L);
+> see §10 for the finding-by-finding disposition. The eight blocking answers this revision settles:
+>
+> 1. **A drift-state write that fails never leaves a *believable* old file behind.** AC-2.9(2) gave
+>    the failed `mkdir`/replace an exit code and a stderr line but left the previous run's file on
+>    disk — with `writeFailures: []` and possibly every row `in-sync` — and the queue's only input is
+>    that file's contents, so it mapped to *proceed silently* on a run whose drift could not be
+>    recorded: the false green this feature exists to eliminate, one layer up (SE v9 F-01).
+>    AC-2.9(2a) adds a mandatory **invalidation ladder** — unlink the stale file, else truncate it in
+>    place to `{}` (which AC-4.1 row 1 already blocks on, `schemaVersion != 1`), else print and accept
+>    a *stated* residual — and AC-4.1's "No freshness clause" paragraph is re-derived with that case
+>    in it instead of asserting it cannot happen.
+> 2. **The execute bit is mandated in the working tree, not only in the git index.** Measured here:
+>    after `git update-index --chmod=+x s.sh`, `git ls-files -s` reports `100755` while `ls -l`
+>    reports `-rw-r--r--` and `./s.sh` exits **126**. So v9's `git ls-files -s` pin went green while
+>    AC-6.5's bare-path invocation — whose fixture copies *worktree* modes — went red, on two
+>    different objects (SE v9 F-02, TE v9 F-08). §6 now mandates `chmod +x`, §4 requires both bits,
+>    AC-6.5 asserts `[ -x ]` on the copied path as well as the index mode, and §0 fact 15's error
+>    code is corrected from `EACCES` to **exit 126**.
+> 3. **`readBytes` is parameterised by its reader, and the manifest's reader is the JSON tool.**
+>    v9 defined `readBytes(p)` as "the content-hash utility exits `0`" and then applied it to AC-0.4's
+>    manifest read, so removing `shasum`/`sha1sum` made a perfectly readable manifest report
+>    `plugin-root-unreadable` with `rows: []` — contradicting §4, AC-1.1, AC-1.2, AC-1.8 and NFR-5,
+>    and making `hash-tool-absent`, the top member of v9's new row-reason precedence, unreachable
+>    (TE v9 F-01, SE v9 F-03). AC-1.1a now defines `readBytes_hash` and `readBytes_json` separately,
+>    every call site names its reader, and **AC-1.0 gains a declared precedence over its seven
+>    manifest-level reasons** so the overlap v9 introduced has one answer.
+> 4. **Exit `4` means a write was *attempted and failed*; `repo-root-unresolved` is exit `3`.**
+>    AC-3.3 row 1 read "or the drift state file could not be written at all", which AC-2.6 says is
+>    exactly what `repo-root-unresolved` produces — so AC-3.8's third population had two mandated exit
+>    codes (TE v9 F-02). The distinction *failed write* vs *no write target* is now stated at AC-3.3,
+>    AC-4.1, AC-2.4, AC-2.6 and AC-2.9(2).
+> 5. **Classification happens before creation.** AC-2.9(1) had every read-only surface `mkdir -p` the
+>    directory whose absence AC-1.1 classifies on, with the order unstated — so `parent-absent`, which
+>    AC-1.8(i) mandates as first-class and which AC-6.5 and AC-3.8 both derive their required
+>    classification from, was reachable only under one of two readings, and AC-6.5 could pass for a
+>    reason other than the one it gives (TE v9 F-03). The order is now normative: the whole drift
+>    computation is evaluated against the filesystem **as observed before this run created anything**.
+> 6. **`writeFailures[].operation` is a closed seven-member set and `stage` is deleted.** Both were
+>    printed to the operator and read by the queue with no domain and no oracle, in a document where
+>    every other operator-visible set is enumerated (SE v9 F-04, TE v9 F-04).
+> 7. **AC-6.5's fixture is `git init -q` and nothing more.** Measured: on a commitless `git init`
+>    directory, `git worktree list --porcelain` prints the worktree with no `bare` line,
+>    `git rev-parse --git-dir` exits `0` and `--show-toplevel` returns the same path — AC-0.5 step 1
+>    (a)–(c) all pass. v9's added `add -A && commit` bought nothing and could fail the feature's only
+>    end-to-end oracle on a container with no git identity or a maintainer with `commit.gpgsign`
+>    (SE v9 F-05).
+> 8. **The uid-0 rule is stated separately for the property test.** "Each such test skips" is written
+>    for example-based fixtures; two of the five permission-only fixtures are *axis values* of
+>    AC-1.8's property test, so the rule as written either skipped the whole totality/precedence
+>    property under root or narrowed the cross product with no marker. It now **filters the affected
+>    axis values, prints the reason once, asserts the remainder, and names the invariants left
+>    unverified** (TE v9 F-05).
+>
+> **Also settled**: `enumerate(D)` has one definition (`[ -r D ] && [ -x D ]`) in both places it
+> appears (SE v9 F-06); AC-0.5 step 2's root carries the same `traverse` check as step 1(b), so
+> AC-1.1's `A(p)` termination argument covers both resolution routes (TE v9 F-06); and AC-3.3's
+> normative Then admits the directory AC-2.9(1) creates (TE v9 F-07).
+>
+> ---
+>
+> **Carried forward from v9.0**, which addressed the v8 SE review (2H/3M/2L) and v8 TE review
+> (1H/4M/2L); see §10. The eight blocking answers **v9.0** settled:
 >
 > 1. **Every writer in this feature creates `.claude/workflows/` when it is absent, and every
 >    mandated write has a defined failure outcome.** New **AC-2.9** decides both. v8 mandated the
@@ -326,8 +386,8 @@ Facts this REQ must respect, each verified above:
     v2–v5 each maintained this list by hand and each was wrong. AC-6.4 is restated so that no list
     is maintained at all: the covered set **is** `grep(patterns) − exemptionRule(path)`, both halves
     machine-computable.
-15. **Every shipped hook script is mode `100644`, yet `hooks.json` invokes them as bare paths.**
-    Measured at `HEAD`:
+15. **Every shipped hook script is mode `100644`, yet `hooks.json` invokes them as bare paths — and
+    the fix must reach the *working tree*, not only the git index.** Measured at `HEAD`:
 
     ```
     $ git ls-files -s pdlc/hooks/scripts/
@@ -338,12 +398,31 @@ Facts this REQ must respect, each verified above:
 
     while `pdlc/hooks/hooks.json` registers each as
     `"\"${CLAUDE_PLUGIN_ROOT}\"/hooks/scripts/<name>.sh"` — a bare-path invocation, which the shell
-    refuses with `EACCES` on a file with no execute bit. This is a **pre-existing latent defect of
+    refuses on a file with no execute bit: the `execve` fails `EACCES` and the **shell exits `126`**
+    with `permission denied` (measured on this platform; v9 stated the exit as `EACCES`/1, which no
+    test could match — SE v9 F-02). This is a **pre-existing latent defect of
     the three shipped hooks**, not something this feature introduces, and it is load-bearing twice
     over: AC-6.5's command block invokes `pdlc/hooks/scripts/sync-workflows.sh` as a bare path, and
     the "exact remediation command" every warning AC prints is that same bare path (§4). This feature
-    therefore ships its two scripts at mode `100755`, pins the index mode with a test, and corrects
-    the three siblings in the same landing step (§6; SE v8 F-05).
+    therefore ships its two scripts executable, pins **both** bits with a test, and corrects the
+    three siblings in the same landing step (§6; SE v8 F-05).
+
+    **The index mode and the working-tree mode are two different objects, and v9 mandated only the
+    first (SE v9 F-02, TE v9 F-08).** Measured here in a fresh `git init` directory:
+
+    ```
+    $ git update-index --chmod=+x s.sh
+    $ git ls-files -s s.sh      → 100755 …            # index says executable
+    $ ls -l s.sh                → -rw-r--r-- …        # working tree does not
+    $ ./s.sh                    → permission denied; exit 126
+    ```
+
+    So a `git ls-files -s` assertion can be green in the very checkout where the bare-path
+    invocation fails — and AC-6.5's fixture is a copy of the **working tree**, so the working-tree
+    bit is the one its invocation depends on. The landing step therefore runs `chmod +x` (which, with
+    `core.fileMode` true — the default on this platform — also records `100755` in the index; the
+    explicit `git update-index --chmod=+x` remains as the belt-and-braces form for a checkout with
+    `core.fileMode false`), and AC-6.5 asserts the index mode **and** `[ -x ]` on the copied path.
 16. **`build-runtime.mjs` depends on node builtins only.** `pdlc/workflows/build-runtime.mjs:23-25`
     imports `fs`, `path` and `url` and nothing else; it reads no `package.json` and requires no
     `node_modules/`. AC-6.5's fixture tree therefore needs **no install step**, which is what makes
@@ -563,10 +642,25 @@ marketplace is Claude Code's own plugin-update mechanism and is out of scope (D-
   `unresolved` with reason `plugin-root-unset` (AC-1.0) and no cache directory is guessed. Given it
   is set to a path that is not a **traversable** directory — `traverse(p)` false, **AC-1.1a** — or
   the manifest at `<pluginRoot>/workflows/dist/distribution-manifest.json` exists but its bytes
-  cannot be read (`readBytes` fails, AC-1.1a), Then the reason is `plugin-root-unreadable`, whose
+  cannot be read **by the reader that reads it** (`readBytes_json` fails, AC-1.1a), Then the reason is
+  `plugin-root-unreadable`, whose
   remediation is the environment/permissions fix (AC-2.5a, AC-4.2) and never a plugin reinstall. The
   two reasons are separated on exactly the axis their remediations differ on, which is the same
-  argument AC-1.2 makes on the row side. This AC applies only when AC-0.3a's maintainer-repo marker is absent; when
+  argument AC-1.2 makes on the row side.
+
+  **The manifest's reader is the JSON tool, never the content-hash utility (TE v9 F-01, SE v9 F-03).**
+  v9 wrote this clause as "`readBytes` fails" while AC-1.1a defined `readBytes` as *the content-hash
+  utility exits `0`*. Composed on the one fixture NFR-5 requires — neither `shasum` nor `sha1sum` on
+  `PATH` — a perfectly readable manifest then failed the probe, so the baseline was `unresolved` with
+  reason `plugin-root-unreadable` and `rows: []`, the operator was shown a permissions fix for a
+  missing utility, and `hash-tool-absent` — a **row** reason, and the top member of AC-1.2's
+  precedence — became unreachable, taking AC-1.8(iv)'s single-valuedness assertion with it. Three
+  statements are therefore normative here: this probe is `readBytes_json`; **hash-tool absence is
+  never a manifest-level reason** (with no hash tool the baseline still resolves and every row is
+  `unknown`/`hash-tool-absent`, §4, AC-1.2, NFR-5); and AC-1.0's seven reasons now carry a declared
+  precedence for the remaining overlaps.
+
+  This AC applies only when AC-0.3a's maintainer-repo marker is absent; when
   it is present, `${CLAUDE_PLUGIN_ROOT}` is not consulted at all and its being unset is not an
   error — **including for the invocation path of the sync script itself**, which is
   `<pluginRoot>/hooks/scripts/sync-workflows.sh` under the same binding (REQ-DIST-03 preamble,
@@ -597,7 +691,15 @@ marketplace is Claude Code's own plugin-update mechanism and is out of scope (D-
      step 2.
   2. Only when step 1 does **not** apply — `git` is absent from `PATH`, or `git rev-parse --git-dir`
      fails because this is not a git repository at all — walk upward from `$PWD` to the nearest
-     ancestor containing `.claude/`, **stopping before** `$HOME` and before `/`.
+     ancestor containing `.claude/`, **stopping before** `$HOME` and before `/`. The result is
+     accepted only if it satisfies the **same** `traverse(p)` check as step 1(b) — `[ -d p ] && [ -x p ]`,
+     AC-1.1a; a walk result that fails it goes to step 3. (TE v9 F-06: the check was written into
+     step 1 only, while AC-1.1's `A(p)` termination argument cites "the repo root, which exists and is
+     traversable by AC-0.5 step 1(b)" for roots produced by **either** route — including the non-git
+     population of AC-3.8's second row. Extending the check to step 2 is the cheaper of the two
+     repairs and makes the termination argument true of both routes. In practice the walk can only
+     return a directory it traversed to find `.claude/` in, so this check fails only under a
+     concurrent permission change — but the guarantee must be stated, not inferred.)
   3. Otherwise `baselineStatus` is `unresolved` with reason `repo-root-unresolved` (AC-1.0).
 
   **Why the work tree and not the parent of the git directory (SE v6 F-02, TE v6 F-04).** v6 read
@@ -660,7 +762,8 @@ marketplace is Claude Code's own plugin-update mechanism and is out of scope (D-
 - **AC-0.6** — Who: any drift check producing a human-facing report. Given the consumer's
   `.claude/workflows/` directory, When the **report** (not the managed set) is produced, Then the
   directory is enumerated once — this is the **only** operation in the feature that needs
-  `enumerate(D)` = `[ -r D ]` rather than `traverse(D)` (AC-1.1a), because it is the only one that
+  `enumerate(D)` = `[ -r D ] && [ -x D ]` rather than `traverse(D)` alone (AC-1.1a — one definition,
+  stated identically here, in AC-1.1a's table and in §4; SE v9 F-06), because it is the only one that
   reads directory *entries*; when it fails the report says so and no row state changes — to list
   files with no manifest row as `not-managed`, excluding every
   entry whose basename begins with `.pdlc-` (which covers `.pdlc-sync-manifest.json`,
@@ -710,6 +813,29 @@ no hosted CI on this repo today).
   and only when it is `resolved` does it evaluate rows at all. `manifest-empty` is the case "the
   manifest parsed but declares zero managed rows"; it is `unresolved` because a managed set of size
   zero can satisfy any universally quantified claim without verifying anything.
+
+  **`baselineReason` is a single scalar too, so these seven have a declared precedence (SE v9 F-03,
+  TE v9 F-01).** v9 gave AC-1.2's four *row* reasons a precedence and left this set with none while
+  *adding* an overlap to it (AC-0.4's manifest-read clause). Highest first:
+
+  > **`json-tool-absent` > `plugin-root-unset` > `plugin-root-unreadable` > `repo-root-unresolved` >
+  > `manifest-absent` > `manifest-malformed` > `manifest-empty`.**
+
+  The rationale is the same as AC-1.2's — remediation order, environment-global before per-artifact,
+  and each member is a strictly later step of the same pipeline than the one above it: with no JSON
+  reader nothing downstream is measurable at all; then the plugin root must be named, then readable;
+  then the consumer root must resolve; only then can the manifest be absent, then malformed, then
+  empty. Two consequences are normative rather than inferred:
+
+  - **`hash-tool-absent` is not in this set and never becomes a `baselineReason`.** It is a *row*
+    reason (§4, AC-1.2): with no content-hash utility the baseline still resolves — the manifest is
+    read by the JSON tool — and every row is `unknown`/`hash-tool-absent`. AC-0.4's `readBytes_json`
+    scoping is what makes that true of the probe as well as of the prose.
+  - The precedence is **declared, not evaluation order**, and is asserted the way AC-1.2's is: by a
+    fixture that satisfies several conditions at once (e.g. no JSON tool **and** `${CLAUDE_PLUGIN_ROOT}`
+    unset **and** a non-git tree with no `.claude/`) whose expected `baselineReason` is
+    `json-tool-absent` alone. AC-1.8(iv) extends its three reason properties to `baselineReason` over
+    this set.
 
   **Every green outcome in this feature is guarded by `baselineStatus == resolved`, a non-empty
   row set, and an empty `writeFailures` (AC-2.9)**, and each of the three seams states it explicitly: hook silence (AC-2.2), `--check`
@@ -771,15 +897,16 @@ no hosted CI on this repo today).
   a file can be hidden under an untraversable ancestor at any depth, not only directly under the
   parent. Let `A(path)` be the **first existing ancestor** of `path` — the nearest proper ancestor
   directory that exists, found by walking upward and stopping at the AC-0.5 repo root, which exists
-  and is traversable by AC-0.5 step 1(b), so the walk always terminates. Then, using AC-1.1a's
-  probes:
+  and is traversable **by whichever of AC-0.5's two routes produced it** — step 1(b) for the git
+  route, step 2's identical `traverse` check for the walk route (added at v10; TE v9 F-06) — so the
+  walk always terminates. Then, using AC-1.1a's probes:
 
   | `consumerPath` situation | Absence established? | State |
   |---|---|---|
   | path absent, `A` is the existing parent and `traverse(A)` | yes | `missing` |
   | path absent, parent absent, `A` is a higher existing ancestor and `traverse(A)` (fresh consumer, fresh clone) | yes — nothing can be hiding under a directory that does not exist, and the highest existing ancestor is visible | `missing` |
   | path absent, `A` exists and **not** `traverse(A)` — whether `A` is the parent or a higher ancestor | no — a file could be there and we cannot see it | `unknown` / `consumer-artifact-unreadable` |
-  | path present, `readBytes(path)` fails | n/a | `unknown` / `consumer-artifact-unreadable` |
+  | path present, `readBytes_hash(path)` fails | n/a | `unknown` / `consumer-artifact-unreadable` |
 
   The table is total over the four situations and each maps to exactly one state; AC-1.8(i)'s
   `consumerPath` axis has one value per row of it (`absent`, `parent-absent`,
@@ -802,8 +929,20 @@ no hosted CI on this repo today).
   |---|---|---|---|
   | `exists(p)` | a definite positive from the existence probe on `p` | `[ -e "$p" ]` true | AC-1.1's present/absent split |
   | `traverse(D)` | **search permission** on directory `D` — the right to resolve a path *through* it and to `stat` a named child | `[ -d "$D" ] && [ -x "$D" ]` | AC-1.1's `established-absent`, AC-0.5 step 1(b), AC-1.2's ancestor clause |
-  | `enumerate(D)` | **read permission** on directory `D` — the right to list its entries | `[ -r "$D" ]` (with `[ -x ]`, since a listing that yields names still needs traversal to stat them) | AC-0.6's `not-managed` listing, and nothing else |
-  | `readBytes(p)` | the tool's own read of `p`'s bytes succeeds — i.e. the content-hash utility (§4) exits `0` on `p` | `shasum "$p" >/dev/null 2>&1` | AC-1.1's `present-unreadable`, AC-1.2's two `*-unreadable` reasons, AC-0.4's manifest read |
+  | `enumerate(D)` | **read permission** on directory `D` — the right to list its entries — **and** traversal, since a listing that yields names still needs `stat` on each of them | `[ -r "$D" ] && [ -x "$D" ]` | AC-0.6's `not-managed` listing, and nothing else |
+  | `readBytes_hash(p)` | the **content-hash utility** (§4 — `shasum`\|`sha1sum`) reads `p`'s bytes and exits `0` | `shasum "$p" >/dev/null 2>&1` | AC-1.1's `present-unreadable`, AC-1.2's two `*-unreadable` row reasons — i.e. **managed-artifact content comparison only** |
+  | `readBytes_json(p)` | the **JSON tool** (§4 — the discovered Python interpreter) opens and reads `p`, distinguishing *absent* from *unreadable* from *malformed* | the same interpreter probe already shipped in `pdlc/hooks/scripts/*.sh`, reading `p` | AC-0.4's manifest read, and every other read of the four JSON files (AC-1.6, AC-2.6, AC-4.3) |
+
+  **`readBytes` is parameterised by its reader, and that is not a quibble (TE v9 F-01, SE v9 F-03).**
+  v9 had one `readBytes`, defined as the hash utility's exit status, and listed AC-0.4's manifest read
+  among its callers. Composed on NFR-5's required no-hash-tool fixture that made a readable manifest
+  report `plugin-root-unreadable` with `rows: []`, contradicting §4, AC-1.1, AC-1.2, AC-1.8(i)/(iv)
+  and NFR-5, and making `hash-tool-absent` — the top member of AC-1.2's precedence — unreachable.
+  The general form is: **`readBytes_R(p)` is "the reader `R` that this artifact is actually read by
+  exits `0` on `p`"**, and every AC that cites it names `R`. There are exactly two readers in this
+  feature, and they fail independently: the hash utility can be absent while the JSON tool works
+  (⇒ baseline `resolved`, every row `unknown`/`hash-tool-absent`) and the JSON tool can be absent
+  while `shasum` works (⇒ baseline `unresolved`/`json-tool-absent`, no rows at all).
 
   and the composite the state table uses:
 
@@ -824,22 +963,38 @@ no hosted CI on this repo today).
   The second row is the serious one: it is a silent-overwrite path through the very state AC-1.1's
   `missing` was narrowed to prevent. Every axis-value name in AC-1.8(i) matches these probes.
 
-  **Running as uid 0 (TE v8 F-07).** Five fixtures in this feature — AC-1.2's
+  **Running as uid 0 (TE v8 F-07, TE v9 F-05).** Five states in this feature — AC-1.2's
   `plugin-artifact-unreadable` and `consumer-artifact-unreadable`, AC-1.1's `ancestor-untraversable`,
-  AC-0.4's `plugin-root-unreadable`, AC-0.5's unreadable-root case — are reachable **only** through
-  permission bits, and under `id -u == 0` `chmod` denies nothing: every one of them reads
-  successfully and takes the wrong branch, indistinguishably from a regression. The required
-  behaviour is therefore: when `id -u` returns `0`, each such test **skips with a printed reason**
-  naming uid 0 — never passes silently, and never asserts the non-root expectation. §0 fact 10 says
+  AC-0.4's `plugin-root-unreadable`, AC-0.5's untraversable-root case — are reachable **only** through
+  permission bits, and each is exercised both by a named example fixture and (for the three that are
+  AC-1.8(i) axis values) by the property generator. Under `id -u == 0` `chmod` denies nothing: every one of them reads
+  successfully and takes the wrong branch, indistinguishably from a regression. §0 fact 10 says
   the only verification surface today is a local `npm test`, but D-DIST-06 brings hosted CI into the
-  plan and containerised runners commonly run as root, so the skip marker is what keeps that
+  plan and containerised runners commonly run as root, so the marker is what keeps that
   transition honest. An alternative unreadability mechanism (an unreadable mount, an immutable
-  attribute) is *not* mandated — the skip is.
+  attribute) is *not* mandated. The required behaviour differs between the two kinds of test, and
+  v9's single sentence covered only the first (TE v9 F-05):
+
+  | Test kind | Required behaviour under `id -u == 0` |
+  |---|---|
+  | **Example-based** — the four fixtures that *are* the permission case (AC-1.2's `plugin-artifact-unreadable` and `consumer-artifact-unreadable`, AC-0.4's `plugin-root-unreadable`, AC-0.5's untraversable-root case) | the test **skips with a printed reason** naming uid 0. Never a silent pass, and never the non-root assertion |
+  | **Property-based** — AC-1.8, where `ancestor-untraversable` and `present-unreadable` are two *values of one axis* of a cross product whose other 25+ combinations are permission-independent | **filter, do not skip.** The two `consumerPath` values and the `pluginPath` `present-unreadable` value are removed from the generator, the reason is printed **once** per run, and the remaining cross product is asserted in full — totality, mutual exclusivity, determinism and AC-1.8(iv)'s reason properties all still run |
+
+  Skipping AC-1.8 wholesale under root would surrender the classifier's entire invariant suite, and
+  the coverage floor with it, at exactly the surface D-DIST-06 introduces; filtering silently would
+  leave the totality property claiming a state space it no longer covers. The filtered run must
+  therefore **name the invariants it did not verify**, and they are exactly these three:
+  (a) `ancestor-untraversable ⇒ unknown`/`consumer-artifact-unreadable`; (b) `pluginPath`
+  present-but-unreadable ⇒ `plugin-artifact-unreadable` rather than `plugin-artifact-missing`;
+  (c) AC-1.2's precedence of `hash-tool-absent` over `consumer-artifact-unreadable` — the pair whose
+  overlap only the permission-derived values generate. Under non-root all three are verified by the
+  same property run, which is why the local `npm test` of §0 fact 10 remains the authoritative
+  surface until D-DIST-06 lands a non-root runner.
 
 - **AC-1.2** — Who: the operator. Given `baselineStatus` is `resolved` (AC-1.0) but an individual
   row cannot be evaluated — **the row's `pluginPath` is absent inside an otherwise-resolvable plugin
-  root**, **the row's `pluginPath` exists but `readBytes` fails on it** (AC-1.1a), **the row's
-  `consumerPath` exists but `readBytes` fails on it, or is absent while its first existing ancestor is
+  root**, **the row's `pluginPath` exists but `readBytes_hash` fails on it** (AC-1.1a), **the row's
+  `consumerPath` exists but `readBytes_hash` fails on it, or is absent while its first existing ancestor is
   not traversable so its absence cannot be established** (AC-1.1, AC-1.1a), or no content-hash utility
   is available — When the check runs,
   Then that row is `unknown` and carries a machine-readable `reason` from this closed set:
@@ -870,8 +1025,8 @@ no hosted CI on this repo today).
   | Reason | Condition | Remediation named (AC-2.5, AC-2.8, AC-4.2) |
   |---|---|---|
   | `plugin-artifact-missing` | `pluginPath` absent under a resolvable `<pluginRoot>` | **plugin update** — the package does not contain the artifact |
-  | `plugin-artifact-unreadable` | `exists(pluginPath)` and `readBytes(pluginPath)` fails (AC-1.1a) | **environment / permissions fix** on the plugin cache path — reinstalling does not fix a permission bit |
-  | `consumer-artifact-unreadable` | `exists(consumerPath)` and `readBytes(consumerPath)` fails, or `consumerPath` absent with a non-traversable first existing ancestor (AC-1.1a) | **environment / permissions fix** on `consumerPath` (or the offending ancestor directory, which the message names) |
+  | `plugin-artifact-unreadable` | `exists(pluginPath)` and `readBytes_hash(pluginPath)` fails (AC-1.1a) | **environment / permissions fix** on the plugin cache path — reinstalling does not fix a permission bit |
+  | `consumer-artifact-unreadable` | `exists(consumerPath)` and `readBytes_hash(consumerPath)` fails, or `consumerPath` absent with a non-traversable first existing ancestor (AC-1.1a) | **environment / permissions fix** on `consumerPath` (or the offending ancestor directory, which the message names) |
   | `hash-tool-absent` | neither `shasum` nor `sha1sum` runs (§4) | install a content-hash utility |
 
   All four are `unknown`, all four are not copied (AC-3.1), exit `3` (AC-3.3) and block the queue
@@ -898,7 +1053,12 @@ no hosted CI on this repo today).
   changes nothing observable. This ordering is not the same as AC-1.8(ii)'s state precedence and does
   not interact with it: reason precedence is evaluated **only** after the state is already `unknown`.
 
-  **Row reasons and manifest reasons are disjoint sets.** The six conditions v5 listed here as row
+  **Row reasons and manifest reasons are disjoint sets, and so are their precedences (SE v9 F-03).**
+  AC-1.0 now declares a precedence over its own seven-member set; the two orderings never compete,
+  because a row `reason` exists only when `baselineStatus == resolved` and a `baselineReason` exists
+  only when it is `unresolved`. The one apparent overlap v9 created — hash-tool absence reported as
+  `plugin-root-unreadable` — was a probe error, not a precedence gap, and is fixed at AC-0.4 and
+  AC-1.1a by naming the manifest's reader. The six conditions v5 listed here as row
   reasons — plugin root unset/unreadable, repo root unresolved, manifest absent/malformed, JSON tool
   absent — are *manifest-level* and live in AC-1.0's `baselineStatus.reason`, because each of them
   is what prevents rows from existing at all and none of them is assignable to a row (TE v5 F-01).
@@ -973,7 +1133,7 @@ no hosted CI on this repo today).
     | `absent` | `consumerPath` absent, parent exists, `traverse(parent)` | `missing` |
     | `parent-absent` | `consumerPath` absent and its parent does not exist; the first existing ancestor is traversable — the whole subtree is absent | `missing` |
     | `ancestor-untraversable` | `consumerPath` absent and its **first existing ancestor** exists but `! traverse(A)` — whether `A` is the parent (`chmod 000 .claude/workflows`) or higher (`chmod 000 .claude` with `workflows/` absent) | `unknown` / `consumer-artifact-unreadable` |
-    | `present-unreadable` | `exists(consumerPath)` and `readBytes(consumerPath)` fails | `unknown` / `consumer-artifact-unreadable` |
+    | `present-unreadable` | `exists(consumerPath)` and `readBytes_hash(consumerPath)` fails | `unknown` / `consumer-artifact-unreadable` |
     | `present-readable` | bytes obtainable | decided by the remaining axes |
 
     **The mapping column is conditional, and the two dominating rows are named (SE v8 F-04).** The
@@ -995,14 +1155,27 @@ no hosted CI on this repo today).
     The generator must produce `parent-absent` and `ancestor-untraversable` as first-class values; a
     suite that only ever creates `.claude/workflows/` before generating is not exercising the bootstrap
     path AC-6.5 asserts, and one that only ever `chmod`s the immediate parent is not exercising the
-    ancestor rule AC-1.1 states. Both permission-derived values skip with a printed reason under
-    `id -u == 0` (AC-1.1a).
+    ancestor rule AC-1.1 states. Under `id -u == 0` the two permission-derived `consumerPath` values
+    and the `pluginPath` `present-unreadable` value are **filtered out of the generator** — not
+    skipped as a whole property — with the reason printed once and the three consequently unverified
+    invariants named; AC-1.1a's uid-0 table states the rule and the list (TE v9 F-05).
+
+    **The generator observes the filesystem as it finds it, and the classifier never creates
+    anything (TE v9 F-03).** The `parent-absent` and `ancestor-untraversable` fixtures are only
+    meaningful if nothing under test has already created `.claude/workflows/`; AC-2.9(1) mandates
+    that every writer classifies **before** it creates, so the axis value the generator built is the
+    one the classifier sees.
   - **(ii) mutual exclusivity** — the six states are disjoint; no input yields two. Precedence when
     conditions could overlap is fixed and stated: `unknown` > `missing` > `in-sync` >
     `unverified` > `stale` > `local-edit`.
   - **(iii) determinism** — the same filesystem inputs yield the same state on repeated runs within
     and across processes, with no dependence on clock, mtime, environment ordering or directory
-    iteration order.
+    iteration order. "The same filesystem inputs" is literal: a *surface* that creates
+    `.claude/workflows/` (AC-2.9(1)) changes the inputs between run 1 and run 2, so the same fixture
+    legitimately reports `consumerPath` axis value `parent-absent` then `absent` — both `missing`, so
+    the **state** is stable, which is what this clause constrains. Determinism is asserted against a
+    fixed tree, and the two-run behaviour of the writers is AC-3.7's idempotence claim, not this one
+    (TE v9 F-03).
   - **(iv) reason totality and determinism (TE v8 F-04)** — the same three properties hold of
     `rows[].reason`, not only of the state: **total** — every generated input whose state is `unknown`
     carries exactly one reason from AC-1.2's four-member closed set, and every input whose state is
@@ -1013,6 +1186,14 @@ no hosted CI on this repo today).
     hand-picked example; **deterministic** — repeated runs on the same inputs record the same reason.
     Without (iv) the reason set is generated but unasserted, which is the position AC-1.2's four
     operator-visible remediations cannot afford.
+
+    **(iv) extends to `baselineReason` over AC-1.0's seven-member set (SE v9 F-03).** The same three
+    properties — totality (`unresolved` ⇒ exactly one member; `resolved` ⇒ `null`), single-valuedness
+    against AC-1.0's declared precedence on a generated overlap, and determinism — hold of the
+    manifest-level reason. Its generator axes are {JSON tool present/absent} × {`${CLAUDE_PLUGIN_ROOT}`
+    unset / set-untraversable / set-traversable} × {manifest absent / malformed / empty / valid} ×
+    {repo root resolves / does not}, which produces the multi-condition overlaps the precedence exists
+    to break. `hash-tool-absent` is **not** in this codomain (AC-0.4, AC-1.1a).
 
   `not-managed` is outside this classifier's codomain by construction (AC-0.6), so the totality
   property is satisfiable as stated rather than requiring an unauthorised state. *(P0)*
@@ -1045,9 +1226,18 @@ no hosted CI on this repo today).
   still warning** (AC-2.5a): exiting 0 is about not blocking the session, never about staying quiet.
   A broken drift check must never block a session from starting. *(P0)*
 
-  **The two cases in which the hook writes no drift state file at all are AC-2.9's, and only those**:
-  the repo root did not resolve (there is no defined location to write to), or the write itself failed
-  (`mkdir` or `mv` refused). Both go to stderr and both still exit `0`. Everywhere else the write is
+  **The two cases in which the hook writes no drift state file at all are AC-2.9's, and only those**,
+  and they are different in kind — the distinction decides the exit code of `--check`/sync on the same
+  fixture (AC-3.3, TE v9 F-02):
+
+  | Case | Was a write attempted? | Hook | `--check` / sync |
+  |---|---|---|---|
+  | **No write target** — the repo root did not resolve (`repo-root-unresolved`), so there is no defined location to write to and nothing anywhere is created | **no** | stderr + warn (AC-2.5a), exit `0` | exit **`3`** (`baselineStatus unresolved`) |
+  | **Write attempted and failed** — `mkdir -p` or the atomic replace was performed and refused (`EACCES`, read-only fs, `ENOSPC`, failed `mv`) | **yes** | stderr + warn, exit `0` | exit **`4`** |
+
+  In the second case the writer must additionally **invalidate any pre-existing drift state file**
+  before it exits (AC-2.9(2a)) — otherwise the previous run's file, which says `writeFailures: []`
+  and may say every row `in-sync`, is the only thing the queue reads. Everywhere else the write is
   unconditional, including on every manifest-level failure this AC lists — AC-2.9 is what makes that
   reachable on a consumer that has no `.claude/workflows/` directory yet.
 - **AC-2.5** — Who: the operator. Given state `unknown` or `unverified` on any managed row, When
@@ -1094,8 +1284,11 @@ no hosted CI on this repo today).
                                   //   that state (TE v6 F-02). Emptiness is still the signal
                                   //   AC-4.1's `retiredPresent` row tests.
     writeFailures,                // array (never absent, `[]` normally) of
-                                  //   { path, operation, stage } — every mandated write this run
-                                  //   attempted and could not complete (AC-2.9). Non-empty ⇒ the
+                                  //   { path, operation } — every mandated write this run
+                                  //   *attempted* and could not complete (AC-2.9). `operation` is
+                                  //   one of a closed seven-member set (AC-2.9(2), §4); v9's third
+                                  //   field `stage` is deleted — it was never defined, printed or
+                                  //   asserted anywhere (SE v9 F-04, TE v9 F-04). Non-empty ⇒ the
                                   //   run's exit is 4 (AC-3.3) and the queue blocks (AC-4.1).
     rows: [ { id, state, reason, pluginHash, consumerHash,
               pluginArtifactVersion, consumerArtifactVersion } ] }
@@ -1103,12 +1296,17 @@ no hosted CI on this repo today).
 
   **When the file itself is not written (AC-2.9).** "Every drift computation has written it on exit"
   holds with exactly two stated exceptions, both of which are AC-2.9's and neither of which is a
-  silent one: the repo root did not resolve (`repo-root-unresolved` — there is no defined path to
-  write to, so nothing anywhere is created and the failure goes to stderr), or creating
-  `.claude/workflows/` or replacing the file failed (the failure goes to stderr, and the queue's
-  row-1 block on an absent file is then the correct outcome). `writeFailures` records failures of
+  silent one: **no write target** (the repo root did not resolve — `repo-root-unresolved`, nothing
+  anywhere is created, the failure goes to stderr, `--check`/sync exit `3`), or the write was
+  **attempted and failed** (creating `.claude/workflows/` or replacing the file refused — the failure
+  goes to stderr, `--check`/sync exit `4`, and AC-2.9(2a)'s invalidation ladder runs so the queue's
+  row-1 block is reached on an *absent or unparseable* file rather than on the previous run's stale
+  contents). The two cases differ in exit code, which is why AC-3.3 row 1 is scoped to *attempted*
+  writes (TE v9 F-02). `writeFailures` records failures of
   *other* mandated writes — copies, backups, sync-manifest updates — which do not prevent this file
-  from being written and must therefore be visible in it.
+  from being written and must therefore be visible in it; the two operations that *do* prevent it
+  (`mkdir`, `drift-state-replace`) are reported on stderr only, because there is no file to record
+  them in.
 
   When `baselineStatus` is `unresolved`, **`rows` is `[]` and `retiredPresent` is `[]` meaning *not
   evaluated*** (AC-0.3b) — `baselineStatus` is what carries the meaning, and no reader may infer
@@ -1133,6 +1331,12 @@ no hosted CI on this repo today).
   different surfaces** — `supersedingState: "stale"` from the hook, and an empty `retiredPresent`
   after the sync that fixed it. AC-2.8's and AC-4.2's golden outputs are therefore surface-specific
   by construction, not by accident.
+
+  **The states recorded here are the states observed *before* this run created anything (AC-2.9(1),
+  TE v9 F-03).** Every writer completes the whole drift computation — row states, reasons,
+  `retiredPresent` — against the filesystem as it found it, and only then creates `.claude/workflows/`
+  and writes this file. So on a fresh consumer the file records `missing` rows classified through
+  AC-1.1's `parent-absent` case even though the directory exists by the time the file lands in it.
 
   Retired paths are carried in the **separate top-level
   `retiredPresent` array**, because a retired path is not a manifest row and forcing it into `rows`
@@ -1247,12 +1451,35 @@ no hosted CI on this repo today).
   creation for sync only (AC-3.4, AC-3.8) and specified **no** failure path for any write at all
   (SE v8 F-01, F-02). *(P0)*
 
-  **(1) Who creates `.claude/workflows/` — every writer does.** Given the AC-0.5-resolved repo root
+  **(1) Who creates `.claude/workflows/` — every writer does, and only after it has classified.**
+  Given the AC-0.5-resolved repo root
   and `.claude/workflows/` absent beneath it, When any of the three writers is about to write the
-  drift state file, Then it creates the directory with `mkdir -p` first, creating at most `.claude/`
+  drift state file, Then it creates the directory with `mkdir -p`, creating at most `.claude/`
   and `.claude/workflows/` and nothing else, at the process umask (the mode is not asserted). The
   guards are AC-0.5's, unchanged: no creation when the reason is `repo-root-unresolved`, and never
   under `$HOME` or `/`.
+
+  **The order is normative: classify first, create second (TE v9 F-03).** Every writer completes the
+  entire drift computation — every row's state and reason, `retiredPresent` — **against the filesystem
+  as observed before this run created anything** — and only then does it `mkdir -p` and write. v9 said
+  the directory is created "first", which read against the drift-state write is correct but read
+  against the *classifier* would destroy the very axis value the feature's two bootstrap ACs depend
+  on: with `.claude/workflows/` created before classification, AC-1.8(i)'s `parent-absent` value is
+  unreachable at the hook and at `--check`, the fixture silently realises `absent` instead, and
+  AC-6.5's stated invariant chain ("the first existing ancestor of
+  `.claude/workflows/orchestrate-dev.bundle.js` is the fixture root, and it is traversable — so
+  absence is established") becomes false of the run that asserts it: the assertion still passes,
+  because the state is `missing` either way, but it passes for a different reason than the AC gives —
+  a false green on the reasoning, which is the shape AC-1.1's ancestor rule was rewritten to make
+  falsifiable. Two consequences a test author must plan for and may assert:
+
+  - the drift state file records **pre-creation** states (AC-2.6), so the first run on a fresh
+    consumer reports `parent-absent`-derived `missing` rows in a file that lives in a directory the
+    same run created;
+  - across two consecutive hook runs on an untouched consumer the recorded *state* is `missing` both
+    times while the underlying `consumerPath` situation moves from `parent-absent` to `absent`. That
+    is a change in the inputs, not non-determinism: AC-1.8(iii) is scoped to a fixed tree, and
+    AC-3.7's idempotence claim is about sync's effects, not about this axis.
 
   This is the *read-only surfaces create a directory* reading, chosen deliberately over the
   alternative. The alternative — skip the write when the directory is absent — violates AC-2.4,
@@ -1264,19 +1491,75 @@ no hosted CI on this repo today).
   at all, under the same wrong-root guards that protect every other write. AC-3.8's sync-side creation
   is now the special case of this rule, not a separate one.
 
-  **(2) Every mandated write has a failure outcome, and it is observable.** Given any write in this
-  feature fails for any reason — `EACCES`, a read-only filesystem, `ENOSPC`, a failed `mkdir`, a
+  **(2) Every mandated write has a failure outcome, and it is observable.** Given a write in this
+  feature is **attempted** and fails for any reason — `EACCES`, a read-only filesystem, `ENOSPC`, a
+  failed `mkdir`, a
   failed `mv` in AC-2.7's atomic replace, a copy that ends short — When the run continues, Then:
 
-  | Failing write | Behaviour |
+  | Failing write (`operation` token) | Behaviour |
   |---|---|
-  | `mkdir -p` of `.claude/workflows/`, or the atomic replace of the drift state file itself | No drift state file this run. The failure is printed to stderr naming the path and the operation. The **hook exits `0`** (NFR-6, AC-2.4); **`--check` and sync exit `4`**. The queue then blocks on AC-4.1 row 1 (file absent), which is the correct outcome and **not** a spurious block: `.claude/workflows/` is where the runtime loads its bundles from, so a repo in which it cannot be created cannot host this pipeline. The only remediation is the permissions/filesystem fix, and it is the one printed |
-  | a managed-artifact copy (AC-3.1), a backup (AC-3.4), a retirement delete (AC-3.9), or a sync-manifest update (AC-1.6) | The run **continues to the next row** (rows are independent, AC-1.4), the affected row's sync-manifest entry is **not** written or updated, and an entry `{ path, operation, stage }` is appended to `writeFailures` in the drift state file (AC-2.6). The run's exit code is **`4`** and the queue blocks (AC-4.1) |
+  | `mkdir` — `mkdir -p` of `.claude/workflows/` — or `drift-state-replace` — the atomic replace of the drift state file itself | No drift state file **written** this run, and **(2a)'s invalidation ladder runs** so no *old* one is left believable. The failure is printed to stderr naming the path and the `operation` token. The **hook exits `0`** (NFR-6, AC-2.4); **`--check` and sync exit `4`**. Neither token can ever appear in `writeFailures` — there is no file to record it in — so the array's closed set is asserted from the five rows below plus these two on stderr. The queue then blocks on AC-4.1 row 1, which is the correct outcome and **not** a spurious block: `.claude/workflows/` is where the runtime loads its bundles from, so a repo in which it cannot be created cannot host this pipeline. The only remediation is the permissions/filesystem fix, and it is the one printed |
+  | `artifact-copy` (AC-3.1), `backup` (AC-3.4), `backup-verify` (AC-2.9(3)), `retire-delete` (AC-3.9), `sync-manifest-update` (AC-1.6) | The run **continues to the next row** (rows are independent, AC-1.4), the affected row's sync-manifest entry is **not** written or updated, and an entry `{ path, operation }` is appended to `writeFailures` in the drift state file (AC-2.6). The run's exit code is **`4`** and the queue blocks (AC-4.1) |
+
+  **`operation` is a closed seven-member set and there is no `stage` (SE v9 F-04, TE v9 F-04).** The
+  members are exactly the tokens above: **`mkdir`, `drift-state-replace`, `artifact-copy`, `backup`,
+  `backup-verify`, `retire-delete`, `sync-manifest-update`** — stderr-only for the first two,
+  `writeFailures` members for the other five. v9 declared `{ path, operation, stage }` and then
+  printed `operation` at three operator-visible surfaces (AC-2.9(2)'s stderr line, AC-4.1's block
+  message, AC-4.2's `Run` block) with no domain, while `stage` appeared nowhere else in the document —
+  no domain, no print site, no oracle. Every other operator-visible set in this REQ is enumerated
+  (AC-1.0's seven baseline reasons, AC-1.2's four row reasons, AC-1.1's six states, AC-3.3's five exit
+  codes) and that enumeration is what makes each golden output assertable; `stage` is deleted rather
+  than defined, because nothing needed it.
+
+  **This is not a `repo-root-unresolved` clause.** When the root does not resolve there is **no write
+  target**, nothing is attempted, `writeFailures` is not reachable (no file), and the outcome is the
+  baseline one: warn (AC-2.5a), `--check`/sync exit **`3`** (AC-3.3 row 2), queue blocked on row 1.
+  Exit `4` means *we tried to write and could not*, which is a strictly different fact and a different
+  remediation (TE v9 F-02).
 
   `writeFailed` is a *run-level* outcome carried in `writeFailures`, deliberately not a fifth member
   of AC-1.2's row-`reason` set: it is not a classification of the row (the row's state was computed
   fine — the write is what failed), and widening a closed set whose four members are pinned by three
   golden oracles and AC-1.8(iv) would be a worse trade than one new top-level array.
+
+  **(2a) A failed drift-state write must invalidate the previous run's file.** Given the `mkdir` or
+  `drift-state-replace` of row 1 above failed **and** a drift state file from an earlier run is still
+  on disk, When the writer exits, Then it first performs the following ladder, stopping at the first
+  step that succeeds, and prints which step it reached:
+
+  | # | Action | Permission it needs | What the queue then reads |
+  |---|---|---|---|
+  | 1 | `unlink` the existing `.pdlc-drift-state.json` | **write on the directory** | absent ⇒ AC-4.1 row 1 ⇒ `blocked` |
+  | 2 | if the unlink fails: overwrite the existing file **in place**, truncating, with the two bytes `{}` | **write on the file** (not on the directory) | parses, but `schemaVersion != 1` and `baselineStatus` absent ⇒ AC-4.1 row 1 ⇒ `blocked`, with no new queue logic |
+  | 3 | if both fail: print the residual explicitly — "the drift state file on disk is stale and could not be invalidated" — and exit `4` (`0` for the hook) | — | the stale file. **Stated residual**, see below |
+
+  **Why this exists (SE v9 F-01).** v9's row 1 argued that a failed drift-state write is safe because
+  "the queue then blocks on AC-4.1 row 1 (file absent)". That holds only on the *first-run*
+  population. On any consumer where an earlier run wrote the file successfully, the old file is still
+  there — with `writeFailures: []`, `baselineStatus: resolved`, possibly every row `in-sync` — and the
+  queue's only input is that file's **contents** (`_readFile`, no stat metadata, AC-4.1). So it mapped
+  to *proceed silently* on a run whose drift computation could not be recorded at all: the false green
+  this feature exists to eliminate, one layer up, on a path the REQ itself specified. The failure is
+  also **asymmetric to the operator** — stderr from a SessionStart hook is not an input to the queue —
+  so nothing downstream would have noticed.
+
+  Step 2 is deliberately a *different permission* from step 1: `unlink` needs write on the containing
+  directory, while `O_TRUNC` on an existing file needs write on the file. The common failure this
+  ladder is written for — a directory that has become read-only while its files stay writable — is
+  covered by step 2 alone. `{}` needs no new queue rule: AC-4.1 row 1 already blocks on
+  `schemaVersion != 1` and on an absent `baselineStatus`.
+
+  **The residual is stated rather than glossed.** Step 3 is reachable only when the writer can neither
+  remove the file nor write to it — a directory and a file that both deny writes while a previous
+  file exists. In that configuration the queue may proceed on stale contents, and this REQ accepts it
+  because the alternative is a queue-visible input that does not exist at that seam (the runtime
+  offers contents only). It is bounded, it is announced on stderr at every drift computation, and the
+  remediation is the same permissions fix. AC-4.1's "No freshness clause" paragraph states the same
+  residual rather than asserting the case away, and the mandated falsifying tests are:
+  *(a)* pre-existing all-`in-sync` file + unwritable directory ⇒ file **absent** afterwards and the
+  queue blocks; *(b)* pre-existing file + unwritable directory + writable file ⇒ file contents `{}`
+  and the queue blocks; *(c)* both denied ⇒ the residual message is printed.
 
   **(3) No delete and no overwrite happens before its backup is verified.** Given AC-3.4 must
   preserve content that AC-3.9 or a `--force` copy is about to destroy, When the backup is written,
@@ -1337,13 +1620,16 @@ relay its output; it makes no classification or copy decisions of its own.
   (AC-3.4). *(P0)*
 - **AC-3.3** — Who: the operator, and the `pdlc/workflows` jest suite (`npm test`) — the only
   automated verification surface that exists (§0 fact 10). Given `--check`, When it runs, Then it
-  reports drift, copies nothing, writes nothing except the drift state file (AC-2.7), and exits per
+  reports drift, copies nothing, writes nothing except the drift state file and, per AC-2.9(1), the
+  directory containing it (AC-2.7; the qualifier is normative — AC-3.8 *requires* `--check` to create
+  `.claude/workflows/` on a fresh consumer, so a "the tree is unchanged apart from the drift state
+  file" assertion written from v9's sentence failed on the AC-3.8 fixture — TE v9 F-07), and exits per
   this complete table — highest applicable code wins, so the exit code is never green while
   anything is unverified: *(P0)*
 
   | Condition (evaluated in this precedence order) | Exit |
   |---|---|
-  | **any mandated write failed this run — `writeFailures` non-empty, or the drift state file could not be written at all (AC-2.9)** | **4** |
+  | **a mandated write was *attempted and failed* this run — `writeFailures` non-empty, or the `mkdir`/`drift-state-replace` of the drift state file itself failed (AC-2.9(2))** | **4** |
   | **`baselineStatus` is `unresolved` (AC-1.0), for any reason including `manifest-empty`** | **3** |
   | any row `unknown` | 3 |
   | any row `local-edit` or `unverified` | 2 |
@@ -1365,6 +1651,15 @@ relay its output; it makes no classification or copy decisions of its own.
   same precedence appears at the queue seam (AC-4.1) and in the drift state file
   (`writeFailures`, AC-2.6). `--check` can reach `4` too: it writes the drift state file, and
   AC-2.9(1) may have to create the directory for it.
+
+  **`4` is *attempted and failed*; `repo-root-unresolved` is `3` (TE v9 F-02).** v9's row 1 read "or
+  the drift state file could not be written at all", which is literally what AC-2.4 and AC-2.6 say
+  happens when the root does not resolve — so AC-3.8's third population (a non-git tree with no
+  `.claude/`) had **two** mandated exit codes: `4` from this row and `3` from AC-3.8, AC-2.5a and
+  AC-1.0. One required fixture, one expected exit code: the missing distinction is *failed write* vs
+  *no write target*, AC-2.9(2)'s own table only ever names `mkdir` and the atomic replace as failing
+  operations, and this row is now scoped to them. `repo-root-unresolved` falls to row 2 (`3`), and
+  AC-4.1's rows 1 and 3 carry the same scoping at the queue seam.
 
   **On the `unverified` asymmetry** (`--check` exits 2, but AC-4.1 lets the queue proceed): it is
   deliberate. `--check` is an assertion surface — its job is to be red whenever provenance is
@@ -1450,7 +1745,10 @@ relay its output; it makes no classification or copy decisions of its own.
 
   `missing`, not `unknown`, is the required classification here, and AC-1.1's `parent-absent` case is
   what supplies it: the parent directory does not exist, its first existing ancestor is traversable,
-  so nothing can be hiding under it and absence *is* established (TE v7 F-02). This AC and AC-6.5 are
+  so nothing can be hiding under it and absence *is* established (TE v7 F-02). **The classification is
+  taken before the run's own `mkdir -p`** — AC-2.9(1) makes that order normative, which is what keeps
+  `parent-absent` (rather than `absent`) the axis value realised here even though the same run creates
+  the directory (TE v9 F-03). This AC and AC-6.5 are
   the two places the distinction is
   load-bearing — read the other way, `--check` would exit `3`, AC-3.1 would refuse to copy, and the
   bootstrap would be unreachable.
@@ -1463,7 +1761,7 @@ relay its output; it makes no classification or copy decisions of its own.
   |---|---|---|
   | a git work tree with no `.claude/` at all | **yes** — AC-0.5 step 1 (`git worktree list --porcelain`) needs no `.claude/` | applies; the run creates `.claude/workflows/` |
   | a non-git tree that has `.claude/` but not `.claude/workflows/` | **yes** — step 2's upward walk finds the `.claude/` anchor | applies; the run creates `.claude/workflows/` |
-  | a non-git tree with **no `.claude/` at all** | **no** — step 1 does not apply and step 2 has no anchor to find ⇒ `repo-root-unresolved` | does **not** apply. `--check` exits `3` (AC-3.3), the hook warns the environment fix (AC-2.5a), nothing is created anywhere (AC-2.9(1)), and the queue blocks on row 1 |
+  | a non-git tree with **no `.claude/` at all** | **no** — step 1 does not apply and step 2 has no anchor to find ⇒ `repo-root-unresolved` | does **not** apply. `--check` exits **`3`** (AC-3.3 row 2 — *no write target*, so no write is attempted and row 1's exit `4` does not apply; TE v9 F-02), the hook warns the environment fix (AC-2.5a), nothing is created anywhere (AC-2.9(1)), and the queue blocks on row 1 |
 
   The third row is the decided answer, not a gap: with neither a git repository nor a `.claude/`
   directory there is no non-arbitrary way to pick which directory in the tree becomes the consumer
@@ -1542,9 +1840,9 @@ exists from that point onward.** No AC in REQ-DIST-04 may be relied on for first
 
   | Condition, in this precedence order | Queue outcome |
   |---|---|
-  | the read returns absent, or the content is unparseable JSON, or `schemaVersion` != 1, **or `baselineStatus` is absent** | `blocked` |
+  | the read returns absent, or the content is unparseable JSON, or `schemaVersion` != 1, **or `baselineStatus` is absent** — this row is also what catches both outcomes of AC-2.9(2a)'s invalidation ladder (file unlinked ⇒ absent; file truncated to `{}` ⇒ `schemaVersion != 1` **and** `baselineStatus` absent) and the `repo-root-unresolved` case, where no file was ever written | `blocked` |
   | `checkEnabled` is `false` | proceed, skip noted in the report (AC-4.3) |
-  | **`writeFailures` is a non-empty array** (AC-2.9) | `blocked`, naming each `{ path, operation }` |
+  | **`writeFailures` is a non-empty array** — i.e. a write this run *attempted and failed* (AC-2.9(2)); a run with **no write target** produces no file at all and is caught by row 1, not here (TE v9 F-02) | `blocked`, naming each `{ path, operation }` — `operation` from AC-2.9(2)'s closed seven-member set |
   | **`baselineStatus` is `unresolved`** (AC-1.0), for any reason including `manifest-empty` | `blocked`, naming `baselineReason` |
   | any row `unknown` | `blocked` |
   | any row `missing` | `blocked` |
@@ -1579,9 +1877,23 @@ exists from that point onward.** No AC in REQ-DIST-04 may be relied on for first
   and no `fs`, its only seam is the injected `_readFile` (contents, not stat metadata), and nothing
   in this REQ produces a session-start instant the queue could read — so the clause had no input a
   test could vary, and would have shipped as dead code or an always-pass guard. What replaces it is
-  strictly stronger and fully observable: AC-2.7 makes *every* writer refresh the file, so a stale
-  snapshot cannot outlive the operation that invalidated it, and the "hook never ran" case is
-  covered by row 1 (absent). `generatedAtUtc` remains in the schema for the human report only, and
+  observable, and the argument is stated with its one failure case in it rather than around it
+  (SE v9 F-01):
+
+  1. AC-2.7 makes *every* writer refresh the file, so on every path where a write **succeeds** a
+     stale snapshot cannot outlive the operation that invalidated it.
+  2. The "hook never ran" and "no write target" cases leave no file, which row 1 blocks on.
+  3. The remaining case — a write **attempted and failed** over a pre-existing file — is exactly
+     where v9's justification was false of v9's own AC-2.9(2): the old file survived, said
+     `writeFailures: []`, possibly said every row `in-sync`, and this table's last row therefore
+     read *proceed silently* on a run that recorded nothing. AC-2.9(2a) closes it at the writer: the
+     stale file is unlinked, or truncated to `{}`, and either outcome lands on **row 1** above.
+  4. The residual AC-2.9(2a) step 3 names — neither the directory nor the file is writable — is a
+     case in which the queue can still proceed on stale contents. It is accepted, stated here as
+     well as there, and announced on stderr at every drift computation; closing it would need a
+     queue-visible input the restricted runtime does not offer (contents only, no stat metadata).
+
+  `generatedAtUtc` remains in the schema for the human report only, and
   the queue never compares it to anything — comparing timestamps would be a classification
   decision, which NFR-1 forbids at this surface.
 - **AC-4.2** — Who: the operator. Given AC-4.1 blocks, When the report is written, Then it names
@@ -1602,7 +1914,7 @@ exists from that point onward.** No AC in REQ-DIST-04 may be relied on for first
   | **Row** (AC-1.2; printed per row, with the row `id` and state) | `plugin-artifact-missing` | **plugin update** — the package does not contain the artifact |
   | Row | `plugin-artifact-unreadable`, `consumer-artifact-unreadable`, `hash-tool-absent` | the corresponding environment or permissions fix (§4, AC-1.2) |
   | Row (states, not reasons) | `stale`, `missing` | `sync-workflows.sh` |
-  | **Run** (AC-2.9; printed in its own block, one line per `writeFailures` entry, naming `path` and `operation`) | a mandated write failed | the **permissions / filesystem fix** on the named path — never `sync-workflows.sh`, which will fail the same way. When the drift state file itself could not be written the queue sees only row 1 (file absent), so the same message is what the hook and `--check` printed to stderr |
+  | **Run** (AC-2.9; printed in its own block, one line per `writeFailures` entry, naming `path` and `operation` — `operation` is one of AC-2.9(2)'s closed seven tokens, so the line is assertable verbatim) | a mandated write was attempted and failed | the **permissions / filesystem fix** on the named path — never `sync-workflows.sh`, which will fail the same way. When the drift state file itself could not be written the queue sees only row 1 (absent, or `{}` after AC-2.9(2a)'s invalidation), so the same message is what the hook and `--check` printed to stderr |
 
   When several row reasons hold at once, the reason printed is the one AC-1.2's declared precedence
   selects, so this table has one applicable row per printed row (TE v8 F-04).
@@ -1908,10 +2220,11 @@ is nothing in the plugin package to copy (§0 fact 3).
 
   | Concern | Requirement |
   |---|---|
-  | Isolation | The test builds its fixture tree, in this exact order, then runs both commands with that directory as cwd and no network: **(1)** `mkdtemp` a fresh directory `F` under `os.tmpdir()`; **(2)** copy into `F`, **preserving mode bits**, every path listed by `git ls-files -z --cached --others --exclude-standard` at `<repoRoot>` — tracked files **plus** untracked-not-ignored ones; **(3)** `git init -q F && git -C F add -A && git -C F commit -q -m fixture`, so `F` **is a git work tree**. It never runs in place: `sync-workflows.sh` in place would write the developer's real `.claude/workflows/`. `F` is removed in teardown. |
+  | Isolation | The test builds its fixture tree, in this exact order, then runs both commands with that directory as cwd and no network: **(1)** `mkdtemp` a fresh directory `F` under `os.tmpdir()`; **(2)** copy into `F`, **preserving mode bits**, every path listed by `git ls-files -z --cached --others --exclude-standard` at `<repoRoot>` — tracked files **plus** untracked-not-ignored ones; **(3)** `git init -q F` — **and nothing else**: no `add`, no `commit` (see the next row), which is already enough to make `F` **a git work tree**. It never runs in place: `sync-workflows.sh` in place would write the developer's real `.claude/workflows/`. `F` is removed in teardown. |
+  | Why `git init -q` alone, with no commit (SE v9 F-05) | Measured on a commitless `git init` directory: `git worktree list --porcelain` prints `worktree <F>` with **no `bare` line**, `git rev-parse --git-dir` exits `0`, and `git rev-parse --show-toplevel` returns `<F>` — so AC-0.5 step 1 checks (a), (b) and (c) all pass, which is everything the next row needs. v9 additionally mandated `add -A && commit`, which buys nothing and adds two failure modes to the feature's only end-to-end oracle: `git commit` needs an identity (auto-derived from gecos on the maintainer machine, but `fatal: unable to auto-detect email address` on the containerised runners D-DIST-06 introduces, where the hostname is frequently `(none)`), and a maintainer with `commit.gpgsign = true` gets a signing prompt or a failure — the "Child environment" row pins `HOME` for the *child commands*, not for fixture construction. Both would make the bootstrap red for reasons unrelated to its assertions, and committing the whole copied tree is a needless per-run cost. If a future need for a commit appears it must be `git -c user.name=… -c user.email=… -c commit.gpgsign=false commit`; today there is none |
   | Why `F` must be a git work tree | AC-0.5 resolves a repo root by step 1 (`git rev-parse --git-dir` succeeds ⇒ `git worktree list --porcelain`) or step 2 (an upward walk for a `.claude/` **anchor**). A plain file copy under `/var/folders/…` is neither: step 1 does not apply, and step 2 finds no `.claude/` — this AC's own Given says the fixture has none, and after AC-3.9's landing step **no file under `.claude/` is tracked at all**, so nothing copies one in. The copy-only fixture therefore resolves `repo-root-unresolved` ⇒ `--check` exits `3`, AC-3.1 copies nothing, the queue blocks, and all three assertions below fail. Step (3) is what makes step 1 apply. v8 offered the copy and the clone as "equivalent"; they differ on exactly this point, which is why the construction is mandated rather than illustrated (TE v8 F-01) |
   | Why `--cached --others --exclude-standard` | `git ls-files` alone lists the **index**. During the implementation batch that orders this test first (TDD), `pdlc/hooks/scripts/sync-workflows.sh`, the SessionStart hook script and the manifest emission are newly authored and not necessarily `git add`ed — so a `--cached`-only fixture is red for "no such file", a reason unrelated to the assertions, and the cheapest fix an implementer finds is to repoint the fixture. `--others --exclude-standard` adds untracked-not-ignored files, which removes the precondition entirely rather than documenting it (SE v8 F-05) |
-  | Script invocation and mode bits | The command block below invokes `pdlc/hooks/scripts/sync-workflows.sh` as a **bare path**, which is the form `hooks.json` uses and therefore the form that must work — so the fixture copy preserves mode bits (step 2) and the two scripts this feature ships are mode `100755` in the index (§6's landing step, §0 fact 15). A separate assertion pins `git ls-files -s` at `100755` for both, so a regression to `100644` fails there with a clear message rather than here as an `EACCES` (SE v8 F-05) |
+  | Script invocation and mode bits | The command block below invokes `pdlc/hooks/scripts/sync-workflows.sh` as a **bare path**, which is the form `hooks.json` uses and therefore the form that must work. **Two** assertions, because the index mode and the working-tree mode are different objects (§0 fact 15, SE v9 F-02, TE v9 F-08): **(a)** `git ls-files -s` reports `100755` at `<repoRoot>` for both scripts this feature ships, so a regression to `100644` fails there with a clear message; **(b)** `[ -x ]` holds for both copied paths **inside `F`**, which is what the bare-path invocation actually depends on — step 2 copies *working-tree* modes, and during the RED phase the scripts may be untracked (`--others`), where an index entry does not exist and assertion (a) is vacuous. Without (b), a `100755` index entry over a `chmod -x` working copy passes (a) and fails the invocation with exit **126**, which is the failure this row exists to prevent (SE v8 F-05) |
   | No install step | The fixture has no `node_modules/` (`--exclude-standard` ignores it) and none is created. This is sound only because `build-runtime.mjs` imports node builtins alone (§0 fact 16); that is a **constraint on the builder**, and a future builder dependency must add an install step here in the same commit (SE v8 F-06) |
   | Invariant it proves | **The bootstrap works against the code in this checkout** — not against `HEAD`. This is what the fixture source is chosen to guarantee, and it is stated so an implementer cannot satisfy the AC against committed content. |
   | Path comparison | Any assertion about the fixture root (including AC-0.5's resolution of it) compares paths after `realpath`. On macOS `os.tmpdir()` returns `/var/folders/…` while both `git worktree list --porcelain` and `git rev-parse --show-toplevel` return `/private/var/folders/…`; the two git commands agree with each other, so AC-0.5 check (c) is safe, but a raw string comparison against `os.tmpdir()` is not. |
@@ -1938,9 +2251,10 @@ is nothing in the plugin package to copy (§0 fact 3).
     claim about the wrong tree.
 
   Building from the working tree keeps every other property the row states (temp directory, no
-  network, teardown) and makes the RED phase a genuine RED — and `git init` on the copy restores the
+  network, teardown) and makes the RED phase a genuine RED — and `git init -q` on the copy restores the
   one property the clone had and the copy did not (a resolvable repo root), rather than reverting to
-  the clone.
+  the clone. Nothing beyond `git init -q` is needed for that, and nothing beyond it is mandated
+  (SE v9 F-05).
 
   **The `.claude/workflows/` directory does not exist in the fixture, and must classify as
   `missing`.** AC-3.9's landing step gitignores it, so it is not among the files copied in — which is
@@ -1950,6 +2264,15 @@ is nothing in the plugin package to copy (§0 fact 3).
   `.claude/workflows/orchestrate-dev.bundle.js` is that root, and it is traversable — so absence is
   established. Without it AC-3.1 would refuse to copy and none of the three assertions above could
   hold. The directory itself is created by the sync run (AC-2.9(1), AC-3.8).
+
+  **This chain is only true because AC-2.9(1) classifies before it creates (TE v9 F-03), and the test
+  must pin that.** If the `mkdir -p` ran first, `.claude/workflows/` would exist at classification
+  time, the realised axis value would be `absent` rather than `parent-absent`, and the assertions
+  above would still pass — for a different reason than the one this paragraph gives. A pipeline that
+  is green for the wrong reason is precisely what AC-1.1's ancestor rule was rewritten to expose, so
+  the required extra assertion is on the **drift state file the run wrote**: the first `--check` on the
+  untouched fixture records the rows as `missing` and, when the implementation exposes the situation
+  (§4's probes vocabulary), as `parent-absent`-derived — pinning the order rather than the outcome.
 
   This AC exists because v5 composed three changes into a bootstrap hole: it untracked
   `.claude/workflows/`, forbade the builder from writing there, and pinned the only remaining writer
@@ -1968,12 +2291,12 @@ absent from this table.
 | `distribution.checkEnabled` | `.claude/pdlc.config.json` (consumer repo; new file, absent ⇒ defaults) | `true` | consuming-repo operator | AC-4.3. Resolved by the shell writer, delivered to the queue via the drift state file. Gates the queue only, not the hook or `--check`. |
 | distribution manifest | **`<pluginRoot>/workflows/dist/distribution-manifest.json`** — one path, three bindings of `<pluginRoot>`: consumer `${CLAUDE_PLUGIN_ROOT}`, maintainer `<repoRoot>/pdlc`, build output `pdlc/workflows/dist/…` | 2 managed rows + 2 `retired` paths (AC-0.2, AC-0.7); **absent on every pre-feature install** ⇒ AC-0.3b | pdlc maintainer, emitted by `build-runtime.mjs` | AC-0.1. Sole authority for the managed set. The `dist/` segment is part of the path everywhere. |
 | sync manifest | `.claude/workflows/.pdlc-sync-manifest.json` (consumer) | absent ⇒ all rows `unverified` | written by `sync-workflows.sh` only — **never** by `build-runtime.mjs` (AC-6.1) | AC-1.6, AC-1.7. |
-| drift state file | `.claude/workflows/.pdlc-drift-state.json` (consumer) | absent ⇒ queue `blocked` | **one shared writer routine**, invoked by the hook, by `--check`, and by sync (AC-2.7); whole-file atomic replace, last complete write wins | AC-2.6, AC-2.7, AC-4.1. |
+| drift state file | `.claude/workflows/.pdlc-drift-state.json` (consumer) | absent ⇒ queue `blocked` | **one shared writer routine**, invoked by the hook, by `--check`, and by sync (AC-2.7); whole-file atomic replace, last complete write wins | AC-2.6, AC-2.7, AC-4.1. When the write is attempted and fails, any pre-existing copy is **invalidated** — unlinked, else truncated in place to `{}` — so the queue never reads a stale snapshot (AC-2.9(2a), SE v9 F-01). |
 | backup dir | `.claude/workflows/.pdlc-backups/` (consumer) | created on demand | sync script | AC-3.4, AC-3.9. |
 | backup retention | same | newest **5** per `id`, selected by `LC_ALL=C` lexicographic descending filename sort | pdlc maintainer | AC-3.4. Never mtime-based. |
 | backup stamp format | backup filename | `YYYYMMDDTHHMMSSZ`, collisions suffixed `-2`, `-3`, … | pdlc maintainer | AC-3.4. Fixed width so lexicographic order == chronological order. |
 | `id` charset | manifest row | `^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$` | pdlc maintainer | AC-0.1. Filename-safety for AC-3.4; violation ⇒ manifest malformed. |
-| content-hash utility | `shasum` \| `sha1sum`, resolved by probing | first that runs | pdlc maintainer | Both absent ⇒ every row `unknown`, reason `hash-tool-absent` (AC-1.2) — a **row-level** reason, since rows exist whenever the baseline resolved. |
+| content-hash utility | `shasum` \| `sha1sum`, resolved by probing | first that runs | pdlc maintainer | Both absent ⇒ every row `unknown`, reason `hash-tool-absent` (AC-1.2) — a **row-level** reason, since rows exist whenever the baseline resolved. It is **never** a `baselineReason`: the manifest is read by the JSON tool (`readBytes_json`, AC-1.1a), so hash-tool absence cannot make the baseline `unresolved` (TE v9 F-01). |
 | row `reason` set | drift state file, `rows[].reason` | `null` for any state other than `unknown` | pdlc maintainer | AC-1.2. Closed set of **four**: `plugin-artifact-missing` (⇒ plugin update), `plugin-artifact-unreadable` (⇒ permissions fix on the plugin cache path), `consumer-artifact-unreadable` (⇒ permissions fix on `consumerPath`), `hash-tool-absent`. Disjoint from AC-1.0's manifest-level set by construction; each member is separately distinguishable in every human-facing surface (AC-2.5, AC-4.2). |
 | JSON read/write utility | Python interpreter, discovered by probing `python3`, `python`, `py` — **the identical loop already shipped in all three `pdlc/hooks/scripts/*.sh`**, reused verbatim, not reinvented | first candidate that executes `import sys` successfully | pdlc maintainer | Reads/writes all four JSON files and is what distinguishes *malformed* from *absent* (AC-2.4). None found ⇒ `baselineStatus` `unresolved`, reason `json-tool-absent` (a **manifest-level** reason — with no JSON reader there are no rows), hook warns (AC-2.5a) and still exits 0 (NFR-6). |
 | sync script invocation path | **`<pluginRoot>/hooks/scripts/sync-workflows.sh`** — consumer `${CLAUDE_PLUGIN_ROOT}/hooks/scripts/sync-workflows.sh`, maintainer `pdlc/hooks/scripts/sync-workflows.sh` | — | pdlc maintainer | REQ-DIST-03 preamble, AC-0.4, AC-6.5. This is the expansion every "exact remediation command" prints; it is runnable with no plugin installed. |
@@ -1986,11 +2309,13 @@ absent from this table.
 | managed row `id` values (v1) | manifest rows | `orchestrate-dev`, `orchestrate-queue` | pdlc maintainer | AC-0.1. Backup filenames are parsed by the stamp-anchored regex in AC-3.4, so `orchestrate-dev` and the retired basename `orchestrate-dev.js` never collide. |
 | plugin version (`pluginVersion`) | `<pluginRoot>/.claude-plugin/plugin.json`, key `version` — i.e. `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json` for a consumer, `<repoRoot>/pdlc/.claude-plugin/plugin.json` under AC-0.3a | `0.10.0` at `3dab335` | pdlc maintainer | AC-2.6, AC-5.4. File or key absent/unreadable ⇒ renders as `unknown` in the report and as `null` in the drift state file; it is context only, so no state, exit code or queue outcome depends on it. |
 | retired paths | each row's `retires` array; the manifest's top-level `retired` is their union | 2 paths (AC-0.7) | pdlc maintainer | AC-0.7, AC-2.8, AC-3.9. Present-in-consumer set is reported as `retiredPresent` in the drift state file (AC-2.6) and blocks the queue (AC-4.1). |
-| `.claude/workflows/` creation | consumer repo, beneath the AC-0.5-resolved root | **created on demand by every writer** — hook, `--check`, sync — with `mkdir -p`, at the process umask; at most `.claude/` and `.claude/workflows/`, never under `$HOME` or `/`, never when the reason is `repo-root-unresolved` | pdlc maintainer | **AC-2.9(1)**. v8 specified creation for sync only while mandating the drift-state write everywhere, which left the write with no target on the rollout-universal population (SE v8 F-01). |
-| `writeFailures` | top-level array of the drift state file | `[]` | the shared drift-state writer (AC-2.7) | **AC-2.9(2)**. Entries `{ path, operation, stage }`. Non-empty ⇒ exit `4` (AC-3.3) and queue `blocked` (AC-4.1). Deliberately **not** a fifth member of the row-`reason` set — the failure is of the write, not a classification of the row. |
-| `sync-workflows.sh` exit codes | process exit | `0` in-sync / `1` sync-fixable / `2` `local-edit`\|`unverified` / `3` unverified-or-unresolved / **`4` write failed** | pdlc maintainer | AC-3.3. Highest applicable code wins; `4` is above `3` because "could not repair" dominates "could not verify" (AC-2.9). |
-| shipped script mode | git index, `pdlc/hooks/scripts/*.sh` | **`100755`** | pdlc maintainer | §0 fact 15. `hooks.json` and every printed remediation command invoke a bare path, which needs the execute bit; all shipped scripts are `100644` today. Pinned by a `git ls-files -s` assertion (AC-6.5) and corrected for the three siblings in the landing step (§6). |
-| filesystem probes | AC-1.1a | `exists` = `[ -e p ]`; `traverse(D)` = `[ -d D ] && [ -x D ]`; `enumerate(D)` = `[ -r D ]`; `readBytes(p)` = the hash utility exits `0` | pdlc maintainer | **AC-1.1a**. Every "readable"/"unreadable" clause in AC-1.1, AC-1.2, AC-1.8(i), AC-0.4 and AC-0.5 resolves to one of these. Absence is established by **traverse**, never by read. Permission-derived fixtures skip with a printed reason when `id -u` is `0`. |
+| `.claude/workflows/` creation | consumer repo, beneath the AC-0.5-resolved root | **created on demand by every writer** — hook, `--check`, sync — with `mkdir -p`, **after classification, never before it** (TE v9 F-03), at the process umask; at most `.claude/` and `.claude/workflows/`, never under `$HOME` or `/`, never when the reason is `repo-root-unresolved` | pdlc maintainer | **AC-2.9(1)**. v8 specified creation for sync only while mandating the drift-state write everywhere, which left the write with no target on the rollout-universal population (SE v8 F-01). |
+| `writeFailures` | top-level array of the drift state file | `[]` | the shared drift-state writer (AC-2.7) | **AC-2.9(2)**. Entries `{ path, operation }` — v9's `stage` is **deleted** (undefined, unprinted, unasserted; SE v9 F-04, TE v9 F-04). Non-empty ⇒ exit `4` (AC-3.3) and queue `blocked` (AC-4.1). Populated only by writes that were *attempted and failed*; `repo-root-unresolved` produces no file at all and is exit `3` (TE v9 F-02). Deliberately **not** a fifth member of the row-`reason` set — the failure is of the write, not a classification of the row. |
+| `writeFailures[].operation` | each entry of that array, and the stderr line of AC-2.9(2) | — (closed set, no default) | pdlc maintainer | **AC-2.9(2)**. Closed **seven**-member set: `mkdir`, `drift-state-replace` (stderr only — there is no file to record them in), `artifact-copy`, `backup`, `backup-verify`, `retire-delete`, `sync-manifest-update` (all five appear in `writeFailures`). Printed at three surfaces (AC-2.9(2) stderr, AC-4.1's block message, AC-4.2's `Run` block), so the enumeration is what makes those golden outputs assertable. |
+| `sync-workflows.sh` exit codes | process exit | `0` in-sync / `1` sync-fixable / `2` `local-edit`\|`unverified` / `3` unverified-or-unresolved (**including `repo-root-unresolved` — no write target**) / **`4` a write was attempted and failed** | pdlc maintainer | AC-3.3. Highest applicable code wins; `4` is above `3` because "could not repair" dominates "could not verify" (AC-2.9). The `3`/`4` boundary is *attempted* vs *no target* (TE v9 F-02). |
+| shipped script mode | **both** the git index and the working tree, `pdlc/hooks/scripts/*.sh` | index `100755` **and** `[ -x ]` on disk | pdlc maintainer | §0 fact 15, SE v9 F-02, TE v9 F-08. The two are independent objects: `git update-index --chmod=+x` sets the index bit and leaves the file `-rw-r--r--`, where bare-path invocation exits **126**. The landing step therefore runs `chmod +x` (which also records `100755` under the default `core.fileMode true`), and AC-6.5 asserts both. `hooks.json` and every printed remediation command invoke a bare path, which needs the execute bit; all shipped scripts are `100644` today. Pinned by a `git ls-files -s` assertion **and** an `[ -x ]` assertion on the fixture copy (AC-6.5), and corrected for the three siblings in the landing step (§6). |
+| filesystem probes | AC-1.1a | `exists` = `[ -e p ]`; `traverse(D)` = `[ -d D ] && [ -x D ]`; `enumerate(D)` = `[ -r D ] && [ -x D ]`; `readBytes_hash(p)` = the **content-hash utility** exits `0`; `readBytes_json(p)` = the **JSON tool** reads `p` | pdlc maintainer | **AC-1.1a**. Every "readable"/"unreadable" clause in AC-1.1, AC-1.2, AC-1.8(i), AC-0.4 and AC-0.5 resolves to one of these. Absence is established by **traverse**, never by read. `readBytes` is parameterised by its reader: managed-artifact comparison uses the hash utility, the manifest uses the JSON tool, so hash-tool absence is never `plugin-root-unreadable` (TE v9 F-01, SE v9 F-03). `enumerate` is stated identically here and at AC-1.1a (SE v9 F-06). Under `id -u == 0`, example-based permission fixtures **skip with a printed reason** and AC-1.8's property test **filters** the affected axis values and names the invariants left unverified (TE v9 F-05). |
+| `baselineReason` precedence | `baselineStatus.reason`, when `unresolved` | `json-tool-absent` > `plugin-root-unset` > `plugin-root-unreadable` > `repo-root-unresolved` > `manifest-absent` > `manifest-malformed` > `manifest-empty` | pdlc maintainer | **AC-1.0**, AC-1.8(iv). Declared, not "first failure encountered", in remediation order — environment-global before per-artifact, and each member a strictly later step of the same pipeline than the one above. `hash-tool-absent` is a **row** reason and is never a member of this set (AC-0.4, AC-1.2). |
 | row `reason` precedence | `rows[].reason`, when the state is `unknown` | `hash-tool-absent` > `plugin-artifact-missing` > `plugin-artifact-unreadable` > `consumer-artifact-unreadable` | pdlc maintainer | AC-1.2, AC-1.8(iv). Declared, not "first failure encountered"; AC-1.8(i)'s cross product generates the overlap on every run. |
 
 No semver comparator and no `sort -V` appear in this table because no AC needs version *ordering* —
@@ -2042,10 +2367,16 @@ state file from listing itself.
   from absent (AC-2.4 requires that distinction). Absence of the hash utility degrades every row to
   `unknown`/`hash-tool-absent` (AC-1.2); absence of the JSON utility degrades the whole run to
   `baselineStatus: unresolved` / `json-tool-absent` (AC-1.0), since with no JSON reader there is no
-  manifest and therefore no rows. Never a crash, and never `in-sync`.
+  manifest and therefore no rows. Never a crash, and never `in-sync`. The two degradations are
+  **independent**, which is what AC-1.1a's split of `readBytes_hash` from `readBytes_json` guarantees
+  at the probe level: a missing hash utility can never make the baseline `unresolved`, and a missing
+  JSON interpreter can never be reported as a row reason (TE v9 F-01, SE v9 F-03).
 - **NFR-6 — Fail-open at the session seam, fail-closed at the queue seam.** The hook must never
   prevent a session from starting (AC-2.4); the queue must never run a feature on an unverified
-  pipeline (AC-4.1). These opposite defaults are deliberate.
+  pipeline (AC-4.1). These opposite defaults are deliberate, and they are what makes AC-2.9(2a)
+  mandatory rather than optional: a hook that fails to write the drift state file exits `0` (fail
+  open) and must therefore leave the queue seam with **nothing believable** to read (fail closed),
+  since stderr from a SessionStart hook is not a queue input (SE v9 F-01).
 
 ## 6. Scope
 
@@ -2062,16 +2393,21 @@ state file from listing itself.
   test, plus the single real-repo-root assertion (AC-6.4).
 - **A jest test for the fresh-clone bootstrap** (AC-6.5): a fixture tree under `os.tmpdir()` built
   from `git ls-files -z --cached --others --exclude-standard` with **mode bits preserved** and then
-  `git init`-ed so AC-0.5 step 1 resolves it, `CLAUDE_PLUGIN_ROOT`
+  `git init -q`-ed (no `add`, no `commit`) so AC-0.5 step 1 resolves it, `CLAUDE_PLUGIN_ROOT`
   unset and `HOME` pinned outside it, `build` then
   `sync`, then assert the bundles exist, `--check` exits `0`, and AC-4.1's mapping over the written
-  drift state file yields *proceed silently*. Plus the `git ls-files -s` mode assertion on the two
-  shipped scripts.
-- **Execute bits on the shipped hook scripts** (§0 fact 15): `git update-index --chmod=+x` on
+  drift state file yields *proceed silently*. Plus **both** mode assertions on the two shipped
+  scripts — `git ls-files -s` = `100755` at the repo root and `[ -x ]` on the copies inside the
+  fixture.
+- **Execute bits on the shipped hook scripts, in the working tree *and* the index** (§0 fact 15,
+  SE v9 F-02): `chmod +x` — plus `git update-index --chmod=+x` for a checkout with
+  `core.fileMode false` — on
   `pdlc/hooks/scripts/sync-workflows.sh` and the new SessionStart drift script, **and on the three
   existing siblings** (`nudge-consolidation.sh`, `check-scope-field.sh`,
   `guard-harvest-before-delete.sh`), all of which are `100644` today while `hooks.json` invokes them
-  as bare paths. Correcting the siblings is a one-line index change with no behavioural risk and it
+  as bare paths. The index-only form is **not** sufficient: it leaves the file `-rw-r--r--` on disk,
+  where a bare-path invocation exits `126`, which is the failure both `hooks.json` and AC-6.5's
+  fixture would hit. Correcting the siblings has no behavioural risk and
   removes the class of defect rather than one instance of it.
 - A distribution-manifest-driven managed set; six-state drift detection with hash-based provenance;
   report-only `not-managed` enumeration.
@@ -2140,6 +2476,31 @@ though they were artifacts.
 | US-04 | REQ-DIST-00 (AC-0.1, 0.2, 0.7), REQ-DIST-06 (AC-6.1–6.5), REQ-DIST-04 (AC-4.1–4.3) |
 
 ## 10. Disposition of cross-review findings
+
+### Software-engineer v9 (2 High / 4 Medium / 1 Low)
+
+| ID | Sev | Resolution |
+|---|---|---|
+| F-01 | High | **New AC-2.9(2a): a failed drift-state write invalidates the previous run's file.** The finding is accepted in full — AC-4.1's "No freshness clause" justification was false of AC-2.9(2), because on any consumer where an earlier run succeeded the stale file survives with `writeFailures: []` and possibly all rows `in-sync`, and the queue reads contents only. The ladder is: **unlink** (needs directory write) → **truncate in place to `{}`** (needs only file write; AC-4.1 row 1 already blocks on `schemaVersion != 1`) → **print a stated residual**. Deliberately no new queue rule and no new queue input. AC-4.1's paragraph is re-derived as four numbered cases with the residual named rather than asserted away; AC-2.4, AC-2.6 and §4's drift-state row cite it, and three falsifying tests are mandated. Answers **Q-01**: the pre-existing file is removed or neutered, never believed. |
+| F-02 | High | **The working-tree bit is now mandated alongside the index bit.** Re-measured here (`git update-index --chmod=+x` ⇒ index `100755`, `ls -l` `-rw-r--r--`, `./s.sh` ⇒ exit **126**) and recorded in §0 fact 15, whose `EACCES` error code is corrected to `126`. §6's landing step runs `chmod +x` (with `git update-index --chmod=+x` retained for `core.fileMode false`), §4's row requires both bits, and AC-6.5 now carries **two** assertions: `git ls-files -s` = `100755` at the repo root **and** `[ -x ]` on the copied paths inside `F` — which also closes TE v9 F-08's vacuous-index-assertion case for untracked RED-phase scripts. Worktree copy + real `chmod +x` was chosen over `git checkout-index`, exactly as the finding recommends, because the index-materialising construction reintroduces v8 F-05. Answers **Q-02**: both, and the worktree bit is the one AC-6.5 depends on. |
+| F-03 | Medium | **`readBytes` is parameterised by its reader and AC-1.0 gains a precedence.** AC-1.1a now defines `readBytes_hash` (content-hash utility; managed-artifact comparison only) and `readBytes_json` (the JSON tool; the manifest and the other three JSON files), states the general form `readBytes_R`, and notes that the two readers fail independently. AC-0.4's manifest clause names `readBytes_json` and states that hash-tool absence is **never** a manifest-level reason. AC-1.0 declares `json-tool-absent` > `plugin-root-unset` > `plugin-root-unreadable` > `repo-root-unresolved` > `manifest-absent` > `manifest-malformed` > `manifest-empty` with the same remediation-order rationale AC-1.2 uses, AC-1.8(iv) extends its three reason properties to `baselineReason`, and §4 carries a `baselineReason` precedence row. Answers **Q-03**. |
+| F-04 | Medium | **`operation` is a closed seven-member set; `stage` is deleted.** Members: `mkdir`, `drift-state-replace` (stderr only — no file exists to record them in), `artifact-copy`, `backup`, `backup-verify`, `retire-delete`, `sync-manifest-update`. Applied at AC-2.6's schema, AC-2.9(2)'s table (each row now names its tokens), AC-4.1 row 3, AC-4.2's `Run` row, and a new §4 row. `stage` is removed rather than defined, since no surface printed it and no oracle read it. Answers **Q-04**. |
+| F-05 | Medium | **AC-6.5's `add -A && commit` is dropped.** Re-measured: on a commitless `git init` directory `git worktree list --porcelain` prints the worktree with no `bare` line, `git rev-parse --git-dir` exits `0` and `--show-toplevel` returns the same path — AC-0.5 step 1 (a)–(c) all pass. A dedicated table row records the measurement and the two failure modes the commit would have added (no git identity on a D-DIST-06 container; `commit.gpgsign`), and names the `-c user.name=… -c commit.gpgsign=false` form should a commit ever be needed. §6's scope item and the closing "why the working tree" paragraph match. |
+| F-06 | Low | **`enumerate(D)` = `[ -r D ] && [ -x D ]`** — one definition, stated identically at AC-1.1a, AC-0.6 and §4. |
+| F-07 | Low | **Not resolved here — out of this REQ's scope, escalation restated.** This round was dispatched as "iteration 2" with an instruction to delta against `-v1` and write `-v2`, while SE/TE v1–v8 were committed and the REQ was at v9.0; both reviewers correctly filed v9 instead. The defect is in `pdlc/skills/orchestrate-dev/SKILL.md` / `orchestrate-dev.js`'s review loop (the index must be derived from the highest `CROSS-REVIEW-{role}-{doc}-v{N}` on the branch), it now also mis-specifies the delta target and the output filename, and it belongs in `docs/_queue/QUEUE.md` as its own item. Recorded so it survives harvest; this REQ is not blocked on it. |
+
+### Test-engineer v9 (2 High / 3 Medium / 3 Low)
+
+| ID | Sev | Resolution |
+|---|---|---|
+| F-01 | High | **Same fix as SE v9 F-03, and the fixture now has one expected outcome.** `readBytes` is split into `readBytes_hash` / `readBytes_json`; AC-0.4 names the JSON tool; AC-1.1a states that the hash utility can be absent while the JSON tool works and vice versa. Answers **Q-01**: with no `shasum`/`sha1sum`, `baselineStatus` is **`resolved`**, every row is `unknown`/`hash-tool-absent`, `--check` exits `3` via the *any row unknown* row, and `hash-tool-absent` wins AC-1.2's precedence on the overlap AC-1.8(iv) asserts against — §4, AC-1.1, AC-1.2, AC-1.8 and NFR-5 all agree, and `plugin-root-unreadable` is reachable only through a genuinely unreadable manifest or an untraversable plugin root. |
+| F-02 | High | **AC-3.3 row 1 is scoped to writes *attempted and failed*.** `repo-root-unresolved` is *no write target* and exits **`3`** via row 2. Applied at AC-3.3 (row 1 plus a new paragraph deriving the boundary), AC-4.1 (row 1 now names the no-file cases explicitly, row 3 is scoped to attempted writes), AC-2.4 (a two-row table separating the cases with their per-surface exit codes), AC-2.6, AC-2.9(2) (an explicit "this is not a `repo-root-unresolved` clause" paragraph), AC-3.8's population row 3, and §4's exit-code row. Answers **Q-02**: `3`. |
+| F-03 | Medium | **AC-2.9(1) mandates classify-then-create.** The whole drift computation is evaluated against the filesystem as observed *before* the run created anything; the two observable consequences are stated (the file records pre-creation states; the axis value moves `parent-absent` → `absent` across two runs while the *state* stays `missing`). AC-1.8(iii) is scoped to a fixed tree, AC-1.8(i) says the generator's value is the one the classifier sees, AC-2.6 states what the file records, AC-3.8 cites the order, and AC-6.5 gains the paragraph the finding asks for **plus** a required assertion on the written drift state file so the order is pinned rather than inferred. Answers **Q-03**: before. |
+| F-04 | Medium | Same as SE v9 F-04 — closed seven-member `operation` set, `stage` deleted, all three printing surfaces and §4 updated. Answers **Q-04**. |
+| F-05 | Medium | **AC-1.1a's uid-0 rule is now a two-row table** separating example-based tests (**skip** with a printed reason) from AC-1.8's property test (**filter** the two permission-derived `consumerPath` values and `pluginPath present-unreadable`, print the reason once, assert the remaining cross product in full). The recommendation is adopted as written, and the three invariants left unverified under root are named: `ancestor-untraversable ⇒ unknown`, `pluginPath` present-unreadable ⇒ `plugin-artifact-unreadable`, and `hash-tool-absent` over `consumer-artifact-unreadable`. AC-1.8(i) cross-references it. Answers **Q-05**: filter. |
+| F-06 | Low | **AC-0.5 step 2's result now carries the same `traverse` check as step 1(b)**, so AC-1.1's `A(p)` termination argument holds for both resolution routes; AC-1.1's citation is restated accordingly. |
+| F-07 | Low | **AC-3.3's Then now reads "writes nothing except the drift state file and, per AC-2.9(1), the directory containing it"**, with the reason the qualifier is normative (AC-3.8 requires that creation). |
+| F-08 | Low | Folded into SE v9 F-02: AC-6.5 asserts `[ -x ]` on the copied paths **inside `F`** alongside the index-mode assertion, and the row states why the index assertion alone is vacuous for untracked RED-phase scripts and passable-but-wrong for a `chmod -x` working copy. |
 
 ### Software-engineer v8 (2 High / 3 Medium / 2 Low)
 
