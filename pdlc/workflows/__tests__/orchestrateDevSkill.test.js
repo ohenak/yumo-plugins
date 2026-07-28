@@ -84,6 +84,6 @@ describe("orchestrate-dev SKILL.md rewrite — TSPEC-SKILL-02", () => {
   // PROP-SKILL-08: references both canonical plugin source and consumer runtime copy
   it("PROP-SKILL-05/08: references both plugin source and consumer runtime copy paths", () => {
     expect(content).toContain("pdlc/workflows/orchestrate-dev.js");
-    expect(content).toContain(".claude/workflows/orchestrate-dev.js");
+    expect(content).toContain(".claude/workflows/orchestrate-dev.bundle.js");
   });
 });
