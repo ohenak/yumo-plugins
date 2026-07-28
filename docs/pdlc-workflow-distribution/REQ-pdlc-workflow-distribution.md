@@ -10,13 +10,34 @@ depends-on: []
 |---|---|
 | Upstream | `docs/design/MASTER-PLAN-engineering-loop.md` (Break 3, order 1) |
 | Downstream | `FSPEC-pdlc-workflow-distribution.md`; features `pdlc-merge-phase`, `pdlc-consolidation-agent`, `pdlc-engineering-loop` |
-| Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-REQ-v{1..13}.md` (26 files, this branch) |
+| Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-REQ-v{1..14}.md` (28 files, this branch) |
 | Post-mortem | `POSTMORTEM-R-pdlc-workflow-distribution.md` (v2.1, resolved) |
 | Archived spec-grade record | REQ v13.0, git `9b66cdb` — superseded as a REQ, preserved as FSPEC/TSPEC input |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | **approved (product scope)** | Claude + operator | 15.0 | 2026-07-28 |
+| pdlc | **approved (product scope)** | Claude + operator | 16.0 | 2026-07-28 |
+
+> **v16.0 — four oracle corrections from SE/TE round 14, no altitude change.** Every edit fixes an
+> oracle the REQ itself elected to state; none changes need, scope, priority or phasing.
+> (1) **TE F-01 (High) / SE F-01 — AC-6.6's oracle was wrong in both readings.** The history-walking
+> form is red on every commit that does not touch `dist/` (steady-state red ⇒ disabled), and its
+> charitable reading is inert at the only moment its own When names (`npm test` runs pre-commit,
+> so the violating commit does not exist yet). AC-6.6 now observes the **working tree against
+> `HEAD`**, matching AC-6.3's observation point: red iff `git diff HEAD -- pdlc/workflows/dist/`
+> is non-empty and the working-tree `plugin.json` `version` equals `HEAD`'s. No history walk, no
+> steady-state red, falsifiable today. (2) **TE F-02 (Medium) — BL-01's exit criterion was
+> vacuous.** "Echo a `workflows/dist/` path" is string interpolation and succeeds whether or not
+> `dist/` shipped; §7 BL-01 now demands a positive-presence conjunct (installed plugin, `test -r`,
+> byte-compare against the repo's manifest) and §0 fact 3 points at that wording. (3) **TE F-05 /
+> SE F-02 — AC-6.4 exemption (ii) is mechanised**: a per-feature dir is a `docs/<X>/` containing
+> `REQ-<X>.md` (verified: reproduces the covered set at exactly 7), and the test now asserts the
+> cardinality as well as the exemption list. (4) **TE F-03 / SE F-03 — AC-6.6's skip vocabulary**
+> now enumerates `git`-absent, no-`.git`, and unborn-`HEAD` alongside clean-`dist/`, each skipping
+> loudly on the §10 O-11 pattern; shallow clones and linked worktrees are no longer a problem
+> because `git diff HEAD` needs no ancestry. **TE F-04 (Low)** recorded in §4: exit `1` is
+> `--check`-only. **SE Q-01** (monotonicity) bound as §10 O-15; **SE Q-02** dissolves under the
+> working-tree oracle — the landing commit's own dirty `dist/` triggers the check.
 
 > **v15.0 — scope corrections from SE/TE round 13, no altitude change.** (1) SE F-01 (High): the
 > A′→B publish edge now has an owner — **AC-6.6** requires the advertised `plugin.json` version to
@@ -65,8 +86,10 @@ facts, each re-checkable in one command:
    the second is evidenced, not yet measured for a build-output directory — nothing under a nested
    build output has shipped. The available evidence: the installed cache does contain a nested
    subdirectory, `~/.claude/plugins/cache/yumo-plugins/pdlc/0.10.0/workflows/__tests__/`, so
-   subdirectory structure under `workflows/` demonstrably survives packaging. BL-01's spike closes
-   the remainder by also echoing a `workflows/dist/` path resolution.
+   subdirectory structure under `workflows/` demonstrably survives packaging. The remainder is
+   closed by **measurement, not by echo**: BL-01's exit criterion (§7) requires an installed
+   plugin built from this repo to expose a *readable* `${CLAUDE_PLUGIN_ROOT}/workflows/dist/distribution-manifest.json`
+   whose bytes equal the repo's copy.
 4. **Live drift exists and is committed** — the consumer copies in `.claude/workflows/` lag the
    sources in `pdlc/workflows/`.
 5. **Two artifacts claim each workflow name in `.claude/workflows/`** (`orchestrate-dev.js` and
@@ -656,10 +679,14 @@ is nothing in the plugin package to copy (§0 fact 2).
   `managed manually`; the phrase `opying the bundle into a consumer repo` (case-tolerant stem,
   matching both SKILL phrasings measured in §1) — minus a four-member path-rule exemption whose
   members are enumerated literally so the set is computable without judgement: (i) generated
-  trees = `.claude/workflows/` and `pdlc/workflows/dist/`; (ii) per-feature `docs/<feature>/`
-  artifact dirs; (iii) any `distribution-manifest.json`; (iv) any `__tests__/`. The test asserts
-  the exemption list itself, so a silently widened exemption is red. The checker is a pure
-  function of a root directory. A false positive is resolved by rephrasing the document —
+  trees = `.claude/workflows/` and `pdlc/workflows/dist/`; (ii) per-feature artifact dirs, where
+  **a per-feature dir is mechanically defined as a `docs/<X>/` that contains `REQ-<X>.md`** — not
+  "any `docs/` subdirectory", which would silently exempt `docs/_queue/` and `docs/design/` and
+  drop the covered set from 7 to 5, losing the two most normative non-SKILL documents while the
+  oracle stayed green; (iii) any `distribution-manifest.json`; (iv) any `__tests__/`. The test
+  asserts **both** the exemption list itself **and** the covered set's cardinality against the
+  enumerated 7 below, so a widened exemption is red on the count even when the list text is
+  unchanged. The checker is a pure function of a root directory, with no judgement step. A false positive is resolved by rephrasing the document —
   narrowing a pattern or widening an exemption requires changing this AC in the same commit.
   **Measured covered set today: 7 files** — `docs/_queue/QUEUE.md`,
   `docs/design/MASTER-PLAN-engineering-loop.md`, `docs/PLAN-pdlc-integration-boundary-gates.md`,
@@ -680,19 +707,30 @@ is nothing in the plugin package to copy (§0 fact 2).
   construction, mode-bit assertions, and the classify-before-create trace oracle are downstream
   obligations (§10 O-1, O-12). *(P0)*
 - **AC-6.6 — A changed artifact is an advertised artifact.** Who: the jest suite (assertion) and
-  the maintainer (the act). Given a commit that changes the bytes of any file under
-  `pdlc/workflows/dist/`, When `npm test` runs, Then it fails unless
-  `pdlc/.claude-plugin/plugin.json` `version` also changes in that same commit — i.e. the
-  advertised version is never equal to the version advertised by the previous commit that
-  touched `dist/`. Oracle: compare `plugin.json` `version` at `HEAD` against its value at the
-  most recent earlier commit whose diff touched `pdlc/workflows/dist/`; equal ⇒ red. The
-  comparison is over committed history, so the check is inert in a working tree with no such
-  ancestor (fresh clone / initial landing commit) and states that as its skip reason rather than
-  passing silently. Ordering is not asserted (no semver policy) — only that the pin moved.
-  Rationale: without this, a merged workflow change is built, tracked and shipped into a package
-  version the marketplace never re-advertises, and every consumer's drift check is green against
-  a stale installed plugin (§1 A′→B table; §0 fact 6 is the measured precedent). Delivering the
-  bumped version into an already-installed cache remains D-DIST-05. *(P0)*
+  the maintainer (the act). **The check observes the working tree against `HEAD`, matching
+  AC-6.3's observation point — it does not audit committed history.** Given a working tree in
+  which the bytes of any file under `pdlc/workflows/dist/` differ from `HEAD` (staged or
+  unstaged), When `npm test` runs, Then it fails unless the working-tree
+  `pdlc/.claude-plugin/plugin.json` `version` also differs from its value at `HEAD` — i.e. the
+  commit about to be authored cannot ship changed `dist/` bytes under an unchanged advertised
+  version. Oracle: red iff `git diff HEAD -- pdlc/workflows/dist/` is non-empty **and**
+  working-tree `plugin.json` `version` equals `HEAD`'s. Rationale for gating the working tree
+  rather than history: `npm test` runs pre-commit, so the violating commit does not yet exist to
+  be audited; and a history-walking form ("compare `HEAD` against the most recent earlier
+  `dist/`-touching commit") is red on every subsequent commit that changes nothing relevant,
+  which is a steady-state red and would be disabled within a week. Because there is no hosted CI
+  (D-DIST-06) nothing would force a later audit run anyway. **Inert cases — each skips loudly**,
+  printing the reason and naming the invariant left unverified (the §10 O-11 pattern), never
+  passing silently: (a) `dist/` is unchanged relative to `HEAD` (the ordinary case — nothing to
+  advertise); (b) `git` is absent from `PATH`; (c) there is no `.git` (source tarball, exported
+  copy); (d) `HEAD` does not exist (unborn branch / initial commit). Shallow clones and linked
+  worktrees are **not** inert: `git diff HEAD` needs no ancestry, which is the second reason the
+  working-tree form is preferred. Ordering is not asserted (no semver policy) — only that the pin
+  moved; a downgrade passes. Whether to add monotonicity is a FSPEC decision (§10 O-15), not an
+  omission here. Rationale: without this, a merged workflow change is built, tracked and shipped
+  into a package version the marketplace never re-advertises, and every consumer's drift check is
+  green against a stale installed plugin (§1 A′→B table; §0 fact 6 is the measured precedent).
+  Delivering the bumped version into an already-installed cache remains D-DIST-05. *(P0)*
 
 ## 4. Declared thresholds, flags and locations
 
@@ -711,7 +749,7 @@ default, and absence behaviour: v13 §4 (`9b66cdb`) — normative here in summar
 | `baselineReason` set (8, closed) | `plugin-root-unset`, `plugin-root-unreadable`, `repo-root-unresolved`, `manifest-absent`, `manifest-malformed`, `json-tool-absent`, `manifest-empty`, `drift-state-invalidated`; declared precedence in that reverse order — `drift-state-invalidated` highest (AC-1.0) |
 | row `reason` set (4, closed) | `hash-tool-absent` > `plugin-artifact-missing` > `plugin-artifact-unreadable` > `consumer-artifact-unreadable` (declared precedence; `null` on non-`unknown` states) |
 | `writeFailures.operation` set (9, closed) | `mkdir`, `drift-state-replace`, `drift-state-invalidate`, `drift-state-unlink` (stderr-only) · `artifact-copy`, `backup`, `backup-verify`, `retire-delete`, `sync-manifest-update` (recordable) |
-| `sync-workflows.sh` exits | `0` verified green · `1` sync-fixable drift · `2` unverified provenance · `3` unverified/unresolved (incl. no write target) · `4` write attempted and failed. **The code is computed over the observed state at the end of the run** — pre-run state for `--check` (which changes nothing), post-run state for a sync run. So a sync that repaired a `stale` row exits `0`; a mixed run that copied a `stale` row and skipped an `unverified` one exits `2` (AC-3.3's precedence applied post-run). Per-entrypoint wording: §10 O-14 |
+| `sync-workflows.sh` exits | `0` verified green · `1` sync-fixable drift · `2` unverified provenance · `3` unverified/unresolved (incl. no write target) · `4` write attempted and failed. **The code is computed over the observed state at the end of the run** — pre-run state for `--check` (which changes nothing), post-run state for a sync run. So a sync that repaired a `stale` row exits `0`; a mixed run that copied a `stale` row and skipped an `unverified` one exits `2` (AC-3.3's precedence applied post-run). **Consequence: `1` is reachable only under `--check`** — post-run every `stale`/`missing` row is either copied (`in-sync`) or failed (`4`), and a retired path still present implies its row was skipped as `local-edit`/`unverified`/`unknown`, which outranks `1` at `2` or `3`. No acceptance test should attempt to construct a sync run exiting `1`. Per-entrypoint wording: §10 O-14 |
 | content-hash utility | `shasum` \| `sha1sum`, probed; both absent ⇒ rows `unknown`/`hash-tool-absent` (row-level only, never a baseline reason) |
 | JSON utility | Python interpreter via the sibling hooks' discovery loop; a dedicated four-outcome read (parsed `0` / unreadable `10` / absent `11` / malformed `12` — outside CPython's 1/2 and the script's 0–4); never a bare `except`; none found ⇒ `json-tool-absent`. One write is exempt: AC-2.9(3)'s `printf` invalidation record |
 | `git` | third external tool, ≥ 2.7.0 (`worktree list --porcelain`); absent ⇒ AC-0.5 step 2 + everything treated untracked; present-but-unusable ⇒ `repo-root-unresolved`, never a silent demotion |
@@ -797,7 +835,7 @@ marketplace→cache link (D-DIST-05); hosted CI/release automation (D-DIST-06); 
 
 | # | Dependency | Resolution form | Gating logic |
 |---|---|---|---|
-| BL-01 | `${CLAUDE_PLUGIN_ROOT}` resolves to a readable plugin root in a consumer `SessionStart` | Executable spike: hook echoes the resolved path in a consumer session | Before FSPEC. The three shipped hooks already assume it; evidence, not proof |
+| BL-01 | `${CLAUDE_PLUGIN_ROOT}` resolves to a readable plugin root in a consumer `SessionStart`, **and a nested build-output directory survives packaging** | Executable spike, **positive-presence exit criterion**: install a locally built package (marketplace `"source": "./pdlc"`) whose `pdlc/workflows/dist/` is populated, then in a consumer `SessionStart` assert that `${CLAUDE_PLUGIN_ROOT}/workflows/dist/distribution-manifest.json` is **readable** (`test -r`) and that its bytes equal `pdlc/workflows/dist/distribution-manifest.json` in this repo. Echoing a resolved path does **not** discharge this row — string interpolation succeeds identically whether or not `dist/` shipped | Before FSPEC. The three shipped hooks already assume the first clause; the second is unmeasured today (§0 fact 3) and the whole A′→B edge and REQ-DIST-06 rest on it, with only AC-6.2a (P1, post-release) as a fallback detector |
 | BL-02 | The plugin package contains an artifact to copy | AC-6.1 + AC-6.2 merged, `npm test` green (deliberately not gated on an installed release) | Before any REQ-DIST-03 implementation |
 | BL-03 | `hooks.json` accepts a second `SessionStart` entry beside `nudge-consolidation.sh` | Both hooks observed firing in one session | Before FSPEC |
 | BL-04 | The runtime's injected read can read the drift state file and distinguish absence | Discharged by citation (`orchestrate-queue.js` `_readFile` contract; adapter honours it) | Re-verify citations at FSPEC |
@@ -849,6 +887,8 @@ document's reviewers must verify the disposition. Source findings:
 | O-12 | AC-6.5 (v13) | TSPEC | Bootstrap fixture construction (working-tree copy with mode bits, `git init` anchor, pinned `HOME`, `realpath` normalisation) and both mode-bit assertions (index and on-disk) |
 | O-13 | POSTMORTEM R-5 | `docs/_constraints/` via consolidate-learnings | REQ-scope stopping rule: a round whose blocking findings are all implementability/oracle defects, none contesting need/scope/priority/phasing, signals the REQ met its bar — approve, move findings downstream. Two consecutive rounds of non-decreasing blocking count is a fixed point: escalate, don't iterate. **Neither `docs/_constraints/` nor `docs/_decisions/` exists on this branch** — `consolidate-learnings` must *create* `docs/_constraints/DOMAIN-CONSTRAINTS.md`, not merge into it; "no such file" does not discharge this row |
 | O-14 | TE v13 F-01 | FSPEC | `sync-workflows.sh`'s own exit code: AC-3.3's precedence table applied to the **post-run** state (§4 states the rule; FSPEC carries the per-entrypoint wording and the mixed-run example — copied a `stale` row, skipped an `unverified` one ⇒ exit 2) |
+| O-15 | SE v14 Q-01 | FSPEC | AC-6.6 asserts only that the `plugin.json` pin **moved**, deliberately (no semver policy at REQ altitude). FSPEC decides whether to add a monotonicity assertion (reject `0.11.0` → `0.10.0`) and, if so, which comparator |
+| O-16 | TE v14 F-01/F-03, SE v14 F-03 | TSPEC | AC-6.6's skip-loudly branches are the REQ-level contract; TSPEC pins the probe order and the printed reason strings for each of (a) `dist/` clean vs `HEAD`, (b) `git` absent from `PATH`, (c) no `.git`, (d) unborn `HEAD` — reusing O-11's "print the reason and name the unverified invariant" vocabulary |
 
 ## 11. Review history
 
@@ -856,6 +896,10 @@ Twelve review rounds (v1–v12, both reviewers) and their finding-by-finding dis
 archived in REQ v13.0 §10 (`9b66cdb`) and the `CROSS-REVIEW-*` files on this branch. Round 13
 (`CROSS-REVIEW-{software-engineer,test-engineer}-REQ-v13.md`, against REQ v14.0) is disposed in
 the v15.0 note at the head of this document: SE 1H/1M/3L and TE 4L, all addressed; TE recommended
-approval. Phase R
+approval. Round 14 (`CROSS-REVIEW-{software-engineer,test-engineer}-REQ-v14.md`, against REQ
+v15.0) is disposed in the v16.0 note: SE 0H/0M/3L (**approved with minor changes**) and TE
+1H/1M/3L, all eight findings addressed — the two reviewers' findings overlap pairwise (TE F-01 ≡
+SE F-01, TE F-05 ≡ SE F-02, TE F-03 ≡ SE F-03), so v16.0 is four edits, none contesting need,
+scope, priority or phasing. Phase R
 non-convergence, root cause, and the acceptance decision this version implements:
 `POSTMORTEM-R-pdlc-workflow-distribution.md` (v2.1, resolved).
