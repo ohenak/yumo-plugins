@@ -86,7 +86,13 @@ All artifacts live under `docs/{feature}/`. See CLAUDE.md §pdlc specifics for f
 
 ## Workflow Script Path
 
-- Canonical plugin source: `pdlc/workflows/orchestrate-dev.js`
-- Runtime-loaded consumer copy: `.claude/workflows/orchestrate-dev.js`
+- Canonical plugin source (ES module, unit-tested): `pdlc/workflows/orchestrate-dev.js`
+- Runtime-loaded bundle: `.claude/workflows/orchestrate-dev.bundle.js`
 
-The consumer copy is a direct copy of the plugin source (no build step). Until a formal `pdlc install` mechanism exists, this copy is managed manually.
+The bundle is **generated** — do not edit it. Run `node pdlc/workflows/build-runtime.mjs` after any change to a workflow source; `--check` exits non-zero when a bundle is stale (CI-usable, and asserted by `__tests__/runtimeBundle.test.js`).
+
+The build exists because the workflow runtime is a restricted sandbox: `export const meta` must be the first statement and must be a pure literal, no other `export` is allowed, and `import` / `import()` / `process` / `fs` / `fetch` are all unavailable. The build strips module syntax and wraps each source in an IIFE; `pdlc/workflows/runtime-adapter.js` (inlined, never imported) re-expresses file reads/writes, existence checks, `gh` CI polling and worktree merges as `agent()` calls, and bridges the `agent` / `parallel` / `pipeline` signature differences. Everything is injected through the modules' existing `_agent`, `_readFile`, `_checkFile`, `_checkCi`, `_mergeWorktree` … parameters, so the ES modules stay the single tested source of truth.
+
+Because the adapter's IO is async, injected IO calls must be `await`ed at every call site in the source.
+
+Until a formal `pdlc install` mechanism exists, copying the bundle into a consumer repo is manual.
