@@ -49,6 +49,21 @@ Every plugin follows this layout:
 | `harvest-learnings` | `skills/harvest-learnings/SKILL.md` | Distils cross-reviews + post-mortems → LEARNINGS, then deletes harvested files |
 | `consolidate-learnings` | `skills/consolidate-learnings/SKILL.md` | Merges LEARNINGS across features into project-level knowledge |
 
+### Workflow scripts and the runtime build
+
+`pdlc/workflows/*.js` are ES modules with jest coverage (`cd pdlc/workflows && npm test`). The Claude Code workflow runtime cannot load them directly: `export const meta` must be the first statement and a pure literal, no other `export` is permitted, and `import` / `import()` / `process` / `fs` / `fetch` do not exist there.
+
+`node pdlc/workflows/build-runtime.mjs` therefore generates the runnable artifacts:
+
+- `.claude/workflows/orchestrate-dev.bundle.js`
+- `.claude/workflows/orchestrate-queue.bundle.js` (inlines `orchestrate-dev` too — the queue calls it in-process)
+
+Both are **generated — never edit them**. `build-runtime.mjs --check` exits non-zero when a bundle is stale, and `__tests__/runtimeBundle.test.js` asserts freshness plus the runtime's structural constraints.
+
+`pdlc/workflows/runtime-adapter.js` is inlined by the build (never imported). It re-expresses Node capabilities — file read/write, existence checks, `gh pr view` CI polling, worktree merges — as `agent()` calls, and bridges the `agent` / `parallel` / `pipeline` signature differences between the module stubs and the runtime. It reaches the pipeline through the modules' existing dependency-injection parameters (`_agent`, `_readFile`, `_writeFile`, `_checkFile`, `_checkCi`, `_mergeWorktree`, …), so the modules remain the single tested source of truth.
+
+Consequence for anyone editing a workflow source: **every injected IO call must be `await`ed** (the adapter's implementations are async, the test doubles are sync), and the bundles must be rebuilt in the same commit.
+
 ### Model selection
 
 The workflow scripts pin a model per phase via the runtime `agent()` `model` option:
