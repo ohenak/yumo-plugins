@@ -998,3 +998,305 @@ was copied: an unconditional rewrite would change `syncedAtUtc` and break the pr
 **Version-control caveat, stated:** a checkout or stash-pop that resurrects a retired, still-tracked
 file **is** an intervening change. The next sync legitimately retires it again, with a second
 backup. That is correct behavior, not an idempotence violation.
+
+## 6. Queue integration (FSPEC-DIST-06)
+
+**Linked requirements:** AC-4.1, AC-4.2, AC-4.3, NFR-1, NFR-6.
+
+**Primary detector is the hook, not the queue** (REQ-DIST-04 preamble). The hook ships from the
+plugin and fires regardless of what the consumer's workflow copies contain; the queue check lives
+*inside* the artifact whose staleness it detects. A consumer whose queue bundle predates this
+feature will never self-report via AC-4.1 — the first and worst instance is covered **only** by the
+hook. **No AC in this section may be relied on for first adoption.**
+
+First-adoption story: install/update plugin → hook fires next session → operator syncs → the queue
+check exists from then on.
+
+### 6.1 The single read (AC-4.1, BL-04)
+
+`orchestrate-queue` performs **one** injected read of `.claude/workflows/.pdlc-drift-state.json` at
+the start of an invocation. It never hashes, never enumerates, never classifies, and **never opens
+any other file** — in particular it never opens `.claude/pdlc.config.json` (AC-4.3's one-read rule,
+NFR-1).
+
+**BL-04 discharged by citation.** The read uses the existing `_readFile` dependency-injection
+parameter in `pdlc/workflows/orchestrate-queue.js`, whose contract returns `null` for an absent
+file — the queue already relies on this for `docs/_queue/QUEUE.md` (`orchestrate-queue.js`, the
+`readFileFn(queuePath)` path, which distinguishes `null` from `""`). `runtime-adapter.js` honours
+the same contract. Per CLAUDE.md, **the injected call must be `await`ed** — the adapter's
+implementation is async while the test doubles are sync — and the bundles must be rebuilt in the
+same commit.
+
+No new injected seam is introduced. Adding one would widen the runtime-adapter surface for a read
+the existing seam already performs.
+
+### 6.2 The mapping (AC-4.1) — precedence order
+
+| # | Condition | Outcome |
+|---|---|---|
+| 1 | read absent, unparseable, `schemaVersion` != 1, or `baselineStatus` absent | `blocked` |
+| 2 | `checkEnabled` is `false` | **proceed**; skip noted in the report (AC-4.3) |
+| 3 | `writeFailures` non-empty | `blocked`, naming each `{ path, operation }` — and naming `drift-state-invalidated` when `baselineReason` carries it |
+| 4 | `baselineStatus: unresolved` (incl. `manifest-empty`, `drift-state-invalidated`) | `blocked`, naming `baselineReason` |
+| 5 | any row `unknown` | `blocked` |
+| 6 | any row `missing` or `stale` | `blocked` |
+| 7 | `retiredPresent` non-empty | `blocked` (sync-fixable — BL-05) |
+| 8 | any row `local-edit` or `unverified` | **proceed**, rows named in the run report |
+| 9 | `resolved`, non-empty rows, all `in-sync`, `retiredPresent` `[]`, `writeFailures` `[]` | **proceed silently** |
+
+Three design points the implementation must preserve:
+
+- **Row 2 sits above every blocking row deliberately.** The operator's opt-out stays reachable even
+  on a consumer whose state is otherwise unreadable — which is also why §4.4 rung (i) preserves
+  `checkEnabled`.
+- **Row 7 blocks** because a retired path beside a fresh bundle is the one configuration where the
+  runtime may load the stale artifact (BL-05). AC-2.8's warning and this row are deliberately **not
+  contingent** on BL-05's answer: they specify the safe default for the unfavourable case.
+- **No freshness clause.** AC-2.7 makes every writer refresh the file, so a stale snapshot cannot
+  outlive the operation that invalidated it. "Hook never ran" is row 1 (absent). A write
+  attempted-and-failed is closed at the writer by §4.4's ladder, whose rung-3 residual — the queue
+  may proceed on stale contents — is **accepted and stated** (NFR-6 exception ii), not asserted
+  away. `generatedAtUtc` is human-report-only; **the queue never compares timestamps** (NFR-1).
+
+The mapping is a pure function of the parsed record. It is implemented in `orchestrate-queue.js` as
+a standalone function so it is unit-testable against literal records without a filesystem.
+
+### 6.3 The blocked report (AC-4.2) — split by level
+
+The three reason sets are disjoint, so the report is split into **Manifest / Row / Run**:
+
+```
+Manifest level:
+  manifest-absent | manifest-malformed | manifest-empty   → update the plugin
+  plugin-root-unset | plugin-root-unreadable
+    | repo-root-unresolved | json-tool-absent             → environment fix
+  drift-state-invalidated                                 → permissions/filesystem fix (NEVER sync)
+
+Row level:
+  plugin-artifact-missing                                 → update the plugin
+  plugin-artifact-unreadable | consumer-artifact-unreadable
+    | hash-tool-absent                                    → environment/permissions fix
+  stale | missing                                         → sync
+
+Run level:
+  one line per writeFailures entry, naming path + operation
+```
+
+- Multiple simultaneous **row** reasons print the one selected by the declared precedence (§3.3).
+- `retiredPresent` entries carry R's `id` and state and the remediation **AC-2.8's table** names for
+  that state (§5.3) — the queue does not invent a second vocabulary.
+- **Every printed command is `<pluginRoot>`-expanded** and runnable exactly as shown (AC-0.4,
+  AC-4.2). The queue has `<pluginRoot>` available only if the drift state carries it; the record
+  therefore does not need it — the queue prints the *sync* command against the consumer path it
+  knows, and any plugin-root-relative command is emitted by C1 into the message the state carries.
+- The design target, stated by AC-4.2: **the operator's next turn is one command, not an
+  investigation.**
+
+### 6.4 `checkEnabled` scope (AC-4.3)
+
+The flag gates the **queue only**. The hook still warns and `--check` still exits non-zero. It
+deliberately does **not** live in workflow source, because that source is what drifts — a flag
+inside the stale artifact could not turn off the check that detects the staleness.
+
+The **shell writer** resolves it (§2.7) and records the boolean; the queue reads that field from the
+one file it already reads.
+
+## 7. Build, packaging and publication (FSPEC-DIST-07)
+
+**Linked requirements:** AC-5.1–5.4, AC-6.1–6.6, REQ §6.
+**Disposes:** §10 **O-15** (monotonicity decision).
+
+### 7.1 The builder (AC-6.1, AC-5.1)
+
+`node pdlc/workflows/build-runtime.mjs` writes to **exactly one location**:
+
+```
+pdlc/workflows/dist/orchestrate-dev.bundle.js
+pdlc/workflows/dist/orchestrate-queue.bundle.js
+pdlc/workflows/dist/distribution-manifest.json
+```
+
+tracked and committed. It writes **nothing else**: no `.claude/workflows/` copy, no sync-manifest
+entry, no drift state. The builder is not on §4.1's writer list and gains no write target.
+
+`build-runtime.mjs --check` compares `dist/` only. The builder keeps its single output directory and
+its **node-builtins-only** dependency footprint (REQ §0 fact 8) — a future builder dependency would
+extend the bootstrap story of AC-6.5 and is out of scope here.
+
+`meta` literals and the runtime's pure-literal constraint are **untouched** (AC-5.1). Version
+stamping is data emitted *alongside* the bundles, never a `meta` field: the runtime demands a pure
+first-statement literal, and grepping a 92 KB generated file from shell is backwards.
+
+**Manifest emission.** Per row, `artifactVersion` is the `pdlc/.claude-plugin/plugin.json` version
+at build time and `pluginSha1` is the sha1 of the bytes just emitted — computed from the emitted
+buffer, so it cannot disagree with what landed.
+
+**The maintainer loop is: build, then sync.** This repo's `.claude/workflows/*.bundle.js` become
+untracked, gitignored consumer copies produced by the same sync script every consumer runs.
+
+### 7.2 Version semantics (AC-5.2, AC-5.3, AC-5.4)
+
+| # | Rule |
+|---|---|
+| AC-5.2 | Where hash and version stamp disagree, **content hash is authoritative**. Versions are compared for **equality only, never ordered** — no semver comparator exists anywhere in this feature (§4) |
+| AC-5.3 | A row not `in-sync` reports **both** `pluginArtifactVersion` and `consumerArtifactVersion` (absent ⇒ reported as unknown). Both lines are **required** and both labelled **"not a drift signal"** — many distinct bundle contents legitimately share one `artifactVersion`. The two sha1 values are printed as the discriminating evidence |
+| AC-5.4 | `pluginVersion` in any report or state file is **context only** — never an input to any state decision; `null` when unreadable. REQ §0 fact 6 measured `0.9.0` and `0.10.0` shipping byte-identical workflow files |
+
+### 7.3 Packaging and freshness oracles (AC-6.2, AC-6.2a, AC-6.3)
+
+**AC-6.2 — packaging oracle, executable before release.** Over the set of files the plugin would
+package (everything under `pdlc/` minus ignore rules), `npm test` asserts:
+
+- (a) every `pluginPath` in the manifest resolves **inside** the packaged set;
+- (b) each file's sha1, **recomputed from disk bytes**, equals its `pluginSha1`;
+- (c) top-level `retired` equals the union of rows' `retires`;
+- (d) the manifest itself sits at `pdlc/workflows/dist/distribution-manifest.json` inside that set.
+
+Build inputs present in the package are **tolerated, not asserted away**. **No test may write into
+this repository's `pdlc/workflows/dist/`** — a constraint on the jest suite, not on BL-01's manual
+spike.
+
+**AC-6.2a — post-release check (P1, release checklist).** A published release, once installed,
+exposes `${CLAUDE_PLUGIN_ROOT}/workflows/dist/` containing the named bundles **plus the manifest
+itself**. Hosted automation is D-DIST-06.
+
+**AC-6.3 — freshness.** `__tests__/runtimeBundle.test.js` fails unless the committed `dist/` bundles
+were rebuilt in the same commit as any workflow-source change — the existing assertion, repointed at
+`dist/`.
+
+### 7.4 The advertised-version oracle (AC-6.6). **Disposes O-15.**
+
+**Observation point: the working tree against `HEAD`** — matching AC-6.3, and deliberately *not* an
+audit of committed history.
+
+```
+red  iff  `git status --porcelain -- pdlc/workflows/dist/` produces ANY line
+     and  working-tree pdlc/.claude-plugin/plugin.json `version` == its value at HEAD
+```
+
+**`--porcelain` is required, not `git diff HEAD`.** `git diff` reports tracked paths only, and on
+the landing commit — the highest-risk commit, and the first to ship `dist/` — **every** file under
+`dist/` is untracked (`pdlc/workflows/dist/` neither exists nor is gitignored at `HEAD`). A `git
+diff` form is therefore empty, falls into inert case (a), and would pass a brand-new bundle set
+under an unchanged advertised version. The same hole reopens on every later commit that adds a
+*new* bundle. `--porcelain` covers `??`, `A`, `M` and `D` alike.
+
+**Rationale for gating the working tree rather than history:** `npm test` runs pre-commit, so the
+violating commit does not yet exist to be audited; and a history-walking form is red on every
+subsequent commit that changes nothing relevant — a steady-state red, disabled within a week.
+
+**Inert cases — each skips loudly**, printing the reason and naming the invariant left unverified,
+never passing silently: (a) the `--porcelain` output is empty (the ordinary case — nothing to
+advertise); (b) `git` absent from `PATH`; (c) no `.git` (source tarball, exported copy); (d) `HEAD`
+does not exist (unborn branch). **Shallow clones and linked worktrees are not inert** — neither
+`git status` nor a `HEAD` comparison needs ancestry. Probe order and the exact printed strings are
+**TSPEC's, §10 O-16**.
+
+**Accepted residual, restated:** a violation that already landed is not detected here. The scope is
+strictly the commit about to be authored. The fallback is the same P1 surface as AC-6.2a — the
+maintainer's release checklist confirms, before publishing, that `plugin.json` `version` differs
+from the previously published release whenever the packaged `dist/` bytes differ. **No acceptance
+test should attempt to detect the landed case.**
+
+#### O-15 — monotonicity: **decided, and the decision is no.**
+
+AC-6.6 asserts only that the pin **moved**; a downgrade (`0.11.0` → `0.10.0`) passes. O-15 asks
+FSPEC to decide whether to add a monotonicity assertion and, if so, which comparator. **This FSPEC
+does not add one**, for three reasons:
+
+1. **It would require the comparator §4 forbids.** REQ §4 states flatly that *no semver comparator
+   exists anywhere in this feature*, and AC-5.2 fixes version comparison as **equality only**.
+   Adding an ordering assertion here would introduce the project's only version-ordering code, in a
+   test, for a failure mode nobody has observed.
+2. **The `version` field is not this feature's to police.** It is the marketplace's advertised
+   version, changed by the maintainer for many reasons. AC-6.6's claim is a *change-detection*
+   claim — "the thing you are shipping is advertised as new" — and a downgrade satisfies that claim
+   in the only sense the consumer's cache cares about: the advertised value differs, so the cache
+   is refreshable.
+3. **The genuine risk is already covered elsewhere.** A downgrade that collides with a
+   *previously published* version is the AC-6.2a/AC-6.6 release-checklist row, which compares
+   against the previously published release rather than against `HEAD` — the correct place for it,
+   because only the checklist knows what was published.
+
+**Recorded as a deliberate omission, not an oversight.** If a monotonic pin is later wanted, it
+belongs to D-DIST-06's release automation, where a published-version baseline exists.
+
+### 7.5 Landing step and document corrections (REQ §6, AC-6.4, AC-3.9)
+
+A **one-time** maintainer landing step, all in the commit that lands this feature:
+
+1. `git rm` the four tracked `.claude/workflows/*` paths; gitignore the directory's generated
+   contents. The directory's contents become untracked consumer copies.
+2. `pdlc/.claude-plugin/plugin.json` `version` bumped — required by AC-6.6, since `dist/` is new
+   bytes — and in **every later commit that changes `dist/`**.
+3. `pdlc/hooks/hooks.json` gains the second `SessionStart` entry (§5.1, BL-03).
+4. **Execute bits on five scripts**: this feature's two (C2, C3) **and** the three existing sibling
+   hook scripts. Both objects are required and are independent — index mode `100755` **and**
+   on-disk `[ -x ]` (REQ §0 fact 11, §4). The three siblings are deliberately in scope: they work
+   today only because `hooks.json` happens to invoke them by bare path, and this feature adds a
+   fourth script under the same convention plus AC-6.5's bare-path bootstrap, so the latent
+   exit-126 class is fixed once here rather than split into a follow-up.
+5. **Document corrections**: whatever `coveredViolations(repoRoot)` returns — **7 files today**,
+   including both orchestrator SKILLs — plus `dist/` path updates to the already-correct normative
+   documents. Archived per-feature spec history under other features' `docs/` dirs is **not**
+   edited.
+6. Bootstrap sequence documented in `CLAUDE.md` and `pdlc/README.md` (AC-6.5).
+
+**AC-6.4's two assertions run against two different roots and are never both evaluated over the
+same tree:**
+
+| Assertion | Root | Claim |
+|---|---|---|
+| Landing criterion | **live repo root** | `coveredViolations(liveRepoRoot) == ∅` — green from the landing commit onward |
+| Anti-widening guard | **pinned fixture tree** under `pdlc/workflows/__tests__/fixtures/` | `\|coveredViolations(fixtureRoot)\| == 7`, the returned paths equal the enumerated 7, and the exemption list itself is asserted literally |
+
+A cardinality assertion over the *live* root would be red from the landing commit and red forever.
+The fixture never changes, so the count assertion is stable; widening an exemption or narrowing a
+pattern turns it red even when the exemption-list prose is untouched. **Fixture construction is
+TSPEC's, §10 O-17.**
+
+`coveredViolations` is a **pure function of a root directory with no judgement step**: `grep` of
+five literal qualifier-free patterns — the two `.claude/workflows/orchestrate-{dev,queue}.js` forms;
+`.claude/workflows/*.js`; the phrase `managed manually`; the phrase `opying the bundle into a
+consumer repo` (case-tolerant stem) — minus a four-member exemption enumerated literally: (i)
+generated trees `.claude/workflows/` and `pdlc/workflows/dist/`; (ii) per-feature artifact dirs,
+**mechanically defined as a `docs/<X>/` containing `REQ-<X>.md`**; (iii) any
+`distribution-manifest.json`; (iv) any `__tests__/`.
+
+The definition in (ii) is load-bearing: "any `docs/` subdirectory" would silently exempt
+`docs/_queue/` and `docs/design/`, dropping the covered set from 7 to 5 and losing the two most
+normative non-SKILL documents while the oracle stayed green.
+
+A false positive is resolved by **rephrasing the document**. Narrowing a pattern or widening an
+exemption requires changing AC-6.4 **and** the fixture expectation in the same commit.
+
+### 7.6 Fresh-clone bootstrap (AC-6.5)
+
+Given a fresh clone with **no plugin installed** and `${CLAUDE_PLUGIN_ROOT}` unset, the two
+documented commands:
+
+```
+node pdlc/workflows/build-runtime.mjs
+pdlc/hooks/scripts/sync-workflows.sh          # bare path — the scripts ship executable
+```
+
+yield: bundles present, every row `in-sync`, `--check` exit 0, and the queue's §6.2 mapping over
+the resulting drift state is **proceed silently**. **No published release, no installed plugin, no
+network.**
+
+The maintainer substitution (§2.4) is what makes this work with `${CLAUDE_PLUGIN_ROOT}` unset:
+`build-runtime.mjs` is present, so `<pluginRoot>` is `<repoRoot>/pdlc` and the env var is never
+consulted. Every row first classifies `missing` (§3.2's ancestor rule) and the sync run creates the
+directory (§4.2).
+
+Fixture construction, mode-bit assertions, and the classify-before-create trace oracle are
+downstream: **§10 O-1, O-12**.
+
+### 7.7 Enforcement surface, stated (REQ §6)
+
+Every AC whose Who is `npm test` — AC-6.2, AC-6.3, AC-6.4, AC-6.5, AC-6.6 — is enforced by
+**maintainer discipline plus `npm test`** until D-DIST-06 lands hosted CI. **No pre-commit hook is
+in scope and none is implied**; a maintainer who commits without running `npm test` bypasses all of
+them. This is a pre-existing property of AC-6.3, made load-bearing by AC-6.6's working-tree
+observation point, and it is why AC-6.6 and AC-6.2a both name the release checklist as the P1
+fallback.
