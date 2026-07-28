@@ -8,7 +8,7 @@
 | LEARNINGS | `docs/pdlc-workflow-distribution/LEARNINGS-pdlc-workflow-distribution.md` |
 | Author | pm-author (Claude) |
 | Date | 2026-07-28 |
-| Version | 2.0 — supersedes the 2026-07-27 edition, which covered the **first** five-round run (REQ v3–v8). This edition covers the **second** five-round run (REQ v8–v13) and the whole phase. |
+| Version | 2.1 — Resolution appended 2026-07-28; otherwise 2.0 — supersedes the 2026-07-27 edition, which covered the **first** five-round run (REQ v3–v8). This edition covers the **second** five-round run (REQ v8–v13) and the whole phase. |
 | Scope | Non-convergence of the REQ cross-review loop. Not a product-decision record; not a technical design record. |
 
 ---
@@ -293,3 +293,21 @@ this run's evidence:
 > A reviewer finding of the form "this AC has no oracle" must be resolvable by **deferring** the
 > oracle to TSPEC, not only by writing one into the REQ. A REQ that specifies trace grammars, fault
 > injection seams, fixture construction or coverage floors has left its layer.
+
+---
+
+## Resolution (2026-07-28)
+
+Acted on by the operator (Kane Ho) with Claude, outside the loop — which is what the
+Recommendation section required.
+
+| Rec | Action taken |
+|---|---|
+| R-0 | `docs/_queue/QUEUE.md` row 1 set `halted`, with a note referencing this file. |
+| R-1 | REQ v14.0 authored: the product-level content of v13.0 (unchanged since v4) restated at requirements altitude and marked **Approved (product scope)**. v13.0 (`9b66cdb`) remains in git history as the archived specification-grade record. The REQ is not to be revised further at REQ level; findings of specification precision are answered by §10 of the REQ (downstream obligations), not by REQ revision. |
+| R-2 | The open v12 findings (SE F-01..F-07, TE F-01..F-07) are bound as FSPEC/TSPEC/PROPERTIES entry obligations in REQ v14 §10, per the carry-forward table in this file's R-2. |
+| R-3 / R-4 | Raised as queue row 8, `pdlc-review-loop-hardening` (`blocked` until its REQ is authored). To be landed before row 1 is un-halted. |
+| R-5 | Deferred to the next `consolidate-learnings` run; the stopping rule is quoted in REQ v14 §10 so it is visible to the next reviewer regardless. |
+
+This post-mortem is **resolved**. A future run that finds this file may treat Phase R for this
+feature as closed: the REQ is accepted at product scope and the pipeline re-enters at FSPEC.

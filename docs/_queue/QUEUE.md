@@ -11,13 +11,14 @@ frontmatter is the pickup gate; the `Status` cell tracks lifecycle.
 
 | Order | Status | Feature | REQ Path | Depends-On |
 |-------|--------|---------|----------|------------|
-| 1 | in-progress | pdlc-workflow-distribution | docs/pdlc-workflow-distribution/REQ-pdlc-workflow-distribution.md | — |
+| 1 | halted | pdlc-workflow-distribution | docs/pdlc-workflow-distribution/REQ-pdlc-workflow-distribution.md | — |
 | 2 | pending | pdlc-merge-phase | docs/pdlc-merge-phase/REQ-pdlc-merge-phase.md | pdlc-workflow-distribution |
 | 3 | pending | pdlc-advisory-tier | docs/pdlc-advisory-tier/REQ-pdlc-advisory-tier.md | pdlc-merge-phase |
 | 4 | pending | pdlc-consolidation-agent | docs/pdlc-consolidation-agent/REQ-pdlc-consolidation-agent.md | pdlc-workflow-distribution, pdlc-advisory-tier |
 | 5 | pending | pdlc-engineering-loop | docs/pdlc-engineering-loop/REQ-pdlc-engineering-loop.md | pdlc-workflow-distribution, pdlc-merge-phase, pdlc-advisory-tier, pdlc-consolidation-agent |
 | 6 | blocked | pdlc-install-mechanism | docs/pdlc-install-mechanism/REQ-pdlc-install-mechanism.md | pdlc-workflow-distribution |
 | 7 | blocked | pdlc-release-ci | docs/pdlc-release-ci/REQ-pdlc-release-ci.md | pdlc-workflow-distribution |
+| 8 | blocked | pdlc-review-loop-hardening | docs/pdlc-review-loop-hardening/REQ-pdlc-review-loop-hardening.md | — |
 
 Row 6 is the successor binding for `pdlc-workflow-distribution` deferrals D-DIST-01, D-DIST-02,
 D-DIST-03 and D-DIST-05 (full `pdlc install`, loading workflows from the plugin path with no copy,
@@ -29,6 +30,24 @@ Row 7 is the successor binding for `pdlc-workflow-distribution` deferral D-DIST-
 release automation on `yumo-plugins` (`.github/` does not exist today, so `cd pdlc/workflows &&
 npm test` is the only automated verification surface). Same convention as row 6 — `blocked`, REQ
 not yet authored, present so the deferral is bound.
+
+Row 1 is `halted` per `docs/pdlc-workflow-distribution/POSTMORTEM-R-pdlc-workflow-distribution.md`
+(v2.1) R-0: Phase R hit the 5-iteration ceiling twice (REQ v3–v13, 24 cross-reviews) without dual
+approval. On 2026-07-28 the REQ was converged manually as v14.0 — product scope accepted per
+post-mortem R-1, specification-grade material moved to §10 downstream obligations per R-2. A human
+may set the row back to `pending` to re-enter the pipeline; note that `orchestrate-dev` will re-run
+Phase R (it has no approved-REQ skip), which is acceptable only because v14 is scoped to be
+approvable, and ideally after row 8 lands.
+
+Row 8 is the successor binding for post-mortem R-3/R-4: the review-loop harness dispatched a wrong
+iteration index eleven consecutive rounds (it must derive the index from the highest
+`CROSS-REVIEW-{role}-{doc}-v{N}` on the branch, and refuse to overwrite an existing review file),
+and the non-convergence exit is not terminal (on writing a POSTMORTEM the pipeline must set the
+queue row `halted` in the same commit, and must refuse to re-enter a phase whose unresolved
+POSTMORTEM exists on the branch, surfacing its Recommendation section at phase entry). Targets:
+`pdlc/workflows/orchestrate-dev.js` review loop + `pdlc/skills/orchestrate-dev/SKILL.md`, bundles
+rebuilt in the same commit. Same convention as rows 6–7 — `blocked`, REQ not yet authored. This row
+should be authored and landed before row 1 is un-halted.
 
 ## Priority rationale (2026-07-27 — closing the engineering loop)
 
