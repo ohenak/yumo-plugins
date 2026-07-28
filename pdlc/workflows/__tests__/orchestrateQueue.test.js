@@ -135,6 +135,22 @@ describe("parseReqFrontmatter", () => {
     });
   });
 
+  it("finds the block behind a preamble the file-reading agent prepended", () => {
+    const text =
+      `Due to the size of this file I cannot return it completely; saved to /tmp/x.txt\n` +
+      `---\nfeature: pdlc-workflow-distribution\nready: true\ndepends-on: []\n---\n# REQ\n`;
+    expect(parseReqFrontmatter(text)).toEqual({
+      ready: true,
+      dependsOn: [],
+      feature: "pdlc-workflow-distribution",
+    });
+  });
+
+  it("does not mistake a horizontal rule deep in the body for frontmatter", () => {
+    const text = `# REQ\n\n${"filler line\n".repeat(500)}---\nready: true\n---\n`;
+    expect(parseReqFrontmatter(text).ready).toBe(false);
+  });
+
   it("treats 'none'/'-' as no dependencies", () => {
     expect(parseReqFrontmatter("---\nready: true\ndepends-on: none\n---\n").dependsOn).toEqual([]);
   });

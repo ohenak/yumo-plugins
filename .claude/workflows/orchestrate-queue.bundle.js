@@ -2549,6 +2549,13 @@ function parseDepsCell(cell) {
 // ─── QUEUE-PARSE-02: parseReqFrontmatter ─────────────────────────────────────
 
 /**
+ * How far into a REQ to look for the frontmatter block. Large enough to clear
+ * an agent-added preamble, small enough that a `---` rule in the body is never
+ * mistaken for frontmatter.
+ */
+const FRONTMATTER_SCAN_LIMIT = 4000;
+
+/**
  * Parse the YAML-ish frontmatter block of a REQ document.
  *
  * Recognized keys:
@@ -2566,7 +2573,14 @@ function parseReqFrontmatter(text) {
   const empty = { ready: false, dependsOn: [], feature: null };
   if (text == null || typeof text !== "string") return empty;
 
-  const fm = /^\s*---\s*\n([\s\S]*?)\n---\s*(\n|$)/.exec(text);
+  // The frontmatter is normally the first thing in the file, but the runtime
+  // reads files by round-tripping them through an agent's final message: for a
+  // large REQ the agent may prepend a line explaining it could not return the
+  // whole file verbatim. Scan a bounded prefix for the first `---` block rather
+  // than anchoring at offset 0, so a preamble does not read as "no frontmatter"
+  // (which silently degrades to ready:false and skips a genuinely ready REQ).
+  const head = text.slice(0, FRONTMATTER_SCAN_LIMIT);
+  const fm = /(?:^|\n)\s*---[ \t]*\n([\s\S]*?)\n---[ \t]*(?:\n|$)/.exec(head);
   if (!fm) return empty;
 
   const body = fm[1];
