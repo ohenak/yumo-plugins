@@ -1,0 +1,7 @@
+# Local tool state — machine-specific, not shared
+.tokensave/
+.claude/settings.local.json
+.claude/.headroom_wrap_marker.json
+
+# Node
+node_modules/

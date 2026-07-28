@@ -61,9 +61,11 @@ These five features modify the pipeline that builds them. Two consequences:
 - **Order 3 (`pdlc-advisory-tier`) carries one unverified premise.** The Fable 5 model alias for
   the workflow runtime's `agent()` `model` option is unconfirmed (master plan OQ-E1); existing
   constants use bare aliases (`"opus"`, `"sonnet"`, `"haiku"`) and no `fable` reference exists
-  anywhere in this repo as of 2026-07-27. REQ-ADV AC-1.2 handles this by construction — the value
-  is startup-validated and never silently falls back — but confirming the alias is the first task
-  of implementation, not a discovery to be made at the end.
+  anywhere in this repo as of 2026-07-27. REQ-ADV AC-1.2/AC-1.3 handle this by construction —
+  Fable is the intended and recommended rung, Opus is a *declared* fallback whose use is warned,
+  recorded and reported (never a silent downgrade), and AC-1.4 keeps a wholly unresolvable
+  configuration a startup failure. Confirming the alias is still the first task of implementation,
+  not a discovery to be made at the end.
 
 ## Ideas backlog
 
