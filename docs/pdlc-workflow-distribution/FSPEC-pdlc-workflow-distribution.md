@@ -10,11 +10,14 @@ feature: pdlc-workflow-distribution
 | Downstream | `TSPEC-pdlc-workflow-distribution.md`, `PROPERTIES-pdlc-workflow-distribution.md` |
 | REQ §10 rows disposed here | O-2, O-4, O-5, O-6, O-8, O-14, O-15 (the seven whose "Lands in" is FSPEC) |
 | REQ §10 rows carried forward | O-1, O-3, O-7, O-9, O-10, O-11, O-12, O-16, O-17 → TSPEC/PROPERTIES; O-13 → `consolidate-learnings` |
+| Obligations **added** by this FSPEC | O-18 (backup-grammar round-trip → PROPERTIES), O-19 (LLM-mediated `_readFile` seam → TSPEC/implementation, Cross-Feature) — §10 |
 | Prerequisites | BL-01, BL-03, BL-06 are **"Before FSPEC"** and are **not discharged** — see §0.3 |
+| Cross-Reviews | `CROSS-REVIEW-software-engineer-FSPEC-v1.md`, `CROSS-REVIEW-test-engineer-FSPEC-v1.md` (both disposed in the v2.0 note below) |
+| LEARNINGS | `docs/pdlc-workflow-distribution/LEARNINGS-pdlc-workflow-distribution.md` (Phase H) |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | **Draft** | Claude + operator | 1.0 | 2026-07-28 |
+| pdlc | **Draft** | Claude + operator | 2.0 | 2026-07-28 |
 
 > **Altitude.** The REQ is approved at product scope and states *observable behavior*. This FSPEC
 > states *how the behavior is produced*: the component inventory, the data formats, the algorithms
@@ -24,6 +27,116 @@ feature: pdlc-workflow-distribution
 > Where the REQ names an obligation as downstream (§10), this document either discharges it (the
 > seven FSPEC rows, §9) or restates it as a TSPEC entry obligation (§10). A reviewer finding that
 > a TSPEC-bound row is unspecified here is answered by §10.
+
+> **v2.0 — SE/TE cross-review round 1 (SE 6H/4M/3L, TE 6H/6M/3L). Every High and Medium is
+> addressed; all three SE Lows and all three TE Lows are addressed too. No REQ text is amended:
+> where the FSPEC deviated from an approved AC it was conformed to the AC, and the one genuine
+> REQ internal tension is recorded as OQ-6 rather than resolved unilaterally. AT numbering is
+> stable; AT-8 is split into AT-8a/AT-8b and AT-26–AT-32 are added.**
+>
+> **Disposition by finding id.**
+>
+> - **SE F-01 (High) — sync run's row states unspecified.** **Fixed, §4.2 rewritten.** The ordering
+>   is now eight steps and names copy/backup/retire explicitly. A sync run makes **two**
+>   classification passes: the *as-found* pass (which decides what to copy — this is what
+>   AC-2.9(1) governs) and a *post-run* pass whose results are what the record carries. §3 now
+>   says "once per row **per pass**" and states that hook/`--check` make one pass and sync makes
+>   two; §5.7's "post-copy" state and §5.8's post-run exit are now produced by a stated mechanism;
+>   §4.3/§6.2's mid-session unblock is now true rather than asserted. The residual tension with
+>   AC-2.6's "recorded states are those observed before this run created anything" is recorded as
+>   **OQ-6** (non-blocking; AC-2.6's own `supersedingState` clause already says "sync: post-copy",
+>   and AC-2.7 + AC-3.3 both require the post-run reading).
+> - **SE F-02 (High) — plain sync destroyed `stale` content without a backup.** **Fixed, §5.5.**
+>   `stale` now takes a verified backup (§4.7) before the copy. AC-1.1's "`missing` is the one
+>   non-`unknown` state sync overwrites without a backup" and AC-3.4's "overwrites **any existing
+>   file**" are now both honoured by the same procedure. New **AT-26** covers it.
+> - **SE F-03 ≡ TE F-02 (High) — row-reason ladder contradicted the declared precedence.**
+>   **Fixed, §3.3.** The ladder now probes hash-tool availability **first**, then plugin-missing,
+>   then plugin-unreadable, then consumer-unreadable — i.e. exactly REQ §4's declared row-reason
+>   precedence. §3.6's "structural, not asserted" claim is now true.
+> - **SE F-08 ≡ TE F-01 (High/Medium) — rung-1 clause named the wrong reason.** **Fixed, §3.3.**
+>   `P1 indeterminate ⇒ plugin-artifact-unreadable`, agreeing with the footnote and §3.2.
+> - **TE F-03 (High) — baseline-reason precedence vs the B1–B7 flow.** **Fixed, §2.1/§2.8
+>   restructured.** Baseline resolution is now explicitly two phases: **evidence gathering** (a
+>   dependency-ordered probe sequence that short-circuits only where a probe's *prerequisite*
+>   failed) and **reason selection** (the declared precedence applied over the conditions that
+>   hold *and are determinate*). The declared precedence is therefore observable and O-9 can
+>   generate fixtures for it. TE Q-02 is answered: observable, not inert.
+> - **SE F-04 (High) — §6.2's mapping was not total and validated no shape.** **Fixed, §6.2.**
+>   Row 1 now carries a full required-key/type check (including `rows`/`retiredPresent`/
+>   `writeFailures` present-and-array, `checkEnabled` boolean, closed-set membership for
+>   `state`/`reason`/`baselineStatus`), and a terminal **row 10 — "anything else ⇒ `blocked`"** is
+>   added. `resolved` with empty `rows` now lands on row 10, not in an undefined region.
+> - **SE F-05 (High) — §4.6/AT-18 deviated from approved AC-2.9(5).** **Conformed to the REQ.**
+>   An unrecognised `PDLC_FAULT` token now exits **4** on `--check`/sync and **0** on the hook,
+>   verbatim per AC-2.9(5). §4.6's contrary argument is deleted, §9 O-2's disposition is rewritten,
+>   and **AT-18** now asserts `--check` exit **4** (AT number kept).
+> - **SE F-06 (High, Cross-Feature) — BL-04 discharged against the module, not the runtime.**
+>   **Fixed, §6.1 rewritten against the real seam.** `pdlc/workflows/runtime-adapter.js`'s
+>   `rtReadFile` is an `agent()` call pinned to `haiku` (`RT_IO_MODEL`) that asks a model to relay
+>   the file's bytes, and returns `null` for absent **and** for every transport failure and
+>   non-string result. §6.1 now states that, states which failure modes the F-04 shape validator
+>   catches, states the one residual it cannot (a shape-preserving value corruption) as
+>   **accepted-and-stated**, and routes adapter hardening as an explicit implementation-phase
+>   obligation (**§10 O-19**) rather than leaving it implicit.
+> - **TE F-04 (High) — `json-tool-absent` had no drift-state write path.** **Fixed, §4.4a (new).**
+>   The `printf` emitter is now specified as the **serialiser of last resort for any record whose
+>   every field is closed-domain** — which is exactly the unresolved-baseline shape, and
+>   `json-tool-absent` guarantees unresolved. It is therefore the *ordinary* writer on a
+>   no-JSON-tool run (including first adoption, where no file pre-exists), and separately the
+>   rung-(i) emitter. TE Q-01 is answered: yes, a record is written. AC-2.9(3)'s "over a
+>   pre-existing file" entry condition is left exactly as approved.
+> - **TE F-05 (High) + SE F-09 (Medium) — `checkEnabled: false` unreachable under
+>   `json-tool-absent`.** **Stated honestly, §2.7 and §4.4.** With no JSON tool the config cannot
+>   be read, so AC-4.3's fail-closed rule forces `true`; there is no JSON-tool-free read and this
+>   FSPEC does not invent one (a `grep` of a JSON document is the thing §1 forbids). §4.4's
+>   rationale is corrected: the rung preserves a genuinely-`false` `checkEnabled` in the
+>   `ENOSPC`/immutable/read-only-mount cases (where a JSON tool exists), **not** in the
+>   `json-tool-absent` case. The residual — a machine with no Python interpreter cannot reach the
+>   opt-out — is recorded as **accepted and stated**, alongside NFR-6 exception (ii), with the
+>   remediation (install a Python interpreter) named. **AT-14** is rewritten onto the
+>   constructible fixture and **AT-14b** added for the falsifiable `false` case.
+> - **TE F-06 (High) — AT-15's Given was self-contradictory.** **Fixed.** AT-15's Given is now a
+>   writable directory with `ENOSPC` on the file write, matching §4.4's own reachability table.
+> - **SE F-07 + TE F-12 (Medium) — backup grammar / ordering.** **Fixed, §1.4.** The collision
+>   suffix is now **always present and zero-padded**: `{id}.{stamp}-NN.bak`, `NN ∈ 01..99`. The
+>   filename is then fixed-width after the id, so (a) `LC_ALL=C` descending filename sort **is**
+>   reverse-chronological with no special case, satisfying AC-3.4's sort clause and AC-3.5's
+>   "newest backup" selection, and (b) the id is recovered by a fixed 24-byte offset, so the
+>   grammar has exactly one parse. **§10 O-18** binds the round-trip property obligation.
+> - **SE F-10 (Medium) — blast radius not a spec invariant.** **Fixed, §1.1 M10:** every
+>   `consumerPath` and every `retires` member must lie under `.claude/workflows/` (NFR-3).
+> - **TE F-07 (Medium) — `syncCommand` missing from §4.4's table; AT-14 dropped a conjunct.**
+>   **Fixed.** `syncCommand: null` added to the field table; AT-14's Then restores the AC-4.1
+>   mapping conjunct and asserts `baselineReason`.
+> - **TE F-08 (Medium) — "byte that cannot be represented" undefined.** **Fixed by simplifying the
+>   rule so no such case exists, §4.4.** The emitter interpolates a path verbatim **iff every byte
+>   is printable ASCII `0x20`–`0x7E`** (with `\` and `"` backslash-escaped); otherwise the whole
+>   path is `"<unprintable>"`. Decidable byte-wise under `LC_ALL=C`, no UTF-8 validation, no
+>   `\uXXXX` rule. The cost — a legitimately non-ASCII path reports as `<unprintable>` — is stated.
+> - **TE F-09 (Medium) — AC-2.9(4)'s negative had no test.** **Fixed: new AT-27** (backup written
+>   but not landed ⇒ original bytes unchanged, operation skipped, `writeFailures` entry, exit 4).
+> - **TE F-10 (Medium) — one-directional jest ATs.** **Fixed: new AT-28** (AC-6.6 green when
+>   `version` *was* bumped) and **AT-29** (AC-6.2 red when a `pluginSha1` disagrees with disk).
+> - **TE F-11 (Medium) — textual distinctness asserted only in prose.** **Fixed: new AT-30**, with
+>   the distinctness predicate stated in §8.2.
+> - **SE F-11 (Low) — §4.4 vacuous with no pre-existing file.** **Stated, §4.4.**
+> - **SE F-12 (Low) — §1.3 understated the `syncCommand` addition.** **Fixed inline in §1.3.**
+> - **SE F-13 (Low) — gitignore scope.** **Fixed, §7.5 item 1**, naming the three state paths.
+> - **TE F-13 (Low) — §6.2 rows 3/7 and the `syncCommand: null` fallback untested.** **Fixed: new
+>   AT-31.**
+> - **TE F-14 (Low) — N-4/N-5/N-6 untested.** **Fixed: new AT-32.**
+> - **TE F-15 (Low) — AT-8 packed two When/Then pairs.** **Fixed: split into AT-8a / AT-8b.**
+> - **Questions.** SE Q-01 answered in §11.1 (documentation-only; an implementation-time
+>   observation is now a named obligation). SE Q-02 answered in §3.1/§13.1 (the hash-utility probe
+>   is **once per run**, not once per row). SE Q-03 answered in §5.8 (the derivation survives, and
+>   now rests on a stated mechanism). SE Q-04 answered in §4.2 (E7 completes inside step 1, before
+>   any write is attempted). TE Q-01/Q-02 as above. TE Q-03 answered in §5.4. TE Q-04 answered in
+>   §4.4 (the three stderr-only `operation` values are filtered out before interpolation).
+> - **Changed acceptance tests, per instruction:** AT-2 (Given tightened so the two-phase baseline
+>   selection is deterministic), AT-8 → AT-8a/AT-8b, AT-14 (rewritten; AT-14b added), AT-15
+>   (Given corrected), AT-18 (`--check` exit 0 → **4**). AT-1, AT-3–AT-7, AT-9–AT-13, AT-16,
+>   AT-17, AT-19–AT-25 are unchanged in number and substance.
 
 ## 0. Preliminaries
 
@@ -131,8 +244,18 @@ Emitted by C5 (AC-5.1), read by C1. Sole authority for the managed set (AC-0.1).
 | M7 | No path appears in two rows' `retires`; no `retires` member equals any row's `consumerPath` (AC-0.1) |
 | M8 | `retired` is present and its **set** equals the union of every row's `retires` (AC-0.2). Order and duplicates are ignored in the comparison; the two disagreeing as sets is malformed |
 | M9 | `pluginSha1` matches `^[0-9a-f]{40}$` |
+| M10 | **Containment (NFR-3's blast-radius bound).** Every `consumerPath` and every `retires` member begins with the literal prefix `.claude/workflows/` and names a file **directly** in it (exactly one path segment after the prefix). A manifest that does not satisfy this is `manifest-malformed` — not a row-level problem |
 
-M1–M9 are evaluated in order and the **first** failure decides; the reason is always
+**Why M10 is a validator clause and not a convention.** REQ §4 asserts "all consumer-side state
+lives under `.claude/workflows/`" and NFR-3 forbids touching unmanaged files, but without M10 a row
+declaring `consumerPath: "pdlc/workflows/orchestrate-dev.js"` — a build bug, or a hand-edited plugin
+cache — would be *synced*: overwritten (backed up, but overwritten), and never seen by §3.5's
+`not-managed` enumeration, which lists only `.claude/workflows/`. M10 makes the blast radius a spec
+invariant that the consumer verifies at every run against the manifest it was handed, rather than a
+property the builder is trusted to have preserved. `pluginPath` is deliberately **not** constrained
+this way: it is read-only and lives in the plugin tree, whose layout is the builder's.
+
+M1–M10 are evaluated in order and the **first** failure decides; the reason is always
 `manifest-malformed` regardless of which clause failed, with the failing clause id printed on
 stderr for the operator (not in the drift state — the reason set is closed, AC-1.0).
 
@@ -176,6 +299,13 @@ detection correct if a copy is ever truncated.
 
 The exact schema is fixed by REQ AC-2.6 and reproduced here as the writer's contract. All three
 arrays are always present.
+
+> **One field below is not in AC-2.6's listing: `syncCommand`.** It is an FSPEC-level addition
+> forced by AC-4.2 + NFR-1 jointly (the queue must print a `<pluginRoot>`-expanded command and
+> cannot expand one itself), argued in full at **OQ-5**. It is recorded here inline, not only in
+> §11, because §1.3 is what an implementer and the PROPERTIES author read as the contract. A
+> reviewer who holds that AC-2.6's key list is exhaustive should route this as a REQ amendment;
+> this FSPEC does not amend the REQ.
 
 ```json
 {
@@ -229,21 +359,47 @@ Field rules the writer enforces:
 
 ### 1.4 Backup filename grammar
 
-`.claude/workflows/.pdlc-backups/{id}.{YYYYMMDDTHHMMSSZ}[-N].bak` (AC-3.4).
+`.claude/workflows/.pdlc-backups/{id}.{YYYYMMDDTHHMMSSZ}-{NN}.bak` (AC-3.4).
 
 ```
-backup   ::= id "." stamp [ "-" N ] ".bak"
+backup   ::= id "." stamp "-" NN ".bak"
 id       ::= ^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$      (the union namespace, M6)
 stamp    ::= YYYY MM DD "T" HH MM SS "Z"            (UTC, fixed width, 16 chars)
-N        ::= 2 | 3 | …                              (same-second collision, ascending, never reused)
+NN       ::= ^(0[1-9]|[1-9][0-9])$                  (zero-padded, 01..99, ascending within one
+                                                     second, never reused, never overwritten)
 ```
 
-The stamp is fixed-width so `LC_ALL=C` lexicographic descending sort **is** reverse-chronological
-(AC-3.4). Because `id` may itself contain `.` and `-`, the id is recovered by **anchoring on the
-stamp**, not by splitting on the first `.`: the pattern is matched right-to-left from `.bak`, and
-everything left of the stamp is the id. Retention prunes to the newest 5 **per id** and never
-touches a file that does not match this pattern for a *currently known* id — a stray file in the
-backup directory is left alone forever.
+**The suffix is always present and always two digits.** AC-3.4 writes it `[-N]` and illustrates it
+with `-2`, `-3`; this FSPEC emits `-01` for the *first* backup in a second and `-02`, `-03`, … for
+subsequent ones. That choice is made inside AC-3.4's `[-N]` latitude and is what makes AC-3.4's own
+normative sort clause **true**:
+
+- With an optional bare form, `…091402Z.bak` and `…091402Z-2.bak` compare at `.` (`0x2E`) versus
+  `-` (`0x2D`), so a `LC_ALL=C` **descending** filename sort puts the *older* un-suffixed file
+  first. AC-3.5's P0 restore oracle ("restoring the **newest** backup for that id") would then
+  restore the wrong file, and retention would prune the wrong member, whenever two backups for one
+  id land in the same second.
+- With the suffix mandatory and zero-padded, every filename for a given id has the **same length**
+  and the varying part is a fixed-width `stamp` followed by a fixed-width `NN`. A plain `LC_ALL=C`
+  descending filename sort is therefore exactly reverse-chronological, with no comparator and no
+  special case — which is what AC-3.4 requires and AC-3.5 depends on.
+
+**Parsing is by fixed offset, so the grammar has exactly one parse.** Everything after the id is
+`"." + stamp(16) + "-" + NN(2) + ".bak"` = **24 bytes**, so `id := name[0 : len(name) - 24]`, and
+the parse is accepted only if the trailing 24 bytes match the grammar above. This settles the
+ambiguity an id-charset that admits stamp-shaped substrings would otherwise create: `format` is
+injective (`format(id₁,s₁,n₁) == format(id₂,s₂,n₂) ⟹ id₁==id₂ ∧ s₁==s₂ ∧ n₁==n₂`), because the
+three components occupy fixed positions counted from the end. A file named
+`dev.20260101T000000Z-01.bak` is the id `dev`; a backup of the id `dev.20260101T000000Z` is
+`dev.20260101T000000Z.20260102T000000Z-01.bak`, and the two can never be confused.
+
+`NN` exhaustion (100 backups of one id inside one second) is a write failure, not a silent reuse:
+the backup is reported skipped with `operation: backup`, the destroying operation does **not**
+proceed (§4.7), and the run exits 4.
+
+Retention prunes to the newest 5 **per id** and never touches a file that does not match this
+pattern for a *currently known* id — a stray file in the backup directory is left alone forever.
+**The grammar's round-trip is a PROPERTIES obligation, §10 O-18.**
 
 ## 2. Baseline resolution (FSPEC-DIST-01)
 
@@ -255,23 +411,58 @@ Baseline resolution runs first on every entrypoint and produces either
 reason. **No row is classified and nothing is created on disk until it completes** (AC-1.0,
 AC-2.9(1)).
 
-### 2.1 Behavioral flow
+### 2.1 Behavioral flow — two phases, deliberately separated
+
+Baseline resolution is **evidence gathering** followed by **reason selection**. The separation is
+not cosmetic: it is what makes §2.8's declared precedence — which is REQ §4's, and normative —
+actually observable. A single short-circuiting ladder cannot realise that precedence, because the
+ladder's order is forced by *data dependencies* (you cannot know a manifest is empty without a JSON
+tool to parse it) while the precedence is ordered by *what the operator should be told*.
+
+#### Phase 1 — evidence gathering (no reason is chosen here)
+
+Each probe records one of `holds` / `does-not-hold` / **`indeterminate`**. A probe is
+`indeterminate` exactly when a probe it depends on did not succeed — never for any other reason.
+Nothing is written to disk in this phase.
 
 ```
-B1  resolve consumer repo root          → fail: repo-root-unresolved  (no write target; stop)
-B2  probe JSON utility                  → fail: json-tool-absent
-B3  resolve <pluginRoot>                → fail: plugin-root-unset | plugin-root-unreadable
-B4  read distribution manifest bytes    → fail: manifest-absent | plugin-root-unreadable
-B5  parse + validate (M1..M9)           → fail: manifest-malformed
-B6  rows empty?                         → yes:  manifest-empty
-B7  resolve checkEnabled                → never fails (fail-closed true)
-    ⇒ baselineStatus = resolved, managed set = rows
+E1  resolve consumer repo root       → repoRootUnresolved ∈ {holds, does-not-hold}
+E2  probe JSON utility               → jsonToolAbsent     ∈ {holds, does-not-hold}
+E3  resolve <pluginRoot>             → pluginRootUnset, pluginRootUnreadable
+E4  stat + read manifest bytes       → manifestAbsent      (indeterminate if E3 failed)
+                                     → pluginRootUnreadable may also be established here
+E5  parse + validate (M1..M10)       → manifestMalformed   (indeterminate if E2 or E4 failed)
+E6  rows empty?                      → manifestEmpty       (indeterminate if E5 failed)
+E7  resolve checkEnabled             → never fails (fail-closed true, §2.7)
 ```
 
-B1 precedes B2 because `repo-root-unresolved` is the one state with **no write target at all** —
-there is nowhere to record anything, so probing tools first would be work with no destination.
+Three points about the dependencies, because they bound what the precedence can ever observe:
 
-### 2.2 B1 — consumer repo root (AC-0.5)
+- **E4 is JSON-free.** "The manifest file is not there" is a `stat`, so `manifestAbsent` is
+  determinate even when `jsonToolAbsent` holds. `manifestMalformed` and `manifestEmpty` are not.
+- **E1 is independent of E2–E6.** The consumer's repo root and the plugin's manifest are unrelated
+  filesystem facts, so `repoRootUnresolved` genuinely co-holds with any of them. This is the pair
+  that made v1's ladder observably disagree with its own declared precedence.
+- **E1 no longer short-circuits.** v1 stopped at E1 on the argument that a run with no write target
+  should not do further work. That argument is an efficiency claim, not a correctness one, and it
+  cost the feature its declared precedence. The probes E2–E6 are a bounded number of `stat`s plus
+  at most three helper invocations (§13.1), none of which write anything, and §4.2 still guarantees
+  that **nothing is created on disk** when `repoRootUnresolved` holds.
+
+#### Phase 2 — reason selection
+
+Apply §2.8's declared precedence, highest first, over the conditions that **hold and are
+determinate**. The first such condition is `baselineReason`; if none holds,
+`baselineStatus = resolved` and the managed set is `rows`. Selection is total by construction: the
+list is exhaustive over the reason set and its fall-through is `resolved`.
+
+An `indeterminate` condition is never selected — its prerequisite failed, and that prerequisite's
+own condition is higher in the precedence in every case (`jsonToolAbsent` outranks
+`manifestMalformed` and `manifestEmpty`; `pluginRootUnset`/`pluginRootUnreadable` are selected only
+when nothing above them holds, and when they hold, `manifestAbsent` is indeterminate). So the
+selector never has to choose between "not determinable" and "true".
+
+### 2.2 E1 — consumer repo root (AC-0.5)
 
 ```
 if git is on PATH and `git rev-parse --git-dir` succeeds:
@@ -303,7 +494,7 @@ Three points the REQ makes load-bearing and the implementation must not soften:
 Linked worktrees of one clone therefore share one `.claude/workflows/`, one sync manifest, one
 drift state (D-DIST-07, and **OQ-3**/BL-06).
 
-### 2.3 B2 — JSON utility
+### 2.3 E2 — JSON utility
 
 The three shipped hook scripts already share a Python-interpreter discovery loop (REQ §0 fact 9);
 C1 reuses it verbatim rather than inventing a second one (NFR-5).
@@ -326,7 +517,7 @@ No interpreter found ⇒ `json-tool-absent`, a **baseline** reason: without JSON
 hence no managed set. This is the whole-run degradation NFR-5 contrasts with the hash tool's
 row-level one.
 
-### 2.4 B3 — `<pluginRoot>` (AC-0.3, AC-0.3a, AC-0.4)
+### 2.4 E3 — `<pluginRoot>` (AC-0.3, AC-0.3a, AC-0.4)
 
 ```
 if <repoRoot>/pdlc/workflows/build-runtime.mjs exists:      # the maintainer marker
@@ -349,30 +540,35 @@ versions, and picking between them is exactly the bug AC-0.4 forbids.
 The maintainer marker is `build-runtime.mjs` rather than, say, `.claude-plugin/` because the marker
 must be a file only the *source* tree has; a packaged plugin ships `.claude-plugin/` too.
 
-### 2.5 B4/B5 — manifest load
+### 2.5 E4/E5 — manifest load
 
 Read via the JSON helper (§2.3), **never** via the hash utility — AC-0.4 is explicit that
 hash-tool absence is a row-level reason and never a baseline one.
 
-| Helper outcome | Baseline reason |
+| Helper outcome | Condition established |
 |---|---|
-| absent (`11`) | `manifest-absent` |
-| unreadable (`10`) | `plugin-root-unreadable` |
-| malformed (`12`), or any M1–M9 failure | `manifest-malformed` |
+| absent (`11`) | `manifestAbsent` |
+| unreadable (`10`) | `pluginRootUnreadable` |
+| malformed (`12`), or any M1–M10 failure | `manifestMalformed` |
+
+**Existence is probed without the JSON tool.** E4 first `stat`s the manifest path; only if it exists
+and is readable does the JSON helper parse it. That is what keeps `manifestAbsent` determinate on a
+machine with no interpreter, and it is the only reason the precedence in §2.8 can distinguish
+"your plugin ships no manifest" from "this machine cannot read JSON".
 
 `manifest-absent` maps to AC-0.3b — **every** consumer at first release. Its remediation on every
 surface is **update the plugin**, never `sync-workflows.sh`: syncing cannot create a manifest that
-the installed plugin does not ship. The `checkEnabled` escape stays reachable because B7 runs on
-the unresolved path too (§2.7).
+the installed plugin does not ship. The `checkEnabled` escape stays reachable because E7 runs on
+the unresolved path too (§2.7) — with the one stated exception in §2.7's final paragraph.
 
-### 2.6 B6 — `manifest-empty`
+### 2.6 E6 — `manifest-empty`
 
 A parsed manifest with zero rows is well-formed but yields `baselineStatus: unresolved`, reason
 `manifest-empty`. Rationale, stated by AC-1.0: a size-zero managed set satisfies every universal
 claim ("all rows in-sync") vacuously, so treating it as resolved would turn an empty manifest into
 a silent green.
 
-### 2.7 B7 — `checkEnabled` (AC-4.3)
+### 2.7 E7 — `checkEnabled` (AC-4.3)
 
 Resolved by the **shell writer**, never by the queue (one-read rule, NFR-1), and recorded in the
 drift state.
@@ -384,10 +580,33 @@ drift state.
 | file absent | `true` |
 | unreadable or malformed | `true` + one verbatim stderr notice (§8.3 N-5) |
 | present but not a boolean (string `"false"`, number, null) | `true` + the same notice |
+| **no JSON utility on this machine (`jsonToolAbsent`)** | **`true`** + the same notice — see below |
 
-Fail-closed to `true` in every degraded case. B7 runs on **both** the resolved and unresolved
+Fail-closed to `true` in every degraded case. E7 runs on **both** the resolved and unresolved
 paths, and on the invalidation record (§4.4) — this is what AC-2.9(3) means by "the record
-preserves `checkEnabled`", and it is why a permanently-unwritable consumer can still opt out.
+preserves `checkEnabled`", and it is why a consumer whose drift state is unwritable *for
+permission or space reasons* can still opt out.
+
+**The `json-tool-absent` residual — accepted and stated.** `.claude/pdlc.config.json` is a JSON
+document, and §1 forbids reading any of this feature's JSON documents with `grep`/`sed`. On a
+machine with no Python interpreter the config is therefore unreadable **by construction**, AC-4.3's
+fail-closed rule forces `checkEnabled: true`, and the documented opt-out is **not reachable** in
+that state: the baseline is `unresolved`/`json-tool-absent`, so §6.2 blocks the queue and no
+recorded `false` can unblock it.
+
+This FSPEC does not invent an escape. The two candidates were both rejected: a fixed-literal `grep`
+of one key would make a JSON document's meaning depend on a line-oriented pattern match — exactly
+the class of bug the "never `grep`/`sed`" rule exists to prevent, and it would disagree with the
+JSON reader on any config the two parse differently; and an environment-variable override would be
+a **third** config surface, which NFR-6 forbids ("exactly two exceptions") and AC-2.9(5) reinforces
+by making the two env seams test-only and not config surfaces.
+
+The residual is therefore recorded on the same footing as NFR-6 exception (ii): **on a machine with
+no Python interpreter, the queue is blocked and the only remediation is to install one.** That
+remediation is exactly what AC-2.5a already names for `json-tool-absent`, it is announced on stderr
+at every drift computation, and it is a one-command fix on every platform Claude Code runs on. §4.4
+is corrected to match: rung (i) preserves a genuinely-`false` `checkEnabled` in the
+`ENOSPC`/immutable/read-only-mount cases, **not** in the `json-tool-absent` case.
 
 ### 2.8 Baseline reason precedence (AC-1.0, §4)
 
@@ -402,9 +621,26 @@ drift-state-invalidated
 
 `drift-state-invalidated` is highest because it is written by the drift-state writer *about this
 run's own failure* — "nothing in this file measures this run" dominates any statement the file
-would otherwise carry. It is the only reason not produced by the B1–B6 ladder; the flow's natural
-short-circuit order already realises the rest, and the precedence is stated so the ladder is not
-free to be reordered.
+would otherwise carry. It is the only reason not produced by §2.1's evidence phase: it is produced
+by §4.4 rung (i), after selection has already happened, and it replaces whatever reason the record
+would otherwise have carried.
+
+**This precedence is the selector, not a commentary on one.** §2.1 Phase 2 *is* this list; there is
+no second ordering anywhere in the feature, and no short-circuit that can pre-empt it. That is the
+whole reason §2.1 is written in two phases — v1 declared this precedence and then evaluated a
+ladder whose order was its near-reverse, so the two disagreed for every pair that can co-hold
+(`repo-root-unresolved` with `manifest-empty` being the plainest). Worked consequences, all
+normative and all fixture-constructible for O-9:
+
+| Conditions that hold | Reported `baselineReason` |
+|---|---|
+| `repoRootUnresolved` + `manifestEmpty` | `manifest-empty` |
+| `repoRootUnresolved` + `jsonToolAbsent` | `json-tool-absent` |
+| `jsonToolAbsent` + `manifestAbsent` | `json-tool-absent` |
+| `jsonToolAbsent` + manifest present (so malformed/empty are **indeterminate**) | `json-tool-absent` |
+| `repoRootUnresolved` + `pluginRootUnset` | `repo-root-unresolved` |
+| `repoRootUnresolved` alone | `repo-root-unresolved` |
+| none | `resolved` |
 
 ### 2.9 Edge cases
 
@@ -422,8 +658,23 @@ free to be reordered.
 
 **Linked requirements:** AC-1.1, AC-1.2, AC-1.3, AC-1.4, AC-1.5, AC-1.6, AC-1.7, AC-1.8, AC-0.6.
 
-Runs once per managed row, only under a resolved baseline, against the filesystem **as found** —
-before this run creates anything (AC-2.9(1)).
+Runs once per managed row **per classification pass**, only under a resolved baseline, against the
+filesystem as it stands when the pass runs.
+
+**How many passes a run makes (§4.2):**
+
+| Entrypoint | Passes | What the drift state records |
+|---|---|---|
+| hook | 1 — the **as-found** pass | the as-found pass |
+| `--check` | 1 — the **as-found** pass | the as-found pass (nothing changed, so as-found == post-run) |
+| sync (plain or `--force`) | 2 — **as-found**, then **post-run** | the **post-run** pass |
+
+The as-found pass is the one AC-2.9(1) governs: it runs before this run creates anything, and it is
+the *only* input to the copy/retire decisions (§5.5, §5.7). The post-run pass exists because AC-2.6
+records `supersedingState` "sync: post-copy", AC-2.7 requires a post-sync drift state to unblock the
+queue **within the same session**, and AC-3.3's exit table is applied to the post-run state (§5.8).
+Both passes call the same pure `classify_row`; there is no second classifier and no derived-state
+shortcut. See **OQ-6** for the one REQ sentence this reading has to interpret.
 
 ### 3.1 C1's classifier surface
 
@@ -435,6 +686,13 @@ classify_row(rowId, pluginPath, consumerPath) -> (state, reason, pluginHash, con
 Pure with respect to the filesystem: it reads, it never writes, and it never spawns a process other
 than the declared hash utility. Rows are independent (AC-1.4) — no row's outcome is an input to
 another's, and the loop has no early exit.
+
+**The hash-utility *probe* is performed once per run, not once per row** (SE Q-02). `classify_row`
+receives the resolved utility (or the fact that none exists) as an input; it never re-probes. This
+is what §13.1's structural latency claim depends on — per row the spawn count is at most **two**
+hash invocations and nothing else — and it is also why `hash-tool-absent` is a property of the
+machine that is identical for every row in a run, which is precisely the justification §3.3 gives
+for ranking it first.
 
 ### 3.2 Probes
 
@@ -463,12 +721,12 @@ Evaluated in AC-1.8(ii)'s fixed precedence — `unknown` > `missing` > `in-sync`
 `stale` > `local-edit`. First match wins; the ladder is total.
 
 ```
-1. unknown    if  P1 indeterminate                   → consumer-artifact-unreadable*
+1. unknown    if  P5 unavailable (no hash tool)      → hash-tool-absent
               or  P1 == no                           → plugin-artifact-missing
+              or  P1 indeterminate                   → plugin-artifact-unreadable*
               or  P2 == no                           → plugin-artifact-unreadable
               or  P3 indeterminate                   → consumer-artifact-unreadable
               or  (P3 == yes and P4 == no)           → consumer-artifact-unreadable
-              or  P5 unavailable (no hash tool)      → hash-tool-absent
 2. missing    if  P3 == no (definite)
 3. in-sync    if  sha1(consumer) == sha1(plugin)
 4. unverified if  P6 == no entry
@@ -477,14 +735,32 @@ Evaluated in AC-1.8(ii)'s fixed precedence — `unknown` > `missing` > `in-sync`
 ```
 
 \* P1 indeterminate is an untraversable ancestor **on the plugin side**; its reason is
-`plugin-artifact-unreadable`. (Written out rather than folded in, because the four reasons exist
-precisely so the remediations differ — AC-1.2.)
+`plugin-artifact-unreadable`, the same as an unreadable plugin artifact. (Written out as its own
+line rather than folded in, because the four reasons exist precisely so the remediations differ —
+AC-1.2. v1 wrote `consumer-artifact-unreadable` on this line, which contradicted this very footnote
+and would have routed the operator to the wrong fix.)
 
 **Row reason precedence (§4, AC-1.2):**
 `hash-tool-absent` > `plugin-artifact-missing` > `plugin-artifact-unreadable` >
 `consumer-artifact-unreadable`. `hash-tool-absent` outranks the rest because it is a property of
 the machine, not of any path — remediating a permission while no hash tool exists changes nothing.
 `reason` is `null` on every state except `unknown`.
+
+**The ladder above evaluates in exactly this order, and that is the point.** v1 probed `P5` *last*,
+so on the entirely ordinary machine with no `shasum`/`sha1sum` and a row whose `pluginPath` is
+absent it emitted `plugin-artifact-missing` while the declared precedence (and REQ §4) demanded
+`hash-tool-absent`. §3.6's claim that single-valuedness is *structural* is only true when the
+first-match order and the declared precedence are the same list, so they are now the same list.
+
+Two consequences of ranking `P5` first, both intended and both testable:
+
+- On a machine with no hash utility, **every** managed row is `unknown`/`hash-tool-absent`,
+  regardless of what any path looks like. That is the correct report: nothing on that machine can
+  be verified, and telling the operator about a missing plugin artifact first would send them to
+  reinstall a plugin that would still not verify afterwards.
+- `hash-tool-absent` is therefore all-or-nothing across a run (§3.1's once-per-run probe), never
+  per row. A fixture in which some rows carry it and others do not is unconstructible, and O-9
+  should not generate one.
 
 Row reasons and baseline reasons are **disjoint sets** (AC-1.2); a row reason exists only under a
 resolved baseline. Nothing in the implementation may write a baseline reason into `rows[].reason`
@@ -528,9 +804,13 @@ clock, mtime, environment order, directory order), with the same three propertie
 `rows[].reason` and for `baselineReason`.
 
 The FSPEC's contribution is the decision procedure above, which is written as a first-match ladder
-precisely so single-valuedness is structural rather than asserted. **Generating the axes and
-fixtures is PROPERTIES' obligation, §10 O-9** — and v13's axis tables are explicitly *not* to be
-imported (24 of 96 cells were undefined).
+whose order **is** the declared row-reason precedence — that is what makes single-valuedness
+structural rather than asserted. The corresponding guarantee for `baselineReason` is §2.1 Phase 2,
+which applies §2.8's declared precedence directly as its selector. Both declared precedences are
+therefore observable and O-9 can generate fixtures for each; §2.8's worked table and §3.3's two
+consequences are the starting rows. **Generating the axes and fixtures is PROPERTIES' obligation,
+§10 O-9** — and v13's axis tables are explicitly *not* to be imported (24 of 96 cells were
+undefined).
 
 Two determinism hazards the implementation must avoid, called out because they are easy to
 reintroduce in bash:
@@ -563,18 +843,67 @@ All three call **one routine in C1**. Neither entrypoint contains its own serial
 
 ### 4.2 Ordering: classify first, create second (AC-2.9(1))
 
+The complete run ordering, for every entrypoint. Steps marked **sync only** do not execute on the
+hook or under `--check`.
+
 ```
-1. resolve baseline                                   (§2)
+1. resolve baseline                                   (§2, both phases; E7 completes HERE)
 2. classify every row + probe retired paths           (§3, §5.7)   ← filesystem AS FOUND
-3. build the record                                   (§1.3)
-4. mkdir -p .claude/ and .claude/workflows/           ← at most these two, at process umask
-5. atomic write of the drift state                    (§4.3)
+                                                       — the AC-2.9(1) pass
+   ── nothing above this line has created anything on disk ──
+3. mkdir -p .claude/ and .claude/workflows/           ← at most these two, at process umask
+4. sync only: for each row, backup (§4.7) then copy   (§5.5)
+5. sync only: retirement — backup then delete         (§5.7)
+6. sync only: sync-manifest update for copied rows    (§1.2)
+7. sync only: RE-CLASSIFY every row + re-probe        (§3)         ← filesystem AS IT NOW STANDS
+              retired paths                                         — the recorded pass
+8. build the record                                   (§1.3)
+9. atomic write of the drift state                    (§4.3)
+10. compute the exit code over the record just built  (§5.8)
 ```
 
-Step 4 happens **only** after step 2, **never** when the reason is `repo-root-unresolved` (no write
-target at all), and **never** under `$HOME` or `/` (§2.2). A first run on a fresh consumer
+**Which pass the record carries — the question v1 left open, answered.**
+
+| `generatedBy` | `rows[]`, `retiredPresent[]` come from |
+|---|---|
+| `"hook"` | step 2 (the only pass) |
+| `"check"` | step 2 (the only pass) |
+| `"sync"` | **step 7** (the post-run pass) |
+
+Steps 4–6 read their decisions **only** from step 2, so AC-2.9(1)'s "the whole drift computation
+has run against the filesystem as found" governs every action this run takes. Step 7 changes no
+decision; it only re-measures, so that the file the queue reads describes the tree the queue will
+work in. Three approved requirements make step 7 mandatory rather than optional:
+
+- **AC-2.6** records `supersedingState` as "measured at write time (hook: session start; check:
+  current; **sync: post-copy**)". A pre-copy `supersedingState` is not post-copy.
+- **AC-2.7** states the consequence that "post-sync drift state is current within the same session,
+  so the queue unblocks without a restart". With a pre-copy record, a successful sync would write
+  `rows[].state: "stale"` and §6.2 row 6 would keep the queue blocked — the promise would be false.
+- **AC-3.3 / §4** compute the exit code over "the observed state at the end of the run". Step 10
+  reads the record built at step 8, so there is exactly one state in play and the exit code and the
+  drift state can never disagree.
+
+**Step 7 is a second invocation of the same `classify_row`,** not a derivation from copy success.
+Deriving would re-introduce the very failure this feature exists to catch: a copy that reported
+success but truncated would be recorded `in-sync` by derivation and `local-edit`/`unverified` by
+measurement. §3.1's classifier is pure and cheap (its hash-utility probe already happened once, per
+§3.1), so a second pass costs at most two more hash invocations per copied row.
+
+**O-1's "single classification invocation" is unaffected.** The trace assertion is scoped to one
+invocation — the step-2 pass — and step 7 is a distinct, separately-labelled phase in the trace
+grammar (§10 O-1, O-7). v1's §3 text ("runs once … as found") is corrected in §3: once per row *per
+pass*.
+
+Step 3 happens **only** after step 2, **never** when the selected reason is `repo-root-unresolved`
+(no write target at all), and **never** under `$HOME` or `/` (§2.2). A first run on a fresh consumer
 therefore records `missing` rows in a directory that the very same run then creates — which is the
-intended, stated behavior (AC-3.8), not an inconsistency.
+intended, stated behavior (AC-3.8), not an inconsistency. (On a `--check` run, step 7 does not
+execute, so those rows stay `missing` in the record; on a sync run, step 7 measures them `in-sync`
+after step 4 copied them.)
+
+**`checkEnabled` is resolved inside step 1** (§2.1 E7), before any write is attempted, so it is
+available to §4.4's invalidation record whatever happens at steps 3–9 (SE Q-04).
 
 The alternative — skip the write when the directory is absent — was considered and rejected by the
 REQ: it leaves the queue permanently blocked at rollout and makes the `checkEnabled` escape
@@ -593,8 +922,47 @@ an operator who syncs mid-session unblocks the queue without restarting. This is
 has no freshness clause — every writer refreshes the file, so a stale snapshot cannot outlive the
 operation that invalidated it.
 
+### 4.4a The `printf` emitter — what it is, and when it is the writer
+
+The `printf` emitter is introduced by AC-2.9(3) for rung (i), but it is not *only* rung (i)'s. It is
+this feature's **serialiser of last resort**, and stating its trigger condition here closes the gap
+v1 left: with no JSON tool there was no specified way to write the ordinary drift-state record at
+all, so the ladder's "most important case" could never be entered and its test had no fixture.
+
+**Definition.** The emitter serialises, with `printf` alone and no JSON tool, exactly those records
+**every field of which is closed-domain** (§4.4's table below enumerates them, plus the one escaped
+string). That is precisely the **unresolved-baseline** record shape: `rows` and `retiredPresent` are
+`[]` by AC-2.6, `baselineStatus`/`baselineReason` are closed literals, `pluginVersion` and
+`syncCommand` are `null`, `generatedBy` and `checkEnabled` are closed sets, and `generatedAtUtc` is
+fixed-width. It **cannot** serialise a resolved record — arbitrary `id`s and hashes are not
+closed-domain — and it is never asked to.
+
+**Trigger conditions — exhaustive, two of them:**
+
+| # | Condition | Which record |
+|---|---|---|
+| T1 | `jsonToolAbsent` holds (§2.1 E2) | the run's **ordinary** record, written through the normal step-3/step-9 path (`mkdir -p`, sibling temp, `mv`) |
+| T2 | the drift-state write failed over a **pre-existing** file (AC-2.9(3)) | the **invalidation** record, written in place per rung (i) |
+
+T1 is well-defined because `jsonToolAbsent` forces `baselineStatus: unresolved`
+(reason `json-tool-absent`, §2.8), which is exactly the shape the emitter can serialise. So:
+
+- On a **first-adoption** consumer with no JSON tool — no `.claude/workflows/`, no pre-existing
+  drift state — the run creates the directory (step 3) and the emitter writes a complete, parseable
+  record through the ordinary atomic path. The queue then blocks at §6.2 row 4 naming
+  `json-tool-absent`, with AC-2.5a's remediation, rather than at row 1 naming nothing. This is TE
+  Q-01's answer: **yes, a record is written.**
+- If *that* write fails and a drift state pre-exists, the ladder below runs — and its rung (i)
+  emitter is the same routine, differing only in `baselineReason` and in writing in place.
+- If that write fails and **no** drift state pre-exists (a `mkdir` failure on a fresh consumer),
+  rungs (i) and (ii) have no target: (i)'s in-place overwrite has nothing to overwrite and (ii)'s
+  `unlink` has nothing to unlink. Both are no-ops and the outcome is **rung (iii) directly** — the
+  queue then sees an absent file, §6.2 row 1, `blocked`. This is stated so O-10's fixture inventory
+  is correct and so no one builds a fixture for a rung-(i) success that cannot exist.
+
 ### 4.4 Failure class (a): `mkdir` or the atomic replace fails — the invalidation ladder (AC-2.9(3))
 
+Entry condition, verbatim from AC-2.9(3): **the drift-state write failed over a pre-existing file.**
 Three rungs, **stop at first success**:
 
 ```
@@ -605,10 +973,11 @@ Three rungs, **stop at first success**:
 
 #### Rung (i) — the invalidation record. **Disposes O-4.**
 
-Written **over the pre-existing file in place**, without `mv`, and **without the JSON tool**. It
-must be emitted by a fixed-literal `printf` for the reason O-4 names: the ladder's most important
-case is `json-tool-absent`, where by construction no serialiser is available. A `printf` template
-can only be safe if every interpolated value is closed-domain, so:
+Written **over the pre-existing file in place**, without `mv`, and **without the JSON tool** — it is
+the §4.4a emitter under trigger T2. O-4 requires the `printf` form because the write must succeed on
+a machine where no serialiser exists at all, and because the ladder must not acquire a dependency
+that the failure it is recovering from may itself have removed. A `printf` template can only be safe
+if every interpolated value is closed-domain, so:
 
 | Field | Value in the record | Why it is safe to interpolate |
 |---|---|---|
@@ -616,27 +985,65 @@ can only be safe if every interpolated value is closed-domain, so:
 | `generatedAtUtc` | ISO-8601 Z from `date -u` | fixed-width, closed charset |
 | `generatedBy` | this entrypoint | closed 3-member set |
 | `pluginVersion` | **`null`, unconditionally** | it is an arbitrary string from the plugin cache — the one field that could inject arbitrary bytes into the template. It is context-only (AC-5.4), so emitting `null` loses nothing |
-| `checkEnabled` | this run's resolved boolean | closed 2-member set — **and this is the field the whole rung exists to preserve** |
+| `syncCommand` | **`null`, unconditionally** | a path-bearing string with the same injection profile as `pluginVersion`; the invalidation record's remediation class is permissions/filesystem, never sync (§1.3, OQ-5), so emitting `null` loses nothing. **Listed because AC-2.9(3) requires a schema-valid record and §1.3 makes this a top-level field — a record missing it is not schema-valid** |
+| `checkEnabled` | this run's resolved boolean | closed 2-member set — see the honesty note below |
 | `baselineStatus` | `"unresolved"` | literal |
-| `baselineReason` | `"drift-state-invalidated"` | literal |
+| `baselineReason` | `"drift-state-invalidated"` | literal (this is the one reason not produced by §2.1 Phase 2; it **replaces** whatever Phase 2 selected — §2.8) |
 | `rows`, `retiredPresent` | `[]` | literal |
-| `writeFailures` | this run's collected entries | `path` is **not** closed-domain — see below |
+| `writeFailures` | this run's collected entries, **filtered** — see below | `path` is **not** closed-domain — see below |
 
-`writeFailures[].operation` is drawn from the closed nine-member set, so it interpolates safely.
-`writeFailures[].path` is a filesystem path and is **not** closed-domain. The emitter therefore
-JSON-escapes it with a fixed, dependency-free routine: backslash and double-quote are escaped,
-control characters below `0x20` are emitted as `\uXXXX`, and a path containing a byte that cannot
-be represented is replaced wholesale by the literal `"<unprintable>"`. A path can never break the
-record's parseability — that is the rung's entire purpose.
+**`writeFailures` filtering (TE Q-04).** Three of §4.5's nine `operation` values — `mkdir`,
+`drift-state-replace`, `drift-state-invalidate`, `drift-state-unlink` — describe failures *of the
+record itself*, so they are stderr-only and cannot be *in* the record. The emitter therefore drops
+every collected entry whose `operation` is one of those before interpolation; what remains is drawn
+from the five recordable operations, each a closed-set literal that interpolates safely. If nothing
+remains, `writeFailures` is `[]`. (This filter is the emitter's, not the caller's, so both trigger
+conditions get it.)
+
+**Path escaping — a decidable predicate, no UTF-8 validation.** `writeFailures[].path` is a
+filesystem path and is not closed-domain. The rule, evaluated byte-wise under `LC_ALL=C`:
+
+```
+if EVERY byte of the path is in the printable-ASCII range 0x20..0x7E:
+     emit it, with  \  →  \\   and  "  →  \"        (the only two escapes needed)
+else:
+     emit the literal string   "<unprintable>"      (the WHOLE path, not the offending byte)
+```
+
+v1 said "a byte that cannot be represented" and never defined which bytes those are, so an
+implementer escaping only `\`, `"` and `< 0x20` satisfied every clause literally and still emitted
+an unparseable record for a path containing a lone `0x80`. The predicate above removes the class:
+every byte outside printable ASCII — control bytes, `0x7F`, any byte `≥ 0x80` whether or not it
+forms valid UTF-8 — takes the `<unprintable>` branch, so no `\uXXXX` rule and no UTF-8 validator is
+needed anywhere in the emitter. **A path can never break the record's parseability**, and the claim
+is now checkable rather than asserted.
+
+**Stated cost:** a legitimately non-ASCII path (an accented directory name) is reported as
+`<unprintable>` in the *invalidation* record. That record exists to say "nothing here measures this
+run"; the operator's next action is a permissions/filesystem fix, and the same path is printed
+**verbatim on stderr** by W-7, which has no serialisation constraint. Nothing is lost that the
+operator needs.
+
+**Honesty note on `checkEnabled` (see §2.7).** The rung preserves a genuinely-`false`
+`checkEnabled` in every case where a JSON tool exists and the config was read — `ENOSPC`/quota,
+immutable attribute, read-only mount, unwritable parent. It **cannot** preserve `false` under
+`json-tool-absent`, because in that state AC-4.3's fail-closed rule already forced `true` before the
+ladder ran; there is no JSON-tool-free read of the config and this FSPEC does not invent one. v1
+called `checkEnabled` "the field the whole rung exists to preserve" while pointing at
+`json-tool-absent` as the rung's most important case — the two could not both be true. The rung's
+purpose stands for the permission/space cases; the `json-tool-absent` residual is **accepted and
+stated** in §2.7, with "install a Python interpreter" as its named remediation.
 
 **Record-first ordering is deliberate** (AC-2.9(3)): an *absent* drift state blocks the queue at
 AC-4.1 row 1, which sits **above** the `checkEnabled` row. Unlinking first would therefore make the
 documented opt-out unreachable on a permanently-unwritable consumer. The record preserves
 `checkEnabled`; that is why it is rung (i) and not rung (ii).
 
-**Mandated test, per O-4:** a `json-tool-absent` ladder test asserting that the emitted record
-*parses* and that AC-4.1's mapping over it produces the `baselineStatus`-unresolved outcome. TSPEC
-owns its construction (§10 O-10).
+**Mandated test, per O-4:** a `json-tool-absent` test asserting that the emitted record *parses*
+**and** that AC-4.1's mapping over it produces the `baselineStatus`-unresolved outcome. Both
+conjuncts are required — a record that parses but that the mapping cannot classify is exactly the
+undefined region §6.2 row 10 now closes. AT-14 (trigger T1) and AT-14b (trigger T2, where a `false`
+`checkEnabled` is genuinely recordable) carry it; TSPEC owns their construction (§10 O-10).
 
 #### Rung (ii) — `unlink` and retry. **Disposes O-5.**
 
@@ -724,17 +1131,30 @@ NFR-6's "exactly two exceptions" stays true:
 ```
 print ONE line to stderr:  pdlc: unrecognised PDLC_FAULT token "<token>"; no fault injected
 inject nothing
-exit with the ENTRYPOINT'S NORMAL EXIT — the token changes no exit code:
-     hook   → 0     (unconditionally; NFR-6 admits no third exception)
-     --check → its computed exit (0–4)
-     sync    → its computed exit (0–4)
+exit per AC-2.9(5), verbatim:
+     hook    → 0     (unconditionally; NFR-6 admits no third exception)
+     --check → 4
+     sync    → 4
 ```
 
-The phrase "uses the entrypoint's normal exit" in AC-2.9(5) means the run **proceeds normally** and
-the exit is whatever the drift computation would have produced anyway — an unrecognised token is
-not a usage error and must not manufacture a 4. Note the asymmetry with a genuine *usage* error
-(an unknown `--flag`), which **is** an error and exits 4 on `--check`/sync — and still exits 0 on
-the hook, which takes no flags.
+AC-2.9(5) reads: an unrecognised token "prints one stderr line, injects nothing, and uses the
+entrypoint's normal exit — **4 on `--check`/sync, 0 on the hook**". The AC fixes both halves
+explicitly, so `--check` and sync exit **4** — the same code a genuine usage error (an unknown
+`--flag`) produces, and for the same reason: a `--check`/sync invocation is an *assertion* surface,
+and an environment it does not understand is a failed assertion, not a green one. The hook is the
+sole exception because AC-2.4 makes its exit 0 absolute.
+
+> **v1 deviated here and this version conforms.** v1 pinned `--check`/sync to "its computed exit
+> (0–4)" on the argument that an unrecognised token "must not manufacture a 4". That argument
+> contradicts the plain text of an approved AC on a P0 requirement, and the REQ text is what TSPEC
+> and PROPERTIES will cite. The FSPEC does not amend an approved REQ; where it disagreed, it is the
+> FSPEC that changed. **AT-18 changes with it** — `--check` under an unrecognised token now exits
+> **4**, not 0.
+
+Note that the drift computation still **runs** and its record is still written: "injects nothing"
+means the run is not perturbed, and only the process exit is pinned. So a `--check` whose tree is
+green still writes a green drift state and the queue still proceeds — the token affects the
+operator-visible exit of the assertion surface, nothing else.
 
 The trace failure asymmetry is deliberate and stated: the **script** ignores a trace-write failure
 (it must never change production behavior), while the **test** that relies on the trace treats an
@@ -860,6 +1280,14 @@ auditable. A thin discoverability `SKILL.md` may exist, but its **only permitted
 the script verbatim and relay its output — it may not paraphrase, summarise a decision, or copy a
 file itself.
 
+**If that `SKILL.md` ships in the landing commit it is inside `coveredViolations`' scan (TE Q-03).**
+It lives under `pdlc/skills/`, which none of §7.5's four exemptions covers, so its wording must
+avoid all five patterns — in particular it must not name `.claude/workflows/*.js` or describe
+"copying the bundle into a consumer repo". That is not a hardship: the correct text for it is "run
+this script", which contains none of them. The rule §7.5 already states applies here unchanged — a
+false positive is resolved by **rephrasing the document**, never by narrowing a pattern — so AT-22's
+live-root `== ∅` assertion stays green on the landing commit either way.
+
 Three modes:
 
 | Invocation | Writes artifacts? | Writes drift state? | `generatedBy` |
@@ -872,15 +1300,36 @@ Three modes:
 
 ### 5.5 Copy semantics (AC-3.1, AC-3.2)
 
+Row states are read from §4.2's **step-2** (as-found) pass; the loop is §4.2 step 4.
+
 ```
 for each row, in manifest order:
-    if state ∈ {stale, missing}                    → copy
+    if state == missing                               → copy            (NO backup — see below)
+    elif state == stale                               → verified backup (§4.7), then copy
     elif state ∈ {local-edit, unverified} and --force → verified backup (§4.7), then copy
-    else                                            → skip, report the reason
+    else                                              → skip, report the reason
 ```
 
 Every row falls in **exactly one** of the copy set / skip set (AC-3.1) — the loop has no
 fall-through and no row is silently ignored.
+
+**Why `stale` takes a backup even without `--force`, and `missing` does not.** AC-3.4's trigger is
+"a sync overwrites or deletes **any existing file**". A `stale` row *is* an existing consumer file
+about to be overwritten, so it is inside AC-3.4 and the verified backup is mandatory. AC-1.1 says it
+from the other side: `missing` is "**the one** non-`unknown` state sync overwrites without a
+backup" — one, not two — and it is the only one because there is nothing there to destroy. §3.2's
+definite-negative rule is what makes that safe: a `missing` classification requires the path to be
+absent *and* its first existing ancestor traversable, so "nothing to back up" is a measured fact,
+not an assumption.
+
+v1's procedure grouped `stale` with `missing` and backed up neither, which destroyed operator
+content with no backup on the **most common sync path** while §3.2, §4.7 and §5.6 all said the
+opposite. **AT-26** now pins it: plain sync of a `stale` row backs up first, and restoring that
+backup yields the pre-sync bytes.
+
+A backup failure on a `stale` row is §4.7's failure branch — the row is **not** copied, the
+operation is reported skipped, `writeFailures` gains an entry, and the run exits 4. A row the
+operator cannot back up is a row the tool will not overwrite, in every state.
 
 - **Never copied under any flag:** all four `unknown` reasons. `--force` overrides *provenance*
   doubt, never *verification* failure — forcing a copy over a row whose plugin side is unreadable
@@ -901,15 +1350,21 @@ sync** (AC-0.3a).
 ### 5.6 Backups (AC-3.4, AC-3.5)
 
 Every overwrite or delete this feature performs is preceded by a verified backup (§4.7) at
-`.claude/workflows/.pdlc-backups/{id}.{stamp}[-N].bak` (§1.4).
+`.claude/workflows/.pdlc-backups/{id}.{stamp}-{NN}.bak` (§1.4). **This includes a plain sync's
+`stale` rows** (§5.5) — the only state overwritten without a backup is `missing`, where nothing
+exists to destroy.
 
 - **Id namespace** is the union of row ids and retired basenames (AC-0.1/M6) — so retirement
   backups share the retention rule, and the pairwise-distinctness clause is what stops a retired
   basename from colliding with a row id in this directory.
-- **Same-second collision:** `-2`, `-3`, … ascending. A backup file is **never overwritten**.
+- **Same-second collision:** `-01`, `-02`, … ascending, always present, always zero-padded (§1.4).
+  A backup file is **never overwritten**; suffix exhaustion at `-99` is a `backup` write failure,
+  never a reuse.
 - **Retention: newest 5 per id**, selected by `LC_ALL=C` lexicographic **descending** filename sort.
-  The fixed-width stamp makes lexicographic == chronological. Pruning is **never** mtime-based and
-  never touches a file that does not match the §1.4 pattern for a currently-known id.
+  Because the suffix is mandatory and fixed-width, every filename for one id has the same length and
+  the sort is exactly reverse-chronological with no comparator and no special case (§1.4 derives
+  this, and derives why the optional-suffix form v1 specified was not). Pruning is **never**
+  mtime-based and never touches a file that does not match the §1.4 pattern for a currently-known id.
 - **Backup dir creation** follows AC-2.9(1) (classify first); its failure is the write-failed
   outcome, `operation: backup`.
 - **Restore (AC-3.5):** restoring the newest backup for an id yields a file **byte-identical** to
@@ -934,6 +1389,12 @@ for each path p in each row R's retires, where p exists and the baseline is reso
 - **`iff` R's post-copy state is `in-sync`** — measured *after* this run's copies, not before. Any
   other state, **including every `unknown`**, leaves `p` in place. The failure mode this prevents
   is deleting the loadable artifact and leaving nothing behind.
+- **Where that measurement comes from, concretely (§4.2):** retirement is step 5, immediately after
+  the copy loop at step 4. "R's post-copy state" is obtained by re-running `classify_row` for R
+  against the tree as it stands at step 5 — the same routine, same inputs discipline. It is *not*
+  inferred from "the copy at step 4 reported success". The record's `retiredPresent` then comes from
+  step 7's re-probe, so a path deleted at step 5 correctly does **not** appear in it, and
+  `supersedingState` is post-copy exactly as AC-2.6 requires.
 - **Per path, idempotent, never before its replacement is in place.**
 - A `mv` into the backup directory is an acceptable implementation of backup-then-delete.
 
@@ -959,10 +1420,13 @@ The complete precedence table — highest applicable wins, never green while any
 | `resolved`, non-empty rows, all `in-sync`, no retired path, `writeFailures` empty | **0** |
 
 **The observation point — O-14's substance.** The code is computed over the state observed **at the
-end of the run**:
+end of the run** — concretely, over **the record built at §4.2 step 8**, which is why §4.2 makes the
+exit computation step 10. There is exactly one state in play, so the exit code and the drift state
+can never disagree:
 
-- **`--check`** changes nothing, so its post-run state *is* its pre-run state.
-- **A sync run** applies the same table to the **post-run** state.
+- **`--check`** changes nothing and makes one classification pass, so its post-run state *is* its
+  pre-run state.
+- **A sync run** applies the same table to the **post-run** state, which §4.2 step 7 measures.
 
 Worked consequences, all normative:
 
@@ -977,6 +1441,13 @@ Worked consequences, all normative:
 been copied (⇒ `in-sync`) or failed (⇒ 4); and a retired path still present implies its row was
 skipped as `local-edit`/`unverified`/`unknown`, which outranks 1 at 2 or 3. **No acceptance test
 should attempt to construct a sync run that exits 1.**
+
+**This derivation survives §4.2's resolution of the two-pass question (SE Q-03), and now rests on a
+mechanism rather than an assumption.** It is sound *because* a sync run records the step-7 pass: a
+successful copy is re-measured `in-sync`, so no `stale` row survives into the record. Under v1's
+unresolved reading — where a sync might have recorded pre-copy states — a fully successful sync
+would have ended with `stale` rows in its own record and exited 1, and the claim would have been
+false. The claim and the two-pass ordering stand or fall together, and both are now stated.
 
 **The 3/4 boundary** is *no write target* vs *attempted write*. 4 outranks 3 because "could not
 repair the record" dominates "could not verify".
@@ -1025,22 +1496,75 @@ the start of an invocation. It never hashes, never enumerates, never classifies,
 any other file** — in particular it never opens `.claude/pdlc.config.json` (AC-4.3's one-read rule,
 NFR-1).
 
-**BL-04 discharged by citation.** The read uses the existing `_readFile` dependency-injection
-parameter in `pdlc/workflows/orchestrate-queue.js`, whose contract returns `null` for an absent
-file — the queue already relies on this for `docs/_queue/QUEUE.md` (`orchestrate-queue.js`, the
-`readFileFn(queuePath)` path, which distinguishes `null` from `""`). `runtime-adapter.js` honours
-the same contract. Per CLAUDE.md, **the injected call must be `await`ed** — the adapter's
-implementation is async while the test doubles are sync — and the bundles must be rebuilt in the
-same commit.
+**BL-04 discharged — against the runtime that actually executes, not only against the module
+signature.** The read uses the existing `_readFile` dependency-injection parameter in
+`pdlc/workflows/orchestrate-queue.js`. At the **module** level its contract is clean:
+`defaultReadFile` returns `null` on any throw, and the queue already relies on the `null`-vs-`""`
+distinction for `docs/_queue/QUEUE.md` (`readFileFn(queuePath)`). Per CLAUDE.md, **the injected call
+must be `await`ed** — the adapter's implementation is async while the test doubles are sync — and
+the bundles must be rebuilt in the same commit.
+
+**What the runtime actually injects, stated plainly.** `build-runtime.mjs`'s `QUEUE_ENTRY` wires
+`_readFile: rtReadFile` from `pdlc/workflows/runtime-adapter.js`, and `rtReadFile` is **an `agent()`
+call pinned to `haiku`** (`RT_IO_MODEL`) that asks a model to return the file's exact contents, with
+a sentinel string for "does not exist or cannot be read". Two consequences the FSPEC must own rather
+than inherit silently:
+
+1. **The seam's `null` is wider than "absent".** `rtReadFile` returns `null` for the missing
+   sentinel, for a non-string result, and for any transport failure of the agent turn. So the queue
+   cannot distinguish "no drift state" from "could not obtain the drift state". Both land on §6.2
+   **row 1 ⇒ `blocked`**, which is the fail-closed direction, so the conflation is safe — but it is
+   a conflation, and §6.2 row 1's wording is therefore "read did not yield a usable record", not
+   "file absent".
+2. **The transport is model-mediated, so the bytes are not guaranteed verbatim.** A model relaying a
+   JSON record containing 40-character sha1s can truncate it, re-wrap it, fence it, drop a key, or
+   "tidy" an array. NFR-1's guarantee — *no judgement in an LLM turn* — holds for the **decision**
+   (§6.2's mapping is a pure function of the parsed record; no model chooses `blocked` or
+   `proceed`), but it does **not** hold for the **transport** at this seam. Saying otherwise would
+   be false, and this feature exists to stop exactly that kind of unverified green.
+
+**The defence is §6.2 row 1's strict shape validation plus row 10's terminal `blocked`** (both added
+in v2.0 for SE F-04, and load-bearing here). Against the realistic corruptions:
+
+| Corruption | Caught by |
+|---|---|
+| fenced, truncated mid-record, or prose-wrapped | unparseable ⇒ row 1 |
+| a required key dropped (`rows`, `writeFailures`, `checkEnabled`, …) | required-key check ⇒ row 1 |
+| an array replaced by a scalar, or a row object flattened | type check ⇒ row 1 |
+| a `state` or `baselineStatus` value re-worded | closed-set membership ⇒ row 1 |
+| a record that is shape-valid but matches no outcome row | row 10 ⇒ `blocked` |
+
+**The residual, accepted and stated.** A relay that preserves the shape exactly while altering a
+**value** within its closed set — flipping one row's `"stale"` to `"in-sync"`, or `checkEnabled`
+`false` to `true` — is not detectable by any check the queue can perform on a single read, because
+the corrupted record is indistinguishable from a legitimate one. Three things bound it, and none of
+them is an assertion that it cannot happen:
+
+- The queue is **defence in depth only**; the hook is the primary detector (§6 preamble, and REQ
+  scope), and the hook is a shell script that reads the filesystem directly with no model in the
+  path. A corrupted relay degrades the second line of defence, never the first.
+- The corruption must be *semantically plausible* to survive shape validation, and the mapping's
+  fail-closed rows (1, 10) catch every implausible one.
+- The residual is on the same footing as NFR-6 exception (ii)'s rung-(iii) residual: the queue may
+  proceed on a state that does not describe the tree. It is announced by the same surface — the
+  hook — at every session start.
+
+**Routed as an implementation obligation, not a wish (§10 O-19).** Hardening `rtReadFile` into a
+byte-faithful read is a runtime-adapter change that touches every pdlc workflow module's
+`_readFile` consumer, so it is out of this FSPEC's scope; but the implementation phase must (a) not
+add a second agent-mediated read for this feature, (b) unit-test the §6.2 shape validator against
+mangled-relay fixtures — fenced, re-wrapped, key-dropped, truncated, type-swapped — and (c) record
+the seam's LLM mediation in the queue's own comments so the next reader does not re-derive it. This
+is tagged **Cross-Feature**: the property belongs to the adapter, not to this feature.
 
 No new injected seam is introduced. Adding one would widen the runtime-adapter surface for a read
-the existing seam already performs.
+the existing seam already performs — and would inherit the same mediation.
 
 ### 6.2 The mapping (AC-4.1) — precedence order
 
 | # | Condition | Outcome |
 |---|---|---|
-| 1 | read absent, unparseable, `schemaVersion` != 1, or `baselineStatus` absent | `blocked` |
+| 1 | the read did not yield a **shape-valid** record — see the predicate below | `blocked` |
 | 2 | `checkEnabled` is `false` | **proceed**; skip noted in the report (AC-4.3) |
 | 3 | `writeFailures` non-empty | `blocked`, naming each `{ path, operation }` — and naming `drift-state-invalidated` when `baselineReason` carries it |
 | 4 | `baselineStatus: unresolved` (incl. `manifest-empty`, `drift-state-invalidated`) | `blocked`, naming `baselineReason` |
@@ -1049,8 +1573,44 @@ the existing seam already performs.
 | 7 | `retiredPresent` non-empty | `blocked` (sync-fixable — BL-05) |
 | 8 | any row `local-edit` or `unverified` | **proceed**, rows named in the run report |
 | 9 | `resolved`, non-empty rows, all `in-sync`, `retiredPresent` `[]`, `writeFailures` `[]` | **proceed silently** |
+| **10** | **anything else** — the terminal row | **`blocked`**, naming "drift state does not describe a recognised outcome" |
 
-Three design points the implementation must preserve:
+**Row 1's shape predicate (D1–D8) — all clauses; any failure ⇒ `blocked`.**
+
+| # | Clause |
+|---|---|
+| D1 | The injected read returned a string (not `null`) — see §6.1: `null` means absent *or* unobtainable, and both block |
+| D2 | It parses as JSON and the top level is an **object** |
+| D3 | `schemaVersion` is present and is the integer `1` |
+| D4 | `baselineStatus` is present and is one of `"resolved"` \| `"unresolved"`; `baselineReason` is present and is `null` or one of the eight closed baseline reasons |
+| D5 | `checkEnabled` is present and is a **boolean** (not the string `"false"`, not absent) |
+| D6 | `rows`, `retiredPresent` and `writeFailures` are all **present and arrays** |
+| D7 | Every member of `rows` is an object with `id` a non-empty string and `state` one of the six closed states, and `reason` `null` or one of the four closed row reasons. Every member of `retiredPresent` is an object with `path`, `supersededBy`, `supersedingState`. Every member of `writeFailures` is an object with `path` and `operation` strings |
+| D8 | `generatedBy` is one of `"hook"` \| `"check"` \| `"sync"`; `pluginVersion` and `syncCommand` are present and each `null`-or-string |
+
+**Why this is here and not left to "the writer always writes a valid record".** Three reasons, and
+the mapping is the feature's own last line of defence in all three:
+
+1. **The record arrives through an LLM-mediated read** (§6.1) that can drop a key or re-shape an
+   array while still producing parseable JSON. Without D1–D8 such a record reaches rows 3–8, all of
+   which test *non-empty predicates* — `rows.some(...)` over `undefined` throws, over `[]` returns
+   false — so the naive implementation either crashes or **proceeds**. Proceeding on a record that
+   verified nothing is precisely the failure this feature exists to prevent.
+2. **v1's mapping was not total.** A record with `baselineStatus: "resolved"` and `rows: []` matched
+   no row 1–9: rows 3–8 each require a non-empty predicate and row 9 explicitly requires non-empty
+   `rows`. It now lands on **row 10 ⇒ `blocked`**, which is also the right answer on the merits —
+   AC-1.0 requires every green outcome to have a **non-empty** `rows`, so a resolved-but-empty
+   record is a green that verified nothing.
+3. **AC-1.8-class totality is demanded of the shell classifier**; the mapping the queue actually
+   gates on is entitled to no less. With row 10, the mapping is total by construction over *all*
+   inputs, including ones no writer in §4.1 can produce.
+
+**Row 2 and the shape check.** `checkEnabled` is validated in D5, *before* row 2 reads it, so the
+opt-out cannot be triggered by a missing or non-boolean field. A record whose `checkEnabled` is
+absent or non-boolean is `blocked` at row 1 — fail-closed, matching §2.7's resolution rule on the
+writer side.
+
+Three further design points the implementation must preserve:
 
 - **Row 2 sits above every blocking row deliberately.** The operator's opt-out stays reachable even
   on a consumer whose state is otherwise unreadable — which is also why §4.4 rung (i) preserves
@@ -1232,8 +1792,14 @@ belongs to D-DIST-06's release automation, where a published-version baseline ex
 
 A **one-time** maintainer landing step, all in the commit that lands this feature:
 
-1. `git rm` the four tracked `.claude/workflows/*` paths; gitignore the directory's generated
-   contents. The directory's contents become untracked consumer copies.
+1. `git rm` the four tracked `.claude/workflows/*` paths, and **gitignore `.claude/workflows/`
+   wholesale**. Naming the directory rather than a bundle glob is deliberate: after this feature
+   lands, that directory also holds `.pdlc-sync-manifest.json`, `.pdlc-drift-state.json` and
+   `.pdlc-backups/`, all of which are **machine-local**. Committing a sync manifest would make
+   `stale`-vs-`local-edit` discrimination differ per checkout (every clone would inherit another
+   machine's `consumerHash`); committing a drift state would hand every clone a stale verdict; and
+   committing backups would put an operator's pre-sync content in the repository. The directory's
+   contents become untracked consumer copies, produced by the same sync script every consumer runs.
 2. `pdlc/.claude-plugin/plugin.json` `version` bumped — required by AC-6.6, since `dist/` is new
    bytes — and in **every later commit that changes `dist/`**.
 3. `pdlc/hooks/hooks.json` gains the second `SessionStart` entry (§5.1, BL-03).
@@ -1344,6 +1910,29 @@ W-3 and W-4 are required to be **textually distinct** (AC-2.3) and they are: W-4
 the backup location and explicitly denies plain sync; W-3 asks for a diff first. Neither is a
 substring of the other.
 
+**The distinctness predicate — normative, so it can be an oracle rather than an argument.**
+AC-2.3, AC-2.5 and AC-2.5a each make textual distinctness a *requirement*, and §8 declares itself
+normative for exactly those distinctions; but a prose argument cannot fail a build, and v1 contained
+no test over the catalogue at all — an implementation emitting one string for both `stale` and
+`local-edit` passed every acceptance test. The predicate, over the messages **as emitted** (with
+their `{…}` substitutions applied, `pdlc:` prefix included, whitespace-normalised):
+
+```
+distinct(a, b)  ≡  a != b  AND  a is not a substring of b  AND  b is not a substring of a
+```
+
+It must hold pairwise over each of these sets:
+
+| Set | Members | AC |
+|---|---|---|
+| S1 | the six row-state messages — one emission each for `stale`, `missing`, `local-edit`, `unverified`, and W-2 for two different `unknown` reasons | AC-2.3, AC-2.5 |
+| S2 | W-2 rendered for **each of the four** row reasons | AC-2.5 |
+| S3 | W-1 rendered for **each of the eight** baseline reasons, and every member of S1 | AC-2.5a ("textually distinct from every row-level message") |
+
+Substring exclusion, not just inequality, is the operative half: two messages differing only by an
+appended clause are not "individually distinguishable" to an operator scanning session output, and
+a naive implementation reaches inequality by appending an id. **AT-30** asserts the predicate.
+
 ### 8.3 Notices
 
 | # | Condition | Line |
@@ -1368,8 +1957,8 @@ document should check these seven.
 
 | # | Obligation | Disposed in | Disposition |
 |---|---|---|---|
-| **O-2** | Unrecognised `PDLC_FAULT` must never make the hook exit non-zero; specify per-entrypoint behavior so NFR-6's "exactly two exceptions" stays true | **§4.6** | One stderr line, nothing injected, and the **entrypoint's normal exit** — hook unconditionally 0, `--check`/sync their computed 0–4. Contrasted explicitly with a genuine usage error, which does exit 4 on `--check`/sync and still 0 on the hook |
-| **O-4** | The `printf` invalidation emitter; `pluginVersion` emitted `null` unconditionally; mandate a `json-tool-absent` ladder test | **§4.4 rung (i)** | Field-by-field table showing every interpolated value is closed-domain; `pluginVersion` `null` unconditionally with the reason (it is the one field that could inject arbitrary bytes); a fixed, dependency-free escaping rule for `writeFailures[].path`, which is *not* closed-domain, with `"<unprintable>"` as the fallback. The mandated ladder test is stated; its construction is TSPEC's (O-10) |
+| **O-2** | Unrecognised `PDLC_FAULT` must never make the hook exit non-zero; specify per-entrypoint behavior so NFR-6's "exactly two exceptions" stays true | **§4.6** | One stderr line (N-7), nothing injected, the drift computation still runs and still writes its record, and the exit is **AC-2.9(5)'s verbatim**: hook **0** unconditionally, `--check` and sync **4**. The run is not perturbed; only the process exit of the assertion surfaces is pinned. **v1 reinterpreted this AC as "the computed exit" and is corrected here — the FSPEC conforms to the approved REQ; AT-18 changed with it** |
+| **O-4** | The `printf` invalidation emitter; `pluginVersion` emitted `null` unconditionally; mandate a `json-tool-absent` ladder test | **§4.4a, §4.4 rung (i)** | The emitter is defined as the serialiser of last resort with **two exhaustive triggers** (§4.4a): the ordinary record whenever `jsonToolAbsent` holds — which closes v1's gap, where no writer was specified for that state at all — and the rung-(i) invalidation record. Field-by-field table showing every interpolated value is closed-domain, now including `syncCommand: null` (a record missing it is not schema-valid); `pluginVersion` `null` unconditionally with the reason; `writeFailures` filtered of the three stderr-only operations before interpolation; and a **decidable** escaping predicate for `writeFailures[].path` (printable-ASCII-only, else `"<unprintable>"` wholesale) that needs no UTF-8 validator. The mandated test is stated with **both** conjuncts (parses **and** AC-4.1's mapping reaches the unresolved outcome) as AT-14/AT-14b; construction is TSPEC's (O-10) |
 | **O-5** | Rung-2 reachability: only `ENOSPC`/quota reaches `unlink`; the rest are rung-3 residual | **§4.4 rung (ii)** | Six-row cause → `unlink` outcome → rung table. The implementation still *attempts* rung (ii) unconditionally (probing the cause first would be a syscall race); the spec states reachability so TSPEC does not build fixtures for unreachable variants |
 | **O-6** | A run failing both an artifact copy and the drift-state write must name the invalidated state | **§4.5** | Both lines emitted, **drift-state line first**, naming the state as not describing this run and directing to a permissions/filesystem fix rather than a sync. Ordering is normative because that line is the one that changes what the operator does next |
 | **O-8** | Degraded-provenance wording, verbatim | **§1.2, §3.4 R-4, §8.3 N-4** | Rows whose bytes **differ** are reported `unverified`; an **equal-bytes** row is `in-sync` regardless of provenance. Carried as a schema rule, a business rule, and the notice's wording |
@@ -1384,15 +1973,17 @@ document's reviewers must verify the disposition. A finding that one of these is
 
 | # | Lands in | Obligation | This FSPEC's contribution |
 |---|---|---|---|
-| O-1 | TSPEC / PROPERTIES | Classify-before-create ordering observable: scope to a single classification invocation; row-id and phase fields in the trace grammar; a positive-presence conjunct so it cannot pass vacuously on an empty trace; an unwritable trace is a red **test** while the script still ignores trace failures | §4.2 states the ordering; §4.6 mandates the seam's existence and the script-ignores/test-reds split |
+| O-1 | TSPEC / PROPERTIES | Classify-before-create ordering observable: scope to a single classification invocation; row-id and phase fields in the trace grammar; a positive-presence conjunct so it cannot pass vacuously on an empty trace; an unwritable trace is a red **test** while the script still ignores trace failures | §4.2 states the ordering as ten steps and settles what "a single classification invocation" scopes to: the **step-2 as-found pass**. A sync run makes a **second** pass at step 7, which the trace grammar must label distinctly (with O-7) so the ordering assertion cannot be satisfied by the wrong pass; §4.6 mandates the seam's existence and the script-ignores/test-reds split |
 | O-3 | TSPEC / PROPERTIES | AC-0.5 step 2 is reachable only on a **non-git** fixture; its oracle must assert observables that exist in `repo-root-unresolved` (stderr reason line, `--check` exit 3), not drift-state fields never written there; one fault token per guard (git vs walk) | §2.2 makes the never-fall-through rule explicit; §2.9 and §5.9 give the observables |
 | O-7 | TSPEC | The trace seam's delimiter and quoting; whether non-row probes (manifest, sync manifest, `pdlc.config.json` reads) are traced | §4.6 mandates existence; grammar is explicitly deferred |
-| O-9 | PROPERTIES | Classifier totality / single-valuedness / determinism over states, row reasons and baseline reasons, including both declared precedences. **Regenerate the axes; do not import v13's tables** (24 of 96 cells undefined) | §3.3's first-match ladder makes single-valuedness structural; §3.6 names two determinism hazards (directory order, environment order/locale) |
+| O-9 | PROPERTIES | Classifier totality / single-valuedness / determinism over states, row reasons and baseline reasons, including both declared precedences. **Regenerate the axes; do not import v13's tables** (24 of 96 cells undefined) | §3.3's first-match ladder **is** the declared row-reason precedence, and §2.1 Phase 2 **is** the declared baseline-reason precedence, so both are observable and single-valuedness is structural; §2.8's worked table and §3.3's two consequences are starting fixtures; §3.6 names two determinism hazards (directory order, environment order/locale) |
 | O-10 | TSPEC | Write-failure test design: which failures are injectable, per-runner fixture requirements (uid-0 caveats), fail-open assertions per writer surface. v13's tests (a)–(f) are the starting inventory | §4.4/§4.5 give the contract; §4.4 rung (i) names the mandated `json-tool-absent` ladder test |
 | O-11 | TSPEC / PROPERTIES | Probe vocabulary and permission-fixture policy: uid-0 runners **skip with a printed reason and named unverified invariants** — never silently pass. Coverage floors live here | §3.2's six probes are the vocabulary's basis; §7.4 reuses the skip-loudly pattern |
 | O-12 | TSPEC | Bootstrap fixture construction (working-tree copy with mode bits, `git init` anchor, pinned `HOME`, `realpath` normalisation) and **both** mode-bit assertions (index and on-disk) | §7.5 item 4 and §7.6 state the requirement; §2.2 requires `realpath` normalisation for the `$HOME` guard |
 | O-16 | TSPEC | AC-6.6's skip-loudly branches: pin the **probe order** and the printed reason string for each of (a) empty `--porcelain`, (b) `git` absent, (c) no `.git`, (d) unborn `HEAD`, reusing O-11's vocabulary. Also pin the **untracked-addition** case as a positive (red) fixture | §7.4 states the four branches and why `--porcelain` (not `git diff`) is required — which is the same reason the untracked fixture must exist |
 | O-17 | TSPEC | AC-6.4's pinned fixture tree reproducing the pre-landing layout for the five patterns and four exemption members; the expected 7 paths; and that live-root (`== ∅`) and fixture-root (`== 7`, exact paths, exemption list) are **separate test cases over separate roots** | §7.5 states the two-root structure and the exemption definitions verbatim |
+| **O-18** | PROPERTIES | **Backup filename grammar round-trip.** The grammar is a parameterisable component (id, stamp, `NN` in; a filename out; and a parse back), so it takes a property-based strategy rather than examples: `parse(format(id, stamp, NN)) == (id, stamp, NN)` over the **full M6 id charset** — including ids containing `.`, `-`, digits, and stamp-shaped substrings such as `dev.20260101T000000Z` — and, as a second property, that `LC_ALL=C` descending sort over a generated set of filenames for one id agrees with descending `(stamp, NN)` order. §1.4's fixed-24-byte-suffix parse is what makes both properties provable; v1's optional-suffix grammar made the second one false | §1.4 gives the grammar, the parse rule, the injectivity argument and the exhaustion behavior |
+| **O-19** | TSPEC / **implementation phase** (Cross-Feature) | **The LLM-mediated `_readFile` seam.** `runtime-adapter.js`'s `rtReadFile` is an `agent()` call pinned to `haiku`; the queue's drift-state read inherits it (§6.1). The implementation must (a) add **no** second agent-mediated read for this feature; (b) unit-test §6.2's D1–D8 shape validator against mangled-relay fixtures — fenced, re-wrapped, truncated, key-dropped, array-replaced-by-scalar, state-value-reworded — asserting `blocked` for each; (c) record the seam's mediation in `orchestrate-queue.js` where the read happens, so the next reader does not re-derive it. Byte-faithful hardening of the adapter itself is **not** this feature's change — every pdlc module's `_readFile` consumer shares the property — but it must be raised as a follow-up rather than absorbed silently | §6.1 states the seam, what the validator catches, and the one residual it cannot |
 | O-13 | `consolidate-learnings` | REQ-scope stopping rule → `docs/_constraints/DOMAIN-CONSTRAINTS.md`. **Neither `docs/_constraints/` nor `docs/_decisions/` exists on this branch** — the file must be **created**, not merged into; "no such file" does not discharge the row | Not FSPEC's; recorded so it is not lost |
 
 ## 11. Open questions
@@ -1404,6 +1995,35 @@ document's reviewers must verify the disposition. A finding that one of these is
 | **OQ-3** | ~~Linked worktree: which `.claude/workflows/` does the runtime load?~~ **ANSWERED — per-worktree (cwd-based), by documentation** (§0.3 BL-06 row for citations; residual: the docs pin it by enumeration of what worktrees *do* share, not by an explicit worktree sentence). Consequence: post-landing the bundles are untracked, so a fresh `git worktree add` worktree has **no bundles at all**, while AC-0.5 routes the drift check — and sync's writes — to the **main** worktree: green check, absent artifact. This is exactly the case REQ BL-06 gated, and its clause says D-DIST-07 pulls in | **RESOLVED — operator selected Option B, 2026-07-28** (§11.1) | No | AC-0.5 stands as approved; mitigations normative in §7.5 items 7–8; residual stated in §11.1 |
 | **OQ-4** | ~~Is a `lib/` subdirectory under `hooks/scripts/` acceptable?~~ **RESOLVED — yes, decided.** The OQ-1 spike proved arbitrary nested directories survive packaging (`workflows/dist/` did; the live cache also ships `workflows/__tests__/`, `hooks/scripts/`, `templates/`). `hooks.json`'s bare-path convention is irrelevant to C1 because C1 is **sourced, never executed and never registered as a hook** — it needs no execute bit. `pdlc/hooks/scripts/lib/pdlc-drift.sh` stands | No | — |
 | **OQ-5** | ~~How does the queue print `<pluginRoot>`-expanded commands?~~ **RESOLVED — decided: the drift state carries one pre-expanded command.** The queue *cannot* expand: it runs in the workflow runtime, which has no `process`/env access, and the one-read rule forbids it opening anything else. The drift state therefore gains one top-level field, `syncCommand` (string \| null) — the `<pluginRoot>`-expanded sync invocation, written by C1 like every other field. See §1.3. AC-2.6 fixes the *required* fields of the record, not an exhaustive key set (its "exactly one entry per manifest row" clause governs `rows`, not the top level), so this is an FSPEC-level elaboration, not a REQ deviation — reviewers who disagree should route it as a REQ amendment, but the field itself is forced by AC-4.2 + NFR-1 jointly | No | In the §4.4 invalidation record `syncCommand` is emitted as **`null`** unconditionally — it is a path-bearing string (the O-4 injection concern), and the record's remediation class is permissions/filesystem, never sync, so nothing is lost |
+
+**OQ-6 — AC-2.6's two sentences about *when* the recorded states are measured.** *(New in v2.0,
+non-blocking, recorded rather than resolved unilaterally.)*
+
+AC-2.6 contains both of these:
+
+1. "`supersedingState` measured at write time (hook: session start; check: current; **sync:
+   post-copy**)"; and
+2. "Recorded states are those observed **before this run created anything** (AC-2.9(1))."
+
+For a sync run they cannot both be read literally over the same field set: (2) read as a claim about
+`rows[].state` would make a successful sync write `stale` rows, which contradicts (1) for the
+sibling field, contradicts **AC-2.7**'s stated consequence that a post-sync drift state unblocks the
+queue within the same session, and contradicts **AC-3.3/§4**'s rule that the exit code is computed
+over the state at the end of the run (§5.8). Under that reading a fully successful sync would exit
+`1` and leave the queue blocked, which §4's own "1 is reachable only under `--check`" line denies.
+
+**This FSPEC's reading, applied in §4.2:** sentence (2) governs the classification the run **acts
+on** — the AC-2.9(1) pass, which decides every copy, backup and deletion and runs before the run
+creates anything — and it is also literally what the hook and `--check` records carry, since those
+runs create nothing that a re-measurement could see. A sync run's *record* carries the post-run
+pass, per sentence (1), AC-2.7 and AC-3.3.
+
+**This is recorded as an open question rather than acted on as a deviation** because the reading is
+forced by three other approved ACs and changes no observable the REQ pins; but sentence (2)'s
+wording would read better as "the recorded states are those the run acted on (hook, `--check`) or
+those left by the run (sync)". A REQ amendment to that effect is invited and is **not** blocking:
+nothing downstream changes if the REQ keeps its current wording, because §4.2 states the behavior
+unambiguously either way. Owner: PM, at the next REQ revision if one occurs.
 
 ### 11.1 OQ-3 — the linked-worktree decision (**decided: Option B**, operator, 2026-07-28)
 
@@ -1432,6 +2052,20 @@ reopened for a non-silent edge. Consequences, now normative:
 4. The residual — a manual worktree's loud failure plus a drift report that describes the main
    worktree — is **accepted and stated**, on the same footing as AC-2.9(3)'s rung-(iii) residual.
 
+**Mitigation (1) rests on documentation, not observation (SE Q-01) — stated, with an obligation.**
+The claim that `.worktreeinclude` copies **untracked** `.claude/workflows/` content into
+Claude-created worktrees is cited from the product documentation; it has **not** been observed on
+this machine. It matters because post-landing the bundles are untracked by design, so if
+`.worktreeinclude` copies *tracked* content only, mitigation (1) is void and OQ-3's residual widens
+from manual worktrees to **every** worktree. The decision itself is unaffected either way — Option B
+was selected on the ground that the failure is loud-absent rather than silent-stale, which holds
+under both answers — but the *scope* of what §7.5 item 8 must document is not. **Implementation
+obligation:** verify at implementation time by creating one Claude-created worktree after the
+landing commit and checking whether `.claude/workflows/*.bundle.js` is present; if it is not, §7.5
+item 8's wording widens from "a manual `git worktree add` tree" to "any linked worktree", and item 7
+is dropped as ineffective. This is a documentation-scope adjustment, not a spec change, which is why
+it is an implementation-time check rather than a blocking prerequisite.
+
 ## 12. Acceptance tests
 
 Who/Given/When/Then, one per behavioral cluster. These are FSPEC-level; the fixture matrix,
@@ -1440,23 +2074,25 @@ generation axes and coverage policy are TSPEC/PROPERTIES (§10).
 | # | Who | Given | When | Then |
 |---|---|---|---|---|
 | AT-1 | operator, fresh consumer | repo root resolves, `.claude/` absent, plugin ships a valid manifest | `--check` | every row `missing`; drift state written into the directory the run created; exit **1** |
-| AT-2 | operator, non-git tree, no `.claude/` anywhere | — | `--check` | exit **3**, reason `repo-root-unresolved`, **nothing created on disk** |
+| AT-2 | operator, non-git tree, no `.claude/` anywhere | a JSON tool is present and the installed plugin ships a **valid, non-empty** manifest, so no higher-precedence baseline condition holds (§2.8) | `--check` | exit **3**, reason `repo-root-unresolved`, **nothing created on disk** |
 | AT-3 | operator, pre-manifest consumer | installed plugin ships no manifest | hook runs | warns `manifest-absent` with **update the plugin**; exits **0**; drift state has `baselineStatus: unresolved`, `rows: []`, `retiredPresent: []` |
 | AT-4 | queue | that same drift state | queue invocation | `blocked`, naming `manifest-absent` at **Manifest** level |
 | AT-5 | operator | `distribution.checkEnabled: false` and rows `stale` | hook, then queue | hook **still warns**; `--check` **still** exits 1; queue **proceeds** with the skip noted |
 | AT-6 | operator | one row byte-identical, sync manifest absent | `--check` | that row `in-sync` (**not** `unverified`) — O-8's equal-bytes rule |
 | AT-7 | operator | one row differs, no sync-manifest entry | `--check` | `unverified`, exit **2**; queue over the same state **proceeds** — the asymmetry, both halves |
-| AT-8 | operator | one row `local-edit` | plain sync | not overwritten, reported with reason; then `--force` | overwritten after a verified backup; restoring the newest backup yields **byte-identical** pre-sync content |
+| AT-8a | operator | one row `local-edit` | plain sync | **not** overwritten; bytes unchanged; reported with the `local-edit` reason (W-4); exit **2** |
+| AT-8b | operator | the same `local-edit` row, unchanged | `--force` | overwritten **after** a verified backup; restoring the newest backup for that id yields **byte-identical** pre-sync content — AC-3.5's non-false-greenable oracle |
 | AT-9 | operator | sync completed, nothing changed | sync again, same flags | copies nothing, writes no backup, sync manifest **byte-identical**, exit **0** |
 | AT-10 | operator | one `stale` row and one `unverified` row | plain sync | `stale` copied, `unverified` skipped, exit **2** (post-run precedence) — O-14's worked case |
 | AT-11 | operator | all rows `in-sync`, a retired `.js` present | hook | **still warns** `retired-present` with R's id and `in-sync` remediation (plain sync); queue **blocks** |
 | AT-12 | operator | retired path present, R post-copy `in-sync` | sync | `p` backed up (id = retired basename), verified, then deleted; a one-line manual commit action printed if tracked |
 | AT-13 | operator | retired path present, R `unknown` | sync | `p` **left**, `retire-skipped` naming R's state |
-| AT-14 | operator | no JSON interpreter on `PATH` | hook | `json-tool-absent`, exit **0**; ladder emits a `printf` record that **parses**, carries `pluginVersion: null` and this run's `checkEnabled` — O-4 |
-| AT-15 | operator | drift-state file exists and its directory is unwritable, `ENOSPC` on the file | any entrypoint | rung (i) attempted, rung (ii) `unlink` succeeds, fresh write lands — O-5's only reachable rung-2 path |
+| AT-14 | operator | no JSON interpreter on `PATH`; **no pre-existing drift state** (first adoption) | hook | the §4.4a **T1** `printf` emitter writes the ordinary record through the normal path: it **parses**, carries `baselineStatus: "unresolved"`, `baselineReason: "json-tool-absent"`, `pluginVersion: null`, `syncCommand: null`, `checkEnabled: true` (forced — §2.7's stated residual), `rows: []`; **and §6.2's mapping over it yields `blocked` at row 4** naming the reason. Hook exit **0** — O-4, both conjuncts |
+| AT-14b | operator | a JSON tool **is** present, `distribution.checkEnabled: false` in the config, a drift state pre-exists, and the atomic replace fails (`ENOSPC`) | any entrypoint | §4.4a **T2**: rung (i) writes the invalidation record in place; it **parses**, carries `baselineReason: "drift-state-invalidated"`, `pluginVersion: null`, `syncCommand: null`, and **`checkEnabled: false`** — the falsifiable form of the preservation claim, red against an emitter that hard-codes `true`; §6.2's mapping over it yields **proceed** at row 2 |
+| AT-15 | operator | drift-state file exists in a **writable** directory; `ENOSPC` (or quota exhaustion) on the file write | any entrypoint | rung (i) attempted and fails, rung (ii) `unlink` succeeds, fresh write lands — O-5's only reachable rung-2 path. (The Given deliberately does **not** make the directory unwritable: §4.4's own reachability table sends `EACCES` on the parent to rung (iii), and a fresh write could not land there) |
 | AT-16 | operator | drift-state file immutable | any entrypoint | rung (i) fails, rung (ii) `unlink` refused (`EPERM`), rung (iii): N-3 on stderr, `--check` exit **4**, hook exit **0** |
 | AT-17 | operator | a copy fails **and** the drift-state write fails | sync | both lines printed, **drift-state line first**, naming the invalidated state and a permissions fix — O-6 |
-| AT-18 | operator | `PDLC_FAULT=not-a-real-token`, everything else green | hook | N-7 printed, nothing injected, exit **0**; `--check` under the same env exits **0** — O-2 |
+| AT-18 | operator | `PDLC_FAULT=not-a-real-token`, everything else green | hook | N-7 printed exactly once, nothing injected, the green drift state still written, hook exit **0**; `--check` under the same env prints N-7, writes the same green record, and exits **4** — AC-2.9(5) verbatim (v1 asserted 0 here) — O-2 |
 | AT-19 | jest | manifest and packaged set | `npm test` | AC-6.2 (a)–(d) all assert; no test writes into `pdlc/workflows/dist/` |
 | AT-20 | jest | working tree with any `dist/` change and `plugin.json` `version` == `HEAD`'s | `npm test` | **red** — including the untracked-only case (`??` lines), which `git diff HEAD` would miss |
 | AT-21 | jest | `git` absent from `PATH` | `npm test` | AC-6.6 **skips loudly**, printing the reason and naming the unverified invariant — never a silent pass |
@@ -1464,6 +2100,13 @@ generation axes and coverage policy are TSPEC/PROPERTIES (§10).
 | AT-23 | jest | pinned fixture root | `npm test` | `\|coveredViolations(fixtureRoot)\| == 7`, paths equal the enumerated 7, exemption list asserted literally |
 | AT-24 | maintainer | fresh clone, no plugin, `${CLAUDE_PLUGIN_ROOT}` unset | `build-runtime.mjs` then `sync-workflows.sh` | bundles present, all rows `in-sync`, `--check` exit **0**, queue mapping proceeds silently — AC-6.5 |
 | AT-25 | operator | a `.claude/workflows/` file with no row and in no `retires` | any entrypoint | reported `not-managed`; never read for comparison, never overwritten, never deleted; absent from `rows` |
+| **AT-26** | operator | one row `stale` (consumer hash == the sync manifest's `consumerHash`) | **plain** sync, no `--force` | a verified backup of the pre-existing bytes is written **before** the copy; the row is copied; restoring that backup yields **byte-identical** pre-sync content. Red against a procedure that copies a `stale` row without backing it up — SE F-02, AC-3.4 |
+| **AT-27** | operator | a `local-edit` row under `--force` where the backup write **appears to succeed but the backup does not land** (fault-injected: re-read returns different bytes) | `--force` | the original consumer file's bytes are **unchanged**; the operation is reported skipped; `writeFailures` gains `{path, backup-verify}`; exit **4**. Red against an implementation that skips §4.7 step 2's re-read — AC-2.9(4)'s negative |
+| **AT-28** | jest | working tree with a `dist/` change and `plugin.json` `version` **different** from its value at `HEAD` | `npm test` | AC-6.6 **passes** — the green counterpart to AT-20, red against an unconditionally-red oracle. This is the case the landing commit itself must satisfy |
+| **AT-29** | jest | manifest whose `pluginSha1` for one row disagrees with that file's bytes on disk | `npm test` | AC-6.2(b) **fails** — the falsifying counterpart to AT-19, red against a no-op assertion |
+| **AT-30** | operator / jest | the emitted message catalogue rendered over S1, S2 and S3 (§8.2) | render each | `distinct(a,b)` holds **pairwise** within each set — not equal, and neither a substring of the other. Red against an implementation emitting one string for `stale` and `local-edit`, or reaching inequality only by appending an id — AC-2.3, AC-2.5, AC-2.5a |
+| **AT-31** | queue | a drift state with `writeFailures` non-empty and `baselineReason: "drift-state-invalidated"`, `syncCommand: null`; and a second record with `retiredPresent` non-empty and every row `in-sync` | queue invocation over each | first: `blocked` at §6.2 **row 3**, naming each `{path, operation}` **and** naming `drift-state-invalidated`, with a permissions/filesystem remediation and **no sync command**; the `syncCommand: null` fallback describes the shipped script rather than printing a fake path. second: `blocked` at **row 7** naming the retired path — §6.2 rows 3 and 7, §6.3 |
+| **AT-32** | operator | (a) `.claude/workflows/` exists but is not listable; (b) `distribution.checkEnabled: "false"` (the string) | any entrypoint | (a) N-6 printed **and every row's state is identical** to the same fixture with a listable directory — AC-0.6's "no row state changes"; (b) N-5 printed once and `checkEnabled` recorded **`true`** — §2.7's non-boolean row |
 
 ## 13. Traceability
 
@@ -1499,10 +2142,16 @@ construction). The three structural claims, each checkable by reading this docum
 1. **No unbounded filesystem enumeration.** The managed set comes from the manifest (§2.5), never
    from a glob — AC-0.1 prohibits globbing outright. The only directory listing in the feature is
    the single non-recursive read of `.claude/workflows/` for the `not-managed` report (§3.5).
-2. **No process spawn per row beyond the three declared tools.** Per row: at most two hash
-   invocations (plugin side, consumer side). Baseline resolution spawns the JSON helper a bounded
-   number of times (manifest, sync manifest, config) and `git` at most twice (§2.2). Nothing scales
-   with the size of the repo.
+2. **No process spawn per row beyond the three declared tools.** Per row **per classification
+   pass**: at most two hash invocations (plugin side, consumer side). The hash-utility *probe* is
+   **once per run**, not once per row (§3.1, SE Q-02), so it does not scale with the managed set.
+   Baseline resolution spawns the JSON helper a bounded number of times (manifest, sync manifest,
+   config) and `git` at most twice (§2.2). Nothing scales with the size of the repo.
+
+   **The second classification pass (§4.2 step 7) is inside the budget**, and it applies to sync
+   runs only — never to the SessionStart hook, which is the surface NFR-2's p95 budget is about.
+   A sync run's worst case is therefore `2 × 2 × |rows|` hash invocations rather than `2 × |rows|`,
+   over a managed set the manifest fixes at 2 rows today; the hook's cost is unchanged from v1.
 3. **No network.** Nowhere in C1/C2/C3. `${CLAUDE_PLUGIN_ROOT}` is used verbatim and the cache is
    never enumerated (§2.4).
 
