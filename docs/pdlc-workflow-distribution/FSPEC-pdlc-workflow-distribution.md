@@ -756,3 +756,245 @@ A cross-cutting rule binding every destroying operation in §5:
 Step 2 is a genuine re-read, not a reuse of the in-memory hash: the failure this guards against is
 a backup that was written but did not land. A recorded hash is explicitly **not** a substitute for
 a backup — a digest cannot restore content (AC-3.4).
+
+## 5. Operator surfaces (FSPEC-DIST-04, FSPEC-DIST-05)
+
+### 5.1 The SessionStart hook — C2 (AC-2.1–2.5a, 2.8, 2.4)
+
+**Registration (BL-03, OQ-2).** `pdlc/hooks/hooks.json` gains a **second** `SessionStart` entry
+beside `nudge-consolidation.sh`. Without this edit the hook never fires (REQ §6). Both entries are
+independent; neither's failure suppresses the other.
+
+**Behavioral flow:**
+
+```
+run the shared drift computation (§2, §3, §4)
+emit warnings per §5.2
+ALWAYS exit 0
+```
+
+**AC-2.4 is absolute.** The hook exits `0` on every path — including an internal error, a failed
+baseline, a failed write, and an unrecognised `PDLC_FAULT` token. A broken drift check must never
+block a session from starting. This is implemented as a trap plus an unconditional `exit 0` at the
+end, not as per-branch discipline.
+
+Exiting 0 is about **not blocking**, never about staying quiet: every non-green condition produces
+output, and the failure is recorded in the drift state as well as on stderr — as
+`baselineStatus: unresolved` + reason, or as `unknown` rows + reason, per level. The drift-state
+write happens on every failure path with **exactly two exceptions**, both stated by AC-2.4:
+
+1. **No write target** — `repo-root-unresolved`. Nothing is created anywhere.
+2. **Write attempted and failed** — the AC-2.9(3) ladder ran and reached rung (iii).
+
+### 5.2 Warning taxonomy — exhaustive over non-silence
+
+AC-2.2 requires that the warning ACs be **exhaustive over the conditions that break silence**:
+there is no silent non-green state. The hook emits, in this order:
+
+| Order | Condition | AC | Message |
+|---|---|---|---|
+| 1 | `baselineStatus: unresolved` (incl. `manifest-empty`) | AC-2.5a | W-1 — manifest-level reason **verbatim**, textually distinct from every row-level message, + a remediation that can actually fix it. **No rows are printed** |
+| 2 | any row `unknown` | AC-2.5 | W-2 — one line per row, each of the four reasons individually distinguishable with its own remediation |
+| 3 | any row `unverified` | AC-2.5 | W-3 — "direction unknown"; remediation is *diff, then sync*; `--force` named |
+| 4 | any row `local-edit` | AC-2.3 | W-4 — **textually distinct from `stale`**, does **not** recommend plain sync, names `--force` and the backup location |
+| 5 | any row `stale` or `missing` | AC-2.1 | W-5 — row `id`, state, and the exact remediation command |
+| 6 | `retiredPresent` non-empty | AC-2.8 | W-6 — token `retired-present`, emitted **independently of managed-row states** |
+| 7 | `writeFailures` non-empty | AC-2.9(2) | W-7 — one line per entry, path + operation |
+
+**Silence (AC-2.2)** requires *all* of: `baselineStatus: resolved`, a **non-empty** row set, every
+row `in-sync`, no retired path present, and `writeFailures` empty. Silence means everything was
+verified — never "could not check". A non-empty row set is part of the condition precisely so that
+`manifest-empty` cannot go vacuously silent.
+
+**AC-2.5a's remediations**, one per baseline reason, each chosen to be the thing that actually
+fixes it:
+
+| Reason | Remediation |
+|---|---|
+| `manifest-absent`, `manifest-malformed`, `manifest-empty` | **update the plugin** (never sync) |
+| `plugin-root-unset` | environment fix — `${CLAUDE_PLUGIN_ROOT}` is not set |
+| `plugin-root-unreadable` | deliberately **generic** environment/permissions fix — the cause could be either, and guessing wrong sends the operator down a dead end |
+| `repo-root-unresolved` | "create `.claude/` at the intended root, or run inside a git work tree" |
+| `json-tool-absent` | install a Python interpreter |
+| `drift-state-invalidated` | permissions/filesystem fix — **never** sync (§4.4, AC-4.2) |
+
+`manifest-absent` is universal at rollout, which is why AC-2.5a exists at all: without it, the
+single most common state at first release reaches the operator as silence.
+
+### 5.3 Retired-artifact warning (AC-2.8)
+
+Emitted whenever a path in some row R's `retires` exists in the consumer — **independently of
+managed-row states**. All-`in-sync` with a legacy `.js` still on disk still warns; that
+configuration is precisely the one where the runtime may load the stale artifact (BL-05).
+
+Retirement is manifest-derived, so it is **not evaluated while the baseline is unresolved** — that
+case belongs to AC-2.5a end to end, and `retiredPresent` is `[]` meaning *not evaluated*.
+
+Token: `retired-present` — deliberately in **neither** reason set (it is a message token, not a
+`baselineReason` and not a row `reason`). Each warning names the retired path, R's `id`, and R's
+state, with a remediation conditioned on R's state:
+
+| R's state | Remediation |
+|---|---|
+| `in-sync` (the primary, rollout-universal case), `stale`, `missing` | plain sync |
+| `local-edit`, `unverified` | `--force`, naming the backup **directory** and both backup filename **patterns** — R's bundle and the retired basename, each labelled |
+| `unknown` (any of the four reasons) | plugin update or environment fix; **sync is not named** |
+
+Two rules the implementation must not soften: the `--force` case prints a directory plus a literal
+*pattern*, **never a concrete filename** (the concrete name depends on a timestamp that does not
+exist yet); and **manual deletion is never recommended**, in any state — the tool backs up before
+it deletes, and an operator deleting by hand loses that.
+
+### 5.4 `sync-workflows.sh` — delivery and invocation (REQ-DIST-03 preamble)
+
+A **bash script** (NFR-5) shipped at `<pluginRoot>/hooks/scripts/sync-workflows.sh`, invoked
+directly by the operator, and runnable in the maintainer repo with **no plugin installed**
+(AC-0.3a). It is not an LLM prompt: an LLM-driven file copy is neither deterministic (NFR-1) nor
+auditable. A thin discoverability `SKILL.md` may exist, but its **only permitted action** is to run
+the script verbatim and relay its output — it may not paraphrase, summarise a decision, or copy a
+file itself.
+
+Three modes:
+
+| Invocation | Writes artifacts? | Writes drift state? | `generatedBy` |
+|---|---|---|---|
+| `--check` | no | **yes** (and, per AC-2.9(1), the directory containing it) | `check` |
+| *(no flags)* | `stale` + `missing` rows | yes | `sync` |
+| `--force` | additionally `local-edit` + `unverified` rows, after verified backup | yes | `sync` |
+
+`--check` and a sync run are mutually exclusive; `--check --force` is a usage error (exit 4).
+
+### 5.5 Copy semantics (AC-3.1, AC-3.2)
+
+```
+for each row, in manifest order:
+    if state ∈ {stale, missing}                    → copy
+    elif state ∈ {local-edit, unverified} and --force → verified backup (§4.7), then copy
+    else                                            → skip, report the reason
+```
+
+Every row falls in **exactly one** of the copy set / skip set (AC-3.1) — the loop has no
+fall-through and no row is silently ignored.
+
+- **Never copied under any flag:** all four `unknown` reasons. `--force` overrides *provenance*
+  doubt, never *verification* failure — forcing a copy over a row whose plugin side is unreadable
+  would write bytes nobody has read.
+- **Per-row atomicity:** sibling temp + `mv`, same as the drift state.
+- **Each copy is reported with both hashes** (AC-3.1).
+- **The sync manifest is updated per copied row** — and *only* per copied row. A row that failed to
+  copy gets **no** sync-manifest entry (AC-2.9(2)), which is what keeps a failed copy from later
+  masquerading as `stale` instead of `unverified`.
+- **A failed copy does not abort the loop** (AC-3.1): `writeFailures` entry, continue, exit 4.
+- **Unresolved baseline:** copy nothing, retire nothing, print the manifest-level reason +
+  remediation, **still rewrite the drift state** (AC-2.7, AC-3.1).
+
+`sync-workflows.sh` is the **only** writer of managed artifacts into `.claude/workflows/`, in every
+repo including the maintainer's (AC-1.6). The maintainer green path is two commands: **build, then
+sync** (AC-0.3a).
+
+### 5.6 Backups (AC-3.4, AC-3.5)
+
+Every overwrite or delete this feature performs is preceded by a verified backup (§4.7) at
+`.claude/workflows/.pdlc-backups/{id}.{stamp}[-N].bak` (§1.4).
+
+- **Id namespace** is the union of row ids and retired basenames (AC-0.1/M6) — so retirement
+  backups share the retention rule, and the pairwise-distinctness clause is what stops a retired
+  basename from colliding with a row id in this directory.
+- **Same-second collision:** `-2`, `-3`, … ascending. A backup file is **never overwritten**.
+- **Retention: newest 5 per id**, selected by `LC_ALL=C` lexicographic **descending** filename sort.
+  The fixed-width stamp makes lexicographic == chronological. Pruning is **never** mtime-based and
+  never touches a file that does not match the §1.4 pattern for a currently-known id.
+- **Backup dir creation** follows AC-2.9(1) (classify first); its failure is the write-failed
+  outcome, `operation: backup`.
+- **Restore (AC-3.5):** restoring the newest backup for an id yields a file **byte-identical** to
+  its pre-sync content. This is the one oracle for AC-3.4 that cannot be false-greened — a hash
+  comparison can pass against a backup that was never written; a restore cannot.
+
+### 5.7 Retirement (AC-3.9)
+
+```
+for each path p in each row R's retires, where p exists and the baseline is resolved:
+    if sync run (NOT --check):
+        if R's POST-COPY state == in-sync:
+            verified backup of p (id = basename(p))      §4.7
+            success  → delete p
+            failure  → leave p, report retire-skipped, writeFailures, exit 4
+        else:
+            leave p, report retire-skipped naming R's state
+    if --check:
+        report retired-present, exit class 1 (sync-fixable, same as stale)
+```
+
+- **`iff` R's post-copy state is `in-sync`** — measured *after* this run's copies, not before. Any
+  other state, **including every `unknown`**, leaves `p` in place. The failure mode this prevents
+  is deleting the loadable artifact and leaving nothing behind.
+- **Per path, idempotent, never before its replacement is in place.**
+- A `mv` into the backup directory is an acceptable implementation of backup-then-delete.
+
+**Version control — two rules of different kind, and only the second ships:**
+
+1. A **one-time maintainer landing step** in this repo `git rm`s the four tracked
+   `.claude/workflows/*` paths and gitignores the directory's generated contents (§7.5).
+2. **In any consumer, sync never runs a VCS command.** It detects tracked-ness best-effort
+   (`git ls-files --error-unmatch`; no usable git ⇒ **treat as untracked**) and prints a one-line
+   manual action telling the operator to commit the removal. **Detection failure never blocks
+   retirement** — the retirement is the safety-relevant act; the commit reminder is a courtesy.
+
+### 5.8 Exit codes (AC-3.3). **Disposes O-14.**
+
+The complete precedence table — highest applicable wins, never green while anything is unverified:
+
+| Condition (precedence order) | Exit |
+|---|---|
+| any mandated write was attempted and failed (AC-2.9(2)) | **4** |
+| `baselineStatus: unresolved` (any reason, incl. `manifest-empty`), or any row `unknown` | **3** |
+| any row `local-edit` or `unverified` | **2** |
+| any row `stale` or `missing`, or any retired path present | **1** |
+| `resolved`, non-empty rows, all `in-sync`, no retired path, `writeFailures` empty | **0** |
+
+**The observation point — O-14's substance.** The code is computed over the state observed **at the
+end of the run**:
+
+- **`--check`** changes nothing, so its post-run state *is* its pre-run state.
+- **A sync run** applies the same table to the **post-run** state.
+
+Worked consequences, all normative:
+
+| Run | Post-run state | Exit |
+|---|---|---|
+| sync repaired the only `stale` row | all `in-sync` | **0** |
+| sync copied a `stale` row and skipped an `unverified` one | one `unverified` remains | **2** |
+| sync copied a `stale` row; a second copy failed | `writeFailures` non-empty | **4** |
+| `--check` on a consumer with one `stale` row | unchanged | **1** |
+
+**Exit `1` is reachable only under `--check`.** Post-run, every `stale`/`missing` row has either
+been copied (⇒ `in-sync`) or failed (⇒ 4); and a retired path still present implies its row was
+skipped as `local-edit`/`unverified`/`unknown`, which outranks 1 at 2 or 3. **No acceptance test
+should attempt to construct a sync run that exits 1.**
+
+**The 3/4 boundary** is *no write target* vs *attempted write*. 4 outranks 3 because "could not
+repair the record" dominates "could not verify".
+
+**Exit 0 asserts** "every managed row was compared against a resolved baseline and matched" — the
+automated form can never go green having verified nothing (AC-1.0).
+
+**The `unverified` asymmetry is deliberate and both halves must be tested:** `--check` exits **2**
+on an `unverified` row, while the queue **proceeds** (§6.2). `--check` is an assertion surface, red
+whenever provenance is missing; the queue is a work surface, and blocking on "direction unknown"
+would strand every consumer at first adoption. The two seams optimise for opposite errors.
+
+### 5.9 Idempotence and round-trip (AC-3.6, AC-3.7, AC-3.8)
+
+| # | Property | Behavior |
+|---|---|---|
+| AC-3.6 | sync, then `--check` with no intervening edit | every copied row `in-sync`; every skipped row reports its **prior** state |
+| AC-3.7 | sync twice with no intervening change **from any source** | second run copies nothing, writes no backup, leaves the sync manifest **byte-identical**, exits 0 |
+| AC-3.8 | fresh consumer, `.claude/workflows/` absent, root resolves | `--check`: every row `missing` (classified before this run's `mkdir -p`), drift state written into the directory the run itself created, exit **1**. sync: directory created under the AC-0.5 root — never `$HOME` — every row copied |
+| AC-3.8 | **non-git tree with no `.claude/` anywhere** | does not resolve: `--check` exits **3**, the hook warns the environment fix, **nothing is created**, the queue blocks. Remediation is one `mkdir .claude` (or `git init`) at the intended root |
+
+**AC-3.7's byte-identical clause** is why the sync manifest is only rewritten when at least one row
+was copied: an unconditional rewrite would change `syncedAtUtc` and break the property.
+
+**Version-control caveat, stated:** a checkout or stash-pop that resurrects a retired, still-tracked
+file **is** an intervening change. The next sync legitimately retires it again, with a second
+backup. That is correct behavior, not an idempotence violation.
