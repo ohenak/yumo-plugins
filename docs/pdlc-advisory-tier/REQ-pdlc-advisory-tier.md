@@ -1,6 +1,6 @@
 ---
 feature: pdlc-advisory-tier
-ready: false
+ready: true
 depends-on: [pdlc-merge-phase]
 ---
 

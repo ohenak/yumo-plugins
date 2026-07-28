@@ -41,7 +41,9 @@ consumes the advisory record that order 3 produces.
 acceptance criterion (AC-1.3, a dependent feature picked up with no human turn) is simply false
 without order 2.
 
-**Pickup state.** Every REQ ships `ready: false` pending operator review of the master plan.
+**Pickup state.** All five REQs are `ready: true`. Ordering is enforced by the `Depends-On`
+column plus each REQ's `depends-on` and the Phase-0 readiness triage — a dependent is skipped
+until its dependency is merged and a human has set that row `done`.
 
 ## Bootstrapping
 

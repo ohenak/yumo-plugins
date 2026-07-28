@@ -1,6 +1,6 @@
 ---
 feature: pdlc-merge-phase
-ready: false
+ready: true
 depends-on: [pdlc-workflow-distribution]
 ---
 
