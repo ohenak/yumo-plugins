@@ -10,30 +10,37 @@ depends-on: []
 |---|---|
 | Upstream | `docs/design/MASTER-PLAN-engineering-loop.md` (Break 3, order 1) |
 | Downstream | `pdlc-merge-phase`, `pdlc-consolidation-agent`, `pdlc-engineering-loop` |
-| Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-REQ-v{1,2,3,4}.md` — eight files, all on `feat-pdlc-workflow-distribution` |
+| Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-REQ-v{1,2,3,4,5}.md` — ten files, all on `feat-pdlc-workflow-distribution` |
 | LEARNINGS | `docs/pdlc-workflow-distribution/LEARNINGS-pdlc-workflow-distribution.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 5.0 | 2026-07-27 |
+| pdlc | draft | Claude | 6.0 | 2026-07-27 |
 
-> **v5.0 is a content revision** addressing the v4 SE review (3H/3M/5L) and v4 TE review (2H/3M/4L);
-> see §10 for the finding-by-finding disposition. The five blocking answers this revision settles,
+> **v6.0 is a content revision** addressing the v5 SE review (1H/4M/5L) and v5 TE review (3H/4M/3L);
+> see §10 for the finding-by-finding disposition. The six blocking answers this revision settles,
 > stated once here so no reader has to reconstruct them from the ACs:
 >
-> 1. **The distribution manifest ships at `${CLAUDE_PLUGIN_ROOT}/workflows/dist/distribution-manifest.json`** —
->    one path, used identically everywhere (SE F-02, TE F-01).
-> 2. **The maintainer-repo override is a plugin-root substitution**, not a baseline-directory
->    substitution: the resolved plugin root becomes `<repoRoot>/pdlc` and every `pluginPath` joins
->    onto it unchanged (SE F-03, TE F-02).
-> 3. **`build-runtime.mjs` writes `pdlc/workflows/dist/` and nothing else.** It does not write
->    `.claude/workflows/`, the sync manifest or the drift state file; the maintainer runs
->    `sync-workflows.sh` after building (SE F-04, SE F-05).
-> 4. **AC-6.4's invariant is scoped to normative surfaces**, with a normative exclusion set for
->    archived per-feature spec history and generated trees; the covered list is re-derived by
->    repo-wide grep at `3dab335` (SE F-01, TE F-04).
-> 5. **Retirement has a version-control story** and `retired-present` is carried through the hook,
->    the drift state file and the queue (SE F-06, TE F-03, TE F-05, TE F-09).
+> 1. **Baseline resolution is a manifest-level precondition, evaluated before any row quantifier**
+>    (new **AC-1.0**). An unresolved baseline or an empty managed set is *never* hook silence,
+>    *never* `--check` exit 0 and *never* a proceeding queue — the "all rows are in-sync" tests are
+>    all guarded by `baselineStatus == resolved` **and** a non-empty row set, so no universal
+>    quantification over an empty set can go green (TE F-01).
+> 2. **Retirement is keyed off a per-row `retires` array** in the manifest row schema (AC-0.1,
+>    AC-0.7). The delete guard is "row R is `in-sync` after the copy loop ⇒ R's `retires` paths may
+>    be removed", which a fixture can state and a test can falsify (TE F-02).
+> 3. **The sync script is invoked at `<pluginRoot>/hooks/scripts/sync-workflows.sh`** — the same
+>    `<pluginRoot>` binding as everything else, so the maintainer runs
+>    `pdlc/hooks/scripts/sync-workflows.sh` with no installed plugin. New **AC-6.5** states the
+>    fresh-clone bootstrap (`build` then `sync`) end to end (SE F-01).
+> 4. **AC-6.4's covered set is `grep(literal patterns) − exemption rule`** — no hand-listed files,
+>    no prose qualifier, and the exemption set is a *rule* over paths so the two provably partition
+>    the tree. The checker is a pure function of a root directory, so the mandated RED case runs
+>    against a fixture tree (SE F-03, SE F-04, TE F-03, TE F-05, TE F-06).
+> 5. **A linked git worktree is not a distinct consumer**: AC-0.5 resolves the **main** worktree, so
+>    Phase I's per-task worktrees do not each become a permanently-warning consumer (SE F-05).
+> 6. **`.claude/workflows/` has one writer of *managed artifacts*** (`sync-workflows.sh`) and the
+>    drift state file has two writers; the two claims are no longer conflated (SE F-02).
 >
 > Rules adopted in v4 and still in force: **the version row is bumped only when the body changed**,
 > and the review iteration index is derived from the highest cross-review file on the branch.
@@ -44,9 +51,10 @@ depends-on: []
 
 ## 0. Grounding
 
-This REQ is grounded against commit **`3dab335`** on `feat-pdlc-workflow-distribution`, with a
+This REQ is grounded against commit **`1075e7d`** on `feat-pdlc-workflow-distribution`, with a
 **clean working tree** — every hash and enumeration below is of committed content, re-measured for
-v5.0. v1 of this REQ was grounded against `cb5e5f7` and modelled the ES
+v6.0 (the tree is unchanged from `3dab335` apart from committed cross-review documents, so every
+v5.0 hash still holds; fact 14's enumeration was re-derived from scratch). v1 of this REQ was grounded against `cb5e5f7` and modelled the ES
 module as the distribution unit; the concurrent bundle work (untracked at v1, landed in `3991b4d`)
 has superseded that. All hashes below are `sha1`, measured 2026-07-27 in
 `/Volumes/T9/workspace/yumo-plugins`:
@@ -125,25 +133,66 @@ Facts this REQ must respect, each verified above:
     `dist/` segment is **not**.
 13. **`build-runtime.mjs` has exactly one output directory today.**
     `pdlc/workflows/build-runtime.mjs:29` declares a single
-    `OUT_DIR = resolve(REPO_ROOT, ".claude", "workflows")` and `:170-173` is the only write. AC-6.1
-    **retargets** that constant; it does not add a second one. The builder is not, and does not
-    become, a writer of `.claude/workflows/`, of the sync manifest, or of the drift state file.
-14. **The superseded distribution convention is stated in five *normative* files and eleven
-    non-normative ones.** `git grep -l -E '\.claude/workflows/orchestrate-(dev|queue)\.js'` at
-    `3dab335` returns 20 paths. Classified:
+    `OUT_DIR = resolve(REPO_ROOT, ".claude", "workflows")`; `:170` is `mkdirSync(OUT_DIR, …)` and
+    the **only content write is `writeFileSync(path, contents, "utf8")` at `:184`**, inside the
+    `for (const { file, contents } of bundles)` loop at `:172-186`. AC-6.1 **retargets** that
+    constant; it does not add a second one. The builder is not, and does not become, a writer of
+    `.claude/workflows/`, of the sync manifest, or of the drift state file.
+14. **The superseded distribution convention is stated in exactly five files that are neither
+    generated nor archived spec history.** This is measured with the **same command AC-6.4's test
+    runs** — a union of four literal patterns, no prose qualifier — at `1075e7d`:
 
-    | Class | Paths | Disposition |
+    ```
+    git grep -l -E '\.claude/workflows/(orchestrate-dev|orchestrate-queue|\*)\.js|managed manually'
+    ```
+
+    Verbatim output (25 paths):
+
+    ```
+    .claude/workflows/orchestrate-dev.bundle.js
+    .claude/workflows/orchestrate-dev.js
+    .claude/workflows/orchestrate-queue.bundle.js
+    .claude/workflows/orchestrate-queue.js
+    docs/_queue/QUEUE.md
+    docs/design/MASTER-PLAN-engineering-loop.md
+    docs/orchestrate-dev-workflow/DECISIONS-orchestrate-dev-workflow.md
+    docs/orchestrate-dev-workflow/FSPEC-orchestrate-dev-workflow.md
+    docs/orchestrate-dev-workflow/LEARNINGS-orchestrate-dev-workflow.md
+    docs/orchestrate-dev-workflow/PLAN-orchestrate-dev-workflow.md
+    docs/orchestrate-dev-workflow/PROPERTIES-orchestrate-dev-workflow.md
+    docs/orchestrate-dev-workflow/REQ-orchestrate-dev-workflow.md
+    docs/orchestrate-dev-workflow/TSPEC-orchestrate-dev-workflow.md
+    docs/pdlc-workflow-distribution/CROSS-REVIEW-software-engineer-REQ-v{1,2,3,4,5}.md
+    docs/pdlc-workflow-distribution/CROSS-REVIEW-test-engineer-REQ-v{1,4,5}.md
+    docs/pdlc-workflow-distribution/REQ-pdlc-workflow-distribution.md
+    docs/PLAN-pdlc-integration-boundary-gates.md
+    pdlc/workflows/orchestrate-dev.js
+    pdlc/workflows/orchestrate-queue.js
+    ```
+
+    Subtracting AC-6.4's exemption **rule** (generated trees `.claude/workflows/**` and
+    `pdlc/workflows/dist/**`; per-feature artifact directories — any `docs/<dir>/` containing a
+    `REQ-*.md`, which is exactly `docs/orchestrate-dev-workflow/` and
+    `docs/pdlc-workflow-distribution/` today) leaves the **covered violations**, five files:
+
+    | Covered file | Superseded text at | Correction |
     |---|---|---|
-    | Normative, must be corrected | `docs/_queue/QUEUE.md:41-42`, `docs/design/MASTER-PLAN-engineering-loop.md:82-83`, `docs/PLAN-pdlc-integration-boundary-gates.md:134,184`, `pdlc/workflows/orchestrate-dev.js:5`, `pdlc/workflows/orchestrate-queue.js:5` | AC-6.4 covers these |
-    | Normative, already correct | `CLAUDE.md:58-59`, `pdlc/skills/orchestrate-dev/SKILL.md:90`, `pdlc/skills/orchestrate-queue/SKILL.md:175` (all name `*.bundle.js`) | AC-6.4 covers these; they need the `dist/` update only |
-    | Archived per-feature spec history | the seven `docs/orchestrate-dev-workflow/{REQ,FSPEC,TSPEC,PLAN,PROPERTIES,DECISIONS,LEARNINGS}-*.md` | **Exempt** — a shipped feature's specs record what was true then; rewriting them is history falsification |
-    | This feature's own working documents | `docs/pdlc-workflow-distribution/**` (this REQ and the cross-reviews) | **Exempt** — they quote the superseded form in order to retire it |
-    | Generated / data | `.claude/workflows/*.js`, `.claude/workflows/*.bundle.js`, and the shipped manifest's own `retired` array | **Exempt** — the `retired` array is *required* to contain the string (AC-0.7) |
+    | `docs/_queue/QUEUE.md` | `:41-42` (`.claude/workflows/*.js`, "managed manually") | name `.claude/workflows/*.bundle.js`, synced by `sync-workflows.sh` |
+    | `docs/design/MASTER-PLAN-engineering-loop.md` | `:82-83` (same two forms) | same |
+    | `docs/PLAN-pdlc-integration-boundary-gates.md` | `:134`, `:184` | same |
+    | `pdlc/workflows/orchestrate-dev.js` | `:5` header comment | same |
+    | `pdlc/workflows/orchestrate-queue.js` | `:5` header comment | same |
 
-    v4's AC-6.4 named two files and was wrong by an order of magnitude, for the third consecutive
-    revision, because the list was maintained by hand. AC-6.4 is restated accordingly: the covered
-    set and the exemption set are both normative, and the list is re-derivable by the grep the test
-    itself runs.
+    Three further normative files already name `.bundle.js` and therefore **do not appear in the
+    grep output at all** — `CLAUDE.md:58-59`, `pdlc/skills/orchestrate-dev/SKILL.md:90`,
+    `pdlc/skills/orchestrate-queue/SKILL.md:175`. They are not part of AC-6.4's oracle; they need
+    the `dist/` path update, which §6 carries as an ordinary in-scope edit. v5's fact 14 listed them
+    inside a table framed as the grep's output, which is what made the table sum to more rows than
+    the command returns (SE v5 F-06, TE v5 F-03).
+
+    v2–v5 each maintained this list by hand and each was wrong. AC-6.4 is restated so that no list
+    is maintained at all: the covered set **is** `grep(patterns) − exemptionRule(path)`, both halves
+    machine-computable.
 
 ## 1. Problem
 
@@ -229,8 +278,18 @@ marketplace is Claude Code's own plugin-update mechanism and is out of scope (D-
   `${CLAUDE_PLUGIN_ROOT}` in a consuming repo (AC-0.3) and `<repoRoot>/pdlc` in the maintainer repo
   (AC-0.3a) — When the check enumerates **the managed set**, Then that manifest is the sole
   authority for it: one row per managed artifact,
-  each row `{ id, pluginPath, consumerPath, artifactVersion, pluginSha1 }`, with `pluginPath`
-  relative to **`<pluginRoot>`** and `consumerPath` relative to the consumer repo root.
+  each row `{ id, pluginPath, consumerPath, artifactVersion, pluginSha1, retires }`, with
+  `pluginPath` relative to **`<pluginRoot>`** and `consumerPath` and every member of `retires`
+  relative to the consumer repo root.
+
+  `retires` is an array (possibly empty, never absent) of the consumer-relative paths this row
+  **supersedes** — the data that makes AC-3.9's delete guard computable. At v1,
+  `orchestrate-dev.bundle.js` carries `retires: [".claude/workflows/orchestrate-dev.js"]` and
+  `orchestrate-queue.bundle.js` carries `retires: [".claude/workflows/orchestrate-queue.js"]`. No
+  path may appear in two rows' `retires`, and no `retires` member may equal any row's
+  `consumerPath`; violation ⇒ the manifest is malformed (AC-2.4). The `id` values at v1 are
+  literally **`orchestrate-dev`** and **`orchestrate-queue`** (TE v5 F-08) — golden-output and
+  backup-filename fixtures pin those strings.
 
   There is exactly one manifest location and it is written the same way in AC-0.2, AC-0.3a, AC-5.1,
   AC-6.1, AC-6.2, AC-6.2a and §4: built at `pdlc/workflows/dist/distribution-manifest.json`,
@@ -251,7 +310,9 @@ marketplace is Claude Code's own plugin-update mechanism and is out of scope (D-
   and **no** ES module source, `runtime-adapter.js`, `build-runtime.mjs`, `package.json`,
   `package-lock.json`, `.gitignore`, `__tests__/` or `node_modules/` entry. Those are build
   inputs or tooling and must never be copied into a consumer. The manifest additionally carries a
-  `retired` array of consumer-relative paths (AC-0.7). *(P0)*
+  top-level `retired` array, **defined as the union of every row's `retires`** (AC-0.7).
+  A manifest whose top-level `retired` is not exactly that union is malformed (AC-2.4) — it is a
+  convenience index, never an independent source of truth. *(P0)*
 - **AC-0.3** — Who: any drift check in a **consuming** repo. Given the comparison baseline, When
   `<pluginRoot>` is resolved, Then it is **node B**, the installed plugin root addressed via
   `${CLAUDE_PLUGIN_ROOT}` — the same mechanism all three shipped hooks in `pdlc/hooks/hooks.json`
@@ -284,33 +345,71 @@ marketplace is Claude Code's own plugin-update mechanism and is out of scope (D-
 - **AC-0.3b — The pre-manifest consumer.** Who: a consumer whose installed plugin predates this
   feature — at first release, that is **every** consumer, since no cached version ships a manifest
   today (§0 fact 3). Given `<pluginRoot>/workflows/dist/distribution-manifest.json` does not exist,
-  When any surface runs, Then: every managed row is `unknown` with reason `manifest-absent`
-  (AC-1.2), the SessionStart hook warns (AC-2.5) and exits `0` (AC-2.4), `--check` exits `3`
-  (AC-3.3), sync copies nothing (AC-3.1), and the queue reports `blocked` (AC-4.1). This is
-  correct, not a bug — nothing has been verified, so nothing may be claimed. **The single
-  documented escape is to update the plugin** to a release that ships the manifest; AC-2.5's
-  warning and AC-4.2's report must therefore name plugin update as the remediation whenever the
-  reason is `manifest-absent`, not `sync-workflows.sh` (which cannot help). Operators who must
-  proceed before that release is available set `distribution.checkEnabled: false` (AC-4.3), which
-  unblocks the queue while leaving the hook and `--check` honest. This state is expected to be
-  transient and universal at rollout; the test suite asserts it as a first-class path rather than
-  treating it as an error case. *(P0)*
+  When any surface runs, Then **`baselineStatus` is `unresolved` with reason `manifest-absent`
+  (AC-1.0), `rows` is `[]`, and `retiredPresent` is `[]` meaning *not evaluated*** — and every
+  surface reacts to the manifest-level status, not to the (empty) row set: the SessionStart hook
+  warns (AC-2.5a) and exits `0` (AC-2.4), `--check` exits `3` (AC-3.3 row 1), sync copies nothing
+  and retires nothing (AC-3.1, AC-3.9), and the queue reports `blocked` (AC-4.1 row 2). This is
+  correct, not a bug — nothing has been verified, so nothing may be claimed.
+
+  **`retiredPresent: []` here means "not evaluated", not "none present".** Retirement is
+  manifest-derived (AC-0.7), so with no manifest the retired set is unknowable — and §0 fact 8 shows
+  the paths really are present in this very repo. A reader must never treat `[]` as evidence of
+  absence; `baselineStatus` is what carries the meaning, and it is `unresolved` (TE v5 F-04).
+
+  **The single documented escape is to update the plugin** to a release that ships the manifest;
+  AC-2.5a's warning and AC-4.2's report must therefore name plugin update as the remediation
+  whenever the reason is `manifest-absent`, not `sync-workflows.sh` (which cannot help).
+
+  **The interim escape is two-step, and the test must assert both steps.** Setting
+  `distribution.checkEnabled: false` in `.claude/pdlc.config.json` does not by itself unblock the
+  queue: AC-4.1 row 1 (drift state file absent/unparseable) is evaluated *above* the `checkEnabled`
+  row, and the queue never opens the config file (AC-4.3). The flag reaches the queue only through
+  the drift state file, so the sequence is **write the config → run the hook or `--check` (the shell
+  writer resolves the flag and records it) → the queue proceeds**. A one-step fixture that writes
+  the config and runs the queue blocks, correctly (TE v5 F-09).
+
+  This state is expected to be transient and universal at rollout; the test suite asserts it as a
+  first-class path rather than treating it as an error case. *(P0)*
 - **AC-0.4** — Who: any drift check. Given multiple plugin versions are cached (today `0.9.0` and
   `0.10.0`), When `<pluginRoot>` is resolved in a consuming repo, Then resolution uses
   `${CLAUDE_PLUGIN_ROOT}` verbatim and never enumerates, sorts, or version-compares cache
   directories. Given `${CLAUDE_PLUGIN_ROOT}` is unset or does not resolve to a readable directory,
-  Then every managed artifact is reported `unknown` (AC-1.2) and no cache directory is guessed.
-  This AC applies only when AC-0.3a's maintainer-repo marker is absent; when it is present,
-  `${CLAUDE_PLUGIN_ROOT}` is not consulted at all and its being unset is not an error. *(P0)*
+  Then `baselineStatus` is `unresolved` with reason `plugin-root-unset` (AC-1.0) and no cache
+  directory is guessed. This AC applies only when AC-0.3a's maintainer-repo marker is absent; when
+  it is present, `${CLAUDE_PLUGIN_ROOT}` is not consulted at all and its being unset is not an
+  error — **including for the invocation path of the sync script itself**, which is
+  `<pluginRoot>/hooks/scripts/sync-workflows.sh` under the same binding (REQ-DIST-03 preamble,
+  AC-6.5), i.e. `pdlc/hooks/scripts/sync-workflows.sh` in the maintainer repo. Every surface that is
+  required to print "the exact remediation command" (AC-2.1, AC-2.5, AC-2.5a, AC-2.8, AC-4.2)
+  prints that expansion of `<pluginRoot>`, so the command is always runnable in the repo the reader
+  is standing in. *(P0)*
 - **AC-0.5** — Who: any drift check. Given the process starts in an arbitrary subdirectory, When
   the consumer repo root is resolved, Then resolution is, in this order:
-  1. `git rev-parse --show-toplevel`. If it succeeds, that is the repo root — full stop.
-  2. If it fails (not a git work tree), walk upward from `$PWD` to the nearest ancestor containing
-     `.claude/`, **stopping before** `$HOME` and before `/`.
-  3. Otherwise the result is `unknown` with reason `repo-root-unresolved`.
+  1. `git rev-parse --path-format=absolute --git-common-dir`. If it succeeds, the repo root is the
+     **parent of the returned directory** (the returned path is the *main* worktree's `.git`
+     directory even when the process is inside a linked worktree; measured at `1075e7d` it returns
+     `/Volumes/T9/workspace/yumo-plugins/.git`). If it succeeds but the parent is not a readable
+     directory, fall through to step 3.
+  2. If step 1 fails (not a git work tree), walk upward from `$PWD` to the nearest ancestor
+     containing `.claude/`, **stopping before** `$HOME` and before `/`.
+  3. Otherwise `baselineStatus` is `unresolved` with reason `repo-root-unresolved` (AC-1.0).
 
-  A resolved root equal to `$HOME` or to `/` is **always** rejected as `unknown` **with reason
-  `repo-root-unresolved`** (AC-1.2's set is closed, and this is the member that applies), regardless
+  **A linked git worktree is not a distinct consumer.** `pdlc/workflows/orchestrate-dev.js:1869`
+  dispatches every Phase-I implementation agent with `{ isolation: "worktree" }` and `:1882` merges
+  the `feat-{feature}-{task}-worktree` branch back, so linked worktrees are created routinely by
+  this pipeline. `git rev-parse --show-toplevel` (v5's step 1) returns the *linked worktree's* path,
+  which — after AC-3.9's landing step untracks and gitignores `.claude/workflows/` — is a directory
+  where the managed artifacts do not and should not exist: every row would be `missing`, the hook
+  would warn on every implementation-agent session, `--check` would exit 1 and the queue would block
+  (SE v5 F-05). Resolving the **main** worktree instead means all worktrees of one clone share one
+  `.claude/workflows/`, one sync manifest and one drift state file, which is also the only reading
+  under which AC-2.7's "the drift state on disk reflects post-sync truth" holds across a Phase-I
+  batch. If a future runtime is shown to load workflow artifacts per-worktree, per-worktree sync is
+  D-DIST-07 — it is not in this feature.
+
+  A resolved root equal to `$HOME` or to `/` is **always** rejected as `unresolved` **with reason
+  `repo-root-unresolved`**, regardless
   of which step produced it — including when step 1 succeeded. Rationale: `~/.claude/` exists on every machine running Claude Code (it
   is where the plugin cache AC-0.3 depends on lives), so a naive upward walk from a non-`.claude`
   consumer terminates at `$HOME` and sync then creates `$HOME/.claude/workflows/`,
@@ -324,9 +423,21 @@ marketplace is Claude Code's own plugin-update mechanism and is out of scope (D-
   human-facing output; it never appears in the `rows` array of `.pdlc-drift-state.json` (AC-2.6),
   so no state file describes itself and no golden-output oracle is self-referential. This
   enumeration is read-only: it stats names, never contents (NFR-3). *(P0)*
-- **AC-0.7** — Who: the maintainer. Given the migration from `.js` consumer copies to `.bundle.js`
-  consumer copies, When the manifest is authored, Then it carries
-  `retired: [".claude/workflows/orchestrate-dev.js", ".claude/workflows/orchestrate-queue.js"]`.
+- **AC-0.7 — Retirement is per-row, not global.** Who: the maintainer. Given the migration from
+  `.js` consumer copies to `.bundle.js` consumer copies, When the manifest is authored, Then each
+  superseding row carries its predecessors in its own `retires` array (AC-0.1) —
+  `orchestrate-dev` → `[".claude/workflows/orchestrate-dev.js"]`,
+  `orchestrate-queue` → `[".claude/workflows/orchestrate-queue.js"]` — and the top-level `retired`
+  array is exactly their union.
+
+  **Why per-row rather than a flat list (TE v5 F-02).** AC-3.9's delete guard is "delete a retired
+  path only after the row that supersedes it is in place". A flat array carries no key back to a
+  row, and basename matching cannot recover one (`orchestrate-dev.js` and
+  `orchestrate-dev.bundle.js` share no basename; a "strip `.bundle`" rule is an unauthorised
+  inference that breaks on the third managed artifact). With `retires` the guard is a per-row
+  relation a fixture can state and a test can falsify: *row A `unknown`/`plugin-artifact-missing`,
+  A's `retires` path present, sync runs ⇒ that path still exists afterwards.*
+
   A retired path is **not** a managed row (it is never compared, never a state in AC-1.1) and is
   **not** `not-managed` (it is not left alone); it is a path sync quarantines under AC-3.9. This
   exists because §0 fact 7 — the only live drift this repo can demonstrate — is on exactly those
@@ -343,6 +454,32 @@ no hosted CI on this repo today).
 
 ### REQ-DIST-01 — Drift detection
 
+- **AC-1.0 — Baseline resolution is a precondition, evaluated before any row quantifier.** Who:
+  every surface in this feature. Given a drift computation begins, When it runs, Then it first
+  produces a **manifest-level** outcome
+
+  > `baselineStatus ∈ { resolved, unresolved }`, and when `unresolved`, a `reason` from the closed
+  > set `plugin-root-unset`, `plugin-root-unreadable`, `repo-root-unresolved`, `manifest-absent`,
+  > `manifest-malformed`, `json-tool-absent`, `manifest-empty`
+
+  and only when it is `resolved` does it evaluate rows at all. `manifest-empty` is the case "the
+  manifest parsed but declares zero managed rows"; it is `unresolved` because a managed set of size
+  zero can satisfy any universally quantified claim without verifying anything.
+
+  **Every green outcome in this feature is guarded by `baselineStatus == resolved` AND a non-empty
+  row set**, and each of the three seams states it explicitly: hook silence (AC-2.2), `--check`
+  exit `0` (AC-3.3 row 1), queue proceed-silently (AC-4.1 row 2). Conversely each seam has a
+  dedicated non-green outcome for `unresolved`: the hook warns (AC-2.5a), `--check` exits `3`, the
+  queue blocks.
+
+  This AC exists because v5 expressed all six manifest-level failures as *per-row reasons* while the
+  conditions they name are precisely what prevents rows from existing. Under v5's wording the
+  manifest-absent state — which AC-0.3b says is **every** consumer at first release — made
+  "every managed row is `in-sync`" vacuously true, so a conforming implementation was silent at the
+  hook, exited `0` from `--check` and proceeded in the queue, having verified nothing. That is the
+  exact false green this feature exists to eliminate, reachable on the universal rollout state
+  (TE v5 F-01). `baselineStatus` and its `reason` are top-level fields of the drift state file
+  (AC-2.6), and `rows` is `[]` whenever `baselineStatus` is `unresolved`. *(P0)*
 - **AC-1.1** — Who: the operator. Given **a manifest row** — any row, with no precondition on
   either side existing — When the check runs, Then it reports exactly one of the six states in the
   table below, using content hashes and the sync manifest (AC-1.6) where both sides are readable.
@@ -357,7 +494,7 @@ no hosted CI on this repo today).
   | `local-edit` | differ; consumer hash != this row's `consumerHash` in the sync manifest | consumer was edited after sync; syncing destroys work |
   | `unverified` | differ; no sync-manifest entry for this row | never synced by this tool; direction unknown |
   | `missing` | `consumerPath` absent | consumer has no copy |
-  | `unknown` | baseline for this row unresolvable / unreadable (AC-1.2) | nothing was verified for this row |
+  | `unknown` | this row's `pluginPath` is missing/unreadable, or no hash tool (AC-1.2) | nothing was verified for this row |
 
   Six states, one per manifest row. `not-managed` (AC-0.6) is deliberately **not** in this table:
   it is a property of files that have no manifest row, is report-only, and is never a row state.
@@ -367,14 +504,18 @@ no hosted CI on this repo today).
   for reporting and for detecting a re-published plugin; it is never the discriminator. The two are
   equal only immediately after a sync.
 
-- **AC-1.2** — Who: the operator. Given the baseline for a row cannot be established — the plugin
-  is not installed, `${CLAUDE_PLUGIN_ROOT}` is unset or unreadable (AC-0.4), the repo root did not
-  resolve (AC-0.5), the manifest is absent or malformed (AC-2.4), **or the row's `pluginPath` does
-  not exist / is unreadable inside an otherwise-resolvable plugin root** — When the check runs,
+- **AC-1.2** — Who: the operator. Given `baselineStatus` is `resolved` (AC-1.0) but an individual
+  row cannot be evaluated — **the row's `pluginPath` does not exist / is unreadable inside an
+  otherwise-resolvable plugin root**, or no content-hash utility is available — When the check runs,
   Then that row is `unknown` and carries a machine-readable `reason` from this closed set:
-  `plugin-root-unset`, `plugin-root-unreadable`, `repo-root-unresolved`, `manifest-absent`,
-  `manifest-malformed`, `plugin-artifact-missing`, `hash-tool-absent`, `json-tool-absent`. It is
-  never reported `in-sync` — absence of evidence is not evidence of sync. The
+  `plugin-artifact-missing`, `hash-tool-absent`. It is
+  never reported `in-sync` — absence of evidence is not evidence of sync.
+
+  **Row reasons and manifest reasons are disjoint sets.** The six conditions v5 listed here as row
+  reasons — plugin root unset/unreadable, repo root unresolved, manifest absent/malformed, JSON tool
+  absent — are *manifest-level* and live in AC-1.0's `baselineStatus.reason`, because each of them
+  is what prevents rows from existing at all and none of them is assignable to a row (TE v5 F-01).
+  A row `reason` is only ever one of the two above. The
   `plugin-artifact-missing` reason is what covers "manifest row present, consumer bytes present,
   but nothing to compare them to"; that case has a defined state, a defined exit code (AC-3.3
   exit 3), a defined queue outcome (AC-4.1 `blocked`), and a defined copy-loop behaviour (AC-3.1:
@@ -389,8 +530,12 @@ no hosted CI on this repo today).
   is not in `retired` (a workflow the consuming repo authored for its own domain), When any
   operation in this feature runs, Then it is reported `not-managed` per AC-0.6 and is never read
   for comparison, never overwritten, and never deleted. *(P0)*
-- **AC-1.6** — Who: `sync-workflows.sh` — **the only writer of `.claude/workflows/`, in every repo
-  including the maintainer's** (AC-6.1). Given a managed
+- **AC-1.6** — Who: `sync-workflows.sh` — **the only writer of *managed artifacts* into
+  `.claude/workflows/`, in every repo including the maintainer's** (AC-6.1). The qualifier is
+  load-bearing: the SessionStart hook also writes into that directory (the drift state file,
+  AC-2.6) and sync writes `.pdlc-backups/` (AC-3.4), so an unqualified "only writer of
+  `.claude/workflows/`" contradicts AC-2.6 and would make a conforming implementation fail a test
+  written against the literal claim (SE v5 F-02). Given a managed
   artifact is written into `.claude/workflows/`, When the write completes, Then the writer records
   `{ id, consumerHash, pluginHash, artifactVersion, pluginVersion, syncedAtUtc }` for that row in
   the **sync manifest** at `.claude/workflows/.pdlc-sync-manifest.json` in the consumer repo.
@@ -403,10 +548,12 @@ no hosted CI on this repo today).
   its remediation is "diff, then sync", and sync requires `--force` (AC-3.2). This is the common
   first-run case and it must be safe in both directions: it must not silently overwrite a real
   local edit, and it must not silently hide a real staleness. *(P0)*
-- **AC-1.8** — Who: the test author. Given the classifier, whose domain is **one manifest row** and
+- **AC-1.8** — Who: the test author. Given the classifier, whose domain is **one manifest row of a
+  manifest whose `baselineStatus` is already `resolved`** (AC-1.0 — the classifier is never invoked
+  otherwise, which is why "baseline resolvable" is no longer an axis) and
   whose codomain is the **six** states of AC-1.1, Then it satisfies, as requirements and not as
   test detail:
-  - **(i) totality** — every combination of the axes {baseline resolvable: yes/no} ×
+  - **(i) totality** — every combination of the axes {hash tool present/absent} ×
     {`pluginPath` bytes present/absent} × {`consumerPath` bytes present/absent} × {bytes equal /
     unequal} × {sync-manifest entry: absent / `consumerHash` matches / `consumerHash` differs}
     maps to exactly one of the six states, with no undefined fall-through. Combinations that cannot
@@ -427,12 +574,15 @@ no hosted CI on this repo today).
 - **AC-2.1** — Who: the operator. Given a `SessionStart` hook and any managed row in state `stale`
   or `missing`, When the session starts, Then a warning names the row `id`, the state, and the
   exact remediation command. *(P0)*
-- **AC-2.2** — Who: the operator. Given **every** managed row is `in-sync`, no retired path is
-  present (AC-3.9, AC-2.8), and any `not-managed` files are ignored, When the session starts, Then
-  the hook emits nothing. Silence means every managed row was verified in-sync **and no retired
-  artifact remains** — it never means "some rows could not be checked". The warning ACs below are
-  exhaustive over the conditions that break silence: AC-2.1 (`stale`/`missing`), AC-2.3
-  (`local-edit`), AC-2.5 (`unknown`/`unverified`), AC-2.8 (retired path present). There is no
+- **AC-2.2** — Who: the operator. Given **`baselineStatus` is `resolved` (AC-1.0)**, **the managed
+  row set is non-empty**, every managed row is `in-sync`, no retired path is present (AC-3.9,
+  AC-2.8), and any `not-managed` files are ignored, When the session starts, Then
+  the hook emits nothing. Silence means a resolved baseline declaring at least one row, every one of
+  them verified in-sync, **and no retired artifact remaining** — it never means "some rows could not
+  be checked" and it can never mean "there were no rows" (AC-1.0; TE v5 F-01). The warning ACs below
+  are exhaustive over the conditions that break silence: AC-2.1 (`stale`/`missing`), AC-2.3
+  (`local-edit`), AC-2.5 (`unknown`/`unverified`), AC-2.5a (`baselineStatus` `unresolved`, which
+  includes the empty managed set), AC-2.8 (retired path present). There is no
   silent non-silent state. *(P0)*
 - **AC-2.3** — Who: the operator. Given state `local-edit`, When the warning is emitted, Then it
   is textually distinct from `stale` and explicitly does **not** recommend the plain sync command,
@@ -440,13 +590,26 @@ no hosted CI on this repo today).
   *(P0)*
 - **AC-2.4** — Who: the operator. Given the hook fails for any reason (missing manifest, unreadable
   plugin root, malformed JSON, hashing tool absent), When the session starts, Then the hook exits
-  `0` with the failure written to stderr and to the drift state file (AC-2.6) as `unknown` with the
-  reason. A broken drift check must never block a session from starting. *(P0)*
+  `0` with the failure written to stderr **and** to the drift state file (AC-2.6) — as
+  `baselineStatus: "unresolved"` with `baselineReason` when the failure is manifest-level (AC-1.0),
+  or as `unknown` rows with their row `reason` when it is per-row (AC-1.2). It exits `0` **while
+  still warning** (AC-2.5a): exiting 0 is about not blocking the session, never about staying quiet.
+  A broken drift check must never block a session from starting. *(P0)*
 - **AC-2.5** — Who: the operator. Given state `unknown` or `unverified` on any managed row, When
   the session starts, Then the hook **warns** — it is never silent — the message carries the
   resolution-failure reason (`unknown`) or the "no sync provenance" reason (`unverified`), and each
   is distinguishable in the output from `stale`, from `local-edit`, and from each other. This is
   what makes AC-1.2 operative rather than decorative. *(P0)*
+- **AC-2.5a — Unresolved baseline warns, without any row.** Who: the operator. Given
+  `baselineStatus` is `unresolved` (AC-1.0) — including `manifest-empty` — When the session starts,
+  Then the hook **warns**, the message carries the manifest-level `reason` verbatim, and it is
+  textually distinct from every row-level message (AC-2.1, AC-2.3, AC-2.5) and from AC-2.8's. The
+  warning names the remediation that can actually fix the reason: **plugin update** for
+  `manifest-absent` / `manifest-malformed` / `manifest-empty` (AC-0.3b), the environment fix for
+  `plugin-root-unset` / `plugin-root-unreadable` / `repo-root-unresolved`, and installing a Python
+  interpreter for `json-tool-absent` (§4). The hook still exits `0` (AC-2.4). This AC is the hook's
+  half of AC-1.0: without it, the manifest-absent state — universal at rollout — reaches the
+  operator as silence, because every row-quantified warning has no rows to quantify over. *(P0)*
 - **AC-2.6** — Who: **the shared drift-state writer routine** (AC-2.7) — i.e. the SessionStart hook
   or `sync-workflows.sh`; never `orchestrate-queue`, which only ever reads this file (AC-4.1).
   Given **any** drift computation completes — the
@@ -458,21 +621,27 @@ no hosted CI on this repo today).
   { schemaVersion: 1,
     generatedAtUtc,               // ISO-8601 Z; reporting only, never a queue input
     generatedBy,                  // "hook" | "check" | "sync"
+    baselineStatus,               // "resolved" | "unresolved"   (AC-1.0) — evaluated before rows
+    baselineReason,               // null when resolved; else one of AC-1.0's closed reason set
     pluginVersion,                // context only (AC-5.4)
     checkEnabled,                 // resolved by the writer from .claude/pdlc.config.json (AC-4.3)
-    retiredPresent,               // array of consumer-relative retired paths found present; [] when none
+    retiredPresent,               // array of consumer-relative retired paths found present
     rows: [ { id, state, reason, pluginHash, consumerHash,
               pluginArtifactVersion, consumerArtifactVersion } ] }
   ```
 
-  `rows` contains exactly one entry per manifest row and nothing else (no `not-managed` entries —
-  AC-0.6, no retired paths — AC-0.7). Retired paths are carried in the **separate top-level
+  When `baselineStatus` is `unresolved`, **`rows` is `[]` and `retiredPresent` is `[]` meaning *not
+  evaluated*** (AC-0.3b) — `baselineStatus` is what carries the meaning, and no reader may infer
+  "nothing is stale" or "nothing is retired" from the empty arrays (TE v5 F-01, F-04). When it is
+  `resolved`, `rows` contains exactly one entry per manifest row and nothing else (no `not-managed`
+  entries — AC-0.6, no retired paths — AC-0.7), and `retiredPresent` is the subset of the manifest's
+  `retired` union (AC-0.7) that exists in the consumer, `[]` meaning genuinely none present.
+  Retired paths are carried in the **separate top-level
   `retiredPresent` array**, because a retired path is not a manifest row and forcing it into `rows`
-  would break AC-2.6's one-entry-per-row invariant and AC-1.8's codomain. `retiredPresent` is
-  written by the same routine in the same atomic write, and is `[]` — never absent — when nothing
-  is retired, so a reader never has to distinguish "no retired paths" from "this writer predates
-  the field". This file is the queue's only input (AC-4.1) and is what keeps classification out of
-  the workflow runtime. *(P0)*
+  would break AC-2.6's one-entry-per-row invariant and AC-1.8's codomain. Both arrays are
+  written by the same routine in the same atomic write, and are never absent, so a reader never has
+  to distinguish "empty" from "this writer predates the field". This file is the queue's only input
+  (AC-4.1) and is what keeps classification out of the workflow runtime. *(P0)*
 - **AC-2.7 — Single writer contract.** Who: the operator remediating mid-session. Given
   `.claude/workflows/.pdlc-drift-state.json`, Then there is exactly **one** writer routine, shared
   by the hook and `sync-workflows.sh`, and it is invoked at the end of **every** drift computation
@@ -488,12 +657,22 @@ no hosted CI on this repo today).
   queue unblocks", and the sync run is what refreshes this file. Because the builder never writes
   `.claude/workflows/` at all (AC-6.1, §0 fact 13), it cannot leave the drift state describing a
   filesystem that has since changed underneath it. Any future change that gives a third process
-  write access to `.claude/workflows/` must add it to this list in the same commit. *(P0)*
-- **AC-2.8 — Retired artifact present.** Who: the operator on a consumer that predates this
-  feature. Given at least one path in the manifest's `retired` array (AC-0.7) exists in the
+  write access to **the drift state file** must add it to this list in the same commit. The forward
+  rule is scoped to that file deliberately: `.claude/workflows/` as a *directory* already has more
+  than two writers by design — sync writes managed artifacts (AC-1.6) and `.pdlc-backups/`
+  (AC-3.4), the hook writes the drift state — so a rule counting writers of the directory would be
+  miscounted from the start, and an implementer reading it as "the hook must not write under
+  `.claude/workflows/`" would break AC-2.6 (SE v5 F-02). *(P0)*
+- **AC-2.8 — Retired artifact present.** Who: the operator on a consumer that **has updated the
+  plugin to a manifest-shipping release but has not yet synced** — retirement is manifest-derived,
+  so it is not evaluated at all while `baselineStatus` is `unresolved` (AC-1.0, AC-0.3b), and v5's
+  "a consumer that predates this feature" named a population for which this warning can never fire
+  (TE v5 F-04). Given `baselineStatus` is `resolved` and at least one path in the manifest's
+  `retired` union (AC-0.7) exists in the
   consumer, When the session starts, Then the hook **warns**, and the warning: (i) carries the
   reason token `retired-present` — a *hook-message* token, deliberately **not** a member of
-  AC-1.2's closed `reason` set, since no manifest row is involved; (ii) is textually distinct from the `stale`, `local-edit`,
+  AC-1.2's closed `reason` set nor of AC-1.0's, since neither a manifest row nor the baseline is
+  involved; (ii) is textually distinct from the `stale`, `local-edit`,
   `unknown` and `unverified` messages; (iii) names each retired path individually; and (iv) names
   `sync-workflows.sh` (without `--check`) as the remediation, since retirement happens only on a
   real sync run (AC-3.9). This holds independently of the managed rows' states — a consumer whose
@@ -506,13 +685,24 @@ no hosted CI on this repo today).
 ### REQ-DIST-03 — Sync action
 
 **Delivery vehicle.** Sync is a bash script (NFR-5) shipped in the plugin at
-`${CLAUDE_PLUGIN_ROOT}/hooks/scripts/sync-workflows.sh`, invoked directly by the operator. It is
+**`<pluginRoot>/hooks/scripts/sync-workflows.sh`** — the *same* `<pluginRoot>` binding as every
+other path in this feature (AC-0.1, AC-0.3, AC-0.3a). It expands to
+`${CLAUDE_PLUGIN_ROOT}/hooks/scripts/sync-workflows.sh` in a consuming repo and to
+**`<repoRoot>/pdlc/hooks/scripts/sync-workflows.sh`** in the maintainer repo, i.e.
+`pdlc/hooks/scripts/sync-workflows.sh` from the repo root — which is what makes the script runnable
+in a fresh clone with no plugin installed (AC-6.5). v5 pinned the invocation to
+`${CLAUDE_PLUGIN_ROOT}` while AC-0.4 stated that variable is not consulted in the maintainer repo,
+leaving "the exact remediation command" with no expansion in the repo that develops the feature
+(SE v5 F-01). It is invoked directly by the operator. It is
 **not** an LLM prompt: every `/pdlc:*` surface today is a `SKILL.md`, and an LLM-driven file copy
 is neither deterministic (NFR-1) nor auditable. A thin `skills/sync-workflows/SKILL.md` may exist
 as a discoverability affordance, but its only permitted action is to run that script verbatim and
 relay its output; it makes no classification or copy decisions of its own.
 
-- **AC-3.1** — Who: the operator. Given `sync-workflows.sh` with no flags, When it runs, Then every
+- **AC-3.1** — Who: the operator. Given `sync-workflows.sh` with no flags **and `baselineStatus`
+  `resolved`** (AC-1.0 — when it is `unresolved` sync copies nothing, retires nothing, prints the
+  manifest-level reason and its remediation, and still rewrites the drift state file), When it runs,
+  Then every
   managed row in state `stale` or `missing` is copied from `pluginPath` to `consumerPath`, each
   copy is reported with both hashes, and the sync manifest (AC-1.6) is updated for each copied row.
   Rows in `local-edit`, `unverified` or `unknown` are not copied — including `unknown` with reason
@@ -531,14 +721,18 @@ relay its output; it makes no classification or copy decisions of its own.
 
   | Condition (evaluated in this precedence order) | Exit |
   |---|---|
+  | **`baselineStatus` is `unresolved` (AC-1.0), for any reason including `manifest-empty`** | **3** |
   | any row `unknown` | 3 |
   | any row `local-edit` or `unverified` | 2 |
   | any row `stale` or `missing`, or any retired path present (AC-3.9) | 1 |
-  | all managed rows `in-sync` and no retired path present (`not-managed` files present or not) | 0 |
+  | `baselineStatus` `resolved`, the row set is non-empty, all rows `in-sync`, no retired path present (`not-managed` files present or not) | 0 |
 
-  Exit `0` therefore asserts "every managed row was compared against a resolved baseline and
-  matched" — the automated form can never go green having verified nothing, which is AC-1.2
-  enforced at the exit code.
+  Exit `0` therefore asserts "the baseline resolved, it declared at least one managed row, and every
+  one of them was compared against it and matched" — the automated form can never go green having
+  verified nothing, which is AC-1.0 enforced at the exit code. Row 1 exists because rows 2–4 are all
+  existential over `rows` and row 5 was universal over it: with no manifest, `rows` is `[]`, rows 2–4
+  are unsatisfied and row 5 vacuously true, so v5's table returned `0` in precisely the state
+  AC-0.3b says every consumer is in at rollout (TE v5 F-01).
 
   **On the `unverified` asymmetry** (`--check` exits 2, but AC-4.1 lets the queue proceed): it is
   deliberate. `--check` is an assertion surface — its job is to be red whenever provenance is
@@ -560,8 +754,20 @@ relay its output; it makes no classification or copy decisions of its own.
   defined as the union of the managed rows' `id` values **and the basenames of the manifest's
   `retired` array** (AC-0.7), so retirement backups (AC-3.9) are inside the retention rule rather
   than accumulating unprunably outside it, and the newest-5-per-`id` invariant a property test
-  asserts over `.pdlc-backups/` holds over every file the tool ever writes there. The backup
-  directory is created if absent. A recorded hash is **not** an acceptable substitute — a digest is
+  asserts over `.pdlc-backups/` holds over every file the tool ever writes there.
+
+  **Parsing a backup filename when the `id` contains dots.** At v1 that set is
+  `{ orchestrate-dev, orchestrate-queue, orchestrate-dev.js, orchestrate-queue.js }` (AC-0.1's row
+  `id`s plus AC-0.7's retired basenames), so `orchestrate-dev` is a proper prefix of
+  `orchestrate-dev.js` and a naive split on the first `.` misattributes every retirement backup
+  (TE v5 F-08). The rule is: match
+  `^(?<id>.+)\.(?<stamp>[0-9]{8}T[0-9]{6}Z)(-(?<n>[0-9]+))?\.bak$` with a **greedy** `id` capture —
+  the fixed-width stamp is what anchors the split, so the `id` may contain any number of dots — and
+  then require the captured `id` to be a member of the set. A filename whose captured `id` is not a
+  member, or which does not match at all, is never touched. Retention is grouped by the captured
+  `id`, so `orchestrate-dev` and `orchestrate-dev.js` keep five backups each, independently.
+
+  The backup directory is created if absent. A recorded hash is **not** an acceptable substitute — a digest is
   one-way and cannot restore content. *(P0)*
 - **AC-3.5** — Who: the operator. Given `--force` overwrote a `local-edit` or `unverified` row,
   When the newest backup for that `id` is restored to `consumerPath`, Then the file is
@@ -587,16 +793,33 @@ relay its output; it makes no classification or copy decisions of its own.
   (this is not a distinct state) and exit is `1`; When sync runs, Then the directory is created —
   **under the repo root resolved by AC-0.5, which is never `$HOME`** — and every row is copied.
   *(P0)*
-- **AC-3.9 — Legacy artifact retirement.** Who: the operator on a consumer that predates this
-  feature. Given a path listed in the manifest's `retired` array (AC-0.7) exists in the consumer,
-  When `sync-workflows.sh` runs (not `--check`), Then, **only after** the managed row that
-  supersedes it has been written or confirmed `in-sync`, the retired file's content is backed up
-  under AC-3.4's rules with `id` = the retired basename, and the file is then deleted. `--check`
+- **AC-3.9 — Legacy artifact retirement.** Who: the operator on a consumer holding a superseded
+  artifact. Given `baselineStatus` is `resolved` (AC-1.0 — retirement is manifest-derived and is
+  **not evaluated at all** when the baseline is unresolved) and a path in some row R's `retires`
+  array (AC-0.1, AC-0.7) exists in the consumer, When `sync-workflows.sh` runs (not `--check`),
+  Then the retirement of that path is gated on **row R specifically**:
+
+  > **Guard.** After the copy loop completes, a path `p ∈ R.retires` may be removed **if and only
+  > if row R's post-copy state is `in-sync`.** If R is in any other state — including `local-edit`,
+  > `unverified` and every `unknown`, the three classes AC-3.1 skips — `p` is left in place and the
+  > run reports `retire-skipped` for `p` naming R's state.
+
+  When the guard passes, the retired file's content is backed up under AC-3.4's rules with
+  `id` = the retired basename, and the file is then deleted. `--check`
   reports retired paths present as `retired-present` in the human-facing report and contributes
   exit code `1` (same class as `stale`: a real, sync-fixable divergence). Retirement is reported
   per path, is idempotent (a second run finds nothing to retire and writes no backup, satisfying
   AC-3.7), and never runs before its replacement is in place — the failure mode to avoid is
-  deleting the loadable artifact and leaving nothing. Rationale: §0 facts 7–8; `.claude/workflows/`
+  deleting the loadable artifact and leaving nothing.
+
+  **Why the guard is per-row (TE v5 F-02).** v5 said "only after the managed row that supersedes it
+  has been written or confirmed `in-sync`" over a *flat* `retired` array, which named a relation the
+  schema could not express: no fixture could state which row supersedes which path, so the guard was
+  unfalsifiable and the natural implementation — "delete all retired paths once the copy loop
+  finishes" — was green on every authorised test while deleting the last loadable artifact whenever
+  the corresponding copy was skipped. `retires` supplies the missing key, and the mandated falsifying
+  test is: *`R.pluginPath` absent ⇒ R is `unknown`/`plugin-artifact-missing` ⇒ sync runs ⇒
+  `R.retires` paths still exist and `retire-skipped` was reported.* Rationale: §0 facts 7–8; `.claude/workflows/`
   currently holds both `orchestrate-dev.js` and `orchestrate-dev.bundle.js`, both declaring
   `meta.name: "orchestrate-dev"`, and leaving the stale one in place is precisely the bug this
   feature exists to eliminate.
@@ -637,18 +860,25 @@ exists from that point onward.** No AC in REQ-DIST-04 may be relied on for first
 
   | Condition, in this precedence order | Queue outcome |
   |---|---|
-  | the read returns absent, or the content is unparseable JSON, or `schemaVersion` != 1 | `blocked` |
+  | the read returns absent, or the content is unparseable JSON, or `schemaVersion` != 1, **or `baselineStatus` is absent** | `blocked` |
   | `checkEnabled` is `false` | proceed, skip noted in the report (AC-4.3) |
+  | **`baselineStatus` is `unresolved`** (AC-1.0), for any reason including `manifest-empty` | `blocked`, naming `baselineReason` |
   | any row `unknown` | `blocked` |
   | any row `missing` | `blocked` |
   | any row `stale` | `blocked` |
   | `retiredPresent` is a non-empty array | `blocked` |
   | any row `local-edit` or `unverified` | proceed, with the rows named in the run report |
-  | all rows `in-sync` and `retiredPresent` is `[]` | proceed silently |
+  | **`baselineStatus` `resolved`, `rows` non-empty**, all rows `in-sync`, `retiredPresent` `[]` | proceed silently |
+
+  Row 3 (`baselineStatus` `unresolved`) sits immediately **below** `checkEnabled` so that AC-0.3b's
+  interim escape still works, and **above** every row-quantified condition so that the
+  manifest-absent state — universal at rollout — cannot fall through to the last row. With
+  `rows: []`, every existential row is unsatisfied and the final universal row is true of nothing,
+  so v5's table proceeded silently on a pipeline where nothing had been verified (TE v5 F-01).
 
   `local-edit` and `unverified` proceed because they represent a deliberate or unknown operator
   divergence that blocking would strand; `unknown` blocks because AC-1.2's rule applies at the
-  queue seam too.
+  queue seam too, and an `unresolved` baseline blocks because AC-1.0's does.
 
   **Why `retiredPresent` blocks, and why it is a top-level field rather than a row.** A retired
   path present beside a fresh bundle is the one configuration in which §0 fact 8 says the runtime
@@ -672,10 +902,15 @@ exists from that point onward.** No AC in REQ-DIST-04 may be relied on for first
   decision, which NFR-1 forbids at this surface.
 - **AC-4.2** — Who: the operator. Given AC-4.1 blocks, When the report is written, Then it names
   each blocking row `id`, its state, its reason, and the exact remediation command, so the
-  operator's next turn is one command rather than an investigation. The remediation named must
-  actually be able to fix the reason: for `manifest-absent` and `plugin-artifact-missing` it is a
-  **plugin update**, not `sync-workflows.sh` (AC-0.3b); for a non-empty `retiredPresent` it is
-  `sync-workflows.sh` without `--check`; for `stale`/`missing` it is `sync-workflows.sh`. *(P0)*
+  operator's next turn is one command rather than an investigation. When the block came from
+  `baselineStatus`, it names `baselineReason` instead of rows, since there are none. The remediation
+  named must actually be able to fix the reason: for `manifest-absent`, `manifest-malformed`,
+  `manifest-empty` and `plugin-artifact-missing` it is a **plugin update**, not `sync-workflows.sh`
+  (AC-0.3b); for `plugin-root-unset`/`-unreadable`, `repo-root-unresolved` and `json-tool-absent` it
+  is the corresponding environment fix (§4); for a non-empty `retiredPresent` it is
+  `sync-workflows.sh` without `--check`; for `stale`/`missing` it is `sync-workflows.sh`. Every
+  printed command is the `<pluginRoot>`-expanded path of AC-0.4, so it is runnable as printed in the
+  repo the operator is standing in. *(P0)*
 - **AC-4.3** — Who: the consuming-repo operator. Given the consumer file
   `.claude/pdlc.config.json` with key `distribution.checkEnabled`, When a drift computation runs,
   Then **the shell writer** (hook, `--check`, or sync) resolves the flag and encodes the resolved
@@ -727,10 +962,13 @@ the rest of the feature already uses (§4).
   `artifactVersion`, and a report showing `plugin 0.10.0 / consumer 0.10.0` beside a hash mismatch
   is correct, not contradictory. The report must therefore label the `artifactVersion` line the way
   AC-5.4 already labels `pluginVersion`, and print the two `sha1` values (AC-2.6 `pluginHash` /
-  `consumerHash`) as the discriminating evidence. If an implementer finds the version lines are
-  adding noise rather than context, dropping `artifactVersion` from the *report* (not from the
-  manifest, where AC-6.2 checks it) is permitted — it carries no information the hashes do not.
-  *(P1)*
+  `consumerHash`) as the discriminating evidence.
+
+  **Both version lines are required in the report, not optional.** v5 permitted an implementer to
+  drop `artifactVersion`; that made every report oracle conditional — a golden-output test asserting
+  the line fails on a conforming implementation that omitted it, and a test not asserting it cannot
+  catch an accidental regression that drops it (TE v5 F-10). The report is a human-facing surface
+  with golden-output tests, so the field is **present, labelled, and asserted**. *(P1)*
 - **AC-5.4** — Who: the operator. Given the plugin's `plugin.json` version, When the report is
   produced, Then it is included as **context only**, explicitly labelled as not a drift signal:
   cached `0.9.0` and `0.10.0` ship byte-identical workflow files (§0 fact 5), so plugin version
@@ -746,14 +984,19 @@ is nothing in the plugin package to copy (§0 fact 3).
   **`pdlc/workflows/dist/` and nothing else**: it emits `dist/*.bundle.js` and
   `dist/distribution-manifest.json` there, both tracked and committed, and it writes **no** file
   under `.claude/workflows/` — no bundle, no sync-manifest entry, no drift state. Mechanically this
-  is a retarget of the single `OUT_DIR` constant at `build-runtime.mjs:29` (§0 fact 13), not the
+  is a retarget of the single `OUT_DIR` constant at `build-runtime.mjs:29`, whose only content write
+  is at `:184` inside the `:172-186` loop (§0 fact 13), not the
   addition of a second output target. `build-runtime.mjs --check` compares `dist/` only.
 
   **`.claude/workflows/` is populated by `sync-workflows.sh`, in this repo exactly as in any other
   consumer.** The maintainer's loop is **build → sync**, two commands, and the second one is the
-  same script every consumer runs (AC-0.3a substitutes `<pluginRoot>` so it finds `dist/` locally).
+  same script every consumer runs, invoked at `<pluginRoot>/hooks/scripts/sync-workflows.sh` =
+  `pdlc/hooks/scripts/sync-workflows.sh` here (REQ-DIST-03 preamble, AC-6.5), with AC-0.3a
+  substituting `<pluginRoot>` so it finds `dist/` locally.
   Consequences, all of which were ambiguous in v4 (SE v4 F-04, F-05): there is exactly one writer
-  of `.claude/workflows/` (AC-1.6), exactly two writers of the drift state file (AC-2.7), and the
+  of **managed artifacts** into `.claude/workflows/` (AC-1.6 — the hook and the backup writer also
+  write into that directory, which is why the qualifier is not optional), exactly two writers of the
+  drift state file (AC-2.7), and the
   maintainer-repo remediation loop closes in-session because the sync run that fixes the drift is
   the same run that rewrites the drift state. `.claude/workflows/*.bundle.js` cease to be a second
   *tracked* generated tree — they are gitignored, untracked consumer copies after AC-3.9's landing
@@ -763,14 +1006,28 @@ is nothing in the plugin package to copy (§0 fact 3).
   Given the set of files that would be packaged for the plugin (`.claude-plugin/marketplace.json`
   declares `source: ./pdlc`, so: everything under `pdlc/` minus the repo's ignore rules), When
   `npm test` runs on any commit, Then a test asserts that (a) every `pluginPath` in
-  `dist/distribution-manifest.json` resolves to a file inside that packaged set, (b) each such file
-  is byte-identical to the freshly built bundle, (c) its `pluginSha1` matches, and (d) the manifest
+  `dist/distribution-manifest.json` resolves to a file inside that packaged set, (b) each such
+  file's `sha1`, **recomputed from the bytes on disk**, equals that row's `pluginSha1`, (c) the
+  manifest's top-level `retired` array equals the union of the rows' `retires` (AC-0.2), and (d) the
+  manifest
   itself is at `pdlc/workflows/dist/distribution-manifest.json` inside that set — the packaged
   path, joined as `workflows/dist/distribution-manifest.json` under `<pluginRoot>`, is what AC-0.1
   reads, so a path regression is caught here and not by a consumer.
 
-  **Build inputs in the package are tolerated, not asserted away.** `.gitignore` ignores only
-  `node_modules/`, so the packaged set today also contains `pdlc/workflows/__tests__/`,
+  **AC-6.2 does not rebuild; freshness is AC-6.3's job.** v5's clause (b) — "byte-identical to the
+  freshly built bundle" — is a self-comparison unless the test invokes the builder, because the file
+  it reads *is* the build output; the most likely implementation was therefore a tautology
+  (TE v5 F-07). This AC is now membership + hash-integrity + manifest-shape only. The
+  source→bundle freshness relation is asserted exactly once, by `__tests__/runtimeBundle.test.js`
+  under AC-6.3, and **no test in this feature runs the builder in a way that writes into
+  `pdlc/workflows/dist/`** — the suite never mutates its own tracked inputs.
+
+  **Build inputs in the package are tolerated, not asserted away.** No ignore rule under `pdlc/`
+  other than `node_modules/` applies (the repo-root `.gitignore` also ignores `.tokensave/`,
+  `.claude/settings.local.json` and `.claude/.headroom_wrap_marker.json`, none of which touch the
+  `pdlc/` subtree, and AC-3.9's landing step adds a fourth root rule for `.claude/workflows/`; state
+  the claim as "no rule under `pdlc/` other than `node_modules/`" so it does not drift — SE v5 F-08).
+  So the packaged set today also contains `pdlc/workflows/__tests__/`,
   `package.json`, `package-lock.json`, `build-runtime.mjs` and `runtime-adapter.js`. That is
   accepted: shipping them is harmless (nothing reads them consumer-side) and AC-0.2 already bars
   them from being *copied into a consumer repo*, which is the property that matters. AC-6.2
@@ -783,7 +1040,9 @@ is nothing in the plugin package to copy (§0 fact 3).
   publication. *(P0)*
 - **AC-6.2a** — Who: a consumer. Given a plugin installed from the marketplace at version *V*, When
   `${CLAUDE_PLUGIN_ROOT}/workflows/dist/` is listed, Then it contains exactly the bundles named in
-  the distribution manifest. This is the post-install smoke check; it is verified by a manual
+  the distribution manifest **plus the manifest itself** — AC-0.1/AC-5.1/AC-6.1 place
+  `distribution-manifest.json` in that same directory, so v5's unqualified "exactly the bundles" was
+  falsified by its own manifest location (SE v5 F-09). This is the post-install smoke check; it is verified by a manual
   release-checklist step until D-DIST-06 automates it, and AC-6.2 is what actually gates
   development. *(P1)*
 - **AC-6.3 — A→A′ freshness, on the surface that exists.** Who: the `pdlc/workflows` jest suite.
@@ -797,49 +1056,94 @@ is nothing in the plugin package to copy (§0 fact 3).
   *(P0)*
 - **AC-6.4 — No *normative* document contradicts the manifest.** Who: the maintainer, and the
   `pdlc/workflows` jest suite. Given the migration from `.js` copies to `.bundle.js` copies and
-  AC-6.1's move of the build output to `dist/`, When this feature lands, Then no file **in the
-  covered set** states a workflow-distribution convention contradicting the shipped distribution
-  manifest, and a test asserts it by grepping for the superseded form
-  (`.claude/workflows/orchestrate-{dev,queue}.js`, and the phrase "managed manually" in a
-  distribution context) over that set.
+  AC-6.1's move of the build output to `dist/`, When this feature lands, Then no file in the
+  **covered set** states a workflow-distribution convention contradicting the shipped distribution
+  manifest, and a test asserts it.
 
-  The covered set and the exemption set are both **normative**, because the alternative — a
-  hand-maintained file list — has been wrong in three consecutive revisions (v2, v3, v4; SE v4
-  F-01 measured v4's list as 2 files against a true 12).
+  **The oracle is one expression, with nothing hand-listed:**
 
-  **Covered set** — the surfaces that tell a reader or an agent what to do *today*:
+  > `coveredViolations(root) := grep(root, PATTERNS) − { p : exempt(p) }`, and the assertion is
+  > `coveredViolations(repoRoot) == ∅`.
 
-  | Surface | Why normative |
+  **`PATTERNS` — four literal, qualifier-free alternatives**, exactly as the test runs them:
+
+  | # | Pattern (POSIX ERE) |
   |---|---|
-  | `CLAUDE.md` | the repo's standing instructions |
-  | `pdlc/skills/**/SKILL.md` | shipped prompts, loaded live by both Claude Code and Ptah |
-  | `pdlc/workflows/*.js` header comments | read by every future editor of those modules |
-  | `docs/_queue/QUEUE.md` | live work queue, drives `orchestrate-queue` |
-  | `docs/design/MASTER-PLAN-engineering-loop.md` | the live plan this feature is an item of |
-  | `docs/PLAN-pdlc-integration-boundary-gates.md` | live plan, not yet executed |
+  | 1 | `\.claude/workflows/orchestrate-dev\.js` |
+  | 2 | `\.claude/workflows/orchestrate-queue\.js` |
+  | 3 | `\.claude/workflows/\*\.js` |
+  | 4 | `managed manually` |
 
-  **Exemption set** — normative and exhaustive; nothing else is exempt:
+  v5 wrote pattern 4 as "the phrase *managed manually* **in a distribution context**". No grep can
+  evaluate "in a distribution context", so an implementer had to either drop it (silently changing
+  what the test matches) or hand-curate the hits — the hand-maintained list that was wrong in v2,
+  v3, v4 and v5. The qualifier is **deleted**: measured at `1075e7d`, every hit it was meant to
+  exclude (`docs/orchestrate-dev-workflow/TSPEC-*.md`, this feature's own documents) is already
+  excluded by `exempt`, so it separated nothing (SE v5 F-03, TE v5 F-03). Patterns 3 and 4 are also
+  the *only* way `docs/_queue/QUEUE.md` and `docs/design/MASTER-PLAN-engineering-loop.md` — the two
+  most live normative surfaces — enter the set at all; v5's §0 fact 14 measured with pattern 1|2
+  alone and therefore printed a table the cited command does not produce.
 
-  | Exempt | Why |
-  |---|---|
-  | `docs/{other-feature}/**` — archived per-feature spec history, e.g. the seven `docs/orchestrate-dev-workflow/*` files | A shipped feature's REQ/FSPEC/TSPEC/PLAN/PROPERTIES record what was true when it shipped. Rewriting them falsifies history and would put a shipped feature's specs in this feature's blast radius. |
-  | `docs/pdlc-workflow-distribution/**` — this feature's own REQ and cross-reviews | They quote the superseded form in order to retire it. |
-  | `.claude/workflows/**` | Generated and/or retired; not documentation. |
-  | The `retired` array of any `distribution-manifest.json` | AC-0.7 **requires** it to contain the superseded paths. A grep that flagged it would fail on its own required data. |
+  **`exempt(p)` — a rule over paths, not a list.** The covered set is *everything else*, so the two
+  provably partition the tree and no file can be in neither (TE v5 F-05):
 
-  **Falsifying case (so the test cannot be written vacuously):** adding a file to the covered set
-  that states the superseded convention ⇒ **RED**; adding the same text under any exempt path ⇒
-  **GREEN**. The test must exercise both directions, or the implementer facing a red grep will
-  narrow the pattern until it passes and the assertion will prove nothing (TE v4 F-04).
+  | Rule | Matches today | Why |
+  |---|---|---|
+  | `p` is under a **generated tree**: `.claude/workflows/**`, `pdlc/workflows/dist/**`, any `node_modules/**` | the 4 tracked `.claude/workflows/*` artifacts; `dist/` once AC-6.1 lands | Generated, not documentation. `dist/*.bundle.js` inlines the module headers this AC corrects, so on the first commit after the correction and before a rebuild it still contains the superseded string — a covered-set reading would go RED on a file no human writes (SE v5 F-04). |
+  | `p` is under a **per-feature artifact directory**: any `docs/<dir>/` containing a `REQ-*.md` | `docs/orchestrate-dev-workflow/`, `docs/pdlc-workflow-distribution/` | A shipped feature's REQ/FSPEC/TSPEC/PLAN/PROPERTIES record what was true when it shipped; rewriting them falsifies history. This feature's own documents quote the superseded form in order to retire it. The rule is computable — `docs/design/`, `docs/_queue/`, `docs/_constraints/`, `docs/_decisions/` and `docs/*.md` contain no `REQ-*.md` and are therefore covered. |
+  | `p` is a `distribution-manifest.json`, for its `retired`/`retires` values | none tracked yet | AC-0.7 **requires** those to contain the superseded paths. Subsumed by rule 1 today (manifests live under `dist/`), stated separately so a future manifest location does not silently go RED. |
 
-  Measured at `3dab335` (§0 fact 14), the covered set contains five files stating the superseded
-  form — `docs/_queue/QUEUE.md:41-42`, `docs/design/MASTER-PLAN-engineering-loop.md:82-83`,
-  `docs/PLAN-pdlc-integration-boundary-gates.md:134,184`, `pdlc/workflows/orchestrate-dev.js:5`,
-  `pdlc/workflows/orchestrate-queue.js:5` — and three already correct on `.bundle.js`
-  (`CLAUDE.md:58-59`, `pdlc/skills/orchestrate-dev/SKILL.md:90`,
-  `pdlc/skills/orchestrate-queue/SKILL.md:175`) that still need the `dist/` update. This
-  enumeration is a *measurement*, not the specification: the test derives it by grep, and §6's
-  in-scope item is "the covered set", not a file list. *(P1)*
+  Files in neither set do not exist by construction: `README.md`, `pdlc/README.md`,
+  `pdlc/hooks/scripts/*.sh`, `docs/_constraints/**` and future `docs/design/*.md` are all **covered**,
+  which is the intended answer — adding `docs/design/MASTER-PLAN-v2.md` stating the superseded
+  convention must go RED.
+
+  **The checker is a pure function of a root directory** — `coveredViolations(root)` takes the root
+  (or an explicit file list) and returns the violating paths; it never reads `process.cwd()` and
+  never hardcodes repository paths. This is what gives the mandated falsifying case an injection
+  seam: RED and GREEN both run against `__tests__/fixtures/` trees, and exactly **one** additional
+  assertion binds the function to the real repository root. Without the seam, exercising RED would
+  require writing into tracked normative directories during `npm test` — polluting the working tree,
+  racing parallel suites, and leaving the repo dirty on a throw — so the falsifying case would be
+  dropped as unimplementable and the assertion would degrade to the one-directional grep this AC
+  exists to prevent (TE v5 F-06). File discovery inside `root` is `git ls-files` when `root` is a
+  git work tree and a directory walk otherwise, so a fixture tree needs no git.
+
+  **Falsifying case (mandatory, two-directional):** a fixture file under a covered path stating the
+  superseded convention ⇒ **RED**; the identical text under each exempt rule ⇒ **GREEN**. Both
+  directions ship, or the implementer facing a red grep will narrow the pattern until it passes and
+  the assertion will prove nothing (TE v4 F-04).
+
+  Measured at `1075e7d` (§0 fact 14), `coveredViolations(repoRoot)` is exactly five files —
+  `docs/_queue/QUEUE.md`, `docs/design/MASTER-PLAN-engineering-loop.md`,
+  `docs/PLAN-pdlc-integration-boundary-gates.md`, `pdlc/workflows/orchestrate-dev.js`,
+  `pdlc/workflows/orchestrate-queue.js` — and correcting them is what makes the assertion green.
+  `CLAUDE.md`, `pdlc/skills/orchestrate-dev/SKILL.md` and `pdlc/skills/orchestrate-queue/SKILL.md`
+  already name `.bundle.js` and do **not** appear in the grep output; their `dist/` path update is an
+  ordinary in-scope edit (§6), not part of this oracle. This measurement is a *measurement*: the test
+  recomputes it, and §6's in-scope item is "whatever `coveredViolations` returns", never a file list.
+  *(P1)*
+- **AC-6.5 — Fresh-clone bootstrap.** Who: a maintainer (or a CI runner) on a clean clone of
+  `yumo-plugins` with **no pdlc plugin installed and `${CLAUDE_PLUGIN_ROOT}` unset**. Given
+  AC-3.9's landing step has untracked and gitignored `.claude/workflows/`, so a fresh clone contains
+  no runtime-loadable artifact at all, When the maintainer runs
+
+  ```
+  node pdlc/workflows/build-runtime.mjs      # writes pdlc/workflows/dist/ only (AC-6.1)
+  pdlc/hooks/scripts/sync-workflows.sh       # <pluginRoot>/hooks/scripts/…, AC-0.3a substitution
+  ```
+
+  Then `.claude/workflows/*.bundle.js` exist, every managed row is `in-sync`, `--check` exits `0`
+  and the queue proceeds — with no published release, no installed plugin and no network. Both
+  commands are documented in `CLAUDE.md` and `pdlc/README.md` as the bootstrap sequence (in scope,
+  §6).
+
+  This AC exists because v5 composed three changes into a bootstrap hole: it untracked
+  `.claude/workflows/`, forbade the builder from writing there, and pinned the only remaining writer
+  to `${CLAUDE_PLUGIN_ROOT}` — which AC-0.4 says is not consulted in this repo. The repo that
+  develops the pipeline could then neither run it nor print a runnable remediation command
+  (SE v5 F-01, and v1 F-05's bootstrap paradox one layer down). The fix is the `<pluginRoot>`
+  substitution already in AC-0.3a, applied to the script's own path. *(P0)*
 
 ## 4. Declared thresholds, flags and locations
 
@@ -856,13 +1160,17 @@ absent from this table.
 | backup retention | same | newest **5** per `id`, selected by `LC_ALL=C` lexicographic descending filename sort | pdlc maintainer | AC-3.4. Never mtime-based. |
 | backup stamp format | backup filename | `YYYYMMDDTHHMMSSZ`, collisions suffixed `-2`, `-3`, … | pdlc maintainer | AC-3.4. Fixed width so lexicographic order == chronological order. |
 | `id` charset | manifest row | `^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$` | pdlc maintainer | AC-0.1. Filename-safety for AC-3.4; violation ⇒ manifest malformed. |
-| content-hash utility | `shasum` \| `sha1sum`, resolved by probing | first that runs | pdlc maintainer | Both absent ⇒ every row `unknown`, reason `hash-tool-absent` (AC-1.2, AC-2.4). |
-| JSON read/write utility | Python interpreter, discovered by probing `python3`, `python`, `py` — **the identical loop already shipped in all three `pdlc/hooks/scripts/*.sh`**, reused verbatim, not reinvented | first candidate that executes `import sys` successfully | pdlc maintainer | Reads/writes all four JSON files and is what distinguishes *malformed* from *absent* (AC-2.4). None found ⇒ every row `unknown`, reason `json-tool-absent`, hook still exits 0 (NFR-6). |
+| content-hash utility | `shasum` \| `sha1sum`, resolved by probing | first that runs | pdlc maintainer | Both absent ⇒ every row `unknown`, reason `hash-tool-absent` (AC-1.2) — a **row-level** reason, since rows exist whenever the baseline resolved. |
+| JSON read/write utility | Python interpreter, discovered by probing `python3`, `python`, `py` — **the identical loop already shipped in all three `pdlc/hooks/scripts/*.sh`**, reused verbatim, not reinvented | first candidate that executes `import sys` successfully | pdlc maintainer | Reads/writes all four JSON files and is what distinguishes *malformed* from *absent* (AC-2.4). None found ⇒ `baselineStatus` `unresolved`, reason `json-tool-absent` (a **manifest-level** reason — with no JSON reader there are no rows), hook warns (AC-2.5a) and still exits 0 (NFR-6). |
+| sync script invocation path | **`<pluginRoot>/hooks/scripts/sync-workflows.sh`** — consumer `${CLAUDE_PLUGIN_ROOT}/hooks/scripts/sync-workflows.sh`, maintainer `pdlc/hooks/scripts/sync-workflows.sh` | — | pdlc maintainer | REQ-DIST-03 preamble, AC-0.4, AC-6.5. This is the expansion every "exact remediation command" prints; it is runnable with no plugin installed. |
+| `baselineStatus` / `baselineReason` | top-level fields of the drift state file | `resolved` / `null` only when the manifest resolved and declares ≥1 row | the shared drift-state writer (AC-2.7) | AC-1.0. Reason set: `plugin-root-unset`, `plugin-root-unreadable`, `repo-root-unresolved`, `manifest-absent`, `manifest-malformed`, `json-tool-absent`, `manifest-empty`. Evaluated before any row quantifier at all three seams. |
 | drift-check latency budget | NFR-2 fixture | p95 ≤ 500 ms | pdlc maintainer | Observation, not a gate — see NFR-2. |
 | `<pluginRoot>` resolution | `${CLAUDE_PLUGIN_ROOT}` in a consuming repo; **`<repoRoot>/pdlc`** when `pdlc/workflows/build-runtime.mjs` is present (AC-0.3a) | set by the harness | Claude Code / pdlc maintainer | AC-0.3, AC-0.3a, AC-0.4. Unset with no maintainer marker ⇒ `unknown`, reason `plugin-root-unset`. Every `pluginPath` joins onto `<pluginRoot>` unchanged. |
-| repo-root resolution | `git rev-parse --show-toplevel`, else bounded upward `.claude/` walk | — | pdlc maintainer | AC-0.5. `$HOME` and `/` are always rejected as `unknown`, reason `repo-root-unresolved`. |
+| repo-root resolution | parent of `git rev-parse --path-format=absolute --git-common-dir` (the **main** worktree, so a linked worktree is not a distinct consumer), else bounded upward `.claude/` walk | — | pdlc maintainer | AC-0.5. `$HOME` and `/` are always rejected, reason `repo-root-unresolved` (manifest-level, AC-1.0). |
+| retired-path key | each manifest row's `retires` array; top-level `retired` is their union | `orchestrate-dev` → `[".claude/workflows/orchestrate-dev.js"]`, `orchestrate-queue` → `[".claude/workflows/orchestrate-queue.js"]` | pdlc maintainer | AC-0.1, AC-0.7, AC-3.9. The per-row key is what makes the delete guard computable. |
+| managed row `id` values (v1) | manifest rows | `orchestrate-dev`, `orchestrate-queue` | pdlc maintainer | AC-0.1. Backup filenames are parsed by the stamp-anchored regex in AC-3.4, so `orchestrate-dev` and the retired basename `orchestrate-dev.js` never collide. |
 | plugin version (`pluginVersion`) | `<pluginRoot>/.claude-plugin/plugin.json`, key `version` — i.e. `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json` for a consumer, `<repoRoot>/pdlc/.claude-plugin/plugin.json` under AC-0.3a | `0.10.0` at `3dab335` | pdlc maintainer | AC-2.6, AC-5.4. File or key absent/unreadable ⇒ renders as `unknown` in the report and as `null` in the drift state file; it is context only, so no state, exit code or queue outcome depends on it. |
-| retired paths | `retired` array of the distribution manifest | 2 paths (AC-0.7) | pdlc maintainer | AC-0.7, AC-2.8, AC-3.9. Present-in-consumer set is reported as `retiredPresent` in the drift state file (AC-2.6) and blocks the queue (AC-4.1). |
+| retired paths | each row's `retires` array; the manifest's top-level `retired` is their union | 2 paths (AC-0.7) | pdlc maintainer | AC-0.7, AC-2.8, AC-3.9. Present-in-consumer set is reported as `retiredPresent` in the drift state file (AC-2.6) and blocks the queue (AC-4.1). |
 
 No semver comparator and no `sort -V` appear in this table because no AC needs version *ordering* —
 AC-5.2 compares versions for equality only.
@@ -905,8 +1213,10 @@ state file from listing itself.
   sibling hooks already ship** (try `python3`, `python`, `py`; accept the first that actually
   executes) — the mechanism is reused, not reinvented, because JSON handling is now cross-cutting
   across four files in this feature and hand-rolled shell JSON parsing cannot distinguish malformed
-  from absent (AC-2.4 requires that distinction). Absence of either tool degrades to `unknown` with
-  the corresponding reason code, never to a crash and never to `in-sync`.
+  from absent (AC-2.4 requires that distinction). Absence of the hash utility degrades every row to
+  `unknown`/`hash-tool-absent` (AC-1.2); absence of the JSON utility degrades the whole run to
+  `baselineStatus: unresolved` / `json-tool-absent` (AC-1.0), since with no JSON reader there is no
+  manifest and therefore no rows. Never a crash, and never `in-sync`.
 - **NFR-6 — Fail-open at the session seam, fail-closed at the queue seam.** The hook must never
   prevent a session from starting (AC-2.4); the queue must never run a feature on an unverified
   pipeline (AC-4.1). These opposite defaults are deliberate.
@@ -930,9 +1240,12 @@ state file from listing itself.
 - `sync-workflows.sh` with `--check` / `--force`, backups, restore, and legacy retirement (AC-3.9).
 - Queue integration as defense-in-depth; version stamping as reporting-only; classifier invariant
   tests.
-- **Correcting the AC-6.4 covered set** — the five files measured at §0 fact 14 as stating the
-  superseded convention, plus the `dist/` update to the three already-correct ones. Archived
+- **Correcting whatever `coveredViolations(repoRoot)` returns** (AC-6.4) — five files at `1075e7d`
+  (§0 fact 14), plus the `dist/` path update to the three already-correct normative files
+  (`CLAUDE.md`, the two orchestrator `SKILL.md`s), which are outside the oracle. Archived
   per-feature spec history under `docs/{other-feature}/` is explicitly **not** edited.
+- **The fresh-clone bootstrap sequence** (AC-6.5): `pdlc/hooks/scripts/sync-workflows.sh` runnable
+  with no plugin installed, documented in `CLAUDE.md` and `pdlc/README.md`.
 - **A one-time version-control landing step** (AC-3.9): `git rm` the four tracked
   `.claude/workflows/*` paths and gitignore that directory's generated contents, so the tracked
   generated tree is `pdlc/workflows/dist/` alone and AC-3.7's idempotence is not coupled to the git
@@ -954,6 +1267,7 @@ behind the marketplace (that is Claude Code's plugin updater — D-DIST-05).
 | BL-03 | `pdlc/hooks/hooks.json` accepts a second `SessionStart` entry alongside `nudge-consolidation.sh` | Both hooks observed firing in one session | Must be demonstrated before FSPEC authoring. |
 | BL-04 | The workflow runtime's injected read (`_readFile` via `runtime-adapter.js`) can read `.claude/workflows/.pdlc-drift-state.json` and returns absence distinguishably from empty | **Discharged by citation, not a spike:** `pdlc/workflows/orchestrate-queue.js:483` documents `_readFile` as `async (path) → string\|null`, and `runtime-adapter.js`'s `rtReadFile` honours it | Re-verify the two citations at FSPEC authoring; no spike required. |
 | BL-05 | Which artifact the workflow runtime resolves when `.claude/workflows/` holds both `orchestrate-dev.js` and `orchestrate-dev.bundle.js`, each declaring `meta.name: "orchestrate-dev"` (§0 fact 8) | Executable proof: place two distinguishable artifacts under both names, invoke the workflow, observe which ran | Must be answered before FSPEC authoring. If the legacy `.js` wins or the resolution is non-deterministic, AC-3.9's retirement is a **correctness fix and P0 blocking**; if the `.bundle.js` wins, AC-3.9 is cleanup and may be sequenced after AC-3.1. Either way the retirement ships in this feature; only its ordering depends on the answer. AC-2.8's warning and AC-4.1's `retiredPresent` block are **not** contingent on the answer — they are specified for the unfavourable case, which is the safe default while the question is open. |
+| BL-06 | Whether the workflow runtime, executing inside a **linked git worktree**, loads `.claude/workflows/*` from that worktree or from the main worktree (AC-0.5 assumes the latter is sufficient; `pdlc/workflows/orchestrate-dev.js:1869` creates one worktree per Phase-I task) | Executable proof: run a workflow from a linked worktree with the artifact present only in the main worktree, observe whether it loads | Must be answered before FSPEC authoring. If it loads per-worktree, AC-0.5's main-worktree resolution is insufficient and D-DIST-07 is pulled forward into this feature; if it loads from the main worktree (or the pipeline only ever runs workflows from the main tree), AC-0.5 as written is correct. |
 
 ## 8. Deferrals
 
@@ -964,18 +1278,49 @@ behind the marketplace (that is Claude Code's plugin updater — D-DIST-05).
 | D-DIST-03 | Auto-sync on detection | Violates NFR-4; revisit only if drift proves chronic in practice | `docs/pdlc-install-mechanism/REQ-pdlc-install-mechanism.md` (queue row 6, `blocked`) |
 | D-DIST-04 | Multi-consumer fan-out (sync all known consuming repos at once) | One consumer today | `pdlc-engineering-loop` (queue row 5) |
 | D-DIST-05 | Detecting that the installed plugin cache (node B) is behind the marketplace | Owned by Claude Code's plugin updater, not by pdlc; this REQ closes A′→B and B→C only | `docs/pdlc-install-mechanism/REQ-pdlc-install-mechanism.md` (queue row 6, `blocked`) |
+| D-DIST-07 | Per-worktree sync (treating each linked git worktree as its own consumer) | AC-0.5 resolves the **main** worktree, so all worktrees of a clone share one `.claude/workflows/`. Only if the workflow runtime is shown to load artifacts relative to a linked worktree does this become a real gap; BL-06 is the check | `docs/pdlc-install-mechanism/REQ-pdlc-install-mechanism.md` (queue row 6, `blocked`) |
 | D-DIST-06 | Hosted CI and release automation on `yumo-plugins` (run `npm test` on every push; automate AC-6.2a's post-install smoke check) | `.github/` does not exist (§0 fact 10). Standing up a CI/release host is a distinct workstream with its own secrets, runner and marketplace-publish concerns; every AC in this REQ is deliberately addressed to `cd pdlc/workflows && npm test`, which exists today, so nothing here is blocked on it | `docs/pdlc-release-ci/REQ-pdlc-release-ci.md` — **queue row 7, `blocked` on `pdlc-workflow-distribution`** (draft row added by this revision) |
 
 ## 9. Traceability
 
 | User story | Requirements |
 |---|---|
-| US-01 | REQ-DIST-00 (AC-0.3a, AC-0.3b, AC-0.6), REQ-DIST-01 (AC-1.1–1.8), REQ-DIST-02 (AC-2.1, 2.2, 2.5, 2.6, 2.8) |
-| US-02 | REQ-DIST-00 (AC-0.5), REQ-DIST-02 (AC-2.7), REQ-DIST-03 (AC-3.1, 3.3, 3.6–3.9) |
+| US-01 | REQ-DIST-00 (AC-0.3a, AC-0.3b, AC-0.6), REQ-DIST-01 (AC-1.0–1.8), REQ-DIST-02 (AC-2.1, 2.2, 2.5, 2.5a, 2.6, 2.8) |
+| US-02 | REQ-DIST-00 (AC-0.4, AC-0.5), REQ-DIST-02 (AC-2.7), REQ-DIST-03 (AC-3.1, 3.3, 3.6–3.9), REQ-DIST-06 (AC-6.5) |
 | US-03 | REQ-DIST-01 (AC-1.1, 1.3, 1.6, 1.7), REQ-DIST-02 (AC-2.3, 2.5), REQ-DIST-03 (AC-3.2, 3.4, 3.5), REQ-DIST-05 (AC-5.1–5.4) |
-| US-04 | REQ-DIST-00 (AC-0.1, 0.2, 0.7), REQ-DIST-06 (AC-6.1–6.4), REQ-DIST-04 (AC-4.1–4.3) |
+| US-04 | REQ-DIST-00 (AC-0.1, 0.2, 0.7), REQ-DIST-06 (AC-6.1–6.5), REQ-DIST-04 (AC-4.1–4.3) |
 
 ## 10. Disposition of cross-review findings
+
+### Software-engineer v5 (1 High / 4 Medium / 5 Low)
+
+| ID | Sev | Resolution |
+|---|---|---|
+| F-01 | High | **Bootstrap hole closed.** The sync script's own path is now bound by the same `<pluginRoot>` substitution as everything else: `<pluginRoot>/hooks/scripts/sync-workflows.sh`, i.e. `pdlc/hooks/scripts/sync-workflows.sh` in the maintainer repo. Stated in the REQ-DIST-03 delivery-vehicle paragraph, in AC-0.4 (which also fixes "the exact remediation command" to that expansion for AC-2.1/2.5/2.5a/2.8/4.2), in AC-6.1, and end to end in new **AC-6.5 — Fresh-clone bootstrap** (`build` then `sync`, no plugin, no network, documented in `CLAUDE.md` and `pdlc/README.md`; §6 in scope). Answers **Q-01**. |
+| F-02 | Medium | AC-1.6 and AC-6.1 restated as "the only writer of **managed artifacts** into `.claude/workflows/`", with the reason the qualifier is load-bearing (the hook writes the drift state, sync writes `.pdlc-backups/`). AC-2.7's forward rule rescoped from "write access to `.claude/workflows/`" to "write access to **the drift state file**". |
+| F-03 | Medium | The "in a distribution context" qualifier is **deleted**. AC-6.4 now pins four literal ERE alternatives in a table and states the oracle as `grep(PATTERNS) − exempt(p)`. Measured evidence that the qualifier separated nothing is in §0 fact 14. Answers **Q-04**. |
+| F-04 | Medium | `pdlc/workflows/dist/**` is **exempt**, by the generated-tree rule, alongside `.claude/workflows/**` and `node_modules/**` — with the day-one reason recorded (the bundles inline the very module headers this AC corrects). Answers **Q-03**. |
+| F-05 | Medium | AC-0.5 step 1 changed to `git rev-parse --path-format=absolute --git-common-dir` → parent, i.e. the **main** worktree; a linked worktree is explicitly **not** a distinct consumer, with `orchestrate-dev.js:1869`/`:1882` cited as why worktrees are routine here. New **BL-06** is the executable check, **D-DIST-07** the bound deferral if the answer is unfavourable. §4's repo-root row updated. Answers **Q-02**. |
+| F-06 | Low | §0 fact 14 rebuilt: it now prints the exact four-pattern command AC-6.4's test runs, its **verbatim 25-path output**, the exemption rule applied to it, and the resulting five covered violations. `CLAUDE.md` and the two `SKILL.md`s are stated as **not appearing in the grep output** and as an ordinary in-scope edit rather than table rows. |
+| F-07 | Low | §0 fact 13 and AC-6.1 now cite `:29` (`OUT_DIR`), `:170` (`mkdirSync`) and `:184` (the only `writeFileSync`, inside the `:172-186` loop). |
+| F-08 | Low | AC-6.2 restated as "no ignore rule under `pdlc/` other than `node_modules/`", listing the three root rules that exist and noting AC-3.9 adds a fourth. |
+| F-09 | Low | AC-6.2a restated as "exactly the bundles named in the manifest **plus the manifest itself**". |
+| F-10 | Low | Still routed to `pdlc/skills/orchestrate-dev/SKILL.md` (v4 F-11's disposition); this REQ does not restate an orchestration rule in prose. This revision was again dispatched as "iteration 3" while v5 reviews are committed, so the reviewers' filed indices (v5 → this v6) are authoritative. |
+
+### Test-engineer v5 (3 High / 4 Medium / 3 Low)
+
+| ID | Sev | Resolution |
+|---|---|---|
+| F-01 | High | **New AC-1.0** makes baseline resolution a manifest-level precondition with its own closed reason set (including `manifest-empty`), evaluated before any row quantifier. Every green outcome is now guarded by `baselineStatus == resolved` **and** a non-empty row set: AC-2.2 (silence), AC-3.3 row 1 + row 5 (exit 0), AC-4.1 rows 1–3 + last row (proceed). New **AC-2.5a** gives the hook a warning that needs no rows. AC-1.2 keeps only the two genuinely row-level reasons (`plugin-artifact-missing`, `hash-tool-absent`); the other six moved to AC-1.0. AC-2.6 gains `baselineStatus`/`baselineReason` and fixes `rows: []` when unresolved. Answers **Q-01**: `rows` is `[]` **with** a manifest-level status field. |
+| F-02 | High | Row schema gains **`retires: [consumer-relative paths]`** (AC-0.1); top-level `retired` is defined as their union and checked by AC-6.2(c). AC-3.9's guard is now per-row and computable: *`p ∈ R.retires` is deleted iff R's post-copy state is `in-sync`*, else `retire-skipped` naming R's state. The mandated falsifying fixture is written out. Answers **Q-03**: retirement is skipped for exactly the rows the copy loop skipped. |
+| F-03 | High | §0 fact 14 re-derived with the **same four-pattern command the test runs**, verbatim output pasted, exemption rule applied mechanically ⇒ five covered violations. AC-6.4's covered set is `grep − exempt`; nothing is hand-listed. Answers **Q-02**: yes, the literal phrase, no qualifier. |
+| F-04 | Medium | Retirement is stated as manifest-derived and **not evaluated** when `baselineStatus` is `unresolved` (AC-0.3b, AC-2.6, AC-3.9). AC-2.8's Who is now "a consumer that has updated the plugin but not yet synced". AC-0.3b enumerates `retiredPresent: []` with its meaning (*not evaluated*, never "none present"). |
+| F-05 | Medium | The exemption set is expressed as a **rule** over paths (generated trees; `docs/<dir>/` containing a `REQ-*.md`; manifest `retired`/`retires` values) and the covered set is "everything else", so the two partition the tree. `README.md`, `pdlc/hooks/scripts/*.sh`, `docs/_constraints/**` and future `docs/design/*.md` are covered — stated explicitly, with the `MASTER-PLAN-v2.md` case named as must-be-RED. |
+| F-06 | Medium | AC-6.4's checker is required to be a **pure function of a root directory** (or explicit file list), with discovery via `git ls-files` when the root is a work tree and a directory walk otherwise. RED and GREEN run against `__tests__/fixtures/` trees; one additional assertion binds it to the real repo root. |
+| F-07 | Medium | AC-6.2(b) no longer says "byte-identical to the freshly built bundle". It recomputes `sha1` from the bytes on disk and compares to `pluginSha1`; freshness is discharged **once**, by AC-6.3, and no test in this feature runs the builder into `dist/`. |
+| F-08 | Low | `id` values pinned literally (`orchestrate-dev`, `orchestrate-queue`) in AC-0.1 and §4, and AC-3.4 gains the stamp-anchored filename regex with a greedy `id` capture, so `orchestrate-dev` and the retired basename `orchestrate-dev.js` are parsed and retained independently. |
+| F-09 | Low | AC-0.3b states the escape is **two-step** (write config → run hook/`--check` so the writer records the resolved flag → queue proceeds) and names the one-step fixture as correctly blocking. AC-4.1's `checkEnabled` row sits above the `baselineStatus` row precisely so the escape still works. |
+| F-10 | Low | AC-5.3: `artifactVersion` is **required** in the report, labelled and asserted; the permission to drop it is withdrawn. |
 
 ### Software-engineer v4 (3 High / 3 Medium / 5 Low)
 
