@@ -16,6 +16,13 @@ frontmatter is the pickup gate; the `Status` cell tracks lifecycle.
 | 3 | pending | pdlc-advisory-tier | docs/pdlc-advisory-tier/REQ-pdlc-advisory-tier.md | pdlc-merge-phase |
 | 4 | pending | pdlc-consolidation-agent | docs/pdlc-consolidation-agent/REQ-pdlc-consolidation-agent.md | pdlc-workflow-distribution, pdlc-advisory-tier |
 | 5 | pending | pdlc-engineering-loop | docs/pdlc-engineering-loop/REQ-pdlc-engineering-loop.md | pdlc-workflow-distribution, pdlc-merge-phase, pdlc-advisory-tier, pdlc-consolidation-agent |
+| 6 | blocked | pdlc-install-mechanism | docs/pdlc-install-mechanism/REQ-pdlc-install-mechanism.md | pdlc-workflow-distribution |
+
+Row 6 is the successor binding for `pdlc-workflow-distribution` deferrals D-DIST-01, D-DIST-02,
+D-DIST-03 and D-DIST-05 (full `pdlc install`, loading workflows from the plugin path with no copy,
+auto-sync, and detecting a plugin cache behind the marketplace). It is `blocked` — its REQ is not
+authored yet, so `orchestrate-queue` never picks it up — but it exists so those deferrals are bound
+to a queue row rather than to prose intent.
 
 ## Priority rationale (2026-07-27 — closing the engineering loop)
 
