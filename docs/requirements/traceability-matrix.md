@@ -1,5 +1,17 @@
 # Requirements Traceability Matrix
 
+## pdlc-workflow-distribution
+
+Authoritative per-AC mapping lives in §9 of
+`docs/pdlc-workflow-distribution/REQ-pdlc-workflow-distribution.md`; this is the roll-up.
+
+| User Story | Requirement | FSPEC |
+|---|---|---|
+| US-01 | REQ-DIST-00, REQ-DIST-01, REQ-DIST-02 | — (pending) |
+| US-02 | REQ-DIST-00, REQ-DIST-02, REQ-DIST-03, REQ-DIST-06 | — (pending) |
+| US-03 | REQ-DIST-01, REQ-DIST-02, REQ-DIST-03, REQ-DIST-05 | — (pending) |
+| US-04 | REQ-DIST-00, REQ-DIST-04, REQ-DIST-06 | — (pending) |
+
 ## orchestrate-dev-workflow
 
 | User Story | Requirement | FSPEC |
