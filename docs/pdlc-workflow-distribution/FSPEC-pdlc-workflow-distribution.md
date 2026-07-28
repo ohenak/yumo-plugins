@@ -41,7 +41,8 @@ feature: pdlc-workflow-distribution
 
 ### 0.2 Component inventory
 
-Seven components. The first four are new files; the rest are edits to existing ones.
+Seven components. C1–C3 are new files; C4 is a placeholder so the inventory is exhaustive; C5–C7
+are edits to existing files.
 
 | # | Component | Path | Kind | Owns |
 |---|---|---|---|---|
@@ -57,7 +58,7 @@ Seven components. The first four are new files; the rest are edits to existing o
 the hook and `sync-workflows.sh`", and AC-1.0's baseline-then-rows order plus AC-1.1's classifier
 must produce identical results on all three entrypoints. A shared sourced library is the only
 structure that makes "shared routine" a fact rather than a convention. C1 is **not** shipped as a
-managed row (§2.2) — it ships with the plugin like any hook script and is never copied into a
+managed row (§1.1) — it ships with the plugin like any hook script and is never copied into a
 consumer repo.
 
 **Dependency direction is strictly one-way:** C2 and C3 source C1; C1 sources nothing and never
@@ -76,7 +77,7 @@ recorded here rather than worked around, and each is carried as an open question
 | BL-06 | Whether the runtime in a **linked worktree** loads `.claude/workflows/` from that worktree or the main one | **Not run.** | §2.4 implements AC-0.5's main-worktree rule as written. If per-worktree, D-DIST-07 pulls in and §2.4 changes — **OQ-3** |
 | BL-04 | The runtime's injected read can read the drift state and distinguish absence | **Discharged by citation**, §6.1 | — |
 | BL-02 | The plugin package contains an artifact to copy | Discharged by §7 landing (AC-6.1 + AC-6.2) | — |
-| BL-05 | Which artifact the runtime resolves when `X.js` and `X.bundle.js` share a `meta.name` | Deliberately not contingent (REQ §7) | §5.4 and §6.2 specify the safe default for the unfavourable case |
+| BL-05 | Which artifact the runtime resolves when `X.js` and `X.bundle.js` share a `meta.name` | Deliberately not contingent (REQ §7) | §5.3 and §6.2 row 7 specify the safe default for the unfavourable case |
 
 ## 1. Data formats
 
@@ -1300,3 +1301,172 @@ in scope and none is implied**; a maintainer who commits without running `npm te
 them. This is a pre-existing property of AC-6.3, made load-bearing by AC-6.6's working-tree
 observation point, and it is why AC-6.6 and AC-6.2a both name the release checklist as the P1
 fallback.
+
+## 8. Message catalogue
+
+Operator-facing strings are specified here because AC-2.3, AC-2.5, AC-2.5a, AC-2.8 and AC-4.2 all
+make *textual distinctness* a requirement. The exact wording below is normative for the
+distinctions the ACs demand; incidental phrasing may change without a spec revision.
+
+### 8.1 Conventions
+
+- Every line is prefixed `pdlc:` on stderr.
+- Every command shown is **`<pluginRoot>`-expanded** and runnable exactly as printed (AC-0.4,
+  AC-4.2).
+- No message ever recommends **manual deletion** of any file (AC-2.8).
+- No message recommends `sync-workflows.sh` for a condition sync cannot fix — specifically
+  `manifest-*` (⇒ update the plugin) and `drift-state-invalidated` (⇒ permissions/filesystem).
+
+### 8.2 Warnings (hook)
+
+| # | Trigger | Shape |
+|---|---|---|
+| W-1 | unresolved baseline | `pdlc: workflow drift check could not run — {reason}. {remediation}` |
+| W-2 | row `unknown` | `pdlc: {id} could not be verified — {reason}. {per-reason remediation}` |
+| W-3 | row `unverified` | `pdlc: {id} differs from the plugin's copy and has no sync provenance — direction unknown. Diff it, then sync (--force required): {cmd}` |
+| W-4 | row `local-edit` | `pdlc: {id} was edited locally after its last sync. Plain sync will NOT overwrite it; --force will, after backing it up to {backupDir}: {cmd}` |
+| W-5 | row `stale` / `missing` | `pdlc: {id} is {state}. Run: {cmd}` |
+| W-6 | retired present | `pdlc: retired-present — {path} is superseded by {id} ({state}). {state-conditioned remediation}` |
+| W-7 | write failure | `pdlc: could not write {path} ({operation})` |
+
+W-3 and W-4 are required to be **textually distinct** (AC-2.3) and they are: W-4 names `--force` and
+the backup location and explicitly denies plain sync; W-3 asks for a diff first. Neither is a
+substring of the other.
+
+### 8.3 Notices
+
+| # | Condition | Line |
+|---|---|---|
+| N-3 | ladder rung (iii) — announced at **every** drift computation (NFR-6 ii) | `pdlc: drift state is not writable at {path}; the queue may proceed on stale contents until this is fixed.` |
+| N-4 | sync manifest unreadable/malformed | `pdlc: sync manifest at {path} is {unreadable\|malformed}; rows that differ are reported unverified.` |
+| N-5 | `pdlc.config.json` unreadable/malformed/non-boolean | `pdlc: {path} could not be read for distribution.checkEnabled; assuming true.` |
+| N-6 | `.claude/workflows/` enumeration failed | `pdlc: could not list {dir}; unmanaged files are not reported this run. Managed rows are unaffected.` |
+| N-7 | unrecognised `PDLC_FAULT` (§4.6) | `pdlc: unrecognised PDLC_FAULT token "{token}"; no fault injected.` |
+
+N-4's wording is **O-8's verbatim requirement**: *rows whose bytes differ are reported `unverified`;
+an equal-bytes row is `in-sync` regardless of provenance.* N-6 states explicitly that row states are
+unaffected (AC-0.6).
+
+The **absent** sync manifest produces no notice — never having synced is the ordinary
+first-adoption state, not a fault.
+
+## 9. Disposition of REQ §10 FSPEC obligations
+
+Every row whose "Lands in" names FSPEC, with where it is discharged. A reviewer verifying this
+document should check these seven.
+
+| # | Obligation | Disposed in | Disposition |
+|---|---|---|---|
+| **O-2** | Unrecognised `PDLC_FAULT` must never make the hook exit non-zero; specify per-entrypoint behavior so NFR-6's "exactly two exceptions" stays true | **§4.6** | One stderr line, nothing injected, and the **entrypoint's normal exit** — hook unconditionally 0, `--check`/sync their computed 0–4. Contrasted explicitly with a genuine usage error, which does exit 4 on `--check`/sync and still 0 on the hook |
+| **O-4** | The `printf` invalidation emitter; `pluginVersion` emitted `null` unconditionally; mandate a `json-tool-absent` ladder test | **§4.4 rung (i)** | Field-by-field table showing every interpolated value is closed-domain; `pluginVersion` `null` unconditionally with the reason (it is the one field that could inject arbitrary bytes); a fixed, dependency-free escaping rule for `writeFailures[].path`, which is *not* closed-domain, with `"<unprintable>"` as the fallback. The mandated ladder test is stated; its construction is TSPEC's (O-10) |
+| **O-5** | Rung-2 reachability: only `ENOSPC`/quota reaches `unlink`; the rest are rung-3 residual | **§4.4 rung (ii)** | Six-row cause → `unlink` outcome → rung table. The implementation still *attempts* rung (ii) unconditionally (probing the cause first would be a syscall race); the spec states reachability so TSPEC does not build fixtures for unreachable variants |
+| **O-6** | A run failing both an artifact copy and the drift-state write must name the invalidated state | **§4.5** | Both lines emitted, **drift-state line first**, naming the state as not describing this run and directing to a permissions/filesystem fix rather than a sync. Ordering is normative because that line is the one that changes what the operator does next |
+| **O-8** | Degraded-provenance wording, verbatim | **§1.2, §3.4 R-4, §8.3 N-4** | Rows whose bytes **differ** are reported `unverified`; an **equal-bytes** row is `in-sync` regardless of provenance. Carried as a schema rule, a business rule, and the notice's wording |
+| **O-14** | `sync-workflows.sh`'s exit code = AC-3.3's table applied to the **post-run** state, with the mixed-run example | **§5.8** | Observation point stated per mode (`--check` changes nothing ⇒ pre == post); four worked rows including the mixed run (copied a `stale`, skipped an `unverified` ⇒ **2**); and the derived consequence that **exit 1 is reachable only under `--check`**, with the instruction that no test should try to construct it |
+| **O-15** | Decide whether to add a monotonicity assertion to AC-6.6, and which comparator | **§7.4** | **Decided: no.** Three reasons — it would require the semver comparator REQ §4 forbids and AC-5.2's equality-only rule excludes; the advertised `version` is not this feature's to police, and AC-6.6's claim is change-detection, which a downgrade satisfies; and the real risk (colliding with a previously *published* version) belongs to the release checklist, the only surface that knows what was published. Recorded as a deliberate omission, with a pointer to D-DIST-06 if it is later wanted |
+
+## 10. Obligations carried forward to TSPEC / PROPERTIES
+
+Restated as **entry obligations** — the TSPEC/PROPERTIES author must dispose of every row, and that
+document's reviewers must verify the disposition. A finding that one of these is unspecified in
+*this* document is answered by this table.
+
+| # | Lands in | Obligation | This FSPEC's contribution |
+|---|---|---|---|
+| O-1 | TSPEC / PROPERTIES | Classify-before-create ordering observable: scope to a single classification invocation; row-id and phase fields in the trace grammar; a positive-presence conjunct so it cannot pass vacuously on an empty trace; an unwritable trace is a red **test** while the script still ignores trace failures | §4.2 states the ordering; §4.6 mandates the seam's existence and the script-ignores/test-reds split |
+| O-3 | TSPEC / PROPERTIES | AC-0.5 step 2 is reachable only on a **non-git** fixture; its oracle must assert observables that exist in `repo-root-unresolved` (stderr reason line, `--check` exit 3), not drift-state fields never written there; one fault token per guard (git vs walk) | §2.2 makes the never-fall-through rule explicit; §2.9 and §5.9 give the observables |
+| O-7 | TSPEC | The trace seam's delimiter and quoting; whether non-row probes (manifest, sync manifest, `pdlc.config.json` reads) are traced | §4.6 mandates existence; grammar is explicitly deferred |
+| O-9 | PROPERTIES | Classifier totality / single-valuedness / determinism over states, row reasons and baseline reasons, including both declared precedences. **Regenerate the axes; do not import v13's tables** (24 of 96 cells undefined) | §3.3's first-match ladder makes single-valuedness structural; §3.6 names two determinism hazards (directory order, environment order/locale) |
+| O-10 | TSPEC | Write-failure test design: which failures are injectable, per-runner fixture requirements (uid-0 caveats), fail-open assertions per writer surface. v13's tests (a)–(f) are the starting inventory | §4.4/§4.5 give the contract; §4.4 rung (i) names the mandated `json-tool-absent` ladder test |
+| O-11 | TSPEC / PROPERTIES | Probe vocabulary and permission-fixture policy: uid-0 runners **skip with a printed reason and named unverified invariants** — never silently pass. Coverage floors live here | §3.2's six probes are the vocabulary's basis; §7.4 reuses the skip-loudly pattern |
+| O-12 | TSPEC | Bootstrap fixture construction (working-tree copy with mode bits, `git init` anchor, pinned `HOME`, `realpath` normalisation) and **both** mode-bit assertions (index and on-disk) | §7.5 item 4 and §7.6 state the requirement; §2.2 requires `realpath` normalisation for the `$HOME` guard |
+| O-16 | TSPEC | AC-6.6's skip-loudly branches: pin the **probe order** and the printed reason string for each of (a) empty `--porcelain`, (b) `git` absent, (c) no `.git`, (d) unborn `HEAD`, reusing O-11's vocabulary. Also pin the **untracked-addition** case as a positive (red) fixture | §7.4 states the four branches and why `--porcelain` (not `git diff`) is required — which is the same reason the untracked fixture must exist |
+| O-17 | TSPEC | AC-6.4's pinned fixture tree reproducing the pre-landing layout for the five patterns and four exemption members; the expected 7 paths; and that live-root (`== ∅`) and fixture-root (`== 7`, exact paths, exemption list) are **separate test cases over separate roots** | §7.5 states the two-root structure and the exemption definitions verbatim |
+| O-13 | `consolidate-learnings` | REQ-scope stopping rule → `docs/_constraints/DOMAIN-CONSTRAINTS.md`. **Neither `docs/_constraints/` nor `docs/_decisions/` exists on this branch** — the file must be **created**, not merged into; "no such file" does not discharge the row | Not FSPEC's; recorded so it is not lost |
+
+## 11. Open questions
+
+| # | Question | Blocking? | Owner |
+|---|---|---|---|
+| **OQ-1** | **BL-01 has not been run.** Does a nested build-output directory survive packaging — i.e. does an installed plugin expose a *readable* `${CLAUDE_PLUGIN_ROOT}/workflows/dist/distribution-manifest.json` whose bytes equal the repo's? | **Blocks implementation, not this document.** If false, REQ-DIST-06's shipping path is wrong and §7 must change | Operator — run the spike. Positive-presence exit criterion: `test -r` plus a byte comparison. **Echoing a resolved path does not discharge it** — string interpolation succeeds identically whether or not `dist/` shipped. The spike may use a placeholder `distribution-manifest.json` of arbitrary bytes on a throwaway branch |
+| **OQ-2** | **BL-03 has not been run.** Does `hooks.json` accept a second `SessionStart` entry beside `nudge-consolidation.sh`? | Blocks implementation of §5.1 only | Operator — observe both hooks firing in one session. If refused, C2 merges into `nudge-consolidation.sh` |
+| **OQ-3** | **BL-06 has not been run.** In a **linked git worktree**, does the runtime load `.claude/workflows/` from that worktree or from the main one? | Blocks §2.2's main-worktree rule | Operator — runtime observation. If per-worktree, D-DIST-07 pulls into this feature and AC-0.5's resolution is insufficient |
+| **OQ-4** | C1 is specified as a sourced bash library at `pdlc/hooks/scripts/lib/pdlc-drift.sh`. Is a `lib/` subdirectory under `hooks/scripts/` acceptable to the plugin packaging and to `hooks.json`'s bare-path convention? | Low — a flat `pdlc/hooks/scripts/pdlc-drift-lib.sh` is an equivalent fallback | TSPEC/PLAN. Note C1 is **sourced, never executed**, so it does not need the execute bit — but it must not be registered as a hook |
+| **OQ-5** | §6.3 assumes the queue can print `<pluginRoot>`-expanded commands. The queue never resolves `<pluginRoot>` itself (one-read rule). Should the drift state carry a pre-expanded remediation command string per condition, or should the queue print only consumer-relative commands? | Low — affects §6.3's wording, not any state decision | TSPEC. This FSPEC assumes C1 emits the expanded command into the message the state carries |
+
+## 12. Acceptance tests
+
+Who/Given/When/Then, one per behavioral cluster. These are FSPEC-level; the fixture matrix,
+generation axes and coverage policy are TSPEC/PROPERTIES (§10).
+
+| # | Who | Given | When | Then |
+|---|---|---|---|---|
+| AT-1 | operator, fresh consumer | repo root resolves, `.claude/` absent, plugin ships a valid manifest | `--check` | every row `missing`; drift state written into the directory the run created; exit **1** |
+| AT-2 | operator, non-git tree, no `.claude/` anywhere | — | `--check` | exit **3**, reason `repo-root-unresolved`, **nothing created on disk** |
+| AT-3 | operator, pre-manifest consumer | installed plugin ships no manifest | hook runs | warns `manifest-absent` with **update the plugin**; exits **0**; drift state has `baselineStatus: unresolved`, `rows: []`, `retiredPresent: []` |
+| AT-4 | queue | that same drift state | queue invocation | `blocked`, naming `manifest-absent` at **Manifest** level |
+| AT-5 | operator | `distribution.checkEnabled: false` and rows `stale` | hook, then queue | hook **still warns**; `--check` **still** exits 1; queue **proceeds** with the skip noted |
+| AT-6 | operator | one row byte-identical, sync manifest absent | `--check` | that row `in-sync` (**not** `unverified`) — O-8's equal-bytes rule |
+| AT-7 | operator | one row differs, no sync-manifest entry | `--check` | `unverified`, exit **2**; queue over the same state **proceeds** — the asymmetry, both halves |
+| AT-8 | operator | one row `local-edit` | plain sync | not overwritten, reported with reason; then `--force` | overwritten after a verified backup; restoring the newest backup yields **byte-identical** pre-sync content |
+| AT-9 | operator | sync completed, nothing changed | sync again, same flags | copies nothing, writes no backup, sync manifest **byte-identical**, exit **0** |
+| AT-10 | operator | one `stale` row and one `unverified` row | plain sync | `stale` copied, `unverified` skipped, exit **2** (post-run precedence) — O-14's worked case |
+| AT-11 | operator | all rows `in-sync`, a retired `.js` present | hook | **still warns** `retired-present` with R's id and `in-sync` remediation (plain sync); queue **blocks** |
+| AT-12 | operator | retired path present, R post-copy `in-sync` | sync | `p` backed up (id = retired basename), verified, then deleted; a one-line manual commit action printed if tracked |
+| AT-13 | operator | retired path present, R `unknown` | sync | `p` **left**, `retire-skipped` naming R's state |
+| AT-14 | operator | no JSON interpreter on `PATH` | hook | `json-tool-absent`, exit **0**; ladder emits a `printf` record that **parses**, carries `pluginVersion: null` and this run's `checkEnabled` — O-4 |
+| AT-15 | operator | drift-state file exists and its directory is unwritable, `ENOSPC` on the file | any entrypoint | rung (i) attempted, rung (ii) `unlink` succeeds, fresh write lands — O-5's only reachable rung-2 path |
+| AT-16 | operator | drift-state file immutable | any entrypoint | rung (i) fails, rung (ii) `unlink` refused (`EPERM`), rung (iii): N-3 on stderr, `--check` exit **4**, hook exit **0** |
+| AT-17 | operator | a copy fails **and** the drift-state write fails | sync | both lines printed, **drift-state line first**, naming the invalidated state and a permissions fix — O-6 |
+| AT-18 | operator | `PDLC_FAULT=not-a-real-token`, everything else green | hook | N-7 printed, nothing injected, exit **0**; `--check` under the same env exits **0** — O-2 |
+| AT-19 | jest | manifest and packaged set | `npm test` | AC-6.2 (a)–(d) all assert; no test writes into `pdlc/workflows/dist/` |
+| AT-20 | jest | working tree with any `dist/` change and `plugin.json` `version` == `HEAD`'s | `npm test` | **red** — including the untracked-only case (`??` lines), which `git diff HEAD` would miss |
+| AT-21 | jest | `git` absent from `PATH` | `npm test` | AC-6.6 **skips loudly**, printing the reason and naming the unverified invariant — never a silent pass |
+| AT-22 | jest | live repo root, post-landing | `npm test` | `coveredViolations(liveRepoRoot) == ∅` |
+| AT-23 | jest | pinned fixture root | `npm test` | `\|coveredViolations(fixtureRoot)\| == 7`, paths equal the enumerated 7, exemption list asserted literally |
+| AT-24 | maintainer | fresh clone, no plugin, `${CLAUDE_PLUGIN_ROOT}` unset | `build-runtime.mjs` then `sync-workflows.sh` | bundles present, all rows `in-sync`, `--check` exit **0**, queue mapping proceeds silently — AC-6.5 |
+| AT-25 | operator | a `.claude/workflows/` file with no row and in no `retires` | any entrypoint | reported `not-managed`; never read for comparison, never overwritten, never deleted; absent from `rows` |
+
+## 13. Traceability
+
+| REQ unit | FSPEC section |
+|---|---|
+| REQ-DIST-00 (AC-0.1–0.7) | §1.1, §2, §3.5 |
+| REQ-DIST-01 (AC-1.0–1.8) | §2, §3 |
+| REQ-DIST-02 (AC-2.1–2.9) | §4, §5.1–5.3 |
+| REQ-DIST-03 (AC-3.1–3.9) | §5.4–5.9 |
+| REQ-DIST-04 (AC-4.1–4.3) | §2.7, §6 |
+| REQ-DIST-05 (AC-5.1–5.4) | §7.1, §7.2 |
+| REQ-DIST-06 (AC-6.1–6.6) | §7 |
+| NFR-1 | §5.4, §6.1, §6.2 |
+| NFR-2 | §13.1 below |
+| NFR-3 | §3.4 R-6, §3.5 |
+| NFR-4 | §5.4 |
+| NFR-5 | §2.3, §5.4, §4.6 |
+| NFR-6 | §5.1, §4.4 rung (iii), §6.2, §4.6 |
+
+| User story | FSPEC sections |
+|---|---|
+| US-01 (told at session start) | §5.1, §5.2, §5.3 |
+| US-02 (single command to update) | §5.4, §5.5, §7.6 |
+| US-03 (which direction, deterministically) | §3.3, §3.4, §3.6, §5.6 |
+| US-04 (published and reaches consumers) | §7.1, §7.3, §7.4 |
+
+### 13.1 NFR-2 — the structural latency discharge
+
+NFR-2 requires the p95 budget to be discharged **structurally and reviewably at FSPEC**, with **no
+test asserting wall-clock time** (a timing assertion on a SessionStart hook is flaky by
+construction). The three structural claims, each checkable by reading this document:
+
+1. **No unbounded filesystem enumeration.** The managed set comes from the manifest (§2.5), never
+   from a glob — AC-0.1 prohibits globbing outright. The only directory listing in the feature is
+   the single non-recursive read of `.claude/workflows/` for the `not-managed` report (§3.5).
+2. **No process spawn per row beyond the three declared tools.** Per row: at most two hash
+   invocations (plugin side, consumer side). Baseline resolution spawns the JSON helper a bounded
+   number of times (manifest, sync manifest, config) and `git` at most twice (§2.2). Nothing scales
+   with the size of the repo.
+3. **No network.** Nowhere in C1/C2/C3. `${CLAUDE_PLUGIN_ROOT}` is used verbatim and the cache is
+   never enumerated (§2.4).
+
+The wall-clock number is observed **once**, on the maintainer's release checklist (the AC-6.2a
+pattern), and is advisory: a miss opens a bug, it never fails a build.
