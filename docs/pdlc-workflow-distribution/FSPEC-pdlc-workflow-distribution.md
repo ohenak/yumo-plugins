@@ -72,9 +72,9 @@ recorded here rather than worked around, and each is carried as an open question
 
 | # | Claim | Status | What this FSPEC does about it |
 |---|---|---|---|
-| BL-01 | `${CLAUDE_PLUGIN_ROOT}` resolves in a consumer `SessionStart`, **and a nested build-output dir survives packaging** | **Not run.** REQ §0 fact 3 records the first clause measured, the second evidenced-not-measured | §7 specifies the build and packaging exactly as the REQ requires. If the spike falsifies the second clause, REQ-DIST-06's shipping path is wrong and the FSPEC's §7 must change — **OQ-1**, and it is a genuine blocker for implementation, not for this document |
-| BL-03 | `hooks.json` accepts a second `SessionStart` entry | **Not run.** | §5.1 specifies the registration. If refused, C2 must be merged into `nudge-consolidation.sh`, which changes §5 only — **OQ-2** |
-| BL-06 | Whether the runtime in a **linked worktree** loads `.claude/workflows/` from that worktree or the main one | **Not run.** | §2.4 implements AC-0.5's main-worktree rule as written. If per-worktree, D-DIST-07 pulls in and §2.4 changes — **OQ-3** |
+| BL-01 | `${CLAUDE_PLUGIN_ROOT}` resolves in a consumer `SessionStart`, **and a nested build-output dir survives packaging** | **Discharged by measurement, 2026-07-28** (spike run per §7's positive-presence criterion — see OQ-1's resolution, §11) | The second clause is now measured true: an installed plugin built from this repo exposes a *readable* `${CLAUDE_PLUGIN_ROOT}/workflows/dist/distribution-manifest.json` whose bytes equal the repo's copy (sha1 `b4d18ba…5373` both sides). §7's shipping path stands |
+| BL-03 | `hooks.json` accepts a second `SessionStart` entry | **Discharged by citation, 2026-07-28** (see OQ-2, §11): the hooks schema is array-based at both levels, all matching hooks run in parallel, and plugin hooks merge with user/project hooks — code.claude.com/docs/en/hooks | §5.1 stands. One caveat carried into §5.1: handlers are deduplicated by identical command string + args, so the two SessionStart commands must differ (they do — different scripts). A both-hooks-fire smoke observation remains an implementation-time check, not a blocker |
+| BL-06 | Whether the runtime in a **linked worktree** loads `.claude/workflows/` from that worktree or the main one | **Answered by documentation, 2026-07-28: per-worktree (cwd-based).** Workflows load by walking up from the working directory (code.claude.com/docs/en/workflows), and worktrees share only `.git`, project-scope plugins and permission approvals (code.claude.com/docs/en/worktrees) — project `.claude/` content comes from the checkout you are in | **The unfavourable answer — REQ §7 BL-06's gating clause fires** ("AC-0.5's main-worktree resolution is insufficient and D-DIST-07 pulls into this feature"). This is a scope decision above FSPEC's authority over an approved REQ: **OQ-3 presents the options and awaits the operator** |
 | BL-04 | The runtime's injected read can read the drift state and distinguish absence | **Discharged by citation**, §6.1 | — |
 | BL-02 | The plugin package contains an artifact to copy | Discharged by §7 landing (AC-6.1 + AC-6.2) | — |
 | BL-05 | Which artifact the runtime resolves when `X.js` and `X.bundle.js` share a `meta.name` | Deliberately not contingent (REQ §7) | §5.3 and §6.2 row 7 specify the safe default for the unfavourable case |
@@ -184,6 +184,7 @@ arrays are always present.
   "generatedBy": "hook",
   "pluginVersion": "0.11.0",
   "checkEnabled": true,
+  "syncCommand": "/Users/x/.claude/plugins/cache/yumo-plugins/pdlc/0.11.0/hooks/scripts/sync-workflows.sh",
   "baselineStatus": "resolved",
   "baselineReason": null,
   "retiredPresent": [
@@ -211,6 +212,10 @@ Field rules the writer enforces:
 - `generatedBy ∈ {"hook","check","sync"}` — the entrypoint, not the caller.
 - `pluginVersion` is context only and is `null` when unreadable (AC-5.4). It is **always** `null`
   in the invalidation record (§4.4, O-4).
+- `syncCommand` is the `<pluginRoot>`-expanded sync invocation, written so the queue can print a
+  runnable command without resolving `<pluginRoot>` itself (AC-4.2 + NFR-1; OQ-5's resolution).
+  `null` when `<pluginRoot>` did not resolve, and **always** `null` in the invalidation record —
+  it is a path-bearing string, and the invalidation remediation is never sync.
 - `baselineReason` is `null` exactly when `baselineStatus == "resolved"`, else one of the eight
   closed values.
 - When `baselineStatus == "unresolved"`: `rows == []` **and** `retiredPresent == []`, meaning *not
@@ -1087,9 +1092,10 @@ Run level:
 - `retiredPresent` entries carry R's `id` and state and the remediation **AC-2.8's table** names for
   that state (§5.3) — the queue does not invent a second vocabulary.
 - **Every printed command is `<pluginRoot>`-expanded** and runnable exactly as shown (AC-0.4,
-  AC-4.2). The queue has `<pluginRoot>` available only if the drift state carries it; the record
-  therefore does not need it — the queue prints the *sync* command against the consumer path it
-  knows, and any plugin-root-relative command is emitted by C1 into the message the state carries.
+  AC-4.2). The queue cannot expand `<pluginRoot>` itself (no env access, one-read rule), so it
+  prints the record's `syncCommand` field verbatim wherever sync is the remediation (§1.3, OQ-5).
+  When `syncCommand` is `null` the report says to run the sync script shipped with the installed
+  plugin, by description rather than by a fake path.
 - The design target, stated by AC-4.2: **the operator's next turn is one command, not an
   investigation.**
 
@@ -1388,11 +1394,30 @@ document's reviewers must verify the disposition. A finding that one of these is
 
 | # | Question | Blocking? | Owner |
 |---|---|---|---|
-| **OQ-1** | **BL-01 has not been run.** Does a nested build-output directory survive packaging — i.e. does an installed plugin expose a *readable* `${CLAUDE_PLUGIN_ROOT}/workflows/dist/distribution-manifest.json` whose bytes equal the repo's? | **Blocks implementation, not this document.** If false, REQ-DIST-06's shipping path is wrong and §7 must change | Operator — run the spike. Positive-presence exit criterion: `test -r` plus a byte comparison. **Echoing a resolved path does not discharge it** — string interpolation succeeds identically whether or not `dist/` shipped. The spike may use a placeholder `distribution-manifest.json` of arbitrary bytes on a throwaway branch |
-| **OQ-2** | **BL-03 has not been run.** Does `hooks.json` accept a second `SessionStart` entry beside `nudge-consolidation.sh`? | Blocks implementation of §5.1 only | Operator — observe both hooks firing in one session. If refused, C2 merges into `nudge-consolidation.sh` |
-| **OQ-3** | **BL-06 has not been run.** In a **linked git worktree**, does the runtime load `.claude/workflows/` from that worktree or from the main one? | Blocks §2.2's main-worktree rule | Operator — runtime observation. If per-worktree, D-DIST-07 pulls into this feature and AC-0.5's resolution is insufficient |
-| **OQ-4** | C1 is specified as a sourced bash library at `pdlc/hooks/scripts/lib/pdlc-drift.sh`. Is a `lib/` subdirectory under `hooks/scripts/` acceptable to the plugin packaging and to `hooks.json`'s bare-path convention? | Low — a flat `pdlc/hooks/scripts/pdlc-drift-lib.sh` is an equivalent fallback | TSPEC/PLAN. Note C1 is **sourced, never executed**, so it does not need the execute bit — but it must not be registered as a hook |
-| **OQ-5** | §6.3 assumes the queue can print `<pluginRoot>`-expanded commands. The queue never resolves `<pluginRoot>` itself (one-read rule). Should the drift state carry a pre-expanded remediation command string per condition, or should the queue print only consumer-relative commands? | Low — affects §6.3's wording, not any state decision | TSPEC. This FSPEC assumes C1 emits the expanded command into the message the state carries |
+| **OQ-1** | ~~Does a nested build-output directory survive packaging?~~ **RESOLVED — yes, measured 2026-07-28.** Spike: a scratch directory-sourced marketplace pointing at this repo's `pdlc/`, with a placeholder `workflows/dist/distribution-manifest.json` of arbitrary bytes; `claude plugin install` produced a cache at `…/pdlc/0.10.0/workflows/dist/distribution-manifest.json`, `test -r` true, bytes equal (sha1 `b4d18ba15df3896d304f74f3f8a59bd3db955373` both sides). Spike fully torn down afterwards | No | Two collateral findings, both recorded: (1) a **directory-sourced** marketplace install copies the **working tree including untracked files** — so REQ BL-01's throwaway-branch contingency is unnecessary; (2) the *currently configured* `yumo-plugins` marketplace on this machine is **git-remote-sourced** (`github.com/ohenak/yumo-plugins.git`), so real consumer installs copy committed content from the remote's default branch — "update the plugin" for consumers means the feature must be **merged** to be distributable, which is consistent with the queue's `awaiting-merge → done` gate |
+| **OQ-2** | ~~Does `hooks.json` accept a second `SessionStart` entry?~~ **RESOLVED — yes, by documentation.** The hooks schema maps each event to an *array* of matcher groups, each with a `hooks` array of handlers; "all matching hooks run in parallel, and identical handlers are deduplicated automatically. Command hooks are deduplicated by command string and `args`"; a group with no matcher "activates on every occurrence of the event"; plugin `hooks.json` uses "the same format" and merges with user/project hooks (code.claude.com/docs/en/hooks). For SessionStart only `command` and `mcp_tool` handler types are supported — C2 is `command` | No | Residual: dedup-by-command-string means the two entries must not be byte-identical invocations (they are different scripts). Both-fire is observed once at implementation as a smoke check |
+| **OQ-3** | ~~Linked worktree: which `.claude/workflows/` does the runtime load?~~ **ANSWERED — per-worktree (cwd-based), by documentation** (§0.3 BL-06 row for citations; residual: the docs pin it by enumeration of what worktrees *do* share, not by an explicit worktree sentence). Consequence: post-landing the bundles are untracked, so a fresh `git worktree add` worktree has **no bundles at all**, while AC-0.5 routes the drift check — and sync's writes — to the **main** worktree: green check, absent artifact. This is exactly the case REQ BL-06 gated, and its clause says D-DIST-07 pulls in | **Yes — operator decision.** This FSPEC does not amend an approved REQ | **Options in §11.1 below.** Until decided, §2.2 implements AC-0.5 as approved |
+| **OQ-4** | ~~Is a `lib/` subdirectory under `hooks/scripts/` acceptable?~~ **RESOLVED — yes, decided.** The OQ-1 spike proved arbitrary nested directories survive packaging (`workflows/dist/` did; the live cache also ships `workflows/__tests__/`, `hooks/scripts/`, `templates/`). `hooks.json`'s bare-path convention is irrelevant to C1 because C1 is **sourced, never executed and never registered as a hook** — it needs no execute bit. `pdlc/hooks/scripts/lib/pdlc-drift.sh` stands | No | — |
+| **OQ-5** | ~~How does the queue print `<pluginRoot>`-expanded commands?~~ **RESOLVED — decided: the drift state carries one pre-expanded command.** The queue *cannot* expand: it runs in the workflow runtime, which has no `process`/env access, and the one-read rule forbids it opening anything else. The drift state therefore gains one top-level field, `syncCommand` (string \| null) — the `<pluginRoot>`-expanded sync invocation, written by C1 like every other field. See §1.3. AC-2.6 fixes the *required* fields of the record, not an exhaustive key set (its "exactly one entry per manifest row" clause governs `rows`, not the top level), so this is an FSPEC-level elaboration, not a REQ deviation — reviewers who disagree should route it as a REQ amendment, but the field itself is forced by AC-4.2 + NFR-1 jointly | No | In the §4.4 invalidation record `syncCommand` is emitted as **`null`** unconditionally — it is a path-bearing string (the O-4 injection concern), and the record's remediation class is permissions/filesystem, never sync, so nothing is lost |
+
+### 11.1 OQ-3 — the linked-worktree decision (operator input required)
+
+The failure mode, precisely: in a linked worktree the runtime loads the worktree's own
+`.claude/workflows/` (absent post-landing, since bundles become untracked), while the drift check
+resolves the **main** worktree (AC-0.5) and reports its copies `in-sync`. A workflow invocation in
+the worktree fails **loudly** (no workflow found) — not silently stale — but the drift tooling
+points the operator at a green state that does not describe the tree the runtime reads.
+
+| | Option A — pull D-DIST-07 in now (what REQ BL-06's clause says) | Option B — defer D-DIST-07, mitigate (recommended) |
+|---|---|---|
+| Change | AC-0.5 re-scoped: each linked worktree is its own consumer — own `.claude/workflows/`, own sync manifest, own drift state; repo root = the worktree containing `$PWD` | AC-0.5 unchanged. Two mitigations: (1) ship a `.worktreeinclude` listing `.claude/workflows/` so worktrees Claude Code itself creates copy the untracked bundles (docs: `.worktreeinclude` applies to Claude-created worktrees only); (2) document plainly that a manual `git worktree add` tree is not a supported consumer until D-DIST-07 (row 6) |
+| Cost | Amends an **approved** REQ (AC-0.5, D-DIST-07's deferral row, §6 scope) — reopens Phase R for the delta, on the eve of implementation; grows the fixture matrix (per-worktree state × every classifier state) | A stated, loud residual: manual worktrees fail with "workflow not found" and the drift report does not explain why |
+| Risk profile | Correctness everywhere, at schedule + re-review risk | The feature's enemy is **silent staleness**; this residual is neither silent nor stale — it is loud absence |
+
+**Recommendation: B.** The REQ's clause was written when the failure mode was unknown; now
+measured, the failure is loud-absent, D-DIST-07 already has a queue-row home (row 6), and reopening
+an approved REQ for a non-silent edge contradicts the stopping rule's spirit. If the operator
+chooses A, §2.2, §0.3 and the REQ change together as one amendment.
 
 ## 12. Acceptance tests
 
