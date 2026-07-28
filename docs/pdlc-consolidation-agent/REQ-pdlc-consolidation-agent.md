@@ -1,6 +1,6 @@
 ---
 feature: pdlc-consolidation-agent
-ready: false
+ready: true
 depends-on: [pdlc-workflow-distribution, pdlc-advisory-tier]
 ---
 

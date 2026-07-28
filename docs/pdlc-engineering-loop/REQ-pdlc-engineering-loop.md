@@ -1,6 +1,6 @@
 ---
 feature: pdlc-engineering-loop
-ready: false
+ready: true
 depends-on: [pdlc-workflow-distribution, pdlc-merge-phase, pdlc-advisory-tier, pdlc-consolidation-agent]
 ---
 

@@ -1,6 +1,6 @@
 ---
 feature: pdlc-workflow-distribution
-ready: false
+ready: true
 depends-on: []
 ---
 
