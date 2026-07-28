@@ -15,9 +15,10 @@ depends-on: [pdlc-merge-phase]
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.0 | 2026-07-27 |
+| pdlc | draft | Claude | 1.1 | 2026-07-27 |
 
-> **Scope in one line.** A third model rung — the Fable 5 advisory tier — that takes the five
+> **Scope in one line.** A third model rung — the Fable 5 advisory tier (Opus as declared
+> fallback) — that takes the five
 > judgment seams where the pipeline currently halts and either resolves them inside a declared
 > envelope or escalates them with the analysis already done, never converting a blocking verdict
 > into a passing one.
@@ -62,14 +63,25 @@ halt currently conflates: *diagnosing* the problem, and *authorizing* the resolu
 
 - **AC-1.1** — Given the workflow configuration, Then a constant `MODEL_ADVISORY` selects the
   advisory model, alongside the existing `MODEL_DEFAULT`, `MODEL_IMPLEMENTATION` and `MODEL_QUEUE`.
-- **AC-1.2** — Given `MODEL_ADVISORY` is set to a value the runtime cannot resolve, Then the
-  pipeline **fails at startup** with an explicit model-resolution error. It does **not** silently
-  fall back to another model: a silent fallback makes the tiering untestable and makes a
-  misconfigured run indistinguishable from a correct one.
-- **AC-1.3** — Given the model value, Then it is a single configuration constant referenced by
-  every advisory dispatch site, so changing it is a one-line change rather than a search.
-- **AC-1.4** — Given `ADVISORY_ENABLED = false`, Then every seam reverts exactly to today's
-  behavior — skip or halt — and no advisory agent is dispatched.
+  Its shipped default is **Fable 5** (`claude-fable-5`) — Fable is the strongly recommended rung
+  for advisory work, because every seam is a judgment-under-evidence task rather than a
+  code-production task.
+- **AC-1.2** — Given a constant `MODEL_ADVISORY_FALLBACK` defaulting to Opus (`claude-opus-5`),
+  Then it is used **only** when `MODEL_ADVISORY` cannot be resolved by the runtime, and using it
+  is a declared, first-class outcome — never an implicit downgrade.
+- **AC-1.3** — Given the fallback is taken, Then the pipeline (a) emits an explicit
+  `ADVISORY_MODEL_FALLBACK` warning naming the unresolvable value and the substitute, (b) records
+  the substitution in the advisory record (REQ-ADV-09) and in the final report's advisory summary,
+  and (c) proceeds. A run on the fallback rung is therefore always distinguishable from a run on
+  the intended rung, which is what AC-1.2's "never implicit" is protecting.
+- **AC-1.4** — Given **neither** `MODEL_ADVISORY` nor `MODEL_ADVISORY_FALLBACK` resolves, Then the
+  pipeline **fails at startup** with an explicit model-resolution error and dispatches no advisory
+  agent. There is no third fallback and no silent revert to `MODEL_DEFAULT`.
+- **AC-1.5** — Given the model values, Then both are single configuration constants referenced by
+  every advisory dispatch site, so changing the rung is a one-line change rather than a search.
+- **AC-1.6** — Given `ADVISORY_ENABLED = false`, Then every seam reverts exactly to today's
+  behavior — skip or halt — no advisory agent is dispatched, and no model resolution is attempted
+  (so a missing Fable alias cannot break a run with the tier switched off).
 
 ### REQ-ADV-02 — The advisory contract
 
@@ -189,7 +201,8 @@ defect.
   artifact — distilled into LEARNINGS and deleted — exactly like `CROSS-REVIEW-*` and
   `CODE_REVIEW-*`.
 - **AC-9.4** — Given the final pipeline report, Then it carries an advisory summary: count of
-  invocations, count resolved, count escalated, by seam.
+  invocations, count resolved, count escalated, by seam, plus the **advisory model actually used**
+  and whether it was the configured rung or the AC-1.2 fallback.
 
 AC-9.3 and AC-9.4 together are what make the advisory tier improvable: the consolidation agent
 reads the harvested record and can see which seams escalate most, which is the signal for where
@@ -218,7 +231,8 @@ the envelope or the upstream phase needs work.
 
 ## 5. Scope
 
-**In scope:** the `MODEL_ADVISORY` rung with startup validation, the advisory verdict contract, the
+**In scope:** the `MODEL_ADVISORY` rung (Fable 5 default) with startup validation and the declared
+`MODEL_ADVISORY_FALLBACK` (Opus) substitution path, the advisory verdict contract, the
 configured envelope with in-code enforcement, the five seams A1–A5, the prohibitions, the advisory
 record, escalation output, tests.
 
@@ -229,9 +243,11 @@ record, escalation output, tests.
 
 - **BL-01** — **The Fable 5 model alias for the workflow runtime's `agent()` `model` option is
   unverified** (master plan OQ-E1). Existing constants use bare aliases (`"opus"`, `"sonnet"`,
-  `"haiku"`). AC-1.2 makes this a startup-validated configuration value precisely so an incorrect
-  alias fails loudly rather than silently downgrading the tier. Confirming the alias is the first
-  task of implementation.
+  `"haiku"`), so `MODEL_ADVISORY` may need `"fable"` rather than `"claude-fable-5"`. Confirming
+  the alias is the first task of implementation. This blocker is **non-fatal by construction**:
+  AC-1.2/AC-1.3 let the tier ship and run on the Opus fallback with the substitution declared,
+  while AC-1.4 keeps a wholly unresolvable configuration a loud startup failure. Fable remains the
+  intended rung; the fallback is a bridge, not the target state.
 - **BL-02** — `pdlc-merge-phase` delivered; seam A5's fix-and-re-poll loop and the merge phase's
   preconditions interact and must be built in that order.
 - **BL-03** — `gh` can retrieve failing job logs (`gh run view --log-failed`) in the consuming repo.
