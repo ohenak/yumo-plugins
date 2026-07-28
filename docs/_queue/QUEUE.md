@@ -31,23 +31,46 @@ release automation on `yumo-plugins` (`.github/` does not exist today, so `cd pd
 npm test` is the only automated verification surface). Same convention as row 6 — `blocked`, REQ
 not yet authored, present so the deferral is bound.
 
-Row 1 is `halted` per `docs/pdlc-workflow-distribution/POSTMORTEM-R-pdlc-workflow-distribution.md`
-(v2.1) R-0: Phase R hit the 5-iteration ceiling twice (REQ v3–v13, 24 cross-reviews) without dual
-approval. On 2026-07-28 the REQ was converged manually as v14.0 — product scope accepted per
-post-mortem R-1, specification-grade material moved to §10 downstream obligations per R-2. A human
-may set the row back to `pending` to re-enter the pipeline; note that `orchestrate-dev` will re-run
-Phase R (it has no approved-REQ skip), which is acceptable only because v14 is scoped to be
-approvable, and ideally after row 8 lands.
+Row 1 is `halted`, but **not for the original reason — Phase R is now resolved.** History: Phase R
+hit the 5-iteration ceiling twice (REQ v3–v13, 24 cross-reviews) without dual approval
+(`POSTMORTEM-R-pdlc-workflow-distribution.md` v2.1, R-0). On 2026-07-28 the REQ was rewritten as
+v14.0 at requirements altitude — product scope accepted per R-1, specification-grade material moved
+to §10 downstream obligations per R-2. The de-escalation worked: the next run converged in four
+rounds (v14→v17) with blocking findings descending 1H/1M → 1H/1M → 1H/1M → **0H/0M**, against the
+flat 8–10 band of the preceding ten rounds. **REQ v17.0 carries dual approval** — SE `e1a627f`, TE
+`a82365e`, both *Approved with minor changes*.
 
-Row 8 is the successor binding for post-mortem R-3/R-4: the review-loop harness dispatched a wrong
-iteration index eleven consecutive rounds (it must derive the index from the highest
-`CROSS-REVIEW-{role}-{doc}-v{N}` on the branch, and refuse to overwrite an existing review file),
-and the non-convergence exit is not terminal (on writing a POSTMORTEM the pipeline must set the
-queue row `halted` in the same commit, and must refuse to re-enter a phase whose unresolved
-POSTMORTEM exists on the branch, surfacing its Recommendation section at phase entry). Targets:
-`pdlc/workflows/orchestrate-dev.js` review loop + `pdlc/skills/orchestrate-dev/SKILL.md`, bundles
-rebuilt in the same commit. Same convention as rows 6–7 — `blocked`, REQ not yet authored. This row
-should be authored and landed before row 1 is un-halted.
+The current halt is Phase F, and it is infrastructure, not content: six `pm-author` attempts were
+each killed by the runtime stall watchdog mid-`Write`, producing no FSPEC (row 8, H-3). Re-entering
+today would also re-run all four approved Phase-R rounds (row 8, H-4). **Land row 8 before setting
+this row back to `pending`.**
+
+Row 8 binds four harness defects — the two from post-mortem R-3/R-4 plus two found during the
+2026-07-28 run. Its REQ **is authored** (v1.0, `ready: true`); the row stays `blocked` until a human
+sets it `pending`, which is the only thing standing between it and pickup.
+
+- **H-1 (R-3)** — the review loop dispatched a wrong iteration index eleven consecutive rounds. It
+  must derive the index from the highest `CROSS-REVIEW-{role}-{doc}-v{N}` on the branch and refuse
+  to overwrite an existing review file. Today `reviewLoop` always starts at 1 and does no directory
+  listing at all, so the review record survived only because reviewer agents overrode the
+  instruction.
+- **H-2 (R-4)** — the non-convergence exit is not terminal. On writing a POSTMORTEM the pipeline
+  must set the queue row `halted` **and commit it** (neither orchestrator does any git today), and
+  must refuse to re-enter a phase whose unresolved POSTMORTEM exists on the branch, surfacing its
+  Recommendation section at phase entry.
+- **H-3 (new)** — monolithic document authoring is unsurvivable under the runtime's 180 s
+  no-progress stall watchdog. Phase F of the 2026-07-28 run spent ~71 minutes and ~1.34 M subagent
+  tokens on six identical `pm-author` attempts, each killed mid-`Write`, producing zero bytes. The
+  watchdog is runtime-side and not configurable from this repo, so authoring must become
+  incremental and resumable, and a no-progress exhaustion must be reported as such.
+- **H-4 (new)** — there is no approved-phase skip. `REQ-pdlc-workflow-distribution` v17 carries dual
+  approval, yet re-entering the pipeline to reach Phase F would re-run all four Phase-R rounds
+  first, at Opus rates, risking a `needs revision` verdict on a settled document.
+
+Targets: `pdlc/workflows/orchestrate-dev.js`, `pdlc/workflows/orchestrate-queue.js`, both
+orchestrator SKILLs and the three author SKILLs; bundles rebuilt in the same commit. **This row
+should be landed before row 1 is un-halted** — three of the four full runs on this branch died to
+harness defects rather than to the work.
 
 ## Priority rationale (2026-07-27 — closing the engineering loop)
 
