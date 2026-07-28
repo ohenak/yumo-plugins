@@ -12,12 +12,12 @@ feature: pdlc-workflow-distribution
 | REQ §10 rows carried forward | O-1, O-3, O-7, O-9, O-10, O-11, O-12, O-16, O-17 → TSPEC/PROPERTIES; O-13 → `consolidate-learnings` |
 | Obligations **added** by this FSPEC | O-18 (backup-grammar round-trip + prune → PROPERTIES), O-19 (LLM-mediated `_readFile` seam → TSPEC/implementation, Cross-Feature), O-20 (OQ-6's reading, → PROPERTIES) — §10 |
 | Prerequisites | BL-01, BL-03, BL-06 are **"Before FSPEC"** and are **not discharged** — see §0.3 |
-| Cross-Reviews | `CROSS-REVIEW-software-engineer-FSPEC-v1.md`, `CROSS-REVIEW-test-engineer-FSPEC-v1.md` (disposed in the v2.0 note); `CROSS-REVIEW-software-engineer-FSPEC-v2.md`, `CROSS-REVIEW-test-engineer-FSPEC-v2.md` (disposed in the v3.0 note) |
+| Cross-Reviews | `CROSS-REVIEW-software-engineer-FSPEC-v1.md`, `CROSS-REVIEW-test-engineer-FSPEC-v1.md` (disposed in the v2.0 note); `CROSS-REVIEW-software-engineer-FSPEC-v2.md`, `CROSS-REVIEW-test-engineer-FSPEC-v2.md` (disposed in the v3.0 note); `CROSS-REVIEW-software-engineer-FSPEC-v3.md`, `CROSS-REVIEW-test-engineer-FSPEC-v3.md` (disposed in the v4.0 note) |
 | LEARNINGS | `docs/pdlc-workflow-distribution/LEARNINGS-pdlc-workflow-distribution.md` (Phase H) |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | **Draft** | Claude + operator | 3.0 | 2026-07-28 |
+| pdlc | **Draft** | Claude + operator | 4.0 | 2026-07-28 |
 
 > **Altitude.** The REQ is approved at product scope and states *observable behavior*. This FSPEC
 > states *how the behavior is produced*: the component inventory, the data formats, the algorithms
@@ -256,6 +256,115 @@ feature: pdlc-workflow-distribution
 >   fixture); AT-18 → AT-18a/AT-18b; AT-19, AT-20, AT-28, AT-29 (restated over a named root);
 >   AT-31 (`checkEnabled: true` pinned). **Added:** AT-33, AT-34, AT-35, AT-36.
 
+> **v4.0 — SE/TE cross-review round 3 (SE 0H/1M/4L, TE 0H/1M/5L). The closing pass: the one shared
+> Medium is resolved with a single rule applied at every named site, and *every* Low from both
+> reviews is fixed — nothing is deferred to a further round. No REQ text is amended. **No AT is
+> added and none is renumbered**; six existing ATs gain conjuncts. Finding ids are reviewer-qualified
+> throughout.**
+>
+> **Disposition by finding id.**
+>
+> - **SE F-22 ≡ TE F-33 (Medium) — v3.0's new post-copy verification left a *prior* sync-manifest
+>   entry in place, so the failed row measured `local-edit`, not the `unverified` six sites
+>   asserted.** **Fixed by the second of TE's three options — the failure branch now *removes* the
+>   row's pre-existing entry — and applied at every named site.** Both reviews derived the same
+>   trace: AT-35's Given is a `stale` row, `stale` *means* an entry exists (§3.3 rung 5), and
+>   "not written" does not remove it; step 7 then finds an entry, differing bytes and
+>   `sha1(consumer) ≠ consumerHash` ⇒ **`local-edit`**, whereupon the next run hands the operator
+>   W-4 — the one warning that refuses to recommend plain sync — for a truncation the tool caused.
+>   The controlling principles chose the rule: §4.5 already says a failed row write gets **no**
+>   sync-manifest entry, and §1.2 already says `consumerHash` is a provenance record of the bytes on
+>   disk — after a failed verification it provably describes nothing, so retaining it is retaining a
+>   **false** record, while removing it puts provenance-less differing bytes exactly where §1.2's
+>   own rules put them: **`unverified`** (§3.3 rung 4, §3.4 R-3). Sites updated to say one thing:
+>   **§5.5** (the verification block's failure branch, both affected bullets, plus the derivation and
+>   the SE Q-01 sub-decision), **§4.5** (the recordable-failure contract, since the removal changes
+>   it), **§1.2** (the worked trace, now in two parts — neither half alone yields `unverified`),
+>   **§3.4 R-3**, **§5.8** (the worked row and the exit-1 derivation), **§5.9** (AC-3.7's rewrite
+>   trigger), **§9 O-14**, and **AT-35** (whose Then now names *two* red directions, because exit 4
+>   is reached under both wrong implementations — the post-run state is the discriminating
+>   assertion).
+> - **SE Q-01 (answered inside the fix) — is the removal itself a governed write?** Yes, and it is
+>   stated: it happens at **§4.2 step 6**, inside the same single rewrite of the sync manifest that
+>   carries the passing rows' entries; it is **not** a §4.7 case (§4.7 guards operator content, and
+>   this destroys a tool-owned record whose subject no longer exists), so no backup is taken; and if
+>   that rewrite fails, `writeFailures` gains `{ path, sync-manifest-update }` and the **stated**
+>   consequence is that the surviving entry sends the row back to `local-edit` next run. That is a
+>   residual of an unwritable sync manifest, named rather than left for an implementer to find.
+> - **SE F-23 (Low) — §2.7 named three causes v3.0's own corrected rung table routes away from rung
+>   (i).** **Fixed, and the same defect is fixed in its twin.** §2.7's closing sentence now names the
+>   **unwritable-parent** case (§4.4 rung (i), AT-14b) — the only cause under which rung (i) lands —
+>   and states honestly what happens to the three it dropped (`ENOSPC`: preserved, but by rung (ii)'s
+>   fresh write; immutable and read-only mount: **not** preserved, the ladder reaches rung (iii)).
+>   §4.4's parallel "Honesty note on `checkEnabled`" carried the identical stale list and is
+>   corrected in the same terms.
+> - **SE F-24 (Low) — §5.5's unresolved-baseline bullet still asserted "still rewrite the drift
+>   state" unconditionally.** **Fixed:** the bullet gains the `repoRootUnresolved` carve-out and says
+>   why it is not a corner (every `repoRootUnresolved` run has an unresolved baseline).
+> - **SE F-25 (Low) — §5.5's verification block re-used §4.2's step numbers 4–7 with different
+>   meanings, and cross-referenced across the collision.** **Fixed:** the block is lettered
+>   **(a)–(d)**, its one outward reference now reads "§4.2 step 6", and a sentence states why the
+>   renumbering is load-bearing (§4.2's steps are the ordering vocabulary O-1/O-7's trace phases key
+>   to).
+> - **SE F-26 (Low) — two stale `AT-18` citations survived the AT-18a/AT-18b split.** **Fixed** in
+>   §4.6's inset and in §9 O-2's disposition cell, both now `AT-18b`, each noting that §12 has no
+>   AT-18.
+> - **SE Q-02 (routed, not re-engineered) — uid 0 bypasses the permission bits, so rung (i)'s only
+>   constructible cause vanishes on root runners.** **Routed to the existing policy, per REQ §10
+>   O-11** ("uid-0 runners skip example-based permission fixtures with a printed reason and named
+>   unverified invariants"): **O-11 gains AT-14b in its named inventory**, with the exact invariants
+>   its skip message must name — rung (i)'s preservation of `checkEnabled: false` and §6.2 row 2's
+>   opt-out reachability. AT-14b carries the same note. No new machinery, no new AT.
+> - **SE Q-03 (answered) — where does the throwing-`_readFile` ⇒ `blocked` assertion live?** In
+>   **O-19(d)'s unit test at this feature's call site**, not in PROPERTIES: PROPERTIES' D1–D8 duty is
+>   over *values* the validator receives (the mangled-relay fixtures of (b) are value-shaped), while
+>   a throw is a property of the injected transport. Stated in O-19 so the PROPERTIES author does not
+>   hunt for a row they cannot write.
+> - **TE F-34 (Low) — AT-15's parenthetical cited the superseded rung table.** **Fixed:** it now
+>   states that the corrected table sends `EACCES`-on-parent (writable file) to rung **(i)** — that
+>   is AT-14b's fixture — so an unwritable directory would not exercise rung (ii) at all, and only
+>   "parent unwritable **and** file unwritable" reaches rung (iii).
+> - **TE F-35 (Low) — the rung-(ii) `ENOSPC` row contradicted its own `unlink` argument, leaving
+>   O-5 possibly vacuous.** **Fixed by narrowing the claim honestly rather than restating it.** The
+>   finding is sound: `O_TRUNC` frees the file's blocks by the same mechanism `unlink` does, and rung
+>   (i) writes the strictly *smaller* unresolved record, so on a classic filesystem `ENOSPC` lands at
+>   rung **(i)** and rung (ii) has no cause. Rung (ii) **does** retain reachable causes, and they are
+>   now named: delayed allocation (ext4/XFS — the truncate succeeds, `ENOSPC` surfaces at writeback),
+>   COW with a snapshot pinning the extents (btrfs/ZFS/APFS — truncation frees nothing), and quota
+>   accounted at write. Row 2's condition, §4.4's prose, **§9 O-5's disposition** and **AT-15's
+>   Given** are all restated to that narrower claim, and AT-15's constructibility is re-grounded on
+>   the §4.6 fault seam (O-10) rather than on a real full disk, so it does not depend on the runner's
+>   filesystem regime.
+> - **TE F-36 (Low) — AT-33's Given lacked the JSON-tool conjunct.** **Fixed**, in AT-2's precedent
+>   wording, with the reason stated: `manifestEmpty` is E6 and is *indeterminate* under
+>   `jsonToolAbsent`, where `json-tool-absent` outranks it and the fixture would report the wrong
+>   reason.
+> - **TE F-37 (Low) — AT-34's `unverified` conjunct was not pinned, and its Given conflated two
+>   fixtures.** **Both fixed:** the Given now states the discriminating fact (the row's **consumer
+>   bytes differ from the plugin's**, since §3.3 evaluates `in-sync` at rung 3 before `unverified` at
+>   rung 4 and R-4/O-8 make equal bytes `in-sync` regardless of provenance), and "unreadable **or**
+>   malformed" is split into two separately-run fixtures with identical expectations so N-4's
+>   emission can fail independently for each. Kept as one AT — the behavior asserted is identical, so
+>   the AT-18a/AT-18b split's rationale (two exits, one pass/fail) does not apply.
+> - **TE F-38 (Low) — AT-19's Then was not stated over §7.3's set-valued oracle.** **Fixed:**
+>   `packagingViolations(liveRepoRoot) == ∅`, matching AT-22's shape and AT-29's counterpart, with
+>   the vacuity it closes named (an oracle returning `{}` for every root satisfied the old wording).
+>   The live-root write prohibition is retained as a second conjunct.
+> - **TE Q-01 (answered, §2.4 + §2.1) —** when `repoRootUnresolved` holds, E3's `<repoRoot>`-relative
+>   maintainer-marker branch is **not probed**; the empty string is never substituted, and resolution
+>   falls to the `${CLAUDE_PLUGIN_ROOT}` branch. §2.1's "E1 is independent of E2–E6" is refined to
+>   what it actually claims — free co-holding and determinacy — since E3 still returns a definite
+>   verdict and no probe is ever `indeterminate` on E1's account.
+> - **TE Q-02 (answered, AT-14b) —** the extra `artifact-copy`/`backup` `writeFailures` entries a
+>   sync run adds under the `r-x` directory are **expected**, do not defeat the assertions (row 2
+>   `proceed` outranks row 3), and hook/`--check` give the quietest form. Stated in AT-14b rather
+>   than narrowing its "any entrypoint" scope.
+> - **Changed acceptance tests:** AT-14b (uid-0 skip note + sync-run scoping note), AT-15 (Given
+>   re-grounded on the fault seam and the narrowed `ENOSPC` regime; parenthetical corrected), AT-19
+>   (Then restated as `== ∅`), AT-33 (JSON-tool conjunct), AT-34 (differing-bytes conjunct; two
+>   fixtures), AT-35 (pre-existing-entry removal; two red directions). **No AT added, none
+>   renumbered.**
+
 ## 0. Preliminaries
 
 ### 0.1 Naming used throughout
@@ -424,12 +533,24 @@ construction after a **verified** copy (§5.5 re-reads the written file and comp
 `pluginSha1`), but recording the written side is what makes `local-edit` detection correct if the
 consumer file is later edited.
 
-**A truncated copy never reaches this file.** Worked through, because v2 got the consequence wrong:
-if a truncated copy *were* recorded, `consumerHash` would be the hash of the truncation, so the next
-classification would find an entry, unequal bytes, and `sha1(consumer) == consumerHash` — i.e.
-**`stale`**, not `local-edit` and not `unverified`. That is why §5.5 verifies the copy *before*
-writing the entry: a copy that did not land gets **no** entry (AC-2.9(2)), the row stays
-`unverified`, and the run exits 4. See §4.2 and §5.8, which v2 had disagreeing on this case.
+**A truncated copy never reaches this file, and no *older* entry outlives one.** Worked through,
+because v2 got the consequence wrong once and v3.0 got it half right:
+
+- If a truncated copy *were* recorded, `consumerHash` would be the hash of the truncation, so the
+  next classification would find an entry, unequal bytes, and `sha1(consumer) == consumerHash` —
+  i.e. **`stale`**, not `local-edit` and not `unverified`. That is why §5.5 verifies the copy
+  *before* writing the entry: a copy that did not land gets **no** entry (AC-2.9(2)).
+- Declining to write the new entry is not sufficient on its own. The rows sync repairs are `stale`
+  (and, under `--force`, `local-edit`) — states that by §3.3 rung 5 **already have** an entry
+  recording the *pre-sync* bytes. Left in place, that entry makes the next classification find an
+  entry, unequal bytes and `sha1(consumer) ≠ consumerHash` ⇒ **`local-edit`**: the tool accusing the
+  operator of an edit the tool itself made. So §5.5's failure branch **also removes the row's
+  pre-existing entry** — the recorded `consumerHash` provably no longer describes the bytes on disk,
+  and a provenance record whose subject is gone is a false record, not a conservative one.
+
+With both halves the row has no entry at all, classifies **`unverified`** by §3.3 rung 4 — the
+correct reading of provenance-less differing bytes — and the run exits 4. See §4.2, §5.5, §5.8 and
+AT-35, which now agree on this case.
 
 ### 1.3 Drift state — `.claude/workflows/.pdlc-drift-state.json`
 
@@ -587,7 +708,11 @@ Three points about the dependencies, because they bound what the precedence can 
   determinate even when `jsonToolAbsent` holds. `manifestMalformed` and `manifestEmpty` are not.
 - **E1 is independent of E2–E6.** The consumer's repo root and the plugin's manifest are unrelated
   filesystem facts, so `repoRootUnresolved` genuinely co-holds with any of them. This is the pair
-  that made v1's ladder observably disagree with its own declared precedence.
+  that made v1's ladder observably disagree with its own declared precedence. Independence here
+  means **co-holding and determinacy**, not that E1's value is invisible to later probes: E3's
+  maintainer-marker branch is `<repoRoot>`-relative and is therefore not probed when
+  `repoRootUnresolved` holds (§2.4), but E3 still returns a definite verdict from its
+  `${CLAUDE_PLUGIN_ROOT}` branch, so no E2–E6 probe is ever `indeterminate` on E1's account.
 - **E1 no longer short-circuits, and the write guard moved with it.** v1 stopped at E1 on the
   argument that a run with no write target should not do further work. That argument is an
   efficiency claim, not a correctness one, and it cost the feature its declared precedence. The
@@ -706,6 +831,18 @@ else:
     set but not traversable   → plugin-root-unreadable
 ```
 
+**When `repoRootUnresolved` holds, the maintainer-marker branch is not probed at all** (TE Q-01):
+there is no `<repoRoot>` to make the path from, and E1 has no fallback value — the empty string is
+**not** substituted, so the probe is never `/pdlc/workflows/build-runtime.mjs`. Resolution falls
+directly to the `${CLAUDE_PLUGIN_ROOT}` branch. This is stated because it is the branch AT-33's
+fixture takes, and because materialising an unresolved component as `""` would both probe an
+absolute path outside the consumer and violate §2.1's no-write-target rule's premise. **E3 stays
+determinate and stays independent of E1 in §2.1's sense:** every `repoRootUnresolved` run still gets
+a definite `holds`/`does-not-hold` for `pluginRootUnset`/`pluginRootUnreadable` from the
+`${CLAUDE_PLUGIN_ROOT}` branch, so E3 is never `indeterminate` on E1's account and the two
+conditions still co-hold freely (§2.8 row 6). E1's evidence selects **which branch** E3 evaluates,
+nothing more.
+
 The maintainer branch is checked **first** so that a maintainer who happens to have the plugin
 installed still gets their working tree as the baseline — otherwise their own repo would report
 every row stale-or-worse forever and block the queue on itself (AC-0.3a rationale).
@@ -783,7 +920,12 @@ no Python interpreter, the queue is blocked and the only remediation is to insta
 remediation is exactly what AC-2.5a already names for `json-tool-absent`, it is announced on stderr
 at every drift computation, and it is a one-command fix on every platform Claude Code runs on. §4.4
 is corrected to match: rung (i) preserves a genuinely-`false` `checkEnabled` in the
-`ENOSPC`/immutable/read-only-mount cases, **not** in the `json-tool-absent` case.
+**unwritable-parent case** — §4.4's corrected rung table (v3.0) shows that is the one cause under
+which rung (i) actually lands, and **AT-14b** is its fixture — **not** in the `json-tool-absent`
+case. (v3.0 named `ENOSPC`/immutable/read-only-mount here; its own corrected table routes all three
+away from rung (i), to rungs (ii) and (iii) respectively. Under `ENOSPC` the `false` is preserved,
+but by rung (ii)'s fresh write, not by rung (i); under immutable and read-only mount it is not
+preserved at all — the ladder reaches rung (iii) and no record is written.)
 
 ### 2.8 Baseline reason precedence (AC-1.0, §4)
 
@@ -972,7 +1114,7 @@ or vice versa.
 |---|---|---|
 | R-1 | `stale` vs `local-edit` is discriminated **solely** by `sha1(consumer bytes) == syncManifest[id].consumerHash`. `pluginHash` is reporting-only and never enters a state decision | AC-1.1 |
 | R-2 | **mtime is never read.** Not for state, not for backup retention, not for tie-breaking. Byte-identical ⇒ `in-sync` regardless of timestamps | AC-1.3 |
-| R-3 | No sync-manifest entry ⇒ `unverified`, never `stale`, never `local-edit`. First adoption must be safe in both directions | AC-1.7 |
+| R-3 | No sync-manifest entry ⇒ `unverified`, never `stale`, never `local-edit`. First adoption must be safe in both directions. §5.5's failed-verification branch **removes** the row's entry precisely so this rule delivers `unverified` rather than `local-edit` on the run after a corrupted copy | AC-1.7 |
 | R-4 | Equal bytes classify `in-sync` **regardless of provenance** — a degraded sync manifest cannot turn a byte-identical row into `unverified` | AC-1.6, **O-8** |
 | R-5 | All four `unknown` reasons: never `in-sync`, never copied by sync, `--check` exit 3, queue `blocked` | AC-1.2 |
 | R-6 | A file in `.claude/workflows/` with no manifest row and in no `retires` is `not-managed`: never read for comparison, never overwritten, never deleted | AC-1.5, NFR-3 |
@@ -1058,7 +1200,10 @@ hook or under `--check`.
 5. sync only: retirement — re-classify each retiring  (§5.7)      ← pass 2: POST-COPY
               row, then backup and delete                           (retiring rows only)
 6. sync only: sync-manifest update for copied rows    (§1.2)
-              — only rows whose step-4 verification passed
+              — entries ONLY for rows whose step-4
+                verification passed; and any PRE-EXISTING
+                entry of a row that FAILED verification is
+                removed in this same rewrite  (§5.5)
 7. sync only: RE-CLASSIFY every row + re-probe        (§3)         ← pass 3: POST-RUN
               retired paths                                         — the recorded pass
 8. build the record                                   (§1.3)
@@ -1097,7 +1242,9 @@ bytes differ from the plugin; `sha1(consumer) == consumerHash`) — not `local-e
 `unverified`. A `stale` row in a sync run's own record means exit **1**, which §5.8 previously
 declared unreachable. That contradiction is closed at its source: **step 4 verifies every copy by
 re-read (§5.5) and step 6 writes a sync-manifest entry only for rows that passed**, so a corrupted
-copy produces no entry, stays `unverified`, and the run exits **4**. §5.8's exit-1 claim is
+copy produces no entry, stays `unverified`, and the run exits **4**. (v4.0 completes step 6's half:
+it also **removes** the pre-existing entry of any row that failed verification — without that, a
+`stale` row's prior entry survives and the row measures `local-edit` instead. §5.5, §1.2.) §5.8's exit-1 claim is
 correspondingly restated as a conditional resting on that verification. §3.1's classifier is pure and
 cheap (its hash-utility probe already happened once per run), so the extra passes cost at most two
 more hash invocations per row each.
@@ -1269,9 +1416,14 @@ run"; the operator's next action is a permissions/filesystem fix, and the same p
 **verbatim on stderr** by W-7, which has no serialisation constraint. Nothing is lost that the
 operator needs.
 
-**Honesty note on `checkEnabled` (see §2.7).** The rung preserves a genuinely-`false`
-`checkEnabled` in every case where a JSON tool exists and the config was read — `ENOSPC`/quota,
-immutable attribute, read-only mount, unwritable parent. It **cannot** preserve `false` under
+**Honesty note on `checkEnabled` (see §2.7).** The *ladder* preserves a genuinely-`false`
+`checkEnabled` wherever a JSON tool exists, the config was read, **and some rung lands**. Per the
+rung table below that is: rung **(i)** in the unwritable-parent case (the only cause under which
+rung (i) succeeds — **AT-14b**), and rung **(ii)**'s fresh write under `ENOSPC`/quota where the
+truncation credit does not apply. Under the immutable attribute, the append-only attribute, a
+directory at the path and a read-only mount the ladder reaches rung (iii) and **nothing is
+preserved**, because nothing is written — that is the AC-2.9(3) residual, not a preservation case.
+It **cannot** preserve `false` under
 `json-tool-absent`, because in that state AC-4.3's fail-closed rule already forced `true` before the
 ladder ran; there is no JSON-tool-free read of the config and this FSPEC does not invent one. v1
 called `checkEnabled` "the field the whole rung exists to preserve" while pointing at
@@ -1299,7 +1451,7 @@ failure (§4.3's sibling-temp + `mv`), which is what the ladder is entered from:
 | Cause of the §4.3 atomic-replace failure | Does rung (i)'s **in-place overwrite** succeed? | Does rung (ii)'s `unlink` succeed? | Rung that lands |
 |---|---|---|---|
 | **parent directory not writable (`EACCES`), the drift-state file itself writable** | **yes** — an in-place `open(O_WRONLY\|O_TRUNC)` of an *existing* file needs write permission on the **file**, not on its directory. Only §4.3's sibling **temp creation** needed the directory | not reached | **(i)** |
-| `ENOSPC` / quota exhausted | no — there is no space for the new bytes either | yes — `unlink` frees space and needs none | **(ii)** |
+| `ENOSPC` / quota exhausted, **on a filesystem where truncation does not free the needed space** — see the row note | no | yes — `unlink` frees space and needs none | **(ii)** |
 | immutable attribute (`chattr +i`, `uchg`) | no — `EPERM` | no — `EPERM` | (iii) |
 | append-only attribute | no — `EPERM` on `O_TRUNC` | no — `EPERM` | (iii) |
 | a **directory** at the path | no — `EISDIR` | no — `EISDIR`/`EPERM` on `unlink` | (iii) |
@@ -1315,10 +1467,32 @@ asymmetry rung (i) exists for: the atomic path needs the directory, the in-place
 **AT-14b is re-based on it**; AT-15 keeps `ENOSPC` in a writable directory and the two no longer
 collide.
 
-`ENOSPC`/quota remains the only ordinary path to rung (ii); the rest are rung-3 residual, derived the
-same way the read-only-mount case is. The implementation still *attempts* each rung unconditionally
-in order — probing the cause first would be a syscall race — but the spec states the reachability so
-that TSPEC does not attempt to build fixtures for unreachable variants.
+**Row 2 is narrowed in v4.0, because v3.0's justification contradicted itself (TE F-35).** v3.0
+credited rung (ii) with succeeding because "`unlink` frees space and needs none" while asserting
+rung (i) fails because "there is no space for the new bytes either" — but `open(O_WRONLY|O_TRUNC)`
+frees the file's blocks by the same mechanism `unlink` does, and the record rung (i) writes is the
+**unresolved** shape (`rows: []`, `retiredPresent: []`, two `null`s), strictly smaller than the
+resolved record it overwrites. On a classic filesystem with immediate block release and quota
+accounted at truncate, truncate-then-write-a-smaller-record therefore **succeeds** and rung (i)
+lands — leaving rung (ii) with no cause at all and O-5's disposition vacuous. Rung (ii) is
+nonetheless reachable, under the conditions where that credit does not apply, and those are the
+ordinary ones on the filesystems Claude Code runs on:
+
+- **Delayed allocation** (ext4's default, XFS): the truncate returns success and the `ENOSPC`
+  surfaces at writeback, so the write does not land even though the truncate appeared to.
+- **Copy-on-write with a snapshot pinning the old extents** (btrfs, ZFS, APFS): truncation frees
+  nothing, because the blocks are still referenced.
+- **Quota accounted at write rather than at truncate**, where the freed blocks are not credited back
+  to the writer in time.
+
+So rung (ii) is reachable, but its reachability is **narrower than "`ENOSPC`"** — it is `ENOSPC`
+*plus* one of the conditions above, and on a classic filesystem the same `ENOSPC` lands at rung (i).
+The rest of the table is rung-3 residual, derived the same way the read-only-mount case is. **AT-15
+is unaffected in constructibility**: like AT-14b/16/17/27/35 it drives the failure through the §4.6
+fault seam (O-10), not through a real full disk, so it pins the ladder's behavior without depending
+on which of these filesystem regimes the runner is on. The implementation still *attempts* each rung
+unconditionally in order — probing the cause first would be a syscall race — but the spec states the
+reachability so that TSPEC does not attempt to build fixtures for unreachable variants.
 
 If `unlink` succeeds, a fresh write is attempted; if **that** fails, the ladder falls to (iii).
 
@@ -1337,9 +1511,16 @@ Applies to the five recordable operations: `artifact-copy`, `backup`, `backup-ve
 ```
 the run CONTINUES to the next row                    (rows are independent, AC-1.4)
 that row's sync-manifest entry is NOT written
+  — and, for an artifact-copy failure over a row that HAD an entry,
+    that pre-existing entry is REMOVED at §4.2 step 6      (§5.5, §1.2)
 { path, operation } appended to writeFailures
 final exit 4;  queue blocks
 ```
+
+The removal clause is part of the recordable-failure contract, not an aside: without it a row whose
+copy failed leaves behind a `consumerHash` that no longer describes any bytes on disk, and the next
+run reads that stale provenance as an operator `local-edit` (§5.5's derivation). A failure of the
+removal write is itself recordable, as `{ path, sync-manifest-update }`.
 
 Write failure is a **run-level** outcome — deliberately not a fifth row reason (AC-2.9(2)), so
 `rows[].reason` stays the four-member closed set and "could not verify" stays distinct from "could
@@ -1404,8 +1585,9 @@ sole exception because AC-2.4 makes its exit 0 absolute.
 > (0–4)" on the argument that an unrecognised token "must not manufacture a 4". That argument
 > contradicts the plain text of an approved AC on a P0 requirement, and the REQ text is what TSPEC
 > and PROPERTIES will cite. The FSPEC does not amend an approved REQ; where it disagreed, it is the
-> FSPEC that changed. **AT-18 changes with it** — `--check` under an unrecognised token now exits
-> **4**, not 0.
+> FSPEC that changed. **AT-18b changes with it** — `--check` under an unrecognised token now exits
+> **4**, not 0. (The `--check` half of v2.0's AT-18 is **AT-18b** since the v3.0 split; §12 has no
+> AT-18.)
 
 Note that the drift computation still **runs** and its record is still written: "injects nothing"
 means the run is not perturbed, and only the process exit is pinned. So a `--check` whose tree is
@@ -1613,19 +1795,53 @@ the *copy* itself, so a silently corrupted copy was recorded as provenance-verif
 therefore ends with:
 
 ```
-4. mv temp → consumerPath                                  (atomic, as above)
-5. RE-READ consumerPath from disk and hash it
-6. compare to the row's pluginSha1 (equivalently, to sha1 of the source bytes)
-7. equal      → the copy stands; step 6 of §4.2 writes its sync-manifest entry
-                with consumerHash = that measured hash
-   not equal  → the copy is a FAILED write:
-                  no sync-manifest entry for this row       (AC-2.9(2))
-                  writeFailures gains { path, artifact-copy }
-                  the loop CONTINUES to the next row        (AC-1.4)
-                  the run exits 4
+(a) mv temp → consumerPath                                 (atomic, as above)
+(b) RE-READ consumerPath from disk and hash it
+(c) compare to the row's pluginSha1 (equivalently, to sha1 of the source bytes)
+(d) equal      → the copy stands; §4.2 step 6 writes its sync-manifest entry
+                 with consumerHash = that measured hash
+    not equal  → the copy is a FAILED write:
+                   no sync-manifest entry is written for this row   (AC-2.9(2))
+                   AND any PRE-EXISTING entry for this row is REMOVED — see below
+                   writeFailures gains { path, artifact-copy }
+                   the loop CONTINUES to the next row               (AC-1.4)
+                   the run exits 4
 ```
 
-Three things this pins deliberately:
+These four sub-steps are **lettered, not numbered** (SE F-25), because they live *inside* §4.2's
+step 4 and §4.2's numbering is the document's ordering vocabulary — §10 O-1/O-7 key their trace
+phases to it. v3.0 numbered them `4.`–`7.`, colliding with §4.2's steps 4–7, which mean something
+else entirely (copy loop / retirement / sync-manifest update / post-run pass), and its sub-step "7"
+pointed at §4.2's step **6**.
+
+**Why the failure branch *removes* the row's pre-existing entry, and not merely declines to write a
+new one (SE F-22 ≡ TE F-33).** "Not written" is not enough, and stating only that made six sites of
+v3.0 false. A row that sync attempts to repair is `stale` or (under `--force`) `local-edit` — and by
+§3.3 rung 5 a `stale` row *by definition* already has a sync-manifest entry `E` whose
+`E.consumerHash` is the hash of the **pre-sync** bytes. Declining to write leaves `E` byte-for-byte
+in place, so §4.2 step 7 finds an entry (rung 4 does not fire), bytes that differ from the plugin
+(rung 3 does not fire) and `sha1(consumer) ≠ E.consumerHash` (rung 5 does not fire) ⇒ the row
+measures **`local-edit`**. That is the worst available outcome: the next run's W-4 tells the operator
+they hand-edited a file the **tool** truncated, and W-4 is by construction the one warning that does
+*not* recommend plain sync. The controlling principle is §1.2's: `consumerHash` is a **provenance
+record of the bytes on disk**, and after a failed verification `E.consumerHash` provably no longer
+describes those bytes. Retaining it is retaining a false provenance record. Removing it puts the row
+where provenance-less differing bytes belong under §1.2's own rules — no entry ⇒ **`unverified`**
+(§3.3 rung 4, §3.4 R-3) — which is exactly what the tool knows: *these bytes came from somewhere I
+cannot vouch for.*
+
+**The removal is a sync-manifest write, and it is governed like one (SE Q-01).** It is performed by
+§4.2 **step 6** alongside the entries for rows that passed, in the same single rewrite of
+`.pdlc-sync-manifest.json` — not as a separate write per failed row. It is **not** a §4.7 case
+(§4.7 guards *destroying operator content*; this destroys a tool-owned provenance record whose
+subject no longer exists), so it takes no backup. If that rewrite itself fails, the failure is
+recorded exactly as any other: `writeFailures` gains `{ path, sync-manifest-update }`, the run still
+exits 4 (it already would), and the **stated consequence** is that the surviving entry sends the row
+back to `local-edit` on the next run — the one path back into the misclassification this clause
+exists to close. This is a residual of an unwritable sync manifest, not of the rule, and it is
+recorded here rather than left for an implementer to discover.
+
+Four things this pins deliberately:
 
 - **The `operation` stays `artifact-copy`.** §4.5's nine-member `operation` set is REQ §4's and is
   closed; a verification failure is a copy that did not land, not a tenth kind of failure.
@@ -1635,8 +1851,12 @@ Three things this pins deliberately:
   write. The operator's remediation is the backup, named by W-4/W-7.
 - **This is what keeps §5.8's exit-1 claim true.** Without it, an unverified truncated copy yields a
   sync-manifest entry over truncated bytes, §4.2 step 7 measures the row **`stale`**, and the sync
-  run exits **1** — see §1.2's worked trace and §5.8's restated claim. With it, the row has no
-  entry, measures `unverified`, and 4 dominates. **AT-35** is the fixture.
+  run exits **1** — see §1.2's worked trace and §5.8's restated claim. With it — writing no new entry
+  **and** removing the row's pre-existing one — the row has no entry, measures `unverified`, and 4
+  dominates. **AT-35** is the fixture.
+- **The removal is what makes `unverified` the true answer.** Suppressing only the *new* entry leaves
+  a `stale` row's prior entry in place and the row measures `local-edit`, as derived above. Both
+  halves are required; neither alone yields `unverified`.
 
 - **Never copied under any flag:** all four `unknown` reasons. `--force` overrides *provenance*
   doubt, never *verification* failure — forcing a copy over a row whose plugin side is unreadable
@@ -1648,11 +1868,16 @@ Three things this pins deliberately:
 - **Each copy is reported with both hashes** (AC-3.1).
 - **The sync manifest is updated per copied row** — and *only* per **verified**-copied row. A row
   whose copy failed **or whose copy failed verification** gets **no** sync-manifest entry
-  (AC-2.9(2)), which is what keeps a failed copy from later masquerading as `stale` instead of
-  `unverified`.
+  (AC-2.9(2)) **and has any pre-existing entry removed**, which is what keeps a failed copy from
+  later masquerading as `stale` (had the entry been written) or as the operator's own `local-edit`
+  (had a prior entry been left in place) instead of `unverified`.
 - **A failed copy does not abort the loop** (AC-3.1): `writeFailures` entry, continue, exit 4.
 - **Unresolved baseline:** copy nothing, retire nothing, print the manifest-level reason +
-  remediation, **still rewrite the drift state** (AC-2.7, AC-3.1).
+  remediation, **still rewrite the drift state** (AC-2.7, AC-3.1) — **unless the E1 evidence
+  `repoRootUnresolved` holds** (§2.1's no-write-target rule, §4.2 steps 3/9, §5.1 exception 1), in
+  which case **nothing at all is written**, including the drift state. Every `repoRootUnresolved`
+  run has an unresolved baseline, so this carve-out is not a corner: it is the case in which the
+  bullet's main clause would otherwise say the opposite of the normative rule.
 
 `sync-workflows.sh` is the **only** writer of managed artifacts into `.claude/workflows/`, in every
 repo including the maintainer's (AC-1.6). The maintainer green path is two commands: **build, then
@@ -1755,7 +1980,7 @@ Worked consequences, all normative:
 | sync copied a `stale` row; a second copy failed | `writeFailures` non-empty | **4** |
 | `--check` on a consumer with one `stale` row | unchanged | **1** |
 | `repoRootUnresolved` holds, `manifest-absent` reported (first release, outside a repo) | not evaluated; nothing written | **3** |
-| sync whose copy landed corrupted (§5.5's verification caught it) | that row `unverified`, `writeFailures` non-empty | **4** |
+| sync whose copy landed corrupted (§5.5's verification caught it: no new entry **and** the row's pre-existing entry removed) | that row `unverified`, `writeFailures` non-empty | **4** |
 
 **Exit `1` on a sync run is reachable only if §5.5's post-copy verification is absent or defeated —
 otherwise exit 1 belongs to `--check`.** The derivation, restated as a conditional because v2 stated
@@ -1770,7 +1995,9 @@ it as an unconditional and §4.2's own truncated-copy argument falsifies the unc
   the truncation; §4.2 step 7 then finds an entry, bytes differing from the plugin, and
   `sha1(consumer) == consumerHash` ⇒ **`stale`** — not `local-edit`, not `unverified` as §4.2
   claimed. A "fully successful" sync would end with a `stale` row in its own record and exit 1.
-  §5.5's verification closes that at 4.
+  §5.5's verification closes that at 4 — by writing no entry **and** removing the row's pre-existing
+  one, so the row measures `unverified` rather than `local-edit` (either way exit 4 dominates on the
+  failing run; the removal is what makes the *next* run's report honest).
 
 Two consequences for downstream, replacing v2's blanket instruction:
 
@@ -1810,7 +2037,10 @@ would strand every consumer at first adoption. The two seams optimise for opposi
 | AC-3.8 | **non-git tree with no `.claude/` anywhere** | `repoRootUnresolved` **holds**: `--check` exits **3**, the hook warns and exits 0, **nothing is created**, the queue blocks. This holds whichever reason is *reported* — if a higher-precedence condition co-holds (`manifest-absent` at first release, `manifest-empty`, `json-tool-absent`, `manifest-malformed`), W-1 names that reason, **N-8** additionally names the absent write target, and the write behavior is identical (§2.1's no-write-target rule, §4.2, §5.1). Remediation is one `mkdir .claude` (or `git init`) at the intended root |
 
 **AC-3.7's byte-identical clause** is why the sync manifest is only rewritten when at least one row
-was copied: an unconditional rewrite would change `syncedAtUtc` and break the property.
+was **verified-copied**, **or** at least one row's copy failed verification and its pre-existing
+entry must be removed (§5.5): an unconditional rewrite would change `syncedAtUtc` and break the
+property. The removal case does not disturb AC-3.7, which is a property of a **no-change re-sync** —
+a run in which nothing was copied and nothing failed — not of a run that failed a write.
 
 **Version-control caveat, stated:** a checkout or stash-pop that resurrects a retired, still-tracked
 file **is** an intervening change. The next sync legitimately retires it again, with a second
@@ -2394,12 +2624,12 @@ document should check these seven.
 
 | # | Obligation | Disposed in | Disposition |
 |---|---|---|---|
-| **O-2** | Unrecognised `PDLC_FAULT` must never make the hook exit non-zero; specify per-entrypoint behavior so NFR-6's "exactly two exceptions" stays true | **§4.6** | One stderr line (N-7), nothing injected, the drift computation still runs and still writes its record, and the exit is **AC-2.9(5)'s verbatim**: hook **0** unconditionally, `--check` and sync **4**. The run is not perturbed; only the process exit of the assertion surfaces is pinned. **v1 reinterpreted this AC as "the computed exit" and is corrected here — the FSPEC conforms to the approved REQ; AT-18 changed with it** |
+| **O-2** | Unrecognised `PDLC_FAULT` must never make the hook exit non-zero; specify per-entrypoint behavior so NFR-6's "exactly two exceptions" stays true | **§4.6** | One stderr line (N-7), nothing injected, the drift computation still runs and still writes its record, and the exit is **AC-2.9(5)'s verbatim**: hook **0** unconditionally, `--check` and sync **4**. The run is not perturbed; only the process exit of the assertion surfaces is pinned. **v1 reinterpreted this AC as "the computed exit" and is corrected here — the FSPEC conforms to the approved REQ; AT-18b changed with it** (the AT carrying the `--check` half since v3.0's AT-18a/AT-18b split; §12 has no AT-18) |
 | **O-4** | The `printf` invalidation emitter; `pluginVersion` emitted `null` unconditionally; mandate a `json-tool-absent` ladder test | **§4.4a, §4.4 rung (i)** | The emitter is defined as the serialiser of last resort with **two exhaustive triggers** (§4.4a): the ordinary record whenever `jsonToolAbsent` holds — which closes v1's gap, where no writer was specified for that state at all — and the rung-(i) invalidation record. Field-by-field table showing every interpolated value is closed-domain, with **`pluginVersion` *and* `syncCommand` emitted `null` unconditionally under *both* triggers** (v3.0: closing `syncCommand` under T1 too is what makes the closed-domain predicate true — under T1 `<pluginRoot>` resolves without a JSON tool, so the field would otherwise be an arbitrary path with no escaping rule); `writeFailures` filtered of the **four** stderr-only operations before interpolation; and a **decidable** escaping predicate for `writeFailures[].path` (printable-ASCII-only, else `"<unprintable>"` wholesale) that needs no UTF-8 validator. The mandated test is stated with **both** conjuncts (parses **and** AC-4.1's mapping reaches the unresolved outcome) as AT-14/AT-14b; construction is TSPEC's (O-10) |
-| **O-5** | Rung-2 reachability: only `ENOSPC`/quota reaches `unlink`; the rest are rung-3 residual | **§4.4 rung (ii)** | Seven-row table: cause of the §4.3 atomic-replace failure → does rung (i)'s **in-place overwrite** succeed → does `unlink` succeed → rung reached. v3.0 corrects the unwritable-parent row: an in-place `O_WRONLY\|O_TRUNC` needs write permission on the **file**, not the directory, so `EACCES` on the parent is the cause under which **rung (i) succeeds** — previously the table admitted no such cause at all, leaving O-4's mandated rung-(i) test and §6.2 row 2's reachability claim without a fixture, and putting AT-14b and AT-15 on the same Given with opposite Thens. `ENOSPC`/quota remains the only ordinary path to rung (ii). The implementation still *attempts* each rung unconditionally (probing the cause first would be a syscall race); the spec states reachability so TSPEC does not build fixtures for unreachable variants |
+| **O-5** | Rung-2 reachability: only `ENOSPC`/quota reaches `unlink`; the rest are rung-3 residual | **§4.4 rung (ii)** | Seven-row table: cause of the §4.3 atomic-replace failure → does rung (i)'s **in-place overwrite** succeed → does `unlink` succeed → rung reached. v3.0 corrects the unwritable-parent row: an in-place `O_WRONLY\|O_TRUNC` needs write permission on the **file**, not the directory, so `EACCES` on the parent is the cause under which **rung (i) succeeds** — previously the table admitted no such cause at all, leaving O-4's mandated rung-(i) test and §6.2 row 2's reachability claim without a fixture, and putting AT-14b and AT-15 on the same Given with opposite Thens. **v4.0 narrows row 2 honestly (TE F-35):** v3.0 credited rung (ii)'s `unlink` with freeing space while denying the same credit to rung (i)'s `O_TRUNC`, which frees blocks identically — and since rung (i) writes the strictly *smaller* unresolved record, a classic filesystem lands `ENOSPC` at rung **(i)**, leaving this disposition vacuous. Rung (ii)'s real reachability is `ENOSPC`/quota **plus** a regime in which truncation does not free the needed space — delayed allocation (ext4/XFS), COW with a snapshot pinning the extents (btrfs/ZFS/APFS), or quota accounted at write. That is stated rather than papered over, and AT-15 remains constructible because it drives the failure through the §4.6 fault seam (O-10) rather than a real full disk. The implementation still *attempts* each rung unconditionally (probing the cause first would be a syscall race); the spec states reachability so TSPEC does not build fixtures for unreachable variants |
 | **O-6** | A run failing both an artifact copy and the drift-state write must name the invalidated state | **§4.5** | Both lines emitted, **drift-state line first**, naming the state as not describing this run and directing to a permissions/filesystem fix rather than a sync. Ordering is normative because that line is the one that changes what the operator does next |
 | **O-8** | Degraded-provenance wording, verbatim | **§1.2, §3.4 R-4, §8.3 N-4** | Rows whose bytes **differ** are reported `unverified`; an **equal-bytes** row is `in-sync` regardless of provenance. Carried as a schema rule, a business rule, and the notice's wording |
-| **O-14** | `sync-workflows.sh`'s exit code = AC-3.3's table applied to the **post-run** state, with the mixed-run example | **§5.8** | Observation point stated per mode (`--check` changes nothing ⇒ pre == post); six worked rows including the mixed run (copied a `stale`, skipped an `unverified` ⇒ **2**), the no-write-target row (⇒ **3**) and the corrupted-copy row (⇒ **4**); and the derived consequence that **exit 1 on a sync run is reachable only if §5.5's post-copy verification is absent or defeated** — v3.0 weakens v2's unconditional claim, which §4.2's own truncated-copy argument falsified, and replaces "no test should construct it" with a two-part instruction: no test constructs exit 1 as a normal sync outcome (AT-35 constructs the corruption and asserts **4**), and an observed sync exit 1 is a diagnosis of skipped verification rather than a spec case |
+| **O-14** | `sync-workflows.sh`'s exit code = AC-3.3's table applied to the **post-run** state, with the mixed-run example | **§5.8** | Observation point stated per mode (`--check` changes nothing ⇒ pre == post); six worked rows including the mixed run (copied a `stale`, skipped an `unverified` ⇒ **2**), the no-write-target row (⇒ **3**) and the corrupted-copy row (⇒ **4**); and the derived consequence that **exit 1 on a sync run is reachable only if §5.5's post-copy verification is absent or defeated** — v3.0 weakens v2's unconditional claim, which §4.2's own truncated-copy argument falsified, and replaces "no test should construct it" with a two-part instruction: no test constructs exit 1 as a normal sync outcome (AT-35 constructs the corruption and asserts **4**), and an observed sync exit 1 is a diagnosis of skipped verification rather than a spec case. **v4.0 completes the failure branch:** a copy failing verification not only gets no new sync-manifest entry but has its **pre-existing** entry removed (§5.5, §1.2, §4.5), without which the corrupted row measures `local-edit` on the next run rather than `unverified` and the operator is handed W-4's refuse-to-sync guidance for a fault the tool caused |
 | **O-15** | Decide whether to add a monotonicity assertion to AC-6.6, and which comparator | **§7.4** | **Decided: no.** Three reasons — it would require the semver comparator REQ §4 forbids and AC-5.2's equality-only rule excludes; the advertised `version` is not this feature's to police, and AC-6.6's claim is change-detection, which a downgrade satisfies; and the real risk (colliding with a previously *published* version) belongs to the release checklist, the only surface that knows what was published. Recorded as a deliberate omission, with a pointer to D-DIST-06 if it is later wanted |
 
 ## 10. Obligations carried forward to TSPEC / PROPERTIES
@@ -2415,12 +2645,12 @@ document's reviewers must verify the disposition. A finding that one of these is
 | O-7 | TSPEC | The trace seam's delimiter and quoting; whether non-row probes (manifest, sync manifest, `pdlc.config.json` reads) are traced | §4.6 mandates existence; grammar is explicitly deferred |
 | O-9 | PROPERTIES | Classifier totality / single-valuedness / determinism over states, row reasons and baseline reasons, including both declared precedences. **Regenerate the axes; do not import v13's tables** (24 of 96 cells undefined) | §3.3's first-match ladder **is** the declared row-reason precedence, and §2.1 Phase 2 **is** the declared baseline-reason precedence, so both are observable and single-valuedness is structural; §2.8's worked table and §3.3's two consequences are starting fixtures; §3.6 names two determinism hazards (directory order, environment order/locale) |
 | O-10 | TSPEC | Write-failure test design: which failures are injectable, per-runner fixture requirements (uid-0 caveats), fail-open assertions per writer surface. v13's tests (a)–(f) are the starting inventory. **Additionally (new in v3.0): enumerate and close the `PDLC_FAULT` token set.** §4.6 declares the token vocabulary **closed at TSPEC** — TSPEC must list every token any C1/C2/C3 code path can emit, one token per distinct guard (O-3 already forces the git-guard/walk-guard split), and PROPERTIES asserts that the emitted set is a subset of the listed one. An open-ended token set makes every fault-observing oracle unfalsifiable, because an unexpected token is indistinguishable from a token the test simply had not heard of | §4.4/§4.5 give the contract; §4.4 rung (i) names the mandated `json-tool-absent` ladder test; §4.6 declares the closure and hands the enumeration to this row |
-| O-11 | TSPEC / PROPERTIES | Probe vocabulary and permission-fixture policy: uid-0 runners **skip with a printed reason and named unverified invariants** — never silently pass. Coverage floors live here | §3.2's six probes are the vocabulary's basis; §7.4 reuses the skip-loudly pattern |
+| O-11 | TSPEC / PROPERTIES | Probe vocabulary and permission-fixture policy: uid-0 runners **skip with a printed reason and named unverified invariants** — never silently pass. Coverage floors live here. **Named inventory (added in v4.0, SE Q-02): `AT-14b` is a uid-0 skip, and its skip message must name the invariants it leaves unverified — "rung (i)'s preservation of `checkEnabled: false` (§4.4, §2.7) and §6.2 row 2's reachability of the opt-out are unverified on this runner."** Root bypasses the permission bits entirely, so the atomic replace succeeds, the ladder is never entered, and rung (i)'s **only** constructible cause vanishes; a generic "permission fixture skipped" line would leave the reader unable to tell which claim went untested. This claim has now been unfalsifiable across two revisions for two different reasons, which is precisely why the skip must be specific rather than categorical | §3.2's six probes are the vocabulary's basis; §7.4 reuses the skip-loudly pattern; §4.4's rung table and AT-14b state the invariants this row must name |
 | O-12 | TSPEC | Bootstrap fixture construction (working-tree copy with mode bits, `git init` anchor, pinned `HOME`, `realpath` normalisation) and **both** mode-bit assertions (index and on-disk) | §7.5 item 4 and §7.6 state the requirement; §2.2 requires `realpath` normalisation for the `$HOME` guard |
 | O-16 | TSPEC | AC-6.6's skip-loudly branches: pin the **probe order** and the printed reason string for each of (a) empty `--porcelain`, (b) `git` absent, (c) no `.git`, (d) unborn `HEAD`, reusing O-11's vocabulary. Also pin the **untracked-addition** case as a positive (red) fixture. **The fixture root must be `git init`-ed and given at least one commit** — otherwise branch (d) fires and the red case is unreachable, i.e. the fixture accidentally tests the skip path it was meant to contrast with | §7.4 defines the oracle as `advertisedVersionViolation(root)` — **parameterised over a root**, exactly like `coveredViolations(root)` — precisely so a red fixture is constructible without touching the live repo; it states the four branches and why `git -C root status --porcelain -- pdlc/workflows/dist/` (not `git diff`) is required, which is the same reason the untracked fixture must exist |
 | O-17 | TSPEC | AC-6.4's pinned fixture tree reproducing the pre-landing layout for the five patterns and four exemption members; the expected 7 paths; and that live-root (`== ∅`) and fixture-root (`== 7`, exact paths, exemption list) are **separate test cases over separate roots**. The fixture root is built under the runner's temp area, never inside the live repo — §7.3's "no test may write into `pdlc/workflows/dist/`" rule is scoped to the **live** root for this reason | §7.3 defines the oracle as `packagingViolations(root) -> set of { clause, path, detail }`, parameterised over a root; §7.5 states the two-root structure and the exemption definitions verbatim |
 | **O-18** | PROPERTIES | **Backup filename grammar round-trip.** The grammar is a parameterisable component (id, stamp, `NN` in; a filename out; and a parse back), so it takes a property-based strategy rather than examples: `parse(format(id, stamp, NN)) == (id, stamp, NN)` over the **full M6 id charset** — including ids containing `.`, `-`, digits, and stamp-shaped substrings such as `dev.20260101T000000Z` — and, as a second property, that `LC_ALL=C` descending sort over a generated set of filenames for one id agrees with descending `(stamp, NN)` order. §1.4's fixed-24-byte-suffix parse is what makes both properties provable; v1's optional-suffix grammar made the second one false. **Third property (new in v3.0) — `prune` is bound, not merely described.** Over a generated directory containing backups for several ids plus decoy names, `prune(dir, knownIds)` (a) **keeps exactly the 5 greatest `(stamp, NN)` members per known id** — greatest under the second property's order, so keep-set membership is decidable without reading mtimes; (b) **removes exactly the remaining members of those ids and nothing else**; (c) is the **identity** on every name that does not match §1.4's pattern and on every matching name whose id is not in `knownIds`; and (d) is **idempotent** — `prune ∘ prune == prune`. Without (c) the "never touches a non-matching file" sentence in §5.6 has no oracle, and R-2's "mtime is never read" is unfalsifiable at the prune site, which is the one place an implementer is most tempted to reach for it | §1.4 gives the grammar, the parse rule, the injectivity argument and the exhaustion behavior; §5.6 states the newest-5-per-id rule, the `LC_ALL=C` descending selector and the never-touch-non-matching rule that clauses (a)–(c) formalise |
-| **O-19** | TSPEC / **implementation phase** (Cross-Feature) | **The LLM-mediated `_readFile` seam.** `runtime-adapter.js`'s `rtReadFile` is an `agent()` call pinned to `haiku`; the queue's drift-state read inherits it (§6.1). The implementation must (a) add **no** second agent-mediated read for this feature; (b) unit-test §6.2's D1–D8 shape validator against mangled-relay fixtures — fenced, re-wrapped, truncated, key-dropped, array-replaced-by-scalar, state-value-reworded — asserting `blocked` for each; (c) record the seam's mediation in `orchestrate-queue.js` where the read happens, so the next reader does not re-derive it. Byte-faithful hardening of the adapter itself is **not** this feature's change — every pdlc module's `_readFile` consumer shares the property — but it must be raised as a follow-up rather than absorbed silently | §6.1 states the seam, what the validator catches, and the one residual it cannot |
+| **O-19** | TSPEC / **implementation phase** (Cross-Feature) | **The LLM-mediated `_readFile` seam.** `runtime-adapter.js`'s `rtReadFile` is an `agent()` call pinned to `haiku`; the queue's drift-state read inherits it (§6.1). The implementation must (a) add **no** second agent-mediated read for this feature; (b) unit-test §6.2's D1–D8 shape validator against mangled-relay fixtures — fenced, re-wrapped, truncated, key-dropped, array-replaced-by-scalar, state-value-reworded — asserting `blocked` for each; (c) record the seam's mediation in `orchestrate-queue.js` where the read happens, so the next reader does not re-derive it. **Where the throw case is tested (v4.0, SE Q-03):** duty (d)'s throwing-`_readFile` ⇒ `blocked` assertion stays a **unit test at this feature's own call site**, not a PROPERTIES row. PROPERTIES' D1–D8 obligation is over *values* the validator receives — the mangled-relay fixtures of (b) are value-shaped and belong there — whereas a throw is a property of the injected transport, reachable only by substituting `_readFile` at the call site. D1's dependence on (d) is therefore a dependence on a unit-tested precondition, stated here so the PROPERTIES author does not go looking for a row they cannot write. Byte-faithful hardening of the adapter itself is **not** this feature's change — every pdlc module's `_readFile` consumer shares the property — but it must be raised as a follow-up rather than absorbed silently | §6.1 states the seam, what the validator catches, and the one residual it cannot |
 | **O-20** | PROPERTIES | **AC-2.6's measurement-time reading must be asserted, not assumed (OQ-6).** OQ-6 records that AC-2.6's two sentences cannot both be read literally over the same field set on a sync run, and §4.2 applies a reading: sentence (2) ("states observed before this run created anything") governs the pass the run **acts on** — the step-2 as-found pass — while a sync run's **record** carries the step-7 post-run pass, per sentence (1), AC-2.7 and AC-3.3. PROPERTIES must pin that reading with executable assertions, because it is the difference between a successful sync exiting `0` and exiting `1`: (a) after a successful plain sync over an all-`stale` consumer, the written `rows[].state` are the **post-run** states (`in-sync`), and the exit is `0` — the record does **not** replay the as-found `stale` states; (b) on a hook run and on a `--check` run the two readings coincide, so the recorded states equal the as-found states, and a test asserting that must not be mistaken for evidence about (a); (c) the copy/backup/delete decisions of the sync run are the ones the **as-found** pass produced, observable through O-1/O-7's `as-found` trace label rather than through the record. Without this row the reading lives only in FSPEC prose that the PROPERTIES author has no obligation to read | §4.2 states the behavior; §3's pass table names the three passes; §5.8 gives the exit-code consequence; OQ-6 (§11) states the tension and the invited REQ amendment, and routes ownership here rather than to a REQ revision that the stopping rule makes unreachable |
 | O-13 | `consolidate-learnings` | REQ-scope stopping rule → `docs/_constraints/DOMAIN-CONSTRAINTS.md`. **Neither `docs/_constraints/` nor `docs/_decisions/` exists on this branch** — the file must be **created**, not merged into; "no such file" does not discharge the row | Not FSPEC's; recorded so it is not lost |
 
@@ -2556,13 +2786,13 @@ a hash utility **skips loudly**, it does not silently pass). AT-14/AT-14b/AT-21 
 | AT-12 | operator | retired path present, R post-copy `in-sync` | sync | `p` backed up (id = retired basename), verified, then deleted; a one-line manual commit action printed if tracked |
 | AT-13 | operator | retired path present, R `unknown` | sync | `p` **left**, `retire-skipped` naming R's state |
 | AT-14 | operator | no JSON interpreter on `PATH`; **no pre-existing drift state** (first adoption) | hook | the §4.4a **T1** `printf` emitter writes the ordinary record through the normal path: it **parses**, carries `baselineStatus: "unresolved"`, `baselineReason: "json-tool-absent"`, `pluginVersion: null`, `syncCommand: null`, `checkEnabled: true` (forced — §2.7's stated residual), `rows: []`; **and §6.2's mapping over it yields `blocked` at row 4** naming the reason. Hook exit **0** — O-4, both conjuncts |
-| AT-14b | operator | a JSON tool **is** present; `.claude/pdlc.config.json` readable with `distribution.checkEnabled: false`; a drift state pre-exists at `.claude/workflows/.pdlc-drift-state.json` and **the file itself is writable**, but its parent `.claude/workflows/` is **not writable** (mode `r-x`) | any entrypoint | the atomic sibling-temp + `mv` replace fails (`EACCES` — creating the temp sibling needs write on the **directory**), so §4.4a **T2** fires; **rung (i) succeeds**, because in-place `open(O_WRONLY\|O_TRUNC)` needs write permission on the **file**, not on the directory (§4.4's rung table, corrected in v3.0). The record **parses**, carries `baselineReason: "drift-state-invalidated"`, `pluginVersion: null`, `syncCommand: null`, and **`checkEnabled: false`** — the falsifiable form of the preservation claim, red against an emitter that hard-codes `true`; §6.2's mapping over it yields **proceed** at row 2. The fixture is deliberately **not** `ENOSPC` any more: v2.0 gave AT-14b and AT-15 the same cause with different expected rungs, which no implementation can satisfy simultaneously |
-| AT-15 | operator | drift-state file exists in a **writable** directory; `ENOSPC` (or quota exhaustion) on the file write | any entrypoint | rung (i) attempted and fails, rung (ii) `unlink` succeeds, fresh write lands — O-5's only reachable rung-2 path. (The Given deliberately does **not** make the directory unwritable: §4.4's own reachability table sends `EACCES` on the parent to rung (iii), and a fresh write could not land there) |
+| AT-14b | operator | a JSON tool **is** present; `.claude/pdlc.config.json` readable with `distribution.checkEnabled: false`; a drift state pre-exists at `.claude/workflows/.pdlc-drift-state.json` and **the file itself is writable**, but its parent `.claude/workflows/` is **not writable** (mode `r-x`) | any entrypoint | the atomic sibling-temp + `mv` replace fails (`EACCES` — creating the temp sibling needs write on the **directory**), so §4.4a **T2** fires; **rung (i) succeeds**, because in-place `open(O_WRONLY\|O_TRUNC)` needs write permission on the **file**, not on the directory (§4.4's rung table, corrected in v3.0). The record **parses**, carries `baselineReason: "drift-state-invalidated"`, `pluginVersion: null`, `syncCommand: null`, and **`checkEnabled: false`** — the falsifiable form of the preservation claim, red against an emitter that hard-codes `true`; §6.2's mapping over it yields **proceed** at row 2. The fixture is deliberately **not** `ENOSPC` any more: v2.0 gave AT-14b and AT-15 the same cause with different expected rungs, which no implementation can satisfy simultaneously. **Two scoping notes (TE Q-02, SE Q-02).** (1) On a **sync** run the `r-x` directory also blocks every artifact copy, the backup directory and the sync-manifest write, so `writeFailures` additionally carries `artifact-copy`/`backup` entries; none of that defeats the assertions (§6.2 row 2 `proceed` outranks row 3), and the extra conjuncts are expected, not a fixture defect — hook and `--check` give the quietest form. (2) Under **uid 0** the permission bits are bypassed entirely, the atomic replace succeeds and the ladder is never entered, so this fixture is **unconstructible on a root runner**: it is one of O-11's named uid-0 skips (§10 O-11) and the skip message must name the invariant left unverified, not skip generically |
+| AT-15 | operator | drift-state file exists in a **writable** directory; `ENOSPC` (or quota exhaustion) **fault-injected via the §4.6 seam** on *both* the atomic replace and rung (i)'s in-place write — the regime §4.4 row 2 names (delayed allocation / COW / quota-at-write), where truncation does not free the needed space | any entrypoint | rung (i) attempted and fails, rung (ii) `unlink` succeeds, fresh write lands — O-5's rung-2 path. (The Given deliberately does **not** make the directory unwritable: §4.4's corrected table sends `EACCES`-on-parent **with a writable file** to rung **(i)** — that is AT-14b's fixture — so an unwritable directory would not exercise rung (ii) at all. Only "parent unwritable **and** file unwritable" reaches rung (iii), where no fresh write could land either) |
 | AT-16 | operator | drift-state file immutable | any entrypoint | rung (i) fails, rung (ii) `unlink` refused (`EPERM`), rung (iii): N-3 on stderr, `--check` exit **4**, hook exit **0** |
 | AT-17 | operator | a copy fails **and** the drift-state write fails | sync | both lines printed, **drift-state line first**, naming the invalidated state and a permissions fix — O-6 |
 | AT-18a | operator | `PDLC_FAULT=not-a-real-token`, everything else green | **hook** | N-7 printed exactly once, nothing injected, the green drift state still written, hook exit **0** — O-2 |
 | AT-18b | operator | the identical fixture and environment | **`--check`** | N-7 printed exactly once, the **same green record** written (byte-identical to AT-18a's, modulo the timestamp field), and exit **4** — AC-2.9(5) verbatim (v1 asserted 0 here). Split from AT-18 in v3.0 because one row asserting two entrypoints with two different exit codes cannot be reported as a single pass/fail, and the `--check` half is the one v1 got wrong |
-| AT-19 | jest | `liveRepoRoot`; the manifest and the packaged set under it | `npm test` | `packagingViolations(liveRepoRoot)` satisfies AC-6.2 (a)–(d); no test writes into **the live root's** `pdlc/workflows/dist/` (the rule is scoped to the live root — §7.3 — so AT-29's fixture root is unaffected) |
+| AT-19 | jest | `liveRepoRoot`; the manifest and the packaged set under it | `npm test` | `packagingViolations(liveRepoRoot) == ∅` — stated over the returned **set**, matching AT-22's shape and AT-29's `clause: "6.2(b)"` counterpart, because "satisfies AC-6.2 (a)–(d)" is a restatement of the clause list that an oracle returning `{}` for every root satisfies vacuously. Additionally: no test writes into **the live root's** `pdlc/workflows/dist/` (the rule is scoped to the live root — §7.3 — so AT-29's fixture root is unaffected) |
 | AT-20 | jest | a **fixture** root `fxRoot`, `git init`-ed with at least one commit (so AC-6.6's unborn-`HEAD` skip branch does not pre-empt the case), containing any `dist/` change and a `plugin.json` whose `version` == its value at `fxRoot`'s `HEAD` | `npm test` | `advertisedVersionViolation(fxRoot) == "red"` — including the untracked-only case (`??` lines), which `git diff HEAD` would miss. Constructible only because §7.4's oracle is parameterised over a root; a live-root-only oracle could not be driven red without dirtying the repo under test |
 | AT-21 | jest | `git` absent from `PATH` | `npm test` | AC-6.6 **skips loudly**, printing the reason and naming the unverified invariant — never a silent pass |
 | AT-22 | jest | live repo root, post-landing | `npm test` | `coveredViolations(liveRepoRoot) == ∅` |
@@ -2576,9 +2806,9 @@ a hash utility **skips loudly**, it does not silently pass). AT-14/AT-14b/AT-21 
 | **AT-30** | operator / jest | the emitted message catalogue rendered over S1, S2 and S3 (§8.2) | render each | `distinct(a,b)` holds **pairwise** within each set — not equal, and neither a substring of the other. Red against an implementation emitting one string for `stale` and `local-edit`, or reaching inequality only by appending an id — AC-2.3, AC-2.5, AC-2.5a |
 | **AT-31** | queue | two records, **both shape-valid under D1–D8 and both carrying `checkEnabled: true`** — so neither can be diverted to §6.2 row 1 (malformed) or row 2 (opt-out), and the row under test is the one actually exercised: (a) `writeFailures` non-empty, `baselineReason: "drift-state-invalidated"`, `syncCommand: null`; (b) `retiredPresent` non-empty and every row `in-sync` | queue invocation over each | first: `blocked` at §6.2 **row 3**, naming each `{path, operation}` **and** naming `drift-state-invalidated`, with a permissions/filesystem remediation and **no sync command**; the `syncCommand: null` fallback describes the shipped script rather than printing a fake path. second: `blocked` at **row 7** naming the retired path — §6.2 rows 3 and 7, §6.3 |
 | **AT-32** | operator | (a) `.claude/workflows/` exists but is not listable; (b) `distribution.checkEnabled: "false"` (the string) | any entrypoint | (a) N-6 printed **and every row's state is identical** to the same fixture with a listable directory — AC-0.6's "no row state changes"; (b) N-5 printed once and `checkEnabled` recorded **`true`** — §2.7's non-boolean row |
-| **AT-33** | operator, non-git tree (`repoRootUnresolved` **holds**) | the installed plugin ships a manifest that is **present, parseable and has zero rows**, so `manifestEmpty` also holds and, by §2.1 Phase 2, **outranks** `repoRootUnresolved` for reporting | `--check`, then the hook over the same fixture | the reported `baselineReason` is **`manifest-empty`** (not `repo-root-unresolved`) — *and yet* **nothing is created on disk**: no `.claude/`, no `.claude/workflows/`, no drift state, no sync manifest, no backup directory. **N-8** is printed (the reported reason is not `repo-root-unresolved`, so W-1 alone would leave the empty result unexplained), `writeFailures` is empty — suppression is not a write failure — and the exits are `--check` **3**, hook **0**. This is the AT that separates the *condition* from the *selected reason*: v2.0's §4.2/§5.1 keyed the no-write-target guard on the reason and would have created a directory here — SE F-14 ≡ TE F-16 |
-| **AT-34** | operator | repo root resolves, hash utility present, and the sync manifest at `.claude/workflows/.pdlc-sync-manifest.json` **exists but is unreadable or malformed** | `--check` | every row with no other distinguishing evidence classifies **`unverified`** (P6 ⇒ "no entry", §1.2) **and N-4 is printed once**, in O-8's wording, naming the manifest path and that it was treated as carrying no entries. Contrast case, asserted in the same test: with the sync manifest simply **absent**, the row states are **identical** but **no N-4 is printed** — absence is the ordinary first-sync condition, not an anomaly. Red against an implementation that emits N-4 in both cases or in neither, and it is the only AT covering N-4 |
-| **AT-35** | operator | hash utility present; one row `stale`; the copy is fault-injected to write a **truncated** prefix of the plugin bytes (a full-disk or interrupted-write simulation) | plain sync | §5.5's post-copy verification re-reads the copy, hashes it, and finds it ≠ `pluginSha1`: the row gets **no sync-manifest entry** (AC-2.9(2)), `writeFailures` gains `{ path, artifact-copy }`, the loop **continues** to the remaining rows (AC-1.4), and the run exits **4**. The post-run pass measures that row **`unverified`** — it has no sync-manifest entry to compare against, which is exactly what §1.2's "bytes written" rule implies. Red against an implementation that copies without re-reading: there the row would silently record a sync-manifest entry whose `consumerHash` is the truncated bytes, classify **`in-sync`** on the next run, and the corruption would be undetectable forever — SE F-18 / SE Q-02 |
+| **AT-33** | operator, non-git tree (`repoRootUnresolved` **holds**) | **a JSON tool is present** — required, and not implied by the file's shape: `manifestEmpty` is E6, established only through §2.3's helper, and §2.1 Phase 2 case 1 makes it **indeterminate** under `jsonToolAbsent`, where `json-tool-absent` outranks it and this fixture would report that instead (AT-2's Given sets the precedent). Given that, the installed plugin ships a manifest that is **present, parseable and has zero rows**, so `manifestEmpty` also holds and, by §2.1 Phase 2, **outranks** `repoRootUnresolved` for reporting | `--check`, then the hook over the same fixture | the reported `baselineReason` is **`manifest-empty`** (not `repo-root-unresolved`) — *and yet* **nothing is created on disk**: no `.claude/`, no `.claude/workflows/`, no drift state, no sync manifest, no backup directory. **N-8** is printed (the reported reason is not `repo-root-unresolved`, so W-1 alone would leave the empty result unexplained), `writeFailures` is empty — suppression is not a write failure — and the exits are `--check` **3**, hook **0**. This is the AT that separates the *condition* from the *selected reason*: v2.0's §4.2/§5.1 keyed the no-write-target guard on the reason and would have created a directory here — SE F-14 ≡ TE F-16 |
+| **AT-34** | operator | repo root resolves, hash utility present, one managed row whose **consumer bytes differ from the plugin's** (the discriminating fact: §3.3 evaluates `in-sync` at rung 3 **before** `unverified` at rung 4, and R-4/O-8 make equal bytes `in-sync` regardless of provenance, so a byte-identical row would classify `in-sync` under any sync-manifest degradation and defeat the assertion); the sync manifest at `.claude/workflows/.pdlc-sync-manifest.json` **exists but is unreadable** — and, as a **separately-run second fixture** with the same expectations, exists but is **malformed** (two fixtures, not one disjunctive row, so N-4's emission can fail independently for each; the AT-18a/AT-18b and AT-8a/AT-8b precedent, kept as one AT here because the expected behavior is identical) | `--check` | that row classifies **`unverified`** (P6 ⇒ "no entry", §1.2) **and N-4 is printed once**, in O-8's wording, naming the manifest path and that it was treated as carrying no entries. Contrast case, asserted in the same test: with the sync manifest simply **absent**, the row states are **identical** but **no N-4 is printed** — absence is the ordinary first-sync condition, not an anomaly. Red against an implementation that emits N-4 in both cases or in neither, and it is the only AT covering N-4 |
+| **AT-35** | operator | hash utility present; one row `stale` — so by §3.3 rung 5 a sync-manifest entry for it **already exists**, recording the pre-sync bytes; the copy is fault-injected to write a **truncated** prefix of the plugin bytes (a full-disk or interrupted-write simulation) | plain sync | §5.5's post-copy verification re-reads the copy, hashes it, and finds it ≠ `pluginSha1`: **no new** sync-manifest entry is written for the row (AC-2.9(2)) **and its pre-existing entry is removed** at §4.2 step 6, `writeFailures` gains `{ path, artifact-copy }`, the loop **continues** to the remaining rows (AC-1.4), and the run exits **4**. The post-run pass then measures that row **`unverified`** — it has no sync-manifest entry to compare against, because the run removed the one that no longer described the bytes on disk. **Two red directions, both required.** (i) Against an implementation that copies without re-reading: the row would silently record an entry whose `consumerHash` is the truncated bytes, classify **`in-sync`** on the next run, and the corruption would be undetectable forever (SE F-18 / SE Q-02). (ii) Against an implementation that verifies but only *declines* to write, leaving the prior entry: the row measures **`local-edit`**, and the next run's W-4 accuses the operator of an edit the tool made while refusing to recommend the repair (SE F-22 ≡ TE F-33). Assert the post-run state explicitly, not merely the exit code — exit 4 is reached under both wrong implementations |
 | **AT-36** | queue | a drift state that is **shape-valid under D1–D8 but omits the `syncCommand` key entirely** (an older C1, or the `printf` emitter of a build that predates the field), with `checkEnabled: false` and rows `stale` | queue invocation | the queue **proceeds**, at §6.2 **row 2** (the `checkEnabled` opt-out) — it is **not** blocked at row 1 as malformed. D8 reads an absent `syncCommand` as `null` (§6.2, §6.3), so the record parses, row 1 does not fire, and the opt-out that outranks every other blocking row takes effect. Red against a validator that makes an FSPEC-invented field a hard shape gate and thereby lets a schema addition silently revoke a consumer's opt-out — SE F-16 |
 
 ## 13. Traceability
