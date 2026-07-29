@@ -408,11 +408,165 @@ and after), not as "the run did not error".
 
 ## 4. Row-reason properties (AC-1.8(iv))
 
+The codomain is the closed four-member set with its own declared precedence (REQ §4, FSPEC §3.3):
+`hash-tool-absent` > `plugin-artifact-missing` > `plugin-artifact-unreadable` >
+`consumer-artifact-unreadable`. These properties are asserted on the **same records** §3's runs
+already produce — they cost no additional spawn (§1.4).
+
+**PROP-RSN-01 — Every `unknown` leaf carries its declared reason.**
+For each of L0–L5, `rows[i].reason` equals the reason §2.3 declares, and it is a member of the
+closed four-member set. *(Functional · Harness · E, L3/L4 E-skip · `driftClassify.test.js`)*
+
+**PROP-RSN-02 — `reason` is `null` exactly on non-`unknown` states.**
+Over every generated row of every property in this document:
+`row.reason === null ⟺ row.state !== "unknown"`. *(Contract · Harness · E ·
+`driftClassify.test.js`)*
+Stated as a **biconditional**, deliberately. AC-1.8(iv)'s wording is "`null` on non-`unknown`
+states"; the one-directional reading (`state !== unknown ⇒ reason === null`) is satisfied by an
+implementation that also nulls the reason on `unknown` rows, which silently deletes the entire
+remediation split AC-1.2 exists to create. The reverse direction is the load-bearing half.
+
+**PROP-RSN-03 — The row-reason ladder's order is the declared precedence.**
+For every adjacent pair, a row exists where both conditions hold and the higher reason is reported:
+*(Functional · Harness · E · `driftClassify.test.js`)*
+
+| Pair | Co-holding fixture | Expected |
+|---|---|---|
+| `hash-tool-absent` > `plugin-artifact-missing` | `A0 = absent` **and** the row's `pluginPath` deleted | `hash-tool-absent` |
+| `plugin-artifact-missing` > `plugin-artifact-unreadable` | `pluginPath` deleted **and** `PDLC_FAULT=plugin-artifact-read:<id>` armed for the same row | `plugin-artifact-missing` |
+| `plugin-artifact-unreadable` > `consumer-artifact-unreadable` | tokens 15 **and** 16 armed for the same row | `plugin-artifact-unreadable` |
+
+Row 1 is the fixture FSPEC §3.3 says v1 of the decision procedure got wrong — "the entirely ordinary
+machine with no `shasum` and a row whose `pluginPath` is absent". It is the single most valuable
+case in this section and it needs no root.
+
+**PROP-RSN-04 — Side attribution: the reason names the side that failed.**
+For every generated row where exactly one side is unreadable/undecidable, the reason's side matches
+the faulted side: plugin-side faults (L2, L3) ⇒ `plugin-artifact-unreadable`; consumer-side faults
+(L4, L5) ⇒ `consumer-artifact-unreadable`. *(Data Integrity · Harness · E, partial on uid-0 ·
+`driftClassify.test.js`)*
+FSPEC §3.3's footnote exists because v1 wrote `consumer-artifact-unreadable` on the plugin-side
+line. The four reasons exist precisely so remediations differ (AC-1.2), so a swapped attribution is
+green on every state assertion and sends the operator to `chmod` the wrong tree. Paired with TSPEC
+§14.1 M-1's remediation-class assertion, which checks the *message* the reason produces.
+
+**PROP-RSN-05 — Row reasons and baseline reasons are disjoint.**
+Over every record any property in this document produces: `rows[].reason` is never a member of the
+eight-member baseline set, `baselineReason` is never a member of the four-member row set, and no
+`rows[].reason` is non-null when `baselineStatus === "unresolved"` — because `rows` is `[]` there.
+*(Contract · Unit + Harness · E · `driftClassify.test.js`, `driftBaseline.test.js`)*
+AC-1.2's disjointness clause and FSPEC §3.3's closing rule. Asserted as a **cross-cutting invariant
+checked by the shared read-back helper**, so it holds over every record the whole suite writes
+rather than over a fixture chosen to demonstrate it.
+
+**PROP-RSN-06 — Reason determinism.**
+The determinism properties of §9 quantify over `(state, reason)` pairs, not states alone; a run
+whose states are stable while a reason flips is a red run. *(Idempotency · Harness · E ·
+`driftClassify.test.js`)* Stated as its own row because a comparison written over `rows[].state`
+only — the obvious first implementation of §9's comparison — would not catch it.
+
 ## 5. Baseline-resolution axes and properties (O-9, second half)
 
 ### 5.1 Evidence axes E1–E7 and determinacy
 
+The baseline is *evidence gathering* then *reason selection* (FSPEC §2.1), so the axes are the
+**evidence vector**, and the property is about the selector applied to it. Each probe is
+three-valued: `holds` · `does-not-hold` · `indeterminate`, and a probe is `indeterminate` **exactly
+when a probe it depends on did not succeed** — never for any other reason.
+
+| Axis | Probe | Values | Indeterminate when | Recipe (TSPEC §13.1) |
+|---|---|---|---|---|
+| **E1** | consumer repo root | `holds` (unresolved) · `does-not-hold` | never | `nonGitNoClaude`, `gitTreeBrokenProbe`, `nonGitClaudeAtHome`, `PDLC_FAULT=git-worktree-list`\|`walk-stat` |
+| **E2** | JSON utility absent | `holds` · `does-not-hold` | never | `makeToolDir` without `python3`/`python`/`python2` |
+| **E3** | `<pluginRoot>` | `ok` · `unset` · `unreadable` | never (E1 selects the *branch*, not the determinacy — FSPEC §2.4) | `pluginRootUnset`; `CLAUDE_PLUGIN_ROOT` at a file |
+| **E4** | manifest absent | `holds` · `does-not-hold` · `indeterminate` | `E3 ≠ ok` | `preManifestConsumer` |
+| **E5** | manifest malformed | `holds` · `does-not-hold` · `indeterminate` | `E2 = holds` or `E4` indeterminate | `manifestClauseBroken` (validator path), `manifestUnparseable` (helper `12`) |
+| **E6** | manifest empty | `holds` · `does-not-hold` · `indeterminate` | `E5` indeterminate | `emptyManifest` |
+| **E7** | `checkEnabled` | always determinate, fail-closed `true` | never | `optOutConsumer`, `nonBooleanConfig` |
+
+`drift-state-invalidated` is **not** an evidence axis: it is produced by §4.4 rung (i) *after*
+selection and replaces the selected reason (FSPEC §2.8). It is therefore generated as a separate
+one-dimensional axis over the ladder fault compositions (`ladderRungI`/`II`/`III`, TSPEC §13.3) and
+appears in PROP-BSL-04 as the top of the precedence.
+
+**The generated set is the determinate vectors, enumerated.** E4/E5/E6's `indeterminate` values are
+not drawn independently — they are *derived* from E2/E3 by the rules above, exactly as §2.1's tree
+derives its children. `enumerateEvidenceVectors()` returns the vectors that satisfy the determinacy
+rules; there are 14 reachable without constructing a second plugin tree, and they are the ones
+§1.4's budget accounts for. FSPEC §2.8's eight-row worked table is a subset of them and is asserted
+literally as well (PROP-BSL-06), so a regression that keeps the generator green while breaking the
+FSPEC's own worked example is still red.
+
 ### 5.2 Properties
+
+**PROP-BSL-01 — Totality: every determinate evidence vector selects exactly one outcome.**
+Over `enumerateEvidenceVectors()`, each run yields either `baselineStatus: "resolved"` with
+`baselineReason: null`, or `"unresolved"` with a `baselineReason` in the closed eight-member set —
+never a third shape, never an empty string, never a value outside the set. *(Contract · Harness ·
+E · `driftBaseline.test.js`)*
+
+**PROP-BSL-02 — `baselineReason` is `null` exactly when `resolved`.**
+`baselineReason === null ⟺ baselineStatus === "resolved"`. *(Contract · Harness · E ·
+`driftBaseline.test.js`)* AC-1.8(iv); same biconditional argument as PROP-RSN-02 (FSPEC §1.3's
+field rule states it in exactly this form).
+
+**PROP-BSL-03 — The selector is the declared precedence.**
+For every generated vector, the reported `baselineReason` equals the **highest-ranked condition that
+holds and is determinate**, under
+`drift-state-invalidated > manifest-empty > json-tool-absent > manifest-malformed > manifest-absent >
+repo-root-unresolved > plugin-root-unreadable > plugin-root-unset`. *(Functional · Harness · E ·
+`driftBaseline.test.js`)*
+The oracle is computed **in the test from the vector**, not looked up in a table copied from the
+FSPEC: `expected = precedence.find(c => vector[c] === "holds")`. A table copy drifts; a
+recomputation from the same declared list cannot. This is the property FSPEC §2.1's two-phase
+structure exists to make observable, and the pair that falsifies a short-circuiting ladder is
+`repoRootUnresolved` + `manifestEmpty` ⇒ `manifest-empty`.
+
+**PROP-BSL-04 — An `indeterminate` condition is never selected.**
+For every vector in which some condition is `indeterminate`, the reported reason is not that
+condition. *(Error Handling · Harness · E · `driftBaseline.test.js`)*
+The two dependency edges (E2→E5/E6, E3→E4) are both generated; the second is the one FSPEC §2.1
+argues separately, because its prerequisite ranks *lower* in the precedence and the ranking argument
+does not apply.
+
+**PROP-BSL-05 — Unresolved implies not-evaluated, uniformly.**
+For every vector selecting a reason: `rows === []` **and** `retiredPresent === []` — meaning "not
+evaluated", never "none present" — while `writeFailures` may be non-empty; and no run in this state
+reports a green outcome on any surface (hook silent, `--check` 0, queue proceed-silently are all
+absent). *(Error Handling · Harness · E · `driftBaseline.test.js`, `queueDriftGate.test.js`)*
+AC-0.3b, AC-1.0's "absence of evidence is never evidence of sync". The negative half is asserted
+positively: the hook's stderr carries the manifest-level warning (W-1) with the reason **captured
+and compared to the record's `baselineReason`**, so a run that warns with a *different* reason than
+it recorded is red.
+
+**PROP-BSL-06 — The no-write-target rule is keyed on evidence, not on selection.**
+For every vector in which `E1 = holds` — **regardless of which reason was selected** — nothing is
+created under the fixture root: no `.claude/`, no `.claude/workflows/`, no drift state, no sync
+manifest, no backup directory; `writeFailures` is `[]`; `--check` and sync exit **3** and the hook
+exits **0**; and N-8 is printed exactly when the *reported* reason is not `repo-root-unresolved`.
+*(Error Handling · Integration · E · `driftRepoRoot.test.js`)*
+This is FSPEC §2.8's third and fourth columns quantified. It is the property that catches the v2.0
+defect the FSPEC records: a guard keyed on the *reason* creates a directory on the
+`repoRootUnresolved` + `manifestEmpty` vector — the vector that is **ordinary at first release**.
+The filesystem-emptiness half uses TSPEC §8.3's `assertTreeUnchanged` (`.git/`-scoped per TE F-12);
+AT-33 is the named example this generalises.
+
+**PROP-BSL-07 — Baseline resolution precedes row classification, always.**
+For every generated vector, the trace contains a `manifest-read` record and it precedes every
+`classify` record; and when the baseline is unresolved there are **no** `classify` records at all.
+*(Contract · Harness · E · `driftOrdering.test.js`)*
+AC-1.0's ordering clause, expressed on the seam TSPEC §4.2 already provides. The second conjunct is
+the falsifiable half — an implementation that classifies first and discards the result satisfies
+every field assertion in §5.2 and violates AC-1.0.
+
+**PROP-BSL-08 — `checkEnabled` is resolved on every path, including unresolved ones.**
+For every generated vector, the record carries a boolean `checkEnabled`; it is `false` only when the
+config parses with an explicit boolean `false`, and `true` in all five degraded cases (key absent,
+file absent, unreadable, malformed, non-boolean) with N-5 printed exactly once in the last three.
+*(Error Handling · Harness · E · `driftBaseline.test.js`)*
+AC-4.3's fail-closed rule as a total function over the config axis; the `manifest-absent` vector is
+included explicitly, because that is the vector on which the documented opt-out has to stay
+reachable at rollout (AC-0.3b, TSPEC §14.1 B-3/B-4).
 
 ## 6. Backup filename grammar properties (O-18)
 
