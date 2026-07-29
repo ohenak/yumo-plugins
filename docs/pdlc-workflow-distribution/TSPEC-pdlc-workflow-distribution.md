@@ -1050,13 +1050,14 @@ on a root CI container.
 | `drift-state-replace` | no | ✅ | ✅ | `drift-state-replace` | `.claude/workflows/` `r-x` | AT-14b, AT-15, AT-16, AT-17 |
 | `drift-state-invalidate` | no | ✅ | ✅ | `drift-state-invalidate` | drift-state file `r--` | AT-15, AT-16 |
 | `drift-state-unlink` | no | ✅ | ⚠️ | `drift-state-unlink` | immutable attr — **not portable** | AT-16 |
-| `artifact-copy` | **yes** | ✅ | ✅ | `artifact-copy`, `artifact-copy-corrupt` | consumer file `r--` | AT-35, §6.3 |
+| `artifact-copy` | **yes** | ✅ | ✅ | `artifact-copy`, `artifact-copy-corrupt` | **`.claude/workflows/` `r-x`** (the *parent*, never the target file's mode — see note 4) | AT-35, §6.3 |
 | `backup` | **yes** | ✅ | ✅ | `backup` | `.pdlc-backups/` `r-x` | §6.3 |
 | `backup-verify` | **yes** | ✅ | ❌ | `backup-corrupt` | — none: a permission bit cannot make a *landed* backup differ | **AT-27** |
 | `retire-delete` | **yes** | ✅ | ✅ | `retire-delete` | `.claude/workflows/` `r-x` | §6.3 |
-| `sync-manifest-update` | **yes** | ✅ | ✅ | `sync-manifest-update` | sync-manifest file `r--` | §6.4 |
+| `sync-manifest-update` | **yes** | ✅ | ✅ | `sync-manifest-update` | **`.claude/workflows/` `r-x`** (the *parent* — note 4) | §6.4 |
+| *(row-read guards — not `operation` values; listed for completeness)* `plugin-artifact-read` / `consumer-artifact-read` | n/a — they produce a row **reason**, not a write failure | ✅ | ✅ | tokens 15/16 (§5.2) | artifact `chmod 0200` | §7.1 P1–P4; §1.4's row-reason floor |
 
-Three readings of this table that matter:
+Four readings of this table that matter:
 
 1. **`backup-verify` has no permission form at all.** Its failure is "the backup was written and did
    not land" — a filesystem lie, not an access decision. `chmod` cannot produce it, a full disk
@@ -1071,6 +1072,17 @@ Three readings of this table that matter:
 3. **Every ✅-F row has an F-only test that runs on every runner**, and the P column is used only for
    the corroborating fixtures §7.3 names. No AT depends solely on P except AT-14b and AT-32(a),
    which is precisely §1.3's uid-0 inventory.
+4. **The `artifact-copy` and `sync-manifest-update` permission cells name the *parent directory*,
+   not the target file (corrected in v2.0 — TE F-06).** v1.0 named "consumer file `r--`" and
+   "sync-manifest file `r--`". Both writes are temp-file-plus-`mv` whole-file replaces (§5.5 step
+   (a), "**before** the `mv`"; §4.2 step 6, "a **whole-file replace**"), and `rename(2)` consults
+   the **directory's** permissions and never the target file's mode — so a fixture built from
+   either v1.0 cell produces a *successful* write and `expectFailOpen()` over it fails for the
+   wrong reason, or gets "fixed" by weakening the assertion. The correct permission form for both
+   is an unwritable **parent** (`.claude/workflows/` `r-x`), which is the same construction AT-14b
+   already uses; note 3 means these cells were unused at v1.0, which is exactly why a wrong cell
+   would have been believed rather than exercised. The **F** column is unaffected and remains the
+   primary form for both.
 
 ### 6.2 Per-runner fixture requirements and the uid-0 caveat
 
@@ -1093,15 +1105,24 @@ two forms assert the same Then over the same tree; only the cause differs. Concr
 | AT-16 | `PDLC_FAULT=drift-state-replace,drift-state-invalidate,drift-state-unlink` | *(none — see §6.1 note 2)* |
 | AT-27 | `PDLC_FAULT=backup-corrupt` | *(none — see §6.1 note 1)* |
 | AT-34 | `PDLC_FAULT=sync-manifest-read` | sync manifest mode `000` |
+| `plugin-artifact-unreadable` (§7.1 P2) | `PDLC_FAULT=plugin-artifact-read:<rowId>` (token 15) | plugin artifact `chmod 0200` |
+| `consumer-artifact-unreadable` (§7.1 P4) | `PDLC_FAULT=consumer-artifact-read:<rowId>` (token 16) | consumer artifact `chmod 0200` |
 | AT-14b | *(none — the fixture **is** the permission asymmetry)* | `.claude/workflows/` `r-x`, drift-state file `rw-` |
 | AT-32(a) | *(none — no enumeration fault token, §5.2)* | `.claude/workflows/` `-wx` |
 
-§1.3's named inventory lists AT-14b, AT-16, AT-27, AT-32(a), AT-34 because those are the ATs whose
-**fixture** is permission-constructed. This table refines that: AT-16, AT-27 and AT-34 lose nothing
-on a root runner because their primary form runs there; **AT-14b and AT-32(a) are the two genuine
-holes**, and the skip messages for those two are the only record that the invariant went unverified.
-That is the distinction §1.3's closing paragraph makes, and §7.3's skip strings say it in the words
-an operator reads.
+§1.3's named inventory lists AT-14b, AT-16, AT-27, AT-32(a), AT-34 and the two `*-artifact-unreadable`
+row reasons because those are the cases whose **fixture** is permission-constructed. This table
+refines that: AT-16, AT-27, AT-34 and both row reasons lose nothing on a root runner because their
+primary form runs there; **AT-14b and AT-32(a) are the two genuine holes**, and the skip messages for
+those two are the only record that the invariant went unverified. That is the distinction §1.3's
+closing paragraph makes, and §7.3's skip strings say it in the words an operator reads.
+
+**This claim is only true after v2.0's tokens 15/16 (TE F-03).** At v1.0 the "every other permission
+fixture has an F twin" premise was false for §7.1's P2 and P4, and R-2 repeated it. The premise is
+restored by making it true rather than by narrowing the claim, because the alternative — a
+capability-aware row-reason floor — would have turned §1.4's strongest meta-oracle into a
+conditional one on exactly the runner (root, i.e. a container) where a maintainer is least likely to
+read a skip line.
 
 **The one thing a fault twin does not corroborate**, stated so no reviewer has to find it: AT-14b's
 subject is that an in-place `O_WRONLY|O_TRUNC` needs write permission on the **file** and not on the
@@ -1252,7 +1273,8 @@ Three construction notes:
 ## 7. Probe vocabulary and permission-fixture policy (O-11)
 
 §1.3 states the `describeOrSkip`/`itOrSkip` contract and §1.4 the coverage floors. This section
-gives the probe → fixture mapping those two depend on, and pins the printed strings.
+gives the probe → fixture mapping those two depend on, pins the printed strings, and (§7.4, new in
+v2.0) states the **remediation-content** assertions the message floors are computed from.
 
 ### 7.1 Probe vocabulary — FSPEC §3.2's six probes as fixture recipes
 
@@ -1262,18 +1284,28 @@ fault fixture, never an ordinary tree.
 
 | Probe | `yes` | `no` (definite) | `indeterminate` | Yields |
 |---|---|---|---|---|
-| P1 plugin artifact exists | file present | file absent, ancestors traversable | `chmod 0600` on `workflows/dist/` (**P**), or `PDLC_FAULT=manifest-read` for the read form (**F**) | `plugin-artifact-missing` / `plugin-artifact-unreadable` |
-| P2 plugin artifact readable | mode `r--` | `chmod 0200` on the artifact (**P**) | — | `plugin-artifact-unreadable` |
-| P3 consumer artifact exists | file present | absent, `.claude/workflows/` traversable | `.claude/workflows/` mode `0600` (**P**) | `missing` / `consumer-artifact-unreadable` |
-| P4 consumer artifact readable | mode `r--` | `chmod 0200` on the consumer file (**P**) | — | `consumer-artifact-unreadable` |
+| P1 plugin artifact exists | file present | file absent, ancestors traversable | `chmod 0600` on `workflows/dist/` (**P**) — the directory is unsearchable, so existence is undecidable; **F**: `PDLC_FAULT=plugin-artifact-read:<rowId>` (token 15) | `plugin-artifact-missing` / `plugin-artifact-unreadable` |
+| P2 plugin artifact readable | mode `r--` | — | `chmod 0200` on the artifact (**P**), or `PDLC_FAULT=plugin-artifact-read:<rowId>` (**F**, token 15) | `plugin-artifact-unreadable` |
+| P3 consumer artifact exists | file present | absent, `.claude/workflows/` traversable | `.claude/workflows/` mode `0600` (**P**); **F**: `PDLC_FAULT=consumer-artifact-read:<rowId>` (token 16) | `missing` / `consumer-artifact-unreadable` |
+| P4 consumer artifact readable | mode `r--` | — | `chmod 0200` on the consumer file (**P**), or `PDLC_FAULT=consumer-artifact-read:<rowId>` (**F**, token 16) | `consumer-artifact-unreadable` |
 | P5 sha1 | hash tool present | — | `makeToolDir` omits `shasum`/`sha1sum`/`openssl` (**F-equivalent, no root needed**) | `hash-tool-absent` |
 | P6 sync-manifest entry | entry present | no entry | unreadable/malformed ⇒ **treated as `no`**, §1.2 | `unverified` |
 
+**Two corrections in v2.0 (TE F-03).** (1) v1.0's P1 row named `PDLC_FAULT=manifest-read` as the F
+escape. That is wrong: token 3 faults **E4's read of the distribution manifest** (§5.2) and yields
+the *baseline* reason `plugin-root-unreadable` — a different failure at a different site from the
+*row* reason `plugin-artifact-unreadable`. (2) v1.0 marked P2 and P4 **(P)**-only, and §5.2's
+fourteen tokens contained no per-artifact read guard, so two of the four `unknown` row reasons were
+unconstructible on a root runner while §1.4's row-reason floor asserts set-equality over all four.
+Tokens 15/16 close both.
+
 **P5's recipe needs no permission bit and no root**, which is why the row-reason floor's
 highest-precedence member (`hash-tool-absent`, §3.3 rung 1) is the one reason that never skips.
-P1–P4's `indeterminate` and definite-`no`-by-permission recipes are the `unknown` cases that carry
-§1.3's `itOrSkip("uid-nonroot", …)` guard; each names, as its unverified invariant, the specific
-row reason it was to have produced.
+After the correction, **none** of the four row reasons skips: P1's definite-`no` and P5 are ordinary
+fixtures, and P1–P4's `indeterminate` recipes all have an F form. The **permission** recipes remain
+in the inventory as the *corroborating* forms (§6.2's rule), each carrying
+`itOrSkip("uid-nonroot", …)` and naming, as its unverified invariant, the specific row reason it was
+to have produced — §1.3's inventory lists the two.
 
 **`hash-tool-absent` is all-or-nothing** (FSPEC §3.3's second consequence), so the fixture builder
 refuses to construct a per-row variant: `makeConsumerTree` throws if a spec asks for
@@ -1287,22 +1319,43 @@ an ad-hoc regex:
 
 ```js
 export const MESSAGES = {
-  "W-1": /^pdlc: workflow drift check could not run — (?<reason>[a-z-]+)\./m,
-  "W-4": /^pdlc: (?<id>\S+) was edited locally after its last sync\./m,
+  // Every warning that carries a remediation captures it WHOLE, to end of line (§7.4).
+  "W-1": /^pdlc: workflow drift check could not run — (?<reason>[a-z-]+)\. (?<remediation>.*)$/m,
+  "W-2": /^pdlc: (?<id>\S+) could not be verified — (?<reason>[a-z-]+)\. (?<remediation>.*)$/m,
+  "W-3": /^pdlc: (?<id>\S+) differs from the plugin's copy .*\(--force required\): (?<cmd>.*)$/m,
+  "W-4": /^pdlc: (?<id>\S+) was edited locally after its last sync\. .*backing it up to (?<backupDir>\S+): (?<cmd>.*)$/m,
+  "W-5": /^pdlc: (?<id>\S+) is (?<state>stale|missing)\. Run: (?<cmd>.*)$/m,
+  "W-6": /^pdlc: retired-present — (?<path>\S+) is superseded by (?<id>\S+) \((?<state>[a-z-]+)\)\. (?<remediation>.*)$/m,
+  "W-7": /^pdlc: could not write (?<path>.+) \((?<operation>[a-z-]+)\)$/m,
   "N-3": /^pdlc: drift state is not writable at (?<path>.+);/m,
   "N-4": /^pdlc: sync manifest at (?<path>.+) is (?<kind>unreadable|malformed);/m,
+  "N-5": /^pdlc: (?<path>.+) could not be read for distribution\.checkEnabled;/m,
   "N-6": /^pdlc: could not list (?<dir>.+);/m,
   "N-7": /^pdlc: unrecognised PDLC_FAULT token "(?<token>[^"]*)";/m,
   "N-8": /^pdlc: no write target — the consumer repo root did not resolve,/m,
-  …  // W-2, W-3, W-5, W-6, W-7, N-5
 };
-export function countOf(stderr, id) -> number      // §5.4 conjunct 1 uses this
+export function countOf(stderr, id) -> number             // §5.4 conjunct 1 uses this
+export function remediationOf(stderr, id) -> string       // the `remediation` or `cmd` capture, trimmed
+export function allOf(stderr, id) -> RegExpMatchArray[]   // every occurrence, for per-row warnings
 ```
 
-Two rules: the matchers are **anchored** (`^pdlc: `) so a message quoted inside another message
-cannot satisfy them, and every matcher is **capture-bearing**, so an assertion reads the reason /
-path / token out of the line rather than asserting a substring that also matches a differently-worded
-line. AT-30's distinctness predicate (§14) runs over the *rendered* messages, not over these
+Three rules. The matchers are **anchored** (`^pdlc: `) so a message quoted inside another message
+cannot satisfy them; every matcher is **capture-bearing**, so an assertion reads the reason / path /
+token out of the line rather than asserting a substring that also matches a differently-worded line;
+and — new in v2.0, PM F-02 — **every remediation-bearing message captures its remediation text to
+end of line**, in a named group (`remediation`, or `cmd` where the shape is a bare command).
+
+**Why the third rule was missing and why it is load-bearing.** v1.0's patterns all terminated at the
+first `;`/`.` and captured only `reason`/`id`/`path`/`kind`/`token` — **no matcher reached a command
+string**, and the word "remediation" did not occur in the document. Since §7.2 also makes `MESSAGES`
+the only sanctioned route to stderr ("no test greps stderr with an ad-hoc regex"), AC-2.1's third
+conjunct ("the row `id`, the state, **and the exact remediation command**") and every
+`<pluginRoot>`-expansion clause (AC-0.4, AC-2.5a, AC-2.8, AC-4.2) were unassertable **by
+construction**. The whole operator-facing payoff — AC-4.2's "the operator's next turn is one command,
+not an investigation" — could regress to an unexpanded `${CLAUDE_PLUGIN_ROOT}/…` literal or a wrong
+flag with the suite green. §7.4 states what the captured text must satisfy.
+
+AT-30's distinctness predicate (§14) runs over the *rendered* messages, not over these
 patterns — the patterns are how a test finds a line, `distinct()` is what the line must satisfy.
 
 ### 7.3 The printed skip strings
@@ -1322,6 +1375,88 @@ supplies those lists for the five named ATs; every other `itOrSkip` call site su
 the helper **throws** when the list is empty — the rule is enforced by the runner, not by review.
 
 ---
+
+### 7.4 Remediation-content assertions (AC-2.1, AC-2.5, AC-2.5a, AC-2.8, AC-0.4, AC-4.2)
+
+New in v2.0 (PM F-02, PM F-06). `distinct()` (AT-30) proves the remediation strings *differ*; it is
+satisfied by four differently-worded but uniformly **wrong** remediations. These assertions say what
+each one must *be*. They are stated as **classes** plus a small number of literal conjuncts, so
+incidental rephrasing (FSPEC §8's stated latitude) does not break them but a wrong repair path does.
+
+```js
+// __tests__/helpers/driftMessages.js
+export const CLASSES = {
+  sync:        { mustName: [SYNC_CMD], mustNotName: [] },
+  forceSync:   { mustName: [SYNC_CMD, "--force"], mustNotName: [] },
+  pluginUpdate:{ mustName: ["update the plugin"], mustNotName: [SYNC_CMD, "--force"] },
+  permissions: { mustName: [],  mustNotName: [SYNC_CMD, "--force", "update the plugin"] },
+  environment: { mustName: [],  mustNotName: [SYNC_CMD, "--force", "update the plugin"] },
+};
+export function expectRemediationClass(text, className, extraConjuncts) { … }
+```
+
+`SYNC_CMD` is the run's **expected expanded** sync invocation, computed by the test from the fixture's
+`pluginRoot` — never a substring like `"sync"`, which "resyncing" would satisfy. Every class also
+asserts the universal §8.1 conventions: the line starts `pdlc: `, and it **never** contains a manual
+`rm`/`delete` recommendation (AC-2.8's absolute rule).
+
+**AC-2.5 — the four row reasons → their remediation class** (floor: all four):
+
+| Row reason | Class | The regression it catches |
+|---|---|---|
+| `hash-tool-absent` | `environment` — install a hash utility | a sync recommendation; sync cannot install `shasum` |
+| `plugin-artifact-missing` | `pluginUpdate` | a sync recommendation; the *plugin* is missing the file, copying it is impossible |
+| `plugin-artifact-unreadable` | `permissions` | **either** a sync **or** a plugin update — AC-2.5 names this case explicitly ("the `*-unreadable` reasons get a permissions fix — not a sync, not a plugin update") |
+| `consumer-artifact-unreadable` | `permissions` | same |
+
+Reached via `MESSAGES["W-2"]`'s `reason` + `remediation` captures on a run whose rows carry each
+reason (the §7.1 recipes, F forms). The `mustNotName` half is the operative one: it is what makes
+this a *pairing* assertion rather than a second distinctness test.
+
+**AC-2.8 — R's state → the retired-present remediation** (floor: all six, FSPEC §5.3's table):
+
+| R's state | Class | Extra conjuncts |
+|---|---|---|
+| `in-sync` | `sync` | the primary, rollout-universal case; `cmd` is `SYNC_CMD` with **no** `--force` |
+| `stale` | `sync` | same |
+| `missing` | `sync` | same |
+| `local-edit` | `forceSync` | names the backup **directory**; names **both** filename **patterns** (R's bundle and the retired basename) **each labelled**; contains **no concrete filename** — asserted as "no substring matching `-\d{2}\.bak$`", since the concrete name depends on a timestamp that does not exist yet |
+| `unverified` | `forceSync` | same |
+| `unknown` | `pluginUpdate` **or** `environment` | **`mustNotName: [SYNC_CMD]`** — AC-2.8 says "sync is not named", and this is the branch where a wrong remediation destroys nothing but wastes the operator's whole next turn |
+
+Reached via `MESSAGES["W-6"]`'s `state` + `remediation` captures over the `retiredPresent` fixture,
+one run per state of R (`setRowState` supplies all six, §3.3). This is the floor v1.0 lacked
+entirely: §14 exercised exactly two of the six (AT-11 `in-sync`, AT-13 `unknown`).
+
+**AC-2.5a — the eight baseline reasons → their remediation class** (floor: all eight), from FSPEC
+§5.2's table, reached via `MESSAGES["W-1"]` — except `drift-state-invalidated`, whose only rendering
+site is §6.3's Manifest-level line (FSPEC §8.2's S3 note), asserted there:
+
+| Baseline reason | Class |
+|---|---|
+| `manifest-absent`, `manifest-malformed`, `manifest-empty` | `pluginUpdate` — and `mustNotName: [SYNC_CMD]`, FSPEC §8.1 |
+| `plugin-root-unset` | `environment` |
+| `plugin-root-unreadable` | `environment` (deliberately generic — asserted as *not* naming a specific fix) |
+| `repo-root-unresolved` | `environment` — names `.claude/` and "git work tree" |
+| `json-tool-absent` | `environment` — names a Python interpreter |
+| `drift-state-invalidated` | `permissions` — and `mustNotName: [SYNC_CMD]`, FSPEC §8.1 and AC-4.2 |
+
+**The `syncCommand` expansion assertion (AC-0.4, AC-4.2; floor: ≥ 1 positive).** v1.0 asserted
+`syncCommand` only negatively or shape-wise — `null` in AT-14/AT-14b, `42 ⇒ D8` and
+`delete syncCommand ⇒ ok` in §12.1 — and never that a resolved baseline carries the expanded
+invocation. AT-24 (§9.2) is the one place in the suite where a **fully-resolved** record exists, so
+the positive assertion lands there:
+
+```js
+expect(record.syncCommand).toBe(join(root, "pdlc/hooks/scripts/sync-workflows.sh"));
+```
+
+**String equality, not `toContain`** — the failure being guarded is a literal
+`${CLAUDE_PLUGIN_ROOT}/hooks/scripts/sync-workflows.sh` reaching the operator, and `toContain` on
+the tail passes against exactly that. Two companions in the same test: the string contains no `$`
+and no `{`, and `W-5`'s `cmd` capture from the same run is **byte-equal to `syncCommand`** — the
+queue prints the record's field (FSPEC §6.3) and the hook prints its own expansion, so a divergence
+between the two is a real operator-visible defect and nothing else in the suite would see it.
 
 ## 8. Repo-root resolution — the non-git fixture and its oracle (O-3)
 
