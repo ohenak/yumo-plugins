@@ -21,8 +21,13 @@ const WORKFLOWS = resolve(HERE, "..");
 const REPO_ROOT = resolve(WORKFLOWS, "..", "..");
 const BUNDLES = ["orchestrate-queue.bundle.js", "orchestrate-dev.bundle.js"];
 
-const read = (file) =>
-  readFileSync(resolve(REPO_ROOT, ".claude", "workflows", file), "utf8");
+// Sole output directory per AC-6.1 / TSPEC §2.3 point 1 — T-14 moves build-runtime.mjs's
+// OUT_DIR here. Until then, every read below fails with ENOENT: that is the batch-2
+// RED-terminal state this file is deliberately left in (PLAN T-05).
+const DIST = resolve(WORKFLOWS, "dist");
+const MANIFEST_PATH = resolve(DIST, "distribution-manifest.json");
+
+const read = (file) => readFileSync(resolve(DIST, file), "utf8");
 
 describe("stripModuleSyntax", () => {
   it("drops static import statements", () => {
@@ -81,5 +86,16 @@ describe("bundle freshness", () => {
       cwd: REPO_ROOT,
       stdio: "pipe",
     });
+  });
+
+  it.each(BUNDLES)("keeps %s under pdlc/workflows/dist/ — the sole output directory (AC-6.1)", (file) => {
+    // Fails with ENOENT until T-14 moves build-runtime.mjs's OUT_DIR to dist/.
+    expect(() => readFileSync(resolve(DIST, file), "utf8")).not.toThrow();
+  });
+
+  it("keeps distribution-manifest.json in dist/ as a --check subject (TSPEC §2.3 point 3)", () => {
+    // Fails with ENOENT until T-14 emits the manifest; once it exists, --check above must
+    // also treat it as a freshness subject (that behavior lives in build-runtime.mjs, T-14).
+    expect(() => readFileSync(MANIFEST_PATH, "utf8")).not.toThrow();
   });
 });
