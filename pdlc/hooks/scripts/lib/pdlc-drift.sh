@@ -435,6 +435,597 @@ pdlc_prune_backups() {
 # `pdlc_resolve_check_enabled`, `pdlc_resolve_baseline`.
 # ─────────────────────────────────────────────────────────────────────────────────────────────
 
+# Generic TAB/US splitter shared by this layer's row-population code below (distinct from
+# `_pdlc_fault_split_commas` above, which is hardcoded to `,` and belongs to layer 1). Manual
+# prefix-stripping — not `IFS=... read -a` — so empty fields survive (bash 3.2, same technique
+# as `bin/lib-probe.sh`'s `split_tab_fields`). Result lands in the global `_PDLC_SPLIT_RESULT`
+# array.
+_pdlc_split_on() {
+  local sep="$1" remaining="$2"
+  _PDLC_SPLIT_RESULT=()
+  while [[ "$remaining" == *"$sep"* ]]; do
+    _PDLC_SPLIT_RESULT+=("${remaining%%"$sep"*}")
+    remaining="${remaining#*"$sep"}"
+  done
+  _PDLC_SPLIT_RESULT+=("$remaining")
+}
+
+# pdlc_resolve_repo_root — FSPEC §2.2/AC-0.5. Step 1: git's main-worktree, via
+# `git worktree list --porcelain`'s first record — NEVER falls through to step 2 on any git-side
+# failure (a wrong root is worse than a refusal). Step 2 (only when git itself is absent or the
+# cwd is not inside any git work tree): an ancestor walk from `$PWD` looking for a `.claude/`
+# directory, stopping (not descending into, and not itself accepted as a match) at `$HOME` and at
+# `/`. Either step's candidate is rejected outright if it normalises to `$HOME` or to `/`
+# (`realpath`-style normalisation via the `cd ... && pwd -P` builtin idiom — no external
+# `realpath`/`dirname` binary is assumed to exist on PATH). Honors `PDLC_FAULT` tokens
+# `git-worktree-list` (step 1) and `walk-stat` (step 2), one per guard (T-32/O-3).
+pdlc_resolve_repo_root() {
+  PDLC_REPO_ROOT=""
+  local candidate=""
+
+  if command -v git >/dev/null 2>&1 && git rev-parse --git-dir >/dev/null 2>&1; then
+    if pdlc_fault_active "git-worktree-list"; then
+      return 1
+    fi
+
+    local worktreeList
+    worktreeList="$(git worktree list --porcelain 2>/dev/null)" || return 1
+
+    local line firstWorktree=""
+    while IFS= read -r line; do
+      case "$line" in
+        "worktree "*)
+          firstWorktree="${line#worktree }"
+          break
+          ;;
+      esac
+    done <<<"$worktreeList"
+
+    [[ -z "$firstWorktree" ]] && return 1
+
+    local candidateNorm
+    candidateNorm="$(cd "$firstWorktree" 2>/dev/null && pwd -P)" || return 1
+    [[ -d "$candidateNorm" && -x "$candidateNorm" ]] || return 1
+
+    local isBare
+    isBare="$(git -C "$candidateNorm" rev-parse --is-bare-repository 2>/dev/null)" || return 1
+    [[ "$isBare" == "false" ]] || return 1
+
+    local topLevel topLevelNorm
+    topLevel="$(git -C "$candidateNorm" rev-parse --show-toplevel 2>/dev/null)" || return 1
+    topLevelNorm="$(cd "$topLevel" 2>/dev/null && pwd -P)" || return 1
+    [[ "$candidateNorm" == "$topLevelNorm" ]] || return 1
+
+    candidate="$candidateNorm"
+  else
+    if pdlc_fault_active "walk-stat"; then
+      return 1
+    fi
+
+    local dir
+    dir="$(pwd -P)"
+    local homeNorm=""
+    homeNorm="$(cd "${HOME:-/}" 2>/dev/null && pwd -P)" || homeNorm=""
+
+    while true; do
+      [[ -n "$homeNorm" && "$dir" == "$homeNorm" ]] && break
+      [[ "$dir" == "/" ]] && break
+      if [[ -d "${dir}/.claude" ]]; then
+        candidate="$dir"
+        break
+      fi
+      local parent="${dir%/*}"
+      [[ -z "$parent" ]] && parent="/"
+      dir="$parent"
+    done
+  fi
+
+  [[ -z "$candidate" ]] && return 1
+
+  local homeNorm2=""
+  homeNorm2="$(cd "${HOME:-/}" 2>/dev/null && pwd -P)" || homeNorm2=""
+  if [[ "$candidate" == "$homeNorm2" || "$candidate" == "/" ]]; then
+    return 1
+  fi
+
+  PDLC_REPO_ROOT="$candidate"
+  return 0
+}
+
+# pdlc_resolve_plugin_root — FSPEC §2.4 (AC-0.3/AC-0.3a/AC-0.4). Checks the maintainer marker
+# (`<repoRoot>/pdlc/workflows/build-runtime.mjs`) FIRST — but only when `PDLC_REPO_ROOT` is
+# non-empty; when repo-root resolution failed (empty `PDLC_REPO_ROOT`), the marker branch is
+# skipped entirely (never probed against an empty-string path), falling straight through to the
+# `${CLAUDE_PLUGIN_ROOT}` branch, which stays independently determinate. `CLAUDE_PLUGIN_ROOT` is
+# consulted verbatim — never enumerated, sorted, or version-compared.
+pdlc_resolve_plugin_root() {
+  PDLC_PLUGIN_ROOT=""
+  PDLC_PLUGIN_ROOT_REASON=""
+
+  local repoRoot="${PDLC_REPO_ROOT:-}"
+  if [[ -n "$repoRoot" && -e "${repoRoot}/pdlc/workflows/build-runtime.mjs" ]]; then
+    PDLC_PLUGIN_ROOT="${repoRoot}/pdlc"
+    PDLC_PLUGIN_ROOT_REASON="maintainer-marker"
+    return 0
+  fi
+
+  local envRoot="${CLAUDE_PLUGIN_ROOT:-}"
+  if [[ -z "$envRoot" ]]; then
+    PDLC_PLUGIN_ROOT_REASON="plugin-root-unset"
+    return 1
+  fi
+
+  if [[ ! -d "$envRoot" || ! -x "$envRoot" ]]; then
+    PDLC_PLUGIN_ROOT_REASON="plugin-root-unreadable"
+    return 1
+  fi
+
+  PDLC_PLUGIN_ROOT="$envRoot"
+  PDLC_PLUGIN_ROOT_REASON="claude-plugin-root"
+  return 0
+}
+
+# Internal: parses and validates the distribution manifest at "$1" (FSPEC §1.1's M1-M10 clauses,
+# evaluated in order, first failure decides). Exit codes mirror `pdlc_json_read`'s four-outcome
+# contract (FSPEC §2.3) as closely as a whole-document parse can: `0` well-formed (rows MAY be
+# empty — M2 does not require a non-empty `rows` array), `10` unreadable (defensive only — the
+# caller already probes `-r` first), `12` malformed (a JSON parse failure, or any M1-M10 clause
+# failure), `20` no JSON tool available at all (distinct from `10`/`12` so the caller can
+# attribute this to E2 (json-tool-absent) rather than manufacturing a false
+# `plugin-root-unreadable`/`manifest-malformed` reading). On success, stdout is a `META` line
+# (`META TAB pluginVersion TAB retired-joined-by-\x1f`) followed by one line per row (`id TAB
+# pluginPath TAB consumerPath TAB artifactVersion TAB pluginSha1 TAB retires-joined-by-\x1f`). On
+# a `12`, stdout is exactly one line: `MALFORMED TAB <clause>` (`<clause>` is `PARSE` for a JSON
+# syntax failure, or `M1`..`M10`).
+_pdlc_manifest_read() {
+  local path="$1"
+
+  if [[ -z "${PDLC_PY_BIN:-}" ]]; then
+    pdlc_probe_json_tool || return 20
+  fi
+
+  "$PDLC_PY_BIN" - "$path" <<'PDLC_MANIFEST_READ_PY'
+import json
+import re
+import sys
+
+path = sys.argv[1]
+
+try:
+    with open(path, "r") as fh:
+        raw = fh.read()
+except OSError:
+    sys.exit(10)
+
+
+def fail(clause):
+    print("MALFORMED\t{}".format(clause))
+    sys.exit(12)
+
+
+try:
+    doc = json.loads(raw)
+except ValueError:
+    fail("PARSE")
+
+if not isinstance(doc, dict):
+    fail("M1")
+
+schema_version = doc.get("schemaVersion")
+if isinstance(schema_version, bool) or not isinstance(schema_version, int) or schema_version != 1:
+    fail("M1")
+
+rows = doc.get("rows")
+if not isinstance(rows, list):
+    fail("M2")
+
+# Same character class as the bash-side `PDLC_M6_ID_REGEX` (layer 1) — kept as a literal here
+# since bash and python cannot share a compiled pattern across the process boundary.
+ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
+SHA1_RE = re.compile(r"^[0-9a-f]{40}$")
+REQUIRED_KEYS = {"id", "pluginPath", "consumerPath", "artifactVersion", "pluginSha1", "retires"}
+
+seen_ids = []
+all_retires_flat = []
+consumer_paths = []
+
+for row in rows:
+    if not isinstance(row, dict) or set(row.keys()) != REQUIRED_KEYS:
+        fail("M3")
+    retires = row.get("retires")
+    if not isinstance(retires, list):
+        fail("M3")
+
+    for key in ("id", "pluginPath", "consumerPath", "artifactVersion", "pluginSha1"):
+        value = row.get(key)
+        if not isinstance(value, str) or value == "":
+            fail("M4")
+    for member in retires:
+        if not isinstance(member, str) or member == "":
+            fail("M4")
+
+    for candidate in [row["pluginPath"], row["consumerPath"]] + retires:
+        if candidate.startswith("/") or "\\" in candidate or "\x00" in candidate:
+            fail("M5")
+        segments = candidate.split("/")
+        if "." in segments or ".." in segments:
+            fail("M5")
+
+    seen_ids.append(row["id"])
+    all_retires_flat.extend(retires)
+    consumer_paths.append(row["consumerPath"])
+
+
+def basename(p):
+    return p.rsplit("/", 1)[-1]
+
+
+union_namespace = list(seen_ids) + [basename(p) for p in all_retires_flat]
+for name in union_namespace:
+    if not ID_RE.match(name):
+        fail("M6")
+if len(set(union_namespace)) != len(union_namespace):
+    fail("M6")
+
+if len(set(all_retires_flat)) != len(all_retires_flat):
+    fail("M7")
+consumer_path_set = set(consumer_paths)
+for member in all_retires_flat:
+    if member in consumer_path_set:
+        fail("M7")
+
+retired = doc.get("retired")
+if not isinstance(retired, list):
+    fail("M8")
+if set(retired) != set(all_retires_flat):
+    fail("M8")
+
+for row in rows:
+    if not SHA1_RE.match(row["pluginSha1"]):
+        fail("M9")
+
+PREFIX = ".claude/workflows/"
+for row in rows:
+    for candidate in [row["consumerPath"]] + row["retires"]:
+        if not candidate.startswith(PREFIX):
+            fail("M10")
+        remainder = candidate[len(PREFIX):]
+        if remainder == "" or "/" in remainder:
+            fail("M10")
+        if remainder.startswith(".pdlc-"):
+            fail("M10")
+
+plugin_version = doc.get("pluginVersion")
+if not isinstance(plugin_version, str):
+    plugin_version = ""
+
+print("META\t{}\t{}".format(plugin_version, "\x1f".join(retired)))
+for row in rows:
+    print(
+        "\t".join(
+            [
+                row["id"],
+                row["pluginPath"],
+                row["consumerPath"],
+                row["artifactVersion"],
+                row["pluginSha1"],
+                "\x1f".join(row["retires"]),
+            ]
+        )
+    )
+sys.exit(0)
+PDLC_MANIFEST_READ_PY
+}
+
+# Internal: populates the `PDLC_ROWS_*` parallel arrays (manifest order preserved) and
+# `PDLC_RETIRED`/`PDLC_MANIFEST_PLUGIN_VERSION` from `_pdlc_manifest_read`'s well-formed ("$1",
+# status 0) stdout. Each `PDLC_ROWS_RETIRES[i]` is that row's `retires` list joined by `\x1f` —
+# bash 3.2 has no arrays-of-arrays, so a consumer that needs the individual members splits with
+# `_pdlc_split_on $'\x1f' "${PDLC_ROWS_RETIRES[i]}"`.
+_pdlc_manifest_populate_rows() {
+  local out="$1"
+  local firstLine=1
+  local line
+
+  while IFS= read -r line; do
+    if ((firstLine)); then
+      firstLine=0
+      _pdlc_split_on $'\t' "$line"
+      PDLC_MANIFEST_PLUGIN_VERSION="${_PDLC_SPLIT_RESULT[1]:-}"
+      _pdlc_split_on $'\x1f' "${_PDLC_SPLIT_RESULT[2]:-}"
+      if [[ -z "${_PDLC_SPLIT_RESULT[0]:-}" && ${#_PDLC_SPLIT_RESULT[@]} -le 1 ]]; then
+        PDLC_RETIRED=()
+      else
+        PDLC_RETIRED=("${_PDLC_SPLIT_RESULT[@]}")
+      fi
+      continue
+    fi
+    [[ -z "$line" ]] && continue
+    _pdlc_split_on $'\t' "$line"
+    PDLC_ROWS_ID+=("${_PDLC_SPLIT_RESULT[0]:-}")
+    PDLC_ROWS_PLUGIN_PATH+=("${_PDLC_SPLIT_RESULT[1]:-}")
+    PDLC_ROWS_CONSUMER_PATH+=("${_PDLC_SPLIT_RESULT[2]:-}")
+    PDLC_ROWS_ARTIFACT_VERSION+=("${_PDLC_SPLIT_RESULT[3]:-}")
+    PDLC_ROWS_SHA1+=("${_PDLC_SPLIT_RESULT[4]:-}")
+    PDLC_ROWS_RETIRES+=("${_PDLC_SPLIT_RESULT[5]:-}")
+    PDLC_ROWS_STATE+=("")
+  done <<<"$out"
+}
+
+# pdlc_validate_manifest <manifestPath> — TSPEC §2.2's standalone validator entry point: re-runs
+# the same M1-M10 check `pdlc_load_manifest` performs as part of loading, for a caller that
+# already has a path and wants a would-this-parse verdict without touching `PDLC_ROWS_*`. Sets
+# `PDLC_MALFORMED_CLAUSE` (empty string when well-formed).
+pdlc_validate_manifest() {
+  local path="$1"
+  local out status
+
+  out="$(_pdlc_manifest_read "$path")"
+  status=$?
+
+  case "$status" in
+    0)
+      PDLC_MALFORMED_CLAUSE=""
+      return 0
+      ;;
+    12)
+      _pdlc_split_on $'\t' "$out"
+      PDLC_MALFORMED_CLAUSE="${_PDLC_SPLIT_RESULT[1]:-}"
+      return 1
+      ;;
+    *)
+      PDLC_MALFORMED_CLAUSE=""
+      return 1
+      ;;
+  esac
+}
+
+# N-5 (FSPEC §8.3): one verbatim stderr notice per degraded checkEnabled read. Layer 5 (T-35) may
+# route this through a shared `pdlc_msg_*` once that layer lands; layer 2 emits it directly so
+# this behaves correctly standing alone (same precedent as layer 1's N-7 fault-token notice).
+_pdlc_check_enabled_notice() {
+  printf 'pdlc: N-5 .claude/pdlc.config.json could not be read as configured; checkEnabled defaults to true\n' >&2
+}
+
+# pdlc_resolve_check_enabled — FSPEC §2.7 (AC-4.3). Reads `distribution.checkEnabled` from
+# `<repoRoot>/.claude/pdlc.config.json` via `pdlc_json_read`. Runs on EVERY path, including when
+# the baseline itself is unresolved (E7 is independent of E1-E6), and is fail-closed to `true` in
+# every degraded case (file absent is the ordinary, undegraded default — no notice; unreadable,
+# malformed, an explicit non-boolean value, or "key not found on an otherwise well-formed
+# document" all still resolve `true`, WITH the N-5 notice — `pdlc_json_read`'s four-outcome
+# contract cannot distinguish "key absent" from "document did not parse" for a nested dot-path,
+# FSPEC §2.3, so those two are folded together here). Only an explicit boolean `false` value
+# resolves `false`. Always returns 0.
+pdlc_resolve_check_enabled() {
+  PDLC_CHECK_ENABLED="true"
+  local root="${PDLC_REPO_ROOT:-}"
+
+  [[ -z "$root" ]] && return 0
+
+  local configPath="${root}/.claude/pdlc.config.json"
+  # §4.2 op table: `config-read`, emitted only when a read is actually attempted (repo root
+  # resolved) — arg is the config path, regardless of the subsequent outcome.
+  pdlc_trace "run" "config-read" "-" "$configPath"
+  local raw status
+  raw="$(pdlc_json_read "$configPath" ".distribution.checkEnabled")"
+  status=$?
+
+  case "$status" in
+    11) : ;;
+    0)
+      case "$raw" in
+        true) PDLC_CHECK_ENABLED="true" ;;
+        false) PDLC_CHECK_ENABLED="false" ;;
+        *)
+          PDLC_CHECK_ENABLED="true"
+          _pdlc_check_enabled_notice
+          ;;
+      esac
+      ;;
+    *)
+      PDLC_CHECK_ENABLED="true"
+      _pdlc_check_enabled_notice
+      ;;
+  esac
+
+  return 0
+}
+
+# pdlc_resolve_baseline — FSPEC §2.1 Phase 2 / §2.8's fixed eight-reason precedence (highest
+# first): `drift-state-invalidated > manifest-empty > json-tool-absent > manifest-malformed >
+# manifest-absent > repo-root-unresolved > plugin-root-unreadable > plugin-root-unset`. Applies
+# selection over the evidence `pdlc_load_manifest` (Phase 1) already gathered into this layer's
+# `_PDLC_EV_*` scratch variables, publishing the three-way holds/does-not-hold/indeterminate
+# reading as `PDLC_EVIDENCE_REPO_ROOT`/`PDLC_EVIDENCE_PLUGIN_ROOT`/`PDLC_EVIDENCE_MANIFEST` and
+# the selection as `PDLC_BASELINE_STATUS`/`PDLC_BASELINE_REASON`. `drift-state-invalidated` is
+# deliberately NOT selected here — FSPEC §4.4 rung (i) (layer 4, T-34) produces it AFTER
+# selection, as a post-hoc override of whatever this function chose. Not called standalone in the
+# ordinary flow (`pdlc_load_manifest` calls it as its last step) but kept as its own function per
+# TSPEC §2.2's table.
+pdlc_resolve_baseline() {
+  PDLC_EVIDENCE_REPO_ROOT="${_PDLC_EV_REPO_ROOT:-does-not-hold}"
+  PDLC_EVIDENCE_PLUGIN_ROOT="${_PDLC_EV_PLUGIN_ROOT:-ok}"
+  PDLC_EVIDENCE_MANIFEST="${_PDLC_EV_MANIFEST:-indeterminate}"
+
+  if [[ "$PDLC_EVIDENCE_MANIFEST" == "manifest-empty" ]]; then
+    PDLC_BASELINE_STATUS="unresolved"
+    PDLC_BASELINE_REASON="manifest-empty"
+    return 1
+  fi
+
+  if [[ "${_PDLC_EV_JSON_TOOL:-does-not-hold}" == "holds" ]]; then
+    PDLC_BASELINE_STATUS="unresolved"
+    PDLC_BASELINE_REASON="json-tool-absent"
+    return 1
+  fi
+
+  if [[ "$PDLC_EVIDENCE_MANIFEST" == "manifest-malformed" ]]; then
+    PDLC_BASELINE_STATUS="unresolved"
+    PDLC_BASELINE_REASON="manifest-malformed"
+    return 1
+  fi
+
+  if [[ "$PDLC_EVIDENCE_MANIFEST" == "manifest-absent" ]]; then
+    PDLC_BASELINE_STATUS="unresolved"
+    PDLC_BASELINE_REASON="manifest-absent"
+    return 1
+  fi
+
+  if [[ "$PDLC_EVIDENCE_REPO_ROOT" == "holds" ]]; then
+    PDLC_BASELINE_STATUS="unresolved"
+    PDLC_BASELINE_REASON="repo-root-unresolved"
+    return 1
+  fi
+
+  if [[ "$PDLC_EVIDENCE_PLUGIN_ROOT" == "unreadable" ]]; then
+    PDLC_BASELINE_STATUS="unresolved"
+    PDLC_BASELINE_REASON="plugin-root-unreadable"
+    return 1
+  fi
+
+  if [[ "$PDLC_EVIDENCE_PLUGIN_ROOT" == "unset" ]]; then
+    PDLC_BASELINE_STATUS="unresolved"
+    PDLC_BASELINE_REASON="plugin-root-unset"
+    return 1
+  fi
+
+  PDLC_BASELINE_STATUS="resolved"
+  PDLC_BASELINE_REASON=""
+  return 0
+}
+
+# pdlc_load_manifest [<repoRootOverride> <pluginRootOverride>] — TSPEC §2.2's function; its
+# ordinary (zero-arg) inputs are `PDLC_REPO_ROOT`/`PDLC_PLUGIN_ROOT`/`CLAUDE_PLUGIN_ROOT`, already
+# resolved by `pdlc_resolve_repo_root`/`pdlc_resolve_plugin_root`. The two positional args are a
+# probe-only convenience (PLAN T-39's `bin/lib-probe.sh` batched driver has no shell to run those
+# two resolvers against first) — when given, they are used VERBATIM in place of resolving, never
+# consulted for anything else. This is the whole evidence-then-select pipeline's single entry
+# point: it resolves whatever of `PDLC_REPO_ROOT`/`PDLC_PLUGIN_ROOT` is still unset, loads and
+# validates the manifest (M1-M10, FSPEC §1.1), resolves `PDLC_CHECK_ENABLED` (E7, on every path —
+# FSPEC §2.7), and finally calls `pdlc_resolve_baseline` to select
+# `PDLC_BASELINE_STATUS`/`PDLC_BASELINE_REASON` over the gathered evidence (FSPEC §2.1/§2.8). Per
+# the no-write-target rule (FSPEC §2.1, normative): callers must gate any write under
+# `<repoRoot>`-relative paths on `PDLC_EVIDENCE_REPO_ROOT != "holds"` — on evidence, never on
+# which reason `PDLC_BASELINE_REASON` happens to report.
+pdlc_load_manifest() {
+  local repoRootArg="${1:-}" pluginRootArg="${2:-}"
+
+  if [[ -n "$repoRootArg" ]]; then
+    PDLC_REPO_ROOT="$repoRootArg"
+    _PDLC_EV_REPO_ROOT="does-not-hold"
+  elif [[ -n "${PDLC_REPO_ROOT:-}" ]]; then
+    _PDLC_EV_REPO_ROOT="does-not-hold"
+  else
+    if pdlc_resolve_repo_root; then
+      _PDLC_EV_REPO_ROOT="does-not-hold"
+    else
+      _PDLC_EV_REPO_ROOT="holds"
+    fi
+  fi
+  # §4.2 op table: `repo-root`, emitted once per invocation regardless of which branch above
+  # resolved it (including the probe-only override), arg empty when unresolved.
+  pdlc_trace "run" "repo-root" "-" "${PDLC_REPO_ROOT:-}"
+
+  if [[ -n "$pluginRootArg" ]]; then
+    PDLC_PLUGIN_ROOT="$pluginRootArg"
+    PDLC_PLUGIN_ROOT_REASON="explicit"
+    _PDLC_EV_PLUGIN_ROOT="ok"
+  else
+    if pdlc_resolve_plugin_root; then
+      _PDLC_EV_PLUGIN_ROOT="ok"
+    else
+      case "$PDLC_PLUGIN_ROOT_REASON" in
+        plugin-root-unset) _PDLC_EV_PLUGIN_ROOT="unset" ;;
+        *) _PDLC_EV_PLUGIN_ROOT="unreadable" ;;
+      esac
+    fi
+  fi
+
+  # E2 (json-tool-absent) is independent of every other axis (PROPERTIES §5.1: never
+  # indeterminate) — probed unconditionally, regardless of plugin-root state.
+  if [[ -z "${PDLC_PY_BIN:-}" ]]; then
+    if pdlc_probe_json_tool; then
+      _PDLC_EV_JSON_TOOL="does-not-hold"
+    else
+      _PDLC_EV_JSON_TOOL="holds"
+    fi
+  else
+    _PDLC_EV_JSON_TOOL="does-not-hold"
+  fi
+  # §4.2 op table: `plugin-root`, emitted once per invocation regardless of which branch above
+  # resolved it, arg empty when unresolved.
+  pdlc_trace "run" "plugin-root" "-" "${PDLC_PLUGIN_ROOT:-}"
+
+  PDLC_ROWS_ID=()
+  PDLC_ROWS_PLUGIN_PATH=()
+  PDLC_ROWS_CONSUMER_PATH=()
+  PDLC_ROWS_ARTIFACT_VERSION=()
+  PDLC_ROWS_SHA1=()
+  PDLC_ROWS_RETIRES=()
+  PDLC_ROWS_STATE=()
+  PDLC_RETIRED=()
+  PDLC_MANIFEST_REASON=""
+  PDLC_MANIFEST_PLUGIN_VERSION=""
+  PDLC_MALFORMED_CLAUSE=""
+  _PDLC_EV_MANIFEST="indeterminate"
+
+  if [[ "$_PDLC_EV_PLUGIN_ROOT" != "ok" ]]; then
+    # E4/E5/E6 indeterminate (PROPERTIES §5.1): no resolved <pluginRoot> to read a manifest from.
+    _PDLC_EV_MANIFEST="indeterminate"
+  else
+    local manifestPath="${PDLC_PLUGIN_ROOT}/workflows/dist/distribution-manifest.json"
+    if [[ ! -e "$manifestPath" ]]; then
+      PDLC_MANIFEST_REASON="manifest-absent"
+      _PDLC_EV_MANIFEST="manifest-absent"
+    elif [[ ! -r "$manifestPath" ]]; then
+      PDLC_MANIFEST_REASON="plugin-root-unreadable"
+      _PDLC_EV_PLUGIN_ROOT="unreadable"
+      _PDLC_EV_MANIFEST="indeterminate"
+    else
+      # §4.2 op table: `manifest-read`, emitted only when a read is actually attempted (a
+      # readable manifest was found) — this is E4/E5's own probe point, so oracle §4.3(d)'s
+      # "manifest-read precedes any classify" positive-presence check only expects a record on
+      # this path, never on manifest-absent/plugin-root-unreadable/indeterminate paths.
+      pdlc_trace "run" "manifest-read" "-" "$manifestPath"
+      local manifestOut manifestStatus
+      manifestOut="$(_pdlc_manifest_read "$manifestPath")"
+      manifestStatus=$?
+      case "$manifestStatus" in
+        0)
+          _pdlc_manifest_populate_rows "$manifestOut"
+          if ((${#PDLC_ROWS_ID[@]} == 0)); then
+            PDLC_MANIFEST_REASON="manifest-empty"
+            _PDLC_EV_MANIFEST="manifest-empty"
+          else
+            PDLC_MANIFEST_REASON=""
+            _PDLC_EV_MANIFEST="ok"
+          fi
+          ;;
+        20)
+          # No JSON tool — E2 already captured independently above; E5/E6 indeterminate here.
+          _PDLC_EV_MANIFEST="indeterminate"
+          ;;
+        12)
+          _pdlc_split_on $'\t' "$manifestOut"
+          PDLC_MALFORMED_CLAUSE="${_PDLC_SPLIT_RESULT[1]:-}"
+          PDLC_MANIFEST_REASON="manifest-malformed"
+          _PDLC_EV_MANIFEST="manifest-malformed"
+          printf 'pdlc: manifest-malformed (%s)\n' "${PDLC_MALFORMED_CLAUSE:-unknown}" >&2
+          ;;
+        *)
+          PDLC_MANIFEST_REASON="plugin-root-unreadable"
+          _PDLC_EV_PLUGIN_ROOT="unreadable"
+          _PDLC_EV_MANIFEST="indeterminate"
+          ;;
+      esac
+    fi
+  fi
+
+  pdlc_resolve_check_enabled
+  pdlc_resolve_baseline
+  return 0
+}
+
 # ─────────────────────────────────────────────────────────────────────────────────────────────
 # Layer 3 (T-33 — classifier) appends below this line: `pdlc_classify_row`, `pdlc_classify_all`.
 # ─────────────────────────────────────────────────────────────────────────────────────────────
