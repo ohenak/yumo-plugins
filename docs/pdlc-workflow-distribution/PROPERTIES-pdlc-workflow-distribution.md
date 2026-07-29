@@ -1021,8 +1021,134 @@ each is falsifiable separately.
 
 ## 11. Skip inventory and design-time arguments
 
+### 11.1 The named skip inventory (O-11's policy, applied to properties)
+
+Every entry uses TSPEC §1.3's `itOrSkip(capability, unverifiedInvariants, fn)`, which **throws** on
+an empty invariant list. A property that cannot run on a runner appears here — never silently green,
+never silently absent.
+
+| Property | Capability | Printed reason (TSPEC §7.3) | Unverified invariants the skip must name |
+|---|---|---|---|
+| PROP-CLS-01 leaf **L3** | `uid-nonroot` | uid-0 string | "leaf L3 (plugin-side existence undecidable ⇒ `unknown`/`plugin-artifact-unreadable`) is unverified; the reason itself stays covered by leaf L2 via `PDLC_FAULT=plugin-artifact-read`" |
+| PROP-CLS-01 leaf **L4** | `uid-nonroot` | uid-0 string | "leaf L4 (consumer-side existence undecidable ⇒ `unknown`/`consumer-artifact-unreadable`) is unverified; the reason stays covered by leaf L5 via `PDLC_FAULT=consumer-artifact-read`" |
+| PROP-CLS-03, PROP-RSN-04 (the L3/L4 half only) | `uid-nonroot` | uid-0 string | "totality and side-attribution are verified over the nine leaves constructible on this runner; the two existence-`indeterminate` leaves are not" |
+| every §3, §4, §7, §9 property | `hash` | hash string | "the leaves whose expected state is not `unknown` are unverified on this runner" (the file-level `describeOrSkip("hash", …)`, FSPEC §12's standing precondition) |
+| PROP-BSL-03/04/06's `git`-routed vectors | `git` | git string | "AC-0.5 step 1's never-fall-through rule and the `git-worktree-list` guard are unverified; the walk-routed vectors still run" |
+| every §6 property | `bash` | bash string | "the backup grammar's round-trip, order and prune clauses are unverified" |
+
+**What does *not* skip, and why that matters.** All four row reasons and all eight baseline reasons
+are reachable on a **root** runner (TSPEC §5.2 tokens 15/16; §7.1's corrected table), so §1.4's
+row-reason and baseline-reason **meta-oracles stay hard assertions** on every runner. The uid-0
+hole in this document is two *leaves*, not two reasons — which is the distinction TSPEC R-2 was
+corrected to make, and restating it loosely here would reintroduce the error.
+
+### 11.2 Design-time arguments (mode **D**) and their surrogates
+
+Three claims are quantified in form but unobservable through the black box (TSPEC R-1). Each is
+recorded with the argument and the example-based surrogate that carries the residual risk — none is
+left as prose alone.
+
+| # | Claim | Why not executable | Surrogate |
+|---|---|---|---|
+| **D-1** | `classify_row` is **pure with respect to the filesystem** — it reads, never writes, and spawns nothing but the hash utility (FSPEC §3.1) | "it did not write" is only observable as "nothing changed", which is also true of an implementation that wrote and restored; process spawns are not observable through the harness | PROP-CLS-06 (row independence) + TSPEC §4.3 conjunct (b) (no mutating trace record precedes the as-found pass) + review of C1's `pdlc_classify_row` against §2.2's output-variable contract. The **residual**: a write outside the traced op set is undetected |
+| **D-2** | The hash-utility probe is **once per run**, not once per row (FSPEC §3.1, and the premise of §13.1's latency claim) | spawn counts are not observable; there is no trace `op` for the probe | Structural: `pdlc_classify_row` receives the resolved utility as an input (TSPEC §2.2). Surrogate assertion: PROP-CLS-01's L0 run asserts **every** row is `unknown`/`hash-tool-absent`, which is only true of a run-level probe. **Residual**: a per-row re-probe that happens to agree is undetected — it would be a latency defect, not a correctness one (NFR-2) |
+| **D-3** | There is exactly **one** classifier and no derived-state shortcut (FSPEC §3.1, §3's pass table) | a second classifier agreeing with the first is unobservable by construction | PROP-DET-06 (process independence) + PROP-MTM-02's single-pass conjunct + `assertPhaseOrder`'s grammar rule (only `pdlc_classify_row` sets a phase label, TSPEC §2.2). **Residual**: two classifiers that agree on every generated leaf are undetected |
+
+A fourth candidate — asserting that no property *depends* on `generatedAtUtc` — is not a **D** row:
+it is discharged by §1.5 rule 2 (every byte comparison normalises the field) plus TSPEC §14.1 V-3
+(the field's only presence/shape assertion).
+
 ## 12. Property → test file placement
+
+Files are TSPEC §14's existing inventory; this document adds **no new test file** and one helper
+(`__tests__/helpers/driftGenerators.js`, §1.3), excluded from jest by the existing
+`testPathIgnorePatterns`.
+
+| File | Properties |
+|---|---|
+| `__tests__/driftClassify.test.js` | PROP-CLS-01…08, PROP-RSN-01…06, PROP-DET-01, -02, -04, -05, PROP-NEG-01, -05 |
+| `__tests__/driftBaseline.test.js` | PROP-BSL-01…08, PROP-DET-06, PROP-NEG-07 (M10 half) |
+| `__tests__/driftOrdering.test.js` | PROP-BSL-07, PROP-CLS-04 (trace half), PROP-MTM-03 (trace half), PROP-SEAM-05, -07, -08, PROP-DET-03 |
+| `__tests__/driftSync.test.js` | PROP-MTM-01, -03, -04, -05, -06, PROP-NEG-03, -06, -07 |
+| `__tests__/driftHook.test.js` | PROP-MTM-02, PROP-MTM-04 (hook half), PROP-NEG-04 (hook half) |
+| `__tests__/driftWriteFailure.test.js` | PROP-NEG-03 (converse half) |
+| `__tests__/driftRepoRoot.test.js` | PROP-BSL-06, PROP-NEG-02 |
+| `__tests__/driftFault.test.js` | PROP-SEAM-01…04, -06 |
+| `__tests__/driftBackups.test.js` | PROP-BKP-01…13 |
+| `__tests__/queueDriftGate.test.js` | PROP-MTM-05 (queue half), PROP-NEG-04 (queue half), PROP-BSL-05 (queue half) |
+| `__tests__/helpers/driftGenerators.js` | the generators, `enumerateLeaves()`, `enumerateEvidenceVectors()`, `shrink()` — **new**, §1.3 |
+
+Two placement rules, both inherited:
+
+1. **A property never gets its own file.** It lands in the file that already owns its AT family, so
+   the fixtures and helpers are shared and TSPEC §1.4's meta-oracles (module-level `Set`s asserted
+   for set-equality at the end of each file) see the property runs too — a generated case counts
+   toward the floor exactly as an example does.
+2. **Each property is one `it()`** with the seed and case index in its failure message. A property
+   spanning two independently-falsifiable claims is split, on TSPEC TE F-09's rule (one `it()`
+   reports one verdict and cannot say which half leaked) — which is why PROP-BKP-05 and PROP-BKP-06
+   are separate, and why PROP-MTM-01…06 are six rows rather than one "O-20 holds" test.
 
 ## 13. Traceability — property ↔ AC ↔ FSPEC/TSPEC section
 
+| Property | REQ AC / NFR | FSPEC | TSPEC | Obligation |
+|---|---|---|---|---|
+| PROP-CLS-01, -03 | AC-1.1, AC-1.8(i) | §3.2, §3.3 | §3.3, §7.1, §1.4 | **O-9** |
+| PROP-CLS-02 | AC-1.8(ii) | §3.3, §3.6 | §3.3 | **O-9** |
+| PROP-CLS-04 | AC-1.8(ii), AC-2.6 | §3.3, §1.3 | §4.3 | **O-9**, O-1 |
+| PROP-CLS-05, PROP-DET-01…06 | AC-1.3, AC-1.8(iii) | §3.4 R-2, §3.6 | §2.5, §11.3 row 2 | **O-9** |
+| PROP-CLS-06 | AC-1.4 | §3.1 | §6.3 | **O-9** |
+| PROP-CLS-07 | AC-1.6, AC-1.7 | §1.2, §3.4 R-3/R-4 | §13.1 | O-8 |
+| PROP-CLS-08, PROP-NEG-01 | AC-0.6, AC-1.5, NFR-3 | §3.5 | §14 AT-25, AT-32(a) | O-9 (report side) |
+| PROP-RSN-01, -03, -04 | AC-1.2, AC-1.8(iv) | §3.3 | §5.2 tokens 15/16, §7.1 | **AC-1.8(iv)** |
+| PROP-RSN-02 | AC-1.8(iv) | §1.3 field rules | §12.1 D7 | **AC-1.8(iv)** |
+| PROP-RSN-05 | AC-1.2 | §3.3 | §1.4 floors | **AC-1.8(iv)** |
+| PROP-RSN-06 | AC-1.8(iii)(iv) | §3.6 | §2.5 | **AC-1.8(iv)** |
+| PROP-BSL-01, -02, -03, -04 | AC-1.0, AC-1.8(iv) | §2.1, §2.8 | §1.4 baseline floor, §13.1 | **O-9** |
+| PROP-BSL-05 | AC-0.3b, AC-1.0 | §1.3, §2.5 | §14.1 B-1…B-5 | **O-9** |
+| PROP-BSL-06 | AC-0.5, AC-2.9(1) | §2.1's no-write-target rule, §2.8 | §8.3, §14 AT-33 | **O-9**, O-3 |
+| PROP-BSL-07 | AC-1.0, AC-2.9(1) | §2, §4.2 | §4.3 | O-1 |
+| PROP-BSL-08 | AC-4.3, AC-0.3b | §2.7 | §14.1 B-3/B-4, AT-32(b) | **O-9** |
+| PROP-BKP-01, -02, -03 | AC-3.4 | §1.4 | §11.1, §11.2, §11.3 row 1 | **O-18** |
+| PROP-BKP-04 | AC-3.4, AC-2.9(2) | §1.4's exhaustion clause | §13.5 `nnExhausted` | **O-18** |
+| PROP-BKP-05, -06, -08 | AC-3.4, AC-3.5 | §1.4, §5.6 | §11.3 rows 2–4 | **O-18** |
+| PROP-BKP-07 | AC-3.4, NFR-1 | §3.6 | §11.3 row 2, §2.5 | **O-18** |
+| PROP-BKP-09…13 | AC-3.4 (retention), AC-1.3 | §5.6, §3.4 R-2 | §11.3 rows 3–4, §13.5 | **O-18** |
+| PROP-MTM-01, -06 | AC-2.6, AC-3.3, AC-2.7 | §4.2, §5.8, OQ-6 | §4.3 `assertRecordedPassIs` | **O-20** |
+| PROP-MTM-02 | AC-2.6 | §4.2, §3's pass table | §4.3 `assertPhaseOrder` | **O-20** |
+| PROP-MTM-03 | AC-2.9(1), AC-3.1 | §4.2 steps 2–5 | §4.3 conjuncts, `assertPostCopyNarrow` | **O-20**, O-1 |
+| PROP-MTM-04 | AC-2.6, AC-2.8, AC-3.9 | §3's pass table, §5.7 | §14 AT-11, AT-12 | **O-20** |
+| PROP-MTM-05 | AC-2.7, AC-3.6 | §4.2 step 7, §5.9 | §14 AT-9, §12.2 | **O-20** |
+| PROP-SEAM-01…04 | AC-2.9(5), NFR-6 | §4.6 | §5.1, §5.1.1, §5.2, §5.4 | **TSPEC §16 subset row**, O-10 |
+| PROP-SEAM-05 | AC-2.9(5) | §4.6 | §4.4, §5.4 rule 2 | O-10 |
+| PROP-SEAM-06 | AC-0.1 (M6) | §1.1 M6 | §5.1.1, §11.3 row 1, §14.1 F-2 | O-10, O-18 |
+| PROP-SEAM-07, -08 | AC-2.9(5) | §4.6 | §4.1, §4.2 | O-1/O-7 (supporting) |
+| PROP-NEG-02 | AC-0.5, NFR-3 | §2.2 | §8.3, §8.4 | O-3 |
+| PROP-NEG-03 | AC-2.9(4), AC-3.4 | §4.7, §5.5 | §14 AT-26, AT-27 | — |
+| PROP-NEG-04 | AC-1.0, AC-2.2, AC-3.3, AC-4.1, NFR-6 | §5.1, §5.8, §6.2 | §1.4a, §12.2 | — |
+| PROP-NEG-05 | AC-5.2, AC-5.4 | §7.2, §1.3 | §14.1 V-4 | — |
+| PROP-NEG-06 | AC-3.9, AC-0.7 | §5.7 | §14 AT-12, AT-13, §14.1 V-1 | — |
+| PROP-NEG-07 | NFR-3, AC-0.1 | §1.1 M10 | §3.3 `manifestOverride` | — |
+
+**ACs deliberately carrying no property**, with the surface that owns them — recorded so their
+absence is a disposition rather than a gap: AC-0.1/0.2/0.3/0.3a/0.4 (baseline resolution mechanics —
+TSPEC AT-24, §9.2); AC-2.1/2.3/2.5/2.5a/2.8 message **content** (TSPEC §7.4, §14.1 M-1/M-2/M-3;
+§0.3); AC-3.5 restore (AT-8b, AT-26); AC-4.1's ten mapping rows (TSPEC §12.2, all ten as examples
+with a record defeating every higher row); AC-4.2's report split (AT-31); AC-5.1/5.3 (AT-19,
+§14.1 V-4, residual R-12); AC-6.1…6.6 (TSPEC §10's root-parameterised oracles); NFR-2 (structural,
+FSPEC §13.1 — no timing assertion exists anywhere).
+
 ## 14. Coverage gaps and stated residuals
+
+Each is stated with its cost and what would change the assessment. None is mitigated by asserting it
+cannot happen.
+
+| # | Gap / residual | Assessment |
+|---|---|---|
+| **P-R-1** | **Two uid-0 leaves.** L3 and L4 (existence-`indeterminate`) are permission-only; on a root runner PROP-CLS-01/-03 and PROP-RSN-04 are partial | Accepted and **named** (§11.1). No fault token can make *existence* undecidable — tokens 15/16 fault the read (TSPEC v2.1, TE L-07) — so closing this would need a token for the existence `stat`, which TSPEC §5.2's closure argument rejects. The **reasons** both leaves produce stay covered on every runner, so no meta-oracle turns red on root. Changes if a runner-level capability (e.g. a user-namespace sandbox) is added to the harness |
+| **P-R-2** | **Shrinking is a fixed ladder, not a search.** A failure whose minimal witness is off the ladder is reported at the drawn size | Accepted (§1.3 rule 3, §2.5). The axes are already minimal — a classifier case is one row of one manifest — so the ladder's four steps reach the minimal form for every axis this document generates. Changes if a future axis is genuinely continuous; the honest fix then is a library shrinker, which means a devDependency and a re-litigation of TSPEC §1.2 |
+| **P-R-3** | **No property-testing library.** Generation, shrinking and reporting are hand-written (§1.3) | Deliberate: `pdlc/workflows/package.json` has exactly one devDependency and TSPEC §1.2 rejected bats for adding one. The cost is that generator bugs are possible; it is bounded by the generators being asserted about themselves (§6.2's forced adversarial proportions, `M6_ID_REGEX` imported rather than re-declared, `setRowState`'s self-check) — the fixture builder is its own first oracle, and this document inherits that rule rather than restating it |
+| **P-R-4** | **Purity, spawn count and classifier uniqueness are design-time** (§11.2 D-1/D-2/D-3) | Accepted; each has a named surrogate and a stated residual. All three are consequences of TSPEC R-1's black-box bash, and the mitigation is the same one TSPEC adopts: a new observable is a new trace `op`, never a new production output |
+| **P-R-5** | **`packagingViolations` / `coveredViolations` are not quantified.** They are pure functions of a root and would admit property-based generation (e.g. "adding an exempt-path file never changes the returned set") | **Not taken, deliberately.** Their obligations (O-16, O-17) are *fixture-pinned by design*: AC-6.4's anti-widening guard is exactly a claim about **one frozen tree**, and a generator over document trees would re-express the exemption rules in the test, giving two copies of the rule that can drift. TSPEC §10.1/§10.3's two-root structure is the stronger oracle. Recorded so a reviewer sees the option was considered |
+| **P-R-6** | **AC-5.3's rendered version lines** have no oracle at any level | Inherited from TSPEC **R-12**, unchanged: FSPEC §8.2's message shapes name no version line, so an assertion would have to invent message text. AC-5.3 is P2, the record-field half is asserted (TSPEC §14.1 V-4), and TSPEC §16 routes the successor. No property is written over an unspecified string |
+| **P-R-7** | **The spawn budget is a ceiling, not a measurement.** §1.4 budgets ≈ 55 spawns; the real cost is measured only when the suite exists | Stated. If the measured cost pushes `npm test` past the point a maintainer runs it (TSPEC R-3 is the whole risk), the required response is to repack axes into rows or move a family to the batched driver — **never** to sample a domain §1.3 rule 2 says to enumerate. Recorded here so the trade-off is made deliberately rather than by deleting cases |
