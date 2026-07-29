@@ -204,3 +204,242 @@ T-19's `hooks.json` second-entry assertion.
 | L-06 | **Document corrections** (§7.5 item 5) — the **last** document task, because it is the one whose done-criterion is `coveredViolations(LIVE_ROOT) == ∅` over the *final* text of every document, including L-07's and L-08's. Correct the **seven** live files of §6.2 plus the `dist/` path updates in the already-correct normative documents. Archived per-feature spec history under other features' `docs/` dirs is **not** edited — exemption (ii) covers it. Two of the seven are `pdlc/workflows/orchestrate-{dev,queue}.js` **comments**, which are workflow sources: the bundles must be rebuilt in the same commit (deferred to L-05, which is the next batch and the landing commit's final build). | `__tests__/documentOracles.test.js` (AT-22) | the 7 files of §6.2; `CLAUDE.md`, `pdlc/README.md` | 20 | T-09, L-08 | ⬚ |
 | L-05 | **Version bump and final build** (§7.5 item 2, AC-6.6). Bump `pdlc/.claude-plugin/plugin.json` `version` `0.10.0` → `0.11.0`, then run `node pdlc/workflows/build-runtime.mjs` and stage the regenerated `dist/` — L-06 edited `orchestrate-queue.js`, so this is also the CLAUDE.md-mandated same-commit rebuild. Sequenced **after** every `dist/`-changing task so the advertised version covers the final bytes; `advertisedVersionViolation(LIVE_ROOT)` must be `"green"` on this commit (version differs from HEAD's while `dist/` has working-tree changes). | `__tests__/documentOracles.test.js` (§10.3), `runtimeBundle.test.js` | `pdlc/.claude-plugin/plugin.json`, `pdlc/workflows/dist/**` | 21 | L-06 | ⬚ |
 | L-09 | **Landing verification.** `node pdlc/workflows/build-runtime.mjs --check` exits 0 (bundles **and** manifest fresh); full `cd pdlc/workflows && npm test` green with **zero unexpected skips** — every skip printed carries a named unverified invariant; `coveredViolations(LIVE_ROOT)` is `[]`; `packagingViolations(LIVE_ROOT)` is `[]`; `advertisedVersionViolation(LIVE_ROOT)` is not `"red"`; `indexMode` is `100755` for all five scripts and `100644` for `lib/pdlc-drift.sh`; `git status --porcelain` shows no unintended untracked file under `.claude/workflows/`; and the `covered-violations` fixture is tracked (`git ls-files --error-unmatch` over the 12 paths). | *(whole suite)* | *(verification only)* | 22 | L-05 | ⬚ |
+
+---
+
+## 3. Dependency notes — why the graph has the shape it has
+
+1. **C1 is the critical path and cannot be widened.** TSPEC §2.1 makes `lib/pdlc-drift.sh` a single
+   sourced file. Batch-safety rule 2 forbids two same-batch tasks writing one file, so T-31…T-35 are
+   five consecutive batches. The layering is chosen so each layer is independently red-testable:
+   seams and primitives (observable through `driftFault` / `driftOrdering` / `driftBackups`),
+   resolution and baseline (`driftRepoRoot` / `driftBaseline`), the classifier (`driftClassify`),
+   the writers and ladder (`driftSync` / `driftWriteFailure` / `driftLadder`), and the messages
+   (`driftMessages`). Splitting C1 into several sourced files would parallelise this — it is **not**
+   done, because TSPEC §2.1's inventory and PROPERTIES §8.1's three-file static scan both name the
+   file set, and changing it here would be a TSPEC amendment smuggled in through a PLAN.
+2. **The node-side track is fully independent of bash** and finishes at batch 6. `document-oracles.mjs`,
+   `build-runtime.mjs` and `orchestrate-queue.js` share no file with any bash task, so batches 3–6
+   carry both tracks concurrently.
+3. **`orchestrate-queue.js` is serialised across T-11 → T-12 → T-13** for the same single-writer
+   reason, and each of the three re-emits `pdlc/workflows/dist/**`. The `dist/` artifacts are
+   therefore owned by five tasks across five different batches (T-14, T-11, T-12, T-13, L-05) and
+   never by two tasks in one batch.
+4. **T-14 precedes every `orchestrate-queue.js` task deliberately.** If the queue changes landed
+   first, their rebuilds would write into `.claude/workflows/` and then be re-emitted into `dist/`,
+   leaving two divergent generated copies mid-feature and a `runtimeBundle.test.js` that is red for
+   two different reasons at once.
+5. **Red-before-green is an edge, never id order.** Every green task's `Deps` names its red-test
+   task: T-07←T-01, T-09←T-02, T-11←T-03, T-12←T-04, T-14←T-05, T-17←T-06, T-31←T-25/27/29/30,
+   T-36←T-24/T-19, T-37←T-21/T-23, L-03←(T-06's §9.3 assertions), L-04←T-19.
+6. **Shared prerequisites are batch-1-style singletons with explicit downstream edges.** The helpers
+   (`driftCapabilities`, `driftHarness`, `driftFixtures`, `driftOrdering`, `freshClone`,
+   `bin/backup-grammar.sh`, `driftGenerators`) each have exactly **one** owning task, and every task
+   that consumes one lists it in `Deps`. `driftHarness.js` is the only helper with two owners, split
+   across batches 3 and 4 (core, then the message layer) because it is one file.
+7. **PROPERTIES adds no test file.** Its properties land in TSPEC §14's existing suites (PROPERTIES
+   §12) plus the one new helper. That is why every property task in batch 12 depends on the batch-5
+   task that created the suite it appends to.
+7a. **The property suites are appended *after* their subjects are green, and this is a deliberate
+   deviation from red-first — stated, not hidden.** `driftGenerators.js` obtains the fault-token set
+   by **sourcing C1 at runtime** (PROPERTIES §8.0 forbids a JS mirror and forbids a generated
+   side-artifact), so no property that consumes it can be authored before T-31 exists, and the
+   harness-mode properties additionally need an entrypoint (T-36/T-37). The red-first guarantee is
+   therefore recovered per task rather than per batch: **every property task in batches 12–13 must
+   demonstrate falsification before it is marked green** — for each property, apply the specific
+   mutation the property's own "Falsifies" / "red against" clause names (PROPERTIES states one for
+   nearly every property), confirm the property fails, revert, confirm it passes, and record the pair
+   in the batch report. A property that cannot be made to fail by its own named mutation is not
+   green, it is vacuous.
+
+8. **T-50 exists only to avoid a same-batch collision** with T-38 on `queueDriftGate.test.js`. It
+   carries no other reason to be its own batch.
+9. **The landing chain is serial by state, not by file.** Its ordering constraints are: untrack
+   before `.worktreeinclude` (L-01→L-02); execute bits before hook registration (L-03→L-04);
+   all document text final before the `coveredViolations` sweep (L-07, L-08 → L-06); every `dist/`
+   change complete before the version bump and final build (L-06→L-05); everything before
+   verification (L-05→L-09).
+
+---
+
+## 4. File-ownership manifest
+
+Every physical file this feature creates or modifies, with its owning task(s) and their batch. Two
+tasks may appear against one file **only** when their batches differ. This table is the mechanical
+audit of batch-safety rule 2.
+
+### 4.1 Production sources
+
+| File | Owner(s) → batch |
+|---|---|
+| `pdlc/hooks/scripts/lib/pdlc-drift.sh` | T-31→6, T-32→7, T-33→8, T-34→9, T-35→10 |
+| `pdlc/hooks/scripts/check-workflow-drift.sh` | T-36→11 (mode: L-03→16) |
+| `pdlc/hooks/scripts/sync-workflows.sh` | T-37→11 (mode: L-03→16) |
+| `pdlc/hooks/scripts/{check-scope-field,guard-harvest-before-delete,nudge-consolidation}.sh` | L-03→16 (**mode only**) |
+| `pdlc/hooks/hooks.json` | L-04→17 |
+| `pdlc/workflows/build-runtime.mjs` | T-14→3 |
+| `pdlc/workflows/lib/document-oracles.mjs` | T-09→3 |
+| `pdlc/workflows/orchestrate-queue.js` | T-11→4, T-12→5, T-13→6, L-06→20 (comment correction) |
+| `pdlc/workflows/orchestrate-dev.js` | L-06→20 (comment correction) |
+| `pdlc/workflows/dist/**` *(generated)* | T-14→3, T-11→4, T-12→5, T-13→6, L-05→21 |
+| `pdlc/.claude-plugin/plugin.json` | L-05→21 |
+| `pdlc/RELEASE-CHECKLIST.md` | L-07→18 |
+| `pdlc/README.md`, `CLAUDE.md` | L-08→19, L-06→20 |
+| `.gitignore` | L-01→14 |
+| `.worktreeinclude` | L-02→15 |
+| `.claude/workflows/**` *(index only — `git rm --cached`)* | L-01→14 |
+| the 5 remaining `coveredViolations` documents (§6.2 rows 1–5) | L-06→20 |
+
+### 4.2 Test files
+
+| File | Owner(s) → batch |
+|---|---|
+| `pdlc/workflows/__tests__/driftHelpers.test.js` | T-01→2 |
+| `pdlc/workflows/__tests__/documentOracles.test.js` | T-02→2 |
+| `pdlc/workflows/__tests__/driftRecordShape.test.js` | T-03→2 |
+| `pdlc/workflows/__tests__/queueDriftGate.test.js` | T-04→2, T-38→12, T-50→13 |
+| `pdlc/workflows/__tests__/runtimeBundle.test.js` | T-05→2 |
+| `pdlc/workflows/__tests__/bootstrap.test.js` | T-06→2 |
+| `pdlc/workflows/__tests__/hookCompatibility.test.js` | T-19→2 |
+| `pdlc/workflows/__tests__/driftRepoRoot.test.js` | T-20→5, T-47→12 |
+| `pdlc/workflows/__tests__/driftBaseline.test.js` | T-21→5, T-42→12 |
+| `pdlc/workflows/__tests__/driftClassify.test.js` | T-22→5, T-41→12 |
+| `pdlc/workflows/__tests__/driftSync.test.js` | T-23→5, T-44→12 |
+| `pdlc/workflows/__tests__/driftHook.test.js` | T-24→5, T-45→12 |
+| `pdlc/workflows/__tests__/driftLadder.test.js` | T-25→5 |
+| `pdlc/workflows/__tests__/driftWriteFailure.test.js` | T-26→5, T-46→12 |
+| `pdlc/workflows/__tests__/driftFault.test.js` | T-27→5, T-48→12 |
+| `pdlc/workflows/__tests__/driftMessages.test.js` | T-28→5 |
+| `pdlc/workflows/__tests__/driftOrdering.test.js` | T-29→5, T-43→12 |
+| `pdlc/workflows/__tests__/driftBackups.test.js` | T-30→5, T-49→12 |
+
+### 4.3 Helpers and fixtures (excluded from jest by the existing `testPathIgnorePatterns`)
+
+| File | Owner(s) → batch |
+|---|---|
+| `pdlc/workflows/__tests__/helpers/driftCapabilities.js` | T-07→3 |
+| `pdlc/workflows/__tests__/helpers/driftHarness.js` | T-08a→3, T-08b→4 |
+| `pdlc/workflows/__tests__/helpers/driftFixtures.js` | T-15→4 |
+| `pdlc/workflows/__tests__/helpers/driftOrdering.js` | T-16→4 |
+| `pdlc/workflows/__tests__/helpers/freshClone.js` | T-17→4 |
+| `pdlc/workflows/__tests__/helpers/bin/backup-grammar.sh` | T-18→4 |
+| `pdlc/workflows/__tests__/helpers/driftGenerators.js` | T-40→7 |
+| `pdlc/workflows/__tests__/fixtures/covered-violations/**` (12 files) | T-10→3 |
+
+**No file appears twice against one batch.** The three multi-owner clusters (`pdlc-drift.sh`,
+`orchestrate-queue.js`, `dist/**`) are serialised by real `Deps` edges, not by prose.
+
+---
+
+## 5. Batch gates
+
+| Batches | Gate wording |
+|---|---|
+| 1 | P0-00's seven assertions hold and are recorded; the pre-existing suite is green. |
+| **2, 5** (RED-terminal) | **The new tests fail for the specified reason** — the named module, export or script does not exist — **and every pre-existing test is still green.** A blanket "full suite green" is unsatisfiable here by design. Each batch report names, per file, the count of failing cases and the failure reason string. |
+| 3, 4, 6–11 | The full suite is green **except** the cases whose gating implementation has not yet landed, enumerated by name in the batch report. Additionally, batches 3–6 must leave `node pdlc/workflows/build-runtime.mjs --check` exit 0 (bundles rebuilt in the same commit as the source change). |
+| 12, 13 | Full suite green with **zero unexpected skips**: every printed skip is one of PROPERTIES §11.1's inventory rows or TSPEC §1.3's, and carries a non-empty named-invariant list. The four meta-oracles (baseline reasons, row states, row reasons, `writeFailures.operation`) and the ten-row queue-mapping floor are hard set-equality assertions and must be **green, not skipped**, on a uid-0 runner. |
+| 14–21 | Full suite green **except** the four assertions this phase turns green, which are enumerated in §2 Phase 7's precondition paragraph and must go green in the batch that owns them (L-03: §9.3 index modes; L-04: T-19; L-05: §10.3; L-06: AT-22). |
+| 22 | L-09's checklist, all conjuncts. |
+
+---
+
+## 6. Integration points
+
+### 6.1 Existing code this feature touches
+
+| Surface | Where | How it is touched |
+|---|---|---|
+| Bundle builder | `pdlc/workflows/build-runtime.mjs:27` (`OUT_DIR`), `~:158` (`mkdirSync`) | T-14 retargets `OUT_DIR` to `resolve(HERE, "dist")` and appends manifest emission; the `--check`/write loop keeps its shape |
+| Queue entrypoint | `pdlc/workflows/orchestrate-queue.js:504` (`main`), `:523` (`await readFileFn(queuePath)`) | T-13 inserts the gate **before** line 523; the pre-existing read is left unwrapped (FSPEC §6.1, R-6) |
+| Runtime adapter | `pdlc/workflows/runtime-adapter.js:85–96` (`rtReadFile`) | **Not modified.** It has no `try`/`catch`, so a throwing agent turn propagates — which is *why* `readDriftStateSafely` exists (O-19(d)). Hardening it is O-19(a)–(c), Cross-Feature |
+| Bundle freshness test | `pdlc/workflows/__tests__/runtimeBundle.test.js:78–86` | T-05 repoints the freshness assertion at `dist/` and adds the manifest as a `--check` subject |
+| Hook harness precedent | `pdlc/workflows/__tests__/hookCompatibility.test.js:46–58` (`runHookScript`) | T-08a generalises it into `runScript`; T-19 appends the C7 registration assertion to the same file |
+| Meta-oracle precedent | `__tests__/helpers/guardRowIds.js` + `guardMatrix.test.js` | **Cited and reused**, not reinvented: the module-level `Set` + set-equality pattern is the form every coverage floor in T-21/T-22/T-26 takes (TSPEC §1.4) |
+| Jest config | `pdlc/workflows/package.json:16-20` (`testPathIgnorePatterns`) | Unchanged — `/__tests__/helpers/` and `/__tests__/fixtures/` are already excluded, which is what lets T-10's fixture tree and every helper live where TSPEC puts them |
+
+### 6.2 The seven live `coveredViolations` files (measured 2026-07-28, L-06's work list)
+
+| # | Path | Pattern carried |
+|---|---|---|
+| 1 | `docs/_queue/QUEUE.md` | `.claude/workflows/orchestrate-queue.js` |
+| 2 | `docs/design/MASTER-PLAN-engineering-loop.md` | `managed manually` / bundle-copy phrasing |
+| 3 | `docs/PLAN-pdlc-integration-boundary-gates.md` | `.claude/workflows/*.js` |
+| 4 | `pdlc/skills/orchestrate-dev/SKILL.md` | `.claude/workflows/orchestrate-dev.js` |
+| 5 | `pdlc/skills/orchestrate-queue/SKILL.md` | bundle-copy phrasing |
+| 6 | `pdlc/workflows/orchestrate-dev.js` | `.claude/workflows/orchestrate-dev.js` (comment) |
+| 7 | `pdlc/workflows/orchestrate-queue.js` | `managed manually` (comment) |
+
+Everything under `docs/orchestrate-dev-workflow/` and `docs/pdlc-workflow-distribution/` also matches
+the raw patterns and is **exempt (ii)** (the directory contains `REQ-<X>.md`). P0-00 re-measures this
+set; if it has moved, the count and TSPEC §10.1's mirror both change and the fixture stays at 7.
+
+---
+
+## 7. Obligations carried into implementation
+
+Every hand-off row the upstream documents route to "the implementation phase", with the task that
+owns it. A reviewer checking completeness should find each here.
+
+| Obligation | Source | Owning task |
+|---|---|---|
+| **O-19(d)** — wrap the drift-state read so a throwing `_readFile` maps to row 1 `blocked` | TSPEC §12.3, §16 | **T-13** (impl) + **T-04** (the three-way injection table, asserting a **returned report**) |
+| **O-19(c)** — record the seam's LLM mediation in `orchestrate-queue.js` | TSPEC §16, R-7 | **T-13** — a code comment with no assertable observable; a review item on the diff, explicitly re-checked at Phase CR |
+| **O-19(a)** — add no second agent-mediated read | TSPEC §12.4 | **T-04**'s single-call gate-placement test; **T-13** must not introduce another |
+| **O-19(b)** — unit-test D1–D8 against mangled-relay fixtures | TSPEC §12.1 | **T-03** — the implementer writes TSPEC's **sixteen-row** table, all six mandated relay shapes, not a new one |
+| **`PDLC_FAULT_TOKENS`** — a bash array in **C1**, TSPEC §5.2 order, behind an idempotent-source guard; **no** JS mirror, **no** generated side-artifact | PROPERTIES §8.0 | **T-31** (declaration + guard) and **T-40** (`readFaultTokens()` via `bash -c 'source …; printf'`, exit-status-checked, 16-entry sanity conjunct) |
+| **uid-0 skip inventory wiring** — every permission-constructed fixture skips *loudly* with named unverified invariants | TSPEC §1.3, PROPERTIES §11.1 | **T-07** (helper + exported invariant strings, throwing on an empty list) → call sites in **T-22** (AT-32a), **T-25** (AT-14b, AT-16), **T-26** (AT-27), **T-22** (AT-34), **T-41** (leaves L3/L4) |
+| **`pdlc/RELEASE-CHECKLIST.md`'s three commitments** — AC-6.2a's installed-package assertion, AC-6.6's landed-violation fallback, NFR-2's one-off observation | TSPEC §2.1a, §16 | **L-07** (a deliverable in §4.1's inventory, not an intention) |
+| **Anchored gitignore** | TSPEC §16, §10.1 | **L-01**, with a mechanical `git check-ignore -v` verification |
+| **Worktree observation** — observe once whether a Claude-created worktree copies untracked `.claude/workflows/` content | TSPEC §16, FSPEC §11.1 | **L-02** records the observation in its batch report; documentation-scope, no test |
+| **R-12's successor** — AC-5.3's rendered version lines have no assertion | TSPEC §16 (v2.1, PM F-03), R-12 | **Not this PLAN's** — routed at DoD to either a follow-up REQ against FSPEC §8.2 or a `consolidate-learnings` entry. Restated here so DoD does not read it as an unhandled deferral |
+| **O-13** — REQ-scope stopping rule → `docs/_constraints/DOMAIN-CONSTRAINTS.md`, which must be **created** (it does not exist in this repo) | TSPEC §16 | `consolidate-learnings`; carried so it is not lost |
+| **Harvest rule** — *a checklist-owned AC needs a checklist artifact in the deliverable inventory* | TSPEC §16 | `harvest-learnings` |
+
+### 7.1 PLAN-level findings for the reviewer
+
+| # | Finding |
+|---|---|
+| **PL-01** | **TSPEC §10.1 and §2.1 disagree about `pdlc/workflows/dist/`.** §10.1's landing note says the landing step writes anchored patterns "(`/.claude/workflows/`, `/pdlc/workflows/dist/`)", while §2.1's inventory lists `dist/*.bundle.js` and `dist/distribution-manifest.json` as **"generated, tracked"** and FSPEC §7.5 item 1 gitignores only `.claude/workflows/`. Gitignoring `dist/` would make the tracked artifacts uncommittable without `git add -f`, and AC-6.2a/AC-6.6 both depend on `dist/` shipping. **Resolution taken by L-01:** write the anchored `/.claude/workflows/` entry only; add **no** `dist/` ignore pattern, and verify with `git check-ignore -v` that neither the real `dist/` nor the fixture's nested `pdlc/workflows/dist/` is ignored. §10.1's *anchoring* requirement is honoured — it binds any such pattern **if one is ever added**. Flagged rather than silently chosen. |
+| **PL-02** | **`__tests__/driftHelpers.test.js` is a PLAN-added file.** TSPEC §14's inventory names no home for the helper contracts TSPEC itself states normatively (§1.3 contract 2, §3.2.1's throw, §3.3's `setRowState` self-oracle, §3.4 rules 2–3, §11.2's line-count check). Leaving them unasserted would make five stated contracts unenforced; putting them in a consuming suite would give that suite a second unrelated subject. If a reviewer prefers, they fold into `driftHelpers`' consumers with no change to the dependency graph. |
+| **PL-03** | **C1's five-layer split is a PLAN decision, not a TSPEC one.** TSPEC §2.2 states one surface table; the layering here is purely an execution ordering chosen so each layer has an independently red-testable observable. It creates no new file and changes no function boundary. |
+
+---
+
+## 8. What Phase CR (final codebase review) should verify, per batch
+
+| Batch(es) | Phase CR checks |
+|---|---|
+| 1 | P0-00's measurements are recorded in the diff or the batch report — in particular the live seven-file `coveredViolations` set and BL-01's discharge — and not merely asserted in prose. |
+| 2 | Every RED file's cases fail for the **stated** reason (missing module/export), not for a typo; no case was authored `.skip`ped or `todo`; `driftRecordShape.test.js` carries **sixteen** rows with **one** mutation each and asserts the **clause id**, never `ok:false`. |
+| 3 | `document-oracles.mjs` is **side-effect-free** and reads no ambient state (no `process.cwd()`, no `import.meta.url`-relative path) — the two-root structure depends on it; `EXEMPTIONS` has **exactly four** members with (i)'s two trees inside one string; the four `S_*` strings are exported, not duplicated in the test; `build-runtime.mjs` computes `pluginSha1` over the **same in-memory `contents`** it wrote, not by re-reading the file; the manifest serialisation is byte-deterministic; the bundles in the diff are regenerated, not hand-edited. |
+| 3–6 | Every `orchestrate-queue.js` change ships with a regenerated bundle in the **same commit**; `build-runtime.mjs --check` is clean at each batch boundary; **`readDriftStateSafely` is `await`ed at its call site** and no other injected IO call was left unawaited. |
+| 4 | `sandboxEnv` **constructs** the child environment (no `...process.env` anywhere in `driftHarness.js`); `makeToolDir` throws rather than degrading; `setRowState` re-derives and throws; `makePluginTree` throws when `manifestRaw` and `manifestOverride` are both given; `assertTreeUnchanged` excludes `.git/` segments; `assertPostCopyNarrow` is **multiset**, not set, equality; `inodeOf` returns `bigint`. |
+| 5 | Every AT in TSPEC §14 and every row in §14.1 has a real `it()` — none discharged by review; the four split ATs are actually split (AT-5 → 3, AT-31 → 2, AT-34 → 3, AT-14b → 2); the meta-oracles are **failing set-equality assertions** against literal lists, not checklists; no test hard-codes an argv (all go through `runScript`'s entrypoint mapping); no test spawns a JSON interpreter to read back an artifact. |
+| 6–10 | C1 is **sourced-only** and carries no execute bit; the idempotent-source guard precedes every `readonly`; `pdlc_trace` returns 0 on every path; `pdlc_classify_row` is the **only** site that sets a trace phase label; no `stat -c %Y`, no `find -newer`, no `ls -t` anywhere in C1/C3; rows are iterated **by index**, never globbed; `export LC_ALL=C` is present in C1 (and not relied on from the harness); `pdlc_prune_backups` has the single signature `<dir> <knownIds…>` and always exits 0; every `pdlc_fault_active` call site passes a **bare literal** as argument 1. |
+| 11 | Both scripts are `100755` in the index and executable on disk at creation; C2 exits 0 on every path; C3 never exits 1; neither script runs a VCS command during sync; the optional `SKILL.md`, if shipped, carries none of the five patterns. |
+| 12–13 | PROPERTIES' two seam oracles are genuinely **independent** — PROP-SEAM-01 reads the runtime array, PROP-SEAM-02 reads the three files as text and **excludes** the array declaration, the definition site, comments and heredocs; `readFaultTokens()` checks the child's exit status **before** the array; PROP-SEAM-01(b) draws **one case per class** from four classes; PROP-NEG-05 includes draw (5) (`syncManifest[id].pluginHash`); every property's "reached the subject" conjunct is present so no invariance property is vacuous; every skip is in PROPERTIES §11.1's inventory. |
+| 14–22 | The landing commit is **one** commit containing all of §4.1's landing rows; `.gitignore`'s pattern is anchored and `git check-ignore -v` proves the fixture and `dist/` are not swallowed; all five scripts are `100755` in the **index** (not just on disk) and `lib/pdlc-drift.sh` is `100644`; `hooks.json` has exactly two `SessionStart` entries; `RELEASE-CHECKLIST.md` exists, names all three commitments, and carries none of the five patterns; the seven document corrections are real edits and no archived per-feature spec history was touched; the version bump is in the same commit as the final `dist/` bytes; `coveredViolations(LIVE_ROOT)` is `[]` **as run**, not as claimed. |
+| all | No production code path reads `PDLC_FAULT` or `PDLC_TRACE_FILE` for anything but fault injection and tracing; no test asserts timing (NFR-2 is structural); nothing in `pdlc/workflows/dist/` was written by a test. |
+
+---
+
+## 9. Definition of Done
+
+- [ ] `cd pdlc/workflows && npm test` is green, with **zero unexpected skips** — every printed skip is a TSPEC §1.3 or PROPERTIES §11.1 inventory row with a non-empty named-invariant list.
+- [ ] All **39** acceptance tests (AT-1…AT-36 incl. AT-8a/8b, AT-14b, AT-18a/18b) exist as real `it()` blocks in the files TSPEC §14 names.
+- [ ] All **21** §14.1 cases (S-1/2, B-1…5, M-1/2/3, PH-1, V-1…4, F-1/2/3) exist.
+- [ ] All **65** PROPERTIES properties exist in the files PROPERTIES §12 names.
+- [ ] Every TSPEC §1.4 coverage floor is a **failing set-equality assertion**, green on a uid-0 runner: 8 baseline reasons, 6 row states + 4 row reasons, 9 `writeFailures.operation` values (5 recordable / 4 stderr-only), exit codes 0–4 per entrypoint, 3 ladder rungs, 10 queue-mapping rows, 3 trace phases, ≥2 hook-silence sites (≥1 strict), 4 + 6 + 8 remediation-class pairings, ≥1 `syncCommand` string-equal expansion.
+- [ ] `node pdlc/workflows/build-runtime.mjs --check` exits 0; both bundles **and** `dist/distribution-manifest.json` are fresh and committed.
+- [ ] Every `orchestrate-queue.js` change shipped with its regenerated bundles in the same commit; every injected IO call is `await`ed.
+- [ ] `coveredViolations(LIVE_ROOT) == []` and `packagingViolations(LIVE_ROOT) == []`; `advertisedVersionViolation(LIVE_ROOT) !== "red"`.
+- [ ] `coveredViolations(FIXTURE_ROOT)` returns exactly the 7 enumerated paths and `EXEMPTIONS` equals the literal four-member array.
+- [ ] Index mode `100755` **and** on-disk `X_OK` for all five scripts; `100644` for `lib/pdlc-drift.sh`.
+- [ ] `.claude/workflows/**` is untracked and covered by an **anchored** gitignore pattern; the `covered-violations` fixture's 12 files are tracked.
+- [ ] `.worktreeinclude` exists at the repo root listing `.claude/workflows/`; the worktree observation is recorded.
+- [ ] `pdlc/hooks/hooks.json` registers the second `SessionStart` entry; `hookCompatibility.test.js` is green.
+- [ ] `pdlc/RELEASE-CHECKLIST.md` exists with the three §2.1a rows and carries none of the five patterns.
+- [ ] `CLAUDE.md` and `pdlc/README.md` document the two-command bootstrap and the manual-worktree limitation; `CLAUDE.md`'s plugin table and build-runtime section reflect `dist/`.
+- [ ] `pdlc/.claude-plugin/plugin.json` `version` bumped in the landing commit.
+- [ ] Every §7 obligation has a landed owner; **R-12** is routed (follow-up REQ or `consolidate-learnings` entry) rather than left as a bare deferral.
