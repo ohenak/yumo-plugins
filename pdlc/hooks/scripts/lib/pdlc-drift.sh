@@ -404,7 +404,7 @@ pdlc_prune_backups() {
     local f base parsed status parsedId
     for f in "$dir"/*; do
       [[ -e "$f" ]] || continue
-      base="$(basename "$f")"
+      base="${f##*/}"
       parsed="$(pdlc_backup_parse "$base" 2>/dev/null)"
       status=$?
       ((status == 0)) || continue
@@ -415,10 +415,23 @@ pdlc_prune_backups() {
 
     ((${#matched[@]} <= 5)) && continue
 
+    # Bash-native descending insertion sort (LC_ALL=C is exported unconditionally at this
+    # file's top, so bash's own `[[ a > b ]]` string comparison is byte-wise here, matching
+    # `LC_ALL=C sort -r` exactly) — `sort` is not a probe-sandbox PATH tool (cf58ac7's
+    # precedent: fix the shell code, do not widen PROBE_PATH_TOOLS).
     local -a sorted=()
-    while IFS= read -r base; do
-      [[ -n "$base" ]] && sorted+=("$base")
-    done < <(printf '%s\n' "${matched[@]}" | LC_ALL=C sort -r)
+    local item pos inserted
+    for item in "${matched[@]}"; do
+      inserted=0
+      for ((pos = 0; pos < ${#sorted[@]}; pos++)); do
+        if [[ "$item" > "${sorted[$pos]}" ]]; then
+          sorted=("${sorted[@]:0:pos}" "$item" "${sorted[@]:pos}")
+          inserted=1
+          break
+        fi
+      done
+      ((inserted == 0)) && sorted+=("$item")
+    done
 
     local i
     for ((i = 5; i < ${#sorted[@]}; i++)); do
@@ -1366,6 +1379,366 @@ pdlc_classify_all() {
 # Layer 4 (T-34 — writers/ladder/backups) appends below this line: `pdlc_write_drift_state`,
 # `pdlc_emit_printf_record`, `pdlc_backup`.
 # ─────────────────────────────────────────────────────────────────────────────────────────────
+
+# ───────────────────────────────── internal helpers (layer 4) ────────────────────────────────
+
+declare -a PDLC_WRITE_FAILURES=()
+PDLC_BACKUP_PATH=""
+PDLC_COPY_HASH=""
+
+# Ensures PDLC_PY_BIN is resolved (reuses layer 1's probe rather than duplicating discovery).
+_pdlc_ensure_py() {
+  [[ -n "${PDLC_PY_BIN:-}" ]] && return 0
+  pdlc_probe_json_tool
+}
+
+# _pdlc_atomic_write <dir> <target> <content> — sibling temp file in `dir`, then `mv` over
+# `target` (same filesystem, atomic rename, §4.3). Traces the write attempt regardless of
+# outcome (op `write`, rowId `-`). Only PATH tools available to this whole layer (`mv`, `rm`) are
+# used here — no `mkdir`, no `cp`, no `cat` (probe-sandbox constraint, cf58ac7's precedent).
+_pdlc_atomic_write() {
+  local dir="$1" target="$2" content="$3"
+
+  [[ -d "$dir" ]] || return 1
+
+  local tmp="${dir}/.pdlc-tmp.$$.${RANDOM}"
+  if ! printf '%s' "$content" >"$tmp" 2>/dev/null; then
+    rm -f -- "$tmp" 2>/dev/null
+    return 1
+  fi
+
+  if ! mv -f -- "$tmp" "$target" 2>/dev/null; then
+    rm -f -- "$tmp" 2>/dev/null
+    return 1
+  fi
+
+  pdlc_trace "run" "write" "-" "$target"
+  return 0
+}
+
+# Closed nine-member `operation` domain (FSPEC §4.5): four are stderr-only and are filtered out
+# of any emitted record by `pdlc_emit_printf_record`; the remaining five are recordable.
+_pdlc_write_failure_op_is_stderr_only() {
+  case "$1" in
+    mkdir | drift-state-replace | drift-state-invalidate | drift-state-unlink)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+# FSPEC §4.4's decidable path-escaping predicate, evaluated byte-wise under LC_ALL=C: every byte
+# in 0x20-0x7E is emitted with only `\` and `"` escaped; a single byte outside that range takes
+# the whole-path `<unprintable>` branch (no partial escaping, no UTF-8 validator).
+_pdlc_emit_escape_path() {
+  local input="$1"
+  local i c ord len=${#input}
+
+  for ((i = 0; i < len; i++)); do
+    c="${input:i:1}"
+    ord=$(printf '%d' "'$c")
+    if ((ord < 32 || ord > 126)); then
+      printf '<unprintable>'
+      return 0
+    fi
+  done
+
+  local out=""
+  for ((i = 0; i < len; i++)); do
+    c="${input:i:1}"
+    case "$c" in
+      '\') out+='\\' ;;
+      '"') out+='\"' ;;
+      *) out+="$c" ;;
+    esac
+  done
+  printf '%s' "$out"
+}
+
+# pdlc_emit_printf_record <generatedBy> <checkEnabled> <baselineReason> — the §4.4a serialiser
+# of last resort: `printf` only, no interpreter (NFR-5). Every interpolated field is
+# closed-domain (§4.4's table) except `writeFailures[].path`, which is escaped by
+# `_pdlc_emit_escape_path` above. `pluginVersion` and `syncCommand` are unconditionally `null`
+# under both of this emitter's triggers (T1: json-tool-absent: T2: rung (i) invalidation).
+# `writeFailures` is filtered of the four stderr-only operations before interpolation (this
+# filter belongs to the emitter, not the caller, so both triggers get it).
+pdlc_emit_printf_record() {
+  local generatedBy="$1" checkEnabled="$2" baselineReason="$3"
+  local generatedAtUtc
+  generatedAtUtc="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+  local failuresJson="" first=1 entry path operation escaped
+  for entry in "${PDLC_WRITE_FAILURES[@]:-}"; do
+    [[ -z "$entry" ]] && continue
+    path="${entry%%$'\x1f'*}"
+    operation="${entry#*$'\x1f'}"
+    _pdlc_write_failure_op_is_stderr_only "$operation" && continue
+
+    escaped="$(_pdlc_emit_escape_path "$path")"
+    if ((first == 1)); then
+      first=0
+    else
+      failuresJson+=","
+    fi
+    failuresJson+="{\"path\":\"${escaped}\",\"operation\":\"${operation}\"}"
+  done
+
+  printf '{"schemaVersion":1,"generatedAtUtc":"%s","generatedBy":"%s","pluginVersion":null,"checkEnabled":%s,"syncCommand":null,"baselineStatus":"unresolved","baselineReason":"%s","retiredPresent":[],"writeFailures":[%s],"rows":[]}' \
+    "$generatedAtUtc" "$generatedBy" "$checkEnabled" "$baselineReason" "$failuresJson"
+}
+
+# pdlc_write_drift_state <repoRoot> <recordJson> [generatedBy] — the single drift-state writer
+# (AC-2.7). Ordinary path: writes the caller-built `recordJson` atomically (§4.3). If a JSON
+# tool is not available (T1, §4.4a), a resolved record cannot have been built at all, so this
+# ignores `recordJson` and writes the closed-domain unresolved record itself, via the `printf`
+# emitter, through the same atomic path. If the atomic write fails over a pre-existing file, the
+# three-rung invalidation ladder (§4.4/§4.4a, AC-2.9(3)) runs: (i) in-place overwrite, (ii)
+# unlink + fresh write, (iii) residual (stderr only, exit 4). Directory creation (`mkdir -p
+# .claude/ .claude/workflows/`, §4.2 step 3) is the entrypoint's job, not this routine's — it is
+# not a probe-sandbox PATH tool (cf58ac7's precedent) and this routine assumes the directory
+# already exists.
+pdlc_write_drift_state() {
+  local repoRoot="$1" recordJson="${2:-}" generatedBy="${3:-hook}"
+  local dir="${repoRoot}/.claude/workflows"
+  local target="${dir}/.pdlc-drift-state.json"
+
+  local preExisted=0
+  [[ -e "$target" ]] && preExisted=1
+
+  local jsonToolAbsent=0
+  if [[ -z "${PDLC_PY_BIN:-}" ]]; then
+    pdlc_probe_json_tool || jsonToolAbsent=1
+  fi
+
+  local content
+  if ((jsonToolAbsent == 1)) || [[ -z "$recordJson" ]]; then
+    content="$(pdlc_emit_printf_record "$generatedBy" "true" "json-tool-absent")"
+  else
+    content="$recordJson"
+  fi
+
+  if ! pdlc_fault_active "drift-state-replace"; then
+    if _pdlc_atomic_write "$dir" "$target" "$content"; then
+      return 0
+    fi
+  fi
+
+  # Atomic replace failed (or was fault-injected). Entry condition for the ladder is "failed
+  # over a pre-existing file" (AC-2.9(3)) — with nothing pre-existing, both rungs (i) and (ii)
+  # are no-ops (nothing to overwrite, nothing to unlink) and the ladder lands directly on the
+  # rung-(iii) residual.
+  if ((preExisted == 0)); then
+    printf 'pdlc: drift state at %s could not be written (operation: drift-state-replace). The recorded state does not describe this run.\n' "$target" >&2
+    return 4
+  fi
+
+  local checkEnabledForLadder="${PDLC_RESOLVED_CHECK_ENABLED:-true}"
+  local invalidation
+  invalidation="$(pdlc_emit_printf_record "$generatedBy" "$checkEnabledForLadder" "drift-state-invalidated")"
+
+  if ! pdlc_fault_active "drift-state-invalidate"; then
+    if printf '%s' "$invalidation" >"$target" 2>/dev/null; then
+      pdlc_trace "run" "write" "-" "$target"
+      return 0
+    fi
+  fi
+
+  if ! pdlc_fault_active "drift-state-unlink"; then
+    if rm -f -- "$target" 2>/dev/null && printf '%s' "$invalidation" >"$target" 2>/dev/null; then
+      pdlc_trace "run" "write" "-" "$target"
+      return 0
+    fi
+  fi
+
+  printf 'pdlc: drift state at %s could not be written (operation: drift-state-replace). The recorded state does not describe this run.\n' "$target" >&2
+  return 4
+}
+
+# pdlc_write_sync_manifest <path> <content> — the sync-manifest's own temp+mv whole-file
+# replace (§4.2 step 6, §5.5), including its removal-only path: the caller builds `content`
+# already reflecting any entry removed for a row that failed post-copy verification, and this
+# routine only writes it. `rename(2)` consults the parent directory, so the failure surface is
+# `.claude/workflows/` itself (TE F-06), not the file's own mode.
+pdlc_write_sync_manifest() {
+  local path="$1" content="$2"
+  local dir="${path%/*}"
+
+  if pdlc_fault_active "sync-manifest-update"; then
+    PDLC_WRITE_FAILURES+=("${path}"$'\x1f'"sync-manifest-update")
+    pdlc_trace "run" "write" "-" "$path"
+    return 1
+  fi
+
+  if ! _pdlc_atomic_write "$dir" "$path" "$content"; then
+    PDLC_WRITE_FAILURES+=("${path}"$'\x1f'"sync-manifest-update")
+    return 1
+  fi
+
+  return 0
+}
+
+# pdlc_copy_artifact <src> <dest> [rowId] — sibling-temp + `mv` copy (§4.3) with post-copy
+# verification (§5.5 lettered sub-steps): re-read `dest`, hash it, compare to `src`'s hash. Not
+# equal (or the copy/replace itself failed) ⇒ no sync-manifest entry is written for this row
+# (that is the caller's job, over this routine's return value) and `writeFailures` gains
+# `{ path: dest, operation: artifact-copy }`. Uses `python3` (via `PDLC_PY_BIN`) for the actual
+# byte copy — `cp`/`cat`/`dd` are not probe-sandbox PATH tools.
+pdlc_copy_artifact() {
+  local src="$1" dest="$2" rowId="${3:-}"
+  local destDir="${dest%/*}"
+
+  if pdlc_fault_active "artifact-copy" "$rowId"; then
+    PDLC_WRITE_FAILURES+=("${dest}"$'\x1f'"artifact-copy")
+    return 1
+  fi
+
+  _pdlc_ensure_py || { PDLC_WRITE_FAILURES+=("${dest}"$'\x1f'"artifact-copy"); return 1; }
+
+  [[ -d "$destDir" ]] || { PDLC_WRITE_FAILURES+=("${dest}"$'\x1f'"artifact-copy"); return 1; }
+
+  local tmp="${destDir}/.pdlc-tmp.$$.${RANDOM}"
+
+  if pdlc_fault_active "artifact-copy-corrupt" "$rowId"; then
+    # Simulates a truncated/partial write: only the source's first byte lands, so post-copy
+    # verification below (a genuine re-read, not a reuse of any in-memory hash) catches it.
+    "$PDLC_PY_BIN" -c '
+import sys
+with open(sys.argv[1], "rb") as f:
+    data = f.read()
+with open(sys.argv[2], "wb") as f:
+    f.write(data[:1])
+' "$src" "$tmp" 2>/dev/null
+  else
+    "$PDLC_PY_BIN" -c 'import shutil, sys; shutil.copyfile(sys.argv[1], sys.argv[2])' "$src" "$tmp" 2>/dev/null
+  fi
+
+  if [[ ! -e "$tmp" ]]; then
+    PDLC_WRITE_FAILURES+=("${dest}"$'\x1f'"artifact-copy")
+    return 1
+  fi
+
+  if ! mv -f -- "$tmp" "$dest" 2>/dev/null; then
+    rm -f -- "$tmp" 2>/dev/null
+    PDLC_WRITE_FAILURES+=("${dest}"$'\x1f'"artifact-copy")
+    return 1
+  fi
+
+  pdlc_trace "run" "copy" "$rowId" "$dest"
+
+  local srcHash destHash
+  srcHash="$(pdlc_sha1 "$src")" || srcHash=""
+  destHash="$(pdlc_sha1 "$dest")" || destHash=""
+
+  if [[ -z "$srcHash" || -z "$destHash" || "$srcHash" != "$destHash" ]]; then
+    PDLC_WRITE_FAILURES+=("${dest}"$'\x1f'"artifact-copy")
+    return 1
+  fi
+
+  PDLC_COPY_HASH="$destHash"
+  return 0
+}
+
+# pdlc_backup <srcPath> <id> — the backup half of "no destroy before verified backup" (AC-2.9(4),
+# §4.7): copy `srcPath` into `.pdlc-backups/{id}.{stamp}-{NN}.bak` (grammar: `pdlc_backup_format`,
+# layer 1), RE-READ the backup from disk and hash it, and compare to a hash of the source bytes.
+# Not equal (or any step failed) ⇒ original `srcPath` is left untouched, `writeFailures` gains
+# `{ path: srcPath, operation: backup|backup-verify }`, and this returns 1. `PDLC_BACKUP_PATH` is
+# set only on a verified success (TSPEC §2.2's documented side effect). `NN` exhaustion (99
+# backups of one id inside one second) is itself a `backup` write failure (§1.4), never a reuse.
+pdlc_backup() {
+  local srcPath="$1" id="$2"
+  local parentDir="${srcPath%/*}"
+  local backupDir="${parentDir}/.pdlc-backups"
+
+  PDLC_BACKUP_PATH=""
+
+  if pdlc_fault_active "backup" "$id"; then
+    PDLC_WRITE_FAILURES+=("${srcPath}"$'\x1f'"backup")
+    return 1
+  fi
+
+  _pdlc_ensure_py || { PDLC_WRITE_FAILURES+=("${srcPath}"$'\x1f'"backup"); return 1; }
+
+  if [[ ! -d "$backupDir" ]]; then
+    "$PDLC_PY_BIN" -c 'import os, sys; os.makedirs(sys.argv[1], exist_ok=True)' "$backupDir" 2>/dev/null
+  fi
+  if [[ ! -d "$backupDir" ]]; then
+    PDLC_WRITE_FAILURES+=("${srcPath}"$'\x1f'"backup")
+    return 1
+  fi
+
+  local stamp candidate n found=0
+  stamp="$(date -u +%Y%m%dT%H%M%SZ)"
+  for ((n = 1; n <= 99; n++)); do
+    candidate="$(pdlc_backup_format "$id" "$stamp" "$n")" || continue
+    if [[ ! -e "${backupDir}/${candidate}" ]]; then
+      found=1
+      break
+    fi
+  done
+
+  if ((found == 0)); then
+    PDLC_WRITE_FAILURES+=("${srcPath}"$'\x1f'"backup")
+    return 1
+  fi
+
+  local backupPath="${backupDir}/${candidate}"
+
+  if pdlc_fault_active "backup-corrupt" "$id"; then
+    # Simulates a backup write that appears to succeed but does not land correctly: the file
+    # exists but its bytes differ from the source, so the re-read-and-hash step below (not a
+    # reuse of any in-memory hash) is what catches it.
+    printf 'PDLC_FAULT-CORRUPT' >"$backupPath" 2>/dev/null
+  else
+    "$PDLC_PY_BIN" -c 'import shutil, sys; shutil.copyfile(sys.argv[1], sys.argv[2])' "$srcPath" "$backupPath" 2>/dev/null
+  fi
+
+  pdlc_trace "run" "backup" "$id" "$backupPath"
+
+  if [[ ! -e "$backupPath" ]]; then
+    PDLC_WRITE_FAILURES+=("${srcPath}"$'\x1f'"backup")
+    return 1
+  fi
+
+  local srcHash backupHash
+  srcHash="$(pdlc_sha1 "$srcPath")" || srcHash=""
+  backupHash="$(pdlc_sha1 "$backupPath")" || backupHash=""
+
+  if [[ -z "$srcHash" || -z "$backupHash" || "$srcHash" != "$backupHash" ]]; then
+    PDLC_WRITE_FAILURES+=("${srcPath}"$'\x1f'"backup-verify")
+    rm -f -- "$backupPath" 2>/dev/null
+    return 1
+  fi
+
+  PDLC_BACKUP_PATH="$backupPath"
+  return 0
+}
+
+# pdlc_retire <target> <retiredBasename> — the retirement half of §5.7: a verified backup
+# (`pdlc_backup`, id = `retiredBasename`) then delete, never the reverse. A failed backup leaves
+# `target` untouched and this returns 1 with `pdlc_backup`'s own `writeFailures` entry already
+# recorded — retirement adds no second entry for that case. A failed delete (after a verified
+# backup landed) is its own `{ path: target, operation: retire-delete }` entry.
+pdlc_retire() {
+  local target="$1" retiredBasename="$2"
+
+  pdlc_backup "$target" "$retiredBasename" || return 1
+
+  if pdlc_fault_active "retire-delete" "$retiredBasename"; then
+    PDLC_WRITE_FAILURES+=("${target}"$'\x1f'"retire-delete")
+    return 1
+  fi
+
+  if ! rm -f -- "$target" 2>/dev/null; then
+    PDLC_WRITE_FAILURES+=("${target}"$'\x1f'"retire-delete")
+    return 1
+  fi
+
+  pdlc_trace "run" "delete" "$retiredBasename" "$target"
+  return 0
+}
 
 # ─────────────────────────────────────────────────────────────────────────────────────────────
 # Layer 5 (T-35 — messages) appends below this line: `pdlc_msg_*`.
