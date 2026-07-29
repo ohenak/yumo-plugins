@@ -804,9 +804,220 @@ record the **post-run** `unverified`, not the as-found `stale`).
 
 ## 8. Seam-closure properties (`PDLC_FAULT` ⊆ 16; M6; trace grammar)
 
-## 9. Determinism properties (TSPEC §2.5, AC-1.3)
+### 8.1 The token-set closure (TSPEC §16's PROPERTIES row)
+
+FSPEC §10 O-10 requires the emitted token set to be a subset of the enumerated one, and TSPEC §5.2
+closes that enumeration at **sixteen**, exported from C1 as `PDLC_FAULT_TOKENS` so the property
+reads the implementation's own list rather than a copy. The obligation is stated as a subset; a
+subset alone is satisfied by an implementation that recognises **nothing**, so both directions are
+asserted, by two independent oracles.
+
+**PROP-SEAM-01 — Recognition equals the enumeration.**
+(a) For every `t ∈ PDLC_FAULT_TOKENS` (all sixteen), a run with `PDLC_FAULT=t` prints **no** N-7
+line. (b) For every generated non-member `s` — 4 draws per run family, comprising: a random
+M6-conforming string, a **one-character mutation** of a real token (`mkdirr`, `mkdi`, `Mkdir`), a
+real token with leading whitespace (`" mkdir"`, TSPEC §5.1's no-trim rule), and a real token of a
+*different* case — the run prints N-7 **exactly once**, with the whole spec text captured, injects
+nothing, and is **byte-equivalent** to the same fixture with the seam unset (stdout, drift state,
+sync manifest, modulo `generatedAtUtc`). *(Contract · Harness · E · `driftFault.test.js`)*
+The mutation draws are the falsifying half: a random string is rejected by any implementation, while
+`mkdirr` is rejected only by one doing exact matching rather than a prefix or substring test.
+Byte-equivalence (not "exit is still 0") is TSPEC §5.4 rule 2's form.
+
+**PROP-SEAM-02 — Static call-site closure.**
+Reading the shipped bash sources as text (`lib/pdlc-drift.sh`, `check-workflow-drift.sh`,
+`sync-workflows.sh`): the set of literal first arguments to `pdlc_fault_active` is **equal** to
+`PDLC_FAULT_TOKENS`, and every call site passes a literal (never a variable). *(Contract · Unit ·
+E · `driftFault.test.js`)*
+The subset direction is the obligation; the superset direction ("every listed token has at least one
+guard") is what stops the enumeration from being padded with tokens no code consults — which would
+make PROP-SEAM-01(a) pass for tokens that inject nothing anywhere. The literal-argument conjunct is
+what keeps this oracle sound: a computed token name would make the static read incomplete without
+saying so.
+
+**PROP-SEAM-03 — Selector-bearing partition.**
+For every token, with a selector appended: tokens TSPEC §5.1.1 marks **non-bearing** produce N-7
+exactly once and inject nothing (the whole spec text captured, including the `mkdir:` and
+`backup:a:b` forms); tokens marked **bearing** produce **no** N-7 and inject **only** for the row or
+backup whose scope key is byte-equal to the selector — over generated 2–4-row manifests, exactly one
+row is affected and the loop continues over the rest. *(Contract · Harness · E ·
+`driftFault.test.js`)*
+The "exactly one row" conjunct is what makes AT-35's "the loop continues" claim quantified rather
+than anecdotal, and it is the failure TSPEC §5.4 rule 4 names: a spec that silently drops its
+selector corrupts every row while the test still passes.
+
+**PROP-SEAM-04 — A partially-recognised list behaves member-wise.**
+For every generated list mixing `k ≥ 1` real tokens with one non-member, the real tokens inject,
+N-7 is printed once for the non-member, and the exit is the unrecognised-token exit (hook **0**,
+`--check`/sync **4**). *(Contract · Harness · E · `driftFault.test.js`)* TSPEC §5.4 rule 3.
+
+**PROP-SEAM-05 — Both seams are inert when unset, at the observable level.**
+For every generated tree, a run with neither `PDLC_FAULT` nor `PDLC_TRACE_FILE` set is
+byte-equivalent (stdout, stderr, exit, drift state, sync manifest, consumer tree; modulo
+`generatedAtUtc`) to a run with `PDLC_TRACE_FILE` set to a writable path and `PDLC_FAULT` unset.
+*(Contract · Harness · E · `driftFault.test.js`, `driftOrdering.test.js`)*
+AC-2.9(5)'s "every other observable is identical with the seams on or off", quantified. The
+trace-file half is also the positive control for TSPEC §4.4's unwritable-trace test: that test
+asserts the *blocked* path changes nothing, and this one asserts the *writable* path changes nothing
+either — an implementation that behaves differently whenever tracing is on would pass the first and
+fail this.
+
+### 8.2 The id charset's unambiguity (M6)
+
+**PROP-SEAM-06 — `M6_ID_REGEX` excludes every delimiter both seams use.**
+For every string matching `M6_ID_REGEX` (500 generated draws plus the adversarial forms of §6.2), the
+string contains no `,` (the `PDLC_FAULT` separator), no `:` (its selector separator), no tab (the
+trace delimiter) and no newline (its record separator). *(Contract · Unit · E ·
+`driftFault.test.js`)*
+TSPEC §5.1.1 answers TE Q-03 by *citing* M6 as the authority for both grammars' unambiguity; this is
+the executable form of that citation. TSPEC §14.1 F-2 asserts the four exclusions of the regex
+directly; this property asserts them over generated members, so a future widening of the charset —
+the change that would actually break the grammars — is red on both.
+
+### 8.3 Trace grammar (derived — supports O-1, which TSPEC §4 owns)
+
+Two quantified properties, marked **supporting**: O-1's disposition is TSPEC §4.3's oracle, and
+nothing here replaces it.
+
+**PROP-SEAM-07 — Percent-encoding round-trips byte-exactly.**
+For every generated byte string (including tabs, newlines, `%`, bytes `0x00`–`0x1F` and `0x7F`–`0xFF`,
+and valid and invalid UTF-8), `decode(encode(b)) == b` as bytes, and `encode(b)` contains no raw tab,
+newline, carriage return, or byte outside `0x20`–`0x7E`. *(Data Integrity · Harness (batched, via a
+one-off encoder driver on the §11.2 pattern) · E · `driftOrdering.test.js`)*
+TSPEC §4.1's encoder/decoder pair. The second conjunct is the one that matters for the oracle: an
+encoder that round-trips but leaves a raw tab in `arg` produces a trace line the parser splits into
+six fields, and `parseTrace` then throws on a *conforming* run.
+
+**PROP-SEAM-08 — `seq` is a gapless permutation of line order.**
+For every generated run that produces a trace, `seq` values are exactly `1..n` in line order, with
+no gap or repeat, and the record count equals the line count. *(Observability · Harness · E ·
+`driftOrdering.test.js`)*
+TSPEC §4.1's self-check, quantified over generated fixtures rather than one. A violation means a
+traced call ran in a subshell, and the property is what makes that diagnosis rather than a silently
+degraded ordering assertion.
+
+## 9. Determinism properties (TSPEC §2.5, AC-1.3, AC-1.8(iii))
+
+AC-1.8(iii) names five independence axes. Each is one property, quantified over §2.3's leaves, and
+each is a **two-run byte comparison** of the record (modulo `generatedAtUtc`) with `(state, reason)`
+pairs compared explicitly per PROP-RSN-06.
+
+**PROP-DET-01 — Clock independence.**
+Two runs over the same tree separated by a changed `TZ` and a changed wall-clock reading produce
+identical records modulo `generatedAtUtc`. *(Idempotency · Harness · E · `driftClassify.test.js`)*
+`generatedAtUtc` itself is asserted to differ or be equal indifferently — it is reporting-only
+(AC-2.6) and the queue never compares timestamps (AC-4.1, NFR-1).
+
+**PROP-DET-02 — mtime independence.**
+For every leaf, `touch`-ing both the plugin-side and consumer-side artifacts (and, independently,
+only one side) between two runs changes no `state` and no `reason`. *(Idempotency · Harness · E ·
+`driftClassify.test.js`)* AC-1.3 and FSPEC §3.4 R-2. The one-sided variant is the discriminating
+draw: an implementation comparing mtimes across sides is green on the two-sided one.
+
+**PROP-DET-03 — Environment-order independence.**
+Two runs whose sandbox environments differ only by the insertion order of 3–8 generated unrelated
+variables produce identical records. *(Idempotency · Harness · E · `driftOrdering.test.js`)*
+TSPEC §2.5 row 5.
+
+**PROP-DET-04 — Directory-order independence.**
+For every generated tree, creating the same `.claude/workflows/` entries in a different creation
+order (and, where the filesystem exposes it, with names chosen to invert readdir order) produces
+identical `rows` **in the manifest's row order**, and an identical `LC_ALL=C`-sorted `not-managed`
+listing. *(Idempotency · Harness · E · `driftClassify.test.js`)*
+TSPEC §2.5 rows 3–4. The row-order half uses a manifest whose ids are **non-alphabetical**, so an
+implementation that sorts rows is red — `rows` follows the manifest, never a glob (AC-0.1).
+
+**PROP-DET-05 — Locale independence.**
+`LC_ALL=en_US.UTF-8` injected through `opts.env` changes no `state`, no `reason`, no row order and
+no `not-managed` order. *(Idempotency · Harness · E · `driftClassify.test.js`)*
+Companion to PROP-BKP-07; together they cover C1's `export LC_ALL=C` on both the classifier and the
+backup paths, which is the only way the sandbox's own `LC_ALL=C` stops masking its removal.
+
+**PROP-DET-06 — Process independence.**
+The same tree classified by two *different entrypoints* that change nothing (`--check`, then the
+hook) yields identical `rows` and identical `baselineReason`, differing only in `generatedBy` and
+`generatedAtUtc`. *(Idempotency · Integration · E · `driftBaseline.test.js`)*
+AC-1.8(iii)'s "across runs **and processes**". This is also the property that would catch a
+classifier whose behavior depends on the entrypoint — the defect FSPEC §3.1's "there is no second
+classifier" rules out by design and nothing else observes.
 
 ## 10. Negative properties
+
+What must **not** happen, quantified. Each carries the three positive conjuncts the falsifiability
+rule requires — an exact status/state value, a named reason or operation token, and a
+retention/audit assertion — because `state != X` alone is satisfied by any accidental state.
+
+**PROP-NEG-01 — No unmanaged file is ever read, modified or deleted.**
+Over every generated tree in this document, for every file in `.claude/workflows/` with no manifest
+row and in no `retires`: its bytes are unchanged (sha1 before/after), it is absent from `rows`, and
+it appears in the `not-managed` listing; and for every `.pdlc-`-prefixed file: unchanged bytes,
+absent from `rows`, **and absent from `not-managed`**. *(Security/Contract · Integration · E ·
+`driftClassify.test.js`)* NFR-3, AC-0.6, AC-1.5. The `.pdlc-` half is the one an implementation gets
+wrong by enumerating the directory to build the managed set — the globbing AC-0.1 prohibits.
+
+**PROP-NEG-02 — Nothing is ever written under `$HOME` or `/`.**
+For every generated tree, including the adversarial fixtures where `.claude/` exists at the sandbox
+`HOME` and where `$PWD` is deleted underneath the process, the run creates no path under `HOME` and
+no path outside the fixture root; the reported reason is exactly `repo-root-unresolved`; and
+`assertTreeUnchanged(HOME)` holds. *(Security · Integration · E · `driftRepoRoot.test.js`)*
+AC-0.5's absolute rejection, quantified over the generated root-resolution vectors of §5.1. Three
+positive conjuncts, not "nothing bad happened".
+
+**PROP-NEG-03 — No destroying operation precedes a verified backup.**
+For every generated tree and both sync modes, for every row or retired path whose bytes are
+overwritten or deleted, the trace contains a `backup` record for that id **before** the `copy` or
+`delete` record, and the backup file's bytes equal the pre-operation bytes of the target.
+Conversely, for every generated fault composition in which the backup fails or fails verification:
+the target's bytes are **byte-identical** to their pre-run value, the operation is reported skipped,
+`writeFailures` contains exactly one entry with `operation ∈ {backup, backup-verify}` for that path,
+and the exit is **4**. *(Error Handling · Integration · E · `driftWriteFailure.test.js`,
+`driftSync.test.js`)*
+AC-2.9(4), AC-3.4. The forward half generalises AT-26 (the `stale`-row backup a plain sync must
+still take); the converse generalises AT-27. `missing` rows are the stated exception — the one state
+sync overwrites without a backup — and the property asserts that too: for a `missing` row there is
+**no** `backup` record, which is red against an implementation that backs up a non-existent file and
+writes a zero-byte backup that would later restore as truncation.
+
+**PROP-NEG-04 — A degraded run is never green, on any surface.**
+For every generated vector or leaf producing `baselineStatus: "unresolved"`, any `unknown` row, or a
+non-empty `writeFailures`: the hook emits at least one matched W-*/N-* line (never silence),
+`--check` exits non-zero per AC-3.3's precedence, and the queue's `mapDriftState` returns
+`blocked` at the row AC-4.1's table names — **except** the two stated exceptions, `checkEnabled:
+false` (row 2) and `unverified`/`local-edit` (row 8), which are asserted to `proceed` with the rows
+named in the report. *(Error Handling · Integration · E · `driftHook.test.js`,
+`queueDriftGate.test.js`)*
+AC-1.0's "every green outcome requires resolved + non-empty rows + empty `writeFailures`", AC-2.2's
+"there is no silent non-green state", and NFR-6's "exactly two exceptions" — the exceptions are
+enumerated **positively**, so a third one appearing is red rather than absorbed.
+
+**PROP-NEG-05 — No state is ever decided by a version or a timestamp.**
+For every generated tree, perturbing only `artifactVersion` in the distribution manifest, only
+`pluginVersion`, only `artifactVersion` in the sync manifest, or only `syncedAtUtc`, changes no
+`state` and no `reason` — while the *reported* `pluginArtifactVersion` / `consumerArtifactVersion`
+fields do change, proving the perturbation reached the subject. *(Data Integrity · Harness · E ·
+`driftClassify.test.js`)* AC-5.2, AC-5.4, REQ §0 fact 6. The second conjunct is what stops this from
+being a vacuous invariance property over a perturbation the subject never read.
+
+**PROP-NEG-06 — A retired path is never deleted before its replacement is in place.**
+For every generated tree with a retired path and every possible post-copy state of its superseding
+row R, the path is deleted **iff** R's post-copy state is `in-sync`; in every other case the path
+exists after the run, `retire-skipped` is reported naming R's state, and — for the failure
+compositions — `writeFailures` carries `retire-delete` or `backup*` and the exit is 4. *(Error
+Handling · Integration · E · `driftSync.test.js`)*
+AC-3.9. Quantified over all six R-states, which is what turns AT-12/AT-13's two examples into the
+exhaustive claim AC-3.9 makes; the `unknown` sub-cases are generated over all four row reasons.
+
+**PROP-NEG-07 — Sync never runs a VCS command, and never touches a file outside the manifest's
+declared blast radius.**
+For every generated tree, no run creates, deletes or modifies any path outside
+`.claude/workflows/` (plus the two directories AC-2.9(1) permits); and for every generated
+**M10-violating** manifest — a `consumerPath` outside `.claude/workflows/`, nested one level deeper,
+or with a `.pdlc-` basename — the baseline is `unresolved`/`manifest-malformed`, `rows` is `[]`, and
+the named path is byte-unchanged. *(Security · Integration · E · `driftBaseline.test.js`,
+`driftSync.test.js`)*
+FSPEC §1.1 M10's blast-radius bound, which exists precisely because a build bug or hand-edited cache
+could otherwise direct sync at this feature's own state files. Generated over M10's three clauses so
+each is falsifiable separately.
 
 ## 11. Skip inventory and design-time arguments
 
