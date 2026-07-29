@@ -972,26 +972,68 @@ equals the set of rows whose **as-found** state is `stale` or `missing` (plain),
 `local-edit`/`unverified` (`--force`); the set carrying a `backup` record equals the rows the same
 pass says have existing bytes to destroy; and every such mutating record follows the last as-found
 `classify` record. *(Integration · Integration · E · `driftSync.test.js`, `driftOrdering.test.js`)*
+**The `--force` gate's two operator-visible conjuncts (AC-3.2, PM F-01/Q-01), asserted here.**
+v1.0 quantified the copy set for both modes and said nothing about what a *plain* sync tells the
+operator when it declines a row — which is half of what AC-3.2 requires. Added:
+
+- On a **plain** sync over a tree containing at least one `local-edit` and one `unverified` row:
+  every such row's bytes are **byte-unchanged** (sha1 before/after), it carries **no** `copy` and
+  **no** `backup` trace record, the report names it with its **exact state string** (`local-edit` /
+  `unverified`) — the reason the operator is being told, not a generic "skipped" — and the run's
+  exit is **1** per AC-3.3's precedence. Three positive conjuncts, per §10's rule: exact state
+  value, named row, retention assertion.
+- On a **`--force`** sync over the same generated tree: the same rows *are* copied, each preceded by
+  a `backup` record (PROP-NEG-03's forward half), and the exit is **0** when nothing else is
+  degraded.
+
+The pair is what makes `--force` a *gate* rather than a flag: the plain run must be observably
+declining, not silently succeeding.
+
 O-20 clause (c). It is observable **only** through the `as-found` trace label — which is why the
 grammar carries three phase labels rather than two (FSPEC §10 O-1) — and it is what forbids an
 implementation that re-classifies before copying and thereby lets a mid-run filesystem change
 silently change what gets copied.
 
-**PROP-MTM-04 — `supersedingState` is the post-run measurement, and the two candidate readings
-agree.**
-For every generated tree with a retired path present, `retiredPresent[].supersedingState` equals R's
-state in the **recorded** pass (`as-found` for hook/`check`, `post-run` for sync) — **and**, on sync
-runs, equals R's state in the `post-copy` pass. *(Data Integrity · Integration · E ·
-`driftSync.test.js`, `driftHook.test.js`)*
-AC-2.6 says `supersedingState` is measured "sync: **post-copy**"; FSPEC §3's table feeds
-`retiredPresent[]` from the **post-run** pass. The two are not in conflict — deleting a retired path
-cannot change R's own `consumerPath` bytes, so R's state is identical across steps 5 and 7 — but
-"they cannot differ" is exactly the kind of claim that stops being true after an unrelated change.
-Asserting the **agreement** disposes the ambiguity in the direction that stays honest: if a future
-change makes them differ, this property goes red and the spec question is reopened, rather than one
-reading silently winning. On non-sync runs only the first conjunct applies (there is no post-copy
-pass), and the property asserts that too, so a hook implementation that fabricates a post-copy label
-is red via `assertPhaseOrder`.
+**PROP-MTM-04 — `supersedingState` is the recorded pass's measurement, and the post-copy pass agrees
+exactly when step 6 left R's manifest entry alone.**
+*(Data Integrity · Integration · E · `driftSync.test.js`, `driftHook.test.js`)*
+
+Three conjuncts, in the order of how load-bearing they are:
+
+1. **Pass attribution (all entrypoints).** For every generated tree with a retired path present,
+   `retiredPresent[].supersedingState` equals R's state in the **recorded** pass — `as-found` for
+   hook and `--check`, `post-run` for sync (FSPEC §3's pass table). On non-sync runs there is no
+   post-copy pass at all, and the property asserts that too: a hook implementation that fabricates a
+   `post-copy` phase label is red via `assertPhaseOrder`.
+2. **Agreement, scoped.** On sync runs in which **step 6 neither wrote nor removed a sync-manifest
+   entry for R** — operationally: R's copy verification passed, or R was not copied at all, and
+   `writeFailures` carries no entry for R — `supersedingState` **also** equals R's state in the
+   `post-copy` pass (`assertPostCopyNarrow`).
+3. **Predicted disagreement, asserted positively.** On sync runs in which step 6 **did** change R's
+   entry — the AT-35 composition, `PDLC_FAULT=artifact-copy-corrupt:<R>` (TSPEC §5.2 token 10) —
+   the two passes are asserted to differ **in exactly the predicted way**, generated over both
+   sub-cases:
+   - R had a **pre-existing** entry as found (R was `stale`): post-copy is **`local-edit`** (the
+     truncated bytes differ from the plugin *and* from the still-present old entry's
+     `consumerHash`), and the recorded post-run state is **`unverified`** (step 6 removed the
+     entry, so rung 4 fires).
+   - R had **no** pre-existing entry (R was `missing` or `unverified`): both passes are
+     **`unverified`**, and the property asserts the agreement rather than exempting the case.
+
+**Why v1.0's version was wrong, recorded because it is the interesting part.** v1.0 asserted
+unconditional agreement on the argument that "deleting a retired path cannot change R's own
+`consumerPath` bytes". That argument is about **bytes**, and it ignores that the **sync manifest is
+a classifier input** for rungs 4–6, and that FSPEC §4.2 **step 6** — which rewrites it, including
+removing the entry of any row that failed verification (§5.5) — runs *between* the post-copy pass
+(step 5) and the post-run pass (step 7). So on a fault composition §7's own generated set includes
+(PROP-MTM-06 quantifies over write-failing trees), the two passes legitimately disagree, and v1.0's
+property would have gone red against a **conforming** implementation — and been deleted, which is
+the opposite of its stated purpose (SE F-04; the step-6 placement answers SE Q-01 by citation, not
+inference: FSPEC §4.2 step 6 and §5.5).
+
+The honesty intent survives, in a stronger form: conjunct 3 pins the *shape* of the disagreement, so
+a future change that makes the passes diverge in any **other** way is still red and still reopens
+the spec question — while a conforming implementation is green.
 
 **PROP-MTM-05 — Post-sync state is current within the session.**
 For every generated tree, immediately after a sync, `--check` over the unchanged tree reports every
@@ -1010,6 +1052,30 @@ Red against an implementation that records post-run states only when the sync su
 back to as-found on a failed run — which is how the exit code and the record would disagree on
 exactly the runs where an operator most needs them to agree (AT-35's shape: a corrupted copy must
 record the **post-run** `unverified`, not the as-found `stale`).
+
+**PROP-MTM-07 — A repeat sync over an unchanged tree is a no-op, byte for byte.**
+For every generated consumer tree, run a plain sync to completion, snapshot, then run the **same**
+plain sync again with nothing changed in between. The second run must satisfy, conjunct by
+conjunct: *(Idempotency · Integration · E · `driftSync.test.js`)*
+
+| # | Conjunct | The wrong implementation it is red against |
+|---|---|---|
+| 1 | **No copy.** The trace contains **zero** `copy` records, and every `.claude/workflows/` artifact is byte-identical to the snapshot (sha1 per path, plus set-equality of the path set) | one that copies unconditionally rather than on the as-found `stale`/`missing` set |
+| 2 | **No backup.** The trace contains **zero** `backup` records, and the backup directory's name → bytes map is **identical** to the snapshot's — no new file, no renumbered `NN` | the one this property exists for: a sync that takes a backup on every invocation. It is green against every other property in §7 and against AT-9, and its operator-visible cost is that AC-3.4's **5-deep retention window silently evicts** — five idle syncs and the pre-edit content AC-3.5's restore oracle promises is gone |
+| 3 | **The sync manifest is byte-identical**, `syncedAtUtc` **included** | one that re-stamps `syncedAtUtc` on every run. FSPEC §1.2 records the timestamp of the sync that *wrote* the entries, and TSPEC §11's rule 2 already relies on the file being stable across no-op runs |
+| 4 | **The drift state is equal up to `generatedAtUtc`** (§1.5 rule 2): identical `rows` (states, reasons, hashes, order), identical `retiredPresent`, `writeFailures === []`, `baselineStatus: "resolved"` | one whose second-run classification depends on first-run residue |
+| 5 | **Exit 0** | — |
+
+AC-3.7, and it is the one operator-facing idempotency claim v1.0 left without a property (PM F-02).
+v1.0 asserted idempotence for `prune` (PROP-BKP-12) and for classification (PROP-CLS-05, §9) — the
+two places it is cheapest — and not for the place US-02 depends on. The property has exactly
+PROP-BKP-12's shape (a repeat-run byte-invariance claim over a name → bytes map), quantified over
+the trees §7 already builds, and costs **one** additional spawn.
+
+**A note on what conjunct 2 does not say.** It asserts that no backup is *taken*, not that the
+retention window is full — retention itself is PROP-BKP-09's. The two together are what make
+AC-3.5's "restore the newest backup" recover the operator's actual pre-sync content rather than a
+copy of the plugin artifact five idle runs old.
 
 ## 8. Seam-closure properties (`PDLC_FAULT` ⊆ 16; M6; trace grammar)
 
