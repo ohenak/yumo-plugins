@@ -32,7 +32,7 @@
  * missing-export load failure to guard against here.
  */
 
-import { mkdirSync, mkdtempSync, unlinkSync, writeFileSync } from "fs";
+import { existsSync, mkdirSync, mkdtempSync, unlinkSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 
@@ -42,10 +42,18 @@ import {
   remediationOf,
   expectRemediationClass,
   expectRepoRootUnresolved,
+  countOf,
+  allOf,
 } from "./helpers/driftHarness.js";
 import { makeConsumerTree, makePluginTree } from "./helpers/driftFixtures.js";
-import { snapshotTree } from "./helpers/driftOrdering.js";
+import {
+  snapshotTree,
+  parseTrace,
+  assertPhaseOrder,
+  assertRecordedPassIs,
+} from "./helpers/driftOrdering.js";
 import { itOrSkip, INVARIANTS_AT_14B } from "./helpers/driftCapabilities.js";
+import { enumerateEvidenceVectors } from "./helpers/driftGenerators.js";
 import { runProbe } from "./helpers/driftProbe.js";
 import { validateDriftRecord, mapDriftState } from "../orchestrate-queue.js";
 
@@ -83,6 +91,39 @@ const EIGHT_BASELINE_REASONS = Object.freeze([
 // `EIGHT_BASELINE_REASONS` — a failing assertion if any reason is never reached, not a manually
 // maintained checklist.
 const exercisedBaselineReasons = new Set();
+
+// PROP-RSN-05 (baseline half, PROPERTIES §4): the closed four-member row-reason set (FSPEC
+// §3.3's own precedence), written out verbatim for the same reason `EIGHT_BASELINE_REASONS`
+// is — this file never derives its oracle from the implementation it is checking.
+const FOUR_ROW_REASONS = Object.freeze([
+  "hash-tool-absent",
+  "plugin-artifact-missing",
+  "plugin-artifact-unreadable",
+  "consumer-artifact-unreadable",
+]);
+
+/**
+ * PROP-RSN-05 (baseline half): `rows[].reason` is never a member of the eight-member baseline
+ * set, `baselineReason` is never a member of the four-member row set, and no row exists while
+ * `baselineStatus === "unresolved"` (§4's disjointness clause, AC-1.2). Invoked at every
+ * `readDriftState` call site this file's new cases add, per PROPERTIES §4's framing: "a
+ * cross-cutting invariant checked by a shared read-back helper... over the whole suite", not a
+ * property demonstrated by one hand-picked fixture.
+ * @param {object} state a parsed drift-state record (readDriftState's return)
+ */
+function assertReasonsDisjoint(state) {
+  if (state.baselineReason !== null) {
+    expect(FOUR_ROW_REASONS).not.toContain(state.baselineReason);
+  }
+  if (state.baselineStatus === "unresolved") {
+    expect(state.rows).toEqual([]);
+  }
+  for (const row of state.rows || []) {
+    if (row.reason !== null && row.reason !== undefined) {
+      expect(EIGHT_BASELINE_REASONS).not.toContain(row.reason);
+    }
+  }
+}
 
 // ───────────────────────────── fixture builders (§13.1/§13.2) ─────────────────────────────
 
@@ -607,4 +648,485 @@ describe("T-39 layer-2 sourced-probe: pdlc_load_manifest over the eight baseline
     const results = runProbe(cases);
     expect(results).toHaveLength(cases.length);
   });
+});
+
+// ───────────────────────── T-42: PROP-BSL-01/-02/-03/-04 (the 20 evidence vectors) ─────────────────────────
+//
+// PLAN T-42. The oracle is recomputed from the vector itself (PROPERTIES §5.2's own rule,
+// PROP-BSL-03), never copied from a table: `expected = precedence.find(c => vector[c] === "holds")`.
+// Because `conditionHolds` only ever tests a field for the literal string `"holds"`, an
+// `"indeterminate"` field can never win the `find` — which is exactly PROP-BSL-04's claim, so a
+// single loop asserting `actual === expected` (PROP-BSL-03) also discharges PROP-BSL-04 without a
+// second traversal. PROP-BSL-01 (totality) and PROP-BSL-02 (null-exactly biconditional) are the
+// two shape conjuncts asserted before the reason comparison on every iteration.
+
+describe("PROP-BSL-01/-02/-03/-04 — totality, null-biconditional, precedence, indeterminate-exclusion over the 20 evidence vectors", () => {
+  // FSPEC §2.8's fixed 8-reason precedence, minus `drift-state-invalidated` (never a member of
+  // `enumerateEvidenceVectors()`'s vector — PROPERTIES §5.1: "not an evidence axis").
+  const PRECEDENCE = Object.freeze([
+    "manifest-empty",
+    "json-tool-absent",
+    "manifest-malformed",
+    "manifest-absent",
+    "repo-root-unresolved",
+    "plugin-root-unreadable",
+    "plugin-root-unset",
+  ]);
+
+  function conditionHolds(vector, condition) {
+    switch (condition) {
+      case "manifest-empty":
+        return vector.E6 === "holds";
+      case "json-tool-absent":
+        return vector.E2 === "holds";
+      case "manifest-malformed":
+        return vector.E5 === "holds";
+      case "manifest-absent":
+        return vector.E4 === "holds";
+      case "repo-root-unresolved":
+        return vector.E1 === "holds";
+      case "plugin-root-unreadable":
+        return vector.E3 === "unreadable";
+      case "plugin-root-unset":
+        return vector.E3 === "unset";
+      default:
+        throw new Error(`PROP-BSL-03: unknown precedence condition "${condition}"`);
+    }
+  }
+
+  function expectedReasonFor(vector) {
+    const hit = PRECEDENCE.find((condition) => conditionHolds(vector, condition));
+    return hit !== undefined ? hit : null;
+  }
+
+  // Maps one evidence vector onto a concrete fixture. E1 selects the repo-root recipe (git-tree
+  // when `does-not-hold`, matching this file's other resolved-root builders; the truly-unresolved
+  // recipe when `holds`, matching `buildRepoRootUnresolved`). E3 selects whether/how a plugin root
+  // is even named. E4/E5/E6 only matter when E3 is `"ok"` — otherwise the manifest is never read
+  // at all, so building it any particular way is immaterial (§5.1's table: those rows carry
+  // E4/E5/E6 indeterminate precisely because E3 failed first).
+  function buildVectorFixture(vector) {
+    const consumer =
+      vector.E1 === "holds"
+        ? makeConsumerTree({ git: false, claudeDir: false })
+        : makeConsumerTree({ git: true, claudeDir: true });
+
+    let plugin;
+    let pluginRootForRun;
+
+    if (vector.E3 === "unset") {
+      pluginRootForRun = undefined;
+    } else if (vector.E3 === "unreadable") {
+      const badRootDir = mkdtempSync(join(tmpdir(), "pdlc-badroot-vec-"));
+      pluginRootForRun = join(badRootDir, "not-a-directory");
+      writeFileSync(pluginRootForRun, "this is a file, not a plugin root\n");
+    } else {
+      if (vector.E5 === "holds") {
+        plugin = makePluginTree({ manifestRaw: "{ not json" });
+      } else if (vector.E6 === "holds") {
+        plugin = makePluginTree({ rows: [] });
+      } else {
+        plugin = makePluginTree();
+      }
+      if (vector.E4 === "holds") {
+        unlinkSync(join(plugin.pluginRoot, "workflows", "dist", "distribution-manifest.json"));
+      }
+      pluginRootForRun = plugin.pluginRoot;
+    }
+
+    const path = vector.E2 === "holds" ? PATH_TOOLS_WITHOUT_PYTHON : undefined;
+
+    return {
+      consumer,
+      plugin,
+      pluginRootForRun,
+      path,
+      cleanup() {
+        consumer.cleanup();
+        if (plugin) plugin.cleanup();
+      },
+    };
+  }
+
+  function labelFor(vector) {
+    return `E1=${vector.E1} E2=${vector.E2} E3=${vector.E3} E4=${vector.E4} E5=${vector.E5} E6=${vector.E6}`;
+  }
+
+  function runVector(vector) {
+    return () => {
+      const built = buildVectorFixture(vector);
+      try {
+        const runOpts = {
+          consumerRoot: built.consumer.root,
+          home: built.consumer.home,
+        };
+        if (built.pluginRootForRun) runOpts.pluginRoot = built.pluginRootForRun;
+        if (built.path) runOpts.path = built.path;
+
+        const run = runScript("check", runOpts);
+        const expected = expectedReasonFor(vector);
+
+        // A vector with E1 = "holds" never resolves a repo root at all — PROP-BSL-06's own
+        // domain note ("nothing is created under the fixture root") means there is no drift
+        // state file to read back; the reported reason is only observable on stderr's W-1 line
+        // (the same route M-3's own `repo-root-unresolved` case uses). Every other vector
+        // resolves a root and is read back from the persisted record as usual.
+        let actualReason;
+        if (vector.E1 === "holds") {
+          const w1 = allOf(run.stderr, "W-1");
+          expect(w1.length).toBeGreaterThanOrEqual(1);
+          actualReason = w1[0].groups.reason;
+          expect(readDriftState(built.consumer.root)).toBeNull();
+        } else {
+          const state = readDriftState(built.consumer.root);
+          expect(state).not.toBeNull();
+          actualReason = state.baselineReason;
+
+          // PROP-BSL-01: totality — a closed three-shape outcome, never a fourth.
+          if (expected === null) {
+            expect(state.baselineStatus).toBe("resolved");
+            expect(state.baselineReason).toBeNull();
+          } else {
+            expect(state.baselineStatus).toBe("unresolved");
+            expect(EIGHT_BASELINE_REASONS).toContain(state.baselineReason);
+
+            // PROP-BSL-05 (record half): unresolved implies not-evaluated, uniformly —
+            // rows === [] and retiredPresent === [] on every vector that selects a reason and
+            // still has a record to read back (the E1 = "holds" branch above has no record at
+            // all, covered instead by PROP-BSL-06's "no write target" claim).
+            expect(state.rows).toEqual([]);
+            expect(state.retiredPresent).toEqual([]);
+          }
+
+          // PROP-BSL-02: null exactly when resolved.
+          expect(state.baselineReason === null).toBe(state.baselineStatus === "resolved");
+
+          assertReasonsDisjoint(state);
+        }
+
+        // PROP-BSL-03: the selector is the declared precedence, recomputed from the vector.
+        expect(actualReason).toBe(expected);
+
+        // PROP-BSL-04: an indeterminate condition is never selected — checked explicitly (not
+        // only implied by PROP-BSL-03's equality) so a failure here names the axis.
+        for (const [axis, condition] of [
+          ["E4", "manifest-absent"],
+          ["E5", "manifest-malformed"],
+          ["E6", "manifest-empty"],
+        ]) {
+          if (vector[axis] === "indeterminate") {
+            expect(actualReason).not.toBe(condition);
+          }
+        }
+
+        if (actualReason) exercisedBaselineReasons.add(actualReason);
+      } finally {
+        built.cleanup();
+      }
+    };
+  }
+
+  for (const vector of enumerateEvidenceVectors()) {
+    const expected = expectedReasonFor(vector);
+    const name = `vector ${labelFor(vector)} -> ${expected || "resolved"}`;
+    if (vector.E1 === "does-not-hold") {
+      itOrSkip(
+        `${name} (git-routed)`,
+        "git",
+        [
+          "AC-0.5 step 1's never-fall-through rule and the git-worktree-list guard are unverified; the walk-routed vectors still run",
+        ],
+        runVector(vector)
+      );
+    } else {
+      it(`${name} (walk-routed)`, runVector(vector));
+    }
+  }
+
+  // FSPEC §2.8's two named regression rows, asserted literally in addition to the quantified loop
+  // above (PROPERTIES §5.2, PROP-BSL-03's "two named rows" conjunct).
+  it("named regression: repoRootUnresolved + manifestEmpty => manifest-empty (falsifies a short-circuiting ladder)", () => {
+    const vector = Object.freeze({
+      E1: "holds",
+      E3: "ok",
+      E4: "does-not-hold",
+      E2: "does-not-hold",
+      E5: "does-not-hold",
+      E6: "holds",
+    });
+    const built = buildVectorFixture(vector);
+    try {
+      const run = runScript("check", {
+        consumerRoot: built.consumer.root,
+        home: built.consumer.home,
+        pluginRoot: built.pluginRootForRun,
+      });
+      // E1 = "holds" (repo-root-unresolved) — no drift state is ever written (PROP-BSL-06); the
+      // reported reason is read from the W-1 line, same as the quantified loop above.
+      expect(readDriftState(built.consumer.root)).toBeNull();
+      const w1 = allOf(run.stderr, "W-1");
+      expect(w1.length).toBeGreaterThanOrEqual(1);
+      expect(w1[0].groups.reason).toBe("manifest-empty");
+      exercisedBaselineReasons.add("manifest-empty");
+    } finally {
+      built.cleanup();
+    }
+  });
+
+  it("named regression (corrected determinacy, SE F-02): repoRootUnresolved + manifestAbsent (E5/E6 indeterminate) => manifest-absent", () => {
+    const vector = Object.freeze({
+      E1: "holds",
+      E3: "ok",
+      E4: "holds",
+      E2: "does-not-hold",
+      E5: "indeterminate",
+      E6: "indeterminate",
+    });
+    const built = buildVectorFixture(vector);
+    try {
+      const run = runScript("check", {
+        consumerRoot: built.consumer.root,
+        home: built.consumer.home,
+        pluginRoot: built.pluginRootForRun,
+      });
+      expect(readDriftState(built.consumer.root)).toBeNull();
+      const w1 = allOf(run.stderr, "W-1");
+      expect(w1.length).toBeGreaterThanOrEqual(1);
+      expect(w1[0].groups.reason).toBe("manifest-absent");
+      exercisedBaselineReasons.add("manifest-absent");
+    } finally {
+      built.cleanup();
+    }
+  });
+});
+
+// ───────────────────────── T-42: PROP-BSL-08 (checkEnabled resolved on every path) ─────────────────────────
+
+describe("PROP-BSL-08 — checkEnabled is resolved on every path, including unresolved ones", () => {
+  // Five non-default config states (the sixth, file-absent, is the default already covered by
+  // the 20-vector enumeration above) × two vectors (resolved; the first-release manifest-absent
+  // vector) — FSPEC §2.7's table. `explicit-false` is the only state producing `false`; the other
+  // four fall closed to `true`, with N-5 printed exactly once for all four (key-absent,
+  // unreadable, malformed, non-boolean all degrade through the same status-12 fold, per
+  // `pdlc_resolve_check_enabled`'s own header comment).
+  const CONFIG_VARIANTS = Object.freeze([
+    {
+      name: "explicit-false",
+      config: { distribution: { checkEnabled: false } },
+      expectedCheckEnabled: false,
+      expectN5: false,
+    },
+    // A well-formed document that simply lacks the key is indistinguishable, at the JSON-path
+    // level, from a malformed one (`pdlc_json_read`'s dot-path walk returns the same status 12
+    // for "path segment missing" as it does for "document did not parse") — `pdlc-drift.sh`'s
+    // own header comment on `pdlc_resolve_check_enabled` documents this fold-together
+    // explicitly, so key-absent gets the N-5 notice too, same as malformed/unreadable/non-boolean.
+    {
+      name: "key-absent",
+      config: { distribution: {} },
+      expectedCheckEnabled: true,
+      expectN5: true,
+    },
+    {
+      name: "unreadable",
+      config: "unreadable",
+      expectedCheckEnabled: true,
+      expectN5: true,
+    },
+    {
+      name: "malformed",
+      config: "malformed",
+      expectedCheckEnabled: true,
+      expectN5: true,
+    },
+    {
+      name: "non-boolean",
+      config: { distribution: { checkEnabled: "yes" } },
+      expectedCheckEnabled: true,
+      expectN5: true,
+    },
+  ]);
+
+  // Walk-routed (git:false, claudeDir:true) resolved-root recipe — deliberately avoids the
+  // git-worktree-list codepath so this property's ten spawns need no `itOrSkip("git", …)` gate
+  // (PROPERTIES §5.2 does not name PROP-BSL-08 among the git-gated properties).
+  function buildBsl08Fixture(variant, manifestAbsent) {
+    const consumer = makeConsumerTree({ git: false, claudeDir: true, config: variant.config });
+    const plugin = makePluginTree();
+    if (manifestAbsent) {
+      unlinkSync(join(plugin.pluginRoot, "workflows", "dist", "distribution-manifest.json"));
+    }
+    return { consumer, plugin };
+  }
+
+  for (const variant of CONFIG_VARIANTS) {
+    for (const manifestAbsent of [false, true]) {
+      const label = manifestAbsent ? "manifest-absent vector" : "resolved vector";
+      it(`${variant.name} config on the ${label}`, () => {
+        const { consumer, plugin } = buildBsl08Fixture(variant, manifestAbsent);
+        try {
+          const run = runScript("check", {
+            consumerRoot: consumer.root,
+            home: consumer.home,
+            pluginRoot: plugin.pluginRoot,
+          });
+          const state = readDriftState(consumer.root);
+          expect(state).not.toBeNull();
+          expect(state.checkEnabled).toBe(variant.expectedCheckEnabled);
+          expect(countOf(run.stderr, "N-5")).toBe(variant.expectN5 ? 1 : 0);
+
+          if (manifestAbsent) {
+            expect(state.baselineReason).toBe("manifest-absent");
+            exercisedBaselineReasons.add("manifest-absent");
+          } else {
+            expect(state.baselineStatus).toBe("resolved");
+          }
+          assertReasonsDisjoint(state);
+        } finally {
+          consumer.cleanup();
+          plugin.cleanup();
+        }
+      });
+    }
+  }
+});
+
+// ───────────────────────── T-42: PROP-DET-06 (process independence) ─────────────────────────
+
+describe("PROP-DET-06 — process independence: --check then hook over the same unchanged tree", () => {
+  it("identical rows and baselineReason across --check and hook, differing only in generatedBy/generatedAtUtc", () => {
+    const consumer = makeConsumerTree({ git: true, claudeDir: true });
+    const plugin = makePluginTree();
+    try {
+      runScript("check", {
+        consumerRoot: consumer.root,
+        home: consumer.home,
+        pluginRoot: plugin.pluginRoot,
+      });
+      const afterCheck = readDriftState(consumer.root);
+      expect(afterCheck).not.toBeNull();
+
+      runScript("hook", {
+        consumerRoot: consumer.root,
+        home: consumer.home,
+        pluginRoot: plugin.pluginRoot,
+      });
+      const afterHook = readDriftState(consumer.root);
+      expect(afterHook).not.toBeNull();
+
+      expect(afterHook.rows).toEqual(afterCheck.rows);
+      expect(afterHook.baselineReason).toBe(afterCheck.baselineReason);
+      expect(afterHook.baselineStatus).toBe(afterCheck.baselineStatus);
+      expect(afterCheck.generatedBy).toBe("check");
+      expect(afterHook.generatedBy).toBe("hook");
+
+      assertReasonsDisjoint(afterCheck);
+      assertReasonsDisjoint(afterHook);
+    } finally {
+      consumer.cleanup();
+      plugin.cleanup();
+    }
+  });
+});
+
+// ───────────────────────── T-42: PROP-MTM-02 (--check half) ─────────────────────────
+
+describe("PROP-MTM-02 (--check half) — the classify pass is as-found only, never a second pass", () => {
+  it("--check over a generated tree yields exactly one classify pass, labelled as-found (O-20(b))", () => {
+    const consumer = makeConsumerTree({ git: true, claudeDir: true });
+    const plugin = makePluginTree();
+    try {
+      const run = runScript("check", {
+        consumerRoot: consumer.root,
+        home: consumer.home,
+        pluginRoot: plugin.pluginRoot,
+      });
+      const state = readDriftState(consumer.root);
+      expect(state).not.toBeNull();
+
+      const trace = parseTrace(run.tracePath);
+      assertPhaseOrder(trace);
+
+      const classifyPhases = new Set(trace.filter((r) => r.op === "classify").map((r) => r.phase));
+      expect(classifyPhases).toEqual(new Set(["as-found"]));
+
+      // The single-pass conjunct, stated so it cannot be mistaken for evidence about clause (a)
+      // (PROPERTIES §7's own warning): "recorded == as-found" AND "recorded == post-run"
+      // vacuously-equal, because there are zero post-run classify records to contradict it.
+      assertRecordedPassIs(trace, state, "as-found");
+      assertRecordedPassIs(trace, state, "post-run");
+
+      assertReasonsDisjoint(state);
+    } finally {
+      consumer.cleanup();
+      plugin.cleanup();
+    }
+  });
+});
+
+// ───────────────────────── T-42: PROP-NEG-07 (M10 half) ─────────────────────────
+
+describe("PROP-NEG-07 (M10 half) — a manifest row naming a path outside .claude/workflows/ is rejected, never followed", () => {
+  // FSPEC §1.1 M10's three independently-falsifiable clauses (`pdlc-drift.sh`'s
+  // `_pdlc_manifest_read` python validator): (1) missing the literal `.claude/workflows/` prefix,
+  // (2) an empty or nested (`/`-containing) remainder, (3) a remainder starting with `.pdlc-`.
+  const M10_MUTATIONS = Object.freeze([
+    {
+      name: "missing the .claude/workflows/ prefix",
+      mutate: (m) => {
+        m.rows[0].consumerPath = "workflows/dist/row-1.bundle.js";
+        return m;
+      },
+      namedPathRel: ["workflows", "dist", "row-1.bundle.js"],
+    },
+    {
+      name: "nested one level under .claude/workflows/",
+      mutate: (m) => {
+        m.rows[0].consumerPath = ".claude/workflows/sub/row-1.bundle.js";
+        return m;
+      },
+      namedPathRel: [".claude", "workflows", "sub", "row-1.bundle.js"],
+    },
+    {
+      name: "a .pdlc--prefixed basename",
+      mutate: (m) => {
+        m.rows[0].consumerPath = ".claude/workflows/.pdlc-row-1.bundle.js";
+        return m;
+      },
+      namedPathRel: [".claude", "workflows", ".pdlc-row-1.bundle.js"],
+    },
+  ]);
+
+  for (const mutation of M10_MUTATIONS) {
+    it(`--check rejects a manifest ${mutation.name} (M10): unresolved/manifest-malformed, rows [], named path never created`, () => {
+      const consumer = makeConsumerTree({ git: true, claudeDir: true });
+      const plugin = makePluginTree({ manifestOverride: mutation.mutate });
+      const namedPath = join(consumer.root, ...mutation.namedPathRel);
+      try {
+        runScript("check", {
+          consumerRoot: consumer.root,
+          home: consumer.home,
+          pluginRoot: plugin.pluginRoot,
+        });
+
+        const state = readDriftState(consumer.root);
+        expect(state).not.toBeNull();
+        expect(state.baselineStatus).toBe("unresolved");
+        expect(state.baselineReason).toBe("manifest-malformed");
+        expect(state.rows).toEqual([]);
+        assertReasonsDisjoint(state);
+        exercisedBaselineReasons.add("manifest-malformed");
+
+        // The blast-radius bound (FSPEC §1.1 M10): the manifest-declared path outside
+        // `.claude/workflows/` (or nested/`.pdlc-`-prefixed within it) is never created — the
+        // rejected manifest never reaches a copy step. This does not assert whole-tree
+        // invariance (the drift-state file itself is legitimately written on this path, since
+        // the repo root and plugin root both resolve fine — only the manifest fails M10).
+        expect(existsSync(namedPath)).toBe(false);
+      } finally {
+        consumer.cleanup();
+        plugin.cleanup();
+      }
+    });
+  }
 });
