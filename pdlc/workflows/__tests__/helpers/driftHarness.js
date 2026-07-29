@@ -532,11 +532,11 @@ export function expectRemediationClass(text, className, extraConjuncts = {}) {
   }
 
   // §8.1's universal conventions, asserted for every class.
-  if (!text.startsWith("pdlc: ")) {
-    throw new Error(
-      `driftHarness.expectRemediationClass: text must start with "pdlc: " (FSPEC §8.1): ${JSON.stringify(text)}`
-    );
-  }
+  //
+  // The `pdlc: ` line prefix is deliberately NOT asserted here: this function's argument is one
+  // rendered *remediation* (a capture group, per the @param above and `remediationOf`'s return),
+  // which is a substring of the line and never carries the prefix. §8.1's prefix convention is
+  // already enforced at match time — every `MESSAGES` matcher is anchored `^pdlc: `.
   if (/\b(rm|delete)\b/i.test(text)) {
     throw new Error(
       `driftHarness.expectRemediationClass: text must never recommend manual deletion ` +

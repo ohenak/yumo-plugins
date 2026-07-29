@@ -70,8 +70,21 @@ import { makeConsumerTree, makePluginTree } from "./helpers/driftFixtures.js";
 // (TSPEC §11.2), which is a different data shape (rendered message text, always intended as a
 // JS string for regex matching against `MESSAGES`, never a `Buffer`) — a small, self-contained
 // decoder here duplicates no exported symbol.
+// Decoding is byte-wise and must go through a Buffer: `lib-probe.sh` percent-encodes every
+// non-printable byte individually, so FSPEC §8.2's em-dash arrives as `%E2%80%94` — three
+// escapes for one character. Mapping each through `String.fromCharCode` would yield Latin-1
+// mojibake ("â€”") that never matches `MESSAGES`' literal `—`.
 function percentDecode(field) {
-  return field.replace(/%([0-9A-Fa-f]{2})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+  const bytes = [];
+  for (let i = 0; i < field.length; i++) {
+    if (field[i] === "%" && /^[0-9A-Fa-f]{2}$/.test(field.slice(i + 1, i + 3))) {
+      bytes.push(parseInt(field.slice(i + 1, i + 3), 16));
+      i += 2;
+    } else {
+      bytes.push(...Buffer.from(field[i], "utf8"));
+    }
+  }
+  return Buffer.from(bytes).toString("utf8");
 }
 
 // Mirrors `driftProbe.js`'s own (private) `PROBE_PATH_TOOLS` — C1's probe functions

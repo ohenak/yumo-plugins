@@ -199,6 +199,10 @@ pdlc_percent_encode() {
       continue
     fi
     ord=$(printf '%d' "'$c")
+    # bash 3.2's `printf '%d' "'<byte>"` sign-extends: any byte >= 0x80 comes back negative
+    # (0xE2 -> -30), and `printf '%02X'` on that yields %FFFFFFFFFFFFFFE2. Under LC_ALL=C the
+    # loop is byte-wise, so the true value is always the unsigned byte.
+    if ((ord < 0)); then ord=$((ord + 256)); fi
     if ((ord >= 32 && ord <= 126)); then
       out+="$c"
     else
