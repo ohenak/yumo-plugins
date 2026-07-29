@@ -8,7 +8,7 @@
  */
 
 import { execSync, spawnSync } from "child_process";
-import { mkdtempSync, writeFileSync, rmSync } from "fs";
+import { mkdtempSync, writeFileSync, rmSync, readFileSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
 import { resolve, dirname } from "path";
@@ -241,4 +241,46 @@ describe("PROP-COMPAT-05: guard-harvest-before-delete.sh blocks deletion when no
       expect(stderr).toContain("pdlc guard");
     }
   );
+});
+
+// ─── C7: hooks.json SessionStart registration for check-workflow-drift.sh ────
+// FSPEC §5.1 (BL-03): pdlc/hooks/hooks.json gains a SECOND SessionStart entry
+// invoking check-workflow-drift.sh through the same ${CLAUDE_PLUGIN_ROOT} form
+// the three shipped hooks use. The pre-existing nudge-consolidation.sh entry
+// is left unchanged. RED until L-04 registers the second entry.
+describe("C7: hooks.json registers check-workflow-drift.sh as a second SessionStart hook", () => {
+  // __dirname = pdlc/workflows/__tests__; go up two levels to pdlc/, then hooks.json
+  const HOOKS_JSON_PATH = resolve(__dirname, "../../hooks/hooks.json");
+
+  function readHooksJson() {
+    const raw = readFileSync(HOOKS_JSON_PATH, "utf8");
+    return JSON.parse(raw);
+  }
+
+  it("leaves the existing nudge-consolidation.sh SessionStart entry unchanged", () => {
+    const hooks = readHooksJson();
+    const sessionStart = hooks.hooks.SessionStart;
+    expect(Array.isArray(sessionStart)).toBe(true);
+    expect(sessionStart[0].hooks[0].command).toBe(
+      '"${CLAUDE_PLUGIN_ROOT}"/hooks/scripts/nudge-consolidation.sh'
+    );
+  });
+
+  it("registers a second SessionStart entry invoking check-workflow-drift.sh via the same ${CLAUDE_PLUGIN_ROOT} form", () => {
+    const hooks = readHooksJson();
+    const sessionStart = hooks.hooks.SessionStart;
+    expect(sessionStart.length).toBeGreaterThanOrEqual(2);
+
+    const driftEntry = sessionStart.find((entry) =>
+      entry.hooks.some((h) => h.command.includes("check-workflow-drift.sh"))
+    );
+    expect(driftEntry).toBeDefined();
+
+    const driftCommand = driftEntry.hooks.find((h) =>
+      h.command.includes("check-workflow-drift.sh")
+    ).command;
+    expect(driftCommand).toBe(
+      '"${CLAUDE_PLUGIN_ROOT}"/hooks/scripts/check-workflow-drift.sh'
+    );
+  });
 });
