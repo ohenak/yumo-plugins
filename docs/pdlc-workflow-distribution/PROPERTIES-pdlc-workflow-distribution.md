@@ -572,15 +572,235 @@ reachable at rollout (AC-0.3b, TSPEC §14.1 B-3/B-4).
 
 ### 6.1 The surface under test
 
+TSPEC §11.1's three C1 functions, driven through §11.2's batched driver — **one spawn per property
+group, not per case**:
+
+| Function | Contract (TSPEC §11.1) |
+|---|---|
+| `pdlc_backup_format <id> <stamp> <nn>` | stdout `{id}.{stamp}-{NN}.bak`; exit 1 if `nn > 99` or `id` fails M6 |
+| `pdlc_backup_parse <name>` | stdout `id TAB stamp TAB nn`; exit 1 if the **trailing 24 bytes** do not match `"." stamp(16) "-" NN(2) ".bak"` |
+| `pdlc_prune_backups <dir> <knownIds…>` | keeps the 5 greatest per known id, removes the rest **of those ids**, identity elsewhere; always exits 0 |
+
+`runGrammar(cases)` asserts line-count equality between input and output before zipping (TSPEC
+§11.2), so a driver that dies halfway is a harness failure, not a property run that reports green
+over 12 of 500 cases. Prune cases are the exception to the batching: each needs a directory, so
+`prune` runs are batched **per property** (one directory tree containing every generated id) rather
+than per case, which keeps §6.5 at one spawn.
+
 ### 6.2 Generators
+
+| Generator | Draw | Shrink ladder |
+|---|---|---|
+| `genId(rng)` | conforms to **`M6_ID_REGEX`**, imported from `document-oracles.mjs` — the *same* regex C1's manifest validator uses (TSPEC §11.3 row 1). Length 1–64; first byte alphanumeric; body drawn from `[A-Za-z0-9._-]`. **Adversarial draws are forced, not hoped for**: ≥ 10% of the set contains `.`, ≥ 10% contains `-`, and ≥ 5% is a **stamp-shaped id** (`dev.20260101T000000Z`, `20260101T000000Z`, `x.20260101T000000Z-01`) | `a` → `a0` → `a.b` → drawn value; stamp-shaped ids shrink **last** |
+| `genStamp(rng, {calendarValid})` | 16 bytes `YYYYMMDDTHHMMSSZ`. `calendarValid: false` draws digits syntactically (the parser is pattern-based, §6.3); `calendarValid: true` draws a real UTC instant in `1970-01-01 … 2999-12-31` | toward `19700101T000000Z` |
+| `genNn(rng)` | `01…99`, plus the out-of-range draws `00`, `100`, `-1`, `1` (unpadded) as the **rejection** cases | toward `01` |
+| `genDecoy(rng)` | names that must be untouched: no `.bak` suffix; `.bak` with a malformed tail; a well-formed backup for an **unknown** id; a name whose *id* portion is empty; a directory | — |
+
+Two generator rules, both load-bearing:
+
+1. **The id charset is imported, never re-declared.** A generator with its own charset proves a
+   property about a set nothing else uses (TSPEC §11.3 row 1). `driftBackups.test.js` additionally
+   asserts `M6_ID_REGEX` is the same object C1's validator is fed, via the export.
+2. **Stamp-shaped ids are a floor, not an accident.** The whole reason FSPEC §1.4 parses by fixed
+   offset is that the id charset admits stamp-shaped substrings. A generated set that happens not
+   to contain one proves nothing about the ambiguity the fixed-offset parse exists to remove, so
+   the proportion is asserted about the generated set itself before the property runs.
 
 ### 6.3 Format/parse properties
 
+**PROP-BKP-01 — Round-trip.**
+For every `(id, stamp, nn)` with `id` M6-conforming, `stamp` grammar-conforming and `nn ∈ 01..99`:
+`parse(format(id, stamp, nn)) == (id, stamp, nn)`, field by field, byte for byte. *(Data Integrity ·
+Harness (batched) · E · `driftBackups.test.js`, 500 cases)* FSPEC §1.4, O-18 clause 1.
+
+**PROP-BKP-02 — `format` is injective.**
+For every pair of distinct triples drawn from the same set,
+`format(id₁,s₁,n₁) == format(id₂,s₂,n₂) ⟹ (id₁,s₁,n₁) == (id₂,s₂,n₂)`. *(Data Integrity · Unit
+(names compared in JS after one batched format run) · E · `driftBackups.test.js`)*
+Asserted as a **collision check over the generated name set**: build the map name → triple and
+require no key collision with differing values. This is where the stamp-shaped ids earn their keep —
+`dev.20260101T000000Z-01.bak` (id `dev`) versus a backup of the id `dev.20260101T000000Z` — and the
+property is red against any implementation that parses left-to-right at the first `.`.
+
+**PROP-BKP-03 — Rejection is total and side-effect-free.**
+(a) `format` exits 1 for every `nn` outside `01..99` and every id failing `M6_ID_REGEX`, and prints
+nothing to stdout. (b) `parse` exits 1 for every generated name whose trailing 24 bytes do not match
+the grammar — including names *shorter* than 24 bytes, names with a valid tail but an **empty** id,
+and `genDecoy` output — and prints nothing to stdout. *(Error Handling · Harness (batched) · E ·
+`driftBackups.test.js`)*
+The "prints nothing" conjunct is the falsifiable half: an implementation that prints a partial parse
+*and* exits 1 passes an exit-code-only assertion and then feeds `pdlc_prune_backups` a garbage id.
+The empty-id case is called out because `id := ${name:0:${#name}-24}` yields `""` for a 24-byte name
+whose tail is well-formed, and `""` fails M6 — so it must be a parse failure, not an id.
+
+**PROP-BKP-04 — `NN` exhaustion is a write failure, not a silent reuse.**
+Over a directory holding all 99 backups of one id in one stamp, the next backup attempt reports
+`operation: backup`, the destroying operation does **not** proceed, the pre-existing file is
+byte-unchanged, and the run exits 4. *(Error Handling · Integration · E · `driftBackups.test.js`,
+`nnExhausted` fixture)*
+FSPEC §1.4's exhaustion clause. Not strictly a grammar property, but it is the only place the
+grammar's finiteness becomes an operator-visible outcome, and the three positive conjuncts (exact
+operation token, untouched original, exit code) are what keep it from being an absence-based oracle.
+
 ### 6.4 Sort properties
+
+**PROP-BKP-05 — `LC_ALL=C` descending filename sort == descending `(stamp, nn)`.**
+For a generated set of names sharing one id, sorting the names `LC_ALL=C` descending yields exactly
+the order obtained by sorting the parsed `(stamp, nn)` tuples descending. *(Data Integrity · Harness
+(batched) · E · `driftBackups.test.js`, 500 names)* O-18 clause 2.
+
+**PROP-BKP-06 — `(stamp, nn)` descending == reverse-chronological.**
+Over names drawn with `calendarValid: true`, descending `(stamp, nn)` order equals descending order
+of the instants the stamps denote (mapped to epoch seconds in JS, ties broken by `nn`). *(Data
+Integrity · Unit · E · `driftBackups.test.js`)*
+PROP-BKP-05 alone proves *"lexicographic == tuple order"*, which is a statement about strings;
+AC-3.4's claim is *"lexicographic == chronological"*, which is a statement about time. The bridge is
+fixed-width zero-padded UTC, and it is exactly what would break if a future stamp gained a variable
+component or a local-time offset. Both conjuncts are required, and they fail for different reasons.
+
+**PROP-BKP-07 — The order is the subject's, not the caller's locale.**
+The same generated name set, sorted by the subject with `LC_ALL=en_US.UTF-8` injected through
+`opts.env`, yields the **identical** order. *(Contract · Harness · E · `driftBackups.test.js`)*
+TSPEC §11.3 row 2: the harness sandbox sets `LC_ALL=C` on the child, which would mask the removal of
+C1's own `export LC_ALL=C`. This property is the one that detects that removal, and it is the reason
+the sandbox default cannot be trusted as coverage of §2.5's first rule.
+
+**PROP-BKP-08 — "Newest" is well-defined and total.**
+For every generated non-empty set of names for one id, `newest` (the head of the descending sort) is
+unique. *(Data Integrity · Unit · E · `driftBackups.test.js`)*
+AC-3.5's restore oracle says "restoring the **newest** backup for that id"; uniqueness is what makes
+that oracle a function. It follows from PROP-BKP-02 (no two backups for one id share `(stamp, nn)`),
+and it is asserted rather than derived because AT-8b/AT-26 depend on it.
 
 ### 6.5 Prune properties
 
+All four clauses of O-18's prune obligation, over `genDecoy`-seeded directories containing backups
+for 1–4 known ids (0–12 each), 0–2 **unknown** ids, and 0–5 non-matching entries, with **mtimes
+shuffled by `utimesSync` after creation** (TSPEC §13.5 `shuffledMtimes`).
+
+**PROP-BKP-09 — Keep-set correctness (clause a).**
+After `pdlc_prune_backups <dir> <knownIds…>`, for every known id with `n` backups the surviving set
+is exactly the `min(n, 5)` **greatest** members under §6.4's order. *(Data Integrity · Harness ·
+E · `driftBackups.test.js`)*
+
+**PROP-BKP-10 — Removal-set correctness (clause b).**
+Exactly the remaining members of those known ids are gone, and **nothing else is** — the
+post-directory equals `pre − removed`, compared as a set of names *and* as a map name → bytes, so a
+prune that rewrote a surviving file is red. *(Data Integrity · Harness · E ·
+`driftBackups.test.js`)*
+
+**PROP-BKP-11 — Identity elsewhere (clause c).**
+Every entry that does not match §1.4's pattern, and every matching entry whose id is **not** in
+`knownIds`, is byte-identical before and after — including the sub-directory decoy and the
+empty-id decoy. *(Data Integrity · Harness · E · `driftBackups.test.js`)*
+This is the clause O-18 says has no oracle without it: FSPEC §5.6's "never touches a file not
+matching the pattern for a current id" is otherwise prose. A stray file in the backup directory is
+left alone **forever**, which the property states as invariance across repeated prunes
+(with PROP-BKP-12).
+
+**PROP-BKP-12 — Idempotence (clause d).**
+`prune(prune(D)) == prune(D)` as a name → bytes map, for every generated `D`. *(Idempotency ·
+Harness · E · `driftBackups.test.js`)*
+
+**PROP-BKP-13 — mtime is never read at the prune site.**
+For every generated `D`, the pruned result is **identical** to the result over the same directory
+with every mtime re-shuffled (`utimesSync`, including mtimes that invert the filename order
+completely — oldest filename given the newest mtime). *(Data Integrity · Harness · E ·
+`driftBackups.test.js`)*
+FSPEC §3.4 R-2 says mtime is never read *anywhere*; the prune site is the one place an implementer
+reaches for `ls -t`, and this is the only oracle in the feature that makes R-2 falsifiable there.
+The paired positive assertion — that the pruned member on the `sameSecondBackups` fixture is `-01`
+(TSPEC §11.3 row 4) — is the example this generalises; the property is red against an mtime selector
+even when it happens to agree on the example.
+
 ## 7. Measurement-time properties (O-20, AC-2.6)
+
+**What this section is for.** FSPEC OQ-6 records that AC-2.6's two sentences cannot both be read
+literally over the same field set on a sync run, and §4.2 applies a reading. SE Q-01 then moved
+ownership here, because the party who needs the reading is the one writing the oracle that decides
+whether a successful sync exits `0` or `1`. So this section is not commentary on the FSPEC's
+reading — **it is the artifact that enforces it.** If these properties are deleted, the reading
+reverts to prose and an implementation that records as-found states on a sync run is green.
+
+The binding, from FSPEC §3's pass table and §4.2:
+
+| `generatedBy` | Passes the run makes | Pass the **record** carries | Pass the **decisions** come from |
+|---|---|---|---|
+| `hook` | 1 | as-found | as-found (nothing to decide) |
+| `check` | 1 | as-found (== post-run: nothing changed) | — |
+| `sync` (plain or `--force`) | 3 | **post-run** (step 7) | **as-found** (step 2); retirement gated on **post-copy** (step 5) |
+
+The measurement instrument is TSPEC §4.3's `assertRecordedPassIs(trace, driftState, phase)` — the
+record's states compared against the states the named phase's `classify` trace records carried —
+plus `assertPhaseOrder` and `assertPostCopyNarrow`.
+
+**PROP-MTM-01 — A successful sync records post-run states and exits 0.**
+For every generated consumer tree whose rows are all `stale` or `missing` (1–4 rows, contents and
+ids generated), a plain sync copies every row and the written record satisfies: every
+`rows[].state === "in-sync"`, `writeFailures === []`, `baselineStatus === "resolved"`, exit **0**,
+and `assertRecordedPassIs(trace, record, "post-run")` holds. *(Integration · Integration · E ·
+`driftSync.test.js`)*
+Three conjuncts, each catching a different wrong implementation: the recorded states catch an
+implementation that replays the as-found `stale` states; `assertRecordedPassIs` catches one that
+*re-derives* `in-sync` without a third pass (and would therefore disagree with the trace); and the
+exit code is the operator-visible consequence — under the rejected reading a fully successful sync
+exits **1** and leaves the queue blocked (FSPEC §5.8, OQ-6).
+
+**PROP-MTM-02 — On hook and `--check` the two readings coincide, and that is not evidence about
+sync.**
+For every generated tree, a hook run and a `--check` run each satisfy
+`assertRecordedPassIs(trace, record, "as-found")` **and**
+`assertRecordedPassIs(trace, record, "post-run")` vacuously-equal — the trace contains exactly one
+`classify` pass, labelled `as-found`, and `assertPhaseOrder` collapses to `[as-found]`. *(Integration
+· Integration · E · `driftHook.test.js`, `driftBaseline.test.js`)*
+O-20 clause (b), including its warning: this property is stated with the **single-pass conjunct** so
+it cannot be mistaken for evidence about clause (a). A test asserting only "recorded == as-found" on
+a hook run is true of an implementation that records as-found on *sync* too.
+
+**PROP-MTM-03 — The run's decisions come from the as-found pass.**
+For every generated tree and both sync modes, the set of row ids carrying a `copy` trace record
+equals the set of rows whose **as-found** state is `stale` or `missing` (plain), or that set plus
+`local-edit`/`unverified` (`--force`); the set carrying a `backup` record equals the rows the same
+pass says have existing bytes to destroy; and every such mutating record follows the last as-found
+`classify` record. *(Integration · Integration · E · `driftSync.test.js`, `driftOrdering.test.js`)*
+O-20 clause (c). It is observable **only** through the `as-found` trace label — which is why the
+grammar carries three phase labels rather than two (FSPEC §10 O-1) — and it is what forbids an
+implementation that re-classifies before copying and thereby lets a mid-run filesystem change
+silently change what gets copied.
+
+**PROP-MTM-04 — `supersedingState` is the post-run measurement, and the two candidate readings
+agree.**
+For every generated tree with a retired path present, `retiredPresent[].supersedingState` equals R's
+state in the **recorded** pass (`as-found` for hook/`check`, `post-run` for sync) — **and**, on sync
+runs, equals R's state in the `post-copy` pass. *(Data Integrity · Integration · E ·
+`driftSync.test.js`, `driftHook.test.js`)*
+AC-2.6 says `supersedingState` is measured "sync: **post-copy**"; FSPEC §3's table feeds
+`retiredPresent[]` from the **post-run** pass. The two are not in conflict — deleting a retired path
+cannot change R's own `consumerPath` bytes, so R's state is identical across steps 5 and 7 — but
+"they cannot differ" is exactly the kind of claim that stops being true after an unrelated change.
+Asserting the **agreement** disposes the ambiguity in the direction that stays honest: if a future
+change makes them differ, this property goes red and the spec question is reopened, rather than one
+reading silently winning. On non-sync runs only the first conjunct applies (there is no post-copy
+pass), and the property asserts that too, so a hook implementation that fabricates a post-copy label
+is red via `assertPhaseOrder`.
+
+**PROP-MTM-05 — Post-sync state is current within the session.**
+For every generated tree, immediately after a sync, `--check` over the unchanged tree reports every
+copied row `in-sync` and every skipped row **its prior state**, and the queue mapping over the
+sync-written record (no further run) yields the same outcome as over the `--check`-written one.
+*(Integration · Integration · E · `driftSync.test.js`, `queueDriftGate.test.js`)*
+AC-2.7's stated consequence (the queue unblocks without a restart) and AC-3.6. Without the second
+half, "the drift state is current" is asserted only about a file the *next* run rewrites, which is
+not the claim.
+
+**PROP-MTM-06 — The recorded pass is a function of `generatedBy`, not of the outcome.**
+Across every generated tree in §7 — green, mixed, and write-failing — the pass identified by
+`assertRecordedPassIs` is determined solely by `record.generatedBy`, per the table above.
+*(Contract · Integration · E · `driftSync.test.js`)*
+Red against an implementation that records post-run states only when the sync succeeded and falls
+back to as-found on a failed run — which is how the exit code and the record would disagree on
+exactly the runs where an operator most needs them to agree (AT-35's shape: a corrupted copy must
+record the **post-run** `unverified`, not the as-found `stale`).
 
 ## 8. Seam-closure properties (`PDLC_FAULT` ⊆ 16; M6; trace grammar)
 
