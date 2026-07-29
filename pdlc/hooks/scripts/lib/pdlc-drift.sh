@@ -262,12 +262,19 @@ pdlc_probe_json_tool() {
   return 1
 }
 
-# pdlc_json_read <file> <query> — FSPEC §2.3's closed four-outcome contract. `query` is a
+# pdlc_json_read <file> <query> [typed] — FSPEC §2.3's closed four-outcome contract. `query` is a
 # dot-path (".a.b"); stdout is the raw string value on a string leaf, or its JSON text otherwise
 # (never JSON-quoted for a string leaf). Named exceptions only inside the Python helper, never a
 # bare `except`.
+#
+# Passing `typed` as the third argument JSON-quotes string leaves too, so the caller can tell a
+# JSON string apart from the scalar that shares its text. §2.7's table needs exactly that: the
+# string `"false"` must resolve `true` WITH the N-5 notice while the boolean `false` resolves
+# `false` silently, and in the default (raw) mode both arrive on stdout as `false`. The default
+# stays raw because that is what the four-outcome contract's own oracle asserts for a string
+# leaf, and every other read of a string value wants it unquoted.
 pdlc_json_read() {
-  local file="$1" query="$2"
+  local file="$1" query="$2" mode="${3:-raw}"
 
   [[ -e "$file" ]] || return 11
   [[ -r "$file" ]] || return 10
@@ -278,11 +285,11 @@ pdlc_json_read() {
 
   local out status
   out="$(
-    "$PDLC_PY_BIN" - "$file" "$query" <<'PDLC_JSON_READ_PY'
+    "$PDLC_PY_BIN" - "$file" "$query" "$mode" <<'PDLC_JSON_READ_PY'
 import json
 import sys
 
-path, query = sys.argv[1], sys.argv[2]
+path, query, mode = sys.argv[1], sys.argv[2], sys.argv[3]
 
 try:
     with open(path, "r") as fh:
@@ -305,7 +312,7 @@ for part in parts:
     else:
         sys.exit(12)
 
-if isinstance(value, str):
+if isinstance(value, str) and mode != "typed":
     sys.stdout.write(value)
 else:
     sys.stdout.write(json.dumps(value))
@@ -840,7 +847,9 @@ pdlc_resolve_check_enabled() {
   # resolved) — arg is the config path, regardless of the subsequent outcome.
   pdlc_trace "run" "config-read" "-" "$configPath"
   local raw status
-  raw="$(pdlc_json_read "$configPath" ".distribution.checkEnabled")"
+  # `typed` — §2.7's table distinguishes the boolean `false` from the string `"false"`, which
+  # the raw mode renders identically.
+  raw="$(pdlc_json_read "$configPath" ".distribution.checkEnabled" typed)"
   status=$?
 
   case "$status" in

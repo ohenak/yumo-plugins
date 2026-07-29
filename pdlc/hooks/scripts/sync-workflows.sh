@@ -514,6 +514,37 @@ sys.stdout.write(json.dumps({"schemaVersion": 1, "entries": entries}))
   pdlc_classify_all "post-run"
 fi
 
+# ───────────────────────────── retired-present inventory under --check ─────────────────────────────
+#
+# FSPEC §5.7's second branch: `if --check: report retired-present, exit class 1 (sync-fixable,
+# same as stale)`. The retirement block above is inside the sync-only gate because it *deletes*;
+# the inventory and W-6 are not sync-only, and building them only there left `--check` reporting
+# an empty `retiredPresent` and exiting 0 on a tree AC-3.9 says is not green (§14.1 V-2).
+#
+# There is no post-copy pass in this mode — `--check` copies nothing, so a row's post-copy state
+# is its as-found state by construction. That is what W-6 names and what `supersedingState`
+# carries, which is also what AC-2.6 asks for: the state of the row superseding the retired path
+# at the moment the record was written.
+if ((_pdlc_c3_check)) && [[ "${PDLC_BASELINE_STATUS:-}" == "resolved" ]]; then
+  for ((_pdlc_c3_i = 0; _pdlc_c3_i < ${#PDLC_ROWS_ID[@]}; _pdlc_c3_i++)); do
+    _pdlc_split_on $'\x1f' "${PDLC_ROWS_RETIRES[$_pdlc_c3_i]:-}"
+    _pdlc_c3_retires=("${_PDLC_SPLIT_RESULT[@]:-}")
+    _pdlc_c3_row_id="${PDLC_ROWS_ID[$_pdlc_c3_i]}"
+    _pdlc_c3_af_state="${_PDLC_C3_AF_STATE[$_pdlc_c3_i]:-}"
+    for _pdlc_c3_r in "${_pdlc_c3_retires[@]:-}"; do
+      [[ -z "$_pdlc_c3_r" ]] && continue
+      _pdlc_c3_target_abs="${PDLC_REPO_ROOT}/${_pdlc_c3_r}"
+      [[ -e "$_pdlc_c3_target_abs" ]] || continue
+
+      pdlc_msg_w6 "$_pdlc_c3_r" "$_pdlc_c3_row_id" "$_pdlc_c3_af_state" >&2; printf '\n' >&2
+
+      _PDLC_C3_RETIRED_PATH+=("$_pdlc_c3_r")
+      _PDLC_C3_RETIRED_ID+=("$_pdlc_c3_row_id")
+      _PDLC_C3_RETIRED_STATE+=("$_pdlc_c3_af_state")
+    done
+  done
+fi
+
 # ───────────────────────────── message emission for skipped rows ─────────────────────────────
 #
 # W-3 (unverified) / W-4 (local-edit): only when this run left the row untouched — i.e. `--check`
