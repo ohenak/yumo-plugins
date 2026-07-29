@@ -3106,6 +3106,197 @@ function buildQueueReport({
   };
 }
 
+// ─── DRIFT-01: validateDriftRecord (TSPEC §12.1, FSPEC §1.3 / §6.2 row 1) ────
+//
+// Shape validator for the single injected read of `.claude/workflows/.pdlc-drift-state.json`
+// (FSPEC §6.1). Pure — no filesystem, no model calls. Defence in depth only: the hook is the
+// primary drift detector; this validator exists to fail closed (⇒ `blocked`) on any relay that
+// is not byte-faithful to what the writer produced, since the read is LLM-mediated (an agent
+// turn), not a raw filesystem read (§6.1). It does not, and cannot, detect a relay that mangles
+// a *value* while staying inside that value's closed set (§6.1's stated residual) — only shapes.
+//
+// Clause order is significant: clauses are checked D1 → D8 and the FIRST failing clause is
+// reported, matching FSPEC §6.2's row-1 predicate table and TSPEC §12.1's one-clause-per-row
+// fixtures. `mapDriftState` (T-12) consumes this function's `{ok, record}` / `{ok, clause}`
+// result as its own row 1; the mapping/report/gate-wiring layers are out of this task's scope.
+
+const DRIFT_CLOSED_ROW_STATES = ["in-sync", "missing", "stale", "local-edit", "unverified", "unknown"];
+
+const DRIFT_CLOSED_ROW_REASONS = [
+  "hash-tool-absent",
+  "plugin-artifact-missing",
+  "plugin-artifact-unreadable",
+  "consumer-artifact-unreadable",
+];
+
+// §2.8's declared precedence order is irrelevant here — D4 only needs closed-set membership,
+// not ranking.
+const DRIFT_CLOSED_BASELINE_REASONS = [
+  "drift-state-invalidated",
+  "manifest-empty",
+  "json-tool-absent",
+  "manifest-malformed",
+  "manifest-absent",
+  "repo-root-unresolved",
+  "plugin-root-unreadable",
+  "plugin-root-unset",
+];
+
+const DRIFT_CLOSED_GENERATED_BY = ["hook", "check", "sync"];
+
+function isDriftPlainObject(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+// D3 — schemaVersion present, integer 1.
+function failsD3(record) {
+  return !(typeof record.schemaVersion === "number" && Number.isInteger(record.schemaVersion) && record.schemaVersion === 1);
+}
+
+// D4 — baselineStatus one of "resolved" | "unresolved"; baselineReason null exactly when
+// resolved, else one of the eight closed baseline reasons (FSPEC §1.3).
+function failsD4(record) {
+  if (record.baselineStatus !== "resolved" && record.baselineStatus !== "unresolved") {
+    return true;
+  }
+  if (record.baselineStatus === "resolved") {
+    return record.baselineReason !== null;
+  }
+  return !DRIFT_CLOSED_BASELINE_REASONS.includes(record.baselineReason);
+}
+
+// D5 — checkEnabled present boolean (not the string "false", not absent).
+function failsD5(record) {
+  return typeof record.checkEnabled !== "boolean";
+}
+
+// D6 — rows, retiredPresent, writeFailures all present arrays.
+function failsD6(record) {
+  return (
+    !Array.isArray(record.rows) ||
+    !Array.isArray(record.retiredPresent) ||
+    !Array.isArray(record.writeFailures)
+  );
+}
+
+// D7 — every member of rows / retiredPresent / writeFailures is shape-valid. Only called once
+// D6 has already confirmed all three are arrays.
+function failsD7(record) {
+  const rowsOk = record.rows.every(
+    (row) =>
+      isDriftPlainObject(row) &&
+      typeof row.id === "string" &&
+      row.id.length > 0 &&
+      DRIFT_CLOSED_ROW_STATES.includes(row.state) &&
+      (row.reason === null || DRIFT_CLOSED_ROW_REASONS.includes(row.reason))
+  );
+  if (!rowsOk) return true;
+
+  const retiredOk = record.retiredPresent.every(
+    (entry) =>
+      isDriftPlainObject(entry) &&
+      typeof entry.path === "string" &&
+      entry.path.length > 0 &&
+      typeof entry.supersededBy === "string" &&
+      entry.supersededBy.length > 0 &&
+      DRIFT_CLOSED_ROW_STATES.includes(entry.supersedingState)
+  );
+  if (!retiredOk) return true;
+
+  return !record.writeFailures.every(
+    (failure) =>
+      isDriftPlainObject(failure) &&
+      typeof failure.path === "string" &&
+      typeof failure.operation === "string"
+  );
+}
+
+// D8 — generatedBy closed-set; pluginVersion null-or-string; syncCommand, if present,
+// null-or-string. Absence of syncCommand is the one thing D8 tolerates (FSPEC §1.3, SE F-16).
+function failsD8(record) {
+  if (!DRIFT_CLOSED_GENERATED_BY.includes(record.generatedBy)) return true;
+  if (!(record.pluginVersion === null || typeof record.pluginVersion === "string")) return true;
+  if ("syncCommand" in record) {
+    if (!(record.syncCommand === null || typeof record.syncCommand === "string")) return true;
+  }
+  return false;
+}
+
+const DRIFT_CLAUSE_CHECKS = [
+  ["D3", failsD3],
+  ["D4", failsD4],
+  ["D5", failsD5],
+  ["D6", failsD6],
+  ["D7", failsD7],
+  ["D8", failsD8],
+];
+
+// Runs D3–D8 against a parsed top-level object, in order, returning the first failing clause
+// id or `null` when every clause is satisfied. Shared by the top-level validation and by the
+// single-level envelope check below (TSPEC §12.1 row 4).
+function firstFailingDriftClause(record) {
+  for (const [clauseId, fails] of DRIFT_CLAUSE_CHECKS) {
+    if (fails(record)) return clauseId;
+  }
+  return null;
+}
+
+/**
+ * Validate the shape of a drift-state record as relayed by the injected read (FSPEC §6.1,
+ * §6.2 row 1; TSPEC §12.1). `value` is whatever the injected read returned — the caller is
+ * responsible for normalising a throw to `null` (O-19(d)); this function only judges shape.
+ *
+ * @param {unknown} value
+ * @returns {{ok:true, record:object} | {ok:false, clause:"D1"|"D2"|"D3"|"D4"|"D5"|"D6"|"D7"|"D8"}}
+ */
+function validateDriftRecord(value) {
+  // D1 — the injected read returned a string (not `null`, and did not throw — §6.1's table
+  // routes both of those to this same clause upstream of this function, at the call site).
+  if (typeof value !== "string") {
+    return { ok: false, clause: "D1" };
+  }
+
+  // D2 — parses as JSON, and the top level is an object (not an array or a scalar).
+  let parsed;
+  try {
+    parsed = JSON.parse(value);
+  } catch {
+    return { ok: false, clause: "D2" };
+  }
+  if (!isDriftPlainObject(parsed)) {
+    return { ok: false, clause: "D2" };
+  }
+
+  // D2's single-level known-envelope check (TSPEC §12.1 row 4, v2.1 TE Q-02): a top-level
+  // object with exactly one key, "result", whose value is ITSELF fully shape-valid, is a
+  // mangled relay (re-wrapped), not a record to unwrap. This check goes exactly one level
+  // deep — it does not recurse the inner value through this same envelope check again — so
+  // `{"result": 42}` is judged on its own top-level shape (⇒ D3, schemaVersion missing) rather
+  // than being treated as an envelope, because 42 is not itself shape-valid.
+  const keys = Object.keys(parsed);
+  if (
+    keys.length === 1 &&
+    keys[0] === "result" &&
+    isDriftPlainObject(parsed.result) &&
+    firstFailingDriftClause(parsed.result) === null
+  ) {
+    return { ok: false, clause: "D2" };
+  }
+
+  const clause = firstFailingDriftClause(parsed);
+  if (clause) {
+    return { ok: false, clause };
+  }
+
+  return {
+    ok: true,
+    record: {
+      ...parsed,
+      syncCommand: "syncCommand" in parsed ? parsed.syncCommand : null,
+    },
+  };
+}
+
 return { main, meta, DEFAULT_QUEUE_PATH };
 })();
 
