@@ -1431,7 +1431,160 @@ specific value keeps the suite green on both, while still failing the one state 
 
 ## 11. Backup filename grammar — TSPEC's contribution (O-18 hand-off)
 
+O-18 is PROPERTIES'. TSPEC owes it **a surface those properties can be written against** — the
+grammar is implemented in bash, and a property-based strategy cannot spawn a process per generated
+case. This section states that surface and the retention binding; it states no property.
+
+### 11.1 The parameterisable surface
+
+Three functions in C1, named in §2.2's table, with the fixed-offset parse FSPEC §1.4 derives:
+
+| Function | Contract |
+|---|---|
+| `pdlc_backup_format <id> <stamp> <nn>` | stdout = `{id}.{stamp}-{NN}.bak`; exit 1 if `nn > 99` or `id` fails M6 |
+| `pdlc_backup_parse <name>` | stdout = `id TAB stamp TAB nn`; exit 1 if the **trailing 24 bytes** do not match `"." stamp(16) "-" NN(2) ".bak"` |
+| `pdlc_prune_backups <dir> <knownIds…>` | keeps the 5 greatest per known id, removes the rest of those ids, identity elsewhere |
+
+`pdlc_backup_parse` is `id := ${name:0:${#name}-24}` plus a pattern match on the tail — one parse,
+by construction, which is what makes O-18's injectivity property provable rather than merely
+plausible. The parser is a **separate function from the formatter**, called by nothing in the
+production path except `pdlc_prune_backups`; that is deliberate, because a round-trip property over
+a formatter with no independent parser tests nothing.
+
+### 11.2 The batched driver
+
+```
+__tests__/helpers/bin/backup-grammar.sh          # sources C1, no execute bit needed (run via bash)
+  stdin :  one case per line —  format TAB id TAB stamp TAB nn
+                             |  parse  TAB name
+  stdout:  one result per line — ok TAB <fields…>  |  err TAB <reason>
+```
+
+**One spawn per property run, not per case.** A generated set of 500 ids costs one `spawnSync`; the
+JS side writes the cases to `input` and zips the output lines back. Without this the O-18 properties
+are ~500 process spawns each and the only automated surface this feature has (§1.1) gets slow enough
+that a maintainer stops running it — the failure mode §1.1 consequence 2 names.
+
+`runGrammar(cases)` is exported from `driftHarness.js` and asserts line-count equality between input
+and output before zipping, so a driver that dies halfway produces a harness failure rather than a
+silently truncated property run reporting green over 12 of 500 cases.
+
+### 11.3 What TSPEC pins, so PROPERTIES does not have to invent it
+
+| # | Pinned here | Because |
+|---|---|---|
+| 1 | the **id generator's charset is M6's**, exported as `M6_ID_REGEX` from `document-oracles.mjs` and shared by C1's validator and the generator | PROPERTIES' round-trip must range over the *same* charset the manifest validator accepts, including ids containing `.`, `-` and stamp-shaped substrings (`dev.20260101T000000Z`); a generator with its own charset proves a property about a set nothing else uses |
+| 2 | the sort oracle is **`LC_ALL=C` on the child**, and C1's own `export LC_ALL=C` is asserted **separately** | §3.2 sets `LC_ALL=C` in the sandbox, which would mask the removal of C1's export. The separate assertion runs one sort fixture with `LC_ALL=en_US.UTF-8` injected via `opts.env` and asserts the ordering is **unchanged** — red against an implementation relying on the caller's locale |
+| 3 | `listBackups(root)` (§3.4) returns entries **already parsed** by the same 24-byte rule | so a prune property compares parsed `(stamp, nn)` tuples rather than re-deriving them in the test, where a second parser would drift from the first |
+| 4 | the retention binding: **newest 5 per id**, selection by descending filename sort, **never mtime** | §5.6. The falsifying fixture is stated in §13: five backups written in one second (`-01`…`-05`) plus a sixth, with **mtimes shuffled** by `utimesSync` after creation, asserting the pruned member is `-01` — red against any mtime-based selector, which is the one place an implementer reaches for `ls -t` |
+
+Row 4 is the retention/prune **binding** O-18's clauses (a)–(d) are written against: TSPEC fixes
+what "newest" means operationally (the §1.4 filename order), PROPERTIES quantifies over generated
+directories.
+
+---
+
 ## 12. Queue-side design — shape validator and the O-19(d) wrapper
+
+All of §12 is in-process jest over `orchestrate-queue.js`'s exported pure functions (§2.4). No
+filesystem, no bash, no bundle — these are the fastest tests in the feature and they carry the
+mapping floor (§1.4), so they are the ones a maintainer runs most.
+
+### 12.1 `validateDriftRecord` — one fixture per clause
+
+`driftRecordShape.test.js` is table-driven over D1–D8. Each row starts from `VALID_RECORD` — a
+frozen, shape-valid literal — and applies **exactly one** mutation:
+
+| Clause | Mutation | Expected `clause` |
+|---|---|---|
+| D1 | the read returned `null` | `"D1"` |
+| D2 | `"```json\n{…}\n```"` (fenced), and separately `"{\"schemaVersion\":1,"` (truncated) | `"D2"` |
+| D3 | `schemaVersion: "1"` | `"D3"` |
+| D4 | `baselineReason: "manifest-gone"` | `"D4"` |
+| D5 | `checkEnabled: "false"` | `"D5"` |
+| D6 | `delete rows` | `"D6"` |
+| D7 | `rows[0].state: "in sync"`; `retiredPresent[0].supersedingState: "fresh"` | `"D7"` |
+| D8 | `generatedBy: "queue"`; `syncCommand: 42` | `"D8"` |
+| — | `delete syncCommand` | **`ok: true`** — AT-36's clause, the one absence D8 tolerates |
+
+The mangled-relay fixtures O-19(b) requires — fenced, re-wrapped, truncated, key-dropped,
+array-replaced-by-scalar, state-value-reworded — are exactly the rows above, so O-19(b) is
+discharged by this table and §16 records that rather than duplicating it. Each row asserts the
+**clause id**, not merely `ok: false`: a validator that returns `D1` for everything satisfies
+`ok: false` for all eight and would pass a coarser table while telling the operator nothing.
+
+`VALID_RECORD` is `Object.freeze`d and every row deep-clones it. A shared mutable literal across a
+table-driven suite produces order-dependent passes, which is the failure this suite would be least
+likely to notice — it has no filesystem to make the leak visible.
+
+### 12.2 `mapDriftState` — ten rows, each defeating every higher row
+
+The floor (§1.4) is **all 10 rows**, and each fixture must falsify the rows above it, or a mapping
+with two rows transposed still passes:
+
+| Row | Fixture (built from `VALID_RECORD`) | Defeats above by |
+|---|---|---|
+| 1 | `validateDriftRecord` returned `{ok:false}` | — |
+| 2 | `checkEnabled: false`, **plus** non-empty `writeFailures` and `rows[0].state: "stale"` | carrying rows 3 and 6's conditions, so a mapping that puts row 2 lower reports `blocked` and fails |
+| 3 | `writeFailures: [{path, operation:"artifact-copy"}]`, `checkEnabled: true`, `baselineReason: "drift-state-invalidated"` | `checkEnabled: true` defeats 2; AT-31(a) |
+| 4 | `baselineStatus:"unresolved"`, `baselineReason:"manifest-empty"`, `writeFailures: []` | empty `writeFailures` defeats 3 |
+| 5 | `resolved`, one row `unknown` **and** one row `stale` | the `stale` row would satisfy 6, so ordering 5 above 6 is asserted |
+| 6 | `resolved`, one row `stale`, `retiredPresent` non-empty | the retired path would satisfy 7 |
+| 7 | `resolved`, all rows `in-sync`, `retiredPresent` non-empty | AT-31(b) |
+| 8 | `resolved`, one row `unverified`, one `local-edit`, `retiredPresent: []` | — |
+| 9 | `resolved`, non-empty rows, all `in-sync`, both arrays empty | — |
+| 10 | `resolved`, **`rows: []`**, everything else empty | shape-valid, matches no row 1–9 — FSPEC §6.2's terminal row |
+
+Every case asserts `{ outcome, row }`. Row 10's fixture is the one FSPEC §6.2 argues about at
+length (a green that verified nothing) and is unreachable through row 9 only because row 9 requires
+non-empty `rows` — asserting the **row number** is what proves it landed at 10 rather than
+accidentally at 9.
+
+`report` is asserted structurally for rows 3, 4 and 7 (the ones AT-31 and AT-4 name): the Manifest /
+Row / Run split is three arrays, and the assertion is that the reason appears in the **right** one —
+a flat message list would let a Row-level reason print under Manifest and no test would see it.
+
+### 12.3 The O-19(d) wrapper
+
+FSPEC §6.1, read against source: `runtime-adapter.js`'s `rtReadFile` (lines 85–96) has **no
+`try`/`catch`**, so a throwing agent turn **propagates**. The wrapper is this feature's own code:
+
+```js
+export async function readDriftStateSafely(readFileFn, path) {
+  try { return await readFileFn(path); } catch { return null; }
+}
+```
+
+`queueDriftGate.test.js` injects a `_readFile` triple and asserts all three land on **row 1
+`blocked`** with the §6.3 report — never an abort, never a `proceed`:
+
+| Injected `_readFile` | Models | Expected |
+|---|---|---|
+| `async () => { throw new Error("agent transport failed"); }` | the throwing agent turn — **the case that aborts today** | `{ outcome: "blocked", row: 1 }` |
+| `async () => null` | file absent, or a non-string relay | `{ outcome: "blocked", row: 1 }` |
+| `async () => 42` | a non-string that reached the module | `{ outcome: "blocked", row: 1 }` |
+
+Three notes the implementation must carry, not the test:
+
+1. **The wrapper is required, not decorative.** Without it the first row does not merely fail — the
+   test throws out of `main` and jest reports an error rather than a verdict. The test is written to
+   assert a **returned report**, so it is red in exactly that way until the wrapper exists.
+2. **The pre-existing `await readFileFn(queuePath)` at `orchestrate-queue.js:523` is left
+   unwrapped** (FSPEC §6.1). A test asserting the asymmetry is *not* added — that would pin another
+   feature's behavior — but §17 records the asymmetry as a stated residual.
+3. **`readDriftStateSafely` is `await`ed at the call site** and both bundles are rebuilt in the same
+   commit (CLAUDE.md's runtime rule). `runtimeBundle.test.js`'s freshness assertion, repointed at
+   `dist/` (§2.3), is what enforces the rebuild; the gate wiring itself is asserted by
+   `pipelineWiring`-style structural tests over the module, not over the bundle.
+
+### 12.4 Gate placement
+
+One test asserts the gate runs **before** the queue's own `QUEUE.md` read: a `_readFile` double that
+records call order is injected, the drift state is a blocked record, and the assertion is that
+`readFileFn` was called **once**, with the drift-state path. FSPEC §6.1's one-read rule and §2.4's
+"a blocked drift state costs no queue work" are the same claim, and this is its only observable.
+
+---
 
 ## 13. Fixture inventory with construction recipes
 
