@@ -29,7 +29,7 @@
  */
 
 import { join } from "path";
-import { chmodSync, readFileSync } from "fs";
+import { chmodSync, linkSync, readFileSync } from "fs";
 
 import { itOrSkip, INVARIANTS_AT_14B, INVARIANTS_AT_16 } from "./helpers/driftCapabilities.js";
 import {
@@ -53,6 +53,28 @@ function driftStatePath(root) {
 
 function workflowsDirPath(root) {
   return join(root, ...WORKFLOWS_DIR_REL);
+}
+
+/**
+ * Makes the drift-state file's inode NUMBER a sound oracle for "was this file replaced in place
+ * or unlinked and rewritten?" by hard-linking it to a second name first.
+ *
+ * A bare `inodeOf(path)` before/after comparison is filesystem-dependent, not spec-dependent:
+ * APFS hands out monotonically increasing inode numbers, so an unlink + fresh write always
+ * changes the number, but ext4/overlayfs (Linux, incl. the CI runners) routinely hands the freed
+ * number straight back to the next allocation — so rung (ii) landed and the number was still
+ * equal. With a live hard link the old inode cannot be freed at all, so it cannot be recycled:
+ * an unchanged number now means the same inode, and a changed number means a different one, on
+ * every filesystem.
+ *
+ * The link is created in `root` (always writable) rather than beside the file, because §13.1's
+ * `unwritableParent` recipe leaves the file's own parent `r-x`.
+ *
+ * @returns {bigint} the pinned pre-run inode number, for comparison after the run
+ */
+function pinDriftStateInode(root, name) {
+  linkSync(driftStatePath(root), join(root, `.inode-pin-${name}`));
+  return inodeOf(driftStatePath(root));
 }
 
 // §3.2.1 — a full PATH tool set with every python interpreter deliberately absent, the
@@ -185,7 +207,7 @@ describe("AT-14b — rung (i) preserves checkEnabled:false (TSPEC §6.5, §13.1 
       // §13.1: "drift-state file 0600" — explicit, after the directory mode is set.
       chmodSync(driftStatePath(consumer.root), 0o600);
 
-      const before = inodeOf(driftStatePath(consumer.root));
+      const before = pinDriftStateInode(consumer.root, "at14b-check");
 
       const run = runScript("check", { consumerRoot: consumer.root, pluginRoot: plugin.pluginRoot });
 
@@ -226,7 +248,7 @@ describe("AT-14b — rung (i) preserves checkEnabled:false (TSPEC §6.5, §13.1 
       );
       chmodSync(driftStatePath(consumer.root), 0o600);
 
-      const before = inodeOf(driftStatePath(consumer.root));
+      const before = pinDriftStateInode(consumer.root, "at14b-sync");
 
       runScript("sync", { consumerRoot: consumer.root, pluginRoot: plugin.pluginRoot });
 
@@ -257,7 +279,7 @@ describe("AT-15 — rung (ii) lands: unlink + fresh write (TSPEC §5.3)", () => 
       makeConsumerTree({ git: true, claudeDir: true, workflowsDir: true, driftState: record })
     );
 
-    const before = inodeOf(driftStatePath(consumer.root));
+    const before = pinDriftStateInode(consumer.root, "at15");
 
     const run = runScript("sync", {
       consumerRoot: consumer.root,

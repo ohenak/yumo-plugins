@@ -666,7 +666,12 @@ for _pdlc_c3_entry in "${PDLC_WRITE_FAILURES[@]:-}"; do
   pdlc_msg_w7 "$(_pdlc_c3_relpath "$_pdlc_c3_path")" "$_pdlc_c3_op" >&2; printf '\n' >&2
 done
 
-if ((${#PDLC_WRITE_FAILURES[@]:-0} > 0)); then
+# `${#ARR[@]:-0}` is NOT a defaulting expansion — `${#…}` does not compose with `:-`. Bash 3.2
+# (macOS) silently tolerates the form; bash 5 (Linux) rejects it as `bad substitution`, which
+# aborted this script mid-run and dropped the exit code from 4 to 2/1 on every write-failure
+# case. Same lesson as check-workflow-drift.sh's `_pdlc_n_rows` site: `PDLC_WRITE_FAILURES` is
+# declared by C1 (sourced unconditionally above), so the plain form is correct and safe.
+if ((${#PDLC_WRITE_FAILURES[@]} > 0)); then
   _pdlc_c3_any_write_failed=1
 fi
 
