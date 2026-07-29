@@ -309,9 +309,27 @@ Three things follow, and they are what the properties in §3 and §4 actually as
    "no undefined fall-through" (AC-1.8(i)) becomes a checkable claim about a finite, enumerated set.
 2. **Single-valuedness is structural** (FSPEC §3.6): the ladder's first-match order *is* the
    declared precedence, so the property to assert is not "the states are disjoint" (trivially true
-   of a first-match ladder) but **"the ladder's order equals the declared precedence"** — asserted
-   by constructing, for each precedence pair, a leaf where **both** conditions hold and asserting
-   the higher one wins (§3, PROP-CLS-02).
+   of a first-match ladder) but **"the ladder's order equals the declared precedence"**.
+
+   **How that is asserted depends on whether the two guards can co-hold, and v1.0 got this wrong**
+   (SE F-01). v1.0 claimed a co-holding fixture for *every* adjacent pair. Reading FSPEC §3.3's
+   guards, three of the five state adjacencies cannot co-hold **in principle**:
+
+   | Adjacency | Guards (FSPEC §3.3) | Can co-hold? |
+   |---|---|---|
+   | `unknown > missing` | rung 1's disjunction · `P3 == no` | **yes** — independent probes |
+   | `missing > in-sync` | `P3 == no` · `sha1(consumer) == sha1(plugin)` | **no** — rung 3 presupposes `P3 == yes` |
+   | `in-sync > unverified` | bytes equal · `P6 == no entry` | **yes** — the byte comparison and the manifest lookup are independent |
+   | `unverified > stale` | `P6 == no entry` · `sha1(consumer) == entry.consumerHash` | **no** — rung 5 presupposes the entry rung 4 denies |
+   | `stale > local-edit` | `sha1(c) == entry.consumerHash` · *otherwise* | **no** — complements over one entry, and rung 6 is the ladder's fall-through, so there is no guard to reorder |
+
+   For a co-holdable pair a co-holding fixture is the only honest oracle and §3 builds one. For an
+   unco-holdable pair **there is no fixture, and inventing one produces a re-run of a leaf
+   PROP-CLS-01 already covers, wearing a precedence label** — which is precisely what v1.0's rows 2,
+   4 and 5 were. §3's PROP-CLS-02 therefore splits into **(a)** co-holding rows and **(b)**
+   structurally-unco-holdable adjacencies, each disposed by a stated structural argument plus a
+   *directed* oracle that targets the named wrong implementation the adjacency actually risks.
+   The disposition, not a fake fixture, is the deliverable for (b).
 3. **The absurd combinations are unreachable by construction**, not enumerated in prose: they have
    no path. §2.4 lists the two the *builder* must additionally refuse, because they are reachable
    as fixture specs even though they are not reachable as classifier inputs.
@@ -326,6 +344,23 @@ Three things follow, and they are what the properties in §3 and §4 actually as
 regardless of any path (FSPEC §3.3's first consequence). It is therefore a **single leaf** (L0),
 not a factor multiplying the other ten, and it is the reason `hash-tool-absent` is the one row
 reason that never skips (TSPEC §7.1).
+
+> **Skip granularity, stated because the TSPEC's is file-level** (SE F-08). TSPEC §7 and §1.3 place
+> the `hash` capability skip at `describeOrSkip("hash", …)` **file** level, which on a hash-less
+> runner would skip the whole of `driftClassify.test.js` — taking **L0** with it, even though L0's
+> recipe is `makeToolDir` *omitting* the tool and needs no hash capability at all. That would make
+> the one row reason this document calls unskippable, skippable, and would relax the row-reason
+> meta-oracle floor §2.3 and §11.1 both rest on. The granularity this document requires:
+>
+> - the **L0-bearing cases** of PROP-CLS-01 and PROP-RSN-01, and PROP-CLS-02(a)'s
+>   `unknown > every lower` row, are written as `it()` blocks **outside** the file-level
+>   `describeOrSkip("hash", …)` — they are unconditional;
+> - every other §3/§4/§7/§9 case stays inside it.
+>
+> This is a *refinement* of TSPEC §7/§1.3's placement, not a contradiction of it: the TSPEC places
+> the skip where `makeToolDir`'s throw is caught, and L0 is the one fixture that does not call
+> `makeToolDir` with a tool to resolve. Recorded as an **upstream note** rather than a change —
+> TSPEC v2.1 is approved and is not edited here; the successor should tighten §7's wording.
 
 ### 2.3 Per-row axes A1–A6 and the eleven leaves
 
@@ -355,19 +390,28 @@ over the tree:
 | **L1** | `A1 = no` | `unknown` | `plugin-artifact-missing` | ordinary tree, `pluginPath` deleted | E |
 | **L2** | `A1 = yes, A2 = no` | `unknown` | `plugin-artifact-unreadable` | `PDLC_FAULT=plugin-artifact-read:<id>` (token 15) | E |
 | **L3** | `A1 = indeterminate` | `unknown` | `plugin-artifact-unreadable` | `chmod 0600` on `workflows/dist/` — **permission only** | E-skip (uid-0) |
-| **L4** | `A3 = indeterminate` | `unknown` | `consumer-artifact-unreadable` | `.claude/workflows/` mode `0600` — **permission only** | E-skip (uid-0) |
-| **L5** | `A3 = yes, A4 = no` | `unknown` | `consumer-artifact-unreadable` | `PDLC_FAULT=consumer-artifact-read:<id>` (token 16) | E |
-| **L6** | `A3 = no` | `missing` | `null` | consumer path absent, `.claude/workflows/` present and traversable | E |
-| **L7** | `A5 = equal` | `in-sync` | `null` | consumer bytes := plugin bytes; **A6 not asked** | E |
+| **L4** | `A1 = yes, A2 = yes, A3 = indeterminate` | `unknown` | `consumer-artifact-unreadable` | `.claude/workflows/` mode `0600` — **permission only** | E-skip (uid-0) |
+| **L5** | `A1 = yes, A2 = yes, A3 = yes, A4 = no` | `unknown` | `consumer-artifact-unreadable` | `PDLC_FAULT=consumer-artifact-read:<id>` (token 16) | E |
+| **L6** | `A1 = yes, A2 = yes, A3 = no` | `missing` | `null` | consumer path absent, `.claude/workflows/` present and traversable | E |
+| **L7** | `A4 = yes, A5 = equal` | `in-sync` | `null` | consumer bytes := plugin bytes; **A6 not asked** | E |
 | **L8** | `A5 = differ, A6 = no-entry` | `unverified` | `null` | ×4 sub-recipes (absent / unreadable / malformed / no id) | E |
-| **L9** | `A5 = differ, A6 = entry-matches` | `stale` | `null` | bytes X ≠ plugin, entry `consumerHash = sha1(X)` | E |
-| **L10** | `A5 = differ, A6 = entry-differs` | `local-edit` | `null` | bytes Y, entry over X, X ≠ Y ≠ plugin | E |
+| **L9** | `A5 = differ, A6 = entry-matches` | `stale` | `null` | bytes X ≠ plugin, entry `consumerHash = sha1(X)`, entry **`pluginHash` pinned to a third value** (see below) | E |
+| **L10** | `A5 = differ, A6 = entry-differs` | `local-edit` | `null` | bytes Y, entry over X, X ≠ Y ≠ plugin, entry **`pluginHash` pinned to `sha1(plugin)`** (see below) | E |
 
 Two readings this table pins, because both are places an implementation drifts silently:
 
 - **L7 does not consult A6.** Equal bytes classify `in-sync` *regardless of provenance* — FSPEC
   §3.4 R-4, O-8, AT-6. The tree expresses this as the absence of a child, so a generator cannot
   produce an "equal bytes + degraded manifest ⇒ `unverified`" case even by accident.
+- **L9 and L10 pin the entry's `pluginHash` in opposite directions**, and that pin is an
+  assertion, not a builder detail (PM F-06). AC-1.1 and FSPEC §3.4 R-1 say `stale` vs `local-edit`
+  is discriminated **solely** by `sha1(consumer) == entry.consumerHash`, with `pluginHash`
+  reporting-only. v1.0's recipes said nothing about `pluginHash`, so whether an implementation that
+  compared the *wrong* field was caught rested on whatever the builder happened to write. The pins
+  make each leaf red against exactly that implementation: on **L9** the entry's `pluginHash` is a
+  third value ≠ `sha1(plugin)`, so a `pluginHash` comparison reports `local-edit` where `stale` is
+  required; on **L10** it is set **equal** to `sha1(plugin)`, so the same comparison reports `stale`
+  where `local-edit` is required. PROP-NEG-05 additionally perturbs the field directly.
 - **L3 and L2 share a reason; L4 and L5 share a reason.** That is FSPEC §3.3's footnote (a
   plugin-side untraversable ancestor is `plugin-artifact-unreadable`, not the consumer-side
   reason). §4's PROP-RSN-04 asserts precisely this pairing, because v1 of the FSPEC got it wrong in
@@ -421,28 +465,45 @@ by the run (FSPEC §1.3), never on stdout.
 **PROP-CLS-01 — Every leaf classifies to its declared state.**
 For every leaf `L` in §2.3, the row constructed from `L` must have `state` exactly equal to `L`'s
 declared state. *(Functional · Harness · E, L3/L4 E-skip · `driftClassify.test.js`)*
-Nine leaves are packed as nine rows of one manifest (§1.4); L0 and the two permission leaves are
-separate runs. Traces to AC-1.1, FSPEC §3.3.
+**Eight** leaves (L1, L2, L5, L6, L7, L8, L9, L10) are packed as eight rows of one manifest (§1.4);
+L0 and the two permission leaves (L3, L4) are three separate whole-run fixtures. Traces to AC-1.1,
+FSPEC §3.3. The L0 case is written outside the file-level `hash` skip (§2.2).
 
-**PROP-CLS-02 — The ladder's order is the declared precedence.**
-For every adjacent pair in `unknown > missing > in-sync > unverified > stale > local-edit`, a row
-must exist in which **both** members' conditions hold, and its `state` must be the higher member.
+**PROP-CLS-02(a) — Where two guards can co-hold, the higher state wins.**
+For every adjacency in `unknown > missing > in-sync > unverified > stale > local-edit` whose two
+guards **can** simultaneously hold under FSPEC §3.3's semantics, a row exists in which both do, and
+its `state` is the higher member. *(Functional · Harness · E · `driftClassify.test.js`)*
+
+| Pair | Genuinely co-holding fixture | Both guards hold because | Expected |
+|---|---|---|---|
+| `unknown` > `missing` | consumer path absent (and its first existing ancestor traversable, so `P3 == no` is *definite*) **and** `PDLC_FAULT=plugin-artifact-read:<id>` armed for the same row | rung 1's `P2 == no` and rung 2's `P3 == no` are verdicts of **different probes on different sides**; neither presupposes the other | `unknown` / `plugin-artifact-unreadable` |
+| `in-sync` > `unverified` | consumer bytes := plugin bytes **and** no sync-manifest entry for the row (AT-6's shape, and the `no-entry` sub-recipes of §2.3 L8) | rung 3 is a byte comparison, rung 4 is a manifest lookup; FSPEC §3.4 R-4 exists precisely because both hold at once on first adoption | `in-sync` |
+| `unknown` > every lower | `A0 = absent` over a tree whose rows would otherwise be `in-sync`, `stale`, `local-edit` and `missing` | the hash-utility probe is run-level (FSPEC §3.1) and orthogonal to every path fact | all `unknown` / `hash-tool-absent` |
+
+The third row is FSPEC §3.3's first consequence and is the one an implementation gets wrong by
+probing the hash tool last (as FSPEC v1 did). It is also the row that most needs a co-holding
+fixture, because every *other* assertion about those rows passes under the wrong order.
+
+**PROP-CLS-02(b) — Where two guards cannot co-hold, the disposition is the structural argument plus
+a directed oracle.**
+The remaining three adjacencies have **no** co-holding fixture — not "none was found", but none
+exists, for the reason stated per row (§2.1(2)'s table). Building one anyway produces a re-run of a
+leaf PROP-CLS-01 already owns; v1.0 did that three times and the rows asserted nothing about order
+(SE F-01). Each is disposed below with the structural argument and, where a *real* wrong
+implementation is reachable, a directed oracle that is red against it.
 *(Functional · Harness · E · `driftClassify.test.js`)*
 
-| Pair | Co-holding fixture | Expected |
+| Adjacency | Structural argument (why no fixture exists) | Directed oracle, and the implementation it is red against |
 |---|---|---|
-| `unknown` > `missing` | consumer path absent **and** `PDLC_FAULT=plugin-artifact-read:<id>` | `unknown` |
-| `missing` > `in-sync` | consumer path absent, plugin artifact present — *the vacuous-equality trap*: an implementation comparing "both hashes null" as equal reports `in-sync` | `missing` |
-| `in-sync` > `unverified` | bytes equal **and** no sync-manifest entry (AT-6's shape) | `in-sync` |
-| `unverified` > `stale` | bytes differ, no entry — an implementation defaulting a missing entry to "matches" reports `stale` | `unverified` |
-| `stale` > `local-edit` | bytes differ, entry present with `consumerHash == sha1(consumer)` | `stale` |
-| `unknown` > every lower | `A0 = absent` over a tree whose rows would otherwise be `in-sync`, `stale` and `missing` | all `unknown` |
+| `missing` > `in-sync` | rung 2 fires on `P3 == no`; rung 3 needs `sha1(consumer)`, which requires `P3 == yes`. The two are **complements over P3**, so no filesystem state satisfies both. The order between them is therefore **unobservable through any input** | Leaf **L6**, with two added conjuncts that are *not* PROP-CLS-01's: the record's `consumerHash` for that row is **`null`** and its `pluginHash` is **non-null**. Red against the vacuous-equality implementation — one that lets a failed consumer hash yield `""`, computes `[ "$h_c" = "$h_p" ]`, and would report `in-sync` on any row where *both* hashes came back empty. The `null`/non-null pair is what proves the empty-string path was not taken |
+| `unverified` > `stale` | rung 4 fires on `P6 == no entry`; rung 5 dereferences `entry.consumerHash`. Rung 5 **presupposes the entry rung 4 denies** | **PROP-CLS-07** is the oracle, and it is the real defect surface: all four `no-entry` sub-recipes (manifest absent / unreadable / malformed / present-without-this-id) must classify `unverified`. Red against an implementation that treats a *degraded* manifest as "entry lookup failed, fall through to rung 5" and compares against an empty `consumerHash` — the FSPEC §1.2 / §3.4 R-3 hazard. That implementation reports `local-edit` (or `stale`, if the consumer hash is also empty), never `unverified` |
+| `stale` > `local-edit` | rung 5 and rung 6 are **complements over the same entry field** (`==` vs `!=`), and rung 6 is written `otherwise` — it has **no guard at all**. There is nothing to reorder, so "the ladder's order" is not a claim that can be made here | The claim that *does* have content is FSPEC §3.4 R-1: the comparison is against **`entry.consumerHash`** and nothing else. Two oracles carry it — §2.3's L9/L10 `pluginHash` pins (each red against an implementation comparing `pluginHash`) and **PROP-NEG-05**'s direct `pluginHash` perturbation. Neither is a precedence fixture, and this row does not pretend otherwise |
 
-This is the falsifiable form of "mutual exclusivity". Asserting that the six states are pairwise
-disjoint is vacuous over a first-match ladder — the defect the property must catch is a ladder whose
-*order* has drifted from the declared precedence, and only a co-holding fixture catches it. The last
-row is FSPEC §3.3's first consequence and is the one an implementation gets wrong by probing the
-hash tool last (as FSPEC v1 did).
+**Why this split matters.** Asserting that the six states are pairwise disjoint is vacuous over a
+first-match ladder; asserting a co-holding fixture where none can exist is *worse than vacuous*,
+because it reports a leaf re-run as precedence coverage and the reviewer stops looking. The honest
+residual — **the `missing`/`in-sync` and `stale`/`local-edit` adjacencies have no order-observing
+input** — is recorded as **P-R-10**, together with the compensating controls above.
 
 **PROP-CLS-03 — Totality: no input escapes the ladder.**
 Over the enumerated leaves, every row in the record has a `state` drawn from the closed six-member
