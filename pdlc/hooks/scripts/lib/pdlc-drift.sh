@@ -63,6 +63,12 @@ readonly -a PDLC_FAULT_TOKENS=(
 _PDLC_FAULT_PARSED=0
 _PDLC_FAULT_UNSCOPED=()
 _PDLC_FAULT_SCOPED=()
+# Set to 1 the first time an unrecognised token or malformed spec is rejected (N-7). The
+# assertion surfaces read it through `pdlc_fault_unrecognised_seen` to take AC-2.9(5)'s
+# unrecognised exit (FSPEC §4.6: `--check`/sync 4, hook 0 unconditionally). A partially
+# recognised list still injects its recognised members and still takes that exit (TSPEC
+# §5.4 rule 3), which is why this is a sticky flag rather than an early return.
+_PDLC_FAULT_UNRECOGNISED=0
 
 # Splits "$1" on "," into the global _PDLC_FAULT_SPLIT array, preserving empty fields (manual
 # prefix-stripping — the same technique bin/lib-probe.sh's `split_tab_fields` uses for TAB, since
@@ -104,7 +110,17 @@ _pdlc_fault_is_selector_bearing() {
 # Layer 5 (T-35) may route this through a shared `pdlc_msg_*` once that layer lands; layer 1
 # writes it directly so this behaves correctly standing alone.
 _pdlc_fault_emit_n7() {
+  _PDLC_FAULT_UNRECOGNISED=1
   printf 'pdlc: unrecognised PDLC_FAULT token "%s"; no fault injected.\n' "$1" >&2
+}
+
+# pdlc_fault_unrecognised_seen — exit 0 when this process rejected at least one spec. Forces
+# parsing first: a run in which no guard was ever consulted (an empty row set, say) would
+# otherwise never have parsed `PDLC_FAULT`, and the exit would silently depend on how much
+# work the tree happened to require.
+pdlc_fault_unrecognised_seen() {
+  _pdlc_fault_ensure_parsed
+  [[ "$_PDLC_FAULT_UNRECOGNISED" == "1" ]]
 }
 
 _pdlc_fault_ensure_parsed() {

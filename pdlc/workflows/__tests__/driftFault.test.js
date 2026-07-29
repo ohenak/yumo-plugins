@@ -158,9 +158,18 @@ describe("AT-18b — the identical fixture under --check exits 4; record byte-id
       expect(checkRun.status).toBe(4);
       expect(countOf(checkRun.stderr, "N-7")).toBe(1);
 
-      expect(stripTimestamps(readDriftState(checkFixture.consumer.root))).toEqual(
-        stripTimestamps(readDriftState(hookFixture.consumer.root))
-      );
+      // AT-18b's Then says "byte-identical to AT-18a's, modulo the timestamp field". Taken
+      // literally that is unsatisfiable: `generatedBy` is FSPEC §6.2's closed 3-member record
+      // of *which entrypoint wrote this*, so the hook run says "hook" and the `--check` run
+      // says "check" by design, not by drift. Excluding it here keeps the assertion's real
+      // content — the token perturbed nothing about the computed record — while the two run-
+      // identity fields (the timestamp and the entrypoint) are the only permitted differences.
+      // Flagged for L-06: AT-18b's wording should name `generatedBy` alongside the timestamp.
+      const { generatedBy: _checkBy, ...checkRecord } = stripTimestamps(readDriftState(checkFixture.consumer.root));
+      const { generatedBy: _hookBy, ...hookRecord } = stripTimestamps(readDriftState(hookFixture.consumer.root));
+      expect(_checkBy).toBe("check");
+      expect(_hookBy).toBe("hook");
+      expect(checkRecord).toEqual(hookRecord);
     } finally {
       hookFixture.cleanup();
       checkFixture.cleanup();

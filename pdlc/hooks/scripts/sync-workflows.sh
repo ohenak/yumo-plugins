@@ -578,6 +578,16 @@ fi
 
 # ───────────────────────────── step 10 — exit code (FSPEC §5.8) ─────────────────────────────
 
+# AC-2.9(5), verbatim (FSPEC §4.6): an unrecognised `PDLC_FAULT` token prints one stderr line,
+# injects nothing, and `--check`/sync take exit 4 — an assertion surface handed an environment
+# it does not understand is a failed assertion, not a green one. This precedes every state-
+# derived code below because the run's computed state is deliberately still whatever it would
+# have been with the seam unset (AT-18a/AT-18b assert exactly that byte-equivalence); only the
+# process exit is pinned here. The hook is the sole exception (AC-2.4) and never reaches this.
+if pdlc_fault_unrecognised_seen; then
+  exit 4
+fi
+
 if ((_pdlc_c3_any_write_failed)); then
   exit 4
 fi

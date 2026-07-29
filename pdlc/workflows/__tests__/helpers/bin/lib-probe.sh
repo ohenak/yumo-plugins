@@ -123,9 +123,16 @@ dump_variable() {
     emit_err "unset-variable"
     return
   fi
-  local declLine
+  local declLine declFlags
   declLine="$(declare -p "$varName")"
-  if [[ "$declLine" == "declare -a "* ]]; then
+  # Test the FLAG SET, not the literal prefix `declare -a `: bash renders every attribute in
+  # one flag word, so C1's `readonly -a PDLC_FAULT_TOKENS` comes back as `declare -ar NAME=…`.
+  # A `"declare -a "*` prefix match misses that, silently falls through to the scalar branch,
+  # and `${!varName}` on an array yields element 0 alone — a 16-member dump arriving as one
+  # field (T-39's `dump PDLC_FAULT_TOKENS` case).
+  declFlags="${declLine#declare -}"
+  declFlags="${declFlags%% *}"
+  if [[ "$declFlags" == *a* ]]; then
     local -a values=()
     eval "values=(\"\${${varName}[@]}\")"
     emit_ok 0 "${values[@]}"
