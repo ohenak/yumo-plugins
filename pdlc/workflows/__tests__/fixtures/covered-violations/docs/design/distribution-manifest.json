@@ -1,0 +1,15 @@
+{
+  "_fixture": "FSPEC §7.5 exemption (iii) — 'any distribution-manifest.json', by BASENAME.",
+  "_why": "This copy deliberately sits OUTSIDE both generated trees (.claude/workflows/ and pdlc/workflows/dist/) and outside any REQ-bearing docs/<X>/ dir and any __tests__/ segment, so clause (iii) is the ONLY exemption that can excuse it. The note below carries one of the five covered patterns, so if (iii) ever stops firing this file appears in coveredViolations(FIXTURE_ROOT) as an 8th path.",
+  "schemaVersion": 1,
+  "pluginVersion": "0.0.0-fixture",
+  "rows": [
+    {
+      "id": "orchestrate-dev",
+      "pluginPath": "workflows/dist/orchestrate-dev.bundle.js",
+      "pluginSha1": "0000000000000000000000000000000000000000",
+      "note": "pre-distribution convention: this artifact was managed manually"
+    }
+  ],
+  "retired": []
+}

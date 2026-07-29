@@ -1,0 +1,8 @@
+{
+  "generatedFrom": "pdlc/workflows/orchestrate-dev.js",
+  "note": "The runtime copy at .claude/workflows/orchestrate-dev.js is managed manually only in the sense that a human triggers the build; the bytes themselves are generated.",
+  "bundles": [
+    "orchestrate-dev.bundle.js",
+    "orchestrate-queue.bundle.js"
+  ]
+}

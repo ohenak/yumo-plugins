@@ -24,7 +24,13 @@ beforeAll(() => {
 });
 
 describe("orchestrate-dev SKILL.md rewrite — TSPEC-SKILL-02", () => {
-  // PROP-SKILL-06: Under 100 lines
+  // PROP-SKILL-06: Under 100 lines.
+  //
+  // BUDGET WARNING (SE F-14, Phase CR): as of the pdlc-workflow-distribution landing this file
+  // measures 99 — ONE line of headroom. The threshold is the property, not a lint knob: do not
+  // raise it to make room. Anything added to orchestrate-dev/SKILL.md must be paid for by
+  // removing a line. The marker lives here rather than in SKILL.md itself because a marker line
+  // in SKILL.md would consume the last remaining slot and turn this test red.
   it("PROP-SKILL-06: rewritten SKILL.md is under 100 lines", () => {
     const lineCount = content.split("\n").length;
     expect(lineCount).toBeLessThan(100);
@@ -84,6 +90,6 @@ describe("orchestrate-dev SKILL.md rewrite — TSPEC-SKILL-02", () => {
   // PROP-SKILL-08: references both canonical plugin source and consumer runtime copy
   it("PROP-SKILL-05/08: references both plugin source and consumer runtime copy paths", () => {
     expect(content).toContain("pdlc/workflows/orchestrate-dev.js");
-    expect(content).toContain(".claude/workflows/orchestrate-dev.js");
+    expect(content).toContain(".claude/workflows/orchestrate-dev.bundle.js");
   });
 });

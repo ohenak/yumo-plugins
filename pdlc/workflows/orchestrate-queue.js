@@ -2,7 +2,8 @@
  * orchestrate-queue.js — Serial queue driver around orchestrate-dev
  *
  * Canonical plugin source: pdlc/workflows/orchestrate-queue.js
- * Consumer runtime copy:  .claude/workflows/orchestrate-queue.js
+ * Built artifact:          pdlc/workflows/dist/orchestrate-queue.bundle.js
+ * Consumer runtime copy:   installed from dist/ by pdlc/hooks/scripts/sync-workflows.sh
  *
  * Purpose
  * -------
@@ -56,6 +57,10 @@ export const meta = {
 
 // Default location of the queue file.
 export const DEFAULT_QUEUE_PATH = "docs/_queue/QUEUE.md";
+
+// Location of the drift-state artifact the queue's gate reads (FSPEC §6.1). Written by the
+// sync hook / manual sync / manifest check — never by this module.
+export const DRIFT_STATE_PATH = ".claude/workflows/.pdlc-drift-state.json";
 
 // MODEL-01: the queue driver's own agent work (the Phase-0 readiness triage) runs
 // on Sonnet — it is a bounded lookup against git/working-tree state, not deep
@@ -191,6 +196,13 @@ function parseDepsCell(cell) {
 // ─── QUEUE-PARSE-02: parseReqFrontmatter ─────────────────────────────────────
 
 /**
+ * How far into a REQ to look for the frontmatter block. Large enough to clear
+ * an agent-added preamble, small enough that a `---` rule in the body is never
+ * mistaken for frontmatter.
+ */
+const FRONTMATTER_SCAN_LIMIT = 4000;
+
+/**
  * Parse the YAML-ish frontmatter block of a REQ document.
  *
  * Recognized keys:
@@ -208,7 +220,14 @@ export function parseReqFrontmatter(text) {
   const empty = { ready: false, dependsOn: [], feature: null };
   if (text == null || typeof text !== "string") return empty;
 
-  const fm = /^\s*---\s*\n([\s\S]*?)\n---\s*(\n|$)/.exec(text);
+  // The frontmatter is normally the first thing in the file, but the runtime
+  // reads files by round-tripping them through an agent's final message: for a
+  // large REQ the agent may prepend a line explaining it could not return the
+  // whole file verbatim. Scan a bounded prefix for the first `---` block rather
+  // than anchoring at offset 0, so a preamble does not read as "no frontmatter"
+  // (which silently degrades to ready:false and skips a genuinely ready REQ).
+  const head = text.slice(0, FRONTMATTER_SCAN_LIMIT);
+  const fm = /(?:^|\n)\s*---[ \t]*\n([\s\S]*?)\n---[ \t]*(?:\n|$)/.exec(head);
   if (!fm) return empty;
 
   const body = fm[1];
@@ -504,11 +523,58 @@ export default async function main({
   const agentFn = (skill, prompt, opts) =>
     rawAgentFn(skill, prompt, { model: MODEL_QUEUE, ...opts });
 
+  // ─── Drift gate (O-19, FSPEC §6.2/§6.4, TSPEC §12.3/§12.4) ───────────────
+  // Runs BEFORE the queue is even read, so a blocked drift state costs no queue
+  // work. `readDriftStateSafely` is the O-19(d) wrapper: the injected read is
+  // agent-mediated (rtReadFile, runtime-adapter.js:85-96), not a raw filesystem
+  // call, and that seam never throws in production — it maps a missing/unreadable
+  // file to `null` itself. The wrapper exists anyway (defence in depth, O-19(c)):
+  // if some future/alternate read implementation DID throw, propagating that
+  // exception here would abort the whole queue invocation instead of yielding a
+  // `blocked` verdict, which is the wrong failure mode for something that must
+  // fail closed onto row 1 (FSPEC §6.2 row 1 — "hook never ran").
+  phaseFn("Queue: Drift gate");
+  const driftRaw = await readDriftStateSafely(readFileFn, DRIFT_STATE_PATH);
+  const driftGate = mapDriftState(validateDriftRecord(driftRaw));
+  if (driftGate.outcome === "blocked") {
+    emit(
+      `Queue blocked by drift gate (row ${driftGate.row}): ${driftGate.reasons.join("; ")}`
+    );
+    return buildQueueReport({
+      outcome: "blocked",
+      reason: `Drift gate row ${driftGate.row}: ${driftGate.reasons.join("; ")}`,
+      remaining: 0,
+      driftReport: driftGate.report,
+    });
+  }
+
+  // A PROCEEDING verdict is not necessarily a silent one. Row 9 is the trivial
+  // all-clear (empty `reasons`, empty report) and says nothing; every other
+  // proceeding row carries something the operator must still see:
+  //   • row 2 — the checkEnabled:false opt-out. AC-4.1 row 2 is "proceed; skip
+  //     noted in report", AC-4.3 is "skips state evaluation and notes the skip".
+  //     A queue that ran a stale tree without saying so would be exactly the
+  //     silent-degradation this feature exists to prevent.
+  //   • row 8 — local-edit / unverified rows. AC-4.1 row 8 is "proceed, rows
+  //     named in the run report".
+  // Both obligations are on the RETURNED QueueReport (and the run log), not on
+  // `mapDriftState`'s node output — so the notice is captured once here and
+  // `finish` is the single funnel every remaining exit path in this pass returns
+  // through, `runPicked`'s two included. Adding a new `return` below that calls
+  // `buildQueueReport` directly would silently reopen this gap.
+  const driftNotice = driftGate.row === 9 ? null : driftGate.report;
+  if (driftNotice) {
+    emit(
+      `Drift gate proceeding (row ${driftGate.row}): ${driftGate.reasons.join("; ")}`
+    );
+  }
+  const finish = (fields) => buildQueueReport({ ...fields, driftReport: driftNotice });
+
   // ─── Load queue ─────────────────────────────────────────────────────────
   phaseFn("Queue: Load");
   const queueText = await readFileFn(queuePath);
   if (queueText == null) {
-    return buildQueueReport({
+    return finish({
       outcome: "no-queue",
       reason: `Queue file not found at ${queuePath}`,
       remaining: 0,
@@ -527,7 +593,7 @@ export default async function main({
       `Queue blocked: "${selection.entry.feature}" is still in-progress. ` +
         `Resolve it (mark done/awaiting-merge or reset to pending) before new work is picked up.`
     );
-    return buildQueueReport({
+    return finish({
       outcome: "blocked",
       reason: `An entry is in-progress: ${selection.entry.feature}`,
       remaining: remainingPending,
@@ -537,7 +603,7 @@ export default async function main({
 
   if (selection.kind === "empty") {
     emit(`Nothing to pick up — ${selection.reason}.`);
-    return buildQueueReport({
+    return finish({
       outcome: "idle",
       reason: selection.reason,
       remaining: 0,
@@ -618,12 +684,13 @@ export default async function main({
       readFileFn,
       phaseFn,
       emit,
+      finish,
     });
   }
 
   // No candidate became ready this pass.
   emit(`No ready REQ this pass (${skipped.length} candidate(s) skipped).`);
-  return buildQueueReport({
+  return finish({
     outcome: "idle",
     reason: "no candidate passed the readiness gate",
     remaining: remainingPending,
@@ -650,6 +717,10 @@ async function runPicked({
   readFileFn,
   phaseFn,
   emit,
+  // `main`'s exit funnel — carries the proceeding drift notice onto whichever
+  // report this pass returns (see the `finish` comment in `main`). Injected
+  // rather than recomputed so there is exactly one place that decides it.
+  finish,
 }) {
   phaseFn(`Pipeline: ${entry.feature}`);
   emit(
@@ -666,7 +737,7 @@ async function runPicked({
     report = await runPipelineFn({ reqPath: entry.reqPath });
   } catch (err) {
     await rewriteStatus(queuePath, entry.feature, "halted", readFileFn, writeFileFn);
-    return buildQueueReport({
+    return finish({
       outcome: "halted",
       reason: `Pipeline threw for ${entry.feature}: ${err && err.message}`,
       remaining: remainingPending - 1,
@@ -684,7 +755,7 @@ async function runPicked({
       : `"${entry.feature}" halted: ${report && report.haltReason}. Status set to halted.`
   );
 
-  return buildQueueReport({
+  return finish({
     outcome: succeeded ? "ran" : "halted",
     reason: succeeded
       ? `Pipeline succeeded for ${entry.feature}`
@@ -713,6 +784,10 @@ async function rewriteStatus(queuePath, feature, status, readFileFn, writeFileFn
  * @property {string} [active]         - in-progress feature blocking pickup (if any)
  * @property {object} [pipelineReport] - the orchestrate-dev FinalReport (if a pipeline ran)
  * @property {Array}  [skipped]        - candidates skipped this pass with reasons
+ * @property {{manifest:string[], row:string[], run:string[]}} [driftReport] - the drift gate's
+ *   Manifest/Row/Run reasons (FSPEC §6.3). Present whenever the gate had something to say —
+ *   on a `blocked` verdict, and on a proceeding verdict at any row other than 9's all-clear
+ *   (AC-4.1 rows 2 and 8, AC-4.3). Absent exactly when the gate was silent.
  */
 function buildQueueReport({
   outcome,
@@ -722,6 +797,7 @@ function buildQueueReport({
   active,
   pipelineReport,
   skipped,
+  driftReport,
 }) {
   return {
     outcome,
@@ -731,5 +807,352 @@ function buildQueueReport({
     ...(active ? { active } : {}),
     ...(pipelineReport ? { pipelineReport } : {}),
     ...(skipped && skipped.length ? { skipped } : {}),
+    ...(driftReport ? { driftReport } : {}),
   };
+}
+
+// ─── DRIFT-01: validateDriftRecord (TSPEC §12.1, FSPEC §1.3 / §6.2 row 1) ────
+//
+// Shape validator for the single injected read of `.claude/workflows/.pdlc-drift-state.json`
+// (FSPEC §6.1). Pure — no filesystem, no model calls. Defence in depth only: the hook is the
+// primary drift detector; this validator exists to fail closed (⇒ `blocked`) on any relay that
+// is not byte-faithful to what the writer produced, since the read is LLM-mediated (an agent
+// turn), not a raw filesystem read (§6.1). It does not, and cannot, detect a relay that mangles
+// a *value* while staying inside that value's closed set (§6.1's stated residual) — only shapes.
+//
+// Clause order is significant: clauses are checked D1 → D8 and the FIRST failing clause is
+// reported, matching FSPEC §6.2's row-1 predicate table and TSPEC §12.1's one-clause-per-row
+// fixtures. `mapDriftState` (T-12) consumes this function's `{ok, record}` / `{ok, clause}`
+// result as its own row 1; the mapping/report/gate-wiring layers are out of this task's scope.
+
+const DRIFT_CLOSED_ROW_STATES = ["in-sync", "missing", "stale", "local-edit", "unverified", "unknown"];
+
+const DRIFT_CLOSED_ROW_REASONS = [
+  "hash-tool-absent",
+  "plugin-artifact-missing",
+  "plugin-artifact-unreadable",
+  "consumer-artifact-unreadable",
+];
+
+// §2.8's declared precedence order is irrelevant here — D4 only needs closed-set membership,
+// not ranking.
+const DRIFT_CLOSED_BASELINE_REASONS = [
+  "drift-state-invalidated",
+  "manifest-empty",
+  "json-tool-absent",
+  "manifest-malformed",
+  "manifest-absent",
+  "repo-root-unresolved",
+  "plugin-root-unreadable",
+  "plugin-root-unset",
+];
+
+const DRIFT_CLOSED_GENERATED_BY = ["hook", "check", "sync"];
+
+function isDriftPlainObject(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+// D3 — schemaVersion present, integer 1.
+function failsD3(record) {
+  return !(typeof record.schemaVersion === "number" && Number.isInteger(record.schemaVersion) && record.schemaVersion === 1);
+}
+
+// D4 — baselineStatus one of "resolved" | "unresolved"; baselineReason present and either
+// null or one of the eight closed baseline reasons (FSPEC §6.2's literal clause text, TSPEC
+// §12.1 row 6/7). Note (T-12): this clause does NOT correlate baselineReason's null-ness with
+// baselineStatus — a "resolved" record carrying a closed baseline reason (e.g.
+// "drift-state-invalidated") is shape-valid under D4. §2.8/§4.4 describe what real writers
+// produce (baselineStatus:"unresolved" alongside "drift-state-invalidated"), but that is a
+// writer-side invariant, not a reader-side shape constraint — §6.2's row 3 precedence fixture
+// (TSPEC §12.2) is exactly a shape-valid "resolved" record carrying that reason, and mapDriftState
+// must still be able to reach it.
+function failsD4(record) {
+  if (record.baselineStatus !== "resolved" && record.baselineStatus !== "unresolved") {
+    return true;
+  }
+  return record.baselineReason !== null && !DRIFT_CLOSED_BASELINE_REASONS.includes(record.baselineReason);
+}
+
+// D5 — checkEnabled present boolean (not the string "false", not absent).
+function failsD5(record) {
+  return typeof record.checkEnabled !== "boolean";
+}
+
+// D6 — rows, retiredPresent, writeFailures all present arrays.
+function failsD6(record) {
+  return (
+    !Array.isArray(record.rows) ||
+    !Array.isArray(record.retiredPresent) ||
+    !Array.isArray(record.writeFailures)
+  );
+}
+
+// D7 — every member of rows / retiredPresent / writeFailures is shape-valid. Only called once
+// D6 has already confirmed all three are arrays.
+function failsD7(record) {
+  const rowsOk = record.rows.every(
+    (row) =>
+      isDriftPlainObject(row) &&
+      typeof row.id === "string" &&
+      row.id.length > 0 &&
+      DRIFT_CLOSED_ROW_STATES.includes(row.state) &&
+      (row.reason === null || DRIFT_CLOSED_ROW_REASONS.includes(row.reason))
+  );
+  if (!rowsOk) return true;
+
+  const retiredOk = record.retiredPresent.every(
+    (entry) =>
+      isDriftPlainObject(entry) &&
+      typeof entry.path === "string" &&
+      entry.path.length > 0 &&
+      typeof entry.supersededBy === "string" &&
+      entry.supersededBy.length > 0 &&
+      DRIFT_CLOSED_ROW_STATES.includes(entry.supersedingState)
+  );
+  if (!retiredOk) return true;
+
+  return !record.writeFailures.every(
+    (failure) =>
+      isDriftPlainObject(failure) &&
+      typeof failure.path === "string" &&
+      typeof failure.operation === "string"
+  );
+}
+
+// D8 — generatedBy closed-set; pluginVersion null-or-string; syncCommand, if present,
+// null-or-string. Absence of syncCommand is the one thing D8 tolerates (FSPEC §1.3, SE F-16).
+function failsD8(record) {
+  if (!DRIFT_CLOSED_GENERATED_BY.includes(record.generatedBy)) return true;
+  if (!(record.pluginVersion === null || typeof record.pluginVersion === "string")) return true;
+  if ("syncCommand" in record) {
+    if (!(record.syncCommand === null || typeof record.syncCommand === "string")) return true;
+  }
+  return false;
+}
+
+const DRIFT_CLAUSE_CHECKS = [
+  ["D3", failsD3],
+  ["D4", failsD4],
+  ["D5", failsD5],
+  ["D6", failsD6],
+  ["D7", failsD7],
+  ["D8", failsD8],
+];
+
+// Runs D3–D8 against a parsed top-level object, in order, returning the first failing clause
+// id or `null` when every clause is satisfied. Shared by the top-level validation and by the
+// single-level envelope check below (TSPEC §12.1 row 4).
+function firstFailingDriftClause(record) {
+  for (const [clauseId, fails] of DRIFT_CLAUSE_CHECKS) {
+    if (fails(record)) return clauseId;
+  }
+  return null;
+}
+
+/**
+ * Validate the shape of a drift-state record as relayed by the injected read (FSPEC §6.1,
+ * §6.2 row 1; TSPEC §12.1). `value` is whatever the injected read returned — the caller is
+ * responsible for normalising a throw to `null` (O-19(d)); this function only judges shape.
+ *
+ * @param {unknown} value
+ * @returns {{ok:true, record:object} | {ok:false, clause:"D1"|"D2"|"D3"|"D4"|"D5"|"D6"|"D7"|"D8"}}
+ */
+export function validateDriftRecord(value) {
+  // D1 — a usable value. In production this is always a string (or `null`, per §6.1) because the
+  // seam is a raw, LLM-mediated file read; some callers validate an already-parsed record object
+  // obtained by other means (e.g. AT-24's end-to-end fresh-clone assertion, which reads the
+  // written drift-state JSON directly off disk), so a plain object is accepted here too and
+  // treated as already having passed D2's JSON-parse step. Anything else (`null`, an array, a
+  // scalar) is D1.
+  let parsed;
+  if (typeof value === "string") {
+    // D2 — parses as JSON, and the top level is an object (not an array or a scalar).
+    try {
+      parsed = JSON.parse(value);
+    } catch {
+      return { ok: false, clause: "D2" };
+    }
+  } else if (isDriftPlainObject(value)) {
+    parsed = value;
+  } else {
+    return { ok: false, clause: "D1" };
+  }
+
+  if (!isDriftPlainObject(parsed)) {
+    return { ok: false, clause: "D2" };
+  }
+
+  // D2's single-level known-envelope check (TSPEC §12.1 row 4, v2.1 TE Q-02): a top-level
+  // object with exactly one key, "result", whose value is ITSELF fully shape-valid, is a
+  // mangled relay (re-wrapped), not a record to unwrap. This check goes exactly one level
+  // deep — it does not recurse the inner value through this same envelope check again — so
+  // `{"result": 42}` is judged on its own top-level shape (⇒ D3, schemaVersion missing) rather
+  // than being treated as an envelope, because 42 is not itself shape-valid.
+  const keys = Object.keys(parsed);
+  if (
+    keys.length === 1 &&
+    keys[0] === "result" &&
+    isDriftPlainObject(parsed.result) &&
+    firstFailingDriftClause(parsed.result) === null
+  ) {
+    return { ok: false, clause: "D2" };
+  }
+
+  const clause = firstFailingDriftClause(parsed);
+  if (clause) {
+    return { ok: false, clause };
+  }
+
+  return {
+    ok: true,
+    record: {
+      ...parsed,
+      syncCommand: "syncCommand" in parsed ? parsed.syncCommand : null,
+    },
+  };
+}
+
+// ─── T-12: mapDriftState — the ten-row precedence mapping (AC-4.1, TSPEC §12.2) ─────────────
+//
+// A pure function of `validateDriftRecord`'s result (never of the raw injected read — the
+// call site is O-19(d)'s job, T-13). Every branch below is ordered exactly as FSPEC §6.2's
+// precedence table and each later branch's fixture is required (TSPEC §12.2) to "defeat" every
+// row above it, so the ORDER of these checks is itself the spec, not an implementation detail.
+//
+// Report shape: the three reason sets (Manifest / Row / Run, FSPEC §6.3) are disjoint, so
+// `report` is always `{ manifest: string[], row: string[], run: string[] }` — never a flat
+// list — because a flat list would let a Row-level reason print under Manifest with nothing
+// to catch it (TSPEC §12.2, rows 3/4/7's structural assertions).
+
+function emptyReport() {
+  return { manifest: [], row: [], run: [] };
+}
+
+function gate(outcome, row, reasons, report) {
+  return { outcome, row, reasons, report };
+}
+
+/**
+ * Map a `validateDriftRecord` result to the queue's gate verdict (FSPEC §6.2, TSPEC §12.2).
+ *
+ * @param {{ok:true, record:object} | {ok:false, clause:string} | null | undefined} validated
+ * @returns {{outcome:"blocked"|"proceed", row:number, reasons:string[], report:{manifest:string[], row:string[], run:string[]}}}
+ */
+export function mapDriftState(validated) {
+  // Row 1 — the read did not yield a shape-valid record (FSPEC §6.2 row 1; D1-D8 upstream).
+  // This is the mapping's own fail-closed floor: every one of validateDriftRecord's negative
+  // clauses (D1-D8) lands here, undifferentiated, because none of rows 2-10 below can be
+  // trusted to mean what they say once the shape itself is unverified.
+  if (!validated || validated.ok !== true) {
+    const clause = validated && typeof validated.clause === "string" ? validated.clause : "D1";
+    const reasons = [`drift state did not yield a usable record (${clause})`];
+    return gate("blocked", 1, reasons, { manifest: reasons, row: [], run: [] });
+  }
+
+  const record = validated.record;
+
+  // Row 2 — checkEnabled:false is the operator's opt-out. It sits above every row below EXCEPT
+  // row 1 (FSPEC §6.2's "three further design points") — so it must be checked before rows
+  // 3-10, deliberately even when the record also carries their conditions (TSPEC §12.2 row 2).
+  if (record.checkEnabled === false) {
+    const reasons = ["checkEnabled is false — drift check skipped by operator opt-out (AC-4.3)"];
+    return gate("proceed", 2, reasons, { manifest: reasons, row: [], run: [] });
+  }
+
+  // Row 3 — a non-empty writeFailures blocks even with checkEnabled:true (AT-31(a)). Named at
+  // Run level, one line per entry; `drift-state-invalidated`, when carried, renders at Manifest
+  // level (FSPEC §6.3 — "drift-state-invalidated's rendering site is the Manifest-level line").
+  if (Array.isArray(record.writeFailures) && record.writeFailures.length > 0) {
+    const run = record.writeFailures.map(
+      (failure) => `write failure: ${failure.path} (${failure.operation})`
+    );
+    const manifest =
+      record.baselineReason === "drift-state-invalidated" ? ["drift-state-invalidated"] : [];
+    return gate("blocked", 3, [...manifest, ...run], { manifest, row: [], run });
+  }
+
+  // Row 4 — baselineStatus:"unresolved" blocks once writeFailures is empty (defeats row 3).
+  // Named at Manifest level only.
+  if (record.baselineStatus === "unresolved") {
+    const manifest = [String(record.baselineReason)];
+    return gate("blocked", 4, manifest, { manifest, row: [], run: [] });
+  }
+
+  // Row 5 — any row "unknown" blocks, ordered above a co-occurring stale row (defeats row 6).
+  if (record.rows.some((row) => row.state === "unknown")) {
+    const row = record.rows
+      .filter((r) => r.state === "unknown")
+      .map((r) => `${r.id}: unknown${r.reason ? ` (${r.reason})` : ""}`);
+    return gate("blocked", 5, row, { manifest: [], row, run: [] });
+  }
+
+  // Row 6 — any row "missing" or "stale" blocks, ordered above a co-occurring retired path
+  // (defeats row 7).
+  if (record.rows.some((row) => row.state === "missing" || row.state === "stale")) {
+    const row = record.rows
+      .filter((r) => r.state === "missing" || r.state === "stale")
+      .map((r) => `${r.id}: ${r.state}`);
+    return gate("blocked", 6, row, { manifest: [], row, run: [] });
+  }
+
+  // Row 7 — retiredPresent non-empty blocks even with every row in-sync (AT-31(b)). Named at
+  // Row level, never Manifest level (a flat list would hide it there — TSPEC §12.2).
+  if (Array.isArray(record.retiredPresent) && record.retiredPresent.length > 0) {
+    const row = record.retiredPresent.map((entry) => `retired artifact present: ${entry.path}`);
+    return gate("blocked", 7, row, { manifest: [], row, run: [] });
+  }
+
+  // Row 8 — local-edit / unverified rows proceed, named in the run report (FSPEC §6.2 row 8's
+  // literal text: "rows named in the run report").
+  if (record.rows.some((row) => row.state === "local-edit" || row.state === "unverified")) {
+    const run = record.rows
+      .filter((r) => r.state === "local-edit" || r.state === "unverified")
+      .map((r) => `${r.id}: ${r.state}`);
+    return gate("proceed", 8, run, { manifest: [], row: [], run });
+  }
+
+  // Row 9 — resolved, non-empty rows, all in-sync, both arrays empty ⇒ proceed silently.
+  if (
+    record.baselineStatus === "resolved" &&
+    record.rows.length > 0 &&
+    record.rows.every((row) => row.state === "in-sync") &&
+    record.retiredPresent.length === 0 &&
+    record.writeFailures.length === 0
+  ) {
+    return gate("proceed", 9, [], emptyReport());
+  }
+
+  // Row 10 — the terminal row: shape-valid but matches no row 1-9 (FSPEC §6.2's totality
+  // argument — e.g. `resolved` with `rows: []`, which row 9 explicitly excludes).
+  const reasons = ["drift state does not describe a recognised outcome"];
+  return gate("blocked", 10, reasons, { manifest: reasons, row: [], run: [] });
+}
+
+// ─── T-13: readDriftStateSafely — the O-19(d) wrapper (TSPEC §12.3) ─────────
+//
+// O-19(c): the injected read this wraps (`_readFile`, production: `rtReadFile`,
+// runtime-adapter.js:85-96) is LLM-mediated — an agent turn that reads a file and
+// relays its contents as the agent's final message — not a raw filesystem call.
+// `rtReadFile` itself never throws today: it maps "file absent / unreadable" to a
+// returned `null`, the same as this module's own `defaultReadFile`. This wrapper's
+// `try`/`catch` is therefore defence in depth (O-19(d)), not dead code covering an
+// impossible path: it is what stands between a hypothetical throwing read (a
+// transport failure some other future/alternate injected implementation surfaces
+// as an exception rather than a `null`) and an *aborted* queue invocation. Without
+// it, that throw would propagate out of `main` entirely instead of mapping to
+// `mapDriftState`'s row 1 `blocked` verdict with a returned report — the fail-closed
+// behavior FSPEC §6.2 row 1 ("hook never ran") requires. The call site (`main`,
+// below) `await`s this — per CLAUDE.md's runtime rule, every injected IO call must
+// be awaited because the runtime adapter's implementations are async.
+//
+// @param {function} readFileFn - async (path) => string|null (or throws)
+// @param {string} path - DRIFT_STATE_PATH
+// @returns {Promise<unknown>} the raw read result, or `null` on any throw
+export async function readDriftStateSafely(readFileFn, path) {
+  try {
+    return await readFileFn(path);
+  } catch {
+    return null;
+  }
 }

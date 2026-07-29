@@ -42,8 +42,12 @@ Both workflows default their agent calls to the phase model and let an explicit 
   `feat-{feature}`.
 - For unattended, multi-feature delivery, copy `templates/QUEUE.md` to
   `docs/_queue/QUEUE.md`, then run `/loop run /pdlc:orchestrate-queue` — it picks the next
-  ready REQ in dependency order, one feature per iteration. See
-  `skills/orchestrate-queue/SKILL.md` for the queue format and status lifecycle.
+  ready REQ in dependency order, one feature per iteration. Every invocation opens with a
+  drift-state check that can block the entire pass (before any REQ is even read) if the
+  consumer's copy of the workflow scripts looks stale or unverified; a repo can opt out via
+  `.claude/pdlc.config.json` → `distribution.checkEnabled: false`. See
+  `skills/orchestrate-queue/SKILL.md` for the queue format, the drift gate, and the status
+  lifecycle.
 
 ## Operator conventions
 
@@ -52,6 +56,49 @@ go through the queue (or, minimally, a standalone `dod-verify` pass) — not an 
 `feat(...)` commit. The two worst gaps in the post-mortem that motivated the
 integration-boundary criterion shipped exactly that way: in ad-hoc commits with no
 REQ/PLAN/DoD, so nothing ever challenged the adjacent surfaces they silently falsified.
+
+## Fresh-clone bootstrap
+
+The runtime artifacts are generated, so a fresh clone of this repo has none. Two commands, **in this
+order**, bring one to a working state — no published release, no installed plugin, no
+`${CLAUDE_PLUGIN_ROOT}`, no network:
+
+```bash
+node pdlc/workflows/build-runtime.mjs     # generates pdlc/workflows/dist/ and distribution-manifest.json
+pdlc/hooks/scripts/sync-workflows.sh      # copies those artifacts into the consumer's .claude/workflows/
+```
+
+The order is not interchangeable: the sync step copies what the build step produced, so running it
+first has nothing to copy. The second command is invoked by **bare path** — no `bash` or `sh`
+prefix; the shipped hook scripts carry their execute bit so that it works. Confirm the result with
+`pdlc/hooks/scripts/sync-workflows.sh --check`, which exits 0 once every row is in sync.
+
+#### When sync skips a row: `unverified` and `--force`
+
+A plain sync refuses to overwrite two classes of consumer file and warns instead of clobbering:
+`local-edit` (the copy was hand-edited since it was synced) and `unverified` (**no sync-manifest
+entry**, so provenance is unknown and the file may be either).
+
+`unverified` is where every pre-existing `.claude/workflows/` tree lands the first time this
+mechanism runs — those copies predate the manifest, so nothing records where they came from. The
+state is deliberately safe in both directions: an unverified file is never assumed to be a stale
+generated artifact, and never assumed to be precious.
+
+The upgrade path is **`sync-workflows.sh --force`**, which overwrites the skipped rows. Every
+overwrite is backed up first, so prior content is recoverable. Run it once you have confirmed there
+are no hand-edits worth keeping — not reflexively; the tool demands the flag precisely because it
+cannot distinguish your edits from a stale copy.
+
+### Worktrees
+
+A worktree Claude Code creates for you is a supported consumer: the repo-root `.worktreeinclude`
+lists `.claude/workflows/`, so the generated artifacts come across with the worktree.
+
+A worktree created by hand with `git worktree add` is **not** a supported consumer. Its
+`.claude/workflows/` is empty, so workflow invocations there fail with "workflow not found", while
+the drift tooling resolves the main worktree and reports that tree as in sync — a green report that
+does not describe the tree the runtime reads. Per-worktree consumer state is deferred to D-DIST-07
+(queue row 6); until it lands, work from the main worktree or from a Claude-created one.
 
 ## Local development
 

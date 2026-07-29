@@ -5,3 +5,25 @@
 
 # Node
 node_modules/
+
+# Generated consumer runtime copies — installed from pdlc/workflows/dist/ by
+# pdlc/hooks/scripts/sync-workflows.sh. The leading slash is explicit-but-redundant: per
+# gitignore(5), a pattern containing a separator anywhere but the trailing position is already
+# relative to this .gitignore's own directory, so `.claude/workflows/` and `/.claude/workflows/`
+# match identically. What must NOT be used here is a slash-free pattern (`workflows/`) or an
+# explicit `**/` — either matches at every depth and would reach the checked-in
+# covered-violations fixture's nested `.claude/workflows/`.
+#
+# What that would and would NOT do (SE G-04, Phase CR — the earlier claim here, that it turns
+# AT-23's `== 7` into `== 0`, was wrong on two independent counts, both measured):
+#   - It would NOT change AT-23. `listAllFiles()` in `lib/document-oracles.mjs` walks the tree
+#     with `readdirSync` and never consults git, so no ignore pattern can alter what the oracle
+#     sees.
+#   - It would NOT untrack the fixture either. Ignore rules do not apply to already-tracked
+#     paths: with a matching pattern added, the tracked files stay tracked, `git ls-files` still
+#     lists them, and a fresh clone still materialises them.
+# The anchoring is still right, for the reason that actually survives measurement: an unanchored
+# pattern would silently make *newly added* files under the fixture's nested `.claude/workflows/`
+# un-`git add`-able without `-f`, so a future fixture file would go missing at authoring time
+# rather than loudly failing. Measured on git 2.50.1 (TSPEC §10.1).
+/.claude/workflows/
