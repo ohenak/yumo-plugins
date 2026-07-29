@@ -392,6 +392,483 @@ export function runGrammar(cases, opts = {}) {
 //
 // The message layer: the `MESSAGES` matcher table (TSPEC §7.2) and its accessors
 // (`remediationOf`, `allOf`, `countOf`, `distinct`, `expectRemediationClass`,
-// `expectFailOpen`, `expectHookSilent`) are added as additional named exports below this
-// marker. Nothing above it needs to change — `RunResult.notices`/`.warnings` are already
-// arrays; T-08b only needs to replace `splitStderrLines`'s heuristic with real matching.
+// `expectFailOpen`, `expectHookSilent`, `expectRepoRootUnresolved`) are added as additional
+// named exports below this marker.
+//
+// Deliberately NOT touched (per this task's explicit scope — append-only, do not rewrite
+// T-08a's landed code): `splitStderrLines`'s N-/W- heuristic above this marker. The
+// accessors below (`countOf`/`remediationOf`/`allOf`) read `run.stderr` directly against the
+// real `MESSAGES` table, so they do not depend on `RunResult.notices`/`.warnings` at all —
+// only `expectHookSilent`'s conjunct 4 (both arrays `[]`) reads those fields, and it does so
+// as a redundant check of already-strict-empty stderr/stdout, so the heuristic's imprecision
+// cannot make that conjunct pass when it should fail. The one residual this defers: a test
+// that wants a *real* MESSAGES-table split into `.notices`/`.warnings` (rather than calling
+// `countOf`/`allOf` directly) does not get one from this slice — that would require editing
+// `splitStderrLines`, which is out of this task's scope.
+
+// ───────────────────────────── §7.2 message matchers ─────────────────────────────
+
+/**
+ * @type {Record<string, RegExp>}
+ * Verbatim from TSPEC §7.2. Every remediation-bearing matcher captures its remediation text
+ * to end of line (`remediation`/`cmd` groups, PM F-02) — this is the only sanctioned route to
+ * stderr; no test greps stderr with an ad-hoc regex.
+ */
+export const MESSAGES = {
+  "W-1": /^pdlc: workflow drift check could not run — (?<reason>[a-z-]+)\. (?<remediation>.*)$/m,
+  "W-2": /^pdlc: (?<id>\S+) could not be verified — (?<reason>[a-z-]+)\. (?<remediation>.*)$/m,
+  "W-3": /^pdlc: (?<id>\S+) differs from the plugin's copy .*\(--force required\): (?<cmd>.*)$/m,
+  "W-4": /^pdlc: (?<id>\S+) was edited locally after its last sync\. .*backing it up to (?<backupDir>\S+): (?<cmd>.*)$/m,
+  "W-5": /^pdlc: (?<id>\S+) is (?<state>stale|missing)\. Run: (?<cmd>.*)$/m,
+  "W-6": /^pdlc: retired-present — (?<path>\S+) is superseded by (?<id>\S+) \((?<state>[a-z-]+)\)\. (?<remediation>.*)$/m,
+  "W-7": /^pdlc: could not write (?<path>.+) \((?<operation>[a-z-]+)\)$/m,
+  "N-3": /^pdlc: drift state is not writable at (?<path>.+);/m,
+  "N-4": /^pdlc: sync manifest at (?<path>.+) is (?<kind>unreadable|malformed);/m,
+  "N-5": /^pdlc: (?<path>.+) could not be read for distribution\.checkEnabled;/m,
+  "N-6": /^pdlc: could not list (?<dir>.+);/m,
+  "N-7": /^pdlc: unrecognised PDLC_FAULT token "(?<token>[^"]*)";/m,
+  "N-8": /^pdlc: no write target — the consumer repo root did not resolve,/m,
+};
+
+function messagesRegex(id, callerName) {
+  const regex = MESSAGES[id];
+  if (!regex) {
+    throw new Error(`driftHarness.${callerName}: unknown MESSAGES id "${id}"`);
+  }
+  return regex;
+}
+
+/** Clones a MESSAGES pattern with a `g` flag added, so multiple occurrences can be found —
+ * the table's own patterns carry only `m` (TSPEC §7.2), since a single-match search is the
+ * common case and a shared global-flagged RegExp would carry mutable `lastIndex` state across
+ * calls. */
+function withGlobalFlag(regex) {
+  return new RegExp(regex.source, regex.flags.includes("g") ? regex.flags : regex.flags + "g");
+}
+
+/** @returns {number} the number of times `id`'s pattern matches `stderr` (§5.4 conjunct 1). */
+export function countOf(stderr, id) {
+  const matches = stderr.match(withGlobalFlag(messagesRegex(id, "countOf")));
+  return matches ? matches.length : 0;
+}
+
+/**
+ * The `remediation` (or `cmd`, where the shape is a bare command) capture of `id`'s first
+ * match on `stderr`, trimmed (§7.2).
+ * @returns {string}
+ */
+export function remediationOf(stderr, id) {
+  const match = withGlobalFlag(messagesRegex(id, "remediationOf")).exec(stderr);
+  if (!match) {
+    throw new Error(`driftHarness.remediationOf: no "${id}" line found on stderr`);
+  }
+  const text = match.groups && (match.groups.remediation ?? match.groups.cmd);
+  if (text === undefined) {
+    throw new Error(`driftHarness.remediationOf: "${id}" has no "remediation" or "cmd" capture group`);
+  }
+  return text.trim();
+}
+
+/** Every occurrence of `id` on `stderr` (§7.2) — for per-row warnings that may repeat. */
+export function allOf(stderr, id) {
+  return [...stderr.matchAll(withGlobalFlag(messagesRegex(id, "allOf")))];
+}
+
+/**
+ * `distinct(a, b) ≡ a != b AND a is not a substring of b AND b is not a substring of a`
+ * (FSPEC §8, the pairwise predicate AT-30 applies over sets S1/S2/S3).
+ * @returns {boolean}
+ */
+export function distinct(a, b) {
+  return a !== b && !b.includes(a) && !a.includes(b);
+}
+
+// ───────────────────────────── §7.4 remediation classes ─────────────────────────────
+
+/**
+ * Sentinel for "the run's expected expanded sync invocation" (TSPEC §7.4): a per-fixture
+ * value computed by the caller from `pluginRoot`, never a hard-coded literal here — a literal
+ * could not vary per fixture and a substring like `"sync"` would let "resyncing" satisfy it.
+ * Callers thread the real value through `expectRemediationClass`'s `extraConjuncts.syncCmd`.
+ */
+const SYNC_CMD = Symbol("driftHarness.SYNC_CMD — resolved per-call via extraConjuncts.syncCmd");
+
+/** TSPEC §7.4, verbatim shape (permissions' positive stem: TE L-02). */
+export const CLASSES = {
+  sync: { mustName: [SYNC_CMD], mustNotName: [] },
+  forceSync: { mustName: [SYNC_CMD, "--force"], mustNotName: [] },
+  pluginUpdate: { mustName: ["update the plugin"], mustNotName: [SYNC_CMD, "--force"] },
+  permissions: {
+    mustName: [/permission|readable/i],
+    mustNotName: [SYNC_CMD, "--force", "update the plugin"],
+  },
+  environment: { mustName: [], mustNotName: [SYNC_CMD, "--force", "update the plugin"] },
+};
+
+function matcherSatisfied(text, matcher) {
+  return matcher instanceof RegExp ? matcher.test(text) : text.includes(matcher);
+}
+
+function resolveMatcher(matcher, syncCmd, className) {
+  if (matcher !== SYNC_CMD) return matcher;
+  if (!syncCmd) {
+    throw new Error(
+      `driftHarness.expectRemediationClass: class "${className}" needs the run's expanded sync ` +
+        `command — pass it as extraConjuncts.syncCmd (TSPEC §7.4)`
+    );
+  }
+  return syncCmd;
+}
+
+/**
+ * @param {string} text one rendered remediation string (already trimmed, e.g. via `remediationOf`)
+ * @param {"sync"|"forceSync"|"pluginUpdate"|"permissions"|"environment"} className
+ * @param {{syncCmd?: string, mustName?: Array<string|RegExp>, mustNotName?: Array<string|RegExp>}} [extraConjuncts]
+ */
+export function expectRemediationClass(text, className, extraConjuncts = {}) {
+  const cls = CLASSES[className];
+  if (!cls) {
+    throw new Error(`driftHarness.expectRemediationClass: unknown class "${className}"`);
+  }
+
+  // §8.1's universal conventions, asserted for every class.
+  if (!text.startsWith("pdlc: ")) {
+    throw new Error(
+      `driftHarness.expectRemediationClass: text must start with "pdlc: " (FSPEC §8.1): ${JSON.stringify(text)}`
+    );
+  }
+  if (/\b(rm|delete)\b/i.test(text)) {
+    throw new Error(
+      `driftHarness.expectRemediationClass: text must never recommend manual deletion ` +
+        `(AC-2.8's absolute rule): ${JSON.stringify(text)}`
+    );
+  }
+
+  const syncCmd = extraConjuncts.syncCmd;
+
+  for (const raw of cls.mustName) {
+    const matcher = resolveMatcher(raw, syncCmd, className);
+    if (!matcherSatisfied(text, matcher)) {
+      throw new Error(
+        `driftHarness.expectRemediationClass: class "${className}" requires text to name ${matcher} ` +
+          `— not found in ${JSON.stringify(text)}`
+      );
+    }
+  }
+  for (const raw of cls.mustNotName) {
+    const matcher = resolveMatcher(raw, syncCmd, className);
+    if (matcherSatisfied(text, matcher)) {
+      throw new Error(
+        `driftHarness.expectRemediationClass: class "${className}" forbids text from naming ${matcher} ` +
+          `— found in ${JSON.stringify(text)}`
+      );
+    }
+  }
+
+  for (const matcher of extraConjuncts.mustName || []) {
+    if (!matcherSatisfied(text, matcher)) {
+      throw new Error(
+        `driftHarness.expectRemediationClass: extra conjunct requires text to name ${matcher} ` +
+          `— not found in ${JSON.stringify(text)}`
+      );
+    }
+  }
+  for (const matcher of extraConjuncts.mustNotName || []) {
+    if (matcherSatisfied(text, matcher)) {
+      throw new Error(
+        `driftHarness.expectRemediationClass: extra conjunct forbids text from naming ${matcher} ` +
+          `— found in ${JSON.stringify(text)}`
+      );
+    }
+  }
+}
+
+// ───────────── forward reference to driftOrdering.js (T-16, batch-4 sibling) ─────────────
+//
+// `expectFailOpen`'s conjunct 5 and `expectRepoRootUnresolved`'s conjunct 3 need
+// `parseTrace`/`assertTreeUnchanged`. T-16 lands in this same batch but is a different
+// single-writer file; a static `import` here would fail this WHOLE module's load (and every
+// OTHER consumer of `driftHarness.js`, e.g. `readDriftState`/`runGrammar`) the instant
+// `driftOrdering.js` is absent. This resolves it once, defensively, at module-evaluation
+// time instead, so the functions above that do not need it are never affected.
+let _ordering = null;
+if (existsSync(resolve(__dirname, "driftOrdering.js"))) {
+  _ordering = await import("./driftOrdering.js");
+}
+
+function requireOrdering(callerName) {
+  if (!_ordering) {
+    throw new Error(
+      `driftHarness.${callerName}: driftOrdering.js (T-16) has not landed yet in this working tree`
+    );
+  }
+  return _ordering;
+}
+
+/**
+ * Root resolution shared by the three assertion helpers below. TSPEC's own signatures are
+ * inconsistent about where `root` lives (`expectRepoRootUnresolved` takes it explicitly;
+ * `expectHookSilent`/`expectFailOpen` do not) — this resolves it defensively from whichever
+ * the caller supplied: an explicit `opts.root`, or `run.root`/`run.consumerRoot` attached to
+ * the run object by the fixture that built it.
+ */
+function resolveRoot(run, opts) {
+  const root = (opts && opts.root) || run.root || run.consumerRoot;
+  if (!root) {
+    throw new Error(
+      "driftHarness: root is required — pass opts.root, or attach it as run.root/run.consumerRoot " +
+        "before calling this assertion"
+    );
+  }
+  return root;
+}
+
+// ───────────────────────────── §1.4a expectHookSilent ─────────────────────────────
+
+/**
+ * The five conjuncts of TSPEC §1.4a (AC-2.2, PM F-01). Conjunct 5 (incl. `generatedBy`,
+ * TE L-06) is what makes silence mean *verified* rather than *skipped* — a hook that does
+ * nothing at all also has empty stderr.
+ * @param {object} run a RunResult (§3.1) with `root`/`consumerRoot` attached by the caller
+ */
+export function expectHookSilent(run) {
+  // Conjunct 1 — strict empty-string equality, never `not.toContain("pdlc:")`.
+  if (run.stderr !== "") {
+    throw new Error(`driftHarness.expectHookSilent: expected stderr === "", got ${JSON.stringify(run.stderr)}`);
+  }
+  // Conjunct 2.
+  if (run.stdout !== "") {
+    throw new Error(`driftHarness.expectHookSilent: expected stdout === "", got ${JSON.stringify(run.stdout)}`);
+  }
+  // Conjunct 3.
+  if (run.status !== 0) {
+    throw new Error(`driftHarness.expectHookSilent: expected status 0, got ${run.status}`);
+  }
+  // Conjunct 4 — the redundant form of conjunct 1, stated so a future matcher addition
+  // cannot make conjunct 1 pass by parsing less.
+  if ((run.notices && run.notices.length) !== 0 || (run.warnings && run.warnings.length) !== 0) {
+    throw new Error("driftHarness.expectHookSilent: expected both notices and warnings to be []");
+  }
+
+  // Conjunct 5 — the anti-vacuity check: the run did work.
+  const root = resolveRoot(run, undefined);
+  const state = readDriftState(root);
+  if (!state) {
+    throw new Error(
+      "driftHarness.expectHookSilent: expected a drift-state record to exist (conjunct 5 — the run did work)"
+    );
+  }
+  if (state.baselineStatus !== "resolved") {
+    throw new Error(
+      `driftHarness.expectHookSilent: expected baselineStatus "resolved", got ${JSON.stringify(state.baselineStatus)}`
+    );
+  }
+  if (!Array.isArray(state.rows) || state.rows.length === 0) {
+    throw new Error("driftHarness.expectHookSilent: expected rows to be non-empty");
+  }
+  if (!state.rows.every((row) => row.state === "in-sync")) {
+    throw new Error('driftHarness.expectHookSilent: expected every row\'s state to be "in-sync"');
+  }
+  if (!Array.isArray(state.retiredPresent) || state.retiredPresent.length !== 0) {
+    throw new Error("driftHarness.expectHookSilent: expected retiredPresent to be []");
+  }
+  if (!Array.isArray(state.writeFailures) || state.writeFailures.length !== 0) {
+    throw new Error("driftHarness.expectHookSilent: expected writeFailures to be []");
+  }
+  if (state.generatedBy !== "hook") {
+    throw new Error(
+      `driftHarness.expectHookSilent: expected record.generatedBy === "hook" (TE L-06 — closes the ` +
+        `vacuous-pass path where a hook that does nothing at all satisfies conjuncts 1-4 against a ` +
+        `pre-existing green record), got ${JSON.stringify(state.generatedBy)}`
+    );
+  }
+}
+
+// ───────────────────────────── §6.3 expectFailOpen ─────────────────────────────
+
+// FSPEC §4.5's closed nine-member `operation` set, split by recordability (TSPEC §6.1).
+const STDERR_ONLY_OPERATIONS = new Set([
+  "mkdir",
+  "drift-state-replace",
+  "drift-state-invalidate",
+  "drift-state-unlink",
+]);
+const RECORDABLE_OPERATIONS = new Set([
+  "artifact-copy",
+  "backup",
+  "backup-verify",
+  "retire-delete",
+  "sync-manifest-update",
+]);
+
+/**
+ * @param {object} run a RunResult with `root`/`consumerRoot` attached by the caller
+ * @param {{path?: string, operation: string, entrypoint: "hook"|"check"|"sync"|"sync-force", remainingRows?: string[], root?: string}} opts
+ */
+export function expectFailOpen(run, opts = {}) {
+  const { path, operation, entrypoint, remainingRows = [] } = opts;
+  const root = resolveRoot(run, opts);
+
+  if (!STDERR_ONLY_OPERATIONS.has(operation) && !RECORDABLE_OPERATIONS.has(operation)) {
+    throw new Error(`driftHarness.expectFailOpen: unknown operation "${operation}" (TSPEC §6.1)`);
+  }
+
+  if (entrypoint === "check" && RECORDABLE_OPERATIONS.has(operation)) {
+    // §6.3's per-surface table: `--check` makes no artifact writes at all, so only
+    // mkdir/drift-state operations are reachable — asserting a recordable one here is a
+    // fixture bug, and `expectFailOpen` throws on it rather than silently checking nothing.
+    throw new Error(
+      `driftHarness.expectFailOpen: "--check" cannot reach recordable operation "${operation}" ` +
+        `(TSPEC §6.3) — this is a fixture bug, not a subject bug`
+    );
+  }
+
+  if (STDERR_ONLY_OPERATIONS.has(operation)) {
+    // The drift-state (stderr-only) table.
+    const state = readDriftState(root);
+    const writeFailures = (state && state.writeFailures) || [];
+    if (writeFailures.some((f) => f.operation === operation)) {
+      throw new Error(
+        `driftHarness.expectFailOpen: stderr-only operation "${operation}" must never appear in ` +
+          `writeFailures (TSPEC §6.3)`
+      );
+    }
+    const w7 = allOf(run.stderr, "W-7").filter(
+      (m) => m.groups.operation === operation && (path === undefined || m.groups.path === path)
+    );
+    if (w7.length < 1) {
+      throw new Error(
+        `driftHarness.expectFailOpen: expected a W-7 line naming operation "${operation}"` +
+          (path !== undefined ? ` and path "${path}"` : "") +
+          " on stderr"
+      );
+    }
+    return;
+  }
+
+  // The per-row (recordable) table.
+  const expectedStatus = entrypoint === "hook" ? 0 : 4;
+  if (run.status !== expectedStatus) {
+    throw new Error(
+      `driftHarness.expectFailOpen: expected status ${expectedStatus} for entrypoint "${entrypoint}" ` +
+        `(AC-2.4 is absolute), got ${run.status}`
+    );
+  }
+
+  const state = readDriftState(root);
+  if (!state) {
+    throw new Error("driftHarness.expectFailOpen: expected a drift-state record to exist");
+  }
+  const writeFailures = state.writeFailures || [];
+  const matching = writeFailures.filter((f) => f.path === path && f.operation === operation);
+  if (matching.length !== 1) {
+    throw new Error(
+      `driftHarness.expectFailOpen: expected exactly one writeFailures entry ` +
+        `{path: ${JSON.stringify(path)}, operation: ${JSON.stringify(operation)}}, found ${matching.length}`
+    );
+  }
+  const others = writeFailures.filter((f) => !(f.path === path && f.operation === operation));
+  if (others.length !== 0) {
+    throw new Error(
+      `driftHarness.expectFailOpen: writeFailures must contain nothing for unfaulted rows, found ` +
+        `${JSON.stringify(others)}`
+    );
+  }
+
+  const w7Count = allOf(run.stderr, "W-7").filter(
+    (m) => m.groups.path === path && m.groups.operation === operation
+  ).length;
+  if (w7Count !== 1) {
+    throw new Error(
+      `driftHarness.expectFailOpen: expected exactly one W-7 line naming path ${JSON.stringify(path)} ` +
+        `and operation ${JSON.stringify(operation)}, found ${w7Count}`
+    );
+  }
+
+  // Conjunct 4 — the loop continued: every remaining row has a post-run state in the record.
+  const rows = state.rows || [];
+  for (const rowId of remainingRows) {
+    const row = rows.find((r) => r.id === rowId);
+    if (!row) {
+      throw new Error(
+        `driftHarness.expectFailOpen: remainingRows entry "${rowId}" has no row in the record ` +
+          `— the loop did not continue past the fault`
+      );
+    }
+  }
+
+  // Conjunct 5 — the ordering-level form of conjunct 4, over the trace.
+  if (remainingRows.length && run.tracePath) {
+    const ordering = requireOrdering("expectFailOpen");
+    const trace = ordering.parseTrace(run.tracePath);
+    const relevantOps = new Set(["copy", "backup", "delete"]);
+    for (const rowId of remainingRows) {
+      const hasRecord = trace.some((rec) => rec.rowId === rowId && relevantOps.has(rec.op));
+      if (!hasRecord) {
+        throw new Error(
+          `driftHarness.expectFailOpen: expected a copy/backup/delete trace record for remaining ` +
+            `row "${rowId}" (TSPEC §6.3 conjunct 5)`
+        );
+      }
+    }
+  }
+}
+
+// ───────────────────────────── §8.3 expectRepoRootUnresolved ─────────────────────────────
+
+/**
+ * @param {object} run a RunResult with `root`/`consumerRoot` attached by the caller, or `root`
+ *   supplied through `opts`
+ * @param {{root?: string, snapshotBefore?: unknown, reportedReason: string}} opts
+ */
+export function expectRepoRootUnresolved(run, opts = {}) {
+  const { snapshotBefore, reportedReason } = opts;
+  const root = resolveRoot(run, opts);
+
+  // Conjunct 1.
+  const w1 = allOf(run.stderr, "W-1").filter((m) => m.groups.reason === reportedReason);
+  if (w1.length < 1) {
+    throw new Error(
+      `driftHarness.expectRepoRootUnresolved: expected W-1 with reason "${reportedReason}" on stderr`
+    );
+  }
+
+  // Conjunct 2 — exit 3 on check/sync, 0 on hook, never 4.
+  const expectedStatus = run.generatedBy === "hook" ? 0 : 3;
+  if (run.status !== expectedStatus) {
+    throw new Error(
+      `driftHarness.expectRepoRootUnresolved: expected status ${expectedStatus}, got ${run.status}`
+    );
+  }
+
+  // Conjunct 3 — the positive form of "nothing created".
+  if (snapshotBefore !== undefined) {
+    const ordering = requireOrdering("expectRepoRootUnresolved");
+    ordering.assertTreeUnchanged(root, snapshotBefore);
+  }
+
+  // Conjunct 4 — the specific negatives.
+  if (readDriftState(root) !== null) {
+    throw new Error("driftHarness.expectRepoRootUnresolved: expected no drift state to have been written");
+  }
+  if (readSyncManifest(root) !== null) {
+    throw new Error("driftHarness.expectRepoRootUnresolved: expected no sync manifest to have been written");
+  }
+  if (existsSync(join(root, ...BACKUPS_DIR_REL))) {
+    throw new Error("driftHarness.expectRepoRootUnresolved: expected no .pdlc-backups/ directory to exist");
+  }
+
+  // Conjunct 5 — N-8 present iff reportedReason !== "repo-root-unresolved", both directions.
+  const n8Count = countOf(run.stderr, "N-8");
+  const shouldHaveN8 = reportedReason !== "repo-root-unresolved";
+  if (shouldHaveN8 && n8Count < 1) {
+    throw new Error(
+      'driftHarness.expectRepoRootUnresolved: expected N-8 on stderr when reportedReason !== "repo-root-unresolved"'
+    );
+  }
+  if (!shouldHaveN8 && n8Count > 0) {
+    throw new Error(
+      'driftHarness.expectRepoRootUnresolved: N-8 must be absent when reportedReason === "repo-root-unresolved"'
+    );
+  }
+}
