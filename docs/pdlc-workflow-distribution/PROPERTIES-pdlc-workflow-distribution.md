@@ -14,7 +14,17 @@ feature: pdlc-workflow-distribution
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | **Draft** | Claude + operator | 1.0 | 2026-07-28 |
+| pdlc | **Draft** | Claude + operator | 2.0 | 2026-07-28 |
+
+> **v2.0 disposes CROSS-REVIEW-product-manager-PROPERTIES-v1 (2H/5M/2L) and
+> CROSS-REVIEW-software-engineer-PROPERTIES-v1 (5H/4M/6L).** Every finding is dispositioned by
+> reviewer-qualified id in **§15**. The four structural changes: PROP-CLS-02 is re-derived so it no
+> longer claims a co-holding fixture for adjacencies that cannot co-hold (SE F-01); §5.1's
+> determinacy rules are restored to FSPEC §2.1's and the vector count re-derived (SE F-02/F-03);
+> PROP-MTM-04's post-copy conjunct is scoped and its disagreement case asserted positively
+> (SE F-04); and §1.4's spawn budget is recomputed from the properties as written, which moves the
+> ceiling from ≈ 55 to **≈ 180** and forces R-3 to be re-argued on wall clock rather than on spawn
+> count (SE F-05, PM F-04). One property is added — **PROP-MTM-07**, sync idempotence (PM F-02).
 
 > **Altitude.** The REQ states observable behavior, the FSPEC how it is produced, the TSPEC how it is
 > built and proved with *examples*. This document states what must hold over **generated** inputs:
@@ -47,14 +57,18 @@ Every obligation routed to PROPERTIES by REQ §10, FSPEC §10 and TSPEC §16, wi
 discharges it. A reviewer verifies these **row by row**; a finding that one of them is unspecified
 elsewhere is answered here.
 
+> **This index is regenerated against the settled body at every revision** (SE F-09). It names
+> property ranges and leaf ids; where it disagrees with the body, the body wins and the index is a
+> defect. v2.0 regenerated it after §3, §5, §7 and §11 settled.
+
 | # | Source | Obligation (abridged) | Disposed in | One-line disposition |
 |---|---|---|---|---|
-| **O-9** | REQ §10 (AC-1.8/AC-1.0), FSPEC §10 | Classifier totality / single-valuedness / determinism over **states**, **row reasons** and **baseline reasons**, including both declared precedences. **Regenerate the axes; do not import REQ v13's tables** (24 of 96 cells undefined) | **§2, §3, §4, §5** | The axes are regenerated **from FSPEC §3.2's six probes** as a **dependent tree** (§2.1), not a cross-product: every leaf is reachable and maps to exactly one state, so the class of defect v13 shipped — an undefined cell — is not expressible in this representation. Eleven row leaves (§2.3), a determinacy-respecting baseline evidence tree (§5.1), both precedences asserted as *selector* properties (`selected == max by precedence over holding-and-determinate conditions`), and determinism asserted against clock, mtime, environment order, directory order and locale (§9) |
+| **O-9** | REQ §10 (AC-1.8/AC-1.0), FSPEC §10 | Classifier totality / single-valuedness / determinism over **states**, **row reasons** and **baseline reasons**, including both declared precedences. **Regenerate the axes; do not import REQ v13's tables** (24 of 96 cells undefined) | **§2, §3, §4, §5** | The axes are regenerated **from FSPEC §3.2's six probes** as a **dependent tree** (§2.1), not a cross-product: every leaf is reachable and maps to exactly one state, so the class of defect v13 shipped — an undefined cell — is not expressible in this representation. Eleven row leaves (§2.3) and a determinacy-respecting baseline evidence tree (§5.1, **20** enumerated vectors). **Three** declared precedences, asserted in the two forms their guard structure admits (§2.1(2), rewritten in v2.0): the **baseline** precedence is a genuine *selector* property (PROP-BSL-03, `selected == highest-ranked condition that holds and is determinate`, oracle computed from the vector); the **row-state** and **row-reason** precedences are first-match ladders whose adjacencies split into co-holdable pairs (real co-holding fixtures — PROP-CLS-02(a), PROP-RSN-03) and structurally unco-holdable pairs (a stated structural argument plus a directed oracle — PROP-CLS-02(b)). Determinism asserted against clock, mtime, environment order, directory order, locale and process (§9) |
 | **O-18** | FSPEC §10 | Backup filename grammar: `parse(format(…))` round-trip over the full M6 id charset, `LC_ALL=C` descending == reverse-chronological, and `prune`'s four clauses (a)–(d) | **§6** | Built on TSPEC §11.1's three C1 functions and §11.2's **batched** driver (one spawn per property run). Round-trip and injectivity over the fixed-24-byte tail (§6.3), the sort property in two conjuncts — lexicographic == `(stamp, nn)` order, and `(stamp, nn)` order == chronological on calendar-valid stamps (§6.4) — and prune's keep/remove/identity/idempotence clauses plus an mtime-invariance conjunct that makes R-2 falsifiable **at the prune site** (§6.5) |
-| **O-20** | FSPEC §10 (OQ-6, SE Q-01) | AC-2.6's measurement-time reading must be **asserted**: (a) a successful sync records post-run states and exits 0; (b) hook/`--check` coincide; (c) the run's decisions come from the as-found pass | **§7** | Three executable properties over generated consumer trees plus a fourth for `supersedingState`, each stated against FSPEC §4.2's `generatedBy`-to-pass binding and measured through TSPEC §4.3's `assertRecordedPassIs` / `assertPhaseOrder` / `assertPostCopyNarrow`. §7 also disposes the one place the two readings could diverge for `supersedingState` (post-copy vs post-run) by asserting they **agree**, rather than picking one silently |
-| **AC-1.8(iv)** | REQ §3 | The same totality / exclusivity / determinism properties for `rows[].reason` (`null` exactly on non-`unknown`) and for `baselineReason` (`null` exactly on `resolved`) | **§4, §5.2** | PROP-RSN-01…05 and PROP-BSL-01…07, including the two `null`-exactly biconditionals (PROP-RSN-02, PROP-BSL-02) and the disjointness property (PROP-RSN-05) that keeps a baseline reason out of `rows[].reason` and vice versa |
-| **`PDLC_FAULT` subset** | TSPEC §16 ("new" row), FSPEC §10 O-10 | The emitted token set is a subset of TSPEC §5.2's **sixteen**; it cannot be asserted example-wise | **§8** | Asserted in both directions and by two independent oracles: a **recognition** property over generated non-members (exactly one N-7, nothing injected, byte-equivalence to the seam-unset run) and a **static call-site closure** property over the shipped bash sources against the exported `PDLC_FAULT_TOKENS`. Subset alone would be satisfied by an implementation that recognises nothing, so the equality direction is asserted too |
-| O-11 (partial) | REQ §10 / FSPEC §10 | uid-0 runners skip with a **printed reason and named unverified invariants** — never silently pass | **§1.6, §11** | TSPEC §1.3 owns the policy and the AT-level inventory; this document adds the **property-level** inventory: the two existence-`indeterminate` leaves (§2.3 L3, L7) are permission-only, so their skip messages name the leaf and the invariant, and §11 records that the *row reasons* they would have produced stay covered by tokens 15/16 — the leaf is the hole, not the reason |
+| **O-20** | FSPEC §10 (OQ-6, SE Q-01) | AC-2.6's measurement-time reading must be **asserted**: (a) a successful sync records post-run states and exits 0; (b) hook/`--check` coincide; (c) the run's decisions come from the as-found pass | **§7** | **Seven** executable properties over generated consumer trees (PROP-MTM-01…07: clause (a) → -01, clause (b) → -02, clause (c) → -03, `supersedingState` → -04, session currency → -05, pass-is-a-function-of-`generatedBy` → -06, and **sync idempotence** → -07, added in v2.0 per PM F-02), each stated against FSPEC §4.2's `generatedBy`-to-pass binding and measured through TSPEC §4.3's `assertRecordedPassIs` / `assertPhaseOrder` / `assertPostCopyNarrow`. §7 also disposes the one place the two readings could diverge for `supersedingState` (post-copy vs post-run): v1.0 asserted they always **agree**, which SE F-04 showed is false against a *conforming* implementation on the AT-35 fault composition (FSPEC §4.2 step 6 rewrites the sync manifest, a classifier input, between the two passes). v2.0 asserts agreement **on the runs where step 6 changed no entry for R** and asserts the *predicted disagreement* positively on the runs where it did |
+| **AC-1.8(iv)** | REQ §3 | The same totality / exclusivity / determinism properties for `rows[].reason` (`null` exactly on non-`unknown`) and for `baselineReason` (`null` exactly on `resolved`) | **§4, §5.2** | PROP-RSN-01…**06** and PROP-BSL-01…**08**, including the two `null`-exactly biconditionals (PROP-RSN-02, PROP-BSL-02) and the disjointness property (PROP-RSN-05) that keeps a baseline reason out of `rows[].reason` and vice versa |
+| **`PDLC_FAULT` subset** | TSPEC §16 ("new" row), FSPEC §10 O-10 | The emitted token set is a subset of TSPEC §5.2's **sixteen**; it cannot be asserted example-wise | **§8** | Asserted in both directions and by two **genuinely independent** oracles (§8.0 pins the independence, SE F-07): a **recognition** property that reads the *runtime* array by sourcing C1 (exactly one N-7 per non-member, nothing injected, byte-equivalence to the seam-unset run) and a **static call-site closure** property that reads the shipped bash sources *as text*. The two never read the same bytes. Subset alone would be satisfied by an implementation that recognises nothing, so the equality direction is asserted too |
+| O-11 (partial) | REQ §10 / FSPEC §10 | uid-0 runners skip with a **printed reason and named unverified invariants** — never silently pass | **§11.1 (sole inventory)** | TSPEC §1.3 owns the policy and the AT-level inventory; this document adds the **property-level** inventory, and v2.0 collapses it to **one** table — §11.1 — because v1.0 carried two (§1.6 and §11.1) that disagreed on both the leaf ids and the `git`-gated set (SE F-06, PM F-03). The two existence-`indeterminate` leaves are **L3** (plugin side) and **L4** (consumer side); they are permission-only, so their skip messages name the leaf and the invariant, and §11.1 records that the *row reasons* they would have produced stay covered by **L2** (token 15) and **L5** (token 16) — the leaf is the hole, not the reason |
 | O-1 / O-7 (consumed, not owned) | FSPEC §10 | Trace grammar and the classify-before-create oracle | **§8.3 (derived only)** | TSPEC §4 owns these. This document adds two grammar-level properties (percent-encoding round-trip, `seq` monotonicity) because they are quantified rather than example-shaped, and marks them **supporting**: O-1's disposition remains TSPEC §4.3's |
 
 ### 0.3 Explicitly out of scope
@@ -70,11 +84,22 @@ elsewhere is answered here.
   design, one mutation per row. A generator over mutations would re-derive it less precisely.
   FSPEC §10 O-19 states outright that the throwing-`_readFile` case is a unit test at the call site
   and **not** a PROPERTIES row.
-- **Wall-clock latency** (NFR-2) — structurally discharged at FSPEC §13.1; no property asserts time.
-- **`packagingViolations` / `coveredViolations` / `advertisedVersionViolation`** — these are pure
-  functions of a root, but their obligations (O-16, O-17) are fixture-pinned by TSPEC §10 and their
-  claims are about **specific trees**, not quantified. §14 records the one property-shaped
-  opportunity left on the table and why it is not taken.
+- **Wall-clock latency** (NFR-2) — structurally discharged at FSPEC §13.1; **no property asserts
+  time, and no other surface does either.** Consequence, stated here rather than left implicit: a
+  residual that is *routed* to NFR-2 is routed to nothing. v1.0's §11.2 D-2 did exactly that (PM
+  F-05); v2.0 removes the routing and records the residual as **P-R-8** with the explicit statement
+  that it has **no owning surface**.
+- **`packagingViolations` / `coveredViolations`** — pure functions of a root, but their obligations
+  (O-16, O-17) are fixture-pinned by TSPEC §10 and their claims are about **specific trees**, not
+  quantified. **P-R-5** records the property-shaped opportunity left on the table and why.
+- **`advertisedVersionViolation` (AC-6.6)** — routed **by name** to its owning oracle:
+  **FSPEC §7.4 / TSPEC §10.3's root-parameterised `advertisedVersionViolation(root)`** — including
+  `documentOracles.test.js`'s assertion over `LIVE_ROOT` (TSPEC §10.3) — exercised at
+  the landing step over the *real* repository root (FSPEC §7.5, §7.7). PM F-07 is correct that
+  P-R-5's argument does not transfer: AC-6.4's anti-widening guard is a claim about one frozen tree,
+  whereas AC-6.6's claim (`dist/` bytes change ⇒ the advertised `plugin.json` `version` changes) is
+  quantified **over roots** and is the defect REQ §0 fact 6 records this repo shipping twice. It
+  therefore gets its own residual, **P-R-5a**, with its own argument — not a share of P-R-5's.
 
 ## 1. Conventions
 
@@ -91,16 +116,18 @@ elsewhere is answered here.
 | Mode | **E** executable now · **E-skip** executable except on a named capability-poor runner (§1.6) · **D** design-time argument with a named surrogate |
 | Lands in | the jest file from TSPEC §14's inventory |
 
-### 1.2 Executable vs design-time, and the two executable harnesses
+### 1.2 Executable vs design-time, and the two *spawning* surfaces
 
-Everything in this document is executable on one of exactly two surfaces, both already specified by
-the TSPEC — no third runner, no new dependency:
+Everything in this document is executable on one of exactly three surfaces — **two of which spawn a
+subject process**, the third being plain in-process JS. All three are already specified by the TSPEC:
+no third *runner*, no new dependency. (SE F-10: v1.0 said "exactly two surfaces" above a three-row
+table.)
 
 | Surface | What it drives | Cost per generated case | Used by |
 |---|---|---|---|
 | **Batched grammar driver** — `__tests__/helpers/bin/backup-grammar.sh` + `runGrammar(cases)` (TSPEC §11.2) | `pdlc_backup_format` / `_parse` / `_prune_backups`, sourced from C1 | **zero spawns** — one spawn per property *run*, cases zipped by line | §6 |
 | **`runScript(entrypoint, opts)`** over builder-made trees (TSPEC §3.1, §3.3) | the real hook / `--check` / sync entrypoints | **one spawn per run**, so cases are packed into *rows of one manifest* (§1.4) | §3, §4, §5, §7, §9 |
-| in-process JS (no subject spawn) | `validateDriftRecord` / `mapDriftState`, `M6_ID_REGEX`, the shipped bash sources read as text | zero | §8.2, §8.4 |
+| in-process JS (**not a runner** — no subject process) | `validateDriftRecord` / `mapDriftState`, `M6_ID_REGEX`, the shipped bash sources read as text | zero | §8.1 (PROP-SEAM-02), §8.2, §8.3 |
 
 A property is **D** (design-time) only when the TSPEC's black-box constraint (R-1: a branch with no
 difference in exit code, stderr, trace or on-disk artifact is untestable) makes it unobservable.
@@ -125,10 +152,27 @@ export function shrink(caseValue) -> caseValue[]       // §2.5, §6.2 — expli
 Four rules, each of which exists because its absence is a known way for a property suite to go
 quietly green:
 
-1. **Seed is fixed and printed.** Every property run uses a literal seed constant declared in the
-   test file, and the failure message prints seed + case index. A time-derived seed would make a
-   red run unreproducible, which on a suite with no CI (TSPEC R-3) means it gets deleted rather
-   than debugged.
+1. **Seed is fixed, printed, and overridable.** Every property run uses a literal seed constant
+   declared in the test file — overridable by the environment variable **`PDLC_PROP_SEED`** (when
+   set to a decimal integer, it replaces every file's literal seed; unset is the default and the
+   only value CI-less local runs ever use) — and the failure message prints **seed, case index and
+   the case value itself**. A time-derived *default* seed would make a red run unreproducible, which
+   on a suite with no CI (TSPEC R-3) means it gets deleted rather than debugged.
+
+   Two consequences, both stated rather than left implicit (SE F-13, PM F-09):
+
+   - **The drawn set is static.** With the default seed the suite explores the *same* 500 strings
+     for the life of the feature. It is therefore a large **generated fixture set**, not an
+     exploring property suite: coverage does not grow by re-running, and a defect outside the drawn
+     sample is never found by repetition. This is an accepted trade — reproducibility over
+     exploration, given R-3 — and it is why §6.2's *forced* adversarial proportions do the real
+     work. `PDLC_PROP_SEED` is the escape hatch for a maintainer who wants to widen deliberately.
+     Recorded as **P-R-9**.
+   - **Reproduction is by replay, not by index.** `seeded(seed)` is a stateful xorshift32 consumed
+     in draw order, so case *n* is reproduced by replaying draws 1…n — the failure message
+     therefore prints the **case value**, and `shrink()` operates on that value, not on an index.
+     Any generator whose cases must be addressable out of order must be written as a pure function
+     of `(seed, index)`; none in this document is.
 2. **Exhaustive where the domain is small.** §2.3's eleven leaves and §5.1's determinate evidence
    vectors are **enumerated**, not sampled. Sampling a domain you can enumerate is how a cell goes
    untested and stays untested — which is precisely REQ v13's failure mode, in a different costume.
@@ -148,24 +192,62 @@ TSPEC R-3 is binding: with no CI, a slow suite is a suite that stops being run, 
 > **A generated case is a manifest *row*, not a *run*, wherever the axis is per-row.**
 
 FSPEC §3.1 makes this sound: `classify_row` is pure with respect to the filesystem, rows are
-independent (AC-1.4), and no row's outcome is an input to another's. So the nine hash-present leaves
-of §2.3 are constructed as **nine rows of one manifest** and cost **one** spawn, with each row's
-expected state asserted independently. Only genuinely run-level axes (the hash tool, the JSON tool,
-the baseline evidence vector, `--force`, the entrypoint) cost a spawn each.
+independent (AC-1.4), and no row's outcome is an input to another's. So the **eight** hash-present,
+non-permission leaves of §2.3 (L1, L2, L5, L6, L7, L8, L9, L10 — L0 is a whole-run leaf and L3/L4
+are permission-only whole-run leaves) are constructed as **eight rows of one manifest** and cost
+**one** spawn, with each row's expected state asserted independently. Only genuinely run-level axes
+(the hash tool, the JSON tool, the baseline evidence vector, `--force`, the entrypoint, a
+non-selector-bearing fault token) cost a spawn each.
 
-| Property family | Spawned runs | Note |
+**The v1.0 budget was wrong, and wrong in the direction that mattered.** SE F-05 and PM F-04 are
+both correct: §8 counted only PROP-SEAM-01, §9 counted four pairs against six properties, §6 folded
+five prune properties into one spawn and omitted PROP-BKP-04, §7's "6" was a per-mode count against
+properties that quantify per generated tree, §3's packed run was "9 leaves" when there are 8 packable
+ones, and §5's "≤ 14" came from the miscounted determinacy rules SE F-02 identifies. The rows below
+are recomputed **from the properties as written in this v2.0**, counting a spawn wherever a property
+needs a distinct process.
+
+| Property family | Spawned runs | Derivation |
 |---|---|---|
-| §3 row states (11 leaves) | **3** | one packed run (9 leaves) + `hash-tool-absent` + one permission run for the two existence-`indeterminate` leaves (§1.6) |
-| §4 row reasons | **0 additional** | the same three runs; reasons are asserted on the same records |
-| §5 baseline reasons | **≤ 14** | one per determinate evidence vector reachable without a second tree; §5.1's table marks the reachable set |
-| §7 measurement time | **6** | 2 sync (plain, `--force`) × 1 fixture family + hook + `--check` + the retiring-row sync + one repeat for PROP-MTM-05 |
-| §9 determinism | **8** | four invariance pairs, each a two-run comparison |
-| §6 backup grammar | **4** | one batched spawn per property group (§6.3/§6.4/§6.5/§6.5's locale conjunct) |
-| §8 seams | **≤ 20** | recognition property: 16 members + 4 generated non-members (§8.1's stated cap) |
+| §3 row states (11 leaves) | **4** | one packed run (8 leaves) + L0 (`hash-tool-absent`) + L3 (plugin-side permission) + L4 (consumer-side permission). L3 and L4 are two runs, not one: each makes a *whole side* untraversable, so no manifest can carry both |
+| §3 PROP-CLS-02 (precedence) | **2** | one fault-armed run carrying the co-holding rows for `unknown > missing` and `in-sync > unverified`; the `unknown > every lower` row reuses the L0 run; §3's three directed rows land on runs already counted |
+| §3 PROP-CLS-05 (determinism) | **2** | two consecutive `--check` runs over the packed manifest |
+| §3 PROP-CLS-06 (row independence) | **8** | each packable leaf re-run as the *only* row of a one-row manifest. This is the price of the packing rule; it is paid once, and every other §3/§4 property then rides the packed run |
+| §3 PROP-CLS-07 (A6 sub-recipes) | **4** | the sync manifest is a **run-level** artifact, so absent / unreadable / malformed are three runs; present-but-no-entry-for-`id` is a fourth |
+| §3 PROP-CLS-08, PROP-NEG-01 | **3** | three generated trees carrying 0–3 extra files plus the `.pdlc-` adversarial draw |
+| §4 row reasons | **1 additional** | PROP-RSN-01/-02/-04/-05/-06 ride the runs above; PROP-RSN-03 needs one fault-armed run for its two lower pairs (its top pair reuses L0) |
+| §5 baseline reasons | **39** | 20 enumerated evidence vectors (§5.1: 10 manifest-chain vectors × E1's 2 values) + 3 ladder-fault vectors for `drift-state-invalidated` + 6 for PROP-BSL-06's two extra entrypoints over 3 E1-holds vectors + 10 for PROP-BSL-08's 5 non-default config states over 2 vectors. PROP-BSL-05's queue half is in-process |
+| §6 backup grammar | **8** | 2 batched format/parse runs + 1 sort run + 1 locale-injected sort run (PROP-BKP-07) + 1 prune run for PROP-BKP-09/-10/-11 + 1 second prune for PROP-BKP-12 + 1 re-shuffled-mtime prune for PROP-BKP-13 + 1 `nnExhausted` entrypoint run for PROP-BKP-04. PROP-BKP-06 and -08 are pure JS |
+| §7 measurement time | **21** | 3 plain syncs + 3 `--force` syncs (PROP-MTM-01/-03) + 4 hook/`--check` runs (PROP-MTM-02) + 5 retired-path runs (PROP-MTM-04: 2 fault-free sync, 2 corrupt-copy sync, 1 hook) + 3 post-sync `--check` runs (PROP-MTM-05) + 2 write-failing syncs (PROP-MTM-06) + 1 repeat sync (PROP-MTM-07) |
+| §8 seams | **47** | PROP-SEAM-01: 16 member runs + 4 non-member draws + 1 seam-unset comparison. PROP-SEAM-03: 16 runs (9 non-bearing tokens with a selector appended, 7 bearing tokens with one) over 2–4-row manifests. PROP-SEAM-04: 4 mixed lists. PROP-SEAM-05: 3 generated trees × 2 runs. PROP-SEAM-07: 1 batched encoder driver. PROP-SEAM-02, -06, -08 add none |
+| §9 determinism | **9** | PROP-DET-01 (1: the second run of the TZ pair, first reuses the packed run), -02 (2: two-sided and one-sided), -03 (1), -04 (2), -05 (1), -06 (2). PROP-CLS-05's two runs are counted in §3, not here |
+| §10 negatives (not already counted) | **27** | PROP-NEG-02 (3 root-resolution adversarial trees), -03 (6 write-failure compositions), -04 (4 surface legs), -05 (5 perturbed runs: `artifactVersion` ×2, `pluginVersion`, `syncedAtUtc`, **`pluginHash`**), -06 (8: six R-states + two failure compositions), -07 (6: M10's three clauses × 2 entrypoints) |
 
-Ceiling: **≈ 55 spawns** across the whole property suite, against the TSPEC's existing AT-level
-spawn count of the same order. Any property that would exceed its row's number must be re-expressed
-as rows-in-one-manifest or moved to the batched driver before it is written.
+**Ceiling: ≈ 180 spawns**, not the ≈ 55 v1.0 claimed. That number has to be defended rather than
+apologised for, so:
+
+> **R-3 is a claim about wall clock, not about spawn count.** TSPEC R-3's risk is "a slow suite
+> stops being run". A `runScript` case is one `bash` process over a temp tree of a handful of small
+> files; at the 0.15–0.25 s per spawn this harness costs on a developer machine, **≈ 180 spawns is
+> ≈ 27–45 s** of added `npm test` time, on top of the TSPEC's existing AT suite of the same order.
+> That is inside the budget a maintainer tolerates for a full-suite run and outside the one they
+> tolerate for a tight edit loop — so the mitigation is jest's own file selection (`-t`, per-file
+> runs), which the §12 placement rule already makes usable because each property is one `it()` in
+> the file that owns its AT family.
+
+**The rule this budget enforces, restated so it can actually fire.** Any property whose
+implementation exceeds its row's number must be re-expressed *before it is written*, in this
+priority order — the same order P-R-7 states, now with the two named first candidates:
+
+1. **Repack** a per-row axis into rows of one manifest (never a per-run axis; §2.2's A0 and §5.1's
+   evidence vector are per-run by construction).
+2. **Batch** onto the §11.2 grammar driver. The two families that would go first are §8's two
+   16-token sweeps (PROP-SEAM-01(a), PROP-SEAM-03), which are 32 of the 180, and §3's PROP-CLS-06
+   solo runs, which are 8.
+3. **Never sample** a domain §1.3 rule 2 says to enumerate. The 16 tokens, the 11 leaves and the 20
+   evidence vectors are enumerations; trimming them is how REQ v13's failure mode returns.
+
+Measured cost is still a measurement, not a prediction — **P-R-7** keeps that residual open.
 
 ### 1.5 Determinism rules every property inherits (TSPEC §2.5)
 
@@ -182,23 +264,24 @@ Every generated fixture is constructed and every run performed under the TSPEC's
 3. **mtime is never an input and never an oracle.** §6.5's prune property and §9's `touch`
    property are the two places this is *falsifiable* rather than merely stated.
 
-### 1.6 uid-0 and capability skips — the named inventory this document adds
+### 1.6 uid-0 and capability skips — one inventory, and it lives in §11.1
 
 TSPEC §1.3 owns `describeOrSkip` / `itOrSkip` and the AT-level uid-0 inventory. A property that
-cannot run on a given runner uses the same helper and appears here — **never silently green, never
-silently absent**:
+cannot run on a given runner uses the same helper and appears in **§11.1 — the single authoritative
+skip inventory in this document**. It is not restated here.
 
-| Property | Capability | Why unconstructible | Invariants the skip message must name |
-|---|---|---|---|
-| PROP-CLS-01 leaf **L3** (P1 `indeterminate`) | `uid-nonroot` | the recipe is `chmod 0600` on `workflows/dist/` (TSPEC §7.1); root traverses it regardless, and no fault token makes *existence* undecidable (tokens 15/16 fault the read, TSPEC v2.1 TE L-07) | "the leaf 'plugin-side existence is undecidable' is unverified; its row reason `plugin-artifact-unreadable` remains covered by leaf L4 via `PDLC_FAULT=plugin-artifact-read`" |
-| PROP-CLS-01 leaf **L7** (P3 `indeterminate`) | `uid-nonroot` | `.claude/workflows/` mode `0600` | "the leaf 'consumer-side existence is undecidable' is unverified; its row reason `consumer-artifact-unreadable` remains covered by leaf L8 via `PDLC_FAULT=consumer-artifact-read`" |
-| PROP-CLS-03 (totality **under permission denial**) | `uid-nonroot` | it quantifies over L3/L7 | as above, plus "totality is verified over the nine leaves constructible on this runner" |
-| every §3/§4 property | `hash` | without a hash utility every row is `unknown`/`hash-tool-absent` (FSPEC §12's standing precondition) and the fixture would silently test something else | TSPEC §7.3's `hash` string, plus the leaf list left unverified |
-| PROP-BSL-05 (`git`-routed evidence) | `git` | `git worktree list --porcelain` is the subject of AC-0.5 step 1 | TSPEC §7.3's `git` string, plus "AC-0.5 step 1's never-fall-through rule is unverified" |
+v1.0 carried two inventories, here and at §11.1, and they disagreed: on the leaf ids (this section
+named **L3/L7** covered by **L4/L8**; §11.1 correctly named **L3/L4** covered by **L2/L5**) and on
+the `git`-gated property set (**PROP-BSL-05** here; **PROP-BSL-03/-04/-06** there). Both reviewers
+flagged it (PM F-03, SE F-06), and the failure is exactly the one the skip policy exists to prevent:
+the skip message is *required* to name the invariant left unverified, and a duplicated inventory
+prints a message naming a leaf that in fact ran. v2.0 removes the duplicate rather than repairing
+it — §11.1 is the one place the text lives, and the skip strings in the test files are read from it.
 
-**The row-reason floor stays a hard assertion on root.** That is the whole point of the middle
-column: TSPEC §5.2's tokens 15/16 make all four `unknown` reasons F-reachable, so what skips on a
-root runner is two **leaves**, not two reasons. §11 states the residual in exactly those terms.
+**What survives here is the argument, not the table.** The row-reason floor stays a hard assertion
+on root: TSPEC §5.2's tokens 15/16 make all four `unknown` reasons F-reachable, so what skips on a
+root runner is two **leaves** (L3, L4), not two reasons. §11.1 and **P-R-1** state the residual in
+exactly those terms.
 
 ## 2. The classifier's generation axes (O-9, regenerated)
 
