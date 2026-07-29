@@ -668,6 +668,8 @@ One record per line, **tab-delimited**, five fields, appended in call order.
 record ::= seq TAB phase TAB op TAB rowId TAB arg LF
 seq    ::= [1-9][0-9]*                       strictly increasing within one invocation, from 1
 phase  ::= "as-found" | "post-copy" | "post-run" | "run"
+                                             "as-found"|"post-copy"|"post-run" on `classify`
+                                             records ONLY; "run" on every other op — §4.2
 op     ::= see §4.2
 rowId  ::= <manifest row id> | "-"           "-" for every non-row record
 arg    ::= percent-encoded value, possibly empty
@@ -705,20 +707,32 @@ properties are cheap and they fail for different reasons, which is the point.
 
 **Non-row probes are traced** (O-7's question, answered `yes`). The `op` vocabulary is closed:
 
-| `op` | Emitted at | `rowId` | `arg` |
-|---|---|---|---|
-| `run` | once, first record of the invocation | `-` | the entrypoint (`hook`\|`check`\|`sync`\|`sync --force`) |
-| `repo-root` | §2.2, after E1 | `-` | the resolved root, or empty when unresolved |
-| `plugin-root` | §2.4, after E3 | `-` | the resolved plugin root, or empty |
-| `manifest-read` | §2.5 E4/E5 | `-` | the manifest path |
-| `config-read` | §2.7 E7 | `-` | the config path |
-| `sync-manifest-read` | §1.2's read | `-` | the sync-manifest path |
-| `classify` | once per row **per pass** | the row id | the resulting state |
-| `mkdir` | §4.2 step 3, once per directory created | `-` | the directory |
-| `write` | every drift-state / sync-manifest write **attempt** | `-` | the target path |
-| `copy` | §5.5, per row, at the `mv` | the row id | the consumer path |
-| `backup` | §4.7 step 1, per backup | the backup id | the backup path |
-| `delete` | §5.7's retirement delete | the row id | the retired path |
+| `op` | `phase` | Emitted at | `rowId` | `arg` |
+|---|---|---|---|---|
+| `run` | `run` | once, first record of the invocation | `-` | the entrypoint (`hook`\|`check`\|`sync`\|`sync --force`) |
+| `repo-root` | `run` | §2.2, after E1 | `-` | the resolved root, or empty when unresolved |
+| `plugin-root` | `run` | §2.4, after E3 | `-` | the resolved plugin root, or empty |
+| `manifest-read` | `run` | §2.5 E4/E5 | `-` | the manifest path |
+| `config-read` | `run` | §2.7 E7 | `-` | the config path |
+| `sync-manifest-read` | `run` | §1.2's read | `-` | the sync-manifest path |
+| `classify` | **`as-found` \| `post-copy` \| `post-run`** — the `phase` argument of `pdlc_classify_row` | once per row **per pass** | the row id | the resulting state |
+| `mkdir` | `run` | §4.2 step 3, once per directory created | `-` | the directory |
+| `write` | `run` | every drift-state / sync-manifest write **attempt** | `-` | the target path |
+| `copy` | `run` | §5.5, per row, at the `mv` | the row id | the consumer path |
+| `backup` | `run` | §4.7 step 1, per backup | the backup id | the backup path |
+| `delete` | `run` | §5.7's retirement delete | the row id | the retired path |
+
+**Every non-`classify` record carries `phase = "run"` (pinned in v2.0 — TE F-02).** v1.0 fixed a
+four-value `phase` field on *every* record and then assigned a value to `classify` only, which left
+`assertPhaseOrder` unimplementable in both directions: against an implementation stamping
+`mkdir`/`copy` with `as-found` the predicate is violated on a **conforming** run, and against one
+stamping them `run` the assertion is vacuous over the mutating ops — with nothing in the document to
+say which. The assignment above is the one that keeps §2.2's structural rule true (`pdlc_classify_row`
+remains *the only place a pass label is set*, because the other twelve ops carry the literal `run`
+and have no pass to belong to) and makes both §4.3's helpers and §1.4's phase floor decidable. The
+grammar rule is itself asserted: `parseTrace()` **throws** if a non-`classify` record carries a
+phase other than `run`, or if a `classify` record carries `run`, so a mislabelled emitter is a
+harness error naming the offending record rather than a silently reshaped oracle.
 
 Tracing the non-row probes is what lets the oracle be **positive** rather than an
 absence-of-evidence argument: an implementation that skipped the manifest read entirely would
@@ -747,26 +761,44 @@ ops. The helper asserts all four conjuncts:
 
 | # | Conjunct | Catches |
 |---|---|---|
-| (a) | `new Set(C.map(r => r.rowId))` **equals** `new Set(expectedRowIds)`, and `expectedRowIds` is non-empty | the vacuous pass — an empty or truncated trace, and an implementation that classifies only the first row |
+| (a) | **multiset equality**: `sorted(C.map(r => r.rowId))` **deep-equals** `sorted(expectedRowIds)` — i.e. every expected id appears in `C` **exactly once** and no other id appears at all — and `expectedRowIds` is non-empty | the vacuous pass (empty or truncated trace, or only the first row classified) **and double-classification** |
 | (b) | `max(index of C) < min(index of M)` | the ordering itself: every as-found classification precedes every mutation |
 | (c) | `M.length === 0 || C.length > 0`, and `min(index of C) < min(index of M)` | a run that creates *before* classifying anything at all — (b) alone is vacuously true when `C` is empty, which is exactly the regression this exists to catch |
 | (d) | `T` contains a `manifest-read` record, and it precedes every member of `C` | a classifier that ran off something other than the manifest (AC-0.1's globbing prohibition) |
 
-Conjunct (a) is O-1's mandated **positive-presence** conjunct and it is stated over the **row-id
-set**, not over a count: a count assertion passes against an implementation that classifies one row
-twice and another zero times, which is precisely the shape a `for` loop with a mis-scoped variable
-produces in bash.
+Conjunct (a) is O-1's mandated **positive-presence** conjunct and it is stated as a **multiset**
+(bag) equality — corrected in v2.0, TE F-01. Neither weaker form is adequate, and each misses what
+the other catches:
+
+| Form | Misses |
+|---|---|
+| count (`C.length === expectedRowIds.length`) | one row classified twice and another zero times — the shape a `for` loop with a mis-scoped variable produces in bash |
+| set (`new Set(C.map(…))` equals `new Set(expected)`) | **an as-found `classify` record emitted twice for every row** — a uniform double-classification, which the set form passes and the count form would have caught |
+
+Multiset equality is the unique form strictly stronger than both, and the double-classification
+hazard is not hypothetical: it is the failure FSPEC §10 O-1 names ("double-count on a conforming
+run") and the one `assertPostCopyNarrow`'s note describes as making NFR-2's bound "quietly become
+`2 × 3 × |rows|`". `seq`'s self-check does not help — monotonicity is satisfied by a
+double-classifier.
 
 **Phase scoping.** The oracle filters to `phase === "as-found"` because a sync run's post-copy and
 post-run passes legitimately follow the mutations. The complementary assertions live in the same
 helper and are asserted by the sync fixtures:
 
-- `assertPhaseOrder(trace)`: the phase label sequence, with `run` records dropped, is a prefix of
-  `[as-found]`, `[as-found, post-copy, post-run]` — never interleaved, never out of order.
-- `assertPostCopyNarrow(trace, retiringIds)`: the `post-copy` classify records' row-id set equals
-  `retiringIds` exactly. FSPEC §3's table calls that pass **narrow**; without this assertion an
-  implementation that re-classified everything at step 5 is indistinguishable, and §13.1's NFR-2
-  bound quietly becomes `2 × 3 × |rows|` on every run.
+- `assertPhaseOrder(trace)`, restated over §4.2's phase assignment: (1) every record whose `op` is
+  not `classify` carries `phase === "run"`, and no `classify` record does — the grammar self-check
+  `parseTrace` already enforces, re-asserted here so a helper used without `parseTrace` cannot skip
+  it; (2) taking the `classify` records in line order and **run-length-collapsing** their labels
+  yields a **prefix of `[as-found, post-copy, post-run]`** — so `[as-found]`,
+  `[as-found, post-copy]` and `[as-found, post-copy, post-run]` pass, while a repeated or
+  out-of-order label (`[as-found, post-copy, as-found]`) fails. Interleaving is caught by the
+  collapse: two non-adjacent runs of the same label produce a repeated element.
+- `assertPostCopyNarrow(trace, retiringIds)`: the `post-copy` classify records' row ids are a
+  **multiset**-equal to `retiringIds` — same correction as conjunct (a) and for the same reason
+  (TE F-01); a set equality passes an implementation that classifies each retiring row twice.
+  FSPEC §3's table calls that pass **narrow**; without this assertion an implementation that
+  re-classified everything at step 5 is indistinguishable, and §13.1's NFR-2 bound quietly becomes
+  `2 × 3 × |rows|` on every run.
 - `assertRecordedPassIs(trace, driftState, "post-run" | "as-found")`: the states in the record equal
   the states the named phase's classify records carried. This is the executable form of FSPEC
   §4.2's "which pass the record carries" table and it is what O-20's PROPERTIES rows will build on
@@ -800,7 +832,15 @@ Test 2 asserts that `parseTrace(tracePath)` on the blocked path **throws**
 must not be softened: the failure mode being closed is a future maintainer "fixing" a flaky ordering
 test by making the helper return `[]` when the trace is missing, at which point conjunct (a) is the
 only thing standing between the suite and a permanently vacuous AC-2.9(1) assertion — and (a) then
-fails on the row-id set, which is why (a) is stated over a set and not merely as `C.length > 0`.
+fails on the row-id multiset, which is why (a) is stated as a multiset equality and not merely as
+`C.length > 0`.
+
+**Trace-path allocation is per tree, not per suite (TE Q-02).** `<tmp>` is the per-consumer-tree
+`mkdtemp` directory `makeConsumerTree` returns (§3.3), so `<tmp>/trace/<n>.tsv` is unique across
+jest's parallel workers by construction — `<n>` need only be unique within one tree, and it is a
+counter on the tree object. Deriving the trace directory from a suite-level or `tmpdir()`-level path
+would make `parseTrace`'s single-`run` assertion a flake rather than a detector, which is the
+failure this note exists to forbid.
 
 ---
 
@@ -811,28 +851,73 @@ fails on the row-id set, which is why (a) is stated over a set and not merely as
 ```
 PDLC_FAULT ::= spec ("," spec)*
 spec       ::= token [":" selector]
-selector   ::= <manifest row id> | <backup id>        (row-scoped tokens only)
+token      ::= one of §5.2's sixteen literals
+selector   ::= scopeKey                               (selector-bearing tokens only — table below)
+scopeKey   ::= <manifest row id> | <backup id>        both are M6-charset strings (§11.3 row 1)
 ```
 
 - **Comma-separated, order-insensitive, duplicates ignored.** FSPEC §4.6 (TE F-42) requires a
   fixture to fault a *subset* of guards in one run; a single-token variable cannot express AT-15
   (fault `drift-state-replace` + `drift-state-invalidate`, leave `drift-state-unlink` clean).
-- **The selector scopes a token to one row.** AT-35 needs one row's copy corrupted while the loop
-  continues over the others (AC-1.4); an unscoped `artifact-copy-corrupt` would corrupt every row
-  and the "the loop continues" conjunct would be unobservable. An absent selector means *every*
-  occurrence of that guard.
-- `pdlc_fault_active <token> [<rowId>]` is the single query point (§2.2's surface). It returns 0
-  when the token is present unscoped, or present with a selector equal to `rowId`.
+- **The selector scopes a token to one row or one backup.** AT-35 needs one row's copy corrupted
+  while the loop continues over the others (AC-1.4); an unscoped `artifact-copy-corrupt` would
+  corrupt every row and the "the loop continues" conjunct would be unobservable. An absent selector
+  means *every* occurrence of that guard.
+- **The query point takes the scope key it is being asked about**, so both selector alternatives are
+  queryable:
+  ```
+  pdlc_fault_active <token> [<scopeKey>]     # exit 0 = active
+  ```
+  It returns 0 when the token is present unscoped, **or** present with a selector byte-equal to
+  `scopeKey`. A guard whose token is selector-bearing always passes its scope key; a guard whose
+  token is not passes none.
 - **Whitespace is not trimmed and an empty spec is unrecognised.** `PDLC_FAULT=""` is inert (the
   variable is treated as unset); `PDLC_FAULT=" mkdir"` is an unrecognised token and takes §5.4's
   path. Trimming would make the seam quietly tolerant of exactly the kind of environment mangling
   §5.4 exists to report.
 
-### 5.2 The enumeration — closed, 14 tokens
+#### 5.1.1 Which tokens bear a selector, and what its scope key is (TE F-05)
+
+v1.0 defined `selector ::= <manifest row id> | <backup id>`, gave the query point **one** argument
+matched against `rowId`, and never enumerated which tokens accept a selector. The backup-id
+alternative was therefore unqueryable — and it is not decorative: AT-12's retirement backup has
+`id = the retired path's basename` (§13.1 `retiredPresent`), not a manifest row id, so a
+`backup:`/`backup-corrupt:` selector for the retirement case could not be evaluated at all.
+
+| Token | Selector? | Scope key the guard passes to `pdlc_fault_active` |
+|---|---|---|
+| `artifact-copy`, `artifact-copy-corrupt` | **yes** | the **manifest row id** being copied |
+| `backup`, `backup-corrupt` | **yes** | the **backup id** — the row id for an artifact backup (§4.7), the **retired path's basename** for a retirement backup (§5.7). This is the alternative v1.0 could not express |
+| `retire-delete` | **yes** | the **manifest row id** R whose `retires` names the path |
+| `plugin-artifact-read`, `consumer-artifact-read` (new, §5.2 tokens 15/16) | **yes** | the **manifest row id** whose artifact is being read |
+| `git-worktree-list`, `walk-stat`, `manifest-read`, `sync-manifest-read`, `mkdir`, `drift-state-replace`, `drift-state-invalidate`, `drift-state-unlink`, `sync-manifest-update` | **no** | — each guard fires at most once per run and has no per-row identity |
+
+**A selector on a non-selector-bearing token is an unrecognised spec.** `PDLC_FAULT=mkdir:foo`
+prints **N-7 with the token text `mkdir:foo`** and injects nothing — it does **not** silently
+degrade to `mkdir`. §5.4 is careful about unrecognised *tokens* and v1.0 was silent about malformed
+*specs*, which is the same class of environment mangling §5.4 exists to report; a spec that
+silently drops its selector is how a fixture meant to scope a fault to one row corrupts every row
+and the test still passes. The same rule covers the empty selector (`mkdir:`) and a spec with more
+than one `:`.
+
+**Grammar unambiguity — the id charset (TE F-05(d), TE Q-03).** **FSPEC §1.1 clause M6 is the
+authority**, not this document and not §4.1's assertion: M6 fixes the union namespace
+`{row ids} ∪ {basename(p) : p ∈ any retires}` to `^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$`. That charset
+contains neither `,` nor `:` nor tab, so **both** seams' delimiters are unambiguous by construction
+— this grammar's `,`/`:` and §4.1's tab — and both scope-key alternatives (row id, backup id) are in
+the one namespace M6 governs, which is what makes a single `scopeKey` production correct.
+`M6_ID_REGEX` (§11.3 row 1) is that regex, written **once**, exported from `document-oracles.mjs`
+and shared by C1's validator, the PROPERTIES generator and this seam; `driftFault.test.js` asserts
+the exclusions as a property of `M6_ID_REGEX` itself (`,`, `:`, tab and newline are all rejected),
+not as a consequence of the ids the fixtures happen to use, since a fixture set that never contains
+a `:` proves nothing.
+
+### 5.2 The enumeration — closed, 16 tokens
 
 The set is **closed here** (FSPEC §4.6, TE Q-01). Every token corresponds to one guard in C1/C2/C3;
 no other guard is faultable and no other token exists. PROPERTIES asserts the emitted set is a
-subset of this list (§16).
+subset of this list (§16). **Tokens 15 and 16 are new in v2.0** (TE F-03) — see the closure argument
+below the table.
 
 | # | Token | Guard | Injected behavior | Serves |
 |---|---|---|---|---|
@@ -850,6 +935,26 @@ subset of this list (§16).
 | 12 | `backup-corrupt` | §4.7 step 1 | the backup is written truncated, so step 2's genuine re-read mismatches | **AT-27** |
 | 13 | `retire-delete` | §5.7's delete | the delete reports failure | §6.3's retirement row |
 | 14 | `sync-manifest-update` | §4.2 step 6's rewrite | the rewrite reports failure | §6.4's removal-only fixture; §5.5's stated residual |
+| **15** | `plugin-artifact-read` | FSPEC §3.2 **P1/P2** — C1's read of one row's plugin artifact, at the read, **after** the existence `stat` | the read reports failure (the probe returns `indeterminate`) | the row reason **`plugin-artifact-unreadable`** on every runner, incl. uid 0 |
+| **16** | `consumer-artifact-read` | FSPEC §3.2 **P3/P4** — C1's read of one row's consumer artifact, at the read | the read reports failure (the probe returns `indeterminate`) | the row reason **`consumer-artifact-unreadable`** on every runner |
+
+**Why 15 and 16 exist, and why adding them does not dissolve the closure (TE F-03).** They are not
+"a token per untestable branch" — the rule §5.2 states below for the enumeration guard. They are two
+**guards that were already in the closed enumeration's scope and were missed**: §3.2's P1–P4 are
+per-row read guards, exactly the granularity tokens 3, 4 and 9–13 already use, and the set is
+"closed at guard granularity" only if every guard is in it. Without them, `plugin-artifact-unreadable`
+and `consumer-artifact-unreadable` are constructible **only** by `chmod 0200`, i.e. only off root,
+and §1.4's row-reason floor — a hard set-equality meta-oracle over `unknown`'s four reasons — turns
+the suite **red on a root runner for a reason unrelated to the code**. §7.1's P1 cell also claimed
+`PDLC_FAULT=manifest-read` as the F escape for `plugin-artifact-unreadable`; it is not — token 3
+faults E4's read of the **distribution manifest** and yields the *baseline* reason
+`plugin-root-unreadable` at a different site (corrected in §7.1 below). The line the closure still
+holds is the one drawn immediately below: the `.claude/workflows/` **enumeration** guard and the
+JSON/hash **tool probes** still get no token — the first because AT-32(a)'s subject *is*
+directory-read permission and a token would assert something else, the second because `makeToolDir`
+is a strictly stronger fixture. A token is added when it faults a guard the classifier already
+defines a failure outcome for and no stronger fixture exists; that is the test P1–P4 pass and those
+three do not.
 
 **Tokens 10 and 12 corrupt bytes; they do not fake a comparison.** This is the single most
 load-bearing decision in the enumeration. AT-35's red direction (i) is "an implementation that
@@ -866,7 +971,9 @@ stronger fixture than a fault — it removes the interpreter rather than lying a
 "the record parses" conjunct is asserted against a tree where no parser exists. The directory
 enumeration has no fault token by decision, and §7.3 records the consequence: AT-32(a) is a genuine
 uid-0 coverage hole, named in the skip inventory (§1.3) rather than closed by widening this set.
-Adding a token per untestable branch would make the closure meaningless.
+Adding a token per untestable branch would make the closure meaningless — which is a different case
+from tokens 15/16, whose guards were **inside** the closure's stated granularity and simply absent
+from the list.
 
 ### 5.3 Rung granularity for the invalidation ladder
 
@@ -918,6 +1025,13 @@ Three test-design consequences:
    the alternative reading — "an unrecognised member voids the whole list" — is equally defensible
    from FSPEC §4.6's singular wording and would make every multi-token fixture in §5.3 silently
    inert if a token were later renamed. `driftFault.test.js` pins it.
+4. **A malformed *spec* is unrecognised on the same footing as an unknown *token*** (§5.1.1). N-7's
+   `{token}` substitution carries the **whole spec text** — `mkdir:foo`, `mkdir:`, `backup:a:b` —
+   so the operator (and the test's `MESSAGES["N-7"]` capture) sees what was actually rejected.
+   `driftFault.test.js` asserts each of those three forms emits N-7 once and injects nothing, with
+   the byte-equivalence conjunct of rule 2. Silently dropping a selector is the failure this
+   forbids: a fixture meant to scope `artifact-copy-corrupt` to one row would corrupt every row and
+   AT-35's "the loop continues" conjunct would pass for the wrong reason.
 
 ---
 
