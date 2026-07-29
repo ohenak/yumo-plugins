@@ -137,9 +137,21 @@ invoke_function() {
     emit_err "unknown-function"
     return
   fi
+  # Deliberately NOT `stdout="$("$fnName" "$@")"` — command substitution always forks a
+  # subshell, and any `PDLC_*` global the function sets as its documented side effect (this
+  # file's own header: "dump reads back the current value of a PDLC_* scalar or indexed array
+  # C1 populates as a side effect") would be discarded the instant that subshell exits, making
+  # every later `dump` case in the same batch report `unset-variable` regardless of what the
+  # function actually did. A plain output redirect on a simple command does not fork, so the
+  # function runs in THIS process and its globals persist for later cases; only the tiny
+  # scratch file (never `cat`/`mktemp` — neither is a guaranteed PATH tool here) is read back
+  # via bash's own `$(< file)` fast path.
+  local tmpOut="${TMPDIR:-/tmp}/pdlc-lib-probe-out.$$.${RANDOM}"
   local stdout status
-  stdout="$("$fnName" "$@")"
+  "$fnName" "$@" >"$tmpOut" 2>/dev/null
   status=$?
+  stdout="$(< "$tmpOut")"
+  rm -f "$tmpOut" 2>/dev/null
   if [[ -z "$stdout" ]]; then
     emit_ok "$status"
   else
