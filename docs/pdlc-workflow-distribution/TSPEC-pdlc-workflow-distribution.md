@@ -1733,6 +1733,112 @@ runner without one **skips loudly** (§7.3), it does not silently produce `unkno
 
 ## 15. Traceability
 
+### 15.1 AC → AT → test case
+
+Read with §14 for the fixture column. An AC with no AT row is one whose only enforcement is
+structural (NFR-2, §13.1 of the FSPEC) or a release-checklist row (AC-6.2a), and is marked as such.
+
+| REQ AC | AT | Test file |
+|---|---|---|
+| AC-0.1 (manifest is the sole authority; no globbing) | AT-25, and §4.3 conjunct (d) | `driftClassify`, `driftOrdering` |
+| AC-0.2 (`retired` = union of `retires`) | §10.2's `break: "retired"` | `documentOracles` |
+| AC-0.3 / AC-0.3a / AC-0.4 (`<pluginRoot>` resolution, maintainer marker, verbatim env) | AT-24 + §9.2's `plugin-root` trace assertion | `bootstrap` |
+| AC-0.5 (repo root) | AT-2, AT-33, §8.2's five fixtures | `driftRepoRoot` |
+| AC-0.6 (`not-managed`, enumeration failure) | AT-25, AT-32(a) | `driftClassify` |
+| AC-0.7 (retired paths quarantined) | AT-11, AT-12, AT-13 | `driftHook`, `driftSync` |
+| AC-1.0 (baseline first; empty is not green) | AT-33, §1.4's baseline-reason floor | `driftBaseline` |
+| AC-1.1 / AC-1.2 (six states, four row reasons) | AT-6, AT-7, AT-8a, AT-34, §7.1's recipes | `driftClassify` |
+| AC-1.3 (no mtime) | §2.5's `touch` test, §11.3 row 4 | `driftClassify`, `driftBackups` |
+| AC-1.4 (rows independent) | AT-35, §6.3 conjuncts 4–5 | `driftWriteFailure` |
+| AC-1.5 / NFR-3 (blast radius) | AT-25, M10 fixtures | `driftClassify`, `driftBaseline` |
+| AC-1.6 / O-8 (degraded provenance) | AT-6, AT-34 | `driftClassify` |
+| AC-1.7 (no entry ⇒ `unverified`) | AT-7, AT-35 | `driftClassify`, `driftWriteFailure` |
+| AC-1.8 (total, single-valued, deterministic) | **PROPERTIES, O-9** — §16 | — |
+| AC-2.1–2.5a, AC-2.8 (warnings, exhaustive) | AT-3, AT-5, AT-11, AT-30 | `driftHook`, `driftMessages` |
+| AC-2.3 / AC-2.5 / AC-2.5a (textual distinctness) | **AT-30** | `driftMessages` |
+| AC-2.4 (hook exits 0 always) | AT-3, AT-14, AT-16, AT-18a | every bash suite's hook variant |
+| AC-2.6 (record schema) | AT-14, AT-14b, §12.1's `VALID_RECORD` | `driftLadder`, `driftRecordShape` |
+| AC-2.6's measurement time | **PROPERTIES, O-20** — §16; §4.3's `assertRecordedPassIs` is the affordance | — |
+| AC-2.7 (one writer routine; mid-session unblock) | AT-9, AT-10 | `driftSync` |
+| AC-2.9(1) (classify before create) | **§4.3's four conjuncts**, asserted on AT-1, AT-14, AT-24 | `driftOrdering` + each |
+| AC-2.9(2) (per-row write failure) | AT-27, AT-35, §6.3 | `driftWriteFailure` |
+| AC-2.9(3) (the ladder) | AT-14b, AT-15, AT-16 | `driftLadder` |
+| AC-2.9(4) (verified backup before destroy) | **AT-27**, AT-8b, AT-26 | `driftWriteFailure`, `driftSync` |
+| AC-2.9(5) (unrecognised token) | AT-18a, AT-18b | `driftFault` |
+| AC-3.1 / AC-3.2 (copy semantics, no fall-through) | AT-8a, AT-10, AT-26 | `driftSync` |
+| AC-3.3 (exit codes) | §1.4's exit floor, spread over AT-1/7/10/16/33 | all |
+| AC-3.4 / AC-3.5 (backups, restore oracle) | AT-8b, AT-26, §11 | `driftSync`, `driftBackups` |
+| AC-3.6 / AC-3.7 / AC-3.8 (idempotence, round-trip, fresh consumer) | AT-9, AT-1, AT-24 | `driftSync`, `bootstrap` |
+| AC-3.9 (retirement gate on post-copy `in-sync`) | AT-12, AT-13, `assertPostCopyNarrow` | `driftSync` |
+| AC-4.1 (the mapping) | AT-4, AT-31, AT-36, §12.2's ten rows | `queueDriftGate` |
+| AC-4.2 (blocked report, one command) | AT-31, §12.2's structural `report` assertion | `queueDriftGate` |
+| AC-4.3 (`checkEnabled` scope) | AT-5, AT-14b, AT-32(b), AT-36 | `driftHook`, `driftLadder`, `queueDriftGate` |
+| AC-5.1–5.4 (build, version semantics) | AT-19, AT-24, §2.3 | `documentOracles`, `bootstrap` |
+| AC-6.1 (sole output directory) | AT-19, AT-24 | `documentOracles`, `bootstrap` |
+| AC-6.2 / AC-6.3 | AT-19, AT-29; `runtimeBundle.test.js` repointed at `dist/` | `documentOracles`, existing suite |
+| AC-6.2a | **release checklist** — no AT, by FSPEC §7.3 | — |
+| AC-6.4 | AT-22, AT-23 | `documentOracles` |
+| AC-6.5 | AT-24, §9.3's two mode-bit objects | `bootstrap` |
+| AC-6.6 | AT-20, AT-21, AT-28, §10.3's four branches | `documentOracles` |
+| NFR-1 (no judgement in an LLM turn) | §12.4's one-read assertion; §12.3's wrapper | `queueDriftGate` |
+| NFR-2 | **structural, FSPEC §13.1** — no timing assertion exists anywhere in this suite | — |
+| NFR-5 (bash, reuse the interpreter loop) | AT-14, §2.2 | `driftLadder` |
+| NFR-6 (exactly two env seams) | §5.2's closed set + PROPERTIES' subset assertion (§16) | `driftFault` |
+
+### 15.2 TSPEC section → FSPEC section
+
+| TSPEC | FSPEC |
+|---|---|
+| §1 test surface, §3 harness | §12's standing precondition, §10 O-11 |
+| §2 implementation architecture | §0.2, §1.1–1.4, §7.1, §6.1–6.2 |
+| §4 trace | §4.2, §4.6, §10 O-1, O-7 |
+| §5 fault seam | §4.6, §10 O-10 |
+| §6 write failures | §4.4, §4.4a, §4.5, §4.7, §5.5, §10 O-10 |
+| §7 probes and skips | §3.2, §10 O-11 |
+| §8 repo root | §2.2, §2.8, §5.9, §8.3 N-8, §10 O-3 |
+| §9 bootstrap | §7.5 item 4, §7.6, §10 O-12 |
+| §10 jest oracles | §7.3, §7.4, §7.5, §10 O-16, O-17 |
+| §11 backup grammar | §1.4, §5.6, §10 O-18 |
+| §12 queue | §6.1, §6.2, §10 O-19 |
+| §13, §14 | §12 |
+
+---
+
 ## 16. Hand-off table — obligations leaving this document
 
+Every obligation this TSPEC does **not** discharge, with its owner and what this document leaves it.
+A reviewer checking completeness should find every FSPEC §10 row either in §0.2 (disposed here) or
+below.
+
+| # | Owner | Obligation | What this TSPEC hands over |
+|---|---|---|---|
+| **O-9** | PROPERTIES | Classifier totality / single-valuedness / determinism over states, row reasons and **both** declared precedences. Regenerate the axes; do **not** import v13's tables | The fixture vocabulary: §3.3's six-state recipe table (with `setRowState`'s self-check), §7.1's probe→recipe mapping, §13's inventory, and two **unconstructible** combinations the generator must exclude — `hash-tool-absent` on a row subset (§7.1) and a `stale` row whose bytes equal the plugin's (§3.3). §1.4's floors are the minimum the generated set must cover; they are asserted by meta-oracles, so a generator that under-covers turns them red rather than passing quietly |
+| **O-18** | PROPERTIES | Backup-grammar round-trip, `LC_ALL=C` descending == reverse-chronological, and `prune`'s four clauses | §11.1's three C1 functions, §11.2's **batched** driver (one spawn per property run, not per case), `M6_ID_REGEX` shared with the manifest validator, `listBackups`'s pre-parsed entries, and §11.3 row 4's retention binding with the mtime-shuffled falsifier |
+| **O-20** | PROPERTIES | AC-2.6's measurement-time reading: (a) a successful sync records **post-run** states and exits 0; (b) hook/`--check` coincide; (c) the run's decisions come from the **as-found** pass | §4.3's `assertRecordedPassIs(trace, record, phase)` and `assertPhaseOrder` — (a) and (b) are assertions over the record, (c) is only observable through the `as-found` trace label, which is why the grammar carries three phase labels rather than two |
+| **O-19 (a)–(c)** | implementation phase (**Cross-Feature**) | (a) add no second agent-mediated read; (b) unit-test D1–D8 against mangled-relay fixtures; (c) record the seam's LLM mediation in `orchestrate-queue.js` | (b) is **discharged in design** by §12.1's table — fenced, truncated, key-dropped, type-swapped and re-worded rows are all present; the implementer writes that table, not a new one. (a) is asserted by §12.4's single-call test. (c) is a code comment with no test and is listed in §17 as such |
+| **O-19 (d)** | this feature's implementation | Wrap the drift-state read so a throwing `_readFile` maps to row 1 `blocked` | §12.3: `readDriftStateSafely`, the three-way injection table, and the note that `rtReadFile` **propagates** today (`runtime-adapter.js:85–96` has no `try`/`catch`), so the wrapper is required for the test to return a report at all |
+| **O-13** | `consolidate-learnings` | REQ-scope stopping rule → `docs/_constraints/DOMAIN-CONSTRAINTS.md`, which must be **created** | Not this document's; carried so it is not lost |
+| **new** | PROPERTIES | **The emitted `PDLC_FAULT` token set is a subset of §5.2's fourteen.** FSPEC §10 O-10 requires it and it cannot be asserted example-wise | §5.2 is the closed list, exported from C1 as `PDLC_FAULT_TOKENS` so the property reads the implementation's own list rather than a copy; the property is `emitted ⊆ listed` over every fixture the suite runs |
+| **new** | landing step (implementation) | The gitignore entries of FSPEC §7.5 item 1 must be **anchored** (`/.claude/workflows/`, `/pdlc/workflows/dist/`) | §10.1: an unanchored pattern silently swallows the checked-in `covered-violations` fixture's nested directories, turning AT-23 from `== 7` into `== 0` with no diff to explain it. `documentOracles.test.js` carries the tracked-ness guard that reports it correctly if it happens |
+| **new** | implementation phase | Observe once whether a Claude-created worktree copies untracked `.claude/workflows/` content (FSPEC §11.1's stated obligation) | Unchanged; no test — it is a documentation-scope adjustment, recorded in §17 |
+
+---
+
 ## 17. Risks and stated residuals
+
+Each is stated with what it costs and what, if anything, would change the assessment. None is
+mitigated by an assertion that it cannot happen.
+
+| # | Residual | Assessment |
+|---|---|---|
+| R-1 | **Black-box bash.** A branch with no difference in exit code, stderr, trace, or on-disk artifact is untestable (§1.2's stated cost). | Accepted. The mitigation is that a new observable is a new trace `op` (§4.2), never a new production output — so closing a coverage hole never changes what an operator sees. The cost is that the trace vocabulary will grow, and each addition must extend §4.2's closed table. |
+| R-2 | **Two genuine uid-0 holes: AT-14b and AT-32(a).** On a root runner, rung (i)'s permission asymmetry and the directory-read branch are unverified. | Accepted and **named** (§1.3, §6.2). Every other permission fixture has an F twin that runs everywhere. Changing this would need a fault token for the enumeration guard, which §5.2 argues against: a token per untestable branch makes the closure meaningless. |
+| R-3 | **No CI (REQ §0 fact 10).** Every assertion in this document runs only when a maintainer runs `npm test`. | Accepted; it is the premise §1.1 is built on. The design consequence is already paid: no test needs root, a full disk, a special mount or a network, and the slowest fixture (§9's working-tree copy) is built once per describe. A slow suite is the failure mode, so §11.2's batching is not an optimisation but a requirement. |
+| R-4 | **The fresh-clone fixture copies the working tree.** A test can therefore pass against uncommitted state that never lands. | Deliberate (§9.1 step 1) — testing `HEAD` would test the previous commit, which is what AC-6.3/AC-6.6 exist to catch. The complementary risk (a file that exists locally and is not tracked) is covered by §9.3's **index-mode** assertion over the live root and by §10.1's tracked-ness guard. |
+| R-5 | **`covered-violations` is checked in and contains the five patterns verbatim**, protected only by exemption (iv). | Stated. Removing or narrowing exemption (iv) turns AT-22 red immediately — which is the correct, loud failure — but a reader might then "fix" it by moving the fixture. §10.1 records why it lives where it does. |
+| R-6 | **The queue's `QUEUE.md` read stays unwrapped** while the drift-state read is wrapped (§12.3 note 2). | Deliberate: wrapping it is a behavior change to another feature's path (FSPEC §6.1). The asymmetry is a real inconsistency and is the follow-up O-19 already names. |
+| R-7 | **O-19(c) — the seam-mediation comment — has no test.** | Accepted. A comment is not assertable without a lint nobody will maintain; it is a review item on the implementation diff. |
+| R-8 | **`assertTreeUnchanged` hashes every regular file under a root.** On a fixture that accidentally includes `node_modules` this is slow enough to look like a hang. | Mitigated by construction: it is only ever called on `mkdtemp` fixture trees and on `LIVE_ROOT/pdlc/workflows/dist/`, never on `LIVE_ROOT` itself. Stated because the obvious next use — "snapshot the whole repo" — is the one that would be unusable. |
+| R-9 | **Fault tokens 10 and 12 truncate to half length.** A source file of length ≤ 1 truncates to the empty string, which some implementations may treat as "no bytes written" rather than "wrong bytes written". | Bounded: every fixture's artifact bytes are ≥ 64 bytes by construction in `makePluginTree`. Recorded so a future minimal fixture does not silently weaken AT-35. |
+| R-10 | **`sync-workflows.sh`'s optional `SKILL.md`** (FSPEC §5.4) is inside `coveredViolations`' scan if it ships in the landing commit. | Not a design risk, a wording constraint: AT-22 goes red if that document names `.claude/workflows/*.js` or describes copying the bundle. The rule stands unchanged — a false positive is fixed by rephrasing the document, never by narrowing a pattern. |
+| R-11 | **The record's `generatedAtUtc` is normalised away in every byte-equivalence assertion** (§4.4, §5.4, AT-18b). | Stated. It means no test asserts anything about that field's format. It is human-report-only (FSPEC §6.2's "the queue never compares timestamps"), so nothing depends on it — but a malformed timestamp would go unnoticed until an operator read one. |
