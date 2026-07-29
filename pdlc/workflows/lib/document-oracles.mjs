@@ -195,9 +195,18 @@ function listManifestFiles(dir, root) {
  * packagingViolations(root) -> { clause, path, detail }[]
  *
  * Clauses 6.2(a)-(d) over `root`'s packaged plugin tree, sorted by
- * (clause, path). If no distribution manifest exists yet under `root`
- * (pre-release, or before the packaging step has ever run), there is
- * nothing to violate: returns [].
+ * (clause, path). An empty array is the pass.
+ *
+ * Exactly ONE input returns [] without having verified anything: no
+ * distribution manifest exists under `root` at all (pre-release, or before the
+ * packaging step has ever run), so nothing has been packaged and nothing can
+ * be violated. That case is benign and is what RELEASE-CHECKLIST §1's presence
+ * checks exist to catch alongside this oracle.
+ *
+ * A manifest that IS present but cannot be understood is a violation, not a
+ * pass (CR F-05). Previously an unparseable manifest and a manifest of neither
+ * known shape both fell through to `[]`, so a corrupt manifest reported a clean
+ * packaged tree — the one thing AC-6.2a exists to deny.
  */
 export function packagingViolations(root) {
   const manifestPath = join(root, MANIFEST_REL);
@@ -206,8 +215,14 @@ export function packagingViolations(root) {
   let manifest;
   try {
     manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
-  } catch {
-    return [];
+  } catch (err) {
+    return [
+      {
+        clause: "6.2(a)",
+        path: MANIFEST_REL,
+        detail: `the distribution manifest is present but is not valid JSON, so no packaging clause could be checked: ${err.message}`,
+      },
+    ];
   }
 
   const violations = [];
@@ -297,6 +312,18 @@ export function packagingViolations(root) {
         detail: `top-level "retired" disagrees with the union of rows' "retires" for "${path}"`,
       });
     }
+  } else {
+    // Parseable, but neither known shape (CR F-05). `{}`, `{"rows": "[]"}` —
+    // TSPEC §12.1's D6 array-replaced-by-scalar mangling, the most likely
+    // hand-edit / relay corruption — used to match neither branch and fall
+    // straight through to clause (d) with an empty violations array, i.e. a
+    // pass. Nothing about the packaged set was verified, so this is 6.2(a).
+    violations.push({
+      clause: "6.2(a)",
+      path: MANIFEST_REL,
+      detail:
+        'the distribution manifest has neither the production "rows" array nor the simplified "entries" array, so no packaging clause could be checked',
+    });
   }
 
   // (d) the manifest itself sits at pdlc/workflows/dist/distribution-manifest.json
@@ -331,6 +358,8 @@ export const S_NO_GIT_DIR =
   "AC-6.6 not verified: {root} is not a git work tree (no .git), so there is no HEAD to compare against. Unverified: same.";
 export const S_UNBORN_HEAD =
   "AC-6.6 not verified: HEAD does not resolve (unborn branch — no commit yet), so plugin.json has no committed value to compare. Unverified: same.";
+export const S_PLUGIN_JSON_UNREADABLE =
+  "AC-6.6 not verified: plugin.json could not be read and parsed in the working tree and/or at HEAD, so the advertised version has no two comparable values. Unverified: a dist/ change under an unbumped plugin.json version would not be detected.";
 export const S_NOTHING_STAGED =
   "AC-6.6 inert: git status --porcelain reports no change under pdlc/workflows/dist/, nothing to advertise. This is the ordinary case; no invariant is left unverified.";
 
@@ -396,9 +425,23 @@ export function advertisedVersionViolation(root) {
   }
 
   // Otherwise: compare plugin.json's version in the working tree vs at HEAD.
+  //
+  // (e) plugin.json unreadable on either side (CR F-19). Both reads and both
+  // parses are guarded: a missing, unreadable or malformed plugin.json in the
+  // working tree or at HEAD used to propagate an Error/SyntaxError out of this
+  // function, outside its documented `"red" | "green" | { skipped }` contract.
+  // Every other precondition here is a skip-loudly branch (O-16); so is this
+  // one now. It is deliberately LAST: it is the only precondition that needs
+  // both git probes to have already succeeded.
   const pluginJsonRel = resolvePluginJsonRel(root);
-  const workingTreeVersion = JSON.parse(readFileSync(join(root, pluginJsonRel), "utf8")).version;
-  const headVersion = JSON.parse(gitOutput(root, ["show", `HEAD:${pluginJsonRel}`])).version;
+  let workingTreeVersion;
+  let headVersion;
+  try {
+    workingTreeVersion = JSON.parse(readFileSync(join(root, pluginJsonRel), "utf8")).version;
+    headVersion = JSON.parse(gitOutput(root, ["show", `HEAD:${pluginJsonRel}`])).version;
+  } catch {
+    return { skipped: S_PLUGIN_JSON_UNREADABLE };
+  }
 
   return workingTreeVersion === headVersion ? "red" : "green";
 }

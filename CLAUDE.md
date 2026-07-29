@@ -80,6 +80,19 @@ The order is not interchangeable: the sync step copies what the build step produ
 
 The second command is invoked by **bare path** — no `bash` or `sh` prefix. The shipped hook scripts carry their execute bit precisely so this works; an invocation that exits 126 means the bit was lost. Verify afterwards with `pdlc/hooks/scripts/sync-workflows.sh --check`, which exits 0 once every row is in sync.
 
+#### When sync skips a row: `unverified` and `--force`
+
+A plain `sync-workflows.sh` **deliberately refuses to overwrite** two classes of consumer file, and reports rather than clobbers:
+
+| State | Meaning | Plain sync |
+|---|---|---|
+| `local-edit` | the consumer copy was hand-edited since it was synced | skipped, warns |
+| `unverified` | **no sync-manifest entry** — provenance unknown, so the file may be either | skipped, warns |
+
+`unverified` is the state every pre-existing `.claude/workflows/` tree lands in the first time this mechanism runs: the copies predate the manifest, so nothing records where they came from. It is deliberately safe in **both** directions — an unverified file is never assumed to be a stale generated artifact, and never assumed to be precious.
+
+The upgrade path is **`sync-workflows.sh --force`**, which overwrites skipped rows. It is safe to run when you have confirmed you have no hand-edits worth keeping under `.claude/workflows/` — and every overwrite is backed up first (`§5.7`'s backup-then-write), so the prior content is recoverable. Do **not** run `--force` reflexively: the tool demands it precisely because it cannot tell your edits from a stale copy. If `--check` exits non-zero on a tree you did not expect to be dirty, read the warnings before forcing.
+
 ### Worktrees
 
 A worktree Claude Code creates for you is a supported consumer: the repo-root `.worktreeinclude` lists `.claude/workflows/`, so the generated artifacts come across with the worktree.

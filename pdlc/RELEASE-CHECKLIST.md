@@ -26,9 +26,16 @@ beside them, and the shipped packaging oracle reports no violation over that tre
 **Runnable form.** The oracle ships inside the plugin, at
 `pdlc/workflows/lib/document-oracles.mjs`, so it can be run straight out of the installed package.
 `packagingViolations(root)` takes the **parent** of the plugin directory and returns an array of
-`{ clause, path, detail }`; an empty array is the pass. Note that it returns an empty array when
-the manifest is absent as well, so the three presence checks below are **not** redundant with it —
-both halves are required for this row to pass.
+`{ clause, path, detail }`; an empty array is the pass.
+
+**Exactly one input returns an empty array without having verified anything: a manifest that is
+absent altogether.** That is why the three presence checks below are **not** redundant with the
+oracle — both halves are required for this row to pass. A manifest that is *present but
+unreadable* is **not** in that hole: an unparseable manifest, and one that parses but carries
+neither the production `rows` array nor the simplified `entries` array, are both reported as a
+`6.2(a)` violation on `pdlc/workflows/dist/distribution-manifest.json` whose `detail` names the
+parse or shape failure. So a corrupt manifest fails this row on the oracle's own output rather
+than printing `present` three times and `packagingViolations -> []`.
 
 ```sh
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:?point this at the installed pdlc plugin directory}"

@@ -207,16 +207,32 @@ function readTraceIfPresent(tracePath) {
 }
 
 /**
- * Heuristic-only placeholder split of stderr into notice/warning lines. T-08b (batch 4)
- * replaces this with the real `MESSAGES` matcher table (TSPEC §7.2); `RunResult`'s shape
- * (`notices`/`warnings` arrays) does not change when that lands.
+ * Splits stderr into notice/warning lines against the REAL `MESSAGES` matcher table (TSPEC
+ * §7.2, defined further down this file — safe to reference here because this function is only
+ * ever CALLED after the whole module has finished evaluating, never at this point in the
+ * module's own top-level execution).
+ *
+ * Fix (CROSS-REVIEW-se-codebase-v1.md F-04): this used to be a placeholder heuristic —
+ * `/\bN-\d+\b/` / `/\bW-\d+\b/` — that tested each line for the literal substring "N-7"/"W-5"
+ * etc. No rendered `MESSAGES` line ever contains that substring (e.g. N-7's real text is
+ * `pdlc: unrecognised PDLC_FAULT token "…"; no fault injected.`), so `notices`/`warnings` were
+ * always `[]` regardless of what a run printed. This now tests each line against every `N-*`/
+ * `W-*` pattern in the real table, so a line is a notice/warning iff it actually matches the
+ * spec'd message shape.
  */
 function splitStderrLines(stderr) {
   const lines = stderr.length ? stderr.split("\n").filter((line) => line.length > 0) : [];
-  return {
-    notices: lines.filter((line) => /\bN-\d+\b/.test(line)),
-    warnings: lines.filter((line) => /\bW-\d+\b/.test(line)),
-  };
+  const notices = [];
+  const warnings = [];
+  for (const line of lines) {
+    const ids = Object.keys(MESSAGES);
+    if (ids.some((id) => id.startsWith("N-") && MESSAGES[id].test(line))) {
+      notices.push(line);
+    } else if (ids.some((id) => id.startsWith("W-") && MESSAGES[id].test(line))) {
+      warnings.push(line);
+    }
+  }
+  return { notices, warnings };
 }
 
 /**
@@ -398,16 +414,12 @@ export function runGrammar(cases, opts = {}) {
 // `expectFailOpen`, `expectHookSilent`, `expectRepoRootUnresolved`) are added as additional
 // named exports below this marker.
 //
-// Deliberately NOT touched (per this task's explicit scope — append-only, do not rewrite
-// T-08a's landed code): `splitStderrLines`'s N-/W- heuristic above this marker. The
-// accessors below (`countOf`/`remediationOf`/`allOf`) read `run.stderr` directly against the
-// real `MESSAGES` table, so they do not depend on `RunResult.notices`/`.warnings` at all —
-// only `expectHookSilent`'s conjunct 4 (both arrays `[]`) reads those fields, and it does so
-// as a redundant check of already-strict-empty stderr/stdout, so the heuristic's imprecision
-// cannot make that conjunct pass when it should fail. The one residual this defers: a test
-// that wants a *real* MESSAGES-table split into `.notices`/`.warnings` (rather than calling
-// `countOf`/`allOf` directly) does not get one from this slice — that would require editing
-// `splitStderrLines`, which is out of this task's scope.
+// UPDATE (CROSS-REVIEW-se-codebase-v1.md F-04, post-T-08b remediation): `splitStderrLines`
+// above this marker was left as T-08a's placeholder heuristic for eighteen batches — it has
+// now been rewritten to classify lines against this real `MESSAGES` table (see its own
+// docstring). `RunResult.notices`/`.warnings` are no longer vacuously `[]`; see
+// `driftMessageSplit.test.js` for the RED/GREEN proof and the repo-wide grep confirming no
+// other test asserted over those fields under the old, always-empty behavior.
 
 // ───────────────────────────── §7.2 message matchers ─────────────────────────────
 

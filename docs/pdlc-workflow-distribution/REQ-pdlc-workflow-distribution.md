@@ -16,7 +16,26 @@ depends-on: []
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | **approved (product scope)** | Claude + operator | 17.0 | 2026-07-28 |
+| pdlc | **approved (product scope)** | Claude + operator | 17.1 | 2026-07-29 |
+
+> **v17.1 — one AC repaired, from the Phase CR codebase review (SE F-06). No altitude change, no
+> new requirement.** AC-2.6 named **three** different moments for one field in adjacent sentences —
+> "measured at write time", "sync: post-copy", and "states observed before this run created
+> anything" — which are §4.2 steps 8, 5 and 2 respectively. The three cannot all hold, and the
+> implementation split the difference: a sync run could ship one record in which a retired path's
+> `supersedingState` said `local-edit` while the *same* superseding row's `rows[].state` in the
+> *same* JSON said `unverified`. AC-2.6 now states one rule for all recorded values — **the
+> post-run pass, i.e. the last classification before the atomic write** — and says explicitly what
+> AC-2.9(1) does govern (the as-found pass, which this run's copy/backup/retire *decisions* are
+> taken from) and what AC-3.9 does (the post-copy state, a decision, never a record). Rationale:
+> this is the reading AC-2.7 (post-sync state unblocks the queue **in the same session**) and
+> AC-3.3/§4 (exit code over the end-of-run state) already force, it is what FSPEC §3's pass table
+> normatively states, and the alternative ships a self-contradicting artifact to AC-4.1's sole
+> consumer. `--check` is unaffected by construction: it copies nothing, so its as-found state *is*
+> its post-run state. This clears FSPEC **OQ-6** at source. **Why this is not foreclosed by the
+> stopping rule below:** the rule blocks "no oracle / no fixture / no seam" findings, not a finding
+> that an AC's *observable behavior* is stated three incompatible ways — that is squarely inside
+> the rule's own carve-out.
 
 > **v17.0 — two oracle repairs from SE/TE round 15, no altitude change.** Both blocking findings
 > are defects in v16's own edits; neither contests need, scope, priority or phasing.
@@ -435,10 +454,17 @@ tooling). The source→bundle relation stays where it lives today: `build-runtim
 
   `rows` has exactly one entry per manifest row and nothing else; retired paths travel in
   `retiredPresent`, never in `rows`. When `unresolved`, `rows` and `retiredPresent` are `[]`
-  meaning "not evaluated". All three arrays are always present. `supersedingState` is measured at
-  write time (hook: at session start; check: current; sync: post-copy). Recorded states are those
-  observed **before this run created anything** (AC-2.9(1)). This file is the queue's only input
-  (AC-4.1). *(P0)*
+  meaning "not evaluated". All three arrays are always present. **Every recorded state — both
+  `rows[].state` and `retiredPresent[].supersedingState` — is the *post-run* measurement: the last
+  classification the run performs before the atomic write. The hook and `--check` change nothing,
+  so their single as-found classification *is* their post-run one; a sync run re-measures after its
+  copies, backups and deletions, and records that.** AC-2.9(1) governs the **as-found**
+  classification — the one this run's copy, backup and retire *decisions* are taken from — not the
+  values the record carries; AC-3.9's `in-sync` deletion gate is likewise a decision, read from the
+  post-copy state and never recorded. One consequence, stated because AC-4.1 depends on it: within
+  a single record, a retired path's `supersedingState` and its superseding row's `rows[].state` are
+  two readings of the same pass and cannot disagree. This file is the queue's only input (AC-4.1).
+  *(P0)*
 - **AC-2.7 — Single writer, atomic.** Who: the operator remediating mid-session. Given the drift
   state file, Then there is exactly one writer routine, shared by the hook and
   `sync-workflows.sh` — the exhaustive writer list; `build-runtime.mjs` is not on it, and any
@@ -965,6 +991,9 @@ an untracked-file blind spot in AC-6.6's replacement command), both repaired by 
 and neither contested need, scope, priority or phasing — the §10 O-13 condition. Note on file
 numbering: the orchestrator's iteration counter reset when the queue re-ran, so rounds are
 dispatched as "iteration 3" while the artifacts continue at `-v15`; both reviewers flagged this and
-it is routed to queue row 8 (`pdlc-review-loop-hardening`), not to this REQ. Phase R
+it is routed to queue row 8 (`pdlc-review-loop-hardening`), not to this REQ. **v17.1** is not a
+review round: it disposes one finding (**SE F-06**) raised by the Phase CR final codebase review
+against the implementation, `CROSS-REVIEW-se-codebase-v1.md`, and is the only post-approval
+amendment to this document. Phase R
 non-convergence, root cause, and the acceptance decision this version implements:
 `POSTMORTEM-R-pdlc-workflow-distribution.md` (v2.1, resolved).

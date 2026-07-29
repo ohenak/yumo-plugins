@@ -69,6 +69,22 @@ first has nothing to copy. The second command is invoked by **bare path** — no
 prefix; the shipped hook scripts carry their execute bit so that it works. Confirm the result with
 `pdlc/hooks/scripts/sync-workflows.sh --check`, which exits 0 once every row is in sync.
 
+#### When sync skips a row: `unverified` and `--force`
+
+A plain sync refuses to overwrite two classes of consumer file and warns instead of clobbering:
+`local-edit` (the copy was hand-edited since it was synced) and `unverified` (**no sync-manifest
+entry**, so provenance is unknown and the file may be either).
+
+`unverified` is where every pre-existing `.claude/workflows/` tree lands the first time this
+mechanism runs — those copies predate the manifest, so nothing records where they came from. The
+state is deliberately safe in both directions: an unverified file is never assumed to be a stale
+generated artifact, and never assumed to be precious.
+
+The upgrade path is **`sync-workflows.sh --force`**, which overwrites the skipped rows. Every
+overwrite is backed up first, so prior content is recoverable. Run it once you have confirmed there
+are no hand-edits worth keeping — not reflexively; the tool demands the flag precisely because it
+cannot distinguish your edits from a stale copy.
+
 ### Worktrees
 
 A worktree Claude Code creates for you is a supported consumer: the repo-root `.worktreeinclude`

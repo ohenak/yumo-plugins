@@ -213,27 +213,53 @@ describe("AT-24: fresh-clone bootstrap sequence (build-runtime -> sync -> check)
     const staleRow = manifest.rows[0];
     const pluginArtifact = join(clone.root, "pdlc", staleRow.pluginPath);
     expect(existsSync(join(clone.root, staleRow.consumerPath))).toBe(true);
-    writeFileSync(
-      pluginArtifact,
-      Buffer.concat([
-        readFileSync(pluginArtifact),
-        Buffer.from("\n// AT-24 assertion-7 plugin-side mutation\n"),
-      ])
-    );
 
-    // The hook entrypoint, because W-5 belongs to FSPEC §5.2's hook warning taxonomy (order 5,
-    // "any row `stale` or `missing`"). `sync-workflows.sh` deliberately emits no W-5 at all —
-    // FSPEC §5.4/§5.5's "sync always attempts `stale`/`missing`" — so `--check` is not a
-    // surface on which this message is specified to appear.
-    const staleCheck = runScript("hook", {
+    // The clone is shared across this whole describe via `beforeAll`, so the mutation is
+    // captured and restored in a `finally` (CR F-16): without it, every later assertion in
+    // this file reads a tree with a permanently `stale` row, and which of them notices depends
+    // on jest's ordering. `assertion 7b` below is the falsifier for this restore.
+    const pristineBytes = readFileSync(pluginArtifact);
+    try {
+      writeFileSync(
+        pluginArtifact,
+        Buffer.concat([pristineBytes, Buffer.from("\n// AT-24 assertion-7 plugin-side mutation\n")])
+      );
+
+      // The hook entrypoint, because W-5 belongs to FSPEC §5.2's hook warning taxonomy (order 5,
+      // "any row `stale` or `missing`"). `sync-workflows.sh` deliberately emits no W-5 at all —
+      // FSPEC §5.4/§5.5's "sync always attempts `stale`/`missing`" — so `--check` is not a
+      // surface on which this message is specified to appear.
+      const staleCheck = runScript("hook", {
+        consumerRoot: clone.root,
+        pluginRoot: undefined,
+        home: clone.home,
+      });
+
+      const match = staleCheck.stderr.match(MESSAGES["W-5"]);
+      expect(match).not.toBeNull();
+      expect(match.groups.cmd).toBe(driftState.syncCommand);
+    } finally {
+      writeFileSync(pluginArtifact, pristineBytes);
+    }
+  });
+
+  // ── CR F-16 ───────────────────────────────────────────────────────────────
+  //
+  // Assertion 7 mutates the `beforeAll`-shared clone (the plugin-side artifact) to manufacture
+  // a `stale` row. Every assertion in this describe reads that same clone, so the mutation must
+  // not outlive the assertion that made it — this case is the falsifier for that, and it is
+  // deliberately placed immediately after assertion 7 so it observes the clone in the state
+  // assertion 7 leaves it in.
+  it("assertion 7b: the shared clone is left in sync — assertion 7's plugin-side mutation does not outlive it", () => {
+    const rerun = runScript("check", {
       consumerRoot: clone.root,
       pluginRoot: undefined,
       home: clone.home,
     });
-
-    const match = staleCheck.stderr.match(MESSAGES["W-5"]);
-    expect(match).not.toBeNull();
-    expect(match.groups.cmd).toBe(driftState.syncCommand);
+    expect(rerun.status).toBe(0);
+    for (const row of readDriftState(clone.root).rows) {
+      expect(row.state).toBe("in-sync");
+    }
   });
 
   // ── §9.3 mode-bit assertions ──────────────────────────────────────────────

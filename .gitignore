@@ -7,6 +7,11 @@
 node_modules/
 
 # Generated consumer runtime copies — installed from pdlc/workflows/dist/ by
-# pdlc/hooks/scripts/sync-workflows.sh. Anchored: an unanchored pattern matches at every
-# depth and would swallow the checked-in covered-violations fixture (TSPEC §10.1).
+# pdlc/hooks/scripts/sync-workflows.sh. The leading slash is explicit-but-redundant: per
+# gitignore(5), a pattern containing a separator anywhere but the trailing position is already
+# relative to this .gitignore's own directory, so `.claude/workflows/` and `/.claude/workflows/`
+# match identically. What must NOT be used here is a slash-free pattern (`workflows/`) or an
+# explicit `**/` — either matches at every depth and would swallow the checked-in
+# covered-violations fixture's nested `.claude/workflows/`, turning AT-23's `== 7` into `== 0`
+# with no diff to explain it. Measured on git 2.50.1 (TSPEC §10.1).
 /.claude/workflows/

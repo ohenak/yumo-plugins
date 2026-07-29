@@ -6,7 +6,7 @@ feature: pdlc-workflow-distribution
 
 | Field | Value |
 |---|---|
-| Upstream | `REQ-pdlc-workflow-distribution.md` v17.0 (approved) → `FSPEC-pdlc-workflow-distribution.md` v5.1 (dual-approved) → `TSPEC-pdlc-workflow-distribution.md` v2.1 (dual-approved) → **PROPERTIES** |
+| Upstream | `REQ-pdlc-workflow-distribution.md` v17.1 (approved) → `FSPEC-pdlc-workflow-distribution.md` v5.2 (dual-approved) → `TSPEC-pdlc-workflow-distribution.md` v2.1 (dual-approved) → **PROPERTIES** |
 | Downstream | `PLAN-pdlc-workflow-distribution.md`, IMPL tests (`pdlc/workflows/__tests__/**`) |
 | Cross-Reviews | `CROSS-REVIEW-{software-engineer,product-manager}-PROPERTIES-v{N}.md` (this branch, while active) |
 | LEARNINGS | `docs/pdlc-workflow-distribution/LEARNINGS-pdlc-workflow-distribution.md` (Phase H) |
@@ -14,7 +14,22 @@ feature: pdlc-workflow-distribution
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | **Draft** | Claude + operator | 2.1 | 2026-07-28 |
+| pdlc | **Draft** | Claude + operator | 2.2 | 2026-07-29 |
+
+> **v2.2 — PROP-MTM-04 strengthened for Phase CR SE F-06. One conjunct added, one instrument
+> citation corrected, no property removed and no domain narrowed.** Conjunct 1 was *correct* — it
+> has said since v1.0 that the recorded pass for sync is **post-run** — but every assertion it
+> named went through the trace, and it constrained `supersedingState` only against the pass, never
+> against the sibling `rows[]` entry in the same record. Production shipped a record whose
+> `supersedingState` came from the step-5 post-copy pass while `rows[].state` came from step 7, and
+> nothing here was red. Conjunct 1 now also asserts `supersedingState === record.rows[R].state`
+> **on the written artifact**, which REQ v17.1's amended AC-2.6 states outright and which needs no
+> trace seam to be trustworthy (FSPEC §10 O-20 clause (d)). Conjunct 2 is **retained** — it is the
+> only assertion in this document about the post-copy pass's own measured value, the value AC-3.9
+> gates the deletion on — with its instrument restated: the comparison is against that phase's
+> `classify` trace records, with `assertPostCopyNarrow` serving as the non-vacuity guard rather
+> than as the comparison itself. The reasoning is recorded in the property's body so the question
+> is not re-litigated.
 
 > **v2.1 disposes CROSS-REVIEW-product-manager-PROPERTIES-v2 (1H/0M/2L) and
 > CROSS-REVIEW-software-engineer-PROPERTIES-v2 (0H/0M/8L).** Every finding is dispositioned by
@@ -84,7 +99,7 @@ elsewhere is answered here.
 |---|---|---|---|---|
 | **O-9** | REQ §10 (AC-1.8/AC-1.0), FSPEC §10 | Classifier totality / single-valuedness / determinism over **states**, **row reasons** and **baseline reasons**, including both declared precedences. **Regenerate the axes; do not import REQ v13's tables** (24 of 96 cells undefined) | **§2, §3, §4, §5** | The axes are regenerated **from FSPEC §3.2's six probes** as a **dependent tree** (§2.1), not a cross-product: every leaf is reachable and maps to exactly one state, so the class of defect v13 shipped — an undefined cell — is not expressible in this representation. Eleven row leaves (§2.3) and a determinacy-respecting baseline evidence tree (§5.1, **20** enumerated vectors). **Three** declared precedences, asserted in the two forms their guard structure admits (§2.1(2), rewritten in v2.0): the **baseline** precedence is a genuine *selector* property (PROP-BSL-03, `selected == highest-ranked condition that holds and is determinate`, oracle computed from the vector); the **row-state** and **row-reason** precedences are first-match ladders whose adjacencies split into co-holdable pairs (real co-holding fixtures — PROP-CLS-02(a), PROP-RSN-03) and structurally unco-holdable pairs (a stated structural argument plus a directed oracle — PROP-CLS-02(b)). Determinism asserted against clock, mtime, environment order, directory order, locale and process (§9) |
 | **O-18** | FSPEC §10 | Backup filename grammar: `parse(format(…))` round-trip over the full M6 id charset, `LC_ALL=C` descending == reverse-chronological, and `prune`'s four clauses (a)–(d) | **§6** | Built on TSPEC §11.1's three C1 functions and §11.2's **batched** driver (one spawn per property run). Round-trip and injectivity over the fixed-24-byte tail (§6.3), the sort property in two conjuncts — lexicographic == `(stamp, nn)` order, and `(stamp, nn)` order == chronological on calendar-valid stamps (§6.4) — and prune's keep/remove/identity/idempotence clauses plus an mtime-invariance conjunct that makes R-2 falsifiable **at the prune site** (§6.5) |
-| **O-20** | FSPEC §10 (OQ-6, SE Q-01) | AC-2.6's measurement-time reading must be **asserted**: (a) a successful sync records post-run states and exits 0; (b) hook/`--check` coincide; (c) the run's decisions come from the as-found pass | **§7** | **Seven** executable properties over generated consumer trees (PROP-MTM-01…07: clause (a) → -01, clause (b) → -02, clause (c) → -03, `supersedingState` → -04, session currency → -05, pass-is-a-function-of-`generatedBy` → -06, and **sync idempotence** → -07, added in v2.0 per PM F-02), each stated against FSPEC §4.2's `generatedBy`-to-pass binding and measured through TSPEC §4.3's `assertRecordedPassIs` / `assertPhaseOrder` / `assertPostCopyNarrow`. §7 also disposes the one place the two readings could diverge for `supersedingState` (post-copy vs post-run): v1.0 asserted they always **agree**, which SE F-04 showed is false against a *conforming* implementation on the AT-35 fault composition (FSPEC §4.2 step 6 rewrites the sync manifest, a classifier input, between the two passes). v2.0 asserts agreement **on the runs where step 6 changed no entry for R** and asserts the *predicted disagreement* positively on the runs where it did |
+| **O-20** | FSPEC §10 (OQ-6, SE Q-01) | AC-2.6's measurement-time reading must be **asserted**: (a) a successful sync records post-run states and exits 0; (b) hook/`--check` coincide; (c) the run's decisions come from the as-found pass; **(d) the same claim over `retiredPresent[].supersedingState`, not `rows[]` alone** (FSPEC v5.2, from Phase CR SE F-06) | **§7** | **Seven** executable properties over generated consumer trees (PROP-MTM-01…07: clause (a) → -01, clause (b) → -02, clause (c) → -03, `supersedingState` → -04, session currency → -05, pass-is-a-function-of-`generatedBy` → -06, and **sync idempotence** → -07, added in v2.0 per PM F-02), each stated against FSPEC §4.2's `generatedBy`-to-pass binding and measured through TSPEC §4.3's `assertRecordedPassIs` / `assertPhaseOrder` / `assertPostCopyNarrow`. §7 also disposes the one place the two readings could diverge for `supersedingState` (post-copy vs post-run): v1.0 asserted they always **agree**, which SE F-04 showed is false against a *conforming* implementation on the AT-35 fault composition (FSPEC §4.2 step 6 rewrites the sync manifest, a classifier input, between the two passes). v2.0 asserts agreement **on the runs where step 6 changed no entry for R** and asserts the *predicted disagreement* positively on the runs where it did. **v2.2 closes clause (d):** PROP-MTM-04 conjunct 1 now also compares `supersedingState` against `record.rows[R].state` **within the written record**, an artifact-only assertion that holds whatever the trace seam does and that is red against the shipped defect SE F-06 found |
 | **AC-1.8(iv)** | REQ §3 | The same totality / exclusivity / determinism properties for `rows[].reason` (`null` exactly on non-`unknown`) and for `baselineReason` (`null` exactly on `resolved`) | **§4, §5.2** | PROP-RSN-01…**06** and PROP-BSL-01…**08**, including the two `null`-exactly biconditionals (PROP-RSN-02, PROP-BSL-02) and the disjointness property (PROP-RSN-05) that keeps a baseline reason out of `rows[].reason` and vice versa |
 | **`PDLC_FAULT` subset** | TSPEC §16 ("new" row), FSPEC §10 O-10 | The emitted token set is a subset of TSPEC §5.2's **sixteen**; it cannot be asserted example-wise | **§8** | Asserted in both directions and by two **genuinely independent** oracles (§8.0 pins the independence, SE F-07): a **recognition** property that reads the *runtime* array by sourcing C1 (exactly one N-7 per non-member, nothing injected, byte-equivalence to the seam-unset run) and a **static call-site closure** property that reads the shipped bash sources *as text*. The two never read the same bytes. Subset alone would be satisfied by an implementation that recognises nothing, so the equality direction is asserted too |
 | O-11 (partial) | REQ §10 / FSPEC §10 | uid-0 runners skip with a **printed reason and named unverified invariants** — never silently pass | **§11.1 (sole inventory)** | TSPEC §1.3 owns the policy and the AT-level inventory; this document adds the **property-level** inventory, and v2.0 collapses it to **one** table — §11.1 — because v1.0 carried two (§1.6 and §11.1) that disagreed on both the leaf ids and the `git`-gated set (SE F-06, PM F-03). The two existence-`indeterminate` leaves are **L3** (plugin side) and **L4** (consumer side); they are permission-only, so their skip messages name the leaf and the invariant, and §11.1 records that the *row reasons* they would have produced stay covered by **L2** (token 15) and **L5** (token 16) — the leaf is the hole, not the reason |
@@ -1039,14 +1054,27 @@ on every run where step 6 did not change R's classification.**
 
 Three conjuncts, in the order of how load-bearing they are:
 
-1. **Pass attribution (all entrypoints).** For every generated tree with a retired path present,
-   `retiredPresent[].supersedingState` equals R's state in the **recorded** pass — `as-found` for
-   hook and `--check`, `post-run` for sync (FSPEC §3's pass table). On non-sync runs there is no
+1. **Pass attribution (all entrypoints), plus intra-record agreement.** For every generated tree
+   with a retired path present, `retiredPresent[].supersedingState` equals R's state in the
+   **recorded** pass — `as-found` for hook and `--check`, `post-run` for sync (REQ **AC-2.6**
+   v17.1, which now states this at source; FSPEC §3's pass table). On non-sync runs there is no
    post-copy pass at all, and the property asserts that too: a hook implementation that fabricates a
-   `post-copy` phase label is red via `assertPhaseOrder`.
-2. **Agreement, scoped.** On sync runs in which **R's copy verification passed, or R was not copied
-   at all, and `writeFailures` carries no entry for R** — `supersedingState` **also** equals R's
-   state in the `post-copy` pass (`assertPostCopyNarrow`). This operational predicate is *not*
+   `post-copy` phase label is red via `assertPhaseOrder`. **Second, record-internal and needing no
+   trace at all: `supersedingState === record.rows[R].state` in the same written record.** AC-2.6
+   makes these two readings of one pass, so any implementation that sources them from different
+   passes is red on the artifact itself. This half is cheap and is stated separately because it is
+   the one that was *missing*: Phase CR SE F-06 found production capturing step 5's value for
+   `supersedingState` while `rows[]` carried step 7's, and a suite that instruments only `rows[]`
+   is green against it (FSPEC §10 O-20 clause (d)). It is not redundant with the trace assertion —
+   it survives a trace seam that is disabled, absent or itself wrong, and it is the assertion whose
+   failure names the operator-visible harm: one JSON document stating two states for one row.
+2. **Agreement of the *gating* pass, scoped.** On sync runs in which **R's copy verification
+   passed, or R was not copied at all, and `writeFailures` carries no entry for R** —
+   `supersedingState` **also** equals R's state as measured by the `post-copy` pass, read from that
+   phase's `classify` trace records (`assertPostCopyNarrow` supplies the non-vacuity guard: it
+   pins the post-copy records to exactly the retiring row ids, so a run that emitted no post-copy
+   record for R cannot pass this conjunct by finding nothing to compare). This operational
+   predicate is *not*
    equivalent to "step 6 neither wrote nor removed an entry for R" (SE F-04): a verified copy makes
    step 6 **write** an entry for R, so such a run satisfies the operational clause here while
    violating that structural one. Agreement still holds on a verified copy, but for a different
@@ -1080,6 +1108,19 @@ inference: FSPEC §4.2 step 6 and §5.5).
 The honesty intent survives, in a stronger form: conjunct 3 pins the *shape* of the disagreement, so
 a future change that makes the passes diverge in any **other** way is still red and still reopens
 the spec question — while a conforming implementation is green.
+
+**Why conjunct 2 is not made vacuous by conjunct 1 (checked at v2.2, when conjunct 1 became an
+unambiguous universal).** The two quantify over different *observables*, not the same one twice.
+Conjunct 1 constrains the record — `supersedingState` against the recorded pass and against
+`rows[]`. Conjunct 2 constrains the **post-copy pass's own measurement**, which is never recorded
+anywhere (FSPEC §3's table) and is reachable only through the trace; that measurement is what
+AC-3.9 gates the *deletion* on, so an implementation whose post-copy pass computes the wrong state
+deletes (or spares) the wrong retired path while writing a perfectly correct record. Conjunct 1
+cannot see that; conjunct 2 is the only assertion in this document that does, and together with
+conjunct 3 it makes the relationship between the two passes total over sync runs — 2 covers the
+runs where step 6 moved nothing, 3 the runs where it did. Conjunct 2 also does **not** duplicate
+PROP-NEG-06: that property asserts the *deletion outcome* against the post-copy state, taking that
+state as given, whereas this one asserts the state itself is the one a correct classifier produces.
 
 **PROP-MTM-05 — Post-sync state is current within the session.**
 For every generated tree, immediately after a sync, `--check` over the unchanged tree reports every

@@ -6,7 +6,7 @@ feature: pdlc-workflow-distribution
 
 | Field | Value |
 |---|---|
-| Upstream | `REQ-pdlc-workflow-distribution.md` v17.0 (**approved, product scope**) |
+| Upstream | `REQ-pdlc-workflow-distribution.md` v17.1 (**approved, product scope**) |
 | Downstream | `TSPEC-pdlc-workflow-distribution.md`, `PROPERTIES-pdlc-workflow-distribution.md` |
 | REQ §10 rows disposed here | O-2, O-4, O-5, O-6, O-8, O-14, O-15 (the seven whose "Lands in" is FSPEC) |
 | REQ §10 rows carried forward | O-1, O-3, O-7, O-9, O-10, O-11, O-12, O-16, O-17 → TSPEC/PROPERTIES; O-13 → `consolidate-learnings` |
@@ -17,7 +17,20 @@ feature: pdlc-workflow-distribution
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | **Draft** | Claude + operator | 5.1 | 2026-07-28 |
+| pdlc | **Draft** | Claude + operator | 5.2 | 2026-07-29 |
+
+> **v5.2 — OQ-6 closed at source; three prose sites corrected to agree with §3's pass table
+> (Phase CR SE F-06). No normative table changes, no behavioral change.** §3's pass table has said
+> since v3.0 that a sync run's record carries the **post-run** pass and that the post-copy pass
+> feeds "the retirement decision only — never the record". Three prose passages still cited AC-2.6
+> v17.0's "sync: post-copy" clause as if it governed the record — §3's pass-table commentary,
+> §4.2's step-7 justification bullet, and §4.6's closing sentence ("`supersedingState` is post-copy
+> exactly as AC-2.6 requires"), the last of which flatly contradicted the table on the same field.
+> Production followed that sentence and shipped a record able to contradict itself. REQ **v17.1**
+> amends AC-2.6 to require the post-run pass for **every** recorded value, so all three passages
+> now cite the amended AC, **OQ-6 is RESOLVED** (§11), and **§10 O-20 gains clause (d)** — the
+> assertion obligation must cover `retiredPresent[].supersedingState`, not `rows[]` alone, which is
+> the coverage gap that let the defect ship.
 
 > **Altitude.** The REQ is approved at product scope and states *observable behavior*. This FSPEC
 > states *how the behavior is produced*: the component inventory, the data formats, the algorithms
@@ -1125,15 +1138,18 @@ silently required a third, which made §13.1's spawn bound and O-1's trace vocab
 The as-found pass is the one AC-2.9(1) governs. The post-copy pass exists because AC-3.9 conditions
 the deletion on a state that only exists after the copies; it is deliberately **narrow** (only rows
 that can retire something) and it is **never** recorded. The post-run pass exists because AC-2.6
-records `supersedingState` "sync: post-copy", AC-2.7 requires a post-sync drift state to unblock the
-queue **within the same session**, and AC-3.3's exit table is applied to the post-run state (§5.8).
-It must be a separate invocation from the post-copy pass, because step 5's deletions have to be
-visible to it.
+(v17.1) requires **every** recorded value — `rows[].state` and `retiredPresent[].supersedingState`
+alike — to be the last classification before the atomic write, AC-2.7 requires a post-sync drift
+state to unblock the queue **within the same session**, and AC-3.3's exit table is applied to the
+post-run state (§5.8). It must be a separate invocation from the post-copy pass, because step 5's
+deletions have to be visible to it.
 
 All three call the same pure `classify_row`; there is no second classifier and no derived-state
 shortcut. **The trace grammar must label all three distinctly** (§10 O-1, O-7) — labelling only two
 is what would let the ordering assertion be satisfied by the wrong pass. §13.1 budgets three.
-See **OQ-6** and **§10 O-20** for the one REQ sentence this reading has to interpret.
+This table is normative and needs no interpretation of the REQ: **OQ-6** is closed by REQ v17.1's
+AC-2.6, which now states the same binding at source (§11). **§10 O-20** stands unchanged — the
+reading still has to be *asserted*, not assumed.
 
 ### 3.1 C1's classifier surface
 
@@ -1347,8 +1363,12 @@ has run against the filesystem as found" governs every action this run takes. St
 decision; it only re-measures, so that the file the queue reads describes the tree the queue will
 work in. Three approved requirements make step 7 mandatory rather than optional:
 
-- **AC-2.6** records `supersedingState` as "measured at write time (hook: session start; check:
-  current; **sync: post-copy**)". A pre-copy `supersedingState` is not post-copy.
+- **AC-2.6** (v17.1) requires every recorded state — `rows[].state` **and**
+  `retiredPresent[].supersedingState` — to be "the last classification the run performs before the
+  atomic write". On a sync run that is step 7 and nothing else. A pre-copy record fails this
+  outright, and so does a record that mixes passes: AC-2.6 adds that a retired path's
+  `supersedingState` and its superseding row's `rows[].state` are two readings of one pass and
+  cannot disagree, which only step 7 delivers.
 - **AC-2.7** states the consequence that "post-sync drift state is current within the same session,
   so the queue unblocks without a restart". With a pre-copy record, a successful sync would write
   `rows[].state: "stale"` and §6.2 row 6 would keep the queue blocked — the promise would be false.
@@ -2090,9 +2110,15 @@ for each path p in each row R's retires, where p exists and the baseline is reso
   to step 7. §3's table names it, §13.1 budgets it, and §10 O-1/O-7 require the trace grammar to
   label it distinctly — v2 counted two passes here and its NFR-2 bound and trace vocabulary were
   both wrong as a result. The pass is **narrow**: only rows with a non-empty `retires` whose retired
-  paths exist are re-classified, and its results are **never** recorded. The record's
-  `retiredPresent` comes from step 7's re-probe, so a path deleted at step 5 correctly does **not**
-  appear in it, and `supersedingState` is post-copy exactly as AC-2.6 requires.
+  paths exist are re-classified, and its results are **never** recorded — not the entry, not the
+  state. The whole of the record's `retiredPresent` comes from step 7's re-probe: a path deleted at
+  step 5 correctly does **not** appear in it, and each surviving entry's `supersedingState` is R's
+  **step-7 post-run** state, exactly as AC-2.6 (v17.1) requires and identically to R's own
+  `rows[].state` in the same record. Writing step 5's value into the record instead is the defect
+  §3's pass table forbids, and it is observable: step 6 runs *between* the two passes and can move
+  R's classification (§5.5 — a failed-verification row loses its sync-manifest entry, so it
+  measures `unverified` post-run where it measured `local-edit` post-copy), so the mixed record
+  would contradict itself on the very rows an operator most needs it not to.
 - **Per path, idempotent, never before its replacement is in place.**
 - A `mv` into the backup directory is an acceptable implementation of backup-then-delete.
 
@@ -2808,7 +2834,7 @@ document's reviewers must verify the disposition. A finding that one of these is
 | O-17 | TSPEC | AC-6.4's pinned fixture tree reproducing the pre-landing layout for the five patterns and four exemption members; the expected 7 paths; and that live-root (`== ∅`) and fixture-root (`== 7`, exact paths, exemption list) are **separate test cases over separate roots**. The fixture root is built under the runner's temp area, never inside the live repo — §7.3's "no test may write into `pdlc/workflows/dist/`" rule is scoped to the **live** root for this reason | §7.3 defines the oracle as `packagingViolations(root) -> set of { clause, path, detail }`, parameterised over a root; §7.5 states the two-root structure and the exemption definitions verbatim |
 | **O-18** | PROPERTIES | **Backup filename grammar round-trip.** The grammar is a parameterisable component (id, stamp, `NN` in; a filename out; and a parse back), so it takes a property-based strategy rather than examples: `parse(format(id, stamp, NN)) == (id, stamp, NN)` over the **full M6 id charset** — including ids containing `.`, `-`, digits, and stamp-shaped substrings such as `dev.20260101T000000Z` — and, as a second property, that `LC_ALL=C` descending sort over a generated set of filenames for one id agrees with descending `(stamp, NN)` order. §1.4's fixed-24-byte-suffix parse is what makes both properties provable; v1's optional-suffix grammar made the second one false. **Third property (new in v3.0) — `prune` is bound, not merely described.** Over a generated directory containing backups for several ids plus decoy names, `prune(dir, knownIds)` (a) **keeps exactly the 5 greatest `(stamp, NN)` members per known id** — greatest under the second property's order, so keep-set membership is decidable without reading mtimes; (b) **removes exactly the remaining members of those ids and nothing else**; (c) is the **identity** on every name that does not match §1.4's pattern and on every matching name whose id is not in `knownIds`; and (d) is **idempotent** — `prune ∘ prune == prune`. Without (c) the "never touches a non-matching file" sentence in §5.6 has no oracle, and R-2's "mtime is never read" is unfalsifiable at the prune site, which is the one place an implementer is most tempted to reach for it | §1.4 gives the grammar, the parse rule, the injectivity argument and the exhaustion behavior; §5.6 states the newest-5-per-id rule, the `LC_ALL=C` descending selector and the never-touch-non-matching rule that clauses (a)–(c) formalise |
 | **O-19** | TSPEC / **implementation phase** (Cross-Feature) | **The LLM-mediated `_readFile` seam.** `runtime-adapter.js`'s `rtReadFile` is an `agent()` call pinned to `haiku`; the queue's drift-state read inherits it (§6.1). The implementation must (a) add **no** second agent-mediated read for this feature; (b) unit-test §6.2's D1–D8 shape validator against mangled-relay fixtures — fenced, re-wrapped, truncated, key-dropped, array-replaced-by-scalar, state-value-reworded — asserting `blocked` for each; (c) record the seam's mediation in `orchestrate-queue.js` where the read happens, so the next reader does not re-derive it. **Where the throw case is tested (v4.0, SE Q-03):** duty (d)'s throwing-`_readFile` ⇒ `blocked` assertion stays a **unit test at this feature's own call site**, not a PROPERTIES row. PROPERTIES' D1–D8 obligation is over *values* the validator receives — the mangled-relay fixtures of (b) are value-shaped and belong there — whereas a throw is a property of the injected transport, reachable only by substituting `_readFile` at the call site. D1's dependence on (d) is therefore a dependence on a unit-tested precondition, stated here so the PROPERTIES author does not go looking for a row they cannot write. Byte-faithful hardening of the adapter itself is **not** this feature's change — every pdlc module's `_readFile` consumer shares the property — but it must be raised as a follow-up rather than absorbed silently | §6.1 states the seam, what the validator catches, and the one residual it cannot |
-| **O-20** | PROPERTIES | **AC-2.6's measurement-time reading must be asserted, not assumed (OQ-6).** OQ-6 records that AC-2.6's two sentences cannot both be read literally over the same field set on a sync run, and §4.2 applies a reading: sentence (2) ("states observed before this run created anything") governs the pass the run **acts on** — the step-2 as-found pass — while a sync run's **record** carries the step-7 post-run pass, per sentence (1), AC-2.7 and AC-3.3. PROPERTIES must pin that reading with executable assertions, because it is the difference between a successful sync exiting `0` and exiting `1`: (a) after a successful plain sync over an all-`stale` consumer, the written `rows[].state` are the **post-run** states (`in-sync`), and the exit is `0` — the record does **not** replay the as-found `stale` states; (b) on a hook run and on a `--check` run the two readings coincide, so the recorded states equal the as-found states, and a test asserting that must not be mistaken for evidence about (a); (c) the copy/backup/delete decisions of the sync run are the ones the **as-found** pass produced, observable through O-1/O-7's `as-found` trace label rather than through the record. Without this row the reading lives only in FSPEC prose that the PROPERTIES author has no obligation to read | §4.2 states the behavior; §3's pass table names the three passes; §5.8 gives the exit-code consequence; OQ-6 (§11) states the tension and the invited REQ amendment, and routes ownership here rather than to a REQ revision that the stopping rule makes unreachable |
+| **O-20** | PROPERTIES | **AC-2.6's measurement-time rule must be asserted, not assumed (OQ-6 — now closed at source by REQ v17.1, which makes this row a restatement of an AC rather than of an FSPEC reading; the obligation is unchanged and, per Phase CR SE F-06, was never discharged for the `retiredPresent` half).** The rule: AC-2.9(1) governs the pass the run **acts on** — the step-2 as-found pass — while a sync run's **record** carries the step-7 post-run pass for **every** recorded value, `rows[].state` and `retiredPresent[].supersedingState` alike, per AC-2.6, AC-2.7 and AC-3.3. PROPERTIES must pin that reading with executable assertions, because it is the difference between a successful sync exiting `0` and exiting `1`: (a) after a successful plain sync over an all-`stale` consumer, the written `rows[].state` are the **post-run** states (`in-sync`), and the exit is `0` — the record does **not** replay the as-found `stale` states; (b) on a hook run and on a `--check` run the two readings coincide, so the recorded states equal the as-found states, and a test asserting that must not be mistaken for evidence about (a); (c) the copy/backup/delete decisions of the sync run are the ones the **as-found** pass produced, observable through O-1/O-7's `as-found` trace label rather than through the record; **(d) the same claim must be asserted over `retiredPresent[].supersedingState`, not only over `rows[]`** — an assertion suite that covers `rows[]` alone is green against an implementation that records the post-copy value for `supersedingState`, which is exactly the shipped defect Phase CR SE F-06 found (`sync-workflows.sh` captured step 5's value and step 7 never revisited it, while step 6 sits between them and can move the classification). Without this row the reading lives only in FSPEC prose that the PROPERTIES author has no obligation to read | §4.2 states the behavior; §3's pass table names the three passes; §5.8 gives the exit-code consequence; OQ-6 (§11) is now **resolved** by REQ v17.1's AC-2.6, so this row and the AC agree by construction; ownership of the executable assertions stays here |
 | O-13 | `consolidate-learnings` | REQ-scope stopping rule → `docs/_constraints/DOMAIN-CONSTRAINTS.md`. **Neither `docs/_constraints/` nor `docs/_decisions/` exists on this branch** — the file must be **created**, not merged into; "no such file" does not discharge the row | Not FSPEC's; recorded so it is not lost |
 
 ## 11. Open questions
@@ -2821,10 +2847,26 @@ document's reviewers must verify the disposition. A finding that one of these is
 | **OQ-4** | ~~Is a `lib/` subdirectory under `hooks/scripts/` acceptable?~~ **RESOLVED — yes, decided.** The OQ-1 spike proved arbitrary nested directories survive packaging (`workflows/dist/` did; the live cache also ships `workflows/__tests__/`, `hooks/scripts/`, `templates/`). `hooks.json`'s bare-path convention is irrelevant to C1 because C1 is **sourced, never executed and never registered as a hook** — it needs no execute bit. `pdlc/hooks/scripts/lib/pdlc-drift.sh` stands | No | — |
 | **OQ-5** | ~~How does the queue print `<pluginRoot>`-expanded commands?~~ **RESOLVED — decided: the drift state carries one pre-expanded command.** The queue *cannot* expand: it runs in the workflow runtime, which has no `process`/env access, and the one-read rule forbids it opening anything else. The drift state therefore gains one top-level field, `syncCommand` (string \| null) — the `<pluginRoot>`-expanded sync invocation, written by C1 like every other field. See §1.3. AC-2.6 fixes the *required* fields of the record, not an exhaustive key set (its "exactly one entry per manifest row" clause governs `rows`, not the top level), so this is an FSPEC-level elaboration, not a REQ deviation — reviewers who disagree should route it as a REQ amendment, but the field itself is forced by AC-4.2 + NFR-1 jointly | No | In the §4.4 invalidation record `syncCommand` is emitted as **`null`** unconditionally — it is a path-bearing string (the O-4 injection concern), and the record's remediation class is permissions/filesystem, never sync, so nothing is lost |
 
-**OQ-6 — AC-2.6's two sentences about *when* the recorded states are measured.** *(New in v2.0,
-non-blocking, recorded rather than resolved unilaterally.)*
+**OQ-6 — AC-2.6's sentences about *when* the recorded states are measured.**
+**RESOLVED at source — REQ **v17.1** amended AC-2.6 (SE F-06, Phase CR), 2026-07-29.** *(Recorded
+in v2.0, non-blocking, deliberately not resolved unilaterally; the REQ closed it instead.)*
 
-AC-2.6 contains both of these:
+**The resolution.** AC-2.6 now states one rule for every recorded value — `rows[].state` and
+`retiredPresent[].supersedingState` alike: **the post-run pass, the last classification the run
+performs before the atomic write.** It further states that AC-2.9(1) governs the *as-found* pass
+(the decisions), that AC-3.9's `in-sync` gate is a decision read from the post-copy state and never
+recorded, and that a retired path's `supersedingState` and its superseding row's `rows[].state`
+cannot disagree within one record. That is precisely the reading §4.2 and §3's pass table already
+applied, so **nothing in this FSPEC changes behaviorally**; what changes is that §3's table is now
+restating an AC rather than interpreting one. The v2.0–v5.1 prose that cited the old "sync:
+post-copy" clause — §3's pass-table commentary, §4.2's step-7 justification and §4.6's retirement
+bullet — is corrected in v5.2 to cite the amended AC; the tables themselves were already correct
+and are unchanged. **§10 O-20 stands unchanged and remains binding:** the reading still has to be
+asserted by executable properties, and the Phase CR finding is the proof — the shipped
+implementation recorded the *post-copy* value for `supersedingState` (`sync-workflows.sh`) and no
+test caught it, because the properties covered the record's `rows[]` half only.
+
+The tension as originally recorded, retained for the record. AC-2.6 v17.0 contained both of these:
 
 1. "`supersedingState` measured at write time (hook: session start; check: current; **sync:
    post-copy**)"; and
@@ -2862,10 +2904,13 @@ artifact. Two independent consequences follow, and neither depends on the other:
 
 1. **Downstream (binding, no revision required):** O-20 obliges PROPERTIES to assert the reading
    directly — post-run states in a sync record, as-found states driving the run's decisions.
-2. **Upstream (optional, non-blocking):** the invitation to reword AC-2.6 sentence (2) as "the
-   recorded states are those the run acted on (hook, `--check`) or those left by the run (sync)"
-   stands and is recorded here for whoever next has legitimate cause to open the REQ. If that never
-   happens, nothing is lost — O-20 already carries the behavior.
+2. **Upstream (optional, non-blocking) — this is what happened.** The invitation to reword AC-2.6
+   sentence (2) was taken up in **REQ v17.1**: Phase CR's final codebase review supplied the
+   legitimate cause (a shipped record that could contradict itself), which is a finding about an
+   AC's observable behavior and therefore inside the REQ stopping rule's carve-out. The amendment
+   went further than the invited wording — it states the rule for `supersedingState` explicitly,
+   which the invited wording did not — because that field, not `rows[]`, is where the
+   implementation went wrong.
 
 ### 11.1 OQ-3 — the linked-worktree decision (**decided: Option B**, operator, 2026-07-28)
 

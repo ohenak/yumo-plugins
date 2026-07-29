@@ -27,7 +27,46 @@ _pdlc_c3_dir="${BASH_SOURCE[0]%/*}"
 [[ "$_pdlc_c3_dir" == "${BASH_SOURCE[0]}" ]] && _pdlc_c3_dir="."
 
 # shellcheck source=lib/pdlc-drift.sh
-. "${_pdlc_c3_dir}/lib/pdlc-drift.sh"
+. "${_pdlc_c3_dir}/lib/pdlc-drift.sh" 2>/dev/null || true
+
+# ───────────────────────── C1 availability gate (FSPEC §5.8, CR F-02) ─────────────────────────
+#
+# A partial plugin install (interrupted copy, unreadable `lib/`, truncated file) leaves this
+# entrypoint present and C1 missing. Without this gate the run fell through the source failure
+# into a `command not found` cascade and died with status **1** — the one code FSPEC §5.8 says
+# this entrypoint never emits, and the worst possible one to emit here: 1 is the "sync-fixable
+# drift" class, so a broken install told the operator to run a sync that cannot fix it.
+#
+# Exit **3** is the correct class per §5.8's precedence table: no baseline could be resolved, so
+# nothing was verified; and no write was attempted, so 4 (which outranks 3) cannot apply.
+#
+# Tolerating the source's exit status is not sufficient on its own — a truncated C1 sources
+# cleanly having defined only its first few functions — so the gate probes the functions this
+# script calls, including `pdlc_msg_w7`, the LAST definition in C1 (its layers are append-only),
+# whose presence therefore witnesses that the whole file was read.
+#
+# The probe list deliberately does NOT name the fault seam's `pdlc_fault_active` guard:
+# PROP-SEAM-02 scans these three bash sources as text and reads the word after that name
+# as a fault token, so listing it here would invent a token that does not exist. The
+# fault layer is witnessed by `pdlc_fault_unrecognised_seen` instead.
+_pdlc_c3_c1_missing=""
+for _pdlc_c3_fn in \
+  pdlc_load_manifest pdlc_probe_hash_tool pdlc_classify_all pdlc_classify_row \
+  pdlc_fault_unrecognised_seen pdlc_trace _pdlc_split_on \
+  _pdlc_write_failure_op_is_stderr_only pdlc_sync_command \
+  pdlc_backup pdlc_copy_artifact pdlc_retire \
+  pdlc_write_sync_manifest pdlc_write_drift_state \
+  pdlc_msg_w1 pdlc_msg_w3 pdlc_msg_w4 pdlc_msg_w6 pdlc_msg_w7; do
+  if ! declare -F "$_pdlc_c3_fn" >/dev/null 2>&1; then
+    _pdlc_c3_c1_missing="$_pdlc_c3_fn"
+    break
+  fi
+done
+if [[ -n "$_pdlc_c3_c1_missing" ]]; then
+  printf 'pdlc: cannot check or sync workflows — the plugin library %s is missing or incomplete (no %s), so nothing could be classified and nothing was written. Reinstall or update the pdlc plugin.\n' \
+    "${_pdlc_c3_dir}/lib/pdlc-drift.sh" "$_pdlc_c3_c1_missing" >&2
+  exit 3
+fi
 
 # ───────────────────────────── argument parsing ─────────────────────────────
 
@@ -178,8 +217,13 @@ _pdlc_c3_build_record() {
 # re-expresses those entries in the repo-relative form the record/stderr contract expects.
 _pdlc_c3_relpath() {
   local p="$1"
+  # Both the `==` RHS and the `#` prefix are QUOTED (CR F-17): an unquoted `${p#${PDLC_REPO_ROOT}/}`
+  # evaluates the repo root as a glob PATTERN, so a root containing `[`, `\` (and, for other
+  # inputs, `*`/`?`) fails to strip or mis-strips, and `writeFailures[].path` silently stops being
+  # repo-relative. Quoting makes it a literal prefix; the trailing `*` on the `==` RHS stays
+  # outside the quotes because that one IS meant to be a pattern.
   if [[ -n "${PDLC_REPO_ROOT:-}" && "$p" == "${PDLC_REPO_ROOT}/"* ]]; then
-    printf '%s' "${p#${PDLC_REPO_ROOT}/}"
+    printf '%s' "${p#"${PDLC_REPO_ROOT}/"}"
   else
     printf '%s' "$p"
   fi
@@ -495,6 +539,30 @@ sys.stdout.write(json.dumps({"schemaVersion": 1, "entries": entries}))
 
   # step 7 — POST-RUN reclassify (recorded pass).
   pdlc_classify_all "post-run"
+
+  # …and re-seat `retiredPresent[].supersedingState` onto that same pass (AC-2.6, FSPEC §3): every
+  # state the record carries is the run's LAST classification, so a retired path's supersedingState
+  # and its superseding row's `rows[].state` are two readings of one pass and cannot disagree. The
+  # retirement loop above appended the POST-COPY reading — the right input for AC-3.9's delete gate
+  # it was taken for, but not the reading the record is defined to carry (they diverge whenever the
+  # row's own copy fails verification: post-copy "local-edit" off the pre-existing entry, post-run
+  # "unverified" once step 6 removes it).
+  #
+  # Only the STATE is revisited: which retired paths appear at all is a property of the filesystem
+  # after the retire attempt (the `-e` re-probe above), not of the classifier, so `..._RETIRED_PATH`
+  # / `..._RETIRED_ID` — the other two arrays parallel to this one — are left exactly as built, and
+  # positional correspondence is preserved by assigning in place rather than rebuilding. Row lookup
+  # is a linear scan of `PDLC_ROWS_ID` (bash 3.2 has no associative arrays; the row count is the
+  # manifest's, i.e. single digits). The `--check` inventory below needs no such re-seat: it copies
+  # nothing, so its single as-found pass IS its post-run pass.
+  for ((_pdlc_c3_i = 0; _pdlc_c3_i < ${#_PDLC_C3_RETIRED_PATH[@]}; _pdlc_c3_i++)); do
+    for ((_pdlc_c3_j = 0; _pdlc_c3_j < ${#PDLC_ROWS_ID[@]}; _pdlc_c3_j++)); do
+      if [[ "${PDLC_ROWS_ID[$_pdlc_c3_j]}" == "${_PDLC_C3_RETIRED_ID[$_pdlc_c3_i]}" ]]; then
+        _PDLC_C3_RETIRED_STATE[$_pdlc_c3_i]="${PDLC_STATE[$_pdlc_c3_j]:-}"
+        break
+      fi
+    done
+  done
 fi
 
 # ───────────────────────────── retired-present inventory under --check ─────────────────────────────

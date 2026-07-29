@@ -51,8 +51,20 @@
 # fields). Every variable this script reads is either always-assigned inside the same
 # function or explicitly defaulted with `${var:-}` at its use site.
 
-export LC_ALL=C
-export LANG=C
+# Deliberately NOT `export LC_ALL=C; export LANG=C` here at top level (TE F-03): this driver's
+# whole process — including every C1 function invoked below via `invoke_function`'s bare
+# `"$fnName" "$@"` (no subshell, §11.2's comment on that) — shares ONE environment, so a
+# top-level export here would silently overwrite whatever locale the CALLER (the harness, or a
+# test injecting one directly via `runProbe`'s `opts.env`) put in place before C1 ever got a
+# chance to run. That makes TSPEC §11.3 row 2's test ("C1's own `export LC_ALL=C` holds under
+# an injected locale") vacuous: the caller's locale would never reach C1, since this script
+# would already have clobbered it back to `C` first. Only `percent_encode`'s OWN byte-wise loop
+# needs a guaranteed `C` locale to be correct (see its own comment on `printf '%d'`'s
+# sign-extension under non-C locales) — so the export is scoped there instead, inside a
+# function invoked exclusively via command substitution (`$(percent_encode "$field")`, see
+# `emit_ok`), which always forks a subshell. An `export` inside that subshell never escapes
+# back to this script's own process, so it cannot leak onto the C1 functions this process runs
+# directly.
 
 SCRIPT_DIR="$(cd "${BASH_SOURCE[0]%/*}" && pwd)"
 C1_PATH="${SCRIPT_DIR}/../../../../hooks/scripts/lib/pdlc-drift.sh"
@@ -64,6 +76,8 @@ source "$C1_PATH" 2>/dev/null || true
 # trailing newline). Bash-3.2-safe (macOS's shipped /bin/bash) — no namerefs, no
 # associative arrays, no bashisms newer than 3.2.
 percent_encode() {
+  export LC_ALL=C
+  export LANG=C
   local input="$1"
   local out="" i c ord hex
   local len=${#input}

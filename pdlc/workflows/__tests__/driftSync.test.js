@@ -801,12 +801,37 @@ describeOrSkip(
     // ───────────────────────────── PROP-MTM-04 (sync half) ─────────────────────────────
 
     describe("PROP-MTM-04 (sync half) — the retired-row pass binding: agreement cases, post-copy narrowing, and the predicted disagreement", () => {
-      // Conjunct 1, scoped to the AGREEMENT cases: R's own as-found/post-copy/post-run states all
-      // coincide (no R-own-copy fault), so `retiredPresent[].supersedingState` (post-copy-derived,
-      // sync-workflows.sh line ~419) trivially equals the row's recorded post-run state too.
-      const agreementCases = ["in-sync", "stale", "missing", "local-edit", "unverified"];
-      for (const rState of agreementCases) {
-        it(`conjunct 1 (agreement) — R "${rState}": retiredPresent.supersedingState matches R's recorded post-run state`, () => {
+      // Conjunct 1 — the record's single-pass contract (REQ AC-2.6 v17.1, FSPEC §3 v5.2, O-20(d)):
+      // EVERY state a record carries is the run's post-run reading, `retiredPresent[].
+      // supersedingState` no less than `rows[].state`. Within one record the two are therefore two
+      // readings of the same pass and cannot disagree — for ANY R, not merely for the R's whose
+      // as-found/post-copy/post-run readings happen to coincide.
+      //
+      // The case list is deliberately NOT scoped to those agreement states: the last two rows below
+      // are the compositions where the passes provably diverge (R's own copy is corrupted, so
+      // post-copy reads "local-edit" off R's stale sync-manifest entry, and the step-6 rewrite then
+      // removes that entry so post-run reads "unverified"). Those are the cases that discriminate a
+      // post-run-derived `supersedingState` from a post-copy-derived one; conjunct 3 below asserts
+      // the divergence itself, and this loop asserts the record stays self-consistent across it.
+      const supersedingStateCases = [
+        { label: 'R "in-sync"', rState: "in-sync" },
+        { label: 'R "stale"', rState: "stale" },
+        { label: 'R "missing"', rState: "missing" },
+        { label: 'R "local-edit"', rState: "local-edit" },
+        { label: 'R "unverified"', rState: "unverified" },
+        {
+          label: 'R "stale" + artifact-copy-corrupt (passes diverge: post-copy "local-edit" / post-run "unverified")',
+          rState: "stale",
+          runOpts: { fault: ["artifact-copy-corrupt:row-1"] },
+        },
+        {
+          label: 'R "local-edit" + --force + artifact-copy-corrupt (passes diverge as above)',
+          rState: "local-edit",
+          runOpts: { force: true, fault: ["artifact-copy-corrupt:row-1"] },
+        },
+      ];
+      for (const { label, rState, runOpts } of supersedingStateCases) {
+        it(`conjunct 1 — ${label}: retiredPresent.supersedingState matches R's recorded post-run state`, () => {
           const { trees, retiredRel } = buildRetiringTrees();
           const { consumer } = trees;
           try {
@@ -818,20 +843,21 @@ describeOrSkip(
               setRowState(trees, "row-1", rState);
             }
 
-            const run = runSync(trees);
+            const run = runSync(trees, runOpts || {});
             const state = readDriftState(consumer.root);
             const row1 = state.rows.find((r) => r.id === "row-1");
             expect(row1).toBeTruthy();
 
             const retiredEntry = state.retiredPresent.find((e) => e.path === retiredRel);
-            if (row1.state === "in-sync") {
-              // Deleted — no retiredPresent entry to compare (the path itself is gone).
-              expect(existsSync(join(consumer.root, ...retiredRel.split("/")))).toBe(false);
+            if (!existsSync(join(consumer.root, ...retiredRel.split("/")))) {
+              // Retired (R's own copy verified in place, AC-3.9's gate) — no entry to compare.
               expect(retiredEntry).toBeUndefined();
             } else {
               expect(retiredEntry).toBeTruthy();
+              expect(retiredEntry.supersededBy).toBe("row-1");
               expect(retiredEntry.supersedingState).toBe(row1.state);
             }
+            void run;
           } finally {
             cleanupAll(trees);
           }
@@ -857,8 +883,9 @@ describeOrSkip(
       // OWN bundle, where R already carried a sync-manifest entry that the corrupted copy orphans):
       // post-copy classifies "local-edit" (stale entry, mismatched bytes); the manifest-rewrite step
       // then removes that entry (copy failed verification), so post-run classifies "unverified".
-      // Asserted directly against the trace's classify records and the recorded row state — NOT
-      // against `retiredPresent`, which is where the known production defect lives (see Residuals).
+      // Asserted against the trace's classify records, the recorded row state, AND — per O-20(d) —
+      // `retiredPresent[].supersedingState`, which the single-pass contract binds to the POST-RUN
+      // reading: the divergence is real in the passes, and must NOT survive into the record.
       it('conjunct 3, sub-case (a) — R "stale" + artifact-copy-corrupt: post-copy "local-edit" vs post-run "unverified"', () => {
         const { trees } = buildRetiringTrees();
         const { consumer } = trees;
@@ -877,6 +904,14 @@ describeOrSkip(
           expect(row1.state).toBe("unverified");
 
           expect(postCopy.arg.toString("utf8")).not.toBe(row1.state);
+
+          // O-20(d): the retired path survived (post-copy was not "in-sync", so AC-3.9's gate held
+          // the delete back), and its recorded supersedingState is the post-run reading of row-1 —
+          // never the post-copy one the delete gate was taken from.
+          const retiredEntry = state.retiredPresent.find((e) => e.path === RETIRED_REL);
+          expect(retiredEntry).toBeTruthy();
+          expect(retiredEntry.supersedingState).toBe(row1.state);
+          expect(retiredEntry.supersedingState).not.toBe(postCopy.arg.toString("utf8"));
         } finally {
           cleanupAll(trees);
         }
@@ -897,6 +932,12 @@ describeOrSkip(
           const state = readDriftState(consumer.root);
           const row1 = state.rows.find((r) => r.id === "row-1");
           expect(row1.state).toBe("unverified");
+
+          // O-20(d), as in sub-case (a): recorded supersedingState is the post-run reading.
+          const retiredEntry = state.retiredPresent.find((e) => e.path === RETIRED_REL);
+          expect(retiredEntry).toBeTruthy();
+          expect(retiredEntry.supersedingState).toBe(row1.state);
+          expect(retiredEntry.supersedingState).not.toBe(postCopy.arg.toString("utf8"));
         } finally {
           cleanupAll(trees);
         }

@@ -22,14 +22,25 @@ set -u
 export LC_ALL=C
 export LANG=C
 
-# AC-2.4 is absolute: a broken drift check must never block a session from starting. The trap
-# covers an unanticipated internal error; the unconditional `exit 0` at the very end of this
-# file covers ordinary fall-through. Every call below whose non-zero return is EXPECTED (not a
-# crash) is guarded with `|| true` (or is inside an `if`) specifically so it never reaches this
-# trap — bash's ERR trap does not fire for a command that is not the final one in a `||`/`&&`
-# list or the condition of an `if`/`while`, so that guarding is sufficient without per-branch
-# `exit 0` discipline.
-trap 'exit 0' ERR
+# AC-2.4 is absolute: a broken drift check must never block a session from starting. The ERR
+# trap covers an unanticipated internal error; the unconditional `exit 0` at the very end of
+# this file covers ordinary fall-through. Every call below whose non-zero return is EXPECTED
+# (not a crash) is guarded with `|| true` (or is inside an `if`) specifically so it never
+# reaches this trap — bash's ERR trap does not fire for a command that is not the final one in
+# a `||`/`&&` list or the condition of an `if`/`while`, so that guarding is sufficient without
+# per-branch `exit 0` discipline.
+#
+# The EXIT arm is what makes AC-2.4 genuinely absolute (CR F-01). ERR alone is NOT enough: a
+# `set -u` unbound-variable fatal does not fire the ERR trap, it kills the shell outright —
+#     bash -c 'set -u; trap "exit 0" ERR; echo $UNSET'   → rc 127, trap never runs
+#     bash -c 'set -u; trap "exit 0" EXIT; echo $UNSET'  → rc 0
+# (127, not 1: measured on bash 3.2.57 arm64-apple-darwin25, and identical with no trap at all,
+# which is itself the evidence that the ERR arm contributes nothing on this path)
+# — and the same is true of every other fatal shell error (bad substitution, a `readonly`
+# reassignment, an arithmetic syntax error). EXIT fires on all of them, so any internal failure
+# whatsoever now leaves the session unblocked. `exit` inside an EXIT trap does not re-enter the
+# trap, so this cannot recurse.
+trap 'exit 0' ERR EXIT
 
 # Drain the SessionStart JSON on stdin — its content is not needed, but the hook contract reads
 # it. Bash-native (no `cat`): a single `read -d ''` consumes everything up to EOF without risk
@@ -45,6 +56,52 @@ if [ "$_PDLC_HOOK_SCRIPT_DIR" = "${BASH_SOURCE[0]}" ]; then
 fi
 # shellcheck disable=SC1091
 source "${_PDLC_HOOK_SCRIPT_DIR}/lib/pdlc-drift.sh" 2>/dev/null || true
+
+# ───────────────────────── C1 availability gate (AC-2.4, CR F-01) ─────────────────────────
+#
+# The tolerant `source` above survives a partial plugin install (an interrupted copy, an
+# unreadable `lib/`, a lost or truncated file) — but everything below it calls into C1, so
+# without this gate the run dies mid-flight on the first `command not found` cascade and hands
+# the operator raw bash diagnostics instead of the message catalogue.
+#
+# Tolerating the `source`'s exit status is NOT sufficient on its own: a truncated C1 sources
+# cleanly (status 0) having defined only its first few functions. The gate therefore probes the
+# functions this script actually calls, including `pdlc_msg_w7` — the LAST definition in C1, so
+# its presence also witnesses that the file was read to the end (C1's layers are append-only).
+#
+# The list deliberately does NOT name `pdlc_fault_active`: PROP-SEAM-02 scans these three
+# bash sources as text and reads the word following that name as a fault token, so naming
+# it here would invent a token. `pdlc_fault_unrecognised_seen` witnesses the same layer.
+_PDLC_HOOK_C1_MISSING=""
+for _pdlc_hook_fn in \
+  pdlc_load_manifest pdlc_probe_hash_tool pdlc_classify_all pdlc_fault_unrecognised_seen pdlc_trace \
+  _pdlc_split_on _pdlc_write_failure_op_is_stderr_only pdlc_sync_command \
+  pdlc_write_drift_state \
+  pdlc_msg_w1 pdlc_msg_w2 pdlc_msg_w3 pdlc_msg_w4 pdlc_msg_w5 pdlc_msg_w6 pdlc_msg_w7; do
+  if ! declare -F "$_pdlc_hook_fn" >/dev/null 2>&1; then
+    _PDLC_HOOK_C1_MISSING="$_pdlc_hook_fn"
+    break
+  fi
+done
+if [ -n "$_PDLC_HOOK_C1_MISSING" ]; then
+  printf 'pdlc: workflow drift was not checked this session — the plugin library %s is missing or incomplete (no %s), so nothing could be classified and nothing was recorded. Reinstall or update the pdlc plugin; your session is unaffected.\n' \
+    "${_PDLC_HOOK_SCRIPT_DIR}/lib/pdlc-drift.sh" "$_PDLC_HOOK_C1_MISSING" >&2
+  exit 0
+fi
+
+# Seed the arrays this script reads, but only when C1 has not already defined them — under
+# `set -u` a read of an unset array is fatal, and `${#ARR[@]:-0}` does NOT default it (`${#…}`
+# does not compose with `:-`; see the `_pdlc_n_rows` site below). Conditional so a C1 that has
+# already populated a row array is never clobbered.
+for _pdlc_hook_arr in \
+  PDLC_ROWS_ID PDLC_ROWS_RETIRES PDLC_STATE PDLC_REASON \
+  PDLC_PLUGIN_HASH PDLC_CONSUMER_HASH \
+  PDLC_PLUGIN_ARTIFACT_VERSION PDLC_CONSUMER_ARTIFACT_VERSION \
+  PDLC_WRITE_FAILURES _PDLC_SPLIT_RESULT; do
+  if ! declare -p "$_pdlc_hook_arr" >/dev/null 2>&1; then
+    eval "declare -a ${_pdlc_hook_arr}=()"
+  fi
+done
 
 # §4.2 steps 1-2: resolve the baseline (evidence + selection, E1-E7) and classify every row +
 # probe retired paths, as-found. `pdlc_load_manifest`'s own last step (`pdlc_resolve_baseline`)
@@ -113,7 +170,10 @@ fi
 declare -a _PDLC_RETIRED_PATH=()
 declare -a _PDLC_RETIRED_BY=()
 declare -a _PDLC_RETIRED_STATE=()
-_pdlc_n_rows=${#PDLC_ROWS_ID[@]:-0}
+# `${#ARR[@]:-0}` is NOT a defaulting expansion — `${#…}` does not compose with `:-`, so under
+# `set -u` an unset `PDLC_ROWS_ID` is a fatal error here rather than a 0 (CR F-01). The array is
+# guaranteed defined by the seeding loop above, so the plain form is correct and safe.
+_pdlc_n_rows=${#PDLC_ROWS_ID[@]}
 _pdlc_i=0
 while [ "$_pdlc_i" -lt "$_pdlc_n_rows" ]; do
   _pdlc_retires_joined="${PDLC_ROWS_RETIRES[$_pdlc_i]:-}"
@@ -175,7 +235,7 @@ if [ -n "${PDLC_PY_BIN:-}" ]; then
     done
 
     _pdlc_j=0
-    _pdlc_n_retired=${#_PDLC_RETIRED_PATH[@]:-0}
+    _pdlc_n_retired=${#_PDLC_RETIRED_PATH[@]}
     while [ "$_pdlc_j" -lt "$_pdlc_n_retired" ]; do
       _pdlc_retired_tsv="${_pdlc_retired_tsv}${_PDLC_RETIRED_PATH[$_pdlc_j]}"$'\t'"${_PDLC_RETIRED_BY[$_pdlc_j]}"$'\t'"${_PDLC_RETIRED_STATE[$_pdlc_j]}"$'\n'
       _pdlc_j=$((_pdlc_j + 1))
@@ -295,7 +355,7 @@ else
 
   # Order 6 — W-6, retiredPresent non-empty, independently of managed-row states.
   _pdlc_j=0
-  _pdlc_n_retired=${#_PDLC_RETIRED_PATH[@]:-0}
+  _pdlc_n_retired=${#_PDLC_RETIRED_PATH[@]}
   while [ "$_pdlc_j" -lt "$_pdlc_n_retired" ]; do
     printf '%s\n' "$(pdlc_msg_w6 "${_PDLC_RETIRED_PATH[$_pdlc_j]}" "${_PDLC_RETIRED_BY[$_pdlc_j]}" "${_PDLC_RETIRED_STATE[$_pdlc_j]}")" >&2
     _pdlc_j=$((_pdlc_j + 1))

@@ -501,7 +501,7 @@ Carried from FSPEC §3.6 and made concrete, because each is a bash idiom that is
 
 | Rule | Implementation | Where a test would catch a regression |
 |---|---|---|
-| `LC_ALL=C` everywhere | `export LC_ALL=C` at the top of C1, before any sort/compare | AT-30's substring predicate; backup-prune ordering |
+| `LC_ALL=C` everywhere | `export LC_ALL=C` at the top of C1, before any sort/compare | AT-30's substring predicate. **Not** backup-prune ordering — see §11.3 row 2's correction (SE F-03): prune's compared set varies only in digits, so it is locale-invariant by grammar and stays green with the export removed. On Darwin no test detects that removal; the export's justification there is cross-libc portability, not a local observable |
 | No mtime, anywhere | no `stat -c %Y`, no `find -newer`, no `ls -t` in C1/C3 | `driftClassify.test.js` "state is identical after `touch`-ing both sides" |
 | Row order follows the manifest | iterate `PDLC_ROWS` by index, never a glob | `driftState.test.js` asserts `rows[].id` order equals manifest order for a manifest whose ids are in non-alphabetical order |
 | `not-managed` sorted | `printf '%s\n' "${…[@]}" \| LC_ALL=C sort` | AT-25 |
@@ -595,7 +595,12 @@ function sandboxEnv(opts) {
 
 Nothing else is present. `LC_ALL=C` is set on the child so the harness never depends on C1's own
 `export LC_ALL=C` (§2.5) being present — a test that relied on the subject to set it could not
-detect its removal; §11.3's sort property asserts the subject-side export separately.
+detect its removal; §11.3 row 2 injects a competing locale separately. **Corrected (SE F-03, Phase
+CR): that separate assertion does not, in fact, detect the subject-side export's removal either** —
+prune's compared set varies only in digits, so it is locale-invariant by grammar. The reasoning
+above (don't let the harness supply what the subject must supply) remains sound and is still why
+`LC_ALL=C` is set on the child; what was wrong was the belief that a detector existed downstream of
+it. See §11.3 row 2.
 
 #### 3.2.1 `makeToolDir(names)` — how a tool is made absent
 
@@ -1763,10 +1768,24 @@ contain no `__tests__/` segment, so (iv) does not fire there.
 
 **The gitignore hazard, closed at the landing step.** FSPEC §7.5 item 1 gitignores
 `.claude/workflows/` wholesale, and the fixture contains a nested `.claude/workflows/` directory
-(it must, to exercise exemption (i)). An unanchored pattern matches at **every** depth, so the
-fixture's files would be silently uncommittable and the tree would arrive empty on a fresh clone —
-turning AT-23's `== 7` into `== 0` with no diff to explain it. The landing step therefore writes
-**anchored** patterns (`/.claude/workflows/`, `/pdlc/workflows/dist/`), and
+(it must, to exercise exemption (i)). A pattern that matches at **every** depth would make the
+fixture's files silently uncommittable and the tree would arrive empty on a fresh clone — turning
+AT-23's `== 7` into `== 0` with no diff to explain it.
+
+> **Corrected (SE F-15, Phase CR).** v1 of this paragraph said "an unanchored pattern matches at
+> every depth" and treated the leading `/` as the thing that closes the hazard. That is not
+> gitignore(5)'s rule and the leading slash is **redundant** here: a pattern with a separator
+> anywhere but the trailing position is *already* relative to its own `.gitignore`'s directory, so
+> `.claude/workflows/` and `/.claude/workflows/` match identically. The real hazard class is a
+> **slash-free** pattern (`workflows/`) or an explicit `**/` prefix — only those recurse. Measured
+> on git 2.50.1: with `.claude/workflows/` or `/.claude/workflows/` the nested fixture path is
+> **not** ignored; with `workflows/` or `**/.claude/workflows/` it **is**. (The probe is
+> non-vacuous — the latter two rows prove the oracle can report a match at depth, so the former
+> two rows' non-match is a real negative.)
+
+The landing step writes the explicitly-anchored patterns
+(`/.claude/workflows/`, `/pdlc/workflows/dist/`) — correct, and clearer at the cost of one
+redundant character — and
 `documentOracles.test.js` carries a guard asserting every file the fixture inventory names is
 present on disk **and** tracked (`git ls-files --error-unmatch`), so the failure is reported as
 "the fixture is not committed" rather than as an oracle bug.
@@ -1968,7 +1987,7 @@ silently truncated property run reporting green over 12 of 500 cases.
 | # | Pinned here | Because |
 |---|---|---|
 | 1 | the **id generator's charset is M6's**, exported as `M6_ID_REGEX` from `document-oracles.mjs` and shared by C1's validator and the generator | PROPERTIES' round-trip must range over the *same* charset the manifest validator accepts, including ids containing `.`, `-` and stamp-shaped substrings (`dev.20260101T000000Z`); a generator with its own charset proves a property about a set nothing else uses |
-| 2 | the sort oracle is **`LC_ALL=C` on the child**, and C1's own `export LC_ALL=C` is asserted **separately** | §3.2 sets `LC_ALL=C` in the sandbox, which would mask the removal of C1's export. The separate assertion runs one sort fixture with `LC_ALL=en_US.UTF-8` injected via `opts.env` and asserts the ordering is **unchanged** — red against an implementation relying on the caller's locale |
+| 2 | the sort oracle is **`LC_ALL=C` on the child**, and pruning is asserted **separately** to be stable under an injected caller locale | §3.2 sets `LC_ALL=C` in the sandbox, so the separate assertion injects `LC_ALL=en_US.UTF-8` via `opts.env` and asserts the ordering is **unchanged**. **Corrected (SE F-03, Phase CR): this row does NOT detect removal of C1's `export LC_ALL=C`, and the original claim that it did was wrong.** `pdlc_prune_backups` sorts only `matched[]`, which `pdlc_backup_parse`'s tail rule `^\.([0-9]{8}T[0-9]{6}Z)-([0-9]{2})\.bak$` plus the constant-`$id` filter restrict to `{constant id}.{8 digits}T{6 digits}Z-{2 digits}.bak` — the only varying bytes reaching the comparison are digits, so the sort is locale-invariant **by grammar**, not by the export. Widening the fixture to non-digit varying characters does not rescue it: those names fail `pdlc_backup_parse` and never enter `matched[]`. Measured on bash 3.2.57(1) arm64-apple-darwin25, C and en_US.UTF-8 are byte-identical for both locale-exposed constructs in C1 (`PDLC_M6_ID_REGEX` bracket ranges under `=~`, and `[[ a > b ]]` case ordering), so **no detector for the export is available from a macOS run at all**. The export is retained as a cross-libc portability guard (glibc collates `a < A < b`; Darwin does not) — reasoning, unmeasured here, and not to be cited as measured. What the row does hold: pruning stays correct under an injected locale, going red if the implementation ever moves onto a locale-sensitive instrument that *is* reachable (`sort`, `awk`, a `tr` range, or a bracket range applied to the id rather than a digit run) |
 | 3 | `listBackups(root)` (§3.4) returns entries **already parsed** by the same 24-byte rule | so a prune property compares parsed `(stamp, nn)` tuples rather than re-deriving them in the test, where a second parser would drift from the first |
 | 4 | the retention binding: **newest 5 per id**, selection by descending filename sort, **never mtime** | §5.6. The falsifying fixture is stated in §13: five backups written in one second (`-01`…`-05`) plus a sixth, with **mtimes shuffled** by `utimesSync` after creation, asserting the pruned member is `-01` — red against any mtime-based selector, which is the one place an implementer reaches for `ls -t` |
 
@@ -2186,7 +2205,7 @@ capability the fixture needs; blank means it runs on every runner.
 
 | Name | Recipe | Location | Used by |
 |---|---|---|---|
-| `covered-violations` | **checked in**, §10.1's 12-file table | `__tests__/fixtures/covered-violations/` | **AT-23** |
+| `covered-violations` | **checked in**, §10.1's **13**-file table (7 expected violations + 6 exempt entries; corrected from 12/5 — SE F-13) | `__tests__/fixtures/covered-violations/` | **AT-23** |
 | `fxGreen` | `makePackagingFixture({})` — manifest computed from written bytes | tmp | §10.2's baseline |
 | `fxRoot3` | `makePackagingFixture({ break: "sha1" })` | tmp | **AT-29** |
 | `fxRoot3b/c/d` | `break: "retired" \| "pluginPath" \| "manifestLocation"` | tmp | §10.2 |
@@ -2399,7 +2418,7 @@ below.
 | **O-19 (d)** | this feature's implementation | Wrap the drift-state read so a throwing `_readFile` maps to row 1 `blocked` | §12.3: `readDriftStateSafely`, the three-way injection table, and the note that `rtReadFile` **propagates** today (`runtime-adapter.js:85–96` has no `try`/`catch`), so the wrapper is required for the test to return a report at all |
 | **O-13** | `consolidate-learnings` | REQ-scope stopping rule → `docs/_constraints/DOMAIN-CONSTRAINTS.md`, which must be **created** | Not this document's; carried so it is not lost |
 | **new** | PROPERTIES | **The emitted `PDLC_FAULT` token set is a subset of §5.2's sixteen.** FSPEC §10 O-10 requires it and it cannot be asserted example-wise | §5.2 is the closed list, exported from C1 as `PDLC_FAULT_TOKENS` so the property reads the implementation's own list rather than a copy; the property is `emitted ⊆ listed` over every fixture the suite runs |
-| **new** | landing step (implementation) | The gitignore entries of FSPEC §7.5 item 1 must be **anchored** (`/.claude/workflows/`, `/pdlc/workflows/dist/`) | §10.1: an unanchored pattern silently swallows the checked-in `covered-violations` fixture's nested directories, turning AT-23 from `== 7` into `== 0` with no diff to explain it. `documentOracles.test.js` carries the tracked-ness guard that reports it correctly if it happens |
+| **new** | landing step (implementation) | The gitignore entries of FSPEC §7.5 item 1 must be **anchored** (`/.claude/workflows/`, `/pdlc/workflows/dist/`) | §10.1: a pattern that matches at every depth — i.e. a **slash-free** one (`workflows/`) or one prefixed `**/`, *not* merely one lacking a leading slash (SE F-15) — silently swallows the checked-in `covered-violations` fixture's nested directories, turning AT-23 from `== 7` into `== 0` with no diff to explain it. `documentOracles.test.js` carries the tracked-ness guard that reports it correctly if it happens |
 | **new** | implementation phase | Observe once whether a Claude-created worktree copies untracked `.claude/workflows/` content (FSPEC §11.1's stated obligation) | Unchanged; no test — it is a documentation-scope adjustment, recorded in §17 |
 | **new** | landing step (implementation) | **Create `pdlc/RELEASE-CHECKLIST.md`** with the three rows §2.1a enumerates — AC-6.2a's installed-package assertion (runnable via `packagingViolations` from the shipped `lib/document-oracles.mjs`), AC-6.6's landed-violation fallback row, and NFR-2's one-off latency observation | §2.1a states the three rows and the one constraint the document carries (its wording must avoid all five `coveredViolations` patterns, or AT-22 goes red — FSPEC §5.4's rule for the optional `SKILL.md`, applied unchanged). It is in §2.1's file inventory, so it is a deliverable and not an intention. Until it exists, three P1/residual commitments (AC-6.2a, AC-6.6's residual, NFR-2) have **no** landing surface — the state v1.0 shipped in |
 | **new** | `harvest-learnings` | The durable rule behind the row above: **a checklist-owned AC needs a checklist artifact in the deliverable inventory** — an AC discharged by "the maintainer's checklist" is undischarged until that document is a named file with a named owner | Stated here so it survives this feature; PM F-05's finding is the second instance the pipeline has seen |

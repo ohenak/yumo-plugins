@@ -46,6 +46,7 @@ import {
   S_GIT_ABSENT,
   S_NO_GIT_DIR,
   S_NOTHING_STAGED, // eslint-disable-line no-unused-vars -- imported for parity with the pinned four; not asserted directly here (§10.3 note)
+  S_PLUGIN_JSON_UNREADABLE,
   S_UNBORN_HEAD,
 } from "../lib/document-oracles.mjs";
 
@@ -281,7 +282,9 @@ describe("covered-violations fixture guard (§10.1, TE Q-04)", () => {
     "pdlc/workflows/dist/orchestrate-queue.bundle.js",
     "pdlc/workflows/dist/distribution-manifest.json",
     "pdlc/workflows/__tests__/someTest.js",
-  ]; // TSPEC §10.1's 12-file table (7 expected violations + 5 exempt entries)
+  ]; // TSPEC §10.1's 13-file table (7 expected violations + 6 exempt entries).
+  // Corrected from "12-file … + 5 exempt" (SE F-13, Phase CR): the array has always held 13
+  // entries; only the comment was stale. Verified against `git ls-files` over the fixture root.
 
   test("every fixture-inventory file exists on disk (capability-free, every runner)", () => {
     for (const rel of ALL_FIXTURE_RELATIVE_PATHS) {
@@ -341,6 +344,65 @@ describe("packagingViolations (§10.2)", () => {
     expect(violations).toEqual(sorted);
   });
 
+  // -------------------------------------------------------------------------
+  // CR F-05 — the manifest's own readability is part of AC-6.2a.
+  //
+  // `packagingViolations` returned `[]` on THREE distinct inputs, only one of
+  // which is benign: manifest absent (documented), manifest unparseable, and
+  // manifest parseable but of neither known shape (no `else` after the
+  // `entries`/`rows` branches, so `{}` or `{"rows":"[]"}` fell straight through
+  // to clause (d) and returned []). A corrupt manifest therefore reported a
+  // clean packaged tree, which is exactly what AC-6.2a exists to deny —
+  // RELEASE-CHECKLIST §1's presence checks mitigate only the ABSENT case.
+  //
+  // The contract stays `{ clause, path, detail }[]`, empty === pass; only the
+  // corrupt cases move from `[]` to a flagged 6.2(a) whose `detail` names the
+  // parse/shape failure.
+  // -------------------------------------------------------------------------
+  describe("CR F-05 — an unreadable manifest is distinguishable from a clean tree", () => {
+    const manifestRel = "pdlc/workflows/dist/distribution-manifest.json";
+
+    test("an absent manifest is still [] — nothing has been packaged, so nothing can be violated", () => {
+      const root = makePackagingFixture();
+      rmSync(join(root, manifestRel));
+      expect(packagingViolations(root)).toEqual([]);
+    });
+
+    test("a manifest that is not valid JSON is flagged 6.2(a), not silently []", () => {
+      const root = makePackagingFixture();
+      writeFileSync(join(root, manifestRel), '{"schemaVersion": 1, "rows": [\n');
+      const violations = packagingViolations(root);
+      expect(violations).not.toEqual([]);
+      expect(
+        violations.some(
+          (v) => v.clause === "6.2(a)" && v.path === manifestRel && /not valid JSON/i.test(v.detail)
+        )
+      ).toBe(true);
+    });
+
+    // TSPEC §12.1's D6 mangling (an array replaced by a scalar) — the most
+    // likely hand-edit / LLM-relay corruption. It parses fine and matches
+    // neither known shape.
+    test("a manifest of neither known shape is flagged 6.2(a), not silently []", () => {
+      const root = makePackagingFixture();
+      writeFileSync(join(root, manifestRel), `${JSON.stringify({ schemaVersion: 1, rows: "[]" })}\n`);
+      const violations = packagingViolations(root);
+      expect(violations).not.toEqual([]);
+      expect(
+        violations.some(
+          (v) =>
+            v.clause === "6.2(a)" && v.path === manifestRel && /neither .*rows.* nor .*entries/i.test(v.detail)
+        )
+      ).toBe(true);
+    });
+
+    test("an empty-object manifest is flagged 6.2(a) too (the {} fall-through)", () => {
+      const root = makePackagingFixture();
+      writeFileSync(join(root, manifestRel), "{}\n");
+      expect(packagingViolations(root).some((v) => v.clause === "6.2(a)")).toBe(true);
+    });
+  });
+
   describe("two-root independence (§10)", () => {
     test("calling packagingViolations against a broken fixture root does not perturb the LIVE_ROOT call", () => {
       const liveBefore = packagingViolations(LIVE_ROOT);
@@ -391,6 +453,49 @@ describe("advertisedVersionViolation (§10.3)", () => {
 
   test("advertisedVersionViolation(LIVE_ROOT) is never \"red\" (§10.3) — \"green\" once landed, { skipped: S_NOTHING_STAGED } on an ordinary later commit", () => {
     expect(advertisedVersionViolation(LIVE_ROOT)).not.toBe("red");
+  });
+
+  // -------------------------------------------------------------------------
+  // CR F-19 — the documented return type is `"red" | "green" | { skipped }`.
+  //
+  // The final comparison read plugin.json from the working tree and from HEAD
+  // through two UNGUARDED `JSON.parse` calls (plus two unguarded reads), so a
+  // malformed or missing plugin.json on either side threw a SyntaxError/Error
+  // straight out of the oracle — outside its contract. Every OTHER precondition
+  // in this function is a skip-loudly branch (O-16); these were a crash.
+  // -------------------------------------------------------------------------
+  describe("CR F-19 — an unreadable plugin.json skips loudly instead of throwing", () => {
+    test("malformed plugin.json in the working tree ⇒ { skipped: S_PLUGIN_JSON_UNREADABLE }", () => {
+      const root = makeUntrackedOnlyFixture();
+      writeFileSync(join(root, "plugin.json"), '{"name": "pdlc", "version":\n');
+      expect(() => advertisedVersionViolation(root)).not.toThrow();
+      expect(advertisedVersionViolation(root)).toEqual({ skipped: S_PLUGIN_JSON_UNREADABLE });
+    });
+
+    test("plugin.json absent from the working tree ⇒ { skipped: S_PLUGIN_JSON_UNREADABLE }", () => {
+      const root = makeUntrackedOnlyFixture();
+      rmSync(join(root, "plugin.json"));
+      expect(advertisedVersionViolation(root)).toEqual({ skipped: S_PLUGIN_JSON_UNREADABLE });
+    });
+
+    test("malformed plugin.json at HEAD ⇒ { skipped: S_PLUGIN_JSON_UNREADABLE }", () => {
+      const root = mkTmpRoot();
+      writeTree(root, { "plugin.json": '{"name": "pdlc", "version":\n' });
+      initGitRepo(root);
+      commitAll(root, "initial (malformed plugin.json)");
+      // Working tree is now well-formed and bumped; only HEAD's copy is broken.
+      writeFileSync(
+        join(root, "plugin.json"),
+        `${JSON.stringify({ name: "pdlc", version: "0.12.0" }, null, 2)}\n`
+      );
+      mkdirSync(join(root, "pdlc/workflows/dist"), { recursive: true });
+      writeFileSync(
+        join(root, "pdlc/workflows/dist/orchestrate-dev.bundle.js"),
+        "// generated, untracked\n"
+      );
+      expect(() => advertisedVersionViolation(root)).not.toThrow();
+      expect(advertisedVersionViolation(root)).toEqual({ skipped: S_PLUGIN_JSON_UNREADABLE });
+    });
   });
 });
 

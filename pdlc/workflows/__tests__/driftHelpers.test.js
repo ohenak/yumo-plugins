@@ -509,6 +509,20 @@ describe("T-01 clause (d) — driver contracts", () => {
       const [result] = runGrammar(["parse\tnot-a-backup-name.txt"]);
       expect(result.ok).toBe(false);
     });
+
+    // CROSS-REVIEW-se-codebase-v1.md F-10: `IFS=$'\t' read -r kind a b c` collapses
+    // consecutive tabs (tab is an IFS-whitespace character even as the sole IFS member), so a
+    // case with an EMPTY middle field silently shifts every later field left. A `format` case
+    // with an empty `stamp` is the clearest observable: neither `pdlc_backup_format` nor its JS
+    // oracle validates the stamp's shape (only `id` against M6 and `nn` against `01..99`), so
+    // `format(id, "", nn)` is a legitimate ACCEPT — but the shift feeds the driver
+    // `pdlc_backup_format(id, nn, "")`, whose THIRD argument (the real `nn`) arrives empty and
+    // fails the `nn` regex, turning a case that must accept into one that wrongly rejects.
+    it("does not collapse an empty middle field (stamp) into a false reject", () => {
+      const [result] = runGrammar([`format\tsome-id\t\t01`]);
+      expect(result.ok).toBe(true);
+      expect(result.fields).toEqual(["some-id.-01.bak"]);
+    });
   });
 
   describe("lib-probe.sh (TSPEC §11.2's sourced-probe precedent)", () => {

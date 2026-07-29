@@ -112,7 +112,31 @@ describeOrSkip(
 
     // ───────────────────────────── §11.3 row 2 ─────────────────────────────
 
-    describe("§11.3 row 2 — C1's own `export LC_ALL=C` holds under an injected locale", () => {
+    // SCOPE CORRECTION (CR F-03): this case is a regression guard, NOT a detector for C1's
+    // `export LC_ALL=C`. Removing that export leaves it green, and it is important to know why
+    // rather than to "strengthen" it into something it cannot be.
+    //
+    // `pdlc_prune_backups` sorts only `matched[]`, and two filters decide that array: every name
+    // must satisfy `pdlc_backup_parse`'s tail `^\.([0-9]{8}T[0-9]{6}Z)-([0-9]{2})\.bak$`, and
+    // every name must parse to the one constant `$id` the loop is currently on. So every string
+    // that ever reaches the `[[ "$item" > … ]]` comparison has the shape
+    //     {constant id}.{8 digits}T{6 digits}Z-{2 digits}.bak
+    // and the only bytes that vary across the compared set are DIGITS. The sort is locale-
+    // invariant by grammar, not by the export. Giving the fixture non-digit varying characters
+    // (the obvious "fix") does not work either: such names fail `pdlc_backup_parse` and never
+    // enter `matched[]` at all, so they would be testing a state the grammar cannot produce.
+    //
+    // Measured on this platform (bash 3.2.57(1), arm64-apple-darwin25), C vs en_US.UTF-8 are
+    // byte-identical for BOTH locale-exposed constructs in C1 — `PDLC_M6_ID_REGEX`'s bracket
+    // ranges under `=~`, and bash's own `[[ a > b ]]` case ordering. There is therefore no
+    // detector for the export available from a macOS run at all.
+    //
+    // The export is still correct, as a cross-libc portability guard: glibc's en_US.UTF-8
+    // collates `a < A < b` where Darwin does not, so `[[ "$item" > … ]]` would order differently
+    // on Linux CI. That last sentence is REASONING, not measurement — it has not been measured
+    // here, and must not be cited as if it had been. Do not delete the export on the strength of
+    // this file staying green.
+    describe("§11.3 row 2 — pruning is stable under an injected caller locale", () => {
       it("prunes to the same members whether the caller's env sets LC_ALL=C or en_US.UTF-8", () => {
         const consumerC = makeConsumerTree({});
         const consumerOther = makeConsumerTree({});
@@ -139,9 +163,11 @@ describeOrSkip(
           expect(resultC.ok).toBe(true);
           expect(resultOther.ok).toBe(true);
 
-          // Red against an implementation relying on the CALLER's locale rather than its own
-          // `export LC_ALL=C` (TSPEC §11.3 row 2): both runs must keep the identical set of
-          // suffixes, regardless of which locale the caller's environment injected.
+          // What this genuinely holds: pruning keeps the identical set regardless of the locale
+          // the caller injected, and drops `-01`. It would go red if pruning were ever rewritten
+          // onto a locale-sensitive instrument that IS reachable here — `sort`, `awk`, a `tr`
+          // range, or a bracket range applied to the id rather than to a digit run. See the
+          // scope correction above for why it does not go red on removal of the export itself.
           const keptC = readdirSync(built1.dir).sort();
           const keptOther = readdirSync(built2.dir).sort();
           expect(keptOther).toEqual(keptC);
