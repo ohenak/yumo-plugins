@@ -281,7 +281,7 @@ describe("driftRepoRoot — AC-0.5 repo-root resolution (TSPEC §8, PLAN T-20)",
             expect(resolveResult.ok).toBe(true);
             expect(resolveResult.fields[0]).toBe("0");
             expect(dumpResult.ok).toBe(true);
-            expect(dumpResult.fields[0]).toBe(consumer.root);
+            expect(dumpResult.fields[1]).toBe(consumer.root);
           } finally {
             consumer.cleanup();
           }
@@ -313,7 +313,7 @@ describe("driftRepoRoot — AC-0.5 repo-root resolution (TSPEC §8, PLAN T-20)",
         expect(resolveResult.ok).toBe(true);
         expect(resolveResult.fields[0]).toBe("0");
         expect(dumpResult.ok).toBe(true);
-        expect(dumpResult.fields[0]).toBe(consumer.root);
+        expect(dumpResult.fields[1]).toBe(consumer.root);
       } finally {
         consumer.cleanup();
       }
@@ -328,7 +328,7 @@ describe("driftRepoRoot — AC-0.5 repo-root resolution (TSPEC §8, PLAN T-20)",
         );
         expect(resolveResult.ok).toBe(true);
         expect(resolveResult.fields[0]).toBe("0");
-        expect(dumpResult.fields[0]).toBe(consumer.root);
+        expect(dumpResult.fields[1]).toBe(consumer.root);
       } finally {
         consumer.cleanup();
       }
@@ -367,7 +367,7 @@ describe("driftRepoRoot — AC-0.5 repo-root resolution (TSPEC §8, PLAN T-20)",
         expect(resolveResult.ok).toBe(true);
         expect(resolveResult.fields[0]).toBe("0");
         expect(rootDump.ok).toBe(true);
-        expect(rootDump.fields[0]).toBe(plugin.pluginRoot);
+        expect(rootDump.fields[1]).toBe(plugin.pluginRoot);
         // PDLC_PLUGIN_ROOT_REASON must be dumpable (i.e. set) whichever branch resolution
         // took — TSPEC §2.2 names it as an output variable without pinning its value
         // vocabulary, so this asserts presence, not a literal string.
@@ -394,7 +394,7 @@ describe("driftRepoRoot — AC-0.5 repo-root resolution (TSPEC §8, PLAN T-20)",
         expect(resolveResult.ok).toBe(true);
         expect(resolveResult.fields[0]).toBe("0");
         expect(rootDump.ok).toBe(true);
-        expect(rootDump.fields[0]).toBe(join(consumer.root, "pdlc"));
+        expect(rootDump.fields[1]).toBe(join(consumer.root, "pdlc"));
         expect(reasonDump.ok).toBe(true);
       } finally {
         consumer.cleanup();

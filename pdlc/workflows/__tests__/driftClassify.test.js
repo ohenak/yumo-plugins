@@ -212,8 +212,8 @@ function probeClassifyRow({ consumer, plugin, rowIndex, phase, fault, toolNames 
   const reasonResult = results[9];
   return {
     classifyOk: classifyResult.ok,
-    state: stateResult.ok ? stateResult.fields[0] : undefined,
-    reason: reasonResult.ok ? reasonResult.fields[0] : undefined,
+    state: stateResult.ok ? stateResult.fields[1] : undefined,
+    reason: reasonResult.ok ? reasonResult.fields[1] : undefined,
   };
 }
 
