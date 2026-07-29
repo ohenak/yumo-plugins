@@ -195,8 +195,19 @@ describeOrSkip(
 
     describe("§4.4 — the unwritable-trace red test", () => {
       it("an unwritable trace does not change any production observable", () => {
-        const writableTrees = buildFreshConsumerFixture();
-        const blockedTrees = buildFreshConsumerFixture();
+        // A SHARED plugin tree, not one per side: `syncCommand` embeds `${PDLC_PLUGIN_ROOT}`
+        // verbatim (`pdlc_sync_command`, FSPEC §1.3/AC-0.4), so two independently-built plugin
+        // fixtures would give the two runs' drift-state records a genuinely different
+        // `syncCommand` value — a field `stripTimestamps` correctly does NOT hide (TSPEC §4.4
+        // permits only the `…Utc` timestamp fields to differ). Sharing one plugin root makes
+        // the comparison test what it means to test: that an unwritable trace changes nothing
+        // else about the run, with `syncCommand` now byte-identical for a real reason instead
+        // of a fixture artifact.
+        const sharedPlugin = makePluginTree({});
+        const writableConsumer = makeConsumerTree({ git: true, claudeDir: false });
+        const blockedConsumer = makeConsumerTree({ git: true, claudeDir: false });
+        const writableTrees = { consumer: writableConsumer, plugin: sharedPlugin };
+        const blockedTrees = { consumer: blockedConsumer, plugin: sharedPlugin };
         const { blockedTracePath, cleanupBlocker } = makeBlockedTracePath();
 
         try {
@@ -220,7 +231,9 @@ describeOrSkip(
           const blockedManifest = stripTimestamps(readSyncManifest(blockedTrees.consumer.root));
           expect(blockedManifest).toEqual(writableManifest);
         } finally {
-          cleanup(writableTrees, blockedTrees);
+          writableConsumer.cleanup();
+          blockedConsumer.cleanup();
+          sharedPlugin.cleanup();
           cleanupBlocker();
         }
       });

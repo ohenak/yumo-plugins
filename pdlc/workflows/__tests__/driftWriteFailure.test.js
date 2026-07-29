@@ -29,7 +29,7 @@
  *     asserted absent from the record and present on stderr at least once.
  */
 
-import { readFileSync } from "fs";
+import { readFileSync, writeFileSync } from "fs";
 import { join } from "path";
 import {
   runScript,
@@ -64,6 +64,7 @@ const STDERR_ONLY_OPERATIONS = Object.freeze([
 ]);
 
 const SYNC_MANIFEST_PATH = ".claude/workflows/.pdlc-sync-manifest.json";
+const DRIFT_STATE_PATH = ".claude/workflows/.pdlc-drift-state.json";
 
 const recordableCovered = new Set();
 const stderrOnlyCovered = new Set();
@@ -79,19 +80,71 @@ function attachRoot(run, root) {
   return run;
 }
 
+/**
+ * TSPEC §13.1's `preExistingDriftState`: a full, shape-valid drift-state record (FSPEC §1.3's
+ * schema), derived from a `makePluginTree()` result so its rows line up with the plugin
+ * manifest. AT-17's TSPEC row (§13.1's `copyAndDriftState`, ~line 2177) needs a record that
+ * already exists on disk: `pdlc_write_drift_state`'s invalidation ladder only engages when the
+ * atomic replace fails **over a pre-existing file** — with nothing pre-existing, the ladder
+ * short-circuits straight to the rung-(iii) residual and no drift-state file is ever written at
+ * all, which starves `expectFailOpen`'s "a drift-state record exists" conjunct. Same pattern as
+ * `driftLadder.test.js`'s `preExistingDriftStateRecord` (each test file owns its own copy,
+ * single-writer-per-file).
+ */
+function preExistingDriftStateRecord(plugin, overrides = {}) {
+  const rows = plugin.manifest.rows.map((row) => ({
+    id: row.id,
+    state: "in-sync",
+    reason: null,
+    pluginHash: row.pluginSha1,
+    consumerHash: row.pluginSha1,
+    pluginArtifactVersion: row.artifactVersion,
+    consumerArtifactVersion: row.artifactVersion,
+  }));
+  return {
+    schemaVersion: 1,
+    generatedAtUtc: "2026-07-28T00:00:00Z",
+    generatedBy: "hook",
+    pluginVersion: plugin.manifest.pluginVersion,
+    checkEnabled: true,
+    syncCommand: null,
+    baselineStatus: "resolved",
+    baselineReason: null,
+    retiredPresent: [],
+    writeFailures: [],
+    rows,
+    ...overrides,
+  };
+}
+
 // ───────────────────────────── AT-17 — the both-failed message (O-6) ────────────────────────
 
 describe("AT-17 — a copy fails and the drift-state write fails, same sync run (O-6)", () => {
   it("prints both W-7 lines, drift-state line first, asserted by stderr index", () => {
     const { consumer, plugin } = buildTree([{ id: "row-1" }]);
     const row = plugin.manifest.rows[0];
+    // TSPEC §13.1's `copyAndDriftState` fixture: a pre-existing drift-state record (so the
+    // atomic replace has something to fail "over"), plus the FULL three-rung ladder faulted —
+    // `drift-state-replace,drift-state-invalidate,drift-state-unlink` — so the write genuinely
+    // exhausts the ladder and lands on the rung-(iii) residual (the "both-failed" message this
+    // AT names), rather than succeeding at rung (i) once a pre-existing record makes rung (i)
+    // reachable.
+    writeFileSync(
+      join(consumer.root, DRIFT_STATE_PATH),
+      JSON.stringify(preExistingDriftStateRecord(plugin))
+    );
     try {
       const run = attachRoot(
         runScript("sync", {
           consumerRoot: consumer.root,
           home: consumer.home,
           pluginRoot: plugin.pluginRoot,
-          fault: ["drift-state-replace", `artifact-copy:${row.id}`],
+          fault: [
+            "drift-state-replace",
+            "drift-state-invalidate",
+            "drift-state-unlink",
+            `artifact-copy:${row.id}`,
+          ],
         }),
         consumer.root
       );
@@ -101,12 +154,18 @@ describe("AT-17 — a copy fails and the drift-state write fails, same sync run 
       expectFailOpen(run, { operation: "drift-state-replace", entrypoint: "sync" });
       stderrOnlyCovered.add("drift-state-replace");
 
-      expectFailOpen(run, {
-        operation: "artifact-copy",
-        entrypoint: "sync",
-        path: row.consumerPath,
-        remainingRows: [],
-      });
+      // NOTE on `artifact-copy` here: TSPEC §5.3's rung-(iii) residual (the same fault
+      // composition as AT-16, `drift-state-replace,drift-state-invalidate,drift-state-unlink`)
+      // leaves the pre-existing drift-state record **byte-unchanged** — that is the whole
+      // "both failed" point of O-6 (the recorded state does not describe this run, because the
+      // record write itself also failed). So, unlike every other `expectFailOpen(operation:
+      // "artifact-copy", …)` call in this file, this one call cannot assert a persisted
+      // `writeFailures` entry — TSPEC's own model says none is written this run. Per TSPEC
+      // §14's landing-test note for AT-17 ("line order asserted by index in stderr, **not by
+      // presence**"), the applicable oracle here is the stderr W-7 line and its ordering
+      // relative to the drift-state line, asserted directly below — not the shared
+      // `expectFailOpen` helper's disk-persistence conjunct, which would assert something this
+      // scenario's own spec says cannot hold.
       recordableCovered.add("artifact-copy");
 
       const w7s = allOf(run.stderr, "W-7");
@@ -390,6 +449,7 @@ describe("§6.4 — removalOnlySyncManifest: a whole-file replace whose written 
         entrypoint: "sync",
         path: rowA.consumerPath,
         remainingRows: ["B"],
+        otherFaults: [{ path: SYNC_MANIFEST_PATH, operation: "sync-manifest-update" }],
       });
       recordableCovered.add("artifact-copy");
 
@@ -398,6 +458,7 @@ describe("§6.4 — removalOnlySyncManifest: a whole-file replace whose written 
         entrypoint: "sync",
         path: SYNC_MANIFEST_PATH,
         remainingRows: ["B"],
+        otherFaults: [{ path: rowA.consumerPath, operation: "artifact-copy" }],
       });
       recordableCovered.add("sync-manifest-update");
     } finally {

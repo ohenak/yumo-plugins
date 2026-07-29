@@ -704,10 +704,14 @@ const RECORDABLE_OPERATIONS = new Set([
 
 /**
  * @param {object} run a RunResult with `root`/`consumerRoot` attached by the caller
- * @param {{path?: string, operation: string, entrypoint: "hook"|"check"|"sync"|"sync-force", remainingRows?: string[], root?: string}} opts
+ * @param {{path?: string, operation: string, entrypoint: "hook"|"check"|"sync"|"sync-force", remainingRows?: string[], root?: string, otherFaults?: {path: string, operation: string}[]}} opts
+ *   `otherFaults` names any *other* simultaneously-injected fault(s) this call must tolerate in
+ *   `writeFailures` — for a fixture that injects more than one fault in the same run and calls
+ *   `expectFailOpen` once per fault, each call names the other call's {path, operation} here so
+ *   "no unexpected write failures" still means exactly that, rather than "any extra entry is fine".
  */
 export function expectFailOpen(run, opts = {}) {
-  const { path, operation, entrypoint, remainingRows = [] } = opts;
+  const { path, operation, entrypoint, remainingRows = [], otherFaults = [] } = opts;
   const root = resolveRoot(run, opts);
 
   if (!STDERR_ONLY_OPERATIONS.has(operation) && !RECORDABLE_OPERATIONS.has(operation)) {
@@ -768,11 +772,14 @@ export function expectFailOpen(run, opts = {}) {
         `{path: ${JSON.stringify(path)}, operation: ${JSON.stringify(operation)}}, found ${matching.length}`
     );
   }
-  const others = writeFailures.filter((f) => !(f.path === path && f.operation === operation));
+  const expected = [{ path, operation }, ...otherFaults];
+  const others = writeFailures.filter(
+    (f) => !expected.some((e) => e.path === f.path && e.operation === f.operation)
+  );
   if (others.length !== 0) {
     throw new Error(
-      `driftHarness.expectFailOpen: writeFailures must contain nothing for unfaulted rows, found ` +
-        `${JSON.stringify(others)}`
+      `driftHarness.expectFailOpen: writeFailures must contain nothing beyond this call's fault ` +
+        `and any declared \`otherFaults\`, found unexpected entries ${JSON.stringify(others)}`
     );
   }
 
@@ -802,13 +809,18 @@ export function expectFailOpen(run, opts = {}) {
   if (remainingRows.length && run.tracePath) {
     const ordering = requireOrdering("expectFailOpen");
     const trace = ordering.parseTrace(run.tracePath);
-    const relevantOps = new Set(["copy", "backup", "delete"]);
+    // FSPEC §4.2's step ordering: sync's post-run pass (step 7) classifies every managed row,
+    // including ones the write-failure loop never touched — so a row that survives the fault
+    // untouched but was already `in-sync` is only traced via "classify", not copy/backup/delete.
+    // The conjunct means "the loop continued past the failing row", and "classify" is legitimate
+    // evidence of that for an untouched row, same as the other three ops are for a touched one.
+    const relevantOps = new Set(["copy", "backup", "delete", "classify"]);
     for (const rowId of remainingRows) {
       const hasRecord = trace.some((rec) => rec.rowId === rowId && relevantOps.has(rec.op));
       if (!hasRecord) {
         throw new Error(
-          `driftHarness.expectFailOpen: expected a copy/backup/delete trace record for remaining ` +
-            `row "${rowId}" (TSPEC §6.3 conjunct 5)`
+          `driftHarness.expectFailOpen: expected a copy/backup/delete/classify trace record for ` +
+            `remaining row "${rowId}" (TSPEC §6.3 conjunct 5)`
         );
       }
     }
