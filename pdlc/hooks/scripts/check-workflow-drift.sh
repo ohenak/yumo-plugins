@@ -82,20 +82,16 @@ fi
 
 # ───────────────────────── §4.2 step 3 — mkdir -p .claude/ .claude/workflows/ ──────────────────
 #
-# Explicitly the entrypoint's job (pdlc_write_drift_state's own header comment: "not this
-# routine's — it is not a probe-sandbox PATH tool"). `mkdir` itself is absent from the probe
-# sandbox, and this must also work with no JSON/python tool present (FSPEC §4.4a: "the run
-# creates the directory (step 3)" even under T1). `git init` creates every missing intermediate
-# directory as a side effect (verified: `git init -q -- a/b/c` creates a, a/b, a/b/c) using only
-# `git` (always present) and `rm` (always present) — no `mkdir`, no `python3` required.
+# Explicitly the entrypoint's job, not `pdlc_write_drift_state`'s. Must also work with no
+# JSON/python tool present (FSPEC §4.4a: "the run creates the directory (step 3)" even under
+# T1), so it cannot route through `PDLC_PY_BIN`. `mkdir -p` is the mechanism FSPEC §4.2 step 3
+# names verbatim.
 _pdlc_workflows_dir="${_pdlc_repo_root}/.claude/workflows"
 if [ ! -d "$_pdlc_workflows_dir" ]; then
   if pdlc_fault_active "mkdir"; then
     PDLC_WRITE_FAILURES+=("${_pdlc_workflows_dir}"$'\x1f'"mkdir")
   else
-    if git init -q -- "$_pdlc_workflows_dir" >/dev/null 2>&1; then
-      rm -rf -- "${_pdlc_workflows_dir}/.git" 2>/dev/null || true
-    fi
+    mkdir -p -- "$_pdlc_workflows_dir" 2>/dev/null || true
     if [ -d "$_pdlc_workflows_dir" ]; then
       pdlc_trace "run" "mkdir" "-" "$_pdlc_workflows_dir"
     else

@@ -181,7 +181,7 @@ const PROBE_TOOLS_WITH_HASH = Object.freeze([
   "date",
   "printf",
 ]);
-const PROBE_TOOLS_WITHOUT_HASH = Object.freeze(["bash", "git", "python3", "mv", "rm", "date", "printf"]);
+const PROBE_TOOLS_WITHOUT_HASH = Object.freeze(["bash", "git", "python3", "mv", "rm", "date", "printf", "mkdir"]);
 
 function probeClassifyRow({ consumer, plugin, rowIndex, phase, fault, toolNames }) {
   const cases = [

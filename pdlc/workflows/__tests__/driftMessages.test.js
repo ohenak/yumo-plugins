@@ -102,6 +102,7 @@ const PROBE_PATH_TOOLS = Object.freeze([
   "rm",
   "date",
   "printf",
+  "mkdir",
 ]);
 
 function buildEnv(cwd, pluginRoot) {

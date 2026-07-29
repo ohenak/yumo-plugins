@@ -118,7 +118,7 @@ describeOrSkip(
           const built1 = sameSecondBackups(consumerC.root, id);
           const built2 = sameSecondBackups(consumerOther.root, id);
 
-          const path = makeToolDir(["bash", "git", "python3", "shasum", "sha1sum", "mv", "rm", "date", "printf"]);
+          const path = makeToolDir(["bash", "git", "python3", "shasum", "sha1sum", "mv", "rm", "date", "printf", "mkdir"]);
           const baseEnv = {
             PATH: path,
             HOME: mkdtempSync(join(tmpdir(), "pdlc-lcall-home-")),

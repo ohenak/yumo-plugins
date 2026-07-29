@@ -59,6 +59,7 @@ const DEFAULT_PATH_TOOLS = Object.freeze([
   "rm",
   "date",
   "printf",
+  "mkdir",
 ]);
 
 // ───────────────────────────── §3.2.1 makeToolDir ─────────────────────────────

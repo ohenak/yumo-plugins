@@ -57,7 +57,7 @@ function workflowsDirPath(root) {
 
 // §3.2.1 — a full PATH tool set with every python interpreter deliberately absent, the
 // construction AT-14's `jsonToolAbsent` tree needs.
-const PATH_TOOLS_NO_JSON_TOOL = ["bash", "git", "shasum", "sha1sum", "mv", "rm", "date", "printf"];
+const PATH_TOOLS_NO_JSON_TOOL = ["bash", "git", "shasum", "sha1sum", "mv", "rm", "date", "printf", "mkdir"];
 
 /**
  * §13.1's `preExistingDriftState`: a full, shape-valid drift-state record (FSPEC §1.3's schema),

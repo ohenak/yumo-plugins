@@ -237,10 +237,7 @@ declare -a _PDLC_C3_AF_CONSUMER_VERSION=("${PDLC_CONSUMER_ARTIFACT_VERSION[@]:-}
 #
 # Must succeed even with no JSON/python tool present (FSPEC §4.4a T1: "the run creates the
 # directory (step 3)" even when jsonToolAbsent holds) — so this cannot route through
-# `PDLC_PY_BIN`. `mkdir` itself is absent from the probe sandbox. `git init` creates every
-# missing intermediate directory as a side effect (verified: `git init -q -- a/b/c` creates
-# a, a/b, a/b/c) using only `git` and `rm` (both always present) — no `mkdir`, no `python3`
-# required. Mirrors check-workflow-drift.sh's (C2) identical step-3 solution.
+# `PDLC_PY_BIN`. `mkdir -p` is the mechanism FSPEC §4.2 step 3 names verbatim.
 
 _pdlc_c3_mkdir_ok=1
 _pdlc_c3_workflows_target="${PDLC_REPO_ROOT:-}/.claude/workflows"
@@ -251,9 +248,7 @@ else
     if [[ -d "$_pdlc_c3_workflows_target" ]]; then
       : # already exists — nothing to create, no trace (mirrors the pre-existing-dir case)
     else
-      if git init -q -- "$_pdlc_c3_workflows_target" >/dev/null 2>&1; then
-        rm -rf -- "${_pdlc_c3_workflows_target}/.git" 2>/dev/null || true
-      fi
+      mkdir -p -- "$_pdlc_c3_workflows_target" 2>/dev/null || true
       if [[ -d "$_pdlc_c3_workflows_target" ]]; then
         pdlc_trace "run" "mkdir" "-" "$_pdlc_c3_workflows_target"
       else

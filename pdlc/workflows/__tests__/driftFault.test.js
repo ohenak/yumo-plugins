@@ -186,7 +186,7 @@ describe("§14.1 F-2 — M6_ID_REGEX excludes both seam delimiters (TE F-05(d), 
 // ───────────────────────────── layer-1 sourced-probe cases (T-39) ─────────────────────────
 
 describe("layer-1 sourced-probe cases (T-39) — C1's fault/trace/hash/JSON primitives (§2.2, §11.2)", () => {
-  const PROBE_PATH_TOOLS = ["bash", "git", "python3", "shasum", "sha1sum", "mv", "rm", "date", "printf"];
+  const PROBE_PATH_TOOLS = ["bash", "git", "python3", "shasum", "sha1sum", "mv", "rm", "date", "printf", "mkdir"];
 
   function probeEnvWith(extra = {}) {
     return {
