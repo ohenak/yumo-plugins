@@ -54,7 +54,7 @@
 export LC_ALL=C
 export LANG=C
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "${BASH_SOURCE[0]%/*}" && pwd)"
 C1_PATH="${SCRIPT_DIR}/../../../../hooks/scripts/lib/pdlc-drift.sh"
 
 # shellcheck disable=SC1090
