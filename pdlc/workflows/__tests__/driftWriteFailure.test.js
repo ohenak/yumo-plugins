@@ -38,7 +38,7 @@ import {
   expectFailOpen,
   allOf,
 } from "./helpers/driftHarness.js";
-import { assertRecordedPassIs } from "./helpers/driftOrdering.js";
+import { assertRecordedPassIs, parseTrace } from "./helpers/driftOrdering.js";
 import { makeConsumerTree, makePluginTree, setRowState } from "./helpers/driftFixtures.js";
 
 // ───────────────────────────── §1.4 meta-oracle: writeFailures.operation floor ─────────────
@@ -588,6 +588,127 @@ describe("floor completion — the invalidation ladder's stderr-only operations 
 
       expectFailOpen(run, { operation: "drift-state-unlink", entrypoint: "sync" });
       stderrOnlyCovered.add("drift-state-unlink");
+    } finally {
+      consumer.cleanup();
+      plugin.cleanup();
+    }
+  });
+});
+
+// ───────────────────────────── PROP-NEG-03 (converse half) — PLAN T-46 ──────────────────────
+//
+// PROPERTIES §9: "for every generated fault composition in which the backup fails or fails
+// verification: the target's bytes are byte-identical to their pre-run value, the operation is
+// reported skipped, `writeFailures` contains exactly one entry with `operation ∈ {backup,
+// backup-verify}` for that path, and the exit is 4." §1.4's spawn budget names this "6
+// write-failure compositions" — the three destroying row states FSPEC §5.5 actually reaches a
+// backup from (`stale` under plain sync, `local-edit`/`unverified` under `--force`) crossed with
+// the two ways §4.7's re-read-and-verify can fail (the write itself, `backup`; or the
+// post-write re-read, `backup-verify`/`backup-corrupt`). Exhaustive over this small, closed
+// domain (§1.3 rule 2 — 3 states x 2 fault kinds = 6), not sampled, so no case index is left to
+// chance; the case value is printed in every test name per §1.3 rule 1.
+//
+// Two of the six coincide with named ATs already exercised above (AT-27 is
+// local-edit/sync-force/backup-corrupt; the "floor completion — backup" describe is
+// local-edit/sync-force/backup) — the property still asserts its own claim independently over
+// all six, rather than inheriting theirs by reference, per §12's "a property is one it()" rule.
+
+describe("PROP-NEG-03 (converse half) — a failed/unverified backup destroys nothing, exit 4", () => {
+  const CASES = [
+    { rowState: "stale", entrypoint: "sync", fault: "backup" },
+    { rowState: "stale", entrypoint: "sync", fault: "backup-corrupt" },
+    { rowState: "local-edit", entrypoint: "sync-force", fault: "backup" },
+    { rowState: "local-edit", entrypoint: "sync-force", fault: "backup-corrupt" },
+    { rowState: "unverified", entrypoint: "sync-force", fault: "backup" },
+    { rowState: "unverified", entrypoint: "sync-force", fault: "backup-corrupt" },
+  ];
+
+  CASES.forEach(({ rowState, entrypoint, fault }, i) => {
+    it(
+      `case ${i} (rowState=${rowState}, entrypoint=${entrypoint}, fault=${fault}) — ` +
+        "byte-identical target, reported skipped, exactly one writeFailures entry, exit 4",
+      () => {
+        const { consumer, plugin } = buildTree([{ id: "row-1" }]);
+        const row = plugin.manifest.rows[0];
+        const preRunBytes = Buffer.from(`pre-run-bytes-case-${i}-for-row-1`);
+        try {
+          if (rowState === "local-edit") {
+            setRowState({ consumer, plugin }, row.id, "local-edit", {
+              originalBytes: Buffer.from(`original-bytes-case-${i}-for-row-1`),
+              consumerBytes: preRunBytes,
+            });
+          } else {
+            setRowState({ consumer, plugin }, row.id, rowState, { consumerBytes: preRunBytes });
+          }
+
+          const run = attachRoot(
+            runScript(entrypoint, {
+              consumerRoot: consumer.root,
+              home: consumer.home,
+              pluginRoot: plugin.pluginRoot,
+              fault: [`${fault}:${row.id}`],
+            }),
+            consumer.root
+          );
+
+          expect(run.status).toBe(4);
+
+          const operation = fault === "backup-corrupt" ? "backup-verify" : "backup";
+          expectFailOpen(run, {
+            operation,
+            entrypoint,
+            path: row.consumerPath,
+            remainingRows: [],
+          });
+          recordableCovered.add(operation);
+
+          // The target's bytes are byte-identical to their pre-run value: the destroying
+          // operation never proceeded past a failed/unverified backup.
+          const postRunBytes = readFileSync(join(consumer.root, row.consumerPath));
+          expect(postRunBytes.equals(preRunBytes)).toBe(true);
+        } finally {
+          consumer.cleanup();
+          plugin.cleanup();
+        }
+      }
+    );
+  });
+});
+
+// ───────────────────────────── PROP-NEG-03's missing-row exception ──────────────────────────
+//
+// PROPERTIES §9: "`missing` rows are the stated exception — the one state sync overwrites
+// without a backup — and the property asserts that too: for a `missing` row there is no
+// `backup` record". FSPEC §5.5: a `missing` row has nothing to back up (the definite-negative
+// rung 3.2 measures), so it is copied directly. This is a positive assertion over a fault-free,
+// fully-successful run — the trace's absence of a `backup` record for this row is the oracle,
+// not a side effect of a failure this file otherwise tests.
+
+describe("PROP-NEG-03's missing-row exception — no backup record for a row that was missing", () => {
+  it("a missing row is copied with no backup record at all, and lands in-sync", () => {
+    const { consumer, plugin } = buildTree([{ id: "row-1" }]);
+    const row = plugin.manifest.rows[0];
+    try {
+      setRowState({ consumer, plugin }, row.id, "missing");
+
+      const run = attachRoot(
+        runScript("sync", {
+          consumerRoot: consumer.root,
+          home: consumer.home,
+          pluginRoot: plugin.pluginRoot,
+        }),
+        consumer.root
+      );
+
+      expect(run.status).toBe(0);
+
+      const trace = parseTrace(run.tracePath);
+      const backupRecord = trace.find((r) => r.op === "backup" && r.rowId === row.id);
+      expect(backupRecord).toBeUndefined();
+
+      const state = readDriftState(consumer.root);
+      const postRow = state.rows.find((r) => r.id === row.id);
+      expect(postRow.state).toBe("in-sync");
     } finally {
       consumer.cleanup();
       plugin.cleanup();
