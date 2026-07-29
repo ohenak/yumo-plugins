@@ -407,7 +407,10 @@ if ((_pdlc_c3_mkdir_ok)) && [[ "${PDLC_BASELINE_STATUS:-}" == "resolved" ]] && (
       pdlc_msg_w6 "$_pdlc_c3_r" "$_pdlc_c3_row_id" "$_pdlc_c3_af_state" >&2; printf '\n' >&2
 
       if [[ "$_pdlc_c3_pc_state" == "in-sync" ]]; then
-        pdlc_retire "$_pdlc_c3_target_abs" "${_pdlc_c3_target_abs##*/}"
+        # Backup id (2nd arg) is the retired path's basename (§5.7); the retire-delete fault
+        # key (3rd arg) is this row's own id — the two identifiers are deliberately distinct
+        # (TSPEC's fault-identity table, ~line 956).
+        pdlc_retire "$_pdlc_c3_target_abs" "${_pdlc_c3_target_abs##*/}" "$_pdlc_c3_row_id"
       fi
 
       if [[ -e "$_pdlc_c3_target_abs" ]]; then
@@ -545,19 +548,27 @@ _pdlc_c3_record="$(_pdlc_c3_build_record \
 
 if ! pdlc_write_drift_state "${PDLC_REPO_ROOT}" "$_pdlc_c3_record" "$_pdlc_c3_generated_by"; then
   _pdlc_c3_any_write_failed=1
-  _pdlc_c3_emit_stderr_only_w7 "$_pdlc_c3_drift_state_path" \
-    "drift-state-replace" "drift-state-invalidate" "drift-state-unlink"
 fi
+# Each rung's own W-7 line is printed whenever THAT rung's token was fault-active — regardless
+# of whether a later rung went on to land the write (TSPEC §5.3, SE F-29 ≡ TE F-43): the ladder
+# can recover (AT-15) while still owing the operator a line naming the rung(s) that failed along
+# the way, so this call is unconditional, not gated on the overall write having failed.
+_pdlc_c3_emit_stderr_only_w7 "$_pdlc_c3_drift_state_path" \
+  "drift-state-replace" "drift-state-invalidate" "drift-state-unlink"
 
 # ───────────────────────────── recordable-operation W-7 lines ─────────────────────────────
 #
 # Deferred emission order (AT-17/O-6): stderr-only lines (mkdir + drift-state triad, printed
-# above at their own points) come before recordable-operation lines.
-
+# above at their own points) come before recordable-operation lines. `pdlc_write_drift_state`'s
+# rung-(iii) residual (C1) now also pushes its own `drift-state-replace` entry into
+# `PDLC_WRITE_FAILURES[]` (so check-workflow-drift.sh's single undifferentiated loop can render
+# it) — skip stderr-only operations here so that entry is not printed a second time on top of
+# `_pdlc_c3_emit_stderr_only_w7`'s own (correctly-ordered) line above.
 for _pdlc_c3_entry in "${PDLC_WRITE_FAILURES[@]:-}"; do
   [[ -z "$_pdlc_c3_entry" ]] && continue
   _pdlc_c3_path="${_pdlc_c3_entry%%$'\x1f'*}"
   _pdlc_c3_op="${_pdlc_c3_entry#*$'\x1f'}"
+  _pdlc_write_failure_op_is_stderr_only "$_pdlc_c3_op" && continue
   pdlc_msg_w7 "$(_pdlc_c3_relpath "$_pdlc_c3_path")" "$_pdlc_c3_op" >&2; printf '\n' >&2
 done
 

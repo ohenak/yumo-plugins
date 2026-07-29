@@ -1493,6 +1493,23 @@ pdlc_emit_printf_record() {
     "$generatedAtUtc" "$generatedBy" "$checkEnabled" "$baselineReason" "$failuresJson"
 }
 
+# _pdlc_drift_state_residual <target> — the invalidation ladder's rung-(iii) residual (FSPEC
+# §4.4/§4.4a, AC-2.9(3)). Two things happen here, both required, neither hand-rolled:
+#   1. N-3 (FSPEC §8.3), verbatim, on stderr — announced at every drift computation that lands
+#      here (NFR-6 ii). This is a notice, not a `writeFailures` entry, so it is not routed
+#      through `pdlc_msg_w7`.
+#   2. The failure is recorded into `PDLC_WRITE_FAILURES[]` with `operation: drift-state-replace`
+#      (the correct member of the closed nine-member set, FSPEC §4.5/TSPEC §6.1, for a drift-state
+#      write that never lands) — NOT printed here as a W-7 line: both entrypoints
+#      (check-workflow-drift.sh, sync-workflows.sh) already render every `PDLC_WRITE_FAILURES[]`
+#      entry into its own W-7 line, so a second print here would double-emit (TSPEC §7.2's W-7
+#      matcher would then see two lines for the same path/operation).
+_pdlc_drift_state_residual() {
+  local target="$1"
+  printf 'pdlc: drift state is not writable at %s; the queue may proceed on stale contents until this is fixed.\n' "$target" >&2
+  PDLC_WRITE_FAILURES+=("${target}"$'\x1f'"drift-state-replace")
+}
+
 # pdlc_write_drift_state <repoRoot> <recordJson> [generatedBy] — the single drift-state writer
 # (AC-2.7). Ordinary path: writes the caller-built `recordJson` atomically (§4.3). If a JSON
 # tool is not available (T1, §4.4a), a resolved record cannot have been built at all, so this
@@ -1534,7 +1551,7 @@ pdlc_write_drift_state() {
   # are no-ops (nothing to overwrite, nothing to unlink) and the ladder lands directly on the
   # rung-(iii) residual.
   if ((preExisted == 0)); then
-    printf 'pdlc: drift state at %s could not be written (operation: drift-state-replace). The recorded state does not describe this run.\n' "$target" >&2
+    _pdlc_drift_state_residual "$target"
     return 4
   fi
 
@@ -1556,7 +1573,7 @@ pdlc_write_drift_state() {
     fi
   fi
 
-  printf 'pdlc: drift state at %s could not be written (operation: drift-state-replace). The recorded state does not describe this run.\n' "$target" >&2
+  _pdlc_drift_state_residual "$target"
   return 4
 }
 
@@ -1720,17 +1737,21 @@ pdlc_backup() {
   return 0
 }
 
-# pdlc_retire <target> <retiredBasename> — the retirement half of §5.7: a verified backup
-# (`pdlc_backup`, id = `retiredBasename`) then delete, never the reverse. A failed backup leaves
-# `target` untouched and this returns 1 with `pdlc_backup`'s own `writeFailures` entry already
-# recorded — retirement adds no second entry for that case. A failed delete (after a verified
-# backup landed) is its own `{ path: target, operation: retire-delete }` entry.
+# pdlc_retire <target> <retiredBasename> <rowId> — the retirement half of §5.7: a verified
+# backup (`pdlc_backup`, id = `retiredBasename` — a retirement backup is keyed by the retired
+# path's basename, §5.7) then delete, never the reverse. A failed backup leaves `target`
+# untouched and this returns 1 with `pdlc_backup`'s own `writeFailures` entry already recorded —
+# retirement adds no second entry for that case. A failed delete (after a verified backup
+# landed) is its own `{ path: target, operation: retire-delete }` entry, keyed by `rowId` — the
+# manifest row id R whose `retires` names `target` (TSPEC's fault-identity table, ~line 956) —
+# NOT by `retiredBasename`: the backup id and the retire-delete fault key are deliberately
+# different identifiers over the same call.
 pdlc_retire() {
-  local target="$1" retiredBasename="$2"
+  local target="$1" retiredBasename="$2" rowId="$3"
 
   pdlc_backup "$target" "$retiredBasename" || return 1
 
-  if pdlc_fault_active "retire-delete" "$retiredBasename"; then
+  if pdlc_fault_active "retire-delete" "$rowId"; then
     PDLC_WRITE_FAILURES+=("${target}"$'\x1f'"retire-delete")
     return 1
   fi
