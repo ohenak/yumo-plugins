@@ -14,9 +14,25 @@ feature: pdlc-workflow-distribution
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | **Draft** | Claude + operator | 2.0 | 2026-07-28 |
+| pdlc | **Draft** | Claude + operator | 2.1 | 2026-07-28 |
 
-> **v2.0 disposes CROSS-REVIEW-product-manager-PROPERTIES-v1 (2H/5M/2L) and
+> **v2.1 disposes CROSS-REVIEW-product-manager-PROPERTIES-v2 (1H/0M/2L) and
+> CROSS-REVIEW-software-engineer-PROPERTIES-v2 (0H/0M/8L).** Every finding is dispositioned by
+> reviewer-qualified id in **§15.4**. The one High: PROP-MTM-03's plain-sync conjunct (and its copy
+> in §13.1's AC-3.2 row) wrongly asserted exit **1** where AC-3.3's precedence, and the property's
+> own cited AT-8a/AT-10, put a tree carrying a `local-edit`/`unverified` row at exit **2** — corrected,
+> with a note that exit 1 on a sync run is reachable only when post-copy verification is absent or
+> defeated (PM F-01). Ten Low precision fixes follow: two budget subtotal corrections (§1.4's §8/§10
+> rows, now 48/32, ceiling still ≈ 180 with rows summing to 181); PROP-MTM-07's domain scoped to
+> fault-free first syncs; P-R-10 corrected from two to three unco-holdable adjacencies, with
+> PROP-CLS-07 named as compensating for a different defect than the reordering; PROP-MTM-04's two
+> scope predicates disentangled; §8.0's `readonly` re-source hazard guarded; three body/ledger
+> wording inaccuracies (L7's ancestor path, PROP-CLS-07's fourth sub-recipe, PROP-SEAM-03's
+> malformed-selector scoping); §13.1 extended with AC-1.1a/AC-6.2a/NFR-4/NFR-5 rows; PROP-CLS-02(a)'s
+> third row reclassified under a broadened, observability-based split criterion; and §13.1's AC-2.4
+> row and §2.5's shrink-ladder count corrected to match the document's own stated domains.
+
+> **v2.0 disposed CROSS-REVIEW-product-manager-PROPERTIES-v1 (2H/5M/2L) and
 > CROSS-REVIEW-software-engineer-PROPERTIES-v1 (5H/4M/6L).** Every finding is dispositioned by
 > reviewer-qualified id in **§15**. The four structural changes: PROP-CLS-02 is re-derived so it no
 > longer claims a co-holding fixture for adjacencies that cannot co-hold (SE F-01); §5.1's
@@ -222,12 +238,12 @@ needs a distinct process.
 | §5 baseline reasons | **39** | 20 enumerated evidence vectors (§5.1: 10 manifest-chain vectors × E1's 2 values) + 3 ladder-fault vectors for `drift-state-invalidated` + 6 for PROP-BSL-06's two extra entrypoints over 3 E1-holds vectors + 10 for PROP-BSL-08's 5 non-default config states over 2 vectors. PROP-BSL-05's queue half is in-process |
 | §6 backup grammar | **8** | 2 batched format/parse runs + 1 sort run + 1 locale-injected sort run (PROP-BKP-07) + 1 prune run for PROP-BKP-09/-10/-11 + 1 second prune for PROP-BKP-12 + 1 re-shuffled-mtime prune for PROP-BKP-13 + 1 `nnExhausted` entrypoint run for PROP-BKP-04. PROP-BKP-06 and -08 are pure JS |
 | §7 measurement time | **21** | 3 plain syncs + 3 `--force` syncs (PROP-MTM-01/-03) + 4 hook/`--check` runs (PROP-MTM-02) + 5 retired-path runs (PROP-MTM-04: 2 fault-free sync, 2 corrupt-copy sync, 1 hook) + 3 post-sync `--check` runs (PROP-MTM-05) + 2 write-failing syncs (PROP-MTM-06) + 1 repeat sync (PROP-MTM-07) |
-| §8 seams | **47** | PROP-SEAM-01: 16 member runs + 4 non-member draws + 1 seam-unset comparison. PROP-SEAM-03: 16 runs (9 non-bearing tokens with a selector appended, 7 bearing tokens with one) over 2–4-row manifests. PROP-SEAM-04: 4 mixed lists. PROP-SEAM-05: 3 generated trees × 2 runs. PROP-SEAM-07: 1 batched encoder driver. PROP-SEAM-02, -06, -08 add none |
+| §8 seams | **48** | PROP-SEAM-01: 16 member runs + 4 non-member draws + 1 seam-unset comparison. PROP-SEAM-03: 16 runs (9 non-bearing tokens with a selector appended, 7 bearing tokens with one) over 2–4-row manifests. PROP-SEAM-04: 4 mixed lists. PROP-SEAM-05: 3 generated trees × 2 runs (6). PROP-SEAM-07: 1 batched encoder driver. PROP-SEAM-02, -06, -08 add none |
 | §9 determinism | **9** | PROP-DET-01 (1: the second run of the TZ pair, first reuses the packed run), -02 (2: two-sided and one-sided), -03 (1), -04 (2), -05 (1), -06 (2). PROP-CLS-05's two runs are counted in §3, not here |
-| §10 negatives (not already counted) | **27** | PROP-NEG-02 (3 root-resolution adversarial trees), -03 (6 write-failure compositions), -04 (4 surface legs), -05 (5 perturbed runs: `artifactVersion` ×2, `pluginVersion`, `syncedAtUtc`, **`pluginHash`**), -06 (8: six R-states + two failure compositions), -07 (6: M10's three clauses × 2 entrypoints) |
+| §10 negatives (not already counted) | **32** | PROP-NEG-02 (3 root-resolution adversarial trees), -03 (6 write-failure compositions), -04 (4 surface legs), -05 (5 perturbed runs: `artifactVersion` ×2, `pluginVersion`, `syncedAtUtc`, **`pluginHash`**), -06 (8: six R-states + two failure compositions), -07 (6: M10's three clauses × 2 entrypoints) |
 
-**Ceiling: ≈ 180 spawns**, not the ≈ 55 v1.0 claimed. That number has to be defended rather than
-apologised for, so:
+**Ceiling: ≈ 180 spawns** (rows sum to **181**; the printed row totals recomputed here per SE F-01),
+not the ≈ 55 v1.0 claimed. That number has to be defended rather than apologised for, so:
 
 > **R-3 is a claim about wall clock, not about spawn count.** TSPEC R-3's risk is "a slow suite
 > stops being run". A `runScript` case is one `bash` process over a temp tree of a handful of small
@@ -314,9 +330,14 @@ Three things follow, and they are what the properties in §3 and §4 actually as
    declared precedence, so the property to assert is not "the states are disjoint" (trivially true
    of a first-match ladder) but **"the ladder's order equals the declared precedence"**.
 
-   **How that is asserted depends on whether the two guards can co-hold, and v1.0 got this wrong**
-   (SE F-01). v1.0 claimed a co-holding fixture for *every* adjacent pair. Reading FSPEC §3.3's
-   guards, three of the five state adjacencies cannot co-hold **in principle**:
+   **How that is asserted depends on whether the reordering is observable through some input, and
+   v1.0 got this wrong** (SE F-01). v1.0 claimed a co-holding fixture for *every* adjacent pair.
+   Co-holdability — a fixture where both guards hold at once and the ladder's order decides the
+   outcome — is the usual way a reordering is observable, but not the only one: A0's collapse (§2.2)
+   makes a reordering of rungs 3–6 observable through a *different* input (the hash tool being
+   absent, so those rungs are never even evaluated), without either guard "holding" in the ordinary
+   sense (SE F-08). Reading FSPEC §3.3's guards, three of the five state *adjacencies* cannot
+   co-hold **in principle**:
 
    | Adjacency | Guards (FSPEC §3.3) | Can co-hold? |
    |---|---|---|
@@ -396,7 +417,7 @@ over the tree:
 | **L4** | `A1 = yes, A2 = yes, A3 = indeterminate` | `unknown` | `consumer-artifact-unreadable` | `.claude/workflows/` mode `0600` — **permission only** | E-skip (uid-0) |
 | **L5** | `A1 = yes, A2 = yes, A3 = yes, A4 = no` | `unknown` | `consumer-artifact-unreadable` | `PDLC_FAULT=consumer-artifact-read:<id>` (token 16) | E |
 | **L6** | `A1 = yes, A2 = yes, A3 = no` | `missing` | `null` | consumer path absent, `.claude/workflows/` present and traversable | E |
-| **L7** | `A4 = yes, A5 = equal` | `in-sync` | `null` | consumer bytes := plugin bytes; **A6 not asked** | E |
+| **L7** | `A1 = yes, A2 = yes, A3 = yes, A4 = yes, A5 = equal` | `in-sync` | `null` | consumer bytes := plugin bytes; **A6 not asked** | E |
 | **L8** | `A5 = differ, A6 = no-entry` | `unverified` | `null` | ×4 sub-recipes (absent / unreadable / malformed / no id) | E |
 | **L9** | `A5 = differ, A6 = entry-matches` | `stale` | `null` | bytes X ≠ plugin, entry `consumerHash = sha1(X)`, entry **`pluginHash` pinned to a third value** (see below) | E |
 | **L10** | `A5 = differ, A6 = entry-differs` | `local-edit` | `null` | bytes Y, entry over X, X ≠ Y ≠ plugin, entry **`pluginHash` pinned to `sha1(plugin)`** (see below) | E |
@@ -446,7 +467,7 @@ expected output — which removes the whole class.
 Ladders are explicit (§1.3 rule 3). For a failing classifier case the harness reports, in order:
 
 1. **Fewest rows** — re-run the same leaf as the *only* row of a one-row manifest. A packed
-   nine-row run that fails is almost always failing on one row, and the one-row form is the
+   eight-row run that fails is almost always failing on one row, and the one-row form is the
    reproduction a maintainer can debug in a shell.
 2. **Shortest bytes** — artifact contents shrink toward the 64-byte floor `makePluginTree`
    guarantees (TSPEC R-9); never below it, because tokens 10/12 truncate to half length.
@@ -472,20 +493,23 @@ declared state. *(Functional · Harness · E, L3/L4 E-skip · `driftClassify.tes
 L0 and the two permission leaves (L3, L4) are three separate whole-run fixtures. Traces to AC-1.1,
 FSPEC §3.3. The L0 case is written outside the file-level `hash` skip (§2.2).
 
-**PROP-CLS-02(a) — Where two guards can co-hold, the higher state wins.**
-For every adjacency in `unknown > missing > in-sync > unverified > stale > local-edit` whose two
-guards **can** simultaneously hold under FSPEC §3.3's semantics, a row exists in which both do, and
-its `state` is the higher member. *(Functional · Harness · E · `driftClassify.test.js`)*
+**PROP-CLS-02(a) — Where the ladder's order is observable, the higher state wins.**
+For every adjacency in `unknown > missing > in-sync > unverified > stale > local-edit` whose order is
+**observable through some input** under FSPEC §3.3's semantics — either because the two guards can
+simultaneously hold, or because a run-level condition makes the lower rungs unevaluable — a row (or
+run) exists that observes it, and its `state` is the higher member. *(Functional · Harness · E ·
+`driftClassify.test.js`)*
 
-| Pair | Genuinely co-holding fixture | Both guards hold because | Expected |
+| Pair | Genuinely observing fixture | Order is observable because | Expected |
 |---|---|---|---|
-| `unknown` > `missing` | consumer path absent (and its first existing ancestor traversable, so `P3 == no` is *definite*) **and** `PDLC_FAULT=plugin-artifact-read:<id>` armed for the same row | rung 1's `P2 == no` and rung 2's `P3 == no` are verdicts of **different probes on different sides**; neither presupposes the other | `unknown` / `plugin-artifact-unreadable` |
-| `in-sync` > `unverified` | consumer bytes := plugin bytes **and** no sync-manifest entry for the row (AT-6's shape, and the `no-entry` sub-recipes of §2.3 L8) | rung 3 is a byte comparison, rung 4 is a manifest lookup; FSPEC §3.4 R-4 exists precisely because both hold at once on first adoption | `in-sync` |
-| `unknown` > every lower | `A0 = absent` over a tree whose rows would otherwise be `in-sync`, `stale`, `local-edit` and `missing` | the hash-utility probe is run-level (FSPEC §3.1) and orthogonal to every path fact | all `unknown` / `hash-tool-absent` |
+| `unknown` > `missing` | consumer path absent (and its first existing ancestor traversable, so `P3 == no` is *definite*) **and** `PDLC_FAULT=plugin-artifact-read:<id>` armed for the same row | rung 1's `P2 == no` and rung 2's `P3 == no` are verdicts of **different probes on different sides**; neither presupposes the other — both guards genuinely **co-hold** | `unknown` / `plugin-artifact-unreadable` |
+| `in-sync` > `unverified` | consumer bytes := plugin bytes **and** no sync-manifest entry for the row (AT-6's shape, and the `no-entry` sub-recipes of §2.3 L8) | rung 3 is a byte comparison, rung 4 is a manifest lookup; FSPEC §3.4 R-4 exists precisely because both hold at once on first adoption — both guards **co-hold** | `in-sync` |
+| `unknown` > every lower | `A0 = absent` over a tree whose rows would otherwise be `in-sync`, `stale`, `local-edit` and `missing` | **not** a co-holding fixture (SE F-08): with `A0 = absent` rungs 3 and 5 cannot be *evaluated* at all — `sha1(consumer)` does not exist to compare — so no guard "holds" in the ordinary sense. The order is observable anyway, because the hash-utility probe is run-level (FSPEC §3.1), collapses the whole tree, and a wrong-ordered implementation that probed it last would visibly disagree with this row | all `unknown` / `hash-tool-absent` |
 
 The third row is FSPEC §3.3's first consequence and is the one an implementation gets wrong by
-probing the hash tool last (as FSPEC v1 did). It is also the row that most needs a co-holding
-fixture, because every *other* assertion about those rows passes under the wrong order.
+probing the hash tool last (as FSPEC v1 did). It is also the row that most needs an
+order-observing fixture — not a co-holding one, per the correction above — because every *other*
+assertion about those rows passes under the wrong order.
 
 **PROP-CLS-02(b) — Where two guards cannot co-hold, the disposition is the structural argument plus
 a directed oracle.**
@@ -505,8 +529,14 @@ implementation is reachable, a directed oracle that is red against it.
 **Why this split matters.** Asserting that the six states are pairwise disjoint is vacuous over a
 first-match ladder; asserting a co-holding fixture where none can exist is *worse than vacuous*,
 because it reports a leaf re-run as precedence coverage and the reviewer stops looking. The honest
-residual — **the `missing`/`in-sync` and `stale`/`local-edit` adjacencies have no order-observing
-input** — is recorded as **P-R-10**, together with the compensating controls above.
+residual — **the `missing`/`in-sync`, `unverified`/`stale` and `stale`/`local-edit` adjacencies all
+have no order-observing input** (SE F-03; §2.1(2)'s table above is the three-row source) — is
+recorded as **P-R-10**, together with the compensating controls above. **PROP-CLS-07 is one of
+those compensating controls, not a fixture for the `unverified`/`stale` reordering itself:** it is
+red against the *degraded-manifest fall-through* implementation (rung 5 evaluated against an absent
+entry's non-existent `consumerHash`), a different defect than a pure rung-4/5 swap — an
+implementation that swapped the rungs but still landed on `unverified` for every no-entry case would
+stay green against it, exactly as `stale`/`local-edit`'s row already says of its own oracle.
 
 **PROP-CLS-03 — Totality: no input escapes the ladder.**
 Over the enumerated leaves, every row in the record has a `state` drawn from the closed six-member
@@ -538,9 +568,12 @@ and it is AC-1.4's quantified form. Red against an implementation with an early 
 variable leaking across the row loop — the bash `for`-loop failure TSPEC §4.3 names.
 
 **PROP-CLS-07 — `A6`'s four degradation sub-recipes are equivalent.**
-Over the four `no-entry` sub-recipes (absent / unreadable / malformed / present-without-id), the
+Over the four `no-entry` sub-recipes (absent / unreadable / malformed / present-without-this-id), the
 resulting `rows` are **deep-equal**; the unreadable and malformed cases additionally emit N-4 exactly
-once and the absent case emits none. *(Data Integrity · Harness · E · `driftClassify.test.js`)*
+once, and both the absent case **and** the present-without-this-id case emit **none** (SE F-06) — the
+latter is the sub-recipe most likely to share an implementation code path with "malformed", so its
+N-4 expectation is stated explicitly rather than left to be inferred from the absent case. *(Data
+Integrity · Harness · E · `driftClassify.test.js`)*
 FSPEC §1.2 and O-8. The N-4 half is the discriminating conjunct — without it the property is
 satisfied by an implementation that treats every degradation as absence *and never tells the
 operator*, which is the difference between a first-adoption state and a corrupted file.
@@ -983,8 +1016,11 @@ operator when it declines a row — which is half of what AC-3.2 requires. Added
   every such row's bytes are **byte-unchanged** (sha1 before/after), it carries **no** `copy` and
   **no** `backup` trace record, the report names it with its **exact state string** (`local-edit` /
   `unverified`) — the reason the operator is being told, not a generic "skipped" — and the run's
-  exit is **1** per AC-3.3's precedence. Three positive conjuncts, per §10's rule: exact state
-  value, named row, retention assertion.
+  exit is **2** per AC-3.3's precedence (any row `local-edit` or `unverified` outranks any row
+  `stale` or `missing`; TSPEC AT-8a and AT-10 are both worked at exit 2). Three positive conjuncts,
+  per §10's rule: exact state value, named row, retention assertion. Exit **1** on a sync run is
+  reachable only when §5.5's post-copy verification is absent or defeated (FSPEC §5.8, O-14) — this
+  property's fixtures never construct that case, so exit 1 must not appear here (PM F-01).
 - On a **`--force`** sync over the same generated tree: the same rows *are* copied, each preceded by
   a `backup` record (PROP-NEG-03's forward half), and the exit is **0** when nothing else is
   degraded.
@@ -998,7 +1034,7 @@ implementation that re-classifies before copying and thereby lets a mid-run file
 silently change what gets copied.
 
 **PROP-MTM-04 — `supersedingState` is the recorded pass's measurement, and the post-copy pass agrees
-exactly when step 6 left R's manifest entry alone.**
+on every run where step 6 did not change R's classification.**
 *(Data Integrity · Integration · E · `driftSync.test.js`, `driftHook.test.js`)*
 
 Three conjuncts, in the order of how load-bearing they are:
@@ -1008,10 +1044,17 @@ Three conjuncts, in the order of how load-bearing they are:
    hook and `--check`, `post-run` for sync (FSPEC §3's pass table). On non-sync runs there is no
    post-copy pass at all, and the property asserts that too: a hook implementation that fabricates a
    `post-copy` phase label is red via `assertPhaseOrder`.
-2. **Agreement, scoped.** On sync runs in which **step 6 neither wrote nor removed a sync-manifest
-   entry for R** — operationally: R's copy verification passed, or R was not copied at all, and
-   `writeFailures` carries no entry for R — `supersedingState` **also** equals R's state in the
-   `post-copy` pass (`assertPostCopyNarrow`).
+2. **Agreement, scoped.** On sync runs in which **R's copy verification passed, or R was not copied
+   at all, and `writeFailures` carries no entry for R** — `supersedingState` **also** equals R's
+   state in the `post-copy` pass (`assertPostCopyNarrow`). This operational predicate is *not*
+   equivalent to "step 6 neither wrote nor removed an entry for R" (SE F-04): a verified copy makes
+   step 6 **write** an entry for R, so such a run satisfies the operational clause here while
+   violating that structural one. Agreement still holds on a verified copy, but for a different
+   reason than "the entry was untouched" — post-copy, R is `in-sync`, and rung 3 fires **before**
+   any manifest lookup (§2.1's ladder), so step 6's entry rewrite cannot move R's classification
+   regardless of what it writes. The operational predicate above is the one this conjunct asserts;
+   no "exactly when" biconditional is claimed — conjunct 3's no-pre-existing-entry sub-case also
+   agrees, and for a reason distinct from both of these.
 3. **Predicted disagreement, asserted positively.** On sync runs in which step 6 **did** change R's
    entry — the AT-35 composition, `PDLC_FAULT=artifact-copy-corrupt:<R>` (TSPEC §5.2 token 10) —
    the two passes are asserted to differ **in exactly the predicted way**, generated over both
@@ -1057,9 +1100,12 @@ exactly the runs where an operator most needs them to agree (AT-35's shape: a co
 record the **post-run** `unverified`, not the as-found `stale`).
 
 **PROP-MTM-07 — A repeat sync over an unchanged tree is a no-op, byte for byte.**
-For every generated consumer tree, run a plain sync to completion, snapshot, then run the **same**
-plain sync again with nothing changed in between. The second run must satisfy, conjunct by
-conjunct: *(Idempotency · Integration · E · `driftSync.test.js`)*
+For every generated consumer tree **whose first sync is fault-free and exits 0** (excluding
+PROP-MTM-06's write-failing trees and PROP-MTM-03's trees carrying a `local-edit`/`unverified` row,
+both of which make a *second* run's exit and `writeFailures` diverge from this property's own
+conjuncts 4–5 against a conforming implementation — SE F-02), run a plain sync to completion,
+snapshot, then run the **same** plain sync again with nothing changed in between. The second run
+must satisfy, conjunct by conjunct: *(Idempotency · Integration · E · `driftSync.test.js`)*
 
 | # | Conjunct | The wrong implementation it is red against |
 |---|---|---|
@@ -1091,9 +1137,9 @@ independent oracles" collapses to one. Pinned here, normatively for the implemen
 
 | | Decision |
 |---|---|
-| **Form** | a **bash array**, declared once in **C1** (`pdlc/hooks/scripts/lib/pdlc-drift.sh`): `PDLC_FAULT_TOKENS=(git-worktree-list walk-stat … consumer-artifact-read)`, in TSPEC §5.2's table order, and `readonly` after assignment |
+| **Form** | a **bash array**, declared once in **C1** (`pdlc/hooks/scripts/lib/pdlc-drift.sh`): `PDLC_FAULT_TOKENS=(git-worktree-list walk-stat … consumer-artifact-read)`, in TSPEC §5.2's table order, guarded by an **idempotent-source guard** at the top of C1 (`[[ -n ${PDLC_DRIFT_LIB_SOURCED:-} ]] && return 0; readonly PDLC_DRIFT_LIB_SOURCED=1`) before the `readonly` assignment. Without the guard, C2/C3 sourcing C1 and `readFaultTokens()` sourcing it again inside its own `bash -c` would re-assign an already-`readonly` array in any shell where C1 is sourced twice — a bash error that aborts the sourcing shell under `set -e` (SE F-05) |
 | **Home** | C1, adjacent to `pdlc_fault_active`. There is **no** generated JSON side-artifact and **no** JS mirror of the list — a mirror is the copy TSPEC §16 exists to avoid, and a generated artifact adds a build step the feature does not otherwise have |
-| **JS extraction** | one `execFileSync` of `bash -c 'source <C1>; printf "%s\n" "${PDLC_FAULT_TOKENS[@]}"'`, wrapped in a helper `readFaultTokens()` in `__tests__/helpers/driftGenerators.js`. This reads the **runtime value of the array after C1 has been sourced** — not the text of the file |
+| **JS extraction** | one `execFileSync` of `bash -c 'source <C1>; printf "%s\n" "${PDLC_FAULT_TOKENS[@]}"'`, wrapped in a helper `readFaultTokens()` in `__tests__/helpers/driftGenerators.js`. This reads the **runtime value of the array after C1 has been sourced** — not the text of the file. `readFaultTokens()` asserts the child process's **exit status** (zero) before it asserts anything about the array, so a sourcing failure — including a `readonly`-reassignment error on a mis-guarded C1 — surfaces as a harness error rather than as a silently empty array (SE F-05) |
 | **Sanity conjunct** | `readFaultTokens()` returns exactly **16** entries, all distinct, each matching `M6_ID_REGEX`. A helper that silently returns `[]` (mis-sourced file, renamed variable) would make PROP-SEAM-01 vacuously true, so the count is asserted before the property runs |
 
 **Why the two oracles are then genuinely independent.** PROP-SEAM-01 consumes the *runtime array*;
@@ -1166,10 +1212,14 @@ For every one of the sixteen tokens, with a selector appended — TSPEC §5.1.1'
 bearing** (`artifact-copy`, `artifact-copy-corrupt`, `backup`, `backup-corrupt`, `retire-delete`,
 `plugin-artifact-read`, `consumer-artifact-read`) and **9 non-bearing**, and the partition itself is
 read from TSPEC §5.1.1, not re-derived: tokens marked **non-bearing** produce N-7
-exactly once and inject nothing (the whole spec text captured, including the `mkdir:` and
-`backup:a:b` forms); tokens marked **bearing** produce **no** N-7 and inject **only** for the row or
-backup whose scope key is byte-equal to the selector — over generated 2–4-row manifests, exactly one
-row is affected and the loop continues over the rest. *(Contract · Harness · E ·
+exactly once and inject nothing (the whole spec text captured, including the `mkdir:` form);
+tokens marked **bearing**, given a **well-formed** selector, produce **no** N-7 and inject **only**
+for the row or backup whose scope key is byte-equal to the selector — over generated 2–4-row
+manifests, exactly one row is affected and the loop continues over the rest. A bearing token carrying
+a **malformed** selector — TSPEC §5.1.1's malformed-spec forms `backup:` (empty selector) and
+`backup:a:b` (extra colon) — is the exception: it produces N-7 exactly once, the same as a
+non-bearing token, and injects nothing (SE F-06; the malformed-spec rule sits in the bearing forms,
+not the non-bearing ones, so the parenthetical above does not cover it). *(Contract · Harness · E ·
 `driftFault.test.js`)*
 The "exactly one row" conjunct is what makes AT-35's "the loop continues" claim quantified rather
 than anecdotal, and it is the failure TSPEC §5.4 rule 4 names: a spec that silently drops its
@@ -1489,8 +1539,8 @@ fifth (PM F-08). Applied here to every AC not appearing above:
 | AC | Priority | Owning surface | Note |
 |---|---|---|---|
 | AC-0.2, AC-0.3, AC-0.3a, AC-0.4 | P0 | TSPEC AT-24, §9.2 | baseline-resolution *mechanics* (marker precedence, `CLAUDE_PLUGIN_ROOT` branches, fresh-clone). The **outcomes** they produce are in §5.1's E3 axis and are property-covered; the resolution order is example-shaped |
-| **AC-2.4** — hook exits 0 on **every** failure path, with the failure on stderr **and** in the drift state | **P0** | **partly property-covered, remainder TSPEC AT-3 / AT-14 / AT-16 / AT-18a** | The exit-0 half is asserted by **PROP-BSL-06** (hook exits 0 on every `E1 = holds` vector) and **PROP-SEAM-04** (hook exits 0 on an unrecognised token while `--check`/sync exit 4); the "never silent" half by **PROP-NEG-04** (at least one matched W-*/N-* line on every degraded run); the "and in the drift state" half by **PROP-BSL-05** (the stderr reason is captured and compared to the record's `baselineReason`). What the ATs still own alone is the **write-failure ladder** — the compositions where the drift state itself cannot be written (AT-14/-16), which no property enumerates |
-| **AC-3.2** — `--force` gate on `local-edit`/`unverified` | **P0** | **property-covered: PROP-MTM-03** | v1.0 quantified only the copy set; v2.0 adds the plain-sync conjuncts (byte-unchanged rows, exact state string in the report, exit 1) and the `--force` conjuncts. TSPEC AT-8a/AT-10/AT-26 remain the worked examples (PM Q-01 answered: the property owns them) |
+| **AC-2.4** — hook exits 0 on **every** failure path, with the failure on stderr **and** in the drift state | **P0** | **partly property-covered, remainder TSPEC AT-3 / AT-14 / AT-16 / AT-18a** | The exit-0 half is asserted by **PROP-BSL-06** on three representative `E1 = holds` vectors (§5.2's stated domain: 10 vectors on `--check`, of which 3 are re-run on sync and the hook for the exit-code conjunct — not every one) and **PROP-SEAM-04** (hook exits 0 on an unrecognised token while `--check`/sync exit 4); the "never silent" half by **PROP-NEG-04** (at least one matched W-*/N-* line on every degraded run); the "and in the drift state" half by **PROP-BSL-05** (the stderr reason is captured and compared to the record's `baselineReason`). What the ATs still own alone is the **write-failure ladder** — the compositions where the drift state itself cannot be written (AT-14/-16), which no property enumerates |
+| **AC-3.2** — `--force` gate on `local-edit`/`unverified` | **P0** | **property-covered: PROP-MTM-03** | v1.0 quantified only the copy set; v2.0 adds the plain-sync conjuncts (byte-unchanged rows, exact state string in the report, exit 2 per AC-3.3's precedence) and the `--force` conjuncts. TSPEC AT-8a/AT-10/AT-26 remain the worked examples (PM Q-01 answered: the property owns them) |
 | **AC-3.7** — repeat sync is a no-op | **P0** | **property-covered: PROP-MTM-07** (new in v2.0) | AT-9 and §14.1 V-1 are the worked examples; the property is the quantified claim, including the backup-window conjunct AT-9 does not make |
 | **AC-3.8** — fresh-consumer bootstrap | **P0** | **TSPEC AT-24**, with two property-level supports | Leaf **L6** (`A3 = no ⇒ missing`, §2.3) is the classification half, and **PROP-MTM-01** covers the copy half over generated trees whose rows are all `missing`. What AT-24 owns alone is the *directory-creation ordering* on a tree with no `.claude/` at all (FSPEC §4.2 step 3 after step 2) — one tree shape, not a quantified claim |
 | AC-2.1, AC-2.3, AC-2.5, AC-2.5a, AC-2.8 | P0/P1 | TSPEC §7.4, §14.1 M-1/M-2/M-3 | message **content**; §0.3 states why a generator over English strings asserts nothing |
@@ -1501,6 +1551,10 @@ fifth (PM F-08). Applied here to every AC not appearing above:
 | AC-6.1…AC-6.5 | P0/P1 | TSPEC §10's root-parameterised oracles | |
 | **AC-6.6** | P0 | **FSPEC §7.4 / TSPEC §10.3's `advertisedVersionViolation(root)`**, incl. the `LIVE_ROOT` assertion | routed by name per §0.3; the residual is **P-R-5a**, not P-R-5 (PM F-07) |
 | NFR-2 | P1 | **none** — structural (FSPEC §13.1) | no timing assertion exists anywhere in the feature, so nothing may be *routed* here (§0.3). The one residual that was is now **P-R-8**, accepted unowned |
+| **AC-1.1a** | P0 | **§11.1** | effectively discharged: it is the source of REQ §10's **O-11**, which §11.1 disposes directly (SE F-07) |
+| **AC-6.2a** | P1 | **not property-shaped** | prose/UX-facing; no property surface owns it, and none is required (SE F-07) |
+| **NFR-4** — sync never runs implicitly | P1 | **property-covered (hook half): PROP-MTM-04 conjunct 1** | the hook half is asserted by conjunct 1's `assertPhaseOrder` claim that a hook run has no post-copy phase at all — routed here by name, where SE F-07 found it unnamed |
+| **NFR-5** | P2 | **not property-shaped** | (SE F-07) |
 
 **AC-0.1 is not on this list** (PM F-08). v1.0's closing paragraph listed it among the ACs carrying
 no property while the table above maps **PROP-SEAM-06** and **PROP-NEG-07** to it — a contradiction
@@ -1528,7 +1582,7 @@ cannot happen.
 | **P-R-7** | **The spawn budget is a ceiling, not a measurement.** §1.4 now budgets **≈ 180** spawns — the v1.0 figure of ≈ 55 was arithmetically wrong in five of its seven rows (SE F-05, PM F-04) — and the real cost is measured only when the suite exists | Restated on the corrected number. §1.4 re-argues R-3 on **wall clock** (≈ 27–45 s at 0.15–0.25 s/spawn) rather than on spawn count, because spawn count was never the quantity R-3 is about. If the measured cost pushes `npm test` past the point a maintainer runs it, the required response is §1.4's ordered rule — repack, then batch (the two named first candidates are §8's 16-token sweeps at 32 spawns and §3's PROP-CLS-06 solo runs at 8) — and **never** to sample a domain §1.3 rule 2 says to enumerate. The residual is that the whole argument rests on an unmeasured per-spawn constant; the first implementation batch should report the measured `npm test` delta and this row should be updated with it |
 | **P-R-8** | **A per-row re-probe of the hash utility is undetected, and no surface owns it** (§11.2 D-2) | Accepted **unowned**, explicitly (PM F-05). v1.0 routed this residual to NFR-2; §0.3 records that NFR-2 is structurally discharged and that no property, AT or oracle in this feature asserts time, so that routing named nothing and made the residual unfalsifiable *and* unattributed. The surrogate (PROP-CLS-01's L0 run, plus `classify_row` receiving the resolved utility as an input per TSPEC §2.2) is real but cannot distinguish a re-probe that agrees. The cost scales with row count and lands on the hook path at session start. Changes only if a trace `op` is added for the probe — which is the mitigation TSPEC R-1 prescribes for exactly this class, and which the successor should weigh against the seam-closure argument in §5.2 |
 | **P-R-9** | **The generated set is static under the default seed** (§1.3 rule 1) | Accepted and now **disclosed** (PM F-09, SE F-13). The suite draws the same 500 cases for the life of the feature: it is a large generated fixture set, not an exploring property suite, so coverage does not grow by re-running and a defect outside the drawn sample is never found by repetition. The trade is reproducibility over exploration and it is forced by R-3 — an unreproducible red run on a suite with no CI gets deleted. `PDLC_PROP_SEED` is the documented widening hatch, and §6.2's *forced* adversarial proportions are what stop the fixed sample from being an arbitrary one. Durable beyond this feature: any hand-rolled property suite in `pdlc/workflows` inherits it, and that is a LEARNINGS candidate |
-| **P-R-10** | **Two ladder adjacencies have no order-observing input.** `missing`/`in-sync` and `stale`/`local-edit` cannot co-hold, so no fixture can catch a reordering of those two rungs (§2.1(2), PROP-CLS-02(b)) | Accepted, and this is the honest form of what v1.0 asserted falsely (SE F-01). The compensating controls are named per row in PROP-CLS-02(b) and they target the defects that are actually reachable: the vacuous-equality implementation (L6's `null`/non-null hash conjuncts), the degraded-manifest fall-through (PROP-CLS-07), and the wrong-field comparison (§2.3's L9/L10 `pluginHash` pins plus PROP-NEG-05 draw 5). What remains genuinely unverifiable is the *pure* reordering — swapping rungs 2 and 3, or 5 and 6, with everything else correct — which by the structural argument produces identical output on every input. A defect that is unobservable is also harmless at the observable level; it becomes a hazard only if a later change makes one of the guards partial, which is why the argument is written down rather than the rows deleted |
+| **P-R-10** | **Three ladder adjacencies have no order-observing input.** `missing`/`in-sync`, `unverified`/`stale` and `stale`/`local-edit` cannot co-hold, so no fixture can catch a reordering of those rungs (§2.1(2), PROP-CLS-02(b); SE F-03 corrected the count from two to three) | Accepted, and this is the honest form of what v1.0 asserted falsely (SE F-01). The compensating controls are named per row in PROP-CLS-02(b) and they target the defects that are actually reachable: the vacuous-equality implementation (L6's `null`/non-null hash conjuncts), the degraded-manifest fall-through (PROP-CLS-07), and the wrong-field comparison (§2.3's L9/L10 `pluginHash` pins plus PROP-NEG-05 draw 5). **PROP-CLS-07 compensates for the degraded-manifest fall-through, not for the `unverified`/`stale` reordering itself** — a pure rung-4/5 swap that still lands on `unverified` for every no-entry case stays green against it (SE F-03), the same distinction the `stale`/`local-edit` row already draws for its own oracle. What remains genuinely unverifiable is the *pure* reordering — swapping rungs 2 and 3, 4 and 5, or 5 and 6, with everything else correct — which by the structural argument produces identical output on every input. A defect that is unobservable is also harmless at the observable level; it becomes a hazard only if a later change makes one of the guards partial, which is why the argument is written down rather than the rows deleted |
 
 ## 15. Revision note — v2.0 (2026-07-28)
 
@@ -1546,7 +1600,7 @@ recorded as an explicit note rather than acted on (SE F-08 → P-R-4a).
 | **SE F-02** | High | **Accepted, corrected.** §5.1's E5 rule is now `E2 = holds ∨ E4 = holds ∨ E4 indeterminate`; E6's is `E5 = holds ∨ E5 indeterminate` — FSPEC §2.1 Phase 1's rules verbatim. The consequence is spelled out: under the corrected rules the manifest-absent vector carries `E5/E6 = indeterminate`, so PROP-BSL-03's computed oracle selects **`manifest-absent`**, matching FSPEC §2.8's "ordinary first-release consumer" row, instead of `manifest-empty`. That row is now an explicitly named literal conjunct of PROP-BSL-03 — a regression fixture for this exact defect |
 | **SE F-03** | High | **Accepted, recounted.** §5.1 now states the axes: `enumerateEvidenceVectors()` closes over **E1–E6** and **not** E7, cardinality **20** (10 manifest-chain assignments × E1's 2 values), with the 10 derived in a checkable table. E7 is varied by PROP-BSL-08 alone (6 config states × 2 vectors). A per-property domain table gives PROP-BSL-06 the 10 `E1 = holds` vectors plus 3 vectors × 2 extra entrypoints, and PROP-BSL-08 its 12 runs. §1.4's baseline row is re-derived at **39** spawns. **Q-02 answered** by that table. **PM Q-02 answered** in the same place: PROP-BSL-06 *reuses* the enumeration's `--check` runs and pays 6 extra spawns for its sync/hook conjunct |
 | **SE F-04** | High | **Accepted, property rewritten.** FSPEC §4.2 **step 6** — cited, not inferred — rewrites the sync manifest (a classifier input for rungs 4–6) between the post-copy pass (step 5) and the post-run pass (step 7), and §5.5 removes the entry of any row that failed verification. PROP-MTM-04 is now three conjuncts: pass attribution on all entrypoints; agreement **scoped** to sync runs where step 6 changed no entry for R; and the AT-35 disagreement asserted **positively** in both sub-cases (pre-existing entry ⇒ post-copy `local-edit` / recorded `unverified`; no entry ⇒ both `unverified`). The bytes-only argument is retracted in the body. **Q-01 answered:** entry removal lands in step 6, so v1.0's conjunct did not survive |
-| **SE F-05** | High | **Accepted, budget recomputed.** §1.4's table is rebuilt from the properties as written, row by row: §3 is 4 + 2 + 2 + 8 + 4 + 3, §4 adds 1, §5 is 39, §6 is 8 (PROP-BKP-04 counted, the five prune properties unbundled, PROP-BKP-07 attributed to §6.4 not §6.5), §7 is 21 (per generated tree, plus PROP-MTM-07), §8 is 47 (PROP-SEAM-01's 21, -03's 16, -04's 4, -05's 6, -07's 1), §9 is 9 against six PROP-DET rows, §10's uncounted negatives are 27. The packed run is **8** leaves, not 9, and §2.3 has **ten** hash-present leaves. **Ceiling ≈ 180, not ≈ 55** — stated as the real number, with R-3 re-argued on wall clock (≈ 27–45 s) rather than spawn count, and §1.4's re-expression rule given an ordered priority with named first candidates so it can actually fire. **P-R-7** restated on the new number |
+| **SE F-05** | High | **Accepted, budget recomputed.** §1.4's table is rebuilt from the properties as written, row by row: §3 is 4 + 2 + 2 + 8 + 4 + 3, §4 adds 1, §5 is 39, §6 is 8 (PROP-BKP-04 counted, the five prune properties unbundled, PROP-BKP-07 attributed to §6.4 not §6.5), §7 is 21 (per generated tree, plus PROP-MTM-07), §8 is 48 (PROP-SEAM-01's 21, -03's 16, -04's 4, -05's 6, -07's 1), §9 is 9 against six PROP-DET rows, §10's uncounted negatives are 32. The packed run is **8** leaves, not 9, and §2.3 has **ten** hash-present leaves. **Ceiling ≈ 180, not ≈ 55** (rows recomputed sum to **181**, per SE F-01's own recount) — stated as the real number, with R-3 re-argued on wall clock (≈ 27–45 s) rather than spawn count, and §1.4's re-expression rule given an ordered priority with named first candidates so it can actually fire. **P-R-7** restated on the new number |
 | **SE F-06** | Med | **Accepted.** The leaf ids are **L3/L4**, covered by **L2/L5**; §0.2's O-11 row and §1.6 are corrected. §1.6 no longer carries a table at all — **§11.1 is the sole inventory**, and the `git` row is reconciled to cover PROP-BSL-03/-04/-06 *and* PROP-BSL-05 |
 | **SE F-07** | Med | **Accepted, pinned in a new §8.0.** `PDLC_FAULT_TOKENS` is a `readonly` **bash array** in C1, adjacent to `pdlc_fault_active`; JS obtains it via `readFaultTokens()`, one `bash -c 'source C1; printf …'` that reads the **runtime array**, with a 16-entry/distinct/M6 sanity conjunct so an empty return cannot make PROP-SEAM-01 vacuous. No JSON side-artifact, no JS mirror. Independence is then argued explicitly: -01 reads the runtime value, -02 reads call-site text and **excludes the array declaration**. **Q-03 answered:** bash array in C1, extracted by sourcing |
 | **SE F-08** | Med | **Accepted as a granularity specification + upstream note.** §2.2 requires L0-bearing cases (PROP-CLS-01, PROP-RSN-01, PROP-CLS-02(a)'s `unknown > every lower` row) at `it()` level **outside** the file-level `describeOrSkip("hash", …)`; §11.1's blanket row is narrowed to match, so the row-reason floor stays hard. TSPEC v2.1 is approved and unedited — the tension is recorded as **P-R-4a**, with the honest fallback stated (relax the floor claim in the skip message, never leave both statements standing) |
@@ -1584,3 +1638,34 @@ recorded as an explicit note rather than acted on (SE F-08 → P-R-4a).
 | SE Q-03 (`PDLC_FAULT_TOKENS`'s form) | §8.0 — bash array in C1, extracted by sourcing |
 | SE Q-04 (`stale > local-edit`'s oracle) | PROP-CLS-02(b) — none is a precedence oracle; R-1's field discipline is the real claim |
 | SE Q-05 (leaf L4's partial path) | §2.3 — an omission; L4, L5, L6 and L7 now spell out their ancestors |
+
+### 15.4 Revision note — v2.1 (2026-07-28)
+
+Disposition of every finding in `CROSS-REVIEW-product-manager-PROPERTIES-v2.md` (1H/0M/2L) and
+`CROSS-REVIEW-software-engineer-PROPERTIES-v2.md` (0H/0M/8L). Ids are **reviewer-qualified**
+(`PM F-nn` / `SE F-nn`), both numbering from F-01 in their respective round-2 reviews. REQ v17.0,
+FSPEC v5.1 and TSPEC v2.1 remain approved and are **not modified**.
+
+**15.4.1 Product-manager round-2 findings**
+
+| ID | Sev | Disposition |
+|---|---|---|
+| **PM F-01** | High | **Accepted.** PROP-MTM-03's plain-sync conjunct corrected from exit **1** to exit **2**, per AC-3.3's precedence table (any row `local-edit`/`unverified` outranks any row `stale`/`missing`) and the property's own cited TSPEC AT-8a/AT-10, both worked at exit 2. §13.1's AC-3.2 row corrected identically. A note is added at the site: exit 1 on a sync run is reachable only when §5.5's post-copy verification is absent or defeated (FSPEC §5.8, O-14), and this property's fixtures never construct that case |
+| **PM F-02** | Low | **Accepted.** §13.1's AC-2.4 row corrected from "PROP-BSL-06 (hook exits 0 on every `E1 = holds` vector)" to "on three representative `E1 = holds` vectors", matching §5.2's stated domain (10 vectors on `--check`, 3 re-run on sync and the hook) |
+| **PM F-03** | Low | **Accepted.** §2.5's shrink ladder step 1 corrected from "packed nine-row run" to "packed eight-row run", matching the F-04 recount already applied elsewhere in v2.0 |
+
+**15.4.2 Software-engineer round-2 findings**
+
+| ID | Sev | Disposition |
+|---|---|---|
+| **SE F-01** | Low | **Accepted.** §1.4's §8 row corrected from 47 to **48** (PROP-SEAM-01 16+4+1=21, -03's 16, -04's 4, -05's 3×2=6, -07's 1) and §10 row corrected from 27 to **32** (3+6+4+5+8+6); §15.1's SE F-05 ledger entry corrected to match. The row totals now sum to **181**, which the stated ≈ 180 ceiling and the 27–45 s wall-clock argument both already assumed and survive unchanged |
+| **SE F-02** | Low | **Accepted.** PROP-MTM-07's domain is now stated explicitly: every generated consumer tree whose first sync is fault-free and exits 0, excluding PROP-MTM-06's write-failing trees and PROP-MTM-03's local-edit/unverified trees, both of which would falsify conjuncts 4–5 against a conforming implementation |
+| **SE F-03** | Low | **Accepted.** P-R-10 and its body (§2.1(2), §3) now name **three** unco-holdable/non-order-observing adjacencies (`missing`/`in-sync`, `unverified`/`stale`, `stale`/`local-edit`), not two, and state explicitly that PROP-CLS-07 compensates for the degraded-manifest fall-through defect, not for a pure rung-4/5 reordering — the same distinction the `stale`/`local-edit` row already draws for its own oracle |
+| **SE F-04** | Low | **Accepted.** PROP-MTM-04's heading no longer claims an "exactly when" biconditional; conjunct 2's structural clause ("step 6 neither wrote nor removed an entry for R") and its operational clause ("R's copy verification passed, or R was not copied at all") are now stated as non-equivalent, with the operational clause kept as the assertion and the copy-verified case's real reason (rung 3 fires before any manifest lookup) stated explicitly |
+| **SE F-05** | Low | **Accepted.** §8.0's `PDLC_FAULT_TOKENS` `readonly` assignment in C1 is now preceded by an idempotent-source guard, so C2/C3 and `readFaultTokens()` sourcing C1 a second time in one shell no longer hits a `readonly`-reassignment error. `readFaultTokens()` is also specified to assert the child process's exit status before its 16-entry sanity conjunct |
+| **SE F-06** | Low | **Accepted, all three.** (i) §2.3's L7 row now spells out its full ancestor path (`A1 = yes, A2 = yes, A3 = yes, A4 = yes, A5 = equal`), correcting §15.3's SE Q-05 disposition. (ii) PROP-CLS-07 now states the present-without-this-id sub-recipe also emits no N-4, alongside the absent case. (iii) PROP-SEAM-03's partition sentence now scopes the malformed-spec forms (`backup:`, `backup:a:b`) to the bearing clause, where TSPEC §5.1.1 places them, stating that a bearing token with a malformed selector produces N-7 like a non-bearing one |
+| **SE F-07** | Low | **Accepted.** §13.1 adds rows for **AC-1.1a** (discharged via §11.1/O-11), **AC-6.2a** and **NFR-5** (not property-shaped), and **NFR-4** (routed by name to PROP-MTM-04 conjunct 1's `assertPhaseOrder` claim) |
+| **SE F-08** | Low | **Accepted.** §2.1(2)'s split criterion is restated as "is the reordering observable through some input", with co-holdability as the usual but not the only route; PROP-CLS-02(a)'s third row (`unknown` > every lower) is reclassified from a co-holding fixture to an order-observing one, since rungs 3/5 cannot be *evaluated* at all under `A0 = absent` |
+
+No High or Medium findings remain open after this revision. All eleven round-2 findings (1H/0M/2L PM,
+0H/0M/8L SE) are disposed above, each at the site the review named.
