@@ -34,12 +34,14 @@
  * this file's `describe`/`it` names 1:1 against that table and against FSPEC §2.2's algorithm.
  */
 
-import { mkdirSync, writeFileSync } from "fs";
-import { join } from "path";
+import { mkdirSync, writeFileSync, mkdtempSync, rmSync, realpathSync } from "fs";
+import { spawnSync } from "child_process";
+import { join, dirname } from "path";
+import { tmpdir } from "os";
 import { describeOrSkip } from "./helpers/driftCapabilities.js";
-import { runScript, expectRepoRootUnresolved, makeToolDir } from "./helpers/driftHarness.js";
+import { runScript, expectRepoRootUnresolved, makeToolDir, allOf } from "./helpers/driftHarness.js";
 import { makeConsumerTree, makePluginTree } from "./helpers/driftFixtures.js";
-import { snapshotTree } from "./helpers/driftOrdering.js";
+import { snapshotTree, assertTreeUnchanged } from "./helpers/driftOrdering.js";
 import { runProbe } from "./helpers/driftProbe.js";
 
 // ───────────────────────────── §8.2 fixture builders ─────────────────────────────
@@ -85,13 +87,19 @@ function buildGitTreeBrokenProbe() {
   return { ...consumer, cwd: consumer.root };
 }
 
-/** `nonGitClaudeAtHome` — no `.git`; the only `.claude/` is at `home` itself. Reaches: the
- * `$HOME` rejection (FSPEC §2.2 clause 2). This is the one fixture in the suite whose `home`
- * deliberately contains a `.claude/` (TSPEC §8.4). */
-function buildNonGitClaudeAtHome() {
+/** `nonGitClaudeAtHome` — no `.git`; the only `.claude/` is at `home` itself. This is the one
+ * fixture in the suite whose `home` deliberately contains a `.claude/` (TSPEC §8.4).
+ *
+ * `cwdAtHome` matters, and defaulting it wrong makes a test vacuous: `makeConsumerTree` creates
+ * `root` and `home` as SIBLING tmpdirs, so with the default `cwd: root` the ancestor walk never
+ * becomes a descendant of `$HOME` and therefore never reaches the `$HOME` guard at all — it
+ * merely exhausts the chain finding no marker, which is a different code path with the same
+ * outward verdict. Pass `cwdAtHome: true` to start the walk at `$HOME` itself, which is what
+ * actually exercises the FSPEC §2.2 clause 2 rejection. */
+function buildNonGitClaudeAtHome({ cwdAtHome = false } = {}) {
   const consumer = makeConsumerTree({ git: false, claudeDir: false });
   mkdirSync(join(consumer.home, ".claude"), { recursive: true });
-  return { ...consumer, cwd: consumer.root };
+  return { ...consumer, cwd: cwdAtHome ? consumer.home : consumer.root };
 }
 
 /** A consumer tree whose repo root itself carries the maintainer marker
@@ -335,7 +343,8 @@ describe("driftRepoRoot — AC-0.5 repo-root resolution (TSPEC §8, PLAN T-20)",
     });
 
     it("rejects $HOME — a walk that lands on $HOME itself is repo-root-unresolved (FSPEC §2.2 clause 2)", () => {
-      const consumer = buildNonGitClaudeAtHome();
+      // `cwdAtHome` is what makes this test non-vacuous — see `buildNonGitClaudeAtHome`.
+      const consumer = buildNonGitClaudeAtHome({ cwdAtHome: true });
       try {
         const [resolveResult] = runProbe(["pdlc_resolve_repo_root"], {
           cwd: consumer.cwd,
@@ -398,6 +407,367 @@ describe("driftRepoRoot — AC-0.5 repo-root resolution (TSPEC §8, PLAN T-20)",
         expect(reasonDump.ok).toBe(true);
       } finally {
         consumer.cleanup();
+      }
+    });
+  });
+
+  // ───────────────────────── PROP-BSL-06 (PLAN T-47, PROPERTIES §5.2) ─────────────────────────
+  //
+  // "The no-write-target rule is keyed on evidence, not on selection." Domain: the 10 §5.1
+  // manifest-chain vectors (`MANIFEST_CHAIN_VECTORS`, `driftGenerators.js`) with E1 (consumer
+  // repo root) bound to `holds` — every one of them built on `buildNonGitNoClaude()` (already
+  // above), which is what supplies E1 = holds uniformly; what varies per vector is E2
+  // (json-tool-absent, via PATH) and E3/E4/E5/E6 (via `CLAUDE_PLUGIN_ROOT` and the plugin tree
+  // it names — FSPEC §2.1's "E1 independent of E2-E6" is exactly what makes this combination
+  // constructible without a resolvable consumer repo root at all). For every vector,
+  // `--check` must report the FSPEC §2.8 precedence-selected reason and create nothing; three
+  // representative vectors (the ones PROPERTIES §5.2 names: `+manifestAbsent`, `+manifestEmpty`,
+  // `E1` alone) are re-run on `sync` and the `hook` for the exit-code conjunct (3 / 0).
+
+  const JSON_TOOL_ABSENT_PATH = Object.freeze([
+    "bash",
+    "git",
+    "shasum",
+    "sha1sum",
+    "mv",
+    "rm",
+    "date",
+    "printf",
+    "mkdir",
+  ]);
+
+  /** E3 = unset — no `CLAUDE_PLUGIN_ROOT` at all. */
+  function noPluginRoot() {
+    return { pluginRootOpt: undefined, cleanup: () => {} };
+  }
+
+  /** E3 = unreadable — `CLAUDE_PLUGIN_ROOT` names a plain FILE, never a directory (§5.1's own
+   * recipe: "`CLAUDE_PLUGIN_ROOT` at file"), so `pdlc_resolve_plugin_root`'s `[[ ! -d ... ]]`
+   * check fails without needing a permission-bit fixture. */
+  function pluginRootUnreadableFile() {
+    const tmp = realpathSync(tmpdir());
+    const dir = mkdtempSync(join(tmp, "pdlc-pluginfile-"));
+    const filePath = join(dir, "not-a-directory");
+    writeFileSync(filePath, "not a directory\n");
+    return { pluginRootOpt: filePath, cleanup: () => rmSync(dir, { recursive: true, force: true }) };
+  }
+
+  /** E3 = ok, E4 = holds — a readable, traversable plugin root whose
+   * `workflows/dist/distribution-manifest.json` does not exist (the `preManifestConsumer`
+   * recipe, TSPEC §13.1, applied to the PLUGIN side rather than the consumer side). */
+  function pluginRootManifestAbsent() {
+    const tmp = realpathSync(tmpdir());
+    const pluginRoot = mkdtempSync(join(tmp, "pdlc-plugin-noManifest-"));
+    mkdirSync(join(pluginRoot, "workflows", "dist"), { recursive: true });
+    return {
+      pluginRootOpt: pluginRoot,
+      cleanup: () => rmSync(pluginRoot, { recursive: true, force: true }),
+    };
+  }
+
+  /** E3 = ok, E4 = does-not-hold, well-formed non-empty manifest (E5/E6 = does-not-hold). */
+  function pluginRootValidNonEmpty() {
+    const plugin = makePluginTree();
+    return { pluginRootOpt: plugin.pluginRoot, cleanup: plugin.cleanup };
+  }
+
+  /** E5 = holds — `manifestUnparseable` (helper `12` path, TSPEC §13.1). */
+  function pluginRootMalformedManifest() {
+    const plugin = makePluginTree({ manifestRaw: "{ not valid json" });
+    return { pluginRootOpt: plugin.pluginRoot, cleanup: plugin.cleanup };
+  }
+
+  /** E6 = holds — `emptyManifest` (TSPEC §13.1, AT-33's own recipe). */
+  function pluginRootEmptyManifest() {
+    const plugin = makePluginTree({ rows: [] });
+    return { pluginRootOpt: plugin.pluginRoot, cleanup: plugin.cleanup };
+  }
+
+  // The 10 vectors, in `MANIFEST_CHAIN_VECTORS` order (driftGenerators.js), each carrying the
+  // FSPEC §2.8 precedence-selected reason for E1 = holds combined with that row's E2-E6:
+  // `drift-state-invalidated > manifest-empty > json-tool-absent > manifest-malformed >
+  // manifest-absent > repo-root-unresolved > plugin-root-unreadable > plugin-root-unset`.
+  const BSL06_VECTORS = [
+    {
+      label: "E3=unset, E2=holds (json-tool-absent outranks plugin-root-unset)",
+      plugin: noPluginRoot,
+      path: JSON_TOOL_ABSENT_PATH,
+      reason: "json-tool-absent",
+    },
+    {
+      label: "E3=unset, E2=does-not-hold (repo-root-unresolved outranks plugin-root-unset)",
+      plugin: noPluginRoot,
+      path: undefined,
+      reason: "repo-root-unresolved",
+    },
+    {
+      label: "E3=unreadable, E2=holds (json-tool-absent outranks plugin-root-unreadable)",
+      plugin: pluginRootUnreadableFile,
+      path: JSON_TOOL_ABSENT_PATH,
+      reason: "json-tool-absent",
+    },
+    {
+      label: "E3=unreadable, E2=does-not-hold (repo-root-unresolved outranks plugin-root-unreadable)",
+      plugin: pluginRootUnreadableFile,
+      path: undefined,
+      reason: "repo-root-unresolved",
+    },
+    {
+      label: "E4=holds (manifest-absent), E2=holds (json-tool-absent outranks manifest-absent)",
+      plugin: pluginRootManifestAbsent,
+      path: JSON_TOOL_ABSENT_PATH,
+      reason: "json-tool-absent",
+    },
+    {
+      label:
+        "E4=holds (manifest-absent), E2=does-not-hold — the +manifestAbsent representative " +
+        "(manifest-absent outranks repo-root-unresolved: FSPEC §2.8's 'ordinary first-release consumer')",
+      plugin: pluginRootManifestAbsent,
+      path: undefined,
+      reason: "manifest-absent",
+      representative: true,
+    },
+    {
+      label: "E4=does-not-hold, E2=holds (json-tool-absent outranks repo-root-unresolved)",
+      plugin: pluginRootValidNonEmpty,
+      path: JSON_TOOL_ABSENT_PATH,
+      reason: "json-tool-absent",
+    },
+    {
+      label:
+        "E4=does-not-hold, E2=does-not-hold, E5=holds (manifest-malformed outranks repo-root-unresolved)",
+      plugin: pluginRootMalformedManifest,
+      path: undefined,
+      reason: "manifest-malformed",
+    },
+    {
+      label:
+        "E5=does-not-hold, E6=holds — the +manifestEmpty representative (manifest-empty outranks " +
+        "everything else that holds here, same co-holding pair as AT-33)",
+      plugin: pluginRootEmptyManifest,
+      path: undefined,
+      reason: "manifest-empty",
+      representative: true,
+    },
+    {
+      label:
+        "E5=does-not-hold, E6=does-not-hold — the E1-alone representative (nothing else holds; " +
+        "repo-root-unresolved is reported)",
+      plugin: pluginRootValidNonEmpty,
+      path: undefined,
+      reason: "repo-root-unresolved",
+      representative: true,
+    },
+  ];
+
+  function buildBsl06RunOpts(consumer, pluginFixture, vector) {
+    const runOpts = {
+      consumerRoot: consumer.root,
+      cwd: consumer.cwd,
+      home: consumer.home,
+    };
+    if (pluginFixture.pluginRootOpt !== undefined) runOpts.pluginRoot = pluginFixture.pluginRootOpt;
+    if (vector.path !== undefined) runOpts.path = vector.path;
+    return runOpts;
+  }
+
+  describe("PROP-BSL-06 — the no-write-target rule is keyed on evidence, not on selection (FSPEC §2.1, §2.8)", () => {
+    for (const vector of BSL06_VECTORS) {
+      describe(vector.label, () => {
+        it("`--check` reports the precedence-selected reason and creates nothing", () => {
+          const consumer = buildNonGitNoClaude();
+          const pluginFixture = vector.plugin();
+          try {
+            const snapshotBefore = snapshotTree(consumer.root);
+            const run = runScript("check", buildBsl06RunOpts(consumer, pluginFixture, vector));
+            expectRepoRootUnresolved(run, {
+              root: consumer.root,
+              snapshotBefore,
+              reportedReason: vector.reason,
+            });
+          } finally {
+            consumer.cleanup();
+            pluginFixture.cleanup();
+          }
+        });
+      });
+    }
+
+    describe("representative vectors re-run on sync and the hook (exit-code conjunct)", () => {
+      const REPRESENTATIVES = BSL06_VECTORS.filter((v) => v.representative);
+
+      it("names exactly the three representatives PROPERTIES §5.2 states", () => {
+        expect(REPRESENTATIVES).toHaveLength(3);
+        expect(REPRESENTATIVES.map((v) => v.reason).sort()).toEqual(
+          ["manifest-absent", "manifest-empty", "repo-root-unresolved"].sort()
+        );
+      });
+
+      for (const vector of REPRESENTATIVES) {
+        describe(vector.label, () => {
+          it("sync exits 3, reports the same reason, and creates nothing", () => {
+            const consumer = buildNonGitNoClaude();
+            const pluginFixture = vector.plugin();
+            try {
+              const snapshotBefore = snapshotTree(consumer.root);
+              const run = runScript("sync", buildBsl06RunOpts(consumer, pluginFixture, vector));
+              expectRepoRootUnresolved(run, {
+                root: consumer.root,
+                snapshotBefore,
+                reportedReason: vector.reason,
+              });
+            } finally {
+              consumer.cleanup();
+              pluginFixture.cleanup();
+            }
+          });
+
+          it("the hook exits 0, reports the same reason, and creates nothing", () => {
+            const consumer = buildNonGitNoClaude();
+            const pluginFixture = vector.plugin();
+            try {
+              const snapshotBefore = snapshotTree(consumer.root);
+              const run = runScript("hook", buildBsl06RunOpts(consumer, pluginFixture, vector));
+              expectRepoRootUnresolved(run, {
+                root: consumer.root,
+                snapshotBefore,
+                reportedReason: vector.reason,
+              });
+            } finally {
+              consumer.cleanup();
+              pluginFixture.cleanup();
+            }
+          });
+        });
+      }
+    });
+  });
+
+  // ───────────────────────── PROP-NEG-02 (PLAN T-47, PROPERTIES §10) ─────────────────────────
+  //
+  // "Nothing is ever written under $HOME or /." Over the two adversarial root-resolution
+  // fixtures the PLAN names — `.claude/` sitting directly at `$HOME` (already built above as
+  // `buildNonGitClaudeAtHome`), and a genuinely deleted `$PWD` (built below, for real, never
+  // simulated via `PDLC_FAULT=walk-stat`) — three POSITIVE conjuncts, never "nothing bad
+  // happened": (1) the tree rooted at the real sandbox `$HOME` is byte-identical to its pre-run
+  // snapshot, (2) exactly one W-1 line names the reason, and it is exactly
+  // "repo-root-unresolved", and (3) the exit code is the exact value the surface documents (0 for
+  // the hook, 3 for `--check`/sync).
+
+  /**
+   * Wraps the real `spawnSync` so the actual invocation is:
+   *   `bash -c '<wrapper>' bash <deletedDir> <script> <...argv>`
+   * The wrapper `cd`s into `deletedDir` (still real at spawn time), `rm -rf`s it from under
+   * itself, then `exec`s the real entrypoint script — which inherits the now-unlinked cwd, so
+   * its own `pwd -P` (bash's builtin, `pdlc_resolve_repo_root`'s walk step) genuinely fails with
+   * no path to return, exactly as confirmed interactively against this runner's bash. This never
+   * touches the real `$HOME` or `/` — `deletedDir` is a disposable fixture-owned directory
+   * created solely to be destroyed by this same call.
+   */
+  /**
+   * A genuine ".claude/ sits directly at $HOME" fixture: `cwd` IS `$HOME` (not a sibling
+   * tmpdir carrying a merely-decorative `.claude/`, as `buildNonGitClaudeAtHome()` above
+   * builds — that fixture's `cwd` is `consumer.root`, a directory whose real filesystem
+   * ancestor chain never actually passes through `consumer.home`, so it cannot exercise
+   * `pdlc_resolve_repo_root`'s $HOME-landing rejection; see the FALSIFICATION-LEDGER-T-47.md
+   * entry for PROP-NEG-02, and the reported defect below, for why this dedicated fixture is
+   * used here instead). The walk starts exactly at $HOME, `.claude/` exists exactly there, so
+   * the only way the run can fail to write is if the guard that stops the walk AT $HOME
+   * without accepting it as a match actually fires.
+   */
+  function buildClaudeDirectlyAtHome() {
+    const tmp = realpathSync(tmpdir());
+    const home = mkdtempSync(join(tmp, "pdlc-home-"));
+    mkdirSync(join(home, ".claude"), { recursive: true });
+    return {
+      home,
+      cwd: home,
+      root: home,
+      cleanup: () => rmSync(home, { recursive: true, force: true }),
+    };
+  }
+
+  function makeDeletedCwdSpawn(deletedDir) {
+    const wrapper =
+      'cd "$1" || exit 97; rm -rf "$1" || exit 98; shift; script="$1"; shift; exec bash "$script" "$@"';
+    return function (_cmd, args, opts) {
+      const [script, ...rest] = args;
+      const newOpts = { ...opts };
+      delete newOpts.cwd;
+      return spawnSync("bash", ["-c", wrapper, "bash", deletedDir, script, ...rest], newOpts);
+    };
+  }
+
+  describe("PROP-NEG-02 — nothing is ever written under $HOME or / (adversarial root-resolution fixtures)", () => {
+    describe("adversarial fixture 1 — .claude/ sits directly at $HOME (TSPEC §8.4)", () => {
+      for (const entrypoint of ["check", "sync", "hook"]) {
+        it(`${entrypoint}: HOME's tree is unchanged, the reason is exactly repo-root-unresolved, and the exit code is the surface's own`, () => {
+          const consumer = buildClaudeDirectlyAtHome();
+          const plugin = makePluginTree();
+          try {
+            const snapshotBefore = snapshotTree(consumer.home);
+            const run = runScript(entrypoint, {
+              consumerRoot: consumer.root,
+              cwd: consumer.cwd,
+              home: consumer.home,
+              pluginRoot: plugin.pluginRoot,
+            });
+
+            // Conjunct 1 (positive): the tree rooted at the sandbox $HOME — the only place a
+            // resolution bug could write, since it is the one directory this fixture's walk
+            // could mistake for a repo root — is byte-identical to its pre-run snapshot.
+            assertTreeUnchanged(consumer.home, snapshotBefore);
+
+            // Conjunct 2 (positive): exactly one W-1 line names the reason, and that reason is
+            // exactly the string "repo-root-unresolved" — never a substring match.
+            const w1 = allOf(run.stderr, "W-1").filter((m) => m.groups.reason === "repo-root-unresolved");
+            expect(w1).toHaveLength(1);
+
+            // Conjunct 3 (positive): the exit code is exactly the value this surface documents.
+            const expectedStatus = entrypoint === "hook" ? 0 : 3;
+            expect(run.status).toBe(expectedStatus);
+          } finally {
+            consumer.cleanup();
+            plugin.cleanup();
+          }
+        });
+      }
+    });
+
+    describe("adversarial fixture 2 — $PWD is deleted underneath the process", () => {
+      for (const entrypoint of ["check", "sync", "hook"]) {
+        it(`${entrypoint}: HOME's tree is unchanged, the reason is exactly repo-root-unresolved, and the exit code is the surface's own`, () => {
+          const tmp = realpathSync(tmpdir());
+          const home = mkdtempSync(join(tmp, "pdlc-home-"));
+          const cwd = mkdtempSync(join(tmp, "pdlc-deletedcwd-"));
+          try {
+            const snapshotBefore = snapshotTree(home);
+            const run = runScript(entrypoint, {
+              consumerRoot: cwd,
+              cwd,
+              home,
+              _spawnSync: makeDeletedCwdSpawn(cwd),
+            });
+
+            // Conjunct 1 (positive): the tree rooted at the sandbox $HOME is byte-identical to
+            // its pre-run snapshot.
+            assertTreeUnchanged(home, snapshotBefore);
+
+            // Conjunct 2 (positive): exactly one W-1 line names the reason, and that reason is
+            // exactly the string "repo-root-unresolved".
+            const w1 = allOf(run.stderr, "W-1").filter((m) => m.groups.reason === "repo-root-unresolved");
+            expect(w1).toHaveLength(1);
+
+            // Conjunct 3 (positive): the exit code is exactly the value this surface documents.
+            const expectedStatus = entrypoint === "hook" ? 0 : 3;
+            expect(run.status).toBe(expectedStatus);
+          } finally {
+            // `cwd` was already removed by the wrapper itself (that is the whole point of this
+            // fixture); `force: true` tolerates its absence rather than throwing on it.
+            rmSync(cwd, { recursive: true, force: true });
+            rmSync(home, { recursive: true, force: true });
+          }
+        });
       }
     });
   });
