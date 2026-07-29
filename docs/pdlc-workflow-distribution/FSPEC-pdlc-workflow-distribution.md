@@ -12,12 +12,12 @@ feature: pdlc-workflow-distribution
 | REQ §10 rows carried forward | O-1, O-3, O-7, O-9, O-10, O-11, O-12, O-16, O-17 → TSPEC/PROPERTIES; O-13 → `consolidate-learnings` |
 | Obligations **added** by this FSPEC | O-18 (backup-grammar round-trip + prune → PROPERTIES), O-19 (LLM-mediated `_readFile` seam → TSPEC/implementation, Cross-Feature), O-20 (OQ-6's reading, → PROPERTIES) — §10 |
 | Prerequisites | BL-01, BL-03, BL-06 are **"Before FSPEC"** and are **not discharged** — see §0.3 |
-| Cross-Reviews | `CROSS-REVIEW-software-engineer-FSPEC-v1.md`, `CROSS-REVIEW-test-engineer-FSPEC-v1.md` (disposed in the v2.0 note); `CROSS-REVIEW-software-engineer-FSPEC-v2.md`, `CROSS-REVIEW-test-engineer-FSPEC-v2.md` (disposed in the v3.0 note); `CROSS-REVIEW-software-engineer-FSPEC-v3.md`, `CROSS-REVIEW-test-engineer-FSPEC-v3.md` (disposed in the v4.0 note); `CROSS-REVIEW-software-engineer-FSPEC-v4.md`, `CROSS-REVIEW-test-engineer-FSPEC-v4.md` (disposed in the v5.0 note) |
+| Cross-Reviews | `CROSS-REVIEW-software-engineer-FSPEC-v1.md`, `CROSS-REVIEW-test-engineer-FSPEC-v1.md` (disposed in the v2.0 note); `CROSS-REVIEW-software-engineer-FSPEC-v2.md`, `CROSS-REVIEW-test-engineer-FSPEC-v2.md` (disposed in the v3.0 note); `CROSS-REVIEW-software-engineer-FSPEC-v3.md`, `CROSS-REVIEW-test-engineer-FSPEC-v3.md` (disposed in the v4.0 note); `CROSS-REVIEW-software-engineer-FSPEC-v4.md`, `CROSS-REVIEW-test-engineer-FSPEC-v4.md` (disposed in the v5.0 note); `CROSS-REVIEW-software-engineer-FSPEC-v5.md`, `CROSS-REVIEW-test-engineer-FSPEC-v5.md` (disposed in the v5.1 note) |
 | LEARNINGS | `docs/pdlc-workflow-distribution/LEARNINGS-pdlc-workflow-distribution.md` (Phase H) |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | **Draft** | Claude + operator | 5.0 | 2026-07-28 |
+| pdlc | **Draft** | Claude + operator | 5.1 | 2026-07-28 |
 
 > **Altitude.** The REQ is approved at product scope and states *observable behavior*. This FSPEC
 > states *how the behavior is produced*: the component inventory, the data formats, the algorithms
@@ -417,7 +417,10 @@ feature: pdlc-workflow-distribution
 >   the stderr operation-token oracle** (`drift-state-invalidate` present, `drift-state-unlink`
 >   absent, confirms rung (i) landed; the reverse confirms rung (ii)) **plus the inode-identity
 >   cross-check** (rung (i)'s in-place `O_TRUNC` preserves `st_ino`; rung (ii)'s `unlink`+create does
->   not).
+>   not). **Superseded in v5.1 (SE F-29 ≡ TE F-43):** the stderr-token conjunct's polarity was
+>   inverted against §4.5's own failure-record semantics and is dropped from AT-15; the
+>   inode-identity observable, stated correctly from v5.0, is the sole discriminating oracle going
+>   forward.
 > - **TE F-42 (Low) — AT-15's re-grounded Given needs rung-granular fault injection (two guards
 >   faulted, one clean), while §4.6 budgeted "one token per AT".** **Fixed:** §4.6 now says the
 >   fixtures "each need one **or more** tokens", names the invalidation ladder's three independently-
@@ -428,10 +431,52 @@ feature: pdlc-workflow-distribution
 >   step 6:** the rewrite is a whole-file replacement of the `entries` map as computed by this run,
 >   never a per-key merge, using the same atomic sibling-temp + `mv` discipline as every other write —
 >   true whether the run's only change is a removal or not. §10 O-10 gains a one-line fixture note.
-> - **TE Q-01 (AC-3.7 byte-identity) — answered inside the review; the one uncovered case (a
->   `--force` re-run re-attempting an `unverified`/`local-edit` row after the fault clears) is now a
->   sentence in §5.9** rather than left implicit: it is expected §5.5 `--force` behavior, not an
->   AC-3.7 violation, since AC-3.7's precondition is a **no-change** re-sync.
+> - **TE Q-01 (AC-3.7 byte-identity) — answered inside the review; assessed satisfied, no §5.9
+>   change needed (corrected SE F-32 ≡ TE F-44, v5.1):** the one uncovered case (a `--force`
+>   re-run re-attempting an `unverified`/`local-edit` row after the fault clears) is expected
+>   §5.5 `--force` behavior, not an AC-3.7 violation, since AC-3.7's precondition is a
+>   **no-change** re-sync — a condition that case does not satisfy, so §5.9's existing text
+>   already covers it without amendment.
+> - **Nothing deferred.** Both reviews' complete slates are applied in this one pass; no AT added, no
+>   AT renumbered, no REQ text touched.
+
+> **v5.1 — SE/TE cross-review round 5 (SE 0H/1M/3L, TE 0H/1M/2L). SE F-29 and TE F-43 are the same
+> defect. A MICRO pass: one Medium and four Lows, all one-clause fixes at the sites the reviews name;
+> no restructuring, no new AT, REQ untouched.**
+>
+> **Disposition by finding id.**
+>
+> - **SE F-29 ≡ TE F-43 (Medium) — AT-15's stderr conjunct asserted the operation tokens with
+>   inverted polarity.** §4.5 fixes `drift-state-replace`/`drift-state-invalidate`/`drift-state-unlink`
+>   as **failure** records ("describe a failure of the record itself"), so with the atomic replace and
+>   rung (i) faulted and rung (ii) clean, a conforming implementation names `drift-state-replace` and
+>   `drift-state-invalidate` on stderr and **cannot** name `drift-state-unlink` — AT-15 asserted the
+>   opposite. **Fixed by dropping the stderr-token conjunct from AT-15's Then entirely** and keeping
+>   the inode-identity conjunct (st_ino changes ⇒ rung (ii)'s unlink+create; preserved ⇒ rung (i)),
+>   which both reviews confirm is stated correctly and discriminates the two rungs on its own — per
+>   both reviewers' endorsed fix option. No success-token emission was added; that would have grown
+>   §4.5's closed nine-member `operation` set and broken §4.4a's 4+5=9 filter arithmetic. The v5.0
+>   note's description of the F-41 fix, which stated a third, also-wrong polarity, is corrected to say
+>   the stderr conjunct was superseded in v5.1 by the inode-identity observable.
+> - **TE F-45 (Low) — AT-15's Given said "either or both of the three guards".** **Fixed:** reworded
+>   to "any subset of the three guards", matching §4.6's wording.
+> - **SE F-30 (Low) — §10 O-11 still said rung (i)'s "only constructible cause vanishes".** **Fixed:**
+>   reworded to "only permission-constructible cause vanishes", noting the §4.6 fault seam still
+>   reaches rung (i) on any runner (classic-filesystem `ENOSPC`) but that is not what AT-14b tests —
+>   the unwritable-parent case remains the only non-root-constructible **permission** fixture, which
+>   is what O-11's uid-0 skip concerns. The two nits in §4.4's rung-(ii) row note are also fixed:
+>   "Row 2 below" → "Row 2 above" (the note sits below the table), and the classic-filesystem
+>   derivation is now attributed to row 2's own v4.0 block-release paragraph rather than to row 1's
+>   (permission-asymmetry) mechanism.
+> - **SE F-31 (Low) — §4.5's not-removed clause enumerated only the `stale` antecedent and claimed
+>   "plain sync repairs without `--force`", false on the `--force`/local-edit path.** **Fixed** at all
+>   three carrying sites (§4.5's contract box, §4.5's explanatory paragraph, §5.5's summary bullet):
+>   the entry-kept row now "keeps whatever state it had (`stale`, or under `--force`
+>   `local-edit`/`unverified`), which is the honest classification of bytes the run never changed."
+> - **SE F-32 ≡ TE F-44 (Low) — the v5.0 note claimed a §5.9 sentence for TE Q-01 that was never
+>   written.** §5.9 is byte-identical to v4.0. **Fixed by correcting the note**, not by adding a §5.9
+>   sentence: Q-01 is recorded as assessed satisfied with no §5.9 change needed, since §5.9's existing
+>   no-change-re-sync precondition already excludes the uncovered case.
 > - **Nothing deferred.** Both reviews' complete slates are applied in this one pass; no AT added, no
 >   AT renumbered, no REQ text touched.
 
@@ -1538,15 +1583,16 @@ failure (§4.3's sibling-temp + `mv`), which is what the ladder is entered from:
 | read-only mount | no — `EROFS` | no — `EROFS` | (iii) |
 | parent directory not writable **and** the file not writable | no — `EACCES` | no — `EACCES` | (iii) |
 
-**Row note — making the table exhaustive over `ENOSPC` (SE F-27, v5.0).** `ENOSPC`/quota
-exhaustion is not always row 2's case. On a **classic filesystem** with immediate block release and
-quota accounted at truncate, the same cause lands at rung **(i)** instead, by row 1's mechanism
-generalised: rung (i)'s in-place `open(O_WRONLY|O_TRUNC)` frees the file's blocks the same way
-`unlink` does, and the invalidation record it writes is strictly smaller than the resolved record it
-replaces, so the truncate-then-write succeeds. Row 2 below is the narrower, residual case — reachable
-only under a regime where that credit does not apply (delayed allocation, a COW snapshot, or
-quota-at-write — see the paragraph after the table). The table is therefore exhaustive over
-`ENOSPC`: classic filesystem ⇒ rung (i); delayed-allocation/COW-snapshot/quota-at-write ⇒ rung (ii).
+**Row note — making the table exhaustive over `ENOSPC` (SE F-27, v5.0; corrected SE F-30, v5.1).**
+`ENOSPC`/quota exhaustion is not always row 2's case. On a **classic filesystem** with immediate
+block release and quota accounted at truncate, the same cause lands at rung **(i)** instead, by the
+block-release argument row 2's own v4.0 paragraph below makes: rung (i)'s in-place
+`open(O_WRONLY|O_TRUNC)` frees the file's blocks the same way `unlink` does, and the invalidation
+record it writes is strictly smaller than the resolved record it replaces, so the truncate-then-write
+succeeds. Row 2 above is the narrower, residual case — reachable only under a regime where that
+credit does not apply (delayed allocation, a COW snapshot, or quota-at-write — see the paragraph
+after the table). The table is therefore exhaustive over `ENOSPC`: classic filesystem ⇒ rung (i);
+delayed-allocation/COW-snapshot/quota-at-write ⇒ rung (ii).
 
 **Row 1 is the correction v2 needed.** v2's table listed "parent directory not writable" as a
 rung-(iii) cause and offered *no* cause under which rung (i) succeeds — which left O-4's mandated
@@ -1605,7 +1651,8 @@ that row's sync-manifest entry is NOT written
     that pre-existing entry is REMOVED at §4.2 step 6      (§5.5, §1.2). A copy that fails
     BEFORE landing (the temp write, or the atomic replace itself — §4.3's per-row atomicity)
     never disturbs the consumer file, so a pre-existing entry over it is still TRUE and is NOT
-    removed; that row stays `stale`, which plain sync repairs without `--force`.
+    removed; the row keeps whatever state it had (`stale`, or under `--force` `local-edit`/
+    `unverified`), which is the honest classification of bytes the run never changed.
 { path, operation } appended to writeFailures
 final exit 4;  queue blocks
 ```
@@ -1614,8 +1661,10 @@ The removal clause is part of the recordable-failure contract, not an aside: wit
 copy **failed verification** leaves behind a `consumerHash` that no longer describes any bytes on
 disk, and the next run reads that stale provenance as an operator `local-edit` (§5.5's derivation).
 A copy that fails **before landing** never touches the consumer file, so its pre-existing entry (if
-any) still truthfully describes the bytes on disk and is not disturbed (TE F-39, v5.0). A failure of
-the removal write is itself recordable, as `{ path, sync-manifest-update }`.
+any) still truthfully describes the bytes on disk and is not disturbed — the row keeps whatever state
+it had (`stale`, or under `--force` `local-edit`/`unverified`), which is the honest classification of
+bytes the run never changed (TE F-39, v5.0; corrected SE F-31, v5.1). A failure of the removal write
+is itself recordable, as `{ path, sync-manifest-update }`.
 
 Write failure is a **run-level** outcome — deliberately not a fifth row reason (AC-2.9(2)), so
 `rows[].reason` stays the four-member closed set and "could not verify" stays distinct from "could
@@ -1975,8 +2024,9 @@ Four things this pins deliberately:
   verification** additionally has any pre-existing entry **removed**, which is what keeps a
   corrupted-but-landed copy from later masquerading as the operator's own `local-edit` (had a prior
   entry been left in place) instead of `unverified`. A copy that failed **before landing** leaves the
-  pre-sync bytes, and the entry describing them, untouched — that row stays `stale`, which plain sync
-  (no `--force` needed) repairs (TE F-39, v5.0).
+  pre-sync bytes, and the entry describing them, untouched — the row keeps whatever state it had
+  (`stale`, or under `--force` `local-edit`/`unverified`), which is the honest classification of
+  bytes the run never changed (TE F-39, v5.0; corrected SE F-31, v5.1).
 - **A failed copy does not abort the loop** (AC-3.1): `writeFailures` entry, continue, exit 4.
 - **Unresolved baseline:** copy nothing, retire nothing, print the manifest-level reason +
   remediation, **still rewrite the drift state** (AC-2.7, AC-3.1) — **unless the E1 evidence
@@ -2752,7 +2802,7 @@ document's reviewers must verify the disposition. A finding that one of these is
 | O-7 | TSPEC | The trace seam's delimiter and quoting; whether non-row probes (manifest, sync manifest, `pdlc.config.json` reads) are traced | §4.6 mandates existence; grammar is explicitly deferred |
 | O-9 | PROPERTIES | Classifier totality / single-valuedness / determinism over states, row reasons and baseline reasons, including both declared precedences. **Regenerate the axes; do not import v13's tables** (24 of 96 cells undefined) | §3.3's first-match ladder **is** the declared row-reason precedence, and §2.1 Phase 2 **is** the declared baseline-reason precedence, so both are observable and single-valuedness is structural; §2.8's worked table and §3.3's two consequences are starting fixtures; §3.6 names two determinism hazards (directory order, environment order/locale) |
 | O-10 | TSPEC | Write-failure test design: which failures are injectable, per-runner fixture requirements (uid-0 caveats), fail-open assertions per writer surface. v13's tests (a)–(f) are the starting inventory. **Additionally (new in v3.0): enumerate and close the `PDLC_FAULT` token set.** §4.6 declares the token vocabulary **closed at TSPEC** — TSPEC must list every token any C1/C2/C3 code path can emit, one token per distinct guard (O-3 already forces the git-guard/walk-guard split), and PROPERTIES asserts that the emitted set is a subset of the listed one. An open-ended token set makes every fault-observing oracle unfalsifiable, because an unexpected token is indistinguishable from a token the test simply had not heard of. **Per-rung granularity (TE F-42, v5.0):** the invalidation ladder's guards (`drift-state-replace`, `drift-state-invalidate`, `drift-state-unlink`) are three distinct entries in this enumeration, not one — AT-15/AT-16 each require faulting a named subset of them in the same run, so "one token per distinct guard" must be read at ladder-guard granularity here. **Fixture note (SE Q-02, v5.0):** because the sync-manifest rewrite (§4.2 step 6) is a whole-file replace, a removal-only run (verified copies = 0, one row's entry removed) is a fixture worth a dedicated row — it exercises the rewrite with an empty "written" set and a non-empty "removed" set | §4.4/§4.5 give the contract; §4.4 rung (i) names the mandated `json-tool-absent` ladder test; §4.6 declares the closure and hands the enumeration to this row |
-| O-11 | TSPEC / PROPERTIES | Probe vocabulary and permission-fixture policy: uid-0 runners **skip with a printed reason and named unverified invariants** — never silently pass. Coverage floors live here. **Named inventory (added in v4.0, SE Q-02): `AT-14b` is a uid-0 skip, and its skip message must name the invariants it leaves unverified — "rung (i)'s preservation of `checkEnabled: false` (§4.4, §2.7) and §6.2 row 2's reachability of the opt-out are unverified on this runner."** Root bypasses the permission bits entirely, so the atomic replace succeeds, the ladder is never entered, and rung (i)'s **only** constructible cause vanishes; a generic "permission fixture skipped" line would leave the reader unable to tell which claim went untested. This claim has now been unfalsifiable across two revisions for two different reasons, which is precisely why the skip must be specific rather than categorical | §3.2's six probes are the vocabulary's basis; §7.4 reuses the skip-loudly pattern; §4.4's rung table and AT-14b state the invariants this row must name |
+| O-11 | TSPEC / PROPERTIES | Probe vocabulary and permission-fixture policy: uid-0 runners **skip with a printed reason and named unverified invariants** — never silently pass. Coverage floors live here. **Named inventory (added in v4.0, SE Q-02): `AT-14b` is a uid-0 skip, and its skip message must name the invariants it leaves unverified — "rung (i)'s preservation of `checkEnabled: false` (§4.4, §2.7) and §6.2 row 2's reachability of the opt-out are unverified on this runner."** Root bypasses the permission bits entirely, so the atomic replace succeeds, the ladder is never entered, and rung (i)'s only **permission-constructible** cause vanishes (the §4.6 fault seam still reaches rung (i) on any runner — §4.4's row note — but that is not what AT-14b tests); a generic "permission fixture skipped" line would leave the reader unable to tell which claim went untested. This claim has now been unfalsifiable across two revisions for two different reasons, which is precisely why the skip must be specific rather than categorical | §3.2's six probes are the vocabulary's basis; §7.4 reuses the skip-loudly pattern; §4.4's rung table and AT-14b state the invariants this row must name |
 | O-12 | TSPEC | Bootstrap fixture construction (working-tree copy with mode bits, `git init` anchor, pinned `HOME`, `realpath` normalisation) and **both** mode-bit assertions (index and on-disk) | §7.5 item 4 and §7.6 state the requirement; §2.2 requires `realpath` normalisation for the `$HOME` guard |
 | O-16 | TSPEC | AC-6.6's skip-loudly branches: pin the **probe order** and the printed reason string for each of (a) empty `--porcelain`, (b) `git` absent, (c) no `.git`, (d) unborn `HEAD`, reusing O-11's vocabulary. Also pin the **untracked-addition** case as a positive (red) fixture. **The fixture root must be `git init`-ed and given at least one commit** — otherwise branch (d) fires and the red case is unreachable, i.e. the fixture accidentally tests the skip path it was meant to contrast with | §7.4 defines the oracle as `advertisedVersionViolation(root)` — **parameterised over a root**, exactly like `coveredViolations(root)` — precisely so a red fixture is constructible without touching the live repo; it states the four branches and why `git -C root status --porcelain -- pdlc/workflows/dist/` (not `git diff`) is required, which is the same reason the untracked fixture must exist |
 | O-17 | TSPEC | AC-6.4's pinned fixture tree reproducing the pre-landing layout for the five patterns and four exemption members; the expected 7 paths; and that live-root (`== ∅`) and fixture-root (`== 7`, exact paths, exemption list) are **separate test cases over separate roots**. The fixture root is built under the runner's temp area, never inside the live repo — §7.3's "no test may write into `pdlc/workflows/dist/`" rule is scoped to the **live** root for this reason | §7.3 defines the oracle as `packagingViolations(root) -> set of { clause, path, detail }`, parameterised over a root; §7.5 states the two-root structure and the exemption definitions verbatim |
@@ -2894,7 +2944,7 @@ a hash utility **skips loudly**, it does not silently pass). AT-14/AT-14b/AT-21 
 | AT-13 | operator | retired path present, R `unknown` | sync | `p` **left**, `retire-skipped` naming R's state |
 | AT-14 | operator | no JSON interpreter on `PATH`; **no pre-existing drift state** (first adoption) | hook | the §4.4a **T1** `printf` emitter writes the ordinary record through the normal path: it **parses**, carries `baselineStatus: "unresolved"`, `baselineReason: "json-tool-absent"`, `pluginVersion: null`, `syncCommand: null`, `checkEnabled: true` (forced — §2.7's stated residual), `rows: []`; **and §6.2's mapping over it yields `blocked` at row 4** naming the reason. Hook exit **0** — O-4, both conjuncts |
 | AT-14b | operator | a JSON tool **is** present; `.claude/pdlc.config.json` readable with `distribution.checkEnabled: false`; a drift state pre-exists at `.claude/workflows/.pdlc-drift-state.json` and **the file itself is writable**, but its parent `.claude/workflows/` is **not writable** (mode `r-x`) | any entrypoint | the atomic sibling-temp + `mv` replace fails (`EACCES` — creating the temp sibling needs write on the **directory**), so §4.4a **T2** fires; **rung (i) succeeds**, because in-place `open(O_WRONLY\|O_TRUNC)` needs write permission on the **file**, not on the directory (§4.4's rung table, corrected in v3.0). The record **parses**, carries `baselineReason: "drift-state-invalidated"`, `pluginVersion: null`, `syncCommand: null`, and **`checkEnabled: false`** — the falsifiable form of the preservation claim, red against an emitter that hard-codes `true`; §6.2's mapping over it yields **proceed** at row 2. The fixture is deliberately **not** `ENOSPC` any more: v2.0 gave AT-14b and AT-15 the same cause with different expected rungs, which no implementation can satisfy simultaneously. **Two scoping notes (TE Q-02, SE Q-02).** (1) On a **sync** run the `r-x` directory also blocks every artifact copy, the backup directory and the sync-manifest write, so `writeFailures` additionally carries `artifact-copy`/`backup` entries; none of that defeats the assertions (§6.2 row 2 `proceed` outranks row 3), and the extra conjuncts are expected, not a fixture defect — hook and `--check` give the quietest form. (2) Under **uid 0** the permission bits are bypassed entirely, the atomic replace succeeds and the ladder is never entered, so this fixture is **unconstructible on a root runner**: it is one of O-11's named uid-0 skips (§10 O-11) and the skip message must name the invariant left unverified, not skip generically |
-| AT-15 | operator | drift-state file exists in a **writable** directory; `ENOSPC` (or quota exhaustion) **fault-injected via the §4.6 seam**, independently, on the atomic-replace guard (`drift-state-replace`) and the rung-(i) in-place-write guard (`drift-state-invalidate`) — the ladder's `PDLC_FAULT` closure is **rung-granular** (TE F-42, §4.6), so a fixture may fault either or both of the three guards — with rung (ii)'s `unlink`/fresh-write guard left clean; the regime §4.4 row 2 names (delayed allocation / COW / quota-at-write), where truncation does not free the needed space | any entrypoint | rung (i) attempted and fails, rung (ii) `unlink` succeeds, fresh write lands — O-5's rung-2 path. **Discriminating observable (TE F-41):** rungs (i) and (ii) write byte-identical invalidation records, so the Then asserts the stderr-only operation token — `drift-state-unlink` **is** named and `drift-state-invalidate` is **not** (the reverse pairing would instead confirm rung (i) landed) — plus, as a cross-check, that the drift-state file's inode identity **changes** (rung (ii)'s `unlink`+create) rather than being preserved (rung (i)'s in-place `O_WRONLY|O_TRUNC` retains `st_ino`). (The Given deliberately does **not** make the directory unwritable: §4.4's corrected table sends `EACCES`-on-parent **with a writable file** to rung **(i)** — that is AT-14b's fixture — so an unwritable directory would not exercise rung (ii) at all. Only "parent unwritable **and** file unwritable" reaches rung (iii), where no fresh write could land either) |
+| AT-15 | operator | drift-state file exists in a **writable** directory; `ENOSPC` (or quota exhaustion) **fault-injected via the §4.6 seam**, independently, on the atomic-replace guard (`drift-state-replace`) and the rung-(i) in-place-write guard (`drift-state-invalidate`) — the ladder's `PDLC_FAULT` closure is **rung-granular** (TE F-42, §4.6), so a fixture may fault **any subset** of the three guards — with rung (ii)'s `unlink`/fresh-write guard left clean; the regime §4.4 row 2 names (delayed allocation / COW / quota-at-write), where truncation does not free the needed space | any entrypoint | rung (i) attempted and fails, rung (ii) `unlink` succeeds, fresh write lands — O-5's rung-2 path. **Discriminating observable (SE F-29/TE F-43, v5.1):** rungs (i) and (ii) write byte-identical invalidation records, so the Then asserts that the drift-state file's inode identity **changes** (rung (ii)'s `unlink`+create) rather than being preserved (rung (i)'s in-place `O_WRONLY|O_TRUNC` retains `st_ino`) — this discriminates the two rungs on its own. (The Given deliberately does **not** make the directory unwritable: §4.4's corrected table sends `EACCES`-on-parent **with a writable file** to rung **(i)** — that is AT-14b's fixture — so an unwritable directory would not exercise rung (ii) at all. Only "parent unwritable **and** file unwritable" reaches rung (iii), where no fresh write could land either) |
 | AT-16 | operator | drift-state file immutable | any entrypoint | rung (i) fails, rung (ii) `unlink` refused (`EPERM`), rung (iii): N-3 on stderr, `--check` exit **4**, hook exit **0** |
 | AT-17 | operator | a copy fails **and** the drift-state write fails | sync | both lines printed, **drift-state line first**, naming the invalidated state and a permissions fix — O-6 |
 | AT-18a | operator | `PDLC_FAULT=not-a-real-token`, everything else green | **hook** | N-7 printed exactly once, nothing injected, the green drift state still written, hook exit **0** — O-2 |
