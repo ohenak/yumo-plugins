@@ -424,60 +424,87 @@ if ((_pdlc_c3_mkdir_ok)) && [[ "${PDLC_BASELINE_STATUS:-}" == "resolved" ]] && (
   done
 
   # step 6 — whole-file sync-manifest rewrite: preserve every existing entry not touched this
-  # run; overwrite entries for verified copies; remove entries for rows whose copy failed
-  # verification (§5.5, §1.2, §4.5 — the removal is what makes a corrupted row measure
-  # `unverified` rather than `local-edit` on this run's own post-run pass and every run after).
-  _pdlc_sync_manifest_ensure_loaded "as-found"
-  declare -a _PDLC_C3_SM_ID=("${_PDLC_SYNC_IDS[@]:-}")
-  declare -a _PDLC_C3_SM_HASH=("${_PDLC_SYNC_CONSUMER_HASH[@]:-}")
-  declare -a _PDLC_C3_SM_VER=("${_PDLC_SYNC_ARTIFACT_VERSION[@]:-}")
-
-  for ((_pdlc_c3_i = 0; _pdlc_c3_i < ${#PDLC_ROWS_ID[@]}; _pdlc_c3_i++)); do
-    _pdlc_c3_row_id="${PDLC_ROWS_ID[$_pdlc_c3_i]}"
-    if [[ -n "${_PDLC_C3_COPIED_HASH[$_pdlc_c3_i]:-}" ]]; then
-      _pdlc_c3_found=0
-      for ((_pdlc_c3_j = 0; _pdlc_c3_j < ${#_PDLC_C3_SM_ID[@]}; _pdlc_c3_j++)); do
-        if [[ "${_PDLC_C3_SM_ID[$_pdlc_c3_j]}" == "$_pdlc_c3_row_id" ]]; then
-          _PDLC_C3_SM_HASH[$_pdlc_c3_j]="${_PDLC_C3_COPIED_HASH[$_pdlc_c3_i]}"
-          _PDLC_C3_SM_VER[$_pdlc_c3_j]="${_PDLC_C3_AF_PLUGIN_VERSION[$_pdlc_c3_i]:-}"
-          _pdlc_c3_found=1
-          break
-        fi
-      done
-      if ((! _pdlc_c3_found)); then
-        _PDLC_C3_SM_ID+=("$_pdlc_c3_row_id")
-        _PDLC_C3_SM_HASH+=("${_PDLC_C3_COPIED_HASH[$_pdlc_c3_i]}")
-        _PDLC_C3_SM_VER+=("${_PDLC_C3_AF_PLUGIN_VERSION[$_pdlc_c3_i]:-}")
-      fi
-    elif [[ "${_PDLC_C3_COPY_FAILED[$_pdlc_c3_i]:-0}" == "1" ]]; then
-      for ((_pdlc_c3_j = 0; _pdlc_c3_j < ${#_PDLC_C3_SM_ID[@]}; _pdlc_c3_j++)); do
-        if [[ "${_PDLC_C3_SM_ID[$_pdlc_c3_j]}" == "$_pdlc_c3_row_id" ]]; then
-          _PDLC_C3_SM_ID[$_pdlc_c3_j]=""
-        fi
-      done
-    fi
-  done
-
+  # run **byte-identical** — including `id`/`pluginHash`/`pluginVersion`/`syncedAtUtc`, not just
+  # `consumerHash`/`artifactVersion` (FSPEC §5.9's AC-3.7 byte-identical clause: an unconditional
+  # rewrite that regenerated every entry would change `syncedAtUtc` on untouched rows and break
+  # the no-change-re-sync property) — overwrite/add a full six-field entry (§1.2's schema) for
+  # verified copies; remove entries for rows whose copy failed verification (§1.2, §4.5 — the
+  # removal is what makes a corrupted row measure `unverified` rather than `local-edit` on this
+  # run's own post-run pass and every run after). C1's `_pdlc_sync_manifest_ensure_loaded` only
+  # exposes `consumerHash`/`artifactVersion` per row (it exists for the classifier, not for
+  # round-tripping), so this reads and re-serializes the raw file itself — the schema/rewrite is
+  # this entrypoint's own job per FSPEC §5.5/§1.2, not C1's.
   _pdlc_c3_sm_path="${PDLC_REPO_ROOT}/.claude/workflows/.pdlc-sync-manifest.json"
+  _pdlc_c3_sm_now="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   _pdlc_c3_sm_content="$(
     {
-      for ((_pdlc_c3_i = 0; _pdlc_c3_i < ${#_PDLC_C3_SM_ID[@]}; _pdlc_c3_i++)); do
-        [[ -z "${_PDLC_C3_SM_ID[$_pdlc_c3_i]}" ]] && continue
-        printf 'ENTRY\x1f%s\x1f%s\x1f%s\n' \
-          "${_PDLC_C3_SM_ID[$_pdlc_c3_i]}" "${_PDLC_C3_SM_HASH[$_pdlc_c3_i]:-}" \
-          "${_PDLC_C3_SM_VER[$_pdlc_c3_i]:-}"
+      printf 'EXISTING\x1f%s\n' "$_pdlc_c3_sm_path"
+      printf 'NOW\x1f%s\n' "$_pdlc_c3_sm_now"
+      for ((_pdlc_c3_i = 0; _pdlc_c3_i < ${#PDLC_ROWS_ID[@]}; _pdlc_c3_i++)); do
+        _pdlc_c3_row_id="${PDLC_ROWS_ID[$_pdlc_c3_i]}"
+        if [[ -n "${_PDLC_C3_COPIED_HASH[$_pdlc_c3_i]:-}" ]]; then
+          printf 'UPSERT\x1f%s\x1f%s\x1f%s\x1f%s\n' \
+            "$_pdlc_c3_row_id" \
+            "${_PDLC_C3_COPIED_HASH[$_pdlc_c3_i]}" \
+            "${_PDLC_C3_AF_PLUGIN_HASH[$_pdlc_c3_i]:-}" \
+            "${_PDLC_C3_AF_PLUGIN_VERSION[$_pdlc_c3_i]:-}"
+        elif [[ "${_PDLC_C3_COPY_FAILED[$_pdlc_c3_i]:-0}" == "1" ]]; then
+          printf 'REMOVE\x1f%s\n' "$_pdlc_c3_row_id"
+        fi
       done
     } | "$PDLC_PY_BIN" -c '
 import sys, json
 
-entries = {}
+
+def to_null(s):
+    return s if s else None
+
+
+existingPath = None
+now = None
+upserts = {}
+removals = set()
 for line in sys.stdin.read().split("\n"):
     if not line:
         continue
     parts = line.split("\x1f")
-    entries[parts[1]] = {"consumerHash": parts[2], "artifactVersion": parts[3]}
+    tag = parts[0]
+    if tag == "EXISTING":
+        existingPath = parts[1]
+    elif tag == "NOW":
+        now = parts[1]
+    elif tag == "UPSERT":
+        upserts[parts[1]] = {
+            "consumerHash": parts[2],
+            "pluginHash": to_null(parts[3]),
+            "artifactVersion": to_null(parts[4]),
+        }
+    elif tag == "REMOVE":
+        removals.add(parts[1])
 
-sys.stdout.write(json.dumps({"entries": entries}))
+entries = {}
+try:
+    with open(existingPath, "r") as f:
+        existing = json.load(f)
+    if isinstance(existing, dict) and isinstance(existing.get("entries"), dict):
+        entries = existing["entries"]
+except Exception:
+    entries = {}
+
+for rowId in removals:
+    entries.pop(rowId, None)
+
+for rowId, upd in upserts.items():
+    entries[rowId] = {
+        "id": rowId,
+        "consumerHash": upd["consumerHash"],
+        "pluginHash": upd["pluginHash"],
+        "artifactVersion": upd["artifactVersion"],
+        "pluginVersion": upd["artifactVersion"],
+        "syncedAtUtc": now,
+    }
+
+sys.stdout.write(json.dumps({"schemaVersion": 1, "entries": entries}))
 '
   )"
   if ! pdlc_write_sync_manifest "$_pdlc_c3_sm_path" "$_pdlc_c3_sm_content"; then
