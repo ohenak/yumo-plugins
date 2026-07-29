@@ -21,12 +21,15 @@
  */
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "fs";
+import { createHash } from "crypto";
 import { dirname, resolve } from "path";
 import { fileURLToPath } from "url";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(HERE, "..", "..");
-const OUT_DIR = resolve(REPO_ROOT, ".claude", "workflows");
+// Sole output directory (AC-6.1) — the builder writes nothing outside pdlc/workflows/dist/.
+// The .claude/workflows/ consumer copy is produced by the maintainer sync step, not this script.
+const OUT_DIR = resolve(HERE, "dist");
 
 const BANNER = [
   "// ⚠️  GENERATED FILE — DO NOT EDIT.",
@@ -169,20 +172,72 @@ let stale = false;
 
 if (!existsSync(OUT_DIR)) mkdirSync(OUT_DIR, { recursive: true });
 
+// artifactVersion / pluginVersion (TSPEC §2.3 point 2, FSPEC M3/M4) — read once, at build time,
+// from the plugin manifest. Never encoded as a `meta` field: `meta` must stay a pure literal.
+const pluginManifest = JSON.parse(
+  readFileSync(resolve(REPO_ROOT, "pdlc", ".claude-plugin", "plugin.json"), "utf8")
+);
+const pluginVersion = pluginManifest.version;
+
+// id -> the retired pre-bundle source this artifact replaces, per FSPEC §1.1's example rows.
+const RETIRES_BY_ID = {
+  "orchestrate-dev": [".claude/workflows/orchestrate-dev.js"],
+  "orchestrate-queue": [".claude/workflows/orchestrate-queue.js"],
+};
+
+const manifestRows = [];
+
 for (const { file, contents } of bundles) {
   const path = resolve(OUT_DIR, file);
   const current = existsSync(path) ? readFileSync(path, "utf8") : null;
   if (current === contents) {
-    console.log(`  in-sync  .claude/workflows/${file}`);
-    continue;
-  }
-  if (checkOnly) {
+    console.log(`  in-sync  pdlc/workflows/dist/${file}`);
+  } else if (checkOnly) {
     stale = true;
-    console.error(`  STALE    .claude/workflows/${file}`);
-    continue;
+    console.error(`  STALE    pdlc/workflows/dist/${file}`);
+  } else {
+    writeFileSync(path, contents, "utf8");
+    console.log(`  wrote    pdlc/workflows/dist/${file}  (${contents.length} bytes)`);
   }
-  writeFileSync(path, contents, "utf8");
-  console.log(`  wrote    .claude/workflows/${file}  (${contents.length} bytes)`);
+
+  const id = file.replace(/\.bundle\.js$/, "");
+  manifestRows.push({
+    id,
+    pluginPath: `workflows/dist/${file}`,
+    consumerPath: `.claude/workflows/${file}`,
+    artifactVersion: pluginVersion,
+    // Computed over the same in-memory `contents` string just written above — never re-read
+    // from disk — so it can never disagree with what was (or would have been) emitted.
+    pluginSha1: createHash("sha1").update(contents, "utf8").digest("hex"),
+    retires: RETIRES_BY_ID[id] ?? [],
+  });
+}
+
+manifestRows.sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+
+const retired = [...new Set(manifestRows.flatMap((row) => row.retires))].sort();
+
+const manifest = {
+  schemaVersion: 1,
+  pluginVersion,
+  rows: manifestRows,
+  retired,
+};
+
+const manifestContents = `${JSON.stringify(manifest, null, 2)}\n`;
+const manifestPath = resolve(OUT_DIR, "distribution-manifest.json");
+const manifestCurrent = existsSync(manifestPath) ? readFileSync(manifestPath, "utf8") : null;
+
+if (manifestCurrent === manifestContents) {
+  console.log("  in-sync  pdlc/workflows/dist/distribution-manifest.json");
+} else if (checkOnly) {
+  stale = true;
+  console.error("  STALE    pdlc/workflows/dist/distribution-manifest.json");
+} else {
+  writeFileSync(manifestPath, manifestContents, "utf8");
+  console.log(
+    `  wrote    pdlc/workflows/dist/distribution-manifest.json  (${manifestContents.length} bytes)`
+  );
 }
 
 if (stale) {
