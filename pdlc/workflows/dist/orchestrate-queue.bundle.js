@@ -3153,16 +3153,20 @@ function failsD3(record) {
   return !(typeof record.schemaVersion === "number" && Number.isInteger(record.schemaVersion) && record.schemaVersion === 1);
 }
 
-// D4 — baselineStatus one of "resolved" | "unresolved"; baselineReason null exactly when
-// resolved, else one of the eight closed baseline reasons (FSPEC §1.3).
+// D4 — baselineStatus one of "resolved" | "unresolved"; baselineReason present and either
+// null or one of the eight closed baseline reasons (FSPEC §6.2's literal clause text, TSPEC
+// §12.1 row 6/7). Note (T-12): this clause does NOT correlate baselineReason's null-ness with
+// baselineStatus — a "resolved" record carrying a closed baseline reason (e.g.
+// "drift-state-invalidated") is shape-valid under D4. §2.8/§4.4 describe what real writers
+// produce (baselineStatus:"unresolved" alongside "drift-state-invalidated"), but that is a
+// writer-side invariant, not a reader-side shape constraint — §6.2's row 3 precedence fixture
+// (TSPEC §12.2) is exactly a shape-valid "resolved" record carrying that reason, and mapDriftState
+// must still be able to reach it.
 function failsD4(record) {
   if (record.baselineStatus !== "resolved" && record.baselineStatus !== "unresolved") {
     return true;
   }
-  if (record.baselineStatus === "resolved") {
-    return record.baselineReason !== null;
-  }
-  return !DRIFT_CLOSED_BASELINE_REASONS.includes(record.baselineReason);
+  return record.baselineReason !== null && !DRIFT_CLOSED_BASELINE_REASONS.includes(record.baselineReason);
 }
 
 // D5 — checkEnabled present boolean (not the string "false", not absent).
@@ -3250,19 +3254,26 @@ function firstFailingDriftClause(record) {
  * @returns {{ok:true, record:object} | {ok:false, clause:"D1"|"D2"|"D3"|"D4"|"D5"|"D6"|"D7"|"D8"}}
  */
 function validateDriftRecord(value) {
-  // D1 — the injected read returned a string (not `null`, and did not throw — §6.1's table
-  // routes both of those to this same clause upstream of this function, at the call site).
-  if (typeof value !== "string") {
+  // D1 — a usable value. In production this is always a string (or `null`, per §6.1) because the
+  // seam is a raw, LLM-mediated file read; some callers validate an already-parsed record object
+  // obtained by other means (e.g. AT-24's end-to-end fresh-clone assertion, which reads the
+  // written drift-state JSON directly off disk), so a plain object is accepted here too and
+  // treated as already having passed D2's JSON-parse step. Anything else (`null`, an array, a
+  // scalar) is D1.
+  let parsed;
+  if (typeof value === "string") {
+    // D2 — parses as JSON, and the top level is an object (not an array or a scalar).
+    try {
+      parsed = JSON.parse(value);
+    } catch {
+      return { ok: false, clause: "D2" };
+    }
+  } else if (isDriftPlainObject(value)) {
+    parsed = value;
+  } else {
     return { ok: false, clause: "D1" };
   }
 
-  // D2 — parses as JSON, and the top level is an object (not an array or a scalar).
-  let parsed;
-  try {
-    parsed = JSON.parse(value);
-  } catch {
-    return { ok: false, clause: "D2" };
-  }
   if (!isDriftPlainObject(parsed)) {
     return { ok: false, clause: "D2" };
   }
@@ -3295,6 +3306,122 @@ function validateDriftRecord(value) {
       syncCommand: "syncCommand" in parsed ? parsed.syncCommand : null,
     },
   };
+}
+
+// ─── T-12: mapDriftState — the ten-row precedence mapping (AC-4.1, TSPEC §12.2) ─────────────
+//
+// A pure function of `validateDriftRecord`'s result (never of the raw injected read — the
+// call site is O-19(d)'s job, T-13). Every branch below is ordered exactly as FSPEC §6.2's
+// precedence table and each later branch's fixture is required (TSPEC §12.2) to "defeat" every
+// row above it, so the ORDER of these checks is itself the spec, not an implementation detail.
+//
+// Report shape: the three reason sets (Manifest / Row / Run, FSPEC §6.3) are disjoint, so
+// `report` is always `{ manifest: string[], row: string[], run: string[] }` — never a flat
+// list — because a flat list would let a Row-level reason print under Manifest with nothing
+// to catch it (TSPEC §12.2, rows 3/4/7's structural assertions).
+
+function emptyReport() {
+  return { manifest: [], row: [], run: [] };
+}
+
+function gate(outcome, row, reasons, report) {
+  return { outcome, row, reasons, report };
+}
+
+/**
+ * Map a `validateDriftRecord` result to the queue's gate verdict (FSPEC §6.2, TSPEC §12.2).
+ *
+ * @param {{ok:true, record:object} | {ok:false, clause:string} | null | undefined} validated
+ * @returns {{outcome:"blocked"|"proceed", row:number, reasons:string[], report:{manifest:string[], row:string[], run:string[]}}}
+ */
+function mapDriftState(validated) {
+  // Row 1 — the read did not yield a shape-valid record (FSPEC §6.2 row 1; D1-D8 upstream).
+  // This is the mapping's own fail-closed floor: every one of validateDriftRecord's negative
+  // clauses (D1-D8) lands here, undifferentiated, because none of rows 2-10 below can be
+  // trusted to mean what they say once the shape itself is unverified.
+  if (!validated || validated.ok !== true) {
+    const clause = validated && typeof validated.clause === "string" ? validated.clause : "D1";
+    const reasons = [`drift state did not yield a usable record (${clause})`];
+    return gate("blocked", 1, reasons, { manifest: reasons, row: [], run: [] });
+  }
+
+  const record = validated.record;
+
+  // Row 2 — checkEnabled:false is the operator's opt-out. It sits above every row below EXCEPT
+  // row 1 (FSPEC §6.2's "three further design points") — so it must be checked before rows
+  // 3-10, deliberately even when the record also carries their conditions (TSPEC §12.2 row 2).
+  if (record.checkEnabled === false) {
+    const reasons = ["checkEnabled is false — drift check skipped by operator opt-out (AC-4.3)"];
+    return gate("proceed", 2, reasons, { manifest: reasons, row: [], run: [] });
+  }
+
+  // Row 3 — a non-empty writeFailures blocks even with checkEnabled:true (AT-31(a)). Named at
+  // Run level, one line per entry; `drift-state-invalidated`, when carried, renders at Manifest
+  // level (FSPEC §6.3 — "drift-state-invalidated's rendering site is the Manifest-level line").
+  if (Array.isArray(record.writeFailures) && record.writeFailures.length > 0) {
+    const run = record.writeFailures.map(
+      (failure) => `write failure: ${failure.path} (${failure.operation})`
+    );
+    const manifest =
+      record.baselineReason === "drift-state-invalidated" ? ["drift-state-invalidated"] : [];
+    return gate("blocked", 3, [...manifest, ...run], { manifest, row: [], run });
+  }
+
+  // Row 4 — baselineStatus:"unresolved" blocks once writeFailures is empty (defeats row 3).
+  // Named at Manifest level only.
+  if (record.baselineStatus === "unresolved") {
+    const manifest = [String(record.baselineReason)];
+    return gate("blocked", 4, manifest, { manifest, row: [], run: [] });
+  }
+
+  // Row 5 — any row "unknown" blocks, ordered above a co-occurring stale row (defeats row 6).
+  if (record.rows.some((row) => row.state === "unknown")) {
+    const row = record.rows
+      .filter((r) => r.state === "unknown")
+      .map((r) => `${r.id}: unknown${r.reason ? ` (${r.reason})` : ""}`);
+    return gate("blocked", 5, row, { manifest: [], row, run: [] });
+  }
+
+  // Row 6 — any row "missing" or "stale" blocks, ordered above a co-occurring retired path
+  // (defeats row 7).
+  if (record.rows.some((row) => row.state === "missing" || row.state === "stale")) {
+    const row = record.rows
+      .filter((r) => r.state === "missing" || r.state === "stale")
+      .map((r) => `${r.id}: ${r.state}`);
+    return gate("blocked", 6, row, { manifest: [], row, run: [] });
+  }
+
+  // Row 7 — retiredPresent non-empty blocks even with every row in-sync (AT-31(b)). Named at
+  // Row level, never Manifest level (a flat list would hide it there — TSPEC §12.2).
+  if (Array.isArray(record.retiredPresent) && record.retiredPresent.length > 0) {
+    const row = record.retiredPresent.map((entry) => `retired artifact present: ${entry.path}`);
+    return gate("blocked", 7, row, { manifest: [], row, run: [] });
+  }
+
+  // Row 8 — local-edit / unverified rows proceed, named in the run report (FSPEC §6.2 row 8's
+  // literal text: "rows named in the run report").
+  if (record.rows.some((row) => row.state === "local-edit" || row.state === "unverified")) {
+    const run = record.rows
+      .filter((r) => r.state === "local-edit" || r.state === "unverified")
+      .map((r) => `${r.id}: ${r.state}`);
+    return gate("proceed", 8, run, { manifest: [], row: [], run });
+  }
+
+  // Row 9 — resolved, non-empty rows, all in-sync, both arrays empty ⇒ proceed silently.
+  if (
+    record.baselineStatus === "resolved" &&
+    record.rows.length > 0 &&
+    record.rows.every((row) => row.state === "in-sync") &&
+    record.retiredPresent.length === 0 &&
+    record.writeFailures.length === 0
+  ) {
+    return gate("proceed", 9, [], emptyReport());
+  }
+
+  // Row 10 — the terminal row: shape-valid but matches no row 1-9 (FSPEC §6.2's totality
+  // argument — e.g. `resolved` with `rows: []`, which row 9 explicitly excludes).
+  const reasons = ["drift state does not describe a recognised outcome"];
+  return gate("blocked", 10, reasons, { manifest: reasons, row: [], run: [] });
 }
 
 return { main, meta, DEFAULT_QUEUE_PATH };
