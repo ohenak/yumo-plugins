@@ -521,9 +521,11 @@ describe("floor completion — retire-delete (token 13, §5.7)", () => {
       git: true,
       claudeDir: true,
       workflowsDir: true,
-      files: { "legacy-tool.sh": "old-format tool, superseded" },
+      files: { ".claude/workflows/legacy-tool.sh": "old-format tool, superseded" },
     });
-    const plugin = makePluginTree({ rows: [{ id: "row-1", retires: ["legacy-tool.sh"] }] });
+    const plugin = makePluginTree({
+      rows: [{ id: "row-1", retires: [".claude/workflows/legacy-tool.sh"] }],
+    });
     try {
       // row-1 is already in-sync — no copy needed, so its POST-COPY state (§5.7) is trivially
       // in-sync, which is retirement's own gate.
@@ -543,13 +545,15 @@ describe("floor completion — retire-delete (token 13, §5.7)", () => {
       expectFailOpen(run, {
         operation: "retire-delete",
         entrypoint: "sync",
-        path: "legacy-tool.sh",
+        path: ".claude/workflows/legacy-tool.sh",
         remainingRows: [],
       });
       recordableCovered.add("retire-delete");
 
       // §5.7's failure branch: "leave p" — the retired path is never deleted on a failed delete.
-      const legacyStillPresent = readFileSync(join(consumer.root, "legacy-tool.sh"));
+      const legacyStillPresent = readFileSync(
+        join(consumer.root, ".claude/workflows/legacy-tool.sh")
+      );
       expect(legacyStillPresent.length).toBeGreaterThan(0);
     } finally {
       consumer.cleanup();

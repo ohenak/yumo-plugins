@@ -191,33 +191,59 @@ describeOrSkip(
 
     describe("FSPEC §1.4 / TSPEC §13.5 — NN exhaustion is a write failure, not a silent reuse", () => {
       it("reports operation: backup and exits 4 when a stale row's id already has 99 backups", () => {
-        const consumer = makeConsumerTree({ git: true, claudeDir: true });
-        const plugin = makePluginTree();
-        try {
-          const trees = { consumer, plugin };
-          const staleRow = plugin.manifest.rows[0];
-          setRowState(trees, staleRow.id, "stale");
-          // 99 pre-existing backups for this row's id — one shy of the grammar's `01..99`
-          // ceiling (TSPEC §11.1), so the very next backup attempt this sync run makes finds
-          // no free suffix.
-          nnExhausted(consumer.root, staleRow.id);
+        // `nnExhausted` pre-populates 99 backups stamped with "now" (as measured in this
+        // process) so the very next real `pdlc_backup` call — which stamps with its OWN,
+        // independently-computed `date -u ...` a moment later — finds no free suffix. Under a
+        // parallel, many-worker `npm test` run a scheduling delay between the two can
+        // occasionally straddle a second boundary, which would manifest as a false-negative
+        // (status 0 instead of 4) rather than a real defect — so this retries with a freshly
+        // re-anchored "now" a bounded few times before failing, same rationale as any
+        // wall-clock-coupled test needs under load.
+        const MAX_ATTEMPTS = 5;
+        let succeeded = false;
+        for (let attempt = 0; attempt < MAX_ATTEMPTS && !succeeded; attempt++) {
+          const consumer = makeConsumerTree({ git: true, claudeDir: true });
+          const plugin = makePluginTree();
+          try {
+            const trees = { consumer, plugin };
+            const staleRow = plugin.manifest.rows[0];
+            setRowState(trees, staleRow.id, "stale");
+            // 99 pre-existing backups for this row's id — one shy of the grammar's `01..99`
+            // ceiling (TSPEC §11.1), so the very next backup attempt this sync run makes finds
+            // no free suffix.
+            nnExhausted(consumer.root, staleRow.id);
 
-          const run = runScript("sync", {
-            consumerRoot: consumer.root,
-            home: consumer.home,
-            pluginRoot: plugin.pluginRoot,
-          });
-          run.root = consumer.root;
+            const run = runScript("sync", {
+              consumerRoot: consumer.root,
+              home: consumer.home,
+              pluginRoot: plugin.pluginRoot,
+            });
+            run.root = consumer.root;
 
-          expect(run.status).toBe(4);
-          // §4.7's negative: the destroying overwrite never proceeds, so the backup is
-          // reported skipped with `operation: backup` (FSPEC §1.4/§5.6) rather than
-          // `backup-verify` — the suffix search itself is what is exhausted, not a landed
-          // backup's re-read.
-          expectFailOpen(run, { path: staleRow.consumerPath, operation: "backup", entrypoint: "sync" });
-        } finally {
-          consumer.cleanup();
-          plugin.cleanup();
+            if (run.status !== 4) continue;
+
+            // Assert BEFORE this iteration's `finally` tears the tree down.
+            expect(run.status).toBe(4);
+            // §4.7's negative: the destroying overwrite never proceeds, so the backup is
+            // reported skipped with `operation: backup` (FSPEC §1.4/§5.6) rather than
+            // `backup-verify` — the suffix search itself is what is exhausted, not a landed
+            // backup's re-read.
+            expectFailOpen(run, {
+              path: staleRow.consumerPath,
+              operation: "backup",
+              entrypoint: "sync",
+            });
+            succeeded = true;
+          } finally {
+            consumer.cleanup();
+            plugin.cleanup();
+          }
+        }
+
+        if (!succeeded) {
+          throw new Error(
+            `nnExhausted: no attempt out of ${MAX_ATTEMPTS} landed on a same-stamp collision`
+          );
         }
       });
     });

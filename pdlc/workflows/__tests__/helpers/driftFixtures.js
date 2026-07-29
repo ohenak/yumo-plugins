@@ -588,8 +588,28 @@ export function decoyBackupDir(root, id, opts = {}) {
 }
 
 /**
+ * The `date -u +%Y%m%dT%H%M%SZ` stamp `pdlc_backup` (TSPEC §11.1) will itself compute if
+ * invoked right now — mirrored here so `nnExhausted`'s 99 pre-existing backups collide with
+ * the *actual* stamp the very next `pdlc_backup` call inside a real `sync` run will pick, not
+ * with an arbitrary fixed stamp from an unrelated calendar date.
+ *
+ * @param {number} [offsetSeconds] added to "now" before formatting — used by `nnExhausted` to
+ *   also pre-populate the following second, so a scheduling delay between this fixture's build
+ *   and the script's own `date` call that happens to straddle a second boundary still collides.
+ */
+function nowStamp(offsetSeconds = 0) {
+  return new Date(Date.now() + offsetSeconds * 1000)
+    .toISOString()
+    .replace(/[-:]/g, "")
+    .replace(/\.\d{3}Z$/, "Z");
+}
+
+/**
  * 99 backups for one id in one `stamp` — `pdlc_backup_format` rejects `nn > 99` (TSPEC §11.1),
  * so 99 is the exhaustion boundary (FSPEC §1.4's exhaustion ⇒ `operation: backup`, exit 4).
+ * Defaults `stamp` to `nowStamp()` (rather than a fixed literal) so a caller who immediately
+ * follows this with a real `sync` run gets a same-second collision — the whole point of this
+ * fixture (see `nowStamp`'s doc).
  *
  * @param {string} root
  * @param {string} id
@@ -597,5 +617,20 @@ export function decoyBackupDir(root, id, opts = {}) {
  * @returns {{dir:string, names:string[], stamp:string}}
  */
 export function nnExhausted(root, id, opts = {}) {
-  return sameSecondBackups(root, id, { ...opts, count: 99 });
+  if (opts.stamp) {
+    return sameSecondBackups(root, id, { ...opts, count: 99 });
+  }
+  // No explicit stamp: a real `sync` run does substantial work (manifest load, classification,
+  // hashing) BEFORE the stale row's own `pdlc_backup` call computes its `date -u ...` stamp —
+  // measured at 1-2+ seconds end-to-end even on an unloaded runner, not a rare scheduler-jitter
+  // tail. So this pre-populates 99 backups for "now" AND several following seconds, covering
+  // that startup latency (plus headroom for a loaded, many-worker `npm test` run) rather than
+  // assuming a same-second collision.
+  const OFFSETS = [0, 1, 2, 3, 4, 5, 6, 7, 8];
+  const built = sameSecondBackups(root, id, { ...opts, stamp: nowStamp(OFFSETS[0]), count: 99 });
+  for (const offset of OFFSETS.slice(1)) {
+    const extra = sameSecondBackups(root, id, { ...opts, stamp: nowStamp(offset), count: 99 });
+    built.names = built.names.concat(extra.names);
+  }
+  return built;
 }
