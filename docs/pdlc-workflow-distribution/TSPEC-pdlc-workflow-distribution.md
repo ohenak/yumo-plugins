@@ -1514,7 +1514,14 @@ export function expectRepoRootUnresolved(run, { root, snapshotBefore, reportedRe
 | 5 | **N-8** is present iff `reportedReason !== "repo-root-unresolved"` | FSPEC §8.3's narrow emission condition, asserted in both directions |
 
 `assertTreeUnchanged` compares a **recursive snapshot** — relative path, type, mode, and sha1 of each
-regular file — taken immediately before `runScript` and again after. A "no `.claude/` was created"
+regular file, **excluding any path with a `.git/` segment** — taken immediately before `runScript`
+and again after. The `.git/` exclusion is normative, not tidiness (TE F-12): §8.2's
+`gitTreeBrokenProbe` and §10.3's `fxNoGitDir`/`fxUnbornHead` fixtures are `git init`-ed trees whose
+`.git/` contents (index mtime and size, `logs/`, `gc.log`, `FETCH_HEAD`) change as an incidental
+effect of any git invocation in or around the run — including the subject's own
+`git worktree list --porcelain` — so an unscoped helper would make the strongest "nothing was
+created" assertion in the suite intermittently red for a reason that has nothing to do with the
+claim. Nothing this feature writes ever lands under `.git/`, so the exclusion costs no coverage. A "no `.claude/` was created"
 assertion is the weaker form, and it passes against a run that wrote a backup directory, touched the
 plugin tree, or created something under `$PWD` outside `.claude/` — which is exactly the
 "invent a path relative to `$PWD`" implementation FSPEC §2.2 clause 2 forbids. The snapshot form is
@@ -1593,6 +1600,14 @@ some fallback, produced it.
 | 4 | `mapDriftState(validateDriftRecord(raw))` yields `{ outcome: "proceed", row: 9 }` — *proceed silently*, the row number distinguishing it from row 2's opt-out and row 8's noisy proceed |
 | 5 | the as-found trace of the **sync** run classified every row `missing` (§3.2's ancestor rule) and the `mkdir` records follow every as-found `classify` record — AC-3.8 and AC-2.9(1) on the same run |
 | 6 | `assertTreeUnchanged(home, …)` — nothing was written under `$HOME` |
+| **7** | **`record.syncCommand` is string-equal to `<root>/pdlc/hooks/scripts/sync-workflows.sh`** — §7.4's positive expansion assertion, plus: the string contains no `$` and no `{`, and `MESSAGES["W-5"].cmd` from a run over the same tree with one row made `stale` is byte-equal to it (AC-0.4, AC-4.2, PM F-02) |
+
+Assertion 7 is why AT-24 is the landing site rather than some new fixture: this is the **only**
+fully-resolved record in the suite (`<pluginRoot>` resolves through §2.4's maintainer-marker branch,
+so the expected value is derivable from the fixture root alone and no environment variable is
+involved). Every other `syncCommand` assertion in the document is negative or shape-wise —
+`null` in AT-14/AT-14b, `42 ⇒ D8` and `delete syncCommand ⇒ ok` in §12.1 — and a suite of only those
+is green against an emitter that never expands anything.
 
 ### 9.3 Both mode-bit assertions (O-12)
 
@@ -1669,6 +1684,13 @@ turning AT-23's `== 7` into `== 0` with no diff to explain it. The landing step 
 present on disk **and** tracked (`git ls-files --error-unmatch`), so the failure is reported as
 "the fixture is not committed" rather than as an oracle bug.
 
+**The guard is two assertions, split by capability (TE Q-04).** The **on-disk presence** half needs
+no git and runs on every runner; the **tracked-ness** half is wrapped in `itOrSkip("git", […])`
+naming "an uncommittable fixture would arrive empty on a fresh clone and AT-23 would report
+`== 0`" as its unverified invariant. Splitting them matters because they fail for different
+reasons: on a `git`-less runner the presence check alone still catches the empty-tree case in the
+only way that runner can, and AT-23's own `== 7` remains the backstop.
+
 **Fixture contents — one file per discrimination, 7 expected violations:**
 
 | # | Fixture path (relative to the fixture root) | Pattern it carries | Expected |
@@ -1703,9 +1725,10 @@ it("AC-6.4 anti-widening guard — the pinned fixture returns exactly 7", () => 
   expect(v.map(e => e.path)).toEqual(EXPECTED_SEVEN);       // literal array, sorted
   expect(v).toHaveLength(7);
   expect(EXEMPTIONS).toEqual([                              // the list itself, asserted literally
-    "generated:.claude/workflows/", "generated:pdlc/workflows/dist/",
-    "feature-docs:docs/<X>/ containing REQ-<X>.md",
-    "any distribution-manifest.json", "any __tests__/",
+    "generated trees: .claude/workflows/ and pdlc/workflows/dist/",   // (i) — ONE member, two trees
+    "feature-docs: docs/<X>/ containing REQ-<X>.md",                  // (ii)
+    "any distribution-manifest.json",                                 // (iii)
+    "any __tests__/",                                                 // (iv)
   ]);
 });
 ```
@@ -1713,6 +1736,17 @@ it("AC-6.4 anti-widening guard — the pinned fixture returns exactly 7", () => 
 The exemption list is exported from `document-oracles.mjs` as a frozen array and asserted
 **literally**, per AC-6.4: widening an exemption is then a red test even when the fixture's file set
 is untouched, which is the case a count-only assertion misses.
+
+**`EXEMPTIONS` has exactly four members, matching FSPEC §7.5's enumeration (corrected in v2.0 —
+TE F-10).** §7.5 reads "a **four-member** exemption enumerated literally: (i) generated trees
+`.claude/workflows/` **and** `pdlc/workflows/dist/`; (ii) …; (iii) …; (iv) …" — (i) is **one**
+member covering two trees. v1.0's literal split it into two strings, giving five, and since AT-23
+asserts this array *literally* (which is the point — widening must be red even when the file set is
+untouched) a conforming implementation would have failed AT-23 on a representation accident. The
+representation is pinned here deliberately: **one string per FSPEC clause, in clause order**, and
+the two generated trees are named inside member (i)'s single string. A future exemption is a new
+array member **and** a new FSPEC §7.5 clause, in the same commit — never a silent split of an
+existing one, which would change the array without changing the exempted set.
 
 ### 10.2 `packagingViolations(root)`
 
@@ -1866,25 +1900,59 @@ mapping floor (§1.4), so they are the ones a maintainer runs most.
 ### 12.1 `validateDriftRecord` — one fixture per clause
 
 `driftRecordShape.test.js` is table-driven over D1–D8. Each row starts from `VALID_RECORD` — a
-frozen, shape-valid literal — and applies **exactly one** mutation:
+frozen, shape-valid literal — and applies **exactly one** mutation. **One row, one mutation, one
+`it()`** — restated as a rule in v2.0 because v1.0 broke it in three places (TE F-04):
 
-| Clause | Mutation | Expected `clause` |
-|---|---|---|
-| D1 | the read returned `null` | `"D1"` |
-| D2 | `"```json\n{…}\n```"` (fenced), and separately `"{\"schemaVersion\":1,"` (truncated) | `"D2"` |
-| D3 | `schemaVersion: "1"` | `"D3"` |
-| D4 | `baselineReason: "manifest-gone"` | `"D4"` |
-| D5 | `checkEnabled: "false"` | `"D5"` |
-| D6 | `delete rows` | `"D6"` |
-| D7 | `rows[0].state: "in sync"`; `retiredPresent[0].supersedingState: "fresh"` | `"D7"` |
-| D8 | `generatedBy: "queue"`; `syncCommand: 42` | `"D8"` |
-| — | `delete syncCommand` | **`ok: true`** — AT-36's clause, the one absence D8 tolerates |
+| # | Clause | Mutation (exactly one) | Expected | O-19(b) shape |
+|---|---|---|---|---|
+| 1 | D1 | the read returned `null` | `"D1"` | — |
+| 2 | D2 | ` "```json\n{…}\n```" ` | `"D2"` | **fenced** |
+| 3 | D2 | `'{"schemaVersion":1,'` | `"D2"` | **truncated** |
+| 4 | D2 | `JSON.stringify({ result: VALID_RECORD })` — the object is wrapped in an envelope, so the top level is an object but not *this* record | `"D2"` (top level is not the record) | **re-wrapped** |
+| 5 | D3 | `schemaVersion: "1"` | `"D3"` | type-swapped |
+| 6 | D4 | `baselineReason: "manifest-gone"` | `"D4"` | reworded |
+| 7 | D4 | `delete baselineStatus` | `"D4"` | **key-dropped** — D4's *other* conjunct |
+| 8 | D5 | `checkEnabled: "false"` | `"D5"` | type-swapped |
+| 9 | D6 | `delete rows` | `"D6"` | key-dropped |
+| 10 | D6 | `retiredPresent: "[]"` | `"D6"` | **array-replaced-by-scalar** |
+| 11 | D6 | `writeFailures: {}` | `"D6"` | array-replaced-by-object |
+| 12 | D7 | `rows[0].state: "in sync"` | `"D7"` | **state-value-reworded** |
+| 13 | D7 | `retiredPresent[0].supersedingState: "fresh"` | `"D7"` | state-value-reworded, second site |
+| 14 | D8 | `generatedBy: "queue"` | `"D8"` | reworded |
+| 15 | D8 | `syncCommand: 42` | `"D8"` | type-swapped |
+| 16 | — | `delete syncCommand` | **`ok: true`** | AT-36's clause, the one absence D8 tolerates |
 
-The mangled-relay fixtures O-19(b) requires — fenced, re-wrapped, truncated, key-dropped,
-array-replaced-by-scalar, state-value-reworded — are exactly the rows above, so O-19(b) is
-discharged by this table and §16 records that rather than duplicating it. Each row asserts the
-**clause id**, not merely `ok: false`: a validator that returns `D1` for everything satisfies
-`ok: false` for all eight and would pass a coarser table while telling the operator nothing.
+**Row 4 needs an implementation note the validator must honour.** D2 as FSPEC §6.2 states it is
+"parses as JSON and the top level is an **object**", which a `{ "result": {…} }` envelope satisfies.
+It is D3 that then fails, because `schemaVersion` is absent at the top level. Either clause id is
+defensible; **the row asserts `"D2"`** on the rule that a validator recognising a *known envelope
+key* whose value is a shape-valid record must reject rather than unwrap — unwrapping is how a relay
+mangling becomes invisible. The implementation therefore checks, as part of D2, that the parsed
+object is not a single-key envelope around a shape-valid record. This is the one row in the table
+that constrains the validator beyond FSPEC §6.2's literal text, and it is stated rather than
+smuggled in: **it is a TSPEC-level test-design decision, not an FSPEC amendment**, and the FSPEC's
+D2/D3 wording is unchanged.
+
+**Three corrections in v2.0 (TE F-04).**
+
+1. **All six of O-19(b)'s mandated relay shapes are now present.** v1.0 had fenced, truncated,
+   key-dropped and reworded, and §16 nonetheless claimed "(b) is discharged in design by §12.1's
+   table". **Re-wrapped** (row 4) and **array-replaced-by-scalar** (row 10) were missing —
+   the latter being the single most plausible LLM-relay corruption of a JSON array.
+2. **D6 and D4 are covered on all their conjuncts.** D6 requires **three** arrays present
+   (`rows`, `retiredPresent`, `writeFailures`) and v1.0 mutated only `rows`, so a validator checking
+   `rows` alone passed. D4 requires `baselineStatus` **and** `baselineReason` and v1.0 tested only
+   the reason. Rows 7, 10 and 11 close both.
+3. **The one-mutation rule is restored.** v1.0's D7 row applied two mutations (`rows[0].state` **and**
+   `retiredPresent[0].supersedingState`) and its D8 row applied two (`generatedBy` **and**
+   `syncCommand`). With two simultaneous mutations a validator implementing only half the clause
+   still returns the right clause id and the sub-clause gap is invisible. Rows 12/13 and 14/15 are
+   the split forms.
+
+O-19(b) is therefore discharged by this table, and §16 records that rather than duplicating it. Each
+row asserts the **clause id**, not merely `ok: false`: a validator that returns `D1` for everything
+satisfies `ok: false` for all fifteen negative rows and would pass a coarser table while telling the
+operator nothing.
 
 `VALID_RECORD` is `Object.freeze`d and every row deep-clones it. A shared mutable literal across a
 table-driven suite produces order-dependent passes, which is the failure this suite would be least
