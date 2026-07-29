@@ -800,7 +800,7 @@ than per case, which keeps §6.5 at one spawn.
 
 | Generator | Draw | Shrink ladder |
 |---|---|---|
-| `genId(rng)` | conforms to **`M6_ID_REGEX`**, imported from `document-oracles.mjs` — the *same* regex C1's manifest validator uses (TSPEC §11.3 row 1). Length 1–64; first byte alphanumeric; body drawn from `[A-Za-z0-9._-]`. **Adversarial draws are forced, not hoped for**: ≥ 10% of the set contains `.`, ≥ 10% contains `-`, and ≥ 5% is a **stamp-shaped id** (`dev.20260101T000000Z`, `20260101T000000Z`, `x.20260101T000000Z-01`) | `a` → `a0` → `a.b` → drawn value; stamp-shaped ids shrink **last** |
+| `genId(rng)` | conforms to **`M6_ID_REGEX`**, imported from `pdlc/workflows/lib/document-oracles.mjs` (**new**, per TSPEC §2.1 — it does not exist at HEAD) — the *same* regex C1's manifest validator uses (TSPEC §11.3 row 1). Cited by bare basename after this first mention. Length 1–64; first byte alphanumeric; body drawn from `[A-Za-z0-9._-]`. **Adversarial draws are forced, not hoped for**: ≥ 10% of the set contains `.`, ≥ 10% contains `-`, and ≥ 5% is a **stamp-shaped id** (`dev.20260101T000000Z`, `20260101T000000Z`, `x.20260101T000000Z-01`) | `a` → `a0` → `a.b` → drawn value; stamp-shaped ids shrink **last** |
 | `genStamp(rng, {calendarValid})` | 16 bytes `YYYYMMDDTHHMMSSZ`. `calendarValid: false` draws digits syntactically (the parser is pattern-based, §6.3); `calendarValid: true` draws a real UTC instant in `1970-01-01 … 2999-12-31` | toward `19700101T000000Z` |
 | `genNn(rng)` | `01…99`, plus the out-of-range draws `00`, `100`, `-1`, `1` (unpadded) as the **rejection** cases | toward `01` |
 | `genDecoy(rng)` | names that must be untouched: no `.bak` suffix; `.bak` with a malformed tail; a well-formed backup for an **unknown** id; a name whose *id* portion is empty; a directory | — |
@@ -1079,39 +1079,90 @@ copy of the plugin artifact five idle runs old.
 
 ## 8. Seam-closure properties (`PDLC_FAULT` ⊆ 16; M6; trace grammar)
 
+### 8.0 `PDLC_FAULT_TOKENS` — its form, its home, and how JS obtains it
+
+TSPEC §16 names `PDLC_FAULT_TOKENS` in one line ("exported from C1") and TSPEC §5.2's enumeration is
+a markdown table, not a code artifact. SE F-07 is right that this is not enough: both §8.1 oracles
+consume the token set from JS, and if they end up reading the same bytes the claim of "two
+independent oracles" collapses to one. Pinned here, normatively for the implementation:
+
+| | Decision |
+|---|---|
+| **Form** | a **bash array**, declared once in **C1** (`pdlc/hooks/scripts/lib/pdlc-drift.sh`): `PDLC_FAULT_TOKENS=(git-worktree-list walk-stat … consumer-artifact-read)`, in TSPEC §5.2's table order, and `readonly` after assignment |
+| **Home** | C1, adjacent to `pdlc_fault_active`. There is **no** generated JSON side-artifact and **no** JS mirror of the list — a mirror is the copy TSPEC §16 exists to avoid, and a generated artifact adds a build step the feature does not otherwise have |
+| **JS extraction** | one `execFileSync` of `bash -c 'source <C1>; printf "%s\n" "${PDLC_FAULT_TOKENS[@]}"'`, wrapped in a helper `readFaultTokens()` in `__tests__/helpers/driftGenerators.js`. This reads the **runtime value of the array after C1 has been sourced** — not the text of the file |
+| **Sanity conjunct** | `readFaultTokens()` returns exactly **16** entries, all distinct, each matching `M6_ID_REGEX`. A helper that silently returns `[]` (mis-sourced file, renamed variable) would make PROP-SEAM-01 vacuously true, so the count is asserted before the property runs |
+
+**Why the two oracles are then genuinely independent.** PROP-SEAM-01 consumes the *runtime array*;
+PROP-SEAM-02 reads the *three shipped bash files as text* and extracts the literal first arguments
+of `pdlc_fault_active` **call sites**. The array declaration and the call sites are different bytes
+in C1, and PROP-SEAM-02 explicitly excludes the declaration (§8.1). A defect that pads the array
+with a token no guard consults is caught by PROP-SEAM-02's superset direction; a defect that adds a
+guard for a token not in the array is caught by its subset direction; a defect in the *recognition*
+code that consults neither is caught by PROP-SEAM-01. No single edit makes all three green.
+
 ### 8.1 The token-set closure (TSPEC §16's PROPERTIES row)
 
 FSPEC §10 O-10 requires the emitted token set to be a subset of the enumerated one, and TSPEC §5.2
-closes that enumeration at **sixteen**, exported from C1 as `PDLC_FAULT_TOKENS` so the property
-reads the implementation's own list rather than a copy. The obligation is stated as a subset; a
-subset alone is satisfied by an implementation that recognises **nothing**, so both directions are
-asserted, by two independent oracles.
+closes that enumeration at **sixteen**, exported from C1 as `PDLC_FAULT_TOKENS` (§8.0) so the
+property reads the implementation's own list rather than a copy. The obligation is stated as a
+subset; a subset alone is satisfied by an implementation that recognises **nothing**, so both
+directions are asserted, by the two independent oracles §8.0 pins.
 
 **PROP-SEAM-01 — Recognition equals the enumeration.**
-(a) For every `t ∈ PDLC_FAULT_TOKENS` (all sixteen), a run with `PDLC_FAULT=t` prints **no** N-7
-line. (b) For every generated non-member `s` — 4 draws per run family, comprising: a random
-M6-conforming string, a **one-character mutation** of a real token (`mkdirr`, `mkdi`, `Mkdir`), a
-real token with leading whitespace (`" mkdir"`, TSPEC §5.1's no-trim rule), and a real token of a
-*different* case — the run prints N-7 **exactly once**, with the whole spec text captured, injects
-nothing, and is **byte-equivalent** to the same fixture with the seam unset (stdout, drift state,
-sync manifest, modulo `generatedAtUtc`). *(Contract · Harness · E · `driftFault.test.js`)*
-The mutation draws are the falsifying half: a random string is rejected by any implementation, while
-`mkdirr` is rejected only by one doing exact matching rather than a prefix or substring test.
-Byte-equivalence (not "exit is still 0") is TSPEC §5.4 rule 2's form.
+(a) For every `t ∈ readFaultTokens()` (all sixteen, §8.0), a run with `PDLC_FAULT=t` prints **no**
+N-7 line. (b) For every generated non-member `s`, the run prints N-7 **exactly once**, with the
+whole spec text captured, injects nothing, and is **byte-equivalent** to the same fixture with the
+seam unset (stdout, drift state, sync manifest, modulo `generatedAtUtc`).
+*(Contract · Harness · E · `driftFault.test.js`)*
+
+**(b)'s draws are four *classes*, one draw from each — not four draws from an overlapping list**
+(SE F-15). v1.0 listed the classes with `Mkdir` serving simultaneously as the one-character-mutation
+example and the different-case example, and gave three examples for one slot, so with "4 draws" the
+four classes were not guaranteed to be covered:
+
+| # | Class | Drawn as | Falsifies |
+|---|---|---|---|
+| 1 | **Unrelated M6-conforming string** | `genId(rng)`, rejected if it collides with a member | nothing subtle — the control that proves N-7 fires at all |
+| 2 | **Edit-distance-1 mutation of a member**, case-preserving | one member drawn, then one of: append a character (`mkdirr`), delete a character (`mkdi`), substitute one (`mkdit`) | a prefix or substring match instead of an exact one — the whole point of the class |
+| 3 | **A member with leading or trailing whitespace** | `" mkdir"` / `"mkdir "` | an implementation that trims; TSPEC §5.1's no-trim rule |
+| 4 | **A member with its case changed**, otherwise identical | `"MKDIR"`, `"Mkdir"` | a case-insensitive comparison (`shopt -s nocasematch`, `${x,,}`) |
+
+Exactly one draw comes from each class per run family, so all four are covered by construction
+rather than by luck. Byte-equivalence (not "exit is still 0") is TSPEC §5.4 rule 2's form.
 
 **PROP-SEAM-02 — Static call-site closure.**
-Reading the shipped bash sources as text (`lib/pdlc-drift.sh`, `check-workflow-drift.sh`,
-`sync-workflows.sh`): the set of literal first arguments to `pdlc_fault_active` is **equal** to
-`PDLC_FAULT_TOKENS`, and every call site passes a literal (never a variable). *(Contract · Unit ·
-E · `driftFault.test.js`)*
+Reading the three shipped bash sources **as text** — `pdlc/hooks/scripts/lib/pdlc-drift.sh` (C1),
+`pdlc/hooks/scripts/check-workflow-drift.sh` (C2), `pdlc/hooks/scripts/sync-workflows.sh` (C3);
+TSPEC §2.1's inventory, and no fourth file carries a guard — the set of literal **first** arguments
+to `pdlc_fault_active` is **equal** to `readFaultTokens()` (§8.0). *(Contract · Unit · E ·
+`driftFault.test.js`)*
+
+Three scoping rules the oracle needs to be sound, all of which v1.0 left implicit (SE F-14):
+
+1. **The literal-argument conjunct scopes to the *first* argument only.** TSPEC §5.1.1 *requires*
+   selector-bearing guards to pass a **variable** scope key as the second argument
+   (`pdlc_fault_active artifact-copy "$id"`), so v1.0's blanket "every call site passes a literal
+   (never a variable)" was false against a conforming implementation. Restated: **argument 1 is
+   always a bare literal token; argument 2, where present, is unconstrained.** A computed token
+   *name* would make the static read incomplete without saying so, which is what the conjunct
+   protects.
+2. **The scan excludes the function's own definition site** (the `pdlc_fault_active() { … }` body,
+   which references the parameter, not a token) **and the `PDLC_FAULT_TOKENS` array declaration**
+   (§8.0) — reading the declaration here would collapse the two oracles into one.
+3. **The scan excludes comments and heredoc bodies.** The extractor matches `pdlc_fault_active` only
+   at a command position on a non-comment line and outside any `<<`-delimited region; a token named
+   in a comment is documentation, not a guard.
+
 The subset direction is the obligation; the superset direction ("every listed token has at least one
 guard") is what stops the enumeration from being padded with tokens no code consults — which would
-make PROP-SEAM-01(a) pass for tokens that inject nothing anywhere. The literal-argument conjunct is
-what keeps this oracle sound: a computed token name would make the static read incomplete without
-saying so.
+make PROP-SEAM-01(a) pass for tokens that inject nothing anywhere.
 
 **PROP-SEAM-03 — Selector-bearing partition.**
-For every token, with a selector appended: tokens TSPEC §5.1.1 marks **non-bearing** produce N-7
+For every one of the sixteen tokens, with a selector appended — TSPEC §5.1.1's partition is **7
+bearing** (`artifact-copy`, `artifact-copy-corrupt`, `backup`, `backup-corrupt`, `retire-delete`,
+`plugin-artifact-read`, `consumer-artifact-read`) and **9 non-bearing**, and the partition itself is
+read from TSPEC §5.1.1, not re-derived: tokens marked **non-bearing** produce N-7
 exactly once and inject nothing (the whole spec text captured, including the `mkdir:` and
 `backup:a:b` forms); tokens marked **bearing** produce **no** N-7 and inject **only** for the row or
 backup whose scope key is byte-equal to the selector — over generated 2–4-row manifests, exactly one
