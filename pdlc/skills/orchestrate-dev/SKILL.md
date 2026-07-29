@@ -87,7 +87,7 @@ All artifacts live under `docs/{feature}/`. See CLAUDE.md §pdlc specifics for f
 ## Workflow Script Path
 
 - Canonical plugin source (ES module, unit-tested): `pdlc/workflows/orchestrate-dev.js`
-- Runtime-loaded bundle: `.claude/workflows/orchestrate-dev.bundle.js`
+- Built artifact (tracked): `pdlc/workflows/dist/orchestrate-dev.bundle.js` → untracked consumer runtime copy `.claude/workflows/orchestrate-dev.bundle.js`, installed by `sync-workflows.sh`
 
 The bundle is **generated** — do not edit it. Run `node pdlc/workflows/build-runtime.mjs` after any change to a workflow source; `--check` exits non-zero when a bundle is stale (CI-usable, and asserted by `__tests__/runtimeBundle.test.js`).
 
@@ -95,4 +95,4 @@ The build exists because the workflow runtime is a restricted sandbox: `export c
 
 Because the adapter's IO is async, injected IO calls must be `await`ed at every call site in the source.
 
-Until a formal `pdlc install` mechanism exists, copying the bundle into a consumer repo is manual.
+Distribution is no longer a hand step. `node pdlc/workflows/build-runtime.mjs` writes the artifacts and `distribution-manifest.json` into `pdlc/workflows/dist/`; `pdlc/hooks/scripts/sync-workflows.sh` then installs them as the consumer's untracked runtime copy under `.claude/workflows/`, and `--check` on either command reports drift instead of hiding it.

@@ -5,3 +5,8 @@
 
 # Node
 node_modules/
+
+# Generated consumer runtime copies — installed from pdlc/workflows/dist/ by
+# pdlc/hooks/scripts/sync-workflows.sh. Anchored: an unanchored pattern matches at every
+# depth and would swallow the checked-in covered-violations fixture (TSPEC §10.1).
+/.claude/workflows/

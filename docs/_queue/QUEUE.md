@@ -11,14 +11,14 @@ frontmatter is the pickup gate; the `Status` cell tracks lifecycle.
 
 | Order | Status | Feature | REQ Path | Depends-On |
 |-------|--------|---------|----------|------------|
-| 1 | halted | pdlc-workflow-distribution | docs/pdlc-workflow-distribution/REQ-pdlc-workflow-distribution.md | — |
+| 1 | in-progress | pdlc-workflow-distribution | docs/pdlc-workflow-distribution/REQ-pdlc-workflow-distribution.md | — |
 | 2 | pending | pdlc-merge-phase | docs/pdlc-merge-phase/REQ-pdlc-merge-phase.md | pdlc-workflow-distribution |
 | 3 | pending | pdlc-advisory-tier | docs/pdlc-advisory-tier/REQ-pdlc-advisory-tier.md | pdlc-merge-phase |
 | 4 | pending | pdlc-consolidation-agent | docs/pdlc-consolidation-agent/REQ-pdlc-consolidation-agent.md | pdlc-workflow-distribution, pdlc-advisory-tier |
 | 5 | pending | pdlc-engineering-loop | docs/pdlc-engineering-loop/REQ-pdlc-engineering-loop.md | pdlc-workflow-distribution, pdlc-merge-phase, pdlc-advisory-tier, pdlc-consolidation-agent |
 | 6 | blocked | pdlc-install-mechanism | docs/pdlc-install-mechanism/REQ-pdlc-install-mechanism.md | pdlc-workflow-distribution |
 | 7 | blocked | pdlc-release-ci | docs/pdlc-release-ci/REQ-pdlc-release-ci.md | pdlc-workflow-distribution |
-| 8 | blocked | pdlc-review-loop-hardening | docs/pdlc-review-loop-hardening/REQ-pdlc-review-loop-hardening.md | — |
+| 8 | blocked | pdlc-review-loop-hardening | docs/pdlc-review-loop-hardening/REQ-pdlc-review-loop-hardening.md | pdlc-workflow-distribution |
 
 Row 6 is the successor binding for `pdlc-workflow-distribution` deferrals D-DIST-01, D-DIST-02,
 D-DIST-03 and D-DIST-05 (full `pdlc install`, loading workflows from the plugin path with no copy,
@@ -80,9 +80,11 @@ residual operator surface, OQ-E1..E4).
 **Order 1 before order 2, despite order 2 being the more valuable feature.**
 `pdlc-merge-phase` is the largest single latency win — it is what lets an unattended `/loop`
 deliver more than one feature. But it is a *workflow script* change, and workflow scripts reach
-consumers through a manual copy (`.claude/workflows/*.js`), documented in both orchestrator
-SKILLs as "managed manually" until a `pdlc install` mechanism exists. Shipping the merge phase
-into that channel is how a fix gets merged, archived, and never runs. Distribution first.
+consumers through a runtime copy that, when this queue was written, had to be refreshed by hand —
+both orchestrator SKILLs recorded that as the standing convention. Shipping the merge phase
+into that channel is how a fix gets merged, archived, and never runs. Distribution first:
+`pdlc-workflow-distribution` replaces the hand refresh with `build-runtime.mjs` emitting into
+`pdlc/workflows/dist/` and `sync-workflows.sh` installing the consumer's runtime copy.
 
 **Order 3 after order 2** because the advisory tier's most valuable seam (A5, CI failure
 triage-and-fix) and the merge phase's preconditions interact directly: the fix-and-re-poll loop

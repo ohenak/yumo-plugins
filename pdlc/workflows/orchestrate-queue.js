@@ -2,7 +2,8 @@
  * orchestrate-queue.js — Serial queue driver around orchestrate-dev
  *
  * Canonical plugin source: pdlc/workflows/orchestrate-queue.js
- * Consumer runtime copy:  .claude/workflows/orchestrate-queue.js
+ * Built artifact:          pdlc/workflows/dist/orchestrate-queue.bundle.js
+ * Consumer runtime copy:   installed from dist/ by pdlc/hooks/scripts/sync-workflows.sh
  *
  * Purpose
  * -------

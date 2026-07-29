@@ -194,14 +194,16 @@ function normalizeRunOpts(entrypoint, opts) {
 }
 
 /**
- * Raw trace lines (unparsed), read only if `tracePath` exists. `parseTrace`
- * (`driftOrdering.js`, T-16) is the parser of record for the §4.1 grammar — this is a
- * passthrough so `RunResult.trace` is always an array, never `undefined`, before T-16 lands.
+ * `RunResult.trace` is a `TraceRecord[]` (TSPEC §3.1's `RunResult` shape: `trace, //
+ * TraceRecord[] — §4.1, [] when trace:false`), so this parses through `driftOrdering.js`'s
+ * `parseTrace`, the parser of record for the §4.1 grammar. Returns `[]` when the file was
+ * never created — §4.4's blocked-trace fixture asserts the empty trace and the direct
+ * `parseTrace(tracePath)` throw itself, and `RunResult.trace` must stay an array so a run
+ * that legitimately traced nothing is not conflated with a harness crash.
  */
 function readTraceIfPresent(tracePath) {
   if (!tracePath || !existsSync(tracePath)) return [];
-  const raw = readFileSync(tracePath, "utf8");
-  return raw.length ? raw.split("\n").filter((line) => line.length > 0) : [];
+  return requireOrdering("runScript").parseTrace(tracePath);
 }
 
 /**

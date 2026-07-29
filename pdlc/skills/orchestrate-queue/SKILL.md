@@ -172,7 +172,8 @@ same files.
 ## Workflow Script Path
 
 - Canonical plugin source (ES module, unit-tested): `pdlc/workflows/orchestrate-queue.js`
-- Runtime-loaded bundle: `.claude/workflows/orchestrate-queue.bundle.js`
+- Built artifact (tracked, shipped): `pdlc/workflows/dist/orchestrate-queue.bundle.js`
+- Consumer runtime copy (untracked, installed by `sync-workflows.sh`): `.claude/workflows/orchestrate-queue.bundle.js`
 
 The bundle is **generated** by `node pdlc/workflows/build-runtime.mjs` — do not edit it.
 It inlines both the queue module and `orchestrate-dev` (the queue calls it in-process),
@@ -180,8 +181,9 @@ plus the runtime adapter. Rebuild after any workflow source change; `--check` ex
 non-zero when stale. See `orchestrate-dev`'s SKILL.md § Workflow Script Path for why the
 build step exists (workflow-runtime sandbox restrictions) and how injection works.
 
-Copying the bundle into a consumer repo remains manual until a formal `pdlc install`
-mechanism exists — same convention as `orchestrate-dev`.
+Distribution follows the same mechanism as `orchestrate-dev`: `build-runtime.mjs` writes
+`pdlc/workflows/dist/` (artifacts plus `distribution-manifest.json`), and
+`pdlc/hooks/scripts/sync-workflows.sh` installs the consumer's untracked runtime copy.
 
 ---
 

@@ -217,7 +217,8 @@ const __dev = (function () {
  * orchestrate-dev.js — Full PDLC pipeline orchestrator
  *
  * Canonical plugin source: pdlc/workflows/orchestrate-dev.js
- * Consumer runtime copy:  .claude/workflows/orchestrate-dev.js
+ * Built artifact:          pdlc/workflows/dist/orchestrate-dev.bundle.js
+ * Consumer runtime copy:   installed from dist/ by pdlc/hooks/scripts/sync-workflows.sh
  *
  * Concurrent-agent ceiling analysis (REQ-NFR-01):
  * max fan-out is 5 se-implement agents per batch (Phase I) + 2 reviewers per reviewLoop
@@ -2361,7 +2362,8 @@ const realMain = __dev.main;
  * orchestrate-queue.js — Serial queue driver around orchestrate-dev
  *
  * Canonical plugin source: pdlc/workflows/orchestrate-queue.js
- * Consumer runtime copy:  .claude/workflows/orchestrate-queue.js
+ * Built artifact:          pdlc/workflows/dist/orchestrate-queue.bundle.js
+ * Consumer runtime copy:   installed from dist/ by pdlc/hooks/scripts/sync-workflows.sh
  *
  * Purpose
  * -------

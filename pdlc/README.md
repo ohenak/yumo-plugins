@@ -53,6 +53,33 @@ go through the queue (or, minimally, a standalone `dod-verify` pass) — not an 
 integration-boundary criterion shipped exactly that way: in ad-hoc commits with no
 REQ/PLAN/DoD, so nothing ever challenged the adjacent surfaces they silently falsified.
 
+## Fresh-clone bootstrap
+
+The runtime artifacts are generated, so a fresh clone of this repo has none. Two commands, **in this
+order**, bring one to a working state — no published release, no installed plugin, no
+`${CLAUDE_PLUGIN_ROOT}`, no network:
+
+```bash
+node pdlc/workflows/build-runtime.mjs     # generates pdlc/workflows/dist/ and distribution-manifest.json
+pdlc/hooks/scripts/sync-workflows.sh      # copies those artifacts into the consumer's .claude/workflows/
+```
+
+The order is not interchangeable: the sync step copies what the build step produced, so running it
+first has nothing to copy. The second command is invoked by **bare path** — no `bash` or `sh`
+prefix; the shipped hook scripts carry their execute bit so that it works. Confirm the result with
+`pdlc/hooks/scripts/sync-workflows.sh --check`, which exits 0 once every row is in sync.
+
+### Worktrees
+
+A worktree Claude Code creates for you is a supported consumer: the repo-root `.worktreeinclude`
+lists `.claude/workflows/`, so the generated artifacts come across with the worktree.
+
+A worktree created by hand with `git worktree add` is **not** a supported consumer. Its
+`.claude/workflows/` is empty, so workflow invocations there fail with "workflow not found", while
+the drift tooling resolves the main worktree and reports that tree as in sync — a green report that
+does not describe the tree the runtime reads. Per-worktree consumer state is deferred to D-DIST-07
+(queue row 6); until it lands, work from the main worktree or from a Claude-created one.
+
 ## Local development
 
 ```bash

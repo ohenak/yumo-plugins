@@ -129,11 +129,14 @@ with no REQ/PLAN/DoD.
 
 ### C8 — Consumer-copy sync (other repo, do LAST)
 
-Per the documented manual-copy convention (`orchestrate-dev` SKILL.md §Workflow Script
-Path): copy the updated `pdlc/workflows/orchestrate-dev.js` over
-`/Volumes/T9/workspace/regime-ledger/.claude/workflows/orchestrate-dev.js` **byte-identical**.
-Do NOT commit in regime-ledger — leave the copy in the working tree; the operator/verifier
-handles that repo's commit separately (it has its own in-flight branches).
+*(Historical step — superseded by `pdlc-workflow-distribution`.)* When this plan ran, the
+consumer's runtime copy of `pdlc/workflows/orchestrate-dev.js` had to be refreshed by hand.
+It no longer does: `node pdlc/workflows/build-runtime.mjs` emits the artifacts and
+`distribution-manifest.json` into `pdlc/workflows/dist/`, and
+`pdlc/hooks/scripts/sync-workflows.sh` installs them as the consumer's untracked runtime
+copy. Run that script in `/Volumes/T9/workspace/regime-ledger` instead.
+Do NOT commit in regime-ledger — leave the refreshed files in the working tree; the
+operator/verifier handles that repo's commit separately (it has its own in-flight branches).
 
 ## Out of scope
 
@@ -180,5 +183,5 @@ Verified 2026-07-08 by Fable 5 (implementation: Opus, commits `1dfff39`/`e39d12e
    `feat-phase-model-selection` or `main` per your branch strategy — main is behind the
    0.7.0 lineage).
 2. Refresh the installed plugin cache to 0.8.0 (reinstall/update; cache dir is versioned).
-3. Commit the synced consumer copy in `regime-ledger`
-   (`.claude/workflows/orchestrate-dev.js`) on a housekeeping branch.
+3. Commit the synced consumer copy in `regime-ledger` — whatever
+   `pdlc/hooks/scripts/sync-workflows.sh` refreshed there — on a housekeeping branch.

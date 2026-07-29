@@ -77,10 +77,12 @@ intending only the first.
 and both interactive Claude Code sessions and the Ptah engine pick up the change automatically
 (no copies to sync)."
 
-**Workflow scripts do not.** Both `orchestrate-dev/SKILL.md` and `orchestrate-queue/SKILL.md`
-record the same convention: the canonical source is `pdlc/workflows/*.js`, the runtime-loaded
-copy is `.claude/workflows/*.js` in the consumer repo, and "until a formal `pdlc install`
-mechanism exists, this copy is managed manually."
+**Workflow scripts did not.** Both `orchestrate-dev/SKILL.md` and `orchestrate-queue/SKILL.md`
+recorded the same convention: the canonical source is `pdlc/workflows/*.js`, and the
+runtime-loaded copy in the consumer repo had to be refreshed by hand until a formal
+`pdlc install` mechanism existed. (`pdlc-workflow-distribution` supplies the mechanism:
+`build-runtime.mjs` emits into `pdlc/workflows/dist/`, and `sync-workflows.sh` installs the
+consumer's untracked runtime copy.)
 
 So a workflow improvement can land here, be reviewed, merged and archived, and **never execute
 anywhere**, because no consumer copied it. Spot-checked 2026-07-27 against a live consuming

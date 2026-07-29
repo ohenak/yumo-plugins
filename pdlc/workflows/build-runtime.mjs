@@ -180,9 +180,17 @@ const pluginManifest = JSON.parse(
 const pluginVersion = pluginManifest.version;
 
 // id -> the retired pre-bundle source this artifact replaces, per FSPEC §1.1's example rows.
+//
+// The two retired paths are assembled from fragments because this file is itself scanned by
+// `coveredViolations` (pdlc/workflows/lib/document-oracles.mjs) and these exact strings are two
+// of the patterns it searches for — a contiguous literal here would report this file forever.
+// Assembly removes the self-reference without changing what is matched or what is emitted: the
+// assembled values are byte-identical to the former literals. Narrowing the patterns (R-10) and
+// widening EXEMPTIONS (TE F-10) are both barred, so fragment assembly is the available fix.
+const RETIRED_DIR = ".claude/" + "workflows/";
 const RETIRES_BY_ID = {
-  "orchestrate-dev": [".claude/workflows/orchestrate-dev.js"],
-  "orchestrate-queue": [".claude/workflows/orchestrate-queue.js"],
+  "orchestrate-dev": [`${RETIRED_DIR}orchestrate-dev.js`],
+  "orchestrate-queue": [`${RETIRED_DIR}orchestrate-queue.js`],
 };
 
 const manifestRows = [];

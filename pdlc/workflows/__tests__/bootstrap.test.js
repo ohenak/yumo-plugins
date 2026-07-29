@@ -201,17 +201,31 @@ describe("AT-24: fresh-clone bootstrap sequence (build-runtime -> sync -> check)
     expect(driftState.syncCommand).not.toMatch(/\$/);
     expect(driftState.syncCommand).not.toMatch(/\{/);
 
-    // Make one previously-synced consumer file stale on the same tree, then re-check to
-    // capture W-5's remediation and compare it byte-for-byte against record.syncCommand.
-    const workflowsDir = join(clone.root, ".claude/workflows");
-    const syncedFiles = readdirSync(workflowsDir).filter((name) =>
-      statSync(join(workflowsDir, name)).isFile()
+    // Make one row `stale` on the same tree, then re-run to capture W-5's remediation and
+    // compare it byte-for-byte against record.syncCommand.
+    //
+    // `stale` is FSPEC §3.3 rung 5 — `sha1(consumer) == syncManifest[id].consumerHash`, i.e.
+    // the consumer copy is untouched since its last sync and the PLUGIN's copy moved on.
+    // Editing the consumer copy instead lands on rung 6, `local-edit` (W-4), which is a
+    // different message with a different (`--force`) command; so the mutation goes to the
+    // plugin-side artifact named by the manifest row's `pluginPath`, resolved under
+    // `<root>/pdlc` (FSPEC §2.4's maintainer-marker `<pluginRoot>`).
+    const staleRow = manifest.rows[0];
+    const pluginArtifact = join(clone.root, "pdlc", staleRow.pluginPath);
+    expect(existsSync(join(clone.root, staleRow.consumerPath))).toBe(true);
+    writeFileSync(
+      pluginArtifact,
+      Buffer.concat([
+        readFileSync(pluginArtifact),
+        Buffer.from("\n// AT-24 assertion-7 plugin-side mutation\n"),
+      ])
     );
-    expect(syncedFiles.length).toBeGreaterThan(0);
-    const targetFile = join(workflowsDir, syncedFiles[0]);
-    writeFileSync(targetFile, Buffer.concat([readFileSync(targetFile), Buffer.from("\n// AT-24 assertion-7 stale mutation\n")]));
 
-    const staleCheck = runScript("check", {
+    // The hook entrypoint, because W-5 belongs to FSPEC §5.2's hook warning taxonomy (order 5,
+    // "any row `stale` or `missing`"). `sync-workflows.sh` deliberately emits no W-5 at all —
+    // FSPEC §5.4/§5.5's "sync always attempts `stale`/`missing`" — so `--check` is not a
+    // surface on which this message is specified to appear.
+    const staleCheck = runScript("hook", {
       consumerRoot: clone.root,
       pluginRoot: undefined,
       home: clone.home,

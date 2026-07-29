@@ -53,16 +53,38 @@ Every plugin follows this layout:
 
 `pdlc/workflows/*.js` are ES modules with jest coverage (`cd pdlc/workflows && npm test`). The Claude Code workflow runtime cannot load them directly: `export const meta` must be the first statement and a pure literal, no other `export` is permitted, and `import` / `import()` / `process` / `fs` / `fetch` do not exist there.
 
-`node pdlc/workflows/build-runtime.mjs` therefore generates the runnable artifacts:
+`node pdlc/workflows/build-runtime.mjs` therefore generates the runnable artifacts into `pdlc/workflows/dist/`:
 
-- `.claude/workflows/orchestrate-dev.bundle.js`
-- `.claude/workflows/orchestrate-queue.bundle.js` (inlines `orchestrate-dev` too — the queue calls it in-process)
+- `pdlc/workflows/dist/orchestrate-dev.bundle.js`
+- `pdlc/workflows/dist/orchestrate-queue.bundle.js` (inlines `orchestrate-dev` too — the queue calls it in-process)
+- `pdlc/workflows/dist/distribution-manifest.json` — one row per artifact (id, plugin path, sha1, retired predecessors), plus the plugin version those bytes were built at
 
-Both are **generated — never edit them**. `build-runtime.mjs --check` exits non-zero when a bundle is stale, and `__tests__/runtimeBundle.test.js` asserts freshness plus the runtime's structural constraints.
+Those three are the tracked, shipped outputs. The copy the workflow runtime actually loads is a separate, **untracked** consumer copy under `.claude/workflows/`, produced from `pdlc/workflows/dist/` by `pdlc/hooks/scripts/sync-workflows.sh` — never hand-edited, never committed.
+
+All are **generated — never edit them**. `build-runtime.mjs --check` exits non-zero when an artifact under `pdlc/workflows/dist/` is stale, `__tests__/runtimeBundle.test.js` asserts freshness plus the runtime's structural constraints, and `pdlc/hooks/scripts/sync-workflows.sh --check` exits non-zero when the consumer copy has drifted from the built artifacts.
 
 `pdlc/workflows/runtime-adapter.js` is inlined by the build (never imported). It re-expresses Node capabilities — file read/write, existence checks, `gh pr view` CI polling, worktree merges — as `agent()` calls, and bridges the `agent` / `parallel` / `pipeline` signature differences between the module stubs and the runtime. It reaches the pipeline through the modules' existing dependency-injection parameters (`_agent`, `_readFile`, `_writeFile`, `_checkFile`, `_checkCi`, `_mergeWorktree`, …), so the modules remain the single tested source of truth.
 
-Consequence for anyone editing a workflow source: **every injected IO call must be `await`ed** (the adapter's implementations are async, the test doubles are sync), and the bundles must be rebuilt in the same commit.
+Consequence for anyone editing a workflow source: **every injected IO call must be `await`ed** (the adapter's implementations are async, the test doubles are sync), and `pdlc/workflows/dist/` must be rebuilt in the same commit.
+
+### Fresh-clone bootstrap
+
+Runtime artifacts are generated, so a fresh clone has none. Two commands, **in this order**, bring a clone to a working state — no published release, no installed plugin, no `${CLAUDE_PLUGIN_ROOT}`, no network:
+
+```bash
+node pdlc/workflows/build-runtime.mjs     # generates pdlc/workflows/dist/ and distribution-manifest.json
+pdlc/hooks/scripts/sync-workflows.sh      # copies those artifacts into the consumer's .claude/workflows/
+```
+
+The order is not interchangeable: the sync step copies what the build step produced, so running it first has nothing to copy.
+
+The second command is invoked by **bare path** — no `bash` or `sh` prefix. The shipped hook scripts carry their execute bit precisely so this works; an invocation that exits 126 means the bit was lost. Verify afterwards with `pdlc/hooks/scripts/sync-workflows.sh --check`, which exits 0 once every row is in sync.
+
+### Worktrees
+
+A worktree Claude Code creates for you is a supported consumer: the repo-root `.worktreeinclude` lists `.claude/workflows/`, so the generated artifacts come across with the worktree.
+
+A worktree you create yourself with `git worktree add` is **not** a supported consumer. Its `.claude/workflows/` is empty, so workflow invocations there fail with "workflow not found", while the drift tooling resolves the main worktree and reports that tree as in sync — a green report that does not describe the tree the runtime reads. Per-worktree consumer state is deferred to D-DIST-07 (queue row 6). Until it lands, work from the main worktree or from a Claude-created one.
 
 ### Model selection
 
@@ -78,6 +100,17 @@ The workflow scripts pin a model per phase via the runtime `agent()` `model` opt
 | `guard-harvest-before-delete` | PreToolUse: Bash | `hooks/scripts/guard-harvest-before-delete.sh` | Blocks deletion of any `CROSS-REVIEW-*` or `CODE_REVIEW-*` file unless `LEARNINGS-{feature}.md` exists on the branch |
 | `check-scope-field` | PostToolUse: Write\|Edit | `hooks/scripts/check-scope-field.sh` | Warns if a `CROSS-REVIEW-*` / `CODE_REVIEW-*` doc is missing the `Scope:` field |
 | `nudge-consolidation` | SessionStart | `hooks/scripts/nudge-consolidation.sh` | Reminds to run consolidate-learnings if stale LEARNINGS files are detected |
+| `check-workflow-drift` | SessionStart | `hooks/scripts/check-workflow-drift.sh` | Reports when the consumer's runtime copy has drifted from the built artifacts under `pdlc/workflows/dist/`, so a stale copy is announced rather than silently executed |
+
+Both `SessionStart` entries are registered in `hooks/hooks.json` as separate entries under the same event, each invoked via `${CLAUDE_PLUGIN_ROOT}`.
+
+### Distribution scripts
+
+| Script | Role |
+|---|---|
+| `hooks/scripts/sync-workflows.sh` | Installs the untracked consumer copy from `pdlc/workflows/dist/`; `--check` reports per-row sync state without writing |
+| `hooks/scripts/check-workflow-drift.sh` | The `SessionStart` drift reporter above; a thin, advisory wrapper over the same comparison |
+| `hooks/scripts/lib/pdlc-drift.sh` | Shared, **sourced** library for the two scripts above — deliberately not executable |
 
 ### Artifact convention (for consuming repos)
 
