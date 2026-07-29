@@ -16,7 +16,7 @@
  *                                             indexMode)                 — T-01/T-08a/T-15
  *   - __tests__/helpers/driftOrdering.js    (assertClassifyBeforeCreate,
  *                                             assertTreeUnchanged)       — T-01/T-16
- *   - __tests__/helpers/driftMessages.js    (MESSAGES)                  — T-01/T-08b
+ *   - __tests__/helpers/driftHarness.js     (MESSAGES)                  — T-08b
  *   - pdlc/workflows/orchestrate-queue.js   (validateDriftRecord,
  *                                             mapDriftState)             — T-04/T-12/T-13
  * This is the RED-terminal, batch-2 authoring pass (PLAN T-06): no source file
@@ -40,7 +40,7 @@ import { fileURLToPath } from "url";
 import { makeFreshClone } from "./helpers/freshClone.js";
 import { runScript, readDriftState, indexMode } from "./helpers/driftHarness.js";
 import { assertClassifyBeforeCreate, assertTreeUnchanged } from "./helpers/driftOrdering.js";
-import { MESSAGES } from "./helpers/driftMessages.js";
+import { MESSAGES } from "./helpers/driftHarness.js";
 import { validateDriftRecord, mapDriftState } from "../orchestrate-queue.js";
 
 const __filename = fileURLToPath(import.meta.url);
