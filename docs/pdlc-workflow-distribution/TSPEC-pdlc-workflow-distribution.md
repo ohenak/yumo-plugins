@@ -1588,7 +1588,148 @@ records call order is injected, the drift state is a blocked record, and the ass
 
 ## 13. Fixture inventory with construction recipes
 
+Consolidated from §3–§12. Every fixture is either a **builder call** (constructed per test under
+`tmpdir()`) or a **checked-in tree** (exactly one: `covered-violations`). "Guard" names the §7.3
+capability the fixture needs; blank means it runs on every runner.
+
+### 13.1 Consumer / plugin trees
+
+| Fixture | Recipe | Guard | Used by |
+|---|---|---|---|
+| `freshConsumer` | `makeConsumerTree({ git: true, claudeDir: false })` + valid 2-row plugin tree | hash | AT-1, AT-24-adjacent |
+| `syncedConsumer` | `freshConsumer` + every row `in-sync` + a matching sync manifest | hash | AT-9, AT-11, AT-18a/b, AT-32 |
+| `staleRow` | `setRowState(…, "stale")` — consumer bytes X, entry `consumerHash = sha1(X)` | hash | AT-10, AT-26, AT-35, §6.4 |
+| `localEditRow` | `setRowState(…, "local-edit")` — bytes Y, entry over X, X ≠ Y ≠ plugin | hash | AT-8a, AT-8b, AT-27 |
+| `unverifiedRow` | consumer bytes ≠ plugin, **no** entry | hash | AT-7, AT-10 |
+| `identicalRowNoManifest` | consumer bytes == plugin, `syncManifest: "absent"` | hash | AT-6 (O-8's equal-bytes rule) |
+| `notManagedFile` | `files: { ".claude/workflows/scratch.js": "…" }`, no row, in no `retires` | hash | AT-25 |
+| `retiredPresent` | `syncedConsumer` + `files: { ".claude/workflows/orchestrate-dev.js": "legacy" }` matching a row's `retires` | hash | AT-11, AT-12, AT-13 |
+| `preManifestConsumer` | plugin tree with **no** `distribution-manifest.json`; `git: true`, `claudeDir: true` | — | AT-3, AT-4 |
+| `emptyManifest` | plugin manifest with `rows: []`, `retired: []` | — | AT-33 |
+| `optOutConsumer` | `staleRow` + `config: { distribution: { checkEnabled: false } }` | hash | AT-5, AT-14b |
+| `nonBooleanConfig` | `config: { distribution: { checkEnabled: "false" } }` | — | AT-32(b) |
+| `unlistableWorkflows` | `workflowsDir: { mode: 0o300 }` (`-wx`) — **P**, uid-0 skip | uid-nonroot | AT-32(a) |
+| `unwritableParent` | `.claude/workflows/` `0500`, drift-state file `0600`, applied **last** — **P** | uid-nonroot | **AT-14b** |
+| `preExistingDriftState` | `driftState:` a full valid record, written before the mode change | — | AT-14b, AT-15, AT-16 |
+| `syncManifestUnreadable` / `…Malformed` / `…Absent` | `syncManifest: "unreadable" \| "malformed" \| "absent"` — the unreadable form has an **F** twin (`PDLC_FAULT=sync-manifest-read`) | (F twin: none) | **AT-34**, three runs |
+
+### 13.2 Environment-shaped fixtures
+
+| Fixture | Recipe | Used by |
+|---|---|---|
+| `jsonToolAbsent` | `makeToolDir` without `python3`/`python`/`python2`; no pre-existing drift state | **AT-14** |
+| `hashToolAbsent` | `makeToolDir` without `shasum`/`sha1sum`/`openssl` | §1.4's row-reason floor, `hash-tool-absent` |
+| `gitAbsent` | `makeToolDir` without `git` | AT-21, §8.2, §10.3 branch (b) |
+| `nonGitWithClaude` / `nonGitNoClaude` / `gitTreeBrokenProbe` / `nonGitClaudeAtHome` | §8.2's table | AT-2, AT-33, §8 |
+| `blockedTrace` | `PDLC_TRACE_FILE = <tmp>/blocker/trace.tsv` where `blocker` is a **regular file** (`ENOTDIR`, not a mode bit) | §4.4, both halves |
+
+### 13.3 Fault compositions
+
+| Name | `PDLC_FAULT` | Used by |
+|---|---|---|
+| `ladderRungI` | `drift-state-replace` | AT-14b's F twin, §5.3 |
+| `ladderRungII` | `drift-state-replace,drift-state-invalidate` | **AT-15** |
+| `ladderRungIII` | `drift-state-replace,drift-state-invalidate,drift-state-unlink` | **AT-16** |
+| `freshRungIII` | `mkdir` | §6.5's no-pre-existing-record case |
+| `truncatedCopy` | `artifact-copy-corrupt:<rowId>` | **AT-35**, §6.4 |
+| `backupNotLanded` | `backup-corrupt:<rowId>` | **AT-27** |
+| `copyAndDriftState` | `artifact-copy:<rowId>,drift-state-replace,drift-state-invalidate,drift-state-unlink` | **AT-17** (both failures in one run) |
+| `removalOnly` | `artifact-copy-corrupt:A` (and, for the residual case, `+ sync-manifest-update`) | **§6.4** |
+| `unrecognised` | `not-a-real-token` | **AT-18a/AT-18b** |
+
+### 13.4 Root fixtures for the jest oracles
+
+| Name | Recipe | Location | Used by |
+|---|---|---|---|
+| `covered-violations` | **checked in**, §10.1's 12-file table | `__tests__/fixtures/covered-violations/` | **AT-23** |
+| `fxGreen` | `makePackagingFixture({})` — manifest computed from written bytes | tmp | §10.2's baseline |
+| `fxRoot3` | `makePackagingFixture({ break: "sha1" })` | tmp | **AT-29** |
+| `fxRoot3b/c/d` | `break: "retired" \| "pluginPath" \| "manifestLocation"` | tmp | §10.2 |
+| `fxRootUntrackedOnly` | `git init` + one commit; untracked `dist/` file; `version` == HEAD's | tmp | **AT-20** |
+| `fxRoot2` | identical, `version` bumped in the working tree | tmp | **AT-28** |
+| `fxNoGitDir` | `fxRoot2` with `.git/` removed | tmp | §10.3 branch (c) |
+| `fxUnbornHead` | `git init`, **no commit** | tmp | §10.3 branch (d) |
+| `freshClone` | §9.1's five steps | tmp, `beforeAll` | **AT-24**, §9.3 |
+| `LIVE_ROOT` | `resolve(__dirname, "../../..")`, `realpathSync`-normalised | the repo | AT-19, AT-22, §9.3's index-mode assertions |
+
+### 13.5 Backup fixtures
+
+| Name | Recipe | Used by |
+|---|---|---|
+| `sameSecondBackups` | six backups for one id, `-01`…`-06`, all one `stamp` | §11.3 row 4 |
+| `shuffledMtimes` | `sameSecondBackups` + `utimesSync` randomising every mtime **after** creation | §11.3 row 4 — red against any mtime-based selector |
+| `decoyBackupDir` | the above plus `README.txt`, `notabackup.bak`, and a well-formed backup for an **unknown** id | O-18 clause (c)'s identity requirement |
+| `nnExhausted` | 99 backups for one id in one `stamp` | FSPEC §1.4's exhaustion ⇒ `operation: backup`, exit 4 |
+
+### 13.6 Cleanup
+
+Every builder returns `cleanup()`, registered in `afterEach`. Two rules: permission fixtures
+`chmod` **back** before `rmSync` (§6.5), and `cleanup` is idempotent and never throws — a fixture
+whose construction failed halfway must not mask the construction error with a teardown error.
+
+---
+
 ## 14. AT → test case → file placement
+
+FSPEC §12's acceptance tests, each mapped to a file, a named `it()`, and the §13 fixtures it
+composes. **Every row is a real jest test case**; nothing here is discharged by review.
+
+The standing precondition (FSPEC §12): every AT whose expected outcome names a row state other than
+`unknown` requires a hash utility, and the file-level guard is `describeOrSkip("hash", …)` — a
+runner without one **skips loudly** (§7.3), it does not silently produce `unknown` rows.
+
+| AT | File | `it()` | Fixtures | Key assertions beyond the AT's Then |
+|---|---|---|---|---|
+| AT-1 | `driftClassify.test.js` | fresh consumer, `--check`, every row `missing` | `freshConsumer` | §4.3's oracle over the same run — classify precedes the `mkdir` that created the directory the record lands in |
+| AT-2 | `driftRepoRoot.test.js` | non-git tree, no `.claude/`, reason `repo-root-unresolved` | `nonGitNoClaude` + valid non-empty manifest + JSON tool | `expectRepoRootUnresolved(reportedReason: "repo-root-unresolved")`; N-8 **absent** (§8.3 conjunct 5) |
+| AT-3 | `driftBaseline.test.js` | pre-manifest consumer, hook warns `manifest-absent` | `preManifestConsumer` | repo root **resolves**, so the empty record is attributable to `manifest-absent` alone |
+| AT-4 | `queueDriftGate.test.js` | queue blocks on AT-3's record at Manifest level | AT-3's record, read as a literal | the reason appears in `report.manifest`, not `report.row` |
+| AT-5 | `driftHook.test.js` + `queueDriftGate.test.js` | opt-out: hook still warns, `--check` still 1, queue proceeds | `optOutConsumer` | three surfaces, one fixture; the queue half asserts `row: 2` |
+| AT-6 | `driftClassify.test.js` | equal bytes are `in-sync` with **no** sync manifest | `identicalRowNoManifest` | O-8/R-4; red against a provenance-first ladder |
+| AT-7 | `driftClassify.test.js` + `queueDriftGate.test.js` | `unverified` ⇒ `--check` 2, queue proceeds | `unverifiedRow` | the asymmetry asserted as **both** halves in one test file each |
+| AT-8a | `driftSync.test.js` | plain sync does not overwrite `local-edit` | `localEditRow` | consumer bytes **byte-identical** before/after; W-4 matched by §7.2's matcher |
+| AT-8b | `driftSync.test.js` | `--force` overwrites after a verified backup | `localEditRow` | `listBackups` newest for the id restores byte-identical pre-sync content — AC-3.5's non-false-greenable oracle |
+| AT-9 | `driftSync.test.js` | sync twice, second is a no-op | `syncedConsumer` | sync manifest **byte-identical** including `syncedAtUtc`; no new backup; exit 0 |
+| AT-10 | `driftSync.test.js` | mixed run exits 2 on post-run precedence | `staleRow` + `unverifiedRow` | `assertRecordedPassIs(trace, record, "post-run")` — O-14's worked case is a *post-run* claim |
+| AT-11 | `driftHook.test.js` + `queueDriftGate.test.js` | retired present warns and blocks though all rows `in-sync` | `retiredPresent` | W-6 emitted **independently** of row states; queue `row: 7` |
+| AT-12 | `driftSync.test.js` | retirement backs up (id = retired basename), verifies, deletes | `retiredPresent` | `assertPostCopyNarrow(trace, [rowId])` — the post-copy pass touched only the retiring row |
+| AT-13 | `driftSync.test.js` | retirement skipped when R is `unknown` | `retiredPresent` + an `unknown` recipe (§7.1) | the retired path still exists; `retire-skipped` names R's state |
+| AT-14 | `driftLadder.test.js` | T1 emitter writes a parseable record with no interpreter | `jsonToolAbsent` | §6.5's five assertions, incl. `mapDriftState` ⇒ `row: 4` |
+| AT-14b | `driftLadder.test.js` | rung (i) preserves `checkEnabled: false` — **`itOrSkip("uid-nonroot", …)`** | `unwritableParent` + `preExistingDriftState` + `optOutConsumer`'s config | inode **unchanged**; `mapDriftState` ⇒ `row: 2`; a second `it()` for the sync-run form (§6.5) |
+| AT-15 | `driftLadder.test.js` | rung (ii) lands: `unlink` + fresh write | `preExistingDriftState` + `ladderRungII` | inode **changed** (`inodeOf`, bigint); stderr names `drift-state-replace` and `drift-state-invalidate` and **not** `drift-state-unlink` |
+| AT-16 | `driftLadder.test.js` | rung (iii) residual: N-3, `--check` 4, hook 0 | `preExistingDriftState` + `ladderRungIII` | the pre-existing record is **byte-unchanged**; run on every runner (fault form, §6.1 note 2) |
+| AT-17 | `driftWriteFailure.test.js` | both-failed message, drift-state line **first** | `staleRow` + `copyAndDriftState` | line order asserted by index in `stderr`, not by presence |
+| AT-18a | `driftFault.test.js` | unrecognised token, hook exits 0 | `syncedConsumer` + `unrecognised` | `countOf(stderr, "N-7") === 1`; byte-equivalence against the same fixture with the seam unset (§5.4) |
+| AT-18b | `driftFault.test.js` | the identical fixture under `--check` exits **4** | same | the record is byte-identical to AT-18a's modulo `generatedAtUtc` |
+| AT-19 | `documentOracles.test.js` | `packagingViolations(LIVE_ROOT)` is `[]` | `LIVE_ROOT` | the live-`dist/` write guard (§10.2) runs in the same file's `beforeAll`/`afterAll` |
+| AT-20 | `documentOracles.test.js` | untracked-only `dist/` under an unbumped version is `"red"` | `fxRootUntrackedOnly` | the `??` case `git diff HEAD` misses |
+| AT-21 | `documentOracles.test.js` | `git` absent ⇒ skips loudly with `S_GIT_ABSENT` | `gitAbsent` | the **returned** `{ skipped }` value is asserted, so the branch is a value, not a console side-effect |
+| AT-22 | `documentOracles.test.js` | `coveredViolations(LIVE_ROOT)` is `[]` | `LIVE_ROOT` | separate `it()` from AT-23, no shared state (O-17) |
+| AT-23 | `documentOracles.test.js` | fixture root returns exactly the 7 | `covered-violations` | the 7 paths **and** the frozen exemption list, asserted literally (§10.1) |
+| AT-24 | `bootstrap.test.js` | fresh clone, two commands, green | `freshClone` | §9.2's six assertions; `mapDriftState` ⇒ `row: 9` |
+| AT-25 | `driftClassify.test.js` | `not-managed` is reported and never touched | `notManagedFile` | bytes unchanged, absent from `rows`, listed `LC_ALL=C`-sorted |
+| AT-26 | `driftSync.test.js` | **plain** sync backs up a `stale` row first | `staleRow` | restore of the newest backup is byte-identical to pre-sync; the `backup` trace record **precedes** the `copy` record for that row |
+| AT-27 | `driftWriteFailure.test.js` | backup written but not landed ⇒ original untouched | `localEditRow` + `backupNotLanded`, `--force` | `expectFailOpen({ operation: "backup-verify" })`; consumer bytes byte-identical |
+| AT-28 | `documentOracles.test.js` | bumped version over a dirty `dist/` is `"green"` | `fxRoot2` | differs from AT-20's fixture in exactly one field |
+| AT-29 | `documentOracles.test.js` | a lying `pluginSha1` is `clause: "6.2(b)"` | `fxRoot3` | asserts `packagingViolations(LIVE_ROOT)` is still `[]` in the same test |
+| AT-30 | `driftMessages.test.js` | `distinct()` pairwise over S1, S2, S3 | rendered catalogue | rendering goes through the **real** `pdlc_msg_*` functions via a batched driver (§11.2's pattern), not through JS copies of the strings |
+| AT-31 | `queueDriftGate.test.js` | rows 3 and 7, both shape-valid, both `checkEnabled: true` | literal records | row 3 also names `drift-state-invalidated`; the `syncCommand: null` fallback describes the shipped script |
+| AT-32 | `driftClassify.test.js` (a) / `driftHook.test.js` (b) | (a) unlistable dir ⇒ N-6, **no state changes** — `itOrSkip("uid-nonroot")`; (b) string `"false"` ⇒ N-5 once, `checkEnabled: true` | `unlistableWorkflows`; `nonBooleanConfig` | (a) compares the full `rows` array against the same fixture with a listable directory — the "identical" claim, not a spot check |
+| AT-33 | `driftRepoRoot.test.js` | co-holding: reports `manifest-empty`, writes nothing | `nonGitNoClaude` + `emptyManifest` + JSON tool | `expectRepoRootUnresolved(reportedReason: "manifest-empty")` ⇒ N-8 **required**; run under `--check` (3) and hook (0) |
+| AT-34 | `driftClassify.test.js` | unreadable / malformed / absent sync manifest | three fixtures, three runs | `unverified` + N-4 for the first two, **identical states and no N-4** for the third; consumer bytes differ from the plugin's in all three |
+| AT-35 | `driftWriteFailure.test.js` | truncated copy ⇒ entry removed, row `unverified`, exit 4 | `staleRow` + `truncatedCopy` | both red directions: exit is 4 (not 1) **and** post-run state is `unverified` (not `local-edit`) |
+| AT-36 | `queueDriftGate.test.js` | absent `syncCommand` still reaches the opt-out | literal record | `{ outcome: "proceed", row: 2 }`, not row 1 |
+
+**Files and helpers, complete:**
+
+| Path | Kind |
+|---|---|
+| `__tests__/driftBaseline.test.js`, `driftClassify.test.js`, `driftLadder.test.js`, `driftWriteFailure.test.js`, `driftSync.test.js`, `driftRepoRoot.test.js`, `driftOrdering.test.js`, `driftFault.test.js`, `driftMessages.test.js`, `driftHook.test.js`, `driftBackups.test.js` | bash-subject suites, all through `runScript` |
+| `__tests__/queueDriftGate.test.js`, `driftRecordShape.test.js` | in-process, pure functions (§12) |
+| `__tests__/documentOracles.test.js`, `bootstrap.test.js` | jest oracles (§10) and the bootstrap (§9) |
+| `__tests__/helpers/driftHarness.js`, `driftCapabilities.js`, `driftOrdering.js`, `driftFixtures.js`, `freshClone.js`, `bin/backup-grammar.sh` | helpers — excluded from jest by the existing `testPathIgnorePatterns` (`package.json:16-20`) |
+| `__tests__/fixtures/covered-violations/**` | the one checked-in fixture tree (§10.1) |
+| `pdlc/workflows/lib/document-oracles.mjs` | production oracles (§2.1) |
 
 ## 15. Traceability
 
