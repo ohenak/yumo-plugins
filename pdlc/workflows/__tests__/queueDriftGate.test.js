@@ -44,7 +44,8 @@
  * end of batch 2.
  */
 
-import { existsSync, readFileSync } from "fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "fs";
+import { tmpdir } from "os";
 import { join } from "path";
 
 import main, {
@@ -55,6 +56,7 @@ import main, {
 import { runScript, readDriftState } from "./helpers/driftHarness.js";
 import { makeConsumerTree, makePluginTree, setRowState } from "./helpers/driftFixtures.js";
 import { itOrSkip } from "./helpers/driftCapabilities.js";
+import { enumerateLeaves } from "./helpers/driftGenerators.js";
 
 // ─── Shared fixture base (§12.2's "built from VALID_RECORD") ─────────────────
 //
@@ -660,4 +662,405 @@ describe("§14.1 B-5 — readDriftStateSafely resolves null from a real preManif
       }
     }
   );
+});
+
+// ═════════════════════ T-50: the three queue-side property halves (batch 13) ═════════════════
+//
+// Everything below is appended by T-50, after T-38's fixture-backed block. Nothing above this
+// banner is modified (PLAN §4.2's single-writer rule: T-04 → T-38 → T-50 each append only).
+//
+// PROPERTIES §12's suite table gives `queueDriftGate.test.js` exactly three property halves:
+//
+//   - PROP-MTM-05 (queue half) — "the queue mapping over the sync-written record (no further
+//     run) yields the same outcome as over the `--check`-written one". AC-2.7's stated
+//     consequence: the queue unblocks *within the session*, without a restart.
+//   - PROP-NEG-04 (queue half) — a degraded run is never green on the queue surface: the
+//     queue's `mapDriftState` blocks at the row AC-4.1's table names, with EXACTLY the two
+//     stated exceptions (row 2 `checkEnabled:false`, row 8 `unverified`/`local-edit`), which
+//     are enumerated POSITIVELY so a third exception appearing is red rather than absorbed
+//     (NFR-6).
+//   - PROP-BSL-05 (queue half) — unresolved implies not-evaluated, uniformly: `rows === []`
+//     and `retiredPresent === []`, and the queue's one green surface (row 9, "proceed
+//     silently") is absent on every one of FSPEC §2.8's eight baseline reasons — AC-1.0's
+//     "absence of evidence is never evidence of sync".
+//
+// The OTHER half of each property lives in another suite and is deliberately NOT re-asserted
+// here (PROPERTIES §12 rule 2 — one `it()` reports one verdict): MTM-05's sync half in
+// `driftSync.test.js`, NEG-04's hook half in `driftHook.test.js`, BSL-05's record half in
+// `driftBaseline.test.js`.
+//
+// ESM `import` declarations are hoisted, so the three below are legal at this point in the
+// file and leave every line above this banner byte-identical.
+
+// FSPEC §2.8's eight baseline reasons, written out verbatim rather than imported from
+// `orchestrate-queue.js`'s own `DRIFT_CLOSED_BASELINE_REASONS` — a property must never derive
+// its oracle from the module it is falsifying. `driftBaseline.test.js` carries the identical
+// literal list, for the identical reason.
+const EIGHT_BASELINE_REASONS_T50 = Object.freeze([
+  "drift-state-invalidated",
+  "manifest-empty",
+  "json-tool-absent",
+  "manifest-malformed",
+  "manifest-absent",
+  "repo-root-unresolved",
+  "plugin-root-unreadable",
+  "plugin-root-unset",
+]);
+
+// TSPEC §6.1's five RECORDABLE `writeFailures.operation` values — the only four-plus-five
+// domain members that can ever reach a record, and therefore the queue. The four stderr-only
+// operations (`mkdir`, `drift-state-replace`, `drift-state-invalidate`, `drift-state-unlink`)
+// never appear in `writeFailures`, so they are out of this half's domain by construction.
+const RECORDABLE_OPERATIONS_T50 = Object.freeze([
+  "artifact-copy",
+  "backup",
+  "backup-verify",
+  "retire-delete",
+  "sync-manifest-update",
+]);
+
+/** A consumer tree with an empty plugin root — the cheapest genuinely degraded real run:
+ *  no distribution manifest at all ⇒ `baselineStatus: "unresolved"`, `manifest-absent`. */
+function withEmptyPluginRoot(body) {
+  const consumer = makeConsumerTree({ git: true, claudeDir: true });
+  const pluginRoot = mkdtempSync(join(tmpdir(), "pdlc-empty-plugin-t50-"));
+  try {
+    return body(consumer, pluginRoot);
+  } finally {
+    consumer.cleanup();
+    rmSync(pluginRoot, { recursive: true, force: true });
+  }
+}
+
+// ─── PROP-MTM-05 (queue half) — post-sync state is current within the session ────────────────
+//
+// The falsifiable claim is an EQUALITY between two queue verdicts, one read from the record the
+// sync itself wrote (mapped with no intervening run) and one read from the record a subsequent
+// `--check` wrote over the unchanged tree. Case 1 additionally pins the PRE-sync verdict, so
+// the equality cannot be satisfied vacuously by a sync that changed nothing: the queue must go
+// blocked(6) → proceed(9) across the sync, on the sync-written record alone.
+
+describe("PROP-MTM-05 (queue half) — the sync-written record maps to the same queue verdict as the --check-written one", () => {
+  function buildTwoRowTrees() {
+    const plugin = makePluginTree();
+    const consumer = makeConsumerTree({ git: true, claudeDir: true, workflowsDir: true });
+    return { consumer, plugin };
+  }
+
+  function runOn(trees, entrypoint, fault) {
+    return runScript(entrypoint, {
+      consumerRoot: trees.consumer.root,
+      home: trees.consumer.home,
+      pluginRoot: trees.plugin.pluginRoot,
+      ...(fault ? { fault } : {}),
+    });
+  }
+
+  function gateFromDisk(trees, expectedGeneratedBy) {
+    const state = readDriftState(trees.consumer.root);
+    expect(state).not.toBeNull();
+    // The `generatedBy` conjunct is the anti-vacuity guard: it proves the record being mapped
+    // is the one THIS entrypoint wrote, not a leftover from the previous run.
+    expect(state.generatedBy).toBe(expectedGeneratedBy);
+    return { state, gate: mapDriftState(validateDriftRecord(state)) };
+  }
+
+  const CASES = [
+    {
+      label: "row-1 stale (copied by the sync), row-2 in-sync ⇒ proceed silently at row 9",
+      priorStates: { "row-1": "stale", "row-2": "in-sync" },
+      preSyncGate: { outcome: "blocked", row: 6 },
+      expected: { outcome: "proceed", row: 9 },
+    },
+    {
+      label: "row-1 stale (copied), row-2 unverified (skipped, keeps its prior state) ⇒ proceed at row 8",
+      priorStates: { "row-1": "stale", "row-2": "unverified" },
+      preSyncGate: null,
+      expected: { outcome: "proceed", row: 8 },
+    },
+    {
+      label: "row-1 missing (copied), row-2 local-edit (skipped without --force) ⇒ proceed at row 8",
+      priorStates: { "row-1": "missing", "row-2": "local-edit" },
+      preSyncGate: null,
+      expected: { outcome: "proceed", row: 8 },
+    },
+    {
+      label:
+        "row-1 unreadable at the plugin side (PDLC_FAULT=plugin-artifact-read:row-1) ⇒ unknown, blocked at row 5",
+      priorStates: { "row-1": "in-sync", "row-2": "in-sync" },
+      fault: ["plugin-artifact-read:row-1"],
+      preSyncGate: null,
+      expected: { outcome: "blocked", row: 5 },
+    },
+  ];
+
+  for (const testCase of CASES) {
+    itOrSkip(
+      `PROP-MTM-05 (queue half) — ${testCase.label}`,
+      "hash",
+      [
+        "AC-2.7/AC-3.6 read through the queue mapping — the sync-written record and a subsequent " +
+          "--check-written record must yield the same queue verdict, so the queue unblocks without a restart",
+      ],
+      () => {
+        const trees = buildTwoRowTrees();
+        try {
+          for (const [rowId, state] of Object.entries(testCase.priorStates)) {
+            setRowState(trees, rowId, state);
+          }
+
+          if (testCase.preSyncGate) {
+            // Pre-sync `--check`: the queue's verdict BEFORE the sync. This is what stops the
+            // equality below from being satisfiable by a sync that copied nothing.
+            runOn(trees, "check", testCase.fault);
+            const before = gateFromDisk(trees, "check");
+            expect(before.gate).toMatchObject(testCase.preSyncGate);
+          }
+
+          runOn(trees, "sync", testCase.fault);
+          // Mapped from the sync-written record, with NO further run in between — this is
+          // exactly PROP-MTM-05's "the queue mapping over the sync-written record (no further
+          // run)".
+          const afterSync = gateFromDisk(trees, "sync");
+          expect(afterSync.gate).toMatchObject(testCase.expected);
+
+          runOn(trees, "check", testCase.fault);
+          const afterCheck = gateFromDisk(trees, "check");
+
+          expect({ outcome: afterSync.gate.outcome, row: afterSync.gate.row }).toEqual({
+            outcome: afterCheck.gate.outcome,
+            row: afterCheck.gate.row,
+          });
+          expect(afterCheck.gate).toMatchObject(testCase.expected);
+        } finally {
+          trees.consumer.cleanup();
+          trees.plugin.cleanup();
+        }
+      }
+    );
+  }
+});
+
+// ─── PROP-NEG-04 (queue half) — a degraded run is never green on the queue surface ───────────
+//
+// Domain: every record shape a degraded run can hand the queue — `baselineStatus:"unresolved"`
+// over all eight reasons, any `unknown` row (quantified over §2.3's six `unknown` leaves via
+// `enumerateLeaves()`), and a non-empty `writeFailures` over all five recordable operations.
+// Each must block at the row AC-4.1's table names AND name its reason at the right report
+// level, because "blocked with an empty report" is a degraded run the operator cannot act on.
+
+describe("PROP-NEG-04 (queue half) — a degraded record is never green, with exactly two exceptions", () => {
+  const proceedRowsSeen = new Set();
+  const blockedRowsSeen = new Set();
+
+  const DEGRADED_CORPUS = [
+    ...EIGHT_BASELINE_REASONS_T50.map((reason) => ({
+      label: `unresolved / ${reason}`,
+      expectedRow: 4,
+      namedIn: "manifest",
+      needle: reason,
+      overrides: {
+        checkEnabled: true,
+        baselineStatus: "unresolved",
+        baselineReason: reason,
+        rows: [],
+        retiredPresent: [],
+        writeFailures: [],
+      },
+    })),
+    ...enumerateLeaves()
+      .filter((leaf) => leaf.state === "unknown")
+      .map((leaf) => ({
+        label: `unknown row from leaf ${leaf.id} (${leaf.reason})`,
+        expectedRow: 5,
+        namedIn: "row",
+        needle: leaf.reason,
+        overrides: {
+          checkEnabled: true,
+          rows: [
+            { id: "row-1", state: "unknown", reason: leaf.reason },
+            { id: "row-2", state: "in-sync", reason: null },
+          ],
+        },
+      })),
+    ...RECORDABLE_OPERATIONS_T50.map((operation) => ({
+      label: `non-empty writeFailures, operation ${operation}`,
+      expectedRow: 3,
+      namedIn: "run",
+      needle: operation,
+      overrides: {
+        checkEnabled: true,
+        writeFailures: [{ path: ".claude/workflows/orchestrate-dev.bundle.js", operation }],
+      },
+    })),
+  ];
+
+  it.each(DEGRADED_CORPUS.map((c) => [c.label, c]))(
+    "%s — blocked at AC-4.1's named row, with the reason named at the right report level",
+    (_label, testCase) => {
+      const gate = mapDriftState(validateDriftRecord(buildRecord(testCase.overrides)));
+
+      // Recorded BEFORE the assertions below, so the exception-set meta-oracle at the end of
+      // this describe sees the row even on a case that fails here: a newly introduced proceed
+      // row must not be able to hide behind an earlier assertion's abort.
+      (gate.outcome === "proceed" ? proceedRowsSeen : blockedRowsSeen).add(gate.row);
+
+      expect(gate.outcome).toBe("blocked");
+      expect(gate.row).toBe(testCase.expectedRow);
+      expect(
+        gate.report[testCase.namedIn].some((line) => String(line).includes(testCase.needle))
+      ).toBe(true);
+    }
+  );
+
+  it.each(DEGRADED_CORPUS.map((c) => [c.label, c]))(
+    "%s — exception 1 (AC-4.1 row 2): the SAME degraded record with checkEnabled:false proceeds at row 2",
+    (_label, testCase) => {
+      const gate = mapDriftState(
+        validateDriftRecord(buildRecord({ ...testCase.overrides, checkEnabled: false }))
+      );
+
+      (gate.outcome === "proceed" ? proceedRowsSeen : blockedRowsSeen).add(gate.row);
+      expect(gate).toMatchObject({ outcome: "proceed", row: 2 });
+    }
+  );
+
+  it("exception 2 (AC-4.1 row 8) — unverified / local-edit rows proceed, with the rows named in the run report", () => {
+    for (const state of ["unverified", "local-edit"]) {
+      const record = buildRecord({
+        checkEnabled: true,
+        rows: [
+          { id: `row-${state}`, state, reason: null },
+          { id: "row-2", state: "in-sync", reason: null },
+        ],
+        retiredPresent: [],
+        writeFailures: [],
+      });
+      const gate = mapDriftState(validateDriftRecord(record));
+
+      (gate.outcome === "proceed" ? proceedRowsSeen : blockedRowsSeen).add(gate.row);
+      expect(gate).toMatchObject({ outcome: "proceed", row: 8 });
+      expect(gate.report.run.some((line) => String(line).includes(`row-${state}`))).toBe(true);
+    }
+  });
+
+  it("grounding — a REAL degraded hook run (empty plugin root ⇒ unresolved/manifest-absent) blocks the queue at row 4", () => {
+    withEmptyPluginRoot((consumer, pluginRoot) => {
+      const run = runScript("hook", {
+        consumerRoot: consumer.root,
+        home: consumer.home,
+        pluginRoot,
+      });
+      expect(run.status).toBe(0);
+
+      const state = readDriftState(consumer.root);
+      expect(state).not.toBeNull();
+      expect(state.baselineStatus).toBe("unresolved");
+      expect(state.baselineReason).toBe("manifest-absent");
+
+      const gate = mapDriftState(validateDriftRecord(state));
+      (gate.outcome === "proceed" ? proceedRowsSeen : blockedRowsSeen).add(gate.row);
+      expect(gate).toMatchObject({ outcome: "blocked", row: 4 });
+      expect(gate.report.manifest.some((line) => String(line).includes("manifest-absent"))).toBe(
+        true
+      );
+    });
+  });
+
+  // NFR-6's "exactly two exceptions", asserted as a set equality over everything this describe
+  // actually exercised — so a THIRD proceed row (a future "don't block when the hash tool is
+  // missing" shortcut, say) is red here rather than silently absorbed by the per-case tests.
+  it("the exception set is EXACTLY {row 2, row 8}, and the blocked rows are exactly AC-4.1's {3, 4, 5}", () => {
+    expect(proceedRowsSeen).toEqual(new Set([2, 8]));
+    expect(blockedRowsSeen).toEqual(new Set([3, 4, 5]));
+  });
+});
+
+// ─── PROP-BSL-05 (queue half) — unresolved implies not-evaluated, uniformly ──────────────────
+//
+// "Not evaluated" is asserted as `rows === []` AND `retiredPresent === []` (never "none
+// present"), and the negative half — "no run in this state reports a green outcome on any
+// surface" — is asserted on the queue's ONE green surface: row 9, `proceed` silently. The
+// reachability case below keeps that negative from being vacuous.
+
+describe("PROP-BSL-05 (queue half) — unresolved ⇒ not-evaluated, and the queue's green surface is absent", () => {
+  it.each(EIGHT_BASELINE_REASONS_T50.map((reason) => [reason]))(
+    "reason %s — rows [] and retiredPresent [] ⇒ never proceed, never row 9; blocked at row 4",
+    (reason) => {
+      const record = buildRecord({
+        checkEnabled: true,
+        baselineStatus: "unresolved",
+        baselineReason: reason,
+        rows: [],
+        retiredPresent: [],
+        writeFailures: [],
+      });
+      expect(record.rows).toEqual([]);
+      expect(record.retiredPresent).toEqual([]);
+
+      const gate = mapDriftState(validateDriftRecord(record));
+      expect(gate.outcome).not.toBe("proceed");
+      expect(gate.row).not.toBe(9);
+      expect(gate).toMatchObject({ outcome: "blocked", row: 4 });
+    }
+  );
+
+  it.each(EIGHT_BASELINE_REASONS_T50.map((reason) => [reason]))(
+    "reason %s — writeFailures MAY be non-empty in this state, and the queue is still never green (row 3)",
+    (reason) => {
+      const record = buildRecord({
+        checkEnabled: true,
+        baselineStatus: "unresolved",
+        baselineReason: reason,
+        rows: [],
+        retiredPresent: [],
+        writeFailures: [
+          { path: ".claude/workflows/.pdlc-sync-manifest.json", operation: "sync-manifest-update" },
+        ],
+      });
+      expect(record.rows).toEqual([]);
+      expect(record.retiredPresent).toEqual([]);
+
+      const gate = mapDriftState(validateDriftRecord(record));
+      expect(gate.outcome).not.toBe("proceed");
+      expect(gate.row).not.toBe(9);
+      expect(gate).toMatchObject({ outcome: "blocked", row: 3 });
+    }
+  );
+
+  it("the green surface IS reachable — a resolved, all-in-sync record proceeds at row 9 (so the absence asserted above is not vacuous)", () => {
+    const record = buildRecord({
+      checkEnabled: true,
+      baselineStatus: "resolved",
+      baselineReason: null,
+      rows: [{ id: "row-1", state: "in-sync", reason: null }],
+      retiredPresent: [],
+      writeFailures: [],
+    });
+    const gate = mapDriftState(validateDriftRecord(record));
+    expect(gate).toMatchObject({ outcome: "proceed", row: 9 });
+  });
+
+  it("grounding — a REAL unresolved run's record carries rows [] and retiredPresent [] on disk, and the queue is not green over it", () => {
+    withEmptyPluginRoot((consumer, pluginRoot) => {
+      const run = runScript("hook", {
+        consumerRoot: consumer.root,
+        home: consumer.home,
+        pluginRoot,
+      });
+      expect(run.status).toBe(0);
+
+      const state = readDriftState(consumer.root);
+      expect(state).not.toBeNull();
+      expect(state.baselineStatus).toBe("unresolved");
+      expect(EIGHT_BASELINE_REASONS_T50).toContain(state.baselineReason);
+      // "not evaluated", never "none present" — read off the real record, not a literal.
+      expect(state.rows).toEqual([]);
+      expect(state.retiredPresent).toEqual([]);
+
+      const gate = mapDriftState(validateDriftRecord(state));
+      expect(gate.outcome).not.toBe("proceed");
+      expect(gate.row).not.toBe(9);
+    });
+  });
 });
