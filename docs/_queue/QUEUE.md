@@ -11,7 +11,7 @@ frontmatter is the pickup gate; the `Status` cell tracks lifecycle.
 
 | Order | Status | Feature | REQ Path | Depends-On |
 |-------|--------|---------|----------|------------|
-| 1 | in-progress | pdlc-workflow-distribution | docs/pdlc-workflow-distribution/REQ-pdlc-workflow-distribution.md | — |
+| 1 | awaiting-merge | pdlc-workflow-distribution | docs/pdlc-workflow-distribution/REQ-pdlc-workflow-distribution.md | — |
 | 2 | pending | pdlc-merge-phase | docs/pdlc-merge-phase/REQ-pdlc-merge-phase.md | pdlc-workflow-distribution |
 | 3 | pending | pdlc-advisory-tier | docs/pdlc-advisory-tier/REQ-pdlc-advisory-tier.md | pdlc-merge-phase |
 | 4 | pending | pdlc-consolidation-agent | docs/pdlc-consolidation-agent/REQ-pdlc-consolidation-agent.md | pdlc-workflow-distribution, pdlc-advisory-tier |
@@ -40,13 +40,35 @@ bootstrap, shell-script syntax and index modes). Two consequences for whoever pi
   automation** half does not (no tag/publish workflow, no marketplace step). Row 7 stays
   `blocked` for that remainder — but scope its REQ to release automation, and treat the PR-test
   gate as existing infrastructure to build on rather than something to author from scratch.
-- **The jobs are unproven.** As of this note the workflow has never executed — no PR had been
-  raised against it. Do not read "CI exists" as "CI is known green"; the Linux half of the matrix
-  in particular has never run.
+- **The jobs are proven as of 2026-07-29, but only after two Linux-only fixes.** The note above
+  originally read "the jobs are unproven … the Linux half of the matrix in particular has never
+  run". PR #19 was the workflow's first-ever execution, and the Linux leg went **red on that first
+  run** — 18 failures, none reproducible on macOS, both causes fixed in `a8ac055`:
+  - `sync-workflows.sh` used `${#ARR[@]:-0}`, which is not a defaulting expansion. Bash 3.2 (macOS)
+    tolerates it silently; bash 5 (Linux) rejects it as `bad substitution` and aborts the script
+    mid-run, dropping the exit code from FSPEC §5.8's 4 to 2/1 on every write-failure case
+    (17 of the 18). `check-workflow-drift.sh` already documented this exact lesson at two sites —
+    this was a missed occurrence, not a new discovery. Grep now confirms zero remaining.
+  - `driftLadder.test.js` used a bare inode-number comparison as the unlink-vs-in-place oracle.
+    APFS allocates inode numbers monotonically, so the test passed there; ext4/overlayfs hands a
+    freed number straight back to the next allocation, so rung (ii) landed and the number was
+    unchanged. Fixed by hard-linking the file first, which prevents the inode from being freed at
+    all and makes the comparison sound on every filesystem.
+  Take the general lesson, not just the two fixes: **macOS-green says nothing about Linux** for
+  this codebase, because the shell dialect and the filesystem both differ. Reproduce Linux locally
+  in a `node:20` container (non-root — running as root bypasses the permission-bit fixtures and
+  skews the result) rather than iterating through PR pushes.
 
-Row 1 is `in-progress` (this feature's own pipeline, mid-flight, is what is producing this very
-document). It was previously `halted` twice, for two different reasons — both now resolved history,
-not the current state:
+Row 1 is `awaiting-merge` as of 2026-07-29: the pipeline ran to the end of Phase PUB and raised
+https://github.com/ohenak/yumo-plugins/pull/19, whose five PR checks are green at `a8ac055`.
+`awaiting-merge → done` is a human step — this PR trips the self-modification convention in
+§Bootstrapping (it touches `pdlc/workflows/**` and `pdlc/skills/**`) and is never auto-merged.
+One item is left for human disposition rather than resolved: **DoD-15** — the 206 lines of
+`.github/workflows/pr-tests.yml` landed out-of-band in `3ef6ac7` and passed no pdlc phase, so the
+CI gate itself is unspecified and unreviewed even though it now demonstrably works.
+
+Row 1 was previously `halted` twice, for two different reasons — both now resolved history, not the
+current state:
 
 The first halt was Phase R hitting the 5-iteration ceiling twice (REQ v3–v13, 24 cross-reviews)
 without dual approval (`POSTMORTEM-R-pdlc-workflow-distribution.md` v2.1, R-0). On 2026-07-28 the
