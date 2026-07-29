@@ -2784,6 +2784,8 @@ a naive implementation reaches inequality by appending an id. **AT-30** asserts 
 | N-6 | `.claude/workflows/` enumeration failed | `pdlc: could not list {dir}; unmanaged files are not reported this run. Managed rows are unaffected.` |
 | N-7 | unrecognised `PDLC_FAULT` (§4.6) | `pdlc: unrecognised PDLC_FAULT token "{token}"; no fault injected.` |
 | **N-8** | the E1 evidence `repoRootUnresolved` **holds** and the *reported* `baselineReason` is **not** `repo-root-unresolved` (§2.1's no-write-target rule) | `pdlc: no write target — the consumer repo root did not resolve, so nothing was recorded this run. Create .claude/ at the intended root, or run inside a git work tree.` |
+| **N-9** | **hook** — the C1 availability gate fails: `lib/pdlc-drift.sh` did not load, or loaded incompletely, so one of the functions the hook calls is undefined | `pdlc: workflow drift was not checked this session — the plugin library {path} is missing or incomplete (no {fn}), so nothing could be classified and nothing was recorded. Reinstall or update the plugin; your session is unaffected.` |
+| **N-10** | **sync** (`--check`, plain, `--force`) — the same gate, over the wider set of functions that entrypoint calls | `pdlc: cannot check or sync workflows — the plugin library {path} is missing or incomplete (no {fn}), so nothing could be classified and nothing was written. Reinstall or update the plugin.` |
 
 N-4's wording is **O-8's verbatim requirement**: *rows whose bytes differ are reported `unverified`;
 an equal-bytes row is `in-sync` regardless of provenance.* N-6 states explicitly that row states are
@@ -2799,6 +2801,34 @@ learning that nothing was recorded. N-8 exists so that state has a **positive ob
 the reason string — the case §2.8's worked table rows 1–3 name, and the one O-3's fixture inventory
 needs a second oracle for. It is a notice, not a warning: it does not participate in §8.2's
 distinctness sets, and it never appears on a run whose repo root resolved.
+
+**N-9 / N-10 — the C1-availability gates, and why they are notices (CR G-03).** Both entrypoints
+source `lib/pdlc-drift.sh` tolerantly and then probe, by name, every function they are about to
+call — the last of which is `pdlc_msg_w7`, C1's final definition, so its presence also witnesses
+that the file was read to the end. A partial plugin install (an interrupted copy, an unreadable
+`lib/`, a truncated file) fails that probe. Without these lines the run would either die mid-flight
+on a `command not found` cascade — handing the operator raw bash diagnostics instead of this
+catalogue — or, worse, record a fabricated "everything in sync" result.
+
+They are **notices, not warnings**, for a structural reason rather than a severity judgement.
+§8.2 is the *hook's warning taxonomy*: an ordered, exhaustive enumeration (W-1 … W-7) over a
+**baseline status and a set of classified rows**. A run stopped by the availability gate produced
+neither — no baseline was resolved, no row was classified, so there is no state for a §8.2 warning
+to be about, and no position in its ordering for one to occupy. Adding either line to §8.2 would
+also drag it into the §8.2 distinctness sets S1/S2/S3, which are defined over *row-state* and
+*baseline-reason* renderings; N-9/N-10 are neither, exactly as N-8 is neither. The outcome they
+announce is degraded but safe and completely reported: drift was **not checked**, and — crucially —
+nothing was recorded, so no stale or invented state is left behind for the next run to trust. That
+is the same "a positive observable for a state that would otherwise be silent" role N-8 plays.
+
+The gate's severity lives in the **exit code**, not the message class: the hook still exits **0**
+(AC-2.4 is absolute — a SessionStart hook must never block a session), while sync exits **3**
+(§5.8: nothing verified, nothing written). Both remediations are §8.1's **plugin-update** class —
+sync cannot repair its own missing library, so neither line may recommend `sync-workflows.sh` or
+`--force`, and both name *update the plugin*. Both interpolate the library path they could not use
+and the first probed name they could not find, so the operator can distinguish "absent" from
+"truncated at layer N" without reading the source. The two are textually distinct by their first
+clause, and that clause is also what identifies which entrypoint spoke.
 
 ## 9. Disposition of REQ §10 FSPEC obligations
 

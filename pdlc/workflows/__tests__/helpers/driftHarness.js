@@ -219,8 +219,13 @@ function readTraceIfPresent(tracePath) {
  * always `[]` regardless of what a run printed. This now tests each line against every `N-*`/
  * `W-*` pattern in the real table, so a line is a notice/warning iff it actually matches the
  * spec'd message shape.
+ *
+ * Exported (CROSS-REVIEW-se-codebase-v2.md G-03) so suites that must spawn a *relocated* copy of
+ * an entrypoint — `driftC1Absent.test.js`, whose whole subject is a broken plugin tree that
+ * `runScript` cannot construct — can still reach the classification `RunResult` gives everyone
+ * else, instead of grepping stderr with an ad-hoc regex.
  */
-function splitStderrLines(stderr) {
+export function splitStderrLines(stderr) {
   const lines = stderr.length ? stderr.split("\n").filter((line) => line.length > 0) : [];
   const notices = [];
   const warnings = [];
@@ -443,6 +448,11 @@ export const MESSAGES = {
   "N-6": /^pdlc: could not list (?<dir>.+);/m,
   "N-7": /^pdlc: unrecognised PDLC_FAULT token "(?<token>[^"]*)";/m,
   "N-8": /^pdlc: no write target — the consumer repo root did not resolve,/m,
+  // N-9 / N-10 — the C1-availability gates (FSPEC §8.3, added under CROSS-REVIEW-se-codebase-v2
+  // G-03). Both capture the trailing sentence as `remediation`, so they can be asserted through
+  // `expectRemediationClass(…, "pluginUpdate")` like every other remediation-bearing message.
+  "N-9": /^pdlc: workflow drift was not checked this session — the plugin library (?<path>.+) is missing or incomplete \(no (?<fn>[A-Za-z_][A-Za-z0-9_]*)\), so nothing could be classified and nothing was recorded\. (?<remediation>.*)$/m,
+  "N-10": /^pdlc: cannot check or sync workflows — the plugin library (?<path>.+) is missing or incomplete \(no (?<fn>[A-Za-z_][A-Za-z0-9_]*)\), so nothing could be classified and nothing was written\. (?<remediation>.*)$/m,
 };
 
 function messagesRegex(id, callerName) {

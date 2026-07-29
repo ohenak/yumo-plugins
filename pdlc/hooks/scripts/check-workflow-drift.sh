@@ -84,7 +84,10 @@ for _pdlc_hook_fn in \
   fi
 done
 if [ -n "$_PDLC_HOOK_C1_MISSING" ]; then
-  printf 'pdlc: workflow drift was not checked this session — the plugin library %s is missing or incomplete (no %s), so nothing could be classified and nothing was recorded. Reinstall or update the pdlc plugin; your session is unaffected.\n' \
+  # FSPEC §8.3 N-9. A notice, not a warning: §8.2's taxonomy is ordered over baseline/row states,
+  # and this run produced neither. The remediation is §8.1's `pluginUpdate` class — sync cannot
+  # fix a missing library — so it must name "update the plugin" and must not name the sync command.
+  printf 'pdlc: workflow drift was not checked this session — the plugin library %s is missing or incomplete (no %s), so nothing could be classified and nothing was recorded. Reinstall or update the plugin; your session is unaffected.\n' \
     "${_PDLC_HOOK_SCRIPT_DIR}/lib/pdlc-drift.sh" "$_PDLC_HOOK_C1_MISSING" >&2
   exit 0
 fi
@@ -99,6 +102,10 @@ for _pdlc_hook_arr in \
   PDLC_PLUGIN_ARTIFACT_VERSION PDLC_CONSUMER_ARTIFACT_VERSION \
   PDLC_WRITE_FAILURES _PDLC_SPLIT_RESULT; do
   if ! declare -p "$_pdlc_hook_arr" >/dev/null 2>&1; then
+    # Dynamic-name `eval` (CR G-06): safe only because `_pdlc_hook_arr` iterates the local
+    # literal list above, never data sourced from a manifest, env var, or other input — that
+    # invariant, not the eval itself, is what must never change. Bash 3.2 has no namerefs, or
+    # this would be written without eval.
     eval "declare -a ${_pdlc_hook_arr}=()"
   fi
 done

@@ -1414,6 +1414,11 @@ export const MESSAGES = {
   "N-6": /^pdlc: could not list (?<dir>.+);/m,
   "N-7": /^pdlc: unrecognised PDLC_FAULT token "(?<token>[^"]*)";/m,
   "N-8": /^pdlc: no write target — the consumer repo root did not resolve,/m,
+  // N-9 / N-10 — the C1-availability gates (FSPEC §8.3, added under CROSS-REVIEW-se-codebase-v2
+  // G-03). Both capture the trailing sentence as `remediation`, so they can be asserted through
+  // `expectRemediationClass(…, "pluginUpdate")` like every other remediation-bearing message.
+  "N-9": /^pdlc: workflow drift was not checked this session — the plugin library (?<path>.+) is missing or incomplete \(no (?<fn>[A-Za-z_][A-Za-z0-9_]*)\), so nothing could be classified and nothing was recorded\. (?<remediation>.*)$/m,
+  "N-10": /^pdlc: cannot check or sync workflows — the plugin library (?<path>.+) is missing or incomplete \(no (?<fn>[A-Za-z_][A-Za-z0-9_]*)\), so nothing could be classified and nothing was written\. (?<remediation>.*)$/m,
 };
 export function countOf(stderr, id) -> number             // §5.4 conjunct 1 uses this
 export function remediationOf(stderr, id) -> string       // the `remediation` or `cmd` capture, trimmed
@@ -1768,9 +1773,8 @@ contain no `__tests__/` segment, so (iv) does not fire there.
 
 **The gitignore hazard, closed at the landing step.** FSPEC §7.5 item 1 gitignores
 `.claude/workflows/` wholesale, and the fixture contains a nested `.claude/workflows/` directory
-(it must, to exercise exemption (i)). A pattern that matches at **every** depth would make the
-fixture's files silently uncommittable and the tree would arrive empty on a fresh clone — turning
-AT-23's `== 7` into `== 0` with no diff to explain it.
+(it must, to exercise exemption (i)). A pattern that matches at **every** depth would reach that
+nested directory.
 
 > **Corrected (SE F-15, Phase CR).** v1 of this paragraph said "an unanchored pattern matches at
 > every depth" and treated the leading `/` as the thing that closes the hazard. That is not
@@ -1782,6 +1786,25 @@ AT-23's `== 7` into `== 0` with no diff to explain it.
 > **not** ignored; with `workflows/` or `**/.claude/workflows/` it **is**. (The probe is
 > non-vacuous — the latter two rows prove the oracle can report a match at depth, so the former
 > two rows' non-match is a real negative.)
+>
+> **Further corrected (SE G-04, Phase CR).** The F-15 correction above fixed *which patterns*
+> recurse but left the stated consequence intact — "the fixture's files become silently
+> uncommittable, the tree arrives empty on a fresh clone, AT-23's `== 7` becomes `== 0`". That
+> consequence is **false on two independent counts, both measured**:
+>
+> 1. **AT-23 cannot move.** `listAllFiles()` walks the tree with `readdirSync` and never consults
+>    git, so no ignore pattern — anchored, unanchored, or `**/`-prefixed — can change what the
+>    oracle enumerates. The `== 7` is computed from the filesystem, not the index.
+> 2. **The fixture cannot be untracked by a pattern.** Ignore rules do not apply to already-tracked
+>    paths. Measured in a throwaway repo: with a tracked file beneath a directory, adding a
+>    matching ignore pattern leaves the file tracked, still listed by `git ls-files`, and still
+>    materialised in a fresh clone.
+>
+> The anchoring stays — it is correct — but its justification is narrower than claimed: it keeps a
+> *future* file added under the fixture's nested `.claude/workflows/` from silently requiring
+> `git add -f`, so the fixture fails at authoring time rather than going quietly missing. No test
+> ever encoded the false claim, so nothing here was vacuous; this was documentation asserting a
+> mechanism that does not exist.
 
 The landing step writes the explicitly-anchored patterns
 (`/.claude/workflows/`, `/pdlc/workflows/dist/`) — correct, and clearer at the cost of one
@@ -1793,7 +1816,11 @@ present on disk **and** tracked (`git ls-files --error-unmatch`), so the failure
 **The guard is two assertions, split by capability (TE Q-04).** The **on-disk presence** half needs
 no git and runs on every runner; the **tracked-ness** half is wrapped in `itOrSkip("git", […])`
 naming "an uncommittable fixture would arrive empty on a fresh clone and AT-23 would report
-`== 0`" as its unverified invariant. Splitting them matters because they fail for different
+`== 0`" as its unverified invariant. **That invariant is sound and stays** (SE G-04) — but note the
+route: it is reachable when the fixture was simply **never committed**, in which case `readdirSync`
+finds nothing and AT-23 genuinely reads `0`. It is *not* reachable via a gitignore pattern, since
+ignore rules do not apply to already-tracked paths. The guard earns its place against the
+forgot-to-`git add` case, not against the pattern-shape case. Splitting them matters because they fail for different
 reasons: on a `git`-less runner the presence check alone still catches the empty-tree case in the
 only way that runner can, and AT-23's own `== 7` remains the backstop.
 
@@ -2418,7 +2445,7 @@ below.
 | **O-19 (d)** | this feature's implementation | Wrap the drift-state read so a throwing `_readFile` maps to row 1 `blocked` | §12.3: `readDriftStateSafely`, the three-way injection table, and the note that `rtReadFile` **propagates** today (`runtime-adapter.js:85–96` has no `try`/`catch`), so the wrapper is required for the test to return a report at all |
 | **O-13** | `consolidate-learnings` | REQ-scope stopping rule → `docs/_constraints/DOMAIN-CONSTRAINTS.md`, which must be **created** | Not this document's; carried so it is not lost |
 | **new** | PROPERTIES | **The emitted `PDLC_FAULT` token set is a subset of §5.2's sixteen.** FSPEC §10 O-10 requires it and it cannot be asserted example-wise | §5.2 is the closed list, exported from C1 as `PDLC_FAULT_TOKENS` so the property reads the implementation's own list rather than a copy; the property is `emitted ⊆ listed` over every fixture the suite runs |
-| **new** | landing step (implementation) | The gitignore entries of FSPEC §7.5 item 1 must be **anchored** (`/.claude/workflows/`, `/pdlc/workflows/dist/`) | §10.1: a pattern that matches at every depth — i.e. a **slash-free** one (`workflows/`) or one prefixed `**/`, *not* merely one lacking a leading slash (SE F-15) — silently swallows the checked-in `covered-violations` fixture's nested directories, turning AT-23 from `== 7` into `== 0` with no diff to explain it. `documentOracles.test.js` carries the tracked-ness guard that reports it correctly if it happens |
+| **new** | landing step (implementation) | The gitignore entries of FSPEC §7.5 item 1 must be **anchored** (`/.claude/workflows/`, `/pdlc/workflows/dist/`) | §10.1: a pattern that matches at every depth — i.e. a **slash-free** one (`workflows/`) or one prefixed `**/`, *not* merely one lacking a leading slash (SE F-15) — would reach the checked-in `covered-violations` fixture's nested directories. **Corrected (SE G-04): that does NOT turn AT-23's `== 7` into `== 0`** — `listAllFiles()` uses `readdirSync` and never consults git, and ignore rules do not apply to already-tracked paths (both measured). The anchoring stays; its narrower justification is that an unanchored pattern would make a *future* fixture file silently require `git add -f`. `documentOracles.test.js` carries the tracked-ness guard that reports it correctly if it happens |
 | **new** | implementation phase | Observe once whether a Claude-created worktree copies untracked `.claude/workflows/` content (FSPEC §11.1's stated obligation) | Unchanged; no test — it is a documentation-scope adjustment, recorded in §17 |
 | **new** | landing step (implementation) | **Create `pdlc/RELEASE-CHECKLIST.md`** with the three rows §2.1a enumerates — AC-6.2a's installed-package assertion (runnable via `packagingViolations` from the shipped `lib/document-oracles.mjs`), AC-6.6's landed-violation fallback row, and NFR-2's one-off latency observation | §2.1a states the three rows and the one constraint the document carries (its wording must avoid all five `coveredViolations` patterns, or AT-22 goes red — FSPEC §5.4's rule for the optional `SKILL.md`, applied unchanged). It is in §2.1's file inventory, so it is a deliverable and not an intention. Until it exists, three P1/residual commitments (AC-6.2a, AC-6.6's residual, NFR-2) have **no** landing surface — the state v1.0 shipped in |
 | **new** | `harvest-learnings` | The durable rule behind the row above: **a checklist-owned AC needs a checklist artifact in the deliverable inventory** — an AC discharged by "the maintainer's checklist" is undischarged until that document is a named file with a named owner | Stated here so it survives this feature; PM F-05's finding is the second instance the pipeline has seen |

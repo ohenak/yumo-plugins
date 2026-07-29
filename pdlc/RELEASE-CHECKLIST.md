@@ -31,11 +31,21 @@ beside them, and the shipped packaging oracle reports no violation over that tre
 **Exactly one input returns an empty array without having verified anything: a manifest that is
 absent altogether.** That is why the three presence checks below are **not** redundant with the
 oracle — both halves are required for this row to pass. A manifest that is *present but
-unreadable* is **not** in that hole: an unparseable manifest, and one that parses but carries
-neither the production `rows` array nor the simplified `entries` array, are both reported as a
-`6.2(a)` violation on `pdlc/workflows/dist/distribution-manifest.json` whose `detail` names the
-parse or shape failure. So a corrupt manifest fails this row on the oracle's own output rather
-than printing `present` three times and `packagingViolations -> []`.
+unreadable* is **not** in that hole: it is reported as a `6.2(a)` violation on
+`pdlc/workflows/dist/distribution-manifest.json` whose `detail` names the specific failure. So a
+corrupt manifest fails this row on the oracle's own output rather than printing `present` three
+times and `packagingViolations -> []`.
+
+**`packagingViolations` is total: it never throws, for any bytes at the manifest path, and it never
+skips.** A manifest that is unreadable, is not valid JSON, is not a JSON object at all (`null`, an
+array, a bare scalar), carries neither the production `rows` array nor the simplified `entries`
+array, or whose rows/entries are not objects or are missing `pluginPath` / `path` / `pluginSha1`,
+all report `6.2(a)` — because a malformed manifest **is itself** a defect in the packaged set, which
+is the very thing this row asks about. Note the deliberate contrast with row 2's oracle
+(`advertisedVersionViolation`), which answers a question that can be genuinely *inapplicable* and so
+returns `{ skipped: … }` instead: that divergence is intended, and the reasoning is recorded in
+`pdlc/workflows/lib/document-oracles.mjs` between §10.2 and §10.3. Neither oracle throws, so a
+malformed input in this row can never abort the run before row 2 is reached.
 
 ```sh
 PLUGIN_ROOT="${CLAUDE_PLUGIN_ROOT:?point this at the installed pdlc plugin directory}"

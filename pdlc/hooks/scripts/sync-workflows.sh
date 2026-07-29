@@ -63,7 +63,9 @@ for _pdlc_c3_fn in \
   fi
 done
 if [[ -n "$_pdlc_c3_c1_missing" ]]; then
-  printf 'pdlc: cannot check or sync workflows — the plugin library %s is missing or incomplete (no %s), so nothing could be classified and nothing was written. Reinstall or update the pdlc plugin.\n' \
+  # FSPEC §8.3 N-10 — the sync-side sibling of N-9. Same class (`pluginUpdate`), different first
+  # clause, so the two are textually distinct and each identifies its own entrypoint.
+  printf 'pdlc: cannot check or sync workflows — the plugin library %s is missing or incomplete (no %s), so nothing could be classified and nothing was written. Reinstall or update the plugin.\n' \
     "${_pdlc_c3_dir}/lib/pdlc-drift.sh" "$_pdlc_c3_c1_missing" >&2
   exit 3
 fi

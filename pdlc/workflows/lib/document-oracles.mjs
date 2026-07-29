@@ -10,8 +10,12 @@
  *
  * Exports:
  *   - coveredViolations(root)          — FSPEC §7.5's document-drift scan
- *   - packagingViolations(root)        — FSPEC §7.3 / AC-6.2 packaging oracle
+ *   - packagingViolations(root)        — FSPEC §7.3 / AC-6.2 packaging oracle;
+ *                                        total, malformed input => 6.2(a)
  *   - advertisedVersionViolation(root) — FSPEC §7.4 / AC-6.6, O-16 skip-loudly
+ *
+ * Neither oracle ever throws; they answer "cannot judge" differently, and
+ * deliberately so — see the divergence note between §10.2 and §10.3.
  *   - EXEMPTIONS                       — frozen 4-member literal (FSPEC §7.5)
  *   - S_GIT_ABSENT / S_NO_GIT_DIR / S_UNBORN_HEAD / S_NOTHING_STAGED
  *   - M6_ID_REGEX                      — TSPEC §11.3 row 1, shared with C1's
@@ -191,11 +195,42 @@ function listManifestFiles(dir, root) {
   return out;
 }
 
+/** A human-readable name for whatever arbitrary JSON value `value` is, used by
+ * the 6.2(a) shape details below so the message names the actual shape found
+ * rather than just "malformed". `typeof null === "object"` is corrected here —
+ * that conflation is precisely the trap that let `null` reach a dereference
+ * (CR G-01). */
+function describeJsonShape(value) {
+  if (value === null) return "null";
+  if (Array.isArray(value)) return "an array";
+  return `a ${typeof value}`;
+}
+
+/** Every shape failure is reported against the manifest itself: the defect is
+ * the manifest's, and a malformed row has no path of its own to blame. */
+function shapeViolation(detail) {
+  return { clause: "6.2(a)", path: MANIFEST_REL, detail };
+}
+
+/** True only for a JSON object — not `null`, not an array, not a scalar. */
+function isJsonObject(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function isNonEmptyString(value) {
+  return typeof value === "string" && value !== "";
+}
+
 /**
  * packagingViolations(root) -> { clause, path, detail }[]
  *
  * Clauses 6.2(a)-(d) over `root`'s packaged plugin tree, sorted by
  * (clause, path). An empty array is the pass.
+ *
+ * TOTAL over arbitrary JSON: this function never throws, for any bytes at the
+ * manifest path (CR G-01). See the "why one skips and the other reports a
+ * violation" note between §10.2 and §10.3 for why totality here means a
+ * violation rather than a skip.
  *
  * Exactly ONE input returns [] without having verified anything: no
  * distribution manifest exists under `root` at all (pre-release, or before the
@@ -209,19 +244,56 @@ function listManifestFiles(dir, root) {
  * packaged tree — the one thing AC-6.2a exists to deny.
  */
 export function packagingViolations(root) {
+  try {
+    return checkedPackagingViolations(root);
+  } catch (err) {
+    // Backstop for a shape nobody enumerated. It reports a 6.2(a) — NOT `[]`,
+    // which would reinstate F-05 exactly, and not a rethrow, which would abort
+    // the checklist run before AC-6.6's row is ever reached. Every known
+    // malformed shape is caught by an explicit guard below with a specific
+    // message; reaching this generic one is itself worth investigating.
+    return [
+      shapeViolation(
+        `the distribution manifest could not be checked — evaluating it raised "${err && err.message ? err.message : String(err)}", so no packaging clause could be checked`,
+      ),
+    ];
+  }
+}
+
+function checkedPackagingViolations(root) {
   const manifestPath = join(root, MANIFEST_REL);
   if (!existsSync(manifestPath)) return [];
 
-  let manifest;
+  let manifestText;
   try {
-    manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+    manifestText = readFileSync(manifestPath, "utf8");
   } catch (err) {
     return [
-      {
-        clause: "6.2(a)",
-        path: MANIFEST_REL,
-        detail: `the distribution manifest is present but is not valid JSON, so no packaging clause could be checked: ${err.message}`,
-      },
+      shapeViolation(
+        `the distribution manifest is present but could not be read, so no packaging clause could be checked: ${err.message}`,
+      ),
+    ];
+  }
+
+  let manifest;
+  try {
+    manifest = JSON.parse(manifestText);
+  } catch (err) {
+    return [
+      shapeViolation(
+        `the distribution manifest is present but is not valid JSON, so no packaging clause could be checked: ${err.message}`,
+      ),
+    ];
+  }
+
+  // `null`, an array, or a scalar parses fine and is not a manifest. `null` in
+  // particular used to reach `null.entries` and throw before either shape
+  // branch or the neither-known-shape `else` could run (CR G-01, measured).
+  if (!isJsonObject(manifest)) {
+    return [
+      shapeViolation(
+        `the distribution manifest is not a JSON object (found ${describeJsonShape(manifest)}), so no packaging clause could be checked`,
+      ),
     ];
   }
 
@@ -234,8 +306,9 @@ export function packagingViolations(root) {
     const pluginPath = manifest.plugin && manifest.plugin.path;
 
     // (a) the manifest's declared plugin path must resolve to something that
-    // actually exists inside the packaged set.
-    if (!pluginPath || !existsSync(join(root, pluginPath))) {
+    // actually exists inside the packaged set. A non-string pluginPath cannot
+    // resolve to anything, and must not be handed to `join` (CR G-01).
+    if (!isNonEmptyString(pluginPath) || !existsSync(join(root, pluginPath))) {
       violations.push({
         clause: "6.2(a)",
         path: MANIFEST_REL,
@@ -243,7 +316,35 @@ export function packagingViolations(root) {
       });
     }
 
-    for (const entry of manifest.entries) {
+    for (const [index, entry] of manifest.entries.entries()) {
+      // (a) shape first: an entry that is not an object, or whose `path` /
+      // `pluginSha1` is missing or of the wrong type, is itself a packaging
+      // defect — the entry describes nothing checkable (CR G-01).
+      if (!isJsonObject(entry)) {
+        violations.push(
+          shapeViolation(
+            `manifest entry ${index} is not a JSON object (found ${describeJsonShape(entry)}), so nothing about it could be checked`,
+          ),
+        );
+        continue;
+      }
+      if (!isNonEmptyString(entry.path)) {
+        violations.push(
+          shapeViolation(
+            `manifest entry ${index}'s "path" is not a non-empty string (found ${describeJsonShape(entry.path)}), so no packaged file could be located for it`,
+          ),
+        );
+        continue;
+      }
+      if (typeof entry.pluginSha1 !== "string") {
+        violations.push(
+          shapeViolation(
+            `manifest entry ${index} ("${entry.path}") has a "pluginSha1" that is not a string (found ${describeJsonShape(entry.pluginSha1)}), so its bytes could not be checked`,
+          ),
+        );
+        continue;
+      }
+
       const entryPath = entry.path;
       const absPath = join(root, entryPath);
 
@@ -272,7 +373,34 @@ export function packagingViolations(root) {
     // relative to root/pdlc/ (the packaged set).
     const unionRetires = new Set();
 
-    for (const row of manifest.rows) {
+    for (const [index, row] of manifest.rows.entries()) {
+      // (a) shape first, for the same reason as the entries branch above:
+      // `{"rows":[null]}` and `{"rows":[{}]}` both threw here before CR G-01.
+      if (!isJsonObject(row)) {
+        violations.push(
+          shapeViolation(
+            `manifest row ${index} is not a JSON object (found ${describeJsonShape(row)}), so nothing about it could be checked`,
+          ),
+        );
+        continue;
+      }
+      if (!isNonEmptyString(row.pluginPath)) {
+        violations.push(
+          shapeViolation(
+            `manifest row ${index}'s "pluginPath" is not a non-empty string (found ${describeJsonShape(row.pluginPath)}), so no packaged file could be located for it`,
+          ),
+        );
+        continue;
+      }
+      if (row.retires !== undefined && !Array.isArray(row.retires)) {
+        violations.push(
+          shapeViolation(
+            `manifest row ${index} ("${row.pluginPath}") has a "retires" that is not an array (found ${describeJsonShape(row.retires)}), so the retired set could not be reconciled`,
+          ),
+        );
+        continue;
+      }
+
       const absPath = join(pluginRoot, row.pluginPath);
 
       if (!existsSync(absPath) || !statSync(absPath).isFile()) {
@@ -299,18 +427,28 @@ export function packagingViolations(root) {
       }
     }
 
-    // (c) top-level retired equals the union of rows' retires.
-    const declaredRetired = new Set(manifest.retired || []);
-    const mismatches = new Set([
-      ...[...unionRetires].filter((p) => !declaredRetired.has(p)),
-      ...[...declaredRetired].filter((p) => !unionRetires.has(p)),
-    ]);
-    for (const path of mismatches) {
-      violations.push({
-        clause: "6.2(c)",
-        path,
-        detail: `top-level "retired" disagrees with the union of rows' "retires" for "${path}"`,
-      });
+    // (c) top-level retired equals the union of rows' retires. A non-array
+    // `retired` is a shape defect, not something to coerce: `new Set(5)` threw
+    // and `new Set("ab")` would silently invent two retired paths (CR G-01).
+    if (manifest.retired !== undefined && !Array.isArray(manifest.retired)) {
+      violations.push(
+        shapeViolation(
+          `the manifest's top-level "retired" is not an array (found ${describeJsonShape(manifest.retired)}), so it could not be reconciled with the rows' "retires"`,
+        ),
+      );
+    } else {
+      const declaredRetired = new Set(manifest.retired || []);
+      const mismatches = new Set([
+        ...[...unionRetires].filter((p) => !declaredRetired.has(p)),
+        ...[...declaredRetired].filter((p) => !unionRetires.has(p)),
+      ]);
+      for (const path of mismatches) {
+        violations.push({
+          clause: "6.2(c)",
+          path,
+          detail: `top-level "retired" disagrees with the union of rows' "retires" for "${path}"`,
+        });
+      }
     }
   } else {
     // Parseable, but neither known shape (CR F-05). `{}`, `{"rows": "[]"}` —
@@ -347,6 +485,38 @@ export function packagingViolations(root) {
   });
   return violations;
 }
+
+// ---------------------------------------------------------------------------
+// Why the two oracles below and above answer "I cannot judge" DIFFERENTLY
+// (CR F-19 + CR G-01 — read this before "fixing" the apparent inconsistency)
+//
+// Shared, non-negotiable half: NEITHER oracle may ever throw. They are
+// checklist instruments run in sequence from RELEASE-CHECKLIST.md; an
+// exception aborts the whole check, which is strictly worse than a reported
+// problem — and in §1's runnable form it would abort before §2's row is ever
+// reached. Both are total over their inputs.
+//
+// Divergent half, and it is deliberate:
+//
+//   * advertisedVersionViolation answers a question that can be genuinely
+//     INAPPLICABLE. If nothing is staged under dist/, there is nothing to
+//     advertise and no invariant is at risk; git being absent, or plugin.json
+//     being unreadable on one side, leaves the question unanswerable without
+//     implying any defect. So it returns { skipped: <named reason> } (O-16,
+//     skip loudly) — a third outcome beside "red"/"green".
+//
+//   * packagingViolations answers "is the packaged set well-formed?". A
+//     manifest that is absent, null, shapeless, or whose rows are not objects
+//     IS ITSELF a defect in the packaged set — it is an answer to the
+//     question, not an obstacle to answering it. So malformed input is a
+//     6.2(a) VIOLATION. A skip would be nearly as bad as the `[]` that F-05
+//     removed: both let a corrupt manifest tick a green box.
+//
+// The one exception is documented on packagingViolations itself: a manifest
+// that is ABSENT altogether returns [], because nothing has been packaged yet.
+// RELEASE-CHECKLIST §1's three presence checks exist to cover exactly that
+// hole, which is why they are not redundant with this oracle.
+// ---------------------------------------------------------------------------
 
 // ---------------------------------------------------------------------------
 // §10.3 — advertisedVersionViolation(root)

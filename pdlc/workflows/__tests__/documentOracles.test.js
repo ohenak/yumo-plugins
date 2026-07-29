@@ -23,6 +23,7 @@
 
 import { execFileSync } from "child_process";
 import {
+  chmodSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -400,6 +401,167 @@ describe("packagingViolations (§10.2)", () => {
       const root = makePackagingFixture();
       writeFileSync(join(root, manifestRel), "{}\n");
       expect(packagingViolations(root).some((v) => v.clause === "6.2(a)")).toBe(true);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // CR G-01 — `packagingViolations` must be TOTAL over arbitrary JSON.
+  //
+  // F-05 closed the unparseable and neither-known-shape holes but left every
+  // input that passes the `Array.isArray` gate and then dereferences a
+  // non-object element. Four such inputs were MEASURED to throw an uncaught
+  // `TypeError` (`null`, `{"rows":[null]}`, `{"entries":[null]}`,
+  // `{"rows":[{}]}`); probing outwards from those found six more (a string or
+  // non-string-`pluginPath` row, an entry missing `path`, a non-array
+  // `retires` / `retired`, a non-string `plugin.path`), plus two inputs that
+  // did not throw but were described by the wrong message (a top-level array
+  // and a top-level scalar are not "an object with neither rows nor entries").
+  //
+  // `null` is the classic trap: `typeof null === "object"`, so it never
+  // reaches the new `else`; `null.entries` throws first.
+  //
+  // The ruling implemented here (see the divergence note in
+  // document-oracles.mjs between §10.2 and §10.3): NEITHER oracle may throw —
+  // these are checklist instruments, and an exception aborts the whole check.
+  // But the two "cannot judge" answers differ legitimately.
+  // `advertisedVersionViolation` answers a question that can be genuinely
+  // inapplicable, so it skips. `packagingViolations` answers "is the packaged
+  // set well-formed?", and a manifest that is null / shapeless / whose rows
+  // are not objects IS ITSELF a packaging defect — so malformed input is a
+  // 6.2(a) VIOLATION, never a skip and never a silent [] (which would
+  // reinstate F-05 exactly).
+  // -------------------------------------------------------------------------
+  describe("CR G-01 — every malformed-but-parseable manifest is a 6.2(a) violation, never a throw", () => {
+    const manifestRel = "pdlc/workflows/dist/distribution-manifest.json";
+    const realBundle = "pdlc/workflows/dist/orchestrate-dev.bundle.js";
+
+    // [label, manifest JSON text, regex the 6.2(a) detail must match]
+    const MALFORMED = [
+      // --- the four the reviewer MEASURED as uncaught TypeErrors ---
+      ["null (measured: TypeError on `.entries`)", "null", /not a JSON object.*\bnull\b/i],
+      ['{"rows":[null]} (measured)', '{"rows":[null]}', /row 0 .*not a JSON object.*\bnull\b/i],
+      ['{"entries":[null]} (measured)', '{"entries":[null]}', /entry 0 .*not a JSON object.*\bnull\b/i],
+      ['{"rows":[{}]} (measured)', '{"rows":[{}]}', /row 0.*pluginPath.*not a non-empty string/i],
+      // --- siblings found while making the oracle total ---
+      ["[] — a top-level array is not a manifest object", "[]", /not a JSON object.*\barray\b/i],
+      ['"a string" — a top-level scalar', '"a string"', /not a JSON object.*\bstring\b/i],
+      ['{"rows":["x"]} — a row that is a string', '{"rows":["x"]}', /row 0 .*not a JSON object.*\bstring\b/i],
+      [
+        '{"rows":[{"pluginPath":7,…}]} — a non-string pluginPath',
+        '{"rows":[{"pluginPath":7,"pluginSha1":"0"}]}',
+        /row 0.*pluginPath.*not a non-empty string/i,
+      ],
+      ['{"entries":[{}]} — an entry with no path', '{"entries":[{}]}', /entry 0.*path.*not a non-empty string/i],
+      [
+        '{"entries":[{"path":<real>}]} — an entry with no pluginSha1',
+        `{"entries":[{"path":${JSON.stringify(realBundle)}}]}`,
+        /entry 0 .*pluginSha1.*not a string/i,
+      ],
+      [
+        '{"rows":[{…,"retires":5}]} — a non-array retires',
+        '{"rows":[{"pluginPath":"workflows/dist/orchestrate-dev.bundle.js","pluginSha1":"0","retires":5}]}',
+        /row 0 .*retires.*not an array/i,
+      ],
+      [
+        '{"rows":[],"retired":5} — a non-array top-level retired',
+        '{"rows":[],"retired":5}',
+        /top-level "retired".*not an array/i,
+      ],
+      [
+        '{"plugin":{"path":5},"entries":[]} — a non-string plugin.path',
+        '{"plugin":{"path":5},"entries":[]}',
+        /plugin\.path.*does not resolve inside the packaged set/i,
+      ],
+    ];
+
+    test.each(MALFORMED)("%s — does not throw", (_label, body) => {
+      const root = makePackagingFixture();
+      writeFileSync(join(root, manifestRel), `${body}\n`);
+      expect(() => packagingViolations(root)).not.toThrow();
+    });
+
+    test.each(MALFORMED)("%s — is flagged 6.2(a), naming the shape failure", (_label, body, detailRe) => {
+      const root = makePackagingFixture();
+      writeFileSync(join(root, manifestRel), `${body}\n`);
+      const violations = packagingViolations(root);
+      expect(violations).not.toEqual([]);
+      expect(
+        violations.some((v) => v.clause === "6.2(a)" && detailRe.test(v.detail))
+      ).toBe(true);
+    });
+
+    test("the shape violations are reported against the manifest itself, and the result still sorts", () => {
+      const root = makePackagingFixture();
+      writeFileSync(join(root, manifestRel), '{"rows":[null,{},"x"]}\n');
+      const violations = packagingViolations(root);
+      expect(violations.length).toBe(3);
+      for (const v of violations) {
+        expect(v.clause).toBe("6.2(a)");
+        expect(v.path).toBe(manifestRel);
+      }
+      const sorted = [...violations].sort((a, b) => {
+        if (a.clause !== b.clause) return a.clause < b.clause ? -1 : 1;
+        return a.path < b.path ? -1 : a.path > b.path ? 1 : 0;
+      });
+      expect(violations).toEqual(sorted);
+    });
+
+    test("a manifest path that cannot be READ (a directory in its place) is 6.2(a), not a throw and not []", () => {
+      const root = makePackagingFixture();
+      rmSync(join(root, manifestRel));
+      mkdirSync(join(root, manifestRel));
+      let violations;
+      expect(() => {
+        violations = packagingViolations(root);
+      }).not.toThrow();
+      expect(violations).not.toEqual([]);
+      expect(
+        violations.some((v) => v.clause === "6.2(a)" && v.path === manifestRel && /could not be read/i.test(v.detail))
+      ).toBe(true);
+    });
+
+    // The generic backstop is not decoration: an input no shape guard can
+    // catch — a well-formed manifest naming a packaged file that exists but
+    // cannot be READ — reaches it. Without it this throws EACCES out of
+    // `readFileSync` during the sha1 recomputation. Needs a non-root uid:
+    // under uid 0 the permission bits are bypassed and the file reads fine.
+    itOrSkip(
+      "a well-formed manifest naming an UNREADABLE packaged file reaches the backstop: 6.2(a), not a throw",
+      "uid-nonroot",
+      ["CR G-01: packagingViolations is total — the generic backstop is reached rather than throwing"],
+      () => {
+        const root = mkTmpRoot();
+        mkdirSync(join(root, "pdlc/workflows/dist"), { recursive: true });
+        const pluginRel = "workflows/dist/orchestrate-dev.bundle.js";
+        const abs = join(root, "pdlc", pluginRel);
+        writeFileSync(abs, "// bytes\n");
+        chmodSync(abs, 0o000);
+        try {
+          writeFileSync(
+            join(root, manifestRel),
+            `${JSON.stringify({
+              schemaVersion: 1,
+              rows: [{ id: "orchestrate-dev", pluginPath: pluginRel, pluginSha1: "0".repeat(40) }],
+              retired: [],
+            })}\n`,
+          );
+          let violations;
+          expect(() => {
+            violations = packagingViolations(root);
+          }).not.toThrow();
+          expect(
+            violations.some(
+              (v) => v.clause === "6.2(a)" && v.path === manifestRel && /EACCES|could not be checked/i.test(v.detail),
+            ),
+          ).toBe(true);
+        } finally {
+          chmodSync(abs, 0o644);
+        }
+      },
+    );
+
+    test("totality is not bought with silence: a well-formed manifest is still [] (F-05 not reinstated)", () => {
+      expect(packagingViolations(makePackagingFixture())).toEqual([]);
     });
   });
 
