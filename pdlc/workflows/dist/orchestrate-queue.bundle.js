@@ -2907,11 +2907,33 @@ async function main({
     });
   }
 
+  // A PROCEEDING verdict is not necessarily a silent one. Row 9 is the trivial
+  // all-clear (empty `reasons`, empty report) and says nothing; every other
+  // proceeding row carries something the operator must still see:
+  //   • row 2 — the checkEnabled:false opt-out. AC-4.1 row 2 is "proceed; skip
+  //     noted in report", AC-4.3 is "skips state evaluation and notes the skip".
+  //     A queue that ran a stale tree without saying so would be exactly the
+  //     silent-degradation this feature exists to prevent.
+  //   • row 8 — local-edit / unverified rows. AC-4.1 row 8 is "proceed, rows
+  //     named in the run report".
+  // Both obligations are on the RETURNED QueueReport (and the run log), not on
+  // `mapDriftState`'s node output — so the notice is captured once here and
+  // `finish` is the single funnel every remaining exit path in this pass returns
+  // through, `runPicked`'s two included. Adding a new `return` below that calls
+  // `buildQueueReport` directly would silently reopen this gap.
+  const driftNotice = driftGate.row === 9 ? null : driftGate.report;
+  if (driftNotice) {
+    emit(
+      `Drift gate proceeding (row ${driftGate.row}): ${driftGate.reasons.join("; ")}`
+    );
+  }
+  const finish = (fields) => buildQueueReport({ ...fields, driftReport: driftNotice });
+
   // ─── Load queue ─────────────────────────────────────────────────────────
   phaseFn("Queue: Load");
   const queueText = await readFileFn(queuePath);
   if (queueText == null) {
-    return buildQueueReport({
+    return finish({
       outcome: "no-queue",
       reason: `Queue file not found at ${queuePath}`,
       remaining: 0,
@@ -2930,7 +2952,7 @@ async function main({
       `Queue blocked: "${selection.entry.feature}" is still in-progress. ` +
         `Resolve it (mark done/awaiting-merge or reset to pending) before new work is picked up.`
     );
-    return buildQueueReport({
+    return finish({
       outcome: "blocked",
       reason: `An entry is in-progress: ${selection.entry.feature}`,
       remaining: remainingPending,
@@ -2940,7 +2962,7 @@ async function main({
 
   if (selection.kind === "empty") {
     emit(`Nothing to pick up — ${selection.reason}.`);
-    return buildQueueReport({
+    return finish({
       outcome: "idle",
       reason: selection.reason,
       remaining: 0,
@@ -3021,12 +3043,13 @@ async function main({
       readFileFn,
       phaseFn,
       emit,
+      finish,
     });
   }
 
   // No candidate became ready this pass.
   emit(`No ready REQ this pass (${skipped.length} candidate(s) skipped).`);
-  return buildQueueReport({
+  return finish({
     outcome: "idle",
     reason: "no candidate passed the readiness gate",
     remaining: remainingPending,
@@ -3053,6 +3076,10 @@ async function runPicked({
   readFileFn,
   phaseFn,
   emit,
+  // `main`'s exit funnel — carries the proceeding drift notice onto whichever
+  // report this pass returns (see the `finish` comment in `main`). Injected
+  // rather than recomputed so there is exactly one place that decides it.
+  finish,
 }) {
   phaseFn(`Pipeline: ${entry.feature}`);
   emit(
@@ -3069,7 +3096,7 @@ async function runPicked({
     report = await runPipelineFn({ reqPath: entry.reqPath });
   } catch (err) {
     await rewriteStatus(queuePath, entry.feature, "halted", readFileFn, writeFileFn);
-    return buildQueueReport({
+    return finish({
       outcome: "halted",
       reason: `Pipeline threw for ${entry.feature}: ${err && err.message}`,
       remaining: remainingPending - 1,
@@ -3087,7 +3114,7 @@ async function runPicked({
       : `"${entry.feature}" halted: ${report && report.haltReason}. Status set to halted.`
   );
 
-  return buildQueueReport({
+  return finish({
     outcome: succeeded ? "ran" : "halted",
     reason: succeeded
       ? `Pipeline succeeded for ${entry.feature}`
@@ -3116,6 +3143,10 @@ async function rewriteStatus(queuePath, feature, status, readFileFn, writeFileFn
  * @property {string} [active]         - in-progress feature blocking pickup (if any)
  * @property {object} [pipelineReport] - the orchestrate-dev FinalReport (if a pipeline ran)
  * @property {Array}  [skipped]        - candidates skipped this pass with reasons
+ * @property {{manifest:string[], row:string[], run:string[]}} [driftReport] - the drift gate's
+ *   Manifest/Row/Run reasons (FSPEC §6.3). Present whenever the gate had something to say —
+ *   on a `blocked` verdict, and on a proceeding verdict at any row other than 9's all-clear
+ *   (AC-4.1 rows 2 and 8, AC-4.3). Absent exactly when the gate was silent.
  */
 function buildQueueReport({
   outcome,

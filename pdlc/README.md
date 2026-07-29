@@ -42,8 +42,12 @@ Both workflows default their agent calls to the phase model and let an explicit 
   `feat-{feature}`.
 - For unattended, multi-feature delivery, copy `templates/QUEUE.md` to
   `docs/_queue/QUEUE.md`, then run `/loop run /pdlc:orchestrate-queue` — it picks the next
-  ready REQ in dependency order, one feature per iteration. See
-  `skills/orchestrate-queue/SKILL.md` for the queue format and status lifecycle.
+  ready REQ in dependency order, one feature per iteration. Every invocation opens with a
+  drift-state check that can block the entire pass (before any REQ is even read) if the
+  consumer's copy of the workflow scripts looks stale or unverified; a repo can opt out via
+  `.claude/pdlc.config.json` → `distribution.checkEnabled: false`. See
+  `skills/orchestrate-queue/SKILL.md` for the queue format, the drift gate, and the status
+  lifecycle.
 
 ## Operator conventions
 

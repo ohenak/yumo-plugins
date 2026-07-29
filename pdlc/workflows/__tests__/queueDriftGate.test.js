@@ -1064,3 +1064,166 @@ describe("PROP-BSL-05 (queue half) — unresolved ⇒ not-evaluated, and the que
     });
   });
 });
+
+// ═════════ DOD-01 — a PROCEEDING gate verdict must reach the returned QueueReport ═════════
+//
+// AC-4.1 row 2 ("proceed; skip noted in report"), AC-4.1 row 8 ("proceed, rows named in the
+// run report") and AC-4.3 ("skips state evaluation and notes the skip") are claims about the
+// operator-visible artifact `main()` RETURNS — not about `mapDriftState`'s return value. Every
+// assertion above this block is on the latter; a `main()` that discarded the gate's `reasons`
+// and `report` on a proceeding verdict would satisfy all of them. These cases close that gap by
+// asserting on the `QueueReport` (and the emitted log) only.
+describe("DOD-01 — main() surfaces a proceeding drift verdict in the returned QueueReport", () => {
+  const QUEUE_PATH = "docs/_queue/QUEUE.md";
+  const QUEUE_MD = [
+    "| Order | Status | Feature | REQ Path | Depends-On |",
+    "|---|---|---|---|---|",
+    "| 1 | pending | f1 | docs/f1/REQ-f1.md | |",
+    "",
+  ].join("\n");
+  const READY_REQ = ["---", "ready: true", "feature: f1", "---", "", "# REQ-f1"].join("\n");
+
+  /**
+   * Drive the REAL `main()` over an injected drift record.
+   *
+   * @param {object} record            the drift-state record served at DRIFT_STATE_PATH
+   * @param {object} [opts]
+   * @param {string|null} [opts.reqText] REQ body, or null for "REQ file missing" (idle path)
+   * @param {string} [opts.triage]     the triage agent's reply
+   * @param {object} [opts.pipeline]   the orchestrate-dev FinalReport to return
+   */
+  async function runMain(record, opts = {}) {
+    const { reqText = null, triage = "TRIAGE: ready deps satisfied", pipeline } = opts;
+    const logs = [];
+    const files = {
+      [DRIFT_STATE_PATH]: JSON.stringify(record),
+      [QUEUE_PATH]: QUEUE_MD,
+      "docs/f1/REQ-f1.md": reqText,
+    };
+    const report = await main({
+      queuePath: QUEUE_PATH,
+      _readFile: async (path) => (path in files ? files[path] : null),
+      _writeFile: async (path, contents) => {
+        files[path] = contents;
+      },
+      _agent: async () => triage,
+      _runPipeline: async () => pipeline ?? { outcome: "success" },
+      _log: (line) => logs.push(String(line)),
+      _phase: () => {},
+    });
+    return { report, logs };
+  }
+
+  const joined = (report, logs) => `${JSON.stringify(report)}\n${logs.join("\n")}`;
+
+  // ─── AC-4.1 row 2 / AC-4.3: the opt-out skip must be NOTED, not silently taken ───
+  it("DOD-01(a) — checkEnabled:false (row 2) over a stale row: the returned report carries driftReport and the skip is named", async () => {
+    const record = buildRecord({
+      checkEnabled: false,
+      rows: [{ id: "orchestrate-dev", state: "stale", reason: null }],
+    });
+
+    const { report, logs } = await runMain(record);
+
+    // The reviewer's measurement: this pass ends `idle` with no candidate ready.
+    expect(report.outcome).toBe("idle");
+    // ...and the AC's obligation, which the measured artifact did NOT meet.
+    expect(report.driftReport).toBeDefined();
+    expect(report.driftReport).toEqual({
+      manifest: [
+        "checkEnabled is false — drift check skipped by operator opt-out (AC-4.3)",
+      ],
+      row: [],
+      run: [],
+    });
+    expect(joined(report, logs)).toMatch(/checkEnabled is false/);
+  });
+
+  // ─── AC-4.1 row 8: local-edit / unverified rows must be NAMED in the run report ───
+  it("DOD-01(b) — local-edit/unverified (row 8): the returned report names each affected row", async () => {
+    const record = buildRecord({
+      rows: [
+        { id: "orchestrate-dev", state: "local-edit", reason: null },
+        { id: "orchestrate-queue", state: "unverified", reason: null },
+        { id: "distribution-manifest", state: "in-sync", reason: null },
+      ],
+    });
+
+    const { report, logs } = await runMain(record);
+
+    expect(report.outcome).toBe("idle");
+    expect(report.driftReport).toBeDefined();
+    expect(report.driftReport.run).toEqual([
+      "orchestrate-dev: local-edit",
+      "orchestrate-queue: unverified",
+    ]);
+    // The in-sync row is not an exception worth an operator's attention.
+    expect(report.driftReport.run.join(" ")).not.toMatch(/distribution-manifest/);
+    expect(joined(report, logs)).toMatch(/orchestrate-dev: local-edit/);
+    expect(joined(report, logs)).toMatch(/orchestrate-queue: unverified/);
+  });
+
+  // ─── The information must survive the OTHER exit paths a proceeding run can take ───
+  it("DOD-01(c) — the drift report reaches the `ran` report too, not just the idle path", async () => {
+    const record = buildRecord({
+      checkEnabled: false,
+      rows: [{ id: "orchestrate-dev", state: "stale", reason: null }],
+    });
+
+    const { report } = await runMain(record, { reqText: READY_REQ });
+
+    expect(report.outcome).toBe("ran");
+    expect(report.picked).toBe("f1");
+    expect(report.driftReport).toEqual({
+      manifest: [
+        "checkEnabled is false — drift check skipped by operator opt-out (AC-4.3)",
+      ],
+      row: [],
+      run: [],
+    });
+  });
+
+  it("DOD-01(d) — the drift report reaches the `halted` report when the pipeline fails", async () => {
+    const record = buildRecord({
+      rows: [{ id: "orchestrate-queue", state: "unverified", reason: null }],
+    });
+
+    const { report } = await runMain(record, {
+      reqText: READY_REQ,
+      pipeline: { outcome: "halted", haltReason: "boom" },
+    });
+
+    expect(report.outcome).toBe("halted");
+    expect(report.driftReport.run).toEqual(["orchestrate-queue: unverified"]);
+  });
+
+  it("DOD-01(e) — the drift report reaches the `no-queue` report", async () => {
+    const record = buildRecord({
+      checkEnabled: false,
+      rows: [{ id: "orchestrate-dev", state: "stale", reason: null }],
+    });
+    const report = await main({
+      queuePath: "docs/_queue/ABSENT.md",
+      _readFile: async (path) =>
+        path === DRIFT_STATE_PATH ? JSON.stringify(record) : null,
+      _writeFile: async () => {},
+      _agent: async () => "",
+      _log: () => {},
+      _phase: () => {},
+    });
+
+    expect(report.outcome).toBe("no-queue");
+    expect(report.driftReport.manifest).toEqual([
+      "checkEnabled is false — drift check skipped by operator opt-out (AC-4.3)",
+    ]);
+  });
+
+  // ─── Row 9 is the trivial all-clear: silence is the specified behaviour there ───
+  it("DOD-01(f) — a row-9 all-clear stays silent: no driftReport key, no drift line logged", async () => {
+    const { report, logs } = await runMain(buildRecord({}));
+
+    expect(report.outcome).toBe("idle");
+    expect("driftReport" in report).toBe(false);
+    expect(logs.join("\n")).not.toMatch(/[Dd]rift/);
+  });
+});

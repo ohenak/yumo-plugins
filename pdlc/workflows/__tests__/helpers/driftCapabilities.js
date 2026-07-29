@@ -20,6 +20,7 @@
  */
 
 import { execFileSync } from "child_process";
+import { appendSkipRecord } from "./skipSink.js";
 
 // ─── Printed skip reasons (TSPEC §7.3) ─────────────────────────────────────────────────
 
@@ -123,10 +124,15 @@ export const SKIP_INVENTORY = Object.freeze([
 ]);
 
 /**
- * Every skip actually emitted this test run, as frozen `{name, capability, unverifiedInvariants}`
- * records — populated by `describeOrSkip`/`itOrSkip` below whenever they skip. T-01 compares this
- * against `SKIP_INVENTORY` so "zero unexpected skips" is a mechanical comparator (TE F-10), not an
- * eyeball pass over stderr.
+ * Every skip emitted **by this module registry** — i.e. by the one test file currently loading
+ * this module — as frozen `{name, capability, unverifiedInvariants}` records, populated by
+ * `describeOrSkip`/`itOrSkip` below. It is deliberately NOT the comparator's input: jest gives
+ * every test file its own module registry and may run files in separate worker processes, so
+ * this set can never see another file's skips. Its job here is de-duplication within a file.
+ *
+ * The run-wide record — the one "zero unexpected skips" is actually checked against (TE F-10) —
+ * is the on-disk sink in `skipSink.js`, compared to `SKIP_INVENTORY` once at end of run by
+ * `skipSinkTeardown.js` (jest `globalTeardown`).
  */
 export const REGISTERED_SKIPS = new Set();
 
@@ -245,8 +251,33 @@ function printSkip(name, reasons, unverifiedInvariants) {
   );
 }
 
+const registeredKeys = new Set();
+
+/** Best-effort name of the test file registering a skip, for the teardown's violation text. */
+function originOfCurrentFile() {
+  try {
+    return expect.getState().testPath || null;
+  } catch {
+    return null;
+  }
+}
+
 function registerSkip(name, capability, unverifiedInvariants) {
-  REGISTERED_SKIPS.add(Object.freeze({ name, capability, unverifiedInvariants: Object.freeze([...unverifiedInvariants]) }));
+  const invariants = Object.freeze([...unverifiedInvariants]);
+  const record = Object.freeze({ name, capability, unverifiedInvariants: invariants });
+  REGISTERED_SKIPS.add(record);
+
+  // One sink line per distinct skip per file; a repeated registration (the same gated block
+  // re-entered) adds no new information and would only pad the teardown's report.
+  const key = JSON.stringify([name, capability, invariants]);
+  if (registeredKeys.has(key)) return;
+  registeredKeys.add(key);
+  appendSkipRecord({
+    name,
+    capability,
+    unverifiedInvariants: [...invariants],
+    origin: originOfCurrentFile(),
+  });
 }
 
 /**

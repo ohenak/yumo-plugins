@@ -38,6 +38,8 @@ work. The queue encodes that order; this skill enforces serial, ready-gated pick
   - `remaining`: pending entries left after this pass
   - `pipelineReport`: the `orchestrate-dev` FinalReport (when a pipeline ran)
   - `skipped`: candidates skipped this pass, with reasons
+  - `driftReport`: present whenever the drift gate (below) had something to say —
+    always on `blocked`, and on some proceeding outcomes too — describing what the gate saw
 
 ---
 
@@ -120,8 +122,37 @@ pending ──pick──▶ in-progress ──pipeline success──▶ awaiting
 
 ---
 
+## Drift gate (runs before the queue is even read)
+
+Every invocation opens with a check of the recorded workflow-drift state — the same record
+the plugin's `check-workflow-drift` SessionStart hook writes. This runs **before** `QUEUE.md`
+is loaded, so a stale or unverified consumer copy of the workflow scripts can stop the whole
+pass without any REQ being selected, dispatched, or even considered.
+
+- **Blocking.** If the gate finds the drift record missing/unreadable, a recorded write
+  failure, an unresolved baseline, or any managed row still `missing`, `stale`, or `unknown`
+  (see FSPEC AC-4.1's precedence table), the invocation returns immediately with
+  `outcome: "blocked", reason: "Drift gate row N: …"` and runs no pipeline. The reason names
+  which precedence row fired. **Operator action:** bring the consumer copy back in sync —
+  `pdlc/hooks/scripts/sync-workflows.sh` (or `--force` when the reason names a hand-edited or
+  unverified row) — then re-invoke `/pdlc:orchestrate-queue`. The gate does not modify
+  `docs/_queue/QUEUE.md`; nothing there needs to change to unblock it.
+- **Opt-out.** A repo can disable the gate via `.claude/pdlc.config.json` →
+  `distribution.checkEnabled: false`. With that set, the gate does not block on drift; it
+  still surfaces that it skipped evaluation (per AC-4.3) rather than proceeding silently, and
+  selection continues as normal below. Use this only when you've deliberately decided the
+  drift check shouldn't gate this repo's queue — not as a routine way past a `blocked` result.
+- **Otherwise-proceeding drift.** A drift state that only shows an editor-touched or
+  no-provenance consumer file (not `missing`/`stale`) does not block the gate; the queue
+  proceeds to selection, and the returned report still names what it saw rather than treating
+  it as clean.
+
+---
+
 ## Selection algorithm (per invocation)
 
+0. Run the drift gate above. `blocked` → return immediately; opt-out or a non-blocking drift
+   state → continue.
 1. Load and parse the queue. If missing → `no-queue`.
 2. If any entry is `in-progress` → `blocked` (don't start new work).
 3. Take `pending` entries in queue order. For each, in order:

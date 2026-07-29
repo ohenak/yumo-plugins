@@ -13,6 +13,8 @@
   "jest": {
     "testEnvironment": "node",
     "transform": {},
+    "globalSetup": "<rootDir>/__tests__/helpers/skipSinkSetup.js",
+    "globalTeardown": "<rootDir>/__tests__/helpers/skipSinkTeardown.js",
     "testPathIgnorePatterns": [
       "/node_modules/",
       "/__tests__/helpers/",

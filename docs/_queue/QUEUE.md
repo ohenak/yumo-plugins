@@ -31,19 +31,23 @@ release automation on `yumo-plugins` (`.github/` does not exist today, so `cd pd
 npm test` is the only automated verification surface). Same convention as row 6 — `blocked`, REQ
 not yet authored, present so the deferral is bound.
 
-Row 1 is `halted`, but **not for the original reason — Phase R is now resolved.** History: Phase R
-hit the 5-iteration ceiling twice (REQ v3–v13, 24 cross-reviews) without dual approval
-(`POSTMORTEM-R-pdlc-workflow-distribution.md` v2.1, R-0). On 2026-07-28 the REQ was rewritten as
-v14.0 at requirements altitude — product scope accepted per R-1, specification-grade material moved
-to §10 downstream obligations per R-2. The de-escalation worked: the next run converged in four
-rounds (v14→v17) with blocking findings descending 1H/1M → 1H/1M → 1H/1M → **0H/0M**, against the
-flat 8–10 band of the preceding ten rounds. **REQ v17.0 carries dual approval** — SE `e1a627f`, TE
-`a82365e`, both *Approved with minor changes*.
+Row 1 is `in-progress` (this feature's own pipeline, mid-flight, is what is producing this very
+document). It was previously `halted` twice, for two different reasons — both now resolved history,
+not the current state:
 
-The current halt is Phase F, and it is infrastructure, not content: six `pm-author` attempts were
+The first halt was Phase R hitting the 5-iteration ceiling twice (REQ v3–v13, 24 cross-reviews)
+without dual approval (`POSTMORTEM-R-pdlc-workflow-distribution.md` v2.1, R-0). On 2026-07-28 the
+REQ was rewritten as v14.0 at requirements altitude — product scope accepted per R-1,
+specification-grade material moved to §10 downstream obligations per R-2. The de-escalation worked:
+the next run converged in four rounds (v14→v17) with blocking findings descending 1H/1M → 1H/1M →
+1H/1M → **0H/0M**, against the flat 8–10 band of the preceding ten rounds. **REQ v17.0 carries dual
+approval** — SE `e1a627f`, TE `a82365e`, both *Approved with minor changes*.
+
+The second halt was Phase F, and it was infrastructure, not content: six `pm-author` attempts were
 each killed by the runtime stall watchdog mid-`Write`, producing no FSPEC (row 8, H-3). Re-entering
-today would also re-run all four approved Phase-R rounds (row 8, H-4). **Land row 8 before setting
-this row back to `pending`.**
+at the time would also have re-run all four approved Phase-R rounds (row 8, H-4). Row 8's harness
+fixes remain the recommended precondition for further Phase F attempts on this row, whether or not
+it has already resumed.
 
 Row 8 binds four harness defects — the two from post-mortem R-3/R-4 plus two found during the
 2026-07-28 run. Its REQ **is authored** (v1.0, `ready: true`); the row stays `blocked` until a human
@@ -69,8 +73,8 @@ sets it `pending`, which is the only thing standing between it and pickup.
 
 Targets: `pdlc/workflows/orchestrate-dev.js`, `pdlc/workflows/orchestrate-queue.js`, both
 orchestrator SKILLs and the three author SKILLs; bundles rebuilt in the same commit. **This row
-should be landed before row 1 is un-halted** — three of the four full runs on this branch died to
-harness defects rather than to the work.
+should be landed before row 1's next Phase F attempt** — three of the four full runs on this branch
+died to harness defects rather than to the work.
 
 ## Priority rationale (2026-07-27 — closing the engineering loop)
 

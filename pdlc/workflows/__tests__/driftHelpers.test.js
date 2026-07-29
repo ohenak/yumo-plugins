@@ -28,7 +28,11 @@ import {
 } from "fs";
 
 // §1.3 — capability + harness contracts (clause a)
-import { describeOrSkip, itOrSkip } from "./helpers/driftCapabilities.js";
+import { describeOrSkip, itOrSkip, SKIP_INVENTORY } from "./helpers/driftCapabilities.js";
+// §1.3 — the run-wide skip-inventory comparator (TE F-10); see helpers/skipSink.js for its
+// domain (skips registered through describeOrSkip/itOrSkip) and the reason it lives in a
+// globalTeardown rather than in an assertion here.
+import { validateSkipRecords } from "./helpers/skipSink.js";
 // §3.1-3.4, §11.2 — harness core, read-back, batched grammar driver (clause a, d)
 import {
   makeToolDir,
@@ -97,6 +101,112 @@ describe("T-01 clause (a) — capability + harness contracts", () => {
     it("describeOrSkip and itOrSkip each take four parameters, name first (PROPERTIES §11.1)", () => {
       expect(describeOrSkip.length).toBe(4);
       expect(itOrSkip.length).toBe(4);
+    });
+  });
+
+  // The comparator itself. It is applied to the WHOLE RUN's registrations by jest's
+  // globalTeardown (helpers/skipSinkTeardown.js) — it cannot be applied here, because this
+  // file's module registry only ever sees this file's own skips, which would make any subset
+  // check vacuously true. These cases pin the comparator's decision function directly, on
+  // synthetic records, so each clause is exercised in both directions.
+  describe("skip-inventory comparator (TSPEC §1.3 ∪ PROPERTIES §11.1, TE F-10)", () => {
+    const goodEntry = SKIP_INVENTORY[0];
+    const goodRecord = {
+      name: goodEntry.name,
+      capability: goodEntry.capability,
+      unverifiedInvariants: [...goodEntry.unverifiedInvariants],
+    };
+
+    it("the shipped SKIP_INVENTORY is itself well-formed (C3, checked on every run)", () => {
+      expect(validateSkipRecords([], SKIP_INVENTORY)).toEqual([]);
+    });
+
+    it("accepts a registered skip that matches its inventory entry verbatim", () => {
+      expect(validateSkipRecords([goodRecord], SKIP_INVENTORY)).toEqual([]);
+    });
+
+    it("accepts an off-inventory skip that is structurally sound (closure is not enforced)", () => {
+      const offInventory = {
+        name: "some other uid-0 fixture",
+        capability: "uid-nonroot",
+        unverifiedInvariants: ["a named, non-generic invariant"],
+      };
+      expect(validateSkipRecords([offInventory], SKIP_INVENTORY)).toEqual([]);
+    });
+
+    it("C1 — fails a registered skip whose invariant list is empty, naming it", () => {
+      const violations = validateSkipRecords(
+        [{ name: "bogus", capability: "uid-nonroot", unverifiedInvariants: [] }],
+        SKIP_INVENTORY
+      );
+      expect(violations).toHaveLength(1);
+      expect(violations[0]).toContain("bogus");
+      expect(violations[0]).toContain("empty or non-string invariant list");
+    });
+
+    it("C1 — fails a registered skip whose invariant list holds a non-string", () => {
+      const violations = validateSkipRecords(
+        [{ name: "bogus", capability: "hash", unverifiedInvariants: [{ not: "a string" }] }],
+        SKIP_INVENTORY
+      );
+      expect(violations).toHaveLength(1);
+      expect(violations[0]).toContain("empty or non-string invariant list");
+    });
+
+    it("C1 — fails a registered skip naming an unknown capability", () => {
+      const violations = validateSkipRecords(
+        [{ name: "bogus", capability: "telepathy", unverifiedInvariants: ["x"] }],
+        SKIP_INVENTORY
+      );
+      expect(violations).toHaveLength(1);
+      expect(violations[0]).toContain("unknown capability");
+    });
+
+    it("C1 — reports the registering file when the record carries an origin", () => {
+      const violations = validateSkipRecords(
+        [
+          {
+            name: "bogus",
+            capability: "uid-nonroot",
+            unverifiedInvariants: [],
+            origin: "/some/suite.test.js",
+          },
+        ],
+        SKIP_INVENTORY
+      );
+      expect(violations[0]).toContain("/some/suite.test.js");
+    });
+
+    it("C2 — fails a skip that claims an inventory name but a different invariant list", () => {
+      const violations = validateSkipRecords(
+        [{ ...goodRecord, unverifiedInvariants: ["something else entirely"] }],
+        SKIP_INVENTORY
+      );
+      expect(violations).toHaveLength(1);
+      expect(violations[0]).toContain(goodEntry.name);
+      expect(violations[0]).toContain("verbatim");
+    });
+
+    it("C2 — fails a skip that claims an inventory name but a different capability", () => {
+      const violations = validateSkipRecords([{ ...goodRecord, capability: "hash" }], SKIP_INVENTORY);
+      expect(violations).toHaveLength(1);
+      expect(violations[0]).toContain("SKIP_INVENTORY names");
+    });
+
+    it("C3 — fails an inventory entry with an empty invariant list", () => {
+      const violations = validateSkipRecords(
+        [],
+        [{ name: "AT-99", capability: "uid-nonroot", unverifiedInvariants: [] }]
+      );
+      expect(violations).toHaveLength(1);
+      expect(violations[0]).toContain("AT-99");
+    });
+
+    it("C3 — fails a duplicated inventory entry name", () => {
+      const entry = { name: "AT-99", capability: "uid-nonroot", unverifiedInvariants: ["x"] };
+      const violations = validateSkipRecords([], [entry, entry]);
+      expect(violations).toHaveLength(1);
+      expect(violations[0]).toContain("duplicate");
     });
   });
 

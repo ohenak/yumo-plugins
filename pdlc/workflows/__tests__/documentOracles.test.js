@@ -255,6 +255,47 @@ describe("coveredViolations (§10, §10.1)", () => {
     }
   });
 
+  // -------------------------------------------------------------------------
+  // DOD-04 — FSPEC §7.5 exemption (iii) needs a DECISIVE fixture.
+  //
+  // Exemption (iii) is "any distribution-manifest.json", matched by BASENAME.
+  // Until now the only manifest in the fixture tree lived at
+  // pdlc/workflows/dist/distribution-manifest.json — already exempt under
+  // clause (i)'s generated-tree prefix — so clause (iii) was never the
+  // decisive exemption and `isDistributionManifest` survived being replaced
+  // by `return false` with every oracle suite still green.
+  //
+  // docs/design/distribution-manifest.json is outside BOTH generated trees,
+  // outside any REQ-bearing docs/<X>/ dir (docs/design/ has no REQ-design.md —
+  // that is exactly why MASTER-PLAN.md next to it IS a reported violation),
+  // and carries no __tests__ segment. Clause (iii) is therefore the only thing
+  // standing between it and the report, and it carries a covered pattern
+  // ("managed manually") so it would be reported the instant (iii) stops
+  // firing. Neither the five patterns nor EXEMPTIONS move (FSPEC §7.5, R-10).
+  // -------------------------------------------------------------------------
+  describe("exemption (iii) is decisive, not shadowed by (i) (DOD-04)", () => {
+    const MANIFEST_REL = "docs/design/distribution-manifest.json";
+
+    test("the fixture manifest exists outside both generated trees and carries a covered pattern", () => {
+      const abs = join(COVERED_FIXTURE_ROOT, MANIFEST_REL);
+      expect(existsSync(abs)).toBe(true);
+      expect(MANIFEST_REL.startsWith(".claude/workflows/")).toBe(false);
+      expect(MANIFEST_REL.startsWith("pdlc/workflows/dist/")).toBe(false);
+      expect(MANIFEST_REL.split("/")).not.toContain("__tests__");
+      // docs/design/ is not a feature-doc dir: no REQ-design.md sibling.
+      expect(existsSync(join(COVERED_FIXTURE_ROOT, "docs/design/REQ-design.md"))).toBe(false);
+      // Non-vacuity: without a covered pattern the assertion below would hold
+      // for any reason at all.
+      expect(readFileSync(abs, "utf8").toLowerCase()).toContain("managed manually");
+    });
+
+    test("it is absent from coveredViolations(FIXTURE_ROOT) — only clause (iii) can excuse it", () => {
+      const reported = coveredViolations(COVERED_FIXTURE_ROOT).map((entry) => entry.path);
+      expect(reported).not.toContain(MANIFEST_REL);
+      expect(reported).toEqual(EXPECTED_SEVEN);
+    });
+  });
+
   describe("two-root independence (§10)", () => {
     test("calling coveredViolations against the fixture root does not perturb the LIVE_ROOT call, or vice versa", () => {
       const liveBefore = coveredViolations(LIVE_ROOT);
@@ -283,9 +324,12 @@ describe("covered-violations fixture guard (§10.1, TE Q-04)", () => {
     "pdlc/workflows/dist/orchestrate-queue.bundle.js",
     "pdlc/workflows/dist/distribution-manifest.json",
     "pdlc/workflows/__tests__/someTest.js",
-  ]; // TSPEC §10.1's 13-file table (7 expected violations + 6 exempt entries).
+    "docs/design/distribution-manifest.json",
+  ]; // TSPEC §10.1's table, now 14 files (7 expected violations + 7 exempt entries).
   // Corrected from "12-file … + 5 exempt" (SE F-13, Phase CR): the array has always held 13
   // entries; only the comment was stale. Verified against `git ls-files` over the fixture root.
+  // DOD-04 added the 14th, docs/design/distribution-manifest.json — the exemption-(iii)
+  // witness, which must be exempt for a reason clause (i) cannot also supply.
 
   test("every fixture-inventory file exists on disk (capability-free, every runner)", () => {
     for (const rel of ALL_FIXTURE_RELATIVE_PATHS) {
@@ -703,6 +747,26 @@ describe("§6.3 document-correction oracles (D-1, D-2, D-3) — red from this ba
   test("D-2: CLAUDE.md's hooks table has a row whose script is check-workflow-drift.sh, and the skills/scripts inventory names sync-workflows.sh", () => {
     expect(claudeMd).toEqual(expect.stringContaining("check-workflow-drift.sh"));
     expect(claudeMd).toEqual(expect.stringContaining("sync-workflows.sh"));
+  });
+
+  // -------------------------------------------------------------------------
+  // DOD-08 — PLAN §9 requires pdlc/RELEASE-CHECKLIST.md to EXIST "with the
+  // three §2.1a rows and carrying none of the five patterns". Only the second
+  // half was covered, and only incidentally, by coveredViolations(LIVE_ROOT)
+  // == [] — an assertion that gets MORE green if the file is deleted. This is
+  // the existence-and-content half.
+  // -------------------------------------------------------------------------
+  test("DOD-08: pdlc/RELEASE-CHECKLIST.md exists and carries headings for all three §2.1a commitments", () => {
+    const checklistPath = join(LIVE_ROOT, "pdlc", "RELEASE-CHECKLIST.md");
+    expect(existsSync(checklistPath)).toBe(true);
+
+    const headings = readFileSync(checklistPath, "utf8")
+      .split("\n")
+      .filter((line) => /^#{1,6}\s/.test(line));
+
+    for (const commitment of [/\bAC-6\.2a\b/, /\bAC-6\.6\b/, /\bNFR-2\b/]) {
+      expect(headings.some((line) => commitment.test(line))).toBe(true);
+    }
   });
 
   test("D-3: pdlc/README.md mentions workflows/dist/, and no line matches .claude/workflows/ followed by bundle", () => {

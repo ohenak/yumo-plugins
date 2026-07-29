@@ -17,7 +17,9 @@
  * Neither oracle ever throws; they answer "cannot judge" differently, and
  * deliberately so — see the divergence note between §10.2 and §10.3.
  *   - EXEMPTIONS                       — frozen 4-member literal (FSPEC §7.5)
- *   - S_GIT_ABSENT / S_NO_GIT_DIR / S_UNBORN_HEAD / S_NOTHING_STAGED
+ *   - S_GIT_ABSENT / S_NO_GIT_DIR / S_UNBORN_HEAD / S_PLUGIN_JSON_UNREADABLE /
+ *     S_NOTHING_STAGED                 — advertisedVersionViolation's five named
+ *                                        skip reasons (O-16)
  *   - M6_ID_REGEX                      — TSPEC §11.3 row 1, shared with C1's
  *                                         validator and PROPERTIES' generator
  */
