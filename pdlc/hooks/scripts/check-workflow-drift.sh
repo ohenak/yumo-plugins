@@ -58,7 +58,12 @@ if [ -z "${PDLC_HASH_BIN:-}" ]; then
   pdlc_probe_hash_tool || true
 fi
 
-pdlc_classify_all "hook" || true
+# The label is the trace PASS name (TSPEC §4.1's `phase ::= "as-found" | "post-copy" |
+# "post-run" | "run"`), not the entrypoint — `generatedBy: "hook"` is written separately below.
+# The hook makes exactly one classify pass and never copies, so that pass is by definition the
+# as-found one, which is also what O-20(b) means by "hook/`--check` coincide": C3's first pass at
+# `sync-workflows.sh:227` carries the same label over the same tree.
+pdlc_classify_all "as-found" || true
 
 _pdlc_repo_root="${PDLC_REPO_ROOT:-}"
 _pdlc_baseline_status="${PDLC_BASELINE_STATUS:-unresolved}"

@@ -24,6 +24,19 @@
  *     in this file regardless).
  *   - AC-2.4  — "the hook exits 0 always": a dedicated case forcing an internal drift-state
  *     write failure and asserting the hook still exits 0 (the trap + unconditional exit 0).
+ *   - PROP-MTM-02 (hook half, PLAN T-45) — O-20 clause (b): a hook run's trace carries exactly
+ *     one classify pass, labelled `as-found`, so `assertRecordedPassIs(..., "as-found")` holds
+ *     and `assertRecordedPassIs(..., "post-run")` holds vacuously (zero post-run records to
+ *     contradict it) — stated with the single-pass conjunct so it is never mistaken for
+ *     evidence about a sync run (PROPERTIES §7).
+ *   - PROP-MTM-04 (hook half, PLAN T-45) — conjunct 1 only (pass attribution): a hook run's
+ *     `retiredPresent[].supersedingState` equals R's state in the recorded (`as-found`) pass,
+ *     and the trace carries no fabricated `post-copy`/`post-run` phase at all (PROPERTIES §7).
+ *   - PROP-NEG-04 (hook half, PLAN T-45) — a degraded run is never silent: at least one matched
+ *     W-N notice/warning line, asserted both for a generic degraded tree and, explicitly and positively,
+ *     for AC-4.1's **two** stated exceptions to queue-blocking (row 2 `checkEnabled:false`, row
+ *     8 `unverified`/`local-edit`) — neither exception is an exception to hook silence
+ *     (PROPERTIES §10).
  *
  * Named §13.1 fixture recipes (`syncedConsumer`, `staleRow`, `optOutConsumer`,
  * `retiredPresent`, `nonBooleanConfig`, `preManifestOptOut`) are NOT exported helper
@@ -53,6 +66,8 @@ import {
 } from "./helpers/driftHarness.js";
 import { makeConsumerTree, makePluginTree, setRowState } from "./helpers/driftFixtures.js";
 import { itOrSkip } from "./helpers/driftCapabilities.js";
+import { seeded, resolveSeed } from "./helpers/driftGenerators.js";
+import { parseTrace, assertPhaseOrder, assertRecordedPassIs } from "./helpers/driftOrdering.js";
 import { validateDriftRecord, mapDriftState } from "../orchestrate-queue.js";
 
 // ─── Locally-composed §13.1 fixture recipes ──────────────────────────────────
@@ -354,6 +369,238 @@ describe("AC-2.4 — the hook exits 0 always", () => {
         run.root = consumer.root;
         expect(run.status).toBe(0);
         expectFailOpen(run, { operation: "drift-state-replace", entrypoint: "hook" });
+      } finally {
+        consumer.cleanup();
+        plugin.cleanup();
+      }
+    }
+  );
+});
+
+// ─── PROP-MTM-02 (hook half) — the hook's single classify pass is as-found ───────────────
+//
+// O-20 clause (b) (PROPERTIES §7): for every generated tree, a hook run's trace carries
+// exactly one classify PASS (every classify record's phase is the same value, "as-found"),
+// so `assertRecordedPassIs(trace, record, "as-found")` holds directly and
+// `assertRecordedPassIs(trace, record, "post-run")` holds VACUOUSLY — there are zero
+// post-run-phase classify records to contradict it. Stated with the single-pass conjunct
+// (the distinct-phases check below) so this can never be mistaken for evidence that a SYNC
+// run also records as-found; it does not.
+
+describe("PROP-MTM-02 (hook half) — trace carries exactly one classify pass, labelled as-found", () => {
+  const ROW_STATES = ["in-sync", "stale", "missing", "local-edit", "unverified"];
+  const rng = seeded(resolveSeed(0x4d544d02));
+  const cases = [0, 1].map(() => ({
+    row1: rng.pick(ROW_STATES),
+    row2: rng.pick(ROW_STATES),
+  }));
+
+  cases.forEach(({ row1, row2 }, i) => {
+    itOrSkip(
+      `case ${i} (row-1=${row1}, row-2=${row2}) — single as-found pass, both readings coincide`,
+      "hash",
+      [
+        "O-20 clause (b) — the hook/--check single-pass reading is unverified on this runner",
+      ],
+      () => {
+        const plugin = makePluginTree();
+        const consumer = makeConsumerTree({ git: true, claudeDir: true, workflowsDir: true });
+        const trees = { consumer, plugin };
+        try {
+          setRowState(trees, "row-1", row1);
+          setRowState(trees, "row-2", row2);
+
+          const run = runScript("hook", {
+            consumerRoot: consumer.root,
+            home: consumer.home,
+            pluginRoot: plugin.pluginRoot,
+          });
+          run.root = consumer.root;
+          expect(run.status).toBe(0);
+
+          const state = readDriftState(consumer.root);
+          expect(state).not.toBeNull();
+
+          const trace = parseTrace(run.tracePath);
+          const classifyRecords = trace.filter((r) => r.op === "classify");
+          expect(classifyRecords.length).toBeGreaterThan(0);
+
+          // The single-pass conjunct: every classify record's phase is the same one value.
+          const distinctPhases = [...new Set(classifyRecords.map((r) => r.phase))];
+          expect(distinctPhases).toEqual(["as-found"]);
+
+          assertPhaseOrder(trace);
+          assertRecordedPassIs(trace, state, "as-found");
+          // Vacuously-equal: no "post-run"-phase classify record exists on a hook run, so this
+          // loop iterates zero records and cannot find a disagreement (O-20 clause (b)'s
+          // stated warning against reading this as "sync also records as-found").
+          assertRecordedPassIs(trace, state, "post-run");
+        } finally {
+          consumer.cleanup();
+          plugin.cleanup();
+        }
+      }
+    );
+  });
+});
+
+// ─── PROP-MTM-04 (hook half, conjunct 1 only) — pass attribution, no fabricated post-copy ──
+//
+// PROPERTIES §7: on a non-sync entrypoint there is no post-copy pass at all. This asserts
+// both directions of conjunct 1 over a retired-present tree whose superseding row R is
+// deliberately NOT in-sync (`stale`) — a livelier case than AT-11's all-in-sync fixture in
+// this same file — so `supersedingState` genuinely has to be read off the as-found pass
+// rather than defaulting to a value every row already carries.
+
+describe("PROP-MTM-04 (hook half) — conjunct 1: supersedingState is the as-found pass's measurement", () => {
+  itOrSkip(
+    "retiredPresent[].supersedingState equals R's as-found state, and no post-copy/post-run phase is fabricated",
+    "hash",
+    [
+      "PROP-MTM-04 conjunct 1 (pass attribution) and its assertPhaseOrder claim are unverified on this runner",
+    ],
+    () => {
+      const retiredPath = ".claude/workflows/orchestrate-dev.js";
+      const plugin = makePluginTree({
+        rows: [
+          { id: "row-1", retires: [retiredPath] },
+          { id: "row-2", retires: [] },
+        ],
+      });
+      const consumer = makeConsumerTree({
+        git: true,
+        workflowsDir: true,
+        files: { [retiredPath]: "legacy-orchestrate-dev-bytes" },
+      });
+      const trees = { consumer, plugin };
+      try {
+        setRowState(trees, "row-1", "stale");
+        setRowState(trees, "row-2", "in-sync");
+
+        const run = runScript("hook", {
+          consumerRoot: consumer.root,
+          home: consumer.home,
+          pluginRoot: plugin.pluginRoot,
+        });
+        run.root = consumer.root;
+        expect(run.status).toBe(0);
+
+        const state = readDriftState(consumer.root);
+        expect(state).not.toBeNull();
+        const entry = (state.retiredPresent || []).find((r) => r.path === retiredPath);
+        expect(entry).toBeDefined();
+        expect(entry.supersedingState).toBe("stale");
+
+        const trace = parseTrace(run.tracePath);
+        const classifyRecords = trace.filter((r) => r.op === "classify");
+        expect(classifyRecords.length).toBeGreaterThan(0);
+        // No fabricated post-copy/post-run phase on a hook run: every classify record is
+        // "as-found", and only "as-found" — a stronger, direct check than assertPhaseOrder
+        // alone provides, since [as-found, post-copy] is itself a valid prefix.
+        const distinctPhases = [...new Set(classifyRecords.map((r) => r.phase))];
+        expect(distinctPhases).toEqual(["as-found"]);
+        assertPhaseOrder(trace);
+      } finally {
+        consumer.cleanup();
+        plugin.cleanup();
+      }
+    }
+  );
+});
+
+// ─── PROP-NEG-04 (hook half) — a degraded run is never silent ───────────────────────────
+//
+// PROPERTIES §10: for every generated vector/leaf producing a degraded outcome, the hook
+// emits at least one matched W-N notice/warning line — never silence. Asserted here over a generic
+// degraded tree AND, explicitly and positively, over AC-4.1's two stated exceptions to
+// QUEUE blocking (row 2 `checkEnabled:false`, row 8 `unverified`/`local-edit`): neither
+// exception is an exception to hook non-silence, which is exactly the distinction worth
+// falsifying — a hook that goes quiet under either condition would be wrong in a way the
+// queue's own `mapDriftState` tests (PROP-NEG-04's queue half, T-50) cannot see.
+
+describe("PROP-NEG-04 (hook half) — a degraded run is never silent, exceptions asserted explicitly", () => {
+  it("generic degraded case (unresolved baseline, manifest-absent) — the hook emits a matched W-1 line", () => {
+    const consumer = makeConsumerTree({ git: true, claudeDir: true });
+    const pluginRoot = mkdtempSync(join(tmpdir(), "pdlc-empty-plugin-"));
+    try {
+      const run = runScript("hook", {
+        consumerRoot: consumer.root,
+        home: consumer.home,
+        pluginRoot,
+      });
+      run.root = consumer.root;
+      expect(run.status).toBe(0);
+
+      const state = readDriftState(consumer.root);
+      expect(state).not.toBeNull();
+      expect(state.baselineStatus).toBe("unresolved");
+      expect(state.baselineReason).toBe("manifest-absent");
+
+      expect(countOf(run.stderr, "W-1")).toBeGreaterThanOrEqual(1);
+      expect(run.stderr).not.toBe("");
+    } finally {
+      consumer.cleanup();
+      rmSync(pluginRoot, { recursive: true, force: true });
+    }
+  });
+
+  itOrSkip(
+    "exception row 2 (checkEnabled:false) — the hook still emits a matched W-5 line over a degraded (stale) tree",
+    "hash",
+    [
+      "AC-4.1 row 2 is an exception to queue blocking only — the hook's non-silence over this exact tree is unverified on this runner",
+    ],
+    () => {
+      const { consumer, plugin } = buildOptOutConsumer();
+      try {
+        const run = runScript("hook", {
+          consumerRoot: consumer.root,
+          home: consumer.home,
+          pluginRoot: plugin.pluginRoot,
+        });
+        run.root = consumer.root;
+        expect(run.status).toBe(0);
+
+        const state = readDriftState(consumer.root);
+        expect(state.checkEnabled).toBe(false);
+
+        expect(countOf(run.stderr, "W-5")).toBeGreaterThanOrEqual(1);
+        expect(run.stderr).not.toBe("");
+      } finally {
+        consumer.cleanup();
+        plugin.cleanup();
+      }
+    }
+  );
+
+  itOrSkip(
+    "exception row 8 (unverified/local-edit) — the hook still emits matched W-3/W-4 lines though the queue would proceed",
+    "hash",
+    [
+      "AC-4.1 row 8 is an exception to queue blocking only — the hook's non-silence over this exact tree is unverified on this runner",
+    ],
+    () => {
+      const { consumer, plugin } = buildFreshConsumer();
+      const trees = { consumer, plugin };
+      try {
+        setRowState(trees, "row-1", "unverified");
+        setRowState(trees, "row-2", "local-edit");
+
+        const run = runScript("hook", {
+          consumerRoot: consumer.root,
+          home: consumer.home,
+          pluginRoot: plugin.pluginRoot,
+        });
+        run.root = consumer.root;
+        expect(run.status).toBe(0);
+
+        const state = readDriftState(consumer.root);
+        expect(state.rows.find((r) => r.id === "row-1").state).toBe("unverified");
+        expect(state.rows.find((r) => r.id === "row-2").state).toBe("local-edit");
+
+        expect(countOf(run.stderr, "W-3")).toBeGreaterThanOrEqual(1);
+        expect(countOf(run.stderr, "W-4")).toBeGreaterThanOrEqual(1);
+        expect(run.stderr).not.toBe("");
       } finally {
         consumer.cleanup();
         plugin.cleanup();
