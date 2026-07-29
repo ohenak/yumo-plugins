@@ -804,17 +804,366 @@ Three test-design consequences:
 
 ### 6.1 Injectability matrix
 
+One row per `operation` value in FSPEC §4.5's closed nine-member set. **F** = reachable through the
+§5.2 fault seam on any runner; **P** = reachable by a permission/filesystem fixture, non-root only.
+Every recordable operation is F, which is the property that keeps the write-failure suite runnable
+on a root CI container.
+
+| `operation` | Recordable? | F | P | Fault token | Permission fixture | Landing test |
+|---|---|---|---|---|---|---|
+| `mkdir` | no (stderr-only) | ✅ | ✅ | `mkdir` | `.claude/` `r-x` | §6.5's fresh-consumer rung (iii) |
+| `drift-state-replace` | no | ✅ | ✅ | `drift-state-replace` | `.claude/workflows/` `r-x` | AT-14b, AT-15, AT-16, AT-17 |
+| `drift-state-invalidate` | no | ✅ | ✅ | `drift-state-invalidate` | drift-state file `r--` | AT-15, AT-16 |
+| `drift-state-unlink` | no | ✅ | ⚠️ | `drift-state-unlink` | immutable attr — **not portable** | AT-16 |
+| `artifact-copy` | **yes** | ✅ | ✅ | `artifact-copy`, `artifact-copy-corrupt` | consumer file `r--` | AT-35, §6.3 |
+| `backup` | **yes** | ✅ | ✅ | `backup` | `.pdlc-backups/` `r-x` | §6.3 |
+| `backup-verify` | **yes** | ✅ | ❌ | `backup-corrupt` | — none: a permission bit cannot make a *landed* backup differ | **AT-27** |
+| `retire-delete` | **yes** | ✅ | ✅ | `retire-delete` | `.claude/workflows/` `r-x` | §6.3 |
+| `sync-manifest-update` | **yes** | ✅ | ✅ | `sync-manifest-update` | sync-manifest file `r--` | §6.4 |
+
+Three readings of this table that matter:
+
+1. **`backup-verify` has no permission form at all.** Its failure is "the backup was written and did
+   not land" — a filesystem lie, not an access decision. `chmod` cannot produce it, a full disk
+   cannot reliably produce it, and AC-2.9(4)'s negative is exactly the case a permission-only test
+   suite cannot reach. That single cell is why the fault seam is not optional, and it is why
+   `backup-corrupt` truncates bytes rather than faking the comparison (§5.2).
+2. **`drift-state-unlink`'s permission form is `⚠️` — `chattr +i` / `chflags uchg`** — which needs
+   root on Linux, is filesystem-dependent, and is unavailable in most containers. It is **not used**;
+   AT-16 is built on the fault seam alone and the immutable fixture is not in the inventory. FSPEC
+   AT-16's Given ("drift-state file immutable") is realised as *the ladder behaves as if the file
+   were immutable*, which is what the AT actually asserts about all three rungs.
+3. **Every ✅-F row has an F-only test that runs on every runner**, and the P column is used only for
+   the corroborating fixtures §7.3 names. No AT depends solely on P except AT-14b and AT-32(a),
+   which is precisely §1.3's uid-0 inventory.
+
 ### 6.2 Per-runner fixture requirements and the uid-0 caveat
+
+Fixture families and what each demands of the runner:
+
+| Family | Needs | Non-root only? | Policy |
+|---|---|---|---|
+| fault-injected write failures | nothing beyond `bash` | no | run everywhere; the primary form |
+| tool-absence (`makeToolDir`) | the tool to be *resolvable* so a sibling fixture can include it | no | `describeOrSkip("hash")` / `("git")` at file level |
+| permission fixtures | `process.getuid() !== 0` | **yes** | `itOrSkip("uid-nonroot", […invariants], …)` per §1.3 |
+| `git`-anchored fixtures (§9, §10) | `git ≥ 2.7.0` | no | `describeOrSkip("git")` |
+| `ENOTDIR` fixtures (§4.4) | nothing | no | run everywhere — deliberately chosen over a permission bit |
+
+**The uid-0 rule, restated as a test-design rule rather than a caveat.** A permission fixture is
+only ever the **corroborating** form of an assertion whose **primary** form is fault-injected. The
+two forms assert the same Then over the same tree; only the cause differs. Concretely:
+
+| AT | Primary (F, every runner) | Corroborating (P, non-root) |
+|---|---|---|
+| AT-16 | `PDLC_FAULT=drift-state-replace,drift-state-invalidate,drift-state-unlink` | *(none — see §6.1 note 2)* |
+| AT-27 | `PDLC_FAULT=backup-corrupt` | *(none — see §6.1 note 1)* |
+| AT-34 | `PDLC_FAULT=sync-manifest-read` | sync manifest mode `000` |
+| AT-14b | *(none — the fixture **is** the permission asymmetry)* | `.claude/workflows/` `r-x`, drift-state file `rw-` |
+| AT-32(a) | *(none — no enumeration fault token, §5.2)* | `.claude/workflows/` `-wx` |
+
+§1.3's named inventory lists AT-14b, AT-16, AT-27, AT-32(a), AT-34 because those are the ATs whose
+**fixture** is permission-constructed. This table refines that: AT-16, AT-27 and AT-34 lose nothing
+on a root runner because their primary form runs there; **AT-14b and AT-32(a) are the two genuine
+holes**, and the skip messages for those two are the only record that the invariant went unverified.
+That is the distinction §1.3's closing paragraph makes, and §7.3's skip strings say it in the words
+an operator reads.
+
+**The one thing a fault twin does not corroborate**, stated so no reviewer has to find it: AT-14b's
+subject is that an in-place `O_WRONLY|O_TRUNC` needs write permission on the **file** and not on the
+**directory** (FSPEC §4.4 rung table row 1). A fault token that makes `drift-state-replace` fail
+reproduces the ladder's *behavior* but not that *asymmetry* — under the token, rung (i) succeeds
+because nothing stopped it, not because the kernel's permission model says it may. Both are worth
+having and they prove different things: the F form (§5.3's first row) pins the ladder, the P form
+pins the reason the ladder works. Only the P form skips.
 
 ### 6.3 Fail-open assertions per writer surface
 
+"Fail-open" here is FSPEC §4.5's contract — **the run continues, records the failure, and exits 4** —
+never "the run degrades quietly". `expectFailOpen()` is the shared assertion:
+
+```js
+export function expectFailOpen(run, { path, operation, entrypoint, remainingRows }) { … }
+```
+
+It asserts, for a per-row (recordable) failure:
+
+| # | Conjunct |
+|---|---|
+| 1 | `run.status` is **4** on `check`/`sync`, **0** on `hook` (AC-2.4 is absolute) |
+| 2 | `readDriftState(root).writeFailures` contains exactly one entry `{ path, operation }` for the faulted row — **and nothing for the unfaulted rows** |
+| 3 | W-7 appears on stderr once per `writeFailures` entry, naming path and operation |
+| 4 | **the loop continued**: every row named in `remainingRows` has its post-run state in the record and, where it was copyable, is `in-sync` on disk (AC-1.4) |
+| 5 | the trace (§4.2) contains a `copy`/`backup`/`delete` record for the rows *after* the faulted one — the ordering-level form of conjunct 4, which catches an implementation that records the remaining rows' states without having processed them |
+
+and, for a drift-state (stderr-only) failure:
+
+| # | Conjunct |
+|---|---|
+| 1 | the four stderr-only operations are **absent** from `writeFailures` in whatever record exists (FSPEC §4.4's filter) — asserted as absence from the *record*, presence on *stderr* |
+| 2 | the operation is named on stderr in §4.5's both-failed ordering when a per-row failure co-occurs: **drift-state line first** (AT-17) |
+| 3 | the ladder's landing rung is discriminated per §5.3 |
+
+Conjunct 2 of the first table is the one that must be stated as **exactly one entry**: a
+`writeFailures` array that accumulates an entry per retry, or per rung, still "contains" the
+expected entry and would pass a `toContainEqual`. §1.4's coverage floor over the nine operations is
+computed from these assertions, so a duplicated entry would also inflate the floor's evidence.
+
+**Per-surface differences the helper takes as parameters, not as separate code paths:**
+
+| Surface | Difference |
+|---|---|
+| hook | exit 0 always; the record is still written; W-7 still printed |
+| `--check` | exit 4; **no artifact writes at all**, so only `mkdir`/drift-state operations are reachable — a `--check` fixture asserting `artifact-copy` is a fixture bug and `expectFailOpen` throws on it |
+| sync / `--force` | all nine reachable; the post-run pass (§4.3's `assertRecordedPassIs`) is asserted alongside |
+
 ### 6.4 The removal-only sync-manifest-rewrite fixture
 
-### 6.5 The json-tool-absent ladder tests — AT-14 and AT-14b
+FSPEC §10 O-10's fixture note (SE Q-02, v5.0): because §4.2 step 6 is a **whole-file replace** of the
+`entries` map and never a per-key merge, a run whose *written* set is empty and whose *removed* set is
+non-empty is the case that separates the two implementations. It gets a dedicated fixture,
+`removalOnlySyncManifest`:
+
+```
+manifest rows:  A (stale), B (in-sync)
+sync manifest:  entries { A: {consumerHash: sha1(pre-sync A bytes)},
+                          B: {consumerHash: sha1(B bytes)} }
+run:            plain sync,  PDLC_FAULT=artifact-copy-corrupt:A
+```
+
+A is the only copy candidate (B is `in-sync` and is not copied), and A's copy lands corrupted, so the
+run's **verified-copy set is empty** while A's pre-existing entry must be removed (§5.5). Then:
+
+| # | Assertion | Red against |
+|---|---|---|
+| 1 | `readSyncManifest(root).entries` has **no** `A` | "decline to write the new entry" — the SE F-22 ≡ TE F-33 implementation |
+| 2 | `entries.B` is **byte-identical** to its pre-run value, `syncedAtUtc` included | a whole-file replace that regenerates untouched entries, which would break AC-3.7's byte-identity elsewhere |
+| 3 | A's post-run state is **`unverified`** (not `local-edit`, not `stale`) | both AT-35 red directions |
+| 4 | exit **4**, `writeFailures` = `[{path: A's consumerPath, operation: "artifact-copy"}]` | — |
+| 5 | with `PDLC_FAULT=artifact-copy-corrupt:A,sync-manifest-update` instead: the run still exits 4, `writeFailures` gains `{path: syncManifestPath, operation: "sync-manifest-update"}`, and A's entry **survives** — the stated residual of §5.5's SE Q-01 paragraph | an implementation that treats a failed removal as a success |
+
+Assertion 2 is the one this fixture exists for and it cannot be reached from AT-35, whose written set
+is non-empty. Assertion 5 pins a residual FSPEC states in prose and no AT covers; it is the reason
+this fixture carries five rows rather than being folded into AT-35.
+
+### 6.5 The `json-tool-absent` ladder tests — AT-14 and AT-14b
+
+The two ATs FSPEC §4.4 rung (i) mandates (O-4's "both conjuncts"), built on deliberately different
+mechanisms.
+
+**AT-14 — trigger T1, no interpreter, no pre-existing record.**
+
+```
+tree:   consumerRoot with .claude/ present, git: true      (repo root resolves)
+        plugin ships a valid, non-empty manifest
+        no .claude/workflows/, no drift state               (first adoption)
+path:   makeToolDir omits python3/python/python2           (§3.2.1)
+run:    hook
+```
+
+Assertions, in the order they falsify:
+
+1. `readDriftState(root)` **parses** — the whole point, and it is asserted by the fact that
+   `readDriftState` throws on unparseable input (§3.4 rule 2) rather than by a `try/catch` in the
+   test.
+2. `baselineStatus: "unresolved"`, `baselineReason: "json-tool-absent"`, `pluginVersion: null`,
+   `syncCommand: null`, `checkEnabled: true`, `rows: []`, `retiredPresent: []`.
+3. **`mapDriftState(validateDriftRecord(raw))`** — the real §2.4 function, imported from
+   `orchestrate-queue.js`, not a re-implementation — yields `{ outcome: "blocked", row: 4 }`.
+   This is O-4's second conjunct and §2.4's row-number affordance is what makes "at row 4" assertable
+   rather than "blocked, somehow".
+4. hook exit **0**.
+5. The record was written through the ordinary path: the trace carries `mkdir` for
+   `.claude/workflows/` and a `write` record, in that order, both **after** the as-found classify
+   records (§4.3) — the T1 emitter is not a bypass of AC-2.9(1).
+
+Assertion 3 is why the JSON tool is removed with `makeToolDir` rather than faulted: the oracle
+(`JSON.parse`, then the queue's own validator) must be strictly outside the subject's dependency set,
+and on this tree it provably is — there is no interpreter for it to accidentally share.
+
+**AT-14b — trigger T2, `r-x` parent, writable file, `checkEnabled: false`.**
+
+```
+tree:   .claude/workflows/ exists and contains a pre-existing drift state
+        .claude/pdlc.config.json  { distribution: { checkEnabled: false } }
+        chmod 0500 .claude/workflows/          ← after the drift state is written
+        chmod 0600 .claude/workflows/.pdlc-drift-state.json
+path:   full (a JSON tool IS present — the config must be readable)
+run:    check         (the quietest entrypoint — see below)
+guard:  itOrSkip("uid-nonroot", [ …§1.3's two invariants… ], …)
+```
+
+Assertions: the record **parses**; `baselineReason: "drift-state-invalidated"`;
+`pluginVersion: null`; `syncCommand: null`; **`checkEnabled: false`**; `inodeOf(driftStatePath)`
+equals `run.driftStateInodeBefore` (rung (i) landed, §5.3); and
+`mapDriftState(…)` yields `{ outcome: "proceed", row: 2 }`.
+
+Three construction notes:
+
+- **Mode bits are applied last**, after every file the fixture needs is in place, and the cleanup
+  helper `chmod`s the directory back before `rmSync` — otherwise jest's teardown leaves temp trees
+  behind on every run and the next `mkdtempSync` is slower for the rest of the suite.
+- **`check` is chosen over `sync`** for the primary assertion. FSPEC AT-14b's scoping note (TE Q-02)
+  says a sync run's `r-x` directory additionally blocks copies, backups and the sync-manifest write,
+  adding expected `artifact-copy`/`backup` entries to `writeFailures`; those do not defeat the
+  assertions (row 2 outranks row 3) but they make the test read as though it were about them. The
+  sync form runs as a **second `it()`** in the same describe, asserting the same six conjuncts plus
+  the extra `writeFailures` members, so the note is pinned rather than merely believed.
+- **`checkEnabled: false` is the falsifiable conjunct.** Against an emitter that hard-codes `true` —
+  the natural way to write a `printf` template — every other assertion still passes. It is listed
+  last in the test body so its failure message is the one a reader sees first.
+
+---
 
 ## 7. Probe vocabulary and permission-fixture policy (O-11)
 
+§1.3 states the `describeOrSkip`/`itOrSkip` contract and §1.4 the coverage floors. This section
+gives the probe → fixture mapping those two depend on, and pins the printed strings.
+
+### 7.1 Probe vocabulary — FSPEC §3.2's six probes as fixture recipes
+
+Each probe's three-valued outcome needs a constructible tree. The `indeterminate` column is the one
+that matters: it is what produces `unknown`, and every one of those recipes is a permission or
+fault fixture, never an ordinary tree.
+
+| Probe | `yes` | `no` (definite) | `indeterminate` | Yields |
+|---|---|---|---|---|
+| P1 plugin artifact exists | file present | file absent, ancestors traversable | `chmod 0600` on `workflows/dist/` (**P**), or `PDLC_FAULT=manifest-read` for the read form (**F**) | `plugin-artifact-missing` / `plugin-artifact-unreadable` |
+| P2 plugin artifact readable | mode `r--` | `chmod 0200` on the artifact (**P**) | — | `plugin-artifact-unreadable` |
+| P3 consumer artifact exists | file present | absent, `.claude/workflows/` traversable | `.claude/workflows/` mode `0600` (**P**) | `missing` / `consumer-artifact-unreadable` |
+| P4 consumer artifact readable | mode `r--` | `chmod 0200` on the consumer file (**P**) | — | `consumer-artifact-unreadable` |
+| P5 sha1 | hash tool present | — | `makeToolDir` omits `shasum`/`sha1sum`/`openssl` (**F-equivalent, no root needed**) | `hash-tool-absent` |
+| P6 sync-manifest entry | entry present | no entry | unreadable/malformed ⇒ **treated as `no`**, §1.2 | `unverified` |
+
+**P5's recipe needs no permission bit and no root**, which is why the row-reason floor's
+highest-precedence member (`hash-tool-absent`, §3.3 rung 1) is the one reason that never skips.
+P1–P4's `indeterminate` and definite-`no`-by-permission recipes are the `unknown` cases that carry
+§1.3's `itOrSkip("uid-nonroot", …)` guard; each names, as its unverified invariant, the specific
+row reason it was to have produced.
+
+**`hash-tool-absent` is all-or-nothing** (FSPEC §3.3's second consequence), so the fixture builder
+refuses to construct a per-row variant: `makeConsumerTree` throws if a spec asks for
+`hash-tool-absent` on some rows and not others. O-9 is told not to generate one; this makes it
+impossible rather than merely discouraged.
+
+### 7.2 Message matchers
+
+`RunResult.notices` / `.warnings` are produced by one exported table, so no test greps stderr with
+an ad-hoc regex:
+
+```js
+export const MESSAGES = {
+  "W-1": /^pdlc: workflow drift check could not run — (?<reason>[a-z-]+)\./m,
+  "W-4": /^pdlc: (?<id>\S+) was edited locally after its last sync\./m,
+  "N-3": /^pdlc: drift state is not writable at (?<path>.+);/m,
+  "N-4": /^pdlc: sync manifest at (?<path>.+) is (?<kind>unreadable|malformed);/m,
+  "N-6": /^pdlc: could not list (?<dir>.+);/m,
+  "N-7": /^pdlc: unrecognised PDLC_FAULT token "(?<token>[^"]*)";/m,
+  "N-8": /^pdlc: no write target — the consumer repo root did not resolve,/m,
+  …  // W-2, W-3, W-5, W-6, W-7, N-5
+};
+export function countOf(stderr, id) -> number      // §5.4 conjunct 1 uses this
+```
+
+Two rules: the matchers are **anchored** (`^pdlc: `) so a message quoted inside another message
+cannot satisfy them, and every matcher is **capture-bearing**, so an assertion reads the reason /
+path / token out of the line rather than asserting a substring that also matches a differently-worded
+line. AT-30's distinctness predicate (§14) runs over the *rendered* messages, not over these
+patterns — the patterns are how a test finds a line, `distinct()` is what the line must satisfy.
+
+### 7.3 The printed skip strings
+
+`describeOrSkip`/`itOrSkip` print one line per skip (§1.3 clause 3). The reason strings are pinned
+here because O-11 requires the *named* invariants and a generic line is the failure mode:
+
+| Guard | Printed reason |
+|---|---|
+| `uid-nonroot` | `runner uid is 0, so permission bits are bypassed and the operation succeeds; the fixture's failure cannot be constructed` |
+| `hash` | `no sha1 utility (shasum/sha1sum/openssl) on PATH; every managed row would classify unknown/hash-tool-absent` |
+| `git` | `git is not on PATH (or is older than 2.7.0), so \`git worktree list --porcelain\` is unavailable` |
+| `bash` | `bash is not available on this runner` |
+
+Each is followed by `Unverified: ` and the caller's invariant list, joined by `; `. §1.3's inventory
+supplies those lists for the five named ATs; every other `itOrSkip` call site supplies its own, and
+the helper **throws** when the list is empty — the rule is enforced by the runner, not by review.
+
+---
+
 ## 8. Repo-root resolution — the non-git fixture and its oracle (O-3)
+
+### 8.1 What O-3 actually demands
+
+Three separable claims, each with its own test, because a single "non-git tree resolves correctly"
+test proves none of them:
+
+1. AC-0.5 **step 2 is reachable only on a non-git fixture** — so the walk has to be tested on a tree
+   with no `.git` anywhere between `$PWD` and `$HOME`.
+2. **Step 1's failure goes to step 3, never to the walk** (FSPEC §2.2 point 1) — the falsifying test
+   needs a tree where the walk *would* succeed, so that a softened implementation is observably
+   different.
+3. The `repo-root-unresolved` oracle must assert **observables that exist in that state**. There is
+   no drift state, so there is no `baselineReason` field to read; the observables are stderr, the
+   exit code, and the filesystem.
+
+### 8.2 The fixtures and the two fault tokens
+
+| Fixture | Construction | Reaches |
+|---|---|---|
+| `nonGitWithClaude` | no `.git` from `root` to `home`; `root/.claude/` present; cwd `root/sub/dir` | step 2 **succeeds** — the walk's positive case |
+| `nonGitNoClaude` | no `.git`, no `.claude/` anywhere | step 2 **fails** ⇒ `repo-root-unresolved` |
+| `gitTreeBrokenProbe` | `git init` at `root`, **and** `root/.claude/` present, run with `PDLC_FAULT=git-worktree-list` | step 1 applies and fails ⇒ **must** be `repo-root-unresolved` |
+| `nonGitClaudeAtHome` | no `.git`; the only `.claude/` is at `home` itself | the `$HOME` rejection (§2.2 clause 2) |
+| `gitAbsent` | `nonGitWithClaude`'s tree, `makeToolDir` omitting `git` | step 1 does not apply; the `else` branch runs |
+
+`gitTreeBrokenProbe` is the whole point of O-3's "one fault token per guard". With only one token
+covering both guards, faulting it on a git tree would be indistinguishable from faulting the walk,
+and the never-fall-through rule would have no falsifying fixture at all. The assertion:
+
+```js
+// driftRepoRoot.test.js
+it("a git tree whose worktree probe fails does NOT fall through to the walk", …)
+//   fixture: gitTreeBrokenProbe — root/.claude/ EXISTS, so the walk would succeed
+//   expect:  repo-root-unresolved, nothing written
+//   red against: an implementation that catches the git failure and walks
+```
+
+`walk-stat` is faulted on `nonGitWithClaude` for the mirror case: the walk's failure must also be
+`repo-root-unresolved` and must not somehow re-enter step 1.
+
+### 8.3 The `repo-root-unresolved` oracle
+
+```js
+export function expectRepoRootUnresolved(run, { root, snapshotBefore, reportedReason }) { … }
+```
+
+| # | Conjunct | Why it, and not a drift-state field |
+|---|---|---|
+| 1 | stderr carries **W-1** with `reason` captured equal to `reportedReason` | the reason is only ever *printed* in this state — nothing is written, so `readDriftState` is `null` and asserting `baselineReason` is impossible |
+| 2 | `run.status` is **3** on `check`/`sync`, **0** on `hook`; **never 4** (FSPEC §5.8) | exit 4 would mean something was attempted |
+| 3 | `assertTreeUnchanged(root, snapshotBefore)` | the positive form of "nothing created" |
+| 4 | `readDriftState(root) === null` **and** `readSyncManifest(root) === null` **and** no `.pdlc-backups/` | the specific negatives §2.8's table names |
+| 5 | **N-8** is present iff `reportedReason !== "repo-root-unresolved"` | FSPEC §8.3's narrow emission condition, asserted in both directions |
+
+`assertTreeUnchanged` compares a **recursive snapshot** — relative path, type, mode, and sha1 of each
+regular file — taken immediately before `runScript` and again after. A "no `.claude/` was created"
+assertion is the weaker form, and it passes against a run that wrote a backup directory, touched the
+plugin tree, or created something under `$PWD` outside `.claude/` — which is exactly the
+"invent a path relative to `$PWD`" implementation FSPEC §2.2 clause 2 forbids. The snapshot form is
+the only one that falsifies it.
+
+### 8.4 The co-holding case — AT-33 and the `$HOME` guard
+
+AT-33 is `nonGitNoClaude` **plus** a plugin manifest with `rows: []` and a JSON tool present, so
+`manifestEmpty` holds and outranks `repoRootUnresolved` for reporting. It runs
+`expectRepoRootUnresolved(run, { reportedReason: "manifest-empty" })`, which by conjunct 5 requires
+N-8 — and it runs both `check` (exit 3) and `hook` (exit 0) over the same tree.
+
+`nonGitClaudeAtHome` is asserted the same way with `reportedReason: "repo-root-unresolved"`, and
+carries one extra conjunct: the snapshot is taken over **`home`**, not over `root`, because the
+failure this guards is a write into `$HOME/.claude/`. It is the one fixture in the suite whose
+`home` deliberately contains a `.claude/`, and the harness's "home is a sibling, never an ancestor"
+rule (§3.3) is what keeps every *other* fixture from accidentally exercising it.
+
+---
 
 ## 9. Bootstrap fixture construction (O-12)
 
