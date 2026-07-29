@@ -1316,13 +1316,22 @@ AC-1.0's "every green outcome requires resolved + non-empty rows + empty `writeF
 "there is no silent non-green state", and NFR-6's "exactly two exceptions" — the exceptions are
 enumerated **positively**, so a third one appearing is red rather than absorbed.
 
-**PROP-NEG-05 — No state is ever decided by a version or a timestamp.**
-For every generated tree, perturbing only `artifactVersion` in the distribution manifest, only
-`pluginVersion`, only `artifactVersion` in the sync manifest, or only `syncedAtUtc`, changes no
-`state` and no `reason` — while the *reported* `pluginArtifactVersion` / `consumerArtifactVersion`
-fields do change, proving the perturbation reached the subject. *(Data Integrity · Harness · E ·
-`driftClassify.test.js`)* AC-5.2, AC-5.4, REQ §0 fact 6. The second conjunct is what stops this from
-being a vacuous invariance property over a perturbation the subject never read.
+**PROP-NEG-05 — No state is ever decided by a version, a timestamp, or the entry's `pluginHash`.**
+For every generated tree, perturbing exactly one **reporting-only** field at a time — (1)
+`artifactVersion` in the distribution manifest, (2) `pluginVersion`, (3) `artifactVersion` in the
+sync manifest, (4) `syncedAtUtc`, and (5) **`syncManifest[id].pluginHash`** — changes no `state` and
+no `reason`, while the corresponding *reported* field does change, proving the perturbation reached
+the subject. *(Data Integrity · Harness · E · `driftClassify.test.js`)*
+AC-5.2, AC-5.4, **AC-1.1**, FSPEC §3.4 R-1, REQ §0 fact 6. The reached-the-subject conjunct is what
+stops this from being a vacuous invariance property over a perturbation the subject never read.
+
+**Draw (5) is the one that matters, and v1.0 omitted it** (PM F-06). AC-1.1 states that `stale` vs
+`local-edit` is discriminated **solely** by `sha1(consumer) == syncManifest[id].consumerHash` and
+that `pluginHash` is *reporting-only* — so `pluginHash` is the single field whose misuse flips
+US-03's direction answer, sending the operator to `--force` over a real local edit. v1.0 perturbed
+every reporting-only field **except** that one. The draw is applied to a `stale` row and a
+`local-edit` row of the same tree (§2.3's L9/L10, whose recipes now pin the field in opposite
+directions), so the perturbation is answered by an assertion rather than by a builder detail.
 
 **PROP-NEG-06 — A retired path is never deleted before its replacement is in place.**
 For every generated tree with a retired path and every possible post-copy state of its superseding
@@ -1349,18 +1358,23 @@ each is falsifiable separately.
 
 ### 11.1 The named skip inventory (O-11's policy, applied to properties)
 
-Every entry uses TSPEC §1.3's `itOrSkip(capability, unverifiedInvariants, fn)`, which **throws** on
-an empty invariant list. A property that cannot run on a runner appears here — never silently green,
-never silently absent.
+**This is the only skip inventory in the document** (§1.6; PM F-03, SE F-06). Every entry uses TSPEC
+§1.3's `itOrSkip(name, capability, unverifiedInvariants, body)` — **four** parameters, `name` first;
+same for `describeOrSkip(name, capability, unverifiedInvariants, body)` (SE F-11 corrects v1.0's
+three-parameter citation). Both **throw** on an empty invariant list. A property that cannot run on
+a runner appears here — never silently green, never silently absent.
 
 | Property | Capability | Printed reason (TSPEC §7.3) | Unverified invariants the skip must name |
 |---|---|---|---|
-| PROP-CLS-01 leaf **L3** | `uid-nonroot` | uid-0 string | "leaf L3 (plugin-side existence undecidable ⇒ `unknown`/`plugin-artifact-unreadable`) is unverified; the reason itself stays covered by leaf L2 via `PDLC_FAULT=plugin-artifact-read`" |
-| PROP-CLS-01 leaf **L4** | `uid-nonroot` | uid-0 string | "leaf L4 (consumer-side existence undecidable ⇒ `unknown`/`consumer-artifact-unreadable`) is unverified; the reason stays covered by leaf L5 via `PDLC_FAULT=consumer-artifact-read`" |
-| PROP-CLS-03, PROP-RSN-04 (the L3/L4 half only) | `uid-nonroot` | uid-0 string | "totality and side-attribution are verified over the nine leaves constructible on this runner; the two existence-`indeterminate` leaves are not" |
-| every §3, §4, §7, §9 property | `hash` | hash string | "the leaves whose expected state is not `unknown` are unverified on this runner" (the file-level `describeOrSkip("hash", …)`, FSPEC §12's standing precondition) |
-| PROP-BSL-03/04/06's `git`-routed vectors | `git` | git string | "AC-0.5 step 1's never-fall-through rule and the `git-worktree-list` guard are unverified; the walk-routed vectors still run" |
+| PROP-CLS-01 leaf **L3** | `uid-nonroot` | uid-0 string | "leaf L3 (plugin-side existence undecidable ⇒ `unknown`/`plugin-artifact-unreadable`) is unverified; the reason itself stays covered by leaf **L2** via `PDLC_FAULT=plugin-artifact-read`" |
+| PROP-CLS-01 leaf **L4** | `uid-nonroot` | uid-0 string | "leaf L4 (consumer-side existence undecidable ⇒ `unknown`/`consumer-artifact-unreadable`) is unverified; the reason stays covered by leaf **L5** via `PDLC_FAULT=consumer-artifact-read`" |
+| PROP-CLS-03, PROP-RSN-04 (the L3/L4 half only) | `uid-nonroot` | uid-0 string | "totality and side-attribution are verified over the **nine** leaves constructible on this runner (L0, L1, L2, L5, L6, L7, L8, L9, L10); the two existence-`indeterminate` leaves L3 and L4 are not" |
+| every §3, §4, §7, §9 case **except** the L0-bearing ones | `hash` | hash string | "the leaves whose expected state is not `unknown` are unverified on this runner" — the file-level `describeOrSkip("hash", …)`, FSPEC §12's standing precondition. **L0's cases sit outside it** (§2.2), so `hash-tool-absent` stays hard on every runner |
+| PROP-BSL-03/-04/-06's `git`-routed vectors **and** PROP-BSL-05's `gitTreeBrokenProbe` leg | `git` | git string | "AC-0.5 step 1's never-fall-through rule and the `git-worktree-list` guard are unverified; the walk-routed vectors still run" |
 | every §6 property | `bash` | bash string | "the backup grammar's round-trip, order and prune clauses are unverified" |
+
+The `git` row is the reconciled one: v1.0's §1.6 named **PROP-BSL-05** and §11.1 named
+**PROP-BSL-03/04/06**; both are gated, for the same reason, and the row now says so.
 
 **What does *not* skip, and why that matters.** All four row reasons and all eight baseline reasons
 are reachable on a **root** runner (TSPEC §5.2 tokens 15/16; §7.1's corrected table), so §1.4's
@@ -1377,7 +1391,7 @@ left as prose alone.
 | # | Claim | Why not executable | Surrogate |
 |---|---|---|---|
 | **D-1** | `classify_row` is **pure with respect to the filesystem** — it reads, never writes, and spawns nothing but the hash utility (FSPEC §3.1) | "it did not write" is only observable as "nothing changed", which is also true of an implementation that wrote and restored; process spawns are not observable through the harness | PROP-CLS-06 (row independence) + TSPEC §4.3 conjunct (b) (no mutating trace record precedes the as-found pass) + review of C1's `pdlc_classify_row` against §2.2's output-variable contract. The **residual**: a write outside the traced op set is undetected |
-| **D-2** | The hash-utility probe is **once per run**, not once per row (FSPEC §3.1, and the premise of §13.1's latency claim) | spawn counts are not observable; there is no trace `op` for the probe | Structural: `pdlc_classify_row` receives the resolved utility as an input (TSPEC §2.2). Surrogate assertion: PROP-CLS-01's L0 run asserts **every** row is `unknown`/`hash-tool-absent`, which is only true of a run-level probe. **Residual**: a per-row re-probe that happens to agree is undetected — it would be a latency defect, not a correctness one (NFR-2) |
+| **D-2** | The hash-utility probe is **once per run**, not once per row (FSPEC §3.1, and the premise of §13.1's latency claim) | spawn counts are not observable; there is no trace `op` for the probe | Structural: `pdlc_classify_row` receives the resolved utility as an input (TSPEC §2.2). Surrogate assertion: PROP-CLS-01's L0 run asserts **every** row is `unknown`/`hash-tool-absent`, which is only true of a run-level probe. **Residual, and it has no owning surface**: a per-row re-probe that happens to agree on every row is undetected here and *nowhere else* — v1.0 routed it to NFR-2, but §0.3 records that NFR-2 is structurally discharged and that **no property, AT or oracle in this feature asserts time**, so that routing named nothing (PM F-05). The residual is accepted unowned and recorded as **P-R-8**; the cost scales with row count, which the manifest is expected to grow, and it lands on the hook path the operator experiences at session start |
 | **D-3** | There is exactly **one** classifier and no derived-state shortcut (FSPEC §3.1, §3's pass table) | a second classifier agreeing with the first is unobservable by construction | PROP-DET-06 (process independence) + PROP-MTM-02's single-pass conjunct + `assertPhaseOrder`'s grammar rule (only `pdlc_classify_row` sets a phase label, TSPEC §2.2). **Residual**: two classifiers that agree on every generated leaf are undetected |
 
 A fourth candidate — asserting that no property *depends* on `generatedAtUtc` — is not a **D** row:
@@ -1390,19 +1404,25 @@ Files are TSPEC §14's existing inventory; this document adds **no new test file
 (`__tests__/helpers/driftGenerators.js`, §1.3), excluded from jest by the existing
 `testPathIgnorePatterns`.
 
+**Reconciled with the per-property "Lands in" annotations** (SE F-12): v1.0's table and the property
+rows disagreed in three places, and PROP-BSL-06/-07 appeared in two rows each, which reads as two
+homes for one `it()` against rule 2 below. The convention now, applied throughout: a property with
+**one** home is listed once; a property genuinely **split into two independently-falsifiable
+`it()`s** is listed in both files with the half named in parentheses, and its own row says the same.
+
 | File | Properties |
 |---|---|
-| `__tests__/driftClassify.test.js` | PROP-CLS-01…08, PROP-RSN-01…06, PROP-DET-01, -02, -04, -05, PROP-NEG-01, -05 |
-| `__tests__/driftBaseline.test.js` | PROP-BSL-01…08, PROP-DET-06, PROP-NEG-07 (M10 half) |
-| `__tests__/driftOrdering.test.js` | PROP-BSL-07, PROP-CLS-04 (trace half), PROP-MTM-03 (trace half), PROP-SEAM-05, -07, -08, PROP-DET-03 |
-| `__tests__/driftSync.test.js` | PROP-MTM-01, -03, -04, -05, -06, PROP-NEG-03, -06, -07 |
-| `__tests__/driftHook.test.js` | PROP-MTM-02, PROP-MTM-04 (hook half), PROP-NEG-04 (hook half) |
+| `__tests__/driftClassify.test.js` | PROP-CLS-01, -02(a), -02(b), -03, -05, -06, -07, -08; PROP-RSN-01…06; PROP-DET-01, -02, -04, -05; PROP-NEG-01, -05; PROP-CLS-04 (record half) |
+| `__tests__/driftBaseline.test.js` | PROP-BSL-01, -02, -03, -04, -08; PROP-BSL-05 (record half); PROP-DET-06; PROP-MTM-02 (`--check` half); PROP-RSN-05 (baseline half); PROP-NEG-07 (M10 half) |
+| `__tests__/driftOrdering.test.js` | PROP-BSL-07; PROP-CLS-04 (trace half); PROP-MTM-03 (trace half); PROP-SEAM-05 (trace-file half), -07, -08; PROP-DET-03 |
+| `__tests__/driftSync.test.js` | PROP-MTM-01, -03, -04 (sync half), -05 (sync half), -06, **-07**; PROP-NEG-03 (forward half), -06, -07 (blast-radius half) |
+| `__tests__/driftHook.test.js` | PROP-MTM-02 (hook half), PROP-MTM-04 (hook half), PROP-NEG-04 (hook half) |
 | `__tests__/driftWriteFailure.test.js` | PROP-NEG-03 (converse half) |
 | `__tests__/driftRepoRoot.test.js` | PROP-BSL-06, PROP-NEG-02 |
-| `__tests__/driftFault.test.js` | PROP-SEAM-01…04, -06 |
+| `__tests__/driftFault.test.js` | PROP-SEAM-01, -02, -03, -04, -06; PROP-SEAM-05 (fault-unset half) |
 | `__tests__/driftBackups.test.js` | PROP-BKP-01…13 |
 | `__tests__/queueDriftGate.test.js` | PROP-MTM-05 (queue half), PROP-NEG-04 (queue half), PROP-BSL-05 (queue half) |
-| `__tests__/helpers/driftGenerators.js` | the generators, `enumerateLeaves()`, `enumerateEvidenceVectors()`, `shrink()` — **new**, §1.3 |
+| `__tests__/helpers/driftGenerators.js` | the generators, `enumerateLeaves()`, `enumerateEvidenceVectors()`, `readFaultTokens()` (§8.0), `shrink()` — **new**, §1.3 |
 
 Two placement rules, both inherited:
 
@@ -1420,7 +1440,7 @@ Two placement rules, both inherited:
 | Property | REQ AC / NFR | FSPEC | TSPEC | Obligation |
 |---|---|---|---|---|
 | PROP-CLS-01, -03 | AC-1.1, AC-1.8(i) | §3.2, §3.3 | §3.3, §7.1, §1.4 | **O-9** |
-| PROP-CLS-02 | AC-1.8(ii) | §3.3, §3.6 | §3.3 | **O-9** |
+| PROP-CLS-02(a), -02(b) | AC-1.8(ii), AC-1.1 | §3.3, §3.6, §3.4 R-1/R-3 | §3.3 | **O-9** |
 | PROP-CLS-04 | AC-1.8(ii), AC-2.6 | §3.3, §1.3 | §4.3 | **O-9**, O-1 |
 | PROP-CLS-05, PROP-DET-01…06 | AC-1.3, AC-1.8(iii) | §3.4 R-2, §3.6 | §2.5, §11.3 row 2 | **O-9** |
 | PROP-CLS-06 | AC-1.4 | §3.1 | §6.3 | **O-9** |
@@ -1442,9 +1462,10 @@ Two placement rules, both inherited:
 | PROP-BKP-09…13 | AC-3.4 (retention), AC-1.3 | §5.6, §3.4 R-2 | §11.3 rows 3–4, §13.5 | **O-18** |
 | PROP-MTM-01, -06 | AC-2.6, AC-3.3, AC-2.7 | §4.2, §5.8, OQ-6 | §4.3 `assertRecordedPassIs` | **O-20** |
 | PROP-MTM-02 | AC-2.6 | §4.2, §3's pass table | §4.3 `assertPhaseOrder` | **O-20** |
-| PROP-MTM-03 | AC-2.9(1), AC-3.1 | §4.2 steps 2–5 | §4.3 conjuncts, `assertPostCopyNarrow` | **O-20**, O-1 |
-| PROP-MTM-04 | AC-2.6, AC-2.8, AC-3.9 | §3's pass table, §5.7 | §14 AT-11, AT-12 | **O-20** |
+| PROP-MTM-03 | AC-2.9(1), AC-3.1, **AC-3.2** | §4.2 steps 2–5, §5.5 | §4.3 conjuncts, `assertPostCopyNarrow`, §14 AT-8a/AT-10 | **O-20**, O-1 |
+| PROP-MTM-04 | AC-2.6, AC-2.8, AC-3.9 | §3's pass table, §4.2 step 6, §5.5, §5.7 | §5.2 token 10, §14 AT-11, AT-12, AT-35 | **O-20** |
 | PROP-MTM-05 | AC-2.7, AC-3.6 | §4.2 step 7, §5.9 | §14 AT-9, §12.2 | **O-20** |
+| **PROP-MTM-07** | **AC-3.7**, AC-3.4 (retention), AC-2.7 | §5.9, §1.2, §5.6 | §14 AT-9, §14.1 V-1, §11.3 row 3 | **O-20** |
 | PROP-SEAM-01…04 | AC-2.9(5), NFR-6 | §4.6 | §5.1, §5.1.1, §5.2, §5.4 | **TSPEC §16 subset row**, O-10 |
 | PROP-SEAM-05 | AC-2.9(5) | §4.6 | §4.4, §5.4 rule 2 | O-10 |
 | PROP-SEAM-06 | AC-0.1 (M6) | §1.1 M6 | §5.1.1, §11.3 row 1, §14.1 F-2 | O-10, O-18 |
@@ -1456,13 +1477,35 @@ Two placement rules, both inherited:
 | PROP-NEG-06 | AC-3.9, AC-0.7 | §5.7 | §14 AT-12, AT-13, §14.1 V-1 | — |
 | PROP-NEG-07 | NFR-3, AC-0.1 | §1.1 M10 | §3.3 `manifestOverride` | — |
 
-**ACs deliberately carrying no property**, with the surface that owns them — recorded so their
-absence is a disposition rather than a gap: AC-0.1/0.2/0.3/0.3a/0.4 (baseline resolution mechanics —
-TSPEC AT-24, §9.2); AC-2.1/2.3/2.5/2.5a/2.8 message **content** (TSPEC §7.4, §14.1 M-1/M-2/M-3;
-§0.3); AC-3.5 restore (AT-8b, AT-26); AC-4.1's ten mapping rows (TSPEC §12.2, all ten as examples
-with a record defeating every higher row); AC-4.2's report split (AT-31); AC-5.1/5.3 (AT-19,
-§14.1 V-4, residual R-12); AC-6.1…6.6 (TSPEC §10's root-parameterised oracles); NFR-2 (structural,
-FSPEC §13.1 — no timing assertion exists anywhere).
+### 13.1 ACs deliberately carrying no property — the full list, with owning surfaces
+
+§13's contract is that an AC's *absence* from the table above is a **disposition, not a gap**. v1.0
+stated the contract and then did not apply it to four P0 ACs (PM F-01) and contradicted itself on a
+fifth (PM F-08). Applied here to every AC not appearing above:
+
+| AC | Priority | Owning surface | Note |
+|---|---|---|---|
+| AC-0.2, AC-0.3, AC-0.3a, AC-0.4 | P0 | TSPEC AT-24, §9.2 | baseline-resolution *mechanics* (marker precedence, `CLAUDE_PLUGIN_ROOT` branches, fresh-clone). The **outcomes** they produce are in §5.1's E3 axis and are property-covered; the resolution order is example-shaped |
+| **AC-2.4** — hook exits 0 on **every** failure path, with the failure on stderr **and** in the drift state | **P0** | **partly property-covered, remainder TSPEC AT-3 / AT-14 / AT-16 / AT-18a** | The exit-0 half is asserted by **PROP-BSL-06** (hook exits 0 on every `E1 = holds` vector) and **PROP-SEAM-04** (hook exits 0 on an unrecognised token while `--check`/sync exit 4); the "never silent" half by **PROP-NEG-04** (at least one matched W-*/N-* line on every degraded run); the "and in the drift state" half by **PROP-BSL-05** (the stderr reason is captured and compared to the record's `baselineReason`). What the ATs still own alone is the **write-failure ladder** — the compositions where the drift state itself cannot be written (AT-14/-16), which no property enumerates |
+| **AC-3.2** — `--force` gate on `local-edit`/`unverified` | **P0** | **property-covered: PROP-MTM-03** | v1.0 quantified only the copy set; v2.0 adds the plain-sync conjuncts (byte-unchanged rows, exact state string in the report, exit 1) and the `--force` conjuncts. TSPEC AT-8a/AT-10/AT-26 remain the worked examples (PM Q-01 answered: the property owns them) |
+| **AC-3.7** — repeat sync is a no-op | **P0** | **property-covered: PROP-MTM-07** (new in v2.0) | AT-9 and §14.1 V-1 are the worked examples; the property is the quantified claim, including the backup-window conjunct AT-9 does not make |
+| **AC-3.8** — fresh-consumer bootstrap | **P0** | **TSPEC AT-24**, with two property-level supports | Leaf **L6** (`A3 = no ⇒ missing`, §2.3) is the classification half, and **PROP-MTM-01** covers the copy half over generated trees whose rows are all `missing`. What AT-24 owns alone is the *directory-creation ordering* on a tree with no `.claude/` at all (FSPEC §4.2 step 3 after step 2) — one tree shape, not a quantified claim |
+| AC-2.1, AC-2.3, AC-2.5, AC-2.5a, AC-2.8 | P0/P1 | TSPEC §7.4, §14.1 M-1/M-2/M-3 | message **content**; §0.3 states why a generator over English strings asserts nothing |
+| AC-3.5 restore | P0 | TSPEC AT-8b, AT-26 | §6.4's sort property is what makes *"the newest"* well-defined for it; **PROP-MTM-07** conjunct 2 is what keeps the window from evicting under it |
+| AC-4.1's ten mapping rows | P0 | TSPEC §12.2 | all ten as examples, each with a record defeating every higher row. **PM Q-03 answered:** PROP-NEG-04 does *not* duplicate §12.2's per-row oracle — it asserts only rows 2 and 8 (the two exceptions) positively, plus the closed-set claim that **no eleventh exception exists**. That claim is quantified and has no example form, so the two surfaces are complementary; the disposition above is narrowed to "the ten rows", not "AC-4.1" |
+| AC-4.2's report split | P1 | TSPEC AT-31 | |
+| AC-5.1, AC-5.3 | P2 | TSPEC AT-19, §14.1 V-4, residual R-12 / **P-R-6** | |
+| AC-6.1…AC-6.5 | P0/P1 | TSPEC §10's root-parameterised oracles | |
+| **AC-6.6** | P0 | **FSPEC §7.4 / TSPEC §10.3's `advertisedVersionViolation(root)`**, incl. the `LIVE_ROOT` assertion | routed by name per §0.3; the residual is **P-R-5a**, not P-R-5 (PM F-07) |
+| NFR-2 | P1 | **none** — structural (FSPEC §13.1) | no timing assertion exists anywhere in the feature, so nothing may be *routed* here (§0.3). The one residual that was is now **P-R-8**, accepted unowned |
+
+**AC-0.1 is not on this list** (PM F-08). v1.0's closing paragraph listed it among the ACs carrying
+no property while the table above maps **PROP-SEAM-06** and **PROP-NEG-07** to it — a contradiction
+a reader cannot resolve. Corrected: AC-0.1 **is** property-covered, in both its halves. The **M6
+charset** half is PROP-SEAM-06 (and PROP-BKP-01/-02's generated ids); the **globbing prohibition**
+half is PROP-NEG-01 (no unmanaged file enters `rows`), PROP-DET-04 (`rows` follows the manifest's
+non-alphabetical order, never a glob's) and PROP-NEG-07 (M10's blast radius). Nothing about AC-0.1
+is dispositioned away.
 
 ## 14. Coverage gaps and stated residuals
 
