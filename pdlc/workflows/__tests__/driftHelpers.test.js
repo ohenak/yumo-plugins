@@ -28,20 +28,20 @@ import {
 } from "fs";
 
 // §1.3 — capability + harness contracts (clause a)
-import { describeOrSkip, itOrSkip } from "../helpers/driftCapabilities.js";
+import { describeOrSkip, itOrSkip } from "./helpers/driftCapabilities.js";
 // §3.1-3.4, §11.2 — harness core, read-back, batched grammar driver (clause a, d)
 import {
   makeToolDir,
   readDriftState,
   readSyncManifest,
   runGrammar,
-} from "../helpers/driftHarness.js";
+} from "./helpers/driftHarness.js";
 // §3.3, §13.6 — consumer/plugin tree builders and row-state construction (clause b)
 import {
   makeConsumerTree,
   makePluginTree,
   setRowState,
-} from "../helpers/driftFixtures.js";
+} from "./helpers/driftFixtures.js";
 // §4.1-4.3, §8.3 — trace grammar, phase/ordering assertions (clause c)
 import {
   parseTrace,
@@ -49,9 +49,9 @@ import {
   assertPostCopyNarrow,
   assertTreeUnchanged,
   snapshotTree,
-} from "../helpers/driftOrdering.js";
+} from "./helpers/driftOrdering.js";
 // §11.2 precedent — sourced-probe driver (clause d, T-39)
-import { runProbe } from "../helpers/driftProbe.js";
+import { runProbe } from "./helpers/driftProbe.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -132,7 +132,7 @@ describe("T-01 clause (a) — capability + harness contracts", () => {
 
   describe("inodeOf (TSPEC §3.4 rule 3)", () => {
     it("returns a bigint", async () => {
-      const { inodeOf } = await import("../helpers/driftHarness.js");
+      const { inodeOf } = await import("./helpers/driftHarness.js");
       const dir = makeTmpDir("pdlc-t01-inode-");
       const file = join(dir, "probe.txt");
       writeFileSync(file, "x");
