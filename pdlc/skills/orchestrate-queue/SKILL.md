@@ -129,9 +129,19 @@ the plugin's `check-workflow-drift` SessionStart hook writes. This runs **before
 is loaded, so a stale or unverified consumer copy of the workflow scripts can stop the whole
 pass without any REQ being selected, dispatched, or even considered.
 
-- **Blocking.** If the gate finds the drift record missing/unreadable, a recorded write
-  failure, an unresolved baseline, or any managed row still `missing`, `stale`, or `unknown`
-  (see FSPEC AC-4.1's precedence table), the invocation returns immediately with
+- **Blocking.** Seven of the ten precedence rows block; rows 2, 8 and 9 proceed (see FSPEC
+  AC-4.1's precedence table; rows are evaluated in order and the first match wins):
+  - **row 1** — the drift record is missing, unreadable, or not shape-valid;
+  - **row 3** — a recorded write failure;
+  - **row 4** — a baseline that is not `resolved` (degraded or unresolved);
+  - **row 5** — any managed row still `unknown`;
+  - **row 6** — any managed row still `missing` or `stale`;
+  - **row 7** — a retired artifact still present in the consumer copy. This one blocks **even
+    when every managed row is `in-sync`**, so an otherwise-clean tree can still be stopped here;
+  - **row 10** — the terminal floor: a shape-valid record matching none of rows 1-9. It exists so
+    an unforeseen state fails closed rather than falling through as clean.
+
+  On any of these the invocation returns immediately with
   `outcome: "blocked", reason: "Drift gate row N: …"` and runs no pipeline. The reason names
   which precedence row fired. **Operator action:** bring the consumer copy back in sync —
   `pdlc/hooks/scripts/sync-workflows.sh` (or `--force` when the reason names a hand-edited or

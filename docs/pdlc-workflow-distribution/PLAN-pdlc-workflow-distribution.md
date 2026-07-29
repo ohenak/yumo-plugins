@@ -799,6 +799,29 @@ owns it. A reviewer checking completeness should find each here.
 - [ ] Every `orchestrate-queue.js` change shipped with its regenerated bundles in the same commit; every injected IO call is `await`ed.
 - [ ] `coveredViolations(LIVE_ROOT) == []` and `packagingViolations(LIVE_ROOT) == []`; `advertisedVersionViolation(LIVE_ROOT) !== "red"`.
 - [ ] `coveredViolations(FIXTURE_ROOT)` returns exactly the 7 enumerated paths and `EXEMPTIONS` equals the literal four-member array.
+- [ ] **Skip-sink transport is itself tested — `__tests__/skipSinkTransport.test.js`, `DOD-11(a)`…`DOD-11(q)` (added in Phase DOD, DOD-11).** The run-wide comparator above is only as
+  good as the sink underneath it, and that sink was initially untested *and* dormant: on a
+  non-root runner no capability skip fires, so clauses C1/C2 evaluated over an empty record set
+  every run and only C3 was load-bearing — a silently broken sink would have left the suite green.
+  This suite covers `skipSinkPath` / `appendSkipRecord` / `readSkipRecords` directly (including
+  two real child processes appending concurrently to one sink), asserts the deliberate
+  error-swallowing rather than relying on it, drives C1/C2 over records that actually travelled
+  **through** the sink, and reaches the live uid-0 registration path on a non-root runner by
+  spoofing `process.getuid`. Coverage of `helpers/skipSink.js` accordingly moves from
+  62.12%/74.28% (stmt/branch) to 95.45%/91.42%. **Caveat, recorded deliberately:** the uid-0
+  path is exercised by spoofing `getuid`, not as real root, so the actual uid-0 kernel path
+  remains unexercised here.
+- [ ] **Known unmet coverage floor — `build-runtime.mjs` (recorded in Phase DOD, DOD-13).** Its
+  reported branch coverage is **39.13%**, below the floor, and this is accepted rather than
+  fixed. Reason: the falsifying harness added for DOD-03 exercises the builder by **spawning it
+  as a subprocess** in a tmpdir (the only way to perturb artifacts without writing to the real
+  `pdlc/workflows/dist/`), and istanbul cannot attribute a child process's execution back to the
+  parent run's counters — so the branches execute but are not counted. Evidence they are
+  genuinely bound, not merely uncounted: neutralising both `stale = true` assignments reds 4
+  tests, and neutralising the manifest comparison alone reds 3 while the bundle-only case stays
+  green, so each staleness branch is independently falsifiable. Anyone raising this number should
+  do it by making coverage *attributable* (in-process invocation), not by deleting the subprocess
+  harness — the harness is what makes the branches falsifiable at all.
 - [ ] Index mode `100755` **and** on-disk `X_OK` for all five scripts; `100644` for `lib/pdlc-drift.sh`.
 - [ ] `.claude/workflows/**` is untracked and covered by an **anchored** gitignore pattern, proved by `git check-ignore -v --no-index` on the two negative conjuncts (TE F-06); the `covered-violations` fixture's 12 files are tracked.
 - [ ] `.worktreeinclude` exists at the repo root listing `.claude/workflows/`; the worktree observation is recorded.
