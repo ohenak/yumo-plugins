@@ -204,15 +204,207 @@ root runner is two **leaves**, not two reasons. §11 states the residual in exac
 
 ### 2.1 Why the axes are a dependent tree, not a cross-product table
 
+REQ §10 O-9 is explicit: **regenerate the axes; do not import REQ v13's tables**, which had 24 of 96
+cells undefined (SE v11 F-03). That failure is not a bookkeeping slip to be repaired by filling the
+cells in — it is a property of the *representation*. A cross-product of six three-valued probes has
+729 cells, most of them meaningless ("the plugin artifact is unreadable **and** the consumer bytes
+equal the plugin's"), and a table with meaningless cells can only be completed by inventing outcomes
+for inputs the system cannot receive. The next author then reads an invented outcome as normative.
+
+The axes are therefore regenerated as a **dependent tree** rooted at FSPEC §3.2's six probes and
+descended in FSPEC §3.3's ladder order:
+
+- Each node is a probe; its children are that probe's outcomes **as constrained by its ancestors**.
+- A probe appears in the tree only where FSPEC §3.3 actually evaluates it. `P4` is not asked when
+  `P3 == no`, so no node exists for it there — not an "N/A cell", **no cell**.
+- Every path from the root to a leaf is a construction recipe (TSPEC §3.3, §7.1) and maps to
+  exactly one `(state, reason)` pair.
+
+Three things follow, and they are what the properties in §3 and §4 actually assert:
+
+1. **Totality is leaf-exhaustiveness**: the tree's leaves partition the reachable input space, so
+   "no undefined fall-through" (AC-1.8(i)) becomes a checkable claim about a finite, enumerated set.
+2. **Single-valuedness is structural** (FSPEC §3.6): the ladder's first-match order *is* the
+   declared precedence, so the property to assert is not "the states are disjoint" (trivially true
+   of a first-match ladder) but **"the ladder's order equals the declared precedence"** — asserted
+   by constructing, for each precedence pair, a leaf where **both** conditions hold and asserting
+   the higher one wins (§3, PROP-CLS-02).
+3. **The absurd combinations are unreachable by construction**, not enumerated in prose: they have
+   no path. §2.4 lists the two the *builder* must additionally refuse, because they are reachable
+   as fixture specs even though they are not reachable as classifier inputs.
+
 ### 2.2 Run-level axis A0 — the hash utility
+
+| Axis | Values | Scope | Source |
+|---|---|---|---|
+| **A0** `hashTool` | `present` · `absent` | **run**, never per row | FSPEC §3.1 (probed once per run), §3.3 rung 1 |
+
+`A0 = absent` collapses the whole per-row tree: *every* row is `unknown`/`hash-tool-absent`
+regardless of any path (FSPEC §3.3's first consequence). It is therefore a **single leaf** (L0),
+not a factor multiplying the other ten, and it is the reason `hash-tool-absent` is the one row
+reason that never skips (TSPEC §7.1).
 
 ### 2.3 Per-row axes A1–A6 and the eleven leaves
 
+Axes, each named by the probe it descends from:
+
+| Axis | Probe (FSPEC §3.2) | Values | Asked when |
+|---|---|---|---|
+| **A1** | P1 plugin artifact exists | `yes` · `no` · `indeterminate` | `A0 = present` |
+| **A2** | P2 plugin artifact readable | `yes` · `no` | `A1 = yes` |
+| **A3** | P3 consumer artifact exists | `yes` · `no` · `indeterminate` | `A2 = yes` |
+| **A4** | P4 consumer artifact readable | `yes` · `no` | `A3 = yes` |
+| **A5** | bytes (P5 applied to both sides) | `equal` · `differ` | `A4 = yes` |
+| **A6** | P6 sync-manifest entry | `no-entry` · `entry-matches` · `entry-differs` | `A5 = differ` |
+
+`A6`'s `no-entry` value has four **sub-recipes**, all classifying identically (FSPEC §1.2, §3.2 P6),
+generated as an independent sub-axis so the equivalence is asserted rather than assumed:
+sync manifest **absent** · **unreadable** · **malformed** · present but carrying **no entry for this
+`id`**. `entry-matches` means `sha1(consumer) == syncManifest[id].consumerHash`; `entry-differs`
+means it does not.
+
+**The eleven leaves** — this is the enumeration `enumerateLeaves()` returns, and it is exhaustive
+over the tree:
+
+| Leaf | Path | State | Reason | Recipe (TSPEC §3.3 / §7.1) | Mode |
+|---|---|---|---|---|---|
+| **L0** | `A0 = absent` | `unknown` | `hash-tool-absent` | `makeToolDir` omits `shasum`/`sha1sum`/`openssl` | E |
+| **L1** | `A1 = no` | `unknown` | `plugin-artifact-missing` | ordinary tree, `pluginPath` deleted | E |
+| **L2** | `A1 = yes, A2 = no` | `unknown` | `plugin-artifact-unreadable` | `PDLC_FAULT=plugin-artifact-read:<id>` (token 15) | E |
+| **L3** | `A1 = indeterminate` | `unknown` | `plugin-artifact-unreadable` | `chmod 0600` on `workflows/dist/` — **permission only** | E-skip (uid-0) |
+| **L4** | `A3 = indeterminate` | `unknown` | `consumer-artifact-unreadable` | `.claude/workflows/` mode `0600` — **permission only** | E-skip (uid-0) |
+| **L5** | `A3 = yes, A4 = no` | `unknown` | `consumer-artifact-unreadable` | `PDLC_FAULT=consumer-artifact-read:<id>` (token 16) | E |
+| **L6** | `A3 = no` | `missing` | `null` | consumer path absent, `.claude/workflows/` present and traversable | E |
+| **L7** | `A5 = equal` | `in-sync` | `null` | consumer bytes := plugin bytes; **A6 not asked** | E |
+| **L8** | `A5 = differ, A6 = no-entry` | `unverified` | `null` | ×4 sub-recipes (absent / unreadable / malformed / no id) | E |
+| **L9** | `A5 = differ, A6 = entry-matches` | `stale` | `null` | bytes X ≠ plugin, entry `consumerHash = sha1(X)` | E |
+| **L10** | `A5 = differ, A6 = entry-differs` | `local-edit` | `null` | bytes Y, entry over X, X ≠ Y ≠ plugin | E |
+
+Two readings this table pins, because both are places an implementation drifts silently:
+
+- **L7 does not consult A6.** Equal bytes classify `in-sync` *regardless of provenance* — FSPEC
+  §3.4 R-4, O-8, AT-6. The tree expresses this as the absence of a child, so a generator cannot
+  produce an "equal bytes + degraded manifest ⇒ `unverified`" case even by accident.
+- **L3 and L2 share a reason; L4 and L5 share a reason.** That is FSPEC §3.3's footnote (a
+  plugin-side untraversable ancestor is `plugin-artifact-unreadable`, not the consumer-side
+  reason). §4's PROP-RSN-04 asserts precisely this pairing, because v1 of the FSPEC got it wrong in
+  the opposite direction and the wrong value routes the operator to the wrong remediation.
+
+**Leaf coverage of the closed sets:** the eleven leaves cover all six states and all four row
+reasons; `hash-tool-absent` is L0, `plugin-artifact-missing` L1, `plugin-artifact-unreadable`
+L2/L3, `consumer-artifact-unreadable` L4/L5. This is the generated set TSPEC §1.4's row-state and
+row-reason **meta-oracles** measure — a generator that under-covers turns those floors red rather
+than passing quietly.
+
 ### 2.4 Unconstructible combinations the generator must refuse
+
+Two combinations are expressible as *fixture specs* while being unreachable as *classifier inputs*.
+TSPEC §16 names both; the generator must make them **impossible**, not merely undrawn:
+
+| # | Combination | Why unreachable | Enforcement |
+|---|---|---|---|
+| U-1 | `hash-tool-absent` on a **subset** of rows | the probe is once per run (FSPEC §3.1); the property is of the machine, not the path (§3.3's second consequence) | `makeConsumerTree` **throws** (TSPEC §7.1); `enumerateLeaves()` emits L0 only as a whole-run leaf, never as a row spec |
+| U-2 | a `stale` row whose consumer bytes **equal** the plugin's | rung 3 precedes rung 5, so it classifies `in-sync` | `setRowState` re-derives the expected classification and **throws** (TSPEC §3.3) — the builder is its own first oracle |
+
+A third, weaker case is worth stating because a generator invites it: **`local-edit` without an
+entry** classifies `unverified` (rung 4 precedes rung 6). `setRowState` throws on that too. The
+generator never constructs a state by *name*; it constructs a **leaf**, and the name is the leaf's
+expected output — which removes the whole class.
 
 ### 2.5 Shrink order
 
+Ladders are explicit (§1.3 rule 3). For a failing classifier case the harness reports, in order:
+
+1. **Fewest rows** — re-run the same leaf as the *only* row of a one-row manifest. A packed
+   nine-row run that fails is almost always failing on one row, and the one-row form is the
+   reproduction a maintainer can debug in a shell.
+2. **Shortest bytes** — artifact contents shrink toward the 64-byte floor `makePluginTree`
+   guarantees (TSPEC R-9); never below it, because tokens 10/12 truncate to half length.
+3. **Simplest id** — `genId` shrinks toward `a`, then `a0`, then the drawn value; ids containing
+   `.`/`-`/stamp-shaped substrings shrink to the plain form **last**, so a failure that depends on
+   the id charset is not shrunk out of existence.
+4. **Simplest sub-recipe** — A6's `no-entry` shrinks toward **absent** (the ordinary first-adoption
+   condition), so a failure that is really about the unreadable/malformed notice (N-4) surfaces as
+   a difference between the shrunk and unshrunk cases rather than disappearing.
+
+The ladder is walked **once** and every step is re-run; the reported case is the simplest one that
+still fails, with seed and leaf id printed.
+
 ## 3. Row-state properties (O-9: totality, single-valuedness, determinism)
+
+All quantify over `enumerateLeaves()` (§2.3) and are asserted on the `rows[]` of the record written
+by the run (FSPEC §1.3), never on stdout.
+
+**PROP-CLS-01 — Every leaf classifies to its declared state.**
+For every leaf `L` in §2.3, the row constructed from `L` must have `state` exactly equal to `L`'s
+declared state. *(Functional · Harness · E, L3/L4 E-skip · `driftClassify.test.js`)*
+Nine leaves are packed as nine rows of one manifest (§1.4); L0 and the two permission leaves are
+separate runs. Traces to AC-1.1, FSPEC §3.3.
+
+**PROP-CLS-02 — The ladder's order is the declared precedence.**
+For every adjacent pair in `unknown > missing > in-sync > unverified > stale > local-edit`, a row
+must exist in which **both** members' conditions hold, and its `state` must be the higher member.
+*(Functional · Harness · E · `driftClassify.test.js`)*
+
+| Pair | Co-holding fixture | Expected |
+|---|---|---|
+| `unknown` > `missing` | consumer path absent **and** `PDLC_FAULT=plugin-artifact-read:<id>` | `unknown` |
+| `missing` > `in-sync` | consumer path absent, plugin artifact present — *the vacuous-equality trap*: an implementation comparing "both hashes null" as equal reports `in-sync` | `missing` |
+| `in-sync` > `unverified` | bytes equal **and** no sync-manifest entry (AT-6's shape) | `in-sync` |
+| `unverified` > `stale` | bytes differ, no entry — an implementation defaulting a missing entry to "matches" reports `stale` | `unverified` |
+| `stale` > `local-edit` | bytes differ, entry present with `consumerHash == sha1(consumer)` | `stale` |
+| `unknown` > every lower | `A0 = absent` over a tree whose rows would otherwise be `in-sync`, `stale` and `missing` | all `unknown` |
+
+This is the falsifiable form of "mutual exclusivity". Asserting that the six states are pairwise
+disjoint is vacuous over a first-match ladder — the defect the property must catch is a ladder whose
+*order* has drifted from the declared precedence, and only a co-holding fixture catches it. The last
+row is FSPEC §3.3's first consequence and is the one an implementation gets wrong by probing the
+hash tool last (as FSPEC v1 did).
+
+**PROP-CLS-03 — Totality: no input escapes the ladder.**
+Over the enumerated leaves, every row in the record has a `state` drawn from the closed six-member
+set, and `rows` has exactly one entry per manifest row — no row is absent, duplicated, or carries a
+value outside the set. *(Contract · Harness · E, uid-0 partial · `driftClassify.test.js`)*
+Positive-presence conjunct: `rows.length === manifest.rows.length` and the multiset of `rows[].id`
+deep-equals the manifest's id multiset. Without it the property is satisfied by an implementation
+that emits no rows at all — the vacuous pass FSPEC §12's standing precondition and AC-1.0 both warn
+about, and the same shape as TSPEC §4.3 conjunct (a).
+
+**PROP-CLS-04 — Single-valuedness: one state per row, per run.**
+No row carries two states and no run reports a row twice; asserted as multiset equality of
+`rows[].id` against the manifest (PROP-CLS-03's conjunct) **plus** `assertClassifyBeforeCreate`'s
+multiset conjunct over the `as-found` trace, which catches a double-classification that the record
+would have collapsed. *(Contract · Harness · E · `driftClassify.test.js` + `driftOrdering.test.js`)*
+
+**PROP-CLS-05 — Determinism across runs and processes.**
+For every leaf, two consecutive `--check` runs over the *unmodified* tree, in two separate
+processes, produce byte-identical `rows` (modulo `generatedAtUtc`, §1.5). *(Idempotency · Harness ·
+E · `driftClassify.test.js`)* AC-1.8(iii)'s "across runs and processes"; the remaining
+independence axes (clock, mtime, environment order, directory order, locale) are §9's, quantified
+over the same leaves rather than restated here.
+
+**PROP-CLS-06 — Row independence.**
+For any two leaves `L`, `L'` packed into one manifest, each row's state equals the state it has when
+constructed alone. *(Functional · Harness · E · `driftClassify.test.js`)*
+This is the property §1.4's packing rests on: it makes the spawn budget sound instead of assumed,
+and it is AC-1.4's quantified form. Red against an implementation with an early exit or a shared
+variable leaking across the row loop — the bash `for`-loop failure TSPEC §4.3 names.
+
+**PROP-CLS-07 — `A6`'s four degradation sub-recipes are equivalent.**
+Over the four `no-entry` sub-recipes (absent / unreadable / malformed / present-without-id), the
+resulting `rows` are **deep-equal**; the unreadable and malformed cases additionally emit N-4 exactly
+once and the absent case emits none. *(Data Integrity · Harness · E · `driftClassify.test.js`)*
+FSPEC §1.2 and O-8. The N-4 half is the discriminating conjunct — without it the property is
+satisfied by an implementation that treats every degradation as absence *and never tells the
+operator*, which is the difference between a first-adoption state and a corrupted file.
+
+**PROP-CLS-08 — `not-managed` is never a state.**
+For every generated tree containing 0–3 extra files in `.claude/workflows/` (no row, no `retires`
+membership, and — as a deliberate adversarial draw — one basename beginning `.pdlc-`), no such file
+appears in `rows`, none is read for comparison, none is modified, and every non-`.pdlc-` one appears
+in the report's `not-managed` listing, `LC_ALL=C`-sorted. *(Contract · Integration · E ·
+`driftClassify.test.js`)* AC-0.6, AC-1.5, NFR-3. Byte-unchanged is asserted positively (hash before
+and after), not as "the run did not error".
 
 ## 4. Row-reason properties (AC-1.8(iv))
 
