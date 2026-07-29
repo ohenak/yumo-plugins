@@ -1,0 +1,206 @@
+name: PR tests
+
+# Unit-test gate for pull requests. Phase PUB of the pdlc pipeline polls this
+# workflow's check results via `gh pr view --json statusCheckRollup` and halts the
+# pipeline if any required check fails, so every job here is a real gate: keep it
+# deterministic, and do not add a job that can fail for reasons unrelated to the diff.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# One in-flight run per ref. A new push supersedes the previous run rather than
+# queueing behind it; `main` is excluded so pushes there are never cancelled.
+concurrency:
+  group: pr-tests-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  unit-tests:
+    name: Unit tests (${{ matrix.os }}, node ${{ matrix.node }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      # Run every combination to completion: a macOS-only or Linux-only failure is
+      # exactly the portability signal this matrix exists to surface, and cancelling
+      # siblings would hide whether the break is platform-specific.
+      fail-fast: false
+      matrix:
+        # The plugin ships bash scripts that must run on both the maintainer's macOS
+        # (bash 3.2 — no associative arrays, no `${var^^}`, no `mapfile`, no `stat -c`)
+        # and on Linux CI (bash 5). Testing both is what keeps the 3.2 constraints honest.
+        os: [ubuntu-latest, macos-latest]
+        node: ['20']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node ${{ matrix.node }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+          cache-dependency-path: pdlc/workflows/package-lock.json
+
+      - name: Record the environment under test
+        # The suite gates capability-dependent tests on these, and skips loudly when one
+        # is unavailable. Printing them means a change in skip count can be explained from
+        # the log rather than guessed at.
+        run: |
+          echo "bash:    $(bash --version | head -1)"
+          echo "git:     $(git --version)"
+          echo "node:    $(node -v)"
+          echo "uid:     $(id -u)  (non-zero => the uid-nonroot capability is available)"
+          for tool in python3 shasum sha1sum; do
+            printf '%-8s %s\n' "$tool:" "$(command -v "$tool" || echo '(absent)')"
+          done
+
+      - name: Install dependencies
+        working-directory: pdlc/workflows
+        run: npm ci
+
+      - name: Unit tests
+        working-directory: pdlc/workflows
+        # A `globalTeardown` failure (the run-wide capability-skip comparator) is reported
+        # AFTER jest's summary and is not reflected in it, so this step must be judged by
+        # npm's exit code — which it is, since bash `set -e` semantics apply per step.
+        run: npm test
+
+  artifact-freshness:
+    name: Generated artifacts are in sync
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # `pdlc/workflows/dist/` is generated and tracked, and CLAUDE.md requires it to be
+      # rebuilt in the same commit as any workflow-source change. This is the gate that
+      # makes that rule enforceable rather than aspirational.
+      - name: dist/ is not stale
+        run: node pdlc/workflows/build-runtime.mjs --check
+
+      # Belt and braces: rebuild and require the tree to be unchanged. `--check` and the
+      # builder share code, so a bug that made both agree could hide staleness from the
+      # step above; `git diff --exit-code` is an independent observer.
+      - name: Rebuilding produces no diff
+        run: |
+          node pdlc/workflows/build-runtime.mjs
+          git diff --exit-code -- pdlc/workflows/dist/
+
+  fresh-clone-bootstrap:
+    name: Fresh-clone bootstrap works
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    # CLAUDE.md documents a two-command bootstrap for a clone with no published release,
+    # no installed plugin, no ${CLAUDE_PLUGIN_ROOT} and no network. A CI checkout IS that
+    # clone, so this job is the only place the documented path gets executed as written.
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: No consumer copy exists yet
+        run: |
+          if [ -e .claude/workflows ]; then
+            echo "::error::.claude/workflows exists in a fresh checkout; it must be untracked"
+            exit 1
+          fi
+          echo "confirmed: no .claude/workflows in a fresh checkout"
+
+      - name: Step 1 — build the runtime artifacts
+        run: node pdlc/workflows/build-runtime.mjs
+
+      - name: Step 2 — sync them into the consumer copy
+        # Invoked by BARE PATH on purpose: the shipped hook scripts carry their execute bit
+        # precisely so this works, and an exit of 126 means that bit was lost in the diff.
+        # Prefixing `bash` here would mask exactly the regression this step exists to catch.
+        run: |
+          set +e
+          pdlc/hooks/scripts/sync-workflows.sh
+          rc=$?
+          set -e
+          if [ "$rc" -eq 126 ]; then
+            echo "::error::sync-workflows.sh exited 126 — the execute bit was lost (expected mode 100755)"
+            exit 1
+          fi
+          if [ "$rc" -ne 0 ]; then
+            echo "::error::sync-workflows.sh exited $rc on a fresh clone; the documented bootstrap should succeed"
+            exit 1
+          fi
+
+      - name: Bootstrapped tree reports in sync
+        run: pdlc/hooks/scripts/sync-workflows.sh --check
+
+      - name: Consumer copy stayed untracked
+        # `.claude/workflows/**` must be ignored by an anchored gitignore pattern. If the
+        # bootstrap ever dirties the index, the artifacts are on their way to being committed.
+        run: |
+          if [ -n "$(git status --porcelain)" ]; then
+            echo "::error::bootstrap dirtied the working tree:"
+            git status --porcelain
+            exit 1
+          fi
+          echo "confirmed: bootstrap left the index clean"
+
+  script-syntax:
+    name: Shell scripts parse
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # A syntax-only pass (`bash -n`) over every shipped script. Deliberately not
+      # shellcheck: this is a gate, and a style warning must never block a PR.
+      - name: bash -n every shipped script
+        run: |
+          status=0
+          while IFS= read -r script; do
+            if bash -n "$script"; then
+              echo "ok    $script"
+            else
+              echo "::error file=$script::bash -n reported a syntax error"
+              status=1
+            fi
+          done < <(git ls-files '*.sh')
+          exit "$status"
+
+      - name: Executable bits are as shipped
+        # The two entrypoints must be executable (they are invoked by bare path); the
+        # shared library must NOT be, because it is sourced. Asserted against the git
+        # index, which is what a consumer actually receives.
+        run: |
+          status=0
+          check_mode() {
+            local want="$1" path="$2" got
+            got=$(git ls-files --stage -- "$path" | awk '{print $1}')
+            if [ -z "$got" ]; then
+              echo "::error::$path is not tracked"
+              status=1
+            elif [ "$got" != "$want" ]; then
+              echo "::error file=$path::index mode is $got, expected $want"
+              status=1
+            else
+              echo "ok    $path ($got)"
+            fi
+          }
+          check_mode 100755 pdlc/hooks/scripts/sync-workflows.sh
+          check_mode 100755 pdlc/hooks/scripts/check-workflow-drift.sh
+          check_mode 100644 pdlc/hooks/scripts/lib/pdlc-drift.sh
+          exit "$status"
