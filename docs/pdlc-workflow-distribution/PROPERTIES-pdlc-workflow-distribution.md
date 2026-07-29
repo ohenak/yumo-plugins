@@ -624,22 +624,69 @@ when a probe it depends on did not succeed** — never for any other reason.
 | **E2** | JSON utility absent | `holds` · `does-not-hold` | never | `makeToolDir` without `python3`/`python`/`python2` |
 | **E3** | `<pluginRoot>` | `ok` · `unset` · `unreadable` | never (E1 selects the *branch*, not the determinacy — FSPEC §2.4) | `pluginRootUnset`; `CLAUDE_PLUGIN_ROOT` at a file |
 | **E4** | manifest absent | `holds` · `does-not-hold` · `indeterminate` | `E3 ≠ ok` | `preManifestConsumer` |
-| **E5** | manifest malformed | `holds` · `does-not-hold` · `indeterminate` | `E2 = holds` or `E4` indeterminate | `manifestClauseBroken` (validator path), `manifestUnparseable` (helper `12`) |
-| **E6** | manifest empty | `holds` · `does-not-hold` · `indeterminate` | `E5` indeterminate | `emptyManifest` |
+| **E5** | manifest malformed | `holds` · `does-not-hold` · `indeterminate` | **`E2 = holds` ∨ `E4 = holds` ∨ `E4` indeterminate** | `manifestClauseBroken` (validator path), `manifestUnparseable` (helper `12`) |
+| **E6** | manifest empty | `holds` · `does-not-hold` · `indeterminate` | **`E5 = holds` ∨ `E5` indeterminate** | `emptyManifest` |
 | **E7** | `checkEnabled` | always determinate, fail-closed `true` | never | `optOutConsumer`, `nonBooleanConfig` |
 
-`drift-state-invalidated` is **not** an evidence axis: it is produced by §4.4 rung (i) *after*
-selection and replaces the selected reason (FSPEC §2.8). It is therefore generated as a separate
-one-dimensional axis over the ladder fault compositions (`ladderRungI`/`II`/`III`, TSPEC §13.3) and
-appears in PROP-BSL-04 as the top of the precedence.
+**The E5/E6 rules are FSPEC §2.1 Phase 1's, restored** (SE F-02). v1.0 wrote E5 as indeterminate
+only when "`E2 = holds` or `E4` indeterminate" and E6 only when "`E5` indeterminate", dropping the
+`E4 = holds` and `E5 = holds` cases. FSPEC §2.1 says E5 is indeterminate "if E2 **or E4 failed**"
+and E6 "if E5 failed", and its first dependency bullet is explicit that `manifestAbsent` is
+determinate JSON-free while "`manifestMalformed` and `manifestEmpty` are **not**". The narrowing was
+not cosmetic: it forced the generator to assign E5/E6 *determinate* values on the manifest-absent
+vector, on which PROP-BSL-03's computed oracle
+`precedence.find(c => vector[c] === "holds")` would then select **`manifest-empty`** — an absent
+manifest trivially has zero rows — over `manifest-absent`, contradicting FSPEC §2.8's normative row
+`repoRootUnresolved + manifestAbsent ⇒ manifest-absent`, the row §2.8 labels *"the ordinary
+first-release consumer"*. Under the corrected rules that vector carries `E5 = indeterminate` and
+`E6 = indeterminate`, PROP-BSL-04 forbids selecting either, and the oracle selects `manifest-absent`.
+This is a **required regression fixture**: the corrected first-release vector is asserted by name in
+PROP-BSL-03.
 
-**The generated set is the determinate vectors, enumerated.** E4/E5/E6's `indeterminate` values are
-not drawn independently — they are *derived* from E2/E3 by the rules above, exactly as §2.1's tree
-derives its children. `enumerateEvidenceVectors()` returns the vectors that satisfy the determinacy
-rules; there are 14 reachable without constructing a second plugin tree, and they are the ones
-§1.4's budget accounts for. FSPEC §2.8's eight-row worked table is a subset of them and is asserted
-literally as well (PROP-BSL-06), so a regression that keeps the generator green while breaking the
-FSPEC's own worked example is still red.
+**The generated set is the reachable vectors, enumerated — and the enumeration states its axes.**
+E4/E5/E6's `indeterminate` values are not drawn independently: they are *derived* from E2/E3/E4/E5
+by the rules above, exactly as §2.1's tree derives its children. SE F-03 is correct that a count is
+meaningless without saying which axes it closes over, so:
+
+> **`enumerateEvidenceVectors()` closes over E1, E2, E3, E4, E5, E6 — and *not* over E7.**
+> Its cardinality is **20**. E7 (`checkEnabled`) is varied separately, by PROP-BSL-08 alone, over
+> its six config states; it is excluded from the core enumeration because it is orthogonal to
+> reason selection by construction (FSPEC §2.7 — it is resolved in step 1 and never enters §2.8's
+> precedence) and including it would multiply every other §5 property by six for no oracle.
+
+The derivation, so the number is checkable rather than asserted. The manifest chain (E2, E3, E4, E5,
+E6) has **10** reachable assignments:
+
+| E3 | E4 | E2 | E5 | E6 | Count | The vector's plain meaning |
+|---|---|---|---|---|---|---|
+| `unset` / `unreadable` | indeterminate | `holds` / `does-not-hold` | indeterminate | indeterminate | **4** | no plugin root ⇒ nothing downstream is knowable |
+| `ok` | `holds` | `holds` / `does-not-hold` | indeterminate | indeterminate | **2** | **the first-release vector**: manifest absent, malformed/empty unknowable |
+| `ok` | `does-not-hold` | `holds` | indeterminate | indeterminate | **1** | manifest present, no JSON tool |
+| `ok` | `does-not-hold` | `does-not-hold` | `holds` | indeterminate | **1** | malformed ⇒ emptiness unknowable |
+| `ok` | `does-not-hold` | `does-not-hold` | `does-not-hold` | `holds` / `does-not-hold` | **2** | well-formed manifest, empty or not |
+
+**E1 is the sixth axis and it multiplies all ten**, because FSPEC §2.1's second dependency bullet
+says E1 is independent of E2–E6 and genuinely co-holds with any of them — which is the whole reason
+§2.8's precedence is observable at all. **10 × 2 = 20.** All twenty are constructible from TSPEC
+§13.1's fixtures without a second plugin tree; §1.4 budgets them at one spawn each.
+
+FSPEC §2.8's eight-row worked table is a subset of the twenty and is asserted **literally as well**
+(PROP-BSL-03's named-row conjunct plus PROP-BSL-06), so a regression that keeps the generator green
+while breaking the FSPEC's own worked example is still red.
+
+**What the other two §5 properties quantify over, stated because they do not use the bare 20**
+(SE F-03, PM Q-02):
+
+| Property | Domain | Spawns |
+|---|---|---|
+| PROP-BSL-01/-02/-03/-04/-07 | the 20 vectors, one `--check` run each | 20 (shared) |
+| PROP-BSL-03's `drift-state-invalidated` rung | 3 ladder-fault compositions (`ladderRungI`/`II`/`III`, TSPEC §13.3) — a separate one-dimensional axis, not a seventh evidence probe | 3 |
+| PROP-BSL-06 | the **10** vectors with `E1 = holds` (half the enumeration) on `--check` — **shared, no new spawn**; its three-entrypoint exit-code conjunct runs on **3** representative vectors × the sync and hook entrypoints | 6 |
+| PROP-BSL-08 | E7's **6** config states × **2** vectors (`resolved`, and the first-release `manifest-absent` vector AC-0.3b names). The default-config leg of each is already in the 20 | 10 |
+
+`drift-state-invalidated` is **not** an evidence axis: it is produced by §4.4 rung (i) *after*
+selection and replaces the selected reason (FSPEC §2.8), which is why it sits in its own row above
+and appears in PROP-BSL-03 as the top of the precedence rather than in the vector.
 
 ### 5.2 Properties
 
@@ -662,9 +709,19 @@ repo-root-unresolved > plugin-root-unreadable > plugin-root-unset`. *(Functional
 `driftBaseline.test.js`)*
 The oracle is computed **in the test from the vector**, not looked up in a table copied from the
 FSPEC: `expected = precedence.find(c => vector[c] === "holds")`. A table copy drifts; a
-recomputation from the same declared list cannot. This is the property FSPEC §2.1's two-phase
-structure exists to make observable, and the pair that falsifies a short-circuiting ladder is
-`repoRootUnresolved` + `manifestEmpty` ⇒ `manifest-empty`.
+recomputation from the same declared list cannot. Note the oracle's `=== "holds"` test is what makes
+§5.1's corrected determinacy rules load-bearing — it is total over the vector only because
+`indeterminate` is a distinct third value that no `find` can select (PROP-BSL-04 asserts the
+consequence).
+
+Two named rows are asserted **literally**, in addition to the quantified claim, because each is a
+worked FSPEC §2.8 row whose failure mode the quantified claim alone would not name in a report:
+
+- `repoRootUnresolved` + `manifestEmpty` ⇒ **`manifest-empty`** — the pair that falsifies a
+  short-circuiting ladder.
+- `repoRootUnresolved` + `manifestAbsent` (E5, E6 both `indeterminate`) ⇒ **`manifest-absent`** —
+  the ordinary first-release consumer, and the row v1.0's narrowed determinacy rules would have
+  answered `manifest-empty` (§5.1, SE F-02). This is the regression fixture for that defect.
 
 **PROP-BSL-04 — An `indeterminate` condition is never selected.**
 For every vector in which some condition is `indeterminate`, the reported reason is not that
@@ -684,10 +741,14 @@ and compared to the record's `baselineReason`**, so a run that warns with a *dif
 it recorded is red.
 
 **PROP-BSL-06 — The no-write-target rule is keyed on evidence, not on selection.**
-For every vector in which `E1 = holds` — **regardless of which reason was selected** — nothing is
-created under the fixture root: no `.claude/`, no `.claude/workflows/`, no drift state, no sync
-manifest, no backup directory; `writeFailures` is `[]`; `--check` and sync exit **3** and the hook
-exits **0**; and N-8 is printed exactly when the *reported* reason is not `repo-root-unresolved`.
+Domain, stated per SE F-03 / PM Q-02: the **10** vectors of §5.1's enumeration in which
+`E1 = holds`, on `--check` (these runs are the enumeration's own — no extra spawn); plus **3**
+representative vectors (`+manifestEmpty`, `+manifestAbsent`, `E1` alone) re-run on **sync** and the
+**hook** for the exit-code conjunct, which is 6 additional spawns. For every such run —
+**regardless of which reason was selected** — nothing is created under the fixture root: no
+`.claude/`, no `.claude/workflows/`, no drift state, no sync manifest, no backup directory;
+`writeFailures` is `[]`; `--check` and sync exit **3** and the hook exits **0**; and N-8 is printed
+exactly when the *reported* reason is not `repo-root-unresolved`.
 *(Error Handling · Integration · E · `driftRepoRoot.test.js`)*
 This is FSPEC §2.8's third and fourth columns quantified. It is the property that catches the v2.0
 defect the FSPEC records: a guard keyed on the *reason* creates a directory on the
@@ -704,7 +765,11 @@ the falsifiable half — an implementation that classifies first and discards th
 every field assertion in §5.2 and violates AC-1.0.
 
 **PROP-BSL-08 — `checkEnabled` is resolved on every path, including unresolved ones.**
-For every generated vector, the record carries a boolean `checkEnabled`; it is `false` only when the
+Domain (SE F-03): E7's **six** config states × **two** baseline vectors — `resolved`, and the
+first-release `manifest-absent` vector — for **12** runs, of which 2 (the default-config legs) are
+already in §5.1's enumeration, so 10 are additional. E7 is *not* in
+`enumerateEvidenceVectors()`; this is the only property that varies it. Over that domain the record
+carries a boolean `checkEnabled`; it is `false` only when the
 config parses with an explicit boolean `false`, and `true` in all five degraded cases (key absent,
 file absent, unreadable, malformed, non-boolean) with N-5 printed exactly once in the last three.
 *(Error Handling · Harness · E · `driftBaseline.test.js`)*
