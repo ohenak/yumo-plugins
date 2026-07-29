@@ -17,9 +17,11 @@
  * (batch 4, already landed) — this file is a consumer, not a writer, of that module.
  */
 
-import { mkdtempSync, writeFileSync, rmSync } from "fs";
+import { mkdtempSync, writeFileSync, readFileSync, rmSync } from "fs";
 import { tmpdir } from "os";
-import { join } from "path";
+import { dirname, join } from "path";
+import { fileURLToPath } from "url";
+import { spawnSync } from "child_process";
 
 import { describeOrSkip } from "./helpers/driftCapabilities.js";
 import { runScript, readDriftState, readSyncManifest } from "./helpers/driftHarness.js";
@@ -28,8 +30,13 @@ import {
   parseTrace,
   assertClassifyBeforeCreate,
   assertPhaseOrder,
+  assertRecordedPassIs,
   TraceUnavailableError,
 } from "./helpers/driftOrdering.js";
+import { seeded, resolveSeed } from "./helpers/driftGenerators.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // ───────────────────────────── shared fixture builders ─────────────────────────────
 
@@ -192,6 +199,393 @@ describeOrSkip(
         }
       );
     });
+
+    // ─────────────────────── PLAN T-43 additions ───────────────────────
+    //
+    // Seven properties, appended to this same file per PLAN §3.1's single-writer convention
+    // (T-43 is the sole writer of *appends* to this file — T-29's original content above is
+    // untouched). Every falsification (mutation -> red -> revert -> green) named in each
+    // block's doc comment was run by hand against the real subject file and recorded in
+    // docs/pdlc-workflow-distribution/FALSIFICATION-LEDGER-T-43.md; this file only carries the
+    // green assertions themselves.
+
+    /**
+     * PROP-BSL-07 — the resolved/unresolved baseline halves of AC-2.9(1)'s manifest-read
+     * ordering rule. Falsification subject: C1 (`pdlc/hooks/scripts/lib/pdlc-drift.sh`).
+     */
+    describe("PROP-BSL-07 — the manifest-read record's ordering relative to classification", () => {
+      it(
+        "a resolved baseline: the manifest-read record precedes every classify record, and at " +
+          "least one classify record exists",
+        () => {
+          const trees = buildFreshConsumerFixture();
+          try {
+            const run = runSync(trees);
+            const trace = parseTrace(run.tracePath);
+            const manifestReadIndex = trace.findIndex((r) => r.op === "manifest-read");
+            expect(manifestReadIndex).toBeGreaterThanOrEqual(0);
+
+            const classifyIndexes = trace
+              .map((r, i) => (r.op === "classify" ? i : -1))
+              .filter((i) => i !== -1);
+            expect(classifyIndexes.length).toBeGreaterThan(0);
+            for (const i of classifyIndexes) {
+              expect(manifestReadIndex).toBeLessThan(i);
+            }
+          } finally {
+            cleanup(trees);
+          }
+        }
+      );
+
+      it(
+        "an unresolved baseline (malformed manifest) produces zero classify records — an " +
+          "implementation that classifies first and discards the result on failure is exactly " +
+          "what this falsifies (falsification mutation: PDLC_ROWS_ID+=(\"row-1\") in C1's " +
+          "manifest-malformed branch)",
+        () => {
+          const consumer = makeConsumerTree({ git: true, claudeDir: false });
+          const plugin = makePluginTree({ manifestRaw: "{ not valid json" });
+          const trees = { consumer, plugin };
+          try {
+            const run = runSync(trees);
+            const trace = parseTrace(run.tracePath);
+            const classifyRecords = trace.filter((r) => r.op === "classify");
+            expect(classifyRecords).toEqual([]);
+          } finally {
+            cleanup(trees);
+          }
+        }
+      );
+    });
+
+    /**
+     * PROP-CLS-04 (trace half) — every manifest row, at every row count, gets exactly one
+     * as-found classify record. Falsification subject: C1's `pdlc_classify_all` loop.
+     */
+    describe("PROP-CLS-04 (trace half) — classify_all traces every manifest row, for every row count", () => {
+      function buildFreshConsumerFixtureWithRows(n) {
+        const rows = Array.from({ length: n }, (_, i) => ({ id: `row-${i + 1}` }));
+        const consumer = makeConsumerTree({ git: true, claudeDir: false });
+        const plugin = makePluginTree({ rows });
+        return { consumer, plugin };
+      }
+
+      for (const n of [2, 3, 5]) {
+        it(`classifies all ${n} rows exactly once in the as-found pass`, () => {
+          const trees = buildFreshConsumerFixtureWithRows(n);
+          try {
+            const run = runSync(trees);
+            const trace = parseTrace(run.tracePath);
+            const expectedIds = trees.plugin.manifest.rows.map((r) => r.id);
+            const asFoundIds = trace
+              .filter((r) => r.op === "classify" && r.phase === "as-found")
+              .map((r) => r.rowId);
+            expect([...asFoundIds].sort()).toEqual([...expectedIds].sort());
+          } finally {
+            cleanup(trees);
+          }
+        });
+      }
+    });
+
+    /**
+     * PROP-MTM-03 (trace half) — only stale/missing rows are copy/backup-recorded; an in-sync
+     * row is classified but never mutated. Falsification subject: `sync-workflows.sh`'s
+     * `should_sync` case statement (line 344).
+     */
+    describe(
+      "PROP-MTM-03 (trace half) — only stale/missing rows are copied or backed up",
+      () => {
+        function buildMixedStateFixture() {
+          const consumer = makeConsumerTree({ git: true, claudeDir: false });
+          const plugin = makePluginTree({ rows: [{ id: "row-1" }, { id: "row-2" }] });
+          const trees = { consumer, plugin };
+          setRowState(trees, "row-1", "in-sync");
+          setRowState(trees, "row-2", "stale");
+          return trees;
+        }
+
+        it(
+          "an in-sync row is classified but never copy/backup-recorded; a stale row is both " +
+            "as-found-classified 'stale' and copy-recorded, and the final (post-run) pass " +
+            "matches the drift-state row for both",
+          () => {
+            const trees = buildMixedStateFixture();
+            try {
+              const run = runSync(trees);
+              const trace = parseTrace(run.tracePath);
+              const driftState = readDriftState(trees.consumer.root);
+
+              // The recorded-pass oracle (§4.3): the FINAL pass a row is classified under
+              // (post-run) must match what actually landed in the drift state — driftState's
+              // `rows[].state` is the post-sync state, not the as-found one.
+              assertRecordedPassIs(trace, driftState, "post-run");
+
+              // The as-found pass is what the mutation-under-falsification (widening
+              // `should_sync` to include "in-sync") would corrupt: row-2 must have been
+              // as-found "stale" (its true original state) BEFORE the sync mutated it.
+              const row2AsFound = trace.find(
+                (r) => r.rowId === "row-2" && r.op === "classify" && r.phase === "as-found"
+              );
+              expect(row2AsFound.arg.toString()).toBe("stale");
+
+              const row1CopyOrBackup = trace.filter(
+                (r) => r.rowId === "row-1" && (r.op === "copy" || r.op === "backup")
+              );
+              expect(row1CopyOrBackup).toEqual([]);
+
+              const row2Copy = trace.filter((r) => r.rowId === "row-2" && r.op === "copy");
+              expect(row2Copy.length).toBeGreaterThan(0);
+            } finally {
+              cleanup(trees);
+            }
+          }
+        );
+      }
+    );
+
+    /**
+     * PROP-SEAM-05 (trace-file half) — disabling tracing entirely changes no production
+     * observable (stdout/stderr/status/driftState/manifest are all byte-identical whether or
+     * not `PDLC_TRACE_FILE` is set). Falsification subject: C1's `pdlc_trace`.
+     */
+    describe("PROP-SEAM-05 (trace-file half) — disabling tracing changes no production observable", () => {
+      it("stdout/stderr/status/driftState/manifest are byte-identical whether or not tracing is enabled", () => {
+        const sharedPlugin = makePluginTree({});
+        const tracedConsumer = makeConsumerTree({ git: true, claudeDir: false });
+        const untracedConsumer = makeConsumerTree({ git: true, claudeDir: false });
+        try {
+          const tracedRun = runScript("sync", {
+            consumerRoot: tracedConsumer.root,
+            home: tracedConsumer.home,
+            pluginRoot: sharedPlugin.pluginRoot,
+            trace: true,
+          });
+          const untracedRun = runScript("sync", {
+            consumerRoot: untracedConsumer.root,
+            home: untracedConsumer.home,
+            pluginRoot: sharedPlugin.pluginRoot,
+            trace: false,
+          });
+
+          expect(untracedRun.status).toBe(tracedRun.status);
+          expect(untracedRun.stdout).toBe(tracedRun.stdout);
+          expect(untracedRun.stderr).toBe(tracedRun.stderr);
+
+          const tracedState = stripTimestamps(readDriftState(tracedConsumer.root));
+          const untracedState = stripTimestamps(readDriftState(untracedConsumer.root));
+          expect(untracedState).toEqual(tracedState);
+
+          const tracedManifest = stripTimestamps(readSyncManifest(tracedConsumer.root));
+          const untracedManifest = stripTimestamps(readSyncManifest(untracedConsumer.root));
+          expect(untracedManifest).toEqual(tracedManifest);
+        } finally {
+          tracedConsumer.cleanup();
+          untracedConsumer.cleanup();
+          sharedPlugin.cleanup();
+        }
+      });
+    });
+
+    /**
+     * PROP-SEAM-07 — `pdlc_percent_encode`'s round trip: `decode(encode(b)) === b` for every
+     * byte string `b` (0x00 excluded — architecturally unrepresentable in a bash argv string,
+     * TSPEC §4.1/PLAN T-43), and `encode(b)` is pure 0x20-0x7E text. Batched via one spawn of
+     * `helpers/bin/percent-encode-driver.sh` per property run (TSPEC §11.2), never one spawn
+     * per case.
+     *
+     * The decoder used as the oracle here is a LOCAL, independently-written re-implementation
+     * (`localPercentDecode`, below) — deliberately NOT `driftOrdering.js`'s
+     * `percentDecodeToBuffer`. A round-trip property whose decoder is derived from the same
+     * source as its encoder's oracle is tautological: the two would agree on a shared mistake
+     * and the property would stay green through it. Two independent implementations is the
+     * point, not an accident of what that module happens to export — so this comment is also
+     * the reason not to "fix" the duplication by exporting the helper's decoder and importing
+     * it here.
+     *
+     * Falsification subject: C1's `pdlc_percent_encode` (the `ord >= 32 && ord <= 126` range
+     * check).
+     */
+    describe("PROP-SEAM-07 — the percent-encode/decode round trip", () => {
+      const SEAM_07_SEED = 774419;
+
+      function toHex(buf) {
+        return buf.toString("hex");
+      }
+
+      function fromHex(hex) {
+        return Buffer.from(hex, "hex");
+      }
+
+      function localPercentDecode(field) {
+        const bytes = [];
+        for (let i = 0; i < field.length; i++) {
+          const ch = field[i];
+          if (ch === "%" && /^[0-9A-Fa-f]{2}$/.test(field.slice(i + 1, i + 3))) {
+            bytes.push(parseInt(field.slice(i + 1, i + 3), 16));
+            i += 2;
+          } else {
+            bytes.push(field.charCodeAt(i));
+          }
+        }
+        return Buffer.from(bytes);
+      }
+
+      function excludeNulByte(buf) {
+        const out = Buffer.from(buf);
+        for (let i = 0; i < out.length; i++) {
+          if (out[i] === 0x00) out[i] = 0x01;
+        }
+        return out;
+      }
+
+      const PERCENT_ENCODE_DRIVER = join(__dirname, "helpers", "bin", "percent-encode-driver.sh");
+
+      function runPercentEncodeDriver(payloads) {
+        const input = payloads.length ? payloads.map(toHex).join("\n") + "\n" : "";
+        const result = spawnSync("bash", [PERCENT_ENCODE_DRIVER], { input, encoding: "utf8" });
+        const outLines = (result.stdout || "").length
+          ? result.stdout.split("\n").filter((l) => l.length > 0)
+          : [];
+        if (outLines.length !== payloads.length) {
+          throw new Error(
+            `runPercentEncodeDriver: driver emitted ${outLines.length} result line(s) for ` +
+              `${payloads.length} input case(s) — treating this as a harness failure (TSPEC §11.2)`
+          );
+        }
+        return outLines.map((line) => {
+          const [tag, field] = line.split("\t");
+          if (tag !== "ok") {
+            throw new Error(`runPercentEncodeDriver: driver returned "${tag}" — ${field}`);
+          }
+          return fromHex(field || "");
+        });
+      }
+
+      function generateSeamO7Cases() {
+        const curated = [
+          Buffer.from(""),
+          Buffer.from("%"),
+          Buffer.from("plain-ascii_text.123"),
+          Buffer.from("a\tb\nc\rd"),
+          Buffer.from([0x1f]),
+          Buffer.from([0x7f]),
+          Buffer.from([0x20]),
+          Buffer.from([0x7e]),
+          Buffer.from([0xff]),
+          Buffer.from("100% done"),
+        ].map(excludeNulByte);
+
+        const rng = seeded(resolveSeed(SEAM_07_SEED));
+        const random = [];
+        for (let i = 0; i < 24; i++) {
+          const len = rng.int(0, 12);
+          random.push(excludeNulByte(rng.bytes(len)));
+        }
+        return curated.concat(random);
+      }
+
+      it("holds over curated edge-case bytes and a seeded random sample, one driver spawn total", () => {
+        const cases = generateSeamO7Cases();
+        const encoded = runPercentEncodeDriver(cases);
+        expect(encoded.length).toBe(cases.length);
+
+        encoded.forEach((encodedBytes, i) => {
+          const original = cases[i];
+          const encodedText = encodedBytes.toString("latin1");
+          for (let j = 0; j < encodedText.length; j++) {
+            const code = encodedText.charCodeAt(j);
+            expect(code).toBeGreaterThanOrEqual(0x20);
+            expect(code).toBeLessThanOrEqual(0x7e);
+          }
+          const decoded = localPercentDecode(encodedText);
+          expect(decoded.equals(original)).toBe(true);
+        });
+      });
+    });
+
+    /**
+     * PROP-SEAM-08 — `seq` is the gapless `1,2,3,…` permutation, one integer per trace line, in
+     * line order, over a real (not hand-built) trace. Falsification subject: C1's `pdlc_trace`
+     * (`_PDLC_TRACE_SEQ` increment).
+     */
+    describe("PROP-SEAM-08 — seq is the gapless 1..N permutation over a real trace", () => {
+      it("every line of a real sync run's trace has seq === lineIndex+1, no gaps or dupes", () => {
+        const trees = buildFreshConsumerFixture();
+        try {
+          const run = runSync(trees);
+          const rawLines = readFileSync(run.tracePath, "utf8")
+            .split("\n")
+            .filter((l) => l.length > 0);
+          const trace = parseTrace(run.tracePath);
+          expect(trace.length).toBe(rawLines.length);
+          trace.forEach((record, i) => {
+            expect(record.seq).toBe(i + 1);
+          });
+        } finally {
+          cleanup(trees);
+        }
+      });
+    });
+
+    /**
+     * PROP-DET-03 — production behavior (stdout/stderr/status/driftState) is independent of
+     * the insertion order of unrelated environment variables. Falsification mechanism: C1
+     * shells out to python3 (confirmed, empirically, in this session, to faithfully preserve
+     * `env` dict insertion order through `os.environ` iteration — unlike bash's own
+     * `compgen -e`/`declare -p`, which are alphabetically sorted regardless of insertion order)
+     * to dump the names of any `PDLC_PROP_UNRELATED_*` variables, in iteration order, to
+     * stderr — a mutation that is order-sensitive by construction.
+     */
+    describe(
+      "PROP-DET-03 — production behavior is independent of environment-variable insertion order",
+      () => {
+        it("forward vs reversed insertion order of unrelated env vars yields byte-identical output", () => {
+          const sharedPlugin = makePluginTree({});
+          const forwardConsumer = makeConsumerTree({ git: true, claudeDir: false });
+          const reversedConsumer = makeConsumerTree({ git: true, claudeDir: false });
+          const keys = [
+            "PDLC_PROP_UNRELATED_A",
+            "PDLC_PROP_UNRELATED_B",
+            "PDLC_PROP_UNRELATED_C",
+            "PDLC_PROP_UNRELATED_D",
+            "PDLC_PROP_UNRELATED_E",
+          ];
+          const forwardEnv = {};
+          for (const k of keys) forwardEnv[k] = "1";
+          const reversedEnv = {};
+          for (const k of [...keys].reverse()) reversedEnv[k] = "1";
+
+          try {
+            const forwardRun = runScript("sync", {
+              consumerRoot: forwardConsumer.root,
+              home: forwardConsumer.home,
+              pluginRoot: sharedPlugin.pluginRoot,
+              env: forwardEnv,
+            });
+            const reversedRun = runScript("sync", {
+              consumerRoot: reversedConsumer.root,
+              home: reversedConsumer.home,
+              pluginRoot: sharedPlugin.pluginRoot,
+              env: reversedEnv,
+            });
+
+            expect(reversedRun.status).toBe(forwardRun.status);
+            expect(reversedRun.stdout).toBe(forwardRun.stdout);
+            expect(reversedRun.stderr).toBe(forwardRun.stderr);
+
+            const forwardState = stripTimestamps(readDriftState(forwardConsumer.root));
+            const reversedState = stripTimestamps(readDriftState(reversedConsumer.root));
+            expect(reversedState).toEqual(forwardState);
+          } finally {
+            forwardConsumer.cleanup();
+            reversedConsumer.cleanup();
+            sharedPlugin.cleanup();
+          }
+        });
+      }
+    );
 
     describe("§4.4 — the unwritable-trace red test", () => {
       it("an unwritable trace does not change any production observable", () => {
