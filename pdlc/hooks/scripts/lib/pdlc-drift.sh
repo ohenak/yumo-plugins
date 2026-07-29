@@ -1030,6 +1030,338 @@ pdlc_load_manifest() {
 # Layer 3 (T-33 — classifier) appends below this line: `pdlc_classify_row`, `pdlc_classify_all`.
 # ─────────────────────────────────────────────────────────────────────────────────────────────
 
+# Internal: FSPEC §3.2 P1/P3's ancestor-walk existence probe — "yes" (exists) | "no" (absent, and
+# its first existing ancestor is traversable — the definite-negative rule, AC-1.1) |
+# "indeterminate" (absent, but its first existing ancestor is NOT traversable). An entirely absent
+# ancestor chain, up to and including "/", establishes absence (FSPEC §3.2) — "/" always exists on
+# a real filesystem, so the walk terminates there rather than looping forever. No `dirname` (not on
+# the probe sandbox's PATH) — pure bash parameter expansion, the same idiom
+# `pdlc_resolve_repo_root`'s own ancestor walk already uses.
+_pdlc_probe_exists() {
+  local path="$1"
+  if [[ -e "$path" ]]; then
+    printf 'yes'
+    return 0
+  fi
+
+  local dir="$path"
+  while true; do
+    local parent="${dir%/*}"
+    [[ "$parent" == "$dir" || -z "$parent" ]] && parent="/"
+    dir="$parent"
+    if [[ -e "$dir" ]]; then
+      if [[ -x "$dir" ]]; then
+        printf 'no'
+      else
+        printf 'indeterminate'
+      fi
+      return 0
+    fi
+    [[ "$dir" == "/" ]] && break
+  done
+  printf 'no'
+  return 0
+}
+
+# Internal: emits N-4 (FSPEC §8.3) for a degraded sync-manifest read. Layer 5 (T-35) may route this
+# through a shared `pdlc_msg_*` once that layer lands; layer 3 emits it directly so this behaves
+# correctly standing alone (same precedent as layer 1's N-7, layer 2's N-5).
+_pdlc_sync_manifest_n4_notice() {
+  printf 'pdlc: sync manifest at %s is %s; rows that differ are reported unverified.\n' "$1" "$2" >&2
+}
+
+# Internal cache for the sync-manifest's `entries` map (FSPEC §1.2). Populated at most once per
+# distinct `phase` value seen so far: the file can legitimately change between a sync run's
+# distinct passes (§4.2 step 6 rewrites it between the post-copy and post-run passes) but never
+# within one pass, so re-reading per row inside the same pass is pure waste, and this also caps the
+# `sync-manifest-read` fault guard / trace record at one firing per pass (§5.1.1: "fires at most
+# once per run"). Absent is the ordinary first-adoption state (no notice, FSPEC §8.3); unreadable
+# and malformed both degrade to "no entries" and print N-4 once per (re)load.
+_PDLC_SYNC_CACHE_BUILT=0
+_PDLC_SYNC_CACHE_PHASE=""
+_PDLC_SYNC_IDS=()
+_PDLC_SYNC_CONSUMER_HASH=()
+_PDLC_SYNC_ARTIFACT_VERSION=()
+
+_pdlc_sync_manifest_ensure_loaded() {
+  local phase="$1"
+  if [[ "$_PDLC_SYNC_CACHE_BUILT" == "1" && "$_PDLC_SYNC_CACHE_PHASE" == "$phase" ]]; then
+    return 0
+  fi
+  _PDLC_SYNC_CACHE_BUILT=1
+  _PDLC_SYNC_CACHE_PHASE="$phase"
+  _PDLC_SYNC_IDS=()
+  _PDLC_SYNC_CONSUMER_HASH=()
+  _PDLC_SYNC_ARTIFACT_VERSION=()
+
+  local root="${PDLC_REPO_ROOT:-}"
+  [[ -z "$root" ]] && return 0
+
+  local path="${root}/.claude/workflows/.pdlc-sync-manifest.json"
+  [[ -e "$path" ]] || return 0
+
+  # §4.2 op table: `sync-manifest-read`, emitted only when a read is actually attempted.
+  pdlc_trace "run" "sync-manifest-read" "-" "$path"
+
+  if pdlc_fault_active "sync-manifest-read"; then
+    _pdlc_sync_manifest_n4_notice "$path" "unreadable"
+    return 0
+  fi
+
+  if [[ ! -r "$path" ]]; then
+    _pdlc_sync_manifest_n4_notice "$path" "unreadable"
+    return 0
+  fi
+
+  if [[ -z "${PDLC_PY_BIN:-}" ]]; then
+    if ! pdlc_probe_json_tool; then
+      # No JSON tool: this row's P6 degrades to "no entries", same shape as unreadable/malformed.
+      _pdlc_sync_manifest_n4_notice "$path" "unreadable"
+      return 0
+    fi
+  fi
+
+  local out status
+  out="$(
+    "$PDLC_PY_BIN" - "$path" <<'PDLC_SYNC_READ_PY'
+import json
+import sys
+
+path = sys.argv[1]
+
+try:
+    with open(path, "r") as fh:
+        raw = fh.read()
+except OSError:
+    sys.exit(10)
+
+try:
+    doc = json.loads(raw)
+except ValueError:
+    sys.exit(12)
+
+entries = doc.get("entries")
+if not isinstance(entries, dict):
+    sys.exit(12)
+
+for rowId, entry in entries.items():
+    if not isinstance(entry, dict):
+        continue
+    consumerHash = entry.get("consumerHash")
+    artifactVersion = entry.get("artifactVersion")
+    if not isinstance(consumerHash, str):
+        consumerHash = ""
+    if not isinstance(artifactVersion, str):
+        artifactVersion = ""
+    print("{}\t{}\t{}".format(rowId, consumerHash, artifactVersion))
+sys.exit(0)
+PDLC_SYNC_READ_PY
+  )"
+  status=$?
+
+  if ((status != 0)); then
+    _pdlc_sync_manifest_n4_notice "$path" "malformed"
+    return 0
+  fi
+
+  local line
+  while IFS= read -r line; do
+    [[ -z "$line" ]] && continue
+    _pdlc_split_on $'\t' "$line"
+    _PDLC_SYNC_IDS+=("${_PDLC_SPLIT_RESULT[0]:-}")
+    _PDLC_SYNC_CONSUMER_HASH+=("${_PDLC_SPLIT_RESULT[1]:-}")
+    _PDLC_SYNC_ARTIFACT_VERSION+=("${_PDLC_SPLIT_RESULT[2]:-}")
+  done <<<"$out"
+  return 0
+}
+
+# Internal: looks up rowId's sync-manifest entry, populated by `_pdlc_sync_manifest_ensure_loaded`.
+# Sets `_PDLC_SYNC_ENTRY_HASH` / `_PDLC_SYNC_ENTRY_VERSION`. Returns 0 if found, 1 if not — P6's
+# "no entry" outcome (absent document, degraded document, or simply no key for this row, all
+# identical per FSPEC §1.2).
+_pdlc_sync_manifest_lookup() {
+  local rowId="$1"
+  _PDLC_SYNC_ENTRY_HASH=""
+  _PDLC_SYNC_ENTRY_VERSION=""
+  local i
+  for ((i = 0; i < ${#_PDLC_SYNC_IDS[@]}; i++)); do
+    if [[ "${_PDLC_SYNC_IDS[$i]}" == "$rowId" ]]; then
+      _PDLC_SYNC_ENTRY_HASH="${_PDLC_SYNC_CONSUMER_HASH[$i]}"
+      _PDLC_SYNC_ENTRY_VERSION="${_PDLC_SYNC_ARTIFACT_VERSION[$i]}"
+      return 0
+    fi
+  done
+  return 1
+}
+
+# pdlc_classify_row <rowIndex> <phase> — FSPEC §3.3's six-state ladder, first-match, evaluated in
+# exactly the declared precedence order (`unknown` > `missing` > `in-sync` > `unverified` >
+# `stale` > `local-edit`). `phase` is the ONLY place a trace pass label is set (TSPEC §2.2's
+# structural rule) — it is stamped verbatim onto this row's single `classify` trace record, never
+# derived or re-labelled anywhere else. `rowIndex` is 0-based, into the `PDLC_ROWS_*` parallel
+# arrays `pdlc_load_manifest` populated. Rows are independent (§3.1) — no row's outcome is an input
+# to another's. Always returns 0 (TSPEC §2.2).
+pdlc_classify_row() {
+  local rowIndex="$1" phase="$2"
+  local rowId="${PDLC_ROWS_ID[$rowIndex]:-}"
+  local pluginRelPath="${PDLC_ROWS_PLUGIN_PATH[$rowIndex]:-}"
+  local consumerRelPath="${PDLC_ROWS_CONSUMER_PATH[$rowIndex]:-}"
+
+  PDLC_ROW_STATE=""
+  PDLC_ROW_REASON=""
+  PDLC_ROW_PLUGIN_HASH=""
+  PDLC_ROW_CONSUMER_HASH=""
+  PDLC_ROW_PLUGIN_ARTIFACT_VERSION="${PDLC_ROWS_ARTIFACT_VERSION[$rowIndex]:-}"
+  PDLC_ROW_CONSUMER_ARTIFACT_VERSION=""
+
+  # Rung 1a: hash-tool-absent — a property of the MACHINE, ranked first (§3.3) precisely so it is
+  # all-or-nothing across every row in a run. The probe runs once per run (SE Q-02); this function
+  # only reads `PDLC_HASH_BIN`, it never re-probes.
+  if [[ -z "${PDLC_HASH_BIN:-}" ]]; then
+    PDLC_ROW_STATE="unknown"
+    PDLC_ROW_REASON="hash-tool-absent"
+    pdlc_trace "$phase" "classify" "$rowId" "$PDLC_ROW_STATE"
+    return 0
+  fi
+
+  local pluginAbs="${PDLC_PLUGIN_ROOT:-}/${pluginRelPath}"
+  local consumerAbs="${PDLC_REPO_ROOT:-}/${consumerRelPath}"
+
+  # Rung 1b/1c: P1 — plugin artifact exists.
+  local p1
+  p1="$(_pdlc_probe_exists "$pluginAbs")"
+  if [[ "$p1" == "no" ]]; then
+    PDLC_ROW_STATE="unknown"
+    PDLC_ROW_REASON="plugin-artifact-missing"
+    pdlc_trace "$phase" "classify" "$rowId" "$PDLC_ROW_STATE"
+    return 0
+  fi
+  if [[ "$p1" == "indeterminate" ]]; then
+    # An untraversable ancestor on the PLUGIN side reports the same reason as an unreadable plugin
+    # artifact (FSPEC §3.3 footnote) — the two are the same remediation from the operator's chair.
+    PDLC_ROW_STATE="unknown"
+    PDLC_ROW_REASON="plugin-artifact-unreadable"
+    pdlc_trace "$phase" "classify" "$rowId" "$PDLC_ROW_STATE"
+    return 0
+  fi
+
+  # Rung 1d: P2 — plugin artifact readable. Fault token 15 gates the READ, AFTER the existence
+  # `stat` above (TE L-07) — never before.
+  local p2
+  if pdlc_fault_active "plugin-artifact-read" "$rowId"; then
+    p2="no"
+  elif [[ -r "$pluginAbs" ]]; then
+    p2="yes"
+  else
+    p2="no"
+  fi
+  if [[ "$p2" == "no" ]]; then
+    PDLC_ROW_STATE="unknown"
+    PDLC_ROW_REASON="plugin-artifact-unreadable"
+    pdlc_trace "$phase" "classify" "$rowId" "$PDLC_ROW_STATE"
+    return 0
+  fi
+
+  local pluginHash
+  pluginHash="$(pdlc_sha1 "$pluginAbs")"
+  PDLC_ROW_PLUGIN_HASH="$pluginHash"
+
+  # Rung 1e/1f: P3 — consumer artifact exists.
+  local p3
+  p3="$(_pdlc_probe_exists "$consumerAbs")"
+  if [[ "$p3" == "indeterminate" ]]; then
+    PDLC_ROW_STATE="unknown"
+    PDLC_ROW_REASON="consumer-artifact-unreadable"
+    pdlc_trace "$phase" "classify" "$rowId" "$PDLC_ROW_STATE"
+    return 0
+  fi
+
+  if [[ "$p3" == "no" ]]; then
+    # Rung 2: missing — the definite-negative rule (AC-1.1): P3's first existing ancestor was
+    # traversable (or entirely absent), so this is a definite negative, not `unknown`.
+    PDLC_ROW_STATE="missing"
+    pdlc_trace "$phase" "classify" "$rowId" "$PDLC_ROW_STATE"
+    return 0
+  fi
+
+  # P4 — consumer artifact readable (only reached when P3 == yes). Fault token 16 gates the READ,
+  # AFTER the existence `stat` above.
+  local p4
+  if pdlc_fault_active "consumer-artifact-read" "$rowId"; then
+    p4="no"
+  elif [[ -r "$consumerAbs" ]]; then
+    p4="yes"
+  else
+    p4="no"
+  fi
+  if [[ "$p4" == "no" ]]; then
+    PDLC_ROW_STATE="unknown"
+    PDLC_ROW_REASON="consumer-artifact-unreadable"
+    pdlc_trace "$phase" "classify" "$rowId" "$PDLC_ROW_STATE"
+    return 0
+  fi
+
+  local consumerHash
+  consumerHash="$(pdlc_sha1 "$consumerAbs")"
+  PDLC_ROW_CONSUMER_HASH="$consumerHash"
+
+  # Rung 3: in-sync — equal bytes, regardless of provenance (R-4/O-8). Evaluated BEFORE P6, so a
+  # degraded sync manifest can never turn a byte-identical row into `unverified`. No mtime anywhere
+  # (R-2) — this is a pure byte comparison via sha1.
+  if [[ "$consumerHash" == "$pluginHash" ]]; then
+    PDLC_ROW_STATE="in-sync"
+    pdlc_trace "$phase" "classify" "$rowId" "$PDLC_ROW_STATE"
+    return 0
+  fi
+
+  # P6: sync-manifest entry lookup — only reached once bytes are already known to differ (R-1/R-3).
+  _pdlc_sync_manifest_ensure_loaded "$phase"
+  if ! _pdlc_sync_manifest_lookup "$rowId"; then
+    # Rung 4: unverified — no entry, never `stale`, never `local-edit` (R-3).
+    PDLC_ROW_STATE="unverified"
+    pdlc_trace "$phase" "classify" "$rowId" "$PDLC_ROW_STATE"
+    return 0
+  fi
+
+  PDLC_ROW_CONSUMER_ARTIFACT_VERSION="$_PDLC_SYNC_ENTRY_VERSION"
+
+  # Rung 5/6: stale vs local-edit, discriminated solely by the recorded consumerHash (R-1) —
+  # `pluginHash` never enters this decision.
+  if [[ "$consumerHash" == "$_PDLC_SYNC_ENTRY_HASH" ]]; then
+    PDLC_ROW_STATE="stale"
+  else
+    PDLC_ROW_STATE="local-edit"
+  fi
+  pdlc_trace "$phase" "classify" "$rowId" "$PDLC_ROW_STATE"
+  return 0
+}
+
+# pdlc_classify_all <phase> — classifies every managed row, indexed by position over `PDLC_ROWS_*`
+# (AC-0.1: never a directory glob). Rows are independent (§3.1) — the loop has no early exit and no
+# row's outcome feeds another's. Always returns 0.
+pdlc_classify_all() {
+  local phase="$1"
+  PDLC_STATE=()
+  PDLC_REASON=()
+  PDLC_PLUGIN_HASH=()
+  PDLC_CONSUMER_HASH=()
+  PDLC_PLUGIN_ARTIFACT_VERSION=()
+  PDLC_CONSUMER_ARTIFACT_VERSION=()
+
+  local n=${#PDLC_ROWS_ID[@]}
+  local i
+  for ((i = 0; i < n; i++)); do
+    pdlc_classify_row "$i" "$phase"
+    PDLC_STATE+=("$PDLC_ROW_STATE")
+    PDLC_REASON+=("$PDLC_ROW_REASON")
+    PDLC_PLUGIN_HASH+=("$PDLC_ROW_PLUGIN_HASH")
+    PDLC_CONSUMER_HASH+=("$PDLC_ROW_CONSUMER_HASH")
+    PDLC_PLUGIN_ARTIFACT_VERSION+=("$PDLC_ROW_PLUGIN_ARTIFACT_VERSION")
+    PDLC_CONSUMER_ARTIFACT_VERSION+=("$PDLC_ROW_CONSUMER_ARTIFACT_VERSION")
+  done
+  return 0
+}
+
 # ─────────────────────────────────────────────────────────────────────────────────────────────
 # Layer 4 (T-34 — writers/ladder/backups) appends below this line: `pdlc_write_drift_state`,
 # `pdlc_emit_printf_record`, `pdlc_backup`.
