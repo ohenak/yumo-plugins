@@ -104,7 +104,7 @@ _pdlc_fault_is_selector_bearing() {
 # Layer 5 (T-35) may route this through a shared `pdlc_msg_*` once that layer lands; layer 1
 # writes it directly so this behaves correctly standing alone.
 _pdlc_fault_emit_n7() {
-  printf 'pdlc: N-7 unrecognised PDLC_FAULT spec: %s\n' "$1" >&2
+  printf 'pdlc: unrecognised PDLC_FAULT token "%s"; no fault injected.\n' "$1" >&2
 }
 
 _pdlc_fault_ensure_parsed() {
@@ -801,7 +801,7 @@ pdlc_validate_manifest() {
 # route this through a shared `pdlc_msg_*` once that layer lands; layer 2 emits it directly so
 # this behaves correctly standing alone (same precedent as layer 1's N-7 fault-token notice).
 _pdlc_check_enabled_notice() {
-  printf 'pdlc: N-5 .claude/pdlc.config.json could not be read as configured; checkEnabled defaults to true\n' >&2
+  printf 'pdlc: %s could not be read for distribution.checkEnabled; assuming true.\n' "$1" >&2
 }
 
 # pdlc_resolve_check_enabled — FSPEC §2.7 (AC-4.3). Reads `distribution.checkEnabled` from
@@ -835,13 +835,13 @@ pdlc_resolve_check_enabled() {
         false) PDLC_CHECK_ENABLED="false" ;;
         *)
           PDLC_CHECK_ENABLED="true"
-          _pdlc_check_enabled_notice
+          _pdlc_check_enabled_notice "$configPath"
           ;;
       esac
       ;;
     *)
       PDLC_CHECK_ENABLED="true"
-      _pdlc_check_enabled_notice
+      _pdlc_check_enabled_notice "$configPath"
       ;;
   esac
 
