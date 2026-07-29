@@ -1743,3 +1743,152 @@ pdlc_retire() {
 # ─────────────────────────────────────────────────────────────────────────────────────────────
 # Layer 5 (T-35 — messages) appends below this line: `pdlc_msg_*`.
 # ─────────────────────────────────────────────────────────────────────────────────────────────
+
+# pdlc_sync_command — the `<pluginRoot>`-expanded `sync-workflows.sh` invocation (FSPEC §1.3,
+# AC-0.4, AC-4.2). Reads the already-resolved `PDLC_PLUGIN_ROOT` (this function never resolves
+# it itself — that is `pdlc_resolve_plugin_root`'s job, already run by the time any `pdlc_msg_*`
+# needs a `{cmd}`) and names the real shipped script path, never a placeholder. stdout is the
+# expanded path (no `$`, no `{` — a literal concatenation of an already-resolved value, never a
+# re-quoted variable reference) with exit 0 when `PDLC_PLUGIN_ROOT` is non-empty; empty stdout
+# and exit 1 otherwise (FSPEC §1.3's `syncCommand: null` fallback — this is the same fallback
+# condition, read by both W-3/W-4/W-5's own `{cmd}` substitution and the drift-state writer, so
+# a divergence between the two would be the exact AC-0.4/AC-4.2 regression this function exists
+# to prevent).
+pdlc_sync_command() {
+  local root="${PDLC_PLUGIN_ROOT:-}"
+  [[ -z "$root" ]] && return 1
+  printf '%s/hooks/scripts/sync-workflows.sh' "$root"
+  return 0
+}
+
+# pdlc_msg_w1 <reason> — FSPEC §8.2 W-1 (unresolved baseline). `reason` is one of the seven
+# §2.1-produced baseline reasons (`drift-state-invalidated` is never rendered here — FSPEC
+# §8.2's S3 note: its only rendering site is the queue's own §6.3 Manifest-level line, which is
+# JS, not C1). Per-reason remediation follows TSPEC §7.4's AC-2.5a class table: the three
+# manifest-* reasons are `pluginUpdate` and never name a sync command (FSPEC §8.1); the
+# remaining four are `environment`, each naming a distinct positive fix in prose.
+pdlc_msg_w1() {
+  local reason="$1" remediation
+  case "$reason" in
+    manifest-absent)
+      remediation="The plugin's distribution manifest is missing — update the plugin to restore it."
+      ;;
+    manifest-malformed)
+      remediation="The plugin's distribution manifest is malformed — update the plugin to restore a valid copy."
+      ;;
+    manifest-empty)
+      remediation="The plugin's distribution manifest lists no files — update the plugin to restore its rows."
+      ;;
+    plugin-root-unset)
+      remediation="Set CLAUDE_PLUGIN_ROOT to the installed plugin's directory."
+      ;;
+    plugin-root-unreadable)
+      remediation="Check that the installed plugin's directory is readable."
+      ;;
+    repo-root-unresolved)
+      remediation="Create .claude/ at the intended root, or run inside a git work tree."
+      ;;
+    json-tool-absent)
+      remediation="Install a Python interpreter (python3) on PATH."
+      ;;
+    *)
+      remediation="Check the plugin installation and try again."
+      ;;
+  esac
+  printf 'pdlc: workflow drift check could not run — %s. %s' "$reason" "$remediation"
+}
+
+# pdlc_msg_w2 <id> <reason> — FSPEC §8.2 W-2 (row `unknown`). `reason` is one of the four row
+# reasons (FSPEC §3.3); remediation classes per TSPEC §7.4's AC-2.5 table:
+# `hash-tool-absent` -> environment, `plugin-artifact-missing` -> pluginUpdate, the two
+# `*-unreadable` reasons -> permissions (names "permission"/"readable", never a sync command or
+# "update the plugin" — AC-2.5's explicit pairing).
+pdlc_msg_w2() {
+  local id="$1" reason="$2" remediation
+  case "$reason" in
+    hash-tool-absent)
+      remediation="Install a hash utility (shasum or sha1sum) on PATH."
+      ;;
+    plugin-artifact-missing)
+      remediation="The plugin is missing this file — update the plugin to restore it."
+      ;;
+    plugin-artifact-unreadable)
+      remediation="Check the plugin artifact's file permissions; it exists but is not readable."
+      ;;
+    consumer-artifact-unreadable)
+      remediation="Check this file's permissions; it exists but is not readable."
+      ;;
+    *)
+      remediation="Check the file's permissions and try again."
+      ;;
+  esac
+  printf 'pdlc: %s could not be verified — %s. %s' "$id" "$reason" "$remediation"
+}
+
+# pdlc_msg_w3 <id> — FSPEC §8.2 W-3 (row `unverified`). `{cmd}` is `pdlc_sync_command`'s value
+# with `--force` appended (empty when `pdlc_sync_command` itself resolves to nothing, so an
+# unresolved plugin root never renders a bare "--force").
+pdlc_msg_w3() {
+  local id="$1" cmd
+  cmd="$(pdlc_sync_command)"
+  [[ -n "$cmd" ]] && cmd="${cmd} --force"
+  printf "pdlc: %s differs from the plugin's copy and has no sync provenance — direction unknown. Diff it, then sync (--force required): %s" \
+    "$id" "$cmd"
+}
+
+# pdlc_msg_w4 <id> <backupDir> — FSPEC §8.2 W-4 (row `local-edit`). Same `--force`-appended
+# `{cmd}` convention as W-3.
+pdlc_msg_w4() {
+  local id="$1" backupDir="$2" cmd
+  cmd="$(pdlc_sync_command)"
+  [[ -n "$cmd" ]] && cmd="${cmd} --force"
+  printf 'pdlc: %s was edited locally after its last sync. Plain sync will NOT overwrite it; --force will, after backing it up to %s: %s' \
+    "$id" "$backupDir" "$cmd"
+}
+
+# pdlc_msg_w5 <id> <state> — FSPEC §8.2 W-5 (row `stale`/`missing`). `{cmd}` is
+# `pdlc_sync_command`'s value VERBATIM, no `--force` — byte-equal to the drift-state writer's own
+# `syncCommand` field on the same tree (TSPEC §7.4's companion assertion).
+pdlc_msg_w5() {
+  local id="$1" state="$2" cmd
+  cmd="$(pdlc_sync_command)"
+  printf 'pdlc: %s is %s. Run: %s' "$id" "$state" "$cmd"
+}
+
+# pdlc_msg_w6 <path> <id> <state> — FSPEC §8.2 W-6 (retired-present). `state` is one of R's six
+# classifier states (FSPEC §3.3); remediation class per TSPEC §7.4's AC-2.8 table:
+# `in-sync`/`stale`/`missing` -> sync (bare `{cmd}`, no `--force`); `local-edit`/`unverified` ->
+# forceSync, naming the backup directory and BOTH filename patterns (this row's bundle id and
+# the retired basename, each labelled) with no concrete filename (the timestamp does not exist
+# yet, so a literal `<timestamp>-NN.bak` placeholder is used rather than a real stamp);
+# `unknown` -> pluginUpdate, which never names a sync command (AC-2.8: "sync is not named").
+pdlc_msg_w6() {
+  local path="$1" id="$2" state="$3"
+  local base cmd remediation
+  base="${path##*/}"
+  cmd="$(pdlc_sync_command)"
+  case "$state" in
+    in-sync | stale | missing)
+      remediation="Sync will bring this in line: ${cmd}"
+      ;;
+    local-edit | unverified)
+      local forceCmd="$cmd"
+      [[ -n "$forceCmd" ]] && forceCmd="${forceCmd} --force"
+      remediation="Back up first, then --force: ${id} backs up as ${id}.<timestamp>-NN.bak and ${base} backs up as ${base}.<timestamp>-NN.bak, both under .pdlc-backups. Then: ${forceCmd}"
+      ;;
+    unknown)
+      remediation="Could not verify this row — update the plugin to get a known-good copy before deciding what to do with the retired file."
+      ;;
+    *)
+      remediation="Check the plugin installation and try again."
+      ;;
+  esac
+  printf 'pdlc: retired-present — %s is superseded by %s (%s). %s' "$path" "$id" "$state" "$remediation"
+}
+
+# pdlc_msg_w7 <path> <operation> — FSPEC §8.2 W-7 (write failure). `operation` is one of the
+# five recordable members of the closed nine-member `operation` domain (FSPEC §4.5, TSPEC §6.1).
+pdlc_msg_w7() {
+  local path="$1" operation="$2"
+  printf 'pdlc: could not write %s (%s)' "$path" "$operation"
+}
