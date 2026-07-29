@@ -1167,13 +1167,267 @@ rule (§3.3) is what keeps every *other* fixture from accidentally exercising it
 
 ## 9. Bootstrap fixture construction (O-12)
 
+AC-6.5 / AT-24: a fresh clone, **no plugin installed**, `${CLAUDE_PLUGIN_ROOT}` unset, two commands.
+
+### 9.1 `makeFreshClone()`
+
+```js
+export function makeFreshClone() -> { root, home, cleanup }   // __tests__/helpers/freshClone.js
+```
+
+Five steps, each with a reason it cannot be simplified away:
+
+| # | Step | Why |
+|---|---|---|
+| 1 | `cp -R` the **working tree** (not `git clone`, not `git archive`) into a fresh `mkdtemp`, excluding `.git/`, `node_modules/`, and `.claude/workflows/` | the subject of the test is the tree **as it stands in this commit-to-be**; a `git clone` of `HEAD` would test the previous commit, which is exactly the regression AC-6.3/AC-6.6 exist to catch. `cp -R` preserves the on-disk execute bit, which step 4 then asserts rather than sets |
+| 2 | replay index modes: for each path from `git ls-files -s` in the live repo with mode `100755`, `chmod +x` the copy | belt-and-braces against a runner whose `cp` implementation drops mode bits (some `busybox` builds) and against a `core.fileMode=false` checkout, where the on-disk bit may not match the committed one. The **live index** is the authority — it is what ships |
+| 3 | `git init -b main`, `git -c user.email=… -c user.name=… add -A && commit -q` | O-16's requirement in its other setting: the tree must have a `HEAD`, or §10.3's unborn-`HEAD` branch fires and AC-6.5's own build/check steps run under a skip. Config is passed with `-c`, never written to the runner's global config |
+| 4 | `home := mkdtemp` **sibling** of `root`; nothing is written into it | §2.2 clause 2's guard, and the reason the two commands can be trusted not to have touched `$HOME/.claude/` |
+| 5 | every returned path passes through `realpathSync` | §3.3's normalisation rule; the clone lives under `tmpdir()`, which is a symlink on macOS, and AC-6.5's assertion set compares the resolved `<repoRoot>` against the fixture root |
+
+**Excluding `.claude/workflows/` from the copy is load-bearing, not tidiness.** Post-landing that
+directory is gitignored and a real fresh clone does not have it; copying the maintainer's own synced
+bundles into the fixture would make every row `in-sync` before `sync-workflows.sh` ran, and AT-24's
+"all rows `in-sync`" assertion would be vacuously true against a sync script that does nothing.
+
+**`pdlc/workflows/dist/` is *not* excluded** — it is tracked and committed post-landing, so a fresh
+clone has it, and step 1 of AT-24 (`node build-runtime.mjs`) is then a no-op-if-fresh rebuild, which
+is the real bootstrap sequence. AT-24 asserts the builder reported `in-sync` for each artifact
+rather than `wrote`, which is the same freshness claim AC-6.3 makes, observed from the bootstrap
+side.
+
+The clone is built **once per describe block** (`beforeAll`) and reused: it is the most expensive
+fixture in the suite (a full working-tree copy) and nothing AT-24 asserts mutates it in a way a
+sibling test would notice, because the two commands are the test.
+
+### 9.2 The AT-24 assertion set
+
+```
+run:  execFileSync("node", ["pdlc/workflows/build-runtime.mjs"], { cwd: root, env: sandboxEnv(...) })
+      runScript("sync", { consumerRoot: root, pluginRoot: undefined, home })
+then: runScript("check", …)
+```
+
+`pluginRoot` is deliberately **undefined**, so `CLAUDE_PLUGIN_ROOT` is absent from the child
+environment (§3.2) and §2.4's maintainer-marker branch is the one under test — the marker file
+`pdlc/workflows/build-runtime.mjs` is present in the clone, so `<pluginRoot>` resolves to
+`<root>/pdlc` without the env var being consulted. The trace's `plugin-root` record (§4.2) is
+asserted to carry `<root>/pdlc`; that is the positive observable that the marker branch, and not
+some fallback, produced it.
+
+| # | Assertion |
+|---|---|
+| 1 | both bundles and `distribution-manifest.json` exist under `<root>/pdlc/workflows/dist/` |
+| 2 | after sync: every row `in-sync` in the written drift state, `writeFailures: []` |
+| 3 | `runScript("check")` exits **0** |
+| 4 | `mapDriftState(validateDriftRecord(raw))` yields `{ outcome: "proceed", row: 9 }` — *proceed silently*, the row number distinguishing it from row 2's opt-out and row 8's noisy proceed |
+| 5 | the as-found trace of the **sync** run classified every row `missing` (§3.2's ancestor rule) and the `mkdir` records follow every as-found `classify` record — AC-3.8 and AC-2.9(1) on the same run |
+| 6 | `assertTreeUnchanged(home, …)` — nothing was written under `$HOME` |
+
+### 9.3 Both mode-bit assertions (O-12)
+
+Two **independent** objects, both required by FSPEC §7.5 item 4, asserted for **all five** scripts
+(`check-workflow-drift.sh`, `sync-workflows.sh`, `check-scope-field.sh`,
+`guard-harvest-before-delete.sh`, `nudge-consolidation.sh` — C1's `lib/pdlc-drift.sh` is
+deliberately **excluded**, it is sourced and carries no execute bit, OQ-4):
+
+| Object | Assertion | Root | Catches |
+|---|---|---|---|
+| index mode | `indexMode(liveRepoRoot, rel) === "100755"` | **live repo** | a script committed `100644`, which ships broken to every consumer even though the maintainer's own checkout works |
+| on-disk mode | `fs.accessSync(join(freshClone, rel), fs.constants.X_OK)` does not throw | **fresh clone** | a copy/packaging step that drops the bit, and — because step 2 of §9.1 replays from the index — a divergence between the two objects |
+
+They fail for different reasons and neither implies the other: a `core.fileMode=false` checkout can
+have a `100755` index entry over a non-executable file, and a locally `chmod +x`-ed file can sit
+under a `100644` index entry. Asserting only one of them is the defect REQ §0 fact 11 recorded.
+
+The bare-path invocation is exercised **here and only here** (§3.1): AT-24 runs
+`execFileSync(join(root, "pdlc/hooks/scripts/sync-workflows.sh"))` with no interpreter, which is
+AC-6.5's documented command and the thing an `EACCES`/exit-126 regression actually breaks. A separate
+`it()` asserts `status !== 126` explicitly, because a 126 otherwise surfaces as "sync produced no
+drift state", four assertions later, with a misleading message.
+
+---
+
 ## 10. Root-parameterised jest oracles
+
+All three live in `pdlc/workflows/lib/document-oracles.mjs` (§2.1) and are pure functions of a root
+directory: no `process.cwd()`, no `import.meta.url`-relative path, no ambient state. That is what
+makes the two-root structure possible, and `documentOracles.test.js` asserts it directly — each
+oracle is called with two different roots in the same test file and neither call perturbs the other.
+
+Return shapes:
+
+```js
+coveredViolations(root)          -> { path, patterns: string[] }[]         // sorted by path, LC_ALL=C
+packagingViolations(root)        -> { clause, path, detail }[]             // sorted by (clause, path)
+advertisedVersionViolation(root) -> "red" | "green" | { skipped: string }
+```
+
+`coveredViolations` returns **one entry per file**, with `patterns` naming which of the five literal
+patterns matched. AC-6.4's cardinality assertion is therefore over files, which is what "7 files
+today" means; a per-match shape would make the count depend on how many times a document repeats a
+phrase, and the fixture's count would drift on an unrelated edit.
 
 ### 10.1 `coveredViolations(root)` and the pinned fixture tree (O-17)
 
+**The fixture is checked in, not generated at runtime.** `pdlc/workflows/__tests__/fixtures/covered-violations/`
+is a literal tree of small markdown/JS files committed to the repo. Three reasons, in order of
+weight:
+
+1. **A generated fixture is written by the same author as the oracle**, so a narrowed pattern and a
+   correspondingly narrowed generator stay green together — which is the exact regression AC-6.4's
+   anti-widening guard exists to catch. A checked-in tree changes only by a diff a reviewer sees.
+2. It costs nothing at runtime and needs no cleanup.
+3. It reproduces the **pre-landing layout** faithfully, including the two `docs/<X>/` shapes whose
+   discrimination is load-bearing (exemption (ii)).
+
+**Why it can be checked in at all: exemption (iv), `any __tests__/`.** The fixture contains the five
+patterns verbatim; without an exemption it would itself be counted by
+`coveredViolations(liveRepoRoot)` and AT-22's `== ∅` would be red from the moment the fixture
+landed. Exemption (iv) is what makes a checked-in fixture legal, and this is the reason it exists —
+recorded here because a future reader trimming the exemption list to "the ones we use" would remove
+the one holding this fixture up. When the oracle runs over the **fixture root**, the relative paths
+contain no `__tests__/` segment, so (iv) does not fire there.
+
+**The gitignore hazard, closed at the landing step.** FSPEC §7.5 item 1 gitignores
+`.claude/workflows/` wholesale, and the fixture contains a nested `.claude/workflows/` directory
+(it must, to exercise exemption (i)). An unanchored pattern matches at **every** depth, so the
+fixture's files would be silently uncommittable and the tree would arrive empty on a fresh clone —
+turning AT-23's `== 7` into `== 0` with no diff to explain it. The landing step therefore writes
+**anchored** patterns (`/.claude/workflows/`, `/pdlc/workflows/dist/`), and
+`documentOracles.test.js` carries a guard asserting every file the fixture inventory names is
+present on disk **and** tracked (`git ls-files --error-unmatch`), so the failure is reported as
+"the fixture is not committed" rather than as an oracle bug.
+
+**Fixture contents — one file per discrimination, 7 expected violations:**
+
+| # | Fixture path (relative to the fixture root) | Pattern it carries | Expected |
+|---|---|---|---|
+| 1 | `docs/_queue/QUEUE.md` | `.claude/workflows/orchestrate-queue.js` | **violation** — `docs/_queue/` has no `REQ-_queue.md`, so exemption (ii) must **not** fire |
+| 2 | `docs/design/MASTER-PLAN.md` | `managed manually` | **violation** — same discrimination, second shape |
+| 3 | `docs/PLAN-top-level.md` | `.claude/workflows/*.js` | **violation** — a `docs/` file in no subdirectory at all |
+| 4 | `pdlc/skills/orchestrate-dev/SKILL.md` | `.claude/workflows/orchestrate-dev.js` | **violation** |
+| 5 | `pdlc/skills/orchestrate-queue/SKILL.md` | `copying the bundle into a consumer repo` (case-tolerant stem) | **violation** |
+| 6 | `pdlc/workflows/orchestrate-dev.js` | `.claude/workflows/orchestrate-dev.js` in a comment | **violation** |
+| 7 | `pdlc/workflows/orchestrate-queue.js` | `managed manually` in a comment | **violation** |
+| — | `docs/some-feature/REQ-some-feature.md` + `docs/some-feature/FSPEC-some-feature.md` | both patterns | **exempt (ii)** — the directory contains `REQ-<X>.md` |
+| — | `.claude/workflows/orchestrate-dev.bundle.js` | pattern | **exempt (i)** |
+| — | `pdlc/workflows/dist/orchestrate-queue.bundle.js` | pattern | **exempt (i)** |
+| — | `pdlc/workflows/dist/distribution-manifest.json` | pattern inside a JSON string | **exempt (i) and (iii)** — both, deliberately, so removing either exemption alone is still caught by another row |
+| — | `pdlc/workflows/__tests__/someTest.js` | pattern | **exempt (iv)** |
+
+The seven expected paths mirror the seven the live root returns **today** (pre-landing), including
+both orchestrator SKILLs — so a reader can check the fixture against the thing it models. After the
+landing commit the live root returns `∅` (AT-22) while the fixture still returns 7 (AT-23); that
+divergence is the design, not a drift.
+
+**AT-22 and AT-23 are two `it()` blocks over two roots, with no shared state** (O-17):
+
+```js
+it("AC-6.4 landing criterion — the live root is clean", () => {
+  expect(coveredViolations(LIVE_ROOT)).toEqual([]);
+});
+
+it("AC-6.4 anti-widening guard — the pinned fixture returns exactly 7", () => {
+  const v = coveredViolations(FIXTURE_ROOT);
+  expect(v.map(e => e.path)).toEqual(EXPECTED_SEVEN);       // literal array, sorted
+  expect(v).toHaveLength(7);
+  expect(EXEMPTIONS).toEqual([                              // the list itself, asserted literally
+    "generated:.claude/workflows/", "generated:pdlc/workflows/dist/",
+    "feature-docs:docs/<X>/ containing REQ-<X>.md",
+    "any distribution-manifest.json", "any __tests__/",
+  ]);
+});
+```
+
+The exemption list is exported from `document-oracles.mjs` as a frozen array and asserted
+**literally**, per AC-6.4: widening an exemption is then a red test even when the fixture's file set
+is untouched, which is the case a count-only assertion misses.
+
 ### 10.2 `packagingViolations(root)`
 
+Same two-root structure, but **both** fixture roots are built in the runner's temp area (O-17's
+proviso), because the clause-(b) fixture must carry a manifest whose `pluginSha1` disagrees with the
+bytes on disk — content that has no business being committed, and that §7.3's rule keeps out of the
+live `dist/`.
+
+| Test | Root | Assertion |
+|---|---|---|
+| AT-19 | `LIVE_ROOT` | `packagingViolations(LIVE_ROOT)` **`toEqual([])`** — stated over the returned set, so an oracle returning `[]` for every root is caught by AT-29 rather than passing both |
+| AT-29 | `fxRoot3` = `makePackagingFixture({ break: "sha1" })` | contains an entry with `clause: "6.2(b)"` and that row's `path`; **and** `packagingViolations(LIVE_ROOT)` is still `[]` in the same test file, proving the two calls are independent |
+| — | `makePackagingFixture({ break: "retired" })` | `clause: "6.2(c)"` — M8's union rule, the clause most likely to rot silently |
+| — | `makePackagingFixture({ break: "pluginPath" })` | `clause: "6.2(a)"` |
+| — | `makePackagingFixture({ break: "manifestLocation" })` | `clause: "6.2(d)"` |
+
+`makePackagingFixture` builds a minimal `root/pdlc/workflows/dist/` with two bundle files and a
+manifest computed from their bytes (the green baseline), then applies exactly one `break`. The green
+baseline is itself asserted (`packagingViolations(fxGreen)` is `[]`) — without it, a fixture whose
+*construction* was broken would produce the expected clause for the wrong reason.
+
+A guard in `documentOracles.test.js` asserts that no test wrote into
+`LIVE_ROOT/pdlc/workflows/dist/`: a snapshot (§8.3's `assertTreeUnchanged`) of that directory is
+taken in `beforeAll` and compared in `afterAll`. AT-19's second conjunct is thereby enforced rather
+than promised.
+
 ### 10.3 `advertisedVersionViolation(root)` and the skip-loudly branches (O-16)
+
+**Probe order — pinned, and it is the reverse of the branch listing in FSPEC §7.4.** The four inert
+cases are probed cheapest-precondition-first, because each later probe presupposes the earlier ones:
+
+```
+(b) git absent from PATH        →  { skipped: S_GIT_ABSENT }
+(c) root has no .git            →  { skipped: S_NO_GIT_DIR }
+(d) HEAD does not resolve       →  { skipped: S_UNBORN_HEAD }     (git rev-parse --verify HEAD)
+(a) `git -C root status --porcelain -- pdlc/workflows/dist/` is empty
+                                →  { skipped: S_NOTHING_STAGED }
+otherwise: compare plugin.json `version` at working tree vs at HEAD
+     equal    → "red"
+     differs  → "green"
+```
+
+Order matters and is asserted: running (a) first would shell out to `git status` on a tree with no
+`.git`, whose output is empty, and the oracle would report the *nothing-to-advertise* skip on a
+source tarball — the wrong reason, and one that reads as benign. Probing (d) before (a) is what
+makes the "fixture root must have a commit" requirement (O-16) observable: without a commit, (d)
+fires and the red case is unreachable, which is the accident O-16 names.
+
+**The four printed strings, pinned verbatim** (`document-oracles.mjs` exports them so the test
+imports rather than duplicates them):
+
+| Const | String |
+|---|---|
+| `S_GIT_ABSENT` | `AC-6.6 not verified: git is not on PATH, so the working tree cannot be compared with HEAD. Unverified: a dist/ change under an unbumped plugin.json version would not be detected.` |
+| `S_NO_GIT_DIR` | `AC-6.6 not verified: {root} is not a git work tree (no .git), so there is no HEAD to compare against. Unverified: same.` |
+| `S_UNBORN_HEAD` | `AC-6.6 not verified: HEAD does not resolve (unborn branch — no commit yet), so plugin.json has no committed value to compare. Unverified: same.` |
+| `S_NOTHING_STAGED` | `AC-6.6 inert: git status --porcelain reports no change under pdlc/workflows/dist/, so there is nothing to advertise. This is the ordinary case; no invariant is left unverified.` |
+
+The first three name an unverified invariant; the fourth explicitly says none is left unverified,
+because it is not a capability skip — it is the oracle's own green-by-vacuity case, and conflating
+the two is what makes a skip line stop being read. Each of (b)/(c)/(d) is asserted by a dedicated
+fixture: `makeToolDir` without `git` (AT-21), a `cp -R` of the fixture with `.git/` removed, and a
+`git init` with no commit.
+
+**The untracked-addition red fixture (O-16's positive case).** `fxRootUntrackedOnly`:
+
+```
+git init -b main; commit a plugin.json with version "0.11.0" and nothing else
+then, WITHOUT adding:  write pdlc/workflows/dist/orchestrate-dev.bundle.js   (never git-added)
+                       leave plugin.json version at "0.11.0"  (== HEAD's value)
+expect: advertisedVersionViolation(fxRootUntrackedOnly) === "red"
+```
+
+This is the case `git diff HEAD` misses entirely (FSPEC §7.4), and it is the **landing commit's own
+shape** — on that commit every file under `dist/` is untracked. Its counterpart, AT-28's `fxRoot2`,
+is the identical tree with `version` bumped to `0.12.0` in the working tree, expected `"green"`. The
+two fixtures differ in exactly one file's one field, which is what makes the pair a real
+discrimination rather than two independent constructions.
+
+`documentOracles.test.js` additionally asserts `advertisedVersionViolation(LIVE_ROOT)` is **not**
+`"red"` — it is `"green"` on the landing commit (item 2 of §7.5 bumps the version) and
+`{ skipped: S_NOTHING_STAGED }` on an ordinary later commit. Asserting "not red" rather than a
+specific value keeps the suite green on both, while still failing the one state AC-6.6 forbids.
+
+---
 
 ## 11. Backup filename grammar — TSPEC's contribution (O-18 hand-off)
 
