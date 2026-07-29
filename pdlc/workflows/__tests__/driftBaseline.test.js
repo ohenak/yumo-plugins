@@ -44,6 +44,7 @@ import {
   expectRepoRootUnresolved,
 } from "./helpers/driftHarness.js";
 import { makeConsumerTree, makePluginTree } from "./helpers/driftFixtures.js";
+import { snapshotTree } from "./helpers/driftOrdering.js";
 import { itOrSkip, INVARIANTS_AT_14B } from "./helpers/driftCapabilities.js";
 import { runProbe } from "./helpers/driftProbe.js";
 import { validateDriftRecord, mapDriftState } from "../orchestrate-queue.js";
@@ -60,6 +61,7 @@ const PATH_TOOLS_WITHOUT_PYTHON = Object.freeze([
   "rm",
   "date",
   "printf",
+  "mkdir",
 ]);
 
 // The literal eight-member baseline-reason list (FSPEC §2.8, highest precedence first) — the
@@ -205,7 +207,7 @@ describe("AT-3 / §14.1 B-1 / §14.1 B-4 — pre-manifest consumer baseline (man
 
       const state = readDriftState(consumer.root);
       expect(state).not.toBeNull();
-      expect(state.baselineStatus).toBe("resolved");
+      expect(state.baselineStatus).toBe("unresolved");
       expect(state.baselineReason).toBe("manifest-absent");
       exercisedBaselineReasons.add("manifest-absent");
 
@@ -331,12 +333,14 @@ describe("M-3 — one it() per baseline reason (8), reason -> remediation class 
         pluginRoot: plugin.pluginRoot,
         path: PATH_TOOLS_WITHOUT_PYTHON,
       });
+      const syncCmd = join(plugin.pluginRoot, "hooks", "scripts", "sync-workflows.sh");
 
       const state = readDriftState(consumer.root);
       expect(state.baselineReason).toBe("json-tool-absent");
       const remediation = remediationOf(run.stderr, "W-1");
       expectRemediationClass(remediation, "environment", {
         mustName: [/python/i],
+        syncCmd,
       });
       exercisedBaselineReasons.add("json-tool-absent");
     } finally {
@@ -368,13 +372,14 @@ describe("M-3 — one it() per baseline reason (8), reason -> remediation class 
   it("repo-root-unresolved -> environment, names .claude/ and the git work tree", () => {
     const { consumer, plugin } = buildRepoRootUnresolved();
     try {
-      const before = { root: consumer.root };
+      const before = snapshotTree(consumer.root);
       const run = runScript("check", {
         consumerRoot: consumer.root,
         home: consumer.home,
         pluginRoot: plugin.pluginRoot,
       });
       run.root = consumer.root;
+      const syncCmd = join(plugin.pluginRoot, "hooks", "scripts", "sync-workflows.sh");
 
       expectRepoRootUnresolved(run, {
         root: consumer.root,
@@ -385,6 +390,7 @@ describe("M-3 — one it() per baseline reason (8), reason -> remediation class 
       const remediation = remediationOf(run.stderr, "W-1");
       expectRemediationClass(remediation, "environment", {
         mustName: [/\.claude\//, /git work tree/i],
+        syncCmd,
       });
       exercisedBaselineReasons.add("repo-root-unresolved");
     } finally {
@@ -405,7 +411,8 @@ describe("M-3 — one it() per baseline reason (8), reason -> remediation class 
       const state = readDriftState(consumer.root);
       expect(state.baselineReason).toBe("plugin-root-unreadable");
       const remediation = remediationOf(run.stderr, "W-1");
-      expectRemediationClass(remediation, "environment");
+      const syncCmd = join(badPluginRoot, "hooks", "scripts", "sync-workflows.sh");
+      expectRemediationClass(remediation, "environment", { syncCmd });
       exercisedBaselineReasons.add("plugin-root-unreadable");
     } finally {
       consumer.cleanup();
@@ -424,7 +431,8 @@ describe("M-3 — one it() per baseline reason (8), reason -> remediation class 
       const state = readDriftState(consumer.root);
       expect(state.baselineReason).toBe("plugin-root-unset");
       const remediation = remediationOf(run.stderr, "W-1");
-      expectRemediationClass(remediation, "environment");
+      const syncCmd = join(plugin.pluginRoot, "hooks", "scripts", "sync-workflows.sh");
+      expectRemediationClass(remediation, "environment", { syncCmd });
       exercisedBaselineReasons.add("plugin-root-unset");
     } finally {
       consumer.cleanup();
@@ -439,20 +447,24 @@ describe("M-3 — one it() per baseline reason (8), reason -> remediation class 
     () => {
       const { consumer, plugin } = buildDriftStateInvalidated();
       try {
-        const run = runScript("check", {
+        runScript("check", {
           consumerRoot: consumer.root,
           home: consumer.home,
           pluginRoot: plugin.pluginRoot,
         });
-        const syncCmd = join(plugin.pluginRoot, "hooks", "scripts", "sync-workflows.sh");
 
+        // TSPEC §7.4/AC-2.5a: `drift-state-invalidated` is the one baseline reason with no
+        // W-1 rendering site — it is never produced by §2.1's evidence phase (FSPEC §2.8), so
+        // the entrypoint that produces it never emits W-1 for it. Its reason -> `permissions`
+        // remediation-class floor is asserted at its actual rendering site instead — the
+        // queue's Manifest-level report line (FSPEC §6.3), covered by
+        // `queueDriftGate.test.js`'s row-3 cases. This case owns the write-mechanics assertion
+        // (AT-14b: rung (i) succeeds, `checkEnabled` preserved) that only this fixture exercises.
         const state = readDriftState(consumer.root);
         expect(state).not.toBeNull();
         expect(state.baselineReason).toBe("drift-state-invalidated");
         expect(state.checkEnabled).toBe(false);
 
-        const remediation = remediationOf(run.stderr, "W-1");
-        expectRemediationClass(remediation, "permissions", { syncCmd });
         exercisedBaselineReasons.add("drift-state-invalidated");
       } finally {
         consumer.cleanup();
