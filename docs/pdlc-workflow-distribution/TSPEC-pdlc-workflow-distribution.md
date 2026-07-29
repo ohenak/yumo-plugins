@@ -8,20 +8,22 @@ feature: pdlc-workflow-distribution
 |---|---|
 | Upstream | `REQ-pdlc-workflow-distribution.md` v17.0 (approved, product scope) → `FSPEC-pdlc-workflow-distribution.md` v5.1 (dual-approved 2026-07-28) → **TSPEC** |
 | Downstream | `PROPERTIES-pdlc-workflow-distribution.md`, `PLAN-pdlc-workflow-distribution.md`, implementation |
-| FSPEC §10 rows disposed here | O-1, O-3, O-7, O-10, O-11, O-12, O-16, O-17 (the eight whose "Lands in" names TSPEC) |
-| Rows carried forward | O-9, O-18, O-20 → PROPERTIES; O-19 → implementation phase (duty (d) unit-tested here); O-13 → `consolidate-learnings` |
-| Cross-Reviews | *(none yet — Phase T)* |
+| FSPEC §10 rows disposed here | O-1, O-3, O-7, O-10, O-11, O-12, O-16, O-17, **O-19** (the nine whose "Lands in" names TSPEC; O-19 is "TSPEC / implementation phase" — duties (a), (b), (d) are designed here, (c) is handed off) |
+| Rows carried forward | O-9, O-18, O-20 → PROPERTIES; O-19(c) → implementation phase; O-13 → `consolidate-learnings` |
+| Cross-Reviews | `CROSS-REVIEW-product-manager-TSPEC-v1.md` (3H/3M/3L), `CROSS-REVIEW-test-engineer-TSPEC-v1.md` (3H/6M/4L) — both disposed in §0.4 |
 | LEARNINGS | `docs/pdlc-workflow-distribution/LEARNINGS-pdlc-workflow-distribution.md` (Phase H) |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | **Draft** | Claude + operator | 1.0 | 2026-07-28 |
+| pdlc | **Draft** | Claude + operator | 2.0 | 2026-07-28 |
 
 > **Altitude.** The REQ states observable behavior; the FSPEC states how it is produced (components,
 > data formats, algorithms, operator strings). This TSPEC states **how it is built and how it is
 > proved**: the test surface architecture, the harness that runs bash from jest, the seam grammars
 > (`PDLC_TRACE_FILE`, `PDLC_FAULT`), every fixture's construction recipe, the module surface of the
-> bash library, and the mapping from the FSPEC's AT-1…AT-36 onto named test cases in named files.
+> bash library, and the mapping from the FSPEC's **39** acceptance tests (AT-1…AT-36, counting the
+> five split ids AT-8a/8b, AT-14b, AT-18a/18b and no un-split AT-8 or AT-18) onto named test cases
+> in named files.
 > It does not restate FSPEC behavior; where a behavior is needed to justify a test design it is
 > cited by FSPEC section, not reproduced.
 
@@ -39,13 +41,17 @@ feature: pdlc-workflow-distribution
 | `PDLC_FAULT`'s **closed** token set, at ladder-guard granularity | §5 |
 | Which write failures are injectable, and how each is injected on each runner | §6 |
 | Permission-fixture policy on uid-0 runners, and the coverage floors | §7, §1.4 |
+| The message-matcher table and the **remediation-content** assertions (AC-2.5, AC-2.5a, AC-2.8) | §7.2, §7.4 |
+| The parameterisable backup-grammar surface and the retention binding handed to PROPERTIES | §11 |
+| The queue-side shape validator, the mangled-relay fixture table, and the O-19(d) wrapper | §12 |
 | Every fixture's construction recipe | §13 |
-| The file and test-case each of AT-1…AT-36 lands in | §14 |
+| The file and test-case each of the 39 acceptance tests lands in | §14 |
 
-### 0.2 Disposition of the eight TSPEC-bound obligations
+### 0.2 Disposition of the nine TSPEC-bound obligations
 
 Every row the FSPEC §10 table routes here, with the section that discharges it. A reviewer verifying
-this document checks these eight row by row.
+this document checks these nine row by row. (v1.0 said "eight" and omitted **O-19**, whose "Lands in"
+reads "TSPEC / implementation phase" — TE F-11.)
 
 | # | Obligation (abridged) | Disposed in | One-line disposition |
 |---|---|---|---|
@@ -57,6 +63,7 @@ this document checks these eight row by row.
 | **O-12** | Bootstrap fixture construction (working-tree copy with mode bits, `git init` anchor, pinned `HOME`, `realpath` normalisation) and **both** mode-bit assertions | **§9** | `makeFreshClone()` copies the working tree with `cp -R` + explicit `chmod` replay from `git ls-files -s`, runs `git init -b main` + one commit, pins `HOME` to a sibling temp dir, and normalises every compared path through `fs.realpathSync`. Two independent assertions: `git ls-files -s` mode `100755` (index) and `fs.accessSync(X_OK)` (on-disk), asserted for all five scripts. |
 | **O-16** | AC-6.6 skip-loudly branch probe order and printed reason strings for (a)–(d); the untracked-addition red fixture | **§10.3** | Probe order `(b) git absent → (c) no .git → (d) unborn HEAD → (a) empty --porcelain`, with four pinned strings; `fxRootUntrackedOnly` builds a `dist/` containing only never-added files with `version` equal to `HEAD`'s, asserted `"red"`. |
 | **O-17** | AC-6.4's pinned fixture tree under `pdlc/workflows/__tests__/fixtures/`, its construction, the expected 7 paths, and live-root vs fixture-root as **separate test cases over separate roots** | **§10.1** | `fixtures/covered-violations/` is a checked-in tree of literal files (not generated at runtime), with a `.gitignore`-safe naming scheme; `coveredViolations` is exported from a new `pdlc/workflows/lib/document-oracles.mjs`; AT-22 (live, `== ∅`) and AT-23 (fixture, `== 7` + exact paths + exemption list) are two `it()` blocks with no shared state. |
+| **O-19** | (a) no second agent-mediated read; (b) unit-test D1–D8 against mangled-relay fixtures; (c) record the seam's LLM mediation in `orchestrate-queue.js`; (d) wrap the drift-state read | **§12.1, §12.3, §12.4**; (c) → §16 | (a) is asserted by §12.4's single-call test. (b) is discharged in design by §12.1's clause table, which after v2.0 carries **all six** of O-19(b)'s mandated relay shapes — fenced, re-wrapped, truncated, key-dropped, array-replaced-by-scalar, state-value-reworded — one mutation per row. (d) is §12.3's `readDriftStateSafely` plus the three-way injection table. (c) is a code comment with no assertable observable and is handed to the implementation phase (§16), recorded as R-7. |
 
 ### 0.3 Explicitly out of scope for this TSPEC
 
@@ -171,13 +178,27 @@ Contract, normative:
    | AT-27 | backup path made unwritable after the write (see §6.1 — fault-injected variant preferred) | AC-2.9(4)'s negative: original bytes untouched on backup-verify failure |
    | AT-32(a) | `.claude/workflows/` non-listable (`-wx`) | AC-0.6: N-6 emitted and **no row state changes** |
    | AT-34 | sync manifest unreadable (mode `000`) | O-8's degraded-provenance wording; N-4 emitted for unreadable, not for absent |
+   | `plugin-artifact-unreadable` (P2, §7.1) | plugin artifact `chmod 0200` | the row reason is reached by a **read** denial on the plugin side, not by the manifest read |
+   | `consumer-artifact-unreadable` (P4, §7.1) | consumer artifact `chmod 0200` | the row reason is reached by a **read** denial on the consumer side |
 
-   AT-16, AT-27 and AT-34 each have a **fault-injected twin** (§6.1) that runs on every runner
-   including root; the permission fixture is the corroborating form, and only it skips. AT-14b and
-   AT-32(a) have no fault-injected twin — AT-14b's whole subject is the permission asymmetry between
-   the in-place write and the sibling-temp write (FSPEC §4.4 rung table row 1), and AT-32(a)'s is
-   directory-read permission — so those two are the genuine uid-0 coverage holes, and the skip
-   message is the only record of them.
+   AT-16, AT-27, AT-34 and the two `*-artifact-unreadable` rows each have a **fault-injected twin**
+   (§6.1) that runs on every runner including root; the permission fixture is the corroborating
+   form, and only it skips. AT-14b and AT-32(a) have no fault-injected twin — AT-14b's whole subject
+   is the permission asymmetry between the in-place write and the sibling-temp write (FSPEC §4.4
+   rung table row 1), and AT-32(a)'s is directory-read permission — so those two are the genuine
+   uid-0 coverage holes, and the skip message is the only record of them.
+
+   **The two `*-artifact-unreadable` rows are new in v2.0 (TE F-03).** At v1.0 they were
+   permission-**only**: §5.2's fourteen tokens contained no per-artifact read guard, and §7.1's P1
+   cell wrongly credited `PDLC_FAULT=manifest-read` with producing the *row* reason
+   `plugin-artifact-unreadable` when that token faults E4's read of the distribution manifest and
+   produces the *baseline* reason `plugin-root-unreadable` (§5.2 token 3). Two of the four row
+   reasons in §1.4's row-reason floor were therefore unreachable on a root runner, and because that
+   floor is a **failing set-equality assertion** the suite would have gone **red on root for a
+   reason unrelated to the code** — the precise failure mode §1.3's skip-loudly policy exists to
+   prevent. v2.0 closes it in the direction that preserves the floor as a hard assertion: §5.2 gains
+   tokens 15 (`plugin-artifact-read`) and 16 (`consumer-artifact-read`), one per guard, so both row
+   reasons are F-reachable everywhere and only the corroborating permission fixtures skip.
 
 ### 1.4 Coverage floors (O-11)
 
@@ -188,13 +209,24 @@ percentage would be a fabricated number. The floors are checkable by reading §1
 | Class | Floor | Where counted |
 |---|---|---|
 | Baseline reasons (FSPEC §2.8) | **all 8** reached by at least one test, each asserting the reported `baselineReason` **and** the entrypoint exit | §14 rows AT-2, AT-3, AT-14, AT-14b, AT-33 + `driftBaseline.test.js` table-driven cases |
-| Row states (FSPEC §3.3) | **all 6** asserted as an outcome; `unknown` additionally per **each of its 4 reasons** | `driftClassify.test.js` |
+| Row states (FSPEC §3.3) | **all 6** asserted as an outcome; `unknown` additionally per **each of its 4 reasons** — every one of the four reachable **without root** (`hash-tool-absent` via `makeToolDir`, `plugin-artifact-missing` by an ordinary tree, `plugin-artifact-unreadable` / `consumer-artifact-unreadable` via §5.2 tokens 15/16), so this floor stays a hard assertion on a uid-0 runner | `driftClassify.test.js` |
 | `writeFailures.operation` (REQ §4, 9 values) | the **5 recordable** asserted present in `writeFailures`; the **4 stderr-only** asserted **absent** from the record and present on stderr | `driftWriteFailure.test.js` |
 | Exit codes 0–4 | each asserted at least once per entrypoint that can produce it (`--check`: 0,1,2,3,4; sync: 0,2,3,4 — **never 1**, FSPEC §5.8; hook: 0 only) | §14 |
 | Ladder rungs (i)/(ii)/(iii) | one landing test each, with the rung **discriminated** (§6.1) | `driftLadder.test.js` |
 | Queue mapping rows (FSPEC §6.2, 10 rows) | **all 10**, each with a record that defeats every higher row | `queueDriftGate.test.js` |
 | Message catalogue sets S1/S2/S3 (FSPEC §8.2) | pairwise `distinct()` over all three sets | `driftMessages.test.js` (AT-30) |
-| Trace phases | all **three** labels (`as-found`, `post-copy`, `post-run`) observed on one sync run | `driftOrdering.test.js` (§4.3) |
+| Trace phases | all **three** classify labels (`as-found`, `post-copy`, `post-run`) observed on **one sync run over a fixture with a retiring row**, and every non-`classify` record carrying `run` (§4.2) | `driftOrdering.test.js` (§4.3) |
+| **Hook silence (AC-2.2)** | **≥ 2** green-tree hook runs asserting `stderr === ""` **and** `stdout === ""` **and** exit 0 — see §1.4a | `driftHook.test.js` |
+| **Row reason → remediation (AC-2.5)** | **all 4** row reasons asserted against their **remediation class**, not merely against each other's inequality — the two `*-unreadable` reasons must match the permissions class and must match **neither** the sync class nor the plugin-update class | `driftMessages.test.js`, `driftClassify.test.js` (§7.4) |
+| **Retired-present remediation (AC-2.8)** | **all 6** of R's states asserted against §7.4's branch table, including the two negative conjuncts (`unknown` ⇒ no sync command; `local-edit`/`unverified` ⇒ backup **dir + two labelled patterns**, no concrete filename) | `driftSync.test.js`, `driftHook.test.js` (§7.4) |
+| **Baseline reason → remediation (AC-2.5a)** | **all 8** baseline reasons asserted against §7.4's remediation class; `manifest-*` and `drift-state-invalidated` additionally asserted **not** to name a sync command (FSPEC §8.1) | `driftBaseline.test.js` (§7.4) |
+| **`syncCommand` expansion (AC-0.4, AC-4.2)** | **≥ 1** fully-resolved record asserting `syncCommand` equals the `<pluginRoot>`-expanded invocation **string-equal**, plus the `null` cases | `bootstrap.test.js` (AT-24), `driftLadder.test.js` |
+
+The last five rows are new in v2.0 (PM F-01, PM F-02, PM F-06). v1.0's eight floors covered the
+mechanical surfaces — reasons, states, operations, exit codes, rungs, mapping rows — and floored
+**message content nowhere**: `distinct()` (AT-30) proves four remediations *differ*, which four
+differently-worded but uniformly wrong remediations satisfy. The class where a defect sends the
+operator down the wrong repair path was the one class with no floor.
 
 A floor is a **failing assertion**, not a checklist: `driftBaseline.test.js` ends with a
 "every baseline reason was exercised" test that reads a module-level `Set` populated by each case and
@@ -202,6 +234,39 @@ asserts set-equality against the literal eight-member list. Same construction fo
 reasons, operations, and mapping rows. This is the repo's shipped meta-oracle pattern
 (`__tests__/helpers/guardRowIds.js` + `guardMatrix.test.js` do the same for guard rows) and is
 **cited and reused** rather than reinvented.
+
+### 1.4a The hook-silence oracle (AC-2.2) — PM F-01
+
+AC-2.2 is P0 and is the load-bearing half of US-01: *"Silence means everything was verified — never
+'could not check' … there is no silent non-green state."* v1.0 contained **no assertion anywhere**
+that the hook emits nothing: §14's rows all assert that a message **is** present, and §15.1 swept
+AC-2.2 into a range of *warning* tests. The consequence is the one that makes operators disable a
+hook: an implementation that warns on **every** session was green.
+
+```js
+// __tests__/helpers/driftHarness.js
+export function expectHookSilent(run) { … }
+```
+
+| # | Conjunct | Catches |
+|---|---|---|
+| 1 | `run.stderr === ""` — **strict empty-string equality**, never `not.toContain("pdlc:")` | a hook that prints an unprefixed line, a `set -x` leftover, or a stray tool's diagnostic |
+| 2 | `run.stdout === ""` | an implementation that "goes quiet" by moving its warnings to stdout, which a SessionStart hook's operator still sees |
+| 3 | `run.status === 0` | — |
+| 4 | `run.notices` and `run.warnings` (§7.2) are both `[]` | the redundant form of 1, stated so a future matcher addition cannot make 1 pass by parsing less |
+| 5 | the run **did** work: `readDriftState(root)` is non-null, `baselineStatus: "resolved"`, `rows` non-empty and every `state === "in-sync"`, `retiredPresent: []`, `writeFailures: []` | **the vacuous pass** — a hook that silently does nothing at all also has empty stderr. Conjunct 5 is what makes silence mean *verified* rather than *skipped*, which is AC-2.2's actual claim |
+
+Two named landing sites, which is why the floor is `≥ 2`:
+
+| Site | Fixture | Why this one |
+|---|---|---|
+| `driftHook.test.js` — `it("AC-2.2 — a fully green tree produces a silent hook")` | `syncedConsumer` (§13.1) — the exact all-`in-sync`, no-retired-path, no-write-failure tree AC-2.2 describes | the positive statement of the AC, on the fixture that already exists and is used by AT-9, AT-11, AT-18a/b and AT-32 without any of them asserting emptiness |
+| `driftFault.test.js` — AT-18a, strengthened | `syncedConsumer` + `unrecognised` | AT-18a's Given is literally "everything else green". v1.0 asserted `countOf(stderr, "N-7") === 1`; v2.0 asserts **N-7 and nothing else** — the stderr, with the single N-7 line removed and whitespace trimmed, is `""` (PM Q-01: yes, and it costs no fixture) |
+
+**The negative direction is asserted too**, because a silence oracle that only ever runs on a green
+tree cannot fail: `driftHook.test.js` runs `expectHookSilent` inside `expect(() => …).toThrow()`
+over `staleRow` — a tree AC-2.2 forbids silence on. Without it, a helper degraded to `return true`
+would keep the whole class green.
 
 ---
 
