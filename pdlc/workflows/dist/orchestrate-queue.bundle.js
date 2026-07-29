@@ -2415,6 +2415,10 @@ const meta = {
 // Default location of the queue file.
 const DEFAULT_QUEUE_PATH = "docs/_queue/QUEUE.md";
 
+// Location of the drift-state artifact the queue's gate reads (FSPEC §6.1). Written by the
+// sync hook / manual sync / manifest check — never by this module.
+const DRIFT_STATE_PATH = ".claude/workflows/.pdlc-drift-state.json";
+
 // MODEL-01: the queue driver's own agent work (the Phase-0 readiness triage) runs
 // on Sonnet — it is a bounded lookup against git/working-tree state, not deep
 // reasoning. The delegated pipeline (orchestrate-dev) pins its OWN models: Opus for
@@ -2876,6 +2880,31 @@ async function main({
   const agentFn = (skill, prompt, opts) =>
     rawAgentFn(skill, prompt, { model: MODEL_QUEUE, ...opts });
 
+  // ─── Drift gate (O-19, FSPEC §6.2/§6.4, TSPEC §12.3/§12.4) ───────────────
+  // Runs BEFORE the queue is even read, so a blocked drift state costs no queue
+  // work. `readDriftStateSafely` is the O-19(d) wrapper: the injected read is
+  // agent-mediated (rtReadFile, runtime-adapter.js:85-96), not a raw filesystem
+  // call, and that seam never throws in production — it maps a missing/unreadable
+  // file to `null` itself. The wrapper exists anyway (defence in depth, O-19(c)):
+  // if some future/alternate read implementation DID throw, propagating that
+  // exception here would abort the whole queue invocation instead of yielding a
+  // `blocked` verdict, which is the wrong failure mode for something that must
+  // fail closed onto row 1 (FSPEC §6.2 row 1 — "hook never ran").
+  phaseFn("Queue: Drift gate");
+  const driftRaw = await readDriftStateSafely(readFileFn, DRIFT_STATE_PATH);
+  const driftGate = mapDriftState(validateDriftRecord(driftRaw));
+  if (driftGate.outcome === "blocked") {
+    emit(
+      `Queue blocked by drift gate (row ${driftGate.row}): ${driftGate.reasons.join("; ")}`
+    );
+    return buildQueueReport({
+      outcome: "blocked",
+      reason: `Drift gate row ${driftGate.row}: ${driftGate.reasons.join("; ")}`,
+      remaining: 0,
+      driftReport: driftGate.report,
+    });
+  }
+
   // ─── Load queue ─────────────────────────────────────────────────────────
   phaseFn("Queue: Load");
   const queueText = await readFileFn(queuePath);
@@ -3094,6 +3123,7 @@ function buildQueueReport({
   active,
   pipelineReport,
   skipped,
+  driftReport,
 }) {
   return {
     outcome,
@@ -3103,6 +3133,7 @@ function buildQueueReport({
     ...(active ? { active } : {}),
     ...(pipelineReport ? { pipelineReport } : {}),
     ...(skipped && skipped.length ? { skipped } : {}),
+    ...(driftReport ? { driftReport } : {}),
   };
 }
 
@@ -3422,6 +3453,34 @@ function mapDriftState(validated) {
   // argument — e.g. `resolved` with `rows: []`, which row 9 explicitly excludes).
   const reasons = ["drift state does not describe a recognised outcome"];
   return gate("blocked", 10, reasons, { manifest: reasons, row: [], run: [] });
+}
+
+// ─── T-13: readDriftStateSafely — the O-19(d) wrapper (TSPEC §12.3) ─────────
+//
+// O-19(c): the injected read this wraps (`_readFile`, production: `rtReadFile`,
+// runtime-adapter.js:85-96) is LLM-mediated — an agent turn that reads a file and
+// relays its contents as the agent's final message — not a raw filesystem call.
+// `rtReadFile` itself never throws today: it maps "file absent / unreadable" to a
+// returned `null`, the same as this module's own `defaultReadFile`. This wrapper's
+// `try`/`catch` is therefore defence in depth (O-19(d)), not dead code covering an
+// impossible path: it is what stands between a hypothetical throwing read (a
+// transport failure some other future/alternate injected implementation surfaces
+// as an exception rather than a `null`) and an *aborted* queue invocation. Without
+// it, that throw would propagate out of `main` entirely instead of mapping to
+// `mapDriftState`'s row 1 `blocked` verdict with a returned report — the fail-closed
+// behavior FSPEC §6.2 row 1 ("hook never ran") requires. The call site (`main`,
+// below) `await`s this — per CLAUDE.md's runtime rule, every injected IO call must
+// be awaited because the runtime adapter's implementations are async.
+//
+// @param {function} readFileFn - async (path) => string|null (or throws)
+// @param {string} path - DRIFT_STATE_PATH
+// @returns {Promise<unknown>} the raw read result, or `null` on any throw
+async function readDriftStateSafely(readFileFn, path) {
+  try {
+    return await readFileFn(path);
+  } catch {
+    return null;
+  }
 }
 
 return { main, meta, DEFAULT_QUEUE_PATH };

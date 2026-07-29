@@ -7,6 +7,7 @@
 import main, {
   meta,
   DEFAULT_QUEUE_PATH,
+  DRIFT_STATE_PATH,
   parseQueue,
   parseReqFrontmatter,
   parseTriageVerdict,
@@ -303,9 +304,29 @@ describe("triagePrompt", () => {
 
 // ─── main() — end-to-end pickup logic ────────────────────────────────────────
 describe("main()", () => {
-  // Build an injectable in-memory filesystem.
+  // A shape-valid, "everything in sync" drift-state record (T-13, orchestrator-authorized
+  // fixture update): these tests predate the drift gate (T-04/T-11/T-12/T-13) and exercise
+  // pipeline-selection behavior downstream of it, not the gate itself (that is
+  // queueDriftGate.test.js's job) — so every main()-block fixture below supplies a green
+  // record at DRIFT_STATE_PATH, letting the gate proceed to the pre-existing QUEUE.md read
+  // exactly as it did before the gate was wired.
+  const GREEN_DRIFT_STATE = JSON.stringify({
+    schemaVersion: 1,
+    baselineStatus: "resolved",
+    baselineReason: null,
+    checkEnabled: true,
+    rows: [{ id: "orchestrate-dev", state: "in-sync", reason: null }],
+    retiredPresent: [],
+    writeFailures: [],
+    generatedBy: "hook",
+    pluginVersion: "0.10.0",
+    syncCommand: null,
+  });
+
+  // Build an injectable in-memory filesystem. Every fixture gets a green drift-state record
+  // by default (overridable via files[DRIFT_STATE_PATH]) so the gate always proceeds.
   function makeFs(files) {
-    const store = { ...files };
+    const store = { [DRIFT_STATE_PATH]: GREEN_DRIFT_STATE, ...files };
     return {
       store,
       readFile: async (p) => (p in store ? store[p] : null),
