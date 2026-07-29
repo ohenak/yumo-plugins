@@ -145,8 +145,21 @@ facts, each re-checkable in one command:
    future builder dependency must extend the bootstrap story (AC-6.5).
 9. **Hooks are bash, not POSIX sh**, and the three shipped hook scripts share a Python-interpreter
    discovery loop — the JSON tool this feature reuses (NFR-5).
-10. **There is no hosted CI** (`.github/` does not exist); `cd pdlc/workflows && npm test` is the
+10. **[SUPERSEDED 2026-07-29 — see the note at the end of this fact.]** **There is no hosted CI** (`.github/` does not exist); `cd pdlc/workflows && npm test` is the
     only automated verification surface (D-DIST-06).
+
+    **Superseded 2026-07-29 (Phase DOD, DOD-14).** Fact 10 was measured and binding when this REQ
+    was authored, and every requirement derived from it still holds. It is no longer true as a
+    statement about the repo: `.github/workflows/pr-tests.yml` landed out-of-band in `3ef6ac7`
+    (four PR-level jobs — unit tests on ubuntu + macos, generated-artifact freshness, fresh-clone
+    bootstrap, shell syntax and index modes). Nothing in this feature depended on the *absence* of
+    CI, so the falsification cuts in the safe direction: the enforcement story it justified
+    (maintainer discipline plus `npm test`) is now *reinforced* by a second surface, not
+    contradicted. Two derived statements are narrowed rather than voided: D-DIST-06 is **partially**
+    discharged (test half landed, release automation still deferred), and AC-6.6's accepted
+    residual is smaller than recorded — the `artifact-freshness` job re-detects a landed `dist/`
+    change that the oracle declines to judge post-commit. The CI workflow itself passed no pdlc
+    phase and its jobs had not executed as of this note (see DOD-15).
 11. **All shipped hook scripts are index mode `100644`** while `hooks.json` invokes them by bare
     path (exit 126 risk). This feature ships its two scripts executable — index mode *and*
     working-tree mode — and fixes the three siblings in the same landing step.
@@ -786,6 +799,8 @@ is nothing in the plugin package to copy (§0 fact 2).
   be audited; and a history-walking form ("compare `HEAD` against the most recent earlier
   `dist/`-touching commit") is red on every subsequent commit that changes nothing relevant,
   which is a steady-state red and would be disabled within a week. Because there is no hosted CI
+  *(as authored; CI landed 2026-07-29 — see fact 10's note. The argument is unaffected: a
+  steady-state red is disabled by whoever it annoys, CI or not.)*
   (D-DIST-06) nothing would force a later audit run anyway. **Inert cases — each skips loudly**,
   printing the reason and naming the invariant left unverified (the §10 O-11 pattern), never
   passing silently: (a) `git status --porcelain -- pdlc/workflows/dist/` is empty (the ordinary
@@ -795,7 +810,9 @@ is nothing in the plugin package to copy (§0 fact 2).
   needs ancestry, which is the second reason the
   working-tree form is preferred. **Accepted residual — a violation that already landed is not
   detected here.** The scope of this AC is strictly the commit about to be authored; nothing
-  forces `npm test` to run before a commit (no pre-commit hook in scope, no hosted CI —
+  forces `npm test` to run before a commit (no pre-commit hook in scope, no hosted CI *[as
+  authored; a PR-level CI gate landed 2026-07-29 — see fact 10's note. It gates the PR, not the
+  commit, so the pre-commit gap this describes is unchanged]* —
   D-DIST-06), so once a violating commit lands, `dist/` is clean against `HEAD`, case (a) fires
   and no §6 criterion re-detects it. The fallback is the same P1 surface as AC-6.2a: **the
   maintainer's release checklist adds a row — before publishing, confirm `plugin.json` `version`
@@ -903,7 +920,8 @@ manifest row, so sync can never copy, compare, or destroy it, and AC-0.6 keeps i
 
 **Enforcement surface, stated explicitly:** every AC in §3 that names `npm test` as its Who —
 AC-6.2, AC-6.3, AC-6.4, AC-6.5, AC-6.6 — is enforced by **maintainer discipline plus `npm test`**
-until D-DIST-06 lands hosted CI. No pre-commit hook is in scope and none is implied; a maintainer
+until D-DIST-06 lands hosted CI *(the CI half landed 2026-07-29 in `3ef6ac7`; release automation
+remains deferred — see fact 10's note)*. No pre-commit hook is in scope and none is implied; a maintainer
 who commits without running `npm test` bypasses all of them. This is a pre-existing property of
 AC-6.3 (approved as such), made load-bearing by AC-6.6's working-tree observation point, and it is
 why AC-6.6 and AC-6.2a both name the release checklist as the P1 fallback.
@@ -933,7 +951,7 @@ marketplace→cache link (D-DIST-05); hosted CI/release automation (D-DIST-06); 
 | D-DIST-03 | Auto-sync on detection | Violates NFR-4; revisit only if drift proves chronic | row 6 |
 | D-DIST-04 | Multi-consumer fan-out | One consumer today | row 5 (`pdlc-engineering-loop`) |
 | D-DIST-05 | Detecting a plugin cache stale behind the marketplace | Owned by Claude Code's updater; this REQ closes A′→B and B→C only | row 6 |
-| D-DIST-06 | Hosted CI / release automation | `.github/` does not exist; every AC here is verifiable via `npm test` today | row 7 |
+| D-DIST-06 | Hosted CI / release automation | **Partially discharged 2026-07-29 (DOD-14):** the CI half landed out-of-band in `3ef6ac7` (`.github/workflows/pr-tests.yml`, four PR-level jobs); the **release-automation** half remains deferred. Every AC here remains verifiable via `npm test`. | row 7 |
 | D-DIST-07 | Per-worktree sync (each linked worktree its own consumer) | Gated on BL-06 | row 6 |
 
 ## 9. Traceability

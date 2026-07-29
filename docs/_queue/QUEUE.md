@@ -27,9 +27,22 @@ authored yet, so `orchestrate-queue` never picks it up — but it exists so thos
 to a queue row rather than to prose intent.
 
 Row 7 is the successor binding for `pdlc-workflow-distribution` deferral D-DIST-06: hosted CI and
-release automation on `yumo-plugins` (`.github/` does not exist today, so `cd pdlc/workflows &&
-npm test` is the only automated verification surface). Same convention as row 6 — `blocked`, REQ
-not yet authored, present so the deferral is bound.
+release automation on `yumo-plugins`. Same convention as row 6 — `blocked`, REQ not yet authored,
+present so the deferral is bound.
+
+**Updated 2026-07-29 (Phase DOD, DOD-14).** The parenthetical here previously read "`.github/`
+does not exist today, so `cd pdlc/workflows && npm test` is the only automated verification
+surface". That is no longer true: `.github/workflows/pr-tests.yml` landed out-of-band in `3ef6ac7`
+with four PR-level jobs (unit tests on ubuntu + macos, generated-artifact freshness, fresh-clone
+bootstrap, shell-script syntax and index modes). Two consequences for whoever picks this row up:
+
+- **D-DIST-06 is partially discharged, not closed.** The *test* half now exists; the **release
+  automation** half does not (no tag/publish workflow, no marketplace step). Row 7 stays
+  `blocked` for that remainder — but scope its REQ to release automation, and treat the PR-test
+  gate as existing infrastructure to build on rather than something to author from scratch.
+- **The jobs are unproven.** As of this note the workflow has never executed — no PR had been
+  raised against it. Do not read "CI exists" as "CI is known green"; the Linux half of the matrix
+  in particular has never run.
 
 Row 1 is `in-progress` (this feature's own pipeline, mid-flight, is what is producing this very
 document). It was previously `halted` twice, for two different reasons — both now resolved history,

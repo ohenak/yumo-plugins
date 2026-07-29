@@ -2705,7 +2705,7 @@ downstream: **§10 O-1, O-12**.
 ### 7.7 Enforcement surface, stated (REQ §6)
 
 Every AC whose Who is `npm test` — AC-6.2, AC-6.3, AC-6.4, AC-6.5, AC-6.6 — is enforced by
-**maintainer discipline plus `npm test`** until D-DIST-06 lands hosted CI. **No pre-commit hook is
+**maintainer discipline plus `npm test`** until D-DIST-06 lands hosted CI. **[Updated 2026-07-29, DOD-14: D-DIST-06's CI half landed out-of-band in `3ef6ac7`. Enforcement is now maintainer discipline plus `npm test` plus four PR-level jobs; the `artifact-freshness` job additionally re-detects a landed `dist/` change, so AC-6.6's accepted residual is narrower than recorded here. The release-automation half of D-DIST-06 is still deferred.]** **No pre-commit hook is
 in scope and none is implied**; a maintainer who commits without running `npm test` bypasses all of
 them. This is a pre-existing property of AC-6.3, made load-bearing by AC-6.6's working-tree
 observation point, and it is why AC-6.6 and AC-6.2a both name the release checklist as the P1

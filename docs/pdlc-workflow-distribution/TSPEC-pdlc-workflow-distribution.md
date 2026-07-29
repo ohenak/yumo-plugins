@@ -135,7 +135,7 @@ are taken here; REQ/FSPEC remain untouched.
 
 ### 1.1 The one automated surface
 
-REQ §0 fact 10 is measured and binding: `.github/` does not exist, so **`cd pdlc/workflows && npm test`
+REQ §0 fact 10 is measured and binding **[as authored; superseded 2026-07-29 by DOD-14 — `.github/workflows/pr-tests.yml` now exists (`3ef6ac7`), so `npm test` is no longer the *only* automated surface. Every technical decision below is unaffected: none depended on CI's absence]**: `.github/` does not exist, so **`cd pdlc/workflows && npm test`
 is the only automated verification surface**, and every automated assertion in this feature is a jest
 test under `pdlc/workflows/__tests__/`. There is no second runner, no shell test target, and no
 `package.json` script added beyond the existing `test`/`test:watch`
@@ -145,7 +145,7 @@ Three consequences the test design must absorb rather than route around:
 
 1. **The subject under test is mostly bash.** C1/C2/C3 (FSPEC §0.2) are bash; jest is a JavaScript
    runner. §1.2 decides the bridge.
-2. **There is no CI gate.** FSPEC §7.7: enforcement is maintainer discipline plus `npm test`. So a
+2. **There is no CI gate.** **[Superseded 2026-07-29, DOD-14: a PR-level CI gate now exists (`3ef6ac7`). The reasoning below still stands — it argues from what `npm test` alone can enforce, which is a floor, and CI raises it.]** FSPEC §7.7: enforcement is maintainer discipline plus `npm test`. So a
    test that is slow, flaky, or environment-dependent will simply be run less often, and the feature
    loses its only detector. That is the argument behind the runner-capability policy (§1.3) and the
    fault seam (§5): every failure mode is reached deterministically, in-process, from a temp dir —

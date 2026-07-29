@@ -175,7 +175,7 @@ landing step that untracks `.claude/workflows/`, fixes execute bits, bumps the p
 corrects seven documents.
 
 **Verification surface.** `cd pdlc/workflows && npm test` is the only automated surface (TSPEC §1.1;
-REQ §0 fact 10 — `.github/` does not exist). Every assertion in this feature is a jest test under
+REQ §0 fact 10 — `.github/` does not exist; **superseded 2026-07-29 by DOD-14, see REQ fact 10's note**). Every assertion in this feature is a jest test under
 `pdlc/workflows/__tests__/`; bash is exercised as a black box through `runScript()` (TSPEC §3.1).
 
 **Blocking assumption BL-01 is discharged.** Nested `dist/` survives plugin packaging — measured
