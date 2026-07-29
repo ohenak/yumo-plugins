@@ -348,47 +348,457 @@ Carried from FSPEC §3.6 and made concrete, because each is a bash idiom that is
 | `not-managed` sorted | `printf '%s\n' "${…[@]}" \| LC_ALL=C sort` | AT-25 |
 | No env-order dependence | no `for v in $(env)`; no `${!PDLC_@}` iteration in a decision path | reviewed, plus `driftOrdering.test.js` runs one fixture twice with shuffled env additions and asserts byte-identical drift state modulo `generatedAtUtc` |
 
-## 2. Implementation architecture
-
-### 2.1 File inventory
-
-### 2.2 C1 (`pdlc-drift.sh`) — the sourced library surface
-
-### 2.3 C5 (`build-runtime.mjs`) — retarget and manifest emission
-
-### 2.4 C6 (`orchestrate-queue.js`) — the drift gate
-
-### 2.5 Determinism rules binding every component
+---
 
 ## 3. The bash harness
 
+One module, `__tests__/helpers/driftHarness.js`, exports everything in this section. It is a
+generalisation of `hookCompatibility.test.js`'s `runHookScript` (lines 46–58) with four additions
+this feature needs: a **closed** environment, the two seams, tree builders, and artifact read-back.
+
 ### 3.1 `runScript()` — the single driver
+
+```js
+/**
+ * @param {"hook"|"check"|"sync"|"sync-force"} entrypoint
+ * @param {RunOpts} opts
+ * @returns {RunResult}
+ */
+export function runScript(entrypoint, opts) { … }
+```
+
+| `RunOpts` field | Meaning | Default |
+|---|---|---|
+| `consumerRoot` | the tree the script runs against; also the default `cwd` | **required** |
+| `pluginRoot` | value of `CLAUDE_PLUGIN_ROOT` | unset (the maintainer-marker branch, §2.4) |
+| `home` | value of `HOME` | a **sibling** temp dir of `consumerRoot`, never its ancestor |
+| `cwd` | process cwd | `consumerRoot` |
+| `path` | array of tool names the sandbox `PATH` may resolve | `["bash","git","python3","shasum","sha1sum","mv","rm","date","printf"]` |
+| `fault` | array of `PDLC_FAULT` tokens (§5) | `[]` ⇒ the variable is **unset**, not empty |
+| `trace` | `true` \| `false` | `true` |
+| `env` | extra variables, merged last | `{}` |
+| `argv` | extra script arguments (`--check --force` usage-error cases) | derived from `entrypoint` |
+
+`entrypoint` maps to an invocation, not to a flag string, so no test hard-codes an argv:
+
+| `entrypoint` | Invocation | `generatedBy` |
+|---|---|---|
+| `hook` | `bash <plugin>/hooks/scripts/check-workflow-drift.sh` with the SessionStart JSON on stdin | `hook` |
+| `check` | `bash <plugin>/hooks/scripts/sync-workflows.sh --check` | `check` |
+| `sync` | `bash …/sync-workflows.sh` | `sync` |
+| `sync-force` | `bash …/sync-workflows.sh --force` | `sync` |
+
+`RunResult`:
+
+```js
+{ status, stdout, stderr,          // spawnSync, encoding "utf8"
+  trace,                           // TraceRecord[] — §4.1, [] when trace:false
+  tracePath,                       // for the negative assertions of §4.4
+  notices,  warnings }             // stderr split into N-*/W-* lines by the §7.2 matchers
+```
+
+`status` is `result.status ?? -1` — the same normalisation the shipped helper uses, so a killed
+process can never read as exit 0.
+
+**Scripts are invoked as `bash <path>`, deliberately, everywhere except §9.** Invoking through the
+interpreter makes every behavioral test independent of the execute bit, so a mode regression fails
+**only** AC-6.5's own mode assertions (§9.3) and does not turn 200 unrelated tests red with
+`EACCES`. §9 is the one place the bare-path form is exercised, because that is what AC-6.5 asserts.
 
 ### 3.2 The environment sandbox
 
+The child's environment is **constructed, never inherited**. `hookCompatibility.test.js` spreads
+`...process.env`; this feature must not, and the reason is not hygiene:
+
+- The subject resolves `<repoRoot>` from `$PWD` **and rejects `$HOME`** (§2.2 clause 2). A leaked
+  developer `HOME` makes clause 2's rejection either untested or accidentally triggered.
+- `CLAUDE_PLUGIN_ROOT` is very often set in the environment a maintainer runs `npm test` in — this
+  is a Claude Code plugin repo — and it is precisely the variable AT-24, AT-33 and every
+  `plugin-root-unset` fixture need **unset**.
+- `PDLC_FAULT` / `PDLC_TRACE_FILE` leaking between tests would be a silent cross-contamination of
+  exactly the seam the assertions read.
+
+```js
+function sandboxEnv(opts) {
+  return {
+    PATH: makeToolDir(opts.path),     // §3.2.1
+    HOME: opts.home,
+    PWD: opts.cwd,
+    TMPDIR: opts.tmp,
+    LC_ALL: "C", LANG: "C", TZ: "UTC",
+    ...(opts.pluginRoot ? { CLAUDE_PLUGIN_ROOT: opts.pluginRoot } : {}),
+    ...(opts.trace ? { PDLC_TRACE_FILE: opts.tracePath } : {}),
+    ...(opts.fault.length ? { PDLC_FAULT: opts.fault.join(",") } : {}),
+    ...opts.env,
+  };
+}
+```
+
+Nothing else is present. `LC_ALL=C` is set on the child so the harness never depends on C1's own
+`export LC_ALL=C` (§2.5) being present — a test that relied on the subject to set it could not
+detect its removal; §11.3's sort property asserts the subject-side export separately.
+
+#### 3.2.1 `makeToolDir(names)` — how a tool is made absent
+
+`PATH` is a **single directory** containing one symlink per requested tool, resolved once per jest
+worker via `execFileSync("command", ["-v", name])` and memoised. Removing a tool from a fixture is
+therefore removing it from the `path` array — not editing a colon-list, and not depending on what
+the runner happens to have installed elsewhere.
+
+| Fixture | `path` omits | Reaches |
+|---|---|---|
+| `json-tool-absent` (AT-14) | `python3`, `python`, `python2` | §2.1 E2 ⇒ `jsonToolAbsent` |
+| `hash-tool-absent` | `shasum`, `sha1sum`, `openssl` | §3.3 rung 1 ⇒ every row `unknown` |
+| `git-absent` (AT-21, §8.2) | `git` | §2.2's `else` branch; §10.3 branch (b) |
+
+The tool list is asserted, not assumed: `makeToolDir` **throws** if a requested tool cannot be
+resolved, so a runner missing `shasum` fails loudly at fixture construction instead of silently
+producing a `hash-tool-absent` tree under a test that expected `in-sync` (§12's standing
+precondition). That throw is caught by §7's `describeOrSkip("hash")` at the file level, which is
+where the skip belongs.
+
 ### 3.3 Consumer-tree builders
 
+```js
+export function makeConsumerTree(spec) -> { root, home, tmp, cleanup }
+export function makePluginTree(spec)   -> { pluginRoot, manifest, bytesOf }
+export function setRowState(trees, id, state, opts)   // the six-state table below
+```
+
+Every tree is created with `mkdtempSync(join(realpathSync(tmpdir()), "pdlc-"))`. **`realpathSync` is
+applied at construction, not at comparison** — on macOS `tmpdir()` is `/var/folders/…`, a symlink
+into `/private/var`, and §2.2 compares paths after `realpath`-style normalisation. Normalising once
+at the root means no assertion in the suite has to remember to normalise, and the `$HOME`-rejection
+fixture (§8.4) is exact rather than approximately exact.
+
+`home` is a **sibling** of `root`, never an ancestor: if `HOME` contained `root`, §2.2's walk would
+stop before reaching the fixture's `.claude/` and every `repo-root` fixture would be measuring the
+`$HOME` guard instead of what it meant to measure.
+
+`makeConsumerTree(spec)` clauses, each independently settable:
+
+| Clause | Effect |
+|---|---|
+| `git: true` | `git init -b main`, `user.name`/`user.email` set locally, one empty commit |
+| `git: false` | no `.git` anywhere from `root` up to `home` |
+| `claudeDir: true \| false` | create `.claude/` (AC-3.8's two fixtures) |
+| `workflowsDir: true \| false \| { mode }` | `.claude/workflows/`, optionally `r-x` (AT-14b) or `-wx` (AT-32a) |
+| `files: { <relPath>: string \| Buffer }` | arbitrary consumer content — `not-managed` files, retired paths |
+| `syncManifest: object \| "absent" \| "unreadable" \| "malformed"` | §1.2's three degradations |
+| `config: object \| "absent" \| "unreadable" \| "malformed"` | `.claude/pdlc.config.json` (E7) |
+| `driftState: string \| object \| "absent"` | the pre-existing record the T2 ladder needs |
+
+`makePluginTree(spec)` writes `workflows/dist/` plus `distribution-manifest.json`, computing every
+`pluginSha1` from the bytes it just wrote, so M8/M9 hold by construction. A malformed-manifest
+fixture is expressed as `manifestOverride: (obj) => obj`, applied **after** that computation — which
+is what makes each of M1–M10 a one-line fixture (`obj.rows[0].pluginSha1 = "zz…"` for M9,
+`obj.retired = []` for M8, …) with no risk of accidentally satisfying a clause the test meant to
+break.
+
+**The six row states, each with its construction recipe.** This table is the single definition;
+§13's inventory references it rather than restating it.
+
+| State | Recipe (`setRowState`) |
+|---|---|
+| `in-sync` | consumer bytes := plugin bytes. Sync-manifest entry **irrelevant** — R-4/O-8; AT-6 asserts exactly this with the manifest absent |
+| `missing` | consumer path absent; its first existing ancestor traversable (`.claude/workflows/` present and `r-x` at least) — the definite-negative rule, §3.2 |
+| `stale` | consumer bytes := X ≠ plugin bytes; sync-manifest entry with `consumerHash = sha1(X)` |
+| `local-edit` | consumer bytes := Y; sync-manifest entry with `consumerHash = sha1(X)`, X ≠ Y ≠ plugin |
+| `unverified` | consumer bytes ≠ plugin bytes; **no** entry for the id (or a degraded manifest) |
+| `unknown` | one of the four reasons — see §7.1's probe table for the per-reason recipe |
+
+Two of these are traps a hand-built fixture falls into, so `setRowState` asserts against them:
+constructing `stale` with consumer bytes that happen to equal the plugin's yields `in-sync` (rung 3
+precedes rung 5), and constructing `local-edit` without an entry yields `unverified` (rung 4
+precedes rung 6). `setRowState` re-derives the expected classification from the tree it just built
+and throws if it does not match the requested state — the fixture builder is its own first oracle.
+
 ### 3.4 Reading back the artifacts
+
+```js
+export function readDriftState(root)   -> object | null        // JSON.parse; null iff absent
+export function readSyncManifest(root) -> object | null
+export function listBackups(root)      -> { id, stamp, nn, name, bytes }[]   // §11.1's parser
+export function inodeOf(path)          -> bigint | null        // statSync(bigint).ino — AT-15
+export function indexMode(root, rel)   -> "100644" | "100755"  // git ls-files -s — §9.3
+```
+
+Three rules these carry:
+
+1. **`JSON.parse`, never a subprocess.** The oracle must stay outside the subject's dependency set
+   (§1.2's load-bearing row): AT-14's tree has no Python interpreter, and a read-back that shelled
+   out to one could not assert "the `printf` emitter's record parses".
+2. **`readDriftState` distinguishes absent from unparseable**, returning `null` only for absent and
+   **throwing** on a parse failure. A helper that returned `null` for both would let the ladder's
+   rung-(iii) assertion (`no record`) pass against an implementation that wrote a corrupt one.
+3. **`inodeOf` returns `bigint`** (`statSync(p, { bigint: true }).ino`). AT-15's whole discriminator
+   is inode identity across the ladder, and `Number` silently loses precision on the large inode
+   numbers APFS and XFS issue.
+
+---
 
 ## 4. `PDLC_TRACE_FILE` — grammar and the classify-before-create oracle (O-1, O-7)
 
 ### 4.1 Grammar
 
-### 4.2 What is traced, and what is not
+One record per line, **tab-delimited**, five fields, appended in call order.
+
+```
+record ::= seq TAB phase TAB op TAB rowId TAB arg LF
+seq    ::= [1-9][0-9]*                       strictly increasing within one invocation, from 1
+phase  ::= "as-found" | "post-copy" | "post-run" | "run"
+op     ::= see §4.2
+rowId  ::= <manifest row id> | "-"           "-" for every non-row record
+arg    ::= percent-encoded value, possibly empty
+```
+
+**Why tab (`0x09`) and not `|` or space.** The two fields that can carry arbitrary bytes are `rowId`
+(M6-constrained, so safe) and `arg` (a filesystem path, not safe). A delimiter must be a byte the
+encoder can guarantee out of `arg`. Tab is (a) excluded by the encoding rule below, (b) already
+excluded from M6's id charset, and (c) trivially split in both bash (`IFS=$'\t'`) and JavaScript
+(`line.split("\t")`). `|` and space are legal path bytes and would need an escape the emitter does
+not otherwise need; comma is the `PDLC_FAULT` separator and reusing it invites confusion between
+the two seams.
+
+**Quoting — one rule, the same shape as FSPEC §4.4's path predicate, and deliberately so.**
+`arg` is percent-encoded over exactly: `%` (`0x25`), tab (`0x09`), newline (`0x0A`), carriage
+return (`0x0D`), and every byte outside `0x20`–`0x7E`. Encoded form is `%XX`, uppercase hex.
+
+- The **encoder is `printf` + a `LC_ALL=C` byte loop** in C1, with no dependency on the JSON tool —
+  the trace has to work on the `json-tool-absent` fixture, which is where AT-14's ordering
+  assertions live.
+- The **decoder is `decodeURIComponent`-shaped but byte-exact**: `Buffer.from(field.replace(/%([0-9A-F]{2})/g, …))`, so a
+  non-UTF-8 path round-trips to a `Buffer` rather than throwing. §4.3's oracle compares `rowId`s and
+  `op`s, never decoded paths, so this only matters for diagnostics — but a decoder that throws on a
+  legitimately non-UTF-8 fixture path would fail the test for the wrong reason.
+- The rule is byte-decidable under `LC_ALL=C` and needs no UTF-8 validation — the same property
+  FSPEC §4.4 argues for the emitter, reused rather than re-derived.
+
+**`seq` is emitted but the oracle orders by line index.** Ordering by line index is immune to a
+`pdlc_trace` call that ran inside a subshell (where a counter increment is lost); `seq` is then a
+**self-check**: the oracle asserts `seq` is `1,2,3,…` with no gap or repeat, and a violation reports
+"a traced call ran in a subshell" rather than silently degrading the ordering assertion. Both
+properties are cheap and they fail for different reasons, which is the point.
+
+### 4.2 What is traced, and what is not — and the single-invocation scoping
+
+**Non-row probes are traced** (O-7's question, answered `yes`). The `op` vocabulary is closed:
+
+| `op` | Emitted at | `rowId` | `arg` |
+|---|---|---|---|
+| `run` | once, first record of the invocation | `-` | the entrypoint (`hook`\|`check`\|`sync`\|`sync --force`) |
+| `repo-root` | §2.2, after E1 | `-` | the resolved root, or empty when unresolved |
+| `plugin-root` | §2.4, after E3 | `-` | the resolved plugin root, or empty |
+| `manifest-read` | §2.5 E4/E5 | `-` | the manifest path |
+| `config-read` | §2.7 E7 | `-` | the config path |
+| `sync-manifest-read` | §1.2's read | `-` | the sync-manifest path |
+| `classify` | once per row **per pass** | the row id | the resulting state |
+| `mkdir` | §4.2 step 3, once per directory created | `-` | the directory |
+| `write` | every drift-state / sync-manifest write **attempt** | `-` | the target path |
+| `copy` | §5.5, per row, at the `mv` | the row id | the consumer path |
+| `backup` | §4.7 step 1, per backup | the backup id | the backup path |
+| `delete` | §5.7's retirement delete | the row id | the retired path |
+
+Tracing the non-row probes is what lets the oracle be **positive** rather than an
+absence-of-evidence argument: an implementation that skipped the manifest read entirely would
+produce a trace with no `manifest-read` record, and §4.3(d) catches it. It costs nothing, because
+the oracle discriminates by `op`, never by "this record has `rowId == "-"` so ignore it" — that
+latter form is the one that silently absorbs a new untraced probe.
+
+**Single-invocation scoping — by construction, not by parsing.** `runScript()` allocates a
+**fresh trace path per invocation** (`<tmp>/trace/<n>.tsv`). A trace file therefore contains exactly
+one invocation, and `parseTrace()` **asserts** it: exactly one `run` record, and it is the first
+line. An oracle that had to segment a shared append log would have to trust a delimiter emitted by
+the very code whose ordering it is checking; a fresh path removes the question. Multi-invocation
+fixtures (AT-9's sync-then-sync, AT-33's `--check`-then-hook) get one trace each and assert over
+them independently.
 
 ### 4.3 The AC-2.9(1) oracle
 
+```js
+// __tests__/helpers/driftOrdering.js
+export function assertClassifyBeforeCreate(trace, expectedRowIds) { … }
+```
+
+Let `T` be the parsed records in line order, `C = T.filter(r => r.phase === "as-found" && r.op === "classify")`,
+and `M = T.filter(r => ["mkdir","write","copy","backup","delete"].includes(r.op))` — the **mutating**
+ops. The helper asserts all four conjuncts:
+
+| # | Conjunct | Catches |
+|---|---|---|
+| (a) | `new Set(C.map(r => r.rowId))` **equals** `new Set(expectedRowIds)`, and `expectedRowIds` is non-empty | the vacuous pass — an empty or truncated trace, and an implementation that classifies only the first row |
+| (b) | `max(index of C) < min(index of M)` | the ordering itself: every as-found classification precedes every mutation |
+| (c) | `M.length === 0 || C.length > 0`, and `min(index of C) < min(index of M)` | a run that creates *before* classifying anything at all — (b) alone is vacuously true when `C` is empty, which is exactly the regression this exists to catch |
+| (d) | `T` contains a `manifest-read` record, and it precedes every member of `C` | a classifier that ran off something other than the manifest (AC-0.1's globbing prohibition) |
+
+Conjunct (a) is O-1's mandated **positive-presence** conjunct and it is stated over the **row-id
+set**, not over a count: a count assertion passes against an implementation that classifies one row
+twice and another zero times, which is precisely the shape a `for` loop with a mis-scoped variable
+produces in bash.
+
+**Phase scoping.** The oracle filters to `phase === "as-found"` because a sync run's post-copy and
+post-run passes legitimately follow the mutations. The complementary assertions live in the same
+helper and are asserted by the sync fixtures:
+
+- `assertPhaseOrder(trace)`: the phase label sequence, with `run` records dropped, is a prefix of
+  `[as-found]`, `[as-found, post-copy, post-run]` — never interleaved, never out of order.
+- `assertPostCopyNarrow(trace, retiringIds)`: the `post-copy` classify records' row-id set equals
+  `retiringIds` exactly. FSPEC §3's table calls that pass **narrow**; without this assertion an
+  implementation that re-classified everything at step 5 is indistinguishable, and §13.1's NFR-2
+  bound quietly becomes `2 × 3 × |rows|` on every run.
+- `assertRecordedPassIs(trace, driftState, "post-run" | "as-found")`: the states in the record equal
+  the states the named phase's classify records carried. This is the executable form of FSPEC
+  §4.2's "which pass the record carries" table and it is what O-20's PROPERTIES rows will build on
+  (§16).
+
 ### 4.4 The unwritable-trace red test
+
+FSPEC §4.6 splits the responsibility: **the script ignores a trace-write failure; the test that
+relies on the trace treats it as red.** Both halves are asserted, in `driftOrdering.test.js`:
+
+```
+it("an unwritable trace does not change any production observable", …)
+it("…and the harness fails the test rather than passing vacuously", …)
+```
+
+**Construction — `ENOTDIR`, not a permission bit.** The trace path is
+`<tmp>/blocker/trace.tsv` where `blocker` is a **regular file**. Every `open(…, O_APPEND|O_CREAT)`
+under it fails `ENOTDIR`, and unlike a `chmod 000` this is **not bypassed by uid 0** — so this test
+runs on every runner and needs no §7 skip. (A permission-bit construction would have made the one
+test that guards the whole trace-based oracle set the test most likely to be skipped.)
+
+Test 1 runs the identical fixture twice, with a writable trace path and with the blocked one, and
+asserts `status`, `stdout` and `stderr` are **byte-identical** (modulo the `generatedAtUtc` field
+inside the drift state, normalised by `readDriftState` before comparison), and that the drift state
+and sync manifest are byte-identical modulo the same field. That is the "script ignores it" half,
+stated as an equivalence rather than as "exit is still 0" — the latter passes against an
+implementation that silently skips half the run when the trace is unavailable.
+
+Test 2 asserts that `parseTrace(tracePath)` on the blocked path **throws**
+`TraceUnavailableError`, and that `assertClassifyBeforeCreate` propagates it. This is the half that
+must not be softened: the failure mode being closed is a future maintainer "fixing" a flaky ordering
+test by making the helper return `[]` when the trace is missing, at which point conjunct (a) is the
+only thing standing between the suite and a permanently vacuous AC-2.9(1) assertion — and (a) then
+fails on the row-id set, which is why (a) is stated over a set and not merely as `C.length > 0`.
+
+---
 
 ## 5. `PDLC_FAULT` — the closed token enumeration (O-10)
 
 ### 5.1 Token grammar and composition
 
-### 5.2 The enumeration
+```
+PDLC_FAULT ::= spec ("," spec)*
+spec       ::= token [":" selector]
+selector   ::= <manifest row id> | <backup id>        (row-scoped tokens only)
+```
+
+- **Comma-separated, order-insensitive, duplicates ignored.** FSPEC §4.6 (TE F-42) requires a
+  fixture to fault a *subset* of guards in one run; a single-token variable cannot express AT-15
+  (fault `drift-state-replace` + `drift-state-invalidate`, leave `drift-state-unlink` clean).
+- **The selector scopes a token to one row.** AT-35 needs one row's copy corrupted while the loop
+  continues over the others (AC-1.4); an unscoped `artifact-copy-corrupt` would corrupt every row
+  and the "the loop continues" conjunct would be unobservable. An absent selector means *every*
+  occurrence of that guard.
+- `pdlc_fault_active <token> [<rowId>]` is the single query point (§2.2's surface). It returns 0
+  when the token is present unscoped, or present with a selector equal to `rowId`.
+- **Whitespace is not trimmed and an empty spec is unrecognised.** `PDLC_FAULT=""` is inert (the
+  variable is treated as unset); `PDLC_FAULT=" mkdir"` is an unrecognised token and takes §5.4's
+  path. Trimming would make the seam quietly tolerant of exactly the kind of environment mangling
+  §5.4 exists to report.
+
+### 5.2 The enumeration — closed, 14 tokens
+
+The set is **closed here** (FSPEC §4.6, TE Q-01). Every token corresponds to one guard in C1/C2/C3;
+no other guard is faultable and no other token exists. PROPERTIES asserts the emitted set is a
+subset of this list (§16).
+
+| # | Token | Guard | Injected behavior | Serves |
+|---|---|---|---|---|
+| 1 | `git-worktree-list` | §2.2 step 1's `git worktree list --porcelain` | the probe reports failure | O-3's git guard; §8.2 |
+| 2 | `walk-stat` | §2.2 step 2's upward walk | the walk finds nothing | O-3's walk guard; §8.2 |
+| 3 | `manifest-read` | §2.5 E4's read of the distribution manifest | the JSON helper returns `10` (unreadable) | `plugin-root-unreadable` on a uid-0 runner |
+| 4 | `sync-manifest-read` | §1.2's read | the JSON helper returns `10` | AT-34's fault twin |
+| 5 | `mkdir` | §4.2 step 3 | the `mkdir -p` reports failure | the fresh-consumer rung-(iii) case (§4.4a's third bullet) |
+| 6 | `drift-state-replace` | §4.3's sibling-temp + `mv` | the `mv` reports failure | ladder entry — AT-14b, AT-15, AT-16, AT-17 |
+| 7 | `drift-state-invalidate` | §4.4 rung (i)'s in-place `O_WRONLY\|O_TRUNC` | the write reports failure | AT-15, AT-16 |
+| 8 | `drift-state-unlink` | §4.4 rung (ii)'s `unlink` + fresh write | the unlink reports failure | AT-16 |
+| 9 | `artifact-copy` | §5.5 step (a), **before** the `mv` | the copy reports failure without touching the consumer file | §6.3's fail-open row; §6.1's "failed before landing" case |
+| 10 | `artifact-copy-corrupt` | §5.5 step (a), **at** the temp write | the temp is written **truncated to half the source length**, then `mv`'d normally | **AT-35** |
+| 11 | `backup` | §4.7 step 1 | the backup copy reports failure | AT-27's sibling; §6.3 |
+| 12 | `backup-corrupt` | §4.7 step 1 | the backup is written truncated, so step 2's genuine re-read mismatches | **AT-27** |
+| 13 | `retire-delete` | §5.7's delete | the delete reports failure | §6.3's retirement row |
+| 14 | `sync-manifest-update` | §4.2 step 6's rewrite | the rewrite reports failure | §6.4's removal-only fixture; §5.5's stated residual |
+
+**Tokens 10 and 12 corrupt bytes; they do not fake a comparison.** This is the single most
+load-bearing decision in the enumeration. AT-35's red direction (i) is "an implementation that
+copies without re-reading" — if the fault made the *verification* return false, that implementation
+would still fail the test and the test would prove nothing about the re-read. By truncating the
+bytes actually written and leaving the comparison untouched, an implementation that skips §5.5's
+re-read genuinely lands a truncated file, genuinely writes a sync-manifest entry over it, and
+genuinely exits 1 — which is the red direction FSPEC §5.8's exit-1 derivation predicts. Same
+argument for token 12 against §4.7 step 2 and AT-27.
+
+**Why there is no token for the `.claude/workflows/` enumeration (N-6 / AT-32a) and none for the
+JSON- or hash-tool probes.** The tool probes are reached by `makeToolDir` (§3.2.1), which is a
+stronger fixture than a fault — it removes the interpreter rather than lying about it, so AT-14's
+"the record parses" conjunct is asserted against a tree where no parser exists. The directory
+enumeration has no fault token by decision, and §7.3 records the consequence: AT-32(a) is a genuine
+uid-0 coverage hole, named in the skip inventory (§1.3) rather than closed by widening this set.
+Adding a token per untestable branch would make the closure meaningless.
 
 ### 5.3 Rung granularity for the invalidation ladder
 
+Tokens 6/7/8 are three entries, not one, exactly as FSPEC §4.6 requires. The composition each
+ladder test needs:
+
+| Test | `PDLC_FAULT` | Rung that must land | Discriminating observable |
+|---|---|---|---|
+| AT-14b (fault-injected twin) | `drift-state-replace` | **(i)** | record present, `checkEnabled: false` preserved, **inode unchanged** |
+| AT-15 | `drift-state-replace,drift-state-invalidate` | **(ii)** | record present, **inode changed** (§3.4's `inodeOf`) |
+| AT-16 (fault-injected twin) | `drift-state-replace,drift-state-invalidate,drift-state-unlink` | **(iii)** | pre-existing record **byte-unchanged**, N-3 on stderr, `--check` exit 4 / hook exit 0 |
+| fresh-consumer rung (iii) | `mkdir` | **(iii)** | **no** drift state anywhere, exit 4 / 0 |
+
+Rungs (i) and (ii) write byte-identical records (FSPEC AT-15, corrected in v5.1), so **inode
+identity is the only discriminator** and every ladder test captures `inodeOf(driftStatePath)` before
+the run. The pre-run inode is captured *after* the pre-existing record is written and *before* the
+script starts; a test that forgets the pre-capture cannot assert rung (i) at all, so `runScript` does
+it automatically whenever `spec.driftState` is set and exposes it as `RunResult.driftStateInodeBefore`.
+
+**Nothing in the ladder tests asserts a stderr `operation` token to discriminate a rung.** FSPEC
+§4.5 makes `drift-state-replace`/`-invalidate`/`-unlink` **failure** records, so the token naming a
+rung appears exactly when that rung *failed* — the inverse of what a naive assertion reads it as
+(SE F-29 ≡ TE F-43). The tests do assert the failure tokens **positively**, in the direction the
+spec fixes: AT-15 asserts `drift-state-replace` and `drift-state-invalidate` appear on stderr and
+`drift-state-unlink` does **not**.
+
 ### 5.4 Unrecognised tokens
+
+Per FSPEC §4.6, verbatim, and asserted by AT-18a/AT-18b (§14):
+
+```
+PDLC_FAULT=not-a-real-token   ⇒   N-7 printed exactly once
+                                  nothing injected — the run is not perturbed
+                                  the record is still written, green if the tree is green
+                                  hook exit 0 · --check exit 4 · sync exit 4
+```
+
+Three test-design consequences:
+
+1. **"Exactly once"** is asserted by counting occurrences of the N-7 line in `stderr`, not by
+   `toContain`. A per-guard implementation of the token lookup emits N-7 once per guard consulted,
+   which `toContain` accepts and which would flood a real operator's session output.
+2. **"Not perturbed"** is asserted as a **byte equivalence** against the same fixture with
+   `PDLC_FAULT` unset — stdout, the drift state and the sync manifest, all modulo `generatedAtUtc` —
+   not as "exit is still 0". AT-18a/AT-18b are stated as one shared fixture run twice for exactly
+   this reason, and AT-18b's Then already requires the record to be byte-identical to AT-18a's.
+3. **A partially-recognised list is a list with an unrecognised member.** `PDLC_FAULT=mkdir,bogus`
+   prints N-7 for `bogus`, injects `mkdir`, and takes the unrecognised exit. This is stated because
+   the alternative reading — "an unrecognised member voids the whole list" — is equally defensible
+   from FSPEC §4.6's singular wording and would make every multi-token fixture in §5.3 silently
+   inert if a token were later renamed. `driftFault.test.js` pins it.
+
+---
 
 ## 6. Write-failure test design (O-10)
 
