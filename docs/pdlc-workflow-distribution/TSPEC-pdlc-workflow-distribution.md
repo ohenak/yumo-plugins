@@ -291,9 +291,34 @@ New and modified files, with the owning FSPEC component.
 | `.worktreeinclude` (repo root) | text | new | FSPEC §7.5 item 7 / §11.1 |
 | `pdlc/.claude-plugin/plugin.json` | JSON | mod — `version` bump (AC-6.6) | FSPEC §7.5 item 2 |
 | `CLAUDE.md`, `pdlc/README.md` | docs | mod — bootstrap + worktree limitation | AC-6.5, §7.5 items 6, 8 |
+| **`pdlc/RELEASE-CHECKLIST.md`** | docs, **new** | new — the checklist three commitments route to; see §2.1a | AC-6.2a, AC-6.6 residual, NFR-2 |
 | plus whatever `coveredViolations(liveRepoRoot)` returns (7 files today) | docs | mod | AC-6.4 |
 
 Test files and helpers are in §14's placement table; fixtures in §13.
+
+### 2.1a `pdlc/RELEASE-CHECKLIST.md` — the checklist-owned commitments get an artifact (PM F-05)
+
+Three commitments name "the maintainer's release checklist" as the surface that discharges them,
+and at v1.0 **no such document existed anywhere in the repo** — §2.1's inventory created it nowhere
+and §16's hand-off assigned it to nobody, so three P1/residual obligations landed in prose:
+
+| Commitment | Priority | What the checklist owes it |
+|---|---|---|
+| **AC-6.2a** | P1, "checklist-owned" (FSPEC §7.3) | After publishing a release and installing it, assert `${CLAUDE_PLUGIN_ROOT}/workflows/dist/` contains both bundles **and** `distribution-manifest.json`. The row names the runnable form: `node -e` over `packagingViolations(installedPluginParentRoot)` from `pdlc/workflows/lib/document-oracles.mjs` — which is exactly why §2.1 puts that module inside `pdlc/` and ships it (it is runnable against an installed plugin, not only against a checkout) |
+| **AC-6.6's accepted residual** | P1 fallback (REQ §6) | A `dist/`-changing commit that already landed under an unbumped `version` is undetectable by §10.3's working-tree oracle. The checklist row: before publishing, confirm `plugin.json` `version` differs from the previously published release whenever `git log` shows any `dist/` change since it |
+| **NFR-2** | structural, observed once | The p95 ≤ 500 ms latency budget is "observed once, on the maintainer's release checklist (the AC-6.2a pattern)". The row records the observation — entrypoint, artifact count, wall clock — and nothing in the suite asserts it (§15.1 keeps NFR-2 marked "structural, no timing assertion exists") |
+
+**It is a real artifact with a named home, not an intention.** It is created in the landing commit,
+it lives beside `pdlc/README.md`, and §16 carries it as an implementation-phase obligation with
+those three rows enumerated so a reviewer can check them off. The durable rule this discharges — *a
+checklist-owned AC needs a checklist artifact in the deliverable inventory* — is wider than this
+feature and is flagged for harvest.
+
+**One constraint the document itself carries:** it lives under `pdlc/`, which none of §7.5's four
+exemptions covers, so — exactly as FSPEC §5.4 requires of the optional `SKILL.md` — its wording must
+avoid all five `coveredViolations` patterns, or AT-22's live-root `== ∅` goes red on the landing
+commit. A false positive there is fixed by rephrasing the checklist, never by narrowing a pattern
+(R-10's rule, unchanged).
 
 **Why `lib/document-oracles.mjs` is production code and not a test helper.** `coveredViolations`,
 `packagingViolations` and `advertisedVersionViolation` are pure functions of a root directory
@@ -328,7 +353,9 @@ consumer's shell cannot collide.
 | `pdlc_write_drift_state <generatedBy>` | built record | 0 / 4 | appends to `PDLC_WRITE_FAILURES[]` |
 | `pdlc_emit_printf_record …` | closed-domain fields only | 0 / 1 | — |
 | `pdlc_backup <srcPath> <id>` | — | 0 / 1 | `PDLC_BACKUP_PATH` |
-| `pdlc_prune_backups <id>` | — | 0 | — |
+| `pdlc_backup_format <id> <stamp> <nn>` | — | 0 / 1 (`nn > 99`, or `id` fails M6) | stdout = `{id}.{stamp}-{NN}.bak` |
+| `pdlc_backup_parse <name>` | — | 0 / 1 (tail does not match) | stdout = `id TAB stamp TAB nn` |
+| `pdlc_prune_backups <dir> <knownIds…>` | — | **always 0** | — (side effect: removes all but the newest 5 per **known** id; identity on every other entry) |
 | `pdlc_trace <phase> <op> <rowId> <arg>` | `PDLC_TRACE_FILE` | **always 0** | — |
 | `pdlc_fault_active <token>` | `PDLC_FAULT` | 0 active / 1 inactive | — |
 | `pdlc_msg_*` | — | 0 | stdout/stderr lines per FSPEC §8 |
@@ -341,6 +368,18 @@ Two structural rules, both testable from the harness:
 - **`pdlc_trace` always returns 0**, including when the append fails. FSPEC §4.6: the script ignores
   trace failures. Implemented as `{ printf … >>"$PDLC_TRACE_FILE"; } 2>/dev/null || true`. §4.4 is
   the red test that this is *not* softened into "the trace must be writable".
+
+**The backup-grammar rows are new in v2.0 (TE F-07).** v1.0's §11.1 opened "Three functions in C1,
+**named in §2.2's table**" and §2.2's table named neither `pdlc_backup_format` nor
+`pdlc_backup_parse` — the two functions that are the entire subject of O-18's round-trip and
+injectivity properties — while giving `pdlc_prune_backups` **two incompatible signatures**: `<id>`
+here and `<dir> <knownIds…>` in §11.1. **`<dir> <knownIds…>` is the one that ships**, because O-18
+clause (c)'s identity-on-unknown-ids contract is written against it and §11.2's batched driver calls
+it by that name; the exit stays "always 0" (pruning is best-effort and never fails a sync — a prune
+failure surfaces as `operation: backup` at the *next* write, FSPEC §1.4's exhaustion case, not as a
+prune error). `pdlc_backup` keeps `<srcPath> <id>` and calls `pdlc_backup_format` internally;
+`pdlc_backup_parse` is called by nothing in the production path except `pdlc_prune_backups`, which
+is deliberate (§11.1).
 
 ### 2.3 C5 (`build-runtime.mjs`) — retarget and manifest emission
 
@@ -435,7 +474,7 @@ export function runScript(entrypoint, opts) { … }
 | `RunOpts` field | Meaning | Default |
 |---|---|---|
 | `consumerRoot` | the tree the script runs against; also the default `cwd` | **required** |
-| `pluginRoot` | value of `CLAUDE_PLUGIN_ROOT` | unset (the maintainer-marker branch, §2.4) |
+| `pluginRoot` | value of `CLAUDE_PLUGIN_ROOT` | **unset** — which reaches FSPEC §2.4's maintainer-marker branch *only when the consumer tree itself contains `pdlc/workflows/build-runtime.mjs`* (that is the `freshClone` fixture, §9). On an ordinary `makeConsumerTree` tree the marker is absent, so unset reaches the `${CLAUDE_PLUGIN_ROOT}` branch and yields baseline reason **`plugin-root-unset`**; every fixture that wants a resolved plugin root passes one explicitly (§13.1). v1.0's one-line default ("the maintainer-marker branch") was true only of the bootstrap fixture — TE F-08 |
 | `home` | value of `HOME` | a **sibling** temp dir of `consumerRoot`, never its ancestor |
 | `cwd` | process cwd | `consumerRoot` |
 | `path` | array of tool names the sandbox `PATH` may resolve | `["bash","git","python3","shasum","sha1sum","mv","rm","date","printf"]` |
@@ -559,6 +598,23 @@ fixture is expressed as `manifestOverride: (obj) => obj`, applied **after** that
 is what makes each of M1–M10 a one-line fixture (`obj.rows[0].pluginSha1 = "zz…"` for M9,
 `obj.retired = []` for M8, …) with no risk of accidentally satisfying a clause the test meant to
 break.
+
+**`manifestRaw` — the unparseable-bytes escape hatch (new in v2.0, TE F-08).** `manifestOverride`
+mutates a *parsed object* that is then re-serialised, so it can only produce M1–M10 clause failures,
+never bytes the JSON helper cannot parse. Both routes establish FSPEC §2.5's `manifestMalformed`
+(the helper's outcome `12` **or** any M1–M10 failure), so the baseline reason was reachable at v1.0
+— but only through one of its two production paths, and the helper's own `12` return was untested.
+`makePluginTree({ manifestRaw: "{ not json" })` writes the given bytes verbatim in place of the
+computed manifest, closing the second path:
+
+| Spec | Manifest bytes | Establishes | Fixture name (§13.1) |
+|---|---|---|---|
+| `manifestOverride: o => { o.rows[0].pluginSha1 = "zz…"; return o; }` | valid JSON, M9 violated | `manifest-malformed` via the **validator** | `manifestClauseBroken` |
+| `manifestRaw: "{ not json"` | unparseable | `manifest-malformed` via the **helper's `12`** | `manifestUnparseable` |
+
+`manifestRaw` and `manifestOverride` are mutually exclusive and `makePluginTree` throws if both are
+given — a raw override silently discarding an object override is the kind of fixture bug that
+produces the right reason for the wrong path.
 
 **The six row states, each with its construction recipe.** This table is the single definition;
 §13's inventory references it rather than restating it.
@@ -1508,7 +1564,10 @@ Three functions in C1, named in §2.2's table, with the fixed-offset parse FSPEC
 |---|---|
 | `pdlc_backup_format <id> <stamp> <nn>` | stdout = `{id}.{stamp}-{NN}.bak`; exit 1 if `nn > 99` or `id` fails M6 |
 | `pdlc_backup_parse <name>` | stdout = `id TAB stamp TAB nn`; exit 1 if the **trailing 24 bytes** do not match `"." stamp(16) "-" NN(2) ".bak"` |
-| `pdlc_prune_backups <dir> <knownIds…>` | keeps the 5 greatest per known id, removes the rest of those ids, identity elsewhere |
+| `pdlc_prune_backups <dir> <knownIds…>` | keeps the 5 greatest per known id, removes the rest of those ids, identity elsewhere; **always exits 0** |
+
+All three are in §2.2's surface table (corrected in v2.0 — TE F-07), and `pdlc_prune_backups`'
+signature is `<dir> <knownIds…>` in both places.
 
 `pdlc_backup_parse` is `id := ${name:0:${#name}-24}` plus a pattern match on the tail — one parse,
 by construction, which is what makes O-18's injectivity property provable rather than merely
