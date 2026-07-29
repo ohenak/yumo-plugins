@@ -169,12 +169,6 @@ _pdlc_c3_build_record() {
   } | "$PDLC_PY_BIN" -c "$_PDLC_C3_BUILD_RECORD_PY"
 }
 
-# _pdlc_c3_emit_stderr_only_w7 — deferred emission (AT-17/O-6): stderr-only operations' W-7 lines
-# print before recordable operations' lines. Gated on overall failure of the write attempt this
-# guards (never printed on success), and on each token's own fault-active probe in catalog order
-# — every ladder-triggering fixture in this suite is `PDLC_FAULT`-driven (TSPEC §5.3), so "is this
-# fault token active" is equivalent to "did this failure occur" for every scenario this run can
-# hit.
 # _pdlc_c3_relpath <path> — strips a leading "${PDLC_REPO_ROOT}/" prefix so that paths
 # recorded in the drift-state record and printed on W-7 lines match the repo-relative
 # convention used everywhere else (row consumerPath, retires entries): C1's pdlc_backup /
@@ -189,17 +183,6 @@ _pdlc_c3_relpath() {
   else
     printf '%s' "$p"
   fi
-}
-
-_pdlc_c3_emit_stderr_only_w7() {
-  local path="$1"
-  shift
-  local token
-  for token in "$@"; do
-    if pdlc_fault_active "$token"; then
-      pdlc_msg_w7 "$path" "$token" >&2; printf '\n' >&2
-    fi
-  done
 }
 
 # ───────────────────────────── step 1 — resolve baseline ─────────────────────────────
@@ -584,8 +567,18 @@ fi
 # of whether a later rung went on to land the write (TSPEC §5.3, SE F-29 ≡ TE F-43): the ladder
 # can recover (AT-15) while still owing the operator a line naming the rung(s) that failed along
 # the way, so this call is unconditional, not gated on the overall write having failed.
-_pdlc_c3_emit_stderr_only_w7 "$_pdlc_c3_drift_state_path" \
-  "drift-state-replace" "drift-state-invalidate" "drift-state-unlink"
+# The three guards are written out one per token rather than looped over a token variable:
+# PROPERTIES §8.1 rule 1 requires every `pdlc_fault_active` argument to be a bare literal, so
+# that the fault vocabulary stays statically recoverable from the guard sites themselves.
+if pdlc_fault_active "drift-state-replace"; then
+  pdlc_msg_w7 "$_pdlc_c3_drift_state_path" "drift-state-replace" >&2; printf '\n' >&2
+fi
+if pdlc_fault_active "drift-state-invalidate"; then
+  pdlc_msg_w7 "$_pdlc_c3_drift_state_path" "drift-state-invalidate" >&2; printf '\n' >&2
+fi
+if pdlc_fault_active "drift-state-unlink"; then
+  pdlc_msg_w7 "$_pdlc_c3_drift_state_path" "drift-state-unlink" >&2; printf '\n' >&2
+fi
 
 # ───────────────────────────── recordable-operation W-7 lines ─────────────────────────────
 #
@@ -594,7 +587,7 @@ _pdlc_c3_emit_stderr_only_w7 "$_pdlc_c3_drift_state_path" \
 # rung-(iii) residual (C1) now also pushes its own `drift-state-replace` entry into
 # `PDLC_WRITE_FAILURES[]` (so check-workflow-drift.sh's single undifferentiated loop can render
 # it) — skip stderr-only operations here so that entry is not printed a second time on top of
-# `_pdlc_c3_emit_stderr_only_w7`'s own (correctly-ordered) line above.
+# the drift-state triad's own (correctly-ordered) lines above.
 for _pdlc_c3_entry in "${PDLC_WRITE_FAILURES[@]:-}"; do
   [[ -z "$_pdlc_c3_entry" ]] && continue
   _pdlc_c3_path="${_pdlc_c3_entry%%$'\x1f'*}"

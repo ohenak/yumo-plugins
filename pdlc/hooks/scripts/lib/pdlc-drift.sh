@@ -1030,8 +1030,19 @@ pdlc_load_manifest() {
       # this path, never on manifest-absent/plugin-root-unreadable/indeterminate paths.
       pdlc_trace "run" "manifest-read" "-" "$manifestPath"
       local manifestOut manifestStatus
-      manifestOut="$(_pdlc_manifest_read "$manifestPath")"
-      manifestStatus=$?
+      if pdlc_fault_active "manifest-read"; then
+        # §5.2 token 3. The injected read failure degrades exactly as a genuinely unreadable
+        # manifest does (the `! -r` branch above): status 30 is outside the {0,12,20} the case
+        # below names, so it lands on the `*)` arm — `plugin-root-unreadable`, E4 unreadable,
+        # E5/E6 indeterminate. Guarding here rather than inside `_pdlc_manifest_read` keeps the
+        # fault to one firing per pass (§5.1.1): that function has a second caller at the
+        # retired/plugin-version read, which this token does not name.
+        manifestOut=""
+        manifestStatus=30
+      else
+        manifestOut="$(_pdlc_manifest_read "$manifestPath")"
+        manifestStatus=$?
+      fi
       case "$manifestStatus" in
         0)
           _pdlc_manifest_populate_rows "$manifestOut"

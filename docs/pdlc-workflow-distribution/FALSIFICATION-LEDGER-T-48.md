@@ -1,0 +1,41 @@
+## T-48
+
+Subjects: **C1** = `pdlc/hooks/scripts/lib/pdlc-drift.sh`, **C2** = `pdlc/hooks/scripts/check-workflow-drift.sh`, **C3** = `pdlc/hooks/scripts/sync-workflows.sh`, **O** = `pdlc/workflows/lib/document-oracles.mjs`.
+Test file: `pdlc/workflows/__tests__/driftFault.test.js`. Every run below is `npm test -- __tests__/driftFault.test.js -t "<property>"` from `pdlc/workflows`.
+
+| Property | Subject | Mutation (named before run) | Red observed | Revert verified | Task |
+|---|---|---|---|---|---|
+| PROP-SEAM-01 (a) — every enumerated token is recognised | C1 | M1: in `_pdlc_fault_is_token`'s loop (C1:86-90) insert `[[ "$t" == "mkdir" ]] && continue`, so exactly one enumerated token stops being recognised while `PDLC_FAULT_TOKENS` itself is untouched (oracle A still reads 16) | 1 failing case of 17 (`(a) PDLC_FAULT=mkdir is recognised — no N-7 line at all`). First failure verbatim: `expect(received).toBe(expected) // Object.is equality` / `Expected: 0` / `Received: 1` at `driftFault.test.js:707` (`expect(countOf(run.stderr, "N-7")).toBe(0)`) | Reverted with `git checkout -- pdlc/hooks/scripts/lib/pdlc-drift.sh`; `git diff --exit-code` over C1 clean; re-run green — `Tests: 55 skipped, 17 passed, 72 total` | T-48 |
+| PROP-SEAM-01 (b) — the four non-member classes each print N-7 once and perturb nothing | C1 | M2: in `_pdlc_fault_ensure_parsed` (C1:139) add leading/trailing-whitespace trimming of each spec (`spec="${spec#"${spec%%[![:space:]]*}"}"` + the trailing twin), so class 3 (a whitespace-padded member) would become a member | 1 failing case (`(b) four non-member classes …`). First failure verbatim: `expect(received).toEqual(expected) // deep equality` / `Object { "className": "leading/trailing whitespace", - "n7": 1, + "n7": 0 }` at `driftFault.test.js:770` | Reverted with `git checkout --`; `git diff --exit-code` over C1 clean; re-run green — `Tests: 55 skipped, 17 passed, 72 total` | T-48 |
+| PROP-SEAM-03 (structural) — TSPEC §5.1.1 partitions the enumeration 7/9 and the union is exactly the 16 | C1 | M3b: rename one member of the `readonly -a PDLC_FAULT_TOKENS` declaration (C1:45) from `"mkdir"` to `"mkdirs"` — still 16 distinct M6-conforming entries, so `readFaultTokens()`'s shape assertions still pass and only the TSPEC↔enumeration agreement breaks | 1 failing case (`TSPEC §5.1.1's table partitions the enumeration into 7 bearing and 9 non-bearing`). First failure verbatim: `expect(received).toEqual(expected) // deep equality` with the sorted-union diff `-   "mkdirs",` / `+   "mkdir",` | Reverted with `git checkout --`; `git diff --exit-code` over C1 clean; re-run green (see the full-file line below) | T-48 |
+| PROP-SEAM-03 (bearing behaviour) — a well-formed selector on a bearing token is recognised and scopes the fault | C1 | M3a: delete `backup` from `_pdlc_fault_is_selector_bearing`'s `case` list (C1:98-99), so one of TSPEC §5.1.1's 7 bearing tokens is treated as non-bearing and `backup:row-1` becomes malformed | 1 failing case of 24 (`backup:row-1 — no N-7, only row-1 is affected, and the run differs from the unscoped one`). First failure verbatim: `expect(received).toBe(expected) // Object.is equality` / `Expected: 0` / `Received: 1` at `driftFault.test.js:933` (`expect(countOf(scopedRun.stderr, "N-7")).toBe(0)`) | Reverted with `git checkout --`; `git diff --exit-code` over C1 clean; re-run green | T-48 |
+| PROP-SEAM-04 — a partially-recognised list still injects its recognised members and still exits 4 | C1 | M4: at the top of `pdlc_fault_active` (C1:175-178, after `_pdlc_fault_ensure_parsed`) insert `[[ "$_PDLC_FAULT_UNRECOGNISED" == "1" ]] && return 1` — i.e. one bad member voids the whole list, the exact negation of the property (the exit-4 half is untouched, so only the injection half moves) | 1 failing case (`four generated k≥1 mixed lists — …`). First failure verbatim: `expect(received).toEqual(expected) // deep equality` / `-   "injected": true,` / `+   "injected": false,` with `"label": "uAiANikeQ_slBT.NuUZPrCgVUNGuDWNbLNAX1IA,mkdir"` at `driftFault.test.js:1087` | Reverted with `git checkout --`; `git diff --exit-code` over C1 clean; re-run green | T-48 |
+| PROP-SEAM-05 (fault half) — `PDLC_FAULT` unset and `PDLC_FAULT=""` produce the same run | C1 | M5: remove both empty-spec inertness guards in `_pdlc_fault_ensure_parsed` — the early `[[ -z "$spec_string" ]] && return 0` (C1:133) and the per-spec `[[ -z "$spec" ]] && continue` (C1:139) — so an empty spec reaches the token test and emits N-7 | 1 failing case (`three generated trees: observable identical whether PDLC_FAULT is absent or empty`). First failure verbatim: `expect(received).toBe(expected) // Object.is equality` / `Expected: 0` / `Received: 4` at `driftFault.test.js:1155` (`expect(absentRun.status).toBe(0)`) | Reverted with `git checkout --`; `git diff --exit-code` over C1 clean; re-run green | T-48 |
+| PROP-SEAM-06 — `M6_ID_REGEX` excludes both seams' delimiters | O | M6: widen `M6_ID_REGEX`'s body character class at `document-oracles.mjs:36` from `[A-Za-z0-9._-]` to `[A-Za-z0-9._:-]`, admitting the `PDLC_FAULT` selector separator | 1 failing case of 2 (`and the exclusion holds in the other direction — inserting a delimiter into a member breaks it`). First failure verbatim: `expect(received).toEqual(expected) // deep equality` / `-   "member": false,` / `+   "member": true,` with `"why": "the PDLC_FAULT selector separator (TSPEC §5.1)"` at `driftFault.test.js:1222` | Reverted with `git checkout -- pdlc/workflows/lib/document-oracles.mjs`; `git diff --exit-code` over O clean; re-run green | T-48 |
+
+| PROP-SEAM-02 — static call-site closure over the three shipped bash sources (§8.1) | C1 + C3 | The **pristine tree itself** was the falsifier: T-48 implemented the property and it went red unmutated, naming two real production defects (both since fixed by the orchestrator — see "Adjudication" below). Equivalent restated mutation: revert either fix — (a) restore the `_pdlc_c3_emit_stderr_only_w7` dispatch wrapper so argument 1 is `"$token"`, or (b) delete the `pdlc_fault_active "manifest-read"` guard at `pdlc-drift.sh:1032` | 2 failing cases of 72. Verbatim: `- Array []` / `+ Array [ "pdlc/hooks/scripts/sync-workflows.sh:199 — argument 1 is \"\\\"$token\\\"\"" ]` at `driftFault.test.js:813`; and `- Array []` / `+ Array [ "manifest-read" ]` (superset/anti-padding direction) | Both defects fixed in C1/C3; `npm test -- __tests__/driftFault.test.js` → `Tests: 72 passed, 72 total` | T-48 (orchestrator) |
+
+Full-file result after all mutations were reverted (`git diff --exit-code` over C1, C2, C3 and O all clean):
+`Tests: 2 failed, 70 passed, 72 total` — the 2 failures were PROP-SEAM-02's two conjuncts, red against the
+**unmutated** subject. After the orchestrator's two production fixes below: `Tests: 72 passed, 72 total`.
+
+### Adjudication (orchestrator)
+
+Both defects T-48 reported were confirmed at source and **fixed**, so PROP-SEAM-02 is green, not a residual:
+
+1. **C3 — non-literal argument 1.** `_pdlc_c3_emit_stderr_only_w7` looped `pdlc_fault_active "$token"` over its
+   arguments. Fixed by **inlining the three guards** at the former call site and deleting the wrapper. Chosen over
+   amending PROPERTIES §8.1 rule 1: the rule exists so the fault vocabulary stays statically recoverable from the
+   guard sites, and an exemption for literal-fed dispatch wrappers would weaken exactly that invariant to
+   accommodate one convenience loop. Behaviour (emission order, AT-17/O-6) is unchanged.
+2. **C1 — `manifest-read` enumerated but unguarded.** Fixed by adding `pdlc_fault_active "manifest-read"` at the
+   read site (`pdlc-drift.sh:1032`), immediately after the existing `pdlc_trace "run" "manifest-read"` record and
+   before `_pdlc_manifest_read`. On fault the read yields status 30, which falls to the `case`'s `*)` arm — the
+   same degradation a genuinely unreadable manifest takes (`plugin-root-unreadable`, E4 unreadable, E5/E6
+   indeterminate). Guarded at the call site rather than inside `_pdlc_manifest_read` because that function has a
+   second caller (the retired/plugin-version read at `:803`) which token 3 does not name, and §5.1.1 requires at
+   most one firing per pass.
+
+### Residuals
+
+None. (T-48's originally-filed PROP-SEAM-02 residual was promoted to green by the two fixes above.)
