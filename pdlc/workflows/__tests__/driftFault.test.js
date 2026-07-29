@@ -30,9 +30,18 @@ import { M6_ID_REGEX } from "../lib/document-oracles.mjs";
 /**
  * TSPEC §13.1's `syncedConsumer`: `freshConsumer` (`makeConsumerTree({git:true,claudeDir:false})`
  * + a valid 2-row plugin tree) with every row `in-sync` and a matching sync manifest.
+ *
+ * @param {object} [sharedPlugin] an already-built `makePluginTree()` fixture to reuse instead of
+ *   building a fresh one. Byte-equivalence assertions (AT-18a/AT-18b, §14.1 F-1) run this twice
+ *   and compare the two runs' drift-state records: `syncCommand` embeds the plugin's own
+ *   `sync-workflows.sh` path verbatim (FSPEC §1.3/AC-0.4), so two independently-built plugin
+ *   trees would legitimately differ there and the comparison could never be byte-identical for a
+ *   real reason. Passing one shared plugin tree makes `syncCommand` identical across both runs
+ *   because it names the same file, not because a fixture artifact was normalised away
+ *   (precedent: `driftOrdering.test.js`'s §4.4 unwritable-trace test, commit 34b1a8c).
  */
-function buildSyncedConsumer() {
-  const plugin = makePluginTree({});
+function buildSyncedConsumer(sharedPlugin) {
+  const plugin = sharedPlugin || makePluginTree({});
   const consumer = makeConsumerTree({ git: true, claudeDir: false });
   for (const row of plugin.manifest.rows) {
     setRowState({ consumer, plugin }, row.id, "in-sync");
@@ -42,7 +51,7 @@ function buildSyncedConsumer() {
     plugin,
     cleanup() {
       consumer.cleanup();
-      plugin.cleanup?.();
+      if (!sharedPlugin) plugin.cleanup?.();
     },
   };
 }
@@ -56,13 +65,33 @@ function runEntrypoint(fixture, entrypoint, fault = []) {
   });
 }
 
-/** Strips `generatedAtUtc` before comparison — every byte-equivalence assertion in §5.4/AT-18b
- * normalises that field away (R-11). */
-function stripGeneratedAt(record) {
-  if (!record || typeof record !== "object") return record;
-  const { generatedAtUtc, ...rest } = record;
-  return rest;
+/**
+ * Deep-clones `value`, dropping any key ending in `Utc` at any depth — the timestamp fields
+ * (`generatedAtUtc`, the sync manifest's per-row `syncedAtUtc`) TSPEC §4.4 permits to differ
+ * between two otherwise-byte-identical runs (precedent: `driftOrdering.test.js`'s
+ * `stripTimestamps`, same defect/fix as this file's §4.4-adjacent byte-equivalence checks).
+ */
+function stripTimestamps(value) {
+  if (Array.isArray(value)) return value.map(stripTimestamps);
+  if (value && typeof value === "object") {
+    const out = {};
+    for (const [key, v] of Object.entries(value)) {
+      if (key.endsWith("Utc")) continue;
+      out[key] = stripTimestamps(v);
+    }
+    return out;
+  }
+  return value;
 }
+
+/**
+ * The FULL N-7 line (FSPEC §4.6, §2759): `pdlc: unrecognised PDLC_FAULT token "{token}"; no
+ * fault injected.` — `MESSAGES["N-7"]` deliberately matches only the `"token";` prefix (the
+ * convention every N-3..N-8 entry shares: no `remediation` group is captured for these), so it
+ * is the wrong tool for "strip the N-7 line and check nothing else remains" (AT-18a's "N-7 and
+ * nothing else", §1.4a). This local pattern matches the whole line for that one purpose.
+ */
+const N7_FULL_LINE = /^pdlc: unrecognised PDLC_FAULT token "[^"]*"; no fault injected\.\r?\n?/m;
 
 /**
  * §5.4 rule 2's byte-equivalence conjunct: stdout, the drift state and the sync manifest, all
@@ -73,18 +102,21 @@ function stripGeneratedAt(record) {
  */
 function expectByteEquivalentRuns(faultedRun, faultedFixture, cleanRun, cleanFixture) {
   expect(faultedRun.stdout).toBe(cleanRun.stdout);
-  expect(stripGeneratedAt(readDriftState(faultedFixture.consumer.root))).toEqual(
-    stripGeneratedAt(readDriftState(cleanFixture.consumer.root))
+  expect(stripTimestamps(readDriftState(faultedFixture.consumer.root))).toEqual(
+    stripTimestamps(readDriftState(cleanFixture.consumer.root))
   );
-  expect(readSyncManifest(faultedFixture.consumer.root)).toEqual(readSyncManifest(cleanFixture.consumer.root));
+  expect(stripTimestamps(readSyncManifest(faultedFixture.consumer.root))).toEqual(
+    stripTimestamps(readSyncManifest(cleanFixture.consumer.root))
+  );
 }
 
 // ───────────────────────────── AT-18a / AT-18b ─────────────────────────────
 
 describe("AT-18a — unrecognised token: N-7 once, nothing else on stderr, run not perturbed", () => {
   it("prints N-7 exactly once with the token text, and is byte-equivalent to the seam-unset run", () => {
-    const faulted = buildSyncedConsumer();
-    const clean = buildSyncedConsumer();
+    const sharedPlugin = makePluginTree({});
+    const faulted = buildSyncedConsumer(sharedPlugin);
+    const clean = buildSyncedConsumer(sharedPlugin);
     try {
       const faultedRun = runEntrypoint(faulted, "hook", ["not-a-real-token"]);
       const cleanRun = runEntrypoint(clean, "hook", []);
@@ -98,7 +130,7 @@ describe("AT-18a — unrecognised token: N-7 once, nothing else on stderr, run n
 
       // PM F-01's second silence site (§1.4a): stderr with the one N-7 line removed and
       // trimmed is "" — "N-7 and nothing else", not merely "N-7 is present".
-      const withoutN7 = faultedRun.stderr.replace(MESSAGES["N-7"], "").trim();
+      const withoutN7 = faultedRun.stderr.replace(N7_FULL_LINE, "").trim();
       expect(withoutN7).toBe("");
 
       // Conjunct 2 — "not perturbed", asserted as byte equivalence, never "exit is still 0".
@@ -109,14 +141,16 @@ describe("AT-18a — unrecognised token: N-7 once, nothing else on stderr, run n
     } finally {
       faulted.cleanup();
       clean.cleanup();
+      sharedPlugin.cleanup();
     }
   });
 });
 
 describe("AT-18b — the identical fixture under --check exits 4; record byte-identical to AT-18a's modulo generatedAtUtc", () => {
   it("exits 4 under --check and the drift-state record matches the hook run's", () => {
-    const hookFixture = buildSyncedConsumer();
-    const checkFixture = buildSyncedConsumer();
+    const sharedPlugin = makePluginTree({});
+    const hookFixture = buildSyncedConsumer(sharedPlugin);
+    const checkFixture = buildSyncedConsumer(sharedPlugin);
     try {
       const hookRun = runEntrypoint(hookFixture, "hook", ["not-a-real-token"]);
       const checkRun = runEntrypoint(checkFixture, "check", ["not-a-real-token"]);
@@ -124,12 +158,13 @@ describe("AT-18b — the identical fixture under --check exits 4; record byte-id
       expect(checkRun.status).toBe(4);
       expect(countOf(checkRun.stderr, "N-7")).toBe(1);
 
-      expect(stripGeneratedAt(readDriftState(checkFixture.consumer.root))).toEqual(
-        stripGeneratedAt(readDriftState(hookFixture.consumer.root))
+      expect(stripTimestamps(readDriftState(checkFixture.consumer.root))).toEqual(
+        stripTimestamps(readDriftState(hookFixture.consumer.root))
       );
     } finally {
       hookFixture.cleanup();
       checkFixture.cleanup();
+      sharedPlugin.cleanup();
     }
   });
 });
@@ -142,8 +177,9 @@ describe("§14.1 F-1 — a malformed spec is unrecognised on the same footing as
     ["mkdir:", "an empty selector"],
     ["backup:a:b", "more than one colon"],
   ])('PDLC_FAULT="%s" (%s) — N-7 once with the whole spec text, nothing injected', (specText) => {
-    const faulted = buildSyncedConsumer();
-    const clean = buildSyncedConsumer();
+    const sharedPlugin = makePluginTree({});
+    const faulted = buildSyncedConsumer(sharedPlugin);
+    const clean = buildSyncedConsumer(sharedPlugin);
     try {
       const faultedRun = runEntrypoint(faulted, "hook", [specText]);
       const cleanRun = runEntrypoint(clean, "hook", []);
@@ -160,6 +196,7 @@ describe("§14.1 F-1 — a malformed spec is unrecognised on the same footing as
     } finally {
       faulted.cleanup();
       clean.cleanup();
+      sharedPlugin.cleanup();
     }
   });
 });
