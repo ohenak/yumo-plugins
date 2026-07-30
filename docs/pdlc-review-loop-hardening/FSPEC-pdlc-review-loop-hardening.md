@@ -818,6 +818,14 @@ or more ⇒ operator-surfaced error, round yields no approval (§6.3's duplicati
 a re-entered round that re-dispatches its reviewers safe: the anchor is written once and never
 silently changed.
 
+**Reachability of these branches (TE-v1 F-10).** They are **defensive**, and no reachable pipeline path is
+claimed for them: §4.4 always derives `startIndex = max + 1` and §15.2 rule 2 sends a resumed
+invocation's *reviewer* dispatch to a new index, so the script does not re-append to a round it already
+anchored. What can put a second value there is an out-of-band act — a hand-edit, a cherry-pick, a
+concurrent run — and the pre-count is what keeps those from silently changing a load-bearing value.
+Consequently TSPEC asserts E-14 and E-15 at **unit level on the append helper**, not through a
+constructed end-to-end fixture; the reachable read-side counterparts are §10.1's E-63/E-64.
+
 ### 7.5 The reviewed document's commit sha (AC-4.2b, TE-v5 F-03 carried through)
 
 The second anchor column is **the commit sha the reviewed document was at when it was sent for
@@ -2740,6 +2748,19 @@ conforming, the verdict reads `Approved`, and the whole-file count of two is nev
 `REVISION-COMPLETE:` lines; `REVISION-COMPLETE: maybe`. *Then* all four are non-terminal **and** the report
 echoes `declared_incomplete`, `absent`, `duplicated` and `unparseable` respectively. *(Fails for a parser
 returning a constant reason for every non-`yes` input.)*
+
+**AT-62 — A placeholder skeleton is not structurally complete (E-60, TE-v1 F-09a)**
+*Given* a greenfield dispatch that writes all of a spec's top-level headings with bodies consisting only of
+`TBD`, `TODO`, `_TBD_` and an HTML comment. *Then* the artifact scores **not complete**, `S` is **0**, the
+episode is **not** terminal, and a second dispatch is issued. *(Fails for a body test of "any non-blank
+line", under which write 1 scores complete.)*
+
+**AT-63 — Per-role malformed duplicate halts; two roles at index 1 do not (E-05, TE-v1 F-09b)**
+*Given* `CROSS-REVIEW-software-engineer-FSPEC.md` **and** `CROSS-REVIEW-software-engineer-FSPEC-v1.md` both
+present. *Then* derivation **halts** at step 5 with an operator error naming **both** paths, before any
+dispatch. *Given instead* `CROSS-REVIEW-software-engineer-FSPEC.md` and
+`CROSS-REVIEW-test-engineer-FSPEC-v1.md`. *Then* there is **no** halt: this is two roles at index 1, a
+normal pairable round, and derivation yields `startIndex` 2.
 
 ## 20. Open questions
 
