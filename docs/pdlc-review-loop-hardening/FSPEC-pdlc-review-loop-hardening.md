@@ -8,15 +8,23 @@ feature: pdlc-review-loop-hardening
 |---|---|
 | Upstream | `REQ-pdlc-review-loop-hardening.md` (v1.5, converged — SE-v5 and TE-v5 dispositioned) → **FSPEC** |
 | Downstream | `TSPEC-pdlc-review-loop-hardening.md`, `PLAN-…`, `PROPERTIES-…` |
-| Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v1.md` (iteration 1, dispositioned at v1.1); `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v2.md` (iteration 2, dispositioned at v1.2); `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v3.md` (iteration 3, dispositioned at v1.3) |
+| Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v1.md` (iteration 1, dispositioned at v1.1); `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v2.md` (iteration 2, dispositioned at v1.2); `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v3.md` (iteration 3, dispositioned at v1.3); `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v4.md` (iteration 4, dispositioned at v1.4) |
 | LEARNINGS | `docs/pdlc-review-loop-hardening/LEARNINGS-pdlc-review-loop-hardening.md` |
 | Citation baseline | **HEAD `0655387`.** Every code citation in this document was re-measured at that sha and names its **enclosing symbol plus a distinctive literal**, per O-16 and the REQ's own `Citation baseline` convention. A bare `file:line` citation is a defect in this document. |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude + operator | 1.3 | 2026-07-30 |
+| pdlc | draft | Claude + operator | 1.4 | 2026-07-30 |
 
 ### Changelog
+
+**v1.4 (2026-07-30)** — one defect, reached independently at Medium by SE-v4 F-18 and TE-v4 F-01: a
+**regression introduced by v1.3's own widening** of §1.2 rule 5 over §16.2, under which "ignores every
+**line**" emptied a fenced-only section body — `S < T` forever and §15.6 halting the phase on a correct
+document, the false-halt class §16.1 and §16.3 each deleted a clause to remove. Fixed by **one clause** in
+rule 5 (the exclusion governs which lines may *match a scanned pattern*) and AT-62's missing **`S`**
+conjunct; no per-site exception. Growth 258,591 → 260,052 bytes (+0.57%);
+normative text is +0.33% of that, the rest this entry and the lineage row.
 
 **v1.3 (2026-07-30)** — addresses all findings of `CROSS-REVIEW-software-engineer-FSPEC-v3.md`
 (SE F-15 Medium; F-16, F-17 Low) and `CROSS-REVIEW-test-engineer-FSPEC-v3.md`
@@ -3023,12 +3031,11 @@ line", under which write 1 scores complete.)* *And given* the same fixture with 
 fenced block that contains a `## …` line. *Then* `T` is **unchanged** by it — the fenced heading is not a
 top-level section (§1.2 rule 5, which §16.2 inherits). *(v1.3, TE-v3 F-01: this is the spec-class
 falsifier for the exclusion; without it a quoted heading inflates `T` and the episode never reaches
-terminal.)* *And given* a spec whose every required heading is present and one of whose bodies is **only**
-a fenced code block (a `## Interfaces` carrying one signature block). *Then* that section's body is
-**non-empty**, it counts toward `S`, and the artifact scores **structurally complete**. *(v1.4, SE-v4 F-18
-/ TE-v4 F-01: fails for a strip-then-scan implementation that removes fenced lines before the body test —
-under which `S < T` forever, §15.5 re-dispatches onto an already-written section, and §15.4/§15.6 halt the
-phase on a correct document.)*
+terminal.)* *And given* all required headings present and one body that is **only** a
+fenced block (`## Interfaces`, one signature block). *Then* that body is **non-empty**, counts toward `S`,
+and the artifact scores **structurally complete**. *(v1.4, SE-v4 F-18 / TE-v4 F-01: fails for a
+strip-then-scan body test — under which `S < T` forever and §15.6 halts the phase on a correct
+document.)*
 
 **AT-63 — Per-role malformed duplicate halts; two roles at index 1 do not (E-05, TE-v1 F-09b)**
 *Given* `CROSS-REVIEW-software-engineer-FSPEC.md` **and** `CROSS-REVIEW-software-engineer-FSPEC-v1.md` both
