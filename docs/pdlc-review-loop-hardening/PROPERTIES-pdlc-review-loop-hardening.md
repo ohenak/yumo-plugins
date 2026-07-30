@@ -790,9 +790,15 @@ with prose one at a time, until the case passes; report the last still-failing t
 
 ### 4.2 L1 — beyond the floor
 
-Four further pure-function invariants the TSPEC's table does not name but whose subjects TSPEC §8.1
-places at L1. Each declares the §7.3 ledger window it *would* occupy (§1.3); adoption is a mechanical
-PLAN edit owned by the writing task.
+**Three** further pure-function invariants the TSPEC's table does not name but whose subjects TSPEC
+§8.1 places at L1. Each declares the §7.3 ledger window it *would* occupy (§1.3); adoption is a
+mechanical PLAN edit owned by the writing task.
+
+v1.0 said *four* and counted `PROP-RESOLVE-01` among them. It has **moved to §4.3 (L2)**: PLAN §11.5
+`N-b` rules that §5.4's two-tier approval search is **non-exported and no test may name it**, and that
+`RLH-24`'s `approvalSearch.test.js` drives it **through `main()` at L2** (PM F-04). An L1 property over
+a function no test may name has no subject. The property's substance — sixteen exhaustively enumerated
+H-4 presence vectors — is preserved intact; only its level, its seam and its ledger row change.
 
 ---
 
@@ -813,14 +819,21 @@ malformed label, and valid trailers placed inside a fence or behind a `>` quote.
 double-trailer. The `quoted-hash.md` fixture (§6.3) pins the quoted case by example; the floor makes it
 a space.
 
-**Owner.** Written by **RLH-06** (batch 2); greened by **RLH-05(d)**. Would occupy the same §7.3 row
-as the two digest properties: green from batch 3, permitted red batch 2.
+**Owner.** Written by **RLH-06** (batch 2); greened by **RLH-05(f)** — v1.0 wrote `RLH-05(d)`, which
+is the *digest* sub-group; PLAN §4's RLH-05(f) is the five record parsers, and `parseApprovalHash` is
+one of them (PM F-12). The window is unaffected, because both sub-groups land in batch 3: same §7.3 row
+as the two digest properties, green from batch 3, permitted red batch 2.
 
 **Beyond the examples.** The hex-shape conjunct is a total statement about the *return* value: no
 input, however malformed, produces a "hash" that is not 64 hex characters. That is the guarantee the
 comparison at the approval gate silently depends on, and no AT states it over the input space.
 
-**Shrink.** Shipped `"bytes"` kind for the prose; file-local ladder for the trailer choice.
+**Shrink.** File-local ladder for the trailer choice, and **that ladder is the whole mechanism**. v1.0
+said "shipped `"bytes"` kind for the prose"; §2.3 measures what that kind actually does
+(`driftGenerators.js:423–475`): below `BYTES_FLOOR = 64` it returns `[]`, and above it returns a
+**single** truncation rung. This property's prose is generated in the tens of bytes, so the shipped
+kind is a **guaranteed no-op** here — not a weak ladder, no ladder. The claim that it contributes is
+withdrawn (SE F-05).
 
 ---
 
@@ -834,7 +847,8 @@ space — and every rejection carries a reason drawn from the catalogue, never a
 Catalogue closure is the second conjunct: the set of reasons observed across the generated corpus is a
 **subset** of `TRAILER_FAILURES`, and (with the floors below) equals it.
 
-**Generator.** D1 line pools as `PROP-SCAN-01`, biased toward trailer-shaped lines: each of the three
+**Generator.** D2 line pools as `PROP-SCAN-01` — v1.0 cited D1, which is the *filename* domain
+(PM F-06) — biased toward trailer-shaped lines: each of the three
 recognisers' verbatim forms, each with one mutation from the catalogue's own failure taxonomy
 (wrong case, trailing content, quoted, fenced, missing payload). 100 cases.
 
@@ -842,8 +856,21 @@ recognisers' verbatim forms, each with one mutation from the catalogue's own fai
 equality** against the catalogue, which is what makes this a totality check (DC-01) and not a sampling
 check: a failure mode added to the catalogue with no generator path fails the property.
 
-**Owner.** Written by **RLH-21** (batch 3); greened by **RLH-23**. Would occupy §7.3's
-`RLH-AT-35 … -54, -58, -43a, -61-loop` row: green from batch 7, permitted red batches 3–6.
+**Owner and window — re-derived from the greening task, not from the file it shares.** Written by
+**RLH-21** (batch 3); greened by **RLH-05(f)**, PLAN §4's five-record-parser sub-group, which is where
+`parseRevisionComplete`, `parseResolvedMarker` and `parseApprovalHash` all become correct. RLH-05(f)
+lands in **batch 3**, the same batch the property is written in, so the correct window is
+**green from batch 3, permitted red none** (PM F-07).
+
+v1.0 gave the property §7.3's `RLH-AT-35 … -54, -58, -43a, -61-loop` **pacing** row — green from
+batch 7, permitted red batches 3–6 — on the grounds that it is written into `pacingWrapper.test.js`.
+That is a co-location argument, not a dependency argument. Adopting the pacing row would license four
+batches of permitted red for a property whose subject is already correct on arrival, and a real
+regression in a record parser during batches 4–6 would be **absorbed as expected red rather than
+halting the batch**. That is the gate loss, stated plainly, and it is why the window is re-derived. The
+consequence for the writing task is that `PROP-TRAILER-01`'s assertions must be **gate-separable**
+from the pacing assertions sharing the file — an ordinary per-assertion ledger row, which §7.3 already
+expresses.
 
 **Beyond the examples.** Mutual exclusion is a *cross-recogniser* claim. Each AT exercises one
 recogniser; nothing in the FSPEC asserts that a line the revision-complete recogniser accepts is not
@@ -854,8 +881,88 @@ trailer satisfy another round's gate.
 
 ---
 
+**PROP-STALE-01 — `isStale` is a three-valued verdict: guard, then digest equality, stable under canonicalisation.**
+*(Data Integrity · L1 · `approvalHash.test.js`)*
+
+**`isStale` is three-valued, not boolean — v1.0's statement is withdrawn** (PM F-03). TSPEC §3.7:
+`isStale(recordedHash, documentBytes) → "UNEVALUABLE" | "STALE" | "FRESH"`. v1.0 asserted
+"`isStale` is `true` **iff** …" and said "absence of an anchor is stale by definition, and a malformed
+anchor is stale, never an error" — both wrong on the shipped contract: a malformed or absent anchor is
+**`"UNEVALUABLE"`**, which is a *third* verdict and, per TSPEC §2.5, one of the gated exits, not a
+synonym for `"STALE"`. Restated:
+
+**Invariant.** For every generated (recorded-anchor, document-bytes) pair, three conjuncts.
+
+(i) **The guard is exactly the shape test.** `isStale` returns `"UNEVALUABLE"` **iff** `recordedHash`
+fails `/^sha256:[0-9a-f]{64}$/` (TSPEC §5.5). Asserted as an `iff`, so neither an over-strict guard
+(rejecting a well-formed anchor) nor an under-strict one (admitting a 63-character payload, uppercase
+hex, or a missing `sha256:` label) survives.
+
+(ii) **Past the guard, it is exactly digest equality.** When the anchor is well-formed,
+`isStale === "FRESH"` **iff** `approvalHashOf(documentBytes) === recordedHash`, and `"STALE"`
+otherwise. `"UNEVALUABLE"` is **never** returned on this branch — the negative half that stops a
+subject collapsing the three-valued return to two.
+
+(iii) **Normalisation-stability, at the caller.** Following `PROP-DIGEST-02`(iii): a document edited
+only in line endings or trailing whitespace is `"FRESH"` against the pre-edit anchor; a document
+edited in any content byte is `"STALE"`. Both are asserted against the **verdict string**, not a
+truthiness test, so a subject returning `"UNEVALUABLE"` for everything cannot pass the stale half by
+accident.
+
+**The upstream classes that also produce `UNEVALUABLE` are named, not asserted here.** TSPEC §6.2
+rows 6–7 map an **absent**, **duplicated** or **unparseable** anchor, and an **unreadable document**,
+to `"UNEVALUABLE"`. Of those, only *unparseable* reaches `isStale`'s own signature — absence,
+duplication and unreadability are resolved before the call, by `parseApprovalHash` and by the reader.
+They are covered at the seam by `PROP-APPROVE-01` (§4.3) and are listed here so the division is
+explicit rather than an apparent gap.
+
+**Generator.** D3 document plus an anchor produced by one of: `sha256:` + digest of the document
+(fresh), `sha256:` + digest of a one-byte-mutated copy (stale), `sha256:` + digest of a
+line-ending-only-mutated copy (fresh — the discriminating shape), `sha256:` + a random 64-hex string
+(stale), and four **`UNEVALUABLE` shapes**: the label omitted, the payload 63 or 65 characters,
+uppercase hex, and a non-hex payload. 100 cases.
+
+**Non-vacuity.** All forced. ≥20 fresh, ≥20 content-stale, ≥15 line-ending-only, and ≥5 of **each** of
+the four `UNEVALUABLE` shapes — the per-shape floor is what makes conjunct (i)'s `iff` a guard test
+rather than a single sampled rejection. The line-ending-only floor is the point of conjunct (iii): it
+is the only shape that fails an implementation comparing raw text instead of digests, and it is the
+AT-16 rebase scenario stated as a space.
+
+**Owner.** Written by **RLH-06** (batch 2); greened by **RLH-16** (staleness conjunct) and
+**RLH-26** (gate conjunct) — §7.3's `RLH-AT-15, -16, -18` row: green from batch 8, permitted red
+batches 2–7.
+
+**Beyond the examples.** `RLH-AT-15`, `-16` and `-18` sample three edits. The property covers the *edit space*: any
+mutation whatsoever is `"STALE"` unless it is a normalisation, which is the exact contract the approval
+gate needs and the one a whitespace-tolerant comparison would violate silently.
+
+**Shrink.** The anchor kind is one of eight tags, reported verbatim — and that report **is** the
+shrunk counterexample, because the anchor tag is the coordinate that distinguishes all three verdicts.
+v1.0 also credited the shipped `"bytes"` kind for the document; §2.3 measures that kind as returning
+`[]` below 64 bytes and one truncation rung above, so on D3 documents it contributes **nothing**. That
+credit is withdrawn (SE F-05). The document is not shrunk; it does not need to be.
+
+### 4.3 L2 — orchestration invariants
+
+These run against `orchestrate-dev.js`'s injected seams (`__tests__/helpers/seams.js`), synchronously
+doubled, with **no filesystem**. Every injected call the subject makes is `await`ed in the subject
+(C-2 consequence); the doubles are sync, so the properties assert on the *recorded call log* the
+doubles accumulate, never on timing.
+
 **PROP-RESOLVE-01 — approval-anchor resolution is a function, and unanimity needs four facts.**
-*(State Machine · L1 · `approvalSearch.test.js`)*
+*(State Machine · **L2** · `approvalSearch.test.js`)*
+
+**Moved from §4.2 (L1) — the level was wrong, the property is not** (PM F-04). PLAN §11.5 answers
+`N-b`, "the name of §5.4's two-tier approval search", with: **non-exported, and no test may name it**;
+`RLH-24`'s `approvalSearch.test.js` drives it **through `main()` at L2**. v1.0 placed this property at
+L1 and, in doing so, silently proposed the export PLAN §11.5 refused. The sixteen-vector enumeration
+below is unchanged; what changes is the seam it is driven through and the ledger row it occupies.
+
+**The seam.** The corpus is presented through the **enumeration and read doubles** in
+`__tests__/helpers/seams.js`, and the verdict is read from the **recorded call log** — which phase the
+gate reaches, and with what anchor — exactly as the other L2 properties do (§4.3 preamble). Nothing in
+the test names the search function; a rename of it breaks no assertion here, which is precisely the
+outcome `N-b` was protecting.
 
 **Invariant.** For every generated review corpus: (i) resolution is **deterministic** — the same
 corpus, however its file list was shuffled, resolves to the same verdict/anchor pair; (ii)
@@ -864,17 +971,22 @@ so for every generated corpus missing any one of the four, the result is *not un
 every corpus carrying all four with matching anchors it *is*; (iii) an anchor that does not match the
 current digest never contributes to unanimity regardless of the verdict beside it.
 
-**Generator.** D4 × D2. A corpus is a set of per-role records, each independently carrying or omitting
-a verdict and carrying a matching / stale / absent anchor. The 4-fact presence vector is enumerated
-exhaustively (16 combinations) and each combination is then dressed with random file ordering and
-random extra non-review files. 100 cases ≥ 16 combinations × ≥6 dressings.
+**Generator.** **D1 × D6** — review basenames crossed with phase-entry configurations. v1.0 cited
+"D4 × D2", which are the *heading-set* and *fenced-markdown* domains and have nothing to do with an
+approval corpus (PM F-06). A corpus is a set of per-role records, each independently carrying or
+omitting a verdict and carrying a matching / stale / absent anchor; D6 supplies the verdict × anchor
+× document-mutation axes, D1 the basenames they are filed under. The 4-fact presence vector is
+enumerated exhaustively (16 combinations) and each combination is then dressed with random file
+ordering and random extra non-review files. 100 cases ≥ 16 combinations × ≥6 dressings.
 
 **Non-vacuity.** All 16 presence combinations must appear (set equality against the enumeration, not a
 count) and ≥15 cases must carry a **stale** anchor alongside an approving verdict — the H-4 shape.
 
 **Owner.** Written by **RLH-24** (batch 3, sole owner of `approvalSearch.test.js`); greened by
 **RLH-26**. Would occupy §7.3's `RLH-AT-08 … -11, -56, -57` row: green from batch 8, permitted red
-batches 3–7.
+batches 3–7. The move to L2 does not disturb this: PLAN already assigns RLH-24 an L2 file, so the row
+was always the row of an L2 suite — v1.0's *level* label was the thing out of step with it, and that
+mismatch is itself evidence the L1 placement was never derived from the PLAN.
 
 **Beyond the examples.** This is the enumeration the H-4 defect proves examples missed: the ATs sample
 three of the sixteen presence vectors. Exhaustive enumeration of the vector, with randomised dressing,
@@ -882,43 +994,6 @@ is what turns "we tested unanimity" into "unanimity is exactly this conjunction"
 
 **Shrink.** File-local ladder: drop dressing first (extra files, ordering), then reduce to the bare
 presence vector — the shrunk counterexample is a 4-bit string, which is the report you want.
-
----
-
-**PROP-STALE-01 — `isStale` is exactly digest inequality, and is stable under canonicalisation.**
-*(Data Integrity · L1 · `approvalHash.test.js`)*
-
-**Invariant.** For every generated (document, recorded-anchor) pair: `isStale` is `true` **iff** the
-document's digest differs from the anchor. Two conjuncts follow from `PROP-DIGEST-02`(iii) and are
-asserted here at the caller: a document edited only in line endings or trailing whitespace is **not**
-stale; a document edited in any content byte **is**. Absence of an anchor is stale by definition, and
-a malformed anchor is stale, never an error.
-
-**Generator.** D3 document plus an anchor produced by one of: digesting the document (fresh),
-digesting a one-byte-mutated copy (stale), digesting a line-ending-only-mutated copy (fresh —
-the discriminating shape), a random 64-hex string, a malformed string, or absent. 100 cases.
-
-**Non-vacuity.** ≥20 fresh, ≥20 content-stale, ≥15 line-ending-only, ≥5 malformed, ≥5 absent. The
-line-ending-only floor is the whole point: it is the only shape that fails an implementation
-comparing raw text instead of digests, and it is the AT-16 rebase scenario stated as a space.
-
-**Owner.** Written by **RLH-06** (batch 2); greened by **RLH-16** (staleness conjunct) and
-**RLH-26** (gate conjunct) — §7.3's `RLH-AT-15, -16, -18` row: green from batch 8, permitted red
-batches 2–7.
-
-**Beyond the examples.** `RLH-AT-15`, `-16` and `-18` sample three edits. The property covers the *edit space*: any
-mutation whatsoever is stale unless it is a normalisation, which is the exact contract the approval
-gate needs and the one a whitespace-tolerant comparison would violate silently.
-
-**Shrink.** Shipped `"bytes"` kind for the document; the anchor kind is one of six tags, reported
-verbatim.
-
-### 4.3 L2 — orchestration invariants
-
-These run against `orchestrate-dev.js`'s injected seams (`__tests__/helpers/seams.js`), synchronously
-doubled, with **no filesystem**. Every injected call the subject makes is `await`ed in the subject
-(C-2 consequence); the doubles are sync, so the properties assert on the *recorded call log* the
-doubles accumulate, never on timing.
 
 ---
 
