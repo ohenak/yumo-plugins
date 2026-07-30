@@ -486,7 +486,10 @@ describe.each(BUNDLES)("%s", (file) => {
 });
 
 describe("bundle freshness", () => {
-  it("is up to date with the canonical modules", () => {
+  // RLH-AT-20 (FSPEC AT-20) — dist/ is fresh in the same commit as any workflow
+  // source change. The consumer half (`sync-workflows.sh --check`) is asserted
+  // by the distribution suite; this is the built-artifact half.
+  it("RLH-AT-20: dist/ is up to date with the canonical modules", () => {
     // Throws (non-zero exit) when a bundle would differ from what is on disk.
     execFileSync("node", [resolve(WORKFLOWS, "build-runtime.mjs"), "--check"], {
       cwd: REPO_ROOT,
@@ -695,6 +698,182 @@ describe("RLH-SCAN-01: the await-discipline scan mechanism", () => {
 });
 
 // ---------------------------------------------------------------------------
+// RLH-31 — RLH-AT-64's derivations (TSPEC §8.5, PLAN §9.3).
+//
+// AT-19 and AT-64 answer different questions and MUST NOT share a derivation:
+// AT-64 asks *is every capability wired* — derived from main(), so a new seam
+// cannot be forgotten; AT-19 asks *is every asynchronous call awaited* — a
+// closed list, because membership is a design judgement.
+// ---------------------------------------------------------------------------
+
+/** The `_`-prefixed keys of one object literal, given the index of its `{`. */
+function underscoreKeysOfObject(masked, openBrace) {
+  const close = matchForward(masked, openBrace);
+  if (close === -1) return [];
+  return splitTopLevel(masked.slice(openBrace + 1, close))
+    .map((entry) => /^(_[A-Za-z0-9_$]*)\s*[:,]?/.exec(entry.trim()))
+    .filter(Boolean)
+    .map((m) => m[1]);
+}
+
+/** rtDevInjections's returned object, read from runtime-adapter.js as it ships. */
+function rtDevInjectionKeys(adapterSource) {
+  const masked = maskLiterals(adapterSource);
+  const m = /function\s+rtDevInjections\s*\([^)]*\)\s*\{/.exec(masked);
+  if (!m) return [];
+  const ret = masked.indexOf("return", m.index);
+  if (ret === -1) return [];
+  return underscoreKeysOfObject(masked, masked.indexOf("{", ret));
+}
+
+/**
+ * Every `_`-prefixed key supplied by a bundle entrypoint's injection object,
+ * read from build-runtime.mjs's DEV_ENTRY / QUEUE_ENTRY template literals.
+ * Every `.main({…})` argument object counts, including the one nested inside
+ * QUEUE_ENTRY's `_runPipeline` closure — the only place `_recordHalt` is
+ * supplied on the queue path (TSPEC §8.5, §7.2 edit 2b).
+ */
+function entrypointInjectionKeys(builderSource) {
+  const keys = new Set();
+  for (const name of ["DEV_ENTRY", "QUEUE_ENTRY"]) {
+    const decl = new RegExp(`const\\s+${name}\\s*=\\s*\``).exec(builderSource);
+    if (!decl) continue;
+    const start = builderSource.indexOf("`", decl.index) + 1;
+    const end = builderSource.indexOf("`", start);
+    if (end === -1) continue;
+    const masked = maskLiterals(builderSource.slice(start, end));
+    const call = /\.main\s*\(\s*\{/g;
+    let m;
+    while ((m = call.exec(masked)) !== null) {
+      for (const key of underscoreKeysOfObject(masked, masked.indexOf("{", m.index))) {
+        keys.add(key);
+      }
+    }
+  }
+  return keys;
+}
+
+/** The parameter list of a module-level function declaration, or null. */
+function moduleFunctionParams(masked, name) {
+  const re = new RegExp(`^(?:export\\s+)?(?:async\\s+)?function\\s+${name}\\s*\\(`, "m");
+  const m = re.exec(masked);
+  if (!m) return null;
+  const open = masked.indexOf("(", m.index);
+  const close = matchForward(masked, open);
+  return close === -1 ? null : masked.slice(open + 1, close);
+}
+
+/** The initialiser text of a module-level const/let/var declaration, or null. */
+function moduleValueInit(masked, name) {
+  const re = new RegExp(`^(?:export\\s+)?(?:const|let|var)\\s+${name}\\s*=\\s*(.*)$`, "m");
+  const m = re.exec(masked);
+  return m ? m[1].trim() : null;
+}
+
+const looksLikeFunction = (text) => /^(?:async\s+)?function\b/.test(text) || text.includes("=>");
+
+/**
+ * TSPEC §8.5's three exemption forms, each decided from source text — a
+ * predicate over the parameter's OWN declaration, never a list of names.
+ * Returns `{ form, resolved, why }`, or null when no form is even a candidate.
+ * `resolved: false` is a FAILURE the assertion names (anti-rot clause 2), never
+ * a silent exemption.
+ */
+function classifyExemption(masked, param) {
+  // E-2 — pass-through: no `=` initialiser at all, AND forwarded in main()'s
+  // body to exactly one callee resolving to a module-local function that
+  // declares the same name with a default. Resolution follows the alias hop.
+  if (param.init === null) {
+    const callees = e2ForwardCallees(masked, param.name);
+    if (callees.length !== 1) {
+      return { form: "E-2", resolved: false, why: `forwarded to ${callees.length} callees, not exactly 1` };
+    }
+    const target = resolveOneHop(masked, callees[0]);
+    const params = target ? moduleFunctionParams(masked, target) : null;
+    const declaresWithDefault =
+      params !== null &&
+      new RegExp(`(?<![A-Za-z0-9_$])${param.name}(?![A-Za-z0-9_$])\\s*=`).test(params);
+    return declaresWithDefault
+      ? { form: "E-2", resolved: true, why: `forwarded to ${callees[0]} → ${target}` }
+      : {
+          form: "E-2",
+          resolved: false,
+          why: `${callees[0]} → ${target ?? "unresolved"} does not declare ${param.name} with a default`,
+        };
+  }
+
+  const init = param.init.trim().replace(/[;,]\s*$/, "");
+
+  if (/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(init)) {
+    // E-3 — agent-composite: the default is a function declared in this module
+    // whose own parameter list contains `_agent`. That declared parameter is
+    // the discriminator, and no capability seam has one.
+    const params = moduleFunctionParams(masked, init);
+    if (params !== null) {
+      const hasAgent = /(?<![A-Za-z0-9_$])_agent(?![A-Za-z0-9_$])/.test(params);
+      return hasAgent
+        ? { form: "E-3", resolved: true, why: `${init}() declares _agent` }
+        : { form: "E-3", resolved: false, why: `${init}() is a module function but declares no _agent` };
+    }
+    // E-1 — policy value: the default identifier resolves to a module-level
+    // declaration whose value is not a function.
+    const value = moduleValueInit(masked, init);
+    if (value === null) {
+      return { form: "E-1", resolved: false, why: `${init} has no module-level declaration` };
+    }
+    return looksLikeFunction(value)
+      ? { form: "E-1", resolved: false, why: `${init} resolves to a function value` }
+      : { form: "E-1", resolved: true, why: `${init} = ${value}` };
+  }
+
+  // E-1's other half — a non-function literal default.
+  if (!looksLikeFunction(init)) return { form: "E-1", resolved: true, why: `literal ${init}` };
+  return null;
+}
+
+/** Distinct callees to which `name` is forwarded, bare, inside main()'s body. */
+function e2ForwardCallees(masked, name) {
+  const body = mainBodyRange(masked);
+  if (!body) return [];
+  const re = new RegExp(`(?<![A-Za-z0-9_$])${name}(?![A-Za-z0-9_$])`, "g");
+  re.lastIndex = body.start;
+  const callees = new Set();
+  let m;
+  while ((m = re.exec(masked)) !== null && m.index < body.end) {
+    const before = masked[prevTokenEnd(masked, m.index)];
+    const after = firstAfter(masked, m.index + name.length).ch;
+    if (!(before === "{" || before === ",") || !(after === "," || after === "}")) continue;
+    const unclosed = unclosedBefore(masked, m.index).filter((i) => masked[i] === "(");
+    if (!unclosed.length) continue;
+    const callee = calleeBefore(masked, unclosed[0]).name;
+    if (callee) callees.add(callee);
+  }
+  return [...callees];
+}
+
+/** One hop — and one only. A callee that is a binding created by main()'s own
+ *  destructuring pattern resolves through that pattern before the module is
+ *  searched (`_x: xFn = moduleFn` → `moduleFn`). A chain is not authorised. */
+function resolveOneHop(masked, callee) {
+  for (const p of parseMainParams(masked) || []) {
+    if (p.local === callee && p.init) return p.init.trim().replace(/[;,]\s*$/, "");
+  }
+  return callee;
+}
+
+/** The `{ … }` body of main(), as an index range into `masked`. */
+function mainBodyRange(masked) {
+  const m = /function\s+main\s*\(/.exec(masked);
+  if (!m) return null;
+  const paren = masked.indexOf("(", m.index);
+  const parenClose = matchForward(masked, paren);
+  if (parenClose === -1) return null;
+  const open = masked.indexOf("{", parenClose);
+  const close = matchForward(masked, open);
+  return close === -1 ? null : { start: open, end: close };
+}
+
+// ---------------------------------------------------------------------------
 // RLH-AT-19 — the bundle-level runtime constraint (FSPEC AT-19, TSPEC §8.5).
 //
 // TSPEC §8.1 calls this "the only thing standing between this design and this
@@ -743,6 +922,91 @@ describe("RLH-AT-19: the runtime constraint", () => {
       expect(unclassified).toEqual([]);
     }
   );
+});
+
+// ---------------------------------------------------------------------------
+// RLH-AT-64 — the composition root wires every seam (FSPEC AT-64, TSPEC §8.5).
+//
+// Asserted against the PRODUCTION composition root with NO injection whatsoever
+// (§8.4: L3 may not inject anything): main()'s default-parameter behaviour,
+// rtDevInjections's returned object and the entrypoint injection objects are
+// inspected as they ship.
+//
+// This guards `orchestrate-dev`'s composition root ONLY. Extending it to
+// orchestrate-queue.js is its own change and would red batches 5–10 by design
+// (PLAN §7.3).
+// ---------------------------------------------------------------------------
+
+describe("RLH-AT-64: orchestrate-dev's composition root wires every seam", () => {
+  const devMasked = maskLiterals(readSource("orchestrate-dev.js"));
+
+  // DERIVED from main(), never hand-listed: a hand-list is the artefact that
+  // rots — the next seam added would leave the test green while the runtime
+  // receives `undefined` and throws on first use.
+  const seams = (parseMainParams(devMasked) || []).filter((p) => /^_/.test(p.name));
+
+  const wired = new Set([
+    ...rtDevInjectionKeys(readSource("runtime-adapter.js")),
+    ...entrypointInjectionKeys(readSource("build-runtime.mjs")),
+  ]);
+
+  const classified = seams.map((p) => {
+    const exemption = classifyExemption(devMasked, p);
+    return {
+      name: p.name,
+      wired: wired.has(p.name),
+      exemption,
+      exempt: Boolean(exemption && exemption.resolved),
+    };
+  });
+
+  const report = (c) =>
+    `${c.name}: wired=${c.wired} exemption=${c.exemption ? `${c.exemption.form}(${c.exemption.resolved ? "resolved" : "UNRESOLVED"}) — ${c.exemption.why}` : "none"}`;
+
+  it("RLH-AT-64: the seam set is derived from main(), and is not empty", () => {
+    expect(seams.length).toBeGreaterThan(0);
+    // The derivation must be main()'s parameter list, not AT-19's closed list:
+    // it carries policy values and pass-throughs that AT-19 deliberately omits.
+    expect(seams.map((p) => p.name)).toEqual(expect.arrayContaining(["_now", "_phaseDodEnabled"]));
+  });
+
+  it("RLH-AT-64: every _-prefixed parameter of main() is wired or exempt", () => {
+    // The failure names WHICH parameter fell in neither class, and its derived
+    // classification — not merely that a count disagreed.
+    expect(classified.filter((c) => !c.wired && !c.exempt).map(report)).toEqual([]);
+  });
+
+  it("RLH-AT-64: anti-rot 1 — a parameter classified exempt that is also wired is a failure", () => {
+    // It would mean the predicate has drifted into admitting a real seam.
+    expect(classified.filter((c) => c.wired && c.exempt).map(report)).toEqual([]);
+  });
+
+  it("RLH-AT-64: anti-rot 2 — exemption evidence must resolve, for all three forms including E-2", () => {
+    // E-2 was the one form outside this clause, which made "exempt by declaring
+    // a seam with no default" a silent pass (TE-v2 N-02).
+    expect(
+      classified.filter((c) => !c.wired && c.exemption && !c.exemption.resolved).map(report)
+    ).toEqual([]);
+  });
+
+  it("RLH-AT-64: _recordHalt is wired, not exempt, whenever main() declares it", () => {
+    // Deliberately absent from rtDevInjections because its implementation
+    // differs by caller; satisfied by QUEUE_ENTRY's _runPipeline closure and by
+    // DEV_ENTRY. If either is dropped, this reds — which is the whole point.
+    const recordHalt = classified.find((c) => c.name === "_recordHalt");
+    if (!recordHalt) return; // not yet declared on main() — RLH-18 adds it
+    expect(report(recordHalt)).toBe(`_recordHalt: wired=true exemption=none`);
+  });
+
+  it("RLH-AT-64: the E-2 alias hop is one hop, through main()'s own destructuring pattern", () => {
+    // main()'s only forward of _now/_sleep goes through the destructured local
+    // raisePrAndVerifyCiFn, not a module declaration, so without the hop both
+    // fall in no class and AT-64 reds on shipped, correct source. A chain is
+    // not authorised: resolveOneHop returns the callee unchanged when it is not
+    // a main()-pattern binding.
+    expect(resolveOneHop(devMasked, "raisePrAndVerifyCiFn")).toBe("raisePrAndVerifyCi");
+    expect(resolveOneHop(devMasked, "someUnknownCallee")).toBe("someUnknownCallee");
+  });
 });
 
 describe("DOD-03 — build-runtime.mjs --check detects staleness", () => {
