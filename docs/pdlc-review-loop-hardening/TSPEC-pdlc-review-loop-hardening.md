@@ -378,7 +378,7 @@ G.  POSTMORTEM gate            §5.8   THE PHASE WILL RUN UNLESS THIS REFUSES
                                       await checkPostmortem({ phase, feature })
                                       ├─ unresolved ─► refuse the phase (§6.2 row 13)
                                       └─ none / resolved ─► step 5
-5.  reviewLoop(…, iteration = startIndex, present, reviewFiles)
+5.  reviewLoop(…, iteration = startIndex, docType)
                                       each round: dispatchAndVerify per author/reviewer episode §5.6
                                       gatePass = isPass(v1) && isPass(v2)   (unchanged)
                                       on pass: append APPROVAL-HASH / REVIEWED-COMMIT   §5.3
@@ -1330,8 +1330,8 @@ instant the episode begins**, read inside `reviewLoop`. They are never a snapsho
 loop. The function stays pure; freshness is the **caller's** obligation, and this is where it is
 discharged.
 
-`reviewLoop`'s signature gains `present`, `reviewFiles`, `docType`, `_listFiles` and `_readFile`
-(§3.9) and declares one module-local helper, called at **every** wrapped episode entry inside its
+`reviewLoop`'s signature gains `docType`, `_listFiles` and `_readFile` — three new parameters, no
+seed maps (§3.9 owns the signature) — and declares one module-local helper, called at **every** wrapped episode entry inside its
 `while (true)` — the round's optimizer episode and each reviewer episode alike:
 
 ```
