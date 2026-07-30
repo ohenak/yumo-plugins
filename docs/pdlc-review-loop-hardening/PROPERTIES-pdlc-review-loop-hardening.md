@@ -1468,17 +1468,38 @@ of **four** outcomes holds:
 | Outcome | Decided by | Decision test |
 |---|---|---|
 | `awaited` | the walk | the token preceding the call is `await` |
-| `returned-promise` | TSPEC §8.5 ruling **2** | nearest preceding token is `=>` or `return` (backward half) **and** the returned value is awaited by the caller (forward half) — **both**, not either |
+| `returned-promise` | TSPEC §8.5 ruling **2**, decided by the walk **PLAN §9.2 item 3(c) prescribes** | **both halves of §9.2 item 3(c), cited not paraphrased.** Backward: the nearest non-whitespace token before the call is `=>` or `return`. Forward: the first non-whitespace token after the call's matching `)`, reached by walking the same bracket-depth stack forward to depth zero, is `;`, `,`, `)`, `}` or end of line. Both must hold; if the forward walk cannot reach a matching `)` at depth zero the site is `unclassified` |
 | `awaited-combinator-argument` | TSPEC §8.5 ruling **3** | the innermost unclosed delimiter at the site is the `[` of an `await`ed `Promise.all` / `allSettled` argument list |
 | `unclassified` | neither ruling fires | the property **fails loudly** — it does not warn, does not skip, and is not permitted to be absent from the report |
+
+**Ruling 2's forward half is a *local syntactic* test, and v1.1's statement of it is withdrawn**
+(SE F-12). v1.1's cell read *"the returned value is awaited by the caller"*. That is a claim about
+every caller of the enclosing function; it is **undecidable by the bracket-depth walk §9.2 item 3(c)
+prescribes**, and it is unauthorable for D8's synthetic fragments, which have no caller at all. What
+§9.2 item 3(c) actually requires is that the call be the *entire* body of the arrow or the *entire*
+operand of the `return` — which the forward token test above decides locally, at the call site. The
+rule's owner is PLAN §9.2 item 3(c) (itself the repair for TE `F-01(a)`) and the exemption it
+implements is TSPEC §8.5 ruling 2; **this document cites both and states neither in its own words.**
 
 **Disjointness is now a real claim.** Under v1.0's catalogue, "a site matching two rulings is a
 failure" was near-vacuous, because alias co-classification was the only plausible overlap and alias
 was never an outcome. Under the rebuilt catalogue the two rulings have *genuinely* distinguishable
 decision tests — ruling 2 keys on the **nearest preceding token**, ruling 3 on the **innermost
 unclosed delimiter** — and a fragment can be constructed that a sloppy implementation would send down
-both (a call inside an `await`ed `Promise.all([...])` whose element is itself an arrow body). Such
-fragments are generated, and exactly one outcome must be returned.
+both (a call inside an `await`ed `Promise.all([...])` whose element is itself an arrow body, followed
+by `,`, so that ruling 2's forward half holds too). Such fragments are generated, and exactly one
+outcome must be returned.
+
+**For those fragments the assertion is cardinality, not a label** (SE F-15, SE Q-01). **No artifact
+states a precedence between rulings 2 and 3**: PLAN §9.2 item 3(c) says the walk decides *"whichever,
+if any, applies"* and TSPEC §8.5's rulings table is unordered. Both rulings exempt the site, so either
+answer is behaviourally correct — and a hand-authored `expected` label would therefore red a *correct*
+classifier, on the one row with no permitted red, ever. This document **does not invent the
+precedence**. These fragments are generated **without** an `expected` label; the assertion over them
+is: `classify(fragment)` returns **exactly one** outcome, and that outcome is a member of
+`{ returned-promise, awaited-combinator-argument }` — never `unclassified`, never both, never a set.
+The missing precedence is reported upward as a specification gap in §8.5, not filled here. The
+round-trip `classify(fragment) === expected` below therefore holds over the labelled fragments only.
 
 **Total cover, not total partition** (SE F-08). The classification of `S` is a partition. The
 *obligation* it discharges is a **cover**: it asserts that no site in `S` is unclassified. It does not
@@ -1497,15 +1518,21 @@ source (that is walked whole and asserted directly) but the *classifier's input 
 fragments composing seam calls with the constructs that break naive regex scanners — calls inside
 template literals, inside string literals containing brackets, inside comments, split across lines,
 nested inside another call's argument list, and inside a `Promise.all([...])` that is itself awaited.
-Each fragment is generated together with its expected classification, so the property is a
-round-trip: classify(fragment) === expected. 100 cases.
+Each fragment **except the both-rulings-applicable shape** is generated together with its expected
+classification, so the property is a round-trip over those: `classify(fragment) === expected`. The
+both-rulings shape is generated unlabelled and carries the cardinality assertion stated above.
+100 cases.
 
 **Non-vacuity.** All forced. Each of the **four** outcomes — `awaited`, `returned-promise`,
 `awaited-combinator-argument`, `unclassified` — must be the expected outcome for ≥10 fragments, set
 equality against that four-element catalogue. ≥10 fragments must satisfy ruling 2's backward half but
-**not** its forward half, expected `unclassified` — the control that stops "either half" passing for
-"both". ≥10 must be the deliberate both-rulings-look-applicable shape described above, where exactly
-one outcome must be returned. And ≥15 fragments must place a seam call inside a masked region (string,
+**not** §9.2 item 3(c)'s forward half, expected `unclassified` — the control that stops "either half"
+passing for "both". Under the corrected forward half these are trivially generable, and PLAN §9.2
+item 3(c) names two of them: `() => _agent(a) && other` and `return _checkFile(p) || fallback;`, where
+the token after the call's matching `)` is `&&` / `||` rather than `;` `,` `)` `}` or end of line.
+(Under v1.1's "awaited by the caller" phrasing this floor was ungenerable, which is the second thing
+SE F-12 broke.) ≥10 must be the deliberate both-rulings-applicable shape described above, carrying the
+**cardinality** assertion rather than a label. And ≥15 fragments must place a seam call inside a masked region (string,
 template, comment) where the expected outcome is that **no site is found at all** — a statement about
 the walk's masking, not about the classifier, and therefore asserted on `S` rather than on an outcome.
 No fragment has expected outcome `alias`; per PLAN §9.2 item 3(b) none can exist.
