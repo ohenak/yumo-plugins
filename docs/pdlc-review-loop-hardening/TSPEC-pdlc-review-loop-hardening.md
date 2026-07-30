@@ -2050,7 +2050,7 @@ of three forms, each decided from source text:
 | Form | Test | Members at HEAD `ef4705a` |
 |---|---|---|
 | **E-1 — policy value** | the default is an identifier resolving to a module-level declaration whose value is **not a function**, or a non-function literal | `_phaseDodEnabled = PHASE_DOD_ENABLED`, `_phasePubEnabled = PHASE_PUB_ENABLED` |
-| **E-2 — pass-through** | the destructuring element has **no `=` initialiser at all**, **and** the parameter is forwarded to exactly one module-local function that declares a same-named parameter *with* a default, and that function resolves | `_now`, `_sleep` (forwarded bare to `raisePrAndVerifyCi`, which defaults them `_now = () => Date.now()`, `_sleep = sleep`; `checkPrCi` takes only `{ execFn }` and never sees them) |
+| **E-2 — pass-through** | the destructuring element has **no `=` initialiser at all**, **and** the parameter is forwarded, in `main()`'s body, to exactly one callee that **resolves to** a module-local function declaring a same-named parameter *with* a default. Resolution follows the alias rule below | `_now`, `_sleep` (forwarded bare to `raisePrAndVerifyCiFn`, `main()`'s destructured alias of `_raisePrAndVerifyCi`, whose own default is the module function `raisePrAndVerifyCi`, which defaults them `_now = () => Date.now()`, `_sleep = sleep`; `checkPrCi` takes only `{ execFn }` and never sees them) |
 | **E-3 — agent-composite** | the default is a function **declared in this module** whose own destructured parameter list contains `_agent` | `_rebaseOntoDefault = rebaseOntoDefault`, `_dodVerifyLoop = dodVerifyLoop`, `_raisePrAndVerifyCi = raisePrAndVerifyCi` |
 
 E-3 is the form the previous four-name list omitted, and its omission is why the rule as written in v1.0
@@ -2081,11 +2081,28 @@ and injected nowhere is forwarded to no defaulting callee, so it falls in no cla
    failure".
 2. **Evidence must resolve — for all three forms, E-2 included.** E-1's default identifier must have
    a module-level declaration; E-3's must be a function declared in this file; **E-2's forwarding
-   target must be a module-local function that declares the same name with a default**, and the
-   forward must be found in `main()`'s body. A parameter whose evidence no longer resolves is a
+   target must resolve to a module-local function that declares the same name with a default**, and
+   the forward must be found in `main()`'s body. A parameter whose evidence no longer resolves is a
    **failure**, never a silent exemption — that is the removal-direction guard the old
    fully-consumed clause supplied, restated for a predicate. E-2 was the one form outside this
    clause, which made "exempt by declaring a seam with no default" a silent pass (TE-v2 N-02).
+
+   **The alias hop, ruled once and reused.** "Resolves to" is the **same alias resolution the AT-19
+   table above already rules**, not a second mechanism: a callee named in `main()`'s body that is a
+   binding created by `main()`'s **own destructuring pattern** is resolved through that pattern before
+   the module is searched. For an element of the form `_x: xFn = moduleFn` the alias resolves to
+   `moduleFn`; the search then asks whether `moduleFn` is a module-level function declaring the
+   forwarded name with a default. This is exactly one hop through a pattern the test has already
+   parsed to derive the seam set, so it adds no new parsing and cannot be widened by accident.
+   **Measured at HEAD `ef4705a`, this hop is load-bearing and not hypothetical:** `main()`'s only
+   forward of `_now` / `_sleep` is `await raisePrAndVerifyCiFn({ …, _now, _sleep })`, and
+   `raisePrAndVerifyCiFn` is a destructured local (`_raisePrAndVerifyCi: raisePrAndVerifyCiFn =
+   raisePrAndVerifyCi`), not a module declaration. Without the hop, `_now` and `_sleep` fall in no
+   class and **AT-64 reds on shipped, correct source** — the same defect class as v1.0's AT-19, which
+   §8.5 exists to have already learned. What the hop does **not** authorise is a chain: resolution
+   follows at most one alias, and the resolved target must itself be a module-level function
+   declaration. "Forwarded to anything that eventually defaults it" would restore the TE-v2 N-02
+   hole, so it is not the rule.
 
 The test reports the derived classification for every parameter, so the failure message names which
 parameter fell in neither class rather than only that a count disagreed.
