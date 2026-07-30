@@ -181,4 +181,55 @@ This is exactly the drift AC-4.2 was re-based to fix, observable in the artifact
 
 ## 5. Open Items for Consolidation
 
+### 5.1 Human action items — these need a person, not `consolidate-learnings`
+
+1. **A follow-up QUEUE row and therefore a REQ, for DoD F-2 + F-3.** Both are byte-identical to `origin/main` — pre-existing — and `CODE_REVIEW-…-v1` states outright: "F-2 and F-3 are one defect seen from two sides. F-2's live site is entirely pre-existing (unchanged bytes on both ends of the seam), so per DC-08 it is deferred with a named successor surface rather than folded into this feature." The coupling is the operative detail: **adding F-3's guard reds until F-2 is fixed**, so they cannot be sequenced apart.
+   - **F-2** — the `checkPrCi` seam uses a dynamic `await import("child_process")` that the workflow runtime forbids. 100% pre-existing.
+   - **F-3** — the same seam pattern at six sites. **Four of six pre-date this branch; two are net-new** (`defaultGit` seams this feature added, one per module). So F-3 is not wholly pre-existing, and this feature contributed to it.
+   - There is currently **no queue row that charters this work**. Recorded here because a deferred finding with no successor row is how a deferral becomes an omission.
+2. **`POSTMORTEM-R-pdlc-review-loop-hardening.md` still carries no `RESOLVED:` marker.** It was unblocked by an operator-directed convergence pass recorded in a `## Resolution` section, but the marker the phase gate actually reads is absent. **The marker is human-written only** — no agent may set it. Until it is set, Phase R fails closed on this feature. The file is deliberately retained by this harvest.
+3. **`docs/_queue/QUEUE.md` row 22 still reads `halted`** for this feature. Queue state is human-owned and untouched by this harvest.
+
+### 5.2 Promotion candidates for `consolidate-learnings`
+
+| Candidate | Target | Note |
+|---|---|---|
+| **Owning-section-wins** — a restatement is not an amendment; the section that owns the question governs | `docs/_constraints/` | The highest-value item in this document. Applied three times this run; would have prevented both §4.2 narrowings, the §4.7 brief conflict, and the PLAN's four-round count churn. |
+| A derived value is stated **once**, marked advisory; gates are predicates over the procedure, never equalities over the output | `docs/_constraints/` | TE-PLAN-v4. |
+| Re-derive a disputed quantity from the stated procedure; report the procedure, not the number | `docs/_constraints/` | TE-PLAN-v4, `Cross-Feature`. |
+| **Any doc/comment asserting "X is enforced by Y" must name Y as an existing test id** | `docs/_constraints/` + `se-review`/`se-implement` SKILL update | The countermeasure for §4.1's dominant defect class. |
+| An exemption that delegates an obligation to a call **outside** the guarded set moves the risk rather than removing it | `docs/_constraints/` | PM-PLAN-v4 obs 4 / v5 obs 3, explicitly "for the constraints file". |
+| Seams are destructured shorthand outside `main()`; dangling `fs` / `await import()` references survive in shipped `dist/` bundles | `docs/_constraints/` — **one shared entry** | CODEBASE-v1 F-4 and F-5, both routed here by the reviewer. |
+| The workflow runtime has no digest primitive, no `crypto`, no `import`/`import()`/`process`/`fs`/`fetch` | `docs/_constraints/` | Rediscovered per feature; SE-REQ-v5 F-03 and the PROPERTIES `crypto` rejection. |
+| A **permitted-red ledger entry must record the environment in which it is red**; a red that vanishes on a clean clone is a different category from a code-caused red | `docs/_constraints/` + `tech-lead` SKILL update | §4.4. |
+| **Agent status is not evidence of quiescence** — measure (recent commits, running tasks) before writing to a shared branch | `docs/_decisions/` + `orchestrate-dev`/`tech-lead` SKILL update | §4.6; DC-02 applied to orchestration itself. |
+| A dispatch brief may narrow *attention* but not *permission*; where a brief and the PLAN disagree on change surface, the PLAN governs | `orchestrate-dev` / `tech-lead` SKILL update | §4.7. |
+| Reviews should carry an explicit "checked and dropped — do not re-file" section | `se-review` / `pm-review` / `te-review` SKILL update | §4.8; demonstrated by SE-PROPERTIES v4/v5. |
+| `Scope:` must be **per-finding**, not a document-level blanket default | `pm-review` / `se-review` / `te-review` SKILL update + `check-scope-field.sh` | §2's tag-under-use note. A blanket header default passes the existing hook while carrying zero routing information. |
+| Harvest deletes the `CROSS-REVIEW-*` files a recorded-approval read depends on — the reason the tier-2 Approval Record exists | `docs/_decisions/` | SE-REQ-v2 F-01. |
+| `halted` is outside `selectNextPending`'s pickup set, so a `halted` row strands the feature | `docs/_decisions/` — queue lifecycle | Filed three times; see §2. |
+
+### 5.3 Deferred findings, recorded so the deferral does not become an omission
+
+| Finding | Status | Named successor surface |
+|---|---|---|
+| **CODEBASE-v1 F-4** (Low) — drift scanner resolves seam aliases only inside `main()` | Deliberately unfixed; not re-raised in v2 | LEARNINGS §5 + a `docs/_constraints/` entry |
+| **CODEBASE-v1 F-5** (Low) — dangling `fs` / `await import()` in shipped `dist/` bundles | Deliberately unfixed | **the same** `docs/_constraints/` entry as F-4 |
+| **CODEBASE-v1 F-6** (Low) — two different predicates for the `## Verdict` heading: `crossReviewComplete` (`orchestrate-dev.js:1244–1254`) vs `extractFileVerdict` (`:892–896`) | Deliberately unfixed | "a two-line tidy whenever that file is next touched" |
+| **CODEBASE-v2 F-7** (Low) — Q-07 reversal unrecorded; false comment at `pipelineWiring.test.js:471` | Recorded | LEARNINGS §3 and §5 — both done (§3 last row, §4.1 item 1) |
+| **CODEBASE-v2 F-8** (Low) — `RLH-CR-F1` preamble claims an assertion against committed `dist/`; the import rebuilds first. Predates this feature (`3991b4d`) | Recorded | §4.3 / §4.1; wants a real fix — see below |
+| **CODEBASE-v2 F-9** (Low) — harvest checklist omitted the `Harvested from` row | Fixed this run | — |
+| **CODEBASE-v2 §7(a)** — `build-runtime.mjs` is import-unsafe (builds as a side effect of import) | Recorded for Harvest | **No successor row exists.** This is the root cause of F-8 and of the §4.3 hole; it deserves one. |
+| **DoD F-1** — `forcePhases` has no reachable or documented invocation channel (`DEV_META` declares no `inputs`) | Surfaced twice (CODEBASE-v1 F-1, then DoD F-1) | Resolved this run |
+| **DoD F-2 / F-3** — forbidden dynamic `import()` in the `checkPrCi` and `defaultGit` seams | Deferred, pre-existing | **Needs a QUEUE row + REQ — see §5.1 item 1** |
+| **`coveredViolations` walks the whole live root** (`WALK_SKIP_DIRS` = `.git`, `node_modules` only) | New finding, this harvest | Candidate: honour `.gitignore`, or scan tracked files only. No row exists. |
+| **PM-PROPERTIES-v3 F-02's residual** — bound to `QUEUE.md` row 9, whose charter explicitly excludes it | Withdrawn in v4 after the author re-read all nine rows; the gap is recorded as **unowned**, and SE-v4 independently reproduced the "none charters it" conclusion row by row | Genuinely unowned — flag for consolidation |
+| **Three TSPEC-review deferrals** (incl. Q-09) | Bound to `docs/_queue/QUEUE.md` row 9 `pdlc-authoring-contract` (`blocked`, Order 9 not 8 deliberately, per DC-08) | Row exists |
+
+### 5.4 Verification performed, recorded as fact
+
+- All four `pr-tests.yml` jobs — **unit-tests, artifact-freshness, fresh-clone-bootstrap, script-syntax** — were reproduced locally against a **clean clone of `c2c2250`**, and all four pass.
+- The full suite on that clean clone: `70 skipped, 1170 passed, 1240 total`, **zero failures** (see §4.4 — AT-22's "permanent red" does not reproduce off the maintainer's machine).
+- **Residual untested surface:** the `ubuntu-latest` / bash-5 matrix leg, which cannot be exercised from macOS.
+
 ## 6. Approval Record
