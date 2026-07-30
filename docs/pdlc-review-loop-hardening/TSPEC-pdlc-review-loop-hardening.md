@@ -1935,6 +1935,16 @@ them; the **jest test name** for every row is `RLH-AT-{N}`.
 | AT-61 | each trailer reason distinguishable in the report | `pacingWrapper.test.js` |
 | AT-65, AT-66 | fenced-region exclusion, both directions plus unclosed fence | `__tests__/scanLines.test.js` **(new)** |
 
+Three **TSPEC-local** ATs, added at v1.2 because the invariants they guard are stated here rather
+than in the FSPEC. Their ids carry a letter suffix so they cannot collide with a future FSPEC id, and
+their jest names follow the same `RLH-` namespacing:
+
+| AT | Asserts | File |
+|---|---|---|
+| **AT-01a** | a **forced** phase on a branch already carrying `-v1` cross-reviews writes `-v2` next. §2.5 step 2 is *not* skipped by a force, so `reviewLoop` never falls back to `iteration = 1`. Reds on the "forced skips steps 2–4" reading, which restores H-1 on the forced path | `forcePhases.test.js` |
+| **AT-13a** | **G-INV totality.** For each of the four exits that lead to running the phase — forced, `candidate < 1`, `NOT APPROVING`, `STALE`/`UNEVALUABLE` — an unresolved POSTMORTEM refuses the phase and the halt reproduces the Recommendation; and the `FRESH` exit does **not** refuse, but names the POSTMORTEM in its skip notice. FSPEC §12.4's worked example A is the `FRESH` case and AC-2.3b's example B is the `candidate < 1` case, both driven verbatim as fixtures | `haltAndQueue.test.js` |
+| **AT-43a** | **S-INV freshness.** On a branch with no cross-reviews, after round 1's reviewers write theirs, round 2's optimizer episode selects `mode: "revision"` for round 1 and requires a trailer; and its `EpisodeKey.roundIndex` differs from round 1's, so the two do not share a dispatch budget. Reds on any implementation that decides mode from a pre-loop snapshot | `pacingWrapper.test.js` |
+
 **The gate is "no new failures against a measured baseline", not "the suite is green."** The suite is
 not green at HEAD and has not been for the life of this branch. Measured by
 `cd pdlc/workflows && npm test` at HEAD `ef4705a`:
@@ -2123,9 +2133,9 @@ its v1.0 form.
 
 | Defect | Mechanism | First falsifying test |
 |---|---|---|
-| **H-1** | `deriveRoundWindow`'s `max(present) + 1` (§5.2), passed to `reviewLoop` at all seven call sites | AT-01 |
-| **H-2** | `checkConverged`'s corrected `postmortemPath`, `_checkFile` confirmation, `_recordHalt`, the two conditional halt shapes (§6.3, §6.4) | AT-22 |
-| **H-3** | `dispatchAndVerify`'s terminal-first-then-progress loop, per-episode counters, resume prompt (§5.6) | AT-35 |
+| **H-1** | `deriveRoundWindow`'s `max(present) + 1` (§5.2), passed to `reviewLoop` at all seven call sites — **including on the forced path**, where §5.7 skips steps 3–4 only | AT-01; **AT-01a** for the forced path |
+| **H-2** | `checkConverged`'s corrected `postmortemPath`, `_checkFile` confirmation, `_recordHalt`, the two conditional halt shapes (§6.3, §6.4); §2.5's G-INV for the refusal half | AT-22; **AT-13a** for G-INV totality |
+| **H-3** | `dispatchAndVerify`'s terminal-first-then-progress loop, per-episode counters and mode (§5.6.1 S-INV), resume prompt (§5.6) | AT-35; **AT-43a** for per-episode mode and budget |
 | **H-4** | the two-tier approval search + `isStale` (§5.4, §5.5) | AT-08 |
 
 ### 9.3 Constraint compliance
