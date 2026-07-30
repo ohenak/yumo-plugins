@@ -1081,9 +1081,13 @@ Every task, before it commits:
 ### 12.2 Per-batch gate
 
 1. `cd pdlc/workflows && npm test`, **run in the background or with a >300 s timeout** (§2.3).
-2. Result satisfies §2.2: 1038 / 1 / 70 or better, the one failure still
-   `documentOracles.test.js` `AT-22 [red-until-L-06]`, **plus only those assertions whose §7.3
-   `Permitted red` window contains the current batch.** Read that column; the rule is not restated here.
+2. Result satisfies §2.2: 1038 passed / 1 failed **/ skipped exactly 70** — an equality, not "or
+   better" — the one failure still `documentOracles.test.js` `AT-22 [red-until-L-06]`, **plus only those
+   assertions whose §7.3 `Permitted red` window contains the current batch.** Read that column; the rule is
+   not restated here. **And every in-window assertion must be *present* and either red-as-expected or
+   green: `RLH-*` and `RLH-AT-*` are all executed, none is skipped, and a skip is not a green** (v1.3, TE
+   `F-04`). "1038 / 1 / 70 or better" was under-specified in exactly one direction and it is the direction
+   this repo makes easy — see the third erosion below.
 3. `node pdlc/workflows/build-runtime.mjs --check` exits 0.
 4. No file outside §5's manifest was modified.
 
@@ -1092,9 +1096,20 @@ Every task, before it commits:
 zero tests fails it — and §7.3's ledger is keyed on **named assertions**, never on a process exit status.
 So the batch gate is structurally immune to a vacuous or non-executing run, whichever way the tooling
 fails; only §12.1's per-*task* gate ever depended on a single-file invocation, which is why §12.1 step 1
-names the working one. The one thing that would erode step 2 is a suite silently leaving jest's match
-pattern or a `--passWithNoTests` path appearing: the absolute counts are the only thing that would notice,
-which is the argument for asserting counts rather than "green".
+names the working one. **Three things would erode step 2**, and the third was missing until v1.3: a suite
+silently leaving jest's match pattern; a `--passWithNoTests` path appearing; and — the one this repo makes
+reachable — **a skipped assertion, which is neither red nor green.** A `test.skip`, `describe.skip` or
+`it.todo` on an `RLH-AT-*` or `RLH-*` assertion satisfied all of v1.2's criteria at once: the pass count is
+unchanged or higher, no failure appears, and §7.3's window is **never consulted** because the assertion is
+not red — while §2.2's "no *new* failures" is silent on it too, so the two statements of the exit criterion
+were not equivalent for a skipped test. An unimplemented or stubbornly-red assertion could therefore be
+switched off at batch 3 and ride through twelve batch gates as permitted, caught only by `RLH-34` at the
+end — the fail-late shape §7.3's per-assertion regranulation exists to remove. This is not theoretical
+here: the baseline already carries **70 skipped** tests and a `globalSetup`/`globalTeardown` skip-sink
+harness (`__tests__/helpers/skipSinkSetup.js`, `skipSinkTeardown.js`), so skipping is an established local
+idiom rather than an exotic act. Hence step 2's skip criterion is an **equality** and its assertion
+criterion is *present and executed*, not merely *not failing*. The absolute counts remain the argument for
+asserting counts rather than "green"; they were simply not sufficient on their own.
 
 Batches 2 and 3 are RED-terminal (§2.2) and their gate is the split wording: **the new `RLH-AT-*` tests
 fail for the stated reason and every pre-existing test still passes.**
@@ -1106,10 +1121,13 @@ fail for the stated reason and every pre-existing test still passes.**
 - [ ] All 66 FSPEC ATs plus `RLH-AT-01a`, `RLH-AT-13a`, `RLH-AT-43a` are implemented under their
       `RLH-`-namespaced jest names, in the files TSPEC §8.3 assigns.
 - [ ] Every task row in §4 is ✅ and every AT in §7 is green.
-- [ ] The **thirteen non-AT assertions of §7.5** — `RLH-WIRE-01`, `RLH-LOOP-01`, `RLH-LOOP-02`,
-      `RLH-REPORT-01`, `RLH-SKILL-01` … `RLH-SKILL-09` — all exist under those exact jest names and are
-      green. They are deliberately outside the AT-counting rows above, so this row is the only thing that
-      requires them.
+- [ ] The **fifteen non-AT assertions of §7.5** — `RLH-WIRE-01`, `RLH-LOOP-01`, `RLH-LOOP-02`,
+      **`RLH-LOOP-03`**, `RLH-REPORT-01`, **`RLH-SCAN-01`**, `RLH-SKILL-01` … `RLH-SKILL-09` — all exist
+      under those exact jest names and are green. They are deliberately outside the AT-counting rows above,
+      so this row is the only thing that requires them. (Thirteen at v1.2; `RLH-LOOP-03` and `RLH-SCAN-01`
+      were added at v1.3 — §11.5 and §9.2 item 3 respectively.)
+- [ ] **No `RLH-*` or `RLH-AT-*` assertion is skipped**, and the suite reports **exactly 70** skipped —
+      the baseline's own count. A skip is not a green (§12.2 step 2, the third erosion).
 - [ ] The seven property tests of TSPEC §8.2 exist, one per parameterisable component, each declaring a
       literal seed through `resolveSeed`, each L1.
 - [ ] Full suite against §2.2: **no new failures**, the one permitted red unchanged in identity.
@@ -1126,10 +1144,13 @@ fail for the stated reason and every pre-existing test still passes.**
       prefix; an exit 126 means the execute bit was lost. **`.claude/workflows/` is not committed**, and
       `git status` confirms it is untracked.
 - [ ] `RLH-AT-19`: both anchored regexes match zero times in both bundles; the await-discipline scan is
-      clean over `orchestrate-dev.js` **and** `orchestrate-queue.js` source, with every non-`await`ed
-      thirteen-list call site classified by **TSPEC §8.5's** three rulings. At HEAD there are **three**
-      such sites — `orchestrate-dev.js:615`, `:616` (awaited combinator argument) and `:1867` (returned
-      promise) — and no site may be classified by a clause naming a line number (§9.2).
+      clean over `orchestrate-dev.js` **and** `orchestrate-queue.js` source, meaning **every non-`await`ed
+      thirteen-list call site is classified by one of TSPEC §8.5's three rulings**. No site may be
+      classified by a clause naming a line number (§9.2). **This row asserts the classification, not a
+      count** (v1.3): the observed site set is §4.1's advisory row and is neither restated nor re-counted
+      here, and a correctly-exempt site that did not exist at authoring time does not fail this row.
+- [ ] `RLH-SCAN-01`: the scan mechanism's own oracle is present and green, so `RLH-AT-19`'s answer rests on
+      a tested scanner rather than a trusted one (§9.2 item 3).
 - [ ] `RLH-AT-64`: every `_`-prefixed `main()` parameter is wired or exempt; both anti-rot clauses hold;
       `_recordHalt` is satisfied by `QUEUE_ENTRY`'s `_runPipeline` closure **and** `DEV_ENTRY`.
 - [ ] Each bundle: `export const meta` first and a pure literal, no other `export`, no `import`.
@@ -1141,6 +1162,10 @@ fail for the stated reason and every pre-existing test still passes.**
       produce **one and the same halt shape**, the one TSPEC §6.2 row 2 fixes (cited, not restated:
       TSPEC §4.2, §6.2 rows 1/2/17).
 - [ ] `selectMode` is the **only** producer of `EpisodeKey.mode`; grep confirms no other assignment.
+- [ ] `endIndex` is derived **exactly once**: the literal `MAX_REVIEW_ROUNDS - 1` occurs once in
+      `orchestrate-dev.js` and outside the source spans of `reviewLoop` and `checkConverged` — the same
+      grep-shaped construction as the row above, and `RLH-LOOP-03` is the assertion that carries it
+      (§11.5, §11.4 `H-q`).
 - [ ] `refreshReviewState` is called at **every** wrapped episode entry and there is **no** pre-loop
       snapshot; `reviewLoop` takes **no** seed maps.
 - [ ] Every path that reaches `reviewLoop` passes step G (**G-INV**); the `FRESH` branch calls
