@@ -1729,13 +1729,23 @@ AC-3.5a–AC-3.5g, AC-3.6. **Discharges O-6, O-19 (placement half) and O-20.**
 AC-3.5c:
 
 ```
-episode = artifact set × phase × round index × invocation
+episode = artifact set × phase × round index × mode × invocation
 ```
 
-All four coordinates matter, and each was corrected against a measured defect: dropping *round* makes a
-healthy five-round convergence hit a six-dispatch cap (1 + 5 = 6); dropping *invocation* makes a
-re-entered phase trip on entry; treating the two documents of a TSPEC+DECISIONS dispatch as separate
-episodes makes a dispatch correctly advancing one score no-progress on the other.
+Four of the coordinates were each corrected against a measured defect: dropping *round* makes a healthy
+five-round convergence hit a six-dispatch cap (1 + 5 = 6); dropping *invocation* makes a re-entered phase
+trip on entry; treating the two documents of a TSPEC+DECISIONS dispatch as separate episodes makes a
+dispatch correctly advancing one score no-progress on the other.
+
+**`mode` is the fifth coordinate, added at v1.1 (TE-v1 F-04).** AC-3.5c's four-coordinate tuple does not
+separate round 1's *greenfield* authoring episode from round 1's *revision* episode: within one invocation
+of Phase F they share artifact set, phase, round index and invocation, yet §15.2 rule 2 has the revision
+pass re-enter "the same round". Under the four-coordinate reading a greenfield pass that legitimately used
+4 dispatches on a large FSPEC would leave the round-1 revision pass 2, and a normal 3-dispatch revision
+pass would halt the phase on `MAX_AUTHORING_DISPATCHES`. Adding `mode` makes the tuple agree with this
+section's own opening sentence — **one `dispatchAndVerify` call is one episode** — which is the reading the
+arithmetic requires. This is a refinement of AC-3.5c's key, not a change to either counter's value or to
+what they bound.
 
 **The wrapped population (AC-3.5 scope (a)), carried through by name:**
 
@@ -1871,7 +1881,8 @@ re-issuing the round's original feedback prompt verbatim would instruct work alr
 | `MAX_AUTHORING_DISPATCHES` | **total** dispatches, progress or not, within one episode | **6** | per episode |
 
 **Reset scope, explicitly:** both counters are **per episode**. They start at zero at the beginning of
-every episode, and therefore reset on each new review round **and** on each fresh invocation of the
+every episode, and therefore reset on each new review round, on each **change of mode within a round**
+(the greenfield→revision transition of §15.1), and on each fresh invocation of the
 phase. Neither is persisted to disk or carried across invocations — a phase re-entered by an operator
 continues from committed partial progress with a **full** dispatch budget. Only the POSTMORTEM state of
 §12 persists, and §15.6 establishes that budget exhaustion writes none.
@@ -2586,9 +2597,13 @@ and three consecutive such dispatches do **not** halt the phase.
 *Given* dispatches scoring no-progress, no-progress, progress, no-progress. *Then* the episode is still
 running.
 
-**AT-42 — Counters are per episode (O-19(c), E-51)**
+**AT-42 — Counters are per episode (O-19(c), E-51, TE-v1 F-04)**
 *Given* a five-round convergence with one dispatch per round. *Then* `MAX_AUTHORING_DISPATCHES` is never
 reached, and at the start of each new round **and** each fresh invocation both counters read zero.
+*Given additionally* round 1 inside **one** invocation where the greenfield authoring episode consumes **4**
+dispatches and the round-1 revision episode then consumes **3**. *Then* both counters read zero at the
+greenfield→revision transition and the phase does **not** halt. *(Fails under the four-coordinate episode
+key, which totals 7 against `MAX_AUTHORING_DISPATCHES` = 6.)*
 
 **AT-43 — Mode survives the invocation seam (O-19(i), E-52)**
 *Given* a revision episode killed mid-edit, halted under the authoring budget, the row reset, and the phase
