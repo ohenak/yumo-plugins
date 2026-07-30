@@ -694,6 +694,57 @@ describe("RLH-SCAN-01: the await-discipline scan mechanism", () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// RLH-AT-19 — the bundle-level runtime constraint (FSPEC AT-19, TSPEC §8.5).
+//
+// TSPEC §8.1 calls this "the only thing standing between this design and this
+// repo's most repeated defect class": the adapter's seam implementations are
+// async while the jest doubles are synchronous, so a missing `await` passes
+// every L1 and L2 test and fails only in the runtime.
+//
+// If this reds on source you believe correct, that is a PLAN §11 halt (`H-h`),
+// not an invitation to widen a regex or add a name-based exemption. A test
+// loosened ad hoc to go green is worse than none.
+// ---------------------------------------------------------------------------
+
+const AWAIT_SCAN_SOURCES = ["orchestrate-dev.js", "orchestrate-queue.js"];
+const readSource = (file) => readFileSync(resolve(WORKFLOWS, file), "utf8");
+
+describe("RLH-AT-19: the runtime constraint", () => {
+  it.each(BUNDLES)("RLH-AT-19: %s makes no call or member reference to process or fetch", (file) => {
+    const text = read(file);
+    // The ANCHORED forms, never the bare-identifier ones: both healthy bundles
+    // legitimately contain `child_process` (generated banner) and `git fetch
+    // origin` (a prompt literal in rebaseOntoDefault), so a bare-identifier or
+    // substring test is red on a correct artifact (FSPEC v1.3, SE-v3 F-15).
+    expect(text.match(/\bprocess\s*\./g) || []).toEqual([]);
+    expect(text.match(/\bfetch\s*\(/g) || []).toEqual([]);
+  });
+
+  it.each(AWAIT_SCAN_SOURCES)(
+    "RLH-AT-19: every seam call site in %s is awaited or classified by a §8.5 ruling",
+    (file) => {
+      const { sites } = scanAwaitDiscipline(readSource(file));
+
+      // Vacuity guard: a scanner gone blind — a broken alias derivation, a mask
+      // that swallowed the file, a call-site regex that matched nothing —
+      // returns an empty set over which the classification below is vacuously
+      // true. Neither module's main() runs a pipeline without calling at least
+      // one injected seam, so this is a lower bound that cannot drift upward.
+      expect(sites.length).toBeGreaterThan(0);
+
+      // A call site matching none of §8.5's three rulings is a failure this
+      // assertion NAMES. The response is a source fix or a new ruling stated as
+      // a predicate — never a fourth clause naming a line number, and never a
+      // narrowing of the thirteen-name set.
+      const unclassified = sites
+        .filter((s) => s.ruling === "unclassified")
+        .map((s) => `${file}:${s.line} — ${s.name}(…) is not awaited and matches no TSPEC §8.5 ruling`);
+      expect(unclassified).toEqual([]);
+    }
+  );
+});
+
 describe("DOD-03 — build-runtime.mjs --check detects staleness", () => {
   const BUILD_INPUTS = [
     "build-runtime.mjs",
