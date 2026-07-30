@@ -474,3 +474,37 @@ describe("RLH-AT-09: cross-round approvals never combine", () => {
     expect(paths).not.toContain(crossReviewPath(TE_SLUG, 2));
   });
 });
+
+// ─── RLH-AT-11: a duplicated verdict field fails closed (E-09, TSPEC §5.1) ────
+//
+// Round 2's SE cross-review carries TWO `VERDICT: Approved` lines inside its
+// trailing `## Verdict` section; the TE file is a clean single approval. Both
+// anchors are the FSPEC's real digest, so **every other input says "skip"** — the
+// only thing standing between this fixture and a wrongly-skipped phase is §5.1
+// step 2's duplicate pre-count, which fails closed *before* `parseVerdict` is
+// consulted. `parseVerdict` scans from the end and would return `Approved`, so an
+// implementation that relied on its result would skip Phase F.
+describe("RLH-AT-11: duplicated verdict field fails closed", () => {
+  const listing = [crossReviewBasename(SE_SLUG, 2), crossReviewBasename(TE_SLUG, 2)];
+  const files = {
+    [crossReviewPath(SE_SLUG, 2)]: crossReviewFile({
+      verdict: APPROVED,
+      hash: FSPEC_HASH,
+      duplicateVerdict: true,
+    }),
+    [crossReviewPath(TE_SLUG, 2)]: crossReviewFile({ verdict: APPROVED, hash: FSPEC_HASH }),
+  };
+
+  test("RLH-AT-11: Phase F runs even though scan-from-end would read Approved", async () => {
+    const { result, fs, agentCalls } = await runPipeline({ files, listing });
+
+    // The pre-count reported unparseable: no approval, so the phase runs.
+    expect(phaseRecord(result, "F")).not.toBeNull();
+    expect(phaseRecord(result, "F").status).not.toBe("⏭");
+    expect(reviewerDispatchesFor(agentCalls, FSPEC_PATH).length).toBeGreaterThan(0);
+
+    // The offending file was actually read — the verdict was extracted from the
+    // file's bytes (§5.1), not inferred from its existence.
+    expect(readPaths(fs)).toContain(crossReviewPath(SE_SLUG, 2));
+  });
+});
