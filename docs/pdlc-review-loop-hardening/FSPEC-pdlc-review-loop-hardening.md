@@ -459,6 +459,89 @@ After this change:
 
 ## 5. FSPEC-ROUND-01 — Same-round dual approval and the role-asymmetric branch
 
+**Linked requirements:** AC-4.1, AC-4.1a, AC-4.2a, AC-4.2b (tier rules). **Discharges O-18.**
+
+### 5.1 What "same round index" means operationally
+
+AC-4.1a fixes dual approval at REQ altitude as **both reviewers approving in the same round index**,
+matching the existing convergence gate. That gate at HEAD `0655387` is `reviewLoop`'s
+`const gatePass = isPass(verdict1.verdict) && isPass(verdict2.verdict);`, evaluated inside one
+iteration of the `while (true)` loop, where `function isPass(verdict)` returns
+`verdict === "Approved" || verdict === "Approved with minor changes"`. AC-4.3 pins the skip to the
+same two forms, "not stricter than the gate that produced the approval, nor looser".
+
+The skip check therefore reconstructs, from artifacts, the same predicate the live gate evaluates from
+responses. The reconstruction is:
+
+```
+1. From the phase-entry listing (§3.5), take the conforming entries for this doc-type (§4.3).
+2. Group them by round index. Within a group, key by role slug (§4.2).
+3. For each round index, descending from the highest present:
+     a. Require BOTH expected roles for this phase to be present in the group.
+     b. Read each present file's persisted verdict field (§6.3).
+     c. If both parse as exactly one catalogue value AND both are approving (AC-4.3) ⇒
+        this is the approving round. Stop.
+     d. Otherwise continue to the next lower round index.
+4. If no round satisfies (a)–(c) ⇒ no approval. The phase runs.
+```
+
+**"Both expected roles for this phase"** is read from `PHASE_DISPATCH`, which already declares the
+pair per phase (Phase R's entry carries `reviewers: ["se-review", "te-review"]`, and each phase's
+entry carries its own pair). The expected pair is therefore never guessed and never hard-coded here —
+a phase reviewed by `pm-review` + `se-review` pairs those two.
+
+**Descending search, and why.** The highest round is searched first because it is the round whose
+findings are most recent; an approval at round N makes any earlier approval irrelevant. The loop
+continues downward rather than stopping at the first non-approving round because a resumed history can
+legitimately hold a non-approving round *above* an approving one only in one situation — a reviewer
+re-reviewed after approval, which AC-4.4's staleness test then governs. Searching downward and letting
+§10 deny a stale approval keeps the two questions separate: §5 answers *was there an approving round*,
+§10 answers *has the document changed since*.
+
+### 5.2 Non-approval by different rounds is explicit
+
+AC-4.1a's motivating case is routine and must not pair: "round N = SE approved / TE needs revision;
+round N+1 = TE approved / SE finds more" ⇒ **the phase runs**. The algorithm produces that outcome
+because step 3(c) requires both approving verdicts inside *one* group; approving verdicts drawn from
+different groups are never combined. There is no "carry forward an approval" rule, and none may be
+added — that would be exactly the looser-than-the-gate reading AC-4.3 forbids.
+
+The logged round of AC-4.1 is the single round index that satisfied step 3(c), and the log names the
+two files it read, so an operator can check the derivation without re-deriving it:
+
+```
+Phase {phaseId}: skipped — {docType} approved at round {N} by {roleA} ({verdictA}) and {roleB} ({verdictB}); tier {1|2}; hash matched
+```
+
+### 5.3 The role-asymmetric branch (O-18's explicit obligation)
+
+AC-1.1 derives the index per (feature, doc-type) **across roles**, which means the two roles' round
+histories need not be dense or aligned. O-18 requires this FSPEC to say so rather than leave it
+inferable. The concrete shape O-18 names: a branch where SE reached `-v13` while TE wrote only `-v1`
+gives a next index of 14 and **no TE file at all for rounds 2–13**.
+
+| Situation at round `N` for this doc-type | Classification | Effect |
+|---|---|---|
+| Both expected roles present, both approving, both parseable | **Approving round** | §10's staleness test runs; if it passes, the phase is skipped |
+| Both present, at least one non-approving | Not approving | Search continues downward |
+| Both present, at least one verdict absent / duplicated / non-catalogue | Not approving — AC-4.2a's unparseable case | Search continues downward; the report names the artifact whose verdict could not be read |
+| **One role's file for round `N` is missing** | Not approving — the absent role is treated as **not approving** for that round | Search continues downward. A gap can never pair into an approval. |
+| Neither role present at `N` (a gap in both) | Not a round at all | Skipped; not reported as an anomaly, since §4.4's derivation tolerates non-contiguous indices by design |
+
+**Fail-closed, and consistent with AC-4.2a.** Treating an absent `-vN` as *not approving* is the same
+direction as every other unreadable-evidence case in this feature: the phase runs, at the cost of one
+re-review. The rejected alternative — treating an absent file as "no findings from that role, so
+implicitly approving" — would grant a skip from the *absence* of evidence, which is the one direction
+R-1 and AC-4.2a forbid.
+
+**No cross-tier completion (AC-4.2b, carried through).** Tier 2 is consulted **only** when tier 1 is
+absent, meaning **no** `CROSS-REVIEW-*` file for that (feature, doc-type) is present on the branch at
+all. A tier 1 that is present but *incomplete* — one role's file for the approving round present, the
+other's missing, i.e. exactly the row above — is **not** "absent". Tier 1 governs, the missing role is
+not approving, and the pair is **not** completed across tiers. Mixed provenance is never used to
+assemble an approval. §6.4 specifies the tier-selection predicate that implements this, and §10.4 the
+both-tiers-disagree case.
+
 ## 6. FSPEC-VERDICT-01 — The persisted verdict record
 
 ## 7. FSPEC-DIGEST-01 — Content digest, hash capture, and write ordering
