@@ -17,6 +17,30 @@ import main, {
   triagePrompt,
 } from "../orchestrate-queue.js";
 
+// RLH-19: a *namespace* import, deliberately, so this suite can observe whether
+// `rewriteStatus` is exported (TSPEC §3.6 — it is not, at HEAD) without a static
+// named import. Under native ESM (this package is `"type": "module"` and jest runs
+// with `transform: {}`), a static `import { rewriteStatus }` of a name the module
+// does not export is a *link-time* SyntaxError that stops the whole suite from
+// running. A namespace import yields `undefined` for the missing name instead, so
+// the absence is an assertion failure in one test rather than a dead file.
+import * as queueModule from "../orchestrate-queue.js";
+import { fakeFs, fakeGit } from "./helpers/seams.js";
+
+/**
+ * RLH-19: shape-tolerant unwrap of `updateQueueStatus`.
+ *
+ * TSPEC §4.6 changes the return from a bare string to `{ markdown, matched }`.
+ * Call sites below that merely *use* the rewritten markdown as a fixture (rather
+ * than asserting the contract) go through this helper so they are correct both
+ * before and after `RLH-20` lands the new shape. The contract itself is asserted
+ * explicitly, and only, in the `RLH-19` describe block at the end of this file.
+ */
+function applyQueueStatus(markdown, feature, newStatus) {
+  const out = updateQueueStatus(markdown, feature, newStatus);
+  return typeof out === "string" ? out : out.markdown;
+}
+
 let logMessages = [];
 const originalLog = console.log;
 
@@ -191,7 +215,7 @@ describe("parseTriageVerdict", () => {
 // ─── updateQueueStatus ───────────────────────────────────────────────────────
 describe("updateQueueStatus", () => {
   it("changes only the targeted feature's status cell", () => {
-    const out = updateQueueStatus(SAMPLE_QUEUE, "notification-v2", "in-progress");
+    const out = applyQueueStatus(SAMPLE_QUEUE, "notification-v2", "in-progress");
     const entries = parseQueue(out);
     expect(entries.find((e) => e.feature === "notification-v2").status).toBe(
       "in-progress"
@@ -204,13 +228,13 @@ describe("updateQueueStatus", () => {
   });
 
   it("preserves dependency cells through a round-trip", () => {
-    const out = updateQueueStatus(SAMPLE_QUEUE, "mobile-push", "awaiting-merge");
+    const out = applyQueueStatus(SAMPLE_QUEUE, "mobile-push", "awaiting-merge");
     const entry = parseQueue(out).find((e) => e.feature === "mobile-push");
     expect(entry.dependsOn).toEqual(["notification-v2", "auth-refresh"]);
   });
 
   it("returns input unchanged when the feature is not found", () => {
-    expect(updateQueueStatus(SAMPLE_QUEUE, "ghost", "done")).toBe(SAMPLE_QUEUE);
+    expect(applyQueueStatus(SAMPLE_QUEUE, "ghost", "done")).toBe(SAMPLE_QUEUE);
   });
 });
 
@@ -226,7 +250,7 @@ describe("selectNextPending", () => {
   });
 
   it("flags an in-progress entry as an active blocker", () => {
-    const q = updateQueueStatus(SAMPLE_QUEUE, "notification-v2", "in-progress");
+    const q = applyQueueStatus(SAMPLE_QUEUE, "notification-v2", "in-progress");
     const sel = selectNextPending(parseQueue(q));
     expect(sel.kind).toBe("blocked-active");
     expect(sel.entry.feature).toBe("notification-v2");
@@ -268,7 +292,7 @@ describe("precheckDependencies", () => {
   });
 
   it("blocks on the FIRST not-done dependency in a mixed list", () => {
-    const q = updateQueueStatus(SAMPLE_QUEUE, "notification-v2", "awaiting-merge");
+    const q = applyQueueStatus(SAMPLE_QUEUE, "notification-v2", "awaiting-merge");
     const mixed = parseQueue(q);
     // auth-refresh is done, notification-v2 is awaiting-merge → first blocker is notification-v2.
     const r = precheckDependencies(["auth-refresh", "notification-v2"], mixed);
@@ -450,7 +474,7 @@ describe("main()", () => {
   });
 
   it("does not pick up new work while an entry is in-progress", async () => {
-    const q = updateQueueStatus(SAMPLE_QUEUE, "notification-v2", "in-progress");
+    const q = applyQueueStatus(SAMPLE_QUEUE, "notification-v2", "in-progress");
     const fs = makeFs({ [DEFAULT_QUEUE_PATH]: q });
     let pipelineCalls = 0;
     const report = await main({
