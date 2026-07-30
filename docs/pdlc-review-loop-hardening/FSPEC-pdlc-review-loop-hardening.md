@@ -727,6 +727,13 @@ of §6.2, not the whole file — plus one additional pre-check the response path
 pre-count and `parseVerdict`'s input are restricted to that section (TE-v1 F-08); a file with **no**
 `## Verdict` heading yields an empty section and lands on the "no `VERDICT: ` line" row below.
 
+**Fenced regions are excluded per §1.2 rule 5**, and that exclusion applies to *locating* the trailing
+section as well as to reading it: a `## Verdict` heading inside a fenced block is not a heading for this
+purpose, so it can neither become the section boundary nor contribute a `VERDICT: ` line. A file whose
+only `## Verdict` heading is a quoted one therefore has **no** trailing section — empty section, "no
+`VERDICT: ` line" row, phase runs (TE-v2 F-01). Without that, a reviewer stall-killed after quoting
+§6.2 but before writing its own section would be scored terminal by §16.3 *and* approving here.
+
 | Input state | Detection | Outcome |
 |---|---|---|
 | Exactly one `VERDICT: ` line, catalogue value, valid JSON | `parseVerdict` returns without `malformed` | Verdict available to §5's pairing |
