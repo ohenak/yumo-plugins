@@ -450,6 +450,142 @@ function promptsOf(run, q) {
 
 // ─── 3. RLH-AT-35 … RLH-AT-38 — terminality and the trailer ───────────────────
 
+/**
+ * A reviewer plan that fails the named rounds and approves every later one, so a
+ * revision (optimizer) episode exists for each failed round. Reviewers always
+ * write a well-formed cross-review, so §5.9 scores their own episodes terminal and
+ * the round record `refreshReviewState` reads is real (S-INV).
+ *
+ * @param {number[]} failingRounds
+ */
+function reviewersFailing(failingRounds) {
+  return (ctx) => {
+    const fails = failingRounds.includes(ctx.round);
+    return {
+      write: crossReviewDoc({ verdict: fails ? "Needs revision" : "Approved", high: fails ? 1 : 0 }),
+      response: reviewResponse(fails ? "Needs revision" : "Approved", fails ? 1 : 0),
+    };
+  };
+}
+
+describe("RLH-AT-35 — no-op-with-trailer is terminal (FSPEC §19 AT-35, AC-3.5b, E-44)", () => {
+  test("RLH-AT-35: a revision dispatch that writes nothing and emits REVISION-COMPLETE: yes is terminal in one dispatch, and the phase neither halts nor re-dispatches", async () => {
+    // The round is fully applied already, so the author writes NOTHING and simply
+    // declares itself done. Under a progress-first ordering this would be scored a
+    // no-progress dispatch and re-dispatched; §5.6.2 evaluates terminal FIRST.
+    const run = await runPipeline({
+      review: reviewersFailing([1]),
+      author: (ctx) =>
+        ctx.kind === "optimizer" && ctx.phase === "R"
+          ? { write: null, response: authorResponse("yes", "Nothing left to change.") }
+          : {},
+    });
+
+    const optimizer = select(run, { kind: "optimizer", phase: "R", round: 1 });
+
+    // (i) The prompt required the trailer at all — §5.6.3 clause 4. Without this
+    // the fixture asserts nothing: an episode that never asked for a trailer
+    // cannot be "terminal on the trailer".
+    expect(optimizer.length).toBeGreaterThan(0);
+    expect(optimizer[0].prompt).toMatch(/REVISION-COMPLETE:/);
+
+    // (ii) Terminal in ONE dispatch, despite zero bytes changing.
+    expect(optimizer).toHaveLength(1);
+    expect(run.fs.writes.filter((w) => w.path === REQ_PATH)).toEqual([]);
+
+    // (iii) The phase does not halt.
+    expect(run.result.outcome).toBe("success");
+  });
+});
+
+describe("RLH-AT-36 — no trailer is not terminal even when complete (FSPEC §19 AT-36, E-45)", () => {
+  test("RLH-AT-36: a revision dispatch that applies part of the round and emits no trailer leaves the artifact structurally complete yet the episode continues", async () => {
+    // The artifact is structurally complete throughout — that is the point. A
+    // mode-blind terminal test keyed on completeness alone would stop here and
+    // report success on a round whose findings were only partly addressed.
+    const run = await runPipeline({
+      review: reviewersFailing([1]),
+      author: (ctx) => {
+        if (ctx.kind !== "optimizer" || ctx.phase !== "R") return {};
+        return ctx.n === 1
+          ? { write: completeDoc("REQ", `3 of 5 findings applied (${ctx.n})`), response: "Applied 3 of 5 findings." }
+          : { write: completeDoc("REQ", `all findings applied (${ctx.n})`), response: authorResponse("yes") };
+      },
+    });
+
+    const optimizer = select(run, { kind: "optimizer", phase: "R", round: 1 });
+    // The oracle: a second dispatch happened, because dispatch 1 carried no trailer.
+    expect(optimizer.length).toBeGreaterThanOrEqual(2);
+    expect(run.result.outcome).toBe("success");
+  });
+});
+
+describe("RLH-AT-37 — all three fault surfacings behave identically (FSPEC §19 AT-37, AC-3.5e, E-46)", () => {
+  /**
+   * The three §4a A-8 surfacings, as a value-returning dispatch, a nothing-returning
+   * dispatch, and a throwing one. `faultObserved` is **true only for the throw**
+   * (FSPEC §15.4) — an implementation that sets it whenever the trailer reason is
+   * `absent` cannot tell a kill from an omission and fails here.
+   */
+  const SURFACINGS = [
+    { name: "returns a value with no trailer", fault: false, first: () => ({ response: "Partial edits made." }) },
+    { name: "returns nothing", fault: false, first: () => ({ response: null }) },
+    { name: "throws", fault: true, first: () => { throw new Error("dispatch stall-killed"); } },
+  ];
+
+  test("RLH-AT-37: all three dispatch-fault surfacings reach the same non-terminal conclusion, and faultObserved is true only for the throw", async () => {
+    const conclusions = [];
+    for (const surfacing of SURFACINGS) {
+      const run = await runPipeline({
+        review: reviewersFailing([1]),
+        author: (ctx) => {
+          if (ctx.kind !== "optimizer" || ctx.phase !== "R") return {};
+          if (ctx.n === 1) return surfacing.first();
+          return { write: completeDoc("REQ", `recovered (${ctx.n})`), response: authorResponse("yes") };
+        },
+      });
+      const optimizer = select(run, { kind: "optimizer", phase: "R", round: 1 });
+      conclusions.push({
+        surfacing: surfacing.name,
+        outcome: run.result.outcome,
+        continued: optimizer.length >= 2,
+      });
+
+      // The fault boolean is read off the run's whole operator surface, because
+      // §4.7 leaves the carrier (report field vs. report line) to the implementer.
+      const sawFaultTrue = /faultObserved["']?\s*[:=]\s*true/.test(run.reportText);
+      expect({ surfacing: surfacing.name, faultObserved: sawFaultTrue })
+        .toEqual({ surfacing: surfacing.name, faultObserved: surfacing.fault });
+    }
+
+    // Asserted WITHOUT distinguishing the three: same outcome, same continuation.
+    expect(conclusions).toEqual(
+      SURFACINGS.map((s) => ({ surfacing: s.name, outcome: "success", continued: true }))
+    );
+  });
+});
+
+describe("RLH-AT-38 — a premature trailer is visible, not silent (FSPEC §19 AT-38, R-12)", () => {
+  test("RLH-AT-38: an agent that emits REVISION-COMPLETE: yes while a finding is demonstrably unreflected ends the episode, and the round's report records that the decision was made on the trailer", async () => {
+    const UNREFLECTED = "FINDING-H1 is not addressed anywhere in this document";
+    const run = await runPipeline({
+      review: reviewersFailing([1]),
+      author: (ctx) =>
+        ctx.kind === "optimizer" && ctx.phase === "R"
+          ? { write: completeDoc("REQ", UNREFLECTED), response: authorResponse("yes", "Done (prematurely).") }
+          : {},
+    });
+
+    // Terminal on the trailer, exactly as claimed — the loss is real.
+    expect(select(run, { kind: "optimizer", phase: "R", round: 1 })).toHaveLength(1);
+    expect(run.fs.files[REQ_PATH]).toContain(UNREFLECTED);
+
+    // …and therefore attributable: the report says the episode ended because the
+    // author declared completion, not merely that the phase passed.
+    expect(run.reportText).toMatch(/REVISION-COMPLETE|revision-complete|trailer/);
+  });
+});
+
 // ─── 4. RLH-AT-39 … RLH-AT-42 — progress, counters, episode scope ─────────────
 
 // ─── 5. RLH-AT-43, RLH-AT-43a — mode across the seam, and S-INV freshness ─────
