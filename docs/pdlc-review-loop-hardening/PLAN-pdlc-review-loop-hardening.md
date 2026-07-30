@@ -1406,3 +1406,73 @@ reviewer defended was cut. What *was* deleted is genuine redundancy: §9.2's thr
 §8.5's ruling table (now a citation) and §9.3's restated counts. The growth is the §11.5 ownership table,
 §7.2's generator decision, §12.2's immunity paragraph, and this section — a round that corrects five false
 changelog claims cannot also be the round that shrinks the changelog.
+
+---
+
+### 14.3 v1.3 — disposition of every round-3 finding
+
+No REQ or FSPEC change. **One TSPEC change: v1.7, §8.5 only** — three clauses, all of them
+*narrowing* (see "TSPEC amendment scope" below). Everything else is a correction to this PLAN.
+
+Both reviewers resolved nearly every round-2 finding, both accepted the `F-10` decline, and both
+found the §14.1 audit honest. v1.3 does not reopen any of that. It also does not re-derive the task
+count, batch count, DAG, `Deps` edges, ledger arithmetic or file-ownership manifest: both reviewers
+have now re-derived them independently in two consecutive rounds and found them clean.
+
+#### The derivation, stated before the dispositions
+
+The round-3 High is a count, and three of the four numbers this document has published for it were
+wrong (v1.1: one; v1.2: three, and "the queue has none"). Every one of those numbers was produced
+by *verifying a reviewer's figure* rather than by *evaluating TSPEC §8.5's predicate against the
+source*. So v1.3 states the method first and the number second, and adopts **no** number from any
+review — including the ones both round-3 reviewers agree on.
+
+**Method** (`DC-02`, measure don't infer). Over the two bundle sources, whole-text (not line-local):
+
+1. **Build the scan set.** Start from FSPEC `AT-19`'s closed thirteen seam names. Add, for each, the
+   local alias `main()` destructures it into (`_agent: rawAgentFn = agent` contributes `rawAgentFn`).
+   Add each *named* wrapper whose body is a bare call to a member of the set (`agentFn` from
+   `const agentFn = (skill, prompt, opts) => rawAgentFn(...)`), and iterate to a fixed point — the
+   inheritance §8.5's returned-promise row describes is transitive, so one pass under-counts.
+2. **Find the call sites.** Every occurrence of a scan-set name immediately followed by `(`,
+   excluding the declaration site itself.
+3. **Test the predicate.** A site is *awaited* iff the text immediately preceding it matches
+   `\bawait\s*$` — computed over the joined source, not per line, because `await` legitimately sits
+   on the preceding physical line. Every site that is **not** awaited must be classified by one of
+   §8.5's three rulings; an unclassified site is the failure.
+
+**Result: 35 scan-set call sites (27 in `orchestrate-dev.js`, 8 in `orchestrate-queue.js`), of which
+five are not awaited, and all five are classified.** The five, with the ruling each matches:
+
+| Site | Ruling |
+|---|---|
+| `orchestrate-dev.js:615` `_agent(reviewers[0], reviewerPrompt1),` | awaited combinator argument |
+| `orchestrate-dev.js:616` `_agent(reviewers[1], reviewerPrompt2),` | awaited combinator argument |
+| `orchestrate-dev.js:1569` `rawAgentFn(skill, prompt, {…})` | returned promise (`agentFn` body) |
+| `orchestrate-dev.js:1867` `agentFn(` in `batch.map((task) => agentFn(…))` | returned promise, *anonymous* arrow |
+| `orchestrate-queue.js:524` `rawAgentFn(skill, prompt, {…})` | returned promise (`agentFn` body) |
+
+Zero unclassified. **So the queue has one, not none** — v1.2's "none" was the load-bearing half of
+its error, and the half no reviewer's count would have caught, because a count of three that happens
+to be a count of the *wrong* three is still three.
+
+The method matters more than the five. A first pass of this scan, matching the wrapper pattern
+line-locally, returned **four** — it missed `:1867` because both the wrapper declaration and the
+`map` callback wrap across lines. Two of the three published wrong numbers are explicable the same
+way. That is precisely why §4.1's **blocking** row is now the classification predicate and the count
+is **advisory evidence in exactly one place**: a gate whose premise is a number inherits every
+counting bug in the tool that produced it, whereas a gate whose premise is "no site is unclassified"
+fails loudly on the site the tool mis-parsed.
+
+#### Product-manager round-3 findings
+
+| Id | Sev | Disposition |
+|---|---|---|
+| **N-01** | High | **Fixed by deletion, not by repair** — the remedy PM's acceptance condition named. The site set is no longer stated in four places. §4.1 owns it in two rows: a **blocking** row asserting *total classification* ("every such site not lexically preceded by `await` is classified by one of TSPEC §8.5's three rulings — that total classification is the whole of the blocking assertion; a site that is correctly exempt never fails this gate, whatever the total is"), and an **advisory** row, owned by §4.1 alone, carrying the five-of-35 evidence and both prior corrections. §7.3 row 1 now cites §8.5 for the rule and §4.1 for the set and restates neither; §9.2 item 1 cites §4.1's advisory row; §12.3's `RLH-AT-19` row asserts the classification and no count. The count is a premise of nothing. Set re-derived above, not adopted. `orchestrate-queue.js:524` — the site PM named — is present in the derived set and was reached by the predicate, not by reading the review. |
+| **N-02** | Medium | **Fixed, resolved toward the ownership table (Option B).** `RLH-LOOP-01` is greened at **batch 9 by `RLH-27`**, not batch 7 by `RLH-23`: the destructuring `RLH-27` performs is what makes the loop's termination gate observable, and §11.5's ownership table was right. §7.3's row is corrected and records *why* it moved. §11.5's Oracles paragraph, which contradicted its own table, is corrected to the same statement — there is now one statement, in two places that agree, with the table as owner. The rejected alternative (green it at batch 7) is recorded with its reason: it would leave `reviewLoop`'s gate evaluating `iteration > undefined` for a whole batch — a live loop with no termination gate — while twenty-plus assertions sit green. The **one-batch interim** this accepts (batch 8 ends with the gate present and inert) is stated explicitly in §11.5 rather than left to be discovered; TE had already verified it as benign. |
+| **N-03** | Medium | **Fixed in TSPEC §8.5 (v1.7), as a property, not a list.** The combinator ruling no longer enumerates members: it requires the outer callee to be **a promise combinator that awaits every element of the array**, and says that property, not a name, is the test. `_parallel`, `parallel`, `Promise.all` and `Promise.allSettled` are named as *instances*; `Promise.race` and `Promise.any` are **withdrawn**, with the false negative spelled out concretely (`await Promise.race([_agent(…), _sleep(MS)])` awaits the race, never the loser) and the measurement recorded (zero occurrences of `race`, `any` or `allSettled` at HEAD, so nothing shipped is reclassified). |
+| **L-01** | Low | **Fixed** (TSPEC §8.5 v1.7, and this is one of the round's two-clause TSPEC budget). The alias row read "the local name, **not** the `_`-prefixed one", which the widened catch-all contradicts — `:615–616` are called under the `_` name. It now reads "the local name **in addition to** the `_`-prefixed one", annotated with what v1.6 said and why it was overridden. The row's real prohibition (scanning the `_` spelling *alone*, which is what missed the alias sites originally) is preserved verbatim. |
+| **L-02** | Low | **Fixed.** `RLH-26` now writes **all three** new `checkConverged` arguments — `feature`, `startIndex`, `endIndex` — into the seven call sites, and §11.5's ownership table row 1 names `feature`. Previously no task owned `feature`, so seven argument lists would have been left one short by every task individually behaving correctly. |
+| **L-03** | Low | **Fixed, and the method failure is the finding.** §14.1's `TE F-08` entry had been made true at v1.2 by *deleting* the word "three" rather than annotating it — a silent correction, which is outside the audit's own stated method even though the resulting sentence was true. The word is restored and annotated: **"three" → "five", corrected at v1.3**, with a note that v1.2 made the correction by deletion and that this is PM round-3 `L-03`. |
+| **Q-01** | — | **Answered: no, and it never was.** Asked whether §4.1's `RLH-01` await row should be blocking at all. It is blocking, but what it blocks on has changed: the assertion is *classification*, not a count. A correct scan of a correctly-exempt codebase passes it unconditionally. The advisory row that carries the number blocks nothing. |
+| **Q-02** | — | **Answered: `H-q` deliberately does not name the shadowing rule**, and §11.5 now says so. `H-q` covers the two *interface shapes* whose violation is silent; the shadowing rule's violation is caught by `RLH-SCAN-01` and `RLH-AT-19`, which fail loudly. The omission is a decision, recorded as one, not an artefact of drafting order. §11.4 also now states that **every clause of `H-q` has a named oracle** (`RLH-LOOP-01`/`-02`/`-03`) — the property that made the question worth asking. |
