@@ -8,15 +8,47 @@ feature: pdlc-review-loop-hardening
 |---|---|
 | Upstream | `REQ-pdlc-review-loop-hardening.md` (v1.5, converged — SE-v5 and TE-v5 dispositioned) → **FSPEC** |
 | Downstream | `TSPEC-pdlc-review-loop-hardening.md`, `PLAN-…`, `PROPERTIES-…` |
-| Cross-Reviews | `CROSS-REVIEW-software-engineer-FSPEC-v1.md`, `CROSS-REVIEW-test-engineer-FSPEC-v1.md` (iteration 1, both dispositioned at v1.1) |
+| Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v1.md` (iteration 1, dispositioned at v1.1); `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v2.md` (iteration 2, dispositioned at v1.2) |
 | LEARNINGS | `docs/pdlc-review-loop-hardening/LEARNINGS-pdlc-review-loop-hardening.md` |
 | Citation baseline | **HEAD `0655387`.** Every code citation in this document was re-measured at that sha and names its **enclosing symbol plus a distinctive literal**, per O-16 and the REQ's own `Citation baseline` convention. A bare `file:line` citation is a defect in this document. |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude + operator | 1.1 | 2026-07-29 |
+| pdlc | draft | Claude + operator | 1.2 | 2026-07-29 |
 
 ### Changelog
+
+**v1.2 (2026-07-29)** — addresses all findings of `CROSS-REVIEW-test-engineer-FSPEC-v2.md`
+(TE F-01 High; F-02, F-03 Medium; F-04 Low) and `CROSS-REVIEW-software-engineer-FSPEC-v2.md`
+(SE F-10, F-11, F-12 Medium; F-13, F-14 Low). Six findings, **four** distinct defects — the two roles
+converged on the same two, which is how they were fixed:
+
+- **TE F-01 + SE F-11 are one defect class**: a cross-review that *quotes* one of this feature's grammars
+  defeats the scan that reads it. Fixed **once**, as new **§1.2 rule 5** — every mechanical scan excludes
+  fenced regions — referenced by §6.3, §7.4, §10.1 and §16.3 rather than restated at each. New E-69/E-70/
+  E-71 and AT-65/AT-66 cover the verdict and hash directions plus an unclosed fence. v1.1 had narrowed the
+  verdict scan to the trailing section, which removed the misread only while the reviewer's real section
+  exists and is *last*; the exclusion removes it unconditionally.
+- **SE F-12 + TE F-02 are one defect**: the withdrawn "per-dispatch `_checkFile`" phrasing survived in
+  §4.5's cases (ii)/(iii), in AT-06's assertion, and at a **fourth site** (§11.5's force-run table) that
+  neither review flagged. Fixed by **deletion** at all four, per both reviewers' instruction; AT-06 now
+  bounds the *listing* count only and AT-58 owns the guard's dispatch scope. No reconciling clause added.
+- **SE F-10**: AT-19's `process` / `fetch` assertion is scoped to real references (`/\bprocess\s*\./`,
+  `/\bfetch\s*\(/`), not substrings — verified red-on-healthy: both bundles contain `child_process` in the
+  banner and `git fetch origin` in a prompt literal. The claim that AT-19 is "the existing test extended"
+  is **withdrawn**; `runtimeBundle.test.js` asserts no such condition today.
+- **TE F-03**: §19's preamble now states its own exception, and **AT-64** asserts the production
+  composition root wires every seam, with the seam set derived from `main()` so that adding a seam without
+  wiring it fails.
+- Lows: **SE F-13** — the dispatch bound is `(1 + MAX_REVIEW_ROUNDS) × MAX_AUTHORING_DISPATCHES` = 6 × 6 =
+  **36**, not 30; the shown product had dropped the greenfield episode the five-coordinate key introduced.
+  **SE F-14** — §10.1 is stated per-role rather than "exactly two files". **TE F-04** — §15.5 states form
+  selection for the cross-review and LEARNINGS classes, whose first-attempt text is not the spec-class
+  skeleton instruction.
+
+Two of the four fixes are net **deletions** of normative text. Growth 241,365 → 254,820 bytes (+4.6%),
+against a +4% target — the overrun is the §1.2 rule and its three tests, and is stated rather than
+absorbed by dropping a fix.
 
 **v1.1 (2026-07-29)** — addresses all findings of `CROSS-REVIEW-software-engineer-FSPEC-v1.md`
 (SE F-01, F-02 High; F-03, F-04, F-05, F-06 Medium; F-07, F-08, F-09 Low) and
