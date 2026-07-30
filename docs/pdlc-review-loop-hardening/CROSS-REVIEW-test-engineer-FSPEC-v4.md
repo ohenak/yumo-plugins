@@ -32,13 +32,13 @@ FSPEC round 4, which is the wrong place and the wrong time. No finding.
 
 | ID | Severity | Scope | Finding | Section ref |
 |----|----------|-------|---------|------------|
-| F-01 | Low | Local | **Rule 5 now reaches §16.2, and §16.2 has two tests, not one — the heading test and the non-empty-body test. The widened rule does not say whether a fenced block counts as body content, and the natural single-pass implementation (strip fenced regions, then apply the criterion) answers "no", which makes a section whose body is only a code block score empty forever.** §16.2's body rule is "at least one non-blank, **non-heading** line between it and the next `##` heading"; a `###` subheading is a heading, so a `## Interfaces` section built from `###` subheads plus fenced type signatures — or a PROPERTIES `## Fixtures` section that is fenced fixtures — has zero countable lines once fenced lines are skipped. It scores empty, `S < T` permanently on a finished document, and §15.6 halts the phase: the same false-halt class §16.3 withdrew "exactly one" to remove. This is not blocking, for three reasons I checked rather than assumed. (1) It is not demonstrable: I scanned all 44 spec artifacts under `docs/*/` for a top-level section whose only non-heading body content is fenced — **zero hits**, including this FSPEC, the REQ, and the one complete TSPEC/PLAN/PROPERTIES/LEARNINGS set under `docs/pdlc-workflow-distribution/`. (2) The failure is loud, not silent: §15.4's report prints `{S} of {T}` and §15.5's resume clause names the section, so an operator sees a written section named as unwritten. (3) The rule's own wording ("the completeness **heading** scan") already points at the harmless reading. Cheapest fix, at TSPEC altitude rather than by reopening the FSPEC: scope the §16 entry in rule 5 to *matching* — headings and the `Scope:` / `VERDICT: ` / `APPROVAL-HASH:` / `RESOLVED:` markers — and state that a fenced block still counts as body content for §16.2's non-empty test. One clause, and one conjunct on AT-62 (`S` unchanged as well as `T`) makes it falsifiable. | §1.2 rule 5, §16.2, §16.5, §15.5, AT-62 |
+| F-01 | Medium | Local | **Rule 5 now reaches §16.2, and §16.2 has two tests, not one — the heading test and the non-empty-body test. The widened rule does not say whether a fenced block counts as body content, and the natural single-pass implementation (strip fenced regions, then apply the criterion) answers "no", which makes a correctly-authored section whose body is only a code block score empty forever.** §16.2's body rule is "at least one non-blank, **non-heading** line between it and the next `##` heading"; a `###` subheading is a heading, so a `## Interfaces` section built from `###` subheads plus fenced type signatures, a PLAN `## Verification` section that is one command block, or a PROPERTIES `## Fixtures` section that is fenced fixtures, has zero countable lines once fenced lines are skipped. §16.5 imports the same body rule for LEARNINGS' five numbered sections, so the exposure is four of the six spec classes plus one non-spec class. **Two consequences, and the second is the one that makes this blocking.** (i) `S < T` permanently on a finished document: the episode never reaches terminal, spends `MAX_AUTHORING_DISPATCHES` and §15.6 halts the phase — the exact false-halt class §16.3 withdrew "exactly one" to remove. (ii) Worse, it halts *sooner and for the wrong stated reason*: §15.5 hands the re-dispatched agent a resume prompt naming a section that is already written, the agent correctly writes nothing, §15.3's byte-change predicate scores **no progress**, and the consecutive no-progress counter — the one §15.3 says exists to catch "a dispatch that produced **no bytes at all** … precisely the stall-killed state" — halts the phase on an agent that was never stalled. The run report then attributes a complete document's halt to a stall. **Two defensible readings with materially different outcomes and no clause choosing between them** is the defect; the peer se-review reached the same conclusion independently at the same severity (SE-v4 F-18), which is itself evidence the text does not decide it. I do note the mitigations I checked: no artifact among the 44 under `docs/*/` exhibits the shape today, and the rule's own wording ("the completeness **heading** scan") leans toward the harmless reading. Neither closes it — this feature's own PROPERTIES must carry AT-62's and AT-65's fenced fixtures, so the uncovered shape is one document away, and "leans toward" is what a reviewer says about text that has not decided. **Fix, one clause:** in rule 5, say the exclusion governs which lines may **match** a scanned pattern (a `##` heading, `VERDICT: `, `APPROVAL-HASH: `, `RESOLVED: `, `Scope:`) and does **not** remove content from §16.2's non-empty-body test. Then give **AT-62** the symmetric conjunct it currently lacks — it pins the `T` direction ("a fenced `## …` leaves `T` unchanged") but says nothing about `S`; assert that a section whose body is a fenced block scores **non-empty**, which is the falsifier for the reading that halts. | §1.2 rule 5, §16.2, §16.5, §15.3, §15.5, AT-62 |
 
 ## Questions
 
 | ID | Question |
 |----|---------|
-| Q-01 | (Carried, non-blocking, for TSPEC.) Will the fence-stripping helper be a shared line iterator used by all six enumerated scan sites, or a per-site pre-filter? The shared-iterator shape is the one rule 5's "stated once, referenced rather than restated" rationale asks for, and it is also the shape that produces F-01's behaviour by default — so the answer decides whether F-01 needs a clause or nothing at all. |
+| Q-01 | Will the fence-stripping helper be a shared line iterator used by all six enumerated scan sites, or a per-site pre-filter? The shared-iterator shape is the one rule 5's "stated once, referenced rather than restated" rationale asks for, and it is also the shape that produces F-01's halting reading by default. The answer does not change F-01 — the FSPEC has to decide it either way — but it says how likely the harmful branch is if the FSPEC does not. |
 
 ## Positive Observations
 
@@ -63,14 +63,31 @@ FSPEC round 4, which is the wrong place and the wrong time. No finding.
 
 ## Recommendation
 
-**Approved**
+**Needs revision**
 
-All three of my v3 findings are resolved in the normative text, in the form I specified, and the change
-surface introduced no High or Medium defect. I said at v3 that I expected to approve at v4 if these
-landed; they landed, so I approve. The single Low above is a residual ambiguity created by the widening
-itself — one clause, no artifact in this repo exhibits it, and it belongs to TSPEC, not to a fifth FSPEC
-round. Trajectory across the loop: 15 → 6 → 2 → 0 blocking findings.
+I want to be straight about this, because I said at v3 that I expected to approve at v4. **All three of my
+v3 findings are resolved**, in the normative text, in the form I specified — the fixes are not the
+problem, and nothing I passed at v1–v3 regressed. The one blocking item is a **consequence of the F-01
+fix rather than a failure of it**: widening rule 5 to §16 was right, and §16.2's body conjunct is the one
+site where "ignores every line" needed a boundary and did not get one. The document now supports two
+implementations, one of which halts a phase on a complete document and reports it as a stall.
 
-**Findings: 0 High, 0 Medium, 1 Low.**
+I first wrote this up as a Low on the strength of two mitigations — no current artifact exhibits the shape,
+and the failure is diagnosable — and I am recording that I revised it up rather than quietly changing it.
+What moved me is not the peer review agreeing (though SE-v4 F-18 is the same finding at the same
+severity, reached independently, which is evidence about the text rather than about either of us): it is
+the §15.3 interaction. This is not merely budget exhaustion on a finished document; the resume prompt
+names an already-written section, the agent correctly writes nothing, and the **no-progress** counter —
+the one whose entire justification is that it fires only on "no bytes at all … precisely the stall-killed
+state" — halts the phase and mislabels the cause. A mechanism that misattributes its own halt reason is
+not a Low.
 
-VERDICT: Approved
+**What must change: one clause and one AT conjunct**, both stated in F-01. Say in §1.2 rule 5 that the
+exclusion governs which lines may *match* a scanned pattern and does not empty a section body for §16.2;
+give AT-62 the `S` direction alongside the `T` direction it already has. Nothing else in the change
+surface is open, and I raise nothing outside it. Trajectory across the loop: 15 → 6 → 2 → 1 blocking
+findings, no Highs since v2.
+
+**Findings: 0 High, 1 Medium, 0 Low.**
+
+VERDICT: Needs revision
