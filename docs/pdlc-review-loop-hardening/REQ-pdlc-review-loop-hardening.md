@@ -43,7 +43,7 @@ approval is not routine, and a reader who skips this entry will not find the cha
   produced exactly the unread record AC-4.7a forbids.
 - **Blast radius: one token in a closed enumeration.** Nothing in the mechanism was five-phase-shaped
   — `PHASE_DISPATCH` already carries six document-review phases and §16.2 of the FSPEC already
-  enumerates PROPERTIES among the six spec classes. Downstream, `FSPEC` v1.6 updates §10.7, §11.2
+  enumerates PROPERTIES among the six spec classes. Downstream, `FSPEC` v1.6 updates §10.7, §11.1
   (where `all` expands from five phases to six) and §11.3's force catalogue; the TSPEC updates
   §5.5, §5.7's `valid` array, `parseForcePhases`'s catalogue **and its rejection message**, and
   AT-29's expected operator text (now `Valid: R, F, T, P, D, PR, all.`). No AC other than AC-4.7 is

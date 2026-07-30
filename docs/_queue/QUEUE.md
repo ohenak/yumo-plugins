@@ -27,7 +27,7 @@ frontmatter is the pickup gate; the `Status` cell tracks lifecycle.
 | 5 | pending | pdlc-engineering-loop | docs/pdlc-engineering-loop/REQ-pdlc-engineering-loop.md | pdlc-workflow-distribution, pdlc-merge-phase, pdlc-advisory-tier, pdlc-consolidation-agent |
 | 6 | blocked | pdlc-install-mechanism | docs/pdlc-install-mechanism/REQ-pdlc-install-mechanism.md | pdlc-workflow-distribution |
 | 7 | blocked | pdlc-release-ci | docs/pdlc-release-ci/REQ-pdlc-release-ci.md | pdlc-workflow-distribution |
-| 8 | blocked | pdlc-authoring-contract | docs/pdlc-authoring-contract/REQ-pdlc-authoring-contract.md | pdlc-review-loop-hardening |
+| 9 | blocked | pdlc-authoring-contract | docs/pdlc-authoring-contract/REQ-pdlc-authoring-contract.md | pdlc-review-loop-hardening |
 
 Row 6 is the successor binding for `pdlc-workflow-distribution` deferrals D-DIST-01, D-DIST-02,
 D-DIST-03 and D-DIST-05 (full `pdlc install`, loading workflows from the plugin path with no copy,
@@ -39,8 +39,12 @@ Row 7 is the successor binding for `pdlc-workflow-distribution` deferral D-DIST-
 release automation on `yumo-plugins`. Same convention as row 6 — `blocked`, REQ not yet authored,
 present so the deferral is bound.
 
-Row 8 (**added 2026-07-30**) is the successor binding for three deferrals `pdlc-review-loop-hardening`
-carries out of its TSPEC review — same convention as rows 6 and 7 (`blocked`, REQ not yet authored,
+Row 9 (**added 2026-07-30**) is the successor binding for three deferrals `pdlc-review-loop-hardening`
+carries out of its TSPEC review. **`Order 9`, not 8**: the banner above records that `Order 8` is a
+live alias for row 0 in every document written before 2026-07-29, so a new row 8 would make ~10
+existing cross-document references resolve to the wrong feature — the exact drift DC-07 and DC-12
+were promoted about. `Order` values are allocated, never reused. Same convention as rows 6 and 7
+(`blocked`, REQ not yet authored,
 present so the deferrals are bound to a row rather than to prose owners, per `DC-08`). All three are
 the *same* underlying gap: **the six author/review SKILLs are the authoring interface, and they
 declare nothing machine-readable about what they produce**, so the workflow script re-states their
