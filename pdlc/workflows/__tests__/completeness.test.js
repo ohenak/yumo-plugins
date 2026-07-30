@@ -395,3 +395,121 @@ function renderBody(rng, kind) {
   return FENCED_TBD_BODY;
 }
 
+/** One `## heading` + body block. */
+function renderSection(headingLine, body) {
+  return `${headingLine}\n\n${body}\n`;
+}
+
+function assemble(docType, sections) {
+  return [`# ${docType} — generated`, "", ...sections].join("\n");
+}
+
+/**
+ * Builds one generated case.
+ *
+ * Returns the document text, the same text **without** its extra headings (conjunct (iii)'s
+ * differential base), the constructed expectation, and the shapes it realises for the
+ * non-vacuity floors.
+ */
+function genCase(rng, plan) {
+  const docType = plan.docType;
+  const R = REQUIRED_HEADINGS[docType];
+  const titles = R.map((h) => h.title);
+
+  // 1. Which required headings are emitted, and with what body kind.
+  const emitted = new Map(); // title → body kind
+  const dropped = new Set();
+  if (plan.kind === "oneShort") {
+    dropped.add(plan.dropTitle);
+    for (const t of titles) if (t !== plan.dropTitle) emitted.set(t, "prose");
+  } else if (plan.kind === "emptyOnly") {
+    const victim = rng.pick(titles);
+    for (const t of titles) emitted.set(t, t === victim ? "placeholder" : "prose");
+    dropped.add(victim); // short, though present — this is conjunct (iv)'s first direction
+  } else if (plan.kind === "fencedComplete") {
+    const lucky = rng.pick(titles);
+    for (const t of titles) emitted.set(t, t === lucky ? "fencedTbd" : "prose");
+  } else if (plan.kind === "complete") {
+    for (const t of titles) emitted.set(t, "prose");
+  } else {
+    const keep = rng.shuffle(titles).slice(rng.int(0, titles.length));
+    for (const t of titles) {
+      if (!keep.includes(t)) {
+        dropped.add(t);
+        continue;
+      }
+      const kind = rng.pick(["prose", "prose", "placeholder", "fencedTbd"]);
+      emitted.set(t, kind);
+      if (!BODY_KINDS[kind].nonEmpty) dropped.add(t);
+    }
+  }
+
+  // 2. Render the required sections, forcing ≥1 non-identity rendering when scheduled.
+  const byTitle = new Map(R.map((h) => [h.title, h]));
+  const emittedTitles = [...emitted.keys()];
+  const forcedVariantTitle = plan.nonIdentity && emittedTitles.length > 0 ? rng.pick(emittedTitles) : null;
+  let nonIdentityUsed = false;
+
+  const requiredSections = rng.shuffle(emittedTitles).map((title) => {
+    const heading = byTitle.get(title);
+    const nonIdentity = plan.nonIdentity && (title === forcedVariantTitle || rng.int(0, 1) === 0);
+    const variant = rng.pick(variantsFor(heading, nonIdentity));
+    if (variant !== "identity") nonIdentityUsed = true;
+    return renderSection(renderHeading(rng, heading, variant), renderBody(rng, emitted.get(title)));
+  });
+
+  // 3. Extras — never in `R`, always ordinary prose, inserted at random positions.
+  const extraCount = plan.extras ? rng.int(1, 4) : 0;
+  const withExtras = requiredSections.slice();
+  for (const title of rng.shuffle(EXTRA_TITLES).slice(0, extraCount)) {
+    withExtras.splice(rng.int(0, withExtras.length), 0, renderSection(`## ${title}`, rng.pick(PROSE_BODIES)));
+  }
+
+  const missing = new Set(titles.filter((t) => dropped.has(t)));
+  return {
+    docType,
+    text: assemble(docType, withExtras),
+    baseText: assemble(docType, requiredSections),
+    expected: { complete: missing.size === 0, missing },
+    shapes: {
+      complete: missing.size === 0,
+      oneShort: missing.size === 1,
+      soleShortfall: missing.size === 1 ? [...missing][0] : null,
+      emptyBodyShort: plan.kind === "emptyOnly",
+      fencedTbdComplete: plan.kind === "fencedComplete",
+      extras: extraCount > 0,
+      nonIdentity: nonIdentityUsed,
+    },
+  };
+}
+
+/**
+ * The forced case schedule (PROPERTIES §3.3 rule 1, §5.2's floors). Floors are **constructed**,
+ * never sampled: a floor met by sampling is green at the literal seed and a seed-dependent red
+ * the first time somebody sets `PDLC_PROP_SEED`.
+ *
+ * The 32 `oneShort` plans are the (docType, required-heading) pairs enumerated exhaustively —
+ * 7 + 7 + 6 + 4 + 4 + 4 — so **every** element of every `R` is the sole shortfall in ≥1 case.
+ * That is what makes the property red when a heading is quietly dropped from the subject's own
+ * table (PROPERTIES §5.2, 4th row) rather than merely untested.
+ */
+function buildPlans(rng, count) {
+  const plans = [];
+  for (const docType of SPEC_DOC_TYPES) {
+    for (const h of REQUIRED_HEADINGS[docType]) {
+      plans.push({ kind: "oneShort", docType, dropTitle: h.title });
+    }
+  }
+  const add = (n, kind) => {
+    for (let i = 0; i < n; i++) plans.push({ kind, docType: rng.pick(SPEC_DOC_TYPES) });
+  };
+  add(25, "complete");
+  add(12, "emptyOnly");
+  add(12, "fencedComplete");
+  add(count - plans.length, "filler");
+
+  // Extras on 40 and a non-identity rendering on 50, assigned by position after the shuffle so
+  // both floors are structural rather than drawn.
+  return rng.shuffle(plans).map((p, i) => ({ ...p, extras: i % 5 < 2, nonIdentity: i % 2 === 0 }));
+}
+
