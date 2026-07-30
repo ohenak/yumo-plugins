@@ -1,10 +1,11 @@
 # TSPEC — pdlc-review-loop-hardening
 
-**Version:** 1.6
+**Version:** 1.7
 **Status:** **Approved** at round 5 by both reviewers (PM and TE each 0 High, 0 Medium, 3 Low) —
 **against v1.4**. v1.5 was a post-approval editorial pass applying those Lows. v1.6 is a **single-item
 post-approval amendment forced by a measurement taken during PLAN round 2** — one new ruling row in §8.5.
-Nothing else was reopened. See §0.
+v1.7 **narrows** that v1.6 row and reconciles two clauses beside it, on PLAN-round-3 findings from both
+reviewers; it is entirely inside §8.5 and it adds no exemption. Nothing else was reopened. See §0.
 
 | Field | Value |
 |---|---|
@@ -16,6 +17,28 @@ Nothing else was reopened. See §0.
 ---
 
 ## 0. Changelog
+
+### v1.7 (2026-07-30) — §8.5 only: v1.6's combinator set narrowed to the property it stood for
+
+**What drove it.** Both PLAN round-3 reviewers independently found that v1.6's closed combinator name set
+admitted `Promise.race` and `Promise.any`, which **do not** await every element — so the ruling's own
+stated justification ("awaited *collectively*, by the combinator") is false of them, and
+`await Promise.race([_agent(…), _sleep(MS)])` would be exempt while leaving a seam call genuinely
+unawaited with its rejection unhandled. Both were admitted with **no shipped instance**, against v1.6
+item 3's own clause that the citations exist so the predicate is "known to be exercised rather than
+hypothetical". This edit **removes** an exemption; it grants none.
+
+| Item | Resolution | Where |
+|---|---|---|
+| **1 — the combinator set becomes the property** | The discriminant is now **"a promise combinator that awaits every element of the array"**, not membership of a name list. `_parallel`, `parallel`, `Promise.all`, `Promise.allSettled` are named as the **instances**; `Promise.race` and `Promise.any` are **withdrawn** and named explicitly as *not* exempting, with the timeout shape spelled out so the exclusion is not re-litigated. Same lesson as item 3: a predicate is self-limiting, an enumeration drifts. Measured at HEAD, `race`/`any`/`allSettled` occur **zero** times in either bundle source, so no shipped site changes classification | §8.5 rulings table |
+| **2 — the alias row reconciled with the widened catch-all** | v1.6's alias row still said to scan "the local name, **not** the `_`-prefixed one", which the same edit's widened catch-all ("under its own `_`-prefixed name **or** under an alias") overrides — and `:615–616`, the sites v1.6 exists for, are called under the `_` name. Now: **"the local name in addition to the `_`-prefixed one"**, with the row's real prohibition (scanning the `_` spelling *alone*, which passes vacuously for an aliased seam) preserved and stated as such | §8.5 alias row |
+| **3 — the anonymous arrow, in the owning section** | The returned-promise row's inheritance clause was written wholly in terms of a *name*, which has no referent for `batch.map((task) => agentFn(…))` (`:1867`, a shipped instance). Added: an anonymous arrow has **no name to inherit** the obligation, so it is inherited by nobody; the exemption is unconditional on naming, only the inheritance is not. This restores an answer PLAN v1.2 deleted from its §9.2 in favour of a citation — the citation now resolves | §8.5 returned-promise row |
+
+**Not changed:** the thirteen-name set, the two anchored regexes, the three rulings' *shapes*, item 3's
+meta-rule, AT-64's derived seam set, E-1/E-2/E-3, both anti-rot clauses, and every other section.
+**REQ and FSPEC untouched.** The **mechanism** by which the assertion decides these predicates is
+deliberately *not* specified here — PLAN §4 `RLH-31` and §9.2 own it (PLAN v1.3), because it is a
+test-construction choice, not a contract.
 
 ### v1.6 (2026-07-30) — one ruling row in §8.5, forced by a PLAN-round-2 measurement
 
@@ -45,7 +68,7 @@ missing E-3 form.
 
 | Item | Resolution | Where |
 |---|---|---|
-| **1 — the missing ruling** | **One new row: awaited combinator argument.** A thirteen-list call that is an element of an array literal in the argument list of an `await`ed call to a promise combinator (`_parallel`, `parallel`, `Promise.all/allSettled/race/any`) is **exempt**; the awaited combinator discharges the obligation, inherited by nobody. Stated as a predicate over **syntactic position**, with `:615–616` cited as the shipped instance the way the returned-promise row cites its own — evidence that the predicate is exercised, never the definition | §8.5 rulings table |
+| **1 — the missing ruling** | **One new row: awaited combinator argument.** A thirteen-list call that is an element of an array literal in the argument list of an `await`ed call to a promise combinator (`_parallel`, `parallel`, `Promise.all/allSettled/race/any`) is **exempt**; the awaited combinator discharges the obligation, inherited by nobody. **`race`/`any` were withdrawn from that set at v1.7** — they do not await every element, so the row's own justification was false of them; the set is now the property, not the list. Stated as a predicate over **syntactic position**, with `:615–616` cited as the shipped instance the way the returned-promise row cites its own — evidence that the predicate is exercised, never the definition | §8.5 rulings table |
 | **2 — the catch-all's reach** | The closing rule said "every other call site of an **aliased** thirteen-list seam". An unaliased call was outside it, which is why the measured shape fell through the whole section. Now: **"under its own `_`-prefixed name or under an alias, the two being the same obligation."** The thirteen-name set is **unchanged** and no scan is widened beyond making the existing obligation well-defined on both spellings | §8.5 |
 | **3 — enumerations drift, invariants do not** | An explicit clause that the rulings are predicates over position, the `file:line` citations are evidence of a shipped instance, and an unmatched call site is a **failure the assertion names** — resolved by a source fix or by a new ruling *stated as a predicate*, never by a clause naming a line number and never by narrowing the thirteen-name set. The `G-INV` and E-1/E-2/E-3 constructions are the precedent | §8.5 |
 
@@ -2157,10 +2180,23 @@ is a design judgement, not a derivation; AT-64 is what stops that list from rott
 
 | Shape | Example at HEAD | Ruling |
 |---|---|---|
-| **Alias** — the seam is destructured under a local name (`_readFile: readFileFn`, `_agent: rawAgentFn`) and called through that name | `await readFileFn(planPath)`, `await checkFileFn(reqPath)` | the assertion resolves the alias from `main()`'s destructuring pattern and scans **the local name**, not the `_`-prefixed one. Scanning the `_` name alone finds zero call sites and passes vacuously — the worst possible failure for this test |
-| **Returned promise** — the call is the entire body of an arrow function, or the operand of a `return`, so its promise is awaited by the caller | `` const agentFn = (skill, prompt, opts) => rawAgentFn(skill, prompt, { model: MODEL_DEFAULT, ...opts }); `` | **exempt, and the wrapper's own name inherits the obligation.** `agentFn` is then itself scanned as an alias of `_agent`, and every `await agentFn(…)` site satisfies the rule. Requiring `await` inside the wrapper would be a redundant await on a correct construction |
+| **Alias** — the seam is destructured under a local name (`_readFile: readFileFn`, `_agent: rawAgentFn`) and called through that name | `await readFileFn(planPath)`, `await checkFileFn(reqPath)` | the assertion resolves the alias from `main()`'s destructuring pattern and scans **the local name in addition to the `_`-prefixed one** (v1.7: v1.6 read "not the `_`-prefixed one", which the widened catch-all below now overrides — `:615–616` are called under the `_` name, so scanning only the local name would miss them). What the row forbids is scanning the `_` spelling **alone**: for an aliased seam that finds zero call sites and passes vacuously — the worst possible failure for this test. Both spellings are the same obligation |
+| **Returned promise** — the call is the entire body of an arrow function, or the operand of a `return`, so its promise is awaited by the caller | `` const agentFn = (skill, prompt, opts) => rawAgentFn(skill, prompt, { model: MODEL_DEFAULT, ...opts }); `` | **exempt, and the wrapper's own name inherits the obligation.** `agentFn` is then itself scanned as an alias of `_agent`, and every `await agentFn(…)` site satisfies the rule. Requiring `await` inside the wrapper would be a redundant await on a correct construction. **An *anonymous* arrow has no name to inherit it, and the obligation is then inherited by nobody** (v1.7, and the shape is shipped: `batch.map((task) => agentFn(…))` at `orchestrate-dev.js:1867`) — the awaiting is the consuming combinator's, which this assertion does not verify. The exemption is unconditional on naming; only the inheritance depends on it |
 
-| **Awaited combinator argument** — the call is (transitively) an element of an **array literal** in the argument list of a call that is itself lexically preceded by `await`, and that outer callee is a **promise combinator**: a thirteen-list-independent name in the closed set `_parallel`, `parallel`, `Promise.all`, `Promise.allSettled`, `Promise.race`, `Promise.any` | `` const [r1, r2] = await _parallel([ _agent(reviewers[0], reviewerPrompt1), _agent(reviewers[1], reviewerPrompt2), ]); `` — `orchestrate-dev.js:615–616` | **exempt; the awaited combinator discharges the obligation and it is inherited by nobody.** The promises are awaited *collectively*, by the combinator; `await` on each element would not add safety, it would **serialise a deliberately concurrent dispatch** and change behaviour. Measured at HEAD, the adapter's `_parallel` is `async function rtParallel(promises) { return await Promise.all(promises); }` (`runtime-adapter.js:67`), so the await is real, not assumed |
+| **Awaited combinator argument** — the call is (transitively) an element of an **array literal** in the argument list of a call that is itself lexically preceded by `await`, and that outer callee is a **promise combinator that awaits every element of the array**. That property, not a name, is the test (v1.7) | `` const [r1, r2] = await _parallel([ _agent(reviewers[0], reviewerPrompt1), _agent(reviewers[1], reviewerPrompt2), ]); `` — `orchestrate-dev.js:615–616` | **exempt; the awaited combinator discharges the obligation and it is inherited by nobody.** The promises are awaited *collectively*, by the combinator — which is why the discriminant is *awaits every element*: the justification for exempting the elements is that each one is in fact awaited. Measured at HEAD, the adapter's `_parallel` is `async function rtParallel(promises) { return await Promise.all(promises); }` (`runtime-adapter.js:67`), so the await is real, not assumed |
+
+**Which callees have that property, and which conspicuously do not.** `_parallel`, `parallel`,
+`Promise.all` and `Promise.allSettled` await every element and are the ruling's instances; `_parallel`
+and `parallel` are the only two with a shipped instance at HEAD. **`Promise.race` and `Promise.any` do
+not have the property and are therefore not exempting** — named here only to be excluded, because both
+are natural spellings a future edit reaches for. `await Promise.race([_agent(…), _sleep(MS)])` — the
+idiomatic JS dispatch timeout, and `_sleep` is already an injected seam — settles on one element and
+leaves the loser unawaited with its rejection unhandled: **exactly the C-2 failure this assertion is the
+only guard against.** `Promise.any` is the same on its success path. v1.6 admitted both inside a closed
+name list; v1.7 **withdraws them** and replaces the list with the property, so a `race` is an unmatched
+site — blocking work under the meta-rule below — rather than a silent exemption. Measured at HEAD,
+`Promise.race`, `Promise.any` and `Promise.allSettled` occur **zero** times in either bundle source, so
+nothing shipped changes classification.
 
 Every other call site of a thirteen-list seam — **under its own `_`-prefixed name or under an alias,
 the two being the same obligation** — must be lexically preceded by `await`, including calls whose
