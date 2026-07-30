@@ -143,3 +143,36 @@ function sweepAll() {
   }
   return { findings, interpolatedTokens, filesSwept: SWEPT_SOURCES.length };
 }
+
+/**
+ * Render findings as one greppable `file:line` line each, so the jest failure
+ * names the offending template rather than only its count.
+ * @param {Array<{file:string,line:number,token:string}>} findings
+ * @returns {string}
+ */
+function describeFindings(findings) {
+  return findings
+    .map((f) => `  ${f.file}:${f.line}  ${f.token}`)
+    .join("\n");
+}
+
+describe("RLH-AT-55 — no un-substituted template reaches a report", () => {
+  test("RLH-AT-55: no operator-facing report string carries a half-substituted {…} template", () => {
+    const { findings, interpolatedTokens, filesSwept } = sweepAll();
+
+    // Self-check: an oracle that swept nothing would green vacuously once
+    // RLH-27 and RLH-30 land, and would never catch a future regression. Assert
+    // the sweep actually reached the sources and found real interpolated text
+    // before trusting its verdict.
+    expect(filesSwept).toBe(SWEPT_SOURCES.length);
+    expect(interpolatedTokens).toBeGreaterThan(100);
+
+    expect(
+      findings.length === 0
+        ? "none"
+        : `${findings.length} half-substituted template token(s) reach an ` +
+          `operator-facing report string (TSPEC §6.3):\n` +
+          describeFindings(findings),
+    ).toBe("none");
+  });
+});
