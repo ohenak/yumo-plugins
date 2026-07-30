@@ -60,9 +60,9 @@ const LITERAL_SEED = 0x51ed0a06;
 function subject(name) {
   const fn = devModule[name];
   // Compared as a sentence so the failure line names the symbol and what it actually is,
-  // e.g. `Expected: "orchestrate-dev.js exports sha256Hex as a function"`.
-  expect(`orchestrate-dev.js exports ${name} as a ${typeof fn}`).toBe(
-    `orchestrate-dev.js exports ${name} as a function`,
+  // e.g. `Expected: "orchestrate-dev.js exports sha256Hex — function"`.
+  expect(`orchestrate-dev.js exports ${name} — ${typeof fn}`).toBe(
+    `orchestrate-dev.js exports ${name} — function`,
   );
   return fn;
 }
@@ -343,8 +343,226 @@ describe("RLH-AT-15, RLH-AT-16, RLH-AT-18 — staleness and the phase gate (gree
 
     // The gate conjunct (RLH-26, batch 8): tier 2 reads the Approval Record section by name,
     // and UNEVALUABLE — like STALE — runs the phase rather than skipping it.
-    const source = devSource();
-    expect(source).toMatch(/Approval Record/);
+    // Asserted as a boolean rather than `expect(source).toMatch(…)` so a red prints the verdict,
+    // not two thousand lines of orchestrate-dev.js.
+    expect({
+      "orchestrate-dev.js names the Approval Record section": /Approval Record/.test(devSource()),
+    }).toEqual({ "orchestrate-dev.js names the Approval Record section": true });
     expectPhaseGateConsultsStaleness();
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// The two digest properties — PROP-DIGEST-01 and PROP-DIGEST-02
+// (PROPERTIES §4.1; TSPEC §8.2's seven-row table, rows 1 and 3).
+//
+// Same permitted-red window as RLH-AT-12/-13/-14/-17: green from batch 3,
+// greened by RLH-05(d).
+//
+// The generators below are FILE-LOCAL and UNEXPORTED, built over the shipped
+// primitives in `helpers/driftGenerators.js` (PLAN §7.2 forbids extending that
+// file and forbids a second primitive library). The literal seed is declared
+// here and passed through `resolveSeed`, honouring `PDLC_PROP_SEED`.
+// ═══════════════════════════════════════════════════════════════════════════
+
+const SEED = resolveSeed(LITERAL_SEED);
+const CASES = 100;
+
+/** Inserts `piece` at a random interior position, never at the very end. */
+function insertInterior(text, rng, piece) {
+  if (text.length === 0) return piece;
+  const at = rng.int(0, text.length - 1);
+  return text.slice(0, at) + piece + text.slice(at);
+}
+
+/**
+ * PROP-DIGEST-01's D3 generator: `rng.bytes(n).toString("utf8")` for n ∈ 0…512 — the U+FFFD
+ * replacements that decode performs are IN the domain, being exactly the byte soup
+ * `canonicaliseForDigest` must survive — with `\r\n`, lone `\r` and 0…5 trailing `\n` injected.
+ * The `force` flags let the caller *require* a shape rather than hope for it, which is how the
+ * non-vacuity floors below are met deterministically (PROPERTIES §3.3 rule 1).
+ */
+function genCanonicalisationText(rng, force = {}) {
+  let text = rng.bytes(rng.int(0, 512)).toString("utf8").replace(/[\r\n]+$/, "");
+  if (force.crlf) {
+    for (let i = rng.int(1, 3); i > 0; i--) text = insertInterior(text, rng, "\r\n");
+  }
+  if (force.loneCr) {
+    // "\rA": the trailing letter keeps the `\r` lone even if it lands before an existing `\n`.
+    for (let i = rng.int(1, 3); i > 0; i--) text = insertInterior(text, rng, "\rA");
+  }
+  if (force.noTrailingNewline) return `${text}${rng.pick(["x", "!", "0", "}"])}`;
+  return text + "\n".repeat(force.trailing === undefined ? rng.int(0, 5) : force.trailing);
+}
+
+/** One code point from U+0800…U+FFFF **minus** the surrogate block U+D800…U+DFFF — the
+ *  3-byte UTF-8 range, drawn uniformly by shifting the draw past the 2048 surrogates. */
+function genThreeByte(rng) {
+  let cp = rng.int(0x0800, 0xffff - 0x0800);
+  if (cp >= 0xd800) cp += 0x0800;
+  return String.fromCodePoint(cp);
+}
+
+/**
+ * PROP-DIGEST-02's extended D3 generator: ASCII, 2-, 3- and 4-byte UTF-8 built from
+ * `codePointAt`-valid code points, surrogate pairs (emoji), byte-soup, and **lone surrogates**
+ * — the shape where a hand-rolled `utf8Bytes` is most likely to be wrong.
+ */
+function genDigestText(rng, force = {}) {
+  const segments = [];
+  for (let i = rng.int(0, 40); i > 0; i--) {
+    switch (rng.int(0, 4)) {
+      case 0:
+        segments.push(String.fromCharCode(rng.int(0x20, 0x7e)));
+        break;
+      case 1:
+        segments.push(String.fromCodePoint(rng.int(0x80, 0x7ff))); // 2-byte
+        break;
+      case 2:
+        segments.push(genThreeByte(rng)); // 3-byte, never a surrogate
+        break;
+      case 3:
+        segments.push(String.fromCodePoint(rng.int(0x10000, 0x10ffff))); // 4-byte, astral
+        break;
+      default:
+        segments.push(rng.bytes(rng.int(0, 8)).toString("utf8")); // U+FFFD soup
+    }
+  }
+  let text = segments.join("");
+  if (force.astral) text += String.fromCodePoint(rng.int(0x1f300, 0x1f9ff));
+  // Appended last so nothing can pair with it: a high surrogate with no low surrogate after it.
+  if (force.loneSurrogate) text += String.fromCharCode(rng.int(0xd800, 0xdbff));
+  // A text with no trailing newline is one N-2 must change, which is what conjunct (iii) needs.
+  if (force.nonCanonical) return `${text}\r\n\r\n`;
+  return force.canonical ? `${text}\n` : text;
+}
+
+/** True when `text` carries a code point above U+FFFF (a well-formed surrogate pair). */
+function hasAstral(text) {
+  return /[\uD800-\uDBFF][\uDC00-\uDFFF]/.test(text);
+}
+
+/** True when `text` carries an unpaired surrogate code unit in either direction. */
+function hasLoneSurrogate(text) {
+  for (let i = 0; i < text.length; i++) {
+    const u = text.charCodeAt(i);
+    if (u >= 0xd800 && u <= 0xdbff) {
+      const next = i + 1 < text.length ? text.charCodeAt(i + 1) : 0;
+      if (!(next >= 0xdc00 && next <= 0xdfff)) return true;
+      i++;
+    } else if (u >= 0xdc00 && u <= 0xdfff) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Runs one generated case, and on failure re-throws with the seed, the case index and the
+ * shipped `"bytes"` shrink ladder's next step (64-byte floor, PROPERTIES §2.5 / §6.2) so the
+ * failure is reproducible by replay rather than by index.
+ */
+function withShrink(index, text, assertions) {
+  try {
+    assertions();
+  } catch (err) {
+    const ladder = shrink({ kind: "bytes", bytes: Buffer.from(text, "utf8") });
+    const shrunk = ladder.length
+      ? JSON.stringify(ladder[0].bytes.toString("utf8")).slice(0, 200)
+      : "(already at or below the 64-byte floor)";
+    throw new Error(
+      `${err.message}\n\n  seed=${SEED} (PDLC_PROP_SEED overrides) case=${index}` +
+        `\n  input=${JSON.stringify(text).slice(0, 300)}` +
+        `\n  shrunk("bytes")=${shrunk}`,
+    );
+  }
+}
+
+describe("digest properties — PROP-DIGEST-01 / PROP-DIGEST-02 (green from batch 3)", () => {
+  test("PROP-DIGEST-01: canonicaliseForDigest is idempotent and lands in a normal form", () => {
+    const canonicaliseForDigest = subject("canonicaliseForDigest");
+    const rng = seeded(SEED);
+
+    const texts = [];
+    for (let i = 0; i < CASES; i++) {
+      // Forced, never sampled (PROPERTIES §3.3 rule 1): the quotas are produced by
+      // construction, then MEASURED below, so a generator regression cannot quietly
+      // hollow the property out.
+      if (i < 15) texts.push(genCanonicalisationText(rng, { crlf: true }));
+      else if (i < 30) texts.push(genCanonicalisationText(rng, { loneCr: true }));
+      else if (i < 45) texts.push(genCanonicalisationText(rng, { trailing: rng.int(2, 5) }));
+      else if (i < 55) texts.push(genCanonicalisationText(rng, { noTrailingNewline: true }));
+      else texts.push(genCanonicalisationText(rng));
+    }
+
+    // Non-vacuity floors — TSPEC §8.2 / PROPERTIES §4.1. The zero-trailing-newline floor is the
+    // only shape that falsifies an N-2 rule that STRIPS rather than FORCES.
+    expect(texts.filter((t) => /\r\n/.test(t)).length).toBeGreaterThanOrEqual(10);
+    expect(texts.filter((t) => /\r(?!\n)/.test(t)).length).toBeGreaterThanOrEqual(10);
+    expect(texts.filter((t) => /\n\n$/.test(t)).length).toBeGreaterThanOrEqual(10);
+    expect(texts.filter((t) => t.length > 0 && !/[\r\n]$/.test(t)).length).toBeGreaterThanOrEqual(5);
+
+    texts.forEach((t, i) => {
+      withShrink(i, t, () => {
+        const once = canonicaliseForDigest(t);
+        // (a) idempotence
+        expect(canonicaliseForDigest(once)).toBe(once);
+        // (b) exactly one trailing newline, and (c) no CR survives
+        expect(once.endsWith("\n")).toBe(true);
+        expect(once.endsWith("\n\n")).toBe(false);
+        expect(once).not.toMatch(/\r/);
+        // (d) positive presence: every line of `t`, with `\r` stripped, appears in `once` in
+        // the same order — the normalisations are the ONLY difference, nothing is dropped.
+        const lines = String(t).replace(/\r\n/g, "\n").replace(/\r/g, "\n").split("\n");
+        while (lines.length > 1 && lines[lines.length - 1] === "") lines.pop();
+        const got = once.split("\n");
+        got.pop(); // the single forced trailing newline's empty tail
+        expect(got).toEqual(lines.length === 1 && lines[0] === "" ? [] : lines);
+      });
+    });
+  });
+
+  test("PROP-DIGEST-02: sha256Hex is deterministic and total, and canonicalises internally", () => {
+    const sha256Hex = subject("sha256Hex");
+    const canonicaliseForDigest = subject("canonicaliseForDigest");
+    const rng = seeded(SEED);
+
+    const texts = [];
+    for (let i = 0; i < CASES; i++) {
+      if (i < 20) texts.push(genDigestText(rng, { astral: true, nonCanonical: true }));
+      else if (i < 30) texts.push(genDigestText(rng, { astral: true, canonical: true }));
+      else if (i < 40) texts.push(genDigestText(rng, { loneSurrogate: true }));
+      else texts.push(genDigestText(rng, { canonical: rng.int(0, 1) === 1 }));
+    }
+
+    // Non-vacuity floors — asserted BEFORE the digest assertions, per PROPERTIES §4.1.
+    expect(texts.filter(hasAstral).length).toBeGreaterThanOrEqual(15);
+    expect(texts.filter(hasLoneSurrogate).length).toBeGreaterThanOrEqual(5);
+    // Conjunct (iii) degenerates into (ii) unless the canonical form actually differs, so at
+    // least 20 cases must be non-canonical to begin with.
+    const nonCanonical = texts.filter((t) => canonicaliseForDigest(t) !== t);
+    expect(nonCanonical.length).toBeGreaterThanOrEqual(20);
+
+    texts.forEach((t, i) => {
+      withShrink(i, t, () => {
+        // (i) totality of shape — never throws, always 64 lowercase hex
+        const digest = sha256Hex(t);
+        expect(digest).toMatch(HEX64);
+        // (ii) determinism — the same input twice, and an independently built equal string
+        expect(sha256Hex(t)).toBe(digest);
+        expect(sha256Hex(`${t}`.slice(0))).toBe(digest);
+        // (iii) canonicalisation is inside — no caller can change the answer by pre-processing
+        expect(sha256Hex(canonicaliseForDigest(t))).toBe(digest);
+      });
+    });
+
+    // The generated form of RLH-AT-14: two texts differing only in line endings and trailing
+    // newline count digest equal, over the whole generated set rather than one fixture.
+    nonCanonical.slice(0, 20).forEach((t, i) => {
+      withShrink(i, t, () => {
+        expect(sha256Hex(t.replace(/\n/g, "\r\n"))).toBe(sha256Hex(t));
+        expect(sha256Hex(`${t}\n\n\n`)).toBe(sha256Hex(t));
+      });
+    });
   });
 });
