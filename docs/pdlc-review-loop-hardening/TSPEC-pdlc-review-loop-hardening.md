@@ -25,7 +25,7 @@ invariants over *every* path rather than as behaviour at an enumerated step.**
 |---|---|---|---|
 | **PM F-01** | High | **Fixed by stating the gate as an invariant (`G-INV`).** v1.1's step 4a was reachable only from §5.5's `STALE`/`UNEVALUABLE`, so §5.4's two earlier exits — `candidate < 1` and `NOT APPROVING` — ran the phase without passing it, making AC-2.3b **worked example B** unreachable exactly as v1.0 had made example A unreachable. Step 4a is renamed **step G** and specified as *evaluated on every exit that leads to running the phase; step 5 is reachable only through it*. §5.4's two exits and §5.7's forced path all route to it. **Both worked examples verified reachable and correct under the revised flow**, and they diverge only at step 3: A takes step 4's `FRESH` skip and names the POSTMORTEM in its notice; B takes `candidate < 1` ⇒ step G ⇒ refusal reproducing the Recommendation. New **AT-13a** drives all five exits, with §12.4 A and AC-2.3b B as verbatim fixtures | §2.5, §5.4, §5.5, §5.7, §5.8, §6.2 row 13, §8.3, §9.2 |
 | **TE N-01** | High | **Fixed by stating the input contract as an invariant (`S-INV`) and wiring the caller.** `selectMode` was specified but had no caller, and its inputs were entry-time snapshots while the revision episode fires inside `reviewLoop`'s `while (true)` — so on a clean branch round 2's optimizer selected greenfield over an empty snapshot and terminated with no trailer. `reviewLoop` gains `docType`, `present`, `reviewFiles`, `_listFiles` and `_readFile`, and declares `refreshReviewState`, called at **every** episode entry; `selectMode` stays pure. `roundIndex` therefore derives per episode, so `EpisodeKey` is no longer pinned and §4.5's 36-dispatch bound survives. Rule 4 is widened: "the candidate round's verdicts were **not read**" — the forced path, whose `reviewFiles` is empty, or a failed mid-loop listing (§6.2 row 17) — fails toward revision, never to greenfield. New **AT-43a** | §5.6.1, §3.7, §3.9, §4.5, §5.4, §5.7, §6.2 row 17, §8.3 |
-| **PM F-02** | Medium | **Fixed — carrier restored, and the phantom union member deleted.** `isTerminal` returns a record (`{ terminal, structural, trailerReason }`) instead of a boolean, and every `dispatchAndVerify` return carries `trailerReason`, so FSPEC AT-61's four reasons reach the report. §3.8's declared `reason: "trailer"` exit is **deleted rather than given a producer**: AT-61 states all four reasons as *non-terminal* and §4.3 disposes of all four as "continue", so any producer for that member would contradict the FSPEC | §5.6.2, §3.7, §3.8, §4.7 |
+| **PM F-02** | Medium | **Fixed — carrier restored, and the phantom union member deleted.** `isTerminal` returns a record instead of a boolean, and every `dispatchAndVerify` return carries `trailerReason`, so FSPEC AT-61's four reasons reach the report. §3.8's declared `reason: "trailer"` exit is **deleted rather than given a producer**: AT-61 states all four reasons as *non-terminal* and §4.3 disposes of all four as "continue", so any producer for that member would contradict the FSPEC | §5.6.2, §3.7, §3.8, §4.7 |
 | **PM F-03** | Medium | **Fixed.** The successor row is `Order` **9**, not 8: `QUEUE.md`'s own banner records `Order 8` as a live alias for row 0 in ~10 documents. `Order` values are allocated, never reused — stated in the row's prose. No existing row altered; row 0 still reads `halted` | `QUEUE.md`, §0, §10.2, §10.3 |
 | **TE N-02** | Medium | **Fixed — one conjunct.** E-2 required only "no `=` initialiser", so a new seam declared bare was silently exempt. It now also requires the parameter to be forwarded to exactly one module-local function that declares it *with* a default, and clause 2's evidence-must-resolve rule is extended to E-2. Measured at HEAD: `_now`/`_sleep` forward to `raisePrAndVerifyCi`, which defaults both | §8.5 |
 | **TE N-03** | Medium | **Fixed.** The `deriveRoundWindow` partition was false on a correct implementation — a conforming basename for another doc type is in neither returned set. Restated over `parseReviewFilename`'s total three-way split, plus the empty-listing conjunct on `startIndex` | §8.2 |
@@ -618,12 +618,15 @@ export function selectMode({ dispatchKind, docType, present, reviewFiles })
 //   candidate round's verdicts were never read.
 
 export function isTerminal(mode, response, artifactClass, docType, after)
-//   → { terminal: boolean, structural: boolean,
-//       trailerReason: TrailerFailure|null }
+//   → { terminal: boolean, trailerReason: TrailerFailure|null }
 //   Greenfield: terminal is structural completeness ALONE, trailerReason null.
 //   Revision: structural AND parseRevisionComplete → complete; on any non-yes
 //   trailer, trailerReason carries which of the four it was (§4.3, AT-61) —
 //   this record is that reason's only carrier.
+//   The record has exactly these two members: both are read by the loop and
+//   both are observable (§4.7's report line, AT-61). Structural completeness is
+//   a local, not a member — no consumer distinguishes it from `terminal`, and
+//   AT-59/AT-60/AT-62 observe it through `isComplete` directly (§5.6.2).
 ```
 
 `sha256Hex` is **not a seam**, and this is a deliberate design decision rather than an oversight. A
@@ -1384,12 +1387,19 @@ because the trailer reason it computes is the only place that reason exists:
 function isTerminal(mode, response, artifactClass, docType, after) {
   const structural = isComplete(artifactClass, docType, after).complete;
   if (mode !== "revision")                                  // greenfield
-    return { terminal: structural, structural, trailerReason: null };
+    return { terminal: structural, trailerReason: null };
   const t = parseRevisionComplete(response);
-  return { terminal: structural && t.complete, structural,
+  return { terminal: structural && t.complete,
            trailerReason: t.complete ? null : t.reason };
 }
 ```
+
+**Both members are read, and `structural` is not one of them.** v1.2 returned it as a third member
+that no caller read: the loop consults `t.terminal` and `t.trailerReason`, §3.8's return union carries
+`trailerReason`, §4.7 reports it, and AT-59/AT-60/AT-62 observe structural completeness through
+`isComplete` directly. An unread field in a normative return type is the shape AC-4.7a forbids, so it
+is **deleted** rather than given a report field no requirement asks for; `structural` survives as the
+local above, which is where its only two readers are.
 
 **`trailerReason` is the carrier, and every exit of the loop carries it.** `parseRevisionComplete` is
 called only here (§4.3), so a boolean return computed the four `TRAILER_FAILURES` values and threw
