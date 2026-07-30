@@ -840,3 +840,8 @@ naming or plumbing choices are decisions to be made once and cited (§11.5).
   writer in a batch is a §11.4 halt.
 
 ## 14. Changelog
+
+| Version | Date | Change |
+|---|---|---|
+| **v1.0** | 2026-07-30 | Initial PLAN. 34 tasks across 16 batches, derived from TSPEC v1.5 (§3 interfaces, §4 data model, §5 algorithms, §7 edit sites, §8 test strategy, §9 traceability) with **no** behaviour restated — every rule is cited. Establishes: the §2.1 baseline (**1038 passed / 1 failed / 70 skipped**) and the "no new failures" exit criterion; the §3.2 serialisation rule (no two tasks in one batch may edit any tracked source under `pdlc/workflows/`, because each must rebuild `dist/` in the same commit); the `RLH-AT-{N}` test namespace, avoiding collision with the pre-existing intentional red `AT-22 [red-until-L-06]`; single-owner-per-test-file with a `Greened by` column; §5's file-ownership manifest; §7/§8's task→AT and task→FSPEC-obligation traceability; §9's C-2 build-time gate including the await-discipline scan; §10's SKILL-amendment verification; §11's halt conditions; §12's Definition of Done; §13's open questions. Phase D was assessed and deliberately skipped — there is no DECISIONS document, by design. |
+
