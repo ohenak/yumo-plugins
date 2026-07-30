@@ -508,3 +508,89 @@ describe("RLH-AT-11: duplicated verdict field fails closed", () => {
     expect(readPaths(fs)).toContain(crossReviewPath(SE_SLUG, 2));
   });
 });
+
+// ─── RLH-AT-56: a partial or disagreeing anchor pair yields no approval ───────
+//
+// (E-63, E-64, SE-v1 F-02.) Both of round 2's cross-reviews are `Approved`, so
+// §5.4's isPass half of unanimity holds; what fails is the anchor half —
+// (a) only the SE file carries an `APPROVAL-HASH:`, (b) the two files carry
+// **different** values. §6.2 row 6 dispositions both as `UNEVALUABLE`: the phase
+// runs and the offending files are named in the report. Adopting either file's
+// value as `recordedHash` — the failure FSPEC §19 calls out — would skip (a) and
+// coin-flip (b).
+describe("RLH-AT-56: a partial or disagreeing anchor pair yields no approval", () => {
+  const listing = [crossReviewBasename(SE_SLUG, 2), crossReviewBasename(TE_SLUG, 2)];
+
+  /** (a) The anchor is on the SE file only; the TE file has none at all. */
+  const partialFiles = {
+    [crossReviewPath(SE_SLUG, 2)]: crossReviewFile({ verdict: APPROVED, hash: FSPEC_HASH }),
+    [crossReviewPath(TE_SLUG, 2)]: crossReviewFile({ verdict: APPROVED, hash: null }),
+  };
+
+  /** (b) Both files carry an anchor, and they disagree. */
+  const disagreeingFiles = {
+    [crossReviewPath(SE_SLUG, 2)]: crossReviewFile({ verdict: APPROVED, hash: FSPEC_HASH }),
+    [crossReviewPath(TE_SLUG, 2)]: crossReviewFile({ verdict: APPROVED, hash: WRONG_HASH }),
+  };
+
+  test("RLH-AT-56: Phase F runs in both cases and the report names the offending files", async () => {
+    // (a) partial pair — the TE file is the one with no anchor.
+    const partial = await runPipeline({ files: partialFiles, listing });
+    expect(phaseRecord(partial.result, "F")).not.toBeNull();
+    expect(phaseRecord(partial.result, "F").status).not.toBe("⏭");
+    expect(JSON.stringify(partial.result)).toContain(crossReviewPath(TE_SLUG, 2));
+
+    // (b) disagreeing pair — neither value may be adopted, so both are offending.
+    const disagreeing = await runPipeline({ files: disagreeingFiles, listing });
+    expect(phaseRecord(disagreeing.result, "F")).not.toBeNull();
+    expect(phaseRecord(disagreeing.result, "F").status).not.toBe("⏭");
+    const report = JSON.stringify(disagreeing.result);
+    expect(report).toContain(crossReviewPath(SE_SLUG, 2));
+    expect(report).toContain(crossReviewPath(TE_SLUG, 2));
+  });
+});
+
+// ─── RLH-AT-57: a higher non-approving round denies an earlier approval ───────
+//
+// (E-65, TE-v1 F-01.) Round 2 is a complete, unanimous approval anchored to the
+// FSPEC's current bytes; round 3 is a complete `Needs revision` pair over the same
+// unedited document. §5.4's candidate is the single highest round present — 3 —
+// and there is no descending walk, so round 2's approval is unreachable and the
+// phase runs. A search that descended past round 3 would fail open and discard a
+// completed review round.
+describe("RLH-AT-57: a higher non-approving round denies an earlier approval", () => {
+  const listing = [
+    crossReviewBasename(SE_SLUG, 2),
+    crossReviewBasename(TE_SLUG, 2),
+    crossReviewBasename(SE_SLUG, 3),
+    crossReviewBasename(TE_SLUG, 3),
+  ];
+  const files = {
+    [crossReviewPath(SE_SLUG, 2)]: crossReviewFile({ verdict: APPROVED, hash: FSPEC_HASH }),
+    [crossReviewPath(TE_SLUG, 2)]: crossReviewFile({ verdict: APPROVED, hash: FSPEC_HASH }),
+    // A non-approving round reaches no PASS gate, so §5.3's anchor is never
+    // appended to either round-3 file.
+    [crossReviewPath(SE_SLUG, 3)]: crossReviewFile({
+      verdict: NEEDS_REVISION,
+      counts: { high: 1, medium: 0, low: 0 },
+    }),
+    [crossReviewPath(TE_SLUG, 3)]: crossReviewFile({
+      verdict: NEEDS_REVISION,
+      counts: { high: 0, medium: 2, low: 0 },
+    }),
+  };
+
+  test("RLH-AT-57: Phase F runs, round 3 is the candidate, and round 2 is not read", async () => {
+    const { result, fs } = await runPipeline({ files, listing });
+
+    expect(phaseRecord(result, "F")).not.toBeNull();
+    expect(phaseRecord(result, "F").status).not.toBe("⏭");
+
+    const paths = readPaths(fs);
+    expect(paths).toContain(crossReviewPath(SE_SLUG, 3));
+    expect(paths).toContain(crossReviewPath(TE_SLUG, 3));
+    // No descending walk: the approving round 2 is never opened.
+    expect(paths).not.toContain(crossReviewPath(SE_SLUG, 2));
+    expect(paths).not.toContain(crossReviewPath(TE_SLUG, 2));
+  });
+});
