@@ -503,40 +503,37 @@ of these has misread the TSPEC:
 
 ## 7. Traceability — task → acceptance tests
 
-TSPEC §8.3 owns the **AT → jest file** map; this table carries that map into the tasks rather than
-re-deriving it, and adds the one thing §8.3 cannot know: which task turns each test green.
+TSPEC §8.3 owns the **AT → jest file** map. The table below carries it into the **authoring** tasks —
+which task writes each assertion. **When each assertion must be green is stated only in §7.3**, and
+§7.4 states which task owns each half of the assertions split across two files.
+
+Greening is deliberately stated **once**. v1.0 stated it twice — a "go green" row per task here and a
+`Greened by` cell per file in §4 — and the two disagreed twice over (one cell omitted `RLH-16`, another
+omitted `RLH-30`), which is §1.2's duplicated-statement failure class inside the document arguing
+against it. §7.3 is the only authority; §2.2 and §12.2 gate on it.
 
 The jest name for every id below is the `RLH-` form (§1.3).
 
-| Task | Acceptance tests it must satisfy | Level | Owning test file |
+| Authoring task | Assertions it writes | Level | Owning test file |
 |---|---|---|---|
 | RLH-03 | AT-65, AT-66; property: `scanLines` totality-and-partition | L1 | `scanLines.test.js` |
-| RLH-05 | AT-65, AT-66 go green | L1 | `scanLines.test.js` |
+| RLH-04 | `RLH-SKILL-01` … `RLH-SKILL-09`, one per row of TSPEC §7.4 (§7.5) | L1 | `skillFiles.test.js` |
 | RLH-06 | AT-12 … AT-18; properties: `canonicaliseForDigest` idempotence, `sha256Hex` determinism-and-totality | L1 + L2 | `approvalHash.test.js` |
-| RLH-10 | AT-12, AT-13, AT-14, AT-17 go green (digest usability, one digest function, canonicalisation inside, rebase invariance) | L1 | `approvalHash.test.js` |
 | RLH-11 | AT-01 … AT-07, AT-63; properties: `parseReviewFilename` round-trip, `deriveRoundWindow` window-invariant | L1 | `roundDerivation.test.js` |
-| RLH-13 | AT-01 … AT-06, AT-63 go green | L1 | `roundDerivation.test.js` |
-| RLH-14 | AT-28, AT-29, **AT-01a**; property: `parseForcePhases` catalogue-closure | L1 + L2 | `forcePhases.test.js` |
-| RLH-15 | AT-29 goes green | L1 | `forcePhases.test.js` |
 | RLH-12 | AT-59, AT-60, AT-62; property: `isComplete` exact-required-set | L1 + L2 | `completeness.test.js` |
-| RLH-16 | AT-60, AT-62 go green; AT-15, AT-16, AT-18's staleness half | L1 | `completeness.test.js`, `approvalHash.test.js` |
-| RLH-17 | AT-64's `main()`-parameter-list half | L3 | `pipelineWiring.test.js` |
-| RLH-18 | AT-64's derived seam set includes the six new names | L3 | `pipelineWiring.test.js` |
-| RLH-19 | AT-30 … AT-34 (queue half) | L1 + L2 | `orchestrateQueue.test.js` |
-| RLH-20 | AT-30 … AT-34 go green; AT-21's queue-row commit half | L2 | `orchestrateQueue.test.js`, `haltAndQueue.test.js` |
-| RLH-21 | AT-35 … AT-54, AT-58, AT-61, **AT-43a** | L2 | `pacingWrapper.test.js` |
-| RLH-22 | the review-loop signature and return-shape assertions | L2 | `reviewLoop.test.js` |
-| RLH-23 | AT-35 … AT-54, AT-58, AT-61, **AT-43a**, AT-59 all go green | L2 | `pacingWrapper.test.js`, `completeness.test.js` |
+| RLH-14 | AT-28, AT-29, **AT-01a**; property: `parseForcePhases` catalogue-closure | L1 + L2 | `forcePhases.test.js` |
+| RLH-17 | **`RLH-WIRE-01`** — `main()`'s parameter list carries the five seams and `forcePhases`. **Not AT-64** (§7.4) | L3 | `pipelineWiring.test.js` |
+| RLH-19 | AT-30 … AT-34, **module half only** (`-module` names, §7.4) | L1 + L2 | `orchestrateQueue.test.js` |
+| RLH-21 | AT-35 … AT-54, AT-58, **AT-43a**; AT-61 as the two named tests `RLH-AT-61-loop` and `RLH-AT-61-report` (§7.4) | L2 | `pacingWrapper.test.js` |
+| RLH-22 | **`RLH-LOOP-01`** — the signature, `iteration` at every call site and the `endIndex` gate; this is §11.5 `N-a`'s oracle. **`RLH-LOOP-02`** — `postmortemWritten` and `trailerReason` | L2 | `reviewLoop.test.js` |
 | RLH-24 | AT-08 … AT-11, AT-56, AT-57 | L2 | `approvalSearch.test.js` |
-| RLH-25 | AT-21 … AT-27, AT-30 … AT-34, **AT-13a** | L2 | `haltAndQueue.test.js` |
-| RLH-26 | AT-07, AT-08 … AT-11, AT-15, AT-16, AT-18, AT-28, **AT-01a**, **AT-13a**, AT-56, AT-57 all go green | L2 | `roundDerivation`, `approvalSearch`, `approvalHash`, `forcePhases`, `haltAndQueue` |
-| RLH-27 | AT-21 … AT-27 go green | L2 | `haltAndQueue.test.js` |
+| RLH-25 | AT-21 … AT-27, **AT-13a**; AT-30 … AT-34, **orchestrator half only** (`-orch` names, §7.4) | L2 | `haltAndQueue.test.js` |
 | RLH-28 | AT-55 | L2 | `reportTemplates.test.js` |
-| RLH-29 | the `buildFinalReport` field-list assertions in the four phase suites | L2 | `dodPhase`, `shipPhase`, `implPhase`, `harvestPhase` |
-| RLH-30 | AT-55, AT-61's report echo go green | L2 | `reportTemplates.test.js`, `pacingWrapper.test.js` |
-| RLH-31 | AT-19, AT-20, AT-64 | L3 | `runtimeBundle.test.js` |
-| RLH-32 | AT-19, AT-64 go green; AT-20 stays green | L3 | `runtimeBundle.test.js` |
-| RLH-33 | AT-20 stays green with the new manifest version | L3 | `runtimeBundle.test.js` |
+| RLH-29 | **`RLH-REPORT-01`** — `buildFinalReport`'s widened field list, in each of the four phase suites | L2 | `dodPhase`, `shipPhase`, `implPhase`, `harvestPhase` |
+| RLH-31 | AT-19, AT-20, AT-64 — **sole owner of all three** (§7.4) | L3 | `runtimeBundle.test.js` |
+
+No other task writes an assertion. Every remaining task in §4 turns one of these green, and §7.3 says
+which and when.
 
 ### 7.1 The three TSPEC-local ATs — where they live and what reds them
 
@@ -544,11 +541,11 @@ These three exist because the invariants they guard are stated in the TSPEC rath
 each was added after a specific wrong implementation shipped through review. They are the tests most
 worth reading the TSPEC prose for before writing.
 
-| AT | Owner task | Greened by | The implementation it must red on |
-|---|---|---|---|
-| **RLH-AT-01a** | RLH-14 | RLH-26 | the "a force skips steps 2–4" reading — which restores H-1 on the forced path. TSPEC §5.7 skips steps **3–4** only; step 2's round derivation always runs |
-| **RLH-AT-13a** | RLH-25 | RLH-26, RLH-27 | a gate placed ahead of step 1 (breaks FSPEC §12.4 example A) **or** reachable only from step 4 (breaks AC-2.3b example B). Both worked examples are driven verbatim as fixtures for exactly this reason |
-| **RLH-AT-43a** | RLH-21 | RLH-23 | (a) any implementation deciding mode from a pre-loop snapshot — `present` stays empty for the phase, round 2's optimizer goes greenfield, needs no trailer, and carries round 1's key: **both** conjuncts red. (b) both prior wrong shapes: the one that read a kept `{}` as a successful observation, and the one that returned `present: null` and continued as a revision episode. Neither halts; the correct implementation halts |
+| AT | Owner task | The implementation it must red on |
+|---|---|---|
+| **RLH-AT-01a** | RLH-14 | the "a force skips steps 2–4" reading — which restores H-1 on the forced path. TSPEC §5.7 skips steps **3–4** only; step 2's round derivation always runs |
+| **RLH-AT-13a** | RLH-25 | a gate placed ahead of step 1 (breaks FSPEC §12.4 example A) **or** reachable only from step 4 (breaks AC-2.3b example B). Both worked examples are driven verbatim as fixtures for exactly this reason |
+| **RLH-AT-43a** | RLH-21 | (a) any implementation deciding mode from a pre-loop snapshot — `present` stays empty for the phase, round 2's optimizer goes greenfield, needs no trailer, and carries round 1's key: **both** conjuncts red. (b) both prior wrong shapes: the one that read a kept `{}` as a successful observation, and the one that returned `present: null` and continued as a revision episode. Neither halts; the correct implementation halts |
 
 ### 7.2 Property tests — one per parameterisable component
 
@@ -566,6 +563,60 @@ reintroduce the weaker form:
 Each property file declares its own literal seed and passes it through `resolveSeed`. Reproduction is
 by **replay, not by index** — print the seed, reproduce case *n* by replaying draws 1…*n*. `shrink` is
 for the failure report, never the pass path.
+
+### 7.3 The permitted-red ledger — per acceptance test
+
+**This table is the gate.** `Green from` is the batch of the last task that greens the assertion: at
+that batch's gate and every gate after it, a red is a **regression** and a halt (§2.2, §11.3). Outside
+its `Permitted red` window an `RLH-AT-*` failure is never excused, whatever else in its file is still
+red — which is the whole reason the ledger is per assertion and not per file (§2.2).
+
+| Assertion(s) | Written by (batch) | Green from | Permitted red | Greened by |
+|---|---|---|---|---|
+| `RLH-AT-19`, `RLH-AT-20` | RLH-31 (2) | **batch 2 — green on arrival** | **none, ever** | nobody. Measured at HEAD for v1.1: both anchored regexes match **zero** times in both bundles, and the await-discipline scan is clean over both sources under §9.2's rulings — the one non-awaited seam call, `agentFn(` at `orchestrate-dev.js:1867`, is the entire body of a `batch.map` arrow and therefore exempt. `RLH-32` and `RLH-33` **keep** them green; they do not turn them green. A red at any gate — batch 2 included — is a `H-h`/`H-k` halt. This row is why the ledger exists: a per-file window would have permitted a red `RLH-AT-19` through batch 7, the batch that adds `refreshReviewState`, the feature's riskiest await site |
+| `RLH-AT-64` | RLH-31 (2) | batch 2, and again from batch 11 | **batches 4–10 only** | RLH-32. Also green on arrival, because it is **derived** (§9.3) and HEAD's sixteen-parameter root is wired-or-exempt. `RLH-18` (batch 4) opens the window by declaring five seams the production composition root does not yet supply; `RLH-32` (batch 11) closes it. A red at batch 2, 3, or 11 onwards is a regression |
+| `RLH-AT-65`, `RLH-AT-66`; `scanLines` property | RLH-03 (2) | batch 3 | batch 2 | RLH-05 (c) |
+| `RLH-AT-12`, `-13`, `-14`, `-17`; both digest properties | RLH-06 (2) | batch 3 | batch 2 | RLH-05 (d) |
+| `RLH-AT-15`, `-16`, `-18` | RLH-06 (2) | batch 8 | batches 2–7 | the staleness conjunct is RLH-16 (batch 6), the gate conjunct RLH-26 (batch 8). **Write each as its own test**, `-stale` and `-gate`, and the windows separate to 2–5 and 2–7; written as one test the binding batch is 8 |
+| `RLH-AT-01` … `-06`, `-63`; both round-derivation properties | RLH-11 (2) | batch 3 | batch 2 | RLH-05 (e) |
+| `RLH-AT-07` | RLH-11 (2) | batch 8 | batches 2–7 | RLH-26 — the call-site half |
+| `RLH-AT-29`; `parseForcePhases` catalogue-closure | RLH-14 (2) | batch 3 | batch 2 | RLH-05 (f) |
+| `RLH-AT-28`, `RLH-AT-01a` | RLH-14 (2) | batch 8 | batches 2–7 | RLH-26 |
+| `RLH-SKILL-01` … `-09` | RLH-04 (2) | batch 3 | batch 2 | RLH-07, RLH-08, RLH-09 |
+| `RLH-WIRE-01` | RLH-17 (2) | batch 4 | batches 2–3 | RLH-18 |
+| `RLH-REPORT-01` | RLH-29 (2) | batch 10 | batches 2–9 | RLH-30 |
+| `RLH-AT-30-module` … `-34-module` | RLH-19 (3) | batch 5 | batches 3–4 | RLH-20 |
+| `RLH-AT-35` … `-54`, `-58`, `RLH-AT-43a`, `RLH-AT-61-loop` | RLH-21 (3) | batch 7 | batches 3–6 | RLH-23 |
+| `RLH-AT-61-report` | RLH-21 (3) | batch 10 | batches 3–9 | RLH-30 |
+| `RLH-LOOP-01` | RLH-22 (3) | batch 7 | batches 3–6 | RLH-23 |
+| `RLH-LOOP-02` | RLH-22 (3) | batch 9 | batches 3–8 | RLH-27 |
+| `RLH-AT-08` … `-11`, `-56`, `-57` | RLH-24 (3) | batch 8 | batches 3–7 | RLH-26 |
+| `RLH-AT-21` … `-27`, `RLH-AT-13a`, `RLH-AT-30-orch` … `-34-orch` | RLH-25 (3) | batch 9 | batches 3–8 | RLH-27; `RLH-AT-13a`'s gate half needs RLH-26 (batch 8) first, so batch 9 binds |
+| `RLH-AT-55` | RLH-28 (3) | batch 10 | batches 3–9 | RLH-30 |
+| `RLH-AT-60`, `-62`; `isComplete` property | RLH-12 (4) | batch 6 | batches 4–5 | RLH-16 |
+| `RLH-AT-59` | RLH-12 (4) | batch 7 | batches 4–6 | RLH-23 |
+
+### 7.4 Every assertion has exactly one owning task
+
+Three ids were owned twice in v1.0, each in two files, with nothing saying which conjunct lived where —
+so two concurrent agents could each write "their half" as they read it and leave a conjunct uncovered
+with both files green, while producing two jest tests of one name in one run (§1.3). Resolved:
+
+| Id | v1.0 | v1.1 |
+|---|---|---|
+| AT-30 … AT-34 | RLH-19 "queue half" and RLH-25 unqualified, both batch 3 | **Split by what is asserted, not by file order.** RLH-19 owns the *mechanism* — `rewriteStatus` / `updateQueueStatus`, the `_git` commit, each commit-failure branch, driven against the module — as `RLH-AT-30-module` … `-34-module`. RLH-25 owns *reach* — which halting exit of `orchestrate-dev` arrives at the committing write and what it reports when the commit fails — as `RLH-AT-30-orch` … `-34-orch`. TSPEC §8.3 assigns the range to both files, so the split is per conjunct, not per file |
+| AT-64 | RLH-17 (`pipelineWiring.test.js`) and RLH-31 (`runtimeBundle.test.js`) | **RLH-31 alone**, which is what TSPEC §8.3 assigns. RLH-17's parameter-list assertion is a real and useful precondition, but it is not AT-64 and it must not carry the id: it is `RLH-WIRE-01` |
+| AT-61 | one id, greened at batch 10 by §4's column and batch 13 by §7's row | **Two tests**, `RLH-AT-61-loop` and `RLH-AT-61-report`, both in `pacingWrapper.test.js` (RLH-21 remains sole owner of the file), greening at batches 7 and 10 respectively |
+
+### 7.5 Assertions that are not FSPEC ATs
+
+Four groups of assertion in this PLAN guard a TSPEC interface rather than an FSPEC acceptance criterion,
+so they have no `AT-{N}` to inherit. They are named and countable anyway, because §12.3's checklist has
+to be mechanically checkable: **`RLH-WIRE-01`** (RLH-17), **`RLH-LOOP-01`** and **`RLH-LOOP-02`**
+(RLH-22), **`RLH-REPORT-01`** (RLH-29), and **`RLH-SKILL-01` … `RLH-SKILL-09`** (RLH-04, one per row of
+TSPEC §7.4, nine files). Fourteen assertions, listed in §7.3 like any other. They are **not** ATs, must
+not be renumbered into the FSPEC's range, and §12.3 counts them separately.
+
 
 ## 8. Traceability — FSPEC obligations and defects
 
