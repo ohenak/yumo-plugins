@@ -588,6 +588,132 @@ describe("RLH-AT-38 — a premature trailer is visible, not silent (FSPEC §19 A
 
 // ─── 4. RLH-AT-39 … RLH-AT-42 — progress, counters, episode scope ─────────────
 
+describe("RLH-AT-39 — a partial over-budget section counts as progress (FSPEC §19 AT-39, E-48)", () => {
+  test("RLH-AT-39: three greenfield dispatches killed mid-way through an over-budget section each write bytes, complete no section, score progress, and do not halt the phase", async () => {
+    // Each kill leaves MORE bytes on disk than the last but finishes no section:
+    // the section is larger than MAX_AUTHORING_WRITE_BYTES, so a whole one never
+    // lands. §5.6.2's predicate is `before !== after` over the working tree — NOT
+    // "a section was completed" — so every one of these scores progress and the
+    // consecutive counter resets each time.
+    const oversized = (n) => "x".repeat(MAX_AUTHORING_WRITE_BYTES + 1).slice(0, 4000 * n);
+    const run = await runPipeline({
+      author: (ctx) => {
+        if (ctx.kind !== "creator" || ctx.phase !== "F") return {};
+        if (ctx.n <= MAX_AUTHORING_ATTEMPTS) {
+          return {
+            write: specDoc([["Overview", oversized(ctx.n)], ...REQUIRED_HEADINGS.FSPEC.slice(1).map((h) => [h, null])]),
+            response: "Killed mid-section.",
+          };
+        }
+        return { write: completeDoc("FSPEC"), response: authorResponse("yes") };
+      },
+    });
+
+    const creator = select(run, { kind: "creator", phase: "F" });
+    // Three progress-scoring kills must not exhaust MAX_AUTHORING_ATTEMPTS, so a
+    // fourth dispatch is reached and the phase survives.
+    expect(creator.length).toBeGreaterThanOrEqual(MAX_AUTHORING_ATTEMPTS + 1);
+    expect(run.result.outcome).toBe("success");
+    expect(run.reportText).not.toMatch(/no progress across/);
+  });
+});
+
+describe("RLH-AT-40 — a revision dispatch on a complete artifact is not no-progress (FSPEC §19 AT-40, O-19(b))", () => {
+  test("RLH-AT-40: three consecutive feedback-addressing dispatches that each edit an already-complete document score progress and do not halt the phase", async () => {
+    const run = await runPipeline({
+      review: reviewersFailing([1]),
+      author: (ctx) => {
+        if (ctx.kind !== "optimizer" || ctx.phase !== "R") return {};
+        // Every dispatch edits a document that is already structurally complete —
+        // completeness is not the progress predicate, byte change is.
+        const write = completeDoc("REQ", `edit pass ${ctx.n}`);
+        return ctx.n <= MAX_AUTHORING_ATTEMPTS
+          ? { write, response: authorResponse("declared_incomplete") }
+          : { write, response: authorResponse("yes") };
+      },
+    });
+
+    const optimizer = select(run, { kind: "optimizer", phase: "R", round: 1 });
+    expect(optimizer.length).toBeGreaterThanOrEqual(MAX_AUTHORING_ATTEMPTS + 1);
+    expect(run.result.outcome).toBe("success");
+    expect(run.reportText).not.toMatch(/no progress across/);
+  });
+});
+
+describe("RLH-AT-41 — counter reset with interleaving (FSPEC §19 AT-41, E-50)", () => {
+  test("RLH-AT-41: dispatches scoring no-progress, no-progress, progress, no-progress leave the episode running", async () => {
+    // The sequence is chosen so that a counter which never resets reaches
+    // MAX_AUTHORING_ATTEMPTS on dispatch 4, and a correctly resetting one is at 1.
+    const SCORES = ["none", "none", "progress", "none"];
+    const run = await runPipeline({
+      review: reviewersFailing([1]),
+      author: (ctx) => {
+        if (ctx.kind !== "optimizer" || ctx.phase !== "R") return {};
+        const score = SCORES[ctx.n - 1];
+        if (score === undefined) return { write: completeDoc("REQ", "final"), response: authorResponse("yes") };
+        return score === "progress"
+          ? { write: completeDoc("REQ", `progress at ${ctx.n}`), response: authorResponse("declared_incomplete") }
+          : { write: null, response: authorResponse("declared_incomplete") };
+      },
+    });
+
+    const optimizer = select(run, { kind: "optimizer", phase: "R", round: 1 });
+    expect(optimizer.length).toBeGreaterThanOrEqual(SCORES.length + 1);
+    expect(run.result.outcome).toBe("success");
+    expect(run.reportText).not.toMatch(/no progress across/);
+  });
+});
+
+describe("RLH-AT-42 — counters are per episode (FSPEC §19 AT-42, O-19(c), E-51)", () => {
+  test("RLH-AT-42: a five-round convergence never reaches MAX_AUTHORING_DISPATCHES, and a greenfield episode spending 4 dispatches followed by a revision episode spending 3 in the same round does not halt", async () => {
+    // (i) One dispatch per round across the whole round budget. Under a per-PHASE
+    // counter this would be 4 against a 6-dispatch budget and pass by luck; the
+    // interesting half is (ii).
+    const perRound = await runPipeline({
+      review: reviewersFailing([1, 2, 3, 4]),
+      author: (ctx) => (ctx.kind === "optimizer" ? { write: completeDoc("REQ", `round ${ctx.round}`), response: authorResponse("yes") } : {}),
+    });
+    expect(perRound.result.outcome).toBe("success");
+    const rOptimizers = select(perRound, { kind: "optimizer", phase: "R" });
+    expect(rOptimizers).toHaveLength(4);
+    for (const round of [1, 2, 3, 4]) {
+      expect(select(perRound, { kind: "optimizer", phase: "R", round })).toHaveLength(1);
+    }
+    expect(perRound.reportText).not.toMatch(/dispatches without reaching/);
+
+    // (ii) 4 greenfield dispatches then 3 revision dispatches, both inside Phase F
+    // round 1. They total 7 against MAX_AUTHORING_DISPATCHES = 6, so a
+    // four-coordinate episode key (no `mode`) halts here; §4.5's five-coordinate
+    // key gives the revision episode its own fresh budget.
+    const GREENFIELD = 4;
+    const REVISION = 3;
+    const mixed = await runPipeline({
+      review: (ctx) => (ctx.phase === "F" && ctx.round === 1
+        ? { write: crossReviewDoc({ verdict: "Needs revision", high: 1 }), response: reviewResponse("Needs revision", 1) }
+        : { write: crossReviewDoc({ verdict: "Approved" }), response: reviewResponse("Approved") }),
+      author: (ctx) => {
+        if (ctx.phase !== "F") return {};
+        if (ctx.kind === "creator") {
+          return ctx.n < GREENFIELD
+            ? { write: partialDoc("FSPEC", ctx.n), response: "Killed." }
+            : { write: completeDoc("FSPEC"), response: authorResponse("yes") };
+        }
+        if (ctx.kind === "optimizer") {
+          return ctx.n < REVISION
+            ? { write: completeDoc("FSPEC", `revision pass ${ctx.n}`), response: authorResponse("declared_incomplete") }
+            : { write: completeDoc("FSPEC", "revision done"), response: authorResponse("yes") };
+        }
+        return {};
+      },
+    });
+
+    expect(select(mixed, { kind: "creator", phase: "F" })).toHaveLength(GREENFIELD);
+    expect(select(mixed, { kind: "optimizer", phase: "F", round: 1 })).toHaveLength(REVISION);
+    expect(mixed.result.outcome).toBe("success");
+    expect(mixed.reportText).not.toMatch(/dispatches without reaching/);
+  });
+});
+
 // ─── 5. RLH-AT-43, RLH-AT-43a — mode across the seam, and S-INV freshness ─────
 
 // ─── 6. RLH-AT-44, RLH-AT-45 — artifact sets and working-tree measurement ─────
