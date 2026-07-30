@@ -345,6 +345,70 @@ it. Operators refresh it with `pdlc/hooks/scripts/sync-workflows.sh`; `RLH-34` o
 
 ## 6. Dependencies
 
+### 6.1 The three kinds of edge in §4's `Deps` column
+
+| Kind | Meaning | How to spot it |
+|---|---|---|
+| **Red-before-green** | the green task cannot start until the test that specifies it exists and fails | the dep is a `RED …` task and the dependent's `Test File` includes it |
+| **Logical** | the dependent calls, extends or is composed from the dep's output | neither of the other two |
+| **Serialisation `[dist]`** | no code dependency; the edge exists solely to keep two `dist/`-rebuilding tasks out of one batch (§3.2) | marked `[dist]` |
+
+A `[dist]` edge is still a **real** dispatcher edge and must not be deleted. It is labelled so a
+reviewer can tell that reordering it changes only wall-clock, whereas reordering a logical edge changes
+correctness.
+
+### 6.2 Logical dependency chains worth naming
+
+Four chains carry the feature's actual coupling, and the TSPEC states in §1.2 that the four defects are
+not independent. Each chain below is that statement expressed as task order:
+
+1. **H-1 supplies H-4's key.** `RLH-13` (`deriveRoundWindow` → `startIndex`) must precede `RLH-26` (the
+   approval search, whose candidate is `startIndex - 1`). An approval search built against a
+   `startIndex` that is always 1 searches round 0 forever and never grants a skip — a silent, green
+   no-op.
+2. **The digest precedes staleness precedes the skip.** `RLH-10` → `RLH-16` (`isStale`) → `RLH-26`.
+   `isStale` is one hash-equality test and nothing else (§5.5); it cannot be stubbed with a comparison
+   the digest does not implement.
+3. **`selectMode` precedes the gate, not the reverse.** `RLH-23` → `RLH-26`. `selectMode` is pure and
+   its freshness is `refreshReviewState`'s obligation inside `reviewLoop`; the phase gate's own
+   `present` / `reviewFiles` are consumed at phase entry by §5.4 and are **not** threaded into the loop.
+   Building the gate first invites exactly the pre-loop-snapshot defect S-INV exists to forbid.
+4. **The queue export precedes the build edit.** `RLH-20` → `RLH-32`. `build-runtime.mjs` edit 3 cannot
+   publish `rewriteStatus` on `__queue` until `orchestrate-queue.js` exports it —
+   `stripModuleSyntax` rewrites `export function` to `function` and `wrapModule` re-publishes only the
+   names in its `exportedNames` list, so the bundle cannot publish what the module does not export.
+
+### 6.3 Integration points with existing code
+
+Everything this feature integrates with, and the shipped precedent it reuses rather than reinvents
+(TSPEC §1.5, §9.4). A task that reinvents one of these is a review-blocking finding.
+
+| Integration point | Existing symbol / file | Reused by | Task |
+|---|---|---|---|
+| dependency injection for capabilities | `main()`'s existing sixteen-parameter destructured list | the six new seams extend it **in place**; no new injection mechanism | RLH-18 |
+| verdict grammar and its closed catalogue | `parseVerdict` + `VALID_VERDICTS` + its reverse-scan + `malformed: true` fallback | the persisted verdict record, **verbatim and unchanged** | RLH-26 |
+| pass/fail semantics | `isPass` | the approval search's unanimity check | RLH-26 |
+| role-slug catalogue | `reviewerRoleSlug`'s `MAP` | the filename grammar's role alternation **and** the new reverse accessor, so the two cannot desynchronise | RLH-13 |
+| Node-default IO with an injectable module | `checkFileNonEmpty(path, { fsMod = fs })` | `defaultListFiles` / `defaultWriteFile` / `defaultAppendFile`, same `{ fsMod = fs }` idiom | RLH-18 |
+| `child_process` injection | `mergeWorktree(…, { execFn })` | `defaultGit(argv, { execFn })` | RLH-18 |
+| adapter agent-relay, JSON return | `rtMergeWorktree` | `rtListFiles`, `rtGit` | RLH-32 |
+| adapter agent-relay, constrained one-word output | `rtCheckFile` | `rtListFiles`'s prompt discipline | RLH-32 |
+| the skip marker in the phase table | the existing `"⏭"` status | the approval skip's phase-table row | RLH-30 |
+| seeded property generation | `__tests__/helpers/driftGenerators.js` — `seeded`, `resolveSeed`, `shrink` | all seven §8.2 properties. Dependency-free, already consumed by seven suites | RLH-03, 06, 11, 12, 14 |
+| bundle staleness and structural guards | `build-runtime.mjs --check`, `runtimeBundle.test.js` | extended, not replaced | RLH-31, RLH-32 |
+| SKILL-file assertions | `__tests__/skillFiles.test.js` | the natural home for §7.4's amendment checks | RLH-04 |
+
+**Explicitly not reused**, each with its reason at the point of decision — a task that reaches for one
+of these has misread the TSPEC:
+
+| Not reused | Why | TSPEC |
+|---|---|---|
+| `listAllFiles(root)` / `WALK_SKIP_DIRS` from `document-oracles.mjs` | a Node-only recursive walker with no seam and a skip-list tuned for a different job; the two listing paths instead share **one error contract**, the `ListFailure` catalogue | §1.5, FSPEC §3.4 |
+| `recoverVerdict({ reviewer, rawResult, _agent })` | an agent adjudicating whether a phase may be skipped breaches C-5 and fails **open** — a hallucinated "Approved" silently discards a phase | §2.6 |
+| `_mergeWorktree` as a general git transport | a **task** seam returning a domain record, versus `_git`'s **transport** seam; folding them would move conflict parsing out of the adapter and give callers a second, looser way to invoke a merge | §3.4 |
+| a cache over `_listFiles` | the thing to invalidate is precisely the just-written review files S-INV exists to observe | §2.6 |
+| a second property-generator library | `driftGenerators.js` ships and is dependency-free | §8.2 |
+
 ## 7. Traceability — task → acceptance tests
 
 ## 8. Traceability — FSPEC obligations and defects
