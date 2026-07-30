@@ -24,6 +24,31 @@ Note that PROPERTIES was reviewed by **product-manager and software-engineer onl
 
 ## 2. Cross-Feature Patterns
 
+The highest-signal item in this section is the first row. It was applied three times in one run and is the general form of the defect class that dominated the whole feature.
+
+| Finding | Suggested Promotion Target |
+|---|---|
+| **Owning-section-wins.** When a constraint is restated in a new context, the section that *owns* the question governs; **a restatement is not an amendment**. Routed to Harvest explicitly by PM-TSPEC-v5 as the general remedy for the four-round restatement-drift class, and endorsed independently by TE-PLAN-v5's §14.4 routing: "a §14 changelog row must never state a normative rule more precisely than the section that owns it; that is the mechanism that produced the round-2/round-3 contradiction." Applied three times this run. | `docs/_constraints/` — new project-level constraint |
+| **A value derived from source by a prescribed procedure is stated in exactly one place, marked advisory, and gates are written as predicates over the procedure, never as equalities over its output.** TE-PLAN-v4's `Process`-tagged Harvest bullet, and the fix that actually ended the PLAN's four-round count churn — the repair was **deletion**, not reconciliation. | `docs/_constraints/` |
+| **When a finding is about a derived quantity, re-derive it from the stated procedure and report the procedure, not the quantity.** TE-PLAN-v4, `Cross-Feature`: reviewers verified a number instead of re-deriving it, three rounds running. | `docs/_constraints/` |
+| **`AT-19`'s structural blind spot: an exemption that delegates an obligation to a call outside the guarded set moves the risk rather than removing it.** `RLH-AT-19`'s exemptions delegate the await obligation to an `await` of `_parallel`, which sits outside FSPEC AT-19's closed thirteen-name set. Filed `Cross-Feature` by PM-PLAN-v4 obs 4, carried forward unchanged by PM-PLAN-v5 obs 3, and explicitly marked "for the constraints file". | `docs/_constraints/` |
+| **Harvest deletes the very `CROSS-REVIEW-*` files a recorded-approval read depends on** — the two mechanisms are mutually destructive (SE-REQ-v2 F-01, High). This is the structural reason the tier-2 Approval Record exists at all. | `docs/_decisions/` |
+| **Writing a `halted` row strands the feature in the queue forever**: `halted` is outside `selectNextPending`'s pickup set (`orchestrate-queue.js:80`, `:387`). Filed three times across three rounds — SE-REQ-v4 F-02 (tagged `Cross-Feature`), SE-REQ-v5 F-04 and TE-REQ-v4 F-06 (both tagged `Local`). | `docs/_decisions/` — queue status lifecycle |
+| **The workflow runtime has no digest primitive and no `crypto`** — the eleven host globals plus C-2's ban on `import`/`import()`/`process`/`fs`/`fetch` (SE-REQ-v5 F-03; independently the ground for rejecting `crypto` in the PROPERTIES harness). A repo-wide runtime constraint that keeps being rediscovered per feature. | `docs/_constraints/` |
+| **Seams are destructured shorthand outside `main()`.** CODEBASE-v1 F-4: the workflow-drift scanner resolves seam aliases only inside `main()`, so seams destructured elsewhere are missed. CODEBASE-v1 F-5 (dangling `fs` / `await import()` references surviving in the shipped `dist/` bundles) is routed to **the same** constraints entry. | `docs/_constraints/` — one shared entry for F-4 and F-5 |
+| **A shipped property-generation library in this very suite was neither cited nor reused** (`__tests__/helpers/driftGenerators.js`) — TE-TSPEC-v1 F-08, `Cross-Feature`. Reuse is not discoverable from within a feature's own docs. | skill update — `te-author` |
+| **`coveredViolations` walks the entire live root, so any untracked local file can red a document oracle for reasons unrelated to the diff.** `WALK_SKIP_DIRS` covers only `.git` and `node_modules`. Measured this run: `.tokensave/tokensave.db` (untracked, gitignored at `.gitignore:2`) contains both forbidden literals and reds AT-22 locally. Candidate successor surface: honour `.gitignore`, or scan tracked files only. **Recorded as a finding; deliberately not fixed here.** | `docs/_constraints/` + a successor QUEUE row |
+| **`build-runtime.mjs` is import-unsafe** — it rebuilds and rewrites `dist/` as a side effect of being imported (`runtimeBundle.test.js:18`), which predates this feature (introduced at `3991b4d`). CODEBASE-v2 §7(a), routed to Harvest. See §4 for why this hollows out a self-check. | `docs/_constraints/` |
+
+**Tag under-use, recorded per the harvest skill's under-tagging check.** Routing had to be done on substance rather than on tags, in both directions:
+
+- The *identical* defect (the `Promise.race`/`Promise.any` false negative in TSPEC §8.5) was tagged `Cross-Feature` by TE-PLAN-v3 F-02 and `Local` by PM-PLAN-v3 N-03 in the same round.
+- The queue-stranding hazard was tagged `Cross-Feature` once and `Local` twice, across three rounds, by two reviewers.
+- `CROSS-REVIEW-test-engineer-TSPEC-v5.md` declares a **blanket** header default — "**Scope:** `Local` unless stated" — so no finding in that file can be classified individually. Both CODEBASE reviews take the opposite blanket approach (`Scope: Cross-Feature` at document level, no per-finding column), which means F-1…F-9 there inherit a Cross-Feature tag whether or not each earns it.
+- Several `Local`-tagged findings reason entirely over repo-wide facts: `pdlc/workflows/package.json`'s dependency set (TE-PLAN-v3 F-03), `orchestrate-dev.js:532/542/669` (TE-PLAN-v4 F-02), `build-runtime.mjs`'s `QUEUE_ENTRY` closure (TE-TSPEC-v1 F-07), and `docs/_queue/QUEUE.md` rows 0–9 and their charters (SE-PROPERTIES v3/v4).
+
+The blanket-default and no-column patterns are the specific gap: the `Scope:` field is being satisfied at document level, which passes the `check-scope-field` hook while carrying no routing information at all.
+
 ## 3. Rejected Proposals (with rationale)
 
 ## 4. Process Learnings
