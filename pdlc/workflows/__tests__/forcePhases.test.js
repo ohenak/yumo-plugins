@@ -28,6 +28,7 @@
 
 import * as devModule from "../orchestrate-dev.js";
 import { resolveSeed, seeded } from "./helpers/driftGenerators.js";
+import { fakeListFiles } from "./helpers/seams.js";
 
 const main = devModule.default;
 
@@ -250,3 +251,178 @@ describe("parseForcePhases — catalogue closure (property)", () => {
     }
   });
 });
+
+// ─── L2 harness — driving `main()` (RLH-AT-28, RLH-AT-01a) ───────────────────────────
+
+// TODO(RLH-02): `fakeFs` and `recordingRecordHalt` belong to `__tests__/helpers/seams.js`,
+// which RLH-02 owns and is writing in this same batch (only `fakeListFiles` had landed
+// when this file was authored). The two local doubles below are the minimum this file
+// needs; replace them with the canonical factories once seams.js publishes them. This
+// file must not define an ad-hoc `_listFiles`, so that one *is* imported from seams.js.
+
+const FEATURE = "force-feat";
+const REQ_PATH = `docs/${FEATURE}/REQ-${FEATURE}.md`;
+const FSPEC_PATH = `docs/${FEATURE}/FSPEC-${FEATURE}.md`;
+const DOCS_DIR = `docs/${FEATURE}`;
+
+/** Body bytes of the documents the approval records are taken against. */
+const REQ_TEXT = "# REQ\n\nA requirement.\n";
+const FSPEC_TEXT = "# FSPEC\n\nA functional spec.\n";
+
+/**
+ * `approvalHashOf` (TSPEC §3.7) is RLH-05 (d)'s to write and does not exist at batch 2.
+ * Building the fixture with the module's own digest is deliberate — it is what makes the
+ * recorded hash genuinely `FRESH` at batch 8 — but the fixture must not be the thing that
+ * reds now, or `RLH-AT-28` would fail in its setup rather than on its own oracle. Until
+ * the digest lands, a syntactically well-formed placeholder stands in.
+ *
+ * @param {string} text
+ * @returns {string} `sha256:{64 lowercase hex}`
+ */
+function approvalHashOfSafe(text) {
+  return typeof devModule.approvalHashOf === "function"
+    ? devModule.approvalHashOf(text)
+    : `sha256:${"0".repeat(64)}`;
+}
+
+/**
+ * An approving cross-review whose recorded hash is the digest of `docText` — i.e. an
+ * approval that §5.5 judges `FRESH`, so the unforced path would *skip* the phase. That is
+ * the precondition `RLH-AT-28` needs: force must override exactly this.
+ *
+ * @param {string} docText
+ * @returns {string}
+ */
+function approvingCrossReview(docText) {
+  return [
+    "# Cross-review",
+    "",
+    "## Verdict",
+    "",
+    "VERDICT: Approved",
+    `APPROVAL-HASH: ${approvalHashOfSafe(docText)}`,
+    "",
+  ].join("\n");
+}
+
+/**
+ * Cross-review basenames for one (docType, round), for the `se-review` + `te-review` pair
+ * both Phase R and Phase F use (`PHASE_DISPATCH`), under the §5.2 filename grammar
+ * `CROSS-REVIEW-{role}-{docType}-v{N}.md`.
+ *
+ * @param {string} docType
+ * @param {number} round
+ * @returns {string[]}
+ */
+function crossReviewBasenames(docType, round) {
+  return [
+    `CROSS-REVIEW-software-engineer-${docType}-v${round}.md`,
+    `CROSS-REVIEW-test-engineer-${docType}-v${round}.md`,
+  ];
+}
+
+/**
+ * Minimal recording file-system double: `_readFile` / `_writeFile` / `_appendFile` /
+ * `_checkFile`. Synchronous, per TSPEC §8.1 (production awaits; a sync return resolves).
+ *
+ * @param {Record<string, string>} [initial] - path -> contents.
+ */
+function localFakeFs(initial = {}) {
+  const contents = { ...initial };
+  const writes = [];
+  return {
+    contents,
+    writes,
+    readFile: (path) => (Object.prototype.hasOwnProperty.call(contents, path) ? contents[path] : null),
+    writeFile: (path, text) => {
+      writes.push({ path, mode: "write", text });
+      contents[path] = text;
+      return { ok: true };
+    },
+    appendFile: (path, text) => {
+      writes.push({ path, mode: "append", text });
+      contents[path] = (contents[path] ?? "") + text;
+      return { ok: true };
+    },
+    checkFile: (path) =>
+      contents[path] && contents[path].trim() !== ""
+        ? { ok: true }
+        : { ok: false, reason: "file_missing" },
+  };
+}
+
+/** The reviewer skills both Phase R and Phase F dispatch (`PHASE_DISPATCH`). */
+const REVIEWER_SKILLS = new Set(["se-review", "te-review", "pm-review"]);
+
+/**
+ * A `main()` invocation harness: an always-approving agent double plus every seam the
+ * force path needs, with the agent dispatches recorded.
+ *
+ * @param {{ listing?: string[], files?: Record<string, string> }} [opts]
+ * @returns {{ args: object, dispatches: Array<{skill: string, prompt: string}>,
+ *            fs: object, listFiles: function }}
+ */
+function makeHarness({ listing = [], files = {} } = {}) {
+  const dispatches = [];
+  const fs = localFakeFs({ [REQ_PATH]: REQ_TEXT, [FSPEC_PATH]: FSPEC_TEXT, ...files });
+  const listFiles = fakeListFiles(listing);
+
+  const agent = async (skill, prompt) => {
+    dispatches.push({ skill, prompt: typeof prompt === "string" ? prompt : "" });
+    if (REVIEWER_SKILLS.has(skill)) {
+      return 'Review.\nVERDICT: Approved\n{"high": 0, "medium": 0, "low": 0}\n';
+    }
+    if (["pm-author", "se-author", "te-author"].includes(skill)) {
+      if (typeof prompt === "string" && prompt.includes("DECISIONS_WARRANTED")) {
+        return "Finalized.\nDECISIONS_WARRANTED: false";
+      }
+      if (typeof prompt === "string" && prompt.includes("Return a JSON object")) {
+        return JSON.stringify({
+          tasks: [{ id: "T1", description: "x", dependencies: [], planBatch: 1 }],
+        });
+      }
+      return "Document created.";
+    }
+    if (skill === "se-implement") return "Tests: 3 passed, 0 failed.";
+    if (skill === "harvest-learnings") return "Harvest complete.";
+    if (skill === "dod-verify") return "Clean.\nDOD_STATUS: passed";
+    return "Success.";
+  };
+
+  return {
+    dispatches,
+    fs,
+    listFiles,
+    args: {
+      reqPath: REQ_PATH,
+      _agent: agent,
+      _parallel: (p) => Promise.all(p),
+      _checkFile: () => ({ ok: true }),
+      _phase: () => {},
+      _log: () => {},
+      _pipeline: async (label, fn) => fn(),
+      _listFiles: listFiles,
+      _readFile: fs.readFile,
+      _writeFile: fs.writeFile,
+      _appendFile: fs.appendFile,
+      _recordHalt: async () => ({ queueRow: "none" }),
+      _mergeWorktree: async () => ({ ok: true }),
+      _rebaseOntoDefault: async () => "clean",
+      _dodVerifyLoop: async () => ({ passed: true, iterations: 1 }),
+      _raisePrAndVerifyCi: async () => ({ prUrl: "https://x/pull/1", ciStatus: "passed" }),
+    },
+  };
+}
+
+/**
+ * Reviewer dispatches for one phase, in order.
+ *
+ * @param {Array<{skill: string, prompt: string}>} dispatches
+ * @param {string} phaseId
+ * @returns {Array<{skill: string, prompt: string}>}
+ */
+function reviewerDispatchesFor(dispatches, phaseId) {
+  return dispatches.filter(
+    (d) => REVIEWER_SKILLS.has(d.skill) && d.prompt.includes(`for phase ${phaseId} `)
+  );
+}
