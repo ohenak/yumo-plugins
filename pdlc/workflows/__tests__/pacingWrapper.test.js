@@ -1270,6 +1270,66 @@ describe("RLH-AT-58 — intra-episode re-dispatch onto the episode's own partial
 
 // ─── 10. RLH-AT-52, RLH-AT-53 — advisory proxy, and no destructive git ────────
 
+describe("RLH-AT-52 — the pacing proxy reports but does not halt (FSPEC §19 AT-52, O-20, E-61)", () => {
+  test("RLH-AT-52: a per-section commit diff over MAX_AUTHORING_WRITE_BYTES is named in the report as an advisory violation, the report says the figure is advisory and not a halt condition, and the run continues to completion", async () => {
+    // The harness's `_git` answers every `--numstat` / `--stat` probe with
+    // 20000 added lines on the FSPEC — comfortably over the 12,000-byte advisory
+    // figure, on a run that is otherwise a clean straight-through success.
+    const run = await runPipeline();
+
+    // (i) The run is unaffected: the proxy is advisory, never a halt condition.
+    expect(run.result.outcome).toBe("success");
+    expect(run.result.haltPhase).toBeNull();
+
+    // (ii) …and yet the violation is visible in the report, naming the artifact
+    // and the constant that was exceeded (§4.7's advisory pacing line).
+    expect(run.reportText).toMatch(/pacing/i);
+    expect(run.reportText).toContain(FSPEC_PATH);
+    expect(run.reportText).toMatch(new RegExp(String(MAX_AUTHORING_WRITE_BYTES).replace(/^(\d)(\d{3})$/, "$1,?$2")));
+
+    // (iii) The report says so in words: an advisory proxy, not an oracle (O-19,
+    // §15.7 — "no oracle for emitted bytes exists").
+    expect(run.reportText).toMatch(/advisory/i);
+
+    // (iv) The measurement really was the commit diff, not a guess: the script
+    // asked git for it.
+    expect(run.git.commands.some((c) => /numstat|--stat/.test(c))).toBe(true);
+  });
+});
+
+/** Git subcommands that would destroy uncommitted artifact bytes (§O-20). */
+const DESTRUCTIVE_GIT = Object.freeze([/\bcheckout\s+--/, /\breset\s+--hard\b/, /\bstash\b/]);
+
+describe("RLH-AT-53 — no git operation discards uncommitted artifact content (FSPEC §19 AT-53, O-20)", () => {
+  test("RLH-AT-53: across a clean run and a budget-exhaustion halt, no git invocation is 'checkout --', 'reset --hard' or 'stash', and the partially-written artifact is still on disk after the halt", async () => {
+    // A halt is the interesting case: it is the only place a cleanup instinct
+    // could plausibly discard the partial work the recovery path depends on.
+    const halted = await runPipeline({
+      review: reviewersFailing([1]),
+      author: (ctx) =>
+        ctx.kind === "optimizer"
+          ? { write: partialDoc("REQ", 1), response: "Killed mid-section." }
+          : {},
+    });
+    expect(halted.result.outcome).toBe("halted");
+
+    // The partial bytes survive — §14.4's recovery ("the phase resumes from
+    // committed partial progress") is a lie if they do not.
+    expect(String(halted.fs.files[REQ_PATH] ?? "")).toContain(REQUIRED_HEADINGS.REQ[0]);
+    expect(halted.fs.files[REQ_PATH]).not.toBe("");
+
+    const clean = await runPipeline();
+    for (const run of [halted, clean]) {
+      for (const command of run.git.commands) {
+        for (const destructive of DESTRUCTIVE_GIT) {
+          expect({ command, destructive: destructive.test(command) })
+            .toEqual({ command, destructive: false });
+        }
+      }
+    }
+  });
+});
+
 // ─── 11. RLH-AT-54 — constant substitution and the round window ───────────────
 
 // ─── 12. RLH-AT-61-loop, RLH-AT-61-report — the four trailer reasons ──────────
