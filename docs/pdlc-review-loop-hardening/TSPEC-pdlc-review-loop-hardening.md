@@ -1649,6 +1649,12 @@ object per test file. A single `__tests__/helpers/seams.js` exports factory func
 (`fakeListFiles(files)`, `fakeFs(initialContents)`, `fakeGit(script)`, `recordingRecordHalt()`) so
 that a change to a seam contract breaks one file, not thirty.
 
+**L1 is example-based *and* property-based.** Every parameterisable component in the L1 row carries
+at least one property, generated with the shipped `__tests__/helpers/driftGenerators.js` — §8.2 names
+the properties and the generator's contract. Examples pin the known answers a property cannot
+(`sha256Hex`'s digest vectors, `quoted-verdict.md`'s nesting); properties cover the input space the
+examples sample.
+
 `DEC-ORACLE-01` applies to the run-wide assertions: AT-13's "one digest function on both paths" and
 AT-64's "every seam is wired" cannot live at module level, and are written as explicit tests.
 
@@ -1668,6 +1674,32 @@ Digest fixtures pin known-answer vectors: the empty string, an ASCII string, a m
 string, and a surrogate-pair string (an emoji), each with its expected 64-hex digest computed
 externally. Without the last two, the hand-rolled `utf8Bytes` is untested where it is most likely to
 be wrong.
+
+**Examples are not sufficient on their own for the parameterisable components**, and the generator
+this repo needs already ships. `pdlc/workflows/__tests__/helpers/driftGenerators.js` — verified at
+HEAD `ef4705a` — exports `seeded(seed)` (a stateful `xorshift32` with `int` / `pick` / `shuffle` /
+`bytes`), `resolveSeed(literalSeed)` (a `PDLC_PROP_SEED` environment override), and `shrink(case)`.
+It is dependency-free, so C-2's "no new dependency" argument does not apply to it, and it is already
+consumed by seven suites (`driftBaseline`, `driftBackups`, `driftFault`, `driftHook`, `driftOrdering`,
+`driftRepoRoot`, `queueDriftGate`). **It is reused, not re-implemented, and a second generator
+library is not written** (§1.5's cite-and-reuse rule; `DEC-ORACLE-03`).
+
+One property per parameterisable component, each declaring its own literal seed through
+`resolveSeed`, each L1 (string in, record out):
+
+| Component | Property | Generated input |
+|---|---|---|
+| `canonicaliseForDigest` | **idempotence**: `f(f(t)) === f(t)`; and every result ends in exactly one `\n` and contains no `\r` | `rng.bytes`-derived strings with injected `\r\n`, `\r`, and 0…5 trailing newlines |
+| `scanLines` | **totality and partition**: never throws for any input, and the visited set ∪ the fenced-and-fence-line set is exactly the line set, disjointly | line sequences drawn from a small alphabet of fence openers (3–6 backticks/tildes), closers, and content |
+| `parseReviewFilename` | **round-trip**: a basename assembled from the G-1…G-4 grammar parses back to the role, doc type and round it was assembled from; and any basename with a deliberately mutated part yields `ok: false` with the reason that part governs | role ∈ `MAP`'s values, doc type ∈ the closed catalogue, round ∈ 1…999, suffix present or absent |
+| `deriveRoundWindow` | **window invariant**: `startIndex > max(every index in present)` and `endIndex === startIndex + MAX_REVIEW_ROUNDS - 1`, for every listing that does not trip the round-1 duplicate halt; and `skipped` ∪ the parsed entries partitions the input basenames | shuffled listings mixing conforming basenames, non-conforming ones, and unrelated files |
+| `sha256Hex` | **determinism and totality**: equal inputs digest equal, output always matches `/^[0-9a-f]{64}$/` — the known-answer vectors above remain the correctness oracle, this is the coverage oracle | arbitrary byte-derived strings including lone surrogates |
+| `parseForcePhases` | **catalogue closure**: every returned phase is in the `valid` array, and any token outside it appears in `badTokens` — no token is silently dropped or coerced | token multisets drawn from the valid array, `all`, casing variants, and junk |
+| `isComplete` | **monotonicity in the required direction**: adding a required heading with a non-empty body never moves a document from complete to incomplete | heading sets drawn from §5.9's per-class tables, bodies drawn from {non-empty, empty, `TBD`, HTML comment} |
+
+Reproduction is by **replay, not by index**, per the generator's own contract: each file prints its
+seed and case n is reproduced by replaying draws 1…n. `shrink` is used for the failure report, not
+for the pass path.
 
 ### 8.3 AT → jest file map
 
@@ -1881,6 +1913,7 @@ Recorded so a reviewer can check the "cite-and-reuse the sibling" obligation mec
 | adapter agent-relay with a JSON contract | `rtMergeWorktree` | §3.2, §3.4 |
 | adapter agent-relay with constrained one-word output | `rtCheckFile` | §3.2 |
 | skip marker in the phase table | the existing `"⏭"` status | §4.7 |
+| seeded property generation for the parameterisable parsers | `__tests__/helpers/driftGenerators.js` — `seeded`, `resolveSeed`, `shrink`; dependency-free `xorshift32`, `PDLC_PROP_SEED` override, already consumed by seven suites | §8.2 |
 | bundle staleness and structural guards | `build-runtime.mjs --check`, `runtimeBundle.test.js` | §7.3 |
 
 Explicitly **not** reused, with the reason stated at the point of decision: `listAllFiles` /
