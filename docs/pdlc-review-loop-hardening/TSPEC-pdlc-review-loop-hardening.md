@@ -1,18 +1,45 @@
 # TSPEC — pdlc-review-loop-hardening
 
-**Version:** 1.4
-**Status:** Draft (round-4 cross-review feedback addressed; awaiting round 5)
+**Version:** 1.5
+**Status:** **Approved** at round 5 by both reviewers (PM and TE each 0 High, 0 Medium, 3 Low) —
+**against v1.4**. v1.5 is a post-approval editorial pass applying those Lows; see §0.
 
 | Field | Value |
 |---|---|
 | Upstream | `REQ → FSPEC → **TSPEC**` (REQ **v1.6**, FSPEC **v1.8** — the REQ amended at v1.1 of this document, the FSPEC at v1.1, v1.2 and v1.3, see §0) |
 | Downstream | `DECISIONS, PLAN, PROPERTIES, IMPL` |
-| Cross-Reviews | `docs/pdlc-review-loop-hardening/CROSS-REVIEW-{product-manager,test-engineer}-TSPEC-v1.md` (round 1, dispositioned at v1.1); `…-TSPEC-v2.md` (round 2, dispositioned at v1.2); `…-TSPEC-v3.md` (round 3, dispositioned at v1.3); `…-TSPEC-v4.md` (round 4, dispositioned at v1.4); harvested into `LEARNINGS-pdlc-review-loop-hardening.md` after Phase H |
+| Cross-Reviews | `docs/pdlc-review-loop-hardening/CROSS-REVIEW-{product-manager,test-engineer}-TSPEC-v1.md` (round 1, dispositioned at v1.1); `…-TSPEC-v2.md` (round 2, dispositioned at v1.2); `…-TSPEC-v3.md` (round 3, dispositioned at v1.3); `…-TSPEC-v4.md` (round 4, dispositioned at v1.4); `…-TSPEC-v5.md` (round 5, **both Approved**, dispositioned at v1.5); harvested into `LEARNINGS-pdlc-review-loop-hardening.md` after Phase H |
 | LEARNINGS | `docs/pdlc-review-loop-hardening/LEARNINGS-pdlc-review-loop-hardening.md` |
 
 ---
 
 ## 0. Changelog
+
+### v1.5 (2026-07-30) — post-approval editorial pass over the round-5 Lows
+
+**Both round-5 approvals were given against v1.4, not against this text.** PM and TE each returned
+**Approved** with 0 High, 0 Medium, 3 Low over the 172,953 B v1.4 document. Their six Lows are **four
+distinct items** (PM F-01 ≡ TE N-01, PM F-02 ≡ part of TE N-01, PM F-03 ≡ TE N-03, TE N-02 alone), and
+the four rows below are **exactly what changed after approval** — three prose corrections and one AT
+repair. Nothing either reviewer approved was reopened; no document-wide de-duplication pass was
+undertaken (both endorsed deferring it, and no iteration remains to verify a large diff); REQ and FSPEC
+untouched.
+
+| Item | Findings | Resolution | Where |
+|---|---|---|---|
+| **1 — seed-parameter residue** | PM F-01 ≡ TE N-01 (i)(ii) | **Corrected to §3.9's three-parameter shape.** §2.5 step 5 now reads `reviewLoop(…, iteration = startIndex, docType)`; §5.6.1's S-INV preamble now says the signature gains `docType`, `_listFiles`, `_readFile` — "no seed maps" — agreeing with the paragraph four lines below it. Grepped every `reviewLoop` mention: no further site states the old shape | §2.5 step 5, §5.6.1 |
+| **2 — §5.4's dead justification** | PM F-02 ≡ TE N-01 (iii) | **False justification deleted; the build kept, and now justified truthfully.** "because §5.6.1 consumes it (§3.9)" named a deleted parameter. `deriveRoundWindow` never returned the map (§3.7, §3.9) and §5.5 takes `recordedHash` from `anchor`, so **nothing outside §5.4 reads it** — but it is not unread: §5.4's own unanimity check needs both roles' verdicts and anchors at once, which is what it holds. The dead thing was the **carry-out**, not the build; the map is now stated as local to the search, and §2.5 step 2 drops a `reviewFiles` it never produced | §5.4, §2.5 step 2 |
+| **3 — rule 4's unreachable clause** | PM F-03 ≡ TE N-03 | **Deleted, with the one behaviour behind it narrated rather than dropped blind.** `refreshReviewState` performs the tier-1 reads unconditionally at every episode entry, so an empty-because-step-3-was-skipped `reviewFiles` never reaches `selectMode`; rule 4 keeps only its reachable half (unreadable verdict fields). §5.7's two sentences become one: a forced phase past an approving round leaves rule 2 with no round, and `roundIndex: sel.round ?? startIndex` opens a **new** revision round — the fail-closed path PM verified, previously un-narrated | §5.6.1 rule 4, §5.7 |
+| **4 — AT-43a(a)'s contradictory conjuncts** | TE N-02 | **Repaired as TE prescribed — the only item that is more than prose.** (a) asserted both "revision **for round 1**" and a `roundIndex` **differing** from round 1's, which no correct implementation satisfies under either episode ordering, so a TDD implementer could not green it. The round-naming conjunct is dropped; the budget conjunct becomes **`EpisodeKey` inequality against a named comparand**, round 1's greenfield optimizer episode. §4.5 resets both counters when *any* coordinate changes and `mode` alone differs, so it is ordering-independent. It **still reds on the pre-loop-snapshot implementation, now on two conjuncts** (`present` stays empty ⇒ greenfield ⇒ no trailer, *and* round 1's key), and cannot false-red on a correct one. Fixture (b) untouched | §8.3, §4.5 |
+
+**Size: 172,953 B → 177,697 B.** The prose items net out near flat; the growth is AT-43a(a)'s repair and
+this entry — the pass that records what changed after an approval cannot also be the one that shrinks
+the file.
+
+**Carried to Harvest, not fixed here** (PM's own disposition): the document states no precedence rule
+between a section owning a contract and a restatement of it. Four rounds running, every residual defect
+has been a consistency failure across such duplicates. Until a rule exists, **§3.9 is authoritative for
+signatures, §4.2 for `ListFailure` dispositions.**
 
 ### v1.4 (2026-07-30) — round-4 cross-review feedback
 
@@ -1264,9 +1291,9 @@ proceeds to §5.5 — approval alone never grants a skip, approval plus `FRESH` 
 
 `reviewFiles` — the `Map<`${role}:${round}`, { verdict, verdictReadable, anchorHash }>` this search
 builds from its tier-1 reads — is **local to the search**: its only reader is the unanimity check
-above, which needs both roles' verdicts and anchor hashes in hand at once. It is carried out to no
-caller. `reviewLoop` takes no seed map (§3.9); every episode builds its own inside
-`refreshReviewState` (§5.6.1), and §5.5 takes `recordedHash` from `anchor`.
+above, which needs both roles' verdicts and anchors at once. It is carried out to no caller —
+`reviewLoop` takes no seed map (§3.9), every episode builds its own in `refreshReviewState` (§5.6.1),
+and §5.5 takes `recordedHash` from `anchor`.
 
 ### 5.5 Staleness
 
@@ -1582,11 +1609,10 @@ reaches for precisely because the phase has been reviewed before (AT-01a). It do
 POSTMORTEM (§5.8) refuses it. Forcing is an operator saying "re-run this despite approval", not
 "ignore that this previously failed unresolved."
 
-A forced phase's first episode refreshes like every other one (S-INV, §5.6.1) — force is invisible to
-`refreshReviewState`. Past an approving round that means a non-empty `present` with no round still
-owed an authoring pass, so rule 2 returns `round: null` and `roundIndex: sel.round ?? startIndex`
-opens a **new** round as a revision episode: fail-closed, and the right semantics for "re-run this
-despite approval".
+A forced phase's first episode refreshes like every other one (S-INV) — force is invisible to
+`refreshReviewState`. Past an approving round `present` is non-empty with no round owed an authoring
+pass, so rule 2 returns `round: null` and `roundIndex: sel.round ?? startIndex` opens a **new** round
+as a revision episode (§5.6.1): fail-closed, and the right reading of "re-run despite approval".
 
 `orchestrate-queue` gets no force surface at all. The queue is an unattended driver; forcing is an
 attended act, and O-5's direct-invocation path is where it belongs.
@@ -2020,7 +2046,7 @@ their jest names follow the same `RLH-` namespacing:
 |---|---|---|
 | **AT-01a** | a **forced** phase on a branch already carrying `-v1` cross-reviews writes `-v2` next. §2.5 step 2 is *not* skipped by a force, so `reviewLoop` never falls back to `iteration = 1`. Reds on the "forced skips steps 2–4" reading, which restores H-1 on the forced path | `forcePhases.test.js` |
 | **AT-13a** | **G-INV totality.** For each of the four exits that lead to running the phase — forced, `candidate < 1`, `NOT APPROVING`, `STALE`/`UNEVALUABLE` — an unresolved POSTMORTEM refuses the phase and the halt reproduces the Recommendation; and the `FRESH` exit does **not** refuse, but names the POSTMORTEM in its skip notice. FSPEC §12.4's worked example A is the `FRESH` case and AC-2.3b's example B is the `candidate < 1` case, both driven verbatim as fixtures | `haltAndQueue.test.js` |
-| **AT-43a** | **S-INV freshness, both refresh outcomes.** Two fixtures over the same clean branch — `docs/{feature}/` exists (the REQ is in it) and holds no `CROSS-REVIEW-*` file at phase entry, so this is §6.2 row 1's *successful* empty listing and **not** `dir_missing`. **(a) Refresh succeeds** — round 2's optimizer episode is `mode: "revision"` and requires a trailer, because its own refresh observes the `-v1` files round 1's reviewers wrote; and its **`EpisodeKey` differs from that of round 1's optimizer episode**, which was greenfield over the empty branch, so the two do not share a dispatch budget (§4.5: both counters reset when *any* coordinate changes, and `mode` alone already differs — which is why the assertion is key inequality and not `roundIndex` inequality, the round coordinate being rule 2's to fix, not this AT's). Reds on any implementation that decides mode from a pre-loop snapshot: `present` is then empty for the life of the phase, so round 2's optimizer selects greenfield, requires no trailer, and carries the *same* `EpisodeKey` as round 1's — both conjuncts red. **(b) Refresh fails** — same run, but `_listFiles` returns a `ListFailure` (`unreadable`) at round 2's optimizer episode **only**. The phase **halts**, `Cannot enumerate docs/{feature}: unreadable` (§4.2, §6.2 rows 2 and 17); no episode is dispatched for round 2 and no mode is selected. Reds on **both** implementations this defect has occupied — v1.2's, which read the kept `{}` as a successful observation ⇒ greenfield ⇒ terminal on dispatch 1, and v1.3's, which returned `present: null` and continued as a revision episode; neither halts. Also reds on any implementation routing a mid-loop `unreadable` into row 1's benign path. The oracles differ because the outcomes do: (a) asserts a dispatched episode's mode, round and budget, (b) the absence of a dispatch and the halt reason | `pacingWrapper.test.js` |
+| **AT-43a** | **S-INV freshness, both refresh outcomes.** Two fixtures over the same clean branch — `docs/{feature}/` exists (the REQ is in it) and holds no `CROSS-REVIEW-*` file at phase entry, so this is §6.2 row 1's *successful* empty listing and **not** `dir_missing`. **(a) Refresh succeeds** — round 2's optimizer episode is `mode: "revision"` and requires a trailer, because its own refresh observes the `-v1` files round 1's reviewers wrote; and its **`EpisodeKey` differs from round 1's optimizer episode's**, which was greenfield over the empty branch, so the two do not share a dispatch budget. Key inequality, not `roundIndex` inequality: §4.5 resets both counters when *any* coordinate changes and `mode` alone already differs, so the assertion holds under either episode ordering and leaves the round coordinate to rule 2. Reds on any implementation that decides mode from a pre-loop snapshot — `present` stays empty for the phase, so round 2's optimizer goes greenfield, needs no trailer, and carries round 1's key: both conjuncts red. **(b) Refresh fails** — same run, but `_listFiles` returns a `ListFailure` (`unreadable`) at round 2's optimizer episode **only**. The phase **halts**, `Cannot enumerate docs/{feature}: unreadable` (§4.2, §6.2 rows 2 and 17); no episode is dispatched for round 2 and no mode is selected. Reds on **both** implementations this defect has occupied — v1.2's, which read the kept `{}` as a successful observation ⇒ greenfield ⇒ terminal on dispatch 1, and v1.3's, which returned `present: null` and continued as a revision episode; neither halts. Also reds on any implementation routing a mid-loop `unreadable` into row 1's benign path. The oracles differ because the outcomes do: (a) asserts a dispatched episode's mode, round and budget, (b) the absence of a dispatch and the halt reason | `pacingWrapper.test.js` |
 
 **The gate is "no new failures against a measured baseline", not "the suite is green."** The suite is
 not green at HEAD and has not been for the life of this branch. Measured by
