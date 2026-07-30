@@ -64,9 +64,14 @@ and cites the clause** rather than re-deciding it.
 ### 1.4 The four seams this feature adds
 
 Everything specified below reaches the runtime through exactly four new injected parameters on
-`orchestrate-dev.js`'s `main()`, joining the nine that exist today (`_agent`, `_parallel`, `_log`,
-`_checkFile`, `_readFile`, `_phase`, `_pipeline`, `_mergeWorktree`, `_checkCi` — the parameter list
-of `export default async function main({ reqPath, _agent: rawAgentFn = agent, … })`).
+`orchestrate-dev.js`'s `main()`, joining the **sixteen** that exist today. Corrected at v1.1 (SE-v1
+F-05): v1.0 said "the nine that exist today" and listed `_agent`, `_parallel`, `_log`, `_checkFile`,
+`_readFile`, `_phase`, `_pipeline`, `_mergeWorktree`, `_checkCi` — that is the count of
+`rtDevInjections`'s entries, not of `main()`'s destructured list, which at `0655387` also carries
+`_rebaseOntoDefault`, `_dodVerifyLoop`, `_raisePrAndVerifyCi`, `_phaseDodEnabled`, `_phasePubEnabled`,
+`_now` and `_sleep` (the list of
+`export default async function main({ reqPath, _agent: rawAgentFn = agent, … })`). The subordinate claim
+that the list carries **no** `_writeFile` is correct and unchanged.
 
 | Seam | Contract | Node default (jest) | Adapter implementation (bundle) |
 |---|---|---|---|
@@ -75,13 +80,37 @@ of `export default async function main({ reqPath, _agent: rawAgentFn = agent, �
 | `_appendFile(path, text)` | `Promise<void>`; append-shaped, never a whole-file rewrite (§7.4) | `fs.appendFileSync` wrapper | `rtAppendFile`, an `agent()` instructed to append and nothing else |
 | `_git(argv)` | `Promise<{ ok: boolean, stdout: string, stderr: string }>` — no throw; the caller branches on `ok` | `child_process` wrapper | `rtGit`, an `agent()` with Bash, following the existing `rtMergeWorktree` pattern (its prompt literal `` `Run: git merge --no-ff ${worktreeBranch}` `` and its `{"ok":true}` / `{"ok":false,…}` JSON return contract) |
 
-**Why `_git` and not more `agent()` prose.** `orchestrate-dev.js` performs **zero** git operations
-today, and `orchestrate-queue.js` performs zero as well — its status writes go through
-`rewriteStatus(queuePath, feature, status, readFileFn, writeFileFn)`, which only re-reads and
-re-writes the file (`const current = (await readFileFn(queuePath)) ?? "";`). O-4 needs a *commit*,
-so a git capability must exist. Making it a narrow, JSON-returning seam rather than free prose in a
-skill prompt is what keeps the decision (did the commit succeed? is the tree dirty?) inside the
-script, per C-5.
+**Correction (SE-v1 F-03).** v1.0 claimed `orchestrate-dev.js` "performs **zero** git operations today".
+That is false at `0655387` and is withdrawn: `export async function mergeWorktree(repoPath,
+worktreeBranch, targetBranch, { execFn } = {})` resolves `child_process`'s `execSync` and runs
+`git merge --no-ff` followed by `git diff --name-only --diff-filter=U`, and
+`export async function rebaseOntoDefault({ feature, … })` dispatches `ship-pr` to rebase. Both are
+injected on `main()` (`_mergeWorktree`, `_rebaseOntoDefault`) and `_mergeWorktree` is already in
+`rtDevInjections`. The module therefore has a git capability and the adapter already ships a git relay
+(`rtMergeWorktree`). `orchestrate-queue.js` does perform zero — its status writes go through
+`rewriteStatus(queuePath, feature, status, readFileFn, writeFileFn)`, which only re-reads and re-writes
+the file (`const current = (await readFileFn(queuePath)) ?? "";`) — and that is the half of the claim
+O-4 actually rests on.
+
+**Disposition of the existing git precedent — `_mergeWorktree` is not folded into `_git`.** The
+reinvention check requires this stated, in the shape §3.4 gives `listAllFiles`:
+
+1. **The contracts are different in kind.** `_mergeWorktree` is a **task** seam: one named operation
+   (`merge --no-ff`, then enumerate conflicting files) returning a domain-shaped record
+   (`{ ok, conflictingFiles }`). `_git(argv)` is a **transport** seam: an arbitrary argv returning
+   `{ ok, stdout, stderr }` with every interpretation left to the script. Re-expressing the merge
+   through `_git` would push conflict-file parsing from the adapter into `orchestrate-dev.js` and give
+   the caller a second, looser way to invoke a merge.
+2. **It is C-4-protected.** `mergeWorktree` is exported, unit-tested with an injected `execFn`, and
+   already wired into `rtDevInjections`; rewriting it buys nothing this feature needs and risks the one
+   git path the pipeline already depends on.
+3. **Two seams, one boundary.** What DC-11 objects to is two *error contracts* for one question. There
+   is no shared question here: nothing asks "did the merge succeed?" through `_git`, and nothing asks
+   "what is HEAD?" through `_mergeWorktree`. The end state is deliberate — a task seam for the one
+   pre-existing composite operation, a transport seam for O-4's commit and §7.5's `git log`.
+
+Making `_git` a narrow, JSON-returning seam rather than free prose in a skill prompt is what keeps the
+decision (did the commit succeed? is the tree dirty?) inside the script, per C-5.
 
 **Await discipline (C-2).** All four seams are async in the adapter and sync in the jest doubles, so
 **every call site awaits**. This is the single most repeated defect class in this repo's workflow
