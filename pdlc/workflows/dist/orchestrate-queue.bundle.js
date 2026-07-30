@@ -1646,8 +1646,24 @@ function isTerminal(mode, response, artifactClass, docType, after) {
  * @param {string} phaseLabel - human-readable phase label
  * @param {Function} recordPhase - the local recordPhase callback
  */
-function checkConverged(loopResult, phaseId, phaseLabel, recordPhase) {
+function checkConverged(
+  loopResult,
+  phaseId,
+  phaseLabel,
+  recordPhase,
+  feature,
+  startIndex,
+  endIndex
+) {
   if (loopResult.converged !== false) return;
+
+  // An authoring-budget halt is NOT a non-convergence: no reviewer disagreed, the
+  // wrapper simply stopped paying for a dispatch that was going nowhere. It writes
+  // no POSTMORTEM (§6.2 rows 10–11) and reports the wrapper's own detail.
+  if (loopResult.halted === true) {
+    recordPhase(phaseId, phaseLabel, "❌", loopResult.haltDetail);
+    throw haltError(loopResult.haltDetail);
+  }
 
   // Build reviewer detail string (PM-F02)
   let reviewerDetail = "";
@@ -1660,10 +1676,16 @@ function checkConverged(loopResult, phaseId, phaseLabel, recordPhase) {
   }
 
   const postmortemPath = `docs/{feature}/POSTMORTEM-${phaseId}-{feature}.md`;
-  recordPhase(phaseId, phaseLabel, "❌", `Non-convergence after 5 iterations${reviewerDetail}`, 5);
+  // AC-5.1: the window is RELATIVE. On a branch whose highest existing round is 3
+  // the phase was admitted rounds 4..8, and "after 5 iterations" would name an
+  // absolute index the run never used.
+  const first = startIndex === undefined ? 1 : startIndex;
+  const last = endIndex === undefined ? windowEnd(first) : endIndex;
+  const window = `rounds ${first}..${last}`;
+  recordPhase(phaseId, phaseLabel, "❌", `Non-convergence across ${window}${reviewerDetail}`, last - first + 1);
 
   throw haltError(
-    `Phase ${phaseId} did not converge after 5 iterations${reviewerDetail}. POSTMORTEM written.`
+    `Phase ${phaseId} did not converge across ${window}${reviewerDetail}. POSTMORTEM written.`
   );
 }
 
@@ -1685,14 +1707,75 @@ function checkConverged(loopResult, phaseId, phaseLabel, recordPhase) {
 async function reviewLoop({
   doc,
   phase,
+  docType,
   reviewers,
   optimizer,
   feature,
   iteration = 1,
+  startIndex = iteration,
+  endIndex = windowEnd(startIndex),
   _agent = agent,
   _parallel = parallel,
   _checkFile = checkFileNonEmpty,
+  _listFiles = defaultListFiles,
+  _readFile = defaultReadFile,
+  _log,
+  _git,
 }) {
+  // The doc type the round record is keyed by. Derived from `doc` when the caller
+  // does not name it, so Phase CR's directory target degrades to "no doc type"
+  // rather than to a wrong one.
+  const roundDocType = docType === undefined ? docTypeFromPath(doc) : docType;
+  const reviewFileType = roundDocType || "REVIEW";
+  const emit = typeof _log === "function" ? _log : log;
+
+  /** Wrap one dispatch of this loop in the §3.8 pacing wrapper. */
+  const wrapped = (skill, basePrompt, targetPath, dispatchKind) =>
+    dispatchAndVerify({
+      skill,
+      basePrompt,
+      targetPath,
+      docType: roundDocType,
+      feature,
+      dispatchKind,
+      phaseId: phase,
+      _agent,
+      _readFile,
+      _listFiles,
+      _log: emit,
+      _git,
+    });
+
+  // An episode that exhausts an authoring budget RETURNS through the loop rather
+  // than throwing past it: `checkConverged` is the one place that decides what a
+  // failed phase does, and `RLH-AT-61-loop` reads the trailer reason off this
+  // return. `halted` is the discriminator; `haltDetail` is the operator's text.
+  let haltedReturn = null;
+  const runWrapped = async (skill, basePrompt, targetPath, dispatchKind) => {
+    if (haltedReturn) return null;
+    try {
+      return await wrapped(skill, basePrompt, targetPath, dispatchKind);
+    } catch (err) {
+      if (err && err.isAuthoringHalt) {
+        haltedReturn = {
+          converged: false,
+          iterations: iteration,
+          halted: true,
+          haltDetail: err.message,
+          trailerReason: err.trailerReason ?? null,
+          postmortemWritten: false,
+          lastResults: [],
+        };
+        return null;
+      }
+      throw err;
+    }
+  };
+
+  /** The cross-review path a reviewer episode writes this round (§5.2). */
+  const reviewTargetPath = (skill, round) =>
+    `docs/${feature}/CROSS-REVIEW-${reviewerRoleSlug(skill) || skill}-${reviewFileType}-v${round}.md`;
+
   // TSPEC-LOOP-02: Entry precondition check (skip for Phase CR)
   if (phase !== "CR") {
     const checkResult = await _checkFile(doc);
@@ -1712,7 +1795,7 @@ async function reviewLoop({
   // TSPEC-LOOP-03: Iteration loop
   while (true) {
     // (a) Check iteration cap at loop-top
-    if (iteration > 5) {
+    if (iteration > endIndex) {
       // POSTMORTEM trigger
       const postmortemPath = `docs/${feature}/POSTMORTEM-${phase}-${feature}.md`;
       const postmortemPrompt = [
@@ -1765,11 +1848,12 @@ async function reviewLoop({
     const reviewerPrompt2 = reviewerPrompt(doc, phase, feature, iteration, reviewers[1]);
 
     const [r1, r2] = await _parallel([
-      _agent(reviewers[0], reviewerPrompt1),
-      _agent(reviewers[1], reviewerPrompt2),
+      runWrapped(reviewers[0], reviewerPrompt1, reviewTargetPath(reviewers[0], iteration), "review"),
+      runWrapped(reviewers[1], reviewerPrompt2, reviewTargetPath(reviewers[1], iteration), "review"),
     ]);
-    result1 = r1;
-    result2 = r2;
+    if (haltedReturn) return haltedReturn;
+    result1 = r1 && r1.response;
+    result2 = r2 && r2.response;
 
     // (d) Parse verdicts. A missing/malformed VERDICT trailer sets malformed:true —
     // make one cheap Haiku recovery attempt to re-emit the trailer from the reviewer's
@@ -1803,7 +1887,9 @@ async function reviewLoop({
 
     // (g) Invoke optimizer (FAIL path)
     const optPrompt = optimizerPrompt(doc, phase, feature, iteration, reviewers);
-    const optimizerResult = await _agent(optimizer, optPrompt);
+    const optEpisode = await runWrapped(optimizer, optPrompt, doc, "authoring");
+    if (haltedReturn) return haltedReturn;
+    const optimizerResult = optEpisode && optEpisode.response;
     lastOptimizerResult = optimizerResult;
 
     if (
