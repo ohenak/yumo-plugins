@@ -98,6 +98,23 @@ and cites the clause** rather than re-deciding it.
 4. **Fail closed, uniformly.** Wherever a machine-readable field cannot be read, the behaviour is
    *more* work, never less: the phase runs, the episode does not reach terminal, the approval is not
    granted. AC-4.2a is the governing clause and the direction never varies.
+5. **Fenced regions are not data (SE-v2 F-11, TE-v2 F-01).** Every mechanical scan this feature
+   specifies over a `CROSS-REVIEW-*` or `LEARNINGS-*` file — the verdict scan and its duplicate
+   pre-count (§6.3), the `APPROVAL-HASH:` scan and its pre-count (§7.4), the tier-1 hash read
+   (§10.1), and the completeness heading scan (§16) — **ignores every line inside a fenced code
+   block**: scanning skips from a line whose first non-whitespace characters are a fence opener
+   (` ``` ` or `~~~`, any longer run) to the matching closer, and a fence left unclosed at EOF
+   swallows the remainder. This is stated once, here, and referenced rather than restated, because
+   the alternative is one exclusion clause per scan site and a later reviewer having to check them
+   against each other.
+
+   This rule is not defensive. Reviews of **this feature** quote these grammars: §6.2's template
+   contains a literal `## Verdict` heading and an approving `VERDICT: ` line, and §7.4's contains an
+   `APPROVAL-HASH: ` line. Without the exclusion a reviewer that quotes a template and is then
+   stall-killed before writing its own section has the *quoted* block read as its verdict — the
+   mechanism defeating itself on precisely the documents it was built to read. v1.1 narrowed the
+   verdict scan to the trailing section, which removed that misread only while the reviewer's real
+   section exists and is last; this rule removes it unconditionally and at every site.
 
 ### 1.3 Constraints carried down from REQ §4
 
