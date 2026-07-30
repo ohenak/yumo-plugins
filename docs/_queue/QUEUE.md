@@ -27,6 +27,7 @@ frontmatter is the pickup gate; the `Status` cell tracks lifecycle.
 | 5 | pending | pdlc-engineering-loop | docs/pdlc-engineering-loop/REQ-pdlc-engineering-loop.md | pdlc-workflow-distribution, pdlc-merge-phase, pdlc-advisory-tier, pdlc-consolidation-agent |
 | 6 | blocked | pdlc-install-mechanism | docs/pdlc-install-mechanism/REQ-pdlc-install-mechanism.md | pdlc-workflow-distribution |
 | 7 | blocked | pdlc-release-ci | docs/pdlc-release-ci/REQ-pdlc-release-ci.md | pdlc-workflow-distribution |
+| 8 | blocked | pdlc-authoring-contract | docs/pdlc-authoring-contract/REQ-pdlc-authoring-contract.md | pdlc-review-loop-hardening |
 
 Row 6 is the successor binding for `pdlc-workflow-distribution` deferrals D-DIST-01, D-DIST-02,
 D-DIST-03 and D-DIST-05 (full `pdlc install`, loading workflows from the plugin path with no copy,
@@ -37,6 +38,31 @@ to a queue row rather than to prose intent.
 Row 7 is the successor binding for `pdlc-workflow-distribution` deferral D-DIST-06: hosted CI and
 release automation on `yumo-plugins`. Same convention as row 6 — `blocked`, REQ not yet authored,
 present so the deferral is bound.
+
+Row 8 (**added 2026-07-30**) is the successor binding for three deferrals `pdlc-review-loop-hardening`
+carries out of its TSPEC review — same convention as rows 6 and 7 (`blocked`, REQ not yet authored,
+present so the deferrals are bound to a row rather than to prose owners, per `DC-08`). All three are
+the *same* underlying gap: **the six author/review SKILLs are the authoring interface, and they
+declare nothing machine-readable about what they produce**, so the workflow script re-states their
+contract from the outside and the two can drift.
+
+- **Q-09 — the acute one, and the reason this row exists at all.** `orchestrate-dev.js` §5.9 holds
+  per-class top-level heading lists used to score a document structurally complete; the templates
+  authors actually follow live in the SKILLs. Drift between them scores a correct document
+  incomplete, which under row 0's mechanism is a **false halt** — a live failure risk, not a
+  tidiness item. Row 0 mitigates but does not close it: its `completeness.test.js` fixtures are
+  copied from the SKILL templates verbatim, so a drift reds the suite rather than a run. Closing it
+  means the SKILLs declaring the heading template themselves.
+- **T-Q-03** — `MAX_AUTHORING_WRITE_BYTES` has no oracle; the per-write byte cap is enforced only by
+  agent compliance, with row 0's commit-diff proxy advisory. Same shape: a contract the script
+  states and the SKILL does not. Revisit with measured non-compliance data.
+- **Q-05** — whether `harvest-learnings`' approval-record heading is pinned by name or renumbers if
+  a sixth prose section is added. Row 0 tolerates either (its matcher normalises numeric prefixes),
+  so there is no product exposure today; the question is the SKILL's contract.
+
+Scope this row's REQ to *declaring* those contracts in the SKILLs, not to re-implementing row 0's
+mechanism — the mechanism is correct, it is the interface that is undeclared. It depends on row 0
+because all three items are stated against machinery row 0 introduces.
 
 **Updated 2026-07-29 (Phase DOD, DOD-14).** The parenthetical here previously read "`.github/`
 does not exist today, so `cd pdlc/workflows && npm test` is the only automated verification
