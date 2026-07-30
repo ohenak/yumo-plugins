@@ -2233,6 +2233,92 @@ does not apply to `dist/`: generated artifacts are not authored sections.
 
 ## 18. Edge cases and error scenarios
 
+Every row has a definite, specified outcome — DC-01's total-function requirement applied to the whole
+feature. "Halt" means the run stops with an operator-facing reason; "phase runs" means the fail-closed
+direction; "reported" means it appears in the run report without changing the outcome.
+
+### 18.1 Discovery and round derivation (§3, §4)
+
+| # | Condition | Outcome | Section |
+|---|---|---|---|
+| E-01 | **Clean branch — `docs/{feature}/` does not exist** (C-4: the feature's very first invocation) | `dir_missing` is **benign**: treated as an empty listing. Round index 1, greenfield mode, no approval, no skip. **No halt, no warning.** This is the common case, not an error. | §3 |
+| E-02 | `docs/{feature}/` exists but is a file, is unreadable, or the seam is called with a bad argument | "Cannot judge" ⇒ one halt shape: `Cannot enumerate {dirPath}: {reason}` | §3 |
+| E-03 | Directory contains a cross-review-shaped basename that does not conform to the grammar | **Skipped and reported** in the phase-entry log line (`skipped non-conforming: {names}`), not a halt | §4 |
+| E-04 | Directory contains unrelated files (REQ, LEARNINGS, images) | Silently ignored | §4 |
+| E-05 | Two conforming files for the same (role, doc type, round) — impossible by filename uniqueness, but a malformed *duplicate role segment* is not | Per-role malformed-duplicate **halt** at derivation step 5 | §4 |
+| E-06 | Highest existing round is 3 on a re-entered phase | Rounds 4..8 — five fresh rounds, not two. The H-1 defect. | §4, §17.1 |
+| E-07 | Role slug in a filename is not in the catalogue | Non-conforming ⇒ skipped and reported; the placeholder substitution degrades to a doc-type glob | §4 |
+
+### 18.2 Verdict, approval and staleness (§5, §6, §7, §9, §10)
+
+| # | Condition | Outcome | Section |
+|---|---|---|---|
+| E-08 | Cross-review has **no** `## Verdict` section | No verdict ⇒ not approving ⇒ **phase runs** | §6 |
+| E-09 | Cross-review has **two** `VERDICT:` lines | Pre-count detects it ⇒ unparseable ⇒ **phase runs**. Never silently resolved by `parseVerdict`'s scan-from-end. | §6.3 |
+| E-10 | Verdict value outside the three-member catalogue | Unparseable ⇒ phase runs | §6 |
+| E-11 | Round N: SE approved / TE needs revision; round N+1: TE approved / SE finds more | **Phase runs.** Approvals from different rounds never combine. | §5 |
+| E-12 | Round N: SE's `-vN` present and approving; TE's `-vN` **absent** | The absent role is **not approving** ⇒ phase runs. Tier 2 is **not** consulted to complete the pair. | §5, §9.6 |
+| E-13 | `APPROVAL-HASH:` append fails after a successful review episode | Operator-surfaced error; the round yields **no approval**; the **current run continues** (it does not halt) | §7 |
+| E-14 | Re-entry finds one `APPROVAL-HASH:` line already present and equal | Idempotent no-op | §7 |
+| E-15 | Re-entry finds one present and **unequal**, or two or more present | Error surfaced; no approval from that round | §7 |
+| E-16 | Anchor **commit** fails though the append succeeded | Non-fatal: the referent is the working tree, so the approval is intact. Reported. | §7 |
+| E-17 | Document changed between approval and Phase H (a DOD remediation touching a spec) | Recorded hash is the round-N hash; the working tree differs ⇒ `STALE` ⇒ **phase runs**. The case a harvest-time hash would have laundered. | §9.4, §10 |
+| E-18 | Reviewed document missing at comparison time | `_readFile` → `null` ⇒ `UNEVALUABLE` ⇒ phase runs | §10.3 |
+| E-19 | Branch was rebased by Phase DOD Step 0, spec bytes unchanged | Approval **survives** — no sha, timestamp or ancestry is read | §10.6 |
+| E-20 | Rebase conflict resolution altered the spec's bytes | `STALE` ⇒ phase runs. Correct: those bytes were not reviewed. | §10.6 |
+| E-21 | Legacy feature: cross-reviews deleted, LEARNINGS predates the approval record | Neither tier ⇒ fail closed ⇒ phase runs. Accepted, **not** backfilled. | §9.7 |
+| E-22 | LEARNINGS exists **without** the approval record | **Passes** `guard-harvest-before-delete` (not tightened), then fails closed. The falsifier is this direction, not the guard rejecting it. | §9.7 |
+| E-23 | Tier-1 record present but its `APPROVAL-HASH:` is `unavailable` or ungrammatical | `UNEVALUABLE` ⇒ phase runs. No substitute value may be computed. | §10.5 |
+| E-24 | Both tiers present for the same (doc type, round) and disagreeing | Unparseable ⇒ phase runs. No "most recent wins" rule. | §10.4 |
+
+### 18.3 POSTMORTEM, force and queue (§11, §12, §13, §14)
+
+| # | Condition | Outcome | Section |
+|---|---|---|---|
+| E-25 | Unresolved POSTMORTEM for phase R, and Phase R **would run** | **Halt**, Recommendation reproduced, next step names AC-2.4 | §12.4 (case B) |
+| E-26 | Unresolved POSTMORTEM for phase R, and Phase R is **skipped** under §5/§10 | Phase **skipped**, run continues, report names **both** the approval and the open POSTMORTEM. The skip does not resolve it. | §12.4 (case A) |
+| E-27 | Unresolved `POSTMORTEM-R-*` present, pipeline at Phase F | Phase F **unaffected** — refusal is keyed on (phase, feature) | §12.3 |
+| E-28 | POSTMORTEM present with two `RESOLVED:` lines, or a non-catalogue value | **Unresolved** ⇒ refusal | §12.3 |
+| E-29 | POSTMORTEM present but unreadable | Unresolved ⇒ refusal (fail closed) | §12.3 |
+| E-30 | POSTMORTEM present, no `## Recommendation` heading | Refusal stands; the field reads `(no Recommendation section found in {path})` | §12.5 |
+| E-31 | Recommendation exceeds 4,000 bytes | Truncated with `… [truncated; read {path}]` | §12.5 |
+| E-32 | POSTMORTEM agent threw, or `_checkFile` finds nothing at the path | Halt reason says **write FAILED**, `postmortemStatus: "write_failed"`. The halt never claims a write that did not happen. | §12.6 |
+| E-33 | `forcePhases` contains `CR` or `DOD` | **Rejected** before any phase runs, with the valid catalogue listed | §11.3 |
+| E-34 | `forcePhases: "all,F"` | Rejected as ambiguous rather than coerced | §11.3 |
+| E-35 | Forced phase whose POSTMORTEM is unresolved | **Refused** — forcing overrides recorded approval only | §11.5 |
+| E-36 | Forced phase with a valid approval | Runs at the **next** round index; the prior approval record is left intact | §11.4 |
+| E-37 | Working tree dirty when the `halted` row is committed | Not an error, not cleaned. The `-- {path}` pathspec commits only `QUEUE.md`. | §13.3 |
+| E-38 | `git commit` fails (hook rejection, no identity, index lock) | Non-fatal, surfaced: `queueRow: "halted (uncommitted)"` plus manual-commit instruction. The **original halt reason comes first.** | §13.4 |
+| E-39 | `git commit` fails with "nothing to commit" | **Success** — idempotent re-entry, no warning | §13.4 |
+| E-40 | Queue-driven run whose feature row vanished mid-run | AC-2.6 **error** surfaced: `queueRow: "error"` — no longer a silent no-op | §13.5 |
+| E-41 | Direct invocation, feature has **no** queue row | `queueRow: "none"`. No write attempted, **no error**. Never a double failure. | §14.3 |
+| E-42 | Direct invocation on a feature whose row reads `halted`, run **succeeds** | Row stays `halted` — `awaiting-merge` is the queue driver's write — so **every other queue feature stays idle** until the row is edited | §14.4 |
+| E-43 | Direct invocation on a `halted` row, run **halts again** | The row **is** written (AC-2.1 binds the direct path) | §14.4 |
+
+### 18.4 Pacing wrapper (§8, §15, §16)
+
+| # | Condition | Outcome | Section |
+|---|---|---|---|
+| E-44 | Revision dispatch writes nothing and emits `REVISION-COMPLETE: yes` | **Terminal.** The phase must **not** halt. The fully-converged round v1.4 falsely halted. | §8.4, §15.4 |
+| E-45 | Revision dispatch killed after applying 3 of 5 findings; artifact structurally complete | **No trailer ⇒ not terminal.** Episode continues. | §8.3 |
+| E-46 | Dispatch returns a value / returns nothing / throws | All three ⇒ same non-terminal conclusion, reached by **absence of a positive marker**, without classifying the fault. Fault observation is reported as a boolean. | §8.3, §15.4 |
+| E-47 | Agent emits `REVISION-COMPLETE: yes` while a finding remains | **R-12**, accepted and bounded: the finding is still on the branch until Phase H, so the next round's reviewers re-raise it. Costs one round rather than losing one. | §8.5 |
+| E-48 | Greenfield dispatch killed part-way through an over-budget section — bytes written, **no** section completed | **Progress** (byte-change predicate), counter resets. The v1.4 contradiction that halted a visibly growing artifact. | §15.3 |
+| E-49 | Healthy 12-section document, one section per dispatch | Never halts: every dispatch is progress, so the consecutive counter never reaches 3 | §15.4 |
+| E-50 | no-progress, no-progress, progress, no-progress | **Still running** — reset on progress | §15.4 |
+| E-51 | Healthy five-round convergence, one dispatch per round | Never trips `MAX_AUTHORING_DISPATCHES`: counters are **per episode**, and a new round is a new episode | §15.1, §15.4 |
+| E-52 | Phase re-entered by an operator after an authoring-budget halt, mid-revision | **Re-enters revision mode on the same round**, with the continuation prompt and that round's findings. Must **not** report terminal success on structural completeness alone. | §15.2 |
+| E-53 | `se-author` dispatch advances TSPEC but not the conditional DECISIONS | **Progress** — progress in any member of the set. Terminal requires every **required** member. | §15.1 |
+| E-54 | DECISIONS not warranted by the phase's own check | **Not a member** of the artifact set; its absence does not block terminal | §15.1 |
+| E-55 | Pathologically unproductive agent that writes a byte each dispatch | Never trips the consecutive counter; bounded by `MAX_AUTHORING_DISPATCHES` = 6. **R-9**, accepted. | §15.3 |
+| E-56 | Authoring budget exhausted | Halt, **no POSTMORTEM**, `halted` row committed, report names the queue-row reset as the single recovery act | §15.6, §15.4 |
+| E-57 | Review episode re-dispatched onto a partial cross-review | Must **continue** it, never rewrite it (a whole-file rewrite past budget is forbidden) | §16.3 |
+| E-58 | Re-dispatch produces a **duplicated** verdict field | Fail closed: phase runs. A duplicated verdict can never produce a skip. | §16.3 |
+| E-59 | Harvest killed after prose, before the approval record | **Terminal, reports success**; the feature lands in the fail-closed case; the report **names** the missing record | §16.5 |
+| E-60 | Skeleton written with `TBD` placeholder bodies | Counts as **empty** ⇒ not complete. Otherwise write 1 would score terminal. | §16.2 |
+| E-61 | Per-section commit whose diff exceeds `MAX_AUTHORING_WRITE_BYTES` | **Reported** as a pacing-proxy violation; **does not halt** the run | §15.8 |
+| E-62 | A compliant-sized commit assembled from one oversized call | **Undetectable.** Stated openly: there is no oracle for emitted bytes. | §15.7, §15.8 |
+
 ## 19. Acceptance tests
 
 ## 20. Open questions
