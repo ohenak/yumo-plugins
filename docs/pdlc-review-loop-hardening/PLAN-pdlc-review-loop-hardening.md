@@ -929,7 +929,7 @@ reconcile two statements on their own authority.
 | H-n | The work appears to require a new runtime dependency, a `crypto` call, a `TextEncoder`, or an `import` in a bundle | Halt. C-2 forbids all four; §9.1 |
 | H-o | The work appears to require touching `docs/_queue/QUEUE.md`, any `CROSS-REVIEW-*` file, the REQ, the FSPEC or the TSPEC | Halt. Those are out of scope for Phase I; a needed spec change is reported, not made |
 | H-p | The work appears to require per-worktree consumer state, a history walk on the approval path, an agent on the approval path, or a cache over `_listFiles` | Halt. All four are in TSPEC §2.6's "deliberately not built" list, each with its reason |
-| H-q | A task implements either interface shape of **§11.5** differently from the decision recorded there — `reviewLoop`'s two sibling fields, `checkConverged`'s two positional arguments, the single gate-side computation of `endIndex`, or `N-b`'s non-exported unnamed search | Halt. §11.5 decided both **before batch 1** precisely because the tests that encode them are written in batch 3 by a single owner (§5.3) and cannot be renegotiated by a batch-8/9 task. `RLH-LOOP-01`/`-02` will red; the halt is what stops the red being "fixed" by editing the oracle. Report the shape built and the shape decided; a genuine case for the other shape is a **PLAN** revision, not a local choice |
+| H-q | A task implements either interface shape of **§11.5** differently from the decision recorded there — `reviewLoop`'s two sibling fields, `checkConverged`'s three positional arguments, the single gate-side computation of `endIndex`, or `N-b`'s non-exported unnamed search | Halt. §11.5 decided both **before batch 1** precisely because the tests that encode them are written in batch 3 by a single owner (§5.3) and cannot be renegotiated by a batch-8/9 task. **Every clause of this row has a named oracle that reds on the violation** — `RLH-LOOP-01` (field shape and gate), `RLH-LOOP-02` (return shape, positional order, the rendered window), `RLH-LOOP-03` (the single computation, added at v1.3 because that clause previously had none: a recomputation inside `reviewLoop` from the `startIndex` it was handed yields an identical value and no behavioural oracle can see it). The halt is what stops the red being "fixed" by editing the oracle. Report the shape built and the shape decided; a genuine case for the other shape is a **PLAN** revision, not a local choice |
 
 ### 11.5 Two interface shapes — **decided here**, not deferred to a task
 
@@ -979,13 +979,51 @@ duplicated argument or a missing one is a named red.
 `if (iteration > endIndex)` — but under this decision that site *reads a parameter* and performs no
 arithmetic; the arithmetic named in edit 3's Edit cell happens at the gate.
 
+**And that rule now has something that can falsify it: `RLH-LOOP-03`** (new at v1.3; `RLH-22`, batch 3,
+green from batch 8 — §7.3, §7.5, and a matching §12.3 row). Until v1.3 the rule was three statements, an
+`H-q` halt and an owner, with **no assertion able to red on the one violation that matters**: a
+recomputation inside `reviewLoop` from the `startIndex` it was handed produces an **identical** value, so
+`RLH-LOOP-01`'s gate passes, `RLH-LOOP-02`'s rendered window text passes, and every AT passes. An
+unfalsifiable halt condition is enforcement by eyeball, which is the standard this feature exists to
+replace. The oracle is mechanical and is the **same construction §12.3 already uses for `selectMode`** —
+over `orchestrate-dev.js`'s source text, the literal `MAX_REVIEW_ROUNDS - 1` occurs **exactly once**, and
+that occurrence lies **outside** the source spans of `reviewLoop` and `checkConverged` (span = the
+function's declaration line to the next `}` in column 0; every top-level function in this file is
+unindented, so the span is decidable without the depth walk of §9.2 item 3). It **reds at HEAD** with zero
+occurrences, so it is a genuine red-then-green, not a green-on-arrival tautology.
+
+This is also the clause an implementer is most likely to violate innocently, which is why it earns an
+oracle rather than a deletion: **TSPEC §7.1 edit 3 anchors the arithmetic inside `reviewLoop`** (enclosing
+symbol `reviewLoop`, distinctive literal `startIndex + MAX_REVIEW_ROUNDS - 1`) while this section relocates
+it to the gate. Answering TE Q-01: that relocation is a **PLAN** decision the TSPEC tolerates rather than a
+§7.1 amendment, because §7.1's Edit cell for edit 3 names *two* things — the gate comparison
+`if (iteration > endIndex)` and the derivation of `endIndex` — and only the first is anchored to
+`reviewLoop` by the enclosing-symbol rule; §3.9's approved row leaves the channel to implementation
+(§13.1 `P-Q-02`) and §10.3 `T-Q-02` says so outright. So edit 3 splits across `RLH-26` (the derivation, at
+the gate, batch 8) and `RLH-27` (the comparison, inside `reviewLoop`, batch 9), both halves land, and
+`RLH-LOOP-03` is what proves the derivation did not land twice. No TSPEC change is taken for this.
+
 **Ownership, so no part of this is unowned work** (v1.1 left the gate-side arithmetic with no task):
 
 | Work | Owning task | Batch |
 |---|---|---|
-| compute `endIndex` once at the phase gate; pass `startIndex` **and** `endIndex` at all seven `reviewLoop` call sites **and** all seven `checkConverged` call sites | **`RLH-26`** | 8 |
-| `reviewLoop` destructures both fields; the gate becomes `if (iteration > endIndex)` reading the parameter (§7.1 edit 3, no arithmetic at the site) | **`RLH-27`** | 9 |
-| `checkConverged` grows the two positional parameters and renders `rounds ${startIndex}..${endIndex}` (§7.1 site 1) | **`RLH-27`** | 9 |
+| compute `endIndex` once at the phase gate; pass `startIndex` **and** `endIndex` at all seven `reviewLoop` call sites; write **all three** new arguments — **`feature`**, `startIndex`, `endIndex` — at all seven `checkConverged` call sites (v1.3 adds `feature` here: it was the one value with no named owner, and arguments 6 and 7 cannot be written without argument 5 — PM `L-02`) | **`RLH-26`** | 8 |
+| `reviewLoop` destructures both fields; the gate becomes `if (iteration > endIndex)` reading the parameter (§7.1 edit 3's comparison half, no arithmetic at the site) | **`RLH-27`** | 9 |
+| `checkConverged` grows the **three** positional parameters (`feature`, `startIndex`, `endIndex`) and renders `rounds ${startIndex}..${endIndex}` (§7.1 site 1) | **`RLH-27`** | 9 |
+
+**The one-batch interim this creates, stated rather than left to be discovered.** At batch 8 the call
+sites pass `startIndex`/`endIndex` that `reviewLoop`'s batch-9 signature does not yet destructure. That is
+**benign and accepted**: they arrive as extra properties on an options object, which is ignored, and
+`reviewLoop` keeps its pre-feature `if (iteration > 5)` until edit 3's comparison half lands at batch 9. It
+is also why **`RLH-LOOP-01` greens at batch 9, not 7** — §7.3's row was corrected to `9 / 3–8 / RLH-27` at
+v1.3. v1.1's `7 / RLH-23` was correct for v1.1's shape; v1.2 moved the destructuring here and left the
+ledger row behind, which would have made `RLH-LOOP-01` red outside its window at the batch-7 and batch-8
+gates — a §11.3 regression halt caused by bookkeeping. **The alternative was considered and rejected:**
+folding `reviewLoop`'s destructuring and gate into `RLH-23` (batch 7) would keep the row at 7, but it
+splits `reviewLoop`'s signature across two writers *and* leaves the gate reading an `endIndex` that no
+call site supplies for a whole batch — `iteration > undefined` is always false, i.e. a live loop with no
+termination gate, in a window where twenty-plus `RLH-AT-*` assertions are green. The interim above is
+inert; that one is not.
 
 **One name, two bindings — answering PM Q-02.** Inside `reviewLoop`, `startIndex` is both the new
 destructured parameter and a field of `refreshReviewState`'s per-episode result, which TSPEC §5.6.1
@@ -996,14 +1034,20 @@ than shadowing the parameter. This is a naming rule, not a behaviour change — 
 `iteration` against the parameter-derived `endIndex` either way — but shadowing would make a reader unable
 to tell which binding a later edit reads, which is this feature's own defect class. `RLH-LOOP-01` pins
 which binding `endIndex` relates to by asserting the gate over a `startIndex` passed in, with a refresh
-returning a *different* index.
+returning a *different* index. **`H-q` deliberately does not name this rule** (answering PM Q-02): `H-q`'s
+shapes are *interface* decisions a later task could renegotiate, and this is a local naming choice with no
+interface consequence — shadowing changes which binding the gate reads, which `RLH-LOOP-01` already reds
+on, and the halt row would add nothing the oracle does not already supply. The omission is a decision, not
+an artefact of drafting order.
 
-**Oracles.** **`RLH-LOOP-01`** (`RLH-22`, green from batch 7 — §7.3) asserts `reviewLoop`'s field shape,
-`iteration` at every call site, and termination on `iteration > endIndex`; it reds on every rejected
-`reviewLoop` form. **`RLH-LOOP-02`** (`RLH-22`, green from batch 9) asserts the return shape *and*
-`checkConverged`'s rendered window text, so it reds on every rejected `checkConverged` form and on a
-swapped index pair. Both are written in batch 3, before either implementing task, so neither needs a
-dependency on it.
+**Oracles.** All three are written by `RLH-22` in batch 3, before every implementing task, so none needs a
+dependency on one; §7.3 is the single authority for their windows and this paragraph does not restate them
+beyond naming the greening task. **`RLH-LOOP-01`** (green from batch **9**, by `RLH-27` — see the interim
+note above) asserts `reviewLoop`'s field shape, `iteration` at every call site, and termination on
+`iteration > endIndex`; it reds on every rejected `reviewLoop` form. **`RLH-LOOP-02`** (green from batch 9,
+by `RLH-27`) asserts the return shape *and* `checkConverged`'s rendered window text, so it reds on every
+rejected `checkConverged` form and on a swapped index pair. **`RLH-LOOP-03`** (green from batch 8, by
+`RLH-26`) is the single-computation oracle above.
 
 **N-b — the name of §5.4's two-tier approval search.** Decision: **non-exported, and no test may name
 it.** `RLH-24`'s `approvalSearch.test.js` drives it through `main()` at L2, which is why `AT-08`…`AT-11`,
