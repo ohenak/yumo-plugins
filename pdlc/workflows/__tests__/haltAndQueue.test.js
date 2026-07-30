@@ -654,5 +654,149 @@ describe("RLH-25: the POSTMORTEM gate", () => {
 
 // ─── PLAN §7.4: the orchestrator half of AT-30…AT-34 ─────────────────────────
 describe("RLH-25: which halting exit reaches the committing status write", () => {
-  // RLH-AT-30-orch … RLH-AT-34-orch
+  /**
+   * Three structurally different halting exits of `orchestrate-dev`, each
+   * thrown from inside the pipeline and each carrying a resolved feature name.
+   * §6.5's "Halt classes: both" is why the set is not just non-convergence.
+   */
+  const HALTING_EXITS = [
+    {
+      exit: "Phase R non-convergence (§6.3)",
+      opts: { verdictFor: nonConvergingAtR },
+    },
+    {
+      exit: "Phase DOD (§6.2, a non-POSTMORTEM halt class)",
+      opts: {
+        extraArgs: {
+          _dodVerifyLoop: async () => {
+            throw new Error("Error: Phase DOD — unremediated findings remain");
+          },
+        },
+      },
+    },
+    {
+      exit: "Phase PUB CI failure",
+      opts: {
+        extraArgs: {
+          _raisePrAndVerifyCi: async () => {
+            throw new Error(
+              "Error: Phase PUB — GHA checks failed for PR https://x/pull/1"
+            );
+          },
+        },
+      },
+    },
+  ];
+
+  it("RLH-AT-30-orch: every halting exit reaches the write, and an absent row is an error", async () => {
+    // AC-2.6 / E-40. Conjunct 1 — reach: each halting exit records the row
+    // exactly once, with `status: "halted"` and the resolved feature name.
+    const seen = [];
+    for (const { exit, opts } of HALTING_EXITS) {
+      const { result, recordHalt } = await run(opts);
+      seen.push({
+        exit,
+        outcome: result.outcome,
+        recorded: recordHalt.records,
+      });
+    }
+    // Every exit halts …
+    expect(seen.map((s) => [s.exit, s.outcome])).toEqual(
+      HALTING_EXITS.map((e) => [e.exit, "halted"])
+    );
+    // … and every one of them arrives at the committing status write, once.
+    expect(seen.map((s) => [s.exit, s.recorded])).toEqual(
+      HALTING_EXITS.map((e) => [
+        e.exit,
+        [{ feature: FEATURE, status: "halted" }],
+      ])
+    );
+
+    // Conjunct 2 — the row was removed mid-run, so the write it expected to
+    // make found nothing. `updateQueueStatus` no longer returns the document
+    // unchanged (§4.6), so the orchestrator can report it.
+    const detail = `no row for ${FEATURE} in ${DEFAULT_QUEUE_PATH}`;
+    const { result } = await run({
+      verdictFor: nonConvergingAtR,
+      recordHaltResult: { queueRow: "error", detail },
+    });
+
+    expect(result.queueRow).toBe("error");
+    expect(JSON.stringify(result)).toContain(FEATURE);
+    expect(JSON.stringify(result)).toContain(DEFAULT_QUEUE_PATH);
+    // The halt itself is not downgraded by the bookkeeping failure.
+    expect(result.outcome).toBe("halted");
+    expect(result.haltReason).toContain("did not converge");
+  });
+
+  it("RLH-AT-31-orch: a direct invocation with no queue reports one failure, not two", async () => {
+    // AC-2.6a / E-41. `_recordHalt`'s default is a no-op reporting "none"
+    // (§3.5): a repo with no queue must not turn one halt into two.
+    const { result } = await run({
+      verdictFor: nonConvergingAtR,
+      recordHaltResult: { queueRow: "none" },
+    });
+
+    expect(result.outcome).toBe("halted");
+    expect(result.queueRow).toBe("none");
+    expect(result.haltReason).toContain("did not converge");
+
+    // Exactly one failure: nothing in the report blames the queue.
+    const text = JSON.stringify(result);
+    expect(text).not.toContain(DEFAULT_QUEUE_PATH);
+    expect(text).not.toContain("queue row");
+    expect(text).not.toContain("uncommitted");
+  });
+
+  it("RLH-AT-32-orch: a successful bypass run never writes a status", async () => {
+    // AC-2.7a / E-42. A direct invocation that succeeds does not recover a
+    // `halted` row — `orchestrate-dev` owns no status write but the halt one,
+    // so the row survives the bypass and the next `/loop` iteration is `idle`.
+    // (That the row itself stays put is `RLH-AT-32-module`'s.)
+    const { result, recordHalt } = await run();
+
+    expect(result.outcome).toBe("success");
+    expect(recordHalt.statuses).not.toContain("halted");
+    expect(recordHalt.statuses).not.toContain("pending");
+    expect(recordHalt.statuses).not.toContain("done");
+    expect(result.queueRow).toBe("none");
+  });
+
+  it("RLH-AT-33-orch: a failed commit is non-fatal, surfaced, and subordinate", async () => {
+    // E-38 / §6.5. The row is correct on disk but `git commit` failed; the
+    // operator's remaining action is a manual commit, which is a different
+    // action from `"error"`'s re-run — hence the distinct value.
+    const manual = `git commit -m "chore(queue): ${FEATURE} → halted" -- ${DEFAULT_QUEUE_PATH}`;
+    const { result } = await run({
+      verdictFor: nonConvergingAtR,
+      recordHaltResult: {
+        queueRow: "halted (uncommitted)",
+        detail: `queue row written but not committed; run: ${manual}`,
+      },
+    });
+
+    expect(result.outcome).toBe("halted");
+    expect(result.queueRow).toBe("halted (uncommitted)");
+    // The manual-commit instruction reaches the operator …
+    expect(JSON.stringify(result)).toContain(manual);
+    // … and the original halt reason is reported first, not displaced by it.
+    expect(result.haltReason.startsWith("Phase R did not converge")).toBe(true);
+  });
+
+  it("RLH-AT-34-orch: nothing to commit is success, and silent", async () => {
+    // E-39. The row already reads `halted` and is already committed, so the
+    // status write is a no-op. A no-op is not a fault and must not be narrated.
+    const { result, logs } = await run({
+      verdictFor: nonConvergingAtR,
+      recordHaltResult: { queueRow: "halted" },
+    });
+
+    expect(result.queueRow).toBe("halted");
+
+    const noise = /nothing to commit|queue row|uncommitted|WARNING: .*queue/i;
+    expect(logs.filter((line) => noise.test(line))).toEqual([]);
+    expect(JSON.stringify(result)).not.toMatch(noise);
+    // Still a halt, for its own reason.
+    expect(result.haltReason).toContain("did not converge");
+  });
 });
