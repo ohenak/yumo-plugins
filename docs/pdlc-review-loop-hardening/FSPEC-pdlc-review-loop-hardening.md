@@ -409,8 +409,9 @@ additional gate is specified here.
 
 ### 4.5 The no-overwrite guard (AC-1.4, AC-1.4a) — the script is the enforcing party
 
-Before **each** reviewer dispatch of a round, and after the round's paths have been computed, the
-script performs a **deterministic existence check on the exact path it is about to instruct**, via
+Before each **review episode's first** dispatch for a round, and after the round's paths have been
+computed, the script performs a **deterministic existence check on the exact path it is about to
+instruct**, via
 `_checkFile` (already injected; contract `{ ok: true } | { ok: false, reason: "file_missing" |
 "file_empty" }`). No model call, per C-5.
 
@@ -424,8 +425,24 @@ AC-1.4's closing clause is respected literally: the agent-facing instruction not
 **retained as belt-and-braces**, and prompt text alone does not satisfy the AC — "because that is
 exactly H-1's root cause one level down."
 
+**Scope: the episode's first dispatch, not its re-dispatches (TE-v1 F-02).** v1.0 said "before **each**
+reviewer dispatch of a round"; that is withdrawn as written, because it deadlocks the continuation
+§16.3/E-57 mandates. A review episode whose first dispatch is stall-killed after writing a **partial**
+cross-review is re-dispatched by §15.4 onto that same path; a guard firing there would raise an operator
+error on the wrapper's own required behaviour. So:
+
+| Dispatch | Guard |
+|---|---|
+| The episode's **first** dispatch for `(role, doc-type, round)` | Guard applies — the table above |
+| A **re-dispatch inside the same episode** onto the same path (§15.4's progress / no-progress branches) | Guard is **not** re-evaluated. The wrapper knows it owns that path: it instructed it, in this episode, and the episode's terminal test (§16.3) is the check that governs. The continuation prompt of §16.3/E-57 applies — continue the partial file, never rewrite it. |
+
+The property that made the per-dispatch phrasing attractive — catching a file that appeared *after* the
+phase-entry listing (case (ii) below) — is preserved, because the appearance can only precede the
+episode's first dispatch. A file appearing mid-episode is one the episode itself wrote.
+
 **Reachability (AC-1.4a), and why the check is not vacuous.** Because §4.4 always derives `max + 1`,
-only three states reach the error, and they are the complete set:
+only three states reach the error, and they are the complete set of states in which the guard is
+evaluated (the intra-episode re-dispatch above is not one, because the guard does not run there):
 
 | Case | State | Which check catches it |
 |---|---|---|
@@ -2354,7 +2371,7 @@ direction; "reported" means it appears in the run report without changing the ou
 | E-54 | DECISIONS not warranted by the phase's own check | **Not a member** of the artifact set; its absence does not block terminal | §15.1 |
 | E-55 | Pathologically unproductive agent that writes a byte each dispatch | Never trips the consecutive counter; bounded by `MAX_AUTHORING_DISPATCHES` = 6. **R-9**, accepted. | §15.3 |
 | E-56 | Authoring budget exhausted | Halt, **no POSTMORTEM**, `halted` row committed, report names the queue-row reset as the single recovery act | §15.6, §15.4 |
-| E-57 | Review episode re-dispatched onto a partial cross-review | Must **continue** it, never rewrite it (a whole-file rewrite past budget is forbidden) | §16.3 |
+| E-57 | Review episode re-dispatched onto a partial cross-review | Must **continue** it, never rewrite it (a whole-file rewrite past budget is forbidden). §4.5's no-overwrite guard is **not** re-evaluated on an intra-episode re-dispatch, so the continuation is reachable. | §16.3, §4.5 |
 | E-58 | Re-dispatch produces a **duplicated** verdict field | Fail closed: phase runs. A duplicated verdict can never produce a skip. | §16.3 |
 | E-59 | Harvest killed after prose, before the approval record | **Terminal, reports success**; the feature lands in the fail-closed case; the report **names** the missing record | §16.5 |
 | E-60 | Skeleton written with `TBD` placeholder bodies | Counts as **empty** ⇒ not complete. Otherwise write 1 would score terminal. | §16.2 |
@@ -2618,6 +2635,13 @@ is adopted as `recordedHash`.)*
 current bytes, **and** round 3's two cross-reviews are `Needs revision` with the document unedited since.
 *Then* Phase F **runs**, the report names round **3** as the candidate, and round 2 is not read.
 *(Fails if the search descends past round 3 — the fail-open skip that discards a completed round.)*
+
+**AT-58 — Intra-episode re-dispatch onto the episode's own partial file is permitted (E-57, TE-v1 F-02)**
+*Given* a review episode whose first dispatch was stall-killed after writing a non-empty partial
+`CROSS-REVIEW-software-engineer-FSPEC-v4.md`. *When* §15.4 re-dispatches inside the same episode. *Then*
+the no-overwrite guard is **not** evaluated, no operator error is raised, the dispatch proceeds with the
+continue-do-not-rewrite instruction, and the partial file's existing bytes are still present afterwards.
+*(Fails if the guard fires — the deadlock of the mandated continuation.)*
 
 ## 20. Open questions
 
