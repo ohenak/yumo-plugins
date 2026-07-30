@@ -116,6 +116,16 @@ pending ──pick──▶ in-progress ──pipeline success──▶ awaiting
   guarantee) until a human resolves it.
 - **`awaiting-merge`** — success, but the work is on a `feat-{feature}` branch / PR, **not
   yet in the base**. The skill never sets `done`.
+- **`halted`** — the pipeline stopped, and the `halted` row is **committed** to git as soon
+  as it is written, so the halt survives the process that recorded it rather than living only
+  in an unsaved working tree. This is true of **every** status write, not just this one:
+  `git add -- docs/_queue/QUEUE.md`, then
+  `git commit -m "chore(queue): {feature} → {status}" -- docs/_queue/QUEUE.md`.
+  The pathspec form commits the queue file alone: a halted pipeline routinely leaves partial
+  work in the tree, and that partial work is exactly what the recovery path resumes from, so
+  the dirty tree is neither an error nor cleaned. Nothing is pushed. If the commit itself
+  fails the halt is **not** downgraded — the run still halts for its original reason and the
+  report carries the commit failure.
 - **`done`** is set by a **human** after merging the PR. This is deliberate: a dependent's
   readiness check looks for the dependency's code in the base, and only a real merge puts
   it there. Marking `done` is the human's acknowledgement that the merge happened.
