@@ -349,6 +349,55 @@ afterEach(() => {
   console.log = originalConsoleLog;
 });
 
+/** Reviewer dispatches that name a given document — the "did the phase run" oracle. */
+function reviewerDispatchesFor(agentCalls, docPath) {
+  return agentCalls.filter(
+    (c) => /-review$/.test(c.skill) && c.prompt.includes(docPath)
+  );
+}
+
+// ─── RLH-AT-08: same-round dual approval skips the phase (AC-4.1, AC-4.1a) ────
+//
+// Round 2's two cross-reviews both carry `VERDICT: Approved` and the SAME
+// `APPROVAL-HASH:`, and that hash is the FSPEC's working-tree digest. §5.4's
+// candidate is 2, tier 1 is unanimous, §5.5 reads `FRESH`, and Phase F is skipped.
+describe("RLH-AT-08: same-round dual approval skips the phase", () => {
+  const listing = [crossReviewBasename(SE_SLUG, 2), crossReviewBasename(TE_SLUG, 2)];
+  const files = {
+    [crossReviewPath(SE_SLUG, 2)]: crossReviewFile({ verdict: APPROVED, hash: FSPEC_HASH }),
+    [crossReviewPath(TE_SLUG, 2)]: crossReviewFile({
+      verdict: APPROVED_MINOR,
+      hash: FSPEC_HASH,
+      counts: { high: 0, medium: 0, low: 3 },
+    }),
+  };
+
+  test("RLH-AT-08: Phase F is recorded ⏭ with §4.7's skip notice, naming round 2", async () => {
+    const { result, fs, agentCalls } = await runPipeline({ files, listing });
+
+    const fRecord = phaseRecord(result, "F");
+    expect(fRecord).not.toBeNull();
+    // §4.7: the per-phase skip reuses the existing `"⏭"` status marker.
+    expect(fRecord.status).toBe("⏭");
+    // §4.7's detail string is specified, not left to the writer. No POSTMORTEM
+    // exists for (F, feature), so the bracketed clause must be absent.
+    expect(fRecord.detail).toBe("Skipped — approved round 2, hash FRESH");
+    // …and the row still names the document under review (AT-08's "names the document").
+    expect(fRecord.label).toMatch(/FSPEC/);
+
+    // Both approving reviews were consulted — §5.4's two-`_readFile` fan-out.
+    const paths = readPaths(fs);
+    expect(paths).toContain(crossReviewPath(SE_SLUG, 2));
+    expect(paths).toContain(crossReviewPath(TE_SLUG, 2));
+    // §5.5 rule 1: the comparison reads the document at comparison time.
+    expect(paths).toContain(FSPEC_PATH);
+
+    // A skipped phase dispatches no reviewer for its document.
+    expect(reviewerDispatchesFor(agentCalls, FSPEC_PATH)).toEqual([]);
+    expect(result.outcome).toBe("success");
+  });
+});
+
 // ─── RLH-AT-09: cross-round approvals never combine (E-11, TSPEC §5.4) ────────
 //
 // Round 2 is SE-approving, round 3 is TE-approving; neither round is unanimous.
