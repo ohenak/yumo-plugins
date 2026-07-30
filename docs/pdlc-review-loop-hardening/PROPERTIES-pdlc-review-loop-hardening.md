@@ -345,14 +345,45 @@ Three more domains are needed by the properties beyond the floor, and each is li
 
 | Domain | Owning file / task | Draws |
 |---|---|---|
-| **D6 — phase-entry configurations** | `haltAndQueue.test.js` (RLH-25) | the cross product of {forced, unforced} × listing shape × per-role verdict × anchor agreement × document-mutation × POSTMORTEM state, for `PROP-GINV-01` and `PROP-APPROVE-01`'s gate half |
+| **D6 — phase-entry configurations** | `haltAndQueue.test.js` (RLH-25) | the cross product of **phase** × {forced, unforced} × listing shape × per-role verdict × anchor agreement × document-mutation × POSTMORTEM state, for `PROP-GINV-01` and `PROP-APPROVE-01`'s gate half |
 | **D7 — episode interleavings** | `pacingWrapper.test.js` (RLH-21) | per-round sequences of dispatch outcomes drawn from {progress-terminal, progress-nonterminal, no-progress, trailer-`yes`, trailer-`no`, trailer-absent, trailer-duplicated, trailer-unparseable}, over 1…`MAX_REVIEW_ROUNDS` rounds |
-| **D8 — source fragments** | `runtimeBundle.test.js` (RLH-31) | synthetic JS text placing a scan-set call in one of the classified positions, plus masked positions (inside a string, template, regex, comment) and one shape matching no ruling |
+| **D8 — source fragments** | `runtimeBundle.test.js` (RLH-31) | synthetic JS text placing a scan-set call in one of the classified positions, plus masked positions (inside a string, template, comment) and one shape matching no ruling — **bounded to the domain PLAN §9.2 item 3 says the walk decides** (below) |
+
+**D6's phase axis is seven, and v1.0's "six forceable phases" was the wrong axis.** `parseForcePhases`
+bounds what an *operator may force* (`R, F, T, P, D, PR` — six, TSPEC §5.7 / §6.2 row 12); it does not
+bound where the gate runs. PLAN §4.1's pre-flight gate measured **seven** `reviewLoop` call sites and
+seven `checkConverged` call sites — **`R, F, T, D, P, PR, CR`** — and TSPEC §4.5's `EpisodeKey.phaseId`
+enumerates eight (those seven plus `DOD`). D6's phase axis is therefore the **seven** call sites, and
+`DOD` is excluded with a reason: it has no `reviewLoop` call site, so there is no phase-entry
+configuration to generate for it. This matters most to `PROP-LIST-01a`, whose whole value is the
+phase × failure product: with `CR` outside the domain, a disposition wrong only at `CR` passes
+(PM F-08). `PROP-GINV-01` and `PROP-WINDOW-01` inherit the corrected axis.
 
 **D8's fragments are never executed.** They are text handed to the bracket-depth walk (PLAN §9.2 item
 3), which is the subject. Executing generated JS in a jest worker would add an evaluation channel this
 feature has no use for, and a fragment that must parse is a *narrower* domain than one that must only
 be scanned.
+
+**D8 is bounded to the walk's stated domain, and that bound is load-bearing** (SE F-07). PLAN §9.2
+item 3 justifies a hand-rolled walk over a parser precisely by domain: *"its input is known-shaped:
+two files, top-level functions unindented, no nested combinator calls anywhere at HEAD"*, and *"a
+shape it cannot decide is an unclassified site, which fails loudly"*. Two of v1.0's draw instructions
+generated outside that domain:
+
+- **Regex literals are withdrawn from the masked-region pool.** Distinguishing `const re = /[)]/;`
+  from `x = a /_agent(b)/ c;` is a **lexer** problem, not a masking problem: a masking pass without
+  token context either hides a real call site (a silent pass — the one failure mode this assertion is
+  the sole guard against) or leaves an unbalanced `)` on the depth stack and corrupts every
+  classification after it in the fragment. The masked-region pool is therefore string literals,
+  template literals and comments only, all three decidable by the prescribed pass. A regex-shaped
+  fragment, if drawn at all, carries expected outcome **`unclassified`** — the walk's honest-limits
+  contract — and **never** the "no site is found at all" expectation.
+- **Nested combinator calls are withdrawn from the draw list.** PLAN §9.2 states they do not occur at
+  HEAD and the walk is not claimed to handle them.
+
+The reason for the bound is the ledger, not fastidiousness: `PROP-AWAIT-01` rides §7.3's first row,
+whose permitted red is **none, ever**, so one generated fragment the walk decides differently from the
+author's hand-written `expected` is a §11.3 `H-h`/`H-k` halt in batch 2 (§4.4, answering SE Q-04).
 
 ### 3.3 Non-vacuity: every generator must prove it produced the shape it claims
 
@@ -361,11 +392,17 @@ revisions, and TSPEC §8.2's two restated rows — is a generator that silently 
 adversarial case while the property stays green. Every property in §4 therefore carries a
 **non-vacuity conjunct** asserted over the *generated set*, not over one draw:
 
-1. **Floors, forced rather than hoped for.** Where a property depends on a shape appearing (D1's
-   other-doc-type basenames, D2's nested four-in-three fence, D5's `all` token, D7's trailer-absent
-   outcome), the generator **forces** a stated minimum count deterministically — the same construction
-   `genId(rng, force)` uses at HEAD for the drift feature's adversarial floors — and the property
-   asserts the floor was met before asserting anything else.
+1. **Every floor in §4 is forced, without exception** — not four exemplars, and not "forced where it
+   matters" (answering SE Q-03). Where a property depends on a shape appearing (D1's other-doc-type
+   basenames, D2's nested four-in-three fence, D5's `all` token, D7's trailer-absent outcome, and the
+   ≈sixty other floors §4 states), the generator **forces** the stated minimum count
+   deterministically — the same construction `genId(rng, force)` uses at HEAD for the drift feature's
+   adversarial floors — and the property asserts the floor was met before asserting anything else.
+   **A floor met by sampling would be a defect**: it is green at the literal seed and a seed-dependent
+   red the first time somebody sets `PDLC_PROP_SEED`, which is exactly the failure §2.2 rule 3
+   forbids. Forcing is also what makes the 100-case budget sufficient: the adversarial shapes are
+   constructed, so each §5 mutation meets its discriminating shape at every seed rather than with high
+   probability.
 2. **Set-level assertions.** Where a property is a partition or a totality claim, it asserts the
    observed class multiset covers every class, so a generator drawing only one class fails loudly
    instead of passing trivially.
