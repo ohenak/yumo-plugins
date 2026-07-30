@@ -271,6 +271,192 @@ exists precisely to catch a file that appeared *after* the first listing.
 
 ## 4. FSPEC-NAME-01 — Cross-review filename grammar and round-index derivation
 
+**Linked requirements:** AC-1.1, AC-1.1a, AC-1.2, AC-1.3, AC-1.4, AC-1.4a, AC-1.5, AC-1.6, AC-1.6a,
+AC-1.6b, AC-1.6c. **Discharges O-2.**
+
+### 4.1 The grammar
+
+A conforming cross-review basename is exactly:
+
+```
+CROSS-REVIEW-{role}-{doc-type}.md          ⇒ round index 1   (the un-suffixed form)
+CROSS-REVIEW-{role}-{doc-type}-v{N}.md     ⇒ round index N   (N a decimal integer ≥ 1)
+```
+
+as a total regular grammar over the **basename** returned by `_listFiles` (§3.2):
+
+```
+^CROSS-REVIEW-(?<role>[a-z]+(?:-[a-z]+)*)-(?<docType>[A-Z][A-Z_]*)(?:-v(?<n>[1-9][0-9]*))?\.md$
+```
+
+Four properties make it unambiguous, and each is a decision this document makes rather than inherits:
+
+| # | Property | Why it is stated |
+|---|---|---|
+| G-1 | The **role** segment is lowercase-with-hyphens; the **doc-type** segment is uppercase | This is what disambiguates the two hyphen-bearing segments. Without a case rule, `CROSS-REVIEW-software-engineer-REQ.md` is ambiguous — a parser cannot tell where the role ends and the type begins, because both segments may contain hyphens. Every artifact this repo has ever written already obeys it (`software-engineer` / `REQ`), so the rule is descriptive, not new. |
+| G-2 | The role must be a member of the **closed slug catalogue** of §4.2 | An unknown role is a non-conforming name (§4.3), not a fourth reviewer. |
+| G-3 | `N` has **no leading zeros** and no `+`/whitespace | So `-v01.md` and `-v1.md` cannot both parse to 1 and silently collide. `-v01.md` is non-conforming. |
+| G-4 | The suffix group is optional **and there is no other optional part** | `-v{N}` is the only permitted decoration. `CROSS-REVIEW-software-engineer-REQ-v3-final.md`, `…-v3.markdown` and `…-V3.md` are all non-conforming. |
+
+### 4.2 The role slug catalogue
+
+Measured at HEAD `0655387`: `function reviewerRoleSlug(skill)` holds the whole mapping as a literal
+object —
+
+```js
+const MAP = {
+  "se-review": "software-engineer",
+  "pm-review": "product-manager",
+  "te-review": "test-engineer",
+};
+```
+
+— and its doc comment already names the filename shape it feeds
+(`` `CROSS-REVIEW-{role}-{DOC-TYPE}[-v{N}].md` ``, with the "Returns null for unknown skills so
+prompts degrade to the generic glob rather than an invented path" note). The three slugs are
+corroborated on the emit side: each review SKILL hard-codes its own slug in its Cross-Review File
+Format section — `se-review/SKILL.md` writes
+`docs/{feature-name}/CROSS-REVIEW-software-engineer-{DOCUMENT-TYPE}[-v{N}].md`, `pm-review/SKILL.md`
+writes `…-product-manager-…`, `te-review/SKILL.md` writes `…-test-engineer-…`.
+
+**Decision: `reviewerRoleSlug` is the single source of truth, and the parser derives its catalogue
+from the same map rather than repeating the three strings.** A second copy of the slug list is a
+divergence waiting to happen, and a divergence here silently makes one role's artifacts invisible to
+index derivation — H-1's failure mode with a new cause. `reviewerRoleSlug` must therefore also gain a
+reverse accessor (slug → reviewer skill id) so §5's pairing can go from a filename back to a role
+without a second literal.
+
+**`null` is retained and is now load-bearing in a second place.** `reviewerRoleSlug` returning `null`
+for an unknown skill is today a prompt-degradation path. It becomes, additionally, the definition of
+G-2's rejection: a basename whose role segment has no reverse mapping is non-conforming.
+
+### 4.3 The document-type token, and the total reject rule
+
+The doc-type token is drawn from a closed catalogue: the six spec document types this pipeline
+reviews, i.e. `REQ`, `FSPEC`, `TSPEC`, `PLAN`, `PROPERTIES`, `DECISIONS`. There is no seventh, and
+Phase CR is deliberately absent — AC-4.7 puts Phase CR and Phase DOD out of AC-4's scope, and AC-4.7a
+confirms `CODE_REVIEW-{feature}-v{N}.md` is a different artifact family that this grammar does not
+cover.
+
+**Reject rule (total).** A basename in the listing is classified as exactly one of:
+
+| Class | Definition | Effect on index derivation | Effect elsewhere |
+|---|---|---|---|
+| **Conforming** | Matches §4.1 with a catalogued role (G-2) and a catalogued doc-type | Contributes its `N` (or 1 for the un-suffixed form) to the maximum for its (role-agnostic) doc-type | Available to §5 pairing, §6 tier-1 verdict reading |
+| **Non-conforming, cross-review-shaped** | Begins `CROSS-REVIEW-` but fails any rule of §4.1–§4.2 | **Skipped** — contributes nothing to the maximum | **Reported**, once, in the phase-entry log line of §4.4, naming the basename and which rule it failed. It is not a halt: a stray file must not be able to stop the pipeline. But it must not be silent either, because a skipped file is precisely what makes a derived index wrong. It also feeds AC-1.4a case (iii) (§4.5). |
+| **Unrelated** | Anything else (`REQ-*.md`, `POSTMORTEM-*.md`, `CODE_REVIEW-*.md`, `LEARNINGS-*.md`, editor backups, …) | Skipped | Silently ignored by this mechanism; `POSTMORTEM-*` and `LEARNINGS-*` are consumed by §12 and §9 from the same listing |
+
+The distinction between the second and third classes is what makes the skip observable without making
+it noisy. `CROSS-REVIEW-` is a strong enough prefix that a file carrying it and *failing* the grammar
+is far more likely to be a mistake than a deliberate unrelated file.
+
+### 4.4 Round-index derivation (AC-1.1, AC-1.1a, AC-1.2, AC-1.6)
+
+Inputs: the one `_listFiles(docs/{feature})` result of §3.5, the feature, and the doc-type for the
+phase (from `PHASE_DISPATCH`, which already carries a `creatorOutputPath` per phase).
+
+```
+1. Partition the listing per §4.3.
+2. Keep the conforming entries whose doc-type equals this phase's doc-type. Roles are NOT filtered:
+   AC-1.1 derives the index per (feature, doc-type) ACROSS roles, and §5/O-18 depends on that.
+3. presentIndices ← the multiset of their round indices (un-suffixed ⇒ 1).
+4. If presentIndices is empty        ⇒ startIndex = 1.
+   Else                             ⇒ startIndex = max(presentIndices) + 1.
+5. Malformed-duplicate check (AC-1.1a): if, for any single role, BOTH the un-suffixed form and
+   `-v1.md` are present for this doc-type ⇒ HALT with an operator-facing error naming both paths.
+6. budget    ← MAX_REVIEW_ROUNDS (§17.1, default 5)
+   endIndex  ← startIndex + budget - 1
+7. Emit the phase-entry log line (below), then run the loop.
+```
+
+**Step 5 is a halt, and it is the one AC-1.1a case that is.** Two files claiming index 1 for one role
+is an unresolvable ambiguity about which one holds round 1's findings — and §5's pairing, §6's verdict
+read and §15.4's mode selection would each silently pick one. AC-1.1a calls it "a malformed duplicate
+of index 1: that is an error surfaced to the operator (AC-1.4's class), not a silent choice between
+them", and this is the implementation of that sentence. Note the check is **per role**: SE holding
+the un-suffixed form while TE holds `-v1.md` is *not* a duplicate — it is two roles at index 1, which
+is a normal, pairable round (§5).
+
+**The phase-entry log line (AC-1.6, AC-1.6b).** One line, emitted before the first reviewer dispatch,
+carrying the actual numbers for this invocation and nothing inferred:
+
+```
+Phase {phaseId}: rounds {startIndex}..{endIndex} (budget {budget}); {k} prior review artifact(s) found[; skipped non-conforming: {names}]
+```
+
+This is the surface AC-1.6 asks for ("both the starting index and the budget are stated in the run
+log at phase entry") and it is where §4.3's skipped-name report lands.
+
+**Loop terminal condition (AC-1.6a).** The cap is evaluated **relative to the invocation's starting
+index**, not against the absolute index. Concretely, `reviewLoop`'s existing gate — `if (iteration >
+5) {` at the top of its `while (true)` body — becomes a comparison against `endIndex`, i.e. against
+`startIndex + MAX_REVIEW_ROUNDS - 1`. A resumed loop starting at index 14 therefore runs rounds
+14–18 and does not trip the cap on entry. This is the behavioural half of AC-5.1's constant
+extraction; §17.1 specifies the edit.
+
+**Reported counts (AC-1.6b).** Three artifacts stop reporting the literal `5`:
+
+| Artifact | Today at HEAD `0655387` | After |
+|---|---|---|
+| POSTMORTEM prompt's mandated section | the prompt literal `` `Include the required sections: Phase, Iterations (5 — limit reached), …` `` | names `startIndex`, `endIndex` (the terminal index actually reached) and `budget` |
+| The non-convergence halt | `checkConverged`'s `` haltError(`Phase ${phaseId} did not converge after 5 iterations${reviewerDetail}. POSTMORTEM written.`) `` | names the same three numbers, and §12.3 replaces the unconditional `POSTMORTEM written.` claim |
+| The recorded phase row | `recordPhase(phaseId, phaseLabel, "❌", `Non-convergence after 5 iterations${reviewerDetail}`, 5)` | detail and the `iterations` field both carry the real counts |
+
+**AC-1.6c is a consistency statement, not a mechanism.** A fresh budget on re-entry is correct; what
+H-2 called a defect was a *silent* fresh budget against an unresolved disagreement. The log line above
+makes it non-silent, and §12 refuses re-entry exactly when a POSTMORTEM records that disagreement. No
+additional gate is specified here.
+
+### 4.5 The no-overwrite guard (AC-1.4, AC-1.4a) — the script is the enforcing party
+
+Before **each** reviewer dispatch of a round, and after the round's paths have been computed, the
+script performs a **deterministic existence check on the exact path it is about to instruct**, via
+`_checkFile` (already injected; contract `{ ok: true } | { ok: false, reason: "file_missing" |
+"file_empty" }`). No model call, per C-5.
+
+| Check outcome | Meaning | Behaviour |
+|---|---|---|
+| `{ ok: false, reason: "file_missing" }` | the path is free | dispatch proceeds |
+| `{ ok: false, reason: "file_empty" }` | a zero-byte file is squatting the path | **dispatch proceeds.** An empty file carries no review to destroy, and refusing here would let a stray `touch` wedge a phase. The reviewer's write fills it. |
+| `{ ok: true }` | a non-empty file already holds this path | **Pipeline-level error surfaced to the operator.** Not a silent overwrite, and not a silent skip. |
+
+AC-1.4's closing clause is respected literally: the agent-facing instruction not to overwrite is
+**retained as belt-and-braces**, and prompt text alone does not satisfy the AC — "because that is
+exactly H-1's root cause one level down."
+
+**Reachability (AC-1.4a), and why the check is not vacuous.** Because §4.4 always derives `max + 1`,
+only three states reach the error, and they are the complete set:
+
+| Case | State | Which check catches it |
+|---|---|---|
+| (i) | AC-1.1a's malformed duplicate of index 1 | §4.4 step 5, at phase entry — before any dispatch |
+| (ii) | A file appearing **between** index derivation and dispatch — a concurrent run, or an agent writing a path it was not instructed to (H-1's *observed* behaviour) | the per-dispatch `_checkFile` above. This is the case that matters and it is the reason the check is per-dispatch rather than once per phase. |
+| (iii) | A non-conforming basename that §4.3 skipped but which collides with the derived path | the per-dispatch `_checkFile` above. §4.3's reported-skip line is what makes the collision diagnosable when it fires. |
+
+O-11 (TSPEC) must construct at least one of these for real; case (ii) is the one to construct,
+because it is the guard that keeps H-1 from destroying history again. This FSPEC's contribution is
+that the guard is **detectable without a real overwrite occurring**: the assertion is over the
+refusal record, and the file's bytes are unchanged, so a test can assert both.
+
+### 4.6 Concrete paths in prompts (AC-1.3, AC-1.5)
+
+Every `{DOC-TYPE}` placeholder is substituted by the script before the prompt leaves it. At HEAD
+`0655387` three literals emit the placeholder verbatim, all inside prompt builders:
+
+- `reviewerPrompt`'s `priorFile` — the role-known branch
+  `` `docs/${feature}/CROSS-REVIEW-${role}-{DOC-TYPE}-v${prev}.md (your reviewer role is "${role}"; …)` ``
+  and the role-unknown branch `` `…docs/${feature}/CROSS-REVIEW-{role}-{DOC-TYPE}-v${prev}.md — …` ``;
+- `optimizerPrompt`'s per-role path map
+  `` .map((role) => `docs/${feature}/CROSS-REVIEW-${role}-{DOC-TYPE}-v${iteration}.md`) ``.
+
+After this change:
+
+| Requirement | Behaviour |
+|---|---|
+| AC-1.3 | The doc-type token is passed into both prompt builders and substituted. **No unsubstituted placeholder may reach an agent's prompt** — including the role-unknown branch, which must not emit a `{role}` placeholder either: with an unknown reviewer skill it degrades to a *glob describing the doc-type* (`CROSS-REVIEW-*-REQ-v{prev}.md`) rather than to a template. |
+| AC-1.5 | For a round index > 1, the back-reference names the file that **actually holds** the previous round for that role and doc-type — taken from the §3.5 listing, not computed as `iteration - 1`. On a resumed loop starting at 14, round 14's back-reference is the highest conforming index below 14 that exists **for that role**, which after a role-asymmetric history (§5.3) may be far below 13. When a role has no prior file at all, the back-reference is omitted and the prompt says so, rather than naming a file that does not exist. |
+| AC-1.2 | Both reviewers of a round, and the author prompt that follows, receive the same round index — guaranteed structurally by the one-listing-per-phase-entry rule of §3.5. |
+
 ## 5. FSPEC-ROUND-01 — Same-round dual approval and the role-asymmetric branch
 
 ## 6. FSPEC-VERDICT-01 — The persisted verdict record
