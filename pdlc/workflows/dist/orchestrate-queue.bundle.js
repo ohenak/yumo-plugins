@@ -252,6 +252,48 @@ const CI_COMPLETION_TIMEOUT_MS = 30 * 60 * 1000; // 30 min — overall cap once 
 // depth EXCEPT the Phase I implementation batches, which run on Sonnet for
 // throughput/cost. Passed to the runtime via the agent() opts.model field.
 const MODEL_DEFAULT = "opus"; // all phases except Phase I
+
+// ── TSPEC §4.8 — review-loop / authoring budgets ───────────────────────────────
+// Module-level, not main() parameters: they are policy, not capability, and the
+// workflow runtime's bundle has no configuration channel to override them from.
+// They are deliberately NOT exported — an export widens the bundle's published
+// surface for no caller. Tests reach them through observable behaviour (round
+// windows, dispatch counts), the same discipline DOD_MAX_ITERATIONS lives under.
+
+// TSPEC-ROUNDS-01: per-invocation review-round budget (AC-1.6a). NOT an absolute
+// round index — the gate and the reported counts derive from this plus the
+// branch-derived starting index.
+const MAX_REVIEW_ROUNDS = 5;
+
+const MAX_AUTHORING_ATTEMPTS = 3; // consecutive no-progress dispatches, per episode
+const MAX_AUTHORING_DISPATCHES = 6; // total dispatches, per episode
+const MAX_AUTHORING_WRITE_BYTES = 12000; // per-tool-call emission ceiling stated to authors
+
+// ── TSPEC §4.1 — the four closed failure catalogues (DC-01) ────────────────────
+// Frozen so a test can enumerate them and a switch can be checked exhaustive.
+// §4.2: `dir_missing` is the sole benign ListFailure; the other three mean
+// "cannot judge" and halt.
+const LIST_FAILURES = Object.freeze([
+  "dir_missing",
+  "not_a_directory",
+  "unreadable",
+  "bad_argument",
+]);
+const FILENAME_FAILURES = Object.freeze([
+  "not_cross_review",
+  "bad_role",
+  "bad_doc_type",
+  "bad_round",
+  "trailing_junk",
+]);
+const HASH_FAILURES = Object.freeze(["absent", "duplicated", "unparseable"]);
+const TRAILER_FAILURES = Object.freeze([
+  "declared_incomplete",
+  "absent",
+  "duplicated",
+  "unparseable",
+]);
+
 const MODEL_IMPLEMENTATION = "sonnet"; // Phase I se-implement batches only
 
 // TSPEC-SCRIPT-03: Exported meta object
