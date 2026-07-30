@@ -9,7 +9,7 @@ depends-on: []
 | Field | Value |
 |---|---|
 | Upstream | `docs/pdlc-workflow-distribution/POSTMORTEM-R-pdlc-workflow-distribution.md` (v2.1) findings R-3, R-4; operator observation of the 2026-07-28 Phase F run |
-| Downstream | `FSPEC-pdlc-review-loop-hardening.md`; unblocks `docs/_queue/QUEUE.md` row 1 (`pdlc-workflow-distribution`) |
+| Downstream | `FSPEC-pdlc-review-loop-hardening.md`; de-risks every remaining `docs/_queue/QUEUE.md` row (this row is `Order 0`, called row 8 before 2026-07-29) |
 | Queue row | 8 (`blocked` — a human sets it `pending` to admit it to the pipeline) |
 | Targets | `pdlc/workflows/orchestrate-dev.js`, `pdlc/workflows/orchestrate-queue.js`, `pdlc/skills/orchestrate-dev/SKILL.md`, `pdlc/skills/orchestrate-queue/SKILL.md`, the three author SKILLs; runtime bundles rebuilt in the same commit |
 
@@ -139,9 +139,16 @@ revision* verdict reopening a settled question.
 | **Reviewer / author agents** | Instructed to write review files at indices that would destroy existing history; correctness depends on the agent noticing. | Instructed with an index derived from the branch, and refused if it would overwrite. |
 | **Downstream queue features (rows 1–7)** | Every one of them runs through this harness and inherits all four defects. | Run on a harness whose failure modes are terminal, resumable, and legible. |
 
-**Priority.** This row should be authored and landed **before row 1 is un-halted**. Row 1 is the
-feature that keeps hitting these defects; running it again on the current harness is the experiment
-that has now failed three times.
+**Priority.** *Restated 2026-07-29 — the original premise was falsified, and the conclusion held.* This
+paragraph read "land before row 1 is un-halted … running it again on the current harness is the
+experiment that has now failed three times". Row 1 (`pdlc-workflow-distribution`) was in fact run again
+on the unfixed harness and **completed** — merged as `1fb6cbe` — so it is no longer the motivating case.
+That run is corroboration, not refutation: it cost 16 REQ rounds against a 5-round policy, ~10 of them
+producing no product-level change, and its harvest re-derived H-1 and H-2 independently from the
+evidence (`LEARNINGS-pdlc-workflow-distribution.md` §1a–§1b). The priority is therefore **higher**, not
+lower, and now rests on rows 2–7 rather than on row 1: every one of them runs through this harness and
+inherits all four defects. This row was set `pending` and moved to `Order 0` on 2026-07-29, ahead of
+`pdlc-merge-phase`.
 
 ## 3. Acceptance criteria
 

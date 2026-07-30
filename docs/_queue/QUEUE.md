@@ -9,8 +9,17 @@ frontmatter is the pickup gate; the `Status` cell tracks lifecycle.
 > **This queue is the pipeline's own queue.** Every feature here modifies the pipeline that
 > executes it. See §Bootstrapping below — this queue has one constraint no consumer queue has.
 
+> **Row 0 was row 8 until 2026-07-29.** `pdlc-review-loop-hardening` was reprioritised to the front of
+> the queue and its `Order` changed `8 → 0`. The other rows were deliberately **not** renumbered:
+> ~25 references to "queue row 6", "row 7" and "row 8" exist across `CLAUDE.md`, `pdlc/README.md`, the
+> `orchestrate-queue` SKILL, `docs/_constraints/`, `docs/_decisions/` and six archived feature specs,
+> and shifting every number to move one row is precisely the document-drift failure mode DC-07 and
+> DC-12 were promoted about. **Documents written before 2026-07-29 call this row "row 8"** — that is the
+> same row. `Order` is the pickup key, not a stable identity.
+
 | Order | Status | Feature | REQ Path | Depends-On |
 |-------|--------|---------|----------|------------|
+| 0 | pending | pdlc-review-loop-hardening | docs/pdlc-review-loop-hardening/REQ-pdlc-review-loop-hardening.md | pdlc-workflow-distribution |
 | 1 | done | pdlc-workflow-distribution | docs/pdlc-workflow-distribution/REQ-pdlc-workflow-distribution.md | — |
 | 2 | pending | pdlc-merge-phase | docs/pdlc-merge-phase/REQ-pdlc-merge-phase.md | pdlc-workflow-distribution |
 | 3 | pending | pdlc-advisory-tier | docs/pdlc-advisory-tier/REQ-pdlc-advisory-tier.md | pdlc-merge-phase |
@@ -18,7 +27,6 @@ frontmatter is the pickup gate; the `Status` cell tracks lifecycle.
 | 5 | pending | pdlc-engineering-loop | docs/pdlc-engineering-loop/REQ-pdlc-engineering-loop.md | pdlc-workflow-distribution, pdlc-merge-phase, pdlc-advisory-tier, pdlc-consolidation-agent |
 | 6 | blocked | pdlc-install-mechanism | docs/pdlc-install-mechanism/REQ-pdlc-install-mechanism.md | pdlc-workflow-distribution |
 | 7 | blocked | pdlc-release-ci | docs/pdlc-release-ci/REQ-pdlc-release-ci.md | pdlc-workflow-distribution |
-| 8 | blocked | pdlc-review-loop-hardening | docs/pdlc-review-loop-hardening/REQ-pdlc-review-loop-hardening.md | pdlc-workflow-distribution |
 
 Row 6 is the successor binding for `pdlc-workflow-distribution` deferrals D-DIST-01, D-DIST-02,
 D-DIST-03 and D-DIST-05 (full `pdlc install`, loading workflows from the plugin path with no copy,
@@ -65,12 +73,11 @@ operator merged it as `1fb6cbe` (squash) and set this row `done`. Per §Bootstra
 always going to be an operator action — the PR touches `pdlc/workflows/**` and `pdlc/skills/**`, so it
 trips the self-modification convention and is never auto-merged.
 
-**Row 2 `pdlc-merge-phase` is now the next entry the queue will pick up** — it is `pending`, and
-`pdlc-workflow-distribution` was its only dependency. Every other row that names this feature stays
-unpickable for its own reason: rows 4 and 5 have further unmet dependencies (`pdlc-advisory-tier`, and
-for row 5 all of 2–4); rows 6 and 7 are `blocked` with no REQ authored; row 8 is `blocked` although its
-REQ **is** authored and `ready: true` — a human setting that row `pending` is the only thing standing
-between it and pickup — and the row 8 notes below argue it should land before row 2.
+Row 1's completion satisfied the only dependency of rows 0 and 2, both of which are `pending` with
+`ready: true` REQs. **Row 0 `pdlc-review-loop-hardening` is the next pickup**, ahead of row 2 — see the
+row 0 notes below for why. Every other row that names this feature stays unpickable for its own reason:
+rows 4 and 5 have further unmet dependencies (`pdlc-advisory-tier`, and for row 5 all of 2–4); rows 6
+and 7 are `blocked` with no REQ authored.
 
 Two items were left open at close rather than resolved:
 
@@ -79,7 +86,7 @@ Two items were left open at close rather than resolved:
   demonstrably works. This is the live instance of `docs/_constraints/DOMAIN-CONSTRAINTS.md` DC-07
   ("work that skips a pipeline phase inherits zero review coverage"), promoted 2026-07-29.
 - **The eleven skill-prompt proposals** in `docs/_decisions/CONSOLIDATION-PROPOSAL-2026-07-29.md`,
-  from this feature's harvest and the first consolidation pass. P-2/P-3/P-4 overlap row 8 and should
+  from this feature's harvest and the first consolidation pass. P-2/P-3/P-4 overlap row 0 and should
   be applied there rather than twice; P-1 is the one with the largest measured cost behind it.
 
 Row 1 was previously `halted` twice, for two different reasons — both now resolved history, not the
@@ -94,14 +101,15 @@ the next run converged in four rounds (v14→v17) with blocking findings descend
 approval** — SE `e1a627f`, TE `a82365e`, both *Approved with minor changes*.
 
 The second halt was Phase F, and it was infrastructure, not content: six `pm-author` attempts were
-each killed by the runtime stall watchdog mid-`Write`, producing no FSPEC (row 8, H-3). Re-entering
-at the time would also have re-run all four approved Phase-R rounds (row 8, H-4). Row 8's harness
-fixes remain the recommended precondition for further Phase F attempts on this row, whether or not
-it has already resumed.
+each killed by the runtime stall watchdog mid-`Write`, producing no FSPEC (row 0, H-3). Re-entering
+at the time would also have re-run all four approved Phase-R rounds (row 0, H-4). Those harness fixes
+were the recommended precondition for further Phase F attempts here; row 1 in fact completed without
+them, which is why row 0 now runs first — the next feature should not have to.
 
-Row 8 binds four harness defects — the two from post-mortem R-3/R-4 plus two found during the
-2026-07-28 run. Its REQ **is authored** (v1.0, `ready: true`); the row stays `blocked` until a human
-sets it `pending`, which is the only thing standing between it and pickup.
+Row 0 (**called row 8 in every document written before 2026-07-29**) binds four harness defects — the
+two from post-mortem R-3/R-4 plus two found during the 2026-07-28 run. Its REQ **is authored** (v1.0,
+`ready: true`), and on 2026-07-29 the operator set the row `pending` and moved it to `Order 0`, making
+it the queue's next pickup ahead of `pdlc-merge-phase`.
 
 - **H-1 (R-3)** — the review loop dispatched a wrong iteration index eleven consecutive rounds. It
   must derive the index from the highest `CROSS-REVIEW-{role}-{doc}-v{N}` on the branch and refuse
@@ -124,17 +132,36 @@ sets it `pending`, which is the only thing standing between it and pickup.
 Targets: `pdlc/workflows/orchestrate-dev.js`, `pdlc/workflows/orchestrate-queue.js`, both
 orchestrator SKILLs and the three author SKILLs; bundles rebuilt in the same commit.
 
-**Updated 2026-07-29:** this row's original recommendation was "land before row 1's next Phase F
-attempt", which is now moot — row 1 completed and is `done`. The recommendation still holds, retargeted:
-**land this row before row 2.** Three of the four full runs on row 1's branch died to harness defects
-rather than to the work, and row 1's own harvest independently re-derived H-1 and H-2 from 16 REQ
-rounds of evidence (see `CONSOLIDATION-PROPOSAL-2026-07-29.md` P-2/P-3/P-4, which overlap this row and
-should be applied here rather than twice). Nothing about those defects was specific to row 1.
+**Updated 2026-07-29 — why this row is now Order 0.** Its original recommendation was "land before row
+1's next Phase F attempt", which stopped naming a real event when row 1 completed. The recommendation
+was not merely moot, it was under-stated, and the operator acted on the stronger form: this row runs
+**before row 2 and before everything else**. The case, in the order the evidence accumulated:
+
+- **Three of the four full runs on row 1's branch died to harness defects rather than to the work.**
+  Nothing about those defects was specific to row 1 — they are properties of `reviewLoop` and of the
+  non-convergence exit, so every remaining row in this queue is exposed to them.
+- **Row 1's harvest re-derived H-1 and H-2 independently**, from 16 REQ rounds of evidence, without
+  reference to this row. H-1's cost is measured: the wrong iteration index was dispatched for **15
+  consecutive rounds**, both reviewers detected the skew every round and refused, and had any complied,
+  committed review history would have been destroyed. H-2's cost is five wasted rounds — a post-mortem
+  was written, no skill read it, and the queue re-picked the feature because the row was never set
+  `halted`.
+- **`CONSOLIDATION-PROPOSAL-2026-07-29.md` P-2/P-3/P-4 overlap this row.** Apply them here rather than
+  twice; P-4 (H-3/H-4) is the one that makes a long authoring phase survivable at all.
+- The self-referential argument is the decisive one: this row fixes the machinery that runs every other
+  row. Landing it first means rows 2–7 are executed by a harness whose iteration bookkeeping is correct
+  and whose escalation path is not a no-op. Landing it later means paying H-1 through H-4 again on each
+  of them, and this queue has already paid them four times.
 
 ## Priority rationale (2026-07-27 — closing the engineering loop)
 
 Master plan: `docs/design/MASTER-PLAN-engineering-loop.md` (four breaks, DEC-E1..E5, the
 residual operator surface, OQ-E1..E4).
+
+**Row 0 before all of them (added 2026-07-29).** The rationale below was written when this queue held
+five rows and the harness was assumed sound. It is not: row 1's run paid four separate harness defects,
+and row 0 fixes the machinery every row below is executed by. Its case is made at the row 0 notes above;
+the ordering argument among rows 1–5 is unchanged and follows.
 
 **Order 1 before order 2, despite order 2 being the more valuable feature.**
 `pdlc-merge-phase` is the largest single latency win — it is what lets an unattended `/loop`
@@ -157,7 +184,7 @@ consumes the advisory record that order 3 produces.
 acceptance criterion (AC-1.3, a dependent feature picked up with no human turn) is simply false
 without order 2.
 
-**Pickup state.** All five REQs are `ready: true`. Ordering is enforced by the `Depends-On`
+**Pickup state.** All six authored REQs — rows 0 through 5 — are `ready: true`. Ordering is enforced by the `Depends-On`
 column plus each REQ's `depends-on` and the Phase-0 readiness triage — a dependent is skipped
 until its dependency is merged and a human has set that row `done`.
 
