@@ -45,3 +45,86 @@ import { createHash } from "crypto";
 
 import main from "../orchestrate-dev.js";
 import { fakeFs, fakeListFiles } from "./helpers/seams.js";
+
+// ───────────────────────────── the fixture branch ─────────────────────────────
+
+/** The feature every fixture below sits on. */
+const FEATURE = "approval-feat";
+
+/** `docs/{feature}` — the one directory `_listFiles` is ever asked about. */
+const DOCS_DIR = `docs/${FEATURE}`;
+
+const REQ_PATH = `${DOCS_DIR}/REQ-${FEATURE}.md`;
+const FSPEC_PATH = `${DOCS_DIR}/FSPEC-${FEATURE}.md`;
+const TSPEC_PATH = `${DOCS_DIR}/TSPEC-${FEATURE}.md`;
+const PLAN_PATH = `${DOCS_DIR}/PLAN-${FEATURE}.md`;
+const PROPERTIES_PATH = `${DOCS_DIR}/PROPERTIES-${FEATURE}.md`;
+const LEARNINGS_PATH = `${DOCS_DIR}/LEARNINGS-${FEATURE}.md`;
+
+/**
+ * TSPEC §3.9's reviewer-skill → role-slug `MAP`, restated as the two role slugs
+ * Phase F's `PHASE_DISPATCH.F.reviewers` pair (`["se-review", "te-review"]`)
+ * resolves to. Restated rather than imported: `MAP` is module-private, and a test
+ * that imported it would agree with a wrong catalogue by construction.
+ */
+const SE_SLUG = "software-engineer";
+const TE_SLUG = "test-engineer";
+
+/** Phase F reviews the FSPEC, so every tier-1 fixture below is `-FSPEC-`. */
+const DOC_TYPE = "FSPEC";
+
+/**
+ * A tier-1 cross-review basename (TSPEC §5.2 G-1…G-4).
+ * @param {string} roleSlug
+ * @param {number} round  branch-absolute; `1` still gets its `-v1` suffix here,
+ *   because every fixture in this file is explicit about the round it claims.
+ * @returns {string}
+ */
+function crossReviewBasename(roleSlug, round) {
+  return `CROSS-REVIEW-${roleSlug}-${DOC_TYPE}-v${round}.md`;
+}
+
+/**
+ * The same file as a repo-relative path, which is the form `_readFile` sees.
+ * @param {string} roleSlug
+ * @param {number} round
+ * @returns {string}
+ */
+function crossReviewPath(roleSlug, round) {
+  return `${DOCS_DIR}/${crossReviewBasename(roleSlug, round)}`;
+}
+
+// ─────────────────────── §5.3's digest, recomputed locally ────────────────────
+
+/**
+ * TSPEC §5.3's `canonicaliseForDigest`: N-1 normalises CRLF/CR to LF, N-2 forces
+ * exactly one trailing newline.
+ *
+ * Restated here rather than imported. The production digest is deliberately
+ * unexported and hand-rolled (no `crypto`, no `TextEncoder`, C-2); this file needs
+ * only *a* value the production hash must agree with, and computing it with node's
+ * own SHA-256 makes the fixture an **independent** oracle instead of a tautology.
+ *
+ * @param {string} text
+ * @returns {string}
+ */
+function canonicaliseForDigest(text) {
+  const lf = String(text ?? "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  return lf.replace(/\n*$/, "\n");
+}
+
+/**
+ * TSPEC §5.3's `approvalHashOf` — `sha256:` plus 64 lowercase hex over the UTF-8
+ * bytes of the canonicalised text.
+ * @param {string} text
+ * @returns {string}
+ */
+function approvalHashOf(text) {
+  const hex = createHash("sha256")
+    .update(Buffer.from(canonicaliseForDigest(text), "utf8"))
+    .digest("hex");
+  return `sha256:${hex}`;
+}
+
+/** A syntactically valid anchor that is **not** any fixture document's digest. */
+const WRONG_HASH = `sha256:${"b".repeat(64)}`;
