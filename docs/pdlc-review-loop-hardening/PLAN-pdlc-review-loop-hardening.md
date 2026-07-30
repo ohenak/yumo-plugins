@@ -411,6 +411,70 @@ of these has misread the TSPEC:
 
 ## 7. Traceability — task → acceptance tests
 
+TSPEC §8.3 owns the **AT → jest file** map; this table carries that map into the tasks rather than
+re-deriving it, and adds the one thing §8.3 cannot know: which task turns each test green.
+
+The jest name for every id below is the `RLH-` form (§1.3).
+
+| Task | Acceptance tests it must satisfy | Level | Owning test file |
+|---|---|---|---|
+| RLH-03 | AT-65, AT-66; property: `scanLines` totality-and-partition | L1 | `scanLines.test.js` |
+| RLH-05 | AT-65, AT-66 go green | L1 | `scanLines.test.js` |
+| RLH-06 | AT-12 … AT-18; properties: `canonicaliseForDigest` idempotence, `sha256Hex` determinism-and-totality | L1 + L2 | `approvalHash.test.js` |
+| RLH-10 | AT-12, AT-13, AT-14, AT-17 go green (digest usability, one digest function, canonicalisation inside, rebase invariance) | L1 | `approvalHash.test.js` |
+| RLH-11 | AT-01 … AT-07, AT-63; properties: `parseReviewFilename` round-trip, `deriveRoundWindow` window-invariant | L1 | `roundDerivation.test.js` |
+| RLH-13 | AT-01 … AT-06, AT-63 go green | L1 | `roundDerivation.test.js` |
+| RLH-14 | AT-28, AT-29, **AT-01a**; property: `parseForcePhases` catalogue-closure | L1 + L2 | `forcePhases.test.js` |
+| RLH-15 | AT-29 goes green | L1 | `forcePhases.test.js` |
+| RLH-12 | AT-59, AT-60, AT-62; property: `isComplete` exact-required-set | L1 + L2 | `completeness.test.js` |
+| RLH-16 | AT-60, AT-62 go green; AT-15, AT-16, AT-18's staleness half | L1 | `completeness.test.js`, `approvalHash.test.js` |
+| RLH-17 | AT-64's `main()`-parameter-list half | L3 | `pipelineWiring.test.js` |
+| RLH-18 | AT-64's derived seam set includes the six new names | L3 | `pipelineWiring.test.js` |
+| RLH-19 | AT-30 … AT-34 (queue half) | L1 + L2 | `orchestrateQueue.test.js` |
+| RLH-20 | AT-30 … AT-34 go green; AT-21's queue-row commit half | L2 | `orchestrateQueue.test.js`, `haltAndQueue.test.js` |
+| RLH-21 | AT-35 … AT-54, AT-58, AT-61, **AT-43a** | L2 | `pacingWrapper.test.js` |
+| RLH-22 | the review-loop signature and return-shape assertions | L2 | `reviewLoop.test.js` |
+| RLH-23 | AT-35 … AT-54, AT-58, AT-61, **AT-43a**, AT-59 all go green | L2 | `pacingWrapper.test.js`, `completeness.test.js` |
+| RLH-24 | AT-08 … AT-11, AT-56, AT-57 | L2 | `approvalSearch.test.js` |
+| RLH-25 | AT-21 … AT-27, AT-30 … AT-34, **AT-13a** | L2 | `haltAndQueue.test.js` |
+| RLH-26 | AT-07, AT-08 … AT-11, AT-15, AT-16, AT-18, AT-28, **AT-01a**, **AT-13a**, AT-56, AT-57 all go green | L2 | `roundDerivation`, `approvalSearch`, `approvalHash`, `forcePhases`, `haltAndQueue` |
+| RLH-27 | AT-21 … AT-27 go green | L2 | `haltAndQueue.test.js` |
+| RLH-28 | AT-55 | L2 | `reportTemplates.test.js` |
+| RLH-29 | the `buildFinalReport` field-list assertions in the four phase suites | L2 | `dodPhase`, `shipPhase`, `implPhase`, `harvestPhase` |
+| RLH-30 | AT-55, AT-61's report echo go green | L2 | `reportTemplates.test.js`, `pacingWrapper.test.js` |
+| RLH-31 | AT-19, AT-20, AT-64 | L3 | `runtimeBundle.test.js` |
+| RLH-32 | AT-19, AT-64 go green; AT-20 stays green | L3 | `runtimeBundle.test.js` |
+| RLH-33 | AT-20 stays green with the new manifest version | L3 | `runtimeBundle.test.js` |
+
+### 7.1 The three TSPEC-local ATs — where they live and what reds them
+
+These three exist because the invariants they guard are stated in the TSPEC rather than the FSPEC, and
+each was added after a specific wrong implementation shipped through review. They are the tests most
+worth reading the TSPEC prose for before writing.
+
+| AT | Owner task | Greened by | The implementation it must red on |
+|---|---|---|---|
+| **RLH-AT-01a** | RLH-14 | RLH-26 | the "a force skips steps 2–4" reading — which restores H-1 on the forced path. TSPEC §5.7 skips steps **3–4** only; step 2's round derivation always runs |
+| **RLH-AT-13a** | RLH-25 | RLH-26, RLH-27 | a gate placed ahead of step 1 (breaks FSPEC §12.4 example A) **or** reachable only from step 4 (breaks AC-2.3b example B). Both worked examples are driven verbatim as fixtures for exactly this reason |
+| **RLH-AT-43a** | RLH-21 | RLH-23 | (a) any implementation deciding mode from a pre-loop snapshot — `present` stays empty for the phase, round 2's optimizer goes greenfield, needs no trailer, and carries round 1's key: **both** conjuncts red. (b) both prior wrong shapes: the one that read a kept `{}` as a successful observation, and the one that returned `present: null` and continued as a revision episode. Neither halts; the correct implementation halts |
+
+### 7.2 Property tests — one per parameterisable component
+
+TSPEC §8.2 owns the seven property statements and their generated-input descriptions. Two of them were
+**restated** because the weaker forms were satisfied by the very defects they existed to catch — do not
+reintroduce the weaker form:
+
+- `deriveRoundWindow`'s partition is stated over **`parseReviewFilename`'s total three-way split**
+  (`entries` / other-doc-type / `skipped`), not over `deriveRoundWindow`'s return. "`skipped` ∪ entries
+  partitions the input" is **false** on a correct implementation, and the generator produces the
+  falsifying case on nearly every run.
+- `isComplete`'s property is the **exact required set, falsifiable in both directions**, not
+  monotonicity. Monotonicity is satisfied by a matcher recognising no required heading at all.
+
+Each property file declares its own literal seed and passes it through `resolveSeed`. Reproduction is
+by **replay, not by index** — print the seed, reproduce case *n* by replaying draws 1…*n*. `shrink` is
+for the failure report, never the pass path.
+
 ## 8. Traceability — FSPEC obligations and defects
 
 ## 9. The C-2 runtime gate
