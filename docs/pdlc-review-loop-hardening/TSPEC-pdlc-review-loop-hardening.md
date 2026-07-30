@@ -732,6 +732,427 @@ a constant that looks enforced but is not is worse than one known to be advisory
 
 ## 5. Algorithms
 
+### 5.0 `scanLines(text, visit)` — the one fenced-region-aware scanner
+
+FSPEC §1.2 rule 5 governs **every** mechanical scan this feature performs over a markdown artifact.
+It is specified here **once**, as a function, and every scanner calls it. There is no per-site fence
+handling anywhere in this design.
+
+```js
+export function scanLines(text, visit) {
+  const lines = String(text ?? "").split("\n");
+  let fenceChar = null;      // "`" | "~" | null
+  let fenceLen = 0;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const m = /^\s*(`{3,}|~{3,})/.exec(line);
+    if (fenceChar === null) {
+      if (m) { fenceChar = m[1][0]; fenceLen = m[1].length; }   // opener: line is not visited
+      else visit(line, i);
+    } else if (m && m[1][0] === fenceChar && m[1].length >= fenceLen) {
+      fenceChar = null; fenceLen = 0;                            // closer: line is not visited
+    }
+    // inside a fence, and the fence lines themselves, are never visited
+  }
+}
+```
+
+Three properties the callers depend on:
+
+1. **A closer must use the same fence character and a run at least as long as the opener.** Every
+   other fence-looking line is content. A three-backtick line inside a four-backtick block does not
+   close it — which is exactly the case that arises when a reviewer quotes a fenced template.
+2. **An unclosed fence swallows the remainder of the file.** This is fail-closed in the correct
+   direction: a truncated artifact yields fewer matches, so a phase runs rather than being skipped.
+3. **The exclusion governs which lines may *match a scanned pattern*. It does not empty a section's
+   body.** §5.9's non-empty-body test counts a fenced block **as** body content. This clause exists
+   because widening the exclusion over §16.2 produced a false-halt regression (FSPEC v1.4): a section
+   whose entire body is a code fence is a correct document, and emptying it halts the phase.
+
+**Callers** (the illustrative, non-closed list of rule 5): the trailing-`## Verdict` locator and its
+duplicate pre-count (§5.1); the `APPROVAL-HASH:` scan and pre-count (§5.3); the tier-1 and tier-2
+hash reads (§5.4); the completeness heading scan across all four artifact classes (§5.9); the heading
+walk that feeds the resume prompt (§5.6); the `RESOLVED:` scan (§5.8); the `Scope:` field check; and
+the `REVISION-COMPLETE:` trailer scan (§5.6).
+
+### 5.1 Verdict extraction from a file
+
+The reviewer writes the verdict as the file's **last section**:
+
+```markdown
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 3}
+```
+
+Reading it is three steps, and reuses `parseVerdict` unmodified.
+
+1. **Locate the trailing section.** `scanLines` over the whole file; record the index of the **last**
+   visited line matching `/^\s*##\s+Verdict\s*$/`. The section is that line to EOF. A `## Verdict`
+   heading inside a fence is not visited, so it can neither become the boundary nor contribute a
+   `VERDICT:` line. No such heading ⇒ the section is empty ⇒ "no `VERDICT:` line" ⇒ **phase runs**.
+2. **Duplicate pre-count.** `scanLines` over the section; count lines whose trimmed form starts with
+   `VERDICT: `. More than one ⇒ fail closed, no approval. This pre-count is the one thing the
+   response path does not need — a response has one trailer by construction, a file can accumulate.
+3. **`parseVerdict(section, roleSlug)`**, unchanged. It is already total over `null`, empty,
+   missing-trailer, non-catalogue value, absent JSON (its
+   `if (nextNonEmpty === null) return { verdict: rawVerdict, high: 0, medium: 0, low: 0 };` branch),
+   unparseable JSON, wrong-keys JSON and negative counts, and it already signals unparseability
+   distinguishably via `malformed: true`. Feeding it file text instead of a response string requires
+   no change to it whatsoever.
+
+**Why the scan is scoped to the trailing section and not the whole file.** "Exactly one `VERDICT:`
+line in the file" misclassifies any cross-review that *quotes* the grammar — including a review of
+this very TSPEC, whose §4.4 fenced block contains a literal `VERDICT: Approved with minor changes`.
+The mechanism would defeat itself on the reviews of its own feature.
+
+Approval requires `isPass(verdict)` — the shipped
+`return verdict === "Approved" || verdict === "Approved with minor changes";`. Reusing it, rather
+than re-deriving a pass set, is what makes the skip neither stricter nor looser than the gate that
+produced the approval in the first place (AC-4.3).
+
+### 5.2 Filename grammar and round-index derivation — the H-1 fix
+
+**The grammar** (FSPEC §4.1), applied to a basename:
+
+```js
+const CROSS_REVIEW_RE =
+  /^CROSS-REVIEW-(?<role>[a-z]+(?:-[a-z]+)*)-(?<docType>[A-Z][A-Z_]*)(?:-v(?<n>[1-9][0-9]*))?\.md$/;
+```
+
+Four rules the regex encodes, each a rejection this design depends on:
+
+| Rule | Encoded by | Rejects |
+|---|---|---|
+| G-1 (case) | `[a-z]` for role, `[A-Z]` for doc type | `CROSS-REVIEW-Software-Engineer-FSPEC.md` |
+| G-2 (closed role catalogue) | validated **after** the regex against `reviewerRoleSlug`'s `MAP` values, not baked into the pattern | `CROSS-REVIEW-architect-FSPEC.md` ⇒ `bad_role` |
+| G-3 (no leading zeros) | `[1-9][0-9]*` | `-v01`, `-v0` |
+| G-4 (no other optional part) | `$` immediately after `\.md` | `CROSS-REVIEW-se-FSPEC-v2.backup.md` ⇒ `trailing_junk` |
+
+**The un-suffixed form is round 1.** `CROSS-REVIEW-software-engineer-FSPEC.md` and
+`CROSS-REVIEW-software-engineer-FSPEC-v1.md` denote the same round. This is not a convenience: the
+un-suffixed form is what every pre-existing branch in this repo carries, and treating it as "no
+round" would make every historical approval invisible.
+
+`parseReviewFilename` validates the role against `MAP`'s values and the doc type against the closed
+catalogue `REQ | FSPEC | TSPEC | PLAN | PROPERTIES | DECISIONS`, returning
+`{ ok: false, reason }` over `FILENAME_FAILURES` otherwise. It is total: any string in, a tagged
+union out, never a throw.
+
+**`deriveRoundWindow(basenames, docType)`:**
+
+```
+1.  entries ← basenames.map(parseReviewFilename).filter(r => r.ok && r.docType === docType)
+2.  present ← Map<role, number[]>            // per-role round indices, deduplicated
+3.  indices ← every round index in `present`
+4.  startIndex ← indices.length ? Math.max(...indices) + 1 : 1
+5.  per-role malformed-duplicate check: a role that has BOTH the un-suffixed form and an
+    explicit `-v1` for the same doc type has two files claiming round 1
+        ⇒ { ok: false, reason: "malformed_round_one_duplicate", role }   ⇒ halt
+6.  endIndex ← startIndex + MAX_REVIEW_ROUNDS - 1
+```
+
+Step 4 is the H-1 fix in one line. Today `reviewLoop`'s `iteration = 1` default is never overridden
+by any of its seven call sites, so round 2 writes `-v1` again and destroys round 1. After this
+change, every call site passes `startIndex`.
+
+Step 5 halts rather than guessing. The two files may carry different verdicts; picking either is a
+coin flip on whether a phase is skipped, and picking "the newer" would import a filesystem timestamp
+into a decision that is otherwise purely content-addressed.
+
+**Step 6 is why `MAX_REVIEW_ROUNDS` is not substituted naively at all five `5` sites.** The constant
+is a **per-invocation budget**, not an absolute index (AC-1.6a). On a branch whose highest existing
+round is 3, a re-entered phase starts at 4 and gets rounds 4–8 — five rounds, not two. The gate
+`if (iteration > 5)` therefore becomes `if (iteration > endIndex)`, and `checkConverged`'s message
+names `rounds ${startIndex}..${endIndex}`; only the two sites that report a *count* rather than an
+*index* (`Iterations (${MAX_REVIEW_ROUNDS} — limit reached)` and
+`iterations: MAX_REVIEW_ROUNDS`) use the constant alone. Substituting naively at all five is the same
+class of defect as H-1 itself.
+
+**Concrete paths in prompts.** `reviewerPrompt` and `optimizerPrompt` today emit the literal
+`{DOC-TYPE}`, including inside
+`` `docs/${feature}/CROSS-REVIEW-${role}-{DOC-TYPE}-v${iteration}.md` ``. Substituting the real doc
+type is required for the grammar above to ever match what the reviewer writes. The general rule this
+establishes: **no un-substituted `{…}` template reaches a prompt or a report.**
+
+### 5.3 The content digest — inlined, pure, no seam
+
+```js
+export function canonicaliseForDigest(text) {
+  const lf = String(text ?? "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");  // N-1
+  return lf.replace(/\n*$/, "\n");                                            // N-2
+}
+```
+
+N-1 normalises line endings; N-2 forces **exactly one** trailing newline. Both are applied **inside**
+`sha256Hex`, never by the caller, so no call site can accidentally digest un-canonicalised bytes —
+the class of defect where two call sites disagree and every approval reads `STALE`.
+
+`utf8Bytes(text)` hand-rolls UTF-8 from `codePointAt`, handling surrogate pairs, because C-2's
+runtime has no `TextEncoder`. `sha256Hex(text)` is a standard SHA-256 over those bytes using `Math`,
+`>>>`, `|`, `^` and `Number` only — no `BigInt` dependence, no `crypto`. It returns 64 lowercase hex
+characters. `approvalHashOf(text)` prefixes `sha256:`.
+
+**Why no seam:** §3.7. The short form is that a seam buys a capability, and this needs none — it is
+deterministic, synchronous, and pure once written, so a seam would add an awaitable boundary on the
+hot path of every approval comparison and would let a double return a hash production never computes.
+
+**Capture ordering** (FSPEC §7.4's t0…t6), which the implementation must follow exactly:
+
+```
+t0  await _readFile(docPath)              → bytes B     ← a NEW read, taken for this purpose
+t1  hash ← approvalHashOf(B)                            (pure, no IO)
+t2  sha  ← the commit the reviewed document is at       (via _git, or "unavailable")
+t3  reviewer dispatch(es) for this round                (each an AC-3.5-wrapped episode)
+t4  each cross-review file reaches TERMINAL             (§5.9)
+t5  await _appendFile(each, the two anchor lines)
+t6  commit the append
+```
+
+The append is the **script's own** write, strictly after t4, so it is not a member of any pacing
+measurement and cannot disturb the terminal decision that preceded it. The wrapper is not re-entered
+afterwards.
+
+**Idempotence pre-count.** Before appending, `scanLines` the file and count `APPROVAL-HASH:` lines
+outside fences; a non-zero count means this round was already anchored, and the append is skipped
+rather than duplicated. After appending, a verification read must find **exactly one**.
+
+**Failed append is an error, not a silent degradation, and not a halt.** If `_appendFile` rejects, or
+the verification read does not find exactly one `APPROVAL-HASH:` line, the script emits an
+operator-facing error naming the file and the failure, and **that round yields no approval**. The
+current run continues normally — the round's verdict is already known from the response trailer; what
+is lost is only the future skip, and §5.5's `UNEVALUABLE` branch will correctly run the phase on
+re-entry. **Recording an approval without its hash is forbidden.**
+
+**`REVIEWED-COMMIT` is corroboration, never load-bearing.** §5.5's comparison never reads it. This is
+what makes the mechanism rebase-proof: Phase DOD rebases `feat-{feature}` and rewrites every sha on
+the branch, and a comparison that read the sha would report every approval stale immediately
+afterwards. Content-addressing survives a rebase because content does. When the sha cannot be
+determined, the field is the literal `unavailable`.
+
+### 5.4 The approval search — the H-4 fix
+
+Runs once per skip-eligible phase entry, after `deriveRoundWindow` and before `reviewLoop`.
+
+```
+candidate ← startIndex - 1        // the single highest round present; 0 ⇒ no candidate ⇒ run
+if candidate < 1: run the phase
+
+TIER 1 — the candidate round's per-role CROSS-REVIEW files
+  for each reviewer role r in this phase's PHASE_DISPATCH entry's `reviewers` pair:
+      path ← docs/{feature}/CROSS-REVIEW-{r}-{DOCTYPE}[-v{candidate}].md
+      if present.get(r) does not contain candidate:  → NOT APPROVING (absent is not approving)
+      text ← await _readFile(path)
+      verdict ← §5.1 over text;  if !isPass(verdict) → NOT APPROVING
+      anchor  ← parseApprovalHash(text)
+  unanimity: every role in the pair must be approving AND every parsed anchor hash
+             must be identical → otherwise NOT APPROVING
+  if tier 1 produced any file at all: this is the record; do NOT consult tier 2
+
+TIER 2 — only when the candidate round has no cross-review file at all (post-harvest)
+  read `## 6. Approval Record` from docs/{feature}/LEARNINGS-{feature}.md
+  select the rows for (docType, candidate); apply the same unanimity and isPass rules
+```
+
+Four properties, each load-bearing:
+
+- **Single-highest-round candidate, no descending walk.** Only `startIndex - 1` may grant approval.
+  If the highest round was not approving, the phase runs — it is not rescued by an approval two
+  rounds ago, which would resurrect a verdict on a document that has since changed twice.
+- **A role's absent `-v{candidate}` is not approving.** Role-asymmetry (one reviewer wrote round 4,
+  the other did not) is a non-approval, not a partial approval.
+- **Tier selection is exclusive**, so there is no "both tiers disagree" merge to specify, and the read
+  fan-out is bounded at **two `_readFile` per phase entry** — one per role in the reviewer pair.
+- **No cross-tier completion.** One role from tier 1 plus one from tier 2 never combine.
+
+Then §5.5 runs. Approval alone never grants a skip; approval plus `FRESH` does.
+
+### 5.5 Staleness
+
+```js
+export function isStale(recordedHash, documentBytes) {
+  if (typeof recordedHash !== "string" || !/^sha256:[0-9a-f]{64}$/.test(recordedHash))
+    return "UNEVALUABLE";
+  return approvalHashOf(documentBytes) === recordedHash ? "FRESH" : "STALE";
+}
+```
+
+| Result | Cause | Effect |
+|---|---|---|
+| `FRESH` | the document's bytes now digest to the recorded hash | record `"⏭"`, skip the phase |
+| `STALE` | they do not | run the phase |
+| `UNEVALUABLE` | absent, duplicated or unparseable hash; or the document could not be read | run the phase, and note it in the report |
+
+Three rules with teeth:
+
+1. **Read at comparison time.** `documentBytes` comes from an `await _readFile(docPath)` performed at
+   the moment of comparison, not from any earlier read cached during the run. A cached read is how a
+   document edited between phases gets skipped as fresh.
+2. **No history walk, at either tier** (O-8, as narrowed at FSPEC v1.5). One hash-equality test. No
+   `git log` of the document, no reconstruction of past bytes, no descending scan.
+3. **Rebase invariance.** The comparison never reads `REVIEWED-COMMIT`. Phase DOD rebases
+   `feat-{feature}` before every PR, rewriting every sha on the branch; a sha- or timestamp-based test
+   would report every approval stale at that moment. Content-addressing is unaffected because content
+   is unaffected.
+
+Scope: phases `R`, `F`, `T`, `P`, `D` (see §10, Q-1 — `PR`/PROPERTIES is carried as an open
+question, not silently included).
+
+### 5.6 `dispatchAndVerify` — the H-3 fix
+
+One episode = one (artifactSet, phase, round, mode) tuple. The loop:
+
+```
+loop:
+  invocation += 1;  dispatches += 1
+  if dispatches > MAX_AUTHORING_DISPATCHES:
+      return { ok:false, reason:"dispatch_budget", detail:… }
+
+  before ← await _readFile(targetPath)              // bytes, or null
+  response ← await _agent(prompt built per the two kinds below, { model })
+
+  // ── TERMINAL FIRST ──
+  trailer ← parseRevisionComplete(response)
+  after   ← await _readFile(targetPath)
+  if trailer.complete && isComplete(class, docType, after).complete:
+      return { ok:true, response }
+
+  // ── THEN PROGRESS ──
+  if bytesDiffer(before, after):  noProgress ← 0
+  else:
+      noProgress += 1
+      if noProgress >= MAX_AUTHORING_ATTEMPTS:
+          return { ok:false, reason:"no_progress", detail:… }
+  prompt ← the resume form (below)
+```
+
+**Terminal-first-then-progress** is not an arbitrary order. An author whose final dispatch declared
+completion and whose last write happened to change no bytes (a re-emission of identical content) is
+**done**, and evaluating progress first would re-dispatch it, burning budget on a finished document.
+
+**The progress predicate is one mode-independent byte-change test over the working tree** (FSPEC
+§15.3): `before !== after`, where both are `_readFile` results with `null` for absent. It is
+deliberately not "the document grew", which would fail a legitimate deletion, and deliberately not a
+git-based diff, because uncommitted content is real content — **no git operation on the pacing path
+may discard uncommitted work.**
+
+**The two prompt kinds** (O-6):
+
+| Kind | When | Contains |
+|---|---|---|
+| **Fresh authoring** | `invocation === 1` and the target is absent or empty | the full authoring brief plus the pacing contract: emit at most `MAX_AUTHORING_WRITE_BYTES` per tool call, write the skeleton first, then one top-level section per write, commit after each, and end the response with `REVISION-COMPLETE: yes\|no` |
+| **Resume** | otherwise | the same pacing contract, plus retry-ness derived **from disk by the script** — the headings already present, and the **name of the first unwritten section**, computed by the script's own heading walk (§5.9), never asked of the agent |
+
+The script names the first unwritten section, with three definite cases: the file is absent (⇒ "start
+with the skeleton"); the skeleton exists but a required heading is missing (⇒ that heading); every
+required heading exists but one has an empty body (⇒ that heading's body). Deriving retry-ness from
+disk rather than from conversational memory is what makes the wrapper restartable after a stall kill
+— the case that motivated the whole feature.
+
+**Revision mode** uses the same wrapper with `mode: "revision"` and a continuation prompt naming the
+cross-review findings to address; its counters are separate because its `EpisodeKey` differs in
+`mode` (§4.5).
+
+**Budget exhaustion writes no POSTMORTEM.** Running out of dispatches is not non-convergence — it is
+the pacing wrapper refusing to keep paying. The phase halts with the wrapper's reason; §6.3's
+POSTMORTEM path belongs to `checkConverged` alone.
+
+**Commit cadence** (O-20): the author is instructed to commit after each top-level section, so an API
+failure loses at most one section. The **commit-diff proxy** — comparing the bytes added by each
+commit against `MAX_AUTHORING_WRITE_BYTES` — is the only available corroboration that the write
+ceiling was respected, and it is **advisory**: it is reported and never halts a run, because a
+legitimately large single section is indistinguishable from a violation at commit granularity.
+
+### 5.7 `parseForcePhases`
+
+```js
+export function parseForcePhases(raw) {
+  if (raw == null || String(raw).trim() === "") return { ok: true, phases: new Set() };
+  const tokens = String(raw).split(/[,\s]+/).filter(Boolean);
+  const valid = ["R", "F", "T", "P", "D"];
+  const bad = tokens.filter((t) => t !== "all" && !valid.includes(t));
+  if (bad.length) return { ok: false, badTokens: bad };
+  return { ok: true, phases: tokens.includes("all") ? new Set(valid) : new Set(tokens) };
+}
+```
+
+Total, case-sensitive, whitespace- and comma-tolerant. Absent and empty are the same thing: the empty
+set. An invalid token halts before any phase runs, with the operator-facing text ending
+`Valid: R, F, T, P, D, all.` — the token catalogue and the message are derived from the same array,
+so they cannot desynchronise.
+
+**Precedence.** `forcePhases` overrides a **recorded approval** (§5.4/§5.5 are skipped for a forced
+phase). It does **not** override a **recorded failure**: an unresolved POSTMORTEM (§5.8) refuses the
+phase even under force. Forcing is an operator saying "re-run this despite approval", not "ignore
+that this previously failed unresolved."
+
+`orchestrate-queue` gets no force surface at all. The queue is an unattended driver; forcing is an
+attended act, and O-5's direct-invocation path is where it belongs.
+
+### 5.8 POSTMORTEM resolution
+
+```js
+export function parseResolvedMarker(fileText)   // scanLines; `RESOLVED: yes|no`
+export function checkPostmortem({ phase, feature, _readFile })
+//   → { status: "none" }                       no POSTMORTEM file
+//   | { status: "resolved" }                    marker present and `yes`
+//   | { status: "unresolved", recommendation }  marker present and `no`, or absent/malformed
+```
+
+The marker is **positionally unconstrained** within the file — a `RESOLVED:` line anywhere outside a
+fenced region counts — and is **human-written only**. No agent and no script ever writes `yes`; a
+POSTMORTEM resolves when a person says it did.
+
+Absent or malformed marker ⇒ `unresolved`. Fail closed: a POSTMORTEM whose marker cannot be read is
+treated as an unaddressed failure, which costs an operator one edit, whereas the opposite default
+silently re-runs a phase that previously failed for an unfixed reason.
+
+`extractRecommendation(fileText)` takes the `## Recommendation` heading (located via `scanLines`) to
+the next top-level heading or EOF, truncated at 4,000 bytes with an explicit truncation notice. It
+feeds the halt message so the operator sees *what to do* without opening the file.
+
+### 5.9 Structural completeness
+
+```js
+export function isComplete(artifactClass, docType, fileText)
+```
+
+Four wrapped artifact classes:
+
+| Class | Criterion |
+|---|---|
+| **spec documents** (REQ, FSPEC, TSPEC, PLAN, PROPERTIES, DECISIONS) | every top-level `##` heading has a non-empty body, **and** the class's required headings are all present |
+| **cross-review** | the trailing `## Verdict` section carries exactly one well-formed `VERDICT:` field — the field is the marker precisely because it is written last |
+| **code-review** | the `Scope:` field is present |
+| **LEARNINGS** | its own required headings; the approval record section is **excluded** from the criterion |
+
+Required headings per spec class (this document's own class is the TSPEC row):
+
+| Class | Required top-level headings (normalised title; numeric prefixes permitted) |
+|---|---|
+| REQ | Problem / Context, Goals, Non-Goals *(or Scope)*, Constraints, Acceptance Criteria, Risks, Obligations *(or Open Questions)* |
+| FSPEC | Overview *(or Scope)*, Linked Requirements, Behavioral Flow, Business Rules, Edge Cases and Error Scenarios, Acceptance Tests, Open Questions |
+| **TSPEC** | **Overview, Architecture *(or Design)*, Interfaces, Data Model *(or State)*, Test Strategy, Open Questions** |
+| PLAN | Overview, Batches *(or Tasks)*, Dependencies, Verification |
+| PROPERTIES | Overview, Properties, Oracles, Fixtures |
+| DECISIONS | Context, Options Considered, Decision, Consequences |
+
+Matching rules: case-insensitive, whitespace-normalised, a leading `N.` / `N)` numeric prefix ignored,
+parenthesised alternatives accepted as equivalent. Extra headings are permitted and counted in `T`.
+**Order is not required** — enforcing it would fail a legitimate reordering and adds nothing to the
+terminal question. A body consisting only of `TBD`, `TODO`, `_TBD_`, or an HTML comment counts as
+**empty**, or a skeleton written with placeholders would score complete on write 1.
+
+The report carries `T` (top-level headings present) and `S` (those with non-empty bodies), both
+measured rather than fixed, so a document richer than the minimum reports honestly.
+
+**Known, accepted shallowness** (FSPEC v1.5, SE-v5 F-20 / TE-v5 Q-01): a body consisting only of a
+fenced block containing `TBD` scores non-empty, because §5.0's exclusion deliberately does not empty a
+section body. A fence-aware placeholder test would reintroduce exactly the coupling that produced
+v1.4's false-halt regression. The criterion is shallow by design; §4.5's counters, not this test, are
+what bound a badly behaved episode.
+
 ## 6. Error Handling
 
 ## 7. Build and Distribution
