@@ -13,7 +13,7 @@ feature: pdlc-review-loop-hardening
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | **Draft** | Claude + operator | 1.1 | 2026-07-30 |
+| pdlc | **Draft** | Claude + operator | 1.2 | 2026-07-30 |
 
 > **Altitude.** The REQ states the observable behaviour, the FSPEC how it is produced and pins the
 > sixty-six acceptance tests, the TSPEC how it is built and proved with *examples*, the PLAN when each
@@ -23,6 +23,55 @@ feature: pdlc-review-loop-hardening
 > by section.
 
 ## 0. Changelog
+
+### v1.2 — round-2 cross-review feedback
+
+Reviewers: `CROSS-REVIEW-software-engineer-PROPERTIES-v2.md` (1 High, 3 Medium, 5 Low, `df12e7c`) and
+`CROSS-REVIEW-product-manager-PROPERTIES-v2.md` (0 High, 3 Medium, 1 Low, `8bb1127`). Both read in
+full. Both verified **all 24 round-1 findings resolved**, none reopened; nothing resolved in v1.1 is
+re-derived here. Upstream REQ v1.6 / FSPEC v1.8 / TSPEC v1.7 / PLAN v1.4 approved and **not** reopened.
+
+**The through-line of this revision: three findings were paraphrases of a rule whose owning section
+already stated it precisely. The fix in each case is a citation and a deletion, not a better
+paraphrase.** SE F-12 (ruling 2's forward half), SE F-19 (the lone-surrogate floor) and PM F-01 (the
+shrink no-op) are all that shape; §4.4, §5.2 and §3.1/§8.2 now cite PLAN §9.2 item 3(c), §4.1 and §2.3
+respectively and state nothing in their own words.
+
+**software-engineer v2**
+
+| ID | Sev | Disposition |
+|---|---|---|
+| F-12 | **High** | **Fixed by citation.** §4.4's `returned-promise` decision cell no longer says *"the returned value is awaited by the caller"* — a semantic claim about callers that the prescribed bracket-depth walk cannot decide and that D8's caller-less fragments cannot carry an expectation for. It now reproduces **PLAN §9.2 item 3(c)**'s local syntactic test (backward: nearest non-whitespace token is `=>`/`return`; forward: first non-whitespace token after the call's matching `)` at depth zero is `;` `,` `)` `}` or EOL; both halves; forward walk failing to reach depth zero ⇒ `unclassified`) and cites §9.2 item 3(c) as the owner. Both dependants repaired: §4.4's ≥10 backward-only floor is now generable and names §9.2's own `() => _agent(a) && other` shape, and §5.3's `PROP-AWAIT-01` (4th) row cites rather than restates. v1.1's phrasing is explicitly withdrawn in §4.4 |
+| F-13 | Medium | **Fixed against the tree.** Measured at HEAD: `reviewLoop` (`orchestrate-dev.js:531–543`) injects exactly `_agent`, `_parallel`, `_checkFile`; `recordPhase` is a `main()`-local callback (`:1574`) passed to `checkConverged` (`:496`), never to `reviewLoop`; site 4's prompt is built at `:567` and dispatched at `:570` as `await _agent(optimizer, postmortemPrompt)`. §4.3 and §6.5 now name the **`_agent` double's recorded prompt** for site 4 and `reviewLoop`'s **return value** for site 5, with the measurement stated and v1.1's claim withdrawn |
+| F-14 | Medium | **Fixed by copying `PROP-WINDOW-01`'s treatment.** `PROP-EPISODE-01`(i)'s tight equality now requires **both** (a) every episode in the segment saturated **and** (b) the segment's loop ran to **exhaustion** (`converged: false`). Measured cause: `:598` returns `iterations: MAX_REVIEW_ROUNDS` only on the non-converged branch, `:648` returns the actual round — so a saturated-but-early-converging segment gave `2B` against `3B`, a deterministic red on correct code at a forced floor. The ≥10 floor is restated to require exhaustion; segments satisfying (a) without (b) fall back to the inequality. SE Q-02 answered in the same conjunct: **`I` is read per segment**, one per phase entry |
+| F-15 | Medium | **Fixed without inventing a precedence.** Neither PLAN §9.2 nor TSPEC §8.5 orders rulings 2 and 3, so a hand-authored `expected` label on the deliberate both-rulings fragments would red a *correct* classifier on §7.3's no-permitted-red row. Those fragments are now generated **unlabelled** and carry a **cardinality** assertion: `classify` returns exactly one outcome and it is a member of `{returned-promise, awaited-combinator-argument}` — never both, never `unclassified`. Stated in §4.4, not §0. The missing precedence is **reported upward** as §8.5 item 5, naming TSPEC §8.5's rulings table as where it would belong. §5.3 gains a matching `PROP-AWAIT-01` (5th) mutation row (return both exemptions ⇒ cardinality dies). This answers SE Q-01 with "either — so the assertion is cardinality-only" |
+| F-16 | Low | **Fixed.** §4.3 now says plainly that `B` is **not** an independent observable — it is measured with the same dispatch doubles that produce conjunct (i)'s left-hand side, so a uniformly wrong cap is invisible — and that the equality's discriminating power is over **segment structure**, not the cap's value. Recorded in both operational form (§8.4 residual 5, extended) and spec form (§8.5 item **4**, the sentence §8.5 item 3 already owes `MAX_REVIEW_ROUNDS`) |
+| F-17 | Low | **Fixed by deletion.** `PROP-EPISODE-01`'s **Generator** paragraph said "vary all **five** `EpisodeKey` coordinates independently", contradicting the F-04 repair three paragraphs above and §8.5 item 2. It now varies the **four externally controllable** coordinates and states the withdrawal |
+| F-18 | Low | **Fixed to the measurement.** `__tests__/helpers/` holds **thirteen entries: twelve `.js` modules plus a `bin/` directory**. v1.0 said twelve modules, v1.1 over-corrected to thirteen modules. §6.1 states the measurement and notes the load-bearing claim (`testPathIgnorePatterns` excludes the directory) is unaffected by either figure |
+| F-19 | Low | **Fixed by citation.** §5.2's `PROP-DIGEST-02` (3rd) row said "the **≥10** lone-surrogate cases"; §4.1's **Non-vacuity** paragraph — the owning floor — says ≥5. The ledger row now **cites §4.1's floor** rather than restating a number, and names v1.1's contradiction |
+| F-20 ≡ PM F-04 | Low | **Fixed by deletion, both filings.** §1.3's *"The approved PLAN stays closed: a property that would need a genuinely new row is a defect in the property, and none here does"* is **withdrawn** — §7.1's own `Row` cell reads *own row*, and no existing §7.3 row carries (`pacingWrapper.test.js`, green batch 3, permitted red none). §1.3 now states the new row's **five cells** in a table and names RLH-21 as the task that adopts it; what stays closed is restated as the PLAN's *content* — no property needs a window §7.3's own derivation rule would not produce. §7.1's cell cross-references §1.3 |
+| Q-01 | — | Answered in §4.4 and §8.5 item 5: **either** is behaviourally right, so the floor is cardinality-only and the precedence is reported upward |
+| Q-02 | — | Answered in §4.3 conjunct (i): **per phase segment**, one `iterations` value per phase entry |
+| Q-03 | — | Carried unchanged from v1.0 by the reviewer's own note and **not filed as a finding**; `PROP-WINDOW-01`(i)'s call-count clause and `RLH-LOOP-03`'s grep oracle ownership are left as v1.1 stated them. Not silently altered |
+
+**product-manager v2**
+
+| ID | Sev | Disposition |
+|---|---|---|
+| F-01 | Medium | **Fixed by deletion, per R-5.** §3.1's `Used by` cell and §8.2's ladder row said the shipped `"bytes"` rung is "a no-op on every case they generate … their strings are shorter", naming all four properties. Measured: the DIGEST pair's domain is `n ∈ 0…512`, so roughly seven-eighths of that corpus is **above** `BYTES_FLOOR = 64` and does get a truncation rung. Both restatements are **deleted**, not qualified; §2.3's table is left as the sole owner of each property's disposition and is cited from both places |
+| F-02 | Medium | **Fixed against the approved TSPEC.** `PROP-HASH-01`'s *"two trailers resolve deterministically to the same one … §6.4 owns which"* conjunct is **withdrawn**: it contradicted TSPEC §4.1 (`HASH_FAILURES` includes `duplicated`) and §6.2 row 6 (`duplicated` ⇒ `{ok:false}` ⇒ `UNEVALUABLE`), so a forced ≥5 floor redded correct code; and the delegation was empty, §6.4 being the heading-fixture section. Restated: a document with two `APPROVAL-HASH:` lines outside fences returns `{ ok: false, reason: "duplicated" }`. **PM Q-02 answered**: the ≥5 floor **survives as a floor on the rejection shape** — it is what forces the named `reason`, which the hex-shape totality conjunct cannot reach |
+| F-03 | Medium | **Fixed by owning three classes and admitting the fourth.** §4.2's routing of absent / duplicated / unreadable to *"the seam, `PROP-APPROVE-01`"* is **withdrawn** — that property's conjuncts are tier discipline, window respect and idempotence, and its generator never produces those anchors. Replaced by an explicit owner table: `unparseable` → `PROP-STALE-01`(i); `duplicated` and `absent` → **`PROP-HASH-01`**, which gains a named-`reason`-in-`HASH_FAILURES` conjunct, two new generator shapes (two trailers / no trailer) and ≥5-case floors for each; **unreadable document → nobody**, recorded as §8.4 residual 6 with the DC-08 successor surface named (queue row Order 9, `pdlc-authoring-contract`). **PM Q-01 answered**: `PROP-APPROVE-01` does *not* acquire the conjunct — the two parser classes go where the parser property already lives, and only the genuine IO gap is deferred |
+| F-04 ≡ SE F-20 | Low | See SE F-20 above. Fixed once, in §1.3 and §7.1 |
+
+**Verification basis (DC-02).** Every restated signature, seam, constant and disposition was measured
+at branch HEAD before the sentence naming it was written: `reviewLoop`'s parameter list, `recordPhase`'s
+declaration and call site, both `reviewLoop` return sites, the postmortem dispatch, `__tests__/helpers/`
+and `fixtures/` listings, `BYTES_FLOOR`, TSPEC §4.1's `HASH_FAILURES`, TSPEC §6.2's dispositions, and
+PLAN §9.2 item 3(c) verbatim.
+
+**Nothing was declined.** All four Mediums and the High are fixed in the owning section; all six Lows
+are fixed. No upstream artifact was edited, no ledger row moved except the one §1.3 now states
+explicitly, and no property was restructured.
 
 ### v1.1 — round-1 cross-review feedback
 
