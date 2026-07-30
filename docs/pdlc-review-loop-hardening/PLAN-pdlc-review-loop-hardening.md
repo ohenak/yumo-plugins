@@ -1116,7 +1116,7 @@ it was meant to shape. Removed as questions; the pinned contract is recorded so 
 | # | Question | Decision |
 |---|---|---|
 | P-Q-01 | The **name** of §5.4's two-tier approval search | Non-exported, and **no test names it**. §11.5 `N-b` |
-| P-Q-02 | How `startIndex` / `endIndex` are **threaded** | Two sibling fields on `reviewLoop`'s existing options object. §11.5 `N-a`, oracle `RLH-LOOP-01` |
+| P-Q-02 | How `startIndex` / `endIndex` are **threaded** | Two channels, one per callee, both decided in §11.5 `N-a`: **`reviewLoop`** takes two sibling fields on its existing options object (oracle `RLH-LOOP-01`); **`checkConverged`** takes two additional **positional** arguments after `feature` (oracle `RLH-LOOP-02`, which reds on a swapped pair). `endIndex` is computed **once**, at the phase gate, by `RLH-26` |
 
 Both were decided in the PLAN rather than in a task because the test that encodes each one is written in
 batch 3 by a single owning task, and every task v1.0 nominated as the decider ran later (§11.5).
