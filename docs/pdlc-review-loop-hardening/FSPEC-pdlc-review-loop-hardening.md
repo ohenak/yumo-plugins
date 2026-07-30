@@ -1304,6 +1304,165 @@ only a human editing the artifact does.
 
 ## 12. FSPEC-PMORT-01 — POSTMORTEM resolution marker and Recommendation extraction
 
+**Linked requirements:** AC-2.2, AC-2.3, AC-2.3a, AC-2.3b, AC-2.4, AC-2.5. **Discharges O-3.**
+
+### 12.1 The artifact and its current defect
+
+`reviewLoop` in `orchestrate-dev.js` writes the POSTMORTEM by dispatching an agent whose prompt fixes
+the section list: `Include the required sections: Phase, Iterations (5 — limit reached), Reviewers,
+Pattern of Disagreement, Best-Guess Root Cause, Recommendation.` The path is
+`docs/{feature}/POSTMORTEM-{phase}-{feature}.md`.
+
+Two measured defects this section closes:
+
+1. **Nothing ever reads it back.** There is no re-entry check anywhere in the module, which is H-2: a
+   re-entered phase gets a fresh 5-iteration budget against the same unresolved disagreement.
+2. **The halt claims a write that may not have happened.** `reviewLoop`'s `postmortemFailed` branch logs
+   `WARNING: POSTMORTEM agent failed — artifact not written for phase ${phase}` and then
+   `return { converged: false, iterations: 5, lastResults };` — the failure flag is **not in the return
+   shape**, so the caller cannot distinguish the two cases. Separately, `checkConverged` builds
+   `const postmortemPath = \`docs/{feature}/POSTMORTEM-${phaseId}-{feature}.md\`;` with the literal
+   `{feature}` placeholder never substituted, and then never uses the variable — a dead template whose
+   halt message asserts "POSTMORTEM written." unconditionally.
+
+### 12.2 The resolution marker (AC-2.4)
+
+A POSTMORTEM is resolved by an explicit, operator-visible act **recorded in the artifact itself**. The
+marker is a line in the document:
+
+```
+RESOLVED: yes
+```
+
+| Aspect | Specification |
+|---|---|
+| Grammar | The literal `RESOLVED: ` at line start after trimming, followed by `yes` or `no`. Same grammar family as §6 and §8 (§2.3) — one shape, learned once. |
+| Location | Anywhere in the document. Not position-constrained, because a human writes it by hand and a position rule would make a correct resolution fail on a formatting slip. |
+| Uniqueness | Exactly one such line. Zero ⇒ unresolved. Two or more ⇒ **unresolved** (§12.3). |
+| Default | Absent ⇒ unresolved. The POSTMORTEM the pipeline writes contains **no** `RESOLVED:` line, so a freshly written POSTMORTEM is unresolved by construction — no separate initialisation step to forget. |
+| Who writes it | **Only a human.** Nothing in the pipeline writes, edits, or removes a `RESOLVED:` line. This is AC-2.4 verbatim: nothing in the pipeline resolves a POSTMORTEM on its own behalf. |
+| Recommended companion | The POSTMORTEM template gains a `## Resolution` section for the operator to record *what* they changed. Its **prose is not parsed** — only the `RESOLVED:` line is. Requiring parseable prose would be a C-5 violation and would make a good-faith resolution fail on wording. |
+
+**Why a marker in the artifact rather than deleting the file.** Deletion is indistinguishable from an
+accident, destroys the record of the disagreement, and is un-reviewable in a diff. A marker keeps the
+Pattern of Disagreement and Root Cause on the branch, where the next reviewer of that phase can read
+them, and shows up in `git diff` as an affirmative operator act.
+
+### 12.3 The gate: `checkPostmortem({ phase, feature })`
+
+Evaluated at **phase entry**, before the phase's authoring or review dispatches.
+
+| Disk state | Result | Effect |
+|---|---|---|
+| No `POSTMORTEM-{phase}-{feature}.md` | `{ present: false }` | Phase proceeds |
+| Present, exactly one `RESOLVED: yes` | `{ present: true, resolved: true }` | Phase proceeds. The report notes the resolved POSTMORTEM was seen. |
+| Present, no `RESOLVED:` line | `{ present: true, resolved: false, reason: "absent" }` | **Refusal** (§12.4) |
+| Present, exactly one `RESOLVED: no` | `{ present: true, resolved: false, reason: "declared_unresolved" }` | Refusal |
+| Present, two or more `RESOLVED:` lines | `{ present: true, resolved: false, reason: "duplicated" }` | Refusal — a contradictory document is not a resolution |
+| Present, one line with a value outside `{yes, no}` | `{ present: true, resolved: false, reason: "unparseable" }` | Refusal |
+| Present but unreadable — `_readFile` returns `null` | `{ present: true, resolved: false, reason: "unreadable" }` | Refusal. A POSTMORTEM whose existence is known but whose content cannot be read is treated as unresolved: the fail-closed direction. |
+
+Presence is established by `await _checkFile(path)`; content by `await _readFile(path)` — both awaited
+(C-2). `file_empty` from `_checkFile` counts as present-and-unreadable.
+
+**Scope is the pair (phase, feature) — AC-2.3a, carried through.** An unresolved
+`POSTMORTEM-R-{feature}.md` refuses re-entry to **Phase R only**. It does not refuse F, T, P, D or any
+later phase. What gates a downstream phase is the approval state of its upstream document (§5, §10, and
+the existing per-phase document gate), not the history of how that approval was reached. Making an
+R-postmortem block every later phase would convert R-2's deadlock risk from a recoverable state into a
+total stop; the trade-off is accepted and recorded as R-6.
+
+### 12.4 Precedence against the skip (AC-2.3b, carried through)
+
+**The AC-4 skip is evaluated first.** Ordering at phase entry:
+
+| Step | Test | Outcome |
+|---|---|---|
+| 1 | §5 + §10: is there a same-round approving pair whose hash is `FRESH`, and is the phase not in `forcePhases` (§11)? | If **yes** ⇒ the phase is **skipped** |
+| 2 | `checkPostmortem` | Only reached when the phase **would otherwise run** |
+
+Because AC-2.3's refusal is conditioned on "the phase would otherwise run", a skipped phase gives it
+nothing to refuse and the run proceeds. But the skip does **not** resolve anything:
+
+- **The skip report must name any unresolved POSTMORTEM for that (phase, feature).** So
+  `checkPostmortem` is still *evaluated* on the skip path — for reporting only, never to change the
+  outcome. Its result appears in the skip line as `; unresolved POSTMORTEM at {path}`.
+- Forcing (§11) removes the skip, which means step 2 is reached, which means a forced phase in this
+  state is **refused**. That is AC-4.6a, and §11.5 owns it.
+
+**The two reachable worked examples, carried through unchanged.**
+
+| Case | State | Outcome |
+|---|---|---|
+| **A — pre-harvest, skip fires** | Phase R converged, pipeline has not reached Phase H, so the `CROSS-REVIEW-{role}-REQ-v{N}.md` pair is still on the branch with same-round approving verdict fields; an unresolved `POSTMORTEM-R-{feature}.md` is also present | **Phase R is skipped**, the run continues to Phase F, and the report names **both** the approval and the still-open POSTMORTEM |
+| **B — harvested, skip does not fire** | `pdlc-workflow-distribution` at HEAD: `POSTMORTEM-R-pdlc-workflow-distribution.md` present, **zero** `CROSS-REVIEW-*` files (Phase H deleted all 62 — §4a A-7), and its LEARNINGS predates §9's approval record | The verdict is unreadable, AC-4.2a fails closed, Phase R **would run**, so AC-2.3 **refuses and halts**, reproducing the Recommendation. This is the correct outcome, not a defect. The operator's **sole** route is AC-2.4. |
+
+Case B is also why §11's force surface is not an escape here: forcing overrides recorded **approval**,
+of which there is none readable, so it would be a no-op even if AC-4.6a permitted it.
+
+### 12.5 Recommendation extraction
+
+The refusal reproduces the POSTMORTEM's `Recommendation` section verbatim.
+
+| Aspect | Specification |
+|---|---|
+| Anchor | The first heading at any level whose text, trimmed and case-insensitively compared, equals `Recommendation` (permitting a numeric prefix such as `## 6. Recommendation`) |
+| Extent | From the line after that heading to the line before the next heading **at the same or shallower depth**, or end of file |
+| Transform | Trailing and leading blank lines stripped. Otherwise verbatim — no summarisation, no re-wrapping, no agent in the path (C-5) |
+| Truncation | If the extracted text exceeds 4,000 bytes, the first 4,000 bytes are reproduced followed by `… [truncated; read {path}]`. A halt report is a report, not a document viewer, and an unbounded paste would bury the halt reason. |
+| Heading absent | The field is the literal `(no Recommendation section found in {path})`. **Still a refusal** — a malformed POSTMORTEM does not become resolvable by being malformed. |
+| Document unreadable | The field is `(POSTMORTEM unreadable at {path})`, and the refusal stands per §12.3 |
+
+The section name is not new: it is already one of the six sections `reviewLoop`'s POSTMORTEM prompt
+requires, so a POSTMORTEM the pipeline wrote will have it.
+
+### 12.6 Halt shapes and structured fields (AC-2.2, AC-2.5)
+
+`buildFinalReport({ feature, outcome, phases, artifactPaths, testSummary, harvestStatus, prUrl,
+ciStatus, haltReason })` gains three fields, so a consumer never has to parse the reason string:
+
+| Field | Value |
+|---|---|
+| `haltPhase` | The phase id, e.g. `"R"` |
+| `postmortemPath` | The resolved path with `{feature}` **substituted** — e.g. `docs/foo/POSTMORTEM-R-foo.md` — or `null` when no POSTMORTEM exists |
+| `postmortemStatus` | `"written"` \| `"write_failed"` \| `"unresolved"` \| `"none"` |
+| `queueRow` | §13/§14's field: `"halted"` \| `"none"` \| `"error"` |
+
+**AC-2.2's two write-time reasons must be distinguishable.** `reviewLoop`'s return shape is extended
+from `{ converged: false, iterations: 5, lastResults }` to carry `postmortemWritten: boolean` — the
+information the existing `postmortemFailed` local already holds but discards. The two halt reasons are
+then:
+
+| Condition | Reason string | `postmortemStatus` |
+|---|---|---|
+| POSTMORTEM agent succeeded and `_checkFile` confirms a non-empty file at the path | `Phase {P} did not converge after {MAX_REVIEW_ROUNDS} rounds{reviewerDetail}. Post-mortem written at {path}. Recover: resolve it per AC-2.4, then set the queue row back to pending.` | `"written"` |
+| POSTMORTEM agent threw, **or** `_checkFile` reports the file missing/empty | `Phase {P} did not converge after {MAX_REVIEW_ROUNDS} rounds{reviewerDetail}. Post-mortem write FAILED — no artifact at {path}.` | `"write_failed"` |
+
+Confirming with `_checkFile` rather than trusting the agent's return is deliberate: a write relayed
+through an `agent()` call (`rtWriteFile` replies `"ok"` when written) is exactly the narration §4a A-7
+shows to be unreliable, and AC-2.2's whole point is that the halt must not claim a write that did not
+happen.
+
+The **refusal** halt (§12.4) is a third, distinct shape:
+
+```
+Phase {P} refused: unresolved POSTMORTEM at {path} ({reason}).
+Recommendation:
+{extracted text}
+Next step (AC-2.4): record an explicit resolution in the artifact — add a line `RESOLVED: yes` and
+describe the resolution — then re-enter. If the queue row reads `halted`, set it back to `pending`
+and commit (AC-2.7a).
+```
+
+Both halt reports name the recovery act, so an operator reading only the report knows the route
+(AC-2.5, AC-2.7a).
+
+### 12.7 The dead `postmortemPath` template
+
+`checkConverged`'s `const postmortemPath = ...` never substitutes `{feature}` and is never read. It is
+replaced by a substituted, used value feeding `postmortemPath` in §12.6's report fields. §17 carries the
+anchored edit.
+
 ## 13. FSPEC-QUEUE-01 — Committing the halted queue row
 
 ## 14. FSPEC-ROWLOC-01 — Locating the queue row on a direct invocation
