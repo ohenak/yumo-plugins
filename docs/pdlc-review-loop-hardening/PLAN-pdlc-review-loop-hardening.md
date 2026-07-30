@@ -794,7 +794,16 @@ Three things about them this PLAN adds, because they are process statements TSPE
    already-in-set name (fixed-point, so `agentFn` enters via `rawAgentFn`); (c) for each call site of a
    scan-set name **not** lexically preceded by `await`, walk *backwards* from its offset maintaining a
    stack of unclosed `(` / `[` / `{` to find the enclosing context, and decide the three rulings from it —
-   returned promise (the nearest non-whitespace token before the call is `=>` or `return`), awaited
+   returned promise (**both halves of the ruling**, because TSPEC §8.5 exempts the call only when it is
+   the *entire* body of an arrow or the *entire* operand of a `return`: **backwards**, the nearest
+   non-whitespace token before the call is `=>` or `return`; **and forwards**, the first non-whitespace
+   token after the call's matching `)` — found by walking the same bracket-depth stack forward to depth
+   zero — is `;`, `,`, `)`, `}` or end of line. Both halves must hold. A backward-only test would exempt
+   `() => _agent(a) && other` and `return _checkFile(p) || fallback;`, which §8.5 exempts neither: the
+   promise is discarded and its rejection unhandled, i.e. the C-2 defect this assertion exists to catch,
+   and an exemption is silent, so nothing downstream would ever report it. If the forward walk cannot
+   reach a matching `)` at depth zero, the site is **unclassified** — it fails loudly, it is never
+   exempted by the backward half alone), awaited
    combinator argument (the innermost unclosed delimiter is `[`, its own enclosing unclosed delimiter is
    `(`, the callee before that `(` awaits every element per §8.5, and that callee is lexically preceded by
    `await`), alias (already discharged by (b)).
