@@ -522,6 +522,87 @@ they change no code. §10 is about how that half is verified.
 
 ## 9. The C-2 runtime gate
 
+C-2 is **a build-time gate, not a review note.** TSPEC §1.4 owns the constraint and §8.5 owns the two
+tests; this section states only which task makes them green and what an agent must not do to get there.
+
+### 9.1 The constraint, as a checklist a task can run
+
+A bundle may declare `export const meta` as its **first** statement and as a **pure literal**; it may
+declare no other `export`; it has no `import`, no `import()`, no `process`, no `fs`, no `fetch`, no
+`crypto`, no `TextEncoder`. Exactly **eleven** host globals exist: `agent`, `parallel`, `pipeline`,
+`phase`, `log`, `workflow`, `args`, `budget`, `console`, `setTimeout`, `clearTimeout`.
+
+Consequences every source task must honour, and none of them is negotiable at implementation time:
+
+- a new capability arrives **only** as an injected seam on `main()`'s destructured options object, with
+  a Node default so jest can exercise the module directly (RLH-18) and an adapter implementation for
+  the bundle (RLH-32). There is no second way;
+- `sha256Hex` is hand-rolled pure JS over a hand-rolled `utf8Bytes`, using `Math`, `>>>`, `|`, `^` and
+  `Number` only — no `BigInt`, no `crypto`, no `TextEncoder` (RLH-10). It is **not** a seam and takes no
+  injection;
+- no new dependency can help. C-2 forbids `import` in the bundle, so a dependency could not reach the
+  runtime at all.
+
+### 9.2 Await discipline — the defect this repo repeats
+
+> **Every call to an injected seam is `await`ed, without exception, including calls whose result is
+> discarded.**
+
+The adapter's seam implementations are `async`; the jest doubles are **synchronous**. A missing `await`
+therefore **passes every L1 and L2 test and fails only in the runtime**. TSPEC §8.1 calls RLH-AT-19
+"the only thing standing between this design and this repo's most repeated defect class".
+
+`refreshReviewState` (RLH-23) is **new IO on a hot path** — one `_listFiles` plus up to two `_readFile`
+at *every* episode entry — and is therefore the highest-risk site in the feature for this defect. Its
+task's exit criterion includes RLH-AT-19 passing over the amended source.
+
+Two call-site shapes RLH-AT-19 must classify explicitly, from TSPEC §8.5, **or the test reds on correct
+source**:
+
+| Shape | Ruling |
+|---|---|
+| **Alias** — the seam is destructured under a local name (`_readFile: readFileFn`) and called through it | resolve the alias from `main()`'s destructuring pattern and scan **the local name**. Scanning the `_` name alone finds zero call sites and **passes vacuously** — the worst possible failure for this test |
+| **Returned promise** — the call is the whole body of an arrow function or the operand of a `return` | **exempt, and the wrapper's own name inherits the obligation.** The wrapper is then scanned as an alias |
+
+And the trap RLH-AT-19 must **not** fall into: the assertion's name set is FSPEC AT-19's **closed
+thirteen names** — `_agent`, `_readFile`, `_writeFile`, `_appendFile`, `_checkFile`, `_listFiles`,
+`_git`, `_checkCi`, `_mergeWorktree`, `_recordHalt`, `_rebaseOntoDefault`, `_dodVerifyLoop`,
+`_raisePrAndVerifyCi` — and **not** a set derived from `main()`'s parameter list. Derivation reds on
+shipped, correct source: `_now` is a clock called synchronously at four sites in
+`raisePrAndVerifyCi`, and `_phaseDodEnabled` / `_phasePubEnabled` are booleans never called.
+The two guards answer different questions and **must not share a derivation** — AT-64 asks *is every
+capability wired* (derived, so a new seam cannot be forgotten); AT-19 asks *is every asynchronous call
+awaited* (a closed list, because membership is a design judgement).
+
+**A test loosened ad hoc to go green is worse than none.** If RLH-AT-19 reds on source an agent
+believes correct, that is a §11 halt condition, not an invitation to widen the regex.
+
+### 9.3 RLH-AT-64 — wired or exempt
+
+Asserted against the **production** composition root with **no injection whatsoever** (TSPEC §8.4: L3
+may not inject anything). The seam set is **derived** from `main()`'s destructured parameter names
+matching `/^_/`; each must be either *wired* or *exempt*, exemption being a **predicate over the
+parameter's own declaration** (E-1 policy value, E-2 pass-through, E-3 agent-composite) and never a list
+of names.
+
+Three things about it that a task will get wrong if it has not read TSPEC §8.5:
+
+1. **`_recordHalt` is wired, not exempt.** It is deliberately absent from `rtDevInjections` because its
+   implementation differs by caller. It is satisfied by `QUEUE_ENTRY`'s `_runPipeline` closure
+   (§7.2 edit 2b) and by `DEV_ENTRY`. If either is dropped, AT-64 reds — which is the whole point.
+2. **The alias hop is load-bearing, and it is one hop.** `main()`'s only forward of `_now`/`_sleep` goes
+   through the destructured local `raisePrAndVerifyCiFn`, not a module declaration, so without the hop
+   both fall in no class and AT-64 reds on correct source. A *chain* is not authorised.
+3. **Both anti-rot clauses are required.** A parameter classified exempt that is *also* wired is a
+   failure; and evidence must resolve for all three forms, **E-2 included**. Dropping the second clause
+   makes "declare a seam with no default and inject it nowhere" a silent pass.
+
+Counts to expect after this feature: `main()` carries **twenty-one** `_`-prefixed parameters (sixteen
+today plus five seams — `forcePhases` is data, not a seam, and carries no `_`), `rtDevInjections`
+returns **thirteen** (nine today plus `_writeFile`, `_appendFile`, `_listFiles`, `_git`), and the same
+three E-3 members remain exempt. RLH-01 records the before-figures so the after-figures are checkable
+rather than asserted.
+
 ## 10. SKILL amendments and how each is verified
 
 ## 11. Halt conditions
