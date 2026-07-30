@@ -1007,7 +1007,9 @@ review set) and each of `not_a_directory`, `unreadable`, `bad_argument` **halts*
 Totality (DC-01) is asserted as **set equality** between the dispositions exercised and
 `LIST_FAILURES`: every row reachable, no row unreachable, nothing outside the table observed.
 
-**Generator.** D6 — phase-entry configurations: phase ∈ the six forceable phases × failure ∈
+**Generator.** D6 — phase-entry configurations: phase ∈ the **seven** phases carrying a `reviewLoop`
+call site (`R, F, T, D, P, PR, CR`; §3.2, PM F-08 — v1.0 wrote "the six forceable phases", which is
+`parseForcePhases`'s axis, not the gate's, and left `CR` outside the product entirely) × failure ∈
 `LIST_FAILURES` ∪ `{ok}` × a randomised pre-existing review set × a randomised `dirPath` string
 (including paths with spaces, unicode, and a trailing slash, to prove the message interpolates the
 path it was given). Enumeration of phase × failure is exhaustive; the rest is sampled. 100 cases.
@@ -1102,12 +1104,27 @@ the exits from the *catalogue* of exits, not from an observed run. (ii) **G is e
 present** — the gate's decision must be a function of the generated state, asserted by requiring that
 the corpus contains both G-passes and G-halts for the same downstream step.
 
+**The exit catalogue: one owner, one count** (SE F-06). v1.0 referred to "the catalogue of exits"
+without saying whose it is or how many entries it has, and §5.3's ledger row then spoke of *four*
+gated exits while §4.3's `PROP-LIST-01a` prose said the same — a number with no source. The owner is
+**TSPEC §2.5**, whose G-INV sentence enumerates them: *forced*, *unforced-with-no-candidate*,
+*unforced-not-approving*, **`STALE`**, **`UNEVALUABLE`**, "or any exit added later" — **five**, and an
+explicitly open-ended fifth clause. The test imports no count; it asserts **set equality** between the
+exits its generated corpus traverses and the catalogue it derives from that sentence, so "any exit
+added later" becomes a failing test the day it is added rather than an untested branch.
+
+`FRESH` is **not** a sixth gated exit: per TSPEC §2.5 a `FRESH` anchor means the phase *is not run*,
+so `FRESH` is a path that must never reach step 5 at all. It is generated, and its assertion is the
+negative one — no step-5 record appears on a `FRESH` path — which is a different obligation from
+"reached step 5 through G" and is stated separately rather than folded into the count.
+
 **Generator.** D6 — phase-entry configurations crossed with the exit catalogue: for each exit, a state
 that takes it, dressed with a randomised round index, a randomised prior-postmortem presence flag, and
 a randomised review set. Exits enumerated exhaustively; dressing sampled. 100 cases.
 
-**Non-vacuity.** Every exit in the catalogue must be traversed at least once — set equality against the
-exit catalogue — and both outcomes of G (pass and halt) must be observed for ≥3 distinct exits. An
+**Non-vacuity.** All **five** of TSPEC §2.5's exits must be traversed at least once — set equality
+against the catalogue, not a count ≥ 5 — and both outcomes of G (pass and halt) must be observed for
+≥3 distinct exits. ≥10 cases must take the `FRESH` path and reach **no** step 5. An
 exit that no generated state can reach is a **failure**, not a skip: an unreachable exit means either
 the catalogue or the machine is wrong, and DC-01 makes that a finding rather than silence.
 
@@ -1129,26 +1146,71 @@ to the shortest prefix that still reaches step 5 without G. The shrunk counterex
 **PROP-EPISODE-01 — `EpisodeKey` is unpinned and the 36-dispatch bound holds over all interleavings.**
 *(Concurrency/Bounds · L2 · `pacingWrapper.test.js`)*
 
-**Invariant.** For every generated interleaving of phases and rounds: (i) **the bound** — total
-authoring dispatches never exceed `(1 + MAX_REVIEW_ROUNDS) × MAX_AUTHORING_DISPATCHES` (TSPEC §4.5;
-36 at the current constants, asserted against the constants, never against the literal 36); (ii)
-**per-episode counting** — the dispatch counter is keyed by the full five-coordinate `EpisodeKey`, so
-two episodes differing in *any single* coordinate never share a budget, asserted by generating pairs
-that differ in exactly one coordinate and checking the counters are independent; (iii) **unpinned
-`roundIndex`** — because `refreshReviewState()` runs at every episode entry, `roundIndex` is a
-per-episode derivation, so an interleaving that revisits a phase at a *lower* round index than a
-previous episode is legal and gets its own budget rather than a exhausted one.
+**Two v1.0 errors are corrected here: the bound's scope, and its oracle.**
+
+*Scope* (SE F-03). TSPEC §4.5 states the 36 as *"worst-case dispatch count for **one phase**"*. v1.0
+asserted it as a **total** over the whole interleaving while simultaneously generating interleavings
+that revisit phases — so v1.0's own generator produced legal runs its own conjunct (i) called
+violations, and conjuncts (i) and (iii) contradicted each other outright. Restated: **36 bounds one
+phase segment.** The interleaving is partitioned into maximal per-phase segments, the bound is
+asserted **per segment**, and the multi-phase total is the *sum over segments* — explicitly **not**
+bounded by 36, which is the sentence that removes the contradiction.
+
+*Oracle* (SE F-02, second identity). v1.0 said the bound is *"asserted against the constants, never
+against the literal 36"*. TSPEC §4.8 makes `MAX_REVIEW_ROUNDS` and `MAX_AUTHORING_DISPATCHES`
+module-level and **not exported**, so there is no import through which a test can name them; asserting
+"against the constants" would mean recomputing the subject's own bound from the subject, which
+compares the subject with itself and cannot fail. That claim is **withdrawn**. The bound is instead
+asserted against **two independently observed quantities**: `I`, the round count `reviewLoop` returns
+in its `iterations` field (TSPEC §7.1 edit 5 — the one site that reports the constant as a *count*
+rather than an index, and the only surface at any level that exposes it), and `B`, the per-episode
+dispatch cap **observed** by driving a single episode past saturation and counting the dispatch
+doubles' calls. The literal 36 appears nowhere.
+
+**Invariant.** For every generated interleaving of phases and rounds:
+
+(i) **The bound, per phase segment.** For each maximal single-phase segment, the authoring dispatches
+recorded by the seam doubles satisfy `dispatches(segment) <= (1 + I) × B`. Where every episode in a
+segment is driven past `B`, the **equality** `dispatches(segment) === (1 + I) × B` is asserted — the
+tight form, which is what makes an off-by-one in either factor die rather than merely being tolerated
+by an inequality. Both `I` and `B` are read from the run, from different surfaces, so the two sides of
+the identity have independent provenance.
+
+(ii) **Per-episode counting.** The dispatch counter is keyed by the full `EpisodeKey`, so two episodes
+differing in any single **externally controllable** coordinate never share a budget — asserted by
+generating pairs that differ in exactly one coordinate and checking the counters are independent.
+
+**The floor is over four coordinates, not five** (SE F-04). `EpisodeKey` has five fields, but
+`invocation` is documented by TSPEC §4.5 as *"monotonic within `(artifactSet, phase, round, mode)`"* —
+it is **derived from** the other four by the counter itself, and §4.5's own note that *"without
+`invocation`, the counters have nothing to increment"* says so. A test cannot hold four coordinates
+fixed and set `invocation` independently; it is not an input. So the sole-differing-coordinate floor
+covers `artifactSet`, `phase`, `round`, `mode`, and `invocation` gets its **own, differently shaped**
+conjunct: with the four externally controllable coordinates held fixed, re-entering the episode
+**consumes the same budget** — the second entry's dispatches count against the first entry's
+remaining allowance and saturate it, rather than receiving a fresh `B`. That is falsifiable (a subject
+that keys on `invocation` as a fifth *identity* coordinate hands out a fresh budget and dies), and it
+is the conjunct v1.0's five-way floor was silently unable to write.
+
+(iii) **Unpinned `roundIndex`.** Because `refreshReviewState()` runs at every episode entry,
+`roundIndex` is a per-episode derivation, so an interleaving that revisits a phase at a *lower* round
+index than a previous episode is legal and gets its own budget rather than an exhausted one.
 
 **Generator.** D7 episode interleavings, extended to vary all five `EpisodeKey` coordinates
 independently, including the pathological orderings (same phase twice non-consecutively, round index
 decreasing, phase revisited after a different phase). Sequence length 1…12; per episode, 0…8 attempted
 dispatches. 100 cases.
 
-**Non-vacuity.** ≥15 interleavings must attempt **more** than the budget within one episode (so the
-cap is exercised, not merely respected by luck); ≥15 must revisit a phase; ≥10 must decrease
-`roundIndex` across episodes; and each of the five coordinates must be the *sole* differing coordinate
-in ≥3 pairs — set equality against the coordinate list, so a coordinate dropped from `EpisodeKey`
-fails here.
+**Non-vacuity.** All forced. ≥15 interleavings must attempt **more** than the budget within one
+episode (so the cap is exercised, not merely respected by luck); ≥15 must revisit a phase; ≥10 must
+decrease `roundIndex` across episodes; ≥10 must drive **every** episode of a segment past `B`, which
+is what makes conjunct (i)'s tight equality reachable rather than an unexercised clause; ≥10 must span
+**two or more** phase segments, so the "the total is the sum, not 36" reading is exercised rather than
+asserted in prose only; and each of the **four externally controllable** coordinates
+(`artifactSet`, `phase`, `round`, `mode`) must be the *sole* differing coordinate in ≥3 pairs — set
+equality against that four-element list, so a coordinate dropped from `EpisodeKey` fails here. ≥10
+pairs must hold all four fixed and re-enter, exercising the `invocation` conjunct. v1.0's floor named
+five coordinates and would have been unsatisfiable on the fifth.
 
 **Owner.** Written by **RLH-21** (batch 3); greened by **RLH-23** — green from batch 7, permitted
 red batches 3–6.
