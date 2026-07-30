@@ -81,16 +81,28 @@ property's implementing task; it is not deferred work and it needs no new surfac
 property's derived window is **identical** to an existing row's, this document says so and the
 property rides that row rather than proposing another.
 
-**Measured outcome: every one of the ten rides an existing row.** Each new property shares a file, a
-writing task and a greening task with an assertion §7.3 already carries, so its derived window is by
-construction that row's window — `PROP-HASH-01` rides the digest row, `PROP-STALE-01` the
-`RLH-AT-15/-16/-18` row, `PROP-TRAILER-01`, `PROP-LIST-01b` and `PROP-EPISODE-01` the
+**Measured outcome: nine of the ten ride an existing row; one does not.** Each new property shares a
+file, a writing task and a **greening task** with an assertion §7.3 already carries, so its derived
+window is by construction that row's window — `PROP-HASH-01` rides the digest row, `PROP-STALE-01` the
+`RLH-AT-15/-16/-18` row, `PROP-LIST-01b` and `PROP-EPISODE-01` the
 `RLH-AT-35 … -58` row, `PROP-RESOLVE-01` and `PROP-APPROVE-01` the `RLH-AT-08 … -57` row,
 `PROP-LIST-01a` and `PROP-GINV-01` the `RLH-AT-21 … -34-orch` row, `PROP-WINDOW-01` the
-`RLH-LOOP-01`/`-02` rows, and `PROP-AWAIT-01` the green-on-arrival `RLH-SCAN-01` row. **No new
-ledger row is proposed by this document** — §7's matrix records the row each property rides, and
-adding the property's name to that row's `Assertion(s)` cell is the whole of the mechanical PLAN
-edit.
+`RLH-LOOP-01`/`-02` rows, and `PROP-AWAIT-01` the green-on-arrival `RLH-SCAN-01` row.
+
+**The exception is `PROP-TRAILER-01`** (PM F-07). v1.0 gave it the `RLH-AT-35 … -58` pacing row on the
+strength of the *file* it is written in. But the derivation stated above keys on the **greening task**,
+and `PROP-TRAILER-01`'s is **RLH-05(f)** — the five record parsers, batch 3 — not RLH-23. Applying the
+stated rule honestly gives **green from batch 3, permitted red none**, which is tighter than the row it
+shares a file with; §4.2 states the gate loss the pacing row would otherwise license. This is the one
+place the mechanical derivation produces a window §7.3 does not already carry, and saying so is
+cheaper than letting a co-location argument quietly widen a gate.
+
+**One narrowed window is not a new ledger row.** §7's matrix records the row each property rides, and
+adding the property's name to that row's `Assertion(s)` cell is the whole of the mechanical PLAN edit.
+`PROP-TRAILER-01` needs one further mechanical thing — its assertions gate-separably from the pacing
+assertions in the same file — which §7.3's per-assertion structure already expresses. **The approved
+PLAN stays closed:** a property that would need a genuinely new row is a defect in the property, and
+none here does.
 
 Where a property lands in a file with a **sole** owning task (PLAN §5.3's single-writer rule), that
 task is the owner. Where an invariant genuinely spans two files, it is split into two named halves
