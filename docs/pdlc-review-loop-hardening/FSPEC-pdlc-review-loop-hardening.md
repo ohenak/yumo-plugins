@@ -2107,6 +2107,130 @@ for **most** wrapped dispatches — the review artifacts are the numerically dom
 
 ## 17. FSPEC-CONST-01 — Constant placement and the AC-5.1 / AC-5.2 edits
 
+**Linked requirements:** AC-5.1, AC-5.2, AC-5.3, AC-5.4, AC-5.5, AC-1.6a. **Discharges O-16.**
+
+**Citation baseline for this section: HEAD `0655387`.** Every edit below is anchored by **enclosing
+symbol + distinctive literal**, never by line number, so it stays verifiable as the file moves. A bare
+`file:line` citation is a defect in this document.
+
+### 17.1 AC-5.1 — `MAX_REVIEW_ROUNDS`
+
+The iteration cap is the bare literal `5` at **five** sites in `pdlc/workflows/orchestrate-dev.js`. It
+becomes one named constant declared beside the existing flags, following the convention set by
+`const DOD_MAX_ITERATIONS = 3;`:
+
+```js
+// TSPEC-ROUNDS-01: per-invocation review-round budget (AC-1.6a). Not an absolute
+// round index — the gate and the reported counts derive from this plus the
+// branch-derived starting index.
+const MAX_REVIEW_ROUNDS = 5;
+```
+
+| # | Enclosing symbol | Distinctive literal at `0655387` | Edit |
+|---|---|---|---|
+| 1 | `checkConverged` | `recordPhase(phaseId, phaseLabel, "❌", \`Non-convergence after 5 iterations${reviewerDetail}\`, 5)` | The message names `rounds ${startIndex}..${endIndex}`; the trailing count argument becomes `MAX_REVIEW_ROUNDS` |
+| 2 | `checkConverged` | `throw haltError(\`Phase ${phaseId} did not converge after 5 iterations${reviewerDetail}. POSTMORTEM written.\`)` | `after ${MAX_REVIEW_ROUNDS} rounds`, and the unconditional `POSTMORTEM written.` is replaced by §12.6's two conditional shapes |
+| 3 | `reviewLoop` | `if (iteration > 5)` | `if (iteration > endIndex)` where `endIndex = startIndex + MAX_REVIEW_ROUNDS - 1` (§4) |
+| 4 | `reviewLoop` | `Include the required sections: Phase, Iterations (5 — limit reached), …` | `Iterations (${MAX_REVIEW_ROUNDS} — limit reached)` |
+| 5 | `reviewLoop` | `return { converged: false, iterations: 5, lastResults };` | `iterations: MAX_REVIEW_ROUNDS`, and the shape gains `postmortemWritten` (§12.6) |
+
+**Why the gate is not simply `iteration > MAX_REVIEW_ROUNDS`.** AC-1.6a makes the constant a
+**per-invocation budget**, not an absolute round index. On a branch whose highest existing round is 3, a
+re-entered phase starts at round 4 and must get five rounds — 4 through 8 — not two. Sites 1 and 3
+therefore derive from the constant **and** the starting index; only sites 4 and 5, which report a *count*
+rather than an *index*, use the constant alone. Substituting the constant naively at all five sites is the
+defect this clause exists to prevent, and it is the same class of defect as H-1.
+
+### 17.2 AC-5.2 — the dead POSTMORTEM path template
+
+In `checkConverged`, the declaration
+`` const postmortemPath = `docs/{feature}/POSTMORTEM-${phaseId}-{feature}.md`; `` interpolates `phaseId`
+but carries **literal, uninterpolated `{feature}` braces**, and the variable is never read.
+
+**Disposition: made correct and made used.** The feature name is in scope at the call sites, so the
+template becomes a real path — `docs/${feature}/POSTMORTEM-${phaseId}-${feature}.md` — and feeds §12.6's
+structured `postmortemPath` report field and its two conditional halt reasons.
+
+**The general rule this establishes: no un-substituted template reaches a report.** Any string built for
+operator output whose `{`…`}` placeholders are not all substituted is a defect — the same rule §4 applies
+to `reviewerPrompt`'s and `optimizerPrompt`'s `{DOC-TYPE}` literals. Deleting the variable would satisfy
+AC-5.2's letter, but §12.6 needs the path as a structured field, so making it correct discharges both.
+
+### 17.3 The whole change surface in `orchestrate-dev.js` and its siblings
+
+Collected so a reviewer sees it in one place. Anchors at `0655387`:
+
+| Enclosing symbol | Distinctive literal | Edit | Owner |
+|---|---|---|---|
+| module top | `const MODEL_DEFAULT = "opus";` | new constants block after it: `MAX_REVIEW_ROUNDS`, `MAX_AUTHORING_ATTEMPTS`, `MAX_AUTHORING_DISPATCHES`, `MAX_AUTHORING_WRITE_BYTES` | §15.7, §17.1 |
+| `export const meta` | `name: "reqPath"` | second `inputs` entry, `forcePhases` | §11.2 |
+| `export default async function main({ reqPath, _agent: rawAgentFn = agent, … })` | the destructured injection list, which today has **no** `_writeFile` | add `forcePhases`, `_writeFile`, `_appendFile`, `_listFiles`, `_git`, `_recordHalt` | §1.4, §11.2, §13.2, §14.2 |
+| `export async function reviewLoop({ doc, phase, reviewers, optimizer, feature, iteration = 1, … })` | `iteration = 1` | callers pass the branch-derived `startIndex`; the seven existing call sites pass none | §4 |
+| `reviewLoop` | `const gatePass = isPass(verdict1.verdict) && isPass(verdict2.verdict);` | logic unchanged; §5's approval search **reuses** `isPass` so the skip is neither stricter nor looser than the gate that produced the approval (AC-4.3) | §5 |
+| `export function parseVerdict(result, skillName)` | `const VALID_VERDICTS = [...]` | unchanged; reused as-is on the file path, with §6.3's duplicate pre-count in front of it | §6 |
+| `export async function recoverVerdict({ reviewer, rawResult, _agent = agent })` | the whole function | **not** reused on the approval path — an agent in that decision would breach C-5 and fail open | §6 |
+| `function checkConverged(...)` | the `postmortemPath` template | §17.2 | §12 |
+| `function buildFinalReport({ feature, outcome, phases, … haltReason })` | the destructured field list | add `haltPhase`, `postmortemPath`, `postmortemStatus`, `queueRow`; plus the skip / force / pacing-proxy report lines | §11.4, §12.6, §15.4, §15.8 |
+| `function reviewerRoleSlug(skill)` | `const MAP = { "se-review": "software-engineer", … }` | add a reverse accessor; the slug catalogue stays derived from this one map | §4 |
+| `function reviewerPrompt(...)`, `function optimizerPrompt(...)` | the two `{DOC-TYPE}` literals and `` `docs/${feature}/CROSS-REVIEW-${role}-{DOC-TYPE}-v${iteration}.md` `` | substitute the real doc type | §4 |
+| `recordPhase("D", PHASE_DISPATCH.D.label, "⏭", "Skipped — no load-bearing alternatives")` | the `"⏭"` status | reused as the skip marker, so an AC-4 skip is visibly distinct from a run and from a `❌` failure (AC-4.5) | §11.4 |
+
+**`orchestrate-queue.js`:** `export function updateQueueStatus(markdown, feature, newStatus)` (return
+shape, replacing `return markdown; // feature row not found`), `async function rewriteStatus(...)` (the
+commit), and `async function runPicked({...})`'s three status writes — `await writeFileFn(queuePath,
+updateQueueStatus(queueText, entry.feature, "in-progress"))`, the `"halted"` rewrite, and
+`const newStatus = succeeded ? "awaiting-merge" : "halted";`. All §13.
+
+**`runtime-adapter.js`:** new `rtListFiles`, `rtAppendFile`, `rtGit`, and their addition to
+`function rtDevInjections(devModule)` — which today returns `_agent, _parallel, _pipeline, _phase, _log,
+_checkFile, _readFile, _checkCi, _mergeWorktree` and **no** `_writeFile`, even though `rtWriteFile` is
+defined directly above it (§1.4).
+
+**`build-runtime.mjs`:** `DEV_ENTRY` (read `args.forcePhases`, which its existing
+`args && typeof args === "object" && args.reqPath` test already establishes as a supported shape) and
+`QUEUE_ENTRY` (pass the new seams alongside its existing `_writeFile: rtWriteFile`). `stripModuleSyntax`
+is unmodified and is what inlines §7's digest function without an `import`.
+
+### 17.4 AC-5.3 — `pdlc/skills/orchestrate-dev/SKILL.md`
+
+Today its **only** POSTMORTEM mention is the naming-convention aside in §Artifact Conventions (the
+`CROSS-REVIEW-*`, `POSTMORTEM-*` list), and the only documented cap is the unrelated DoD one. Four
+additive subsections:
+
+| Subsection | Content |
+|---|---|
+| Review-round budget | `MAX_REVIEW_ROUNDS` = 5 as a **per-invocation budget**, the branch-derived starting index, and §4's `rounds {startIndex}..{endIndex}` log line |
+| Non-convergence exit | That it is terminal, that it commits the `halted` queue row, and §12.6's two halt shapes including the write-failed one |
+| POSTMORTEM | The six mandated sections, the `RESOLVED:` marker and who may write it, the (phase, feature) refusal scope, and that §15.6's authoring-budget halt writes none |
+| Approved-phase skip | The two tiers, the same-round rule, the hash-equality staleness test, the `forcePhases` surface, and that CR and DOD are out of scope (AC-4.7) |
+
+### 17.5 AC-5.4 — `pdlc/skills/orchestrate-queue/SKILL.md`
+
+Its §Status lifecycle diagram shows `halted` as a **terminal leaf with no way out** — the branch
+`└──pipeline halts / throws──▶ halted`. Edits:
+
+| Edit | Content |
+|---|---|
+| Diagram | Add the return edge `halted ──human edits row to pending + commits──▶ pending`, so the leaf is no longer a dead end |
+| New §Recovering a halted row | AC-2.7a's act verbatim — a human edits the row from `halted` to `pending` and commits; nothing in the pipeline performs this edit; it is the **only** act that recovers the queue. Plus what the pipeline refuses until then, per halt class (§14.4's table). |
+| Same section | The bypass paragraph, stating the **surviving** rule of §14.4: a direct `orchestrate-dev` invocation resumes **this feature only** and leaves every other queue feature idle, because `awaiting-merge` is the queue driver's write and `selectNextPending`'s no-candidate reason is `"no pending entries (all done, awaiting-merge, blocked, or halted)"`. It is **not** a substitute for the row edit. |
+
+No new status is introduced; `export const QUEUE_STATUSES = [...]` is unchanged.
+
+### 17.6 AC-5.5 — the generated-artifact obligation
+
+| Tier | Obligation |
+|---|---|
+| `pdlc/workflows/dist/` — **tracked** | Rebuilt with `node pdlc/workflows/build-runtime.mjs` and **committed in the same commit** as any change to `orchestrate-dev.js`, `orchestrate-queue.js` or `runtime-adapter.js`. `node pdlc/workflows/build-runtime.mjs --check` must pass. |
+| `.claude/workflows/` — **untracked by decision** (DEC-DIST-02, §4a A-6) | **Never committed.** Its correctness is asserted separately, by `pdlc/hooks/scripts/sync-workflows.sh --check` exiting 0. |
+
+The earlier wording required committing an untracked-by-decision path and would have landed a
+`.gitignore` regression; the corrected two-tier statement above is the one that binds.
+
+Because this feature touches all three bundle sources, **every** implementation commit that changes a
+workflow source carries its rebuilt `dist/` artifacts. This is also why §15.8's per-section commit cadence
+does not apply to `dist/`: generated artifacts are not authored sections.
+
 ## 18. Edge cases and error scenarios
 
 ## 19. Acceptance tests
