@@ -907,19 +907,35 @@ H-4 presence vectors — is preserved intact; only its level, its seam and its l
 **PROP-HASH-01 — `parseApprovalHash` accepts only well-formed trailers, and never mid-document.**
 *(Parsing · L1 · `approvalHash.test.js`)*
 
-**Invariant.** For every generated document: a hash is returned **iff** a well-formed approval trailer
-appears at a position the format permits; the returned hash always matches `/^[0-9a-f]{64}$/`; a
-trailer that is quoted (`>`), fenced, or truncated to fewer than 64 hex characters yields **no** hash;
-and a document containing two trailers resolves deterministically to the same one on every run
-(whichever the format specifies — the property asserts *stability*, and §6.4 owns which).
+**Invariant.** For every generated document: `parseApprovalHash` returns `{ ok: true, hash, … }`
+**iff** a *single* well-formed approval trailer appears at a position the format permits; the returned
+hash always matches `/^[0-9a-f]{64}$/`; a trailer that is quoted (`>`), fenced, or truncated to fewer
+than 64 hex characters yields `ok: false`; a document carrying **two** `APPROVAL-HASH:` lines outside
+fenced regions returns `{ ok: false, reason: "duplicated" }` — never a hash, and never one of the two
+arbitrarily chosen; and a document carrying **no** `APPROVAL-HASH:` line outside a fenced region
+returns `{ ok: false, reason: "absent" }`. Every `ok: false` return carries a `reason` that is a
+member of `HASH_FAILURES` (TSPEC §4.1), asserted by membership, so a subject inventing a fourth reason
+string dies.
+
+v1.1 asserted instead that a two-trailer document *"resolves deterministically to the same one on every
+run (whichever the format specifies — the property asserts stability, and §6.4 owns which)"*. **That
+conjunct is withdrawn** (PM F-02): it is false on a conforming subject, and the delegation was empty —
+§6.4 is the heading-fixture section and owns nothing about approval trailers. The owner is
+**TSPEC §4.1**, whose `HASH_FAILURES = ["absent", "duplicated", "unparseable"]` makes `duplicated` a
+`HashFailure`, and **TSPEC §6.2 row 6**, which routes it to `UNEVALUABLE`. Cited, not restated.
 
 **Generator.** D3 prose interleaved with trailer candidates drawn from: valid (64 lowercase hex),
 uppercase hex, 63 and 65 characters, non-hex characters in the payload, correct payload with a
-malformed label, and valid trailers placed inside a fence or behind a `>` quote. 100 cases.
+malformed label, valid trailers placed inside a fence or behind a `>` quote, **two valid trailers**,
+and **no trailer at all**. 100 cases.
 
 **Non-vacuity.** All forced (§3.3 rule 1), never sampled. ≥20 valid, ≥10 of each of the length-off-by-one shapes, ≥10 quoted-or-fenced, ≥5
-double-trailer. The `quoted-hash.md` fixture (§6.3) pins the quoted case by example; the floor makes it
-a space.
+double-trailer, ≥5 no-trailer. The `quoted-hash.md` fixture (§6.3) pins the quoted case by example;
+the floor makes it
+a space. **The ≥5 double-trailer floor survives as a floor on the *rejection* shape** (PM Q-02): it is
+what forces `reason === "duplicated"` — a named catalogue member, not merely `ok: false` — to be
+exercised, which the hex-shape totality conjunct cannot reach, since totality quantifies over returned
+hashes and a duplicated document returns none.
 
 **Owner.** Written by **RLH-06** (batch 2); greened by **RLH-05(f)** — v1.0 wrote `RLH-05(d)`, which
 is the *digest* sub-group; PLAN §4's RLH-05(f) is the five record parsers, and `parseApprovalHash` is
@@ -1011,12 +1027,22 @@ edited in any content byte is `"STALE"`. Both are asserted against the **verdict
 truthiness test, so a subject returning `"UNEVALUABLE"` for everything cannot pass the stale half by
 accident.
 
-**The upstream classes that also produce `UNEVALUABLE` are named, not asserted here.** TSPEC §6.2
+**The upstream classes that also produce `UNEVALUABLE`, and who actually asserts each.** TSPEC §6.2
 rows 6–7 map an **absent**, **duplicated** or **unparseable** anchor, and an **unreadable document**,
 to `"UNEVALUABLE"`. Of those, only *unparseable* reaches `isStale`'s own signature — absence,
 duplication and unreadability are resolved before the call, by `parseApprovalHash` and by the reader.
-They are covered at the seam by `PROP-APPROVE-01` (§4.3) and are listed here so the division is
-explicit rather than an apparent gap.
+v1.1 routed all three to *"the seam, by `PROP-APPROVE-01` (§4.3)"*. **That routing sentence is
+withdrawn** (PM F-03): `PROP-APPROVE-01`'s three conjuncts are tier discipline, window respect and
+idempotence, its generator never produces an absent, duplicated or unreadable *approval-hash anchor*,
+and it carries no floor over the three. A claimed division with an empty side closes the residual
+ledger against a live gap, which is worse than the gap. The honest division is:
+
+| `UNEVALUABLE` class | Owner in this document |
+|---|---|
+| `unparseable` anchor | **`PROP-STALE-01`** conjunct (i), ≥5 cases in each of four malformed shapes |
+| `duplicated` trailer | **`PROP-HASH-01`** — named-`reason` conjunct, ≥5 double-trailer floor |
+| `absent` trailer | **`PROP-HASH-01`** — named-`reason` conjunct, ≥5 no-trailer floor |
+| **unreadable document** | **nobody** — no property here covers it; recorded as a residual with a named successor surface in §8.4 (PM Q-01) |
 
 **Generator.** D3 document plus an anchor produced by one of: `sha256:` + digest of the document
 (fresh), `sha256:` + digest of a one-byte-mutated copy (stale), `sha256:` + digest of a
