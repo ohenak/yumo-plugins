@@ -1492,6 +1492,141 @@ function isPass(verdict) {
   return verdict === "Approved" || verdict === "Approved with minor changes";
 }
 
+// ─── TSPEC §5.6.1 — selectMode; §5.6.2 — isTerminal ───────────────────────────
+
+/**
+ * Compute an episode's `mode` (TSPEC §5.6.1, FSPEC §15.2, AC-3.5 scope (d)).
+ *
+ * `EpisodeKey.mode` is not an input the caller invents. It is computed **once per
+ * episode, at that episode's entry**, by this pure function, from what the phase
+ * is dispatching an author to *do* — never from the artifact's structural state.
+ *
+ * **Invariant S-INV is the caller's obligation, not this function's.** `present`
+ * and `reviewFiles` must be the state of the branch at the instant the episode
+ * begins, read inside `reviewLoop` by `refreshReviewState`, never a snapshot taken
+ * before the loop. Under an entry-time snapshot on a clean branch `present` is
+ * empty for the life of the phase, every optimizer episode selects greenfield,
+ * `isTerminal` requires no trailer, and the wrapper reports success on a round
+ * whose findings were never addressed (TE-v2 N-01).
+ *
+ * The four rules, in the order §5.6.1 states them:
+ *
+ * 1. **The revision test is evaluated first** — structural completeness is never
+ *    consulted here, so it can never move an episode out of revision mode.
+ * 2. **Which round** — the highest round `present` holds that is not carrying
+ *    same-round dual approval: the round still owed an authoring pass. A resuming
+ *    invocation therefore re-enters the *same* round. §5.2's `max + 1` governs the
+ *    next *reviewer* dispatch and is a different question over the same map.
+ * 3. **Non-authoring wrapped dispatches are always greenfield**, without
+ *    evaluating rule 1 — a review / dod-verify / harvest episode is never
+ *    dispatched to address findings in its own artifact.
+ * 4. **Greenfield needs positive evidence.** An episode is greenfield *only if*
+ *    this episode's own refresh observed the branch and found no review round for
+ *    this (feature, doc type) — i.e. `present` is empty. Everything else, including
+ *    a non-empty `present` whose verdicts are unreadable, is revision. "Not read"
+ *    is never "no findings"; the directions are not symmetric.
+ *
+ * The unread-*listing* axis never reaches rule 4: a `refreshReviewState` whose
+ * `_listFiles` cannot be judged **halts** (§4.2, §6.2 rows 2 and 17), so `present`
+ * is a `Map` at every call — the input domain has no third value to rule on, which
+ * is what makes the rule total.
+ *
+ * @param {{dispatchKind: string, docType: string,
+ *          present: Map<string, number[]>,
+ *          reviewFiles: Map<string, {verdict: string, verdictReadable: boolean, anchorHash: string|null}>,
+ *          startIndex: number}} arg
+ * @returns {{mode: "authoring"|"revision", round: number|null, reason: string}}
+ */
+function selectMode({ dispatchKind, docType, present, reviewFiles, startIndex }) {
+  // Rule 3 — evaluated before rule 1, not after it.
+  if (dispatchKind !== "authoring") {
+    return {
+      mode: "authoring",
+      round: null,
+      reason: `non-authoring dispatch kind ${dispatchKind} is greenfield by construction`,
+    };
+  }
+
+  const rounds = new Set();
+  const roles = [];
+  if (present && typeof present.forEach === "function") {
+    present.forEach((list, role) => {
+      roles.push(role);
+      for (const n of list || []) rounds.add(n);
+    });
+  }
+
+  // Rule 4 — greenfield needs positive evidence: an observed, EMPTY `present`.
+  if (rounds.size === 0) {
+    return {
+      mode: "authoring",
+      round: null,
+      reason: `no review round on the branch for ${docType}`,
+    };
+  }
+
+  // Rule 2 — the highest round not carrying same-round dual approval.
+  const files = reviewFiles && typeof reviewFiles.get === "function" ? reviewFiles : new Map();
+  const dualApproved = (round) =>
+    roles.length > 0 &&
+    roles.every((role) => {
+      const rec = files.get(`${role}:${round}`);
+      return !!rec && rec.verdictReadable === true && isPass(rec.verdict);
+    });
+
+  const descending = [...rounds].sort((a, b) => b - a);
+  const owed = descending.find((r) => !dualApproved(r));
+  const round = owed === undefined ? descending[0] : owed;
+
+  return {
+    mode: "revision",
+    round,
+    reason:
+      owed === undefined
+        ? `every observed ${docType} round is dual-approved; addressing round ${round}`
+        : `${docType} round ${round} is still owed an authoring pass`,
+  };
+}
+
+/**
+ * The terminal test (TSPEC §5.6.2, FSPEC §8.4, AC-3.5b). Per mode, and it returns
+ * a **record, not a boolean**, because the trailer reason it computes is the only
+ * place that reason exists.
+ *
+ * | Mode | Terminal condition | Trailer |
+ * |---|---|---|
+ * | Greenfield | the required member of the artifact set is structurally complete | none required, none expected — `parseRevisionComplete` is not called |
+ * | Revision | structurally complete **and** `parseRevisionComplete(response)` → `{complete: true}` | required |
+ *
+ * **Why the conjunct is absent from the greenfield path rather than reconciled.**
+ * §7.4 amends only the three *author* SKILLs to emit `REVISION-COMPLETE:`; the
+ * three review SKILLs, `dod-verify` and `harvest-learnings` never will, and
+ * §5.6.1 rule 3 puts every one of those episodes in greenfield by construction. A
+ * mode-blind conjunct would make the numerically dominant episode population
+ * unable to *ever* reach terminal — H-3's own failure mode rebuilt by the
+ * mechanism meant to remove it.
+ *
+ * **Both members are read, and `structural` is not one of them** — v1.2 returned
+ * it as a third member no caller read, which is the shape AC-4.7a forbids, so it
+ * lives as the local below where its only two readers are.
+ *
+ * @param {string} mode - the episode's mode, from `selectMode`
+ * @param {string} response - the dispatch's response text
+ * @param {string} artifactClass - §5.9's wrapped artifact class
+ * @param {string} docType
+ * @param {string|null} after - the target's bytes read AFTER the dispatch
+ * @returns {{terminal: boolean, trailerReason: string|null}}
+ */
+function isTerminal(mode, response, artifactClass, docType, after) {
+  const structural = isComplete(artifactClass, docType, after).complete;
+  if (mode !== "revision") return { terminal: structural, trailerReason: null };
+  const t = parseRevisionComplete(response);
+  return {
+    terminal: structural && t.complete,
+    trailerReason: t.complete ? null : t.reason,
+  };
+}
+
 // ─── REQ-GATE-04: Non-convergence halt helper ─────────────────────────────────
 
 /**
