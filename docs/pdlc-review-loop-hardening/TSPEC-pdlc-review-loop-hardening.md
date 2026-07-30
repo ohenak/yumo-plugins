@@ -127,6 +127,141 @@ catalogue of §4.2 — so a "cannot judge" failure means the same thing on both 
 
 ## 2. Architecture
 
+### 2.1 Technology stack — nothing new
+
+No new runtime dependency, no new package, no new build step. The change is confined to the existing
+ES-module sources under `pdlc/workflows/`, their existing jest suite (`cd pdlc/workflows && npm
+test`), and the existing generator `build-runtime.mjs`. This is deliberate: C-2 forbids `import` in
+the bundle, so a new dependency could not reach the runtime at all — anything a bundle needs must be
+either inlined pure JS or an injected seam.
+
+### 2.2 Module layout — one file, not a new package
+
+Every new pure function specified in §5 lands **in `pdlc/workflows/orchestrate-dev.js`**, as a
+module-level `export function` beside the existing `parseVerdict` / `checkFileNonEmpty` /
+`parseDecisionsWarranted` family. No new source file is created under `pdlc/workflows/`.
+
+The reason is structural, not stylistic. `build-runtime.mjs`'s `wrapModule(varName, body,
+exportedNames, prelude)` inlines **whole files**: the dev bundle is composed from a fixed array
+`[DEV_META, BANNER, adapter, devModule, DEV_ENTRY]`, where `devModule` is
+`wrapModule("__dev", stripModuleSyntax(devSource), […])`. A new source file would require a new
+`wrapModule` invocation, a new entry in both bundle composition arrays, a new `exportedNames` list,
+and a new cross-module reference idiom (`__helpers.foo`) that nothing in the tree uses today. The
+cost of a fifth module is paid on every future build edit; the benefit — file-length hygiene — is
+not one this design needs to buy.
+
+Two exceptions, both forced:
+
+- **`runtime-adapter.js`** gains `rtListFiles`, `rtAppendFile`, `rtGit` and their `rtDevInjections`
+  wiring. That file is the adapter; a seam implementation cannot live anywhere else.
+- **`orchestrate-queue.js`** gains the `_git` thread-through and the export of its status rewriter
+  (§3.6). That is where the queue row is written.
+
+### 2.3 Dependency graph
+
+```
+                        ┌──────────────────────────┐
+   runtime globals ───► │  runtime-adapter.js      │  (inlined verbatim by the build,
+   (agent, parallel,    │  rtAgent … rtGit         │   never imported)
+    pipeline, phase,    │  rtDevInjections()       │
+    log, setTimeout)    └───────────┬──────────────┘
+                                    │ supplies seams
+                                    ▼
+   ┌────────────────────────────────────────────────────────────────┐
+   │  orchestrate-dev.js                                            │
+   │                                                                │
+   │   main({ reqPath, forcePhases, _listFiles, _writeFile,         │
+   │          _appendFile, _git, _recordHalt, …16 existing })       │
+   │            │                                                   │
+   │            ├─► phase gate       ─► §5.4 approval / §5.5 stale  │
+   │            ├─► reviewLoop(…, startIndex)  ─► §5.2 rounds       │
+   │            │       └─► dispatchAndVerify  ─► §5.6 pacing       │
+   │            └─► checkConverged   ─► §6.3 terminal exit          │
+   │                                                                │
+   │   pure, seam-free:  sha256Hex, canonicalise, scanLines,        │
+   │                     parseReviewFilename, parseVerdict,         │
+   │                     parseApprovalHash, parseRevisionComplete,  │
+   │                     parseForcePhases, isStale, isComplete      │
+   └───────────────────────────┬────────────────────────────────────┘
+                               │ __dev.main / row helpers
+                               ▼
+   ┌────────────────────────────────────────────────────────────────┐
+   │  orchestrate-queue.js   updateQueueStatus, rewriteStatus(_git) │
+   └────────────────────────────────────────────────────────────────┘
+```
+
+The arrow from `orchestrate-queue.js` back up is new. Today the dev bundle does **not** include
+`queueModule` at all — `contents: [DEV_META, BANNER, adapter, devModule, DEV_ENTRY]`. §7.2's fourth
+build edit adds it, which is what makes `_recordHalt` (§3.5) able to close over the queue's row
+helpers rather than reimplementing queue-row parsing inside `orchestrate-dev.js`.
+
+### 2.4 The layering rule
+
+Three strata, and the rule that keeps them honest:
+
+| Stratum | Contents | May call |
+|---|---|---|
+| **Pure** | every parser, the digest, the scanner, `isStale`, `isComplete`, `updateQueueStatus` | only other pure functions |
+| **Seam** | `_listFiles`, `_readFile`, `_writeFile`, `_appendFile`, `_git`, `_recordHalt`, `_agent`, … | the host, via the adapter |
+| **Orchestration** | `main`, `reviewLoop`, `dispatchAndVerify`, `checkConverged`, phase gate | both strata above |
+
+**A pure function never performs IO, and an orchestration function never parses.** This is what
+makes §8's test strategy cheap: the pure stratum is tested with string inputs and no doubles at all,
+the orchestration stratum with sync doubles for every seam. It is also what satisfies C-5 — the
+decision logic is entirely in the pure stratum, where no `agent()` call is reachable.
+
+### 2.5 Control flow of one phase entry
+
+The following is the new shape of a `PHASE_DISPATCH` entry's execution, for phases in the
+force/skip-eligible set. Steps 1–4 are new; step 5 is today's `reviewLoop` with a corrected starting
+index; steps 6–7 are the corrected terminal exit.
+
+```
+1.  forcePhases gate           §5.7   phase named in forcePhases?
+                                      ├─ yes ─► skip steps 2–4, run from step 5
+                                      └─ no  ─► continue
+2.  round derivation           §5.2   await _listFiles(`docs/${feature}`)
+                                      ├─ ListFailure(dir_missing)  ─► [] ⇒ startIndex 1
+                                      ├─ ListFailure(other)        ─► halt "cannot judge"
+                                      └─ ok ─► parseReviewFilename over every entry
+                                               startIndex = max(presentIndices) + 1  (or 1)
+                                               endIndex   = startIndex + MAX_REVIEW_ROUNDS - 1
+3.  approval search            §5.4   candidate = highest round index present (single, no walk)
+                                      tier 1: the candidate round's per-role CROSS-REVIEW files
+                                      tier 2: `## 6. Approval Record` in LEARNINGS-{feature}.md
+                                      (tiers are exclusive; at most 2 _readFile per phase entry)
+4.  staleness                  §5.5   isStale(recordedHash, await _readFile(docPath))
+                                      ├─ FRESH       ─► record "⏭" skip, phase done
+                                      ├─ STALE       ─► fall through to step 5
+                                      └─ UNEVALUABLE ─► fall through to step 5, note in report
+5.  reviewLoop(…, iteration = startIndex)
+                                      each round: dispatchAndVerify per author/reviewer episode §5.6
+                                      gatePass = isPass(v1) && isPass(v2)   (unchanged)
+                                      on pass: append APPROVAL-HASH / REVIEWED-COMMIT   §5.3
+6.  checkConverged                    converged ─► done
+                                      not      ─► step 7
+7.  terminal exit              §6.3   write docs/${feature}/POSTMORTEM-${phaseId}-${feature}.md
+                                      await _recordHalt({ feature, status: "halted" })
+                                      throw haltError(one of §6.4's two conditional shapes)
+```
+
+A POSTMORTEM already on disk is consulted **before** step 1 by `checkPostmortem({ phase, feature })`
+(§5.8): an unresolved POSTMORTEM refuses the run for that phase, and refuses it *even under
+`forcePhases`* — a force is an override of a recorded approval, not of a recorded failure.
+
+### 2.6 What is deliberately not built
+
+- **No history walk, at either approval tier** (O-8, narrowed at FSPEC v1.5). Approval is one
+  hash-equality test against the single highest round present. No descending scan of earlier rounds,
+  no `git log` of the document, no reconstruction of past bytes.
+- **No agent on the approval path.** `recoverVerdict({ reviewer, rawResult, _agent })` exists and is
+  reused nowhere in this design: an agent adjudicating whether a phase may be skipped breaches C-5
+  and, worse, fails **open** — a hallucinated "Approved" silently discards a phase.
+- **No per-worktree consumer state.** Out of scope; deferred to D-DIST-07 (queue row 6).
+- **No caching layer over `_listFiles`.** The read fan-out is already bounded (one `_listFiles` and
+  at most two `_readFile` per phase entry, §5.4); a cache would add an invalidation problem in
+  exchange for nothing measurable.
+
 ## 3. Interfaces
 
 ## 4. Data Model
