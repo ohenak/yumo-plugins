@@ -213,6 +213,57 @@ Paths are repo-relative and subpackage-qualified. `__tests__/` and `dist/` are a
 | **RLH-13** | **GREEN the filename grammar and round window** — `parseReviewFilename` (G-1…G-4, role alternation derived from `reviewerRoleSlug`'s `MAP`), `deriveRoundWindow`, and the reverse accessor `reviewerSkillForSlug` over the same `MAP`, per TSPEC §5.2 and §3.9 | `__tests__/roundDerivation.test.js` | `pdlc/workflows/orchestrate-dev.js`, `dist/` | 5 | RLH-10 `[dist]`, RLH-11 | — | ⬚ |
 | **RLH-15** | **GREEN the five record parsers** — `parseApprovalHash`, `parseRevisionComplete`, `parseResolvedMarker`, `extractRecommendation`, `parseForcePhases`, per TSPEC §3.7, §4.3, §5.7, §5.8. All total, all over `scanLines`, all synchronous | `__tests__/{approvalHash,forcePhases}.test.js` | `pdlc/workflows/orchestrate-dev.js`, `dist/` | 6 | RLH-13 `[dist]`, RLH-14, RLH-06 | — | ⬚ |
 | **RLH-16** | **GREEN the two judgements** — `isStale` per TSPEC §5.5 (read at comparison time, one hash-equality test, never reads `REVIEWED-COMMIT`) and `isComplete` per §5.9 (four wrapped classes, six spec-class heading tables, order not required, the accepted shallowness of T-Q-04) | `__tests__/{approvalHash,completeness}.test.js` | `pdlc/workflows/orchestrate-dev.js`, `dist/` | 7 | RLH-15 `[dist]`, RLH-12, RLH-10 | — | ⬚ |
+| **RLH-18** | **GREEN the six seams and their Node defaults.** Six new parameters on `main()`'s destructured list (TSPEC §3.1 — nothing existing renamed or reordered), `meta.inputs` gains the `forcePhases` entry, and `defaultListFiles` / `defaultWriteFile` / `defaultAppendFile` / `defaultGit` / `defaultRecordHalt` per §3.2–§3.5. `_appendFile` is **append-shaped, never a whole-file rewrite**. `DEV_META` is **not** edited (§3.1, Q-07) | `__tests__/pipelineWiring.test.js` | `pdlc/workflows/orchestrate-dev.js`, `dist/` | 8 | RLH-16 `[dist]`, RLH-17, RLH-02 | — | ⬚ |
+| **RLH-20** | **GREEN the queue module.** The four changes of TSPEC §3.6 — `updateQueueStatus`'s `{ markdown, matched }` (§4.6) with **every** existing call site updated to destructure, `rewriteStatus` **exported** (load-bearing for §7.2 edit 3, not cosmetic) with a `_git` parameter and §6.5's two-invocation commit, `main()`'s `_git`, and `runPicked`'s three status writes routed through the committing `rewriteStatus` | `__tests__/{orchestrateQueue,haltAndQueue}.test.js` | `pdlc/workflows/orchestrate-queue.js`, `dist/` | 9 | RLH-18 `[dist]`, RLH-19 | — | ⬚ |
+| **RLH-23** | **GREEN the episode machinery** — `selectMode` (§5.6.1, the ONLY producer of `EpisodeKey.mode`), `isTerminal` (§5.6.2, exactly two members), `dispatchAndVerify` (§3.8, §5.6.2's terminal-first-then-progress loop), the two prompt kinds (§5.6.3), and `reviewLoop`'s `refreshReviewState` helper called at **every** wrapped episode entry — never a pre-loop snapshot (S-INV). `reviewLoop` gains `docType`, `_listFiles`, `_readFile` and **no seed maps** (§3.9) | `__tests__/{pacingWrapper,reviewLoop,completeness}.test.js` | `pdlc/workflows/orchestrate-dev.js`, `dist/` | 10 | RLH-20 `[dist]`, RLH-21, RLH-22, RLH-13, RLH-16 | — | ⬚ |
+| **RLH-26** | **GREEN the phase gate.** TSPEC §2.5 steps 1–4 and step G in one task because they are one control-flow shape and **G-INV is an invariant over paths, not a step number**: the approval search (§5.4), the staleness call (§5.5), `checkPostmortem` (§5.8) placed at the single point every phase-running exit converges on, the anchor capture/append ordering t0…t6 with the pre-count **count-and-compare** (§5.3), the `forcePhases` gate (§5.7), and **all seven `reviewLoop` call sites** passing the branch-derived `startIndex` — including the forced path | `__tests__/{approvalSearch,approvalHash,forcePhases,haltAndQueue,roundDerivation,reviewLoop}.test.js` | `pdlc/workflows/orchestrate-dev.js`, `dist/` | 11 | RLH-23 `[dist]`, RLH-24, RLH-25, RLH-14, RLH-15, RLH-16, RLH-10, RLH-11 | — | ⬚ |
+| **RLH-27** | **GREEN the terminal exit.** `checkConverged` gains `feature`, its `postmortemPath` template is **corrected and read**, and the exit sequence of §6.3 runs in order — dispatch, `await _checkFile` **confirmation** (never the agent's reply), `await _recordHalt`, throw one of §6.4's **two conditional** shapes. Plus §7.1's five `MAX_REVIEW_ROUNDS` edits, all five anchored by enclosing symbol + distinctive literal, and `reviewLoop`'s `postmortemWritten` | `__tests__/{haltAndQueue,reviewLoop}.test.js` | `pdlc/workflows/orchestrate-dev.js`, `dist/` | 12 | RLH-26 `[dist]`, RLH-25, RLH-05 | — | ⬚ |
+| **RLH-30** | **GREEN the report surface.** `buildFinalReport`'s four new fields and four new lines per TSPEC §4.7 — including the skip notice's **specified** detail string with its conditional bracketed clause (absent, not empty, when the POSTMORTEM state is clean) — and the `{DOC-TYPE}` substitution in `reviewerPrompt` / `optimizerPrompt` (§3.9), which is the same "no un-substituted template" rule as §6.3 | `__tests__/{reportTemplates,dodPhase,shipPhase,implPhase,harvestPhase}.test.js` | `pdlc/workflows/orchestrate-dev.js`, `dist/` | 13 | RLH-27 `[dist]`, RLH-28, RLH-29 | — | ⬚ |
+| **RLH-32** | **GREEN the adapter and the build.** `rtListFiles`, `rtAppendFile`, `rtGit` and the four-entry extension of `rtDevInjections` (TSPEC §3.10 — `_writeFile: rtWriteFile` **existed but was never wired**; `_recordHalt` is deliberately **not** here); then all four `build-runtime.mjs` edits of §7.2 with §3.3 of this PLAN's ordering. One commit, one rebuild | `__tests__/{runtimeBundle,pipelineWiring}.test.js` | `pdlc/workflows/runtime-adapter.js`, `pdlc/workflows/build-runtime.mjs`, `dist/` | 14 | RLH-30 `[dist]`, RLH-31, RLH-18, RLH-20 | — | ⬚ |
+| **RLH-33** | **Version bump and final rebuild.** Bump `version` per TSPEC §7.5, rebuild, confirm `distribution-manifest.json` records the new version and `build-runtime.mjs --check` exits 0 | `__tests__/runtimeBundle.test.js` | `pdlc/.claude-plugin/plugin.json`, `dist/` | 15 | RLH-32 `[dist]` | — | ⬚ |
+| **RLH-34** | **Final verification.** Run §12's checklist end to end. Writes no source and no test; a failure here re-opens the owning task rather than being patched locally | — | — | 16 | RLH-33, and every task above | — | ⬚ |
+
+### 4.1 What `RLH-01`, the pre-flight gate, asserts
+
+Existence only — never the new shape a later task creates. Every row was verified while authoring this
+PLAN and is expected to pass; the gate exists so that a drift between authoring and implementation
+becomes blocking work in batch 1 instead of a confusing red in batch 9.
+
+| Assertion | Verified value at authoring time |
+|---|---|
+| the §2.1 baseline reproduces, with the one red being `documentOracles.test.js` `AT-22 [red-until-L-06]` | 1038 / 1 / 70, 36 suites, 179 s |
+| `__tests__/helpers/driftGenerators.js` exports `seeded` (returning `{ seed, int, pick, shuffle, bytes }`), `resolveSeed` (with the `PDLC_PROP_SEED` override), `shrink` | all present; `bytes(n)` returns a `Buffer` |
+| that generator is already consumed by seven suites — so it is reused, **not** re-implemented, and no second generator library is written | `driftBackups`, `driftBaseline`, `driftFault`, `driftHook`, `driftOrdering`, `driftRepoRoot`, `queueDriftGate` |
+| `main()` in `orchestrate-dev.js` carries sixteen `_`-prefixed parameters | sixteen, `_agent` … `_sleep` |
+| `rtDevInjections` returns nine entries, and `rtWriteFile` **exists but is absent from them** | nine; `rtWriteFile` defined at `async function rtWriteFile(path, contents)` |
+| `reviewLoop` has exactly seven call sites in `orchestrate-dev.js`, and `checkConverged` seven | seven each (`R`, `F`, `T`, `D`, `P`, `PR`, `CR`) |
+| `reviewLoop`'s `iteration = 1` default and its `if (iteration > 5)` gate both exist | present |
+| `checkConverged(loopResult, phaseId, phaseLabel, recordPhase)` takes no `feature` | confirmed |
+| `wrapModule("__queue", …)`'s `exportedNames` is `["main", "meta", "DEFAULT_QUEUE_PATH"]`, and `rewriteStatus` is **not** exported from `orchestrate-queue.js` | confirmed |
+| the **dev** bundle's `contents` array is `[DEV_META, BANNER, adapter, devModule, DEV_ENTRY]` — no `queueModule` | confirmed |
+| `QUEUE_ENTRY` carries `_writeFile: rtWriteFile,` and `_runPipeline: ({ reqPath }) => __dev.main({ reqPath, ...__devInjections }),` — §7.2's edit-2a and edit-2b anchors | both present, distinct literals |
+| each of §7.1's five distinctive literals occurs, and occurs **once** | five |
+| `pdlc/workflows/dist/` holds exactly the three tracked artifacts | `orchestrate-dev.bundle.js`, `orchestrate-queue.bundle.js`, `distribution-manifest.json` |
+
+### 4.2 Counts, width and the critical path
+
+| Quantity | Value |
+|---|---|
+| Tasks | **34** |
+| Batches | **16** |
+| Widest batches | batch 2 — **nine** tasks (RLH-02, 03, 04, 06, 11, 14, 17, 29, 31) — and batch 3 — **nine** tasks (RLH-05, 07, 08, 09, 19, 21, 22, 24, 25). Every task in each is a distinct file; the only source-lane member of batch 3 is RLH-05 |
+| Batches 4–16 | one to three tasks each, always exactly one source-lane task |
+| **Critical path** | the source lane: **RLH-01 → 05 → 10 → 13 → 15 → 16 → 18 → 20 → 23 → 26 → 27 → 30 → 32 → 33 → 34** — fifteen links, one per batch, and it is the whole span of the schedule |
+
+The critical path is the batch count. Nothing shortens it except merging source tasks, which trades
+review granularity for wall time and is **not** recommended for `RLH-23`, `RLH-26` or `RLH-27` — those
+three are where every one of this feature's four defects actually gets fixed, and they are the three
+whose failure modes are invisible to the unit level.
+
+`RLH-26` is the single heaviest task and the one most likely to need splitting in flight. If it must be
+split, split it **along step boundaries of TSPEC §2.5** (steps 1–2 / steps 3–4 / step G + t0…t6), never
+along file boundaries, and put each piece in its own batch — **and re-read G-INV first**, because the
+one thing a split must not do is leave a path that reaches `reviewLoop` without passing step G.
 
 ## 5. File-ownership manifest
 
