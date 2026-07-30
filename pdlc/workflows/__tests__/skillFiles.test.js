@@ -158,6 +158,55 @@ describe("SKILL prompt amendments (TSPEC §7.4)", () => {
       expect(content).toMatch(/12,?000/);
     });
   }
+
+  // TSPEC §7.4 row 3 — harvest-learnings: emit `## 6. Approval Record` per §4.4, copying the
+  // anchor lines **verbatim** and never recomputing. FSPEC §9.4.
+  it("RLH-SKILL-07: harvest-learnings/SKILL.md documents the `## 6. Approval Record` section", () => {
+    const content = readSkill("harvest-learnings/SKILL.md");
+
+    expect(content).toContain("## 6. Approval Record");
+
+    // §4.4's six columns, in order.
+    const columns = [
+      "Document Type",
+      "Round",
+      "Role",
+      "Verdict",
+      "Approval Hash",
+      "Reviewed Commit",
+    ];
+    let cursor = content.indexOf("## 6. Approval Record");
+    for (const column of columns) {
+      const at = content.indexOf(column, cursor);
+      expect([column, at >= 0]).toEqual([column, true]);
+      cursor = at + column.length;
+    }
+
+    // §4.4: "Copy, never recompute."
+    expect(content).toMatch(/copy, never recompute/i);
+  });
+
+  // TSPEC §7.4 row 4 — orchestrate-dev: document the POSTMORTEM lifecycle and the `RESOLVED:`
+  // marker, which §5.8 states is human-written only. AC-5.3.
+  it("RLH-SKILL-08: orchestrate-dev/SKILL.md documents the POSTMORTEM lifecycle and the human-written `RESOLVED:` marker", () => {
+    const content = readSkill("orchestrate-dev/SKILL.md");
+
+    expect(content).toContain("POSTMORTEM");
+    expect(content).toContain("RESOLVED:");
+    expect(content).toMatch(/RESOLVED: yes/);
+    expect(content).toMatch(/RESOLVED: no/);
+
+    // §5.8: no agent and no script ever writes `yes`.
+    expect(content).toMatch(/human-written only/i);
+  });
+
+  // TSPEC §7.4 row 5 — orchestrate-queue: document that a `halted` row is committed. AC-5.4.
+  it("RLH-SKILL-09: orchestrate-queue/SKILL.md documents that a `halted` row is committed", () => {
+    const content = readSkill("orchestrate-queue/SKILL.md");
+
+    expect(content).toContain("halted");
+    expect(content).toMatch(/halted[^\n]{0,120}committed/i);
+  });
 });
 
 // PROP-COMPAT-07, PROP-COMPAT-08: Worker and tech-lead skills are unmodified
