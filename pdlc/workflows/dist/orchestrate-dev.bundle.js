@@ -1072,6 +1072,76 @@ function parseRevisionComplete(response) {
   return { complete: false, reason: "unparseable" };
 }
 
+/**
+ * Read a POSTMORTEM's `RESOLVED:` marker (§5.8).
+ *
+ * The marker is positionally unconstrained — a `RESOLVED:` line anywhere outside
+ * a fenced region counts — and is HUMAN-WRITTEN ONLY. No agent and no script
+ * ever writes `yes`; a POSTMORTEM resolves when a person says it did.
+ *
+ * Absence and malformation are reported here as `ok: false`; §5.8's
+ * `checkPostmortem` maps both onto `unresolved`, failing closed, because a
+ * POSTMORTEM whose marker cannot be read costs an operator one edit whereas the
+ * opposite default silently re-runs a phase that failed for an unfixed reason.
+ *
+ * @param {string} fileText
+ * @returns {{ok: true, resolved: boolean}|{ok: false, reason: string}}
+ */
+function parseResolvedMarker(fileText) {
+  const values = [];
+  scanLines(fileText, (line) => {
+    const m = /^\s*RESOLVED:\s*(\S*)\s*$/.exec(line);
+    if (m) values.push(m[1]);
+  });
+
+  if (values.length === 0) return { ok: false, reason: "absent" };
+  if (values.length > 1) return { ok: false, reason: "duplicated" };
+
+  const value = values[0].toLowerCase();
+  if (value === "yes") return { ok: true, resolved: true };
+  if (value === "no") return { ok: true, resolved: false };
+  return { ok: false, reason: "unparseable" };
+}
+
+/** §5.8's truncation ceiling for the recommendation carried into a halt message. */
+const RECOMMENDATION_MAX_BYTES = 4000;
+
+/**
+ * Take the `## Recommendation` section of a POSTMORTEM — heading located via
+ * `scanLines`, so a quoted heading inside a fence is not mistaken for the real
+ * one — up to the next top-level heading or EOF (§5.8).
+ *
+ * The BODY is sliced from the raw lines rather than from the visited ones: the
+ * fenced-region exclusion governs which lines may match a scanned pattern, it
+ * does not empty a section's body (§5.0 property 3), so a recommendation whose
+ * content is a code fence survives intact.
+ *
+ * Truncated at 4,000 bytes with an explicit notice, because this text feeds the
+ * halt message so the operator sees what to do without opening the file.
+ *
+ * @param {string} fileText
+ * @returns {string} the recommendation body, or `""` when there is no such section.
+ */
+function extractRecommendation(fileText) {
+  const lines = String(fileText ?? "").split("\n");
+  let headingIndex = -1;
+  let nextHeadingIndex = -1;
+  scanLines(fileText, (line, index) => {
+    if (headingIndex === -1) {
+      if (/^\s*##\s+Recommendation\s*$/.test(line)) headingIndex = index;
+    } else if (nextHeadingIndex === -1 && /^#{1,2}\s/.test(line)) {
+      nextHeadingIndex = index;
+    }
+  });
+
+  if (headingIndex === -1) return "";
+  const end = nextHeadingIndex === -1 ? lines.length : nextHeadingIndex;
+  const body = lines.slice(headingIndex + 1, end).join("\n").trim();
+
+  if (body.length <= RECOMMENDATION_MAX_BYTES) return body;
+  return `${body.slice(0, RECOMMENDATION_MAX_BYTES)}\n\n[truncated at ${RECOMMENDATION_MAX_BYTES} bytes — see the POSTMORTEM for the rest]`;
+}
+
 // ─── isPass helper ────────────────────────────────────────────────────────────
 
 function isPass(verdict) {
