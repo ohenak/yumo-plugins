@@ -500,6 +500,42 @@ async function defaultWriteFile(path, contents) {
   writeFileSync(path, contents, "utf8");
 }
 
+// ─── TSPEC §3.4 — the transport seam's Node default ───────────────────────────
+
+/**
+ * Run a git command. The caller branches on `ok`; the seam interprets nothing
+ * and never throws. `argv` is an array, NOT a command string: a string would
+ * need quoting rules at the seam boundary and would make a feature name
+ * containing a space a shell-injection surface.
+ *
+ * Mirrors `defaultGit` in orchestrate-dev.js (RLH-18). The two modules are
+ * bundled into separate IIFEs, so the duplicate name is not a collision, and
+ * each module stays independently loadable by the runtime.
+ *
+ * @param {string[]} argv - git arguments, NOT including the leading "git"
+ * @param {{ execFn?: function }} [opts] - injection point for tests
+ * @returns {Promise<{ ok: boolean, stdout: string, stderr: string }>}
+ */
+async function defaultGit(argv, { execFn } = {}) {
+  const { execFileSync: realExecFileSync } = await import("child_process");
+  const exec =
+    execFn ?? ((file, args, opts) => realExecFileSync(file, args, opts));
+
+  const args = Array.isArray(argv) ? argv : [];
+  const execOpts = { stdio: "pipe", encoding: "utf8" };
+
+  try {
+    const stdout = exec("git", args, execOpts);
+    return { ok: true, stdout: String(stdout ?? ""), stderr: "" };
+  } catch (err) {
+    return {
+      ok: false,
+      stdout: String((err && err.stdout) ?? ""),
+      stderr: String((err && (err.stderr || err.message)) ?? ""),
+    };
+  }
+}
+
 // ─── main() ───────────────────────────────────────────────────────────────────
 
 /**
@@ -779,11 +815,135 @@ async function runPicked({
   });
 }
 
-/** Re-read the queue (the pipeline may have touched it) and set a feature's status. */
-async function rewriteStatus(queuePath, feature, status, readFileFn, writeFileFn) {
-  const current = (await readFileFn(queuePath)) ?? "";
-  const { markdown } = updateQueueStatus(current, feature, status);
+/**
+ * Re-read the queue (the pipeline may have touched it), set a feature's status,
+ * and commit that one row (TSPEC §6.5).
+ *
+ * **Exported deliberately, and load-bearing** (TSPEC §3.6): the bundle can only
+ * publish names the module exports (`stripModuleSyntax` rewrites `export
+ * function` to `function`; `wrapModule` re-publishes only the names in its
+ * `exportedNames` list), and `build-runtime.mjs`'s `_recordHalt` closure has to
+ * reach this function through `__queue`.
+ *
+ * The re-read is not defensive padding: the pipeline that just ran may itself
+ * have rewritten the queue, so a snapshot taken before the run is stale by
+ * construction. Exactly one read, at write time.
+ *
+ * Never throws for a git failure — §6.5's "commit failure does not downgrade the
+ * halt". The row is on disk either way; only its durability is at stake.
+ *
+ * @param {string} queuePath
+ * @param {string} feature
+ * @param {string} status
+ * @param {function} readFileFn  - async (path) => string|null
+ * @param {function} writeFileFn - async (path, contents) => void
+ * @param {function} [gitFn]     - async (argv) => {ok, stdout, stderr}
+ * @returns {Promise<{ queueRow: string, detail?: string }>}
+ *   `queueRow` is drawn from TSPEC §4.7's closed catalogue
+ *   `"halted" | "halted (uncommitted)" | "none" | "error"`. The catalogue
+ *   describes the *row disposition*, not the status written, so a recorded
+ *   write reports `"halted"` whatever `status` was.
+ */
+export async function rewriteStatus(
+  queuePath,
+  feature,
+  status,
+  readFileFn,
+  writeFileFn,
+  gitFn = defaultGit
+) {
+  const current = await readFileFn(queuePath);
+
+  // FSPEC §14.3 — no queue document at all. Reporting `"none"` (rather than an
+  // error) is what stops a direct, queue-less invocation turning one failure
+  // into two. No write, no git.
+  if (current === null || current === undefined) {
+    return { queueRow: "none" };
+  }
+
+  const { markdown, matched } = updateQueueStatus(current, feature, status);
+
+  // FSPEC §13.5 — document present, row expected, row absent. Distinct from
+  // "none": something removed the row mid-run, which the operator must see.
+  // Write nothing and touch git not at all; a write here would clobber the
+  // queue with an unchanged copy and hide the discrepancy.
+  if (!matched) {
+    return {
+      queueRow: "error",
+      detail:
+        `no row for ${feature} in ${queuePath}; ` +
+        `status "${status}" was not recorded`,
+    };
+  }
+
   await writeFileFn(queuePath, markdown);
+  return await commitQueueRow(queuePath, feature, status, gitFn);
+}
+
+/** `git`'s idempotence signal. Emitted on stdout by some versions, stderr by others. */
+const NOTHING_TO_COMMIT_RE = /nothing to commit/i;
+
+/** First line only — a multi-line hook rejection must not flood the report. */
+function firstLine(text) {
+  return String(text ?? "").split("\n")[0].trim();
+}
+
+/**
+ * TSPEC §6.5 — exactly two `_git` invocations, in order:
+ *
+ *     git add    -- {queuePath}
+ *     git commit -m "chore(queue): {feature} → {status}" -- {queuePath}
+ *
+ * Both are pathspec-scoped after `--`. `git commit -a` would sweep unrelated
+ * working-tree changes into a queue-status commit, and a halted pipeline
+ * routinely leaves a partially written document in the tree — that partial
+ * progress is what the recovery path resumes from, so the tree is neither
+ * cleaned nor treated as an error. No `push`: the halt must survive the
+ * *process*, which a local commit achieves.
+ *
+ * @returns {Promise<{ queueRow: string, detail?: string }>}
+ */
+async function commitQueueRow(queuePath, feature, status, gitFn) {
+  const added = await gitFn(["add", "--", queuePath]);
+  if (!added.ok) return uncommitted(added, queuePath);
+
+  const committed = await gitFn([
+    "commit",
+    "-m",
+    `chore(queue): ${feature} → ${status}`,
+    "--",
+    queuePath,
+  ]);
+  if (committed.ok) return { queueRow: "halted" };
+
+  // E-39 — the row already read the target status and was already committed
+  // (the common case on a re-entry). Idempotence, not a fault: no warning, and
+  // nothing to narrate. `git` reports it on stdout or stderr depending on
+  // version, so both are inspected.
+  if (
+    NOTHING_TO_COMMIT_RE.test(committed.stdout ?? "") ||
+    NOTHING_TO_COMMIT_RE.test(committed.stderr ?? "")
+  ) {
+    return { queueRow: "halted" };
+  }
+
+  return uncommitted(committed, queuePath);
+}
+
+/**
+ * E-38 / FSPEC §13.4 — the row is correct on disk but git refused (hook
+ * rejection, missing identity, index lock). Distinct from `"error"` because the
+ * operator's remaining action differs: a manual commit, not a re-run.
+ */
+function uncommitted(result, queuePath) {
+  const reason = firstLine(result && result.stderr);
+  return {
+    queueRow: "halted (uncommitted)",
+    detail:
+      `queue row written but not committed` +
+      (reason ? `: ${reason}` : "") +
+      `; commit ${queuePath} manually`,
+  };
 }
 
 // ─── Report builder ───────────────────────────────────────────────────────────
