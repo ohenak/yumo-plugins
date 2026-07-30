@@ -1490,3 +1490,32 @@ fails loudly on the site the tool mis-parsed.
 | **F-07** | Low | **Folded into `F-01`/`N-01` and fixed there** — the four-place site set is the High's root cause, not a separate item. |
 | **Q-01** | — | **Answered: a PLAN decision, not a §7.1 amendment.** Edit 3's relocation is permitted by §3.9, §10.3 and §13.1's `P-Q-02`, which give the PLAN authority over *where* a permitted edit lands when the TSPEC pins the behaviour and not the site. §11.5 records the answer and the split: `RLH-26` writes the arguments, `RLH-27` the destructuring and the gate. No TSPEC §7.1 change was made or needed. |
 | **Q-02** | — | **Answered: no, there is no precedent to reuse, and that was checked rather than assumed.** `__tests__/helpers/` contains `driftCapabilities`, `driftFixtures`, `driftGenerators`, `driftHarness`, `driftOrdering`, `driftProbe`, `freshClone`, `guardFixtures`, `guardRowIds`, `skipSink*` and `bin` — fixture, harness and probe utilities, none of which reads JS source structurally. The nearest shipped precedent is `runtimeBundle.test.js`'s own regex assertions over the bundle text, which is why the depth walk lives there and stays file-local: it extends the one place that already treats the bundle as text. §9.2 records the negative finding, so the next author does not re-search for it. |
+
+#### TSPEC amendment scope, and what was declined
+
+**Three clauses of TSPEC §8.5, and nothing else in the TSPEC.** All three narrow; none widens:
+
+| Clause | Finding | Direction |
+|---|---|---|
+| Combinator ruling stated as a **property** ("awaits every element"), `race`/`any` withdrawn | PM `N-03` / TE `F-02` | narrows the exempt set |
+| Alias row: scan the local name **in addition to** the `_`-prefixed one | PM `L-01` | corrects a contradiction; scope unchanged |
+| Returned-promise row: an anonymous arrow's exemption is **inherited by nobody** | TE `F-06` | narrows what inheritance reaches |
+
+The third is the clause beyond the brief's two, disclosed in the `F-06` row above with its reason.
+The **mechanism is deliberately absent from the TSPEC** — §8.5 states rulings as predicates over
+syntactic position, and PLAN §4 (`RLH-31`) and §9.2 own how they are evaluated. TSPEC §0 records
+this in its v1.7 entry so a later reader does not read the omission as a gap.
+
+**Declined — nothing.** Every round-3 finding, High through Low, is addressed above; both questions
+are answered. Two dispositions differ from the remedy a reviewer or the brief suggested, and both are
+argued rather than asserted: TE `F-05` (kept with a check, where deletion was offered as the
+preference) and PM `N-02` (resolved toward §11.5's table rather than §7.3's row). The round-2 `F-10`
+decline stands; both reviewers accepted it and v1.3 does not reopen it.
+
+**Byte count.** v1.3 grows the document. The PLAN was ruled executable at 129 KB by both reviewers
+and **no compression pass was run for its own sake**. The growth is concentrated in this changelog
+section and in §9.2's third item — the mechanism decision, which is new content that closes an
+unowned obligation. Against that, v1.3 **deletes** three normative restatements of the site set
+(§7.3 row 1, §9.2 item 1, §12.3's `RLH-AT-19` row, each now a citation), which is the one reduction
+both reviewers asked for by name: a round that removes a duplicated catalogue and records why it was
+duplicated cannot also be the round that shrinks the record of it.
