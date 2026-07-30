@@ -509,8 +509,20 @@ export function isComplete(artifactClass, docType, fileText)
 
 // ── round derivation (§5.2) ─────────────────────────────────────────────────
 export function deriveRoundWindow(basenames, docType)
-//   → { ok: true, startIndex, endIndex, present: Map<role, number[]> }
+//   → { ok: true, startIndex, endIndex, present: Map<role, number[]>,
+//       skipped: Array<{ basename: string, reason: FilenameFailure }> }
 //   | { ok: false, reason: "malformed_round_one_duplicate", role }
+
+// ── episode mode (§5.6.1) ───────────────────────────────────────────────────
+export function selectMode({ dispatchKind, docType, present, reviewFiles })
+//   → { mode: "authoring" | "revision", round: number|null, reason: string }
+//   The ONLY producer of EpisodeKey.mode (§4.5). Pure: it reads no file itself,
+//   consuming the §5.2 listing and the §5.1/§5.4 reads the phase entry already
+//   performed. FSPEC §15.2's four rules; fails toward "revision".
+
+export function isTerminal(mode, response, artifactClass, docType, after)
+//   → boolean.  Greenfield: structural completeness ALONE, no trailer.
+//   Revision: structural completeness AND parseRevisionComplete → complete.
 ```
 
 `sha256Hex` is **not a seam**, and this is a deliberate design decision rather than an oversight. A
@@ -617,7 +629,11 @@ error path.
 
 ### 4.3 `TrailerFailure` and `HashFailure`
 
-`parseRevisionComplete(response)` returns `{ complete: true }` or `{ complete: false, reason }`:
+`parseRevisionComplete(response)` returns `{ complete: true }` or `{ complete: false, reason }`. It
+is called **only on a revision episode** (§5.6.2's `isTerminal`); a greenfield episode's terminal test
+is structural completeness alone, so `absent` never arises there and no greenfield episode can be
+held back by a trailer its SKILL was never amended to emit. The dispositions below are therefore all
+revision-path dispositions:
 
 | `reason` | Meaning | Consequence in `dispatchAndVerify` |
 |---|---|---|
@@ -699,6 +715,12 @@ LEARNINGS consulted. This bounds the read fan-out at two `_readFile` per phase e
 Five coordinates, because four collide. Without `mode`, an authoring dispatch and a revision dispatch
 for the same document in the same round share counters, and a long revision exhausts the authoring
 budget. Without `invocation`, the counters have nothing to increment.
+
+`mode` is produced by exactly one function — **`selectMode` (§5.6.1)** — called once at episode
+entry. No other site assigns it, and in particular it is never derived from the artifact's structural
+state; FSPEC §15.2 records that derivation as retracted. `roundIndex` on a **revision** episode is
+`selectMode`'s returned `round` (the highest round still owed an authoring pass), not §5.2's
+`startIndex`, which is the *next reviewer* round; on a greenfield episode it is `startIndex`.
 
 Per-episode counters, both reset when any coordinate changes:
 
@@ -1060,7 +1082,64 @@ question, not silently included).
 
 ### 5.6 `dispatchAndVerify` — the H-3 fix
 
-One episode = one (artifactSet, phase, round, mode) tuple. The loop:
+One episode = one (artifactSet, phase, round, mode) tuple.
+
+#### 5.6.1 `selectMode` — how `mode` is computed (FSPEC §15.2, AC-3.5 scope (d))
+
+`EpisodeKey.mode` is not an input the caller invents. It is computed **once, at episode entry**, by a
+pure function, from **what the phase is dispatching an author to do** — never from the artifact's
+structural state:
+
+```js
+export function selectMode({ dispatchKind, docType, present, reviewFiles })
+//   dispatchKind : "authoring" | "review" | "dod-verify" | "harvest"
+//   docType      : the doc type this episode's artifact set belongs to
+//   present      : deriveRoundWindow's per-role Map<role, number[]> for docType
+//   reviewFiles  : Map<`${role}:${round}`, { verdict, verdictReadable, anchorHash }>
+//                  — the §5.1 / §5.4 reads already performed for this phase entry
+//   →  { mode: "authoring" | "revision", round: number|null, reason: string }
+```
+
+Four rules, taken from FSPEC §15.2 and normative here:
+
+1. **The revision test is evaluated first.** The episode is a **revision** episode iff a
+   findings-bearing review round exists on the branch for this (feature, doc type). Structural
+   completeness is consulted **only** when no such round exists, so completeness can never move an
+   episode out of revision mode.
+2. **Which round.** The highest round index `present` holds for that (feature, doc type) whose review
+   artifacts do **not** carry same-round dual approval — the round still owed an authoring pass. A
+   resuming invocation therefore re-enters the **same** round and re-derives its findings from the
+   surviving `CROSS-REVIEW-*` files. §5.2's `max + 1` governs the **next reviewer** dispatch, which
+   happens only after this episode reaches terminal; it is not the round a revision episode addresses.
+   `selectMode` and `deriveRoundWindow` consume the same `present` map and answer different questions.
+3. **Non-authoring wrapped dispatches are always greenfield.** `dispatchKind !== "authoring"` ⇒
+   `{ mode: "authoring", round: null }` without evaluating rule 1. A `pm-review` / `se-review` /
+   `te-review` / `dod-verify` / `harvest-learnings` episode is never dispatched to address findings in
+   its own artifact — each writes a new file — so the revision test cannot match.
+4. **Fail toward revision.** If review artifacts for the candidate round exist but their verdict
+   fields are unreadable (§5.1's fail-closed cases), the episode is a **revision** episode. The
+   directions are not symmetric: mis-entering greenfield silently drops a whole review round, while
+   mis-entering revision costs at most a continuation prompt naming findings already reflected — and
+   §8.2's trailer terminates that in one dispatch.
+
+Stickiness is a **consequence**, not the mechanism: the selection is made once and does not change
+for the life of the episode, whatever later measurements observe. Episode entry is the instant the
+counters start at zero, so mode, prompt kind and counters share one scope. This is what lets a fresh
+process recover `(round, mode)` after a stall kill — everything `selectMode` reads is on disk.
+
+**The retracted derivation, stated so this document does not reinstate it.** FSPEC §15.2 withdraws
+v1.3's per-dispatch re-measurement *and* v1.4's entry-time derivation from the artifact's structural
+state. Neither is used here. In particular, §5.6.3's prompt-kind rule — `invocation === 1` and the
+target absent or empty — selects **the prompt kind, not the mode**. The two are different axes: a
+revision episode resuming after a stall kill finds an incomplete document and takes the *resume*
+prompt shape, while remaining a **revision** episode carrying that round's findings. Reading that
+rule as the mode rule reproduces exactly the failure §15.2 describes — the resumed episode carries a
+prompt naming no findings, greenfield terminal fires on structural completeness, and the wrapper
+reports success on a round whose findings were never addressed.
+
+#### 5.6.2 The loop
+
+The loop:
 
 ```
 loop:
@@ -1072,9 +1151,8 @@ loop:
   response ← await _agent(prompt built per the two kinds below, { model })
 
   // ── TERMINAL FIRST ──
-  trailer ← parseRevisionComplete(response)
-  after   ← await _readFile(targetPath)
-  if trailer.complete && isComplete(class, docType, after).complete:
+  after ← await _readFile(targetPath)
+  if isTerminal(episode.mode, response, class, docType, after):
       return { ok:true, response }
 
   // ── THEN PROGRESS ──
@@ -1086,9 +1164,37 @@ loop:
   prompt ← the resume form (below)
 ```
 
+**The terminal test is per mode** (FSPEC §8.4, AC-3.5b). There is no unconditional trailer conjunct:
+
+```js
+function isTerminal(mode, response, artifactClass, docType, after) {
+  const structural = isComplete(artifactClass, docType, after).complete;
+  if (mode !== "revision") return structural;              // greenfield
+  return structural && parseRevisionComplete(response).complete;
+}
+```
+
+| Mode | Terminal condition | Trailer |
+|---|---|---|
+| **Greenfield** | the required member of the artifact set is structurally complete (§5.9) | **none required, none expected.** `parseRevisionComplete` is not called on this path |
+| **Revision** | structurally complete **and** `parseRevisionComplete(response)` → `{ complete: true }` | required |
+
+**Why the conjunct was deleted from the greenfield path rather than reconciled.** §7.4 amends only
+the three **author** SKILLs to emit `REVISION-COMPLETE:`; the three review SKILLs, `dod-verify` and
+`harvest-learnings` are not amended and will never emit it. Rule 3 of §5.6.1 puts every one of those
+episodes in greenfield by construction. A mode-blind conjunct therefore makes the numerically
+dominant episode population unable to *ever* reach terminal: each burns all six
+`MAX_AUTHORING_DISPATCHES` and halts its phase — H-3's own failure mode, a correct artifact scored
+not-done and the run killed, reconstructed by the mechanism built to remove it. A clause reconciling
+"absent trailer counts as complete for these classes" would leave the same conjunct in place and
+carry a second rule to keep in sync with §7.4's amendment list; deleting the conjunct from the
+greenfield path leaves one rule.
+
 **Terminal-first-then-progress** is not an arbitrary order. An author whose final dispatch declared
 completion and whose last write happened to change no bytes (a re-emission of identical content) is
 **done**, and evaluating progress first would re-dispatch it, burning budget on a finished document.
+It also keeps a genuine stall counted: a stall-killed dispatch emits **no** trailer, so *no progress
+without a trailer* still counts against `MAX_AUTHORING_ATTEMPTS` exactly as before.
 
 **The progress predicate is one mode-independent byte-change test over the working tree** (FSPEC
 §15.3): `before !== after`, where both are `_readFile` results with `null` for absent. It is
@@ -1096,7 +1202,13 @@ deliberately not "the document grew", which would fail a legitimate deletion, an
 git-based diff, because uncommitted content is real content — **no git operation on the pacing path
 may discard uncommitted work.**
 
-**The two prompt kinds** (O-6):
+#### 5.6.3 The two prompt kinds (O-6)
+
+**This table selects the prompt kind. It does not select the mode** — §5.6.1 does that, from a
+different input, at a different time. Both axes are consulted for every dispatch: the prompt kind
+decides *fresh brief vs. resume brief*, the mode decides *whether findings are named and whether a
+trailer is required*. All four combinations occur; a revision episode resuming after a stall kill is
+`(resume, revision)`.
 
 | Kind | When | Contains |
 |---|---|---|
@@ -1109,9 +1221,10 @@ required heading exists but one has an empty body (⇒ that heading's body). Der
 disk rather than from conversational memory is what makes the wrapper restartable after a stall kill
 — the case that motivated the whole feature.
 
-**Revision mode** uses the same wrapper with `mode: "revision"` and a continuation prompt naming the
-cross-review findings to address; its counters are separate because its `EpisodeKey` differs in
-`mode` (§4.5).
+**Revision mode** uses the same wrapper. `mode: "revision"` comes from `selectMode` (§5.6.1), not from
+the caller and not from the artifact's state; the prompt additionally names the cross-review findings
+of `selectMode`'s returned `round`, re-read from the surviving `CROSS-REVIEW-*` files rather than from
+conversational memory. Its counters are separate because its `EpisodeKey` differs in `mode` (§4.5).
 
 **Budget exhaustion writes no POSTMORTEM.** Running out of dispatches is not non-convergence — it is
 the pacing wrapper refusing to keep paying. The phase halts with the wrapper's reason; §6.3's
@@ -1244,7 +1357,8 @@ failure to answer.
 | 6 | `APPROVAL-HASH:` absent / duplicated / unparseable | `parseApprovalHash` | `UNEVALUABLE`; phase runs; noted in the report |
 | 7 | reviewed document unreadable at comparison time | `_readFile` → `null` | `UNEVALUABLE`; phase runs |
 | 8 | `_appendFile` rejects, or the verification read finds ≠ 1 anchor | §5.3 | operator-facing error; **round yields no approval**; run continues |
-| 9 | `REVISION-COMPLETE:` absent / duplicated / unparseable | `parseRevisionComplete` | episode not terminal; continue; counts toward the counters |
+| 9 | `REVISION-COMPLETE:` absent / duplicated / unparseable, **on a revision episode** | `parseRevisionComplete` | episode not terminal; continue; counts toward the counters |
+| 9a | no `REVISION-COMPLETE:` on a **greenfield** episode | — | **not a failure and not detected.** `parseRevisionComplete` is not called; terminal is structural completeness alone (§5.6.2). This row exists so the absence is a recorded non-event rather than a gap |
 | 10 | `MAX_AUTHORING_ATTEMPTS` consecutive no-progress dispatches | `dispatchAndVerify` | halt the phase, `reason: "no_progress"`; **no POSTMORTEM** |
 | 11 | `MAX_AUTHORING_DISPATCHES` exceeded | `dispatchAndVerify` | halt the phase, `reason: "dispatch_budget"`; **no POSTMORTEM** |
 | 12 | invalid `forcePhases` token | `parseForcePhases` | halt **before any phase runs**, ending `Valid: R, F, T, P, D, all.` |
