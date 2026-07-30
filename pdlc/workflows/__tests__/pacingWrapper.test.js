@@ -1169,6 +1169,105 @@ describe("RLH-AT-49 — the resume prompt names the first unwritten section (FSP
 
 // ─── 9. RLH-AT-50, RLH-AT-51, RLH-AT-58 — the non-authoring wrapped classes ───
 
+/**
+ * The pacing contract every **wrapped authoring or review** prompt carries
+ * (§5.6.3's shared clause; the same literals `skillFiles.test.js` pins in the
+ * SKILL templates). Its *absence* is what distinguishes an unwrapped dispatch.
+ */
+const PACING_CONTRACT = Object.freeze([/skeleton/i, /commit after each/i, /12,?000/]);
+
+/** How many of the pacing clauses a prompt carries. */
+function pacingClauseCount(prompt) {
+  return PACING_CONTRACT.filter((re) => re.test(String(prompt ?? ""))).length;
+}
+
+describe("RLH-AT-50 — a wrapped review dispatch is terminal on its verdict field (FSPEC §19 AT-50, O-19(f))", () => {
+  test("RLH-AT-50: a cross-review with one parseable verdict ends the episode in a single dispatch that carried the pacing contract, while a Phase-DOD se-implement remediation dispatch carries none of it", async () => {
+    const run = await runPipeline({
+      review: () => ({
+        write: crossReviewDoc({ verdict: "Approved" }),
+        response: reviewResponse("Approved"),
+      }),
+    });
+    const rReviews = select(run, { skill: "se-review", phase: "R", round: 1 });
+    // Terminal on the verdict field alone: exactly one dispatch in the episode.
+    expect(rReviews.map((d) => d.n)).toEqual([1]);
+    // …and it was *wrapped*: a wrapped review dispatch carries the pacing contract.
+    expect(pacingClauseCount(rReviews[0].prompt)).toBe(PACING_CONTRACT.length);
+
+    // Phase-DOD remediation is an implementation dispatch, not an authoring one:
+    // §5.6's wrapped classes do not include it, so it must carry none of the
+    // contract and must never be asked for a `REVISION-COMPLETE:` trailer.
+    const dodRun = await runPipeline({ dod: true, dodStatuses: ["failed", "passed"] });
+    const remediation = select(dodRun, { skill: "se-implement" });
+    expect(remediation.length).toBeGreaterThan(0);
+    for (const dispatch of remediation) {
+      expect(pacingClauseCount(dispatch.prompt)).toBe(0);
+      expect(dispatch.prompt).not.toMatch(/REVISION-COMPLETE/);
+    }
+  });
+});
+
+describe("RLH-AT-51 — harvest is terminal without the approval record (FSPEC §19 AT-51, E-59)", () => {
+  test("RLH-AT-51: a harvest killed after the prose and before the approval record is terminal on its first dispatch, the run still reports success, and the report names the missing approval record", async () => {
+    const run = await runPipeline({
+      harvest: () => ({
+        write: learningsDoc({ approvalRecord: false }),
+        response: "Harvest complete.",
+      }),
+    });
+    const harvestDispatches = select(run, { skill: "harvest-learnings" });
+    // Terminal: the missing §4.4 record does not make the episode incomplete, so
+    // the harvester is not re-dispatched and the run is not halted by it.
+    expect(harvestDispatches.map((d) => d.n)).toEqual([1]);
+    expect(run.result.outcome).toBe("success");
+    // …but the omission is reported rather than swallowed.
+    expect(run.reportText).toMatch(/approval record/i);
+    expect(run.reportText).toMatch(/missing|absent|not written/i);
+  });
+});
+
+/** The marker the AT-58 fixture leaves in its stall-killed partial file. */
+const PARTIAL_MARKER = "PARTIAL-BYTES-FROM-DISPATCH-1";
+
+describe("RLH-AT-58 — intra-episode re-dispatch onto the episode's own partial file (FSPEC §19 AT-58, E-57)", () => {
+  test("RLH-AT-58: after a stall-killed first dispatch leaves a non-empty partial cross-review, §15.4 re-dispatches inside the same episode without evaluating the no-overwrite guard, without an operator error, with the continue-do-not-rewrite instruction, and the partial bytes survive", async () => {
+    // Rounds 1–3 already exist on disk, so the FSPEC review episode this fixture
+    // targets is round 4 — §15.4's `CROSS-REVIEW-software-engineer-FSPEC-v4.md`.
+    const seeded3 = {};
+    for (const round of [1, 2, 3]) {
+      for (const role of ["software-engineer", "test-engineer"]) {
+        seeded3[`${DOCS_DIR}/CROSS-REVIEW-${role}-FSPEC-v${round}.md`] =
+          crossReviewDoc({ verdict: "Needs revision", high: 1 });
+      }
+    }
+    const run = await runPipeline({
+      files: { ...seeded3, [FSPEC_PATH]: completeDoc("FSPEC") },
+      review: (ctx) =>
+        ctx.docType === "FSPEC" && ctx.skill === "se-review" && ctx.n === 1
+          ? // Stall-killed: real bytes on disk, no trailing `## Verdict`.
+            { write: crossReviewDoc({ withVerdict: false, extra: ` ${PARTIAL_MARKER}` }),
+              response: "Killed mid-write." }
+          : { write: crossReviewDoc({ verdict: "Approved" }), response: reviewResponse("Approved") },
+    });
+
+    const seFspec = select(run, { skill: "se-review", docType: "FSPEC" });
+    expect(seFspec.length).toBeGreaterThan(0);
+    expect(seFspec[0].round).toBe(4);
+    // The episode re-dispatches onto its own partial file…
+    expect(seFspec.filter((d) => d.round === 4).map((d) => d.n)).toEqual([1, 2]);
+    // …the guard is not evaluated and no operator error is raised…
+    expect(run.result.outcome).not.toBe("halted");
+    expect(run.reportText).not.toMatch(/already exists|refusing to overwrite|no-overwrite/i);
+    // …the continuation instruction is present…
+    expect(seFspec[1].prompt).toMatch(/do NOT rewrite/i);
+    expect(seFspec[1].prompt).toMatch(/RESUMED/i);
+    // …and dispatch 1's bytes were still on disk when dispatch 2 was asked for.
+    const partialPath = `${DOCS_DIR}/CROSS-REVIEW-software-engineer-FSPEC-v4.md`;
+    expect(String(run.fs.files[partialPath] ?? "")).toContain(PARTIAL_MARKER);
+  });
+});
+
 // ─── 10. RLH-AT-52, RLH-AT-53 — advisory proxy, and no destructive git ────────
 
 // ─── 11. RLH-AT-54 — constant substitution and the round window ───────────────
