@@ -395,7 +395,7 @@ exports eight symbols; the five this feature consumes, with their measured behav
 |---|---|---|
 | `seeded(seed)` | returns `{ seed, int(lo,hi), pick(arr), shuffle(arr), bytes(n) }`. Stateful xorshift32; `state = (seed >>> 0) \|\| 0x9e3779b9`, so **seed 0 silently becomes `0x9e3779b9`** — a property must not treat 0 as a distinct seed. `int` throws when `hi < lo`; `pick` throws on a non-array or empty array; `shuffle` copies (`arr.slice()`) and does not mutate its argument; `bytes(n)` returns a **`Buffer`**, not a string or `Uint8Array` | every property |
 | `resolveSeed(literalSeed)` | `PDLC_PROP_SEED` override; unset or `""` ⇒ the literal; non-decimal ⇒ **throws**; otherwise `parseInt(raw, 10)` | every property file, once |
-| `shrink(caseValue)` | dispatches on `caseValue.kind` over **exactly four** kinds — `"manifest"`, `"bytes"`, `"id"`, `"subRecipe"` — `default: return []` (§2.3) | `PROP-DIGEST-01/-02`, `PROP-SCAN-01` |
+| `shrink(caseValue)` | dispatches on `caseValue.kind` over **exactly four** kinds — `"manifest"`, `"bytes"`, `"id"`, `"subRecipe"` — `default: return []` (§2.3) | nominally `PROP-DIGEST-01/-02`, `PROP-HASH-01`, `PROP-STALE-01` — but a no-op on every case they generate, since `BYTES_FLOOR = 64` (`:423`) and their strings are shorter (§2.3, §8.2). v1.0 also listed `PROP-SCAN-01`, which uses a file-local ladder |
 | `genId(rng, force)` | an `M6_ID_REGEX`-conforming id, 1–64 bytes, first byte alphanumeric, body `[A-Za-z0-9._-]` | **not used** — this feature's identifiers are role slugs and doc types from closed catalogues, not free ids |
 | `genStamp(rng, opts)` | a 16-byte `YYYYMMDDTHHMMSSZ` stamp | **not used** — no property here has a timestamp domain |
 
@@ -525,7 +525,7 @@ line of `t`, with `\r` stripped, appears in `f(t)` in the same order).
 decode performs is *in* the domain and is exactly the byte soup the function must survive — with
 `\r\n`, lone `\r` and 0…5 trailing `\n` injected at random positions. 100 cases.
 
-**Non-vacuity.** The generated set must contain ≥10 cases with at least one `\r\n`, ≥10 with a lone
+**Non-vacuity.** All forced (§3.3 rule 1), never sampled. The generated set must contain ≥10 cases with at least one `\r\n`, ≥10 with a lone
 `\r`, ≥10 with two or more trailing newlines, and ≥5 with **zero** trailing newline — the last is the
 only shape that falsifies an implementation whose N-2 rule strips rather than forces. Forced, not
 sampled.
@@ -556,7 +556,7 @@ first, and any two texts differing only in line endings or trailing newlines dig
 `codePointAt`-valid code points), surrogate pairs (emoji), and **lone surrogates** (`"\uD800"` alone),
 which is where a hand-rolled `utf8Bytes` is most likely to be wrong. 100 cases.
 
-**Non-vacuity.** ≥15 cases must contain a code point above U+FFFF and ≥5 must contain a lone
+**Non-vacuity.** All forced (§3.3 rule 1), never sampled. ≥15 cases must contain a code point above U+FFFF and ≥5 must contain a lone
 surrogate; the property asserts those counts before asserting the digest. And conjunct (iii) is
 asserted **only** over cases where `f(t) !== t` for at least 20 of them — otherwise it degenerates
 into `sha256Hex(t) === sha256Hex(t)`, which is conjunct (ii).
@@ -614,7 +614,7 @@ whitespace, altered case, or embedded inside a sentence), fence delimiters (``` 
 characters, with and without an info string), and arbitrary prose from D3 — shuffled with
 `rng.shuffle` and joined. Document length 0…120 lines. 100 cases.
 
-**Non-vacuity.** ≥20 cases must contain at least one true marker line, ≥20 at least one near-miss,
+**Non-vacuity.** All forced (§3.3 rule 1), never sampled. ≥20 cases must contain at least one true marker line, ≥20 at least one near-miss,
 ≥15 at least one *balanced* fence pair with a marker **inside** it, ≥10 a **nested** four-in-three
 fence (a three-backtick line that must not close a four-backtick block), and ≥5 an **unclosed** fence.
 The nested and unclosed floors are the ones that matter: together they are the only shapes
@@ -672,7 +672,7 @@ catalogue × docType catalogue × round 1…99, plus one mutation selected per c
 five mutation classes. 100 cases, with the unversioned form (no `-v{N}`) included in the valid domain
 because TSPEC §3.9 makes the suffix optional.
 
-**Non-vacuity.** All five mutation classes must appear ≥10 times each **and each must be observed
+**Non-vacuity.** All forced (§3.3 rule 1), never sampled. All five mutation classes must appear ≥10 times each **and each must be observed
 producing its own `FILENAME_FAILURES` member** — set equality against the catalogue, so a failure mode
 added to `FILENAME_FAILURES` with no generator path fails the property. The valid-domain half must
 cover every role and every docType at least once, likewise as set equality against the catalogues, so
@@ -741,7 +741,7 @@ filenames (`REQ-*.md`, `LEARNINGS-*.md`, `.DS_Store`, directory names), conformi
 another doc type**, and rounds drawn to straddle the window edge. Set size 0…40, shuffled with
 `rng.shuffle` (pure — §3.1). 100 cases.
 
-**Non-vacuity.** ≥20 cases must carry at least one **other-doc-type** basename (the class v1.0's
+**Non-vacuity.** All forced (§3.3 rule 1), never sampled. ≥20 cases must carry at least one **other-doc-type** basename (the class v1.0's
 partition had no home for), ≥15 at least one file **above** `endIndex`, ≥15 at least one **below**
 `startIndex`, ≥10 must be the empty set, ≥20 must mix review and non-review names, and ≥10 must trip
 the round-1 duplicate halt. All forced. The above-`endIndex` floor catches a window computed per-round
@@ -777,7 +777,7 @@ conjuncts: `rng.shuffle` of the tokens, and any token repeated, yield an equal `
 (lowercase `r`, `pr ` with trailing space, `ALL`, `Rq`, empty string, `R,F` as a single token), joined
 with the separator TSPEC §3.7 specifies. 100 cases.
 
-**Non-vacuity.** ≥25 cases must be wholly valid, ≥25 must contain ≥1 near-miss, ≥10 must contain
+**Non-vacuity.** All forced (§3.3 rule 1), never sampled. ≥25 cases must be wholly valid, ≥25 must contain ≥1 near-miss, ≥10 must contain
 `all`, ≥10 must contain a duplicate, and ≥5 must be the empty input. The valid-half floor is asserted
 as *set coverage of `V`*, so a catalogue that grows without the generator growing fails here.
 
@@ -905,7 +905,7 @@ and a document containing two trailers resolves deterministically to the same on
 uppercase hex, 63 and 65 characters, non-hex characters in the payload, correct payload with a
 malformed label, and valid trailers placed inside a fence or behind a `>` quote. 100 cases.
 
-**Non-vacuity.** ≥20 valid, ≥10 of each of the length-off-by-one shapes, ≥10 quoted-or-fenced, ≥5
+**Non-vacuity.** All forced (§3.3 rule 1), never sampled. ≥20 valid, ≥10 of each of the length-off-by-one shapes, ≥10 quoted-or-fenced, ≥5
 double-trailer. The `quoted-hash.md` fixture (§6.3) pins the quoted case by example; the floor makes it
 a space.
 
@@ -942,7 +942,7 @@ Catalogue closure is the second conjunct: the set of reasons observed across the
 recognisers' verbatim forms, each with one mutation from the catalogue's own failure taxonomy
 (wrong case, trailing content, quoted, fenced, missing payload). 100 cases.
 
-**Non-vacuity.** Every member of `TRAILER_FAILURES` must be observed ≥1 time — asserted as **set
+**Non-vacuity.** All forced (§3.3 rule 1), never sampled. Every member of `TRAILER_FAILURES` must be observed ≥1 time — asserted as **set
 equality** against the catalogue, which is what makes this a totality check (DC-01) and not a sampling
 check: a failure mode added to the catalogue with no generator path fails the property.
 
@@ -1069,7 +1069,7 @@ omitting a verdict and carrying a matching / stale / absent anchor; D6 supplies 
 enumerated exhaustively (16 combinations) and each combination is then dressed with random file
 ordering and random extra non-review files. 100 cases ≥ 16 combinations × ≥6 dressings.
 
-**Non-vacuity.** All 16 presence combinations must appear (set equality against the enumeration, not a
+**Non-vacuity.** All forced (§3.3 rule 1), never sampled. All 16 presence combinations must appear (set equality against the enumeration, not a
 count) and ≥15 cases must carry a **stale** anchor alongside an approving verdict — the H-4 shape.
 
 **Owner.** Written by **RLH-24** (batch 3, sole owner of `approvalSearch.test.js`); greened by
@@ -1104,7 +1104,7 @@ call site (`R, F, T, D, P, PR, CR`; §3.2, PM F-08 — v1.0 wrote "the six force
 (including paths with spaces, unicode, and a trailing slash, to prove the message interpolates the
 path it was given). Enumeration of phase × failure is exhaustive; the rest is sampled. 100 cases.
 
-**Non-vacuity.** Every `(phase, failure)` pair must be observed — set equality against the product,
+**Non-vacuity.** All forced (§3.3 rule 1), never sampled. Every `(phase, failure)` pair must be observed — set equality against the product,
 which is what makes "every row reachable" a measured claim rather than an aspiration. And ≥10 `ok`
 cases must be present so the benign path is not the only non-halting outcome.
 
@@ -1135,7 +1135,7 @@ review set at the second episode.
 index, and a seam answer drawn from `LIST_FAILURES ∪ {ok}`, subject to the constraint that a halting
 answer terminates the sequence (halts are terminal, so nothing after one is generated). 100 cases.
 
-**Non-vacuity.** ≥20 sequences must change seam answer between consecutive episodes (the caching
+**Non-vacuity.** All forced (§3.3 rule 1), never sampled. ≥20 sequences must change seam answer between consecutive episodes (the caching
 discriminator), ≥15 must be length ≥5, and ≥10 must end in a halt. A sequence whose answers never
 change cannot falsify caching and is counted but not relied upon.
 
@@ -1166,7 +1166,7 @@ branch state yields an equal result and issues an equal number of seam reads.
 membership is generated, not assumed) crossed with `PROP-RESOLVE-01`'s 16-element presence vector, plus
 tier placement (`tier1`, `tier2`, `both`, `neither`) chosen by `rng.pick`. 100 cases.
 
-**Non-vacuity.** All four tier placements must appear; ≥15 cases must place a unanimous approval
+**Non-vacuity.** All forced (§3.3 rule 1), never sampled. All four tier placements must appear; ≥15 cases must place a unanimous approval
 **outside** the window; ≥15 must place a unanimous-but-stale approval inside it. Those two floors are
 the property's discriminating power — everything else is dressing.
 
@@ -1212,7 +1212,7 @@ negative one — no step-5 record appears on a `FRESH` path — which is a diffe
 that takes it, dressed with a randomised round index, a randomised prior-postmortem presence flag, and
 a randomised review set. Exits enumerated exhaustively; dressing sampled. 100 cases.
 
-**Non-vacuity.** All **five** of TSPEC §2.5's exits must be traversed at least once — set equality
+**Non-vacuity.** All forced (§3.3 rule 1), never sampled. All **five** of TSPEC §2.5's exits must be traversed at least once — set equality
 against the catalogue, not a count ≥ 5 — and both outcomes of G (pass and halt) must be observed for
 ≥3 distinct exits. ≥10 cases must take the `FRESH` path and reach **no** step 5. An
 exit that no generated state can reach is a **failure**, not a skip: an unreachable exit means either
