@@ -19,7 +19,7 @@ frontmatter is the pickup gate; the `Status` cell tracks lifecycle.
 
 | Order | Status | Feature | REQ Path | Depends-On |
 |-------|--------|---------|----------|------------|
-| 0 | pending | pdlc-review-loop-hardening | docs/pdlc-review-loop-hardening/REQ-pdlc-review-loop-hardening.md | pdlc-workflow-distribution |
+| 0 | halted | pdlc-review-loop-hardening | docs/pdlc-review-loop-hardening/REQ-pdlc-review-loop-hardening.md | pdlc-workflow-distribution |
 | 1 | done | pdlc-workflow-distribution | docs/pdlc-workflow-distribution/REQ-pdlc-workflow-distribution.md | — |
 | 2 | pending | pdlc-merge-phase | docs/pdlc-merge-phase/REQ-pdlc-merge-phase.md | pdlc-workflow-distribution |
 | 3 | pending | pdlc-advisory-tier | docs/pdlc-advisory-tier/REQ-pdlc-advisory-tier.md | pdlc-merge-phase |
