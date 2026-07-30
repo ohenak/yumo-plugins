@@ -1227,20 +1227,45 @@ the budget edge, then collapse coordinates to their first catalogue value.
 **PROP-WINDOW-01 — the round window is computed once at the phase gate and read, never recomputed.**
 *(State Machine · L2 · `reviewLoop.test.js`)*
 
-**Invariant.** For every generated phase run: `deriveRoundWindow` is invoked **exactly once** per
-phase entry (call-count equality on the seam log, not a floor); every subsequent consumer receives
-`startIndex` and `endIndex` **positionally** from that single computation; and for the whole duration
-of the phase the pair satisfies `endIndex === startIndex + MAX_REVIEW_ROUNDS - 1` even as rounds
-advance — i.e. round advancement moves the *cursor*, never the window. `checkConverged` receives both
-values on every call, and the values it receives are identical across all calls within one phase entry.
+**This property now carries the width identity `PROP-ROUND-01` could not** (SE F-02). The identity
+`endIndex - startIndex + 1 === MAX_REVIEW_ROUNDS` is unobservable at L1 — the constant is unexported
+(TSPEC §4.8), `deriveRoundWindow` takes no width argument (§3.7), and §8.4 bars an L1 test from the
+filesystem — so at L1 it degenerates to comparing the subject's width with itself. At **L2** it is
+observable, and TSPEC §7.1 says exactly where: of the five `MAX_REVIEW_ROUNDS` edit sites, *"only
+sites 4 and 5, which report a **count** rather than an index, use the constant alone"* — site 5 being
+`return { converged: false, iterations: MAX_REVIEW_ROUNDS, lastResults };`, and site 4 the
+`Iterations (${MAX_REVIEW_ROUNDS} — limit reached)` line in `reviewLoop`'s prompt, which the
+`recordPhase` double captures. Both are read here **through the seams**, not imported.
+
+**Invariant.** For every generated phase run:
+
+(i) **Computed once.** `deriveRoundWindow` is invoked **exactly once** per phase entry — call-count
+equality on the seam log, not a floor; every subsequent consumer receives `startIndex` and `endIndex`
+**positionally** from that single computation; `checkConverged` receives both values on every call and
+the values are identical across all calls within one phase entry.
+
+(ii) **The width identity, against an independently observed count.** For a run driven to exhaustion,
+`endIndex - startIndex + 1 === loopResult.iterations`, where `iterations` is the value site 5 returns
+and the left-hand side comes from the window the gate computed. Two independently sourced observables:
+an off-by-one introduced on either side (`startIndex + MAX_REVIEW_ROUNDS`, or a loop that returns one
+round too few) breaks the identity, which is precisely what the L1 form could not do. The same value
+is cross-checked against the count rendered into the prompt at site 4 and captured by the
+`recordPhase` double — a third surface, so a mutation would have to be applied consistently at all
+three to escape.
+
+(iii) **The window does not move.** For the whole duration of the phase, `startIndex` and `endIndex`
+are unchanged as rounds advance — round advancement moves the *cursor*, never the window.
 
 **Generator.** D6 × D7: a phase entry with a generated branch state (from `PROP-ROUND-01`'s generator)
-followed by 1…`MAX_REVIEW_ROUNDS + 2` round advances, each with a generated verdict. 100 cases.
+followed by 1…`MAX_REVIEW_ROUNDS + 2` round advances, each with a generated verdict. The upper bound
+is expressed relative to the **observed** `iterations` count, not to an imported constant. 100 cases.
 
-**Non-vacuity.** ≥20 runs must advance past `MAX_REVIEW_ROUNDS` rounds (the overflow shape), ≥15 must
-start from a branch already carrying reviews (non-1 `startIndex`), and ≥10 must converge before the
-window closes. The non-1 `startIndex` floor is what distinguishes derivation from a counter starting
-at 1 — the H-1 defect.
+**Non-vacuity.** All forced. ≥20 runs must advance past the observed `iterations` count (the overflow
+shape), ≥20 must run to exhaustion so conjunct (ii)'s identity is reachable — a run that converges
+early never returns the `iterations` count the identity needs, so without this floor (ii) would be
+silently unexercised — ≥15 must start from a branch already carrying reviews (non-1 `startIndex`), and
+≥10 must converge before the window closes. The non-1 `startIndex` floor is what distinguishes
+derivation from a counter starting at 1 — the H-1 defect.
 
 **Owner.** Written by **RLH-22** (batch 3); greened by **RLH-27** — rides `RLH-LOOP-01`/`-02`'s
 ledger rows: green from batch 9, permitted red batches 3–8.
@@ -1263,15 +1288,51 @@ One property, at the level TSPEC §8.3 calls composition/source: it reads `pdlc/
 **PROP-AWAIT-01 — the await classification is total: every seam call site is classified or fails.**
 *(Static Guard · L3 · `runtimeBundle.test.js`)*
 
-**Invariant.** Let `S` be the set of call sites of the thirteen injected seam identifiers found by
-PLAN §9.2 item 3's bracket-depth walk over the masked source. For every site `s ∈ S`, exactly one of
-four things holds: `s` is `await`ed; or `s` is classified by TSPEC §8.5 ruling **1** (alias — the
-one-hop alias resolution), **2** (returned promise, satisfying **both** the backward and the forward
-half) or **3** (argument to an awaited combinator). A site matching **none** is *unclassified* and the
-property **fails loudly** — it does not warn, does not skip, and is not permitted to be absent from
-the report. A site matching **two** rulings is equally a failure: the classification is a partition,
-not a cover (DC-01). The property is quantified over `S` as the walk computes it, never over a
-hard-coded list of the sites present today.
+**The outcome catalogue is rebuilt from the classifier's real outcome space** (SE F-01). v1.0 stated
+a **five**-element catalogue — `awaited`, ruling 1 (alias), ruling 2, ruling 3, `unclassified` —
+and made it a partition with a set-equality floor of ≥10 fragments per element. That catalogue is
+**unproducible**, and the floor over it would red on shipped, correct source. PLAN §9.2 item 3 builds
+the classification in two stages: step **(b)** *"build the scan set including aliases and the wrapper
+fixed-point"*, then step **(c)** classifies each remaining non-`await`ed site, and (c)'s own third
+branch reads *"alias (already discharged by (b))"*. **Alias is a scan-set construction rule, applied
+before classification** — an aliased call never survives to be classified, so `alias` can never be a
+classifier *outcome*, and no fragment can be generated whose expected outcome is `alias`. A floor
+demanding ≥10 such fragments is unsatisfiable; on the shipped source it fails. That matters more than
+usual here because this property rides §7.3's row 1 (`RLH-AT-19`, `-20`, `RLH-SCAN-01`) — the one row
+in the whole ledger with **no permitted red, ever**. A property that reds on correct source, on that
+row, halts the batch. v1.0's catalogue is withdrawn.
+
+**Invariant.** Let `S` be the set of call sites of the thirteen injected seam identifiers surviving
+PLAN §9.2 item 3's scan-set construction — step (b), aliases and the wrapper fixed-point already
+resolved — found by the bracket-depth walk over the masked source. For every site `s ∈ S`, exactly one
+of **four** outcomes holds:
+
+| Outcome | Decided by | Decision test |
+|---|---|---|
+| `awaited` | the walk | the token preceding the call is `await` |
+| `returned-promise` | TSPEC §8.5 ruling **2** | nearest preceding token is `=>` or `return` (backward half) **and** the returned value is awaited by the caller (forward half) — **both**, not either |
+| `awaited-combinator-argument` | TSPEC §8.5 ruling **3** | the innermost unclosed delimiter at the site is the `[` of an `await`ed `Promise.all` / `allSettled` argument list |
+| `unclassified` | neither ruling fires | the property **fails loudly** — it does not warn, does not skip, and is not permitted to be absent from the report |
+
+**Disjointness is now a real claim.** Under v1.0's catalogue, "a site matching two rulings is a
+failure" was near-vacuous, because alias co-classification was the only plausible overlap and alias
+was never an outcome. Under the rebuilt catalogue the two rulings have *genuinely* distinguishable
+decision tests — ruling 2 keys on the **nearest preceding token**, ruling 3 on the **innermost
+unclosed delimiter** — and a fragment can be constructed that a sloppy implementation would send down
+both (a call inside an `await`ed `Promise.all([...])` whose element is itself an arrow body). Such
+fragments are generated, and exactly one outcome must be returned.
+
+**Total cover, not total partition** (SE F-08). The classification of `S` is a partition. The
+*obligation* it discharges is a **cover**: it asserts that no site in `S` is unclassified. It does not
+assert that every seam call in the file is in `S` — TSPEC §8.5's anonymous-arrow exemption puts at
+least one shipped site outside `S` (`orchestrate-dev.js:1866`'s `batch.map((task) =>` arrow, whose
+`agentFn(` call at `:1867` is the site the scan set names), and §8.5 states that exemption is
+*"inherited by nobody"*, i.e. it is unsound in the general case and sound only at HEAD. v1.0 called
+the whole thing a total partition, which overstates it. §8.4 records the shipped unsound exemption as
+a residual rather than claiming coverage the walk does not have.
+
+The property is quantified over `S` as the walk computes it, never over a hard-coded list of the sites
+present today.
 
 **Generator.** D8 — source fragments, **never executed**. The generated object is not the production
 source (that is walked whole and asserted directly) but the *classifier's input space*: synthetic
@@ -1281,11 +1342,15 @@ nested inside another call's argument list, and inside a `Promise.all([...])` th
 Each fragment is generated together with its expected classification, so the property is a
 round-trip: classify(fragment) === expected. 100 cases.
 
-**Non-vacuity.** Each of the three rulings, plus "awaited" and plus "unclassified", must be the
-expected outcome for ≥10 fragments — set equality against the five-element outcome catalogue. And
-≥15 fragments must place a seam call inside a masked region (string, template, comment) where the
-expected outcome is that **no site is found at all**, which is the walk's own correctness, not the
-classifier's.
+**Non-vacuity.** All forced. Each of the **four** outcomes — `awaited`, `returned-promise`,
+`awaited-combinator-argument`, `unclassified` — must be the expected outcome for ≥10 fragments, set
+equality against that four-element catalogue. ≥10 fragments must satisfy ruling 2's backward half but
+**not** its forward half, expected `unclassified` — the control that stops "either half" passing for
+"both". ≥10 must be the deliberate both-rulings-look-applicable shape described above, where exactly
+one outcome must be returned. And ≥15 fragments must place a seam call inside a masked region (string,
+template, comment) where the expected outcome is that **no site is found at all** — a statement about
+the walk's masking, not about the classifier, and therefore asserted on `S` rather than on an outcome.
+No fragment has expected outcome `alias`; per PLAN §9.2 item 3(b) none can exist.
 
 **Withdrawn rulings.** TSPEC v1.7 withdrew `Promise.race` and `Promise.any` from ruling 3. The
 generator therefore emits `Promise.race`/`any` fragments with expected outcome **unclassified**, so
