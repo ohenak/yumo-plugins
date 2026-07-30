@@ -2601,6 +2601,15 @@ Who / Given / When / Then. Every test is executable against `pdlc/workflows/__te
 seams — no runtime, no network. Oracle construction is TSPEC's and PROPERTIES' work (O-14, O-19); these
 are the behavioural gates.
 
+**One exception, and it is load-bearing (TE-v2 F-03).** Injecting the seams in every test means **no**
+test traverses the production composition root, and §17.3 declares four `build-runtime.mjs` edits
+load-bearing. A seam that TSPEC adds to `main()`'s parameter list but omits from the adapter's
+`rtDevInjections` / `QUEUE_ENTRY` wiring silently falls back to its **Node default** — bodies that use
+`await import("child_process")` or `fs`, which are dead in the runtime — so every seam-injected test stays
+green while the shipped bundle fails on first use. That is the exact failure class C-2 exists to prevent,
+and seam injection structurally hides it. **AT-64 is therefore asserted against the composition root
+itself, with no injection**, and is the one test in this section that does not follow the pattern above.
+
 **AT-01 — Round index is derived from the branch, not from 1 (H-1)**
 *Who:* the pipeline. *Given* `docs/foo/` holds `CROSS-REVIEW-software-engineer-FSPEC-v3.md` and
 `CROSS-REVIEW-test-engineer-FSPEC-v3.md`, none approving. *When* Phase F is entered. *Then* the first
@@ -2931,6 +2940,32 @@ present. *Then* derivation **halts** at step 5 with an operator error naming **b
 dispatch. *Given instead* `CROSS-REVIEW-software-engineer-FSPEC.md` and
 `CROSS-REVIEW-test-engineer-FSPEC-v1.md`. *Then* there is **no** halt: this is two roles at index 1, a
 normal pairable round, and derivation yields `startIndex` 2.
+
+**AT-64 — The composition root wires every seam (C-2, TE-v2 F-03)**
+*Who:* the bundle test. **No seams injected** — this is the one test in §19 that reads the production
+wiring. *Given* the set of injected seam parameter names on `orchestrate-dev`'s and `orchestrate-queue`'s
+`main()`. *When* the adapter's `rtDevInjections` and `QUEUE_ENTRY` wiring is enumerated. *Then* **every**
+seam in that set is present in the wiring, and the assertion is written so that **adding a seam to
+`main()` without wiring it fails the test** — the enumeration is derived from `main()`, never from a
+hand-maintained list that would need the same edit twice. *Falsifier:* delete one entry from
+`rtDevInjections` and the test goes red while every seam-injected test stays green.
+
+**AT-65 — A quoted verdict template is not a verdict (§1.2 rule 5, TE-v2 F-01)**
+*Given* `CROSS-REVIEW-test-engineer-FSPEC-v4.md` whose body quotes §6.2's fenced template — so the file
+contains a `## Verdict` heading and `VERDICT: Approved with minor changes` **inside a fenced block** — and
+which has **no** unfenced `## Verdict` section, the reviewer having been stall-killed before writing one.
+*And given* the peer role's round-4 file carries a genuine `VERDICT: Approved` and an equal
+`APPROVAL-HASH:`, and the document's bytes are unchanged. *Then* the quoted block contributes **no**
+heading and **no** verdict line: the file has no trailing verdict section, is **not** approving, §16.3
+scores the episode **not terminal**, and **the phase runs**. *Falsifier:* drop the fenced-region exclusion
+and this fixture skips the phase on a review that was never written.
+
+**AT-66 — A quoted `APPROVAL-HASH:` does not poison the pre-count (§1.2 rule 5, SE-v2 F-11)**
+*Given* a cross-review that quotes §7.4's fenced append shape, so the file contains an `APPROVAL-HASH:`
+line inside a fenced block, and **no** unfenced one. *When* §7.4's pre-count runs before appending.
+*Then* the count is **zero**, the append proceeds normally, and the round's approval is anchored.
+*Falsifier:* count without the exclusion and the fixture lands on the "one present, unequal" branch —
+an operator-facing error, and no approval for a round that earned one.
 
 ## 20. Open questions
 
