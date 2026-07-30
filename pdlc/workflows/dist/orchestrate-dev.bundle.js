@@ -2415,6 +2415,75 @@ function defaultReadFile(path) {
   }
 }
 
+// ─── TSPEC §3.2 — the listing seam's Node default ─────────────────────────────
+
+/**
+ * List a directory's file basenames. Never throws: every failure is reported as
+ * `{ ok: false, reason }` with `reason` drawn from the closed LIST_FAILURES
+ * catalogue (§4.2). Non-recursive; directories are excluded; basenames only, so
+ * parseReviewFilename's anchored grammar sees what it expects.
+ *
+ * The `{ fsMod = fs }` second-argument idiom is copied from checkFileNonEmpty so
+ * the two file-touching Node defaults are tested the same way.
+ *
+ * @param {string} dirPath - repo-relative directory path
+ * @param {{ fsMod?: object }} [opts] - injection point for tests (override fs)
+ * @returns {{ ok: true, files: string[] } | { ok: false, reason: string }}
+ */
+function defaultListFiles(dirPath, { fsMod = fs } = {}) {
+  if (typeof dirPath !== "string" || dirPath.trim() === "") {
+    return { ok: false, reason: "bad_argument" };
+  }
+  try {
+    const entries = fsMod.readdirSync(dirPath, { withFileTypes: true });
+    return {
+      ok: true,
+      files: entries
+        .filter((entry) => !entry.isDirectory())
+        .map((entry) => entry.name),
+    };
+  } catch (err) {
+    const code = err && err.code;
+    if (code === "ENOENT") return { ok: false, reason: "dir_missing" };
+    if (code === "ENOTDIR") return { ok: false, reason: "not_a_directory" };
+    return { ok: false, reason: "unreadable" };
+  }
+}
+
+// ─── TSPEC §3.3 — the two write seams' Node defaults ──────────────────────────
+
+/**
+ * Write a file, replacing its contents entirely. Throws on failure — deliberately
+ * the exception to §3.2's never-throw rule: a failed write is not a condition a
+ * caller can meaningfully continue past, and defaultReadFile / checkFileNonEmpty
+ * already establish throw-on-IO-failure as this module's idiom. Callers wrap it
+ * where FSPEC prescribes a specific halt.
+ *
+ * @param {string} path
+ * @param {string} contents
+ * @param {{ fsMod?: object }} [opts] - injection point for tests (override fs)
+ * @returns {void}
+ */
+function defaultWriteFile(path, contents, { fsMod = fs } = {}) {
+  fsMod.writeFileSync(path, contents, "utf8");
+}
+
+/**
+ * Append text to a file. APPEND-SHAPED, NEVER A WHOLE-FILE REWRITE (FSPEC §7.4):
+ * a read-modify-write would re-emit the reviewer's prose, and any divergence
+ * between what was read and what was written would silently rewrite a
+ * cross-review file. Hence appendFileSync, not writeFileSync(existing + text).
+ * Throws on failure, for the same reason defaultWriteFile does.
+ *
+ * @param {string} path
+ * @param {string} text
+ * @param {{ fsMod?: object }} [opts] - injection point for tests (override fs)
+ * @returns {void}
+ */
+function defaultAppendFile(path, text, { fsMod = fs } = {}) {
+  fsMod.appendFileSync(path, text, "utf8");
+}
+
 // ─── TSPEC-SCRIPT-04: main() ──────────────────────────────────────────────────
 
 /**
