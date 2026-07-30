@@ -13,7 +13,7 @@ feature: pdlc-review-loop-hardening
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | **Draft** | Claude + operator | 1.2 | 2026-07-30 |
+| pdlc | **Draft** | Claude + operator | 1.3 | 2026-07-30 |
 
 > **Altitude.** The REQ states the observable behaviour, the FSPEC how it is produced and pins the
 > sixty-six acceptance tests, the TSPEC how it is built and proved with *examples*, the PLAN when each
@@ -23,6 +23,40 @@ feature: pdlc-review-loop-hardening
 > by section.
 
 ## 0. Changelog
+
+### v1.3 — round-3 cross-review feedback
+
+Reviewers: `CROSS-REVIEW-software-engineer-PROPERTIES-v3.md` (0 High, 1 Medium, 3 Low, `a03ecde`) and
+`CROSS-REVIEW-product-manager-PROPERTIES-v3.md` (0 High, 2 Medium, 1 Low, `1dfeb1c`). Both read in
+full. Both verified **all thirteen round-2 findings resolved**, none reopened, each by independent
+re-derivation. Upstream REQ v1.6 / FSPEC v1.8 / TSPEC v1.7 / PLAN v1.4 approved and **not** reopened.
+The v1.2 range was `95529be..b6773e7` (ten commits), not the `d6b524d..b6773e7` the round-3 briefs
+named — both reviewers widened it independently and both said so.
+
+**The through-line: one measure, read from its owner.** `PROP-HASH-01`'s duplicate handling was wrong
+for the third consecutive round, in a third new way, and both reviewers filed it independently. The
+cause was the same each time — the property paraphrased the counting rule instead of measuring it.
+This revision goes to TSPEC §5.3 and §4.3, extracts the unit those sections count
+(**`APPROVAL-HASH:` lines outside fenced regions, irrespective of payload**), and states the `iff`,
+the `duplicated` conjunct and the `absent` conjunct over that one measure — as conjuncts (i)–(vi) of a
+single count `n`. Nothing else in §4.2 moves.
+
+| ID | Sev | Resolution |
+|---|---|---|
+| SE F-21 | Medium | **Two rows added to §5.2**, in `PROP-TRAILER-01` (2nd)'s shape. `PROP-HASH-01` (3rd): on pre-count `≥ 2`, return the **first** collected line as `{ ok: true, hash }` ⇒ conjunct (ii) dies on the ≥5 double-line floor while (v) and (vi) survive. `PROP-HASH-01` (4th): on `n === 0` return `{ ok: false }` with `reason` omitted or outside `HASH_FAILURES` ⇒ conjunct (vi)'s membership dies on the ≥5 no-trailer floor while (i) survives. Each was checked against rows 1 and 2 first: both survive both mutations, which is why the rows were owed. **SE Q-02 answered**: the omission was forgotten, not deliberate — stated in the (4th) row itself |
+| SE F-23 ≡ PM F-01 | Medium (convergent) | **§4.2's invariant restated over the measured count**, not paraphrased a fourth time. The `iff` now reads `n === 1` **and** that line well-formed at a permitted position; `duplicated` reads `n >= 2` *whatever the payloads are*; `absent` reads `n === 0`. On one valid trailer plus one malformed line both now say `duplicated` — the contradiction was the `iff` counting *trailers* while TSPEC counts *lines*. **SE Q-01 / PM Q-01 answered in §4.2's Generator**: each document carries **exactly one shape**, never a mixture, and the double-line shape is widened to include one-valid-plus-one-malformed so conjunct (ii)'s payload-blindness is drawn (≥2 of the ≥5). The one thing TSPEC does not settle — whether a `> `-quoted line enters the pre-count — is stated in §4.2 together with the reason no conjunct depends on it: both readings yield `ok: false` with a `HASH_FAILURES` member, and the *named* reasons are asserted only where the count is unambiguous |
+| PM F-02 | Medium (cross-feature) | **§8.4 residual 6's successor binding withdrawn.** `QUEUE.md` scopes row 9 to *"declaring those contracts in the SKILLs, not to re-implementing row 0's mechanism"*; an `_readFile` → `null` reader-seam path is that mechanism. Row 9's scope is now quoted from `QUEUE.md` rather than characterised, and the residual is recorded as having **no successor row** — every row in the table was read. Closing it is stated as an **action** (widen row 9's REQ scope when authored, or allocate a new row), per PM Q-02. §8.3's two existing row-9 bindings fit that charter and stand |
+| SE F-22 | Low | **§4.3's `I` provenance sentence corrected.** `I` has two return sites: `:598` (the exhausting branch, TSPEC §7.1 edit 5, the constant reported as a count) and `:648` (the converging branch, not an edit site, no constant). That split is now stated as the reason conjunct (i)'s equality is restricted to precondition (b) and its inequality is not |
+| SE F-24 | Low | **PLAN §9.2 item 3(c) quoted as written** in both §4.4 and §8.5 item 5: *"to decide which §8.5 ruling, if any, applies"*. v1.2's *"whichever, if any, applies"* was a paraphrase inside quotation marks. Substance unaffected — neither phrasing states a precedence, so §8.5 item 5's upward report stands |
+| PM F-03 | Low | **§2.3's competing sole-ownership claim withdrawn**, per R-5's prefer-deletion rule and last round's ruling that §2.3 owns the disposition. §2.3's table is now the single named owner; a property's `Shrink.` line restates its row. §3.1's cell already pointed here and is unchanged |
+| SE F-23 (as filed Low) | — | Same defect as PM F-01; treated once, above. Nothing declined |
+| SE Q-03 | Carried | `PROP-WINDOW-01`(i)'s call-count observability, unchanged for the third round and not filed as a finding for the third time. Not addressed here: it is a question about which surface `RLH-22` will use, and answering it would require a TSPEC export §4.8 declines to make. §8.5 item 3 already carries the shape of the admission |
+
+**Mechanical, corrected silently (R-6), not filed as defects:** site 4's dispatch is `orchestrate-dev.js:574`, not `:570` (three places: §0's v1.2 F-13 row, §4.3, §6.5).
+
+**Nothing was declined.** Every finding in both reviews is resolved in the section that owns it. No
+property was restated, no floor was removed, no structure moved, and §0 gained a map row per finding
+rather than a statement any section needs.
 
 ### v1.2 — round-2 cross-review feedback
 
