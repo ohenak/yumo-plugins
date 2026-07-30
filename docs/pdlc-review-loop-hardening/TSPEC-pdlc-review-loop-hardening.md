@@ -1057,15 +1057,13 @@ union out, never a throw.
 7.  → { ok: true, startIndex, endIndex, present, skipped }
 ```
 
-**Step 1 keeps the rejects, and step 7 carries them out.** E-03 and E-07 both specify a non-conforming
-basename as "skipped **and reported**", and AT-05 asserts the phase-entry line contains the literal
-`skipped non-conforming: CROSS-REVIEW-se-FSPEC-v2.md`. Discarding the rejects inside the filter would
-leave the caller no way to emit that text except by re-running `parseReviewFilename` over the listing
-itself — a parse in the orchestration stratum, which §2.4 forbids. `skipped` is ordered by the
-listing's own order, deduplicated by basename, and empty (not absent) when every basename conformed;
-a caller emits the notice iff it is non-empty. Only basenames that fail the *grammar* appear —
-a well-formed cross-review for a **different** doc type is not a reject, it is simply not this
-document's, and reporting it would fire on every phase entry in a normal `docs/{feature}/`.
+**Step 1 keeps the rejects, and step 7 carries them out.** E-03/E-07 specify a non-conforming basename
+as "skipped **and reported**" and AT-05 asserts the literal text, so discarding them inside the filter
+would force the caller to re-parse the listing — a parse in the orchestration stratum, which §2.4
+forbids. `skipped` is ordered by the listing's own order, deduplicated by basename, and empty (not
+absent) when every basename conformed; a caller emits the notice iff it is non-empty. Only basenames
+that fail the *grammar* appear: a well-formed cross-review for a **different** doc type is neither an
+entry nor a reject — it is a third outcome (§8.2's partition property is stated over all three).
 
 Step 4 is the H-1 fix in one line. Today `reviewLoop`'s `iteration = 1` default is never overridden
 by any of its seven call sites, so round 2 writes `-v1` again and destroys round 1. After this
@@ -1140,22 +1138,16 @@ just computed.
 | 1 | **unequal** | **error surfaced** naming the file, both hashes and the round; **no append**, and **that round yields no approval** | E-15 |
 | ≥ 2 | — | **error surfaced** naming the file and the count; **no append**, and **that round yields no approval**. Two anchors mean the file's history is ambiguous, and picking either is a coin flip on whether a phase is skipped | E-15 |
 
-The unequal and ≥2 branches take §5.3's failed-append disposition (§6.2 row 8): operator-facing error,
-no approval from that round, the run continues, and §5.5's `UNEVALUABLE` correctly re-runs the phase
-on re-entry. They deliberately do **not** overwrite, delete or reconcile the existing anchors —
-AC-1.4 forbids rewriting a cross-review file, and a "repair" here would launder exactly the ambiguity
-that should be visible.
-
-Collapsing all three non-zero cases into "already anchored, skip the append" — which a count-only
-pre-count does — silently accepts an unequal or duplicated anchor as a valid approval, and §6.2 row
-8's verification read never fires because it runs only after an append this branch skipped.
-
-**Failed append is an error, not a silent degradation, and not a halt.** If `_appendFile` rejects, or
-the verification read does not find exactly one `APPROVAL-HASH:` line, the script emits an
-operator-facing error naming the file and the failure, and **that round yields no approval**. The
-current run continues normally — the round's verdict is already known from the response trailer; what
-is lost is only the future skip, and §5.5's `UNEVALUABLE` branch will correctly run the phase on
-re-entry. **Recording an approval without its hash is forbidden.**
+**A failed or ambiguous append is an error, not a silent degradation, and not a halt.** The unequal
+and ≥2 branches, a rejecting `_appendFile`, and a verification read that does not find exactly one
+`APPROVAL-HASH:` line all take the same disposition (§6.2 row 8): an operator-facing error naming the
+file and the failure, **no approval from that round**, and the run continues — the round's verdict is
+already known, and what is lost is only the future skip, which §5.5's `UNEVALUABLE` correctly
+re-derives by running the phase. **Recording an approval without its hash is forbidden**, and the
+existing anchors are never overwritten, deleted or reconciled: AC-1.4 forbids rewriting a cross-review
+file, and a "repair" would launder the ambiguity that should be visible. A count-only pre-count
+collapses all three non-zero cases into "already anchored, skip the append", which accepts an unequal
+or duplicated anchor as a valid approval and never fires the verification read.
 
 **`REVIEWED-COMMIT` is corroboration, never load-bearing.** §5.5's comparison never reads it. This is
 what makes the mechanism rebase-proof: Phase DOD rebases `feat-{feature}` and rewrites every sha on
@@ -1770,14 +1762,10 @@ load.
 | `pdlc/workflows/dist/orchestrate-queue.bundle.js` | 140,096 | 3,540 |
 | `pdlc/workflows/orchestrate-queue.js` (source) | 47,733 | 1,158 |
 
-The queue bundle **already inlines both modules today** and ships. Edit 4 therefore grows the dev
-bundle to roughly the size of an artifact that has been in production since
-`pdlc-workflow-distribution` — the largest shipped artifact already contains exactly this union, so
-no new size territory is entered and there is no undocumented ceiling to discover. The alternative
-the FSPEC leaves implicit — duplicating the two row helpers into `orchestrate-dev.js` — is
-**declined on the merits**, not for want of a limit: it would put a second copy of the queue's table
-grammar in a module whose §3.5 contract is precisely that it never learns that grammar, and a second
-copy of a parser is the failure mode DC-11 and §1.5's cite-and-reuse rule both exist to prevent.
+The queue bundle **already inlines both modules today** and ships, so edit 4 enters no new size
+territory. The alternative — duplicating the two row helpers into `orchestrate-dev.js` — is declined
+on the merits: a second copy of the queue's table grammar in a module whose §3.5 contract is that it
+never learns that grammar is the duplicate-parser failure mode DC-11 and §1.5 both exist to prevent.
 
 ### 7.3 Generated artifacts
 
