@@ -2155,6 +2155,148 @@ async function refreshReviewState({ feature, docType, _listFiles, _readFile }) {
   };
 }
 
+// ─── TSPEC §5.8 — the POSTMORTEM query (§2.5 step G's subject) ───────────────
+
+/**
+ * Ask whether this (phase, feature) carries a POSTMORTEM, and whether a human
+ * has resolved it (§5.8).
+ *
+ * This is a **query, not a gate**. It never decides on its own whether a phase
+ * runs; the refusal lives at §2.5 step G, which is the single point every
+ * phase-running exit converges on (G-INV). Putting the refusal in here would
+ * invert AC-2.3b, because step 4's `FRESH` branch calls it for REPORTING ONLY.
+ *
+ * Absent or malformed marker ⇒ `unresolved`. Fail closed: a POSTMORTEM whose
+ * marker cannot be read costs an operator one edit, whereas the opposite default
+ * silently re-runs a phase that previously failed for an unfixed reason.
+ *
+ * @param {{phase: string, feature: string, _readFile: function}} arg
+ * @returns {Promise<{status: "none"|"resolved"|"unresolved", path: string,
+ *                    recommendation?: string}>}
+ */
+async function checkPostmortem({ phase, feature, _readFile }) {
+  const path = `docs/${feature}/POSTMORTEM-${phase}-${feature}.md`;
+  const text = await _readFile(path);
+  if (text == null || String(text).trim() === "") return { status: "none", path };
+
+  const marker = parseResolvedMarker(text);
+  if (marker.ok && marker.resolved) return { status: "resolved", path };
+  return { status: "unresolved", path, recommendation: extractRecommendation(text) };
+}
+
+// ─── TSPEC §5.4 — the approval search (the H-4 fix) ──────────────────────────
+
+/** The shape every non-approving exit of the search returns (§5.4). */
+function noApprovalRecord(candidate, unevaluable = []) {
+  return { approving: false, candidate, hash: null, unevaluable, tier1Empty: false };
+}
+
+/**
+ * TIER 1 — the candidate round's per-role CROSS-REVIEW records (§5.4).
+ *
+ * Pure: the reads were already performed by `refreshReviewState`, which §5.6.1
+ * defines as "§5.4's tier-1 reads over round `startIndex - 1`". That is what
+ * holds the fan-out at **two `_readFile` per phase entry** — this function opens
+ * nothing.
+ *
+ * Four properties, each load-bearing:
+ *   - single-highest-round candidate, **no descending walk** (`RLH-AT-57`);
+ *   - a role's absent `-v{candidate}` is **not approving**, not partially
+ *     approving (`RLH-AT-10`);
+ *   - unanimity is `isPass` on every role AND identical anchor hashes — a
+ *     partial or disagreeing anchor pair adopts neither value (`RLH-AT-56`);
+ *   - a duplicated `VERDICT:` line already failed closed upstream, in §5.1
+ *     (`RLH-AT-11`).
+ *
+ * @param {{reviewers: string[], startIndex: number, reviewFiles: Map}} arg
+ * @returns {{approving: boolean, candidate: number, hash: string|null,
+ *            unevaluable: string[], tier1Empty: boolean}}
+ */
+function tier1ApprovalRecord({ reviewers, startIndex, reviewFiles }) {
+  const candidate = startIndex - 1;
+  if (candidate < 1) return noApprovalRecord(candidate);
+
+  const roles = reviewers.map((skill) => reviewerRoleSlug(skill) || skill);
+  const records = roles.map((role) => reviewFiles.get(`${role}:${candidate}`) || null);
+
+  // "Tier 1 produced a file at all" is what makes the tiers exclusive.
+  if (records.every((r) => r === null)) {
+    return { ...noApprovalRecord(candidate), tier1Empty: true };
+  }
+  // Role-asymmetry: one reviewer wrote the candidate round and the other did not.
+  if (records.some((r) => r === null)) return noApprovalRecord(candidate);
+
+  // §6.2 row 6: an absent, duplicated or unparseable anchor is UNEVALUABLE and
+  // the offending file is named in the report. Adopting the *other* file's value
+  // is the failure FSPEC §19 calls out.
+  const unevaluable = records.filter((r) => !r.anchorHash).map((r) => r.path);
+  const verdictsPass = records.every((r) => r.verdictReadable && isPass(r.verdict));
+  if (!verdictsPass || unevaluable.length) return noApprovalRecord(candidate, unevaluable);
+
+  const hashes = records.map((r) => r.anchorHash);
+  if (!hashes.every((h) => h === hashes[0])) {
+    // Disagreement: neither value may be adopted, so BOTH files are offending.
+    return noApprovalRecord(candidate, records.map((r) => r.path));
+  }
+
+  return { approving: true, candidate, hash: hashes[0], unevaluable: [], tier1Empty: false };
+}
+
+/** The `## 6. Approval Record` heading tier 2 reads by name (§4.4, §5.4). */
+const APPROVAL_RECORD_HEADING = /^\s*##\s+\d*\.?\s*Approval Record\s*$/;
+
+/**
+ * TIER 2 — `## 6. Approval Record` in `LEARNINGS-{feature}.md` (§5.4).
+ *
+ * Consulted **only** when the candidate round produced no cross-review file at
+ * all: the tiers are exclusive, so there is no "both tiers disagree" merge to
+ * specify and no cross-tier completion (`RLH-AT-10` falsifies both).
+ *
+ * Under §5.2's `startIndex = max(present) + 1`, `candidate` is by construction a
+ * round some role holds, so post-harvest — the case this tier was written for —
+ * `present` is empty, `candidate` is 0 and §5.4's `candidate < 1` exit fires
+ * first (FSPEC §12.4 example B). This path therefore survives for a listing that
+ * changes under the run, and is deliberately kept rather than folded away: the
+ * grammar it reads is the one harvest writes (§4.4, RLH-09).
+ *
+ * @param {{feature: string, docType: string, candidate: number,
+ *          reviewers: string[], _readFile: function}} arg
+ */
+async function tier2ApprovalRecord({ feature, docType, candidate, reviewers, _readFile }) {
+  const text = await _readFile(`docs/${feature}/LEARNINGS-${feature}.md`);
+  if (text == null) return noApprovalRecord(candidate);
+
+  const rows = [];
+  let inSection = false;
+  scanLines(text, (line) => {
+    if (APPROVAL_RECORD_HEADING.test(line)) {
+      inSection = true;
+      return;
+    }
+    if (!inSection) return;
+    if (/^\s*#{1,2}\s/.test(line)) {
+      inSection = false;
+      return;
+    }
+    const cells = line.split("|").map((c) => c.trim());
+    if (cells.length < 8) return; // leading + 6 columns + trailing
+    rows.push(cells.slice(1, 7));
+  });
+
+  const roles = reviewers.map((skill) => reviewerRoleSlug(skill) || skill);
+  const matched = roles.map((role) =>
+    rows.find((r) => r[0] === docType && Number(r[1]) === candidate && r[2] === role) || null
+  );
+  if (matched.some((r) => r === null)) return noApprovalRecord(candidate);
+  if (!matched.every((r) => isPass(r[3]))) return noApprovalRecord(candidate);
+
+  const hashes = matched.map((r) => r[4]);
+  if (!hashes.every((h) => APPROVAL_HASH_VALUE_RE.test(h) && h === hashes[0])) {
+    return noApprovalRecord(candidate);
+  }
+  return { approving: true, candidate, hash: hashes[0], unevaluable: [], tier1Empty: false };
+}
+
 // ─── TSPEC §3.8 — dispatchAndVerify ──────────────────────────────────────────
 
 /** An authoring-budget halt: caught by `reviewLoop`, which turns it into a return. */
