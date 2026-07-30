@@ -94,6 +94,13 @@ export const meta = {
       type: "string",
       required: true,
     },
+    {
+      name: "forcePhases",
+      description:
+        "Optional comma- or space-separated phases to re-run despite a recorded approval. Valid: R, F, T, P, D, PR, all.",
+      type: "string",
+      required: false,
+    },
   ],
 };
 
