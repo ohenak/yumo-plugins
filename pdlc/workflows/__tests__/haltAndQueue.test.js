@@ -181,6 +181,7 @@ function basenamesUnder(files, dirPath) {
  * }} [opts]
  */
 async function run({
+  reqPath = REQ_PATH,
   files = baseTree(),
   verdictFor = () => APPROVING_REVIEW,
   postmortem = "write",
@@ -229,7 +230,7 @@ async function run({
   };
 
   const result = await main({
-    reqPath: REQ_PATH,
+    reqPath,
     _agent: agentFn,
     _parallel: (p) => Promise.all(p),
     _log: (...args) => logs.push(args.join(" ")),
@@ -529,6 +530,125 @@ describe("RLH-25: the POSTMORTEM gate", () => {
     for (const phaseId of ["F", "T", "P", "D", "PR"]) {
       expect(JSON.stringify(result)).not.toContain(`Phase ${phaseId} refused`);
     }
+  });
+
+  // ── FSPEC AC-2.3b example B, verbatim ──────────────────────────────────────
+  const FEATURE_B = "pdlc-workflow-distribution";
+  const DOCS_B = `docs/${FEATURE_B}`;
+  const REQ_B = `${DOCS_B}/REQ-${FEATURE_B}.md`;
+  const POSTMORTEM_R_B = `${DOCS_B}/POSTMORTEM-R-${FEATURE_B}.md`;
+
+  /**
+   * "`pdlc-workflow-distribution` at HEAD: `POSTMORTEM-R-…` present, **zero**
+   * `CROSS-REVIEW-*` files (Phase H deleted all 62), and its LEARNINGS predates
+   * §9's approval record."
+   */
+  function exampleBTree() {
+    return {
+      [REQ_B]: REQ_TEXT,
+      [`${DOCS_B}/FSPEC-${FEATURE_B}.md`]: "# FSPEC\n",
+      [`${DOCS_B}/TSPEC-${FEATURE_B}.md`]: "# TSPEC\n",
+      [`${DOCS_B}/PLAN-${FEATURE_B}.md`]: "# PLAN\n",
+      [`${DOCS_B}/PROPERTIES-${FEATURE_B}.md`]: "# PROPERTIES\n",
+      [`${DOCS_B}/LEARNINGS-${FEATURE_B}.md`]:
+        "# Learnings\n\n## 1. What worked\n\nNothing here predates §9's approval record.\n",
+      [POSTMORTEM_R_B]: postmortemDoc(),
+    };
+  }
+
+  it("RLH-AT-13a: G-INV totality — every exit that leads to running the phase passes step G", async () => {
+    // TSPEC §2.5's G-INV, stated over *paths*, not step numbers: no exit —
+    // forced, no candidate, not approving, STALE, UNEVALUABLE — may reach
+    // `reviewLoop` without having passed step G. PLAN §7.3: a gate ahead of
+    // §12.4 step 1 breaks example A, a gate reachable only from step 4 breaks
+    // example B, so both are driven here.
+    expect(FSPEC_AC_2_3B_EXAMPLE_B.outcome).toContain("refuses and halts");
+
+    const STALE_ANCHOR = `sha256:${"0".repeat(64)}`;
+    const gatedExits = [
+      {
+        // §2.5 step 1 — forcing removes the skip, so the phase would run; force
+        // overrides recorded approval, never recorded failure (AC-4.6a).
+        exit: "forced",
+        reqPath: REQ_PATH,
+        postmortemPath: POSTMORTEM_R,
+        files: exampleATree(),
+        extraArgs: { forcePhases: "R" },
+      },
+      {
+        // §2.5 step 3, `candidate < 1` — FSPEC AC-2.3b example B, verbatim.
+        exit: "candidate < 1 (example B)",
+        reqPath: REQ_B,
+        postmortemPath: POSTMORTEM_R_B,
+        files: exampleBTree(),
+      },
+      {
+        // §2.5 step 3, NOT APPROVING.
+        exit: "NOT APPROVING",
+        reqPath: REQ_PATH,
+        postmortemPath: POSTMORTEM_R,
+        files: {
+          ...baseTree(),
+          ...reqReviewPair(1, { approving: false }),
+          [POSTMORTEM_R]: postmortemDoc(),
+        },
+      },
+      {
+        // §2.5 step 4, STALE — the recorded anchor parses but does not match.
+        exit: "STALE",
+        reqPath: REQ_PATH,
+        postmortemPath: POSTMORTEM_R,
+        files: {
+          ...baseTree(),
+          ...reqReviewPair(1, { approving: true, hash: STALE_ANCHOR }),
+          [POSTMORTEM_R]: postmortemDoc(),
+        },
+      },
+      {
+        // §2.5 step 4, UNEVALUABLE — no `APPROVAL-HASH:` line at all.
+        exit: "UNEVALUABLE",
+        reqPath: REQ_PATH,
+        postmortemPath: POSTMORTEM_R,
+        files: {
+          ...baseTree(),
+          ...reqReviewPair(1, { approving: true, hash: null }),
+          [POSTMORTEM_R]: postmortemDoc(),
+        },
+      },
+    ];
+
+    for (const c of gatedExits) {
+      const { result } = await run({
+        reqPath: c.reqPath,
+        files: c.files,
+        extraArgs: c.extraArgs ?? {},
+      });
+
+      expect([c.exit, result.outcome]).toEqual([c.exit, "halted"]);
+      expect([c.exit, result.haltPhase]).toEqual([c.exit, "R"]);
+      expect([c.exit, result.postmortemStatus]).toEqual([c.exit, "unresolved"]);
+      expect([c.exit, result.postmortemPath]).toEqual([
+        c.exit,
+        c.postmortemPath,
+      ]);
+      expect(result.haltReason).toContain(
+        `Phase R refused: unresolved POSTMORTEM at ${c.postmortemPath}`
+      );
+      // The Recommendation is reproduced verbatim on every one of them.
+      expect(result.haltReason).toContain(RECOMMENDATION_BODY);
+    }
+
+    // The fifth exit is the one that does NOT refuse: step 4's `FRESH` branch
+    // skips the phase, so AC-2.3 has nothing to refuse — but §6.2 row 13a and
+    // §4.7 still require the notice to name it. Both halves matter.
+    const fresh = await run({ files: exampleATree() });
+    expect(fresh.result.outcome).toBe("success");
+    expect(fresh.result.haltPhase).toBeNull();
+    expect(fresh.phaseOf("R").status).toBe("⏭");
+    expect(fresh.phaseOf("R").detail).toContain(
+      `; unresolved POSTMORTEM at ${POSTMORTEM_R}`
+    );
+    expect(JSON.stringify(fresh.result)).not.toContain("Phase R refused");
   });
 });
 
