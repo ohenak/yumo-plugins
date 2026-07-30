@@ -1,50 +1,77 @@
 # TSPEC — pdlc-review-loop-hardening
 
-**Version:** 1.3
-**Status:** Draft (round-3 cross-review feedback addressed; awaiting round 4)
+**Version:** 1.4
+**Status:** Draft (round-4 cross-review feedback addressed; awaiting round 5)
 
 | Field | Value |
 |---|---|
 | Upstream | `REQ → FSPEC → **TSPEC**` (REQ **v1.6**, FSPEC **v1.8** — the REQ amended at v1.1 of this document, the FSPEC at v1.1, v1.2 and v1.3, see §0) |
 | Downstream | `DECISIONS, PLAN, PROPERTIES, IMPL` |
-| Cross-Reviews | `docs/pdlc-review-loop-hardening/CROSS-REVIEW-{product-manager,test-engineer}-TSPEC-v1.md` (round 1, dispositioned at v1.1); `…-TSPEC-v2.md` (round 2, dispositioned at v1.2); `…-TSPEC-v3.md` (round 3, dispositioned at v1.3); harvested into `LEARNINGS-pdlc-review-loop-hardening.md` after Phase H |
+| Cross-Reviews | `docs/pdlc-review-loop-hardening/CROSS-REVIEW-{product-manager,test-engineer}-TSPEC-v1.md` (round 1, dispositioned at v1.1); `…-TSPEC-v2.md` (round 2, dispositioned at v1.2); `…-TSPEC-v3.md` (round 3, dispositioned at v1.3); `…-TSPEC-v4.md` (round 4, dispositioned at v1.4); harvested into `LEARNINGS-pdlc-review-loop-hardening.md` after Phase H |
 | LEARNINGS | `docs/pdlc-review-loop-hardening/LEARNINGS-pdlc-review-loop-hardening.md` |
 
 ---
 
 ## 0. Changelog
 
-### v1.3 (2026-07-30) — round-3 cross-review feedback
+### v1.4 (2026-07-30) — round-4 cross-review feedback
 
-`CROSS-REVIEW-product-manager-TSPEC-v3.md` is **Approved** with one Low;
-`CROSS-REVIEW-test-engineer-TSPEC-v3.md` is Needs revision with 0 High, 2 Medium, 2 Low. Every one of
-the four distinct findings is addressed — PM's single Low and TE N-04 are the **same defect raised by
-two lenses** and are fixed once. **Nothing is declined.** Both Mediums are the same shape: a defect
-this document already fixed, still live on a path the fix did not reach — so both are fixed by widening
-the existing ruling rather than by adding a second mechanism.
+TE **Approved** (0 High, 0 Medium, 3 Low); PM Needs revision (0 High, 1 Medium, 1 Low). **All five
+findings are one defect cluster at two severities, raised independently by both lenses** — PM F-01 ≡
+TE N-03, PM F-02 ≡ TE N-01, TE N-02 downstream of the first. **Nothing is declined, and no FSPEC or
+REQ change was needed**: the resolution chosen is specifically the one that requires none.
 
 | Finding | Sev | Resolution | Where |
 |---|---|---|---|
-| **TE N-01** | Medium | **Fixed by making the distinction intrinsic to the type: `present` is `Map \| null`, and `null` — "not observed" — is not the same input as an empty Map.** v1.2's rule 4 required a *non-empty* `present` and closed "only an *empty* `present` is greenfield", so on a clean branch (seed `{}`) a round-2 optimizer whose `_listFiles` failed kept `{}`, selected greenfield, required no trailer and terminated on dispatch 1 over a round-1-complete document — the original N-01 fail-open relocated one path over. Rule 4 is restated in the positive direction (**greenfield requires this episode's own refresh to have successfully observed an empty review record**), from which both the failed-refresh and unread-verdict cases follow without a special case; `refreshReviewState` returns `present: null` on `ListFailure` and keeps the last observed `startIndex` only to *name* the round. §6.2 row 17 rewritten to match. **AT-43a gains fixture (b)** — the same run with the refresh failing at round 2 — which reds on the v1.2 wording | §5.6.1 rule 4, §3.7, §6.2 row 17, §8.3 |
-| **TE N-02** | Medium | **Fixed by extending §8.5's existing alias ruling to E-2, not by a second mechanism.** E-2 required a *module-local function* found in `main()`'s body; measured at HEAD the only forward of `_now`/`_sleep` is `await raisePrAndVerifyCiFn({ …, _now, _sleep })`, and `raisePrAndVerifyCiFn` is a `main()`-local destructured alias, so both fell in **no** class and AT-64 red on shipped, correct source — v1.0's AT-19 defect exactly. Clause 2 now defines "resolves to" as the same one-hop resolution through `main()`'s destructuring pattern the AT-19 table already rules, and the Members cell names the alias. **At most one hop, resolved target must be a module-level function declaration** — "forwarded to anything that eventually defaults it" would restore the TE-v2 N-02 hole | §8.5 (E-2, clause 2) |
-| **TE N-04 ≡ PM F-01** | Low | **Fixed once — the same DC-02 slip found independently by both lenses.** §2.6's no-cache justification and §4.4 still cited "one `_listFiles` and at most two `_readFile` per phase entry" as the **aggregate** bound; S-INV's per-episode refresh makes it ~18 listings / 36 reads per phase, which §5.6.1 already states. §2.6 now cites that bound and rests on the invalidation reason; §4.4's figure is re-scoped to **per search call**, which is what it is true of. **The no-cache decision is unaffected and not reopened** | §2.6, §4.4 |
-| **TE N-03** | Low | **Fixed by deletion (R-5).** `isTerminal`'s `structural` member had no consumer, no report field and no AT. Adding one is the AC-4.7a anti-pattern, so it is **deleted**; `structural` survives as §5.6.2's local, and AT-59/AT-60/AT-62 observe completeness through `isComplete` directly | §3.7, §5.6.2 |
+| **PM F-01 ≡ TE N-03** | Medium / Low | **Fixed by deletion (R-5): the global halt contract stands.** v1.3 made §5.6.1's per-episode refresh the one caller of §4.2 that did **not** halt on `unreadable` / `not_a_directory` / `bad_argument`, contradicting FSPEC §3.3 as restated at §2.5 step 2, §4.2 and §6.2 row 2 — and AT-43a(b) pinned the deviation to a named value, so an implementer could not satisfy both. Those three values now **halt** here too. §4.2 states that the dispositions are properties of the *value*, not the call site, and that no site narrows them; §6.2 row 17 cites rows 1–2 and claims no exception; §9.3's DC-11 row follows. `dir_missing` keeps its benign empty-listing disposition | §4.2, §5.6.1 rule 4, §6.2 row 17, §9.3, §8.3 |
+| **PM F-02 ≡ TE N-01** | Low | **Moot, not fixed.** The unassigned `kept` deref lived only in the branch that now halts, so `kept` is deleted — no binding to initialise, no `NaN` round. The seed `present` / `reviewFiles` parameters go with it, `kept` being their only reader; that also settles §5.6.1's imprecise "seed for the first episode only" sentence by deletion rather than definition. `reviewLoop` gains **three** new parameters, not five | §5.6.1, §3.9 |
+| **TE N-02** | Low | **Moot, not fixed.** AT-43a(b)'s unspecified "the failure reported" conjunct is gone; the observable is the halt, whose shape §4.2 already fixes. No report field or line was invented, so §4.7 is untouched and §6.6's **two** advisory-only signals stay two | §8.3, §4.7, §6.6 |
+| **AT-43a(b)** | — | **Repurposed, not deleted.** Deleting it as unreachable (PM's suggestion) drops oracle coverage of the path TE's original N-01 was about. Same setup, new assertion: the standard halt. Reds on **both** implementations this defect has occupied — v1.2's (kept `{}` read as a successful observation ⇒ greenfield ⇒ terminal on dispatch 1) and v1.3's (continue as revision) — and on any routing a mid-loop `unreadable` into row 1's benign path. Fixture (a) unchanged bar its stale "seed" clause | §8.3 |
 
-**Mechanical, fixed silently (lesson R-6, not findings).** FSPEC §20's v1.7 preamble referred to an
-"**Owner** column" that is headed `Disposition` — sentence deleted, FSPEC → **v1.8**, no disposition
-changed. §1.4 forbids bare `file:line` and v1.2's own new sentence used one; that site and the
-matching one in §8.5 now cite the enclosing symbol plus a distinctive literal.
+**Why halting, not the scoped exception** (PM offered both). It is strictly *more* fail-closed than
+v1.3's continue, so it cannot reintroduce the fail-open TE's original N-01 found; it needs **no FSPEC
+amendment**, whereas the alternative reopens the document owning the contract and excepts four further
+sites plus a new report carrier; and it is the deletion move (R-5). PM's Q-01 takes the FSPEC's own
+answer: no, a run should not proceed through an unreadable `docs/{feature}/`.
 
-**The `_now`/`_sleep` correction stands.** Both reviewers re-measured it independently and both accept
-it: `checkPrCi(prUrl, { execFn })` never sees the clock. TE N-02's fix is what makes §8.5's predicate
-agree with it.
+**A clean branch is unaffected**, and AT-43a says why: `docs/{feature}/` exists on any branch this
+pipeline runs on, the REQ it was invoked with living there — so a cross-review-free branch takes §6.2
+row 1's empty listing, never `dir_missing` and never a halt.
 
-**Size: 164,456 B → 172,978 B, +8,522 B (+5.2%).** Not the net-neutral the brief asked for, and stated
-rather than glossed. Paid for in part by compressing the v1.2 changelog now that both reviewers have
-verified every one of its fixes by measurement (~2.5 KB, the one cut TE named). The remainder is rule
-4's restatement — which must state the two cases it derives *and* the superseded wording, because
-reinstating that wording is the failure mode — the alias-hop ruling, and AT-43a's second fixture. All
-three are normative; the alternative was deleting rules to hit a number.
+**Mechanical, fixed silently (R-6).** `deriveRoundWindow(r.basenames, …)` → `r.files`, matching §3.2's
+seam. Rule 1's "iff a round exists" versus rule 4's unconditional revision under `null`: resolved by
+`null`'s deletion, and rule 1's plain "exists" is now right unhedged.
+
+**Size: 172,978 B → 172,953 B (−25 B)** — the first revision not to grow, though only just: the
+deletions were offset by AT-43a's rewritten fixture and rule 4's two-wording record. **Three rounds
+running, every residual defect has been a consistency failure across duplicated statements of a single
+rule, never an error in the rule itself** — one listing-failure contract in six places, one read bound
+in three. Where this round's edits were already open a restatement was replaced by a citation to the
+owning section (§2.6, §6.2 row 17 and §9.3's DC-11 row now cite §5.6.1 or §4.2), so the next edit to
+either contract cannot leave five sites asserting the opposite. That is this phase's main lesson,
+flagged for Harvest; no document-wide de-duplication pass was undertaken. The v1.2 and v1.3 entries are
+compressed to their dispositions, both reviewers having verified every one of their fixes by
+measurement.
+
+### v1.3 (2026-07-30) — round-3 cross-review feedback
+
+PM **Approved** with one Low; TE Needs revision with 0 High, 2 Medium, 2 Low. All four distinct
+findings addressed (PM's Low ≡ TE N-04, fixed once); **nothing declined**. Both Mediums were the same
+shape — a defect this document already fixed, still live on a path the fix did not reach — so both were
+fixed by widening the existing ruling rather than adding a second mechanism. All four verified closed
+by both reviewers at round 4, so the rows below are compressed to their dispositions.
+
+| Finding | Sev | Resolution | Where |
+|---|---|---|---|
+| **TE N-01** | Medium | Fixed by typing `present` as `Map \| null` and selecting revision on `null`, closing v1.2's fail-open (a round-2 optimizer whose refresh failed kept `{}`, went greenfield and terminated on dispatch 1). **Fail-closed but superseded at v1.4** — the `null` arm made the refresh site the only caller of §4.2 that did not halt on `unreadable`. See v1.4's PM F-01; the two superseded wordings are recorded at §5.6.1 rule 4 | §5.6.1 rule 4, §3.7, §6.2 row 17, §8.3 |
+| **TE N-02** | Medium | **Fixed by extending §8.5's existing alias ruling to E-2, not by a second mechanism.** The only forward of `_now`/`_sleep` is through `raisePrAndVerifyCiFn`, a `main()`-local destructured alias, so both fell in **no** class and AT-64 red on shipped source. Clause 2's "resolves to" is now the one-hop resolution the AT-19 table already performs, capped at one hop onto a module-level function declaration. TE re-derived the full 16-parameter classification at round 4 | §8.5 (E-2, clause 2) |
+| **TE N-04 ≡ PM F-01** | Low | **Fixed once — the same DC-02 slip found by both lenses.** §2.6 and §4.4 cited the per-*phase*-entry figure as the aggregate bound; the per-episode refresh makes it 18 listings / 36 reads. §2.6 cites §5.6.1's bound; §4.4's figure is re-scoped **per search call**. The no-cache decision is unaffected | §2.6, §4.4 |
+| **TE N-03** | Low | **Fixed by deletion (R-5).** `isTerminal`'s `structural` member had no consumer, report field or AT; adding one is the AC-4.7a anti-pattern. Deleted; it survives as §5.6.2's local, and AT-59/AT-60/AT-62 observe completeness through `isComplete` | §3.7, §5.6.2 |
+
+Mechanical (R-6): FSPEC §20's stale "**Owner** column" sentence deleted, FSPEC → **v1.8**; two bare
+`file:line` citations replaced per §1.4. **The `_now`/`_sleep` correction stands** — `checkPrCi` never
+sees the clock. **Size: 164,456 B → 172,978 B, +8,522 B (+5.2%)** — not the net-neutral asked for,
+stated not glossed.
 
 ### v1.2 (2026-07-30) — round-2 cross-review feedback
 
@@ -55,27 +82,21 @@ invariants over *every* path rather than as behaviour at an enumerated step.**
 
 | Finding | Sev | Resolution | Where |
 |---|---|---|---|
-| **PM F-01** | High | **Fixed by stating the gate as an invariant (`G-INV`), not as a step.** v1.1's step 4a was reachable only from §5.5, so §5.4's `candidate < 1` and `NOT APPROVING` exits ran the phase without it — making AC-2.3b example B unreachable as v1.0 had made example A unreachable. Renamed **step G** and specified as *evaluated on every exit that leads to running the phase*. Both worked examples verified reachable; new **AT-13a** drives all five exits with §12.4 A and AC-2.3b B as verbatim fixtures. Verified fixed at round 3 by both reviewers, including the over-refusal direction | §2.5, §5.4, §5.5, §5.7, §5.8, §6.2 row 13, §8.3, §9.2 |
-| **TE N-01** | High | **Fixed by stating the input contract as an invariant (`S-INV`) and wiring the caller.** `selectMode` had no caller and its inputs were entry-time snapshots, so on a clean branch round 2's optimizer selected greenfield over an empty snapshot. `reviewLoop` gains `docType`, `present`, `reviewFiles`, `_listFiles`, `_readFile` and declares `refreshReviewState`, called at **every** episode entry; `selectMode` stays pure, `roundIndex` derives per episode, §4.5's 36-dispatch bound survives. New **AT-43a**. Verified fixed at round 3 on every path but the mid-loop listing failure, filed as v1.3's TE N-01 | §5.6.1, §3.7, §3.9, §4.5, §5.4, §5.7, §6.2 row 17, §8.3 |
-| **PM F-02** | Medium | **Fixed — carrier restored, phantom union member deleted.** `isTerminal` returns a record instead of a boolean and every `dispatchAndVerify` return carries `trailerReason`, so FSPEC AT-61's four reasons reach the report. §3.8's `reason: "trailer"` exit is deleted rather than given a producer, which would contradict AT-61's non-terminal disposition | §5.6.2, §3.7, §3.8, §4.7 |
-| **PM F-03** | Medium | **Fixed.** The successor row is `Order` **9**, not 8: `QUEUE.md`'s own banner records `Order 8` as a live alias for row 0 in ~10 documents. `Order` values are allocated, never reused — stated in the row's prose. No existing row altered; row 0 still reads `halted` | `QUEUE.md`, §0, §10.2, §10.3 |
-| **TE N-02** | Medium | **Fixed — one conjunct.** E-2 required only "no `=` initialiser", so a new seam declared bare was silently exempt. It now also requires the parameter to be forwarded to exactly one module-local function that declares it *with* a default, and clause 2's evidence-must-resolve rule is extended to E-2. Measured at HEAD: `_now`/`_sleep` forward to `raisePrAndVerifyCi`, which defaults both | §8.5 |
-| **TE N-03** | Medium | **Fixed.** The `deriveRoundWindow` partition was false on a correct implementation — a conforming basename for another doc type is in neither returned set. Restated over `parseReviewFilename`'s total three-way split, plus the empty-listing conjunct on `startIndex` | §8.2 |
-| **TE N-04** | Medium | **Fixed.** §2.5's "forced skips steps 2–4" contradicted §5.7 and reinstated **H-1** on the forced path by dropping `startIndex`. A force skips steps **3–4** only; step 2 always runs. New **AT-01a** forces a phase on a branch carrying `-v1` and asserts the next write is `-v2` | §2.5, §5.7, §8.3, §9.2 |
-| **PM F-04** | Low | **Fixed by deletion.** The "exactly two places … two powers" sentence is gone; G-INV states the rule and the one report-only call is named separately | §2.5 |
-| **PM F-05** | Low | **Fixed.** `postmortemPath` is populated whenever `postmortemStatus` is `"unresolved"`, including on the skip path; `haltPhase` alone distinguishes skipped from refused | §4.7 |
-| **PM F-06** | Low | **Fixed in the FSPEC** (→ v1.7): §20's Q-05, Q-06 and Q-09 rows carry their dispositions and named owners | FSPEC §20 |
-| **TE N-05** | Low | **Fixed by strengthening.** `isComplete`'s monotonicity property was satisfied by a matcher recognising no heading at all. Replaced with the exact-required-set form, falsifiable in the removal direction | §8.2 |
+| **PM F-01** | High | **Fixed by stating the gate as an invariant (`G-INV`), not as a step** | §2.5, §5.4, §5.5, §5.7, §5.8, §6.2 row 13, §8.3, §9.2 |
+| **TE N-01** | High | **Fixed by stating the input contract as an invariant (`S-INV`) and wiring the caller** | §5.6.1, §3.7, §3.9, §4.5, §5.4, §5.7, §6.2 row 17, §8.3 |
+| **PM F-02** | Medium | **Fixed — carrier restored, phantom union member deleted** | §5.6.2, §3.7, §3.8, §4.7 |
+| **PM F-03** | Medium | **Fixed — successor row is `Order` 9, not 8** (`Order` values are allocated, never reused; no existing row altered) | `QUEUE.md`, §0, §10.2, §10.3 |
+| **TE N-02** | Medium | **Fixed — one conjunct**: a bare seam was silently E-2-exempt, so E-2 now also requires the forward (refined again at v1.3) | §8.5 |
+| **TE N-03** | Medium | **Fixed** — `deriveRoundWindow`'s partition restated over `parseReviewFilename`'s total three-way split | §8.2 |
+| **TE N-04** | Medium | **Fixed** — a force skips steps **3–4** only; step 2 always runs, else H-1 returns on the forced path. New **AT-01a** | §2.5, §5.7, §8.3, §9.2 |
+| **PM F-04** | Low | **Fixed by deletion** | §2.5 |
+| **PM F-05** | Low | **Fixed** — `postmortemPath` populated whenever `postmortemStatus` is `"unresolved"`; `haltPhase` alone distinguishes skipped from refused | §4.7 |
+| **PM F-06** | Low | **Fixed in the FSPEC** | FSPEC §20 |
+| **TE N-05** | Low | **Fixed by strengthening** — `isComplete`'s monotonicity property restated in the exact-required-set form | §8.2 |
 
-**Size — measured, target missed, accepted by both reviewers at round 3.** **155,549 B → 164,456 B,
-+8,907 B (+5.7%)** against a net-neutral brief: ~10 KB cut (v1.1's changelog and §0.1 annex to
-finding→resolution rows, rationale in §5.2/§5.3/§7.2/§8.5/§10.2/§10.3 reduced to the rule) and ~18 KB
-added, all of it the two Highs' fixes and their oracles. Trimming further would have meant deleting
-normative rules.
-
-**Nothing was declined.** The one reviewer proposal not taken literally is PM F-02: §3.8's union
-member is deleted rather than given a manufactured producer, because any producer would contradict
-FSPEC AT-61. PM ruled at round 3 that this was the correct call.
+**Size: 155,549 B → 164,456 B, +8,907 B (+5.7%)** against a net-neutral brief; accepted by both
+reviewers at round 3. **Nothing declined**; the one proposal not taken literally is PM F-02 (deletion
+over a manufactured producer), ruled correct at round 3.
 
 ### v1.1 (2026-07-30) — round-1 cross-review feedback
 
@@ -102,10 +123,8 @@ PM F-01 and TE N-01 above.
 | **TE F-10** | Low | The green gate restated as "no new failures against the measured baseline 1038/1/70"; test names namespaced `RLH-AT-{N}` | §8.3 |
 
 Four open questions were closed or bound: **T-Q-05** closed on the merits (a second copy of the
-queue's table grammar risks a wrong-row rewrite, and the queue bundle already ships at 140,096 B);
-**Q-06** declined and closed (a second agent-unwritable field nothing branches on; git carries the
-provenance); **Q-05** and **Q-09** bound to `QUEUE.md` row 9, Q-09 flagged acute because heading-list
-drift produces a false halt.
+queue's table grammar risks a wrong-row rewrite); **Q-06** declined and closed (a second
+agent-unwritable field nothing branches on); **Q-05** and **Q-09** bound to `QUEUE.md` row 9.
 
 ### v1.0 (2026-07-29)
 
@@ -117,12 +136,12 @@ Initial technical specification.
 
 ### 1.1 What this document is
 
-The FSPEC (v1.5, 66 acceptance tests `AT-01`…`AT-66`, 71 edge cases `E-01`…`E-71`, 21 obligations
+The FSPEC (v1.8, 66 acceptance tests `AT-01`…`AT-66`, 71 edge cases `E-01`…`E-71`, 21 obligations
 `O-1`…`O-21`) fixes **behaviour**. This TSPEC fixes **code**: module layout, exact function
 signatures, injected-seam definitions and their Node defaults, data shapes, control flow, constant
 placement, and the file each change lands in. It does not re-narrate the FSPEC. Every behavioural
 claim here is a pointer — `AC-*`, `E-*`, `AT-*`, `O-*`, `DC-*` — and the reader is expected to
-resolve it in REQ v1.5 / FSPEC v1.5 / `docs/_constraints/DOMAIN-CONSTRAINTS.md`.
+resolve it in REQ v1.6 / FSPEC v1.8 / `docs/_constraints/DOMAIN-CONSTRAINTS.md`.
 
 Where the FSPEC deliberately left a decision to implementation, §10 records the resolution taken
 here. Where it left something genuinely open at REQ altitude, §10 carries it forward unresolved
@@ -410,11 +429,9 @@ only from step 4 breaks B. G-INV is the statement that holds for both.
   and, worse, fails **open** — a hallucinated "Approved" silently discards a phase.
 - **No per-worktree consumer state.** Out of scope; deferred to D-DIST-07 (queue row 6).
 - **No caching layer over `_listFiles`.** The read fan-out is bounded per **episode** entry, not per
-  phase entry — one `_listFiles` and at most two `_readFile` each, up to
-  `(1 + MAX_REVIEW_ROUNDS) × (reviewers + 1)` listings and twice that many reads for one phase
-  (§5.6.1's measured bound: 18 and 36 at today's constants). A cache would add an invalidation
-  problem — and the thing to invalidate is precisely the just-written review files S-INV exists to
-  observe — in exchange for saving directory listings that are cheap next to an Opus dispatch.
+  phase entry, at the figure §5.6.1 derives and owns — cited, not restated here. A cache would add an
+  invalidation problem, and the thing to invalidate is precisely the just-written review files S-INV
+  exists to observe, in exchange for saving directory listings that are cheap next to an Opus dispatch.
 
 ## 3. Interfaces
 
@@ -757,17 +774,15 @@ export const TRAILER_FAILURES  = ["declared_incomplete", "absent", "duplicated",
 | `unreadable` | permissions, IO error, or an adapter response the prompt did not permit | **cannot judge** ⇒ halt |
 | `bad_argument` | `dirPath` absent, non-string, or empty | **cannot judge** ⇒ halt |
 
-**These dispositions are properties of the value, not of the call site.** Every caller of the seam
-applies this table unchanged — the phase-entry derivation (§2.5 step 2) and §5.6.1's per-episode
-`refreshReviewState` alike — and the three non-benign values produce one halt-reason shape at all of
-them (DC-11, FSPEC §3.3's "one halt, with one shape … no caller invents its own wording"):
+**These dispositions are properties of the value, not of the call site.** Every caller applies this
+table unchanged — the phase-entry derivation (§2.5 step 2) and §5.6.1's per-episode
+`refreshReviewState` alike — and the three non-benign values produce one halt-reason shape at both,
+narrowed or excepted by neither (DC-11; FSPEC §3.3's "one halt, with one shape … no caller invents its
+own wording"):
 
 ```
 Cannot enumerate {dirPath}: {reason}
 ```
-
-No site narrows or excepts this. §6.2 row 17 enumerates the refresh site so the reader can see it is
-governed here, and claims no exception.
 
 The asymmetry is the whole point. "There are no cross-reviews" and "I could not find out whether
 there are cross-reviews" must not collapse into the same value, because the second, silently treated
@@ -1388,19 +1403,17 @@ Four rules, taken from FSPEC §15.2 and normative here:
    prompt naming findings already reflected, terminated in one dispatch by the trailer.
 
    **The other axis — an unread *listing* — never reaches this rule.** A `refreshReviewState` whose
-   `_listFiles` cannot be judged **halts** (§4.2, §6.2 rows 2 and 17), so `present` is a `Map` at
-   every call of `selectMode` and the rule needs no "not observed" arm. That is what makes it total:
-   the input domain has no third value to rule on.
+   `_listFiles` cannot be judged **halts** (§4.2, §6.2 rows 2 and 17), so `present` is a `Map` at every
+   call of `selectMode`: the input domain has no third value to rule on, which is what makes the rule
+   total.
 
-   **The two wordings that are not reinstated.** Both are recorded because this defect has now moved
-   twice and the wording is the failure mode. (i) v1.2 required a *non-empty* `present` in both
-   clauses and closed "only an *empty* `present` is greenfield" — so on a clean branch a round-2
-   optimizer whose refresh failed kept `{}`, matched neither clause, went greenfield and terminated
-   on dispatch 1 over a round-1-complete document (fail-open). (ii) v1.3 replaced that with
-   `present: Map | null` and selected **revision** on `null` — fail-closed, but it made the refresh
-   site the one caller of §4.2 that did not halt on `unreadable`, contradicting the FSPEC §3.3
-   contract restated at §2.5 step 2, §4.2 and §6.2 row 2. Halting is strictly more fail-closed than
-   (ii) and needs no exception anywhere, so it supersedes both.
+   **The two wordings that are not reinstated**, recorded because this defect has moved twice and the
+   wording is the failure mode. (i) v1.2 required a *non-empty* `present` and closed "only an *empty*
+   `present` is greenfield", so a round-2 optimizer whose refresh failed kept `{}`, matched neither
+   clause, went greenfield and terminated on dispatch 1 over a round-1-complete document — fail-open.
+   (ii) v1.3 typed `present` as `Map | null` and selected revision on `null` — fail-closed, but it made
+   this the one caller of §4.2 that did not halt on `unreadable`. Halting is more fail-closed than (ii)
+   and needs no exception anywhere, so it supersedes both.
 
 Stickiness is a **consequence**, not the mechanism: the selection is made once per episode and does
 not change for that episode's life, whatever later measurements observe. Episode entry is the instant
@@ -1680,7 +1693,7 @@ failure to answer.
 | 14 | non-convergence within `startIndex..endIndex` | `checkConverged` | §6.3's terminal exit |
 | 15 | POSTMORTEM write failed | `_checkFile` after the write agent | §6.4's second halt shape, `postmortemStatus: "write_failed"` |
 | 16 | queue-row commit failed | `_git` → `{ ok: false }` | §6.5; `queueRow: "error"`; the halt itself is **not** downgraded |
-| 17 | `refreshReviewState`'s `_listFiles` fails **mid-loop** (§5.6.1) | seam return | **exactly rows 1 and 2, no exception claimed.** `dir_missing` is a benign empty listing; the three non-benign values **halt** with §4.2's one shape. This row exists only so the second call site of the seam is enumerated — the disposition is §4.2's, and this site does not get its own. The consequence for §5.6.1: a listing that cannot be judged never produces a "not observed" state for `selectMode` to classify, which is why rule 4's `present` is an ordinary `Map` and needs no third arm |
+| 17 | `refreshReviewState`'s `_listFiles` fails **mid-loop** (§5.6.1) | seam return | **exactly rows 1 and 2; no exception claimed.** This row exists only so the seam's second call site is enumerated — the disposition is §4.2's and this site does not get its own. Consequence for §5.6.1: a listing that cannot be judged never produces a "not observed" state for `selectMode` to classify, which is why rule 4's `present` is an ordinary `Map` needing no third arm |
 
 Rows 10 and 11 write **no POSTMORTEM** on purpose. Exhausting the authoring budget is the pacing
 wrapper refusing to keep paying; it is not the reviewers failing to converge, and a POSTMORTEM
@@ -2004,7 +2017,7 @@ their jest names follow the same `RLH-` namespacing:
 |---|---|---|
 | **AT-01a** | a **forced** phase on a branch already carrying `-v1` cross-reviews writes `-v2` next. §2.5 step 2 is *not* skipped by a force, so `reviewLoop` never falls back to `iteration = 1`. Reds on the "forced skips steps 2–4" reading, which restores H-1 on the forced path | `forcePhases.test.js` |
 | **AT-13a** | **G-INV totality.** For each of the four exits that lead to running the phase — forced, `candidate < 1`, `NOT APPROVING`, `STALE`/`UNEVALUABLE` — an unresolved POSTMORTEM refuses the phase and the halt reproduces the Recommendation; and the `FRESH` exit does **not** refuse, but names the POSTMORTEM in its skip notice. FSPEC §12.4's worked example A is the `FRESH` case and AC-2.3b's example B is the `candidate < 1` case, both driven verbatim as fixtures | `haltAndQueue.test.js` |
-| **AT-43a** | **S-INV freshness, both refresh outcomes.** Two fixtures over the same clean branch — `docs/{feature}/` exists (the REQ is in it) and holds no `CROSS-REVIEW-*` file at phase entry, so this is §6.2 row 1's *successful* empty listing and **not** `dir_missing`. **(a) Refresh succeeds** — round 2's optimizer episode is `mode: "revision"` for round 1 and requires a trailer, because the refresh observes the `-v1` files round 1's reviewers wrote; and its `EpisodeKey.roundIndex` differs from round 1's, so the two do not share a dispatch budget. Reds on any implementation that decides mode from a pre-loop snapshot. **(b) Refresh fails** — same run, but `_listFiles` returns a `ListFailure` (`unreadable`) at round 2's optimizer episode **only**. The phase **halts** with §4.2's one shape, `Cannot enumerate docs/{feature}: unreadable` (§6.2 rows 2 and 17); no episode is dispatched for round 2 and no mode is selected. Reds on **both** implementations this defect has occupied: v1.2's, which treated the kept `{}` as a successful observation ⇒ greenfield ⇒ terminal on dispatch 1 (no halt, and a run reporting success over an unaddressed round); and v1.3's, which returned `present: null` and continued as a revision episode (no halt). Also reds on any implementation that routes a mid-loop `unreadable` into row 1's benign empty-listing path. The two fixtures' oracles differ because their outcomes do: (a) asserts a dispatched episode's mode, round and budget; (b) asserts the absence of a dispatch and the halt reason | `pacingWrapper.test.js` |
+| **AT-43a** | **S-INV freshness, both refresh outcomes.** Two fixtures over the same clean branch — `docs/{feature}/` exists (the REQ is in it) and holds no `CROSS-REVIEW-*` file at phase entry, so this is §6.2 row 1's *successful* empty listing and **not** `dir_missing`. **(a) Refresh succeeds** — round 2's optimizer episode is `mode: "revision"` for round 1 and requires a trailer, because the refresh observes the `-v1` files round 1's reviewers wrote; and its `EpisodeKey.roundIndex` differs from round 1's, so the two do not share a dispatch budget. Reds on any implementation that decides mode from a pre-loop snapshot. **(b) Refresh fails** — same run, but `_listFiles` returns a `ListFailure` (`unreadable`) at round 2's optimizer episode **only**. The phase **halts**, `Cannot enumerate docs/{feature}: unreadable` (§4.2, §6.2 rows 2 and 17); no episode is dispatched for round 2 and no mode is selected. Reds on **both** implementations this defect has occupied — v1.2's, which read the kept `{}` as a successful observation ⇒ greenfield ⇒ terminal on dispatch 1, and v1.3's, which returned `present: null` and continued as a revision episode; neither halts. Also reds on any implementation routing a mid-loop `unreadable` into row 1's benign path. The oracles differ because the outcomes do: (a) asserts a dispatched episode's mode, round and budget, (b) the absence of a dispatch and the halt reason | `pacingWrapper.test.js` |
 
 **The gate is "no new failures against a measured baseline", not "the suite is green."** The suite is
 not green at HEAD and has not been for the life of this branch. Measured by
