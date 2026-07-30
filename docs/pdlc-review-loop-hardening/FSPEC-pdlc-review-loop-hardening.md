@@ -1691,7 +1691,7 @@ halt path only:
 | Caller | What `_recordHalt` is |
 |---|---|
 | `orchestrate-queue`'s `_runPipeline` | A closure over the queue path and its own `rewriteStatus`, so a halt on the delegated run writes and commits the row through the one function that owns status writes (§13.2) |
-| The bundle's `DEV_ENTRY` (direct invocation) | A closure the bundle builds over `__queue`'s row-locating helpers — the `orchestrate-queue.bundle.js` already inlines both modules, and the dev bundle inlines the queue module's row helpers for this purpose |
+| The bundle's `DEV_ENTRY` (direct invocation) | A closure the bundle builds over `__queue`'s row-locating helpers. `orchestrate-queue.bundle.js` already inlines both modules; the **dev** bundle does not inline the queue module at all today, so §17.3 carries the four `build-runtime.mjs` edits (composition array, `exportedNames`, `rewriteStatus`'s export) that make this closure reachable (SE-v1 F-04) |
 | A unit test / an absent queue | The default no-op |
 
 This preserves the existing dependency direction: `orchestrate-dev` declares a capability it needs and
@@ -2338,8 +2338,11 @@ Collected so a reviewer sees it in one place. Anchors at `0655387`:
 | `recordPhase("D", PHASE_DISPATCH.D.label, "⏭", "Skipped — no load-bearing alternatives")` | the `"⏭"` status | reused as the skip marker, so an AC-4 skip is visibly distinct from a run and from a `❌` failure (AC-4.5) | §11.4 |
 
 **`orchestrate-queue.js`:** `export function updateQueueStatus(markdown, feature, newStatus)` (return
-shape, replacing `return markdown; // feature row not found`), `async function rewriteStatus(...)` (the
-commit), and `async function runPicked({...})`'s three status writes — `await writeFileFn(queuePath,
+shape, replacing `return markdown; // feature row not found`), `async function rewriteStatus(...)` — which
+is **non-exported** at `0655387` and must be **exported** so the bundle can publish it (or an exported
+helper added over it), and which gains the commit plus a `_git` parameter — `main()`'s own parameter list
+gains `_git` so the seam can be threaded down to it, and `async function runPicked({...})`'s three status
+writes — `await writeFileFn(queuePath,
 updateQueueStatus(queueText, entry.feature, "in-progress"))`, the `"halted"` rewrite, and
 `const newStatus = succeeded ? "awaiting-merge" : "halted";`. All §13.
 
@@ -2348,10 +2351,18 @@ updateQueueStatus(queueText, entry.feature, "in-progress"))`, the `"halted"` rew
 _checkFile, _readFile, _checkCi, _mergeWorktree` and **no** `_writeFile`, even though `rtWriteFile` is
 defined directly above it (§1.4).
 
-**`build-runtime.mjs`:** `DEV_ENTRY` (read `args.forcePhases`, which its existing
-`args && typeof args === "object" && args.reqPath` test already establishes as a supported shape) and
-`QUEUE_ENTRY` (pass the new seams alongside its existing `_writeFile: rtWriteFile`). `stripModuleSyntax`
-is unmodified and is what inlines §7's digest function without an `import`.
+**`build-runtime.mjs`:** four edits, three of which v1.0 omitted (SE-v1 F-04) — §14.2's `_recordHalt`
+closure over `__queue`'s row helpers is not reachable without them:
+
+| Edit | Anchor at `0655387` | Why |
+|---|---|---|
+| `DEV_ENTRY` reads `args.forcePhases` | its existing `args && typeof args === "object" && args.reqPath` test, which already establishes an object-shaped `args` | §11.2 |
+| `QUEUE_ENTRY` passes the new seams | its existing `_writeFile: rtWriteFile,` line | §13 |
+| **The queue module's published names** | `wrapModule("__queue", …, ["main", "meta", "DEFAULT_QUEUE_PATH"])` — neither `rewriteStatus` nor `updateQueueStatus` is on `__queue` today | `exportedNames` must be extended, or `DEV_ENTRY`'s closure has nothing to call |
+| **The dev bundle's composition array** | `contents: [DEV_META, BANNER, adapter, devModule, DEV_ENTRY]` — it does **not** include `queueModule` at all | `queueModule` is added (bringing its `wrapModule` prelude `const realMain = __dev.main;` with it), which is what makes §14.2's "the dev bundle inlines the queue module's row helpers" true rather than assumed |
+
+Q-08 defers only *where* the seam lives; these four are what make it reachable at all.
+`stripModuleSyntax` is unmodified and is what inlines §7's digest function without an `import`.
 
 ### 17.4 AC-5.3 — `pdlc/skills/orchestrate-dev/SKILL.md`
 
