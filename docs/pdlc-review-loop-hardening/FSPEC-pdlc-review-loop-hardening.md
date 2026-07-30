@@ -544,6 +544,111 @@ both-tiers-disagree case.
 
 ## 6. FSPEC-VERDICT-01 — The persisted verdict record
 
+**Linked requirements:** AC-4.2, AC-4.2a, AC-4.3, AC-4.7a, R-7. **Discharges the verdict half of
+O-17.**
+
+### 6.1 Why the field must exist (§4a A-4, carried through)
+
+Measured at HEAD `0655387`: the machine-readable verdict is a **response** contract, not an artifact
+field. All three review SKILLs place the trailer in the agent's response — `se-review/SKILL.md`'s
+§VERDICT Trailer instructs appending the two lines "as the last content of your response" — and
+`reviewLoop` parses it off the `_agent()` return value through `parseVerdict(result, skillName)`, used
+at its `const lastResults = [ { skill: reviewers[0], ...parseVerdict(result1, reviewers[0]) }, … ]`
+and at `let verdict1 = parseVerdict(result1, reviewers[0]);`. It is never read off disk. The
+cross-review *file* template in each SKILL ends at a free-text `## Recommendation` section whose body
+is the prose line `**Approved** / **Approved with minor changes** / **Needs revision**`.
+
+Free-text `## Recommendation` is not parseable as a closed catalogue: it is a template line a reviewer
+edits, and this branch's own artifacts prove the response trailer is not reliably persisted either
+(§4a A-4 measured one of two v1 files carrying it and one not). AC-4.2 therefore claims the scope of
+making the verdict a **persisted, machine-readable field of the artifact**.
+
+### 6.2 Grammar and placement
+
+**Placement: a `## Verdict` section appended as the file's last section, after `## Recommendation`.**
+
+```markdown
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 3}
+```
+
+| Aspect | Specification | Rationale |
+|---|---|---|
+| Key | The literal `VERDICT: ` at the start of a line, after trimming | Byte-identical to what `parseVerdict` already scans for (its `if (trimmed.startsWith("VERDICT: "))` test), so **one** parser serves both carriers. |
+| Value | Exactly one of `Approved`, `Approved with minor changes`, `Needs revision`, case-sensitive | The same closed catalogue as `parseVerdict`'s `VALID_VERDICTS` array. AC-4.3, AC-4.7a. |
+| JSON line | The immediately following non-empty line is a JSON object with exactly the keys `high`, `medium`, `low`, all non-negative integers | Identical to `parseVerdict`'s structural validation (`keys.length !== 3 \|\| keys[0] !== "high" \|\| keys[1] !== "low" \|\| keys[2] !== "medium"` and its `Number.isInteger(...) && … >= 0` checks). |
+| Position | **Last section of the file**, and written last | AC-3.5 scope (c) makes the field the cross-review class's structural-completeness marker precisely because it is written last; a mid-file field would make a truncated write look complete. §16.3. |
+| Uniqueness | Exactly one `VERDICT: ` line in the file | Duplication is AC-4.2a's fail-closed case (§6.3). |
+
+**Decision: reuse `parseVerdict` rather than write a second parser.** The function is already total
+over `null`, empty, missing-trailer, non-catalogue value, absent JSON (its truncated-output branch
+`if (nextNonEmpty === null) return { verdict: rawVerdict, high: 0, medium: 0, low: 0 };`), unparseable
+JSON, wrong-keys JSON and negative counts — and it already signals unparseability distinguishably via
+`malformed: true`. Feeding it file contents instead of a response string requires **no change to it**.
+Two carriers, one parser, one catalogue: this is what O-17's "one grammar family" means in practice,
+and it is why the field's syntax is the trailer's syntax rather than a tidier YAML-ish alternative.
+
+### 6.3 Reading it, and the fail-closed branches (AC-4.2a)
+
+The reader is `parseVerdict(fileContents, roleSlug)` plus one additional pre-check the response path
+does not need:
+
+| Input state | Detection | Outcome |
+|---|---|---|
+| Exactly one `VERDICT: ` line, catalogue value, valid JSON | `parseVerdict` returns without `malformed` | Verdict available to §5's pairing |
+| Exactly one `VERDICT: ` line, catalogue value, **no** following non-empty line | `parseVerdict`'s truncated-output branch | Verdict available; counts read as zero. Accepted: AC-4.3 keys approval on the verdict value, not the counts. |
+| **No** `VERDICT: ` line | `parseVerdict` returns the fallback with `malformed: true` | **Not approving.** The phase runs; the report names the artifact. |
+| Value not in the catalogue | same | **Not approving.** Phase runs; artifact named. |
+| JSON present but malformed / wrong keys / negative | same | **Not approving.** Phase runs; artifact named. |
+| **Two or more** `VERDICT: ` lines | A count of `VERDICT: `-prefixed lines, performed before `parseVerdict` | **Not approving.** Phase runs; artifact named. This pre-check is required because `parseVerdict` scans **from the end** (`const reversed = lines.slice().reverse();`) and would silently take the last one — a silent choice between two verdicts is exactly what AC-4.2a forbids. |
+
+**No verdict-recovery agent on this path.** `reviewLoop`'s response path makes one cheap Haiku
+recovery attempt when a trailer is malformed (`recoverVerdict({ reviewer, rawResult, _agent })`, whose
+prompt opens `Your previous review response did not end with a machine-readable VERDICT trailer.`).
+That recovery is **not** reused here. Recovery re-asks an agent to re-state a verdict it just formed;
+asking an agent to re-state a verdict from a file written in some earlier run is asking it to *decide*
+one, which is a C-5 violation and a fail-open one. An unparseable persisted field is simply not
+approving.
+
+**Legacy artifacts (AC-4.2a, R-7, DC-07).** Every cross-review written before this change lacks the
+field, so it lands in the "no `VERDICT: ` line" row: extra review, never a skipped review. No backfill
+is specified, and none may be — reconstructing verdicts for artifacts from git history is out of scope
+(AC-4.2c).
+
+### 6.4 Tier selection (AC-4.2b, carried through)
+
+| Predicate, evaluated in order | Tier used |
+|---|---|
+| At least one conforming `CROSS-REVIEW-*` file for this (feature, doc-type) is present in the listing | **Tier 1.** §5's pairing runs over the files; §10 compares the hash from the tier-1 record. Tier 2 is **not** consulted, even when tier 1 is incomplete or unparseable. |
+| **No** conforming `CROSS-REVIEW-*` file for this (feature, doc-type) is present, and `LEARNINGS-{feature}.md` is present and holds a parseable approval record (§9) | **Tier 2.** §5's pairing runs over the record's rows; §10 compares the hash from the record. |
+| Neither | **No approval.** The phase runs. |
+
+The predicate for "tier 1 absent" is deliberately **presence of any conforming file for that doc-type**,
+not "presence of an approving pair". That is what makes §5.3's no-cross-tier-completion rule
+mechanical rather than a special case.
+
+### 6.5 Amendment to the three review SKILLs (R-7)
+
+The change is **additive** to each of `pm-review`, `se-review` and `te-review`:
+
+| Edit | Content |
+|---|---|
+| §Cross-Review File Format — the fenced template | Append a final `## Verdict` section carrying the `VERDICT: <verdict-value>` line and the counts JSON line, in the exact grammar of §6.2, with a note that it is the **last** content of the file and is written after everything else. |
+| §VERDICT Trailer — the response contract | Unchanged in substance, and explicitly stated to be **still required**: the reviewer emits the trailer in its response *and* the field in the file. One extra sentence naming the file field, so a reviewer cannot read the section as an either/or. |
+| §Approval Rules | Unchanged. The mapping from finding severity to recommendation is not touched (REQ §5 non-goal: "Changing what reviewers assess, or the verdict trailer grammar"). |
+
+**Why both carriers stay.** The response trailer feeds the live convergence gate inside one
+invocation; the file field feeds the *next* invocation's skip decision. Removing either breaks a
+different mechanism, so C-4 holds and `parseVerdict`'s existing call sites are untouched — which is
+R-7's whole containment argument.
+
+**AC-4.7a, carried through unchanged.** `CODE_REVIEW-{feature}-v{N}.md` gets **no** verdict field.
+Phase DOD is out of AC-4's scope per AC-4.7, so a persisted verdict on it would have no reader.
+`harvest-learnings` continues to delete `CODE_REVIEW-*` unchanged, and §9's approval record carries no
+DOD rows. The *catalogue* is shared should a future row bring Phase DOD into scope.
+
 ## 7. FSPEC-DIGEST-01 — Content digest, hash capture, and write ordering
 
 ## 8. FSPEC-TRAILER-01 — The revision-completion trailer
