@@ -903,6 +903,59 @@ it with stale inputs.
 **Shrink.** File-local ladder: reduce the round count to the first failing advance, then minimise the
 branch state.
 
+### 4.4 L3 — source-guard invariant
+
+One property, at the level TSPEC §8.3 calls composition/source: it reads `pdlc/workflows/*.js` as
+**text**, executes nothing, and never reads `dist/` (§2.4).
+
+---
+
+**PROP-AWAIT-01 — the await classification is total: every seam call site is classified or fails.**
+*(Static Guard · L3 · `runtimeBundle.test.js`)*
+
+**Invariant.** Let `S` be the set of call sites of the thirteen injected seam identifiers found by
+PLAN §9.2 item 3's bracket-depth walk over the masked source. For every site `s ∈ S`, exactly one of
+four things holds: `s` is `await`ed; or `s` is classified by TSPEC §8.5 ruling **1** (alias — the
+one-hop alias resolution), **2** (returned promise, satisfying **both** the backward and the forward
+half) or **3** (argument to an awaited combinator). A site matching **none** is *unclassified* and the
+property **fails loudly** — it does not warn, does not skip, and is not permitted to be absent from
+the report. A site matching **two** rulings is equally a failure: the classification is a partition,
+not a cover (DC-01). The property is quantified over `S` as the walk computes it, never over a
+hard-coded list of the sites present today.
+
+**Generator.** D8 — source fragments, **never executed**. The generated object is not the production
+source (that is walked whole and asserted directly) but the *classifier's input space*: synthetic
+fragments composing seam calls with the constructs that break naive regex scanners — calls inside
+template literals, inside string literals containing brackets, inside comments, split across lines,
+nested inside another call's argument list, and inside a `Promise.all([...])` that is itself awaited.
+Each fragment is generated together with its expected classification, so the property is a
+round-trip: classify(fragment) === expected. 100 cases.
+
+**Non-vacuity.** Each of the three rulings, plus "awaited" and plus "unclassified", must be the
+expected outcome for ≥10 fragments — set equality against the five-element outcome catalogue. And
+≥15 fragments must place a seam call inside a masked region (string, template, comment) where the
+expected outcome is that **no site is found at all**, which is the walk's own correctness, not the
+classifier's.
+
+**Withdrawn rulings.** TSPEC v1.7 withdrew `Promise.race` and `Promise.any` from ruling 3. The
+generator therefore emits `Promise.race`/`any` fragments with expected outcome **unclassified**, so
+the withdrawal is asserted rather than merely documented — a re-added ruling reds this property.
+
+**Owner.** Written by **RLH-31** (batch 2). §7.3's first row (`RLH-AT-19`, `RLH-AT-20`;
+`RLH-SCAN-01`): **green on arrival, permitted red none ever**, greened by nobody. This property rides
+that row for the same reason `RLH-SCAN-01` does — it is the scan mechanism's own self-test (PLAN §9.2
+item 3), and a self-test that is allowed to be red is not a self-test.
+
+**Beyond the examples.** `RLH-AT-19`/`-20` assert two anchored regexes match zero times, and the
+advisory row enumerates the sites observed at HEAD. Enumeration is exactly what §8.5 forbids as the
+statement of the rule, and enumeration is what rots: a fourteenth seam, or a fourth alias hop, is
+invisible to a site list and visible to a quantifier. This is the property that makes "every
+non-`await`ed site is classified" a checked sentence rather than a claim about a snapshot.
+
+**Shrink.** File-local ladder over the fragment: strip surrounding context lines, then collapse the
+masked region, then reduce to the bare call expression. The shrunk counterexample is a single line of
+source, which is the only useful failure report for a static guard.
+
 ## 5. Oracles
 
 ## 6. Fixtures
