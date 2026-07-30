@@ -1230,6 +1230,262 @@ function isStale(recordedHash, documentBytes) {
   return approvalHashOf(documentBytes) === recordedHash ? "FRESH" : "STALE";
 }
 
+// ─── TSPEC §5.9 / FSPEC §16 — structural completeness ─────────────────────────
+//
+// Four wrapped artifact classes. The criterion is deliberately **shallow** and
+// script-decidable (C-5) over the only evidence available — the artifact on disk.
+// Anything richer would need an agent in the terminal decision, which is the loop
+// this feature exists to bound; §4.5's counters, not this test, are what bound a
+// badly behaved episode (FSPEC §16.2).
+
+/**
+ * The six spec classes' required top-level headings (TSPEC §5.9 = FSPEC §16.2).
+ *
+ * `title` is the **canonical** name — the form §5.9 lists first, and the form
+ * `missing` carries even when the document rendered `alt` or a case/spacing/
+ * numeric-prefix variant. `alt` is §5.9's parenthesised alternative, accepted as
+ * equivalent; `null` where the row states none.
+ */
+const REQUIRED_HEADINGS = Object.freeze({
+  REQ: Object.freeze([
+    { title: "Problem / Context", alt: null },
+    { title: "Goals", alt: null },
+    { title: "Non-Goals", alt: "Scope" },
+    { title: "Constraints", alt: null },
+    { title: "Acceptance Criteria", alt: null },
+    { title: "Risks", alt: null },
+    { title: "Obligations", alt: "Open Questions" },
+  ]),
+  FSPEC: Object.freeze([
+    { title: "Overview", alt: "Scope" },
+    { title: "Linked Requirements", alt: null },
+    { title: "Behavioral Flow", alt: null },
+    { title: "Business Rules", alt: null },
+    { title: "Edge Cases and Error Scenarios", alt: null },
+    { title: "Acceptance Tests", alt: null },
+    { title: "Open Questions", alt: null },
+  ]),
+  TSPEC: Object.freeze([
+    { title: "Overview", alt: null },
+    { title: "Architecture", alt: "Design" },
+    { title: "Interfaces", alt: null },
+    { title: "Data Model", alt: "State" },
+    { title: "Test Strategy", alt: null },
+    { title: "Open Questions", alt: null },
+  ]),
+  PLAN: Object.freeze([
+    { title: "Overview", alt: null },
+    { title: "Batches", alt: "Tasks" },
+    { title: "Dependencies", alt: null },
+    { title: "Verification", alt: null },
+  ]),
+  PROPERTIES: Object.freeze([
+    { title: "Overview", alt: null },
+    { title: "Properties", alt: null },
+    { title: "Oracles", alt: null },
+    { title: "Fixtures", alt: null },
+  ]),
+  DECISIONS: Object.freeze([
+    { title: "Context", alt: null },
+    { title: "Options Considered", alt: null },
+    { title: "Decision", alt: null },
+    { title: "Consequences", alt: null },
+  ]),
+});
+
+/**
+ * LEARNINGS' five numbered sections, as `harvest-learnings/SKILL.md` mandates
+ * them (FSPEC §16.5). `## 6. Approval Record` is **deliberately absent**: the
+ * record is best-effort (AC-4.2c), and making it part of the terminal criterion
+ * would let a record-writing bug re-dispatch harvest to MAX_AUTHORING_DISPATCHES
+ * and then halt the phase over an optimisation's bookkeeping.
+ *
+ * Matched by normalised prefix, so `## 3. Rejected Proposals (with rationale)`
+ * satisfies `Rejected Proposals`.
+ */
+const LEARNINGS_SECTIONS = Object.freeze([
+  "Non-Convergences",
+  "Cross-Feature Patterns",
+  "Rejected Proposals",
+  "Process Learnings",
+  "Open Items for Consolidation",
+]);
+
+/** A top-level `##` heading — never `###`, up to three leading spaces. */
+const TOP_LEVEL_HEADING = /^ {0,3}##(?!#)\s+(.+?)\s*$/;
+
+/**
+ * §5.9's matching rules as one function: case-insensitive, whitespace-normalised,
+ * a leading `N.` / `N)` numeric prefix ignored.
+ */
+function normaliseHeadingTitle(raw) {
+  return String(raw ?? "")
+    .replace(/^\s*\d+[.)]\s*/, "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLowerCase();
+}
+
+/**
+ * The document's top-level sections, in document order.
+ *
+ * Headings are located through `scanLines`, so a `## …` line **quoted inside a
+ * fenced block is not a section** (§1.2 rule 5) — a reviewer stall-killed after
+ * quoting §6.2's template must not look like it reached the end. Bodies, by
+ * contrast, are the **raw** lines between one heading and the next, fences
+ * included: §5.0's exclusion governs which lines may *match a scanned pattern*,
+ * it does not empty a section's body. Both directions matter and they pull
+ * opposite ways (SE-v4 F-18 / TE-v4 F-01).
+ */
+function topLevelSections(fileText) {
+  const lines = String(fileText ?? "").split("\n");
+  const heads = [];
+  scanLines(fileText, (line, index) => {
+    const m = TOP_LEVEL_HEADING.exec(line);
+    if (m) heads.push({ index, title: m[1] });
+  });
+  return heads.map((h, i) => ({
+    title: h.title,
+    normalised: normaliseHeadingTitle(h.title),
+    index: h.index,
+    body: lines.slice(h.index + 1, i + 1 < heads.length ? heads[i + 1].index : lines.length),
+  }));
+}
+
+/**
+ * §5.9's body rule. A body consisting only of `TBD`, `TODO`, `_TBD_` or an HTML
+ * comment counts as **empty** — otherwise a skeleton written with placeholders
+ * would score complete on write 1.
+ *
+ * The **accepted shallowness** (FSPEC v1.5, SE-v5 F-20 / TE-v5 Q-01): a body that
+ * is only a fenced block containing `TBD` scores **non-empty**, because the fence
+ * lines themselves are ordinary body content here. A fence-aware placeholder test
+ * would reintroduce exactly the coupling that produced v1.4's false-halt.
+ */
+function isEmptyBody(bodyLines) {
+  const stripped = bodyLines.join("\n").replace(/<!--[\s\S]*?-->/g, "");
+  const meaningful = stripped
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
+  if (meaningful.length === 0) return true;
+  return meaningful.every((l) => /^[_*`~\s]*(?:TBD|TODO)[_*`~\s]*$/i.test(l));
+}
+
+/**
+ * Does `line` carry a catalogue verdict? One grammar, shared with `parseVerdict`
+ * (TSPEC §3.9): the same `VERDICT: ` prefix over the trimmed line, the same
+ * slice, the same `VALID_VERDICTS` array — which is why that array is now module
+ * scoped rather than copied here.
+ */
+function isCatalogueVerdictLine(line) {
+  const trimmed = String(line ?? "").trim();
+  if (!trimmed.startsWith("VERDICT: ")) return false;
+  return VALID_VERDICTS.includes(trimmed.slice("VERDICT: ".length).trim());
+}
+
+/**
+ * FSPEC §16.3's cross-review criterion: the **trailing** `## Verdict` section
+ * carries **at least one** `VERDICT: ` line whose value is in the catalogue.
+ *
+ * "Exactly one" was **withdrawn from the terminal test** at FSPEC v1.x and is
+ * retained only in §6.3's *approval* test. Under the old reading a duplicated
+ * verdict field made a finished review permanently non-terminal: the wrapper
+ * re-dispatched to MAX_AUTHORING_DISPATCHES and halted the phase over a review
+ * whose reviewer plainly reached the end (E-58). Terminal and approving are two
+ * questions — a duplicated field is terminal **yes**, approving **no**, and
+ * §5.1's own duplicate pre-count is what answers the second.
+ *
+ * The `APPROVAL-HASH:` / `REVIEWED-COMMIT:` lines §7 appends are not part of this
+ * criterion: they are written *after* the episode reaches terminal.
+ */
+function crossReviewComplete(fileText) {
+  const visited = [];
+  scanLines(fileText, (line, index) => visited.push({ line, index }));
+  let headingAt = -1;
+  for (const v of visited) {
+    const m = TOP_LEVEL_HEADING.exec(v.line);
+    if (m && normaliseHeadingTitle(m[1]) === "verdict") headingAt = v.index;
+  }
+  if (headingAt === -1) return false;
+  return visited.some((v) => v.index > headingAt && isCatalogueVerdictLine(v.line));
+}
+
+/**
+ * Structural completeness of one wrapped artifact (§5.9, §3.7).
+ *
+ * Pure, total and synchronous — no seam, no throw, no IO. Unknown class or doc
+ * type is **not complete**: FSPEC §1.2 rule 4's uniform direction is more work,
+ * never less.
+ *
+ * `T` (top-level headings present) and `S` (those with non-empty bodies) are
+ * carried for the run report and are **measured, not fixed**, so a document
+ * richer than the minimum reports honestly. `missing` names the **canonical**
+ * required titles that are absent or short; it is `[]` on the complete arm.
+ *
+ * @param {string} artifactClass - "spec" | "cross-review" | "code-review" | "LEARNINGS"
+ * @param {string} docType - the spec doc type for the "spec" class; ignored otherwise
+ * @param {string} fileText - the artifact's bytes
+ * @returns {{complete: boolean, missing: string[], T: number, S: number}}
+ */
+function isComplete(artifactClass, docType, fileText) {
+  const sections = topLevelSections(fileText);
+  const T = sections.length;
+  const S = sections.filter((s) => !isEmptyBody(s.body)).length;
+  const done = (complete, missing) => ({ complete, missing, T, S });
+
+  // A required row is satisfied when SOME section matches its canonical title or
+  // its alternative AND that section's body is non-empty. Extra headings are
+  // permitted, counted in `T`, and never subtract — a document richer than the
+  // minimum is not incomplete. Order is not required.
+  const shortfall = (rows) => {
+    const satisfied = new Set();
+    for (const s of sections) {
+      for (const row of rows) {
+        const matches = row.prefix
+          ? s.normalised.startsWith(normaliseHeadingTitle(row.title))
+          : s.normalised === normaliseHeadingTitle(row.title) ||
+            (row.alt && s.normalised === normaliseHeadingTitle(row.alt));
+        if (matches && !isEmptyBody(s.body)) satisfied.add(row.title);
+      }
+    }
+    return rows.map((r) => r.title).filter((t) => !satisfied.has(t));
+  };
+
+  if (artifactClass === "spec") {
+    const rows = REQUIRED_HEADINGS[docType];
+    if (!rows) return done(false, []);
+    const missing = shortfall(rows);
+    return done(missing.length === 0, missing);
+  }
+
+  if (artifactClass === "cross-review") {
+    return done(crossReviewComplete(fileText), []);
+  }
+
+  if (artifactClass === "code-review") {
+    // §16.4: the `Scope:` field — matched with the SAME expression
+    // `hooks/scripts/check-scope-field.sh` uses, so this criterion and the
+    // existing hook agree on one marker rather than drifting apart — plus the
+    // findings section the skill mandates. No verdict field: Phase DOD is out of
+    // AC-4's scope entirely (§10.7), so a verdict on it would carry no meaning.
+    const scoped = /scope|cross-feature/i.test(String(fileText ?? ""));
+    const findings = sections.some((s) => s.normalised.includes("findings") && !isEmptyBody(s.body));
+    return done(scoped && findings, []);
+  }
+
+  if (artifactClass === "LEARNINGS") {
+    // §16.5: the harvest content — the metadata table's `Harvested from` row and
+    // the five numbered sections, each with a non-empty body. The approval record
+    // is EXCLUDED (see LEARNINGS_SECTIONS).
+    const harvestedFrom = /\|\s*Harvested from\s*\|/i.test(String(fileText ?? ""));
+    const missing = shortfall(LEARNINGS_SECTIONS.map((title) => ({ title, alt: null, prefix: true })));
+    return done(harvestedFrom && missing.length === 0, missing);
+  }
+
+  return done(false, []);
+}
+
 // ─── isPass helper ────────────────────────────────────────────────────────────
 
 function isPass(verdict) {
