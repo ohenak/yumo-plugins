@@ -1228,6 +1228,80 @@ function reviewerSkillForSlug(slug) {
   return null;
 }
 
+// ─── TSPEC §5.2 — filename grammar and round-index derivation (the H-1 fix) ────
+
+/** The G-1…G-4 cross-review basename grammar, applied to a BASENAME. */
+const CROSS_REVIEW_RE =
+  /^CROSS-REVIEW-(?<role>[a-z]+(?:-[a-z]+)*)-(?<docType>[A-Z][A-Z_]*)(?:-v(?<n>[1-9][0-9]*))?\.md$/;
+
+/** The same grammar with the round/extension tail left unconsumed, so a basename
+ *  that fails only on its tail can be told apart: `bad_round` from `trailing_junk`. */
+const CROSS_REVIEW_LOOSE_RE =
+  /^CROSS-REVIEW-(?<role>[a-z]+(?:-[a-z]+)*)-(?<docType>[A-Z][A-Z_]*)(?<rest>.*)$/;
+
+const CROSS_REVIEW_PREFIX = "CROSS-REVIEW-";
+
+/** The closed doc-type catalogue a cross-review may be written against (§4.4). */
+const REVIEW_DOC_TYPES = Object.freeze([
+  "REQ",
+  "FSPEC",
+  "TSPEC",
+  "PLAN",
+  "PROPERTIES",
+  "DECISIONS",
+]);
+
+/**
+ * Parse a cross-review basename against the §5.2 grammar. Total: a string goes
+ * in, a tagged union comes out, and it never throws.
+ *
+ * The four rules the grammar encodes, and the rejection each produces:
+ *   G-1 (case)                  — `[a-z]` role / `[A-Z]` doc type
+ *   G-2 (closed role catalogue) — validated AFTER the regex against `MAP`'s
+ *                                 values, not baked into the pattern ⇒ `bad_role`
+ *   G-3 (no leading zeros)      — `[1-9][0-9]*` ⇒ `bad_round`
+ *   G-4 (no other optional part)— `$` immediately after `\.md` ⇒ `trailing_junk`
+ *
+ * The un-suffixed form IS round 1: `CROSS-REVIEW-{role}-{DOC}.md` and
+ * `…-v1.md` denote the same round. That is not a convenience — the un-suffixed
+ * form is what pre-existing branches in this repo carry, and treating it as "no
+ * round" would make every historical approval invisible.
+ *
+ * @param {string} basename
+ * @returns {{ok: true, role: string, docType: string, round: number, suffixed: boolean}
+ *          |{ok: false, reason: string}} `reason` is a `FILENAME_FAILURES` member.
+ */
+function parseReviewFilename(basename) {
+  const name = typeof basename === "string" ? basename : "";
+  if (!name.startsWith(CROSS_REVIEW_PREFIX)) {
+    return { ok: false, reason: "not_cross_review" };
+  }
+
+  const m = CROSS_REVIEW_RE.exec(name);
+  if (m) {
+    const { role, docType, n } = m.groups;
+    if (!REVIEWER_ROLE_SLUGS.includes(role)) return { ok: false, reason: "bad_role" };
+    if (!REVIEW_DOC_TYPES.includes(docType)) return { ok: false, reason: "bad_doc_type" };
+    return {
+      ok: true,
+      role,
+      docType,
+      round: n === undefined ? 1 : Number(n),
+      suffixed: n !== undefined,
+    };
+  }
+
+  // The prefix is right but the rest is not. Classify the tail rather than
+  // collapsing every such name onto `not_cross_review`, so E-03/E-07's notice
+  // can tell an operator WHICH rule the file broke.
+  const loose = CROSS_REVIEW_LOOSE_RE.exec(name);
+  if (!loose) return { ok: false, reason: "bad_role" }; // G-1: the role segment itself
+  const rest = loose.groups.rest;
+  // Reachable only for a round token the strict pattern rejected — `-v0`, `-v01`.
+  if (/^-v[0-9]+\.md$/.test(rest)) return { ok: false, reason: "bad_round" };
+  return { ok: false, reason: "trailing_junk" };
+}
+
 /**
  * Build the reviewer dispatch prompt. Iteration 1 is a full first-pass review.
  * Iteration ≥2 appends the delta re-review protocol so the reviewer reads its own
