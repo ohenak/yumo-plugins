@@ -573,11 +573,11 @@ red — which is the whole reason the ledger is per assertion and not per file (
 
 | Assertion(s) | Written by (batch) | Green from | Permitted red | Greened by |
 |---|---|---|---|---|
-| `RLH-AT-19`, `RLH-AT-20` | RLH-31 (2) | **batch 2 — green on arrival** | **none, ever** | nobody. Measured at HEAD for v1.1: both anchored regexes match **zero** times in both bundles, and the await scan is clean over both sources under §9.2's rulings — the one non-awaited seam call, `agentFn(` at `orchestrate-dev.js:1867`, is an entire `batch.map` arrow body and exempt. `RLH-32` and `RLH-33` **keep** them green; they do not turn them green. A red at any gate is a `H-h`/`H-k` halt (§2.2) |
+| `RLH-AT-19`, `RLH-AT-20` | RLH-31 (2) | **batch 2 — green on arrival** | **none, ever** | nobody. Measured at HEAD (**re-measured for v1.2**): both anchored regexes match **zero** times in both bundles, and the await scan is clean over both sources under **TSPEC §8.5's** rulings — **three** non-`await`ed thirteen-list call sites, each exempt: `orchestrate-dev.js:615` and `:616` by the awaited-combinator-argument ruling (array elements of `await _parallel([…])`), `orchestrate-dev.js:1867` by the returned-promise ruling (a `batch.map` arrow body); `orchestrate-queue.js` has none. **v1.1 stated one site and was wrong**; `RLH-01` now checks the count and the classification at batch 1 (§4.1) rather than inheriting an authoring-time scan. `RLH-32` and `RLH-33` **keep** them green; they do not turn them green. A red at any gate is a `H-h`/`H-k` halt (§2.2) |
 | `RLH-AT-64` | RLH-31 (2) | batch 2, and again from batch 11 | **batches 4–10 only** | RLH-32. Also green on arrival, being **derived** (§9.3) over HEAD's wired-or-exempt root. `RLH-18` (4) opens the window by declaring five seams the production root does not yet supply; `RLH-32` (11) closes it. A red at batch 2, 3, or 11 onwards is a regression |
 | `RLH-AT-65`, `RLH-AT-66`; `scanLines` property | RLH-03 (2) | batch 3 | batch 2 | RLH-05 (c) |
 | `RLH-AT-12`, `-13`, `-14`, `-17`; both digest properties | RLH-06 (2) | batch 3 | batch 2 | RLH-05 (d) |
-| `RLH-AT-15`, `-16`, `-18` | RLH-06 (2) | batch 8 | batches 2–7 | the staleness conjunct is RLH-16 (batch 6), the gate conjunct RLH-26 (batch 8). **Write each as its own test**, `-stale` and `-gate`, and the windows separate to 2–5 and 2–7; written as one test the binding batch is 8 |
+| `RLH-AT-15`, `-16`, `-18` | RLH-06 (2) | batch 8 | batches 2–7 | RLH-16 (6) supplies the staleness conjunct, RLH-26 (8) the gate conjunct, so **batch 8 binds all three**. **Three tests, one per AT, no `-stale`/`-gate` split** — v1.1 offered the split as optional and v1.2 withdraws it: it left the gate's sole authority with two windows for three assertions and ids registered nowhere (§7.4), and it does not decompose — FSPEC `AT-18` ("a record-less LEARNINGS passes the guard and the next Phase F **runs**") carries **no** staleness conjunct, so the split prescribes an empty `-stale` test for it. The cost of withdrawing it is one batch of slack on `AT-15`/`-16` only; the benefit is that every id the ledger names exists in the run |
 | `RLH-AT-01` … `-06`, `-63`; both round-derivation properties | RLH-11 (2) | batch 3 | batch 2 | RLH-05 (e) |
 | `RLH-AT-07` | RLH-11 (2) | batch 8 | batches 2–7 | RLH-26 — the call-site half |
 | `RLH-AT-29`; `parseForcePhases` catalogue-closure | RLH-14 (2) | batch 3 | batch 2 | RLH-05 (f) |
@@ -624,8 +624,12 @@ Four groups of assertion in this PLAN guard a TSPEC interface rather than an FSP
 so they have no `AT-{N}` to inherit. They are named and countable anyway, because §12.3's checklist has
 to be mechanically checkable: **`RLH-WIRE-01`** (RLH-17), **`RLH-LOOP-01`** and **`RLH-LOOP-02`**
 (RLH-22), **`RLH-REPORT-01`** (RLH-29), and **`RLH-SKILL-01` … `RLH-SKILL-09`** (RLH-04, one per row of
-TSPEC §7.4, nine files). Fourteen assertions, listed in §7.3 like any other. They are **not** ATs, must
-not be renumbered into the FSPEC's range, and §12.3 counts them separately.
+TSPEC §7.4, nine files). **Thirteen** assertions — 1 + 2 + 1 + 9; v1.1 said "fourteen" and mis-added —
+listed in §7.3 like any other. They are **not** ATs and must not be renumbered into the FSPEC's range,
+which is exactly why §12.3's two AT-counting rows do not reach them: §12.3 therefore carries **its own
+row naming all thirteen**, added at v1.2. Without it `RLH-34` could certify a tree in which
+`RLH-LOOP-01` — §11.5's sole oracle for the `N-a` threading shape — and all nine `RLH-SKILL-*` were
+absent.
 
 
 ## 8. Traceability — FSPEC obligations and defects
