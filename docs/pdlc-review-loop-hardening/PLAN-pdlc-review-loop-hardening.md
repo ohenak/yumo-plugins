@@ -82,87 +82,67 @@ The single failure is `__tests__/documentOracles.test.js`'s **intentional** red 
 `AT-22 [red-until-L-06]`, carried deliberately from the preceding feature. It is **not this feature's
 test and must not be fixed, deleted or skipped.**
 
-### 2.2 The exit criterion, stated once — every task cites this section
+### 2.2 The exit criterion, stated once — every task cites this
 
-> **The gate is "no new failures against the §2.1 baseline", never "the suite is green."**
-> A batch passes when `npm test` reports **1038 passing / 1 failing / 70 skipped or better**, the one
-> failure is still `documentOracles.test.js` `AT-22 [red-until-L-06]` and no other, **plus** exactly
-> those `RLH-AT-*` tests whose **§7.3 ledger row** lists the current batch inside its permitted-red
-> window. A second unexplained failure, or a *different* single failure, is a regression.
+> **A batch gate passes when the suite shows no *new* failures against §2.1's baseline.**
 
-**The permitted-red ledger is per acceptance test, not per test file** (§7.3), and that granularity is
-load-bearing rather than tidy. A per-file ledger keyed on "the last task that greens anything in this
-file" puts every assertion in the file into the permitted set until that task's batch — which would
-place `RLH-AT-19`, the await-discipline guard, in the permitted set across the very batch that
-introduces the feature's riskiest await site (`refreshReviewState`, §9.2). The guard would then fail
-**open** at exactly the batch it exists to guard, and §11.3 `H-h` would never fire because no agent
-would ever be told the test failed unexpectedly. §7.3 therefore states, per assertion, the batch from
-which a red is a regression — and states which assertions are **green on arrival** and must never be
-red at any gate.
+Never "green". The baseline is 1 failed / 1038 passed / 70 skipped, and the one failure —
+`AT-22 [red-until-L-06]` in `documentOracles.test.js` — belongs to another feature (§13.2 `P-Q-08`). A
+gate demanding green is unsatisfiable at every batch, and a task that "fixes" that red has changed
+another feature's contract.
 
-**Three assertions are green at HEAD** (measured for v1.1, §7.3): `RLH-AT-19`'s two anchored regexes
-match zero times in both bundles and the await-discipline scan is clean over both sources under §9.2's
-rulings; `RLH-AT-20` (freshness) already passes; and `RLH-AT-64`, being *derived*, passes over HEAD's
-sixteen-parameter composition root. `RLH-AT-19` and `RLH-AT-20` have an **empty** permitted-red window:
-green from batch 2 onwards, and a red at any gate is a regression and a halt. `RLH-AT-64` has a
-*bounded* window — batches 4–10, opened by `RLH-18` declaring five seams the composition root does not
-yet supply and closed by `RLH-32` supplying them — and a red outside that window is a regression.
+"No new failures" needs a companion, because a task's own red tests are legitimately failing between the
+batch that writes them and the batch that greens them. **That companion is §7.3, and only §7.3.** It is a
+ledger **per acceptance test**, not per file: for each assertion it gives the batch it must be green from
+and the batches in which a red is permitted. Outside its window, a red is a regression and a halt.
 
-Two batches are **RED-terminal by construction** — batch 2 and batch 3, which write test files ahead
-of their subjects. Their gate wording is therefore: *the new `RLH-AT-*` tests fail for the stated
-reason (their subject does not exist yet) and every pre-existing test still passes* — with the
-exception of the three assertions above, which are green in batch 2 and stay green. No batch is gated
-on absolute green.
+v1.0 kept the same information per **file**, and that fails open in exactly the place this feature can
+least afford it. A file's window is the union of its assertions' windows, so an assertion that is green
+on arrival inherits a permitted-red window from its noisiest neighbour. **Three assertions are green at
+HEAD**, measured for v1.1: `RLH-AT-19` and `RLH-AT-20` have an **empty** window — a red at any gate,
+including batch 2, is a regression — and `RLH-AT-64` has a *bounded* one, batches 4–10 only, opened by
+`RLH-18` and closed by `RLH-32`. Under v1.0's per-file column `RLH-AT-19` was permitted-red through the
+batch that adds `refreshReviewState`, the feature's riskiest await site, which would have made this
+feature's own await guard silent over its own worst risk.
 
 ### 2.3 The suite is already over the 180 s watchdog — how to run it
 
-**The margin is negative, not one second positive.** Three independent measurements of the same HEAD:
+Three measurements of the **same** HEAD, all after the baseline above:
 
-| Measurement | jest's own `Time:` | True wall clock of the command an agent issues |
+| Run | jest `Time:` | wall |
 |---|---|---|
-| v1.0 (this PLAN, round 1) | 179.175 s | not taken |
-| test-engineer, round-1 review | 179.924 s | **180.56 s** |
-| **v1.1, re-measured 2026-07-30** | 184.752 s | **185.43 s** (`3:05.43 total`) |
+| v1.0 authoring | 179.175 s | not recorded |
+| test-engineer review | 179.924 s | **180.56 s** |
+| v1.1 re-measurement | 184.752 s | **185.43 s** |
 
-jest's `Time:` **excludes** npm and node startup and teardown, so it is the smaller of the two numbers
-and it is not the number the watchdog sees. On both wall-clock measurements the suite is **already over
-the 180 s stall watchdog** that produced `H-3` in the first place — before this feature adds a single
-test. A default-timeout foreground call dies well short of either figure.
+So the honest statement is **not** "179 s, just under the ceiling" but **already over it, and noisy
+upward**. The wall clock is set by the longest single suite plus worker contention, not by the sum of
+test time: in the v1.1 run `driftFault.test.js` alone took 184.459 s of the 184.752 s total, with
+`guardMatrix.test.js` at 177.718 s and `driftSync.test.js` at 154.248 s beside it — shell-spawning drift
+suites paying process-startup cost under contention. This feature's new suites are in-process and cheap,
+but they add workers competing for the same cores, so the projection after the feature is **190–200 s**,
+not 179 s plus a few seconds of new assertions.
 
-**Why the figure moves, and what it is made of.** Wall clock here is not the sum of test time; it is
-set by the longest single suite plus worker contention. In the v1.1 run `driftFault.test.js` alone took
-**184.459 s** of the 184.752 s total, with `guardMatrix.test.js` at 177.718 s and `driftSync.test.js` at
-154.248 s running beside it — the shell-spawning drift suites, whose cost is process startup under
-whatever else the machine is doing. The sum of per-suite times far exceeds the wall clock because jest
-runs them in parallel. Two consequences worth stating, because both are counter-intuitive:
+Consequences, and the first is not a recommendation:
 
-- **This feature's new tests do not widen the gap in proportion to their count.** All of them are pure
-  in-process JS (L1) or seam-injected module drives (L2) with no process spawning; they run inside the
-  window the drift suites already occupy. What they add is *worker contention* against the critical
-  suite, not a new critical suite.
-- **Projected post-feature wall clock: 190–200 s** — the same longest-suite floor plus contention from
-  roughly six added suites. Recorded here so the next reader has a number to compare against rather
-  than a trend nobody owns. It is a projection, not a measurement, and §4.1 says how to falsify it.
+- **run the suite in the background, always** — a foreground invocation will be killed at 180 s, and the
+  kill looks like a hang, not a failure. This is **mandatory** at every batch gate, not advisory;
+- **halt if a gate run exceeds 300 s.** Beyond that the run is not slow, it is stuck (§11.3);
+- **do not shorten the suite to fit the watchdog.** Deleting or skipping a drift suite to buy margin
+  destroys coverage this repo paid for; the ceiling is a procedural problem, not a coverage budget;
+- **record the wall time in each batch commit**, so the trend stays visible rather than being rediscovered
+  at review;
+- **run a single file with `npm test --`, never bare `npx jest <file>`:**
 
-Normative for every task in this PLAN — **mandatory, not recommended**:
+```bash
+cd pdlc/workflows && npm test -- __tests__/scanLines.test.js
+```
 
-- **Inner TDD loop:** run only the task's own file(s) —
-  `cd pdlc/workflows && npm test -- __tests__/scanLines.test.js`. Single files are seconds
-  (`parseVerdict.test.js`: 20 tests, 0.53 s wall).
-  **Use `npm test --`, never bare `npx jest <file>`.** Verified for v1.1: this package runs jest under
-  `node --experimental-vm-modules` (see `package.json` `scripts.test`), and bare `npx jest
-  __tests__/parseVerdict.test.js` reports `Tests: 0 total` and **exits 0** — a vacuous green that looks
-  like a passing RED gate. An agent that uses it will believe a test file passes when it never ran.
-- **Batch gate:** the full suite **must** be run in the background with its output read from a file, or
-  with an explicit timeout above 300 s. A blocking foreground call is a defect, not a style choice: on
-  the measured figures it *will* be killed.
-- **Record the measured wall clock in every batch commit message** (§13.3). If a batch gate's wall
-  clock exceeds **300 s**, halt and report rather than retrying — the procedural mitigation has been
-  exceeded and the ceiling is a spec question, not an implementation one.
-- Do **not** shorten the suite to fit the watchdog. Do not delete, `skip` or shard coverage to buy a
-  green gate, and do not add `--silent`-driven partial runs. The gate is the whole suite against §2.2
-  or it is not the gate. A feature that exists to remove false halts must not purchase its own gate by
-  removing coverage.
+  jest here needs `node --experimental-vm-modules` (see `package.json`), which the npm script supplies.
+  Bare `npx jest __tests__/parseVerdict.test.js` reports `Tests: 0 total` and **exits 0** — a vacuous
+  green, where the same file under `npm test --` runs 20 tests. `RLH-01` asserts both figures (§4.1) so
+  nobody discovers this at batch 7.
+
 
 ## 3. Generated-artifact discipline and why it serialises the source lane
 
@@ -504,15 +484,12 @@ of these has misread the TSPEC:
 ## 7. Traceability — task → acceptance tests
 
 TSPEC §8.3 owns the **AT → jest file** map. The table below carries it into the **authoring** tasks —
-which task writes each assertion. **When each assertion must be green is stated only in §7.3**, and
-§7.4 states which task owns each half of the assertions split across two files.
+which task writes each assertion. **When each assertion must be green is stated only in §7.3**; §7.4
+gives each split id a single owner and §7.5 names the assertions that are not FSPEC ATs.
 
-Greening is deliberately stated **once**. v1.0 stated it twice — a "go green" row per task here and a
-`Greened by` cell per file in §4 — and the two disagreed twice over (one cell omitted `RLH-16`, another
-omitted `RLH-30`), which is §1.2's duplicated-statement failure class inside the document arguing
-against it. §7.3 is the only authority; §2.2 and §12.2 gate on it.
-
-The jest name for every id below is the `RLH-` form (§1.3).
+Greening is stated **once** deliberately. v1.0 stated it twice — a "go green" row per task here and a
+`Greened by` cell per file in §4 — and the two disagreed twice over, which is §1.2's own failure class.
+§7.3 is the only authority; §2.2 and §12.2 gate on it. Every id below takes its `RLH-` jest name (§1.3).
 
 | Authoring task | Assertions it writes | Level | Owning test file |
 |---|---|---|---|
@@ -573,8 +550,8 @@ red — which is the whole reason the ledger is per assertion and not per file (
 
 | Assertion(s) | Written by (batch) | Green from | Permitted red | Greened by |
 |---|---|---|---|---|
-| `RLH-AT-19`, `RLH-AT-20` | RLH-31 (2) | **batch 2 — green on arrival** | **none, ever** | nobody. Measured at HEAD for v1.1: both anchored regexes match **zero** times in both bundles, and the await-discipline scan is clean over both sources under §9.2's rulings — the one non-awaited seam call, `agentFn(` at `orchestrate-dev.js:1867`, is the entire body of a `batch.map` arrow and therefore exempt. `RLH-32` and `RLH-33` **keep** them green; they do not turn them green. A red at any gate — batch 2 included — is a `H-h`/`H-k` halt. This row is why the ledger exists: a per-file window would have permitted a red `RLH-AT-19` through batch 7, the batch that adds `refreshReviewState`, the feature's riskiest await site |
-| `RLH-AT-64` | RLH-31 (2) | batch 2, and again from batch 11 | **batches 4–10 only** | RLH-32. Also green on arrival, because it is **derived** (§9.3) and HEAD's sixteen-parameter root is wired-or-exempt. `RLH-18` (batch 4) opens the window by declaring five seams the production composition root does not yet supply; `RLH-32` (batch 11) closes it. A red at batch 2, 3, or 11 onwards is a regression |
+| `RLH-AT-19`, `RLH-AT-20` | RLH-31 (2) | **batch 2 — green on arrival** | **none, ever** | nobody. Measured at HEAD for v1.1: both anchored regexes match **zero** times in both bundles, and the await scan is clean over both sources under §9.2's rulings — the one non-awaited seam call, `agentFn(` at `orchestrate-dev.js:1867`, is an entire `batch.map` arrow body and exempt. `RLH-32` and `RLH-33` **keep** them green; they do not turn them green. A red at any gate is a `H-h`/`H-k` halt (§2.2) |
+| `RLH-AT-64` | RLH-31 (2) | batch 2, and again from batch 11 | **batches 4–10 only** | RLH-32. Also green on arrival, being **derived** (§9.3) over HEAD's wired-or-exempt root. `RLH-18` (4) opens the window by declaring five seams the production root does not yet supply; `RLH-32` (11) closes it. A red at batch 2, 3, or 11 onwards is a regression |
 | `RLH-AT-65`, `RLH-AT-66`; `scanLines` property | RLH-03 (2) | batch 3 | batch 2 | RLH-05 (c) |
 | `RLH-AT-12`, `-13`, `-14`, `-17`; both digest properties | RLH-06 (2) | batch 3 | batch 2 | RLH-05 (d) |
 | `RLH-AT-15`, `-16`, `-18` | RLH-06 (2) | batch 8 | batches 2–7 | the staleness conjunct is RLH-16 (batch 6), the gate conjunct RLH-26 (batch 8). **Write each as its own test**, `-stale` and `-gate`, and the windows separate to 2–5 and 2–7; written as one test the binding batch is 8 |
@@ -775,31 +752,24 @@ asserts properties of `pdlc/skills/orchestrate-dev/SKILL.md` and is not owned by
 
 ### 10.2 The known drift risk, and why this PLAN does not claim to detect it
 
-TSPEC §10.2's **Q-09** names it and binds it: §5.9's per-class heading lists live in the workflow
-script, while the templates authors actually follow live in the SKILLs, and the two can drift.
+TSPEC §10.2's **Q-09** names and binds it: §5.9's per-class heading lists live in the workflow script,
+the templates authors follow live in the SKILLs, and the two can drift.
 
-**v1.1 records this as accepted residual risk. This feature builds no drift detector, and no task in §4
-is asked to.** v1.0 implied otherwise in two places, and both are removed: §12.3 carried a "heading
-fixtures byte-identical to the SKILL templates" checklist row that **no task could satisfy**, and
-§11.3's `H-j` presupposed a test that would fire on drift. What RLH-12's fixtures actually are is a
-**point-in-time copy** of the templates as they stand when RLH-12 runs — they pin `isComplete`'s matcher
-against a real template shape, and they detect **no subsequent SKILL edit** whatever.
+**v1.1 builds no drift detector, and no task in §4 is asked to.** v1.0 implied otherwise twice, and both
+are removed: §12.3 carried a "heading fixtures byte-identical to the SKILL templates" row **no task could
+satisfy**, and §11.3's `H-j` presupposed a test that would fire on drift. `RLH-12`'s fixtures are a
+**point-in-time copy** — they pin `isComplete`'s matcher against a real template shape and detect **no
+later SKILL edit** whatever. A real detector must parse nine SKILL files for heading blocks, judge which
+are templates, and compare them against a list inside a bundle that cannot `import` (§9.1): that is a
+feature with its own REQ. It is bound to `docs/_queue/QUEUE.md` **Order 9**, beside TSPEC Q-09 and
+`P-Q-05`.
 
-Why not build one here: a real detector must parse nine SKILL.md files for heading blocks, decide which
-blocks are templates, and compare them against a list embedded in a bundle that cannot `import`
-anything (§9.1). That is a feature with its own REQ, not a checklist row. It is bound to
-`docs/_queue/QUEUE.md` **Order 9** beside TSPEC Q-09 and `P-Q-05`, where this same class of
-prompt-versus-code coupling already sits.
-
-What this feature does instead — and this is the honest whole of it:
-
-- RLH-04's `RLH-SKILL-01` … `RLH-SKILL-09` assert each amendment's **presence and grammar** in the SKILL
-  file, so an amendment silently reverted by a later edit does red (§10.1, layer 1);
-- RLH-12's fixtures pin the template shape `isComplete` matches at the moment they are written;
-- the residual gap — a SKILL heading edited *after* RLH-12 — is **announced, not covered**.
-
-Anyone editing a §5.9 heading list or a SKILL template must update the other in the same commit. That
-instruction is the mitigation. There is no test behind it, and this PLAN does not pretend there is.
+What this feature does instead, and this is the whole of it: `RLH-04`'s `RLH-SKILL-01`…`-09` assert each
+amendment's **presence and grammar**, so a silent revert reds (§10.1 layer 1); `RLH-12`'s fixtures pin the
+template shape at the moment they are written; and the residual gap — a SKILL heading edited *after*
+`RLH-12` — is **announced, not covered**. Anyone editing a §5.9 heading list or a SKILL template updates
+the other in the same commit. That instruction is the mitigation; there is no test behind it, and this
+PLAN does not pretend there is.
 
 ### 10.3 The one thing prompts cannot be held to
 
@@ -983,14 +953,14 @@ pointer (§13.1a). What remains in §13.2 is accepted incompleteness, and closin
 
 ### 13.1 Not open — the TSPEC already pins these
 
-Both were listed as open in v1.0 against the TSPEC's own text, and each nominated a closer that runs
-after the code it was supposed to shape. Removed as questions; the pinned contract is stated here so no
-one reopens them.
+Both were listed as open against the TSPEC's own text, and each nominated a closer running after the code
+it was meant to shape. Removed as questions; the pinned contract is recorded so nobody reopens them.
 
 | Was | The pinned contract | Where |
 |---|---|---|
-| "`forcePhases` — array or `Set`?" | **Both, at different layers, and neither is a choice.** `main()`'s `forcePhases` parameter is a **raw, unparsed operator string** — TSPEC §3.1 annotates it exactly so. `parseForcePhases(raw)` returns `{ ok: true, phases: Set<string> }` on success and `{ ok: false, badTokens: string[] }` on failure. So the *input* is a string and the *parsed* value is a `Set`; there is no array anywhere and nothing to decide. v1.0 nominated `RLH-30` (batch 10) as closer, which also runs after `RLH-05` (b3), `RLH-18` (b4), `RLH-26` (b8) and `RLH-27` (b9) — every task that touches it | TSPEC §3.1, §3.7 |
-| "Where is `refreshReviewState`'s `ListFailure` disposition applied — callee or caller?" | **Inside `refreshReviewState`**, above the `deriveRoundWindow` call. TSPEC §5.6.1's pseudocode places it there literally: the `_listFiles` result is tested for `ListFailure`, `dir_missing` maps to an empty listing and anything else halts, all before the window is derived. v1.0 assigned the question to `RLH-15`, a task that wrote **no listing code at all** (`refreshReviewState` is `RLH-23`), and cited `AT-30`…`AT-34` as the safety net — but TSPEC §8.3 assigns that range to the queue-row commit, not to this disposition | TSPEC §5.6.1, and `RLH-23`'s row in §4 |
+| "`forcePhases` — array or `Set`?" | **Neither is a choice.** `main()`'s `forcePhases` is a **raw, unparsed operator string** (TSPEC §3.1 annotates it so); `parseForcePhases(raw)` returns `{ ok: true, phases: Set<string> }` or `{ ok: false, badTokens: string[] }`. No array exists anywhere. v1.0's nominated closer `RLH-30` also ran after every task that touches it | TSPEC §3.1, §3.7 |
+| "Where is `refreshReviewState`'s `ListFailure` disposition applied?" | **Inside `refreshReviewState`**, above the `deriveRoundWindow` call — TSPEC §5.6.1's pseudocode places it there literally (`dir_missing` → empty listing, anything else halts, both before the window is derived). v1.0 assigned the question to `RLH-15`, which wrote no listing code, and cited `AT-30`…`AT-34` as the net — but TSPEC §8.3 assigns that range to the queue-row commit | TSPEC §5.6.1; `RLH-23` in §4 |
+
 
 ### 13.1a Decided in this PLAN, not in a task
 
