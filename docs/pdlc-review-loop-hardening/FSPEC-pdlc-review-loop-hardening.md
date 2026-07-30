@@ -822,6 +822,109 @@ comparison was deliberately defined over the working tree rather than over histo
 
 ## 8. FSPEC-TRAILER-01 — The revision-completion trailer
 
+**Linked requirements:** AC-3.5g clause 4, AC-3.5b (terminal-first), AC-3.5e, R-12. **Discharges the
+trailer half of O-17 (O-17(d)).**
+
+### 8.1 What it is and why it exists
+
+In **revision** mode the wrapper cannot decide terminal from disk state alone. §4a A-9 measured that
+the script sees an artifact's content but never the calls that produced it, so "does any finding of this
+round remain unreflected in the document?" is a semantic judgement over content the script cannot make.
+AC-3.5g clause 4 therefore makes the author agent emit a **positive, closed-form declaration**, and the
+script's whole role is to parse one catalogue token.
+
+Two readings the REQ **retracted**, which this document must not reinstate:
+
+| Retracted | Why it was defective |
+|---|---|
+| "the dispatch returned normally" as the terminal test (v1.4, retracted at v1.5 / TE-v5 F-01) | §4a A-8 measured that how an exhausted runtime retry surfaces to the caller is **unmeasured** — it may return a value, return nothing, or throw. Read strictly, the script can never establish "returned normally", so every revision episode would re-dispatch to `MAX_AUTHORING_DISPATCHES` and a healthy converging round would halt the phase. Read as "no exception was caught", a dispatch killed after applying three of five findings scores terminal and the wrapper **reports success on a partly-unaddressed round**. |
+| requiring **progress** on the terminal dispatch (v1.4, retracted at v1.5 / TE-v5 F-02) | AC-3.5g makes "write nothing" the **correct** output of a continuation dispatch whose round is already fully applied. Under v1.4 that compliant no-op scored no-progress, the script re-dispatched, the agent correctly did nothing again, and three consecutive no-ops exhausted `MAX_AUTHORING_ATTEMPTS`, **halting a phase whose round had fully converged** — with the only escape being the gratuitous write AC-3.5g calls an error. |
+
+### 8.2 Grammar
+
+The trailer is the **last content of the author agent's response** — the same carrier position the
+verdict trailer occupies, deliberately, so authors and reviewers follow one convention:
+
+```
+REVISION-COMPLETE: yes
+```
+
+| Aspect | Specification |
+|---|---|
+| Key | The literal `REVISION-COMPLETE: ` at the start of a line, after trimming |
+| Value catalogue | Exactly two values, case-sensitive: `yes` (no finding of this round remains unreflected in the document) and `no` (work remains) |
+| Position | The **final** non-empty line of the response, emitted after all edits are written **and committed** — so its presence is evidence the dispatch ran to the end of its work (AC-3.5g clause 4, bullet 1) |
+| Uniqueness | Exactly one such line in the response |
+| Scan direction | From the end, like `parseVerdict`'s `const reversed = lines.slice().reverse();` — but with a **pre-count** of `REVISION-COMPLETE:`-prefixed lines, for the same reason §6.3 pre-counts `VERDICT:` lines: scanning from the end would silently prefer the last of two, and a silent choice between two contradictory declarations is exactly the fail-open shape being designed out. |
+| No JSON line | Unlike `VERDICT:`, the trailer carries no counts. Counts would be a semantic claim the script could not check and would invite an agent to narrate. |
+
+**Why `yes`/`no` rather than a single presence marker.** A presence-only marker conflates "I finished"
+with "my response was truncated before the marker". An explicit `no` lets an agent that legitimately
+ran out of budget mid-round say so, which turns a stall into a *reported continuation* rather than an
+ambiguity — and it keeps the parser total in the DC-01 sense.
+
+### 8.3 The parser and its total behaviour
+
+`parseRevisionComplete(response)` → `{ complete: true } | { complete: false, reason: TrailerFailure }`.
+
+| Input state | Result | Terminal? |
+|---|---|---|
+| Exactly one line, value `yes` | `{ complete: true }` | **Terminal** (subject to structural completeness, §8.4) |
+| Exactly one line, value `no` | `{ complete: false, reason: "declared_incomplete" }` | Not terminal |
+| **No** such line | `{ complete: false, reason: "absent" }` | Not terminal |
+| Two or more such lines | `{ complete: false, reason: "duplicated" }` | Not terminal |
+| One line, value not in the catalogue | `{ complete: false, reason: "unparseable" }` | Not terminal |
+| `response` is `null`, `undefined` or empty | `{ complete: false, reason: "absent" }` | Not terminal |
+| The dispatch **threw** | the wrapper catches it and treats it as `{ complete: false, reason: "absent" }` | Not terminal |
+
+**Absence is never terminal, and the wrapper never inspects the fault.** This is the design property
+AC-3.5e requires: on all three of §4a A-8's surfacings — returns a value, returns nothing, throws —
+there is no parseable trailer, so a faulting dispatch is **never** terminal in revision mode, and the
+wrapper reaches that conclusion *by the absence of a positive marker* rather than by classifying the
+fault. Whether the artifact happens to be structurally complete on disk is therefore not sufficient to
+end a revision episode, which is exactly the fail-open reading v1.4 permitted. A dispatch fault must
+**not** propagate as an unhandled halt that bypasses the attempt count — that is the path §H-3 took,
+producing no operator-facing explanation at all. §15.4's report names whether a fault was observed,
+alongside the counts.
+
+**C-5 is not breached.** The script parses **one closed-catalogue token** and never interprets prose —
+the same thing `parseVerdict` already does off an agent response. The judgement is the agent's because
+§4a A-9 proves the script cannot substitute its own.
+
+### 8.4 Interaction with the terminal test (AC-3.5b, carried through)
+
+After each dispatch the wrapper evaluates **terminal first, then progress**:
+
+| Mode | Terminal condition |
+|---|---|
+| **Greenfield** | every required member of the artifact set is structurally complete (§16). Positive, script-decidable, unchanged from v1.3. No trailer is required or expected — AC-3.5 scope (d) rule 3 puts every non-authoring wrapped dispatch (review, `dod-verify`, `harvest-learnings`) in greenfield by construction, so those episodes need no trailer. |
+| **Revision** | every required member is structurally complete **and** `parseRevisionComplete` returned `{ complete: true }`. **Progress on the terminal dispatch is not required**: a dispatch that writes nothing and emits `REVISION-COMPLETE: yes` **is** terminal. |
+
+**The distinguishing property.** Evaluating the trailer before the progress predicate is what converts
+a fully-converged round from a false halt into a one-dispatch terminal — and it is also what keeps a
+genuine stall counted: a stall-killed dispatch emits **no** trailer, so *no progress without a trailer*
+still counts against `MAX_AUTHORING_ATTEMPTS` exactly as before. The two populations are separated by
+the presence of a positive marker, not by anything the script infers.
+
+### 8.5 Amendment to the three author SKILLs (O-17(d))
+
+Additive edits to `pm-author`, `se-author` and `te-author` — the same three files AC-3.2a already puts
+in `Targets` for their Git Workflow sections (§15.5):
+
+| Edit | Content |
+|---|---|
+| New §Revision-Completion Trailer section | States the grammar of §8.2 verbatim; states that it is emitted **only** when the dispatch was a revision/feedback-addressing dispatch; states that it is the **last** content of the response, after edits are written and committed; states that `yes` means *no finding of this round remains unreflected in the document as it stands*, and that emitting `yes` while a finding remains is an error, not an optimisation. |
+| Same section, the no-op case | States explicitly that the trailer is emitted **even when the dispatch wrote nothing**, and that this is its most important case: it is the correct and complete output of a continuation dispatch whose round is already fully applied. Writing something gratuitously in order to "show progress" is an error. |
+| §Process Feedback | Cross-reference to the new section, and the not-already-reflected instruction of §15.4's continuation prompt, so an author reading only that capability finds both. |
+
+**Residual risk, priced not eliminated (R-12).** An agent may emit `yes` while findings remain, ending
+the episode early. This is accepted as the least-bad of three options — the two alternatives were
+measured, not argued (§8.1) — and it is bounded: the round's findings are still on the branch until
+Phase H (§4a A-7), so the **next** round's reviewers see the unaddressed finding and re-raise it. The
+failure costs one review round rather than losing one, which is the opposite direction from the silent
+loss AC-3.5 scope (d) exists to prevent. It is also not new trust: the pipeline already ends a review
+round on an agent-emitted trailer parsed by `parseVerdict`. O-19(h4) owns the negative fixture.
+
 ## 9. FSPEC-APPROVAL-01 — The tier-2 approval record in LEARNINGS
 
 ## 10. FSPEC-STALE-01 — The staleness comparison
