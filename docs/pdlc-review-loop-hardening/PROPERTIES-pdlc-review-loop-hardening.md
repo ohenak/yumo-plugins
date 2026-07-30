@@ -1677,8 +1677,11 @@ expression, because it compares the subject with itself. §4.3's oracle avoids b
 
 `pdlc/workflows/__tests__/fixtures/` currently holds **two** entries — `covered-violations/`, a
 directory tree used by the guard suites, and `tmpGitFixture.js` — and `__tests__/helpers/` holds
-**thirteen** modules, of which `driftGenerators.js` is the one this document builds on (§3.1). *v1.0
-said one and twelve; both counts were off by one, re-measured against the tree (SE F-09).* **None** of the fixtures this feature
+**thirteen entries: twelve `.js` modules plus a `bin/` directory**, of which `driftGenerators.js` is
+the one this document builds on (§3.1). *v1.0 said one fixture entry and twelve helper modules; the
+fixture count was wrong, and v1.1's "thirteen modules" over-corrected the second by counting `bin/` as
+a module. Re-measured against the tree (SE F-09, SE F-18); the load-bearing claim below —
+`testPathIgnorePatterns` excludes the directory — is unaffected by either figure.* **None** of the fixtures this feature
 needs exists at HEAD; every one below is created by the task named beside it, and each is listed in
 PLAN §4.2's file table.
 
@@ -1756,8 +1759,15 @@ from there, do not retype it from here"*) and §1.4 above:
   the surface: of the five `MAX_REVIEW_ROUNDS` edit sites, *"only sites 4 and 5, which report a
   **count** rather than an index, use the constant alone"* — site 5 returns
   `{ converged: false, iterations: MAX_REVIEW_ROUNDS, lastResults }`, and site 4 renders
-  `Iterations (${MAX_REVIEW_ROUNDS} — limit reached)` into `reviewLoop`'s prompt, captured by the
-  `recordPhase` double. Those two are the **only** places any test at any level can observe the
+  `Iterations (${MAX_REVIEW_ROUNDS} — limit reached)` into `reviewLoop`'s prompt.
+
+  **Measured, because v1.1 named the wrong double here too** (SE F-13): `reviewLoop`
+  (`orchestrate-dev.js:531–543`) injects exactly `_agent`, `_parallel`, `_checkFile`. Site 4 is
+  therefore observed through the **`_agent` double's recorded prompt** (`:570`,
+  `await _agent(optimizer, postmortemPrompt)`); site 5 is observed through **`reviewLoop`'s return
+  value**. `recordPhase` is a `main()`-local callback passed to `checkConverged` (`:496`,
+  declared `:1574`) and is not a seam of `reviewLoop` at all; v1.1's claim that it captures site 4 is
+  **withdrawn**. Those two are the **only** places any test at any level can observe the
   constant's value, and both are L2. A property that needs the constant's value must therefore be an
   L2 property — which is why the width identity moved from `PROP-ROUND-01` to `PROP-WINDOW-01`
   (§4.1, §4.3), and why `PROP-EPISODE-01`'s per-episode cap `B` is *measured by saturation* rather
