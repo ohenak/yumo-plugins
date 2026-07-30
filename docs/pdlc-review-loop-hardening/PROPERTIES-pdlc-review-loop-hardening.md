@@ -1199,3 +1199,82 @@ increment to a suite already measured at ~180 s wall time — the figure that al
 foreground watchdog and is why the baseline was run in the background.
 
 ## 8. Gaps, residuals, and measured inconsistencies
+
+### 8.1 Measured inconsistency — TSPEC §8.1 and §8.2 do not agree on the property count
+
+§8.1 states that *every parameterisable component in the L1 row carries at least one property*, and
+names that row as `every parser, sha256Hex, scanLines, isStale, isComplete, deriveRoundWindow,
+parseForcePhases, updateQueueStatus`. §8.2's table has **seven** rows. The difference is six
+components: `parseApprovalHash`, `parseRevisionComplete`, `parseResolvedMarker`,
+`extractRecommendation`, `isStale`, `updateQueueStatus`.
+
+This document closes four of the six (`PROP-HASH-01`, `PROP-TRAILER-01` — which covers
+`parseRevisionComplete` and `parseResolvedMarker` jointly through the mutual-exclusion conjunct — and
+`PROP-STALE-01`). §8.2 remains the authority on the seven it owns; nothing here amends it. **The
+finding itself is reported to the TSPEC's owner rather than silently absorbed**: a converged spec that
+asserts a universal and enumerates a proper subset of it is the same shape as the defects this feature
+exists to fix, and it should be corrected in a TSPEC revision — not by this document quietly making
+the universal true.
+
+### 8.2 Measured limitation — the shipped `shrink` cannot shrink this feature's cases
+
+TSPEC §8.2 says `shrink` is used for the failure report. Measured at HEAD,
+`__tests__/helpers/driftGenerators.js`'s `shrink(caseValue)` switches on `caseValue.kind` over exactly
+four kinds — `"manifest"`, `"bytes"`, `"id"`, `"subRecipe"` — and its `default` branch returns `[]`.
+**Every case shape this feature generates falls through to that default**: line arrays, filename sets,
+presence vectors, episode interleavings, source fragments. Taken literally, the TSPEC sentence is
+unimplementable for these properties as the helper stands.
+
+Disposition (§2.3), and it is deliberately **not** a change to `driftGenerators.js`:
+
+| Case shape | Approach |
+|---|---|
+| a single text/byte string (`PROP-DIGEST-01/-02`, `PROP-HASH-01`, `PROP-STALE-01`'s document) | wrap as `{ kind: "bytes" }` and use the shipped ladder unmodified |
+| everything else (line arrays, filename sets, vectors, interleavings, fragments) | a **file-local** shrink ladder, declared per property in §4 |
+
+This respects PLAN §7.2 exactly: generators — and now ladders — stay per-file, file-local and
+unexported; no second primitive library is written; `driftGenerators.js` is reused unmodified. The
+alternative, extending `shrink` with five new kinds, would touch a helper seven existing suites depend
+on, in a feature whose whole subject is not breaking things quietly.
+
+### 8.3 Deliberately without a property, and where each is owned
+
+**DC-08 applies: each of these names a successor surface — a queue row, not a person or a promise.**
+
+| Surface | Why no property here | Successor |
+|---|---|---|
+| `updateQueueStatus` | its input space is a two-state lifecycle write with an external effect (a commit); the interesting invariant is *transactional*, not generated, and PLAN §7.4 already splits its assertions into `-module`/`-orch` halves with owners. A generated property would restate `RLH-AT-30`…`-34` without adding a quantifier | none needed — covered by the AT split at both levels. Recorded here so §8.1's list is fully accounted for |
+| `extractRecommendation` | it extracts a free-text field; there is no invariant over generated prose beyond "returns a string or nothing", which is an assertion, not a property. Writing one would be a green square with no falsifier — §5.1's definition of worse than none | none. Explicitly declined, not deferred |
+| `MAX_AUTHORING_WRITE_BYTES` (TSPEC §4.8) | the constant governs **authoring agent behaviour**, not workflow code. Nothing in `orchestrate-dev.js` reads it in a way a property can quantify over; `skillFiles.test.js` asserts only that the figure is *stated* in the SKILLs (PLAN §9.1). There is no oracle for the behaviour it names | **queue row Order 9, `pdlc-authoring-contract`** (`docs/pdlc-authoring-contract/REQ-pdlc-authoring-contract.md`, status `blocked`, `Depends-On: pdlc-review-loop-hardening`) — the row that already owns the authoring contract, and the natural home for an executable byte-budget oracle |
+| SKILL template ↔ `completeness.test.js` fixture drift | PLAN §10.2 / risk `H-j` state this is undetected and that bolting a comparison onto `completeness.test.js` is out of scope; §6.4 explains why `PROP-COMPLETE-01` does not close it | **queue row Order 9, `pdlc-authoring-contract`** — the same row PLAN §10.2 points at |
+| per-worktree consumer state (`.claude/workflows/`) | not this feature's surface at all; noted only because `PROP-AWAIT-01` reads source and a reader may wonder which tree it reads (answer: `pdlc/workflows/*.js`, never `dist/`, never `.claude/`) | **D-DIST-07 / queue row Order 6, `pdlc-install-mechanism`** |
+
+### 8.4 Residual risks this document carries
+
+1. **The `PROP-` namespace is already occupied** (§2.1, measured: 431 matches across 28 files, 23
+   domains, including a live `describe("PROP-GATE-01: …")` at `pipelineWiring.test.js:235`). The
+   sixteen domains chosen here were each verified to return zero matches at HEAD, and `PROP-GATE-01`
+   was renamed `PROP-GINV-01` for exactly this reason. **This verification is point-in-time**: a
+   future feature can collide again. The durable fix is the `RLH-`-style namespacing PLAN §1.3 already
+   mandates for ATs, extended to properties — which is a PLAN convention change, not this document's
+   to make.
+2. **Non-vacuity floors are asserted, but the floors themselves are hand-chosen.** Every floor in §4
+   is stated as an assertion the property makes about its own corpus, so a generator that stops
+   producing a shape fails loudly. What is *not* checked is whether a floor of ten is enough; that is
+   a judgement, revisited if a defect escapes.
+3. **Six of the seventeen properties depend on seam doubles behaving synchronously** while the
+   production adapter is async (the C-2 consequence: every injected IO call must be `await`ed). A
+   subject that forgets an `await` can pass an L2 property against sync doubles and fail in the
+   runtime — which is precisely the hole `PROP-AWAIT-01` exists to cover at L3, and why it is
+   green-on-arrival with **no permitted red, ever**.
+
+### 8.5 What could not be written against the specs
+
+One item, recorded rather than invented: **TSPEC §4.5's `EpisodeKey` is defined by its five
+coordinates, but the specs do not name a canonical serialisation for it.** `PROP-EPISODE-01`
+therefore asserts *independence* of counters across pairs differing in one coordinate — a
+formulation that needs no serialisation — rather than the more direct "equal keys share a budget,
+unequal keys do not", which would require the test to construct a key and so to fix a serialisation
+the TSPEC does not own. If a serialisation is later pinned, the property can be strengthened; it is
+correct, and weaker than it could be, as written. Everything else in §4 was derived from a spec
+section that states the invariant outright.
