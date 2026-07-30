@@ -743,6 +743,26 @@ the advisory pacing/commit-diff proxy. Per-phase skip reuses the existing `"⏭"
 one `recordPhase("D", PHASE_DISPATCH.D.label, "⏭", "Skipped — no load-bearing alternatives")` already
 uses — so an approval skip is visibly distinct from both a run and a `"❌"` failure.
 
+**The skip notice's content is specified, not left to the writer** (AC-2.3b's report obligation,
+FSPEC §12.4). The detail string is:
+
+```
+Skipped — approved round {candidate}, hash FRESH[; unresolved POSTMORTEM at {postmortemPath}]
+```
+
+The bracketed clause is present **iff** `checkPostmortem({ phase, feature })`, evaluated on the skip
+path for reporting only (§2.5), returns `{ status: "unresolved" }`. It carries the path and nothing
+more — the Recommendation excerpt belongs to the refusal halt (§6.4), not to a line in a phase
+table, and a skip is not a failure. When `checkPostmortem` returns `none` or `resolved` the clause is
+absent; a phase that is skipped with a clean POSTMORTEM state must not emit an empty parenthetical,
+because an operator scanning the table reads any suffix as a signal.
+
+Two report fields interact with the same call: `postmortemStatus` is set to `"unresolved"` on the
+skip path too — the state is real whether or not the phase ran — while `haltPhase` and
+`postmortemPath` stay `null`, because the run did not halt. A reader can therefore distinguish
+"skipped, and by the way there is an open POSTMORTEM here" from "refused because of it" without
+re-deriving either.
+
 ### 4.8 Constants
 
 All four land in one block in `orchestrate-dev.js` immediately after the anchor
@@ -1139,6 +1159,13 @@ export function checkPostmortem({ phase, feature, _readFile })
 //   | { status: "unresolved", recommendation }  marker present and `no`, or absent/malformed
 ```
 
+**Where it is called from, and with what power,** is fixed by §2.5 and is part of this contract:
+`checkPostmortem` is a **query**, not a gate. It never decides on its own whether a phase runs; the
+caller does, and the caller's power differs by path — unconditional refusal on the forced path,
+refusal on the would-otherwise-run path, and reporting only on the skip path. An implementation that
+puts the refusal *inside* `checkPostmortem`, or calls it ahead of the approval skip, reproduces the
+inversion AC-2.3b exists to fix.
+
 The marker is **positionally unconstrained** within the file — a `RESOLVED:` line anywhere outside a
 fenced region counts — and is **human-written only**. No agent and no script ever writes `yes`; a
 POSTMORTEM resolves when a person says it did.
@@ -1221,7 +1248,8 @@ failure to answer.
 | 10 | `MAX_AUTHORING_ATTEMPTS` consecutive no-progress dispatches | `dispatchAndVerify` | halt the phase, `reason: "no_progress"`; **no POSTMORTEM** |
 | 11 | `MAX_AUTHORING_DISPATCHES` exceeded | `dispatchAndVerify` | halt the phase, `reason: "dispatch_budget"`; **no POSTMORTEM** |
 | 12 | invalid `forcePhases` token | `parseForcePhases` | halt **before any phase runs**, ending `Valid: R, F, T, P, D, all.` |
-| 13 | unresolved POSTMORTEM for the phase | `checkPostmortem` | refuse the phase, `postmortemStatus: "unresolved"`, halt reason carries the Recommendation excerpt; **not overridable by `forcePhases`** |
+| 13 | unresolved POSTMORTEM for the phase, **on a path where the phase would otherwise run** (§2.5 step 4a) or **on the forced path** (§2.5 step 1) | `checkPostmortem` | refuse the phase, `postmortemStatus: "unresolved"`, halt reason carries the Recommendation excerpt; **not overridable by `forcePhases`** |
+| 13a | unresolved POSTMORTEM for a phase the approval skip has already elided (§2.5 step 4, `FRESH`) | `checkPostmortem`, evaluated for reporting only | **not a failure.** The skip stands and the run proceeds; the notice names the POSTMORTEM path (§4.7) and `postmortemStatus` is `"unresolved"`. AC-2.3's refusal is conditioned on the phase otherwise running, so there is nothing here to refuse |
 | 14 | non-convergence within `startIndex..endIndex` | `checkConverged` | §6.3's terminal exit |
 | 15 | POSTMORTEM write failed | `_checkFile` after the write agent | §6.4's second halt shape, `postmortemStatus: "write_failed"` |
 | 16 | queue-row commit failed | `_git` → `{ ok: false }` | §6.5; `queueRow: "error"`; the halt itself is **not** downgraded |
