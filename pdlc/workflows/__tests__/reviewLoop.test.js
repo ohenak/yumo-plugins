@@ -83,7 +83,10 @@ describe("PROP-LOOP-01: Both reviewers approve on iteration 1", () => {
       _checkFile: existsGuard,
     });
 
-    expect(result).toEqual({
+    // `toMatchObject`, not `toEqual`: TSPEC §3.9 makes `reviewLoop`'s return a
+    // SUPERSET of what this property names — `trailerReason` rides on every
+    // return (RLH-LOOP-02b). The property under test is the three fields below.
+    expect(result).toMatchObject({
       converged: true,
       iterations: 1,
       lastOptimizerResult: null,
@@ -122,7 +125,8 @@ describe("PROP-LOOP-02: One reviewer needs revision, then both pass on iteration
       _checkFile: existsGuard,
     });
 
-    expect(result).toEqual({
+    // `toMatchObject` for the same reason as PROP-LOOP-01 above.
+    expect(result).toMatchObject({
       converged: true,
       iterations: 2,
       lastOptimizerResult: makeOptimizerResult(),

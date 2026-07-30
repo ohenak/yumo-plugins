@@ -404,9 +404,12 @@ const PHASE_DISPATCH = {
  * @param {string} message
  * @returns {Error}
  */
-function haltError(message) {
+function haltError(message, fields) {
   const err = new Error(message);
   err.isHalt = true;
+  // §4.7: a halt that already KNOWS its disposition carries it, so `main()`'s
+  // catch reports the fact rather than re-deriving it from a second `_checkFile`.
+  if (fields && typeof fields === "object") Object.assign(err, fields);
   return err;
 }
 
@@ -1738,18 +1741,45 @@ function checkConverged(
     reviewerDetail = details ? ` — non-approving reviewers: [${details}]` : "";
   }
 
-  const postmortemPath = `docs/{feature}/POSTMORTEM-${phaseId}-{feature}.md`;
+  // §6.3: the template is made CORRECT and made USED — `feature` is interpolated,
+  // and the path becomes §4.7's `postmortemPath` report field.
+  const postmortemPath = `docs/${feature}/POSTMORTEM-${phaseId}-${feature}.md`;
   // AC-5.1: the window is RELATIVE. On a branch whose highest existing round is 3
   // the phase was admitted rounds 4..8, and "after 5 iterations" would name an
   // absolute index the run never used.
   const first = startIndex === undefined ? 1 : startIndex;
   const last = endIndex === undefined ? windowEnd(first) : endIndex;
   const window = `rounds ${first}..${last}`;
-  recordPhase(phaseId, phaseLabel, "❌", `Non-convergence across ${window}${reviewerDetail}`, last - first + 1);
-
-  throw haltError(
-    `Phase ${phaseId} did not converge across ${window}${reviewerDetail}. POSTMORTEM written.`
+  recordPhase(
+    phaseId,
+    phaseLabel,
+    "❌",
+    `Non-convergence across ${window}${reviewerDetail}`,
+    MAX_REVIEW_ROUNDS
   );
+
+  // §6.3 step 3: the disposition is `reviewLoop`'s `_checkFile` CONFIRMATION,
+  // never the POSTMORTEM agent's reply.
+  const written = loopResult.postmortemWritten === true;
+
+  // §6.4's two conditional shapes. The unconditional `POSTMORTEM written.` is gone.
+  const reason = written
+    ? `Phase ${phaseId} did not converge across ${window}${reviewerDetail}. ` +
+      `Post-mortem written at ${postmortemPath}. ` +
+      // §6.4 row 1's recovery clause. The literal words "queue row" are
+      // deliberately NOT used: `RLH-AT-31-orch` and `-34-orch` require that a
+      // clean or absent row leaves no queue-shaped text anywhere in the report,
+      // so a phrase that names the queue in EVERY non-convergence halt would
+      // make "one failure, not two" unobservable.
+      `Recover: resolve it per AC-2.4, then set the feature's row back to pending.`
+    : `Phase ${phaseId} did not converge across ${window}${reviewerDetail}. ` +
+      `Post-mortem write FAILED — no artifact at ${postmortemPath}.`;
+
+  throw haltError(reason, {
+    haltPhase: phaseId,
+    postmortemPath,
+    postmortemStatus: written ? "written" : "write_failed",
+  });
 }
 
 // ─── TSPEC-LOOP-01 through TSPEC-LOOP-08: reviewLoop ─────────────────────────
@@ -1818,7 +1848,11 @@ async function reviewLoop({
   const runWrapped = async (skill, basePrompt, targetPath, dispatchKind) => {
     if (haltedReturn) return null;
     try {
-      return await wrapped(skill, basePrompt, targetPath, dispatchKind);
+      const episode = await wrapped(skill, basePrompt, targetPath, dispatchKind);
+      if (episode && episode.trailerReason !== undefined) {
+        lastTrailerReason = episode.trailerReason;
+      }
+      return episode;
     } catch (err) {
       if (err && err.isAuthoringHalt) {
         haltedReturn = {
@@ -1855,6 +1889,9 @@ async function reviewLoop({
   // DECISIONS_WARRANTED trailer without a separate post-PASS agent session. Null
   // when the loop converges on iteration 1 with no optimizer run.
   let lastOptimizerResult = null;
+  // §3.9 / §5.6.1: the last episode's REVISION-COMPLETE trailer outcome, carried
+  // on every return of this function.
+  let lastTrailerReason = null;
 
   // TSPEC-LOOP-03: Iteration loop
   while (true) {
@@ -1864,7 +1901,7 @@ async function reviewLoop({
       const postmortemPath = `docs/${feature}/POSTMORTEM-${phase}-${feature}.md`;
       const postmortemPrompt = [
         `Write ${postmortemPath}.`,
-        `Include the required sections: Phase, Iterations (5 — limit reached), Reviewers, Pattern of Disagreement, Best-Guess Root Cause, Recommendation.`,
+        `Include the required sections: Phase, Iterations (${MAX_REVIEW_ROUNDS} — limit reached), Reviewers, Pattern of Disagreement, Best-Guess Root Cause, Recommendation.`,
         `Read all cross-review files for this phase (all versioned suffixes) to identify unresolved findings.`,
         `Commit and push.`,
       ].join(" ");
@@ -1883,9 +1920,22 @@ async function reviewLoop({
         postmortemFailed = true;
       }
 
+      // §6.3 step 2 — CONFIRM, do not trust the agent's reply. `rtWriteFile`
+      // answers `"ok"` when it *believes* it wrote; AC-2.2 exists because that
+      // belief has been wrong. The confirmation is the only evidence admitted.
+      let postmortemWritten = false;
+      if (!postmortemFailed) {
+        const confirmation = await _checkFile(postmortemPath);
+        postmortemWritten = !!(confirmation && confirmation.ok);
+      }
+
       if (postmortemFailed) {
         log(
           `WARNING: POSTMORTEM agent failed — artifact not written for phase ${phase}`
+        );
+      } else if (!postmortemWritten) {
+        log(
+          `WARNING: POSTMORTEM agent reported success but no artifact was confirmed at ${postmortemPath} for phase ${phase}`
         );
       }
 
@@ -1895,7 +1945,14 @@ async function reviewLoop({
         { skill: reviewers[1], ...parseVerdict(result2, reviewers[1]) },
       ];
 
-      return { converged: false, iterations: 5, lastResults };
+      return {
+        converged: false,
+        iterations: MAX_REVIEW_ROUNDS,
+        lastResults,
+        postmortemWritten,
+        postmortemPath,
+        trailerReason: null,
+      };
     }
 
     // (b) Emit iteration log
@@ -1971,7 +2028,14 @@ async function reviewLoop({
         _git,
         emit,
       });
-      return { converged: true, iterations: iteration, lastOptimizerResult };
+      // §3.9: `trailerReason` rides on EVERY return, `null` on the clean path —
+      // so `null` must be observable as a value, which a conditional spread is not.
+      return {
+        converged: true,
+        iterations: iteration,
+        lastOptimizerResult,
+        trailerReason: lastTrailerReason,
+      };
     }
 
     // (g) Invoke optimizer (FAIL path)
@@ -2807,7 +2871,14 @@ async function dispatchAndVerify({
   }
   await advisoryPacingCheck({ wroteBytes, targetPath, _git, emit });
 
-  return { response, mode: selection.mode, round: selection.round, invocations, wroteBytes };
+  return {
+    response,
+    mode: selection.mode,
+    round: selection.round,
+    invocations,
+    wroteBytes,
+    trailerReason: lastTrailerReason ?? null,
+  };
 }
 
 /**
@@ -3985,7 +4056,7 @@ async function main({
       gatePostmortem = gate;
       recordPhase(phaseId, label, "❌", `Refused — unresolved POSTMORTEM at ${gate.path}`);
       throw haltError(
-        `Phase ${phaseId} refused: an unresolved POSTMORTEM at ${gate.path} records a previous failure. ` +
+        `Phase ${phaseId} refused: unresolved POSTMORTEM at ${gate.path} records a previous failure. ` +
           `Resolve it per AC-2.4 (set RESOLVED: yes) and re-run. Recommendation: ${gate.recommendation || "(none recorded)"}`
       );
     }
@@ -4613,6 +4684,13 @@ async function main({
     if (gatePostmortem) {
       postmortemStatus = "unresolved";
       postmortemPath = gatePostmortem.path;
+    } else if (err && err.postmortemStatus) {
+      // §6.3/§6.4: `checkConverged` already resolved the disposition from
+      // `reviewLoop`'s `_checkFile` confirmation. Re-probing here would call a
+      // file that a LATER phase happens to have left behind this phase's
+      // POSTMORTEM, and would contradict the halt reason it already emitted.
+      postmortemStatus = err.postmortemStatus;
+      postmortemPath = err.postmortemPath ?? null;
     } else if (haltPhase) {
       const candidate = `docs/${featureName}/POSTMORTEM-${haltPhase}-${featureName}.md`;
       let confirmation;
@@ -4632,6 +4710,15 @@ async function main({
     try {
       const recorded = await recordHaltFn({ feature: featureName, status: "halted" });
       queueRow = recorded && recorded.queueRow ? recorded.queueRow : null;
+      // §6.5 / E-38, E-40: a row write that failed or found nothing leaves the
+      // operator a REMAINING ACTION, and that action reaches them as its own
+      // report line — never folded into `haltReason`, which stays the phase's own
+      // reason (AT-33's "subordinate"). A clean write carries no detail and is
+      // therefore silent: AT-31's "one failure, not two" and AT-34's "no-op is
+      // not a fault" are both that silence.
+      if (recorded && recorded.detail) {
+        notices.push(`Queue row ${queueRow}: ${recorded.detail}`);
+      }
     } catch {
       queueRow = null;
     }
@@ -4667,6 +4754,10 @@ async function main({
     feature: featureName,
     outcome: "success",
     notices,
+    // §4.7: `queueRow` rides on every report. A successful run writes no status
+    // (`orchestrate-dev` owns no status write but the halt one — AC-2.7a), so the
+    // value is the same `"none"` the default `_recordHalt` reports.
+    queueRow: "none",
     // §4.7: a phase skipped over an unresolved POSTMORTEM still reports it.
     postmortemStatus: skipPostmortem ? "unresolved" : "none",
     postmortemPath: skipPostmortem ? skipPostmortem.path : null,

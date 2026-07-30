@@ -60,12 +60,45 @@ const POSTMORTEM_R = `${DOCS}/POSTMORTEM-R-${FEATURE}.md`;
 /** Phase R's reviewer pair, and their `CROSS-REVIEW-{role}-…` slugs (§5.2 G-2). */
 const R_ROLE_SLUGS = ["software-engineer", "test-engineer"];
 
+/**
+ * A STRUCTURALLY COMPLETE REQ — every §5.9 required heading with a non-empty
+ * body. Completeness is half of §5.6.2's terminal criterion for a revision
+ * episode (the author's `REVISION-COMPLETE:` trailer is the other half), so a
+ * one-heading REQ would make every Phase-R revision episode non-terminal and
+ * halt the phase in §3.8's pacing wrapper on its no-progress budget — the wrong
+ * exit for every oracle in this file, all of which need Phase R to reach either
+ * its round budget (§6.3) or the gate (§5.8).
+ */
 const REQ_TEXT = [
   "# REQ — foo",
+  "",
+  "## Problem / Context",
+  "",
+  "The thing does not work.",
+  "",
+  "## Goals",
+  "",
+  "Make the thing work.",
+  "",
+  "## Non-Goals",
+  "",
+  "Everything else.",
+  "",
+  "## Constraints",
+  "",
+  "No new dependencies.",
   "",
   "## Acceptance Criteria",
   "",
   "AC-1. The thing works.",
+  "",
+  "## Risks",
+  "",
+  "The thing might not work.",
+  "",
+  "## Obligations",
+  "",
+  "None.",
   "",
 ].join("\n");
 
@@ -216,7 +249,14 @@ async function run({
           tasks: [{ id: "T1", description: "x", dependencies: [], planBatch: 1 }],
         });
       }
-      return "Document created.";
+      // A COMPLIANT author (TSPEC §7.4 / §8.4) ends its reply with the
+      // `REVISION-COMPLETE:` trailer. §5.6.2 makes a revision episode terminal
+      // on structural completeness AND the trailer, so a double that narrates
+      // without it burns §3.8's no-progress budget and halts the phase in the
+      // pacing wrapper — which is not the exit any oracle in this file is about.
+      // Every test here needs the phase to reach either its round budget (§6.3)
+      // or the gate (§5.8).
+      return "Document created.\nREVISION-COMPLETE: yes";
     }
     if (skill === "dod-verify") return "Clean.\nDOD_STATUS: passed";
     if (skill === "ship-pr") {
@@ -778,7 +818,15 @@ describe("RLH-25: which halting exit reaches the committing status write", () =>
     expect(result.outcome).toBe("halted");
     expect(result.queueRow).toBe("halted (uncommitted)");
     // The manual-commit instruction reaches the operator …
-    expect(JSON.stringify(result)).toContain(manual);
+    //
+    // Compared against the JSON-ESCAPED form: `manual` carries the double quotes
+    // of `-m "chore(queue): …"`, and `JSON.stringify` escapes every one of them,
+    // so a raw `toContain(manual)` is unsatisfiable for any implementation that
+    // puts the detail in the report at all. `JSON.stringify(manual).slice(1, -1)`
+    // is the same string under the same escaping the report is being read
+    // through, so the conjunct still fails on an implementation that drops the
+    // detail — which is what it is for.
+    expect(JSON.stringify(result)).toContain(JSON.stringify(manual).slice(1, -1));
     // … and the original halt reason is reported first, not displaced by it.
     expect(result.haltReason.startsWith("Phase R did not converge")).toBe(true);
   });
