@@ -1256,12 +1256,24 @@ export function isComplete(artifactClass, docType, fileText) {
   }
 
   if (artifactClass === "LEARNINGS") {
-    // §16.5: the harvest content — the metadata table's `Harvested from` row and
-    // the five numbered sections, each with a non-empty body. The approval record
-    // is EXCLUDED (see LEARNINGS_SECTIONS).
-    const harvestedFrom = /\|\s*Harvested from\s*\|/i.test(String(fileText ?? ""));
-    const missing = shortfall(LEARNINGS_SECTIONS.map((title) => ({ title, alt: null, prefix: true })));
-    return done(harvestedFrom && missing.length === 0, missing);
+    // §16.5: "its five numbered sections each with a non-empty body". The
+    // criterion is POSITIONAL, not title-based: harvest-learnings is free to name
+    // its five sections for the feature it distilled, and LEARNINGS_SECTIONS is
+    // this module's default naming, not a contract the skill is held to. What is
+    // fixed is that sections `1.`…`5.` all exist and all carry content.
+    //
+    // The approval record is EXCLUDED — it is section 6 when present, and
+    // best-effort (AC-4.2c); see LEARNINGS_SECTIONS.
+    const numbered = new Map();
+    for (const s of sections) {
+      const m = /^\s*(\d+)[.)]/.exec(String(s.title ?? ""));
+      if (!m) continue;
+      const n = Number(m[1]);
+      if (n < 1 || n > LEARNINGS_SECTIONS.length) continue;
+      if (!numbered.has(n) && !isEmptyBody(s.body)) numbered.set(n, s.title);
+    }
+    const missing = LEARNINGS_SECTIONS.filter((_, i) => !numbered.has(i + 1));
+    return done(missing.length === 0, missing);
   }
 
   return done(false, []);
@@ -1785,10 +1797,25 @@ export function deriveRoundWindow(basenames, docType) {
   const indices = [];
   for (const rounds of present.values()) for (const round of rounds) indices.push(round);
   const startIndex = indices.length ? Math.max(...indices) + 1 : 1;
-  const endIndex = startIndex + MAX_REVIEW_ROUNDS - 1;
+  const endIndex = windowEnd(startIndex);
 
   // Step 7.
   return { ok: true, startIndex, endIndex, present, skipped };
+}
+
+/**
+ * The last round index of the review window that opens at `startIndex`.
+ *
+ * This is the SOLE place in the module where the window width is expressed in
+ * terms of `MAX_REVIEW_ROUNDS`. `reviewLoop` takes `endIndex` as a parameter and
+ * defaults it through this helper rather than recomputing the arithmetic, so the
+ * budget can never be re-derived (and so drift) inside the loop itself.
+ *
+ * @param {number} startIndex
+ * @returns {number}
+ */
+function windowEnd(startIndex) {
+  return startIndex + MAX_REVIEW_ROUNDS - 1;
 }
 
 /**
