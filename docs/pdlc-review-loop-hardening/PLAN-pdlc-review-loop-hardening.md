@@ -712,6 +712,96 @@ satisfy every AT. Record the choice in the task's commit message so a reviewer s
 
 ## 12. Verification
 
+### 12.1 Per-task gate
+
+Every task, before it commits:
+
+1. Its own test file(s) pass under `npx jest <file>` — or, for a RED task, fail **only** for the stated
+   reason (the subject does not exist yet).
+2. If it touched a tracked source under `pdlc/workflows/`: `node pdlc/workflows/build-runtime.mjs`, then
+   `node pdlc/workflows/build-runtime.mjs --check` exits 0, and `dist/` is staged in the **same commit**.
+3. Every injected-seam call it added or moved is lexically preceded by `await` (§9.2) — checked by eye
+   before RLH-AT-19 checks it mechanically.
+4. Its commit message names the task id.
+
+### 12.2 Per-batch gate
+
+1. `cd pdlc/workflows && npm test`, **run in the background or with a >300 s timeout** (§2.3).
+2. Result satisfies §2.2: 1038 / 1 / 70 or better, the one failure still
+   `documentOracles.test.js` `AT-22 [red-until-L-06]`, plus only those `RLH-AT-*` tests whose
+   `Greened by` batch has not yet completed.
+3. `node pdlc/workflows/build-runtime.mjs --check` exits 0.
+4. No file outside §5's manifest was modified.
+
+Batches 2 and 3 are RED-terminal (§2.2) and their gate is the split wording: **the new `RLH-AT-*` tests
+fail for the stated reason and every pre-existing test still passes.**
+
+### 12.3 Definition of Done — the checklist `RLH-34` runs
+
+**Behaviour and tests**
+
+- [ ] All 66 FSPEC ATs plus `RLH-AT-01a`, `RLH-AT-13a`, `RLH-AT-43a` are implemented under their
+      `RLH-`-namespaced jest names, in the files TSPEC §8.3 assigns.
+- [ ] Every task row in §4 is ✅ and every AT in §7 is green.
+- [ ] The seven property tests of TSPEC §8.2 exist, one per parameterisable component, each declaring a
+      literal seed through `resolveSeed`, each L1.
+- [ ] Full suite against §2.2: **no new failures**, the one permitted red unchanged in identity.
+- [ ] No test reads `pdlc/workflows/dist/` to make a claim about source behaviour (TSPEC §8.4, L2), and
+      no L3 test injects anything.
+- [ ] No L1 test touches the filesystem.
+
+**Generated artifacts and distribution**
+
+- [ ] `node pdlc/workflows/build-runtime.mjs --check` exits 0.
+- [ ] `git status` shows no uncommitted change under `pdlc/workflows/dist/`.
+- [ ] `pdlc/workflows/dist/distribution-manifest.json` records the **bumped** plugin version (§3.4).
+- [ ] `pdlc/hooks/scripts/sync-workflows.sh` then `--check` exits 0 — run by **bare path**, no `bash`
+      prefix; an exit 126 means the execute bit was lost. **`.claude/workflows/` is not committed**, and
+      `git status` confirms it is untracked.
+- [ ] `RLH-AT-19`: both anchored regexes match zero times in both bundles; the await-discipline scan is
+      clean over `orchestrate-dev.js` **and** `orchestrate-queue.js` source, with the alias and
+      returned-promise shapes classified as §9.2 rules them.
+- [ ] `RLH-AT-64`: every `_`-prefixed `main()` parameter is wired or exempt; both anti-rot clauses hold;
+      `_recordHalt` is satisfied by `QUEUE_ENTRY`'s `_runPipeline` closure **and** `DEV_ENTRY`.
+- [ ] Each bundle: `export const meta` first and a pure literal, no other `export`, no `import`.
+
+**Contract integrity — the consistency checks this feature exists to earn**
+
+- [ ] `ListFailure`'s dispositions are applied **unchanged at every call site** — the phase-entry
+      derivation and `refreshReviewState` alike — and the three non-benign values produce **one** halt
+      shape, `Cannot enumerate {dirPath}: {reason}`, at both (TSPEC §4.2, §6.2 rows 1/2/17).
+- [ ] `selectMode` is the **only** producer of `EpisodeKey.mode`; grep confirms no other assignment.
+- [ ] `refreshReviewState` is called at **every** wrapped episode entry and there is **no** pre-loop
+      snapshot; `reviewLoop` takes **no** seed maps.
+- [ ] Every path that reaches `reviewLoop` passes step G (**G-INV**); the `FRESH` branch calls
+      `checkPostmortem` for **reporting only** and cannot change the outcome.
+- [ ] The digest is computed by exactly one function, canonicalising **internally**; no call site
+      canonicalises.
+- [ ] `_appendFile` is append-shaped everywhere; no site implements it as read-modify-write.
+- [ ] `parseVerdict` and `recoverVerdict` are **unchanged**; `recoverVerdict` is not reached from the
+      approval path.
+- [ ] `driftGenerators.js` is unmodified and no second generator library exists.
+- [ ] Every operator-facing string is fully substituted (AT-55).
+
+**Prompts and version**
+
+- [ ] All nine SKILL amendments of TSPEC §7.4 are present and asserted in `skillFiles.test.js`;
+      `orchestrateDevSkill.test.js` is still green.
+- [ ] `completeness.test.js`'s heading fixtures are byte-identical to the SKILL templates (§10.2).
+- [ ] `pdlc/.claude-plugin/plugin.json` `version` is bumped.
+
+**Documentation**
+
+- [ ] `CLAUDE.md`'s pdlc section still describes the shipped behaviour — in particular the model-selection
+      and hooks tables, if a task's change made either stale. If nothing there is stale, record that it
+      was checked.
+
+### 12.4 What `RLH-34` may not do
+
+It may not fix anything. A failing checklist row re-opens the owning task from §5's manifest, in its own
+batch, with its own commit. A verification task that patches its own findings destroys the only
+independent signal in the plan.
+
 ## 13. Open Questions
 
 ## 14. Changelog
