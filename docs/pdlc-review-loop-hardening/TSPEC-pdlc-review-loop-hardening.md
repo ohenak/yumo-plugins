@@ -31,19 +31,20 @@ the existing ruling rather than by adding a second mechanism.
 | **TE N-03** | Low | **Fixed by deletion (R-5).** `isTerminal`'s `structural` member had no consumer, no report field and no AT. Adding one is the AC-4.7a anti-pattern, so it is **deleted**; `structural` survives as §5.6.2's local, and AT-59/AT-60/AT-62 observe completeness through `isComplete` directly | §3.7, §5.6.2 |
 
 **Mechanical, fixed silently (lesson R-6, not findings).** FSPEC §20's v1.7 preamble referred to an
-"**Owner** column" that is headed `Disposition`; the sentence is deleted and the FSPEC goes to
-**v1.8** with no disposition changed. §1.4's own convention paragraph forbids bare `file:line`, and
-v1.2's new sentence used `orchestrate-dev.js:1283` two sentences later; both that site and the
+"**Owner** column" that is headed `Disposition` — sentence deleted, FSPEC → **v1.8**, no disposition
+changed. §1.4 forbids bare `file:line` and v1.2's own new sentence used one; that site and the
 matching one in §8.5 now cite the enclosing symbol plus a distinctive literal.
 
-**On the accepted `_now`/`_sleep` correction.** Both reviewers independently re-measured it and both
-accept it: `checkPrCi(prUrl, { execFn })` never sees the clock, and the defaults live in
-`raisePrAndVerifyCi`. It stands, and TE N-02's fix is what makes the predicate agree with it.
+**The `_now`/`_sleep` correction stands.** Both reviewers re-measured it independently and both accept
+it: `checkPrCi(prUrl, { execFn })` never sees the clock. TE N-02's fix is what makes §8.5's predicate
+agree with it.
 
-**On size.** The round-3 brief was net-neutral-or-negative and this round is close to it: three of the
-four fixes are a re-worded sentence, a widened clause and a deleted field. The one addition that is
-not a re-wording is rule 4's restatement, which had to state both cases it now derives plus the
-wording it replaces — recorded because reinstating the old wording is the failure mode.
+**Size: 164,456 B → 172,978 B, +8,522 B (+5.2%).** Not the net-neutral the brief asked for, and stated
+rather than glossed. Paid for in part by compressing the v1.2 changelog now that both reviewers have
+verified every one of its fixes by measurement (~2.5 KB, the one cut TE named). The remainder is rule
+4's restatement — which must state the two cases it derives *and* the superseded wording, because
+reinstating that wording is the failure mode — the alias-hop ruling, and AT-43a's second fixture. All
+three are normative; the alternative was deleting rules to hit a number.
 
 ### v1.2 (2026-07-30) — round-2 cross-review feedback
 
@@ -205,10 +206,10 @@ four synchronous `_now()` call sites, and the un-awaited `rawAgentFn` alias wrap
 1038/1/70 suite baseline (§8.3). Two v1.1 measurements **overturned** a reviewer's premise rather than
 complying with it (§8.5, §8.3), and one v1.2 measurement corrected this document's own claim:
 `_now`/`_sleep` are defaulted in `raisePrAndVerifyCi` (`_now = () => Date.now()`), not in `checkPrCi`,
-which takes only `{ execFn }` — §8.5 said the latter. v1.3 adds one more measurement at the same HEAD:
+which takes only `{ execFn }` — §8.5 said the latter. v1.3 adds one measurement at the same HEAD:
 `main()`'s **only** forward of `_now`/`_sleep` goes through the destructured local
-`raisePrAndVerifyCiFn`, not through a module declaration, which is why E-2 needs the alias hop §8.5's
-clause 2 now rules — a predicate that reads correct on paper and reds on the tree. Code is cited as
+`raisePrAndVerifyCiFn`, not a module declaration — which is why E-2 needs §8.5 clause 2's alias hop.
+Code is cited as
 **enclosing symbol plus a distinctive literal**, never as a bare `file:line`, which drifts (FSPEC
 §1.1, O-16).
 
@@ -655,10 +656,8 @@ export function isTerminal(mode, response, artifactClass, docType, after)
 //   Revision: structural AND parseRevisionComplete → complete; on any non-yes
 //   trailer, trailerReason carries which of the four it was (§4.3, AT-61) —
 //   this record is that reason's only carrier.
-//   The record has exactly these two members: both are read by the loop and
-//   both are observable (§4.7's report line, AT-61). Structural completeness is
-//   a local, not a member — no consumer distinguishes it from `terminal`, and
-//   AT-59/AT-60/AT-62 observe it through `isComplete` directly (§5.6.2).
+//   Exactly two members, both read and both observable (§4.7, AT-61). Structural
+//   completeness is a local, not a member — no consumer reads it (§5.6.2).
 ```
 
 `sha256Hex` is **not a seam**, and this is a deliberate design decision rather than an oversight. A
@@ -1373,38 +1372,30 @@ Four rules, taken from FSPEC §15.2 and normative here:
    > the branch and found no review round for this (feature, doc type)** — i.e. `present` is a Map
    > *and* it is empty. In every other case the episode is a **revision** episode.
 
-   Two cases follow from that one sentence, and neither is a special case of it:
+   Two cases follow from that one sentence; neither is a special case of it.
 
-   - **`present === null` — not observed.** The listing failed, so nothing this episode read can
-     testify to the branch's review state. `null` is not "empty": an *empty* Map is the measurement
-     "there are no review files", `null` is the *absence* of a measurement, and conflating them is
-     exactly the fail-open this rule exists to close. Revision is selected **unconditionally**,
-     whatever the kept `reviewFiles` contain — a listing that fails *inside* `reviewLoop` is by
-     construction not a virgin branch, because the loop only runs after §2.5's steps have already
-     enumerated the directory once. The round is `max(1, startIndex − 1)` over the last successfully
-     observed `startIndex`, which under-names the round by at most one; §5.6.3 builds the prompt from
-     the files on disk at prompt-build time, so the findings the episode addresses are the branch's
-     real ones either way. The cost of the stale index is that the episode may share an `EpisodeKey`
-     — and so a dispatch budget — with the previous round's; that is a bounded cost paid only on a
-     reported IO failure, never silently, and it errs toward *fewer* dispatches, not toward skipping
-     a round.
-   - **Observed, non-empty `present`, unreadable or unread verdicts.** `present` holds a candidate
-     round but `reviewFiles` carries no readable verdict for it: the verdict fields are unreadable
-     (§5.1's fail-closed cases), or the read was never performed — the forced path, where §2.5 step 3
-     is skipped and `reviewFiles` is empty. Revision, and the two shapes are not distinguished.
+   - **`present === null` — not observed** (§6.2 row 17). An *empty* Map is the measurement "there
+     are no review files"; `null` is the *absence* of a measurement. Revision is selected
+     **unconditionally**, whatever the kept `reviewFiles` contain. The round is
+     `max(1, startIndex − 1)` over the last successfully observed `startIndex`, which under-names it
+     by at most one; §5.6.3 builds the prompt from the files on disk, so the findings addressed are
+     the branch's real ones either way. The stale index may make the episode share an `EpisodeKey`,
+     and so a dispatch budget, with the previous round's — a bounded cost paid only on a **reported**
+     IO failure, erring toward fewer dispatches rather than toward skipping a round.
+   - **Observed, non-empty `present`, unreadable or unread verdicts.** The verdict fields are
+     unreadable (§5.1's fail-closed cases), or the read was never performed — the forced path, where
+     §2.5 step 3 is skipped and `reviewFiles` is empty. Revision; the two shapes are not distinguished.
 
-   "Not read" is therefore never treated as "no findings" on **either** axis — neither an unread
-   verdict nor an unread *listing*. The directions are not symmetric: mis-entering greenfield
-   silently drops a whole review round, while mis-entering revision costs at most a continuation
-   prompt naming findings already reflected, terminated in one dispatch by the trailer.
+   So "not read" is never "no findings" on **either** axis — neither an unread verdict nor an unread
+   *listing*. The directions are not symmetric: mis-entering greenfield silently drops a whole review
+   round, while mis-entering revision costs at most a continuation prompt naming findings already
+   reflected, terminated in one dispatch by the trailer.
 
-   **What the old wording got wrong, recorded so it is not reinstated.** v1.2 stated this rule as
-   "if `present` holds a candidate round … but `reviewFiles` carries no readable verdict" and closed
-   "only an *empty* `present` is greenfield". Both clauses require a non-empty `present`, so on a
-   clean branch — where the seed `present` is `{}` — a round-2 optimizer episode whose refresh failed
-   kept `{}`, satisfied neither clause, selected greenfield, required no trailer, and terminated on
-   dispatch 1 over a document that was only round-1 complete. That is the original N-01 fail-open
-   relocated one path over, and `{}`-versus-`null` is what removes it rather than papering over it.
+   **Why the old wording is not reinstated.** v1.2 required a non-empty `present` in both clauses and
+   closed "only an *empty* `present` is greenfield" — so on a clean branch (seed `{}`) a round-2
+   optimizer whose refresh failed kept `{}`, matched neither clause, went greenfield and terminated on
+   dispatch 1 over a round-1-complete document. `{}`-versus-`null` is what removes that, rather than a
+   clause that special-cases it.
 
 Stickiness is a **consequence**, not the mechanism: the selection is made once per episode and does
 not change for that episode's life, whatever later measurements observe. Episode entry is the instant
@@ -1463,12 +1454,10 @@ function isTerminal(mode, response, artifactClass, docType, after) {
 }
 ```
 
-**Both members are read, and `structural` is not one of them.** v1.2 returned it as a third member
-that no caller read: the loop consults `t.terminal` and `t.trailerReason`, §3.8's return union carries
-`trailerReason`, §4.7 reports it, and AT-59/AT-60/AT-62 observe structural completeness through
-`isComplete` directly. An unread field in a normative return type is the shape AC-4.7a forbids, so it
-is **deleted** rather than given a report field no requirement asks for; `structural` survives as the
-local above, which is where its only two readers are.
+**Both members are read, and `structural` is not one of them.** v1.2 returned it as a third member no
+caller read; an unread field in a normative return type is the shape AC-4.7a forbids, so it is
+**deleted** rather than given a report field no requirement asks for. It survives as the local above,
+where its only two readers are, and AT-59/AT-60/AT-62 observe completeness via `isComplete` directly.
 
 **`trailerReason` is the carrier, and every exit of the loop carries it.** `parseRevisionComplete` is
 called only here (§4.3), so a boolean return computed the four `TRAILER_FAILURES` values and threw
@@ -2010,7 +1999,7 @@ their jest names follow the same `RLH-` namespacing:
 |---|---|---|
 | **AT-01a** | a **forced** phase on a branch already carrying `-v1` cross-reviews writes `-v2` next. §2.5 step 2 is *not* skipped by a force, so `reviewLoop` never falls back to `iteration = 1`. Reds on the "forced skips steps 2–4" reading, which restores H-1 on the forced path | `forcePhases.test.js` |
 | **AT-13a** | **G-INV totality.** For each of the four exits that lead to running the phase — forced, `candidate < 1`, `NOT APPROVING`, `STALE`/`UNEVALUABLE` — an unresolved POSTMORTEM refuses the phase and the halt reproduces the Recommendation; and the `FRESH` exit does **not** refuse, but names the POSTMORTEM in its skip notice. FSPEC §12.4's worked example A is the `FRESH` case and AC-2.3b's example B is the `candidate < 1` case, both driven verbatim as fixtures | `haltAndQueue.test.js` |
-| **AT-43a** | **S-INV freshness, both refresh outcomes.** Two fixtures, same clean branch (no cross-reviews at phase entry, so the seed `present` is empty) and the same assertion — `mode: "revision"` for round 1 with a trailer required. **(a) Refresh succeeds:** after round 1's reviewers write theirs, round 2's optimizer episode observes them, selects revision, and its `EpisodeKey.roundIndex` differs from round 1's so the two do not share a dispatch budget. Reds on any implementation that decides mode from a pre-loop snapshot. **(b) Refresh fails:** the same run with `_listFiles` returning a `ListFailure` at round 2's optimizer episode only (`unreadable`) — `present` is `null`, revision is still selected, the trailer is still required, and the failure appears in the report. Reds on any implementation that keeps the previous empty `present` and treats it as a successful observation of a virgin branch — i.e. on the v1.2 rule-4 wording (§5.6.1) | `pacingWrapper.test.js` |
+| **AT-43a** | **S-INV freshness, both refresh outcomes.** Two fixtures over the same clean branch (no cross-reviews at phase entry, so the seed `present` is empty) with the same assertion: round 2's optimizer episode is `mode: "revision"` for round 1 and requires a trailer. **(a) Refresh succeeds** — it observes the `-v1` files round 1's reviewers wrote, and its `EpisodeKey.roundIndex` differs from round 1's so the two do not share a dispatch budget. Reds on any implementation that decides mode from a pre-loop snapshot. **(b) Refresh fails** — `_listFiles` returns a `ListFailure` (`unreadable`) at that episode only, so `present` is `null`; revision is still selected, the trailer still required, and the failure reported. Reds on any implementation that treats a kept empty `present` as a successful observation of a virgin branch — i.e. on the v1.2 rule-4 wording | `pacingWrapper.test.js` |
 
 **The gate is "no new failures against a measured baseline", not "the suite is green."** The suite is
 not green at HEAD and has not been for the life of this branch. Measured by
@@ -2154,19 +2143,16 @@ and injected nowhere is forwarded to no defaulting callee, so it falls in no cla
    **The alias hop, ruled once and reused.** "Resolves to" is the **same alias resolution the AT-19
    table above already rules**, not a second mechanism: a callee named in `main()`'s body that is a
    binding created by `main()`'s **own destructuring pattern** is resolved through that pattern before
-   the module is searched. For an element of the form `_x: xFn = moduleFn` the alias resolves to
-   `moduleFn`; the search then asks whether `moduleFn` is a module-level function declaring the
-   forwarded name with a default. This is exactly one hop through a pattern the test has already
-   parsed to derive the seam set, so it adds no new parsing and cannot be widened by accident.
-   **Measured at HEAD `ef4705a`, this hop is load-bearing and not hypothetical:** `main()`'s only
-   forward of `_now` / `_sleep` is `await raisePrAndVerifyCiFn({ …, _now, _sleep })`, and
-   `raisePrAndVerifyCiFn` is a destructured local (`_raisePrAndVerifyCi: raisePrAndVerifyCiFn =
-   raisePrAndVerifyCi`), not a module declaration. Without the hop, `_now` and `_sleep` fall in no
-   class and **AT-64 reds on shipped, correct source** — the same defect class as v1.0's AT-19, which
-   §8.5 exists to have already learned. What the hop does **not** authorise is a chain: resolution
-   follows at most one alias, and the resolved target must itself be a module-level function
-   declaration. "Forwarded to anything that eventually defaults it" would restore the TE-v2 N-02
-   hole, so it is not the rule.
+   the module is searched — for `_x: xFn = moduleFn`, `xFn` resolves to `moduleFn`, and the search then
+   asks whether `moduleFn` is a module-level function declaring the forwarded name with a default.
+   One hop, through a pattern the test already parses to derive the seam set. **Measured at HEAD
+   `ef4705a` this is load-bearing, not hypothetical:** `main()`'s only forward of `_now`/`_sleep` is
+   `await raisePrAndVerifyCiFn({ …, _now, _sleep })`, and `raisePrAndVerifyCiFn` is a destructured
+   local, not a module declaration — so without the hop both fall in no class and **AT-64 reds on
+   shipped, correct source**, the same defect class as v1.0's AT-19. What the hop does **not**
+   authorise is a chain: at most one alias, and the resolved target must itself be a module-level
+   function declaration. "Forwarded to anything that eventually defaults it" would restore the TE-v2
+   N-02 hole.
 
 The test reports the derived classification for every parameter, so the failure message names which
 parameter fell in neither class rather than only that a count disagreed.
