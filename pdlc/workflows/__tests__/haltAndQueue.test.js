@@ -266,8 +266,63 @@ const nonConvergingAtR = (skill, prompt) =>
   prompt.includes(`REQ-${FEATURE}.md`) ? NEEDS_REVISION_REVIEW : APPROVING_REVIEW;
 
 // ─── §6.3 / §6.5: the terminal exit and the queue-row commit ─────────────────
+/** A queue document carrying an `in-progress` row for the feature under test. */
+const QUEUE_WITH_FOO = `# PDLC Queue
+
+| Order | Status | Feature | REQ Path | Depends-On |
+|-------|--------|---------|----------|------------|
+| 1 | in-progress | foo | docs/foo/REQ-foo.md | — |
+| 2 | pending | bar | docs/bar/REQ-bar.md | foo |
+`;
+
 describe("RLH-25: the terminal exit and the queue row", () => {
-  // RLH-AT-21, RLH-AT-22, RLH-AT-23
+  it("RLH-AT-21: non-convergence commits the `halted` row under orchestrate-queue", async () => {
+    // AC-2.1 / FSPEC AT-21. The orchestrator half: a phase that exhausts its
+    // round budget must *reach* the committing status write. The write itself
+    // is `RLH-AT-30-module`…`-34-module`'s; here it is wired the way TSPEC §3.5
+    // says `orchestrate-queue`'s `_runPipeline` wires it — a closure over the
+    // queue path and `rewriteStatus` — so that "reaches the write" is observed
+    // as the two §6.5 `_git` invocations actually happening.
+    const queueFs = fakeFs({ [DEFAULT_QUEUE_PATH]: QUEUE_WITH_FOO });
+    const git = fakeGit();
+    const rewriteStatus = queueModule.rewriteStatus;
+    expect(typeof rewriteStatus).toBe("function");
+
+    const queueBackedRecordHalt = async ({ feature, status }) =>
+      rewriteStatus(
+        DEFAULT_QUEUE_PATH,
+        feature,
+        status,
+        queueFs.readFile,
+        queueFs.writeFile,
+        git
+      );
+
+    const { result } = await run({
+      verdictFor: nonConvergingAtR,
+      extraArgs: { _recordHalt: queueBackedRecordHalt },
+    });
+
+    expect(result.outcome).toBe("halted");
+
+    // The row reads `halted` on disk …
+    expect(queueFs.writes).toHaveLength(1);
+    expect(queueFs.writes[0].path).toBe(DEFAULT_QUEUE_PATH);
+    expect(queueFs.files[DEFAULT_QUEUE_PATH]).toMatch(
+      /\|\s*1\s*\|\s*halted\s*\|\s*foo\s*\|/
+    );
+    // … the row for the *other* feature is untouched …
+    expect(queueFs.files[DEFAULT_QUEUE_PATH]).toMatch(
+      /\|\s*2\s*\|\s*pending\s*\|\s*bar\s*\|/
+    );
+
+    // … and exactly the §6.5 commit exists, pathspec-scoped to the queue file.
+    expect(git.commands).toEqual([
+      `add -- ${DEFAULT_QUEUE_PATH}`,
+      `commit -m chore(queue): foo → halted -- ${DEFAULT_QUEUE_PATH}`,
+    ]);
+    expect(result.queueRow).toBe("halted");
+  });
 });
 
 // ─── §2.5 step G / §5.8: the POSTMORTEM gate ─────────────────────────────────
