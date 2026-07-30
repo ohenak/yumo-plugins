@@ -360,14 +360,14 @@ last-writer-wins race that the green gate cannot detect.
 
 | File | Owner(s), in batch order | Batches |
 |---|---|---|
-| `pdlc/workflows/orchestrate-dev.js` | RLH-05, RLH-10, RLH-13, RLH-15, RLH-16, RLH-18, RLH-23, RLH-26, RLH-27, RLH-30 | 3, 4, 5, 6, 7, 8, 10, 11, 12, 13 |
-| `pdlc/workflows/orchestrate-queue.js` | RLH-20 | 9 |
-| `pdlc/workflows/runtime-adapter.js` | RLH-32 | 14 |
-| `pdlc/workflows/build-runtime.mjs` | RLH-32 | 14 |
-| `pdlc/workflows/dist/` (all three artifacts) | RLH-05, RLH-10, RLH-13, RLH-15, RLH-16, RLH-18, RLH-20, RLH-23, RLH-26, RLH-27, RLH-30, RLH-32, RLH-33 | 3–15, one per batch |
-| `pdlc/.claude-plugin/plugin.json` | RLH-33 | 15 |
+| `pdlc/workflows/orchestrate-dev.js` | RLH-05, RLH-18, RLH-16, RLH-23, RLH-26, RLH-27, RLH-30 | 3, 4, 6, 7, 8, 9, 10 |
+| `pdlc/workflows/orchestrate-queue.js` | RLH-20 | 5 |
+| `pdlc/workflows/runtime-adapter.js` | RLH-32 | 11 |
+| `pdlc/workflows/build-runtime.mjs` | RLH-32 | 11 |
+| `pdlc/workflows/dist/` (all three artifacts) | RLH-05, RLH-18, RLH-20, RLH-16, RLH-23, RLH-26, RLH-27, RLH-30, RLH-32, RLH-33 | 3–12, one per batch |
+| `pdlc/.claude-plugin/plugin.json` | RLH-33 | 12 |
 
-**`dist/` is the reason batches 3–15 each carry exactly one source-lane task.** Read the `dist/` row as
+**`dist/` is the reason batches 3–12 each carry exactly one source-lane task.** Read the `dist/` row as
 the constraint and the `orchestrate-dev.js` row as its largest consequence. See §3.2.
 
 ### 5.2 Test helpers and fixtures
@@ -411,6 +411,13 @@ stricter than the batch-safety rule requires and it removes the whole class of "
 another feature's deliberate red (§2.1). `__tests__/parseVerdict.test.js` needs no change — TSPEC §3.9
 keeps `parseVerdict` unchanged, and its new file-text callers are covered in `approvalSearch.test.js`.
 
+**Every pre-existing suite not named above needs no change**, and that is an assertion, not an
+omission. Spot-checked at HEAD for the two most likely to break: `orchestrate-dev.test.js` reads
+`meta.inputs` by `find(i => i.name === "reqPath")`, so `RLH-18`'s added entry cannot red it, and
+`orchestrateDevSkill.test.js` asserts properties of `pdlc/skills/orchestrate-dev/SKILL.md` that
+`RLH-09` must preserve (§10.1). If any other pre-existing suite reds, that is a regression under §2.2
+and a §11.2 halt — never a licence to edit a file this manifest does not list.
+
 ### 5.4 SKILL prompts
 
 | File(s) | Owner | Batch |
@@ -446,11 +453,12 @@ correctness.
 Four chains carry the feature's actual coupling, and the TSPEC states in §1.2 that the four defects are
 not independent. Each chain below is that statement expressed as task order:
 
-1. **H-1 supplies H-4's key.** `RLH-13` (`deriveRoundWindow` → `startIndex`) must precede `RLH-26` (the
+1. **H-1 supplies H-4's key.** `RLH-05`'s `deriveRoundWindow` → `startIndex` must precede `RLH-26` (the
    approval search, whose candidate is `startIndex - 1`). An approval search built against a
    `startIndex` that is always 1 searches round 0 forever and never grants a skip — a silent, green
    no-op.
-2. **The digest precedes staleness precedes the skip.** `RLH-10` → `RLH-16` (`isStale`) → `RLH-26`.
+2. **The digest precedes staleness precedes the skip.** `RLH-05` (the digest family) → `RLH-16`
+   (`isStale`) → `RLH-26`.
    `isStale` is one hash-equality test and nothing else (§5.5); it cannot be stubbed with a comparison
    the digest does not implement.
 3. **`selectMode` precedes the gate, not the reverse.** `RLH-23` → `RLH-26`. `selectMode` is pure and
@@ -472,7 +480,7 @@ Everything this feature integrates with, and the shipped precedent it reuses rat
 | dependency injection for capabilities | `main()`'s existing sixteen-parameter destructured list | the six new seams extend it **in place**; no new injection mechanism | RLH-18 |
 | verdict grammar and its closed catalogue | `parseVerdict` + `VALID_VERDICTS` + its reverse-scan + `malformed: true` fallback | the persisted verdict record, **verbatim and unchanged** | RLH-26 |
 | pass/fail semantics | `isPass` | the approval search's unanimity check | RLH-26 |
-| role-slug catalogue | `reviewerRoleSlug`'s `MAP` | the filename grammar's role alternation **and** the new reverse accessor, so the two cannot desynchronise | RLH-13 |
+| role-slug catalogue | `reviewerRoleSlug`'s `MAP` | the filename grammar's role alternation **and** the new reverse accessor, so the two cannot desynchronise | RLH-05 |
 | Node-default IO with an injectable module | `checkFileNonEmpty(path, { fsMod = fs })` | `defaultListFiles` / `defaultWriteFile` / `defaultAppendFile`, same `{ fsMod = fs }` idiom | RLH-18 |
 | `child_process` injection | `mergeWorktree(…, { execFn })` | `defaultGit(argv, { execFn })` | RLH-18 |
 | adapter agent-relay, JSON return | `rtMergeWorktree` | `rtListFiles`, `rtGit` | RLH-32 |
