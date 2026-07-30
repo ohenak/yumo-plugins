@@ -993,6 +993,85 @@ function approvalHashOf(text) {
   return `sha256:${sha256Hex(text)}`;
 }
 
+// ─── TSPEC §4.3 / §5.3 / §5.8 — the record parsers ────────────────────────────
+//
+// All five are total, synchronous, take no seam, and read the artifact through
+// `scanLines`, so a marker quoted inside a fenced region never counts.
+
+/** `sha256:` + 64 lowercase hex — the only well-formed APPROVAL-HASH value. */
+const APPROVAL_HASH_VALUE_RE = /^sha256:[0-9a-f]{64}$/;
+/** A commit sha as `REVIEWED-COMMIT:` may carry it: abbreviated or full lowercase hex. */
+const REVIEWED_COMMIT_VALUE_RE = /^[0-9a-f]{7,40}$/;
+/** The literal stored when no usable commit sha could be determined (§4.3, §4.4). */
+const COMMIT_UNAVAILABLE = "unavailable";
+
+/**
+ * Read the tier-1 approval record out of a cross-review file (§4.4, §5.3).
+ *
+ * `HASH_FAILURES` describes the `APPROVAL-HASH:` line and nothing else.
+ * `REVIEWED-COMMIT:` has no failure value because it has no failure: when it is
+ * absent outside a fence, duplicated, or carries a value that is not lowercase
+ * hex, `reviewedCommit` is the literal `"unavailable"` and `ok` stays `true`.
+ * That is safe in the only direction that matters — §5.5's comparison never
+ * reads the field (content-addressing is what makes the mechanism rebase-proof),
+ * and degrading such a record to UNEVALUABLE would re-run a converged phase over
+ * a field nothing consults.
+ *
+ * @param {string} fileText
+ * @returns {{ok: true, hash: string, reviewedCommit: string}
+ *          |{ok: false, reason: string}} `reason` is a `HASH_FAILURES` member.
+ */
+function parseApprovalHash(fileText) {
+  const hashes = [];
+  const commits = [];
+  scanLines(fileText, (line) => {
+    const h = /^\s*APPROVAL-HASH:\s*(\S*)\s*$/.exec(line);
+    if (h) hashes.push(h[1]);
+    const c = /^\s*REVIEWED-COMMIT:\s*(\S*)\s*$/.exec(line);
+    if (c) commits.push(c[1]);
+  });
+
+  if (hashes.length === 0) return { ok: false, reason: "absent" };
+  if (hashes.length > 1) return { ok: false, reason: "duplicated" };
+  if (!APPROVAL_HASH_VALUE_RE.test(hashes[0])) return { ok: false, reason: "unparseable" };
+
+  const reviewedCommit =
+    commits.length === 1 && REVIEWED_COMMIT_VALUE_RE.test(commits[0])
+      ? commits[0]
+      : COMMIT_UNAVAILABLE;
+
+  return { ok: true, hash: hashes[0], reviewedCommit };
+}
+
+/**
+ * Read an author's `REVISION-COMPLETE:` trailer out of its response (§4.3).
+ *
+ * Called ONLY on a revision episode (§5.6.2): a greenfield episode's terminal
+ * test is structural completeness alone, so `absent` never arises there and no
+ * greenfield episode can be held back by a trailer its SKILL was never amended
+ * to emit. All four failure reasons are non-terminal — none of them ends an
+ * episode, `declared_incomplete` least of all, which is the normal paced path.
+ *
+ * @param {string} response
+ * @returns {{complete: true}|{complete: false, reason: string}} `reason` is a
+ *   `TRAILER_FAILURES` member.
+ */
+function parseRevisionComplete(response) {
+  const values = [];
+  scanLines(response, (line) => {
+    const m = /^\s*REVISION-COMPLETE:\s*(\S*)\s*$/.exec(line);
+    if (m) values.push(m[1]);
+  });
+
+  if (values.length === 0) return { complete: false, reason: "absent" };
+  if (values.length > 1) return { complete: false, reason: "duplicated" };
+
+  const value = values[0].toLowerCase();
+  if (value === "yes") return { complete: true };
+  if (value === "no") return { complete: false, reason: "declared_incomplete" };
+  return { complete: false, reason: "unparseable" };
+}
+
 // ─── isPass helper ────────────────────────────────────────────────────────────
 
 function isPass(verdict) {
