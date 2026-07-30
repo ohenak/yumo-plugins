@@ -752,18 +752,53 @@ meta-rule that makes them durable: they are predicates over *position*, the `fil
 evidence that each is exercised, and a call site matching none of them is a **failure the assertion
 names** — never a fourth clause naming a line.
 
-Two things about them this PLAN adds, because they are process statements TSPEC §8.5 is silent on:
+Three things about them this PLAN adds, because they are process statements TSPEC §8.5 is silent on:
 
-1. **The scan is clean at HEAD over exactly three sites, and `RLH-01` checks that, batch 1** (§4.1). The
-   sites are `orchestrate-dev.js:615`, `:616` (array elements of `await _parallel([…])` in `reviewLoop` —
-   §8.5's combinator ruling) and `orchestrate-dev.js:1867` (`agentFn(` as a `batch.map` arrow body —
-   §8.5's returned-promise ruling); `orchestrate-queue.js` has none. **v1.1 asserted one site and was
-   wrong**; that is why the premise is now measured at batch 1 instead of carried from authoring.
-2. **A fourth site is blocking work, not an exemption.** `RLH-AT-19`'s permitted-red window is empty
-   (§7.3 row 1) and §11.3 `H-h` forbids loosening the assertion, so the only legal responses to an
-   unclassified site are a source fix or a **TSPEC amendment adding a ruling as a predicate** — which is
-   exactly the route v1.6 took for `:615–616`, and the reason that route is now demonstrated rather than
-   theoretical.
+1. **The scan is clean at HEAD — every non-`await`ed site is classified — and `RLH-01` checks *that*, at
+   batch 1** (§4.1). The observed site set and its size live in **§4.1's advisory row and nowhere else in
+   this document**; they are not restated here, in §7.3 or in §12.3. Corrected at v1.3, and the correction
+   is the *shape*, not the arithmetic: v1.1 asserted one site, v1.2 asserted three and said
+   `orchestrate-queue.js` had none, and **both were wrong the same way** — a hand-carried enumeration
+   installed as a blocking premise in four places at once. The number is now advisory (five at HEAD, §4.1)
+   and a correct new wrapper cannot halt the plan.
+2. **An *unclassified* site is blocking work; a *correctly exempt* one never is** — and v1.2's wording
+   here ("a fourth site is blocking work") was wrong on exactly that point: sites four and five
+   (`orchestrate-dev.js:1569` and `orchestrate-queue.js:524`) are shipped, correct and exempt under §8.5's
+   returned-promise ruling, and v1.2's text told an implementer who scanned correctly that they were
+   blocking work. **Withdrawn and restated.** For a genuinely unclassified site, `RLH-AT-19`'s
+   permitted-red window is empty (§7.3 row 1) and §11.3 `H-h` forbids loosening the assertion, so the only
+   legal responses are a source fix or a **TSPEC amendment adding a ruling as a predicate** — the route
+   v1.6 took for `:615–616` and v1.7 used again to *withdraw* `race`/`any`.
+3. **The scan mechanism — decided here, and owned by `RLH-31`.** TSPEC §8.5 prescribes a mechanism only
+   for the two `process`/`fetch` regexes and is deliberately silent on the await half, so this PLAN
+   decides it; the mechanism is a test-construction choice, not a contract (TSPEC v1.7's §0 says so).
+   **Decision: a bracket-depth walk over source text, file-local and unexported inside
+   `runtimeBundle.test.js`. No parser, no new dependency.** In three steps:
+   (a) mask string literals, template literals, regex literals and comments, so no delimiter inside them
+   is counted; (b) build the scan set — the thirteen names, each name's `main()`-destructured local alias
+   read from the destructuring pattern, and each named wrapper whose whole body is a call of an
+   already-in-set name (fixed-point, so `agentFn` enters via `rawAgentFn`); (c) for each call site of a
+   scan-set name **not** lexically preceded by `await`, walk *backwards* from its offset maintaining a
+   stack of unclosed `(` / `[` / `{` to find the enclosing context, and decide the three rulings from it —
+   returned promise (the nearest non-whitespace token before the call is `=>` or `return`), awaited
+   combinator argument (the innermost unclosed delimiter is `[`, its own enclosing unclosed delimiter is
+   `(`, the callee before that `(` awaits every element per §8.5, and that callee is lexically preceded by
+   `await`), alias (already discharged by (b)).
+   **Why not a parser.** `pdlc/workflows/package.json` declares **`jest` alone**; `@babel/parser` and
+   `esprima` are present only transitively under `node_modules`, so either would be an undeclared
+   dependency — and §11.4 `H-n` halts on a new runtime dependency. Against that, the walk needed here is
+   small and its input is known-shaped: two files, top-level functions unindented, no nested combinator
+   calls anywhere at HEAD. It also **stays honest about its own limits** — a shape it cannot decide is an
+   unclassified site, which fails loudly (item 2), never a silent pass. There is **no existing structural
+   source scan in this repo to reuse** (answering TE Q-02: `scanLines` is markdown-fence-aware and is
+   *product* code this feature adds, `driftGenerators.js` is a generator library; neither does delimiter
+   depth over JS), so this is written, not cited.
+   **The mechanism has its own oracle: `RLH-SCAN-01`** (`RLH-31`, batch 2, §7.3 row 1, §7.5). It drives
+   the walk over inline literal source fixtures — one per ruling, plus a masked-delimiter case, plus a
+   shape matching no ruling — and asserts the classification of each, so the scanner is tested rather than
+   trusted. This exists because **the mechanism decides the answer**: a line-local scan, an alias-blind
+   scan and a structural scan return three different site sets, which is how the count in §4.1 was wrong
+   twice. `RLH-AT-19` asserts the property; `RLH-SCAN-01` asserts that the thing asserting it works.
 
 And the trap `RLH-AT-19` must **not** fall into: the assertion's name set is **FSPEC AT-19's closed
 thirteen-name list**, restated once in TSPEC §8.5 and cited — never re-enumerated — from here. It is
