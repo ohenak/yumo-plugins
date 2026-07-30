@@ -168,15 +168,16 @@ total, each has an explicit disposition for absent, malformed and truncated inpu
 (§4.2) and `TrailerFailure` (§4.3) are the two new closed catalogues.
 
 **DC-02 (measured, not inferred).** Every assertion this document makes about existing code was
-checked against the working tree on `feat-pdlc-review-loop-hardening`: at HEAD **`af6f335`** for v1.0,
-and **re-measured at HEAD `ef4705a`** for every claim v1.1 touched or added. The v1.1 re-measurements
-are recorded where they are used rather than only here — `main()`'s sixteen `_`-parameters against
-`rtDevInjections`' nine (§8.5), `checkPrCi`'s four synchronous `_now()` call sites and the un-awaited
-`rawAgentFn` alias wrapper (§8.5), `QUEUE_ENTRY`'s injection object (§7.2), the bundle sizes (§7.2),
-the `AT-22` test-name collision in `documentOracles.test.js` and the 1038/1/70 suite baseline (§8.3).
-No claim in this document rests on a v1.0 measurement that v1.1 did not re-check. Code is
-cited as **enclosing symbol plus a distinctive literal** — never as a bare `file:line`, which drifts
-(FSPEC §1.1, O-16).
+checked against the working tree on `feat-pdlc-review-loop-hardening`: HEAD **`af6f335`** for v1.0,
+**`ef4705a`** for every claim v1.1 touched, and again for v1.2's. Measurements are recorded where
+they are used, not only here: `main()`'s sixteen `_`-parameters against `rtDevInjections`' nine, the
+four synchronous `_now()` call sites, and the un-awaited `rawAgentFn` alias wrapper (§8.5);
+`QUEUE_ENTRY`'s injection object and the bundle sizes (§7.2); the `AT-22` name collision and the
+1038/1/70 suite baseline (§8.3). Two v1.1 measurements **overturned** a reviewer's premise rather than
+complying with it (§8.5, §8.3), and one v1.2 measurement corrected this document's own claim:
+`_now`/`_sleep` are defaulted in `raisePrAndVerifyCi` (`orchestrate-dev.js:1283`), not in `checkPrCi`,
+which takes only `{ execFn }` — §8.5 said the latter. Code is cited as **enclosing symbol plus a
+distinctive literal**, never as a bare `file:line`, which drifts (FSPEC §1.1, O-16).
 
 ### 1.5 Reuse of shipped precedent
 
