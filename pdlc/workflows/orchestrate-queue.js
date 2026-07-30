@@ -546,6 +546,9 @@ async function defaultGit(argv, { execFn } = {}) {
  * @param {function} [params._agent]      - Injected agent (triage).
  * @param {function} [params._readFile]   - async (path) => string|null.
  * @param {function} [params._writeFile]  - async (path, contents) => void.
+ * @param {function} [params._git]        - async (argv) => {ok, stdout, stderr};
+ *   TSPEC §3.6 — threads down to `rewriteStatus` so every status write is
+ *   committed (§6.5). Never throws; the caller branches on `ok`.
  * @param {function} [params._runPipeline]- async ({reqPath}) => FinalReport.
  * @param {function} [params._log]        - Injected logger.
  * @param {function} [params._phase]      - Injected phase marker.
@@ -556,6 +559,7 @@ export default async function main({
   _agent: rawAgentFn = agent,
   _readFile: readFileFn = defaultReadFile,
   _writeFile: writeFileFn = defaultWriteFile,
+  _git: gitFn = defaultGit,
   _runPipeline: runPipelineFn = realMain,
   _log: logFn = log,
   _phase: phaseFn = phase,
@@ -727,6 +731,10 @@ export default async function main({
       runPipelineFn,
       writeFileFn,
       readFileFn,
+      gitFn,
+      // `queueText` is deliberately NOT passed: every status write now re-reads
+      // at write time through `rewriteStatus`, so a pre-run snapshot would be
+      // stale by construction (TSPEC §3.6).
       phaseFn,
       emit,
       finish,
@@ -754,12 +762,12 @@ async function runPicked({
   dependsOn,
   triageReason,
   queuePath,
-  queueText,
   remainingPending,
   skipped,
   runPipelineFn,
   writeFileFn,
   readFileFn,
+  gitFn,
   phaseFn,
   emit,
   // `main`'s exit funnel — carries the proceeding drift notice onto whichever
@@ -775,16 +783,30 @@ async function runPicked({
   );
 
   // Persist in-progress BEFORE running so a crash leaves a visible marker.
-  await writeFileFn(
+  // TSPEC §6.5 scopes the commit to *every* status write, not only `halted`:
+  // `in-progress` and `awaiting-merge` become durable too, which is a strict
+  // improvement and avoids a second, divergent code path.
+  await rewriteStatus(
     queuePath,
-    updateQueueStatus(queueText, entry.feature, "in-progress").markdown
+    entry.feature,
+    "in-progress",
+    readFileFn,
+    writeFileFn,
+    gitFn
   );
 
   let report;
   try {
     report = await runPipelineFn({ reqPath: entry.reqPath });
   } catch (err) {
-    await rewriteStatus(queuePath, entry.feature, "halted", readFileFn, writeFileFn);
+    await rewriteStatus(
+      queuePath,
+      entry.feature,
+      "halted",
+      readFileFn,
+      writeFileFn,
+      gitFn
+    );
     return finish({
       outcome: "halted",
       reason: `Pipeline threw for ${entry.feature}: ${err && err.message}`,
@@ -795,7 +817,14 @@ async function runPicked({
 
   const succeeded = report && report.outcome === "success";
   const newStatus = succeeded ? "awaiting-merge" : "halted";
-  await rewriteStatus(queuePath, entry.feature, newStatus, readFileFn, writeFileFn);
+  await rewriteStatus(
+    queuePath,
+    entry.feature,
+    newStatus,
+    readFileFn,
+    writeFileFn,
+    gitFn
+  );
 
   emit(
     succeeded
