@@ -2567,4 +2567,26 @@ exhaustion message names `rounds 4..8` — not `after 5 iterations` against an a
 
 ## 20. Open questions
 
+Genuinely open at FSPEC altitude — each names who resolves it and where. Nothing here is a REQ decision
+being re-litigated, and nothing here is a deferral (D-RLH-01..05 are out of scope, not open).
+
+| # | Question | Owner | Why it is not settled here |
+|---|---|---|---|
+| Q-01 | Should `rtListFiles` be implemented as a single `ls -1A`-class Bash agent call, or as a `find`-class call scoped to `docs/{feature}/` with a depth of 1? §3 fixes the **contract** (one non-recursive listing of basenames, four `reason` values) and leaves the command form open. | TSPEC | Both satisfy the contract; the choice turns on which produces the more reliably parseable single-line-per-entry output through an agent relay, which is an implementation measurement. |
+| Q-02 | Which SHA-256 implementation is inlined? §7 fixes the algorithm, the output form (`sha256:` + 64 lowercase hex), the canonicalisation and the single-function requirement, but not the code. | TSPEC | A pure-JS SHA-256 is ~80 lines; whether to write it inline in `orchestrate-dev.js` or in a small sibling module that `stripModuleSyntax` inlines is a build-shape question with a measurable answer (bundle size, test isolation). |
+| Q-03 | Does the digest need to be byte-accurate over non-ASCII content, i.e. must the implementation encode to UTF-8 before hashing rather than hashing UTF-16 code units? | TSPEC / PROPERTIES | The answer is almost certainly "yes, UTF-8", but the **falsifier** needs a fixture with a multi-byte character in a spec document, and whether such content occurs in practice affects test priority, not correctness. |
+| Q-04 | Should the pacing proxy of §15.8 run once per episode or once per phase? §15.8 fixes what it measures and that it cannot halt the run. | TSPEC | Per-episode gives sharper attribution; per-phase costs fewer `_git` calls. Both are advisory, so the trade-off is cost, not behaviour. |
+| Q-05 | For `## 6. Approval Record` (§9.2): if a future `harvest-learnings` revision adds a sixth prose section, does the approval record renumber to `## 7`, or is it pinned to a name-only heading? | Whoever revises `harvest-learnings/SKILL.md` | §9.2 pins the current numbering because that is what is true today. The forward-compatibility rule is a maintenance convention, not a behaviour of this feature. |
+| Q-06 | Should the `RESOLVED:` marker also record **who** resolved it and when? §12.2 deliberately parses only the token. | Operator convention / a later feature | Adding parsed fields would put prose in a script's path (C-5). A `## Resolution` section already carries the narrative unparsed; whether to make any of it structured is a separate decision. |
+| Q-07 | Is `forcePhases` worth surfacing in `DEV_META` for bundle-level discoverability? §11.2 deliberately does not edit `DEV_META`. | A later distribution change | The hand-written bundle `meta` has no `inputs` array at all today, so adding one is a change to that file's shape, with its own sync obligation. Out of proportion to the benefit here. |
+| Q-08 | Does the `_recordHalt` seam (§14.2) belong in `runtime-adapter.js` or in the bundle entrypoints? §14.2 specifies the contract and the three callers, not the file. | TSPEC | The queue bundle inlines both modules, so either placement works; the dev bundle needs the queue's row helpers inlined, which is a build-shape question like Q-02. |
+
+**Explicitly not open** — recorded here because each was asked and answered at REQ altitude, and a reviewer
+should not reopen them: whether the staleness test walks history (**no**, §10.2); whether harvest may
+recompute the hash (**no**, §9.4); whether a force can clear a POSTMORTEM (**no**, §11.5); whether a
+bypass recovers the queue (**no**, §14.4); whether the guard is tightened (**no**, §9.7); whether a
+verdict field is added to `CODE_REVIEW-*` (**no**, §16.4); whether the approval record is part of LEARNINGS
+completeness (**no**, §16.5); whether progress varies by mode (**no**, §15.3); whether terminal requires
+progress (**no**, §8.4).
+
 ## 21. Obligation discharge and traceability
