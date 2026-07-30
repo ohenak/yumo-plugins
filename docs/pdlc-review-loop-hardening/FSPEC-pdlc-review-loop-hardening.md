@@ -167,7 +167,10 @@ and cites the clause** rather than re-deciding it.
    run) to the matching closer, and a fence left unclosed at EOF swallows the remainder. A line is
    the **matching closer** only if its fence run uses the *same* fence character as the opener and
    is *at least as long*; every other fence line is content, so a three-backtick line inside a
-   four-backtick block does not close it. This is stated once, here, and referenced rather than
+   four-backtick block does not close it. The exclusion governs which lines may **match a scanned
+   pattern** — a `##` heading, a `VERDICT: `, `APPROVAL-HASH: ` or `RESOLVED: ` line; it does **not**
+   empty a section's body for §16.2's non-empty-body test, where a fenced block **is** body content
+   *(v1.4, SE-v4 F-18 / TE-v4 F-01)*. This is stated once, here, and referenced rather than
    restated, because the alternative is one exclusion clause per scan site and a later reviewer
    having to check them against each other.
 
