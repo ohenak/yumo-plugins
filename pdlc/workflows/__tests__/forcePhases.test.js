@@ -108,3 +108,145 @@ describe("RLH-AT-29 — bad force token rejection", () => {
     expect(renderMessageEnding([...all.phases])).toBe(REJECTION_MESSAGE_ENDING);
   });
 });
+
+// ─── Property — `parseForcePhases` catalogue closure (TSPEC §8.2, PROPERTIES) ─────────
+
+/**
+ * This file's literal seed (PLAN §7.2 rule: every property file declares its own literal
+ * seed and passes it through `resolveSeed`, which honours a `PDLC_PROP_SEED` override).
+ */
+const FORCE_PHASES_SEED = 0x5f0c3e17;
+
+/** How many token strings the property draws. */
+const FORCE_PHASES_CASES = 250;
+
+/**
+ * Junk tokens — every one of them outside the closed catalogue, and none of them
+ * containing a comma or whitespace, so `parseForcePhases`' `/[,\s]+/` split recovers each
+ * one intact and the expected classification is unambiguous.
+ *
+ * `CR` and `DOD` are here deliberately: they are real `PHASE_DISPATCH` ids that AC-4.7
+ * puts out of scope (FSPEC E-33), which is the interesting rejection, not a typo.
+ *
+ * The casing variants (`r`, `f`, `pr`, `Pr`, `All`) are junk **because TSPEC §5.7 pins
+ * `parseForcePhases` as case-sensitive** ("Total, case-sensitive, whitespace- and
+ * comma-tolerant"), and its `valid.includes(t)` / `t !== "all"` tests are exact-match.
+ *
+ * @type {readonly string[]}
+ */
+const JUNK_TOKENS = Object.freeze([
+  "CR",
+  "DOD",
+  "Q",
+  "X",
+  "REQ",
+  "1",
+  "R2",
+  "-R",
+  "r",
+  "f",
+  "pr",
+  "Pr",
+  "All",
+  "ALL",
+]);
+
+/** Separators the parser must tolerate: any run of commas and whitespace (TSPEC §5.7). */
+const SEPARATORS = Object.freeze([",", " ", ", ", " ,", "  ", ",,", " , ", "\t", "\n"]);
+
+/**
+ * File-local, **unexported** force-phase token-string generator, built only over
+ * `driftGenerators.js`'s primitives (`int`, `pick`, `shuffle`) — PLAN §7.2 forbids
+ * extending that library and forbids a second primitive library, so the domain generator
+ * lives here.
+ *
+ * Draws a token multiset over the three pools TSPEC §8.2 names — "token multisets drawn
+ * from the valid array, `all`, casing variants, and junk" — and renders it with arbitrary
+ * comma/whitespace separators plus optional surrounding whitespace.
+ *
+ * @param {{int: function(number, number): number, pick: function(Array): *,
+ *          shuffle: function(Array): Array}} rng
+ * @returns {{ raw: string, tokens: string[] }}
+ *   `raw` is what an operator would type; `tokens` is the multiset it encodes, in order.
+ */
+function genForcePhaseTokenString(rng) {
+  const count = rng.int(0, 6);
+  const tokens = [];
+  for (let i = 0; i < count; i++) {
+    const pool = rng.int(0, 9);
+    if (pool <= 4) tokens.push(rng.pick([...VALID_TOKENS]));
+    else if (pool <= 6) tokens.push(ALL_TOKEN);
+    else tokens.push(rng.pick([...JUNK_TOKENS]));
+  }
+
+  let raw = rng.int(0, 3) === 0 ? rng.pick([" ", "  ", "\t"]) : "";
+  tokens.forEach((token, index) => {
+    if (index > 0) raw += rng.pick([...SEPARATORS]);
+    raw += token;
+  });
+  if (rng.int(0, 3) === 0) raw += rng.pick([" ", ",", " ,", "\n"]);
+
+  return { raw, tokens };
+}
+
+describe("parseForcePhases — catalogue closure (property)", () => {
+  test("parseForcePhases catalogue-closure: accepted tokens are catalogue members, rejected tokens are exactly the non-members, and the two are exhaustive and disjoint", () => {
+    const { parseForcePhases } = devModule;
+    const seed = resolveSeed(FORCE_PHASES_SEED);
+    const rng = seeded(seed);
+
+    // The seven-token closed catalogue: six phases plus `all` (TSPEC §5.7).
+    const catalogue = new Set([...VALID_TOKENS, ALL_TOKEN]);
+
+    for (let caseIndex = 0; caseIndex < FORCE_PHASES_CASES; caseIndex++) {
+      const { raw, tokens } = genForcePhaseTokenString(rng);
+      const where = `seed=${seed} case=${caseIndex} raw=${JSON.stringify(raw)}`;
+      let result;
+      try {
+        result = parseForcePhases(raw);
+      } catch (err) {
+        throw new Error(`${where}: parseForcePhases threw — ${err && err.message}`);
+      }
+
+      const outsiders = tokens.filter((t) => !catalogue.has(t));
+      // Every failure below carries `where`, so a red is replayable with PDLC_PROP_SEED.
+      expect({ where, ok: result && result.ok }).toEqual({
+        where,
+        ok: outsiders.length === 0,
+      });
+
+      if (outsiders.length > 0) {
+        // Rejection branch: `{ ok: false, badTokens: string[] }` — no `phases` at all.
+        expect(Array.isArray(result.badTokens)).toBe(true);
+        expect(result.phases).toBeUndefined();
+
+        // Exhaustive: no token outside the catalogue is silently dropped or coerced.
+        for (const outsider of outsiders) {
+          expect(result.badTokens).toContain(outsider);
+        }
+        // Disjoint: nothing inside the catalogue is ever reported bad.
+        for (const bad of result.badTokens) {
+          expect(catalogue.has(bad)).toBe(false);
+          expect(tokens).toContain(bad);
+        }
+      } else {
+        // Acceptance branch: `{ ok: true, phases: Set<string> }` — a Set, never an array
+        // (PLAN §13.1: "No array exists anywhere").
+        expect(result.ok).toBe(true);
+        expect(result.phases).toBeInstanceOf(Set);
+        expect(result.badTokens).toBeUndefined();
+
+        // Closure: every returned phase is a member of the six-phase `valid` array —
+        // `all` itself is never returned as a phase, it expands.
+        for (const phase of result.phases) {
+          expect(VALID_TOKENS).toContain(phase);
+        }
+        // Nothing the operator asked for is dropped.
+        const expected = tokens.includes(ALL_TOKEN)
+          ? new Set(VALID_TOKENS)
+          : new Set(tokens);
+        expect([...result.phases].sort()).toEqual([...expected].sort());
+      }
+    }
+  });
+});
