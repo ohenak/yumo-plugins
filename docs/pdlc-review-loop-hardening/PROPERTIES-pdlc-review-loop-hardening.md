@@ -1050,6 +1050,80 @@ anti-oracle is how that mistake is prevented at review rather than discovered at
 
 ## 6. Fixtures
 
+### 6.1 What exists today, measured
+
+`pdlc/workflows/__tests__/fixtures/` currently holds **one** entry — `covered-violations/`, a
+directory tree used by the guard suites — and `__tests__/helpers/` holds twelve modules, of which
+`driftGenerators.js` is the one this document builds on (§3.1). **None** of the fixtures this feature
+needs exists at HEAD; every one below is created by the task named beside it, and each is listed in
+PLAN §4.2's file table.
+
+`testPathIgnorePatterns` excludes `/__tests__/helpers/` and `/__tests__/fixtures/`, so a fixture
+module is never collected as a suite — measured in `pdlc/workflows/package.json`. That is what makes
+`digest-vectors.js` safe as a `.js` fixture rather than a `.json` one.
+
+### 6.2 Digest known-answer vectors — `__tests__/fixtures/digest-vectors.js` (RLH-06, batch 2)
+
+Four vectors per TSPEC §8.2: the empty string, an ASCII string, a multi-byte UTF-8 string, and a
+surrogate-pair emoji string — each with its 64-hex digest **computed externally** and pasted in.
+
+**Why externally.** These are the correctness oracle for `sha256Hex`, and `PROP-DIGEST-02` is only a
+coverage oracle beside them (§4.1). A vector computed by Node's `crypto` inside the test would still
+be a valid oracle for the *test process*, but it invites the failure mode §5.1 forbids: someone
+"simplifies" the fixture into a live `crypto` call, and the comparison becomes the subject against
+itself. The vectors are literals so there is nothing to simplify.
+
+PLAN §4.2 is explicit that the last two vectors are the **only** falsifier of a wrong `utf8Bytes`;
+`PROP-DIGEST-02`'s ≥15-cases-above-U+FFFF floor exists to keep that falsifier from depending on four
+hand-picked strings.
+
+### 6.3 Fenced-region fixtures — `__tests__/fixtures/cross-reviews/` (RLH-03, batch 2)
+
+Three byte-exact files, per TSPEC §8.2 and PLAN §4.2:
+
+| Fixture | Pins |
+|---|---|
+| `quoted-verdict.md` | the **nested four-in-three** form — a four-backtick fence containing a three-backtick fence. PLAN §4.2 records why: *a three-in-three fixture passes under the wrong implementation*, i.e. under a boolean toggle. It is the example twin of `PROP-SCAN-01`'s unclosed-fence floor |
+| `quoted-hash.md` | an approval trailer behind a `>` quote — the example twin of `PROP-HASH-01`'s ≥10 quoted-or-fenced floor |
+| `unclosed-fence.md` | a fence opened and never closed — the example twin of the ≥5 unclosed floor |
+
+**Byte-exactness matters and is fragile.** These files carry significant trailing whitespace and
+significant line endings; an editor that trims either changes what the fixture pins. They are
+authored once, by RLH-03, and not reformatted afterwards.
+
+### 6.4 Heading fixtures — `__tests__/fixtures/completeness/` (RLH-12, batch 4)
+
+Copied **verbatim from the SKILL templates as they read at the end of batch 3** — hence RLH-12's
+declared edges on RLH-08 and RLH-09. PLAN §10.2 and its risk row `H-j` state plainly what this does
+and does not buy: the copy is a point-in-time snapshot and **detects no subsequent SKILL edit**, and
+bolting a fixture-versus-SKILL comparison onto `completeness.test.js` is explicitly *not* this
+feature's work.
+
+`PROP-COMPLETE-01` does not change that. It quantifies over **present-sets**, not over heading text:
+its domain is the required set `R`, and its §5.2 second row shows it reds when `R` shrinks. It says
+nothing about whether `R`'s headings still match the SKILLs — that gap stays open, owned where PLAN
+§10.2 leaves it, and §8.3 below records it rather than quietly implying a property covers it.
+
+### 6.5 String ownership — cite, never retype
+
+The rule the fixtures and the generators both obey, from PLAN §4.2's repeated instruction (*"copy it
+from there, do not retype it from here"*) and §1.4 above:
+
+- **Halt messages** (`Cannot enumerate {dirPath}: {reason}`, TSPEC §4.2 / §6.2) — the property
+  imports or reads the production constant and interpolates its own generated `dirPath`. It never
+  spells the sentence out. A retyped message greens against a subject that emits a *different*
+  retyped message, and the two drift apart silently.
+- **Catalogues** (`LIST_FAILURES`, `FILENAME_FAILURES`, `HASH_FAILURES`, `TRAILER_FAILURES`, the role
+  and doc-type catalogues, the six forceable phases) — the generator enumerates the catalogue itself
+  (§3.3), which is what makes the set-equality floors meaningful.
+- **Constants** (`MAX_REVIEW_ROUNDS`, `MAX_AUTHORING_ATTEMPTS`, `MAX_AUTHORING_DISPATCHES`,
+  `MAX_AUTHORING_WRITE_BYTES`) — TSPEC §4.8 makes these **module-level and not exported**. A property
+  at L1/L2 therefore cannot import them; it obtains them the way the rest of the suite does (through
+  the injected surface or, for `PROP-AWAIT-01`, from the source text) and asserts *relationships*
+  between them, never their values. §4.3's 36-dispatch bound and §5.3's anti-oracle row are the worked
+  example of this rule.
+- **SKILL template headings** — copied by RLH-12 once, per §6.4, and never paraphrased.
+
 ## 7. Coverage matrix
 
 ## 8. Gaps, residuals, and measured inconsistencies
