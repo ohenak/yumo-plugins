@@ -238,3 +238,99 @@ function learningsWithApprovalRecord(rows = []) {
     "",
   ].join("\n");
 }
+
+// ───────────────────────────── the pipeline driver ────────────────────────────
+
+/** Document bodies for the fixture branch. The FSPEC's bytes are what §5.5 hashes. */
+const FSPEC_BODY = `# FSPEC — ${FEATURE}\n\nThe functional specification, as it stands on the branch.\n`;
+
+/** The branch documents every fixture starts from, before its own overlay. */
+function baseFiles() {
+  return {
+    [REQ_PATH]: `# REQ — ${FEATURE}\n\nready: true\n`,
+    [FSPEC_PATH]: FSPEC_BODY,
+    [TSPEC_PATH]: `# TSPEC — ${FEATURE}\n`,
+    [PLAN_PATH]: `# PLAN — ${FEATURE}\n`,
+    [PROPERTIES_PATH]: `# PROPERTIES — ${FEATURE}\n`,
+  };
+}
+
+/**
+ * A recording agent that converges every review loop on its first iteration and
+ * satisfies every downstream phase gate. It is **not** a seam double — seams come
+ * from `helpers/seams.js`; this is the runtime's `agent()` capability, which
+ * `main()` already parameterises as `_agent`.
+ *
+ * @param {Array<{skill: string, prompt: string}>} log
+ */
+function makeConvergingAgent(log) {
+  return async (skill, prompt) => {
+    log.push({ skill, prompt: typeof prompt === "string" ? prompt : "" });
+    if (skill === "se-review" || skill === "te-review" || skill === "pm-review") {
+      return `Review complete.\nVERDICT: Approved\n{"high": 0, "medium": 0, "low": 0}\n`;
+    }
+    if (skill === "pm-author" || skill === "se-author" || skill === "te-author") {
+      if (typeof prompt === "string" && prompt.includes("DECISIONS_WARRANTED")) {
+        return "Finalized TSPEC.\nDECISIONS_WARRANTED: false";
+      }
+      if (typeof prompt === "string" && prompt.includes("Return a JSON object")) {
+        return JSON.stringify({
+          tasks: [{ id: "TASK-01", description: "First task", dependencies: [], planBatch: 1 }],
+        });
+      }
+      return "Created/updated document successfully.";
+    }
+    if (skill === "se-implement") return "Tests: 5 passed, 0 failed. All good.";
+    if (skill === "harvest-learnings") return "Harvest complete. LEARNINGS written.";
+    return "Success.";
+  };
+}
+
+/**
+ * Drive the whole pipeline over one fixture branch and hand back everything the
+ * assertions observe.
+ *
+ * Phases DOD and PUB are disabled: they rebase, poll CI and shell out, and neither
+ * is skip-eligible (§5.5's scope is `R`, `F`, `T`, `P`, `D`, `PR`), so they can
+ * only add failure modes unrelated to the search.
+ *
+ * @param {{ files?: Record<string, string>, listing?: string[] }} spec
+ *   `files` overlays `baseFiles()`; `listing` is what `_listFiles(DOCS_DIR)`
+ *   returns — basenames, not paths (§3.2).
+ */
+async function runPipeline({ files = {}, listing = [] } = {}) {
+  const fs = fakeFs({ ...baseFiles(), ...files });
+  const listFiles = fakeListFiles({ [DOCS_DIR]: listing });
+  const agentCalls = [];
+
+  const result = await main({
+    reqPath: REQ_PATH,
+    _agent: makeConvergingAgent(agentCalls),
+    _parallel: (promises) => Promise.all(promises),
+    _log: () => {},
+    _phase: () => {},
+    _pipeline: async (label, fn) => fn(),
+    _listFiles: listFiles,
+    ...fs.injections(),
+    _mergeWorktree: async () => ({ ok: true }),
+    _checkCi: async () => "passed",
+    _phaseDodEnabled: false,
+    _phasePubEnabled: false,
+  });
+
+  return { result, fs, listFiles, agentCalls };
+}
+
+/**
+ * The final report's record for one phase (§4.7 — `recordPhase`'s row).
+ * @param {{phases: Array<{phase: string}>}} result
+ * @param {string} phaseId
+ */
+function phaseRecord(result, phaseId) {
+  return (result.phases || []).find((p) => p.phase === phaseId) || null;
+}
+
+/** Every path `_readFile` was called with, in order. */
+function readPaths(fs) {
+  return fs.reads.map((r) => r.path);
+}
