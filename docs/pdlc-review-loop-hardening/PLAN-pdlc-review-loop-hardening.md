@@ -267,6 +267,82 @@ one thing a split must not do is leave a path that reaches `reviewLoop` without 
 
 ## 5. File-ownership manifest
 
+Every physical file this feature creates or modifies, with its owning task(s). Where a file has more
+than one owner they are listed **in batch order** and no two share a batch — this table is the
+mechanical audit of the single-writer-per-batch premise, and it is the only thing preventing a
+last-writer-wins race that the green gate cannot detect.
+
+### 5.1 Tracked source and generated
+
+| File | Owner(s), in batch order | Batches |
+|---|---|---|
+| `pdlc/workflows/orchestrate-dev.js` | RLH-05, RLH-10, RLH-13, RLH-15, RLH-16, RLH-18, RLH-23, RLH-26, RLH-27, RLH-30 | 3, 4, 5, 6, 7, 8, 10, 11, 12, 13 |
+| `pdlc/workflows/orchestrate-queue.js` | RLH-20 | 9 |
+| `pdlc/workflows/runtime-adapter.js` | RLH-32 | 14 |
+| `pdlc/workflows/build-runtime.mjs` | RLH-32 | 14 |
+| `pdlc/workflows/dist/` (all three artifacts) | RLH-05, RLH-10, RLH-13, RLH-15, RLH-16, RLH-18, RLH-20, RLH-23, RLH-26, RLH-27, RLH-30, RLH-32, RLH-33 | 3–15, one per batch |
+| `pdlc/.claude-plugin/plugin.json` | RLH-33 | 15 |
+
+**`dist/` is the reason batches 3–15 each carry exactly one source-lane task.** Read the `dist/` row as
+the constraint and the `orchestrate-dev.js` row as its largest consequence. See §3.2.
+
+### 5.2 Test helpers and fixtures
+
+| File | Owner | Batch |
+|---|---|---|
+| `pdlc/workflows/__tests__/helpers/seams.js` | RLH-02 | 2 |
+| `pdlc/workflows/__tests__/fixtures/cross-reviews/{quoted-verdict,quoted-hash,unclosed-fence}.md` | RLH-03 | 2 |
+| `pdlc/workflows/__tests__/fixtures/digest-vectors.js` | RLH-06 | 2 |
+| `pdlc/workflows/__tests__/fixtures/completeness/` | RLH-12 | 4 |
+
+`pdlc/workflows/__tests__/helpers/driftGenerators.js` is **read-only for this feature.** It is reused,
+never modified and never duplicated (TSPEC §8.2, §9.4). No task owns it.
+
+### 5.3 Test files — one owning task each
+
+Every test file has **exactly one** owning task. A file is written whole and red by its owner, then
+greened across one or more later source tasks; no test file is appended to by a second task. This is
+stricter than the batch-safety rule requires and it removes the whole class of "two agents both added a
+`describe` block" conflicts.
+
+| File | Owner | Batch | New / extended |
+|---|---|---|---|
+| `__tests__/scanLines.test.js` | RLH-03 | 2 | new |
+| `__tests__/skillFiles.test.js` | RLH-04 | 2 | extended |
+| `__tests__/approvalHash.test.js` | RLH-06 | 2 | new |
+| `__tests__/roundDerivation.test.js` | RLH-11 | 2 | new |
+| `__tests__/forcePhases.test.js` | RLH-14 | 2 | new |
+| `__tests__/pipelineWiring.test.js` | RLH-17 | 2 | extended |
+| `__tests__/dodPhase.test.js`, `shipPhase.test.js`, `implPhase.test.js`, `harvestPhase.test.js` | RLH-29 | 2 | extended |
+| `__tests__/runtimeBundle.test.js` | RLH-31 | 2 | extended |
+| `__tests__/orchestrateQueue.test.js` | RLH-19 | 3 | extended |
+| `__tests__/pacingWrapper.test.js` | RLH-21 | 3 | new |
+| `__tests__/reviewLoop.test.js` | RLH-22 | 3 | extended |
+| `__tests__/approvalSearch.test.js` | RLH-24 | 3 | new |
+| `__tests__/haltAndQueue.test.js` | RLH-25 | 3 | new |
+| `__tests__/reportTemplates.test.js` | RLH-28 | 3 | new |
+| `__tests__/completeness.test.js` | RLH-12 | 4 | new |
+
+`__tests__/documentOracles.test.js` is **not owned by any task and is not to be touched.** It carries
+another feature's deliberate red (§2.1). `__tests__/parseVerdict.test.js` needs no change — TSPEC §3.9
+keeps `parseVerdict` unchanged, and its new file-text callers are covered in `approvalSearch.test.js`.
+
+### 5.4 SKILL prompts
+
+| File(s) | Owner | Batch |
+|---|---|---|
+| `pdlc/skills/{se,pm,te}-review/SKILL.md` | RLH-07 | 3 |
+| `pdlc/skills/{se,pm,te}-author/SKILL.md` | RLH-08 | 3 |
+| `pdlc/skills/{harvest-learnings,orchestrate-dev,orchestrate-queue}/SKILL.md` | RLH-09 | 3 |
+
+Three tasks, nine files, no overlap — which is why they run in parallel in one batch. All three are
+verified through the single test file `skillFiles.test.js`, owned by RLH-04 one batch earlier.
+
+### 5.5 Never written by any task
+
+`.claude/workflows/` — the untracked consumer copy (§3.1). No task copies into it and no task commits
+it. Operators refresh it with `pdlc/hooks/scripts/sync-workflows.sh`; `RLH-34` only *checks* it.
+
 ## 6. Dependencies
 
 ## 7. Traceability — task → acceptance tests
