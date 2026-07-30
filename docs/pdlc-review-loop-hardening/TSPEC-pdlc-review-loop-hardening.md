@@ -1395,9 +1395,8 @@ Four rules, taken from FSPEC §15.2 and normative here:
 
    One case follows from that one sentence; it is not a special case of it.
 
-   - **Observed, non-empty `present`, unreadable or unread verdicts.** The verdict fields are
-     unreadable (§5.1's fail-closed cases), or the read was never performed — the forced path, where
-     §2.5 step 3 is skipped and `reviewFiles` is empty. Revision; the two shapes are not distinguished.
+   - **Observed, non-empty `present`, unreadable verdicts.** The verdict fields are unreadable
+     (§5.1's fail-closed cases). Revision.
 
    So "not read" is never "no findings". The directions are not symmetric: mis-entering greenfield
    silently drops a whole review round, while mis-entering revision costs at most a continuation
@@ -1583,8 +1582,11 @@ reaches for precisely because the phase has been reviewed before (AT-01a). It do
 POSTMORTEM (§5.8) refuses it. Forcing is an operator saying "re-run this despite approval", not
 "ignore that this previously failed unresolved."
 
-A forced phase's `reviewFiles` is **empty**, since step 3 is what populates it. That is a
-`selectMode` rule-4 input, not a greenfield one (§5.6.1).
+A forced phase's first episode refreshes like every other one (S-INV, §5.6.1) — force is invisible to
+`refreshReviewState`. Past an approving round that means a non-empty `present` with no round still
+owed an authoring pass, so rule 2 returns `round: null` and `roundIndex: sel.round ?? startIndex`
+opens a **new** round as a revision episode: fail-closed, and the right semantics for "re-run this
+despite approval".
 
 `orchestrate-queue` gets no force surface at all. The queue is an unattended driver; forcing is an
 attended act, and O-5's direct-invocation path is where it belongs.
