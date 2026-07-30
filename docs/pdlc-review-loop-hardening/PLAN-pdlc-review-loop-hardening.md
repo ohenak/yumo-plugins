@@ -804,4 +804,39 @@ independent signal in the plan.
 
 ## 13. Open Questions
 
+Everything here is a place the **TSPEC is silent or deliberately incomplete**, recorded so that Phase I
+does not mistake silence for licence. Nothing here blocks the start of batch 1; each item names the task
+that closes it. Items whose resolution is observable in behaviour are halts (§11.1); items that are
+naming or plumbing choices are decisions to be made once and cited (§11.5).
+
+### 13.1 Genuinely under-specified — decide in the named task, record the decision in its commit
+
+| # | Question | Where the TSPEC stops | Closed by | Why it is safe to defer |
+|---|---|---|---|---|
+| P-Q-01 | **The name of the approval search.** TSPEC §5.4 gives the two-tier search as pseudocode and never names a function. §3 does not list it in any interface table. | §5.4 body; absent from §3.1–§3.10 | `RLH-26` | The behaviour is fully specified; only the identifier is not. Name it once, keep it non-exported unless `approvalSearch.test.js` needs the seam, and reference `RLH-26`'s commit from any later task that calls it. |
+| P-Q-02 | **How `startIndex` / `endIndex` are threaded** to the wrapped episode — extra positional args, a field on the options object, or carried inside `EpisodeKey`. TSPEC §4.5 defines the values; no section fixes the shape. | §4.5; §5.2 shows the values in use, not the parameter list | `RLH-13`, cited by `RLH-23`, `RLH-26`, `RLH-27` | Four tasks must agree. This is precisely the drift class §1.2 names, so the mitigation is a single decision point, not a specification gap left open. `RLH-13` decides; the other three cite. |
+| P-Q-03 | **Where `refreshReviewState`'s `ListFailure` disposition is applied** — inside `refreshReviewState` or by its caller. TSPEC §4.2 fixes the dispositions and §6.2 rows 1/2/17 fix the single halt string; neither fixes the layer. | §4.2, §6.2 | `RLH-15` | Both placements are conformant. The invariant that matters — one halt shape, dispositions unchanged at every call site — is asserted by `RLH-AT-30`-family tests either way. Choose the callee (it keeps the caller free of parsing, per the §2.4 strata rule) unless a test forces otherwise. |
+| P-Q-04 | **Whether `forcePhases` arrives as an array or a Set.** TSPEC §3.6 calls it data rather than a seam and shows membership tests only. | §3.6 | `RLH-30` | Membership semantics are identical. Fix it in `RLH-30` and state it in the JSDoc so `RLH-32`'s adapter wiring matches. |
+
+### 13.2 Accepted incompleteness — do **not** try to close these
+
+| # | Item | Disposition |
+|---|---|---|
+| P-Q-05 | **TSPEC T-Q-03 — `MAX_AUTHORING_WRITE_BYTES` has no oracle.** Nothing under C-2 measures the bytes an agent emits per tool call; §6.6's commit-diff proxy is advisory only. So no test can prove the constant is *obeyed*, only that it is *stated*. | Accepted and **bound to `docs/_queue/QUEUE.md` Order 9**. Assert the constant's placement and its appearance in the authoring brief; do **not** invent enforcement, and do **not** escalate the advisory proxy into a halt — TSPEC T-Q-03 rejects that explicitly (it would fire on a legitimately large section). |
+| P-Q-06 | **TSPEC T-Q-04 — `isComplete`'s placeholder detection is deliberately shallow.** A body consisting solely of a fenced block containing `TBD` scores non-empty. FSPEC v1.5 declined the fix because a fence-aware test reintroduces the §16.2 ↔ rule 5 coupling that caused v1.4's false-halt regression. | **Accepted, carried knowingly.** `RLH-16` implements §5.9 as written and must not add fence awareness. What bounds a badly behaved episode is §4.5's per-episode counters, not this test. |
+| P-Q-07 | **TSPEC Q-05 and Q-09** — both explicitly bound to `docs/_queue/QUEUE.md` **Order 9**. | **Out of scope. Do not reopen in Phase I.** If implementation appears to need either resolved, that is a halt (§11.4), not a licence to decide them here. |
+| P-Q-08 | **`AT-22 [red-until-L-06]`** in `documentOracles.test.js` is an intentional pre-existing red owned by another feature. | Not this feature's to fix. It is the *identity* of the one permitted failure in §2.2's gate; changing it invalidates the baseline. |
+
+### 13.3 Risks this PLAN carries knowingly
+
+- **The 179 s suite against a 180 s watchdog** (§2.3). Mitigated by procedure, not by shortening the
+  suite. Every task this feature adds makes the margin worse; if a batch gate is killed, re-run it in the
+  background and record the wall time in the batch commit so the trend is visible.
+- **SKILL.md / fixture drift** (§10.2). `completeness.test.js`'s heading fixtures duplicate the SKILL
+  templates. The duplication is pre-existing and out of scope to remove; `RLH-31` asserts byte-identity
+  so the drift is caught rather than removed.
+- **Thirteen serialised source-lane commits** (§3.2). The critical path is long by construction. Any task
+  that discovers it must also touch `orchestrate-dev.js` out of turn must move, not fork — a second
+  writer in a batch is a §11.4 halt.
+
 ## 14. Changelog
