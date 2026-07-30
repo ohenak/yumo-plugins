@@ -1044,7 +1044,9 @@ lines arbitrarily chosen. This is where v1.2's `iff` and its `duplicated` conjun
 other (SE F-23, PM F-01); the contradiction was in the `iff` counting trailers while the contract
 counts lines, and both are now stated over `n`.
 
-(iii) `n === 0` returns `{ ok: false, reason: "absent" }`.
+(iii) `n === 0` returns `{ ok: false, reason: "absent" }` — the **named** reason asserted on the
+documents whose count is unambiguous (no trailer at all; a trailer only inside a fence), and withheld
+on the two shapes where an unstated matcher decides the count, per the recorded silences below.
 
 (iv) `n === 1` whose payload is uppercase hex, 63 or 65 hex characters, or non-hex returns
 `ok: false`. Two shapes v1.3 listed here are not values of `n === 1` at all, and both are routed out
