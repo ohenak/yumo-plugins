@@ -1847,6 +1847,148 @@ classifying which of §4a A-8's three surfacings occurred.
 fail-closed consequence is operator-visible at the moment it is incurred rather than discovered at the
 next re-entry.
 
+### 15.5 The two prompt kinds (O-6, AC-3.3, AC-3.5g)
+
+**Greenfield — the resume-aware prompt.** "Retry" is determined **from artifact state on disk before
+dispatch**, never from a runtime attempt counter (§4a A-2/A-3):
+
+| Pre-dispatch disk state | Prompt form |
+|---|---|
+| No artifact, or an artifact with no top-level headings | **First attempt.** "Write the skeleton first: all top-level section headings, no prose. One whole-file write is acceptable for the skeleton only." |
+| A partial artifact with headings present and at least one section not satisfying §16's criterion | **Resume.** Carries the resume clause below. |
+| Structurally complete | Terminal — not dispatched |
+
+The resume clause names the section, so the agent does not have to re-derive it:
+
+```
+This is a RESUMED attempt. The document already exists on disk with {S} of {T} top-level sections
+written. The first unwritten section is "{heading text}". Read the file, then continue from that
+section. Do NOT restart from an empty file and do NOT rewrite sections already written.
+```
+
+**How the first unwritten section is determined — by the script, not the agent.** Walk the artifact's
+top-level headings in document order and return the **first** whose body does not satisfy §16's criterion
+for that artifact class. Definite in every case:
+
+| State | Result |
+|---|---|
+| Some heading has an unsatisfying body | that heading — the common case |
+| **Every** heading satisfies the criterion but the artifact is not terminal (a required member of the set is absent) | the field is `(this document is complete; the outstanding artifact is {other member})` |
+| Headings cannot be parsed at all | the field is `(unknown — read the file and continue from the first section lacking prose)`, and the dispatch still proceeds. A degraded prompt is better than a refusal: the agent can read the file. |
+
+Determining it in the script rather than asking the agent is deliberate — it is a mechanical scan over
+disk state, so C-5 requires the script to own it, and it means a stall-killed agent that never got to
+read the file still receives the answer.
+
+**Scope, narrowed at v1.5 (SE-v5 F-01).** This determination is a **within-greenfield** question only: it
+chooses between the resume and first-attempt forms of a *greenfield* prompt. It does **not** select the
+episode's mode (§15.2 does). A structurally incomplete document can therefore no longer pull a revision
+episode onto this path and hand it a prompt naming no findings.
+
+**Revision — the continuation prompt.** In revision mode there is no "first unwritten section", and
+re-issuing the round's original feedback prompt verbatim is not acceptable either: the artifact may
+already carry some of that round's edits, so re-issuing instructs work already done and can double-apply
+it, once per remaining dispatch, with the byte-change predicate resetting the consecutive counter each
+time. **Every** revision dispatch — the episode's first as well as every re-dispatch — carries a
+continuation prompt with four clauses:
+
+| # | Clause |
+|---|---|
+| 1 | Names the **same round's findings** the episode was entered with, by cross-review path and finding id. The findings are never dropped or narrowed between dispatches of one episode. |
+| 2 | States that the document has been **partially edited by an interrupted earlier attempt of this same round**, and instructs the agent to address only findings **not already reflected** in the document as it stands. The prompt is idempotent by construction; re-application is an **error**, not a no-op. |
+| 3 | Requires the agent to determine what is already reflected from the **document on disk**, not from the prompt — the script cannot know which findings were applied (§4a A-9: it sees content, never the calls that produced it). |
+| 4 | Requires the **revision-completion trailer** of §8, emitted last. |
+
+**This one *is* script-decidable, unlike the byte budget.** It is a prompt-contract obligation on the
+script, checkable by inspecting the prompt the script emits: a revision-mode dispatch whose prompt lacks
+the continuation clause or the trailer requirement is a defect, and an oracle can assert it directly.
+Residual risks: an agent mis-judging what is already reflected is **R-10**; an agent emitting the trailer
+prematurely is **R-12**.
+
+### 15.6 Budget exhaustion writes no POSTMORTEM (AC-3.5f)
+
+An exhaustion of either budget **halts the phase** with §15.4's report and **does not write
+`POSTMORTEM-{phase}-{feature}.md`**.
+
+| | POSTMORTEM records | Authoring-budget exhaustion records |
+|---|---|---|
+| Nature | a **reviewer disagreement** a fresh round budget cannot resolve (H-2) | a **mechanical** failure to produce bytes |
+| Recovery acts needed | **two** — the queue-row reset **plus** §12.2's resolution act inside the artifact, because §12 refuses the phase until then and §11.5 makes that the exclusive route (a force-run is refused too) | **one** — the queue-row reset (AC-2.7a) — after which the phase runs |
+| Lasting effect | permanently marks the feature with an unresolved disagreement that every later skip report must name (§12.4) | none at the phase level |
+
+So writing a POSTMORTEM for a mechanical byte-production failure would attach the heavier,
+artifact-level recovery — and the standing §12 refusal — to a merely large document. That is the wrong
+classification and is **forbidden**.
+
+**Two retracted rationales, replaced by the surviving ground.** v1.3 justified the split as "re-invoke
+versus human-only recovery"; that is false as written and retracted, because the same clause commits the
+row `halted`, and `halted` is outside `orchestrate-queue`'s pickup set (§4a A-10), so under the documented
+entry point a bare re-invocation reports `idle` — **both** halt classes need a human act. v1.4 then added
+that a bypassing operator "needs none"; that is true of the **phase** and false of the **queue**, and is
+retracted (§14.4). The classification stands on **how many acts and where**, and on the fact that after an
+authoring-budget halt the phase itself is *willing to run* while after a POSTMORTEM halt it *refuses*.
+
+The halt is still terminal for the invocation, and it still sets and **commits** the queue row to
+`halted` on §13's terms — AC-2.1's obligation is extended to this halt, so durability does not depend on
+a POSTMORTEM existing. The halt is durable and legible without being self-refusing.
+
+### 15.7 Constant placement (O-19, placement half) — and the missing oracle
+
+Three constants, all declared as named constants at the top of `pdlc/workflows/orchestrate-dev.js`,
+following the existing convention set by `const DOD_MAX_ITERATIONS = 3;`:
+
+| Constant | Value | Placement |
+|---|---|---|
+| `MAX_AUTHORING_ATTEMPTS` | `3` | `orchestrate-dev.js`, beside `MAX_REVIEW_ROUNDS` (§17) |
+| `MAX_AUTHORING_DISPATCHES` | `6` | same block |
+| `MAX_AUTHORING_WRITE_BYTES` | `12000` | **Both** — as a constant in `orchestrate-dev.js` (so §15.8's proxy check has one referent) **and** stated numerically in the authoring-pacing section of each of the three author SKILLs (so the agent bound by it can read it). The SKILL text cites the constant by name so the two cannot silently diverge. |
+
+`MAX_AUTHORING_ATTEMPTS` and `MAX_AUTHORING_DISPATCHES` are **script-owned counters**, never the
+runtime's. `MAX_AUTHORING_WRITE_BYTES` is **agent-directed only**.
+
+**The statement O-19(a) requires, stated plainly: there is no oracle for emitted bytes, and this
+document does not pretend otherwise.** Emitted bytes per tool call are not observable from any seam this
+repo has (C-1, §4a A-1/A-2, and §4a **A-9**, which is the measurement): the wrapper's only evidence is the
+artifact on disk after a dispatch, from which the number and shape of the calls that produced it cannot
+be recovered. AC-1.4's "prompt text alone does not satisfy this AC" bar is deliberately **not** met for
+AC-3.1/AC-3.1a, and the reason is asymmetric in a way that matters: AC-1.4's obligation is decidable
+from a file check, this one is not. An earlier draft's phrase "how the pacing bound is checked in review"
+was **withdrawn** (TE-v3 F-03) precisely because no such check exists. TSPEC and PROPERTIES may not
+assert a byte-level oracle; the two compensations of §15.8 are what a reviewer holds this bound to.
+
+### 15.8 Commit cadence and the commit-diff proxy (O-20)
+
+**The cadence is one commit per section write** (AC-3.2a). A single commit at the end of an attempt does
+not satisfy AC-3.2, because it is exactly the state a stall-kill destroys.
+
+| Aspect | Specification |
+|---|---|
+| Who is bound | **Every** agent bound by AC-3.6 — the three author SKILLs, the three review SKILLs, `dod-verify`, `harvest-learnings`, and the code-writing dispatches of Phase I and Phase DOD (AC-3.2b). Where an artifact is produced in a single sub-budget write, the cadence is satisfied trivially by the one commit that follows it. |
+| Message form | `docs({artifact-kind}): §{N} {section title} — {one-line substance}` for spec sections; existing conventions elsewhere |
+| Cost, stated honestly | Section-granular commits are **squash-invariant**, so the merged history is unchanged. But a rebase **replays each commit in turn**, so N per-section commits are N replay steps and N potential conflict points, and Phase DOD Step 0 halts the pipeline on conflict (`ship-pr`). v1.1's claim that the rebase is "unaffected" was wrong. The cadence is still right — a single end-of-attempt commit is what a stall-kill destroys — and the honest trade-off argues for **coarse top-level sections** rather than fine-grained ones, and for keeping conflict surface in mind when choosing AC-3.1's split points. |
+
+**The proxy check.** Under this cadence the commit series *is* on-disk evidence of write granularity:
+
+| Aspect | Specification |
+|---|---|
+| Measurement | For each commit the episode produced touching an artifact path, the size of its diff — added plus removed bytes on artifact paths only, via `_git(["diff", "--numstat", ...])`-class inspection, awaited |
+| Threshold | `MAX_AUTHORING_WRITE_BYTES` |
+| On exceed | **Reported** as a pacing-contract violation in the run report: `Pacing proxy: commit {sha} changed {B} bytes of {path} (> MAX_AUTHORING_WRITE_BYTES = 12000) — likely an over-budget write.` |
+| Effect on the run | **None.** It is advisory evidence of coarse pacing and **must not halt the run on its own.** |
+| Honest limits, stated | It is a **proxy, not the bound**. It catches coarse pacing, and **cannot** catch a compliant-sized commit assembled from one oversized call — the case the bound actually forbids. It can also false-positive on a legitimate multi-call section committed once. |
+
+**The compensating measurable control.** §15.4's script-owned counters are what actually bounds the cost
+of a pacing failure, and they are fully measurable. A pacing violation therefore degrades to a
+stall-killed dispatch that the wrapper counts, reports and terminates — the outcome §H-3 lacked — rather
+than to an undetected breach. That is the honest claim this feature makes: not that the byte budget is
+enforced, but that violating it is now **bounded and legible** instead of silent and unbounded.
+
+**Amendment to the SKILL Git Workflow sections (AC-3.2a).** `pm-author/SKILL.md`'s
+`2. **After completing:** write all artifacts to disk, stage, commit with descriptive messages, and push
+to the remote branch.` and its three later `Commit and push.` lines instruct exactly the end-of-attempt
+cadence AC-3.2 forbids. §17 carries the anchored edits for all three author SKILLs plus the three review
+SKILLs, `dod-verify` and `harvest-learnings`.
+
 ## 16. FSPEC-COMPLETE-01 — Structural completeness per wrapped artifact class
 
 ## 17. FSPEC-CONST-01 — Constant placement and the AC-5.1 / AC-5.2 edits
