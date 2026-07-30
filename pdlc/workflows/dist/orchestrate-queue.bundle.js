@@ -1777,6 +1777,7 @@ async function reviewLoop({
   _checkFile = checkFileNonEmpty,
   _listFiles = defaultListFiles,
   _readFile = defaultReadFile,
+  _appendFile = defaultAppendFile,
   _log,
   _git,
 }) {
@@ -1899,6 +1900,18 @@ async function reviewLoop({
       log(`Resuming from iteration ${iteration}`);
     }
 
+    // (b2) TSPEC §5.3 t0–t2 — capture the anchor BEFORE the reviewers are
+    // dispatched (t3), so what is recorded is the document this round actually
+    // reviewed, not whatever the optimizer left behind afterwards. Phase CR's
+    // target is a directory and carries no anchor.
+    let anchorHash = null;
+    let anchorCommit = "unavailable";
+    if (phase !== "CR") {
+      const anchorBytes = await _readFile(doc); // t0
+      if (anchorBytes != null) anchorHash = approvalHashOf(anchorBytes); // t1
+      anchorCommit = await headCommitSha(_git); // t2
+    }
+
     // (c) Dispatch reviewers in parallel. On iteration ≥2 each reviewer gets a
     // delta re-review prompt (read prior cross-review, diff-only scan) — see
     // reviewerPrompt. Iteration 1 is the full first-pass review.
@@ -1938,8 +1951,21 @@ async function reviewLoop({
     // (e) Evaluate gate
     const gatePass = isPass(verdict1.verdict) && isPass(verdict2.verdict);
 
-    // (f) PASS branch
+    // (f) PASS branch — t4. The round is terminal, so §5.3 t5 appends the anchor
+    // pair to each reviewer's cross-review file and t6 commits. A failed or
+    // ambiguous append is an operator-facing error that yields NO approval for the
+    // round and never halts the run (§6.2 row 8, `AT-17`): the phase simply has no
+    // recorded approval to skip on next time.
     if (gatePass) {
+      await appendApprovalAnchors({
+        paths: [reviewTargetPath(reviewers[0], iteration), reviewTargetPath(reviewers[1], iteration)],
+        hash: anchorHash,
+        commit: anchorCommit,
+        _readFile,
+        _appendFile,
+        _git,
+        emit,
+      });
       return { converged: true, iterations: iteration, lastOptimizerResult };
     }
 
@@ -1962,6 +1988,116 @@ async function reviewLoop({
     }
 
     iteration += 1;
+  }
+}
+
+// ─── TSPEC §5.3 — approval anchor capture and append (t0…t6) ─────────────────
+
+/**
+ * §5.3 t2 — the commit the reviewed bytes were read at. Never a halt condition:
+ * a repo-less or failing `git` degrades to the `"unavailable"` sentinel §4.3 and
+ * §5.5 rule 3 both already accept (the comparison never reads it).
+ *
+ * @param {function|undefined} _git
+ * @returns {Promise<string>}
+ */
+async function headCommitSha(_git) {
+  if (typeof _git !== "function") return "unavailable";
+  try {
+    const result = await _git(["rev-parse", "HEAD"]);
+    const stdout = result && typeof result.stdout === "string" ? result.stdout.trim() : "";
+    return /^[0-9a-f]{7,40}$/.test(stdout) ? stdout : "unavailable";
+  } catch {
+    return "unavailable";
+  }
+}
+
+/**
+ * §5.3's pre-count over one cross-review file: the `APPROVAL-HASH:` values on
+ * unfenced lines, in order. `scanLines` already skips fenced regions, so a quoted
+ * example anchor cannot fabricate an ambiguity.
+ *
+ * @param {string} fileText
+ * @returns {string[]}
+ */
+function approvalAnchorPreCount(fileText) {
+  const found = [];
+  scanLines(String(fileText ?? ""), (line) => {
+    const m = /^APPROVAL-HASH:\s*(\S+)\s*$/.exec(line);
+    if (m) found.push(m[1]);
+  });
+  return found;
+}
+
+/**
+ * §5.3 t5–t6. The pre-count is a count AND a comparison (E-14/E-15):
+ *
+ *   0 existing anchors        ⇒ append the pair
+ *   1, equal to `hash`        ⇒ idempotent no-op; the approval stands
+ *   1, unequal                ⇒ error surfaced, no append, no approval
+ *   ≥ 2                       ⇒ history ambiguous, no append, no approval
+ *
+ * Nothing here throws: `AT-17`'s "does not halt".
+ */
+async function appendApprovalAnchors({
+  paths,
+  hash,
+  commit,
+  _readFile,
+  _appendFile,
+  _git,
+  emit,
+}) {
+  if (!hash) {
+    emit(
+      "Approval anchor not recorded: the reviewed document could not be read at " +
+        "capture time. The round yields no approval; the phase will re-run."
+    );
+    return;
+  }
+
+  let appended = false;
+  for (const path of paths) {
+    const existingText = await _readFile(path);
+    if (existingText == null) {
+      emit(`Approval anchor not recorded: ${path} is absent. The round yields no approval.`);
+      return;
+    }
+    const existing = approvalAnchorPreCount(existingText);
+    if (existing.length >= 2) {
+      emit(
+        `Approval anchor not recorded: ${path} already carries ${existing.length} ` +
+          "APPROVAL-HASH: lines, so its history is ambiguous. The round yields no approval."
+      );
+      return;
+    }
+    if (existing.length === 1) {
+      if (existing[0] === hash) continue; // E-14 — idempotent no-op.
+      emit(
+        `Approval anchor not recorded: ${path} already carries a DIFFERENT ` +
+          `APPROVAL-HASH: (${existing[0]} vs ${hash}). The round yields no approval.`
+      );
+      return;
+    }
+    try {
+      await _appendFile(path, `\nAPPROVAL-HASH: ${hash}\nREVIEWED-COMMIT: ${commit}\n`);
+      appended = true;
+    } catch (err) {
+      emit(
+        `Approval anchor not recorded: appending to ${path} failed (${err && err.message}). ` +
+          "The round yields no approval."
+      );
+      return;
+    }
+  }
+
+  if (!appended || typeof _git !== "function") return;
+  try {
+    await _git(["add", ...paths]); // t6
+    await _git(["commit", "-m", `chore(pdlc): record approval anchors ${hash}`]);
+  } catch {
+    // t6 is best-effort: the anchors are on disk either way, and §5.5's comparison
+    // reads the working tree, never the commit.
   }
 }
 
@@ -3865,6 +4001,7 @@ async function main({
     _agent: agentFn,
     _readFile: readFileFn,
     _listFiles: listFilesFn,
+    _appendFile: appendFileFn,
     _log: emit,
     _git: gitFn,
   };
