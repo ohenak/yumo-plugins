@@ -1586,8 +1586,10 @@ by `,`, so that ruling 2's forward half holds too). Such fragments are generated
 outcome must be returned.
 
 **For those fragments the assertion is cardinality, not a label** (SE F-15, SE Q-01). **No artifact
-states a precedence between rulings 2 and 3**: PLAN §9.2 item 3(c) says the walk decides *"whichever,
-if any, applies"* and TSPEC §8.5's rulings table is unordered. Both rulings exempt the site, so either
+states a precedence between rulings 2 and 3**: PLAN §9.2 item 3(c) directs the walk *"to decide which
+§8.5 ruling, if any, applies"* — quoted as it is written; v1.2 put a paraphrase inside quotation
+marks in the one paragraph that forswears paraphrase (SE F-24) — and TSPEC §8.5's rulings table is
+unordered. Both rulings exempt the site, so either
 answer is behaviourally correct — and a hand-authored `expected` label would therefore red a *correct*
 classifier, on the one row with no permitted red, ever. This document **does not invent the
 precedence**. These fragments are generated **without** an `expected` label; the assertion over them
@@ -2095,7 +2097,7 @@ not approximated. §8.4 residual 5 carries the operational form.
 
 **5. No artifact states a precedence between TSPEC §8.5's rulings 2 and 3.** A site can satisfy both —
 a call inside an `await`ed `Promise.all([...])` whose element is an arrow body followed by `,`. PLAN
-§9.2 item 3(c) instructs the walk to decide *"whichever, if any, applies"* and TSPEC §8.5's table is
+§9.2 item 3(c) instructs the walk *"to decide which §8.5 ruling, if any, applies"* and TSPEC §8.5's table is
 unordered, so **which** exemption a conforming classifier names is undetermined. Both exempt the site,
 so behaviour is well-defined and only the *label* is not. This document **declines to invent the
 precedence** (SE F-15): §4.4 asserts cardinality over those fragments — exactly one outcome, drawn from
