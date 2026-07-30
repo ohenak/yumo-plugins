@@ -2083,6 +2083,14 @@ dispatch**, never from a runtime attempt counter (§4a A-2/A-3):
 | A partial artifact with headings present and at least one section not satisfying §16's criterion | **Resume.** Carries the resume clause below. |
 | Structurally complete | Terminal — not dispatched |
 
+**Form selection for the non-spec classes (TE-v2 F-04).** The two predicates above are stated in
+top-level-section terms, which only the spec classes have. For the cross-review and LEARNINGS classes the
+form is selected on the class's own §16 criterion instead: **absent or empty ⇒ first attempt; present but
+not satisfying its criterion ⇒ resume.** The first-attempt text above is a **spec-class instruction** and
+is not emitted for them — a cross-review has no skeleton of top-level headings to write first, and
+instructing one would contradict §6.2's placement rule that its verdict section is written last. Their
+first-attempt text is the role's ordinary authoring instruction, unchanged by this feature.
+
 The resume clause names the section, so the agent does not have to re-derive it:
 
 ```
@@ -2298,6 +2306,12 @@ approval test:
 | One `VERDICT: ` line, catalogue value | **Yes** | per its value |
 | **Two or more** `VERDICT: ` lines, at least one catalogue value | **Yes** — the reviewer reached the end of the file | **No** — §6.3's fail-closed branch; the phase runs |
 | No `VERDICT: ` line, or no catalogue value among them | **No** — the episode continues | No |
+
+Both columns read the section located under **§1.2 rule 5**, fenced regions excluded. This matters most to
+the *terminal* column, whose justification below is "its presence means the reviewer got to the end": a
+reviewer stall-killed after quoting §6.2's template has a fenced `## Verdict` heading in its file and got
+nowhere near the end, so without the exclusion the row's justification is simply false and the wrapper
+stops on a truncated review (TE-v2 F-01, AT-65).
 
 No remediation prompt and no duplicate-deleting edit is specified: terminal-but-non-approving already
 costs exactly one re-review, which is the same price every other unreadable-verdict state pays, and it
