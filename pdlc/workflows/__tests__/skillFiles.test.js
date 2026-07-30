@@ -128,6 +128,36 @@ describe("SKILL prompt amendments (TSPEC §7.4)", () => {
       expect(content).toMatch(/last section/i);
     });
   }
+
+  // TSPEC §7.4 row 2 — the three author SKILLs: end every response with
+  // `REVISION-COMPLETE: yes|no` as its **last line**; observe the pacing contract. FSPEC §8.5.
+  const authorAmendments = [
+    { id: "RLH-SKILL-04", name: "se-author", file: "se-author/SKILL.md" },
+    { id: "RLH-SKILL-05", name: "pm-author", file: "pm-author/SKILL.md" },
+    { id: "RLH-SKILL-06", name: "te-author", file: "te-author/SKILL.md" },
+  ];
+
+  for (const { id, name, file } of authorAmendments) {
+    it(`${id}: ${name}/SKILL.md documents the REVISION-COMPLETE trailer and the pacing contract`, () => {
+      const content = readSkill(file);
+
+      // The marker literal and both permitted values.
+      expect(content).toContain("REVISION-COMPLETE:");
+      expect(content).toMatch(/REVISION-COMPLETE: yes/);
+      expect(content).toMatch(/REVISION-COMPLETE: no/);
+
+      // TSPEC §7.4: it is the response's **last line**.
+      expect(content).toMatch(/last line/i);
+
+      // The pacing contract (TSPEC §5.6): skeleton first, one top-level section per write,
+      // commit after each, at most MAX_AUTHORING_WRITE_BYTES per tool call.
+      expect(content).toMatch(/skeleton first/i);
+      expect(content).toMatch(/section per (write|tool call)/i);
+      expect(content).toMatch(/commit after each/i);
+      expect(content).toContain("MAX_AUTHORING_WRITE_BYTES");
+      expect(content).toMatch(/12,?000/);
+    });
+  }
 });
 
 // PROP-COMPAT-07, PROP-COMPAT-08: Worker and tech-lead skills are unmodified
