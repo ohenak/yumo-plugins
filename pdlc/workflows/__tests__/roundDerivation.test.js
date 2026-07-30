@@ -471,3 +471,151 @@ describe("RLH reviewLoop call sites (TSPEC §5.2 step 4, §3.9)", () => {
     expect(withoutDerivedIteration).toEqual([]);
   });
 });
+
+// ─────────────────────────── TSPEC §8.2 — property suite ───────────────────────────
+
+describe("RLH round-derivation properties (TSPEC §8.2)", () => {
+  const ROUND_TRIP_CASES = 300;
+  const LISTING_CASES = 200;
+
+  test(`RLH-PROP-FILENAME-01: parseReviewFilename round-trips the G-1…G-4 grammar, and each mutated part yields the reason that part governs [seed ${LITERAL_SEED}]`, () => {
+    expect(devModule.FILENAME_FAILURES).toEqual(EXPECTED_FILENAME_FAILURES);
+
+    const rng = seeded(SEED);
+    const failures = [];
+
+    for (let n = 1; n <= ROUND_TRIP_CASES; n++) {
+      const drawn = genConformingCase(rng);
+
+      // (i) Round trip: a basename assembled from the grammar parses back to the role, doc type
+      // and round it was assembled from. The un-suffixed form round-trips to round 1 (§5.2).
+      const parsed = devModule.parseReviewFilename(drawn.value);
+      const roundTripped =
+        parsed &&
+        parsed.ok === true &&
+        parsed.role === drawn.role &&
+        parsed.docType === drawn.docType &&
+        parsed.round === drawn.round;
+      if (!roundTripped) {
+        failures.push(
+          describeFailure(
+            `case ${n}: expected round-trip to ${drawn.role}/${drawn.docType}/${drawn.round}, got ${JSON.stringify(parsed)}`,
+            drawn,
+            (candidate) =>
+              typeof candidate.value === "string" && candidate.value.startsWith("CROSS-REVIEW-"),
+          ),
+        );
+      }
+
+      // (ii) Every deliberately mutated part yields `ok: false` with the reason that part
+      // governs — one mutation per case, so the reason is never ambiguous.
+      for (const part of MUTATION_PARTS) {
+        const { basename, reason } = mutateBasename(rng, drawn, part);
+        const result = devModule.parseReviewFilename(basename);
+        if (!result || result.ok !== false || result.reason !== reason) {
+          failures.push(
+            `case ${n} [seed ${SEED}] mutation "${part}": ${JSON.stringify(basename)} expected { ok: false, reason: ${JSON.stringify(reason)} }, got ${JSON.stringify(result)}`,
+          );
+        }
+      }
+    }
+
+    expect(failures).toEqual([]);
+  });
+
+  test(`RLH-PROP-WINDOW-01: deriveRoundWindow's window invariant, and the partition stated over parseReviewFilename's total three-way split [seed ${LITERAL_SEED}]`, () => {
+    const rng = seeded(SEED);
+    const failures = [];
+    let otherDocTypeDraws = 0;
+    let weakFormFalsifiedOn = 0;
+
+    for (let n = 1; n <= LISTING_CASES; n++) {
+      const targetDocType = rng.pick(DOC_TYPES.slice());
+      const listing = genListing(rng, targetDocType);
+      const rows = listing.rows;
+      const w = devModule.deriveRoundWindow(rows, targetDocType);
+
+      const note = (message) =>
+        failures.push(
+          describeFailure(`case ${n}: ${message}`, listing, (candidate) => {
+            const probe = devModule.deriveRoundWindow(candidate.rows, targetDocType);
+            return !probe || probe.ok !== true;
+          }),
+        );
+
+      // The generator never emits two files claiming round 1 for one (role, doc type), so no
+      // case here trips §5.2 step 5 — the invariant below is stated over exactly those listings.
+      if (!w || w.ok !== true) {
+        note(`expected ok: true, got ${JSON.stringify(w)}`);
+        continue;
+      }
+
+      // (i) Window invariant: endIndex === startIndex + MAX_REVIEW_ROUNDS - 1, and startIndex is
+      // one past the highest index present (1 when none is).
+      if (w.endIndex !== w.startIndex + EXPECTED_WINDOW_WIDTH - 1) {
+        note(`window width: ${w.startIndex}..${w.endIndex}`);
+      }
+      const indices = allPresentIndices(w.present);
+      const expectedStart = indices.length ? Math.max(...indices) + 1 : 1;
+      if (w.startIndex !== expectedStart) {
+        note(`startIndex ${w.startIndex}, expected ${expectedStart} over present ${JSON.stringify(indices)}`);
+      }
+      if (indices.length && !indices.every((i) => i < w.startIndex)) {
+        note(`startIndex ${w.startIndex} does not exceed every present index ${JSON.stringify(indices)}`);
+      }
+
+      // (ii) The partition, stated over `parseReviewFilename`'s TOTAL three-way split — NOT over
+      // this return. A conforming basename for another doc type is in neither `entries` nor
+      // `skipped` (§5.2), so "skipped ∪ entries partitions the input" is false on a correct
+      // implementation; the restated form is that every basename falls in exactly one of
+      // entries / other-doc-type / skipped, and `deriveRoundWindow` returns the first and third.
+      const unique = rows.filter((b, i) => rows.indexOf(b) === i);
+      const expectedEntryPairs = [];
+      const expectedSkipped = [];
+      let otherThisCase = 0;
+
+      for (const basename of unique) {
+        const p = devModule.parseReviewFilename(basename);
+        const isEntry = p && p.ok === true && p.docType === targetDocType;
+        const isOther = p && p.ok === true && p.docType !== targetDocType;
+        const isSkipped = p && p.ok === false;
+        if ([isEntry, isOther, isSkipped].filter(Boolean).length !== 1) {
+          note(`${JSON.stringify(basename)} is not in exactly one class: ${JSON.stringify(p)}`);
+          continue;
+        }
+        if (isEntry) expectedEntryPairs.push(`${p.role}|${p.round}`);
+        if (isOther) otherThisCase++;
+        if (isSkipped) expectedSkipped.push({ basename, reason: p.reason });
+      }
+      otherDocTypeDraws += otherThisCase;
+      if (otherThisCase > 0) weakFormFalsifiedOn++;
+
+      const actualPairs = [];
+      const entries = w.present instanceof Map ? Array.from(w.present.entries()) : Object.entries(w.present || {});
+      for (const [role, roundList] of entries) {
+        for (const round of roundList) actualPairs.push(`${role}|${round}`);
+      }
+
+      const dedupedExpected = expectedEntryPairs.filter((p, i) => expectedEntryPairs.indexOf(p) === i);
+      if (JSON.stringify(actualPairs.slice().sort()) !== JSON.stringify(dedupedExpected.slice().sort())) {
+        note(
+          `entries mismatch: present holds ${JSON.stringify(actualPairs.sort())}, this doc type's conforming basenames are ${JSON.stringify(dedupedExpected.sort())}`,
+        );
+      }
+
+      // `skipped` holds exactly the grammar rejects, in the listing's own order, deduplicated by
+      // basename — never a conforming basename for another doc type.
+      if (JSON.stringify(w.skipped) !== JSON.stringify(expectedSkipped)) {
+        note(`skipped mismatch: got ${JSON.stringify(w.skipped)}, expected ${JSON.stringify(expectedSkipped)}`);
+      }
+    }
+
+    expect(failures).toEqual([]);
+
+    // Anti-vacuity: the generator must actually produce the case that falsifies v1.1's weaker
+    // form (TSPEC §8.2, PLAN §7.2) — otherwise this property would pass under the very
+    // implementation the restatement exists to catch.
+    expect(otherDocTypeDraws).toBeGreaterThan(0);
+    expect(weakFormFalsifiedOn).toBeGreaterThan(0);
+  });
+});
