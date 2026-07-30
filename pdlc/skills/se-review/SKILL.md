@@ -171,7 +171,14 @@ Write to `docs/{feature-name}/CROSS-REVIEW-software-engineer-{DOCUMENT-TYPE}[-v{
 **Approved** / **Approved with minor changes** / **Needs revision**
 
 > Any High or Medium finding → Needs revision (mandatory).
+
+## Verdict
+
+VERDICT: <verdict-value>
+{"high": N, "medium": N, "low": N}
 ```
+
+The `## Verdict` section is the **last section** of the cross-review file — nothing follows it, and it is written after every other section is complete. Its grammar is fixed; see the `## Verdict` section at the end of this SKILL.
 
 ---
 
@@ -207,3 +214,27 @@ VERDICT: <verdict-value>
 - The JSON object appears on the immediately following line with no intervening text
 - N values are the count of High / Medium / Low findings in your cross-review
 - Trailing newline after the JSON object is permitted
+
+**Still required — and not an either/or with the file field.** You emit this trailer in your response *and* the `VERDICT:` field in the trailing `## Verdict` section of your cross-review file. The response trailer feeds the convergence gate inside this invocation; the file field feeds the next invocation. Omitting either one breaks a different mechanism.
+
+---
+
+## Verdict
+
+This is the last section of this SKILL, and it describes the **last section of your cross-review file**. After `## Recommendation` — and only once every other section of `docs/{feature-name}/CROSS-REVIEW-software-engineer-{DOCUMENT-TYPE}[-v{N}].md` is written — append a `## Verdict` section in exactly this grammar:
+
+```markdown
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 2, "low": 5}
+```
+
+Rules:
+
+- The heading is exactly `## Verdict` — one `##`, that capitalisation, nothing else on the line.
+- `VERDICT: ` starts the line, followed by exactly one of (case-sensitive): `Approved`, `Approved with minor changes`, `Needs revision` — the same catalogue and the same mapping as `## Approval Rules` above.
+- The counts JSON is on the immediately following non-empty line: a single object with exactly the keys `high`, `medium`, `low` in that order, each a non-negative integer, matching your `## Findings` table.
+- Write **exactly one** `VERDICT:` line in this section. A second one is read as fail-closed and your approval will not be honoured.
+- This section is the **last section** of the file: nothing follows it. Its position is the signal that the file is complete — a verdict written mid-file would make a truncated write look finished. Write it last, in one edit, after everything else.
+
