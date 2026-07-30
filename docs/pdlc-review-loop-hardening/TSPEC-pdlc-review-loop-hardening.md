@@ -1154,8 +1154,8 @@ determined, the field is the literal `unavailable`.
 Runs once per skip-eligible phase entry, after `deriveRoundWindow` and before `reviewLoop`.
 
 ```
-candidate ← startIndex - 1        // the single highest round present; 0 ⇒ no candidate ⇒ run
-if candidate < 1: run the phase
+candidate ← startIndex - 1        // the single highest round present
+if candidate < 1: → NO APPROVAL RECORD
 
 TIER 1 — the candidate round's per-role CROSS-REVIEW files
   for each reviewer role r in this phase's PHASE_DISPATCH entry's `reviewers` pair:
@@ -1184,7 +1184,17 @@ Four properties, each load-bearing:
   fan-out is bounded at **two `_readFile` per phase entry** — one per role in the reviewer pair.
 - **No cross-tier completion.** One role from tier 1 plus one from tier 2 never combine.
 
-Then §5.5 runs. Approval alone never grants a skip; approval plus `FRESH` does.
+**Every exit of this function that is not an approving record leads to running the phase, so it goes
+to §2.5 step G — never to `reviewLoop` directly.** `NO APPROVAL RECORD` and `NOT APPROVING` are the
+two such exits, and they are the state AC-2.3b calls "approval is absent"; §5.5's `STALE` /
+`UNEVALUABLE` are the "or stale" half and converge on the same gate. This is G-INV; a `run the phase`
+arrow drawn from here straight to step 5 is the defect it exists to forbid. An approving record
+proceeds to §5.5 — approval alone never grants a skip, approval plus `FRESH` does.
+
+`reviewFiles` — the `Map<`${role}:${round}`, { verdict, verdictReadable, anchorHash }>` this search
+builds from its tier-1 reads — is carried out of the search alongside the verdict, whichever exit is
+taken, because §5.6.1 consumes it (§3.9). On the `candidate < 1` exit and on the forced path it is
+**empty, not absent**, and §5.6.1 rule 4 rules that case.
 
 ### 5.5 Staleness
 
@@ -1199,8 +1209,8 @@ export function isStale(recordedHash, documentBytes) {
 | Result | Cause | Effect |
 |---|---|---|
 | `FRESH` | the document's bytes now digest to the recorded hash | record `"⏭"`, skip the phase |
-| `STALE` | they do not | run the phase |
-| `UNEVALUABLE` | absent, duplicated or unparseable hash; or the document could not be read | run the phase, and note it in the report |
+| `STALE` | they do not | the phase would otherwise run ⇒ §2.5 step G |
+| `UNEVALUABLE` | absent, duplicated or unparseable hash; or the document could not be read | the phase would otherwise run ⇒ §2.5 step G, and note it in the report |
 
 Three rules with teeth:
 
@@ -1401,10 +1411,17 @@ would have been the one site that silently kept teaching the operator the old fi
 **`all` means six phases, not five** — `new Set(valid)` with `valid.length === 6`. AT-29 asserts the
 message text verbatim, so it is the regression guard for both halves.
 
-**Precedence.** `forcePhases` overrides a **recorded approval** (§5.4/§5.5 are skipped for a forced
-phase). It does **not** override a **recorded failure**: an unresolved POSTMORTEM (§5.8) refuses the
-phase even under force. Forcing is an operator saying "re-run this despite approval", not "ignore
-that this previously failed unresolved."
+**Precedence.** `forcePhases` overrides a **recorded approval**: §5.4 and §5.5 — and only those, i.e.
+§2.5 steps **3 and 4** — are skipped for a forced phase. **Step 2 is not skipped.** `deriveRoundWindow`
+still runs, because `reviewLoop` needs `startIndex`; entering it with the shipped `iteration = 1`
+default on a branch that already carries `-v1` files re-creates **H-1**, on the one path an operator
+reaches for precisely because the phase has been reviewed before (AT-01a). It does **not** override a
+**recorded failure**: a forced phase passes §2.5 step G like any other run, and an unresolved
+POSTMORTEM (§5.8) refuses it. Forcing is an operator saying "re-run this despite approval", not
+"ignore that this previously failed unresolved."
+
+A forced phase's `reviewFiles` is **empty**, since step 3 is what populates it. That is a
+`selectMode` rule-4 input, not a greenfield one (§5.6.1).
 
 `orchestrate-queue` gets no force surface at all. The queue is an unattended driver; forcing is an
 attended act, and O-5's direct-invocation path is where it belongs.
@@ -1419,12 +1436,12 @@ export function checkPostmortem({ phase, feature, _readFile })
 //   | { status: "unresolved", recommendation }  marker present and `no`, or absent/malformed
 ```
 
-**Where it is called from, and with what power,** is fixed by §2.5 and is part of this contract:
-`checkPostmortem` is a **query**, not a gate. It never decides on its own whether a phase runs; the
-caller does, and the caller's power differs by path — unconditional refusal on the forced path,
-refusal on the would-otherwise-run path, and reporting only on the skip path. An implementation that
-puts the refusal *inside* `checkPostmortem`, or calls it ahead of the approval skip, reproduces the
-inversion AC-2.3b exists to fix.
+**Where it is called from, and with what power,** is fixed by §2.5's G-INV and is part of this
+contract: `checkPostmortem` is a **query**, not a gate. It never decides on its own whether a phase
+runs. It has exactly two callers — §2.5 step G, which refuses on `unresolved` and which every
+path that runs the phase passes through, and step 4's `FRESH` branch, which reports only. An
+implementation that puts the refusal *inside* `checkPostmortem` inverts AC-2.3b; one that reaches
+step 5 without calling it violates G-INV.
 
 The marker is **positionally unconstrained** within the file — a `RESOLVED:` line anywhere outside a
 fenced region counts — and is **human-written only**. No agent and no script ever writes `yes`; a
