@@ -591,7 +591,9 @@ over the queue's own `rewriteStatus`, `DEV_ENTRY` closes over `__queue`'s row he
 implementation differs by caller, which is exactly what `rtDevInjections`, a caller-independent
 bundle of adapters, cannot express. AT-64 (§8.5) derives its expected seam set from `main()`'s
 parameter list rather than a hand-written list, and must therefore account for `_recordHalt`'s
-per-entrypoint supply rather than asserting it appears in `rtDevInjections`.
+per-entrypoint supply rather than asserting it appears in `rtDevInjections`. `_recordHalt` is
+**wired, not exempt**, under §8.5's classification: `QUEUE_ENTRY`'s `_runPipeline` closure (§7.2 edit
+2b) and `DEV_ENTRY` are the two places that satisfy it, and if either is dropped AT-64 reds.
 
 ## 4. Data Model
 
@@ -1714,10 +1716,41 @@ nothing else exported, no static `import`, a top-level `return`, IO routed throu
   `child_process` and `git fetch origin`, so a substring test matches on a correct bundle and the
   assertion becomes noise. FSPEC v1.3 struck the bare forms from AT-19 for exactly this measured
   reason.
-- an await-discipline assertion over `orchestrate-dev.js`'s **source**: for each seam name in the
-  set derived from `main()`'s parameter list, every call site of the corresponding local function
-  variable is preceded by `await`. This is a lint-shaped test over source text, and it is the only
-  mechanical guard that exists for the async/sync asymmetry of §8.1.
+- an await-discipline assertion over `orchestrate-dev.js`'s **source**, scoped to **FSPEC AT-19's
+  closed thirteen-name set** — `_agent`, `_readFile`, `_writeFile`, `_appendFile`, `_checkFile`,
+  `_listFiles`, `_git`, `_checkCi`, `_mergeWorktree`, `_recordHalt`, `_rebaseOntoDefault`,
+  `_dodVerifyLoop`, `_raisePrAndVerifyCi` — and **not** to a set derived from `main()`'s parameter
+  list.
+
+**Why the parameter-list derivation is wrong here, measured at HEAD `ef4705a`.** The two guards
+answer different questions and must not share a derivation. AT-64 asks *is every capability wired*,
+which must be derived so a new seam cannot be forgotten. AT-19 asks *is every asynchronous call
+awaited*, which is a property of the seam's **implementation**, not of its position in a parameter
+list — and `main()`'s parameter list contains parameters that are correctly called without `await`:
+
+- **`_now` is a clock.** It is a `main()` parameter threaded down to `checkPrCi`, whose body calls it
+  synchronously at four sites (`const start = _now();`, `completionStart = _now();`, and the two
+  elapsed-time comparisons `_now() - completionStart` / `_now() - start`). A clock must not be
+  awaited; awaiting it would make every comparison compare a promise.
+- **`_phaseDodEnabled` / `_phasePubEnabled` are booleans**, never called at all.
+
+So a parameter-list derivation reds AT-19 on the shipped, correct source — and §8.1 calls this test
+"the only thing standing between this design and this repo's most repeated defect class", so a test
+that must be loosened ad hoc to go green is worse than none. The FSPEC supplies a closed list
+precisely because the membership question is a design judgement, not a derivation; AT-64, below,
+is what stops that list from being the thing that rots.
+
+**Two call-site shapes the assertion must classify explicitly, or it reds on correct source:**
+
+| Shape | Example at HEAD | Ruling |
+|---|---|---|
+| **Alias** — the seam is destructured under a local name (`_readFile: readFileFn`, `_agent: rawAgentFn`) and called through that name | `await readFileFn(planPath)`, `await checkFileFn(reqPath)` | the assertion resolves the alias from `main()`'s destructuring pattern and scans **the local name**, not the `_`-prefixed one. Scanning the `_` name alone finds zero call sites and passes vacuously — the worst possible failure for this test |
+| **Returned promise** — the call is the entire body of an arrow function, or the operand of a `return`, so its promise is awaited by the caller | `` const agentFn = (skill, prompt, opts) => rawAgentFn(skill, prompt, { model: MODEL_DEFAULT, ...opts }); `` | **exempt, and the wrapper's own name inherits the obligation.** `agentFn` is then itself scanned as an alias of `_agent`, and every `await agentFn(…)` site satisfies the rule. Requiring `await` inside the wrapper would be a redundant await on a correct construction |
+
+Every other call site of an aliased thirteen-list seam must be lexically preceded by `await`,
+including calls whose result is discarded. The assertion runs over `orchestrate-dev.js` and
+`orchestrate-queue.js` **source** (permitted at any level — it reads source, not `dist/`, so §8.4's
+L2 prohibition does not apply).
 
 **AT-64 — the composition root wires every seam.** Asserted against the **production** composition
 root with **no injection whatsoever**: `main`'s default-parameter behaviour and `rtDevInjections`'s
@@ -1728,15 +1761,57 @@ parameter list for names matching `/^_/` and requires each to be satisfied. A ha
 the artefact that rots: the next seam added to `main()` would leave the test green while the runtime
 receives `undefined` and throws on first use.
 
-Two derivation caveats the test must encode explicitly, or it will red on a correct tree:
+**Every `_`-prefixed parameter must be either *wired* or *exempt*, and exemption is a predicate over
+the parameter's own declaration — not a list of names.** A list of names is the same artefact as a
+hand-maintained seam list: it relocates the rot rather than removing it, and it says nothing about
+*why* a name is on it, so nothing distinguishes a legitimate policy parameter from a real capability
+seam somebody parked there to get green.
 
-1. `_recordHalt` is supplied **per entrypoint** (`QUEUE_ENTRY` / `DEV_ENTRY`), not by
-   `rtDevInjections` (§3.10). It is satisfied by the entrypoint text, not the injections object.
-2. `_phaseDodEnabled`, `_phasePubEnabled`, `_now` and `_sleep` are **policy/clock** parameters, not
-   capability seams, and are legitimately left to their defaults. The test's rule is therefore "every
-   `_`-prefixed parameter is either present in `rtDevInjections`, present in an entrypoint's
-   injection object, **or** on an explicitly-declared exemption list that the test itself asserts is
-   fully consumed" — an unused exemption entry is also a failure, so the list cannot silently rot.
+**Wired** means: present in `rtDevInjections`, **or** present in a bundle entrypoint's injection
+object — which for `QUEUE_ENTRY` includes the `_runPipeline` closure's `__dev.main({…})` argument
+(§7.2 edit 2b), the only place `_recordHalt` is supplied on the queue path.
+
+**Exempt** means the parameter's declaration in `main()`'s destructuring pattern matches exactly one
+of three forms, each decided from source text:
+
+| Form | Test | Members at HEAD `ef4705a` |
+|---|---|---|
+| **E-1 — policy value** | the default is an identifier resolving to a module-level declaration whose value is **not a function**, or a non-function literal | `_phaseDodEnabled = PHASE_DOD_ENABLED`, `_phasePubEnabled = PHASE_PUB_ENABLED` |
+| **E-2 — pass-through** | the destructuring element has **no `=` initialiser at all**; the parameter's default is declared by the callee it is threaded into | `_now`, `_sleep` (defaulted inside `checkPrCi` as `_now = () => Date.now()`, `_sleep = sleep`) |
+| **E-3 — agent-composite** | the default is a function **declared in this module** whose own destructured parameter list contains `_agent` | `_rebaseOntoDefault = rebaseOntoDefault`, `_dodVerifyLoop = dodVerifyLoop`, `_raisePrAndVerifyCi = raisePrAndVerifyCi` |
+
+E-3 is the form the previous four-name list omitted, and its omission is why the rule as written in
+v1.0 **red on a correct tree**: measured at HEAD, `main()` carries sixteen `_`-prefixed parameters
+while `rtDevInjections` returns nine, leaving `_rebaseOntoDefault`, `_dodVerifyLoop` and
+`_raisePrAndVerifyCi` satisfied by nothing. After this feature the counts are twenty-one and thirteen
+and the same three remain. They are not capability seams: each reaches the outside world only through
+`_agent`, which is itself wired, so injecting them would inject a second copy of a capability the
+composition root already supplies.
+
+**E-3 is narrow by construction, and that is what defends the *addition* direction.** The declared
+`_agent` parameter is the discriminator, and no capability seam has one: `defaultReadFile`,
+`defaultWriteFile`, `defaultAppendFile`, `defaultListFiles` and `checkFileNonEmpty` reach `fs`;
+`defaultGit`, `mergeWorktree` and `checkPrCi` reach `child_process` through an `execFn`; `agent`,
+`parallel`, `pipeline`, `phase` and `log` are host globals with no module declaration at all, so E-3
+cannot apply to them; and `defaultRecordHalt` — a deliberate no-op — declares no `_agent` either, so
+it stays on the wired side where §7.2 edit 2b has to satisfy it. A future seam cannot be exempted by
+adding a name; it can only be exempted by acquiring an `_agent` parameter, which is a change to its
+signature that a reviewer sees.
+
+**Two anti-rot clauses, one per direction:**
+
+1. **A parameter classified exempt that is *also* wired is a failure.** It means the predicate has
+   drifted into admitting a real seam, and the test says so rather than passing quietly. (Green on
+   the tree today: none of the seven exempt names appears in `rtDevInjections` or in either
+   entrypoint.) This is the direction-symmetric replacement for "an unused exemption entry is also a
+   failure".
+2. **Evidence must resolve.** E-1's default identifier must have a module-level declaration and E-3's
+   must be a function declared in this file. A parameter whose default identifier no longer resolves
+   is a **failure**, never a silent exemption — that is the removal-direction guard the old
+   fully-consumed clause supplied, restated for a predicate.
+
+The test reports the derived classification for every parameter, so the failure message names which
+parameter fell in neither class rather than only that a count disagreed.
 
 ## 9. Traceability
 
