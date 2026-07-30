@@ -1703,6 +1703,14 @@ for the pass path.
 
 ### 8.3 AT → jest file map
 
+**Test names are namespaced `RLH-AT-{N}`**, not bare `AT-{N}`. The collision is real and measured:
+`__tests__/documentOracles.test.js` at HEAD carries
+`test("AT-22 [red-until-L-06]: coveredViolations(LIVE_ROOT) is empty post-landing", …)` from the
+preceding feature, while this feature's AT-22 is "halt does not claim an unwritten POSTMORTEM". Two
+tests named `AT-22` in one suite, owned by different features, make a failure report ambiguous
+exactly when it matters. The table below uses FSPEC's bare ids because that is how the FSPEC numbers
+them; the **jest test name** for every row is `RLH-AT-{N}`.
+
 | ATs | Concern | File |
 |---|---|---|
 | AT-01 … AT-07, AT-63 | round-index derivation, filename grammar, un-suffixed round 1, clean branch, unenumerable directory, non-conforming basenames, overwrite guard, per-role duplicate halt | `__tests__/roundDerivation.test.js` **(new)** |
@@ -1717,7 +1725,24 @@ for the pass path.
 | AT-61 | each trailer reason distinguishable in the report | `pacingWrapper.test.js` |
 | AT-65, AT-66 | fenced-region exclusion, both directions plus unclosed fence | `__tests__/scanLines.test.js` **(new)** |
 
-Existing suites that must stay green and will need mechanical updates: `reviewLoop.test.js` (the
+**The gate is "no new failures against a measured baseline", not "the suite is green."** The suite is
+not green at HEAD and has not been for the life of this branch. Measured by
+`cd pdlc/workflows && npm test` at HEAD `ef4705a`:
+
+```
+Test Suites: 1 failed, 35 passed, 36 total
+Tests:       1 failed, 70 skipped, 1038 passed, 1109 total
+```
+
+The single failure is `documentOracles.test.js`'s **intentional** red placeholder
+`AT-22 [red-until-L-06]`, carried deliberately from the preceding feature. Stating the gate as
+absolute green would make it unsatisfiable on arrival, and the predictable response — deleting or
+skipping that placeholder to get green — would discard another feature's deferral marker. The gate
+this feature is held to is therefore: **1038 passing / 1 failing / 70 skipped or better, with the one
+failure still being `documentOracles.test.js` `AT-22 [red-until-L-06]` and no other.** A second
+failure, or a *different* single failure, is a regression.
+
+Existing suites that will need mechanical updates: `reviewLoop.test.js` (the
 `iteration` parameter is now supplied at every call site), `parseVerdict.test.js` (unchanged
 behaviour; new file-path callers), `orchestrateQueue.test.js` (`updateQueueStatus`'s return shape),
 `pipelineWiring.test.js` (the six new `main()` parameters), `dodPhase.test.js` / `shipPhase.test.js` /
