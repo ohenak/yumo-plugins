@@ -2037,6 +2037,123 @@ function windowEnd(startIndex) {
   return startIndex + MAX_REVIEW_ROUNDS - 1;
 }
 
+// ─── TSPEC §5.6.3 — the two prompt kinds, and the section walk behind them ────
+
+/** The doc type an artifact path names, e.g. `docs/f/FSPEC-f.md` → `"FSPEC"`. */
+function docTypeFromPath(path) {
+  const m = /\/([A-Z]+)-[^/]+\.md$/.exec(String(path ?? ""));
+  return m ? m[1] : null;
+}
+
+/**
+ * §5.9's artifact class for a target path. The three special classes are
+ * recognised by their filename convention; everything else is a spec-class
+ * document, which is also the safe default for Phase CR's directory target
+ * (`topLevelSections` of an unreadable target is empty, so the wrapper's
+ * unmeasurable-target escape takes over — see `dispatchAndVerify`).
+ */
+function artifactClassOf(path) {
+  const name = String(path ?? "");
+  if (/\/CROSS-REVIEW-[^/]*$/.test(name)) return "cross-review";
+  if (/\/CODE_REVIEW-[^/]*$/.test(name)) return "code-review";
+  if (/\/LEARNINGS-[^/]*$/.test(name)) return "LEARNINGS";
+  return "spec";
+}
+
+/**
+ * The heading the resume prompt names — **never empty** (§15.5's closing
+ * guarantee). It reuses the same module-scope walk `isComplete` uses; a second
+ * heading walker would be a second oracle for the same question.
+ *
+ * Resolution order:
+ * 1. an absent or blank target has no sections at all, so the resume prompt names
+ *    the skeleton rather than a heading;
+ * 2. a cross-review is scored whole-file (§5.9), so its one unwritten "section" is
+ *    the trailing verdict block — the only thing its criterion can be missing;
+ * 3. otherwise the first top-level section whose body is empty, by document order;
+ * 4. otherwise the first required heading `isComplete` reports missing.
+ *
+ * @param {string} artifactClass
+ * @param {string} docType
+ * @param {string|null} text
+ * @returns {string}
+ */
+function firstUnwrittenSection(artifactClass, docType, text) {
+  const body = String(text ?? "");
+  if (body.trim() === "") return "the document skeleton (no content on disk yet)";
+  if (artifactClass === "cross-review" && !crossReviewComplete(body)) {
+    return '(the trailing "## Verdict" section)';
+  }
+  const sections = topLevelSections(body);
+  const unwritten = sections.find((s) => isEmptyBody(s.body));
+  if (unwritten) return unwritten.title;
+  const { missing } = isComplete(artifactClass, docType, body);
+  if (Array.isArray(missing) && missing.length > 0) return missing[0];
+  return "the closing pass over the whole document";
+}
+
+/**
+ * §5.6.3's shared clause, carried by every wrapped authoring **and** review
+ * dispatch. `skillFiles.test.js` pins the same three literals in the SKILL
+ * templates, so the runtime prompt and the SKILL text say one thing.
+ */
+const PACING_CONTRACT_CLAUSE = [
+  "Pacing contract (H-3): lay down the skeleton first, then write ONE top-level",
+  "section per edit, keep every single write under 12,000 bytes, and commit after",
+  "each section. A monolithic write is killed by the 180 s stall watchdog and loses",
+  "everything it had not yet flushed.",
+].join(" ");
+
+/** The greenfield opener for a target that is not on disk yet. */
+function skeletonClause() {
+  return (
+    "This artifact is not on disk yet. Begin by laying out its top-level headings " +
+    "as a skeleton, then fill them one at a time under the pacing contract above."
+  );
+}
+
+/**
+ * The resume opener (§5.6.3 clause 2, FSPEC §15.5): the target already carries
+ * partial content, so the dispatch continues it instead of starting over. The
+ * section count and the heading are computed by THIS script's walk — the agent is
+ * never asked where it got to.
+ */
+function resumeClause(artifactClass, docType, text, targetPath) {
+  const { T, S } = isComplete(artifactClass, docType, text);
+  return [
+    `RESUMED: ${targetPath} already carries partial content`,
+    `(${S} of ${T} top-level sections carry a body).`,
+    "Read the document on disk first and do NOT rewrite what is already written.",
+    `The first unwritten section is ${firstUnwrittenSection(artifactClass, docType, text)}.`,
+    "Continue from there, one section per write, under the pacing contract above.",
+  ].join(" ");
+}
+
+/**
+ * The continuation opener (§5.6.3 clause 3, FSPEC §15.5): a revision-mode episode
+ * is addressing a specific round's findings on a document an earlier, interrupted
+ * dispatch may already have partly edited. The five clauses `RLH-AT-48` inspects
+ * are all here, and the cross-review basenames are the ones the episode's own
+ * refresh actually saw on disk — never a name derived from arithmetic.
+ *
+ * The round is written in lower case deliberately: the acceptance harness reads
+ * `Iteration N` out of prompts to key episodes, and a capitalised restatement here
+ * would re-key the episode mid-flight.
+ */
+function continuationClause(round, reviewBasenames, targetPath) {
+  const named = reviewBasenames.length > 0 ? reviewBasenames.join(", ") : "the cross-reviews of this round";
+  return [
+    `CONTINUATION of round ${round}. ${targetPath} may have been partially edited`,
+    "already by an earlier dispatch that was interrupted mid-write.",
+    `Address the findings in: ${named}.`,
+    "Read the document on disk first and apply only what is not already reflected",
+    "there; do NOT rewrite passages that already carry the change.",
+    "When every finding this round owes has been applied, end your reply with the",
+    "line `REVISION-COMPLETE: yes`. If you were stopped before finishing, end it",
+    "with `REVISION-COMPLETE: no` instead.",
+  ].join(" ");
+}
+
 /**
  * Build the reviewer dispatch prompt. Iteration 1 is a full first-pass review.
  * Iteration ≥2 appends the delta re-review protocol so the reviewer reads its own
