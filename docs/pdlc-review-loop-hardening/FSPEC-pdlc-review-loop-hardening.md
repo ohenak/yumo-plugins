@@ -1991,6 +1991,120 @@ SKILLs, `dod-verify` and `harvest-learnings`.
 
 ## 16. FSPEC-COMPLETE-01 — Structural completeness per wrapped artifact class
 
+**Linked requirements:** AC-3.4, AC-3.5 scope (c), AC-3.5b, AC-3.5d, AC-4.7a. **Discharges O-7.**
+
+### 16.1 What this criterion is and is not
+
+**Is:** the **terminal** test of §15.4 (with §8.4's trailer clause in revision mode), and the source of
+the section count `{S} of {T}` that §15.4's report prints.
+
+**Is not:** the progress predicate. §15.3 is a single mode-independent byte-change test and this section
+may not redefine it (v1.5, TE-v5 F-05). In particular this criterion **can no longer make a partial write
+score as no-progress** — the defect that halted a visibly growing artifact. Nothing here is counted for
+progress purposes; the two named reporting sub-cases of §15.3 refer to this criterion, but the predicate
+does not.
+
+**The term.** AC-3.5 scope (c) names the unit **wrapped artifact class**, because "document type" was
+already taken for the *reviewed* doc type of §4 and §9. There are four classes, and the six spec documents
+are six of them.
+
+### 16.2 Spec documents (six classes)
+
+Common shape for all six: an artifact is structurally complete when **every** top-level `##` heading
+declared in its skeleton has a **non-empty body** — at least one non-blank, non-heading line between it
+and the next `##` heading (or EOF) — **and** the class-specific required headings below are all present.
+
+| Class | Required top-level headings (by normalised title, numeric prefixes permitted) |
+|---|---|
+| **REQ** | Problem / Context, Goals, Non-Goals *(or Scope)*, Constraints, Acceptance Criteria, Risks, Obligations *(or Open Questions)* |
+| **FSPEC** | Overview *(or Scope)*, Linked Requirements, Behavioral Flow, Business Rules, Edge Cases and Error Scenarios, Acceptance Tests, Open Questions |
+| **TSPEC** | Overview, Architecture *(or Design)*, Interfaces, Data Model *(or State)*, Test Strategy, Open Questions |
+| **PLAN** | Overview, Batches *(or Tasks)*, Dependencies, Verification |
+| **PROPERTIES** | Overview, Properties, Oracles, Fixtures |
+| **DECISIONS** | Context, Options Considered, Decision, Consequences |
+
+| Rule | Specification |
+|---|---|
+| Heading matching | Case-insensitive, whitespace-normalised, a leading `N.` / `N)` numeric prefix ignored, and the parenthesised alternatives above are accepted as equivalent |
+| Extra headings | Permitted and counted in `T`. A document richer than the minimum is not incomplete. |
+| Order | **Not** required. Enforcing order would fail a legitimate reordering and adds nothing to the terminal question. |
+| Missing required heading | Not complete, however much prose the rest carries |
+| Artifact absent / empty | Not complete. Presence of a non-empty file is **never** sufficient (AC-3.4). |
+| `T` and `S` for the report | `T` = count of top-level headings present; `S` = count with non-empty bodies. `T` is measured, not fixed, so a skeleton with extra sections reports honestly. |
+| Placeholder bodies | A body consisting only of `TBD`, `TODO`, `_TBD_`, or an HTML comment counts as **empty**. Otherwise a skeleton written with placeholders would score complete on write 1. |
+
+**Why heading-plus-non-empty-body and not something semantic.** The criterion has to be script-decidable
+(C-5) over the only evidence available — the artifact on disk (§4a A-9). Anything richer would need an
+agent in the terminal decision, which is the loop this feature exists to bound. The criterion is
+deliberately shallow; §15.4's counters, not this test, are what bound a badly behaved episode.
+
+### 16.3 Cross-review files (one class) — fixed at REQ altitude
+
+A `CROSS-REVIEW-{role}-{doc-type}[-v{N}].md` is structurally complete when it carries **§6's persisted
+verdict field, parseable as exactly one catalogue value**. This document **implements** that criterion; it
+does not choose a new one (AC-3.5 scope (c) already fixes it).
+
+| Property | Consequence |
+|---|---|
+| The verdict field is written **last** (§6.2 puts `## Verdict` as the file's final section) | It is a sound terminal marker: its presence means the reviewer got to the end |
+| It is the same check §6 already performs for approval | One parser, one meaning of "this review is finished" |
+| A cross-review is written in one sub-budget call (AC-3.2b) | The write itself is progress under §15.3, terminal is decidable, and the wrapper does **not** re-dispatch a reviewer over a finished file |
+| A re-dispatch onto a **partial** cross-review must **continue** it, not rewrite it | AC-3.1a — a whole-file rewrite of a document past the budget is forbidden outright |
+| A re-dispatch nonetheless producing a **duplicated** verdict field | §6's fail-closed branch governs: the phase runs. A duplicated verdict can **never** produce a skip. |
+
+The `APPROVAL-HASH:` / `REVIEWED-COMMIT:` lines §7 appends are **not** part of this criterion. They are
+written by the script *after* the review episode reaches terminal, so requiring them would make the
+terminal test depend on a write that has not happened yet.
+
+### 16.4 Code-review files (one class) — fixed at REQ altitude
+
+A `CODE_REVIEW-{feature}-v{N}.md` is structurally complete when it carries:
+
+1. the **`Scope:` field** — the same field `hooks/scripts/check-scope-field.sh` already warns about when
+   absent, so this criterion and the existing hook agree on one marker; and
+2. the **findings section** its skill mandates.
+
+**AC-4.7a is unchanged and this document adds nothing: no verdict field is added to `CODE_REVIEW-*`.**
+Phase DOD is out of AC-4's scope entirely (§10.7) — it reviews the tree, not a named document, and
+produces no reviewer-pair cross-review — so a verdict field on it would carry no meaning and would invite
+a skip the AC forbids.
+
+### 16.5 LEARNINGS (one class) — and the exclusion
+
+`LEARNINGS-{feature}.md` is structurally complete when it carries the harvest content
+`harvest-learnings/SKILL.md` mandates: the metadata table including its `Harvested from` row, and its five
+numbered sections each with a non-empty body (§16.2's body rule applies).
+
+**The approval record of §9 is deliberately excluded from this criterion.** This is the answer AC-3.5
+scope (c) gives to TE-v5 Q-02, and it aligns this section with AC-4.2c's standing decision that the
+record is **best-effort**. Both clauses now point the same way rather than opposite ways.
+
+**The accepted consequence, stated plainly.** A harvest killed after writing its prose but before writing
+the record **reaches terminal, reports success**, and the feature lands permanently in §9.7's fail-closed
+case — its phases run, at the cost of one re-review.
+
+**The rejected alternative, and why.** Making the record part of the criterion would let a
+record-writing bug re-dispatch harvest up to `MAX_AUTHORING_DISPATCHES` times and then **halt the phase**
+over an optimisation's bookkeeping — the same objection AC-4.2c already sustained against tightening
+`guard-harvest-before-delete` (§9.7).
+
+**One addition so the outcome is not silent.** When the wrapper reaches terminal on a LEARNINGS carrying
+no approval record, the run report names it (§15.4's final obligation), so the fail-closed consequence is
+operator-visible at the moment it is incurred rather than discovered at the next re-entry.
+
+### 16.6 Summary — the four classes and where each criterion comes from
+
+| Class | Criterion | Origin |
+|---|---|---|
+| Spec documents (6) | §16.2 — required headings present, every heading non-empty | This document (O-7's own work) |
+| Cross-review | §16.3 — one parseable verdict field | Fixed by AC-3.5 scope (c); implemented here |
+| Code-review | §16.4 — `Scope:` + findings section | Fixed by AC-3.5 scope (c); implemented here |
+| LEARNINGS | §16.5 — harvest content, **excluding** the approval record | Fixed by AC-3.5 scope (c) / AC-4.2c; implemented here |
+
+An enumeration omitting the review artifacts would leave mode selection and the terminal test unevaluable
+for **most** wrapped dispatches — the review artifacts are the numerically dominant wrapped population
+(§4a A-7 counts 62 cross-reviews on one feature). All four classes are therefore covered above.
+
 ## 17. FSPEC-CONST-01 — Constant placement and the AC-5.1 / AC-5.2 edits
 
 ## 18. Edge cases and error scenarios
