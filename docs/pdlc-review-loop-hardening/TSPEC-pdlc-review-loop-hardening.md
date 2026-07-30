@@ -1,14 +1,92 @@
 # TSPEC — pdlc-review-loop-hardening
 
-**Version:** 1.0
-**Status:** Draft (awaiting se-review / te-review)
+**Version:** 1.1
+**Status:** Draft (round-1 cross-review feedback addressed; awaiting round 2)
 
 | Field | Value |
 |---|---|
-| Upstream | `REQ → FSPEC → **TSPEC**` |
+| Upstream | `REQ → FSPEC → **TSPEC**` (REQ **v1.6**, FSPEC **v1.6** — both amended by this revision, see §0) |
 | Downstream | `DECISIONS, PLAN, PROPERTIES, IMPL` |
 | Cross-Reviews | `docs/pdlc-review-loop-hardening/CROSS-REVIEW-{software-engineer,test-engineer}-TSPEC-v{N}.md` (link list while active; harvested into `LEARNINGS-pdlc-review-loop-hardening.md` after Phase H) |
 | LEARNINGS | `docs/pdlc-review-loop-hardening/LEARNINGS-pdlc-review-loop-hardening.md` |
+
+---
+
+## 0. Changelog
+
+### v1.1 (2026-07-30) — round-1 cross-review feedback
+
+Addresses **every** High and Medium finding of `CROSS-REVIEW-product-manager-TSPEC-v1.md` (2 High,
+3 Medium) and `CROSS-REVIEW-test-engineer-TSPEC-v1.md` (3 High, 5 Medium, 2 Low), and settles the
+four open questions the two reviews contested. The two reviews overlapped on exactly two defects;
+each shared defect was fixed **once, at its root**, not patched per site.
+
+**In both cases the correct fix was deletion of an over-generalised clause, not addition of a
+reconciling one** — the same shape this feature's FSPEC phase converged on (post-mortem lesson R-5).
+The mode-blind trailer conjunct was *removed* from the greenfield path rather than given a class
+exception, and the global pre-step-1 POSTMORTEM gate was *demoted* to a per-path query rather than
+given an exemption list.
+
+| Finding | Severity | Resolution | Where |
+|---|---|---|---|
+| **PM F-01** | High | **Fixed.** §2.5 placed `checkPostmortem` before the approval skip and refused unconditionally, inverting AC-2.3b and FSPEC §12.4 and making that section's worked example A unreachable. Root cause: §11.5's *forced-path-only* rule had been lifted into a global pre-step-1 gate. The gate is now split — unconditional refusal on the **forced** path (step 1), refusal at new **step 4a** only when the phase would otherwise run, and **report-only** when the approval skip has already elided the phase. §5.8 states plainly that `checkPostmortem` is a query, not a gate. Worked example A re-verified reachable. | §2.5, §5.8, §6.2 rows 13/13a |
+| **PM F-02 ≡ TE F-02** | High | **Fixed by deletion, at the root.** §5.6's terminal test was `trailer.complete && isComplete(…)` with no mode condition, while §7.4 amends only the three *author* SKILLs — so a wrapped `pm-review`/`se-review`/`te-review`/`dod-verify`/`harvest-learnings` episode could never terminate, would burn all 6 dispatches and halt, reconstructing **H-3**. The unconditional conjunction is gone: new §5.6.2 `isTerminal(mode, …)` returns structural completeness **alone** on a greenfield episode and completeness **and** the trailer on a revision episode, per FSPEC §8.4. §4.3 now states `parseRevisionComplete` is called only on a revision episode. | §5.6.2, §4.3, §6.2 rows 9/9a |
+| **PM F-03 ≡ TE F-01** | High | **Fixed.** `EpisodeKey.mode` was a coordinate no specified function computed. New **§5.6.1 `selectMode`** is that function, and it is the only one: mode is selected **once at episode entry** from what the phase is dispatching an author to do, revision test first, decided from the review artifacts on the branch, **independent of the artifact's structural state**, failing toward revision (AC-3.5 scope (d), FSPEC §15.2). The retracted "derive mode from disk" rule is named and explicitly *not* reinstated. §5.6.3 now states that its `invocation === 1 && target absent/empty` rule selects the **prompt kind, not the mode** — all four (kind, mode) combinations occur. | §5.6.1, §5.6.3, §3.7, §4.5 |
+| **TE F-03** | High | **Fixed — aligned to the FSPEC.** AT-19 as written derived its seam set from `main()`'s parameters, which is red on a correct tree: `_now()` is *correctly* called synchronously at four sites in `checkPrCi`, and `main()`'s wrapper `rawAgentFn(skill, prompt, {…})` is a correct un-awaited `_agent` alias call site. AT-19 now uses FSPEC's **closed thirteen-name list**, with the alias and returned-promise cases ruled explicitly. | §8.5, §3.10 |
+| **TE F-04** | Medium | **Fixed by a machine-checkable predicate**, replacing the hand-list that left `_rebaseOntoDefault`, `_dodVerifyLoop` and `_raisePrAndVerifyCi` satisfied by nothing. Membership is now derived from the parameter's **own declaration**: E-1 default resolves to a non-function policy value; E-2 no `=` initialiser at all; E-3 default is a function declared in this module whose destructured parameter list contains `_agent`. The reviewer's suggested predicate ("locally-defined function default") was measured against the tree and **declined as too wide** — `defaultListFiles`, `defaultGit`, `defaultWriteFile`, `defaultAppendFile` and `defaultRecordHalt` all match it yet are genuine capability seams. The "an unused exemption entry is also a failure" clause is kept, and a second anti-rot clause added (exempt-**and**-wired is a failure). | §8.5, §3.10 |
+| **TE F-05** | Medium | **Fixed.** §5.3's pre-count was count-only and collapsed E-14 into E-15. It is now a count **and** a comparison: 0 ⇒ append; 1 **equal** ⇒ E-14 idempotent no-op; 1 **unequal** ⇒ E-15; ≥2 ⇒ E-15. | §5.3, §6.2 rows 4/8 |
+| **TE F-06** | Medium | **Fixed.** `deriveRoundWindow` had no carrier for AT-05's `skipped non-conforming: …` text. It now keeps rejects and returns `{ ok, startIndex, endIndex, present, skipped }`, `skipped` being `{ basename, reason }` rows. | §5.2, §3.7 |
+| **TE F-07** | Medium | **Fixed.** §7.2 edit 2 never wired `_recordHalt` into `QUEUE_ENTRY`'s `_runPipeline` closure, and added `_listFiles`/`_appendFile` to `__queue.main`, which per §3.6 accepts neither. Edit 2 is split into **2a** (`QUEUE_ENTRY`'s injection object gains `_git: rtGit` **and nothing else**) and **2b** (the `_runPipeline` closure gains `_recordHalt`, spelled out). | §7.2, §3.5 |
+| **TE F-08** | Medium | **Fixed — the existing library is used.** `pdlc/workflows/__tests__/helpers/driftGenerators.js` was uncited. §8.2 now carries a seven-row property table reusing its `seeded` / `resolveSeed` / `shrink`, with replay-not-index reproduction via `PDLC_PROP_SEED`; §9.4 records the reuse. | §8.2, §8.1, §9.4 |
+| **PM F-04** | Medium | **Fixed.** Carried items were bound to prose owners, contrary to `DC-08`. A new **`blocked` row 8 `pdlc-authoring-contract`** in `docs/_queue/QUEUE.md` (row-6/row-7 convention, depends on this feature) is now the named successor surface for **Q-09** (the acute one — a live false-halt risk), **T-Q-03** and **Q-05**. No existing queue row was altered; row 0's `halted` status is untouched. | §10.2, §10.3, `QUEUE.md` |
+| **PM F-05 ≡ T-Q-01** | Medium | **Settled as a slip and corrected at REQ altitude** — see §0.1 below. | REQ, FSPEC, §5.5, §5.7, §6.2 row 12, §10.3 |
+| **TE F-09** | Low | **Fixed.** `parseApprovalHash`'s behaviour when `REVIEWED-COMMIT:` is absent is now stated: `reviewedCommit` is the literal `"unavailable"` when the line is absent, duplicated or non-hex, and a missing corroboration line is **never** a `HashFailure`. | §3.7, §4.3 |
+| **TE F-10** | Low | **Fixed, and the reviewer's premise confirmed by measurement.** §8.3 claimed "the suite must stay green", which is false at HEAD. Measured baseline: **1038 passed / 1 failed / 70 skipped, 1109 total, 36 suites**, the one failure being `documentOracles.test.js`'s intentional `AT-22 [red-until-L-06]`. The gate is now stated as **no new failures against that baseline**, not absolute green. The AT-22 name collision is real, so this feature's test names are namespaced **`RLH-AT-{N}`**. | §8.3 |
+
+**Open questions settled in this revision** (all four now closed or bound; none left to prose):
+
+| Q | Disposition |
+|---|---|
+| **T-Q-05** | **Closed, not carried.** Declined the duplicate-row-helpers alternative **on the merits**: a second copy of the queue's table grammar risks a silent wrong-row rewrite, which is strictly worse than bytes. The measurement is stated in §7.2 per `DC-02` — the queue bundle already inlines all of `orchestrate-dev` at 140,096 B / 3,540 lines against the dev bundle's 92,525 B / 2,377 lines, so the larger artifact has been in production since `pdlc-workflow-distribution` landed with no observed size problem. |
+| **Q-06** | **Declined and closed.** Provenance on the `RESOLVED:` marker would be a *second* agent-unwritable field, **nothing branches on it** (§5.8 parses the boolean only, per C-5), and git already carries author and timestamp more reliably than a hand-typed field. |
+| **Q-05** | **Correctly carried, now bound** to `QUEUE.md` row 8. No product exposure today — §5.9 normalises numeric prefixes — but it needed a successor surface. |
+| **Q-09** | **Carried, bound** to `QUEUE.md` row 8, and flagged as the acute one: script-side heading lists drifting from the SKILL templates produce a **false halt**. |
+
+**Nothing was declined without a stated reason, and nothing is left unresolved.** The two items
+declined outright are Q-06 (above) and TE F-04's suggested exemption predicate (declined as
+measurably too wide, and replaced with a narrower one rather than dropped).
+
+### 0.1 REQ v1.6 and FSPEC v1.6 — an amendment to two already-approved upstream documents
+
+`PR` (PROPERTIES) was missing from AC-4.7's skip-eligible phase set. Both round-1 cross-reviews
+raised it independently and without reference to each other (PM **F-05**, TE **T-Q-01**), and the
+operator ruled it a **drafting slip**, directing the correction upstream rather than a workaround
+here. Amending approved upstream documents downstream of approval is deliberate and authorised, and
+is recorded prominently in all three changelogs precisely because it is not routine.
+
+The argument for "slip" rather than "judgement being reversed" is internal to the REQ. AC-4.7's own
+functional criterion — convergence established by a reviewer-pair cross-review artifact for a named
+document — is satisfied by PROPERTIES. The decisive evidence is **AC-4.7a**, which declines a
+persisted verdict on `CODE_REVIEW-*` on the express ground that an out-of-scope phase's record would
+have no reader: under the five-phase set, AC-4.2's verdict and AC-4.2b's approval record *were*
+written for PROPERTIES cross-reviews and then read by nothing — the exact unread record AC-4.7a
+exists to forbid.
+
+- **REQ → v1.6:** AC-4.7's enumeration becomes `R, F, T, P, D, PR`.
+- **FSPEC → v1.6:** §10.7 (comparison scope), §11.1 (catalogue; `all` means **six**), §11.3 (parse
+  table and the rejection halt text).
+- **This document:** §5.5's scope, §5.7's `valid` array `["R","F","T","P","D","PR"]`,
+  `parseForcePhases`'s catalogue **and its rejection message**, §6.2 row 12, and AT-29's expected
+  operator text, now `Valid: R, F, T, P, D, PR, all.`
+
+The widening is one token in a closed enumeration. No mechanism changed and no clause was withdrawn:
+`PHASE_DISPATCH` already carried six document-review phases, FSPEC §16.2 already enumerated
+PROPERTIES among the six spec classes, and §4.3 already carried `PROPERTIES` in the doc-type
+catalogue. Only the enumeration was short.
+
+### v1.0 (2026-07-29)
+
+Initial technical specification.
 
 ---
 
