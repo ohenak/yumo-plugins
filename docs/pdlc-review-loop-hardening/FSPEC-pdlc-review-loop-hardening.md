@@ -1085,6 +1085,23 @@ isStale(recordedHash, documentBytes) :=
     otherwise                                        ⇒ FRESH
 ```
 
+**Where `recordedHash` comes from at tier 1 (SE-v1 F-02).** The candidate round of §5.1 has exactly
+**two** cross-review files, because step 3(a) requires both expected roles. Each may carry an
+`APPROVAL-HASH:` line. Selection is a **unanimity** rule with no tie-break:
+
+| Anchor state across the candidate round's two files | `recordedHash` |
+|---|---|
+| Present on both, grammatical, and **equal** | that value |
+| Present on one role's file, **absent** on the other's | **none ⇒ `UNEVALUABLE` ⇒ the phase runs** |
+| Present on both but **unequal** | **none ⇒ `UNEVALUABLE` ⇒ the phase runs**, and the report names both files and both values |
+| Absent on both, or ungrammatical on either | **none ⇒ `UNEVALUABLE` ⇒ the phase runs** (§10.5) |
+
+An anchor is **never** assembled across roles and no role's file is ever preferred over the other's. The
+partial state is reachable — §7.4's failed-append branch has SE's append succeed and TE's fail — and
+§4.4's `max + 1` derivation means that round is not re-dispatched, so the asymmetry persists on the
+branch. Preferring either value would grant a skip from a half-written record; the unanimity rule is the
+fail-closed reading AC-4.2a requires, and it costs one re-review.
+
 That is the whole mechanism: **one hash-equality test, identical at both tiers.** `digest` is §7's
 single inlined function — the same function on the write path and every read path (A-11, AC-4.2d) — so
 canonicalisation N-1/N-2 is applied here automatically and cannot be forgotten by a call site.
@@ -1155,12 +1172,14 @@ is treated as an absence of approval, which is the only direction that cannot la
 
 ### 10.5 No parseable hash in the tier in use
 
-The **legacy population lands here.** Three reachable shapes, one outcome:
+The **legacy population lands here.** Five reachable shapes, one outcome:
 
 | Shape | Result |
 |---|---|
-| Tier-1 record present, verdict parseable, **no** `APPROVAL-HASH:` line (a cross-review written before this feature shipped, or by a reviewer whose round's append failed per §7's failed-append branch) | `UNEVALUABLE` ⇒ no approval ⇒ phase runs |
-| Tier-1 `APPROVAL-HASH:` line present but the value does not match §7's grammar (`sha256:` + 64 lowercase hex) | `UNEVALUABLE` ⇒ phase runs |
+| Tier-1 record present, verdict parseable, **no** `APPROVAL-HASH:` line on **either** of the candidate round's files (cross-reviews written before this feature shipped) | `UNEVALUABLE` ⇒ no approval ⇒ phase runs |
+| `APPROVAL-HASH:` present on **one** role's file for the candidate round and **absent** on the other's (§7.4's failed-append branch, or a kill between the two appends) | `UNEVALUABLE` ⇒ phase runs. Neither value is adopted — §10.1's unanimity rule. |
+| `APPROVAL-HASH:` present on **both** but the two values are **unequal** | `UNEVALUABLE` ⇒ phase runs; the report names both files and both values. There is no tie-break and no "most recent file wins". |
+| Tier-1 `APPROVAL-HASH:` line present but the value does not match §7's grammar (`sha256:` + 64 lowercase hex) on either file | `UNEVALUABLE` ⇒ phase runs |
 | Tier-2 row present with the literal `unavailable` in `Approval Hash` (§9.4's marker), or with an ungrammatical value | `UNEVALUABLE` ⇒ phase runs |
 
 An approval with a verdict but no anchor is **never** treated as fresh. Substituting any other value —
@@ -2290,7 +2309,9 @@ direction; "reported" means it appears in the run report without changing the ou
 | E-22 | LEARNINGS exists **without** the approval record | **Passes** `guard-harvest-before-delete` (not tightened), then fails closed. The falsifier is this direction, not the guard rejecting it. | §9.7 |
 | E-23 | Tier-1 record present but its `APPROVAL-HASH:` is `unavailable` or ungrammatical | `UNEVALUABLE` ⇒ phase runs. No substitute value may be computed. | §10.5 |
 | E-24 | Both tiers present for the same (doc type, round) and disagreeing | Unparseable ⇒ phase runs. No "most recent wins" rule. | §10.4 |
-| E-63 | Round 2 dual-approving; a forced run produced round 3 whose two cross-reviews are **non-approving**, and the invocation ended before any authoring edit, so the document's bytes still hash to round 2's anchor | Round 3 is the **candidate**; it is non-approving ⇒ **no approval ⇒ phase runs**. Round 2 is never consulted. Without the highest-round-only rule this skipped the phase and discarded round 3's findings. | §5.1, §5.3 |
+| E-63 | Candidate round: `APPROVAL-HASH:` present on the SE file, **absent** on the TE file (§7.4's failed append, or a kill between the two appends) | `UNEVALUABLE` ⇒ phase runs. Neither value is adopted; no anchor is assembled across roles. | §10.1, §10.5 |
+| E-64 | Candidate round: `APPROVAL-HASH:` present on both files but the two values **differ** | `UNEVALUABLE` ⇒ phase runs; the report names both files and both values. No tie-break exists. | §10.1, §10.5 |
+| E-65 | Round 2 dual-approving; a forced run produced round 3 whose two cross-reviews are **non-approving**, and the invocation ended before any authoring edit, so the document's bytes still hash to round 2's anchor | Round 3 is the **candidate**; it is non-approving ⇒ **no approval ⇒ phase runs**. Round 2 is never consulted. Without the highest-round-only rule this skipped the phase and discarded round 3's findings. | §5.1, §5.3 |
 
 ### 18.3 POSTMORTEM, force and queue (§11, §12, §13, §14)
 
@@ -2586,7 +2607,13 @@ exhaustion message names `rounds 4..8` — not `after 5 iterations` against an a
 **AT-55 — No un-substituted template reaches a report (AC-5.2)**
 *Then* no report string produced by any halt path contains a literal `{feature}` or `{DOC-TYPE}`.
 
-**AT-56 — A higher non-approving round denies an earlier approval (E-63, TE-v1 F-01)**
+**AT-56 — A partial or disagreeing anchor pair yields no approval (E-63, E-64, SE-v1 F-02)**
+*Given* the candidate round's two cross-reviews both `Approved`, with (a) `APPROVAL-HASH:` on the SE file
+only, and (b) different `APPROVAL-HASH:` values on the two files. *Then* in both cases the result is
+`UNEVALUABLE`, Phase F **runs**, and the report names the offending files. *(Fails if either file's value
+is adopted as `recordedHash`.)*
+
+**AT-57 — A higher non-approving round denies an earlier approval (E-65, TE-v1 F-01)**
 *Given* round 2's two cross-reviews are `Approved` with an `APPROVAL-HASH:` matching the document's
 current bytes, **and** round 3's two cross-reviews are `Needs revision` with the document unedited since.
 *Then* Phase F **runs**, the report names round **3** as the candidate, and round 2 is not read.
