@@ -385,4 +385,89 @@ describe("RLH round-index derivation (TSPEC §5.2)", () => {
     );
     expect(Object.keys(w).sort()).toEqual(["endIndex", "ok", "present", "skipped", "startIndex"]);
   });
+
+  test("RLH-AT-63: per-role malformed duplicate halts; two roles at index 1 do not (E-05)", () => {
+    // Both files claim round 1 for the SAME role and doc type — step 5 halts rather than
+    // guessing which verdict governs. The returned record carries `role` (TSPEC §5.2 step 5 /
+    // §3.7); the two offending paths are that role's un-suffixed and `-v1` forms for the doc
+    // type under derivation, which is what the operator error names.
+    const halted = devModule.deriveRoundWindow(
+      ["CROSS-REVIEW-software-engineer-FSPEC.md", "CROSS-REVIEW-software-engineer-FSPEC-v1.md"],
+      "FSPEC",
+    );
+
+    expect(halted.ok).toBe(false);
+    expect(halted.reason).toBe("malformed_round_one_duplicate");
+    expect(halted.role).toBe("software-engineer");
+    // The halt is instead of a window, not alongside one — nothing downstream can dispatch.
+    expect(halted.startIndex).toBeUndefined();
+    expect(halted.endIndex).toBeUndefined();
+
+    // Two *different* roles at index 1 is a normal pairable round, not a duplicate.
+    const ok = devModule.deriveRoundWindow(
+      ["CROSS-REVIEW-software-engineer-FSPEC.md", "CROSS-REVIEW-test-engineer-FSPEC-v1.md"],
+      "FSPEC",
+    );
+
+    expect(ok.ok).toBe(true);
+    expect(ok.startIndex).toBe(2);
+    expect(roundsFor(ok.present, "software-engineer")).toEqual([1]);
+    expect(roundsFor(ok.present, "test-engineer")).toEqual([1]);
+  });
+});
+
+// ─────────────────────── AC-1.4 — the derived index reaches reviewLoop ───────────────────────
+
+describe("RLH reviewLoop call sites (TSPEC §5.2 step 4, §3.9)", () => {
+  /**
+   * Extract the argument text of every `reviewLoop({ … })` **call** in `orchestrate-dev.js`,
+   * skipping the declaration. Brace-matched rather than line-matched, because the call sites are
+   * multi-line object literals.
+   * @param {string} source
+   * @returns {string[]}
+   */
+  function reviewLoopCallArguments(source) {
+    const calls = [];
+    const marker = "reviewLoop({";
+    let from = 0;
+    for (;;) {
+      const at = source.indexOf(marker, from);
+      if (at === -1) break;
+      from = at + marker.length;
+      const before = source.slice(Math.max(0, at - 24), at);
+      if (/function\s+$/.test(before)) continue; // the declaration, not a call
+      let depth = 0;
+      let end = at + marker.length - 1;
+      for (let i = at + marker.length - 1; i < source.length; i++) {
+        const ch = source[i];
+        if (ch === "{") depth++;
+        else if (ch === "}") {
+          depth--;
+          if (depth === 0) {
+            end = i;
+            break;
+          }
+        }
+      }
+      calls.push(source.slice(at + marker.length, end));
+    }
+    return calls;
+  }
+
+  test("RLH-AT-07: all seven reviewLoop call sites pass the branch-derived startIndex", () => {
+    // TSPEC §5.2 step 4: "Today `reviewLoop`'s `iteration = 1` default is never overridden by
+    // any of its seven call sites, so round 2 writes `-v1` again and destroys round 1. After
+    // this change, every call site passes `startIndex`." That is the guard which keeps the
+    // round-4 dispatch of AT-01/AT-07 from clobbering an existing `-v4` cross-review: an
+    // un-overridden default aims every write back at round 1.
+    const source = readFileSync(DEV_SOURCE_PATH, "utf8");
+    const calls = reviewLoopCallArguments(source);
+
+    expect(calls).toHaveLength(7); // R, F, T, D, P, PR, CR
+
+    const withoutDerivedIteration = calls.filter(
+      (args) => !/\biteration\s*:\s*[^,}]*\bstartIndex\b/.test(args),
+    );
+    expect(withoutDerivedIteration).toEqual([]);
+  });
 });
