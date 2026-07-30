@@ -1563,6 +1563,102 @@ row.
 
 ## 14. FSPEC-ROWLOC-01 — Locating the queue row on a direct invocation
 
+**Linked requirements:** AC-2.1, AC-2.6, AC-2.6a, AC-2.7a. **Discharges O-5.**
+
+### 14.1 The gap
+
+AC-2.1 binds **both** entry paths: the `halted` row must be written and committed "whether the pipeline
+was entered via `orchestrate-queue` or invoked directly on a REQ path". But `orchestrate-dev` knows
+nothing about the queue. Its `main()` takes `reqPath` and a bag of injections; `QUEUE.md`, its parser,
+`updateQueueStatus` and `rewriteStatus` all live in `orchestrate-queue.js`, and the dependency runs the
+other way — the queue imports the pipeline (`import realMain from "./orchestrate-dev.js"`), and the
+bundle wires the same direction (`_runPipeline: ({ reqPath }) => __dev.main({ reqPath,
+...__devInjections })`).
+
+So on the direct path there is no code that knows a row might exist.
+
+### 14.2 Locating the row
+
+The pipeline already derives the feature name from `reqPath`. Row location adds three steps, all on the
+halt path only:
+
+| Step | Action |
+|---|---|
+| 1 | Resolve the queue path: the default `docs/_queue/QUEUE.md` (`orchestrate-queue.js`'s `DEFAULT_QUEUE_PATH`). No new input — a direct invocation that wanted a different queue would be using the queue driver. |
+| 2 | `await _readFile(queuePath)`. `null` (absent or unreadable) ⇒ **no queue**, go to §14.3's no-row case. |
+| 3 | Locate the row by exact match on the `Feature` column against the derived feature name — the same match `updateQueueStatus` performs. Not found ⇒ §14.3's no-row case. |
+
+**Direction of the dependency.** The row-locating and row-writing logic stays in
+`orchestrate-queue.js`, and `orchestrate-dev` reaches it through a **new injected seam**,
+`_recordHalt({ feature, status })`, defaulting to a no-op that reports `{ queueRow: "none" }`:
+
+| Caller | What `_recordHalt` is |
+|---|---|
+| `orchestrate-queue`'s `_runPipeline` | A closure over the queue path and its own `rewriteStatus`, so a halt on the delegated run writes and commits the row through the one function that owns status writes (§13.2) |
+| The bundle's `DEV_ENTRY` (direct invocation) | A closure the bundle builds over `__queue`'s row-locating helpers — the `orchestrate-queue.bundle.js` already inlines both modules, and the dev bundle inlines the queue module's row helpers for this purpose |
+| A unit test / an absent queue | The default no-op |
+
+This preserves the existing dependency direction: `orchestrate-dev` declares a capability it needs and
+never imports the queue. Inverting it — having the pipeline `import` the queue module — would be a
+circular import in the canonical sources (the queue imports the pipeline) and is not available.
+
+### 14.3 No row for this feature (AC-2.6a, carried through)
+
+A pipeline invoked directly on a REQ path for a feature with **no** queue row **does not attempt a status
+write at all**. Therefore:
+
+| Property | Value |
+|---|---|
+| Is AC-2.6's error raised? | **No.** AC-2.6 is reserved for a write *attempted* against an absent row — i.e. a row was expected. Nothing was expected here. |
+| Does the run proceed? | Yes, normally |
+| What does a halt report? | The structured field `queueRow: "none"`, meaning **"halt not recorded in a queue"** |
+| Is it a failure? | No. A direct invocation is **never** a double failure — the halt reason stands alone, unaccompanied by a bookkeeping error about a row that was never supposed to exist. |
+
+The three reachable direct-invocation states, all distinguishable in the report:
+
+| Disk state | `queueRow` |
+|---|---|
+| No `QUEUE.md`, or `QUEUE.md` with no row for this feature | `"none"` |
+| Row present ⇒ written and committed per §13 | `"halted"` |
+| Row present, write or commit failed | `"error"` / `"halted (uncommitted)"` per §13.4 |
+
+### 14.4 A bypass run is not the recovery act (AC-2.7a, carried through)
+
+The recovery act for a `halted` row is stated once, in AC-2.7a: **a human edits the feature's row in
+`docs/_queue/QUEUE.md` from `halted` back to `pending` and commits it.** No new status is introduced and
+nothing in the pipeline performs this edit. It is the **only** act that recovers the queue.
+
+An earlier draft offered a bypass as an equivalent — "an operator may bypass the queue for one run by
+invoking `orchestrate-dev` directly on the REQ path, which touches no row (AC-2.6a)". That sentence is
+**retracted** (v1.5, SE-v5 F-04), and this document states the surviving rule. It was wrong on two
+counts, both measurable:
+
+1. **It mis-cited AC-2.6a.** AC-2.6a is scoped to a feature with **no** queue row. This case is the
+   opposite by construction: the row exists and reads `halted`, because §13 just wrote it. So §14.3's
+   no-row clause does not apply, and the direct path here *does* find a row — meaning a bypass run that
+   **halts again does write the row** (AC-2.1 binds the direct path explicitly).
+2. **It does not recover.** A bypass run that **succeeds** writes nothing: `awaiting-merge` is set by the
+   queue driver, not by `orchestrate-dev` (`runPicked`'s post-run write, `const newStatus = succeeded ?
+   "awaiting-merge" : "halted";`). The row therefore stays `halted`, `selectNextPending` still finds no
+   `pending` entry — its no-candidate reason is `"no pending entries (all done, awaiting-merge, blocked,
+   or halted)"`, and `QUEUE_STATUSES`' header comment states that only `pending` entries are eligible for
+   pickup — so **every other feature in the queue stays idle** until the row is edited (§4a A-10).
+
+**The surviving rule.** A bypass resumes **this feature only**, and leaves the queue in exactly the state
+that made the recovery act necessary. It is a legitimate way to make progress on one feature out of
+band; it is **not** a way to avoid the row edit, and the row edit is still required before the queue runs
+again.
+
+**What the pipeline refuses until then.**
+
+| Halt class | Under `orchestrate-queue` | After the row is `pending` again |
+|---|---|---|
+| **POSTMORTEM** halt | The feature is not picked up and the run reports `idle`, not an error | Re-entry to the halted phase is **still refused** by §12 until AC-2.4's resolution act is performed in the artifact |
+| **AC-3.5f** authoring-budget halt | Same: not picked up, run reports `idle` | Returning the row to `pending` is **sufficient** — no POSTMORTEM is written (§15.6), so the phase resumes from committed partial progress |
+
+Both halt reports name this act as the next step (§12.6, §15.4), so an operator reading only the report
+knows the route.
+
 ## 15. FSPEC-PACE-01 — Authoring pacing, resume prompt, and commit cadence
 
 ## 16. FSPEC-COMPLETE-01 — Structural completeness per wrapped artifact class
