@@ -294,9 +294,11 @@ JSON).
 derivation (§4.4), the AC-1.4 collision guard (§4.5), POSTMORTEM detection (§12.2), tier selection
 (§6.4), and mode selection (§15.4). This satisfies AC-1.2 ("computed once per round … the same for
 every reviewer in that round, and for the author prompt that follows it") structurally rather than by
-convention, and it bounds the cost at one cheap agent call per phase. The **only** deliberate
-re-listing is the AC-1.4a case (ii) re-check immediately before each reviewer dispatch (§4.5), which
-exists precisely to catch a file that appeared *after* the first listing.
+convention, and it bounds the cost at one cheap agent call per phase. There is **no** second
+`_listFiles` call in the phase: the AC-1.4a case (ii) re-check before a reviewer dispatch is a
+`_checkFile` on the exact path (§4.5), not a re-listing, and it exists precisely to catch a file that
+appeared *after* the one listing. *(Corrected at v1.1, SE-v1 F-08 — v1.0 called it "the only deliberate
+re-listing".)*
 
 ## 4. FSPEC-NAME-01 — Cross-review filename grammar and round-index derivation
 
@@ -763,7 +765,7 @@ deterministic comparison depend on a response the script cannot verify.
 |---|---|
 | Algorithm | **SHA-256**, implemented as pure JavaScript over the canonicalised byte sequence of §7.3, emitting **64 lowercase hex characters**. |
 | Why SHA-256 and not sha1 | The repo's existing sha1 uses are *drift detection over files the repo itself generated*; this hash is an **approval anchor** an operator may audit months later, and a collision here silently grants a skip over unreviewed bytes (R-1). A wider digest costs nothing at these sizes, and there is no interop requirement pulling toward sha1 — nothing compares this value against `distribution-manifest.json`'s sha1s. |
-| Purity | No host global beyond arithmetic and typed arrays. No `crypto`, no `import`, no `process`, no `fetch` (C-2). It must survive `runtimeBundle.test.js`'s structural assertions. |
+| Purity | No host global beyond arithmetic and typed arrays. No `crypto`, no `import`, no `process`, no `fetch` (C-2). It must survive `runtimeBundle.test.js`'s structural assertions. **`TextEncoder` is not available either** — it is not among §4a A-1's eleven measured host globals (`agent`, `parallel`, `pipeline`, `phase`, `log`, `workflow`, `args`, `budget`, `console`, `setTimeout`, `clearTimeout`) — so §7.3's UTF-8 encoding is hand-rolled from `codePointAt` arithmetic. `Math` and typed arrays are ECMAScript intrinsics and are fine. Stated because a TSPEC reaching for `TextEncoder` on the strength of "no host global beyond arithmetic and typed arrays" would build a bundle that fails only in the runtime (SE-v1 F-09). |
 | Where it lives | A named function in `pdlc/workflows/orchestrate-dev.js`, exported for jest, stripped to a plain declaration by the build's `stripModuleSyntax` (its `.replace(/^export (const\|let\|var\|function\|async function\|class) /gm, "$1 ")` rule) — the same treatment `parseVerdict` already receives. It is therefore **inlined by the existing build**, with no new build step. |
 | Synchronous | The digest takes bytes and returns a string. It performs no IO, so it is **not** an injected seam and **not** awaited. Only the read that supplies its input is awaited. |
 
@@ -2116,7 +2118,8 @@ not satisfy AC-3.2, because it is exactly the state a stall-kill destroys.
 
 | Aspect | Specification |
 |---|---|
-| Measurement | For each commit the episode produced touching an artifact path, the size of its diff — added plus removed bytes on artifact paths only, via `_git(["diff", "--numstat", ...])`-class inspection, awaited |
+| The episode's commit set | The script does not perform these commits, so it identifies them by **boundary capture**: one `_git(["rev-parse", "HEAD"])` at episode entry and one after the last dispatch; the set is the commits in `{entry}..{exit}` (empty when the two shas are equal). No author filter, no `--since`, no heuristic. If either `rev-parse` fails, the proxy is **skipped** and the report says so — it is advisory, so a skip costs nothing (SE-v1 F-07). |
+| Measurement | For each commit in that set touching an artifact path, the size of its diff — added plus removed bytes on artifact paths only, via `_git(["diff", "--numstat", ...])`-class inspection, awaited |
 | Threshold | `MAX_AUTHORING_WRITE_BYTES` |
 | On exceed | **Reported** as a pacing-contract violation in the run report: `Pacing proxy: commit {sha} changed {B} bytes of {path} (> MAX_AUTHORING_WRITE_BYTES = 12000) — likely an over-budget write.` |
 | Effect on the run | **None.** It is advisory evidence of coarse pacing and **must not halt the run on its own.** |
@@ -2528,9 +2531,11 @@ pair is used, and the phase-entry line contains `skipped non-conforming: CROSS-R
 No halt.
 
 **AT-06 — One listing per phase entry (AC-1.2)**
-*Given* an instrumented `_listFiles`. *When* one phase entry runs its discovery, round derivation and
-approval search. *Then* `_listFiles` was called **once** for that directory; the only additional listing
-in the phase is the per-dispatch overwrite check.
+*Given* instrumented `_listFiles` and `_checkFile`. *When* one phase entry runs its discovery, round
+derivation and approval search. *Then* `_listFiles` was called **exactly once** for that directory and
+**never again** in the phase; the overwrite guard's re-checks are `_checkFile` calls on exact paths, one
+per reviewer dispatch (§4.5), and are **not** listings. *(Corrected at v1.1, SE-v1 F-08: v1.0 called the
+guard "the only additional listing in the phase", which asserted a second `_listFiles` that §4.5 forbids.)*
 
 **AT-07 — Overwrite guard refuses to clobber a cross-review (AC-1.4)**
 *Given* `CROSS-REVIEW-software-engineer-FSPEC-v4.md` already exists non-empty. *When* the round-4 reviewer
