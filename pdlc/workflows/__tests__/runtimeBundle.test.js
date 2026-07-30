@@ -1135,3 +1135,85 @@ describe("DOD-03 — build-runtime.mjs --check detects staleness", () => {
     expect(runCheck(root).status).not.toBe(0);
   });
 });
+
+// ---------------------------------------------------------------------------
+// RLH-CR-F1 — Phase CR finding F-1: `forcePhases` must have a reachable,
+// declared invocation channel in the SHIPPED artifact.
+//
+// The module's `meta.inputs` is dead in the bundle (`stripModuleSyntax` keeps it
+// inside the `__dev` IIFE, where nothing reads it); the `meta` the runtime reads
+// is `build-runtime.mjs`'s hand-written `DEV_META`. If that copy declares no
+// `inputs`, the operator has no declared way to pass `forcePhases` at all.
+//
+// Both halves are asserted against `dist/orchestrate-dev.bundle.js` — the bytes
+// the runtime loads — not against the builder's source.
+// ---------------------------------------------------------------------------
+
+describe("RLH-CR-F1: the shipped dev bundle declares and honours its inputs", () => {
+  const DEV_BUNDLE = "orchestrate-dev.bundle.js";
+
+  /** The leading `export const meta = { … };` literal, evaluated. */
+  function shippedMeta(file) {
+    const src = read(file);
+    const start = src.indexOf("export const meta = ");
+    expect(start).toBeGreaterThanOrEqual(0);
+    const open = src.indexOf("{", start);
+    const end = src.indexOf("\n};", open);
+    expect(end).toBeGreaterThan(open);
+    // eslint-disable-next-line no-new-func
+    return Function(`"use strict"; return (${src.slice(open, end + 2)});`)();
+  }
+
+  /**
+   * Evaluate the entrypoint's two argument reads (`__reqPath`, `__forcePhases`)
+   * for a given `args`, by lifting the emitted `const` declarations out of the
+   * bundle rather than restating them here.
+   */
+  function readArgs(args) {
+    const src = read(DEV_BUNDLE);
+    const decls = ["__reqPath", "__forcePhases"].map((name) => {
+      const at = src.indexOf(`const ${name} =`);
+      expect(at).toBeGreaterThanOrEqual(0);
+      const end = src.indexOf(";", at);
+      expect(end).toBeGreaterThan(at);
+      return src.slice(at, end + 1);
+    });
+    // eslint-disable-next-line no-new-func
+    return Function("args", `"use strict"; ${decls.join("\n")}\nreturn { __reqPath, __forcePhases };`)(
+      args
+    );
+  }
+
+  it("RLH-CR-F1: DEV_META declares reqPath and forcePhases as inputs", () => {
+    const meta = shippedMeta(DEV_BUNDLE);
+    expect(Array.isArray(meta.inputs)).toBe(true);
+    const byName = Object.fromEntries(meta.inputs.map((i) => [i.name, i]));
+    expect(Object.keys(byName).sort()).toEqual(["forcePhases", "reqPath"]);
+    expect(byName.reqPath.required).toBe(true);
+    expect(byName.forcePhases.required).toBe(false);
+    // The catalogue the operator is told about must be the one the module enforces.
+    for (const token of ["R", "F", "T", "P", "D", "PR", "all"]) {
+      expect(byName.forcePhases.description).toContain(token);
+    }
+  });
+
+  it("RLH-CR-F1: the string form still yields reqPath, and the object form reaches forcePhases", () => {
+    // The documented invocation — `/pdlc:orchestrate-dev docs/f/REQ-f.md`.
+    expect(readArgs("  docs/f/REQ-f.md  ")).toEqual({
+      __reqPath: "docs/f/REQ-f.md",
+      __forcePhases: null,
+    });
+
+    // The named-input form the runtime delivers once `inputs` is declared.
+    expect(readArgs({ reqPath: "docs/f/REQ-f.md", forcePhases: "R,F" })).toEqual({
+      __reqPath: "docs/f/REQ-f.md",
+      __forcePhases: "R,F",
+    });
+
+    // reqPath alone, as an object: forcePhases stays absent, not undefined.
+    expect(readArgs({ reqPath: "docs/f/REQ-f.md" })).toEqual({
+      __reqPath: "docs/f/REQ-f.md",
+      __forcePhases: null,
+    });
+  });
+});

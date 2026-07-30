@@ -3,6 +3,26 @@ export const meta = {
   description:
     "Full PDLC pipeline for one REQ — spec authoring, reviews, TDD implementation, DoD, harvest, PR.",
   whenToUse: "Run the pipeline for a single named REQ path.",
+  // CR F-1 — the module's own meta.inputs is dead in this artifact (it stays
+  // inside the __dev IIFE, where nothing reads it), so the operator's declared
+  // channel is this copy. Keep it in step with orchestrate-dev.js's meta.inputs:
+  // forcePhases' catalogue here is FORCE_PHASE_TOKENS + "all".
+  inputs: [
+    {
+      name: "reqPath",
+      description:
+        "Path to the approved REQ document, e.g. docs/{feature}/REQ-{feature}.md",
+      type: "string",
+      required: true,
+    },
+    {
+      name: "forcePhases",
+      description:
+        "Optional comma- or space-separated phases to re-run despite a recorded approval. Valid: R, F, T, P, D, PR, all.",
+      type: "string",
+      required: false,
+    },
+  ],
   phases: [
     { title: "Phase R", detail: "REQ review" },
     { title: "Phase F", detail: "FSPEC author + review" },

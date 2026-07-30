@@ -7,7 +7,7 @@
       "pluginPath": "workflows/dist/orchestrate-dev.bundle.js",
       "consumerPath": ".claude/workflows/orchestrate-dev.bundle.js",
       "artifactVersion": "0.13.0",
-      "pluginSha1": "49dc9809f28db7a1b6f62cbc6b2639c2fb3aa6f4",
+      "pluginSha1": "c86047e4187bc5dfb57881a27668a411300c5927",
       "retires": [
         ".claude/workflows/orchestrate-dev.js"
       ]
