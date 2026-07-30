@@ -218,7 +218,9 @@ index; steps 6–7 are the corrected terminal exit.
 
 ```
 1.  forcePhases gate           §5.7   phase named in forcePhases?
-                                      ├─ yes ─► skip steps 2–4, run from step 5
+                                      ├─ yes ─► checkPostmortem §5.8 — UNCONDITIONAL on this path
+                                      │         ├─ unresolved ─► refuse the phase (§11.5, AC-4.6a)
+                                      │         └─ otherwise  ─► skip steps 2–4, run from step 5
                                       └─ no  ─► continue
 2.  round derivation           §5.2   await _listFiles(`docs/${feature}`)
                                       ├─ ListFailure(dir_missing)  ─► [] ⇒ startIndex 1
@@ -231,9 +233,18 @@ index; steps 6–7 are the corrected terminal exit.
                                       tier 2: `## 6. Approval Record` in LEARNINGS-{feature}.md
                                       (tiers are exclusive; at most 2 _readFile per phase entry)
 4.  staleness                  §5.5   isStale(recordedHash, await _readFile(docPath))
-                                      ├─ FRESH       ─► record "⏭" skip, phase done
-                                      ├─ STALE       ─► fall through to step 5
-                                      └─ UNEVALUABLE ─► fall through to step 5, note in report
+                                      ├─ FRESH       ─► SKIP. checkPostmortem §5.8 is evaluated
+                                      │                 here for REPORTING ONLY — its result never
+                                      │                 changes the outcome; an unresolved
+                                      │                 POSTMORTEM for this (phase, feature) is
+                                      │                 named in the "⏭" skip notice (§4.7).
+                                      │                 Phase done.
+                                      ├─ STALE       ─► fall through to step 4a
+                                      └─ UNEVALUABLE ─► fall through to step 4a, note in report
+4a. POSTMORTEM gate            §5.8   REACHED ONLY WHEN THE PHASE WOULD OTHERWISE RUN
+                                      await checkPostmortem({ phase, feature })
+                                      ├─ unresolved ─► refuse the phase (§6.2 row 13)
+                                      └─ none / resolved ─► continue to step 5
 5.  reviewLoop(…, iteration = startIndex)
                                       each round: dispatchAndVerify per author/reviewer episode §5.6
                                       gatePass = isPass(v1) && isPass(v2)   (unchanged)
@@ -245,9 +256,31 @@ index; steps 6–7 are the corrected terminal exit.
                                       throw haltError(one of §6.4's two conditional shapes)
 ```
 
-A POSTMORTEM already on disk is consulted **before** step 1 by `checkPostmortem({ phase, feature })`
-(§5.8): an unresolved POSTMORTEM refuses the run for that phase, and refuses it *even under
-`forcePhases`* — a force is an override of a recorded approval, not of a recorded failure.
+**The skip is evaluated first; the POSTMORTEM gate is not a pre-step-1 gate.** This ordering is
+AC-2.3b and FSPEC §12.4, and it is normative here because getting it wrong is a live operator
+outage. `checkPostmortem({ phase, feature })` (§5.8) appears at exactly two places above, with two
+different powers:
+
+| Path | Where | Power |
+|---|---|---|
+| **forced** (step 1, `yes`) | before the phase runs | **unconditional refusal.** A force overrides a recorded *approval*, never a recorded *failure* (§5.7, §11.5, AC-4.6a) |
+| **unforced, phase would otherwise run** (step 4a) | after the skip has been declined | **refusal** — §6.2 row 13 |
+| **unforced, phase skipped** (step 4, `FRESH`) | on the skip path | **report only.** Evaluated so AC-2.3b's report obligation can be met; the result cannot change the outcome |
+
+The third row is the one an implementation drops silently. AC-2.3's refusal is conditioned on "the
+phase would otherwise run", so a skipped phase has nothing to refuse and the run proceeds — but
+AC-2.3b *also* requires that the skip report name any unresolved POSTMORTEM for that (phase,
+feature), so `checkPostmortem` is still called, and its result still reaches §4.7's notice.
+
+**Why this is stated so emphatically.** §11.5's rule — "a force does not override a recorded
+failure" — belongs to the *forced* path only. Lifting it to a global gate ahead of step 1 makes
+FSPEC §12.4's **worked example A unreachable**: Phase R converged, its approving `CROSS-REVIEW-*`
+pair is still on the branch pre-harvest, an unresolved `POSTMORTEM-R-{feature}.md` also sits there,
+and the correct behaviour is *skip Phase R, name the POSTMORTEM in the skip line, continue to Phase
+F*. Under a pre-step-1 gate that run halts instead, and the operator's only recovery is to hand-edit
+`RESOLVED: yes` onto a POSTMORTEM for a phase that was never going to run. Under the flow above,
+example A reaches step 4 with `FRESH`, takes the skip, and emits the notice — reachable, and
+reached.
 
 ### 2.6 What is deliberately not built
 
