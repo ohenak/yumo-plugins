@@ -1,12 +1,15 @@
 # PLAN — pdlc-review-loop-hardening
 
-**Version:** v1.2
-**Scope:** Work breakdown for implementing TSPEC v1.6 (`pdlc-review-loop-hardening`) — task list, batch
+**Version:** v1.3
+**Scope:** Work breakdown for implementing TSPEC v1.7 (`pdlc-review-loop-hardening`) — task list, batch
 assignment, file ownership, TDD order, traceability and halt conditions. This document specifies **when
 and by whom** each change is built. It specifies **no behaviour**: every behavioural, structural and
-algorithmic statement lives in REQ v1.6 / FSPEC v1.8 / TSPEC v1.6 and is cited here, never restated. **One TSPEC amendment was
-made in this round and only one** — v1.6's §8.5 ruling row (§14, `TE F-01`); it was forced by a
-measurement, is owned by the TSPEC, and is cited from §9.2 rather than copied.
+algorithmic statement lives in REQ v1.6 / FSPEC v1.8 / TSPEC v1.7 and is cited here, never restated. **One TSPEC amendment was
+made in this round and only one** — TSPEC v1.7, **§8.5 only**, three clauses, all of them *narrowing*
+(the combinator ruling restated as the property it stood for, with `Promise.race`/`Promise.any`
+withdrawn; the alias row's contradiction corrected; an anonymous arrow's exemption declared
+inherited by nobody). Each was forced by a measurement or a demonstrated false negative, is owned by
+the TSPEC, and is cited from §9.2 rather than copied. Full mapping in §14.3.
 
 | Field | Value |
 |---|---|
@@ -756,7 +759,9 @@ task's exit criterion includes RLH-AT-19 passing over the amended source.
 **The rulings that keep RLH-AT-19 off correct source are owned by TSPEC §8.5 and cited, not restated
 here.** §8.5's table gives three predicates over syntactic position — **alias**, **returned promise**
 (which covers the anonymous-arrow case: an arrow body is an arrow body whether the arrow is named or
-not), and **awaited combinator argument**, added at TSPEC v1.6. Read them there. §8.5 also states the
+not), and **awaited combinator argument**, added at TSPEC v1.6 and narrowed at v1.7 to the *property*
+"the outer callee awaits every element of the array" (`Promise.race`/`Promise.any` withdrawn, PM
+round-3 `N-03` / TE `F-02`). Read them there. §8.5 also states the
 meta-rule that makes them durable: they are predicates over *position*, the `file:line` citations are
 evidence that each is exercised, and a call site matching none of them is a **failure the assertion
 names** — never a fourth clause naming a line.
@@ -1471,7 +1476,7 @@ fails loudly on the site the tool mis-parsed.
 | **N-01** | High | **Fixed by deletion, not by repair** — the remedy PM's acceptance condition named. The site set is no longer stated in four places. §4.1 owns it in two rows: a **blocking** row asserting *total classification* ("every such site not lexically preceded by `await` is classified by one of TSPEC §8.5's three rulings — that total classification is the whole of the blocking assertion; a site that is correctly exempt never fails this gate, whatever the total is"), and an **advisory** row, owned by §4.1 alone, carrying the five-of-35 evidence and both prior corrections. §7.3 row 1 now cites §8.5 for the rule and §4.1 for the set and restates neither; §9.2 item 1 cites §4.1's advisory row; §12.3's `RLH-AT-19` row asserts the classification and no count. The count is a premise of nothing. Set re-derived above, not adopted. `orchestrate-queue.js:524` — the site PM named — is present in the derived set and was reached by the predicate, not by reading the review. |
 | **N-02** | Medium | **Fixed, resolved toward the ownership table (Option B).** `RLH-LOOP-01` is greened at **batch 9 by `RLH-27`**, not batch 7 by `RLH-23`: the destructuring `RLH-27` performs is what makes the loop's termination gate observable, and §11.5's ownership table was right. §7.3's row is corrected and records *why* it moved. §11.5's Oracles paragraph, which contradicted its own table, is corrected to the same statement — there is now one statement, in two places that agree, with the table as owner. The rejected alternative (green it at batch 7) is recorded with its reason: it would leave `reviewLoop`'s gate evaluating `iteration > undefined` for a whole batch — a live loop with no termination gate — while twenty-plus assertions sit green. The **one-batch interim** this accepts (batch 8 ends with the gate present and inert) is stated explicitly in §11.5 rather than left to be discovered; TE had already verified it as benign. |
 | **N-03** | Medium | **Fixed in TSPEC §8.5 (v1.7), as a property, not a list.** The combinator ruling no longer enumerates members: it requires the outer callee to be **a promise combinator that awaits every element of the array**, and says that property, not a name, is the test. `_parallel`, `parallel`, `Promise.all` and `Promise.allSettled` are named as *instances*; `Promise.race` and `Promise.any` are **withdrawn**, with the false negative spelled out concretely (`await Promise.race([_agent(…), _sleep(MS)])` awaits the race, never the loser) and the measurement recorded (zero occurrences of `race`, `any` or `allSettled` at HEAD, so nothing shipped is reclassified). |
-| **L-01** | Low | **Fixed** (TSPEC §8.5 v1.7, and this is one of the round's two-clause TSPEC budget). The alias row read "the local name, **not** the `_`-prefixed one", which the widened catch-all contradicts — `:615–616` are called under the `_` name. It now reads "the local name **in addition to** the `_`-prefixed one", annotated with what v1.6 said and why it was overridden. The row's real prohibition (scanning the `_` spelling *alone*, which is what missed the alias sites originally) is preserved verbatim. |
+| **L-01** | Low | **Fixed** (TSPEC §8.5 v1.7 — the second of the brief's two authorised clauses). The alias row read "the local name, **not** the `_`-prefixed one", which the widened catch-all contradicts — `:615–616` are called under the `_` name. It now reads "the local name **in addition to** the `_`-prefixed one", annotated with what v1.6 said and why it was overridden. The row's real prohibition (scanning the `_` spelling *alone*, which is what missed the alias sites originally) is preserved verbatim. |
 | **L-02** | Low | **Fixed.** `RLH-26` now writes **all three** new `checkConverged` arguments — `feature`, `startIndex`, `endIndex` — into the seven call sites, and §11.5's ownership table row 1 names `feature`. Previously no task owned `feature`, so seven argument lists would have been left one short by every task individually behaving correctly. |
 | **L-03** | Low | **Fixed, and the method failure is the finding.** §14.1's `TE F-08` entry had been made true at v1.2 by *deleting* the word "three" rather than annotating it — a silent correction, which is outside the audit's own stated method even though the resulting sentence was true. The word is restored and annotated: **"three" → "five", corrected at v1.3**, with a note that v1.2 made the correction by deletion and that this is PM round-3 `L-03`. |
 | **Q-01** | — | **Answered: no, and it never was.** Asked whether §4.1's `RLH-01` await row should be blocking at all. It is blocking, but what it blocks on has changed: the assertion is *classification*, not a count. A correct scan of a correctly-exempt codebase passes it unconditionally. The advisory row that carries the number blocks nothing. |
