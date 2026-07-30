@@ -70,6 +70,55 @@ The blanket-default and no-column patterns are the specific gap: the `Scope:` fi
 
 ## 4. Process Learnings
 
+### 4.1 The dominant defect class: claims that outlive their truth
+
+Five-plus instances in one run. In every case a **prose claim about the code stayed put while the code moved**:
+
+1. **CODEBASE-v2 F-7** — a comment at `pipelineWiring.test.js:471` still asserted the TSPEC §3.1 Q-07 decision ("`build-runtime.mjs` will not be edited") after the PLAN reversed it.
+2. **CODEBASE-v2 F-8** — the `RLH-CR-F1` preamble claims the test asserts against the committed `dist/`, but `runtimeBundle.test.js:18` imports `build-runtime.mjs`, **which builds on import**, so the assertion is against a freshly built tree.
+3. **DoD F-1** — `reviewerSkillForSlug`'s doc comment claimed an enforcement that no test performed. (Fixed this run at `168544e`.)
+4. **The FSPEC §16.3 narrowing** — TSPEC:1722 restated §16.3's terminal criterion as "exactly one well-formed `VERDICT:` field", the *withdrawn* form (§3, row 1). A false halt.
+5. **The FSPEC §16.5 narrowing** — TSPEC:1724 restated the LEARNINGS completeness clause more narrowly, dropping the `Harvested from` conjunct.
+6. **CODEBASE-v2 §7(b)** — a stale TSPEC §5.9 LEARNINGS row.
+7. **CODEBASE-v2 F-9** — the harvest checklist omitted the now-mandatory `Harvested from` row. (Routed to LEARNINGS §4; the checklist has since been corrected.)
+
+**Suggested countermeasure:** any comment or doc that asserts "X is enforced by Y" must name Y **as a test id**, and that test id must exist. A claim with no citable oracle is a claim with no expiry date.
+
+### 4.2 The same narrowing defect, twice, in one feature
+
+The TSPEC restated an FSPEC §16 criterion in a *narrower* form and the narrower form was wrong **both times**:
+
+- **FSPEC §16.3:2439** owns the cross-review terminal criterion — "at least one `VERDICT:` line whose value is in the catalogue". TSPEC:1722 restated it as "exactly one well-formed `VERDICT:` field". FSPEC §16.3:2442–2446 explicitly records that "exactly one" was **deliberately withdrawn** as TE-FSPEC-v1 F-03. The restatement therefore reintroduced a defect the FSPEC had already removed by name.
+- **FSPEC §16.5:2271** owns the LEARNINGS completeness clause. TSPEC:1724 restated it more narrowly, dropping the metadata-table conjunct.
+
+The second one was caught by CR **F-2** and resolved in favour of the FSPEC. The resolution is recorded in the shipped code, at `pdlc/workflows/orchestrate-dev.js` around `HARVESTED_FROM_ROW` (:1156–1175): "§16 owns the structural-completeness criteria and governs, so the conjunct is implemented here (CR F-2) and the TSPEC narrowing is documentation drift for Harvest."
+
+**The resolution rule that settled both — and a third case — is `owning-section-wins`** (promoted to §2, row 1): the section that owns the question governs, and a restatement is not an amendment. It is worth noting how cheap this rule is compared to what it prevents: the PLAN spent three rounds repairing *copies* of a derived count because no section owned it.
+
+Also worth recording plainly: this feature exists to catch restated-constraint drift, and it shipped with two instances of restated-constraint drift in its own TSPEC. That is not irony so much as evidence the class is genuinely hard to see from inside the document.
+
+### 4.3 Non-obvious mechanics of this repo's own test suite
+
+Two facts that cost real time and are not written down anywhere a future implementer would look:
+
+- **The suite requires a clean tree.** `advertisedVersionViolation` compares `plugin.json` between the working tree and HEAD **whenever `git status --porcelain -- pdlc/workflows/dist/` is non-empty**. An uncommitted rebuilt `dist/` therefore reds AC-6.6's oracle *spuriously*. The working discipline is: rebuild `dist/` and commit it **in the same commit**, then run the suite.
+- **`npm test` silently repairs a stale tracked `dist/`.** `runtimeBundle.test.js:18` imports `build-runtime.mjs`, which rebuilds and rewrites `dist/` at import time. The consequence is sharp: **the in-repo `--check` assertion at `runtimeBundle.test.js:494` can never observe staleness** — the import already fixed it. Genuine staleness coverage exists only in DOD-03's temp-root tests. This is a real hole in a self-check: a test that cannot fail for the reason it exists. (Independently found as CODEBASE-v2 F-8 and §7(a).)
+
+### 4.4 The "permanent red" AT-22 was an environment artifact, not an inherent red
+
+PLAN §7.3's permitted-red ledger carries `AT-22 [red-until-L-06]` (`coveredViolations(LIVE_ROOT) is empty post-landing`, `documentOracles.test.js:246`) as a standing red, and the entire run's gate arithmetic was expressed as "1 permitted red". Measured:
+
+- In the maintainer's working tree the suite ends `1 failed, 70 skipped, 1169 passed, 1240 total`. AT-22 fails on **exactly one path**: `.tokensave/tokensave.db`, matching the patterns `.claude/workflows/orchestrate-dev.js` and `managed manually`.
+- `.tokensave/` is **untracked and gitignored** (`.gitignore:2`).
+- The branch was cloned at `c2c2250` into a clean tree (no `.tokensave/`, no `.claude/workflows/`) and the full suite run there: **`70 skipped, 1170 passed, 1240 total` — zero failures.**
+
+So AT-22 is **green on any clean checkout, including CI**. It is red locally only because `coveredViolations` walks the whole live root and a local tool's untracked SQLite database happens to contain both forbidden literals.
+
+Two separable learnings:
+
+1. **A permitted-red ledger entry that is actually environment-dependent is a mislabelled ledger entry.** It hid a real question — "is this red inherent to the code or to my machine?" — behind a number that everyone, reviewers included, carried forward for the entire run. **Countermeasure:** a permitted-red entry must record the *environment* in which it is red, and a red that disappears on a clean clone belongs in a different category from one that is genuinely code-caused.
+2. **`coveredViolations` scanning the entire root is a robustness gap** — any untracked local file (editor backup, tool cache, database) can red a document oracle for reasons unrelated to the diff. `WALK_SKIP_DIRS` covers only `.git` and `node_modules`. Candidate successor surface: honour `.gitignore`, or scan tracked files only. Recorded as a finding in §2 and §5; **not fixed here**.
+
 ## 5. Open Items for Consolidation
 
 ## 6. Approval Record
