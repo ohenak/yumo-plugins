@@ -209,6 +209,167 @@ E-2). Nothing here admits a real seam.
 
 ## 7. Findings
 
+| ID | Severity | Surface | Summary |
+|---|---|---|---|
+| F-1 | Medium | `build-runtime.mjs` / `CLAUDE.md` | `forcePhases` ships with no reachable, documented invocation channel |
+| F-2 | Medium | `orchestrate-dev.js` `isComplete` | LEARNINGS criterion drops FSPEC §16.5's `Harvested from` conjunct; FSPEC's resume-clause row becomes unreachable |
+| F-3 | Medium | `CLAUDE.md` | three new operator-facing contracts undocumented in the repo's operator manual |
+| F-4 | Low | `__tests__/runtimeBundle.test.js` | await scanner's alias resolution covers `main()` only — a renamed seam in a helper's parameter list is invisible |
+| F-5 | Low | `dist/*.bundle.js` | dangling `fs` / `await import()` in default seam implementations survive into the shipped artifacts |
+| F-6 | Low | `orchestrate-dev.js` | two different `## Verdict` heading predicates for the same section |
+
+---
+
+### F-1 — Medium — `forcePhases` has no reachable, documented invocation channel
+
+`orchestrate-dev.js:96–103` declares `forcePhases` in the module's `meta.inputs`, and `main()` accepts
+it at `:3672`. But `build-runtime.mjs`'s `DEV_META` — the `meta` that actually ships, hand-written
+because the runtime demands a pure literal first statement — **declares no `inputs` array at all**.
+`meta.inputs` in the module is dead: `stripModuleSyntax` keeps it inside the `__dev` IIFE, where
+nothing reads it, and the bundle's own `meta` never mentions the input.
+
+Second half: `DEV_ENTRY` reads it as
+`args && typeof args === "object" && args.forcePhases ? args.forcePhases : null`. The invocation form
+`CLAUDE.md` documents — `/pdlc:orchestrate-dev docs/{feature}/REQ-{feature}.md` — passes `args` as a
+**string**, on which `typeof args === "object"` is false. So on the documented invocation path
+`forcePhases` is permanently `null`. Reaching it requires `{ reqPath, forcePhases }`, a form stated
+nowhere the operator will see it.
+
+This is not a spec violation — TSPEC §7.2 edit 1's "no other channel into the bundle" is satisfied by
+`args.forcePhases`, and §5.7's `parseForcePhases` is correct and well tested (six tokens, `all`,
+message derived from `FORCE_PHASE_TOKENS` so catalogue and text cannot desynchronise). It is a
+**delivery** gap: a feature-sized capability with no discoverable way to use it.
+
+*Recommend:* add `inputs` to `DEV_META` (naming `reqPath` and `forcePhases`) and one CLAUDE.md line
+giving the object-arg form. Both are in `build-runtime.mjs` / `CLAUDE.md` — no module change, no
+rebuild risk beyond a `--check` refresh.
+
+*Falsifier:* `DEV_META` containing an `inputs` entry for `forcePhases`, **or** a documented invocation
+in which `args` is an object.
+
+*Note:* `QUEUE_ENTRY`'s `_runPipeline` does not forward `forcePhases`, so queue-driven runs cannot
+force. That reads as intentional (the queue is unattended) and I raise no finding, but it is
+undocumented and should be stated wherever F-1 is closed.
+
+### F-2 — Medium — LEARNINGS completeness drops FSPEC §16.5's `Harvested from` conjunct
+
+FSPEC §16.5 states the criterion as a conjunction: "the metadata table including its `Harvested from`
+row, **and** its five numbered sections each with a non-empty body". `isComplete`'s `LEARNINGS` arm
+(`orchestrate-dev.js:1319–1338`) implements only the second conjunct — it collects `## N.` headings for
+`N ∈ 1..5` with non-empty bodies and returns complete when all five are present. Nothing in the module
+matches `Harvested from`; `grep -rn 'Harvested from' pdlc/workflows/` returns zero hits.
+
+TSPEC §5.9's table restates the criterion as "its own required headings; the approval record section is
+excluded" — silently dropping the metadata-table conjunct. The code follows TSPEC. So this is an
+FSPEC↔TSPEC conflict that the implementation resolved in TSPEC's favour without either document
+recording the narrowing (unlike §16.5's approval-record exclusion, which *is* argued at length).
+
+Two consequences, both real:
+
+1. A LEARNINGS carrying five populated sections but no metadata table reaches terminal and reports
+   success. The wrapper then permits `harvest-learnings` step 8's deletion of every `CROSS-REVIEW-*`
+   and `CODE_REVIEW-*` — and `hooks/scripts/guard-harvest-before-delete.sh` only checks that
+   `LEARNINGS-{feature}.md` exists, so nothing else catches it. The record of *what was deleted* is
+   exactly the row that went missing.
+2. FSPEC §16.5's per-class resume-clause mapping ("when all five are satisfied,
+   `(the metadata table's "Harvested from" row)` if that is what is missing") is **unreachable**: under
+   this implementation, five satisfied sections means `missing === []` means complete, so the branch
+   that would emit that string cannot be entered.
+
+*Recommend:* pick one and make both documents say it. Either add the conjunct (a `scanLines` predicate
+for a `Harvested from` table row, cheap and symmetric with §16.4's `Scope:` marker) and keep FSPEC
+§16.5 as written, or amend FSPEC §16.5 and its mapping row to match TSPEC §5.9 and record the reason.
+The second is smaller and defensible on the same AC-4.2c grounds the approval-record exclusion uses.
+
+*Falsifier:* a `LEARNINGS-{feature}.md` with sections 1–5 populated and no `| Harvested from | … |` row
+that `isComplete("LEARNINGS", …)` reports `{complete: false}` for.
+
+### F-3 — Medium — CLAUDE.md omits three new operator-facing contracts
+
+`CLAUDE.md` is this repo's shipped operator manual and the file every consuming session loads. It
+receives **no change in this diff**, while the feature adds three contracts an operator must know:
+
+1. **POSTMORTEM `RESOLVED:` lifecycle.** `checkPostmortem` refuses a phase whose POSTMORTEM carries no
+   readable `RESOLVED: yes`, and the marker is human-written only. `CLAUDE.md:134` still describes
+   post-mortems as merely a filename convention. Without the lifecycle documented there, a halted
+   pipeline is unrecoverable-looking: the operator has no stated way to clear it.
+2. **`## 6. Approval Record` in LEARNINGS**, and the tier-1 `APPROVAL-HASH:` / `REVIEWED-COMMIT:`
+   anchors appended to cross-review files. `CLAUDE.md`'s "Artifact convention (for consuming repos)"
+   section enumerates the artifacts and now under-describes two of them.
+3. **The mandatory trailing `## Verdict` section** on `CROSS-REVIEW-*` files, which is now a parsed
+   data contract (`extractFileVerdict`) and not just prose. The `Scope:`-field convention is documented
+   there; its new sibling is not.
+
+The SKILL.md files carry all three correctly (`orchestrate-dev/SKILL.md`'s new "POSTMORTEM Lifecycle"
+section, `harvest-learnings/SKILL.md`'s Approval Record table and checklist row, the six author/review
+SKILLs' `## Verdict` sections). The gap is only in the repo-level manual — but that is the document a
+human reads before running anything.
+
+*Recommend:* close before the PR. It is three short paragraphs in an existing file, it costs no rebuild,
+and F-1's one line lands in the same edit.
+
+*Falsifier:* `grep -n 'RESOLVED\|forcePhases\|Approval Record' CLAUDE.md` returning hits.
+
+### F-4 — Low — the await scanner's alias resolution is `main()`-only
+
+`buildScanSet` (`__tests__/runtimeBundle.test.js`) grows the thirteen seed names by (i) `main()`'s own
+destructured aliases and (ii) a fixed point over whole-body arrow wrappers. It does **not** resolve an
+alias introduced in any *other* function's parameter list. A future helper written as
+`async function f({ _readFile: read }) { … read(p) … }` would put `read(…)` outside the scan set
+entirely, so a missing `await` there is classified by nothing and reported by nothing.
+
+I verified this is latent, not live: every helper in both modules destructures its seams **shorthand**,
+so the seed names are the call-site names throughout (§2a). The risk is that the convention is
+undocumented — nothing tells the next author that renaming a seam parameter disables the guard for that
+function.
+
+*Successor surface (DC-08):* this belongs in `LEARNINGS-pdlc-review-loop-hardening.md` §5 (Open Items
+for Consolidation) as a candidate `docs/_constraints/` entry — "seams are destructured shorthand
+outside `main()`" — with the scanner extension (walk every function's destructuring pattern, not just
+`main`'s) as the alternative. Harvest owns it; no code change is warranted in this feature.
+
+*Falsifier:* a helper in either module whose parameter list contains `_seam: alias`.
+
+### F-5 — Low — dangling `fs` / `await import()` reach the shipped bundles
+
+`stripModuleSyntax` removes `import * as fs from "fs";` but leaves `fs.readFileSync(path, "utf8")` in
+`defaultReadFile`, and `{ fsMod = fs }` defaults in `defaultListFiles` / `defaultWriteFile` /
+`defaultAppendFile`; `defaultGit`, `mergeWorktree` and `checkPrCi` retain `await import("child_process")`.
+Six such sites per bundle. All are parse-safe (§5) and all are unreachable, because every corresponding
+seam is injected by the entrypoints.
+
+The reason this is worth naming rather than ignoring: **the injection table is the entire safety net**,
+and RLH-32 exists precisely because one entry (`_writeFile`) was missing from it for the whole life of
+the previous bundle. The failure mode is a bare `ReferenceError: fs is not defined` mid-phase, not a
+halt with a diagnosis. RLH-AT-64 now derives the wired-or-exempt set from `main()`, which closes the
+class properly — so this is a note on the residue, not a request to change it.
+
+*Recommend:* no change in this feature. Optionally, a future `stripModuleSyntax` could replace stripped
+import bindings with a throwing stub so the failure names itself. Successor surface: the same
+`docs/_constraints/` entry as F-4.
+
+*Falsifier:* a runtime code path that reaches any `default*` seam implementation — i.e. an entrypoint
+`.main({…})` object that omits a seam `main()` declares, which RLH-AT-64 now reds on.
+
+### F-6 — Low — two `## Verdict` heading predicates for one section
+
+`crossReviewComplete` (`:1244–1254`) locates the section with
+`normaliseHeadingTitle(m[1]) === "verdict"`, which accepts `## 5. Verdict`, `## VERDICT`, and extra
+internal whitespace. `extractFileVerdict` (`:892–896`) locates the same section with the strict
+`/^\s*##\s+Verdict\s*$/`. A cross-review headed `## 6. Verdict` is therefore **structurally complete**
+(the episode reaches terminal) but yields `{ok:false, reason:"no_verdict_section"}` on the approval
+read, so the phase silently re-runs next invocation.
+
+The direction is safe — more work, never less, per FSPEC §1.2 rule 4 — and every shipped SKILL mandates
+the exact `## Verdict` form, so a conforming reviewer never hits it. But the two predicates answer "is
+this the verdict section?" differently for the same bytes, which is the shape that rots.
+
+*Recommend:* have `crossReviewComplete` reuse `extractFileVerdict`'s regex, or extract one shared
+`isVerdictHeading`. Low cost, no behaviour change on conforming input.
+
+*Falsifier:* a fixture headed `## 6. Verdict` on which `crossReviewComplete` and `extractFileVerdict`
+agree.
+
 ## 8. Assessed and Cleared
 
 ## 9. Documentation Drift for Harvest
