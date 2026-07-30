@@ -13,7 +13,7 @@ feature: pdlc-review-loop-hardening
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | **Draft** | Claude + operator | 1.3 | 2026-07-30 |
+| pdlc | **Draft** | Claude + operator | 1.4 | 2026-07-30 |
 
 > **Altitude.** The REQ states the observable behaviour, the FSPEC how it is produced and pins the
 > sixty-six acceptance tests, the TSPEC how it is built and proved with *examples*, the PLAN when each
@@ -23,6 +23,34 @@ feature: pdlc-review-loop-hardening
 > by section.
 
 ## 0. Changelog
+
+### v1.4 — round-4 cross-review feedback
+
+Reviewers: `CROSS-REVIEW-software-engineer-PROPERTIES-v4.md` (0 High, 1 Medium, 2 Low, `f4dc8cb`) and
+`CROSS-REVIEW-product-manager-PROPERTIES-v4.md` (0 High, 1 Medium, 2 Low, `5604f85`). Both read in
+full. Both verified **all seven round-3 findings resolved** by independent re-derivation, none
+reopened; both confirmed §0 inert for a fourth round, the seven-property floor met seven of seven
+(§4.1 carries no hunk), the counting unit correct, and the `> `-quoted silence safe under both
+readings — that last is settled and is not revisited here. Upstream REQ v1.6 / FSPEC v1.8 /
+TSPEC v1.7 / PLAN v1.4 approved and **not** reopened. Both Mediums are the same class: a conjunct
+that reds a *correct* implementation. Every fix is a single clause inside the conjunct or ledger row
+that owns it; no property is restated, and the only floor added is the one conjunct (i) of
+`PROP-WINDOW-01` needs to be falsifiable at all.
+
+| Finding | Sev | Resolution — and where the substance lives |
+|---|---|---|
+| PM F-01 | **Medium** | **Fixed at the value, measured from the owning sections.** `PROP-HASH-01` conjunct (v) asserted the bare `/^[0-9a-f]{64}$/`. Re-derived: FSPEC §5's carrier catalogue, FSPEC §7's append shape, FSPEC §10.5's rejection clause and TSPEC §4.4's record grammar all define the value as `sha256:` + 64 lowercase hex; TSPEC §3.7 splits it (`sha256Hex` is the hex half, `approvalHashOf` prefixes); TSPEC §5.4 routes `parseApprovalHash`'s output into §5.5, whose guard is `/^sha256:[0-9a-f]{64}$/`. So the old clause was false on all ≥20 forced valid cases and contradicted `PROP-STALE-01` over the same value. (v) now reads `/^sha256:[0-9a-f]{64}$/` in **§4.2**, with the derivation stated there; the three consequential clauses are corrected to match — §4.2's Generator (a valid candidate is the grammar verbatim, malformed shapes vary the **hex run**, the malformed-label shape varies the label), §4.2's *Beyond the examples*, §5.2's `PROP-HASH-01` row 1, and §7.2's coverage cell |
+| SE F-25 (≡ carried SE Q-03, promoted) | **Medium** | **Fixed by replacing a call-count equality with a provenance oracle.** `PROP-WINDOW-01` (i) asserted `deriveRoundWindow` is invoked exactly once per phase entry. Re-derived from the sections that own the call sites: TSPEC §5.4 puts one at the gate and TSPEC §5.6.1 (`refreshReviewState`) puts one at **every** wrapped episode entry — N-01's own fix — so a *k*-episode entry invokes it **1 + k** times, and `PROP-LIST-01b` already asserted that *k* as an equality. (i) is restated in **§4.3** over the threaded window *values*: the cap `reviewLoop` enforces follows the **parameter**, shown on runs where a re-derivation would answer differently. Conjuncts (ii) and (iii) are untouched in substance; (iii) gains one clause naming that it speaks of the threaded pair, not `refreshReviewState`'s internal `w`. `PROP-LIST-01b` gains the reconciling paragraph. The property's title, §5.3's `PROP-WINDOW-01` row 1 and §7.2's cell are restated to match, and one floor is added (≥15 disagreeing runs) without which (i) would be vacuous |
+| SE F-26 ≡ PM F-02 | Low | **Fixed by swapping the mutation, not by hedging the claim.** §5.2's `PROP-HASH-01` (3rd) row claimed its red named (ii) alone; re-derived, the old mutation also killed (i)'s only-if half on every double-line case and (v) on mixed cases where the malformed line was collected first — so it demonstrated nothing about (ii). Replaced with the reviewer's isolating mutation: return `{ ok: false, reason: "unparseable" }` at `n ≥ 2`. Checked against all six conjuncts and rows 1–2: **(ii) alone dies** |
+| SE F-27 ≡ PM F-03 | Low | **Fixed in (iv)'s own shape.** (iv) bucketed the malformed-label document under `n === 1`, but by §4.2's own unit a line under a malformed label is not an `APPROVAL-HASH:` line, so it is `n === 0` — which (iii) claims with a *named* reason. (iv) now routes it out alongside the fence, and §4.2 records it as the **second** instance of the matcher silence it already records for the `> `-quoted shape: both matchers answer `ok: false` with a `HASH_FAILURES` member, so (i), (v) and (vi) bind and neither named reason is asserted |
+| R-6 (mechanical, not defects) | — | `reviewLoop`'s span corrected to `orchestrate-dev.js:532–542` in §4.3. The phrase *"to decide which §8.5 ruling, if any, applies"* is PLAN's but lives in PLAN **§0's changelog row for F-03** (`PLAN:1504`), not §9.2 item 3(c), whose own words are *"and decide the three rulings from it"* — both are now quoted and attributed where they live, in §4.4 and §8.5 item 5. §4.2's owner table `absent` row renumbered to *conjunct (iii)* for parity with the `duplicated` row |
+| SE Q-04 | — | Answered by the fix: (i) is aiming at *`reviewLoop` not re-deriving the cap it was handed*, which is what §4.3 now states. The gate-side claim is not this property's and is not smuggled in — the gate is not inside `reviewLoop` and `reviewLoop.test.js` cannot see it |
+| SE Q-05, PM Q-01, PM Q-02 | — | Q-05: the (3rd) row's old mutation was chosen because round-3 F-21 prescribed it, so the swap is free and taken. PM Q-01: `hash` is the line's **whole** value, per the derivation above; no upward report is owed, because the approved specs are unanimous and it was this document that disagreed with them. PM Q-02: the malformed-label shape is asserted as `ok: false` **only** — the named `absent` is withheld, on the recorded-silence ground above |
+
+**Nothing declined.** All six findings across both reviews are fixed at the clause that owns them.
+The `> `-quoted-line disposition, §4.1's seven properties, §8.4's residual 6 and every generator floor
+except `PROP-WINDOW-01`'s new one are unchanged, because both reviewers re-derived them and neither
+filed against them.
 
 ### v1.3 — round-3 cross-review feedback
 
