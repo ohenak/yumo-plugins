@@ -844,15 +844,43 @@ reconcile two statements on their own authority.
 | H-o | The work appears to require touching `docs/_queue/QUEUE.md`, any `CROSS-REVIEW-*` file, the REQ, the FSPEC or the TSPEC | Halt. Those are out of scope for Phase I; a needed spec change is reported, not made |
 | H-p | The work appears to require per-worktree consumer state, a history walk on the approval path, an agent on the approval path, or a cache over `_listFiles` | Halt. All four are in TSPEC §2.6's "deliberately not built" list, each with its reason |
 
-### 11.5 Two decisions that are **not** halts — decide and record
+### 11.5 Two interface shapes — **decided here**, not deferred to a task
 
-TSPEC §10.3 explicitly leaves these to implementation. Deciding them is not guessing; both shapes
-satisfy every AT. Record the choice in the task's commit message so a reviewer sees it was deliberate.
+TSPEC §10.3 leaves both to implementation, and both shapes satisfy every AT. v1.0 nominated a task to
+decide each one — and in both cases that task ran **after** the batch-3 task that writes the test
+encoding the decision (`reviewLoop.test.js` is written whole by RLH-22 in batch 3; §5.3 forbids a second
+writer, so there is no later chance to encode it). A note asking four tasks to agree does not fix that;
+an ordering does, and the cheapest ordering is to decide in the PLAN. **Both are decided below. Neither
+is open. A Phase I task that picks the other shape is a §11.4 scope halt, not a judgement call.**
 
-| # | Question | Guidance |
-|---|---|---|
-| N-a | **T-Q-02** — how `startIndex` / `endIndex` travel from the phase gate through `reviewLoop` to `checkConverged`: two more positional arguments through three functions, or one small per-phase record threaded once | The record is cleaner but changes `reviewLoop`'s call signature at seven sites; the positional form is uglier but touches less. Either is acceptable. **Whichever is chosen, `RLH-13`, `RLH-23`, `RLH-26` and `RLH-27` must all use the same one** — this is a four-task consistency point, which is exactly the drift class §1.2 warns about, so decide it in `RLH-13` and cite that decision in the other three |
-| N-b | The **name** of §5.4's approval search. The TSPEC specifies it as pseudocode and never names a function | Name it once, in `RLH-26`, and keep it non-exported unless a test needs it. See §13 |
+**N-a — how `startIndex` / `endIndex` reach `reviewLoop` and `checkConverged`.**
+`reviewLoop` already takes a **single destructured options object** (TSPEC §3.9), and `iteration`
+already rides on it. Decision: **two sibling fields on that same object** — `startIndex` and `endIndex`
+— with `iteration` keeping its present meaning (the current round number) and its `= 1` default.
+`endIndex` is computed **once**, at the phase gate, as `startIndex + MAX_REVIEW_ROUNDS - 1` (TSPEC §7.1
+edit 3) and passed down; it is never recomputed inside the loop, and neither field becomes positional
+anywhere. `checkConverged` receives `endIndex` the same way. No new record type, no `EpisodeKey` field,
+no positional argument at any of the seven call sites.
+
+Rejected: a per-phase record (a new type for two integers, and it would have to be threaded through
+`selectMode` too); extra positional arguments (seven call sites, all silent on a wrong-order mistake);
+carrying them inside `EpisodeKey` (they are loop control, not episode identity — and `EpisodeKey` is
+compared for equality, which two round bounds would corrupt).
+
+**`RLH-LOOP-01`** (RLH-22, `reviewLoop.test.js`, green from batch 7 — §7.3) is the oracle: it asserts the
+options-object shape, that every call site passes `iteration`, and that the loop terminates on
+`iteration > endIndex`. It reds on every rejected shape above. RLH-22 therefore needs **no** dependency
+on the implementing task to know what to write, which is the point.
+
+**N-b — the name of §5.4's two-tier approval search.**
+Decision: it is an **internal, non-exported** helper of `orchestrate-dev.js`, and **no test may name
+it**. RLH-24's `approvalSearch.test.js` drives it **through `main()`** at L2 (§4), which is why AT-08 …
+AT-11, AT-56 and AT-57 can be written in batch 3 against an unnamed function: the assertions are about
+which files are read and which verdict is reached, never about an identifier. The implementing task
+(RLH-26) picks a name and may pick any name; it exports nothing new, so no bundle export rule (§9.1) and
+no `RLH-AT-64` parameter class is touched. If a later task genuinely needs to import it, that is a TSPEC
+change request, not a local decision.
+
 
 ## 12. Verification
 
