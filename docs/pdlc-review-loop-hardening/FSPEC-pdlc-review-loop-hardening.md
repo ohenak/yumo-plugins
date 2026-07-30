@@ -1061,6 +1061,123 @@ test that shows the guard rejecting it would be testing a tightening this docume
 
 ## 10. FSPEC-STALE-01 — The staleness comparison
 
+**Linked requirements:** AC-4.4, AC-4.2a, AC-4.2d, AC-4.7. **Discharges O-8 (as narrowed at v1.5).**
+
+### 10.1 The comparison, in full
+
+```
+isStale(recordedHash, documentBytes) :=
+    parseApprovalHash(recordedHash) is absent        ⇒ UNEVALUABLE
+    parseApprovalHash(recordedHash) ≠ digest(documentBytes) ⇒ STALE
+    otherwise                                        ⇒ FRESH
+```
+
+That is the whole mechanism: **one hash-equality test, identical at both tiers.** `digest` is §7's
+single inlined function — the same function on the write path and every read path (A-11, AC-4.2d) — so
+canonicalisation N-1/N-2 is applied here automatically and cannot be forgotten by a call site.
+
+| Result | Effect on the phase |
+|---|---|
+| `FRESH` | The approval is usable. Combined with §5's same-round pair test, the phase is **skipped** (AC-4.1, reported per AC-4.5). |
+| `STALE` | The document changed after its approval. The phase **runs**. |
+| `UNEVALUABLE` | No parseable referent in the tier in use. The phase **runs** (fail closed, AC-4.2a). |
+
+Only two of the three outcomes are distinguishable in effect, deliberately: `STALE` and `UNEVALUABLE`
+both run the phase. They are distinguished only in the report line, so an operator can tell "your edit
+invalidated the approval" from "there is no anchor to compare against".
+
+### 10.2 No history walk at either tier (v1.5 narrowing, carried through)
+
+v1.3–v1.4 gave tier 1 a **different** measure: the approving cross-review artifacts' own *position in
+history*, compared against the document's. That is **withdrawn**, and this document specifies **no
+history walk at either tier**. Three consequences the REQ fixed and this section carries:
+
+1. **Redundancy.** Once §7 puts the hash into the tier-1 record, the walk answers a question the hash
+   already answers, and answers it worse.
+2. **The two tiers can no longer disagree** about a document they both certified, because they are
+   evaluating the identical predicate over the identical referent. §9.6's disagreement case survives
+   only for a genuinely contradictory *verdict*, not for staleness.
+3. **SE-v5 Q-01 dissolves rather than being answered.** The question "which commit is a cross-review
+   file *at* — the reviewer's write, or the script's later `APPROVAL-HASH:` append?" had no good answer
+   and is now not asked: no part of this comparison reads a commit.
+
+**The recorded commit sha is not load-bearing, and this document may not make it so.** `Reviewed
+Commit` (§9.3) and `REVIEWED-COMMIT:` (§7) exist as corroborating context for a human reading the
+record. The comparison never reads either. Any implementation that consults them to decide staleness is
+non-conforming.
+
+### 10.3 Reading the document at comparison time
+
+The one remaining degree of freedom O-8 owns. The rule is AC-4.2d's single-referent rule applied at the
+read side:
+
+| Aspect | Specification |
+|---|---|
+| Source | The reviewed document read from the **working tree**, via `_readFile(docPath)` — awaited (C-2) |
+| Not | Not `git show HEAD:{docPath}`, not the index, not a cached copy from an earlier phase |
+| When | **At comparison time**, inside the skip evaluation for that phase — a fresh read, not a value carried from a previous phase's evaluation |
+| Missing document | `_readFile` returns `null` (`defaultReadFile` swallows the error and returns `null`). No bytes ⇒ nothing to compare ⇒ `UNEVALUABLE` ⇒ the phase runs. A missing document is exactly the case where the phase must run. |
+| Empty document | Zero bytes is a legitimate input to `digest`; it will not equal any recorded hash of a non-empty document, so this lands on `STALE`. No special case. |
+| Canonicalisation | Inside `digest` (§7), so the working-tree read needs no pre-processing here |
+
+**Why the working tree and not HEAD.** AC-3.5c already measures the working tree, §7 hashes the working
+tree, and §9.5 canonicalises those same bytes. Reading HEAD here would be the *third* referent SE-v5
+F-06 identified and the REQ eliminated. It would also be wrong in practice: an uncommitted edit to a
+spec is precisely the unreviewed change AC-4.4 must catch, and a HEAD read would not see it.
+
+### 10.4 Both tiers available and disagreeing
+
+Per §9.6, the tier-selection predicate is exclusive — tier 2 is consulted **only** when no conforming
+`CROSS-REVIEW-*` for that doc-type is present on the branch — so the two tiers are not normally both
+read. The case survives only for a malformed branch state (a LEARNINGS approval record *and* a
+surviving cross-review for the same doc-type and round). Behaviour:
+
+| State | Outcome |
+|---|---|
+| Tier 1 present ⇒ tier 1 governs, tier 2 not read | Per §9.6. No disagreement is possible because only one tier was consulted. |
+| Both read despite the predicate (implementation fault) and they carry **different** hashes for the same (doc type, round) | AC-4.2a's unparseable case: the phase **runs**, and the report names the disagreement |
+
+There is no reconciliation rule and no "most recent wins" rule. A contradiction about what was approved
+is treated as an absence of approval, which is the only direction that cannot launder an edit.
+
+### 10.5 No parseable hash in the tier in use
+
+The **legacy population lands here.** Three reachable shapes, one outcome:
+
+| Shape | Result |
+|---|---|
+| Tier-1 record present, verdict parseable, **no** `APPROVAL-HASH:` line (a cross-review written before this feature shipped, or by a reviewer whose round's append failed per §7's failed-append branch) | `UNEVALUABLE` ⇒ no approval ⇒ phase runs |
+| Tier-1 `APPROVAL-HASH:` line present but the value does not match §7's grammar (`sha256:` + 64 lowercase hex) | `UNEVALUABLE` ⇒ phase runs |
+| Tier-2 row present with the literal `unavailable` in `Approval Hash` (§9.4's marker), or with an ungrammatical value | `UNEVALUABLE` ⇒ phase runs |
+
+An approval with a verdict but no anchor is **never** treated as fresh. Substituting any other value —
+a recomputed hash, a timestamp, "assume unchanged" — is forbidden, because each converts a missing
+anchor into a fail-open skip (AC-4.2d).
+
+### 10.6 Why the comparison is rebase-invariant
+
+The statement O-8 owes explicitly. Phase DOD Step 0 rebases `feat-{feature}` onto the latest default
+branch before Harvest — this is not hypothetical, it is a standing step of every pipeline run. A rebase:
+
+| What it rewrites | Would the withdrawn referent survive? | Does the hash survive? |
+|---|---|---|
+| Every commit sha on the branch | **No** — a recorded sha or a "position in history" names commits that no longer exist | **Yes** — no sha is read |
+| Committer/author timestamps | **No** — a timestamp comparison flips arbitrarily | **Yes** — no timestamp is read |
+| Ancestry / topological order | **No** — "is the document's commit after the cross-review's commit?" is answered over a rewritten graph | **Yes** — no ancestry is walked |
+| The **bytes** of a file the rebase did not conflict on | — | Unchanged, so the digest is unchanged and the approval survives |
+| The bytes of a file the rebase **did** change (a conflict resolution touching the spec) | — | Changed, so the digest differs ⇒ `STALE` ⇒ the phase runs — which is **correct**: those bytes were not reviewed |
+
+The invariance is therefore not an accident of the algorithm; it is the reason the referent was moved
+to content. A hash is a function of bytes alone, and a rebase that preserves a file's bytes preserves
+its approval while a rebase that alters them revokes it — exactly the semantics AC-4.4 asks for.
+
+### 10.7 Scope
+
+The comparison is evaluated only for the phases AC-4.7 admits — **R, F, T, P and D**. Phase CR and
+Phase DOD produce no `CROSS-REVIEW-{role}-{doc-type}` pair for a named document, so there is no
+recorded hash and no document to compare; they are out of scope for AC-4 entirely and this comparison is
+never reached for them.
+
 ## 11. FSPEC-FORCE-01 — The operator force-run surface
 
 ## 12. FSPEC-PMORT-01 — POSTMORTEM resolution marker and Recommendation extraction
