@@ -1,10 +1,12 @@
 # PLAN — pdlc-review-loop-hardening
 
-**Version:** v1.1
-**Scope:** Work breakdown for implementing TSPEC v1.5 (`pdlc-review-loop-hardening`) — task list, batch
+**Version:** v1.2
+**Scope:** Work breakdown for implementing TSPEC v1.6 (`pdlc-review-loop-hardening`) — task list, batch
 assignment, file ownership, TDD order, traceability and halt conditions. This document specifies **when
 and by whom** each change is built. It specifies **no behaviour**: every behavioural, structural and
-algorithmic statement lives in REQ v1.6 / FSPEC v1.8 / TSPEC v1.5 and is cited here, never restated.
+algorithmic statement lives in REQ v1.6 / FSPEC v1.8 / TSPEC v1.6 and is cited here, never restated. **One TSPEC amendment was
+made in this round and only one** — v1.6's §8.5 ruling row (§14, `TE F-01`); it was forced by a
+measurement, is owned by the TSPEC, and is cited from §9.2 rather than copied.
 
 | Field | Value |
 |---|---|
@@ -71,11 +73,12 @@ npm test  115.66s user 173.42s system 155% cpu 3:05.43 total
 ```
 
 **The three counts are the baseline and they are stable**: `1038 passed / 1 failed / 70 skipped` over
-36 suites reproduced identically in v1.0's measurement, the test-engineer's independent round-1
-measurement and this one. They agree with the TSPEC's own measurement (§8.3, taken at `ef4705a`).
+36 suites reproduced identically in v1.0's measurement, the test-engineer's independent round-1 and
+round-2 measurements, this one, and a fifth re-run while authoring v1.2 — **five for five, same three
+counts, same single red.** They agree with the TSPEC's own measurement (§8.3, taken at `ef4705a`).
 
-**The wall-clock figure is not stable and is not a gate** — four measurements of the same HEAD gave
-179.175 s, 179.924 s, 184.752 s and 181.681 s of jest-reported `Time:`. It is load-dependent by construction
+**The wall-clock figure is not stable and is not a gate** — five measurements of the same HEAD gave
+179.175 s, 179.924 s, 184.752 s, 181.681 s and 181.336 s of jest-reported `Time:`. It is load-dependent by construction
 (§2.3). Nothing in this PLAN gates on it; §2.3 states what to do about it and §4.1 states the tolerance.
 
 The single failure is `__tests__/documentOracles.test.js`'s **intentional** red placeholder
@@ -107,7 +110,7 @@ feature's own await guard silent over its own worst risk.
 
 ### 2.3 The suite is already over the 180 s watchdog — how to run it
 
-Four measurements of the **same** HEAD, all after the baseline above:
+Five measurements of the **same** HEAD, all after the baseline above:
 
 | Run | jest `Time:` | wall |
 |---|---|---|
@@ -115,9 +118,10 @@ Four measurements of the **same** HEAD, all after the baseline above:
 | test-engineer review | 179.924 s | **180.56 s** |
 | v1.1 re-measurement | 184.752 s | **185.43 s** |
 | test-engineer round 2 | 181.681 s | **182.35 s** |
+| v1.2 re-measurement | 181.336 s | **181.80 s** |
 
 So the honest statement is **not** "179 s, just under the ceiling" but **already over it, and noisy
-upward**. The four points span jest 179.2–184.8 s and wall 180.6–185.4 s; **every recorded wall figure
+upward**. The five points span jest 179.2–184.8 s and wall 180.6–185.4 s; **every recorded wall figure
 exceeds 180 s and none is under**, and no run reproduces to better than ±3 s. That is the whole argument
 for the treatment below: a number this noisy cannot be a gate, and a ceiling every measurement already
 crosses is a procedural constraint, not a budget to trim coverage against. The wall clock is set by the longest single suite plus worker contention, not by the sum of
@@ -297,7 +301,7 @@ becomes blocking work in batch 1 instead of a confusing red in batch 9.
 | Assertion | Verified value at authoring time |
 |---|---|
 | **Command:** `cd pdlc/workflows && { time npm test; }`, run in the background per §2.3. **Blocking assertion:** the three counts and the suite total reproduce exactly, and the one red is `documentOracles.test.js` `AT-22 [red-until-L-06]`. Any deviation in a count, or a different red, fails the gate | 1038 passed / 1 failed / 70 skipped, 1109 total, 36 suites |
-| **Advisory, recorded not asserted:** the wall clock of that command. **No tolerance, because it is not a gate** — it is load-dependent (§2.3) and four measurements of one HEAD spanned 179.2–185.4 s. `RLH-01` records the number it measures so §2.3's 190–200 s projection can be falsified later; it does **not** fail on it. If it exceeds **300 s** at HEAD, halt — the §2.3 procedure has been outrun before the feature starts | jest `Time: 184.752 s`; wall clock `3:05.43` = 185.43 s (2026-07-30) |
+| **Advisory, recorded not asserted:** the wall clock of that command. **No tolerance, because it is not a gate** — it is load-dependent (§2.3) and five measurements of one HEAD spanned 179.2–185.4 s. `RLH-01` records the number it measures so §2.3's 190–200 s projection can be falsified later; it does **not** fail on it. If it exceeds **300 s** at HEAD, halt — the §2.3 procedure has been outrun before the feature starts | jest `Time: 184.752 s`; wall clock `3:05.43` = 185.43 s (2026-07-30) |
 | **Blocking assertion, restated as measured (v1.2).** `cd pdlc/workflows && npx jest __tests__/parseVerdict.test.js` **fails to run the suite**: `Test Suites: 1 failed, 1 total`, `Tests: 0 total`, `SyntaxError: Cannot use import statement outside a module`, **exit 1**. The same file under `npm test -- __tests__/parseVerdict.test.js` reports `20 passed`, exit 0. The gate asserts *that* — suite-failed-to-run, zero tests, non-zero exit for the bare form; 20 tests, exit 0 for the npm form — and **not** v1.1's withdrawn "exits 0 / vacuous green" (§2.3). If the bare form ever starts *executing* tests, the row fails and §2.3's mandate is re-derived rather than assumed | re-measured 2026-07-30: bare → suite failed to run, `Tests: 0 total`, exit **1**; npm form → 20 passed, exit 0 |
 | **Blocking assertion:** the await-discipline scan `RLH-31` will encode has exactly **three** non-`await`ed call sites of FSPEC AT-19's closed thirteen-name list across `orchestrate-dev.js` and `orchestrate-queue.js`, and each is classified exempt by TSPEC §8.5's ruling table (§9.2). The gate exists so `RLH-AT-19`'s **empty** permitted-red window (§7.3 row 1) rests on a *checked* premise at batch 1 rather than an authoring-time scan. A fourth site, or a site none of §8.5's rulings reaches, fails the gate and is blocking work before batch 2 — never a quiet fourth exemption (§11.3 `H-h`) | measured 2026-07-30 at HEAD: `orchestrate-dev.js:615`, `:616` (array elements of `await _parallel([…])` in `reviewLoop` — §8.5 combinator ruling), `orchestrate-dev.js:1867` (`agentFn(` as an anonymous `batch.map` arrow body — §8.5 returned-promise ruling); `orchestrate-queue.js` has none |
 | `__tests__/helpers/driftGenerators.js` exports `seeded` (returning `{ seed, int, pick, shuffle, bytes }`), `resolveSeed` (with the `PDLC_PROP_SEED` override), `shrink` | all present; `bytes(n)` returns a `Buffer` |
@@ -703,14 +707,26 @@ therefore **passes every L1 and L2 test and fails only in the runtime**. TSPEC �
 at *every* episode entry — and is therefore the highest-risk site in the feature for this defect. Its
 task's exit criterion includes RLH-AT-19 passing over the amended source.
 
-Two call-site shapes RLH-AT-19 must classify explicitly, from TSPEC §8.5, **or the test reds on correct
-source**:
+**The rulings that keep RLH-AT-19 off correct source are owned by TSPEC §8.5 and cited, not restated
+here.** §8.5's table gives three predicates over syntactic position — **alias**, **returned promise**
+(which covers the anonymous-arrow case: an arrow body is an arrow body whether the arrow is named or
+not), and **awaited combinator argument**, added at TSPEC v1.6. Read them there. §8.5 also states the
+meta-rule that makes them durable: they are predicates over *position*, the `file:line` citations are
+evidence that each is exercised, and a call site matching none of them is a **failure the assertion
+names** — never a fourth clause naming a line.
 
-| Shape | Ruling |
-|---|---|
-| **Alias** — the seam is destructured under a local name (`_readFile: readFileFn`) and called through it | resolve the alias from `main()`'s destructuring pattern and scan **the local name**. Scanning the `_` name alone finds zero call sites and **passes vacuously** — the worst possible failure for this test |
-| **Returned promise** — the call is the whole body of an arrow function or the operand of a `return` | **exempt, and the wrapper's own name inherits the obligation.** The wrapper is then scanned as an alias |
-| **Anonymous arrow** — the seam call is the entire body of an arrow passed inline, with no name to inherit the obligation (`batch.map((t) => agentFn(t))`, `orchestrate-dev.js:1867`) | **Exempt, and the obligation is inherited by nobody.** The awaiting is done by whatever consumes the returned array — `parallel(...)` / `Promise.all` — which `RLH-AT-19` does not and must not try to verify. This is the shipped shape at that line, and it is why the scan is clean at HEAD (§7.3, row 1). Answering TE Q-02: an anonymous arrow does **not** inherit; only a *named* wrapper does (row 2) |
+Two things about them this PLAN adds, because they are process statements TSPEC §8.5 is silent on:
+
+1. **The scan is clean at HEAD over exactly three sites, and `RLH-01` checks that, batch 1** (§4.1). The
+   sites are `orchestrate-dev.js:615`, `:616` (array elements of `await _parallel([…])` in `reviewLoop` —
+   §8.5's combinator ruling) and `orchestrate-dev.js:1867` (`agentFn(` as a `batch.map` arrow body —
+   §8.5's returned-promise ruling); `orchestrate-queue.js` has none. **v1.1 asserted one site and was
+   wrong**; that is why the premise is now measured at batch 1 instead of carried from authoring.
+2. **A fourth site is blocking work, not an exemption.** `RLH-AT-19`'s permitted-red window is empty
+   (§7.3 row 1) and §11.3 `H-h` forbids loosening the assertion, so the only legal responses to an
+   unclassified site are a source fix or a **TSPEC amendment adding a ruling as a predicate** — which is
+   exactly the route v1.6 took for `:615–616`, and the reason that route is now demonstrated rather than
+   theoretical.
 
 And the trap `RLH-AT-19` must **not** fall into: the assertion's name set is **FSPEC AT-19's closed
 thirteen-name list**, restated once in TSPEC §8.5 and cited — never re-enumerated — from here. It is
@@ -744,8 +760,7 @@ Three things about it that a task will get wrong if it has not read TSPEC §8.5:
    failure; and evidence must resolve for all three forms, **E-2 included**. Dropping the second clause
    makes "declare a seam with no default and inject it nowhere" a silent pass.
 
-The after-feature counts are **TSPEC §8.5's** (`twenty-one` and `thirteen`, the same three exempt) and
-are not restated here. `RLH-01` records the before-figures at HEAD so the after-figures are *checked*
+The after-feature counts are **TSPEC §8.5's** — read them there. `RLH-01` records the before-figures at HEAD so the after-figures are *checked*
 rather than asserted.
 
 ## 10. SKILL amendments and how each is verified
