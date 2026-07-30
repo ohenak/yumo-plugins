@@ -580,3 +580,93 @@ describe("main()", () => {
     expect(report.picked).toBe("feat-y");
   });
 });
+
+// ─── RLH-19 — the queue-row write/commit mechanism ───────────────────────────
+//
+// AT-30…AT-34, **module half only** (PLAN §7.4): the `rewriteStatus` /
+// `updateQueueStatus` mechanism itself — the row rewrite, TSPEC §6.5's `_git`
+// two-invocation commit, and each commit-failure branch — driven directly
+// against `orchestrate-queue.js`. *Which* halting exit of `orchestrate-dev`
+// reaches this write is the orchestrator half and belongs to `RLH-25`
+// (`RLH-AT-30-orch` …); nothing here asserts it.
+//
+// Contracts under test:
+//   TSPEC §4.6  `updateQueueStatus` returns `{ markdown, matched }`
+//   TSPEC §3.6  `rewriteStatus` is **exported**, gains a `_git` parameter,
+//               and commits after the write
+//   TSPEC §3.5  its return is `{ queueRow, detail? }`, `queueRow` drawn from
+//               `"halted" | "halted (uncommitted)" | "none" | "error"`
+//   TSPEC §6.5  exactly two `_git` invocations, `add` then `commit`, both
+//               pathspec-scoped to the queue path
+//   FSPEC §13.4/§13.5  the three failure dispositions
+describe("RLH-19: queue-row write and commit mechanism", () => {
+  const QUEUE_PATH = DEFAULT_QUEUE_PATH;
+
+  /** The exported-or-not `rewriteStatus`, read off the namespace (see the import). */
+  function rewriteStatusOf() {
+    return queueModule.rewriteStatus;
+  }
+
+  it("RLH-AT-30-module: an absent row is an error, never a silent no-op", async () => {
+    // TSPEC §4.6 — the not-found path stops being indistinguishable from a
+    // successful update whose replacement happened to be a no-op.
+    const miss = updateQueueStatus(SAMPLE_QUEUE, "ghost", "halted");
+    expect(miss).toEqual({ markdown: SAMPLE_QUEUE, matched: false });
+
+    const hit = updateQueueStatus(SAMPLE_QUEUE, "notification-v2", "halted");
+    expect(hit).toMatchObject({ matched: true });
+    expect(typeof hit.markdown).toBe("string");
+    expect(
+      parseQueue(hit.markdown).find((e) => e.feature === "notification-v2").status
+    ).toBe("halted");
+
+    // FSPEC §13.5 — on `matched: false` `rewriteStatus` writes nothing,
+    // performs no git operation, and returns an error result naming the
+    // feature, the queue path and the status that was not recorded.
+    const rewriteStatus = rewriteStatusOf();
+    expect(typeof rewriteStatus).toBe("function");
+
+    const fs = fakeFs({ [QUEUE_PATH]: SAMPLE_QUEUE });
+    const git = fakeGit();
+    const result = await rewriteStatus(
+      QUEUE_PATH,
+      "ghost",
+      "halted",
+      fs.readFile,
+      fs.writeFile,
+      git
+    );
+
+    expect(fs.writes).toEqual([]);
+    expect(git.callCount).toBe(0);
+    expect(result).toMatchObject({ queueRow: "error" });
+    expect(result.detail).toContain("ghost");
+    expect(result.detail).toContain(QUEUE_PATH);
+    expect(result.detail).toContain("halted");
+    expect(fs.files[QUEUE_PATH]).toBe(SAMPLE_QUEUE);
+  });
+
+  it("RLH-AT-31-module: no queue document is 'none', not an error", async () => {
+    // FSPEC §14.3 — "No QUEUE.md, or QUEUE.md with no row for this feature"
+    // reports `queueRow: "none"`; a direct invocation is never a double failure.
+    // The module half is that `rewriteStatus` distinguishes "no document" from
+    // §13.5's "document present, row expected, row absent" (RLH-AT-30-module).
+    const rewriteStatus = rewriteStatusOf();
+    expect(typeof rewriteStatus).toBe("function");
+
+    const fs = fakeFs({}); // readFile returns null for the queue path
+    const git = fakeGit();
+    const result = await rewriteStatus(
+      QUEUE_PATH,
+      "notification-v2",
+      "halted",
+      fs.readFile,
+      fs.writeFile,
+      git
+    );
+
+    expect(result).toEqual({ queueRow: "none" });
+    expect(fs.writes).toEqual([]);
+    expect(git.callCount).toBe(0);
+  });
+});
