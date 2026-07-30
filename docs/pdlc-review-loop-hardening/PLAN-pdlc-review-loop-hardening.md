@@ -58,6 +58,54 @@ numbers them); the jest name is always the `RLH-` form.
 
 ## 2. Test baseline and the exit criterion
 
+### 2.1 The measured baseline
+
+**Re-measured for this PLAN**, at HEAD on `feat-pdlc-review-loop-hardening`, by
+`cd pdlc/workflows && npm test`:
+
+```
+Test Suites: 1 failed, 35 passed, 36 total
+Tests:       1 failed, 70 skipped, 1038 passed, 1109 total
+Time:        179.175 s
+```
+
+The single failure is `__tests__/documentOracles.test.js`'s **intentional** red placeholder
+`AT-22 [red-until-L-06]`, carried deliberately from the preceding feature. It is **not this feature's
+test and must not be fixed, deleted or skipped.** This figure agrees with the TSPEC's own measurement
+(§8.3, taken at `ef4705a`).
+
+### 2.2 The exit criterion, stated once — every task cites this section
+
+> **The gate is "no new failures against the §2.1 baseline", never "the suite is green."**
+> A batch passes when `npm test` reports **1038 passing / 1 failing / 70 skipped or better**, the one
+> failure is still `documentOracles.test.js` `AT-22 [red-until-L-06]` and no other, **plus** any
+> `RLH-AT-*` test whose greening task (column `Greened by` in §4) has not yet run.
+> A second unexplained failure, or a *different* single failure, is a regression.
+
+The `Greened by` column makes the permitted-red set mechanically derivable at every batch: a red test
+owned by this feature is permitted exactly until the batch of its greening task completes, and is a
+regression from the batch after that onwards.
+
+Two batches are **RED-terminal by construction** — batch 2 and batch 3, which write test files ahead
+of their subjects. Their gate wording is therefore: *the new `RLH-AT-*` tests fail for the stated
+reason (their subject does not exist yet) and every pre-existing test still passes.* No batch is gated
+on absolute green.
+
+### 2.3 The 179-second hazard — how to run the suite
+
+The full suite takes **179 s**, which sits one second under the 180 s stall watchdog that produced
+`H-3` in the first place. A `se-implement` agent that runs `npm test` in the foreground as its
+inner-loop command will be killed mid-run, repeatedly, and will conclude the suite hangs.
+
+Normative for every task in this PLAN:
+
+- **Inner TDD loop:** run only the task's own file(s) —
+  `cd pdlc/workflows && npx jest __tests__/scanLines.test.js`. Single files are seconds, not minutes.
+- **Batch gate:** run the full suite **in the background** and read the output file, or with an
+  explicit timeout above 300 s. Never in a blocking foreground call.
+- Do **not** shorten the suite to fit the watchdog. Do not add `--silent`-driven partial runs to the
+  gate. The gate is the whole suite against §2.2 or it is not the gate.
+
 ## 3. Generated-artifact discipline and why it serialises the source lane
 
 ## 4. Batches
