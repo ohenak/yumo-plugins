@@ -1072,7 +1072,7 @@ nothing, asserted on the recorded seam call log, so a search that always reads b
 unanimous and however current. (iii) **Idempotence** — running the search twice against the same
 branch state yields an equal result and issues an equal number of seam reads.
 
-**Generator.** D2 × D4. Branch states composed from `PROP-ROUND-01`'s filename generator (so window
+**Generator.** **D1 × D6** — v1.0 cited "D2 × D4", the fenced-markdown and heading-set domains (PM F-06). Branch states composed from `PROP-ROUND-01`'s filename generator (so window
 membership is generated, not assumed) crossed with `PROP-RESOLVE-01`'s 16-element presence vector, plus
 tier placement (`tier1`, `tier2`, `both`, `neither`) chosen by `rng.pick`. 100 cases.
 
@@ -1662,6 +1662,18 @@ finding itself is reported to the TSPEC's owner rather than silently absorbed**:
 asserts a universal and enumerates a proper subset of it is the same shape as the defects this feature
 exists to fix, and it should be corrected in a TSPEC revision — not by this document quietly making
 the universal true.
+
+**Does the count close the gap in substance?** No, and the distinction is worth stating (PM Q-03).
+`PROP-TRAILER-01`'s conjuncts are **cross-recogniser**: mutual exclusion over the line space, and
+closure of `TRAILER_FAILURES`. Neither quantifies over `parseRevisionComplete`'s own input space or
+`parseResolvedMarker`'s own input space in the way §8.1's universal — *"every parameterisable
+component … carries at least one property"* — is asking for. What the two recognisers have is a joint
+property that would catch one of them accepting the other's input, and a catalogue-closure property
+that would catch either inventing a reason. What they do not have is a per-recogniser round-trip of
+the kind `PROP-NAME-01` gives `parseReviewFilename`. So: **four of six closed by count, two of those
+four closed only jointly**, and §8.1's universal remains open in substance for those two. That is
+stated here rather than left to be inferred from the arithmetic, and it is a second reason the finding
+belongs with the TSPEC's owner rather than being absorbed silently.
 
 ### 8.2 Measured limitation — the shipped `shrink` cannot shrink this feature's cases
 
