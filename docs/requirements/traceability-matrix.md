@@ -44,8 +44,8 @@ Downstream: `docs/pdlc-review-loop-hardening/FSPEC-pdlc-review-loop-hardening.md
 
 | Defect | AC group | FSPEC sections |
 |---|---|---|
-| H-1 (iteration index ignores the branch) | AC-1 | §3 FSPEC-DISCOVER-01, §4 FSPEC-GRAMMAR-01, §17.1 FSPEC-CONST-01 |
+| H-1 (iteration index ignores the branch) | AC-1 | §3 FSPEC-DISC-01, §4 FSPEC-NAME-01, §17.1 FSPEC-CONST-01 |
 | H-2 (non-terminal non-convergence exit) | AC-2 | §12 FSPEC-PMORT-01, §13 FSPEC-QUEUE-01, §14 FSPEC-ROWLOC-01 |
 | H-3 (monolithic authoring unsurvivable) | AC-3 | §8 FSPEC-TRAILER-01, §15 FSPEC-PACE-01, §16 FSPEC-COMPLETE-01 |
-| H-4 (no approved-phase skip) | AC-4 | §5 FSPEC-APPROVE-01, §6 FSPEC-VERDICT-01, §7 FSPEC-DIGEST-01, §9 FSPEC-APPROVAL-01, §10 FSPEC-STALE-01, §11 FSPEC-FORCE-01 |
+| H-4 (no approved-phase skip) | AC-4 | §5 FSPEC-ROUND-01, §6 FSPEC-VERDICT-01, §7 FSPEC-DIGEST-01, §9 FSPEC-APPROVAL-01, §10 FSPEC-STALE-01, §11 FSPEC-FORCE-01 |
 | — (harness consistency) | AC-5 | §17 FSPEC-CONST-01 |
