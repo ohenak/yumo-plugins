@@ -179,3 +179,140 @@ function requiredSet(docType) {
 function missingSet(result) {
   return new Set(result.missing === undefined ? [] : result.missing);
 }
+
+// ═══════════════ the acceptance tests (FSPEC §19; TSPEC §8.3's `completeness.test.js` row) ═══
+//
+// Jest names are namespaced `RLH-AT-{N}`, never bare `AT-{N}`: `documentOracles.test.js`
+// carries a foreign, intentional `AT-22` red, and two tests of one name in one run make a
+// failure report ambiguous exactly when it matters (TSPEC §8.3, PLAN §1.3 / §7.4).
+
+describe("structural completeness — the cross-review class (TSPEC §5.9, FSPEC §16.3)", () => {
+  test("RLH-AT-59: a duplicated verdict field is terminal but not approving", () => {
+    const text = readFixture("cross-review-duplicated-verdict.md");
+
+    // Non-vacuity: the fixture really does carry two catalogue-valued `VERDICT:` lines, both
+    // inside the trailing `## Verdict` section. A fixture with one, or with the second one
+    // fenced, would pass under the very implementation this AT exists to red.
+    const section = trailingVerdictSection(text);
+    expect(section.headingIndex).toBeGreaterThan(0);
+    expect(section.lines.filter(isVerdictField)).toEqual(["VERDICT: Approved", "VERDICT: Approved"]);
+    expect(section.fieldCount).toBe(2);
+
+    // (a) TERMINAL. §16.3's table: "two or more `VERDICT: ` lines, at least one carrying a
+    //     catalogue value" ⇒ terminal **yes**. The "exactly one" clause was withdrawn from the
+    //     terminal test at FSPEC v1.x precisely because it made a finished review permanently
+    //     non-terminal — the wrapper re-dispatches to `MAX_AUTHORING_DISPATCHES` and halts the
+    //     phase over a review whose reviewer plainly reached the end (E-58).
+    const completeness = devModule.isComplete(CLASS_CROSS_REVIEW, "FSPEC", text);
+    expect(completeness.complete).toBe(true);
+
+    // …and observed where the wrapper observes it. A review episode is greenfield, so
+    // §5.6.2's terminal record is `{ terminal: isComplete(...).complete, trailerReason: null }`
+    // — `parseRevisionComplete` is not called and no trailer is required (§6.2 row 9a). This
+    // conjunct is why `RLH-AT-59` stays red one batch past RLH-16: `isTerminal` is RLH-23's.
+    const terminal = devModule.isTerminal(
+      MODE_GREENFIELD,
+      "review written; see the cross-review file.",
+      CLASS_CROSS_REVIEW,
+      "FSPEC",
+      text,
+    );
+    expect(terminal).toEqual({ terminal: true, trailerReason: null });
+
+    // (b) NOT APPROVING. §5.1 step 2's duplicate pre-count over the located section fails
+    //     closed, so the phase runs. The phase-level halves — that no halt occurs and that the
+    //     phase actually runs — are `approvalSearch.test.js`'s AT-11 and `haltAndQueue.test.js`
+    //     (PLAN §7.4); what this file owns is that the *same* section is simultaneously
+    //     terminal and non-approving, which is the whole content of "terminal but not
+    //     approving".
+    expect(section.fieldCount).toBeGreaterThan(1);
+  });
+
+  test("RLH-AT-60: quoted verdict grammar does not make a file unparseable", () => {
+    const text = readFixture("cross-review-quoted-verdict.md");
+
+    // Non-vacuity: two `VERDICT:` lines exist in the file — one fenced quotation of the SKILL's
+    // own grammar block, one real field in the trailing section. Without both, the "count of
+    // two is never consulted" clause has nothing to be true about.
+    expect(wholeFileFieldCount(text)).toBe(2);
+    expect(text).toContain("VERDICT: Approved with minor changes");
+    expect(text).toContain("```markdown\n## Verdict\n");
+
+    // The fenced occurrence is excluded under §1.2 rule 5, so the located trailing section
+    // carries exactly one field — and the located heading is the unfenced one.
+    const section = trailingVerdictSection(text);
+    expect(section.fieldCount).toBe(1);
+    expect(section.lines.filter(isVerdictField)).toEqual(["VERDICT: Approved"]);
+
+    // (a) The file is CONFORMING — exactly the judgement a whole-file count of two would
+    //     destroy, and the one RLH-16 must get right.
+    expect(devModule.isComplete(CLASS_CROSS_REVIEW, "TSPEC", text).complete).toBe(true);
+
+    // (b) The verdict READS `Approved` — the trailing section's value, not the quotation's.
+    //     `parseVerdict` is unchanged by this feature (TSPEC §3.9) and is driven over the
+    //     located section text, which is §5.1 step 3.
+    const parsed = devModule.parseVerdict(section.lines.join("\n"), "software-engineer");
+    expect(parsed.verdict).toBe("Approved");
+    expect(parsed.malformed).toBeUndefined();
+
+    // (c) The whole-file count is never consulted: it is 2, and 2 is the count that would make
+    //     §5.1's fail-closed duplicate branch fire. The located count is what governs.
+    expect(wholeFileFieldCount(text)).not.toBe(section.fieldCount);
+  });
+});
+
+describe("structural completeness — the spec classes (TSPEC §5.9, FSPEC §16.2)", () => {
+  test("RLH-AT-62: a placeholder skeleton is not structurally complete", () => {
+    const R = requiredSet("TSPEC");
+
+    // ── (a) every required heading written, every body a placeholder ──────────────────────
+    //
+    // `TBD`, `TODO`, `_TBD_` and an HTML comment all count as an **empty** body (§5.9), so
+    // `S` is 0 and every required heading is short. Reds for a body test of "any non-blank
+    // line", under which write 1 of a skeleton scores complete and the episode terminates
+    // before a single word of content exists.
+    const skeleton = readFixture("tspec-placeholder-skeleton.md");
+    for (const title of R) expect(skeleton).toContain(`## ${title}\n`);
+    expect(skeleton).toContain("TBD");
+    expect(skeleton).toContain("TODO");
+    expect(skeleton).toContain("_TBD_");
+    expect(skeleton).toContain("<!-- to be written -->");
+
+    const skeletonResult = devModule.isComplete(CLASS_SPEC, "TSPEC", skeleton);
+    expect(skeletonResult.complete).toBe(false);
+    // `S` is 0, observed through the only surface §3.7's return exposes: every member of `R`
+    // is short, so `missing` is set-equal to `R` itself.
+    expect(missingSet(skeletonResult)).toEqual(new Set(R));
+
+    // ── (b) a fenced `## …` line does not inflate `T` ─────────────────────────────────────
+    //
+    // The same skeleton with `## Data Model` written as a *quotation* inside a fenced block
+    // instead of as a section of its own (§1.2 rule 5, which §16.2 inherits). The fenced
+    // heading is not a top-level section, so `Data Model` is still short — while the fenced
+    // block **is** body content for the heading it sits under, so `Interfaces` is not.
+    // Both directions in one fixture: an implementation that scans fences reds on the first
+    // conjunct, one that strips fenced lines out of bodies reds on the second (SE-v4 F-18).
+    const fencedHeading = readFixture("tspec-fenced-heading-skeleton.md");
+    expect(fencedHeading).toContain("```markdown\n## Data Model\n");
+    expect(fencedHeading.split("\n").filter((l) => l === "## Data Model")).toHaveLength(0);
+
+    const fencedHeadingResult = devModule.isComplete(CLASS_SPEC, "TSPEC", fencedHeading);
+    expect(fencedHeadingResult.complete).toBe(false);
+    expect(missingSet(fencedHeadingResult).has("Data Model")).toBe(true);
+    expect(missingSet(fencedHeadingResult).has("Interfaces")).toBe(false);
+
+    // ── (c) a body that is ONLY a fenced block is non-empty ───────────────────────────────
+    //
+    // All six required headings present, `## Interfaces` carrying nothing but one signature
+    // block. That body counts toward `S` and the artifact scores structurally **complete**.
+    // Reds for a strip-then-scan body test, under which `S < T` forever and §15.6 halts the
+    // phase on a correct document (SE-v4 F-18 / TE-v4 F-01).
+    const fencedBody = readFixture("tspec-fenced-body-complete.md");
+    for (const title of R) expect(fencedBody).toContain(`## ${title}\n`);
+    expect(fencedBody).toContain("## Interfaces\n\n```js\n");
+
+    const fencedBodyResult = devModule.isComplete(CLASS_SPEC, "TSPEC", fencedBody);
+    expect(fencedBodyResult.complete).toBe(true);
+    expect(missingSet(fencedBodyResult)).toEqual(new Set());
+  });
+});
