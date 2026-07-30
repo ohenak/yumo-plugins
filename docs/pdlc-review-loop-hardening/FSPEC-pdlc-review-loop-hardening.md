@@ -130,15 +130,19 @@ and cites the clause** rather than re-deciding it.
 4. **Fail closed, uniformly.** Wherever a machine-readable field cannot be read, the behaviour is
    *more* work, never less: the phase runs, the episode does not reach terminal, the approval is not
    granted. AC-4.2a is the governing clause and the direction never varies.
-5. **Fenced regions are not data (SE-v2 F-11, TE-v2 F-01).** Every mechanical scan this feature
-   specifies over a `CROSS-REVIEW-*` or `LEARNINGS-*` file — the verdict scan and its duplicate
-   pre-count (§6.3), the `APPROVAL-HASH:` scan and its pre-count (§7.4), the tier-1 hash read
-   (§10.1), and the completeness heading scan (§16) — **ignores every line inside a fenced code
-   block**: scanning skips from a line whose first non-whitespace characters are a fence opener
-   (` ``` ` or `~~~`, any longer run) to the matching closer, and a fence left unclosed at EOF
-   swallows the remainder. This is stated once, here, and referenced rather than restated, because
-   the alternative is one exclusion clause per scan site and a later reviewer having to check them
-   against each other.
+5. **Fenced regions are not data (SE-v2 F-11, TE-v2 F-01; scope clause struck at v1.3 per SE-v3
+   F-17 / TE-v3 F-01).** Every mechanical scan this feature specifies over a markdown artifact it
+   reads — the verdict scan and its duplicate pre-count (§6.3), the `APPROVAL-HASH:` scan and its
+   pre-count (§7.4), the hash read at either tier (§10.1, §10.5), the completeness heading scan
+   (§16, all four classes) and the heading walk that feeds the resume prompt (§15.5), and the
+   `RESOLVED:` scan (§12.2) — **ignores every line inside a fenced code block**: scanning skips from
+   a line whose first non-whitespace characters are a fence opener (` ``` ` or `~~~`, any longer
+   run) to the matching closer, and a fence left unclosed at EOF swallows the remainder. A line is
+   the **matching closer** only if its fence run uses the *same* fence character as the opener and
+   is *at least as long*; every other fence line is content, so a three-backtick line inside a
+   four-backtick block does not close it. This is stated once, here, and referenced rather than
+   restated, because the alternative is one exclusion clause per scan site and a later reviewer
+   having to check them against each other.
 
    This rule is not defensive. Reviews of **this feature** quote these grammars: §6.2's template
    contains a literal `## Verdict` heading and an approving `VERDICT: ` line, and §7.4's contains an
