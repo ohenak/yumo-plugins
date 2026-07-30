@@ -350,4 +350,41 @@ ruling already written down in `orchestrate-dev.js`'s `HARVESTED_FROM_ROW` comme
 
 ## 8. Recommendation
 
+**All three Medium findings are closed, and closed properly.** I want to be specific about what
+"properly" means here, because two of the three could have been closed cosmetically and were not:
+
+- **F-1** was closed at the surface that actually ships, and the round-1 premise it rested on
+  (`DEV_ENTRY` already accepts both arg shapes) was correct — verified, not assumed. The new tests red
+  under targeted mutants on each half independently.
+- **F-2** was closed by implementing the criterion FSPEC states, and by writing down *which document
+  governs and why* in the code, the commit and the tests. The ordering requirement I flagged — the
+  clause last, so a resume prompt still names a section first — is satisfied twice over and asserted
+  directly. The AC-4.2c exclusion is intact and asserted. The one pre-existing test that depended on
+  the old, looser criterion was updated rather than deleted, and came out strictly stronger for it.
+- **F-3** is accurate documentation, not aspirational documentation. I checked nine factual claims
+  against their implementing constructs and found no overstatement, including the two that are easiest
+  to get subtly wrong (force-vs-POSTMORTEM precedence, and the `## Verdict` heading form under two
+  live predicates).
+
+The suite delta corroborates: +6 passed / +6 total, exactly the 2 `RLH-CR-F1` and 4 `RLH-CR-F2` cases;
+skipped unchanged at 70; the single red still the permanent `AT-22 [red-until-L-06]`. Both `--check`
+gates exit 0.
+
+The three new Low findings are all *hygiene left behind by the fixes*, and none of them warrants
+another round:
+
+1. **F-7** is a spec reconciliation plus one false comment line at `pipelineWiring.test.js:471`. The
+   comment is the only part I would fix opportunistically; the Q-07 reversal belongs in LEARNINGS §3.
+2. **F-8** is a preamble that claims more than it delivers. The coverage is real; the sentence is not.
+3. **F-9** is one checklist line in `harvest-learnings/SKILL.md`, and the loop already self-corrects
+   without it.
+
+F-4, F-5 and F-6 remain unfixed with their named successors, as agreed. Nothing in this round changes
+that assessment.
+
+**This clears Phase CR.** The feature should proceed to Phase DOD. The three Lows above, plus §7's two
+recorded items, should be carried into `LEARNINGS-pdlc-review-loop-hardening.md` at harvest — F-7 and
+§7(a) point at the same `docs/_constraints/` entry that v1's F-4 and F-5 already name, which is a sign
+the generated-artifact/hand-maintained-copy boundary is the thing this feature learned most about.
+
 ## Verdict
