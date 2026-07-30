@@ -513,3 +513,105 @@ function buildPlans(rng, count) {
   return rng.shuffle(plans).map((p, i) => ({ ...p, extras: i % 5 < 2, nonIdentity: i % 2 === 0 }));
 }
 
+// ═══ PROP-COMPLETE-01 (PROPERTIES §4; TSPEC §8.2's `isComplete` row; PLAN §7.2) ═══════════════
+//
+// **The exact required set, falsifiable in both directions** — NOT monotonicity. PLAN §7.2 and
+// PROPERTIES §5.2 both record why the weaker v1.1 form was withdrawn and must not return: a
+// matcher recognising *no* required heading at all is incomplete before and after any addition,
+// so monotonicity holds while the oracle detects nothing. Conjunct (i) below reds on exactly
+// that subject, in the `R ⊆ S` direction.
+
+/** This file's literal seed. `PDLC_PROP_SEED` overrides it — see `resolveSeed`. */
+const PROP_COMPLETE_SEED = 20260730;
+const CASE_COUNT = 100;
+
+/** Replay-based reproduction (PROPERTIES §3.3 rule 3): the seed and the case index are printed
+ *  with every failure, plus `shrink`'s first simpler candidate. `shrink` is never on the pass
+ *  path — it is read only while building this report. */
+function failureReport(seed, caseIndex, kase, detail) {
+  const [simpler] = shrink({ kind: "bytes", bytes: Buffer.from(kase.text, "utf8") });
+  const shrunk = simpler ? `${simpler.bytes.length} bytes` : "already minimal";
+  return [
+    `PROP-COMPLETE-01 failed: ${detail}`,
+    `  seed=${seed} (override with PDLC_PROP_SEED); reproduce case ${caseIndex} by replaying draws 1…${caseIndex + 1}`,
+    `  docType=${kase.docType}; expected complete=${kase.expected.complete}; expected missing=${JSON.stringify([...kase.expected.missing])}`,
+    `  shrink candidate: ${shrunk}`,
+    `  document:\n${kase.text}`,
+  ].join("\n");
+}
+
+describe("PROP-COMPLETE-01 — isComplete is exactly the required set (TSPEC §5.9, §8.2)", () => {
+  test("PROP-COMPLETE-01: complete iff R ⊆ S, missing is exactly R \\ S, and extras never subtract", () => {
+    const seed = resolveSeed(PROP_COMPLETE_SEED);
+    const rng = seeded(seed);
+    const plans = buildPlans(rng, CASE_COUNT);
+
+    const floors = { complete: 0, oneShort: 0, emptyBodyShort: 0, fencedTbdComplete: 0, extras: 0, nonIdentity: 0 };
+    const soleShortfalls = new Map(SPEC_DOC_TYPES.map((d) => [d, new Set()]));
+
+    for (let caseIndex = 0; caseIndex < plans.length; caseIndex++) {
+      const kase = genCase(rng, plans[caseIndex]);
+      for (const key of Object.keys(floors)) if (kase.shapes[key]) floors[key] += 1;
+      if (kase.shapes.soleShortfall) soleShortfalls.get(kase.docType).add(kase.shapes.soleShortfall);
+
+      // jest's `expect` takes exactly one argument, so the seed/replay report is attached by
+      // re-throwing rather than passed as a message.
+      try {
+        const result = devModule.isComplete(CLASS_SPEC, kase.docType, kase.text);
+
+        // (i) The `iff`, at the right level. Both directions: a subject that always returns
+        //     `true` dies on the `R ⊄ S` half, one that always returns `false` on the `R ⊆ S`
+        //     half. The extras generated below are what stop monotonicity hiding here.
+        expect(result.complete).toBe(kase.expected.complete);
+
+        // (ii) `missing` is exactly the shortfall — a positive-presence conjunct, not an
+        //      absence. Set-equal to `R \ S`: every shortfall named, nothing outside `R`, and
+        //      nothing that is in `S`. This distinguishes a subject returning `false` for the
+        //      right reason from one returning it for the wrong reason.
+        if (kase.expected.complete) {
+          expect(missingSet(result)).toEqual(new Set());
+        } else {
+          expect(missingSet(result)).toEqual(kase.expected.missing);
+          // …and no name outside `R` was invented, which set equality already implies but
+          // which is asserted separately so the failure message says which rule broke.
+          const R = new Set(requiredSet(kase.docType));
+          expect([...missingSet(result)].filter((m) => !R.has(m))).toEqual([]);
+        }
+
+        // (iii) Extras never subtract — stated as a **differential** between the extras-added
+        //       text and the same document without them, so it cannot be satisfied vacuously
+        //       by a case that had no extras to begin with.
+        if (kase.shapes.extras) {
+          const base = devModule.isComplete(CLASS_SPEC, kase.docType, kase.baseText);
+          expect(result.complete).toBe(base.complete);
+          expect(missingSet(result)).toEqual(missingSet(base));
+        }
+      } catch (err) {
+        throw new Error(failureReport(seed, caseIndex, kase, err && err.message ? err.message : String(err)));
+      }
+    }
+
+    // ── Non-vacuity (PROPERTIES §5.2). All forced by `buildPlans`, asserted here so a
+    //    generator that stops producing an adversarial shape fails loudly rather than passing.
+    const REQUIRED_FLOORS = {
+      complete: 25,
+      oneShort: 25,
+      emptyBodyShort: 10,
+      fencedTbdComplete: 10,
+      extras: 15,
+      nonIdentity: 20,
+    };
+    const shortfalls = Object.entries(REQUIRED_FLOORS)
+      .filter(([shape, min]) => floors[shape] < min)
+      .map(([shape, min]) => `seed=${seed}: ${shape} floor ${floors[shape]} < ${min} (observed ${JSON.stringify(floors)})`);
+    expect(shortfalls).toEqual([]);
+
+    // …and each element of every `R` was the sole shortfall in ≥1 case, asserted as set
+    // equality against `R` itself — so a heading added to (or removed from) the required set
+    // without this generator knowing fails here rather than going untested.
+    for (const docType of SPEC_DOC_TYPES) {
+      expect([...soleShortfalls.get(docType)].sort()).toEqual([...requiredSet(docType)].sort());
+    }
+  });
+});
+
