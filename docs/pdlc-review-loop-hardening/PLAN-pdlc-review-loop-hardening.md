@@ -17,6 +17,45 @@ algorithmic statement lives in REQ v1.6 / FSPEC v1.8 / TSPEC v1.5 and is cited h
 
 ## 1. Overview
 
+### 1.1 What is being built
+
+Four harness defects (TSPEC §1.2 `H-1`…`H-4`) are fixed inside the existing `pdlc/workflows/` ES
+modules. Five tracked paths change and nothing outside them does — TSPEC §1.3 owns the change surface.
+No new package, no new dependency, no new source file under `pdlc/workflows/` (TSPEC §2.1, §2.2).
+
+The work decomposes into **34 tasks across 16 batches**. The shape is unusual and the reason is
+structural rather than stylistic: almost all of it lands in **one** physical file
+(`pdlc/workflows/orchestrate-dev.js`), and every commit that touches a tracked workflow source must
+also rebuild `pdlc/workflows/dist/` in the same commit (§3 below). Those two facts together mean the
+**source lane is fully serialised** — one source-writing task per batch — while the test, fixture and
+SKILL lanes fan out widely beside it. Batch 2 carries nine tasks; the source lane carries one.
+
+### 1.2 How to read this document
+
+**This PLAN cites; it does not restate.** Every task row names the TSPEC section that owns the thing
+being built. If a task row and the TSPEC disagree, the TSPEC wins and the task row is the defect.
+
+That rule is not stylistic either. This feature's own review history is the argument for it: every
+residual defect across four consecutive rounds of TSPEC cross-review was a **consistency failure
+between duplicated statements of a single rule** — one `ListFailure` contract stated in six places, one
+read bound in three, one signature in three. A PLAN that re-describes `selectMode` or the digest
+becomes the seventh copy and is wrong within a round. So a task row states only what the TSPEC does
+not: *when* the work happens, *who* owns which file, *which test comes first*, and *what stops*.
+
+Where a task row does carry a normative statement, it is a **process** statement (batch, owner, gate,
+order) and the TSPEC is silent on it by design.
+
+### 1.3 Test-name namespacing — mandatory
+
+Every jest test this feature adds is named **`RLH-AT-{N}`**, never bare `AT-{N}` (TSPEC §8.3). The
+collision is measured, not hypothetical: `pdlc/workflows/__tests__/documentOracles.test.js` at HEAD
+carries `test("AT-22 [red-until-L-06]: coveredViolations(LIVE_ROOT) is empty post-landing", …)` from the
+preceding feature, and this feature's AT-22 is a different assertion entirely. The TSPEC-local ATs
+follow the same rule: `RLH-AT-01a`, `RLH-AT-13a`, `RLH-AT-43a`.
+
+Throughout this document bare `AT-{N}` refers to the **FSPEC's** numbering (which is how the FSPEC
+numbers them); the jest name is always the `RLH-` form.
+
 ## 2. Test baseline and the exit criterion
 
 ## 3. Generated-artifact discipline and why it serialises the source lane
