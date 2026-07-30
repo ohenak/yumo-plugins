@@ -1489,9 +1489,10 @@ expression, because it compares the subject with itself. §4.3's oracle avoids b
 
 ### 6.1 What exists today, measured
 
-`pdlc/workflows/__tests__/fixtures/` currently holds **one** entry — `covered-violations/`, a
-directory tree used by the guard suites — and `__tests__/helpers/` holds twelve modules, of which
-`driftGenerators.js` is the one this document builds on (§3.1). **None** of the fixtures this feature
+`pdlc/workflows/__tests__/fixtures/` currently holds **two** entries — `covered-violations/`, a
+directory tree used by the guard suites, and `tmpGitFixture.js` — and `__tests__/helpers/` holds
+**thirteen** modules, of which `driftGenerators.js` is the one this document builds on (§3.1). *v1.0
+said one and twelve; both counts were off by one, re-measured against the tree (SE F-09).* **None** of the fixtures this feature
 needs exists at HEAD; every one below is created by the task named beside it, and each is listed in
 PLAN §4.2's file table.
 
@@ -1536,8 +1537,10 @@ and does not buy: the copy is a point-in-time snapshot and **detects no subseque
 bolting a fixture-versus-SKILL comparison onto `completeness.test.js` is explicitly *not* this
 feature's work.
 
-`PROP-COMPLETE-01` does not change that. It quantifies over **present-sets**, not over heading text:
-its domain is the required set `R`, and its §5.2 second row shows it reds when `R` shrinks. It says
+`PROP-COMPLETE-01` does not change that. It quantifies over generated **document text** whose headings
+are drawn from the required set `R` — v1.0 said "present-sets", the wrong domain for
+`isComplete(artifactClass, docType, fileText)` (PM F-01, §4.1) — and its §5.2 **fourth** row shows it
+reds when `R` shrinks. It says
 nothing about whether `R`'s headings still match the SKILLs — that gap stays open, owned where PLAN
 §10.2 leaves it, and §8.3 below records it rather than quietly implying a property covers it.
 
@@ -1551,14 +1554,28 @@ from there, do not retype it from here"*) and §1.4 above:
   spells the sentence out. A retyped message greens against a subject that emits a *different*
   retyped message, and the two drift apart silently.
 - **Catalogues** (`LIST_FAILURES`, `FILENAME_FAILURES`, `HASH_FAILURES`, `TRAILER_FAILURES`, the role
-  and doc-type catalogues, the six forceable phases) — the generator enumerates the catalogue itself
-  (§3.3), which is what makes the set-equality floors meaningful.
+  and doc-type catalogues, the six force**able** phases of `parseForcePhases` — distinct from the
+  **seven** phases carrying a `reviewLoop` call site, which is D6's axis; §3.2) — the generator
+  enumerates the catalogue itself (§3.3), which is what makes the set-equality floors meaningful.
+  TSPEC §2.5's **five gated exits** are a catalogue in exactly the same sense, cited from §2.5 and not
+  re-listed here (§4.3).
 - **Constants** (`MAX_REVIEW_ROUNDS`, `MAX_AUTHORING_ATTEMPTS`, `MAX_AUTHORING_DISPATCHES`,
   `MAX_AUTHORING_WRITE_BYTES`) — TSPEC §4.8 makes these **module-level and not exported**. A property
   at L1/L2 therefore cannot import them; it obtains them the way the rest of the suite does (through
   the injected surface or, for `PROP-AWAIT-01`, from the source text) and asserts *relationships*
-  between them, never their values. §4.3's 36-dispatch bound and §5.3's anti-oracle row are the worked
-  example of this rule.
+  between them, never their values.
+
+  **Which injected surface, precisely.** v1.0 left "through the injected surface" unnamed, and that
+  vagueness is what let two properties assert a constant against itself (SE F-02). TSPEC §7.1 names
+  the surface: of the five `MAX_REVIEW_ROUNDS` edit sites, *"only sites 4 and 5, which report a
+  **count** rather than an index, use the constant alone"* — site 5 returns
+  `{ converged: false, iterations: MAX_REVIEW_ROUNDS, lastResults }`, and site 4 renders
+  `Iterations (${MAX_REVIEW_ROUNDS} — limit reached)` into `reviewLoop`'s prompt, captured by the
+  `recordPhase` double. Those two are the **only** places any test at any level can observe the
+  constant's value, and both are L2. A property that needs the constant's value must therefore be an
+  L2 property — which is why the width identity moved from `PROP-ROUND-01` to `PROP-WINDOW-01`
+  (§4.1, §4.3), and why `PROP-EPISODE-01`'s per-episode cap `B` is *measured by saturation* rather
+  than read. §4.3's 36-dispatch bound and §5.4's anti-oracle note are the worked example of this rule.
 - **SKILL template headings** — copied by RLH-12 once, per §6.4, and never paraphrased.
 
 ## 7. Coverage matrix
