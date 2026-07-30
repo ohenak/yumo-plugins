@@ -246,3 +246,45 @@ discipline does not fix it.
 §4a A-11, a new terminal marker, and a single-referent rule for the approval bytes. Under R-1 do not
 dispatch reviewers at it. If the operator wants confidence before accepting R-2, read v1.5's changelog
 directly and confine any check to AC-1/AC-2/AC-5 — the sections R-2 proposes to ship.
+
+---
+
+## Resolution (2026-07-29, operator-directed)
+
+The operator directed a convergence pass on v1.5 without a sixth review round ("converge and
+resolve all the issues that te and se brought up … avoid more reviews"). The pass verified v1.5
+finding-by-finding against both round-5 cross-reviews and against the tree, rather than
+dispatching reviewers:
+
+- **All nine round-5 blocking findings and all four Low findings are resolved in the v1.5 text**,
+  each with its retraction recorded in place: SE-v5 F-01 (mode = dispatched prompt kind, revision
+  test first, fail-toward-revision, same-round re-entry); TE-v5 F-01/F-02 (revision terminal =
+  structural completeness + agent-emitted completion trailer, evaluated before the progress
+  predicate; "returned normally" retracted); SE-v5 F-02 / TE-v5 F-04 (new pre-review read, shared
+  with no AC-3.5 measurement); SE-v5 F-03 (§4a A-11 + inlined pure-JS digest, C-5 boundary stated);
+  SE-v5 F-04 (bypass route corrected — recovers the feature only, row edit is the sole queue
+  recovery); TE-v5 F-03 (reviewed document's commit sha replaces the self-referential column);
+  TE-v5 F-05 (one mode-independent byte predicate; "on disk" clause demoted to referent-only);
+  SE-v5 F-05/F-06, TE-v5 F-06/F-07 (citations and referent corrected). SE-v5 Q-01 is dissolved
+  (tier 1 now uses the same hash-equality comparison as tier 2 — no history referent remains);
+  SE-v5 Q-02, TE-v5 Q-01/Q-02 are answered in-document.
+- **Every citation v1.5 claims as measured was re-verified byte-accurate at HEAD** (`6247fa5`;
+  workflow sources byte-identical to `cda9161`): `orchestrate-queue.js` `:71-73`/`:80`/`:373`/
+  `:387`/`:749`; `orchestrate-dev.js` `:25`/`:322`/`:1719`; `runtime-adapter.js` `:13-16`/`:21`
+  (and zero `crypto`/`shasum`/`sha1` hits, confirming A-11); `build-runtime.mjs` `:24`/`:219`;
+  `pdlc-drift.sh` `:338-347`. The class-D citation defect that consumed part of every round is
+  clean at v1.5.
+- **An adversarial pass over the v1.5 text found no new blocking defect.** The closest candidate —
+  a revision continuation on a document whose findings are all reflected but whose structure was
+  damaged by the interrupted attempt — resolves within AC-3.5g clause 2's scope and the R-10/R-12
+  pricing.
+
+Disposition: **Phase R is converged at v1.5 by operator-directed verification.** This section is
+the resolution act for this post-mortem in the sense the REQ's own AC-2.4 specifies. The round-5
+cross-review files retain their historical `Needs revision` verdicts against v1.4; they are not
+amended and no reviewer approval is fabricated — the convergence authority for v1.5 is this
+operator-directed pass, recorded here. R-2's alternative (accept a narrowed v1.5) is superseded by
+this full-scope resolution; R-3's spike-first successor rows remain worthwhile independent hardening
+and are unaffected. The queue row remains `halted` pending the operator's decision on how to resume
+(note: the current pipeline predates this REQ's AC-4, so a naive resume would re-enter Phase R
+review from scratch rather than proceeding to Phase F).
