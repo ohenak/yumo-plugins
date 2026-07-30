@@ -264,6 +264,285 @@ A POSTMORTEM already on disk is consulted **before** step 1 by `checkPostmortem(
 
 ## 3. Interfaces
 
+Signatures are normative. A jest double must satisfy the stated shape; the adapter implementation
+must satisfy it asynchronously.
+
+### 3.1 `main()` — the composition root
+
+`orchestrate-dev.js`, at the anchor
+`export default async function main({ reqPath, _agent: rawAgentFn = agent, … })`. Six parameters are
+added to the sixteen that exist today. Nothing existing is renamed or reordered.
+
+```js
+export default async function main({
+  reqPath,
+  forcePhases = null,                          // §5.7 — raw operator string, unparsed
+  // …the sixteen existing injections, unchanged…
+  _listFiles: listFilesFn = defaultListFiles,  // §3.2
+  _writeFile: writeFileFn = defaultWriteFile,  // §3.3
+  _appendFile: appendFileFn = defaultAppendFile, // §3.3
+  _git: gitFn = defaultGit,                    // §3.4
+  _recordHalt: recordHaltFn = defaultRecordHalt, // §3.5
+} = {}) {
+```
+
+`forcePhases` is data, not a seam: it carries no default implementation and is never called. It
+defaults to `null`, which `parseForcePhases` (§5.7) maps to the empty set — absent and empty are the
+same thing, so the runtime need not distinguish "not supplied" from "supplied empty".
+
+`export const meta` gains a second `inputs` entry beside the existing `{ name: "reqPath", …,
+required: true }`:
+
+```js
+{ name: "forcePhases", description: "…", type: "string", required: false }
+```
+
+`DEV_META` in `build-runtime.mjs` is **not** edited — it is a separate hand-written literal that
+carries `name`, `description`, `whenToUse`, `phases` and no `inputs` array at all. Adding one would
+create a second declaration to keep in sync for no benefit; the bundle entrypoint reads `args`
+directly (FSPEC §11.2).
+
+### 3.2 `_listFiles(dirPath)` — the listing seam
+
+```js
+/**
+ * @param {string} dirPath  repo-relative directory path
+ * @returns {Promise<{ ok: true, files: string[] } | { ok: false, reason: ListFailure }>}
+ *          files: basenames only, not paths; order unspecified; directories excluded
+ */
+```
+
+- **Never throws.** Every failure is a `{ ok: false, reason }` with `reason` drawn from the closed
+  `ListFailure` catalogue of §4.2 (DC-01 receive side, DC-11 one error contract).
+- **Basenames, not paths.** `parseReviewFilename` (§5.2) consumes basenames; returning paths would
+  force every caller to re-derive the basename and would make the grammar's `^`/`$` anchors wrong.
+- **Non-recursive.** The only directory ever listed is `docs/${feature}`; cross-review files are
+  flat there. A recursive walk would be a different contract with different failure modes.
+
+**Node default** (jest, and any direct `node` invocation):
+
+```js
+export function defaultListFiles(dirPath, { fsMod = fs } = {}) { /* readdirSync withFileTypes */ }
+```
+
+It maps `ENOENT` → `{ ok: false, reason: "dir_missing" }`, `ENOTDIR` → `"not_a_directory"`,
+`EACCES`/`EPERM` → `"unreadable"`, a non-string or empty `dirPath` → `"bad_argument"`, and any other
+error → `"unreadable"`. The `{ fsMod = fs }` second-argument idiom is copied verbatim from the
+shipped `export function checkFileNonEmpty(path, { fsMod = fs } = {})` so the two file-touching Node
+defaults are tested the same way.
+
+**Adapter implementation:** `rtListFiles`, an `agent()` with Bash, following `rtCheckFile`'s
+constrained-output discipline (its prompt literal is
+`` `Return ONLY one word: OK, EMPTY, or MISSING.` ``) and `rtMergeWorktree`'s JSON return discipline
+(`{"ok":true}` / `{"ok":false,…}`). It returns the same union; the four `ListFailure` values are the
+only `reason` strings the prompt permits, and an unrecognised agent response maps to
+`{ ok: false, reason: "unreadable" }` rather than throwing.
+
+### 3.3 `_writeFile(path, contents)` and `_appendFile(path, text)`
+
+```js
+/** @returns {Promise<void>}  throws on failure */
+export function defaultWriteFile(path, contents, { fsMod = fs } = {})
+export function defaultAppendFile(path, text, { fsMod = fs } = {})
+```
+
+These two are the exception to §3.2's never-throw rule, and deliberately so: a failed write is not a
+condition any caller can meaningfully continue past, and the existing `defaultReadFile` /
+`checkFileNonEmpty` pair already establishes throw-on-IO-failure as this module's idiom. Callers
+wrap them where FSPEC prescribes a specific halt (§6.2).
+
+`_appendFile` is **append-shaped and never a whole-file rewrite** (FSPEC §7.4). This matters for the
+approval-hash record: a read-modify-write would re-emit the reviewer's prose, and any divergence
+between what was read and what was written would silently rewrite a cross-review file. The Node
+default uses `appendFileSync`, and the adapter's `rtAppendFile` prompt instructs the agent to append
+and nothing else — it must not be implemented as `rtWriteFile(path, existing + text)`.
+
+**`_writeFile`'s adapter implementation already exists.** `runtime-adapter.js` defines
+`async function rtWriteFile(path, contents)` (prompt literal
+`` `replacing the file's current contents exactly` ``) but `rtDevInjections(devModule)` does not
+include it — today it returns exactly `_agent, _parallel, _pipeline, _phase, _log, _checkFile,
+_readFile, _checkCi, _mergeWorktree`. Adding `_writeFile: rtWriteFile` to that object is the entire
+adapter change for this seam. `rtAppendFile` is new.
+
+### 3.4 `_git(argv)` — the transport seam
+
+```js
+/**
+ * @param {string[]} argv  git arguments, NOT including the leading "git"
+ * @returns {Promise<{ ok: boolean, stdout: string, stderr: string }>}   never throws
+ */
+export function defaultGit(argv, { execFn } = {})
+```
+
+The caller branches on `ok`; the seam interprets nothing. The `{ execFn }` injection point mirrors
+the shipped `export async function mergeWorktree(repoPath, worktreeBranch, targetBranch, { execFn }
+= {})`, which resolves `child_process`'s `execSync` the same way.
+
+**Argv, not a string.** A single command string would require quoting rules at the seam boundary and
+would make a feature name containing a space a shell-injection surface. `argv` has no quoting rules.
+
+**`_mergeWorktree` is not folded into `_git`, and `_git` does not replace it.** FSPEC §1.4 states the
+disposition in full; the operative distinction is that `_mergeWorktree` is a **task** seam (one named
+operation returning a domain record `{ ok, conflictingFiles }`) and `_git` is a **transport** seam
+(arbitrary argv, all interpretation in the script). Re-expressing the merge through `_git` would move
+conflict parsing out of the adapter and into `orchestrate-dev.js`, and would give callers a second,
+looser way to invoke a merge. The two do not answer a shared question, so DC-11's one-contract rule is
+not engaged.
+
+**Adapter implementation:** `rtGit`, an `agent()` with Bash returning the `{ ok, stdout, stderr }`
+JSON, modelled on `rtMergeWorktree` (prompt literal `` `Run: git merge --no-ff ${worktreeBranch}` ``).
+
+### 3.5 `_recordHalt({ feature, status })` — the queue-row seam
+
+```js
+/**
+ * @param {{ feature: string, status: string }} arg
+ * @returns {Promise<{ queueRow: "written" | "none" | "failed", detail?: string }>}
+ */
+export async function defaultRecordHalt(/* { feature, status } */) {
+  return { queueRow: "none" };
+}
+```
+
+The default is a **no-op that reports `"none"`** — a unit test, or a direct invocation in a repo with
+no queue, has no row to write and must not fail for it.
+
+This seam exists to preserve the dependency direction. Row location and row writing stay in
+`orchestrate-queue.js`; `orchestrate-dev.js` never learns the queue's table grammar. Three callers
+supply it:
+
+| Caller | What it supplies |
+|---|---|
+| `orchestrate-queue`'s `_runPipeline` | a closure over the queue path and its own `rewriteStatus`, so a halt in the delegated run is written and committed by the one function that owns status writes (§6.5) |
+| the dev bundle's `DEV_ENTRY` (direct invocation) | a closure the bundle builds over `__queue`'s row helpers — reachable only after §7.2's four `build-runtime.mjs` edits |
+| jest, or a repo with no queue | the default no-op |
+
+Row location on the halt path is three steps: resolve `DEFAULT_QUEUE_PATH`
+(`"docs/_queue/QUEUE.md"`, already exported from `orchestrate-queue.js`); `await _readFile(queuePath)`
+— `null` ⇒ the no-row case; exact match on the `Feature` column, the same match `updateQueueStatus`
+performs — not found ⇒ the no-row case. No new input is added for the queue path: a direct invocation
+wanting a different queue would be using the queue driver.
+
+### 3.6 `orchestrate-queue.js` changes
+
+| Symbol | Change |
+|---|---|
+| `export function updateQueueStatus(markdown, feature, newStatus)` | return shape becomes `{ markdown, matched }` (§4.6), replacing today's `return markdown; // feature row not found` — the caller can no longer confuse "row updated" with "no such row" |
+| `async function rewriteStatus(queuePath, feature, status, readFileFn, writeFileFn)` | **exported**, gains a `_git` parameter, and gains the commit of §6.5 after the write |
+| `export default async function main({ … })` | parameter list gains `_git` so the seam threads down to `rewriteStatus` |
+| `async function runPicked({ … })` | its three status writes — the `"in-progress"` write, the `"halted"` rewrite, and the `const newStatus = succeeded ? "awaiting-merge" : "halted";` rewrite — all route through the committing `rewriteStatus` |
+
+`rewriteStatus` is non-exported today; the bundle cannot publish what the module does not export
+(`stripModuleSyntax` rewrites `export function` to `function` and `wrapModule` re-publishes only the
+names in its `exportedNames` list). Exporting it is therefore load-bearing, not cosmetic.
+
+### 3.7 Pure functions — new, all in `orchestrate-dev.js`, all exported
+
+Every one is synchronous, total, and takes no seam. Algorithms are in §5; this is the contract.
+
+```js
+// ── scanning ────────────────────────────────────────────────────────────────
+export function scanLines(text, visit)
+//   The one fenced-region-aware line scanner (§5.0). `visit(line, index)` is
+//   called only for lines OUTSIDE a fenced code region. Returns undefined.
+//   Callers: parseVerdict-on-file, parseApprovalHash, parseRevisionComplete,
+//            parseResolvedMarker, isComplete's heading scan.
+
+// ── digest (§5.3) ───────────────────────────────────────────────────────────
+export function canonicaliseForDigest(text)   // N-1 line endings, N-2 one trailing \n
+export function utf8Bytes(text)               // hand-rolled, no TextEncoder
+export function sha256Hex(text)               // 64 lowercase hex; canonicalises internally
+export function approvalHashOf(text)          // `sha256:${sha256Hex(text)}`
+
+// ── parsers (§5.1, §5.2, §5.4, §5.7, §5.8) ──────────────────────────────────
+export function parseReviewFilename(basename)
+//   → { ok: true, role, docType, round } | { ok: false, reason: FilenameFailure }
+export function parseApprovalHash(fileText)
+//   → { ok: true, hash, reviewedCommit } | { ok: false, reason: HashFailure }
+export function parseRevisionComplete(response)
+//   → { complete: true } | { complete: false, reason: TrailerFailure }
+export function parseForcePhases(raw)
+//   → { ok: true, phases: Set<string> } | { ok: false, badTokens: string[] }
+export function parseResolvedMarker(fileText)
+//   → { ok: true, resolved: boolean } | { ok: false, reason }
+export function extractRecommendation(fileText)   // §5.8; 4000-byte truncation
+
+// ── judgements (§5.5, §5.9) ─────────────────────────────────────────────────
+export function isStale(recordedHash, documentBytes)
+//   → "UNEVALUABLE" | "STALE" | "FRESH"
+export function isComplete(artifactClass, docType, fileText)
+//   → { complete: true } | { complete: false, missing: string[] }
+
+// ── round derivation (§5.2) ─────────────────────────────────────────────────
+export function deriveRoundWindow(basenames, docType)
+//   → { ok: true, startIndex, endIndex, present: Map<role, number[]> }
+//   | { ok: false, reason: "malformed_round_one_duplicate", role }
+```
+
+`sha256Hex` is **not a seam**, and this is a deliberate design decision rather than an oversight. A
+seam exists to reach a capability the runtime lacks; a seam's cost is an async boundary, an adapter
+implementation, a jest double, and an `await` that can be forgotten. A SHA-256 over an in-memory
+string needs none of those — it is deterministic, synchronous and dependency-free once written in
+pure JS, which C-2 forces anyway because there is no `crypto`. Making it a seam would introduce an
+awaitable call on the hot path of every approval comparison for no capability gained, and would let a
+test double return a hash the production code never computes.
+
+### 3.8 `dispatchAndVerify({ episode, prompt })` — the pacing wrapper
+
+```js
+/**
+ * @param {{ episode: EpisodeKey, prompt: string, model?: string }} arg
+ * @returns {Promise<{ ok: true, response: string }
+ *                  | { ok: false, reason: "no_progress" | "dispatch_budget"
+ *                                       | "trailer" , detail: string }>}
+ */
+async function dispatchAndVerify({ episode, prompt, model = MODEL_DEFAULT })
+```
+
+Non-exported at module level but reachable from `reviewLoop`'s and the phase gate's scope; it closes
+over `_agent`, `_readFile`, `_checkFile` and the counters. `EpisodeKey` is §4.5's five-coordinate
+record. It implements FSPEC §15's **terminal-first-then-progress** ordering: the trailer verdict is
+evaluated before the progress predicate, so an author that declared completion is never re-dispatched
+merely because its last write produced no byte change.
+
+### 3.9 Changed existing signatures
+
+| Symbol | Change |
+|---|---|
+| `export async function reviewLoop({ doc, phase, reviewers, optimizer, feature, iteration = 1, _agent, _parallel, _checkFile })` | the `iteration = 1` default stays (it is the correct value for a virgin branch), but **all seven existing call sites now pass the branch-derived `startIndex`**; the gate `if (iteration > 5)` becomes `if (iteration > endIndex)`; the return shape gains `postmortemWritten` |
+| `function checkConverged(loopResult, phaseId, phaseLabel, recordPhase)` | gains `feature` so its `postmortemPath` template can interpolate; the dead `` const postmortemPath = `docs/{feature}/POSTMORTEM-${phaseId}-{feature}.md` `` becomes `` `docs/${feature}/POSTMORTEM-${phaseId}-${feature}.md` `` and is **read**; the literal `5`s become `MAX_REVIEW_ROUNDS` / `startIndex..endIndex` per §7.1; the unconditional `POSTMORTEM written.` becomes §6.4's two conditional shapes |
+| `function buildFinalReport({ feature, outcome, phases, artifactPaths, testSummary, harvestStatus, prUrl, ciStatus, haltReason })` | gains `haltPhase`, `postmortemPath`, `postmortemStatus`, `queueRow`, plus the skip / force / pacing-proxy report lines |
+| `function reviewerRoleSlug(skill)` | unchanged, but gains a **reverse accessor** `function reviewerSkillForSlug(slug)` over the same `MAP`, so the filename grammar's role alternation and the dispatch table cannot desynchronise |
+| `function reviewerPrompt(doc, phase, feature, iteration, reviewer)` and `function optimizerPrompt(doc, phase, feature, iteration, reviewers = [])` | the `{DOC-TYPE}` literals — including inside `` `docs/${feature}/CROSS-REVIEW-${role}-{DOC-TYPE}-v${iteration}.md` `` — are substituted with the real document type, so the prompt names the concrete path the script will later parse |
+| `export function parseVerdict(result, skillName)` | **unchanged**, reused as-is against file text, with §5.1's duplicate pre-count in front of it |
+| `export async function recoverVerdict({ reviewer, rawResult, _agent = agent })` | **unchanged and not reused** on the approval path (C-5; it would fail open) |
+
+### 3.10 Adapter wiring — `rtDevInjections`
+
+The post-change return object, in the order the existing one uses:
+
+```js
+function rtDevInjections(devModule) {
+  return {
+    _agent: rtAgent, _parallel: rtParallel, _pipeline: rtPipeline,
+    _phase: rtPhase, _log: rtLog, _checkFile: rtCheckFile,
+    _readFile: rtReadFile, _checkCi: rtMakeCheckCi(devModule),
+    _mergeWorktree: rtMergeWorktree,
+    _writeFile: rtWriteFile,     // existed; was never wired
+    _appendFile: rtAppendFile,   // new
+    _listFiles: rtListFiles,     // new
+    _git: rtGit,                 // new
+  };
+}
+```
+
+`_recordHalt` is **not** in `rtDevInjections`. It is supplied per entrypoint — `QUEUE_ENTRY` closes
+over the queue's own `rewriteStatus`, `DEV_ENTRY` closes over `__queue`'s row helpers — because its
+implementation differs by caller, which is exactly what `rtDevInjections`, a caller-independent
+bundle of adapters, cannot express. AT-64 (§8.5) derives its expected seam set from `main()`'s
+parameter list rather than a hand-written list, and must therefore account for `_recordHalt`'s
+per-entrypoint supply rather than asserting it appears in `rtDevInjections`.
+
 ## 4. Data Model
 
 ## 5. Algorithms
