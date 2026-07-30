@@ -233,3 +233,29 @@ This is exactly the drift AC-4.2 was re-based to fix, observable in the artifact
 - **Residual untested surface:** the `ubuntu-latest` / bash-5 matrix leg, which cannot be exercised from macOS.
 
 ## 6. Approval Record
+
+The durable (tier-2) record of every approving cross-review round, copied out of the `CROSS-REVIEW-*` files before they were deleted.
+
+**No file in the harvested corpus carried an `APPROVAL-HASH:` or `REVIEWED-COMMIT:` anchor** — verified by grep across all 53 files before deletion. Every anchor cell below is therefore `unavailable`. They were **copied from nothing, never recomputed**: recomputing at harvest time would have hashed each document as it stands *after* its phase, turning every one of these into a false "fresh" approval.
+
+| Document Type | Round | Role | Verdict | Approval Hash | Reviewed Commit |
+|---|---|---|---|---|---|
+| FSPEC | 5 | software-engineer | Approved | unavailable | unavailable |
+| FSPEC | 5 | test-engineer | Approved | unavailable | unavailable |
+| TSPEC | 3 | product-manager | Approved | unavailable | unavailable |
+| TSPEC | 4 | test-engineer | Approved | unavailable | unavailable |
+| TSPEC | 5 | product-manager | Approved | unavailable | unavailable |
+| TSPEC | 5 | test-engineer | Approved | unavailable | unavailable |
+| PLAN | 4 | product-manager | Approved | unavailable | unavailable |
+| PLAN | 5 | product-manager | Approved | unavailable | unavailable |
+| PLAN | 5 | test-engineer | Approved | unavailable | unavailable |
+| PROPERTIES | 5 | product-manager | Approved | unavailable | unavailable |
+| PROPERTIES | 5 | software-engineer | Approved with minor changes | unavailable | unavailable |
+
+**Notes on rows that are not straightforward.**
+
+- **REQ contributes no row.** No REQ round reached an approving verdict — the loop exhausted its rounds and was closed by an operator-directed pass (§1). This is the correct record: there was no reviewer approval to copy.
+- **TSPEC round 3, product-manager** is retained even though PM filed *Needs revision* at round 4. The round-3 approval was genuine at the time and was later re-opened on new evidence (§1); PM's round-4 file states explicitly that the earlier approval was not being re-litigated but superseded by a behaviour newly pinned in v1.3.
+- **PLAN round 5, test-engineer** is recorded from a `## Verdict` section whose body reads "**Approved.**" with **no parseable `VERDICT:` field**. The verdict value is unambiguous in prose; the machine-readable field is absent. Recorded as `Approved` and flagged — this is the drift described in §4.9.
+- **`CROSS-REVIEW-software-engineer-CODEBASE-v2.md` was approving** (*Approved with minor changes*, `{high: 0, medium: 0, low: 3}`, at `579758f`, diff `c563687..579758f`) but contributes **no row**: `CODEBASE` is not a member of the Document Type catalogue (`REQ | FSPEC | TSPEC | PLAN | PROPERTIES | DECISIONS`). Recorded here in prose rather than forced into a column it does not belong in.
+- **No `DECISIONS` document was produced** for this feature, so that document type is absent by fact, not by omission.
