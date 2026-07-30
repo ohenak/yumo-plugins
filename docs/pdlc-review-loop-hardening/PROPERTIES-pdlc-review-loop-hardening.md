@@ -63,6 +63,43 @@ are forced, and every §4 non-vacuity paragraph now says so explicitly; none is 
 catalogue is what makes that safe: v1.0's catalogue would have redded a no-permitted-red row on
 correct source, which is exactly the `H-h` halt the question anticipates.
 
+#### Product-manager findings
+
+| ID | Sev | Disposition |
+|---|---|---|
+| F-01 | High | **Fixed.** `PROP-COMPLETE-01` restated against `isComplete(artifactClass, docType, fileText) → { complete } \| { complete, missing[] }`: headings **within one document's text**, `R ⊆ S` where `S` is the headings with **non-empty bodies**, `missing` asserted as set-equal to `R \ S` (the positive-presence conjunct), extras-never-subtract as a differential, and both directions of the body criterion — `TBD`/`TODO`/`_TBD_`/HTML comment **empty**, fenced-`TBD` **non-empty** per §5.9's accepted shallowness. v1.0's boolean-over-present-sets statement is recorded as withdrawn. Dependent text fixed in §5.2 (rows rewritten, two added), §6.4 and §7.2 |
+| F-02 | High | **Fixed.** The partition is TSPEC §8.2's, over `parseReviewFilename`'s split — `entries` / **other-doc-type** / `skipped` — cited, not re-worded. v1.0's *in-window / out-of-window / not-a-review* classes had no home for a well-formed cross-review of another doc type, so its conservation sum was **false on a correct implementation**; PLAN §7.2 names that weaker form as one that must not be reintroduced. New floor: ≥20 other-doc-type cases. New §5.2 row `PROP-ROUND-01` (3rd) |
+| F-03 | High | **Fixed.** `PROP-STALE-01` restated over `"UNEVALUABLE" \| "STALE" \| "FRESH"`: the shape guard as an `iff`, digest equality past it, `"UNEVALUABLE"` never returned past the guard. Four `UNEVALUABLE` anchor shapes with ≥5 cases each. v1.0's "absent/malformed anchor is stale" is withdrawn; its "treat a missing anchor as fresh" ledger row was unimplementable against `isStale`'s arity and is withdrawn with two rows put in its place. TSPEC §6.2 rows 6–7's other `UNEVALUABLE` classes (absent, duplicated, unreadable) are named and routed to `PROP-APPROVE-01` at the seam |
+| F-04 | High | **Fixed.** `PROP-RESOLVE-01` moved to **L2**, driven through `main()` and the seam doubles, per PLAN §11.5 `N-b` (*non-exported, and no test may name it*). The sixteen-vector enumeration is unchanged. §4.2 is now three properties, §7.1's Level cell reads L2, and §7.3's pyramid is re-derived to **ten L1, seven L2, one L3** (17 properties, 18 ids) |
+| F-05 | Medium | **Fixed.** `PROP-SCAN-01` restated over the **visitor's observation set** — `scanLines(text, visit)` returns `undefined`, so v1.0's return-value conservation identity is withdrawn. Conjuncts: totality, `V ∪ F` partition, conservation against `text.split("\n").length`, fence discipline, positional fidelity |
+| F-06 | Medium | **Fixed throughout.** Generator ids re-derived against §3.2's owning table: `PROP-SCAN-01` and `PROP-TRAILER-01` → **D2**; `PROP-NAME-01` and `PROP-ROUND-01` → **D1**; `PROP-RESOLVE-01` and `PROP-APPROVE-01` → **D1 × D6** (v1.0 cited `D4 × D2` and `D2 × D4`, the heading-set and fenced-markdown domains) |
+| F-07 | Medium | **Fixed — window re-derived, not accepted.** `PROP-TRAILER-01`'s greening task is **RLH-05(f)** (batch 3), not RLH-23, so the correct window is **green from batch 3, permitted red none** — tighter than the pacing row it shares a file with. §4.2 states the gate loss the pacing row would have licensed (four batches of permitted red for a subject correct on arrival); §1.3 records this as the one place the mechanical derivation departs from the row co-location suggests; §7.1 updated. Its assertions must be gate-separable from the pacing assertions in the same file, which §7.3's per-assertion structure already expresses |
+| F-08 | Medium | **Fixed** in the §3 pass. D6's phase axis is **seven** — `R, F, T, D, P, PR, CR`, PLAN §4.1's measured `reviewLoop`/`checkConverged` call sites — not `parseForcePhases`'s six forceable phases. `DOD` is excluded with a stated reason (no `reviewLoop` call site). `PROP-LIST-01a`, `PROP-GINV-01` and `PROP-WINDOW-01` inherit the corrected axis; §6.5's catalogue bullet now distinguishes the two |
+| F-09 | Medium | **Fixed** in the §2 pass, per ruling R-5's fix-by-deletion: §2.3's "Applies to" lists are gone, each property's `Shrink.` line owns its own disposition, and the 64-byte/one-rung limit is stated once and cited from §8.2 |
+| F-10 | Medium | **Fixed — falsifiers named, no Residual filed.** `PROP-DIGEST-02` (3rd): make `utf8Bytes` throw on a lone surrogate — kills totality, conjunct (i). `PROP-DIGEST-02` (4th): memoise the digest keyed by pre-canonical text — kills determinism, conjunct (ii), while the shape conjunct and the known-answer vectors survive. DC-03 does not permit a Residual where a mutation exists |
+| F-11 | Medium | **Fixed.** The width conjuncts are bounded to the `ok: true` branch; TSPEC §5.2 step 5's `{ ok: false, reason: "malformed_round_one_duplicate", role }` is stated as a **fourth outcome** and generated deliberately, with a ≥10-case floor, rather than excluded by a generator constraint left unstated |
+| F-12 | Low | **Fixed.** `PROP-HASH-01`'s greening sub-group corrected to **RLH-05(f)** (the five record parsers); v1.0 wrote RLH-05(d), the digest family. Both are batch 3, so the window is unaffected — but §1.3's derivation is stated as mechanical, and the sub-group letter is an input to it |
+| F-13 | Low | **Fixed.** TSPEC §3.7 exports no filename formatter, so `compose` **is written in the test**; v1.0's "not a second implementation in the test" claim had no production surface to bind to and is withdrawn, with the **rejection direction** stated as carrying the property's weight. The parse field is `round`, not `version` (§5.2 row corrected too), and failure is `{ ok: false, reason: FilenameFailure }` over the closed `FILENAME_FAILURES` catalogue |
+
+**PM rulings.** **R-1** — accepted; §8.1 reports upward and amends nothing, and now also answers
+whether the count closes the gap *in substance* (it does not, for the two recognisers covered only
+jointly — Q-03). **R-2** — accepted; the measurement stands, the over-claim is removed (SE F-05,
+PM F-09). **R-3** — noted; §7.1's rows are re-derived again here, with two changed cells
+(`PROP-RESOLVE-01`'s Level, `PROP-TRAILER-01`'s row and window). **R-4** — accepted; §8.5 no longer
+understates it, and now carries **three** items rather than one. **R-5** — accepted; DC-08 deferrals
+are satisfied and both routings verified, with §8.3's wording corrected per SE F-11, and
+`extractRecommendation` remains **explicitly declined, not deferred**.
+
+**PM questions.** **Q-01** — the 179.8 s figure was an unloaded measurement; §2.5 now says so and
+defers to PLAN §4.1's 300 s halt. The 100-case budget stands: all 17 properties are L1/L2, ≈1,700
+cases, single-digit seconds of CPU. **Q-02** — §8.4 residual 3 is re-counted to **seven** of seventeen,
+following `PROP-RESOLVE-01` to L2. **Q-03** — answered in §8.1: the count closes four of six, but two
+of those four are closed only *jointly*, so §8.1's universal remains open in substance for
+`parseRevisionComplete` and `parseResolvedMarker`.
+
+**Not reopened.** TSPEC §8.1 vs §8.2 (reported upward, per R-1); the `shrink` extension (declined per
+PLAN §7.2); `extractRecommendation` (declined); the approved REQ/FSPEC/TSPEC/PLAN.
+
 ## 1. Overview
 
 ### 1.1 What this document decides
