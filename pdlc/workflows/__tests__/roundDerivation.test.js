@@ -319,4 +319,70 @@ describe("RLH round-index derivation (TSPEC §5.2)", () => {
     expect(EXPECTED_LIST_FAILURES).toContain(BENIGN_LIST_FAILURE);
     expect(devModule.LIST_FAILURES).toEqual(EXPECTED_LIST_FAILURES);
   });
+
+  test("RLH-AT-04: an unenumerable directory is never treated as an empty listing", () => {
+    // The derivation half of AT-04. §4.2 makes the disposition a property of the ListFailure
+    // *value*, not of the call site: `dir_missing` alone is benign, and the other three
+    // ("cannot judge") halt before any window is derived. This asserts the closed catalogue and
+    // that exactly one member carries the benign disposition; the halt *message*
+    // (`Cannot enumerate docs/{feature}: not_a_directory`) is asserted where the listing seam
+    // exists, per TSPEC §8.3's file map.
+    expect(devModule.LIST_FAILURES).toEqual(EXPECTED_LIST_FAILURES);
+    expect(Object.isFrozen(devModule.LIST_FAILURES)).toBe(true);
+
+    const nonBenign = EXPECTED_LIST_FAILURES.filter((r) => r !== BENIGN_LIST_FAILURE);
+    expect(nonBenign).toEqual(["not_a_directory", "unreadable", "bad_argument"]);
+
+    // The benign value's whole meaning is "an empty listing", and that is the only listing
+    // outcome the pure derivation ever sees. It has no representation for a failure, so an
+    // implementation that routed `not_a_directory` here would have to fabricate `[]` — which is
+    // exactly what the three non-benign dispositions forbid.
+    expect(devModule.deriveRoundWindow([], "FSPEC").startIndex).toBe(1);
+  });
+
+  test("RLH-AT-05: non-conforming basenames are skipped and reported, without a halt", () => {
+    const basenames = [
+      "CROSS-REVIEW-software-engineer-FSPEC-v2.md",
+      "CROSS-REVIEW-se-FSPEC-v2.md", // unknown slug — G-2
+      "CROSS-REVIEW-test-engineer-FSPEC-v2.md",
+    ];
+
+    const w = devModule.deriveRoundWindow(basenames, "FSPEC");
+
+    // No halt: the conforming pair is used.
+    expect(w.ok).toBe(true);
+    expect(w.startIndex).toBe(3);
+    expect(roundsFor(w.present, "software-engineer")).toEqual([2]);
+    expect(roundsFor(w.present, "test-engineer")).toEqual([2]);
+    // The unknown slug never becomes a role.
+    expect(roundsFor(w.present, "se")).toEqual([]);
+
+    // Step 1 keeps the reject and step 7 carries it out, so the caller can emit E-03/E-07's
+    // notice without re-parsing the listing (§2.4 forbids a parse in the orchestration stratum).
+    expect(w.skipped).toEqual([{ basename: "CROSS-REVIEW-se-FSPEC-v2.md", reason: "bad_role" }]);
+
+    const notice = `skipped non-conforming: ${w.skipped.map((s) => s.basename).join(", ")}`;
+    expect(notice).toBe("skipped non-conforming: CROSS-REVIEW-se-FSPEC-v2.md");
+  });
+
+  test("RLH-AT-06: one listing per phase entry — the derivation consumes it once and takes no seam", () => {
+    // The derivation half of AC-1.2. §3.7: every new pure function is synchronous, total and
+    // takes no seam, so `deriveRoundWindow` cannot itself list a directory; and §5.2 step 7
+    // carries `present` *and* `skipped` out precisely so one listing suffices for the whole
+    // phase entry. An implementation that dropped either field would force the caller to
+    // re-enumerate, which is the second listing AC-1.2 forbids.
+    expect(typeof devModule.deriveRoundWindow).toBe("function");
+    expect(devModule.deriveRoundWindow.constructor.name).toBe("Function"); // not AsyncFunction
+    expect(devModule.deriveRoundWindow.length).toBe(2); // (basenames, docType) — no seam parameter
+
+    expect(typeof devModule.parseReviewFilename).toBe("function");
+    expect(devModule.parseReviewFilename.constructor.name).toBe("Function");
+    expect(devModule.parseReviewFilename.length).toBe(1); // (basename) — no seam parameter
+
+    const w = devModule.deriveRoundWindow(
+      ["CROSS-REVIEW-software-engineer-FSPEC-v2.md", "notes.txt"],
+      "FSPEC",
+    );
+    expect(Object.keys(w).sort()).toEqual(["endIndex", "ok", "present", "skipped", "startIndex"]);
+  });
 });
