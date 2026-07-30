@@ -2047,10 +2047,32 @@ on, in a feature whose whole subject is not breaking things quietly.
    `PROP-STALE-01`. The **unreadable document** class has no property here and is not covered by
    `PROP-APPROVE-01`, whose conjuncts are tier discipline, window respect and idempotence and whose
    generator produces no unreadable input. It is an IO-failure path at the reader seam, not a parser
-   invariant. Per DC-08 the successor surface is named: **queue row Order 9, `pdlc-authoring-contract`**
-   — the same row §8.3 uses, whose scope is the read/write contract these seams sit on. v1.1 claimed
-   the class was "covered at the seam by `PROP-APPROVE-01`"; that claim is **withdrawn**, because a
-   division of labour with an empty side closes this ledger against a live gap.
+   invariant. v1.1 claimed the class was "covered at the seam by `PROP-APPROVE-01`"; that claim is
+   **withdrawn**, because a division of labour with an empty side closes this ledger against a live
+   gap.
+
+   **This residual has no successor row today, and v1.2's binding was DC-08's own inverse failure**
+   (PM F-02). v1.2 bound it to **queue row Order 9, `pdlc-authoring-contract`** and described that row
+   as one *"whose scope is the read/write contract these seams sit on"*. `docs/_queue/QUEUE.md` states
+   row 9's scope in its own words, and it is not that: its three bound items are *"the **same**
+   underlying gap: the six author/review SKILLs are the authoring interface, and they declare nothing
+   machine-readable about what they produce"*, and its instruction to whoever authors the REQ is
+   *"Scope this row's REQ to *declaring* those contracts in the SKILLs, not to re-implementing row 0's
+   mechanism — the mechanism is correct, it is the interface that is undeclared."* An
+   `_readFile` → `null` path at the reader seam **is** row 0's mechanism, which that sentence
+   explicitly excludes. The two items §8.3 binds to row 9 (`MAX_AUTHORING_WRITE_BYTES`, SKILL-template
+   drift) do fit that charter, which is what makes this third one the outlier rather than the pattern;
+   §8.3's two bindings stand and only this one is withdrawn. DC-08's Origin names precisely this
+   failure — *"row existed but description false"* — so the description is not repaired by softening
+   it.
+
+   **Recorded state, in place of a false attribution: no successor.** Every row in `QUEUE.md`'s table
+   was read (0–7 and 9); none charters reader-seam IO-failure coverage. Closing this residual
+   therefore requires an **action by a queue owner**, and it is stated here as an action rather than
+   as a fact: either **row 9's REQ must be scoped to include the reader seam** when it is authored, or
+   a new row must be allocated for it. Until one of those happens the gap is **unowned**, and that is
+   what this ledger now says. An honestly unowned gap is recoverable; a gap bound to a row whose
+   charter will not pick it up is not, which is the whole of DC-08.
 
 ### 8.5 What could not be written against the specs
 
