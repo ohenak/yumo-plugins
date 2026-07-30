@@ -382,9 +382,12 @@ only from step 4 breaks B. G-INV is the statement that holds for both.
   reused nowhere in this design: an agent adjudicating whether a phase may be skipped breaches C-5
   and, worse, fails **open** — a hallucinated "Approved" silently discards a phase.
 - **No per-worktree consumer state.** Out of scope; deferred to D-DIST-07 (queue row 6).
-- **No caching layer over `_listFiles`.** The read fan-out is already bounded (one `_listFiles` and
-  at most two `_readFile` per phase entry, §5.4); a cache would add an invalidation problem in
-  exchange for nothing measurable.
+- **No caching layer over `_listFiles`.** The read fan-out is bounded per **episode** entry, not per
+  phase entry — one `_listFiles` and at most two `_readFile` each, up to
+  `(1 + MAX_REVIEW_ROUNDS) × (reviewers + 1)` listings and twice that many reads for one phase
+  (§5.6.1's measured bound: 18 and 36 at today's constants). A cache would add an invalidation
+  problem — and the thing to invalidate is precisely the just-written review files S-INV exists to
+  observe — in exchange for saving directory listings that are cheap next to an Opus dispatch.
 
 ## 3. Interfaces
 
@@ -817,8 +820,10 @@ document as it stands *after* the phase, turning every harvested approval into a
 
 **Tier selection is exclusive.** A phase entry consults tier 1 **or** tier 2, never both merged: if
 the candidate round's cross-review files exist, they are the record; only if they are absent is
-LEARNINGS consulted. This bounds the read fan-out at two `_readFile` per phase entry and removes the
-"both tiers disagree" merge entirely.
+LEARNINGS consulted. This bounds the read fan-out at two `_readFile` **per search
+call** and removes the "both tiers disagree" merge entirely. The per-phase aggregate is not two:
+§5.6.1's `refreshReviewState` performs the tier-1 reads again at every episode entry, so the phase's
+bound is the per-episode figure times the episode count, stated and measured there.
 
 ### 4.5 `EpisodeKey` — the pacing unit
 
