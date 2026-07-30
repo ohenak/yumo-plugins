@@ -426,3 +426,99 @@ function reviewerDispatchesFor(dispatches, phaseId) {
     (d) => REVIEWER_SKILLS.has(d.skill) && d.prompt.includes(`for phase ${phaseId} `)
   );
 }
+
+// ─── RLH-AT-01a — a force does NOT skip step 2 (TSPEC §5.7, §2.5; PLAN §7.1) ──────────
+
+describe("RLH-AT-01a — the forced path keeps its round derivation", () => {
+  test("RLH-AT-01a: a forced phase on a branch already carrying -v1 cross-reviews writes -v2 next", async () => {
+    // Branch state: Phase R has been reviewed once. Both reviewer roles' v1 files are on
+    // disk, so §5.2's window derivation gives startIndex = max(1) + 1 = 2.
+    const listing = crossReviewBasenames("REQ", 1);
+    const files = Object.fromEntries(
+      listing.map((b) => [`${DOCS_DIR}/${b}`, approvingCrossReview(REQ_TEXT)])
+    );
+    const harness = makeHarness({ listing, files });
+
+    await main({ ...harness.args, forcePhases: "R" });
+
+    // The oracle. TSPEC §5.7: a force skips §2.5 steps **3 and 4** only — "Step 2 is not
+    // skipped". An implementation that reads the force as "skip steps 2–4" enters
+    // `reviewLoop` on the shipped `iteration = 1` default and re-creates defect H-1 on
+    // exactly the path an operator reaches for *because* the phase was reviewed before.
+    const rReviews = reviewerDispatchesFor(harness.dispatches, "R");
+    expect(rReviews.length).toBeGreaterThan(0);
+    for (const dispatch of rReviews) {
+      expect(dispatch.prompt).toContain("This is iteration 2.");
+      expect(dispatch.prompt).toContain("as v2");
+      expect(dispatch.prompt).not.toContain("This is iteration 1.");
+    }
+
+    // The listing seam was actually consulted for the phase's directory — step 2 ran, it
+    // was not merely that the default happened to agree.
+    expect(harness.listFiles.dirs).toContain(DOCS_DIR);
+  });
+});
+
+// ─── RLH-AT-28 — force overrides a recorded approval, and only that ───────────────────
+
+describe("RLH-AT-28 — force overrides approval only", () => {
+  test("RLH-AT-28: a forced phase past an approving fresh round runs the next round and leaves the approval record intact, but an unresolved POSTMORTEM still refuses it", async () => {
+    // Branch state: Phase F converged at round 2, both roles' v2 cross-reviews approving
+    // and their recorded hash still matching the FSPEC bytes (§5.5 `FRESH`). Unforced,
+    // §2.5 step 4 would skip Phase F outright.
+    const listing = [
+      ...crossReviewBasenames("FSPEC", 1),
+      ...crossReviewBasenames("FSPEC", 2),
+    ];
+    const roundTwoPaths = crossReviewBasenames("FSPEC", 2).map((b) => `${DOCS_DIR}/${b}`);
+    const files = Object.fromEntries(
+      listing.map((b) => [`${DOCS_DIR}/${b}`, approvingCrossReview(FSPEC_TEXT)])
+    );
+    const harness = makeHarness({ listing, files });
+    const approvalRecordBefore = roundTwoPaths.map((p) => harness.fs.contents[p]);
+
+    const result = await main({ ...harness.args, forcePhases: "F" });
+
+    // (i) The phase RUNS despite the approval — and at the NEXT round index, 3, because
+    // step 2 still derived the window (§5.7, AC-4.6).
+    const fReviews = reviewerDispatchesFor(harness.dispatches, "F");
+    expect(fReviews.length).toBeGreaterThan(0);
+    for (const dispatch of fReviews) {
+      expect(dispatch.prompt).toContain("This is iteration 3.");
+      expect(dispatch.prompt).toContain("as v3");
+    }
+
+    // (ii) It is reported as forced. The notice is one of §4.7's four report *lines*; its
+    // wording is not pinned to a literal anywhere in the TSPEC, so this asserts that the
+    // run's own record says the phase was forced, not a particular sentence.
+    const fPhase = result.phases.find((p) => p.phase === "F");
+    expect(fPhase).toBeTruthy();
+    expect(`${fPhase.detail ?? ""} ${result.haltReason ?? ""}`).toMatch(/forc/i);
+
+    // (iii) The prior approval record is left intact (FSPEC E-36): nothing was written to
+    // or appended onto the round-2 cross-review files.
+    for (const path of roundTwoPaths) {
+      expect(harness.fs.writes.filter((w) => w.path === path)).toEqual([]);
+    }
+    expect(roundTwoPaths.map((p) => harness.fs.contents[p])).toEqual(approvalRecordBefore);
+
+    // (iv) AC-4.6a / FSPEC E-35 / §6.2 row 13 — forcing overrides a recorded APPROVAL and
+    // never a recorded FAILURE. The same forced phase, with an unresolved POSTMORTEM
+    // beside it, is refused: a forced run reaches step G exactly like any other (G-INV).
+    const postmortemPath = `${DOCS_DIR}/POSTMORTEM-F-${FEATURE}.md`;
+    const refusedHarness = makeHarness({
+      listing,
+      files: {
+        ...files,
+        [postmortemPath]: "# Postmortem\n\nRESOLVED: no\n\n## Recommendation\n\nRedo the FSPEC.\n",
+      },
+    });
+    const refused = await main({ ...refusedHarness.args, forcePhases: "F" });
+
+    expect(refused.outcome).toBe("halted");
+    expect(refused.postmortemStatus).toBe("unresolved");
+    expect(refused.postmortemPath).toBe(postmortemPath);
+    expect(refused.haltReason).toContain("Redo the FSPEC.");
+    expect(reviewerDispatchesFor(refusedHarness.dispatches, "F")).toEqual([]);
+  });
+});
