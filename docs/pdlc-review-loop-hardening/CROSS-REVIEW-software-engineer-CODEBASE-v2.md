@@ -99,6 +99,50 @@ is now documented in `CLAUDE.md` (§4), and `build-runtime.mjs:162` confirms the
 
 ## 3. F-2 — the `Harvested from` conjunct
 
+**Resolved, and resolved in the direction I recommended second-best but which is better argued than my
+recommendation was.** All four sub-questions I was asked to check come back correct.
+
+**(a) The criterion is now FSPEC §16.5's conjunction.** §16.5 states it as "the metadata table
+including its `Harvested from` row, and its five numbered sections each with a non-empty body". The
+`LEARNINGS` arm now appends the metadata conjunct to `missing`, so `complete` requires both. The
+authoring choice is recorded where a future reader will hit it — the doc comment on
+`HARVESTED_FROM_ROW` states the ruling (FSPEC §16 owns structural completeness and governs; the TSPEC
+§5.9 narrowing is documentation drift for Harvest) and the same ruling appears in the commit message
+and the test-file preamble. That is the "record the narrowing" half my finding asked for, applied to
+whichever document lost, which is the part that matters.
+
+**(b) The clause is appended last, and `firstUnwrittenSection` still names a section first.** The push
+happens after `missing` is built from the five numbered sections, so the ordering is positional, not
+incidental. `firstUnwrittenSection` (`orchestrate-dev.js:2248`) reaches `missing[0]` only at its
+step 4, after step 3's `sections.find(isEmptyBody)` has already returned any unwritten section — so
+there are two independent reasons a section is named ahead of the row. §16.5's mapping row ("when all
+five are satisfied") is now reachable and asserted directly: `RLH-CR-F2` case 1 checks
+`missing === [HARVESTED_FROM_CLAUSE]`, and case 2 checks that with a section short the section is
+`missing[0]` and the clause is *absent* from `missing` entirely. The clause literal matches FSPEC
+§16.5's mapping row byte for byte: `(the metadata table's "Harvested from" row)`.
+
+**(c) The AC-4.2c approval-record exclusion is preserved.** `RLH-CR-F2` case 4 asserts completeness
+both with and without `## 6. Approval Record`. Nothing in the added code inspects section 6, and the
+positional walk still collects only `1.`…`5.`.
+
+**(d) Matching is correctly scoped.** `HARVESTED_FROM_ROW` is `/^\s*\|\s*harvested\s+from\s*\|/i`,
+applied through `scanLines`, which skips fenced regions (`orchestrate-dev.js:569`). This is exactly
+the shape §16.4's `Scope:` marker uses, and it matters here specifically because
+`harvest-learnings/SKILL.md:76` carries the row inside a fenced template — a LEARNINGS that quotes the
+SKILL's format block must not score its own table from the quotation. Case 3 asserts both the
+case-insensitive match and the fenced-quotation rejection.
+
+**Prompt side agrees with the criterion.** `harvest-learnings/SKILL.md`'s output format already emits
+`| Harvested from | {list …, now deleted} |` in the metadata table, so a conforming harvest produces a
+complete document on its first dispatch and the criterion does not tighten the loop for correct
+output. One asymmetry on the checklist is raised as **F-9**.
+
+**Falsifiability, by mutation.** Deleting the single added line
+`if (!hasHarvestedFromRow(fileText)) missing.push(HARVESTED_FROM_CLAUSE);` from `isComplete` reds
+**3 of the 4** `RLH-CR-F2` cases; case 4 (the approval-record exclusion) correctly stays green, since
+it asserts a property the mutant does not change. The conjunction is therefore falsifiable in both
+directions and no case is vacuous.
+
 ## 4. F-3 — `CLAUDE.md` operator contracts
 
 ## 5. Did the Fixes Break or Weaken Anything
