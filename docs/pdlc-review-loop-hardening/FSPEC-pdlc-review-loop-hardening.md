@@ -8,15 +8,42 @@ feature: pdlc-review-loop-hardening
 |---|---|
 | Upstream | `REQ-pdlc-review-loop-hardening.md` (v1.5, converged — SE-v5 and TE-v5 dispositioned) → **FSPEC** |
 | Downstream | `TSPEC-pdlc-review-loop-hardening.md`, `PLAN-…`, `PROPERTIES-…` |
-| Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v1.md` (iteration 1, dispositioned at v1.1); `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v2.md` (iteration 2, dispositioned at v1.2) |
+| Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v1.md` (iteration 1, dispositioned at v1.1); `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v2.md` (iteration 2, dispositioned at v1.2); `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v3.md` (iteration 3, dispositioned at v1.3) |
 | LEARNINGS | `docs/pdlc-review-loop-hardening/LEARNINGS-pdlc-review-loop-hardening.md` |
 | Citation baseline | **HEAD `0655387`.** Every code citation in this document was re-measured at that sha and names its **enclosing symbol plus a distinctive literal**, per O-16 and the REQ's own `Citation baseline` convention. A bare `file:line` citation is a defect in this document. |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude + operator | 1.2 | 2026-07-29 |
+| pdlc | draft | Claude + operator | 1.3 | 2026-07-30 |
 
 ### Changelog
+
+**v1.3 (2026-07-30)** — addresses all findings of `CROSS-REVIEW-software-engineer-FSPEC-v3.md`
+(SE F-15 Medium; F-16, F-17 Low) and `CROSS-REVIEW-test-engineer-FSPEC-v3.md`
+(TE F-01 Medium; F-02, F-03 Low). Six findings, **five** distinct fixes:
+
+- **SE F-17 + TE F-01 are one defect** (treated at the higher severity): §1.2 rule 5's scope clause
+  ("over a `CROSS-REVIEW-*` or `LEARNINGS-*` file") was narrower than the rule's own enumeration, which
+  already named §16. Fixed by **striking the clause** — the rule now covers every mechanical scan this
+  feature specifies over any markdown artifact it reads, so §16.2, §15.5's heading walk, §16.4 and
+  §12.2's `RESOLVED:` scan inherit it with no per-site clause; "tier-1" is dropped from the §10.1
+  reference so §10.5's tier-2 read is named too. **AT-62** gains the spec-class falsifier (a fenced
+  `## …` leaves `T` unchanged). No second rule, no exception.
+- **SE F-15**: AT-19's trailing "and the bare-identifier forms" is **struck**. The two named regexes match
+  0 in both healthy bundles; the bare forms match the banner's `child_process` and `git fetch origin`, so
+  the disjunct contradicted its own sentence head and the paragraph below it, which already forbade the
+  substring form for the same measured reason.
+- **TE F-02**: rule 5 now defines "matching closer" — same fence character, run at least as long as the
+  opener; every other fence line is content. **AT-65**'s fixture is pinned to the nested form (four
+  backticks wrapping the template's three), so a "next fence line closes it" implementation reds.
+- **TE F-03**: §15.5's form-selection paragraph names the **code-review** class alongside cross-review and
+  LEARNINGS — which answers TE Q-01: the class *is* wrapped (§15.5's field table and §16.4 carry it), so
+  the rows are completed, not deleted.
+- **SE F-16**: §21.4's DC-01 row reads "the candidate round's **per-role** files", matching §10.1 at v1.2.
+
+Four of the five fixes are net **deletions** or one-liners. Growth 254,820 → 258,591 bytes (+1.5%).
+Not reopened, deliberately: SE Q-01 (E-66's mechanism) and SE's Q-03/Q-09 deferral; no REQ-altitude or
+SKILL-template surface is widened.
 
 **v1.2 (2026-07-29)** — addresses all findings of `CROSS-REVIEW-test-engineer-FSPEC-v2.md`
 (TE F-01 High; F-02, F-03 Medium; F-04 Low) and `CROSS-REVIEW-software-engineer-FSPEC-v2.md`
