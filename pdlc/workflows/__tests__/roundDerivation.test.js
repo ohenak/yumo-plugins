@@ -74,3 +74,177 @@ const EXPECTED_LIST_FAILURES = Object.freeze([
   "bad_argument",
 ]);
 const BENIGN_LIST_FAILURE = "dir_missing";
+
+// ─────────────────────────── file-local domain generators ───────────────────────────
+// Built over `driftGenerators.js`'s primitives only (`rng.int`, `rng.pick`, `rng.shuffle`).
+// Unexported by design: PLAN §7.2 keeps each property's domain generator local to its file, so
+// a wrong builder reds only its own property.
+
+/** Lowercase, hyphen-joined slugs that satisfy the regex but are NOT in `MAP`'s values (G-2). */
+const NON_CATALOGUE_ROLES = Object.freeze([
+  "architect",
+  "se",
+  "te",
+  "pm",
+  "designer",
+  "data-scientist",
+]);
+
+/** Uppercase tokens that satisfy `[A-Z][A-Z_]*` but are NOT in the doc-type catalogue. */
+const NON_CATALOGUE_DOC_TYPES = Object.freeze(["SPEC", "REQS", "DESIGN", "NOTES", "READ_ME"]);
+
+/** Prefixes that break `^CROSS-REVIEW-` outright. */
+const NON_PREFIXES = Object.freeze(["CROSSREVIEW-", "REVIEW-", "X-CROSS-REVIEW-", "cross-review-"]);
+
+/** Round tokens G-3 rejects: leading zeros and zero itself. */
+const BAD_ROUND_TOKENS = Object.freeze(["0", "01", "007", "0001"]);
+
+/** Suffixes G-4 rejects because `$` follows `\.md` immediately. */
+const JUNK_SUFFIXES = Object.freeze([".backup", ".bak", ".orig", ".save"]);
+
+/** Files a `docs/{feature}/` directory legitimately holds that are not cross-reviews at all. */
+const UNRELATED_BASENAMES = Object.freeze([
+  "REQ-foo.md",
+  "FSPEC-foo.md",
+  "TSPEC-foo.md",
+  "PLAN-foo.md",
+  "LEARNINGS-foo.md",
+  "POSTMORTEM-R-foo.md",
+  "notes.txt",
+  "README.md",
+]);
+
+/**
+ * Assemble a G-1…G-4 conforming basename.
+ * @param {{role: string, docType: string, round: number, suffixed: boolean}} parts
+ * @returns {string}
+ */
+function buildBasename({ role, docType, round, suffixed }) {
+  return suffixed
+    ? `CROSS-REVIEW-${role}-${docType}-v${round}.md`
+    : `CROSS-REVIEW-${role}-${docType}.md`;
+}
+
+/**
+ * One round-trip draw: a conforming basename plus the three fields it was assembled from.
+ * `suffixed: false` denotes round 1 (TSPEC §5.2, "the un-suffixed form is round 1").
+ * @param {ReturnType<typeof seeded>} rng
+ */
+function genConformingCase(rng) {
+  const role = rng.pick(ROLE_SLUGS.slice());
+  const docType = rng.pick(DOC_TYPES.slice());
+  const suffixed = rng.int(0, 3) > 0; // ~75% suffixed, ~25% un-suffixed round 1
+  const round = suffixed ? rng.int(1, 999) : 1;
+  const parts = { role, docType, round, suffixed };
+  return { kind: "id", value: buildBasename(parts), ...parts };
+}
+
+/**
+ * Mutate exactly one part of a conforming case, returning the mutated basename and the
+ * `FILENAME_FAILURES` member that part governs (TSPEC §4.1, §5.2's G-1…G-4 table).
+ * @param {ReturnType<typeof seeded>} rng
+ * @param {{role: string, docType: string, round: number, suffixed: boolean}} parts
+ * @param {"prefix"|"role"|"docType"|"round"|"junk"} part
+ */
+function mutateBasename(rng, parts, part) {
+  switch (part) {
+    case "prefix":
+      return {
+        basename: rng.pick(NON_PREFIXES.slice()) + buildBasename(parts).slice("CROSS-REVIEW-".length),
+        reason: "not_cross_review",
+      };
+    case "role":
+      return {
+        basename: buildBasename({ ...parts, role: rng.pick(NON_CATALOGUE_ROLES.slice()) }),
+        reason: "bad_role",
+      };
+    case "docType":
+      return {
+        basename: buildBasename({ ...parts, docType: rng.pick(NON_CATALOGUE_DOC_TYPES.slice()) }),
+        reason: "bad_doc_type",
+      };
+    case "round":
+      // G-3: `[1-9][0-9]*` — a leading zero (or a bare 0) is the round token's own failure.
+      return {
+        basename: `CROSS-REVIEW-${parts.role}-${parts.docType}-v${rng.pick(BAD_ROUND_TOKENS.slice())}.md`,
+        reason: "bad_round",
+      };
+    case "junk":
+    default:
+      // G-4, TSPEC's own example shape `CROSS-REVIEW-…-v2.backup.md`. Always built over the
+      // suffixed form so the junk unambiguously follows a well-formed round token.
+      return {
+        basename: `CROSS-REVIEW-${parts.role}-${parts.docType}-v${parts.round}${rng.pick(
+          JUNK_SUFFIXES.slice(),
+        )}.md`,
+        reason: "trailing_junk",
+      };
+  }
+}
+
+const MUTATION_PARTS = Object.freeze(["prefix", "role", "docType", "round", "junk"]);
+
+/**
+ * A shuffled directory listing mixing all four kinds TSPEC §8.2's generated-input column names:
+ * conforming basenames for the target doc type, conforming ones for other doc types,
+ * non-conforming ones, and unrelated files. Never emits two files claiming round 1 for one
+ * (role, doc type) — that is §5.2 step 5's halt, which the window-invariant property excludes by
+ * construction and RLH-AT-63 asserts directly.
+ *
+ * @param {ReturnType<typeof seeded>} rng
+ * @param {string} targetDocType
+ * @returns {{kind: "manifest", rows: string[], targetDocType: string}}
+ */
+function genListing(rng, targetDocType) {
+  const rows = [];
+  const usedRoundKeys = new Set();
+
+  const emitConforming = (docType) => {
+    const role = rng.pick(ROLE_SLUGS.slice());
+    const suffixed = rng.int(0, 3) > 0;
+    const round = suffixed ? rng.int(1, 60) : 1;
+    const key = `${role}|${docType}|${round}`;
+    if (usedRoundKeys.has(key)) return;
+    usedRoundKeys.add(key);
+    rows.push(buildBasename({ role, docType, round, suffixed }));
+  };
+
+  for (let i = 0, n = rng.int(0, 6); i < n; i++) emitConforming(targetDocType);
+  for (let i = 0, n = rng.int(0, 4); i < n; i++) {
+    const others = DOC_TYPES.filter((d) => d !== targetDocType);
+    emitConforming(rng.pick(others));
+  }
+  for (let i = 0, n = rng.int(0, 4); i < n; i++) {
+    const parts = genConformingCase(rng);
+    rows.push(mutateBasename(rng, parts, rng.pick(MUTATION_PARTS.slice())).basename);
+  }
+  for (let i = 0, n = rng.int(0, 3); i < n; i++) rows.push(rng.pick(UNRELATED_BASENAMES.slice()));
+
+  return { kind: "manifest", rows: rng.shuffle(rows), targetDocType };
+}
+
+/**
+ * Failure-report helper. Prints the seed (reproduction is by **replay**: re-run with
+ * `PDLC_PROP_SEED=<seed>` and replay draws 1…n) and walks `driftGenerators`' shipped `shrink`
+ * ladder for a smaller witness. Used on the failure path only, never on the pass path (PLAN §7.2).
+ *
+ * @param {string} label
+ * @param {{kind: string}} caseValue
+ * @param {function({kind: string}): boolean} stillFails
+ * @returns {string}
+ */
+function describeFailure(label, caseValue, stillFails) {
+  let witness = caseValue;
+  for (let depth = 0; depth < 4; depth++) {
+    const smaller = shrink(witness).find((candidate) => {
+      try {
+        return stillFails(candidate);
+      } catch {
+        return true;
+      }
+    });
+    if (!smaller) break;
+    witness = smaller;
+  }
+  return `${label} [seed ${SEED}] failing case: ${JSON.stringify(caseValue)}; shrunk witness: ${JSON.stringify(witness)}`;
+}
