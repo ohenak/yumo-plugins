@@ -1222,11 +1222,14 @@ isStale(recordedHash, documentBytes) :=
     otherwise                                        ⇒ FRESH
 ```
 
-**Where `recordedHash` comes from at tier 1 (SE-v1 F-02).** The candidate round of §5.1 has exactly
-**two** cross-review files, because step 3(a) requires both expected roles. Each may carry an
-`APPROVAL-HASH:` line. Selection is a **unanimity** rule with no tie-break:
+**Where `recordedHash` comes from at tier 1 (SE-v1 F-02).** The candidate round of §5.1 has one file per
+expected role, because step 3(a) requires every expected role to be present; for the two-reviewer phases
+in scope that is two files, and the rule below is written per-role rather than per-file so that it does
+not have to be restated if §20's Q-01 answer ever admits a third reviewer (SE-v2 F-14). Each such file
+may carry an `APPROVAL-HASH:` line, **read excluding fenced regions per §1.2 rule 5** (SE-v2 F-11).
+Selection is a **unanimity** rule with no tie-break:
 
-| Anchor state across the candidate round's two files | `recordedHash` |
+| Anchor state across the candidate round's per-role files | `recordedHash` |
 |---|---|
 | Present on both, grammatical, and **equal** | that value |
 | Present on one role's file, **absent** on the other's | **none ⇒ `UNEVALUABLE` ⇒ the phase runs** |
