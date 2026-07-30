@@ -145,6 +145,46 @@ directions and no case is vacuous.
 
 ## 4. F-3 — `CLAUDE.md` operator contracts
 
+**Resolved. Judged for accuracy against the code, not for style: every factual claim in the added text
+checks out, and the section is complete for the three contracts F-3 named plus F-1's operator half.**
+
+Nine claims, each checked against the construct that implements it:
+
+| Claim in the added text | Verified against | Verdict |
+|---|---|---|
+| POSTMORTEM `RESOLVED:` line is read "outside any fenced block" | `orchestrate-dev.js:939–956` — `/^\s*RESOLVED:\s*(\S*)\s*$/` under the fence-skipping scan | accurate |
+| `RESOLVED: no`, absent, or unparseable all refuse the phase (fail closed) | `:946` doc + `checkPostmortem` `:2428`, `status: "unresolved"` | accurate |
+| the refusal "reports the POSTMORTEM's `## Recommendation`" | `:3888` interpolates `gate.recommendation`, produced by `extractRecommendation` `:988` | accurate |
+| the marker is human-written only — no agent, no script writes `yes` | no write site exists in `pdlc/workflows/`, `pdlc/hooks/` or any SKILL; the only occurrences are the *instruction* at `:3888` and `orchestrate-dev/SKILL.md:40` | accurate |
+| the `Harvested from` row is required and its absence makes the file structurally incomplete | §3 above | accurate as of `52f21c1` |
+| `## 6. Approval Record` is best-effort — reported, never a halt | `RLH-AT-51`, and the exclusion asserted by `RLH-CR-F2` case 4 | accurate |
+| its six columns, in the stated order | `harvest-learnings/SKILL.md:107` — identical order and names | accurate |
+| anchors are `APPROVAL-HASH: sha256:{64 hex}` / `REVIEWED-COMMIT: {sha}`, copied verbatim and never recomputed | `orchestrate-dev.js:815–817`, append at `:1975`; `harvest-learnings/SKILL.md:55` states copy-never-recompute | accurate |
+| exactly one `VERDICT:` line; a second is read fail-closed and the approval is not honoured | `extractFileVerdict`'s pre-count, and `se-review/SKILL.md:238` says the same thing to the reviewer | accurate |
+
+Two judgement calls in the wording are the right ones:
+
+- **"The heading must be exactly `## Verdict`."** This is stricter than `crossReviewComplete`'s
+  `normaliseHeadingTitle` test but exactly matches `extractFileVerdict`'s. Documenting the stricter of
+  two live predicates is correct operator guidance — it is the form under which both agree, and it
+  keeps F-6 (which stands unfixed, with its own successor) from becoming an operator-visible trap.
+- **The `forcePhases` paragraph.** "Forcing overrides a recorded **approval** only — an unresolved
+  POSTMORTEM still refuses the phase" is verified structurally, not just textually: the phase gate's
+  step G runs `checkPostmortem` on the path taken by forced *and* unforced phases
+  (`orchestrate-dev.js:3874–3891`, "Every exit that leads to running the phase arrives here, forced or
+  not"). "An unrecognised token halts with a message naming the catalogue" matches `:3966–3979`, which
+  returns a final report with `outcome: "halted"` before any phase runs, rendering the catalogue from
+  `FORCE_PHASE_TOKENS` itself.
+
+**No claim overstates the code.** In particular the text does *not* say `forcePhases` is available from
+the queue — it says the opposite, and `build-runtime.mjs:162` agrees. What the text describes as
+"optional" tier-1 anchors is a mild understatement (the workflow appends them itself; the reviewer need
+not), but the operator-facing consequence — a cross-review may or may not carry them, and harvest
+writes `unavailable` when it does not — is stated correctly.
+
+*Falsifier for this section:* any claim in the added text whose implementing construct behaves
+otherwise. I looked for one at each of the nine rows and found none.
+
 ## 5. Did the Fixes Break or Weaken Anything
 
 ## 6. Findings
