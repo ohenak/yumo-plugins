@@ -1012,8 +1012,14 @@ unfalsifiable halt condition is enforcement by eyeball, which is the standard th
 replace. The oracle is mechanical and is the **same construction §12.3 already uses for `selectMode`** —
 over `orchestrate-dev.js`'s source text, the literal `MAX_REVIEW_ROUNDS - 1` occurs **exactly once**, and
 that occurrence lies **outside** the source spans of `reviewLoop` and `checkConverged` (span = the
-function's declaration line to the next `}` in column 0; every top-level function in this file is
-unindented, so the span is decidable without the depth walk of §9.2 item 3). It **reds at HEAD** with zero
+function's declaration line to the first following line matching **`^}\s*$`** — a column-0 line that is a
+**lone** `}`; every top-level function in this file is unindented, so the span is decidable without the
+depth walk of §9.2 item 3). **`^}` alone is wrong and was the v1.3 wording (TE round-4 `F-02`):** a column-0
+`}` followed by other tokens (`}) {`, `} = {}) {`) closes a *destructured parameter list*, not a body.
+Measured at HEAD: `reviewLoop` is declared at `orchestrate-dev.js:532` and the next `^}` is **`:542`, which
+is `}) {`**, while its body ends at **`:669`** — so under `^}` the placement conjunct was satisfied by an
+occurrence anywhere in `:543–669`, the whole region it exists to forbid. Under `^}\s*$` the spans are
+`:532–669` for `reviewLoop` and `:496–515` for `checkConverged`, both correct. It **reds at HEAD** with zero
 occurrences, so it is a genuine red-then-green, not a green-on-arrival tautology.
 
 This is also the clause an implementer is most likely to violate innocently, which is why it earns an
@@ -1187,7 +1193,8 @@ fail for the stated reason and every pre-existing test still passes.**
       TSPEC §4.2, §6.2 rows 1/2/17).
 - [ ] `selectMode` is the **only** producer of `EpisodeKey.mode`; grep confirms no other assignment.
 - [ ] `endIndex` is derived **exactly once**: the literal `MAX_REVIEW_ROUNDS - 1` occurs once in
-      `orchestrate-dev.js` and outside the source spans of `reviewLoop` and `checkConverged` — the same
+      `orchestrate-dev.js` and outside the source spans of `reviewLoop` and `checkConverged` — span end
+      being the first line matching `^}\s*$`, per §11.5, **not** the first `^}` — the same
       grep-shaped construction as the row above, and `RLH-LOOP-03` is the assertion that carries it
       (§11.5, §11.4 `H-q`).
 - [ ] `refreshReviewState` is called at **every** wrapped episode entry and there is **no** pre-loop
