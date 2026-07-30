@@ -13,7 +13,7 @@ feature: pdlc-review-loop-hardening
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | **Draft** | Claude + operator | 1.0 | 2026-07-30 |
+| pdlc | **Draft** | Claude + operator | 1.1 | 2026-07-30 |
 
 > **Altitude.** The REQ states the observable behaviour, the FSPEC how it is produced and pins the
 > sixty-six acceptance tests, the TSPEC how it is built and proved with *examples*, the PLAN when each
@@ -21,6 +21,47 @@ feature: pdlc-review-loop-hardening
 > domains, the invariants quantified over them, the shrink order, and — for every property — the
 > concrete source mutation that would falsify it. It restates no FSPEC behaviour; behaviour is cited
 > by section.
+
+## 0. Changelog
+
+### v1.1 — round-1 cross-review feedback
+
+Reviewers: `CROSS-REVIEW-software-engineer-PROPERTIES-v1.md` (4 High, 4 Medium, 3 Low) and
+`CROSS-REVIEW-product-manager-PROPERTIES-v1.md` (4 High, 7 Medium, 2 Low). Both were read in full and
+both are the authority for this revision; the upstream REQ v1.6 / FSPEC v1.8 / TSPEC v1.7 / PLAN v1.4
+are approved and were **not** reopened.
+
+**The shape of the revision.** The ten beyond-floor properties were the strong ones and are preserved
+intact — `PROP-GINV-01` still states its invariant over *paths*, `PROP-LIST-01b` still asserts
+call-count **equality**, `PROP-RESOLVE-01` still enumerates all sixteen H-4 presence vectors. The
+repair is concentrated in two places: **four of the seven TSPEC-named floor properties were stated
+against signatures the TSPEC does not have**, and **several oracles were unreachable at the level they
+were stated at**. Where a v1.0 claim was wrong it is recorded as withdrawn in place, never silently
+deleted. **No property was deleted outright.** No new PLAN ledger row is proposed.
+
+#### Software-engineer findings
+
+| ID | Sev | Disposition |
+|---|---|---|
+| F-01 | High | **Fixed.** `PROP-AWAIT-01`'s outcome catalogue rebuilt from the classifier's real outcome space: **four** elements — `awaited`, `returned-promise`, `awaited-combinator-argument`, `unclassified`. `alias` is a **scan-set construction rule** (PLAN §9.2 item 3(b), *"already discharged by (b)"*), applied before classification, so it can never be an outcome; the ≥10-fragments-per-element floor over v1.0's five-element catalogue was unsatisfiable and would have redded on correct source, on §7.3's one row with no permitted red ever. Disjointness now bites: ruling 2 keys on the nearest preceding token, ruling 3 on the innermost unclosed delimiter, and a fragment that looks like both is generated. §4.4, §5.3 (`PROP-AWAIT-01` 4th row added) |
+| F-02 | High | **Fixed, by resolution (c) — route each constant through an existing observable surface.** (a) `PROP-ROUND-01` weakens at L1 to *width **invariance** across all inputs*; the width **identity** moves to `PROP-WINDOW-01` at L2, where TSPEC §7.1 edit 5 exposes `MAX_REVIEW_ROUNDS` as `reviewLoop`'s returned `iterations` **count** (edit 4 renders the same count into the prompt, giving a third surface). §5.2's `PROP-ROUND-01` row is rewritten to a mutation that actually kills invariance (width from `present.size`); the off-by-one moves to a new `PROP-WINDOW-01` (3rd) row. (b) `PROP-EPISODE-01` asserts `(1 + I) × B` from an observed `I` and a **saturation-measured** `B`. v1.0's "asserted against the constants" is recorded as withdrawn in §4.1, §4.3, §5.4 and §6.5; §6.5 now names the surface precisely and §8.5 records what remains unwritable |
+| F-03 | High | **Fixed.** The 36 is TSPEC §4.5's *"worst-case dispatch count for **one phase**"*. The interleaving is partitioned into maximal per-phase segments, the bound asserted **per segment**, and the multi-phase total stated as the sum over segments and explicitly **not** bounded by 36 — which removes v1.0's (i)/(iii) contradiction. New floor: ≥10 interleavings spanning two or more segments; new §5.3 row `PROP-EPISODE-01` (4th) |
+| F-04 | High | **Fixed.** The sole-differing-coordinate floor covers the **four externally controllable** coordinates (`artifactSet`, `phase`, `round`, `mode`). `invocation` is TSPEC §4.5's subject-derived counter (*"monotonic within (artifactSet, phase, round, mode)"*; *"without `invocation`, the counters have nothing to increment"*) and no seam lets a test set it, so it gets its own differently shaped conjunct: with the four held fixed, re-entry **consumes** the same budget rather than receiving a fresh one. §5.3's `PROP-EPISODE-01` (2nd) row is replaced with the matching subject mutation; §8.5 item 2 records the direct statement as unwritable |
+| F-05 | Medium | **Fixed — the workaround was over-sold and is now stated honestly.** Measured: `driftGenerators.js:423` `BYTES_FLOOR = 64`; the `"bytes"` arm returns `[]` at or below 64 bytes and **one** truncation rung above. For `PROP-HASH-01` and `PROP-STALE-01` it is a **guaranteed no-op**, not a weak ladder. §2.3, §8.2's table and the affected `Shrink.` lines now say so; the file-local ladder is stated as the mechanism for every property here. Declining to extend `shrink` stands (PLAN §7.2) |
+| F-06 | Medium | **Fixed.** The exit catalogue's owner is **TSPEC §2.5**, and it has **five** entries (forced, unforced-with-no-candidate, unforced-not-approving, `STALE`, `UNEVALUABLE`, plus an open *"or any exit added later"*). `FRESH` is not a sixth exit — it is a path that must not reach step 5, and carries its own negative assertion and a ≥10-case floor. §5.3's `PROP-GINV-01` (3rd) falsifier — which mutated the *test's* catalogue — is replaced by a **subject** mutation (step G moved inside the `STALE` branch, so the forced and no-candidate exits reach step 5 ungated). §5.4 rewritten: one specification-level falsifier is deliberate, two would have been a habit |
+| F-07 | Medium | **Fixed** in the §3 pass. D8 is bounded to PLAN §9.2 item 3's stated domain (*"two files, top-level functions unindented, no nested combinator calls anywhere at HEAD"*); regex literals and nested combinator calls are withdrawn from the draw instructions, and a lexically ambiguous fragment's expected outcome is `unclassified`, never "no site found" |
+| F-08 | Medium | **Accepted and restated.** §4.4 now claims a **total partition of the scan set `S`**, discharging the obligation as a **cover** — it does not claim every seam call in the file is in `S`. TSPEC §8.5's anonymous-arrow exemption is *"inherited by nobody"*, i.e. sound at HEAD and unsound in general; §8.4 residual 4 records it, naming both `orchestrate-dev.js:1866` (the `batch.map((task) =>` arrow) and `:1867` (the `agentFn(` call PLAN §4.1's advisory list names) — both line numbers are correct, for different things |
+| F-09 | Low | **Fixed.** §6.1 re-measured: `__tests__/fixtures/` holds **two** entries (`covered-violations/`, `tmpGitFixture.js`); `__tests__/helpers/` holds **thirteen** modules |
+| F-10 | Low | **Fixed** in the §2 pass — the baseline wall time is stated as machine- and load-dependent, with PLAN §4.1's 300 s halt as the operative figure rather than a reproduced number |
+| F-11 | Low | **Fixed.** §8.3 says the queue row Order 9 is the row **reserved for** the authoring contract, and states as measured that `docs/pdlc-authoring-contract/` does not exist on disk. v1.0's "already owns" read as though the successor surface were in place |
+
+**SE questions.** **Q-01** — TSPEC §2.5 owns it; the falsifier that mutated the test's copy is
+replaced by a subject mutation (F-06). **Q-02** — no: §4.8 does not export, §3.7 has no width
+parameter, §8.4 bars the filesystem. Resolution **(c)** is taken (F-02). **Q-03** — **all** §4 floors
+are forced, and every §4 non-vacuity paragraph now says so explicitly; none is sampled. **Q-04** — the
+100-fragment round-trip is intended to carry the guarantee from batch 2, and the rebuilt four-element
+catalogue is what makes that safe: v1.0's catalogue would have redded a no-permitted-red row on
+correct source, which is exactly the `H-h` halt the question anticipates.
 
 ## 1. Overview
 
