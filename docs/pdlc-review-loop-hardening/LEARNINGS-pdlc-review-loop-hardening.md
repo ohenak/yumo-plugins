@@ -119,6 +119,66 @@ Two separable learnings:
 1. **A permitted-red ledger entry that is actually environment-dependent is a mislabelled ledger entry.** It hid a real question — "is this red inherent to the code or to my machine?" — behind a number that everyone, reviewers included, carried forward for the entire run. **Countermeasure:** a permitted-red entry must record the *environment* in which it is red, and a red that disappears on a clean clone belongs in a different category from one that is genuinely code-caused.
 2. **`coveredViolations` scanning the entire root is a robustness gap** — any untracked local file (editor backup, tool cache, database) can red a document oracle for reasons unrelated to the diff. `WALK_SKIP_DIRS` covers only `.git` and `node_modules`. Candidate successor surface: honour `.gitignore`, or scan tracked files only. Recorded as a finding in §2 and §5; **not fixed here**.
 
+### 4.5 `PROP-HASH-01`: four rounds of partial propagation
+
+The single best-documented convergence failure in the run, and the reason it took four rounds is *not* that the answer was hard.
+
+The question was `parseApprovalHash`'s returned `hash` grammar: **bare 64-hex, or `sha256:`-prefixed?** PM-PROPERTIES-v4 F-01 filed it. SE-PROPERTIES-v5 derived the answer independently from six sources (FSPEC §5 `:372`, §7 `:1046`, §10.5 `:1466`; TSPEC §4.4 `:921`, §3.7 `:715–716`, §5.4→§5.5 routing) **before reading any clause**: `/^sha256:[0-9a-f]{64}$/`, the line's whole value. The routing settles it twice over — a bare-hex `hash` fails §5.5's guard, *and* even without the guard it could never equal `approvalHashOf(documentBytes)`, so `FRESH` would be unreachable and the entire skip mechanism could never fire.
+
+So the answer was over-determined. What took four rounds was **propagation**. PM-PROPERTIES-v5:
+
+> "I have found claimed-coverage-with-contradicting-reality in every round of this document, and in each of the previous four the repair was partial — the clause moved and a consequential cell did not. … That is the first time the propagation has been complete."
+
+SE-PROPERTIES-v5 supplies the mechanism, and this is the sentence worth keeping:
+
+> "Propagation is complete, and — the check that actually matters — **it is not over-propagated**. … Six sites carry the prefixed form and are correct; three sites carry the bare form and are correct to. A blanket find-and-replace would have broken the two digest properties; this revision distinguishes the two halves TSPEC §3.7 distinguishes. **That is the difference between propagating a value and propagating a string, and it is what four rounds of partial propagation failed at.**"
+
+SE-PROPERTIES-v4 names the same failure from the technical side: "Three rounds of this property failed the same way: each revision restated the counting rule in the property's own words and each restatement drifted."
+
+**The generalisable lesson:** a fix to a *stated grammar* has a blast radius, and the radius is not a string match — it is the set of sites that mean the same thing. Under-propagation and over-propagation are the same defect with opposite signs, and a blanket find-and-replace commits the second while appearing to fix the first. The `-v{N}` count is measuring propagation completeness here, not disagreement.
+
+A pleasant counter-example from the same round, worth recording because final-round repairs usually go the other way: two independent fixes **interlocked**. Pinning malformed payloads to vary the hex run while keeping the `sha256:` label (a PM F-01 consequence) is what makes the mixed double-line document `n === 2` under *either* label matcher, which is what lets conjunct (ii) assert a *named* `duplicated` on a shape F-27's silence would otherwise have left undetermined. SE: "Neither fix was aimed there. … it is exactly the seam where a final-round repair usually opens a hole, and it closed one instead."
+
+### 4.6 Concurrent-writer incident — orchestration, not code
+
+**Two orchestrating writers committed to the same feature branch simultaneously.** The supervisor inferred from an agent's `completed` status that the agent was dormant. It was not — it was mid-batch.
+
+Consequences: duplicate `RLH-12` fixtures, `RLH-16` double-authoring, and an unbidden commit landing mid-gate. The damage was caught by **the agent's own `SHARED-FILE-RACE` guard**, not by the supervisor.
+
+**Lesson: agent status is not evidence of quiescence.** `completed` describes a reported state, not an observed one. Before writing to a shared branch, *measure* — check recent commits, check running tasks — rather than infer. This is DC-02 ("measure, don't infer") applied to orchestration itself, which is the layer that had been assuming it was exempt.
+
+### 4.7 A supervisor brief that prohibited the very edits the PLAN mandated
+
+The Phase I brief told implementers **not to edit any `SKILL.md`**. PLAN §5.4 assigns **nine `SKILL.md` edits** to RLH-07 / RLH-08 / RLH-09.
+
+This is the *same* defect class the feature exists to catch — a restated constraint narrower than the owning document — occurring in the run that built the catcher, one layer up from where the catcher can see. The PLAN owns the change surface; a dispatch brief that restates it is a restatement, and `owning-section-wins` applies to briefs exactly as it applies to specs. Worth making explicit in `orchestrate-dev`/`tech-lead`: a brief may *narrow attention*, but it may not narrow *permission*, and where it appears to, the PLAN governs.
+
+### 4.8 Review-discipline practices worth keeping
+
+Several are already quoted in §3; collected here as process signal:
+
+- **Publish the failed derivation pass, not only the corrected result** (PM-PLAN-v4 obs 6). "A count that has been wrong four times is made trustworthy by a written method, not by a fifth assertion."
+- **How to handle a collision between an authorised amendment scope and the ownership rule** (PM-PLAN-v4 obs 5): take the clause, put it in the owning section, disclose it as beyond the brief, label its direction, and state the alternative it avoided. PM records that this is "what let me approve a third clause I had not authorised in under a page."
+- **An explicit "checked and dropped — do not re-file these" section** (SE-PROPERTIES v4 and v5) is the cheapest available defence against round-N+1 re-litigation.
+- **A changelog that owns the provenance of its own defects** — the FSPEC v1.4 changelog calling its own v1.3 widening the cause of the v1.4 regression. TE-FSPEC-v5: such a changelog "is a better artifact for the harvest phase to read than one that presents every fix as an improvement." Confirmed from the harvest side.
+- **Severity revisions and withdrawals are recorded, not silently applied** (TE-FSPEC-v4 revising *up* and saying so; the five reviewer self-withdrawals in §3).
+- **`POSTMORTEM-R`'s R-6 worked.** The instruction "no citation-drift nit at any severity" was adopted verbatim by TE-FSPEC-v4 and v5, which open their Scope sections by citing it. A post-mortem recommendation that later rounds cite by name is the mechanism doing what it is for.
+
+### 4.9 A live instance of the contract this feature fixes, inside the feature's own corpus
+
+The cross-review corpus is itself inconsistent about the machine-readable verdict:
+
+- `CROSS-REVIEW-test-engineer-REQ-v1/v2/v3.md` and `CROSS-REVIEW-test-engineer-FSPEC-v1.md` carry **prose verdicts only, with no `VERDICT:` line at all**. The first machine-readable TE verdict appears at REQ v4.
+- `CROSS-REVIEW-test-engineer-PLAN-v5.md` has a `## Verdict` heading whose body is "**Approved.**" — a heading with no parseable `VERDICT:` field.
+- Only the five `CROSS-REVIEW-software-engineer-FSPEC-*` files carry both a `## Verdict` heading and the field; TE-FSPEC v2–v5 carry a bare `VERDICT:` line with no heading and no count trailer.
+- **No file in the entire 53-file corpus carries an `APPROVAL-HASH:` or `REVIEWED-COMMIT:` anchor.** Every cell in §6 is therefore `unavailable`, copied from nothing rather than recomputed.
+
+This is exactly the drift AC-4.2 was re-based to fix, observable in the artifacts produced *while* fixing it. It also means the tier-1 anchors have never yet been exercised end-to-end on real data.
+
+### 4.10 Altitude
+
+`POSTMORTEM-R`'s third root cause — no altitude gate, so implementation-level defects were litigated in a requirements document — is the one structural finding of the run that no code change addresses. The REQ quadrupled in size while its blocking-finding count rose, because every AC added to close a finding was itself new reviewable surface. Note the shape: **REQ was the only loop that failed, and it failed by growing.** FSPEC, TSPEC, PLAN and PROPERTIES all converged, and the TSPEC's first *shrinking* revision (−25 B) is also the one that closed its hardest finding.
+
 ## 5. Open Items for Consolidation
 
 ## 6. Approval Record
