@@ -276,7 +276,7 @@ Paths are repo-relative and subpackage-qualified. `__tests__/` and `dist/` are a
 | **RLH-09** | **Amend the three orchestration/harvest SKILLs** — `harvest-learnings` emits `## 6. Approval Record` per TSPEC §4.4 copying anchor lines **verbatim, never recomputing** (FSPEC §9.4); `orchestrate-dev` documents the POSTMORTEM lifecycle and the `RESOLVED:` marker (AC-5.3); `orchestrate-queue` documents that a `halted` row is committed (AC-5.4). Must keep `orchestrateDevSkill.test.js` green | `__tests__/skillFiles.test.js` | `pdlc/skills/{harvest-learnings,orchestrate-dev,orchestrate-queue}/SKILL.md` | 3 | RLH-04 | ⬚ |
 | **RLH-19** | **RED queue-module suite extension.** `updateQueueStatus`'s `{ markdown, matched }` return (TSPEC §4.6) at every existing call site, `rewriteStatus` exported and committing (§3.6, §6.5). **AT-30…AT-34, module half only** (§7.4): the `rewriteStatus` / `updateQueueStatus` mechanism itself — the row rewrite, the `_git` two-invocation commit, and each commit-failure branch driven directly against the module. The orchestrator-level half — *which* halt paths reach it — is `RLH-25`'s and is asserted nowhere here. Jest names carry the `-module` qualifier (`RLH-AT-30-module` …) so one run has no two tests of one name | `__tests__/orchestrateQueue.test.js` | — | 3 | RLH-01, RLH-02 | ⬚ |
 | **RLH-21** | **RED pacing-wrapper suite.** AT-35…AT-54, AT-58; **AT-61 as two named tests** because its two conjuncts green in different batches (§7.3) — `RLH-AT-61-loop` (each trailer reason distinguishable in `reviewLoop`'s return, green with `RLH-23`) and `RLH-AT-61-report` (the same reason distinguishable in the operator report line, green with `RLH-30`). Both live here; `RLH-30` writes no test. Plus **RLH-AT-43a** (S-INV freshness, **both** refresh outcomes — (a) round 2's optimizer is `mode: "revision"` with an `EpisodeKey` differing from round 1's, (b) a mid-loop `unreadable` **halts** with `Cannot enumerate docs/{feature}: unreadable` and dispatches no episode). Both fixtures sit on the same clean branch where `docs/{feature}/` **exists and is empty of cross-reviews** — TSPEC §6.2 row 1's successful empty listing, **not** `dir_missing` | `__tests__/pacingWrapper.test.js` | — | 3 | RLH-02 | ⬚ |
-| **RLH-22** | **RED review-loop suite update.** The three new parameters (`docType`, `_listFiles`, `_readFile`) and **no seed maps**; `iteration` supplied at every call site; `if (iteration > endIndex)` with `endIndex = startIndex + MAX_REVIEW_ROUNDS - 1` (TSPEC §7.1 edit 3); the return shape's `postmortemWritten` and `trailerReason` (TSPEC §3.9, §5.6.1). **This file is the oracle for §11.5 `N-a`'s decided threading shape** — `RLH-LOOP-01` asserts the signature, so `RLH-23`/`26`/`27` red here if any of them threads the window differently. The shape is decided in §11.5, not by this task | `__tests__/reviewLoop.test.js` | — | 3 | RLH-02 | ⬚ |
+| **RLH-22** | **RED review-loop suite update.** The three new parameters (`docType`, `_listFiles`, `_readFile`) and **no seed maps**; `iteration` supplied at every call site; the gate `if (iteration > endIndex)` reading `endIndex` as a **consumed parameter** — the `startIndex + MAX_REVIEW_ROUNDS - 1` arithmetic is `RLH-26`'s, at the phase gate, and is asserted to happen **once** (§11.5 `N-a`); the return shape's `postmortemWritten` and `trailerReason` (TSPEC §3.9, §5.6.1). **This file is the oracle for both halves of §11.5 `N-a`** — `RLH-LOOP-01` asserts `reviewLoop`'s two sibling fields and the gate, `RLH-LOOP-02` asserts the return shape **and** `checkConverged`'s rendered `rounds {startIndex}..{endIndex}` text over a case with `startIndex ≠ 1 ≠ endIndex`, so a swapped positional pair is a named red. `RLH-23`/`26`/`27` red here if any of them threads the window differently. The shape is decided in §11.5, not by this task | `__tests__/reviewLoop.test.js` | — | 3 | RLH-02 | ⬚ |
 | **RLH-24** | **RED approval-search suite.** Drives the search **through `main()` with injected seams** (L2, §7), so it needs no exported identifier and the §11.5 `N-b` name is not observable to it. AT-08…AT-11, AT-56, AT-57 per TSPEC §5.4 — same-round dual approval, no cross-round combination, absent role file is not approving, duplicated verdict, partial/disagreeing anchor pair, higher non-approving round, exclusive tier selection | `__tests__/approvalSearch.test.js` | — | 3 | RLH-02 | ⬚ |
 | **RLH-25** | **RED halt-and-queue suite.** AT-21…AT-27; **AT-30…AT-34, orchestrator half only** (§7.4) — that each halting exit of `orchestrate-dev` reaches the committing status write, and what the orchestrator reports when the commit fails; the mechanism itself is `RLH-19`'s. Jest names carry the `-orch` qualifier (`RLH-AT-30-orch` …). Plus **RLH-AT-13a** (G-INV totality: each of the four exits that lead to running the phase refuses on an unresolved POSTMORTEM and reproduces the Recommendation; the `FRESH` exit does **not** refuse but names it in the skip notice). FSPEC §12.4 example A and AC-2.3b example B are driven **verbatim as fixtures** | `__tests__/haltAndQueue.test.js` | — | 3 | RLH-02 | ⬚ |
 | **RLH-28** | **RED report-template suite.** AT-55 — no un-substituted `{…}` template reaches any operator-facing report string (TSPEC §6.3's general rule) | `__tests__/reportTemplates.test.js` | — | 3 | RLH-02 | ⬚ |
@@ -285,8 +285,8 @@ Paths are repo-relative and subpackage-qualified. `__tests__/` and `dist/` are a
 | **RLH-20** | **GREEN the queue module.** The four changes of TSPEC §3.6 — `updateQueueStatus`'s `{ markdown, matched }` (§4.6) with **every** existing call site updated to destructure, `rewriteStatus` **exported** (load-bearing for §7.2 edit 3, not cosmetic) with a `_git` parameter and §6.5's two-invocation commit, `main()`'s `_git`, and `runPicked`'s three status writes routed through the committing `rewriteStatus` | `__tests__/{orchestrateQueue,haltAndQueue}.test.js` | `pdlc/workflows/orchestrate-queue.js`, `dist/` | 5 | RLH-18 `[dist]`, RLH-19 | ⬚ |
 | **RLH-16** | **GREEN the two judgements** — `isStale` per TSPEC §5.5 (read at comparison time, one hash-equality test, never reads `REVIEWED-COMMIT`) and `isComplete` per §5.9 (four wrapped classes, six spec-class heading tables, order not required, the accepted shallowness of T-Q-04) | `__tests__/{approvalHash,completeness}.test.js` | `pdlc/workflows/orchestrate-dev.js`, `dist/` | 6 | RLH-20 `[dist]`, RLH-12, RLH-05 | ⬚ |
 | **RLH-23** | **GREEN the episode machinery** — `selectMode` (§5.6.1, the ONLY producer of `EpisodeKey.mode`), `isTerminal` (§5.6.2, exactly two members), `dispatchAndVerify` (§3.8, §5.6.2's terminal-first-then-progress loop), the two prompt kinds (§5.6.3), and `reviewLoop`'s `refreshReviewState` helper called at **every** wrapped episode entry — never a pre-loop snapshot (S-INV). **The `ListFailure` disposition belongs inside `refreshReviewState`, above the `deriveRoundWindow` call, exactly as TSPEC §5.6.1's pseudocode places it** — `dir_missing ─► r.files ← []`, otherwise the one halt of §4.2 / §6.2 rows 2 and 17. That is pinned, not a layering choice. `reviewLoop` gains `docType`, `_listFiles`, `_readFile` and **no seed maps** (§3.9) | `__tests__/{pacingWrapper,reviewLoop,completeness}.test.js` | `pdlc/workflows/orchestrate-dev.js`, `dist/` | 7 | RLH-16 `[dist]`, RLH-21, RLH-22, RLH-05 | ⬚ |
-| **RLH-26** | **GREEN the phase gate.** TSPEC §2.5 steps 1–4 and step G in one task because they are one control-flow shape and **G-INV is an invariant over paths, not a step number**: the approval search (§5.4), the staleness call (§5.5), `checkPostmortem` (§5.8) placed at the single point every phase-running exit converges on, **§5.1's three-step file-verdict extraction** — locate the trailing `## Verdict` section by last-visited `scanLines` match, the **duplicate-`VERDICT:` pre-count that fails closed** (`AT-11`'s oracle, and a *different* pre-count from §5.3's), then `parseVerdict` unchanged over the section text — the anchor capture/append ordering t0…t6 with §5.3's own pre-count **count-and-compare**, the `forcePhases` gate (§5.7) whose parsed input is the `Set<string>` of §3.7, and **all seven `reviewLoop` call sites** passing the branch-derived `startIndex` — including the forced path | `__tests__/{approvalSearch,approvalHash,forcePhases,haltAndQueue,roundDerivation,reviewLoop}.test.js` | `pdlc/workflows/orchestrate-dev.js`, `dist/` | 8 | RLH-23 `[dist]`, RLH-24, RLH-25, RLH-22, RLH-14, RLH-11, RLH-16, RLH-05 | ⬚ |
-| **RLH-27** | **GREEN the terminal exit.** `checkConverged` gains `feature`, its `postmortemPath` template is **corrected and read**, and the exit sequence of §6.3 runs in order — dispatch, `await _checkFile` **confirmation** (never the agent's reply), `await _recordHalt`, throw one of §6.4's **two conditional** shapes. Plus §7.1's five `MAX_REVIEW_ROUNDS` edits, all five anchored by enclosing symbol + distinctive literal, and `reviewLoop`'s `postmortemWritten` | `__tests__/{haltAndQueue,reviewLoop}.test.js` | `pdlc/workflows/orchestrate-dev.js`, `dist/` | 9 | RLH-26 `[dist]`, RLH-25, RLH-22, RLH-05 | ⬚ |
+| **RLH-26** | **GREEN the phase gate.** TSPEC §2.5 steps 1–4 and step G in one task because they are one control-flow shape and **G-INV is an invariant over paths, not a step number**: the approval search (§5.4), the staleness call (§5.5), `checkPostmortem` (§5.8) placed at the single point every phase-running exit converges on, **§5.1's three-step file-verdict extraction** — locate the trailing `## Verdict` section by last-visited `scanLines` match, the **duplicate-`VERDICT:` pre-count that fails closed** (`AT-11`'s oracle, and a *different* pre-count from §5.3's), then `parseVerdict` unchanged over the section text — the anchor capture/append ordering t0…t6 with §5.3's own pre-count **count-and-compare**, the `forcePhases` gate (§5.7) whose parsed input is the `Set<string>` of §3.7, and **the review-window threading of §11.5 `N-a`, which this task owns end to end**: compute `endIndex` **once** here as `startIndex + MAX_REVIEW_ROUNDS - 1` (TSPEC §7.1 edit 3's arithmetic, hoisted to the gate by `N-a`) and pass `startIndex` **and** `endIndex` at **all seven `reviewLoop` call sites** — including the forced path — **and at all seven `checkConverged` call sites**, positionally after `feature`. No other site computes `endIndex`; a second derivation is an `H-q` halt | `__tests__/{approvalSearch,approvalHash,forcePhases,haltAndQueue,roundDerivation,reviewLoop}.test.js` | `pdlc/workflows/orchestrate-dev.js`, `dist/` | 8 | RLH-23 `[dist]`, RLH-24, RLH-25, RLH-22, RLH-14, RLH-11, RLH-16, RLH-05 | ⬚ |
+| **RLH-27** | **GREEN the terminal exit.** `checkConverged` gains **three** positional parameters after `recordPhase` — `feature`, `startIndex`, `endIndex` (§11.5 `N-a`; TSPEC §3.9 pins the positional shape and §7.1 site 1 requires both indices, so the two are the same row's two halves) — renders §7.1 site 1's `rounds ${startIndex}..${endIndex}` from them and **recomputes neither**; `reviewLoop` destructures the same two as sibling fields and its gate reads `endIndex` (§7.1 edit 3, arithmetic-free at the site). Its `postmortemPath` template is **corrected and read**, and the exit sequence of §6.3 runs in order — dispatch, `await _checkFile` **confirmation** (never the agent's reply), `await _recordHalt`, throw one of §6.4's **two conditional** shapes. Plus §7.1's five `MAX_REVIEW_ROUNDS` edits, all five anchored by enclosing symbol + distinctive literal, and `reviewLoop`'s `postmortemWritten` | `__tests__/{haltAndQueue,reviewLoop}.test.js` | `pdlc/workflows/orchestrate-dev.js`, `dist/` | 9 | RLH-26 `[dist]`, RLH-25, RLH-22, RLH-05 | ⬚ |
 | **RLH-30** | **GREEN the report surface.** `buildFinalReport`'s four new fields and four new lines per TSPEC §4.7 — including the skip notice's **specified** detail string with its conditional bracketed clause (absent, not empty, when the POSTMORTEM state is clean) — and the `{DOC-TYPE}` substitution in `reviewerPrompt` / `optimizerPrompt` (§3.9), which is the same "no un-substituted template" rule as §6.3 | `__tests__/{reportTemplates,dodPhase,shipPhase,implPhase,harvestPhase}.test.js` | `pdlc/workflows/orchestrate-dev.js`, `dist/` | 10 | RLH-27 `[dist]`, RLH-28, RLH-29, RLH-21 | ⬚ |
 | **RLH-32** | **GREEN the adapter and the build.** `rtListFiles`, `rtAppendFile`, `rtGit` and the four-entry extension of `rtDevInjections` (TSPEC §3.10 — `_writeFile: rtWriteFile` **existed but was never wired**; `_recordHalt` is deliberately **not** here); then all four `build-runtime.mjs` edits of §7.2 with §3.3 of this PLAN's ordering. One commit, one rebuild | `__tests__/{runtimeBundle,pipelineWiring}.test.js` | `pdlc/workflows/runtime-adapter.js`, `pdlc/workflows/build-runtime.mjs`, `dist/` | 11 | RLH-30 `[dist]`, RLH-31, RLH-18, RLH-20 | ⬚ |
 | **RLH-33** | **Version bump and final rebuild.** Bump `version` per TSPEC §7.5, rebuild, confirm `distribution-manifest.json` records the new version and `build-runtime.mjs --check` exits 0 | `__tests__/runtimeBundle.test.js` | `pdlc/.claude-plugin/plugin.json`, `dist/` | 12 | RLH-32 `[dist]` | ⬚ |
@@ -525,7 +525,7 @@ Greening is stated **once** deliberately. v1.0 stated it twice — a "go green" 
 | RLH-17 | **`RLH-WIRE-01`** — `main()`'s parameter list carries the five seams and `forcePhases`. **Not AT-64** (§7.4) | L3 | `pipelineWiring.test.js` |
 | RLH-19 | AT-30 … AT-34, **module half only** (`-module` names, §7.4) | L1 + L2 | `orchestrateQueue.test.js` |
 | RLH-21 | AT-35 … AT-54, AT-58, **AT-43a**; AT-61 as the two named tests `RLH-AT-61-loop` and `RLH-AT-61-report` (§7.4) | L2 | `pacingWrapper.test.js` |
-| RLH-22 | **`RLH-LOOP-01`** — the signature, `iteration` at every call site and the `endIndex` gate; this is §11.5 `N-a`'s oracle. **`RLH-LOOP-02`** — `postmortemWritten` and `trailerReason` | L2 | `reviewLoop.test.js` |
+| RLH-22 | **`RLH-LOOP-01`** — `reviewLoop`'s two sibling fields, `iteration` at every call site and the `endIndex` gate; §11.5 `N-a`'s oracle for `reviewLoop`. **`RLH-LOOP-02`** — `postmortemWritten`, `trailerReason`, **and `checkConverged`'s rendered `rounds {startIndex}..{endIndex}`** over `startIndex ≠ 1 ≠ endIndex`; §11.5 `N-a`'s oracle for `checkConverged`, including a swapped positional pair | L2 | `reviewLoop.test.js` |
 | RLH-24 | AT-08 … AT-11, AT-56, AT-57 | L2 | `approvalSearch.test.js` |
 | RLH-25 | AT-21 … AT-27, **AT-13a**; AT-30 … AT-34, **orchestrator half only** (`-orch` names, §7.4) | L2 | `haltAndQueue.test.js` |
 | RLH-28 | AT-55 | L2 | `reportTemplates.test.js` |
@@ -861,6 +861,7 @@ reconcile two statements on their own authority.
 | H-n | The work appears to require a new runtime dependency, a `crypto` call, a `TextEncoder`, or an `import` in a bundle | Halt. C-2 forbids all four; §9.1 |
 | H-o | The work appears to require touching `docs/_queue/QUEUE.md`, any `CROSS-REVIEW-*` file, the REQ, the FSPEC or the TSPEC | Halt. Those are out of scope for Phase I; a needed spec change is reported, not made |
 | H-p | The work appears to require per-worktree consumer state, a history walk on the approval path, an agent on the approval path, or a cache over `_listFiles` | Halt. All four are in TSPEC §2.6's "deliberately not built" list, each with its reason |
+| H-q | A task implements either interface shape of **§11.5** differently from the decision recorded there — `reviewLoop`'s two sibling fields, `checkConverged`'s two positional arguments, the single gate-side computation of `endIndex`, or `N-b`'s non-exported unnamed search | Halt. §11.5 decided both **before batch 1** precisely because the tests that encode them are written in batch 3 by a single owner (§5.3) and cannot be renegotiated by a batch-8/9 task. `RLH-LOOP-01`/`-02` will red; the halt is what stops the red being "fixed" by editing the oracle. Report the shape built and the shape decided; a genuine case for the other shape is a **PLAN** revision, not a local choice |
 
 ### 11.5 Two interface shapes — **decided here**, not deferred to a task
 
@@ -868,18 +869,73 @@ TSPEC §10.3 leaves both to implementation. v1.0 nominated a task to decide each
 task ran **after** the batch-3 task that writes the test encoding the decision (`reviewLoop.test.js` is
 written whole by `RLH-22` in batch 3, and §5.3 forbids a second writer). A note asking tasks to agree does
 not fix that; deciding in the PLAN does. **Both are decided below. Neither is open. Picking the other
-shape in Phase I is a §11.4 scope halt, not a judgement call.**
+shape in Phase I is a halt under §11.4 `H-q`, not a judgement call** — v1.1 pointed at "a §11.4 scope
+halt" when §11.4 held no such row; v1.2 adds the row rather than deleting the pointer, because the
+condition is real and `RLH-LOOP-01`/`-02` catch it as a red without saying what to *do* about it.
 
-**N-a — how `startIndex` / `endIndex` reach `reviewLoop` and `checkConverged`.** `reviewLoop` already
-takes one destructured options object (TSPEC §3.9) and `iteration` already rides on it. Decision: **two
-sibling fields on that same object**, with `iteration` keeping its meaning and `= 1` default. `endIndex`
-is computed **once** at the phase gate as `startIndex + MAX_REVIEW_ROUNDS - 1` (TSPEC §7.1 edit 3) and
-passed down, never recomputed in the loop; `checkConverged` receives it the same way. Rejected: a new
-record type for two integers; positional arguments (seven call sites, silent on a wrong order); a field
-on `EpisodeKey` (which is compared for equality, and these are loop control, not episode identity).
-**`RLH-LOOP-01`** (`RLH-22`, green from batch 7 — §7.3) asserts the shape, `iteration` at every call site,
-and termination on `iteration > endIndex`. It reds on every rejected form, so `RLH-22` needs no dependency
-on the implementing task to know what to write.
+**N-a — how `startIndex` / `endIndex` reach `reviewLoop` and `checkConverged`.** The two functions have
+**different** approved signature shapes, so one answer cannot serve both, and v1.1's "`checkConverged`
+receives it the same way" was wrong on that point. v1.2 states them separately.
+
+***`reviewLoop`* — two sibling fields on the existing options object.** `reviewLoop` already takes one
+destructured options object (TSPEC §3.9) and `iteration` already rides on it, so `startIndex` and
+`endIndex` **extend** that object rather than changing its shape; `iteration` keeps its meaning and its
+`= 1` default. Rejected: a new record type for two integers; positional arguments (seven call sites,
+silent on a wrong order); a field on `EpisodeKey` (which is compared for equality, and these are loop
+control, not episode identity).
+
+***`checkConverged`* — two additional positional arguments, because §3.9 pins it positional.** TSPEC §3.9
+gives `checkConverged(loopResult, phaseId, phaseLabel, recordPhase)` and says it "gains `feature`" **and,
+in the same row, that "the literal `5`s become `MAX_REVIEW_ROUNDS` / `startIndex..endIndex` per §7.1"** —
+so §3.9 already contemplates the function reading both indices and is simply silent on the channel.
+Deciding the channel is this PLAN's job (§11.1 `H-b` applies only when the choice is *observable and
+unstated*; here it is unstated but the enclosing shape is pinned). Decision: **positional, after
+`feature`** —
+`checkConverged(loopResult, phaseId, phaseLabel, recordPhase, feature, startIndex, endIndex)`, arity four
+to seven, at all seven call sites. Rejected: converting it to an options object (that *would* contradict
+§3.9's pinned positional signature, and §3.9 wins — §1.2); carrying the two indices as new fields on
+`loopResult` (§3.9 pins that return shape as gaining `postmortemWritten` and `trailerReason`, and nothing
+else, so two more fields is the same contradiction one indirection away); and letting `checkConverged`
+re-derive `endIndex` from `MAX_REVIEW_ROUNDS` (a second derivation is exactly what the single-computation
+rule below exists to forbid).
+
+The known cost of positional here is the one that made it wrong for `reviewLoop`: `startIndex` and
+`endIndex` are both integers, so a swapped pair is silent at the type level. It is **not** silent at the
+assertion level, and that is the mitigation: `RLH-LOOP-02` drives a case with `startIndex ≠ 1` and
+`startIndex ≠ endIndex` and asserts the rendered `rounds {startIndex}..{endIndex}` text, so a swap, a
+duplicated argument or a missing one is a named red.
+
+**`endIndex` is computed exactly once, at the phase gate**, as `startIndex + MAX_REVIEW_ROUNDS - 1`
+(TSPEC §7.1 edit 3), and passed to both functions; **never recomputed inside `reviewLoop` and never inside
+`checkConverged`.** §7.1 edit 3 stays where TSPEC §7.1 anchors it — inside `reviewLoop`, as the gate
+`if (iteration > endIndex)` — but under this decision that site *reads a parameter* and performs no
+arithmetic; the arithmetic named in edit 3's Edit cell happens at the gate.
+
+**Ownership, so no part of this is unowned work** (v1.1 left the gate-side arithmetic with no task):
+
+| Work | Owning task | Batch |
+|---|---|---|
+| compute `endIndex` once at the phase gate; pass `startIndex` **and** `endIndex` at all seven `reviewLoop` call sites **and** all seven `checkConverged` call sites | **`RLH-26`** | 8 |
+| `reviewLoop` destructures both fields; the gate becomes `if (iteration > endIndex)` reading the parameter (§7.1 edit 3, no arithmetic at the site) | **`RLH-27`** | 9 |
+| `checkConverged` grows the two positional parameters and renders `rounds ${startIndex}..${endIndex}` (§7.1 site 1) | **`RLH-27`** | 9 |
+
+**One name, two bindings — answering PM Q-02.** Inside `reviewLoop`, `startIndex` is both the new
+destructured parameter and a field of `refreshReviewState`'s per-episode result, which TSPEC §5.6.1
+declares block-scoped as `{ present, reviewFiles, startIndex } ← await refreshReviewState()`. **The
+parameter is the loop-control value and the only one `endIndex` relates to; the refresh result's field is
+episode-local and must be destructured under a distinct local name** (e.g. `refreshedStartIndex`) rather
+than shadowing the parameter. This is a naming rule, not a behaviour change — the gate compares
+`iteration` against the parameter-derived `endIndex` either way — but shadowing would make a reader unable
+to tell which binding a later edit reads, which is this feature's own defect class. `RLH-LOOP-01` pins
+which binding `endIndex` relates to by asserting the gate over a `startIndex` passed in, with a refresh
+returning a *different* index.
+
+**Oracles.** **`RLH-LOOP-01`** (`RLH-22`, green from batch 7 — §7.3) asserts `reviewLoop`'s field shape,
+`iteration` at every call site, and termination on `iteration > endIndex`; it reds on every rejected
+`reviewLoop` form. **`RLH-LOOP-02`** (`RLH-22`, green from batch 9) asserts the return shape *and*
+`checkConverged`'s rendered window text, so it reds on every rejected `checkConverged` form and on a
+swapped index pair. Both are written in batch 3, before either implementing task, so neither needs a
+dependency on it.
 
 **N-b — the name of §5.4's two-tier approval search.** Decision: **non-exported, and no test may name
 it.** `RLH-24`'s `approvalSearch.test.js` drives it through `main()` at L2, which is why `AT-08`…`AT-11`,
