@@ -658,6 +658,58 @@ into an outage and would fire on a legitimately large section.
 
 ## 11. Halt conditions
 
+**An `se-implement` agent halts and reports rather than guesses whenever any row below fires.** The
+default is not "make a reasonable choice"; the default is **stop and say what is missing**. This
+feature's own history is the argument: the residual defects that survived four review rounds were all
+consistency failures, and every one of them would have been caught earlier by someone declining to
+reconcile two statements on their own authority.
+
+### 11.1 Halt — the TSPEC is silent, and the choice is observable
+
+| # | Condition | Why guessing is worse than halting |
+|---|---|---|
+| H-a | A behaviour is needed that no TSPEC §3/§4/§5/§6 section specifies, and the choice is **observable** in a return value, a persisted record, a report line or a halt message | An invented observable becomes a de-facto contract that no reviewer approved and no AT covers |
+| H-b | Two TSPEC statements about the same rule disagree | Reconciling them silently picks a winner. **Report both citations.** This is the exact failure class §1.2 describes |
+| H-c | A closed catalogue (`LIST_FAILURES`, `FILENAME_FAILURES`, `HASH_FAILURES`, `TRAILER_FAILURES`, `VALID_VERDICTS`, the six doc types, the seven `forcePhases` tokens) needs a value it does not contain | Adding a value to a closed catalogue changes a DC-01 contract on both sides. Never widen one locally |
+| H-d | A halt-message or report string would contain an un-substituted `{…}` placeholder and the TSPEC does not supply the substitution | AT-55 forbids it, and this is precisely H-2's original shape |
+
+### 11.2 Halt — a claim about existing code does not hold
+
+| # | Condition | Action |
+|---|---|---|
+| H-e | Any `RLH-01` pre-flight assertion fails | **Halt the whole PLAN at batch 1.** Promote the absent item to blocking work; do not proceed to batch 2 with an unmet premise. This is the gate's only purpose |
+| H-f | A §7.1 or §7.2 anchor literal is absent, or occurs **more than once** | Halt. A multi-match anchor means the edit is ambiguous and a `replace_all` would corrupt a second site. Report the literal and the match count |
+| H-g | A symbol the TSPEC says exists does not (or has a different shape) | Halt and report the symbol, the expected shape and the measured one. Do **not** create the symbol to satisfy the citation — the TSPEC's claim is what is wrong, and it needs a spec revision, not a workaround |
+
+### 11.3 Halt — a guard test reds and the temptation is to loosen it
+
+| # | Condition | Action |
+|---|---|---|
+| H-h | `RLH-AT-19` reds on source the agent believes correct | **Halt.** Do not widen the regex, do not add a name to an exemption list, do not switch the closed thirteen-name set to a derived one. Report the exact call site and the classification the test gave it. §9.2 explains why this test in particular must not be loosened |
+| H-i | `RLH-AT-64` names a parameter that falls in neither class | Halt. Either the parameter is a real seam that is unwired (fix the wiring) or the predicate has drifted (a spec question). **Do not add a name-based exemption** — the predicate is deliberately not a list of names |
+| H-j | `completeness.test.js` reds because a SKILL template and §5.9's heading list diverge | Halt and report both texts. §10.2: this is the drift the test exists to announce, and "fix the fixture" destroys the mitigation |
+| H-k | The suite's single permitted failure changes identity — the red is no longer `documentOracles.test.js` `AT-22 [red-until-L-06]` | Halt. Never delete or `skip` that placeholder to get green; it is another feature's deferral marker (§2.1) |
+| H-l | `build-runtime.mjs --check` exits non-zero and a rebuild does not fix it | Halt. Something outside `dist/` is generating differently. Do not hand-edit `dist/` — §3.1 |
+
+### 11.4 Halt — scope
+
+| # | Condition | Action |
+|---|---|---|
+| H-m | The work appears to require a **new source file** under `pdlc/workflows/` | Halt. TSPEC §2.2 rules this out with a stated cost argument (a fifth module means a new `wrapModule` call, entries in both bundle composition arrays, a new `exportedNames` list and a cross-module reference idiom nothing in the tree uses) |
+| H-n | The work appears to require a new runtime dependency, a `crypto` call, a `TextEncoder`, or an `import` in a bundle | Halt. C-2 forbids all four; §9.1 |
+| H-o | The work appears to require touching `docs/_queue/QUEUE.md`, any `CROSS-REVIEW-*` file, the REQ, the FSPEC or the TSPEC | Halt. Those are out of scope for Phase I; a needed spec change is reported, not made |
+| H-p | The work appears to require per-worktree consumer state, a history walk on the approval path, an agent on the approval path, or a cache over `_listFiles` | Halt. All four are in TSPEC §2.6's "deliberately not built" list, each with its reason |
+
+### 11.5 Two decisions that are **not** halts — decide and record
+
+TSPEC §10.3 explicitly leaves these to implementation. Deciding them is not guessing; both shapes
+satisfy every AT. Record the choice in the task's commit message so a reviewer sees it was deliberate.
+
+| # | Question | Guidance |
+|---|---|---|
+| N-a | **T-Q-02** — how `startIndex` / `endIndex` travel from the phase gate through `reviewLoop` to `checkConverged`: two more positional arguments through three functions, or one small per-phase record threaded once | The record is cleaner but changes `reviewLoop`'s call signature at seven sites; the positional form is uglier but touches less. Either is acceptable. **Whichever is chosen, `RLH-13`, `RLH-23`, `RLH-26` and `RLH-27` must all use the same one** — this is a four-task consistency point, which is exactly the drift class §1.2 warns about, so decide it in `RLH-13` and cite that decision in the other three |
+| N-b | The **name** of §5.4's approval search. The TSPEC specifies it as pseudocode and never names a function | Name it once, in `RLH-26`, and keep it non-exported unless a test needs it. See §13 |
+
 ## 12. Verification
 
 ## 13. Open Questions
