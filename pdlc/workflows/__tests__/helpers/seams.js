@@ -160,6 +160,143 @@ export function fakeListFiles(spec = []) {
 
 // ─── fakeFs ───────────────────────────────────────────────────────────────────
 
+/**
+ * Resolve a `failWrite` / `failAppend` option into a thrown error, or nothing.
+ *
+ * @param {undefined|((path: string, text: string) => any)|string[]} option
+ * @param {string} path
+ * @param {string} text
+ * @param {string} verb  "write" | "append", used in the default message
+ */
+function maybeFail(option, path, text, verb) {
+  if (!option) return;
+  let outcome;
+  if (typeof option === "function") outcome = option(path, text);
+  else if (Array.isArray(option)) outcome = option.includes(path);
+  else outcome = false;
+  if (!outcome) return;
+  if (outcome instanceof Error) throw outcome;
+  throw new Error(
+    typeof outcome === "string" ? outcome : `fakeFs: ${verb} failed for ${path}`
+  );
+}
+
+/**
+ * Double for the four file seams over one in-memory tree:
+ * `_readFile(path)`, `_writeFile(path, contents)`, `_appendFile(path, text)`
+ * and the existing `_checkFile(path)` (TSPEC §3.3, and `checkFileNonEmpty`'s
+ * shipped `{ ok }` / `{ ok: false, reason }` contract).
+ *
+ * Contract points this double preserves, because tests assert on them:
+ * - **`_readFile` returns `null`** for an absent path — never throws, mirroring
+ *   the shipped `defaultReadFile`.
+ * - **`_writeFile` / `_appendFile` throw on failure** — §3.3's deliberate
+ *   exception to the never-throw rule. Failure is opt-in via `failWrite` /
+ *   `failAppend`.
+ * - **`_appendFile` is append-shaped, never a whole-file rewrite** (§3.3,
+ *   FSPEC §7.4). The double concatenates; the recorded `appends` entry carries
+ *   only the appended `text`, so a test can prove the caller emitted two lines
+ *   rather than re-emitting the reviewer's prose.
+ * - **`_checkFile`** returns `{ ok: false, reason: "file_missing" }` for an
+ *   absent path and `{ ok: false, reason: "file_empty" }` for blank contents.
+ *
+ * @param {Record<string, string>} [initialContents={}]  path -> contents
+ * @param {{
+ *   failWrite?: string[] | ((path: string, contents: string) => boolean|string|Error),
+ *   failAppend?: string[] | ((path: string, text: string) => boolean|string|Error),
+ * }} [opts={}]
+ *   Opt-in IO failure. An array is a list of failing paths; a predicate may
+ *   return `true`, a message, or an `Error` to throw.
+ * @returns {{
+ *   files: Record<string, string>,                       // the live tree, readable and writable by the test
+ *   readFile: (path: string) => (string|null),           // pass as `_readFile`
+ *   writeFile: (path: string, contents: string) => void, // pass as `_writeFile`
+ *   appendFile: (path: string, text: string) => void,    // pass as `_appendFile`
+ *   checkFile: (path: string) => ({ok: true}|{ok: false, reason: string}), // pass as `_checkFile`
+ *   reads: Array<{ path: string, result: string|null }>,
+ *   writes: Array<{ path: string, contents: string }>,
+ *   appends: Array<{ path: string, text: string }>,
+ *   checks: Array<{ path: string, result: object }>,
+ *   calls: Array<{ op: "read"|"write"|"append"|"check", path: string, text?: string, result?: any }>,
+ *   injections: () => ({ _readFile, _writeFile, _appendFile, _checkFile }),
+ *   reset: () => void
+ * }}
+ *   `calls` is the **cross-operation ordered log** — the one to assert on when
+ *   the claim is about ordering (e.g. FSPEC §7.4's "the hash is appended
+ *   strictly after the review episode reaches terminal"). The four per-op logs
+ *   are conveniences over the same events.
+ *
+ * @example
+ * const fs = fakeFs({ "docs/f/REQ-f.md": "# REQ\n" });
+ * const result = await main({ reqPath: "docs/f/REQ-f.md", ...fs.injections() });
+ * expect(fs.appends).toEqual([{ path: "…", text: "APPROVAL-HASH: …\nREVIEWED-COMMIT: …\n" }]);
+ * expect(fs.calls.map((c) => c.op)).toEqual(["read", "check", "append"]);
+ */
+export function fakeFs(initialContents = {}, opts = {}) {
+  const self = {
+    files: { ...initialContents },
+    reads: [],
+    writes: [],
+    appends: [],
+    checks: [],
+    calls: [],
+  };
+
+  self.readFile = (path) => {
+    const result = Object.prototype.hasOwnProperty.call(self.files, path)
+      ? self.files[path]
+      : null;
+    self.reads.push({ path, result });
+    self.calls.push({ op: "read", path, result });
+    return result;
+  };
+
+  self.writeFile = (path, contents) => {
+    maybeFail(opts.failWrite, path, contents, "write");
+    self.files[path] = contents;
+    self.writes.push({ path, contents });
+    self.calls.push({ op: "write", path, text: contents });
+  };
+
+  self.appendFile = (path, text) => {
+    maybeFail(opts.failAppend, path, text, "append");
+    self.files[path] = (self.files[path] ?? "") + text;
+    self.appends.push({ path, text });
+    self.calls.push({ op: "append", path, text });
+  };
+
+  self.checkFile = (path) => {
+    let result;
+    if (!path || (typeof path === "string" && path.trim() === "")) {
+      result = { ok: false, reason: "file_missing" };
+    } else if (!Object.prototype.hasOwnProperty.call(self.files, path)) {
+      result = { ok: false, reason: "file_missing" };
+    } else if (String(self.files[path]).trim() === "") {
+      result = { ok: false, reason: "file_empty" };
+    } else {
+      result = { ok: true };
+    }
+    self.checks.push({ path, result });
+    self.calls.push({ op: "check", path, result });
+    return result;
+  };
+
+  self.injections = () => ({
+    _readFile: self.readFile,
+    _writeFile: self.writeFile,
+    _appendFile: self.appendFile,
+    _checkFile: self.checkFile,
+  });
+
+  self.reset = () => {
+    for (const log of [self.reads, self.writes, self.appends, self.checks, self.calls]) {
+      log.length = 0;
+    }
+  };
+
+  return self;
+}
+
 // ─── fakeGit ──────────────────────────────────────────────────────────────────
 
 // ─── recordingRecordHalt ──────────────────────────────────────────────────────
