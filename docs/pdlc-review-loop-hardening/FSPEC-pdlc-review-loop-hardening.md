@@ -3023,7 +3023,12 @@ line", under which write 1 scores complete.)* *And given* the same fixture with 
 fenced block that contains a `## …` line. *Then* `T` is **unchanged** by it — the fenced heading is not a
 top-level section (§1.2 rule 5, which §16.2 inherits). *(v1.3, TE-v3 F-01: this is the spec-class
 falsifier for the exclusion; without it a quoted heading inflates `T` and the episode never reaches
-terminal.)*
+terminal.)* *And given* a spec whose every required heading is present and one of whose bodies is **only**
+a fenced code block (a `## Interfaces` carrying one signature block). *Then* that section's body is
+**non-empty**, it counts toward `S`, and the artifact scores **structurally complete**. *(v1.4, SE-v4 F-18
+/ TE-v4 F-01: fails for a strip-then-scan implementation that removes fenced lines before the body test —
+under which `S < T` forever, §15.5 re-dispatches onto an already-written section, and §15.4/§15.6 halt the
+phase on a correct document.)*
 
 **AT-63 — Per-role malformed duplicate halts; two roles at index 1 do not (E-05, TE-v1 F-09b)**
 *Given* `CROSS-REVIEW-software-engineer-FSPEC.md` **and** `CROSS-REVIEW-software-engineer-FSPEC-v1.md` both
