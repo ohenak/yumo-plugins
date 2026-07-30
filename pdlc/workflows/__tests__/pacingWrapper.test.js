@@ -1005,6 +1005,108 @@ describe("RLH-AT-47 — two distinct exhaustion reports (FSPEC §19 AT-47, AC-3.
 
 // ─── 8. RLH-AT-48, RLH-AT-49 — the two prompt kinds ───────────────────────────
 
+/** This file's literal seed (PLAN §7.2); `PDLC_PROP_SEED` overrides it. */
+const PACING_SEED = 0x3ac91d05;
+/** How many round plans `RLH-AT-48` replays. */
+const PACING_CASES = 24;
+
+/**
+ * File-local, **unexported** domain generator: a plan for one phase's rounds.
+ * Built only over `driftGenerators.js`'s primitives (PLAN §7.2 forbids extending
+ * that library and forbids a second one).
+ *
+ * The case is shaped as a `{ kind: "manifest", rows }` value precisely so that
+ * `shrink` — used on the failure path only — reduces a multi-round failure to the
+ * single round that causes it.
+ *
+ * @param {{int: function(number, number): number, pick: function(Array): *}} rng
+ * @returns {{ kind: "manifest", rows: Array<{round: number, spend: number, trailer: string}> }}
+ */
+function genRoundPlan(rng) {
+  const rounds = rng.int(1, 3);
+  const rows = [];
+  for (let round = 1; round <= rounds; round += 1) {
+    rows.push({
+      round,
+      spend: rng.int(1, MAX_AUTHORING_ATTEMPTS),
+      trailer: rng.pick(["declared_incomplete", "absent", "duplicated", "unparseable"]),
+    });
+  }
+  return { kind: "manifest", rows };
+}
+
+/**
+ * Replay one generated round plan and return every revision-mode prompt it
+ * produced, together with the clauses each prompt satisfied.
+ *
+ * @param {{rows: Array<{round: number, spend: number, trailer: string}>}} plan
+ */
+async function replayRoundPlan(plan) {
+  const byRound = new Map(plan.rows.map((r) => [r.round, r]));
+  const run = await runPipeline({
+    review: reviewersFailing([...byRound.keys()]),
+    author: (ctx) => {
+      if (ctx.kind !== "optimizer" || ctx.phase !== "R") return {};
+      const row = byRound.get(ctx.round);
+      if (!row || ctx.n >= row.spend) {
+        return { write: completeDoc("REQ", `round ${ctx.round} done`), response: authorResponse("yes") };
+      }
+      return {
+        write: completeDoc("REQ", `round ${ctx.round} pass ${ctx.n}`),
+        response: authorResponse(row.trailer),
+      };
+    },
+  });
+  return select(run, { kind: "optimizer", phase: "R" }).map((d) => ({
+    round: d.round,
+    missing: ALL_CLAUSES.filter((name) => !clausesIn(d.prompt).includes(name)),
+  }));
+}
+
+describe("RLH-AT-48 — the continuation prompt contract is inspectable (FSPEC §19 AT-48, AC-3.5g)", () => {
+  test("RLH-AT-48: every revision-mode dispatch names the round's findings, states the partially-edited condition, gives the not-already-reflected instruction, directs the agent to the document on disk, and requires the trailer", async () => {
+    // The named-case half: one round, four dispatches, each of them revision-mode.
+    const run = await runPipeline({
+      review: reviewersFailing([1]),
+      author: (ctx) => {
+        if (ctx.kind !== "optimizer" || ctx.phase !== "R") return {};
+        return ctx.n < 4
+          ? { write: completeDoc("REQ", `pass ${ctx.n}`), response: authorResponse("declared_incomplete") }
+          : { write: completeDoc("REQ", "done"), response: authorResponse("yes") };
+      },
+    });
+    const revisionDispatches = select(run, { kind: "optimizer", phase: "R", round: 1 });
+    expect(revisionDispatches.length).toBeGreaterThan(0);
+    for (const dispatch of revisionDispatches) {
+      // A prompt lacking ANY clause fails the test — the whole set, not a subset.
+      expect({ n: dispatch.n, clauses: clausesIn(dispatch.prompt) })
+        .toEqual({ n: dispatch.n, clauses: ALL_CLAUSES });
+    }
+
+    // The generated half: the contract holds for every round shape, not just this one.
+    const seed = resolveSeed(PACING_SEED);
+    const rng = seeded(seed);
+    for (let caseIndex = 0; caseIndex < PACING_CASES; caseIndex += 1) {
+      const plan = genRoundPlan(rng);
+      const observed = await replayRoundPlan(plan);
+      const bad = observed.filter((o) => o.missing.length > 0);
+      if (bad.length > 0) {
+        // Failure path only: reduce the multi-round case to the single round at fault.
+        let minimal = plan;
+        for (const candidate of shrink(plan)) {
+          const stillBad = (await replayRoundPlan(candidate)).some((o) => o.missing.length > 0);
+          if (stillBad) { minimal = candidate; break; }
+        }
+        throw new Error(
+          `RLH-AT-48 seed=${seed} case=${caseIndex}: revision prompts missing clauses ` +
+            `${JSON.stringify(bad)} — minimal plan ${JSON.stringify(minimal.rows)}`
+        );
+      }
+      expect(observed.length).toBeGreaterThan(0);
+    }
+  });
+});
+
 // ─── 9. RLH-AT-50, RLH-AT-51, RLH-AT-58 — the non-authoring wrapped classes ───
 
 // ─── 10. RLH-AT-52, RLH-AT-53 — advisory proxy, and no destructive git ────────
