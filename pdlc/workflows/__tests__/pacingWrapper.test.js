@@ -923,6 +923,86 @@ describe("RLH-AT-45 — working-tree measurement (FSPEC §19 AT-45, O-19(g))", (
 
 // ─── 7. RLH-AT-46, RLH-AT-47 — budget exhaustion and its two reports ──────────
 
+/** The POSTMORTEM path a Phase R non-convergence would use (§6.3). */
+const POSTMORTEM_R_PATH = `${DOCS_DIR}/POSTMORTEM-R-${FEATURE}.md`;
+
+/**
+ * A revision episode that never writes and never emits a trailer: every dispatch
+ * scores no-progress, so `MAX_AUTHORING_ATTEMPTS` is reached (§6.2 row 10).
+ */
+function stalledRevisionRun() {
+  return runPipeline({
+    review: reviewersFailing([1]),
+    author: (ctx) => (ctx.kind === "optimizer" ? { write: null, response: "Killed." } : {}),
+  });
+}
+
+describe("RLH-AT-46 — authoring-budget exhaustion writes no POSTMORTEM (FSPEC §19 AT-46, AC-3.5f, E-56)", () => {
+  test("RLH-AT-46: the phase halts, no POSTMORTEM is written, the halted queue row is committed, and the report names the queue-row reset as the single recovery act and says no POSTMORTEM was written", async () => {
+    const run = await stalledRevisionRun();
+
+    // (i) The phase halts — and on the wrapper's reason, not on non-convergence.
+    expect(run.result.outcome).toBe("halted");
+    expect(run.reportText).toMatch(/no progress across/);
+
+    // (ii) No POSTMORTEM. Exhausting the budget is the wrapper refusing to keep
+    // paying; a POSTMORTEM claiming non-convergence would be false (§6.2, rows
+    // 10–11 note). Asserted over the tree AND the structured field.
+    expect(run.fs.files[POSTMORTEM_R_PATH]).toBeUndefined();
+    expect(run.fs.writes.filter((w) => w.path.includes("POSTMORTEM"))).toEqual([]);
+    expect(run.result.postmortemStatus).toBe("none");
+    expect(run.result.postmortemPath).toBeNull();
+
+    // (iii) The `halted` row IS committed (§6.5: every halt class, this one included).
+    expect(run.recordHalt.statuses).toContain("halted");
+    expect(run.result.queueRow).toBe("halted");
+
+    // (iv) The report states both halves, and offers exactly one recovery act — the
+    // queue-row reset. A direct re-invocation is deliberately not offered (§14.4).
+    expect(run.reportText).toContain("No POSTMORTEM was written.");
+    expect(run.reportText).toMatch(
+      new RegExp(`Recover: set the ${FEATURE} row in docs/_queue/QUEUE\\.md back to pending`)
+    );
+    expect(run.reportText).not.toMatch(/\/pdlc:orchestrate-dev/);
+  });
+});
+
+describe("RLH-AT-47 — two distinct exhaustion reports (FSPEC §19 AT-47, AC-3.5d)", () => {
+  test("RLH-AT-47: the consecutive budget reports 'no progress across 3 consecutive attempts' and the cumulative one '6 dispatches without reaching structural completeness', each with the section count and neither claiming a runtime retry count", async () => {
+    // ── consecutive (MAX_AUTHORING_ATTEMPTS) ──
+    const consecutive = await stalledRevisionRun();
+    expect(consecutive.result.outcome).toBe("halted");
+    expect(consecutive.reportText).toContain(
+      `no progress across ${MAX_AUTHORING_ATTEMPTS} consecutive attempts`
+    );
+    expect(consecutive.reportText).not.toContain("dispatches without reaching structural completeness");
+
+    // ── cumulative (MAX_AUTHORING_DISPATCHES) ──
+    // Every dispatch writes NEW bytes, so the consecutive counter never advances;
+    // the artifact still never becomes structurally complete, so only the total
+    // budget can end it. The two exhaustion paths are therefore genuinely distinct.
+    const cumulative = await runPipeline({
+      author: (ctx) =>
+        ctx.kind === "creator" && ctx.phase === "F"
+          ? { write: partialDoc("FSPEC", Math.min(ctx.n, REQUIRED_HEADINGS.FSPEC.length - 1)), response: "Still going." }
+          : {},
+    });
+    expect(cumulative.result.outcome).toBe("halted");
+    expect(cumulative.reportText).toContain(
+      `${MAX_AUTHORING_DISPATCHES} dispatches without reaching structural completeness`
+    );
+    expect(cumulative.reportText).not.toContain("consecutive attempts");
+    expect(select(cumulative, { kind: "creator", phase: "F" })).toHaveLength(MAX_AUTHORING_DISPATCHES);
+
+    // Each carries the script's own section count …
+    for (const run of [consecutive, cumulative]) {
+      expect(run.reportText).toMatch(/\(\d+ of \d+ sections complete\)/);
+      // … and neither claims the runtime's internal retry count (§4a A-2/A-3).
+      expect(run.reportText).not.toMatch(/runtime retr|internal retr|retry count/i);
+    }
+  });
+});
+
 // ─── 8. RLH-AT-48, RLH-AT-49 — the two prompt kinds ───────────────────────────
 
 // ─── 9. RLH-AT-50, RLH-AT-51, RLH-AT-58 — the non-authoring wrapped classes ───
