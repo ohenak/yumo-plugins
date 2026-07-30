@@ -493,6 +493,10 @@ export function parseReviewFilename(basename)
 //   → { ok: true, role, docType, round } | { ok: false, reason: FilenameFailure }
 export function parseApprovalHash(fileText)
 //   → { ok: true, hash, reviewedCommit } | { ok: false, reason: HashFailure }
+//   `reviewedCommit` is the literal string "unavailable" whenever no
+//   REVIEWED-COMMIT: line is present outside a fence, or its value is not
+//   lowercase hex. A missing corroboration line is NEVER a HashFailure:
+//   HASH_FAILURES describes the APPROVAL-HASH: line only (§4.3).
 export function parseRevisionComplete(response)
 //   → { complete: true } | { complete: false, reason: TrailerFailure }
 export function parseForcePhases(raw)
@@ -645,6 +649,16 @@ revision-path dispositions:
 `parseApprovalHash(fileText)` returns `{ ok: true, hash, reviewedCommit }` or `{ ok: false, reason }`
 over `HASH_FAILURES`. All three failure values reach the **same** place: §5.5's `UNEVALUABLE`, which
 means the phase runs. There is no branch in which an unparseable hash grants a skip.
+
+**`HASH_FAILURES` is about the `APPROVAL-HASH:` line and nothing else.** `REVIEWED-COMMIT:` has no
+failure value, because it has no failure: when the line is absent outside a fence, is duplicated, or
+carries a value that is not lowercase hex, `reviewedCommit` is the literal `"unavailable"` and `ok`
+stays `true`. That closes the totality gap under DC-01 without inventing a fourth catalogue entry, and
+it is safe in the only direction that matters — §5.5's comparison never reads the field (§5.3,
+rebase invariance), and §4.4's tier-2 column already admits `unavailable` as a value, so the harvest
+copy has somewhere to put it. A record whose hash parses and whose corroboration is missing is a
+usable approval; degrading it to `UNEVALUABLE` would re-run a converged phase over a field nothing
+consults.
 
 ### 4.4 The persisted records
 
