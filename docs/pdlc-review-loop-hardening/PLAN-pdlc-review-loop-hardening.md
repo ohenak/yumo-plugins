@@ -653,16 +653,25 @@ with both files green, while producing two jest tests of one name in one run (§
 
 ### 7.5 Assertions that are not FSPEC ATs
 
-Four groups of assertion in this PLAN guard a TSPEC interface rather than an FSPEC acceptance criterion,
-so they have no `AT-{N}` to inherit. They are named and countable anyway, because §12.3's checklist has
-to be mechanically checkable: **`RLH-WIRE-01`** (RLH-17), **`RLH-LOOP-01`** and **`RLH-LOOP-02`**
-(RLH-22), **`RLH-REPORT-01`** (RLH-29), and **`RLH-SKILL-01` … `RLH-SKILL-09`** (RLH-04, one per row of
-TSPEC §7.4, nine files). **Thirteen** assertions — 1 + 2 + 1 + 9; v1.1 said "fourteen" and mis-added —
-listed in §7.3 like any other. They are **not** ATs and must not be renumbered into the FSPEC's range,
-which is exactly why §12.3's two AT-counting rows do not reach them: §12.3 therefore carries **its own
-row naming all thirteen**, added at v1.2. Without it `RLH-34` could certify a tree in which
-`RLH-LOOP-01` — §11.5's sole oracle for the `N-a` threading shape — and all nine `RLH-SKILL-*` were
-absent.
+Five groups of assertion in this PLAN guard a TSPEC interface, a PLAN decision or the test harness itself
+rather than an FSPEC acceptance criterion, so they have no `AT-{N}` to inherit. They are named and
+countable anyway, because §12.3's checklist has to be mechanically checkable: **`RLH-WIRE-01`** (RLH-17),
+**`RLH-LOOP-01`**, **`RLH-LOOP-02`** and **`RLH-LOOP-03`** (RLH-22), **`RLH-REPORT-01`** (RLH-29),
+**`RLH-SCAN-01`** (RLH-31), and **`RLH-SKILL-01` … `RLH-SKILL-09`** (RLH-04, one per row of TSPEC §7.4,
+nine files). **Fifteen** assertions — 1 + 3 + 1 + 1 + 9 — each listed in §7.3 like any other.
+
+**The count has moved twice and both moves are recorded here rather than overwritten.** v1.1 said
+"fourteen" and had mis-added; v1.2 corrected it to **thirteen** (1 + 2 + 1 + 9), which both round-3
+reviewers independently re-derived and confirmed. v1.3 makes it **fifteen** by *adding two assertions*, not
+by re-counting: **`RLH-LOOP-03`**, the grep-shaped oracle that finally falsifies §11.5's single-computation
+rule (TE `F-05` — an `H-q` halt with nothing able to red on it), and **`RLH-SCAN-01`**, the await scan
+mechanism's own oracle (TE `F-03` — the mechanism decides the answer, so it is tested rather than trusted;
+§9.2 item 3).
+
+They are **not** ATs and must not be renumbered into the FSPEC's range, which is exactly why §12.3's two
+AT-counting rows do not reach them: §12.3 therefore carries **its own row naming all fifteen**, added at
+v1.2 and extended at v1.3. Without it `RLH-34` could certify a tree in which `RLH-LOOP-01` — §11.5's oracle
+for the `N-a` threading shape — and all nine `RLH-SKILL-*` were absent.
 
 
 ## 8. Traceability — FSPEC obligations and defects
