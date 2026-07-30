@@ -574,6 +574,25 @@ function parsePlanDepsCell(cell) {
 // ─── TSPEC-PARSE-01: parseVerdict ─────────────────────────────────────────────
 
 /**
+ * The closed verdict catalogue (TSPEC §3.9, §5.9; FSPEC §16.3).
+ *
+ * Lifted out of `parseVerdict`'s body to module scope — the same single-source
+ * move RLH-05 made for `reviewerRoleSlug`'s `MAP`, and for the same reason: §5.9's
+ * cross-review completeness criterion asks "is at least one `VERDICT: ` value in
+ * the catalogue?", and a second, hand-copied catalogue beside this one is exactly
+ * the desync defect this feature exists to remove (TSPEC §3.9 — "reused verbatim",
+ * one grammar family, three carriers).
+ *
+ * `parseVerdict` itself is otherwise untouched: same reverse-scan, same
+ * `malformed: true` fallback, same returns for every input (PLAN §12.3).
+ */
+const VALID_VERDICTS = Object.freeze([
+  "Approved",
+  "Approved with minor changes",
+  "Needs revision",
+]);
+
+/**
  * Extract VERDICT from a reviewer agent result string.
  *
  * When the trailer is missing or malformed (any path that logs the "returned no
@@ -588,11 +607,6 @@ function parsePlanDepsCell(cell) {
  * @returns {{ verdict: string, high: number, medium: number, low: number, malformed?: boolean }}
  */
 function parseVerdict(result, skillName) {
-  const VALID_VERDICTS = [
-    "Approved",
-    "Approved with minor changes",
-    "Needs revision",
-  ];
   const fallback = {
     verdict: "Needs revision",
     high: 0,
@@ -1178,6 +1192,42 @@ function parseForcePhases(raw) {
   const bad = tokens.filter((t) => t !== "all" && !valid.includes(t));
   if (bad.length) return { ok: false, badTokens: bad };
   return { ok: true, phases: tokens.includes("all") ? new Set(valid) : new Set(tokens) };
+}
+
+// ─── TSPEC §5.5 — staleness ───────────────────────────────────────────────────
+
+/**
+ * Is a recorded approval hash still describing the document on disk?
+ *
+ * Three rules with teeth (§5.5), all of them structural rather than documented:
+ *
+ * 1. **Read at comparison time.** `documentBytes` is whatever the caller read at
+ *    the moment of comparison — never a read cached earlier in the run, which is
+ *    how a document edited between phases gets skipped as fresh.
+ * 2. **No history walk** (O-8, as narrowed at FSPEC v1.5). One hash equality. No
+ *    `git log` of the document, no reconstruction of past bytes.
+ * 3. **Rebase invariance.** The comparison never reads `REVIEWED-COMMIT`. Phase
+ *    DOD rebases `feat-{feature}` before every PR and rewrites every sha on the
+ *    branch; a sha- or timestamp-based test would report every approval stale at
+ *    that moment. Content-addressing is unaffected because content is unaffected.
+ *    This is enforced by the signature, not by a comment: neither parameter is a
+ *    commit, so there is no argument through which a sha could reach the compare.
+ *
+ * Only `FRESH` grants the skip. `STALE` and `UNEVALUABLE` both fall to §2.5 step
+ * G and run the phase — FSPEC §1.2 rule 4's uniform direction: wherever a
+ * machine-readable field cannot be read, the behaviour is *more* work, never less.
+ *
+ * Pure, total and synchronous: no seam, no throw, no IO (§3.7).
+ *
+ * @param {string} recordedHash - the `sha256:{64 hex}` literal carried by the
+ *   approval record, copied verbatim — never recomputed over the working tree.
+ * @param {string} documentBytes - the document's bytes, read at comparison time.
+ * @returns {"FRESH"|"STALE"|"UNEVALUABLE"}
+ */
+function isStale(recordedHash, documentBytes) {
+  if (typeof recordedHash !== "string" || !/^sha256:[0-9a-f]{64}$/.test(recordedHash))
+    return "UNEVALUABLE";
+  return approvalHashOf(documentBytes) === recordedHash ? "FRESH" : "STALE";
 }
 
 // ─── isPass helper ────────────────────────────────────────────────────────────
