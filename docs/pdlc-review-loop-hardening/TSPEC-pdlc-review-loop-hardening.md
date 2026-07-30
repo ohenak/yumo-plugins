@@ -175,7 +175,13 @@ total, each has an explicit disposition for absent, malformed and truncated inpu
 (§4.2) and `TrailerFailure` (§4.3) are the two new closed catalogues.
 
 **DC-02 (measured, not inferred).** Every assertion this document makes about existing code was
-checked against the working tree at HEAD `af6f335` on `feat-pdlc-review-loop-hardening`. Code is
+checked against the working tree on `feat-pdlc-review-loop-hardening`: at HEAD **`af6f335`** for v1.0,
+and **re-measured at HEAD `ef4705a`** for every claim v1.1 touched or added. The v1.1 re-measurements
+are recorded where they are used rather than only here — `main()`'s sixteen `_`-parameters against
+`rtDevInjections`' nine (§8.5), `checkPrCi`'s four synchronous `_now()` call sites and the un-awaited
+`rawAgentFn` alias wrapper (§8.5), `QUEUE_ENTRY`'s injection object (§7.2), the bundle sizes (§7.2),
+the `AT-22` test-name collision in `documentOracles.test.js` and the 1038/1/70 suite baseline (§8.3).
+No claim in this document rests on a v1.0 measurement that v1.1 did not re-check. Code is
 cited as **enclosing symbol plus a distinctive literal** — never as a bare `file:line`, which drifts
 (FSPEC §1.1, O-16).
 
@@ -2006,7 +2012,7 @@ its v1.0 form.
 | **C-2** — await discipline | every injected call `await`ed by construction; AT-19's source-level lint is the mechanical guard |
 | **C-5** — no agent in a script-decidable loop | the entire decision surface lives in §2.4's pure stratum; `recoverVerdict` explicitly not reused on the approval path (§2.6) |
 | **DC-01** — closed and total | four failure catalogues (§4.1); six total parsers (§5); every emit-side string catalogued |
-| **DC-02** — measured, not inferred | every claim about existing code verified against the tree at HEAD `af6f335`; `stripModuleSyntax`'s and `wrapModule`'s behaviour, `rtDevInjections`'s nine entries, `main()`'s sixteen injections, the dev bundle's composition array and `DEV_META`'s missing `inputs` all read directly |
+| **DC-02** — measured, not inferred | every claim about existing code verified against the tree at HEAD `af6f335` (v1.0) and re-measured at `ef4705a` (v1.1, §1.4); `stripModuleSyntax`'s and `wrapModule`'s behaviour, `rtDevInjections`'s nine entries, `main()`'s sixteen injections, the dev bundle's composition array and `DEV_META`'s missing `inputs` all read directly. v1.1 adds six measurements rather than inferences, and two of them **overturned** a reviewer's own suggestion or premise: TE F-04's proposed exemption predicate was measured too wide against five real capability seams, and §8.3's "must stay green" was measured false (1038/1/70) | 
 | **DC-11** — one error contract per question | `ListFailure` shared across both listing paths; `_git` and `_mergeWorktree` justified as answering different questions (§3.4) |
 | **DEC-DIST-01/02** | `dist/` regenerated in the same commit; consumer copy never committed (§7.3) |
 | **DEC-ORACLE-01/03** | run-wide assertions written as explicit tests; one canonical double per seam at a named path (§8.1) |
