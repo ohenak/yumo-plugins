@@ -1465,6 +1465,102 @@ anchored edit.
 
 ## 13. FSPEC-QUEUE-01 — Committing the halted queue row
 
+**Linked requirements:** AC-2.1, AC-2.6, AC-2.7a, AC-3.5f. **Discharges O-4.**
+
+### 13.1 The gap
+
+`orchestrate-queue.js` already writes the row: `runPicked` calls
+`await rewriteStatus(queuePath, entry.feature, "halted", ...)` when the delegated pipeline throws, and
+`const newStatus = succeeded ? "awaiting-merge" : "halted";` afterwards. But `rewriteStatus(queuePath,
+feature, status, readFileFn, writeFileFn)` **performs zero git operations** — it reads, rewrites and
+writes the file, leaving the change uncommitted in the working tree. Neither orchestrator has any git
+capability today: `main()`'s injection list in `orchestrate-dev.js` carries no `_git`, and
+`rtDevInjections` supplies none.
+
+So a halt today survives only as long as the working tree does. AC-2.1 requires it to survive the
+process.
+
+### 13.2 Who performs it, and how
+
+A new injected seam, `_git(argv) → { ok, stdout, stderr }`, declared in §1.4. It **never throws**: a
+non-zero exit is reported as `{ ok: false, stderr }`, because a git failure is a condition this section
+must branch on, not an exception that would unwind the halt path and lose the reason.
+
+| Aspect | Specification |
+|---|---|
+| Adapter implementation | `rtGit(argv)` — one `agent()` at `RT_IO_MODEL` with Bash, prompted to run exactly `git {argv joined}` from the repository root and return only a JSON object `{"ok":true,"stdout":"…"}` or `{"ok":false,"stderr":"…"}`. The same shape and the same defensive `JSON.parse`-in-`try` as `rtMergeWorktree` already uses, whose prompt likewise fixes an exact command and an exact JSON reply. |
+| Argument form | An **array** of arguments, never an interpolated command string, so a feature name can never be read as a flag or a shell metacharacter |
+| Injection | Added to `rtDevInjections`'s returned object alongside `_agent`, `_readFile`, `_checkFile`, … and to `QUEUE_ENTRY`'s injection list in `build-runtime.mjs` (which already passes `_writeFile: rtWriteFile`) |
+| Await | Every call awaited (C-2) |
+| C-5 | The agent runs one fixed command and relays an exit status. Every decision about what to do with that status is the script's. This is the same boundary `rtMergeWorktree` and `rtCheckCi` already sit on. |
+
+**Who calls it.** The commit is performed by `rewriteStatus` in `orchestrate-queue.js` — the one function
+that already owns every status write — so no call site can write a row without committing it. Making it
+the caller's responsibility would guarantee the omission this section exists to fix, since there are
+three call sites (`"in-progress"`, `"halted"`, and the terminal `newStatus`) and only two of them matter
+for durability today.
+
+### 13.3 The commit
+
+Exactly two git invocations, in order:
+
+```
+git add -- docs/_queue/QUEUE.md
+git commit -m "chore(queue): {feature} → {status}" -- docs/_queue/QUEUE.md
+```
+
+| Aspect | Specification |
+|---|---|
+| Message | `chore(queue): {feature} → {status}` — e.g. `chore(queue): pdlc-review-loop-hardening → halted`. Matches the repo's existing convention (`chore(queue): row 1 pdlc-workflow-distribution awaiting-merge → done`) so the history stays greppable. |
+| Pathspec | The queue path only, passed after `--`. A bare `git commit -a` would sweep unrelated working-tree changes into a queue-status commit; the `-- {path}` form commits **only** that file even when the tree is dirty. |
+| Scope | Applied to **every** status write, not only `halted`. `in-progress` and `awaiting-merge` become durable too, which is a strict improvement and avoids a second, divergent code path. |
+| Push | **Not** performed. The halt must survive the *process*, which a local commit achieves; pushing is a network act with its own failure modes and is not what AC-2.1 asks for. |
+| Which halt classes | Both. AC-2.1's obligation is not conditional on a POSTMORTEM existing — an AC-3.5f authoring-budget halt writes no POSTMORTEM (§15.6) and still commits the `halted` row. |
+
+**Dirty working tree.** Explicitly **not** an error and explicitly **not** cleaned. A halted pipeline
+very often leaves a partially written document in the tree — that is the committed-partial-progress
+AC-2.7a relies on for resumption — so stashing, resetting or refusing would destroy the state the
+recovery path needs. The pathspec form makes the dirty tree irrelevant: only `QUEUE.md` is staged, and
+`git add -- {path}` stages that file's current content regardless of what else is modified.
+
+**One edge case with a definite answer.** If `QUEUE.md` is already staged with *other* changes to the
+same file (an operator mid-edit), the commit captures those too. This is accepted rather than guarded:
+detecting it requires a diff-vs-index comparison whose only available action would be to refuse, and
+refusing would lose the halt. The commit message names the status change, so the extra content is
+visible in review.
+
+### 13.4 Failure catalogue
+
+| Failure | Detection | Behaviour |
+|---|---|---|
+| The row write itself failed (`_writeFile` error) | `_writeFile` rejects or `_git add` reports the path unchanged | **Surfaced**: the halt report carries `queueRow: "error"` and the reason gains `; queue row write FAILED`. The pipeline still halts with its original reason — the halt is not replaced by the bookkeeping failure. |
+| `git add` fails | `{ ok: false }` | As above |
+| `git commit` fails — pre-commit hook rejection, no identity configured, index lock | `{ ok: false, stderr }` | **Non-fatal but surfaced.** `queueRow: "halted (uncommitted)"`, and the reason gains `; queue row set to halted but the commit FAILED: {stderr first line} — commit docs/_queue/QUEUE.md manually before re-running the queue.` The row is correct on disk; only its durability is lost, and the operator is told exactly what to do. |
+| `git commit` fails with "nothing to commit" | `{ ok: false }` whose stderr/stdout matches `nothing to commit` | **Success.** The row already read the target status and was already committed — the common case on a re-entry. Treated as `queueRow: "halted"`, no warning. Idempotence, not an error. |
+| No git repository at all | `{ ok: false }` | Same as commit-failure: surfaced, non-fatal |
+
+**Why a commit failure does not escalate.** The original halt reason is the operator-actionable
+information; replacing it with a git error would hide *why* the pipeline stopped in order to report a
+bookkeeping problem. Both are reported, the halt reason first.
+
+### 13.5 Absent row (AC-2.6) — no longer a silent no-op
+
+`updateQueueStatus(markdown, feature, newStatus)` ends `return markdown; // feature row not found` — the
+measured H-2 defect: a status write against a feature with no row silently succeeds and returns the
+document unchanged.
+
+| Change | Specification |
+|---|---|
+| Return shape | `updateQueueStatus` returns `{ markdown, matched: boolean }` instead of a bare string. A caller cannot ignore the outcome by accident, and the existing "not found" comment becomes a value. |
+| `rewriteStatus` behaviour on `matched: false` | Writes nothing, performs no git operation, and returns an error result |
+| Surfacing | The run's outcome carries `queueRow: "error"`, and the reason gains `Queue row for feature {feature} not found in {queuePath} — status "{status}" was not recorded.` |
+| Scope of the error | **Only when a write was attempted because a row was expected** — i.e. the `orchestrate-queue` path, which selected the entry from that very file, so an absent row means the file changed under the run |
+| Not an error | A **direct** invocation, which never attempts the write at all — §14 |
+
+The distinction matters because it is what keeps a direct invocation from being a double failure: the
+error is reserved for a row that was expected and is missing, not for a feature that legitimately has no
+row.
+
 ## 14. FSPEC-ROWLOC-01 — Locating the queue row on a direct invocation
 
 ## 15. FSPEC-PACE-01 — Authoring pacing, resume prompt, and commit cadence
