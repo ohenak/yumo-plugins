@@ -187,6 +187,40 @@ otherwise. I looked for one at each of the nine rows and found none.
 
 ## 5. Did the Fixes Break or Weaken Anything
 
+**No. Existing coverage was updated, not deleted, and the one fixture that changed came out stronger.**
+
+The `pacingWrapper.test.js` change is the only edit to pre-existing test code in the three commits, and
+it is confined to the `learningsDoc` fixture: a `LEARNINGS_METADATA` constant, a `harvestedFrom` knob
+defaulting to `true`, and a `String.replace` that inserts the table between the `# ` title and the
+first `## ` section. **Not one assertion line in the file is added, removed or altered** — the diff
+touches lines 192–227 only, and every `expect` in `RLH-AT-49`, `RLH-AT-51` and `RLH-AT-58` is
+byte-identical to its pre-fix form.
+
+That leaves the real question: did the *fixture* change weaken what those assertions discriminate? I
+mutated the fixture — `harvestedFrom` forced to never insert the table — and ran each against the
+**unmutated** module:
+
+| Case | Under the fixture mutant | Reading |
+|---|---|---|
+| `RLH-AT-51` | **red** | The metadata row was **required** for this test to keep passing, and it now depends on it. AT-51's claim ("the missing §4.4 record does not make the episode incomplete") is only meaningful if the document is otherwise complete — which, post-F-2, requires the row. The fixture change is what preserves the test's discrimination; without it AT-51 would have been passing for the wrong reason. **Strengthened.** |
+| `RLH-AT-49` | green | Leg (c) asserts `prompt` contains `LEARNINGS_HEADINGS[4]`, which holds whether or not the clause also sits in `missing`, and the dispatch-count assertion is `>= 2`. So AT-49 is insensitive to the row in both directions — it asserts precisely what it asserted before, neither more nor less. **Unchanged.** |
+
+So the fixture edit is the minimum needed to keep an existing test honest under a tightened criterion,
+which is the correct shape for this kind of change. The new conjunct's own coverage lives in
+`RLH-CR-F2`, not smuggled into AT-49.
+
+**One residue, not a finding.** `pacingWrapper.test.js`'s new `harvestedFrom` parameter is never passed
+`false` anywhere in that file (grep: the identifier appears only at its own declaration, doc comment
+and guard). It is an unexercised fixture branch. It costs nothing, it makes the fixture symmetric with
+`completeness.test.js`'s, and the `false` direction *is* exercised — in `RLH-CR-F2`, which owns it. I
+record it so the next reader does not mistake it for coverage.
+
+**Nothing else regressed.** No production construct outside `isComplete`'s `LEARNINGS` arm changed;
+`orchestrate-dev.js`'s diff across all three commits is +46/−2, entirely the new constant, the
+`hasHarvestedFromRow` helper, one pushed clause and comment. The rebuilt `dist/` artifacts are
+consistent (`build-runtime.mjs --check` exits 0 with three in-sync rows), and I confirmed the working
+tree is byte-clean after every mutation experiment in this review.
+
 ## 6. Findings
 
 ## 7. Recorded for Harvest (outside the round bound)
