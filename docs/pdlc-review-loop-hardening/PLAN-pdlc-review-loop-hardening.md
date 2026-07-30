@@ -1,6 +1,6 @@
 # PLAN — pdlc-review-loop-hardening
 
-**Version:** v1.3
+**Version:** v1.4
 **Scope:** Work breakdown for implementing TSPEC v1.7 (`pdlc-review-loop-hardening`) — task list, batch
 assignment, file ownership, TDD order, traceability and halt conditions. This document specifies **when
 and by whom** each change is built. It specifies **no behaviour**: every behavioural, structural and
@@ -1301,6 +1301,7 @@ batch 3 by a single owning task, and every task v1.0 nominated as the decider ra
 | **v1.1** | 2026-07-30 | Round-1 cross-review revision (PM 1H/3M/5L, TE 3H/5M/2L). **31 tasks across 13 batches** (was 34/16). No REQ, FSPEC or TSPEC change — every finding was editorial to this PLAN. Per-finding disposition in §14.1, **audited and corrected at v1.2** — five of its claims were overstated or false. |
 | **v1.2** | 2026-07-30 | Round-2 cross-review revision (PM 1H/3M/7L, TE 3H/3M/3L). **Task count, batch count, DAG, `Deps` edges, ledger arithmetic and file ownership are unchanged** — both reviewers re-derived them independently and found them clean, and v1.2 does not reopen them. **One TSPEC amendment, and only one: TSPEC v1.6** adds the awaited-combinator-argument ruling to §8.5, forced by a measurement (`orchestrate-dev.js:615–616`); REQ and FSPEC untouched. Everything else is a correction to this PLAN. Per-finding disposition in §14.2. |
 | **v1.3** | 2026-07-30 | Round-3 cross-review revision (PM 1H/2M/3L, TE 1H/4M/2L). **Task count (31), batch count (13), DAG, `Deps` edges, ledger arithmetic and file ownership are unchanged** for the second consecutive round. The High was the same defect in both reviews for the third consecutive round — the await-discipline **site enumeration**, restated normatively in four places (§4.1, §7.3 row 1, §9.2, §12.3) with no owner. v1.3 does not repair the four copies: it **deletes three of them**. §4.1 becomes the sole owner and states the set once, in two rows — a **predicate-shaped blocking assertion** (every non-awaited seam site is classified by one of TSPEC §8.5's three rulings) and an **advisory evidence row** carrying the count, which is no longer a premise of any gate; §7.3 row 1, §9.2 item 1 and §12.3's `RLH-AT-19` row cite §4.1 and restate nothing. The set was **re-derived from the predicate** (method in §4.1 and §14.3) rather than adopted from either review: **five non-awaited sites of 35 seam call sites**, all five exempt, none unclassified — so `orchestrate-queue.js` has **one**, not none. Two new assertions (`RLH-LOOP-03`, `RLH-SCAN-01`) take the count of non-AT assertions from thirteen to **fifteen**. **One TSPEC amendment: TSPEC v1.7**, §8.5 only — three narrowing clauses, no widening. Per-finding disposition in §14.3. |
+| **v1.4** | 2026-07-30 | Round-4 cross-review revision (PM approved, 0 findings; TE 0H/2M/2L). **Task count (31), batch count (13), DAG, `Deps` edges, ledger arithmetic and file ownership are unchanged** for the third consecutive round; **no TSPEC, REQ or FSPEC change** — TSPEC v1.7 is approved by both reviewers and is untouched. Four localised corrections, all to content written at v1.3, all in the sections that already own them: §9.2 item 3(c) gains the **forward half** of TSPEC §8.5's returned-promise ruling (the v1.3 backward-only proxy was fail-open, exempting `() => _agent(a) && other`); §4.1's blocking row gains a **lower-bound non-vacuity conjunct** (total classification over an empty reported set was vacuously true, so a blind scanner passed every gate); §11.5's span rule and §12.3's matching `endIndex` row take `^}\s*$` instead of `^}` (measured: `reviewLoop` at `orchestrate-dev.js:532`, next `^}` is `:542` = `}) {`, body ends `:669`); §2.2's exit-criterion quote gains the **skip clause**, citing §12.2 step 2 as its operator. Per-finding disposition in §14.4. |
 
 ### 14.1 v1.1 — disposition of every round-1 finding
 
@@ -1536,3 +1537,46 @@ unowned obligation. Against that, v1.3 **deletes** three normative restatements 
 (§7.3 row 1, §9.2 item 1, §12.3's `RLH-AT-19` row, each now a citation), which is the one reduction
 both reviewers asked for by name: a round that removes a duplicated catalogue and records why it was
 duplicated cannot also be the round that shrinks the record of it.
+
+### 14.4 v1.4 — disposition of every round-4 finding
+
+**PM: approved, zero findings at any severity** (`a5d83c1`), having re-derived the site set by
+implementing §9.2 item 3's algorithm — 35 sites, five non-awaited, all classified. **TE: 0 High, 2
+Medium, 2 Low**, all four in content written at v1.3, all fixed in the owning section. No TSPEC, REQ or
+FSPEC change; TSPEC v1.7 is approved by both reviewers and is not reopened.
+
+| Finding | Sev | Disposition |
+|---|---|---|
+| TE `F-01(a)` — §9.2 item 3(c) is a **backward-only proxy**, fail-open and silent | Medium | **Fixed in §9.2 item 3(c).** The returned-promise test now decides the ruling as written — the call must be the *entire* body/operand — so it checks **both halves**: backwards, the nearest non-whitespace token is `=>` or `return`; **and forwards**, the first non-whitespace token after the call's matching `)`, found by walking the same bracket-depth stack forward to depth zero, is `;`, `,`, `)`, `}` or end of line. `() => _agent(a) && other` and `return _checkFile(p) \|\| fallback;` now fail the forward half and are **not** exempted. The degrade-to-unclassified discipline is preserved and made explicit for the new half: a forward walk that cannot reach a matching `)` at depth zero yields an **unclassified** site, which fails loudly — the backward half alone never exempts anything |
+| TE `F-01(b)` — total classification is **vacuously true over the empty set** | Medium | **Fixed in §4.1's blocking row** (the owning section; §7.3 row 1, §9.2 item 1 and §12.3 keep citing it and restate nothing). A **lower bound, not a count**: the scan must report at least one call site in `orchestrate-dev.js` and at least one in `orchestrate-queue.js`. One-per-file is the chosen value because neither module's `main()` can run its pipeline without calling at least one injected seam, so no legitimate future source change can drive either file to zero — only a scanner that has gone blind reports none — and a bound of one cannot drift upward the way the exact figure drifted across four rounds. This defect was introduced by the v1.3 remedy itself: making the count inert removed the only thing that had been standing between the gate and a scanner reporting nothing |
+| TE `F-02` — `RLH-LOOP-03`'s span conjunct is broken at HEAD | Low (filed Medium; scoped Low by the round-4 brief) | **Fixed in §11.5, with §12.3's `endIndex` row updated to match.** Span end is now the first line matching **`^}\s*$`** — a *lone* column-0 `}` — not the first `^}`. Measured at HEAD before editing: `reviewLoop` is declared at `orchestrate-dev.js:532`, the next `^}` is **`:542`, which is `}) {`** (its destructured parameter-list close), and its body ends at **`:669`**; `checkConverged` is `:496` → `:515` and was already correct. Under `^}` the placement conjunct was satisfied by an occurrence anywhere in `:543–669` — the whole region it forbids. The row's **count** conjunct is sound and the row is kept rather than deleted: `MAX_REVIEW_ROUNDS` occurs **zero** times in `orchestrate-dev.js` at HEAD (measured), so it is a genuine red-then-green |
+| TE `F-04` — §2.2 omits the skip criterion | Low | **Fixed in §2.2's block quote**, in TE's words, with the ownership made explicit rather than duplicated: §12.2 step 2 remains the **operator and owner** of the skip rule (`skipped exactly 70`, an equality; every in-window assertion present and either red-as-expected or green), and §2.2 states it so that the criterion it claims to state "once" is not half-stated, citing §12.2 for how it is checked |
+
+**Root cause of the count defect, recorded for Harvest.** TE established *why* the round-2 derivation
+returned three: under TSPEC **v1.6**'s alias phrasing ("the local name, **not** the `_`-prefixed one"),
+`orchestrate-dev.js:615`/`:616` — called under `_agent` itself — fall outside the scan set, and the
+derivation **legitimately returns three**. The count was not a miscount; it was correct output from a
+contradictory contract. TSPEC v1.7's alias-row reconciliation was therefore **load-bearing for the
+mechanism, not editorial** — it is what makes §9.2 item 3 reproduce 35/5 for an independent implementer.
+This is the root cause of a defect that consumed three rounds and is the highest-value item in this
+feature's Harvest.
+
+**Routed to Harvest, not fixed here** (both reviewers filed these as explicitly non-blocking; recorded
+so Harvest picks them up):
+
+- **Two §14.3 restatements have drifted from their owning sections** (PM, non-blocking): `RLH-SCAN-01`'s
+  fixture design is stated more strongly in §14.3's `F-03` disposition than in §9.2 item 3, and the
+  `Q-02` row carries a wrong oracle attribution. Non-blocking because §4's `RLH-31` row and §11.5 route
+  the implementer to the correct owner. TE filed the first as its round-4 `F-03` (Low); the scoped brief
+  routes it here, and F-01(b)'s lower bound closes the reachability that made it matter — a scan
+  reporting zero now fails §4.1 regardless of which fixture set `RLH-SCAN-01` uses. **The general rule
+  this instance supports: a §14 changelog row must never state a normative rule more precisely than the
+  section that owns it.**
+- **Masking is under-specified but not reachable at HEAD** — regex-versus-division (a real division at
+  `orchestrate-dev.js:1340`, *before* two of the five sites), nested templates
+  (`orchestrate-queue.js:1086`), `//` inside a string. TE measured two independent masking resolutions
+  and both give identical results over both bundle sources, so the latitude is safe to exercise. Worth
+  one sentence in `RLH-31`'s implementation notes for the next editor of these files.
+- **Cross-feature (PM):** `RLH-AT-19`'s exemptions delegate the await obligation to an `await` of
+  `_parallel`, which is outside FSPEC AT-19's closed thirteen-name set. Pre-existing and out of surface
+  under R-5; recorded so a later feature that widens the set knows the delegation exists.
