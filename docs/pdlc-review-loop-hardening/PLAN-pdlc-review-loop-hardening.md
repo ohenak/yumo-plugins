@@ -247,8 +247,9 @@ granularity fails open. The permitted-red window is stated **once**, per accepta
 that table is the gate's only authority. A task row here says what the task builds; §7.3 says when each
 assertion must be green.
 
-**Three ids are retired**: `RLH-10`, `RLH-13` and `RLH-15` are folded into `RLH-05` (§4.2). They appear
-nowhere below and nowhere else in this document; a reference to one is a stale reference.
+**Three ids are retired**: `RLH-10`, `RLH-13` and `RLH-15` are folded into `RLH-05` (§4.2). No task row,
+`Deps` edge, ledger row or traceability cell names one; the only surviving mentions are historical, in
+§4.2, §13.1 and §14. A reference to one **as a live task** is a stale reference.
 
 Paths are repo-relative and subpackage-qualified. `__tests__/` and `dist/` are always under
 `pdlc/workflows/`.
@@ -296,8 +297,9 @@ becomes blocking work in batch 1 instead of a confusing red in batch 9.
 | Assertion | Verified value at authoring time |
 |---|---|
 | **Command:** `cd pdlc/workflows && { time npm test; }`, run in the background per §2.3. **Blocking assertion:** the three counts and the suite total reproduce exactly, and the one red is `documentOracles.test.js` `AT-22 [red-until-L-06]`. Any deviation in a count, or a different red, fails the gate | 1038 passed / 1 failed / 70 skipped, 1109 total, 36 suites |
-| **Advisory, recorded not asserted:** the wall clock of that command. **No tolerance, because it is not a gate** — it is load-dependent (§2.3) and three measurements of one HEAD spanned 179.2–185.4 s. `RLH-01` records the number it measures so §2.3's 190–200 s projection can be falsified later; it does **not** fail on it. If it exceeds **300 s** at HEAD, halt — the §2.3 procedure has been outrun before the feature starts | jest `Time: 184.752 s`; wall clock `3:05.43` = 185.43 s (2026-07-30) |
-| bare `npx jest __tests__/parseVerdict.test.js` reports `Tests: 0 total` and exits 0, whereas `npm test -- __tests__/parseVerdict.test.js` reports 20 passed — i.e. the inner-loop command of §2.3 is the `npm test --` form and the other is a vacuous green | confirmed; 0 vs 20 tests |
+| **Advisory, recorded not asserted:** the wall clock of that command. **No tolerance, because it is not a gate** — it is load-dependent (§2.3) and four measurements of one HEAD spanned 179.2–185.4 s. `RLH-01` records the number it measures so §2.3's 190–200 s projection can be falsified later; it does **not** fail on it. If it exceeds **300 s** at HEAD, halt — the §2.3 procedure has been outrun before the feature starts | jest `Time: 184.752 s`; wall clock `3:05.43` = 185.43 s (2026-07-30) |
+| **Blocking assertion, restated as measured (v1.2).** `cd pdlc/workflows && npx jest __tests__/parseVerdict.test.js` **fails to run the suite**: `Test Suites: 1 failed, 1 total`, `Tests: 0 total`, `SyntaxError: Cannot use import statement outside a module`, **exit 1**. The same file under `npm test -- __tests__/parseVerdict.test.js` reports `20 passed`, exit 0. The gate asserts *that* — suite-failed-to-run, zero tests, non-zero exit for the bare form; 20 tests, exit 0 for the npm form — and **not** v1.1's withdrawn "exits 0 / vacuous green" (§2.3). If the bare form ever starts *executing* tests, the row fails and §2.3's mandate is re-derived rather than assumed | re-measured 2026-07-30: bare → suite failed to run, `Tests: 0 total`, exit **1**; npm form → 20 passed, exit 0 |
+| **Blocking assertion:** the await-discipline scan `RLH-31` will encode has exactly **three** non-`await`ed call sites of FSPEC AT-19's closed thirteen-name list across `orchestrate-dev.js` and `orchestrate-queue.js`, and each is classified exempt by TSPEC §8.5's ruling table (§9.2). The gate exists so `RLH-AT-19`'s **empty** permitted-red window (§7.3 row 1) rests on a *checked* premise at batch 1 rather than an authoring-time scan. A fourth site, or a site none of §8.5's rulings reaches, fails the gate and is blocking work before batch 2 — never a quiet fourth exemption (§11.3 `H-h`) | measured 2026-07-30 at HEAD: `orchestrate-dev.js:615`, `:616` (array elements of `await _parallel([…])` in `reviewLoop` — §8.5 combinator ruling), `orchestrate-dev.js:1867` (`agentFn(` as an anonymous `batch.map` arrow body — §8.5 returned-promise ruling); `orchestrate-queue.js` has none |
 | `__tests__/helpers/driftGenerators.js` exports `seeded` (returning `{ seed, int, pick, shuffle, bytes }`), `resolveSeed` (with the `PDLC_PROP_SEED` override), `shrink` | all present; `bytes(n)` returns a `Buffer` |
 | that generator is already consumed by seven suites — so it is reused, **not** re-implemented, and no second generator library is written | `driftBackups`, `driftBaseline`, `driftFault`, `driftHook`, `driftOrdering`, `driftRepoRoot`, `queueDriftGate` |
 | `main()` in `orchestrate-dev.js` carries sixteen `_`-prefixed parameters | sixteen, `_agent` … `_sleep` |
@@ -318,7 +320,7 @@ becomes blocking work in batch 1 instead of a confusing red in batch 9.
 | Tasks | **31** (v1.0 had 34; `RLH-10`, `RLH-13` and `RLH-15` are folded into `RLH-05`) |
 | Batches | **13** (v1.0 had 16) |
 | Widest batches | batch 2 — **nine** tasks (RLH-02, 03, 04, 06, 11, 14, 17, 29, 31) — and batch 3 — **ten** tasks (RLH-05, 07, 08, 09, 19, 21, 22, 24, 25, **28**). Every task in each writes a distinct file; the only source-lane member of batch 3 is RLH-05 |
-| Batches 4–13 | one or two tasks each, always exactly one source-lane task (batch 4 also carries RLH-12, a test file) |
+| Batches 4–12 | one or two tasks each, always exactly one source-lane task (batch 4 also carries RLH-12, a test file). **Batch 13 has none** — its sole member `RLH-34` writes no source and no test, matching §5.1's `dist/` range ("3–12, one per batch") and §13.3's ten serialised source-lane commits |
 | **Critical path** | **RLH-01 → 03 → 05 → 18 → 20 → 16 → 23 → 26 → 27 → 30 → 32 → 33 → 34** — thirteen nodes, twelve edges, one node per batch, and it is the whole span of the schedule |
 
 The critical path is the batch count, so shortening it means merging source tasks. **v1.1 takes the one
