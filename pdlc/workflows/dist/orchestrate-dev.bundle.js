@@ -1196,13 +1196,36 @@ async function reviewLoop({
  * @param {string} skill
  * @returns {string|null}
  */
+/**
+ * The single reviewer-skill → role-slug MAP (TSPEC §3.9). Lifted to module scope
+ * so the filename grammar's role alternation (§5.2 G-2), the dispatch table and
+ * the reverse accessor below all read the SAME catalogue and cannot desynchronise.
+ */
+const MAP = {
+  "se-review": "software-engineer",
+  "pm-review": "product-manager",
+  "te-review": "test-engineer",
+};
+
+/** The closed role catalogue G-2 validates a parsed filename's role against. */
+const REVIEWER_ROLE_SLUGS = Object.freeze(Object.values(MAP));
+
 function reviewerRoleSlug(skill) {
-  const MAP = {
-    "se-review": "software-engineer",
-    "pm-review": "product-manager",
-    "te-review": "test-engineer",
-  };
   return MAP[skill] || null;
+}
+
+/**
+ * The reverse of `reviewerRoleSlug` (TSPEC §3.9): a role slug as it appears in a
+ * `CROSS-REVIEW-{role}-…` basename back to the reviewer skill that produced it.
+ *
+ * @param {string} slug
+ * @returns {string|null} the reviewer skill id, or `null` for a non-catalogue slug.
+ */
+function reviewerSkillForSlug(slug) {
+  for (const skill of Object.keys(MAP)) {
+    if (MAP[skill] === slug) return skill;
+  }
+  return null;
 }
 
 /**
