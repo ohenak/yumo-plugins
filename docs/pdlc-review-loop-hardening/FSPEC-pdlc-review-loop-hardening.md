@@ -1661,6 +1661,192 @@ knows the route.
 
 ## 15. FSPEC-PACE-01 — Authoring pacing, resume prompt, and commit cadence
 
+**Linked requirements:** AC-3.1, AC-3.1a, AC-3.2, AC-3.2a, AC-3.2b, AC-3.3, AC-3.5 (scope a–d),
+AC-3.5a–AC-3.5g, AC-3.6. **Discharges O-6, O-19 (placement half) and O-20.**
+
+### 15.1 The wrapper and the episode
+
+`dispatchAndVerify({ episode, prompt })` wraps one dispatch loop. An **episode** is the tuple fixed by
+AC-3.5c:
+
+```
+episode = artifact set × phase × round index × invocation
+```
+
+All four coordinates matter, and each was corrected against a measured defect: dropping *round* makes a
+healthy five-round convergence hit a six-dispatch cap (1 + 5 = 6); dropping *invocation* makes a
+re-entered phase trip on entry; treating the two documents of a TSPEC+DECISIONS dispatch as separate
+episodes makes a dispatch correctly advancing one score no-progress on the other.
+
+**The wrapped population (AC-3.5 scope (a)), carried through by name:**
+
+| Dispatch | Wrapped | Artifact set |
+|---|---|---|
+| `pm-author` / `se-author` / `te-author` on a spec document | **Yes** | that document; plus a conditionally required second document written by the same dispatch (TSPEC + DECISIONS) as **one set** |
+| `pm-review` / `se-review` / `te-review` | **Yes** | its own `CROSS-REVIEW-{role}-{doc-type}[-v{N}].md` |
+| `dod-verify` | **Yes** | `CODE_REVIEW-{feature}-v{N}.md` |
+| `harvest-learnings` | **Yes** | `LEARNINGS-{feature}.md` |
+| Phase I batches (`tech-lead` → `se-implement`) | **No** — bounded by the PLAN's batch structure and existing Phase I accounting | — |
+| Phase DOD remediation (`se-implement` on `CODE_REVIEW-*`) | **No** — bounded by `DOD_MAX_ITERATIONS` (declared as `const DOD_MAX_ITERATIONS = 3;`), each round of which re-runs the wrapped `dod-verify` | — |
+| `ship-pr`, the CI poll loop, anything writing no artifact | **No** — their own existing bounds | — |
+
+Code-writing dispatches are excluded **deliberately**: they edit an open-ended set of source and test
+files, so "the artifact", its structural completeness and the byte-change comparison are all undefined
+for them. Bounding a stall-killed *code* dispatch is a real gap and is **D-RLH-05** — out of scope here
+and not half-specified. AC-3.6's per-call byte budget and AC-3.2b's commit cadence still bind those
+agents, because those are agent-directed obligations needing no pre/post measurement.
+
+**Membership of the set.** Terminal requires every member the phase *actually requires*. A DECISIONS
+the phase's own warrant check does not require is **not a member** — that check's result is bound to the
+local `decisionsWarranted` alongside `parseDecisionsWarranted`. (v1.4 cited a
+`decisionsWarranted(...)` function; no function of that name exists at HEAD `0655387` — the mechanism is
+real, the name was not.)
+
+### 15.2 Mode selection (AC-3.5 scope (d))
+
+Selected **once, at episode entry**, from **what the phase is dispatching an author to do** — never from
+the artifact's completeness:
+
+| Mode | Selected when | Prompt every dispatch carries |
+|---|---|---|
+| **Revision** | the phase is dispatching an author to address the findings of a review round that exists on the branch for this (feature, doc type) — decided from the review artifacts §4 already enumerates, **regardless of the artifact's structural state** | §15.5's continuation prompt |
+| **Greenfield** | **no** findings-bearing round exists — the phase's first authoring dispatch | §15.5's resume/first-attempt prompt |
+
+Four rules, carried through:
+
+1. **The revision test is evaluated first.** Completeness is consulted only when no findings-bearing
+   round exists, so completeness can never move an episode out of revision mode.
+2. **Which round.** The highest round index §4 finds for that (feature, doc type) whose review artifacts
+   do **not** carry same-round dual approval — the round still owed an authoring pass. A resuming
+   invocation therefore re-enters the **same** round and re-derives its findings from the surviving
+   `CROSS-REVIEW-*` files. §4's `max + 1` derivation governs the **next reviewer** dispatch, which
+   happens only after this episode reaches terminal.
+3. **Non-authoring wrapped dispatches are always greenfield.** A review, `dod-verify` or
+   `harvest-learnings` episode is never dispatched to address findings in its own artifact — each writes
+   a new file — so the revision test cannot match. Such episodes need **no** completion trailer and
+   their terminal test is structural completeness alone.
+4. **Fail toward revision.** If review artifacts for that round exist but their verdict fields are
+   unreadable (§6's fail-closed case), the episode is a **revision** episode. The directions are not
+   symmetric: mis-entering greenfield silently drops a whole review round, while mis-entering revision
+   costs at most a continuation prompt naming findings already reflected — priced as R-10, and
+   terminated in one dispatch by §8's trailer.
+
+Stickiness is a **consequence**, not the mechanism: the selection is made once and does not change for
+the life of the episode, whatever later measurements observe. Episode entry is the same instant the
+counters start at zero, so mode, prompt kind and counters share one scope.
+
+**The retracted derivation, stated so it is not reinstated.** v1.3 selected mode from the pre-dispatch
+measurement on **every** dispatch; v1.4 made it sticky **within** an episode but still derived it from
+the artifact's structural state at entry. Both are withdrawn. v1.4's own recovery path walks straight
+through its stickiness: a revision dispatch killed after breaking structural completeness → the episode
+exhausts `MAX_AUTHORING_DISPATCHES` → the phase halts and commits `halted` → the operator resets the row
+→ the resuming invocation is a **new** episode, re-selects from disk, finds an incomplete document, and
+enters **greenfield**. Every re-dispatch then carries a resume prompt naming **no findings**, greenfield
+terminal fires on structural completeness, and the wrapper reports success on a round whose findings were
+never addressed. The halt path is not even required — any kill of the top-level invocation mid-revision
+reaches the same state. The information to classify it correctly was on disk and simply unread: the
+round's `CROSS-REVIEW-*` files survive until Phase H (§4a A-7) and §4 already reads them.
+
+### 15.3 The one progress predicate (AC-3.5a)
+
+```
+progress := bytes(any member of the artifact set) changed between the pre-dispatch and
+            post-dispatch measurement — including a member coming into existence
+```
+
+**One predicate, mode-independent.** Any difference in content counts. The referent of both
+measurements is the **working tree** (AC-3.5c), read through `await _readFile(...)`.
+
+Two named sub-cases are retained **for reporting only**, never as separate tests: a
+**section-completion** (the count of top-level sections satisfying §16's criterion strictly increased —
+the count §15.4 reports) and a **skeleton creation** (no artifact existed before, one exists after).
+Both are strictly subsumed by the byte-change predicate.
+
+**Why the mode-specific limbs are retracted (v1.5 TE-v5 F-05).** v1.4 restricted the byte test to
+revision mode and gave greenfield only section-completion and skeleton creation. But AC-3.1 mandates
+that a section larger than `MAX_AUTHORING_WRITE_BYTES` is **split across successive calls**, so a
+greenfield dispatch killed part-way through an over-budget section has produced bytes and completed
+**no** satisfying section: the predicate said no-progress while AC-3.5c's referent clause said progress.
+Three such kills on one large section — exactly §H-3's shape — exhausted `MAX_AUTHORING_ATTEMPTS`
+against a visibly growing artifact. Extending the byte test to both modes removes the contradiction and
+the false halt at once, and leaves mode governing only what it should: prompt kind and terminal test.
+
+**Why the working tree and not HEAD.** Scoring uncommitted bytes as no-progress would count a successful
+write against the stall budget and would make the counters disagree with §15.5's resume determination,
+which reads the same working tree. Under the one-commit-per-section cadence the two states normally
+coincide; where they diverge, the working tree governs and the uncommitted remainder is committed by the
+continuation dispatch. **No `git` operation performed by the pipeline may discard uncommitted artifact
+content** (O-20) — no `checkout --`, no `reset --hard`, no `stash` on an artifact path.
+
+**Two false positives permanently excluded.** A **heading-presence** predicate is constant from write 1
+onwards, because AC-3.1 requires the first write to lay down all top-level headings, so it would score
+every healthy filling dispatch as no-progress. A **section-count** predicate is saturated from above on a
+revision dispatch — the document is already complete, so the count cannot strictly increase however
+correct the edit — so section-counting alone would score every feedback-addressing dispatch as
+no-progress and halt every phase at the third round.
+
+**What the weak predicate costs.** A pathologically unproductive but non-silent agent never trips the
+consecutive counter. That cost is bounded by `MAX_AUTHORING_DISPATCHES` and accepted as **R-9**. What it
+buys is that the only dispatch scored no-progress is one that produced **no bytes at all** — precisely
+the stall-killed state the counter exists to catch.
+
+### 15.4 The three actions, the counters, and the report
+
+**Evaluated terminal first, then progress** (§8.4 owns the terminal test). Exactly one action per
+dispatch:
+
+| Evaluation | Action |
+|---|---|
+| **Terminal** | Stop, report success, the phase proceeds |
+| **Progress, not terminal** | Reset the consecutive counter to zero; re-dispatch with the **mode-fixed** prompt (§15.5), subject to the cumulative budget |
+| **No progress, not terminal** | Count one failed **script-owned** attempt; re-dispatch with the same mode-fixed prompt, unless a budget is exhausted |
+
+**No branch re-issues an unmodified original prompt.** This is the branch a mid-edit kill lands on, and
+re-issuing the round's original feedback prompt verbatim would instruct work already done.
+
+**The two counters (AC-3.5c), both terminal, whichever is reached first:**
+
+| Constant | Bounds | Default | Reset |
+|---|---|---|---|
+| `MAX_AUTHORING_ATTEMPTS` | **consecutive** no-progress dispatches within one episode | **3** | to zero by **any** dispatch that makes progress |
+| `MAX_AUTHORING_DISPATCHES` | **total** dispatches, progress or not, within one episode | **6** | per episode |
+
+**Reset scope, explicitly:** both counters are **per episode**. They start at zero at the beginning of
+every episode, and therefore reset on each new review round **and** on each fresh invocation of the
+phase. Neither is persisted to disk or carried across invocations — a phase re-entered by an operator
+continues from committed partial progress with a **full** dispatch budget. Only the POSTMORTEM state of
+§12 persists, and §15.6 establishes that budget exhaustion writes none.
+
+**Consistency with the round budget, shown.** The two constants bound the same loop at different
+granularities: worst-case dispatches for one artifact in one phase in one invocation is
+`MAX_REVIEW_ROUNDS × MAX_AUTHORING_DISPATCHES` = 5 × 6 = **30**, and the worst-case consecutive-stall run
+inside any one episode is 3. A healthy five-round convergence uses one or two dispatches per episode and
+approaches neither bound.
+
+**The exhaustion report (AC-3.5d).** Names the phase, the artifact, **which** budget was exhausted, and
+the actual counts:
+
+| Budget | Report text |
+|---|---|
+| `MAX_AUTHORING_ATTEMPTS` | `Phase {P}: no progress across {N} consecutive attempts on {artifact} ({S} of {T} sections complete).` |
+| `MAX_AUTHORING_DISPATCHES` | `Phase {P}: {M} dispatches without reaching structural completeness on {artifact} ({S} of {T} sections complete).` |
+
+Plus, in both cases: `No POSTMORTEM was written.` and the recovery act — `Recover: set the {feature} row
+in docs/_queue/QUEUE.md back to pending and commit (AC-2.7a); the phase resumes from committed partial
+progress.` It does **not** offer a direct `orchestrate-dev` invocation as an *alternative* to that act;
+if it mentions the bypass at all it must say what §14.4 says — the bypass resumes this feature only and
+leaves every other queue feature idle.
+
+`N` and `M` are always the **script's own** counts. The runtime's internal retry count is explicitly
+**not** claimed, reported, or depended upon (§4a A-2/A-3); observing it is **D-RLH-04**. Whether a
+dispatch **fault** was observed is reported alongside the counts (AC-3.5e), as a boolean, without
+classifying which of §4a A-8's three surfacings occurred.
+
+**One further report obligation (AC-3.5 scope (c)).** When the wrapper reaches terminal on a
+`LEARNINGS-{feature}.md` that carries **no** approval record, the run report names it — so §9.7's
+fail-closed consequence is operator-visible at the moment it is incurred rather than discovered at the
+next re-entry.
+
 ## 16. FSPEC-COMPLETE-01 — Structural completeness per wrapped artifact class
 
 ## 17. FSPEC-CONST-01 — Constant placement and the AC-5.1 / AC-5.2 edits
