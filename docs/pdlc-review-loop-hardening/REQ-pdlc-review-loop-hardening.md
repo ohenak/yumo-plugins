@@ -12,13 +12,55 @@ depends-on: []
 | Downstream | `FSPEC-pdlc-review-loop-hardening.md`; de-risks every remaining `docs/_queue/QUEUE.md` row (this row is `Order 0`, called row 8 before 2026-07-29) |
 | Queue row | 0 (`in-progress`; was row 8 / `blocked` until the 2026-07-29 reprioritisation — `docs/_queue/QUEUE.md` row `pdlc-review-loop-hardening`) |
 | Targets | `pdlc/workflows/orchestrate-dev.js`, `pdlc/workflows/orchestrate-queue.js`, `pdlc/skills/orchestrate-dev/SKILL.md`, `pdlc/skills/orchestrate-queue/SKILL.md`, the three author SKILLs (`pm-author`, `se-author`, `te-author`) **including their Git Workflow sections**, the three review SKILLs (`pm-review`, `se-review`, `te-review`) — the latter for the persisted-verdict field required by AC-4.2 — and `pdlc/skills/harvest-learnings/SKILL.md`, for the harvest-surviving approval record required by AC-4.2b *(v1.2, SE-v2 F-01)*; generated artifacts under `pdlc/workflows/dist/` rebuilt in the same commit |
-| Cross-Reviews | `CROSS-REVIEW-software-engineer-REQ-v{1,2,3,4}.md`, `CROSS-REVIEW-test-engineer-REQ-v{1,2,3,4}.md` (all dispositioned — v1 in v1.1, v2 in v1.2, v3 in v1.3, v4 in v1.4; see §9 Traceability) |
+| Cross-Reviews | `CROSS-REVIEW-software-engineer-REQ-v{1,2,3,4,5}.md`, `CROSS-REVIEW-test-engineer-REQ-v{1,2,3,4,5}.md` (all dispositioned — v1 in v1.1, v2 in v1.2, v3 in v1.3, v4 in v1.4, v5 in v1.5; see §9 Traceability) |
 | LEARNINGS | `docs/pdlc-review-loop-hardening/LEARNINGS-pdlc-review-loop-hardening.md` |
-| Citation baseline | All `file:line` references in this document were taken at HEAD **`9220a20`** and re-verified at v1.1 and v1.2. *(v1.4: §4a **A-10**'s citations were taken at HEAD **`c12baf3`** and name their sha in the row itself; they are the only citations in this document not on the `9220a20` baseline.)* In §H-1–§H-4, §4a and AC-5 — the sections a maintainer edits from — every citation also names the enclosing symbol and a distinctive literal, so a line drift does not invalidate it (per CROSS-REVIEW-software-engineer-REQ-v1 F-05). Elsewhere, short in-line references may give `file:line` alone; they were verified at the same HEAD but are not drift-proof. *(v1.2, SE-v2 F-05 — the earlier blanket "every citation" claim was not met by the document that made it; O-16's stricter bar continues to bind the FSPEC.)* |
+| Citation baseline | All `file:line` references in this document were taken at HEAD **`9220a20`** and re-verified at v1.1 and v1.2. *(v1.4: §4a **A-10**'s citations were taken at HEAD **`c12baf3`**; v1.5 **corrects two of them** — the `"halted",` member is `:80`, not `:78`, and the header comment is `:71-73`, not `:70-72` — re-measured at `c12baf3` and at `cda9161`, where the file is byte-identical, per SE-v5 F-05 / TE-v5 F-07. v1.5's new §4a **A-11** was measured at HEAD **`cda9161`** and names that sha in its own row. A-10 and A-11 are the only citations in this document not on the `9220a20` baseline, and each names its own sha.)* In §H-1–§H-4, §4a and AC-5 — the sections a maintainer edits from — every citation also names the enclosing symbol and a distinctive literal, so a line drift does not invalidate it (per CROSS-REVIEW-software-engineer-REQ-v1 F-05). Elsewhere, short in-line references may give `file:line` alone; they were verified at the same HEAD but are not drift-proof. *(v1.2, SE-v2 F-05 — the earlier blanket "every citation" claim was not met by the document that made it; O-16's stricter bar continues to bind the FSPEC.)* |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude + operator | 1.4 | 2026-07-29 |
+| pdlc | draft | Claude + operator | 1.5 | 2026-07-29 |
+
+**v1.5 (2026-07-29)** — addresses all High/Medium findings of
+`CROSS-REVIEW-software-engineer-REQ-v5.md` (F-01 High; F-02, F-03, F-04 Medium; F-05, F-06 Low) and
+`CROSS-REVIEW-test-engineer-REQ-v5.md` (F-01, F-02 High; F-03, F-04, F-05 Medium; F-06, F-07 Low),
+and answers SE-v5 Q-01/Q-02 and TE-v5 Q-01/Q-02 in the document. Substantive changes, all in text
+introduced at v1.4:
+- **Mode is now a property of the kind of prompt the phase is dispatching, not of the artifact's
+  structural state** (AC-3.5 scope (d), SE-v5 F-01). v1.4 made mode sticky *within* an episode but
+  still selected it from disk at episode entry, so a fresh invocation resuming a half-revised
+  artifact re-selected **greenfield**, carried AC-3.3's findings-free resume prompt, and reported
+  success on a round whose findings were never addressed — the same silent loss of a review round
+  one invocation seam later. A phase dispatching an author to address a round's findings is now in
+  revision mode **regardless** of the artifact's completeness, and structural completeness selects
+  mode only when no findings-bearing round exists (answers SE-v5 Q-02: the resuming invocation
+  re-derives the round's findings from the surviving `CROSS-REVIEW-*` files and continues the **same**
+  round).
+- **Revision-mode terminal is redefined over script-observable state** (AC-3.5b, AC-3.5g, TE-v5
+  F-01/F-02). "The dispatch returned normally" is **retracted** — §4a A-8 measured that surfacing as
+  unobservable and AC-3.5e forbids depending on it — and replaced by a positive, agent-emitted
+  **revision-completion trailer** the script parses, on the same `parseVerdict` pattern the pipeline
+  already uses. The trailer is evaluated **before** the progress predicate, so AC-3.5g's compliant
+  no-op ("nothing unreflected remains") is now the **terminal** signal rather than a no-progress
+  failed attempt that halted a fully converged round.
+- **The progress predicate is unified as one mode-independent byte-change test** (AC-3.5a, TE-v5
+  F-05). v1.4's greenfield limbs scored a partial-section kill as no-progress while AC-3.5c's "on
+  disk" clause called the same bytes progress; three such kills on one over-budget section halted a
+  visibly growing artifact. Section-completion and skeleton creation survive as named sub-cases for
+  AC-3.5d's report only. R-9's acceptance is extended to both modes.
+- **AC-4.2d names the read that actually holds the reviewed bytes** — a **new** read taken
+  immediately before the review dispatch, shared with no AC-3.5 measurement (SE-v5 F-02, TE-v5
+  F-04) — fixes **one referent** for "the bytes" across AC-4.2d/AC-4.4/O-21 (SE-v5 F-06), replaces
+  the self-referential "sha of the commit the cross-review files were committed at" with the
+  **reviewed document's** commit sha, knowable at capture time (TE-v5 F-03), and **measures the
+  digest mechanism** as new §4a **A-11**, choosing an inlined pure-JS digest over an agent-relayed
+  `shasum` and stating the C-5 consequence (SE-v5 F-03). AC-4.4's **tier-1** comparison becomes the
+  same hash-equality test as tier 2, which retires O-8's history walk and dissolves SE-v5 Q-01.
+- **AC-2.7a's direct-invocation route is corrected**: it recovers the *feature* only, leaves the row
+  `halted`, and therefore still strands every other queue feature until the row is edited — so it is
+  no longer offered as equivalent to the row reset, and AC-3.5f's "needs none" bullet is corrected
+  with it (SE-v5 F-04).
+- Citation corrections: `parseDecisionsWarranted` (TE-v5 F-06) and A-10's two line numbers (SE-v5
+  F-05 / TE-v5 F-07).
 
 **v1.4 (2026-07-29)** — addresses all High/Medium findings of
 `CROSS-REVIEW-test-engineer-REQ-v4.md` (F-01 High; F-02, F-03, F-04 Medium; F-05, F-06 Low) and
@@ -366,8 +408,24 @@ inherits all four defects. This row was set `pending` and moved to `Order 0` on 
   once, here, and is the same for both halt classes:
   - **The act.** A human edits the feature's row in `docs/_queue/QUEUE.md` from `halted` back to
     `pending` and commits it. No new status is introduced and nothing in the pipeline performs this
-    edit (§5 non-goals; AC-2.4 is unchanged). Equivalently, an operator may bypass the queue for one
-    run by invoking `orchestrate-dev` directly on the REQ path, which touches no row (AC-2.6a).
+    edit (§5 non-goals; AC-2.4 is unchanged). This is the **only** act that recovers the queue.
+  - **The bypass is not equivalent, and is not a substitute.** *(v1.5, SE-v5 F-04 — v1.4 offered
+    "equivalently, an operator may bypass the queue for one run by invoking `orchestrate-dev` directly
+    on the REQ path, which touches no row (AC-2.6a)". That sentence is **retracted**: it mis-cited
+    AC-2.6a and it does not recover.)* AC-2.6a is scoped to a feature with **no** queue row, which is
+    the opposite of this case by construction — the row exists and reads `halted`, because AC-2.1 just
+    wrote it. Two consequences follow, and they are the reason the routes are not equivalent:
+    - AC-2.1 binds the direct path explicitly ("whether the pipeline was entered via
+      `orchestrate-queue` or invoked directly on a REQ path"), so a bypass run that **halts again does
+      write the row**.
+    - A bypass run that **succeeds** writes nothing: `awaiting-merge` is set by the queue driver, not
+      by `orchestrate-dev` (`orchestrate-queue.js`, `runPicked`'s post-run write, `:749`). The row
+      stays `halted`, so `selectNextPending` still finds no `pending` entry (§4a **A-10**) and **every
+      other feature in the queue stays idle** until the row is edited.
+
+    A bypass therefore resumes **this feature only**, and leaves the queue in exactly the state that
+    made the act necessary. It is a legitimate way to make progress on one feature out of band; it is
+    not a way to avoid the row edit, and the row edit is still required before the queue runs again.
   - **What the pipeline refuses until then.** Under `orchestrate-queue`: the feature is not picked
     up, and the run reports `idle` rather than an error. Additionally, for a **POSTMORTEM** halt
     only, re-entry to the halted phase is refused by AC-2.3 even after the row is `pending`, until
@@ -468,7 +526,12 @@ inherits all four defects. This row was set `pending` and moved to `Order 0` on 
   and is not structurally complete (AC-3.4), the dispatch is a resume and carries the
   resume-flavoured prompt naming the first unwritten section; otherwise it is a first attempt. This
   holds whether the runtime replayed the previous attempt opaquely or the script re-dispatched it
-  (A-3), because in both cases the on-disk state is the same.
+  (A-3), because in both cases the on-disk state is the same. *(v1.5, SE-v5 F-01 — scope narrowed.)*
+  This determination is a **within-greenfield** question only: it chooses between the resume-flavoured
+  and first-attempt forms of a greenfield prompt. It does **not** select the episode's mode — AC-3.5
+  scope (d) does, from the kind of prompt the phase is dispatching — so a structurally incomplete
+  document can no longer pull a revision episode onto this path and hand it a prompt that names no
+  findings, which was the defect SE-v5 F-01 identified.
 - **AC-3.4** A document is only treated as complete when it is structurally complete — the presence
   of a non-empty file is not sufficient evidence that authoring finished.
 - **AC-3.5** *(v1.1, restated for SE F-02 / TE F-02 — the counted quantity is script-owned; v1.2,
@@ -495,8 +558,8 @@ inherits all four defects. This row was set `pending` and moved to `Order 0` on 
     | `ship-pr`, the CI poll loop, and any dispatch that writes no artifact | **No** | — | their own existing bounds; nothing to pre-measure |
 
     Code-writing dispatches are excluded **deliberately**, not by omission: they edit an open-ended
-    set of source and test files, so "the artifact", its structural completeness and AC-3.5a limb 3's
-    byte comparison are all undefined for them. Bounding a stall-killed *code* dispatch is a real gap
+    set of source and test files, so "the artifact", its structural completeness and AC-3.5a's
+    byte-change comparison are all undefined for them. Bounding a stall-killed *code* dispatch is a real gap
     and is deferred as **D-RLH-05** with a named successor, rather than half-specified here. AC-3.6's
     per-call byte budget and AC-3.2b's commit cadence still bind those agents — those are
     agent-directed obligations and need no pre/post measurement.
@@ -505,8 +568,11 @@ inherits all four defects. This row was set `pending` and moved to `Order 0` on 
     covers one **declared artifact set** — normally one document, but a dispatch that legitimately
     writes two (`se-author` producing TSPEC and a conditional DECISIONS) declares both, and the
     wrapper measures the set: **progress** is progress in *any* member, and **terminal** requires
-    every member the phase actually requires to be structurally complete (a DECISIONS that
-    `decisionsWarranted(...)` does not require is not a member). Evaluating the two documents as
+    every member the phase actually requires to be structurally complete (a DECISIONS that the phase's
+    own warrant check does not require is not a member — that check is `parseDecisionsWarranted(...)`,
+    whose result is bound to the local `decisionsWarranted` at `orchestrate-dev.js:1719`. *(v1.5,
+    TE-v5 F-06: v1.4 cited `decisionsWarranted(...)` in function-call form; no function of that name
+    exists at HEAD. The mechanism is real, the name was not.)*). Evaluating the two documents as
     independent episodes was rejected: a dispatch correctly advancing one member would score
     no-progress on the other and could exhaust that member's consecutive budget while working
     correctly.
@@ -521,15 +587,32 @@ inherits all four defects. This row was set `pending` and moved to `Order 0` on 
     - A **cross-review file** is structurally complete when it carries the persisted verdict field of
       AC-4.2, parseable as exactly one catalogue value. That field is written last, so it is a sound
       terminal marker, and it is the same check AC-4.2a already performs. Consequence, and it is the
-      one TE-v4 F-02 asked for: a cross-review is written in one sub-budget call (AC-3.2b), so limb 2
-      fires, terminal is decidable, and the wrapper does not re-dispatch a reviewer over a finished
-      file. A re-dispatch onto a *partial* cross-review must continue it rather than rewrite it
-      (AC-3.1a), and if a re-dispatch nonetheless produces a duplicated verdict field, AC-4.2a's
-      fail-closed branch governs — the phase runs; a duplicated verdict can never produce a skip.
+      one TE-v4 F-02 asked for: a cross-review is written in one sub-budget call (AC-3.2b), so the
+      write itself is progress under AC-3.5a, terminal is decidable, and the wrapper does not
+      re-dispatch a reviewer over a finished file. A re-dispatch onto a *partial* cross-review must
+      continue it rather than rewrite it (AC-3.1a), and if a re-dispatch nonetheless produces a
+      duplicated verdict field, AC-4.2a's fail-closed branch governs — the phase runs; a duplicated
+      verdict can never produce a skip.
     - A **code-review file** is structurally complete when it carries the `Scope:` field and the
       findings section its skill mandates. AC-4.7a is unchanged: no verdict field is added to it.
 
-    **(d) Mode is selected once per episode and is sticky.** *(v1.4, TE-v4 F-01 — v1.3 selected mode
+    *(v1.5, answers TE-v5 Q-02 — the **LEARNINGS** class, and whether AC-4.2b's approval record is
+    part of its completeness criterion. **It is not.** O-7's LEARNINGS criterion is over the harvest
+    content the skill mandates and **excludes** the approval record, consistent with AC-4.2c's
+    standing decision that the record is **best-effort**. The two clauses therefore point the same
+    way rather than opposite ways. The accepted consequence is stated plainly: a harvest killed after
+    writing its prose but before writing the record reaches terminal, reports success, and the feature
+    lands permanently in AC-4.2c's fail-closed case — its phases run, at the cost of one re-review.
+    The rejected alternative is making the record part of the criterion, which would let a
+    record-writing bug re-dispatch harvest up to `MAX_AUTHORING_DISPATCHES` times and then **halt the
+    phase** over an optimisation's bookkeeping — the same objection AC-4.2c already sustained against
+    tightening `guard-harvest-before-delete`. One addition is required so the outcome is not silent:
+    when the wrapper reaches terminal on a LEARNINGS that carries no approval record, the run report
+    names it, so the fail-closed consequence is operator-visible at the moment it is incurred rather
+    than discovered at the next re-entry.)*
+
+    **(d) Mode is a property of the kind of prompt the phase is dispatching, selected once per
+    episode, and sticky.** *(v1.4, TE-v4 F-01 — v1.3 selected mode
     "by the pre-dispatch measurement and by nothing else" on **every** dispatch, which was wrong: a
     revision dispatch legitimately breaks structural completeness while it works, so a dispatch
     killed after laying down a new heading left the artifact incomplete on disk, the next dispatch of
@@ -537,63 +620,156 @@ inherits all four defects. This row was set `pending` and moved to `Order 0` on 
     which carries no cross-review findings at all. The agent filled the empty section, greenfield
     terminal fired on structural completeness, and the wrapper reported **success on a round whose
     findings were never addressed**. That is silent loss of a review round, in the same loop this REQ
-    exists to harden.)* Therefore:
+    exists to harden.)*
 
-    | Mode | Selected when, **at episode entry only** | Progress predicate (AC-3.5a) |
+    *(v1.5, SE-v5 F-01 — v1.4's stickiness was necessary but was scoped one level too narrowly, and
+    the retraction is recorded here. v1.4 made mode sticky **within** an episode while still deriving
+    it from the artifact's structural state at episode entry, and AC-3.5c defines an episode as
+    artifact set × phase × round × **invocation**. So the flip survived at the invocation seam, and
+    v1.4's own recovery path walks straight through it: a revision dispatch killed after breaking
+    structural completeness → the episode exhausts `MAX_AUTHORING_DISPATCHES` → AC-3.5f halts and
+    commits `halted` → AC-2.7a's operator resets the row to `pending` → the resuming invocation is a
+    **new** episode, re-selects mode from disk, finds a structurally *incomplete* document, and enters
+    **greenfield**. Every re-dispatch then carries AC-3.3's resume prompt, which names no findings at
+    all; greenfield terminal fires on structural completeness; the wrapper reports success on a round
+    whose findings were never addressed. The AC-3.5f path is not even required — any kill of the
+    top-level invocation mid-revision reaches the same state. The information needed to classify it
+    correctly was on disk and simply unread: the round's `CROSS-REVIEW-*` files survive until Phase H
+    (§4a **A-7**) and AC-1.1 already reads them.)*
+
+    Therefore mode is **not** derived from the artifact's completeness. It is derived from **what the
+    phase is dispatching an author to do**, which the phase knows before it measures anything:
+
+    | Mode | Selected when, **at episode entry only** | Prompt every dispatch of the episode carries |
     |---|---|---|
-    | **Greenfield** | the artifact set is absent, or present and **not** structurally complete (AC-3.4) | limb 1 or limb 2 of AC-3.5a |
-    | **Revision** | every required member is present and **already structurally complete** | limb 3 of AC-3.5a |
+    | **Revision** | the phase is dispatching an author to **address the findings of a review round that exists on the branch** for this (feature, document type) — decided from the review artifacts AC-1.1 already enumerates, **regardless of the artifact's structural state** | AC-3.5g's continuation prompt |
+    | **Greenfield** | **no** findings-bearing round exists for this (feature, document type) — i.e. this is the phase's first authoring dispatch, and the artifact set is absent or present and not structurally complete (AC-3.4) | AC-3.3's resume prompt |
 
-    The selection is taken from the measurement made before the episode's **first** dispatch, and it
-    does **not** change for the life of the episode, whatever intermediate states later measurements
-    observe. Every re-dispatch within the episode carries a prompt of the kind the episode was
-    entered with — AC-3.3's resume prompt in greenfield, AC-3.5g's continuation prompt in revision —
-    so the round's findings can never be dropped by a mode flip. Episode entry is the same instant
-    AC-3.5c's counters start at zero, so mode, prompt kind and counters share one scope. Mode
-    selection at entry is identical to the resume/first-attempt determination of AC-3.3 and is taken
-    from the same measurement, so the two can never disagree.
-  - **AC-3.5a — what "progress" means.** *(v1.2, TE-v2 F-01; v1.3, restated as a disjunction for
-    TE-v3 F-01 / F-05.)* A dispatch made progress if **any** of the following holds:
-    1. the count of top-level sections satisfying the AC-3.4 completeness criterion — i.e. sections
-       that have acquired their content — **strictly increased**; or
-    2. no artifact existed before the dispatch and one exists after it (the **skeleton write**: this
-       is limb 2, not an exception to limb 1, and after it the consecutive no-progress counter of
-       AC-3.5c is **zero**); or
-    3. *(revision mode only)* the artifact's **bytes on disk changed** — any difference in content
-       between the pre-dispatch and post-dispatch measurement counts, whether or not the section
-       count moved.
+    Four rules make that decidable and closed:
 
-    Limbs 1 and 2 apply in greenfield mode; limb 3 applies in revision mode. Two false positives are
-    thereby excluded, and both were live defects of earlier drafts. *(v1.2 excluded the first:)* a
-    heading-presence predicate is constant from write 1 onwards, because AC-3.1 requires the first
-    write to lay down all top-level headings, so it would score every healthy filling dispatch as
-    "no progress". *(v1.3 excludes the second, TE-v3 F-01:)* a section-count predicate is **saturated
-    from above** on a revision dispatch — the document is already complete, so the count is already
-    at its maximum and cannot strictly increase no matter how correct the edit — so limbs 1 and 2
-    alone would score **every** feedback-addressing dispatch as no progress and halt every phase at
-    AC-3.5c's third round. Limb 3 gives that population a predicate that can actually change. It is
-    deliberately weak (any byte change counts): a revision dispatch that runs to completion always
-    writes something, and a stall-killed one that wrote nothing is exactly the state the counter
-    exists to catch.
+    1. **The revision test is evaluated first.** Structural completeness is consulted **only** when no
+       findings-bearing round exists. An artifact's completeness can therefore never move an episode
+       out of revision mode, which is the whole content of SE-v5 F-01.
+    2. **Which round.** The round in question is the highest round index AC-1.1 finds for that
+       (feature, document type) whose review artifacts do **not** carry same-round dual approval
+       (AC-4.1a) — i.e. the round whose findings are still owed an authoring pass. A resuming
+       invocation therefore re-enters the **same** round rather than opening a new one, and re-derives
+       that round's findings from the surviving `CROSS-REVIEW-*` files *(answers SE-v5 Q-02: the first
+       of its two options — this is what makes AC-3.5f's "the phase resumes from committed partial
+       progress" true for a revision episode)*. AC-1.1's `max + 1` derivation governs the **next
+       reviewer dispatch**, which happens only after this revision episode reaches terminal.
+    3. **Non-authoring wrapped dispatches are always greenfield.** A `pm-review`/`se-review`/`te-review`,
+       `dod-verify` or `harvest-learnings` episode (scope (a) rows 2–4) is never dispatched to address
+       findings in its own artifact — each writes a new file — so the revision test cannot match and
+       mode is greenfield by the second row of the table. Such episodes therefore need no
+       revision-completion trailer, and their terminal test is structural completeness alone (AC-3.5b,
+       with scope (c)'s criteria).
+    4. **Fail toward revision.** If review artifacts for that round exist but their verdict fields are
+       unreadable (AC-4.2a's case), the episode is a **revision** episode. The two failure directions
+       are not symmetric: mis-entering greenfield silently drops a whole review round, while
+       mis-entering revision costs at most a continuation prompt naming findings that are already
+       reflected — which AC-3.5g and R-10 already price, and which the completion trailer of AC-3.5b
+       terminates in one dispatch.
+
+    Stickiness is retained as a consequence rather than as the mechanism: the selection is made once,
+    at episode entry, and does **not** change for the life of the episode, whatever intermediate
+    states later measurements observe. Episode entry is the same instant AC-3.5c's counters start at
+    zero, so mode, prompt kind and counters share one scope. The resume/first-attempt determination of
+    AC-3.3 remains a **within-greenfield** question — which section is first unwritten — and no longer
+    doubles as the mode selector, so the two can no longer disagree.
+  - **AC-3.5a — what "progress" means.** *(v1.2, TE-v2 F-01; v1.3, split into mode-specific limbs for
+    TE-v3 F-01 / F-05; v1.5, **unified into one mode-independent predicate** for TE-v5 F-05.)* A
+    dispatch made progress if **the bytes on disk of any member of the artifact set changed** —
+    including a member coming into existence where none existed before. Any difference in content
+    between the pre-dispatch and post-dispatch measurement counts (AC-3.5c fixes both measurements on
+    the **working tree**). There is one predicate and it does not vary by mode.
+
+    Two named sub-cases are retained, for **reporting only** and not as separate tests: a
+    **section-completion** (the count of top-level sections satisfying the AC-3.4 criterion strictly
+    increased — the count AC-3.5d reports) and a **skeleton creation** (no artifact existed before the
+    dispatch and one exists after it). Both are strictly subsumed by the byte-change predicate; they
+    are named because AC-3.5d's report and O-19's oracles refer to them.
+
+    *(v1.5, TE-v5 F-05 — why the mode-specific limbs are retracted. v1.4 restricted the byte-change
+    test to revision mode and gave greenfield only section-completion and skeleton creation. AC-3.5c's
+    "on disk" clause then asserted that a write killed before its commit "has produced bytes, and
+    those bytes are progress" — but AC-3.1 mandates that a section larger than
+    `MAX_AUTHORING_WRITE_BYTES` is **split across successive calls**, so a greenfield dispatch killed
+    part-way through an over-budget section has produced bytes and completed **no** satisfying
+    section. Under v1.4 the predicate said no-progress while the clause said progress: two possible
+    expected values for O-19(g)'s mandated oracle, and three such kills on one large section — exactly
+    §H-3's shape — exhausted `MAX_AUTHORING_ATTEMPTS` against a visibly growing artifact. Extending
+    the byte test to both modes removes the contradiction and the false halt in one move, and it makes
+    mode govern only what it should: the prompt kind (scope (d)) and the terminal test (AC-3.5b).)*
+
+    The predicate is deliberately weak, and the two false positives earlier drafts suffered from are
+    still excluded. *(v1.2 excluded the first:)* a **heading-presence** predicate is constant from
+    write 1 onwards, because AC-3.1 requires the first write to lay down all top-level headings, so it
+    would score every healthy filling dispatch as "no progress". *(v1.3 excluded the second, TE-v3
+    F-01:)* a **section-count** predicate is saturated from above on a revision dispatch — the document
+    is already complete, so the count cannot strictly increase no matter how correct the edit — so
+    section-counting alone would score every feedback-addressing dispatch as no progress and halt every
+    phase at AC-3.5c's third round. What the weak predicate costs is that a pathologically
+    unproductive but non-silent agent never trips the consecutive counter; that cost is bounded by
+    `MAX_AUTHORING_DISPATCHES` and accepted as **R-9**. What it buys is that the only dispatch scored
+    no-progress is one that produced **no bytes at all** — which is precisely the stall-killed state
+    the counter exists to catch.
   - **AC-3.5b — no progress, progress, and completion.** *(v1.3, TE-v3 F-04 — the loop's success and
-    continuation conditions are stated, not left inferable.)* After each dispatch the wrapper takes
-    exactly one of three actions:
-    - **No progress** ⇒ the dispatch counts as one failed *script-owned* attempt (AC-3.5c), and the
-      script re-dispatches — with the resume prompt of AC-3.3 in greenfield mode, with the
-      continuation prompt of **AC-3.5g** in revision mode — unless a budget is exhausted, in which
-      case AC-3.5d/AC-3.5f apply.
+    continuation conditions are stated, not left inferable; v1.5, the terminal test is redefined over
+    script-observable state for TE-v5 F-01 / F-02.)* After each dispatch the wrapper evaluates
+    **terminal first, then progress**, and takes exactly one of three actions:
+    - **Terminal** ⇒ the wrapper **stops and reports success**, and the phase proceeds. Terminal is
+      mode-specific:
+      - **Greenfield:** every required member of the artifact set is structurally complete (AC-3.4).
+        This is a positive, script-decidable predicate over disk state and is unchanged.
+      - **Revision:** every required member is structurally complete **and** the dispatch emitted the
+        **revision-completion trailer** of AC-3.5g clause 4 — a closed-form, parseable declaration
+        that no finding of the round remains unreflected. Absence of the trailer is never terminal.
+        Progress on the terminal dispatch is **not** required: a dispatch that writes nothing and
+        emits the trailer *is* terminal (see below).
     - **Progress, artifact set not yet terminal** ⇒ the consecutive counter resets to zero (AC-3.5c)
       and the script re-dispatches to continue, subject to the cumulative budget. *(v1.4, SE-v4 F-03
       / TE-v4 F-05 — the prompt of this branch was unstated, and it is the branch a mid-edit kill
-      lands on.)* The continuation re-dispatch carries the **same kind of prompt as the no-progress
-      branch above**, fixed by the episode's mode (AC-3.5 scope (d)): AC-3.3's resume prompt in
-      greenfield, AC-3.5g's continuation prompt in revision. No branch of this AC re-issues an
-      unmodified original prompt.
-    - **Terminal** ⇒ the wrapper **stops and reports success**, and the phase proceeds. "Terminal" is
-      structural completeness (AC-3.4) in greenfield mode, and, in revision mode, the completion of
-      the dispatched revision — the artifact is structurally complete and the dispatch returned
-      normally having made progress. A wrapper that made progress on the terminal dispatch never
-      re-dispatches, so a converged phase costs no extra dispatch.
+      lands on.)* The continuation re-dispatch carries the prompt fixed by the episode's mode
+      (AC-3.5 scope (d)): AC-3.3's resume prompt in greenfield, AC-3.5g's continuation prompt in
+      revision. No branch of this AC re-issues an unmodified original prompt.
+    - **No progress, not terminal** ⇒ the dispatch counts as one failed *script-owned* attempt
+      (AC-3.5c), and the script re-dispatches with the same mode-fixed prompt, unless a budget is
+      exhausted, in which case AC-3.5d/AC-3.5f apply.
+
+    *(v1.5, TE-v5 F-01 — why "the dispatch returned normally" is **retracted**. v1.4's revision
+    terminal read "the artifact is structurally complete and the dispatch returned normally having
+    made progress". §4a **A-8** measures how an exhausted runtime retry surfaces to the caller as
+    **unmeasured** — it may return a value, return nothing, or throw — and AC-3.5e turns that into a
+    design rule: the wrapper treats all three identically and "nothing in AC-3 depends on which
+    outcome is real". A clause defined over "returned normally" therefore had only two readings, both
+    defective: read strictly, the script can never establish it, so **every** revision episode
+    re-dispatches to `MAX_AUTHORING_DISPATCHES` and a healthy converging round halts the phase; read
+    as "no exception was caught", a dispatch killed after applying three of five findings is scored
+    terminal and the wrapper **reports success on a partly-unaddressed round** — the same silent loss
+    of a review round scope (d) exists to prevent, by a third route. Neither is acceptable, and a test
+    author could not write O-19(d)'s terminal assertion because the two readings give opposite
+    statuses on the same fixture.)*
+
+    *(v1.5, TE-v5 F-02 — why terminal must not require progress on the terminal dispatch. AC-3.5g
+    makes "write nothing" the **correct** output of a continuation dispatch whose round is already
+    fully applied: the prompt instructs the agent to address only findings not already reflected, and
+    re-application is an error, not a no-op. Under v1.4 that compliant no-op scored no-progress, the
+    script re-dispatched the same prompt, the agent correctly did nothing again, and three consecutive
+    no-ops exhausted `MAX_AUTHORING_ATTEMPTS` — **AC-3.5f halting a phase whose round had fully
+    converged**, committing a `halted` row and demanding AC-2.7a's human act, with the only escape
+    being the gratuitous write AC-3.5g calls an error. Evaluating the trailer before the progress
+    predicate is what converts that population from a false halt into a one-dispatch terminal, and it
+    is also what distinguishes it from a genuine stall: a stall-killed dispatch emits **no** trailer,
+    so no-progress-without-a-trailer still counts against the budget exactly as before.)*
+
+    Why the trailer is agent-emitted rather than script-derived: "does any finding of this round remain
+    unreflected in the document?" is a semantic judgement over content, and §4a **A-9** measured that
+    the script sees content but never the calls that produced it, so it cannot make that judgement.
+    C-5 is therefore not breached — this is not a decision a script can make. The script's role is
+    strictly to **parse one closed-catalogue token**, which is the same thing `parseVerdict` already
+    does off an agent response (`orchestrate-dev.js:322`), and never to interpret prose. The residual
+    exposure — an agent emitting the trailer while findings remain — is priced as **R-12**.
   - **AC-3.5g — the revision-mode continuation contract.** *(v1.4, SE-v4 F-03 / TE-v4 F-05.)* In
     revision mode there is no "first unwritten section", so AC-3.3's resume prompt does not apply;
     but re-issuing the round's original feedback-addressing prompt verbatim is **not** acceptable
@@ -601,8 +777,9 @@ inherits all four defects. This row was set `pending` and moved to `Order 0` on 
     revision dispatch that applied three of five findings and died is *progress, not terminal*
     (AC-3.5b), and AC-3.2b establishes a partially applied edit as a real state. Re-issuing the
     original prompt therefore instructs work already done and can double-apply it into the artifact,
-    once per remaining dispatch of the episode's budget, with limb 3 resetting the consecutive counter
-    each time. Every revision-mode re-dispatch must therefore carry a **continuation prompt** that:
+    once per remaining dispatch of the episode's budget, with AC-3.5a's byte-change predicate
+    resetting the consecutive counter each time. Every revision-mode dispatch — the episode's first as
+    well as every re-dispatch — must therefore carry a **continuation prompt** that:
     1. names the same round's findings the episode was entered with — the findings are never dropped
        or narrowed between dispatches of one episode (this is the invariant AC-3.5 scope (d) protects);
     2. states that the document has been **partially edited by an interrupted earlier attempt of this
@@ -611,12 +788,27 @@ inherits all four defects. This row was set `pending` and moved to `Order 0` on 
        error, not a no-op; and
     3. requires the agent to determine what is already reflected from the **document on disk**, not
        from the prompt, since the script cannot know which findings were applied (§4a A-9 — the script
-       sees content, never the calls that produced it).
+       sees content, never the calls that produced it); and
+    4. *(v1.5, TE-v5 F-01 / F-02 — the terminal signal.)* requires the agent to end its response with a
+       **revision-completion trailer**: a single closed-form, machine-parseable declaration that no
+       finding of the round remains unreflected in the document. Three properties are fixed at this
+       altitude, and O-17 owns the grammar (shared, one grammar per closed catalogue, with AC-4.2's
+       verdict field):
+       - It is **emitted last**, after all edits are written and committed, so its presence is
+         evidence that the dispatch ran to the end of its work.
+       - It is **positive and closed-form** — the script parses exactly one catalogue value and never
+         interprets prose. Absent, duplicated or unparseable ⇒ **not terminal** (fail closed, the same
+         direction as AC-4.2a), so a killed dispatch, a dispatch that returns nothing, and a dispatch
+         that throws (§4a A-8) are all non-terminal without the script having to distinguish them.
+       - It is emitted **even when the dispatch wrote nothing**, and that is its most important case:
+         it is the correct and complete output of a continuation dispatch whose round is already fully
+         applied. That combination is **terminal** under AC-3.5b, not a failed attempt.
 
     This is a prompt-contract obligation on the script, decidable by inspecting the prompt the script
-    emits (unlike AC-3.1a, which is not script-decidable): a revision-mode re-dispatch whose prompt
-    lacks the continuation clause is a defect. The residual risk of an agent mis-judging what is
-    already reflected is accepted and recorded as **R-10**.
+    emits (unlike AC-3.1a, which is not script-decidable): a revision-mode dispatch whose prompt lacks
+    the continuation clause or the trailer requirement is a defect. The residual risk of an agent
+    mis-judging what is already reflected is accepted and recorded as **R-10**; the residual risk of an
+    agent emitting the trailer prematurely is **R-12**.
   - **AC-3.5c — the counting rules and their scopes.** *(v1.2, TE-v2 F-02; v1.3 re-scoped for TE-v3
     F-02 and SE-v3 F-03.)* Two bounds, both terminal — whichever is reached first ends the phase:
     - `MAX_AUTHORING_ATTEMPTS` bounds **consecutive** no-progress dispatches and is **reset to zero
@@ -639,10 +831,14 @@ inherits all four defects. This row was set `pending` and moved to `Order 0` on 
     the POSTMORTEM state of AC-2.3 persists, and AC-3.5f establishes that budget exhaustion does not
     write one.)
 
-    **What "on disk" means for every measurement in AC-3.5** *(v1.4, answers TE-v4 Q-01)*: the
-    **working tree**, not the committed state. A dispatch killed after a write but before its commit
-    has produced bytes, and those bytes are progress — scoring them as no-progress would count a
-    successful section against the stall budget and would make the counters disagree with AC-3.3's
+    **What "on disk" means for every measurement in AC-3.5** *(v1.4, answers TE-v4 Q-01; v1.5, the
+    predicate claim is separated from the referent claim for TE-v5 F-05)*: this clause fixes the
+    **referent** of every AC-3.5 measurement as the **working tree**, not the committed state. It makes
+    **no** independent claim about the progress predicate — AC-3.5a alone owns that, and since v1.5 its
+    single byte-change test already scores an uncommitted write as progress in **both** modes, so the
+    two clauses can no longer disagree (v1.4's greenfield limbs and this clause did: TE-v5 F-05).
+    Rationale for the working-tree referent: scoring uncommitted bytes as no-progress would count a
+    successful write against the stall budget, and would make the counters disagree with AC-3.3's
     resume determination, which reads the same working tree. Under AC-3.2a's one-commit-per-section
     cadence the two states normally coincide; where they diverge, the working tree governs, and the
     uncommitted remainder is committed by the continuation dispatch. No `git` operation performed by
@@ -669,8 +865,16 @@ inherits all four defects. This row was set `pending` and moved to `Order 0` on 
     human act, so the classification cannot rest on "re-invoke versus human-only recovery".)* The
     classification stands on the corrected ground, which is about **how many acts and where**:
     - An AC-3.5f halt needs **one** act, in `QUEUE.md`, from the operator (AC-2.7a) — after which the
-      phase runs. An operator bypassing the queue with a direct `orchestrate-dev` invocation needs
-      **none**, because no phase-refusal state was written.
+      phase runs. *(v1.5, SE-v5 F-04 — v1.4 added "An operator bypassing the queue with a direct
+      `orchestrate-dev` invocation needs **none**, because no phase-refusal state was written." That is
+      true of the **phase** and false of the **queue**, and the bullet did not distinguish them; it is
+      **retracted** and replaced by the distinction. A bypass run needs no act to make the *phase* run
+      again, because no phase-refusal state was written — that much stands, and it is the property this
+      classification actually turns on. But the row still reads `halted`, a successful bypass writes
+      nothing to it (`awaiting-merge` is the queue driver's write, not `orchestrate-dev`'s), and so the
+      **queue** stays idle for every other feature until the row is edited: AC-2.7a states this in
+      full. The one act is therefore required in every case where the operator wants the queue to keep
+      running.)*
     - A POSTMORTEM halt needs **two**: the same queue-row reset **plus** AC-2.4's resolution act
       inside the artifact, because AC-2.3 refuses the phase until then and AC-4.6a makes that the
       exclusive route (a force-run is refused too). It also permanently marks the feature with an
@@ -679,8 +883,12 @@ inherits all four defects. This row was set `pending` and moved to `Order 0` on 
     So writing a POSTMORTEM for a mechanical byte-production failure would attach the heavier,
     artifact-level recovery — and the standing AC-2.3 refusal — to a merely large document. Writing a POSTMORTEM here would make AC-2.3 refuse
     re-entry to the phase and, under AC-4.6a, make AC-2.4's artifact-level resolution act the
-    **exclusive** route out — closing even the direct-invocation route, which is the one route an
-    AC-3.5f halt leaves open. That is the wrong classification and is forbidden. The halt is still terminal for the invocation, and
+    **exclusive** route out. *(v1.5, SE-v5 F-04: v1.4 added "closing even the direct-invocation route,
+    which is the one route an AC-3.5f halt leaves open". Corrected: the bypass is a route to running the
+    **phase**, never to recovering the **queue** (AC-2.7a), so what a POSTMORTEM would close is the
+    cheaper of the two phase-level routes — which is still the substantive difference, since after an
+    AC-3.5f halt the phase itself is willing to run and after a POSTMORTEM halt it refuses.)* That is
+    the wrong classification and is forbidden. The halt is still terminal for the invocation, and
     it still sets and **commits** the feature's queue row to `halted` on the same terms as AC-2.1 —
     AC-2.1's obligation is extended to this halt, so durability does not depend on a POSTMORTEM
     existing — so the halt is durable and legible without being self-refusing.
@@ -688,9 +896,12 @@ inherits all four defects. This row was set `pending` and moved to `Order 0` on 
     phase, the artifact, **which budget was exhausted**, and the actual counts — "no progress across
     N consecutive attempts" for `MAX_AUTHORING_ATTEMPTS`, or "M dispatches without reaching
     structural completeness" for `MAX_AUTHORING_DISPATCHES` — together with the count of
-    AC-3.4-satisfying sections reached. *(v1.4, SE-v4 F-02 / TE-v4 F-06:)* it also names the recovery
-    act of **AC-2.7a** — reset the row to `pending`, or re-invoke `orchestrate-dev` directly — and
-    states that no POSTMORTEM was written (AC-3.5f), so the report is self-contained. N and M are
+    AC-3.4-satisfying sections reached. *(v1.4, SE-v4 F-02 / TE-v4 F-06; corrected v1.5, SE-v5 F-04:)*
+    it also names the recovery act of **AC-2.7a** — reset the row to `pending` and commit, which is the
+    only act that recovers the queue — and states that no POSTMORTEM was written (AC-3.5f), so the
+    report is self-contained. It does **not** offer a direct `orchestrate-dev` invocation as an
+    alternative to that act; if it mentions the bypass at all it must say what AC-2.7a says, that the
+    bypass resumes this feature only and leaves every other queue feature idle. N and M are
     always the **script's own** counts. The runtime's
     internal retry count is explicitly **not** claimed, reported, or depended upon (§4a A-2/A-3);
     observing it is deferred as **D-RLH-04**.
@@ -700,7 +911,14 @@ inherits all four defects. This row was set `pending` and moved to `Order 0` on 
     value, return nothing, or throw/reject. The wrapper therefore treats **all** of those identically
     to a dispatch that returned without progress: the script catches the fault, re-measures
     completeness from disk (which is authoritative either way, AC-3.3), applies AC-3.5a–AC-3.5c, and
-    re-dispatches or halts accordingly. A dispatch fault must **not** propagate as an unhandled halt
+    re-dispatches or halts accordingly. *(v1.5, TE-v5 F-01 — the interaction with the revision-mode
+    terminal test, stated so no AC depends on the return shape.)* On all three surfacings there is no
+    parseable **revision-completion trailer** (AC-3.5g clause 4) — either no response exists or it ends
+    mid-work — so a faulting dispatch is **never** terminal in revision mode, and the wrapper reaches
+    that conclusion by the *absence of a positive marker* rather than by inspecting the fault. Whether
+    the artifact happens to be structurally complete on disk is therefore not sufficient to end a
+    revision episode, which is exactly the fail-open reading v1.4 permitted. A dispatch fault must
+    **not** propagate as an unhandled halt
     that bypasses the attempt count, because that is the exact path on which §H-3 produced no
     operator-facing explanation at all. Whether the fault was observed is reported alongside the
     counts of AC-3.5d.
@@ -772,8 +990,14 @@ inherits all four defects. This row was set `pending` and moved to `Order 0` on 
   The approval record carries, per approving round: the **document type**, the **round index**, each
   **role** and its **verdict value** from the same closed catalogue of AC-4.3, and — *(v1.3, SE-v3
   F-01: the anchor v1.2 omitted)* — the **content hash of the reviewed document as it stood at that
-  approving round**, captured at that round per **AC-4.2d** and *copied* here, plus the **commit sha**
-  that round's approving cross-review files were committed at.
+  approving round**, captured at that round per **AC-4.2d** and *copied* here, plus the **commit sha
+  the reviewed document was at when it was sent for review**. *(v1.5, TE-v5 F-03: v1.2–v1.4 specified
+  this column as "the commit sha that round's approving cross-review files were committed at". That is
+  **retracted** as unimplementable at tier 1 — AC-4.2d has the script write the field **into** those
+  cross-review files, and the sha of the commit that contains a file cannot be a field of that file, so
+  the value did not exist at the instant it was required. The reviewed document's own commit is
+  knowable at capture time, is not self-referential, and is the more useful anchor anyway: it names the
+  commit of the very bytes the hash covers.)*
   The content hash is the load-bearing field and the commit sha is corroborating context only:
   AC-4.4 asks whether the document changed after its approval, and a hash of the approved bytes
   answers that by comparing the document at HEAD against the recorded hash — which is **rebase-proof**,
@@ -833,13 +1057,48 @@ inherits all four defects. This row was set `pending` and moved to `Order 0` on 
 - **AC-4.2d** *(v1.4, SE-v4 F-01 / TE-v4 F-03 — **when** the approval-time hash is taken, which v1.3
   left contradicting itself.)* The approval-time content hash is **captured at the approving round**
   and never reconstructed afterwards:
-  - **Who captures it, and from what.** The **script** captures it, not an agent: for each round it
-    dispatches, it hashes the exact bytes of the document it is about to send for review — the same
-    single pre-dispatch read the round already performs (AC-3.5's pre-episode measurement) — and
-    persists that hash into the round's tier-1 record alongside the verdict field of AC-4.2, together
-    with the sha of the commit the round's cross-review files were committed at. This keeps a
-    deterministic measurement out of a model's hands (C-5) and makes the hash a property of the bytes
-    that were *reviewed*, which is the only instant at which those bytes are identifiable.
+  - **The one referent for "the bytes".** *(v1.5, SE-v5 F-06 — v1.4 had three referents in one
+    mechanism: AC-3.5c's working tree, O-21's "the document file as committed", and AC-4.4's "the
+    document at HEAD".)* There is exactly one, defined here and referenced by every other clause: **the
+    exact bytes of the reviewed document read from the working tree immediately before the review
+    dispatch** (the same working-tree referent rule as AC-3.5c). AC-4.4's comparison at both tiers reads
+    the document by the same rule, and O-21's canonicalisation is over these bytes. The pre-review read
+    must be taken **after** the round's authoring commits, so under AC-3.2a's cadence the working tree
+    and HEAD coincide; where a later uncommitted edit makes them diverge, the recorded hash will not
+    match and the skip is denied, which is the fail-closed direction R-1 requires.
+  - **Who captures it, and from what.** The **script** captures it, and from a read taken for this
+    purpose: for each round it dispatches, it performs a **new** read of the reviewed document
+    immediately before sending it for review, hashes those bytes, and persists the hash into the
+    round's tier-1 record alongside the verdict field of AC-4.2, together with the commit sha the
+    reviewed document was at (AC-4.2b). *(v1.5, SE-v5 F-02 / TE-v5 F-04 — v1.4's parenthetical "the
+    same single pre-dispatch read the round already performs (AC-3.5's pre-episode measurement)" is
+    **retracted**; it named the wrong seam, and under either available reading the recorded hash was not
+    the reviewed bytes. (i) The **authoring** episode's pre-episode measurement is taken *before* that
+    round's authoring or revision dispatch: for a greenfield round 1 the document does not exist, so
+    every round-1 approval would fall to the missing-hash branch below, and for a revision round it
+    records the *previous* round's document — either way HEAD never matches, tier 2 never grants a skip,
+    and AC-4 is inert in the common case while looking implemented. (ii) The **review** episode's
+    pre-episode measurement is over the reviewer's own `CROSS-REVIEW-*` file, not the reviewed document
+    at all (AC-3.5 scope (a) row 2, scope (b)).)* This read is therefore **new and not shared** with any
+    AC-3.5 measurement. It coincides in value with the authoring episode's post-terminal re-measurement
+    whenever nothing intervenes, but the normative source is this read, and an implementation that
+    reuses an AC-3.5 measurement instead is a defect.
+  - **How the digest is produced.** *(v1.5, SE-v5 F-03 — the mechanism, measured as §4a **A-11**, not
+    only the algorithm. A-1 measured no `crypto` among the runtime's eleven host globals and C-2 forbids
+    the import that would supply one, so "the script captures it" required a mechanism this document had
+    not measured — the exact DC-02 failure §4a exists to prevent.)* The digest is computed by a **pure-JS
+    digest function inlined into the workflow bundle**, over bytes the script already holds from the
+    injected read seam. The rejected alternative is an **agent-relayed `shasum`** through the adapter's
+    Bash seam: it is how `git`/`gh` reach the runtime today (A-11), but it puts the load-bearing value
+    behind a model relaying text, which is the narration risk AC-4.2b and §4a A-7 already document, and
+    it would make a deterministic comparison depend on a response the script cannot verify. Two
+    obligations follow, and O-17/O-21 own them jointly: the **same** function must be used on the write
+    path and on every read path (a hash that two call sites compute differently is worse than no hash),
+    and it must satisfy the runtime's structural constraints (C-2) as inlined bundle code. What "not an
+    agent" claims and does not claim, stated precisely so C-5 is not overread: the **digest and the
+    comparison** are computed by the script from bytes it holds; the *transport* of those bytes is an
+    injected read seam that is itself implemented as an `agent()` call (A-1, C-2), because in this
+    runtime every read is. No agent is ever asked to compute, compare, or report a hash.
   - **Harvest copies.** At Phase H, `harvest-learnings` copies the hash from tier 1 into the tier-2
     approval record verbatim (AC-4.2b). Tier 1 → tier 2 is therefore a **copy, not a
     re-derivation**, so no history walk is required, the two tiers can never disagree about the
@@ -847,7 +1106,24 @@ inherits all four defects. This row was set `pending` and moved to `Order 0` on 
     unresolvable.
   - **The commit sha stays corroborating.** Because the hash is captured at the round, nothing needs
     to resolve `git show {sha}:{path}` at read time. The sha remains context for a human auditor
-    (AC-4.2b), and its unresolvability after a squash merge or rebase costs nothing.
+    (AC-4.2b), and its unresolvability after a squash merge or rebase costs nothing. Nothing in AC-4
+    may be defined over it (O-8).
+  - **When the script writes it, and what happens if that write fails.** *(v1.5, answers TE-v5 Q-01.)*
+    The hash is computed **before** the review dispatch and written **after** the review episode reaches
+    terminal on the cross-review file, as an append-shaped write to that file (AC-1.4 forbids
+    overwriting it, AC-3.1a forbids a whole-file rewrite). Three consequences are stated so O-17 can
+    specify the ordering:
+    - The append is the **script's own** write, not a dispatch, so it is not a member of any AC-3.5
+      measurement and cannot disturb the terminal decision that preceded it. The wrapper's terminal
+      measurement on that file is final before the append happens.
+    - The append therefore lands *after* the reviewer's commit. That window is irrelevant, because
+      since v1.5 **neither** tier's staleness test measures a position in history — both compare the
+      recorded hash (AC-4.4) — so no comparison can be perturbed by the append's own commit. *(This is
+      what dissolves SE-v5 Q-01 rather than answering it: there is no longer a history referent for the
+      append to move.)*
+    - A **failed append** is an error surfaced to the operator, not a silent degradation. The round then
+      carries no parseable hash, so the fail-closed branch below governs: that round yields no approval
+      and the phase runs. Recording the approval without the hash is forbidden.
   - **Fail closed when the hash is missing.** If a round's tier-1 record carries no parseable hash —
     a legacy artifact, or a round dispatched before this change — then that round yields **no**
     approval: tier 1 fails closed under AC-4.2a and harvest records the round with its hash field
@@ -860,17 +1136,24 @@ inherits all four defects. This row was set `pending` and moved to `Order 0` on 
   emit (`Approved`, `Approved with minor changes`, `Needs revision`).
 - **AC-4.4** If the document has been modified after the approving reviews, the phase is **not**
   skipped — the skip must not launder an unreviewed edit. *(v1.3, SE-v3 F-01 — the referent per
-  tier.)* Under **tier 1** the comparison is against the approving cross-review artifacts' own
-  position in history (O-8 owns the measure and its rebase behavior). Under **tier 2** the comparison
-  is against the **approval-time content hash** recorded in AC-4.2b's approval record — captured at
-  the approving round per **AC-4.2d**, which is what makes this test able to see a post-approval edit
-  at all: the phase is skipped only if the document at HEAD hashes to the recorded value, and any
+  tier; v1.5, SE-v5 Q-01 / F-06 — **one comparison for both tiers**.)* The test is the same at both
+  tiers: an **equality check against the approval-time content hash** captured at the approving round
+  per **AC-4.2d** — read from the tier-1 record before Phase H, from AC-4.2b's approval record after it —
+  compared against the reviewed document read by AC-4.2d's single referent rule. *(v1.5: v1.3–v1.4 gave
+  tier 1 a different measure, "the approving cross-review artifacts' own position in history". That is
+  **withdrawn**. Once AC-4.2d puts the hash into the tier-1 record, the history walk is redundant, the
+  two tiers can no longer disagree about a document they both certified, and the question of which commit
+  a cross-review file "is at" — the reviewer's or the script's later append (SE-v5 Q-01) — stops existing.
+  It also removes the last rebase-sensitive referent from AC-4: a position in history is rewritten by
+  Phase DOD's rebase, a hash is not.)* The phase is skipped only if the document hashes to the recorded
+  value, and any
   difference is a modification, **including one made between the approving round and Phase H** (a DOD
   remediation touching a spec, an operator fixup, a later phase's upstream-altitude finding). *(v1.4,
   SE-v4 F-01 / TE-v4 F-03: under v1.3's harvest-time derivation that whole window was invisible and
-  the test reported "not stale" over unreviewed bytes.)* Tier 2 therefore has a definite, rebase-proof referent and is neither inert nor
-  fail-open. If no referent is available in the tier being used, the AC is unevaluable and the phase
-  **runs** (fail closed, AC-4.2a).
+  the test reported "not stale" over unreviewed bytes.)* Both tiers therefore have a definite,
+  rebase-proof referent and neither is inert nor fail-open. If no referent is available in the tier
+  being used — a tier-1 record with no parseable hash, or a tier-2 record with none — the AC is
+  unevaluable and the phase **runs** (fail closed, AC-4.2a, AC-4.2d).
 - **AC-4.5** The skip is observable in the final report: skipped phases are listed with their reason
   and are visibly distinct from phases that ran and from phases that failed.
 - **AC-4.6** An operator can force a phase to run despite recorded approval.
@@ -962,10 +1245,11 @@ inherits all four defects. This row was set `pending` and moved to `Order 0` on 
 ## 4a. Assumptions (measured — DC-02)
 
 Every predicate below was measured against this tree at HEAD `9220a20`, with the measuring command
-recorded — except **A-10**, measured at HEAD `c12baf3` and naming that sha in its own row. None is
+recorded — except **A-10** (measured at HEAD `c12baf3`, two citations corrected at `cda9161` in v1.5)
+and **A-11** (measured at HEAD `cda9161`), each of which names its own sha in its own row. None is
 inferred from naming or documentation. Added at v1.1 for SE F-02 / TE F-02;
 A-7 and A-8 added at v1.2 for SE-v2 F-01 / F-03; A-9 added at v1.3 for TE-v3 F-03; A-10 added at
-v1.4 for SE-v4 F-02 / TE-v4 F-06.
+v1.4 for SE-v4 F-02 / TE-v4 F-06; A-11 added at v1.5 for SE-v5 F-03.
 
 | # | Assumption | How it was measured | Consequence |
 |---|---|---|---|
@@ -978,7 +1262,8 @@ v1.4 for SE-v4 F-02 / TE-v4 F-06.
 | A-7 *(v1.2, SE-v2 F-01)* | **Phase H deletes every `CROSS-REVIEW-*` and `CODE_REVIEW-*` file for the feature**, so no cross-review artifact survives a completed pipeline run. `POSTMORTEM-*` files are read by harvest but **not** deleted, so they do survive — which is why an unresolved POSTMORTEM outlives the approval that would have skipped past it. | `pdlc/skills/harvest-learnings/SKILL.md` states it four times — the description line (`:3`, "then deletes the now-redundant process artifacts"), §Scope (`:10`, "then remove the harvested `CROSS-REVIEW-*` and `CODE_REVIEW-*` files"), the Git Workflow step (`:27`, "delete … in a second commit"), and the checklist (`:100`) — and the `guard-harvest-before-delete` hook exists to sequence that deletion. Verified against the tree: `docs/pdlc-workflow-distribution/` holds `LEARNINGS-…`, a REQ at v17.1 and `POSTMORTEM-R-…`, and **zero `CROSS-REVIEW-*` files**; its LEARNINGS `Harvested` row records 62 deleted cross-reviews plus 3 `CODE_REVIEW-*`, listing **filenames only, no verdicts**. | AC-4.2's evidence source is destroyed by the pipeline that creates it. AC-4.2b therefore adds a harvest-surviving tier (an approval record in LEARNINGS) and puts `harvest-learnings` in `Targets`; AC-2.3b's worked example is corrected accordingly. |
 | A-8 *(v1.2, SE-v2 F-03)* | **How an exhausted runtime retry surfaces to the caller is not measured** — whether the `agent()` call returns a value, returns nothing, or throws/rejects after the runtime's final kill is unknown. | The 2026-07-28 transcript shows only the six `INTERRUPTED` records of §H-3 and no caller-side outcome; A-1's global list offers no primitive that would report one, and A-2 found no stall/retry constant anywhere in the repo. As with A-3, no measurement available in this repo settles it, so it is recorded as unknown rather than assumed. | AC-3.5e is written to hold under **all three** outcomes: the wrapper catches faults, and completeness is re-measured from disk in every case, so the attempt count and the operator-facing report exist on every path. Nothing in AC-3 depends on which outcome is real. |
 | A-9 *(v1.3, TE-v3 F-03)* | **Emitted bytes per tool call are not observable from any seam a workflow script has.** Neither the number of tool calls an agent made, nor their shape (whole-file write vs. edit vs. append), nor the bytes each emitted, is recoverable by the script. The only post-dispatch evidence is the artifact's content on disk, which is identical whether it was produced by one 43 KB write or by fourteen 3 KB appends. | A-1's eleven host globals contain no telemetry primitive, and the `agent()` bridge in `pdlc/workflows/runtime-adapter.js` conveys only the agent's response text — no tool-call log. The injected file seams the pipeline uses (`_readFile`, `_writeFile`, `_checkFile`) observe file *content and existence*, never a call record. Cross-checked against A-2's grep, which found no stall/retry/attempt telemetry of any kind in `pdlc/` or `.claude/`. | AC-3.1/AC-3.1a are recorded as **agent-directed and script-unverifiable** (see AC-3.1a **Enforceability**), rather than claiming an enforcement the seams cannot deliver. The one observable proxy is the per-section commit diff of AC-3.2a (owned by O-20); the compensating *measurable* control is AC-3.5's script-owned dispatch-and-verify counters, which bound the cost of any pacing failure. This is why AC-3.1 is held to a weaker standard than AC-1.4, and the reason is stated rather than left as an inconsistency. |
-| A-10 *(v1.4, SE-v4 F-02 / TE-v4 F-06)* | **`halted` is outside `orchestrate-queue`'s pickup set, so a `halted` row takes the whole queue idle** until a human edits `QUEUE.md` — no re-invocation of the queue can resume the feature. | Read at HEAD **`c12baf3`**: `pdlc/workflows/orchestrate-queue.js`, the `QUEUE_STATUSES` array (the `"halted",` member, `:78`) with its header comment "Only `pending` entries are eligible for pickup … `awaiting-merge`/`done`/`blocked`/`halted` are terminal-for-this-loop and skipped" (`:70-72`); and `selectNextPending` (`:373`), whose empty branch filters `e.status === "pending"` and returns `{ kind: "empty", reason: "no pending entries (all done, awaiting-merge, blocked, or halted)" }` (`:387`). Cross-checked against CLAUDE.md's documented status lifecycle. | **AC-2.7a** states the recovery act (a human resets the row to `pending`, or bypasses the queue with a direct `orchestrate-dev` invocation), and **AC-3.5f**'s classification rationale is restated over "how many acts and where" rather than over the false "re-invoke versus human act" contrast. No new queue status is introduced (§5). |
+| A-10 *(v1.4, SE-v4 F-02 / TE-v4 F-06; two citations corrected v1.5, SE-v5 F-05 / TE-v5 F-07)* | **`halted` is outside `orchestrate-queue`'s pickup set, so a `halted` row takes the whole queue idle** until a human edits `QUEUE.md` — no re-invocation of the queue can resume the feature. | Read at HEAD **`c12baf3`** and re-read at **`cda9161`**, where `pdlc/workflows/orchestrate-queue.js` is byte-identical: the `QUEUE_STATUSES` array (the `"halted",` member, **`:80`** — *v1.4 said `:78`, which is `"done",`*) with its header comment "Only `pending` entries are eligible for pickup … `awaiting-merge`/`done`/`blocked`/`halted` are terminal-for-this-loop and skipped" (**`:71-73`** — *v1.4 said `:70-72`*); and `selectNextPending` (`:373`), whose empty branch filters `e.status === "pending"` and returns `{ kind: "empty", reason: "no pending entries (all done, awaiting-merge, blocked, or halted)" }` (`:387`) — those two were exact. Cross-checked against CLAUDE.md's documented status lifecycle. | **AC-2.7a** states the recovery act (a human resets the row to `pending` and commits — the direct-`orchestrate-dev` bypass is **not** an equivalent, per v1.5/SE-v5 F-04, because `awaiting-merge` is the queue driver's write at `:749` and a successful bypass leaves the row `halted`), and **AC-3.5f**'s classification rationale is restated over "how many acts and where" rather than over the false "re-invoke versus human act" contrast. No new queue status is introduced (§5). |
+| A-11 *(v1.5, SE-v5 F-03)* | **The workflow runtime has no digest primitive, and the only sha1 producers in this repo are unreachable from a bundle.** So a script-owned content hash (AC-4.2d) must be either a pure-JS digest inlined into the bundle or an agent-relayed shell `shasum`; there is no third mechanism, and no platform primitive. | Read at HEAD **`cda9161`**. (i) A-1's eleven host globals contain no `crypto` and C-2 forbids the `import` that would supply one; re-confirmed against `pdlc/workflows/runtime-adapter.js`'s probe header (`:13-16`, "the only host globals are: agent, parallel, pipeline, phase, log, workflow, args, budget, console, setTimeout, clearTimeout"), and `grep -n "crypto\|shasum\|sha1\|sha256" pdlc/workflows/runtime-adapter.js` → **no match**. (ii) The repo's sha1 producers are both outside the runtime: Node-side, `pdlc/workflows/build-runtime.mjs` (`import { createHash } from "crypto"`, `:24`; `createHash("sha1").update(contents, "utf8").digest("hex")` in the manifest row builder, `:219`), and shell-side, `pdlc/hooks/scripts/lib/pdlc-drift.sh`'s `pdlc_probe_hash_tool` resolving `shasum`/`sha1sum` on PATH (`:338-347`, `PDLC_HASH_BIN`). Neither is loadable by a bundle (C-2). (iii) The adapter's only route to a shell is an `agent()` with Bash (`runtime-adapter.js:21`, "`gh` and `git` invocations → an agent with Bash"). | **AC-4.2d** names the chosen mechanism — an **inlined pure-JS digest** — states the rejected one and why (an agent relaying `shasum` puts the load-bearing value behind narration, AC-4.2b/§4a A-7), and states the C-5 boundary precisely: the digest and comparison are script-computed, the byte *transport* is an injected read seam that is an `agent()` call because in this runtime every read is. O-17/O-21 own the requirement that one function serves the write path and every read path. A digest that cannot be produced falls to AC-4.2d's fail-closed branch and never to a substitute. |
 
 ## 5. Non-goals
 
@@ -1010,7 +1295,8 @@ v1.4 for SE-v4 F-02 / TE-v4 F-06.
 | R-5 | **This REQ hitting the very loop it fixes.** | The §preamble stopping rule, and the escalation clause within it. |
 | R-6 *(v1.1, SE F-04; scope corrected v1.2, SE-v2 F-01)* | **Per-phase refusal scope letting stale upstream trouble through** — AC-2.3a means an unresolved `POSTMORTEM-R` does not block Phase F, so a feature can progress downstream while an R-phase disagreement is still formally open. | Accepted deliberately: what gates Phase F is the REQ's approval state (AC-4, AC-4.2a fails closed), and the alternative — a feature-wide refusal — converts R-2's deadlock from recoverable to total. AC-2.3b keeps the open POSTMORTEM named in every skip report, so it never becomes invisible. *(v1.2: this acceptance no longer rests on the falsified v1.1 worked example. It applies to the pre-harvest state of worked example A; for a harvested feature the skip does not fire at all, AC-2.3 refuses, and the risk does not arise. The narrower exposure strengthens the acceptance rather than weakening it.)* |
 | R-8 *(v1.2, SE-v2 F-01)* | **Widening scope to `harvest-learnings`** — AC-4.2b makes the harvest step responsible for persisting the approval record, a fourth SKILL family this REQ did not originally target, and it puts a machine-read contract into a document (`LEARNINGS-{feature}.md`) that has so far been purely for human and consolidation reading. | The change is additive: the record is a new table alongside the existing `Harvested from` row, no existing LEARNINGS content changes, nothing else parses LEARNINGS, and C-4 holds. AC-4.2a fails closed on every LEARNINGS predating the record (AC-4.2c), so no legacy feature silently skips a phase. The alternative considered and rejected was to keep the record out of LEARNINGS in a separate durable file — rejected because a second file harvest must also write is one more thing to forget, whereas LEARNINGS is already the artifact harvest exists to produce and is guarded by `guard-harvest-before-delete`. |
-| R-9 *(v1.3, TE-v3 F-01)* | **AC-3.5a limb 3 is a weak predicate** — in revision mode any byte change counts as progress, so a dispatch that edits one character resets `MAX_AUTHORING_ATTEMPTS` and the consecutive rule can never fire against a pathologically unproductive but non-silent agent. | Accepted, and deliberately traded. The alternative — a semantic progress predicate for edits — is not measurable from the seams this repo has (§4a A-9), and getting it wrong reinstates TE-v3 F-01's halt-every-revision-round defect, which is the far worse failure. The cost is bounded by the *other* counter: `MAX_AUTHORING_DISPATCHES` caps the episode at 6 dispatches regardless of progress (AC-3.5c), so the worst case is a bounded cost and a legible AC-3.5d report, not an unbounded loop. AC-3.5a's weakness is therefore covered by the cumulative bound rather than left open. |
+| R-9 *(v1.3, TE-v3 F-01; scope widened v1.5, TE-v5 F-05)* | **AC-3.5a's byte-change predicate is weak, and since v1.5 it is weak in *both* modes** — any byte change counts as progress, so a dispatch that edits one character resets `MAX_AUTHORING_ATTEMPTS` and the consecutive rule can never fire against a pathologically unproductive but non-silent agent, greenfield or revision. | Accepted, deliberately traded, and the trade is now the same in both modes rather than different in each. The alternative — a semantic progress predicate — is not measurable from the seams this repo has (§4a A-9), and getting it wrong reinstates a halt against a healthy dispatch: TE-v3 F-01's halt-every-revision-round defect, and TE-v5 F-05's halt-a-growing-greenfield-section defect, which are the same failure in the two modes and both far worse than a loose predicate. The cost is bounded by the *other* counter: `MAX_AUTHORING_DISPATCHES` caps the episode at 6 dispatches regardless of progress (AC-3.5c), so the worst case is a bounded cost and a legible AC-3.5d report, not an unbounded loop. A byte-at-a-time agent therefore costs at most one episode's budget and is then reported. |
+| R-12 *(v1.5, TE-v5 F-01 / F-02)* | **A premature revision-completion trailer** — AC-3.5g clause 4 makes an agent-emitted marker the revision-mode terminal signal, so an agent that emits it while findings remain unaddressed ends the episode early and the wrapper reports success on a partly-addressed round. | Accepted as the least-bad of three options, and bounded. The two alternatives are strictly worse and were both measured, not argued: defining terminal over the runtime's return shape is **undecidable** (§4a A-8) and fail-open in the same direction (TE-v5 F-01), and requiring progress on the terminal dispatch **halts a fully converged round** (TE-v5 F-02). The exposure is also not new trust: the pipeline already ends a review round on an agent-emitted trailer parsed by `parseVerdict` (`orchestrate-dev.js:322`, §4a A-4), so this places the same kind of trust in the same kind of marker, on a population where §4a A-9 proves the script cannot substitute its own judgement. Containment: the round's findings are still on the branch until Phase H (A-7), so the **next** round's reviewers see an unaddressed finding and re-raise it — the failure costs one review round rather than losing one, which is the opposite direction from the silent loss scope (d) and AC-3.5b close. O-19(h) owns the negative fixture (a trailer emitted with a finding demonstrably unreflected must be visible in the round's report). |
 | R-7 *(v1.1, TE F-01)* | **Widening scope to the review SKILLs** — AC-4.2 changes the output contract of `pm-review` / `se-review` / `te-review`, three files this REQ did not originally target. | The change is additive (the verdict field is written into the artifact in addition to the response trailer the workflow already parses), so the existing `parseVerdict` path is untouched and C-4 holds. AC-4.2a fails closed on every artifact predating the change, so no legacy branch silently skips a phase. |
 | R-10 *(v1.4, SE-v4 F-03 / TE-v4 F-05)* | **A revision-mode continuation re-applying an edit already applied** — AC-3.5g's prompt tells the agent to address only findings not already reflected, but whether a finding is "already reflected" is a judgement the agent makes from the document, and the script cannot check it (§4a A-9). A mis-judgement duplicates a paragraph or a table row. | Accepted as the lesser of two failures, and bounded. The alternative — re-issuing the round's original prompt unchanged — guarantees re-application on every continuation dispatch rather than risking it, so AC-3.5g is strictly better. The blast radius is one artifact on a feature branch, the duplication is visible in the per-section commit diff (AC-3.2a, O-20) and to the next round's reviewers, and `MAX_AUTHORING_DISPATCHES` caps how many times it can happen in one episode (6). Contrast the failure AC-3.5 scope (d) removes, which was **silent** loss of a whole review round. |
 | R-11 *(v1.4, TE-v4 F-04)* | **Excluding code-writing dispatches from AC-3.5** leaves Phase I and Phase DOD remediation with no stall-kill accounting, which is the same class of failure as §H-3 one phase later. | Named, not hidden: AC-3.5 scope (a) lists the exclusions with the bound that covers each, and D-RLH-05 binds the gap to a successor queue row. The exposure is smaller than §H-3's because a code dispatch writes many small files rather than one large document, so it does not reproduce the monolithic-write mechanism that made §H-3 deterministic; and Phase DOD's own `DOD_MAX_ITERATIONS` already terminates its loop. |
@@ -1029,21 +1315,21 @@ finding that one of these is unspecified here is answered by this table.
 | O-4 | FSPEC | The queue-status commit (AC-2.1): who performs the git operation given that neither orchestrator does any git today, what the message is, and the behavior when the working tree is dirty or the commit fails. |
 | O-5 | FSPEC | The direct-invocation path for AC-2.1 — `orchestrate-dev` does not know about the queue at all; specify how it locates the row, and what it does when the feature has no row. |
 | O-6 | FSPEC | The retry-aware prompt contract (AC-3.3): how an author agent is told it is a retry, and how it determines the first unwritten section. |
-| O-7 | FSPEC | The structural-completeness criterion for each document type (AC-3.4) — the **terminal** criterion, per document type. *(v1.2, TE-v2 F-01: the **delta** predicate is not O-7's to choose; AC-3.5a fixes it at REQ altitude as a strict increase in the count of sections satisfying this criterion. O-7 supplies what "satisfying" means per document type; it may not redefine progress as heading presence.)* *(v1.3, TE-v3 F-01: AC-3.5a now fixes the delta predicate in **three limbs** — section-count increase, skeleton creation, and byte-level mutation in revision mode. O-7 supplies the per-document-type completeness criterion that limbs 1 and 2 count over, and the terminal criterion AC-3.5b stops on; it owns neither the mode selection nor limb 3.)* **(v1.4, TE-v4 F-02 / SE-v4 F-05)** O-7's enumeration is over the **wrapped artifact classes** of AC-3.5 scope (c), not only the reviewed spec document types: it must supply a criterion for the six spec documents **and** for `CROSS-REVIEW-{role}-{doc-type}[-v{N}].md`, `CODE_REVIEW-{feature}-v{N}.md` and `LEARNINGS-{feature}.md` — the review artifacts are now the numerically dominant wrapped population, so an enumeration that omits them leaves mode selection and the terminal test unevaluable for most dispatches. For cross-review and code-review files O-7 **implements** the criteria AC-3.5 scope (c) already fixes (verdict field parseable; `Scope:` plus findings section) rather than choosing new ones. |
-| O-8 *(extended v1.3)* | FSPEC | The staleness comparison for AC-4.4 — what "modified after the approving reviews" is measured against, and its behavior under rebase (Phase DOD rebases the branch, rewriting commit timestamps). **(v1.3, SE-v3 F-01)** Two referents, not one: the **tier-1** comparison (against the approving cross-review artifacts' position in history) is O-8's to design and must state its rebase behavior; the **tier-2** comparison is fixed by AC-4.2b/AC-4.4 as an equality check against the recorded approval-time content hash, and O-8 must not redefine it — it is chosen precisely because it is rebase-invariant where a timestamp is not. O-8 must also state the behavior when the two tiers are both available and disagree (AC-4.2a's unparseable case) and when the tier in use has no referent (phase runs). **(v1.4, SE-v4 F-01 / TE-v4 F-03)** The tier-2 hash is **captured at the approving round** by the script and copied by harvest (AC-4.2d), so O-8 designs no history walk and must not make the recorded commit sha load-bearing; it must also state that a tier-1 record lacking a parseable hash yields no approval at all (fail closed), which is where the legacy population lands. |
+| O-7 | FSPEC | The structural-completeness criterion for each document type (AC-3.4) — the **terminal** criterion, per document type. *(v1.2, TE-v2 F-01: the **delta** predicate is not O-7's to choose; AC-3.5a fixes it at REQ altitude as a strict increase in the count of sections satisfying this criterion. O-7 supplies what "satisfying" means per document type; it may not redefine progress as heading presence.)* *(v1.3, TE-v3 F-01: AC-3.5a now fixes the delta predicate in **three limbs** — section-count increase, skeleton creation, and byte-level mutation in revision mode. O-7 supplies the per-document-type completeness criterion that limbs 1 and 2 count over, and the terminal criterion AC-3.5b stops on; it owns neither the mode selection nor limb 3.)* **(v1.4, TE-v4 F-02 / SE-v4 F-05)** O-7's enumeration is over the **wrapped artifact classes** of AC-3.5 scope (c), not only the reviewed spec document types: it must supply a criterion for the six spec documents **and** for `CROSS-REVIEW-{role}-{doc-type}[-v{N}].md`, `CODE_REVIEW-{feature}-v{N}.md` and `LEARNINGS-{feature}.md` — the review artifacts are now the numerically dominant wrapped population, so an enumeration that omits them leaves mode selection and the terminal test unevaluable for most dispatches. For cross-review and code-review files O-7 **implements** the criteria AC-3.5 scope (c) already fixes (verdict field parseable; `Scope:` plus findings section) rather than choosing new ones. **(v1.5, TE-v5 F-05 / Q-02 — the two parentheticals above that describe the progress predicate in limbs are superseded; AC-3.5a is now one predicate.)** Two narrowings. (i) The completeness criterion no longer feeds the **progress** predicate at all — AC-3.5a is now a single mode-independent byte-change test — so O-7's criterion is used for the **terminal** test (AC-3.5b) and for AC-3.5d's reported section count, and nothing else; it can no longer make a partial write score as no-progress. (ii) The **LEARNINGS** criterion **excludes** AC-4.2b's approval record, per AC-3.5 scope (c)'s answer to TE-v5 Q-02 and AC-4.2c's best-effort stance; O-7 must state the exclusion rather than leave the two clauses pointing opposite ways. |
+| O-8 *(extended v1.3, v1.4; narrowed v1.5)* | FSPEC | The staleness comparison for AC-4.4 — what "modified after the approving reviews" is measured against, and its behavior under rebase (Phase DOD rebases the branch, rewriting commit timestamps). **(v1.3, SE-v3 F-01 / v1.4, SE-v4 F-01)** superseded in part. **(v1.5, SE-v5 Q-01 / F-06 — this is now the operative statement.)** AC-4.4 fixes **one** comparison for **both** tiers: an equality check against the approval-time content hash of AC-4.2d, over AC-4.2d's single byte referent (the reviewed document read from the working tree). O-8 therefore **designs no history walk at either tier** — v1.3's tier-1 "position in history" referent is withdrawn — and may not redefine the comparison, nor make the recorded commit sha load-bearing (it is corroborating context only, AC-4.2b/AC-4.2d). What remains O-8's is narrower and still real: how the document is read at comparison time under the AC-4.2d referent rule, the behavior when both tiers are available and disagree (AC-4.2a's unparseable case ⇒ phase runs), the behavior when the tier in use has no parseable hash (⇒ no approval, phase runs — where the legacy population lands), and a statement of why the comparison is rebase-invariant where the withdrawn referent was not. |
 | O-9 | FSPEC | The operator override surface for AC-4.6 and its precedence relative to the recorded approval. |
 | O-10 | TSPEC / PROPERTIES | Oracles for AC-1.1 across the fixture matrix: no artifacts, un-suffixed v1 only, contiguous v1..vN, **non-contiguous** (gaps), mixed document types in one directory, mixed roles, and a non-conforming filename. |
 | O-11 | TSPEC / PROPERTIES | Oracles for AC-1.4's refusal — how "would overwrite" is detected and asserted without a real overwrite occurring in the test. |
 | O-12 | TSPEC / PROPERTIES | Oracles for AC-2.3's refusal and for AC-2.2's two distinct halt reasons, including the `postmortemFailed` path (`orchestrate-dev.js:586-588`) that currently only logs and is not carried in the `:598` return object — so the return shape changes too. Add the AC-2.3b precedence case (approved **and** unresolved POSTMORTEM ⇒ skip, POSTMORTEM still named) and the AC-2.3a scope case (R-postmortem does not refuse Phase F). |
 | O-13 | TSPEC / PROPERTIES | Oracles for AC-3.2/AC-3.3 resumption. Simulating a mid-write kill needs a seam; specify it, and specify that an unrecognised fault token must not change production behavior. |
-| O-14 *(extended v1.3)* | TSPEC / PROPERTIES | Oracles for AC-4.1/AC-4.4 — including the negative case (stale approval ⇒ phase runs), which is the one that protects R-1. **(v1.3, SE-v3 F-01/Q-02)** Must cover the staleness negative case **in both tiers** — tier 2 with a document whose bytes no longer match the recorded hash ⇒ phase runs; tier 2 with a matching hash ⇒ phase skipped — plus a rebase fixture showing the tier-2 hash comparison is unaffected by rewritten commits, and the mixed-provenance case (tier 1 present for one role only ⇒ tier 2 is not consulted, the pair does not complete across tiers, phase runs). **(v1.4, SE-v4 F-01 / TE-v4 F-03)** Must add the **pre-harvest edit fixture**, which is the case v1.3's derivation could not detect: a document approved at round N, **edited after that round but before Phase H** (a DOD remediation is the realistic shape), then harvested ⇒ the tier-2 hash is the round-N hash, HEAD does not match it, and the phase **runs**. A test that passes only because the hash was recomputed at harvest is the falsifying case for AC-4.2d and must fail. Also assert the missing-hash case: a tier-1 record with no parseable hash ⇒ no approval recorded ⇒ phase runs. |
+| O-14 *(extended v1.3)* | TSPEC / PROPERTIES | Oracles for AC-4.1/AC-4.4 — including the negative case (stale approval ⇒ phase runs), which is the one that protects R-1. **(v1.3, SE-v3 F-01/Q-02)** Must cover the staleness negative case **in both tiers** — tier 2 with a document whose bytes no longer match the recorded hash ⇒ phase runs; tier 2 with a matching hash ⇒ phase skipped — plus a rebase fixture showing the tier-2 hash comparison is unaffected by rewritten commits, and the mixed-provenance case (tier 1 present for one role only ⇒ tier 2 is not consulted, the pair does not complete across tiers, phase runs). **(v1.4, SE-v4 F-01 / TE-v4 F-03)** Must add the **pre-harvest edit fixture**, which is the case v1.3's derivation could not detect: a document approved at round N, **edited after that round but before Phase H** (a DOD remediation is the realistic shape), then harvested ⇒ the tier-2 hash is the round-N hash, HEAD does not match it, and the phase **runs**. A test that passes only because the hash was recomputed at harvest is the falsifying case for AC-4.2d and must fail. Also assert the missing-hash case: a tier-1 record with no parseable hash ⇒ no approval recorded ⇒ phase runs. **(v1.5, SE-v5 F-02/F-03/F-06, TE-v5 F-03/Q-01)** Four additions. (i) A **round-1 approval** fixture — greenfield round 1, document authored then reviewed, approval granted: the recorded hash must be the reviewed bytes, and the skip must fire on re-entry. This is the fixture that fails if the hash is sourced from an AC-3.5 pre-episode measurement rather than from AC-4.2d's new pre-review read, and under that wrong implementation *every* round-1 approval falls to the missing-hash branch, so the positive case is the oracle for SE-v5 F-02. (ii) **Tier 1 uses the same hash comparison as tier 2** — a pre-harvest fixture where the document changed after approval must run the phase without consulting history, and must be unaffected by a rebase. (iii) The digest is **one function**: a fixture asserting the write-path hash and every read-path hash of identical bytes are equal (A-11, AC-4.2d). (iv) A **failed hash append** ⇒ error surfaced, round yields no approval, phase runs (TE-v5 Q-01) — never a silently record-less approval. |
 | O-15 | TSPEC | Which of these behaviors are unit-testable against the injected seams in `pdlc/workflows/__tests__/` and which require a bundle-level assertion; `runtimeBundle.test.js` already asserts freshness and the runtime's structural constraints (AC-5.5). |
 | O-16 | FSPEC | Disposition of AC-5.1/AC-5.2 as concrete edits, so the reviewers can verify them without re-deriving the line references. **(v1.1, SE F-05)** The FSPEC cites by **enclosing symbol + distinctive literal**, and records the HEAD sha its references were taken at, exactly as this REQ's `Citation baseline` row now does. A bare `file:line` citation is a defect in that document. |
-| O-17 *(v1.1, TE F-01 / SE F-07)* | FSPEC | The **persisted-verdict grammar** required by AC-4.2: where in the cross-review file the verdict field lives, its exact syntax, the closed catalogue of values, how the three review SKILLs are amended to emit it, and how it is extracted. Must specify the fail-closed behavior of AC-4.2a for absent / duplicated / unparseable fields, and the treatment of legacy artifacts that predate the field. **(v1.4, AC-4.2d)** The tier-1 record also carries the **approval-time content hash** and the round's commit sha, written by the **script** rather than by the reviewer: O-17 specifies where in the file they sit, their syntax, the hash algorithm and canonicalisation (shared with O-21 — one grammar, two carriers), and *when* the script writes them relative to the reviewer's own write, given AC-1.4 forbids overwriting a cross-review file and AC-3.1a forbids a whole-file rewrite (an append-shaped write is the expected answer). |
+| O-17 *(v1.1, TE F-01 / SE F-07)* | FSPEC | The **persisted-verdict grammar** required by AC-4.2: where in the cross-review file the verdict field lives, its exact syntax, the closed catalogue of values, how the three review SKILLs are amended to emit it, and how it is extracted. Must specify the fail-closed behavior of AC-4.2a for absent / duplicated / unparseable fields, and the treatment of legacy artifacts that predate the field. **(v1.4, AC-4.2d)** The tier-1 record also carries the **approval-time content hash** and the round's commit sha, written by the **script** rather than by the reviewer: O-17 specifies where in the file they sit, their syntax, the hash algorithm and canonicalisation (shared with O-21 — one grammar, two carriers), and *when* the script writes them relative to the reviewer's own write, given AC-1.4 forbids overwriting a cross-review file and AC-3.1a forbids a whole-file rewrite (an append-shaped write is the expected answer). **(v1.5)** Four additions, all fixed in substance by v1.5 and left to O-17 only as grammar. (a) *SE-v5 F-03:* the **digest mechanism** is an inlined pure-JS function (§4a A-11, AC-4.2d) — O-17 specifies the algorithm, the canonicalisation, and the single-implementation requirement (one function on the write path and every read path); an algorithm named without a mechanism does not discharge this row. (b) *TE-v5 Q-01:* the **write ordering** is fixed — computed before the review dispatch, appended after the review episode reaches terminal — and the failed-append behavior is an operator-surfaced error with the round yielding no approval; O-17 specifies the append's shape and its idempotence on re-entry. (c) *TE-v5 F-03:* the second field is the **reviewed document's** commit sha, not the cross-review file's own; the self-referential column is gone. (d) *TE-v5 F-01/F-02:* O-17 also owns the grammar of the **revision-completion trailer** of AC-3.5g clause 4 — a closed catalogue, parsed exactly like the verdict field, absent/duplicated/unparseable ⇒ not terminal — and the amendment to the three **author** SKILLs that makes them emit it. One grammar family, three carriers. |
 | O-18 *(v1.1, TE F-04; extended v1.2, TE-v2 Q-01)* | FSPEC | How the "same round index" of AC-4.1a is established from artifacts — pairing each role's file for a round and requiring both to be approving — including the case where one role's file for that round is missing. **(v1.2)** Must state the **role-asymmetric branch** explicitly: AC-1.1 computes the index per (feature, document type) *across roles*, so a branch where SE reached v13 while TE wrote only v1 gives TE a next index of v14 and no TE file at all for v2–v13. A role's absent `-vN` is treated as **not approving** for that round (fail-closed, consistent with AC-4.2a), so a gap can never pair into an approval; the FSPEC must say so rather than leave it to be inferred. |
-| O-19 *(v1.1, AC-3.1/AC-3.5; extended v1.2 and v1.3)* | FSPEC / TSPEC | Where `MAX_AUTHORING_WRITE_BYTES`, `MAX_AUTHORING_ATTEMPTS` and `MAX_AUTHORING_DISPATCHES` live (SKILL prose vs. workflow constant), and the oracles for AC-3.5d's two distinct exhaustion reports against the script-owned counters — never against a runtime counter (§4a A-2). **(v1.2)** Must include the negative case TE-v2 F-01 named: an artifact that acquires one AC-3.4-satisfying section per dispatch **must not** halt, and the positive case for AC-3.5c's reset (no-progress, no-progress, progress, no-progress ⇒ still running). Both counting rules must be exercised: consecutive-with-reset, and the cumulative cap. **(v1.3)** Three further obligations. (a) *TE-v3 F-03:* the phrase "how the pacing bound of AC-3.1a is checked in review" is **withdrawn** — §4a A-9 measured that it cannot be checked from the script. What the FSPEC/TSPEC must specify instead is the **commit-diff proxy** (a per-section commit whose diff exceeds `MAX_AUTHORING_WRITE_BYTES` is a reported violation; O-20 owns the check) and an explicit statement that no oracle for emitted bytes exists. (b) *TE-v3 F-01:* oracles for **mode selection** (AC-3.5's two-mode table) and for the revision-mode negative case — a feedback-addressing dispatch on an already-complete artifact that edits it **must not** score no-progress, and three consecutive such dispatches **must not** halt the phase. (c) *TE-v3 F-02 / SE-v3 F-03:* oracles for the **episode scope** — a five-round convergence with one dispatch per round must not trip `MAX_AUTHORING_DISPATCHES`, both counters must read zero at the start of each new round and of each fresh invocation, and an AC-3.5f exhaustion must be asserted to write **no** POSTMORTEM while still committing the `halted` row. **(v1.4)** Four further obligations. (d) *TE-v4 F-01:* an oracle for **mode stickiness** — an episode entered in revision mode whose first dispatch is killed after breaking structural completeness must remain in revision mode, must receive AC-3.5g's continuation prompt (not AC-3.3's resume prompt), and must **not** report terminal success while the round's findings are unaddressed. This is the fixture that fails under v1.3's per-dispatch selection, so it is not optional. (e) *SE-v4 F-03 / TE-v4 F-05:* an assertion over the **prompt the script emits** on every revision-mode re-dispatch — it carries the episode's findings and AC-3.5g's not-already-reflected clause; a re-dispatch prompt equal to the episode's original prompt is a failure. (f) *TE-v4 F-04:* oracles over the **wrapped population** of AC-3.5 scope (a) — a wrapped review dispatch reaching terminal on its verdict field, and an excluded code-writing dispatch demonstrably not wrapped. (g) *TE-v4 Q-01/Q-02:* the **working-tree** measurement (a write not yet committed counts as progress) and the **artifact-set** rules (a dispatch advancing one member of a TSPEC+DECISIONS set scores progress; terminal requires every required member; a DECISIONS that is not warranted is not a member). |
+| O-19 *(v1.1, AC-3.1/AC-3.5; extended v1.2 and v1.3)* | FSPEC / TSPEC | Where `MAX_AUTHORING_WRITE_BYTES`, `MAX_AUTHORING_ATTEMPTS` and `MAX_AUTHORING_DISPATCHES` live (SKILL prose vs. workflow constant), and the oracles for AC-3.5d's two distinct exhaustion reports against the script-owned counters — never against a runtime counter (§4a A-2). **(v1.2)** Must include the negative case TE-v2 F-01 named: an artifact that acquires one AC-3.4-satisfying section per dispatch **must not** halt, and the positive case for AC-3.5c's reset (no-progress, no-progress, progress, no-progress ⇒ still running). Both counting rules must be exercised: consecutive-with-reset, and the cumulative cap. **(v1.3)** Three further obligations. (a) *TE-v3 F-03:* the phrase "how the pacing bound of AC-3.1a is checked in review" is **withdrawn** — §4a A-9 measured that it cannot be checked from the script. What the FSPEC/TSPEC must specify instead is the **commit-diff proxy** (a per-section commit whose diff exceeds `MAX_AUTHORING_WRITE_BYTES` is a reported violation; O-20 owns the check) and an explicit statement that no oracle for emitted bytes exists. (b) *TE-v3 F-01:* oracles for **mode selection** (AC-3.5's two-mode table) and for the revision-mode negative case — a feedback-addressing dispatch on an already-complete artifact that edits it **must not** score no-progress, and three consecutive such dispatches **must not** halt the phase. (c) *TE-v3 F-02 / SE-v3 F-03:* oracles for the **episode scope** — a five-round convergence with one dispatch per round must not trip `MAX_AUTHORING_DISPATCHES`, both counters must read zero at the start of each new round and of each fresh invocation, and an AC-3.5f exhaustion must be asserted to write **no** POSTMORTEM while still committing the `halted` row. **(v1.4)** Four further obligations. (d) *TE-v4 F-01:* an oracle for **mode stickiness** — an episode entered in revision mode whose first dispatch is killed after breaking structural completeness must remain in revision mode, must receive AC-3.5g's continuation prompt (not AC-3.3's resume prompt), and must **not** report terminal success while the round's findings are unaddressed. This is the fixture that fails under v1.3's per-dispatch selection, so it is not optional. (e) *SE-v4 F-03 / TE-v4 F-05:* an assertion over the **prompt the script emits** on every revision-mode re-dispatch — it carries the episode's findings and AC-3.5g's not-already-reflected clause; a re-dispatch prompt equal to the episode's original prompt is a failure. (f) *TE-v4 F-04:* oracles over the **wrapped population** of AC-3.5 scope (a) — a wrapped review dispatch reaching terminal on its verdict field, and an excluded code-writing dispatch demonstrably not wrapped. (g) *TE-v4 Q-01/Q-02:* the **working-tree** measurement (a write not yet committed counts as progress) and the **artifact-set** rules (a dispatch advancing one member of a TSPEC+DECISIONS set scores progress; terminal requires every required member; a DECISIONS that is not warranted is not a member). **(v1.5)** Three further obligations, each with a fixture that fails under v1.4. (h) *TE-v5 F-01/F-02, R-12:* oracles for the **revision-completion trailer** — (h1) a dispatch that writes nothing and emits the trailer is **terminal**, and the phase must **not** halt (this is the fully-converged round that v1.4 halted, so it is not optional); (h2) a dispatch that is killed after applying some findings emits **no** trailer and is therefore **not** terminal even though the artifact is structurally complete, and the episode continues; (h3) all three A-8 surfacings (returns a value, returns nothing, throws) yield the same non-terminal conclusion, asserted without the test distinguishing them; (h4) the R-12 negative case — a trailer emitted while a finding is demonstrably unreflected is visible in the round's report rather than silent. (i) *SE-v5 F-01:* an oracle for **mode from prompt kind across the invocation seam** — a revision episode killed mid-edit, halted under AC-3.5f, the row reset, and the phase **re-invoked** must re-enter **revision** mode on the *same* round, carry AC-3.5g's continuation prompt with that round's findings, and must not report terminal success on structural completeness alone. v1.4 fails this fixture; O-19(d)'s within-episode stickiness oracle does not cover it. (j) *TE-v5 F-05:* an oracle for the **greenfield partial-section** case — a dispatch killed part-way through an over-budget section has produced bytes and completed no satisfying section, and must score **progress**; three such kills must **not** halt the phase. |
 | O-20 *(v1.1, AC-3.2a; extended v1.3)* | FSPEC | The per-section commit contract: the message form, staging scope, and the behavior when a commit fails mid-document (which must not leave the artifact looking structurally complete, AC-3.4). **(v1.3, TE-v3 F-03)** Additionally owns the **commit-diff proxy** for AC-3.1a: how a per-section commit's diff size is measured, the threshold it is compared against (`MAX_AUTHORING_WRITE_BYTES`), where the violation is reported, and — explicitly — that the proxy is advisory evidence of coarse pacing and is **not** an oracle for emitted bytes (§4a A-9), so it must not halt a run on its own. |
-| O-21 *(v1.2, AC-4.2b; extended v1.3)* | FSPEC | The **approval-record grammar** in `LEARNINGS-{feature}.md`: where the table sits, its columns, how `harvest-learnings` derives it from the artifacts it is about to delete, the tier-1/tier-2 precedence of AC-4.2b, and the behavior when LEARNINGS exists without the record (AC-4.2c) or with a record that disagrees with a surviving cross-review. Must share the closed catalogue of AC-4.3 with O-17's persisted field — one catalogue, two carriers. **(v1.3, SE-v3 F-01)** The column set is no longer O-21's to discover: AC-4.2b now fixes it at REQ altitude as document type, round index, role, verdict value, **approval-time content hash of the reviewed document**, and **approving commit sha**. O-21 specifies the hash **algorithm and canonicalisation** (what bytes are hashed — the document file as committed, byte-for-byte, is the expected answer), the field syntax, and the **derivation procedure**. *(v1.4, SE-v4 F-01 / TE-v4 F-03 — the derivation is corrected, and this is the operative clause: v1.3's "harvest must compute the hash from the document on disk" is **withdrawn**, because at Phase H that is the harvest-time document, not the approved one.)* Harvest **copies** the hash and the commit sha from the round's tier-1 record (AC-4.2d) and reads each verdict from the file it is about to delete; it may not recompute the hash, may not substitute a harvest-time hash, and must record the round with an unavailable-hash marker (⇒ AC-4.2a, phase runs) when tier 1 carries none. Verdicts and hashes are never narrated from memory (§4a A-7 records harvest already mis-stating what it deleted in the adjacent row). Must also specify the unparseable-hash case (AC-4.2a, phase runs) and the guard ordering fixed by AC-4.2c — the record is best-effort, `guard-harvest-before-delete` is not tightened, so the falsifying test is that a record-less LEARNINGS **passes** the guard and then fails closed. |
+| O-21 *(v1.2, AC-4.2b; extended v1.3)* | FSPEC | The **approval-record grammar** in `LEARNINGS-{feature}.md`: where the table sits, its columns, how `harvest-learnings` derives it from the artifacts it is about to delete, the tier-1/tier-2 precedence of AC-4.2b, and the behavior when LEARNINGS exists without the record (AC-4.2c) or with a record that disagrees with a surviving cross-review. Must share the closed catalogue of AC-4.3 with O-17's persisted field — one catalogue, two carriers. **(v1.3, SE-v3 F-01; column set corrected v1.5)** The column set is no longer O-21's to discover: AC-4.2b now fixes it at REQ altitude as document type, round index, role, verdict value, **approval-time content hash of the reviewed document**, and — *(v1.5, TE-v5 F-03)* — the **commit sha the reviewed document was at when it was sent for review** (the earlier "approving commit sha", meaning the cross-review files' own commit, is withdrawn as self-referential at tier 1). O-21 specifies the hash **algorithm and canonicalisation** and the field syntax. *(v1.5, SE-v5 F-06 — the canonicalisation referent is corrected: v1.3's "the document file as committed, byte-for-byte" is **withdrawn**, because AC-4.2d fixes the one referent as the bytes read from the working tree immediately before the review dispatch, and a "as committed" reading would give this mechanism a third referent. O-21 canonicalises **those** bytes and no others.)* *(v1.4, SE-v4 F-01 / TE-v4 F-03 — the derivation is corrected, and this is the operative clause: v1.3's "harvest must compute the hash from the document on disk" is **withdrawn**, because at Phase H that is the harvest-time document, not the approved one.)* Harvest **copies** the hash and the commit sha from the round's tier-1 record (AC-4.2d) and reads each verdict from the file it is about to delete; it may not recompute the hash, may not substitute a harvest-time hash, and must record the round with an unavailable-hash marker (⇒ AC-4.2a, phase runs) when tier 1 carries none. Verdicts and hashes are never narrated from memory (§4a A-7 records harvest already mis-stating what it deleted in the adjacent row). Must also specify the unparseable-hash case (AC-4.2a, phase runs) and the guard ordering fixed by AC-4.2c — the record is best-effort, `guard-harvest-before-delete` is not tightened, so the falsifying test is that a record-less LEARNINGS **passes** the guard and then fails closed. |
 | O-22 *(v1.2, AC-3.5e / §4a A-8)* | TSPEC / PROPERTIES | Oracles for the abnormal-termination path: a dispatch seam that can be made to throw, to return nothing, and to return normally without advancing, with the assertion that all three produce the same attempt accounting and the same operator-facing report shape. This is the path §H-3 actually took, so it is not an optional fixture. |
 
 ## 9. Traceability
@@ -1098,3 +1384,15 @@ finding that one of these is unspecified here is answered by this table.
 | CROSS-REVIEW-software-engineer-REQ-v4 F-03 + test-engineer-REQ-v4 F-05 (no prompt for the revision-mode continuation branch) | AC-3.5g, AC-3.5b bullet 2, R-10, O-19(e) |
 | CROSS-REVIEW-software-engineer-REQ-v4 F-04 (two numbering systems for one enumeration) | AC-3.5 scope (d) mode table (limbs 1/2/3) |
 | SE-v4 Q-01 / Q-02, TE-v4 Q-01 / Q-02 | AC-2.7a (operator-gated at the queue, no new status), AC-4.2d (hash captured at the approving round, copied by harvest), AC-3.5c (working-tree measurement), AC-3.5 scope (b) (artifact set) |
+| CROSS-REVIEW-software-engineer-REQ-v5 F-01 (mode selected from artifact state ⇒ greenfield flip survives the invocation seam) | AC-3.5 scope (d) (mode = dispatched prompt kind, revision test first, fail toward revision), AC-3.3 (resume is now a within-greenfield question), O-19(i) |
+| CROSS-REVIEW-test-engineer-REQ-v5 F-01 (revision terminal defined over an unobservable "returned normally") | AC-3.5b (terminal-first, trailer-based), AC-3.5g clause 4, AC-3.5e, R-12, O-17(d), O-19(h) |
+| CROSS-REVIEW-test-engineer-REQ-v5 F-02 (a converged revision round can never reach terminal ⇒ false halt) | AC-3.5b (progress not required on the terminal dispatch), AC-3.5g clause 4, R-12, O-19(h1) |
+| CROSS-REVIEW-software-engineer-REQ-v5 F-02 + test-engineer-REQ-v5 F-04 (hash sourced from the wrong read ⇒ tier 2 inert) | AC-4.2d (new pre-review read, not shared with AC-3.5), O-14(i) |
+| CROSS-REVIEW-software-engineer-REQ-v5 F-03 (no measured digest mechanism in the runtime) | §4a A-11, AC-4.2d (inlined pure-JS digest, C-5 boundary), O-17(a), O-14(iii) |
+| CROSS-REVIEW-software-engineer-REQ-v5 F-04 (direct-invocation recovery route mis-cited and strands the queue) | AC-2.7a (bypass not equivalent), AC-3.5f ("needs none" bullet retracted), AC-3.5d, §4a A-10 |
+| CROSS-REVIEW-test-engineer-REQ-v5 F-03 (a cross-review cannot carry the sha of its own commit) | AC-4.2b (reviewed document's commit sha), AC-4.2d, O-17(c), O-21 |
+| CROSS-REVIEW-test-engineer-REQ-v5 F-05 (greenfield partial-section write: predicate and clause disagree) | AC-3.5a (one mode-independent byte predicate), AC-3.5c ("on disk" clause is referent-only), R-9, O-7(i), O-19(j) |
+| CROSS-REVIEW-software-engineer-REQ-v5 F-06 (three referents for "the bytes") | AC-4.2d (one referent), AC-4.4, O-21 |
+| CROSS-REVIEW-test-engineer-REQ-v5 F-06 (`decisionsWarranted` is not a function at HEAD) | AC-3.5 scope (b) (`parseDecisionsWarranted`, `:1719`) |
+| CROSS-REVIEW-software-engineer-REQ-v5 F-05 + test-engineer-REQ-v5 F-07 (A-10 line numbers off by two) | §4a A-10, `Citation baseline` row |
+| SE-v5 Q-01 / Q-02, TE-v5 Q-01 / Q-02 | AC-4.4 (one hash comparison at both tiers ⇒ no history referent to perturb), AC-3.5 scope (d) rule 2 (same round, findings re-derived from surviving cross-reviews), AC-4.2d (write ordering, failed append is an error), AC-3.5 scope (c) (approval record is not part of LEARNINGS completeness) |
