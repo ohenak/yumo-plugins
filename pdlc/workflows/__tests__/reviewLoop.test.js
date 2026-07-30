@@ -3,7 +3,12 @@
  * PROP-LOOP-01 through PROP-LOOP-16
  */
 
-import { reviewLoop } from "../orchestrate-dev.js";
+import { readFileSync } from "fs";
+import { dirname, join } from "path";
+import { fileURLToPath } from "url";
+
+import main, { reviewLoop } from "../orchestrate-dev.js";
+import { fakeListFiles } from "./helpers/seams.js";
 
 let logMessages = [];
 const originalLog = console.log;
@@ -803,5 +808,126 @@ describe("Malformed trailer recovery (Haiku)", () => {
     expect(result.converged).toBe(true);
     expect(result.iterations).toBe(2);
     expect(optimizerCount).toBe(1);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RLH-22 — the review-window interface oracles for PLAN §11.5 `N-a`.
+//
+// PLAN §11.5 *decides* both interface shapes; this section is what makes the
+// decision falsifiable. Nothing below is negotiable by a later task — a task
+// that threads the window differently reds here, and editing the oracle to
+// green it is the §11.4 `H-q` halt, not a fix.
+//
+//   RLH-LOOP-01  `reviewLoop`'s two sibling fields `startIndex` / `endIndex`,
+//                its three new parameters (`docType`, `_listFiles`,
+//                `_readFile`) and absence of seed maps (TSPEC §3.9), the gate
+//                `if (iteration > endIndex)` reading `endIndex` as a consumed
+//                parameter, and `iteration` at every call site.
+//                RED batches 3–8, green from RLH-27 (batch 9); the call-site
+//                half greens at RLH-26 (batch 8).
+//   RLH-LOOP-02  the return shape's `postmortemWritten` / `trailerReason`
+//                (TSPEC §3.9, §5.6.1, §6.3) and `checkConverged`'s rendered
+//                `rounds {startIndex}..{endIndex}` (TSPEC §7.1 site 1), driven
+//                over `startIndex ≠ 1 ≠ endIndex` so a swapped positional pair
+//                is a named red. Green from RLH-27 (batch 9).
+//   RLH-LOOP-03  §11.5's single-computation rule: the literal
+//                `MAX_REVIEW_ROUNDS - 1` occurs exactly once in
+//                `orchestrate-dev.js` and outside the source spans of
+//                `reviewLoop` and `checkConverged`. Green from RLH-26 (batch 8).
+//
+// Spans are **measured** from the tree, never taken from a spec citation
+// (PLAN §2, DC-02): a `file:line` in the TSPEC/PLAN is evidence, not a literal.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const DEV_SOURCE_PATH = join(
+  dirname(fileURLToPath(import.meta.url)),
+  "..",
+  "orchestrate-dev.js"
+);
+
+/** The source text of `orchestrate-dev.js`, re-read per call so a concurrent edit cannot be cached. */
+function devSourceLines() {
+  return readFileSync(DEV_SOURCE_PATH, "utf8").split("\n");
+}
+
+/**
+ * PLAN §11.5's span rule, verbatim: a span runs from the function's declaration
+ * line to the first following line matching `^}\s*$` — a column-0 line that is a
+ * **lone** `}`. `^}` alone is wrong (TE round-4 `F-02`): a column-0 `}` followed
+ * by other tokens (`}) {`, `} = {}) {`) closes a destructured *parameter list*,
+ * not a body, which would place `reviewLoop`'s span end ~127 lines early and
+ * exempt the whole region the placement conjunct exists to forbid.
+ *
+ * @returns {{ startLine: number, endLine: number }} 1-based, inclusive.
+ */
+function measureSpan(lines, declPattern) {
+  const startLine = lines.findIndex((l) => declPattern.test(l)) + 1;
+  if (startLine === 0) {
+    throw new Error(`RLH-LOOP-03: no line matches ${declPattern} in orchestrate-dev.js`);
+  }
+  const endOffset = lines.slice(startLine).findIndex((l) => /^\}\s*$/.test(l));
+  if (endOffset === -1) {
+    throw new Error(
+      `RLH-LOOP-03: no line matching /^\\}\\s*$/ follows the declaration at :${startLine}`
+    );
+  }
+  return { startLine, endLine: startLine + endOffset + 1 };
+}
+
+/** 1-based line numbers on which `needle` occurs as a literal substring. */
+function literalOccurrenceLines(lines, needle) {
+  const hits = [];
+  lines.forEach((line, i) => {
+    if (line.includes(needle)) hits.push(i + 1);
+  });
+  return hits;
+}
+
+// ─── RLH-LOOP-03: `endIndex` is derived exactly once, at the phase gate ───────
+// PLAN §11.5 / §12.3, halt condition §11.4 `H-q`. Grep-shaped by construction —
+// the same instrument §12.3 already uses for `selectMode`, and deliberately not a
+// parser (PLAN §7.2's no-new-dependency rule and §12.3's "grep confirms").
+//
+// It exists because the one violation that matters is behaviourally invisible: a
+// recomputation of `startIndex + MAX_REVIEW_ROUNDS - 1` *inside* `reviewLoop`
+// yields an identical value, so RLH-LOOP-01's gate passes, RLH-LOOP-02's rendered
+// window passes, and every AT passes. TSPEC §7.1 edit 3 anchors the arithmetic
+// inside `reviewLoop` while PLAN §11.5 relocates it to the gate, so an
+// implementer following both documents literally writes it twice — that is the
+// innocent failure this red catches.
+describe("RLH-LOOP-03: the literal `MAX_REVIEW_ROUNDS - 1` is written exactly once, outside reviewLoop and checkConverged", () => {
+  const ARITHMETIC = "MAX_REVIEW_ROUNDS - 1";
+
+  test("RLH-LOOP-03a: `MAX_REVIEW_ROUNDS - 1` occurs exactly once in orchestrate-dev.js", () => {
+    const lines = devSourceLines();
+    const hits = literalOccurrenceLines(lines, ARITHMETIC);
+
+    // Zero at HEAD (no site derives the window yet) — RLH-26 writes the single
+    // gate-side occurrence. Two or more is the H-q halt, not a style nit.
+    expect({ occurrences: hits.length, lines: hits }).toEqual({
+      occurrences: 1,
+      lines: hits.length === 1 ? hits : [expect.any(Number)],
+    });
+  });
+
+  test("RLH-LOOP-03b: that occurrence lies outside the source spans of reviewLoop and checkConverged", () => {
+    const lines = devSourceLines();
+    const reviewLoopSpan = measureSpan(lines, /^export async function reviewLoop\(/);
+    const checkConvergedSpan = measureSpan(lines, /^function checkConverged\(/);
+
+    // Span ends are measured, never cited. Sanity-check the measurement itself so a
+    // span that collapsed onto a parameter-list `}) {` cannot make the placement
+    // conjunct pass vacuously (PLAN §11.5, TE round-4 F-02).
+    expect(reviewLoopSpan.endLine - reviewLoopSpan.startLine).toBeGreaterThan(20);
+    expect(checkConvergedSpan.endLine - checkConvergedSpan.startLine).toBeGreaterThan(5);
+
+    const hits = literalOccurrenceLines(lines, ARITHMETIC);
+    const inSpan = (n, s) => n >= s.startLine && n <= s.endLine;
+    const misplaced = hits.filter(
+      (n) => inSpan(n, reviewLoopSpan) || inSpan(n, checkConvergedSpan)
+    );
+
+    expect({ hits, misplaced }).toEqual({ hits: [expect.any(Number)], misplaced: [] });
   });
 });
