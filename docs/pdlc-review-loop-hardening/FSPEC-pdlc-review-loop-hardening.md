@@ -651,6 +651,175 @@ DOD rows. The *catalogue* is shared should a future row bring Phase DOD into sco
 
 ## 7. FSPEC-DIGEST-01 — Content digest, hash capture, and write ordering
 
+**Linked requirements:** AC-4.2d (all five bullets), AC-4.2b (the two anchor columns), AC-4.4, §4a
+A-11, C-2, C-5. **Discharges the hash half of O-17.**
+
+### 7.1 The one referent for "the bytes" (AC-4.2d, carried through unchanged)
+
+There is exactly **one** referent, fixed at REQ altitude, and this document does not add a second:
+
+> **the exact bytes of the reviewed document read from the working tree immediately before the review
+> dispatch.**
+
+Three consequences the REQ already fixed, restated here because every clause below depends on them:
+
+1. The read is **new** and is **not shared** with any AC-3.5 measurement. AC-4.2d retracted the v1.4
+   "same single pre-dispatch read the round already performs" wording as naming the wrong seam: the
+   *authoring* episode's pre-episode measurement is taken **before** that round's authoring pass (for a
+   greenfield round 1 the document does not yet exist; for a revision round it holds the *previous*
+   round's bytes), and the *review* episode's pre-episode measurement is over the reviewer's own
+   `CROSS-REVIEW-*` file, not the reviewed document at all. An implementation that reuses an AC-3.5
+   measurement is a **defect**, not an optimisation.
+2. The referent is the **working tree**, the same rule as AC-3.5c. The read is taken *after* the round's
+   authoring commits, so under AC-3.2a's cadence the working tree and HEAD coincide; where a later
+   uncommitted edit makes them diverge, the recorded hash will not match and the skip is denied — the
+   fail-closed direction R-1 requires.
+3. §9's canonicalisation and §10's comparison are over **these** bytes and no others. The withdrawn
+   "the document file as committed, byte-for-byte" reading of O-21 v1.3 would have been a third
+   referent and is not specified anywhere in this document.
+
+### 7.2 The digest mechanism — an inlined pure-JS function (§4a A-11)
+
+**Chosen: a pure-JS digest function inlined into the workflow bundle, computed over bytes the script
+already holds from the injected read seam.**
+
+§4a A-11 measured that the runtime has no digest primitive — no `crypto` among the eleven host globals,
+and C-2 forbids the `import` that would supply one — and that the repo's two sha1 producers are both
+unreachable from a bundle: `build-runtime.mjs` (`import { createHash } from "crypto"`, and its manifest
+row builder's `createHash("sha1").update(contents, "utf8").digest("hex")`) is Node-side, and
+`pdlc/hooks/scripts/lib/pdlc-drift.sh`'s `pdlc_probe_hash_tool` (resolving `shasum` / `sha1sum` on
+`PATH` into `PDLC_HASH_BIN`) is shell-side.
+
+**Rejected: an agent-relayed `shasum` through the adapter's Bash seam.** It is how `git` and `gh`
+reach the runtime today (`runtime-adapter.js`'s header line "`gh` and `git` invocations → an agent with
+Bash"), so it would have been the path of least resistance. It is rejected because it puts the
+**load-bearing value** behind a model relaying text — the narration risk AC-4.2b and §4a A-7 already
+document, where harvest's own `Harvested from` row mis-states what it deleted — and it would make a
+deterministic comparison depend on a response the script cannot verify.
+
+| Aspect | Specification |
+|---|---|
+| Algorithm | **SHA-256**, implemented as pure JavaScript over the canonicalised byte sequence of §7.3, emitting **64 lowercase hex characters**. |
+| Why SHA-256 and not sha1 | The repo's existing sha1 uses are *drift detection over files the repo itself generated*; this hash is an **approval anchor** an operator may audit months later, and a collision here silently grants a skip over unreviewed bytes (R-1). A wider digest costs nothing at these sizes, and there is no interop requirement pulling toward sha1 — nothing compares this value against `distribution-manifest.json`'s sha1s. |
+| Purity | No host global beyond arithmetic and typed arrays. No `crypto`, no `import`, no `process`, no `fetch` (C-2). It must survive `runtimeBundle.test.js`'s structural assertions. |
+| Where it lives | A named function in `pdlc/workflows/orchestrate-dev.js`, exported for jest, stripped to a plain declaration by the build's `stripModuleSyntax` (its `.replace(/^export (const\|let\|var\|function\|async function\|class) /gm, "$1 ")` rule) — the same treatment `parseVerdict` already receives. It is therefore **inlined by the existing build**, with no new build step. |
+| Synchronous | The digest takes bytes and returns a string. It performs no IO, so it is **not** an injected seam and **not** awaited. Only the read that supplies its input is awaited. |
+
+**The single-implementation requirement (O-17(a), AC-4.2d).** **One** function serves the write path
+and **every** read path. Concretely: the pre-review capture (§7.4), the tier-1 comparison (§10.2), the
+tier-2 comparison (§10.3), and any diagnostic that prints a hash all call the same named function with
+the same canonicalisation applied by that function itself — the canonicalisation is **inside** the
+digest function, not at its call sites, so a call site cannot forget it. "A hash that two call sites
+compute differently is worse than no hash": AC-4.2d states the requirement, and putting
+canonicalisation inside the function is how this document makes it unforgettable rather than merely
+required. The TSPEC owes the fixture (O-14(iii)).
+
+**The C-5 boundary, stated precisely so it is not overread.** The **digest and the comparison** are
+computed by the script from bytes it holds. The **transport** of those bytes is `_readFile`, which in
+this runtime is implemented as an `agent()` call (`rtReadFile`, whose prompt instructs "Return ONLY its
+exact, complete contents as your final message" and returns `null` on the `__PDLC_FILE_MISSING__`
+sentinel) — because in this runtime *every* read is an agent call. **No agent is ever asked to compute,
+compare, or report a hash.**
+
+### 7.3 Canonicalisation
+
+The digest is taken over the bytes as read, with exactly two normalisations and no others:
+
+| # | Normalisation | Why |
+|---|---|---|
+| N-1 | Line endings normalised to `\n` (a `\r\n` or lone `\r` becomes `\n`) | The transport is a text round-trip through an agent response; a line-ending change is not a content change, and letting it deny every skip would make AC-4 inert for a reason unrelated to review. |
+| N-2 | Exactly one trailing `\n`; other trailing whitespace-only content at end-of-file is removed | `rtReadFile`'s prompt explicitly forbids added blank lines ("no leading or trailing blank lines you add yourself"), but a trailing-newline discrepancy is the single most likely transport artefact and is never a content change. |
+
+**Explicitly not normalised:** internal whitespace, indentation, blank lines between sections, heading
+capitalisation, table alignment, character case, or Unicode form. Any of those changing **is** a
+content change and must deny the skip. Normalising further would launder edits, which R-1 forbids.
+
+The two normalisations are applied **inside** the digest function (§7.2), so tier 1, tier 2 and the
+capture path cannot disagree about them.
+
+### 7.4 Capture point, write ordering, and the failed-append branch
+
+**Who captures, and from what (AC-4.2d).** The **script**, from a read taken for this purpose. For
+each round it dispatches, the script performs a **new** `_readFile` of the reviewed document
+immediately before sending it for review, digests those bytes, and holds the value for the duration of
+the round.
+
+**Ordering (AC-4.2d's fifth bullet, answering TE-v5 Q-01):**
+
+```
+t0  script reads the reviewed document           → bytes B          (§7.1's referent)
+t1  hash  ← digest(B)                            (pure, no IO)
+t2  sha   ← the commit sha the reviewed document is at              (§7.5)
+t3  reviewer dispatch(es) for this round         (the AC-3.5-wrapped review episode)
+t4  the review episode reaches TERMINAL on each cross-review file   (§16.3)
+t5  script APPENDS the two anchor lines to each of that round's cross-review files
+t6  script commits the append                    (§7.6)
+```
+
+**The append's shape.** Append-only, never a rewrite:
+
+```markdown
+
+APPROVAL-HASH: sha256:{64 lowercase hex}
+REVIEWED-COMMIT: {40 lowercase hex | unavailable}
+```
+
+appended to the end of the file, after the `## Verdict` section of §6.2, via `_appendFile`. Two REQ
+clauses force this shape: AC-1.4 forbids overwriting a cross-review file, and AC-3.1a forbids a
+whole-file rewrite of a document over `MAX_AUTHORING_WRITE_BYTES` — and a replace-shaped edit would
+emit match + replacement, roughly double. An append emits only the two lines.
+
+**Three consequences the REQ fixed, and their implementation:**
+
+| REQ clause | Implementation |
+|---|---|
+| "The append is the **script's own** write, not a dispatch, so it is not a member of any AC-3.5 measurement and cannot disturb the terminal decision that preceded it." | The append happens strictly after t4. The wrapper's terminal measurement on that file is **final** before the append happens; the wrapper is not re-entered afterwards. §16.3's completeness criterion is the `VERDICT:` field, which the append does not touch. |
+| "The append therefore lands *after* the reviewer's commit. That window is irrelevant, because neither tier's staleness test measures a position in history." | §10 designs **no** history walk at either tier. There is no history referent for the append's own commit to move. This is what dissolves SE-v5 Q-01 rather than answering it. |
+| "A **failed append** is an error surfaced to the operator, not a silent degradation." | On `_appendFile` rejecting, or on the post-append verification read failing to find exactly one `APPROVAL-HASH:` line: the script emits an operator-facing error naming the file and the failure, and **that round yields no approval**. §10.5's no-parseable-hash branch then governs on any later re-entry: the phase runs. **Recording the approval without the hash is forbidden.** The append failure does **not** halt the current run — the round's review verdict is already known from the response trailer and the pipeline continues normally; what is lost is only the future skip. |
+
+**Idempotence on re-entry (O-17(b)).** Before appending, the script counts `APPROVAL-HASH:`-prefixed
+lines in the file. Zero ⇒ append. One ⇒ **skip the append** and verify the existing value equals the
+value just computed; if it differs, that is an operator-surfaced error and the round yields no
+approval (two different anchors for one round is unresolvable, and choosing either is fail-open). Two
+or more ⇒ operator-surfaced error, round yields no approval (§6.3's duplication direction). This makes
+a re-entered round that re-dispatches its reviewers safe: the anchor is written once and never
+silently changed.
+
+### 7.5 The reviewed document's commit sha (AC-4.2b, TE-v5 F-03 carried through)
+
+The second anchor column is **the commit sha the reviewed document was at when it was sent for
+review** — obtained at `t2` via `_git` (`git log -1 --format=%H -- {docPath}`, or equivalently the
+current `HEAD` given AC-3.2a's cadence puts the round's authoring commits behind it).
+
+**What was retracted, and why the FSPEC must not reinstate it.** v1.2–v1.4 specified this column as
+"the commit sha that round's approving cross-review files were committed at". TE-v5 F-03 retracted it
+as **unimplementable at tier 1**: AC-4.2d has the script write the field *into* those cross-review
+files, and the sha of the commit that contains a file cannot be a field of that file — the value did
+not exist at the instant it was required. The reviewed document's own commit is knowable at `t2`, is
+not self-referential, and names the commit of the very bytes the hash covers.
+
+**It is corroborating context only.** The hash is the load-bearing field. Nothing in AC-4 may be
+defined over the sha (O-8), nothing resolves `git show {sha}:{path}` at read time, and its
+unresolvability after a squash merge or a rebase costs nothing. When `_git` cannot produce a sha (a
+document not yet committed, a `_git` failure), the column is written as the literal `unavailable` —
+which is **not** the fail-closed trigger, because the sha is not load-bearing. Only a missing or
+unparseable `APPROVAL-HASH:` denies approval (§10.5).
+
+### 7.6 Committing the anchor lines
+
+The append is committed by the script through `_git`, using the same commit mechanics §13.2 specifies
+for the queue row (staging scope limited to the named paths, one commit, no `-A`), with the message:
+
+```
+chore(pdlc): record approval anchor for {feature} {docType} round {N}
+```
+
+If the commit fails while the append succeeded, the anchor is on disk in the working tree and §7.1's
+working-tree referent means the *next* read of the cross-review file still finds it. The failure is
+reported (§13.4's catalogue) but does not deny the approval, because the value is present at the
+referent the comparison uses. This is the one place a git failure is non-fatal, and it is because the
+comparison was deliberately defined over the working tree rather than over history.
+
 ## 8. FSPEC-TRAILER-01 — The revision-completion trailer
 
 ## 9. FSPEC-APPROVAL-01 — The tier-2 approval record in LEARNINGS
