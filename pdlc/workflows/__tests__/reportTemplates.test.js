@@ -58,3 +58,88 @@ const SWEPT_SOURCES = [
   "orchestrate-queue.js",
   "runtime-adapter.js",
 ];
+
+// ─── The oracle ───────────────────────────────────────────────────────────────
+//
+// Text/regex-shaped, no parser and no new dependency (PLAN §12.3's grep-shaped
+// oracles; brief halt condition H-n).
+//
+// A *half-substituted* template is the falsifiable, machine-decidable form of
+// TSPEC §6.3's rule: a single whitespace-delimited token that carries BOTH a
+// real `${…}` interpolation AND a bare `{placeholder}`. That token was written
+// as one interpolated string and one of its placeholders was left behind — the
+// exact shape of `checkConverged`'s
+//   `docs/{feature}/POSTMORTEM-${phaseId}-{feature}.md`
+// and of `reviewerPrompt`'s
+//   `docs/${feature}/CROSS-REVIEW-${role}-{DOC-TYPE}-v${prev}.md`.
+//
+// Why token-scoped rather than string-scoped: a wholly un-interpolated brace
+// pattern is a *legitimate* operator-facing construct — `main()`'s usage halt
+// prints the literal pattern `docs/{feature}/REQ-{feature}.md` so the operator
+// knows the shape to supply, and the phase table's `creatorOutputPath` entries
+// are templates by design, substituted downstream. Scoping to the token keeps
+// those green while still flagging a mixed token that sits inside prose (e.g.
+// `optimizerPrompt`'s parenthesised path). No allow-list, no `file:line`
+// exemption, nothing to maintain per site.
+//
+// Known and accepted limit, stated so it is not mistaken for coverage: a report
+// string in which *every* placeholder is un-substituted is textually
+// indistinguishable from a deliberate pattern message and is not flagged. TSPEC
+// §6.3's live defects, and every defect of the class it names, are mixed.
+
+/** A bare `{ident}` placeholder — `$`-prefixed interpolations excluded. */
+const PLACEHOLDER = /(?:^|[^$])\{[A-Za-z][A-Za-z0-9_-]*\}/;
+
+/**
+ * Blank out comment text so JSDoc `@param {string}` tags and prose that quotes
+ * a template are not mistaken for emitted strings. Block comments are replaced
+ * space-for-space to keep line numbers exact; only line-leading `//` comments
+ * are dropped, so a `//` inside a string literal can never truncate it.
+ * @param {string} src
+ * @returns {string}
+ */
+function stripComments(src) {
+  return src
+    .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, " "))
+    .split("\n")
+    .map((line) => (/^\s*\/\//.test(line) ? "" : line))
+    .join("\n");
+}
+
+/**
+ * Sweep one source for half-substituted template tokens.
+ * @param {string} file - basename under `pdlc/workflows/`
+ * @returns {{ findings: Array<{file:string,line:number,token:string}>,
+ *             interpolatedTokens: number }}
+ */
+function sweepSource(file) {
+  const src = stripComments(readFileSync(join(WORKFLOWS, file), "utf8"));
+  const findings = [];
+  let interpolatedTokens = 0;
+  src.split("\n").forEach((line, index) => {
+    for (const token of line.split(/\s+/)) {
+      if (!token.includes("${")) continue;
+      interpolatedTokens += 1;
+      if (PLACEHOLDER.test(token)) {
+        findings.push({ file, line: index + 1, token });
+      }
+    }
+  });
+  return { findings, interpolatedTokens };
+}
+
+/**
+ * Sweep every source in `SWEPT_SOURCES`.
+ * @returns {{ findings: Array<{file:string,line:number,token:string}>,
+ *             interpolatedTokens: number, filesSwept: number }}
+ */
+function sweepAll() {
+  let findings = [];
+  let interpolatedTokens = 0;
+  for (const file of SWEPT_SOURCES) {
+    const result = sweepSource(file);
+    findings = findings.concat(result.findings);
+    interpolatedTokens += result.interpolatedTokens;
+  }
+  return { findings, interpolatedTokens, filesSwept: SWEPT_SOURCES.length };
+}
