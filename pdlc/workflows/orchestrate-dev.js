@@ -800,6 +800,15 @@ export function approvalHashOf(text) {
 // All five are total, synchronous, take no seam, and read the artifact through
 // `scanLines`, so a marker quoted inside a fenced region never counts.
 
+/**
+ * The six skip-eligible phase ids `forcePhases` accepts, and the SAME array the
+ * operator-facing rejection message is rendered from (§5.7, §6.2 row 12), so the
+ * catalogue and the message cannot desynchronise. `PR` entered the catalogue at
+ * REQ/FSPEC v1.6; a hand-written message would have been the one site that kept
+ * silently teaching the operator the old five-token set.
+ */
+const FORCE_PHASE_TOKENS = Object.freeze(["R", "F", "T", "P", "D", "PR"]);
+
 /** `sha256:` + 64 lowercase hex — the only well-formed APPROVAL-HASH value. */
 const APPROVAL_HASH_VALUE_RE = /^sha256:[0-9a-f]{64}$/;
 /** A commit sha as `REVIEWED-COMMIT:` may carry it: abbreviated or full lowercase hex. */
@@ -1018,7 +1027,7 @@ export function extractRecommendation(fileText) {
 export function parseForcePhases(raw) {
   if (raw == null || String(raw).trim() === "") return { ok: true, phases: new Set() };
   const tokens = String(raw).split(/[,\s]+/).filter(Boolean);
-  const valid = ["R", "F", "T", "P", "D", "PR"]; // six — "PR" added at REQ/FSPEC v1.6
+  const valid = FORCE_PHASE_TOKENS; // six — "PR" added at REQ/FSPEC v1.6
   const bad = tokens.filter((t) => t !== "all" && !valid.includes(t));
   if (bad.length) return { ok: false, badTokens: bad };
   return { ok: true, phases: tokens.includes("all") ? new Set(valid) : new Set(tokens) };
@@ -3483,6 +3492,15 @@ export default async function main({
   const phases = [];
   let haltReason;
 
+  /**
+   * §5.8/§4.7: an unresolved POSTMORTEM found on a SKIP path. The state is real
+   * whether or not the phase ran, so `postmortemStatus`/`postmortemPath` carry
+   * it on a successful run too — `haltPhase` staying `null` is what tells the
+   * operator this was "skipped, and by the way there is an open POSTMORTEM
+   * here" rather than "refused because of it".
+   */
+  let skipPostmortem = null;
+
   function recordPhase(phaseId, label, status, detail, iterations) {
     phases.push({
       phase: phaseId,
@@ -3510,6 +3528,123 @@ export default async function main({
     if (!state.ok) throw haltError(state.message);
     return state;
   }
+
+  // ─── TSPEC §2.5 — the phase gate (steps 1–4 and step G) ──────────────────
+
+  /**
+   * §4.7's report LINES — the skip notice's siblings. Additive on every report,
+   * so a note ("this anchor was UNEVALUABLE") reaches the operator without being
+   * smuggled into a phase row's `detail`, which other oracles pin verbatim.
+   */
+  const notices = [];
+
+  /**
+   * Set when §2.5 step G refuses a phase, so §4.7's `postmortemStatus` reports
+   * `"unresolved"` rather than the `"written"` a plain existence check would
+   * infer. `haltPhase` still names the phase — that field is what distinguishes
+   * "refused because of it" from a skip that merely mentions one.
+   */
+  let gatePostmortem = null;
+
+  /**
+   * Run §2.5 steps 1–4 and step G for one skip-eligible phase entry.
+   *
+   * Called BEFORE the phase's creator dispatch, because a skip elides the whole
+   * phase and a creator that had already run would have rewritten the very
+   * document the approval was anchored to.
+   *
+   * @param {{phaseId: string, docType: string, docPath: string}} arg
+   * @returns {Promise<{skip: true}|{skip: false, window: object, forced: boolean}>}
+   */
+  async function phaseGate({ phaseId, docType, docPath }) {
+    const label = PHASE_DISPATCH[phaseId].label;
+    // Step 1. Force overrides a recorded APPROVAL — steps 3 and 4, and only
+    // those. Step 2 is NOT skipped: entering reviewLoop on the shipped
+    // `iteration = 1` default re-creates H-1 on exactly the path an operator
+    // reaches for BECAUSE the phase was reviewed before (§5.7, RLH-AT-01a).
+    const forced = forcedPhases.has(phaseId);
+
+    // Step 2 — the branch-derived round window.
+    const window = await phaseWindow(docType);
+
+    if (!forced) {
+      // Step 3 — the approval search. Tier 1's reads already happened above.
+      let record = tier1ApprovalRecord({
+        reviewers: PHASE_DISPATCH[phaseId].reviewers,
+        startIndex: window.startIndex,
+        reviewFiles: window.reviewFiles,
+      });
+      if (record.tier1Empty) {
+        record = await tier2ApprovalRecord({
+          feature: featureName,
+          docType,
+          candidate: record.candidate,
+          reviewers: PHASE_DISPATCH[phaseId].reviewers,
+          _readFile: readFileFn,
+        });
+      }
+      for (const path of record.unevaluable) {
+        notices.push(
+          `Phase ${phaseId}: approval anchor UNEVALUABLE at ${path} — the phase runs.`
+        );
+      }
+
+      if (record.approving) {
+        // Step 4 — staleness. §5.5 rule 1: the bytes are read AT COMPARISON
+        // TIME, never from a read cached earlier in the run.
+        const freshness = isStale(record.hash, await readFileFn(docPath));
+        if (freshness === "FRESH") {
+          // The phase does not run. `checkPostmortem` is still evaluated, for
+          // REPORTING ONLY — AC-2.3's refusal is conditioned on the phase
+          // otherwise running, so a skip has nothing to refuse (§6.2 row 13a).
+          const pm = await checkPostmortem({
+            phase: phaseId,
+            feature: featureName,
+            _readFile: readFileFn,
+          });
+          let detail = `Skipped — approved round ${record.candidate}, hash FRESH`;
+          if (pm.status === "unresolved") {
+            detail += `; unresolved POSTMORTEM at ${pm.path}`;
+            skipPostmortem = pm;
+          }
+          recordPhase(phaseId, label, "⏭", detail);
+          return { skip: true };
+        }
+        if (freshness === "UNEVALUABLE") {
+          notices.push(
+            `Phase ${phaseId}: ${docPath} could not be compared against the recorded approval — the phase runs.`
+          );
+        }
+      }
+    }
+
+    // Step G — G-INV. Every exit that leads to running the phase arrives here,
+    // forced or not, and step 5 is reachable only through it. Force never
+    // overrides a recorded FAILURE (§5.7, §6.2 row 13, AC-4.6a).
+    const gate = await checkPostmortem({
+      phase: phaseId,
+      feature: featureName,
+      _readFile: readFileFn,
+    });
+    if (gate.status === "unresolved") {
+      gatePostmortem = gate;
+      recordPhase(phaseId, label, "❌", `Refused — unresolved POSTMORTEM at ${gate.path}`);
+      throw haltError(
+        `Phase ${phaseId} refused: an unresolved POSTMORTEM at ${gate.path} records a previous failure. ` +
+          `Resolve it per AC-2.4 (set RESOLVED: yes) and re-run. Recommendation: ${gate.recommendation || "(none recorded)"}`
+      );
+    }
+
+    return { skip: false, window, forced };
+  }
+
+  /**
+   * §4.7's force-override notice, folded into the phase row so the run's own
+   * record says the phase was forced. The wording is not pinned to a literal
+   * anywhere in the TSPEC; that it is *said* is (RLH-AT-28).
+   */
+  const forcedDetail = (detail, forced) =>
+    forced ? `${detail} — forced (recorded approval overridden)` : detail;
 
   /** The seams every wrapped dispatch and every reviewLoop entry shares. */
   const wrapperSeams = {
@@ -3567,6 +3702,28 @@ export default async function main({
 
   const featureName = match[1];
 
+  // ─── TSPEC §5.7 / §6.2 row 12 — the forcePhases gate ──────────────────────
+  //
+  // An invalid token halts BEFORE any phase runs. The catalogue and the message
+  // are rendered from the same array, so they cannot desynchronise.
+
+  const forceParse = parseForcePhases(forcePhases);
+  if (!forceParse.ok) {
+    haltReason =
+      `Error: invalid forcePhases token${forceParse.badTokens.length === 1 ? "" : "s"}: ` +
+      `${forceParse.badTokens.join(", ")}. Valid: ${[...FORCE_PHASE_TOKENS, "all"].join(", ")}.`;
+    return buildFinalReport({
+      feature: featureName,
+      outcome: "halted",
+      phases,
+      artifactPaths: [],
+      testSummary: "Not run",
+      harvestStatus: "Not run",
+      haltReason,
+    });
+  }
+  const forcedPhases = forceParse.phases;
+
   // ─── TSPEC-ENTRY-03: deterministic REQ file existence check ───────────────
 
   const reqCheck = await checkFileFn(reqPath);
@@ -3600,7 +3757,9 @@ export default async function main({
     await pipelineFn("PDLC Pipeline", async () => {
       // ─── Phase R: REQ Cross-Review ───────────────────────────────────────
       phaseFn("Phase R: REQ Cross-Review");
-      const rWindow = await phaseWindow("REQ");
+      const rGate = await phaseGate({ phaseId: "R", docType: "REQ", docPath: reqPath });
+      if (!rGate.skip) {
+      const rWindow = rGate.window;
       const rLoop = await reviewLoop({
         doc: reqPath,
         phase: "R",
@@ -3616,11 +3775,15 @@ export default async function main({
         ...wrapperSeams,
       });
       checkConverged(rLoop, "R", PHASE_DISPATCH.R.label, recordPhase, featureName, rWindow.startIndex, rWindow.endIndex);
-      recordPhase("R", PHASE_DISPATCH.R.label, "✅", `Approved (${rLoop.iterations} iteration${rLoop.iterations !== 1 ? "s" : ""})`, rLoop.iterations);
+      recordPhase("R", PHASE_DISPATCH.R.label, "✅", forcedDetail(`Approved (${rLoop.iterations} iteration${rLoop.iterations !== 1 ? "s" : ""})`, rGate.forced), rLoop.iterations);
+      }
 
       // ─── Phase F: FSPEC Creation + Review ───────────────────────────────
       phaseFn("Phase F: FSPEC Creation + Review");
       const fspecPath = `docs/${featureName}/FSPEC-${featureName}.md`;
+      const fGate = await phaseGate({ phaseId: "F", docType: "FSPEC", docPath: fspecPath });
+      artifactPaths.push(fspecPath);
+      if (!fGate.skip) {
       const fCreatorResult = await wrappedDispatch({
         skill: PHASE_DISPATCH.F.creator,
         basePrompt: creatorPrompt("F", featureName, PHASE_DISPATCH.F.creatorInputs),
@@ -3634,8 +3797,7 @@ export default async function main({
           `Error: creator agent ${PHASE_DISPATCH.F.creator} failed to produce ${fspecPath} for phase F`
         );
       }
-      artifactPaths.push(fspecPath);
-      const fWindow = await phaseWindow("FSPEC");
+      const fWindow = fGate.window;
       const fLoop = await reviewLoop({
         doc: fspecPath,
         phase: "F",
@@ -3651,12 +3813,21 @@ export default async function main({
         ...wrapperSeams,
       });
       checkConverged(fLoop, "F", PHASE_DISPATCH.F.label, recordPhase, featureName, fWindow.startIndex, fWindow.endIndex);
-      recordPhase("F", PHASE_DISPATCH.F.label, "✅", `Approved (${fLoop.iterations} iterations)`, fLoop.iterations);
+      recordPhase("F", PHASE_DISPATCH.F.label, "✅", forcedDetail(`Approved (${fLoop.iterations} iterations)`, fGate.forced), fLoop.iterations);
+      }
 
       // ─── Phase T: TSPEC Creation + Review ───────────────────────────────
       phaseFn("Phase T: TSPEC Creation + Review");
       const tspecPath = `docs/${featureName}/TSPEC-${featureName}.md`;
-      const tCreatorResult = await wrappedDispatch({
+      const tGate = await phaseGate({ phaseId: "T", docType: "TSPEC", docPath: tspecPath });
+      artifactPaths.push(tspecPath);
+      // Declared outside the gate's branch: Phase D's `DECISIONS_WARRANTED` read
+      // is downstream of Phase T and must survive a skipped Phase T, where the
+      // trailer was never re-emitted and the conservative answer is "no".
+      let tCreatorResult = null;
+      let tLoop = null;
+      if (!tGate.skip) {
+      tCreatorResult = await wrappedDispatch({
         skill: PHASE_DISPATCH.T.creator,
         basePrompt: `${creatorPrompt("T", featureName, PHASE_DISPATCH.T.creatorInputs)}\n${decisionsWarrantedTrailerRequirement()}`,
         targetPath: tspecPath,
@@ -3669,9 +3840,8 @@ export default async function main({
           `Error: creator agent ${PHASE_DISPATCH.T.creator} failed to produce ${tspecPath} for phase T`
         );
       }
-      artifactPaths.push(tspecPath);
-      const tWindow = await phaseWindow("TSPEC");
-      const tLoop = await reviewLoop({
+      const tWindow = tGate.window;
+      tLoop = await reviewLoop({
         doc: tspecPath,
         phase: "T",
         docType: "TSPEC",
@@ -3686,7 +3856,8 @@ export default async function main({
         ...wrapperSeams,
       });
       checkConverged(tLoop, "T", PHASE_DISPATCH.T.label, recordPhase, featureName, tWindow.startIndex, tWindow.endIndex);
-      recordPhase("T", PHASE_DISPATCH.T.label, "✅", `Approved (${tLoop.iterations} iterations)`, tLoop.iterations);
+      recordPhase("T", PHASE_DISPATCH.T.label, "✅", forcedDetail(`Approved (${tLoop.iterations} iterations)`, tGate.forced), tLoop.iterations);
+      }
 
       // ─── TSPEC-DECISIONS-01: DECISIONS_WARRANTED read from Phase T ─────────
       // The trailer requirement is appended to the Phase T creator and optimizer
@@ -3694,7 +3865,7 @@ export default async function main({
       // post-PASS agent session. The last optimizer result carries it; if the loop
       // converged on iteration 1 (no optimizer run) the creator result does.
       const decisionsWarranted = parseDecisionsWarranted(
-        tLoop.lastOptimizerResult ?? tCreatorResult
+        (tLoop && tLoop.lastOptimizerResult) ?? tCreatorResult
       );
 
       // ─── Phase D: DECISIONS (conditional) ───────────────────────────────
@@ -3706,6 +3877,9 @@ export default async function main({
       } else {
         phaseFn("Phase D: DECISIONS Creation + Review");
         decisionsPath = `docs/${featureName}/DECISIONS-${featureName}.md`;
+        const dGate = await phaseGate({ phaseId: "D", docType: "DECISIONS", docPath: decisionsPath });
+        artifactPaths.push(decisionsPath);
+        if (!dGate.skip) {
         const dCreatorResult = await wrappedDispatch({
           skill: PHASE_DISPATCH.D.creator,
           basePrompt: creatorPrompt("D", featureName, PHASE_DISPATCH.D.creatorInputs),
@@ -3719,8 +3893,7 @@ export default async function main({
             `Error: creator agent ${PHASE_DISPATCH.D.creator} failed to produce ${decisionsPath} for phase D`
           );
         }
-        artifactPaths.push(decisionsPath);
-        const dWindow = await phaseWindow("DECISIONS");
+        const dWindow = dGate.window;
         const dLoop = await reviewLoop({
           doc: decisionsPath,
           phase: "D",
@@ -3736,7 +3909,8 @@ export default async function main({
           ...wrapperSeams,
         });
         checkConverged(dLoop, "D", PHASE_DISPATCH.D.label, recordPhase, featureName, dWindow.startIndex, dWindow.endIndex);
-        recordPhase("D", PHASE_DISPATCH.D.label, "✅", `Approved (${dLoop.iterations} iterations)`, dLoop.iterations);
+        recordPhase("D", PHASE_DISPATCH.D.label, "✅", forcedDetail(`Approved (${dLoop.iterations} iterations)`, dGate.forced), dLoop.iterations);
+        }
       }
 
       // ─── Phase P: PLAN Creation + Review ────────────────────────────────
@@ -3744,6 +3918,9 @@ export default async function main({
       const planPath = `docs/${featureName}/PLAN-${featureName}.md`;
       const pInputs = [...PHASE_DISPATCH.P.creatorInputs.filter(i => i !== "DECISIONS?")];
       if (decisionsPath) pInputs.push("DECISIONS");
+      const pGate = await phaseGate({ phaseId: "P", docType: "PLAN", docPath: planPath });
+      artifactPaths.push(planPath);
+      if (!pGate.skip) {
       const pCreatorResult = await wrappedDispatch({
         skill: PHASE_DISPATCH.P.creator,
         basePrompt: creatorPrompt("P", featureName, pInputs),
@@ -3757,8 +3934,7 @@ export default async function main({
           `Error: creator agent ${PHASE_DISPATCH.P.creator} failed to produce ${planPath} for phase P`
         );
       }
-      artifactPaths.push(planPath);
-      const pWindow = await phaseWindow("PLAN");
+      const pWindow = pGate.window;
       const pLoop = await reviewLoop({
         doc: planPath,
         phase: "P",
@@ -3774,11 +3950,15 @@ export default async function main({
         ...wrapperSeams,
       });
       checkConverged(pLoop, "P", PHASE_DISPATCH.P.label, recordPhase, featureName, pWindow.startIndex, pWindow.endIndex);
-      recordPhase("P", PHASE_DISPATCH.P.label, "✅", `Approved (${pLoop.iterations} iterations)`, pLoop.iterations);
+      recordPhase("P", PHASE_DISPATCH.P.label, "✅", forcedDetail(`Approved (${pLoop.iterations} iterations)`, pGate.forced), pLoop.iterations);
+      }
 
       // ─── Phase PR: PROPERTIES Creation + Review ──────────────────────────
       phaseFn("Phase PR: PROPERTIES Creation + Review");
       const propertiesPath = `docs/${featureName}/PROPERTIES-${featureName}.md`;
+      const prGate = await phaseGate({ phaseId: "PR", docType: "PROPERTIES", docPath: propertiesPath });
+      artifactPaths.push(propertiesPath);
+      if (!prGate.skip) {
       const prCreatorResult = await wrappedDispatch({
         skill: PHASE_DISPATCH.PR.creator,
         basePrompt: creatorPrompt("PR", featureName, PHASE_DISPATCH.PR.creatorInputs),
@@ -3792,8 +3972,7 @@ export default async function main({
           `Error: creator agent ${PHASE_DISPATCH.PR.creator} failed to produce ${propertiesPath} for phase PR`
         );
       }
-      artifactPaths.push(propertiesPath);
-      const prWindow = await phaseWindow("PROPERTIES");
+      const prWindow = prGate.window;
       const prLoop = await reviewLoop({
         doc: propertiesPath,
         phase: "PR",
@@ -3809,7 +3988,8 @@ export default async function main({
         ...wrapperSeams,
       });
       checkConverged(prLoop, "PR", PHASE_DISPATCH.PR.label, recordPhase, featureName, prWindow.startIndex, prWindow.endIndex);
-      recordPhase("PR", PHASE_DISPATCH.PR.label, "✅", `Approved (${prLoop.iterations} iterations)`, prLoop.iterations);
+      recordPhase("PR", PHASE_DISPATCH.PR.label, "✅", forcedDetail(`Approved (${prLoop.iterations} iterations)`, prGate.forced), prLoop.iterations);
+      }
 
       // ─── Phase I: Implementation ─────────────────────────────────────────
       phaseFn("Phase I: Implementation");
@@ -4071,7 +4251,13 @@ export default async function main({
     // narration — the whole of H-2 is that the two were assumed to agree.
     let postmortemStatus = "none";
     let postmortemPath = null;
-    if (haltPhase) {
+    // §6.2 row 13: a step-G refusal names an EXISTING, unresolved POSTMORTEM.
+    // The existence check below would call the same artifact `"written"` — the
+    // refusal's whole point is that it was not written by this run.
+    if (gatePostmortem) {
+      postmortemStatus = "unresolved";
+      postmortemPath = gatePostmortem.path;
+    } else if (haltPhase) {
       const candidate = `docs/${featureName}/POSTMORTEM-${haltPhase}-${featureName}.md`;
       let confirmation;
       try {
@@ -4117,12 +4303,17 @@ export default async function main({
       postmortemStatus,
       postmortemPath,
       queueRow,
+      notices,
     });
   }
 
   return buildFinalReport({
     feature: featureName,
     outcome: "success",
+    notices,
+    // §4.7: a phase skipped over an unresolved POSTMORTEM still reports it.
+    postmortemStatus: skipPostmortem ? "unresolved" : "none",
+    postmortemPath: skipPostmortem ? skipPostmortem.path : null,
     phases,
     artifactPaths,
     testSummary,
@@ -4201,6 +4392,7 @@ function buildFinalReport({
   postmortemStatus = "none",
   postmortemPath = null,
   queueRow = null,
+  notices = [],
 }) {
   return {
     feature,
@@ -4209,6 +4401,9 @@ function buildFinalReport({
     artifactPaths,
     testSummary,
     harvestStatus,
+    // §4.7's non-skip report lines. Carried as their own field rather than
+    // appended to a phase row's `detail`, which oracles pin verbatim.
+    notices,
     // §4.7's four halt-disposition fields ride on EVERY report, present with a
     // readable value on success too: a conditionally-spread field cannot express
     // "no POSTMORTEM", which is precisely the fact `RLH-AT-46` reads.

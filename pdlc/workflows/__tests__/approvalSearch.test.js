@@ -434,7 +434,17 @@ describe("RLH-AT-10: absent role file is not approving, and tier 2 is not read",
     // `test-engineer` one is discovered. This conjunct is the batch-3 red.
     expect(paths).toContain(crossReviewPath(SE_SLUG, 2));
     // …and tier 2 was NOT, because tier selection is exclusive.
-    expect(paths).not.toContain(LEARNINGS_PATH);
+    //
+    // The oracle is the reads that PRECEDE Phase F's first read of the FSPEC, not
+    // the whole run: Phase H's harvest dispatch reads `LEARNINGS-{feature}.md` for
+    // its own, unrelated reasons (`dispatchAndVerify`'s before/after measurement of
+    // its `targetPath`), which no correct §5.4 implementation can suppress. Phase F's
+    // gate runs strictly before that, and a cross-tier completion would land its
+    // tier-2 read inside this window — immediately after the tier-1 SE read above.
+    expect(paths).toContain(FSPEC_PATH);
+    const gateWindow = paths.slice(0, paths.indexOf(FSPEC_PATH));
+    expect(gateWindow).toContain(crossReviewPath(SE_SLUG, 2));
+    expect(gateWindow).not.toContain(LEARNINGS_PATH);
   });
 });
 

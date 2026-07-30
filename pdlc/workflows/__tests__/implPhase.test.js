@@ -505,7 +505,13 @@ describe("Phase I DAG parsing: parse-first, agent fallback on Haiku", () => {
     ].join("\n");
 
     const record = [];
-    const result = await main(baseArgs(record, { _readFile: () => planMd }));
+    // Scoped to the PLAN path. A blanket `() => planMd` also answers the
+    // `POSTMORTEM-{phase}-{feature}.md` probes TSPEC §5.8's step-G gate makes, and
+    // a non-empty POSTMORTEM with no `RESOLVED: yes` marker refuses the phase — a
+    // fixture artefact, not the DAG behaviour under test. The sibling case below
+    // already establishes that everything-null reaches Phase I.
+    const readPlanOnly = (path) => (String(path).includes("/PLAN-") ? planMd : null);
+    const result = await main(baseArgs(record, { _readFile: readPlanOnly }));
     expect(result.outcome).toBe("success");
 
     const dagAgentCalls = record.filter((c) =>
