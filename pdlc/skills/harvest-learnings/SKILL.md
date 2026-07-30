@@ -41,7 +41,21 @@ The argument is the feature's docs directory. Invoked by `orchestrate-dev` in Ph
    - Explicitly-rejected reviewer proposals where the reason matters later → §3 Rejected Proposals.
 5. **Be ruthless about signal.** Omit transient `Local` findings already fixed upstream — they are noise. A short, high-signal LEARNINGS beats an exhaustive one.
 6. **Flag, don't promote.** Anything you believe should become a project-level constraint or decision goes in §5 Open Items for Consolidation, for `consolidate-learnings` to act on later. You do not edit `docs/_constraints/` or `docs/_decisions/` yourself.
-7. Write the document, commit, push. Then delete the `CROSS-REVIEW-*` and `CODE_REVIEW-*` files, commit, push.
+7. **Build the Approval Record (`## 6. Approval Record`) before deleting anything.** Every `CROSS-REVIEW-*` whose `## Verdict` section is approving (`Approved` or `Approved with minor changes`) contributes one row, in the six columns below, in this order:
+
+   | Column | Value |
+   |---|---|
+   | Document Type | `REQ` \| `FSPEC` \| `TSPEC` \| `PLAN` \| `PROPERTIES` \| `DECISIONS` |
+   | Round | the same `N` as the filename's `-v{N}` (a file with no `-v{N}` is round 1) |
+   | Role | `product-manager` \| `software-engineer` \| `test-engineer` |
+   | Verdict | `Approved` \| `Approved with minor changes` \| `Needs revision` |
+   | Approval Hash | the file's `APPROVAL-HASH:` value — `sha256:{64 lowercase hex}` \| `unavailable` |
+   | Reviewed Commit | the file's `REVIEWED-COMMIT:` value — lowercase hex sha \| `unavailable` |
+
+   **Copy, never recompute.** Take the `APPROVAL-HASH:` and `REVIEWED-COMMIT:` bytes verbatim out of the cross-review file. Never recompute the digest and never substitute a harvest-time hash — recomputing at harvest time would hash the document as it stands *after* the phase, turning every harvested approval into a false "fresh" one. If either anchor line is missing, write `unavailable`; do not invent a value.
+
+   One row per (document type, round, role) — a round approved by two roles contributes two rows. Order the rows totally: document type in pipeline order (REQ → FSPEC → TSPEC → PLAN → PROPERTIES → DECISIONS), then round ascending, then role slug ascending, so the section is byte-stable across re-derivations.
+8. Write the document, commit, push. Then delete the `CROSS-REVIEW-*` and `CODE_REVIEW-*` files, commit, push.
 
 ---
 
@@ -86,6 +100,13 @@ Signals (Scope = Process, or repeated high-iteration loops) about how the workfl
 
 ## 5. Open Items for Consolidation
 Candidates for promotion that the harvest is not authorized to promote autonomously.
+
+## 6. Approval Record
+The durable (tier-2) record of every approving cross-review round, copied out of the `CROSS-REVIEW-*` files before they are deleted. Never omitted: a feature with no approving round still emits this heading and the header row, with no data rows.
+
+| Document Type | Round | Role | Verdict | Approval Hash | Reviewed Commit |
+|---|---|---|---|---|---|
+| TSPEC | 2 | software-engineer | Approved | sha256:{64 lowercase hex} | {lowercase hex sha \| unavailable} |
 ```
 
 ---
@@ -96,6 +117,7 @@ Candidates for promotion that the harvest is not authorized to promote autonomou
 - [ ] Every `Cross-Feature` finding appears in §2; every `Process` finding in §4
 - [ ] Iteration counts reflect the actual `-v{N}` versions present (including DoD rounds from `CODE_REVIEW-v{N}`)
 - [ ] Transient `Local` findings already fixed upstream are omitted (signal over completeness)
+- [ ] `## 6. Approval Record` is present (heading + header row even when there are no approving rounds), and its Approval Hash / Reviewed Commit cells were **copied verbatim, never recomputed**
 - [ ] LEARNINGS committed and pushed **before** any `CROSS-REVIEW-*` / `CODE_REVIEW-*` deletion
 - [ ] All harvested `CROSS-REVIEW-*` and `CODE_REVIEW-*` files deleted after LEARNINGS landed
 
