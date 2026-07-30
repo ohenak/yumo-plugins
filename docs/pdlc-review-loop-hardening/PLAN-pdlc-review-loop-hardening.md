@@ -763,28 +763,33 @@ saying so plainly is better than implying a stronger guarantee.
 `RLH-09` must additionally keep `__tests__/orchestrateDevSkill.test.js` green — that suite already
 asserts properties of `pdlc/skills/orchestrate-dev/SKILL.md` and is not owned by this feature.
 
-### 10.2 The known drift risk, and the mitigation that is already in the plan
+### 10.2 The known drift risk, and why this PLAN does not claim to detect it
 
-TSPEC §10.2 **Q-09** names it and binds it: §5.9's per-class heading lists live **in the workflow
-script**, while the templates authors actually follow live **in the SKILLs**. The two can drift, and the
-failure mode is asymmetric and nasty — a correct document scored incomplete, i.e. **a false halt**.
+TSPEC §10.2's **Q-09** names it and binds it: §5.9's per-class heading lists live in the workflow
+script, while the templates authors actually follow live in the SKILLs, and the two can drift.
 
-It is not closed here, deliberately: closing it means editing six SKILLs to declare their own heading
-templates machine-readably, which widens this feature's blast radius from the workflow scripts to the
-prompts driving every phase. It is bound to `docs/_queue/QUEUE.md` **Order 9**
-(`pdlc-authoring-contract`), and **this PLAN does not reopen it** — see §13.
+**v1.1 records this as accepted residual risk. This feature builds no drift detector, and no task in §4
+is asked to.** v1.0 implied otherwise in two places, and both are removed: §12.3 carried a "heading
+fixtures byte-identical to the SKILL templates" checklist row that **no task could satisfy**, and
+§11.3's `H-j` presupposed a test that would fire on drift. What RLH-12's fixtures actually are is a
+**point-in-time copy** of the templates as they stand when RLH-12 runs — they pin `isComplete`'s matcher
+against a real template shape, and they detect **no subsequent SKILL edit** whatever.
 
-The mitigation that *is* in this plan is mechanical and lives in one task:
+Why not build one here: a real detector must parse nine SKILL.md files for heading blocks, decide which
+blocks are templates, and compare them against a list embedded in a bundle that cannot `import`
+anything (§9.1). That is a feature with its own REQ, not a checklist row. It is bound to
+`docs/_queue/QUEUE.md` **Order 9** beside TSPEC Q-09 and `P-Q-05`, where this same class of
+prompt-versus-code coupling already sits.
 
-> **`RLH-12` takes `completeness.test.js`'s heading fixtures verbatim from the SKILL templates**, which
-> is why it depends on `RLH-08` and `RLH-09` and sits in batch 4 rather than batch 2. A subsequent
-> divergence between a SKILL template and §5.9's list then **reds the suite rather than a run.**
+What this feature does instead — and this is the honest whole of it:
 
-Two things follow that a task must not do:
-- do not paraphrase a heading when copying it into a fixture. A paraphrase silently re-couples the
-  fixture to the script instead of to the SKILL, and the mitigation evaporates.
-- do not "fix" a red `completeness.test.js` by editing the fixture to match the script. If they diverge,
-  that is the drift the test exists to announce — §11's halt conditions apply.
+- RLH-04's `RLH-SKILL-01` … `RLH-SKILL-09` assert each amendment's **presence and grammar** in the SKILL
+  file, so an amendment silently reverted by a later edit does red (§10.1, layer 1);
+- RLH-12's fixtures pin the template shape `isComplete` matches at the moment they are written;
+- the residual gap — a SKILL heading edited *after* RLH-12 — is **announced, not covered**.
+
+Anyone editing a §5.9 heading list or a SKILL template must update the other in the same commit. That
+instruction is the mitigation. There is no test behind it, and this PLAN does not pretend there is.
 
 ### 10.3 The one thing prompts cannot be held to
 
@@ -826,7 +831,7 @@ reconcile two statements on their own authority.
 |---|---|---|
 | H-h | `RLH-AT-19` reds on source the agent believes correct | **Halt.** Do not widen the regex, do not add a name to an exemption list, do not switch the closed thirteen-name set to a derived one. Report the exact call site and the classification the test gave it. §9.2 explains why this test in particular must not be loosened |
 | H-i | `RLH-AT-64` names a parameter that falls in neither class | Halt. Either the parameter is a real seam that is unwired (fix the wiring) or the predicate has drifted (a spec question). **Do not add a name-based exemption** — the predicate is deliberately not a list of names |
-| H-j | `completeness.test.js` reds because a SKILL template and §5.9's heading list diverge | Halt and report both texts. §10.2: this is the drift the test exists to announce, and "fix the fixture" destroys the mitigation |
+| H-j | a `completeness.test.js` heading fixture no longer matches the SKILL template it was copied from | **Not a halt — and not a detected condition.** Nothing in this feature watches for it (§10.2). If a human notices, fix both sides in one commit and say which. Do **not** bolt a fixture-versus-SKILL comparison onto `completeness.test.js` under cover of this feature: that is Order 9 work, and a half-built detector is worse than the recorded gap |
 | H-k | The suite's single permitted failure changes identity — the red is no longer `documentOracles.test.js` `AT-22 [red-until-L-06]` | Halt. Never delete or `skip` that placeholder to get green; it is another feature's deferral marker (§2.1) |
 | H-l | `build-runtime.mjs --check` exits non-zero and a rebuild does not fix it | Halt. Something outside `dist/` is generating differently. Do not hand-edit `dist/` — §3.1 |
 
@@ -908,7 +913,7 @@ fail for the stated reason and every pre-existing test still passes.**
 
 - [ ] `ListFailure`'s dispositions are applied **unchanged at every call site** — the phase-entry
       derivation and `refreshReviewState` alike — and the three non-benign values produce **one** halt
-      shape, `Cannot enumerate {dirPath}: {reason}`, at both (TSPEC §4.2, §6.2 rows 1/2/17).
+  halt shape at both — the one TSPEC §6.2 row 2 fixes, cited not restated (TSPEC §4.2, §6.2 rows 1/2/17).
 - [ ] `selectMode` is the **only** producer of `EpisodeKey.mode`; grep confirms no other assignment.
 - [ ] `refreshReviewState` is called at **every** wrapped episode entry and there is **no** pre-loop
       snapshot; `reviewLoop` takes **no** seed maps.
@@ -926,7 +931,6 @@ fail for the stated reason and every pre-existing test still passes.**
 
 - [ ] All nine SKILL amendments of TSPEC §7.4 are present and asserted in `skillFiles.test.js`;
       `orchestrateDevSkill.test.js` is still green.
-- [ ] `completeness.test.js`'s heading fixtures are byte-identical to the SKILL templates (§10.2).
 - [ ] `pdlc/.claude-plugin/plugin.json` `version` is bumped.
 
 **Documentation**
