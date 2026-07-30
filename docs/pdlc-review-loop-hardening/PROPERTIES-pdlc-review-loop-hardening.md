@@ -321,6 +321,209 @@ adversarial case while the property stays green. Every property in §4 therefore
 
 ## 4. Properties
 
+Each entry states, in order: the **invariant**; the **generator** and its case budget; the
+**non-vacuity** conjunct; the **owner** (PLAN §4 task that writes it / task that greens it); and what
+it **covers that examples cannot**. The falsifying source mutation for every property is in §5, so
+that the falsifiability ledger can be read end to end without navigating the bodies.
+
+### 4.1 L1 — the seven the TSPEC names
+
+These seven are TSPEC §8.2's table, cited not restated. Where the wording below differs from §8.2 it
+is an elaboration of mechanism, never of the invariant; §8.2 governs.
+
+---
+
+**PROP-DIGEST-01 — `canonicaliseForDigest` is idempotent and lands in a normal form.**
+*(Data Integrity · L1 · `approvalHash.test.js`)*
+
+**Invariant.** For every generated text `t`: `f(f(t)) === f(t)`; `f(t)` ends in **exactly one** `\n`;
+`f(t)` contains **no** `\r`; and `f(t)` differs from `t` only by those two normalisations — the
+sequence of `\n`-separated non-empty-suffix content is preserved (positive-presence conjunct: every
+line of `t`, with `\r` stripped, appears in `f(t)` in the same order).
+
+**Generator.** D3. `rng.bytes(n).toString("utf8")` for `n` ∈ 0…512 — the U+FFFD replacement this
+decode performs is *in* the domain and is exactly the byte soup the function must survive — with
+`\r\n`, lone `\r` and 0…5 trailing `\n` injected at random positions. 100 cases.
+
+**Non-vacuity.** The generated set must contain ≥10 cases with at least one `\r\n`, ≥10 with a lone
+`\r`, ≥10 with two or more trailing newlines, and ≥5 with **zero** trailing newline — the last is the
+only shape that falsifies an implementation whose N-2 rule strips rather than forces. Forced, not
+sampled.
+
+**Owner.** Written by **RLH-06** (batch 2); greened by **RLH-05(d)** (batch 3). Rides §7.3's
+`RLH-AT-12,-13,-14,-17; both digest properties` row: green from batch 3, permitted red batch 2.
+
+**Beyond the examples.** The known-answer vectors (§6.2) pin four points; this pins the *shape of the
+output* over the whole input space, including the case §8.2 calls out — text whose only defect is a
+`\r` in the middle of a line, which no vector carries.
+
+**Shrink.** Shipped `"bytes"` kind, floor 64 bytes (§2.3).
+
+---
+
+**PROP-DIGEST-02 — `sha256Hex` is deterministic and total, and canonicalises internally.**
+*(Data Integrity · L1 · `approvalHash.test.js`)*
+
+**Invariant.** Three conjuncts. (i) **Totality of shape**: for every generated text `t`,
+`sha256Hex(t)` matches `/^[0-9a-f]{64}$/` and never throws. (ii) **Determinism**: `sha256Hex(t)`
+called twice returns the identical string, and two independently generated equal strings digest
+equal. (iii) **Canonicalisation is inside**: for every `t`, `sha256Hex(t) === sha256Hex(f(t))` where
+`f` is `canonicaliseForDigest` — i.e. no caller can produce a different digest by canonicalising
+first, and any two texts differing only in line endings or trailing newlines digest **equal**.
+
+**Generator.** D3, extended: ASCII, multi-byte UTF-8 (2-, 3- and 4-byte sequences composed from
+`codePointAt`-valid code points), surrogate pairs (emoji), and **lone surrogates** (`"\uD800"` alone),
+which is where a hand-rolled `utf8Bytes` is most likely to be wrong. 100 cases.
+
+**Non-vacuity.** ≥15 cases must contain a code point above U+FFFF and ≥5 must contain a lone
+surrogate; the property asserts those counts before asserting the digest. And conjunct (iii) is
+asserted **only** over cases where `f(t) !== t` for at least 20 of them — otherwise it degenerates
+into `sha256Hex(t) === sha256Hex(t)`, which is conjunct (ii).
+
+**Owner.** Written by **RLH-06** (batch 2); greened by **RLH-05(d)** (batch 3); same §7.3 row as
+`PROP-DIGEST-01`.
+
+**Beyond the examples.** TSPEC §8.2 is explicit that the known-answer vectors remain the *correctness*
+oracle and this is the *coverage* oracle: the vectors cannot tell you that the 837th multi-byte string
+does not throw, and AT-13's "one digest function on both paths" is a wiring claim, not an input-space
+claim. Conjunct (iii) is the generated form of AT-14 and is what makes AT-16's rebase invariance an
+input-space fact rather than a single fixture.
+
+**Shrink.** Shipped `"bytes"` kind.
+
+**C-2 note (§2.4).** The oracle for correctness is the externally computed vectors in
+`__tests__/fixtures/digest-vectors.js`, **never** a comparison against Node's `crypto`: a property
+that compared against `crypto.createHash("sha256")` would stay green if the subject itself reached for
+`crypto`, which C-2 forbids and which the bundle has no way to load.
+
+---
+
+**PROP-SCAN-01 — `scanLines` is total and partitions its input.**
+*(Data Integrity · L1 · `scanLines.test.js`)*
+
+**Invariant.** For every generated document `d` and every closed catalogue of markers, `scanLines(d)`
+returns for each line exactly one classification — the classifications are pairwise disjoint and their
+union is every line of `d` (**DC-01 totality**). Two further conjuncts: (i) **fence discipline** — no
+line inside a fenced code block is classified as a marker, and a document with an unclosed fence
+classifies every line after the opening fence as fenced, never as a marker; (ii) **conservation** —
+`sum(|class_i|) === d.split("\n").length`, asserted as an arithmetic identity, so a
+classifier that silently drops a line fails even if every line it *does* classify is right.
+
+**Generator.** D1. Lines drawn from four pools — verbatim marker lines (from the normative literals,
+cited per §6.4, never retyped), near-miss marker lines (marker text with a leading `>` quote, leading
+whitespace, altered case, or embedded inside a sentence), fence delimiters (``` and `~~~`, 3–6
+characters, with and without an info string), and arbitrary prose from D3 — shuffled with
+`rng.shuffle` and joined. Document length 0…120 lines. 100 cases.
+
+**Non-vacuity.** ≥20 cases must contain at least one true marker, ≥20 at least one near-miss, ≥15 at
+least one *balanced* fence pair with a marker **inside** it, and ≥5 an **unclosed** fence. The
+unclosed-fence floor is the one that matters: it is the only shape distinguishing a depth counter from
+a boolean toggle, and it is the shape the `unclosed-fence.md` fixture (§6.3) pins by example.
+
+**Owner.** Written by **RLH-03** (batch 1); greened by **RLH-05(c)** (batch 3).
+
+**Beyond the examples.** AT-05…AT-09 pin named near-misses one at a time; the generator composes them
+— quoted marker *inside* a fence, marker on the line that closes a fence, two markers on adjacent
+lines — combinations no AT enumerates and where an ordering bug in the scan lives.
+
+**Shrink.** File-local ladder over the line array (§2.3, second disposition): delete-half, then
+delete-one, then simplify each surviving line to its pool tag. The shipped `shrink` returns `[]` for
+this case shape.
+
+---
+
+**PROP-NAME-01 — `parseReviewFilename` round-trips, and rejects every single-part mutation.**
+*(Parsing · L1 · `reviewFilename.test.js`)*
+
+**Invariant.** Two directions. **Round-trip**: for every generated `{role, docType, version}` drawn
+from the valid domains, `parseReviewFilename(format(role, docType, version))` returns a parse whose
+three fields equal the inputs — `format` being the composition the production code itself uses, not a
+second implementation in the test (§6.4). **Rejection**: for every valid filename and every
+single-part mutation of it (role replaced by a non-role token, docType by a non-docType token, the
+`v{N}` segment by a non-numeric or negative or zero-padded form, the prefix or extension altered), the
+parse returns the "not a review file" outcome — **not** a throw, and **not** a partial parse.
+
+**Generator.** D2, product of the role catalogue × docType catalogue × version 1…99, plus one mutation
+selected per case by `rng.pick` from the five mutation classes. 100 cases, with the
+unversioned form (no `-v{N}`) included in the valid domain because TSPEC §3.9 makes version optional.
+
+**Non-vacuity.** All five mutation classes must appear ≥10 times each, and the valid-domain half must
+cover every role and every docType at least once — a floor asserted as set equality against the
+catalogues, so adding a docType to the catalogue without extending the generator fails the property
+rather than silently narrowing it.
+
+**Owner.** Written by **RLH-11** (batch 5); greened by **RLH-05(e)** (batch 3 — already green when
+RLH-11 lands, so this property is green on arrival and has **no** permitted-red window).
+
+**Beyond the examples.** AT-30…AT-33 are four named filenames. The rejection direction is the half
+examples cannot carry: it asserts a *negative over a space*, that nothing outside the catalogue parses,
+which is what stops a loosened regex from silently admitting `CROSS-REVIEW-pm-REQ-v1.md.bak`.
+
+**Shrink.** File-local ladder: shorten the version number toward 1, then reduce the mutation to the
+single altered character.
+
+---
+
+**PROP-ROUND-01 — `deriveRoundWindow` returns a fixed-width window and partitions the review files.**
+*(State Machine · L1 · `reviewFilename.test.js`)*
+
+**Invariant.** For every generated set of filenames on a branch: `endIndex === startIndex +
+MAX_REVIEW_ROUNDS - 1` (the width identity, over all inputs including the empty set); `startIndex >=
+1`; and the **three-way partition** TSPEC §8.2 states over `parseReviewFilename`'s split — every input
+name is counted in exactly one of *in-window versioned review*, *out-of-window versioned review*, and
+*not a review file* — with `startIndex` derived from the highest in-set version, never from a counter.
+Conservation is asserted arithmetically: the three counts sum to the input size.
+
+**Generator.** D2, as `PROP-NAME-01`, plus non-review filenames (`REQ-*.md`, `LEARNINGS-*.md`,
+`.DS_Store`, directories) and versions drawn to straddle the window edge: `rng.int` over 1…`startIndex
++ MAX_REVIEW_ROUNDS + 3`. Set size 0…40. 100 cases.
+
+**Non-vacuity.** ≥15 cases must place at least one file **above** `endIndex`, ≥15 at least one
+**below** `startIndex`, ≥10 must be the empty set, and ≥20 must mix review and non-review names. The
+above-`endIndex` floor is the one that catches a window computed per-round instead of once at the
+phase gate.
+
+**Owner.** Written by **RLH-11** (batch 5); greened by **RLH-05(e)**. Green on arrival.
+
+**Beyond the examples.** The width identity is the generated form of the H-1 fix: examples pin
+`startIndex` for named branch states, the property asserts that the *sibling-field relationship*
+holds for every branch state, which is precisely what a caller recomputing `endIndex` from a stale
+`roundIndex` would break. It is also the only place the "derive, never count" rule is stated over the
+whole input space rather than at the three ATs (AT-34…AT-36) that sample it.
+
+**Shrink.** File-local ladder: delete names, then reduce each surviving version toward `startIndex`.
+
+---
+
+**PROP-FORCE-01 — `parseForcePhases` is closed over its catalogue.**
+*(Parsing · L1 · `forcePhases.test.js`)*
+
+**Invariant.** Let `V = {R, F, T, P, D, PR}` and the accepted vocabulary be `V ∪ {all}`. For every
+generated input: if every token is in the vocabulary, the result is `{ ok: true, phases }` with
+`phases` a `Set` whose members are all in `V` (never `all` itself), `phases` equals the set of
+non-`all` tokens unioned with `V` if `all` was present, and `|phases| === 6` exactly when `all`
+appeared or all six were listed; if **any** token is outside the vocabulary the result is the failure
+shape, and the failure names the offending token. Order-insensitivity and duplicate-idempotence are
+conjuncts: `rng.shuffle` of the tokens, and any token repeated, yield an equal `Set`.
+
+**Generator.** D5. Token lists of length 0…10 drawn from `V ∪ {all}` ∪ a pool of near-misses
+(lowercase `r`, `pr ` with trailing space, `ALL`, `Rq`, empty string, `R,F` as a single token), joined
+with the separator TSPEC §3.7 specifies. 100 cases.
+
+**Non-vacuity.** ≥25 cases must be wholly valid, ≥25 must contain ≥1 near-miss, ≥10 must contain
+`all`, ≥10 must contain a duplicate, and ≥5 must be the empty input. The valid-half floor is asserted
+as *set coverage of `V`*, so a catalogue that grows without the generator growing fails here.
+
+**Owner.** Written by **RLH-14** (batch 6); greened by **RLH-05(f)** (batch 3). Green on arrival.
+
+**Beyond the examples.** AT-52…AT-55 sample four inputs. Closure over the catalogue — that nothing
+outside it is ever accepted and `all` always expands to exactly six — is a statement about the
+*complement* of the catalogue, which no finite example set can make. It is also the property that
+detects a seventh phase added to the runtime without being added to the vocabulary: `|phases|` stops
+being 6 and the identity fails loudly rather than the phase being silently unforceable.
+
+**Shrink.** File-local ladder: drop tokens one at a time, keeping the first that still fails.
+
 ## 5. Oracles
 
 ## 6. Fixtures
