@@ -8,15 +8,26 @@ feature: pdlc-review-loop-hardening
 |---|---|
 | Upstream | `REQ-pdlc-review-loop-hardening.md` (v1.5, converged — SE-v5 and TE-v5 dispositioned) → **FSPEC** |
 | Downstream | `TSPEC-pdlc-review-loop-hardening.md`, `PLAN-…`, `PROPERTIES-…` |
-| Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v1.md` (iteration 1, dispositioned at v1.1); `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v2.md` (iteration 2, dispositioned at v1.2); `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v3.md` (iteration 3, dispositioned at v1.3); `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v4.md` (iteration 4, dispositioned at v1.4) |
+| Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v1.md` (iteration 1, dispositioned at v1.1); `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v2.md` (iteration 2, dispositioned at v1.2); `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v3.md` (iteration 3, dispositioned at v1.3); `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v4.md` (iteration 4, dispositioned at v1.4). Downstream: `CROSS-REVIEW-product-manager-TSPEC-v2.md` F-06 dispositioned at **v1.7** (§20). |
 | LEARNINGS | `docs/pdlc-review-loop-hardening/LEARNINGS-pdlc-review-loop-hardening.md` |
 | Citation baseline | **HEAD `0655387`.** Every code citation in this document was re-measured at that sha and names its **enclosing symbol plus a distinctive literal**, per O-16 and the REQ's own `Citation baseline` convention. A bare `file:line` citation is a defect in this document. |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude + operator | 1.6 | 2026-07-30 |
+| pdlc | draft | Claude + operator | 1.7 | 2026-07-30 |
 
 ### Changelog
+
+**v1.7 (2026-07-30) — §20's three prose-owned open questions get real owners.** Raised as
+`CROSS-REVIEW-product-manager-TSPEC-v2.md` **F-06**: Q-05, Q-06 and Q-09 still named "whoever revises
+`harvest-learnings/SKILL.md`", "operator convention / a later feature" and "whoever revises the author
+SKILLs" — prose owners, which under `DC-08` are not owners. §20 now moves all three out of the
+genuinely-open table into a **Closed at v1.7** table: Q-05 and Q-09 are **bound to `docs/_queue/QUEUE.md`
+Order 9** (`pdlc-authoring-contract`, `blocked` on this feature, which already carries both verbatim), and
+Q-06 is **declined and closed** — not deferred — because parsed `RESOLVED:` authorship fields would put
+prose in a script's path (C-5). The same edit fixes a formatting slip: Q-09's row had been stranded below
+the iteration-1 answers table, outside the table it belonged to. **No behavioural section changes**; §20
+is the only section touched.
 
 **v1.6 (2026-07-30) — tracks a correction made to an already-approved REQ. Not editorial.** This
 version follows `REQ-pdlc-review-loop-hardening.md` **v1.6**, which corrected a drafting slip in
@@ -3136,8 +3147,6 @@ being re-litigated, and nothing here is a deferral (D-RLH-01..05 are out of scop
 | Q-02 | Which SHA-256 implementation is inlined? §7 fixes the algorithm, the output form (`sha256:` + 64 lowercase hex), the canonicalisation and the single-function requirement, but not the code. | TSPEC | A pure-JS SHA-256 is ~80 lines; whether to write it inline in `orchestrate-dev.js` or in a small sibling module that `stripModuleSyntax` inlines is a build-shape question with a measurable answer (bundle size, test isolation). |
 | Q-03 | Does the digest need to be byte-accurate over non-ASCII content, i.e. must the implementation encode to UTF-8 before hashing rather than hashing UTF-16 code units? | TSPEC / PROPERTIES | The answer is almost certainly "yes, UTF-8", but the **falsifier** needs a fixture with a multi-byte character in a spec document, and whether such content occurs in practice affects test priority, not correctness. |
 | Q-04 | Should the pacing proxy of §15.8 run once per episode or once per phase? §15.8 fixes what it measures and that it cannot halt the run. | TSPEC | Per-episode gives sharper attribution; per-phase costs fewer `_git` calls. Both are advisory, so the trade-off is cost, not behaviour. |
-| Q-05 | For `## 6. Approval Record` (§9.2): if a future `harvest-learnings` revision adds a sixth prose section, does the approval record renumber to `## 7`, or is it pinned to a name-only heading? | Whoever revises `harvest-learnings/SKILL.md` | §9.2 pins the current numbering because that is what is true today. The forward-compatibility rule is a maintenance convention, not a behaviour of this feature. |
-| Q-06 | Should the `RESOLVED:` marker also record **who** resolved it and when? §12.2 deliberately parses only the token. | Operator convention / a later feature | Adding parsed fields would put prose in a script's path (C-5). A `## Resolution` section already carries the narrative unparsed; whether to make any of it structured is a separate decision. |
 | Q-07 | Is `forcePhases` worth surfacing in `DEV_META` for bundle-level discoverability? §11.2 deliberately does not edit `DEV_META`. | A later distribution change | The hand-written bundle `meta` has no `inputs` array at all today, so adding one is a change to that file's shape, with its own sync obligation. Out of proportion to the benefit here. |
 | Q-08 | Does the `_recordHalt` seam (§14.2) belong in `runtime-adapter.js` or in the bundle entrypoints? §14.2 specifies the contract and the three callers, not the file. | TSPEC | The queue bundle inlines both modules, so either placement works; the dev bundle needs the queue's row helpers inlined, which is a build-shape question like Q-02. |
 
@@ -3152,7 +3161,16 @@ answer this document can state):
 | TE Q-01 — a stray non-expected role inflating `startIndex` | **Intended, and the outcome is defined.** §4.4 step 2 deliberately does not filter by role (AC-1.1 derives across roles, §5.3/O-18 depends on it), so the stray file raises the index and is never pairable. Cost: index numbers skip. Classing it non-conforming would require the derivation to know the phase's expected pair, which is exactly the coupling AC-1.1 removes. |
 | TE Q-02 — is the artifact set re-derived per dispatch? | **Fixed at episode entry** — §15.1 now states the instant. |
 
-| Q-09 | Should the six author/review SKILLs declare the top-level heading template §16.2 measures against, or should §16.2's per-class heading lists remain stated only here? | Whoever revises the author SKILLs | Either placement is sound; one source of truth is clearly better, but moving it is an O-16-class SKILL edit outside this feature's change surface (§17). |
+**Closed at v1.7 — each was a prose owner, and a prose owner is not an owner (DC-08).** Three questions
+above named "whoever revises X" or "operator convention", which is the failure mode DC-08 was promoted
+about: nobody is named, so nobody picks it up. Each is now either bound to a queue row or declined outright.
+The **Owner** column below is the disposition, not a forwarding address.
+
+| # | Question | Disposition |
+|---|---|---|
+| Q-05 | For `## 6. Approval Record` (§9.2): if a future `harvest-learnings` revision adds a sixth prose section, does the approval record renumber to `## 7`, or is it pinned to a name-only heading? | **Bound to `docs/_queue/QUEUE.md` Order 9** (`pdlc-authoring-contract`, `blocked` on this feature), which carries it verbatim as one of its three items. No product exposure today: §16.2's matcher normalises numeric prefixes, so either answer scores the same. |
+| Q-06 | Should the `RESOLVED:` marker also record **who** resolved it and when? | **Declined and closed.** Not deferred — the answer is no. Parsed authorship fields would put prose in a script's path (C-5), and §12.2's token is load-bearing precisely because it is the *only* thing parsed. The `## Resolution` section already carries who and when, unparsed, which is where that narrative belongs. Reopening it needs a new requirement, not a revision of this one. |
+| Q-09 | Should the six author/review SKILLs declare the top-level heading template §16.2 measures against, or should §16.2's per-class heading lists remain stated only here? | **Bound to `QUEUE.md` Order 9**, which names it "the acute one, and the reason this row exists at all": drift between §16.2's lists and the templates authors follow scores a correct document incomplete, i.e. a false halt. Mitigated here, not closed — `completeness.test.js`'s fixtures are copied from the SKILL templates verbatim, so a drift reds the suite rather than a run. |
 
 **Explicitly not open** — recorded here because each was asked and answered at REQ altitude, and a reviewer
 should not reopen them: whether the staleness test walks history (**no**, §10.2); whether harvest may
