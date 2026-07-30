@@ -43,7 +43,12 @@ import main from "../orchestrate-dev.js";
 import * as dev from "../orchestrate-dev.js";
 import * as queueModule from "../orchestrate-queue.js";
 import { DEFAULT_QUEUE_PATH } from "../orchestrate-queue.js";
-import { fakeFs, fakeGit, recordingRecordHalt } from "./helpers/seams.js";
+import {
+  fakeFs,
+  fakeGit,
+  fakeListFiles,
+  recordingRecordHalt,
+} from "./helpers/seams.js";
 
 // ─── Fixture vocabulary ──────────────────────────────────────────────────────
 
@@ -140,6 +145,125 @@ function reqReviewPair(round, opts = {}) {
   }
   return tree;
 }
+
+// ─── Harness ─────────────────────────────────────────────────────────────────
+
+const APPROVING_REVIEW =
+  'Review complete.\nVERDICT: Approved\n{"high": 0, "medium": 0, "low": 0}\n';
+const NEEDS_REVISION_REVIEW =
+  'Review with issues.\nVERDICT: Needs revision\n{"high": 1, "medium": 0, "low": 0}\n';
+
+const REVIEWER_SKILLS = ["se-review", "pm-review", "te-review"];
+const AUTHOR_SKILLS = ["pm-author", "se-author", "te-author"];
+
+/** `reviewLoop`'s POSTMORTEM dispatch — `Write {path}. Include sections: …`. */
+const POSTMORTEM_PROMPT_RE = /^Write (\S*POSTMORTEM-[^\s.]+\.md)\./;
+
+/** Basenames directly under `dirPath`, computed live off the fake tree. */
+function basenamesUnder(files, dirPath) {
+  const prefix = `${dirPath}/`;
+  return Object.keys(files)
+    .filter((p) => p.startsWith(prefix) && !p.slice(prefix.length).includes("/"))
+    .map((p) => p.slice(prefix.length));
+}
+
+/**
+ * Drive `orchestrate-dev`'s `main()` over an in-memory tree with every seam of
+ * TSPEC §3 injected. Every double is synchronous (§8.1); production `await`s
+ * them and a sync return resolves.
+ *
+ * @param {{
+ *   files?: Record<string,string>,
+ *   verdictFor?: (skill: string, prompt: string) => string,
+ *   postmortem?: "write"|"throw",
+ *   recordHaltResult?: any,
+ *   extraArgs?: object,
+ * }} [opts]
+ */
+async function run({
+  files = baseTree(),
+  verdictFor = () => APPROVING_REVIEW,
+  postmortem = "write",
+  recordHaltResult = undefined,
+  extraArgs = {},
+} = {}) {
+  const fs = fakeFs(files);
+  const listFiles = fakeListFiles((dirPath) =>
+    basenamesUnder(fs.files, dirPath)
+  );
+  const recordHalt = recordingRecordHalt(recordHaltResult);
+  const logs = [];
+  const dispatches = [];
+
+  const agentFn = async (skill, prompt) => {
+    const text = typeof prompt === "string" ? prompt : "";
+    dispatches.push({ skill, prompt: text });
+
+    const pm = POSTMORTEM_PROMPT_RE.exec(text);
+    if (pm) {
+      if (postmortem === "throw") throw new Error("agent transport failed");
+      fs.writeFile(pm[1], postmortemDoc());
+      return "Post-mortem written.";
+    }
+    if (REVIEWER_SKILLS.includes(skill)) return verdictFor(skill, text);
+    if (AUTHOR_SKILLS.includes(skill)) {
+      if (text.includes("DECISIONS_WARRANTED")) {
+        return "Finalized.\nDECISIONS_WARRANTED: false";
+      }
+      if (text.includes("Return a JSON object")) {
+        return JSON.stringify({
+          tasks: [{ id: "T1", description: "x", dependencies: [], planBatch: 1 }],
+        });
+      }
+      return "Document created.";
+    }
+    if (skill === "dod-verify") return "Clean.\nDOD_STATUS: passed";
+    if (skill === "ship-pr") {
+      if (text.includes("Rebase")) return "Rebased.\nREBASE_STATUS: clean";
+      if (text.includes("pull request")) {
+        return "PR opened.\nPR_URL: https://github.com/acme/repo/pull/42";
+      }
+      return "Checks.\nCI_STATUS: passed";
+    }
+    return "Success.";
+  };
+
+  const result = await main({
+    reqPath: REQ_PATH,
+    _agent: agentFn,
+    _parallel: (p) => Promise.all(p),
+    _log: (...args) => logs.push(args.join(" ")),
+    _phase: () => {},
+    _pipeline: async (label, fn) => fn(),
+    _checkFile: fs.checkFile,
+    _readFile: fs.readFile,
+    _writeFile: fs.writeFile,
+    _appendFile: fs.appendFile,
+    _listFiles: listFiles,
+    _recordHalt: recordHalt,
+    _mergeWorktree: async () => ({ ok: true }),
+    _raisePrAndVerifyCi: async () => ({
+      prUrl: "https://x/pull/1",
+      ciStatus: "passed",
+    }),
+    ...extraArgs,
+  });
+
+  return {
+    result,
+    fs,
+    listFiles,
+    recordHalt,
+    logs,
+    dispatches,
+    phaseOf: (id) => (result.phases || []).find((p) => p.phase === id),
+    reportText: JSON.stringify(result),
+  };
+}
+
+/** Reviewers that never approve the REQ, so Phase R exhausts its round budget. */
+const nonConvergingAtR = (skill, prompt) =>
+  prompt.includes(`REQ-${FEATURE}.md`) ? NEEDS_REVISION_REVIEW : APPROVING_REVIEW;
 
 // ─── §6.3 / §6.5: the terminal exit and the queue-row commit ─────────────────
 describe("RLH-25: the terminal exit and the queue row", () => {
