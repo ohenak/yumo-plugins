@@ -1,13 +1,13 @@
 # TSPEC — pdlc-review-loop-hardening
 
-**Version:** 1.1
-**Status:** Draft (round-1 cross-review feedback addressed; awaiting round 2)
+**Version:** 1.2
+**Status:** Draft (round-2 cross-review feedback addressed; awaiting round 3)
 
 | Field | Value |
 |---|---|
-| Upstream | `REQ → FSPEC → **TSPEC**` (REQ **v1.6**, FSPEC **v1.6** — both amended by this revision, see §0) |
+| Upstream | `REQ → FSPEC → **TSPEC**` (REQ **v1.6**, FSPEC **v1.7** — the REQ amended at v1.1 of this document, the FSPEC at v1.1 and again at v1.2, see §0) |
 | Downstream | `DECISIONS, PLAN, PROPERTIES, IMPL` |
-| Cross-Reviews | `docs/pdlc-review-loop-hardening/CROSS-REVIEW-{software-engineer,test-engineer}-TSPEC-v{N}.md` (link list while active; harvested into `LEARNINGS-pdlc-review-loop-hardening.md` after Phase H) |
+| Cross-Reviews | `docs/pdlc-review-loop-hardening/CROSS-REVIEW-{product-manager,test-engineer}-TSPEC-v1.md` (round 1, dispositioned at v1.1); `…-TSPEC-v2.md` (round 2, dispositioned at v1.2); harvested into `LEARNINGS-pdlc-review-loop-hardening.md` after Phase H |
 | LEARNINGS | `docs/pdlc-review-loop-hardening/LEARNINGS-pdlc-review-loop-hardening.md` |
 
 ---
@@ -35,12 +35,19 @@ invariants over *every* path rather than as behaviour at an enumerated step.**
 | **PM F-06** | Low | **Fixed in the FSPEC** (→ v1.7): §20's Q-05, Q-06 and Q-09 rows carry their dispositions and named owners | FSPEC §20 |
 | **TE N-05** | Low | **Fixed by strengthening.** `isComplete`'s monotonicity property was satisfied by a matcher recognising no heading at all. Replaced with the exact-required-set form, falsifiable in the removal direction | §8.2 |
 
-**Size.** v1.1 grew 44.8%; both reviewers judged the additions justified in kind but the
-rationale-to-rule ratio inverted, and both of PM's Mediums were consistency casualties of that extra
-surface. This revision is **net smaller**: the v1.1 changelog and its §0.1 annex are compressed to their
-finding→resolution content now that both reviewers have verified those fixes by measurement, and the
-rationale paragraphs in §2.5, §5.6.1, §5.6.2, §7.2 and §10.3 are cut to one sentence each. Nothing
-normative was removed except §3.8's unproducible union member, which was the defect.
+**Size — measured, and the target was missed.** v1.1 grew 44.8%; both reviewers judged the additions
+justified in kind but the rationale-to-rule ratio inverted, and both of PM's Mediums were consistency
+casualties of that extra surface. The brief for this revision was net-neutral-or-smaller. The measured
+outcome is **155,549 B → 164,456 B, +8,907 B (+5.7%)** — smaller than the +44.8% that preceded it, but
+**not net-neutral, and stated rather than glossed.** About 10 KB was cut: the v1.1 changelog and its §0.1
+annex compressed to finding→resolution rows now that both reviewers have verified those fixes by
+measurement, the rationale in §5.2/§5.3/§7.2 reduced to the rule, §8.5's three explanatory paragraphs
+tightened, and §10.2/§10.3's dispositions cut to the ruling and its one decisive reason. Roughly 18 KB
+was added, and the additions are the two Highs' fixes plus their evidence: §5.6.1's wiring subsection
+(the S-INV contract and `refreshReviewState`, which is the *only* place the fix can live), §2.5's step G
+and its reachability verification, three new ATs, two restated §8.2 properties, and §6.2 row 17. Trimming
+to net-neutral from here would mean deleting normative rules, not prose — so it was not done. Nothing
+normative was removed except §3.8's unproducible union member, which was itself the defect.
 
 **Nothing is declined.** The one place a reviewer's proposed shape was not taken literally is PM
 F-02: rather than manufacture a `reason: "trailer"` episode exit to give §3.8's union member a
@@ -417,7 +424,7 @@ required: true }`:
 `DEV_META` in `build-runtime.mjs` is **not** edited — it is a separate hand-written literal that
 carries `name`, `description`, `whenToUse`, `phases` and no `inputs` array at all. Adding one would
 create a second declaration to keep in sync for no benefit; the bundle entrypoint reads `args`
-directly (FSPEC §11.2).
+directly (FSPEC §11.1).
 
 ### 3.2 `_listFiles(dirPath)` — the listing seam
 
@@ -1880,14 +1887,13 @@ One property per parameterisable component, each declaring its own literal seed 
 | `parseForcePhases` | **catalogue closure**: every returned phase is in the `valid` array, and any token outside it appears in `badTokens` — no token is silently dropped or coerced | token multisets drawn from the valid array, `all`, casing variants, and junk |
 | `isComplete` | **exact required set**, falsifiable in both directions: a document assembled from exactly §5.9's required headings for the class, each with a non-empty body, is complete; and removing any **one** of them makes it incomplete, with that heading named in `missing` | heading sets drawn from §5.9's per-class tables, bodies drawn from {non-empty, empty, `TBD`, HTML comment} |
 
-**Two rows are stated as falsifiable properties rather than as the weaker forms v1.1 carried, because
-the weaker forms were satisfied by the defects they existed to catch.** `deriveRoundWindow`'s
-"`skipped` ∪ entries partitions the input" is *false* on a correct implementation — a conforming
-basename for another doc type is in neither set (§5.2), and the generator produces those on nearly
-every run — so it is restated over `parseReviewFilename`'s three-way split, which is total.
-`isComplete`'s monotonicity form was satisfied by a matcher recognising no required heading at all:
-such a document is incomplete both before and after the addition, so monotonicity holds while the
-oracle detects nothing. The exact-required-set form reds on it in the removal direction.
+**Two rows were restated at v1.2 because v1.1's weaker forms were satisfied by the defects they existed
+to catch.** `deriveRoundWindow`'s "`skipped` ∪ entries partitions the input" is *false* on a correct
+implementation — a conforming basename for another doc type is in neither set (§5.2), and the generator
+produces those on nearly every run — hence the restatement over `parseReviewFilename`'s total three-way
+split. `isComplete`'s monotonicity form was satisfied by a matcher recognising no required heading at
+all: such a document is incomplete before and after, so monotonicity holds while the oracle detects
+nothing. The exact-required-set form reds on it in the removal direction.
 
 Reproduction is by **replay, not by index**, per the generator's own contract: each file prints its
 seed and case n is reproduced by replaying draws 1…n. `shrink` is used for the failure report, not
