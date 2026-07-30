@@ -961,15 +961,47 @@ H-4 presence vectors — is preserved intact; only its level, its seam and its l
 **PROP-HASH-01 — `parseApprovalHash` accepts only well-formed trailers, and never mid-document.**
 *(Parsing · L1 · `approvalHash.test.js`)*
 
-**Invariant.** For every generated document: `parseApprovalHash` returns `{ ok: true, hash, … }`
-**iff** a *single* well-formed approval trailer appears at a position the format permits; the returned
-hash always matches `/^[0-9a-f]{64}$/`; a trailer that is quoted (`>`), fenced, or truncated to fewer
-than 64 hex characters yields `ok: false`; a document carrying **two** `APPROVAL-HASH:` lines outside
-fenced regions returns `{ ok: false, reason: "duplicated" }` — never a hash, and never one of the two
-arbitrarily chosen; and a document carrying **no** `APPROVAL-HASH:` line outside a fenced region
-returns `{ ok: false, reason: "absent" }`. Every `ok: false` return carries a `reason` that is a
-member of `HASH_FAILURES` (TSPEC §4.1), asserted by membership, so a subject inventing a fourth reason
-string dies.
+**The measure every conjunct below is stated over — read from the contract, not chosen here.** The
+duplicate test is a **count**, and the count's *unit* is what v1.2 got wrong in both directions at
+once. TSPEC §5.3's idempotence pre-count is *"collect the `APPROVAL-HASH:` lines outside fences"*, and
+its branch table keys on that count being `0`, `1` or `≥ 2`, consulting a line's **value** only in the
+two `1` rows — at `≥ 2` the disposition is fixed with no payload test at all. TSPEC §4.3 defines the
+sibling `duplicated` as *"more than one such line outside fenced regions"*. The unit is therefore
+**`APPROVAL-HASH:` lines outside fenced regions, counted irrespective of payload** — not well-formed
+trailers — and TSPEC §5.0's `scanLines` makes the fence the only exclusion.
+
+**Invariant.** For every generated document, let `n` be that count. Six conjuncts, all over `n`:
+
+(i) `parseApprovalHash` returns `{ ok: true, hash, … }` **iff** `n === 1` **and** that one line is a
+well-formed trailer at a position the format permits (TSPEC §4.4's grammar). Both halves are required
+in both directions.
+
+(ii) `n >= 2` returns `{ ok: false, reason: "duplicated" }` — **whatever the payloads are**. A document
+carrying one valid trailer and one malformed one is `duplicated`: never a hash, and never one of the
+lines arbitrarily chosen. This is where v1.2's `iff` and its `duplicated` conjunct contradicted each
+other (SE F-23, PM F-01); the contradiction was in the `iff` counting trailers while the contract
+counts lines, and both are now stated over `n`.
+
+(iii) `n === 0` returns `{ ok: false, reason: "absent" }`.
+
+(iv) `n === 1` whose payload is uppercase hex, 63 or 65 characters, non-hex, or carried under a
+malformed label returns `ok: false`. A **fenced** trailer is not collected at all, so a
+fenced-only document is `n === 0` and falls under (iii) — the fence is an exclusion from the count,
+not a malformed payload.
+
+(v) the returned hash always matches `/^[0-9a-f]{64}$/`, totally over the input space.
+
+(vi) every `ok: false` return carries a `reason` that is a member of `HASH_FAILURES` (TSPEC §4.1),
+asserted by membership, so a subject inventing a fourth reason string dies.
+
+**The one thing the contract does not settle, and why no conjunct depends on it.** `scanLines`
+excludes fenced regions and nothing else, so whether a `> `-quoted `APPROVAL-HASH:` line is one of the
+lines §5.3's pre-count collects is not decided by any approved artifact. Under the counting reading a
+quoted-only document is `n === 1` at a position the format forbids; under the not-counting reading it
+is `n === 0` ⇒ `absent`. **Both are `ok: false` with a `HASH_FAILURES` member**, so (i), (v) and (vi)
+hold on a conforming subject under either reading, and the *named* reasons in (ii) and (iii) are
+asserted only where the count is unambiguous — unquoted, unfenced lines. The property therefore states
+no rule the specs do not, and cannot red a conforming subject on the quoted shapes.
 
 v1.1 asserted instead that a two-trailer document *"resolves deterministically to the same one on every
 run (whichever the format specifies — the property asserts stability, and §6.4 owns which)"*. **That
@@ -978,13 +1010,17 @@ conjunct is withdrawn** (PM F-02): it is false on a conforming subject, and the 
 **TSPEC §4.1**, whose `HASH_FAILURES = ["absent", "duplicated", "unparseable"]` makes `duplicated` a
 `HashFailure`, and **TSPEC §6.2 row 6**, which routes it to `UNEVALUABLE`. Cited, not restated.
 
-**Generator.** D3 prose interleaved with trailer candidates drawn from: valid (64 lowercase hex),
-uppercase hex, 63 and 65 characters, non-hex characters in the payload, correct payload with a
-malformed label, valid trailers placed inside a fence or behind a `>` quote, **two valid trailers**,
-and **no trailer at all**. 100 cases.
+**Generator.** D3 prose interleaved with trailer candidates. **Each document carries exactly one
+shape from this list, never a mixture** — the list is a list of *document shapes*, not of candidates
+that may be combined (SE Q-01, PM Q-01; v1.2 left this to the reader and both readings were
+available): valid (64 lowercase hex); uppercase hex; 63 and 65 characters; non-hex characters in the
+payload; correct payload with a malformed label; a valid trailer inside a fence; a valid trailer
+behind a `>` quote; **two `APPROVAL-HASH:` lines outside fences — both valid, or one valid and one
+malformed, since the count is payload-blind**; and **no trailer at all**. 100 cases.
 
 **Non-vacuity.** All forced (§3.3 rule 1), never sampled. ≥20 valid, ≥10 of each of the length-off-by-one shapes, ≥10 quoted-or-fenced, ≥5
-double-trailer, ≥5 no-trailer. The `quoted-hash.md` fixture (§6.3) pins the quoted case by example;
+double-line — **of which ≥2 are the mixed valid-plus-malformed shape**, which is what makes conjunct
+(ii)'s payload-blindness non-vacuous rather than a sentence — and ≥5 no-trailer. The `quoted-hash.md` fixture (§6.3) pins the quoted case by example;
 the floor makes it
 a space. **The ≥5 double-trailer floor survives as a floor on the *rejection* shape** (PM Q-02): it is
 what forces `reason === "duplicated"` — a named catalogue member, not merely `ok: false` — to be
