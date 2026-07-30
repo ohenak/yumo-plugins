@@ -1908,9 +1908,31 @@ if it mentions the bypass at all it must say what §14.4 says — the bypass res
 leaves every other queue feature idle.
 
 `N` and `M` are always the **script's own** counts. The runtime's internal retry count is explicitly
-**not** claimed, reported, or depended upon (§4a A-2/A-3); observing it is **D-RLH-04**. Whether a
-dispatch **fault** was observed is reported alongside the counts (AC-3.5e), as a boolean, without
-classifying which of §4a A-8's three surfacings occurred.
+**not** claimed, reported, or depended upon (§4a A-2/A-3); observing it is **D-RLH-04**.
+
+**The fault-observed boolean, defined over the observable evidence (TE-v1 F-06).** v1.0 said only that
+"whether a dispatch **fault** was observed is reported … as a boolean, without classifying which of §4a
+A-8's three surfacings occurred", which left the boolean's *value* undecidable for two of the three
+surfacings — nothing distinguishes a killed dispatch that returned no trailer from a healthy agent that
+merely omitted one. The definition is therefore narrowed to what the wrapper can actually see:
+
+> `faultObserved` is **true** iff the wrapper **caught a throw** from the dispatch, and **false**
+> otherwise. The report states the definition alongside the value, so the field is never read as "a fault
+> occurred" when it can only mean "a throw was caught".
+
+This preserves AC-3.5e's substance — the three surfacings still reach the *same* non-terminal conclusion,
+and the wrapper still never classifies a fault to decide anything — while making the reported field
+decidable. The two non-throw surfacings are covered instead by the trailer reason below, which is the
+honest surface for them.
+
+**The trailer reason is echoed in the report (TE-v1 F-07).** §8.3's four reasons —
+`declared_incomplete`, `absent`, `duplicated`, `unparseable` — are reported per dispatch, verbatim,
+alongside the counts. That is their consumer, and it is what makes them falsifiable: an implementation
+returning a constant `absent` for all four inputs now fails an acceptance test. The reason changes **no**
+control flow — §8.3 already gives all four the same non-terminal outcome — so this is a reporting
+obligation only. A `declared_incomplete` dispatch is thereby visible in the report as a *reported
+continuation* rather than as an unexplained re-dispatch, which is the property §8.2 claimed for the
+two-value catalogue and did not previously deliver.
 
 **One further report obligation (AC-3.5 scope (c)).** When the wrapper reaches terminal on a
 `LEARNINGS-{feature}.md` that carries **no** approval record, the run report names it — so §9.7's
@@ -2421,6 +2443,8 @@ direction; "reported" means it appears in the run report without changing the ou
 | E-57 | Review episode re-dispatched onto a partial cross-review | Must **continue** it, never rewrite it (a whole-file rewrite past budget is forbidden). §4.5's no-overwrite guard is **not** re-evaluated on an intra-episode re-dispatch, so the continuation is reachable. | §16.3, §4.5 |
 | E-58 | Re-dispatch produces a **duplicated** verdict field | **Terminal** (the reviewer reached the end), and fail closed on approval: phase runs. Never a skip, and never a halt. | §16.3, §6.3 |
 | E-66 | A cross-review **quotes** the verdict grammar in prose or a fenced block (e.g. a review of §6.2), so the file contains two `VERDICT: ` lines but its trailing `## Verdict` section contains one | **Conforming.** The pre-count and `parseVerdict` read the trailing section only, so the quoted line is invisible and the verdict is used normally. | §6.2, §6.3 |
+| E-67 | Revision dispatch emits `REVISION-COMPLETE: no` | **Not terminal**; the episode continues with the same continuation prompt, and the report echoes `declared_incomplete` — a reported continuation, not an unexplained re-dispatch | §8.3, §15.4 |
+| E-68 | Revision dispatch emits **two** `REVISION-COMPLETE:` lines | Pre-count detects it ⇒ **not terminal**, reason `duplicated`, echoed in the report. Never silently resolved by scanning from the end. | §8.2, §8.3, §15.4 |
 | E-59 | Harvest killed after prose, before the approval record | **Terminal, reports success**; the feature lands in the fail-closed case; the report **names** the missing record | §16.5 |
 | E-60 | Skeleton written with `TBD` placeholder bodies | Counts as **empty** ⇒ not complete. Otherwise write 1 would score terminal. | §16.2 |
 | E-61 | Per-section commit whose diff exceeds `MAX_AUTHORING_WRITE_BYTES` | **Reported** as a pacing-proxy violation; **does not halt** the run | §15.8 |
@@ -2591,10 +2615,12 @@ the wrapper does not re-dispatch.
 *Given* a revision dispatch killed after applying 3 of 5 findings, leaving the artifact structurally
 complete. *Then* the episode is **not** terminal and continues.
 
-**AT-37 — All three fault surfacings behave identically (AC-3.5e, E-46)**
-*Given* three fixtures: dispatch returns a value, returns nothing, throws. *Then* all three are
-non-terminal, the assertion is written **without** distinguishing them, and the fault-observed boolean is
-reported.
+**AT-37 — All three fault surfacings behave identically (AC-3.5e, E-46, TE-v1 F-06)**
+*Given* three fixtures: dispatch returns a value with no trailer, returns nothing, throws. *Then* all three
+reach the **same** non-terminal conclusion, asserted without distinguishing them. *And* the
+`faultObserved` boolean reads **true** for the throwing fixture and **false** for the other two, per
+§15.4's definition. *(Fails for an implementation that sets the boolean whenever the trailer reason is
+`absent` — which cannot distinguish a kill from an omission.)*
 
 **AT-38 — Premature trailer is visible, not silent (R-12, O-19(h4))**
 *Given* an agent emitting the trailer while a finding is demonstrably unreflected. *Then* the round's
@@ -2708,6 +2734,12 @@ re-dispatches to `MAX_AUTHORING_DISPATCHES` — the false halt of a finished rev
 *Given* a cross-review whose body quotes `VERDICT: Approved with minor changes` inside a fenced block and
 whose trailing `## Verdict` section carries exactly one `VERDICT: Approved`. *Then* the file is
 conforming, the verdict reads `Approved`, and the whole-file count of two is never consulted.
+
+**AT-61 — Each trailer reason is distinguishable in the report (E-67, E-68, TE-v1 F-07)**
+*Given* four revision-dispatch fixtures emitting: `REVISION-COMPLETE: no`; no trailer; two
+`REVISION-COMPLETE:` lines; `REVISION-COMPLETE: maybe`. *Then* all four are non-terminal **and** the report
+echoes `declared_incomplete`, `absent`, `duplicated` and `unparseable` respectively. *(Fails for a parser
+returning a constant reason for every non-`yes` input.)*
 
 ## 20. Open questions
 
