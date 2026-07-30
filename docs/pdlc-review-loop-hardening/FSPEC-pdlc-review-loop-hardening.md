@@ -610,7 +610,8 @@ VERDICT: Approved with minor changes
 | Value | Exactly one of `Approved`, `Approved with minor changes`, `Needs revision`, case-sensitive | The same closed catalogue as `parseVerdict`'s `VALID_VERDICTS` array. AC-4.3, AC-4.7a. |
 | JSON line | The immediately following non-empty line is a JSON object with exactly the keys `high`, `medium`, `low`, all non-negative integers | Identical to `parseVerdict`'s structural validation (`keys.length !== 3 \|\| keys[0] !== "high" \|\| keys[1] !== "low" \|\| keys[2] !== "medium"` and its `Number.isInteger(...) && … >= 0` checks). |
 | Position | **Last section of the file**, and written last | AC-3.5 scope (c) makes the field the cross-review class's structural-completeness marker precisely because it is written last; a mid-file field would make a truncated write look complete. §16.3. |
-| Uniqueness | Exactly one `VERDICT: ` line in the file | Duplication is AC-4.2a's fail-closed case (§6.3). |
+| Scan scope | The **trailing `## Verdict` section only** — from the file's last `## Verdict` heading to EOF. Nothing above that heading is read as a verdict. | TE-v1 F-08. v1.0's "exactly one `VERDICT: ` line **in the file**" is withdrawn: it misclassifies any cross-review that *quotes* the grammar — including a review of this very FSPEC's §6.2, whose fenced block contains `VERDICT: Approved with minor changes` — so the mechanism defeated itself on the reviews of its own feature. §6.2 already fixes placement, so scoping the scan to that section costs nothing and removes the false positive. |
+| Uniqueness | Exactly one `VERDICT: ` line **within that section** | Duplication is AC-4.2a's fail-closed case (§6.3). |
 
 **Decision: reuse `parseVerdict` rather than write a second parser.** The function is already total
 over `null`, empty, missing-trailer, non-catalogue value, absent JSON (its truncated-output branch
@@ -622,8 +623,10 @@ and it is why the field's syntax is the trailer's syntax rather than a tidier YA
 
 ### 6.3 Reading it, and the fail-closed branches (AC-4.2a)
 
-The reader is `parseVerdict(fileContents, roleSlug)` plus one additional pre-check the response path
-does not need:
+The reader is `parseVerdict(section, roleSlug)` — where `section` is the **trailing `## Verdict` section**
+of §6.2, not the whole file — plus one additional pre-check the response path does not need. Both the
+pre-count and `parseVerdict`'s input are restricted to that section (TE-v1 F-08); a file with **no**
+`## Verdict` heading yields an empty section and lands on the "no `VERDICT: ` line" row below.
 
 | Input state | Detection | Outcome |
 |---|---|---|
@@ -632,7 +635,7 @@ does not need:
 | **No** `VERDICT: ` line | `parseVerdict` returns the fallback with `malformed: true` | **Not approving.** The phase runs; the report names the artifact. |
 | Value not in the catalogue | same | **Not approving.** Phase runs; artifact named. |
 | JSON present but malformed / wrong keys / negative | same | **Not approving.** Phase runs; artifact named. |
-| **Two or more** `VERDICT: ` lines | A count of `VERDICT: `-prefixed lines, performed before `parseVerdict` | **Not approving.** Phase runs; artifact named. This pre-check is required because `parseVerdict` scans **from the end** (`const reversed = lines.slice().reverse();`) and would silently take the last one — a silent choice between two verdicts is exactly what AC-4.2a forbids. |
+| **Two or more** `VERDICT: ` lines **inside the trailing `## Verdict` section** | A count of `VERDICT: `-prefixed lines in that section, performed before `parseVerdict` | **Not approving.** Phase runs; artifact named. This pre-check is required because `parseVerdict` scans **from the end** (`const reversed = lines.slice().reverse();`) and would silently take the last one — a silent choice between two verdicts is exactly what AC-4.2a forbids. |
 
 **No verdict-recovery agent on this path.** `reviewLoop`'s response path makes one cheap Haiku
 recovery attempt when a trailer is malformed (`recoverVerdict({ reviewer, rawResult, _agent })`, whose
@@ -2096,9 +2099,26 @@ deliberately shallow; §15.4's counters, not this test, are what bound a badly b
 
 ### 16.3 Cross-review files (one class) — fixed at REQ altitude
 
-A `CROSS-REVIEW-{role}-{doc-type}[-v{N}].md` is structurally complete when it carries **§6's persisted
-verdict field, parseable as exactly one catalogue value**. This document **implements** that criterion; it
-does not choose a new one (AC-3.5 scope (c) already fixes it).
+A `CROSS-REVIEW-{role}-{doc-type}[-v{N}].md` is structurally complete when its trailing `## Verdict`
+section (§6.2) carries **at least one `VERDICT: ` line whose value is in the catalogue**. This document
+**implements** AC-3.5 scope (c)'s criterion; it does not choose a new one.
+
+**Terminal and approving are two questions, not one (TE-v1 F-03).** v1.0 stated the criterion as "§6's
+persisted verdict field, **parseable as exactly one** catalogue value", which made a *duplicated* verdict
+field permanently non-terminal: the wrapper would re-dispatch to `MAX_AUTHORING_DISPATCHES` and then halt
+the phase over a review the reviewer genuinely finished. That is the same false-halt class E-44 exists to
+remove, so the "exactly one" clause is **withdrawn from the terminal test** and retained only in §6.3's
+approval test:
+
+| Trailing `## Verdict` section | Terminal (§15.4) | Approving (§5, §6.3) |
+|---|---|---|
+| One `VERDICT: ` line, catalogue value | **Yes** | per its value |
+| **Two or more** `VERDICT: ` lines, at least one catalogue value | **Yes** — the reviewer reached the end of the file | **No** — §6.3's fail-closed branch; the phase runs |
+| No `VERDICT: ` line, or no catalogue value among them | **No** — the episode continues | No |
+
+No remediation prompt and no duplicate-deleting edit is specified: terminal-but-non-approving already
+costs exactly one re-review, which is the same price every other unreadable-verdict state pays, and it
+needs no new mechanism.
 
 | Property | Consequence |
 |---|---|
@@ -2106,7 +2126,7 @@ does not choose a new one (AC-3.5 scope (c) already fixes it).
 | It is the same check §6 already performs for approval | One parser, one meaning of "this review is finished" |
 | A cross-review is written in one sub-budget call (AC-3.2b) | The write itself is progress under §15.3, terminal is decidable, and the wrapper does **not** re-dispatch a reviewer over a finished file |
 | A re-dispatch onto a **partial** cross-review must **continue** it, not rewrite it | AC-3.1a — a whole-file rewrite of a document past the budget is forbidden outright |
-| A re-dispatch nonetheless producing a **duplicated** verdict field | §6's fail-closed branch governs: the phase runs. A duplicated verdict can **never** produce a skip. |
+| A re-dispatch nonetheless producing a **duplicated** verdict field | **Terminal** (the table above), and §6's fail-closed branch governs the approval: the phase runs. A duplicated verdict can **never** produce a skip, and can **never** halt the phase either. |
 
 The `APPROVAL-HASH:` / `REVIEWED-COMMIT:` lines §7 appends are **not** part of this criterion. They are
 written by the script *after* the review episode reaches terminal, so requiring them would make the
@@ -2372,7 +2392,8 @@ direction; "reported" means it appears in the run report without changing the ou
 | E-55 | Pathologically unproductive agent that writes a byte each dispatch | Never trips the consecutive counter; bounded by `MAX_AUTHORING_DISPATCHES` = 6. **R-9**, accepted. | §15.3 |
 | E-56 | Authoring budget exhausted | Halt, **no POSTMORTEM**, `halted` row committed, report names the queue-row reset as the single recovery act | §15.6, §15.4 |
 | E-57 | Review episode re-dispatched onto a partial cross-review | Must **continue** it, never rewrite it (a whole-file rewrite past budget is forbidden). §4.5's no-overwrite guard is **not** re-evaluated on an intra-episode re-dispatch, so the continuation is reachable. | §16.3, §4.5 |
-| E-58 | Re-dispatch produces a **duplicated** verdict field | Fail closed: phase runs. A duplicated verdict can never produce a skip. | §16.3 |
+| E-58 | Re-dispatch produces a **duplicated** verdict field | **Terminal** (the reviewer reached the end), and fail closed on approval: phase runs. Never a skip, and never a halt. | §16.3, §6.3 |
+| E-66 | A cross-review **quotes** the verdict grammar in prose or a fenced block (e.g. a review of §6.2), so the file contains two `VERDICT: ` lines but its trailing `## Verdict` section contains one | **Conforming.** The pre-count and `parseVerdict` read the trailing section only, so the quoted line is invisible and the verdict is used normally. | §6.2, §6.3 |
 | E-59 | Harvest killed after prose, before the approval record | **Terminal, reports success**; the feature lands in the fail-closed case; the report **names** the missing record | §16.5 |
 | E-60 | Skeleton written with `TBD` placeholder bodies | Counts as **empty** ⇒ not complete. Otherwise write 1 would score terminal. | §16.2 |
 | E-61 | Per-section commit whose diff exceeds `MAX_AUTHORING_WRITE_BYTES` | **Reported** as a pacing-proxy violation; **does not halt** the run | §15.8 |
@@ -2642,6 +2663,17 @@ current bytes, **and** round 3's two cross-reviews are `Needs revision` with the
 the no-overwrite guard is **not** evaluated, no operator error is raised, the dispatch proceeds with the
 continue-do-not-rewrite instruction, and the partial file's existing bytes are still present afterwards.
 *(Fails if the guard fires — the deadlock of the mandated continuation.)*
+
+**AT-59 — A duplicated verdict field is terminal but not approving (E-58, TE-v1 F-03)**
+*Given* a cross-review whose trailing `## Verdict` section carries two `VERDICT: Approved` lines. *Then*
+the review episode is **terminal** on the first dispatch, the reviewer is **not** re-dispatched, the phase
+does **not** halt, and the phase **runs** because the verdict is not approving. *(Fails if the episode
+re-dispatches to `MAX_AUTHORING_DISPATCHES` — the false halt of a finished review.)*
+
+**AT-60 — Quoted verdict grammar does not make a file unparseable (E-66, TE-v1 F-08)**
+*Given* a cross-review whose body quotes `VERDICT: Approved with minor changes` inside a fenced block and
+whose trailing `## Verdict` section carries exactly one `VERDICT: Approved`. *Then* the file is
+conforming, the verdict reads `Approved`, and the whole-file count of two is never consulted.
 
 ## 20. Open questions
 
