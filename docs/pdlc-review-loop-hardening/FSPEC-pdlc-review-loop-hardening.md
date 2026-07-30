@@ -2321,6 +2321,250 @@ direction; "reported" means it appears in the run report without changing the ou
 
 ## 19. Acceptance tests
 
+Who / Given / When / Then. Every test is executable against `pdlc/workflows/__tests__/` with injected
+seams — no runtime, no network. Oracle construction is TSPEC's and PROPERTIES' work (O-14, O-19); these
+are the behavioural gates.
+
+**AT-01 — Round index is derived from the branch, not from 1 (H-1)**
+*Who:* the pipeline. *Given* `docs/foo/` holds `CROSS-REVIEW-software-engineer-FSPEC-v3.md` and
+`CROSS-REVIEW-test-engineer-FSPEC-v3.md`, none approving. *When* Phase F is entered. *Then* the first
+reviewer dispatch is round **4**, the round span logged is `rounds 4..8`, and no write targets a `-v1`,
+`-v2` or `-v3` path.
+
+**AT-02 — Un-suffixed first round is index 1**
+*Given* `docs/foo/CROSS-REVIEW-software-engineer-FSPEC.md` with no `-vN`. *When* the round index is
+derived. *Then* it is treated as round **1** and the next round is **2**.
+
+**AT-03 — Clean branch is benign (C-4, E-01)**
+*Given* `docs/foo/` does not exist. *When* Phase F is entered. *Then* the listing yields `dir_missing`,
+the round index is 1, mode is greenfield, and **no** warning or halt is emitted.
+
+**AT-04 — Unenumerable directory halts once**
+*Given* the listing seam reports `not_a_directory`. *Then* the run halts with exactly
+`Cannot enumerate docs/foo: not_a_directory` and no phase work is dispatched.
+
+**AT-05 — Non-conforming basenames are skipped and reported**
+*Given* `CROSS-REVIEW-se-FSPEC-v2.md` (unknown slug) alongside a conforming pair. *Then* the conforming
+pair is used, and the phase-entry line contains `skipped non-conforming: CROSS-REVIEW-se-FSPEC-v2.md`.
+No halt.
+
+**AT-06 — One listing per phase entry (AC-1.2)**
+*Given* an instrumented `_listFiles`. *When* one phase entry runs its discovery, round derivation and
+approval search. *Then* `_listFiles` was called **once** for that directory; the only additional listing
+in the phase is the per-dispatch overwrite check.
+
+**AT-07 — Overwrite guard refuses to clobber a cross-review (AC-1.4)**
+*Given* `CROSS-REVIEW-software-engineer-FSPEC-v4.md` already exists non-empty. *When* the round-4 reviewer
+dispatch is prepared. *Then* the guard reports the operator error and the file's bytes are unchanged.
+
+**AT-08 — Same-round dual approval skips the phase (AC-4.1, AC-4.1a)**
+*Given* round 2's two cross-reviews each carry `VERDICT: Approved` and matching `APPROVAL-HASH:` lines,
+and the FSPEC's working-tree bytes hash to that value. *Then* Phase F is **skipped**, the report carries
+the `⏭` marker, and names the document, both approving reviews and round **2**.
+
+**AT-09 — Cross-round approvals never combine (E-11)**
+*Given* round 2 = SE `Approved` / TE `Needs revision`; round 3 = TE `Approved` / SE `Needs revision`.
+*Then* the phase **runs**.
+
+**AT-10 — Absent role file is not approving (E-12)**
+*Given* round 2 has only the SE file, approving, and a LEARNINGS approval record exists for round 2.
+*Then* tier 1 governs, tier 2 is **not** read, and the phase runs.
+
+**AT-11 — Duplicated verdict field fails closed (E-09)**
+*Given* a cross-review with two `VERDICT: Approved` lines. *Then* the pre-count reports unparseable, the
+phase runs, and `parseVerdict`'s scan-from-end result is **not** used.
+
+**AT-12 — Round-1 approval produces a usable hash (O-14(i))**
+*Given* a greenfield round 1: document authored, then reviewed and approved. *Then* the recorded
+`APPROVAL-HASH:` equals the digest of the bytes read immediately **before** the review dispatch, and
+re-entry skips the phase. *(Fails if the hash is sourced from a pre-episode pacing measurement — under
+that implementation every round-1 approval falls to the missing-hash branch.)*
+
+**AT-13 — One digest function on write and read paths (A-11)**
+*Given* identical bytes. *Then* the write-path hash and every read-path hash are equal, and both carry the
+`sha256:` prefix with 64 lowercase hex characters.
+
+**AT-14 — Canonicalisation is inside the digest**
+*Given* two byte sequences differing only in CRLF vs LF and in trailing-newline count. *Then* their
+digests are equal, with no call-site pre-processing.
+
+**AT-15 — Pre-harvest edit invalidates the approval (AC-4.4, E-17)**
+*Given* a document approved at round 2, then edited (a DOD remediation shape), then harvested. *Then* the
+tier-2 hash is the round-2 hash, the working tree does not match, and the phase **runs**. *(A test that
+passes only because the hash was recomputed at harvest is the falsifying case and must fail.)*
+
+**AT-16 — Rebase does not disturb the comparison (E-19)**
+*Given* an approved document and a rebase that rewrites every commit sha and timestamp but not the
+document's bytes. *Then* the phase is still skipped, and no sha, timestamp or ancestry was read.
+
+**AT-17 — Failed hash append yields no approval and does not halt (E-13, TE-v5 Q-01)**
+*Given* `_appendFile` fails after the review episode reaches terminal. *Then* an error is surfaced, the
+round records **no** approval, and the current run **continues**. Never a silently record-less approval.
+
+**AT-18 — Record-less LEARNINGS passes the guard and then fails closed (E-22)**
+*Given* `LEARNINGS-foo.md` exists without `## 6. Approval Record`. *When* harvest deletes the
+cross-reviews. *Then* `guard-harvest-before-delete` **permits** the deletion, and the next Phase F
+invocation **runs**.
+
+**AT-19 — Every injected IO call is awaited (C-2)**
+*Who:* the bundle test. *Given* the built `pdlc/workflows/dist/*.bundle.js`. *When* the sources are
+scanned for calls to the injected seams — `_agent`, `_readFile`, `_writeFile`, `_appendFile`, `_checkFile`,
+`_listFiles`, `_git`, `_checkCi`, `_mergeWorktree`, `_recordHalt` — *then* every call site is `await`ed,
+and no bundle contains `import`, `export` past `meta`, `process`, `fs` or `fetch`. *(The adapter's
+implementations are async while the test doubles are sync, so a missing `await` passes unit tests and
+fails only in the runtime — this is the test that catches it.)*
+
+**AT-20 — `dist/` is fresh**
+*Given* any change to a workflow source. *Then* `node pdlc/workflows/build-runtime.mjs --check` exits 0 in
+the same commit, and `sync-workflows.sh --check` exits 0 for the consumer copy, which is never committed.
+
+**AT-21 — Non-convergence commits the `halted` row (AC-2.1)**
+*Given* a phase that exhausts its round budget under `orchestrate-queue`. *Then* the row reads `halted`
+**and** a commit `chore(queue): foo → halted` exists touching only `docs/_queue/QUEUE.md`.
+
+**AT-22 — Halt does not claim an unwritten POSTMORTEM (AC-2.2, E-32)**
+*Given* the POSTMORTEM agent throws. *Then* the reason says **write FAILED**, `postmortemStatus` is
+`"write_failed"`, and no reason string contains `POSTMORTEM written`.
+
+**AT-23 — Structured halt fields (AC-2.5)**
+*Then* the report carries `haltPhase`, `postmortemPath` (fully substituted — no literal `{feature}`),
+`postmortemStatus` and `queueRow` as fields, not only inside the reason string.
+
+**AT-24 — Unresolved POSTMORTEM refuses re-entry (AC-2.3, E-25)**
+*Given* `POSTMORTEM-R-foo.md` with no `RESOLVED:` line and no readable approval. *Then* Phase R halts, the
+Recommendation text is reproduced verbatim, and the next step names AC-2.4.
+
+**AT-25 — Resolved POSTMORTEM permits re-entry (AC-2.4)**
+*Given* the same file with one `RESOLVED: yes`. *Then* Phase R runs.
+
+**AT-26 — Skip reports the open POSTMORTEM without resolving it (E-26)**
+*Given* an approving round-2 pair, a fresh hash, and an unresolved `POSTMORTEM-R-foo.md`. *Then* Phase R
+is **skipped**, the run continues to Phase F, the report names both, and the POSTMORTEM is unchanged on
+disk.
+
+**AT-27 — Refusal is keyed on (phase, feature) (AC-2.3a, E-27)**
+*Given* an unresolved `POSTMORTEM-R-foo.md`. *Then* Phase F, T, P and D are unaffected.
+
+**AT-28 — Force overrides approval only (AC-4.6, AC-4.6a)**
+*Given* `forcePhases: "F"` and an approving, fresh round-2 pair. *Then* Phase F **runs** at round 3, is
+reported as forced, and the round-2 approval record is unchanged. *Given additionally* an unresolved
+`POSTMORTEM-F-foo.md`, *then* the forced run is **refused**.
+
+**AT-29 — Bad force token is rejected (E-33, E-34)**
+*Given* `forcePhases: "CR"` or `"all,F"`. *Then* the run halts before any phase, listing the valid
+catalogue. No phase executed.
+
+**AT-30 — Absent queue row is an error when a write was expected (AC-2.6, E-40)**
+*Given* a queue-driven run whose row was removed mid-run. *Then* `queueRow: "error"` and the reason names
+the feature and the queue path. `updateQueueStatus` does not silently return the document unchanged.
+
+**AT-31 — Direct invocation with no row is not an error (AC-2.6a, E-41)**
+*Given* no `QUEUE.md`. *When* a direct invocation halts. *Then* `queueRow: "none"` and the report carries
+exactly one failure — the halt reason.
+
+**AT-32 — Bypass does not recover the queue (AC-2.7a, E-42)**
+*Given* a `halted` row and a **successful** direct invocation. *Then* the row still reads `halted`,
+`selectNextPending` reports no pending entries, and the next `/loop` iteration is `idle`.
+
+**AT-33 — Commit failure is non-fatal and surfaced (E-38)**
+*Given* `_git` reports a commit failure. *Then* the row is correct on disk, `queueRow` is
+`"halted (uncommitted)"`, the manual-commit instruction appears, and the **original halt reason is
+reported first**.
+
+**AT-34 — Nothing-to-commit is success (E-39)**
+*Given* the row already reads `halted` and is committed. *Then* the status write is a silent no-op with no
+warning.
+
+**AT-35 — No-op-with-trailer is terminal (AC-3.5b, E-44)**
+*Given* a revision episode whose round is fully applied. *When* the dispatch writes nothing and emits
+`REVISION-COMPLETE: yes`. *Then* the episode is **terminal in one dispatch**, the phase does not halt, and
+the wrapper does not re-dispatch.
+
+**AT-36 — No trailer is not terminal even when complete (E-45)**
+*Given* a revision dispatch killed after applying 3 of 5 findings, leaving the artifact structurally
+complete. *Then* the episode is **not** terminal and continues.
+
+**AT-37 — All three fault surfacings behave identically (AC-3.5e, E-46)**
+*Given* three fixtures: dispatch returns a value, returns nothing, throws. *Then* all three are
+non-terminal, the assertion is written **without** distinguishing them, and the fault-observed boolean is
+reported.
+
+**AT-38 — Premature trailer is visible, not silent (R-12, O-19(h4))**
+*Given* an agent emitting the trailer while a finding is demonstrably unreflected. *Then* the round's
+report records the terminal-on-trailer decision, so the loss is attributable rather than silent.
+
+**AT-39 — Partial over-budget section counts as progress (E-48)**
+*Given* a greenfield dispatch killed mid-way through a section larger than
+`MAX_AUTHORING_WRITE_BYTES`, having written bytes but completed no section. *Then* the dispatch scores
+**progress**, the consecutive counter resets, and three such kills do **not** halt the phase.
+
+**AT-40 — Revision dispatch on a complete artifact is not no-progress (O-19(b))**
+*Given* a feedback-addressing dispatch that edits an already-complete document. *Then* it scores progress,
+and three consecutive such dispatches do **not** halt the phase.
+
+**AT-41 — Counter reset with interleaving (E-50)**
+*Given* dispatches scoring no-progress, no-progress, progress, no-progress. *Then* the episode is still
+running.
+
+**AT-42 — Counters are per episode (O-19(c), E-51)**
+*Given* a five-round convergence with one dispatch per round. *Then* `MAX_AUTHORING_DISPATCHES` is never
+reached, and at the start of each new round **and** each fresh invocation both counters read zero.
+
+**AT-43 — Mode survives the invocation seam (O-19(i), E-52)**
+*Given* a revision episode killed mid-edit, halted under the authoring budget, the row reset, and the phase
+**re-invoked**. *Then* the new episode re-enters **revision** mode on the **same** round, carries the
+continuation prompt with that round's findings, and does **not** report terminal success on structural
+completeness alone.
+
+**AT-44 — Artifact-set semantics (O-19(g), E-53, E-54)**
+*Given* an `se-author` dispatch advancing TSPEC only. *Then* it scores progress; terminal requires every
+required member; a DECISIONS the warrant check does not require is not a member.
+
+**AT-45 — Working-tree measurement (O-19(g))**
+*Given* a write not yet committed. *Then* it counts as progress.
+
+**AT-46 — Authoring-budget exhaustion writes no POSTMORTEM (AC-3.5f, E-56)**
+*Then* the phase halts, **no** `POSTMORTEM-{phase}-{feature}.md` is written, the `halted` row **is**
+committed, and the report names the queue-row reset as the single recovery act and states that no
+POSTMORTEM was written.
+
+**AT-47 — Two distinct exhaustion reports (AC-3.5d)**
+*Then* the consecutive exhaustion reports `no progress across 3 consecutive attempts` and the cumulative
+one reports `6 dispatches without reaching structural completeness`, each with the section count, and
+neither claims any runtime retry count.
+
+**AT-48 — Continuation prompt contract is inspectable (AC-3.5g)**
+*Given* any revision-mode dispatch. *Then* its prompt names the round's findings, states the
+partially-edited condition and the not-already-reflected instruction, directs the agent to the document on
+disk, and requires the trailer. A prompt lacking any clause fails the test.
+
+**AT-49 — Resume prompt names the first unwritten section (AC-3.3, O-6)**
+*Given* a partial FSPEC with sections 1–7 filled and 8–21 empty. *Then* the dispatch is a resume, the
+prompt names section 8's heading, and the section index was computed by the **script**.
+
+**AT-50 — Wrapped review dispatch is terminal on its verdict field (O-19(f), §16.3)**
+*Given* a `se-review` dispatch producing a cross-review with one parseable verdict. *Then* the episode is
+terminal and the reviewer is not re-dispatched. *And* a Phase-DOD remediation `se-implement` dispatch is
+demonstrably **not** wrapped.
+
+**AT-51 — Harvest terminal without the approval record (E-59)**
+*Given* a harvest killed after prose, before the record. *Then* the episode is terminal, the run reports
+success, **and** the report names the missing approval record.
+
+**AT-52 — Pacing proxy reports but does not halt (O-20, E-61)**
+*Given* a per-section commit whose diff exceeds `MAX_AUTHORING_WRITE_BYTES`. *Then* the run report names
+the violation and the run **continues** to completion.
+
+**AT-53 — No git operation discards uncommitted artifact content (O-20)**
+*Then* no code path invokes `checkout --`, `reset --hard`, or `stash` on an artifact path.
+
+**AT-54 — Constant substitution respects the budget semantics (AC-5.1, E-06)**
+*Given* a branch whose highest FSPEC round is 3. *Then* the gate admits rounds 4 through 8, and the
+exhaustion message names `rounds 4..8` — not `after 5 iterations` against an absolute index.
+
+**AT-55 — No un-substituted template reaches a report (AC-5.2)**
+*Then* no report string produced by any halt path contains a literal `{feature}` or `{DOC-TYPE}`.
+
 ## 20. Open questions
 
 ## 21. Obligation discharge and traceability
