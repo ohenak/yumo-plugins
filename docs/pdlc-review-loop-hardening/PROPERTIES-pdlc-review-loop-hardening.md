@@ -363,7 +363,8 @@ sampled.
 **Owner.** Written by **RLH-06** (batch 2); greened by **RLH-05(d)** (batch 3). Rides §7.3's
 `RLH-AT-12,-13,-14,-17; both digest properties` row: green from batch 3, permitted red batch 2.
 
-**Beyond the examples.** The known-answer vectors (§6.2) pin four points; this pins the *shape of the
+**Beyond the examples.** The known-answer vectors (§6.2) pin four points, and RLH-06's `RLH-AT-12`…
+`-18` pin the wiring; this pins the *shape of the
 output* over the whole input space, including the case §8.2 calls out — text whose only defect is a
 `\r` in the middle of a line, which no vector carries.
 
@@ -433,7 +434,8 @@ a boolean toggle, and it is the shape the `unclosed-fence.md` fixture (§6.3) pi
 **Owner.** Written by **RLH-03** (batch 2); greened by **RLH-05(c)**. §7.3 row `RLH-AT-65, -66;
 scanLines property`: green from batch 3, permitted red batch 2.
 
-**Beyond the examples.** AT-05…AT-09 pin named near-misses one at a time; the generator composes them
+**Beyond the examples.** RLH-03's two ATs — `RLH-AT-65` and `RLH-AT-66` (PLAN §4.2) — pin two named
+near-misses; the generator composes them
 — quoted marker *inside* a fence, marker on the line that closes a fence, two markers on adjacent
 lines — combinations no AT enumerates and where an ordering bug in the scan lives.
 
@@ -466,9 +468,11 @@ rather than silently narrowing it.
 **Owner.** Written by **RLH-11** (batch 2); greened by **RLH-05(e)**. §7.3 row `RLH-AT-01 … -06,
 -63; round-derivation properties`: green from batch 3, permitted red batch 2.
 
-**Beyond the examples.** AT-30…AT-33 are four named filenames. The rejection direction is the half
+**Beyond the examples.** RLH-11's suite pins `RLH-AT-01`…`-06` and `RLH-AT-63` — a fixed handful of
+named filenames and branch states. The rejection direction is the half
 examples cannot carry: it asserts a *negative over a space*, that nothing outside the catalogue parses,
-which is what stops a loosened regex from silently admitting `CROSS-REVIEW-pm-REQ-v1.md.bak`.
+which is what stops a loosened regex from silently admitting `CROSS-REVIEW-pm-REQ-v1.md.bak` — a
+negative none of `RLH-AT-01`…`-06` states.
 
 **Shrink.** File-local ladder: shorten the version number toward 1, then reduce the mutation to the
 single altered character.
@@ -501,7 +505,8 @@ phase gate.
 `startIndex` for named branch states, the property asserts that the *sibling-field relationship*
 holds for every branch state, which is precisely what a caller recomputing `endIndex` from a stale
 `roundIndex` would break. It is also the only place the "derive, never count" rule is stated over the
-whole input space rather than at the three ATs (AT-34…AT-36) that sample it.
+whole input space rather than at the `RLH-AT-01`…`-06`/`-63` points that sample it (`RLH-AT-07`, the
+call-site half, greens two batches later against `RLH-26`).
 
 **Shrink.** File-local ladder: delete names, then reduce each surviving version toward `startIndex`.
 
@@ -529,7 +534,8 @@ as *set coverage of `V`*, so a catalogue that grows without the generator growin
 **Owner.** Written by **RLH-14** (batch 2); greened by **RLH-05(f)**. §7.3 row `RLH-AT-29;
 parseForcePhases catalogue-closure`: green from batch 3, permitted red batch 2.
 
-**Beyond the examples.** AT-52…AT-55 sample four inputs. Closure over the catalogue — that nothing
+**Beyond the examples.** RLH-14's suite samples three inputs — `RLH-AT-28`, `RLH-AT-29` and
+`RLH-AT-01a` (PLAN §4.2). Closure over the catalogue — that nothing
 outside it is ever accepted and `all` always expands to exactly six — is a statement about the
 *complement* of the catalogue, which no finite example set can make. It is also the property that
 detects a seventh phase added to the runtime without being added to the vocabulary: `|phases|` stops
@@ -562,7 +568,7 @@ required set without the generator knowing fails here rather than going untested
 **Owner.** Written by **RLH-12** (batch 4); greened by **RLH-16**. §7.3 row `RLH-AT-60, -62;
 isComplete property`: green from batch 6, permitted red batches 4–5.
 
-**Beyond the examples.** AT-40 and AT-41 pin two present-sets. The property is what makes the
+**Beyond the examples.** RLH-12's `RLH-AT-59`, `-60` and `-62` pin three present-sets. The property is what makes the
 *required set itself* the thing under test: it is the only assertion in the suite that fails when a
 document is quietly dropped from `R`, because it derives its expectation from `R` and its floors from
 `R` simultaneously.
@@ -694,7 +700,7 @@ comparing raw text instead of digests, and it is the AT-16 rebase scenario state
 **RLH-26** (gate conjunct) — §7.3's `RLH-AT-15, -16, -18` row: green from batch 8, permitted red
 batches 2–7.
 
-**Beyond the examples.** AT-15…AT-17 sample three edits. The property covers the *edit space*: any
+**Beyond the examples.** `RLH-AT-15`, `-16` and `-18` sample three edits. The property covers the *edit space*: any
 mutation whatsoever is stale unless it is a normalisation, which is the exact contract the approval
 gate needs and the one a whitespace-tolerant comparison would violate silently.
 
@@ -732,7 +738,8 @@ cases must be present so the benign path is not the only non-halting outcome.
 **Owner.** Written by **RLH-25** (batch 3); greened by **RLH-27** — §7.3's `RLH-AT-21 … -27, -13a,
 -30-orch … -34-orch` row: green from batch 9, permitted red batches 3–8.
 
-**Beyond the examples.** AT-24…AT-27 name four dispositions one phase at a time. The product with the
+**Beyond the examples.** RLH-25's `RLH-AT-21`…`-27` name the dispositions one phase at a time, and
+`RLH-AT-13a` enumerates G-INV's four gated exits. The product with the
 phase axis is what no AT set carries: a disposition that is correct at Phase R and swallowed at Phase
 D is exactly the H-2 terminal-exit shape, and only the product catches it.
 
@@ -794,7 +801,7 @@ the property's discriminating power — everything else is dressing.
 red batches 3–7.
 
 **Beyond the examples.** The `iff` is the point. The ATs assert *finding* an approval that is there
-(AT-44…AT-47); the property additionally asserts *not* finding one that is not, over a space that
+(`RLH-AT-08`…`-11`, `-56`, `-57`); the property additionally asserts *not* finding one that is not, over a space that
 includes the near-misses — out-of-window, stale, half-unanimous — that the H-4 defect shipped through.
 
 **Shrink.** File-local ladder: collapse to tier placement + presence vector + one in/out-of-window
@@ -1125,5 +1132,70 @@ from there, do not retype it from here"*) and §1.4 above:
 - **SKILL template headings** — copied by RLH-12 once, per §6.4, and never paraphrased.
 
 ## 7. Coverage matrix
+
+### 7.1 Property → assertions generalised → owner → ledger row
+
+AT ids are given in the PLAN's `RLH-`-namespaced form (PLAN §1.3), because that is the form the jest
+names take. `Row` is the §7.3 ledger row the property rides (§1.3); `Green from` / `Permitted red`
+are that row's, unchanged.
+
+| Property | Level | File | Generalises | Written by | Row (§7.3) | Green from | Permitted red |
+|---|---|---|---|---|---|---|---|
+| `PROP-DIGEST-01` | L1 | `approvalHash.test.js` | `RLH-AT-12`…`-14`, `-17` | RLH-06 (2) | digest row | batch 3 | batch 2 |
+| `PROP-DIGEST-02` | L1 | `approvalHash.test.js` | `RLH-AT-12`…`-14`, `-17` | RLH-06 (2) | digest row | batch 3 | batch 2 |
+| `PROP-HASH-01` | L1 | `approvalHash.test.js` | — (new; §8.1's gap) | RLH-06 (2) | digest row | batch 3 | batch 2 |
+| `PROP-STALE-01` | L1 | `approvalHash.test.js` | `RLH-AT-15`, `-16`, `-18` | RLH-06 (2) | `RLH-AT-15/-16/-18` | batch 8 | batches 2–7 |
+| `PROP-SCAN-01` | L1 | `scanLines.test.js` | `RLH-AT-65`, `-66` | RLH-03 (2) | scanLines row | batch 3 | batch 2 |
+| `PROP-NAME-01` | L1 | `roundDerivation.test.js` | `RLH-AT-01`…`-06`, `-63` | RLH-11 (2) | round-derivation row | batch 3 | batch 2 |
+| `PROP-ROUND-01` | L1 | `roundDerivation.test.js` | `RLH-AT-01`…`-06`, `-63` | RLH-11 (2) | round-derivation row | batch 3 | batch 2 |
+| `PROP-FORCE-01` | L1 | `forcePhases.test.js` | `RLH-AT-29` (and `-28`, `-01a`) | RLH-14 (2) | force-phases row | batch 3 | batch 2 |
+| `PROP-COMPLETE-01` | L1 | `completeness.test.js` | `RLH-AT-60`, `-62` | RLH-12 (4) | `isComplete` row | batch 6 | batches 4–5 |
+| `PROP-TRAILER-01` | L1 | `pacingWrapper.test.js` | `RLH-AT-61-loop` | RLH-21 (3) | pacing row | batch 7 | batches 3–6 |
+| `PROP-RESOLVE-01` | L1 | `approvalSearch.test.js` | `RLH-AT-08`…`-11`, `-56`, `-57` | RLH-24 (3) | approval-search row | batch 8 | batches 3–7 |
+| `PROP-LIST-01a` | L2 | `haltAndQueue.test.js` | `RLH-AT-21`…`-27` | RLH-25 (3) | halt-and-queue row | batch 9 | batches 3–8 |
+| `PROP-LIST-01b` | L2 | `pacingWrapper.test.js` | `RLH-AT-43a` | RLH-21 (3) | pacing row | batch 7 | batches 3–6 |
+| `PROP-APPROVE-01` | L2 | `approvalSearch.test.js` | `RLH-AT-08`…`-11`, `-56`, `-57` | RLH-24 (3) | approval-search row | batch 8 | batches 3–7 |
+| `PROP-GINV-01` | L2 | `haltAndQueue.test.js` | `RLH-AT-13a` | RLH-25 (3) | halt-and-queue row | batch 9 | batches 3–8 |
+| `PROP-EPISODE-01` | L2 | `pacingWrapper.test.js` | `RLH-AT-35`…`-54`, `-58` | RLH-21 (3) | pacing row | batch 7 | batches 3–6 |
+| `PROP-WINDOW-01` | L2 | `reviewLoop.test.js` | `RLH-LOOP-01`, `-02` | RLH-22 (3) | `RLH-LOOP-01`/`-02` | batch 9 | batches 3–8 |
+| `PROP-AWAIT-01` | L3 | `runtimeBundle.test.js` | `RLH-AT-19`, `-20`, `RLH-SCAN-01` | RLH-31 (2) | first row | **batch 2, on arrival** | **none, ever** |
+
+Seventeen properties, eighteen ids (`PROP-LIST-01` splits into `-01a`/`-01b` across two files, one
+owner each, per §1.3 and PLAN §7.4's `-module`/`-orch` precedent).
+
+### 7.2 What each property covers that its examples cannot
+
+| Property | The examples pin | The property adds |
+|---|---|---|
+| `PROP-DIGEST-01` | four canonicalisation outcomes | the **normal form** over arbitrary byte soup, incl. mid-line `\r` |
+| `PROP-DIGEST-02` | four known-answer digests | totality of the 64-hex shape, and that canonicalisation is *inside* the digest |
+| `PROP-HASH-01` | one quoted-trailer fixture | that **no** input yields a non-64-hex "hash" |
+| `PROP-STALE-01` | three named edits | the whole edit space: every mutation is stale unless it is a normalisation |
+| `PROP-SCAN-01` | two near-misses, three fixtures | *compositions* of near-misses, and conservation of line count |
+| `PROP-NAME-01` | six named filenames | the **rejection** half — a negative over the complement of the catalogue |
+| `PROP-ROUND-01` | six branch states | the width identity as a relationship, over every branch state incl. empty |
+| `PROP-FORCE-01` | three inputs | catalogue closure, and that `all` expands to exactly six |
+| `PROP-COMPLETE-01` | three present-sets | the `iff`, plus detection of `R` itself shrinking |
+| `PROP-TRAILER-01` | four trailer shapes | **mutual exclusion** across recognisers — a cross-recogniser claim no AT makes |
+| `PROP-RESOLVE-01` | three presence vectors | all sixteen, exhaustively, plus order-independence |
+| `PROP-LIST-01a` | four dispositions at one phase | the phase × failure **product** — the H-2 shape |
+| `PROP-LIST-01b` | one two-episode refresh | arbitrary interleavings, incl. phase changes mid-sequence |
+| `PROP-APPROVE-01` | approvals that are found | approvals that must **not** be found: out-of-window, stale, half-unanimous |
+| `PROP-GINV-01` | four enumerated exits | **reachability over paths** — the framing under which H-2 was visible and enumeration was not |
+| `PROP-EPISODE-01` | three interleavings | the bound over all interleavings, and per-coordinate `EpisodeKey` independence |
+| `PROP-WINDOW-01` | one threading assertion + a grep oracle | that the window is computed **once** and read identically by every consumer |
+| `PROP-AWAIT-01` | two zero-match regexes + a site list | the classification as a **total partition** over the site set the walk computes |
+
+### 7.3 Distribution against the test pyramid
+
+Eleven L1, six L2, one L3 — measured against §7.1's `Level` column. That shape follows TSPEC §8.3's
+own levelling rather than a target: the pure parsers and the digest path are where generated input
+buys the most, the orchestration invariants need the seam doubles and so cost more per case, and
+exactly one invariant (`PROP-AWAIT-01`) is about the source text rather than about behaviour.
+
+**No property runs at L4.** Nothing here spawns a process, touches the filesystem, or reads `dist/`
+(§2.4). The 100-case budget per property (§2.5) is set so that seventeen properties add a bounded
+increment to a suite already measured at ~180 s wall time — the figure that already exceeds the 180 s
+foreground watchdog and is why the baseline was run in the background.
 
 ## 8. Gaps, residuals, and measured inconsistencies
