@@ -1445,7 +1445,7 @@ skip(phase) := phase ∉ forcePhases
 | Not overridden by forcing | Why |
 |---|---|
 | **AC-2.3's POSTMORTEM refusal** | §11.5 — the whole point of AC-4.6a |
-| The round index (§4) | Forcing re-runs the phase at the *next* round index, appending `-v{N+1}` cross-reviews. It does not re-use or overwrite an existing round (AC-1.4 forbids overwriting a cross-review file, §4's per-dispatch guard enforces it). |
+| The round index (§4) | Forcing re-runs the phase at the *next* round index, appending `-v{N+1}` cross-reviews. It does not re-use or overwrite an existing round (AC-1.4 forbids overwriting a cross-review file, §4.5's first-dispatch guard enforces it). |
 | The approval record | Forcing does **not** delete, edit, or invalidate the tier-1 or tier-2 record. The prior approval stays on the branch as history; the new round produces its own record. |
 | Phases not named | Every in-scope phase not in `forcePhases` evaluates the skip normally in the same run. Forcing `F` does not force `T`. |
 | AC-4.7's out-of-scope phases | CR and DOD always run; there is nothing to force. |
