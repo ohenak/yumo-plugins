@@ -845,6 +845,55 @@ export function parseApprovalHash(fileText) {
   return { ok: true, hash: hashes[0], reviewedCommit };
 }
 
+// ─── TSPEC §5.1 — verdict extraction from a FILE ──────────────────────────────
+
+/**
+ * Read a reviewer's verdict out of a cross-review **file** (§5.1), in the three
+ * steps the spec fixes, reusing `parseVerdict` unmodified.
+ *
+ * 1. **Locate the trailing section.** `scanLines` over the whole file, recording
+ *    the index of the LAST visited `## Verdict` heading; the section is that line
+ *    to EOF. A heading inside a fence is never visited, so it can neither become
+ *    the boundary nor contribute a `VERDICT:` line. No such heading ⇒ no verdict
+ *    ⇒ the phase runs.
+ * 2. **Duplicate pre-count** over the section. More than one `VERDICT: ` line
+ *    fails closed — and it fails closed *before* step 3, because `parseVerdict`
+ *    scans from the end and would happily return the last of them.
+ * 3. **`parseVerdict(section, roleSlug)`**, unchanged. Feeding it file text
+ *    instead of a response string requires no change to it whatsoever.
+ *
+ * The scan is scoped to the trailing section rather than the whole file on
+ * purpose: "exactly one `VERDICT:` line in the file" misclassifies any
+ * cross-review that *quotes* the grammar — including a review of this very
+ * feature, whose TSPEC §4.4 fenced block contains a literal `VERDICT:` line.
+ *
+ * @param {string|null|undefined} fileText
+ * @param {string} roleSlug - for `parseVerdict`'s warning text only.
+ * @returns {{ok: true, verdict: string, high: number, medium: number,
+ *            low: number, malformed?: boolean}
+ *          |{ok: false, reason: "no_verdict_section"|"duplicated"}}
+ */
+function extractFileVerdict(fileText, roleSlug) {
+  const text = String(fileText ?? "");
+  const lines = text.split("\n");
+
+  let headingIndex = -1;
+  scanLines(text, (line, index) => {
+    if (/^\s*##\s+Verdict\s*$/.test(line)) headingIndex = index;
+  });
+  if (headingIndex === -1) return { ok: false, reason: "no_verdict_section" };
+
+  const section = lines.slice(headingIndex).join("\n");
+
+  let trailers = 0;
+  scanLines(section, (line) => {
+    if (line.trim().startsWith("VERDICT: ")) trailers += 1;
+  });
+  if (trailers > 1) return { ok: false, reason: "duplicated" };
+
+  return { ok: true, ...parseVerdict(section, roleSlug) };
+}
+
 /**
  * Read an author's `REVISION-COMPLETE:` trailer out of its response (§4.3).
  *
@@ -2067,18 +2116,31 @@ async function refreshReviewState({ feature, docType, _listFiles, _readFile }) {
 
   // The verdict record rule 2 reads. Unreadable is recorded as unreadable, never
   // downgraded to "no findings" — the two directions are not symmetric (§5.6.1).
+  //
+  // §5.6.1 pins WHICH files are opened: "§5.4's tier-1 reads over round
+  // `w.startIndex - 1`, or empty when that is < 1". Reading every matched
+  // basename instead would blow §5.4's two-`_readFile` fan-out and would open
+  // rounds the approval search is forbidden to descend to (`RLH-AT-09`,
+  // `RLH-AT-57`). `matched` still carries every round — it is derived from the
+  // listing, costs no read, and `dispatchAndVerify` names the revision round's
+  // files from it.
+  const candidate = window.startIndex - 1;
   const reviewFiles = new Map();
   const matched = [];
   for (const basename of files) {
     const parsed = parseReviewFilename(basename);
     if (!parsed.ok || parsed.docType !== docType) continue;
     matched.push({ basename, role: parsed.role, round: parsed.round });
+    if (parsed.round !== candidate) continue;
     const text = await _readFile(`${dirPath}/${basename}`);
-    const parsedVerdict = parseVerdict(text, basename);
+    const parsedVerdict = extractFileVerdict(text, parsed.role);
+    const anchor = parseApprovalHash(text);
     reviewFiles.set(`${parsed.role}:${parsed.round}`, {
-      verdict: parsedVerdict.verdict,
-      verdictReadable: parsedVerdict.malformed !== true,
-      anchorHash: null,
+      verdict: parsedVerdict.ok ? parsedVerdict.verdict : null,
+      verdictReadable: parsedVerdict.ok && parsedVerdict.malformed !== true,
+      anchorHash: anchor.ok ? anchor.hash : null,
+      anchorReason: anchor.ok ? null : anchor.reason,
+      path: `${dirPath}/${basename}`,
     });
   }
 
