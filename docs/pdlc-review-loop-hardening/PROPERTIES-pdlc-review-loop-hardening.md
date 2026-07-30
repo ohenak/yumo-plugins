@@ -178,13 +178,41 @@ exactly four kinds — `"manifest"`, `"bytes"`, `"id"`, `"subRecipe"` — and it
 heading sets, force-phase token strings, listing shapes, episode interleavings, source fragments)
 falls in the `default` branch and shrinks to **nothing**.
 
-The disposition, per property, is one of exactly two — stated in each property's body and never left
-implicit:
+**What the shipped `"bytes"` arm actually buys — measured, and it is less than v1.0 claimed.**
+`driftGenerators.js:453–457` at HEAD, with `const BYTES_FLOOR = 64;` at `:423`:
 
-| Disposition | When it applies | What the property does |
+```js
+case "bytes": {
+  const bytes = caseValue.bytes;
+  if (!bytes || bytes.length <= BYTES_FLOOR) return [];
+  return [{ kind: "bytes", bytes: bytes.slice(0, BYTES_FLOOR) }];
+}
+```
+
+It is **not a ladder**. It returns **at most one** candidate, and only when the case exceeds 64 bytes;
+at or below 64 bytes it returns `[]`. The single rung is a raw byte truncation, so it splits multi-byte
+UTF-8 sequences — the shapes `PROP-DIGEST-02`'s floors exist to force — and the truncated case usually
+lands in a different domain and stops falsifying, at which point the walk reports the original. **This
+document therefore claims one rung, never a ladder, and v1.0's "walk `shrink`'s existing ladder" is
+withdrawn** (SE F-05, PM F-09, PM R-2).
+
+Where that one rung is a **guaranteed no-op**, say so rather than imply a shrink path:
+
+| Property | Shipped `"bytes"` rung | Why |
 |---|---|---|
-| **Reuse a shipped kind** | the case is naturally a byte string | wrap the failing case as `{ kind: "bytes", bytes: Buffer.from(text, "utf8") }` and walk `shrink`'s existing ladder (floor 64 bytes). Applies to `PROP-DIGEST-01`, `PROP-DIGEST-02`, `PROP-SCAN-01` |
-| **File-local ladder** | the case is structured | declare a short, ordered, **explicit** ladder of strictly simpler cases in the property's own file, unexported, and walk it. Never a search. Applies to the other thirteen |
+| `PROP-DIGEST-01`, `PROP-DIGEST-02` | useful above 64 bytes only | domain is `n ∈ 0…512`, so roughly an eighth of every corpus has no shrink step at all |
+| `PROP-HASH-01`, `PROP-STALE-01` | **no-op** | the case turns on a 64-hex trailer/anchor at the document's end; truncating to the first 64 bytes removes exactly the thing being tested, so the rung never still-falsifies |
+| everything else | not used | `shrink` returns `[]` for the kind |
+
+**Each property's `Shrink.` line is the sole owner of its disposition.** v1.0 declared the disposition
+"one of exactly two" and then gave three memberships across §2.3, §4 and §8.2 that disagreed; the
+"Applies to" lists are deleted rather than reconciled (PM F-09, PM R-5). Two mechanisms exist and a
+property may use both on different parts of one case:
+
+| Mechanism | What it is |
+|---|---|
+| **Shipped `"bytes"` kind** | wrap the failing text as `{ kind: "bytes", bytes: Buffer.from(text, "utf8") }` and take the single 64-byte-prefix rung, above the floor, where that prefix can still falsify |
+| **File-local ladder** | a short, ordered, **explicit** ladder of strictly simpler cases declared in the property's own file, unexported, walked once. Never a search |
 
 A file-local ladder is **not** a second primitive library and does not contradict PLAN §7.2: §7.2
 forbids re-implementing `int` / `pick` / `shuffle` / `bytes` / `resolveSeed` / `shrink` **as a shared
@@ -236,20 +264,35 @@ Tests:       1 failed, 70 skipped, 1038 passed, 1109 total
 Time:        179.795 s
 ```
 
-exit 1, the single red being `documentOracles.test.js`'s intentional `AT-22 [red-until-L-06]`. This
-reproduces PLAN §2.1's figures exactly. The wall clock **sits on the 180 s foreground watchdog**
-(179.795 s this run; PLAN §4.1 recorded 179.2–185.4 s across five runs of one HEAD), so every suite
-run in this feature — including every property run — goes in the background with a generous timeout.
+exit 1, the single red being `documentOracles.test.js`'s intentional `AT-22 [red-until-L-06]`.
+
+**The four counts reproduce exactly on every machine that has run them; the wall clock does not, and
+v1.0 stated it as if it did.** Both round-1 reviewers re-ran the same HEAD and got the same
+`1038 passed / 1 failed / 70 skipped / 1109 total` over 36 suites, with the same single red — and
+**299.503 s** (SE F-10) and **331.163 s** under concurrent load (PM Q-01) against this document's
+179.795 s. PLAN §4.1 itself recorded 179.2–185.4 s across five runs of one HEAD and marks the figure
+**advisory, not a gate**, for this reason.
+
+So: **the pass/fail/skip/suite baseline is the assertion; the wall clock is machine- and
+load-dependent and is recorded, never asserted.** The conclusion is unchanged and is more robustly
+right at 300 s than at 180 s — the suite is at or past the 180 s foreground watchdog on every machine
+measured, so every suite run in this feature, including every property run, goes in the background
+with a generous timeout. The per-property budget below is set from case counts and level, not from
+any one machine's wall clock: all seventeen properties are L1/L2 with no spawn, no filesystem and no
+`dist/` read, ≈1,700 cases in total, and the suite's critical path is the shell-spawning drift suites
+(`guardMatrix`, `driftFault`, `driftSync`), which none of these properties joins.
 That is a constraint on *how the properties are executed*, and it is why §4's per-property case counts
 are stated as budgets rather than left to the implementer: seventeen properties drawing a thousand
 cases each would put the gate past the point where anyone runs it.
 
 **Per-property case budget: 100 generated cases by default**, stated per property where it differs,
 and each property must complete within a few seconds at that budget. Exhaustive enumeration is used
-wherever the space is small enough to enumerate (`PROP-LIST-01`'s eight cells, `PROP-FORCE-01`'s
-seven-token catalogue, `PROP-GINV-01`'s six exits × three POSTMORTEM states) — exhaustive beats
-sampled whenever it is affordable, and the exhaustive cases are the ones that cannot regress into
-"the generator stopped producing that shape".
+wherever the space is small enough to enumerate (`PROP-LIST-01a`'s phase × failure product,
+`PROP-FORCE-01`'s seven-token catalogue, `PROP-GINV-01`'s **five** gated exits × three POSTMORTEM
+states) — exhaustive beats sampled whenever it is affordable, and the exhaustive cases are the ones
+that cannot regress into "the generator stopped producing that shape". **Five, not six**: the exit
+count is TSPEC §2.5's G-INV sentence and nothing else states it (§4.3, SE F-06); v1.0's "six" here was
+a third, unowned count and is withdrawn.
 
 ## 3. Generators
 
