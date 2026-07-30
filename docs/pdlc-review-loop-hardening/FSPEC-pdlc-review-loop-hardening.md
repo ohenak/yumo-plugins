@@ -917,7 +917,10 @@ emit match + replacement, roughly double. An append emits only the two lines.
 | "A **failed append** is an error surfaced to the operator, not a silent degradation." | On `_appendFile` rejecting, or on the post-append verification read failing to find exactly one `APPROVAL-HASH:` line: the script emits an operator-facing error naming the file and the failure, and **that round yields no approval**. §10.5's no-parseable-hash branch then governs on any later re-entry: the phase runs. **Recording the approval without the hash is forbidden.** The append failure does **not** halt the current run — the round's review verdict is already known from the response trailer and the pipeline continues normally; what is lost is only the future skip. |
 
 **Idempotence on re-entry (O-17(b)).** Before appending, the script counts `APPROVAL-HASH:`-prefixed
-lines in the file. Zero ⇒ append. One ⇒ **skip the append** and verify the existing value equals the
+lines in the file, **excluding fenced regions per §1.2 rule 5** — the template above is itself a fenced
+block containing such a line, so an unscoped count misreads any review that quotes it and lands on the
+"one present, unequal" branch below: an operator-facing error and no approval for a round that earned
+one (SE-v2 F-11). Zero ⇒ append. One ⇒ **skip the append** and verify the existing value equals the
 value just computed; if it differs, that is an operator-surfaced error and the round yields no
 approval (two different anchors for one round is unresolvable, and choosing either is fail-open). Two
 or more ⇒ operator-surfaced error, round yields no approval (§6.3's duplication direction). This makes
