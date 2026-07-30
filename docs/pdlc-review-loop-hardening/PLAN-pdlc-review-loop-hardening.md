@@ -90,7 +90,14 @@ test and must not be fixed, deleted or skipped.**
 
 ### 2.2 The exit criterion, stated once — every task cites this
 
-> **A batch gate passes when the suite shows no *new* failures against §2.1's baseline.**
+> **A batch gate passes when the suite shows no *new* failures against §2.1's baseline — and no
+> `RLH-*` or `RLH-AT-*` assertion is skipped; skips stay at the baseline's 70. A skip is neither a
+> failure nor a pass.**
+
+The skip half is **operated and owned by §12.2 step 2** (`skipped exactly 70`, an equality; every
+in-window assertion present and either red-as-expected or green), which this quote states so that the
+criterion is not half-stated here; §12.2 remains the authority on how it is checked (v1.4, TE round-4
+`F-04`).
 
 Never "green". The baseline is 1 failed / 1038 passed / 70 skipped, and the one failure —
 `AT-22 [red-until-L-06]` in `documentOracles.test.js` — belongs to another feature (§13.2 `P-Q-08`). A
