@@ -731,6 +731,52 @@ function parseDecisionsWarranted(result) {
   return true;
 }
 
+// ─── TSPEC §5.0 — the one fenced-region-aware scanner ─────────────────────────
+
+/**
+ * Visit every line of `text` that lies OUTSIDE a fenced code region.
+ *
+ * FSPEC §1.2 rule 5 governs every mechanical scan this pipeline performs over a
+ * markdown artifact; it is expressed here once and every scanner calls it. There
+ * is no per-site fence handling anywhere else.
+ *
+ * Three properties the callers depend on:
+ *  1. A closer must use the same fence character and a run at least as long as
+ *     the opener — a three-backtick line inside a four-backtick block is content,
+ *     which is exactly the case a quoted fenced template produces.
+ *  2. An unclosed fence swallows the remainder of the file. That fails closed in
+ *     the correct direction: fewer matches, so a phase runs rather than skipping.
+ *  3. The exclusion governs which lines may *match a scanned pattern*; it does
+ *     not empty a section's body (§5.9 counts a fenced block as body content).
+ *
+ * Total: any input is coerced, nothing throws, the return is undefined.
+ *
+ * @param {string} text - the artifact text.
+ * @param {function(string, number): void} visit - called as `visit(line, index)`
+ *   for each unfenced line, where `index` is the line's index in `text.split("\n")`.
+ * @returns {void}
+ */
+function scanLines(text, visit) {
+  const lines = String(text ?? "").split("\n");
+  let fenceChar = null; // "`" | "~" | null
+  let fenceLen = 0;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const m = /^\s*(`{3,}|~{3,})/.exec(line);
+    if (fenceChar === null) {
+      if (m) {
+        fenceChar = m[1][0];
+        fenceLen = m[1].length;
+      } // opener: the line is not visited
+      else visit(line, i);
+    } else if (m && m[1][0] === fenceChar && m[1].length >= fenceLen) {
+      fenceChar = null;
+      fenceLen = 0; // closer: the line is not visited
+    }
+    // lines inside a fence, and the fence lines themselves, are never visited
+  }
+}
+
 // ─── isPass helper ────────────────────────────────────────────────────────────
 
 function isPass(verdict) {
