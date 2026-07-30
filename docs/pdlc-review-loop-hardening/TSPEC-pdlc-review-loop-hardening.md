@@ -397,7 +397,8 @@ JSON, modelled on `rtMergeWorktree` (prompt literal `` `Run: git merge --no-ff $
 ```js
 /**
  * @param {{ feature: string, status: string }} arg
- * @returns {Promise<{ queueRow: "halted" | "none" | "error", detail?: string }>}
+ * @returns {Promise<{ queueRow: "halted" | "halted (uncommitted)" | "none" | "error",
+ *                     detail?: string }>}
  */
 export async function defaultRecordHalt(/* { feature, status } */) {
   return { queueRow: "none" };
@@ -697,7 +698,12 @@ claiming a write it did not perform. Every existing call site is updated to dest
 | `haltPhase` | phase id \| `null` | the terminal-exit path (§6.3) |
 | `postmortemPath` | `docs/{feature}/POSTMORTEM-{phaseId}-{feature}.md` \| `null` | §6.3 |
 | `postmortemStatus` | `"written"` \| `"write_failed"` \| `"unresolved"` \| `"none"` | §6.3, §5.8 |
-| `queueRow` | `"halted"` \| `"none"` \| `"error"` | `_recordHalt`'s return |
+| `queueRow` | `"halted"` \| `"halted (uncommitted)"` \| `"none"` \| `"error"` | `_recordHalt`'s return |
+
+`"halted (uncommitted)"` is the E-38 case: the row was rewritten on disk but `git commit` failed
+(hook rejection, missing identity, index lock). It is distinct from `"error"` — the operator's
+remaining action is a manual commit, not a re-run — and the **original halt reason is reported
+first**, with this as a subordinate note.
 
 Plus three report **lines** (not fields): the per-phase skip notice, the force-override notice, and
 the advisory pacing/commit-diff proxy. Per-phase skip reuses the existing `"⏭"` status marker — the
@@ -1366,6 +1372,118 @@ records the plugin version the bytes were built at, so a bundle rebuild without 
 produces a manifest that under-reports what changed.
 
 ## 8. Test Strategy
+
+### 8.1 Levels and doubles
+
+Three levels, matching §2.4's three strata. The rule is that a test is written at the **lowest level
+that can falsify the claim**.
+
+| Level | Subject | Doubles | Where |
+|---|---|---|---|
+| **L1 — pure** | every parser, `sha256Hex`, `scanLines`, `isStale`, `isComplete`, `deriveRoundWindow`, `parseForcePhases`, `updateQueueStatus` | **none** — string in, record out | new `__tests__/` files, §8.3 |
+| **L2 — orchestration** | `main`, `reviewLoop`, `dispatchAndVerify`, `checkConverged`, the phase gate, `rewriteStatus` | **synchronous** doubles for every seam, supplied through `main()`'s injection list | extends `reviewLoop.test.js`, `orchestrate-dev.test.js`, `orchestrateQueue.test.js` |
+| **L3 — composition** | the built bundles and the composition root | **none at all** — this is the point | `runtimeBundle.test.js`, `pipelineWiring.test.js` |
+
+**The seam doubles are sync; the adapter is async.** This asymmetry is a *feature* of the test
+design and simultaneously its central hazard: it is precisely why a missing `await` passes L1 and L2
+and fails only in production. L3's AT-19 is the compensating control, and it is the only thing
+standing between this design and this repo's most repeated defect class.
+
+Every double follows `DEC-ORACLE-03` — one canonical double at a named path, not a fresh ad-hoc
+object per test file. A single `__tests__/helpers/seams.js` exports factory functions
+(`fakeListFiles(files)`, `fakeFs(initialContents)`, `fakeGit(script)`, `recordingRecordHalt()`) so
+that a change to a seam contract breaks one file, not thirty.
+
+`DEC-ORACLE-01` applies to the run-wide assertions: AT-13's "one digest function on both paths" and
+AT-64's "every seam is wired" cannot live at module level, and are written as explicit tests.
+
+### 8.2 Fixtures
+
+`__tests__/fixtures/cross-reviews/` holds the byte-exact artifacts the grammar tests need. Three
+deserve naming because getting them wrong makes the test vacuous:
+
+- **`quoted-verdict.md`** (AT-65) — the fence is pinned to the **nested** form: a four-backtick block
+  wrapping a three-backtick template that contains `VERDICT: Approved`. An implementation that treats
+  "the next fence line closes it" must **red** on this fixture. A three-in-three fixture would pass
+  under the wrong implementation.
+- **`quoted-hash.md`** (AT-66) — a fenced `APPROVAL-HASH:` line that must not enter the pre-count.
+- **`unclosed-fence.md`** (AT-66) — an opener with no closer, whose remainder must be swallowed.
+
+Digest fixtures pin known-answer vectors: the empty string, an ASCII string, a multi-byte UTF-8
+string, and a surrogate-pair string (an emoji), each with its expected 64-hex digest computed
+externally. Without the last two, the hand-rolled `utf8Bytes` is untested where it is most likely to
+be wrong.
+
+### 8.3 AT → jest file map
+
+| ATs | Concern | File |
+|---|---|---|
+| AT-01 … AT-07, AT-63 | round-index derivation, filename grammar, un-suffixed round 1, clean branch, unenumerable directory, non-conforming basenames, overwrite guard, per-role duplicate halt | `__tests__/roundDerivation.test.js` **(new)** |
+| AT-08 … AT-11, AT-56, AT-57 | same-round dual approval, no cross-round combination, absent role file, duplicated verdict, partial/disagreeing anchor pair, higher non-approving round | `__tests__/approvalSearch.test.js` **(new)** |
+| AT-12 … AT-18 | digest usability, one digest function, canonicalisation inside, pre-harvest edit invalidation, rebase invariance, failed append, record-less LEARNINGS | `__tests__/approvalHash.test.js` **(new)** |
+| AT-19, AT-20, AT-64 | bundle structural constraints, `dist/` freshness, composition root wiring | `__tests__/runtimeBundle.test.js` **(extend)** |
+| AT-21 … AT-27, AT-30 … AT-34 | POSTMORTEM lifecycle, structured halt fields, queue-row commit, commit-failure branches | `__tests__/haltAndQueue.test.js` **(new)**, plus `orchestrateQueue.test.js` **(extend)** |
+| AT-28, AT-29 | force overrides approval only; bad token rejection | `__tests__/forcePhases.test.js` **(new)** |
+| AT-35 … AT-54, AT-58 | the pacing wrapper end to end: terminal/progress ordering, the four trailer reasons, counter reset and per-episode isolation, mode across the invocation seam, artifact-set semantics, working-tree measurement, budget exhaustion, prompt contract, advisory proxy, no-git-discards | `__tests__/pacingWrapper.test.js` **(new)** |
+| AT-55 | no un-substituted template reaches a report | `__tests__/reportTemplates.test.js` **(new)** |
+| AT-59, AT-60, AT-62 | terminal-but-not-approving, structural completeness incl. placeholder skeleton | `__tests__/completeness.test.js` **(new)** |
+| AT-61 | each trailer reason distinguishable in the report | `pacingWrapper.test.js` |
+| AT-65, AT-66 | fenced-region exclusion, both directions plus unclosed fence | `__tests__/scanLines.test.js` **(new)** |
+
+Existing suites that must stay green and will need mechanical updates: `reviewLoop.test.js` (the
+`iteration` parameter is now supplied at every call site), `parseVerdict.test.js` (unchanged
+behaviour; new file-path callers), `orchestrateQueue.test.js` (`updateQueueStatus`'s return shape),
+`pipelineWiring.test.js` (the six new `main()` parameters), `dodPhase.test.js` / `shipPhase.test.js` /
+`implPhase.test.js` / `harvestPhase.test.js` (unaffected in behaviour; affected by `buildFinalReport`'s
+widened field list).
+
+### 8.4 What each level may not do
+
+- **L1 may not touch the filesystem.** If a pure-function test needs a file, the function under test
+  is not pure and belongs in L2.
+- **L2 may not read `pdlc/workflows/dist/`.** A test that reads a generated artifact to make a claim
+  about source behaviour will pass against a stale bundle.
+- **L3 may not inject anything.** Injecting into a composition-root test defeats its only purpose.
+
+### 8.5 AT-19 and AT-64 — the two tests that guard the runtime
+
+These are called out because they are the only two whose failure mode is invisible to every other
+test in the suite.
+
+**AT-19 — bundle-level constraint assertions.** `runtimeBundle.test.js` today asserts: `meta` first,
+nothing else exported, no static `import`, a top-level `return`, IO routed through the adapters, and
+`dist/` freshness. It asserts **nothing** about `process`, `fetch`, or awaiting. AT-19 is therefore a
+**new** assertion this TSPEC must write, not an existing one to point at:
+
+- two anchored regexes over each bundle's text — `/\bprocess\s*\./` and `/\bfetch\s*\(/` — each
+  matching zero times;
+- **not** the bare-identifier forms. The banner in both healthy bundles legitimately contains
+  `child_process` and `git fetch origin`, so a substring test matches on a correct bundle and the
+  assertion becomes noise. FSPEC v1.3 struck the bare forms from AT-19 for exactly this measured
+  reason.
+- an await-discipline assertion over `orchestrate-dev.js`'s **source**: for each seam name in the
+  set derived from `main()`'s parameter list, every call site of the corresponding local function
+  variable is preceded by `await`. This is a lint-shaped test over source text, and it is the only
+  mechanical guard that exists for the async/sync asymmetry of §8.1.
+
+**AT-64 — the composition root wires every seam.** Asserted against the **production** composition
+root with **no injection whatsoever**: `main`'s default-parameter behaviour and `rtDevInjections`'s
+returned object are inspected as they ship.
+
+The seam set is **derived from `main()`**, not hand-listed — the test parses `main`'s destructured
+parameter list for names matching `/^_/` and requires each to be satisfied. A hand-list is precisely
+the artefact that rots: the next seam added to `main()` would leave the test green while the runtime
+receives `undefined` and throws on first use.
+
+Two derivation caveats the test must encode explicitly, or it will red on a correct tree:
+
+1. `_recordHalt` is supplied **per entrypoint** (`QUEUE_ENTRY` / `DEV_ENTRY`), not by
+   `rtDevInjections` (§3.10). It is satisfied by the entrypoint text, not the injections object.
+2. `_phaseDodEnabled`, `_phasePubEnabled`, `_now` and `_sleep` are **policy/clock** parameters, not
+   capability seams, and are legitimately left to their defaults. The test's rule is therefore "every
+   `_`-prefixed parameter is either present in `rtDevInjections`, present in an entrypoint's
+   injection object, **or** on an explicitly-declared exemption list that the test itself asserts is
+   fully consumed" — an unused exemption entry is also a failure, so the list cannot silently rot.
 
 ## 9. Traceability
 
