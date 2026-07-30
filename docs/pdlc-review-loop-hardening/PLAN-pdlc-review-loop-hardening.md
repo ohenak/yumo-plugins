@@ -74,8 +74,8 @@ npm test  115.66s user 173.42s system 155% cpu 3:05.43 total
 36 suites reproduced identically in v1.0's measurement, the test-engineer's independent round-1
 measurement and this one. They agree with the TSPEC's own measurement (§8.3, taken at `ef4705a`).
 
-**The wall-clock figure is not stable and is not a gate** — three measurements of the same HEAD gave
-179.175 s, 179.924 s and 184.752 s of jest-reported `Time:`. It is load-dependent by construction
+**The wall-clock figure is not stable and is not a gate** — four measurements of the same HEAD gave
+179.175 s, 179.924 s, 184.752 s and 181.681 s of jest-reported `Time:`. It is load-dependent by construction
 (§2.3). Nothing in this PLAN gates on it; §2.3 states what to do about it and §4.1 states the tolerance.
 
 The single failure is `__tests__/documentOracles.test.js`'s **intentional** red placeholder
@@ -107,16 +107,20 @@ feature's own await guard silent over its own worst risk.
 
 ### 2.3 The suite is already over the 180 s watchdog — how to run it
 
-Three measurements of the **same** HEAD, all after the baseline above:
+Four measurements of the **same** HEAD, all after the baseline above:
 
 | Run | jest `Time:` | wall |
 |---|---|---|
 | v1.0 authoring | 179.175 s | not recorded |
 | test-engineer review | 179.924 s | **180.56 s** |
 | v1.1 re-measurement | 184.752 s | **185.43 s** |
+| test-engineer round 2 | 181.681 s | **182.35 s** |
 
 So the honest statement is **not** "179 s, just under the ceiling" but **already over it, and noisy
-upward**. The wall clock is set by the longest single suite plus worker contention, not by the sum of
+upward**. The four points span jest 179.2–184.8 s and wall 180.6–185.4 s; **every recorded wall figure
+exceeds 180 s and none is under**, and no run reproduces to better than ±3 s. That is the whole argument
+for the treatment below: a number this noisy cannot be a gate, and a ceiling every measurement already
+crosses is a procedural constraint, not a budget to trim coverage against. The wall clock is set by the longest single suite plus worker contention, not by the sum of
 test time: in the v1.1 run `driftFault.test.js` alone took 184.459 s of the 184.752 s total, with
 `guardMatrix.test.js` at 177.718 s and `driftSync.test.js` at 154.248 s beside it — shell-spawning drift
 suites paying process-startup cost under contention. This feature's new suites are in-process and cheap,
@@ -139,9 +143,22 @@ cd pdlc/workflows && npm test -- __tests__/scanLines.test.js
 ```
 
   jest here needs `node --experimental-vm-modules` (see `package.json`), which the npm script supplies.
-  Bare `npx jest __tests__/parseVerdict.test.js` reports `Tests: 0 total` and **exits 0** — a vacuous
-  green, where the same file under `npm test --` runs 20 tests. `RLH-01` asserts both figures (§4.1) so
-  nobody discovers this at batch 7.
+
+  **The hazard, restated as measured (v1.2 correction).** Bare `npx jest <file>` **cannot run any suite
+  in this directory at all**. Measured at HEAD, `npx jest __tests__/parseVerdict.test.js` prints
+  `● Test suite failed to run` with `SyntaxError: Cannot use import statement outside a module`, reports
+  `Test Suites: 1 failed, 1 total` / `Tests: 0 total`, and **exits 1**; the same file under
+  `npm test -- __tests__/parseVerdict.test.js` reports `20 passed`, exit 0. v1.1 asserted that the bare
+  invocation "exits 0 — a vacuous green"; **that is false and is withdrawn.** It is a loud red, not a
+  silent green.
+
+  The correction matters in both directions. It **removes** a hazard the PLAN claimed to have — nothing
+  in this feature can be waved through by a zero-test run that reports success, because there is no such
+  run. And it **replaces** it with a smaller, real one: an implementer who reaches for the bare command
+  gets a module-parse error that is indistinguishable, at a glance, from the failure a legitimately RED
+  new test is supposed to produce. That is why every single-file invocation in this PLAN — §4.1's
+  pre-flight, §12.1's per-task gate — uses `npm test -- <file>`, and why `RLH-01` asserts the measured
+  observation (suite-failed-to-run, `Tests: 0 total`, non-zero exit) rather than the withdrawn one.
 
 
 ## 3. Generated-artifact discipline and why it serialises the source lane
