@@ -1298,6 +1298,86 @@ function parseReviewFilename(basename) {
 }
 
 /**
+ * Derive the round window for one phase entry from ONE directory listing.
+ *
+ * Step 4 is the H-1 fix in a line: `startIndex` is one past the highest round
+ * index already on the branch, so re-entering a phase never rewrites an existing
+ * `-v{N}` cross-review. Step 6 makes `MAX_REVIEW_ROUNDS` a per-invocation BUDGET
+ * rather than an absolute cap — on a branch whose highest existing round is 3,
+ * the re-entered phase starts at 4 and gets rounds 4…8, five rounds, not two.
+ *
+ * `present` and `skipped` are both carried out (step 7) precisely so one listing
+ * suffices for the whole phase entry: a caller that had to re-enumerate, or
+ * re-parse the listing itself, would violate AC-1.2 and the §2.4 layering rule.
+ *
+ * Step 5 halts rather than guessing: two files claiming round 1 for one role and
+ * doc type may carry different verdicts, so picking either is a coin flip on
+ * whether the phase is skipped, and picking "the newer" would import a filesystem
+ * timestamp into an otherwise purely content-addressed decision.
+ *
+ * Synchronous, total, and takes no seam (§3.7).
+ *
+ * @param {string[]} basenames - the directory listing, basenames only.
+ * @param {string} docType - the document type under derivation.
+ * @returns {{ok: true, startIndex: number, endIndex: number,
+ *            present: Map<string, number[]>,
+ *            skipped: Array<{basename: string, reason: string}>}
+ *          |{ok: false, reason: "malformed_round_one_duplicate", role: string}}
+ */
+function deriveRoundWindow(basenames, docType) {
+  const listing = Array.isArray(basenames) ? basenames : [];
+  // Deduplicated by basename, in the listing's own order — `skipped` is reported
+  // in that order and `present` records each round index once.
+  const unique = listing.filter((b, i) => listing.indexOf(b) === i);
+
+  // Step 1 — parse every basename, keeping BOTH the entries and the rejects.
+  const present = new Map();
+  const skipped = [];
+  // Per (role) record of which round-1 spelling was seen, for step 5.
+  const roundOneForms = new Map();
+
+  for (const basename of unique) {
+    const result = parseReviewFilename(basename);
+    if (!result.ok) {
+      skipped.push({ basename, reason: result.reason });
+      continue;
+    }
+    // A well-formed cross-review for a DIFFERENT doc type is a third outcome:
+    // neither an entry nor a reject (§5.2, §8.2's partition property).
+    if (result.docType !== docType) continue;
+
+    // Step 2 — per-role round indices, deduplicated.
+    const rounds = present.get(result.role) || [];
+    if (!rounds.includes(result.round)) rounds.push(result.round);
+    present.set(result.role, rounds);
+
+    if (result.round === 1) {
+      const forms = roundOneForms.get(result.role) || { plain: false, v1: false };
+      if (result.suffixed) forms.v1 = true;
+      else forms.plain = true;
+      roundOneForms.set(result.role, forms);
+      // Step 5 — one role, one doc type, two files both claiming round 1.
+      if (forms.plain && forms.v1) {
+        return {
+          ok: false,
+          reason: "malformed_round_one_duplicate",
+          role: result.role,
+        };
+      }
+    }
+  }
+
+  // Steps 3, 4 and 6.
+  const indices = [];
+  for (const rounds of present.values()) for (const round of rounds) indices.push(round);
+  const startIndex = indices.length ? Math.max(...indices) + 1 : 1;
+  const endIndex = startIndex + MAX_REVIEW_ROUNDS - 1;
+
+  // Step 7.
+  return { ok: true, startIndex, endIndex, present, skipped };
+}
+
+/**
  * Build the reviewer dispatch prompt. Iteration 1 is a full first-pass review.
  * Iteration ≥2 appends the delta re-review protocol so the reviewer reads its own
  * previous cross-review and scans only the diff instead of re-reviewing the whole
