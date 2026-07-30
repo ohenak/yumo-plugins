@@ -357,7 +357,7 @@ index; steps 6–7 are the corrected terminal exit.
                                       └─ ok ─► parseReviewFilename over every entry
                                                startIndex = max(presentIndices) + 1  (or 1)
                                                endIndex   = startIndex + MAX_REVIEW_ROUNDS - 1
-                                               present, reviewFiles, skipped carried forward
+                                               present, skipped carried forward (§3.9)
 3.  approval search            §5.4   candidate = startIndex - 1 (single, no walk)
                                       tier 1: the candidate round's per-role CROSS-REVIEW files
                                       tier 2: `## 6. Approval Record` in LEARNINGS-{feature}.md
@@ -1263,9 +1263,10 @@ arrow drawn from here straight to step 5 is the defect it exists to forbid. An a
 proceeds to §5.5 — approval alone never grants a skip, approval plus `FRESH` does.
 
 `reviewFiles` — the `Map<`${role}:${round}`, { verdict, verdictReadable, anchorHash }>` this search
-builds from its tier-1 reads — is carried out of the search alongside the verdict, whichever exit is
-taken, because §5.6.1 consumes it (§3.9). On the `candidate < 1` exit and on the forced path it is
-**empty, not absent**, and §5.6.1 rule 4 rules that case.
+builds from its tier-1 reads — is **local to the search**: its only reader is the unanimity check
+above, which needs both roles' verdicts and anchor hashes in hand at once. It is carried out to no
+caller. `reviewLoop` takes no seed map (§3.9); every episode builds its own inside
+`refreshReviewState` (§5.6.1), and §5.5 takes `recordedHash` from `anchor`.
 
 ### 5.5 Staleness
 
