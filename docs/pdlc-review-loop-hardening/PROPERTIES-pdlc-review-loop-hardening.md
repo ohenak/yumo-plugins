@@ -355,7 +355,12 @@ Where that one rung is a **guaranteed no-op**, say so rather than imply a shrink
 | `PROP-HASH-01`, `PROP-STALE-01` | **no-op** | the case turns on a 64-hex trailer/anchor at the document's end; truncating to the first 64 bytes removes exactly the thing being tested, so the rung never still-falsifies |
 | everything else | not used | `shrink` returns `[]` for the kind |
 
-**Each property's `Shrink.` line is the sole owner of its disposition.** v1.0 declared the disposition
+**The table above is the sole owner of each property's disposition; a property's `Shrink.` line
+restates its row here and owns nothing.** v1.2 asserted sole ownership twice for one rule — here, over
+the `Shrink.` lines, and again in §3.1's `Used by` cell, over this table. The two never disagreed on
+content, but "sole owner" stated twice is the shape §2.3 and §8.2 were already deleted for, so the
+competing claim is **withdrawn** rather than reconciled (PM F-03, R-5). §3.1 names this table; this
+table names itself; there is one owner. v1.0 declared the disposition
 "one of exactly two" and then gave three memberships across §2.3, §4 and §8.2 that disagreed; the
 "Applies to" lists are deleted rather than reconciled (PM F-09, PM R-5). Two mechanisms exist and a
 property may use both on different parts of one case:
