@@ -1124,8 +1124,13 @@ Three rules with teeth:
    would report every approval stale at that moment. Content-addressing is unaffected because content
    is unaffected.
 
-Scope: phases `R`, `F`, `T`, `P`, `D` (see §10, Q-1 — `PR`/PROPERTIES is carried as an open
-question, not silently included).
+Scope: phases `R`, `F`, `T`, `P`, `D`, `PR` — **six**, matching AC-4.7 as corrected at REQ v1.6 and
+FSPEC §10.7 at v1.6. `PR` (PROPERTIES) was omitted from AC-4.7 through v1.5; both TSPEC round-1
+cross-reviews raised the omission independently and the operator ruled it a drafting slip, so it was
+corrected upstream rather than worked around here. §10.3 T-Q-01 carries the full disposition. Phase
+CR and Phase DOD remain out of scope — they review the tree rather than a named document and produce
+no `CROSS-REVIEW-{role}-{doc-type}` pair, so there is no recorded hash to compare and this function is
+never reached for them.
 
 ### 5.6 `dispatchAndVerify` — the H-3 fix
 
@@ -1289,7 +1294,7 @@ legitimately large single section is indistinguishable from a violation at commi
 export function parseForcePhases(raw) {
   if (raw == null || String(raw).trim() === "") return { ok: true, phases: new Set() };
   const tokens = String(raw).split(/[,\s]+/).filter(Boolean);
-  const valid = ["R", "F", "T", "P", "D"];
+  const valid = ["R", "F", "T", "P", "D", "PR"];   // six — "PR" added at REQ/FSPEC v1.6
   const bad = tokens.filter((t) => t !== "all" && !valid.includes(t));
   if (bad.length) return { ok: false, badTokens: bad };
   return { ok: true, phases: tokens.includes("all") ? new Set(valid) : new Set(tokens) };
@@ -1298,8 +1303,13 @@ export function parseForcePhases(raw) {
 
 Total, case-sensitive, whitespace- and comma-tolerant. Absent and empty are the same thing: the empty
 set. An invalid token halts before any phase runs, with the operator-facing text ending
-`Valid: R, F, T, P, D, all.` — the token catalogue and the message are derived from the same array,
-so they cannot desynchronise.
+`Valid: R, F, T, P, D, PR, all.` — the token catalogue and the message are derived from the same
+array, so they cannot desynchronise. That derivation is the point of this shape and is now
+load-bearing: `PR` entered the catalogue at REQ/FSPEC v1.6 (§10.3 T-Q-01), and a hand-written message
+would have been the one site that silently kept teaching the operator the old five-token set.
+
+**`all` means six phases, not five** — `new Set(valid)` with `valid.length === 6`. AT-29 asserts the
+message text verbatim, so it is the regression guard for both halves.
 
 **Precedence.** `forcePhases` overrides a **recorded approval** (§5.4/§5.5 are skipped for a forced
 phase). It does **not** override a **recorded failure**: an unresolved POSTMORTEM (§5.8) refuses the
@@ -1408,7 +1418,7 @@ failure to answer.
 | 9a | no `REVISION-COMPLETE:` on a **greenfield** episode | — | **not a failure and not detected.** `parseRevisionComplete` is not called; terminal is structural completeness alone (§5.6.2). This row exists so the absence is a recorded non-event rather than a gap |
 | 10 | `MAX_AUTHORING_ATTEMPTS` consecutive no-progress dispatches | `dispatchAndVerify` | halt the phase, `reason: "no_progress"`; **no POSTMORTEM** |
 | 11 | `MAX_AUTHORING_DISPATCHES` exceeded | `dispatchAndVerify` | halt the phase, `reason: "dispatch_budget"`; **no POSTMORTEM** |
-| 12 | invalid `forcePhases` token | `parseForcePhases` | halt **before any phase runs**, ending `Valid: R, F, T, P, D, all.` |
+| 12 | invalid `forcePhases` token | `parseForcePhases` | halt **before any phase runs**, ending `Valid: R, F, T, P, D, PR, all.` (six tokens plus `all`, per REQ/FSPEC v1.6) |
 | 13 | unresolved POSTMORTEM for the phase, **on a path where the phase would otherwise run** (§2.5 step 4a) or **on the forced path** (§2.5 step 1) | `checkPostmortem` | refuse the phase, `postmortemStatus: "unresolved"`, halt reason carries the Recommendation excerpt; **not overridable by `forcePhases`** |
 | 13a | unresolved POSTMORTEM for a phase the approval skip has already elided (§2.5 step 4, `FRESH`) | `checkPostmortem`, evaluated for reporting only | **not a failure.** The skip stands and the run proceeds; the notice names the POSTMORTEM path (§4.7) and `postmortemStatus` is `"unresolved"`. AC-2.3's refusal is conditioned on the phase otherwise running, so there is nothing here to refuse |
 | 14 | non-convergence within `startIndex..endIndex` | `checkConverged` | §6.3's terminal exit |
