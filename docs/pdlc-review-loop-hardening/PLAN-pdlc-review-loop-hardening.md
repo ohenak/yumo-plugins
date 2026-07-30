@@ -385,6 +385,11 @@ the constraint and the `orchestrate-dev.js` row as its largest consequence. See 
 `pdlc/workflows/__tests__/helpers/driftGenerators.js` is **read-only for this feature.** It is reused,
 never modified and never duplicated (TSPEC §8.2, §9.4). No task owns it.
 
+**No shared domain-generator module appears in this manifest, and that is a decision, not an omission.**
+The five property-owning tasks each build their domain draws **file-local and unexported** over
+`driftGenerators.js`'s primitives; §7.2 states why and what is still forbidden. So there is nothing to own
+here, and no `Deps` edge for it.
+
 ### 5.3 Test files — one owning task each
 
 Every test file has **exactly one** owning task. A file is written whole and red by its owner, then
@@ -480,7 +485,7 @@ Everything this feature integrates with, and the shipped precedent it reuses rat
 
 | Integration point | Existing symbol / file | Reused by | Task |
 |---|---|---|---|
-| dependency injection for capabilities | `main()`'s existing sixteen-parameter destructured list | the six new seams extend it **in place**; no new injection mechanism | RLH-18 |
+| dependency injection for capabilities | `main()`'s existing sixteen-parameter destructured list | the **five** new seams — plus `forcePhases`, which is **data**, not a seam (TSPEC §3.1) — extend it **in place**; no new injection mechanism | RLH-18 |
 | verdict grammar and its closed catalogue | `parseVerdict` + `VALID_VERDICTS` + its reverse-scan + `malformed: true` fallback | the persisted verdict record, **verbatim and unchanged** | RLH-26 |
 | pass/fail semantics | `isPass` | the approval search's unanimity check | RLH-26 |
 | role-slug catalogue | `reviewerRoleSlug`'s `MAP` | the filename grammar's role alternation **and** the new reverse accessor, so the two cannot desynchronise | RLH-05 |
@@ -489,7 +494,7 @@ Everything this feature integrates with, and the shipped precedent it reuses rat
 | adapter agent-relay, JSON return | `rtMergeWorktree` | `rtListFiles`, `rtGit` | RLH-32 |
 | adapter agent-relay, constrained one-word output | `rtCheckFile` | `rtListFiles`'s prompt discipline | RLH-32 |
 | the skip marker in the phase table | the existing `"⏭"` status | the approval skip's phase-table row | RLH-30 |
-| seeded property generation | `__tests__/helpers/driftGenerators.js` — `seeded`, `resolveSeed`, `shrink` | all seven §8.2 properties. Dependency-free, already consumed by seven suites | RLH-03, 06, 11, 12, 14 |
+| seeded property generation — **primitives** | `__tests__/helpers/driftGenerators.js` — `seeded` (`int`, `pick`, `shuffle`, `bytes`), `resolveSeed`, `shrink` | all seven §8.2 properties. Dependency-free, already consumed by seven suites. The **domain** draws each property needs on top of these are file-local and unshared by decision (§7.2) | RLH-03, 06, 11, 12, 14 |
 | bundle staleness and structural guards | `build-runtime.mjs --check`, `runtimeBundle.test.js` | extended, not replaced | RLH-31, RLH-32 |
 | SKILL-file assertions | `__tests__/skillFiles.test.js` | the natural home for §7.4's amendment checks | RLH-04 |
 
@@ -563,6 +568,32 @@ reintroduce the weaker form:
 Each property file declares its own literal seed and passes it through `resolveSeed`. Reproduction is
 by **replay, not by index** — print the seed, reproduce case *n* by replaying draws 1…*n*. `shrink` is
 for the failure report, never the pass path.
+
+**Domain generators are per file, deliberately, and no shared module is created** (deciding TE round-1
+F-10 / round-2 F-07, which v1.1's changelog wrongly recorded as fixed — see §14.1). `driftGenerators.js`
+supplies **primitives** only — `int`, `pick`, `shuffle`, `bytes` — and the seven properties need *domain*
+draws on top of them: conforming and non-conforming review filenames (`RLH-11`), fenced-markdown documents
+(`RLH-03`), multi-byte and surrogate-pair strings (`RLH-06`), heading sets (`RLH-12`), force-phase token
+strings (`RLH-14`). Each of those five tasks builds its own, **file-local and unexported**, over the shared
+primitives. The reasons, stated so the choice is auditable rather than accidental:
+
+- **The five domains have no common shape.** A filename builder, a fence builder, a codepoint builder, a
+  heading-set builder and a token-string builder share nothing but the primitives they already share. A
+  module holding all five would be a namespace, not an abstraction, and would couple five tasks in three
+  batches to one file.
+- **§5.3's single-writer rule would have to be paid for.** A shared generator module needs one owning
+  batch-1/2 task and a `Deps` edge from each of the five consumers — real schedule cost, and it puts a
+  batch-2 file on the critical path of `RLH-12` in batch 4.
+- **A domain generator that drifts from its property is a *local* defect.** Unlike a shared oracle, a
+  wrong filename builder reds only its own property, so the blast radius the shared-module argument
+  usually buys against does not exist here.
+- **What is *not* accepted is a second primitive library.** `driftGenerators.js` stays the only source of
+  `int` / `pick` / `shuffle` / `bytes` / `resolveSeed` / `shrink` (§6.3, §12.3). A task that reimplements a
+  primitive has misread this paragraph.
+
+If a sixth property later wants one of these domains, the reuse move is to promote *that* generator to
+`__tests__/helpers/`, as its own change with its own owner — not to pre-build a module for five callers
+that do not overlap.
 
 ### 7.3 The permitted-red ledger — per acceptance test
 
