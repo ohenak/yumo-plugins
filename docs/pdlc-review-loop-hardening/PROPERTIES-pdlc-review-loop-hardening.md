@@ -1601,8 +1601,8 @@ in `reviewLoop.test.js` would not have found one.
 (i) **Threaded from the gate, not re-derived.** The `endIndex` `reviewLoop` enforces and the
 `startIndex..endIndex` pair `checkConverged` renders are the values the phase gate supplied
 **positionally** — never a value the loop computed for itself. Asserted by disagreement: drive
-`reviewLoop` with an `endIndex` that *differs* from what a re-derivation over the `_listFiles`
-double's answer would produce, and the loop's cap follows the **parameter**. The values are identical
+`reviewLoop` with a `startIndex..endIndex` pair that *differs* from what a re-derivation over the
+`_listFiles` double's answer would produce, and the loop's cap follows the **parameter**. The values are identical
 across every consumer and every call within one phase entry — an equality over observed values, not a
 floor.
 
@@ -1648,8 +1648,11 @@ silently unexercised — ≥15 must start from a branch already carrying reviews
 ≥10 must converge before the window closes. The non-1 `startIndex` floor is what distinguishes
 derivation from a counter starting at 1 — the H-1 defect. **Conjunct (i) needs one more axis, and it
 is orthogonal to those four: in ≥15 runs the window pair handed to `reviewLoop` must *disagree* with
-what a re-derivation over the `_listFiles` double's listing would produce** — the same test controls
-both, so the disagreement is constructible without touching the subject. Without that floor (i) is
+what a re-derivation over the `_listFiles` double's listing would produce**, realised as an
+**equal-width shift** of the pair — both indices moved together (hand `6..10` where the listing
+implies `3..7`), so the handed width stays `MAX_REVIEW_ROUNDS` and conjunct (ii)'s identity is
+undisturbed on any run that is both disagreeing and driven to exhaustion. The same test controls
+both the listing and the pair, so the disagreement is constructible without touching the subject. Without that floor (i) is
 vacuous, because on an agreeing case a re-deriving subject and a threading subject return the same
 cap; the disagreeing case is the only one where provenance is observable at all (SE F-25).
 
