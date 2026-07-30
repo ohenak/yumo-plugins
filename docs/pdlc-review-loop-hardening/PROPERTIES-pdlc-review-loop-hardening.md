@@ -492,24 +492,45 @@ that compared against `crypto.createHash("sha256")` would stay green if the subj
 **PROP-SCAN-01 — `scanLines` is total and partitions its input.**
 *(Data Integrity · L1 · `scanLines.test.js`)*
 
-**Invariant.** For every generated document `d` and every closed catalogue of markers, `scanLines(d)`
-returns for each line exactly one classification — the classifications are pairwise disjoint and their
-union is every line of `d` (**DC-01 totality**). Two further conjuncts: (i) **fence discipline** — no
-line inside a fenced code block is classified as a marker, and a document with an unclosed fence
-classifies every line after the opening fence as fenced, never as a marker; (ii) **conservation** —
-`sum(|class_i|) === d.split("\n").length`, asserted as an arithmetic identity, so a
-classifier that silently drops a line fails even if every line it *does* classify is right.
+**Invariant.** Stated over the **visitor's observation set**, because `scanLines(text, visit)`
+*returns `undefined`* (TSPEC §3.7) — v1.0 hung the conservation identity on a return value the
+function does not have, and that statement is withdrawn (PM F-05). Let `V` be the set of indices for
+which `visit(line, index)` was called, recorded by a counting visitor the property supplies, and let
+`F` be the fenced-and-fence-line index set the generator **constructed** (not a second scanner: the
+generator knows which lines it placed inside, and which lines open and close, each fence). Then, for
+every generated document `d`, in TSPEC §8.2's own words — *the visited set ∪ the fenced-and-fence-line
+set is exactly the line set, disjointly*:
 
-**Generator.** D1. Lines drawn from four pools — verbatim marker lines (from the normative literals,
+(i) **Totality** — `scanLines` never throws, for any input including `""`, `null` and `undefined`
+(§5.0 coerces via `String(text ?? "")`).
+(ii) **Partition** — `V ∪ F === {0 … d.split("\n").length - 1}` and `V ∩ F === ∅`.
+(iii) **Conservation** — `|V| + |F| === d.split("\n").length`, asserted as an arithmetic identity, so
+a scanner that silently skips a line fails even if every line it *does* visit is right.
+(iv) **Fence discipline** — no index in `F` is ever visited; a closer must use the same fence
+character and a run at least as long as the opener (§5.0 rule 1), so a three-backtick line inside a
+four-backtick block is content and stays in `F`; and an unclosed fence swallows the remainder of the
+file (§5.0 rule 2), so every index after the opener is in `F`.
+(v) **Positional fidelity** — the `line` passed to the visitor equals `d.split("\n")[index]`, so an
+off-by-one in the index cannot hide behind a correct count.
+
+Marker classification is **not** asserted here: `scanLines` visits, and its *callers* match patterns
+(§5.0's caller list). "No marker inside a fence" is therefore stated as (iv) — no fenced index is
+visited — which is the same guarantee at the level that owns it.
+
+**Generator.** D2 — fenced markdown, per §3.2 (v1.0 cited D1, which §3.2 owns as review basenames;
+PM F-06). Lines drawn from four pools — verbatim marker lines (from the normative literals,
 cited per §6.4, never retyped), near-miss marker lines (marker text with a leading `>` quote, leading
 whitespace, altered case, or embedded inside a sentence), fence delimiters (``` and `~~~`, 3–6
 characters, with and without an info string), and arbitrary prose from D3 — shuffled with
 `rng.shuffle` and joined. Document length 0…120 lines. 100 cases.
 
-**Non-vacuity.** ≥20 cases must contain at least one true marker, ≥20 at least one near-miss, ≥15 at
-least one *balanced* fence pair with a marker **inside** it, and ≥5 an **unclosed** fence. The
-unclosed-fence floor is the one that matters: it is the only shape distinguishing a depth counter from
-a boolean toggle, and it is the shape the `unclosed-fence.md` fixture (§6.3) pins by example.
+**Non-vacuity.** ≥20 cases must contain at least one true marker line, ≥20 at least one near-miss,
+≥15 at least one *balanced* fence pair with a marker **inside** it, ≥10 a **nested** four-in-three
+fence (a three-backtick line that must not close a four-backtick block), and ≥5 an **unclosed** fence.
+The nested and unclosed floors are the ones that matter: together they are the only shapes
+distinguishing §5.0's same-char-and-length closer rule from a boolean toggle, and they are the shapes
+the `quoted-verdict.md` and `unclosed-fence.md` fixtures (§6.3) pin by example. Every floor forced
+(§3.3).
 
 **Owner.** Written by **RLH-03** (batch 2); greened by **RLH-05(c)**. §7.3 row `RLH-AT-65, -66;
 scanLines property`: green from batch 3, permitted red batch 2.
@@ -528,22 +549,44 @@ this case shape.
 **PROP-NAME-01 — `parseReviewFilename` round-trips, and rejects every single-part mutation.**
 *(Parsing · L1 · `roundDerivation.test.js`)*
 
-**Invariant.** Two directions. **Round-trip**: for every generated `{role, docType, version}` drawn
-from the valid domains, `parseReviewFilename(format(role, docType, version))` returns a parse whose
-three fields equal the inputs — `format` being the composition the production code itself uses, not a
-second implementation in the test (§6.4). **Rejection**: for every valid filename and every
-single-part mutation of it (role replaced by a non-role token, docType by a non-docType token, the
-`v{N}` segment by a non-numeric or negative or zero-padded form, the prefix or extension altered), the
-parse returns the "not a review file" outcome — **not** a throw, and **not** a partial parse.
+**Invariant.** Two directions, over TSPEC §3.7's return shape:
+`{ ok: true, role, docType, round } | { ok: false, reason: FilenameFailure }`. The parsed field is
+**`round`**, not `version` (v1.0 called it `version` throughout; corrected per PM F-13), and failure is
+a **closed catalogue** — `FILENAME_FAILURES = ["not_cross_review", "bad_role", "bad_doc_type",
+"bad_round", "trailing_junk"]` (TSPEC §4.1) — not a single "not a review file" outcome.
 
-**Generator.** D2, product of the role catalogue × docType catalogue × version 1…99, plus one mutation
-selected per case by `rng.pick` from the five mutation classes. 100 cases, with the
-unversioned form (no `-v{N}`) included in the valid domain because TSPEC §3.9 makes version optional.
+**Round-trip**: for every generated `{role, docType, round}` drawn from the valid domains,
+`parseReviewFilename(compose(role, docType, round))` returns `ok: true` with those three fields equal
+to the inputs.
 
-**Non-vacuity.** All five mutation classes must appear ≥10 times each, and the valid-domain half must
-cover every role and every docType at least once — a floor asserted as set equality against the
-catalogues, so adding a docType to the catalogue without extending the generator fails the property
-rather than silently narrowing it.
+**Rejection**: for every valid basename and every single-part mutation of it (role replaced by a
+non-role token, docType by a non-docType token, the `-v{N}` segment by a non-numeric / negative /
+zero-padded form, the prefix or extension altered), the parse returns `{ ok: false, reason }` with
+`reason` **the catalogue member that part governs** — not a throw, not a partial parse, and not an
+ad-hoc string. Catalogue closure is a conjunct: every observed `reason` is in `FILENAME_FAILURES`, and
+across the corpus the observed set **equals** it.
+
+**Where `compose` comes from — stated plainly rather than implied.** TSPEC §3.7 exports **no filename
+formatter**; §5.2 supplies `CROSS_REVIEW_RE` and a prompt-side template string, and nothing else. So
+`compose` **is written in the test**, and v1.0's claim that it is *"the composition the production code
+itself uses, not a second implementation in the test"* had no production surface to bind to and is
+**withdrawn** (PM F-13). The consequence is stated rather than hidden: a bidirectionally wrong
+implementation — a grammar and a composer wrong in the same way — is invisible to the round-trip half,
+so **the rejection direction carries this property's weight**, and the round-trip half is a
+well-formedness check on the generator as much as on the subject. The example-based
+`RLH-AT-01`…`-06`/`-63` pin literal filenames from the FSPEC and are the guard against a
+co-wrong composer.
+
+**Generator.** D1 — review basenames, per §3.2 (v1.0 cited D2; PM F-06). Product of the role
+catalogue × docType catalogue × round 1…99, plus one mutation selected per case by `rng.pick` from the
+five mutation classes. 100 cases, with the unversioned form (no `-v{N}`) included in the valid domain
+because TSPEC §3.9 makes the suffix optional.
+
+**Non-vacuity.** All five mutation classes must appear ≥10 times each **and each must be observed
+producing its own `FILENAME_FAILURES` member** — set equality against the catalogue, so a failure mode
+added to `FILENAME_FAILURES` with no generator path fails the property. The valid-domain half must
+cover every role and every docType at least once, likewise as set equality against the catalogues, so
+adding a docType without extending the generator fails rather than silently narrowing. All forced.
 
 **Owner.** Written by **RLH-11** (batch 2); greened by **RLH-05(e)**. §7.3 row `RLH-AT-01 … -06,
 -63; round-derivation properties`: green from batch 3, permitted red batch 2.
@@ -562,21 +605,58 @@ single altered character.
 **PROP-ROUND-01 — `deriveRoundWindow` returns a fixed-width window and partitions the review files.**
 *(State Machine · L1 · `roundDerivation.test.js`)*
 
-**Invariant.** For every generated set of filenames on a branch: `endIndex === startIndex +
-MAX_REVIEW_ROUNDS - 1` (the width identity, over all inputs including the empty set); `startIndex >=
-1`; and the **three-way partition** TSPEC §8.2 states over `parseReviewFilename`'s split — every input
-name is counted in exactly one of *in-window versioned review*, *out-of-window versioned review*, and
-*not a review file* — with `startIndex` derived from the highest in-set version, never from a counter.
-Conservation is asserted arithmetically: the three counts sum to the input size.
+**Invariant.** Three conjuncts, all bounded to `deriveRoundWindow`'s `ok: true` branch, plus a fourth
+that owns the `ok: false` one.
 
-**Generator.** D2, as `PROP-NAME-01`, plus non-review filenames (`REQ-*.md`, `LEARNINGS-*.md`,
-`.DS_Store`, directories) and versions drawn to straddle the window edge: `rng.int` over 1…`startIndex
-+ MAX_REVIEW_ROUNDS + 3`. Set size 0…40. 100 cases.
+(i) **The partition, as TSPEC §8.2 and PLAN §7.2 own it — cited, not re-worded.** It is stated over
+**`parseReviewFilename`'s** total three-way split, not over `deriveRoundWindow`'s return: every input
+basename falls in exactly one of `entries` (`ok`, **this** doc type) / **other-doc-type** (`ok`,
+*another* doc type) / `skipped` (`!ok`), and `deriveRoundWindow` returns the first and third.
+Conservation is arithmetic: `|entries| + |other-doc-type| + |skipped| === |basenames|`.
+**v1.0's three classes were wrong and are withdrawn** (PM F-02): it stated *in-window versioned
+review* / *out-of-window versioned review* / *not a review file*, which has no other-doc-type class,
+so a well-formed cross-review of another doc type falls in none of the three and the conservation sum
+is **false on a correct implementation** — for exactly the basenames D1 is required to force. PLAN
+§7.2 names that weaker form as one of two that *must not be reintroduced*; v1.0 reintroduced it.
 
-**Non-vacuity.** ≥15 cases must place at least one file **above** `endIndex`, ≥15 at least one
-**below** `startIndex`, ≥10 must be the empty set, and ≥20 must mix review and non-review names. The
-above-`endIndex` floor is the one that catches a window computed per-round instead of once at the
-phase gate.
+(ii) **Derivation, never counting.** `startIndex === max(every round index in `present`) + 1` when
+`present` holds any index, `startIndex === 1` when it holds none (TSPEC §5.2 steps 3–4), and
+`startIndex >= 1` always. In-window / out-of-window membership is asserted **as a predicate over
+`[startIndex, endIndex]`**, which is where v1.0's second and third classes were trying to go.
+
+(iii) **Width invariance, at the strength L1 can actually observe.** For every input,
+`endIndex - startIndex + 1` is the **same value** across all cases in the corpus. It is *not* asserted
+against `MAX_REVIEW_ROUNDS`: TSPEC §4.8 makes the constants module-level and **unexported**, §3.7 gives
+`deriveRoundWindow(basenames, docType)` **no width parameter**, and §8.4 bars an L1 test from the
+filesystem — so there is no surface at this level that exposes the constant, and v1.0's *"asserted
+against the constants"* was a comparison of the subject's width with itself (SE F-02). The identity
+`endIndex === startIndex + MAX_REVIEW_ROUNDS - 1` is therefore **moved to `PROP-WINDOW-01` at L2**,
+where TSPEC §7.1 edit 5 makes the constant independently observable as `reviewLoop`'s returned
+`iterations` field. §5.2's ledger row is rewritten to match: the off-by-one mutation
+(`startIndex + MAX_REVIEW_ROUNDS`) does **not** die here — it merely changes the constant width — and
+claiming it did was the wrong half of the wrong ledger row.
+
+(iv) **The round-1 duplicate halt is the fourth outcome, not an excluded shape.** TSPEC §5.2 step 5:
+a role carrying **both** the un-suffixed form and an explicit `-v1` for one doc type returns
+`{ ok: false, reason: "malformed_round_one_duplicate", role }` — no `startIndex`, no `endIndex`. So
+conjuncts (i)–(iii) are quantified over `ok: true` only, TSPEC §8.2's generator constraint (*"for every
+listing that does not trip the round-1 duplicate halt"*) is stated here rather than dropped, and the
+duplicate shape is generated **deliberately** with the halt as its expected outcome, naming the role.
+v1.0 asserted the width identity *"over all inputs including the empty set"* while its own generator
+would draw the duplicate (PM F-11); "all inputs" now means all `ok: true` inputs, and the empty set is
+one of them.
+
+**Generator.** D1 — review basenames, as `PROP-NAME-01` (v1.0 cited D2; PM F-06) — plus non-review
+filenames (`REQ-*.md`, `LEARNINGS-*.md`, `.DS_Store`, directory names), conforming basenames **for
+another doc type**, and rounds drawn to straddle the window edge. Set size 0…40, shuffled with
+`rng.shuffle` (pure — §3.1). 100 cases.
+
+**Non-vacuity.** ≥20 cases must carry at least one **other-doc-type** basename (the class v1.0's
+partition had no home for), ≥15 at least one file **above** `endIndex`, ≥15 at least one **below**
+`startIndex`, ≥10 must be the empty set, ≥20 must mix review and non-review names, and ≥10 must trip
+the round-1 duplicate halt. All forced. The above-`endIndex` floor catches a window computed per-round
+instead of once at the phase gate; the other-doc-type floor is what makes conjunct (i) a partition
+rather than a cover with a hole in it.
 
 **Owner.** Written by **RLH-11** (batch 2); greened by **RLH-05(e)**. Same §7.3 row as
 `PROP-NAME-01`: green from batch 3, permitted red batch 2.
@@ -628,30 +708,76 @@ being 6 and the identity fails loudly rather than the phase being silently unfor
 **PROP-COMPLETE-01 — `isComplete` is exactly the required set, falsifiable in both directions.**
 *(State Machine · L1 · `completeness.test.js`)*
 
-**Invariant.** Let `R` be the required document set. For every generated present-set `P`:
-`isComplete(P) === true` **iff** `R ⊆ P`. Both directions are asserted, which is what TSPEC §8.2 means
-by "falsifiable both directions": a subject that always returns `true` fails on the `R ⊄ P` half, and a
-subject that always returns `false` fails on the `R ⊆ P` half. Extra documents beyond `R` never make
-`isComplete` false (superset tolerance), and the result is independent of the order in which `P` was
-built (`rng.shuffle`).
+**The v1.0 statement was against the wrong signature and is withdrawn** (PM F-01). v1.0 wrote
+`isComplete(P)` over a *present-set of documents* `P` and a *required document set* `R`, and asserted
+`isComplete(P) === true iff R ⊆ P`. TSPEC §3.7 gives
+`isComplete(artifactClass, docType, fileText) → { complete: true } | { complete: false, missing: string[] }`:
+three arguments, not one; a **structured record**, not a boolean; and §5.9 makes the quantified domain
+the **top-level headings within one document's text**, not a set of sibling documents on disk. Every
+sentence of v1.0's statement — the boolean `iff`, "extra documents beyond `R`", "the order in which
+`P` was built" — was unimplementable as written. It is restated below rather than deleted, and the
+dependent text in §5.2, §6.4 and §7.2 is corrected to match.
 
-**Generator.** D4. `P` built by taking `R`, removing a `rng.int(0, |R|)`-sized random subset, then
-adding 0…4 documents from a non-required pool (`DECISIONS`, `LEARNINGS`, `POSTMORTEM-*`, an invented
-`FOO`). 100 cases.
+**Invariant.** Fix an `artifactClass` (one of TSPEC §5.9's four wrapped classes) and a `docType`. Let
+`R(artifactClass, docType)` be §5.9's **required top-level heading set** for that pair — for the
+PROPERTIES spec row, `Overview`, `Properties`, `Oracles`, `Fixtures`. Let `T` be the set of top-level
+headings §5.9's matching rules recognise in `fileText`, and let `S ⊆ T` be those whose **body is
+non-empty** under §5.9's criterion. Four conjuncts, over every generated `fileText`:
 
-**Non-vacuity.** ≥25 cases must be complete (nothing removed) and ≥25 incomplete with exactly **one**
-document missing — the single-missing shape is the one that distinguishes `R ⊆ P` from a
-cardinality check `|P| >= |R|`, which the extras would otherwise satisfy. Each element of `R` must be
-the sole missing element in ≥1 case; asserted as set equality against `R`, so a document added to the
-required set without the generator knowing fails here rather than going untested.
+(i) **The `iff`, at the right level.** `result.complete === true` **iff** `R ⊆ S`. Both directions are
+asserted — a subject that always returns `complete: true` dies on the `R ⊄ S` half, one that always
+returns `false` dies on the `R ⊆ S` half. This is what TSPEC §8.2 means by *exact required set,
+falsifiable both directions*; PLAN §7.2 additionally names **monotonicity** (`|S| >= |R|`, or "more
+headings can only help") as a weaker form that **must not be reintroduced**, and the extras generated
+in (iii) are what stop it hiding here.
+
+(ii) **`missing` is exactly the shortfall, and is a positive-presence conjunct — not an absence.**
+When `complete: false`, `new Set(result.missing)` is **set-equal to `R \ S`**: every shortfall is
+named, no name outside `R` appears, and no name in `S` appears. This is the conjunct that makes the
+oracle falsifiable rather than a status check: a subject that returns `complete: false` for the right
+reason and one that returns it for the wrong reason are distinguished. When `complete: true`,
+`missing` is absent or empty, and the test asserts **which** — whichever §5.9's shape gives — rather
+than only that it is falsy.
+
+(iii) **Extra headings never subtract.** Adding a heading **not** in `R` never flips a
+`complete: true` result to `false` and never adds a name to `missing`. Stated as a *differential*
+between two calls on the same base text — the extras-added text and the base — so it cannot be
+satisfied vacuously by a text that had no extras to begin with.
+
+(iv) **`S`, not `T` — the non-empty-body criterion carries real weight.** A heading present in the
+text with a body consisting only of `TBD`, `TODO`, `_TBD_`, or an HTML comment is **absent from `S`**
+and therefore appears in `missing` (TSPEC §5.9). Symmetrically, and this is the direction that
+catches an over-eager emptiness test: §5.9's **accepted shallowness** rules that a *fenced block
+containing* `TBD` scores **non-empty**, so such a heading is in `S` and must **not** appear in
+`missing`. Both directions are forced by the floors.
+
+**Generator.** D4, re-based on document *text*. Build `fileText` by emitting the headings of
+`R(artifactClass, docType)` in `rng.shuffle` order, dropping a `rng.int(0, |R|)`-sized random subset,
+appending 0…4 headings from a non-required pool (`Decisions`, `Learnings`, `Appendix`, an invented
+`Foo`), and giving each emitted heading a body drawn from four kinds: ordinary prose, bare `TBD` /
+`TODO` / `_TBD_`, an HTML comment, and a fenced block containing `TBD`. Heading rendering exercises
+§5.9's matching rules on their own axis: case variation, extra internal whitespace, an `N.` or `N)`
+prefix, and the parenthesised-alternative form. `artifactClass` and `docType` are drawn per case.
+100 cases.
+
+**Non-vacuity.** All forced, not sampled. ≥25 cases must be complete (no heading dropped, every
+required body ordinary prose). ≥25 must be incomplete with exactly **one** required heading short —
+the shape that separates conjunct (i) from PLAN §7.2's forbidden monotonicity check, which the extras
+would otherwise satisfy. Each element of `R` must be the sole shortfall in ≥1 case, asserted as set
+equality against `R`, so a heading added to the required set without the generator knowing fails here
+rather than going untested. ≥10 cases must be short **only** because a heading present in the text has
+a `TBD`-class empty body, and ≥10 must contain a fenced-`TBD` body under a required heading and be
+**complete** — the accepted-shallowness control for (iv). ≥15 must carry extras, and ≥20 must render
+at least one required heading through a non-identity matching rule (case, whitespace, `N.`/`N)`
+prefix, or parenthesised alternative), so the rules are exercised rather than assumed.
 
 **Owner.** Written by **RLH-12** (batch 4); greened by **RLH-16**. §7.3 row `RLH-AT-60, -62;
 isComplete property`: green from batch 6, permitted red batches 4–5.
 
-**Beyond the examples.** RLH-12's `RLH-AT-59`, `-60` and `-62` pin three present-sets. The property is what makes the
-*required set itself* the thing under test: it is the only assertion in the suite that fails when a
-document is quietly dropped from `R`, because it derives its expectation from `R` and its floors from
-`R` simultaneously.
+**Beyond the examples.** RLH-12's `RLH-AT-59`, `-60` and `-62` pin three document texts. The property
+is what makes the *required heading set itself* the thing under test: it is the only assertion in the
+suite that fails when a heading is quietly dropped from `R`, because it derives its expectation from
+`R` and its floors from `R` simultaneously.
 
 **Note — measured file ownership.** PLAN §4.2 assigns `isComplete`'s suite to
 `__tests__/completeness.test.js` (RLH-12, a new file), **not** to the existing
@@ -659,8 +785,8 @@ document is quietly dropped from `R`, because it derives its expectation from `R
 `AT-22 [red-until-L-06]` lives. This feature does not touch that file, so the foreign red stays red
 (§2.5) and no property here depends on it.
 
-**Shrink.** File-local ladder: re-add removed documents one at a time until the case passes; report the
-last still-failing set.
+**Shrink.** File-local ladder: re-add dropped headings one at a time, and replace `TBD`-class bodies
+with prose one at a time, until the case passes; report the last still-failing text.
 
 ### 4.2 L1 — beyond the floor
 
