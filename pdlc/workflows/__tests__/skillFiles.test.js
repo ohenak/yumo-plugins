@@ -90,6 +90,46 @@ describe("Review SKILL.md VERDICT trailers (TSPEC-SKILL-01)", () => {
   }
 });
 
+// RLH-SKILL-01 … RLH-SKILL-09 — TSPEC §7.4 SKILL prompt amendments, PLAN §10.1 layer L1.
+//
+// These assert *presence and grammar only*: that each amendment's instruction is in the file and is
+// byte-consistent with the grammar the workflow script parses. No test can assert that an agent
+// reading the prompt obeys it (PLAN §10). Deliberately NOT a SKILL-template-vs-fixture drift
+// detector — PLAN §10.2 and §11.3 H-j bind that to QUEUE.md Order 9.
+describe("SKILL prompt amendments (TSPEC §7.4)", () => {
+  const readSkill = (relPath) =>
+    readFileSync(join(SKILLS_ROOT, relPath), "utf8");
+
+  // TSPEC §7.4 row 1 — the three review SKILLs: write the `## Verdict` section as the file's
+  // **last** section, in §4.4's exact grammar. FSPEC §6.5.
+  const reviewAmendments = [
+    { id: "RLH-SKILL-01", name: "se-review", file: "se-review/SKILL.md" },
+    { id: "RLH-SKILL-02", name: "pm-review", file: "pm-review/SKILL.md" },
+    { id: "RLH-SKILL-03", name: "te-review", file: "te-review/SKILL.md" },
+  ];
+
+  for (const { id, name, file } of reviewAmendments) {
+    it(`${id}: ${name}/SKILL.md documents the trailing "## Verdict" section in TSPEC §4.4 grammar`, () => {
+      const content = readSkill(file);
+
+      // The `## Verdict` heading itself (distinct from the pre-existing, case-different
+      // "## VERDICT Trailer (required — workflow data contract)" section).
+      const headingMatch = /^## Verdict$/m.exec(content);
+      expect(headingMatch).not.toBeNull();
+
+      // §4.4's grammar: the `VERDICT:` line, then the finding-count JSON line.
+      const section = content.slice(headingMatch.index);
+      expect(section).toMatch(/^VERDICT: /m);
+      expect(section).toMatch(
+        /^\{"high": \d+, "medium": \d+, "low": \d+\}$/m
+      );
+
+      // TSPEC §7.4: it is the file's **last** section.
+      expect(content).toMatch(/last section/i);
+    });
+  }
+});
+
 // PROP-COMPAT-07, PROP-COMPAT-08: Worker and tech-lead skills are unmodified
 describe("Worker skill files — unmodified (TSPEC-NFR-05, REQ-COMPAT-03)", () => {
   const workerSkills = [
