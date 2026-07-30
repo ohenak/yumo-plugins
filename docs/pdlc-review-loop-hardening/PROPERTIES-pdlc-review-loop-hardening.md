@@ -1018,12 +1018,30 @@ counts lines, and both are now stated over `n`.
 
 (iii) `n === 0` returns `{ ok: false, reason: "absent" }`.
 
-(iv) `n === 1` whose payload is uppercase hex, 63 or 65 characters, non-hex, or carried under a
-malformed label returns `ok: false`. A **fenced** trailer is not collected at all, so a
-fenced-only document is `n === 0` and falls under (iii) — the fence is an exclusion from the count,
-not a malformed payload.
+(iv) `n === 1` whose payload is uppercase hex, 63 or 65 hex characters, or non-hex returns
+`ok: false`. Two shapes v1.3 listed here are not values of `n === 1` at all, and both are routed out
+of it: a **fenced** trailer is not collected, and neither is a line under a **malformed label** — it
+is not an `APPROVAL-HASH:` line — so both documents are `n === 0`, an exclusion from the count rather
+than a malformed payload. The fenced-only document falls under (iii) with its named reason, because
+the fence is a **stated** exclusion (TSPEC §5.0). Whether the named reason `absent` is asserted on the
+malformed-label document turns on the label matcher TSPEC does not specify, so that shape is excluded
+from (iii)'s named reason on the same ground as the quoted shape below; (i), (v) and (vi) still bind
+on it, and both matchers answer `ok: false` (SE F-27, PM F-03).
 
-(v) the returned hash always matches `/^[0-9a-f]{64}$/`, totally over the input space.
+(v) the returned `hash` always matches `/^sha256:[0-9a-f]{64}$/`, totally over the input space — the
+**whole** value of the `APPROVAL-HASH:` line, label included, never the bare hex run. Measured from
+the contracts, not chosen here: FSPEC §5's carrier catalogue gives the approval anchor's value as
+`sha256:` + 64 lowercase hex; FSPEC §7's append shape and TSPEC §4.4's record grammar both write
+`APPROVAL-HASH: sha256:{64 lowercase hex}`; FSPEC §10.5 rejects a tier-1 value that *"does not match
+§7's grammar (`sha256:` + 64 lowercase hex)"*; and TSPEC §3.7 defines `approvalHashOf(text)` as
+`` `sha256:${sha256Hex(text)}` `` — `sha256Hex` alone is the 64-hex half. The routing settles it in
+the only direction that matters: TSPEC §5.4 binds `anchor ← parseApprovalHash(text)` and states that
+*"§5.5 takes `recordedHash` from `anchor`"*, and §5.5's guard is `/^sha256:[0-9a-f]{64}$/` — so a
+subject returning a bare 64-hex `hash` would make `isStale` answer `"UNEVALUABLE"` on **every**
+approval and the skip mechanism would never fire. v1.3 asserted the unprefixed `/^[0-9a-f]{64}$/`
+here: false on all ≥20 forced valid cases, and in contradiction with `PROP-STALE-01`, whose generator
+draws `sha256:` + digest and whose conjunct (i) guards the prefixed form over the very same value
+(PM F-01).
 
 (vi) every `ok: false` return carries a `reason` that is a member of `HASH_FAILURES` (TSPEC §4.1),
 asserted by membership, so a subject inventing a fourth reason string dies.
@@ -1034,8 +1052,17 @@ lines §5.3's pre-count collects is not decided by any approved artifact. Under 
 quoted-only document is `n === 1` at a position the format forbids; under the not-counting reading it
 is `n === 0` ⇒ `absent`. **Both are `ok: false` with a `HASH_FAILURES` member**, so (i), (v) and (vi)
 hold on a conforming subject under either reading, and the *named* reasons in (ii) and (iii) are
-asserted only where the count is unambiguous — unquoted, unfenced lines. The property therefore states
-no rule the specs do not, and cannot red a conforming subject on the quoted shapes.
+asserted only where the count is unambiguous — unquoted, unfenced lines under an exact
+`APPROVAL-HASH:` label. The property therefore states no rule the specs do not, and cannot red a
+conforming subject on the quoted shapes.
+
+**The malformed-label shape is the second instance of that same silence, and is recorded, not
+resolved.** The label matcher is exactly what TSPEC leaves unstated for `parseApprovalHash` (§4.3
+defines the *sibling* `duplicated` for `parseRevisionComplete`; no matcher is given here), so a
+prefix-exact matcher gives `n === 0` ⇒ `absent`, while a matcher loose enough to recognise the line
+gives `n === 1` at a shape the grammar forbids ⇒ `ok: false`, reason `unparseable`. Both are
+`ok: false` carrying a `HASH_FAILURES` member, so (i), (v) and (vi) bind and neither named reason is
+asserted — the same disposition, on the same ground, as the quoted shape (SE F-27, PM F-03).
 
 v1.1 asserted instead that a two-trailer document *"resolves deterministically to the same one on every
 run (whichever the format specifies — the property asserts stability, and §6.4 owns which)"*. **That
@@ -1047,8 +1074,11 @@ conjunct is withdrawn** (PM F-02): it is false on a conforming subject, and the 
 **Generator.** D3 prose interleaved with trailer candidates. **Each document carries exactly one
 shape from this list, never a mixture** — the list is a list of *document shapes*, not of candidates
 that may be combined (SE Q-01, PM Q-01; v1.2 left this to the reader and both readings were
-available): valid (64 lowercase hex); uppercase hex; 63 and 65 characters; non-hex characters in the
-payload; correct payload with a malformed label; a valid trailer inside a fence; a valid trailer
+available). A **valid** candidate line is the grammar verbatim — `APPROVAL-HASH: sha256:{64 lowercase
+hex}` (FSPEC §7, TSPEC §4.4) — and every malformed payload shape varies the **hex run** while keeping
+the `sha256:` label, since the label is what the *malformed-label* shape varies instead: valid;
+uppercase hex run; hex run of 63 and of 65 characters; non-hex characters in the hex run; correct
+`sha256:`-prefixed value under a malformed label; a valid trailer inside a fence; a valid trailer
 behind a `>` quote; **two `APPROVAL-HASH:` lines outside fences — both valid, or one valid and one
 malformed, since the count is payload-blind**; and **no trailer at all**. 100 cases.
 
@@ -1066,9 +1096,10 @@ is the *digest* sub-group; PLAN §4's RLH-05(f) is the five record parsers, and 
 one of them (PM F-12). The window is unaffected, because both sub-groups land in batch 3: same §7.3 row
 as the two digest properties, green from batch 3, permitted red batch 2.
 
-**Beyond the examples.** The hex-shape conjunct is a total statement about the *return* value: no
-input, however malformed, produces a "hash" that is not 64 hex characters. That is the guarantee the
-comparison at the approval gate silently depends on, and no AT states it over the input space.
+**Beyond the examples.** The value-shape conjunct is a total statement about the *return* value: no
+input, however malformed, produces a `hash` that is not `sha256:` + 64 lowercase hex — the exact shape
+TSPEC §5.5's guard admits. That is the guarantee the comparison at the approval gate silently depends
+on, and no AT states it over the input space.
 
 **Shrink.** File-local ladder for the trailer choice, and **that ladder is the whole mechanism**. v1.0
 said "shipped `"bytes"` kind for the prose"; §2.3 measures what that kind actually does
@@ -1165,7 +1196,7 @@ ledger against a live gap, which is worse than the gap. The honest division is:
 |---|---|
 | `unparseable` anchor | **`PROP-STALE-01`** conjunct (i), ≥5 cases in each of four malformed shapes |
 | `duplicated` trailer | **`PROP-HASH-01`** — named-`reason` conjunct (ii), ≥5 double-line floor |
-| `absent` trailer | **`PROP-HASH-01`** — named-`reason` conjunct, ≥5 no-trailer floor |
+| `absent` trailer | **`PROP-HASH-01`** — named-`reason` conjunct (iii), ≥5 no-trailer floor |
 | **unreadable document** | **nobody** — no property here covers it, and as of v1.3 **no queue row charters it either**; recorded as an unowned residual in §8.4 residual 6, with the action that would give it an owner stated there (PM Q-01, PM F-02) |
 
 **Generator.** D3 document plus an anchor produced by one of: `sha256:` + digest of the document
