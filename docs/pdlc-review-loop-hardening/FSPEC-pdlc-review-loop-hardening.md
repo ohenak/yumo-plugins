@@ -2120,7 +2120,8 @@ dispatch**, never from a runtime attempt counter (§4a A-2/A-3):
 | Structurally complete | Terminal — not dispatched |
 
 **Form selection for the non-spec classes (TE-v2 F-04).** The two predicates above are stated in
-top-level-section terms, which only the spec classes have. For the cross-review and LEARNINGS classes the
+top-level-section terms, which only the spec classes have. For the cross-review, code-review and
+LEARNINGS classes the
 form is selected on the class's own §16 criterion instead: **absent or empty ⇒ first attempt; present but
 not satisfying its criterion ⇒ resume.** The first-attempt text above is a **spec-class instruction** and
 is not emitted for them — a cross-review has no skeleton of top-level headings to write first, and
