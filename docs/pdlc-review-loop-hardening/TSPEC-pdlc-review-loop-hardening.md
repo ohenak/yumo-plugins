@@ -397,7 +397,7 @@ JSON, modelled on `rtMergeWorktree` (prompt literal `` `Run: git merge --no-ff $
 ```js
 /**
  * @param {{ feature: string, status: string }} arg
- * @returns {Promise<{ queueRow: "written" | "none" | "failed", detail?: string }>}
+ * @returns {Promise<{ queueRow: "halted" | "none" | "error", detail?: string }>}
  */
 export async function defaultRecordHalt(/* { feature, status } */) {
   return { queueRow: "none" };
@@ -696,8 +696,8 @@ claiming a write it did not perform. Every existing call site is updated to dest
 |---|---|---|
 | `haltPhase` | phase id \| `null` | the terminal-exit path (§6.3) |
 | `postmortemPath` | `docs/{feature}/POSTMORTEM-{phaseId}-{feature}.md` \| `null` | §6.3 |
-| `postmortemStatus` | `"written"` \| `"exists-unresolved"` \| `"none"` | §6.3, §5.8 |
-| `queueRow` | `"written"` \| `"none"` \| `"failed"` | `_recordHalt`'s return |
+| `postmortemStatus` | `"written"` \| `"write_failed"` \| `"unresolved"` \| `"none"` | §6.3, §5.8 |
+| `queueRow` | `"halted"` \| `"none"` \| `"error"` | `_recordHalt`'s return |
 
 Plus three report **lines** (not fields): the per-phase skip notice, the force-override notice, and
 the advisory pacing/commit-diff proxy. Per-phase skip reuses the existing `"⏭"` status marker — the
@@ -1154,6 +1154,135 @@ v1.4's false-halt regression. The criterion is shallow by design; §4.5's counte
 what bound a badly behaved episode.
 
 ## 6. Error Handling
+
+### 6.1 The uniform direction
+
+FSPEC §1.2 rule 4 fixes the direction of every ambiguity in this feature: **wherever a
+machine-readable field cannot be read, the behaviour is *more* work, never less.** The phase runs;
+the episode does not reach terminal; the approval is not granted. That rule is not restated at each
+site below — it is why each site takes the branch it does.
+
+The one deliberate exception is `ListFailure.dir_missing` (§4.2), which is benign because "the
+directory does not exist" is a *complete and correct* answer to "what cross-reviews are there", not a
+failure to answer.
+
+### 6.2 Failure disposition table
+
+| # | Failure | Detection | Disposition |
+|---|---|---|---|
+| 1 | `_listFiles` → `dir_missing` | seam return | empty listing; `startIndex = 1`; phase runs |
+| 2 | `_listFiles` → `not_a_directory` / `unreadable` / `bad_argument` | seam return | **halt**, `Cannot enumerate {dirPath}: {reason}` |
+| 3 | two files claim round 1 for one role | `deriveRoundWindow` step 5 | **halt**, naming the role and both filenames |
+| 4 | filename does not match the grammar | `parseReviewFilename` | ignored for round derivation; not an error — the directory legitimately holds REQ, FSPEC, POSTMORTEM, LEARNINGS |
+| 5 | no `## Verdict` section, or a duplicate `VERDICT:` line | §5.1 | not approving; phase runs |
+| 6 | `APPROVAL-HASH:` absent / duplicated / unparseable | `parseApprovalHash` | `UNEVALUABLE`; phase runs; noted in the report |
+| 7 | reviewed document unreadable at comparison time | `_readFile` → `null` | `UNEVALUABLE`; phase runs |
+| 8 | `_appendFile` rejects, or the verification read finds ≠ 1 anchor | §5.3 | operator-facing error; **round yields no approval**; run continues |
+| 9 | `REVISION-COMPLETE:` absent / duplicated / unparseable | `parseRevisionComplete` | episode not terminal; continue; counts toward the counters |
+| 10 | `MAX_AUTHORING_ATTEMPTS` consecutive no-progress dispatches | `dispatchAndVerify` | halt the phase, `reason: "no_progress"`; **no POSTMORTEM** |
+| 11 | `MAX_AUTHORING_DISPATCHES` exceeded | `dispatchAndVerify` | halt the phase, `reason: "dispatch_budget"`; **no POSTMORTEM** |
+| 12 | invalid `forcePhases` token | `parseForcePhases` | halt **before any phase runs**, ending `Valid: R, F, T, P, D, all.` |
+| 13 | unresolved POSTMORTEM for the phase | `checkPostmortem` | refuse the phase, `postmortemStatus: "unresolved"`, halt reason carries the Recommendation excerpt; **not overridable by `forcePhases`** |
+| 14 | non-convergence within `startIndex..endIndex` | `checkConverged` | §6.3's terminal exit |
+| 15 | POSTMORTEM write failed | `_checkFile` after the write agent | §6.4's second halt shape, `postmortemStatus: "write_failed"` |
+| 16 | queue-row commit failed | `_git` → `{ ok: false }` | §6.5; `queueRow: "error"`; the halt itself is **not** downgraded |
+
+Rows 10 and 11 write **no POSTMORTEM** on purpose. Exhausting the authoring budget is the pacing
+wrapper refusing to keep paying; it is not the reviewers failing to converge, and a POSTMORTEM
+claiming non-convergence would be false. The POSTMORTEM path belongs to `checkConverged` alone.
+
+### 6.3 The terminal exit — the H-2 fix
+
+Today `checkConverged` builds
+`` const postmortemPath = `docs/{feature}/POSTMORTEM-${phaseId}-{feature}.md`; `` — a template that
+interpolates `phaseId` but carries **literal, uninterpolated `{feature}` braces** — and then never
+reads the variable. Its halt text nevertheless asserts `POSTMORTEM written.`
+
+**Disposition: made correct and made used**, not deleted. Deleting satisfies AC-5.2's letter, but the
+path is needed as a structured report field, so correcting it discharges both obligations.
+
+```js
+const postmortemPath = `docs/${feature}/POSTMORTEM-${phaseId}-${feature}.md`;
+```
+
+`feature` is added to `checkConverged`'s parameter list; it is in scope at every call site.
+
+The exit sequence, in order:
+
+```
+1.  dispatch the POSTMORTEM author for {phaseId, feature}, writing postmortemPath
+2.  await _checkFile(postmortemPath)      ← CONFIRM, do not trust the agent's reply
+3.  postmortemWritten ← the confirmation, not the agent's return
+4.  await _recordHalt({ feature, status: "halted" })
+5.  throw haltError(one of §6.4's two shapes)
+```
+
+Step 2 is the crux. A write relayed through `agent()` (`rtWriteFile` replies `"ok"` when it believes
+it wrote) is precisely the narration this feature exists to stop trusting, and AC-2.2's whole point is
+that a halt must not claim a write that did not happen. `reviewLoop`'s return shape is extended from
+`{ converged: false, iterations: 5, lastResults }` to carry `postmortemWritten: boolean` — the
+information its existing `postmortemFailed` local already holds and discards.
+
+**The general rule this establishes: no un-substituted template reaches a report.** Any operator-facing
+string whose `{…}` placeholders are not all substituted is a defect. The same rule condemns
+`reviewerPrompt`'s and `optimizerPrompt`'s `{DOC-TYPE}` literals (§5.2).
+
+### 6.4 Halt message shapes
+
+The two conditional replacements for the unconditional `POSTMORTEM written.`:
+
+| Condition | Reason string | `postmortemStatus` |
+|---|---|---|
+| POSTMORTEM agent returned **and** `_checkFile` confirms a non-empty file | `Phase {P} did not converge after {MAX_REVIEW_ROUNDS} rounds{reviewerDetail}. Post-mortem written at {path}. Recover: resolve it per AC-2.4, then set the queue row back to pending.` | `"written"` |
+| agent threw, **or** `_checkFile` reports missing/empty | `Phase {P} did not converge after {MAX_REVIEW_ROUNDS} rounds{reviewerDetail}. Post-mortem write FAILED — no artifact at {path}.` | `"write_failed"` |
+
+The refusal halt (§5.8, row 13) is a third, distinct shape, naming the existing POSTMORTEM path and
+carrying the truncated Recommendation so the operator sees the required action without opening the
+file.
+
+`checkConverged`'s existing `recordPhase(phaseId, phaseLabel, "❌", …, 5)` call has its message
+rewritten to name `rounds {startIndex}..{endIndex}` and its trailing count argument replaced by
+`MAX_REVIEW_ROUNDS` (§7.1, edit 1).
+
+### 6.5 The queue-row commit
+
+Exactly two `_git` invocations, in order, from the committing `rewriteStatus`:
+
+```
+git add    -- docs/_queue/QUEUE.md
+git commit -m "chore(queue): {feature} → {status}" -- docs/_queue/QUEUE.md
+```
+
+| Aspect | Specification |
+|---|---|
+| Message | `chore(queue): {feature} → {status}`, matching this repo's existing convention (`chore(queue): row 1 pdlc-workflow-distribution awaiting-merge → done`) so the history stays greppable |
+| Pathspec | the queue path only, after `--`. `git commit -a` would sweep unrelated working-tree changes into a queue-status commit; the `-- {path}` form commits only that file even when the tree is dirty |
+| Scope | **every** status write, not only `halted`. `in-progress` and `awaiting-merge` become durable too — a strict improvement, and it avoids a second, divergent code path |
+| Push | **not** performed. The halt must survive the *process*, which a local commit achieves; pushing is a network act with its own failure modes and is not what AC-2.1 asks for |
+| Halt classes | both. An authoring-budget halt (rows 10–11) writes no POSTMORTEM and still commits the `halted` row |
+
+**A dirty working tree is not an error and is not cleaned.** A halted pipeline routinely leaves a
+partially written document in the tree — that partial progress is exactly what the recovery path
+resumes from — so stashing, resetting or refusing would destroy the state recovery needs. The
+pathspec form makes the dirty tree irrelevant.
+
+**One accepted edge case:** if `QUEUE.md` is already staged with *other* operator changes, the commit
+captures those too. Detecting it needs a diff-vs-index comparison whose only available action would be
+to refuse, and refusing loses the halt. The commit message names the status change, so the extra
+content is visible in review.
+
+**Commit failure does not downgrade the halt.** `_git` returns `{ ok: false }`; `_recordHalt` returns
+`{ queueRow: "error", detail }`; the report carries it; the pipeline still halts for the original
+reason. A failure to *record* a halt is not a reason to *not* halt.
+
+### 6.6 Advisory-only signals
+
+Two signals in this design are reported and never halt:
+
+- the **commit-diff proxy** for `MAX_AUTHORING_WRITE_BYTES` (§5.6) — a legitimately large single
+  section is indistinguishable from a violation at commit granularity;
+- an **`UNEVALUABLE` staleness result** — it already causes the phase to run, which is the whole
+  remedy; halting on top of that would convert a missing optimisation into an outage.
 
 ## 7. Build and Distribution
 
