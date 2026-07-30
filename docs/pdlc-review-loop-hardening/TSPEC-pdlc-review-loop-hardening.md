@@ -1986,7 +1986,8 @@ which must be derived so a new seam cannot be forgotten. AT-19 asks *is every as
 awaited*, which is a property of the seam's **implementation**, not of its position in a parameter
 list — and `main()`'s parameter list contains parameters that are correctly called without `await`:
 
-- **`_now` is a clock.** It is a `main()` parameter threaded down to `checkPrCi`, whose body calls it
+- **`_now` is a clock.** It is a `main()` parameter threaded down to `raisePrAndVerifyCi`
+  (`orchestrate-dev.js:1283`, which defaults it `_now = () => Date.now()`), whose body calls it
   synchronously at four sites (`const start = _now();`, `completionStart = _now();`, and the two
   elapsed-time comparisons `_now() - completionStart` / `_now() - start`). A clock must not be
   awaited; awaiting it would make every comparison compare a promise.
@@ -2035,7 +2036,7 @@ of three forms, each decided from source text:
 | Form | Test | Members at HEAD `ef4705a` |
 |---|---|---|
 | **E-1 — policy value** | the default is an identifier resolving to a module-level declaration whose value is **not a function**, or a non-function literal | `_phaseDodEnabled = PHASE_DOD_ENABLED`, `_phasePubEnabled = PHASE_PUB_ENABLED` |
-| **E-2 — pass-through** | the destructuring element has **no `=` initialiser at all**; the parameter's default is declared by the callee it is threaded into | `_now`, `_sleep` (defaulted inside `checkPrCi` as `_now = () => Date.now()`, `_sleep = sleep`) |
+| **E-2 — pass-through** | the destructuring element has **no `=` initialiser at all**, **and** the parameter is forwarded to exactly one module-local function that declares a same-named parameter *with* a default, and that function resolves | `_now`, `_sleep` (forwarded to `raisePrAndVerifyCi` → `checkPrCi`, which defaults them `_now = () => Date.now()`, `_sleep = sleep`) |
 | **E-3 — agent-composite** | the default is a function **declared in this module** whose own destructured parameter list contains `_agent` | `_rebaseOntoDefault = rebaseOntoDefault`, `_dodVerifyLoop = dodVerifyLoop`, `_raisePrAndVerifyCi = raisePrAndVerifyCi` |
 
 E-3 is the form the previous four-name list omitted, and its omission is why the rule as written in
@@ -2053,8 +2054,12 @@ composition root already supplies.
 `parallel`, `pipeline`, `phase` and `log` are host globals with no module declaration at all, so E-3
 cannot apply to them; and `defaultRecordHalt` — a deliberate no-op — declares no `_agent` either, so
 it stays on the wired side where §7.2 edit 2b has to satisfy it. A future seam cannot be exempted by
-adding a name; it can only be exempted by acquiring an `_agent` parameter, which is a change to its
-signature that a reviewer sees.
+adding a name. It can only be exempted by acquiring an `_agent` parameter (E-3), by resolving to a
+non-function policy value (E-1), or by being forwarded to a module-local function that defaults it
+(E-2) — each a signature change a reviewer sees. **Omitting an initialiser is not among them**: E-2's
+second conjunct is what makes that so. A seam declared bare and injected nowhere is forwarded to no
+defaulting callee, so it falls in no class and the test names it — which is precisely the `_recordHalt`
+regression §7.2 edit 2b guards.
 
 **Two anti-rot clauses, one per direction:**
 
@@ -2063,10 +2068,13 @@ signature that a reviewer sees.
    the tree today: none of the seven exempt names appears in `rtDevInjections` or in either
    entrypoint.) This is the direction-symmetric replacement for "an unused exemption entry is also a
    failure".
-2. **Evidence must resolve.** E-1's default identifier must have a module-level declaration and E-3's
-   must be a function declared in this file. A parameter whose default identifier no longer resolves
-   is a **failure**, never a silent exemption — that is the removal-direction guard the old
-   fully-consumed clause supplied, restated for a predicate.
+2. **Evidence must resolve — for all three forms, E-2 included.** E-1's default identifier must have
+   a module-level declaration; E-3's must be a function declared in this file; **E-2's forwarding
+   target must be a module-local function that declares the same name with a default**, and the
+   forward must be found in `main()`'s body. A parameter whose evidence no longer resolves is a
+   **failure**, never a silent exemption — that is the removal-direction guard the old
+   fully-consumed clause supplied, restated for a predicate. E-2 was the one form outside this
+   clause, which made "exempt by declaring a seam with no default" a silent pass (TE-v2 N-02).
 
 The test reports the derived classification for every parameter, so the failure message names which
 parameter fell in neither class rather than only that a count disagreed.
