@@ -448,7 +448,7 @@ supply it:
 | Caller | What it supplies |
 |---|---|
 | `orchestrate-queue`'s `_runPipeline` | a closure over the queue path and its own `rewriteStatus`, so a halt in the delegated run is written and committed by the one function that owns status writes (§6.5) |
-| the dev bundle's `DEV_ENTRY` (direct invocation) | a closure the bundle builds over `__queue`'s row helpers — reachable only after §7.2's four `build-runtime.mjs` edits |
+| the dev bundle's `DEV_ENTRY` (direct invocation) | a closure the bundle builds over `__queue`'s row helpers — reachable only after §7.2's `build-runtime.mjs` edits 3 and 4 |
 | jest, or a repo with no queue | the default no-op |
 
 Row location on the halt path is three steps: resolve `DEFAULT_QUEUE_PATH`
@@ -1528,15 +1528,19 @@ The iteration cap is the bare literal `5` at five sites in `orchestrate-dev.js`.
 Sites 1 and 3 derive from the constant **and** `startIndex`; only sites 4 and 5, which report a
 *count* rather than an *index*, use the constant alone. §5.2 states why.
 
-### 7.2 The four `build-runtime.mjs` edits (§17.3)
+### 7.2 The `build-runtime.mjs` edits (§17.3)
 
 Three of these were omitted from FSPEC v1.0 and added at v1.1 (SE-v1 F-04) precisely because
-`_recordHalt`'s closure over the queue's row helpers is **unreachable** without them.
+`_recordHalt`'s closure over the queue's row helpers is **unreachable** without them. Edit 2 is
+**two** edits to the same literal — 2a and 2b below — for the reason TE-v1 F-07 identified: the
+seam that has to reach the *delegated dev pipeline* is not in the same object as the seam that has to
+reach `__queue.main`, and conflating them leaves the production path unwired behind a green suite.
 
 | # | Anchor | Edit | Why |
 |---|---|---|---|
 | 1 | `DEV_ENTRY`'s existing `args && typeof args === "object" && args.reqPath` test | also read `args.forcePhases`, and pass it: `__dev.main({ reqPath: __reqPath, forcePhases: __forcePhases, ...rtDevInjections(__dev) })` | the operator override has no other channel into the bundle |
-| 2 | `QUEUE_ENTRY`'s existing `_writeFile: rtWriteFile,` line | add `_git`, `_listFiles`, `_appendFile` | the queue bundle needs `_git` for §6.5's commit |
+| 2a | `QUEUE_ENTRY`'s existing `_writeFile: rtWriteFile,` line | add **`_git: rtGit`, and nothing else** | this object is the argument to `__queue.main`, whose signature gains only `_git` (§3.6). `_listFiles` and `_appendFile` here would be silently ignored — and, worse, would *spuriously satisfy* AT-64's "present in an entrypoint's injection object" clause for seams that are in fact unwired |
+| 2b | `QUEUE_ENTRY`'s existing `` _runPipeline: ({ reqPath }) => __dev.main({ reqPath, ...__devInjections }), `` | becomes `` _runPipeline: ({ reqPath }) => __dev.main({ reqPath, ...__devInjections, _recordHalt: async ({ feature, status }) => …rewriteStatus over __queuePath… }), `` | **without this the `_recordHalt` seam is unwired on the production queue path.** `rtDevInjections` cannot supply it (§3.10: its implementation differs by caller), so the delegated dev pipeline would fall back to `defaultRecordHalt`'s `{ queueRow: "none" }` no-op and AT-21 — "non-convergence commits the `halted` row *under `orchestrate-queue`*" — would be **false in production while green at L2** against an injected `recordingRecordHalt()`. `_listFiles` and `_appendFile` reach the dev pipeline through `__devInjections` (§3.10) and need no mention here |
 | 3 | `wrapModule("__queue", …, ["main", "meta", "DEFAULT_QUEUE_PATH"])` | extend `exportedNames` with `rewriteStatus` and `updateQueueStatus` | neither is on `__queue` today; without them `DEV_ENTRY`'s `_recordHalt` closure has nothing to call |
 | 4 | `contents: [DEV_META, BANNER, adapter, devModule, DEV_ENTRY]` | insert `queueModule` | the **dev** bundle does not inline the queue module at all today; adding it (with its `wrapModule` prelude `const realMain = __dev.main;`) is what makes "the dev bundle can reach the queue's row helpers" true rather than assumed |
 
@@ -1545,10 +1549,39 @@ Three of these were omitted from FSPEC v1.0 and added at v1.1 (SE-v1 F-04) preci
 §5.3's digest without an `import`, and its `import`-line filter is what keeps the bundle C-2-legal.
 The new pure functions of §3.7 need nothing from it beyond what it already does.
 
+**Edit 2b's closure, spelled out**, since it is the one whose omission is invisible:
+
+```js
+_recordHalt: async ({ feature, status }) =>
+  __queue.rewriteStatus(__queuePath, feature, status, rtReadFile, rtWriteFile, rtGit),
+```
+
+It closes over the queue path the entrypoint already resolved, and calls the **exported**
+`rewriteStatus` (edit 3) so the row write and its commit happen in the one function that owns status
+writes (§6.5). It is `async` and its result is `await`ed by `orchestrate-dev`'s terminal exit (§6.3
+step 4) — the seam is in AT-19's scan set for exactly that reason.
+
 **Ordering hazard.** Edit 4 makes `queueModule` appear in the dev bundle, and `queueModule`'s prelude
 references `__dev.main`. `devModule` must therefore still precede `queueModule` in the `contents`
 array — which the insertion point above preserves. Reversing them produces a bundle that throws at
 load.
+
+**Edit 4's size cost, measured rather than asked** (`DC-02`; closes T-Q-05). At HEAD `ef4705a`:
+
+| Artifact | Bytes | Lines |
+|---|---|---|
+| `pdlc/workflows/dist/orchestrate-dev.bundle.js` | 92,525 | 2,377 |
+| `pdlc/workflows/dist/orchestrate-queue.bundle.js` | 140,096 | 3,540 |
+| `pdlc/workflows/orchestrate-queue.js` (source) | 47,733 | 1,158 |
+
+The queue bundle **already inlines both modules today** and ships. Edit 4 therefore grows the dev
+bundle to roughly the size of an artifact that has been in production since
+`pdlc-workflow-distribution` — the largest shipped artifact already contains exactly this union, so
+no new size territory is entered and there is no undocumented ceiling to discover. The alternative
+the FSPEC leaves implicit — duplicating the two row helpers into `orchestrate-dev.js` — is
+**declined on the merits**, not for want of a limit: it would put a second copy of the queue's table
+grammar in a module whose §3.5 contract is precisely that it never learns that grammar, and a second
+copy of a parser is the failure mode DC-11 and §1.5's cite-and-reuse rule both exist to prevent.
 
 ### 7.3 Generated artifacts
 
