@@ -1107,6 +1107,66 @@ describe("RLH-AT-48 — the continuation prompt contract is inspectable (FSPEC �
   });
 });
 
+/** The wording a resume prompt must carry (§5.6.3, FSPEC §15.5's resume clause). */
+const RESUME_MARKERS = Object.freeze([/RESUMED/i, /first unwritten section/i, /do NOT rewrite/i]);
+
+describe("RLH-AT-49 — the resume prompt names the first unwritten section (FSPEC §19 AT-49, AC-3.3, O-6)", () => {
+  test("RLH-AT-49: a partial spec resumes at section 8, a partial cross-review resumes at the trailing Verdict section, a partial LEARNINGS resumes at its fifth numbered section, and the heading field is never empty", async () => {
+    // ── (a) Spec class: 21 top-level headings, 1–7 written, 8–21 empty. The FSPEC
+    // is already on disk at entry, so the creator episode's FIRST dispatch is a
+    // resume ("`invocation === 1` and the target is absent or empty" is false).
+    const EXTRA = 14; // 7 required + 14 extra = 21 top-level headings
+    const specRun = await runPipeline({
+      files: { [FSPEC_PATH]: partialDoc("FSPEC", REQUIRED_HEADINGS.FSPEC.length, EXTRA) },
+      author: (ctx) =>
+        ctx.kind === "creator" && ctx.phase === "F"
+          ? { write: completeDoc("FSPEC"), response: authorResponse("yes") }
+          : {},
+    });
+    const fCreator = select(specRun, { kind: "creator", phase: "F" });
+    expect(fCreator.length).toBeGreaterThan(0);
+    const resumePrompt = fCreator[0].prompt;
+    for (const marker of RESUME_MARKERS) expect(resumePrompt).toMatch(marker);
+    // Section 8 is the first unwritten one, and the index was computed by the
+    // SCRIPT's own heading walk — the agent was never asked.
+    expect(resumePrompt).toContain(extraHeading(8));
+    expect(resumePrompt).toMatch(/7 of 21 top-level sections/);
+
+    // ── (b) Cross-review class (§5.9's whole-file criterion, §15.5's per-class
+    // mapping). Dispatch 1 writes prose under every heading but no trailing
+    // `## Verdict`, so the episode is not terminal and dispatch 2 is a resume.
+    const reviewRun = await runPipeline({
+      review: (ctx) =>
+        ctx.skill === "se-review" && ctx.phase === "R" && ctx.n === 1
+          ? { write: crossReviewDoc({ withVerdict: false }), response: "Killed before the verdict." }
+          : { write: crossReviewDoc({ verdict: "Approved" }), response: reviewResponse("Approved") },
+    });
+    const seReview = select(reviewRun, { skill: "se-review", phase: "R", round: 1 });
+    expect(seReview.length).toBeGreaterThanOrEqual(2);
+    for (const marker of RESUME_MARKERS) expect(seReview[1].prompt).toMatch(marker);
+    expect(seReview[1].prompt).toContain('(the trailing "## Verdict" section)');
+
+    // ── (c) LEARNINGS class: four numbered sections bodied, the fifth empty.
+    const harvestRun = await runPipeline({
+      harvest: (ctx) =>
+        ctx.n === 1
+          ? { write: learningsDoc({ filled: 4, approvalRecord: false }), response: "Killed." }
+          : { write: learningsDoc(), response: authorResponse("yes") },
+    });
+    const harvestDispatches = select(harvestRun, { skill: "harvest-learnings" });
+    expect(harvestDispatches.length).toBeGreaterThanOrEqual(2);
+    for (const marker of RESUME_MARKERS) expect(harvestDispatches[1].prompt).toMatch(marker);
+    expect(harvestDispatches[1].prompt).toContain(LEARNINGS_HEADINGS[4]);
+
+    // ── The field is never empty or undefined in any of the three (§15.5's closing
+    // guarantee: "the resume prompt is never emitted with an undefined field").
+    for (const prompt of [resumePrompt, seReview[1].prompt, harvestDispatches[1].prompt]) {
+      expect(prompt).not.toMatch(/undefined|\bnull\b/);
+      expect(prompt).not.toMatch(/first unwritten section is\s*"?\s*[."]/i);
+    }
+  });
+});
+
 // ─── 9. RLH-AT-50, RLH-AT-51, RLH-AT-58 — the non-authoring wrapped classes ───
 
 // ─── 10. RLH-AT-52, RLH-AT-53 — advisory proxy, and no destructive git ────────
