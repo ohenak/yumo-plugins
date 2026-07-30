@@ -1238,19 +1238,60 @@ One episode = one (artifactSet, phase, round, mode) tuple.
 
 #### 5.6.1 `selectMode` — how `mode` is computed (FSPEC §15.2, AC-3.5 scope (d))
 
-`EpisodeKey.mode` is not an input the caller invents. It is computed **once, at episode entry**, by a
-pure function, from **what the phase is dispatching an author to do** — never from the artifact's
-structural state:
+`EpisodeKey.mode` is not an input the caller invents. It is computed **once per episode, at that
+episode's entry**, by a pure function, from **what the phase is dispatching an author to do** — never
+from the artifact's structural state:
 
 ```js
 export function selectMode({ dispatchKind, docType, present, reviewFiles })
 //   dispatchKind : "authoring" | "review" | "dod-verify" | "harvest"
 //   docType      : the doc type this episode's artifact set belongs to
-//   present      : deriveRoundWindow's per-role Map<role, number[]> for docType
+//   present      : per-role Map<role, number[]> for docType, from deriveRoundWindow
 //   reviewFiles  : Map<`${role}:${round}`, { verdict, verdictReadable, anchorHash }>
-//                  — the §5.1 / §5.4 reads already performed for this phase entry
 //   →  { mode: "authoring" | "revision", round: number|null, reason: string }
 ```
+
+#### Where it is called from, and with what — the wiring (normative)
+
+**Invariant S-INV.** `selectMode`'s `present` and `reviewFiles` are the state of the branch **at the
+instant the episode begins**, read inside `reviewLoop`. They are never a snapshot taken before the
+loop. The function stays pure; freshness is the **caller's** obligation, and this is where it is
+discharged.
+
+`reviewLoop`'s signature gains `present`, `reviewFiles`, `docType`, `_listFiles` and `_readFile`
+(§3.9) and declares one module-local helper, called at **every** wrapped episode entry inside its
+`while (true)` — the round's optimizer episode and each reviewer episode alike:
+
+```
+refreshReviewState():                                  // one _listFiles + ≤2 _readFile
+  basenames ← await _listFiles(`docs/${feature}`)      // ListFailure ⇒ keep the previous maps,
+                                                       //   note it; never silently empty (§6.2 r.17)
+  w ← deriveRoundWindow(basenames, docType)
+  present ← w.present
+  reviewFiles ← §5.4's tier-1 reads over round `w.startIndex - 1`, or empty when that is < 1
+  return { present, reviewFiles, startIndex: w.startIndex }
+
+episode entry:
+  { present, reviewFiles } ← await refreshReviewState()
+  sel ← selectMode({ dispatchKind, docType, present, reviewFiles })
+  episode ← { artifactSet, phaseId, roundIndex: sel.round ?? startIndex, mode: sel.mode, invocation: 0 }
+```
+
+The phase-entry values passed in from §2.5 steps 2–3 are the **seed** for the first episode only;
+from then on each episode re-reads. This is the whole of N-01's fix, and the reason it is stated as an
+invariant rather than a call site: **round 2's optimizer episode must see the reviews round 1 wrote,
+and this run is what wrote them.** Under an entry-time snapshot on a clean branch `present` is empty
+for the life of the phase, so every optimizer episode selects greenfield, `isTerminal` requires no
+trailer, and the wrapper reports success on a round whose findings were never addressed — the exact
+failure `selectMode` exists to prevent, relocated from the resume path to the ordinary one.
+
+`roundIndex` therefore differs across rounds by construction, so each round's revision episode has its
+own `EpisodeKey` and its own `MAX_AUTHORING_DISPATCHES` budget — §4.5's 36-dispatch bound.
+
+**Read fan-out.** One `_listFiles` and at most two `_readFile` per **episode** entry, not per phase
+entry: bounded above by `(1 + MAX_REVIEW_ROUNDS) × (reviewers + 1)` listings for one phase. A listing
+of one directory is cheap next to an Opus dispatch, and the alternative — threading the just-written
+filenames forward in memory — is the conversational-memory dependence §5.6.3 rejects everywhere else.
 
 Four rules, taken from FSPEC §15.2 and normative here:
 
@@ -1263,31 +1304,35 @@ Four rules, taken from FSPEC §15.2 and normative here:
    resuming invocation therefore re-enters the **same** round and re-derives its findings from the
    surviving `CROSS-REVIEW-*` files. §5.2's `max + 1` governs the **next reviewer** dispatch, which
    happens only after this episode reaches terminal; it is not the round a revision episode addresses.
-   `selectMode` and `deriveRoundWindow` consume the same `present` map and answer different questions.
+   `selectMode` and `deriveRoundWindow` consume the same `present` map — the one `refreshReviewState`
+   just built — and answer different questions.
 3. **Non-authoring wrapped dispatches are always greenfield.** `dispatchKind !== "authoring"` ⇒
    `{ mode: "authoring", round: null }` without evaluating rule 1. A `pm-review` / `se-review` /
    `te-review` / `dod-verify` / `harvest-learnings` episode is never dispatched to address findings in
    its own artifact — each writes a new file — so the revision test cannot match.
-4. **Fail toward revision.** If review artifacts for the candidate round exist but their verdict
-   fields are unreadable (§5.1's fail-closed cases), the episode is a **revision** episode. The
-   directions are not symmetric: mis-entering greenfield silently drops a whole review round, while
-   mis-entering revision costs at most a continuation prompt naming findings already reflected — and
-   §8.2's trailer terminates that in one dispatch.
+4. **Fail toward revision — including when the verdicts were never read.** If `present` holds a
+   candidate round for this (feature, doc type) but `reviewFiles` carries no readable verdict for it,
+   the episode is a **revision** episode. This covers both shapes and they are not distinguished:
+   the verdict fields are unreadable (§5.1's fail-closed cases), **or** the read was never performed
+   — the forced path, where §2.5 step 3 is skipped and `reviewFiles` is empty, or a `refreshReviewState`
+   whose listing failed. "Not read" is never treated as "no findings"; only an *empty* `present` is
+   greenfield. The directions are not symmetric: mis-entering greenfield silently drops a whole
+   review round, while mis-entering revision costs at most a continuation prompt naming findings
+   already reflected, terminated in one dispatch by the trailer.
 
-Stickiness is a **consequence**, not the mechanism: the selection is made once and does not change
-for the life of the episode, whatever later measurements observe. Episode entry is the instant the
-counters start at zero, so mode, prompt kind and counters share one scope. This is what lets a fresh
-process recover `(round, mode)` after a stall kill — everything `selectMode` reads is on disk.
+Stickiness is a **consequence**, not the mechanism: the selection is made once per episode and does
+not change for that episode's life, whatever later measurements observe. Episode entry is the instant
+the counters start at zero, so mode, prompt kind and counters share one scope. This is what lets a
+fresh process recover `(round, mode)` after a stall kill — everything `selectMode` reads is on disk,
+and `refreshReviewState` re-reads it.
 
 **The retracted derivation, stated so this document does not reinstate it.** FSPEC §15.2 withdraws
-v1.3's per-dispatch re-measurement *and* v1.4's entry-time derivation from the artifact's structural
-state. Neither is used here. In particular, §5.6.3's prompt-kind rule — `invocation === 1` and the
-target absent or empty — selects **the prompt kind, not the mode**. The two are different axes: a
-revision episode resuming after a stall kill finds an incomplete document and takes the *resume*
-prompt shape, while remaining a **revision** episode carrying that round's findings. Reading that
-rule as the mode rule reproduces exactly the failure §15.2 describes — the resumed episode carries a
-prompt naming no findings, greenfield terminal fires on structural completeness, and the wrapper
-reports success on a round whose findings were never addressed.
+v1.3's per-dispatch re-measurement *and* v1.4's derivation from the artifact's structural state;
+neither is used here. Note the distinction S-INV does *not* blur: what is re-read per episode is the
+**review record on the branch**, never the artifact's own completeness. §5.6.3's prompt-kind rule
+(`invocation === 1` and the target absent or empty) selects the **prompt kind, not the mode** — a
+revision episode resuming after a stall kill takes the *resume* prompt shape while remaining a
+revision episode carrying that round's findings.
 
 #### 5.6.2 The loop
 
