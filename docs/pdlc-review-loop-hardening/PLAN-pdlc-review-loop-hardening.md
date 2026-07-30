@@ -894,8 +894,16 @@ request.
 
 Every task, before it commits:
 
-1. Its own test file(s) pass under `npx jest <file>` — or, for a RED task, fail **only** for the stated
-   reason (the subject does not exist yet).
+1. Its own test file(s) run under **`cd pdlc/workflows && npm test -- <file>`** — the only invocation that
+   can run a suite in this directory at all, per §2.3, which owns the rule. **Never bare `npx jest <file>`:
+   measured at HEAD it fails the suite with `Cannot use import statement outside a module`, `Tests: 0
+   total`, exit 1**, so under it no task in this PLAN — green or red — can satisfy this step, and a RED
+   task's failure would be a module-parse error rather than its oracle.
+   - a **GREEN** task: the file passes.
+   - a **RED** task: the criterion is **assertion-level, not suite-level** — the suite *runs*, and exactly
+     the named `RLH-AT-*` / `RLH-*` assertions §7 assigns to this task fail, each on **its own oracle**
+     (the subject does not exist yet, or exists in the pre-feature shape). A suite that fails to *run*, or
+     a failure anywhere else in the file, is not a valid red.
 2. If it touched a tracked source under `pdlc/workflows/`: `node pdlc/workflows/build-runtime.mjs`, then
    `node pdlc/workflows/build-runtime.mjs --check` exits 0, and `dist/` is staged in the **same commit**.
 3. Every injected-seam call it added or moved is lexically preceded by `await` (§9.2) — checked by eye
@@ -906,10 +914,19 @@ Every task, before it commits:
 
 1. `cd pdlc/workflows && npm test`, **run in the background or with a >300 s timeout** (§2.3).
 2. Result satisfies §2.2: 1038 / 1 / 70 or better, the one failure still
-   `documentOracles.test.js` `AT-22 [red-until-L-06]`, plus only those `RLH-AT-*` tests whose
-   `Greened by` batch has not yet completed.
+   `documentOracles.test.js` `AT-22 [red-until-L-06]`, **plus only those assertions whose §7.3
+   `Permitted red` window contains the current batch.** Read that column; the rule is not restated here.
 3. `node pdlc/workflows/build-runtime.mjs --check` exits 0.
 4. No file outside §5's manifest was modified.
+
+**Why this gate cannot be defeated by a run that executes nothing** (answering TE Q-02, and the reason
+§2.3's correction does not weaken anything here). Step 2 asserts **absolute counts** — a run that executed
+zero tests fails it — and §7.3's ledger is keyed on **named assertions**, never on a process exit status.
+So the batch gate is structurally immune to a vacuous or non-executing run, whichever way the tooling
+fails; only §12.1's per-*task* gate ever depended on a single-file invocation, which is why §12.1 step 1
+names the working one. The one thing that would erode step 2 is a suite silently leaving jest's match
+pattern or a `--passWithNoTests` path appearing: the absolute counts are the only thing that would notice,
+which is the argument for asserting counts rather than "green".
 
 Batches 2 and 3 are RED-terminal (§2.2) and their gate is the split wording: **the new `RLH-AT-*` tests
 fail for the stated reason and every pre-existing test still passes.**
@@ -921,6 +938,10 @@ fail for the stated reason and every pre-existing test still passes.**
 - [ ] All 66 FSPEC ATs plus `RLH-AT-01a`, `RLH-AT-13a`, `RLH-AT-43a` are implemented under their
       `RLH-`-namespaced jest names, in the files TSPEC §8.3 assigns.
 - [ ] Every task row in §4 is ✅ and every AT in §7 is green.
+- [ ] The **thirteen non-AT assertions of §7.5** — `RLH-WIRE-01`, `RLH-LOOP-01`, `RLH-LOOP-02`,
+      `RLH-REPORT-01`, `RLH-SKILL-01` … `RLH-SKILL-09` — all exist under those exact jest names and are
+      green. They are deliberately outside the AT-counting rows above, so this row is the only thing that
+      requires them.
 - [ ] The seven property tests of TSPEC §8.2 exist, one per parameterisable component, each declaring a
       literal seed through `resolveSeed`, each L1.
 - [ ] Full suite against §2.2: **no new failures**, the one permitted red unchanged in identity.
@@ -937,8 +958,10 @@ fail for the stated reason and every pre-existing test still passes.**
       prefix; an exit 126 means the execute bit was lost. **`.claude/workflows/` is not committed**, and
       `git status` confirms it is untracked.
 - [ ] `RLH-AT-19`: both anchored regexes match zero times in both bundles; the await-discipline scan is
-      clean over `orchestrate-dev.js` **and** `orchestrate-queue.js` source, with the alias and
-      returned-promise shapes classified as §9.2 rules them.
+      clean over `orchestrate-dev.js` **and** `orchestrate-queue.js` source, with every non-`await`ed
+      thirteen-list call site classified by **TSPEC §8.5's** three rulings. At HEAD there are **three**
+      such sites — `orchestrate-dev.js:615`, `:616` (awaited combinator argument) and `:1867` (returned
+      promise) — and no site may be classified by a clause naming a line number (§9.2).
 - [ ] `RLH-AT-64`: every `_`-prefixed `main()` parameter is wired or exempt; both anti-rot clauses hold;
       `_recordHalt` is satisfied by `QUEUE_ENTRY`'s `_runPipeline` closure **and** `DEV_ENTRY`.
 - [ ] Each bundle: `export const meta` first and a pure literal, no other `export`, no `import`.
@@ -946,8 +969,9 @@ fail for the stated reason and every pre-existing test still passes.**
 **Contract integrity — the consistency checks this feature exists to earn**
 
 - [ ] `ListFailure`'s dispositions are applied **unchanged at every call site** — the phase-entry
-      derivation and `refreshReviewState` alike — and the three non-benign values produce **one** halt
-  halt shape at both — the one TSPEC §6.2 row 2 fixes, cited not restated (TSPEC §4.2, §6.2 rows 1/2/17).
+      derivation and `refreshReviewState` alike — and at both call sites the three non-benign values
+      produce **one and the same halt shape**, the one TSPEC §6.2 row 2 fixes (cited, not restated:
+      TSPEC §4.2, §6.2 rows 1/2/17).
 - [ ] `selectMode` is the **only** producer of `EpisodeKey.mode`; grep confirms no other assignment.
 - [ ] `refreshReviewState` is called at **every** wrapped episode entry and there is **no** pre-loop
       snapshot; `reviewLoop` takes **no** seed maps.
