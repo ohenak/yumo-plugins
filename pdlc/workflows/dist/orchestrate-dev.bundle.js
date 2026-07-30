@@ -2154,6 +2154,254 @@ function continuationClause(round, reviewBasenames, targetPath) {
   ].join(" ");
 }
 
+// ─── TSPEC §5.6.1 S-INV — refreshReviewState ─────────────────────────────────
+
+/**
+ * Re-read the branch's review record for one (feature, doc type), at the instant
+ * an episode begins. **This is S-INV**: `selectMode` is never handed a snapshot
+ * taken before the loop, because on a clean branch such a snapshot stays empty for
+ * the life of the phase and every optimizer episode then selects greenfield
+ * (TE-v2 N-01).
+ *
+ * The `ListFailure` disposition lives HERE, above the `deriveRoundWindow` call, so
+ * that a listing which cannot be judged never reaches the round derivation:
+ *
+ * | reason | disposition |
+ * |---|---|
+ * | `dir_missing` | benign — the feature directory has no reviews yet, `files ← []` |
+ * | `not_a_directory`, `unreadable`, `bad_argument` | halt — "not read" is never "no findings" |
+ *
+ * @param {{feature: string, docType: string|null, _listFiles: function, _readFile: function}} arg
+ * @returns {Promise<{ok: true, startIndex: number, endIndex: number,
+ *                    present: Map, reviewFiles: Map, matched: object[], files: string[]}
+ *                  |{ok: false, message: string}>}
+ */
+async function refreshReviewState({ feature, docType, _listFiles, _readFile }) {
+  const dirPath = `docs/${feature}`;
+  const listing = await _listFiles(dirPath);
+
+  let files = [];
+  if (listing && listing.ok) {
+    files = Array.isArray(listing.files) ? listing.files : [];
+  } else {
+    const reason = (listing && listing.reason) || "unreadable";
+    if (reason !== "dir_missing") {
+      return { ok: false, message: `Cannot enumerate ${dirPath}: ${reason}` };
+    }
+  }
+
+  const window = deriveRoundWindow(files, docType);
+  if (!window.ok) {
+    return {
+      ok: false,
+      message: `Cannot derive the review round window for ${docType} in ${dirPath}: ${window.reason} (role ${window.role})`,
+    };
+  }
+
+  // The verdict record rule 2 reads. Unreadable is recorded as unreadable, never
+  // downgraded to "no findings" — the two directions are not symmetric (§5.6.1).
+  const reviewFiles = new Map();
+  const matched = [];
+  for (const basename of files) {
+    const parsed = parseReviewFilename(basename);
+    if (!parsed.ok || parsed.docType !== docType) continue;
+    matched.push({ basename, role: parsed.role, round: parsed.round });
+    const text = await _readFile(`${dirPath}/${basename}`);
+    const parsedVerdict = parseVerdict(text, basename);
+    reviewFiles.set(`${parsed.role}:${parsed.round}`, {
+      verdict: parsedVerdict.verdict,
+      verdictReadable: parsedVerdict.malformed !== true,
+      anchorHash: null,
+    });
+  }
+
+  return {
+    ok: true,
+    startIndex: window.startIndex,
+    endIndex: window.endIndex,
+    present: window.present,
+    reviewFiles,
+    matched,
+    files,
+  };
+}
+
+// ─── TSPEC §3.8 — dispatchAndVerify ──────────────────────────────────────────
+
+/** An authoring-budget halt: caught by `reviewLoop`, which turns it into a return. */
+function authoringHaltError(message, trailerReason) {
+  const err = haltError(message);
+  err.isAuthoringHalt = true;
+  err.trailerReason = trailerReason ?? null;
+  return err;
+}
+
+/**
+ * Dispatch one agent episode and verify its outcome against §5.6.2, re-dispatching
+ * inside the episode until it is terminal or a budget ends it. **Deliberately not
+ * exported** (§3.8) — its behaviour is observed through `main()` and `reviewLoop`.
+ *
+ * Order of evaluation, which is the whole of the H-3 fix:
+ * 1. **terminal first, then progress**. A dispatch that writes nothing and declares
+ *    the round complete is terminal; scoring progress first would re-dispatch it.
+ * 2. progress is `before !== after` over the WORKING TREE — not "a section was
+ *    completed", and not a git diff (§5.6.2, `RLH-AT-45`).
+ *
+ * **The unmeasurable-target escape.** When the target yields no top-level sections
+ * at all *and* the dispatch changed nothing, this wrapper has no measurement to
+ * make: `isComplete` cannot score a document it cannot see. Re-dispatching such an
+ * episode to the budget would convert every unmeasurable target (Phase CR's
+ * directory; any caller whose read seam is a stub) into a halt. The episode is
+ * therefore terminal after one dispatch — exactly the pre-feature behaviour.
+ *
+ * @returns {Promise<{response: any, mode: string, round: number|null,
+ *                    invocations: number, wroteBytes: boolean}>}
+ */
+async function dispatchAndVerify({
+  skill,
+  basePrompt,
+  targetPath,
+  docType,
+  feature,
+  dispatchKind,
+  phaseId,
+  model,
+  _agent,
+  _readFile,
+  _listFiles,
+  _log,
+  _git,
+}) {
+  const emit = typeof _log === "function" ? _log : () => {};
+  const artifactClass = artifactClassOf(targetPath);
+
+  // §5.6.1: mode is computed ONCE per episode, at the episode's entry, over state
+  // this episode itself observed.
+  let selection;
+  let roundFiles = [];
+  if (dispatchKind === "authoring") {
+    const state = await refreshReviewState({ feature, docType, _listFiles, _readFile });
+    if (!state.ok) throw haltError(state.message);
+    selection = selectMode({
+      dispatchKind,
+      docType,
+      present: state.present,
+      reviewFiles: state.reviewFiles,
+      startIndex: state.startIndex,
+    });
+    if (selection.mode === "revision") {
+      roundFiles = state.matched
+        .filter((m) => m.round === selection.round)
+        .map((m) => m.basename);
+    }
+  } else {
+    selection = selectMode({
+      dispatchKind,
+      docType,
+      present: new Map(),
+      reviewFiles: new Map(),
+      startIndex: 1,
+    });
+  }
+
+  let invocations = 0;
+  let consecutiveNoProgress = 0;
+  let wroteBytes = false;
+  let lastTrailerReason = null;
+  let response = null;
+
+  for (;;) {
+    const before = await _readFile(targetPath);
+    invocations += 1;
+
+    let opener;
+    if (selection.mode === "revision") {
+      opener = continuationClause(selection.round, roundFiles, targetPath);
+    } else if (invocations === 1 && String(before ?? "").trim() === "") {
+      opener = skeletonClause();
+    } else {
+      opener = resumeClause(artifactClass, docType, before, targetPath);
+    }
+    const prompt = `${basePrompt}\n\n${PACING_CONTRACT_CLAUSE}\n\n${opener}`;
+
+    let faulted = false;
+    try {
+      response = await _agent(skill, prompt, model ? { model } : undefined);
+    } catch {
+      faulted = true;
+      response = null;
+    }
+    if (faulted) {
+      // §15.4: only a THROWN dispatch is a runtime fault. A reply with no trailer
+      // is an omission, and an implementation that cannot tell them apart reports
+      // a kill that did not happen.
+      emit(`Dispatch fault observed: faultObserved=true (${skill}, phase ${phaseId}).`);
+    }
+
+    const after = await _readFile(targetPath);
+    const measured = isComplete(artifactClass, docType, after);
+    const verdict = isTerminal(selection.mode, response ?? "", artifactClass, docType, after);
+    lastTrailerReason = verdict.trailerReason;
+    const progressed = before !== after;
+    if (progressed) wroteBytes = true;
+
+    if (verdict.terminal) break;
+    // The unmeasurable-target escape — see the doc comment above.
+    if (measured.T === 0 && !progressed) break;
+
+    consecutiveNoProgress = progressed ? 0 : consecutiveNoProgress + 1;
+    const sections = `(${measured.S} of ${measured.T} sections complete)`;
+    const trailerNote = lastTrailerReason ? `; last trailer outcome: ${lastTrailerReason}` : "";
+
+    if (consecutiveNoProgress >= MAX_AUTHORING_ATTEMPTS) {
+      throw authoringHaltError(
+        `Phase ${phaseId}: ${skill} made no progress across ${MAX_AUTHORING_ATTEMPTS} consecutive attempts on ${targetPath} ${sections}${trailerNote}.`,
+        lastTrailerReason
+      );
+    }
+    if (invocations >= MAX_AUTHORING_DISPATCHES) {
+      throw authoringHaltError(
+        `Phase ${phaseId}: ${skill} spent ${MAX_AUTHORING_DISPATCHES} dispatches without reaching structural completeness on ${targetPath} ${sections}${trailerNote}.`,
+        lastTrailerReason
+      );
+    }
+  }
+
+  if (selection.mode === "revision") {
+    emit(`Phase ${phaseId} round ${selection.round}: episode ended on the author's REVISION-COMPLETE trailer.`);
+  }
+  await advisoryPacingCheck({ wroteBytes, targetPath, _git, emit });
+
+  return { response, mode: selection.mode, round: selection.round, invocations, wroteBytes };
+}
+
+/**
+ * §15.7's advisory proxy for "did that section land in one over-large write?".
+ * No oracle for emitted bytes exists, so the per-artifact commit diff stands in —
+ * and it is **advisory only**: it is reported and never halts anything (O-20).
+ */
+async function advisoryPacingCheck({ wroteBytes, targetPath, _git, emit }) {
+  if (!wroteBytes || typeof _git !== "function") return;
+  let result;
+  try {
+    result = await _git(["diff", "--numstat", "--", targetPath]);
+  } catch {
+    return;
+  }
+  const stdout = result && typeof result.stdout === "string" ? result.stdout : "";
+  for (const line of stdout.split("\n")) {
+    const m = /^(\d+)\t(\d+)\t(.+)$/.exec(line.trim());
+    if (!m) continue;
+    const added = Number(m[1]);
+    if (added <= MAX_AUTHORING_WRITE_BYTES) continue;
+    emit(
+      `Advisory pacing check: ${m[3]} shows ${added} added lines against the ` +
+        `${MAX_AUTHORING_WRITE_BYTES} per-write figure. That figure is advisory ` +
+        `only — it is a proxy, not an oracle, and never a halt condition.`
+    );
+  }
+}
+
 /**
  * Build the reviewer dispatch prompt. Iteration 1 is a full first-pass review.
  * Iteration ≥2 appends the delta re-review protocol so the reviewer reads its own
