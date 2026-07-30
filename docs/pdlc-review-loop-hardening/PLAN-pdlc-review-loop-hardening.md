@@ -477,6 +477,49 @@ for the failure report, never the pass path.
 
 ## 8. Traceability — FSPEC obligations and defects
 
+### 8.1 FSPEC obligations → tasks
+
+**TSPEC §9.1 already maps every FSPEC obligation to the TSPEC section that discharges it, and states
+that nothing is deferred.** That table is not rebuilt here. This one adds only the missing column — the
+task that builds it — and is read *through* §9.1, not instead of it.
+
+`O-10` … `O-15` are absent because they were retracted during FSPEC review and are absent from the
+FSPEC's own obligation map. Their absence is deliberate.
+
+| O-row | TSPEC §9.1 discharges it in | Built by |
+|---|---|---|
+| O-1 | §3.2, §4.2, §6.2 rows 1–2 | RLH-18 (seam + Node default), RLH-32 (`rtListFiles`), RLH-05 (`LIST_FAILURES`), RLH-26 (dispositions at the phase gate), RLH-23 (dispositions at `refreshReviewState`) |
+| O-2 | §5.2 | RLH-13 |
+| O-3 | §5.8 | RLH-15 (`parseResolvedMarker`, `extractRecommendation`), RLH-26 (`checkPostmortem` at step G) |
+| O-4 | §6.5 | RLH-20 |
+| O-5 | §3.5 | RLH-18 (`defaultRecordHalt`), RLH-32 (both entrypoint suppliers) |
+| O-6 | §5.6 | RLH-23 |
+| O-7 | §5.9 | RLH-16 |
+| O-8 | §5.5 | RLH-16, RLH-26 |
+| O-9 | §3.1, §5.7 | RLH-18 (`main()` + `meta.inputs`), RLH-15 (`parseForcePhases`), RLH-26 (precedence), RLH-32 (build edit 1) |
+| O-16 | §7.1, §7.2, §3.9 | RLH-27 (the five §7.1 edits), RLH-32 (the four §7.2 edits) |
+| O-17 | §5.1, §5.3, §4.3 | RLH-10, RLH-15, RLH-26 |
+| O-18 | §5.4 | RLH-26 |
+| O-19 | §4.8, §5.6, §8.3 | RLH-05 (constant placement), RLH-21 (the behavioural oracles). `MAX_AUTHORING_WRITE_BYTES` has **no** oracle and no task pretends otherwise |
+| O-20 | §5.6, §6.6 | RLH-08 (the per-section cadence stated to authors), RLH-23 (no git operation on the pacing path may discard uncommitted work), RLH-30 (the advisory proxy line) |
+| O-21 | §4.4 | RLH-09 (harvest emits the section), RLH-26 (the script appends the anchors) |
+
+### 8.2 Defect → mechanism → first falsifying test → task
+
+Carried from TSPEC §9.2, with the task column added.
+
+| Defect | Mechanism (TSPEC) | First falsifying test | Task that fixes it |
+|---|---|---|---|
+| **H-1** — round index always 1 | `deriveRoundWindow`'s `max(present) + 1` (§5.2), passed at all seven `reviewLoop` call sites **including the forced path** | AT-01; **AT-01a** for the forced path | RLH-13 (derivation) + RLH-26 (the seven call sites) |
+| **H-2** — non-terminal exit, no POSTMORTEM | corrected `postmortemPath`, `_checkFile` confirmation, `_recordHalt`, the two conditional halt shapes (§6.3, §6.4); G-INV for the refusal half | AT-22; **AT-13a** for G-INV totality | RLH-27 (+ RLH-26 for the gate, RLH-20 for the row commit) |
+| **H-3** — 180 s stall kills a monolithic write | `dispatchAndVerify`'s terminal-first-then-progress loop, per-episode counters and mode (S-INV), the resume prompt (§5.6) | AT-35; **AT-43a** for per-episode mode and budget | RLH-23 (+ RLH-08 for the authoring-side pacing contract) |
+| **H-4** — approved phase re-run from scratch | the two-tier approval search + `isStale` (§5.4, §5.5) | AT-08 | RLH-26 (+ RLH-16, RLH-10) |
+
+**H-2 and H-3 each need a prompt-side task as well as a code-side one**, and that is the one place this
+feature's fix is not entirely mechanical: the persisted records of TSPEC §4.4 exist only if the agents
+write them, so `RLH-07`/`RLH-08`/`RLH-09` are load-bearing for H-2 and H-4 respectively even though
+they change no code. §10 is about how that half is verified.
+
 ## 9. The C-2 runtime gate
 
 ## 10. SKILL amendments and how each is verified
