@@ -1,6 +1,6 @@
 # PLAN — pdlc-review-loop-hardening
 
-**Version:** v1.0
+**Version:** v1.1
 **Scope:** Work breakdown for implementing TSPEC v1.5 (`pdlc-review-loop-hardening`) — task list, batch
 assignment, file ownership, TDD order, traceability and halt conditions. This document specifies **when
 and by whom** each change is built. It specifies **no behaviour**: every behavioural, structural and
@@ -23,12 +23,12 @@ Four harness defects (TSPEC §1.2 `H-1`…`H-4`) are fixed inside the existing `
 modules. Five tracked paths change and nothing outside them does — TSPEC §1.3 owns the change surface.
 No new package, no new dependency, no new source file under `pdlc/workflows/` (TSPEC §2.1, §2.2).
 
-The work decomposes into **34 tasks across 16 batches**. The shape is unusual and the reason is
+The work decomposes into **31 tasks across 13 batches**. The shape is unusual and the reason is
 structural rather than stylistic: almost all of it lands in **one** physical file
 (`pdlc/workflows/orchestrate-dev.js`), and every commit that touches a tracked workflow source must
 also rebuild `pdlc/workflows/dist/` in the same commit (§3 below). Those two facts together mean the
 **source lane is fully serialised** — one source-writing task per batch — while the test, fixture and
-SKILL lanes fan out widely beside it. Batch 2 carries nine tasks; the source lane carries one.
+SKILL lanes fan out widely beside it. Batch 3 carries ten tasks; the source lane carries one.
 
 ### 1.2 How to read this document
 
@@ -60,51 +60,109 @@ numbers them); the jest name is always the `RLH-` form.
 
 ### 2.1 The measured baseline
 
-**Re-measured for this PLAN**, at HEAD on `feat-pdlc-review-loop-hardening`, by
-`cd pdlc/workflows && npm test`:
+**Re-measured for v1.1**, at HEAD on `feat-pdlc-review-loop-hardening`, by
+`cd pdlc/workflows && { time npm test; }`:
 
 ```
 Test Suites: 1 failed, 35 passed, 36 total
 Tests:       1 failed, 70 skipped, 1038 passed, 1109 total
-Time:        179.175 s
+Time:        184.752 s
+npm test  115.66s user 173.42s system 155% cpu 3:05.43 total
 ```
+
+**The three counts are the baseline and they are stable**: `1038 passed / 1 failed / 70 skipped` over
+36 suites reproduced identically in v1.0's measurement, the test-engineer's independent round-1
+measurement and this one. They agree with the TSPEC's own measurement (§8.3, taken at `ef4705a`).
+
+**The wall-clock figure is not stable and is not a gate** — three measurements of the same HEAD gave
+179.175 s, 179.924 s and 184.752 s of jest-reported `Time:`. It is load-dependent by construction
+(§2.3). Nothing in this PLAN gates on it; §2.3 states what to do about it and §4.1 states the tolerance.
 
 The single failure is `__tests__/documentOracles.test.js`'s **intentional** red placeholder
 `AT-22 [red-until-L-06]`, carried deliberately from the preceding feature. It is **not this feature's
-test and must not be fixed, deleted or skipped.** This figure agrees with the TSPEC's own measurement
-(§8.3, taken at `ef4705a`).
+test and must not be fixed, deleted or skipped.**
 
 ### 2.2 The exit criterion, stated once — every task cites this section
 
 > **The gate is "no new failures against the §2.1 baseline", never "the suite is green."**
 > A batch passes when `npm test` reports **1038 passing / 1 failing / 70 skipped or better**, the one
-> failure is still `documentOracles.test.js` `AT-22 [red-until-L-06]` and no other, **plus** any
-> `RLH-AT-*` test whose greening task (column `Greened by` in §4) has not yet run.
-> A second unexplained failure, or a *different* single failure, is a regression.
+> failure is still `documentOracles.test.js` `AT-22 [red-until-L-06]` and no other, **plus** exactly
+> those `RLH-AT-*` tests whose **§7.3 ledger row** lists the current batch inside its permitted-red
+> window. A second unexplained failure, or a *different* single failure, is a regression.
 
-The `Greened by` column makes the permitted-red set mechanically derivable at every batch: a red test
-owned by this feature is permitted exactly until the batch of its greening task completes, and is a
-regression from the batch after that onwards.
+**The permitted-red ledger is per acceptance test, not per test file** (§7.3), and that granularity is
+load-bearing rather than tidy. A per-file ledger keyed on "the last task that greens anything in this
+file" puts every assertion in the file into the permitted set until that task's batch — which would
+place `RLH-AT-19`, the await-discipline guard, in the permitted set across the very batch that
+introduces the feature's riskiest await site (`refreshReviewState`, §9.2). The guard would then fail
+**open** at exactly the batch it exists to guard, and §11.3 `H-h` would never fire because no agent
+would ever be told the test failed unexpectedly. §7.3 therefore states, per assertion, the batch from
+which a red is a regression — and states which assertions are **green on arrival** and must never be
+red at any gate.
+
+**Three assertions are green at HEAD** (measured for v1.1, §7.3): `RLH-AT-19`'s two anchored regexes
+match zero times in both bundles and the await-discipline scan is clean over both sources under §9.2's
+rulings; `RLH-AT-20` (freshness) already passes; and `RLH-AT-64`, being *derived*, passes over HEAD's
+sixteen-parameter composition root. `RLH-AT-19` and `RLH-AT-20` have an **empty** permitted-red window:
+green from batch 2 onwards, and a red at any gate is a regression and a halt. `RLH-AT-64` has a
+*bounded* window — batches 4–10, opened by `RLH-18` declaring five seams the composition root does not
+yet supply and closed by `RLH-32` supplying them — and a red outside that window is a regression.
 
 Two batches are **RED-terminal by construction** — batch 2 and batch 3, which write test files ahead
 of their subjects. Their gate wording is therefore: *the new `RLH-AT-*` tests fail for the stated
-reason (their subject does not exist yet) and every pre-existing test still passes.* No batch is gated
+reason (their subject does not exist yet) and every pre-existing test still passes* — with the
+exception of the three assertions above, which are green in batch 2 and stay green. No batch is gated
 on absolute green.
 
-### 2.3 The 179-second hazard — how to run the suite
+### 2.3 The suite is already over the 180 s watchdog — how to run it
 
-The full suite takes **179 s**, which sits one second under the 180 s stall watchdog that produced
-`H-3` in the first place. A `se-implement` agent that runs `npm test` in the foreground as its
-inner-loop command will be killed mid-run, repeatedly, and will conclude the suite hangs.
+**The margin is negative, not one second positive.** Three independent measurements of the same HEAD:
 
-Normative for every task in this PLAN:
+| Measurement | jest's own `Time:` | True wall clock of the command an agent issues |
+|---|---|---|
+| v1.0 (this PLAN, round 1) | 179.175 s | not taken |
+| test-engineer, round-1 review | 179.924 s | **180.56 s** |
+| **v1.1, re-measured 2026-07-30** | 184.752 s | **185.43 s** (`3:05.43 total`) |
+
+jest's `Time:` **excludes** npm and node startup and teardown, so it is the smaller of the two numbers
+and it is not the number the watchdog sees. On both wall-clock measurements the suite is **already over
+the 180 s stall watchdog** that produced `H-3` in the first place — before this feature adds a single
+test. A default-timeout foreground call dies well short of either figure.
+
+**Why the figure moves, and what it is made of.** Wall clock here is not the sum of test time; it is
+set by the longest single suite plus worker contention. In the v1.1 run `driftFault.test.js` alone took
+**184.459 s** of the 184.752 s total, with `guardMatrix.test.js` at 177.718 s and `driftSync.test.js` at
+154.248 s running beside it — the shell-spawning drift suites, whose cost is process startup under
+whatever else the machine is doing. The sum of per-suite times far exceeds the wall clock because jest
+runs them in parallel. Two consequences worth stating, because both are counter-intuitive:
+
+- **This feature's new tests do not widen the gap in proportion to their count.** All of them are pure
+  in-process JS (L1) or seam-injected module drives (L2) with no process spawning; they run inside the
+  window the drift suites already occupy. What they add is *worker contention* against the critical
+  suite, not a new critical suite.
+- **Projected post-feature wall clock: 190–200 s** — the same longest-suite floor plus contention from
+  roughly six added suites. Recorded here so the next reader has a number to compare against rather
+  than a trend nobody owns. It is a projection, not a measurement, and §4.1 says how to falsify it.
+
+Normative for every task in this PLAN — **mandatory, not recommended**:
 
 - **Inner TDD loop:** run only the task's own file(s) —
-  `cd pdlc/workflows && npx jest __tests__/scanLines.test.js`. Single files are seconds, not minutes.
-- **Batch gate:** run the full suite **in the background** and read the output file, or with an
-  explicit timeout above 300 s. Never in a blocking foreground call.
-- Do **not** shorten the suite to fit the watchdog. Do not add `--silent`-driven partial runs to the
-  gate. The gate is the whole suite against §2.2 or it is not the gate.
+  `cd pdlc/workflows && npm test -- __tests__/scanLines.test.js`. Single files are seconds
+  (`parseVerdict.test.js`: 20 tests, 0.53 s wall).
+  **Use `npm test --`, never bare `npx jest <file>`.** Verified for v1.1: this package runs jest under
+  `node --experimental-vm-modules` (see `package.json` `scripts.test`), and bare `npx jest
+  __tests__/parseVerdict.test.js` reports `Tests: 0 total` and **exits 0** — a vacuous green that looks
+  like a passing RED gate. An agent that uses it will believe a test file passes when it never ran.
+- **Batch gate:** the full suite **must** be run in the background with its output read from a file, or
+  with an explicit timeout above 300 s. A blocking foreground call is a defect, not a style choice: on
+  the measured figures it *will* be killed.
+- **Record the measured wall clock in every batch commit message** (§13.3). If a batch gate's wall
+  clock exceeds **300 s**, halt and report rather than retrying — the procedural mitigation has been
+  exceeded and the ceiling is a spec question, not an implementation one.
+- Do **not** shorten the suite to fit the watchdog. Do not delete, `skip` or shard coverage to buy a
+  green gate, and do not add `--silent`-driven partial runs. The gate is the whole suite against §2.2
+  or it is not the gate. A feature that exists to remove false halts must not purchase its own gate by
+  removing coverage.
 
 ## 3. Generated-artifact discipline and why it serialises the source lane
 
