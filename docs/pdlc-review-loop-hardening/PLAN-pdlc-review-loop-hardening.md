@@ -632,16 +632,16 @@ FSPEC's own obligation map. Their absence is deliberate.
 | O-row | TSPEC §9.1 discharges it in | Built by |
 |---|---|---|
 | O-1 | §3.2, §4.2, §6.2 rows 1–2 | RLH-18 (seam + Node default), RLH-32 (`rtListFiles`), RLH-05 (`LIST_FAILURES`), RLH-26 (dispositions at the phase gate), RLH-23 (dispositions at `refreshReviewState`) |
-| O-2 | §5.2 | RLH-13 |
-| O-3 | §5.8 | RLH-15 (`parseResolvedMarker`, `extractRecommendation`), RLH-26 (`checkPostmortem` at step G) |
+| O-2 | §5.2 | RLH-05 (b) |
+| O-3 | §5.8 | RLH-05 (a) (`parseResolvedMarker`, `extractRecommendation`), RLH-26 (`checkPostmortem` at step G) |
 | O-4 | §6.5 | RLH-20 |
 | O-5 | §3.5 | RLH-18 (`defaultRecordHalt`), RLH-32 (both entrypoint suppliers) |
 | O-6 | §5.6 | RLH-23 |
 | O-7 | §5.9 | RLH-16 |
 | O-8 | §5.5 | RLH-16, RLH-26 |
-| O-9 | §3.1, §5.7 | RLH-18 (`main()` + `meta.inputs`), RLH-15 (`parseForcePhases`), RLH-26 (precedence), RLH-32 (build edit 1) |
+| O-9 | §3.1, §5.7 | RLH-18 (`main()` + `meta.inputs`), RLH-05 (f) (`parseForcePhases`), RLH-26 (precedence), RLH-32 (build edit 1) |
 | O-16 | §7.1, §7.2, §3.9 | RLH-27 (the five §7.1 edits), RLH-32 (the four §7.2 edits) |
-| O-17 | §5.1, §5.3, §4.3 | RLH-10, RLH-15, RLH-26 |
+| O-17 | §5.1, §5.3, §4.3 | RLH-05 (a), RLH-26 |
 | O-18 | §5.4 | RLH-26 |
 | O-19 | §4.8, §5.6, §8.3 | RLH-05 (constant placement), RLH-21 (the behavioural oracles). `MAX_AUTHORING_WRITE_BYTES` has **no** oracle and no task pretends otherwise |
 | O-20 | §5.6, §6.6 | RLH-08 (the per-section cadence stated to authors), RLH-23 (no git operation on the pacing path may discard uncommitted work), RLH-30 (the advisory proxy line) |
@@ -653,10 +653,10 @@ Carried from TSPEC §9.2, with the task column added.
 
 | Defect | Mechanism (TSPEC) | First falsifying test | Task that fixes it |
 |---|---|---|---|
-| **H-1** — round index always 1 | `deriveRoundWindow`'s `max(present) + 1` (§5.2), passed at all seven `reviewLoop` call sites **including the forced path** | AT-01; **AT-01a** for the forced path | RLH-13 (derivation) + RLH-26 (the seven call sites) |
+| **H-1** — round index always 1 | `deriveRoundWindow`'s `max(present) + 1` (§5.2), passed at all seven `reviewLoop` call sites **including the forced path** | AT-01; **AT-01a** for the forced path | RLH-05 (b) (derivation) + RLH-26 (the seven call sites) |
 | **H-2** — non-terminal exit, no POSTMORTEM | corrected `postmortemPath`, `_checkFile` confirmation, `_recordHalt`, the two conditional halt shapes (§6.3, §6.4); G-INV for the refusal half | AT-22; **AT-13a** for G-INV totality | RLH-27 (+ RLH-26 for the gate, RLH-20 for the row commit) |
 | **H-3** — 180 s stall kills a monolithic write | `dispatchAndVerify`'s terminal-first-then-progress loop, per-episode counters and mode (S-INV), the resume prompt (§5.6) | AT-35; **AT-43a** for per-episode mode and budget | RLH-23 (+ RLH-08 for the authoring-side pacing contract) |
-| **H-4** — approved phase re-run from scratch | the two-tier approval search + `isStale` (§5.4, §5.5) | AT-08 | RLH-26 (+ RLH-16, RLH-10) |
+| **H-4** — approved phase re-run from scratch | the two-tier approval search + `isStale` (§5.4, §5.5) | AT-08 | RLH-26 (+ RLH-16, RLH-05 (d)) |
 
 **H-2 and H-3 each need a prompt-side task as well as a code-side one**, and that is the one place this
 feature's fix is not entirely mechanical: the persisted records of TSPEC §4.4 exist only if the agents
@@ -668,12 +668,10 @@ they change no code. §10 is about how that half is verified.
 C-2 is **a build-time gate, not a review note.** TSPEC §1.4 owns the constraint and §8.5 owns the two
 tests; this section states only which task makes them green and what an agent must not do to get there.
 
-### 9.1 The constraint, as a checklist a task can run
+### 9.1 What the constraint forces on every source task
 
-A bundle may declare `export const meta` as its **first** statement and as a **pure literal**; it may
-declare no other `export`; it has no `import`, no `import()`, no `process`, no `fs`, no `fetch`, no
-`crypto`, no `TextEncoder`. Exactly **eleven** host globals exist: `agent`, `parallel`, `pipeline`,
-`phase`, `log`, `workflow`, `args`, `budget`, `console`, `setTimeout`, `clearTimeout`.
+TSPEC §1.4 owns the constraint in full — the `export const meta` rule, the forbidden identifiers and
+the closed host-global list. It is cited, not restated. What follows is only what it forces here.
 
 Consequences every source task must honour, and none of them is negotiable at implementation time:
 
@@ -681,7 +679,7 @@ Consequences every source task must honour, and none of them is negotiable at im
   a Node default so jest can exercise the module directly (RLH-18) and an adapter implementation for
   the bundle (RLH-32). There is no second way;
 - `sha256Hex` is hand-rolled pure JS over a hand-rolled `utf8Bytes`, using `Math`, `>>>`, `|`, `^` and
-  `Number` only — no `BigInt`, no `crypto`, no `TextEncoder` (RLH-10). It is **not** a seam and takes no
+  `Number` only — no `BigInt`, no `crypto`, no `TextEncoder` (RLH-05 (d)). It is **not** a seam and takes no
   injection;
 - no new dependency can help. C-2 forbids `import` in the bundle, so a dependency could not reach the
   runtime at all.
@@ -706,13 +704,13 @@ source**:
 |---|---|
 | **Alias** — the seam is destructured under a local name (`_readFile: readFileFn`) and called through it | resolve the alias from `main()`'s destructuring pattern and scan **the local name**. Scanning the `_` name alone finds zero call sites and **passes vacuously** — the worst possible failure for this test |
 | **Returned promise** — the call is the whole body of an arrow function or the operand of a `return` | **exempt, and the wrapper's own name inherits the obligation.** The wrapper is then scanned as an alias |
+| **Anonymous arrow** — the seam call is the entire body of an arrow passed inline, with no name to inherit the obligation (`batch.map((t) => agentFn(t))`, `orchestrate-dev.js:1867`) | **Exempt, and the obligation is inherited by nobody.** The awaiting is done by whatever consumes the returned array — `parallel(...)` / `Promise.all` — which `RLH-AT-19` does not and must not try to verify. This is the shipped shape at that line, and it is why the scan is clean at HEAD (§7.3, row 1). Answering TE Q-02: an anonymous arrow does **not** inherit; only a *named* wrapper does (row 2) |
 
-And the trap RLH-AT-19 must **not** fall into: the assertion's name set is FSPEC AT-19's **closed
-thirteen names** — `_agent`, `_readFile`, `_writeFile`, `_appendFile`, `_checkFile`, `_listFiles`,
-`_git`, `_checkCi`, `_mergeWorktree`, `_recordHalt`, `_rebaseOntoDefault`, `_dodVerifyLoop`,
-`_raisePrAndVerifyCi` — and **not** a set derived from `main()`'s parameter list. Derivation reds on
-shipped, correct source: `_now` is a clock called synchronously at four sites in
-`raisePrAndVerifyCi`, and `_phaseDodEnabled` / `_phasePubEnabled` are booleans never called.
+And the trap `RLH-AT-19` must **not** fall into: the assertion's name set is **FSPEC AT-19's closed
+thirteen-name list**, restated once in TSPEC §8.5 and cited — never re-enumerated — from here. It is
+**not** a set derived from `main()`'s parameter list. A derived set reds on the shipped, correct source:
+`_now` is a clock called synchronously at four sites in `raisePrAndVerifyCi`, and `_phaseDodEnabled` /
+`_phasePubEnabled` are booleans never called at all.
 The two guards answer different questions and **must not share a derivation** — AT-64 asks *is every
 capability wired* (derived, so a new seam cannot be forgotten); AT-19 asks *is every asynchronous call
 awaited* (a closed list, because membership is a design judgement).
@@ -740,10 +738,8 @@ Three things about it that a task will get wrong if it has not read TSPEC §8.5:
    failure; and evidence must resolve for all three forms, **E-2 included**. Dropping the second clause
    makes "declare a seam with no default and inject it nowhere" a silent pass.
 
-Counts to expect after this feature: `main()` carries **twenty-one** `_`-prefixed parameters (sixteen
-today plus five seams — `forcePhases` is data, not a seam, and carries no `_`), `rtDevInjections`
-returns **thirteen** (nine today plus `_writeFile`, `_appendFile`, `_listFiles`, `_git`), and the same
-three E-3 members remain exempt. RLH-01 records the before-figures so the after-figures are checkable
+The after-feature counts are **TSPEC §8.5's** (`twenty-one` and `thirteen`, the same three exempt) and
+are not restated here. `RLH-01` records the before-figures at HEAD so the after-figures are *checked*
 rather than asserted.
 
 ## 10. SKILL amendments and how each is verified
