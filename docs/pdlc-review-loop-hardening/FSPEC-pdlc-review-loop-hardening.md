@@ -46,7 +46,7 @@ converged on the same two, which is how they were fixed:
   selection for the cross-review and LEARNINGS classes, whose first-attempt text is not the spec-class
   skeleton instruction.
 
-Two of the four fixes are net **deletions** of normative text. Growth 241,365 → 254,820 bytes (+4.6%),
+Two of the four fixes are net **deletions** of normative text. Growth 241,365 → 254,820 bytes (+5.6%),
 against a +4% target — the overrun is the §1.2 rule and its three tests, and is stated rather than
 absorbed by dropping a fix.
 
