@@ -14,9 +14,23 @@ feature: pdlc-review-loop-hardening
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude + operator | 1.4 | 2026-07-30 |
+| pdlc | draft | Claude + operator | 1.5 | 2026-07-30 |
 
 ### Changelog
+
+**v1.5 (2026-07-30)** — **post-approval editorial.** Both iteration-5 cross-reviews returned
+`VERDICT: Approved` **against v1.4**; this version changes nothing they blocked on. It applies the one
+Low both roles raised independently (SE-v5 F-19, TE-v5 F-01): rule 5's appositive list of governed
+patterns omitted §16.4's `Scope: ` field, which reads fail-open if the list is taken as a closed
+catalogue — a fenced `Scope: ` quote could satisfy §16.4 for a stall-killed `CODE_REVIEW-*`. Both rated
+it Low because the governing sentence ("§16, all four classes") is what decides behaviour. `Scope: ` is
+added and the list is declared **illustrative, not closed**, which also disposes of the general form of
+the finding rather than just its one instance.
+
+Not applied: SE-v5 F-20 / TE-v5 Q-01 (a fenced body containing only `TBD` scores non-empty, evading
+§16.2's placeholder row). Deliberately left — TE's reasoning is that a fence-aware placeholder test
+would reintroduce exactly the §16.2 ↔ rule 5 coupling that v1.4 removed, and §16.2 already declares its
+criterion deliberately shallow. Carried to TSPEC as a known, accepted shallowness.
 
 **v1.4 (2026-07-30)** — one defect, reached independently at Medium by SE-v4 F-18 and TE-v4 F-01: a
 **regression introduced by v1.3's own widening** of §1.2 rule 5 over §16.2, under which "ignores every
@@ -176,7 +190,9 @@ and cites the clause** rather than re-deciding it.
    the **matching closer** only if its fence run uses the *same* fence character as the opener and
    is *at least as long*; every other fence line is content, so a three-backtick line inside a
    four-backtick block does not close it. The exclusion governs which lines may **match a scanned
-   pattern** — a `##` heading, a `VERDICT: `, `APPROVAL-HASH: ` or `RESOLVED: ` line; it does **not**
+   pattern** — a `##` heading, a `VERDICT: `, `APPROVAL-HASH: `, `Scope: ` or `RESOLVED: ` line, and
+   any further pattern a scan in the governing sentence above matches; the list is illustrative, not a
+   closed catalogue; it does **not**
    empty a section's body for §16.2's non-empty-body test, where a fenced block **is** body content
    *(v1.4, SE-v4 F-18 / TE-v4 F-01)*. This is stated once, here, and referenced rather than
    restated, because the alternative is one exclusion clause per scan site and a later reviewer
