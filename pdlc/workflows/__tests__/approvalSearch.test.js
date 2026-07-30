@@ -398,6 +398,46 @@ describe("RLH-AT-08: same-round dual approval skips the phase", () => {
   });
 });
 
+// ─── RLH-AT-10: an absent role file is not approving; tiers are exclusive ─────
+//
+// Round 2 has only the SE cross-review, approving, anchored to the FSPEC's real
+// digest — and `LEARNINGS-{feature}.md` carries a tier-2 `## 6. Approval Record`
+// in which **both** roles approved round 2 at that same digest.
+//
+// §5.4: tier 1 "produced a file at all", so tier 2 is never consulted; within
+// tier 1 the missing `test-engineer` file is a NON-approval, not a partial one.
+// The phase therefore runs. An implementation that completed the pair from tier 2
+// — the cross-tier completion §5.4 forbids — would find unanimity and skip.
+describe("RLH-AT-10: absent role file is not approving, and tier 2 is not read", () => {
+  const listing = [
+    crossReviewBasename(SE_SLUG, 2),
+    `LEARNINGS-${FEATURE}.md`,
+  ];
+  const files = {
+    [crossReviewPath(SE_SLUG, 2)]: crossReviewFile({ verdict: APPROVED, hash: FSPEC_HASH }),
+    [LEARNINGS_PATH]: learningsWithApprovalRecord([
+      { round: 2, role: SE_SLUG, verdict: APPROVED, hash: FSPEC_HASH },
+      { round: 2, role: TE_SLUG, verdict: APPROVED, hash: FSPEC_HASH },
+    ]),
+  };
+
+  test("RLH-AT-10: tier 1 governs, LEARNINGS is never read, and Phase F runs", async () => {
+    const { result, fs } = await runPipeline({ files, listing });
+
+    // Tier 1's role-asymmetry is a non-approval.
+    expect(phaseRecord(result, "F")).not.toBeNull();
+    expect(phaseRecord(result, "F").status).not.toBe("⏭");
+
+    const paths = readPaths(fs);
+    // Tier 1 WAS consulted — §5.4 walks the reviewer pair in `PHASE_DISPATCH`
+    // order, so the present `software-engineer` file is read before the missing
+    // `test-engineer` one is discovered. This conjunct is the batch-3 red.
+    expect(paths).toContain(crossReviewPath(SE_SLUG, 2));
+    // …and tier 2 was NOT, because tier selection is exclusive.
+    expect(paths).not.toContain(LEARNINGS_PATH);
+  });
+});
+
 // ─── RLH-AT-09: cross-round approvals never combine (E-11, TSPEC §5.4) ────────
 //
 // Round 2 is SE-approving, round 3 is TE-approving; neither round is unanimous.
