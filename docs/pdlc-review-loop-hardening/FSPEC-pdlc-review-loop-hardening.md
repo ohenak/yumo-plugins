@@ -269,7 +269,10 @@ error contract — a `readdirSync` failure propagates as a thrown `Error`, so a 
 **same `ListFailure` catalogue** as its failure vocabulary — a sibling `listAllFilesSafe(root)`
 returning `{ ok, files } | { ok: false, reason }` over the same four `reason` values, with
 `listAllFiles` retained as the throwing convenience wrapper so existing callers are untouched (C-4).
-The four `reason` strings are then defined **once**, in one place, and both paths quote it. Two
+The four `reason` strings are then defined **once**, in one place, and both paths quote it — and the
+direction is **one-way** (SE-v1 Q-01): the definition lives **bundle-side** in `orchestrate-dev.js` and
+`document-oracles.mjs` quotes it, never the reverse, because C-2 forbids the bundle from importing the
+`.mjs` module. TSPEC may not put the catalogue in `lib/`. Two
 implementations, one catalogue, one "cannot judge" verdict — which is exactly what DC-11 asks for and
 what the rejected outcome ("two independent implementations with different error contracts") is not.
 
@@ -1804,7 +1807,9 @@ for them. Bounding a stall-killed *code* dispatch is a real gap and is **D-RLH-0
 and not half-specified. AC-3.6's per-call byte budget and AC-3.2b's commit cadence still bind those
 agents, because those are agent-directed obligations needing no pre/post measurement.
 
-**Membership of the set.** Terminal requires every member the phase *actually requires*. A DECISIONS
+**Membership of the set.** Terminal requires every member the phase *actually requires*, and membership is
+**fixed at episode entry** — the same instant mode and the counters are fixed (TE-v1 Q-02). A warrant that
+flips mid-episode does not add or remove a member; it is read on the next episode. A DECISIONS
 the phase's own warrant check does not require is **not a member** — that check's result is bound to the
 local `decisionsWarranted` alongside `parseDecisionsWarranted`. (v1.4 cited a
 `decisionsWarranted(...)` function; no function of that name exists at HEAD `0655387` — the mechanism is
@@ -2834,6 +2839,19 @@ being re-litigated, and nothing here is a deferral (D-RLH-01..05 are out of scop
 | Q-06 | Should the `RESOLVED:` marker also record **who** resolved it and when? §12.2 deliberately parses only the token. | Operator convention / a later feature | Adding parsed fields would put prose in a script's path (C-5). A `## Resolution` section already carries the narrative unparsed; whether to make any of it structured is a separate decision. |
 | Q-07 | Is `forcePhases` worth surfacing in `DEV_META` for bundle-level discoverability? §11.2 deliberately does not edit `DEV_META`. | A later distribution change | The hand-written bundle `meta` has no `inputs` array at all today, so adding one is a change to that file's shape, with its own sync obligation. Out of proportion to the benefit here. |
 | Q-08 | Does the `_recordHalt` seam (§14.2) belong in `runtime-adapter.js` or in the bundle entrypoints? §14.2 specifies the contract and the three callers, not the file. | TSPEC | The queue bundle inlines both modules, so either placement works; the dev bundle needs the queue's row helpers inlined, which is a build-shape question like Q-02. |
+
+**Iteration-1 reviewer questions, answered at v1.1** (not added to the table above, because each has an
+answer this document can state):
+
+| Asked | Answer |
+|---|---|
+| SE Q-01 — is the `ListFailure` catalogue's definition one-way? | **Yes, and §3.4 now says so.** The catalogue is defined bundle-side and `document-oracles.mjs` quotes it; the reverse is impossible under C-2. |
+| SE Q-02 — does `CROSS-REVIEW-{role}-DECISIONS-v{N}.md` ever exist? | **No.** DECISIONS is authored and reviewed inside Phase T alongside TSPEC, and §11.1's force catalogue has no DECISIONS phase. Its presence in §4.3's doc-type catalogue is deliberate headroom — a conforming name is parsed rather than reported as junk — and it is harmless because nothing ever produces one. |
+| SE Q-03 — this document's own top-level headings do not match §16.2's FSPEC row | Correct, and it is a **SKILL-template question, not a criterion defect**. §16.2 measures a document against the template its author SKILL declares; this FSPEC was authored under the current `pm-author` prose, which declares no top-level heading set. Reconciling the two — either the SKILL gains the template or §16.2's row is derived from it — is an O-16-class edit §17 does not carry, and is recorded as Q-09. |
+| TE Q-01 — a stray non-expected role inflating `startIndex` | **Intended, and the outcome is defined.** §4.4 step 2 deliberately does not filter by role (AC-1.1 derives across roles, §5.3/O-18 depends on it), so the stray file raises the index and is never pairable. Cost: index numbers skip. Classing it non-conforming would require the derivation to know the phase's expected pair, which is exactly the coupling AC-1.1 removes. |
+| TE Q-02 — is the artifact set re-derived per dispatch? | **Fixed at episode entry** — §15.1 now states the instant. |
+
+| Q-09 | Should the six author/review SKILLs declare the top-level heading template §16.2 measures against, or should §16.2's per-class heading lists remain stated only here? | Whoever revises the author SKILLs | Either placement is sound; one source of truth is clearly better, but moving it is an O-16-class SKILL edit outside this feature's change surface (§17). |
 
 **Explicitly not open** — recorded here because each was asked and answered at REQ altitude, and a reviewer
 should not reopen them: whether the staleness test walks history (**no**, §10.2); whether harvest may
