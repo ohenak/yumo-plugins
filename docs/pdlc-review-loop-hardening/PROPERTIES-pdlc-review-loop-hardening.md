@@ -1324,6 +1324,16 @@ a seam that answers `ok` then `unreadable` halts at the second episode rather th
 cached first answer. Conversely a seam answering `dir_missing` then `ok` proceeds with a **non**-empty
 review set at the second episode.
 
+**What this equality does and does not say about `deriveRoundWindow`.** `refreshReviewState`'s body
+includes `w ← deriveRoundWindow(r.files, docType)` (TSPEC §5.6.1), so a *k*-episode phase entry
+invokes `deriveRoundWindow` *k* times inside `reviewLoop`, plus once at the §5.4 gate — **1 + k**, by
+design, and this equality is the property that pins the *k*. `PROP-WINDOW-01` asserts nothing about
+that count: its conjunct (i) is a provenance claim over the threaded window *values*, not a call
+count. Through v1.3 it asserted `deriveRoundWindow` was invoked exactly once per phase entry, which
+contradicted this equality on every sequence of length ≥1 and was false on a conforming subject; that
+clause is withdrawn there (SE F-25). The two properties now partition the ground: this one owns the
+per-episode refresh count, `PROP-WINDOW-01` owns the window's immutability.
+
 **Generator.** D7 — episode interleavings: a sequence of 1…12 episodes, each carrying a phase, a round
 index, and a seam answer drawn from `LIST_FAILURES ∪ {ok}`, subject to the constraint that a halting
 answer terminates the sequence (halts are terminal, so nothing after one is generated). 100 cases.
@@ -1534,7 +1544,7 @@ the budget edge, then collapse coordinates to their first catalogue value.
 
 ---
 
-**PROP-WINDOW-01 — the round window is computed once at the phase gate and read, never recomputed.**
+**PROP-WINDOW-01 — the round window `reviewLoop` enforces is the gate's, threaded positionally and never re-derived.**
 *(State Machine · L2 · `reviewLoop.test.js`)*
 
 **This property now carries the width identity `PROP-ROUND-01` could not** (SE F-02). The identity
@@ -1548,7 +1558,7 @@ sites 4 and 5, which report a **count** rather than an index, use the constant a
 **`_agent` double** captures. Both are read here **through the seams**, not imported.
 
 **v1.1 named the wrong double for site 4 and it is corrected here** (SE F-13). Measured at HEAD:
-`reviewLoop`'s parameter list (`orchestrate-dev.js:531–543`) injects exactly `_agent`, `_parallel` and
+`reviewLoop`'s parameter list (`orchestrate-dev.js:532–542`) injects exactly `_agent`, `_parallel` and
 `_checkFile` — there is no `recordPhase` seam. `recordPhase` is a `main()`-local callback declared at
 `:1574` and passed to **`checkConverged`** (`:496`), never to `reviewLoop`. Site 4's prompt is built at
 `:567` and dispatched at `:574` as `await _agent(optimizer, postmortemPrompt)`, so the recorded prompt
@@ -1557,10 +1567,29 @@ in `reviewLoop.test.js` would not have found one.
 
 **Invariant.** For every generated phase run:
 
-(i) **Computed once.** `deriveRoundWindow` is invoked **exactly once** per phase entry — call-count
-equality on the seam log, not a floor; every subsequent consumer receives `startIndex` and `endIndex`
-**positionally** from that single computation; `checkConverged` receives both values on every call and
-the values are identical across all calls within one phase entry.
+(i) **Threaded from the gate, not re-derived.** The `endIndex` `reviewLoop` enforces and the
+`startIndex..endIndex` pair `checkConverged` renders are the values the phase gate supplied
+**positionally** — never a value the loop computed for itself. Asserted by disagreement: drive
+`reviewLoop` with an `endIndex` that *differs* from what a re-derivation over the `_listFiles`
+double's answer would produce, and the loop's cap follows the **parameter**. The values are identical
+across every consumer and every call within one phase entry — an equality over observed values, not a
+floor.
+
+**v1.3 asserted this as a call-count equality on `deriveRoundWindow`, which is false on a conforming
+subject** (SE F-25 ≡ the carried SE Q-03, promoted). Measured from the sections that own the call
+sites, not inferred: **TSPEC §5.4** — the approval search *"Runs once per skip-eligible phase entry,
+after `deriveRoundWindow` and before `reviewLoop`"* — is the gate invocation; and **TSPEC §5.6.1**
+declares `refreshReviewState`, *"called at **every** wrapped episode entry inside its
+`while (true)`"*, whose body includes `w ← deriveRoundWindow(r.files, docType)`. TSPEC states in the
+same place that *"**Every** episode re-reads, the first included, so the loop needs no seed maps"* —
+that per-episode re-derivation **is** N-01's fix and the reason `reviewLoop`'s signature gained
+`_listFiles` and `_readFile` at all. A phase entry with *k* wrapped episodes therefore invokes
+`deriveRoundWindow` **1 + k** times by design, and this document's own `PROP-LIST-01b` asserts the
+per-episode count as an equality over the same subject at the same level. Two equalities, one
+subject, incompatible: the old clause would have redded `RLH-22` in batch 3 on correct code. What the
+clause was aiming at — a `reviewLoop` that recomputes the cap it was handed and drifts as the listing
+grows — survives intact above, stated over values rather than counts. `PROP-LIST-01b` keeps the
+per-episode count; this property keeps the window's immutability; neither claims the other's ground.
 
 (ii) **The width identity, against an independently observed count.** For a run driven to exhaustion,
 `endIndex - startIndex + 1 === loopResult.iterations`, where `iterations` is the value site 5 returns
@@ -1571,8 +1600,11 @@ is cross-checked against the count rendered into the prompt at site 4 and captur
 double's recorded prompt — a third surface, so a mutation would have to be applied consistently at all
 three to escape.
 
-(iii) **The window does not move.** For the whole duration of the phase, `startIndex` and `endIndex`
-are unchanged as rounds advance — round advancement moves the *cursor*, never the window.
+(iii) **The window does not move.** For the whole duration of the phase, the `startIndex` and
+`endIndex` **`reviewLoop` was handed** are unchanged as rounds advance — round advancement moves the
+*cursor*, never the window. This is a claim about the threaded pair only. `refreshReviewState`'s own
+`w.startIndex` legitimately advances as rounds write new files (TSPEC §5.6.1 rule 2: `selectMode` and
+`deriveRoundWindow` *"answer different questions"*), and nothing here asserts otherwise.
 
 **Generator.** D6 × D7: a phase entry with a generated branch state (from `PROP-ROUND-01`'s generator)
 followed by 1…`MAX_REVIEW_ROUNDS + 2` round advances, each with a generated verdict. The upper bound
@@ -1583,13 +1615,19 @@ shape), ≥20 must run to exhaustion so conjunct (ii)'s identity is reachable �
 early never returns the `iterations` count the identity needs, so without this floor (ii) would be
 silently unexercised — ≥15 must start from a branch already carrying reviews (non-1 `startIndex`), and
 ≥10 must converge before the window closes. The non-1 `startIndex` floor is what distinguishes
-derivation from a counter starting at 1 — the H-1 defect.
+derivation from a counter starting at 1 — the H-1 defect. **Conjunct (i) needs one more axis, and it
+is orthogonal to those four: in ≥15 runs the window pair handed to `reviewLoop` must *disagree* with
+what a re-derivation over the `_listFiles` double's listing would produce** — the same test controls
+both, so the disagreement is constructible without touching the subject. Without that floor (i) is
+vacuous, because on an agreeing case a re-deriving subject and a threading subject return the same
+cap; the disagreeing case is the only one where provenance is observable at all (SE F-25).
 
 **Owner.** Written by **RLH-22** (batch 3); greened by **RLH-27** — rides `RLH-LOOP-01`/`-02`'s
 ledger rows: green from batch 9, permitted red batches 3–8.
 
-**Beyond the examples.** "Computed once" is a claim about call *counts* across a run; no example
-asserts absence of a second computation. This is the orchestration-level half of `PROP-ROUND-01`'s
+**Beyond the examples.** "Threaded, not re-derived" is a claim about *provenance* across a run — the
+cap the loop enforces came from the gate — and no example asserts it; an example can only show one
+run in which a re-derivation would have agreed. This is the orchestration-level half of `PROP-ROUND-01`'s
 pure arithmetic, and the pair together is what closes H-1: the arithmetic is right *and* nobody redoes
 it with stale inputs.
 
