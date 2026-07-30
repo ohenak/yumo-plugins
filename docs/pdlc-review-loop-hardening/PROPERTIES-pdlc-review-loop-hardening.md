@@ -42,7 +42,7 @@ respectively and state nothing in their own words.
 | ID | Sev | Disposition |
 |---|---|---|
 | F-12 | **High** | **Fixed by citation.** §4.4's `returned-promise` decision cell no longer says *"the returned value is awaited by the caller"* — a semantic claim about callers that the prescribed bracket-depth walk cannot decide and that D8's caller-less fragments cannot carry an expectation for. It now reproduces **PLAN §9.2 item 3(c)**'s local syntactic test (backward: nearest non-whitespace token is `=>`/`return`; forward: first non-whitespace token after the call's matching `)` at depth zero is `;` `,` `)` `}` or EOL; both halves; forward walk failing to reach depth zero ⇒ `unclassified`) and cites §9.2 item 3(c) as the owner. Both dependants repaired: §4.4's ≥10 backward-only floor is now generable and names §9.2's own `() => _agent(a) && other` shape, and §5.3's `PROP-AWAIT-01` (4th) row cites rather than restates. v1.1's phrasing is explicitly withdrawn in §4.4 |
-| F-13 | Medium | **Fixed against the tree.** Measured at HEAD: `reviewLoop` (`orchestrate-dev.js:531–543`) injects exactly `_agent`, `_parallel`, `_checkFile`; `recordPhase` is a `main()`-local callback (`:1574`) passed to `checkConverged` (`:496`), never to `reviewLoop`; site 4's prompt is built at `:567` and dispatched at `:570` as `await _agent(optimizer, postmortemPrompt)`. §4.3 and §6.5 now name the **`_agent` double's recorded prompt** for site 4 and `reviewLoop`'s **return value** for site 5, with the measurement stated and v1.1's claim withdrawn |
+| F-13 | Medium | **Fixed against the tree.** Measured at HEAD: `reviewLoop` (`orchestrate-dev.js:531–543`) injects exactly `_agent`, `_parallel`, `_checkFile`; `recordPhase` is a `main()`-local callback (`:1574`) passed to `checkConverged` (`:496`), never to `reviewLoop`; site 4's prompt is built at `:567` and dispatched at `:574` as `await _agent(optimizer, postmortemPrompt)`. §4.3 and §6.5 now name the **`_agent` double's recorded prompt** for site 4 and `reviewLoop`'s **return value** for site 5, with the measurement stated and v1.1's claim withdrawn |
 | F-14 | Medium | **Fixed by copying `PROP-WINDOW-01`'s treatment.** `PROP-EPISODE-01`(i)'s tight equality now requires **both** (a) every episode in the segment saturated **and** (b) the segment's loop ran to **exhaustion** (`converged: false`). Measured cause: `:598` returns `iterations: MAX_REVIEW_ROUNDS` only on the non-converged branch, `:648` returns the actual round — so a saturated-but-early-converging segment gave `2B` against `3B`, a deterministic red on correct code at a forced floor. The ≥10 floor is restated to require exhaustion; segments satisfying (a) without (b) fall back to the inequality. SE Q-02 answered in the same conjunct: **`I` is read per segment**, one per phase entry |
 | F-15 | Medium | **Fixed without inventing a precedence.** Neither PLAN §9.2 nor TSPEC §8.5 orders rulings 2 and 3, so a hand-authored `expected` label on the deliberate both-rulings fragments would red a *correct* classifier on §7.3's no-permitted-red row. Those fragments are now generated **unlabelled** and carry a **cardinality** assertion: `classify` returns exactly one outcome and it is a member of `{returned-promise, awaited-combinator-argument}` — never both, never `unclassified`. Stated in §4.4, not §0. The missing precedence is **reported upward** as §8.5 item 5, naming TSPEC §8.5's rulings table as where it would belong. §5.3 gains a matching `PROP-AWAIT-01` (5th) mutation row (return both exemptions ⇒ cardinality dies). This answers SE Q-01 with "either — so the assertion is cardinality-only" |
 | F-16 | Low | **Fixed.** §4.3 now says plainly that `B` is **not** an independent observable — it is measured with the same dispatch doubles that produce conjunct (i)'s left-hand side, so a uniformly wrong cap is invisible — and that the equality's discriminating power is over **segment structure**, not the cap's value. Recorded in both operational form (§8.4 residual 5, extended) and spec form (§8.5 item **4**, the sentence §8.5 item 3 already owes `MAX_REVIEW_ROUNDS`) |
@@ -1380,8 +1380,13 @@ module-level and **not exported**, so there is no import through which a test ca
 "against the constants" would mean recomputing the subject's own bound from the subject, which
 compares the subject with itself and cannot fail. That claim is **withdrawn**. The bound is instead
 asserted against **two independently observed quantities**: `I`, the round count `reviewLoop` returns
-in its `iterations` field (TSPEC §7.1 edit 5 — the one site that reports the constant as a *count*
-rather than an index, and the only surface at any level that exposes it), and `B`, the per-episode
+in its `iterations` field — **two return sites, not one** (SE F-22). On the *exhausting* branch the
+value is `MAX_REVIEW_ROUNDS` itself, returned at `orchestrate-dev.js:598`, which is TSPEC §7.1 edit 5,
+the one site that reports the constant as a *count* rather than an index and the only surface at any
+level that exposes it. On a *converging* branch the value is the round actually reached, returned at
+`:648` — not an edit site, and it reports no constant. That split is exactly why conjunct (i)'s
+**equality** is restricted to precondition (b) and its **inequality** is not; v1.2's provenance
+sentence described only the first site while the conjunct already read both — and `B`, the per-episode
 dispatch cap **observed** by driving a single episode past saturation and counting the dispatch
 doubles' calls. The literal 36 appears nowhere.
 
@@ -1481,7 +1486,7 @@ sites 4 and 5, which report a **count** rather than an index, use the constant a
 `reviewLoop`'s parameter list (`orchestrate-dev.js:531–543`) injects exactly `_agent`, `_parallel` and
 `_checkFile` — there is no `recordPhase` seam. `recordPhase` is a `main()`-local callback declared at
 `:1574` and passed to **`checkConverged`** (`:496`), never to `reviewLoop`. Site 4's prompt is built at
-`:567` and dispatched at `:570` as `await _agent(optimizer, postmortemPrompt)`, so the recorded prompt
+`:567` and dispatched at `:574` as `await _agent(optimizer, postmortemPrompt)`, so the recorded prompt
 of the **agent** double is the surface. An implementer at `RLH-22` looking for a `recordPhase` double
 in `reviewLoop.test.js` would not have found one.
 
@@ -1855,7 +1860,7 @@ from there, do not retype it from here"*) and §1.4 above:
 
   **Measured, because v1.1 named the wrong double here too** (SE F-13): `reviewLoop`
   (`orchestrate-dev.js:531–543`) injects exactly `_agent`, `_parallel`, `_checkFile`. Site 4 is
-  therefore observed through the **`_agent` double's recorded prompt** (`:570`,
+  therefore observed through the **`_agent` double's recorded prompt** (`:574`,
   `await _agent(optimizer, postmortemPrompt)`); site 5 is observed through **`reviewLoop`'s return
   value**. `recordPhase` is a `main()`-local callback passed to `checkConverged` (`:496`,
   declared `:1574`) and is not a seam of `reviewLoop` at all; v1.1's claim that it captures site 4 is
