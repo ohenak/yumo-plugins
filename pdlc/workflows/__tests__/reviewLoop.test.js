@@ -1038,3 +1038,138 @@ describe("RLH-LOOP-01: reviewLoop's startIndex/endIndex sibling fields, new seam
     }).toEqual({ present: false, reviewFiles: false });
   });
 });
+
+// ─── RLH-LOOP-02: the return shape, and checkConverged's rendered window ─────
+// Two halves of one row (PLAN §5.4 RLH-22, §7.5):
+//   * TSPEC §3.9 / §6.3 — `reviewLoop`'s non-convergence return gains
+//     `postmortemWritten`, sourced from the `await _checkFile` **confirmation**
+//     and never from the agent's reply, plus `trailerReason` on every return.
+//   * PLAN §11.5 `N-a`, `checkConverged` half — three additional **positional**
+//     arguments after `recordPhase`: `feature`, `startIndex`, `endIndex`, in that
+//     order, because TSPEC §3.9 pins the signature positional. The known cost of
+//     positional is that a swapped integer pair is silent at the type level; the
+//     agreed mitigation is exactly the assertion below, driven over
+//     `startIndex ≠ 1` and `startIndex ≠ endIndex` so a swap, a duplicated
+//     argument or a missing one is a named red.
+describe("RLH-LOOP-02: postmortemWritten, trailerReason, and the rendered `rounds {startIndex}..{endIndex}`", () => {
+  /** An agent that never converges; POSTMORTEM dispatch always claims success. */
+  function neverConvergingAgent() {
+    return async (skill, prompt) => {
+      if (skill === "pm-review" || skill === "te-review" || skill === "se-review") {
+        return makeNeedsRevisionResult();
+      }
+      if (typeof prompt === "string" && prompt.includes("POSTMORTEM")) {
+        return "POSTMORTEM written."; // the narration this feature stops trusting
+      }
+      return makeOptimizerResult();
+    };
+  }
+
+  test("RLH-LOOP-02a: postmortemWritten comes from the _checkFile confirmation, not the agent's reply", async () => {
+    const capCase = { ...baseParams, iteration: 5, startIndex: 5, endIndex: 5 };
+
+    // (i) The agent says it wrote the POSTMORTEM; the filesystem says otherwise.
+    const denied = await reviewLoop({
+      ...capCase,
+      _agent: neverConvergingAgent(),
+      _parallel: (promises) => Promise.all(promises),
+      _checkFile: (path) =>
+        /POSTMORTEM/.test(String(path)) ? { ok: false, reason: "file_not_found" } : { ok: true },
+    });
+
+    // (ii) Same narration, and this time the confirmation agrees.
+    const confirmed = await reviewLoop({
+      ...capCase,
+      _agent: neverConvergingAgent(),
+      _parallel: (promises) => Promise.all(promises),
+      _checkFile: existsGuard,
+    });
+
+    expect({
+      deniedConverged: denied.converged,
+      denied: denied.postmortemWritten,
+      confirmed: confirmed.postmortemWritten,
+    }).toEqual({ deniedConverged: false, denied: false, confirmed: true });
+  });
+
+  test("RLH-LOOP-02b: trailerReason is present on every reviewLoop return", async () => {
+    const convergedRun = await reviewLoop({
+      ...baseParams,
+      _agent: async (skill) =>
+        skill === "se-author" ? makeOptimizerResult() : makeApproveResult(skill),
+      _parallel: (promises) => Promise.all(promises),
+      _checkFile: existsGuard,
+    });
+
+    const cappedRun = await reviewLoop({
+      ...baseParams,
+      iteration: 5,
+      startIndex: 5,
+      endIndex: 5,
+      _agent: neverConvergingAgent(),
+      _parallel: (promises) => Promise.all(promises),
+      _checkFile: existsGuard,
+    });
+
+    // TSPEC §3.9 / §5.6.1: `trailerReason` rides on **every** return, `null` on
+    // the greenfield/clean path — so `null` must be observable as a value, which a
+    // conditionally-spread field is not.
+    expect({
+      convergedHas: Object.prototype.hasOwnProperty.call(convergedRun, "trailerReason"),
+      cappedHas: Object.prototype.hasOwnProperty.call(cappedRun, "trailerReason"),
+    }).toEqual({ convergedHas: true, cappedHas: true });
+  });
+});
+
+// ─── RLH-LOOP-02c: checkConverged's rendered window (§11.5 `N-a`, second half) ─
+// `checkConverged` is not exported and PLAN §11.5 keeps it that way, so this half
+// is observed **through `main()` with injected seams** (an L2 drive, PLAN §7): the
+// halt it throws is caught by `main()`'s pipeline catch and surfaces as the Phase R
+// row's detail — TSPEC §7.1 site 1, the `recordPhase(phaseId, phaseLabel, "❌", …)`
+// message whose `after 5 iterations` becomes `rounds ${startIndex}..${endIndex}`.
+//
+// The window is driven to **3..7**: two prior rounds are on the branch, so the
+// branch-derived `startIndex` is 3 and the once-computed `endIndex` is 7. Both
+// differ from 1 and from each other, which is precisely what makes a swapped,
+// duplicated or missing positional argument a *named* red rather than a silent
+// pass — `rounds 7..3`, `rounds 3..3` and `rounds 1..5` all fail this assertion.
+describe("RLH-LOOP-02c: checkConverged renders `rounds {startIndex}..{endIndex}` from its positional arguments", () => {
+  test("RLH-LOOP-02c: a non-converging Phase R over a 3..7 window reports `rounds 3..7`", async () => {
+    // Two completed rounds of REQ cross-review on the branch: `-v2` is the highest
+    // present index, so the next reviewer dispatch is round 3 (TSPEC §5.2).
+    const listFiles = fakeListFiles([
+      "CROSS-REVIEW-software-engineer-REQ-v1.md",
+      "CROSS-REVIEW-test-engineer-REQ-v1.md",
+      "CROSS-REVIEW-software-engineer-REQ-v2.md",
+      "CROSS-REVIEW-test-engineer-REQ-v2.md",
+    ]);
+
+    const report = await main({
+      reqPath: "docs/test-feat/REQ-test-feat.md",
+      _agent: async (skill, prompt) => {
+        if (skill === "se-review" || skill === "te-review") return makeNeedsRevisionResult();
+        if (typeof prompt === "string" && prompt.includes("POSTMORTEM")) {
+          return "POSTMORTEM written.";
+        }
+        return makeOptimizerResult();
+      },
+      _parallel: (promises) => Promise.all(promises),
+      _pipeline: async (_name, fn) => fn(),
+      _phase: () => {},
+      _log: () => {},
+      _checkFile: () => ({ ok: true }),
+      _readFile: () => "",
+      _listFiles: listFiles,
+    });
+
+    const phaseR = (report.phases || []).find((p) => p.phase === "R");
+
+    expect({
+      outcome: report.outcome,
+      detail: phaseR ? phaseR.detail : "(no Phase R row recorded)",
+    }).toEqual({
+      outcome: "halted",
+      detail: expect.stringContaining("rounds 3..7"),
+    });
+  });
+});
