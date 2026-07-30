@@ -3,7 +3,7 @@
  * PROP-PIPELINE-01 through PROP-PIPELINE-03, PROP-ARTIFACTS-01/02, PROP-OBS-01/02, PROP-NFR-01
  */
 
-import main from "../orchestrate-dev.js";
+import main, { meta } from "../orchestrate-dev.js";
 import { readFileSync } from "fs";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
@@ -372,5 +372,107 @@ describe("PROP-PIPELINE-03: phase() called with correct labels in order", () => 
     expect(phaseLabels).toMatch(/Phase DOD/);
     expect(phaseLabels).toMatch(/Phase H/);
     expect(phaseLabels).toMatch(/Phase PUB/);
+  });
+});
+
+// ─── RLH-WIRE-01: composition-root wiring (TSPEC §3.1) ────────────────────────
+// L3 composition-root assertion: it injects NOTHING (TSPEC §8.4). The parameter
+// list is *derived* from the production source text, never restated here, so a
+// new seam cannot be added to main() without this test seeing it.
+//
+// This assertion is deliberately NOT named AT-64 — TSPEC §8.3 assigns AT-64 to
+// __tests__/runtimeBundle.test.js alone.
+
+/** Extract main()'s destructured parameter names from the production source. */
+function mainParameterNames() {
+  const scriptPath = resolve(__dirname, "../orchestrate-dev.js");
+  const content = readFileSync(scriptPath, "utf8");
+
+  const anchor = "export default async function main({";
+  const start = content.indexOf(anchor);
+  if (start < 0) throw new Error("main() composition-root anchor not found");
+  if (content.indexOf(anchor, start + 1) >= 0) {
+    throw new Error("main() composition-root anchor occurs more than once");
+  }
+
+  const bodyStart = start + anchor.length;
+  const end = content.indexOf("} = {}) {", bodyStart);
+  if (end < 0) throw new Error("main() parameter list terminator not found");
+
+  const block = content
+    .slice(bodyStart, end)
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/\/\/[^\n]*/g, "");
+
+  return block
+    .split(",")
+    .map((entry) => entry.split(":")[0].split("=")[0].trim())
+    .filter((name) => name.length > 0);
+}
+
+describe("RLH-WIRE-01: main() composition root carries the new parameters", () => {
+  // The sixteen that exist today — TSPEC §3.1: "Nothing existing is renamed or
+  // reordered."
+  const EXISTING_PARAMS = [
+    "reqPath",
+    "_agent",
+    "_parallel",
+    "_log",
+    "_checkFile",
+    "_readFile",
+    "_phase",
+    "_pipeline",
+    "_mergeWorktree",
+    "_rebaseOntoDefault",
+    "_dodVerifyLoop",
+    "_raisePrAndVerifyCi",
+    "_checkCi",
+    "_phaseDodEnabled",
+    "_phasePubEnabled",
+    "_now",
+    "_sleep",
+  ];
+
+  // Exactly five new *seams*. `forcePhases` is NOT one of them: it is data —
+  // no default implementation, never called (TSPEC §3.1) — so there are five
+  // Node defaults and five adapter entries, not six of either.
+  const NEW_SEAMS = [
+    "_listFiles",
+    "_writeFile",
+    "_appendFile",
+    "_git",
+    "_recordHalt",
+  ];
+
+  it("RLH-WIRE-01: parameter list carries the five new seams plus forcePhases, and meta.inputs declares forcePhases", () => {
+    const names = mainParameterNames();
+
+    // Pre-existing surface is intact — nothing renamed or dropped (TSPEC §3.1).
+    for (const name of EXISTING_PARAMS) {
+      expect(names).toContain(name);
+    }
+
+    // The five new injected seams.
+    for (const seam of NEW_SEAMS) {
+      expect(names).toContain(seam);
+    }
+
+    // `forcePhases` — data, not a seam, hence no `_` prefix (TSPEC §3.1, §5.7).
+    expect(names).toContain("forcePhases");
+    expect(names).not.toContain("_forcePhases");
+
+    // Every new seam is `_`-prefixed; exactly five of the added names are.
+    const addedSeams = names.filter((n) => NEW_SEAMS.includes(n));
+    expect(addedSeams).toHaveLength(5);
+
+    // meta gains a second inputs entry beside reqPath (TSPEC §3.1). DEV_META in
+    // build-runtime.mjs is deliberately NOT edited (TSPEC §3.1, Q-07).
+    const inputNames = meta.inputs.map((input) => input.name);
+    expect(inputNames).toContain("reqPath");
+    expect(inputNames).toContain("forcePhases");
+
+    const forceInput = meta.inputs.find((i) => i.name === "forcePhases");
+    expect(forceInput.type).toBe("string");
+    expect(forceInput.required).toBe(false);
   });
 });
