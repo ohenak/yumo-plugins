@@ -677,8 +677,8 @@ FSPEC's own obligation map. Their absence is deliberate.
 | O-row | TSPEC §9.1 discharges it in | Built by |
 |---|---|---|
 | O-1 | §3.2, §4.2, §6.2 rows 1–2 | RLH-18 (seam + Node default), RLH-32 (`rtListFiles`), RLH-05 (`LIST_FAILURES`), RLH-26 (dispositions at the phase gate), RLH-23 (dispositions at `refreshReviewState`) |
-| O-2 | §5.2 | RLH-05 (b) |
-| O-3 | §5.8 | RLH-05 (a) (`parseResolvedMarker`, `extractRecommendation`), RLH-26 (`checkPostmortem` at step G) |
+| O-2 | §5.2 | RLH-05 (e) |
+| O-3 | §5.8 | RLH-05 (f) (`parseResolvedMarker`, `extractRecommendation`), RLH-26 (`checkPostmortem` at step G) |
 | O-4 | §6.5 | RLH-20 |
 | O-5 | §3.5 | RLH-18 (`defaultRecordHalt`), RLH-32 (both entrypoint suppliers) |
 | O-6 | §5.6 | RLH-23 |
@@ -686,7 +686,7 @@ FSPEC's own obligation map. Their absence is deliberate.
 | O-8 | §5.5 | RLH-16, RLH-26 |
 | O-9 | §3.1, §5.7 | RLH-18 (`main()` + `meta.inputs`), RLH-05 (f) (`parseForcePhases`), RLH-26 (precedence), RLH-32 (build edit 1) |
 | O-16 | §7.1, §7.2, §3.9 | RLH-27 (the five §7.1 edits), RLH-32 (the four §7.2 edits) |
-| O-17 | §5.1, §5.3, §4.3 | RLH-05 (a), RLH-26 |
+| O-17 | §5.1, §5.3, §4.3 | RLH-05 (d) (§5.3's digest family) and RLH-05 (f) (§4.3's record parsers), RLH-26 (§5.1's extraction) |
 | O-18 | §5.4 | RLH-26 |
 | O-19 | §4.8, §5.6, §8.3 | RLH-05 (constant placement), RLH-21 (the behavioural oracles). `MAX_AUTHORING_WRITE_BYTES` has **no** oracle and no task pretends otherwise |
 | O-20 | §5.6, §6.6 | RLH-08 (the per-section cadence stated to authors), RLH-23 (no git operation on the pacing path may discard uncommitted work), RLH-30 (the advisory proxy line) |
@@ -698,7 +698,7 @@ Carried from TSPEC §9.2, with the task column added.
 
 | Defect | Mechanism (TSPEC) | First falsifying test | Task that fixes it |
 |---|---|---|---|
-| **H-1** — round index always 1 | `deriveRoundWindow`'s `max(present) + 1` (§5.2), passed at all seven `reviewLoop` call sites **including the forced path** | AT-01; **AT-01a** for the forced path | RLH-05 (b) (derivation) + RLH-26 (the seven call sites) |
+| **H-1** — round index always 1 | `deriveRoundWindow`'s `max(present) + 1` (§5.2), passed at all seven `reviewLoop` call sites **including the forced path** | AT-01; **AT-01a** for the forced path | RLH-05 (e) (derivation) + RLH-26 (the seven call sites) |
 | **H-2** — non-terminal exit, no POSTMORTEM | corrected `postmortemPath`, `_checkFile` confirmation, `_recordHalt`, the two conditional halt shapes (§6.3, §6.4); G-INV for the refusal half | AT-22; **AT-13a** for G-INV totality | RLH-27 (+ RLH-26 for the gate, RLH-20 for the row commit) |
 | **H-3** — 180 s stall kills a monolithic write | `dispatchAndVerify`'s terminal-first-then-progress loop, per-episode counters and mode (S-INV), the resume prompt (§5.6) | AT-35; **AT-43a** for per-episode mode and budget | RLH-23 (+ RLH-08 for the authoring-side pacing contract) |
 | **H-4** — approved phase re-run from scratch | the two-tier approval search + `isStale` (§5.4, §5.5) | AT-08 | RLH-26 (+ RLH-16, RLH-05 (d)) |
@@ -1154,7 +1154,8 @@ batch 3 by a single owning task, and every task v1.0 nominated as the decider ra
 | Version | Date | Change |
 |---|---|---|
 | **v1.0** | 2026-07-30 | Initial PLAN. 34 tasks across 16 batches, derived from TSPEC v1.5 (§3 interfaces, §4 data model, §5 algorithms, §7 edit sites, §8 test strategy, §9 traceability) with **no** behaviour restated — every rule is cited. Establishes: the §2.1 baseline (**1038 passed / 1 failed / 70 skipped**) and the "no new failures" exit criterion; the §3.2 serialisation rule (no two tasks in one batch may edit any tracked source under `pdlc/workflows/`, because each must rebuild `dist/` in the same commit); the `RLH-AT-{N}` test namespace, avoiding collision with the pre-existing intentional red `AT-22 [red-until-L-06]`; single-owner-per-test-file with a `Greened by` column; §5's file-ownership manifest; §7/§8's task→AT and task→FSPEC-obligation traceability; §9's C-2 build-time gate including the await-discipline scan; §10's SKILL-amendment verification; §11's halt conditions; §12's Definition of Done; §13's open questions. Phase D was assessed and deliberately skipped — there is no DECISIONS document, by design. |
-| **v1.1** | 2026-07-30 | Round-1 cross-review revision (PM 1H/3M/5L, TE 3H/5M/2L). **31 tasks across 13 batches** (was 34/16). No REQ, FSPEC or TSPEC change — every finding was editorial to this PLAN. Per-finding disposition in §14.1. |
+| **v1.1** | 2026-07-30 | Round-1 cross-review revision (PM 1H/3M/5L, TE 3H/5M/2L). **31 tasks across 13 batches** (was 34/16). No REQ, FSPEC or TSPEC change — every finding was editorial to this PLAN. Per-finding disposition in §14.1, **audited and corrected at v1.2** — five of its claims were overstated or false. |
+| **v1.2** | 2026-07-30 | Round-2 cross-review revision (PM 1H/3M/7L, TE 3H/3M/3L). **Task count, batch count, DAG, `Deps` edges, ledger arithmetic and file ownership are unchanged** — both reviewers re-derived them independently and found them clean, and v1.2 does not reopen them. **One TSPEC amendment, and only one: TSPEC v1.6** adds the awaited-combinator-argument ruling to §8.5, forced by a measurement (`orchestrate-dev.js:615–616`); REQ and FSPEC untouched. Everything else is a correction to this PLAN. Per-finding disposition in §14.2. |
 
 ### 14.1 v1.1 — disposition of every round-1 finding
 
@@ -1165,8 +1166,11 @@ pinned contracts cited in §13.1. F-03 **fixed by withdrawing the claim** (§10.
 **fixed by deletion** — §9.1's C-2 sentence and host-global list, §9.2's thirteen-name list, §9.3's
 counts, `RLH-14`'s literal and §12.3's halt string are now citations; the exempted checklist rows and
 baseline figures are kept. F-05 **fixed** (batch 3 is ten, §1.1/§4.2). F-06 **fixed structurally** — the
-per-file column is gone, `AT-15/16/18` get a §7.3 row greening at batch 6. F-07 **fixed** — five seams
-plus `forcePhases`, which is data. F-08 **fixed** — §11.5 `N-b` decides the name. F-09 **fixed** —
+per-file column is gone, `AT-15/16/18` get a §7.3 row greening at **batch 8** (`batch 6` here was a
+mis-transcription of the staleness conjunct's batch; the row itself always said 8 — **corrected at v1.2**).
+F-07 **partially fixed at v1.1, completed at v1.2** — v1.1 fixed `RLH-17`/`RLH-18`/§9.3 to five seams plus
+`forcePhases` as data but left §6.3 saying "the six new seams"; PM re-filed it as `L-01` and v1.2 fixed
+§6.3 (**claim corrected at v1.2**). F-08 **fixed** — §11.5 `N-b` decides the name. F-09 **fixed** —
 `RLH-26` now owns §5.1's three steps and the fail-closed duplicate-`VERDICT:` pre-count. Batching
 judgement **adopted in the form that pays**: `RLH-10/13/15` fold into `RLH-05`, but `RLH-16` stays
 separate because `RLH-12`'s fixtures land in batch 4 and folding it in would have *cost* a batch — three
@@ -1175,17 +1179,108 @@ is not a property and v1.1 stops calling it one); Q-02 answered (§5.3 now state
 pre-existing suite needs no change, with the spot-check); Q-03 answered (G-INV integrity is the
 unconditional tiebreak — `RLH-26` is not split, and wall time does not buy a split).
 
-**Test engineer.** F-01 **fixed** — §7.3 is a **per-assertion** ledger and the gate's only authority;
-`RLH-AT-19`/`-20` are green on arrival with **no** permitted-red window and `RLH-AT-64`'s window is
-bounded to batches 4–10, re-measured for v1.1. F-02 **fixed by deciding both shapes in the PLAN**
+**Test engineer.** F-01 **partially fixed at v1.1, completed at v1.2** — §7.3 is a **per-assertion** ledger and the
+gate's only authority; `RLH-AT-19`/`-20` are green on arrival with **no** permitted-red window and
+`RLH-AT-64`'s window is bounded to batches 4–10. TE re-derived all 23 rows as arithmetically correct. But
+row 1's premise was **one** measured await site where there are **three**; TE re-filed it as round-2 `F-01`
+and v1.2 fixed it (three sites, TSPEC v1.6's fourth ruling, `RLH-01` checks it at batch 1) — **claim
+corrected at v1.2**. F-02 **fixed by deciding both shapes in the PLAN**
 (§11.5), with `RLH-LOOP-01` as `N-a`'s oracle and real `Deps` edges rather than a note. F-03 **fixed** —
 no detector is claimed, the unowned §12.3 row is deleted, `H-j` is rewritten, §13.3's `RLH-31`
 attribution withdrawn, and the gap is bound to `QUEUE.md` Order 9. F-04 **fixed** — `AT-30…34` split per
 conjunct (`-module` / `-orch`), `AT-64` is `RLH-31`'s alone per TSPEC §8.3, `RLH-17`'s assertion renamed
 `RLH-WIRE-01` (§7.4). F-05 **fixed** — one row per assertion, and `AT-61` splits into `-loop` (7) and
-`-report` (10), which was the contradiction. F-06 **fixed** — five names, not six. F-07 **fixed**
-throughout §7.3, §8.1, §8.2. F-08 **fixed and re-measured** — three runs of one HEAD, **185.43 s** wall,
-190–200 s projected, background invocation **mandatory**, suite not shortened. F-09, F-10 **fixed** as
-filed. Q-01 answered in §7.3's closing note (the queue bundle's unwired `_git`, batches 5–10, accepted —
+`-report` (10), which was the contradiction. F-06 **fixed** — five names, not six. F-07 **fixed** — neither of the two questions it named (`forcePhases`'s shape, the `ListFailure`
+disposition's placement) was open; both are recorded as pinned TSPEC contracts in §13.1. (v1.1 wrote
+"fixed throughout §7.3, §8.1, §8.2" here, which describes a different finding's remedy — **claim corrected
+at v1.2**; TE independently verified the actual remedy as "Fixed, and better than I asked for".) F-08
+**fixed and re-measured** — runs of one HEAD, **185.43 s** wall, 190–200 s projected, background invocation
+**mandatory**, suite not shortened. F-09 **fixed** — batch 3 is ten, critical path thirteen nodes. **F-10
+was NOT fixed, and v1.1's "fixed as filed" was false** — no shared domain-generator module was created and
+no acceptance of per-file generators was stated. TE re-filed it as round-2 `F-07`. v1.2 resolves it by
+**deciding and stating** per-file domain generators (§7.2, §5.2, §6.3), i.e. the second of the two remedies
+TE offered — **claim corrected at v1.2**. Q-01 answered in §7.3's closing note (the queue bundle's unwired `_git`, batches 5–10, accepted —
 and why not to widen `RLH-AT-64`); Q-02 answered in §9.2's third ruling row (an anonymous arrow is exempt
-and passes its obligation to nobody); Q-03 answered by §7.5's fourteen `RLH-`-namespaced ids.
+and passes its obligation to nobody); Q-03 answered by §7.5's `RLH-`-namespaced ids — **thirteen**, not the "fourteen" v1.1 wrote, and
+§12.3 did not in fact count them separately until v1.2 added the row (**claim corrected at v1.2**).
+
+### 14.2 v1.2 — disposition of every round-2 finding
+
+**One spec change, and it is named:** TSPEC **v1.6** adds one ruling row to §8.5 (TE `F-01`). REQ, FSPEC,
+`docs/_queue/QUEUE.md` and every `CROSS-REVIEW-*` file are untouched. Nothing else in this round required
+a spec change.
+
+**The measurement both reviewers took, and which v1.1 got wrong.** Bare `npx jest <file>` reports
+`Tests: 0 total` **and exits 1**, with `Test Suites: 1 failed` / `Cannot use import statement outside a
+module`. v1.1 asserted `exits 0 — a vacuous green`. Re-measured for v1.2 at HEAD: **exit 1**. The hazard is
+therefore that the bare invocation **cannot run these ESM suites at all**, not that it passes silently —
+and the corrected statement is *weaker* in one direction (no gate here is defeatable by a vacuous green)
+and *sharper* in the other (a parse error masks a RED task's real oracle). Restated at §2.3 and §4.1;
+§12.1 now uses `npm test -- <file>`.
+
+#### Test engineer
+
+| Id | Sev | Disposition |
+|---|---|---|
+| **F-01** | High | **Fixed, and it is the one finding that was not editorial.** Verified TE's measurement myself: exactly **three** non-`await`ed thirteen-list call sites at HEAD — `orchestrate-dev.js:615`, `:616`, `:1867`; `orchestrate-queue.js` none. Read `orchestrate-dev.js:600–630` and `runtime-adapter.js:67`. **Conclusion: the source is correct and the guard was wrong.** `_parallel` resolves to `async function rtParallel(promises) { return await Promise.all(promises); }`, so the combinator supplies the await; putting `await` on each array element would **serialise a deliberately concurrent two-reviewer dispatch**, a behaviour change for no safety gain. Since the exemption predicate is owned by TSPEC §8.5, **TSPEC v1.6** adds a fourth ruling — *awaited combinator argument* — stated as a rule over **syntactic position** (the `G-INV` / E-1–E-3 construction), plus an explicit clause that the rulings are predicates and the `file:line` citations are evidence, not the definition, and a fix to §8.5's catch-all, which reached only *aliased* seams and so let an unaliased call fall through the whole section. §9.2 and §7.3 row 1 now **cite** §8.5 instead of restating it; §7.3 row 1 and §12.3 say **three** sites with each one's ruling; `RLH-01` gains a **blocking** pre-flight row asserting the count **and** the classification, so `RLH-AT-19`'s empty window rests on a checked premise at batch 1. `RLH-AT-19`'s window is unchanged (**empty**) because the resolution makes the assertion green at HEAD, which is what an empty window requires. |
+| **F-02** | High | **Fixed.** §12.1 step 1 is `cd pdlc/workflows && npm test -- <file>`, citing §2.3 as owner. The RED criterion is restated at **assertion level**: the suite *runs* and exactly the named `RLH-*` assertions §7 assigns the task fail, each on its own oracle; a suite that fails to run is not a valid red. |
+| **F-03** | High | **Fixed.** §2.3 and §4.1 both restate the measured behaviour; §4.1's row asserts suite-failed-to-run / `Tests: 0 total` / non-zero exit, so `H-e` no longer fires on a false premise. |
+| **F-04** | Medium | **Fixed by dropping the split** — the first of the two options TE offered. The optional `-stale`/`-gate` split is withdrawn: it left the gate's sole authority with two window sets for three assertions and ids registered in neither §7.4 nor §7.5, and it does not decompose (FSPEC `AT-18` has no staleness conjunct, so it prescribed an empty `-stale` test). Cost: one batch of slack on `AT-15`/`-16`. Benefit: every id the ledger names exists in the run. |
+| **F-05** | Medium | **Fixed both halves.** §7.5 reads **thirteen** (1+2+1+9) and no longer claims a §12.3 behaviour §12.3 lacks; §12.3 gains the row naming all thirteen, so `RLH-34` cannot certify a tree missing `RLH-LOOP-01` or the nine `RLH-SKILL-*`. |
+| **F-06** | Medium | **Fixed.** §12.2 step 2 now cites §7.3's **`Permitted red`** column and restates no rule, so the `RLH-AT-64` batches-2–3 discrepancy and the "`Greened by` is nobody" unresolvable case both disappear. |
+| **F-07** (round-1 F-10) | Low | **Fixed as a stated decision, and the false changelog claim corrected — the latter treated as the more serious half.** §7.2 now decides **per-file, file-local, unexported domain generators** over `driftGenerators.js`'s primitives, with four reasons (no common shape across the five domains; a shared module would cost a §5.3 owner plus five `Deps` edges and put a batch-2 file on `RLH-12`'s path; a drifting domain generator reds only its own property; a second *primitive* library remains forbidden) and a stated promotion path if a sixth caller appears. Recorded also at §5.2 and §6.3. §14.1's "fixed as filed" is marked false. |
+| **F-08** | Low | **Fixed.** §4.2 reads "Batches 4–12" and states that batch 13 has no source-lane task, agreeing with §5.1's `dist/` range and §13.3. |
+| **F-09** | Low | **Fixed.** §12.3's `ListFailure` row is a sentence again, with its citation intact. |
+| **Q-01** | — | Answered by the F-01 resolution: **exempt**, and the evidence is `rtParallel`'s `await Promise.all`. |
+| **Q-02** | — | Answered in §12.2, in one paragraph as suggested: the batch gate is structurally immune because step 2 asserts **absolute counts** and §7.3 keys on **named assertions**, never exit status; only §12.1's per-task gate ever depended on a single-file invocation. The paragraph also names what *would* erode it (`--passWithNoTests`, a suite leaving jest's match pattern). |
+| **Q-03** | — | Answered: **thirteen**, and §12.3 now counts them (see F-05). |
+
+#### Product manager
+
+| Id | Sev | Disposition |
+|---|---|---|
+| **N-01** | High | **Fixed** — same remedy as TE `F-03`; "exits 0" and "a vacuous green" are deleted from both sites. |
+| **N-02** | Medium | **Fixed** — same remedy as TE `F-02`. |
+| **N-03** | Medium | **Fixed; `endIndex` now has exactly one owning task.** `RLH-26` (batch 8) owns the gate-side computation `endIndex = startIndex + MAX_REVIEW_ROUNDS - 1` **and** the passing of both values at all seven `reviewLoop` call sites and all seven `checkConverged` call sites. `RLH-22`'s row no longer restates the in-loop formula: it describes `endIndex` as a **consumed parameter**, with the arithmetic attributed to `RLH-26`. `RLH-27` (batch 9) owns the two consuming signatures. §11.5's dangling enforcement pointer is fixed by **adding** the row rather than deleting the reference: §11.4 `H-q` covers building either §11.5 shape differently, and says the halt exists to stop a red being "fixed" by editing the oracle. §11.5 carries an explicit ownership table so the mapping is not inferred from prose. |
+| **N-04** | Medium | **Fixed concretely, without a TSPEC change.** `checkConverged` gets **two additional positional arguments after `feature`** — `checkConverged(loopResult, phaseId, phaseLabel, recordPhase, feature, startIndex, endIndex)`. This is what TSPEC §3.9's own row requires: the same row says it "gains `feature`" **and** that "the literal `5`s become `MAX_REVIEW_ROUNDS` / `startIndex..endIndex` per §7.1", so §3.9 already contemplates both indices and is silent only on the channel. Rejected and recorded: converting it to an options object (contradicts §3.9's pinned positional shape); carrying the indices on `loopResult` (§3.9 pins that return shape as gaining `postmortemWritten` and `trailerReason` and nothing else); re-deriving `endIndex` inside it (a second derivation). The positional-swap risk PM's objection implies is mitigated at the assertion level: **`RLH-LOOP-02`** is extended to assert the rendered `rounds {startIndex}..{endIndex}` over a case with `startIndex ≠ 1 ≠ endIndex`, so a swap, a duplicate or a missing argument is a named red — and it is written in batch 3, before `RLH-27` in batch 9. `RLH-27`'s row names both values. |
+| **L-01** | Low | **Fixed** — §6.3 reads "the **five** new seams … plus `forcePhases`, which is **data**". |
+| **L-02** | Low | **Fixed** — the four wrong letters: §8.1 `O-2` → `(e)`, `O-3` → `(f)`, `O-17` → `(d)`+`(f)` with the §5.1 half attributed to `RLH-26`, §8.2 `H-1` → `(e)`. |
+| **L-03** | Low | **Fixed** — same remedy as TE `F-09`. |
+| **L-04** | Low | **Fixed** — same remedy as TE `F-05`. |
+| **L-05** | Low | **Fixed** — same remedy as TE `F-06`. |
+| **L-06** | Low | **Fixed by narrowing the claim, not by keeping the absolute.** (i) §4 now says no task row, `Deps` edge, ledger row or traceability cell names a retired id, that the surviving mentions in §4.2/§13.1/§14 are historical, and that a reference **as a live task** is stale. (ii) §9.3 no longer restates the two counts it says it does not restate — the parenthetical is deleted and the reader is sent to TSPEC §8.5. |
+| **L-07** | Low | **Fixed** — same remedy as TE `F-04` (the split is withdrawn). |
+| **Q-01** | — | Noted, not actioned here: `QUEUE.md` is outside this change surface and `H-o` forbids a Phase-I task touching it. Recorded for **Harvest**, which is the surface that survives this feature — the operator's `awaiting-merge` edit is a single moment and the Order 9 REQ author is the reader who needs the correction. §10.2's account, not `QUEUE.md`'s, is the accurate one. |
+| **Q-02** | — | **Answered, and it produced a rule.** §11.5 now states that `reviewLoop`'s `startIndex` **parameter** is the loop-control value `endIndex` relates to, and that `refreshReviewState`'s per-episode `startIndex` field must be destructured under a **distinct local name** rather than shadowing it; `RLH-LOOP-01` pins which binding the gate reads by supplying a refresh that returns a different index. A naming rule, not a behaviour change — but shadowing is precisely the ambiguity this feature exists to remove. |
+| **Q-03** | — | Confirmed deliberate: advisory below 300 s, blocking above. The row reads that way by design and is unchanged. |
+
+#### Audit of §14.1 — what the round-1 changelog claimed that it should not have
+
+TE's `F-07` made the general point: **a changelog asserting a fix that does not exist is the defect class
+this feature exists to remove.** So every claim in §14.1 was re-checked against the tree, not just the one
+TE named. **Five** claims did not survive; each is annotated in place at §14.1:
+
+| §14.1 claim | Verdict | Correction |
+|---|---|---|
+| TE F-10 "**fixed** as filed" | **False** — no generator module, no stated acceptance | now recorded as not fixed at v1.1, fixed by decision at v1.2 |
+| PM F-06 "`AT-15/16/18` get a §7.3 row greening at **batch 6**" | **False** — the row says batch **8**; 6 is the staleness conjunct's batch | corrected to batch 8 |
+| PM F-07 "**fixed** — five seams plus `forcePhases`" | **Overstated** — §6.3 still said six; PM re-filed as `L-01` | corrected to partially fixed at v1.1, completed at v1.2 |
+| TE F-01 "**fixed**" | **Overstated** — mechanism and all 23 rows correct, but row 1's premise measurably false | corrected to partially fixed at v1.1, completed at v1.2 |
+| Q-03 "§7.5's **fourteen** ids" | **False** — thirteen, and §12.3 did not count them | corrected to thirteen, with §12.3's row added |
+
+Claims that **did** substantiate, checked individually: PM F-01/F-02 (`P-Q-04`/`P-Q-03` deleted, contracts
+in §13.1), F-03 (detector claim withdrawn at all five sites), F-04 (catalogues deleted, no load-bearing
+rule lost — PM verified this independently), F-05 (batch 3 is ten), F-08 (`N-b` decides the name), F-09
+(`RLH-26` owns §5.1's three steps and the pre-count), PM Q-01/Q-02/Q-03 (§5.3 does carry the unlisted-suite
+statement and the spot-check; G-INV is recorded as the unconditional tiebreak at §4.2), the batching
+judgement (both reviewers re-derived the `RLH-16` arithmetic), TE F-02…F-06, F-08, F-09 and Q-01/Q-02. One
+further defect was found by the audit rather than by a reviewer: §14.1's **TE F-07** entry described the
+wrong remedy ("fixed throughout §7.3, §8.1, §8.2" belongs to another finding); it is corrected to the
+remedy TE actually verified.
+
+**Byte count.** v1.1 → v1.2 grows the document. Neither reviewer filed the overage and both accepted the
+stated trade, so **no compression pass was run for its own sake** and none of the rationale prose either
+reviewer defended was cut. What *was* deleted is genuine redundancy: §9.2's three-row restatement of TSPEC
+§8.5's ruling table (now a citation) and §9.3's restated counts. The growth is the §11.5 ownership table,
+§7.2's generator decision, §12.2's immunity paragraph, and this section — a round that corrects five false
+changelog claims cannot also be the round that shrinks the changelog.
