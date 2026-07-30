@@ -3289,6 +3289,48 @@ export default async function main({
     });
   }
 
+  // ─── TSPEC §5.6 — the pacing wrapper's main()-side seams ─────────────────
+
+  /**
+   * The branch-derived round window for one doc type, read at phase entry (§5.2).
+   * A listing that cannot be judged halts here rather than being read as "no
+   * reviews on the branch" (§6.2 rows 2 and 17).
+   */
+  async function phaseWindow(docType) {
+    const state = await refreshReviewState({
+      feature: featureName,
+      docType,
+      _listFiles: listFilesFn,
+      _readFile: readFileFn,
+    });
+    if (!state.ok) throw haltError(state.message);
+    return state;
+  }
+
+  /** The seams every wrapped dispatch and every reviewLoop entry shares. */
+  const wrapperSeams = {
+    _agent: agentFn,
+    _readFile: readFileFn,
+    _listFiles: listFilesFn,
+    _log: emit,
+    _git: gitFn,
+  };
+
+  /** Wrap one main()-level dispatch (a creator, or harvest) in §3.8's episode. */
+  async function wrappedDispatch({ skill, basePrompt, targetPath, docType, dispatchKind, phaseId }) {
+    const episode = await dispatchAndVerify({
+      skill,
+      basePrompt,
+      targetPath,
+      docType,
+      feature: featureName,
+      dispatchKind,
+      phaseId,
+      ...wrapperSeams,
+    });
+    return episode.response;
+  }
+
   // ─── TSPEC-ENTRY-01: REQ path validation ─────────────────────────────────
 
   if (!reqPath || reqPath.trim() === "") {
@@ -3354,69 +3396,92 @@ export default async function main({
     await pipelineFn("PDLC Pipeline", async () => {
       // ─── Phase R: REQ Cross-Review ───────────────────────────────────────
       phaseFn("Phase R: REQ Cross-Review");
+      const rWindow = await phaseWindow("REQ");
       const rLoop = await reviewLoop({
         doc: reqPath,
         phase: "R",
+        docType: "REQ",
         reviewers: PHASE_DISPATCH.R.reviewers,
         optimizer: PHASE_DISPATCH.R.optimizer,
         feature: featureName,
-        _agent: agentFn,
+        iteration: rWindow.startIndex,
+        startIndex: rWindow.startIndex,
+        endIndex: rWindow.endIndex,
         _parallel: parallelFn,
         _checkFile: checkFileFn,
+        ...wrapperSeams,
       });
-      checkConverged(rLoop, "R", PHASE_DISPATCH.R.label, recordPhase);
+      checkConverged(rLoop, "R", PHASE_DISPATCH.R.label, recordPhase, featureName, rWindow.startIndex, rWindow.endIndex);
       recordPhase("R", PHASE_DISPATCH.R.label, "✅", `Approved (${rLoop.iterations} iteration${rLoop.iterations !== 1 ? "s" : ""})`, rLoop.iterations);
 
       // ─── Phase F: FSPEC Creation + Review ───────────────────────────────
       phaseFn("Phase F: FSPEC Creation + Review");
       const fspecPath = `docs/${featureName}/FSPEC-${featureName}.md`;
-      const fCreatorResult = await agentFn(
-        PHASE_DISPATCH.F.creator,
-        creatorPrompt("F", featureName, PHASE_DISPATCH.F.creatorInputs)
-      );
+      const fCreatorResult = await wrappedDispatch({
+        skill: PHASE_DISPATCH.F.creator,
+        basePrompt: creatorPrompt("F", featureName, PHASE_DISPATCH.F.creatorInputs),
+        targetPath: fspecPath,
+        docType: "FSPEC",
+        dispatchKind: "authoring",
+        phaseId: "F",
+      });
       if (!fCreatorResult || fCreatorResult.trim() === "") {
         throw haltError(
           `Error: creator agent ${PHASE_DISPATCH.F.creator} failed to produce ${fspecPath} for phase F`
         );
       }
       artifactPaths.push(fspecPath);
+      const fWindow = await phaseWindow("FSPEC");
       const fLoop = await reviewLoop({
         doc: fspecPath,
         phase: "F",
+        docType: "FSPEC",
         reviewers: PHASE_DISPATCH.F.reviewers,
         optimizer: PHASE_DISPATCH.F.optimizer,
         feature: featureName,
-        _agent: agentFn,
+        iteration: fWindow.startIndex,
+        startIndex: fWindow.startIndex,
+        endIndex: fWindow.endIndex,
         _parallel: parallelFn,
         _checkFile: checkFileFn,
+        ...wrapperSeams,
       });
-      checkConverged(fLoop, "F", PHASE_DISPATCH.F.label, recordPhase);
+      checkConverged(fLoop, "F", PHASE_DISPATCH.F.label, recordPhase, featureName, fWindow.startIndex, fWindow.endIndex);
       recordPhase("F", PHASE_DISPATCH.F.label, "✅", `Approved (${fLoop.iterations} iterations)`, fLoop.iterations);
 
       // ─── Phase T: TSPEC Creation + Review ───────────────────────────────
       phaseFn("Phase T: TSPEC Creation + Review");
       const tspecPath = `docs/${featureName}/TSPEC-${featureName}.md`;
-      const tCreatorResult = await agentFn(
-        PHASE_DISPATCH.T.creator,
-        `${creatorPrompt("T", featureName, PHASE_DISPATCH.T.creatorInputs)}\n${decisionsWarrantedTrailerRequirement()}`
-      );
+      const tCreatorResult = await wrappedDispatch({
+        skill: PHASE_DISPATCH.T.creator,
+        basePrompt: `${creatorPrompt("T", featureName, PHASE_DISPATCH.T.creatorInputs)}\n${decisionsWarrantedTrailerRequirement()}`,
+        targetPath: tspecPath,
+        docType: "TSPEC",
+        dispatchKind: "authoring",
+        phaseId: "T",
+      });
       if (!tCreatorResult || tCreatorResult.trim() === "") {
         throw haltError(
           `Error: creator agent ${PHASE_DISPATCH.T.creator} failed to produce ${tspecPath} for phase T`
         );
       }
       artifactPaths.push(tspecPath);
+      const tWindow = await phaseWindow("TSPEC");
       const tLoop = await reviewLoop({
         doc: tspecPath,
         phase: "T",
+        docType: "TSPEC",
         reviewers: PHASE_DISPATCH.T.reviewers,
         optimizer: PHASE_DISPATCH.T.optimizer,
         feature: featureName,
-        _agent: agentFn,
+        iteration: tWindow.startIndex,
+        startIndex: tWindow.startIndex,
+        endIndex: tWindow.endIndex,
         _parallel: parallelFn,
         _checkFile: checkFileFn,
+        ...wrapperSeams,
       });
-      checkConverged(tLoop, "T", PHASE_DISPATCH.T.label, recordPhase);
+      checkConverged(tLoop, "T", PHASE_DISPATCH.T.label, recordPhase, featureName, tWindow.startIndex, tWindow.endIndex);
       recordPhase("T", PHASE_DISPATCH.T.label, "✅", `Approved (${tLoop.iterations} iterations)`, tLoop.iterations);
 
       // ─── TSPEC-DECISIONS-01: DECISIONS_WARRANTED read from Phase T ─────────
@@ -3437,27 +3502,36 @@ export default async function main({
       } else {
         phaseFn("Phase D: DECISIONS Creation + Review");
         decisionsPath = `docs/${featureName}/DECISIONS-${featureName}.md`;
-        const dCreatorResult = await agentFn(
-          PHASE_DISPATCH.D.creator,
-          creatorPrompt("D", featureName, PHASE_DISPATCH.D.creatorInputs)
-        );
+        const dCreatorResult = await wrappedDispatch({
+          skill: PHASE_DISPATCH.D.creator,
+          basePrompt: creatorPrompt("D", featureName, PHASE_DISPATCH.D.creatorInputs),
+          targetPath: decisionsPath,
+          docType: "DECISIONS",
+          dispatchKind: "authoring",
+          phaseId: "D",
+        });
         if (!dCreatorResult || dCreatorResult.trim() === "") {
           throw haltError(
             `Error: creator agent ${PHASE_DISPATCH.D.creator} failed to produce ${decisionsPath} for phase D`
           );
         }
         artifactPaths.push(decisionsPath);
+        const dWindow = await phaseWindow("DECISIONS");
         const dLoop = await reviewLoop({
           doc: decisionsPath,
           phase: "D",
+          docType: "DECISIONS",
           reviewers: PHASE_DISPATCH.D.reviewers,
           optimizer: PHASE_DISPATCH.D.optimizer,
           feature: featureName,
-          _agent: agentFn,
+          iteration: dWindow.startIndex,
+          startIndex: dWindow.startIndex,
+          endIndex: dWindow.endIndex,
           _parallel: parallelFn,
           _checkFile: checkFileFn,
+          ...wrapperSeams,
         });
-        checkConverged(dLoop, "D", PHASE_DISPATCH.D.label, recordPhase);
+        checkConverged(dLoop, "D", PHASE_DISPATCH.D.label, recordPhase, featureName, dWindow.startIndex, dWindow.endIndex);
         recordPhase("D", PHASE_DISPATCH.D.label, "✅", `Approved (${dLoop.iterations} iterations)`, dLoop.iterations);
       }
 
@@ -3466,53 +3540,71 @@ export default async function main({
       const planPath = `docs/${featureName}/PLAN-${featureName}.md`;
       const pInputs = [...PHASE_DISPATCH.P.creatorInputs.filter(i => i !== "DECISIONS?")];
       if (decisionsPath) pInputs.push("DECISIONS");
-      const pCreatorResult = await agentFn(
-        PHASE_DISPATCH.P.creator,
-        creatorPrompt("P", featureName, pInputs)
-      );
+      const pCreatorResult = await wrappedDispatch({
+        skill: PHASE_DISPATCH.P.creator,
+        basePrompt: creatorPrompt("P", featureName, pInputs),
+        targetPath: planPath,
+        docType: "PLAN",
+        dispatchKind: "authoring",
+        phaseId: "P",
+      });
       if (!pCreatorResult || pCreatorResult.trim() === "") {
         throw haltError(
           `Error: creator agent ${PHASE_DISPATCH.P.creator} failed to produce ${planPath} for phase P`
         );
       }
       artifactPaths.push(planPath);
+      const pWindow = await phaseWindow("PLAN");
       const pLoop = await reviewLoop({
         doc: planPath,
         phase: "P",
+        docType: "PLAN",
         reviewers: PHASE_DISPATCH.P.reviewers,
         optimizer: PHASE_DISPATCH.P.optimizer,
         feature: featureName,
-        _agent: agentFn,
+        iteration: pWindow.startIndex,
+        startIndex: pWindow.startIndex,
+        endIndex: pWindow.endIndex,
         _parallel: parallelFn,
         _checkFile: checkFileFn,
+        ...wrapperSeams,
       });
-      checkConverged(pLoop, "P", PHASE_DISPATCH.P.label, recordPhase);
+      checkConverged(pLoop, "P", PHASE_DISPATCH.P.label, recordPhase, featureName, pWindow.startIndex, pWindow.endIndex);
       recordPhase("P", PHASE_DISPATCH.P.label, "✅", `Approved (${pLoop.iterations} iterations)`, pLoop.iterations);
 
       // ─── Phase PR: PROPERTIES Creation + Review ──────────────────────────
       phaseFn("Phase PR: PROPERTIES Creation + Review");
       const propertiesPath = `docs/${featureName}/PROPERTIES-${featureName}.md`;
-      const prCreatorResult = await agentFn(
-        PHASE_DISPATCH.PR.creator,
-        creatorPrompt("PR", featureName, PHASE_DISPATCH.PR.creatorInputs)
-      );
+      const prCreatorResult = await wrappedDispatch({
+        skill: PHASE_DISPATCH.PR.creator,
+        basePrompt: creatorPrompt("PR", featureName, PHASE_DISPATCH.PR.creatorInputs),
+        targetPath: propertiesPath,
+        docType: "PROPERTIES",
+        dispatchKind: "authoring",
+        phaseId: "PR",
+      });
       if (!prCreatorResult || prCreatorResult.trim() === "") {
         throw haltError(
           `Error: creator agent ${PHASE_DISPATCH.PR.creator} failed to produce ${propertiesPath} for phase PR`
         );
       }
       artifactPaths.push(propertiesPath);
+      const prWindow = await phaseWindow("PROPERTIES");
       const prLoop = await reviewLoop({
         doc: propertiesPath,
         phase: "PR",
+        docType: "PROPERTIES",
         reviewers: PHASE_DISPATCH.PR.reviewers,
         optimizer: PHASE_DISPATCH.PR.optimizer,
         feature: featureName,
-        _agent: agentFn,
+        iteration: prWindow.startIndex,
+        startIndex: prWindow.startIndex,
+        endIndex: prWindow.endIndex,
         _parallel: parallelFn,
         _checkFile: checkFileFn,
+        ...wrapperSeams,
       });
-      checkConverged(prLoop, "PR", PHASE_DISPATCH.PR.label, recordPhase);
+      checkConverged(prLoop, "PR", PHASE_DISPATCH.PR.label, recordPhase, featureName, prWindow.startIndex, prWindow.endIndex);
       recordPhase("PR", PHASE_DISPATCH.PR.label, "✅", `Approved (${prLoop.iterations} iterations)`, prLoop.iterations);
 
       // ─── Phase I: Implementation ─────────────────────────────────────────
@@ -3618,17 +3710,22 @@ export default async function main({
 
       // ─── Phase CR: Final Codebase Review ─────────────────────────────────
       phaseFn("Phase CR: Final Codebase Review");
+      const crWindow = await phaseWindow(null);
       const crResult = await reviewLoop({
         doc: `docs/${featureName}/`,
         phase: "CR",
+        docType: null,
         reviewers: PHASE_DISPATCH.CR.reviewers,
         optimizer: PHASE_DISPATCH.CR.optimizer,
         feature: featureName,
-        _agent: agentFn,
+        iteration: crWindow.startIndex,
+        startIndex: crWindow.startIndex,
+        endIndex: crWindow.endIndex,
         _parallel: parallelFn,
         _checkFile: checkFileFn,
+        ...wrapperSeams,
       });
-      checkConverged(crResult, "CR", PHASE_DISPATCH.CR.label, recordPhase);
+      checkConverged(crResult, "CR", PHASE_DISPATCH.CR.label, recordPhase, featureName, crWindow.startIndex, crWindow.endIndex);
       recordPhase("CR", PHASE_DISPATCH.CR.label, "✅", `Approved (${crResult.iterations} iterations)`, crResult.iterations);
 
       // ─── Phase DOD: Definition of Done Verification ─────────────────────
@@ -3682,10 +3779,26 @@ export default async function main({
         recordPhase("H", "Harvest", "⏭", "Phase H: ⏭ Skipped (prerequisite not yet landed)");
       } else {
         phaseFn("Phase H: Harvest");
-        const harvestResult = await agentFn(
-          "harvest-learnings",
-          harvestPrompt(featureName)
-        );
+        const learningsPath = `docs/${featureName}/LEARNINGS-${featureName}.md`;
+        const harvestResult = await wrappedDispatch({
+          skill: "harvest-learnings",
+          basePrompt: harvestPrompt(featureName),
+          targetPath: learningsPath,
+          docType: "LEARNINGS",
+          dispatchKind: "harvest",
+          phaseId: "H",
+        });
+
+        // AC-4.2c: the §4.4 approval record is best-effort and is deliberately NOT
+        // part of §5.9's LEARNINGS criterion — a record-writing bug must not
+        // re-dispatch harvest to its budget. Its absence is reported, not swallowed.
+        const learningsText = await readFileFn(learningsPath);
+        if (!/approval record/i.test(String(learningsText ?? ""))) {
+          emit(
+            `Harvest note: the approval record is missing from ${learningsPath}. ` +
+              `It is best-effort (AC-4.2c) and is not a halt condition.`
+          );
+        }
 
         // TSPEC-HARVEST-04: Guard block detection
         if (
@@ -3743,6 +3856,49 @@ export default async function main({
     if (testSummary === "Not run" && haltReason) {
       testSummary = haltReason;
     }
+
+    // ─── TSPEC §4.7 / §6.5 — what an operator gets on a halt ────────────────
+    // The phase that failed is read off the recorded rows rather than carried in
+    // a parallel variable, so it can never disagree with the phase table.
+    const failedRow = [...phases].reverse().find((row) => row.status === "❌");
+    const haltPhase = failedRow ? failedRow.phase : null;
+
+    // §6.3: the POSTMORTEM claim is a FILESYSTEM confirmation, never the agent's
+    // narration — the whole of H-2 is that the two were assumed to agree.
+    let postmortemStatus = "none";
+    let postmortemPath = null;
+    if (haltPhase) {
+      const candidate = `docs/${featureName}/POSTMORTEM-${haltPhase}-${featureName}.md`;
+      let confirmation;
+      try {
+        confirmation = await checkFileFn(candidate);
+      } catch {
+        confirmation = { ok: false };
+      }
+      if (confirmation && confirmation.ok) {
+        postmortemStatus = "written";
+        postmortemPath = candidate;
+      }
+    }
+
+    // §6.5: EVERY halt class commits the queue row — exactly once per invocation.
+    let queueRow = null;
+    try {
+      const recorded = await recordHaltFn({ feature: featureName, status: "halted" });
+      queueRow = recorded && recorded.queueRow ? recorded.queueRow : null;
+    } catch {
+      queueRow = null;
+    }
+
+    if (postmortemStatus === "none") {
+      emit("No POSTMORTEM was written.");
+    }
+    // §14.4: exactly ONE recovery act is offered. A direct re-invocation is
+    // deliberately not offered — the queue row is the single entry point.
+    emit(
+      `Recover: set the ${featureName} row in docs/_queue/QUEUE.md back to pending, then re-run the queue.`
+    );
+
     return buildFinalReport({
       feature: featureName,
       outcome: "halted",
@@ -3753,6 +3909,10 @@ export default async function main({
       prUrl,
       ciStatus,
       haltReason,
+      haltPhase,
+      postmortemStatus,
+      postmortemPath,
+      queueRow,
     });
   }
 
@@ -3833,6 +3993,10 @@ function buildFinalReport({
   prUrl,
   ciStatus,
   haltReason,
+  haltPhase = null,
+  postmortemStatus = "none",
+  postmortemPath = null,
+  queueRow = null,
 }) {
   return {
     feature,
@@ -3841,6 +4005,13 @@ function buildFinalReport({
     artifactPaths,
     testSummary,
     harvestStatus,
+    // §4.7's four halt-disposition fields ride on EVERY report, present with a
+    // readable value on success too: a conditionally-spread field cannot express
+    // "no POSTMORTEM", which is precisely the fact `RLH-AT-46` reads.
+    haltPhase,
+    postmortemStatus,
+    postmortemPath,
+    queueRow,
     ...(prUrl ? { prUrl } : {}),
     ...(ciStatus ? { ciStatus } : {}),
     ...(haltReason ? { haltReason } : {}),
