@@ -11,7 +11,7 @@ frontmatter is the pickup gate; the `Status` cell tracks lifecycle.
 
 | Order | Status | Feature | REQ Path | Depends-On |
 |-------|--------|---------|----------|------------|
-| 1 | awaiting-merge | pdlc-workflow-distribution | docs/pdlc-workflow-distribution/REQ-pdlc-workflow-distribution.md | — |
+| 1 | done | pdlc-workflow-distribution | docs/pdlc-workflow-distribution/REQ-pdlc-workflow-distribution.md | — |
 | 2 | pending | pdlc-merge-phase | docs/pdlc-merge-phase/REQ-pdlc-merge-phase.md | pdlc-workflow-distribution |
 | 3 | pending | pdlc-advisory-tier | docs/pdlc-advisory-tier/REQ-pdlc-advisory-tier.md | pdlc-merge-phase |
 | 4 | pending | pdlc-consolidation-agent | docs/pdlc-consolidation-agent/REQ-pdlc-consolidation-agent.md | pdlc-workflow-distribution, pdlc-advisory-tier |
@@ -59,13 +59,28 @@ bootstrap, shell-script syntax and index modes). Two consequences for whoever pi
   in a `node:20` container (non-root — running as root bypasses the permission-bit fixtures and
   skews the result) rather than iterating through PR pushes.
 
-Row 1 is `awaiting-merge` as of 2026-07-29: the pipeline ran to the end of Phase PUB and raised
-https://github.com/ohenak/yumo-plugins/pull/19, whose five PR checks are green at `a8ac055`.
-`awaiting-merge → done` is a human step — this PR trips the self-modification convention in
-§Bootstrapping (it touches `pdlc/workflows/**` and `pdlc/skills/**`) and is never auto-merged.
-One item is left for human disposition rather than resolved: **DoD-15** — the 206 lines of
-`.github/workflows/pr-tests.yml` landed out-of-band in `3ef6ac7` and passed no pdlc phase, so the
-CI gate itself is unspecified and unreviewed even though it now demonstrably works.
+Row 1 is `done` as of 2026-07-29. The pipeline ran to the end of Phase PUB and raised
+https://github.com/ohenak/yumo-plugins/pull/19, whose five PR checks were green at `a8ac055`; the
+operator merged it as `1fb6cbe` (squash) and set this row `done`. Per §Bootstrapping that merge was
+always going to be an operator action — the PR touches `pdlc/workflows/**` and `pdlc/skills/**`, so it
+trips the self-modification convention and is never auto-merged.
+
+**Row 2 `pdlc-merge-phase` is now the next entry the queue will pick up** — it is `pending`, and
+`pdlc-workflow-distribution` was its only dependency. Every other row that names this feature stays
+unpickable for its own reason: rows 4 and 5 have further unmet dependencies (`pdlc-advisory-tier`, and
+for row 5 all of 2–4); rows 6 and 7 are `blocked` with no REQ authored; row 8 is `blocked` although its
+REQ **is** authored and `ready: true` — a human setting that row `pending` is the only thing standing
+between it and pickup — and the row 8 notes below argue it should land before row 2.
+
+Two items were left open at close rather than resolved:
+
+- **DoD-15** — the 206 lines of `.github/workflows/pr-tests.yml` landed out-of-band in `3ef6ac7` and
+  passed no pdlc phase, so the CI gate itself is unspecified and unreviewed even though it now
+  demonstrably works. This is the live instance of `docs/_constraints/DOMAIN-CONSTRAINTS.md` DC-07
+  ("work that skips a pipeline phase inherits zero review coverage"), promoted 2026-07-29.
+- **The eleven skill-prompt proposals** in `docs/_decisions/CONSOLIDATION-PROPOSAL-2026-07-29.md`,
+  from this feature's harvest and the first consolidation pass. P-2/P-3/P-4 overlap row 8 and should
+  be applied there rather than twice; P-1 is the one with the largest measured cost behind it.
 
 Row 1 was previously `halted` twice, for two different reasons — both now resolved history, not the
 current state:
@@ -107,9 +122,14 @@ sets it `pending`, which is the only thing standing between it and pickup.
   first, at Opus rates, risking a `needs revision` verdict on a settled document.
 
 Targets: `pdlc/workflows/orchestrate-dev.js`, `pdlc/workflows/orchestrate-queue.js`, both
-orchestrator SKILLs and the three author SKILLs; bundles rebuilt in the same commit. **This row
-should be landed before row 1's next Phase F attempt** — three of the four full runs on this branch
-died to harness defects rather than to the work.
+orchestrator SKILLs and the three author SKILLs; bundles rebuilt in the same commit.
+
+**Updated 2026-07-29:** this row's original recommendation was "land before row 1's next Phase F
+attempt", which is now moot — row 1 completed and is `done`. The recommendation still holds, retargeted:
+**land this row before row 2.** Three of the four full runs on row 1's branch died to harness defects
+rather than to the work, and row 1's own harvest independently re-derived H-1 and H-2 from 16 REQ
+rounds of evidence (see `CONSOLIDATION-PROPOSAL-2026-07-29.md` P-2/P-3/P-4, which overlap this row and
+should be applied here rather than twice). Nothing about those defects was specific to row 1.
 
 ## Priority rationale (2026-07-27 — closing the engineering loop)
 
