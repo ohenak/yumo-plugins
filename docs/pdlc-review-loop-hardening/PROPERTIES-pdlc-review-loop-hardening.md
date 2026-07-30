@@ -1056,7 +1056,7 @@ malformed, since the count is payload-blind**; and **no trailer at all**. 100 ca
 double-line — **of which ≥2 are the mixed valid-plus-malformed shape**, which is what makes conjunct
 (ii)'s payload-blindness non-vacuous rather than a sentence — and ≥5 no-trailer. The `quoted-hash.md` fixture (§6.3) pins the quoted case by example;
 the floor makes it
-a space. **The ≥5 double-trailer floor survives as a floor on the *rejection* shape** (PM Q-02): it is
+a space. **The ≥5 double-line floor survives as a floor on the *rejection* shape** (PM Q-02): it is
 what forces `reason === "duplicated"` — a named catalogue member, not merely `ok: false` — to be
 exercised, which the hex-shape totality conjunct cannot reach, since totality quantifies over returned
 hashes and a duplicated document returns none.
@@ -1164,9 +1164,9 @@ ledger against a live gap, which is worse than the gap. The honest division is:
 | `UNEVALUABLE` class | Owner in this document |
 |---|---|
 | `unparseable` anchor | **`PROP-STALE-01`** conjunct (i), ≥5 cases in each of four malformed shapes |
-| `duplicated` trailer | **`PROP-HASH-01`** — named-`reason` conjunct, ≥5 double-trailer floor |
+| `duplicated` trailer | **`PROP-HASH-01`** — named-`reason` conjunct (ii), ≥5 double-line floor |
 | `absent` trailer | **`PROP-HASH-01`** — named-`reason` conjunct, ≥5 no-trailer floor |
-| **unreadable document** | **nobody** — no property here covers it; recorded as a residual with a named successor surface in §8.4 (PM Q-01) |
+| **unreadable document** | **nobody** — no property here covers it, and as of v1.3 **no queue row charters it either**; recorded as an unowned residual in §8.4 residual 6, with the action that would give it an owner stated there (PM Q-01, PM F-02) |
 
 **Generator.** D3 document plus an anchor produced by one of: `sha256:` + digest of the document
 (fresh), `sha256:` + digest of a one-byte-mutated copy (stale), `sha256:` + digest of a
