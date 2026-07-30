@@ -642,13 +642,13 @@ export function deriveRoundWindow(basenames, docType)
 export function selectMode({ dispatchKind, docType, present, reviewFiles, startIndex })
 //   → { mode: "authoring" | "revision", round: number|null, reason: string }
 //   The ONLY producer of EpisodeKey.mode (§4.5). Pure: it reads no file itself.
-//   `present` is Map | null; null means NOT OBSERVED, which is not the same
-//   input as an empty Map and never selects greenfield (§5.6.1 rule 4).
+//   `present` is always a Map. There is no "not observed" input: a listing
+//   that cannot be judged halts at the seam (§4.2, §6.2 rows 2 and 17), so
+//   `selectMode` is only ever reached with a measurement in hand.
 //   Its caller — reviewLoop's refreshReviewState, once per EPISODE entry, never
 //   a pre-loop snapshot (§5.6.1 S-INV) — owns the freshness of both maps.
-//   FSPEC §15.2's four rules; greenfield requires a successful observation of
-//   an empty review record, so both an unread verdict and an unread listing
-//   fail toward "revision".
+//   FSPEC §15.2's four rules; greenfield requires an observed-empty review
+//   record, so an unread verdict fails toward "revision".
 
 export function isTerminal(mode, response, artifactClass, docType, after)
 //   → { terminal: boolean, trailerReason: TrailerFailure|null }
@@ -1296,11 +1296,9 @@ from the artifact's structural state:
 export function selectMode({ dispatchKind, docType, present, reviewFiles, startIndex })
 //   dispatchKind : "authoring" | "review" | "dod-verify" | "harvest"
 //   docType      : the doc type this episode's artifact set belongs to
-//   present      : per-role Map<role, number[]> for docType, from deriveRoundWindow,
-//                  or **null** meaning NOT OBSERVED by this episode (§6.2 row 17)
+//   present      : per-role Map<role, number[]> for docType, from deriveRoundWindow
 //   reviewFiles  : Map<`${role}:${round}`, { verdict, verdictReadable, anchorHash }>
-//   startIndex   : the round window's start, used only to name the round when
-//                  `present` is null
+//   startIndex   : the round window's start
 //   →  { mode: "authoring" | "revision", round: number|null, reason: string }
 ```
 
