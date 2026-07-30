@@ -2590,3 +2590,82 @@ completeness (**no**, §16.5); whether progress varies by mode (**no**, §15.3);
 progress (**no**, §8.4).
 
 ## 21. Obligation discharge and traceability
+
+### 21.1 REQ §8 obligation rows landing in FSPEC
+
+| Row | Substance | Discharged in | Complete? |
+|---|---|---|---|
+| **O-1** | Review-artifact discovery: injected listing seam, adapter implementation, absent-directory behaviour; disposition of `listAllFiles`/`WALK_SKIP_DIRS` precedent; **one shared "cannot judge" error contract** across both listing paths (DC-11) | §1.4, §3 | Yes — `listAllFilesSafe` shares the one four-value `ListFailure` catalogue; two implementations, one error contract |
+| **O-2** | Filename grammar including the un-suffixed round-1 form, role slugs from `reviewerRoleSlug`'s `MAP`, doc-type token, unambiguous `N`, rejection of non-conforming names | §4 | Yes |
+| **O-3** | Representation of "unresolved POSTMORTEM" — marker location and grammar — and Recommendation extraction | §12.2, §12.3, §12.5 | Yes |
+| **O-4** | The queue-status commit: who performs the git operation, the message, dirty-tree and commit-failure behaviour | §13 | Yes |
+| **O-5** | The direct-invocation path: how the row is located, and what happens when there is none | §14 | Yes |
+| **O-6** | Retry-aware prompt contract: how an author is told it is a retry, and how the first unwritten section is determined | §15.5 | Yes — determined by the **script**, with three definite cases |
+| **O-7** | Structural completeness per **wrapped artifact class** — six spec documents plus cross-review, code-review and LEARNINGS; implements (not re-chooses) the two REQ-fixed criteria; **excludes** the approval record from LEARNINGS; does **not** redefine progress | §16 | Yes |
+| **O-8** | The staleness comparison, as **narrowed at v1.5**: one hash-equality test at both tiers, **no history walk at either**, sha not load-bearing, read-at-comparison-time rule, both-tiers-disagree, no-parseable-hash, rebase-invariance argument | §10 | Yes |
+| **O-9** | The operator override surface and its precedence relative to recorded approval | §11 | Yes |
+| **O-16** | AC-5.1/AC-5.2 as concrete edits, cited by **enclosing symbol + distinctive literal**, with the HEAD sha recorded | §17 (baseline `0655387`) | Yes — no bare `file:line` citation anywhere in this document |
+| **O-17** | Persisted-verdict grammar and extraction; the script-written **hash + reviewed-commit** fields, their syntax, algorithm, canonicalisation, single-implementation requirement, write ordering, append shape and idempotence; the **revision-completion trailer** grammar and the author-SKILL amendment | §6 (verdict), §7 (hash), §8 (trailer) | Yes — one grammar family, three carriers (§2.3) |
+| **O-18** | Role-asymmetric handling in the approval search | §5 | Yes |
+| **O-19** | Constant **placement** for `MAX_AUTHORING_WRITE_BYTES`, `MAX_AUTHORING_ATTEMPTS`, `MAX_AUTHORING_DISPATCHES`, plus the explicit statement that **no oracle for emitted bytes exists** | §15.7 | **Placement half only** — the oracle half (a)–(j) is PROPERTIES/TSPEC work; §19's AT-35..AT-53 are the behavioural gates those oracles must satisfy |
+| **O-20** | Per-section commit cadence and the **commit-diff proxy**: what is measured, the threshold, that a violation is reported, and that the proxy is advisory and may not halt the run | §15.8 | Yes |
+| **O-21** | Approval-record grammar in LEARNINGS: placement, the six REQ-fixed columns, **copy-not-recompute** derivation, tier precedence, unavailable marker, canonicalisation referent, guard-not-tightened falsifier | §9 | Yes |
+
+**Rows not landing in FSPEC** and therefore not discharged here: O-10..O-15 (TSPEC / PROPERTIES /
+SKILL-text owners), and the oracle half of O-19. **Deferrals D-RLH-01..05 are out of scope** and are
+specified nowhere in this document; §15.1 names D-RLH-05 only to record *why* code-writing dispatches are
+excluded from the wrapper, and §15.4 names D-RLH-04 only to record that the runtime retry count is not
+claimed.
+
+### 21.2 AC group → FSPEC section map
+
+| AC group | Sections |
+|---|---|
+| AC-1 (iteration index, discovery) | §3, §4, §5, §17.1 |
+| AC-2 (terminal, legible non-convergence) | §12, §13, §14 |
+| AC-3 (resumable authoring) | §8, §15, §16 |
+| AC-4 (approved-phase skip) | §5, §6, §7, §9, §10, §11 |
+| AC-5 (harness consistency) | §17 |
+
+### 21.3 REQ retractions this document depends on
+
+Every one is a rule an earlier REQ version stated and later **withdrew**. This document specifies the
+**surviving** rule in each case, and lists them here so a reviewer can check that none was silently
+reinstated.
+
+| Retracted | Superseded by | Where the surviving rule is stated |
+|---|---|---|
+| Tier-1 staleness measured by "the approving cross-review artifacts' own position in history" (v1.3–v1.4) | AC-4.4 v1.5 — one hash-equality test at both tiers | §10.1, §10.2 |
+| The recorded **commit sha** as a staleness referent | AC-4.2b/AC-4.2d — corroborating context only | §10.2 |
+| "The commit sha that round's approving cross-review files were committed at" (v1.2–v1.4) | AC-4.2b v1.5 (TE-v5 F-03) — the **reviewed document's** commit | §7, §9.3 |
+| Harvest **computes** the hash from the document it harvests beside (v1.3) | AC-4.2b v1.4 — harvest **copies** it from the tier-1 record | §9.4 |
+| Canonicalisation over "the document file as committed, byte-for-byte" (v1.3) | AC-4.2d/SE-v5 F-06 — the working-tree bytes read immediately before the review dispatch | §9.5, §10.3 |
+| "The same single pre-dispatch read" shared with the pacing measurement | AC-4.2d v1.5 (SE-v5 F-02) — a **new** pre-review read | §7 |
+| Force-run offered as an alternative route through an unresolved POSTMORTEM (v1.2) | AC-4.6a / SE-v3 F-02 — AC-2.4 is the **exclusive** route | §11.5, §12.4 |
+| "Or AC-4.6 (force the phase)" in worked example B | same | §12.4 |
+| Terminal = "the dispatch returned normally" (v1.4) | AC-3.5b v1.5 (TE-v5 F-01) — the revision-completion trailer | §8.1, §8.4 |
+| Terminal requires **progress** on the terminal dispatch (v1.4) | AC-3.5b v1.5 (TE-v5 F-02) — a no-op with a trailer is terminal | §8.1, §8.4 |
+| Mode-specific progress limbs; byte-change restricted to revision mode (v1.4) | AC-3.5a v1.5 (TE-v5 F-05) — one mode-independent predicate | §15.3 |
+| Mode derived from the artifact's structural state, sticky only **within** an episode (v1.3, v1.4) | AC-3.5 scope (d) v1.5 (SE-v5 F-01) — derived from the kind of prompt the phase dispatches | §15.2 |
+| `MAX_AUTHORING_DISPATCHES` scoped "per artifact per phase" (v1.2) | AC-3.5c v1.3 — per **episode** (set × phase × round × invocation) | §15.1, §15.4 |
+| "The correct operator response is to re-invoke" (v1.3 rationale for AC-3.5f) | AC-3.5f v1.4 — both halt classes need a human act | §15.6 |
+| "An operator bypassing the queue needs **none**" (v1.4) | AC-3.5f/AC-2.7a v1.5 (SE-v5 F-04) — true of the phase, false of the queue | §14.4, §15.6 |
+| Bypass offered as **equivalent** to the queue-row reset (v1.4) | AC-2.7a v1.5 (SE-v5 F-04) — the row edit is the only act that recovers the queue | §14.4 |
+| The `≈150 lines` co-bound on the write budget (v1.1) | AC-3.1a v1.2 (TE-v2 F-03) — a byte bound only | §15.7 |
+| Append-only byte equality applied to **all** edits (v1.2) | AC-3.1a v1.3 (SE-v3 F-05) — a replace-shaped edit emits match **plus** replacement | §15.8 |
+| "How the pacing bound is checked in review" (v1.2) | AC-3.1a v1.3 (TE-v3 F-03) — not script-decidable; the proxy plus the counters | §15.7, §15.8 |
+| Committing the `.claude/workflows/` consumer copy (v1.0) | AC-5.5 v1.1 (SE F-01) — untracked by decision (DEC-DIST-02) | §17.6 |
+| `decisionsWarranted(...)` cited in function-call form (v1.4) | v1.5 (TE-v5 F-06) — the mechanism is `parseDecisionsWarranted` bound to a local | §15.1 |
+
+### 21.4 Constraint compliance
+
+| Constraint | How this document complies |
+|---|---|
+| **C-2** (runtime restrictions) | Every new capability reaches the runtime through a DI seam declared in §1.4 and implemented in `runtime-adapter.js`; §7's digest is inlined pure JS with **no** seam and no `crypto`; every injected IO call is specified as `await`ed, and AT-19 asserts it at bundle level |
+| **C-4** (clean-branch behaviour) | E-01 / AT-03 — an absent feature directory is benign, with no warning and no halt |
+| **C-5** (no agent in a decision a script can make) | The script owns every decision: round derivation, grammar parsing, verdict extraction, hash computation and comparison, section counting, first-unwritten-section, force parsing, POSTMORTEM gating, Recommendation extraction. Agents supply only **closed-catalogue tokens** (§6, §8) and byte transport. §6 explicitly declines to reuse `recoverVerdict` on the approval path for this reason. |
+| **DC-01** (closed catalogue, total function) | Every parser in §3, §4, §6, §8, §11.3, §12.3 is specified over its whole input domain with a named failure value |
+| **DC-02** (measured platform facts) | Every platform claim cites the file and its distinctive literal at HEAD `0655387`; §4a A-1/A-2/A-7/A-8/A-9/A-10/A-11 are the measured basis |
+| **DC-04** (oracle = pure function of injected root) | `listAllFilesSafe(root)` keeps the oracle side root-parameterised and pure |
+| **DC-11** (sibling oracles share one error contract) | §3's single `ListFailure` catalogue, defined once and used by both listing paths |
+| Generated artifacts | §17.6 — `dist/` rebuilt and committed with its sources; `.claude/workflows/` never committed |
