@@ -456,6 +456,80 @@ describe("RLH-25: the POSTMORTEM gate", () => {
     expect(rReviews.length).toBeGreaterThanOrEqual(2);
     expect(phaseOf("R").status).not.toBe("⏭");
   });
+
+  /**
+   * `approvalHashOf` (TSPEC §3.7) is the only producer of a `FRESH` anchor, so
+   * example A's "same-round approving verdict fields" fixture is built with the
+   * module's own digest rather than a hand-written constant that could agree
+   * with a wrong implementation.
+   */
+  function freshAnchorFor(text) {
+    expect(typeof dev.approvalHashOf).toBe("function");
+    return dev.approvalHashOf(text);
+  }
+
+  /** FSPEC §12.4 example A's tree, built from the row quoted above. */
+  function exampleATree() {
+    return {
+      ...baseTree(),
+      ...reqReviewPair(1, { approving: true, hash: freshAnchorFor(REQ_TEXT) }),
+      [POSTMORTEM_R]: postmortemDoc(),
+    };
+  }
+
+  it("RLH-AT-26: the skip reports the open POSTMORTEM without resolving it", async () => {
+    // E-26 / §6.2 row 13a, driving FSPEC §12.4 example A verbatim.
+    expect(FSPEC_12_4_EXAMPLE_A.case).toContain("skip fires");
+
+    const before = postmortemDoc();
+    const { result, phaseOf, fs } = await run({ files: exampleATree() });
+
+    // "Phase R is skipped, the run continues to Phase F …"
+    expect(phaseOf("R").status).toBe("⏭");
+    expect(phaseOf("F")).toBeDefined();
+    expect(result.outcome).toBe("success");
+
+    // "… and the report names both the approval and the still-open POSTMORTEM."
+    // §4.7 fixes the line verbatim, bracketed clause and all.
+    expect(phaseOf("R").detail).toContain(
+      `Skipped — approved round 1, hash FRESH; unresolved POSTMORTEM at ${POSTMORTEM_R}`
+    );
+
+    // The skip is not a halt, but the state is still reported structurally.
+    expect(result.haltPhase).toBeNull();
+    expect(result.postmortemStatus).toBe("unresolved");
+    expect(result.postmortemPath).toBe(POSTMORTEM_R);
+
+    // "without resolving it" — byte-identical on disk, never written, never
+    // appended to. `checkPostmortem` is a query (§5.8) and the marker is
+    // human-written only.
+    expect(fs.files[POSTMORTEM_R]).toBe(before);
+    expect(fs.writes.map((w) => w.path)).not.toContain(POSTMORTEM_R);
+    expect(fs.appends.map((a) => a.path)).not.toContain(POSTMORTEM_R);
+  });
+
+  it("RLH-AT-27: refusal is keyed on (phase, feature) — F, T, P and D are unaffected", async () => {
+    // AC-2.3a / E-27. Only `POSTMORTEM-R-foo.md` exists; the gate is consulted
+    // per phase at `docs/{feature}/POSTMORTEM-{phaseId}-{feature}.md` (§6.3),
+    // so no other phase sees it.
+    const { result, fs, phaseOf } = await run({ files: exampleATree() });
+
+    expect(result.outcome).toBe("success");
+    expect(result.haltReason).toBeUndefined();
+
+    for (const phaseId of ["F", "T", "P", "PR"]) {
+      expect(phaseOf(phaseId)).toBeDefined();
+      // The gate ran for this phase, against this phase's own path …
+      expect(fs.reads.map((r) => r.path)).toContain(
+        `${DOCS}/POSTMORTEM-${phaseId}-${FEATURE}.md`
+      );
+      // … and found nothing, so nothing was refused.
+      expect(phaseOf(phaseId).detail || "").not.toContain("refused");
+    }
+    for (const phaseId of ["F", "T", "P", "D", "PR"]) {
+      expect(JSON.stringify(result)).not.toContain(`Phase ${phaseId} refused`);
+    }
+  });
 });
 
 // ─── PLAN §7.4: the orchestrator half of AT-30…AT-34 ─────────────────────────
