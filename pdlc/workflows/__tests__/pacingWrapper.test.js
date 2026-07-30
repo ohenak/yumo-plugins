@@ -1384,3 +1384,96 @@ describe("RLH-AT-54 — constant substitution respects the budget semantics (FSP
 });
 
 // ─── 12. RLH-AT-61-loop, RLH-AT-61-report — the four trailer reasons ──────────
+
+/**
+ * The four §4.3 `TrailerFailure` values, paired with the fixture response that
+ * must produce each. Every one is non-terminal; there is no `reason: "trailer"`.
+ */
+const TRAILER_FIXTURES = Object.freeze([
+  { reason: "declared_incomplete", key: "declared_incomplete" },
+  { reason: "absent", key: "absent" },
+  { reason: "duplicated", key: "duplicated" },
+  { reason: "unparseable", key: "unparseable" },
+]);
+
+/** Which of the four reasons a serialized surface mentions. */
+function reasonsIn(text) {
+  return TRAILER_FIXTURES.map((f) => f.reason).filter((r) => String(text ?? "").includes(r));
+}
+
+describe("RLH-AT-61-loop — each trailer reason is distinguishable in reviewLoop's return (FSPEC §19 AT-61, E-67, E-68)", () => {
+  // Deviation from this suite's L2 stratum, deliberately: the subject of this
+  // half of AT-61 is literally "`reviewLoop`'s return" (PLAN §5.4 row RLH-21,
+  // TSPEC §3.9), and §3.8 forbids exporting `dispatchAndVerify`, so the exported
+  // `reviewLoop` is the only legitimate observation point.
+  test("RLH-AT-61-loop: 'REVISION-COMPLETE: no', a missing trailer, two trailer lines and an unparseable value each leave a DIFFERENT reason in reviewLoop's return, and every one of them is non-terminal", async () => {
+    const seen = [];
+    for (const fixture of TRAILER_FIXTURES) {
+      const fs = fakeFs({ [FSPEC_PATH]: completeDoc("FSPEC") });
+      const dispatches = [];
+      const agent = async (skill, prompt) => {
+        dispatches.push({ skill, prompt: String(prompt ?? "") });
+        if (REVIEW_SKILLS.includes(skill)) {
+          const role = ROLE_SLUG[skill];
+          const round = iterationIn(prompt) ?? 1;
+          fs.writeFile(
+            `${DOCS_DIR}/CROSS-REVIEW-${role}-FSPEC-v${round}.md`,
+            crossReviewDoc({ verdict: "Needs revision", high: 1 })
+          );
+          return reviewResponse("Needs revision", 1);
+        }
+        // The revision dispatch: no edit, and a trailer of the fixture's shape.
+        return authorResponse(fixture.key, "Considered the findings.");
+      };
+
+      const result = await devModule.reviewLoop({
+        doc: FSPEC_PATH,
+        phase: "F",
+        docType: "FSPEC",
+        reviewers: ["se-review", "te-review"],
+        optimizer: "pm-author",
+        feature: FEATURE,
+        _agent: agent,
+        _parallel: (promises) => Promise.all(promises),
+        _listFiles: fakeListFiles((dirPath) => basenamesIn(fs.files, dirPath)),
+        ...fs.injections(),
+      });
+
+      // Non-terminal: the wrapper re-dispatched the optimizer rather than
+      // accepting the failed trailer.
+      const optimizerCalls = dispatches.filter((d) => !REVIEW_SKILLS.includes(d.skill));
+      expect({ reason: fixture.reason, redispatched: optimizerCalls.length > 1 })
+        .toEqual({ reason: fixture.reason, redispatched: true });
+
+      const surface = result && result.trailerReason !== undefined
+        ? String(result.trailerReason)
+        : JSON.stringify(result ?? null);
+      seen.push({ reason: fixture.reason, mentioned: reasonsIn(surface) });
+    }
+
+    // A parser returning a constant reason for every non-`yes` input fails here.
+    expect(seen).toEqual(
+      TRAILER_FIXTURES.map((f) => ({ reason: f.reason, mentioned: [f.reason] }))
+    );
+  });
+});
+
+describe("RLH-AT-61-report — each trailer reason is distinguishable in the operator report (FSPEC §19 AT-61, §4.7)", () => {
+  test("RLH-AT-61-report: the same four fixtures driven through main() each echo their own reason — declared_incomplete, absent, duplicated, unparseable — into the run report, and no report names a reason it did not observe", async () => {
+    const seen = [];
+    for (const fixture of TRAILER_FIXTURES) {
+      const run = await runPipeline({
+        review: reviewersFailing([1]),
+        author: (ctx) =>
+          ctx.kind === "optimizer" && ctx.phase === "R"
+            ? { write: null, response: authorResponse(fixture.key, "Considered the findings.") }
+            : {},
+      });
+      seen.push({ reason: fixture.reason, mentioned: reasonsIn(run.reportText) });
+    }
+
+    expect(seen).toEqual(
+      TRAILER_FIXTURES.map((f) => ({ reason: f.reason, mentioned: [f.reason] }))
+    );
+  });
+});
