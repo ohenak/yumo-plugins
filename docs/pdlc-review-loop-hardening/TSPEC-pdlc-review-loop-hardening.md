@@ -757,11 +757,17 @@ export const TRAILER_FAILURES  = ["declared_incomplete", "absent", "duplicated",
 | `unreadable` | permissions, IO error, or an adapter response the prompt did not permit | **cannot judge** ⇒ halt |
 | `bad_argument` | `dirPath` absent, non-string, or empty | **cannot judge** ⇒ halt |
 
-The three non-benign values produce one halt-reason shape, shared by both listing paths (DC-11):
+**These dispositions are properties of the value, not of the call site.** Every caller of the seam
+applies this table unchanged — the phase-entry derivation (§2.5 step 2) and §5.6.1's per-episode
+`refreshReviewState` alike — and the three non-benign values produce one halt-reason shape at all of
+them (DC-11, FSPEC §3.3's "one halt, with one shape … no caller invents its own wording"):
 
 ```
 Cannot enumerate {dirPath}: {reason}
 ```
+
+No site narrows or excepts this. §6.2 row 17 enumerates the refresh site so the reader can see it is
+governed here, and claims no exception.
 
 The asymmetry is the whole point. "There are no cross-reviews" and "I could not find out whether
 there are cross-reviews" must not collapse into the same value, because the second, silently treated
@@ -1674,7 +1680,7 @@ failure to answer.
 | 14 | non-convergence within `startIndex..endIndex` | `checkConverged` | §6.3's terminal exit |
 | 15 | POSTMORTEM write failed | `_checkFile` after the write agent | §6.4's second halt shape, `postmortemStatus: "write_failed"` |
 | 16 | queue-row commit failed | `_git` → `{ ok: false }` | §6.5; `queueRow: "error"`; the halt itself is **not** downgraded |
-| 17 | `refreshReviewState`'s `_listFiles` fails **mid-loop** (§5.6.1) | seam return | `present` is returned as **`null` — not observed**, never as an empty Map; the last observed `reviewFiles` / `startIndex` are kept for naming the round, and the failure is reported. §5.6.1 rule 4 selects **revision unconditionally** on `present === null`, so the episode cannot be reclassified greenfield even on a branch whose last observed `present` was empty. Distinct from row 1: row 1 is a *successful* observation of a virgin branch (empty Map ⇒ greenfield is correct); this row is the absence of an observation, which is not evidence of anything |
+| 17 | `refreshReviewState`'s `_listFiles` fails **mid-loop** (§5.6.1) | seam return | **exactly rows 1 and 2, no exception claimed.** `dir_missing` is a benign empty listing; the three non-benign values **halt** with §4.2's one shape. This row exists only so the second call site of the seam is enumerated — the disposition is §4.2's, and this site does not get its own. The consequence for §5.6.1: a listing that cannot be judged never produces a "not observed" state for `selectMode` to classify, which is why rule 4's `present` is an ordinary `Map` and needs no third arm |
 
 Rows 10 and 11 write **no POSTMORTEM** on purpose. Exhausting the authoring budget is the pacing
 wrapper refusing to keep paying; it is not the reviewers failing to converge, and a POSTMORTEM
@@ -2205,7 +2211,7 @@ its v1.0 form.
 | **C-5** — no agent in a script-decidable loop | the entire decision surface lives in §2.4's pure stratum; `recoverVerdict` explicitly not reused on the approval path (§2.6) |
 | **DC-01** — closed and total | four failure catalogues (§4.1); six total parsers (§5); every emit-side string catalogued |
 | **DC-02** — measured, not inferred | every claim about existing code verified against the tree at HEAD `af6f335` (v1.0) and re-measured at `ef4705a` (v1.1, §1.4); `stripModuleSyntax`'s and `wrapModule`'s behaviour, `rtDevInjections`'s nine entries, `main()`'s sixteen injections, the dev bundle's composition array and `DEV_META`'s missing `inputs` all read directly. v1.1 adds six measurements rather than inferences, and two of them **overturned** a reviewer's own suggestion or premise: TE F-04's proposed exemption predicate was measured too wide against five real capability seams, and §8.3's "must stay green" was measured false (1038/1/70) | 
-| **DC-11** — one error contract per question | `ListFailure` shared across both listing paths; `_git` and `_mergeWorktree` justified as answering different questions (§3.4) |
+| **DC-11** — one error contract per question | `ListFailure` and its dispositions shared across **every** listing call site, none excepted (§4.2, §6.2 rows 1/2/17); `_git` and `_mergeWorktree` justified as answering different questions (§3.4) |
 | **DEC-DIST-01/02** | `dist/` regenerated in the same commit; consumer copy never committed (§7.3) |
 | **DEC-ORACLE-01/03** | run-wide assertions written as explicit tests; one canonical double per seam at a named path (§8.1) |
 
