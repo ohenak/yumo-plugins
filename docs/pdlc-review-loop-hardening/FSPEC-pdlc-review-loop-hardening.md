@@ -14,9 +14,38 @@ feature: pdlc-review-loop-hardening
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude + operator | 1.5 | 2026-07-30 |
+| pdlc | draft | Claude + operator | 1.6 | 2026-07-30 |
 
 ### Changelog
+
+**v1.6 (2026-07-30) — tracks a correction made to an already-approved REQ. Not editorial.** This
+version follows `REQ-pdlc-review-loop-hardening.md` **v1.6**, which corrected a drafting slip in
+AC-4.7 after that REQ had been approved. Amending approved upstream documents downstream of approval
+was a deliberate, authorised operator decision, taken because the alternative — specifying around the
+slip at TSPEC altitude — would have left the REQ permanently disagreeing with the mechanism built
+from it. It is recorded here as prominently as in the REQ so that no reader of this FSPEC alone can
+miss it.
+
+- **The change: AC-4.7's skip-eligible phase set gains `PR` (PROPERTIES).** `R, F, T, P, D` →
+  **`R, F, T, P, D, PR`**. Raised independently by both TSPEC round-1 cross-reviews —
+  `CROSS-REVIEW-product-manager-TSPEC-v1.md` **F-05** and `CROSS-REVIEW-test-engineer-TSPEC-v1.md`
+  **T-Q-01** — and ruled a slip by the operator. The REQ v1.6 entry carries the full argument; the
+  short form is that PROPERTIES meets AC-4.7's own stated criterion (named creator, the same reviewer
+  pair, convergence through a `CROSS-REVIEW-{role}-PROPERTIES-v{N}` artifact), and that under the
+  five-phase set AC-4.2's verdict and AC-4.2b's approval record were written for PROPERTIES
+  cross-reviews and read by nothing — the precise unread-record outcome AC-4.7a exists to forbid.
+- **Three sites in this document change, and nothing else does.** (i) **§10.7** — the approval
+  comparison's scope becomes six phases. (ii) **§11.1** — `forcePhases`' catalogue admits `PR`, and
+  `all` now means **six** phases rather than five. (iii) **§11.3** — the parse table's `all` row
+  yields `{R,F,T,P,D,PR}`, and the rejection halt text becomes
+  `Unrecognised forcePhases token(s): {badTokens joined}. Valid: R, F, T, P, D, PR, all.` The
+  catalogue and the rejection message are one list and were changed together on purpose: the message
+  is the operator's only view of the closed set.
+- **No mechanism changed, and no clause was withdrawn.** Nothing in this FSPEC was ever
+  five-phase-shaped — §16.2 already enumerates PROPERTIES among the six spec classes, §4.3 already
+  carries `PROPERTIES` in the doc-type catalogue, and `PHASE_DISPATCH` already carries six
+  document-review phases. Only the enumeration was short. Downstream, the TSPEC updates §5.5, §5.7's
+  `valid` array, `parseForcePhases`'s catalogue and rejection message, and AT-29's expected text.
 
 **v1.5 (2026-07-30)** — **post-approval editorial.** Both iteration-5 cross-reviews returned
 `VERDICT: Approved` **against v1.4**; this version changes nothing they blocked on. It applies the one
@@ -1442,7 +1471,9 @@ its approval while a rebase that alters them revokes it — exactly the semantic
 
 ### 10.7 Scope
 
-The comparison is evaluated only for the phases AC-4.7 admits — **R, F, T, P and D**. Phase CR and
+The comparison is evaluated only for the phases AC-4.7 admits — **R, F, T, P, D and PR** *(six as of
+REQ v1.6 / FSPEC v1.6; `PR` was omitted from AC-4.7's enumeration through v1.5 and the omission was
+ruled a slip — see the v1.6 changelog entry)*. Phase CR and
 Phase DOD produce no `CROSS-REVIEW-{role}-{doc-type}` pair for a named document, so there is no
 recorded hash and no document to compare; they are out of scope for AC-4 entirely and this comparison is
 never reached for them.
@@ -1460,7 +1491,7 @@ A single optional workflow input, `forcePhases`.
 | Name | `forcePhases` |
 | Type | `string` — a comma-separated list of phase ids, or the literal `all` |
 | Required | No. Absent ⇒ no phase is forced (today's behaviour exactly) |
-| Catalogue | Members of AC-4.7's in-scope set only: `R`, `F`, `T`, `P`, `D`. Plus the literal `all`, meaning all five. |
+| Catalogue | Members of AC-4.7's in-scope set only: `R`, `F`, `T`, `P`, `D`, `PR`. Plus the literal `all`, meaning all six. *(v1.6: `PR` added — AC-4.7's five-phase enumeration was a slip.)* |
 | Parsing | Split on `,`, trim each token, drop empty tokens, upper-case. Total function: an unrecognised token is **rejected**, not ignored (§11.3). |
 | Invocation | `/pdlc:orchestrate-dev` with an args object: `{ reqPath: "docs/{feature}/REQ-{feature}.md", forcePhases: "F,T" }` |
 
@@ -1503,7 +1534,7 @@ attended operator act, and O-5's direct-invocation path (§14) is where it belon
 | Input | Result |
 |---|---|
 | absent / `null` / `""` / whitespace | `{ ok: true, phases: ∅ }` — not an error |
-| `all` (any case) | `{ ok: true, phases: {R,F,T,P,D} }` |
+| `all` (any case) | `{ ok: true, phases: {R,F,T,P,D,PR} }` — **six** members as of v1.6, not five |
 | `F,T` | `{ ok: true, phases: {F,T} }` |
 | `f, t ,` | `{ ok: true, phases: {F,T} }` — trimmed, upper-cased, empty tokens dropped |
 | `CR` or `DOD` | `{ ok: false, badTokens: ["CR"] }` — **rejected**, because AC-4.7 puts them out of AC-4's scope; silently ignoring them would let an operator believe a forced CR was honoured |
@@ -1512,8 +1543,13 @@ attended operator act, and O-5's direct-invocation path (§14) is where it belon
 A rejection **halts before any phase runs**, with one halt shape:
 
 ```
-Unrecognised forcePhases token(s): {badTokens joined}. Valid: R, F, T, P, D, all.
+Unrecognised forcePhases token(s): {badTokens joined}. Valid: R, F, T, P, D, PR, all.
 ```
+
+The `PR` token in that message is not decoration: the message **is** the catalogue as far as an
+operator is concerned, so a catalogue that admits `PR` while the rejection message omits it would
+teach the operator the wrong closed set at the exact moment they are being corrected. The two are one
+list and change together.
 
 Halting rather than warning is the fail-closed direction here: the operator's stated intent was not
 achieved, and running the pipeline anyway would silently substitute a different plan. `all,F` is
