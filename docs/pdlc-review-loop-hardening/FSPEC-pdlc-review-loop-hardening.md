@@ -2017,10 +2017,14 @@ continues from committed partial progress with a **full** dispatch budget. Only 
 §12 persists, and §15.6 establishes that budget exhaustion writes none.
 
 **Consistency with the round budget, shown.** The two constants bound the same loop at different
-granularities: worst-case dispatches for one artifact in one phase in one invocation is
-`MAX_REVIEW_ROUNDS × MAX_AUTHORING_DISPATCHES` = 5 × 6 = **30**, and the worst-case consecutive-stall run
-inside any one episode is 3. A healthy five-round convergence uses one or two dispatches per episode and
-approaches neither bound.
+granularities. Because `mode` is a coordinate of the episode key (§15.1, TE-v1 F-04), one artifact in one
+phase passes through **one greenfield episode plus up to `MAX_REVIEW_ROUNDS` revision episodes** — 1 + 5 =
+**6** episodes, not 5 — each carrying its own `MAX_AUTHORING_DISPATCHES`. Worst-case dispatches for one
+artifact in one phase in one invocation is therefore `(1 + MAX_REVIEW_ROUNDS) × MAX_AUTHORING_DISPATCHES`
+= 6 × 6 = **36**, and the worst-case consecutive-stall run inside any one episode is 3. A healthy
+five-round convergence uses one or two dispatches per episode and approaches neither bound.
+*(v1.2, SE-v2 F-13: the shown product was `5 × 6 = 30`, which silently dropped the greenfield episode that
+the same version's five-coordinate key had just introduced.)*
 
 **The exhaustion report (AC-3.5d).** Names the phase, the artifact, **which** budget was exhausted, and
 the actual counts:
