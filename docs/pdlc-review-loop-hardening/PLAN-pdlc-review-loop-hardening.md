@@ -596,6 +596,16 @@ red — which is the whole reason the ledger is per assertion and not per file (
 | `RLH-AT-60`, `-62`; `isComplete` property | RLH-12 (4) | batch 6 | batches 4–5 | RLH-16 |
 | `RLH-AT-59` | RLH-12 (4) | batch 7 | batches 4–6 | RLH-23 |
 
+**`RLH-AT-64` guards `orchestrate-dev`'s composition root only** (TSPEC §8.5), so it does not see the
+other bundle: `RLH-20` (batch 5) adds `_git` to `orchestrate-queue.js`'s `main()`, and `QUEUE_ENTRY`
+does not supply it until `RLH-32`'s edit 2a in batch 11. Between those batches the built queue bundle
+carries a declared-but-unsupplied seam and **nothing reds** — the module keeps a Node default, so every
+L1/L2 test passes. Answering TE Q-01: this is real and accepted. The mitigation is that an interim
+batch's `dist/` is not a shippable artifact — only `RLH-34` certifies one (§12.3) — and `RLH-32` lists
+`RLH-20` in its `Deps` precisely so the gap cannot outlive the feature. Do **not** widen `RLH-AT-64` to
+both roots to cover it; extending the guard to `orchestrate-queue.js` is its own change, and doing it
+mid-feature would red batches 5–10 by design.
+
 ### 7.4 Every assertion has exactly one owning task
 
 Three ids were owned twice in v1.0, each in two files, with nothing saying which conjunct lived where —
@@ -973,21 +983,36 @@ It may not fix anything. A failing checklist row re-opens the owning task from �
 batch, with its own commit. A verification task that patches its own findings destroys the only
 independent signal in the plan.
 
-## 13. Open Questions
+## 13. Open questions
 
-Everything here is a place the **TSPEC is silent or deliberately incomplete**, recorded so that Phase I
-does not mistake silence for licence. Nothing here blocks the start of batch 1; each item names the task
-that closes it. Items whose resolution is observable in behaviour are halts (§11.1); items that are
-naming or plumbing choices are decisions to be made once and cited (§11.5).
+Everything here is a place the **TSPEC is silent or deliberately incomplete**, recorded so Phase I does
+not mistake silence for licence. Nothing here blocks the start of batch 1.
 
-### 13.1 Genuinely under-specified — decide in the named task, record the decision in its commit
+v1.1 shortened this section rather than annotating it. Two entries were never open — the TSPEC already
+pins them, and v1.0 misread it (§13.1). Two more were real interface choices that v1.0 deferred to tasks
+running *after* the tests encoding them, so they are **decided in §11.5** and appear here only as a
+pointer (§13.1a). What remains in §13.2 is accepted incompleteness, and closing it is out of scope.
 
-| # | Question | Where the TSPEC stops | Closed by | Why it is safe to defer |
-|---|---|---|---|---|
-| P-Q-01 | **The name of the approval search.** TSPEC §5.4 gives the two-tier search as pseudocode and never names a function. §3 does not list it in any interface table. | §5.4 body; absent from §3.1–§3.10 | `RLH-26` | The behaviour is fully specified; only the identifier is not. Name it once, keep it non-exported unless `approvalSearch.test.js` needs the seam, and reference `RLH-26`'s commit from any later task that calls it. |
-| P-Q-02 | **How `startIndex` / `endIndex` are threaded** to the wrapped episode — extra positional args, a field on the options object, or carried inside `EpisodeKey`. TSPEC §4.5 defines the values; no section fixes the shape. | §4.5; §5.2 shows the values in use, not the parameter list | `RLH-13`, cited by `RLH-23`, `RLH-26`, `RLH-27` | Four tasks must agree. This is precisely the drift class §1.2 names, so the mitigation is a single decision point, not a specification gap left open. `RLH-13` decides; the other three cite. |
-| P-Q-03 | **Where `refreshReviewState`'s `ListFailure` disposition is applied** — inside `refreshReviewState` or by its caller. TSPEC §4.2 fixes the dispositions and §6.2 rows 1/2/17 fix the single halt string; neither fixes the layer. | §4.2, §6.2 | `RLH-15` | Both placements are conformant. The invariant that matters — one halt shape, dispositions unchanged at every call site — is asserted by `RLH-AT-30`-family tests either way. Choose the callee (it keeps the caller free of parsing, per the §2.4 strata rule) unless a test forces otherwise. |
-| P-Q-04 | **Whether `forcePhases` arrives as an array or a Set.** TSPEC §3.6 calls it data rather than a seam and shows membership tests only. | §3.6 | `RLH-30` | Membership semantics are identical. Fix it in `RLH-30` and state it in the JSDoc so `RLH-32`'s adapter wiring matches. |
+### 13.1 Not open — the TSPEC already pins these
+
+Both were listed as open in v1.0 against the TSPEC's own text, and each nominated a closer that runs
+after the code it was supposed to shape. Removed as questions; the pinned contract is stated here so no
+one reopens them.
+
+| Was | The pinned contract | Where |
+|---|---|---|
+| "`forcePhases` — array or `Set`?" | **Both, at different layers, and neither is a choice.** `main()`'s `forcePhases` parameter is a **raw, unparsed operator string** — TSPEC §3.1 annotates it exactly so. `parseForcePhases(raw)` returns `{ ok: true, phases: Set<string> }` on success and `{ ok: false, badTokens: string[] }` on failure. So the *input* is a string and the *parsed* value is a `Set`; there is no array anywhere and nothing to decide. v1.0 nominated `RLH-30` (batch 10) as closer, which also runs after `RLH-05` (b3), `RLH-18` (b4), `RLH-26` (b8) and `RLH-27` (b9) — every task that touches it | TSPEC §3.1, §3.7 |
+| "Where is `refreshReviewState`'s `ListFailure` disposition applied — callee or caller?" | **Inside `refreshReviewState`**, above the `deriveRoundWindow` call. TSPEC §5.6.1's pseudocode places it there literally: the `_listFiles` result is tested for `ListFailure`, `dir_missing` maps to an empty listing and anything else halts, all before the window is derived. v1.0 assigned the question to `RLH-15`, a task that wrote **no listing code at all** (`refreshReviewState` is `RLH-23`), and cited `AT-30`…`AT-34` as the safety net — but TSPEC §8.3 assigns that range to the queue-row commit, not to this disposition | TSPEC §5.6.1, and `RLH-23`'s row in §4 |
+
+### 13.1a Decided in this PLAN, not in a task
+
+| # | Question | Decision |
+|---|---|---|
+| P-Q-01 | The **name** of §5.4's two-tier approval search | Non-exported, and **no test names it**. §11.5 `N-b` |
+| P-Q-02 | How `startIndex` / `endIndex` are **threaded** | Two sibling fields on `reviewLoop`'s existing options object. §11.5 `N-a`, oracle `RLH-LOOP-01` |
+
+Both were decided in the PLAN rather than in a task because the test that encodes each one is written in
+batch 3 by a single owning task, and every task v1.0 nominated as the decider ran later (§11.5).
 
 ### 13.2 Accepted incompleteness — do **not** try to close these
 
@@ -1000,19 +1025,65 @@ naming or plumbing choices are decisions to be made once and cited (§11.5).
 
 ### 13.3 Risks this PLAN carries knowingly
 
-- **The 179 s suite against a 180 s watchdog** (§2.3). Mitigated by procedure, not by shortening the
-  suite. Every task this feature adds makes the margin worse; if a batch gate is killed, re-run it in the
-  background and record the wall time in the batch commit so the trend is visible.
-- **SKILL.md / fixture drift** (§10.2). `completeness.test.js`'s heading fixtures duplicate the SKILL
-  templates. The duplication is pre-existing and out of scope to remove; `RLH-31` asserts byte-identity
-  so the drift is caught rather than removed.
-- **Thirteen serialised source-lane commits** (§3.2). The critical path is long by construction. Any task
-  that discovers it must also touch `orchestrate-dev.js` out of turn must move, not fork — a second
-  writer in a batch is a §11.4 halt.
+- **The suite is already past the 180 s watchdog** (§2.3). Measured at **185.43 s** wall for v1.1, and
+  the trend across three measurements of the same HEAD is upward-noisy, not stable. Mitigation is
+  procedural — background invocation is **mandatory**, not advised — and explicitly *not* shortening the
+  suite. Every task this feature adds makes the margin worse; the projection after the feature is
+  **190–200 s**. If a batch gate is killed, re-run it in the background and record the wall time in the
+  batch commit so the trend stays visible.
+- **SKILL.md / fixture drift** (§10.2). `completeness.test.js`'s heading fixtures are a point-in-time
+  copy of the SKILL templates and **detect no later SKILL edit**. No task in this feature builds a
+  detector, no checklist row claims one, and the gap is bound to `docs/_queue/QUEUE.md` **Order 9**
+  beside TSPEC Q-09. v1.0 attributed a byte-identity assertion to `RLH-31`, which asserts nothing of the
+  kind — that claim is withdrawn.
+- **Ten serialised source-lane commits** (§3.2). The critical path is long by construction: every
+  tracked-source commit must rebuild `pdlc/workflows/dist/` in the same commit (TSPEC §7.3), so the lane
+  admits one task per batch. v1.1's merges took it from thirteen to ten. A task that discovers it must
+  also touch `orchestrate-dev.js` out of turn **moves**, it does not fork — a second writer in a batch is
+  a §11.4 halt.
 
 ## 14. Changelog
 
 | Version | Date | Change |
 |---|---|---|
 | **v1.0** | 2026-07-30 | Initial PLAN. 34 tasks across 16 batches, derived from TSPEC v1.5 (§3 interfaces, §4 data model, §5 algorithms, §7 edit sites, §8 test strategy, §9 traceability) with **no** behaviour restated — every rule is cited. Establishes: the §2.1 baseline (**1038 passed / 1 failed / 70 skipped**) and the "no new failures" exit criterion; the §3.2 serialisation rule (no two tasks in one batch may edit any tracked source under `pdlc/workflows/`, because each must rebuild `dist/` in the same commit); the `RLH-AT-{N}` test namespace, avoiding collision with the pre-existing intentional red `AT-22 [red-until-L-06]`; single-owner-per-test-file with a `Greened by` column; §5's file-ownership manifest; §7/§8's task→AT and task→FSPEC-obligation traceability; §9's C-2 build-time gate including the await-discipline scan; §10's SKILL-amendment verification; §11's halt conditions; §12's Definition of Done; §13's open questions. Phase D was assessed and deliberately skipped — there is no DECISIONS document, by design. |
+| **v1.1** | 2026-07-30 | Round-1 cross-review revision (PM 1H/3M/5L, TE 3H/5M/2L). **31 tasks across 13 batches** (was 34/16). No REQ, FSPEC or TSPEC change — every finding was editorial to this PLAN. Per-finding disposition in §14.1. |
+
+### 14.1 v1.1 — disposition of every round-1 finding
+
+**Product-manager review**
+
+| Finding | Disposition |
+|---|---|
+| F-01 (High) — P-Q-04 is not an open question | **Fixed.** Question deleted; TSPEC §3.1/§3.7's pinned contract stated with citation in §13.1 |
+| F-02 (Med) — P-Q-03 is not open either | **Fixed.** Deleted; TSPEC §5.6.1's placement stated in §13.1 and in `RLH-23`'s §4 row |
+| F-03 (Med) ≡ TE F-03 — no SKILL↔fixture detector exists | **Fixed by withdrawing the claim.** §10.2 rewritten as accepted residual risk bound to `QUEUE.md` Order 9; the unowned §12.3 byte-identity row deleted; `H-j` rewritten; §13.3's `RLH-31` attribution withdrawn |
+| F-04 (Med) — closed catalogues restated | **Fixed.** §9.1's C-2 sentence and host-global list, §9.2's thirteen-name seam list, §9.3's counts, `RLH-14`'s literal and §12.3's halt string all replaced by citations. §12.3's one-line checklist rows and §2.1/§2.2's baseline figures kept, per the reviewer's exemption |
+| F-05 (Low) — batch 3 has ten tasks, not nine | **Fixed** in §1.1 and §4.2 |
+| F-06 (Low) — `RLH-06`'s greening omits `RLH-16` | **Fixed structurally.** The per-file `Greened by` column is gone; §7.3 gives `AT-15/16/18` their own row with the staleness conjunct greening at batch 6 |
+| F-07 (Low) — `RLH-18` "six seams" | **Fixed.** Five seams plus `forcePhases`, which is data, not a seam |
+| F-08 (Low) — `RLH-24` writes a test for a function P-Q-01 left unnamed | **Fixed.** §11.5 `N-b` decides it: non-exported, and the test drives it through `main()` and names nothing |
+| F-09 (Low) — §5.1's file-verdict extraction owned by no task | **Fixed.** `RLH-26`'s row now carries §5.1's three steps, including the duplicate-`VERDICT:` pre-count that fails closed |
+| Judgement — merge `RLH-05/10/13/15/16` | **Adopted, in the form that pays.** `RLH-10/13/15` fold into `RLH-05` (retired ids); `RLH-16` stays separate because `RLH-12`'s fixtures land in batch 4, so folding it in would have *cost* a batch. Three batches saved |
+| Judgement — decline the `RLH-23/26/27` merges | **Accepted; not merged** |
+| Q-01 | Answered: the mitigation is not a property, and v1.1 stops calling it one (§10.2) |
+| Q-02 | Answered: §5.3 now states that every unlisted pre-existing suite needs no change, with the spot-check that establishes it |
+| Q-03 | Answered: G-INV integrity is the unconditional tiebreak — `RLH-26` is not split, and the wall-time ceiling does not buy a split |
+
+**Test-engineer review**
+
+| Finding | Disposition |
+|---|---|
+| F-01 (High) — the permitted-red ledger is per file, so this feature's own await guard fails open | **Fixed.** §7.3 is a **per-assertion** ledger and is now the gate's only authority. `RLH-AT-19`/`-20` are recorded **green on arrival with no permitted-red window, ever**; `RLH-AT-64` gets a bounded window of batches 4–10. Re-measured for v1.1: zero regex matches in both bundles |
+| F-02 (High) — P-Q-01/P-Q-02 decided after the tests that encode them | **Fixed by deciding both in the PLAN** (§11.5), not by asking tasks to agree. `RLH-LOOP-01` is the oracle for `N-a` |
+| F-03 (High) ≡ PM F-03 | **Fixed** — see PM F-03 |
+| F-04 (Med) — dual-owned ATs | **Fixed.** `AT-30`…`AT-34` split per conjunct into `-module` (`RLH-19`) and `-orch` (`RLH-25`); `AT-64` is `RLH-31`'s alone per TSPEC §8.3, and `RLH-17`'s assertion is renamed `RLH-WIRE-01`. §7.4 records all three |
+| F-05 (Med) — `Greened by` omissions produce false regressions | **Fixed.** Column deleted; §7.3 carries one row per assertion, and `AT-61` is split into `-loop` (batch 7) and `-report` (batch 10), which was the contradiction |
+| F-06 (Med) — impossible obligation, "six new names" | **Fixed.** Five seam names; `forcePhases` asserted separately as a non-seam parameter |
+| F-07 (Med) — wrong closing tasks | **Fixed** throughout §7.3, §8.1 and §8.2 against the 13-batch schedule |
+| F-08 (Med) — wall time wrong in the reassuring direction | **Fixed and re-measured.** §2.1/§2.3 carry three measurements of the same HEAD (179.175 / 179.924 / 184.752 s jest; **185.43 s** wall), state that the figure is not a gate, project **190–200 s** post-feature, and make background invocation **mandatory**. The suite is not shortened |
+| F-09, F-10 (Low) | **Fixed** as filed |
+| Q-01 | Answered in §7.3's closing note: the queue bundle really does carry an unwired `_git` from batch 5 to 11; accepted, with the reason it must not be covered by widening `RLH-AT-64` |
+| Q-02 | Answered in §9.2's third ruling row: an **anonymous** arrow is exempt and passes its obligation to nobody; only a *named* wrapper inherits |
+| Q-03 | Answered: the fourteen non-AT assertions get `RLH-`-namespaced ids (§7.5) and appear in §7.3 like any other |
 
