@@ -1051,8 +1051,9 @@ on the two shapes where an unstated matcher decides the count, per the recorded 
 (iv) `n === 1` whose payload is uppercase hex, 63 or 65 hex characters, or non-hex returns
 `ok: false`. Two shapes v1.3 listed here are not values of `n === 1` at all, and both are routed out
 of it: a **fenced** trailer is not collected, and neither is a line under a **malformed label** — it
-is not an `APPROVAL-HASH:` line — so both documents are `n === 0`, an exclusion from the count rather
-than a malformed payload. The fenced-only document falls under (iii) with its named reason, because
+is not an `APPROVAL-HASH:` line — so the fenced document is `n === 0` and the malformed-label document
+is `n === 0` under a prefix-exact matcher; neither is a malformed payload, and neither is a value of
+`n === 1` that (iv) governs. The fenced-only document falls under (iii) with its named reason, because
 the fence is a **stated** exclusion (TSPEC §5.0). Whether the named reason `absent` is asserted on the
 malformed-label document turns on the label matcher TSPEC does not specify, so that shape is excluded
 from (iii)'s named reason on the same ground as the quoted shape below; (i), (v) and (vi) still bind
