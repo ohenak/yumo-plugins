@@ -128,3 +128,113 @@ function approvalHashOf(text) {
 
 /** A syntactically valid anchor that is **not** any fixture document's digest. */
 const WRONG_HASH = `sha256:${"b".repeat(64)}`;
+
+// ──────────────────────── tier-1 fixture: TSPEC §4.4's block ──────────────────
+
+/** `parseVerdict`'s `VALID_VERDICTS`, as TSPEC §4.4's Verdict column names them. */
+const APPROVED = "Approved";
+const APPROVED_MINOR = "Approved with minor changes";
+const NEEDS_REVISION = "Needs revision";
+
+/**
+ * One tier-1 cross-review file, shaped like TSPEC §4.4's `## Verdict` template —
+ * the same template RLH-07 writes into `pdlc/skills/{se,pm,te}-review/SKILL.md`,
+ * taken from the TSPEC because that task is not in this batch.
+ *
+ * Two carriers, two producers (§4.4): the reviewer agent writes `VERDICT:` plus
+ * the JSON counts as the file's **last section**, and the script *appends*
+ * `APPROVAL-HASH:` / `REVIEWED-COMMIT:` afterwards. The prose above the section is
+ * real content, not filler: §5.1 locates the section by the **last** visited
+ * `## Verdict` heading, and a fixture with no body would not exercise that.
+ *
+ * @param {{
+ *   verdict: string,
+ *   hash?: string|null,          // omit/null ⇒ no APPROVAL-HASH: line at all (§6.2 row 6)
+ *   commit?: string,
+ *   counts?: {high: number, medium: number, low: number},
+ *   duplicateVerdict?: boolean,  // emit a SECOND `VERDICT:` line (E-09, AT-11)
+ * }} spec
+ * @returns {string}
+ */
+function crossReviewFile({
+  verdict,
+  hash = null,
+  commit = "unavailable",
+  counts = { high: 0, medium: 0, low: 0 },
+  duplicateVerdict = false,
+}) {
+  const countsLine = JSON.stringify(counts);
+  const lines = [
+    `# Cross-review — ${DOC_TYPE} (${FEATURE})`,
+    "",
+    "Scope: whole document.",
+    "",
+    "## Findings",
+    "",
+    "- No blocking findings.",
+    "",
+    "## Verdict",
+    "",
+    `VERDICT: ${verdict}`,
+    countsLine,
+  ];
+  if (duplicateVerdict) {
+    // E-09 / AT-11: a second trailer in the SAME trailing section. `parseVerdict`
+    // scans from the end and would happily return this one; §5.1 step 2's
+    // pre-count must fail closed before it is ever consulted.
+    lines.push("", `VERDICT: ${verdict}`, countsLine);
+  }
+  if (hash) {
+    lines.push("", `APPROVAL-HASH: ${hash}`, `REVIEWED-COMMIT: ${commit}`);
+  }
+  return `${lines.join("\n")}\n`;
+}
+
+// ──────────────────── tier-2 fixture: TSPEC §4.4's §6 table ───────────────────
+
+/** TSPEC §4.4's six Approval Record columns, in order. */
+const APPROVAL_RECORD_COLUMNS = Object.freeze([
+  "Document Type",
+  "Round",
+  "Role",
+  "Verdict",
+  "Approval Hash",
+  "Reviewed Commit",
+]);
+
+/**
+ * A `LEARNINGS-{feature}.md` carrying TSPEC §4.4's tier-2 `## 6. Approval Record`
+ * section as its final top-level section, with the five pre-existing sections'
+ * numbers untouched. A feature with no approving round still emits the heading and
+ * the header row with no data rows, so `rows: []` is a legal fixture.
+ *
+ * @param {Array<{docType?: string, round: number, role: string, verdict: string,
+ *                hash?: string, commit?: string}>} rows
+ * @returns {string}
+ */
+function learningsWithApprovalRecord(rows = []) {
+  const body = rows.map((r) =>
+    `| ${r.docType ?? DOC_TYPE} | ${r.round} | ${r.role} | ${r.verdict} | ` +
+    `${r.hash ?? "unavailable"} | ${r.commit ?? "unavailable"} |`
+  );
+  return [
+    `# LEARNINGS — ${FEATURE}`,
+    "",
+    "## 1. What went well",
+    "",
+    "## 2. What went badly",
+    "",
+    "## 3. Surprises",
+    "",
+    "## 4. Process changes",
+    "",
+    "## 5. Open questions",
+    "",
+    "## 6. Approval Record",
+    "",
+    `| ${APPROVAL_RECORD_COLUMNS.join(" | ")} |`,
+    `|${APPROVAL_RECORD_COLUMNS.map(() => "---").join("|")}|`,
+    ...body,
+    "",
+  ].join("\n");
+}
