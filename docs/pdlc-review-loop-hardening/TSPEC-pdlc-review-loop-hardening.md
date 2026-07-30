@@ -1316,12 +1316,11 @@ discharged.
 ```
 refreshReviewState():                                  // one _listFiles + ≤2 _readFile
   r ← await _listFiles(`docs/${feature}`)
-  if r is a ListFailure:                               // §6.2 row 17 — NOT an empty listing
-      report it; return { present: null, reviewFiles: kept.reviewFiles,
-                          startIndex: kept.startIndex }
-  w ← deriveRoundWindow(r.basenames, docType)
+  if r is a ListFailure:                               // §4.2's dispositions, verbatim
+      dir_missing ─► r.files ← []                      // benign empty listing (§6.2 row 1)
+      otherwise   ─► halt `Cannot enumerate {dirPath}: {reason}`  (§4.2, §6.2 rows 2, 17)
+  w ← deriveRoundWindow(r.files, docType)
   reviewFiles ← §5.4's tier-1 reads over round `w.startIndex - 1`, or empty when that is < 1
-  kept ← { reviewFiles, startIndex: w.startIndex }     // last successfully observed state
   return { present: w.present, reviewFiles, startIndex: w.startIndex }
 
 episode entry:
@@ -1330,10 +1329,12 @@ episode entry:
   episode ← { artifactSet, phaseId, roundIndex: sel.round ?? startIndex, mode: sel.mode, invocation: 0 }
 ```
 
-The phase-entry values passed in from §2.5 steps 2–3 are the **seed** for the first episode only;
-from then on each episode re-reads. This is the whole of N-01's fix, and the reason it is stated as an
-invariant rather than a call site: **round 2's optimizer episode must see the reviews round 1 wrote,
-and this run is what wrote them.** Under an entry-time snapshot on a clean branch `present` is empty
+**Every** episode re-reads, the first included, so the loop needs no seed maps: `reviewLoop` takes
+`docType` and the two seams and nothing else new (§3.9). §2.5 steps 2–3's `present` / `reviewFiles`
+are consumed at phase entry by §5.4 and are **not** threaded into the loop — a seed would be an
+unread parameter, and the first episode's own refresh is the value it would have carried. This is the
+whole of N-01's fix, and the reason it is stated as an invariant rather than a call site: **round 2's
+optimizer episode must see the reviews round 1 wrote, and this run is what wrote them.** Under an entry-time snapshot on a clean branch `present` is empty
 for the life of the phase, so every optimizer episode selects greenfield, `isTerminal` requires no
 trailer, and the wrapper reports success on a round whose findings were never addressed — the exact
 failure `selectMode` exists to prevent, relocated from the resume path to the ordinary one.
@@ -1366,34 +1367,34 @@ Four rules, taken from FSPEC §15.2 and normative here:
 4. **Greenfield needs positive evidence; everything else fails toward revision.** Stated in the
    direction that makes the distinction intrinsic rather than as a list of exceptions:
 
-   > An episode is greenfield **only if this episode's own `refreshReviewState` successfully observed
-   > the branch and found no review round for this (feature, doc type)** — i.e. `present` is a Map
-   > *and* it is empty. In every other case the episode is a **revision** episode.
+   > An episode is greenfield **only if this episode's own `refreshReviewState` observed the branch
+   > and found no review round for this (feature, doc type)** — i.e. `present` is empty. In every
+   > other case the episode is a **revision** episode.
 
-   Two cases follow from that one sentence; neither is a special case of it.
+   One case follows from that one sentence; it is not a special case of it.
 
-   - **`present === null` — not observed** (§6.2 row 17). An *empty* Map is the measurement "there
-     are no review files"; `null` is the *absence* of a measurement. Revision is selected
-     **unconditionally**, whatever the kept `reviewFiles` contain. The round is
-     `max(1, startIndex − 1)` over the last successfully observed `startIndex`, which under-names it
-     by at most one; §5.6.3 builds the prompt from the files on disk, so the findings addressed are
-     the branch's real ones either way. The stale index may make the episode share an `EpisodeKey`,
-     and so a dispatch budget, with the previous round's — a bounded cost paid only on a **reported**
-     IO failure, erring toward fewer dispatches rather than toward skipping a round.
    - **Observed, non-empty `present`, unreadable or unread verdicts.** The verdict fields are
      unreadable (§5.1's fail-closed cases), or the read was never performed — the forced path, where
      §2.5 step 3 is skipped and `reviewFiles` is empty. Revision; the two shapes are not distinguished.
 
-   So "not read" is never "no findings" on **either** axis — neither an unread verdict nor an unread
-   *listing*. The directions are not symmetric: mis-entering greenfield silently drops a whole review
-   round, while mis-entering revision costs at most a continuation prompt naming findings already
-   reflected, terminated in one dispatch by the trailer.
+   So "not read" is never "no findings". The directions are not symmetric: mis-entering greenfield
+   silently drops a whole review round, while mis-entering revision costs at most a continuation
+   prompt naming findings already reflected, terminated in one dispatch by the trailer.
 
-   **Why the old wording is not reinstated.** v1.2 required a non-empty `present` in both clauses and
-   closed "only an *empty* `present` is greenfield" — so on a clean branch (seed `{}`) a round-2
-   optimizer whose refresh failed kept `{}`, matched neither clause, went greenfield and terminated on
-   dispatch 1 over a round-1-complete document. `{}`-versus-`null` is what removes that, rather than a
-   clause that special-cases it.
+   **The other axis — an unread *listing* — never reaches this rule.** A `refreshReviewState` whose
+   `_listFiles` cannot be judged **halts** (§4.2, §6.2 rows 2 and 17), so `present` is a `Map` at
+   every call of `selectMode` and the rule needs no "not observed" arm. That is what makes it total:
+   the input domain has no third value to rule on.
+
+   **The two wordings that are not reinstated.** Both are recorded because this defect has now moved
+   twice and the wording is the failure mode. (i) v1.2 required a *non-empty* `present` in both
+   clauses and closed "only an *empty* `present` is greenfield" — so on a clean branch a round-2
+   optimizer whose refresh failed kept `{}`, matched neither clause, went greenfield and terminated
+   on dispatch 1 over a round-1-complete document (fail-open). (ii) v1.3 replaced that with
+   `present: Map | null` and selected **revision** on `null` — fail-closed, but it made the refresh
+   site the one caller of §4.2 that did not halt on `unreadable`, contradicting the FSPEC §3.3
+   contract restated at §2.5 step 2, §4.2 and §6.2 row 2. Halting is strictly more fail-closed than
+   (ii) and needs no exception anywhere, so it supersedes both.
 
 Stickiness is a **consequence**, not the mechanism: the selection is made once per episode and does
 not change for that episode's life, whatever later measurements observe. Episode entry is the instant
