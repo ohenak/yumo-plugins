@@ -85,6 +85,45 @@ list. The first is asserted in CI; the second is F-4 below.
 
 ## 3. Priority Surface — RLH-32 Build Ordering and Seam Wiring
 
+**Result: correct on both entrypoints. No unwired seam on the production queue path.**
+
+**Ordering.** `build-runtime.mjs` joins the dev bundle as
+`[DEV_META, BANNER, adapter, devModule, queueModule, DEV_ENTRY]`. The emitted artifact confirms the
+order actually holds — this is the check that matters, because the hazard is invisible in the builder:
+
+| Artifact | `const __dev = (function ()` | `const __queue = (function ()` | `const realMain = __dev.main;` |
+|---|---|---|---|
+| `dist/orchestrate-dev.bundle.js` | line 322 | line 4977 | line 4978 |
+| `dist/orchestrate-queue.bundle.js` | line 317 | line 4972 | line 4973 |
+
+`__queue`'s prelude reads `__dev.main` at IIFE-evaluation time, and `__dev` is initialised ~4,650 lines
+earlier in both. A TDZ `ReferenceError` on load is therefore impossible. `--check` exits 0, so the
+tracked `dist/` bytes are the ones this order produces.
+
+**`_recordHalt` on both paths.** The adapter deliberately omits it (`runtime-adapter.js:288–290`), so
+each entrypoint supplies it:
+
+- `DEV_ENTRY` → `__queue.rewriteStatus(__queue.DEFAULT_QUEUE_PATH, feature, status, rtReadFile, rtWriteFile, rtGit)`
+- `QUEUE_ENTRY`, inside the `_runPipeline` closure → the same call at `__queuePath` (the operator's path, not the default)
+
+Both call shapes match `rewriteStatus(queuePath, feature, status, readFileFn, writeFileFn, gitFn)`
+positionally and in arity. `wrapModule` was widened to publish `rewriteStatus` and `updateQueueStatus`
+from `__queue`, and the emitted `return { main, meta, DEFAULT_QUEUE_PATH, rewriteStatus, updateQueueStatus };`
+is present at the tail of both bundles' `__queue` IIFE — so the closures reach real functions, not
+`undefined`.
+
+**Full injection coverage.** `rtDevInjections` supplies thirteen keys; `main()` declares twenty-one
+`_`-prefixed parameters. The remainder are the policy values and pass-throughs
+(`_phaseDodEnabled`, `_phasePubEnabled`, `_now`, `_sleep`) and the three agent-composites
+(`_rebaseOntoDefault`, `_dodVerifyLoop`, `_raisePrAndVerifyCi`), each of which resolves to a module
+function that itself takes `_agent` — none reaches Node. `_git` was added to `QUEUE_ENTRY`'s own
+injection object too, so `orchestrate-queue`'s three `rewriteStatus` calls commit through the adapter
+rather than falling back to `defaultGit`'s `await import("child_process")`.
+
+**Falsifier:** `queueModule` appearing before `devModule` in either emitted bundle; `__queue`'s returned
+object omitting `rewriteStatus`; or an entrypoint `.main({…})` object missing `_recordHalt`. All three
+are asserted by `RLH-AT-64` (see §6), derived from the shipping sources rather than hand-listed.
+
 ## 4. Priority Surface — runtime-adapter.js New Seams
 
 ## 5. Priority Surface — Runtime Structural Constraints
