@@ -117,7 +117,8 @@ The durable (tier-2) record of every approving cross-review round, copied out of
 - [ ] Every `Cross-Feature` finding appears in §2; every `Process` finding in §4
 - [ ] Iteration counts reflect the actual `-v{N}` versions present (including DoD rounds from `CODE_REVIEW-v{N}`)
 - [ ] Transient `Local` findings already fixed upstream are omitted (signal over completeness)
-- [ ] `## 6. Approval Record` is present (heading + header row even when there are no approving rounds), and its Approval Hash / Reviewed Commit cells were **copied verbatim, never recomputed**
+- [ ] The metadata table carries its `| Harvested from | … |` row — the record of what step 8 deleted. It is **half of the completeness criterion** (FSPEC §16.5): without it the file is structurally incomplete and the harvest is re-dispatched, however well written the five sections are
+- [ ] `## 6. Approval Record` is present (heading + header row even when there are no approving rounds), and its Approval Hash / Reviewed Commit cells were **copied verbatim, never recomputed**. Unlike the row above, this section is **excluded** from the completeness criterion (AC-4.2c) — its absence is reported, never a halt
 - [ ] LEARNINGS committed and pushed **before** any `CROSS-REVIEW-*` / `CODE_REVIEW-*` deletion
 - [ ] All harvested `CROSS-REVIEW-*` and `CODE_REVIEW-*` files deleted after LEARNINGS landed
 
