@@ -49,6 +49,54 @@ node pdlc/workflows/build-runtime.mjs --check                                  �
 
 ## 2. F-1 — `DEV_META` declares `inputs`
 
+**Resolved. `forcePhases` is now reachable through the shipped artifact, and the round-1 premise about
+`DEV_ENTRY` is confirmed correct.**
+
+**The premise held: only the meta needed changing.** `6e611a0` touches exactly one hunk of
+`build-runtime.mjs` — 20 added lines, all inside `DEV_META`. `DEV_ENTRY` is byte-identical to its
+pre-fix form, and it already read
+
+```js
+const __reqPath =
+  typeof args === "string" && args.trim()
+    ? args.trim()
+    : args && typeof args === "object" && args.reqPath
+      ? args.reqPath
+      : null;
+```
+
+so the bare-string invocation `/pdlc:orchestrate-dev docs/{feature}/REQ-{feature}.md` and the
+named-input object form are both accepted by the same ternary. `__forcePhases` reads the object arm
+only, which is the correct and unchanged behaviour. Nothing about the entrypoint had to move.
+
+**The two `meta.inputs` copies are consistent.** `dist/orchestrate-dev.bundle.js` carries three
+`inputs: [` literals. Compared by extracted byte-slice:
+
+| # | Line | Owner | Result |
+|---|---|---|---|
+| 0 | 10 | `DEV_META` — the `meta` the runtime reads | — |
+| 1 | 430 | `orchestrate-dev.js`'s own `meta`, inside the `__dev` IIFE (dead) | **byte-identical to #0** |
+| 2 | 5086 | `orchestrate-queue.js`'s `meta` (`queuePath`) — unrelated | differs, correctly |
+
+Both dev copies declare `reqPath` (required) and `forcePhases` (optional, `type: "string"`), with the
+same description text and the same catalogue string `R, F, T, P, D, PR, all` — which matches
+`FORCE_PHASE_TOKENS` (`orchestrate-dev.js:813`, six tokens) plus `all`, and therefore matches the halt
+message rendered from the same array at `:3969`.
+
+**Falsifiability, by mutation.** Both new `RLH-CR-F1` cases red under a targeted mutant:
+
+| Mutant applied to `build-runtime.mjs` | Result |
+|---|---|
+| delete the `inputs` array from `DEV_META` | test 1 **red**, test 2 green |
+| `DEV_ENTRY`'s `typeof args === "string" && args.trim()` → `false && args.trim()` | test 1 green, test 2 **red** |
+
+Each mutant reds exactly its own case, so neither passes vacuously and the pair discriminates the two
+halves independently. One caveat about *what* the tests are asserting against is raised as **F-8**.
+
+**Not re-raised:** the round-1 note that `QUEUE_ENTRY`'s `_runPipeline` does not forward `forcePhases`
+is now documented in `CLAUDE.md` (§4), and `build-runtime.mjs:162` confirms the closure still passes
+`{ reqPath }` only — the documented behaviour is the actual behaviour.
+
 ## 3. F-2 — the `Harvested from` conjunct
 
 ## 4. F-3 — `CLAUDE.md` operator contracts
