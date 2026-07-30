@@ -294,7 +294,10 @@ describe("structural completeness — the spec classes (TSPEC §5.9, FSPEC §16.
     // conjunct, one that strips fenced lines out of bodies reds on the second (SE-v4 F-18).
     const fencedHeading = readFixture("tspec-fenced-heading-skeleton.md");
     expect(fencedHeading).toContain("```markdown\n## Data Model\n");
-    expect(fencedHeading.split("\n").filter((l) => l === "## Data Model")).toHaveLength(0);
+    // Exactly one `## Data Model` line exists in the file, and it is the fenced one — the
+    // opener immediately above it (asserted on the line before) is what makes that so. A
+    // second, unfenced occurrence would make the conjunct below vacuous.
+    expect(fencedHeading.split("\n").filter((l) => l === "## Data Model")).toHaveLength(1);
 
     const fencedHeadingResult = devModule.isComplete(CLASS_SPEC, "TSPEC", fencedHeading);
     expect(fencedHeadingResult.complete).toBe(false);
@@ -316,3 +319,79 @@ describe("structural completeness — the spec classes (TSPEC §5.9, FSPEC §16.
     expect(missingSet(fencedBodyResult)).toEqual(new Set());
   });
 });
+
+// ══════════ D4 — heading sets (PROPERTIES §3.2 / §5.2), file-local and unexported ══════════
+//
+// Built over `driftGenerators.js`'s primitives only (`int` / `pick` / `shuffle`). PLAN §7.2:
+// the domain generator lives in the file that consumes it, no shared module is created, and no
+// primitive is re-implemented. The generator **constructs** the expected `S` — it never
+// re-derives it by scanning the text it just emitted, which would make the property a
+// comparison of two heading walkers rather than an oracle over one.
+
+/** Ordinary prose bodies — never placeholder-shaped, never heading-shaped, never fenced. */
+const PROSE_BODIES = Object.freeze([
+  "This section carries real content written by the author.",
+  "One paragraph of substance, sufficient to satisfy the non-empty-body criterion.",
+  "Content. More content on a second line.\nAnd a third.",
+]);
+
+/** §5.9's placeholder catalogue — each of these makes a body count as **empty**. */
+const PLACEHOLDER_BODIES = Object.freeze(["TBD", "TODO", "_TBD_", "<!-- to be written -->"]);
+
+/**
+ * §5.9's **accepted shallowness** (FSPEC v1.5, SE-v5 F-20 / TE-v5 Q-01): a body consisting
+ * only of a fenced block containing `TBD` scores **non-empty**, because §5.0's exclusion
+ * deliberately does not empty a section body. Generated so conjunct (iv) is forced in both
+ * directions rather than only the one an over-eager emptiness test gets right.
+ */
+const FENCED_TBD_BODY = "```text\nTBD\n```";
+
+/** Non-required heading titles — the extras of conjunct (iii). `Decisions` sits deliberately
+ *  one character from `DECISIONS`' required `Decision`, so a matcher that normalises too
+ *  aggressively cannot hide a genuine shortfall behind an extra. */
+const EXTRA_TITLES = Object.freeze(["Decisions", "Learnings", "Appendix", "Foo"]);
+
+const SPEC_DOC_TYPES = Object.freeze(Object.keys(REQUIRED_HEADINGS));
+
+/** The body kinds, and whether each counts toward `S` (§5.9). */
+const BODY_KINDS = Object.freeze({
+  prose: { nonEmpty: true },
+  placeholder: { nonEmpty: false },
+  fencedTbd: { nonEmpty: true },
+});
+
+/** Renders one heading line, exercising §5.9's matching rules on their own axis. */
+function renderHeading(rng, heading, variant) {
+  const t = heading.title;
+  switch (variant) {
+    case "lower":
+      return `## ${t.toLowerCase()}`;
+    case "upper":
+      return `## ${t.toUpperCase()}`;
+    case "spaced":
+      return `##   ${t.split(" ").join("  ")}   `;
+    case "numDot":
+      return `## ${rng.int(1, 9)}. ${t}`;
+    case "numParen":
+      return `## ${rng.int(1, 9)}) ${t}`;
+    case "alt":
+      return `## ${heading.alt}`;
+    default:
+      return `## ${t}`;
+  }
+}
+
+/** The rendering variants available for a heading — `alt` only where §5.9 states one. */
+function variantsFor(heading, nonIdentity) {
+  const base = ["lower", "upper", "spaced", "numDot", "numParen"];
+  if (heading.alt) base.push("alt");
+  return nonIdentity ? base : ["identity"];
+}
+
+/** Renders one body of the drawn kind. */
+function renderBody(rng, kind) {
+  if (kind === "prose") return rng.pick(PROSE_BODIES);
+  if (kind === "placeholder") return rng.pick(PLACEHOLDER_BODIES);
+  return FENCED_TBD_BODY;
+}
+
