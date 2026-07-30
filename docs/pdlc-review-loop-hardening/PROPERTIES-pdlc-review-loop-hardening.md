@@ -524,6 +524,163 @@ being 6 and the identity fails loudly rather than the phase being silently unfor
 
 **Shrink.** File-local ladder: drop tokens one at a time, keeping the first that still fails.
 
+---
+
+**PROP-COMPLETE-01 — `isComplete` is exactly the required set, falsifiable in both directions.**
+*(State Machine · L1 · `documentOracles.test.js`)*
+
+**Invariant.** Let `R` be the required document set. For every generated present-set `P`:
+`isComplete(P) === true` **iff** `R ⊆ P`. Both directions are asserted, which is what TSPEC §8.2 means
+by "falsifiable both directions": a subject that always returns `true` fails on the `R ⊄ P` half, and a
+subject that always returns `false` fails on the `R ⊆ P` half. Extra documents beyond `R` never make
+`isComplete` false (superset tolerance), and the result is independent of the order in which `P` was
+built (`rng.shuffle`).
+
+**Generator.** D4. `P` built by taking `R`, removing a `rng.int(0, |R|)`-sized random subset, then
+adding 0…4 documents from a non-required pool (`DECISIONS`, `LEARNINGS`, `POSTMORTEM-*`, an invented
+`FOO`). 100 cases.
+
+**Non-vacuity.** ≥25 cases must be complete (nothing removed) and ≥25 incomplete with exactly **one**
+document missing — the single-missing shape is the one that distinguishes `R ⊆ P` from a
+cardinality check `|P| >= |R|`, which the extras would otherwise satisfy. Each element of `R` must be
+the sole missing element in ≥1 case; asserted as set equality against `R`, so a document added to the
+required set without the generator knowing fails here rather than going untested.
+
+**Owner.** Written by **RLH-12** (batch 5); greened by **RLH-16** (batch 7).
+
+**Beyond the examples.** AT-40 and AT-41 pin two present-sets. The property is what makes the
+*required set itself* the thing under test: it is the only assertion in the suite that fails when a
+document is quietly dropped from `R`, because it derives its expectation from `R` and its floors from
+`R` simultaneously.
+
+**Note — the foreign red.** This property lands in `documentOracles.test.js`, which already carries
+the intentional red `AT-22 [red-until-L-06]` from another feature. That red is **foreign** and must
+stay red (§2.5); nothing here may be written in a way that requires the file to be fully green.
+
+**Shrink.** File-local ladder: re-add removed documents one at a time until the case passes; report the
+last still-failing set.
+
+### 4.2 L1 — beyond the floor
+
+Four further pure-function invariants the TSPEC's table does not name but whose subjects TSPEC §8.1
+places at L1. Each declares the §7.3 ledger window it *would* occupy (§1.3); adoption is a mechanical
+PLAN edit owned by the writing task.
+
+---
+
+**PROP-HASH-01 — `parseApprovalHash` accepts only well-formed trailers, and never mid-document.**
+*(Parsing · L1 · `approvalHash.test.js`)*
+
+**Invariant.** For every generated document: a hash is returned **iff** a well-formed approval trailer
+appears at a position the format permits; the returned hash always matches `/^[0-9a-f]{64}$/`; a
+trailer that is quoted (`>`), fenced, or truncated to fewer than 64 hex characters yields **no** hash;
+and a document containing two trailers resolves deterministically to the same one on every run
+(whichever the format specifies — the property asserts *stability*, and §6.4 owns which).
+
+**Generator.** D3 prose interleaved with trailer candidates drawn from: valid (64 lowercase hex),
+uppercase hex, 63 and 65 characters, non-hex characters in the payload, correct payload with a
+malformed label, and valid trailers placed inside a fence or behind a `>` quote. 100 cases.
+
+**Non-vacuity.** ≥20 valid, ≥10 of each of the length-off-by-one shapes, ≥10 quoted-or-fenced, ≥5
+double-trailer. The `quoted-hash.md` fixture (§6.3) pins the quoted case by example; the floor makes it
+a space.
+
+**Owner.** Written by **RLH-06** (batch 2); greened by **RLH-05(f)** (batch 3). Would occupy the same
+§7.3 row as the two digest properties: permitted red batch 2, green from batch 3.
+
+**Beyond the examples.** The hex-shape conjunct is a total statement about the *return* value: no
+input, however malformed, produces a "hash" that is not 64 hex characters. That is the guarantee the
+comparison at the approval gate silently depends on, and no AT states it over the input space.
+
+**Shrink.** Shipped `"bytes"` kind for the prose; file-local ladder for the trailer choice.
+
+---
+
+**PROP-TRAILER-01 — the trailer catalogue is closed and its recognisers are mutually exclusive.**
+*(Parsing · L1 · `documentOracles.test.js`)*
+
+**Invariant.** Over the closed catalogue `TRAILER_FAILURES` and the trailer recognisers
+(`parseRevisionComplete`, `parseResolvedMarker`, `parseApprovalHash`): for every generated document,
+**at most one** recogniser claims any given line — the recognisers are pairwise disjoint over the line
+space — and every rejection carries a reason drawn from the catalogue, never an ad-hoc string.
+Catalogue closure is the second conjunct: the set of reasons observed across the generated corpus is a
+**subset** of `TRAILER_FAILURES`, and (with the floors below) equals it.
+
+**Generator.** D1 line pools as `PROP-SCAN-01`, biased toward trailer-shaped lines: each of the three
+recognisers' verbatim forms, each with one mutation from the catalogue's own failure taxonomy
+(wrong case, trailing content, quoted, fenced, missing payload). 100 cases.
+
+**Non-vacuity.** Every member of `TRAILER_FAILURES` must be observed ≥1 time — asserted as **set
+equality** against the catalogue, which is what makes this a totality check (DC-01) and not a sampling
+check: a failure mode added to the catalogue with no generator path fails the property.
+
+**Owner.** Written by **RLH-21** (batch 9); greened by **RLH-23** (batch 10). Would occupy §7.3's
+pacing-wrapper row: permitted red batch 9, green from batch 10.
+
+**Beyond the examples.** Mutual exclusion is a *cross-recogniser* claim. Each AT exercises one
+recogniser; nothing in the FSPEC asserts that a line the revision-complete recogniser accepts is not
+also accepted by the resolved-marker recogniser, which is the failure mode that would let one round's
+trailer satisfy another round's gate.
+
+**Shrink.** File-local ladder over the line array; identical mechanism to `PROP-SCAN-01`.
+
+---
+
+**PROP-RESOLVE-01 — approval-anchor resolution is a function, and unanimity needs four facts.**
+*(State Machine · L1 · `approvalSearch.test.js`)*
+
+**Invariant.** For every generated review corpus: (i) resolution is **deterministic** — the same
+corpus, however its file list was shuffled, resolves to the same verdict/anchor pair; (ii)
+**unanimity requires all four facts simultaneously** — both roles' verdicts *and* both roles' anchors —
+so for every generated corpus missing any one of the four, the result is *not unanimous*, and for
+every corpus carrying all four with matching anchors it *is*; (iii) an anchor that does not match the
+current digest never contributes to unanimity regardless of the verdict beside it.
+
+**Generator.** D4 × D2. A corpus is a set of per-role records, each independently carrying or omitting
+a verdict and carrying a matching / stale / absent anchor. The 4-fact presence vector is enumerated
+exhaustively (16 combinations) and each combination is then dressed with random file ordering and
+random extra non-review files. 100 cases ≥ 16 combinations × ≥6 dressings.
+
+**Non-vacuity.** All 16 presence combinations must appear (set equality against the enumeration, not a
+count) and ≥15 cases must carry a **stale** anchor alongside an approving verdict — the H-4 shape.
+
+**Owner.** Written by **RLH-25** (batch 11); greened by **RLH-26** (batch 12).
+
+**Beyond the examples.** This is the enumeration the H-4 defect proves examples missed: the ATs sample
+three of the sixteen presence vectors. Exhaustive enumeration of the vector, with randomised dressing,
+is what turns "we tested unanimity" into "unanimity is exactly this conjunction".
+
+**Shrink.** File-local ladder: drop dressing first (extra files, ordering), then reduce to the bare
+presence vector — the shrunk counterexample is a 4-bit string, which is the report you want.
+
+---
+
+**PROP-STALE-01 — `isStale` is exactly digest inequality, and is stable under canonicalisation.**
+*(Data Integrity · L1 · `approvalHash.test.js`)*
+
+**Invariant.** For every generated (document, recorded-anchor) pair: `isStale` is `true` **iff** the
+document's digest differs from the anchor. Two conjuncts follow from `PROP-DIGEST-02`(iii) and are
+asserted here at the caller: a document edited only in line endings or trailing whitespace is **not**
+stale; a document edited in any content byte **is**. Absence of an anchor is stale by definition, and
+a malformed anchor is stale, never an error.
+
+**Generator.** D3 document plus an anchor produced by one of: digesting the document (fresh),
+digesting a one-byte-mutated copy (stale), digesting a line-ending-only-mutated copy (fresh —
+the discriminating shape), a random 64-hex string, a malformed string, or absent. 100 cases.
+
+**Non-vacuity.** ≥20 fresh, ≥20 content-stale, ≥15 line-ending-only, ≥5 malformed, ≥5 absent. The
+line-ending-only floor is the whole point: it is the only shape that fails an implementation
+comparing raw text instead of digests, and it is the AT-16 rebase scenario stated as a space.
+
+**Owner.** Written by **RLH-06** (batch 2); greened by **RLH-16** (batch 7).
+
+**Beyond the examples.** AT-15…AT-17 sample three edits. The property covers the *edit space*: any
+mutation whatsoever is stale unless it is a normalisation, which is the exact contract the approval
+gate needs and the one a whitespace-tolerant comparison would violate silently.
+
+**Shrink.** Shipped `"bytes"` kind for the document; the anchor kind is one of six tags, reported
+verbatim.
+
 ## 5. Oracles
 
 ## 6. Fixtures
