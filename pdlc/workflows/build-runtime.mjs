@@ -80,7 +80,9 @@ const devModule = wrapModule("__dev", stripModuleSyntax(devSource), [
 const queueModule = wrapModule(
   "__queue",
   stripModuleSyntax(queueSource),
-  ["main", "meta", "DEFAULT_QUEUE_PATH"],
+  // §7.2 edit 3 — `rewriteStatus` / `updateQueueStatus` are what an entrypoint's
+  // `_recordHalt` closure calls; without them on `__queue` it has nothing to call.
+  ["main", "meta", "DEFAULT_QUEUE_PATH", "rewriteStatus", "updateQueueStatus"],
   "const realMain = __dev.main;"
 );
 
@@ -134,9 +136,16 @@ return await __queue.main({
   _agent: rtAgent,
   _readFile: rtReadFile,
   _writeFile: rtWriteFile,
+  _git: rtGit,
   _log: rtLog,
   _phase: rtPhase,
-  _runPipeline: ({ reqPath }) => __dev.main({ reqPath, ...__devInjections }),
+  _runPipeline: ({ reqPath }) =>
+    __dev.main({
+      reqPath,
+      ...__devInjections,
+      _recordHalt: async ({ feature, status }) =>
+        __queue.rewriteStatus(__queuePath, feature, status, rtReadFile, rtWriteFile, rtGit),
+    }),
 });
 `;
 
@@ -149,11 +158,31 @@ const __reqPath =
       ? args.reqPath
       : null;
 
+// §7.2 edit 1 — the operator's phase override has no other channel into the bundle.
+const __forcePhases =
+  args && typeof args === "object" && args.forcePhases ? args.forcePhases : null;
+
 if (!__reqPath) {
   return { outcome: "halted", haltReason: "No reqPath supplied — pass the REQ path as args." };
 }
 
-return await __dev.main({ reqPath: __reqPath, ...rtDevInjections(__dev) });
+return await __dev.main({
+  reqPath: __reqPath,
+  forcePhases: __forcePhases,
+  ...rtDevInjections(__dev),
+  // §7.2 edits 3 + 4 — a direct dev invocation still owns its queue row, so it
+  // closes over __queue's row helpers at the default queue path. Absent this,
+  // the seam falls back to defaultRecordHalt's queueRow "none" no-op.
+  _recordHalt: async ({ feature, status }) =>
+    __queue.rewriteStatus(
+      __queue.DEFAULT_QUEUE_PATH,
+      feature,
+      status,
+      rtReadFile,
+      rtWriteFile,
+      rtGit
+    ),
+});
 `;
 
 const bundles = [
@@ -163,7 +192,10 @@ const bundles = [
   },
   {
     file: "orchestrate-dev.bundle.js",
-    contents: [DEV_META, BANNER, adapter, devModule, DEV_ENTRY].join("\n\n"),
+    // §7.2 edit 4 — `queueModule` joins the dev bundle so DEV_ENTRY's
+    // `_recordHalt` closure can reach the queue's row helpers. ORDERING HAZARD:
+    // queueModule's prelude references `__dev.main`, so devModule must precede it.
+    contents: [DEV_META, BANNER, adapter, devModule, queueModule, DEV_ENTRY].join("\n\n"),
   },
 ];
 

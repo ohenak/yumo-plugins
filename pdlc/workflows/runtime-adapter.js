@@ -146,6 +146,99 @@ function rtMakeCheckCi(devModule) {
 }
 
 /**
+ * Append to a file through an agent (TSPEC §3.3). Append-shaped by construction:
+ * the prompt forbids reading, rewriting or reformatting the existing bytes, so
+ * this is deliberately NOT `rtWriteFile(path, existing + text)` — a
+ * read-modify-write would re-emit the reviewer's prose and any divergence would
+ * silently rewrite a cross-review file.
+ */
+async function rtAppendFile(path, text) {
+  await RT.agent(
+    `APPEND the following content to the END of "${path}", relative to the repository root.\n` +
+      `Do not read, rewrite, reformat, re-wrap, summarise, or alter any existing content — ` +
+      `the file's current bytes must be preserved exactly, byte for byte, and the content below ` +
+      `must be added after them verbatim. If the file does not exist, create it containing ` +
+      `exactly the content below. Reply with "ok" when appended.\n\n` +
+      `<<<PDLC_CONTENT_BEGIN\n${text}\nPDLC_CONTENT_END`,
+    { label: `append:${path}`, model: RT_IO_MODEL }
+  );
+}
+
+// TSPEC §3.2 / FSPEC §3.5 — rtListFiles's closed reply vocabulary. One sentinel
+// per ListFailure the shell can observe; `bad_argument` is decided here, before
+// calling out, exactly as rtCheckFile does for an empty path.
+const RT_LIST_SENTINELS = {
+  __PDLC_DIR_MISSING__: "dir_missing",
+  __PDLC_NOT_A_DIRECTORY__: "not_a_directory",
+  __PDLC_UNREADABLE__: "unreadable",
+};
+
+/**
+ * Non-recursive listing of the regular files in `dirPath` (TSPEC §3.2).
+ * Returns { ok: true, files } | { ok: false, reason } over LIST_FAILURES —
+ * never throws, and an unrecognised reply maps to "unreadable" (a halt), never
+ * to an empty list: "there are no cross-reviews" and "I could not find out"
+ * must not collapse into the same value.
+ */
+async function rtListFiles(dirPath) {
+  if (!dirPath || typeof dirPath !== "string" || dirPath.trim() === "") {
+    return { ok: false, reason: "bad_argument" };
+  }
+  const d = dirPath;
+  const out = await RT.agent(
+    `Run this exact command from the repository root and report its output:\n` +
+      `  if [ ! -e "${d}" ]; then echo __PDLC_DIR_MISSING__; ` +
+      `elif [ ! -d "${d}" ]; then echo __PDLC_NOT_A_DIRECTORY__; ` +
+      `elif [ ! -r "${d}" ] || [ ! -x "${d}" ]; then echo __PDLC_UNREADABLE__; ` +
+      `else ls -p -A "${d}" | grep -v '/$'; true; fi\n` +
+      `Return ONLY the command's exact output: one file name per line, no commentary, ` +
+      `no code fences, no bullets, no path prefixes. If the command printed one of the ` +
+      `sentinel tokens, return ONLY that token. If it printed nothing at all, return nothing at all.`,
+    { label: `list:${d}`, model: RT_IO_MODEL }
+  );
+  const text = typeof out === "string" ? out.trim() : null;
+  if (text === null) return { ok: false, reason: "unreadable" };
+  if (text === "") return { ok: true, files: [] };
+  if (RT_LIST_SENTINELS[text]) return { ok: false, reason: RT_LIST_SENTINELS[text] };
+
+  const lines = text.split("\n").map((l) => l.trim()).filter((l) => l !== "");
+  // A basename has no separator and no whitespace. Anything else is prose the
+  // prompt did not permit, and prose is "I could not find out".
+  if (!lines.every((l) => !/[\/\s]/.test(l) && !RT_LIST_SENTINELS[l])) {
+    return { ok: false, reason: "unreadable" };
+  }
+  return { ok: true, files: lines };
+}
+
+/**
+ * Transport seam for git (TSPEC §3.4). `argv` excludes the leading "git".
+ * Returns { ok, stdout, stderr } and never throws; the caller interprets.
+ * Modelled on rtMergeWorktree's fixed-command + exact-JSON-reply discipline.
+ */
+async function rtGit(argv) {
+  const args = Array.isArray(argv) ? argv : [];
+  const out = await RT.agent(
+    `Run exactly this command from the repository root, and nothing else:\n` +
+      `  git ${args.join(" ")}\n` +
+      `If it exits 0, return exactly: {"ok":true,"stdout":"<its stdout>","stderr":""}\n` +
+      `If it exits non-zero, return exactly: {"ok":false,"stdout":"","stderr":"<its stderr>"}\n` +
+      `Return ONLY that JSON object, correctly escaped — no commentary, no code fences. ` +
+      `Do not retry, do not repair, and do not run any other command.`,
+    { label: `git:${args[0] || ""}`, model: RT_IO_MODEL }
+  );
+  try {
+    const parsed = JSON.parse(String(out).trim());
+    return {
+      ok: parsed && parsed.ok === true,
+      stdout: typeof (parsed && parsed.stdout) === "string" ? parsed.stdout : "",
+      stderr: typeof (parsed && parsed.stderr) === "string" ? parsed.stderr : "",
+    };
+  } catch {
+    return { ok: false, stdout: "", stderr: "unparseable adapter response" };
+  }
+}
+
+/**
  * Merge a worktree branch. Contract mirrors mergeWorktree():
  * { ok: true } | { ok: false, conflictingFiles: string[] }
  */
@@ -186,5 +279,14 @@ function rtDevInjections(devModule) {
     _readFile: rtReadFile,
     _checkCi: rtMakeCheckCi(devModule),
     _mergeWorktree: rtMergeWorktree,
+    // TSPEC §3.10. `_writeFile`'s adapter existed since the first bundle but was
+    // never in this object; the other three are new with RLH-32.
+    _writeFile: rtWriteFile,
+    _appendFile: rtAppendFile,
+    _listFiles: rtListFiles,
+    _git: rtGit,
+    // `_recordHalt` is deliberately ABSENT: its implementation differs by caller,
+    // which a caller-independent adapter bundle cannot express. It is supplied
+    // per entrypoint by build-runtime.mjs (§3.10, §7.2 edit 2b).
   };
 }

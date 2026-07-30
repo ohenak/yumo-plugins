@@ -995,7 +995,22 @@ describe("RLH-AT-64: orchestrate-dev's composition root wires every seam", () =>
     // DEV_ENTRY. If either is dropped, this reds — which is the whole point.
     const recordHalt = classified.find((c) => c.name === "_recordHalt");
     if (!recordHalt) return; // not yet declared on main() — RLH-18 adds it
-    expect(report(recordHalt)).toBe(`_recordHalt: wired=true exemption=none`);
+    // The claim is TSPEC §8.5's and PLAN §9.3 item 1's, in their words: "wired,
+    // NOT exempt" — asserted as the two derived fields, with `report` carrying
+    // the derivation into the failure message.
+    //
+    // Not `exemption=none`. TSPEC §3.1 mandates the declaration
+    // `_recordHalt: recordHaltFn = defaultRecordHalt`, and §8.5 says of that very
+    // default: "`defaultRecordHalt` — a deliberate no-op — declares no `_agent`
+    // either, so it stays on the wired side". An identifier default that names a
+    // module function makes E-3 a CANDIDATE form by construction; what §8.5 asks
+    // is that it not RESOLVE, i.e. `exempt === false`. Demanding the rendered
+    // string be `exemption=none` would instead demand main() drop the default
+    // §3.1 prescribes — the test dictating the composition root, backwards.
+    expect(report(recordHalt)).toContain("wired=true");
+    expect({ name: recordHalt.name, exempt: recordHalt.exempt, why: report(recordHalt) }).toMatchObject({
+      exempt: false,
+    });
   });
 
   it("RLH-AT-64: the E-2 alias hop is one hop, through main()'s own destructuring pattern", () => {
