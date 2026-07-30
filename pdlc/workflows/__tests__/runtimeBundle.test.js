@@ -1145,8 +1145,18 @@ describe("DOD-03 — build-runtime.mjs --check detects staleness", () => {
 // is `build-runtime.mjs`'s hand-written `DEV_META`. If that copy declares no
 // `inputs`, the operator has no declared way to pass `forcePhases` at all.
 //
-// Both halves are asserted against `dist/orchestrate-dev.bundle.js` — the bytes
-// the runtime loads — not against the builder's source.
+// What is asserted, and against what (CR F-8 — the earlier wording here claimed
+// more than this suite delivers). Both halves read `dist/orchestrate-dev.bundle.js`,
+// but they do NOT pin the *tracked* bytes: line 18's `import … from
+// "../build-runtime.mjs"` runs the builder — the module is a top-level script
+// with no entry guard — so `dist/` has already been rebuilt from the current
+// sources before the first assertion executes. What these two cases therefore
+// assert is that a bundle built from today's `build-runtime.mjs` + `orchestrate-dev.js`
+// declares `inputs` on the runtime-visible `meta` and honours both argument
+// shapes; they red against a mutation of the builder's source, not against a
+// hand-perturbed `dist/`. Freshness of the tracked artifact is a separate
+// guarantee, genuinely covered by `DOD-03`'s temp-root tests, which build in a
+// `mkdtemp` root this import cannot repair.
 // ---------------------------------------------------------------------------
 
 describe("RLH-CR-F1: the shipped dev bundle declares and honours its inputs", () => {
@@ -1184,6 +1194,23 @@ describe("RLH-CR-F1: the shipped dev bundle declares and honours its inputs", ()
     );
   }
 
+  /**
+   * The `FORCE_PHASE_TOKENS` array as the module declares it, lifted from
+   * `orchestrate-dev.js`'s source rather than restated here (CR F-7: a
+   * hard-coded catalogue lets the operator-facing description go stale
+   * silently). The constant is deliberately not exported — C-2 permits exactly
+   * one `export` in a workflow source — so it is read as text and evaluated.
+   */
+  function forcePhaseTokens() {
+    const src = readFileSync(resolve(WORKFLOWS, "orchestrate-dev.js"), "utf8");
+    const at = src.indexOf("const FORCE_PHASE_TOKENS =");
+    expect(at).toBeGreaterThanOrEqual(0);
+    const end = src.indexOf(";", at);
+    expect(end).toBeGreaterThan(at);
+    // eslint-disable-next-line no-new-func
+    return Function(`"use strict"; ${src.slice(at, end + 1)}\nreturn FORCE_PHASE_TOKENS;`)();
+  }
+
   it("RLH-CR-F1: DEV_META declares reqPath and forcePhases as inputs", () => {
     const meta = shippedMeta(DEV_BUNDLE);
     expect(Array.isArray(meta.inputs)).toBe(true);
@@ -1191,8 +1218,9 @@ describe("RLH-CR-F1: the shipped dev bundle declares and honours its inputs", ()
     expect(Object.keys(byName).sort()).toEqual(["forcePhases", "reqPath"]);
     expect(byName.reqPath.required).toBe(true);
     expect(byName.forcePhases.required).toBe(false);
-    // The catalogue the operator is told about must be the one the module enforces.
-    for (const token of ["R", "F", "T", "P", "D", "PR", "all"]) {
+    // The catalogue the operator is told about must be the one the module
+    // enforces — derived from FORCE_PHASE_TOKENS, never restated (CR F-7).
+    for (const token of [...forcePhaseTokens(), "all"]) {
       expect(byName.forcePhases.description).toContain(token);
     }
   });
