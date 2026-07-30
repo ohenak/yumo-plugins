@@ -681,6 +681,202 @@ gate needs and the one a whitespace-tolerant comparison would violate silently.
 **Shrink.** Shipped `"bytes"` kind for the document; the anchor kind is one of six tags, reported
 verbatim.
 
+### 4.3 L2 — orchestration invariants
+
+These run against `orchestrate-dev.js`'s injected seams (`__tests__/helpers/seams.js`), synchronously
+doubled, with **no filesystem**. Every injected call the subject makes is `await`ed in the subject
+(C-2 consequence); the doubles are sync, so the properties assert on the *recorded call log* the
+doubles accumulate, never on timing.
+
+---
+
+**PROP-LIST-01a — `ListFailure` disposition is total at the phase gate.**
+*(Error Handling · L2 · `haltAndQueue.test.js`)*
+
+**Invariant.** For every failure the enumeration seam can report, the phase gate reaches exactly one
+disposition from TSPEC §4.2's table: `dir_missing` is **benign** (the phase proceeds with an empty
+review set) and each of `not_a_directory`, `unreadable`, `bad_argument` **halts** with the message
+`Cannot enumerate {dirPath}: {reason}` — the literal owned by §4.2 and cited, not retyped (§6.4).
+Totality (DC-01) is asserted as **set equality** between the dispositions exercised and
+`LIST_FAILURES`: every row reachable, no row unreachable, nothing outside the table observed.
+
+**Generator.** D6 — phase-entry configurations: phase ∈ the six forceable phases × failure ∈
+`LIST_FAILURES` ∪ `{ok}` × a randomised pre-existing review set × a randomised `dirPath` string
+(including paths with spaces, unicode, and a trailing slash, to prove the message interpolates the
+path it was given). Enumeration of phase × failure is exhaustive; the rest is sampled. 100 cases.
+
+**Non-vacuity.** Every `(phase, failure)` pair must be observed — set equality against the product,
+which is what makes "every row reachable" a measured claim rather than an aspiration. And ≥10 `ok`
+cases must be present so the benign path is not the only non-halting outcome.
+
+**Owner.** Written by **RLH-25** (batch 11); greened by **RLH-26** (batch 12).
+
+**Beyond the examples.** AT-24…AT-27 name four dispositions one phase at a time. The product with the
+phase axis is what no AT set carries: a disposition that is correct at Phase R and swallowed at Phase
+D is exactly the H-2 terminal-exit shape, and only the product catches it.
+
+**Shrink.** File-local ladder: fix the failure, minimise the phase to the earliest failing one, then
+reduce `dirPath` to the shortest still-failing string.
+
+---
+
+**PROP-LIST-01b — the disposition is re-evaluated at every episode entry, not cached.**
+*(Error Handling · L2 · `pacingWrapper.test.js`)*
+
+**Invariant.** For every generated episode interleaving: `refreshReviewState()` is called at **every**
+episode entry (call count equals episode count, asserted as an equality, not a floor); the disposition
+each episode reaches is the one implied by *that episode's* seam answer, not a previous episode's; and
+a seam that answers `ok` then `unreadable` halts at the second episode rather than proceeding on the
+cached first answer. Conversely a seam answering `dir_missing` then `ok` proceeds with a **non**-empty
+review set at the second episode.
+
+**Generator.** D7 — episode interleavings: a sequence of 1…12 episodes, each carrying a phase, a round
+index, and a seam answer drawn from `LIST_FAILURES ∪ {ok}`, subject to the constraint that a halting
+answer terminates the sequence (halts are terminal, so nothing after one is generated). 100 cases.
+
+**Non-vacuity.** ≥20 sequences must change seam answer between consecutive episodes (the caching
+discriminator), ≥15 must be length ≥5, and ≥10 must end in a halt. A sequence whose answers never
+change cannot falsify caching and is counted but not relied upon.
+
+**Owner.** Written by **RLH-21** (batch 9); greened by **RLH-23** (batch 10).
+
+**Beyond the examples.** This is `S-INV` — per-episode refresh — stated over interleavings. Examples
+pin two-episode sequences; the property covers arbitrary ones, including the phase-change-mid-sequence
+shapes where a cached state is most tempting and most wrong.
+
+**Shrink.** File-local ladder: truncate the sequence from the front while it still fails, then
+simplify each surviving episode's phase to the first in the catalogue.
+
+---
+
+**PROP-APPROVE-01 — the two-tier approval search finds an approval iff one exists in the window.**
+*(State Machine · L2 · `approvalSearch.test.js`)*
+
+**Invariant.** For every generated branch state: the search returns an approval **iff** the branch
+carries a unanimous, digest-current approval for a review inside `[startIndex, endIndex]`. Three
+conjuncts. (i) **Tier discipline** — the second tier is consulted **only** when the first yields
+nothing, asserted on the recorded seam call log, so a search that always reads both tiers fails.
+(ii) **Window respect** — an approval for a review *outside* the window is never returned, however
+unanimous and however current. (iii) **Idempotence** — running the search twice against the same
+branch state yields an equal result and issues an equal number of seam reads.
+
+**Generator.** D2 × D4. Branch states composed from `PROP-ROUND-01`'s filename generator (so window
+membership is generated, not assumed) crossed with `PROP-RESOLVE-01`'s 16-element presence vector, plus
+tier placement (`tier1`, `tier2`, `both`, `neither`) chosen by `rng.pick`. 100 cases.
+
+**Non-vacuity.** All four tier placements must appear; ≥15 cases must place a unanimous approval
+**outside** the window; ≥15 must place a unanimous-but-stale approval inside it. Those two floors are
+the property's discriminating power — everything else is dressing.
+
+**Owner.** Written by **RLH-24** (batch 11); greened by **RLH-26** (batch 12).
+
+**Beyond the examples.** The `iff` is the point. The ATs assert *finding* an approval that is there
+(AT-44…AT-47); the property additionally asserts *not* finding one that is not, over a space that
+includes the near-misses — out-of-window, stale, half-unanimous — that the H-4 defect shipped through.
+
+**Shrink.** File-local ladder: collapse to tier placement + presence vector + one in/out-of-window
+flag; the shrunk report is three tokens.
+
+---
+
+**PROP-GINV-01 — `G-INV`: no path reaches step 5 except through the POSTMORTEM gate.**
+*(State Machine · L2 · `haltAndQueue.test.js`)*
+
+**Invariant.** Stated over **paths, not steps**. For every generated traversal of the phase machine
+that ends in the phase being run (step 5), the recorded step log contains step **G**, and G appears
+**before** step 5 in every such path. Equivalently: step 5 is unreachable in the traversal graph with
+G removed. Two conjuncts guard the framing. (i) **Every exit that leads to running the phase is
+gated** — not merely the exits the current implementation happens to take, so the property enumerates
+the exits from the *catalogue* of exits, not from an observed run. (ii) **G is evaluated, not merely
+present** — the gate's decision must be a function of the generated state, asserted by requiring that
+the corpus contains both G-passes and G-halts for the same downstream step.
+
+**Generator.** D6 — phase-entry configurations crossed with the exit catalogue: for each exit, a state
+that takes it, dressed with a randomised round index, a randomised prior-postmortem presence flag, and
+a randomised review set. Exits enumerated exhaustively; dressing sampled. 100 cases.
+
+**Non-vacuity.** Every exit in the catalogue must be traversed at least once — set equality against the
+exit catalogue — and both outcomes of G (pass and halt) must be observed for ≥3 distinct exits. An
+exit that no generated state can reach is a **failure**, not a skip: an unreachable exit means either
+the catalogue or the machine is wrong, and DC-01 makes that a finding rather than silence.
+
+**Owner.** Written by **RLH-25** (batch 11); greened by **RLH-26** and **RLH-27** (batch 12) — the
+property is not fully green until RLH-27's terminal-exit rework lands, because until then at least one
+exit reaches step 5 without G. That is the H-2 defect, and this property is its executable statement.
+
+**Beyond the examples.** An enumeration of steps is what the pre-fix suite had, and it passed while
+H-2 was live: each step was individually correct and one *path* skipped the gate. Stating the invariant
+over paths — and generating the paths rather than listing them — is the whole reason this property
+exists and the reason it is worded as reachability rather than as a sequence assertion.
+
+**Shrink.** File-local ladder: minimise the path by removing dressing, then by shortening the traversal
+to the shortest prefix that still reaches step 5 without G. The shrunk counterexample is a path.
+
+---
+
+**PROP-EPISODE-01 — `EpisodeKey` is unpinned and the 36-dispatch bound holds over all interleavings.**
+*(Concurrency/Bounds · L2 · `pacingWrapper.test.js`)*
+
+**Invariant.** For every generated interleaving of phases and rounds: (i) **the bound** — total
+authoring dispatches never exceed `(1 + MAX_REVIEW_ROUNDS) × MAX_AUTHORING_DISPATCHES` (TSPEC §4.5;
+36 at the current constants, asserted against the constants, never against the literal 36); (ii)
+**per-episode counting** — the dispatch counter is keyed by the full five-coordinate `EpisodeKey`, so
+two episodes differing in *any single* coordinate never share a budget, asserted by generating pairs
+that differ in exactly one coordinate and checking the counters are independent; (iii) **unpinned
+`roundIndex`** — because `refreshReviewState()` runs at every episode entry, `roundIndex` is a
+per-episode derivation, so an interleaving that revisits a phase at a *lower* round index than a
+previous episode is legal and gets its own budget rather than a exhausted one.
+
+**Generator.** D7 episode interleavings, extended to vary all five `EpisodeKey` coordinates
+independently, including the pathological orderings (same phase twice non-consecutively, round index
+decreasing, phase revisited after a different phase). Sequence length 1…12; per episode, 0…8 attempted
+dispatches. 100 cases.
+
+**Non-vacuity.** ≥15 interleavings must attempt **more** than the budget within one episode (so the
+cap is exercised, not merely respected by luck); ≥15 must revisit a phase; ≥10 must decrease
+`roundIndex` across episodes; and each of the five coordinates must be the *sole* differing coordinate
+in ≥3 pairs — set equality against the coordinate list, so a coordinate dropped from `EpisodeKey`
+fails here.
+
+**Owner.** Written by **RLH-21** (batch 9); greened by **RLH-23** (batch 10).
+
+**Beyond the examples.** The bound is arithmetic over a *space of interleavings*; the ATs sample three
+of them. And the "unpinned" conjunct cannot be written as an example at all without asserting a
+specific illegal-looking sequence is legal — which reads as a bug in an AT and as an invariant here.
+
+**Shrink.** File-local ladder: shorten the interleaving, then reduce per-episode dispatch counts toward
+the budget edge, then collapse coordinates to their first catalogue value.
+
+---
+
+**PROP-WINDOW-01 — the round window is computed once at the phase gate and read, never recomputed.**
+*(State Machine · L2 · `roundWindow.test.js`)*
+
+**Invariant.** For every generated phase run: `deriveRoundWindow` is invoked **exactly once** per
+phase entry (call-count equality on the seam log, not a floor); every subsequent consumer receives
+`startIndex` and `endIndex` **positionally** from that single computation; and for the whole duration
+of the phase the pair satisfies `endIndex === startIndex + MAX_REVIEW_ROUNDS - 1` even as rounds
+advance — i.e. round advancement moves the *cursor*, never the window. `checkConverged` receives both
+values on every call, and the values it receives are identical across all calls within one phase entry.
+
+**Generator.** D6 × D7: a phase entry with a generated branch state (from `PROP-ROUND-01`'s generator)
+followed by 1…`MAX_REVIEW_ROUNDS + 2` round advances, each with a generated verdict. 100 cases.
+
+**Non-vacuity.** ≥20 runs must advance past `MAX_REVIEW_ROUNDS` rounds (the overflow shape), ≥15 must
+start from a branch already carrying reviews (non-1 `startIndex`), and ≥10 must converge before the
+window closes. The non-1 `startIndex` floor is what distinguishes derivation from a counter starting
+at 1 — the H-1 defect.
+
+**Owner.** Written by **RLH-22** (batch 9); greened by **RLH-27** (batch 12).
+
+**Beyond the examples.** "Computed once" is a claim about call *counts* across a run; no example
+asserts absence of a second computation. This is the orchestration-level half of `PROP-ROUND-01`'s
+pure arithmetic, and the pair together is what closes H-1: the arithmetic is right *and* nobody redoes
+it with stale inputs.
+
+**Shrink.** File-local ladder: reduce the round count to the first failing advance, then minimise the
+branch state.
+
 ## 5. Oracles
 
 ## 6. Fixtures
