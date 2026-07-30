@@ -314,4 +314,88 @@ statement. One sentence on the "Entry (single feature)" bullet closes it.
 
 ## 4. Checked and clean
 
-<!-- filled in section 4 -->
+Recorded so a later round does not pay for this again, and so the absence of findings here is
+evidence rather than silence.
+
+### 4.1 Stubs, placeholders, TODO
+
+`grep -rn "TODO|FIXME|XXX|HACK|placeholder|not implemented|NotImplemented|stub"` over
+`orchestrate-dev.js`, `orchestrate-queue.js`, `runtime-adapter.js` and `build-runtime.mjs`
+returns **no** unfinished work. Every hit is one of three benign classes:
+
+- the two `// ─── Runtime API stubs (replaced by real runtime in production) ───` banners
+  (`orchestrate-dev.js:3537`, `orchestrate-queue.js:469`) — the documented no-op globals the
+  build replaces;
+- `dodVerifyLoop`'s own prompt text, which enumerates stubs/mock data/unwired integrations
+  because that is what it instructs `dod-verify` to hunt for, and its `stubs: 0` fields, which
+  are parsed counters not placeholders;
+- `isPlaceholderBody`'s `/^[_*`~\s]*(?:TBD|TODO)[_*`~\s]*$/i` (`:1251`) — the §5.9 rule that
+  *detects* placeholder bodies.
+
+### 4.2 Mock or hard-coded data on production paths
+
+None. The two shapes worth suspecting were both checked and are correct:
+
+- `commitQueueRow` returns the literal `{ queueRow: "halted" }` on success regardless of the
+  status written (`orchestrate-queue.js:946`). This is not hard-coding: `rewriteStatus`'s
+  contract documents `queueRow` as TSPEC §4.7's **row disposition** catalogue
+  (`"halted" | "halted (uncommitted)" | "none" | "error"`), not as the status. The value is also
+  never surfaced from the non-halt call sites — `orchestrate-queue.js:789`, `:802` and `:820`
+  discard the return — so only `_recordHalt`'s value reaches a report, where `"halted"` is
+  correct by construction.
+- `PHASE_DISPATCH`'s `creatorOutputPath` templates are substituted at their single consumer
+  (§2.4 above).
+
+### 4.3 Unwired integrations
+
+Every `_`-prefixed parameter of `orchestrate-dev.js`'s `main()` was enumerated against
+`rtDevInjections` plus the two entrypoint templates. Thirteen are supplied by the adapter
+object, `_recordHalt` by both `DEV_ENTRY` and `QUEUE_ENTRY`, and the remainder
+(`_rebaseOntoDefault`, `_dodVerifyLoop`, `_raisePrAndVerifyCi`, `_phaseDodEnabled`,
+`_phasePubEnabled`, `_now`, `_sleep`) default to in-module values that are themselves
+agent-composite or literal — the E-1/E-3 forms `RLH-AT-64`'s `classifyExemption` recognises,
+with the anti-rot clauses asserting that a parameter cannot be both wired and exempt and that
+every exemption's evidence resolves. `rtDevInjections` is the only object the assertion reads
+and it is read from `runtime-adapter.js` **as it ships**, so a seam added later without an
+adapter cannot pass silently.
+
+The queue side matches: `orchestrate-queue.js`'s `main()` declares `_agent`, `_readFile`,
+`_writeFile`, `_git`, `_runPipeline`, `_log`, `_phase`, and `QUEUE_ENTRY` supplies all seven.
+Its `_recordHalt` closure threads `rtReadFile`/`rtWriteFile`/`rtGit` explicitly into
+`rewriteStatus`, so the queue's `default*` seams are unreachable in the runtime too.
+
+The **one** genuine unwired-in-runtime path found is F-2's, and it is pre-existing.
+
+### 4.4 Coverage — behaviour shipping without a test
+
+No production behaviour ships untested. One observation, deliberately **not** raised as a
+finding: four parsers — `parseApprovalHash` (`:838`), `extractFileVerdict` (`:888`),
+`parseResolvedMarker` (`:953`) and `extractRecommendation` (`:988`) — are never named in any
+test file. They are nonetheless covered, at two levels:
+
+- their shared primitive `scanLines` is directly and property-tested, with the fence-aware
+  edge cases pinned by dedicated fixtures (`__tests__/fixtures/cross-reviews/quoted-hash.md`,
+  `quoted-verdict.md`, `unclosed-fence.md`, consumed at `scanLines.test.js:247/278/292`);
+- their behaviour is exercised through `main()` by `approvalSearch.test.js`,
+  `haltAndQueue.test.js` and `forcePhases.test.js`, which construct `APPROVAL-HASH:` and
+  `RESOLVED:` inputs and assert the pipeline outcome those parsers determine.
+
+That is integration coverage rather than unit coverage, which is a legitimate choice here (all
+four are unexported and reachable only through the phase-entry derivation). It is recorded so a
+future round does not mistake the naming gap for an untested surface.
+
+### 4.5 No vacuous passes
+
+`RLH-AT-19`'s source half carries an explicit vacuity guard —
+`expect(sites.length).toBeGreaterThan(0)` before the classification assertion — so a scanner that
+went blind would fail rather than pass over an empty set, and `RLH-SCAN-01` is the scanner's own
+self-test, so the classification rests on a tested mechanism rather than a trusted one.
+`RLH-AT-64` has the matching guard ("the seam set is derived from `main()`, and is not empty").
+Both were checked by reading the assertions, not by trusting their names.
+
+### 4.6 Dead code that is not this feature's
+
+Two symbols are defined and never used, both **byte-identical on `origin/main`** and therefore
+outside this diff: `orchestrate-queue.js:74 export const QUEUE_STATUSES` and
+`orchestrate-queue.js:84 function haltError`. Recorded, not raised. (`reviewerSkillForSlug` is
+the same shape but *is* new with this feature, which is why it is F-1.)
