@@ -193,17 +193,38 @@ const LEARNINGS_HEADINGS = Object.freeze([
 ]);
 
 /**
+ * `harvest-learnings/SKILL.md`'s metadata table. Its `Harvested from` row is the
+ * **second conjunct** of §16.5's completeness criterion (CR F-2), so every
+ * fixture that means to score complete must carry it.
+ */
+const LEARNINGS_METADATA = [
+  "| Field | Detail |",
+  "|---|---|",
+  `| Feature | ${FEATURE} |`,
+  "| Harvested from | CROSS-REVIEW-se-review-FSPEC-v1.md, now deleted |",
+].join("\n");
+
+/**
  * A LEARNINGS document. `filled` counts how many of the five numbered sections
  * carry a body; the rest are present but empty. `approvalRecord` adds §4.4's
- * record, whose **absence** is what `RLH-AT-51` observes.
+ * record, whose **absence** is what `RLH-AT-51` observes. `harvestedFrom` drops
+ * §16.5's metadata row, which is what makes the document incomplete on its own.
  *
- * @param {{ filled?: number, approvalRecord?: boolean }} [opts]
+ * @param {{ filled?: number, approvalRecord?: boolean, harvestedFrom?: boolean }} [opts]
  * @returns {string}
  */
-function learningsDoc({ filled = LEARNINGS_HEADINGS.length, approvalRecord = true } = {}) {
+function learningsDoc({
+  filled = LEARNINGS_HEADINGS.length,
+  approvalRecord = true,
+  harvestedFrom = true,
+} = {}) {
   const sections = LEARNINGS_HEADINGS.map((h, i) => [h, i < filled ? `Learned: ${h}.` : null]);
   if (approvalRecord) sections.push(["6. Approval Record", "| Doc | Round | Verdict |\n|---|---|---|\n| FSPEC | 1 | Approved |"]);
-  return specDoc(sections);
+  const doc = specDoc(sections);
+  if (!harvestedFrom) return doc;
+  // The metadata table sits between the `# ` title and the first `## ` section,
+  // exactly as the SKILL's output format places it.
+  return doc.replace(`# ${FEATURE}\n`, `# ${FEATURE}\n\n${LEARNINGS_METADATA}\n`);
 }
 
 /** A reviewer's response body. The file is the artifact; the response carries the trailer. */

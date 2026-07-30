@@ -615,3 +615,109 @@ describe("PROP-COMPLETE-01 — isComplete is exactly the required set (TSPEC §5
   });
 });
 
+
+// ═══ RLH-CR-F2 — Phase CR finding F-2: FSPEC §16.5's `Harvested from` conjunct ═════════════
+//
+// §16.5 states the LEARNINGS criterion as a **conjunction**: "the metadata table including its
+// `Harvested from` row, **and** its five numbered sections each with a non-empty body". The
+// implementation carried only the second conjunct, following TSPEC §5.9's narrower restatement.
+// FSPEC §16 owns the structural-completeness criteria and governs (the same owning-section
+// ruling already applied to the §5.9-vs-§16.3 verdict conflict), so §16.5 is implemented here
+// and the TSPEC narrowing is recorded as documentation drift for Harvest.
+//
+// Second half of the finding: §16.5's per-class resume clause names
+// `(the metadata table's "Harvested from" row)` "when all five are satisfied" — a branch that
+// is unreachable while five satisfied sections imply `missing === []`. It is reachable now, and
+// asserted through `missing[0]`, which is what `firstUnwrittenSection` step 4 names.
+
+const CLASS_LEARNINGS = "LEARNINGS";
+
+/** §16.5's resume-clause string for the absent metadata row. */
+const HARVESTED_FROM_CLAUSE = '(the metadata table\'s "Harvested from" row)';
+
+/** `harvest-learnings/SKILL.md`'s metadata table, `Harvested from` row included or omitted. */
+function metadataTable({ harvestedFrom = true } = {}) {
+  const rows = [
+    "| Field | Detail |",
+    "|---|---|",
+    "| Feature | f |",
+    "| REQ | docs/f/REQ-f.md |",
+  ];
+  if (harvestedFrom) rows.push("| Harvested from | CROSS-REVIEW-se-FSPEC-v1.md, now deleted |");
+  rows.push("| DoD rounds | 1 |");
+  return rows.join("\n");
+}
+
+/**
+ * A LEARNINGS document. `filled` counts how many of the five numbered sections carry a body;
+ * the rest are present but empty.
+ */
+function learningsDoc({ filled = 5, harvestedFrom = true, approvalRecord = false } = {}) {
+  const titles = [
+    "1. Non-Convergences",
+    "2. Cross-Feature Patterns",
+    "3. Rejected Proposals (with rationale)",
+    "4. Process Learnings",
+    "5. Open Items for Consolidation",
+  ];
+  const parts = ["# LEARNINGS — f", "", metadataTable({ harvestedFrom }), ""];
+  titles.forEach((title, i) => {
+    parts.push(`## ${title}`, "");
+    if (i < filled) parts.push(`Distilled body for ${title}.`, "");
+  });
+  if (approvalRecord) {
+    parts.push("## 6. Approval Record", "", "| Doc | Round | Verdict |", "|---|---|---|", "");
+  }
+  return parts.join("\n");
+}
+
+describe("RLH-CR-F2 — LEARNINGS completeness is FSPEC §16.5's conjunction", () => {
+  test("RLH-CR-F2: five populated sections WITHOUT a `Harvested from` row are not complete, and the resume clause names that row", () => {
+    // The finding's own falsifier, inverted into an assertion.
+    const withoutRow = devModule.isComplete(CLASS_LEARNINGS, null, learningsDoc({ harvestedFrom: false }));
+    expect(withoutRow.complete).toBe(false);
+    // All five sections are satisfied, so the row is the sole — and therefore first — shortfall.
+    expect(withoutRow.missing).toEqual([HARVESTED_FROM_CLAUSE]);
+  });
+
+  test("RLH-CR-F2: the conjunction is falsifiable in both directions", () => {
+    // Both conjuncts → complete.
+    const complete = devModule.isComplete(CLASS_LEARNINGS, null, learningsDoc());
+    expect(complete.complete).toBe(true);
+    expect(complete.missing).toEqual([]);
+
+    // Row present, a section short → incomplete, and the SECTION is named first (§16.5 names
+    // the metadata row only "when all five are satisfied").
+    const shortSection = devModule.isComplete(CLASS_LEARNINGS, null, learningsDoc({ filled: 4 }));
+    expect(shortSection.complete).toBe(false);
+    expect(shortSection.missing[0]).toBe("Open Items for Consolidation");
+    expect(shortSection.missing).not.toContain(HARVESTED_FROM_CLAUSE);
+
+    // Neither conjunct → both reported, sections first.
+    const neither = devModule.isComplete(
+      CLASS_LEARNINGS,
+      null,
+      learningsDoc({ filled: 4, harvestedFrom: false })
+    );
+    expect(neither.complete).toBe(false);
+    expect(neither.missing).toEqual(["Open Items for Consolidation", HARVESTED_FROM_CLAUSE]);
+  });
+
+  test("RLH-CR-F2: the row is matched case-insensitively and only outside fenced regions", () => {
+    const lowerCased = learningsDoc().replace("| Harvested from |", "|  harvested FROM  |");
+    expect(devModule.isComplete(CLASS_LEARNINGS, null, lowerCased).complete).toBe(true);
+
+    // §1.2 rule 5 — a row quoted inside a fence is a template, not the document's own table.
+    const fenced = learningsDoc({ harvestedFrom: false }).replace(
+      "| Field | Detail |",
+      "```markdown\n| Harvested from | {list} |\n```\n\n| Field | Detail |"
+    );
+    expect(devModule.isComplete(CLASS_LEARNINGS, null, fenced).complete).toBe(false);
+  });
+
+  test("RLH-CR-F2: the approval record stays excluded — its absence never blocks completeness", () => {
+    // AC-4.2c / §16.5's argued exclusion is unchanged by the added conjunct.
+    expect(devModule.isComplete(CLASS_LEARNINGS, null, learningsDoc({ approvalRecord: false })).complete).toBe(true);
+    expect(devModule.isComplete(CLASS_LEARNINGS, null, learningsDoc({ approvalRecord: true })).complete).toBe(true);
+  });
+});

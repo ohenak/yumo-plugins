@@ -1494,6 +1494,43 @@ const LEARNINGS_SECTIONS = Object.freeze([
   "Open Items for Consolidation",
 ]);
 
+/**
+ * FSPEC §16.5's **other** conjunct: the metadata table's `Harvested from` row.
+ *
+ * §16.5 states the LEARNINGS criterion as "the metadata table including its
+ * `Harvested from` row, AND its five numbered sections each with a non-empty
+ * body". TSPEC §5.9's restatement drops the first half; §16 owns the
+ * structural-completeness criteria and governs, so the conjunct is implemented
+ * here (CR F-2) and the TSPEC narrowing is documentation drift for Harvest.
+ *
+ * Why it matters and not merely tidiness: `harvest-learnings` step 8 deletes
+ * every `CROSS-REVIEW-*` / `CODE_REVIEW-*` once the episode reaches terminal, and
+ * `guard-harvest-before-delete.sh` checks only that the LEARNINGS file exists.
+ * This row is the record of **what was deleted** — the one thing whose absence is
+ * unrecoverable.
+ *
+ * Matched like §16.4's `Scope:` marker: one cheap, case-insensitive line scan,
+ * through `scanLines` so a row quoted inside a fenced template block (as the
+ * SKILL's own format section carries it) is not the document's own table.
+ */
+const HARVESTED_FROM_ROW = /^\s*\|\s*harvested\s+from\s*\|/i;
+
+/**
+ * §16.5's per-class resume clause for the absent row — the branch FSPEC names
+ * "when all five are satisfied", which was unreachable while the five sections
+ * were the whole criterion. Appended **last** to `missing`, so
+ * `firstUnwrittenSection` names an unwritten section ahead of it.
+ */
+const HARVESTED_FROM_CLAUSE = '(the metadata table\'s "Harvested from" row)';
+
+function hasHarvestedFromRow(fileText) {
+  let found = false;
+  scanLines(fileText, (line) => {
+    if (!found && HARVESTED_FROM_ROW.test(line)) found = true;
+  });
+  return found;
+}
+
 /** A top-level `##` heading — never `###`, up to three leading spaces. */
 const TOP_LEVEL_HEADING = /^ {0,3}##(?!#)\s+(.+?)\s*$/;
 
@@ -1658,8 +1695,9 @@ function isComplete(artifactClass, docType, fileText) {
   }
 
   if (artifactClass === "LEARNINGS") {
-    // §16.5: "its five numbered sections each with a non-empty body". The
-    // criterion is POSITIONAL, not title-based: harvest-learnings is free to name
+    // §16.5, in full: "the metadata table including its `Harvested from` row,
+    // AND its five numbered sections each with a non-empty body". The section
+    // half of the criterion is POSITIONAL, not title-based: harvest-learnings is free to name
     // its five sections for the feature it distilled, and LEARNINGS_SECTIONS is
     // this module's default naming, not a contract the skill is held to. What is
     // fixed is that sections `1.`…`5.` all exist and all carry content.
@@ -1675,6 +1713,10 @@ function isComplete(artifactClass, docType, fileText) {
       if (!numbered.has(n) && !isEmptyBody(s.body)) numbered.set(n, s.title);
     }
     const missing = LEARNINGS_SECTIONS.filter((_, i) => !numbered.has(i + 1));
+    // The metadata conjunct, appended last so an unwritten section is still what
+    // the resume prompt names first (§16.5: the row is named "when all five are
+    // satisfied"). See HARVESTED_FROM_CLAUSE.
+    if (!hasHarvestedFromRow(fileText)) missing.push(HARVESTED_FROM_CLAUSE);
     return done(missing.length === 0, missing);
   }
 
