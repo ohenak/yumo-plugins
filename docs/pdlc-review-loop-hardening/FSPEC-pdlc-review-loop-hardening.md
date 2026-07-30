@@ -150,6 +150,125 @@ not terminal).
 
 ## 3. FSPEC-DISC-01 — Review-artifact discovery seam
 
+**Linked requirements:** AC-1.1, AC-1.1a, AC-1.4a, AC-2.3, AC-4.2, AC-4.2b, C-2, C-5. **Discharges
+O-1.**
+
+### 3.1 The problem, restated at HEAD
+
+`orchestrate-dev.js` has **no directory-listing capability of any kind**. Verified at HEAD
+`0655387`: the module's only filesystem entry points are `checkFileNonEmpty(path, { fsMod = fs })`
+(existence + non-empty) and `defaultReadFile(path)` (whose body is `return fs.readFileSync(path,
+"utf8");` inside a try/catch returning `null`), and the injected surface `main()` exposes is
+`_checkFile` / `_readFile`. There is no `readdir`, no glob, and the runtime supplies no `fs` at all
+(§4a A-1). So every clause that needs to know *which* review artifacts exist — AC-1.1's index
+derivation, AC-1.1a's un-suffixed detection, AC-1.4a's collision guard, AC-2.3's POSTMORTEM
+detection, AC-4.2/AC-4.2b's tier selection, AC-3.5 scope (d) rule 2's "which round still owes an
+authoring pass" — is unimplementable until a listing seam exists.
+
+### 3.2 Behavioural contract of `_listFiles`
+
+`_listFiles(dirPath)` is a **single-directory, non-recursive** listing of regular files.
+
+```
+_listFiles(dirPath: string)
+  → { ok: true,  files: string[] }              // basenames only, no path prefix, no directories
+  → { ok: false, reason: ListFailure }          // total; never throws, never returns partial data
+```
+
+| Rule | Behaviour | Rationale |
+|---|---|---|
+| Non-recursive | Only the immediate children of `dirPath` | Every consumer wants exactly `docs/{feature}/`. A recursive walk would pull in nothing the callers use and would make the adapter's agent prompt open-ended. |
+| Basenames only | `files` holds `"CROSS-REVIEW-se…-v3.md"`, not `"docs/f/CROSS-REVIEW-…"` | The filename grammar of §4 is defined over basenames; prefixing would force every parse site to strip it, and a stripped-prefix bug is exactly H-1's class of defect. |
+| Files only | Directories, symlinks-to-directories and anything not a regular file are omitted | A subdirectory can never be a review artifact; including it would make the §4.3 reject rule fire on legitimate structure. |
+| Sorted, deterministic | `files` is returned in ascending byte order | So every derived report (§4.4's log line, §18's error text) is stable across runs, which is a precondition for the TSPEC's oracles. |
+| Total | No throw on any input, including `null`, `""` and a path that is a file rather than a directory | DC-01's receive-side rule. Callers branch on `ok`, never on an exception. |
+
+### 3.3 `ListFailure` — the one shared error catalogue (DC-11)
+
+O-1 requires that the two listing paths in this repo cannot diverge in their error contract. This
+FSPEC pins **one** closed catalogue, and both paths use it.
+
+| `reason` | Meaning | Caller behaviour |
+|---|---|---|
+| `"dir_missing"` | `dirPath` does not exist | Treated as **an empty directory** by every caller. This is the clean-branch case (C-4): a feature whose `docs/{feature}/` has not been created yet yields index 1, no POSTMORTEM, no tier-1 approval. It is **not** an error surfaced to the operator. |
+| `"not_a_directory"` | The path exists but is not a directory | **Cannot judge.** The caller halts with an operator-facing error naming the path. Silently treating it as empty would grant AC-4's skip and AC-1.1's index 1 over a tree the script could not see, which is fail-open in the one direction AC-4.2a forbids. |
+| `"unreadable"` | The path exists, is a directory, and could not be enumerated (permissions, IO error, adapter could not produce a parseable answer) | **Cannot judge.** Same halt as above. |
+| `"bad_argument"` | `dirPath` is absent, empty, or not a string | **Cannot judge.** Halt; this is a programming error in the caller, and masking it as "empty" would hide it. |
+
+The asymmetry between `dir_missing` (⇒ empty, benign) and the other three (⇒ halt) is the whole
+substance of the contract, and it is the answer to O-1's "behaviour when the feature directory does
+not exist". It is deliberate and it is the fail-closed direction in both senses: a *missing* directory
+genuinely contains no approving artifact, so treating it as empty denies every skip and starts every
+index at 1; an *unreadable* directory might contain one, so guessing either way is unsafe and the run
+stops instead.
+
+**"Cannot judge" is one halt, with one shape.** Every one of the three judging failures produces the
+same operator-facing halt reason shape — `Cannot enumerate {dirPath}: {reason}` — plus the structured
+fields of §12.4. No caller invents its own wording, so the catalogue stays closed on the emit side
+(DC-01).
+
+### 3.4 Disposition of the existing precedent — `listAllFiles` is **not** reused
+
+O-1 requires an explicit disposition of `pdlc/workflows/lib/document-oracles.mjs`. Measured at HEAD
+`0655387`: that module defines `function listAllFiles(root)` — a recursive `readdirSync(dir, {
+withFileTypes: true })` walk that skips the entries of `const WALK_SKIP_DIRS = new Set([".git",
+"node_modules"]);` and returns POSIX-style paths relative to `root` via `relative(root,
+abs).split(sep).join("/")`. It is a pure, root-parameterised oracle of exactly the shape DC-04
+mandates.
+
+**Decision: the runtime seam is separate, and `listAllFiles` is left untouched.** Three reasons, in
+order of weight:
+
+1. **It is unreachable, not merely inconvenient.** The file is an `.mjs` ES module importing `fs`
+   (`readdirSync`) and `path` (`join`, `relative`, `sep`). C-2 forbids `import` in a bundle and §4a
+   A-1 measured that no `fs` exists there. Nothing short of rewriting it as injected-IO code makes it
+   loadable, and rewriting it that way would break its current consumers, which call it
+   synchronously inside pure oracles (`coveredViolations(root)`, `packagingViolations(root)`).
+2. **The contracts are genuinely different, not accidentally different.** `listAllFiles` is
+   **recursive** and returns **paths relative to a root**; `_listFiles` is **single-directory** and
+   returns **basenames**. Forcing one signature to serve both would make each caller do work the
+   other does not need, and the direction that loses is the runtime one — the adapter prompt for a
+   recursive walk is materially harder to make reliable than one `ls`.
+3. **The oracle side has no need of the runtime side.** `listAllFiles` exists to let jest-side
+   oracles walk the repo. The pipeline never needs a repo-wide walk.
+
+**What is shared, and it is the part that matters.** DC-11's objection is not to two
+implementations; it is to two implementations with **different error contracts**, so a checklist that
+calls both cannot report one verdict. That is pinned as follows: `listAllFiles` today has **no**
+error contract — a `readdirSync` failure propagates as a thrown `Error`, so a caller cannot tell
+"missing" from "unreadable". This FSPEC requires `document-oracles.mjs` to be amended to expose the
+**same `ListFailure` catalogue** as its failure vocabulary — a sibling `listAllFilesSafe(root)`
+returning `{ ok, files } | { ok: false, reason }` over the same four `reason` values, with
+`listAllFiles` retained as the throwing convenience wrapper so existing callers are untouched (C-4).
+The four `reason` strings are then defined **once**, in one place, and both paths quote it. Two
+implementations, one catalogue, one "cannot judge" verdict — which is exactly what DC-11 asks for and
+what the rejected outcome ("two independent implementations with different error contracts") is not.
+
+### 3.5 Adapter implementation
+
+`rtListFiles(dirPath)` follows the established adapter pattern for a capability that needs a shell:
+an `agent()` with Bash, a single exact command, and a **closed** reply vocabulary the script parses —
+the same shape as `rtCheckFile` (whose prompt literal is `` `Return ONLY one word: OK, EMPTY, or
+MISSING.` ``) and `rtMergeWorktree` (which returns `{"ok":true}` / `{"ok":false,"conflictingFiles":…}`
+JSON).
+
+| Aspect | Specification |
+|---|---|
+| Command | One `ls`-class invocation scoped to `dirPath`, listing regular files only, one basename per line, with a distinct sentinel for each `ListFailure` other than `bad_argument` (which the adapter decides itself before calling out, exactly as `rtCheckFile` does for an empty path). |
+| Reply vocabulary | Either the file list, or exactly one sentinel token. The adapter maps sentinel → `reason` and never interprets prose; an unrecognised reply maps to `"unreadable"`, i.e. to a halt, not to an empty list. |
+| Model | The cheapest rung, matching `const RT_IO_MODEL = "haiku";` — this call does no reasoning. |
+| C-5 posture | The agent **transports** the listing; the script decides everything from it (which names conform, what the maximum index is, whether a path would be overwritten). No agent is asked "what is the next round index?". |
+| C-2 posture | `async`, so **every** call site awaits. The jest default (`fs.readdirSync` + `statSync`, mapping `ENOENT` → `"dir_missing"`, `ENOTDIR` → `"not_a_directory"`, anything else → `"unreadable"`) is sync-shaped but returns the same record, so the `await` is harmless there and mandatory in the bundle. |
+
+**One listing per phase entry, reused.** A phase entry performs **one** `_listFiles` call for
+`docs/{feature}/` and threads the result through every consumer of it in that phase: index
+derivation (§4.4), the AC-1.4 collision guard (§4.5), POSTMORTEM detection (§12.2), tier selection
+(§6.4), and mode selection (§15.4). This satisfies AC-1.2 ("computed once per round … the same for
+every reviewer in that round, and for the author prompt that follows it") structurally rather than by
+convention, and it bounds the cost at one cheap agent call per phase. The **only** deliberate
+re-listing is the AC-1.4a case (ii) re-check immediately before each reviewer dispatch (§4.5), which
+exists precisely to catch a file that appeared *after* the first listing.
+
 ## 4. FSPEC-NAME-01 — Cross-review filename grammar and round-index derivation
 
 ## 5. FSPEC-ROUND-01 — Same-round dual approval and the role-asymmetric branch
