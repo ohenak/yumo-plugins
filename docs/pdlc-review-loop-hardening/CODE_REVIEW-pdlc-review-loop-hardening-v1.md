@@ -153,7 +153,164 @@ does not downgrade the halt" rule, all of which match the code at
 
 ## 3. Findings
 
-<!-- filled in section 3 -->
+### F-1 — `reviewerSkillForSlug` ships dead, and its comment claims a guarantee it cannot provide
+
+**Severity: Low. Does not block Definition of Done.**
+
+`pdlc/workflows/orchestrate-dev.js:2031` defines:
+
+```js
+function reviewerSkillForSlug(slug) {
+  for (const skill of Object.keys(MAP)) {
+    if (MAP[skill] === slug) return skill;
+  }
+  return null;
+}
+```
+
+It has **no caller**, is **not exported**, and has **no assertion**. Measured:
+`grep -rn "reviewerSkillForSlug"` over `orchestrate-dev.js`, `orchestrate-queue.js`,
+`__tests__/` and `dist/` returns the definition, its two verbatim copies in the two generated
+bundles, and one *comment* in `roundDerivation.test.js:11` — a batch-2 red-phase preamble
+recording that the symbol did not yet exist. Nothing evaluates it.
+
+The claim is in its own doc comment: the reverse accessor exists "so the filename grammar's
+role alternation and the dispatch table cannot desynchronise" (TSPEC §3.9 uses the same
+wording). With no caller and no test, nothing detects such a desynchronisation. The function is
+inert and the sentence describing it is false about the shipped artifact.
+
+**Falsifier.** Delete `reviewerSkillForSlug` entirely and rebuild: `npm test`,
+`build-runtime.mjs --check` and `sync-workflows.sh --check` all stay exactly as they are now,
+because no assertion and no production path reaches it. If that is *not* what happens, this
+finding is wrong.
+
+**Why it does not block.** Dead code cannot mis-execute; the guarantee that was never enforced
+is not one this feature relies on anywhere else. The two acceptable remediations are (a) give
+it the assertion TSPEC §3.9's rationale implies — a round-trip over `MAP` asserting
+`reviewerSkillForSlug(reviewerRoleSlug(s)) === s` for every reviewer skill, which requires
+exporting it — or (b) remove it and amend TSPEC §3.9. Either is a small, isolated change with
+one owning test file (`roundDerivation.test.js`, PLAN §5.3).
+
+### F-2 — `checkPrCi` dereferences `import()` before consulting its injected `execFn`, so the runtime's only CI path throws
+
+**Severity: Low. Does not block Definition of Done.** Pre-existing on `origin/main`;
+**not introduced, and not touched, by this diff.**
+
+`pdlc/workflows/orchestrate-dev.js:2923-2925`:
+
+```js
+export async function checkPrCi(prUrl, { execFn } = {}) {
+  const { execSync: realExecSync } = await import("child_process");
+  const exec = execFn ?? ((cmd, opts) => realExecSync(cmd, opts));
+```
+
+The dynamic import is **unconditional** — it is evaluated even when the caller supplied
+`execFn` and `realExecSync` is therefore never used. The runtime's `_checkCi` is
+`rtMakeCheckCi(devModule)`, whose body ends
+(`runtime-adapter.js:144`) with exactly that call:
+
+```js
+return await devModule.checkPrCi(prUrl, { execFn: () => text });
+```
+
+The adapter's own header records the probe result: "probed 2026-07-27, the sandbox has NO
+`import` (static or dynamic)". So in the workflow runtime this line rejects. There is no
+`try`/`catch` anywhere on the path: `raisePrAndVerifyCi` calls `await _checkCi(prUrl)` at
+`orchestrate-dev.js:3360` inside its poll loop with no guard, so the rejection propagates out
+of Phase PUB and out of `main()`.
+
+**Falsifier.** Invoke the generated `orchestrate-dev` bundle through the workflow runtime on a
+branch with an open PR and let it reach Phase PUB. If Phase PUB reports a `ciStatus` rather than
+dying on the first poll, then either the sandbox does have `import()` (the adapter's recorded
+probe is stale) or something catches the rejection, and this finding is wrong.
+
+**Why it does not block, and its successor surface (DC-08).** Both ends of the seam are
+byte-identical to `origin/main`: `git show <merge-base>:pdlc/workflows/runtime-adapter.js`
+already contains `rtMakeCheckCi` at line 134 and `_checkCi: rtMakeCheckCi(devModule)` at 187,
+and `checkPrCi`'s first line is unchanged. It is therefore outside this feature's remediation
+surface, and repairing it here would put an untested runtime-behaviour change into a DoD round.
+It should be carried as **its own `docs/_queue/QUEUE.md` row** — the natural shape is "move the
+`await import("child_process")` below the `execFn ?? …` fallback in `checkPrCi` and
+`mergeWorktree`, and add the bundle-level assertion F-3 asks for", which is one source task plus
+one rebuild. Recording it here is the point: it is exactly the class of defect
+(a seam declared, supplied, and still unreachable on the real path) that this document exists to
+surface.
+
+### F-3 — the bundles ship six dynamic-`import` sites against a stated "no `import()`" constraint, and the guard does not look for them
+
+**Severity: Low. Does not block Definition of Done.**
+
+Three places assert the constraint:
+
+- `pdlc/workflows/build-runtime.mjs:10` — "2. No `import` — static or dynamic."
+- `pdlc/workflows/runtime-adapter.js:13-15` — "the sandbox has NO `import` (static or dynamic)".
+- `pdlc/skills/orchestrate-dev/SKILL.md` (amended by this feature) — "`import` / `import()` /
+  `process` / `fs` / `fetch` are all unavailable".
+
+What actually ships: `grep -nE "[^a-zA-Z]import\(" pdlc/workflows/dist/orchestrate-dev.bundle.js`
+returns **six** hits (`:3265`, `:4009`, `:4961`, `:5529`, `:5538`, `:5559`), and the queue bundle
+carries the same set. `stripModuleSyntax` only filters lines matching `/^import\s.+;\s*$/`, i.e.
+single-line *static* imports, so every `await import(…)` survives verbatim.
+
+The guard is correspondingly narrow. `runtimeBundle.test.js:474` asserts
+`expect(read(file)).not.toMatch(/^import\s/m)` — anchored at line start, so it cannot see
+`  const { readFileSync } = await import("fs");`. `RLH-AT-19`'s bundle half asserts only
+`/\bprocess\s*\./` and `/\bfetch\s*\(/`. Nothing in the suite asserts the `import()` half of the
+constraint the two source files and the SKILL all state.
+
+**Falsifier.** Add `expect(text.match(/[^A-Za-z0-9_$]import\s*\(/g) || []).toEqual([])` to the
+`RLH-AT-19` bundle block. If it passes, this finding is wrong.
+
+**Scope note, measured.** Four of the six sites pre-date this branch (`checkPrCi` and
+`mergeWorktree` in `orchestrate-dev.js`; `defaultReadFile` and `defaultWriteFile` in
+`orchestrate-queue.js` — confirmed by `git show <merge-base>:…`). The **two new** ones are the
+`defaultGit` seams this feature added, one per module. Both new sites are unreachable in the
+runtime, because `DEV_ENTRY` and `QUEUE_ENTRY` both supply `_git: rtGit`; they follow the
+established dead-in-runtime pattern of the other `default*` seams and introduce no live
+regression. The live site is F-2's, and it is pre-existing.
+
+**Why it does not block.** No shipped path is broken *by this feature* on account of this. The
+finding is that the constraint is asserted in prose in three places and enforced in none — a
+guard gap, not a fault. Adding the assertion is a one-line test change; note that doing so will
+red until F-2's site is fixed, so the two should land together, which is the second reason to
+carry F-2 and F-3 as one successor row rather than as DoD remediation.
+
+### F-4 — `CLAUDE.md` does not record that a direct `orchestrate-dev` run now git-commits a queue row
+
+**Severity: Low. Does not block Definition of Done.**
+
+`build-runtime.mjs`'s `DEV_ENTRY` now supplies, for a **direct** `orchestrate-dev` invocation:
+
+```js
+_recordHalt: async ({ feature, status }) =>
+  __queue.rewriteStatus(__queue.DEFAULT_QUEUE_PATH, feature, status, rtReadFile, rtWriteFile, rtGit),
+```
+
+`rewriteStatus` writes `docs/_queue/QUEUE.md` and then calls `commitQueueRow`
+(`orchestrate-queue.js:938`), which runs `git add -- {queuePath}` followed by
+`git commit -m "chore(queue): {feature} → {status}" -- {queuePath}`. So a halted direct run
+now creates a commit in the operator's repository. That is deliberate and specified (REQ
+AC-2.7a; PLAN §7.2 edits 3+4) and it is documented in `pdlc/skills/orchestrate-queue/SKILL.md`,
+which this feature amended with the full rule including the pathspec rationale and the
+"commit failure does not downgrade the halt" clause.
+
+`CLAUDE.md` was updated by this feature and updated well — the `## Verdict` contract, the
+`APPROVAL-HASH`/`REVIEWED-COMMIT` anchors, the LEARNINGS shape, the POSTMORTEM `RESOLVED:`
+lifecycle and the `forcePhases` object form are all now described. But its "Entry (single
+feature)" bullet still describes a direct run purely in terms of the pipeline, and its queue
+bullet still attributes the status lifecycle to `orchestrate-queue`. A reader of `CLAUDE.md`
+alone would not expect `/pdlc:orchestrate-dev` to touch `docs/_queue/QUEUE.md`, still less to
+commit.
+
+**Falsifier.** Read `CLAUDE.md`'s "Artifact convention (for consuming repos)" section at HEAD
+and find a sentence saying a direct `orchestrate-dev` invocation writes or commits a queue row.
+There is none — `grep -n "queue" CLAUDE.md` attributes every queue write to `orchestrate-queue`.
+
+**Why it does not block.** PLAN §12.3's documentation row asks that `CLAUDE.md`'s pdlc section
+"still describes the shipped behaviour — in particular the model-selection and hooks tables".
+Neither of those is stale (no model constant and no hook changed in this diff), so the row's
+named obligations are met; this is an *omission* of newly-shipped behaviour, not a false
+statement. One sentence on the "Entry (single feature)" bullet closes it.
 
 ## 4. Checked and clean
 
