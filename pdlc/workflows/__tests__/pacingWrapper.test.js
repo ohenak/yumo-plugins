@@ -227,7 +227,226 @@ function authorResponse(trailerKey, prose = "Edits applied.") {
 }
 
 // ─── 2. The harness ───────────────────────────────────────────────────────────
-// (agent double, `runPipeline`, dispatch selectors, report-surface reader)
+
+/** Reviewer skill → the role slug its cross-review filename carries (§5.2). */
+const ROLE_SLUG = Object.freeze({
+  "se-review": "software-engineer",
+  "pm-review": "product-manager",
+  "te-review": "test-engineer",
+});
+
+/** Doc type → the phase that produces it, for prompts that name only the path. */
+const PHASE_OF_DOC = Object.freeze({
+  REQ: "R", FSPEC: "F", TSPEC: "T", DECISIONS: "D", PLAN: "P", PROPERTIES: "PR",
+});
+
+/** The artifact path a prompt names, or `null`. */
+function docPathIn(prompt) {
+  const m = /docs\/[A-Za-z0-9._-]+\/(?:REQ|FSPEC|TSPEC|DECISIONS|PLAN|PROPERTIES)-[A-Za-z0-9._-]+\.md/.exec(
+    String(prompt ?? "")
+  );
+  return m ? m[0] : null;
+}
+
+/** The phase id a prompt names, derived from the phase clause or the doc type. */
+function phaseIn(prompt, docType) {
+  const m = /for phase ([A-Z]+) of feature/.exec(String(prompt ?? ""));
+  if (m) return m[1];
+  if (/docs\/[A-Za-z0-9._-]+\/\s*$/.test(String(prompt ?? ""))) return "CR";
+  return PHASE_OF_DOC[docType] ?? null;
+}
+
+/** The round index a prompt names (`This is iteration N.` / `Iteration N reviewers`). */
+function iterationIn(prompt) {
+  const m = /(?:This is iteration|Iteration) (\d+)/.exec(String(prompt ?? ""));
+  return m ? Number(m[1]) : null;
+}
+
+/** What kind of dispatch a prompt represents. Mirrors the call sites in `main()`. */
+function kindIn(skill, prompt) {
+  const text = String(prompt ?? "");
+  if (REVIEW_SKILLS.includes(skill)) {
+    return /did not end with a machine-readable VERDICT trailer/.test(text) ? "recover" : "review";
+  }
+  if (AUTHOR_SKILLS.includes(skill)) {
+    if (/POSTMORTEM-/.test(text)) return "postmortem";
+    if (/Return a JSON object/.test(text)) return "plan-dag";
+    if (/^Address reviewer feedback/.test(text)) return "optimizer";
+    if (/^Create /.test(text)) return "creator";
+    return "author-other";
+  }
+  return skill;
+}
+
+/** Basenames of the fake tree that live directly under `dirPath` (the live listing). */
+function basenamesIn(files, dirPath) {
+  const prefix = `${String(dirPath).replace(/\/+$/, "")}/`;
+  return Object.keys(files)
+    .filter((p) => p.startsWith(prefix) && !p.slice(prefix.length).includes("/"))
+    .map((p) => p.slice(prefix.length))
+    .sort();
+}
+
+/**
+ * Drive `main()` once over an in-memory tree.
+ *
+ * Every plan hook receives a `ctx` and returns `{ write, response }`:
+ * - `write` — the bytes to place at `ctx.path` (omit or `null` to write nothing,
+ *   which is what makes a dispatch score *no progress* under §5.6.2's
+ *   `before !== after` predicate);
+ * - `response` — the agent's reply, i.e. where a `REVISION-COMPLETE:` trailer
+ *   lives. Returning a `throw` from the hook models §4a A-8's third fault
+ *   surfacing, and returning `null` models the second.
+ *
+ * `ctx.n` is the **1-based index of this dispatch within its episode**, an episode
+ * being keyed here by `(skill, kind, phase, round)` — the observable stand-in for
+ * §4.5's `EpisodeKey`, which the suite cannot read directly.
+ *
+ * @param {{
+ *   files?: Record<string, string>,
+ *   author?: (ctx: object) => any,
+ *   review?: (ctx: object) => any,
+ *   harvest?: (ctx: object) => any,
+ *   listFiles?: Function,
+ *   dod?: boolean,
+ *   pub?: boolean,
+ *   dodStatuses?: string[],
+ *   forcePhases?: string,
+ * }} [opts]
+ */
+async function runPipeline(opts = {}) {
+  const {
+    files = {}, author, review, harvest, listFiles: listFilesOverride,
+    dod = false, pub = false, dodStatuses = ["passed"], forcePhases,
+  } = opts;
+
+  const fs = fakeFs({ [REQ_PATH]: completeDoc("REQ"), ...files });
+  const listFiles = listFilesOverride ?? fakeListFiles((dirPath) => basenamesIn(fs.files, dirPath));
+  const git = fakeGit((argv) =>
+    argv.some((a) => /numstat|--stat/.test(String(a)))
+      ? { ok: true, stdout: `20000\t0\t${FSPEC_PATH}\n` }
+      : { ok: true }
+  );
+  const recordHalt = recordingRecordHalt({ queueRow: "halted" });
+  const dispatches = [];
+  const logs = [];
+  const episodes = new Map();
+  let dodIndex = 0;
+
+  const agent = async (skill, prompt, options) => {
+    const text = String(prompt ?? "");
+    const kind = kindIn(skill, prompt);
+    const path = docPathIn(text);
+    const docType = docTypeOf(path);
+    const phase = phaseIn(text, docType);
+    const round = iterationIn(text);
+    const key = `${skill}|${kind}|${phase}|${round}`;
+    const n = (episodes.get(key) ?? 0) + 1;
+    episodes.set(key, n);
+
+    const entry = {
+      skill, prompt: text, model: options && options.model, kind, phase, docType,
+      path, round, n, listCallCount: listFiles.callCount,
+    };
+    dispatches.push(entry);
+    if (dispatches.length > 400) throw new Error("pacingWrapper harness: runaway dispatch count");
+
+    const write = (contents, at = path) => {
+      if (contents !== null && contents !== undefined && at) fs.writeFile(at, contents);
+    };
+
+    if (kind === "review" || kind === "recover") {
+      const role = ROLE_SLUG[skill];
+      const reviewPath = `${DOCS_DIR}/CROSS-REVIEW-${role}-${docType ?? "REQ"}-v${round ?? 1}.md`;
+      const ctx = { ...entry, role, path: reviewPath, write: (c) => write(c, reviewPath) };
+      const out = review ? review(ctx) : null;
+      if (out && Object.prototype.hasOwnProperty.call(out, "write")) write(out.write, reviewPath);
+      else write(crossReviewDoc({ verdict: "Approved" }), reviewPath);
+      return out && out.response !== undefined ? out.response : reviewResponse("Approved");
+    }
+
+    if (kind === "postmortem") {
+      const pmPath = /docs\/[^\s.]+\/POSTMORTEM-[^\s.]+\.md/.exec(text);
+      if (pmPath) fs.writeFile(pmPath[0], "# Postmortem\n\nRESOLVED: no\n");
+      return "Postmortem written.";
+    }
+    if (kind === "plan-dag") {
+      return JSON.stringify({ tasks: [{ id: "T1", description: "x", dependencies: [], planBatch: 1 }] });
+    }
+    if (kind === "creator" || kind === "optimizer" || kind === "author-other") {
+      const ctx = { ...entry, write };
+      const out = author ? author(ctx) : null;
+      if (out && Object.prototype.hasOwnProperty.call(out, "write")) write(out.write);
+      else if (docType) write(completeDoc(docType));
+      let response = out && out.response !== undefined ? out.response : authorResponse("yes", "Document written.");
+      if (phase === "T" && /DECISIONS_WARRANTED/.test(text)) response = `${response}\nDECISIONS_WARRANTED: false`;
+      return response;
+    }
+    if (skill === "harvest-learnings") {
+      const ctx = { ...entry, path: LEARNINGS_PATH, write: (c) => write(c, LEARNINGS_PATH) };
+      const out = harvest ? harvest(ctx) : null;
+      if (out && Object.prototype.hasOwnProperty.call(out, "write")) write(out.write, LEARNINGS_PATH);
+      else write(learningsDoc(), LEARNINGS_PATH);
+      return out && out.response !== undefined ? out.response : "Harvest complete.";
+    }
+    if (skill === "dod-verify") {
+      const status = dodStatuses[Math.min(dodIndex++, dodStatuses.length - 1)];
+      return `Reviewed.\nDOD_STATUS: ${status}`;
+    }
+    if (skill === "se-implement") return "Tests: 3 passed, 0 failed.";
+    return "Success.";
+  };
+
+  const result = await main({
+    reqPath: REQ_PATH,
+    ...(forcePhases ? { forcePhases } : {}),
+    _agent: agent,
+    _parallel: (promises) => Promise.all(promises),
+    _pipeline: async (label, fn) => fn(),
+    _phase: (label) => logs.push(String(label)),
+    _log: (message) => logs.push(String(message)),
+    _listFiles: listFiles,
+    _git: git,
+    _recordHalt: recordHalt,
+    ...fs.injections(),
+    _mergeWorktree: async () => ({ ok: true }),
+    _rebaseOntoDefault: async () => "clean",
+    _raisePrAndVerifyCi: async () => ({ prUrl: "https://example/pull/1", ciStatus: "passed" }),
+    _phaseDodEnabled: dod,
+    _phasePubEnabled: pub,
+    _now: () => 0,
+    _sleep: async () => {},
+  });
+
+  return {
+    result, dispatches, fs, listFiles, git, recordHalt, logs,
+    /**
+     * Everything an operator can read back from one run: the structured report
+     * plus the emitted report lines. §4.7 makes some of this feature's carriers
+     * report **lines** rather than fields, so an assertion that pinned only
+     * `result` would be unwritable for them.
+     */
+    reportText: `${JSON.stringify(result, null, 1)}\n${logs.join("\n")}`,
+  };
+}
+
+/**
+ * Dispatches matching every supplied coordinate.
+ *
+ * @param {{dispatches: object[]}} run
+ * @param {{skill?: string, kind?: string, phase?: string, round?: number, docType?: string}} q
+ * @returns {object[]}
+ */
+function select(run, q = {}) {
+  return run.dispatches.filter((d) =>
+    Object.entries(q).every(([k, v]) => (v === undefined ? true : d[k] === v))
+  );
+}
+
+/** The prompts of the selected dispatches, in order. */
+function promptsOf(run, q) {
+  return select(run, q).map((d) => d.prompt);
+}
 
 // ─── 3. RLH-AT-35 … RLH-AT-38 — terminality and the trailer ───────────────────
 
