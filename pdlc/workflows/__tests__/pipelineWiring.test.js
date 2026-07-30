@@ -209,11 +209,13 @@ describe("PROP-NFR-01: No single parallel() call dispatches more than 5 agents",
     const scriptPath = resolve(__dirname, "../orchestrate-dev.js");
     const content = readFileSync(scriptPath, "utf8");
 
-    // Reviewer parallel calls should dispatch exactly 2 agents via _parallel([agent, agent])
-    // The pattern may be multiline — just check both dispatches exist
+    // Reviewer parallel calls should dispatch exactly 2 agents via _parallel([...]).
+    // RLH-23 routes both of them through the pacing wrapper, so the dispatch is
+    // written `runWrapped(reviewers[i], …)` rather than `_agent(reviewers[i], …)`;
+    // the property this test guards — two dispatches, not more — is unchanged.
     expect(content).toContain("_parallel([");
-    expect(content).toContain("_agent(reviewers[0]");
-    expect(content).toContain("_agent(reviewers[1]");
+    expect(content).toMatch(/runWrapped\(\s*reviewers\[0\]/);
+    expect(content).toMatch(/runWrapped\(\s*reviewers\[1\]/);
 
     // Batch dispatch uses .map() which is dynamically constrained to ≤ 5 by computeTopologicalBatches
     expect(content).toContain("batch.map(");
@@ -225,7 +227,7 @@ describe("PROP-NFR-01: No single parallel() call dispatches more than 5 agents",
     for (const match of parallelCallMatches) {
       // Count agent() calls in the literal array — should be ≤ 5
       const innerContent = match[1];
-      const agentCount = (innerContent.match(/_agent\(/g) || []).length;
+      const agentCount = (innerContent.match(/_agent\(|runWrapped\(/g) || []).length;
       expect(agentCount).toBeLessThanOrEqual(5);
     }
   });

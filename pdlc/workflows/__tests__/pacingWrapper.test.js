@@ -678,7 +678,16 @@ describe("RLH-AT-42 — counters are per episode (FSPEC §19 AT-42, O-19(c), E-5
     // interesting half is (ii).
     const perRound = await runPipeline({
       review: reviewersFailing([1, 2, 3, 4]),
-      author: (ctx) => (ctx.kind === "optimizer" ? { write: completeDoc("REQ", `round ${ctx.round}`), response: authorResponse("yes") } : {}),
+      // `ctx.docType`, not a literal "REQ": `reviewersFailing` fails round 1 of
+      // EVERY phase, so this hook also serves Phase F's/T's round-1 optimizer.
+      // Writing a REQ-shaped body at the FSPEC path would leave that episode
+      // structurally incomplete, and §5.6.2 makes a revision episode terminal on
+      // completeness AND trailer — the episode would stall on an artefact of the
+      // fixture rather than on anything AT-42 is about.
+      author: (ctx) =>
+        ctx.kind === "optimizer"
+          ? { write: completeDoc(ctx.docType, `round ${ctx.round}`), response: authorResponse("yes") }
+          : {},
     });
     expect(perRound.result.outcome).toBe("success");
     const rOptimizers = select(perRound, { kind: "optimizer", phase: "R" });
@@ -1243,12 +1252,27 @@ describe("RLH-AT-58 — intra-episode re-dispatch onto the episode's own partial
     }
     const run = await runPipeline({
       files: { ...seeded3, [FSPEC_PATH]: completeDoc("FSPEC") },
-      review: (ctx) =>
-        ctx.docType === "FSPEC" && ctx.skill === "se-review" && ctx.n === 1
-          ? // Stall-killed: real bytes on disk, no trailing `## Verdict`.
-            { write: crossReviewDoc({ withVerdict: false, extra: ` ${PARTIAL_MARKER}` }),
-              response: "Killed mid-write." }
-          : { write: crossReviewDoc({ verdict: "Approved" }), response: reviewResponse("Approved") },
+      review: (ctx) => {
+        if (ctx.docType === "FSPEC" && ctx.skill === "se-review" && ctx.n === 1) {
+          // Stall-killed: real bytes on disk, no trailing `## Verdict`.
+          return {
+            write: crossReviewDoc({ withVerdict: false, extra: ` ${PARTIAL_MARKER}` }),
+            response: "Killed mid-write.",
+          };
+        }
+        if (ctx.docType === "FSPEC" && ctx.skill === "se-review" && ctx.n === 2) {
+          // A dispatch that OBEYS §15.4's continue-do-not-rewrite instruction:
+          // it appends the missing `## Verdict` and leaves dispatch 1's bytes in
+          // place. Modelling it as a full rewrite would delete the marker no
+          // matter what the implementation did, making the last assertion
+          // unsatisfiable rather than discriminating.
+          return {
+            write: crossReviewDoc({ verdict: "Approved", extra: ` ${PARTIAL_MARKER}` }),
+            response: reviewResponse("Approved"),
+          };
+        }
+        return { write: crossReviewDoc({ verdict: "Approved" }), response: reviewResponse("Approved") };
+      },
     });
 
     const seFspec = select(run, { skill: "se-review", docType: "FSPEC" });
