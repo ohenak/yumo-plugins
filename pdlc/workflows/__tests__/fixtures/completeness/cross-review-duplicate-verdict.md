@@ -27,16 +27,9 @@
 
 > Any High or Medium finding → Needs revision (mandatory).
 
-The grammar this file must end in, quoted from the SKILL:
-
-```markdown
 ## Verdict
 
-VERDICT: Approved with minor changes
+VERDICT: Approved
 {"high": 0, "medium": 2, "low": 5}
-```
-
-## Verdict
-
 VERDICT: Approved
 {"high": 0, "medium": 2, "low": 5}
