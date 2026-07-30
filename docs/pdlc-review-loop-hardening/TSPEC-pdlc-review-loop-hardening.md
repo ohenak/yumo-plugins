@@ -1,8 +1,10 @@
 # TSPEC — pdlc-review-loop-hardening
 
-**Version:** 1.5
+**Version:** 1.6
 **Status:** **Approved** at round 5 by both reviewers (PM and TE each 0 High, 0 Medium, 3 Low) —
-**against v1.4**. v1.5 is a post-approval editorial pass applying those Lows; see §0.
+**against v1.4**. v1.5 was a post-approval editorial pass applying those Lows. v1.6 is a **single-item
+post-approval amendment forced by a measurement taken during PLAN round 2** — one new ruling row in §8.5.
+Nothing else was reopened. See §0.
 
 | Field | Value |
 |---|---|
@@ -14,6 +16,43 @@
 ---
 
 ## 0. Changelog
+
+### v1.6 (2026-07-30) — one ruling row in §8.5, forced by a PLAN-round-2 measurement
+
+**What drove it.** Both PLAN round-2 reviewers independently scanned `orchestrate-dev.js` and
+`orchestrate-queue.js` for calls to AT-19's closed thirteen-name set not lexically preceded by `await`.
+The PLAN v1.1 asserted one such site; the measurement found **three**:
+
+```
+orchestrate-dev.js:615:      _agent(reviewers[0], reviewerPrompt1),
+orchestrate-dev.js:616:      _agent(reviewers[1], reviewerPrompt2),
+orchestrate-dev.js:1867:            agentFn(
+```
+
+`:1867` is an anonymous `batch.map` arrow body and was already covered by §8.5's **returned-promise**
+ruling. `:615–616` are bare, **unaliased** `_agent(…)` calls appearing as elements of an array literal
+passed to `await _parallel([…])` inside `reviewLoop`, and they matched **no** ruling: not an alias, not an
+arrow body or `return` operand. §8.5's closing catch-all reached only *aliased* seams, so the TSPEC did
+not supply the missing row either.
+
+**The source is correct as written; the guard was under-specified.** `_parallel` resolves to the adapter's
+`async function rtParallel(promises) { return await Promise.all(promises); }`
+(`pdlc/workflows/runtime-adapter.js:67`, read at HEAD) — the combinator *is* the await. Placing `await` on
+each array element would serialise a deliberately concurrent two-reviewer dispatch, i.e. change behaviour
+for no safety gain. Requiring it would therefore make `RLH-AT-19` red on shipped, correct source — the
+identical defect class §8.5 already records for AT-19's v1.0 parameter-list derivation and for AT-64's
+missing E-3 form.
+
+| Item | Resolution | Where |
+|---|---|---|
+| **1 — the missing ruling** | **One new row: awaited combinator argument.** A thirteen-list call that is an element of an array literal in the argument list of an `await`ed call to a promise combinator (`_parallel`, `parallel`, `Promise.all/allSettled/race/any`) is **exempt**; the awaited combinator discharges the obligation, inherited by nobody. Stated as a predicate over **syntactic position**, with `:615–616` cited as the shipped instance the way the returned-promise row cites its own — evidence that the predicate is exercised, never the definition | §8.5 rulings table |
+| **2 — the catch-all's reach** | The closing rule said "every other call site of an **aliased** thirteen-list seam". An unaliased call was outside it, which is why the measured shape fell through the whole section. Now: **"under its own `_`-prefixed name or under an alias, the two being the same obligation."** The thirteen-name set is **unchanged** and no scan is widened beyond making the existing obligation well-defined on both spellings | §8.5 |
+| **3 — enumerations drift, invariants do not** | An explicit clause that the rulings are predicates over position, the `file:line` citations are evidence of a shipped instance, and an unmatched call site is a **failure the assertion names** — resolved by a source fix or by a new ruling *stated as a predicate*, never by a clause naming a line number and never by narrowing the thirteen-name set. The `G-INV` and E-1/E-2/E-3 constructions are the precedent | §8.5 |
+
+**Not changed:** the thirteen-name set, the two anchored regexes, AT-64's derived seam set, E-1/E-2/E-3,
+both anti-rot clauses, and every other section of this document. **REQ and FSPEC untouched.** The PLAN's
+§9.2 and §7.3 row 1 **cite** this ruling; they do not restate it (an owning section beats a restatement —
+the precedence rule v1.5 carried to Harvest).
 
 ### v1.5 (2026-07-30) — post-approval editorial pass over the round-5 Lows
 
@@ -2114,17 +2153,31 @@ calls this test "the only thing standing between this design and this repo's mos
 a test loosened ad hoc to go green is worse than none. The FSPEC supplies a closed list because membership
 is a design judgement, not a derivation; AT-64 is what stops that list from rotting.
 
-**Two call-site shapes the assertion must classify explicitly, or it reds on correct source:**
+**Three call-site shapes the assertion must classify explicitly, or it reds on correct source:**
 
 | Shape | Example at HEAD | Ruling |
 |---|---|---|
 | **Alias** — the seam is destructured under a local name (`_readFile: readFileFn`, `_agent: rawAgentFn`) and called through that name | `await readFileFn(planPath)`, `await checkFileFn(reqPath)` | the assertion resolves the alias from `main()`'s destructuring pattern and scans **the local name**, not the `_`-prefixed one. Scanning the `_` name alone finds zero call sites and passes vacuously — the worst possible failure for this test |
 | **Returned promise** — the call is the entire body of an arrow function, or the operand of a `return`, so its promise is awaited by the caller | `` const agentFn = (skill, prompt, opts) => rawAgentFn(skill, prompt, { model: MODEL_DEFAULT, ...opts }); `` | **exempt, and the wrapper's own name inherits the obligation.** `agentFn` is then itself scanned as an alias of `_agent`, and every `await agentFn(…)` site satisfies the rule. Requiring `await` inside the wrapper would be a redundant await on a correct construction |
 
-Every other call site of an aliased thirteen-list seam must be lexically preceded by `await`,
-including calls whose result is discarded. The assertion runs over `orchestrate-dev.js` and
+| **Awaited combinator argument** — the call is (transitively) an element of an **array literal** in the argument list of a call that is itself lexically preceded by `await`, and that outer callee is a **promise combinator**: a thirteen-list-independent name in the closed set `_parallel`, `parallel`, `Promise.all`, `Promise.allSettled`, `Promise.race`, `Promise.any` | `` const [r1, r2] = await _parallel([ _agent(reviewers[0], reviewerPrompt1), _agent(reviewers[1], reviewerPrompt2), ]); `` — `orchestrate-dev.js:615–616` | **exempt; the awaited combinator discharges the obligation and it is inherited by nobody.** The promises are awaited *collectively*, by the combinator; `await` on each element would not add safety, it would **serialise a deliberately concurrent dispatch** and change behaviour. Measured at HEAD, the adapter's `_parallel` is `async function rtParallel(promises) { return await Promise.all(promises); }` (`runtime-adapter.js:67`), so the await is real, not assumed |
+
+Every other call site of a thirteen-list seam — **under its own `_`-prefixed name or under an alias,
+the two being the same obligation** — must be lexically preceded by `await`, including calls whose
+result is discarded. The assertion runs over `orchestrate-dev.js` and
 `orchestrate-queue.js` **source** (permitted at any level — it reads source, not `dist/`, so §8.4's
 L2 prohibition does not apply).
+
+**The three rulings are predicates over syntactic position, not an enumeration of known sites.** This is
+the same construction as E-1/E-2/E-3 below and as the `G-INV` precedent: what makes a call exempt is
+where it *stands* — aliased-and-awaited-through-its-alias, returned as an arrow body or `return` operand,
+or an element of an array literal argument to an awaited promise combinator — never its file and line.
+The `file:line` citations in the table are **evidence that each ruling has a shipped instance**, so the
+predicate is known to be exercised rather than hypothetical; they are not the definition and a scan that
+matched them by location would be the artefact that rots. Correspondingly, a call site that matches none
+of the three predicates is a **failure the assertion must name**, and the response is a source fix or a
+new *ruling stated as a predicate* — never a fourth clause naming a line number, and never a narrowing of
+the thirteen-name set.
 
 **AT-64 — the composition root wires every seam.** Asserted against the **production** composition
 root with **no injection whatsoever**: `main`'s default-parameter behaviour and `rtDevInjections`'s
