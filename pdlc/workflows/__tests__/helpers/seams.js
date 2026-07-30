@@ -299,4 +299,180 @@ export function fakeFs(initialContents = {}, opts = {}) {
 
 // ─── fakeGit ──────────────────────────────────────────────────────────────────
 
+/**
+ * Normalise one `fakeGit` script value into the seam's full return shape.
+ * A partial result is completed, so a script may say just `{ ok: false }`.
+ *
+ * @param {undefined|boolean|{ok?: boolean, stdout?: string, stderr?: string}} value
+ * @returns {{ ok: boolean, stdout: string, stderr: string }}
+ */
+function normaliseGitResult(value) {
+  if (value === undefined || value === null) {
+    return { ok: true, stdout: "", stderr: "" };
+  }
+  if (typeof value === "boolean") return { ok: value, stdout: "", stderr: "" };
+  if (typeof value === "object") {
+    return {
+      ok: value.ok !== false,
+      stdout: value.stdout ?? "",
+      stderr: value.stderr ?? "",
+    };
+  }
+  throw new Error(
+    "fakeGit: script value must be a boolean or an { ok, stdout, stderr } object"
+  );
+}
+
+/**
+ * Double for the `_git(argv)` transport seam (TSPEC §3.4).
+ *
+ * The seam **never throws** and interprets nothing: it returns
+ * `{ ok, stdout, stderr }` and the caller branches on `ok`. `argv` is an array
+ * that does **not** include the leading `"git"`.
+ *
+ * The recorded invocation log is what makes TSPEC §6.5's **two-invocation
+ * queue-row commit** assertable — exactly two calls, in order, `git add` then
+ * `git commit -m … -- {queuePath}` — and `commands` renders each argv as one
+ * space-joined string so that assertion reads as the spec writes it.
+ *
+ * @param {undefined                                        // every call succeeds silently
+ *         | boolean|{ok?: boolean, stdout?: string, stderr?: string}  // constant result
+ *         | Array<any>                                     // per-call results, in order; last one repeats
+ *         | Record<string, any>                            // subcommand map: argv[0] -> result
+ *         | ((argv: string[], callIndex: number) => any)   // per-call script; callIndex is 0-based
+ *        } [script]
+ *   A plain object is read as a **subcommand map** when none of its keys is
+ *   `ok`/`stdout`/`stderr`; an unmapped subcommand succeeds silently.
+ * @returns {((argv: string[]) => { ok: boolean, stdout: string, stderr: string }) & {
+ *   calls: string[][],                                     // the argv arrays, in order (mutation-safe copies)
+ *   invocations: Array<{ argv: string[], result: object }>, // argv paired with what was returned
+ *   commands: string[],                                    // `calls` space-joined, e.g. "add -- docs/_queue/QUEUE.md"
+ *   callCount: number,
+ *   reset(): void
+ * }}
+ *
+ * @example
+ * const git = fakeGit();                       // everything succeeds
+ * const git = fakeGit({ commit: { ok: false, stderr: "nothing to commit" } });
+ * const git = fakeGit([true, { ok: false }]);  // add succeeds, commit fails
+ * expect(git.callCount).toBe(2);
+ * expect(git.commands).toEqual([
+ *   "add -- docs/_queue/QUEUE.md",
+ *   'commit -m chore(queue): f → halted -- docs/_queue/QUEUE.md',
+ * ]);
+ */
+export function fakeGit(script) {
+  const isResultShaped =
+    script !== null &&
+    typeof script === "object" &&
+    !Array.isArray(script) &&
+    ("ok" in script || "stdout" in script || "stderr" in script);
+  const isMap =
+    script !== null &&
+    typeof script === "object" &&
+    !Array.isArray(script) &&
+    !isResultShaped;
+
+  const git = (argv) => {
+    const args = Array.isArray(argv) ? argv.slice() : [argv];
+    const index = git.invocations.length;
+    let value;
+    if (typeof script === "function") {
+      value = script(args, index);
+    } else if (Array.isArray(script)) {
+      value = script.length === 0 ? undefined : script[Math.min(index, script.length - 1)];
+    } else if (isMap) {
+      value = Object.prototype.hasOwnProperty.call(script, args[0])
+        ? script[args[0]]
+        : undefined;
+    } else {
+      value = script;
+    }
+    const result = normaliseGitResult(value);
+    git.invocations.push({ argv: args, result });
+    return result;
+  };
+
+  git.invocations = [];
+  Object.defineProperties(git, {
+    calls: { get: () => git.invocations.map((i) => i.argv.slice()) },
+    commands: { get: () => git.invocations.map((i) => i.argv.join(" ")) },
+    callCount: { get: () => git.invocations.length },
+  });
+  git.reset = () => {
+    git.invocations.length = 0;
+  };
+  return git;
+}
+
 // ─── recordingRecordHalt ──────────────────────────────────────────────────────
+
+/**
+ * Double for the `_recordHalt({ feature, status })` queue-row seam (TSPEC §3.5).
+ *
+ * The shipped default is a no-op reporting `{ queueRow: "none" }`, and so is
+ * this double's default — a unit test has no queue row to write and must not
+ * fail for it. `queueRow` is one of `"halted"` | `"halted (uncommitted)"` |
+ * `"none"` | `"error"`, with an optional `detail`; §6.5's "commit failure does
+ * not downgrade the halt" case is scripted by returning
+ * `{ queueRow: "error", detail }` and asserting the pipeline still halts for its
+ * original reason.
+ *
+ * The captured halt records are the point: `records` holds the `{ feature,
+ * status }` arguments verbatim, in call order, so a test can assert *which*
+ * status was recorded (`"halted"` on the halt path, `"in-progress"` /
+ * `"awaiting-merge"` elsewhere) and that it was recorded exactly once.
+ *
+ * @param {undefined
+ *         | {queueRow: string, detail?: string}
+ *         | ((arg: {feature: string, status: string}, callIndex: number) => object)
+ *        } [result]
+ *   What to return. Defaults to `{ queueRow: "none" }`.
+ * @returns {((arg: {feature: string, status: string}) => {queueRow: string, detail?: string}) & {
+ *   records: Array<{ feature: string, status: string }>,   // the arguments, in call order
+ *   calls: Array<{ arg: object, result: object }>,         // arguments paired with returns
+ *   statuses: string[],                                    // just the `status` values, in order
+ *   last: ({feature: string, status: string}|null),        // the most recent record, or null
+ *   callCount: number,
+ *   reset(): void
+ * }}
+ *
+ * @example
+ * const recordHalt = recordingRecordHalt();
+ * await main({ reqPath, _recordHalt: recordHalt, ...rest });
+ * expect(recordHalt.callCount).toBe(1);
+ * expect(recordHalt.last).toEqual({ feature: "f", status: "halted" });
+ */
+export function recordingRecordHalt(result) {
+  const recordHalt = (arg) => {
+    const record = {
+      feature: arg && arg.feature,
+      status: arg && arg.status,
+    };
+    const value =
+      typeof result === "function"
+        ? result(arg, recordHalt.calls.length)
+        : (result ?? { queueRow: "none" });
+    recordHalt.records.push(record);
+    recordHalt.calls.push({ arg, result: value });
+    return value;
+  };
+
+  recordHalt.records = [];
+  recordHalt.calls = [];
+  Object.defineProperties(recordHalt, {
+    statuses: { get: () => recordHalt.records.map((r) => r.status) },
+    last: {
+      get: () =>
+        recordHalt.records.length
+          ? recordHalt.records[recordHalt.records.length - 1]
+          : null,
+    },
+    callCount: { get: () => recordHalt.calls.length },
+  });
+  recordHalt.reset = () => {
+    recordHalt.records.length = 0;
+    recordHalt.calls.length = 0;
+  };
+  return recordHalt;
+}
