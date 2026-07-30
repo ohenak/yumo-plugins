@@ -1981,24 +1981,17 @@ nothing else exported, no static `import`, a top-level `return`, IO routed throu
   `_dodVerifyLoop`, `_raisePrAndVerifyCi` — and **not** to a set derived from `main()`'s parameter
   list.
 
-**Why the parameter-list derivation is wrong here, measured at HEAD `ef4705a`.** The two guards
-answer different questions and must not share a derivation. AT-64 asks *is every capability wired*,
-which must be derived so a new seam cannot be forgotten. AT-19 asks *is every asynchronous call
-awaited*, which is a property of the seam's **implementation**, not of its position in a parameter
-list — and `main()`'s parameter list contains parameters that are correctly called without `await`:
-
-- **`_now` is a clock.** It is a `main()` parameter threaded down to `raisePrAndVerifyCi`
-  (`orchestrate-dev.js:1283`, which defaults it `_now = () => Date.now()`), whose body calls it
-  synchronously at four sites (`const start = _now();`, `completionStart = _now();`, and the two
-  elapsed-time comparisons `_now() - completionStart` / `_now() - start`). A clock must not be
-  awaited; awaiting it would make every comparison compare a promise.
-- **`_phaseDodEnabled` / `_phasePubEnabled` are booleans**, never called at all.
-
-So a parameter-list derivation reds AT-19 on the shipped, correct source — and §8.1 calls this test
-"the only thing standing between this design and this repo's most repeated defect class", so a test
-that must be loosened ad hoc to go green is worse than none. The FSPEC supplies a closed list
-precisely because the membership question is a design judgement, not a derivation; AT-64, below,
-is what stops that list from being the thing that rots.
+**Why the parameter-list derivation is wrong here, measured at HEAD `ef4705a`.** The two guards answer
+different questions and must not share a derivation. AT-64 asks *is every capability wired* — derived, so
+a new seam cannot be forgotten. AT-19 asks *is every asynchronous call awaited* — a property of the seam's
+**implementation**, not of its position in a parameter list. `main()`'s list contains parameters correctly
+called without `await`: `_now` is a clock, forwarded to `raisePrAndVerifyCi` (`orchestrate-dev.js:1283`,
+which defaults it `_now = () => Date.now()`) and called synchronously at four sites there — awaiting it
+would make every elapsed-time comparison compare a promise — and `_phaseDodEnabled` / `_phasePubEnabled`
+are booleans, never called. So a parameter-list derivation reds AT-19 on shipped, correct source, and §8.1
+calls this test "the only thing standing between this design and this repo's most repeated defect class":
+a test loosened ad hoc to go green is worse than none. The FSPEC supplies a closed list because membership
+is a design judgement, not a derivation; AT-64 is what stops that list from rotting.
 
 **Two call-site shapes the assertion must classify explicitly, or it reds on correct source:**
 
@@ -2017,15 +2010,14 @@ root with **no injection whatsoever**: `main`'s default-parameter behaviour and 
 returned object are inspected as they ship.
 
 The seam set is **derived from `main()`**, not hand-listed — the test parses `main`'s destructured
-parameter list for names matching `/^_/` and requires each to be satisfied. A hand-list is precisely
-the artefact that rots: the next seam added to `main()` would leave the test green while the runtime
-receives `undefined` and throws on first use.
+parameter list for names matching `/^_/` and requires each to be satisfied. A hand-list is the artefact
+that rots: the next seam added would leave the test green while the runtime receives `undefined` and
+throws on first use.
 
-**Every `_`-prefixed parameter must be either *wired* or *exempt*, and exemption is a predicate over
-the parameter's own declaration — not a list of names.** A list of names is the same artefact as a
-hand-maintained seam list: it relocates the rot rather than removing it, and it says nothing about
-*why* a name is on it, so nothing distinguishes a legitimate policy parameter from a real capability
-seam somebody parked there to get green.
+**Every `_`-prefixed parameter must be either *wired* or *exempt*, and exemption is a predicate over the
+parameter's own declaration — not a list of names**, which would relocate the rot rather than remove it
+and would say nothing about *why* a name is on it, so nothing would distinguish a legitimate policy
+parameter from a real seam somebody parked there to get green.
 
 **Wired** means: present in `rtDevInjections`, **or** present in a bundle entrypoint's injection
 object — which for `QUEUE_ENTRY` includes the `_runPipeline` closure's `__dev.main({…})` argument
@@ -2037,30 +2029,27 @@ of three forms, each decided from source text:
 | Form | Test | Members at HEAD `ef4705a` |
 |---|---|---|
 | **E-1 — policy value** | the default is an identifier resolving to a module-level declaration whose value is **not a function**, or a non-function literal | `_phaseDodEnabled = PHASE_DOD_ENABLED`, `_phasePubEnabled = PHASE_PUB_ENABLED` |
-| **E-2 — pass-through** | the destructuring element has **no `=` initialiser at all**, **and** the parameter is forwarded to exactly one module-local function that declares a same-named parameter *with* a default, and that function resolves | `_now`, `_sleep` (forwarded to `raisePrAndVerifyCi` → `checkPrCi`, which defaults them `_now = () => Date.now()`, `_sleep = sleep`) |
+| **E-2 — pass-through** | the destructuring element has **no `=` initialiser at all**, **and** the parameter is forwarded to exactly one module-local function that declares a same-named parameter *with* a default, and that function resolves | `_now`, `_sleep` (forwarded bare to `raisePrAndVerifyCi`, which defaults them `_now = () => Date.now()`, `_sleep = sleep`; `checkPrCi` takes only `{ execFn }` and never sees them) |
 | **E-3 — agent-composite** | the default is a function **declared in this module** whose own destructured parameter list contains `_agent` | `_rebaseOntoDefault = rebaseOntoDefault`, `_dodVerifyLoop = dodVerifyLoop`, `_raisePrAndVerifyCi = raisePrAndVerifyCi` |
 
-E-3 is the form the previous four-name list omitted, and its omission is why the rule as written in
-v1.0 **red on a correct tree**: measured at HEAD, `main()` carries sixteen `_`-prefixed parameters
-while `rtDevInjections` returns nine, leaving `_rebaseOntoDefault`, `_dodVerifyLoop` and
-`_raisePrAndVerifyCi` satisfied by nothing. After this feature the counts are twenty-one and thirteen
-and the same three remain. They are not capability seams: each reaches the outside world only through
-`_agent`, which is itself wired, so injecting them would inject a second copy of a capability the
-composition root already supplies.
+E-3 is the form the previous four-name list omitted, and its omission is why the rule as written in v1.0
+**red on a correct tree**: measured at HEAD, `main()` carries sixteen `_`-prefixed parameters while
+`rtDevInjections` returns nine, leaving `_rebaseOntoDefault`, `_dodVerifyLoop` and `_raisePrAndVerifyCi`
+satisfied by nothing. After this feature the counts are twenty-one and thirteen, the same three remaining.
+They are not capability seams: each reaches the outside world only through `_agent`, which is itself wired.
 
 **E-3 is narrow by construction, and that is what defends the *addition* direction.** The declared
 `_agent` parameter is the discriminator, and no capability seam has one: `defaultReadFile`,
 `defaultWriteFile`, `defaultAppendFile`, `defaultListFiles` and `checkFileNonEmpty` reach `fs`;
 `defaultGit`, `mergeWorktree` and `checkPrCi` reach `child_process` through an `execFn`; `agent`,
-`parallel`, `pipeline`, `phase` and `log` are host globals with no module declaration at all, so E-3
-cannot apply to them; and `defaultRecordHalt` — a deliberate no-op — declares no `_agent` either, so
-it stays on the wired side where §7.2 edit 2b has to satisfy it. A future seam cannot be exempted by
-adding a name. It can only be exempted by acquiring an `_agent` parameter (E-3), by resolving to a
-non-function policy value (E-1), or by being forwarded to a module-local function that defaults it
-(E-2) — each a signature change a reviewer sees. **Omitting an initialiser is not among them**: E-2's
-second conjunct is what makes that so. A seam declared bare and injected nowhere is forwarded to no
-defaulting callee, so it falls in no class and the test names it — which is precisely the `_recordHalt`
-regression §7.2 edit 2b guards.
+`parallel`, `pipeline`, `phase` and `log` are host globals with no module declaration at all; and
+`defaultRecordHalt` — a deliberate no-op — declares no `_agent` either, so it stays on the wired side
+where §7.2 edit 2b has to satisfy it. A future seam can therefore only be exempted by acquiring an
+`_agent` parameter (E-3), resolving to a non-function policy value (E-1), or being forwarded to a
+module-local function that defaults it (E-2) — each a signature change a reviewer sees. **Omitting an
+initialiser is not among them**, and E-2's second conjunct is what makes that so: a seam declared bare
+and injected nowhere is forwarded to no defaulting callee, so it falls in no class and the test names it
+— precisely the `_recordHalt` regression §7.2 edit 2b guards.
 
 **Two anti-rot clauses, one per direction:**
 
