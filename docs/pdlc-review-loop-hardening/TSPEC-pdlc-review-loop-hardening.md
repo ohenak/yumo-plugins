@@ -182,7 +182,7 @@ four synchronous `_now()` call sites, and the un-awaited `rawAgentFn` alias wrap
 `QUEUE_ENTRY`'s injection object and the bundle sizes (§7.2); the `AT-22` name collision and the
 1038/1/70 suite baseline (§8.3). Two v1.1 measurements **overturned** a reviewer's premise rather than
 complying with it (§8.5, §8.3), and one v1.2 measurement corrected this document's own claim:
-`_now`/`_sleep` are defaulted in `raisePrAndVerifyCi` (`orchestrate-dev.js:1283`), not in `checkPrCi`,
+`_now`/`_sleep` are defaulted in `raisePrAndVerifyCi` (`_now = () => Date.now()`), not in `checkPrCi`,
 which takes only `{ execFn }` — §8.5 said the latter. Code is cited as **enclosing symbol plus a
 distinctive literal**, never as a bare `file:line`, which drifts (FSPEC §1.1, O-16).
 
@@ -2044,8 +2044,8 @@ nothing else exported, no static `import`, a top-level `return`, IO routed throu
 different questions and must not share a derivation. AT-64 asks *is every capability wired* — derived, so
 a new seam cannot be forgotten. AT-19 asks *is every asynchronous call awaited* — a property of the seam's
 **implementation**, not of its position in a parameter list. `main()`'s list contains parameters correctly
-called without `await`: `_now` is a clock, forwarded to `raisePrAndVerifyCi` (`orchestrate-dev.js:1283`,
-which defaults it `_now = () => Date.now()`) and called synchronously at four sites there — awaiting it
+called without `await`: `_now` is a clock, forwarded to `raisePrAndVerifyCi`
+(which defaults it `_now = () => Date.now()`) and called synchronously at four sites there — awaiting it
 would make every elapsed-time comparison compare a promise — and `_phaseDodEnabled` / `_phasePubEnabled`
 are booleans, never called. So a parameter-list derivation reds AT-19 on shipped, correct source, and §8.1
 calls this test "the only thing standing between this design and this repo's most repeated defect class":

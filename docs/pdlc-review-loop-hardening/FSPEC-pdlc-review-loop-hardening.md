@@ -8,15 +8,22 @@ feature: pdlc-review-loop-hardening
 |---|---|
 | Upstream | `REQ-pdlc-review-loop-hardening.md` (v1.5, converged — SE-v5 and TE-v5 dispositioned) → **FSPEC** |
 | Downstream | `TSPEC-pdlc-review-loop-hardening.md`, `PLAN-…`, `PROPERTIES-…` |
-| Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v1.md` (iteration 1, dispositioned at v1.1); `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v2.md` (iteration 2, dispositioned at v1.2); `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v3.md` (iteration 3, dispositioned at v1.3); `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v4.md` (iteration 4, dispositioned at v1.4). Downstream: `CROSS-REVIEW-product-manager-TSPEC-v2.md` F-06 dispositioned at **v1.7** (§20). |
+| Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v1.md` (iteration 1, dispositioned at v1.1); `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v2.md` (iteration 2, dispositioned at v1.2); `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v3.md` (iteration 3, dispositioned at v1.3); `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v4.md` (iteration 4, dispositioned at v1.4). Downstream: `CROSS-REVIEW-product-manager-TSPEC-v2.md` F-06 dispositioned at **v1.7** (§20); the round-3 TSPEC reviewers' mechanical note on that section's preamble at **v1.8**. |
 | LEARNINGS | `docs/pdlc-review-loop-hardening/LEARNINGS-pdlc-review-loop-hardening.md` |
 | Citation baseline | **HEAD `0655387`.** Every code citation in this document was re-measured at that sha and names its **enclosing symbol plus a distinctive literal**, per O-16 and the REQ's own `Citation baseline` convention. A bare `file:line` citation is a defect in this document. |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude + operator | 1.7 | 2026-07-30 |
+| pdlc | draft | Claude + operator | 1.8 | 2026-07-30 |
 
 ### Changelog
+
+**v1.8 (2026-07-30) — one stale sentence deleted from §20's v1.7 preamble.** Raised as a mechanical
+note (lesson R-6) by both round-3 TSPEC reviewers: the preamble said "The **Owner** column below is
+the disposition, not a forwarding address", but the table's third column is headed `Disposition` — a
+sentence referring to a column that no longer exists under that name. Deleted rather than reworded;
+the header already says what it is (R-5). **No behavioural section changes and no disposition
+changed**; §20's preamble is the only text touched.
 
 **v1.7 (2026-07-30) — §20's three prose-owned open questions get real owners.** Raised as
 `CROSS-REVIEW-product-manager-TSPEC-v2.md` **F-06**: Q-05, Q-06 and Q-09 still named "whoever revises
@@ -3164,7 +3171,6 @@ answer this document can state):
 **Closed at v1.7 — each was a prose owner, and a prose owner is not an owner (DC-08).** Three questions
 above named "whoever revises X" or "operator convention", which is the failure mode DC-08 was promoted
 about: nobody is named, so nobody picks it up. Each is now either bound to a queue row or declined outright.
-The **Owner** column below is the disposition, not a forwarding address.
 
 | # | Question | Disposition |
 |---|---|---|
