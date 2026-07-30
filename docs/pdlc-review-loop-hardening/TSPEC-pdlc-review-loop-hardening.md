@@ -1,18 +1,49 @@
 # TSPEC — pdlc-review-loop-hardening
 
-**Version:** 1.2
-**Status:** Draft (round-2 cross-review feedback addressed; awaiting round 3)
+**Version:** 1.3
+**Status:** Draft (round-3 cross-review feedback addressed; awaiting round 4)
 
 | Field | Value |
 |---|---|
-| Upstream | `REQ → FSPEC → **TSPEC**` (REQ **v1.6**, FSPEC **v1.7** — the REQ amended at v1.1 of this document, the FSPEC at v1.1 and again at v1.2, see §0) |
+| Upstream | `REQ → FSPEC → **TSPEC**` (REQ **v1.6**, FSPEC **v1.8** — the REQ amended at v1.1 of this document, the FSPEC at v1.1, v1.2 and v1.3, see §0) |
 | Downstream | `DECISIONS, PLAN, PROPERTIES, IMPL` |
-| Cross-Reviews | `docs/pdlc-review-loop-hardening/CROSS-REVIEW-{product-manager,test-engineer}-TSPEC-v1.md` (round 1, dispositioned at v1.1); `…-TSPEC-v2.md` (round 2, dispositioned at v1.2); harvested into `LEARNINGS-pdlc-review-loop-hardening.md` after Phase H |
+| Cross-Reviews | `docs/pdlc-review-loop-hardening/CROSS-REVIEW-{product-manager,test-engineer}-TSPEC-v1.md` (round 1, dispositioned at v1.1); `…-TSPEC-v2.md` (round 2, dispositioned at v1.2); `…-TSPEC-v3.md` (round 3, dispositioned at v1.3); harvested into `LEARNINGS-pdlc-review-loop-hardening.md` after Phase H |
 | LEARNINGS | `docs/pdlc-review-loop-hardening/LEARNINGS-pdlc-review-loop-hardening.md` |
 
 ---
 
 ## 0. Changelog
+
+### v1.3 (2026-07-30) — round-3 cross-review feedback
+
+`CROSS-REVIEW-product-manager-TSPEC-v3.md` is **Approved** with one Low;
+`CROSS-REVIEW-test-engineer-TSPEC-v3.md` is Needs revision with 0 High, 2 Medium, 2 Low. Every one of
+the four distinct findings is addressed — PM's single Low and TE N-04 are the **same defect raised by
+two lenses** and are fixed once. **Nothing is declined.** Both Mediums are the same shape: a defect
+this document already fixed, still live on a path the fix did not reach — so both are fixed by widening
+the existing ruling rather than by adding a second mechanism.
+
+| Finding | Sev | Resolution | Where |
+|---|---|---|---|
+| **TE N-01** | Medium | **Fixed by making the distinction intrinsic to the type: `present` is `Map \| null`, and `null` is "not observed", not "empty".** v1.2's rule 4 fired only on a *non-empty* `present` and closed "only an *empty* `present` is greenfield", so on a clean branch (seed `present = {}`) a round-2 optimizer episode whose `_listFiles` failed kept `{}`, selected greenfield, required no trailer, and terminated on dispatch 1 over a round-1-complete document — the original N-01 fail-open relocated one path over. Rule 4 is now stated in the positive direction — **greenfield requires this episode's own refresh to have successfully observed an empty review record** — from which the failed-refresh case and the unread-verdict case both follow without a special case. `refreshReviewState` returns `present: null` on `ListFailure`, keeping the last observed `reviewFiles` / `startIndex` only to *name* the round (`max(1, startIndex − 1)`), never to decide the mode. §6.2 row 17 is rewritten to match and now states the distinction it needs (row 1 is a successful observation of a virgin branch; row 17 is the absence of an observation). **AT-43a gains fixture (b)** — the same clean-branch run with the refresh failing at round 2's optimizer episode — so the direction can red; it reds specifically on the v1.2 rule-4 wording | §5.6.1 rule 4, §3.7, §6.2 row 17, §8.3 |
+| **TE N-02** | Medium | **Fixed by extending §8.5's existing alias ruling to E-2, not by a second mechanism.** E-2's forwarding conjunct required a *module-local function* found in `main()`'s body; measured at HEAD, the only forward of `_now` / `_sleep` is `await raisePrAndVerifyCiFn({ …, _now, _sleep })`, and `raisePrAndVerifyCiFn` is a `main()`-local destructured alias (`_raisePrAndVerifyCi: raisePrAndVerifyCiFn = raisePrAndVerifyCi`), so both parameters fell in **no** class and AT-64 red on shipped, correct source — v1.0's AT-19 defect exactly. Clause 2 now defines "resolves to" as the same one-hop resolution through `main()`'s destructuring pattern that the AT-19 table already rules, and the E-2 Members cell names `raisePrAndVerifyCiFn` so the hop is measured rather than implied. **At most one alias hop, and the resolved target must be a module-level function declaration** — "forwarded to anything that eventually defaults it" would restore the TE-v2 N-02 hole and is explicitly not the rule | §8.5 (E-2, anti-rot clause 2) |
+| **TE N-04 ≡ PM F-01** | Low | **Fixed once — the same DC-02 slip found independently by both lenses.** §2.6's no-cache justification and §4.4's tier-exclusivity paragraph still cited "one `_listFiles` and at most two `_readFile` per phase entry" as the **aggregate** bound; S-INV's per-episode refresh makes it ~18 listings / 36 reads per phase, which §5.6.1 already states correctly. §2.6 now cites §5.6.1's measured bound and rests the decision on the invalidation reason (and on the fact that what would need invalidating is precisely the just-written review files S-INV exists to observe); §4.4's figure is re-scoped to **per search call**, which is what it is true of, with the per-phase aggregate pointed at §5.6.1. **The no-cache decision is unaffected and is not reopened** | §2.6, §4.4 |
+| **TE N-03** | Low | **Fixed by deletion (R-5).** `isTerminal`'s `structural` member had no consumer, no report field and no AT, while `terminal` and `trailerReason` are both read and both observable. Adding a report field for it is the AC-4.7a anti-pattern, so the member is **deleted**; `structural` survives as the local in §5.6.2's body, where its only two readers are, and AT-59/AT-60/AT-62 continue to observe structural completeness through `isComplete` directly | §3.7, §5.6.2 |
+
+**Mechanical, fixed silently (lesson R-6, not findings).** FSPEC §20's v1.7 preamble referred to an
+"**Owner** column" that is headed `Disposition`; the sentence is deleted and the FSPEC goes to
+**v1.8** with no disposition changed. §1.4's own convention paragraph forbids bare `file:line`, and
+v1.2's new sentence used `orchestrate-dev.js:1283` two sentences later; both that site and the
+matching one in §8.5 now cite the enclosing symbol plus a distinctive literal.
+
+**On the accepted `_now`/`_sleep` correction.** Both reviewers independently re-measured it and both
+accept it: `checkPrCi(prUrl, { execFn })` never sees the clock, and the defaults live in
+`raisePrAndVerifyCi`. It stands, and TE N-02's fix is what makes the predicate agree with it.
+
+**On size.** The round-3 brief was net-neutral-or-negative and this round is close to it: three of the
+four fixes are a re-worded sentence, a widened clause and a deleted field. The one addition that is
+not a re-wording is rule 4's restatement, which had to state both cases it now derives plus the
+wording it replaces — recorded because reinstating the old wording is the failure mode.
 
 ### v1.2 (2026-07-30) — round-2 cross-review feedback
 
@@ -183,8 +214,12 @@ four synchronous `_now()` call sites, and the un-awaited `rawAgentFn` alias wrap
 1038/1/70 suite baseline (§8.3). Two v1.1 measurements **overturned** a reviewer's premise rather than
 complying with it (§8.5, §8.3), and one v1.2 measurement corrected this document's own claim:
 `_now`/`_sleep` are defaulted in `raisePrAndVerifyCi` (`_now = () => Date.now()`), not in `checkPrCi`,
-which takes only `{ execFn }` — §8.5 said the latter. Code is cited as **enclosing symbol plus a
-distinctive literal**, never as a bare `file:line`, which drifts (FSPEC §1.1, O-16).
+which takes only `{ execFn }` — §8.5 said the latter. v1.3 adds one more measurement at the same HEAD:
+`main()`'s **only** forward of `_now`/`_sleep` goes through the destructured local
+`raisePrAndVerifyCiFn`, not through a module declaration, which is why E-2 needs the alias hop §8.5's
+clause 2 now rules — a predicate that reads correct on paper and reds on the tree. Code is cited as
+**enclosing symbol plus a distinctive literal**, never as a bare `file:line`, which drifts (FSPEC
+§1.1, O-16).
 
 ### 1.5 Reuse of shipped precedent
 
