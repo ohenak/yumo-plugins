@@ -322,6 +322,32 @@ Learnings) — "when a completeness criterion moves, the authoring SKILL's check
 
 ## 7. Recorded for Harvest (outside the round bound)
 
+Two items surfaced by this round's measurements that are **not** findings against these three commits,
+because their cause predates the feature. Recorded so they are not lost, per DC-08.
+
+**(a) `npm test` silently repairs a stale tracked `dist/`.** Because `runtimeBundle.test.js:18` imports
+from the unguarded `build-runtime.mjs`, running that suite rebuilds and rewrites
+`pdlc/workflows/dist/`. Two consequences worth a constraint entry:
+
+- the suite has a **write side-effect on tracked artifacts**, so a `git status` that was clean before a
+  test run may not be after one (it is clean here only because the sources and the artifacts agree);
+- the in-repo freshness assertion at `runtimeBundle.test.js:494` — `build-runtime.mjs --check` at
+  `cwd: REPO_ROOT` — runs *after* that import has already repaired any staleness, so it cannot observe
+  a stale tree. The genuine staleness coverage is `DOD-03`, which builds in a `mkdtemp` root and does
+  discriminate; `--check` as a standalone command from a shell is also unaffected. So the guarantee
+  holds, but not by the route that line suggests.
+
+*Successor:* `docs/_constraints/` via harvest — "`build-runtime.mjs` is import-unsafe: importing it
+builds. Guard the build behind an entry check, or import `stripModuleSyntax` from a module that does
+not build." That is a small, self-contained change and a plausible follow-up REQ, not this feature's
+work.
+
+**(b) TSPEC §5.9's LEARNINGS row is now confirmed stale.** v1 §9 recorded it as *possibly* stale
+pending the F-2 decision. The decision is made — FSPEC §16.5 governs and is implemented — so the row
+"its own required headings; the approval record section is excluded" now definitely under-states the
+criterion. It joins the §5.9-vs-§16.3 verdict row as documentation drift for consolidation, with the
+ruling already written down in `orchestrate-dev.js`'s `HARVESTED_FROM_ROW` comment.
+
 ## 8. Recommendation
 
 ## Verdict
