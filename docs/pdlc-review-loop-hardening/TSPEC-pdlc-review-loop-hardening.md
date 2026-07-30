@@ -1893,10 +1893,19 @@ One property per parameterisable component, each declaring its own literal seed 
 | `canonicaliseForDigest` | **idempotence**: `f(f(t)) === f(t)`; and every result ends in exactly one `\n` and contains no `\r` | `rng.bytes`-derived strings with injected `\r\n`, `\r`, and 0…5 trailing newlines |
 | `scanLines` | **totality and partition**: never throws for any input, and the visited set ∪ the fenced-and-fence-line set is exactly the line set, disjointly | line sequences drawn from a small alphabet of fence openers (3–6 backticks/tildes), closers, and content |
 | `parseReviewFilename` | **round-trip**: a basename assembled from the G-1…G-4 grammar parses back to the role, doc type and round it was assembled from; and any basename with a deliberately mutated part yields `ok: false` with the reason that part governs | role ∈ `MAP`'s values, doc type ∈ the closed catalogue, round ∈ 1…999, suffix present or absent |
-| `deriveRoundWindow` | **window invariant**: `startIndex > max(every index in present)` and `endIndex === startIndex + MAX_REVIEW_ROUNDS - 1`, for every listing that does not trip the round-1 duplicate halt; and `skipped` ∪ the parsed entries partitions the input basenames | shuffled listings mixing conforming basenames, non-conforming ones, and unrelated files |
+| `deriveRoundWindow` | **window invariant**: `endIndex === startIndex + MAX_REVIEW_ROUNDS - 1`, and `startIndex > max(every index in present)` when `present` holds any index, `startIndex === 1` when it holds none — for every listing that does not trip the round-1 duplicate halt. **Partition** is stated over `parseReviewFilename`, not over this return: every input basename falls in exactly one of `entries` (`ok`, this doc type) / **other-doc-type** (`ok`, another doc type) / `skipped` (`!ok`), and `deriveRoundWindow` returns the first and third | shuffled listings mixing conforming basenames for this doc type, conforming ones for other doc types, non-conforming ones, and unrelated files |
 | `sha256Hex` | **determinism and totality**: equal inputs digest equal, output always matches `/^[0-9a-f]{64}$/` — the known-answer vectors above remain the correctness oracle, this is the coverage oracle | arbitrary byte-derived strings including lone surrogates |
 | `parseForcePhases` | **catalogue closure**: every returned phase is in the `valid` array, and any token outside it appears in `badTokens` — no token is silently dropped or coerced | token multisets drawn from the valid array, `all`, casing variants, and junk |
-| `isComplete` | **monotonicity in the required direction**: adding a required heading with a non-empty body never moves a document from complete to incomplete | heading sets drawn from §5.9's per-class tables, bodies drawn from {non-empty, empty, `TBD`, HTML comment} |
+| `isComplete` | **exact required set**, falsifiable in both directions: a document assembled from exactly §5.9's required headings for the class, each with a non-empty body, is complete; and removing any **one** of them makes it incomplete, with that heading named in `missing` | heading sets drawn from §5.9's per-class tables, bodies drawn from {non-empty, empty, `TBD`, HTML comment} |
+
+**Two rows are stated as falsifiable properties rather than as the weaker forms v1.1 carried, because
+the weaker forms were satisfied by the defects they existed to catch.** `deriveRoundWindow`'s
+"`skipped` ∪ entries partitions the input" is *false* on a correct implementation — a conforming
+basename for another doc type is in neither set (§5.2), and the generator produces those on nearly
+every run — so it is restated over `parseReviewFilename`'s three-way split, which is total.
+`isComplete`'s monotonicity form was satisfied by a matcher recognising no required heading at all:
+such a document is incomplete both before and after the addition, so monotonicity holds while the
+oracle detects nothing. The exact-required-set form reds on it in the removal direction.
 
 Reproduction is by **replay, not by index**, per the generator's own contract: each file prints its
 seed and case n is reproduced by replaying draws 1…n. `shrink` is used for the failure report, not
