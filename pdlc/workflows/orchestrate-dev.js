@@ -563,6 +563,72 @@ export function scanLines(text, visit) {
   }
 }
 
+// ─── TSPEC §5.3 — the content digest: inlined, pure, no seam ──────────────────
+//
+// The workflow runtime has no `crypto` and no `TextEncoder`, so SHA-256 and the
+// UTF-8 encoding beneath it are hand-rolled here in `Number`-only arithmetic (no
+// `BigInt`). This family is deliberately NOT a seam: a seam exists to reach a
+// capability the runtime lacks, and a deterministic synchronous digest over an
+// in-memory string needs none — a seam would only add an awaitable boundary on
+// the hot path of every approval comparison and let a double return a hash the
+// production code never computes (§3.7).
+
+/**
+ * Canonicalise `text` before it is digested.
+ *
+ * N-1 normalises line endings (CRLF and lone CR both become LF); N-2 forces
+ * exactly one trailing newline. Both are applied INSIDE `sha256Hex`, never by a
+ * caller, so no two call sites can disagree about which bytes were digested —
+ * the defect class where a write path and a read path produce different hashes
+ * and every approval reads STALE.
+ *
+ * Total and idempotent: `canonicaliseForDigest(canonicaliseForDigest(t))` is
+ * `canonicaliseForDigest(t)` for every input, including `null` and `undefined`.
+ *
+ * @param {string} text
+ * @returns {string} the canonical form — LF-only, exactly one trailing newline.
+ */
+export function canonicaliseForDigest(text) {
+  const lf = String(text ?? "")
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n"); // N-1
+  return lf.replace(/\n*$/, "\n"); // N-2
+}
+
+/**
+ * Encode `text` as UTF-8, by hand, because the runtime has no `TextEncoder`.
+ *
+ * Surrogate pairs are combined into their astral scalar value (the case a wrong
+ * encoder gets wrong); an UNPAIRED surrogate is encoded as the three-byte form
+ * of its own code unit, which is deterministic and total rather than throwing.
+ *
+ * @param {string} text
+ * @returns {number[]} the bytes, each in 0…255.
+ */
+export function utf8Bytes(text) {
+  const s = String(text ?? "");
+  const out = [];
+  for (let i = 0; i < s.length; i++) {
+    const cp = s.codePointAt(i);
+    if (cp > 0xffff) i++; // a well-formed surrogate pair consumed two code units
+    if (cp < 0x80) {
+      out.push(cp);
+    } else if (cp < 0x800) {
+      out.push(0xc0 | (cp >> 6), 0x80 | (cp & 0x3f));
+    } else if (cp < 0x10000) {
+      out.push(0xe0 | (cp >> 12), 0x80 | ((cp >> 6) & 0x3f), 0x80 | (cp & 0x3f));
+    } else {
+      out.push(
+        0xf0 | (cp >> 18),
+        0x80 | ((cp >> 12) & 0x3f),
+        0x80 | ((cp >> 6) & 0x3f),
+        0x80 | (cp & 0x3f)
+      );
+    }
+  }
+  return out;
+}
+
 // ─── isPass helper ────────────────────────────────────────────────────────────
 
 function isPass(verdict) {
