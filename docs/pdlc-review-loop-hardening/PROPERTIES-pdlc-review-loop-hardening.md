@@ -958,6 +958,96 @@ source, which is the only useful failure report for a static guard.
 
 ## 5. Oracles
 
+### 5.1 The rule this section enforces
+
+**An unfalsifiable property is worse than none**: it consumes a batch, occupies a ledger row, and
+reports green whether or not the behaviour it names exists. So every property in §4 is paired below
+with a **named mutation to a named source file** that turns it red, and with the conjunct that dies.
+A property whose row cannot be filled is deleted, not weakened.
+
+Two supporting rules, both from the te-author oracle checklist:
+
+- **No oracle may be the subject's own code path.** `PROP-DIGEST-02` may not compare against
+  `crypto` (§4.1); `PROP-NAME-01` may not compose the filename with a second regex written in the
+  test; `PROP-AWAIT-01` may not re-implement the bracket walk it is testing. Where the property needs
+  a constructor, it uses the production one and asserts the **round-trip**, which fails on a
+  bidirectionally wrong implementation but is not satisfied by a tautology, because the generated
+  input is compared field-by-field against the parse.
+- **Absence-based claims carry three positive conjuncts.** Four properties assert that something is
+  *not* there — `PROP-SCAN-01` (no marker inside a fence), `PROP-NAME-01` (mutations do not parse),
+  `PROP-APPROVE-01` (out-of-window approvals are not found), `PROP-GINV-01` (step 5 unreachable
+  without G). Each pairs the negative with three positives: the run happened (a positive call-count
+  or step-log assertion), the input was well-formed (the non-vacuity floors), and the *complementary*
+  positive holds (the in-fence marker is classified as fenced; the unmutated name parses; the
+  in-window approval is found; the gated path reaches step 5). A negative asserted alone is
+  indistinguishable from a subject that did nothing.
+
+### 5.2 Falsifiability ledger — L1
+
+| Property | Named mutation (file · construct) | Conjunct that dies |
+|---|---|---|
+| `PROP-DIGEST-01` | `orchestrate-dev.js` · in `canonicaliseForDigest`, change the trailing-newline rule from *force exactly one* to *strip all* | the "exactly one `\n`" conjunct, on the ≥5 zero-trailing-newline cases — and **only** on those, which is why that floor is forced |
+| `PROP-DIGEST-01` (2nd) | same file · drop the `\r` removal, keep the newline rule | idempotence survives; the "no `\r`" conjunct dies on the ≥10 lone-`\r` cases |
+| `PROP-DIGEST-02` | `orchestrate-dev.js` · in `utf8Bytes`, emit the raw code unit for code points above U+FFFF instead of the surrogate-pair encoding | the shape conjunct survives (still 64 hex); the **known-answer vectors** red, and the property's determinism half stays green — which is the point of keeping both oracles |
+| `PROP-DIGEST-02` (2nd) | same file · call `sha256Hex` on the raw text at one call site instead of the canonical form | conjunct (iii): `sha256Hex(t) === sha256Hex(f(t))` fails on the ≥20 non-canonical cases |
+| `PROP-SCAN-01` | `orchestrate-dev.js` · replace the fence **depth counter** in `scanLines` with a boolean toggle | fence discipline dies on the ≥5 unclosed-fence cases and on nested fences; conservation survives, so the failure names the right conjunct |
+| `PROP-SCAN-01` (2nd) | same file · `continue` past a line that matches no pool instead of classifying it | conservation (`sum === lines.length`) dies immediately; totality is what catches the silent drop |
+| `PROP-NAME-01` | `orchestrate-dev.js` · loosen `parseReviewFilename`'s anchor from `$` to a non-anchored match | the rejection direction dies on the extension-mutation class; the round-trip stays green, which is exactly how a loosened regex ships unnoticed today |
+| `PROP-NAME-01` (2nd) | same file · accept a zero-padded version (`v01`) as version 1 | rejection dies on the version-mutation class |
+| `PROP-ROUND-01` | `orchestrate-dev.js` · compute `endIndex` as `startIndex + MAX_REVIEW_ROUNDS` (off by one) | the width identity dies on **every** case, including the empty set — a total failure, which is the correct signature for an arithmetic identity |
+| `PROP-ROUND-01` (2nd) | same file · derive `startIndex` from a counter initialised to 1 rather than from the highest observed version | the partition survives; `startIndex >= 1` survives; the **derivation** conjunct dies on the ≥15 cases whose branch already carries reviews. This is H-1, and this row is its executable statement |
+| `PROP-FORCE-01` | `orchestrate-dev.js` · make `parseForcePhases` return `ok: true` with the unknown tokens dropped instead of `ok: false` | catalogue closure dies on the ≥25 near-miss cases; `all`-expansion survives |
+| `PROP-FORCE-01` (2nd) | same file · expand `all` to five phases (omit `PR`) | `\|phases\| === 6` dies on the ≥10 `all` cases; the set-coverage floor names the missing member |
+| `PROP-COMPLETE-01` | `orchestrate-dev.js` · replace the `R ⊆ P` test with `P.length >= R.length` | the `iff` dies on the ≥25 single-missing cases **that also carry extras** — the extras are generated precisely so a cardinality check cannot hide behind them |
+| `PROP-COMPLETE-01` (2nd) | same file · remove one document from the required set `R` | the property greens on the subject **and reds on its own floor**: the set-equality non-vacuity assertion (every element of `R` sole-missing in ≥1 case) fails, because the generator derives its floors from `R`. A shrinking required set is a finding, not a silence |
+| `PROP-HASH-01` | `orchestrate-dev.js` · accept 63-or-more hex characters (`{63,}` instead of `{64}`) | the `/^[0-9a-f]{64}$/` return-shape conjunct dies on the 63-character cases |
+| `PROP-HASH-01` (2nd) | same file · scan the whole document for a trailer instead of the permitted positions | the quoted/fenced cases start returning hashes; the "never mid-document" conjunct dies |
+| `PROP-TRAILER-01` | `orchestrate-dev.js` · widen `parseRevisionComplete` to match a line *containing* the trailer rather than *being* it | mutual exclusion dies where a resolved-marker line also contains the revision trailer text |
+| `PROP-TRAILER-01` (2nd) | same file · return a literal string reason not in `TRAILER_FAILURES` | catalogue closure (subset) dies on that path; set-equality names which member went missing |
+| `PROP-RESOLVE-01` | `orchestrate-dev.js` · treat a present verdict as approving without checking the anchor | unanimity's four-fact conjunction dies on the ≥15 stale-anchor cases. This is H-4 |
+| `PROP-RESOLVE-01` (2nd) | same file · iterate the corpus in filesystem order and return the first approving record | determinism dies under `rng.shuffle` of the file list — the conjunct no fixed-order example can test |
+| `PROP-STALE-01` | `orchestrate-dev.js` · compare the recorded anchor against the raw document text instead of its digest | the line-ending-only conjunct dies on ≥15 cases; content-staleness survives, so the failure is specific |
+| `PROP-STALE-01` (2nd) | same file · treat a missing anchor as fresh | the absent-anchor conjunct dies on ≥5 cases |
+
+### 5.3 Falsifiability ledger — L2 and L3
+
+| Property | Named mutation (file · construct) | Conjunct that dies |
+|---|---|---|
+| `PROP-LIST-01a` | `orchestrate-dev.js` · treat `unreadable` as benign (fall through to an empty review set) alongside `dir_missing` | the halt disposition dies for that row at **every** phase; the set-equality assertion names `unreadable` specifically |
+| `PROP-LIST-01a` (2nd) | same file · handle the failure at Phase R's gate only, leaving the other five phases to fall through | the phase × failure product reds at five phases and stays green at one — the exact H-2 signature, and invisible to any single-phase example |
+| `PROP-LIST-01a` (3rd) | same file · interpolate a constant path into the halt message instead of `dirPath` | the message conjunct dies on the generated `dirPath`s (spaces, unicode, trailing slash), which is why the path is generated rather than fixed |
+| `PROP-LIST-01b` | `orchestrate-dev.js` · hoist `refreshReviewState()` out of the episode loop to a single pre-loop call | the call-count **equality** dies on every sequence of length ≥2; the ≥20 answer-changing sequences additionally red on the disposition conjunct. This is `S-INV` |
+| `PROP-LIST-01b` (2nd) | same file · memoise the seam answer per phase | equality survives, the disposition conjunct dies on answer-changing sequences within one phase |
+| `PROP-APPROVE-01` | `orchestrate-dev.js` · drop the `<= endIndex` bound from the search predicate | window respect dies on the ≥15 out-of-window cases; the `iff`'s forward half survives |
+| `PROP-APPROVE-01` (2nd) | same file · read tier 2 unconditionally and prefer its answer | tier discipline dies on the seam call log for every `tier1`-only case |
+| `PROP-APPROVE-01` (3rd) | same file · cache the tier-1 result across invocations | idempotence's *call-count* half dies while the value half stays green — the split is what localises the fault |
+| `PROP-GINV-01` | `orchestrate-dev.js` · restore the pre-fix terminal exit that reaches the phase run without passing step G | reachability dies on exactly the exits that skip G; the shrunk counterexample **is the offending path**. This is H-2 |
+| `PROP-GINV-01` (2nd) | same file · make step G unconditional (always pass) | reachability survives — G is on every path — and the "G is evaluated" conjunct dies, because no generated state produces a G-halt. Without that second conjunct this property would green on a gate that gates nothing |
+| `PROP-GINV-01` (3rd) | remove an exit from the exit catalogue while leaving the machine's exit in place | the set-equality traversal floor fails: an exit exists that no catalogue member names. The property fails on catalogue rot as well as on machine rot, which is what "invariant over paths, not an enumeration of steps" buys |
+| `PROP-EPISODE-01` | `orchestrate-dev.js` · key the dispatch counter on `phase` alone instead of the five-coordinate `EpisodeKey` | per-episode counting dies on the pairs differing only in a non-`phase` coordinate; the set-equality coordinate floor names which coordinate was dropped |
+| `PROP-EPISODE-01` (2nd) | same file · raise `MAX_AUTHORING_DISPATCHES` without changing the bound expression | nothing reds — **correctly**: the bound is asserted against the constants, not against the literal 36, so a deliberate constant change is not a false alarm. The falsifier is instead: **hard-code `36`** in the assertion, then change the constant; the property then reds while the subject is right, which is why §4.3 forbids the literal |
+| `PROP-EPISODE-01` (3rd) | same file · pin `roundIndex` at the phase gate rather than deriving it per episode | the unpinned conjunct dies on the ≥10 decreasing-`roundIndex` interleavings |
+| `PROP-WINDOW-01` | `orchestrate-dev.js` · recompute `startIndex + MAX_REVIEW_ROUNDS - 1` inside `reviewLoop` | the call-count equality dies immediately; `RLH-LOOP-03`'s grep oracle reds in the same batch, and the two together are the §11.5 `N-a` enforcement pair |
+| `PROP-WINDOW-01` (2nd) | same file · swap the positional `startIndex` / `endIndex` arguments at one `checkConverged` call site | the "identical values across all calls" conjunct dies on the ≥15 non-1-`startIndex` cases — and **only** there, which is why that floor is forced; a swapped pair is invisible when both values are 1 |
+| `PROP-AWAIT-01` | `orchestrate-dev.js` · remove an `await` from a seam call at a site matching no §8.5 ruling | the site is unclassified; the property fails loudly rather than warning. Detected in **batch 2**, before any of the code that would depend on it |
+| `PROP-AWAIT-01` (2nd) | the classifier · re-admit `Promise.race` to ruling 3 | the withdrawn-ruling fragments (expected `unclassified`) now classify; the withdrawal is asserted, not merely documented |
+| `PROP-AWAIT-01` (3rd) | the walk · stop masking template literals | the ≥15 masked-region fragments report phantom sites; the walk's own correctness is what those fragments test, separately from the classifier's |
+
+### 5.4 Two rows that deserve their own sentence
+
+**`PROP-COMPLETE-01` (2nd) and `PROP-GINV-01` (3rd) falsify against the *specification*, not the
+subject.** Both mutations leave the production function correct and break a catalogue — the required
+document set, the exit catalogue. Both properties red, because their non-vacuity floors are derived
+from the catalogue by set equality rather than written out by hand. This is deliberate and it is the
+main reason §3.3's floors are stated as set equality: a generator that samples a catalogue silently
+narrows when the catalogue narrows, and a property that cannot notice its own domain shrinking is a
+property that decays into a tautology one commit at a time.
+
+**`PROP-EPISODE-01` (2nd) is a falsifier of the *test*, not of the subject.** It is recorded because
+the obvious way to write the 36-dispatch assertion — asserting against `36` — produces a property
+that reds on a legitimate constant change and greens on a broken bound expression. Recording the
+anti-oracle is how that mistake is prevented at review rather than discovered at batch 10.
+
 ## 6. Fixtures
 
 ## 7. Coverage matrix
