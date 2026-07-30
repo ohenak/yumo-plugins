@@ -1298,11 +1298,29 @@ doubles' calls. The literal 36 appears nowhere.
 **Invariant.** For every generated interleaving of phases and rounds:
 
 (i) **The bound, per phase segment.** For each maximal single-phase segment, the authoring dispatches
-recorded by the seam doubles satisfy `dispatches(segment) <= (1 + I) × B`. Where every episode in a
-segment is driven past `B`, the **equality** `dispatches(segment) === (1 + I) × B` is asserted — the
-tight form, which is what makes an off-by-one in either factor die rather than merely being tolerated
-by an inequality. Both `I` and `B` are read from the run, from different surfaces, so the two sides of
-the identity have independent provenance.
+recorded by the seam doubles satisfy `dispatches(segment) <= (1 + I) × B`, where **`I` is read per
+segment** — `reviewLoop` returns one `iterations` value per *phase entry*, so a multi-phase
+interleaving yields one `I` per segment, not one per run (SE Q-02).
+
+The **equality** `dispatches(segment) === (1 + I) × B` is asserted only under **both** preconditions:
+(a) every episode in the segment is driven past `B`, **and** (b) the segment's `reviewLoop` call
+**ran to exhaustion** — it returned `converged: false`. Precondition (b) was missing in v1.1 and its
+absence made the equality **false on a correct subject** (SE F-14): measured at HEAD,
+`orchestrate-dev.js:598` returns `iterations: MAX_REVIEW_ROUNDS` on the non-converged branch, while
+`:648` returns `{ converged: true, iterations: iteration }` — the *actual* round reached. A phase
+produces `1 + (rounds that yielded a revision)` episodes, which equals `1 + I` only when the loop
+exhausts; on a segment converging at round 2 the left-hand side is `2B` against a right-hand side of
+`3B`. Since the ≥10 "drive every episode past `B`" floor is forced, that was a deterministic red on
+correct code, not a seed-dependent one. `PROP-WINDOW-01` states the same precondition for the same
+reason two properties below; this is that treatment, copied.
+
+Both `I` and `B` are read from the run. `I` genuinely has independent provenance —
+`reviewLoop`'s return value is a different site from the dispatch counter, so an off-by-one on either
+side dies. **`B` does not**: it is observed by driving a single episode past saturation and counting
+the *same* dispatch doubles that produce the left-hand side, so a subject whose cap is uniformly wrong
+measures its own wrong cap and satisfies the equality (SE F-16). The equality's discriminating power
+is over **segment structure** — the `1 + I` episode count and the per-segment budget reset — not over
+the cap's value; §8.5 records the residue.
 
 (ii) **Per-episode counting.** The dispatch counter is keyed by the full `EpisodeKey`, so two episodes
 differing in any single **externally controllable** coordinate never share a budget — asserted by
@@ -1324,15 +1342,19 @@ is the conjunct v1.0's five-way floor was silently unable to write.
 `roundIndex` is a per-episode derivation, so an interleaving that revisits a phase at a *lower* round
 index than a previous episode is legal and gets its own budget rather than an exhausted one.
 
-**Generator.** D7 episode interleavings, extended to vary all five `EpisodeKey` coordinates
-independently, including the pathological orderings (same phase twice non-consecutively, round index
+**Generator.** D7 episode interleavings, extended to vary the **four externally controllable**
+`EpisodeKey` coordinates independently — `artifactSet`, `phase`, `round`, `mode`; `invocation` is
+subject-derived and no seam lets a test set it, per the paragraph above and §8.5 item 2, and v1.1's
+leftover "all five" here is **withdrawn** (SE F-17) — including the pathological orderings (same phase twice non-consecutively, round index
 decreasing, phase revisited after a different phase). Sequence length 1…12; per episode, 0…8 attempted
 dispatches. 100 cases.
 
 **Non-vacuity.** All forced. ≥15 interleavings must attempt **more** than the budget within one
 episode (so the cap is exercised, not merely respected by luck); ≥15 must revisit a phase; ≥10 must
-decrease `roundIndex` across episodes; ≥10 must drive **every** episode of a segment past `B`, which
-is what makes conjunct (i)'s tight equality reachable rather than an unexercised clause; ≥10 must span
+decrease `roundIndex` across episodes; ≥10 must drive **every** episode of a segment past `B` **and
+run that segment's loop to exhaustion** (`converged: false`), which is what makes conjunct (i)'s tight
+equality both reachable and true — a segment that saturates but converges early satisfies (a) without
+(b) and is deliberately excluded from the equality, falling back to the inequality; ≥10 must span
 **two or more** phase segments, so the "the total is the sum, not 36" reading is exercised rather than
 asserted in prose only; and each of the **four externally controllable** coordinates
 (`artifactSet`, `phase`, `round`, `mode`) must be the *sole* differing coordinate in ≥3 pairs — set
@@ -1363,7 +1385,15 @@ observable, and TSPEC §7.1 says exactly where: of the five `MAX_REVIEW_ROUNDS` 
 sites 4 and 5, which report a **count** rather than an index, use the constant alone"* — site 5 being
 `return { converged: false, iterations: MAX_REVIEW_ROUNDS, lastResults };`, and site 4 the
 `Iterations (${MAX_REVIEW_ROUNDS} — limit reached)` line in `reviewLoop`'s prompt, which the
-`recordPhase` double captures. Both are read here **through the seams**, not imported.
+**`_agent` double** captures. Both are read here **through the seams**, not imported.
+
+**v1.1 named the wrong double for site 4 and it is corrected here** (SE F-13). Measured at HEAD:
+`reviewLoop`'s parameter list (`orchestrate-dev.js:531–543`) injects exactly `_agent`, `_parallel` and
+`_checkFile` — there is no `recordPhase` seam. `recordPhase` is a `main()`-local callback declared at
+`:1574` and passed to **`checkConverged`** (`:496`), never to `reviewLoop`. Site 4's prompt is built at
+`:567` and dispatched at `:570` as `await _agent(optimizer, postmortemPrompt)`, so the recorded prompt
+of the **agent** double is the surface. An implementer at `RLH-22` looking for a `recordPhase` double
+in `reviewLoop.test.js` would not have found one.
 
 **Invariant.** For every generated phase run:
 
@@ -1377,8 +1407,8 @@ the values are identical across all calls within one phase entry.
 and the left-hand side comes from the window the gate computed. Two independently sourced observables:
 an off-by-one introduced on either side (`startIndex + MAX_REVIEW_ROUNDS`, or a loop that returns one
 round too few) breaks the identity, which is precisely what the L1 form could not do. The same value
-is cross-checked against the count rendered into the prompt at site 4 and captured by the
-`recordPhase` double — a third surface, so a mutation would have to be applied consistently at all
+is cross-checked against the count rendered into the prompt at site 4 and captured by the **`_agent`**
+double's recorded prompt — a third surface, so a mutation would have to be applied consistently at all
 three to escape.
 
 (iii) **The window does not move.** For the whole duration of the phase, `startIndex` and `endIndex`
