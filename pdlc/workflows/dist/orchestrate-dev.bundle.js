@@ -2348,6 +2348,8 @@ async function appendApprovalAnchors({
  * The single reviewer-skill → role-slug MAP (TSPEC §3.9). Lifted to module scope
  * so the filename grammar's role alternation (§5.2 G-2), the dispatch table and
  * the reverse accessor below all read the SAME catalogue and cannot desynchronise.
+ * Sharing the object is what makes the three consistent; `RLH-MAP-01` is what keeps
+ * this catalogue and `PHASE_DISPATCH`'s reviewer set consistent with each other.
  */
 const MAP = {
   "se-review": "software-engineer",
@@ -2365,6 +2367,16 @@ function reviewerRoleSlug(skill) {
 /**
  * The reverse of `reviewerRoleSlug` (TSPEC §3.9): a role slug as it appears in a
  * `CROSS-REVIEW-{role}-…` basename back to the reviewer skill that produced it.
+ *
+ * The desynchronisation this pair guards against is between `MAP` and
+ * `PHASE_DISPATCH`: a reviewer added to the dispatch table without a `MAP` entry
+ * derives its cross-review path at the `reviewerRoleSlug(skill) || skill` fallback
+ * (§5.2's call site), producing a basename whose role is outside G-2's closed
+ * catalogue and therefore unparseable on the next round. `RLH-MAP-01`
+ * (`__tests__/roundDerivation.test.js`) is what enforces that — both accessors are
+ * exported for it, and the guarantee this comment states holds only because that
+ * assertion runs. It is two-way: a dispatch reviewer with no slug reds, and a `MAP`
+ * entry no phase dispatches reds too.
  *
  * @param {string} slug
  * @returns {string|null} the reviewer skill id, or `null` for a non-catalogue slug.

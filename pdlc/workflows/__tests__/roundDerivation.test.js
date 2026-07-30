@@ -3,7 +3,10 @@
  * branch-derived round-index derivation (`deriveRoundWindow`, TSPEC §5.2 steps 1–7).
  *
  * Owns, per PLAN §4 row RLH-11 and TSPEC §8.3's AT→file map:
- *   RLH-AT-01 … RLH-AT-07, RLH-AT-63, plus TSPEC §8.2's two property rows for
+ *   RLH-AT-01 … RLH-AT-07, RLH-AT-63, RLH-MAP-01 (the §3.9 catalogue/dispatch-table
+ *   desynchronisation guard, added in Phase DOD round 1 remediation of CR v1 F-1 —
+ *   `reviewerSkillForSlug`'s doc comment claimed that guarantee with nothing enforcing
+ *   it), plus TSPEC §8.2's two property rows for
  *   `parseReviewFilename` (round-trip) and `deriveRoundWindow` (window invariant, and the
  *   partition **restated over `parseReviewFilename`'s total three-way split**).
  *
@@ -617,5 +620,55 @@ describe("RLH round-derivation properties (TSPEC §8.2)", () => {
     // implementation the restatement exists to catch.
     expect(otherDocTypeDraws).toBeGreaterThan(0);
     expect(weakFormFalsifiedOn).toBeGreaterThan(0);
+  });
+});
+
+// ─── TSPEC §3.9 — the role catalogue and the dispatch table cannot desynchronise ───
+
+describe("RLH role-slug catalogue vs dispatch table (TSPEC §3.9)", () => {
+  /** Every reviewer skill the normative dispatch table can dispatch, deduplicated. */
+  function dispatchedReviewers() {
+    const seen = new Set();
+    for (const entry of Object.values(devModule.PHASE_DISPATCH)) {
+      for (const skill of entry.reviewers || []) seen.add(skill);
+    }
+    return [...seen].sort();
+  }
+
+  test("RLH-MAP-01: the role-slug MAP and PHASE_DISPATCH's reviewer set agree in both directions", () => {
+    const reviewers = dispatchedReviewers();
+
+    // Anti-vacuity: the dispatch table must actually name reviewers, or the forward
+    // arm below would pass over an empty set.
+    expect(reviewers.length).toBeGreaterThan(0);
+
+    // Forward arm — a reviewer added to PHASE_DISPATCH without a MAP entry would
+    // derive its cross-review path through the `reviewerRoleSlug(skill) || skill`
+    // fallback, writing a basename whose role is outside G-2's closed catalogue and
+    // therefore unparseable on the next round. This is what reds on that.
+    const unslugged = reviewers.filter((skill) => devModule.reviewerRoleSlug(skill) === null);
+    expect(unslugged).toEqual([]);
+
+    // Round-trip — the reverse accessor recovers the skill each slug came from, so
+    // a slug can be carried back from a parsed `CROSS-REVIEW-{role}-…` basename.
+    const roundTripFailures = reviewers.filter(
+      (skill) => devModule.reviewerSkillForSlug(devModule.reviewerRoleSlug(skill)) !== skill,
+    );
+    expect(roundTripFailures).toEqual([]);
+
+    // Reverse arm — every slug in the catalogue belongs to a skill the table really
+    // dispatches, so a MAP entry outliving the phase that used it reds too. Derived
+    // from the catalogue via its own slugs, not from a restated literal.
+    const catalogueSlugs = reviewers.map((skill) => devModule.reviewerRoleSlug(skill));
+    const orphanSlugs = ROLE_SLUGS.filter((slug) => !catalogueSlugs.includes(slug));
+    expect(orphanSlugs).toEqual([]);
+
+    // G-2's closed catalogue, restated at the top of this file, is exactly that set.
+    expect([...catalogueSlugs].sort()).toEqual([...ROLE_SLUGS].sort());
+
+    // A non-catalogue slug recovers nothing rather than inventing a skill.
+    for (const slug of NON_CATALOGUE_ROLES) {
+      expect(devModule.reviewerSkillForSlug(slug)).toBeNull();
+    }
   });
 });
