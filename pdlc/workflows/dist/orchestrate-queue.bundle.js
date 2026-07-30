@@ -2539,6 +2539,7 @@ async function defaultRecordHalt(/* { feature, status } */) {
  */
 async function main({
   reqPath,
+  forcePhases = null,
   _agent: rawAgentFn = agent,
   _parallel: parallelFn = parallel,
   _log: logFn = log,
@@ -2555,6 +2556,11 @@ async function main({
   _phasePubEnabled: phasePubEnabled = PHASE_PUB_ENABLED,
   _now,
   _sleep,
+  _listFiles: listFilesFn = defaultListFiles,
+  _writeFile: writeFileFn = defaultWriteFile,
+  _appendFile: appendFileFn = defaultAppendFile,
+  _git: gitFn = defaultGit,
+  _recordHalt: recordHaltFn = defaultRecordHalt,
 } = {}) {
   // Override module-level log for injection
   const emit = logFn;
