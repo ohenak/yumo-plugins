@@ -927,6 +927,138 @@ round on an agent-emitted trailer parsed by `parseVerdict`. O-19(h4) owns the ne
 
 ## 9. FSPEC-APPROVAL-01 — The tier-2 approval record in LEARNINGS
 
+**Linked requirements:** AC-4.2b, AC-4.2c, AC-4.3, AC-4.2a, AC-4.2d. **Discharges O-21.**
+
+### 9.1 Why a second carrier exists at all
+
+§4a A-7 measures that `harvest-learnings` **deletes** every `CROSS-REVIEW-*` on the branch
+(`harvest-learnings/SKILL.md` instructs deletion of the harvested cross-review and code-review files,
+and its LEARNINGS template carries the `| Harvested from | {list …, now deleted} |` row). Tier 1 —
+§6's persisted verdict field — therefore ceases to exist at Phase H. Without a durable carrier the
+approved-phase skip of AC-4.1 would be permanently inert for every feature that has been harvested,
+which is every finished feature. Tier 2 is that carrier.
+
+### 9.2 Placement in `LEARNINGS-{feature}.md`
+
+`harvest-learnings/SKILL.md`'s output format is a metadata table (including `| Harvested from | … |`)
+followed by five numbered sections. The approval record is added as a **new, final top-level section**
+of that document:
+
+```markdown
+## 6. Approval Record
+
+| Document Type | Round | Role | Verdict | Approval Hash | Reviewed Commit |
+|---|---|---|---|---|---|
+| FSPEC | 2 | product-manager | Approved | sha256:1f3a…9c | 4b21e07 |
+| FSPEC | 2 | software-engineer | Approved with minor changes | sha256:1f3a…9c | 4b21e07 |
+```
+
+| Aspect | Specification |
+|---|---|
+| Heading | Exactly `## 6. Approval Record` — a new section appended after §5, so the five existing sections keep their numbers and any consumer that reads them by number is unaffected |
+| Shape | One markdown table, one row per (document type, round, role). A round approved by two roles contributes **two** rows. |
+| Ordering | Document type in pipeline order (REQ, FSPEC, TSPEC, PLAN, PROPERTIES, DECISIONS), then round index ascending, then role slug ascending — a total order, so the section is byte-stable across re-derivations |
+| Absent case | A feature with no approving round emits the heading and the table header with **no data rows**, never omits the section. An empty table is evidence that harvest looked; a missing section is indistinguishable from a harvest that predates this mechanism. |
+| Why a section, not a metadata row | The record is multi-row and grows with rounds; the metadata table is one-value-per-row. Placing it beside `Harvested from` would also invite the narration failure §9.4 exists to prevent. |
+
+### 9.3 The columns (fixed at REQ altitude — carried through unchanged)
+
+AC-4.2b fixes the column set; O-21 owns only syntax. All six, verbatim in substance:
+
+| Column | Value | Syntax |
+|---|---|---|
+| Document Type | The document that was reviewed | One member of §4's doc-type catalogue, upper case: `REQ`, `FSPEC`, `TSPEC`, `PLAN`, `PROPERTIES`, `DECISIONS` |
+| Round | The approving round index | A positive decimal integer, branch-absolute per §4 — the same index that appears in the cross-review's `-v{N}` suffix |
+| Role | The approving reviewer | One member of §4's role-slug catalogue: `product-manager`, `software-engineer`, `test-engineer` |
+| Verdict | That role's verdict | One member of **AC-4.3's closed catalogue**, which is `parseVerdict`'s own `VALID_VERDICTS` — `Approved`, `Approved with minor changes`, `Needs revision`. One catalogue, three carriers (§2.3). |
+| Approval Hash | The approval-time content hash of the reviewed document | §7's grammar exactly: `sha256:` + 64 lowercase hex, **or** the literal `unavailable` |
+| Reviewed Commit | The commit the reviewed document was at when sent for review | An abbreviated or full lowercase hex sha, **or** the literal `unavailable` |
+
+**Two REQ-altitude decisions carried through, not re-litigated.**
+
+1. The **Reviewed Commit** column is the *reviewed document's* commit, not the cross-review files' own
+   commit. AC-4.2b retracted the latter at v1.5 (TE-v5 F-03) as unimplementable: §7 has the script
+   write these fields **into** the cross-review file, and the sha of the commit containing a file
+   cannot be a field of that file, so the value did not exist at the instant it was needed. §7 already
+   fixes the same rule for tier 1; tier 2 copies it.
+2. The **Approval Hash** is load-bearing and the **Reviewed Commit** is corroborating context only
+   (AC-4.2b, AC-4.2d). §10's comparison never reads the sha. This is what makes the mechanism
+   rebase-proof where a timestamp or a sha would not be — Phase DOD rebases `feat-{feature}` and
+   rewrites both.
+
+### 9.4 Derivation: copy, never recompute, never narrate
+
+`harvest-learnings` builds each row **by measurement of the files it is about to delete**:
+
+| Field | Source | Rule |
+|---|---|---|
+| Document Type, Round, Role | The cross-review **filename**, parsed by §4's grammar | Derived from the basename, not from the file's prose |
+| Verdict | The `## Verdict` section of that cross-review file (§6), read with §6's parser including its duplicate pre-count | Read from the file, never recalled from the harvest agent's own summary of it |
+| Approval Hash, Reviewed Commit | **Copied verbatim** from the `APPROVAL-HASH:` / `REVIEWED-COMMIT:` lines that §7 appended to that same tier-1 record | Copied as bytes. Harvest **may not** recompute the hash and **may not** substitute a harvest-time hash. |
+
+**Why recomputation is forbidden (AC-4.2b's v1.4 retraction, carried through).** v1.3 had harvest
+compute the hash from the document it was harvesting beside. That is retracted, and reinstating it
+would reintroduce the exact fail-open this feature exists to close: Phase H runs *after* the approving
+round, *after* the Final Codebase Review, and *after* Phase DOD's remediation rounds, so a harvest-time
+hash records whatever the document is at that moment. Any edit landing between approval and harvest
+would then be certified as approved — §10's comparison would find HEAD equal to the recorded hash and
+skip a phase over bytes no reviewer saw. That is R-1's laundering outcome. The hash must originate at
+the approving round (§7) and travel here unchanged.
+
+**Why narration is forbidden.** §4a A-7 records that harvest *already* mis-states what it deleted in
+the adjacent row: `pdlc-workflow-distribution`'s `Harvested from` row asserts its `POSTMORTEM-R-*` was
+"all now deleted" while that file is present at HEAD and `harvest-learnings/SKILL.md` never instructs
+its deletion. The row immediately beside this one is therefore known-unreliable when produced from
+memory. Every field above is copied or parsed.
+
+**Unavailable-hash marker.** When the tier-1 record for an approving round carries no parseable
+`APPROVAL-HASH:` line, harvest writes the literal `unavailable` in that column (and, independently, in
+`Reviewed Commit` when that line is missing). It does **not** omit the row and does **not** fill the
+gap. §10 treats an `unavailable` hash as no parseable hash: the approval is not usable and the phase
+runs (AC-4.2a). Recording the round with a marker rather than dropping it preserves the audit trail —
+an operator can see that a round was approved and *why* its skip is not available.
+
+### 9.5 Canonicalisation and the single byte referent
+
+The hash is not computed here, so no canonicalisation happens here. The statement O-21 owes is about
+the **referent**, and it is one line: the bytes the hash covers are AC-4.2d's single referent — the
+reviewed document as read from the **working tree immediately before the review dispatch** (§7's t2) —
+canonicalised by §7's N-1/N-2 inside the digest function itself.
+
+v1.3's phrasing "the document file as committed, byte-for-byte" is **withdrawn** (SE-v5 F-06): it
+would have given this mechanism a third referent alongside AC-3.5c's working tree and AC-4.4's
+comparison read. O-21 canonicalises those bytes and no others — and in practice canonicalises nothing,
+because it copies a digest §7 already produced with the one shared function.
+
+### 9.6 Tier precedence and the disagreement case (AC-4.2b, carried through)
+
+| Situation | Governing tier | Outcome |
+|---|---|---|
+| **No** `CROSS-REVIEW-*` file for that (feature, document type) present on the branch | Tier 2 | The approval record is consulted |
+| Any conforming `CROSS-REVIEW-*` for that doc-type present — **even one** | Tier 1 | Tier 2 is **not** consulted (§6.4's tier-selection predicate) |
+| Tier 1 present but role-asymmetric — one role's file for the approving round present, the other's missing | **Tier 1** | Tier 1 is *not* "absent". The missing role is **not approving** (§5's role-asymmetric table). The pair is **never** completed across tiers: mixed provenance never assembles an approval. Phase runs. |
+| Both tiers present for the same (document type, round) and **disagree** | Neither | AC-4.2a's unparseable case: the phase **runs** |
+
+### 9.7 Legacy features and the guard (AC-4.2c, carried through)
+
+A feature harvested before this mechanism shipped has neither tier: its cross-reviews are gone and its
+LEARNINGS has no `## 6. Approval Record`. It fails closed under AC-4.2a and its phases run. This is
+**accepted, not backfilled** — reconstructing verdicts for deleted artifacts from git history is out of
+scope, and an operator who wants the skip has §11's force surface.
+
+`guard-harvest-before-delete` is **not tightened**. Its precondition remains exactly what
+`hooks/scripts/guard-harvest-before-delete.sh` implements today — block deleting a `CROSS-REVIEW-*` or
+`CODE_REVIEW-*` unless `LEARNINGS-{feature}.md` exists on the branch — and it does **not** additionally
+require the approval record. Rationale, carried through from AC-4.2c: the guard protects harvest of
+*content*, which is the irreversible loss; a missing approval record costs one re-review, which
+AC-4.2a already treats as the safe direction. Making an optimisation's record a precondition of the
+pipeline's normal cleanup step would let a record-writing bug halt harvest.
+
+**The falsifier is therefore the opposite of the obvious one.** O-14 must *not* assert that the guard
+rejects a record-less LEARNINGS. It must assert that a record-less LEARNINGS **passes** the guard, the
+cross-reviews are deleted, and the feature then **fails closed** at AC-4.2a with its phases running. A
+test that shows the guard rejecting it would be testing a tightening this document forbids.
+
 ## 10. FSPEC-STALE-01 — The staleness comparison
 
 ## 11. FSPEC-FORCE-01 — The operator force-run surface
