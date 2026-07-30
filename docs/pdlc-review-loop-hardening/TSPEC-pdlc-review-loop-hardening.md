@@ -832,11 +832,17 @@ Five coordinates, because four collide. Without `mode`, an authoring dispatch an
 for the same document in the same round share counters, and a long revision exhausts the authoring
 budget. Without `invocation`, the counters have nothing to increment.
 
-`mode` is produced by exactly one function — **`selectMode` (§5.6.1)** — called once at episode
-entry. No other site assigns it, and in particular it is never derived from the artifact's structural
-state; FSPEC §15.2 records that derivation as retracted. `roundIndex` on a **revision** episode is
-`selectMode`'s returned `round` (the highest round still owed an authoring pass), not §5.2's
-`startIndex`, which is the *next reviewer* round; on a greenfield episode it is `startIndex`.
+`mode` is produced by exactly one function — **`selectMode` (§5.6.1)** — called once per episode, at
+that episode's entry, over maps re-read at that instant (S-INV). No other site assigns it, and it is
+never derived from the artifact's structural state; FSPEC §15.2 records that derivation as retracted.
+`roundIndex` on a **revision** episode is `selectMode`'s returned `round` (the highest round still
+owed an authoring pass), not §5.2's `startIndex`, which is the *next reviewer* round; on a greenfield
+episode it is the refreshed `startIndex`.
+
+**Both coordinates are therefore per-episode, and that is what makes the bound below true.** A
+`roundIndex` derived once at phase entry would be constant for the phase, collapsing all five rounds'
+revision episodes onto **one** `EpisodeKey` and one six-dispatch budget — the whole phase would then
+be bounded by 6, not 36, and round 2 would inherit round 1's spent counters.
 
 Per-episode counters, both reset when any coordinate changes:
 
@@ -845,8 +851,10 @@ Per-episode counters, both reset when any coordinate changes:
 | consecutive no-progress dispatches | `MAX_AUTHORING_ATTEMPTS = 3` | reset to 0 by any dispatch that makes progress |
 | total dispatches | `MAX_AUTHORING_DISPATCHES = 6` | never reset within the episode |
 
-Worst-case dispatch count for one phase is `(1 + MAX_REVIEW_ROUNDS) × MAX_AUTHORING_DISPATCHES` = 36.
-That bound is stated here so a reviewer can check it against the run budget rather than discover it.
+Worst-case dispatch count for one phase is `(1 + MAX_REVIEW_ROUNDS) × MAX_AUTHORING_DISPATCHES` = 36
+authoring/revision dispatches — one fresh budget per round, which is exactly the premise `roundIndex`
+being per-episode supplies. Stated here so a reviewer can check it against the run budget rather than
+discover it.
 
 ### 4.6 `updateQueueStatus`'s return shape
 
@@ -876,8 +884,11 @@ claiming a write it did not perform. Every existing call site is updated to dest
 remaining action is a manual commit, not a re-run — and the **original halt reason is reported
 first**, with this as a subordinate note.
 
-Plus three report **lines** (not fields): the per-phase skip notice, the force-override notice, and
-the advisory pacing/commit-diff proxy. Per-phase skip reuses the existing `"⏭"` status marker — the
+Plus four report **lines** (not fields): the per-phase skip notice, the force-override notice, the
+advisory pacing/commit-diff proxy, and — on any episode that did not reach terminal — the wrapper's
+reason together with `dispatchAndVerify`'s `trailerReason` echoed verbatim as one of
+`declared_incomplete` / `absent` / `duplicated` / `unparseable` (§5.6.2, FSPEC AT-61). The line is
+omitted when `trailerReason` is `null`. Per-phase skip reuses the existing `"⏭"` status marker — the
 one `recordPhase("D", PHASE_DISPATCH.D.label, "⏭", "Skipped — no load-bearing alternatives")` already
 uses — so an approval skip is visibly distinct from both a run and a `"❌"` failure.
 
@@ -1603,6 +1614,7 @@ failure to answer.
 | 14 | non-convergence within `startIndex..endIndex` | `checkConverged` | §6.3's terminal exit |
 | 15 | POSTMORTEM write failed | `_checkFile` after the write agent | §6.4's second halt shape, `postmortemStatus: "write_failed"` |
 | 16 | queue-row commit failed | `_git` → `{ ok: false }` | §6.5; `queueRow: "error"`; the halt itself is **not** downgraded |
+| 17 | `refreshReviewState`'s `_listFiles` fails **mid-loop** (§5.6.1) | seam return | the previous `present` / `reviewFiles` are kept and the failure is reported; the episode is **not** silently reclassified greenfield, because §5.6.1 rule 4 rules an unread candidate round as revision. Distinct from row 1: an empty listing at *phase entry* is a virgin branch, an unreadable listing *after* round 1 wrote files is not |
 
 Rows 10 and 11 write **no POSTMORTEM** on purpose. Exhausting the authoring budget is the pacing
 wrapper refusing to keep paying; it is not the reviewers failing to converge, and a POSTMORTEM
