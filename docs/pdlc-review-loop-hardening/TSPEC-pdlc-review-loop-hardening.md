@@ -545,6 +545,191 @@ per-entrypoint supply rather than asserting it appears in `rtDevInjections`.
 
 ## 4. Data Model
 
+Every record here is a plain object literal. No class, no `Symbol`, no prototype — C-2's bundle has
+no module system to hang a type on, and `stripModuleSyntax` operates on text.
+
+### 4.1 The four closed failure catalogues (DC-01)
+
+Each is a frozen array declared beside the constants block, so a test can enumerate it and a
+`switch` can be checked exhaustive.
+
+```js
+export const LIST_FAILURES     = ["dir_missing", "not_a_directory", "unreadable", "bad_argument"];
+export const FILENAME_FAILURES = ["not_cross_review", "bad_role", "bad_doc_type",
+                                  "bad_round", "trailing_junk"];
+export const HASH_FAILURES     = ["absent", "duplicated", "unparseable"];
+export const TRAILER_FAILURES  = ["declared_incomplete", "absent", "duplicated", "unparseable"];
+```
+
+### 4.2 `ListFailure` — and its dispositions
+
+| Value | Cause | Disposition |
+|---|---|---|
+| `dir_missing` | the directory does not exist | **benign** — treated as an empty listing; a feature whose `docs/{feature}/` has not been created yet has no cross-reviews, which is a true and useful answer |
+| `not_a_directory` | the path exists but is a file | **cannot judge** ⇒ halt |
+| `unreadable` | permissions, IO error, or an adapter response the prompt did not permit | **cannot judge** ⇒ halt |
+| `bad_argument` | `dirPath` absent, non-string, or empty | **cannot judge** ⇒ halt |
+
+The three non-benign values produce one halt-reason shape, shared by both listing paths (DC-11):
+
+```
+Cannot enumerate {dirPath}: {reason}
+```
+
+The asymmetry is the whole point. "There are no cross-reviews" and "I could not find out whether
+there are cross-reviews" must not collapse into the same value, because the second, silently treated
+as the first, restarts an approved phase from round 1 — H-1's failure mode reintroduced through the
+error path.
+
+### 4.3 `TrailerFailure` and `HashFailure`
+
+`parseRevisionComplete(response)` returns `{ complete: true }` or `{ complete: false, reason }`:
+
+| `reason` | Meaning | Consequence in `dispatchAndVerify` |
+|---|---|---|
+| `declared_incomplete` | the trailer is present and says the author is not done | continue the episode — this is the normal paced path, not an error |
+| `absent` | no `REVISION-COMPLETE:` line at all | non-terminal; continue, counts against `MAX_AUTHORING_ATTEMPTS` if no progress |
+| `duplicated` | more than one such line outside fenced regions | fail closed — non-terminal, and reported |
+| `unparseable` | the line exists but its value is not `yes`/`no` | fail closed — non-terminal, and reported |
+
+`parseApprovalHash(fileText)` returns `{ ok: true, hash, reviewedCommit }` or `{ ok: false, reason }`
+over `HASH_FAILURES`. All three failure values reach the **same** place: §5.5's `UNEVALUABLE`, which
+means the phase runs. There is no branch in which an unparseable hash grants a skip.
+
+### 4.4 The persisted records
+
+**Tier-1, in each `CROSS-REVIEW-{role}-{DOCTYPE}[-v{N}].md`.** Two carriers in one file, written by
+two different producers.
+
+```markdown
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 3}
+
+APPROVAL-HASH: sha256:{64 lowercase hex}
+REVIEWED-COMMIT: {40 lowercase hex | unavailable}
+```
+
+| Field | Producer | Written when | Read by |
+|---|---|---|---|
+| `VERDICT:` + JSON counts | the **reviewer agent**, as the file's last section | during the review dispatch | `parseVerdict(section, roleSlug)`, unchanged, over the trailing `## Verdict` section only |
+| `APPROVAL-HASH:` / `REVIEWED-COMMIT:` | the **script**, appended | strictly after the review episode reaches terminal (t5 of FSPEC §7.4's ordering) | `parseApprovalHash(fileText)` |
+
+The append is append-shaped for two independent reasons: AC-1.4 forbids overwriting a cross-review
+file at all, and a replace-shaped edit emits both match and replacement, roughly doubling the bytes
+against `MAX_AUTHORING_WRITE_BYTES`. An append emits two lines.
+
+**Tier-2, in `LEARNINGS-{feature}.md`.** Tier 1 does not survive Phase H — `harvest-learnings`
+deletes the cross-review files it harvests — so a second, durable carrier exists as a new final
+top-level section, `## 6. Approval Record`, leaving the five existing sections' numbers untouched:
+
+| Column | Domain |
+|---|---|
+| Document Type | `REQ` \| `FSPEC` \| `TSPEC` \| `PLAN` \| `PROPERTIES` \| `DECISIONS` |
+| Round | positive decimal integer, branch-absolute (the same `N` as the filename's `-v{N}`) |
+| Role | `product-manager` \| `software-engineer` \| `test-engineer` |
+| Verdict | `parseVerdict`'s `VALID_VERDICTS` — `Approved` \| `Approved with minor changes` \| `Needs revision` |
+| Approval Hash | `sha256:{64 lowercase hex}` \| `unavailable` |
+| Reviewed Commit | abbreviated-or-full lowercase hex sha of the **reviewed document's** commit \| `unavailable` |
+
+One row per (document type, round, role); a round approved by two roles contributes two rows.
+Ordering is total — document type in pipeline order, round ascending, role slug ascending — so the
+section is byte-stable across re-derivations. A feature with no approving round emits the heading and
+the header row with **no data rows**; the section is never omitted, because an empty table is
+evidence that harvest looked, while a missing section is indistinguishable from a harvest that
+predates the mechanism.
+
+**Copy, never recompute.** Harvest builds Approval Hash and Reviewed Commit by copying the
+`APPROVAL-HASH:` / `REVIEWED-COMMIT:` bytes verbatim out of the tier-1 file. It may not recompute the
+digest, and may not substitute a harvest-time hash — recomputation at harvest time would hash the
+document as it stands *after* the phase, turning every harvested approval into a false `FRESH`.
+
+**Tier selection is exclusive.** A phase entry consults tier 1 **or** tier 2, never both merged: if
+the candidate round's cross-review files exist, they are the record; only if they are absent is
+LEARNINGS consulted. This bounds the read fan-out at two `_readFile` per phase entry and removes the
+"both tiers disagree" merge entirely.
+
+### 4.5 `EpisodeKey` — the pacing unit
+
+```js
+/** @typedef {{
+ *   artifactSet: string,   // the document (or document set) being produced
+ *   phaseId: string,       // "R" | "F" | "T" | "D" | "P" | "PR" | "CR" | "DOD"
+ *   roundIndex: number,    // branch-absolute, from §5.2
+ *   mode: "authoring" | "revision",
+ *   invocation: number,    // monotonic within (artifactSet, phase, round, mode)
+ * }} EpisodeKey */
+```
+
+Five coordinates, because four collide. Without `mode`, an authoring dispatch and a revision dispatch
+for the same document in the same round share counters, and a long revision exhausts the authoring
+budget. Without `invocation`, the counters have nothing to increment.
+
+Per-episode counters, both reset when any coordinate changes:
+
+| Counter | Constant | Semantics |
+|---|---|---|
+| consecutive no-progress dispatches | `MAX_AUTHORING_ATTEMPTS = 3` | reset to 0 by any dispatch that makes progress |
+| total dispatches | `MAX_AUTHORING_DISPATCHES = 6` | never reset within the episode |
+
+Worst-case dispatch count for one phase is `(1 + MAX_REVIEW_ROUNDS) × MAX_AUTHORING_DISPATCHES` = 36.
+That bound is stated here so a reviewer can check it against the run budget rather than discover it.
+
+### 4.6 `updateQueueStatus`'s return shape
+
+```js
+/** @returns {{ markdown: string, matched: boolean }} */
+export function updateQueueStatus(markdown, feature, newStatus)
+```
+
+Today the not-found path is `return markdown; // feature row not found` — indistinguishable, to the
+caller, from a successful update whose replacement happened to be a no-op. `matched` makes the
+difference observable, which is what `_recordHalt` needs to report `queueRow: "none"` rather than
+claiming a write it did not perform. Every existing call site is updated to destructure.
+
+### 4.7 New fields on the final report
+
+`buildFinalReport`'s destructured list gains four fields:
+
+| Field | Domain | Set by |
+|---|---|---|
+| `haltPhase` | phase id \| `null` | the terminal-exit path (§6.3) |
+| `postmortemPath` | `docs/{feature}/POSTMORTEM-{phaseId}-{feature}.md` \| `null` | §6.3 |
+| `postmortemStatus` | `"written"` \| `"exists-unresolved"` \| `"none"` | §6.3, §5.8 |
+| `queueRow` | `"written"` \| `"none"` \| `"failed"` | `_recordHalt`'s return |
+
+Plus three report **lines** (not fields): the per-phase skip notice, the force-override notice, and
+the advisory pacing/commit-diff proxy. Per-phase skip reuses the existing `"⏭"` status marker — the
+one `recordPhase("D", PHASE_DISPATCH.D.label, "⏭", "Skipped — no load-bearing alternatives")` already
+uses — so an approval skip is visibly distinct from both a run and a `"❌"` failure.
+
+### 4.8 Constants
+
+All four land in one block in `orchestrate-dev.js` immediately after the anchor
+`const MODEL_DEFAULT = "opus";`, following the convention `const DOD_MAX_ITERATIONS = 3;` sets.
+
+```js
+// TSPEC-ROUNDS-01: per-invocation review-round budget (AC-1.6a). NOT an absolute
+// round index — the gate and the reported counts derive from this plus the
+// branch-derived starting index.
+const MAX_REVIEW_ROUNDS = 5;
+
+const MAX_AUTHORING_ATTEMPTS = 3;      // consecutive no-progress dispatches, per episode
+const MAX_AUTHORING_DISPATCHES = 6;    // total dispatches, per episode
+const MAX_AUTHORING_WRITE_BYTES = 12000; // per-tool-call emission ceiling stated to authors
+```
+
+Module-level, not `main()` parameters: they are policy, not capability, and C-2's bundle has no
+configuration channel to override them from. They are not exported — an export widens the bundle's
+published surface for no caller. Tests reach them through observable behaviour (round windows,
+dispatch counts), which is the same discipline `DOD_MAX_ITERATIONS` already lives under.
+
+`MAX_AUTHORING_WRITE_BYTES` has **no oracle**: nothing in the runtime measures the bytes an agent
+actually emits per tool call. It is a value stated in the prompt and enforced only by the agent's
+compliance, corroborated by §6.6's advisory commit-diff proxy. This is recorded, not hidden, because
+a constant that looks enforced but is not is worse than one known to be advisory.
+
 ## 5. Algorithms
 
 ## 6. Error Handling
