@@ -931,3 +931,110 @@ describe("RLH-LOOP-03: the literal `MAX_REVIEW_ROUNDS - 1` is written exactly on
     expect({ hits, misplaced }).toEqual({ hits: [expect.any(Number)], misplaced: [] });
   });
 });
+
+// ─── RLH-LOOP-01: reviewLoop's review-window parameters ──────────────────────
+// PLAN §11.5 `N-a`, `reviewLoop` half: **two sibling fields on the existing
+// options object**. `reviewLoop` already takes one destructured options object
+// (TSPEC §3.9) and `iteration` already rides on it, so `startIndex` and
+// `endIndex` extend that object rather than changing its shape. Rejected there,
+// and therefore red here: a new record type; positional arguments (seven call
+// sites, silent on a wrong order); a field on `EpisodeKey`.
+describe("RLH-LOOP-01: reviewLoop's startIndex/endIndex sibling fields, new seams, and the endIndex gate", () => {
+  /** The destructured parameter list text — declaration line through the closing `}) {`. */
+  function reviewLoopParamList() {
+    const lines = devSourceLines();
+    const start = lines.findIndex((l) => /^export async function reviewLoop\(/.test(l));
+    expect(start).toBeGreaterThanOrEqual(0);
+    const end = lines.slice(start).findIndex((l) => /^\}\)\s*\{/.test(l));
+    expect(end).toBeGreaterThan(0);
+    return lines.slice(start, start + end + 1).join("\n");
+  }
+
+  test("RLH-LOOP-01a: startIndex and endIndex are sibling fields of the options object, alongside iteration", () => {
+    const params = reviewLoopParamList();
+
+    // Siblings of `iteration`, not a nested record and not positional.
+    expect({
+      iteration: /^\s*iteration\s*=\s*1\s*,\s*$/m.test(params),
+      startIndex: /^\s*startIndex\b/m.test(params),
+      endIndex: /^\s*endIndex\b/m.test(params),
+    }).toEqual({ iteration: true, startIndex: true, endIndex: true });
+  });
+
+  test("RLH-LOOP-01b: the gate reads endIndex as a consumed parameter — `if (iteration > endIndex)`", () => {
+    const lines = devSourceLines();
+    const span = measureSpan(lines, /^export async function reviewLoop\(/);
+    const body = lines.slice(span.startLine - 1, span.endLine).join("\n");
+
+    // TSPEC §7.1 edit 3. The site reads a parameter and performs no arithmetic;
+    // the arithmetic is RLH-26's, once, at the phase gate (RLH-LOOP-03).
+    expect({
+      gateOnEndIndex: /if\s*\(\s*iteration\s*>\s*endIndex\s*\)/.test(body),
+      bareLiteralGate: /if\s*\(\s*iteration\s*>\s*5\s*\)/.test(body),
+    }).toEqual({ gateOnEndIndex: true, bareLiteralGate: false });
+  });
+
+  test("RLH-LOOP-01c: the gate honours the window behaviourally — startIndex..endIndex runs exactly endIndex - startIndex + 1 rounds", async () => {
+    // startIndex = 3, endIndex = 4: a two-round window that is neither the
+    // pre-feature 1..5 nor a width-5 window, so a gate still reading the bare
+    // literal 5 (three rounds: 3, 4, 5) is a distinct, named failure.
+    let reviewerPairCount = 0;
+
+    const mockAgent = async (skill, prompt) => {
+      if (skill === "pm-review") reviewerPairCount++;
+      if (skill === "pm-review" || skill === "te-review") return makeNeedsRevisionResult();
+      if (skill === "se-author") return makeOptimizerResult();
+      return "";
+    };
+
+    const result = await reviewLoop({
+      ...baseParams,
+      iteration: 3,
+      startIndex: 3,
+      endIndex: 4,
+      _agent: mockAgent,
+      _parallel: (promises) => Promise.all(promises),
+      _checkFile: existsGuard,
+    });
+
+    expect({ rounds: reviewerPairCount, converged: result.converged }).toEqual({
+      rounds: 2,
+      converged: false,
+    });
+  });
+
+  test("RLH-LOOP-01d: all seven reviewLoop call sites pass iteration", () => {
+    // TSPEC §3.9: "all seven existing call sites now pass the branch-derived
+    // startIndex". An un-overridden `iteration = 1` default aims a round-4 write
+    // back at round 1 and destroys the existing -v1 cross-review (H-1).
+    const source = devSourceLines().join("\n");
+    const sites = [
+      ...source.matchAll(/(?<!function )\breviewLoop\(\{([\s\S]*?)\n\s*\}\)/g),
+    ].map((m) => m[1]);
+
+    expect(sites).toHaveLength(7); // R, F, T, D, P, PR, CR
+    const withoutIteration = sites.filter((args) => !/\biteration\s*:/.test(args));
+    expect(withoutIteration).toEqual([]);
+  });
+
+  test("RLH-LOOP-01e: reviewLoop gains docType, _listFiles and _readFile, and takes no seed maps", () => {
+    const params = reviewLoopParamList();
+
+    // TSPEC §3.9's three new parameters, all for §5.6.1's S-INV: `docType`, plus
+    // the two seams `refreshReviewState` needs to re-read the review record at
+    // **every** episode entry.
+    expect({
+      docType: /^\s*docType\b/m.test(params),
+      _listFiles: /^\s*_listFiles\b/m.test(params),
+      _readFile: /^\s*_readFile\b/m.test(params),
+    }).toEqual({ docType: true, _listFiles: true, _readFile: true });
+
+    // And explicitly **no** seed `present` / `reviewFiles`: the first episode
+    // refreshes like every other one, so a seed would be an unread parameter
+    // (TSPEC §5.6.1; a pre-loop snapshot is TE-v2 N-01).
+    expect({
+      present: /^\s*present\b/m.test(params),
+      reviewFiles: /^\s*reviewFiles\b/m.test(params),
+    }).toEqual({ present: false, reviewFiles: false });
+  });
+});
