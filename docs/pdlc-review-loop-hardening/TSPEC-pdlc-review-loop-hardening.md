@@ -1487,4 +1487,75 @@ Two derivation caveats the test must encode explicitly, or it will red on a corr
 
 ## 9. Traceability
 
+### 9.1 FSPEC obligations → TSPEC sections
+
+`O-10` … `O-15` do not appear: they were retracted during FSPEC review and are absent from the
+FSPEC's own obligation map. Their absence here is deliberate, not an omission.
+
+| O-row | Discharged in | Note |
+|---|---|---|
+| **O-1** | §3.2, §4.2, §6.2 rows 1–2 | `_listFiles` seam + `defaultListFiles` + `rtListFiles`; `ListFailure` as the one shared error contract; `listAllFiles` explicitly not reused (§1.5) |
+| **O-2** | §5.2 | `CROSS_REVIEW_RE` with G-1…G-4, role validation against `reviewerRoleSlug`'s `MAP`, closed doc-type catalogue, total reject rule |
+| **O-3** | §5.8 | `parseResolvedMarker`, `checkPostmortem`, `extractRecommendation` with 4,000-byte truncation |
+| **O-4** | §6.5 | two `_git` invocations, message form, pathspec, dirty-tree and commit-failure branches |
+| **O-5** | §3.5 | `_recordHalt`'s three suppliers, row location, `queueRow: "none"` when absent |
+| **O-6** | §5.6 | the two prompt kinds; retry-ness derived from disk; the script names the first unwritten section, three definite cases |
+| **O-7** | §5.9 | four wrapped classes; the six spec-class heading tables; LEARNINGS' approval-record exclusion |
+| **O-8** | §5.5 | one hash-equality test, no history walk at either tier, read-at-comparison-time, rebase invariance |
+| **O-9** | §3.1, §5.7 | `forcePhases` on `main()` + `meta.inputs`; `parseForcePhases`; precedence over approval but not over an unresolved POSTMORTEM |
+| **O-16** | §7.1, §7.2, §3.9 | every edit anchored by enclosing symbol + distinctive literal; **no bare `file:line` citation appears anywhere in this document** |
+| **O-17** | §5.1, §5.3, §4.3 | one grammar family, three carriers; digest mechanism and canonicalisation; trailer grammar and its four reasons |
+| **O-19** | §4.8, §5.6, §8.3 | constant **placement** (module-level, unexported, beside `MODEL_DEFAULT`), and the explicit statement that `MAX_AUTHORING_WRITE_BYTES` has **no** oracle; the behavioural oracles (a)–(j) are the AT-35…AT-53 tests of §8.3 |
+| **O-20** | §5.6, §6.6 | per-section commit cadence; the commit-diff proxy as advisory-only; no git operation may discard uncommitted content |
+| **O-21** | §4.4 | `## 6. Approval Record` placement, six columns, copy-never-recompute, exclusive tier selection, `unavailable` marker |
+| **O-18** | §5.4 | absent role file is not approving; single-highest-round candidate; no cross-tier completion |
+
+**Nothing is deferred.** Every O-row the FSPEC left open to TSPEC is answered above. Two are answered
+*narrowly* and the narrowing is stated where it lands: O-19's oracle half is discharged as test
+obligations (§8.3) rather than as a runtime mechanism, because no runtime mechanism exists to measure
+emitted bytes; and O-8 is discharged in its v1.5-narrowed form (one comparison, no walk) rather than
+its v1.0 form.
+
+### 9.2 Defect → mechanism → test
+
+| Defect | Mechanism | First falsifying test |
+|---|---|---|
+| **H-1** | `deriveRoundWindow`'s `max(present) + 1` (§5.2), passed to `reviewLoop` at all seven call sites | AT-01 |
+| **H-2** | `checkConverged`'s corrected `postmortemPath`, `_checkFile` confirmation, `_recordHalt`, the two conditional halt shapes (§6.3, §6.4) | AT-22 |
+| **H-3** | `dispatchAndVerify`'s terminal-first-then-progress loop, per-episode counters, resume prompt (§5.6) | AT-35 |
+| **H-4** | the two-tier approval search + `isStale` (§5.4, §5.5) | AT-08 |
+
+### 9.3 Constraint compliance
+
+| Constraint | Where honoured |
+|---|---|
+| **C-2** — bundle-legal | six new capabilities, all injected seams (§3.1); no `import`, `process`, `fs`, `fetch`, `crypto`, `TextEncoder` introduced anywhere; digest hand-rolled (§5.3); AT-19 asserts it (§8.5) |
+| **C-2** — await discipline | every injected call `await`ed by construction; AT-19's source-level lint is the mechanical guard |
+| **C-5** — no agent in a script-decidable loop | the entire decision surface lives in §2.4's pure stratum; `recoverVerdict` explicitly not reused on the approval path (§2.6) |
+| **DC-01** — closed and total | four failure catalogues (§4.1); six total parsers (§5); every emit-side string catalogued |
+| **DC-02** — measured, not inferred | every claim about existing code verified against the tree at HEAD `af6f335`; `stripModuleSyntax`'s and `wrapModule`'s behaviour, `rtDevInjections`'s nine entries, `main()`'s sixteen injections, the dev bundle's composition array and `DEV_META`'s missing `inputs` all read directly |
+| **DC-11** — one error contract per question | `ListFailure` shared across both listing paths; `_git` and `_mergeWorktree` justified as answering different questions (§3.4) |
+| **DEC-DIST-01/02** | `dist/` regenerated in the same commit; consumer copy never committed (§7.3) |
+| **DEC-ORACLE-01/03** | run-wide assertions written as explicit tests; one canonical double per seam at a named path (§8.1) |
+
+### 9.4 Reused rather than reinvented
+
+Recorded so a reviewer can check the "cite-and-reuse the sibling" obligation mechanically.
+
+| Obligation | Shipped precedent reused | Where |
+|---|---|---|
+| dependency injection for capabilities | `main()`'s existing sixteen-parameter destructured list | §3.1 |
+| verdict parsing and its closed catalogue | `parseVerdict` + `VALID_VERDICTS`, unchanged | §5.1 |
+| pass/fail semantics of a verdict | `isPass` | §5.1 |
+| role-slug catalogue | `reviewerRoleSlug`'s `MAP` | §5.2 |
+| Node-default IO with an injectable module | `checkFileNonEmpty(path, { fsMod = fs })` | §3.2 |
+| `child_process` injection for git | `mergeWorktree(…, { execFn })` | §3.4 |
+| adapter agent-relay with a JSON contract | `rtMergeWorktree` | §3.2, §3.4 |
+| adapter agent-relay with constrained one-word output | `rtCheckFile` | §3.2 |
+| skip marker in the phase table | the existing `"⏭"` status | §4.7 |
+| bundle staleness and structural guards | `build-runtime.mjs --check`, `runtimeBundle.test.js` | §7.3 |
+
+Explicitly **not** reused, with the reason stated at the point of decision: `listAllFiles` /
+`WALK_SKIP_DIRS` (§1.5), `recoverVerdict` (§2.6), `_mergeWorktree` as a general git transport (§3.4).
+
 ## 10. Open Questions
