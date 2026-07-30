@@ -857,7 +857,7 @@ claiming a write it did not perform. Every existing call site is updated to dest
 | Field | Domain | Set by |
 |---|---|---|
 | `haltPhase` | phase id \| `null` | the terminal-exit path (§6.3) |
-| `postmortemPath` | `docs/{feature}/POSTMORTEM-{phaseId}-{feature}.md` \| `null` | §6.3 |
+| `postmortemPath` | `docs/{feature}/POSTMORTEM-{phaseId}-{feature}.md` \| `null` | §6.3, and §5.8 whenever `postmortemStatus` is `"unresolved"` |
 | `postmortemStatus` | `"written"` \| `"write_failed"` \| `"unresolved"` \| `"none"` | §6.3, §5.8 |
 | `queueRow` | `"halted"` \| `"halted (uncommitted)"` \| `"none"` \| `"error"` | `_recordHalt`'s return |
 
@@ -885,11 +885,11 @@ table, and a skip is not a failure. When `checkPostmortem` returns `none` or `re
 absent; a phase that is skipped with a clean POSTMORTEM state must not emit an empty parenthetical,
 because an operator scanning the table reads any suffix as a signal.
 
-Two report fields interact with the same call: `postmortemStatus` is set to `"unresolved"` on the
-skip path too — the state is real whether or not the phase ran — while `haltPhase` and
-`postmortemPath` stay `null`, because the run did not halt. A reader can therefore distinguish
-"skipped, and by the way there is an open POSTMORTEM here" from "refused because of it" without
-re-deriving either.
+Two report fields interact with the same call. `postmortemStatus` is set to `"unresolved"` on the
+skip path too — the state is real whether or not the phase ran — and `postmortemPath` is populated
+with it, so the datum AC-2.5 wants structured is never available only inside prose. `haltPhase`
+stays `null`, because the run did not halt: that field alone is what distinguishes "skipped, and by
+the way there is an open POSTMORTEM here" from "refused because of it".
 
 ### 4.8 Constants
 
@@ -1526,7 +1526,7 @@ failure to answer.
 | 10 | `MAX_AUTHORING_ATTEMPTS` consecutive no-progress dispatches | `dispatchAndVerify` | halt the phase, `reason: "no_progress"`; **no POSTMORTEM** |
 | 11 | `MAX_AUTHORING_DISPATCHES` exceeded | `dispatchAndVerify` | halt the phase, `reason: "dispatch_budget"`; **no POSTMORTEM** |
 | 12 | invalid `forcePhases` token | `parseForcePhases` | halt **before any phase runs**, ending `Valid: R, F, T, P, D, PR, all.` (six tokens plus `all`, per REQ/FSPEC v1.6) |
-| 13 | unresolved POSTMORTEM for the phase, **on a path where the phase would otherwise run** (§2.5 step 4a) or **on the forced path** (§2.5 step 1) | `checkPostmortem` | refuse the phase, `postmortemStatus: "unresolved"`, halt reason carries the Recommendation excerpt; **not overridable by `forcePhases`** |
+| 13 | unresolved POSTMORTEM for a phase that **would otherwise run** — i.e. on any path reaching §2.5 step G, forced or not, no candidate, not approving, `STALE` or `UNEVALUABLE` (G-INV) | `checkPostmortem` at step G | refuse the phase, `postmortemStatus: "unresolved"`, halt reason carries the Recommendation excerpt; **not overridable by `forcePhases`** |
 | 13a | unresolved POSTMORTEM for a phase the approval skip has already elided (§2.5 step 4, `FRESH`) | `checkPostmortem`, evaluated for reporting only | **not a failure.** The skip stands and the run proceeds; the notice names the POSTMORTEM path (§4.7) and `postmortemStatus` is `"unresolved"`. AC-2.3's refusal is conditioned on the phase otherwise running, so there is nothing here to refuse |
 | 14 | non-convergence within `startIndex..endIndex` | `checkConverged` | §6.3's terminal exit |
 | 15 | POSTMORTEM write failed | `_checkFile` after the write agent | §6.4's second halt shape, `postmortemStatus: "write_failed"` |
