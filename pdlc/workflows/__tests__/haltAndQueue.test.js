@@ -323,6 +323,56 @@ describe("RLH-25: the terminal exit and the queue row", () => {
     ]);
     expect(result.queueRow).toBe("halted");
   });
+
+  it("RLH-AT-22: the halt never claims a POSTMORTEM that was not written", async () => {
+    // AC-2.2 / E-32 / §6.4 row 2. The POSTMORTEM agent throws, so `_checkFile`
+    // finds nothing at the path and the halt must say so. §6.3 step 2 is the
+    // crux: the confirmation, not the agent's reply, decides.
+    const { result, fs } = await run({
+      verdictFor: nonConvergingAtR,
+      postmortem: "throw",
+    });
+
+    expect(result.outcome).toBe("halted");
+    expect(result.postmortemStatus).toBe("write_failed");
+    expect(result.haltReason).toContain("Post-mortem write FAILED");
+    expect(result.haltReason).toContain(POSTMORTEM_R);
+
+    // Not one reason string anywhere in the report may claim the write.
+    expect(JSON.stringify(result)).not.toContain("POSTMORTEM written");
+    expect(JSON.stringify(result)).not.toContain("Post-mortem written at");
+
+    // And nothing was written, which is the fact the report is describing.
+    expect(fs.writes.map((w) => w.path)).not.toContain(POSTMORTEM_R);
+  });
+
+  it("RLH-AT-23: the halt report carries §4.7's four fields, fully substituted", async () => {
+    // AC-2.5 / FSPEC §12.6. A consumer never has to parse the reason string,
+    // and no un-substituted `{feature}` template reaches a report (§6.3's
+    // general rule — today's `postmortemPath` carries literal braces).
+    const { result } = await run({ verdictFor: nonConvergingAtR });
+
+    expect(result.outcome).toBe("halted");
+    expect(Object.keys(result)).toEqual(
+      expect.arrayContaining([
+        "haltPhase",
+        "postmortemPath",
+        "postmortemStatus",
+        "queueRow",
+      ])
+    );
+
+    expect(result.haltPhase).toBe("R");
+    expect(result.postmortemPath).toBe(POSTMORTEM_R);
+    expect(result.postmortemPath).not.toContain("{feature}");
+    expect(result.postmortemStatus).toBe("written");
+    expect(["halted", "halted (uncommitted)", "none", "error"]).toContain(
+      result.queueRow
+    );
+
+    // The whole report, not just this field, is free of un-substituted braces.
+    expect(JSON.stringify(result)).not.toMatch(/\{feature\}|\{DOC-TYPE\}/);
+  });
 });
 
 // ─── §2.5 step G / §5.8: the POSTMORTEM gate ─────────────────────────────────
