@@ -476,13 +476,13 @@ responses. The reconstruction is:
 ```
 1. From the phase-entry listing (§3.5), take the conforming entries for this doc-type (§4.3).
 2. Group them by round index. Within a group, key by role slug (§4.2).
-3. For each round index, descending from the highest present:
-     a. Require BOTH expected roles for this phase to be present in the group.
+3. Take the SINGLE HIGHEST round index present in any group — the candidate round. No lower
+   round index is ever examined.
+     a. Require BOTH expected roles for this phase to be present in that group.
      b. Read each present file's persisted verdict field (§6.3).
      c. If both parse as exactly one catalogue value AND both are approving (AC-4.3) ⇒
-        this is the approving round. Stop.
-     d. Otherwise continue to the next lower round index.
-4. If no round satisfies (a)–(c) ⇒ no approval. The phase runs.
+        this is the approving round.
+4. If the candidate round fails any of (a)–(c) ⇒ no approval. The phase runs.
 ```
 
 **"Both expected roles for this phase"** is read from `PHASE_DISPATCH`, which already declares the
@@ -490,13 +490,23 @@ pair per phase (Phase R's entry carries `reviewers: ["se-review", "te-review"]`,
 entry carries its own pair). The expected pair is therefore never guessed and never hard-coded here —
 a phase reviewed by `pm-review` + `se-review` pairs those two.
 
-**Descending search, and why.** The highest round is searched first because it is the round whose
-findings are most recent; an approval at round N makes any earlier approval irrelevant. The loop
-continues downward rather than stopping at the first non-approving round because a resumed history can
-legitimately hold a non-approving round *above* an approving one only in one situation — a reviewer
-re-reviewed after approval, which AC-4.4's staleness test then governs. Searching downward and letting
-§10 deny a stale approval keeps the two questions separate: §5 answers *was there an approving round*,
-§10 answers *has the document changed since*.
+**The highest round only, and why — retraction in place (TE-v1 F-01, SE-v1 F-06).** v1.0 searched
+"for each round index, descending from the highest present … otherwise continue to the next lower round
+index", justified by "a resumed history can legitimately hold a non-approving round *above* an approving
+one only in one situation — a reviewer re-reviewed after approval, which AC-4.4's staleness test then
+governs." **Both sentences are withdrawn.** The justification is false: a round that produced findings
+but whose authoring pass never ran leaves the document's bytes *untouched*, so the hash of the lower
+approving round still matches and §10 returns `FRESH` — the descending search then skipped the phase and
+discarded the completed round's findings silently. That is exactly the loss R-1 and AC-3.5 scope (d)
+exist to prevent, arriving through the skip path.
+
+The surviving rule is a **single candidate**: only the highest present round index can grant an
+approval. Any higher round — approving, non-approving, half-present or unparseable — denies the skip by
+construction, because it *is* the candidate and fails (a)–(c). The two questions stay separate exactly
+as before (§5 answers *did the latest round approve*, §10 answers *has the document changed since*), and
+the read fan-out is now bounded at **two** `_readFile` calls per phase entry — one per expected role of
+one round — independent of branch history length. There is no descent, no read budget to exhaust, and no
+history-length term in the phase-entry cost (SE-v1 F-06).
 
 ### 5.2 Non-approval by different rounds is explicit
 
@@ -520,13 +530,16 @@ histories need not be dense or aligned. O-18 requires this FSPEC to say so rathe
 inferable. The concrete shape O-18 names: a branch where SE reached `-v13` while TE wrote only `-v1`
 gives a next index of 14 and **no TE file at all for rounds 2–13**.
 
-| Situation at round `N` for this doc-type | Classification | Effect |
+All rows below are evaluated on the **candidate** round — the highest present index (§5.1). A round below
+it is never examined, so "no approval" is the outcome whenever the candidate fails.
+
+| Situation at the candidate round `N` for this doc-type | Classification | Effect |
 |---|---|---|
 | Both expected roles present, both approving, both parseable | **Approving round** | §10's staleness test runs; if it passes, the phase is skipped |
-| Both present, at least one non-approving | Not approving | Search continues downward |
-| Both present, at least one verdict absent / duplicated / non-catalogue | Not approving — AC-4.2a's unparseable case | Search continues downward; the report names the artifact whose verdict could not be read |
-| **One role's file for round `N` is missing** | Not approving — the absent role is treated as **not approving** for that round | Search continues downward. A gap can never pair into an approval. |
-| Neither role present at `N` (a gap in both) | Not a round at all | Skipped; not reported as an anomaly, since §4.4's derivation tolerates non-contiguous indices by design |
+| Both present, at least one non-approving | Not approving | **No approval; the phase runs** |
+| Both present, at least one verdict absent / duplicated / non-catalogue | Not approving — AC-4.2a's unparseable case | No approval; the phase runs and the report names the artifact whose verdict could not be read |
+| **One role's file for round `N` is missing** | Not approving — the absent role is treated as **not approving** for that round | No approval; the phase runs. A gap can never pair into an approval. |
+| A lower round `M < N` is dual-approving | **Irrelevant** | Not consulted. A completed round `N` — including one whose findings were never authored into the document — always denies the skip. |
 
 **Fail-closed, and consistent with AC-4.2a.** Treating an absent `-vN` as *not approving* is the same
 direction as every other unreadable-evidence case in this feature: the phase runs, at the cost of one
@@ -2277,6 +2290,7 @@ direction; "reported" means it appears in the run report without changing the ou
 | E-22 | LEARNINGS exists **without** the approval record | **Passes** `guard-harvest-before-delete` (not tightened), then fails closed. The falsifier is this direction, not the guard rejecting it. | §9.7 |
 | E-23 | Tier-1 record present but its `APPROVAL-HASH:` is `unavailable` or ungrammatical | `UNEVALUABLE` ⇒ phase runs. No substitute value may be computed. | §10.5 |
 | E-24 | Both tiers present for the same (doc type, round) and disagreeing | Unparseable ⇒ phase runs. No "most recent wins" rule. | §10.4 |
+| E-63 | Round 2 dual-approving; a forced run produced round 3 whose two cross-reviews are **non-approving**, and the invocation ended before any authoring edit, so the document's bytes still hash to round 2's anchor | Round 3 is the **candidate**; it is non-approving ⇒ **no approval ⇒ phase runs**. Round 2 is never consulted. Without the highest-round-only rule this skipped the phase and discarded round 3's findings. | §5.1, §5.3 |
 
 ### 18.3 POSTMORTEM, force and queue (§11, §12, §13, §14)
 
@@ -2571,6 +2585,12 @@ exhaustion message names `rounds 4..8` — not `after 5 iterations` against an a
 
 **AT-55 — No un-substituted template reaches a report (AC-5.2)**
 *Then* no report string produced by any halt path contains a literal `{feature}` or `{DOC-TYPE}`.
+
+**AT-56 — A higher non-approving round denies an earlier approval (E-63, TE-v1 F-01)**
+*Given* round 2's two cross-reviews are `Approved` with an `APPROVAL-HASH:` matching the document's
+current bytes, **and** round 3's two cross-reviews are `Needs revision` with the document unedited since.
+*Then* Phase F **runs**, the report names round **3** as the candidate, and round 2 is not read.
+*(Fails if the search descends past round 3 — the fail-open skip that discards a completed round.)*
 
 ## 20. Open questions
 
