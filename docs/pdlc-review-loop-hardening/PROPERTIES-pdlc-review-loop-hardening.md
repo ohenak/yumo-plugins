@@ -79,8 +79,18 @@ Each new property therefore declares, in §7's coverage matrix, the `Green from`
 — the same derivation §7.3 uses. Adopting those rows into §7.3 is a mechanical PLAN edit owned by the
 property's implementing task; it is not deferred work and it needs no new surface. Where a new
 property's derived window is **identical** to an existing row's, this document says so and the
-property rides that row rather than proposing another (this is true of `PROP-HASH-01`,
-`PROP-TRAILER-01` and `PROP-AWAIT-01`).
+property rides that row rather than proposing another.
+
+**Measured outcome: every one of the ten rides an existing row.** Each new property shares a file, a
+writing task and a greening task with an assertion §7.3 already carries, so its derived window is by
+construction that row's window — `PROP-HASH-01` rides the digest row, `PROP-STALE-01` the
+`RLH-AT-15/-16/-18` row, `PROP-TRAILER-01`, `PROP-LIST-01b` and `PROP-EPISODE-01` the
+`RLH-AT-35 … -58` row, `PROP-RESOLVE-01` and `PROP-APPROVE-01` the `RLH-AT-08 … -57` row,
+`PROP-LIST-01a` and `PROP-GINV-01` the `RLH-AT-21 … -34-orch` row, `PROP-WINDOW-01` the
+`RLH-LOOP-01`/`-02` rows, and `PROP-AWAIT-01` the green-on-arrival `RLH-SCAN-01` row. **No new
+ledger row is proposed by this document** — §7's matrix records the row each property rides, and
+adding the property's name to that row's `Assertion(s)` cell is the whole of the mechanical PLAN
+edit.
 
 Where a property lands in a file with a **sole** owning task (PLAN §5.3's single-writer rule), that
 task is the owner. Where an invariant genuinely spans two files, it is split into two named halves
@@ -420,7 +430,8 @@ least one *balanced* fence pair with a marker **inside** it, and ≥5 an **unclo
 unclosed-fence floor is the one that matters: it is the only shape distinguishing a depth counter from
 a boolean toggle, and it is the shape the `unclosed-fence.md` fixture (§6.3) pins by example.
 
-**Owner.** Written by **RLH-03** (batch 1); greened by **RLH-05(c)** (batch 3).
+**Owner.** Written by **RLH-03** (batch 2); greened by **RLH-05(c)**. §7.3 row `RLH-AT-65, -66;
+scanLines property`: green from batch 3, permitted red batch 2.
 
 **Beyond the examples.** AT-05…AT-09 pin named near-misses one at a time; the generator composes them
 — quoted marker *inside* a fence, marker on the line that closes a fence, two markers on adjacent
@@ -433,7 +444,7 @@ this case shape.
 ---
 
 **PROP-NAME-01 — `parseReviewFilename` round-trips, and rejects every single-part mutation.**
-*(Parsing · L1 · `reviewFilename.test.js`)*
+*(Parsing · L1 · `roundDerivation.test.js`)*
 
 **Invariant.** Two directions. **Round-trip**: for every generated `{role, docType, version}` drawn
 from the valid domains, `parseReviewFilename(format(role, docType, version))` returns a parse whose
@@ -452,8 +463,8 @@ cover every role and every docType at least once — a floor asserted as set equ
 catalogues, so adding a docType to the catalogue without extending the generator fails the property
 rather than silently narrowing it.
 
-**Owner.** Written by **RLH-11** (batch 5); greened by **RLH-05(e)** (batch 3 — already green when
-RLH-11 lands, so this property is green on arrival and has **no** permitted-red window).
+**Owner.** Written by **RLH-11** (batch 2); greened by **RLH-05(e)**. §7.3 row `RLH-AT-01 … -06,
+-63; round-derivation properties`: green from batch 3, permitted red batch 2.
 
 **Beyond the examples.** AT-30…AT-33 are four named filenames. The rejection direction is the half
 examples cannot carry: it asserts a *negative over a space*, that nothing outside the catalogue parses,
@@ -465,7 +476,7 @@ single altered character.
 ---
 
 **PROP-ROUND-01 — `deriveRoundWindow` returns a fixed-width window and partitions the review files.**
-*(State Machine · L1 · `reviewFilename.test.js`)*
+*(State Machine · L1 · `roundDerivation.test.js`)*
 
 **Invariant.** For every generated set of filenames on a branch: `endIndex === startIndex +
 MAX_REVIEW_ROUNDS - 1` (the width identity, over all inputs including the empty set); `startIndex >=
@@ -483,7 +494,8 @@ Conservation is asserted arithmetically: the three counts sum to the input size.
 above-`endIndex` floor is the one that catches a window computed per-round instead of once at the
 phase gate.
 
-**Owner.** Written by **RLH-11** (batch 5); greened by **RLH-05(e)**. Green on arrival.
+**Owner.** Written by **RLH-11** (batch 2); greened by **RLH-05(e)**. Same §7.3 row as
+`PROP-NAME-01`: green from batch 3, permitted red batch 2.
 
 **Beyond the examples.** The width identity is the generated form of the H-1 fix: examples pin
 `startIndex` for named branch states, the property asserts that the *sibling-field relationship*
@@ -514,7 +526,8 @@ with the separator TSPEC §3.7 specifies. 100 cases.
 `all`, ≥10 must contain a duplicate, and ≥5 must be the empty input. The valid-half floor is asserted
 as *set coverage of `V`*, so a catalogue that grows without the generator growing fails here.
 
-**Owner.** Written by **RLH-14** (batch 6); greened by **RLH-05(f)** (batch 3). Green on arrival.
+**Owner.** Written by **RLH-14** (batch 2); greened by **RLH-05(f)**. §7.3 row `RLH-AT-29;
+parseForcePhases catalogue-closure`: green from batch 3, permitted red batch 2.
 
 **Beyond the examples.** AT-52…AT-55 sample four inputs. Closure over the catalogue — that nothing
 outside it is ever accepted and `all` always expands to exactly six — is a statement about the
@@ -527,7 +540,7 @@ being 6 and the identity fails loudly rather than the phase being silently unfor
 ---
 
 **PROP-COMPLETE-01 — `isComplete` is exactly the required set, falsifiable in both directions.**
-*(State Machine · L1 · `documentOracles.test.js`)*
+*(State Machine · L1 · `completeness.test.js`)*
 
 **Invariant.** Let `R` be the required document set. For every generated present-set `P`:
 `isComplete(P) === true` **iff** `R ⊆ P`. Both directions are asserted, which is what TSPEC §8.2 means
@@ -546,16 +559,19 @@ cardinality check `|P| >= |R|`, which the extras would otherwise satisfy. Each e
 the sole missing element in ≥1 case; asserted as set equality against `R`, so a document added to the
 required set without the generator knowing fails here rather than going untested.
 
-**Owner.** Written by **RLH-12** (batch 5); greened by **RLH-16** (batch 7).
+**Owner.** Written by **RLH-12** (batch 4); greened by **RLH-16**. §7.3 row `RLH-AT-60, -62;
+isComplete property`: green from batch 6, permitted red batches 4–5.
 
 **Beyond the examples.** AT-40 and AT-41 pin two present-sets. The property is what makes the
 *required set itself* the thing under test: it is the only assertion in the suite that fails when a
 document is quietly dropped from `R`, because it derives its expectation from `R` and its floors from
 `R` simultaneously.
 
-**Note — the foreign red.** This property lands in `documentOracles.test.js`, which already carries
-the intentional red `AT-22 [red-until-L-06]` from another feature. That red is **foreign** and must
-stay red (§2.5); nothing here may be written in a way that requires the file to be fully green.
+**Note — measured file ownership.** PLAN §4.2 assigns `isComplete`'s suite to
+`__tests__/completeness.test.js` (RLH-12, a new file), **not** to the existing
+`__tests__/documentOracles.test.js` — which is where the foreign intentional red
+`AT-22 [red-until-L-06]` lives. This feature does not touch that file, so the foreign red stays red
+(§2.5) and no property here depends on it.
 
 **Shrink.** File-local ladder: re-add removed documents one at a time until the case passes; report the
 last still-failing set.
@@ -585,8 +601,8 @@ malformed label, and valid trailers placed inside a fence or behind a `>` quote.
 double-trailer. The `quoted-hash.md` fixture (§6.3) pins the quoted case by example; the floor makes it
 a space.
 
-**Owner.** Written by **RLH-06** (batch 2); greened by **RLH-05(f)** (batch 3). Would occupy the same
-§7.3 row as the two digest properties: permitted red batch 2, green from batch 3.
+**Owner.** Written by **RLH-06** (batch 2); greened by **RLH-05(d)**. Would occupy the same §7.3 row
+as the two digest properties: green from batch 3, permitted red batch 2.
 
 **Beyond the examples.** The hex-shape conjunct is a total statement about the *return* value: no
 input, however malformed, produces a "hash" that is not 64 hex characters. That is the guarantee the
@@ -597,7 +613,7 @@ comparison at the approval gate silently depends on, and no AT states it over th
 ---
 
 **PROP-TRAILER-01 — the trailer catalogue is closed and its recognisers are mutually exclusive.**
-*(Parsing · L1 · `documentOracles.test.js`)*
+*(Parsing · L1 · `pacingWrapper.test.js`)*
 
 **Invariant.** Over the closed catalogue `TRAILER_FAILURES` and the trailer recognisers
 (`parseRevisionComplete`, `parseResolvedMarker`, `parseApprovalHash`): for every generated document,
@@ -614,8 +630,8 @@ recognisers' verbatim forms, each with one mutation from the catalogue's own fai
 equality** against the catalogue, which is what makes this a totality check (DC-01) and not a sampling
 check: a failure mode added to the catalogue with no generator path fails the property.
 
-**Owner.** Written by **RLH-21** (batch 9); greened by **RLH-23** (batch 10). Would occupy §7.3's
-pacing-wrapper row: permitted red batch 9, green from batch 10.
+**Owner.** Written by **RLH-21** (batch 3); greened by **RLH-23**. Would occupy §7.3's
+`RLH-AT-35 … -54, -58, -43a, -61-loop` row: green from batch 7, permitted red batches 3–6.
 
 **Beyond the examples.** Mutual exclusion is a *cross-recogniser* claim. Each AT exercises one
 recogniser; nothing in the FSPEC asserts that a line the revision-complete recogniser accepts is not
@@ -644,7 +660,9 @@ random extra non-review files. 100 cases ≥ 16 combinations × ≥6 dressings.
 **Non-vacuity.** All 16 presence combinations must appear (set equality against the enumeration, not a
 count) and ≥15 cases must carry a **stale** anchor alongside an approving verdict — the H-4 shape.
 
-**Owner.** Written by **RLH-25** (batch 11); greened by **RLH-26** (batch 12).
+**Owner.** Written by **RLH-24** (batch 3, sole owner of `approvalSearch.test.js`); greened by
+**RLH-26**. Would occupy §7.3's `RLH-AT-08 … -11, -56, -57` row: green from batch 8, permitted red
+batches 3–7.
 
 **Beyond the examples.** This is the enumeration the H-4 defect proves examples missed: the ATs sample
 three of the sixteen presence vectors. Exhaustive enumeration of the vector, with randomised dressing,
@@ -672,7 +690,9 @@ the discriminating shape), a random 64-hex string, a malformed string, or absent
 line-ending-only floor is the whole point: it is the only shape that fails an implementation
 comparing raw text instead of digests, and it is the AT-16 rebase scenario stated as a space.
 
-**Owner.** Written by **RLH-06** (batch 2); greened by **RLH-16** (batch 7).
+**Owner.** Written by **RLH-06** (batch 2); greened by **RLH-16** (staleness conjunct) and
+**RLH-26** (gate conjunct) — §7.3's `RLH-AT-15, -16, -18` row: green from batch 8, permitted red
+batches 2–7.
 
 **Beyond the examples.** AT-15…AT-17 sample three edits. The property covers the *edit space*: any
 mutation whatsoever is stale unless it is a normalisation, which is the exact contract the approval
@@ -709,7 +729,8 @@ path it was given). Enumeration of phase × failure is exhaustive; the rest is s
 which is what makes "every row reachable" a measured claim rather than an aspiration. And ≥10 `ok`
 cases must be present so the benign path is not the only non-halting outcome.
 
-**Owner.** Written by **RLH-25** (batch 11); greened by **RLH-26** (batch 12).
+**Owner.** Written by **RLH-25** (batch 3); greened by **RLH-27** — §7.3's `RLH-AT-21 … -27, -13a,
+-30-orch … -34-orch` row: green from batch 9, permitted red batches 3–8.
 
 **Beyond the examples.** AT-24…AT-27 name four dispositions one phase at a time. The product with the
 phase axis is what no AT set carries: a disposition that is correct at Phase R and swallowed at Phase
@@ -738,7 +759,8 @@ answer terminates the sequence (halts are terminal, so nothing after one is gene
 discriminator), ≥15 must be length ≥5, and ≥10 must end in a halt. A sequence whose answers never
 change cannot falsify caching and is counted but not relied upon.
 
-**Owner.** Written by **RLH-21** (batch 9); greened by **RLH-23** (batch 10).
+**Owner.** Written by **RLH-21** (batch 3); greened by **RLH-23** — green from batch 7, permitted
+red batches 3–6.
 
 **Beyond the examples.** This is `S-INV` — per-episode refresh — stated over interleavings. Examples
 pin two-episode sequences; the property covers arbitrary ones, including the phase-change-mid-sequence
@@ -768,7 +790,8 @@ tier placement (`tier1`, `tier2`, `both`, `neither`) chosen by `rng.pick`. 100 c
 **outside** the window; ≥15 must place a unanimous-but-stale approval inside it. Those two floors are
 the property's discriminating power — everything else is dressing.
 
-**Owner.** Written by **RLH-24** (batch 11); greened by **RLH-26** (batch 12).
+**Owner.** Written by **RLH-24** (batch 3); greened by **RLH-26** — green from batch 8, permitted
+red batches 3–7.
 
 **Beyond the examples.** The `iff` is the point. The ATs assert *finding* an approval that is there
 (AT-44…AT-47); the property additionally asserts *not* finding one that is not, over a space that
@@ -800,7 +823,8 @@ exit catalogue — and both outcomes of G (pass and halt) must be observed for �
 exit that no generated state can reach is a **failure**, not a skip: an unreachable exit means either
 the catalogue or the machine is wrong, and DC-01 makes that a finding rather than silence.
 
-**Owner.** Written by **RLH-25** (batch 11); greened by **RLH-26** and **RLH-27** (batch 12) — the
+**Owner.** Written by **RLH-25** (batch 3); greened by **RLH-26** (batch 8) and **RLH-27** (batch 9)
+— green from batch 9, permitted red batches 3–8. The
 property is not fully green until RLH-27's terminal-exit rework lands, because until then at least one
 exit reaches step 5 without G. That is the H-2 defect, and this property is its executable statement.
 
@@ -838,7 +862,8 @@ cap is exercised, not merely respected by luck); ≥15 must revisit a phase; ≥
 in ≥3 pairs — set equality against the coordinate list, so a coordinate dropped from `EpisodeKey`
 fails here.
 
-**Owner.** Written by **RLH-21** (batch 9); greened by **RLH-23** (batch 10).
+**Owner.** Written by **RLH-21** (batch 3); greened by **RLH-23** — green from batch 7, permitted
+red batches 3–6.
 
 **Beyond the examples.** The bound is arithmetic over a *space of interleavings*; the ATs sample three
 of them. And the "unpinned" conjunct cannot be written as an example at all without asserting a
@@ -850,7 +875,7 @@ the budget edge, then collapse coordinates to their first catalogue value.
 ---
 
 **PROP-WINDOW-01 — the round window is computed once at the phase gate and read, never recomputed.**
-*(State Machine · L2 · `roundWindow.test.js`)*
+*(State Machine · L2 · `reviewLoop.test.js`)*
 
 **Invariant.** For every generated phase run: `deriveRoundWindow` is invoked **exactly once** per
 phase entry (call-count equality on the seam log, not a floor); every subsequent consumer receives
@@ -867,7 +892,8 @@ start from a branch already carrying reviews (non-1 `startIndex`), and ≥10 mus
 window closes. The non-1 `startIndex` floor is what distinguishes derivation from a counter starting
 at 1 — the H-1 defect.
 
-**Owner.** Written by **RLH-22** (batch 9); greened by **RLH-27** (batch 12).
+**Owner.** Written by **RLH-22** (batch 3); greened by **RLH-27** — rides `RLH-LOOP-01`/`-02`'s
+ledger rows: green from batch 9, permitted red batches 3–8.
 
 **Beyond the examples.** "Computed once" is a claim about call *counts* across a run; no example
 asserts absence of a second computation. This is the orchestration-level half of `PROP-ROUND-01`'s
