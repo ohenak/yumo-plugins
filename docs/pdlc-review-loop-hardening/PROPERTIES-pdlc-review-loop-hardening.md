@@ -243,6 +243,82 @@ sampled whenever it is affordable, and the exhaustive cases are the ones that ca
 
 ## 3. Generators
 
+### 3.1 The shipped primitives — measured, not assumed
+
+`pdlc/workflows/__tests__/helpers/driftGenerators.js` is reused **unmodified**. Read at HEAD, it
+exports eight symbols; the five this feature consumes, with their measured behaviour:
+
+| Export | Measured signature and behaviour at HEAD | Used by |
+|---|---|---|
+| `seeded(seed)` | returns `{ seed, int(lo,hi), pick(arr), shuffle(arr), bytes(n) }`. Stateful xorshift32; `state = (seed >>> 0) \|\| 0x9e3779b9`, so **seed 0 silently becomes `0x9e3779b9`** — a property must not treat 0 as a distinct seed. `int` throws when `hi < lo`; `pick` throws on a non-array or empty array; `shuffle` copies (`arr.slice()`) and does not mutate its argument; `bytes(n)` returns a **`Buffer`**, not a string or `Uint8Array` | every property |
+| `resolveSeed(literalSeed)` | `PDLC_PROP_SEED` override; unset or `""` ⇒ the literal; non-decimal ⇒ **throws**; otherwise `parseInt(raw, 10)` | every property file, once |
+| `shrink(caseValue)` | dispatches on `caseValue.kind` over **exactly four** kinds — `"manifest"`, `"bytes"`, `"id"`, `"subRecipe"` — `default: return []` (§2.3) | `PROP-DIGEST-01/-02`, `PROP-SCAN-01` |
+| `genId(rng, force)` | an `M6_ID_REGEX`-conforming id, 1–64 bytes, first byte alphanumeric, body `[A-Za-z0-9._-]` | **not used** — this feature's identifiers are role slugs and doc types from closed catalogues, not free ids |
+| `genStamp(rng, opts)` | a 16-byte `YYYYMMDDTHHMMSSZ` stamp | **not used** — no property here has a timestamp domain |
+
+`enumerateLeaves`, `enumerateEvidenceVectors` and `readFaultTokens` are the drift feature's domain
+enumerations and are **not** used here; `readFaultTokens` shells out through `execFileSync`, which no
+property in this document needs.
+
+Two consumption rules follow from the measurements above and are binding:
+
+- **`bytes(n)` is a `Buffer`.** A property drawing text from it must decode explicitly — and the
+  decode is part of the domain, not an incidental detail. `Buffer.toString("utf8")` on arbitrary bytes
+  **replaces invalid sequences with U+FFFD**, which is a *different* generator from "arbitrary
+  well-formed UTF-8 text". `PROP-DIGEST-01`/`-02` state which one they want (§4.1) rather than letting
+  the encoder decide.
+- **`shuffle` is pure.** Listing-order properties (`PROP-ROUND-01`) rely on that: they shuffle the same
+  basename multiset repeatedly and compare results, which a mutating shuffle would silently make
+  vacuous.
+
+Verified at HEAD: seven suites already consume this file — `driftBackups`, `driftBaseline`,
+`driftFault`, `driftHook`, `driftOrdering`, `driftRepoRoot`, `queueDriftGate`. It is reused, **not
+re-implemented**, and this document proposes no second primitive library (PLAN §7.2, TSPEC §1.5).
+
+### 3.2 Domain generators: five, file-local, unexported
+
+PLAN §7.2 decides this and it is not reopened. The five domains, each built **inside** the test file
+that consumes it, over the primitives above:
+
+| Domain | Owning file / task | Draws |
+|---|---|---|
+| **D1 — review basenames** | `roundDerivation.test.js` (RLH-11) | conforming `CROSS-REVIEW-{role}-{DOCTYPE}[-v{N}].md` for this doc type; conforming for *another* doc type; and one mutated part per `FILENAME_FAILURES` member |
+| **D2 — fenced markdown** | `scanLines.test.js` (RLH-03) | line sequences over an alphabet of fence openers (3–6 backticks/tildes, optionally indented), closers, and content lines |
+| **D3 — codepoint strings** | `approvalHash.test.js` (RLH-06) | ASCII, multi-byte UTF-8, surrogate pairs, and lone surrogates; plus `\r\n` / `\r` / 0–5 trailing-newline injection |
+| **D4 — heading sets** | `completeness.test.js` (RLH-12) | subsets and supersets of §5.9's per-class required headings, each with a body drawn from {non-empty, empty, `TBD`, HTML comment, fenced-`TBD`} |
+| **D5 — force-phase token strings** | `forcePhases.test.js` (RLH-14) | token multisets over the valid array, `all`, casing variants, junk, and the separator alphabet `[,\s]+` |
+
+Three more domains are needed by the properties beyond the floor, and each is likewise file-local:
+
+| Domain | Owning file / task | Draws |
+|---|---|---|
+| **D6 — phase-entry configurations** | `haltAndQueue.test.js` (RLH-25) | the cross product of {forced, unforced} × listing shape × per-role verdict × anchor agreement × document-mutation × POSTMORTEM state, for `PROP-GINV-01` and `PROP-APPROVE-01`'s gate half |
+| **D7 — episode interleavings** | `pacingWrapper.test.js` (RLH-21) | per-round sequences of dispatch outcomes drawn from {progress-terminal, progress-nonterminal, no-progress, trailer-`yes`, trailer-`no`, trailer-absent, trailer-duplicated, trailer-unparseable}, over 1…`MAX_REVIEW_ROUNDS` rounds |
+| **D8 — source fragments** | `runtimeBundle.test.js` (RLH-31) | synthetic JS text placing a scan-set call in one of the classified positions, plus masked positions (inside a string, template, regex, comment) and one shape matching no ruling |
+
+**D8's fragments are never executed.** They are text handed to the bracket-depth walk (PLAN §9.2 item
+3), which is the subject. Executing generated JS in a jest worker would add an evaluation channel this
+feature has no use for, and a fragment that must parse is a *narrower* domain than one that must only
+be scanned.
+
+### 3.3 Non-vacuity: every generator must prove it produced the shape it claims
+
+The failure mode this repo has paid for twice — PLAN §4.1's await-scan count, wrong in two successive
+revisions, and TSPEC §8.2's two restated rows — is a generator that silently stops producing the
+adversarial case while the property stays green. Every property in §4 therefore carries a
+**non-vacuity conjunct** asserted over the *generated set*, not over one draw:
+
+1. **Floors, forced rather than hoped for.** Where a property depends on a shape appearing (D1's
+   other-doc-type basenames, D2's nested four-in-three fence, D5's `all` token, D7's trailer-absent
+   outcome), the generator **forces** a stated minimum count deterministically — the same construction
+   `genId(rng, force)` uses at HEAD for the drift feature's adversarial floors — and the property
+   asserts the floor was met before asserting anything else.
+2. **Set-level assertions.** Where a property is a partition or a totality claim, it asserts the
+   observed class multiset covers every class, so a generator drawing only one class fails loudly
+   instead of passing trivially.
+3. **The seed is printed with the floor counts** in the failure message, so a red says both which case
+   failed and whether the set was adversarial at all.
+
 ## 4. Properties
 
 ## 5. Oracles
