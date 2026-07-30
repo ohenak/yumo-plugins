@@ -334,3 +334,54 @@ function phaseRecord(result, phaseId) {
 function readPaths(fs) {
   return fs.reads.map((r) => r.path);
 }
+
+/** The digest the FSPEC's working-tree bytes actually have (§5.5's `FRESH` value). */
+const FSPEC_HASH = approvalHashOf(FSPEC_BODY);
+
+// `reviewLoop`'s per-iteration progress lines go through the module-level `log`,
+// which is not one of `main()`'s injection points. Silenced so a failure report is
+// the assertion and not two hundred lines of pipeline chatter.
+const originalConsoleLog = console.log;
+beforeEach(() => {
+  console.log = () => {};
+});
+afterEach(() => {
+  console.log = originalConsoleLog;
+});
+
+// ─── RLH-AT-09: cross-round approvals never combine (E-11, TSPEC §5.4) ────────
+//
+// Round 2 is SE-approving, round 3 is TE-approving; neither round is unanimous.
+// Both anchors carry the FSPEC's real digest, so an implementation that merged the
+// two rounds' approving halves would find a unanimous pair, read `FRESH`, and skip
+// Phase F. §5.4's single-highest-round candidate forbids it: `candidate` is 3 and
+// nothing else is consulted.
+describe("RLH-AT-09: cross-round approvals never combine", () => {
+  const listing = [
+    crossReviewBasename(SE_SLUG, 2),
+    crossReviewBasename(TE_SLUG, 2),
+    crossReviewBasename(SE_SLUG, 3),
+    crossReviewBasename(TE_SLUG, 3),
+  ];
+  const files = {
+    [crossReviewPath(SE_SLUG, 2)]: crossReviewFile({ verdict: APPROVED, hash: FSPEC_HASH }),
+    [crossReviewPath(TE_SLUG, 2)]: crossReviewFile({ verdict: NEEDS_REVISION, hash: FSPEC_HASH }),
+    [crossReviewPath(SE_SLUG, 3)]: crossReviewFile({ verdict: NEEDS_REVISION, hash: FSPEC_HASH }),
+    [crossReviewPath(TE_SLUG, 3)]: crossReviewFile({ verdict: APPROVED, hash: FSPEC_HASH }),
+  };
+
+  test("RLH-AT-09: Phase F runs, and only the candidate round 3 is consulted", async () => {
+    const { result, fs } = await runPipeline({ files, listing });
+
+    // The phase ran: no `"⏭"` approval skip.
+    expect(phaseRecord(result, "F")).not.toBeNull();
+    expect(phaseRecord(result, "F").status).not.toBe("⏭");
+
+    const paths = readPaths(fs);
+    // The candidate round — and only it — was read (§5.4's single-highest-round rule).
+    expect(paths).toContain(crossReviewPath(SE_SLUG, 3));
+    expect(paths).toContain(crossReviewPath(TE_SLUG, 3));
+    expect(paths).not.toContain(crossReviewPath(SE_SLUG, 2));
+    expect(paths).not.toContain(crossReviewPath(TE_SLUG, 2));
+  });
+});
