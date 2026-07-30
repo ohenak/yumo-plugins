@@ -112,3 +112,70 @@ function trailingVerdictSection(text) {
 function wholeFileFieldCount(text) {
   return text.split("\n").filter(isVerdictField).length;
 }
+
+// ─────────────── the six spec-class required-heading tables (TSPEC §5.9) ───────────────
+//
+// Transcribed from §5.9's table, one row per spec class. `title` is the **canonical** name —
+// the form §5.9 lists first, and the form this suite asserts `missing` carries. `alt` is
+// §5.9's parenthesised alternative, which the matching rules accept as equivalent; `null`
+// where the row states none.
+//
+// This table is what makes `PROP-COMPLETE-01` an oracle over the required set itself: it
+// derives both its expectation and its non-vacuity floors from these rows, so a heading
+// quietly dropped from the subject's own table reds the property (PROPERTIES §5.2 4th row).
+const REQUIRED_HEADINGS = Object.freeze({
+  REQ: Object.freeze([
+    { title: "Problem / Context", alt: null },
+    { title: "Goals", alt: null },
+    { title: "Non-Goals", alt: "Scope" },
+    { title: "Constraints", alt: null },
+    { title: "Acceptance Criteria", alt: null },
+    { title: "Risks", alt: null },
+    { title: "Obligations", alt: "Open Questions" },
+  ]),
+  FSPEC: Object.freeze([
+    { title: "Overview", alt: "Scope" },
+    { title: "Linked Requirements", alt: null },
+    { title: "Behavioral Flow", alt: null },
+    { title: "Business Rules", alt: null },
+    { title: "Edge Cases and Error Scenarios", alt: null },
+    { title: "Acceptance Tests", alt: null },
+    { title: "Open Questions", alt: null },
+  ]),
+  TSPEC: Object.freeze([
+    { title: "Overview", alt: null },
+    { title: "Architecture", alt: "Design" },
+    { title: "Interfaces", alt: null },
+    { title: "Data Model", alt: "State" },
+    { title: "Test Strategy", alt: null },
+    { title: "Open Questions", alt: null },
+  ]),
+  PLAN: Object.freeze([
+    { title: "Overview", alt: null },
+    { title: "Batches", alt: "Tasks" },
+    { title: "Dependencies", alt: null },
+    { title: "Verification", alt: null },
+  ]),
+  PROPERTIES: Object.freeze([
+    { title: "Overview", alt: null },
+    { title: "Properties", alt: null },
+    { title: "Oracles", alt: null },
+    { title: "Fixtures", alt: null },
+  ]),
+  DECISIONS: Object.freeze([
+    { title: "Context", alt: null },
+    { title: "Options Considered", alt: null },
+    { title: "Decision", alt: null },
+    { title: "Consequences", alt: null },
+  ]),
+});
+
+/** The canonical required-title set `R` for a spec doc type. */
+function requiredSet(docType) {
+  return REQUIRED_HEADINGS[docType].map((h) => h.title);
+}
+
+/** `missing` as a Set, tolerating the `{ complete: true }` shape that omits the field. */
+function missingSet(result) {
+  return new Set(result.missing === undefined ? [] : result.missing);
+}
