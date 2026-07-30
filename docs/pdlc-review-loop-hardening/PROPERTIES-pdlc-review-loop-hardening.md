@@ -1793,7 +1793,7 @@ are that row's, unchanged.
 | `PROP-ROUND-01` | L1 | `roundDerivation.test.js` | `RLH-AT-01`…`-06`, `-63` | RLH-11 (2) | round-derivation row | batch 3 | batch 2 |
 | `PROP-FORCE-01` | L1 | `forcePhases.test.js` | `RLH-AT-29` (and `-28`, `-01a`) | RLH-14 (2) | force-phases row | batch 3 | batch 2 |
 | `PROP-COMPLETE-01` | L1 | `completeness.test.js` | `RLH-AT-60`, `-62` | RLH-12 (4) | `isComplete` row | batch 6 | batches 4–5 |
-| `PROP-TRAILER-01` | L1 | `pacingWrapper.test.js` | `RLH-AT-61-loop` | RLH-21 (3) | **own row** — greened by RLH-05(f), not by the pacing work it shares a file with (§4.2) | batch 3 | **none** |
+| `PROP-TRAILER-01` | L1 | `pacingWrapper.test.js` | `RLH-AT-61-loop` | RLH-21 (3) | **own row — a genuinely new §7.3 entry, five cells stated in §1.3**; greened by RLH-05(f), not by the pacing work it shares a file with (§4.2) | batch 3 | **none** |
 | `PROP-LIST-01a` | L2 | `haltAndQueue.test.js` | `RLH-AT-21`…`-27` | RLH-25 (3) | halt-and-queue row | batch 9 | batches 3–8 |
 | `PROP-LIST-01b` | L2 | `pacingWrapper.test.js` | `RLH-AT-43a` | RLH-21 (3) | pacing row | batch 7 | batches 3–6 |
 | `PROP-RESOLVE-01` | **L2** | `approvalSearch.test.js` | `RLH-AT-08`…`-11`, `-56`, `-57` | RLH-24 (3) | approval-search row | batch 8 | batches 3–7 |
@@ -1812,7 +1812,7 @@ owner each, per §1.3 and PLAN §7.4's `-module`/`-orch` precedent).
 |---|---|---|
 | `PROP-DIGEST-01` | four canonicalisation outcomes | the **normal form** over arbitrary byte soup, incl. mid-line `\r` |
 | `PROP-DIGEST-02` | four known-answer digests | totality of the 64-hex shape, and that canonicalisation is *inside* the digest |
-| `PROP-HASH-01` | one quoted-trailer fixture | that **no** input yields a non-64-hex "hash" |
+| `PROP-HASH-01` | one quoted-trailer fixture | that **no** input yields a non-64-hex "hash", and that every rejection names a `HASH_FAILURES` member — `duplicated` and `absent` included, which no AT states over the input space (§4.2) |
 | `PROP-STALE-01` | three named edits | the whole edit space — every mutation is `"STALE"` unless it is a normalisation — **plus** the `"UNEVALUABLE"` guard as an `iff`, which no AT states |
 | `PROP-SCAN-01` | two near-misses, three fixtures | *compositions* of near-misses, and conservation of line count |
 | `PROP-NAME-01` | six named filenames | the **rejection** half — a negative over the complement of the catalogue |
