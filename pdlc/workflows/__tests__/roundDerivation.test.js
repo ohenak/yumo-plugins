@@ -248,3 +248,75 @@ function describeFailure(label, caseValue, stillFails) {
   }
   return `${label} [seed ${SEED}] failing case: ${JSON.stringify(caseValue)}; shrunk witness: ${JSON.stringify(witness)}`;
 }
+
+// ─────────────────────────── shared assertion helpers ───────────────────────────
+
+/** `present` is a `Map<role, number[]>` (TSPEC §3.7); read it without assuming an object. */
+function roundsFor(present, role) {
+  if (present instanceof Map) return present.get(role) || [];
+  return (present && present[role]) || [];
+}
+
+/** Every round index recorded in `present`, flattened (TSPEC §5.2 step 3). */
+function allPresentIndices(present) {
+  const values = present instanceof Map ? Array.from(present.values()) : Object.values(present || {});
+  return values.flat();
+}
+
+// ─────────────────────────── §5.2 — round-index derivation ───────────────────────────
+
+describe("RLH round-index derivation (TSPEC §5.2)", () => {
+  test("RLH-AT-01: round index is derived from the branch, not from 1 (H-1)", () => {
+    const basenames = [
+      "CROSS-REVIEW-software-engineer-FSPEC-v3.md",
+      "CROSS-REVIEW-test-engineer-FSPEC-v3.md",
+    ];
+
+    const w = devModule.deriveRoundWindow(basenames, "FSPEC");
+
+    expect(w.ok).toBe(true);
+    // The first reviewer dispatch is round 4 and the span logged is `rounds 4..8`.
+    expect(w.startIndex).toBe(4);
+    expect(w.endIndex).toBe(8);
+    // No write targets a -v1, -v2 or -v3 path: every round already on the branch is strictly
+    // below the next-reviewer index the window opens at.
+    for (const index of allPresentIndices(w.present)) {
+      expect(index).toBeLessThan(w.startIndex);
+    }
+    expect(roundsFor(w.present, "software-engineer")).toEqual([3]);
+    expect(roundsFor(w.present, "test-engineer")).toEqual([3]);
+  });
+
+  test("RLH-AT-02: un-suffixed first round is index 1", () => {
+    const w = devModule.deriveRoundWindow(["CROSS-REVIEW-software-engineer-FSPEC.md"], "FSPEC");
+
+    expect(w.ok).toBe(true);
+    // The un-suffixed form denotes round 1 — not "no round" (TSPEC §5.2).
+    expect(roundsFor(w.present, "software-engineer")).toEqual([1]);
+    expect(w.startIndex).toBe(2);
+    expect(w.endIndex).toBe(2 + EXPECTED_WINDOW_WIDTH - 1);
+    expect(devModule.parseReviewFilename("CROSS-REVIEW-software-engineer-FSPEC.md")).toMatchObject({
+      ok: true,
+      role: "software-engineer",
+      docType: "FSPEC",
+      round: 1,
+    });
+  });
+
+  test("RLH-AT-03: clean branch is benign (C-4, E-01)", () => {
+    // §2.5 step 2: a `dir_missing` ListFailure is treated as an empty listing — the benign
+    // disposition of §4.2 — so the derivation runs over `[]` and yields the greenfield window.
+    const w = devModule.deriveRoundWindow([], "FSPEC");
+
+    expect(w.ok).toBe(true);
+    expect(w.startIndex).toBe(1);
+    expect(w.endIndex).toBe(EXPECTED_WINDOW_WIDTH);
+    expect(allPresentIndices(w.present)).toEqual([]);
+    // `skipped` is empty, not absent, when every basename conformed (TSPEC §5.2 step 7) — a
+    // caller emits the "skipped non-conforming" notice iff it is non-empty, so there is no
+    // warning and no halt on a clean branch.
+    expect(w.skipped).toEqual([]);
+    expect(EXPECTED_LIST_FAILURES).toContain(BENIGN_LIST_FAILURE);
+    expect(devModule.LIST_FAILURES).toEqual(EXPECTED_LIST_FAILURES);
+  });
+});
