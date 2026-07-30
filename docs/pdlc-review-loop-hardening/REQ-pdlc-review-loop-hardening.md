@@ -18,7 +18,36 @@ depends-on: []
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude + operator | 1.5 | 2026-07-29 |
+| pdlc | draft | Claude + operator | 1.6 | 2026-07-30 |
+
+**v1.6 (2026-07-30) — a correction of a slip in an already-approved document, made deliberately and
+at REQ altitude.** This version makes **one** substantive change and is otherwise byte-identical to
+v1.5. It is recorded prominently because amending an approved upstream document downstream of
+approval is not routine, and a reader who skips this entry will not find the change anywhere else.
+
+- **AC-4.7's skip-eligible phase set gains `PR` (PROPERTIES): `R, F, T, P, D` → `R, F, T, P, D, PR`.**
+  Both TSPEC-round-1 cross-reviews raised the omission independently and neither was aware of the
+  other: `CROSS-REVIEW-product-manager-TSPEC-v1.md` **F-05** and
+  `CROSS-REVIEW-test-engineer-TSPEC-v1.md` **T-Q-01**. The operator ruled it a **drafting slip**
+  rather than a deliberate exclusion, and directed the correction here rather than a workaround
+  downstream.
+- **Why it is a slip and not a judgement being reversed.** AC-4.7's own criterion — "phases whose
+  convergence is established by a reviewer-pair cross-review artifact for a named document" —
+  is satisfied by PROPERTIES: named creator, the same reviewer pair, convergence through
+  `CROSS-REVIEW-{role}-PROPERTIES-v{N}`. The enumeration therefore contradicted the criterion it
+  purported to enumerate, which is the signature of a slip. The **decisive** evidence is internal:
+  AC-4.7a declines a persisted verdict on `CODE_REVIEW-*` on the express ground that an out-of-scope
+  phase's record would have **no reader** and "adding an unread field is the kind of speculative
+  contract this REQ declines" — yet under the five-phase set, AC-4.2's verdict and AC-4.2b's approval
+  record *were* written for PROPERTIES cross-reviews and then read by nothing. The five-phase set
+  produced exactly the unread record AC-4.7a forbids.
+- **Blast radius: one token in a closed enumeration.** Nothing in the mechanism was five-phase-shaped
+  — `PHASE_DISPATCH` already carries six document-review phases and §16.2 of the FSPEC already
+  enumerates PROPERTIES among the six spec classes. Downstream, `FSPEC` v1.6 updates §10.7, §11.2
+  (where `all` expands from five phases to six) and §11.3's force catalogue; the TSPEC updates
+  §5.5, §5.7's `valid` array, `parseForcePhases`'s catalogue **and its rejection message**, and
+  AT-29's expected operator text (now `Valid: R, F, T, P, D, PR, all.`). No AC other than AC-4.7 is
+  touched, and no clause is withdrawn.
 
 **v1.5 (2026-07-29)** — addresses all High/Medium findings of
 `CROSS-REVIEW-software-engineer-REQ-v5.md` (F-01 High; F-02, F-03, F-04 Medium; F-05, F-06 Low) and
@@ -1167,13 +1196,27 @@ inherits all four defects. This row was set `pending` and moved to `Order 0` on 
   deliberately; whereas the POSTMORTEM resolution act is cheap, is already required to be
   operator-visible, and leaves a record of *why* the disputed review was re-opened. The refusal
   message names AC-2.4 as the next step, so a forcing operator is never left guessing.
-- **AC-4.7** *(v1.1, SE Q-04 — which phases the skip applies to.)* The skip applies **only** to
-  phases whose convergence is established by a reviewer-pair cross-review artifact for a named
-  document: R, F, T, P and D. Phase CR (final codebase review) and Phase DOD are **out of scope** for
+- **AC-4.7** *(v1.1, SE Q-04 — which phases the skip applies to; corrected v1.6, see below.)* The skip
+  applies **only** to phases whose convergence is established by a reviewer-pair cross-review artifact
+  for a named document: **R, F, T, P, D and PR**. Phase CR (final codebase review) and Phase DOD are **out of scope** for
   AC-4 — they review the tree rather than a document, produce no
   `CROSS-REVIEW-{role}-{doc-type}` pair in AC-1.1's sense, and are cheap relative to the risk of
   skipping a verification phase. They continue to run unconditionally, subject to their existing
   flags.
+
+  *v1.6 correction — `PR` (PROPERTIES) was a slip, not an exclusion.* This clause enumerated five
+  phases from v1.1 to v1.5, omitting `PR`. Both TSPEC cross-reviews raised the omission independently
+  (`CROSS-REVIEW-product-manager-TSPEC-v1.md` F-05, `CROSS-REVIEW-test-engineer-TSPEC-v1.md` T-Q-01)
+  and it is hereby ruled a **drafting slip**, corrected rather than defended. The enumeration
+  contradicted the functional criterion stated in its own first sentence: PROPERTIES is authored by a
+  named creator, cross-reviewed by the same reviewer pair, and converges through a
+  `CROSS-REVIEW-{role}-PROPERTIES-v{N}` artifact exactly as R, F, T, P and D do. The decisive
+  inconsistency is with **AC-4.7a**: that clause declines a persisted verdict on `CODE_REVIEW-*`
+  precisely because Phase DOD is out of scope and the field would therefore have **no reader** — yet
+  under the five-phase enumeration AC-4.2's verdict and AC-4.2b's approval record *were* written for
+  PROPERTIES cross-reviews and then never read by AC-4's skip, creating exactly the unread record
+  AC-4.7a exists to forbid. The set is now **six**: `R, F, T, P, D, PR`. Nothing else changes —
+  the mechanism was already total over the six document-review phases; only the enumeration was short.
 - **AC-4.7a** *(v1.2, SE-v2 Q-03 — `dod-verify`'s artifacts.)* **No.** The persisted-verdict field of
   AC-4.2 and the approval record of AC-4.2b apply to `CROSS-REVIEW-{role}-{doc-type}` artifacts only.
   `CODE_REVIEW-{feature}-v{N}.md` is **not** amended: Phase DOD is out of AC-4's scope per AC-4.7, so
