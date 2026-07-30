@@ -1432,32 +1432,20 @@ by *verifying a reviewer's figure* rather than by *evaluating TSPEC §8.5's pred
 source*. So v1.3 states the method first and the number second, and adopts **no** number from any
 review — including the ones both round-3 reviewers agree on.
 
-**Method** (`DC-02`, measure don't infer). Over the two bundle sources, whole-text (not line-local):
-
-1. **Build the scan set.** Start from FSPEC `AT-19`'s closed thirteen seam names. Add, for each, the
-   local alias `main()` destructures it into (`_agent: rawAgentFn = agent` contributes `rawAgentFn`).
-   Add each *named* wrapper whose body is a bare call to a member of the set (`agentFn` from
-   `const agentFn = (skill, prompt, opts) => rawAgentFn(...)`), and iterate to a fixed point — the
-   inheritance §8.5's returned-promise row describes is transitive, so one pass under-counts.
-2. **Find the call sites.** Every occurrence of a scan-set name immediately followed by `(`,
-   excluding the declaration site itself.
-3. **Test the predicate.** A site is *awaited* iff the text immediately preceding it matches
-   `\bawait\s*$` — computed over the joined source, not per line, because `await` legitimately sits
-   on the preceding physical line. Every site that is **not** awaited must be classified by one of
-   §8.5's three rulings; an unclassified site is the failure.
+**Method** (`DC-02`, measure don't infer). The algorithm is the one §9.2 item 3 specifies for
+`RLH-31` — v1.3 ran it by hand, over the two bundle sources, **whole-text and not line-local**: build
+the scan set from FSPEC `AT-19`'s thirteen seam names plus each name's `main()`-destructured local
+alias plus each *named* wrapper whose body is a bare call to a set member, iterated **to a fixed
+point** (the returned-promise row's inheritance is transitive, so one pass under-counts); take every
+occurrence of a set name followed by `(` other than its declaration; and treat a site as awaited iff
+the text immediately preceding it matches `\bawait\s*$` **over the joined source**, because `await`
+legitimately sits on the preceding physical line. The method is written down once, in §9.2, so the
+implementation and this derivation cannot diverge.
 
 **Result: 35 scan-set call sites (27 in `orchestrate-dev.js`, 8 in `orchestrate-queue.js`), of which
-five are not awaited, and all five are classified.** The five, with the ruling each matches:
-
-| Site | Ruling |
-|---|---|
-| `orchestrate-dev.js:615` `_agent(reviewers[0], reviewerPrompt1),` | awaited combinator argument |
-| `orchestrate-dev.js:616` `_agent(reviewers[1], reviewerPrompt2),` | awaited combinator argument |
-| `orchestrate-dev.js:1569` `rawAgentFn(skill, prompt, {…})` | returned promise (`agentFn` body) |
-| `orchestrate-dev.js:1867` `agentFn(` in `batch.map((task) => agentFn(…))` | returned promise, *anonymous* arrow |
-| `orchestrate-queue.js:524` `rawAgentFn(skill, prompt, {…})` | returned promise (`agentFn` body) |
-
-Zero unclassified. **So the queue has one, not none** — v1.2's "none" was the load-bearing half of
+five are not awaited and all five are classified — zero unclassified.** The five sites and the ruling
+each matches are recorded in §4.1's advisory row, which owns them; they are not repeated here.
+**So the queue has one, not none** — v1.2's "none" was the load-bearing half of
 its error, and the half no reviewer's count would have caught, because a count of three that happens
 to be a count of the *wrong* three is still three.
 
