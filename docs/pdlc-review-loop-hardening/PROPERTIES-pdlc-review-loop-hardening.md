@@ -2017,7 +2017,7 @@ owner each, per §1.3 and PLAN §7.4's `-module`/`-orch` precedent).
 |---|---|---|
 | `PROP-DIGEST-01` | four canonicalisation outcomes | the **normal form** over arbitrary byte soup, incl. mid-line `\r` |
 | `PROP-DIGEST-02` | four known-answer digests | totality of the 64-hex shape, and that canonicalisation is *inside* the digest |
-| `PROP-HASH-01` | one quoted-trailer fixture | that **no** input yields a non-64-hex "hash", and that every rejection names a `HASH_FAILURES` member — `duplicated` and `absent` included, which no AT states over the input space (§4.2) |
+| `PROP-HASH-01` | one quoted-trailer fixture | that **no** input yields a `hash` outside `/^sha256:[0-9a-f]{64}$/` — the whole labelled value TSPEC §5.5's guard admits, not a bare hex run (PM F-01) — and that every rejection names a `HASH_FAILURES` member, `duplicated` and `absent` included, which no AT states over the input space (§4.2) |
 | `PROP-STALE-01` | three named edits | the whole edit space — every mutation is `"STALE"` unless it is a normalisation — **plus** the `"UNEVALUABLE"` guard as an `iff`, which no AT states |
 | `PROP-SCAN-01` | two near-misses, three fixtures | *compositions* of near-misses, and conservation of line count |
 | `PROP-NAME-01` | six named filenames | the **rejection** half — a negative over the complement of the catalogue |
@@ -2031,7 +2031,7 @@ owner each, per §1.3 and PLAN §7.4's `-module`/`-orch` precedent).
 | `PROP-APPROVE-01` | approvals that are found | approvals that must **not** be found: out-of-window, stale, half-unanimous |
 | `PROP-GINV-01` | four enumerated exits | **reachability over paths** across TSPEC §2.5's **five** gated exits plus the `FRESH` non-path — the framing under which H-2 was visible and enumeration was not |
 | `PROP-EPISODE-01` | three interleavings | the bound over all interleavings, and per-coordinate `EpisodeKey` independence |
-| `PROP-WINDOW-01` | one threading assertion + a grep oracle | that the window is computed **once** and read identically by every consumer |
+| `PROP-WINDOW-01` | one threading assertion + a grep oracle | that the window `reviewLoop` enforces came **from the gate** — shown on runs where a re-derivation would have answered differently — and is read identically by every consumer for the phase's whole duration |
 | `PROP-AWAIT-01` | two zero-match regexes + a site list | the classification as a **total partition of the scan set `S`**, i.e. a **cover** of the obligation — `S` itself is narrower than "every seam call", per §8.5's exemption (§8.4) |
 
 ### 7.3 Distribution against the test pyramid
