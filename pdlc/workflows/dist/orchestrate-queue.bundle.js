@@ -1137,6 +1137,37 @@ function extractRecommendation(fileText) {
   return `${body.slice(0, RECOMMENDATION_MAX_BYTES)}\n\n[truncated at ${RECOMMENDATION_MAX_BYTES} bytes — see the POSTMORTEM for the rest]`;
 }
 
+/**
+ * Parse the operator's raw `forcePhases` string (§5.7).
+ *
+ * Total, case-sensitive, whitespace- and comma-tolerant. Absent and empty are
+ * the same thing: the empty set. An invalid token halts before any phase runs,
+ * with the operator-facing text ending `Valid: R, F, T, P, D, PR, all.` — the
+ * token catalogue and that message are derived from the SAME array, so they
+ * cannot desynchronise. That derivation is load-bearing: `PR` entered the
+ * catalogue at REQ/FSPEC v1.6, and a hand-written message would have been the
+ * one site that silently kept teaching the operator the old five-token set.
+ *
+ * `all` means SIX phases, not five.
+ *
+ * Precedence (§5.7): forcing overrides a recorded APPROVAL — §2.5 steps 3 and 4
+ * only — and never a recorded FAILURE. Step 2 is NOT skipped: `deriveRoundWindow`
+ * still runs, because entering `reviewLoop` on the shipped `iteration = 1`
+ * default on a branch that already carries `-v1` files re-creates H-1 on the one
+ * path an operator reaches for precisely because the phase was reviewed before.
+ *
+ * @param {string} raw
+ * @returns {{ok: true, phases: Set<string>}|{ok: false, badTokens: string[]}}
+ */
+function parseForcePhases(raw) {
+  if (raw == null || String(raw).trim() === "") return { ok: true, phases: new Set() };
+  const tokens = String(raw).split(/[,\s]+/).filter(Boolean);
+  const valid = ["R", "F", "T", "P", "D", "PR"]; // six — "PR" added at REQ/FSPEC v1.6
+  const bad = tokens.filter((t) => t !== "all" && !valid.includes(t));
+  if (bad.length) return { ok: false, badTokens: bad };
+  return { ok: true, phases: tokens.includes("all") ? new Set(valid) : new Set(tokens) };
+}
+
 // ─── isPass helper ────────────────────────────────────────────────────────────
 
 function isPass(verdict) {
