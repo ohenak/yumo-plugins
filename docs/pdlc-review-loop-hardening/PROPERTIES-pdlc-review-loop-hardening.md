@@ -1884,8 +1884,8 @@ Disposition (§2.3), and it is deliberately **not** a change to `driftGenerators
 
 | Case shape | Approach |
 |---|---|
-| a single text/byte string (`PROP-DIGEST-01/-02`, `PROP-HASH-01`, `PROP-STALE-01`'s document) | wrap as `{ kind: "bytes" }` and use the shipped ladder unmodified — **and expect nothing from it below 64 bytes.** Measured: `driftGenerators.js:423` sets `const BYTES_FLOOR = 64;` and the `"bytes"` arm returns `[]` at or below it, and a single truncation rung above it. That is one rung, not a ladder, and on the sub-64-byte strings these properties actually generate it is a **guaranteed no-op**. v1.0 presented this row as the shipped mechanism doing useful work; that presentation is withdrawn (SE F-05, §2.3) |
-| everything else (line arrays, filename sets, presence vectors, interleavings, fragments) | a **file-local** shrink ladder, declared per property in §4. In practice this is the mechanism for **every** property in this document — the row above buys nothing for any of them |
+| a single text/byte string (`PROP-DIGEST-01/-02`, `PROP-HASH-01`, `PROP-STALE-01`'s document) | wrap as `{ kind: "bytes" }` and use the shipped rung unmodified. It is **one rung, not a ladder**: measured, `driftGenerators.js:423` sets `const BYTES_FLOOR = 64;` and the `"bytes"` arm returns `[]` at or below it and a single truncation rung above it. v1.0 presented this row as the shipped mechanism doing useful work; that presentation is withdrawn (SE F-05, §2.3). **Which of these four properties the rung is a no-op for is stated once, in §2.3's table, and is not restated here** — v1.1's blanket "a no-op on every case they generate, their strings are shorter" over-shot: the DIGEST pair's domain is `n ∈ 0…512`, so most of its corpus is *above* the floor and does get the rung (PM F-01) |
+| everything else (line arrays, filename sets, presence vectors, interleavings, fragments) | a **file-local** shrink ladder, declared per property in §4 |
 
 This respects PLAN §7.2 exactly: generators — and now ladders — stay per-file, file-local and
 unexported; no second primitive library is written; `driftGenerators.js` is reused unmodified. The
@@ -1935,12 +1935,28 @@ on, in a feature whose whole subject is not breaking things quietly.
    generator's per-episode dispatch attempt ceiling happens to be, and `B` would be measured as that
    ceiling. The generator's ceiling (8) is therefore deliberately set **above** the specified cap (6),
    and the property additionally asserts `B < ceiling` — if `B` ever equals the ceiling the measurement
-   is not a measurement and the property fails rather than passing on a tautology.
+   is not a measurement and the property fails rather than passing on a tautology. **A second, distinct
+   shortfall** (SE F-16): beyond the degenerate no-cap case, a `B` that is uniformly *wrong* — a subject
+   capping at 7 where the spec says 6 — is invisible, because `B` is measured with the **same
+   instrument** that produces conjunct (i)'s left-hand side, on a different input. The measured cap and
+   the measured dispatches move together, so the equality still holds. `I` does not have this problem
+   (`reviewLoop`'s return value is a genuinely different site); `B` does. §8.5 item 3 makes the
+   analogous admission for `MAX_REVIEW_ROUNDS`, and item 4 now makes it for `B`.
+6. **Three `UNEVALUABLE` classes were routed to a property that did not assert them, and one still has
+   no owner** (PM F-03). TSPEC §6.2 rows 6–7's `absent` and `duplicated` trailer classes are now owned
+   by `PROP-HASH-01` (§4.2, named-`reason` conjunct with ≥5-case floors each), and `unparseable` by
+   `PROP-STALE-01`. The **unreadable document** class has no property here and is not covered by
+   `PROP-APPROVE-01`, whose conjuncts are tier discipline, window respect and idempotence and whose
+   generator produces no unreadable input. It is an IO-failure path at the reader seam, not a parser
+   invariant. Per DC-08 the successor surface is named: **queue row Order 9, `pdlc-authoring-contract`**
+   — the same row §8.3 uses, whose scope is the read/write contract these seams sit on. v1.1 claimed
+   the class was "covered at the seam by `PROP-APPROVE-01`"; that claim is **withdrawn**, because a
+   division of labour with an empty side closes this ledger against a live gap.
 
 ### 8.5 What could not be written against the specs
 
-**Three** items, recorded rather than invented — v1.0 recorded one, and the two added here are the
-two places round-1 review found this document asserting something the specs do not expose.
+**Five** items, recorded rather than invented — v1.0 recorded one, v1.1 added two, and round 2 adds
+two more. Each is a place this document would have had to assert something the specs do not expose.
 
 **1. TSPEC §4.5's `EpisodeKey` is defined by its five
 coordinates, but the specs do not name a canonical serialisation for it.** `PROP-EPISODE-01`
@@ -1970,5 +1986,25 @@ remains is this: **nothing at any level asserts that the count `reviewLoop` repo
 constant the window derivation uses.** Both could be wrong together, consistently, and every property
 here would stay green. Closing that needs an export the TSPEC declines to make, so it is recorded, not
 invented.
+
+**4. `MAX_AUTHORING_DISPATCHES` has the same problem, one degree worse.** §8.5 item 3's admission is
+owed to `B` as well (SE F-16), and `B` is weaker than `I`: `I` is *reported* by the subject at a site
+distinct from the dispatch counter, so a wrong `I` and a right count disagree. `B` is **measured by the
+same instrument** as the quantity it bounds, so a uniformly wrong cap is consistent with itself and
+`PROP-EPISODE-01`(i) stays green. What conjunct (i) discriminates is therefore **segment structure** —
+the `1 + I` episode count and the per-segment budget reset — not the cap's value. Closing this needs
+either an export TSPEC §4.8 declines to make or a reported cap the subject does not emit; recorded,
+not approximated. §8.4 residual 5 carries the operational form.
+
+**5. No artifact states a precedence between TSPEC §8.5's rulings 2 and 3.** A site can satisfy both —
+a call inside an `await`ed `Promise.all([...])` whose element is an arrow body followed by `,`. PLAN
+§9.2 item 3(c) instructs the walk to decide *"whichever, if any, applies"* and TSPEC §8.5's table is
+unordered, so **which** exemption a conforming classifier names is undetermined. Both exempt the site,
+so behaviour is well-defined and only the *label* is not. This document **declines to invent the
+precedence** (SE F-15): §4.4 asserts cardinality over those fragments — exactly one outcome, drawn from
+`{returned-promise, awaited-combinator-argument}` — rather than a hand-authored label that would red a
+correct classifier on §7.3's no-permitted-red row. **Reported upward as a specification gap**: if a
+precedence is wanted it belongs in TSPEC §8.5's rulings table, where the rulings live, and the
+strengthening of §4.4's floor from cardinality to a label follows automatically. Not filled here.
 
 Everything else in §4 was derived from a spec section that states the invariant outright.
