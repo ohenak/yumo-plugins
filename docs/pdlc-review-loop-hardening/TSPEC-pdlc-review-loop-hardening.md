@@ -612,13 +612,16 @@ export function deriveRoundWindow(basenames, docType)
 //   | { ok: false, reason: "malformed_round_one_duplicate", role }
 
 // ── episode mode (§5.6.1) ───────────────────────────────────────────────────
-export function selectMode({ dispatchKind, docType, present, reviewFiles })
+export function selectMode({ dispatchKind, docType, present, reviewFiles, startIndex })
 //   → { mode: "authoring" | "revision", round: number|null, reason: string }
 //   The ONLY producer of EpisodeKey.mode (§4.5). Pure: it reads no file itself.
+//   `present` is Map | null; null means NOT OBSERVED, which is not the same
+//   input as an empty Map and never selects greenfield (§5.6.1 rule 4).
 //   Its caller — reviewLoop's refreshReviewState, once per EPISODE entry, never
 //   a pre-loop snapshot (§5.6.1 S-INV) — owns the freshness of both maps.
-//   FSPEC §15.2's four rules; fails toward "revision", including when the
-//   candidate round's verdicts were never read.
+//   FSPEC §15.2's four rules; greenfield requires a successful observation of
+//   an empty review record, so both an unread verdict and an unread listing
+//   fail toward "revision".
 
 export function isTerminal(mode, response, artifactClass, docType, after)
 //   → { terminal: boolean, trailerReason: TrailerFailure|null }
@@ -1265,11 +1268,14 @@ episode's entry**, by a pure function, from **what the phase is dispatching an a
 from the artifact's structural state:
 
 ```js
-export function selectMode({ dispatchKind, docType, present, reviewFiles })
+export function selectMode({ dispatchKind, docType, present, reviewFiles, startIndex })
 //   dispatchKind : "authoring" | "review" | "dod-verify" | "harvest"
 //   docType      : the doc type this episode's artifact set belongs to
-//   present      : per-role Map<role, number[]> for docType, from deriveRoundWindow
+//   present      : per-role Map<role, number[]> for docType, from deriveRoundWindow,
+//                  or **null** meaning NOT OBSERVED by this episode (§6.2 row 17)
 //   reviewFiles  : Map<`${role}:${round}`, { verdict, verdictReadable, anchorHash }>
+//   startIndex   : the round window's start, used only to name the round when
+//                  `present` is null
 //   →  { mode: "authoring" | "revision", round: number|null, reason: string }
 ```
 
@@ -1286,16 +1292,18 @@ discharged.
 
 ```
 refreshReviewState():                                  // one _listFiles + ≤2 _readFile
-  basenames ← await _listFiles(`docs/${feature}`)      // ListFailure ⇒ keep the previous maps,
-                                                       //   note it; never silently empty (§6.2 r.17)
-  w ← deriveRoundWindow(basenames, docType)
-  present ← w.present
+  r ← await _listFiles(`docs/${feature}`)
+  if r is a ListFailure:                               // §6.2 row 17 — NOT an empty listing
+      report it; return { present: null, reviewFiles: kept.reviewFiles,
+                          startIndex: kept.startIndex }
+  w ← deriveRoundWindow(r.basenames, docType)
   reviewFiles ← §5.4's tier-1 reads over round `w.startIndex - 1`, or empty when that is < 1
-  return { present, reviewFiles, startIndex: w.startIndex }
+  kept ← { reviewFiles, startIndex: w.startIndex }     // last successfully observed state
+  return { present: w.present, reviewFiles, startIndex: w.startIndex }
 
 episode entry:
-  { present, reviewFiles } ← await refreshReviewState()
-  sel ← selectMode({ dispatchKind, docType, present, reviewFiles })
+  { present, reviewFiles, startIndex } ← await refreshReviewState()
+  sel ← selectMode({ dispatchKind, docType, present, reviewFiles, startIndex })
   episode ← { artifactSet, phaseId, roundIndex: sel.round ?? startIndex, mode: sel.mode, invocation: 0 }
 ```
 
@@ -1332,15 +1340,45 @@ Four rules, taken from FSPEC §15.2 and normative here:
    `{ mode: "authoring", round: null }` without evaluating rule 1. A `pm-review` / `se-review` /
    `te-review` / `dod-verify` / `harvest-learnings` episode is never dispatched to address findings in
    its own artifact — each writes a new file — so the revision test cannot match.
-4. **Fail toward revision — including when the verdicts were never read.** If `present` holds a
-   candidate round for this (feature, doc type) but `reviewFiles` carries no readable verdict for it,
-   the episode is a **revision** episode. This covers both shapes and they are not distinguished:
-   the verdict fields are unreadable (§5.1's fail-closed cases), **or** the read was never performed
-   — the forced path, where §2.5 step 3 is skipped and `reviewFiles` is empty, or a `refreshReviewState`
-   whose listing failed. "Not read" is never treated as "no findings"; only an *empty* `present` is
-   greenfield. The directions are not symmetric: mis-entering greenfield silently drops a whole
-   review round, while mis-entering revision costs at most a continuation prompt naming findings
-   already reflected, terminated in one dispatch by the trailer.
+4. **Greenfield needs positive evidence; everything else fails toward revision.** Stated in the
+   direction that makes the distinction intrinsic rather than as a list of exceptions:
+
+   > An episode is greenfield **only if this episode's own `refreshReviewState` successfully observed
+   > the branch and found no review round for this (feature, doc type)** — i.e. `present` is a Map
+   > *and* it is empty. In every other case the episode is a **revision** episode.
+
+   Two cases follow from that one sentence, and neither is a special case of it:
+
+   - **`present === null` — not observed.** The listing failed, so nothing this episode read can
+     testify to the branch's review state. `null` is not "empty": an *empty* Map is the measurement
+     "there are no review files", `null` is the *absence* of a measurement, and conflating them is
+     exactly the fail-open this rule exists to close. Revision is selected **unconditionally**,
+     whatever the kept `reviewFiles` contain — a listing that fails *inside* `reviewLoop` is by
+     construction not a virgin branch, because the loop only runs after §2.5's steps have already
+     enumerated the directory once. The round is `max(1, startIndex − 1)` over the last successfully
+     observed `startIndex`, which under-names the round by at most one; §5.6.3 builds the prompt from
+     the files on disk at prompt-build time, so the findings the episode addresses are the branch's
+     real ones either way. The cost of the stale index is that the episode may share an `EpisodeKey`
+     — and so a dispatch budget — with the previous round's; that is a bounded cost paid only on a
+     reported IO failure, never silently, and it errs toward *fewer* dispatches, not toward skipping
+     a round.
+   - **Observed, non-empty `present`, unreadable or unread verdicts.** `present` holds a candidate
+     round but `reviewFiles` carries no readable verdict for it: the verdict fields are unreadable
+     (§5.1's fail-closed cases), or the read was never performed — the forced path, where §2.5 step 3
+     is skipped and `reviewFiles` is empty. Revision, and the two shapes are not distinguished.
+
+   "Not read" is therefore never treated as "no findings" on **either** axis — neither an unread
+   verdict nor an unread *listing*. The directions are not symmetric: mis-entering greenfield
+   silently drops a whole review round, while mis-entering revision costs at most a continuation
+   prompt naming findings already reflected, terminated in one dispatch by the trailer.
+
+   **What the old wording got wrong, recorded so it is not reinstated.** v1.2 stated this rule as
+   "if `present` holds a candidate round … but `reviewFiles` carries no readable verdict" and closed
+   "only an *empty* `present` is greenfield". Both clauses require a non-empty `present`, so on a
+   clean branch — where the seed `present` is `{}` — a round-2 optimizer episode whose refresh failed
+   kept `{}`, satisfied neither clause, selected greenfield, required no trailer, and terminated on
+   dispatch 1 over a document that was only round-1 complete. That is the original N-01 fail-open
+   relocated one path over, and `{}`-versus-`null` is what removes it rather than papering over it.
 
 Stickiness is a **consequence**, not the mechanism: the selection is made once per episode and does
 not change for that episode's life, whatever later measurements observe. Episode entry is the instant
@@ -1622,7 +1660,7 @@ failure to answer.
 | 14 | non-convergence within `startIndex..endIndex` | `checkConverged` | §6.3's terminal exit |
 | 15 | POSTMORTEM write failed | `_checkFile` after the write agent | §6.4's second halt shape, `postmortemStatus: "write_failed"` |
 | 16 | queue-row commit failed | `_git` → `{ ok: false }` | §6.5; `queueRow: "error"`; the halt itself is **not** downgraded |
-| 17 | `refreshReviewState`'s `_listFiles` fails **mid-loop** (§5.6.1) | seam return | the previous `present` / `reviewFiles` are kept and the failure is reported; the episode is **not** silently reclassified greenfield, because §5.6.1 rule 4 rules an unread candidate round as revision. Distinct from row 1: an empty listing at *phase entry* is a virgin branch, an unreadable listing *after* round 1 wrote files is not |
+| 17 | `refreshReviewState`'s `_listFiles` fails **mid-loop** (§5.6.1) | seam return | `present` is returned as **`null` — not observed**, never as an empty Map; the last observed `reviewFiles` / `startIndex` are kept for naming the round, and the failure is reported. §5.6.1 rule 4 selects **revision unconditionally** on `present === null`, so the episode cannot be reclassified greenfield even on a branch whose last observed `present` was empty. Distinct from row 1: row 1 is a *successful* observation of a virgin branch (empty Map ⇒ greenfield is correct); this row is the absence of an observation, which is not evidence of anything |
 
 Rows 10 and 11 write **no POSTMORTEM** on purpose. Exhausting the authoring budget is the pacing
 wrapper refusing to keep paying; it is not the reviewers failing to converge, and a POSTMORTEM
@@ -1946,7 +1984,7 @@ their jest names follow the same `RLH-` namespacing:
 |---|---|---|
 | **AT-01a** | a **forced** phase on a branch already carrying `-v1` cross-reviews writes `-v2` next. §2.5 step 2 is *not* skipped by a force, so `reviewLoop` never falls back to `iteration = 1`. Reds on the "forced skips steps 2–4" reading, which restores H-1 on the forced path | `forcePhases.test.js` |
 | **AT-13a** | **G-INV totality.** For each of the four exits that lead to running the phase — forced, `candidate < 1`, `NOT APPROVING`, `STALE`/`UNEVALUABLE` — an unresolved POSTMORTEM refuses the phase and the halt reproduces the Recommendation; and the `FRESH` exit does **not** refuse, but names the POSTMORTEM in its skip notice. FSPEC §12.4's worked example A is the `FRESH` case and AC-2.3b's example B is the `candidate < 1` case, both driven verbatim as fixtures | `haltAndQueue.test.js` |
-| **AT-43a** | **S-INV freshness.** On a branch with no cross-reviews, after round 1's reviewers write theirs, round 2's optimizer episode selects `mode: "revision"` for round 1 and requires a trailer; and its `EpisodeKey.roundIndex` differs from round 1's, so the two do not share a dispatch budget. Reds on any implementation that decides mode from a pre-loop snapshot | `pacingWrapper.test.js` |
+| **AT-43a** | **S-INV freshness, both refresh outcomes.** Two fixtures, same clean branch (no cross-reviews at phase entry, so the seed `present` is empty) and the same assertion — `mode: "revision"` for round 1 with a trailer required. **(a) Refresh succeeds:** after round 1's reviewers write theirs, round 2's optimizer episode observes them, selects revision, and its `EpisodeKey.roundIndex` differs from round 1's so the two do not share a dispatch budget. Reds on any implementation that decides mode from a pre-loop snapshot. **(b) Refresh fails:** the same run with `_listFiles` returning a `ListFailure` at round 2's optimizer episode only (`unreadable`) — `present` is `null`, revision is still selected, the trailer is still required, and the failure appears in the report. Reds on any implementation that keeps the previous empty `present` and treats it as a successful observation of a virgin branch — i.e. on the v1.2 rule-4 wording (§5.6.1) | `pacingWrapper.test.js` |
 
 **The gate is "no new failures against a measured baseline", not "the suite is green."** The suite is
 not green at HEAD and has not been for the life of this branch. Measured by
