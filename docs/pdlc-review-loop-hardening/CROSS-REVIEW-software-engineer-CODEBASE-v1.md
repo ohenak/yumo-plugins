@@ -126,9 +126,86 @@ are asserted by `RLH-AT-64` (see §6), derived from the shipping sources rather 
 
 ## 4. Priority Surface — runtime-adapter.js New Seams
 
+**Result: all three correct. This is the only unit-tested-by-proxy file in the diff, and it holds up.**
+
+**`rtAppendFile`.** Append-shaped **by prompt construction**, exactly as required. It issues one
+`RT.agent` call whose instruction is "APPEND … to the END of", explicitly forbids reading, rewriting,
+reformatting or altering existing content, and specifies create-with-content-only when absent. It is
+*not* `rtWriteFile(path, existing + text)` — there is no read in the function at all, so the
+read-modify-write failure mode (re-emitting the reviewer's prose through a model and silently rewriting
+a cross-review) is structurally unavailable, not merely discouraged. The `<<<PDLC_CONTENT_BEGIN` /
+`PDLC_CONTENT_END` delimiters match `rtWriteFile`'s, keeping one payload convention.
+
+**`rtListFiles`.** Closed vocabulary, correct in both directions:
+
+| Reply | Result |
+|---|---|
+| empty/whitespace `dirPath` | `{ok:false, reason:"bad_argument"}` — decided *before* calling out, mirroring `rtCheckFile` |
+| non-string / `null` agent reply | `{ok:false, reason:"unreadable"}` |
+| `""` | `{ok:true, files:[]}` — the genuine empty directory |
+| one of the three sentinels | mapped via `RT_LIST_SENTINELS` |
+| anything with `/` or whitespace on any line | `{ok:false, reason:"unreadable"}` |
+
+The last row is the load-bearing one: prose the prompt did not permit becomes "I could not find out",
+never an empty list. `!lines.every(l => !/[\/\s]/.test(l) && !RT_LIST_SENTINELS[l])` also rejects a
+sentinel appearing *among* filenames, so a partial reply cannot be read as a listing. The shell command
+distinguishes `dir_missing` / `not_a_directory` / `unreadable` before `ls`, and `ls -p -A | grep -v '/$'`
+drops directories — matching the "regular files, non-recursive" contract. Four `LIST_FAILURES` members
+are declared in `orchestrate-dev.js:62–67`; all four are producible here.
+
+**`rtGit`.** Argv transport, `{ok, stdout, stderr}`, never throws. The `JSON.parse` is inside
+`try/catch` and the catch returns `{ok:false, stdout:"", stderr:"unparseable adapter response"}`. Every
+field is type-guarded (`parsed.ok === true`, `typeof … === "string"`), so a well-formed-but-wrong reply
+degrades rather than propagating `undefined`. The prompt pins "and nothing else", "do not retry, do not
+repair, do not run any other command" — appropriate for a seam that runs `git commit`. Consumed by
+`commitQueueRow`, whose `NOTHING_TO_COMMIT_RE` idempotence check reads both `stdout` and `stderr`,
+which `rtGit` always supplies as strings.
+
+**Falsifier:** an `rtAppendFile` implementation containing a read; an `rtListFiles` path that returns
+`{ok:true, files:[]}` for a reply it did not recognise; an `rtGit` input that escapes the `try`.
+
 ## 5. Priority Surface — Runtime Structural Constraints
 
+**Result: satisfied on both shipped artifacts.**
+
+Measured on `dist/`, which is what the runtime loads:
+
+| Constraint | `orchestrate-dev.bundle.js` | `orchestrate-queue.bundle.js` |
+|---|---|---|
+| `export const meta` is the first statement | line 1 | line 1 |
+| `meta` is a pure literal | yes — hand-written `DEV_META` / `QUEUE_META`, no computed members | same |
+| exactly one `export` in the file | 1 | 1 |
+| no static `import` statement | 0 | 0 |
+| `\bprocess\s*\.` / `\bfetch\s*\(` | 0 / 0 | 0 / 0 |
+| ends in a top-level `return` | yes | yes |
+
+I additionally reconstructed the runtime's evaluation shape — compiling each bundle (with the single
+`export` keyword removed) as an `AsyncFunction` body whose only parameters are the eleven documented
+host globals. **Both parse.** Top-level `return` is legal in that shape, no identifier outside the host
+set is referenced at top level, and `const RT = { agent, parallel, pipeline, phase, log }` binds before
+either IIFE runs.
+
+The residual Node references (`fs.readFileSync` in `defaultReadFile`, `await import("child_process")`
+in `defaultGit` / `mergeWorktree` / `checkPrCi`) survive `stripModuleSyntax` but sit only in default
+seam implementations that the entrypoints override. They are parse-safe and unreachable. See F-5.
+
 ## 6. Priority Surface — RLH-AT-64 Exemption Predicate
+
+**Result: predicate genuinely unmodified. The ruling stands; not relitigated.**
+
+`git diff b1b7ab1..d14119f -- __tests__/runtimeBundle.test.js` is **17 lines added, 1 removed, all
+inside the `_recordHalt` `it(…)` block**. `classifyExemption`, `e2ForwardCallees`, `resolveOneHop`,
+`moduleFunctionParams`, `moduleValueInit`, `looksLikeFunction`, `rtDevInjectionKeys`,
+`entrypointInjectionKeys` and `underscoreKeysOfObject` are byte-identical across that commit. The
+E-1/E-2/E-3 forms are unchanged, no name is special-cased, and no regex was widened. The removed line
+was `expect(report(recordHalt)).toBe("_recordHalt: wired=true exemption=none")`; the added assertions
+are `toContain("wired=true")` plus `toMatchObject({ exempt: false })` — strictly the two conjuncts
+TSPEC §8.5 and PLAN §9.3 state.
+
+The anti-rot clauses that make the predicate load-bearing are all still present and still derived:
+seams from `parseMainParams(devMasked)`, `wired` from `rtDevInjections` ∪ the entrypoint objects,
+anti-rot 1 (exempt **and** wired is a failure), anti-rot 2 (unresolved evidence is a failure, including
+E-2). Nothing here admits a real seam.
 
 ## 7. Findings
 
