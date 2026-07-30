@@ -868,6 +868,59 @@ describe("RLH-AT-43a — S-INV: every episode entry re-reads the branch (TSPEC �
 
 // ─── 6. RLH-AT-44, RLH-AT-45 — artifact sets and working-tree measurement ─────
 
+describe("RLH-AT-44 — artifact-set semantics (FSPEC §19 AT-44, O-19(g), E-53, E-54)", () => {
+  test("RLH-AT-44: an se-author dispatch that advances the TSPEC alone scores progress, terminal needs every required member, and a DECISIONS the warrant check does not require is not a member", async () => {
+    const run = await runPipeline({
+      author: (ctx) => {
+        if (ctx.kind !== "creator" || ctx.phase !== "T") return {};
+        // Dispatch 1 advances the TSPEC only — bytes change, required headings are
+        // not all bodied yet. Progress, not terminal.
+        return ctx.n === 1
+          ? { write: partialDoc("TSPEC", 2), response: "Wrote the first two sections." }
+          : { write: completeDoc("TSPEC"), response: authorResponse("yes") };
+      },
+    });
+
+    const tCreator = select(run, { kind: "creator", phase: "T" });
+    // Progress, so no halt; not terminal, so a second dispatch.
+    expect(tCreator).toHaveLength(2);
+    expect(run.reportText).not.toMatch(/no progress across/);
+
+    // Terminal required every required member of the set — and DECISIONS is not a
+    // member here, because the warrant check answered false (Phase D is skipped).
+    // Had DECISIONS been treated as a member, Phase T could never reach terminal.
+    expect(run.result.outcome).toBe("success");
+    expect(run.fs.files[`${DOCS_DIR}/DECISIONS-${FEATURE}.md`]).toBeUndefined();
+    const dPhase = run.result.phases.find((p) => p.phase === "D");
+    expect(dPhase && dPhase.status).toBe("⏭");
+  });
+});
+
+describe("RLH-AT-45 — working-tree measurement (FSPEC §19 AT-45, O-19(g))", () => {
+  test("RLH-AT-45: writes that are never committed count as progress, so three uncommitted partial writes do not exhaust MAX_AUTHORING_ATTEMPTS", async () => {
+    // Nothing in this fixture ever commits the artifact. A git-based diff would see
+    // no change at all across the three dispatches and score them all no-progress,
+    // halting the phase; §5.6.2 measures `before !== after` over the working tree.
+    const run = await runPipeline({
+      author: (ctx) => {
+        if (ctx.kind !== "creator" || ctx.phase !== "F") return {};
+        return ctx.n <= MAX_AUTHORING_ATTEMPTS
+          ? { write: partialDoc("FSPEC", ctx.n), response: "Killed before commit." }
+          : { write: completeDoc("FSPEC"), response: authorResponse("yes") };
+      },
+    });
+
+    const fCreator = select(run, { kind: "creator", phase: "F" });
+    expect(fCreator.length).toBeGreaterThanOrEqual(MAX_AUTHORING_ATTEMPTS + 1);
+    expect(run.result.outcome).toBe("success");
+    expect(run.reportText).not.toMatch(/no progress across/);
+
+    // The artifact was genuinely never committed by the pipeline — the progress
+    // reading came from the tree, not from git.
+    expect(run.git.commands.filter((c) => /commit/.test(c) && c.includes(FSPEC_PATH))).toEqual([]);
+  });
+});
+
 // ─── 7. RLH-AT-46, RLH-AT-47 — budget exhaustion and its two reports ──────────
 
 // ─── 8. RLH-AT-48, RLH-AT-49 — the two prompt kinds ───────────────────────────
