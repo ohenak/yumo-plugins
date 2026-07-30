@@ -45,6 +45,102 @@ import * as queueModule from "../orchestrate-queue.js";
 import { DEFAULT_QUEUE_PATH } from "../orchestrate-queue.js";
 import { fakeFs, fakeGit, recordingRecordHalt } from "./helpers/seams.js";
 
+// ─── Fixture vocabulary ──────────────────────────────────────────────────────
+
+const FEATURE = "foo";
+const DOCS = `docs/${FEATURE}`;
+const REQ_PATH = `${DOCS}/REQ-${FEATURE}.md`;
+const POSTMORTEM_R = `${DOCS}/POSTMORTEM-R-${FEATURE}.md`;
+
+/** Phase R's reviewer pair, and their `CROSS-REVIEW-{role}-…` slugs (§5.2 G-2). */
+const R_ROLE_SLUGS = ["software-engineer", "test-engineer"];
+
+const REQ_TEXT = [
+  "# REQ — foo",
+  "",
+  "## Acceptance Criteria",
+  "",
+  "AC-1. The thing works.",
+  "",
+].join("\n");
+
+/** The Recommendation the refusal must reproduce verbatim (§5.8, FSPEC §12.5). */
+const RECOMMENDATION_BODY = [
+  "Split the round-index derivation out of `reviewLoop`, give it its own",
+  "listing seam, and re-enter Phase R at round 3.",
+].join("\n");
+
+/**
+ * A POSTMORTEM document. `resolved` is `null` for no `RESOLVED:` line at all
+ * (§5.8: absent or malformed marker ⇒ `unresolved`, fail closed).
+ *
+ * @param {{ resolved?: "yes"|"no"|null }} [opts]
+ */
+function postmortemDoc({ resolved = null } = {}) {
+  return [
+    "# Post-mortem — Phase R, foo",
+    "",
+    "## Pattern Disagreement",
+    "",
+    "The reviewers never agreed on the round index.",
+    "",
+    ...(resolved === null ? [] : [`RESOLVED: ${resolved}`, ""]),
+    "## Recommendation",
+    "",
+    RECOMMENDATION_BODY,
+    "",
+  ].join("\n");
+}
+
+/**
+ * One `CROSS-REVIEW-{role}-REQ-v{round}.md` document.
+ *
+ * @param {{ approving?: boolean, hash?: string|null }} [opts]
+ *   `hash: null` omits the `APPROVAL-HASH:` line entirely, which §5.5 reads as
+ *   `UNEVALUABLE` rather than `STALE`.
+ */
+function crossReviewDoc({ approving = true, hash = null } = {}) {
+  return [
+    "# Cross-review",
+    "",
+    "## Verdict",
+    "",
+    `VERDICT: ${approving ? "Approved" : "Needs revision"}`,
+    approving
+      ? '{"high": 0, "medium": 0, "low": 0}'
+      : '{"high": 1, "medium": 0, "low": 0}',
+    "",
+    ...(hash === null
+      ? []
+      : [`APPROVAL-HASH: ${hash}`, "REVIEWED-COMMIT: unavailable", ""]),
+  ].join("\n");
+}
+
+/** The pipeline artifacts every phase's entry precondition checks for. */
+function baseTree() {
+  return {
+    [REQ_PATH]: REQ_TEXT,
+    [`${DOCS}/FSPEC-${FEATURE}.md`]: "# FSPEC\n",
+    [`${DOCS}/TSPEC-${FEATURE}.md`]: "# TSPEC\n",
+    [`${DOCS}/PLAN-${FEATURE}.md`]: "# PLAN\n",
+    [`${DOCS}/PROPERTIES-${FEATURE}.md`]: "# PROPERTIES\n",
+  };
+}
+
+/**
+ * A round-`round` Phase-R cross-review pair, keyed by path.
+ *
+ * @param {number} round
+ * @param {{ approving?: boolean, hash?: string|null }} [opts]
+ */
+function reqReviewPair(round, opts = {}) {
+  const tree = {};
+  for (const slug of R_ROLE_SLUGS) {
+    tree[`${DOCS}/CROSS-REVIEW-${slug}-REQ-v${round}.md`] = crossReviewDoc(opts);
+  }
+  return tree;
+}
+
 // ─── §6.3 / §6.5: the terminal exit and the queue-row commit ─────────────────
 describe("RLH-25: the terminal exit and the queue row", () => {
   // RLH-AT-21, RLH-AT-22, RLH-AT-23
