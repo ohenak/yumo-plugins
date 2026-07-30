@@ -1676,8 +1676,8 @@ Disposition (§2.3), and it is deliberately **not** a change to `driftGenerators
 
 | Case shape | Approach |
 |---|---|
-| a single text/byte string (`PROP-DIGEST-01/-02`, `PROP-HASH-01`, `PROP-STALE-01`'s document) | wrap as `{ kind: "bytes" }` and use the shipped ladder unmodified |
-| everything else (line arrays, filename sets, vectors, interleavings, fragments) | a **file-local** shrink ladder, declared per property in §4 |
+| a single text/byte string (`PROP-DIGEST-01/-02`, `PROP-HASH-01`, `PROP-STALE-01`'s document) | wrap as `{ kind: "bytes" }` and use the shipped ladder unmodified — **and expect nothing from it below 64 bytes.** Measured: `driftGenerators.js:423` sets `const BYTES_FLOOR = 64;` and the `"bytes"` arm returns `[]` at or below it, and a single truncation rung above it. That is one rung, not a ladder, and on the sub-64-byte strings these properties actually generate it is a **guaranteed no-op**. v1.0 presented this row as the shipped mechanism doing useful work; that presentation is withdrawn (SE F-05, §2.3) |
+| everything else (line arrays, filename sets, presence vectors, interleavings, fragments) | a **file-local** shrink ladder, declared per property in §4. In practice this is the mechanism for **every** property in this document — the row above buys nothing for any of them |
 
 This respects PLAN §7.2 exactly: generators — and now ladders — stay per-file, file-local and
 unexported; no second primitive library is written; `driftGenerators.js` is reused unmodified. The
@@ -1692,7 +1692,7 @@ on, in a feature whose whole subject is not breaking things quietly.
 |---|---|---|
 | `updateQueueStatus` | its input space is a two-state lifecycle write with an external effect (a commit); the interesting invariant is *transactional*, not generated, and PLAN §7.4 already splits its assertions into `-module`/`-orch` halves with owners. A generated property would restate `RLH-AT-30`…`-34` without adding a quantifier | none needed — covered by the AT split at both levels. Recorded here so §8.1's list is fully accounted for |
 | `extractRecommendation` | it extracts a free-text field; there is no invariant over generated prose beyond "returns a string or nothing", which is an assertion, not a property. Writing one would be a green square with no falsifier — §5.1's definition of worse than none | none. Explicitly declined, not deferred |
-| `MAX_AUTHORING_WRITE_BYTES` (TSPEC §4.8) | the constant governs **authoring agent behaviour**, not workflow code. Nothing in `orchestrate-dev.js` reads it in a way a property can quantify over; `skillFiles.test.js` asserts only that the figure is *stated* in the SKILLs (PLAN §9.1). There is no oracle for the behaviour it names | **queue row Order 9, `pdlc-authoring-contract`** (`docs/pdlc-authoring-contract/REQ-pdlc-authoring-contract.md`, status `blocked`, `Depends-On: pdlc-review-loop-hardening`) — the row that already owns the authoring contract, and the natural home for an executable byte-budget oracle |
+| `MAX_AUTHORING_WRITE_BYTES` (TSPEC §4.8) | the constant governs **authoring agent behaviour**, not workflow code. Nothing in `orchestrate-dev.js` reads it in a way a property can quantify over; `skillFiles.test.js` asserts only that the figure is *stated* in the SKILLs (PLAN §9.1). There is no oracle for the behaviour it names | **queue row Order 9, `pdlc-authoring-contract`** (`docs/pdlc-authoring-contract/REQ-pdlc-authoring-contract.md`, status `blocked`, `Depends-On: pdlc-review-loop-hardening`) — the row **reserved for** the authoring contract. Measured, and stated rather than implied: `docs/pdlc-authoring-contract/` **does not exist on disk**; the row is a queue entry with a REQ path, at status `blocked`, not an artifact that already owns anything. v1.0 wrote "already owns", which read as though the successor surface were in place (SE F-11). It is a named, tracked successor — which is what DC-08 requires — and nothing more |
 | SKILL template ↔ `completeness.test.js` fixture drift | PLAN §10.2 / risk `H-j` state this is undetected and that bolting a comparison onto `completeness.test.js` is out of scope; §6.4 explains why `PROP-COMPLETE-01` does not close it | **queue row Order 9, `pdlc-authoring-contract`** — the same row PLAN §10.2 points at |
 | per-worktree consumer state (`.claude/workflows/`) | not this feature's surface at all; noted only because `PROP-AWAIT-01` reads source and a reader may wonder which tree it reads (answer: `pdlc/workflows/*.js`, never `dist/`, never `.claude/`) | **D-DIST-07 / queue row Order 6, `pdlc-install-mechanism`** |
 
@@ -1709,19 +1709,58 @@ on, in a feature whose whole subject is not breaking things quietly.
    is stated as an assertion the property makes about its own corpus, so a generator that stops
    producing a shape fails loudly. What is *not* checked is whether a floor of ten is enough; that is
    a judgement, revisited if a defect escapes.
-3. **Six of the seventeen properties depend on seam doubles behaving synchronously** while the
+3. **Seven of the seventeen properties depend on seam doubles behaving synchronously** — six at v1.0, plus `PROP-RESOLVE-01` now that PLAN §11.5 `N-b` places it at L2 (§4.2; this answers PM Q-02) — while the
    production adapter is async (the C-2 consequence: every injected IO call must be `await`ed). A
    subject that forgets an `await` can pass an L2 property against sync doubles and fail in the
    runtime — which is precisely the hole `PROP-AWAIT-01` exists to cover at L3, and why it is
    green-on-arrival with **no permitted red, ever**.
+4. **`PROP-AWAIT-01` covers the scan set, not every seam call in the file.** TSPEC §8.5's
+   anonymous-arrow exemption is *"inherited by nobody"* — it is stated for the site at HEAD and is unsound
+   in general. At HEAD that is `orchestrate-dev.js:1866`'s `batch.map((task) =>` arrow, whose `agentFn(`
+   call at `:1867` is the site PLAN §4.1's advisory list names (both line numbers are correct, for
+   different things — the arrow and the call). A second anonymous arrow added tomorrow inherits nothing
+   and is simply outside `S`, so `PROP-AWAIT-01` will not see it and will not complain. v1.0 called the
+   classification a *total partition* of the seam call sites, which overstated this; §4.4 now states it
+   as a **cover** of the obligation over `S`, and the shortfall lives here (SE F-08).
+5. **`PROP-EPISODE-01`'s per-episode cap `B` is measured, not read.** §6.5 explains why (TSPEC §4.8
+   exports nothing), but a measured `B` means a subject that has *no* cap saturates at whatever the
+   generator's per-episode dispatch attempt ceiling happens to be, and `B` would be measured as that
+   ceiling. The generator's ceiling (8) is therefore deliberately set **above** the specified cap (6),
+   and the property additionally asserts `B < ceiling` — if `B` ever equals the ceiling the measurement
+   is not a measurement and the property fails rather than passing on a tautology.
 
 ### 8.5 What could not be written against the specs
 
-One item, recorded rather than invented: **TSPEC §4.5's `EpisodeKey` is defined by its five
+**Three** items, recorded rather than invented — v1.0 recorded one, and the two added here are the
+two places round-1 review found this document asserting something the specs do not expose.
+
+**1. TSPEC §4.5's `EpisodeKey` is defined by its five
 coordinates, but the specs do not name a canonical serialisation for it.** `PROP-EPISODE-01`
 therefore asserts *independence* of counters across pairs differing in one coordinate — a
 formulation that needs no serialisation — rather than the more direct "equal keys share a budget,
 unequal keys do not", which would require the test to construct a key and so to fix a serialisation
 the TSPEC does not own. If a serialisation is later pinned, the property can be strengthened; it is
-correct, and weaker than it could be, as written. Everything else in §4 was derived from a spec
-section that states the invariant outright.
+correct, and weaker than it could be, as written.
+
+**2. `invocation` is not an independently settable input, so it cannot join the sole-differing-coordinate
+floor.** TSPEC §4.5 defines it as *"monotonic within `(artifactSet, phase, round, mode)`"* and notes
+that *"without `invocation`, the counters have nothing to increment"* — it is produced by the counter,
+from the other four. No seam lets a test hold four coordinates fixed and set the fifth. v1.0's floor
+demanded ≥3 pairs differing solely in `invocation` and was unsatisfiable (SE F-04). §4.3 states the
+four-coordinate floor plus a separate, differently shaped `invocation` conjunct (re-entry consumes the
+same budget). The *direct* statement — "two episodes differing only in `invocation` are the same
+episode" — is what could not be written, and it is recorded here rather than approximated.
+
+**3. `MAX_REVIEW_ROUNDS` and `MAX_AUTHORING_DISPATCHES` have no L1-observable surface at all.** TSPEC
+§4.8 makes them module-level and unexported; §3.7 gives `deriveRoundWindow` no width parameter; §8.4
+bars L1 from the filesystem. The only surfaces that expose a value are TSPEC §7.1's edit sites 4 and 5,
+both inside `reviewLoop`, both L2 (§6.5). So the sentence *"`endIndex - startIndex + 1` equals
+`MAX_REVIEW_ROUNDS`"* is unwritable as a pure-function property, and v1.0 wrote it anyway, against
+itself (SE F-02). What replaced it — width **invariance** at L1, the width **identity** against an
+observed count at L2 — is strictly weaker at L1 and strictly stronger overall, and the gap that
+remains is this: **nothing at any level asserts that the count `reviewLoop` reports is the same
+constant the window derivation uses.** Both could be wrong together, consistently, and every property
+here would stay green. Closing that needs an export the TSPEC declines to make, so it is recorded, not
+invented.
+
+Everything else in §4 was derived from a spec section that states the invariant outright.
