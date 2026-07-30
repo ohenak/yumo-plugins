@@ -610,13 +610,19 @@ export function deriveRoundWindow(basenames, docType)
 // ── episode mode (§5.6.1) ───────────────────────────────────────────────────
 export function selectMode({ dispatchKind, docType, present, reviewFiles })
 //   → { mode: "authoring" | "revision", round: number|null, reason: string }
-//   The ONLY producer of EpisodeKey.mode (§4.5). Pure: it reads no file itself,
-//   consuming the §5.2 listing and the §5.1/§5.4 reads the phase entry already
-//   performed. FSPEC §15.2's four rules; fails toward "revision".
+//   The ONLY producer of EpisodeKey.mode (§4.5). Pure: it reads no file itself.
+//   Its caller — reviewLoop's refreshReviewState, once per EPISODE entry, never
+//   a pre-loop snapshot (§5.6.1 S-INV) — owns the freshness of both maps.
+//   FSPEC §15.2's four rules; fails toward "revision", including when the
+//   candidate round's verdicts were never read.
 
 export function isTerminal(mode, response, artifactClass, docType, after)
-//   → boolean.  Greenfield: structural completeness ALONE, no trailer.
-//   Revision: structural completeness AND parseRevisionComplete → complete.
+//   → { terminal: boolean, structural: boolean,
+//       trailerReason: TrailerFailure|null }
+//   Greenfield: terminal is structural completeness ALONE, trailerReason null.
+//   Revision: structural AND parseRevisionComplete → complete; on any non-yes
+//   trailer, trailerReason carries which of the four it was (§4.3, AT-61) —
+//   this record is that reason's only carrier.
 ```
 
 `sha256Hex` is **not a seam**, and this is a deliberate design decision rather than an oversight. A
@@ -631,10 +637,11 @@ test double return a hash the production code never computes.
 
 ```js
 /**
+ * @typedef {"declared_incomplete"|"absent"|"duplicated"|"unparseable"} TrailerFailure
  * @param {{ episode: EpisodeKey, prompt: string, model?: string }} arg
- * @returns {Promise<{ ok: true, response: string }
- *                  | { ok: false, reason: "no_progress" | "dispatch_budget"
- *                                       | "trailer" , detail: string }>}
+ * @returns {Promise<{ ok: true,  response: string, trailerReason: TrailerFailure|null }
+ *                  | { ok: false, reason: "no_progress" | "dispatch_budget",
+ *                      detail: string, trailerReason: TrailerFailure|null }>}
  */
 async function dispatchAndVerify({ episode, prompt, model = MODEL_DEFAULT })
 ```
@@ -643,13 +650,16 @@ Non-exported at module level but reachable from `reviewLoop`'s and the phase gat
 over `_agent`, `_readFile`, `_checkFile` and the counters. `EpisodeKey` is §4.5's five-coordinate
 record. It implements FSPEC §15's **terminal-first-then-progress** ordering: the trailer verdict is
 evaluated before the progress predicate, so an author that declared completion is never re-dispatched
-merely because its last write produced no byte change.
+merely because its last write produced no byte change. `trailerReason` is present on **every** return,
+`null` whenever the episode was greenfield or the last trailer read `yes`; it is the report's carrier
+for AT-61 (§5.6.2). There is no `"trailer"` reason: all four trailer failures are non-terminal, so
+none of them ends an episode.
 
 ### 3.9 Changed existing signatures
 
 | Symbol | Change |
 |---|---|
-| `export async function reviewLoop({ doc, phase, reviewers, optimizer, feature, iteration = 1, _agent, _parallel, _checkFile })` | the `iteration = 1` default stays (it is the correct value for a virgin branch), but **all seven existing call sites now pass the branch-derived `startIndex`**; the gate `if (iteration > 5)` becomes `if (iteration > endIndex)`; the return shape gains `postmortemWritten` |
+| `export async function reviewLoop({ doc, phase, reviewers, optimizer, feature, iteration = 1, docType, present, reviewFiles, _agent, _parallel, _checkFile, _listFiles, _readFile })` | the `iteration = 1` default stays (it is the correct value for a virgin branch), but **all seven existing call sites now pass the branch-derived `startIndex`**; the gate `if (iteration > 5)` becomes `if (iteration > endIndex)`; the return shape gains `postmortemWritten` and `trailerReason`. **Five new parameters, all for §5.6.1's S-INV**: `docType`, plus the seed `present` / `reviewFiles` from §2.5 steps 2–3, plus the two seams `refreshReviewState` needs to re-read them at every episode entry. Without `_listFiles` and `_readFile` in this scope the mode of every episode after the first is decided from a snapshot taken before the loop, which is TE-v2 N-01 |
 | `function checkConverged(loopResult, phaseId, phaseLabel, recordPhase)` | gains `feature` so its `postmortemPath` template can interpolate; the dead `` const postmortemPath = `docs/{feature}/POSTMORTEM-${phaseId}-{feature}.md` `` becomes `` `docs/${feature}/POSTMORTEM-${phaseId}-${feature}.md` `` and is **read**; the literal `5`s become `MAX_REVIEW_ROUNDS` / `startIndex..endIndex` per §7.1; the unconditional `POSTMORTEM written.` becomes §6.4's two conditional shapes |
 | `function buildFinalReport({ feature, outcome, phases, artifactPaths, testSummary, harvestStatus, prUrl, ciStatus, haltReason })` | gains `haltPhase`, `postmortemPath`, `postmortemStatus`, `queueRow`, plus the skip / force / pacing-proxy report lines |
 | `function reviewerRoleSlug(skill)` | unchanged, but gains a **reverse accessor** `function reviewerSkillForSlug(slug)` over the same `MAP`, so the filename grammar's role alternation and the dispatch table cannot desynchronise |
@@ -1342,34 +1352,53 @@ The loop:
 loop:
   invocation += 1;  dispatches += 1
   if dispatches > MAX_AUTHORING_DISPATCHES:
-      return { ok:false, reason:"dispatch_budget", detail:… }
+      return { ok:false, reason:"dispatch_budget", detail:…, trailerReason }
 
   before ← await _readFile(targetPath)              // bytes, or null
   response ← await _agent(prompt built per the two kinds below, { model })
 
   // ── TERMINAL FIRST ──
   after ← await _readFile(targetPath)
-  if isTerminal(episode.mode, response, class, docType, after):
-      return { ok:true, response }
+  t ← isTerminal(episode.mode, response, class, docType, after)
+  trailerReason ← t.trailerReason        // rebound every dispatch; null on greenfield
+  if t.terminal:
+      return { ok:true, response, trailerReason }
 
   // ── THEN PROGRESS ──
   if bytesDiffer(before, after):  noProgress ← 0
   else:
       noProgress += 1
       if noProgress >= MAX_AUTHORING_ATTEMPTS:
-          return { ok:false, reason:"no_progress", detail:… }
+          return { ok:false, reason:"no_progress", detail:…, trailerReason }
   prompt ← the resume form (below)
 ```
 
-**The terminal test is per mode** (FSPEC §8.4, AC-3.5b). There is no unconditional trailer conjunct:
+**The terminal test is per mode** (FSPEC §8.4, AC-3.5b), and it **returns a record, not a boolean**,
+because the trailer reason it computes is the only place that reason exists:
 
 ```js
 function isTerminal(mode, response, artifactClass, docType, after) {
   const structural = isComplete(artifactClass, docType, after).complete;
-  if (mode !== "revision") return structural;              // greenfield
-  return structural && parseRevisionComplete(response).complete;
+  if (mode !== "revision")                                  // greenfield
+    return { terminal: structural, structural, trailerReason: null };
+  const t = parseRevisionComplete(response);
+  return { terminal: structural && t.complete, structural,
+           trailerReason: t.complete ? null : t.reason };
 }
 ```
+
+**`trailerReason` is the carrier, and every exit of the loop carries it.** `parseRevisionComplete` is
+called only here (§4.3), so a boolean return computed the four `TRAILER_FAILURES` values and threw
+them away: FSPEC AT-61 requires the report to echo `declared_incomplete`, `absent`, `duplicated` and
+`unparseable` *respectively*, and a report that can only say `no_progress` cannot distinguish an
+author declaring itself unfinished from a SKILL emitting a malformed line. The wrapper's return
+carries the **last** value observed, and the phase report echoes it verbatim beside the reason.
+
+**No trailer failure is itself an episode exit.** FSPEC AT-61 states all four as *non-terminal*, and
+§4.3 disposes of all four as "continue"; an episode ends only on terminal, `no_progress` or
+`dispatch_budget`. §3.8's return union is corrected accordingly — the `reason: "trailer"` member is
+**deleted**, not given a manufactured producer, because any producer for it would have to contradict
+AT-61.
 
 | Mode | Terminal condition | Trailer |
 |---|---|---|
@@ -1378,14 +1407,12 @@ function isTerminal(mode, response, artifactClass, docType, after) {
 
 **Why the conjunct was deleted from the greenfield path rather than reconciled.** §7.4 amends only
 the three **author** SKILLs to emit `REVISION-COMPLETE:`; the three review SKILLs, `dod-verify` and
-`harvest-learnings` are not amended and will never emit it. Rule 3 of §5.6.1 puts every one of those
-episodes in greenfield by construction. A mode-blind conjunct therefore makes the numerically
-dominant episode population unable to *ever* reach terminal: each burns all six
-`MAX_AUTHORING_DISPATCHES` and halts its phase — H-3's own failure mode, a correct artifact scored
-not-done and the run killed, reconstructed by the mechanism built to remove it. A clause reconciling
-"absent trailer counts as complete for these classes" would leave the same conjunct in place and
-carry a second rule to keep in sync with §7.4's amendment list; deleting the conjunct from the
-greenfield path leaves one rule.
+`harvest-learnings` never will, and §5.6.1 rule 3 puts every one of those episodes in greenfield by
+construction. A mode-blind conjunct therefore makes the numerically dominant episode population
+unable to *ever* reach terminal — each burns all six dispatches and halts its phase, which is H-3's
+own failure mode rebuilt by the mechanism meant to remove it. A reconciling clause ("absent trailer
+counts as complete for these classes") would leave a second rule to keep in sync with §7.4's
+amendment list.
 
 **Terminal-first-then-progress** is not an arbitrary order. An author whose final dispatch declared
 completion and whose last write happened to change no bytes (a re-emission of identical content) is
