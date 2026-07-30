@@ -535,9 +535,16 @@ error on the wrapper's own required behaviour. So:
 | The episode's **first** dispatch for `(role, doc-type, round)` | Guard applies — the table above |
 | A **re-dispatch inside the same episode** onto the same path (§15.4's progress / no-progress branches) | Guard is **not** re-evaluated. The wrapper knows it owns that path: it instructed it, in this episode, and the episode's terminal test (§16.3) is the check that governs. The continuation prompt of §16.3/E-57 applies — continue the partial file, never rewrite it. |
 
-The property that made the per-dispatch phrasing attractive — catching a file that appeared *after* the
+The property that made a per-dispatch check attractive — catching a file that appeared *after* the
 phase-entry listing (case (ii) below) — is preserved, because the appearance can only precede the
 episode's first dispatch. A file appearing mid-episode is one the episode itself wrote.
+
+*(v1.2: the earlier "the check is per-dispatch rather than once per phase" phrasing is **withdrawn**
+here and in case (ii)/(iii) below, and the AT-06 assertion that counted one `_checkFile` per reviewer
+dispatch is withdrawn with it — SE-v2 F-12, TE-v2 F-02. It contradicted this same section's
+first-dispatch scope, and an assertion of per-dispatch counting is green on exactly the implementation
+that deadlocks §15.4's intra-episode re-dispatch. The scope is stated once, in the table above; nothing
+reconciles the two phrasings because only one survives.)*
 
 **Reachability (AC-1.4a), and why the check is not vacuous.** Because §4.4 always derives `max + 1`,
 only three states reach the error, and they are the complete set of states in which the guard is
@@ -546,8 +553,8 @@ evaluated (the intra-episode re-dispatch above is not one, because the guard doe
 | Case | State | Which check catches it |
 |---|---|---|
 | (i) | AC-1.1a's malformed duplicate of index 1 | §4.4 step 5, at phase entry — before any dispatch |
-| (ii) | A file appearing **between** index derivation and dispatch — a concurrent run, or an agent writing a path it was not instructed to (H-1's *observed* behaviour) | the per-dispatch `_checkFile` above. This is the case that matters and it is the reason the check is per-dispatch rather than once per phase. |
-| (iii) | A non-conforming basename that §4.3 skipped but which collides with the derived path | the per-dispatch `_checkFile` above. §4.3's reported-skip line is what makes the collision diagnosable when it fires. |
+| (ii) | A file appearing **between** index derivation and dispatch — a concurrent run, or an agent writing a path it was not instructed to (H-1's *observed* behaviour) | the first-dispatch `_checkFile` above. This is the case that matters, and it is why the check sits at the dispatch rather than at phase entry. |
+| (iii) | A non-conforming basename that §4.3 skipped but which collides with the derived path | the first-dispatch `_checkFile` above. §4.3's reported-skip line is what makes the collision diagnosable when it fires. |
 
 O-11 (TSPEC) must construct at least one of these for real; case (ii) is the one to construct,
 because it is the guard that keeps H-1 from destroying history again. This FSPEC's contribution is
@@ -2616,9 +2623,14 @@ No halt.
 **AT-06 — One listing per phase entry (AC-1.2)**
 *Given* instrumented `_listFiles` and `_checkFile`. *When* one phase entry runs its discovery, round
 derivation and approval search. *Then* `_listFiles` was called **exactly once** for that directory and
-**never again** in the phase; the overwrite guard's re-checks are `_checkFile` calls on exact paths, one
-per reviewer dispatch (§4.5), and are **not** listings. *(Corrected at v1.1, SE-v1 F-08: v1.0 called the
-guard "the only additional listing in the phase", which asserted a second `_listFiles` that §4.5 forbids.)*
+**never again** in the phase; the overwrite guard's re-checks are `_checkFile` calls on exact paths
+(§4.5) and are **not** listings. This test asserts the **listing** count only; it places no bound on how
+many times `_checkFile` is called, because §4.5 scopes the guard to an episode's first dispatch and an
+assertion of one call per reviewer dispatch is green precisely on the implementation that deadlocks
+§15.4's intra-episode re-dispatch. AT-58 owns the guard's dispatch scope.
+*(Corrected at v1.1, SE-v1 F-08: v1.0 called the guard "the only additional listing in the phase", which
+asserted a second `_listFiles` that §4.5 forbids. Narrowed at v1.2, SE-v2 F-12 / TE-v2 F-02: the
+per-reviewer-dispatch `_checkFile` clause is **deleted**, not re-scoped.)*
 
 **AT-07 — Overwrite guard refuses to clobber a cross-review (AC-1.4)**
 *Given* `CROSS-REVIEW-software-engineer-FSPEC-v4.md` already exists non-empty. *When* the round-4 reviewer
