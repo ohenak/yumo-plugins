@@ -2265,6 +2265,57 @@ export function defaultAppendFile(path, text, { fsMod = fs } = {}) {
   fsMod.appendFileSync(path, text, "utf8");
 }
 
+// ─── TSPEC §3.4 — the transport seam's Node default ───────────────────────────
+
+/**
+ * Run a git command. The caller branches on `ok`; the seam interprets nothing.
+ * Never throws. `argv` is an array, not a command string: a string would need
+ * quoting rules at the seam boundary and would make a feature name containing a
+ * space a shell-injection surface. The `{ execFn }` injection point mirrors
+ * mergeWorktree, which resolves child_process's execSync the same way.
+ *
+ * @param {string[]} argv - git arguments, NOT including the leading "git"
+ * @param {{ execFn?: function }} [opts] - injection point for tests
+ * @returns {Promise<{ ok: boolean, stdout: string, stderr: string }>}
+ */
+export async function defaultGit(argv, { execFn } = {}) {
+  const { execFileSync: realExecFileSync } = await import("child_process");
+  const exec =
+    execFn ?? ((file, args, opts) => realExecFileSync(file, args, opts));
+
+  const args = Array.isArray(argv) ? argv : [];
+  const execOpts = { stdio: "pipe", encoding: "utf8" };
+
+  try {
+    const stdout = exec("git", args, execOpts);
+    return { ok: true, stdout: String(stdout ?? ""), stderr: "" };
+  } catch (err) {
+    return {
+      ok: false,
+      stdout: String((err && err.stdout) ?? ""),
+      stderr: String((err && (err.stderr || err.message)) ?? ""),
+    };
+  }
+}
+
+// ─── TSPEC §3.5 — the queue-row seam's Node default ───────────────────────────
+
+/**
+ * Record a halt against the feature's queue row. The default is a NO-OP that
+ * reports "none": a unit test, or a direct invocation in a repo with no queue,
+ * has no row to write and must not fail for it.
+ *
+ * The seam exists to preserve the dependency direction — row location and row
+ * writing stay in orchestrate-queue.js; orchestrate-dev.js never learns the
+ * queue's table grammar. orchestrate-queue's _runPipeline and the dev bundle's
+ * DEV_ENTRY supply the real closures.
+ *
+ * @returns {Promise<{ queueRow: string, detail?: string }>}
+ */
+export async function defaultRecordHalt(/* { feature, status } */) {
+  return { queueRow: "none" };
+}
+
 // ─── TSPEC-SCRIPT-04: main() ──────────────────────────────────────────────────
 
 /**
