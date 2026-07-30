@@ -376,8 +376,86 @@ describe("RLH-25: the terminal exit and the queue row", () => {
 });
 
 // ─── §2.5 step G / §5.8: the POSTMORTEM gate ─────────────────────────────────
+/**
+ * FSPEC §12.4's two worked examples, **copied verbatim** from
+ * `docs/pdlc-review-loop-hardening/FSPEC-pdlc-review-loop-hardening.md`
+ * ("The two reachable worked examples, carried through unchanged"). PLAN §7.3
+ * names this pair as the guard against a gate placed ahead of §12.4 step 1
+ * (breaks A) or reachable only from step 4 (breaks B); both are driven as
+ * fixtures below, and the row text is reproduced here so a spec edit that
+ * changes an example is visible as a diff in this file.
+ */
+const FSPEC_12_4_EXAMPLE_A = Object.freeze({
+  case: "A — pre-harvest, skip fires",
+  state:
+    "Phase R converged, pipeline has not reached Phase H, so the `CROSS-REVIEW-{role}-REQ-v{N}.md` pair is still on the branch with same-round approving verdict fields; an unresolved `POSTMORTEM-R-{feature}.md` is also present",
+  outcome:
+    "**Phase R is skipped**, the run continues to Phase F, and the report names **both** the approval and the still-open POSTMORTEM",
+});
+
+const FSPEC_AC_2_3B_EXAMPLE_B = Object.freeze({
+  case: "B — harvested, skip does not fire",
+  state:
+    "`pdlc-workflow-distribution` at HEAD: `POSTMORTEM-R-pdlc-workflow-distribution.md` present, **zero** `CROSS-REVIEW-*` files (Phase H deleted all 62 — §4a A-7), and its LEARNINGS predates §9's approval record",
+  outcome:
+    "The verdict is unreadable, AC-4.2a fails closed, Phase R **would run**, so AC-2.3 **refuses and halts**, reproducing the Recommendation. This is the correct outcome, not a defect. The operator's **sole** route is AC-2.4.",
+});
+
 describe("RLH-25: the POSTMORTEM gate", () => {
-  // RLH-AT-24, RLH-AT-25, RLH-AT-26, RLH-AT-27, RLH-AT-13a
+  it("RLH-AT-24: an unresolved POSTMORTEM refuses re-entry and reproduces the Recommendation", async () => {
+    // AC-2.3 / E-25 / §6.2 row 13. No `RESOLVED:` line at all and no readable
+    // approval (zero cross-review files ⇒ candidate < 1 ⇒ §2.5 step G).
+    const { result, phaseOf, fs } = await run({
+      files: { ...baseTree(), [POSTMORTEM_R]: postmortemDoc() },
+    });
+
+    expect(result.outcome).toBe("halted");
+    expect(result.haltPhase).toBe("R");
+    expect(result.postmortemStatus).toBe("unresolved");
+    expect(result.postmortemPath).toBe(POSTMORTEM_R);
+
+    // §6.4's third, distinct shape: the refusal, not a non-convergence halt.
+    expect(result.haltReason).toContain(
+      `Phase R refused: unresolved POSTMORTEM at ${POSTMORTEM_R}`
+    );
+    // FSPEC §12.5 — verbatim, no summarisation, no agent in the path.
+    expect(result.haltReason).toContain(RECOMMENDATION_BODY);
+    // …and the operator's sole route is named.
+    expect(result.haltReason).toContain("AC-2.4");
+    expect(result.haltReason).toContain("RESOLVED: yes");
+
+    // A refusal is not a non-convergence: no POSTMORTEM is authored over it.
+    expect(fs.files[POSTMORTEM_R]).toBe(postmortemDoc());
+    expect(result.haltReason).not.toContain("did not converge");
+    expect(phaseOf("F")).toBeUndefined();
+  });
+
+  it("RLH-AT-25: a POSTMORTEM carrying one `RESOLVED: yes` permits re-entry", async () => {
+    // AC-2.4. The marker is positionally unconstrained and human-written only;
+    // `checkPostmortem` is a query, and `resolved` simply lets step 5 run.
+    const { result, dispatches, phaseOf, fs } = await run({
+      files: {
+        ...baseTree(),
+        [POSTMORTEM_R]: postmortemDoc({ resolved: "yes" }),
+      },
+    });
+
+    expect(result.outcome).toBe("success");
+    expect(result.haltReason).toBeUndefined();
+
+    // "Permits" only means something if the marker was consulted: step G is on
+    // every path that reaches step 5 (G-INV), so the file must have been read.
+    expect(fs.reads.map((r) => r.path)).toContain(POSTMORTEM_R);
+
+    // Phase R actually ran: its reviewer pair was dispatched over the REQ.
+    const rReviews = dispatches.filter(
+      (d) =>
+        ["se-review", "te-review"].includes(d.skill) &&
+        d.prompt.includes(REQ_PATH)
+    );
+    expect(rReviews.length).toBeGreaterThanOrEqual(2);
+    expect(phaseOf("R").status).not.toBe("⏭");
+  });
 });
 
 // ─── PLAN §7.4: the orchestrator half of AT-30…AT-34 ─────────────────────────
