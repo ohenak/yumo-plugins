@@ -316,12 +316,16 @@ function basenamesIn(files, dirPath) {
  */
 async function runPipeline(opts = {}) {
   const {
-    files = {}, author, review, harvest, listFiles: listFilesOverride,
+    files = {}, author, review, harvest, makeListFiles,
     dod = false, pub = false, dodStatuses = ["passed"], forcePhases,
   } = opts;
 
   const fs = fakeFs({ [REQ_PATH]: completeDoc("REQ"), ...files });
-  const listFiles = listFilesOverride ?? fakeListFiles((dirPath) => basenamesIn(fs.files, dirPath));
+  // The live view. `makeListFiles(fs)` lets a fixture interpose a per-call
+  // ListFailure (RLH-AT-43a(b)) while keeping the rest of the view live.
+  const listFiles = makeListFiles
+    ? makeListFiles(fs)
+    : fakeListFiles((dirPath) => basenamesIn(fs.files, dirPath));
   const git = fakeGit((argv) =>
     argv.some((a) => /numstat|--stat/.test(String(a)))
       ? { ok: true, stdout: `20000\t0\t${FSPEC_PATH}\n` }
@@ -347,6 +351,9 @@ async function runPipeline(opts = {}) {
     const entry = {
       skill, prompt: text, model: options && options.model, kind, phase, docType,
       path, round, n, listCallCount: listFiles.callCount,
+      // The cross-review record on disk *at the instant this episode dispatched* —
+      // the state S-INV says `selectMode` must have been given.
+      crossReviews: basenamesIn(fs.files, DOCS_DIR).filter((b) => b.startsWith("CROSS-REVIEW-")),
     };
     dispatches.push(entry);
     if (dispatches.length > 400) throw new Error("pacingWrapper harness: runaway dispatch count");
@@ -715,6 +722,149 @@ describe("RLH-AT-42 — counters are per episode (FSPEC §19 AT-42, O-19(c), E-5
 });
 
 // ─── 5. RLH-AT-43, RLH-AT-43a — mode across the seam, and S-INV freshness ─────
+
+/**
+ * The five clauses §5.6.3 and FSPEC §15.5 require of **every** revision-mode
+ * dispatch prompt. Each is matched loosely enough to admit any wording and
+ * tightly enough that an omitted clause reds — which is what AT-48 asserts
+ * directly and what AT-43 and AT-43a assert as a precondition of "revision mode".
+ */
+const CONTINUATION_CLAUSES = Object.freeze([
+  { name: "names the round's findings", re: /CROSS-REVIEW-[a-z-]+-[A-Z]+-v\d+\.md/ },
+  { name: "states the partially-edited condition", re: /partial|already (?:been )?edited|interrupted/i },
+  { name: "instructs: only what is not already reflected", re: /not already reflected|already reflected/i },
+  { name: "directs the agent to the document on disk", re: /on disk|from the (?:file|document) on disk|read the (?:file|document)/i },
+  { name: "requires the revision-completion trailer", re: /REVISION-COMPLETE:/ },
+]);
+
+/** Which continuation clauses a prompt satisfies. */
+function clausesIn(prompt) {
+  return CONTINUATION_CLAUSES.filter((c) => c.re.test(String(prompt ?? ""))).map((c) => c.name);
+}
+
+/** Every continuation clause name, for a whole-set `toEqual`. */
+const ALL_CLAUSES = CONTINUATION_CLAUSES.map((c) => c.name);
+
+/** The highest `-v{N}` round among a list of cross-review basenames, or 0. */
+function highestRound(basenames) {
+  return basenames.reduce((max, b) => {
+    const m = /-v(\d+)\.md$/.exec(b);
+    return m ? Math.max(max, Number(m[1])) : max;
+  }, 0);
+}
+
+describe("RLH-AT-43 — mode survives the invocation seam (FSPEC §19 AT-43, O-19(i), E-52)", () => {
+  test("RLH-AT-43: after a revision episode is killed mid-edit and the phase halts on the authoring budget, a fresh invocation re-enters revision mode on the round the branch still owes, not greenfield on structural completeness", async () => {
+    // Invocation 1: round 1's reviewers find issues; the optimizer is killed on
+    // every dispatch — no bytes written, no trailer — so the episode exhausts
+    // MAX_AUTHORING_ATTEMPTS and the phase halts (§6.2 row 10).
+    const first = await runPipeline({
+      review: reviewersFailing([1, 2, 3, 4, 5]),
+      author: (ctx) =>
+        ctx.kind === "optimizer" ? { write: null, response: "Killed mid-edit." } : {},
+    });
+    expect(first.result.outcome).toBe("halted");
+    expect(first.reportText).toMatch(/no progress across/);
+
+    // The branch carries round 1's surviving cross-reviews and the REQ, unchanged.
+    const survived = { ...first.fs.files };
+    expect(Object.keys(survived).filter((p) => p.includes("CROSS-REVIEW-")).length).toBeGreaterThan(0);
+
+    // Invocation 2: same tree, queue row reset, phase re-entered. Nothing about the
+    // episode is carried in memory — everything selectMode reads is on disk.
+    const second = await runPipeline({
+      files: survived,
+      review: reviewersFailing([1, 2, 3, 4, 5]),
+      author: (ctx) =>
+        ctx.kind === "optimizer" && ctx.n === 1
+          ? { write: null, response: "Still working." }
+          : { write: completeDoc("REQ", "addressed"), response: authorResponse("yes") },
+    });
+
+    const authored = select(second, { kind: "optimizer", phase: "R" });
+    expect(authored.length).toBeGreaterThan(0);
+    const resumed = authored[0];
+
+    // (i) Revision mode, not greenfield: the full continuation contract is present.
+    expect(clausesIn(resumed.prompt)).toEqual(ALL_CLAUSES);
+
+    // (ii) The SAME round — the highest round the branch already holds, i.e. the one
+    // still owed an authoring pass (§5.6.1 rule 2). Never an invented later round:
+    // the findings it names must exist on disk at the instant it dispatched.
+    const namedRounds = [...String(resumed.prompt).matchAll(/CROSS-REVIEW-([a-z-]+)-([A-Z]+)-v(\d+)\.md/g)];
+    expect(namedRounds.length).toBeGreaterThan(0);
+    for (const [basename, , , round] of namedRounds) {
+      expect(resumed.crossReviews).toContain(basename);
+      expect(Number(round)).toBe(highestRound(resumed.crossReviews));
+    }
+
+    // (iii) It does NOT report terminal success on structural completeness alone:
+    // the REQ was complete throughout, dispatch 1 emitted no trailer, so a second
+    // dispatch was issued.
+    expect(authored.length).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe("RLH-AT-43a — S-INV: every episode entry re-reads the branch (TSPEC §5.6.1)", () => {
+  test("RLH-AT-43a: round 2's optimizer is a revision episode with an EpisodeKey distinct from round 1's, and a mid-loop unreadable listing halts without dispatching an episode", async () => {
+    // ── (a) Freshness. `docs/{feature}/` EXISTS and is EMPTY of cross-reviews at
+    // entry — §6.2 row 1's successful empty listing, not `dir_missing`. Under an
+    // entry-time snapshot `present` stays empty for the life of the phase, every
+    // optimizer episode selects greenfield, and the wrapper reports success on a
+    // round whose findings were never addressed.
+    expect(fakeListFiles([])("docs/absent-on-purpose")).toEqual({ ok: true, files: [] });
+
+    const SPEND = 4; // per episode; 2 × 4 = 8 > MAX_AUTHORING_DISPATCHES = 6
+    const run = await runPipeline({
+      review: reviewersFailing([1, 2]),
+      author: (ctx) => {
+        if (ctx.kind !== "optimizer" || ctx.phase !== "R") return {};
+        return ctx.n < SPEND
+          ? { write: completeDoc("REQ", `round ${ctx.round} pass ${ctx.n}`), response: authorResponse("declared_incomplete") }
+          : { write: completeDoc("REQ", `round ${ctx.round} done`), response: authorResponse("yes") };
+      },
+    });
+
+    expect(run.result.outcome).toBe("success");
+    const round1 = select(run, { kind: "optimizer", phase: "R", round: 1 });
+    const round2 = select(run, { kind: "optimizer", phase: "R", round: 2 });
+
+    // Both episodes are revision episodes — round 1's included. Round 1's is the
+    // S-INV case: the reviews it must see were written by THIS run, moments before.
+    expect(round1.length).toBe(SPEND);
+    expect(round2.length).toBe(SPEND);
+    expect(clausesIn(round1[0].prompt)).toEqual(ALL_CLAUSES);
+    expect(clausesIn(round2[0].prompt)).toEqual(ALL_CLAUSES);
+    expect(round1[0].crossReviews.length).toBeGreaterThan(0);
+
+    // Distinct EpisodeKeys, observed two ways: the round each addresses, and the
+    // fact that 8 dispatches were paid for against a 6-dispatch per-episode budget
+    // without the phase halting. One shared key exhausts on dispatch 7.
+    expect(highestRound(round2[0].crossReviews)).toBe(2);
+    expect(round1.length + round2.length).toBeGreaterThan(MAX_AUTHORING_DISPATCHES);
+    expect(run.reportText).not.toMatch(/dispatches without reaching/);
+
+    // Each episode's own refresh happened: at least one listing per episode entry.
+    expect(run.listFiles.dirs).toContain(DOCS_DIR);
+
+    // ── (b) A mid-loop `unreadable` halts (§6.2 rows 2 and 17) and dispatches
+    // nothing. The failure is at call index 1, i.e. NOT the first listing — the
+    // loop is already running, which is what "mid-loop" means.
+    const FAIL_AT = 1;
+    const failing = await runPipeline({
+      review: reviewersFailing([1, 2]),
+      makeListFiles: (fs) =>
+        fakeListFiles((dirPath, callIndex) =>
+          callIndex === FAIL_AT ? "unreadable" : basenamesIn(fs.files, dirPath)
+        ),
+    });
+
+    expect(failing.result.outcome).toBe("halted");
+    expect(failing.reportText).toContain(`Cannot enumerate ${DOCS_DIR}: unreadable`);
+    // No episode is dispatched after the listing that could not be judged.
+    expect(failing.dispatches.filter((d) => d.listCallCount > FAIL_AT)).toEqual([]);
+  });
+});
 
 // ─── 6. RLH-AT-44, RLH-AT-45 — artifact sets and working-tree measurement ─────
 
