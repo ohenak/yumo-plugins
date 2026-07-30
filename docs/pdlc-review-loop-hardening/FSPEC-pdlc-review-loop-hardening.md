@@ -1180,6 +1180,128 @@ never reached for them.
 
 ## 11. FSPEC-FORCE-01 — The operator force-run surface
 
+**Linked requirements:** AC-4.6, AC-4.6a, AC-2.3, AC-2.4, AC-4.5, AC-4.7. **Discharges O-9.**
+
+### 11.1 The surface
+
+A single optional workflow input, `forcePhases`.
+
+| Aspect | Specification |
+|---|---|
+| Name | `forcePhases` |
+| Type | `string` — a comma-separated list of phase ids, or the literal `all` |
+| Required | No. Absent ⇒ no phase is forced (today's behaviour exactly) |
+| Catalogue | Members of AC-4.7's in-scope set only: `R`, `F`, `T`, `P`, `D`. Plus the literal `all`, meaning all five. |
+| Parsing | Split on `,`, trim each token, drop empty tokens, upper-case. Total function: an unrecognised token is **rejected**, not ignored (§11.3). |
+| Invocation | `/pdlc:orchestrate-dev` with an args object: `{ reqPath: "docs/{feature}/REQ-{feature}.md", forcePhases: "F,T" }` |
+
+**Why an args field and not an env var, a marker file, or a config key.** `build-runtime.mjs`'s
+`DEV_ENTRY` already establishes that `args` may be a string **or** an object — it reads
+`typeof args === "string" ? args.trim() : args && typeof args === "object" && args.reqPath` — so an
+object-valued second key is the surface the runtime already supports, with no new capability. The three
+alternatives are unavailable or worse: there is no `process` in the runtime (C-2, §4a A-1) so an env var
+cannot be read; a marker file would require a new read seam and would persist past the run that wanted
+it (a forced phase that stays forced is a footgun); and `.claude/pdlc.config.json` is repo-level
+persistent state, wrong altitude for a one-shot operator act.
+
+### 11.2 The three edits this input requires
+
+Grounded at HEAD `0655387`. `forcePhases` must be threaded through, and the thread has exactly three
+links because `meta` cannot be shared between source and bundle:
+
+| Target | Edit | Anchor |
+|---|---|---|
+| `pdlc/workflows/orchestrate-dev.js` | Add a second entry to `meta.inputs` — `{ name: "forcePhases", description: …, type: "string", required: false }` — after the existing `reqPath` entry (`name: "reqPath"`, `required: true`) | `export const meta` |
+| `pdlc/workflows/orchestrate-dev.js` | Add `forcePhases` to `main()`'s destructured parameter list, defaulting to `null` | `export default async function main({ reqPath, _agent: rawAgentFn = agent, … })` |
+| `pdlc/workflows/build-runtime.mjs` | Extend `DEV_ENTRY` to read `args.forcePhases` when `args` is an object, and pass it to `__dev.main({ reqPath: __reqPath, forcePhases: __forcePhases, …rtDevInjections(__dev) })` | `const DEV_ENTRY = ` / `return await __dev.main({ reqPath: __reqPath, ...rtDevInjections(__dev) });` |
+
+**`DEV_META` is deliberately not edited.** The hand-written `DEV_META` literal in `build-runtime.mjs`
+is not a copy of the module's `meta` — it carries `name`, `description`, `whenToUse` and `phases`, and
+carries **no** `inputs` array at all. Adding one would be a new, second declaration to keep in sync for
+no benefit, since the bundle's entrypoint reads `args` directly. The comment already above `QUEUE_META`
+records why the two `meta`s diverge (`meta` must be a pure literal and the first statement, so each
+bundle carries its own hand-written copy rather than re-exporting the module's). The `meta.inputs` edit
+to the module is what documents the input for a reader of the canonical source; discoverability at the
+bundle is out of scope for this feature.
+
+`orchestrate-queue` gets **no** force surface. The queue is the unattended driver; forcing is an
+attended operator act, and O-5's direct-invocation path (§14) is where it belongs.
+
+### 11.3 Rejection of a bad token
+
+`parseForcePhases(raw)` → `{ ok: true, phases: Set<string> } | { ok: false, badTokens: string[] }`.
+
+| Input | Result |
+|---|---|
+| absent / `null` / `""` / whitespace | `{ ok: true, phases: ∅ }` — not an error |
+| `all` (any case) | `{ ok: true, phases: {R,F,T,P,D} }` |
+| `F,T` | `{ ok: true, phases: {F,T} }` |
+| `f, t ,` | `{ ok: true, phases: {F,T} }` — trimmed, upper-cased, empty tokens dropped |
+| `CR` or `DOD` | `{ ok: false, badTokens: ["CR"] }` — **rejected**, because AC-4.7 puts them out of AC-4's scope; silently ignoring them would let an operator believe a forced CR was honoured |
+| `Q` / `all,F` / any unknown token | `{ ok: false, badTokens: [...] }` |
+
+A rejection **halts before any phase runs**, with one halt shape:
+
+```
+Unrecognised forcePhases token(s): {badTokens joined}. Valid: R, F, T, P, D, all.
+```
+
+Halting rather than warning is the fail-closed direction here: the operator's stated intent was not
+achieved, and running the pipeline anyway would silently substitute a different plan. `all,F` is
+rejected rather than coerced for the same reason — the request is ambiguous about intent, and DC-01's
+total-function requirement is satisfied by a definite rejection, not by a guess.
+
+### 11.4 Precedence: forcing overrides recorded approval only
+
+The skip decision for an in-scope phase becomes:
+
+```
+skip(phase) := phase ∉ forcePhases
+            ∧ approvingPairForSomeRound(phase)   (§5)
+            ∧ isStale(...) = FRESH               (§10)
+```
+
+`forcePhases` is a **veto on the skip**, evaluated first and short-circuiting. It changes nothing else:
+
+| Not overridden by forcing | Why |
+|---|---|
+| **AC-2.3's POSTMORTEM refusal** | §11.5 — the whole point of AC-4.6a |
+| The round index (§4) | Forcing re-runs the phase at the *next* round index, appending `-v{N+1}` cross-reviews. It does not re-use or overwrite an existing round (AC-1.4 forbids overwriting a cross-review file, §4's per-dispatch guard enforces it). |
+| The approval record | Forcing does **not** delete, edit, or invalidate the tier-1 or tier-2 record. The prior approval stays on the branch as history; the new round produces its own record. |
+| Phases not named | Every in-scope phase not in `forcePhases` evaluates the skip normally in the same run. Forcing `F` does not force `T`. |
+| AC-4.7's out-of-scope phases | CR and DOD always run; there is nothing to force. |
+
+**Reporting (AC-4.5).** A forced phase is reported as having **run**, with its reason naming the force:
+`Ran (forced by operator — recorded approval overridden)`. It is visibly distinct from the `⏭` skip
+marker the existing code already uses for a phase that was skipped (the `"⏭"` status passed to
+`recordPhase` for Phase D's "Skipped — no load-bearing alternatives") and from a failed phase's `❌`.
+An operator must be able to read the report and see that the force took effect; a forced phase that
+reported identically to an ordinary run would leave the override unverifiable.
+
+### 11.5 Refusal against an unresolved POSTMORTEM (AC-4.6a, carried through)
+
+On the state that motivates both mechanisms — a recorded approval **and** an unresolved
+`POSTMORTEM-{phase}-{feature}.md` — a force-run is **refused**.
+
+| Step | Behaviour |
+|---|---|
+| 1 | The POSTMORTEM gate of §12 is evaluated **before** the skip decision, so it is reached whether or not the phase was forced |
+| 2 | An unresolved POSTMORTEM for that phase ⇒ halt, with §12's halt reason and the POSTMORTEM's **Recommendation** section reproduced |
+| 3 | The halt reason names **AC-2.4** as the next step, so a forcing operator is never left guessing |
+
+**The rationale, carried through unchanged.** AC-2.3's refusal exists because a phase re-entered against
+an unresolved disagreement wastes a whole budget on it (H-2) — and that is just as true when the
+re-entry was requested deliberately. The resolution act is cheap, is already required to be
+operator-visible, and leaves a record of *why* the disputed review was re-opened.
+
+**AC-2.4 is the exclusive route, and this document adds no escape hatch.** An earlier draft offered a
+force flag that could also clear a POSTMORTEM; the REQ withdrew it (AC-4.6a is the governing clause and
+needs none, because AC-2.4's resolution act is itself the cheap, operator-visible bypass). A
+`forcePostmortem`-style input is therefore **not** specified, and specifying one would be
+non-conforming — it would be wrong twice over: it would re-open the H-2 budget waste and it would erase
+the operator-visible record of the decision. Nothing in the pipeline resolves a POSTMORTEM on its own;
+only a human editing the artifact does.
+
 ## 12. FSPEC-PMORT-01 — POSTMORTEM resolution marker and Recommendation extraction
 
 ## 13. FSPEC-QUEUE-01 — Committing the halted queue row
