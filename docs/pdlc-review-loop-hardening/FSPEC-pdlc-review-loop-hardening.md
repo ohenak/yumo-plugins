@@ -1950,6 +1950,22 @@ Determining it in the script rather than asking the agent is deliberate — it i
 disk state, so C-5 requires the script to own it, and it means a stall-killed agent that never got to
 read the file still receives the answer.
 
+**Per-class mapping (TE-v1 F-05).** The heading walk above is stated over §16.2's per-heading criterion,
+which only the six **spec** classes have. §16.3–§16.5 are whole-file criteria, so for the other three
+wrapped classes — which are the numerically dominant population, §16.6 — the `{heading text}` field is
+defined directly rather than by walking:
+
+| Wrapped class | `{heading text}` for the resume clause |
+|---|---|
+| Spec documents (§16.2) | the heading walk above |
+| Cross-review (§16.3) | `(the trailing "## Verdict" section)` — the one thing its criterion requires, and the thing a partial cross-review is by definition missing |
+| Code-review (§16.4) | the first of its two required markers that is absent — `(the "Scope:" field)` or `(the findings section)` |
+| LEARNINGS (§16.5) | §16.2's body rule already applies to its five numbered sections, so the heading walk runs over those; when all five are satisfied, `(the metadata table's "Harvested from" row)` if that is what is missing |
+
+In every case the field is a definite string, so the resume prompt is never emitted with an undefined
+field. The degraded `(unknown — …)` form of the third row above remains the fallback for an artifact whose
+structure cannot be parsed at all.
+
 **Scope, narrowed at v1.5 (SE-v5 F-01).** This determination is a **within-greenfield** question only: it
 chooses between the resume and first-attempt forms of a *greenfield* prompt. It does **not** select the
 episode's mode (§15.2 does). A structurally incomplete document can therefore no longer pull a revision
@@ -2633,9 +2649,12 @@ neither claims any runtime retry count.
 partially-edited condition and the not-already-reflected instruction, directs the agent to the document on
 disk, and requires the trailer. A prompt lacking any clause fails the test.
 
-**AT-49 — Resume prompt names the first unwritten section (AC-3.3, O-6)**
+**AT-49 — Resume prompt names the first unwritten section (AC-3.3, O-6, TE-v1 F-05)**
 *Given* a partial FSPEC with sections 1–7 filled and 8–21 empty. *Then* the dispatch is a resume, the
-prompt names section 8's heading, and the section index was computed by the **script**.
+prompt names section 8's heading, and the section index was computed by the **script**. *Given instead* a
+partial **cross-review** whose headings all carry prose but which has no trailing `## Verdict` section, and
+*given instead* a partial **LEARNINGS** missing its fifth numbered section. *Then* in both cases the resume
+prompt's `{heading text}` field is the per-class value of §15.5's mapping and is never empty or undefined.
 
 **AT-50 — Wrapped review dispatch is terminal on its verdict field (O-19(f), §16.3)**
 *Given* a `se-review` dispatch producing a cross-review with one parseable verdict. *Then* the episode is
