@@ -44,6 +44,45 @@ alias/await scans over the two module sources (§2).
 
 ## 2. Priority Surface — C-2 Await Discipline
 
+**Result: clean. No un-awaited injected IO call exists in either module source.**
+
+Three independent derivations, because this is the one defect class the green suite cannot see.
+
+**(a) Direct call-site enumeration.** Every call of the nine seam names and their `main()`-level aliases
+(`readFileFn`, `writeFileFn`, `appendFileFn`, `checkFileFn`, `listFilesFn`, `gitFn`, `recordHaltFn`,
+`checkCiFn`, `mergeWorktreeFn`) across both files — 27 sites total — is lexically preceded by `await`.
+Helper functions (`reviewLoop`, `refreshReviewState`, `appendApprovalAnchors`, `checkPostmortem`,
+`tier2ApprovalRecord`, `dispatchAndVerify`) destructure the seams **shorthand** (`_readFile`, not
+`_readFile: rf`), so the seed names themselves are the call-site names there — no alias to miss.
+
+**(b) Reachability of every async helper.** I derived the set of `async function` / `async` arrow
+declarations in both modules and located every call site not preceded by `await`. Three survive, all
+correct:
+
+| Site | Form | Why correct |
+|---|---|---|
+| `orchestrate-dev.js:1609` `dispatchAndVerify({…})` | entire body of the `wrapped` arrow | returned promise; `runWrapped:1632` awaits it |
+| `orchestrate-dev.js:1765–1766` `runWrapped(…)` | elements of `await _parallel([…])` | awaited combinator argument |
+| `orchestrate-dev.js:4264` `agentFn(…)` | element of `await parallelFn(batch.map(…))` | awaited combinator argument |
+
+`orchestrate-queue.js:723` `return runPicked({…})` is a returned promise inside an `async` function,
+awaited by `main`'s caller.
+
+**(c) The in-repo scanner.** `__tests__/runtimeBundle.test.js` now carries `scanAwaitDiscipline`, run as
+`RLH-AT-19` over both sources with a vacuity guard (`sites.length > 0`) and a named-failure assertion.
+Its mechanism is sound and better than my (a): `maskLiterals` first, a thirteen-name seed set
+(`AT19_SEAM_NAMES`) that is deliberately *not* derived from `main()` (`_now`, `_phaseDodEnabled` would
+red correct source), a fixed-point wrapper closure so `agentFn` enters via `rawAgentFn`, and a
+combinator set that excludes `Promise.race`/`Promise.any` because they settle on one element. The
+returned-promise ruling tests **both** halves (`return`/`=>` before, whole-expression after), so
+`return _checkFile(p) || fallback` is not exempted. This is a durable regression barrier, not a
+one-time check.
+
+**Falsifier for the whole section:** a call of any of the thirteen names, or of a local rebinding of
+one, that reaches the runtime without `await` — i.e. `scanAwaitDiscipline` returning a site with
+`ruling: "unclassified"`, or a seam aliased under a new name inside a non-`main` function's parameter
+list. The first is asserted in CI; the second is F-4 below.
+
 ## 3. Priority Surface — RLH-32 Build Ordering and Seam Wiring
 
 ## 4. Priority Surface — runtime-adapter.js New Seams
