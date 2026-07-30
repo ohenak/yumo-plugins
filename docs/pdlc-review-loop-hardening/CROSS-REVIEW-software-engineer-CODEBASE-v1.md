@@ -372,8 +372,80 @@ agree.
 
 ## 8. Assessed and Cleared
 
+**`refreshReviewState`'s read narrowing — correct, and the narrowing is the point.**
+It opens exactly the files of round `window.startIndex - 1`, not every matched basename. Under §5.2's
+`startIndex = max(present) + 1`, that candidate **is** the highest round on the branch — precisely the
+round `selectMode` rule 2 evaluates for same-round dual approval. So the narrowing costs rule 2 nothing
+while holding §5.4's two-`_readFile` fan-out and keeping the approval search from descending to rounds
+`RLH-AT-09` / `RLH-AT-57` forbid. `matched` still carries every round for `dispatchAndVerify`'s naming,
+derived from the listing at no read cost. Rule 2's `dualApproved` treats a round with no `reviewFiles`
+entry as not-approved, so the narrowing can only push an episode *into* revision — the safe direction.
+*Falsifier:* a `startIndex` derivation under which the highest present round ≠ `startIndex - 1` and rule
+2 consequently reads an absent record for the round it selects.
+
+**`tier2ApprovalRecord`'s near-unreachability — accepted, and honestly documented.**
+The code states the reasoning itself: under `startIndex = max(present) + 1`, `candidate` is a round some
+role holds, so post-harvest `present` is empty, `candidate` is 0, and §5.4's `candidate < 1` exit fires
+before tier 2 is consulted. It survives for a listing that changes under the run. That is a real
+scenario (the queue commits `QUEUE.md` mid-run; nothing pins `docs/{feature}/`), the grammar it parses
+is the one `harvest-learnings/SKILL.md` now writes, and `__tests__/approvalSearch.test.js` covers it.
+Keeping it is right; deleting it would leave the tiers' exclusivity claim untestable. One benign detail:
+the section terminator `/^\s*#{1,2}\s/` does not fire on a `###` sub-heading, so a `###` inside the
+Approval Record keeps the scan in-section — harmless, because only six-cell table rows are collected.
+
+**Queue halt path double-write — not a defect.** On a halt reached inside `orchestrate-dev` under the
+queue, `_recordHalt` writes and commits `halted`, then `runPicked` writes and commits `halted` again.
+The second is absorbed by `commitQueueRow`'s `NOTHING_TO_COMMIT_RE` on either stream, so it produces no
+extra commit and no warning. Idempotent by construction, as §6.5 intends.
+
+**`VALID_VERDICTS` hoist and the `RLH-AT-64` assertion change** — both previously ruled on; confirmed
+consistent with the code as it stands and not re-raised.
+
+**The §16.3 / §5.1 "one verdict" split — verified coherent, not a finding.** The two questions are
+answered by two functions and they should differ: `crossReviewComplete` (the *terminal* test) accepts at
+least one catalogue `VERDICT:` line after the last `## Verdict` heading, per FSPEC §16.3;
+`extractFileVerdict` (the *approval* read) pre-counts and fails closed on more than one, which is what
+`se-review/SKILL.md`'s new "a second one is read as fail-closed and your approval will not be honoured"
+describes. The SKILL text is therefore accurate. Scoping the duplicate count to the trailing section
+rather than the whole file is what lets a cross-review quote the grammar — including this one.
+
 ## 9. Documentation Drift for Harvest
+
+Recorded here for `harvest-learnings`, not raised as code findings:
+
+| Drift | Detail |
+|---|---|
+| TSPEC §5.9:1722 vs FSPEC §16.3:2439 | "exactly one well-formed `VERDICT:` field" vs "at least one … in the catalogue". §16.3 owns the terminal test and governs; the implementation follows it. The TSPEC wording is stale and should be reconciled at consolidation. |
+| TSPEC §5.9:1724 vs FSPEC §16.5 | The LEARNINGS criterion, per F-2. If F-2 is closed by amending FSPEC, this row is the record of why. |
+| `orchestrate-dev.js` `meta.inputs` | Dead in the shipped artifact (F-1). The module-level `meta` and `DEV_META` are two hand-maintained copies with no consistency check between them — a candidate `docs/_constraints/` entry. |
 
 ## 10. Recommendation
 
+The engineering core of this feature is strong and I want to say so plainly: the await-discipline
+scanner, the derived wired-or-exempt check, the append-shaped adapter seam, and the closed
+`rtListFiles` vocabulary are all better than the defects they were written against. Every high-risk
+surface I was pointed at came back clean, including the two that are green-at-L2-and-false-in-production
+by construction.
+
+The three Medium findings are all **delivery and documentation**, not logic, and all three are cheap:
+
+1. **F-1 + F-3 are one edit.** Add `inputs` to `DEV_META`, rebuild, and add three paragraphs to
+   `CLAUDE.md` (POSTMORTEM `RESOLVED:` lifecycle, `## 6. Approval Record` + tier-1 anchors, the trailing
+   `## Verdict` contract) plus one line for the object-arg invocation form. Note there that the queue
+   path does not forward `forcePhases`.
+2. **F-2 needs a decision, then one edit.** Either add the `Harvested from` predicate to `isComplete`'s
+   LEARNINGS arm, or amend FSPEC §16.5 and its §16.5 mapping row to match TSPEC §5.9 and record the
+   narrowing. I lean to the second — it is consistent with the approval-record exclusion already argued
+   on AC-4.2c grounds — but the choice is the author's, and the mapping row must not be left describing
+   an unreachable branch either way.
+
+F-4, F-5 and F-6 need no action in this feature. F-4 and F-5 have a named successor surface (harvest →
+`docs/_constraints/`); F-6 is a two-line tidy whenever that file is next touched.
+
+Nothing here blocks Phase DOD on logic. Verdict is `Needs revision` because two Medium findings stand
+under the mandatory approval rule, not because the implementation is unsound.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 0, "medium": 3, "low": 3}
