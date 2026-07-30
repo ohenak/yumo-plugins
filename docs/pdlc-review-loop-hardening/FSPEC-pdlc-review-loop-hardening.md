@@ -8,13 +8,61 @@ feature: pdlc-review-loop-hardening
 |---|---|
 | Upstream | `REQ-pdlc-review-loop-hardening.md` (v1.5, converged — SE-v5 and TE-v5 dispositioned) → **FSPEC** |
 | Downstream | `TSPEC-pdlc-review-loop-hardening.md`, `PLAN-…`, `PROPERTIES-…` |
-| Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC[-v{N}].md` (none yet at authoring time) |
+| Cross-Reviews | `CROSS-REVIEW-software-engineer-FSPEC-v1.md`, `CROSS-REVIEW-test-engineer-FSPEC-v1.md` (iteration 1, both dispositioned at v1.1) |
 | LEARNINGS | `docs/pdlc-review-loop-hardening/LEARNINGS-pdlc-review-loop-hardening.md` |
 | Citation baseline | **HEAD `0655387`.** Every code citation in this document was re-measured at that sha and names its **enclosing symbol plus a distinctive literal**, per O-16 and the REQ's own `Citation baseline` convention. A bare `file:line` citation is a defect in this document. |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude + operator | 1.0 | 2026-07-29 |
+| pdlc | draft | Claude + operator | 1.1 | 2026-07-29 |
+
+### Changelog
+
+**v1.1 (2026-07-29)** — addresses all findings of `CROSS-REVIEW-software-engineer-FSPEC-v1.md`
+(SE F-01, F-02 High; F-03, F-04, F-05, F-06 Medium; F-07, F-08, F-09 Low) and
+`CROSS-REVIEW-test-engineer-FSPEC-v1.md` (TE F-01, F-02, F-03 High; F-04, F-05, F-06, F-07, F-08,
+F-09 Medium; F-10 Low), and answers SE Q-01…Q-03 and TE Q-01…Q-02 in §20. Substantive changes:
+
+- **Approval search reduced to the single highest round (§5.1, §5.3)** — the v1.0 descending walk is
+  retracted in place. Only the highest round index present is examined; a higher non-approving round
+  now denies an earlier dual approval (TE F-01) and the read fan-out is bounded at two `_readFile`
+  calls per phase entry, with no history-length term (SE F-06). E-65, AT-57.
+- **Gate ordering has one site (§11.5, §12.4)** — §11.5's step 1 was falsified against REQ AC-2.3b
+  and is retracted; §11.5 now defers to §12.4, which stays authoritative (SE F-01).
+- **Tier-1 anchor selection made total (§10.1, §10.5)** — a new unanimity table: an anchor pair that
+  is partial or unequal yields **no** approval and the phase runs. Anchors are never assembled
+  across roles and no role is preferred (SE F-02). §10.5 grows from three to five reachable shapes;
+  E-63, E-64, AT-56; §21.4's DC-01 row extended.
+- **No-overwrite guard scoped to the episode's first dispatch (§4.5)** — the v1.0 guard deadlocked
+  the mandated intra-episode continuation; a two-row table now exempts re-dispatches (TE F-02).
+  AT-58.
+- **Verdict scan scope fixed to the trailing `## Verdict` section (§6.2, §6.3, §16.3)** — resolves
+  the contradiction with §6.2's placement rule and removes the quoted-grammar false positive
+  (TE F-08, E-66, AT-60). A duplicated verdict is now **terminal but not approving**, so a finished
+  cross-review can no longer produce a false halt (TE F-03). AT-59, AT-63.
+- **Episode key gains `mode` as a fifth coordinate (§15.1, §15.4)** — greenfield and revision
+  episodes in one round no longer share counters (TE F-04); membership is fixed at episode entry.
+- **`faultObserved` given a decidable definition (§15.4)** — true iff the wrapper caught a throw,
+  false otherwise, making AT-37 writable (TE F-06). The four `parseRevisionComplete` reasons are
+  echoed verbatim in the run report, giving them a consumer (TE F-07, E-67, E-68, AT-61).
+- **§15.5's "first unwritten section" walk defined per artifact class** — a `{heading text}` mapping
+  table for spec, cross-review, code-review and LEARNINGS (TE F-05). AT-62.
+- **§15.8's commit set bounded** — captured from `_git(["rev-parse","HEAD"])` at episode entry and
+  after the last dispatch; no author filter, no `--since`; the proxy is skipped and reported on
+  failure (SE F-07).
+- **Build and seam facts corrected** — §1.4 retracts the "zero git operations" claim, adds the
+  `_mergeWorktree`-vs-`_git` disposition (SE F-03) and corrects "nine" seams to **sixteen**;
+  §14.2's `DEV_ENTRY` row and §17.3's four `build-runtime.mjs` edits (incl. exporting
+  `rewriteStatus` and adding `_git` to `main()`) make §14.2's `_recordHalt` closure reachable and
+  AT-19 green on a healthy bundle (SE F-04, SE F-05); §3.4 fixes the `ListFailure` catalogue
+  direction; §3.5 retracts the "only deliberate re-listing" claim and AT-06 no longer asserts a
+  second `_listFiles` (SE F-08).
+- **Purity note corrected (§7.2)** — `TextEncoder` is not among §4a A-1's eleven host globals, so
+  UTF-8 encoding is hand-rolled from `codePointAt` (SE F-09).
+- **Coverage gaps closed** — E-60, E-05 (TE F-09) and E-14, E-15 (TE F-10, now defensive and
+  unit-asserted on the append helper) have tests; AT-06, AT-19, AT-37, AT-42, AT-49 rewritten.
+- **New open question Q-09** — SE Q-03 (this document's headings vs §16.2's FSPEC row) is a
+  SKILL-template question, recorded rather than resolved by widening §16.2.
 
 ## 1. Scope, conventions, and citation baseline
 
@@ -2936,7 +2984,7 @@ reinstated.
 | **C-2** (runtime restrictions) | Every new capability reaches the runtime through a DI seam declared in §1.4 and implemented in `runtime-adapter.js`; §7's digest is inlined pure JS with **no** seam and no `crypto`; every injected IO call is specified as `await`ed, and AT-19 asserts it at bundle level |
 | **C-4** (clean-branch behaviour) | E-01 / AT-03 — an absent feature directory is benign, with no warning and no halt |
 | **C-5** (no agent in a decision a script can make) | The script owns every decision: round derivation, grammar parsing, verdict extraction, hash computation and comparison, section counting, first-unwritten-section, force parsing, POSTMORTEM gating, Recommendation extraction. Agents supply only **closed-catalogue tokens** (§6, §8) and byte transport. §6 explicitly declines to reuse `recoverVerdict` on the approval path for this reason. |
-| **DC-01** (closed catalogue, total function) | Every parser in §3, §4, §6, §8, §11.3, §12.3 is specified over its whole input domain with a named failure value |
+| **DC-01** (closed catalogue, total function) | Every parser in §3, §4, §6, §8, §11.3, §12.3 is specified over its whole input domain with a named failure value, and §10.1's tier-1 anchor **selection** is likewise total over the candidate round's two files — including the partial and unequal pairs (E-63, E-64) v1.0 omitted |
 | **DC-02** (measured platform facts) | Every platform claim cites the file and its distinctive literal at HEAD `0655387`; §4a A-1/A-2/A-7/A-8/A-9/A-10/A-11 are the measured basis |
 | **DC-04** (oracle = pure function of injected root) | `listAllFilesSafe(root)` keeps the oracle side root-parameterised and pure |
 | **DC-11** (sibling oracles share one error contract) | §3's single `ListFailure` catalogue, defined once and used by both listing paths |
