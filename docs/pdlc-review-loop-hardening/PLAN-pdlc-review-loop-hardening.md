@@ -605,6 +605,57 @@ rather than asserted.
 
 ## 10. SKILL amendments and how each is verified
 
+Nine prompt files change (TSPEC §7.4). They are **prompt text, not code**, and they cannot be
+unit-tested the way a module can: no test can assert that an Opus agent reading an amended SKILL will in
+fact emit the trailer. What a test *can* assert is that the instruction is present, unambiguous and
+byte-consistent with the grammar the script parses. That is the whole of the verification available, and
+saying so plainly is better than implying a stronger guarantee.
+
+### 10.1 The three verification layers, per amendment
+
+| Amendment | Owner | L1 — the instruction is present | L2 — the script's parser accepts what the SKILL asks for | Runtime — the only true test |
+|---|---|---|---|---|
+| review SKILLs emit `## Verdict` as the file's **last** section in TSPEC §4.4's grammar | RLH-07 | `skillFiles.test.js` asserts each of the three files contains the section template and the words "last section" | `approvalSearch.test.js` parses a fixture **copied from the SKILL's own template** through §5.1's `parseVerdict` path | a real review dispatch writes a parseable verdict |
+| author SKILLs end every response with `REVISION-COMPLETE: yes\|no` as its **last line**, and observe the pacing contract | RLH-08 | `skillFiles.test.js` asserts the literal `REVISION-COMPLETE:` and both permitted values appear in each of the three files, and that the per-section-commit cadence and the `MAX_AUTHORING_WRITE_BYTES` figure are stated | `pacingWrapper.test.js` drives `parseRevisionComplete` over responses shaped exactly as the SKILL instructs, and over each of the four `TRAILER_FAILURES` shapes | a real authoring dispatch reaches terminal in a revision episode |
+| `harvest-learnings` emits `## 6. Approval Record`, copying anchor lines **verbatim and never recomputing** | RLH-09 | `skillFiles.test.js` asserts the heading, the six column names in order, and the explicit "copy, never recompute" instruction | `approvalSearch.test.js`'s tier-2 fixture is the SKILL's own table shape | a real harvest produces a tier-2 record a later run can read |
+| `orchestrate-dev` documents the POSTMORTEM lifecycle and the `RESOLVED:` marker | RLH-09 | `skillFiles.test.js` asserts the marker literal and that it is described as **human-written only** | `haltAndQueue.test.js` drives `parseResolvedMarker` over the documented shapes | — |
+| `orchestrate-queue` documents that a `halted` row is committed | RLH-09 | `skillFiles.test.js` asserts the statement | `orchestrateQueue.test.js` asserts the commit actually happens | — |
+
+`RLH-09` must additionally keep `__tests__/orchestrateDevSkill.test.js` green — that suite already
+asserts properties of `pdlc/skills/orchestrate-dev/SKILL.md` and is not owned by this feature.
+
+### 10.2 The known drift risk, and the mitigation that is already in the plan
+
+TSPEC §10.2 **Q-09** names it and binds it: §5.9's per-class heading lists live **in the workflow
+script**, while the templates authors actually follow live **in the SKILLs**. The two can drift, and the
+failure mode is asymmetric and nasty — a correct document scored incomplete, i.e. **a false halt**.
+
+It is not closed here, deliberately: closing it means editing six SKILLs to declare their own heading
+templates machine-readably, which widens this feature's blast radius from the workflow scripts to the
+prompts driving every phase. It is bound to `docs/_queue/QUEUE.md` **Order 9**
+(`pdlc-authoring-contract`), and **this PLAN does not reopen it** — see §13.
+
+The mitigation that *is* in this plan is mechanical and lives in one task:
+
+> **`RLH-12` takes `completeness.test.js`'s heading fixtures verbatim from the SKILL templates**, which
+> is why it depends on `RLH-08` and `RLH-09` and sits in batch 4 rather than batch 2. A subsequent
+> divergence between a SKILL template and §5.9's list then **reds the suite rather than a run.**
+
+Two things follow that a task must not do:
+- do not paraphrase a heading when copying it into a fixture. A paraphrase silently re-couples the
+  fixture to the script instead of to the SKILL, and the mitigation evaporates.
+- do not "fix" a red `completeness.test.js` by editing the fixture to match the script. If they diverge,
+  that is the drift the test exists to announce — §11's halt conditions apply.
+
+### 10.3 The one thing prompts cannot be held to
+
+`MAX_AUTHORING_WRITE_BYTES` has **no oracle** (TSPEC §4.8, T-Q-03): nothing in the runtime measures the
+bytes an agent emits per tool call. It is stated in the prompt and enforced only by agent compliance,
+corroborated by §6.6's **advisory-only** commit-diff proxy, which `RLH-30` reports and which never
+halts. No task in this PLAN attempts to enforce it, and none should — the only stronger control
+available under C-2 is to halt the pipeline on an oversized commit, which converts a stylistic violation
+into an outage and would fire on a legitimately large section.
+
 ## 11. Halt conditions
 
 ## 12. Verification
