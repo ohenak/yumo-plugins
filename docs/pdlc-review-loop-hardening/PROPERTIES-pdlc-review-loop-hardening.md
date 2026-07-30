@@ -1597,10 +1597,10 @@ are that row's, unchanged.
 | `PROP-ROUND-01` | L1 | `roundDerivation.test.js` | `RLH-AT-01`…`-06`, `-63` | RLH-11 (2) | round-derivation row | batch 3 | batch 2 |
 | `PROP-FORCE-01` | L1 | `forcePhases.test.js` | `RLH-AT-29` (and `-28`, `-01a`) | RLH-14 (2) | force-phases row | batch 3 | batch 2 |
 | `PROP-COMPLETE-01` | L1 | `completeness.test.js` | `RLH-AT-60`, `-62` | RLH-12 (4) | `isComplete` row | batch 6 | batches 4–5 |
-| `PROP-TRAILER-01` | L1 | `pacingWrapper.test.js` | `RLH-AT-61-loop` | RLH-21 (3) | pacing row | batch 7 | batches 3–6 |
-| `PROP-RESOLVE-01` | L1 | `approvalSearch.test.js` | `RLH-AT-08`…`-11`, `-56`, `-57` | RLH-24 (3) | approval-search row | batch 8 | batches 3–7 |
+| `PROP-TRAILER-01` | L1 | `pacingWrapper.test.js` | `RLH-AT-61-loop` | RLH-21 (3) | **own row** — greened by RLH-05(f), not by the pacing work it shares a file with (§4.2) | batch 3 | **none** |
 | `PROP-LIST-01a` | L2 | `haltAndQueue.test.js` | `RLH-AT-21`…`-27` | RLH-25 (3) | halt-and-queue row | batch 9 | batches 3–8 |
 | `PROP-LIST-01b` | L2 | `pacingWrapper.test.js` | `RLH-AT-43a` | RLH-21 (3) | pacing row | batch 7 | batches 3–6 |
+| `PROP-RESOLVE-01` | **L2** | `approvalSearch.test.js` | `RLH-AT-08`…`-11`, `-56`, `-57` | RLH-24 (3) | approval-search row | batch 8 | batches 3–7 |
 | `PROP-APPROVE-01` | L2 | `approvalSearch.test.js` | `RLH-AT-08`…`-11`, `-56`, `-57` | RLH-24 (3) | approval-search row | batch 8 | batches 3–7 |
 | `PROP-GINV-01` | L2 | `haltAndQueue.test.js` | `RLH-AT-13a` | RLH-25 (3) | halt-and-queue row | batch 9 | batches 3–8 |
 | `PROP-EPISODE-01` | L2 | `pacingWrapper.test.js` | `RLH-AT-35`…`-54`, `-58` | RLH-21 (3) | pacing row | batch 7 | batches 3–6 |
@@ -1617,25 +1617,25 @@ owner each, per §1.3 and PLAN §7.4's `-module`/`-orch` precedent).
 | `PROP-DIGEST-01` | four canonicalisation outcomes | the **normal form** over arbitrary byte soup, incl. mid-line `\r` |
 | `PROP-DIGEST-02` | four known-answer digests | totality of the 64-hex shape, and that canonicalisation is *inside* the digest |
 | `PROP-HASH-01` | one quoted-trailer fixture | that **no** input yields a non-64-hex "hash" |
-| `PROP-STALE-01` | three named edits | the whole edit space: every mutation is stale unless it is a normalisation |
+| `PROP-STALE-01` | three named edits | the whole edit space — every mutation is `"STALE"` unless it is a normalisation — **plus** the `"UNEVALUABLE"` guard as an `iff`, which no AT states |
 | `PROP-SCAN-01` | two near-misses, three fixtures | *compositions* of near-misses, and conservation of line count |
 | `PROP-NAME-01` | six named filenames | the **rejection** half — a negative over the complement of the catalogue |
-| `PROP-ROUND-01` | six branch states | the width identity as a relationship, over every branch state incl. empty |
+| `PROP-ROUND-01` | six branch states | the three-way partition over every branch state incl. empty, derivation from the highest observed round, and width **invariance** (the width *identity* is `PROP-WINDOW-01`'s — §4.1) |
 | `PROP-FORCE-01` | three inputs | catalogue closure, and that `all` expands to exactly six |
-| `PROP-COMPLETE-01` | three present-sets | the `iff`, plus detection of `R` itself shrinking |
+| `PROP-COMPLETE-01` | three document texts | the `iff` over heading text, `missing` as an exact set, the `TBD`-vs-fenced-`TBD` body boundary, and detection of `R` itself shrinking |
 | `PROP-TRAILER-01` | four trailer shapes | **mutual exclusion** across recognisers — a cross-recogniser claim no AT makes |
 | `PROP-RESOLVE-01` | three presence vectors | all sixteen, exhaustively, plus order-independence |
 | `PROP-LIST-01a` | four dispositions at one phase | the phase × failure **product** — the H-2 shape |
 | `PROP-LIST-01b` | one two-episode refresh | arbitrary interleavings, incl. phase changes mid-sequence |
 | `PROP-APPROVE-01` | approvals that are found | approvals that must **not** be found: out-of-window, stale, half-unanimous |
-| `PROP-GINV-01` | four enumerated exits | **reachability over paths** — the framing under which H-2 was visible and enumeration was not |
+| `PROP-GINV-01` | four enumerated exits | **reachability over paths** across TSPEC §2.5's **five** gated exits plus the `FRESH` non-path — the framing under which H-2 was visible and enumeration was not |
 | `PROP-EPISODE-01` | three interleavings | the bound over all interleavings, and per-coordinate `EpisodeKey` independence |
 | `PROP-WINDOW-01` | one threading assertion + a grep oracle | that the window is computed **once** and read identically by every consumer |
-| `PROP-AWAIT-01` | two zero-match regexes + a site list | the classification as a **total partition** over the site set the walk computes |
+| `PROP-AWAIT-01` | two zero-match regexes + a site list | the classification as a **total partition of the scan set `S`**, i.e. a **cover** of the obligation — `S` itself is narrower than "every seam call", per §8.5's exemption (§8.4) |
 
 ### 7.3 Distribution against the test pyramid
 
-Eleven L1, six L2, one L3 — measured against §7.1's `Level` column. That shape follows TSPEC §8.3's
+Ten L1, seven L2, one L3 — measured against §7.1's `Level` column. *v1.0 counted eleven and six; `PROP-RESOLVE-01` moved to L2 (§4.2, PM F-04).* That shape follows TSPEC §8.3's
 own levelling rather than a target: the pure parsers and the digest path are where generated input
 buys the most, the orchestration invariants need the seam doubles and so cost more per case, and
 exactly one invariant (`PROP-AWAIT-01`) is about the source text rather than about behaviour.
