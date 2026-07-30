@@ -1332,4 +1332,55 @@ describe("RLH-AT-53 — no git operation discards uncommitted artifact content (
 
 // ─── 11. RLH-AT-54 — constant substitution and the round window ───────────────
 
+describe("RLH-AT-54 — constant substitution respects the budget semantics (FSPEC §19 AT-54, AC-5.1, E-06)", () => {
+  test("RLH-AT-54: on a branch whose highest FSPEC round is 3 the gate admits rounds 4 through 8, the exhaustion message names the window 'rounds 4..8', and no message claims 'after 5 iterations' against an absolute index", async () => {
+    const HIGHEST_EXISTING = 3;
+    const FIRST = HIGHEST_EXISTING + 1; // 4
+    const LAST = HIGHEST_EXISTING + MAX_REVIEW_ROUNDS; // 8
+
+    // Rounds 1–3 of the FSPEC already sit on the branch, non-approving. Nothing
+    // else does, so Phase R starts at round 1 and is undisturbed.
+    const seeded = {};
+    for (let round = 1; round <= HIGHEST_EXISTING; round += 1) {
+      for (const role of ["software-engineer", "test-engineer"]) {
+        seeded[`${DOCS_DIR}/CROSS-REVIEW-${role}-FSPEC-v${round}.md`] =
+          crossReviewDoc({ verdict: "Needs revision", high: 1 });
+      }
+    }
+
+    const run = await runPipeline({
+      files: { ...seeded, [FSPEC_PATH]: completeDoc("FSPEC") },
+      // Phase R approves immediately; Phase F never does, so the whole admitted
+      // window is consumed and the exhaustion message must describe it.
+      review: (ctx) =>
+        ctx.docType === "FSPEC"
+          ? { write: crossReviewDoc({ verdict: "Needs revision", high: 1 }),
+              response: reviewResponse("Needs revision", 1) }
+          : { write: crossReviewDoc({ verdict: "Approved" }), response: reviewResponse("Approved") },
+      // Each revision genuinely edits, so no authoring budget can end the phase
+      // first — only the review-round window can.
+      author: (ctx) =>
+        ctx.phase === "F"
+          ? { write: `${completeDoc("FSPEC")}\n<!-- pass ${ctx.round ?? 0}.${ctx.n} -->\n`,
+              response: authorResponse("yes") }
+          : {},
+    });
+
+    // (i) The gate admitted exactly rounds 4..8 — a RELATIVE window of
+    // `MAX_REVIEW_ROUNDS` rounds starting after the highest existing one.
+    const fspecRounds = [
+      ...new Set(select(run, { skill: "se-review", docType: "FSPEC" }).map((d) => d.round)),
+    ].sort((a, b) => a - b);
+    expect(fspecRounds).toEqual([FIRST, FIRST + 1, FIRST + 2, FIRST + 3, LAST]);
+
+    // (ii) …and the round-3 files that were already there were not re-reviewed.
+    expect(fspecRounds.some((r) => r <= HIGHEST_EXISTING)).toBe(false);
+
+    // (iii) The exhaustion message names the window, not an absolute count.
+    expect(run.result.outcome).toBe("halted");
+    expect(run.reportText).toMatch(new RegExp(`rounds ${FIRST}\\.\\.${LAST}`));
+    expect(run.reportText).not.toMatch(new RegExp(`after ${MAX_REVIEW_ROUNDS} iterations`));
+  });
+});
+
 // ─── 12. RLH-AT-61-loop, RLH-AT-61-report — the four trailer reasons ──────────
