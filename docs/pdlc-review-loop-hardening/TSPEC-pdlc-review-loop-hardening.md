@@ -1286,6 +1286,85 @@ Two signals in this design are reported and never halt:
 
 ## 7. Build and Distribution
 
+### 7.1 The `MAX_REVIEW_ROUNDS` edits (AC-5.1)
+
+The iteration cap is the bare literal `5` at five sites in `orchestrate-dev.js`. Anchors are
+**enclosing symbol + distinctive literal**; no `file:line` appears here because line numbers drift.
+
+| # | Enclosing symbol | Distinctive literal | Edit |
+|---|---|---|---|
+| 1 | `checkConverged` | `recordPhase(phaseId, phaseLabel, "❌", ` + `` `Non-convergence after 5 iterations${reviewerDetail}` `` + `, 5)` | message names `rounds ${startIndex}..${endIndex}`; the trailing count argument becomes `MAX_REVIEW_ROUNDS` |
+| 2 | `checkConverged` | `` throw haltError(`Phase ${phaseId} did not converge after 5 iterations${reviewerDetail}. POSTMORTEM written.`) `` | `after ${MAX_REVIEW_ROUNDS} rounds`, and the unconditional `POSTMORTEM written.` becomes §6.4's two conditional shapes |
+| 3 | `reviewLoop` | `if (iteration > 5)` | `if (iteration > endIndex)`, `endIndex = startIndex + MAX_REVIEW_ROUNDS - 1` |
+| 4 | `reviewLoop` | `Include the required sections: Phase, Iterations (5 — limit reached), …` | `Iterations (${MAX_REVIEW_ROUNDS} — limit reached)` |
+| 5 | `reviewLoop` | `return { converged: false, iterations: 5, lastResults };` | `iterations: MAX_REVIEW_ROUNDS`, and the shape gains `postmortemWritten` |
+
+Sites 1 and 3 derive from the constant **and** `startIndex`; only sites 4 and 5, which report a
+*count* rather than an *index*, use the constant alone. §5.2 states why.
+
+### 7.2 The four `build-runtime.mjs` edits (§17.3)
+
+Three of these were omitted from FSPEC v1.0 and added at v1.1 (SE-v1 F-04) precisely because
+`_recordHalt`'s closure over the queue's row helpers is **unreachable** without them.
+
+| # | Anchor | Edit | Why |
+|---|---|---|---|
+| 1 | `DEV_ENTRY`'s existing `args && typeof args === "object" && args.reqPath` test | also read `args.forcePhases`, and pass it: `__dev.main({ reqPath: __reqPath, forcePhases: __forcePhases, ...rtDevInjections(__dev) })` | the operator override has no other channel into the bundle |
+| 2 | `QUEUE_ENTRY`'s existing `_writeFile: rtWriteFile,` line | add `_git`, `_listFiles`, `_appendFile` | the queue bundle needs `_git` for §6.5's commit |
+| 3 | `wrapModule("__queue", …, ["main", "meta", "DEFAULT_QUEUE_PATH"])` | extend `exportedNames` with `rewriteStatus` and `updateQueueStatus` | neither is on `__queue` today; without them `DEV_ENTRY`'s `_recordHalt` closure has nothing to call |
+| 4 | `contents: [DEV_META, BANNER, adapter, devModule, DEV_ENTRY]` | insert `queueModule` | the **dev** bundle does not inline the queue module at all today; adding it (with its `wrapModule` prelude `const realMain = __dev.main;`) is what makes "the dev bundle can reach the queue's row helpers" true rather than assumed |
+
+`stripModuleSyntax` is **unmodified**. Its
+`.replace(/^export (const|let|var|function|async function|class) /gm, "$1 ")` is what silently inlines
+§5.3's digest without an `import`, and its `import`-line filter is what keeps the bundle C-2-legal.
+The new pure functions of §3.7 need nothing from it beyond what it already does.
+
+**Ordering hazard.** Edit 4 makes `queueModule` appear in the dev bundle, and `queueModule`'s prelude
+references `__dev.main`. `devModule` must therefore still precede `queueModule` in the `contents`
+array — which the insertion point above preserves. Reversing them produces a bundle that throws at
+load.
+
+### 7.3 Generated artifacts
+
+`pdlc/workflows/dist/` is generated. Every commit that touches any of the five sources in §1.3
+**also** runs:
+
+```bash
+node pdlc/workflows/build-runtime.mjs
+```
+
+and commits the resulting `orchestrate-dev.bundle.js`, `orchestrate-queue.bundle.js` and
+`distribution-manifest.json`. `build-runtime.mjs --check` exits non-zero when an artifact is stale;
+`__tests__/runtimeBundle.test.js` asserts freshness plus the structural constraints; and
+`pdlc/hooks/scripts/sync-workflows.sh --check` covers the untracked consumer copy under
+`.claude/workflows/`. None of the three is authored by this feature — they already exist and already
+guard this — but a change that lands source without a rebuild reds the suite, which is the intended
+outcome.
+
+The consumer copy is never committed and never hand-edited (`DEC-DIST-02`).
+
+### 7.4 SKILL prompt amendments
+
+Prompt text, not code, but load-bearing: the persisted records of §4.4 exist only if the agents write
+them.
+
+| File | Amendment | Source |
+|---|---|---|
+| `pdlc/skills/se-review/SKILL.md`, `pm-review`, `te-review` | write the `## Verdict` section as the file's **last** section, in §4.4's exact grammar | FSPEC §6.5 |
+| `pdlc/skills/se-author/SKILL.md`, `pm-author`, `te-author` | end every response with `REVISION-COMPLETE: yes\|no` as its **last line**; observe the pacing contract | FSPEC §8.4 |
+| `pdlc/skills/harvest-learnings/SKILL.md` | emit `## 6. Approval Record` per §4.4, copying the anchor lines **verbatim** and never recomputing | FSPEC §9.4 |
+| `pdlc/skills/orchestrate-dev/SKILL.md` | document the POSTMORTEM lifecycle and the `RESOLVED:` marker | AC-5.3 |
+| `pdlc/skills/orchestrate-queue/SKILL.md` | document that a `halted` row is committed | AC-5.4 |
+
+`pdlc/workflows/__tests__/skillFiles.test.js` already asserts properties of SKILL files and is the
+natural home for assertions that these amendments are present.
+
+### 7.5 The version bump
+
+`pdlc/.claude-plugin/plugin.json`'s `version` is bumped in the same change. The distribution manifest
+records the plugin version the bytes were built at, so a bundle rebuild without a version bump
+produces a manifest that under-reports what changed.
+
 ## 8. Test Strategy
 
 ## 9. Traceability
