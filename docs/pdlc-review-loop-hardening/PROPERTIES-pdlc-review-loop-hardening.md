@@ -175,12 +175,24 @@ shares a file with; §4.2 states the gate loss the pacing row would otherwise li
 place the mechanical derivation produces a window §7.3 does not already carry, and saying so is
 cheaper than letting a co-location argument quietly widen a gate.
 
-**One narrowed window is not a new ledger row.** §7's matrix records the row each property rides, and
-adding the property's name to that row's `Assertion(s)` cell is the whole of the mechanical PLAN edit.
-`PROP-TRAILER-01` needs one further mechanical thing — its assertions gate-separably from the pacing
-assertions in the same file — which §7.3's per-assertion structure already expresses. **The approved
-PLAN stays closed:** a property that would need a genuinely new row is a defect in the property, and
-none here does.
+**For the nine that ride a row, adding the property's name to that row's `Assertion(s)` cell is the
+whole of the mechanical PLAN edit.** §7's matrix records the row each of the nine rides.
+
+**`PROP-TRAILER-01` needs a genuinely new §7.3 row, and this is it** (SE F-20 / PM F-04; v1.1's
+closing sentence — *"a property that would need a genuinely new row is a defect in the property, and
+none here does"* — is **withdrawn**, because §7.1's own `Row` cell for this property reads *own row*
+and no existing §7.3 row carries the pair *green batch 3 / permitted red none* in
+`pacingWrapper.test.js`):
+
+| Assertion(s) | File | Written by (batch) | Green from | Permitted red |
+|---|---|---|---|---|
+| `PROP-TRAILER-01` | `__tests__/pacingWrapper.test.js` | RLH-21 (batch 3) | **batch 3** | **none** |
+
+Adopting that row is a mechanical PLAN edit owned by **RLH-21**, the property's writing task; §7.3's
+per-assertion structure already expresses the one thing it needs — that these assertions gate
+separably from the pacing assertions in the same file. What stays closed is the PLAN's *content*: no
+property here needs a window §7.3's own derivation rule would not produce, and the rule was applied,
+not bent.
 
 Where a property lands in a file with a **sole** owning task (PLAN §5.3's single-writer rule), that
 task is the owner. Where an invariant genuinely spans two files, it is split into two named halves
