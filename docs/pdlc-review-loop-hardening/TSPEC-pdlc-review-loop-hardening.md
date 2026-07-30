@@ -924,7 +924,9 @@ union out, never a throw.
 **`deriveRoundWindow(basenames, docType)`:**
 
 ```
-1.  entries ← basenames.map(parseReviewFilename).filter(r => r.ok && r.docType === docType)
+1.  parsed  ← basenames.map(b => ({ basename: b, result: parseReviewFilename(b) }))
+    entries ← parsed where result.ok && result.docType === docType
+    skipped ← parsed where !result.ok, as { basename, reason: result.reason }
 2.  present ← Map<role, number[]>            // per-role round indices, deduplicated
 3.  indices ← every round index in `present`
 4.  startIndex ← indices.length ? Math.max(...indices) + 1 : 1
@@ -932,7 +934,18 @@ union out, never a throw.
     explicit `-v1` for the same doc type has two files claiming round 1
         ⇒ { ok: false, reason: "malformed_round_one_duplicate", role }   ⇒ halt
 6.  endIndex ← startIndex + MAX_REVIEW_ROUNDS - 1
+7.  → { ok: true, startIndex, endIndex, present, skipped }
 ```
+
+**Step 1 keeps the rejects, and step 7 carries them out.** E-03 and E-07 both specify a non-conforming
+basename as "skipped **and reported**", and AT-05 asserts the phase-entry line contains the literal
+`skipped non-conforming: CROSS-REVIEW-se-FSPEC-v2.md`. Discarding the rejects inside the filter would
+leave the caller no way to emit that text except by re-running `parseReviewFilename` over the listing
+itself — a parse in the orchestration stratum, which §2.4 forbids. `skipped` is ordered by the
+listing's own order, deduplicated by basename, and empty (not absent) when every basename conformed;
+a caller emits the notice iff it is non-empty. Only basenames that fail the *grammar* appear —
+a well-formed cross-review for a **different** doc type is not a reject, it is simply not this
+document's, and reporting it would fire on every phase entry in a normal `docs/{feature}/`.
 
 Step 4 is the H-1 fix in one line. Today `reviewLoop`'s `iteration = 1` default is never overridden
 by any of its seven call sites, so round 2 writes `-v1` again and destroys round 1. After this
@@ -995,9 +1008,27 @@ The append is the **script's own** write, strictly after t4, so it is not a memb
 measurement and cannot disturb the terminal decision that preceded it. The wrapper is not re-entered
 afterwards.
 
-**Idempotence pre-count.** Before appending, `scanLines` the file and count `APPROVAL-HASH:` lines
-outside fences; a non-zero count means this round was already anchored, and the append is skipped
-rather than duplicated. After appending, a verification read must find **exactly one**.
+**Idempotence pre-count — a count *and* a comparison.** Before appending, `scanLines` the file and
+collect the `APPROVAL-HASH:` lines outside fences. The count alone is not the decision: E-14 and E-15
+share the value "one" and have opposite outcomes, so the existing value is compared against the hash
+just computed.
+
+| Pre-count | Existing value vs. computed hash | Branch | Edge |
+|---|---|---|---|
+| 0 | — | append the two lines; verification read must then find **exactly one** | normal path |
+| 1 | **equal** | **idempotent no-op.** No append, no error; the round keeps its approval — this is a re-entry over an already-anchored round | E-14 |
+| 1 | **unequal** | **error surfaced** naming the file, both hashes and the round; **no append**, and **that round yields no approval** | E-15 |
+| ≥ 2 | — | **error surfaced** naming the file and the count; **no append**, and **that round yields no approval**. Two anchors mean the file's history is ambiguous, and picking either is a coin flip on whether a phase is skipped | E-15 |
+
+The unequal and ≥2 branches take §5.3's failed-append disposition (§6.2 row 8): operator-facing error,
+no approval from that round, the run continues, and §5.5's `UNEVALUABLE` correctly re-runs the phase
+on re-entry. They deliberately do **not** overwrite, delete or reconcile the existing anchors —
+AC-1.4 forbids rewriting a cross-review file, and a "repair" here would launder exactly the ambiguity
+that should be visible.
+
+Collapsing all three non-zero cases into "already anchored, skip the append" — which a count-only
+pre-count does — silently accepts an unequal or duplicated anchor as a valid approval, and §6.2 row
+8's verification read never fires because it runs only after an append this branch skipped.
 
 **Failed append is an error, not a silent degradation, and not a halt.** If `_appendFile` rejects, or
 the verification read does not find exactly one `APPROVAL-HASH:` line, the script emits an
@@ -1352,11 +1383,11 @@ failure to answer.
 | 1 | `_listFiles` → `dir_missing` | seam return | empty listing; `startIndex = 1`; phase runs |
 | 2 | `_listFiles` → `not_a_directory` / `unreadable` / `bad_argument` | seam return | **halt**, `Cannot enumerate {dirPath}: {reason}` |
 | 3 | two files claim round 1 for one role | `deriveRoundWindow` step 5 | **halt**, naming the role and both filenames |
-| 4 | filename does not match the grammar | `parseReviewFilename` | ignored for round derivation; not an error — the directory legitimately holds REQ, FSPEC, POSTMORTEM, LEARNINGS |
+| 4 | filename does not match the grammar | `parseReviewFilename` | ignored for round derivation; not an error — the directory legitimately holds REQ, FSPEC, POSTMORTEM, LEARNINGS. Carried out on `deriveRoundWindow`'s `skipped` array (§5.2 step 7) and named in the phase-entry line as `skipped non-conforming: {basenames}` (E-03, E-07, AT-05) |
 | 5 | no `## Verdict` section, or a duplicate `VERDICT:` line | §5.1 | not approving; phase runs |
 | 6 | `APPROVAL-HASH:` absent / duplicated / unparseable | `parseApprovalHash` | `UNEVALUABLE`; phase runs; noted in the report |
 | 7 | reviewed document unreadable at comparison time | `_readFile` → `null` | `UNEVALUABLE`; phase runs |
-| 8 | `_appendFile` rejects, or the verification read finds ≠ 1 anchor | §5.3 | operator-facing error; **round yields no approval**; run continues |
+| 8 | `_appendFile` rejects, or the verification read finds ≠ 1 anchor, or the pre-count finds one **unequal** anchor (E-15) or ≥ 2 anchors (E-15) | §5.3 | operator-facing error; **round yields no approval**; run continues. The pre-count's one-**equal**-anchor case (E-14) is **not** here — it is an idempotent no-op, not a failure |
 | 9 | `REVISION-COMPLETE:` absent / duplicated / unparseable, **on a revision episode** | `parseRevisionComplete` | episode not terminal; continue; counts toward the counters |
 | 9a | no `REVISION-COMPLETE:` on a **greenfield** episode | — | **not a failure and not detected.** `parseRevisionComplete` is not called; terminal is structural completeness alone (§5.6.2). This row exists so the absence is a recorded non-event rather than a gap |
 | 10 | `MAX_AUTHORING_ATTEMPTS` consecutive no-progress dispatches | `dispatchAndVerify` | halt the phase, `reason: "no_progress"`; **no POSTMORTEM** |
