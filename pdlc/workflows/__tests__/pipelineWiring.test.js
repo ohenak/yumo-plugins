@@ -467,8 +467,12 @@ describe("RLH-WIRE-01: main() composition root carries the new parameters", () =
     const addedSeams = names.filter((n) => NEW_SEAMS.includes(n));
     expect(addedSeams).toHaveLength(5);
 
-    // meta gains a second inputs entry beside reqPath (TSPEC §3.1). DEV_META in
-    // build-runtime.mjs is deliberately NOT edited (TSPEC §3.1, Q-07).
+    // meta gains a second inputs entry beside reqPath (TSPEC §3.1). Note this is
+    // NOT the operator-facing surface: in the built bundle this `meta` sits inside
+    // the `__dev` IIFE, where nothing reads it. The `inputs` the runtime actually
+    // offers are declared by `DEV_META` in build-runtime.mjs, which CR F-1 edited
+    // for exactly that reason. The two copies are hand-maintained; RLH-CR-F7 below
+    // asserts they agree.
     const inputNames = meta.inputs.map((input) => input.name);
     expect(inputNames).toContain("reqPath");
     expect(inputNames).toContain("forcePhases");
@@ -476,5 +480,65 @@ describe("RLH-WIRE-01: main() composition root carries the new parameters", () =
     const forceInput = meta.inputs.find((i) => i.name === "forcePhases");
     expect(forceInput.type).toBe("string");
     expect(forceInput.required).toBe(false);
+  });
+});
+
+// ─── RLH-CR-F7: the two hand-maintained `meta.inputs` copies agree ────────────
+// Phase CR finding F-7. TSPEC Q-07 declined to declare `forcePhases` in
+// `DEV_META` precisely because "adding one creates a second declaration to keep
+// in sync". CR F-1 reversed that decision — correctly, since Q-07's premise was
+// false: the module's own `meta.inputs` is dead in the built artifact (it stays
+// inside the `__dev` IIFE, read by nothing), so it is not the operator-facing
+// surface and `DEV_META` had to declare the channel itself.
+//
+// The reversal is right and the duplication is therefore real. Q-07's stated
+// cost is what this suite pays down: nothing previously compared the two copies
+// (RLH-CR-F1 reads only DEV_META; RLH-WIRE-01 reads only the module's `meta`),
+// so they could diverge silently. Here they are compared directly, from source
+// text on both sides, so an edit to either copy alone reds.
+//
+// The TSPEC is an approved artifact and is not amended here; the Q-07 reversal
+// is carried to LEARNINGS §3 at harvest.
+
+/** The `DEV_META` template literal in build-runtime.mjs, evaluated. */
+function devMeta() {
+  const src = readFileSync(resolve(__dirname, "../build-runtime.mjs"), "utf8");
+  const anchor = "const DEV_META = `";
+  const start = src.indexOf(anchor);
+  if (start < 0) throw new Error("DEV_META anchor not found in build-runtime.mjs");
+  if (src.indexOf(anchor, start + 1) >= 0) {
+    throw new Error("DEV_META anchor occurs more than once");
+  }
+
+  const bodyStart = start + anchor.length;
+  // The literal carries no backticks by construction (a backtick would terminate
+  // it and break the build), so the first one after the anchor closes it.
+  const end = src.indexOf("`", bodyStart);
+  if (end < 0) throw new Error("DEV_META literal is unterminated");
+
+  const literal = src.slice(bodyStart, end).replace("export const meta = ", "");
+  // eslint-disable-next-line no-new-func
+  return Function(`"use strict"; return (${literal.replace(/;\s*$/, "")});`)();
+}
+
+describe("RLH-CR-F7: DEV_META and the module's meta declare the same inputs", () => {
+  it("RLH-CR-F7: the two meta.inputs copies are deep-equal", () => {
+    const shipped = devMeta();
+    expect(Array.isArray(shipped.inputs)).toBe(true);
+    expect(shipped.inputs.length).toBeGreaterThan(0);
+
+    // Order included: the runtime presents inputs in declaration order, so a
+    // reorder in one copy alone is a divergence worth reding on.
+    expect(shipped.inputs).toEqual(meta.inputs);
+  });
+
+  it("RLH-CR-F7: both copies name the same inputs with the same required-ness", () => {
+    const byName = (m) =>
+      Object.fromEntries(m.inputs.map((i) => [i.name, { type: i.type, required: i.required }]));
+
+    expect(byName(devMeta())).toEqual(byName(meta));
+    // Anchored so a copy that loses `forcePhases` entirely — the pre-F-1 state —
+    // cannot satisfy this suite by both copies being equally wrong.
+    expect(meta.inputs.map((i) => i.name).sort()).toEqual(["forcePhases", "reqPath"]);
   });
 });
