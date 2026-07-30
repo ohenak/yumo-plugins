@@ -11,14 +11,27 @@ depends-on: []
 | Upstream | `docs/pdlc-workflow-distribution/POSTMORTEM-R-pdlc-workflow-distribution.md` (v2.1) findings R-3, R-4; operator observation of the 2026-07-28 Phase F run |
 | Downstream | `FSPEC-pdlc-review-loop-hardening.md`; de-risks every remaining `docs/_queue/QUEUE.md` row (this row is `Order 0`, called row 8 before 2026-07-29) |
 | Queue row | 0 (`in-progress`; was row 8 / `blocked` until the 2026-07-29 reprioritisation — `docs/_queue/QUEUE.md` row `pdlc-review-loop-hardening`) |
-| Targets | `pdlc/workflows/orchestrate-dev.js`, `pdlc/workflows/orchestrate-queue.js`, `pdlc/skills/orchestrate-dev/SKILL.md`, `pdlc/skills/orchestrate-queue/SKILL.md`, the three author SKILLs (`pm-author`, `se-author`, `te-author`) **including their Git Workflow sections**, and the three review SKILLs (`pm-review`, `se-review`, `te-review`) — the latter for the persisted-verdict field required by AC-4.2; generated artifacts under `pdlc/workflows/dist/` rebuilt in the same commit |
-| Cross-Reviews | `CROSS-REVIEW-software-engineer-REQ-v1.md`, `CROSS-REVIEW-test-engineer-REQ-v1.md` (both dispositioned in v1.1 — see §9 Traceability) |
+| Targets | `pdlc/workflows/orchestrate-dev.js`, `pdlc/workflows/orchestrate-queue.js`, `pdlc/skills/orchestrate-dev/SKILL.md`, `pdlc/skills/orchestrate-queue/SKILL.md`, the three author SKILLs (`pm-author`, `se-author`, `te-author`) **including their Git Workflow sections**, the three review SKILLs (`pm-review`, `se-review`, `te-review`) — the latter for the persisted-verdict field required by AC-4.2 — and `pdlc/skills/harvest-learnings/SKILL.md`, for the harvest-surviving approval record required by AC-4.2b *(v1.2, SE-v2 F-01)*; generated artifacts under `pdlc/workflows/dist/` rebuilt in the same commit |
+| Cross-Reviews | `CROSS-REVIEW-software-engineer-REQ-v{1,2}.md`, `CROSS-REVIEW-test-engineer-REQ-v{1,2}.md` (all dispositioned — v1 in v1.1, v2 in v1.2; see §9 Traceability) |
 | LEARNINGS | `docs/pdlc-review-loop-hardening/LEARNINGS-pdlc-review-loop-hardening.md` |
-| Citation baseline | All `file:line` references in this document were taken at HEAD **`9220a20`** and re-verified at v1.1. Every citation also names the enclosing symbol and a distinctive literal, so a line drift does not invalidate it (per CROSS-REVIEW-software-engineer-REQ-v1 F-05). |
+| Citation baseline | All `file:line` references in this document were taken at HEAD **`9220a20`** and re-verified at v1.1 and v1.2. In §H-1–§H-4, §4a and AC-5 — the sections a maintainer edits from — every citation also names the enclosing symbol and a distinctive literal, so a line drift does not invalidate it (per CROSS-REVIEW-software-engineer-REQ-v1 F-05). Elsewhere, short in-line references may give `file:line` alone; they were verified at the same HEAD but are not drift-proof. *(v1.2, SE-v2 F-05 — the earlier blanket "every citation" claim was not met by the document that made it; O-16's stricter bar continues to bind the FSPEC.)* |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude + operator | 1.1 | 2026-07-29 |
+| pdlc | draft | Claude + operator | 1.2 | 2026-07-29 |
+
+**v1.2 (2026-07-29)** — addresses all High/Medium findings of
+`CROSS-REVIEW-software-engineer-REQ-v2.md` (F-01 High; F-02, F-03 Medium; F-04–F-06 Low) and
+`CROSS-REVIEW-test-engineer-REQ-v2.md` (F-01–F-03 Medium; F-04, F-05 Low), and answers SE-v2
+Q-01…Q-03 and TE-v2 Q-01…Q-02 in the document. Substantive changes: **AC-4.2b** adds a
+harvest-surviving carrier of approval (Phase H deletes every `CROSS-REVIEW-*`, so AC-4's evidence
+source did not survive its own pipeline — SE-v2 F-01), with `harvest-learnings` added to `Targets`,
+the AC-2.3b worked example corrected, and R-6/R-8 updated; AC-3.1's bound restated over **bytes
+emitted per call** with the required tool-call shape named and the `≈150 lines` co-bound deleted;
+AC-3.5's progress predicate restated as a **strict increase in AC-3.4-satisfying sections**, with an
+explicit counting rule and a new total-dispatch bound (`MAX_AUTHORING_DISPATCHES`); new **AC-3.5e**
+for a dispatch that does not return normally; AC-3.1's derivation arithmetic corrected against
+re-measured HEAD values; AC-4.6 sequenced against AC-2.3; AC-3.2a's rebase cost stated honestly.
 
 **v1.1 (2026-07-29)** — addresses all High/Medium findings of
 `CROSS-REVIEW-software-engineer-REQ-v1.md` (F-01…F-07, plus F-08/F-09) and
@@ -142,7 +155,9 @@ the authoring side.
 The author SKILLs today instruct a single terminal write — *"After completing: write all artifacts
 to disk, stage, commit"* (`pdlc/skills/pm-author/SKILL.md:29`), and the numbered procedures end at
 *"Commit and push"* (`:88`, `:109`, `:121`). A PDLC spec document is routinely 700–1000 lines
-(`REQ-pdlc-workflow-distribution.md` is 970 lines / 84,671 bytes), and generating that as one tool
+(`REQ-pdlc-workflow-distribution.md` is 1,017 lines / 89,069 bytes at HEAD `9220a20`, `wc -lc`; it
+was ~970 lines / ~84,671 bytes at the moment of the failing write — *v1.2, SE-v2 F-04 / TE-v2 F-04:
+the earlier figure was the write-time size mislabelled as the baseline size*), and generating that as one tool
 call exceeds the window with no intervening progress event. The failure is **deterministic**, so
 the six retries are not merely wasted — they are structurally incapable of succeeding, and the
 run's entire budget is spent discovering that.
@@ -206,6 +221,14 @@ inherits all four defects. This row was set `pending` and moved to `Order 0` on 
   a silent overwrite and not a silent skip. The corresponding agent instruction is retained as
   belt-and-braces only; prompt text alone does **not** satisfy this AC, because that is exactly
   H-1's root cause one level down.
+  - **AC-1.4a** *(v1.2, SE-v2 Q-02 — reachability stated.)* Because AC-1.1 always derives `max + 1`,
+    the only states that reach AC-1.4's error are (i) AC-1.1a's malformed duplicate of index 1,
+    (ii) a file appearing between index derivation and dispatch — a concurrent run, or an agent
+    writing a path it was not instructed to, which is H-1's observed behavior — and (iii) a
+    non-conforming filename that AC-1.1's parse skipped but that collides with the derived path.
+    Those three are the *complete* set, and (ii) is the case that matters: it is the guard that
+    keeps H-1 from silently destroying history again. O-11 must construct at least one of them for
+    real rather than asserting the check in isolation, so the AC is not satisfied vacuously.
 - **AC-1.5** When a round's index is greater than 1, the back-reference to the previous round names
   the file that actually holds the previous round's review for that role and document type.
 - **AC-1.6** The five-round budget is counted from the round the *current invocation* starts at, and
@@ -249,10 +272,29 @@ inherits all four defects. This row was set `pending` and moved to `Order 0` on 
   AC-2.3 has nothing to refuse and the run proceeds. The skip report must nevertheless name any
   unresolved POSTMORTEM for that (phase, feature), so it stays operator-visible; the skip does
   **not** resolve it (AC-2.4 is unchanged — nothing in the pipeline resolves a POSTMORTEM on its own
-  behalf). Worked example, which is the next real operational use: `pdlc-workflow-distribution` holds
-  both `POSTMORTEM-R-pdlc-workflow-distribution.md` and a dual-approved REQ v17 ⇒ **Phase R is
-  skipped, the run continues to Phase F, and the report names both the approval and the still-open
-  POSTMORTEM.** When approval is absent or stale (AC-4.4), the phase would run and AC-2.3 refuses.
+  behalf).
+
+  *(v1.2, SE-v2 F-01 — the v1.1 worked example was falsified and is replaced by the two cases that
+  are actually reachable.)*
+
+  - **Worked example A — pre-harvest feature, skip fires.** A feature whose Phase R converged and
+    whose pipeline has **not** yet reached Phase H still holds its `CROSS-REVIEW-{role}-REQ-v{N}.md`
+    pair on the branch. If that pair carries same-round approving verdict fields (AC-4.1a, AC-4.2)
+    and an unresolved `POSTMORTEM-R-{feature}.md` is also present, **Phase R is skipped, the run
+    continues to Phase F, and the report names both the approval and the still-open POSTMORTEM.**
+    This is the state run 4 of `feat-pdlc-workflow-distribution` was in on 2026-07-28, and it is the
+    state any re-entry after a Phase-F failure is in.
+  - **Worked example B — harvested feature, skip does not fire.** `pdlc-workflow-distribution` as it
+    stands at HEAD holds `POSTMORTEM-R-pdlc-workflow-distribution.md` and a REQ at v17.1, but
+    **zero `CROSS-REVIEW-*` files** — Phase H deleted all 62 of them (§4a A-7), and its
+    `LEARNINGS-pdlc-workflow-distribution.md` predates AC-4.2b's approval record. So the verdict is
+    unreadable, AC-4.2a fails closed, Phase R **would run**, and AC-2.3 therefore **refuses and
+    halts**, reproducing the POSTMORTEM's Recommendation. That is the correct outcome, not a defect:
+    the operator's route forward is AC-2.4 (resolve the POSTMORTEM, then re-enter) or AC-4.6 (force
+    the phase), both of which are explicit human acts. AC-4.2b prevents future features from landing
+    in this state.
+
+  When approval is absent or stale (AC-4.4), the phase would run and AC-2.3 refuses.
 - **AC-2.4** A POSTMORTEM is marked resolved by an explicit, operator-visible act recorded in the
   artifact itself. Once resolved, the phase may be re-entered normally. Nothing in the pipeline
   resolves a POSTMORTEM on its own behalf.
@@ -275,19 +317,35 @@ inherits all four defects. This row was set `pending` and moved to `Order 0` on 
 - **AC-3.1** An authoring agent producing a specification document (REQ, FSPEC, TSPEC, PLAN,
   PROPERTIES, DECISIONS) writes it incrementally: a skeleton (all top-level section headings, no
   prose) in the first write, then one top-level section per subsequent write. **No single write or
-  edit call may author more than `MAX_AUTHORING_WRITE_BYTES` of document content** (see the
-  threshold declaration below); a section larger than the budget is split across successive calls at
-  sub-heading boundaries. *(v1.1, TE F-03 — the bound replaces "well inside" and "expected to".)*
+  edit call may emit more than `MAX_AUTHORING_WRITE_BYTES`** (see the threshold declaration below); a
+  section larger than the budget is split across successive calls at sub-heading boundaries.
+  *(v1.1, TE F-03 — the bound replaces "well inside" and "expected to".)*
+- **AC-3.1a** *(v1.2, SE-v2 F-02 — the bound's referent and the required call shape.)* The bound is
+  over the bytes **the call itself emits**, not over how much of the document is newly authored. This
+  distinction is behavioral, because the two tools differ:
+  - A whole-file **write** emits the entire document every time, so appending a 3 KB section to a
+    40 KB draft emits ~43 KB and violates the bound even though only 3 KB is new. Six such calls,
+    each with a modest amount of new content, reproduce §H-3's failure incrementally — which is
+    exactly what the v1.1 wording permitted.
+  - An **edit / append-shaped** call emits only the replacement text, so its emitted bytes equal its
+    new content.
+
+  Therefore: the **first** write (the skeleton) may be a whole-file write, since a headings-only
+  skeleton is far under the budget. **Every subsequent section must be added by an edit- or
+  append-shaped call**; once a document exceeds `MAX_AUTHORING_WRITE_BYTES` in total, a whole-file
+  rewrite of it is forbidden outright, and a document that must be restructured wholesale is
+  restructured section-by-section. This obligation is stated in each author SKILL's authoring-pacing
+  section and applies identically under AC-3.6.
 
   **Threshold declaration — `MAX_AUTHORING_WRITE_BYTES`**
 
   | Field | Value |
   |---|---|
-  | Name | `MAX_AUTHORING_WRITE_BYTES` (equivalently ≈150 lines, whichever is hit first) |
-  | Default | **12,000 bytes** per single Write/Edit call |
+  | Name | `MAX_AUTHORING_WRITE_BYTES` — a **byte** bound only. *(v1.2, TE-v2 F-03: the `≈150 lines, whichever is hit first` co-bound is **deleted**. It was approximate, therefore undecidable, and it was unmeasured — the surviving witnesses are 48 and 88 lines and the failing one ~1,000, so nothing measured supported 150. The byte bound alone is decidable and sufficient.)* |
+  | Default | **12,000 bytes** emitted per single write/edit call (AC-3.1a) |
   | Owner | pdlc plugin maintainer; declared in the authoring-pacing section of each of the three author SKILLs, and asserted by the dispatch-and-verify wrapper's review checklist |
-  | Derivation (measured floor, at HEAD `9220a20`) | Smallest **observed failing** single write: `REQ-pdlc-workflow-distribution.md`, 970 lines / **84,671 bytes**, killed 6/6 times (§H-3). Largest **observed surviving** single writes on this branch: `CROSS-REVIEW-test-engineer-REQ-v1.md` **12,767 bytes** / 88 lines and `CROSS-REVIEW-software-engineer-REQ-v1.md` **11,933 bytes** / 48 lines, neither of which ever stalled (`wc -lc` on all three). The default sits at the smaller of the two surviving witnesses, rounded down — **7.1× below the failing floor and at 0.94× the largest never-stalled write** — so it is inside the demonstrated-safe band rather than interpolated into the untested gap. It is deliberately conservative: this REQ itself (25,920 bytes) survived as a larger artifact, but not demonstrably as a single call, so it is not used as a witness. |
-  | Revision rule | Raising the default requires a new surviving-write measurement at the higher value; it is not raised by argument. |
+  | Derivation (measured floor, `wc -lc` at HEAD `9220a20`) | *(v1.2 — re-measured; SE-v2 F-04 / TE-v2 F-04 corrected two numbers and one false claim.)* Smallest **observed failing** single write: `REQ-pdlc-workflow-distribution.md` at **1,017 lines / 89,069 bytes**, killed 6/6 times (§H-3). *(v1.1 cited 970 / 84,671 — that was the file's size at the moment of the failing write, not its size at the declared baseline; the provenance line was wrong, so the baseline figure is now used.)* Largest **observed surviving** single writes on this branch: `CROSS-REVIEW-test-engineer-REQ-v1.md` **12,767 bytes** / 88 lines and `CROSS-REVIEW-software-engineer-REQ-v1.md` **11,933 bytes** / 48 lines, neither of which ever stalled. The default is the round number **inside the band bracketed by the two surviving witnesses** — 67 bytes above the smaller (11,933) and at **0.94× the larger** (12,767) — and **7.42× below the failing floor** (89,069 ÷ 12,000). *(v1.1's "the smaller of the two surviving witnesses, rounded down" was simply false: 12,000 is above 11,933, not rounded down from it. The band conclusion is unchanged.)* So the default sits inside the demonstrated-safe band rather than interpolated into the untested gap between 12,767 and 89,069. It is deliberately conservative: this REQ itself survived as a larger artifact, but never demonstrably as a single call, so it is not used as a witness. |
+  | Revision rule | Raising the default requires a new surviving-write measurement at the higher value, recorded here with the command that produced it; it is not raised by argument. |
 
 - **AC-3.2** Partial progress is durable. A document killed mid-authoring leaves the sections
   written so far on disk **and committed**, not an empty file and not a truncated one that reads as
@@ -297,8 +355,19 @@ inherits all four defects. This row was set `pending` and moved to `Order 0` on 
   AC-3.2, because it is exactly the state a stall-kill destroys. This makes the author SKILLs' Git
   Workflow sections part of `Targets` (they currently say "After completing: write all artifacts to
   disk, stage, commit" — `pdlc/skills/pm-author/SKILL.md:29`). Section-granular commits on a feature
-  branch are accepted as the cost; they are squash-invariant and Phase DOD's rebase is unaffected
-  because it rebases the branch, not individual commits' content.
+  branch are accepted as the cost. *(v1.2, SE-v2 F-06 — the cost is restated honestly.)* They are
+  squash-invariant, so the merged history is unchanged; but a rebase **replays each commit in turn**,
+  so N per-section commits are N replay steps and N potential conflict points, and Phase DOD Step 0
+  halts the pipeline on conflict (`ship-pr`). The v1.1 claim that Phase DOD's rebase is "unaffected"
+  was wrong. The cadence is still the right call — a single end-of-attempt commit is precisely what a
+  stall-kill destroys — and the honest trade-off is *more replay steps against a moved base*, which
+  argues for **coarse top-level sections** rather than fine-grained ones, and for keeping conflict
+  surface in mind when choosing the split points of AC-3.1.
+- **AC-3.2b** *(v1.2, TE-v2 Q-02 — cadence scope.)* The one-commit-per-section cadence binds **every
+  agent bound by AC-3.6**, not only the three author SKILLs: a review agent's partially written
+  cross-review, or a remediation agent's partially applied edit, is lost to a stall-kill in exactly
+  the same way. Where a review artifact is produced in a single sub-budget write, the cadence is
+  satisfied trivially by the one commit that follows it.
 - **AC-3.3** A retried authoring attempt **resumes**: it continues from the first unwritten section
   rather than restarting from an empty file. *(v1.1, SE F-02 / TE F-02 — restated over
   script-observable state.)* "Retry" is determined **from artifact state on disk before dispatch**,
@@ -309,28 +378,69 @@ inherits all four defects. This row was set `pending` and moved to `Order 0` on 
   (A-3), because in both cases the on-disk state is the same.
 - **AC-3.4** A document is only treated as complete when it is structurally complete — the presence
   of a non-empty file is not sufficient evidence that authoring finished.
-- **AC-3.5** *(v1.1, restated for SE F-02 / TE F-02 — the counted quantity is script-owned.)* An
-  authoring dispatch is wrapped by the script in a **dispatch-and-verify** step: after the dispatch
-  returns, the script re-checks the artifact's structural completeness (AC-3.4). If completeness did
-  not advance — no new section since the previous check — the script counts that as one failed
-  *script-owned* attempt and re-dispatches with the resume prompt, up to a named budget. When that
-  budget is exhausted the operator-facing report reads "no progress across N attempts", naming the
-  phase, the artifact, and **N as the script's own attempt count**. The runtime's internal
-  retry count is explicitly **not** claimed, reported, or depended upon (§4a A-2/A-3); observing it
-  is deferred as **D-RLH-04**. The threshold below is declared per this REQ's threshold obligation.
+- **AC-3.5** *(v1.1, restated for SE F-02 / TE F-02 — the counted quantity is script-owned; v1.2,
+  restated again for TE-v2 F-01 / F-02 and SE-v2 F-03.)* An authoring dispatch is wrapped by the
+  script in a **dispatch-and-verify** step: after each dispatch, the script re-measures the
+  artifact's structural completeness (AC-3.4) from disk and compares it with the measurement taken
+  before that dispatch.
+  - **AC-3.5a — what "progress" means.** *(v1.2, TE-v2 F-01.)* Progress is a **strict increase in the
+    count of top-level sections satisfying the AC-3.4 completeness criterion** — i.e. sections that
+    have acquired their content — **not** the appearance of a new heading. AC-3.1 requires the first
+    write to lay down *all* top-level headings, so a section-presence predicate is constant from
+    write 1 onwards and would score every healthy dispatch as "no progress": a document being filled
+    in correctly, one section per dispatch, would burn an attempt every time and halt with "no
+    progress across N attempts". That false positive on the pipeline's principal new halt path is
+    excluded by this clause. The **skeleton write itself counts as progress** (0 → the skeleton is a
+    real advance in on-disk state, and it is the prerequisite for every later resume).
+  - **AC-3.5b — what happens on no progress.** A dispatch that produced no progress counts as one
+    failed *script-owned* attempt, and the script re-dispatches with the resume prompt (AC-3.3).
+  - **AC-3.5c — the counting rule.** *(v1.2, TE-v2 F-02.)* `MAX_AUTHORING_ATTEMPTS` bounds
+    **consecutive** no-progress dispatches and is **reset to zero by any dispatch that makes
+    progress**. A legitimately advancing 12-section document therefore never halts on it. Because
+    that rule alone bounds nothing globally, a **second, cumulative** bound is declared:
+    `MAX_AUTHORING_DISPATCHES` caps the **total** number of dispatches for one artifact within one
+    phase, progress or not. Both are terminal: whichever is reached first ends the phase.
+  - **AC-3.5d — the report.** When either budget is exhausted the operator-facing report names the
+    phase, the artifact, **which budget was exhausted**, and the actual counts — "no progress across
+    N consecutive attempts" for `MAX_AUTHORING_ATTEMPTS`, or "M dispatches without reaching
+    structural completeness" for `MAX_AUTHORING_DISPATCHES` — together with the count of
+    AC-3.4-satisfying sections reached. N and M are always the **script's own** counts. The runtime's
+    internal retry count is explicitly **not** claimed, reported, or depended upon (§4a A-2/A-3);
+    observing it is deferred as **D-RLH-04**.
+  - **AC-3.5e — a dispatch that does not return normally.** *(v1.2, SE-v2 F-03 — the failure path of
+    the mechanism's own motivating scenario.)* §H-3's dispatches were killed, and §4a A-8 records
+    that how an exhausted runtime retry surfaces to the caller is **not measured**: it may return a
+    value, return nothing, or throw/reject. The wrapper therefore treats **all** of those identically
+    to a dispatch that returned without progress: the script catches the fault, re-measures
+    completeness from disk (which is authoritative either way, AC-3.3), applies AC-3.5a–AC-3.5c, and
+    re-dispatches or halts accordingly. A dispatch fault must **not** propagate as an unhandled halt
+    that bypasses the attempt count, because that is the exact path on which §H-3 produced no
+    operator-facing explanation at all. Whether the fault was observed is reported alongside the
+    counts of AC-3.5d.
 
   | Field | Value |
   |---|---|
-  | Name | `MAX_AUTHORING_ATTEMPTS` (script-owned dispatch-and-verify attempts, distinct from the runtime's own retries) |
+  | Name | `MAX_AUTHORING_ATTEMPTS` (**consecutive** script-owned no-progress dispatches, reset by any progress; distinct from the runtime's own retries) |
   | Default | **3** |
   | Owner | pdlc plugin maintainer; a named constant in `pdlc/workflows/orchestrate-dev.js`, following the `DOD_MAX_ITERATIONS` convention (`:25`) |
-  | Rationale | Each attempt after the first begins from committed partial progress (AC-3.2), so attempts are cumulative rather than repetitive; 3 bounds the cost of a genuinely stuck artifact at ≈1 phase's budget instead of the ~71 min / ~1.34 M tokens of §H-3. |
+  | Rationale | Three identical no-progress dispatches against unchanged on-disk state is sufficient evidence of a stuck artifact: each dispatch after the first already begins from committed partial progress (AC-3.2), so a fourth adds no new information. |
+  | Revision rule | Raising it requires an observed case where a fourth consecutive no-progress dispatch made progress. |
+
+  | Field | Value |
+  |---|---|
+  | Name | `MAX_AUTHORING_DISPATCHES` (**cumulative** dispatches per artifact per phase, progress or not) |
+  | Default | **6** |
+  | Owner | pdlc plugin maintainer; a named constant alongside `MAX_AUTHORING_ATTEMPTS` in `pdlc/workflows/orchestrate-dev.js` |
+  | Derivation (measured, §H-3) | §H-3's six killed attempts cost **~71 min and ~1.34 M subagent tokens** for zero output — ~5.3 min and ~223 K tokens per dispatch. Capping the total at **6** bounds the worst case at exactly the already-observed ceiling and never worse, while AC-3.5c's consecutive rule terminates most stuck cases at 3. Under AC-3.1's pacing a healthy document needs far fewer: one skeleton dispatch plus, in the observed non-stalling case, a single dispatch that writes every remaining section — 6 leaves headroom of several stall-killed dispatches before the phase gives up. |
+  | Revision rule | Raising it requires a measured case where a 7th dispatch reached structural completeness that 6 did not; lowering it is always permitted, since it only tightens the cost bound. |
 
 - **AC-3.6** Applies uniformly to `pm-author`, `se-author` and `te-author`. A review or remediation
   agent editing an existing document is bound by the **same** `MAX_AUTHORING_WRITE_BYTES` budget per
   call — *(v1.1, TE F-03: "comparable size" is replaced by the one numeric bound; there is no second,
   looser threshold for edits.)* An edit that would exceed the budget is split at sub-heading
-  boundaries, exactly as in AC-3.1.
+  boundaries, exactly as in AC-3.1, and is measured over **bytes emitted** per AC-3.1a — so a review
+  or remediation agent may not rewrite a whole document to change part of it. The commit cadence of
+  AC-3.2b binds these agents too.
 
 ### AC-4 — Approved-phase skip (H-4)
 
@@ -355,6 +465,30 @@ inherits all four defects. This row was set `pending` and moved to `Order 0` on 
   as exactly one catalogue value, the phase is **not** skipped — it runs — and the report names the
   artifact whose verdict could not be read. Legacy artifacts written before this change therefore
   cause extra review, never a skipped review (DC-07, R-1).
+- **AC-4.2b** *(v1.2, SE-v2 F-01 — approval must survive the pipeline that records it.)* **Phase H
+  deletes every `CROSS-REVIEW-*` file** for the feature after LEARNINGS is committed (§4a A-7). So an
+  approval carried *only* in the cross-review artifact is destroyed by the same pipeline run that
+  earned it, and AC-4 as written in v1.1 was inert for every feature that has actually shipped — the
+  whole population re-entry targets. Approval must therefore have **two tiers of evidence**, checked
+  in order:
+
+  | Tier | Carrier | Available |
+  |---|---|---|
+  | 1 (primary) | The persisted verdict field in `CROSS-REVIEW-{role}-{doc-type}-v{N}.md` (AC-4.2) | Before Phase H |
+  | 2 (durable) | A machine-readable **approval record** in `LEARNINGS-{feature}.md`, written by `harvest-learnings` as it deletes the artifacts it harvested | After Phase H, permanently |
+
+  The approval record carries, per approving round, the document type, the round index, each role and
+  its verdict value from the same closed catalogue of AC-4.3 — enough for AC-4.1a's same-round test
+  and AC-4.4's staleness test to be evaluated after the artifacts are gone. `harvest-learnings` is
+  added to `Targets` accordingly: it already lists the harvested filenames in its `Harvested from`
+  row, but filenames are not verdicts, so the row is not sufficient evidence and this is an additive
+  change to that SKILL's output contract. Tier 2 is consulted **only** when tier 1 is absent; when
+  both exist and disagree, that is AC-4.2a's unparseable case and the phase runs.
+- **AC-4.2c** *(v1.2)* **Legacy features have no tier-2 record either**, since their LEARNINGS
+  predates AC-4.2b. They therefore fail closed under AC-4.2a and their phases run — see AC-2.3b
+  worked example B. This is accepted rather than backfilled: reconstructing verdicts for deleted
+  artifacts from git history is out of scope (a backfill would be an operator act, and an operator who
+  wants the skip has AC-4.6).
 - **AC-4.3** Both approving verdict forms count: *Approved* and *Approved with minor changes*. This
   matches the existing convergence gate; the skip must not be stricter than the gate that produced
   the approval, nor looser — the catalogue is closed to exactly the three values the review SKILLs
@@ -364,6 +498,16 @@ inherits all four defects. This row was set `pending` and moved to `Order 0` on 
 - **AC-4.5** The skip is observable in the final report: skipped phases are listed with their reason
   and are visibly distinct from phases that ran and from phases that failed.
 - **AC-4.6** An operator can force a phase to run despite recorded approval.
+- **AC-4.6a** *(v1.2, TE-v2 F-05 — force-run sequenced against AC-2.3.)* A forced phase is still
+  subject to AC-2.3. Forcing overrides **recorded approval only**; it does not override an unresolved
+  POSTMORTEM, so on the state that motivates both — approval recorded *and* an unresolved
+  `POSTMORTEM-{phase}-{feature}.md` — the force-run is **refused** by AC-2.3, with the POSTMORTEM's
+  Recommendation reproduced. AC-2.4's resolve-then-run is the **exclusive** route through that state.
+  Rationale: AC-2.3's refusal exists because a phase re-entered against an unresolved disagreement
+  wastes a whole budget on it (H-2), and that is just as true when the re-entry was requested
+  deliberately; whereas the POSTMORTEM resolution act is cheap, is already required to be
+  operator-visible, and leaves a record of *why* the disputed review was re-opened. The refusal
+  message names AC-2.4 as the next step, so a forcing operator is never left guessing.
 - **AC-4.7** *(v1.1, SE Q-04 — which phases the skip applies to.)* The skip applies **only** to
   phases whose convergence is established by a reviewer-pair cross-review artifact for a named
   document: R, F, T, P and D. Phase CR (final codebase review) and Phase DOD are **out of scope** for
@@ -371,6 +515,14 @@ inherits all four defects. This row was set `pending` and moved to `Order 0` on 
   `CROSS-REVIEW-{role}-{doc-type}` pair in AC-1.1's sense, and are cheap relative to the risk of
   skipping a verification phase. They continue to run unconditionally, subject to their existing
   flags.
+- **AC-4.7a** *(v1.2, SE-v2 Q-03 — `dod-verify`'s artifacts.)* **No.** The persisted-verdict field of
+  AC-4.2 and the approval record of AC-4.2b apply to `CROSS-REVIEW-{role}-{doc-type}` artifacts only.
+  `CODE_REVIEW-{feature}-v{N}.md` is **not** amended: Phase DOD is out of AC-4's scope per AC-4.7, so
+  a persisted verdict on it would have no reader, and adding an unread field is the kind of
+  speculative contract this REQ declines. `harvest-learnings` continues to delete `CODE_REVIEW-*`
+  unchanged, and the approval record of AC-4.2b carries no DOD rows. One grammar still holds where it
+  matters: the *catalogue* of verdict values (AC-4.3) is shared, so if a future row brings Phase DOD
+  into scope it reuses the same values rather than inventing new ones.
 
 ### AC-5 — Consistency of the harness itself
 
@@ -410,7 +562,9 @@ inherits all four defects. This row was set `pending` and moved to `Order 0` on 
   wrapper: AC-3.1/3.2/3.6 pace and persist the writing, AC-3.3 derives retry-ness from disk state,
   and AC-3.5 counts the script's own dispatch-and-verify attempts. *(v1.1 — this closes the gap SE
   F-02 / TE F-02 identified, where AC-3.3 and AC-3.5 presupposed a signal C-1 declares out of
-  reach.)*
+  reach.)* *(v1.2 — the unobservability extends to how a killed dispatch **surfaces** to its caller
+  (§4a A-8), so AC-3.5e is written over all three possible surfacings rather than over a measurement
+  this repo cannot take.)*
 - **C-2 — Runtime authoring constraints.** Workflow sources compile to bundles under the runtime's
   restrictions (`export const meta` first and a pure literal, no other `export`, no `import` /
   `process` / `fs` / `fetch`). Any new capability that needs the filesystem — reading the branch's
@@ -429,7 +583,8 @@ inherits all four defects. This row was set `pending` and moved to `Order 0` on 
 ## 4a. Assumptions (measured — DC-02)
 
 Every predicate below was measured against this tree at HEAD `9220a20`, with the measuring command
-recorded. None is inferred from naming or documentation. Added at v1.1 for SE F-02 / TE F-02.
+recorded. None is inferred from naming or documentation. Added at v1.1 for SE F-02 / TE F-02;
+A-7 and A-8 added at v1.2 for SE-v2 F-01 / F-03.
 
 | # | Assumption | How it was measured | Consequence |
 |---|---|---|---|
@@ -439,6 +594,8 @@ recorded. None is inferred from naming or documentation. Added at v1.1 for SE F-
 | A-4 | **The machine-readable verdict is a response contract, not an artifact field.** All three review SKILLs place the `VERDICT:` + JSON trailer in the agent's *response* ("append the following two lines as the last content of your response", `pdlc/skills/se-review/SKILL.md:199`), and `reviewLoop` parses it off the `_agent()` return value via `parseVerdict` (`orchestrate-dev.js:322`, used at `:594-595`, `:624`, `:633`) — never off disk. The cross-review *file* template ends at a free-text `## Recommendation` (`se-review/SKILL.md:143` ff.). | Read both SKILLs and `parseVerdict`; then checked this branch's own artifacts: `CROSS-REVIEW-software-engineer-REQ-v1.md` happens to carry the trailer, `CROSS-REVIEW-test-engineer-REQ-v1.md` does **not**. One of two — the field is not reliably persisted today. | AC-4.2 cannot read approval off today's artifacts. This REQ therefore takes the scope of making the verdict a persisted, closed-catalogue field (see `Targets`, AC-4.2, O-17). |
 | A-5 | **A pure, root-parameterised file-listing oracle already exists in this repo**, but only on the jest side: `pdlc/workflows/lib/document-oracles.mjs` (`listAllFiles(root)` at `:81`, skipping `.git`/`node_modules` via `WALK_SKIP_DIRS` at `:77`). Being `.mjs` and using `fs`, it is unreachable from a runtime bundle. | Read the module; cross-checked against A-1. | The runtime needs its own injected listing seam regardless (C-2), so O-1 must dispose of reuse-vs-duplicate explicitly and pin one shared error contract (DC-04, DC-11). |
 | A-6 | **The tracked generated tier is `pdlc/workflows/dist/`; `.claude/workflows/` is untracked by decision.** | `DEC-DIST-02` (`docs/_decisions/DECISIONS-plugin-distribution.md`, three-tier table: source `pdlc/workflows/*.js` tracked; built `pdlc/workflows/dist/` tracked, never hand-edited; consumer `.claude/workflows/` **not** tracked, never hand-edited) plus CLAUDE.md §"Workflow scripts and the runtime build". | AC-5.5 is stated against `dist/` and `sync-workflows.sh --check`, never against the consumer copy (SE F-01). |
+| A-7 *(v1.2, SE-v2 F-01)* | **Phase H deletes every `CROSS-REVIEW-*` and `CODE_REVIEW-*` file for the feature**, so no cross-review artifact survives a completed pipeline run. `POSTMORTEM-*` files are read by harvest but **not** deleted, so they do survive — which is why an unresolved POSTMORTEM outlives the approval that would have skipped past it. | `pdlc/skills/harvest-learnings/SKILL.md` states it four times — the description line (`:3`, "then deletes the now-redundant process artifacts"), §Scope (`:10`, "then remove the harvested `CROSS-REVIEW-*` and `CODE_REVIEW-*` files"), the Git Workflow step (`:27`, "delete … in a second commit"), and the checklist (`:100`) — and the `guard-harvest-before-delete` hook exists to sequence that deletion. Verified against the tree: `docs/pdlc-workflow-distribution/` holds `LEARNINGS-…`, a REQ at v17.1 and `POSTMORTEM-R-…`, and **zero `CROSS-REVIEW-*` files**; its LEARNINGS `Harvested` row records 62 deleted cross-reviews plus 3 `CODE_REVIEW-*`, listing **filenames only, no verdicts**. | AC-4.2's evidence source is destroyed by the pipeline that creates it. AC-4.2b therefore adds a harvest-surviving tier (an approval record in LEARNINGS) and puts `harvest-learnings` in `Targets`; AC-2.3b's worked example is corrected accordingly. |
+| A-8 *(v1.2, SE-v2 F-03)* | **How an exhausted runtime retry surfaces to the caller is not measured** — whether the `agent()` call returns a value, returns nothing, or throws/rejects after the runtime's final kill is unknown. | The 2026-07-28 transcript shows only the six `INTERRUPTED` records of §H-3 and no caller-side outcome; A-1's global list offers no primitive that would report one, and A-2 found no stall/retry constant anywhere in the repo. As with A-3, no measurement available in this repo settles it, so it is recorded as unknown rather than assumed. | AC-3.5e is written to hold under **all three** outcomes: the wrapper catches faults, and completeness is re-measured from disk in every case, so the attempt count and the operator-facing report exist on every path. Nothing in AC-3 depends on which outcome is real. |
 
 ## 5. Non-goals
 
@@ -467,7 +624,8 @@ recorded. None is inferred from naming or documentation. Added at v1.1 for SE F-
 | R-3 | **Incremental authoring degrading document coherence** — section-at-a-time writing producing a document that does not hang together. | AC-3.1 mandates a skeleton first, so the structure is decided before the prose. AC-3.4 keeps a partial document from being mistaken for a finished one. |
 | R-4 | **Bootstrapping** — a defect in this change disables the pipeline that would fix it. | C-3; plus `cd pdlc/workflows && npm test` is a real, local gate that runs without the pipeline. |
 | R-5 | **This REQ hitting the very loop it fixes.** | The §preamble stopping rule, and the escalation clause within it. |
-| R-6 *(v1.1, SE F-04)* | **Per-phase refusal scope letting stale upstream trouble through** — AC-2.3a means an unresolved `POSTMORTEM-R` does not block Phase F, so a feature can progress downstream while an R-phase disagreement is still formally open. | Accepted deliberately: what gates Phase F is the REQ's approval state (AC-4, AC-4.2a fails closed), and the alternative — a feature-wide refusal — converts R-2's deadlock from recoverable to total. AC-2.3b keeps the open POSTMORTEM named in every skip report, so it never becomes invisible. |
+| R-6 *(v1.1, SE F-04; scope corrected v1.2, SE-v2 F-01)* | **Per-phase refusal scope letting stale upstream trouble through** — AC-2.3a means an unresolved `POSTMORTEM-R` does not block Phase F, so a feature can progress downstream while an R-phase disagreement is still formally open. | Accepted deliberately: what gates Phase F is the REQ's approval state (AC-4, AC-4.2a fails closed), and the alternative — a feature-wide refusal — converts R-2's deadlock from recoverable to total. AC-2.3b keeps the open POSTMORTEM named in every skip report, so it never becomes invisible. *(v1.2: this acceptance no longer rests on the falsified v1.1 worked example. It applies to the pre-harvest state of worked example A; for a harvested feature the skip does not fire at all, AC-2.3 refuses, and the risk does not arise. The narrower exposure strengthens the acceptance rather than weakening it.)* |
+| R-8 *(v1.2, SE-v2 F-01)* | **Widening scope to `harvest-learnings`** — AC-4.2b makes the harvest step responsible for persisting the approval record, a fourth SKILL family this REQ did not originally target, and it puts a machine-read contract into a document (`LEARNINGS-{feature}.md`) that has so far been purely for human and consolidation reading. | The change is additive: the record is a new table alongside the existing `Harvested from` row, no existing LEARNINGS content changes, nothing else parses LEARNINGS, and C-4 holds. AC-4.2a fails closed on every LEARNINGS predating the record (AC-4.2c), so no legacy feature silently skips a phase. The alternative considered and rejected was to keep the record out of LEARNINGS in a separate durable file — rejected because a second file harvest must also write is one more thing to forget, whereas LEARNINGS is already the artifact harvest exists to produce and is guarded by `guard-harvest-before-delete`. |
 | R-7 *(v1.1, TE F-01)* | **Widening scope to the review SKILLs** — AC-4.2 changes the output contract of `pm-review` / `se-review` / `te-review`, three files this REQ did not originally target. | The change is additive (the verdict field is written into the artifact in addition to the response trailer the workflow already parses), so the existing `parseVerdict` path is untouched and C-4 holds. AC-4.2a fails closed on every artifact predating the change, so no legacy branch silently skips a phase. |
 
 ## 8. Downstream specification obligations
@@ -484,7 +642,7 @@ finding that one of these is unspecified here is answered by this table.
 | O-4 | FSPEC | The queue-status commit (AC-2.1): who performs the git operation given that neither orchestrator does any git today, what the message is, and the behavior when the working tree is dirty or the commit fails. |
 | O-5 | FSPEC | The direct-invocation path for AC-2.1 — `orchestrate-dev` does not know about the queue at all; specify how it locates the row, and what it does when the feature has no row. |
 | O-6 | FSPEC | The retry-aware prompt contract (AC-3.3): how an author agent is told it is a retry, and how it determines the first unwritten section. |
-| O-7 | FSPEC | The structural-completeness criterion for each document type (AC-3.4). |
+| O-7 | FSPEC | The structural-completeness criterion for each document type (AC-3.4) — the **terminal** criterion, per document type. *(v1.2, TE-v2 F-01: the **delta** predicate is not O-7's to choose; AC-3.5a fixes it at REQ altitude as a strict increase in the count of sections satisfying this criterion. O-7 supplies what "satisfying" means per document type; it may not redefine progress as heading presence.)* |
 | O-8 | FSPEC | The staleness comparison for AC-4.4 — what "modified after the approving reviews" is measured against, and its behavior under rebase (Phase DOD rebases the branch, rewriting commit timestamps). |
 | O-9 | FSPEC | The operator override surface for AC-4.6 and its precedence relative to the recorded approval. |
 | O-10 | TSPEC / PROPERTIES | Oracles for AC-1.1 across the fixture matrix: no artifacts, un-suffixed v1 only, contiguous v1..vN, **non-contiguous** (gaps), mixed document types in one directory, mixed roles, and a non-conforming filename. |
@@ -495,9 +653,11 @@ finding that one of these is unspecified here is answered by this table.
 | O-15 | TSPEC | Which of these behaviors are unit-testable against the injected seams in `pdlc/workflows/__tests__/` and which require a bundle-level assertion; `runtimeBundle.test.js` already asserts freshness and the runtime's structural constraints (AC-5.5). |
 | O-16 | FSPEC | Disposition of AC-5.1/AC-5.2 as concrete edits, so the reviewers can verify them without re-deriving the line references. **(v1.1, SE F-05)** The FSPEC cites by **enclosing symbol + distinctive literal**, and records the HEAD sha its references were taken at, exactly as this REQ's `Citation baseline` row now does. A bare `file:line` citation is a defect in that document. |
 | O-17 *(v1.1, TE F-01 / SE F-07)* | FSPEC | The **persisted-verdict grammar** required by AC-4.2: where in the cross-review file the verdict field lives, its exact syntax, the closed catalogue of values, how the three review SKILLs are amended to emit it, and how it is extracted. Must specify the fail-closed behavior of AC-4.2a for absent / duplicated / unparseable fields, and the treatment of legacy artifacts that predate the field. |
-| O-18 *(v1.1, TE F-04)* | FSPEC | How the "same round index" of AC-4.1a is established from artifacts — pairing each role's file for a round and requiring both to be approving — including the case where one role's file for that round is missing. |
-| O-19 *(v1.1, AC-3.1/AC-3.5)* | FSPEC / TSPEC | Where `MAX_AUTHORING_WRITE_BYTES` and `MAX_AUTHORING_ATTEMPTS` live (SKILL prose vs. workflow constant), how the pacing bound is checked in review, and the oracle for AC-3.5's "no progress across N attempts" against the script-owned counter — never against a runtime counter (§4a A-2). |
+| O-18 *(v1.1, TE F-04; extended v1.2, TE-v2 Q-01)* | FSPEC | How the "same round index" of AC-4.1a is established from artifacts — pairing each role's file for a round and requiring both to be approving — including the case where one role's file for that round is missing. **(v1.2)** Must state the **role-asymmetric branch** explicitly: AC-1.1 computes the index per (feature, document type) *across roles*, so a branch where SE reached v13 while TE wrote only v1 gives TE a next index of v14 and no TE file at all for v2–v13. A role's absent `-vN` is treated as **not approving** for that round (fail-closed, consistent with AC-4.2a), so a gap can never pair into an approval; the FSPEC must say so rather than leave it to be inferred. |
+| O-19 *(v1.1, AC-3.1/AC-3.5; extended v1.2)* | FSPEC / TSPEC | Where `MAX_AUTHORING_WRITE_BYTES`, `MAX_AUTHORING_ATTEMPTS` and `MAX_AUTHORING_DISPATCHES` live (SKILL prose vs. workflow constant), how the pacing bound of AC-3.1a is checked in review given that it is a bound on *emitted* bytes, and the oracles for AC-3.5d's two distinct exhaustion reports against the script-owned counters — never against a runtime counter (§4a A-2). **(v1.2)** Must include the negative case TE-v2 F-01 named: an artifact that acquires one AC-3.4-satisfying section per dispatch **must not** halt, and the positive case for AC-3.5c's reset (no-progress, no-progress, progress, no-progress ⇒ still running). Both counting rules must be exercised: consecutive-with-reset, and the cumulative cap. |
 | O-20 *(v1.1, AC-3.2a)* | FSPEC | The per-section commit contract: the message form, staging scope, and the behavior when a commit fails mid-document (which must not leave the artifact looking structurally complete, AC-3.4). |
+| O-21 *(v1.2, AC-4.2b)* | FSPEC | The **approval-record grammar** in `LEARNINGS-{feature}.md`: where the table sits, its columns (document type, round index, role, verdict value, and whatever AC-4.4's staleness comparison needs), how `harvest-learnings` derives it from the artifacts it is about to delete, the tier-1/tier-2 precedence of AC-4.2b, and the behavior when LEARNINGS exists without the record (AC-4.2c) or with a record that disagrees with a surviving cross-review. Must share the closed catalogue of AC-4.3 with O-17's persisted field — one catalogue, two carriers. |
+| O-22 *(v1.2, AC-3.5e / §4a A-8)* | TSPEC / PROPERTIES | Oracles for the abnormal-termination path: a dispatch seam that can be made to throw, to return nothing, and to return normally without advancing, with the assertion that all three produce the same attempt accounting and the same operator-facing report shape. This is the path §H-3 actually took, so it is not an optional fixture. |
 
 ## 9. Traceability
 
@@ -522,3 +682,14 @@ finding that one of these is unspecified here is answered by this table.
 | CROSS-REVIEW-test-engineer-REQ-v1 F-04 (dual approval over rounds) | AC-4.1a, O-18 |
 | CROSS-REVIEW-test-engineer-REQ-v1 F-05 (who enforces no-overwrite) | AC-1.4 |
 | SE Q-02 / Q-03 / Q-04, TE Q-01 / Q-02 / Q-03 | AC-2.6a, AC-3.2a + O-20, AC-4.7, AC-4.2 (`Targets`), AC-2.3a, AC-3.2a |
+| CROSS-REVIEW-software-engineer-REQ-v2 F-01 (Phase H deletes AC-4.2's evidence) | §4a A-7, AC-4.2b, AC-4.2c, AC-2.3b worked examples A/B, `Targets` (`harvest-learnings`), R-6, R-8, O-21 |
+| CROSS-REVIEW-software-engineer-REQ-v2 F-02 (bound's referent: authored vs emitted bytes) | AC-3.1, AC-3.1a |
+| CROSS-REVIEW-software-engineer-REQ-v2 F-03 (dispatch that does not return normally) | AC-3.5e, §4a A-8, O-22 |
+| CROSS-REVIEW-software-engineer-REQ-v2 F-04 + test-engineer-REQ-v2 F-04 (derivation does not reproduce) | AC-3.1 Derivation row |
+| CROSS-REVIEW-software-engineer-REQ-v2 F-05 (Citation baseline overstated) | Header `Citation baseline` row |
+| CROSS-REVIEW-software-engineer-REQ-v2 F-06 (rebase cost understated) | AC-3.2a |
+| CROSS-REVIEW-test-engineer-REQ-v2 F-01 (progress predicate saturated by the skeleton) | AC-3.5a, O-7, O-19 |
+| CROSS-REVIEW-test-engineer-REQ-v2 F-02 (no counting rule, no total bound) | AC-3.5c, `MAX_AUTHORING_DISPATCHES` declaration, AC-3.5d, O-19 |
+| CROSS-REVIEW-test-engineer-REQ-v2 F-03 (approximate line co-bound) | AC-3.1 threshold declaration (co-bound deleted) |
+| CROSS-REVIEW-test-engineer-REQ-v2 F-05 (force-run vs AC-2.3) | AC-4.6a |
+| SE-v2 Q-01 / Q-02 / Q-03, TE-v2 Q-01 / Q-02 | AC-4.2b (durable carrier), AC-1.4a, AC-4.7a, O-18 (role-asymmetric gap), AC-3.2b |
