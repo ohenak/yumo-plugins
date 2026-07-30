@@ -313,16 +313,25 @@ export function parseTriageVerdict(result) {
 
 /**
  * Return a new QUEUE.md string with `feature`'s row Status cell set to newStatus.
- * Pure string transform — preserves all other formatting. If the feature row is not
- * found, returns the input unchanged (caller decides whether that's an error).
+ * Pure string transform — preserves all other formatting.
+ *
+ * TSPEC §4.6: the return is `{ markdown, matched }`, not a bare string. The old
+ * not-found path (`return markdown; // feature row not found`) was
+ * indistinguishable, to the caller, from a successful update whose replacement
+ * happened to be a no-op — so a status write against a row that had been deleted
+ * mid-run looked exactly like a write that landed. `matched` makes the
+ * difference observable, which is what `_recordHalt` needs in order to report
+ * `queueRow: "error"` (FSPEC §13.5) rather than claiming a write it never made.
  *
  * @param {string} markdown
  * @param {string} feature
  * @param {string} newStatus
- * @returns {string}
+ * @returns {{ markdown: string, matched: boolean }}
  */
 export function updateQueueStatus(markdown, feature, newStatus) {
-  if (typeof markdown !== "string" || !feature) return markdown;
+  if (typeof markdown !== "string" || !feature) {
+    return { markdown, matched: false };
+  }
 
   const lines = markdown.split("\n");
 
@@ -352,10 +361,10 @@ export function updateQueueStatus(markdown, feature, newStatus) {
     const newCells = cells.slice();
     newCells[statusCol] = newStatus;
     lines[i] = `| ${newCells.join(" | ")} |`;
-    return lines.join("\n");
+    return { markdown: lines.join("\n"), matched: true };
   }
 
-  return markdown; // feature row not found
+  return { markdown, matched: false }; // feature row not found
 }
 
 // ─── selectNextPending ───────────────────────────────────────────────────────
@@ -730,7 +739,10 @@ async function runPicked({
   );
 
   // Persist in-progress BEFORE running so a crash leaves a visible marker.
-  await writeFileFn(queuePath, updateQueueStatus(queueText, entry.feature, "in-progress"));
+  await writeFileFn(
+    queuePath,
+    updateQueueStatus(queueText, entry.feature, "in-progress").markdown
+  );
 
   let report;
   try {
@@ -770,7 +782,8 @@ async function runPicked({
 /** Re-read the queue (the pipeline may have touched it) and set a feature's status. */
 async function rewriteStatus(queuePath, feature, status, readFileFn, writeFileFn) {
   const current = (await readFileFn(queuePath)) ?? "";
-  await writeFileFn(queuePath, updateQueueStatus(current, feature, status));
+  const { markdown } = updateQueueStatus(current, feature, status);
+  await writeFileFn(queuePath, markdown);
 }
 
 // ─── Report builder ───────────────────────────────────────────────────────────
