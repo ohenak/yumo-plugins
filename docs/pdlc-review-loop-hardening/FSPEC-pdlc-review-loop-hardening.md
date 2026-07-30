@@ -115,10 +115,10 @@ history; §19 AT-19 asserts it at bundle level.
 |---|---|---|
 | O-1 | §3 (all) | New `_listFiles` seam; `document-oracles.mjs`'s `listAllFiles(root)` is **not** reused (§3.4 states why); one shared `ListFailure` catalogue pins the error contract across both (§3.3, DC-11). |
 | O-2 | §4.1–§4.3 | Full grammar with the un-suffixed form as index 1; role slugs taken from `reviewerRoleSlug`'s `MAP`; document-type token enumerated; a total reject rule. |
-| O-3 | §12 | `Resolution:` marker in the POSTMORTEM's own front block; `## Recommendation` heading-to-next-heading extraction. |
+| O-3 | §12 | `RESOLVED: yes|no` marker, positionally unconstrained within the POSTMORTEM, human-written only; `## Recommendation` heading-to-next-heading extraction. |
 | O-4 | §13 | `orchestrate-dev` owns the write via `_writeFile` + `_git`; message form fixed; dirty-tree and commit-failure branches specified. |
 | O-5 | §14 | `orchestrate-dev` reads `docs/_queue/QUEUE.md` through `_readFile`, matches the Feature column; absent row ⇒ `queueRow: "none"`, no write attempted. |
-| O-6 | §15.3 | Resume prompt contract: how retry-ness is derived from disk, and how the first unwritten section is named. |
+| O-6 | §15.5 | Resume prompt contract: how retry-ness is derived from disk, and how the first unwritten section is named (by the script, with three definite cases); plus the revision-mode continuation prompt. |
 | O-7 | §16 | Terminal completeness criteria for the six spec document types plus the three review/learnings classes; the two REQ-fixed ones carried through; the LEARNINGS exclusion stated. |
 | O-8 | §10 | One hash-equality comparison at both tiers; **no history walk designed at either tier**; read-at-comparison-time rule, both-tiers-disagree, no-parseable-hash, and the rebase-invariance argument. |
 | O-9 | §11 | `forcePhases` in the workflow's `args` object plus `meta.inputs`; precedence stated against AC-2.3 and AC-4. |
@@ -126,7 +126,7 @@ history; §19 AT-19 asserts it at bundle level.
 | O-17 | §6, §7, §8 | Verdict field grammar and SKILL amendment (§6); digest mechanism, canonicalisation, single-implementation rule, write ordering, failed-append behaviour, reviewed document's commit sha (§7); revision-completion trailer grammar and author-SKILL amendment (§8). One grammar family, three carriers. |
 | O-18 | §5 | Round pairing from the parsed listing; a role's absent `-vN` is not approving; no cross-tier completion. |
 | O-19 | §15.7 | Placement decision for all three constants, plus the commit-diff proxy statement and the explicit "no oracle for emitted bytes exists" claim. Oracles are TSPEC's. |
-| O-20 | §15.5, §15.6 | Commit message form, staging scope, mid-document commit failure, and the advisory commit-diff proxy. |
+| O-20 | §15.8 | Commit cadence and message form, the honest rebase cost, the advisory commit-diff proxy (reports, never halts), and the no-git-may-discard-uncommitted-content rule (§15.3). |
 | O-21 | §9 | Table placement in LEARNINGS, syntax, copy-not-recompute derivation, canonicalisation over AC-4.2d's bytes only, unavailable-hash marker, and the guard-ordering falsifier. |
 
 ### 2.3 Grammar family — one catalogue, three carriers
@@ -138,7 +138,7 @@ line of JSON.** Three carriers use it, and no fourth is introduced.
 | Carrier | Key | Value catalogue | Where it lives | Written by | §|
 |---|---|---|---|---|---|
 | Persisted verdict | `VERDICT:` | `Approved` \| `Approved with minor changes` \| `Needs revision` | in the `CROSS-REVIEW-*` file body | the reviewer agent | §6 |
-| Approval anchor | `APPROVAL-HASH:` and `REVIEWED-COMMIT:` | a 40-hex digest / a 40-hex sha or `unavailable` | appended to the `CROSS-REVIEW-*` file | the **script** | §7 |
+| Approval anchor | `APPROVAL-HASH:` and `REVIEWED-COMMIT:` | `sha256:` + 64 lowercase hex / a commit sha or `unavailable` | appended to the `CROSS-REVIEW-*` file | the **script** | §7 |
 | Revision completion | `REVISION-COMPLETE:` | `yes` \| `no` | last line of the **author agent's response** | the author agent | §8 |
 
 The catalogue for `VERDICT:` is the same closed set `parseVerdict`'s `VALID_VERDICTS` array already
