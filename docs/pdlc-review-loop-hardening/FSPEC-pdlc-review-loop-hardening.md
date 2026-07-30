@@ -2759,7 +2759,8 @@ scanned for calls to the injected async seams — `_agent`, `_readFile`, `_write
 `_dodVerifyLoop`, `_raisePrAndVerifyCi` — *then* every call site is `await`ed, and **no bundle statement
 introduces** a module or host capability the runtime lacks: no `import` **line** (`/^import\s/m`), no
 `export` past `meta`, and no **call or member reference** to `process` or `fetch` — asserted as
-`/\bprocess\s*\./`, `/\bfetch\s*\(/` and the bare-identifier forms, **not** as a substring search.
+`/\bprocess\s*\./` and `/\bfetch\s*\(/`, **not** as a substring search *(v1.3, SE-v3 F-15: the
+bare-identifier disjunct is struck — it is red on the healthy bundles, per the paragraph below)*.
 *(The adapter's implementations are async while the test doubles are sync, so a missing `await` passes
 unit tests and fails only in the runtime — this is the test that catches it.)*
 
@@ -2768,8 +2769,10 @@ forbade it for `fs` (SE-v2 F-10).** Verified against the current healthy artifac
 the substring `process` (in `child_process`, inside the generated banner comment) and the substring
 `fetch` (in `git fetch origin`, a prompt string literal in `rebaseOntoDefault`). A substring assertion is
 therefore red on a correct artifact — the identical defect v1.1 fixed one clause earlier for `fs`, left
-un-fixed in the adjacent clause. The reference forms above are what distinguish a real host-capability
-use from a comment or a prompt literal.
+un-fixed in the adjacent clause. A **bare-identifier** assertion (`/\bprocess\b/`, `/\bfetch\b/`) is red on
+the same two sites, the backticks and spaces around them supplying the word boundary; AT-19 specifies no
+comment- or string-stripping step, so it has no way to exempt them. The reference forms above are what
+distinguish a real host-capability use from a comment or a prompt literal.
 
 *Restated at v1.1 (SE-v1 F-05).* v1.0 asserted "no bundle contains `import`, `export` past `meta`,
 `process`, `fs` or `fetch`" — a **bare substring** test that is red on a correct artifact:
@@ -2986,7 +2989,11 @@ returning a constant reason for every non-`yes` input.)*
 *Given* a greenfield dispatch that writes all of a spec's top-level headings with bodies consisting only of
 `TBD`, `TODO`, `_TBD_` and an HTML comment. *Then* the artifact scores **not complete**, `S` is **0**, the
 episode is **not** terminal, and a second dispatch is issued. *(Fails for a body test of "any non-blank
-line", under which write 1 scores complete.)*
+line", under which write 1 scores complete.)* *And given* the same fixture with one further body carrying a
+fenced block that contains a `## …` line. *Then* `T` is **unchanged** by it — the fenced heading is not a
+top-level section (§1.2 rule 5, which §16.2 inherits). *(v1.3, TE-v3 F-01: this is the spec-class
+falsifier for the exclusion; without it a quoted heading inflates `T` and the episode never reaches
+terminal.)*
 
 **AT-63 — Per-role malformed duplicate halts; two roles at index 1 do not (E-05, TE-v1 F-09b)**
 *Given* `CROSS-REVIEW-software-engineer-FSPEC.md` **and** `CROSS-REVIEW-software-engineer-FSPEC-v1.md` both
@@ -3008,6 +3015,9 @@ hand-maintained list that would need the same edit twice. *Falsifier:* delete on
 *Given* `CROSS-REVIEW-test-engineer-FSPEC-v4.md` whose body quotes §6.2's fenced template — so the file
 contains a `## Verdict` heading and `VERDICT: Approved with minor changes` **inside a fenced block** — and
 which has **no** unfenced `## Verdict` section, the reviewer having been stall-killed before writing one.
+The quotation is **nested**: a four-backtick wrapper containing the template's own three-backtick lines,
+which is the form a reviewer must use to quote §6.2 *(v1.3, TE-v3 F-02; a "next fence line closes it"
+implementation reds here because the inner opener would end the block and re-expose both lines)*.
 *And given* the peer role's round-4 file carries a genuine `VERDICT: Approved` and an equal
 `APPROVAL-HASH:`, and the document's bytes are unchanged. *Then* the quoted block contributes **no**
 heading and **no** verdict line: the file has no trailing verdict section, is **not** approving, §16.3
