@@ -2576,11 +2576,23 @@ invocation **runs**.
 
 **AT-19 — Every injected IO call is awaited (C-2)**
 *Who:* the bundle test. *Given* the built `pdlc/workflows/dist/*.bundle.js`. *When* the sources are
-scanned for calls to the injected seams — `_agent`, `_readFile`, `_writeFile`, `_appendFile`, `_checkFile`,
-`_listFiles`, `_git`, `_checkCi`, `_mergeWorktree`, `_recordHalt` — *then* every call site is `await`ed,
-and no bundle contains `import`, `export` past `meta`, `process`, `fs` or `fetch`. *(The adapter's
-implementations are async while the test doubles are sync, so a missing `await` passes unit tests and
-fails only in the runtime — this is the test that catches it.)*
+scanned for calls to the injected async seams — `_agent`, `_readFile`, `_writeFile`, `_appendFile`,
+`_checkFile`, `_listFiles`, `_git`, `_checkCi`, `_mergeWorktree`, `_recordHalt`, `_rebaseOntoDefault`,
+`_dodVerifyLoop`, `_raisePrAndVerifyCi` — *then* every call site is `await`ed, and **no bundle statement
+introduces** a module or host capability the runtime lacks: no `import` **line**, no `export` past `meta`,
+and no reference to `process` or `fetch`. *(The adapter's implementations are async while the test doubles
+are sync, so a missing `await` passes unit tests and fails only in the runtime — this is the test that
+catches it.)*
+
+*Restated at v1.1 (SE-v1 F-05).* v1.0 asserted "no bundle contains `import`, `export` past `meta`,
+`process`, `fs` or `fetch`" — a **bare substring** test that is red on a correct artifact:
+`orchestrate-dev.bundle.js` contains `return fs.readFileSync(path, "utf8");`, the residue
+`stripModuleSyntax` leaves after removing `defaultReadFile`'s `import` line. That statement is dead in the
+runtime because the adapter supplies `_readFile`, and the existing
+`__tests__/runtimeBundle.test.js` already asserts the correct, line-anchored form
+(`not.toMatch(/^import\s/m)`). The last three seams above were also missing from v1.0's scan list despite
+being async injected seams in the same hazard class. This AT is the existing test extended, not a second,
+stricter gate.
 
 **AT-20 — `dist/` is fresh**
 *Given* any change to a workflow source. *Then* `node pdlc/workflows/build-runtime.mjs --check` exits 0 in
