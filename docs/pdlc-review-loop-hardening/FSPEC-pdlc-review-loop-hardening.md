@@ -1285,9 +1285,16 @@ On the state that motivates both mechanisms — a recorded approval **and** an u
 
 | Step | Behaviour |
 |---|---|
-| 1 | The POSTMORTEM gate of §12 is evaluated **before** the skip decision, so it is reached whether or not the phase was forced |
+| 1 | **§12.4 owns the ordering and this section does not restate it.** The force veto removes the skip (§11.4), so the phase "would otherwise run", and *that* is what reaches §12.4 step 2's `checkPostmortem` |
 | 2 | An unresolved POSTMORTEM for that phase ⇒ halt, with §12's halt reason and the POSTMORTEM's **Recommendation** section reproduced |
 | 3 | The halt reason names **AC-2.4** as the next step, so a forcing operator is never left guessing |
+
+**Retraction in place (SE-v1 F-01).** v1.0's step 1 read "The POSTMORTEM gate of §12 is evaluated
+**before** the skip decision, so it is reached whether or not the phase was forced." That is wrong and
+is withdrawn: it contradicts §12.4, AC-2.3b and E-26/AT-26, under which an *unforced* phase with an
+approving fresh pair is skipped and the POSTMORTEM is only **named** in the report, never halted on.
+The gate is reached because forcing removed the skip — not because it precedes it. §12.4 is the single
+site that states the order.
 
 **The rationale, carried through unchanged.** AC-2.3's refusal exists because a phase re-entered against
 an unresolved disagreement wastes a whole budget on it (H-2) — and that is just as true when the
