@@ -13,7 +13,7 @@ feature: pdlc-review-loop-hardening
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | **Draft** | Claude + operator | 1.4 | 2026-07-30 |
+| pdlc | **Draft** | Claude + operator | 1.5 | 2026-07-30 |
 
 > **Altitude.** The REQ states the observable behaviour, the FSPEC how it is produced and pins the
 > sixty-six acceptance tests, the TSPEC how it is built and proved with *examples*, the PLAN when each
@@ -23,6 +23,28 @@ feature: pdlc-review-loop-hardening
 > by section.
 
 ## 0. Changelog
+
+### v1.5 — round-5 cross-review feedback (both reviewers approved v1.4)
+
+Reviewers: `CROSS-REVIEW-software-engineer-PROPERTIES-v5.md` (**0 High, 0 Medium, 2 Low**,
+*"Approved with minor changes"*, `cc2c843`) and `CROSS-REVIEW-product-manager-PROPERTIES-v5.md`
+(**0 High, 0 Medium, 0 Low**, clean approval, `20f01d6`). **The PROPERTIES phase has converged**;
+this is the touch-up pass that applies the two non-blocking Lows the SE approval authorised, and
+nothing else. Both reviewers re-derived the round-4 fixes rather than confirming them and reopened
+nothing; §0 was checked inert for a fifth round. Upstream REQ v1.6 / FSPEC v1.8 / TSPEC v1.7 /
+PLAN v1.4 remain approved and closed. **No property is restated, no floor is added or moved, no
+generator gains a shape, and no assertion changes truth value on any subject.** Both edits are the
+one-clause repairs the reviewer prescribed, applied as given.
+
+| Finding | Sev | Resolution — and where the substance lives |
+|---|---|---|
+| SE F-28 | Low | **Fixed by pinning how the disagreement is realised, not by touching the floor.** `PROP-WINDOW-01`'s ≥15 disagreement floor could collide with conjunct (ii)'s width identity on a run that is both disagreeing and exhausted, if the disagreement were realised by moving `endIndex` alone — the handed width would then not be `MAX_REVIEW_ROUNDS`, and under the reading where *"the window the gate computed"* is the pair the test handed, (ii) could red a conforming subject. The *Non-vacuity* paragraph in **§4.3** now requires the disagreement to be an **equal-width shift** of the pair — both indices moved together (hand `6..10` where the listing implies `3..7`) — so the handed width stays `MAX_REVIEW_ROUNDS` and (ii)'s identity holds on every drawn run; and conjunct (i)'s sentence now says *"a `startIndex..endIndex` pair that differs"* rather than *"an `endIndex` that differs"*, so the conjunct and the floor describe the same construction. The floor is still ≥15 and still consumes no cases of its own, so §4.3's forced-case budget is unchanged; §5.3's `PROP-WINDOW-01` row 1 still reds, because its mutation re-derives `startIndex` from the listing and so caps at `7` where the property demands `10` |
+| SE F-29 | Low | **Fixed by reconciling two sentences; no assertion changes.** §4.2 (iv)'s summary said *"both documents are `n === 0`"*, which over-commits on the malformed-label shape — the very next sentence, and the recorded silence paragraph, both correctly leave that count matcher-dependent (`0` under a prefix-exact matcher, `1` under a loose one). **§4.2** (iv) now reads *"the fenced document is `n === 0` and the malformed-label document is `n === 0` under a prefix-exact matcher; neither is a malformed payload, and neither is a value of `n === 1` that (iv) governs"*. The fence half is unchanged — it is a *stated* exclusion (TSPEC §5.0). Every conjunct that binds on the malformed-label shape ((i), (v), (vi)) already answered identically under both counts, and both named reasons remain withheld |
+
+**Nothing declined, nothing else touched.** Both reviewers' round-5 *Checked and dropped* lists —
+§0's inertness, the `> `-quoted-line disposition, `PROP-HASH-01`'s full six-conjunct pass and its
+60-of-100 forced budget, §7.1/§7.3's arithmetic, §4.1's seven properties, §8.4's residual 6 — carry
+no hunk in this revision.
 
 ### v1.4 — round-4 cross-review feedback
 
