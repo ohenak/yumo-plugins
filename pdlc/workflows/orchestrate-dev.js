@@ -1758,8 +1758,8 @@ export async function reviewLoop({
     // (c) Dispatch reviewers in parallel. On iteration ≥2 each reviewer gets a
     // delta re-review prompt (read prior cross-review, diff-only scan) — see
     // reviewerPrompt. Iteration 1 is the full first-pass review.
-    const reviewerPrompt1 = reviewerPrompt(doc, phase, feature, iteration, reviewers[0]);
-    const reviewerPrompt2 = reviewerPrompt(doc, phase, feature, iteration, reviewers[1]);
+    const reviewerPrompt1 = reviewerPrompt(doc, phase, feature, iteration, reviewers[0], reviewFileType);
+    const reviewerPrompt2 = reviewerPrompt(doc, phase, feature, iteration, reviewers[1], reviewFileType);
 
     const [r1, r2] = await _parallel([
       runWrapped(reviewers[0], reviewerPrompt1, reviewTargetPath(reviewers[0], iteration), "review"),
@@ -1820,7 +1820,7 @@ export async function reviewLoop({
     }
 
     // (g) Invoke optimizer (FAIL path)
-    const optPrompt = optimizerPrompt(doc, phase, feature, iteration, reviewers);
+    const optPrompt = optimizerPrompt(doc, phase, feature, iteration, reviewers, reviewFileType);
     const optEpisode = await runWrapped(optimizer, optPrompt, doc, "authoring");
     if (haltedReturn) return haltedReturn;
     const optimizerResult = optEpisode && optEpisode.response;
@@ -2701,15 +2701,19 @@ async function advisoryPacingCheck({ wroteBytes, targetPath, _git, emit }) {
  * @param {string} [reviewer] - reviewer skill id (for the prior-cross-review path)
  * @returns {string}
  */
-function reviewerPrompt(doc, phase, feature, iteration, reviewer) {
+function reviewerPrompt(doc, phase, feature, iteration, reviewer, docType) {
   const base = `Review the document at ${doc} for phase ${phase} of feature ${feature}. This is iteration ${iteration}.`;
   if (iteration < 2) return base;
 
   const prev = iteration - 1;
   const role = reviewerRoleSlug(reviewer);
+  // §6.3's general rule: NO un-substituted template reaches an operator-facing
+  // string. `{DOC-TYPE}` and `{role}` were literal braces the reader had to
+  // resolve by hand; both are known here.
+  const type = docType || docTypeFromPath(doc) || "REVIEW";
   const priorFile = role
-    ? `docs/${feature}/CROSS-REVIEW-${role}-{DOC-TYPE}-v${prev}.md (your reviewer role is "${role}"; find the file for the previous iteration v${prev} matching this document's type)`
-    : `your own previous cross-review file for this document (docs/${feature}/CROSS-REVIEW-{role}-{DOC-TYPE}-v${prev}.md — find your reviewer role's file for iteration v${prev})`;
+    ? `docs/${feature}/CROSS-REVIEW-${role}-${type}-v${prev}.md (your reviewer role is "${role}")`
+    : `your own previous cross-review file for this document (docs/${feature}/CROSS-REVIEW-*-${type}-v${prev}.md — find your reviewer role's file for iteration v${prev})`;
 
   return (
     `${base}\n` +
@@ -2723,16 +2727,17 @@ function reviewerPrompt(doc, phase, feature, iteration, reviewer) {
   );
 }
 
-function optimizerPrompt(doc, phase, feature, iteration, reviewers = []) {
+function optimizerPrompt(doc, phase, feature, iteration, reviewers = [], docType) {
   const base = `Address reviewer feedback on ${doc} for phase ${phase} of feature ${feature}. Iteration ${iteration} reviewers found issues. Update and commit.`;
 
   // Point the optimizer straight at this iteration's cross-review files so it does
   // not hunt for them. Both reviewer roles' expected paths for v{iteration}.
   const roles = reviewers.map(reviewerRoleSlug).filter(Boolean);
+  const type = docType || docTypeFromPath(doc) || "REVIEW";
   let feedback = "";
   if (roles.length > 0) {
     const paths = roles
-      .map((role) => `docs/${feature}/CROSS-REVIEW-${role}-{DOC-TYPE}-v${iteration}.md`)
+      .map((role) => `docs/${feature}/CROSS-REVIEW-${role}-${type}-v${iteration}.md`)
       .join(" and ");
     feedback =
       `\nRead the reviewers' cross-review files for this iteration directly: ${paths} ` +
