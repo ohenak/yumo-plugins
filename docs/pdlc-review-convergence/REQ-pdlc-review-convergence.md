@@ -785,3 +785,72 @@ action, and it is recorded here as an open item rather than papered over.** A re
 treat these as unbound deferrals; that reading is correct. They become bound when the rows exist.
 
 ## 10. Traceability
+
+### 10.1 User story → requirement
+
+| User story | Requirements |
+|---|---|
+| US-01 — the loop stops when it stops progressing | REQ-RCV-01, REQ-RCV-02 |
+| US-02 — bounded, predictable cost per document | REQ-RCV-01, REQ-RCV-03, REQ-RCV-04 |
+| US-03 — the report says what stopped it and what is unsettled | REQ-RCV-02 (AC-2.2), REQ-RCV-04 (AC-4.7), REQ-RCV-05 (AC-5.4) |
+| US-04 — authors know what they must not answer in prose | REQ-RCV-05 (AC-5.3), REQ-RCV-04 (AC-4.6) |
+| US-05 — reviewers know cold-read from disposition-check | REQ-RCV-03, REQ-RCV-04 |
+| US-06 — citation accuracy checked by a program | REQ-RCV-06 |
+
+Every requirement traces to at least one user story; every user story is served by at least one
+requirement.
+
+### 10.2 Upstream finding → requirement
+
+| Upstream source | Finding | Requirement |
+|---|---|---|
+| POSTMORTEM root cause 3 / R-5 | Nothing bounds the size of a revision; new text is unreviewed text | REQ-RCV-04, REQ-RCV-01 |
+| POSTMORTEM root cause 2 / R-4 | The stopping rule is advisory, so it did nothing | REQ-RCV-02 |
+| POSTMORTEM root cause 1 | Design work mis-filed as requirements work; classes A and B never closed | REQ-RCV-05 |
+| POSTMORTEM §Pattern 4 | The two reviewers do not disagree; rounds 2–5 were disposition checks at ~100% resolution | REQ-RCV-03 |
+| POSTMORTEM §Iterations | Five rounds, blocking count non-decreasing from round 2, 6.4× growth | REQ-RCV-01 |
+| POSTMORTEM R-6 / class D | Citation drift is a mechanical check that consumed part of every round | REQ-RCV-06 |
+| LEARNINGS §2, §5.3 | `build-runtime.mjs` is import-unsafe | REQ-RCV-06 (AC-6.2) |
+| LEARNINGS §2 | The runtime has no digest primitive and eleven host globals; C-2 bans `import` | REQ-RCV-06 (AC-6.6), O-11 |
+| LEARNINGS §4 | Owning-section-wins; re-derive stated procedures rather than verifying quoted numbers | Applied to this document's own construction (§4, §6) |
+
+### 10.3 Requirement → measured fact
+
+| Requirement | Facts it attaches to |
+|---|---|
+| REQ-RCV-01 | M-1a, M-1b, M-1c |
+| REQ-RCV-02 | M-2a, M-2b, M-2c, M-2d |
+| REQ-RCV-03 | M-3a … M-3f, M-4a, M-4b |
+| REQ-RCV-04 | M-5a, M-5b, M-5c |
+| REQ-RCV-05 | *(no code seam — it is a SKILL change plus a section extraction; the extraction rides M-3e's existing file read)* |
+| REQ-RCV-06 | M-6a, M-6b, M-6c, M-6d |
+
+### 10.4 Requirement → priority and phase
+
+| Requirement | Priority | Phase | Rationale |
+|---|---|---|---|
+| REQ-RCV-01 | P0 | 1 | One constant. Delivers the cost bound on its own, independent of everything else. |
+| REQ-RCV-02 | P0 | 1 | The defect that has now recurred on three features. |
+| REQ-RCV-03 | P0 | 1 | The largest behavioural change and the highest integration risk (R-6). |
+| REQ-RCV-04 | P0 | 1 | AC-3's compensating control — shipping AC-3 without it removes a reviewer with nothing watching revision size (A-2). |
+| REQ-RCV-05 | P0 | 1 | Addresses the post-mortem's *primary* root cause. |
+| REQ-RCV-06 | P1 | 1 | Real but smaller: class D was recurring and never blocking. The only P1 in the set. |
+
+All six are Phase 1 — this is a single delivery. **The one ordering constraint that is not optional:
+REQ-RCV-04 must not ship after REQ-RCV-03.** AC-3 removes a reviewer from rounds 2+, and AC-4 is what
+puts the panel back when a revision is large enough to warrant it (A-2). Shipping AC-3 alone would
+leave large revisions read by a single verifier under a rule (AC-3.2 clause 2) that restricts where it
+may raise blocking findings. The other four have no ordering constraint between them.
+
+### 10.5 Requirement → downstream obligation
+
+| Requirement | Obligations |
+|---|---|
+| REQ-RCV-01 | O-11 |
+| REQ-RCV-02 | O-5, O-8, O-10, O-11 |
+| REQ-RCV-03 | O-1, O-2, O-3, O-4, O-9, O-10, O-11 |
+| REQ-RCV-04 | O-8, O-9, O-10, O-11 |
+| REQ-RCV-05 | O-7, O-8, O-9, O-10, O-11 |
+| REQ-RCV-06 | O-6, O-9, O-10, O-11 |
+
+No obligation is orphaned and no requirement is without one.
