@@ -11,7 +11,7 @@ feature: pdlc-workflow-distribution
 | FSPEC §10 rows disposed here | O-1, O-3, O-7, O-10, O-11, O-12, O-16, O-17, **O-19** (the nine whose "Lands in" names TSPEC; O-19 is "TSPEC / implementation phase" — duties (a), (b), (d) are designed here, (c) is handed off) |
 | Rows carried forward | O-9, O-18, O-20 → PROPERTIES; O-19(c) → implementation phase; O-13 → `consolidate-learnings` |
 | Cross-Reviews | `CROSS-REVIEW-product-manager-TSPEC-v1.md` (3H/3M/3L), `CROSS-REVIEW-test-engineer-TSPEC-v1.md` (3H/6M/4L), `CROSS-REVIEW-product-manager-TSPEC-v2.md` (0H/0M/3L, approved), `CROSS-REVIEW-test-engineer-TSPEC-v2.md` (0H/0M/8L, approved) — all disposed in §0.4 |
-| LEARNINGS | `docs/pdlc-workflow-distribution/LEARNINGS-pdlc-workflow-distribution.md` (Phase H) |
+| LEARNINGS | `docs/completed/pdlc-workflow-distribution/LEARNINGS-pdlc-workflow-distribution.md` (Phase H) |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|

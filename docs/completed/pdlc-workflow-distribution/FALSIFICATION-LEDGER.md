@@ -1,7 +1,7 @@
 # Falsification ledger — pdlc-workflow-distribution
 
 Owner (creation): T-40, batch 7 (empty, header only). Populated by T-41…T-49 (batch 12, each
-appending its own `docs/pdlc-workflow-distribution/FALSIFICATION-LEDGER-T-{task}.md` fragment)
+appending its own `docs/completed/pdlc-workflow-distribution/FALSIFICATION-LEDGER-T-{task}.md` fragment)
 and T-50 (batch 13, appending its own fragment for its three queue-side properties, then
 concatenating every fragment into this file in task order and deleting them). See PLAN §3.1 and
 §4.4.
