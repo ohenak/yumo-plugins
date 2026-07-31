@@ -490,6 +490,132 @@ what the file path, the approval marker and AC-2's panel-shape comparison are al
 `REVIEW-MODE: verification`; which round `selectMode` reports as owed. All on disk, all readable on a
 later invocation.
 
+---
+
+### REQ-RCV-04 — Revisions are measured, and a large revision re-escalates the panel
+
+**Priority:** P0 · **Phase:** 1 · **Source:** US-02, US-05 · **Depends on:** BL-01, AC-3
+
+Root cause 3: nothing in the loop distinguishes "this round tightened 1 KB" from "this round added a
+new 25 KB mechanism", and the iteration counter treats both as one round. At ~25 KB of new text per
+round the review surface never shrinks. AC-3 stops the verifier from *mining* small revisions for new
+findings; AC-4 stops a genuinely large revision from slipping past a verifier that is not equipped to
+read it cold.
+
+**AC-4.1 — Growth is measured, per round.**
+*Who:* the review loop. *Given:* a review-loop phase other than Phase CR. *When:* an optimizer episode
+for round N has returned and the loop is about to open round N+1. *Then:* it computes **round growth**
+as `bytes(document at start of round N+1) − bytes(document at start of round N)`, using the same
+injected reader the loop already uses to take the round's anchor (M-5c). The measurement is taken at a
+**round boundary**, after the optimizer episode has returned — so it does not depend on whether a
+partial write is visible on disk mid-dispatch, which §4.7 records as unmeasured.
+
+**AC-4.2 — Classification.**
+*Who:* the review loop. *Given:* a measured round growth `g`. *When:* it selects round N+1's panel.
+*Then:*
+
+| Condition | Classification | Round N+1's panel |
+|---|---|---|
+| `g > 12,000` bytes | **new-mechanism** | full panel (AC-3.1's exception) |
+| `g ≤ 12,000` bytes, including zero and negative | **incremental** | single verifier |
+| growth unmeasurable | **unmeasurable** | full panel — fail safe |
+
+**AC-4.3 — Why 12,000, and what the number means.**
+The threshold is `MAX_AUTHORING_WRITE_BYTES` — **12,000 bytes, one pacing write**, already a constant
+in the module and already stated verbatim to every wrapped authoring dispatch (M-5a). It is not a new
+number and it is not a guessed round number: it is the largest revision an author can emit in a single
+tool call under the pacing contract, so "more than one pacing write of growth" is exactly "this
+revision was too big to be one edit". Its derivation is therefore **the pacing contract's**, not a
+fresh estimate; this REQ inherits it rather than inventing one. For calibration against the measured
+run: the predecessor's rounds grew 25.8, 22.3, 25.0, 28.1 and 38.2 KB — every one of the five would
+have classified new-mechanism, which is the correct reading of a run in which every round added a new
+mechanism.
+
+**AC-4.4 — The threshold is a declared, named threshold.**
+See §6. It is `MAX_AUTHORING_WRITE_BYTES`, default 12,000 bytes, owner: the `orchestrate-dev` workflow
+module. Changing the pacing contract changes this classification with it, deliberately — they are the
+same quantity and must not drift apart into two numbers.
+
+**AC-4.5 — Unmeasurable growth fails safe to the full panel.**
+*Who:* the review loop. *Given:* either endpoint read returns nothing, or the phase's target is not a
+single readable document (Phase CR's directory target being the standing example). *When:* the panel
+for the next round is selected. *Then:* the **full panel** is dispatched and the run report records
+that growth was unmeasurable and why. Failing safe here means failing *toward more review*, which is
+the direction that cannot lose a finding.
+
+**AC-4.6 — The optimizer is told to revise minimally.**
+*Who:* an authoring agent addressing findings. *Given:* a revision dispatch. *When:* it receives its
+prompt. *Then:* the prompt carries a **minimal-revision clause**: address every blocking finding, and
+prefer the smallest edit that does so — a targeted edit over a rewritten section, a corrected clause
+over a new subsection, a retraction over a retraction plus a new mechanism. The clause states the
+consequence plainly: a revision that grows the document by more than one pacing write re-escalates the
+next round to the full panel. This is a prompt clause, so it is directive rather than enforced; AC-4.2
+is what actually bites, and the clause exists so the author knows the rule it is being measured
+against.
+
+**AC-4.7 — Growth is reported.**
+*Who:* the operator. *Given:* any completed review-loop phase. *When:* they read the run report.
+*Then:* it carries, per round: the round number, the panel shape, the blocking count, the round
+growth in bytes, and the resulting classification. This table is the artifact the predecessor's
+post-mortem had to be reconstructed by hand (US-03), and it is what makes AC-2's fixed-point
+determination auditable after the fact.
+
+**Observability.** Two byte lengths of one file, one comparison against a constant, one row per round
+in a report.
+
+---
+
+### REQ-RCV-05 — Findings that require a measurement are routed, not answered in prose
+
+**Priority:** P0 · **Phase:** 1 · **Source:** US-04, US-03 · **Depends on:** BL-01
+
+The primary root cause. Generator classes A and B never closed across five rounds because both turn on
+properties of the workflow runtime that nobody had measured. Every candidate answer was a guess about
+unobservable behaviour, every guess was falsifiable by a reviewer-constructed scenario, and the
+author's only moves were to guess differently or to convert the defect into an accepted risk. That
+process has **no fixed point** below the point where the fact gets measured. The measurements were
+cheap. They were never the REQ's job — and filing them as blocking REQ findings is what made them the
+REQ's job.
+
+**AC-5.1 — The test a reviewer applies.**
+*Who:* a reviewer (full panel or verifier). *Given:* a finding they are about to file. *When:* they
+classify it. *Then:* if **resolving** the finding requires a measurement against the real workflow
+runtime — a fact about what the runtime does that is not established at HEAD — it is **not** a
+blocking finding. The test is about the *resolution*, not the topic: "this clause contradicts that
+one" is answerable from the document and blocks; "this clause depends on what an exhausted retry
+returns, which nobody has measured" is not answerable from the document and does not block.
+
+**AC-5.2 — Where it goes.**
+*Who:* a reviewer. *Given:* such a finding. *When:* they write their cross-review file. *Then:* it
+goes in a section headed exactly `## Measurement Required`, one item per finding, each naming: the
+fact to be measured, how it could be measured, and what it would settle. The section is
+**non-blocking** — it does not contribute to the `high`/`medium` counts AC-2 reads, and its presence
+alone never prevents an `Approved` verdict.
+
+**AC-5.3 — Authors must not answer these in prose.**
+*Who:* an authoring agent. *Given:* a `## Measurement Required` item on its document. *When:* it
+addresses the round's findings. *Then:* it **does not** invent a mechanism, choose an unobservable, or
+convert the item into an accepted risk. It may record the item and its status; it may not resolve it.
+Answering such an item in prose is precisely the act that produced R-9, R-10 and R-12 on the
+predecessor — three "resolutions" that name the failure the design tolerates rather than removing it.
+
+**AC-5.4 — The loop carries them into the report.**
+*Who:* the review loop. *Given:* a round's cross-review files. *When:* the round completes. *Then:*
+the loop extracts each file's `## Measurement Required` section and carries the items into the run
+report, attributed to their round and role. The operator therefore ends every phase — converged or
+halted — with a list of the measurements the phase is waiting on, without opening a cross-review file.
+
+**AC-5.5 — An absent section is normal.**
+*Who:* the review loop. *Given:* a cross-review file with no `## Measurement Required` section.
+*When:* extraction runs. *Then:* it contributes nothing and is not an error. Most rounds will have
+none. The section is optional and its absence is never a halt, a warning, or a completeness failure —
+it is **not** part of the cross-review completeness criterion, which remains the trailing `## Verdict`
+section and its single `VERDICT:` line, unchanged.
+
+**Observability.** The presence and content of a named markdown section in files on disk; a list in
+the run report. Note the self-application: this REQ's §4.7 names the two unmeasured facts it declines
+to depend on, which is what AC-5 asks every reviewer and author to do.
+
 ## 6. Declared thresholds
 
 ## 7. Non-goals and out of scope
