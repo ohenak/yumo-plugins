@@ -19,7 +19,7 @@ frontmatter is the pickup gate; the `Status` cell tracks lifecycle.
 
 | Order | Status | Feature | REQ Path | Depends-On |
 |-------|--------|---------|----------|------------|
-| 0 | halted | pdlc-review-loop-hardening | docs/pdlc-review-loop-hardening/REQ-pdlc-review-loop-hardening.md | pdlc-workflow-distribution |
+| 0 | awaiting-merge | pdlc-review-loop-hardening | docs/pdlc-review-loop-hardening/REQ-pdlc-review-loop-hardening.md | pdlc-workflow-distribution |
 | 1 | done | pdlc-workflow-distribution | docs/pdlc-workflow-distribution/REQ-pdlc-workflow-distribution.md | — |
 | 2 | pending | pdlc-merge-phase | docs/pdlc-merge-phase/REQ-pdlc-merge-phase.md | pdlc-workflow-distribution |
 | 3 | pending | pdlc-advisory-tier | docs/pdlc-advisory-tier/REQ-pdlc-advisory-tier.md | pdlc-merge-phase |
@@ -103,9 +103,10 @@ operator merged it as `1fb6cbe` (squash) and set this row `done`. Per §Bootstra
 always going to be an operator action — the PR touches `pdlc/workflows/**` and `pdlc/skills/**`, so it
 trips the self-modification convention and is never auto-merged.
 
-Row 1's completion satisfied the only dependency of rows 0 and 2, both of which are `pending` with
-`ready: true` REQs. **Row 0 `pdlc-review-loop-hardening` is the next pickup**, ahead of row 2 — see the
-row 0 notes below for why. Every other row that names this feature stays unpickable for its own reason:
+Row 1's completion satisfied the only dependency of rows 0 and 2. Row 0 took that pickup and is now
+`awaiting-merge` (see its notes below), so **row 2 `pdlc-merge-phase` is the next pickup** — it is the
+only remaining `pending` row whose dependencies are all `done`. Note that row 2 becomes pickable on
+row 1's merge alone; it does not wait on row 0's PR. Every other row stays unpickable for its own reason:
 rows 4 and 5 have further unmet dependencies (`pdlc-advisory-tier`, and for row 5 all of 2–4); rows 6
 and 7 are `blocked` with no REQ authored.
 
@@ -135,6 +136,30 @@ each killed by the runtime stall watchdog mid-`Write`, producing no FSPEC (row 0
 at the time would also have re-run all four approved Phase-R rounds (row 0, H-4). Those harness fixes
 were the recommended precondition for further Phase F attempts here; row 1 in fact completed without
 them, which is why row 0 now runs first — the next feature should not have to.
+
+**Row 0 is `awaiting-merge` as of 2026-07-30.** The pipeline ran to the end of Phase PUB and raised
+https://github.com/ohenak/yumo-plugins/pull/23, whose five PR checks were green at `7bc559a` (both
+`Unit tests` matrix legs, `Generated artifacts are in sync`, `Fresh-clone bootstrap works`, `Shell
+scripts parse`). As with row 1 the merge is an operator action — the PR touches `pdlc/workflows/**`
+and `pdlc/skills/**`, so it trips the self-modification convention and is never auto-merged.
+
+This row was `halted` from 2026-07-29 (`6247fa5`, Phase R non-convergence at the 5-iteration ceiling)
+until this transition. The intervening resolution is the operator-directed convergence pass recorded
+in `POSTMORTEM-R-pdlc-review-loop-hardening.md` §Resolution: v1.5 was verified finding-by-finding
+against both round-5 cross-reviews rather than by a sixth review round, all nine blocking and four Low
+findings resolved in the v1.5 text, and every citation re-verified byte-accurate at HEAD. The round-5
+cross-review files keep their historical `Needs revision` verdicts against v1.4 — no reviewer approval
+was fabricated. **One operator action is still outstanding**: that POSTMORTEM carries no machine-readable
+`RESOLVED:` marker, so `parseResolvedMarker` reads it as `absent` and `checkPostmortem` fails closed. Any
+future re-entry to Phase R for this feature will refuse until a person adds `RESOLVED: yes` on its own
+line. The marker is human-written only by construction (`pdlc/workflows/orchestrate-dev.js:942-943`),
+so no agent has written or will write it.
+
+Two items are carried out of this row rather than resolved in it, bound to row 9
+(`pdlc-authoring-contract`): CODEBASE F-4/F-5/F-6, and DoD F-2/F-3 — one defect from two angles, where
+F-2 is entirely pre-existing and F-3 is partly net-new (four of six sites pre-date the branch, two are
+`defaultGit` seams this feature added). Adding F-3's guard reds until F-2 is fixed, so they land
+together or not at all.
 
 Row 0 (**called row 8 in every document written before 2026-07-29**) binds four harness defects — the
 two from post-mortem R-3/R-4 plus two found during the 2026-07-28 run. Its REQ **is authored** (v1.0,
