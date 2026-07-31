@@ -48,6 +48,108 @@ depends-on: [pdlc-review-loop-hardening]
 
 ## 1. Problem
 
+The pdlc review loop does not converge, and when it fails to converge it fails **expensively**. This
+is now measured twice, on two consecutive features, with the same signature.
+
+### 1.1 The measured run
+
+`docs/pdlc-review-loop-hardening/POSTMORTEM-R-pdlc-review-loop-hardening.md` records Phase R for that
+feature in full. Five rounds of author → dual cross-review → address ran to the five-round ceiling
+without a single **Approved** verdict from either reviewer. The two tables that matter:
+
+| REQ version reviewed | v1.0 | v1.1 | v1.2 | v1.3 | v1.4 |
+|---|---|---|---|---|---|
+| Blocking findings (High + Medium, SE + TE) | 11 | 6 | 6 | 7 | 9 |
+| of which High | 4 | 1 | 1 | 1 | 3 |
+
+| REQ version | v1.0 | v1.1 | v1.2 | v1.3 | v1.4 | v1.5 |
+|---|---|---|---|---|---|---|
+| Bytes | 25.9 KB | 51.7 KB | 74.0 KB | 99.0 KB | 127.1 KB | 165.3 KB |
+
+The blocking count fell once, flattened, then rose for three consecutive rounds. The document grew
+monotonically at roughly 25 KB per round — 6.4× over five rounds. The predecessor feature
+(`pdlc-workflow-distribution`) produced the same shape twice, for a combined ten rounds and 384 KB
+with no acceptance.
+
+Meanwhile the *resolution rate* was near perfect: rounds 2–5 resolved 5/5, 5/5, 6/6 and 5/5 of the
+findings they were given. The authoring side did everything it was asked. That is what makes this a
+loop defect rather than a quality defect.
+
+### 1.2 Why it does not converge
+
+The post-mortem names four defects. All four are in scope here.
+
+**P-1 — New text is unreviewed text, so the finding rate is self-sustaining.** Under delta review,
+each round reads what the previous round added. Every round's answer to a finding is *more text*:
+a retraction, a rationale, a risk row, a downstream obligation. At ~25 KB of new text per round the
+review surface never shrinks, so the blocking-finding rate cannot fall below the rate at which the
+answers themselves generate reviewable material. POSTMORTEM §Pattern 1 states this directly: at
+round 5, *every* blocking finding from both reviewers landed in text introduced at v1.4. The loop is
+convergent on the text it reviewed and non-convergent on the document. Nothing in the loop
+distinguishes "this round tightened 1 KB" from "this round added a new 25 KB mechanism" — the
+iteration counter treats both as one round (root cause 3).
+
+**P-2 — The stopping rule is advisory, so it does nothing.** The predecessor REQ's preamble carried
+the same fixed-point rule this document carries in its own preamble. Its test was satisfied at
+round 3 (6 → 6, non-decreasing). Rounds 4 and 5 ran anyway, consumed two full author-plus-two-reviewer
+cycles, added 66 KB — 40% of the finished document — and ended with *more* blocking findings than the
+round on which the rule fired. Nothing in `orchestrate-dev` reads a stopping rule written in the
+document under review, so the loop cannot honour it. This is a verbatim reproduction of finding R-4
+of the feature *before* that one. An advisory stopping rule has now failed on three features
+(root cause 2).
+
+**P-3 — Findings that only a measurement can close are filed as blocking prose findings.** The
+post-mortem's primary root cause. Two of the four generator classes (A: unobservable termination
+signal; B: provenance of the approval hash) never closed across five rounds, because both turn on
+properties the workflow runtime does not expose and nobody had measured. Every candidate rule was
+therefore a guess about unobservable behaviour; a competent reviewer can always construct the
+falsifying scenario, and the author can only answer by choosing a different unobservable or by
+converting the defect into an accepted risk. That process **has no fixed point** below the point where
+the underlying facts get measured. Three of the surviving answers (R-9, R-10, R-12) are risk
+acceptances, not solutions. The measurements themselves were cheap — a throwaway bundle run — and
+were never the REQ's job.
+
+**P-4 — Mechanically checkable defects consume review rounds.** Class D: line-number and
+symbol-existence accuracy in `file:line` citations. It was filed at round 1, answered with a dedicated
+`Citation baseline` header row and a symbol-plus-literal drift-proofing convention, and *reappeared at
+round 5* inside the newest measured section — off-by-two line numbers at the very sha the row named,
+plus a function cited in call form that does not exist at HEAD. Four rounds of attention and a
+documented convention did not fix it. POSTMORTEM R-6 already rules it "verifiable by a script and
+should never consume a review round again". It has no script.
+
+### 1.3 Two structural facts about the panel
+
+Two further observations from the post-mortem are load-bearing for the fix and are not defects in
+themselves:
+
+- **The two reviewers do not disagree with each other** (§Pattern 4). At round 5 both independently
+  filed the same wrong-read defect. Their disposition tables agree on what was fixed. Both explicitly
+  approve the large majority of each revision. The dual-adversarial panel is buying breadth on the
+  *first* read of a document and, on later reads, is buying a duplicated disposition check.
+- **There is no product disagreement at all** (§Pattern 3). Across ten reviews, not one blocking
+  finding contests user need, scope, priority, phasing, or an externally observable behaviour. Every
+  blocking finding is about internal mechanism.
+
+### 1.4 What this REQ does
+
+Six changes to the review loop, directed by the operator, each attacking one of the four defects:
+
+| # | Change | Attacks |
+|---|---|---|
+| AC-1 | Round cap 5 → 3 | P-1 (bounds the damage), P-2 |
+| AC-2 | Enforced fixed-point stop, computed from the reviewers' own count trailers | P-2 |
+| AC-3 | Round 1 dual-adversarial; rounds 2+ a single verifier in disposition-check mode | P-1, §1.3 |
+| AC-4 | Revision-size bound: measure per-round byte growth; large growth re-escalates the panel | P-1 |
+| AC-5 | Measurement-required routing: such findings are non-blocking and carried to the report | P-3 |
+| AC-6 | A mechanised citation checker under `pdlc/workflows/lib/`, run by reviewers and authors | P-4 |
+
+**The whole set is observable in-band.** AC-1 is an integer constant. AC-2 compares two integers the
+reviewers already emit. AC-3 turns on which files exist on disk with which role slug and marker.
+AC-4 compares two byte lengths of a file. AC-5 turns on the presence of a named markdown section.
+AC-6 is a program with an exit code. None of the six requires anyone to settle, in prose, a fact about
+the runtime that nobody has measured — which is precisely the failure mode (P-3) that killed the
+predecessor's Phase R.
+
 ## 2. Users and value
 
 ## 3. Prerequisites
