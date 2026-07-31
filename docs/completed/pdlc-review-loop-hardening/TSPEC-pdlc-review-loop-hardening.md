@@ -11,8 +11,8 @@ reviewers; it is entirely inside §8.5 and it adds no exemption. Nothing else wa
 |---|---|
 | Upstream | `REQ → FSPEC → **TSPEC**` (REQ **v1.6**, FSPEC **v1.8** — the REQ amended at v1.1 of this document, the FSPEC at v1.1, v1.2 and v1.3, see §0) |
 | Downstream | `DECISIONS, PLAN, PROPERTIES, IMPL` |
-| Cross-Reviews | `docs/pdlc-review-loop-hardening/CROSS-REVIEW-{product-manager,test-engineer}-TSPEC-v1.md` (round 1, dispositioned at v1.1); `…-TSPEC-v2.md` (round 2, dispositioned at v1.2); `…-TSPEC-v3.md` (round 3, dispositioned at v1.3); `…-TSPEC-v4.md` (round 4, dispositioned at v1.4); `…-TSPEC-v5.md` (round 5, **both Approved**, dispositioned at v1.5); harvested into `LEARNINGS-pdlc-review-loop-hardening.md` after Phase H |
-| LEARNINGS | `docs/pdlc-review-loop-hardening/LEARNINGS-pdlc-review-loop-hardening.md` |
+| Cross-Reviews | `docs/completed/pdlc-review-loop-hardening/CROSS-REVIEW-{product-manager,test-engineer}-TSPEC-v1.md` (round 1, dispositioned at v1.1); `…-TSPEC-v2.md` (round 2, dispositioned at v1.2); `…-TSPEC-v3.md` (round 3, dispositioned at v1.3); `…-TSPEC-v4.md` (round 4, dispositioned at v1.4); `…-TSPEC-v5.md` (round 5, **both Approved**, dispositioned at v1.5); harvested into `LEARNINGS-pdlc-review-loop-hardening.md` after Phase H |
+| LEARNINGS | `docs/completed/pdlc-review-loop-hardening/LEARNINGS-pdlc-review-loop-hardening.md` |
 
 ---
 

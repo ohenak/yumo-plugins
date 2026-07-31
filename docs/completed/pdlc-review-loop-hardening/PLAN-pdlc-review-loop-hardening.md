@@ -16,7 +16,7 @@ the TSPEC, and is cited from §9.2 rather than copied. Full mapping in §14.3.
 | Upstream | `REQ → FSPEC → TSPEC → **PLAN**` |
 | Downstream | PROPERTIES, IMPL |
 | Cross-Reviews | `CROSS-REVIEW-{product-manager,test-engineer}-PLAN[-v{N}].md` |
-| LEARNINGS | `docs/pdlc-review-loop-hardening/LEARNINGS-pdlc-review-loop-hardening.md` |
+| LEARNINGS | `docs/completed/pdlc-review-loop-hardening/LEARNINGS-pdlc-review-loop-hardening.md` |
 
 ---
 

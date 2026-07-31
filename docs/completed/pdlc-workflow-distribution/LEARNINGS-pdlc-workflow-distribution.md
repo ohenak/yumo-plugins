@@ -3,7 +3,7 @@
 | Field | Detail |
 |---|---|
 | Feature | pdlc-workflow-distribution |
-| REQ | docs/pdlc-workflow-distribution/REQ-pdlc-workflow-distribution.md |
+| REQ | docs/completed/pdlc-workflow-distribution/REQ-pdlc-workflow-distribution.md |
 | Date Completed | 2026-07-29 |
 | Total Iterations | **REQ: 16** (document reached v17.x), FSPEC: 6, TSPEC: 2, PLAN: 3, PROPERTIES: 3, DECISIONS: 0 (none authored), Final Codebase Review: 2, **DoD: 3**, IMPL: 22 batches / 205 commits on the branch |
 | Upstream | REQ → FSPEC → TSPEC → PLAN → PROPERTIES → IMPL → CR → DOD |
