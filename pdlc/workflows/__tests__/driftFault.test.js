@@ -454,6 +454,7 @@ const T48_SHIPPED_BASH_SOURCES = Object.freeze([
 const T48_TSPEC_PATH = join(
   T48_REPO_ROOT,
   "docs",
+  "completed",
   "pdlc-workflow-distribution",
   "TSPEC-pdlc-workflow-distribution.md"
 );
