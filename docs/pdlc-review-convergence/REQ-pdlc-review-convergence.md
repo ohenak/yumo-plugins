@@ -206,6 +206,76 @@ fallback for it.
 
 ## 4. Measured facts
 
+Every fact below was read from the working tree at the Citation baseline commit **`d11dad5`**. Each
+row names the **enclosing symbol** and a **distinctive literal** as well as the line, per the drift
+convention in the header. These are the seams AC-1 through AC-6 attach to; a reviewer verifying this
+REQ should verify these rows, not re-derive them from memory.
+
+### 4.1 The round budget
+
+| ID | Fact | Where | Literal |
+|---|---|---|---|
+| **M-1a** | The round budget is one module-scope constant. | `pdlc/workflows/orchestrate-dev.js:52`, module scope | `const MAX_REVIEW_ROUNDS = 5;` |
+| **M-1b** | The **sole** site where the window *width* is expressed in terms of that constant is the helper `windowEnd`. Its own doc comment says so: *"This is the SOLE place in the module where the window width is expressed in terms of `MAX_REVIEW_ROUNDS`."* `reviewLoop` takes `endIndex` as a parameter and defaults it through this helper rather than recomputing the arithmetic. | `orchestrate-dev.js:2215–2217`, function `windowEnd`; the default is applied at `:1574` inside `reviewLoop` | `return startIndex + MAX_REVIEW_ROUNDS - 1;` and `const last = endIndex === undefined ? windowEnd(first) : endIndex;` |
+| **M-1c** | Three further sites *read* the constant without doing width arithmetic: the non-convergence phase record, the post-mortem prompt's required-sections literal, and the returned `iterations` field. All three are value-sensitive but arithmetic-free. | `orchestrate-dev.js:1581`, `:1727`, `:1773` | `MAX_REVIEW_ROUNDS` as an argument to `recordPhase`; `` `Iterations (${MAX_REVIEW_ROUNDS} — limit reached)` ``; `iterations: MAX_REVIEW_ROUNDS,` |
+
+### 4.2 The counts AC-2 compares
+
+| ID | Fact | Where | Literal |
+|---|---|---|---|
+| **M-2a** | `parseVerdict` returns `{verdict, high, medium, low, malformed?}` — the blocking counts are already machine-readable, parsed from the reviewer's trailing `{"high": N, "medium": N, "low": N}` JSON object. | `orchestrate-dev.js:393`, function `parseVerdict` | `export function parseVerdict(result, skillName)`; JSDoc `@returns {{ verdict: string, high: number, medium: number, low: number, malformed?: boolean }}` |
+| **M-2b** | `malformed: true` is set **only** when the trailer is missing or unparseable. Its doc comment is explicit that a genuine parse — *"including the truncated-output zero-counts case"* — never sets it. | `orchestrate-dev.js` JSDoc immediately above `:393`, and the `fallback` object literal inside the function | `malformed: true,` in `const fallback = { verdict: "Needs revision", high: 0, medium: 0, low: 0, malformed: true }` |
+| **M-2c** | The truncated-output path returns **genuine zero counts** and no `malformed` flag, so `0/0/0` is a real observation, not an absence. | `orchestrate-dev.js:451`, inside `parseVerdict` | `return { verdict: rawVerdict, high: 0, medium: 0, low: 0 };` |
+| **M-2d** | A malformed trailer already has a cheap recovery path: a second, small-model pass over the raw reviewer output. | `orchestrate-dev.js:2824`, function `recoverVerdict` | `export async function recoverVerdict({ reviewer, rawResult, _agent = agent })` |
+
+### 4.3 The panel AC-3 reshapes
+
+| ID | Fact | Where | Literal |
+|---|---|---|---|
+| **M-3a** | `reviewLoop` hardcodes **exactly two** reviewers. The results are two named bindings, and the reviewer array is indexed positionally at `[0]` and `[1]`. | `orchestrate-dev.js:1623` (`reviewLoop` signature), `:1710` (bindings), `:1803–1812` (dispatch) | `let result1, result2;`; `reviewers[0]` / `reviewers[1]`; `const [r1, r2] = await _parallel([...])` |
+| **M-3b** | The per-round cross-review path is derived from the reviewer's role slug and the round number, so a new reviewer role writes a file the existing machinery already indexes. | `orchestrate-dev.js`, arrow `reviewTargetPath` near `:1697` | `` `docs/${feature}/CROSS-REVIEW-${reviewerRoleSlug(skill) || skill}-${reviewFileType}-v${round}.md` `` |
+| **M-3c** | `selectMode` rule 2 requires **every** role in `present` to approve at the *same* round before that round is considered discharged. Its `dualApproved` predicate is `roles.every(...)` over the roles observed in `present`. | `orchestrate-dev.js:1436` (signature) and the `dualApproved` arrow near `:1462` | `const dualApproved = (round) => roles.length > 0 && roles.every((role) => {...})` |
+| **M-3d** | `tier1ApprovalRecord` treats **a lone file at the candidate round as role asymmetry and yields no approval**. This is deliberately fail-closed against a dual round one of whose reviewers crashed. | `orchestrate-dev.js:2478` (function), `:2490` (the asymmetry test) | `// Role-asymmetry: one reviewer wrote the candidate round and the other did not.` followed by `if (records.some((r) => r === null)) return noApprovalRecord(candidate);` |
+| **M-3e** | The state `selectMode` and the approval records read is refreshed **from the branch, inside the loop**, once per episode. | `orchestrate-dev.js:2358`, function `refreshReviewState` | `async function refreshReviewState({ feature, docType, _listFiles, _readFile })` |
+| **M-3f** | Tier 2 — the LEARNINGS approval record — is a separate, later reader of the same approvals. | `orchestrate-dev.js:2528`, method `tier2ApprovalRecord` | `async tier2ApprovalRecord({ feature, docType, candidate, reviewers, _readFile })` |
+
+### 4.4 The approval anchors AC-3 extends
+
+| ID | Fact | Where | Literal |
+|---|---|---|---|
+| **M-4a** | On the terminal round the loop appends a two-line anchor block to each approving cross-review file. This is an existing writer of durable, in-file, machine-read markers — AC-3's verifier marker is a third line in the same block, written by the same function. | `orchestrate-dev.js:1934` (function `appendApprovalAnchors`), append at `:1975` | `` `\nAPPROVAL-HASH: ${hash}\nREVIEWED-COMMIT: ...` `` |
+| **M-4b** | The anchor pre-count is a count **and** a comparison: 0 ⇒ append; 1 equal ⇒ idempotent no-op; 1 unequal ⇒ error, no approval; ≥ 2 ⇒ history ambiguous, no approval. Nothing here throws. | JSDoc immediately above `:1934`, and `approvalAnchorPreCount` near `:1918` | `if (existing.length >= 2) {`; `/^APPROVAL-HASH:\s*(\S+)\s*$/` |
+
+### 4.5 The growth AC-4 measures
+
+| ID | Fact | Where | Literal |
+|---|---|---|---|
+| **M-5a** | `12000` already exists in the module as the per-tool-call authoring emission ceiling, and is the figure the runtime prompt states to every wrapped authoring dispatch. | `orchestrate-dev.js:56` (constant) and `:2279` (`PACING_CONTRACT_CLAUSE`) | `const MAX_AUTHORING_WRITE_BYTES = 12000;`; `"section per edit, keep every single write under 12,000 bytes, and commit after"` |
+| **M-5b** | There is already an **advisory** post-dispatch check that shells `git diff --numstat` and compares *added lines* against that byte constant, emitting a note and never halting. AC-4 does **not** reuse it: it compares lines to a byte figure, and it is scoped to one dispatch, not to a round. AC-4's measurement is a byte length of the document, taken from a read. | `orchestrate-dev.js:2725–2743`, the advisory pacing emitter | `result = await _git(["diff", "--numstat", "--", targetPath]);` and `"only — it is a proxy, not an oracle, and never a halt condition."` |
+| **M-5c** | The loop already reads the document's text through an injected reader on the same seam AC-4 needs, so no new IO primitive is required. | `orchestrate-dev.js`, `_readFile` parameter threaded through `reviewLoop` and `refreshReviewState` (`:2358`) | `_readFile` |
+
+### 4.6 The library AC-6 adds
+
+| ID | Fact | Where | Literal |
+|---|---|---|---|
+| **M-6a** | `pdlc/workflows/lib/` exists and holds exactly one file today: `document-oracles.mjs`. It is **production code with no side effects on import** — its header says so, and every export is a pure function of a `root` directory path, with no `process.cwd()` and no `import.meta.url`-derived paths. It names *"a future CLI"* among its intended callers. | `pdlc/workflows/lib/document-oracles.mjs:1–12`, module header | `"Production code, no side effects: every exported function is a pure"` |
+| **M-6b** | That library is **not** part of the runtime bundle. `build-runtime.mjs` refers to it only in a comment about keeping two exact strings in step. AC-6's new library is the same class. | `pdlc/workflows/build-runtime.mjs:237`, comment | `` // `coveredViolations` (pdlc/workflows/lib/document-oracles.mjs) `` |
+| **M-6c** | `build-runtime.mjs` is itself **import-unsafe** (it acts on import), which is why a new checker must be a separate module rather than an addition to the builder. Recorded in `LEARNINGS-pdlc-review-loop-hardening.md` §2 and §5.3, citing `runtimeBundle.test.js:18` and `CODEBASE-v2 §7(a)`. | `docs/pdlc-review-loop-hardening/LEARNINGS-pdlc-review-loop-hardening.md` §2, §5.3 | `` **`build-runtime.mjs` import-unsafe** `` |
+| **M-6d** | The workflow test suite is jest under `--experimental-vm-modules`; a new `lib/` module is testable by the existing `npm test` with no tooling change. | `pdlc/workflows/package.json:6–9`, `scripts` | `"test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"` |
+
+### 4.7 What is deliberately **not** measured here
+
+Two facts this REQ does **not** claim, and does not need:
+
+- **How an exhausted retry or a stall-killed dispatch surfaces to the caller.** Unmeasured at
+  `d11dad5`; recorded as unmeasured by the predecessor REQ's §4a A-8. No AC below depends on it.
+- **Whether a partial write is visible on disk before its commit.** Also unmeasured. AC-4's growth
+  measurement is taken at a round boundary, after the optimizer episode has returned and committed, so
+  it does not depend on intra-dispatch write visibility.
+
+Both are named here so that a reviewer can check the claim in §1.4 — that no AC turns on an unmeasured
+runtime fact — against the two specific unmeasured facts that killed the predecessor.
+
 ## 5. Acceptance criteria
 
 ## 6. Declared thresholds
