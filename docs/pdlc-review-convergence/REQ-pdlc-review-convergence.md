@@ -727,6 +727,61 @@ Stated so a reviewer does not file a blocking finding against an absence that is
 
 ## 8. Downstream obligations
 
+This section is the **discharge point for the preamble's stopping rule**. A review finding of the form
+"this AC has no oracle / no fixture / no seam / no test" is answered here: it is an obligation on the
+FSPEC, TSPEC, PLAN or PROPERTIES, not a REQ revision.
+
+| # | Obligation | Owner |
+|---|---|---|
+| **O-1** | Specify how the loop threads a **per-round reviewer list** through `reviewLoop`, replacing the two named result bindings, the positional `reviewers[0]`/`[1]` dispatch and the two-element `lastResults` construction (M-3a, AC-3.5(d)). | FSPEC → TSPEC |
+| **O-2** | Specify the amended same-round-approval rule: how `selectMode` evaluates rule 2 against the roles dispatched **at the round being judged** rather than the accumulated role set (M-3c, AC-3.5(c)), and what happens on a branch that carries a mixture of dual and verifier rounds. | FSPEC → TSPEC |
+| **O-3** | Name the verifier role: its slug, its SKILL file, and whether it is a new SKILL or a mode of an existing review SKILL (AC-3.7, §6). | FSPEC |
+| **O-4** | Specify the `REVIEW-MODE: verification` marker's exact write path through `appendApprovalAnchors`, and its interaction with that function's existing pre-count semantics (0 / 1-equal / 1-unequal / ≥2 — M-4b): what a duplicated or contradictory marker means, and how `tier1ApprovalRecord` reads it fail-closed (AC-3.5(a), AC-3.5(b)). | FSPEC → TSPEC |
+| **O-5** | Specify where in the loop AC-2's comparison is evaluated so that it precedes the optimizer dispatch (AC-2.1), and how its halt reason reaches both the post-mortem prompt and the run report distinctly from budget exhaustion (AC-2.2). | TSPEC |
+| **O-6** | Specify the citation grammar the checker recognises, the symbol-proximity window and its default, and the exact output format (AC-6.3, AC-6.4, §6). | FSPEC → TSPEC |
+| **O-7** | Specify the `## Measurement Required` extraction: how the section is located, what an empty or malformed one does (AC-5.5 requires: nothing), and the report format (AC-5.4). | TSPEC |
+| **O-8** | Specify the run-report row schema of AC-4.7 (round, panel shape, blocking count, growth, classification) and where it is emitted for both converged and halted phases. | TSPEC |
+| **O-9** | Write the SKILL amendments: the three review SKILLs (AC-5.1, AC-5.2, AC-6.5), the three author SKILLs (AC-5.3, AC-4.6, AC-6.5), and the verifier's disposition-check contract (AC-3.2). | FSPEC → implementation |
+| **O-10** | Properties and tests for all six ACs, including the negative cases this REQ names explicitly: the `0 ≥ 0` non-firing (AC-2.5), the malformed-count chain break in **both** directions (AC-2.3), the unequal-panel-shape non-comparison (AC-2.4), the lone-file-without-marker fail-closed (AC-3.5(b)), and unmeasurable growth escalating rather than degrading (AC-4.5). | PROPERTIES |
+| **O-11** | Rebuild `pdlc/workflows/dist/` in the same commit as every workflow-source change, and honour the C-2 runtime constraints: no new `import` into the bundle, and **every injected IO call `await`ed** (the adapter's implementations are async; the test doubles are sync, so a missing `await` passes the tests and fails at runtime). AC-6's library must acquire no caller inside the bundle (AC-6.6). | implementation |
+
 ## 9. Risks, assumptions and deferrals
+
+### 9.1 Assumptions
+
+| # | Assumption | If false |
+|---|---|---|
+| **A-1** | Reviewers reliably emit the `{"high": N, "medium": N, "low": N}` count trailer. Measured on the predecessor: **7 of 10** files carried it; the three that did not were all rounds 1–3 of one reviewer, and `recoverVerdict` (M-2d) exists to recover exactly that case. | AC-2 fires less often than expected. It never fires *wrongly* — AC-2.3 makes an unreadable count break the chain rather than trigger it. This is a degradation, not a defect. |
+| **A-2** | A single verifier in disposition-check mode catches what a second reviewer would have caught on rounds 2+. Evidenced by §1.3: across ten reviews the two reviewers converged rather than disagreeing. | AC-3 loses findings on later rounds. AC-4 is the compensating control — any revision large enough to contain a genuinely new mechanism re-escalates to the full panel. |
+| **A-3** | Byte growth is a usable proxy for "this revision added new mechanism". | AC-4 misclassifies. Both directions fail toward *more* review or toward the same review: a large tightening escalates unnecessarily (costly, safe), and a small new mechanism is read by a verifier who is still instructed to raise blocking findings in new-mechanism text (AC-3.2 clause 2). |
+| **A-4** | Reviewers can apply AC-5.1's test — "does resolving this require a measurement?" — consistently. | Findings are misrouted. Misrouting *toward* `## Measurement Required` weakens the loop; misrouting *away* from it reproduces the predecessor's failure. This is a prompt-quality risk with no mechanical control, and it is the weakest of the six changes. R-5. |
+
+### 9.2 Risks
+
+| # | Risk | Disposition |
+|---|---|---|
+| **R-1** | **This REQ is reviewed by the loop it is changing, under the old behaviour.** Five rounds, dual panel, no enforced stop, no measured growth, no citation checker. The predecessor's Phase R died exactly here. | Mitigated by the preamble's stopping rule, by §4.7's explicit naming of the two unmeasured facts no AC depends on, and by keeping this document short. **Accepted, and unenforceable** — the enforcement is AC-2, which has not shipped. The operator is asked to watch the trajectory table and halt at the fixed point by hand. |
+| **R-2** | **AC-2 is nearly inert in the default configuration.** Under AC-1's three rounds and AC-3's panel shape, the only comparable consecutive same-shape pair is (2, 3), so the rule fires at most once and saves one optimizer episode. | **Accepted and stated in AC-2.6 rather than hidden.** The rule's value is durability, not immediate saving. Successor: revisit cross-panel comparability (N-2) once real runs exist to calibrate against. |
+| **R-3** | **Tier-2 approval records will have gaps** for verifier-approved rounds (AC-3.6). | Accepted, with the limitation documented in LEARNINGS and the run report. Tier 2 is already best-effort and excluded from the completeness criterion. Successor: extend tier 2 to verifier rounds. |
+| **R-4** | **The two unmeasured runtime facts (§4.7) remain unmeasured**, so the predecessor's generator classes A and B stay open. | Out of scope by N-6. AC-5 is what stops them consuming review rounds in the meantime; it does not settle them. Successor: a spike that measures both, per POSTMORTEM R-3. |
+| **R-5** | **AC-5 and AC-4.6 are prompt clauses, so they are directive rather than enforced.** An agent that ignores them is not detected. | Accepted. AC-4.2 and AC-2 are the mechanical controls; AC-5's mechanical half is only the extraction (AC-5.4), and its classification half is prompt-borne. A-4 records the assumption. A finding that AC-5 is unenforceable is **correct and known** — file it as Low. |
+| **R-6** | **A branch carrying a mixture of dual and verifier rounds is a state the existing approval machinery has never seen.** Three separate call sites encode "two reviewers" (M-3a, M-3c, M-3d). | This is the highest-risk part of the change and is why AC-3.5 states four separate constraints rather than one. O-1, O-2, O-4 and O-10 discharge it downstream. |
+
+### 9.3 Deferrals and their binding
+
+Per the deferral-binding obligation, every deferred capability must be bound to a successor that
+exists as a queue row or a named successor REQ file. **This is not satisfied at authoring time**, and
+the REQ says so plainly rather than offering prose intent as a binding:
+
+| Deferral | Named successor | Status |
+|---|---|---|
+| Cross-panel count comparability (R-2, N-2) | `pdlc-review-convergence-calibration` | **Unbound.** No queue row exists. |
+| Tier-2 approval for verifier rounds (R-3, N-5) | `pdlc-approval-record-tier2` | **Unbound.** No queue row exists. |
+| Measuring the two runtime facts of §4.7 (R-4, N-6) | POSTMORTEM R-3's spike | **Unbound.** No queue row exists; POSTMORTEM R-3 recommended creating them and they were not created. |
+
+The authoring agent was instructed not to modify `docs/_queue/QUEUE.md` — the orchestrator adds this
+feature's own row after authoring. **Creating the three successor rows above is therefore an operator
+action, and it is recorded here as an open item rather than papered over.** A reviewer is entitled to
+treat these as unbound deferrals; that reading is correct. They become bound when the rows exist.
 
 ## 10. Traceability
