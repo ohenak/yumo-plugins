@@ -389,6 +389,107 @@ consecutive rounds to the full panel. R-2 records the residue.
 **Observability.** Two integers from `parseVerdict`, two role-slug sets, one comparison, one halt
 reason string. No unmeasured runtime behaviour is involved.
 
+---
+
+### REQ-RCV-03 — Round 1 is dual-adversarial; later rounds are a single verifier
+
+**Priority:** P0 · **Phase:** 1 · **Source:** US-05, US-02 · **Depends on:** BL-01, BL-03, BL-04
+
+Two facts from §1.3 motivate this. The two reviewers **never disagreed** — at round 5 both
+independently filed the same defect, their disposition tables agreed, and both approved the large
+majority of each revision. And rounds 2–5 had a ~100% finding-resolution rate: the authoring side
+resolved every finding it was given, every round. Later rounds were therefore *disposition checks* that
+also happened to manufacture a fresh crop of findings in the new text written to answer them. Two
+agents doing a disposition check independently is a duplicated disposition check at double the
+finding-manufacture rate.
+
+Round 1 is different: it is the only round that reads the document cold, and breadth of lens is worth
+paying for exactly once.
+
+**AC-3.1 — Panel by round.**
+*Who:* the review loop. *Given:* a review-loop phase other than Phase CR. *When:* it dispatches
+round N. *Then:* round 1 dispatches the **full reviewer panel** (today: `se-review` and `te-review`,
+in parallel, as now), and every round N ≥ 2 dispatches a **single verifier** — unless AC-4 classified
+round N−1's revision as **new-mechanism**, in which case round N dispatches the full panel again.
+
+**AC-3.2 — What the verifier is asked to do.**
+*Who:* the verifier. *Given:* round N ≥ 2 on a document whose round N−1 findings have been addressed.
+*When:* it reviews. *Then:* it works in **disposition-check mode**:
+1. it verifies that **every** prior blocking finding from every prior round is resolved, and states a
+   per-finding disposition;
+2. it may raise a **new blocking finding only in text that adds new mechanism** — a clause that
+   changes what the system does. Text that restates, tightens, retracts, cites, or records a risk is
+   not new mechanism and is not a place a new blocking finding may be raised;
+3. it may raise Low findings and `## Measurement Required` items (AC-5) anywhere, without restriction.
+
+Restriction 2 is the direct answer to P-1. It is a rule about *where* a blocking finding may be
+raised, not about what is true; a verifier that believes a non-mechanism clause is wrong records it as
+Low or as a Measurement Required item.
+
+**AC-3.3 — Phase CR keeps the full panel every round.**
+*Who:* the pipeline. *Given:* Phase CR, the final codebase review. *When:* any round runs. *Then:*
+the full panel is dispatched, every round. Phase CR's optimizer changes **code**, not the reviewed
+document, so the growth AC-4 measures does not exist there and the "new text is unreviewed text"
+mechanism this AC is designed around does not apply. Applying the verifier rule to a phase whose
+growth is unmeasurable would be applying it blind.
+
+**AC-3.4 — The verifier writes the same file grammar under its own role slug.**
+*Who:* the verifier. *Given:* round N ≥ 2. *When:* it finishes. *Then:* it writes
+`CROSS-REVIEW-{verifier-role-slug}-{doc}-v{N}.md` — the **unchanged** cross-review grammar: a trailing
+`## Verdict` section written last, carrying exactly **one** `VERDICT:` line, plus the machine-readable
+`{"high": N, "medium": N, "low": N}` count trailer that AC-2 reads. No parser changes; the loop's
+existing path-derivation already composes the path from the role slug and the round (M-3b).
+
+**AC-3.5 — A verifier-round approval is recorded, and a crashed dual round still is not.**
+
+This is the load-bearing integration constraint, and it exists because three separate places in
+`orchestrate-dev.js` currently encode "two reviewers" as an invariant. All three must be satisfied.
+
+*Who:* the review loop. *Given:* round N ≥ 2 dispatched a single verifier which approved. *When:*
+the loop records the approval. *Then:*
+
+- **(a) A durable, in-file marker distinguishes a verifier round from a crashed dual round.** The
+  loop appends `REVIEW-MODE: verification` to the verifier's cross-review file, alongside the
+  `APPROVAL-HASH:` / `REVIEWED-COMMIT:` anchors the terminal round already writes (M-4a) — same
+  writer, same append, same idempotence and ambiguity rules as M-4b. The marker is **in the file**,
+  not in memory, because the reader that needs it (M-3d) runs on a later invocation with nothing but
+  the branch to read.
+- **(b) A lone cross-review file at the candidate round WITHOUT the marker remains fail-closed.**
+  The existing role-asymmetry rule (M-3d) exists to refuse approval when one reviewer of a dual round
+  crashed, and that refusal must survive intact. Only the marker converts "one file" from *evidence of
+  a crash* into *evidence of a verifier round*.
+- **(c) Same-round approval is evaluated against the roles dispatched at that round.** `selectMode`
+  rule 2 today requires every role in `present` to approve at the same round, and `present`'s role set
+  is accumulated across **all** observed rounds (M-3c). Unchanged, a branch carrying
+  `{software-engineer, test-engineer}` at round 1 and `{verifier}` at round 2 would require all three
+  roles to approve at round 2, which is unsatisfiable — every round would read as still owed an
+  authoring pass, and the loop would never terminate on approval. The rule must be evaluated against
+  the roles dispatched **at the round being judged**.
+- **(d) The reviewer list is per-round.** `reviewLoop` currently hardcodes two reviewers in three
+  places: two named result bindings, positional `reviewers[0]`/`reviewers[1]` dispatch, and a
+  two-element `lastResults` construction on the halt path (M-3a). A round's panel must be a list whose
+  length the round determines, and every one of those sites must read from it.
+
+**AC-3.6 — Tier 2 may remain dual-only, and says so.**
+*Who:* the harvest step. *Given:* a feature whose approving round was a verifier round. *When:* the
+LEARNINGS approval record (tier 2, M-3f) is written. *Then:* it is acceptable for tier 2 to record no
+approval row for that round, **provided the limitation is documented** in the LEARNINGS file and in
+the run report — i.e. the absence is reported as a known limitation, not left as a silent gap. Tier 2
+is a best-effort record and is already explicitly excluded from the completeness criterion; extending
+it is not in this REQ's scope. R-3 binds the residue.
+
+**AC-3.7 — The verifier's lens is named, and it is not a third opinion.**
+*Who:* the operator. *Given:* the verifier role. *When:* they ask what lens it applies. *Then:* the
+verifier applies the **union** of the panel's lenses in disposition-check mode, not a new lens. It is
+not a tie-breaker between the two round-1 reviewers, because §1.3 measured that they do not disagree.
+The role's name, its skill file, and whether it is a new SKILL or a mode of an existing one are FSPEC
+decisions (§8 O-3); what this REQ fixes is that it has **one stable role slug**, because the slug is
+what the file path, the approval marker and AC-2's panel-shape comparison are all keyed on.
+
+**Observability.** Which files exist, under which role slug, at which round; whether a file carries
+`REVIEW-MODE: verification`; which round `selectMode` reports as owed. All on disk, all readable on a
+later invocation.
+
 ## 6. Declared thresholds
 
 ## 7. Non-goals and out of scope
