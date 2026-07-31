@@ -3,7 +3,7 @@
 | Field | Detail |
 |---|---|
 | Feature | pdlc-review-loop-hardening |
-| REQ | docs/pdlc-review-loop-hardening/REQ-pdlc-review-loop-hardening.md |
+| REQ | docs/completed/pdlc-review-loop-hardening/REQ-pdlc-review-loop-hardening.md |
 | Date Completed | 2026-07-30 |
 | Total Iterations | REQ: 5 (never converged — see §1), FSPEC: 5, TSPEC: 5, PLAN: 5, PROPERTIES: 5, CODEBASE: 2, IMPL: 1 |
 | Upstream | REQ → FSPEC → TSPEC → PLAN → PROPERTIES → IMPL |

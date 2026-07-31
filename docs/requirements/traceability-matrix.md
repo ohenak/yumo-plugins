@@ -3,7 +3,7 @@
 ## pdlc-workflow-distribution
 
 Authoritative per-AC mapping lives in §9 of
-`docs/pdlc-workflow-distribution/REQ-pdlc-workflow-distribution.md`; this is the roll-up.
+`docs/completed/pdlc-workflow-distribution/REQ-pdlc-workflow-distribution.md`; this is the roll-up.
 
 | User Story | Requirement | FSPEC |
 |---|---|---|
@@ -39,8 +39,8 @@ Authoritative per-AC mapping lives in §9 of
 
 ## pdlc-review-loop-hardening
 
-Upstream: `docs/pdlc-review-loop-hardening/REQ-pdlc-review-loop-hardening.md` (v1.5).
-Downstream: `docs/pdlc-review-loop-hardening/FSPEC-pdlc-review-loop-hardening.md` (v1.0).
+Upstream: `docs/completed/pdlc-review-loop-hardening/REQ-pdlc-review-loop-hardening.md` (v1.5).
+Downstream: `docs/completed/pdlc-review-loop-hardening/FSPEC-pdlc-review-loop-hardening.md` (v1.0).
 
 | Defect | AC group | FSPEC sections |
 |---|---|---|

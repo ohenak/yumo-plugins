@@ -5,7 +5,7 @@
 | Upstream | `REQ-pdlc-workflow-distribution.md` (v13.0, `9b66cdb`) → **POSTMORTEM-R** |
 | Downstream | `LEARNINGS-pdlc-workflow-distribution.md`, `docs/_queue/QUEUE.md` |
 | Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-REQ-v{1..12}.md` — twenty-four files, all on `feat-pdlc-workflow-distribution` |
-| LEARNINGS | `docs/pdlc-workflow-distribution/LEARNINGS-pdlc-workflow-distribution.md` |
+| LEARNINGS | `docs/completed/pdlc-workflow-distribution/LEARNINGS-pdlc-workflow-distribution.md` |
 | Author | pm-author (Claude) |
 | Date | 2026-07-28 |
 | Version | 2.1 — Resolution appended 2026-07-28; otherwise 2.0 — supersedes the 2026-07-27 edition, which covered the **first** five-round run (REQ v3–v8). This edition covers the **second** five-round run (REQ v8–v13) and the whole phase. |

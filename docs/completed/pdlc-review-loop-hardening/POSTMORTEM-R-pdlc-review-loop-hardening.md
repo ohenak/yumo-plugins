@@ -5,7 +5,7 @@
 | Upstream | `REQ-pdlc-review-loop-hardening.md` (v1.5, `432b3be`) → **POSTMORTEM-R** |
 | Downstream | `LEARNINGS-pdlc-review-loop-hardening.md`, `docs/_queue/QUEUE.md` |
 | Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-REQ-v{1..5}.md` — ten files, all on `feat-pdlc-review-loop-hardening` |
-| LEARNINGS | `docs/pdlc-review-loop-hardening/LEARNINGS-pdlc-review-loop-hardening.md` |
+| LEARNINGS | `docs/completed/pdlc-review-loop-hardening/LEARNINGS-pdlc-review-loop-hardening.md` |
 | Author | pm-author (Claude) |
 | Date | 2026-07-29 |
 | Version | 1.0 |

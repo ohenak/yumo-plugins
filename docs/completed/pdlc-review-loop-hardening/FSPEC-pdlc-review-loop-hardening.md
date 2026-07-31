@@ -9,7 +9,7 @@ feature: pdlc-review-loop-hardening
 | Upstream | `REQ-pdlc-review-loop-hardening.md` (v1.5, converged — SE-v5 and TE-v5 dispositioned) → **FSPEC** |
 | Downstream | `TSPEC-pdlc-review-loop-hardening.md`, `PLAN-…`, `PROPERTIES-…` |
 | Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v1.md` (iteration 1, dispositioned at v1.1); `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v2.md` (iteration 2, dispositioned at v1.2); `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v3.md` (iteration 3, dispositioned at v1.3); `CROSS-REVIEW-{software-engineer,test-engineer}-FSPEC-v4.md` (iteration 4, dispositioned at v1.4). Downstream: `CROSS-REVIEW-product-manager-TSPEC-v2.md` F-06 dispositioned at **v1.7** (§20); the round-3 TSPEC reviewers' mechanical note on that section's preamble at **v1.8**. |
-| LEARNINGS | `docs/pdlc-review-loop-hardening/LEARNINGS-pdlc-review-loop-hardening.md` |
+| LEARNINGS | `docs/completed/pdlc-review-loop-hardening/LEARNINGS-pdlc-review-loop-hardening.md` |
 | Citation baseline | **HEAD `0655387`.** Every code citation in this document was re-measured at that sha and names its **enclosing symbol plus a distinctive literal**, per O-16 and the REQ's own `Citation baseline` convention. A bare `file:line` citation is a defect in this document. |
 
 | Product | Status | Author | Version | Date |

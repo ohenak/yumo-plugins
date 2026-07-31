@@ -13,7 +13,7 @@ feature: pdlc-workflow-distribution
 | Obligations **added** by this FSPEC | O-18 (backup-grammar round-trip + prune → PROPERTIES), O-19 (LLM-mediated `_readFile` seam → TSPEC/implementation, Cross-Feature), O-20 (OQ-6's reading, → PROPERTIES) — §10 |
 | Prerequisites | BL-01, BL-03, BL-06 are **"Before FSPEC"** and are **not discharged** — see §0.3 |
 | Cross-Reviews | `CROSS-REVIEW-software-engineer-FSPEC-v1.md`, `CROSS-REVIEW-test-engineer-FSPEC-v1.md` (disposed in the v2.0 note); `CROSS-REVIEW-software-engineer-FSPEC-v2.md`, `CROSS-REVIEW-test-engineer-FSPEC-v2.md` (disposed in the v3.0 note); `CROSS-REVIEW-software-engineer-FSPEC-v3.md`, `CROSS-REVIEW-test-engineer-FSPEC-v3.md` (disposed in the v4.0 note); `CROSS-REVIEW-software-engineer-FSPEC-v4.md`, `CROSS-REVIEW-test-engineer-FSPEC-v4.md` (disposed in the v5.0 note); `CROSS-REVIEW-software-engineer-FSPEC-v5.md`, `CROSS-REVIEW-test-engineer-FSPEC-v5.md` (disposed in the v5.1 note) |
-| LEARNINGS | `docs/pdlc-workflow-distribution/LEARNINGS-pdlc-workflow-distribution.md` (Phase H) |
+| LEARNINGS | `docs/completed/pdlc-workflow-distribution/LEARNINGS-pdlc-workflow-distribution.md` (Phase H) |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
