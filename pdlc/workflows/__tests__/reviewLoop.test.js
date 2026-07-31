@@ -3,7 +3,12 @@
  * PROP-LOOP-01 through PROP-LOOP-16
  */
 
-import { reviewLoop } from "../orchestrate-dev.js";
+import { readFileSync } from "fs";
+import { dirname, join } from "path";
+import { fileURLToPath } from "url";
+
+import main, { reviewLoop } from "../orchestrate-dev.js";
+import { fakeListFiles } from "./helpers/seams.js";
 
 let logMessages = [];
 const originalLog = console.log;
@@ -78,7 +83,10 @@ describe("PROP-LOOP-01: Both reviewers approve on iteration 1", () => {
       _checkFile: existsGuard,
     });
 
-    expect(result).toEqual({
+    // `toMatchObject`, not `toEqual`: TSPEC §3.9 makes `reviewLoop`'s return a
+    // SUPERSET of what this property names — `trailerReason` rides on every
+    // return (RLH-LOOP-02b). The property under test is the three fields below.
+    expect(result).toMatchObject({
       converged: true,
       iterations: 1,
       lastOptimizerResult: null,
@@ -117,7 +125,8 @@ describe("PROP-LOOP-02: One reviewer needs revision, then both pass on iteration
       _checkFile: existsGuard,
     });
 
-    expect(result).toEqual({
+    // `toMatchObject` for the same reason as PROP-LOOP-01 above.
+    expect(result).toMatchObject({
       converged: true,
       iterations: 2,
       lastOptimizerResult: makeOptimizerResult(),
@@ -803,5 +812,368 @@ describe("Malformed trailer recovery (Haiku)", () => {
     expect(result.converged).toBe(true);
     expect(result.iterations).toBe(2);
     expect(optimizerCount).toBe(1);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RLH-22 — the review-window interface oracles for PLAN §11.5 `N-a`.
+//
+// PLAN §11.5 *decides* both interface shapes; this section is what makes the
+// decision falsifiable. Nothing below is negotiable by a later task — a task
+// that threads the window differently reds here, and editing the oracle to
+// green it is the §11.4 `H-q` halt, not a fix.
+//
+//   RLH-LOOP-01  `reviewLoop`'s two sibling fields `startIndex` / `endIndex`,
+//                its three new parameters (`docType`, `_listFiles`,
+//                `_readFile`) and absence of seed maps (TSPEC §3.9), the gate
+//                `if (iteration > endIndex)` reading `endIndex` as a consumed
+//                parameter, and `iteration` at every call site.
+//                RED batches 3–8, green from RLH-27 (batch 9); the call-site
+//                half greens at RLH-26 (batch 8).
+//   RLH-LOOP-02  the return shape's `postmortemWritten` / `trailerReason`
+//                (TSPEC §3.9, §5.6.1, §6.3) and `checkConverged`'s rendered
+//                `rounds {startIndex}..{endIndex}` (TSPEC §7.1 site 1), driven
+//                over `startIndex ≠ 1 ≠ endIndex` so a swapped positional pair
+//                is a named red. Green from RLH-27 (batch 9).
+//   RLH-LOOP-03  §11.5's single-computation rule: the literal
+//                `MAX_REVIEW_ROUNDS - 1` occurs exactly once in
+//                `orchestrate-dev.js` and outside the source spans of
+//                `reviewLoop` and `checkConverged`. Green from RLH-26 (batch 8).
+//
+// Spans are **measured** from the tree, never taken from a spec citation
+// (PLAN §2, DC-02): a `file:line` in the TSPEC/PLAN is evidence, not a literal.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const DEV_SOURCE_PATH = join(
+  dirname(fileURLToPath(import.meta.url)),
+  "..",
+  "orchestrate-dev.js"
+);
+
+/** The source text of `orchestrate-dev.js`, re-read per call so a concurrent edit cannot be cached. */
+function devSourceLines() {
+  return readFileSync(DEV_SOURCE_PATH, "utf8").split("\n");
+}
+
+/**
+ * PLAN §11.5's span rule, verbatim: a span runs from the function's declaration
+ * line to the first following line matching `^}\s*$` — a column-0 line that is a
+ * **lone** `}`. `^}` alone is wrong (TE round-4 `F-02`): a column-0 `}` followed
+ * by other tokens (`}) {`, `} = {}) {`) closes a destructured *parameter list*,
+ * not a body, which would place `reviewLoop`'s span end ~127 lines early and
+ * exempt the whole region the placement conjunct exists to forbid.
+ *
+ * @returns {{ startLine: number, endLine: number }} 1-based, inclusive.
+ */
+function measureSpan(lines, declPattern) {
+  const startLine = lines.findIndex((l) => declPattern.test(l)) + 1;
+  if (startLine === 0) {
+    throw new Error(`RLH-LOOP-03: no line matches ${declPattern} in orchestrate-dev.js`);
+  }
+  const endOffset = lines.slice(startLine).findIndex((l) => /^\}\s*$/.test(l));
+  if (endOffset === -1) {
+    throw new Error(
+      `RLH-LOOP-03: no line matching /^\\}\\s*$/ follows the declaration at :${startLine}`
+    );
+  }
+  return { startLine, endLine: startLine + endOffset + 1 };
+}
+
+/** 1-based line numbers on which `needle` occurs as a literal substring. */
+function literalOccurrenceLines(lines, needle) {
+  const hits = [];
+  lines.forEach((line, i) => {
+    if (line.includes(needle)) hits.push(i + 1);
+  });
+  return hits;
+}
+
+// ─── RLH-LOOP-03: `endIndex` is derived exactly once, at the phase gate ───────
+// PLAN §11.5 / §12.3, halt condition §11.4 `H-q`. Grep-shaped by construction —
+// the same instrument §12.3 already uses for `selectMode`, and deliberately not a
+// parser (PLAN §7.2's no-new-dependency rule and §12.3's "grep confirms").
+//
+// It exists because the one violation that matters is behaviourally invisible: a
+// recomputation of `startIndex + MAX_REVIEW_ROUNDS - 1` *inside* `reviewLoop`
+// yields an identical value, so RLH-LOOP-01's gate passes, RLH-LOOP-02's rendered
+// window passes, and every AT passes. TSPEC §7.1 edit 3 anchors the arithmetic
+// inside `reviewLoop` while PLAN §11.5 relocates it to the gate, so an
+// implementer following both documents literally writes it twice — that is the
+// innocent failure this red catches.
+describe("RLH-LOOP-03: the literal `MAX_REVIEW_ROUNDS - 1` is written exactly once, outside reviewLoop and checkConverged", () => {
+  const ARITHMETIC = "MAX_REVIEW_ROUNDS - 1";
+
+  test("RLH-LOOP-03a: `MAX_REVIEW_ROUNDS - 1` occurs exactly once in orchestrate-dev.js", () => {
+    const lines = devSourceLines();
+    const hits = literalOccurrenceLines(lines, ARITHMETIC);
+
+    // Zero at HEAD (no site derives the window yet) — RLH-26 writes the single
+    // gate-side occurrence. Two or more is the H-q halt, not a style nit.
+    expect({ occurrences: hits.length, lines: hits }).toEqual({
+      occurrences: 1,
+      lines: hits.length === 1 ? hits : [expect.any(Number)],
+    });
+  });
+
+  test("RLH-LOOP-03b: that occurrence lies outside the source spans of reviewLoop and checkConverged", () => {
+    const lines = devSourceLines();
+    const reviewLoopSpan = measureSpan(lines, /^export async function reviewLoop\(/);
+    const checkConvergedSpan = measureSpan(lines, /^function checkConverged\(/);
+
+    // Span ends are measured, never cited. Sanity-check the measurement itself so a
+    // span that collapsed onto a parameter-list `}) {` cannot make the placement
+    // conjunct pass vacuously (PLAN §11.5, TE round-4 F-02).
+    expect(reviewLoopSpan.endLine - reviewLoopSpan.startLine).toBeGreaterThan(20);
+    expect(checkConvergedSpan.endLine - checkConvergedSpan.startLine).toBeGreaterThan(5);
+
+    const hits = literalOccurrenceLines(lines, ARITHMETIC);
+    const inSpan = (n, s) => n >= s.startLine && n <= s.endLine;
+    const misplaced = hits.filter(
+      (n) => inSpan(n, reviewLoopSpan) || inSpan(n, checkConvergedSpan)
+    );
+
+    expect({ hits, misplaced }).toEqual({ hits: [expect.any(Number)], misplaced: [] });
+  });
+});
+
+// ─── RLH-LOOP-01: reviewLoop's review-window parameters ──────────────────────
+// PLAN §11.5 `N-a`, `reviewLoop` half: **two sibling fields on the existing
+// options object**. `reviewLoop` already takes one destructured options object
+// (TSPEC §3.9) and `iteration` already rides on it, so `startIndex` and
+// `endIndex` extend that object rather than changing its shape. Rejected there,
+// and therefore red here: a new record type; positional arguments (seven call
+// sites, silent on a wrong order); a field on `EpisodeKey`.
+describe("RLH-LOOP-01: reviewLoop's startIndex/endIndex sibling fields, new seams, and the endIndex gate", () => {
+  /** The destructured parameter list text — declaration line through the closing `}) {`. */
+  function reviewLoopParamList() {
+    const lines = devSourceLines();
+    const start = lines.findIndex((l) => /^export async function reviewLoop\(/.test(l));
+    expect(start).toBeGreaterThanOrEqual(0);
+    const end = lines.slice(start).findIndex((l) => /^\}\)\s*\{/.test(l));
+    expect(end).toBeGreaterThan(0);
+    return lines.slice(start, start + end + 1).join("\n");
+  }
+
+  test("RLH-LOOP-01a: startIndex and endIndex are sibling fields of the options object, alongside iteration", () => {
+    const params = reviewLoopParamList();
+
+    // Siblings of `iteration`, not a nested record and not positional.
+    expect({
+      iteration: /^\s*iteration\s*=\s*1\s*,\s*$/m.test(params),
+      startIndex: /^\s*startIndex\b/m.test(params),
+      endIndex: /^\s*endIndex\b/m.test(params),
+    }).toEqual({ iteration: true, startIndex: true, endIndex: true });
+  });
+
+  test("RLH-LOOP-01b: the gate reads endIndex as a consumed parameter — `if (iteration > endIndex)`", () => {
+    const lines = devSourceLines();
+    const span = measureSpan(lines, /^export async function reviewLoop\(/);
+    const body = lines.slice(span.startLine - 1, span.endLine).join("\n");
+
+    // TSPEC §7.1 edit 3. The site reads a parameter and performs no arithmetic;
+    // the arithmetic is RLH-26's, once, at the phase gate (RLH-LOOP-03).
+    expect({
+      gateOnEndIndex: /if\s*\(\s*iteration\s*>\s*endIndex\s*\)/.test(body),
+      bareLiteralGate: /if\s*\(\s*iteration\s*>\s*5\s*\)/.test(body),
+    }).toEqual({ gateOnEndIndex: true, bareLiteralGate: false });
+  });
+
+  test("RLH-LOOP-01c: the gate honours the window behaviourally — startIndex..endIndex runs exactly endIndex - startIndex + 1 rounds", async () => {
+    // startIndex = 3, endIndex = 4: a two-round window that is neither the
+    // pre-feature 1..5 nor a width-5 window, so a gate still reading the bare
+    // literal 5 (three rounds: 3, 4, 5) is a distinct, named failure.
+    let reviewerPairCount = 0;
+
+    const mockAgent = async (skill, prompt) => {
+      if (skill === "pm-review") reviewerPairCount++;
+      if (skill === "pm-review" || skill === "te-review") return makeNeedsRevisionResult();
+      if (skill === "se-author") return makeOptimizerResult();
+      return "";
+    };
+
+    const result = await reviewLoop({
+      ...baseParams,
+      iteration: 3,
+      startIndex: 3,
+      endIndex: 4,
+      _agent: mockAgent,
+      _parallel: (promises) => Promise.all(promises),
+      _checkFile: existsGuard,
+    });
+
+    expect({ rounds: reviewerPairCount, converged: result.converged }).toEqual({
+      rounds: 2,
+      converged: false,
+    });
+  });
+
+  test("RLH-LOOP-01d: all seven reviewLoop call sites pass iteration", () => {
+    // TSPEC §3.9: "all seven existing call sites now pass the branch-derived
+    // startIndex". An un-overridden `iteration = 1` default aims a round-4 write
+    // back at round 1 and destroys the existing -v1 cross-review (H-1).
+    const source = devSourceLines().join("\n");
+    const sites = [
+      ...source.matchAll(/(?<!function )\breviewLoop\(\{([\s\S]*?)\n\s*\}\)/g),
+    ].map((m) => m[1]);
+
+    expect(sites).toHaveLength(7); // R, F, T, D, P, PR, CR
+    const withoutIteration = sites.filter((args) => !/\biteration\s*:/.test(args));
+    expect(withoutIteration).toEqual([]);
+  });
+
+  test("RLH-LOOP-01e: reviewLoop gains docType, _listFiles and _readFile, and takes no seed maps", () => {
+    const params = reviewLoopParamList();
+
+    // TSPEC §3.9's three new parameters, all for §5.6.1's S-INV: `docType`, plus
+    // the two seams `refreshReviewState` needs to re-read the review record at
+    // **every** episode entry.
+    expect({
+      docType: /^\s*docType\b/m.test(params),
+      _listFiles: /^\s*_listFiles\b/m.test(params),
+      _readFile: /^\s*_readFile\b/m.test(params),
+    }).toEqual({ docType: true, _listFiles: true, _readFile: true });
+
+    // And explicitly **no** seed `present` / `reviewFiles`: the first episode
+    // refreshes like every other one, so a seed would be an unread parameter
+    // (TSPEC §5.6.1; a pre-loop snapshot is TE-v2 N-01).
+    expect({
+      present: /^\s*present\b/m.test(params),
+      reviewFiles: /^\s*reviewFiles\b/m.test(params),
+    }).toEqual({ present: false, reviewFiles: false });
+  });
+});
+
+// ─── RLH-LOOP-02: the return shape, and checkConverged's rendered window ─────
+// Two halves of one row (PLAN §5.4 RLH-22, §7.5):
+//   * TSPEC §3.9 / §6.3 — `reviewLoop`'s non-convergence return gains
+//     `postmortemWritten`, sourced from the `await _checkFile` **confirmation**
+//     and never from the agent's reply, plus `trailerReason` on every return.
+//   * PLAN §11.5 `N-a`, `checkConverged` half — three additional **positional**
+//     arguments after `recordPhase`: `feature`, `startIndex`, `endIndex`, in that
+//     order, because TSPEC §3.9 pins the signature positional. The known cost of
+//     positional is that a swapped integer pair is silent at the type level; the
+//     agreed mitigation is exactly the assertion below, driven over
+//     `startIndex ≠ 1` and `startIndex ≠ endIndex` so a swap, a duplicated
+//     argument or a missing one is a named red.
+describe("RLH-LOOP-02: postmortemWritten, trailerReason, and the rendered `rounds {startIndex}..{endIndex}`", () => {
+  /** An agent that never converges; POSTMORTEM dispatch always claims success. */
+  function neverConvergingAgent() {
+    return async (skill, prompt) => {
+      if (skill === "pm-review" || skill === "te-review" || skill === "se-review") {
+        return makeNeedsRevisionResult();
+      }
+      if (typeof prompt === "string" && prompt.includes("POSTMORTEM")) {
+        return "POSTMORTEM written."; // the narration this feature stops trusting
+      }
+      return makeOptimizerResult();
+    };
+  }
+
+  test("RLH-LOOP-02a: postmortemWritten comes from the _checkFile confirmation, not the agent's reply", async () => {
+    const capCase = { ...baseParams, iteration: 5, startIndex: 5, endIndex: 5 };
+
+    // (i) The agent says it wrote the POSTMORTEM; the filesystem says otherwise.
+    const denied = await reviewLoop({
+      ...capCase,
+      _agent: neverConvergingAgent(),
+      _parallel: (promises) => Promise.all(promises),
+      _checkFile: (path) =>
+        /POSTMORTEM/.test(String(path)) ? { ok: false, reason: "file_not_found" } : { ok: true },
+    });
+
+    // (ii) Same narration, and this time the confirmation agrees.
+    const confirmed = await reviewLoop({
+      ...capCase,
+      _agent: neverConvergingAgent(),
+      _parallel: (promises) => Promise.all(promises),
+      _checkFile: existsGuard,
+    });
+
+    expect({
+      deniedConverged: denied.converged,
+      denied: denied.postmortemWritten,
+      confirmed: confirmed.postmortemWritten,
+    }).toEqual({ deniedConverged: false, denied: false, confirmed: true });
+  });
+
+  test("RLH-LOOP-02b: trailerReason is present on every reviewLoop return", async () => {
+    const convergedRun = await reviewLoop({
+      ...baseParams,
+      _agent: async (skill) =>
+        skill === "se-author" ? makeOptimizerResult() : makeApproveResult(skill),
+      _parallel: (promises) => Promise.all(promises),
+      _checkFile: existsGuard,
+    });
+
+    const cappedRun = await reviewLoop({
+      ...baseParams,
+      iteration: 5,
+      startIndex: 5,
+      endIndex: 5,
+      _agent: neverConvergingAgent(),
+      _parallel: (promises) => Promise.all(promises),
+      _checkFile: existsGuard,
+    });
+
+    // TSPEC §3.9 / §5.6.1: `trailerReason` rides on **every** return, `null` on
+    // the greenfield/clean path — so `null` must be observable as a value, which a
+    // conditionally-spread field is not.
+    expect({
+      convergedHas: Object.prototype.hasOwnProperty.call(convergedRun, "trailerReason"),
+      cappedHas: Object.prototype.hasOwnProperty.call(cappedRun, "trailerReason"),
+    }).toEqual({ convergedHas: true, cappedHas: true });
+  });
+});
+
+// ─── RLH-LOOP-02c: checkConverged's rendered window (§11.5 `N-a`, second half) ─
+// `checkConverged` is not exported and PLAN §11.5 keeps it that way, so this half
+// is observed **through `main()` with injected seams** (an L2 drive, PLAN §7): the
+// halt it throws is caught by `main()`'s pipeline catch and surfaces as the Phase R
+// row's detail — TSPEC §7.1 site 1, the `recordPhase(phaseId, phaseLabel, "❌", …)`
+// message whose `after 5 iterations` becomes `rounds ${startIndex}..${endIndex}`.
+//
+// The window is driven to **3..7**: two prior rounds are on the branch, so the
+// branch-derived `startIndex` is 3 and the once-computed `endIndex` is 7. Both
+// differ from 1 and from each other, which is precisely what makes a swapped,
+// duplicated or missing positional argument a *named* red rather than a silent
+// pass — `rounds 7..3`, `rounds 3..3` and `rounds 1..5` all fail this assertion.
+describe("RLH-LOOP-02c: checkConverged renders `rounds {startIndex}..{endIndex}` from its positional arguments", () => {
+  test("RLH-LOOP-02c: a non-converging Phase R over a 3..7 window reports `rounds 3..7`", async () => {
+    // Two completed rounds of REQ cross-review on the branch: `-v2` is the highest
+    // present index, so the next reviewer dispatch is round 3 (TSPEC §5.2).
+    const listFiles = fakeListFiles([
+      "CROSS-REVIEW-software-engineer-REQ-v1.md",
+      "CROSS-REVIEW-test-engineer-REQ-v1.md",
+      "CROSS-REVIEW-software-engineer-REQ-v2.md",
+      "CROSS-REVIEW-test-engineer-REQ-v2.md",
+    ]);
+
+    const report = await main({
+      reqPath: "docs/test-feat/REQ-test-feat.md",
+      _agent: async (skill, prompt) => {
+        if (skill === "se-review" || skill === "te-review") return makeNeedsRevisionResult();
+        if (typeof prompt === "string" && prompt.includes("POSTMORTEM")) {
+          return "POSTMORTEM written.";
+        }
+        return makeOptimizerResult();
+      },
+      _parallel: (promises) => Promise.all(promises),
+      _pipeline: async (_name, fn) => fn(),
+      _phase: () => {},
+      _log: () => {},
+      _checkFile: () => ({ ok: true }),
+      _readFile: () => "",
+      _listFiles: listFiles,
+    });
+
+    const phaseR = (report.phases || []).find((p) => p.phase === "R");
+
+    expect({
+      outcome: report.outcome,
+      detail: phaseR ? phaseR.detail : "(no Phase R row recorded)",
+    }).toEqual({
+      outcome: "halted",
+      detail: expect.stringContaining("rounds 3..7"),
+    });
   });
 });

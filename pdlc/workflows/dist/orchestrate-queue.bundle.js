@@ -168,6 +168,99 @@ function rtMakeCheckCi(devModule) {
 }
 
 /**
+ * Append to a file through an agent (TSPEC §3.3). Append-shaped by construction:
+ * the prompt forbids reading, rewriting or reformatting the existing bytes, so
+ * this is deliberately NOT `rtWriteFile(path, existing + text)` — a
+ * read-modify-write would re-emit the reviewer's prose and any divergence would
+ * silently rewrite a cross-review file.
+ */
+async function rtAppendFile(path, text) {
+  await RT.agent(
+    `APPEND the following content to the END of "${path}", relative to the repository root.\n` +
+      `Do not read, rewrite, reformat, re-wrap, summarise, or alter any existing content — ` +
+      `the file's current bytes must be preserved exactly, byte for byte, and the content below ` +
+      `must be added after them verbatim. If the file does not exist, create it containing ` +
+      `exactly the content below. Reply with "ok" when appended.\n\n` +
+      `<<<PDLC_CONTENT_BEGIN\n${text}\nPDLC_CONTENT_END`,
+    { label: `append:${path}`, model: RT_IO_MODEL }
+  );
+}
+
+// TSPEC §3.2 / FSPEC §3.5 — rtListFiles's closed reply vocabulary. One sentinel
+// per ListFailure the shell can observe; `bad_argument` is decided here, before
+// calling out, exactly as rtCheckFile does for an empty path.
+const RT_LIST_SENTINELS = {
+  __PDLC_DIR_MISSING__: "dir_missing",
+  __PDLC_NOT_A_DIRECTORY__: "not_a_directory",
+  __PDLC_UNREADABLE__: "unreadable",
+};
+
+/**
+ * Non-recursive listing of the regular files in `dirPath` (TSPEC §3.2).
+ * Returns { ok: true, files } | { ok: false, reason } over LIST_FAILURES —
+ * never throws, and an unrecognised reply maps to "unreadable" (a halt), never
+ * to an empty list: "there are no cross-reviews" and "I could not find out"
+ * must not collapse into the same value.
+ */
+async function rtListFiles(dirPath) {
+  if (!dirPath || typeof dirPath !== "string" || dirPath.trim() === "") {
+    return { ok: false, reason: "bad_argument" };
+  }
+  const d = dirPath;
+  const out = await RT.agent(
+    `Run this exact command from the repository root and report its output:\n` +
+      `  if [ ! -e "${d}" ]; then echo __PDLC_DIR_MISSING__; ` +
+      `elif [ ! -d "${d}" ]; then echo __PDLC_NOT_A_DIRECTORY__; ` +
+      `elif [ ! -r "${d}" ] || [ ! -x "${d}" ]; then echo __PDLC_UNREADABLE__; ` +
+      `else ls -p -A "${d}" | grep -v '/$'; true; fi\n` +
+      `Return ONLY the command's exact output: one file name per line, no commentary, ` +
+      `no code fences, no bullets, no path prefixes. If the command printed one of the ` +
+      `sentinel tokens, return ONLY that token. If it printed nothing at all, return nothing at all.`,
+    { label: `list:${d}`, model: RT_IO_MODEL }
+  );
+  const text = typeof out === "string" ? out.trim() : null;
+  if (text === null) return { ok: false, reason: "unreadable" };
+  if (text === "") return { ok: true, files: [] };
+  if (RT_LIST_SENTINELS[text]) return { ok: false, reason: RT_LIST_SENTINELS[text] };
+
+  const lines = text.split("\n").map((l) => l.trim()).filter((l) => l !== "");
+  // A basename has no separator and no whitespace. Anything else is prose the
+  // prompt did not permit, and prose is "I could not find out".
+  if (!lines.every((l) => !/[\/\s]/.test(l) && !RT_LIST_SENTINELS[l])) {
+    return { ok: false, reason: "unreadable" };
+  }
+  return { ok: true, files: lines };
+}
+
+/**
+ * Transport seam for git (TSPEC §3.4). `argv` excludes the leading "git".
+ * Returns { ok, stdout, stderr } and never throws; the caller interprets.
+ * Modelled on rtMergeWorktree's fixed-command + exact-JSON-reply discipline.
+ */
+async function rtGit(argv) {
+  const args = Array.isArray(argv) ? argv : [];
+  const out = await RT.agent(
+    `Run exactly this command from the repository root, and nothing else:\n` +
+      `  git ${args.join(" ")}\n` +
+      `If it exits 0, return exactly: {"ok":true,"stdout":"<its stdout>","stderr":""}\n` +
+      `If it exits non-zero, return exactly: {"ok":false,"stdout":"","stderr":"<its stderr>"}\n` +
+      `Return ONLY that JSON object, correctly escaped — no commentary, no code fences. ` +
+      `Do not retry, do not repair, and do not run any other command.`,
+    { label: `git:${args[0] || ""}`, model: RT_IO_MODEL }
+  );
+  try {
+    const parsed = JSON.parse(String(out).trim());
+    return {
+      ok: parsed && parsed.ok === true,
+      stdout: typeof (parsed && parsed.stdout) === "string" ? parsed.stdout : "",
+      stderr: typeof (parsed && parsed.stderr) === "string" ? parsed.stderr : "",
+    };
+  } catch {
+    return { ok: false, stdout: "", stderr: "unparseable adapter response" };
+  }
+}
+
+/**
  * Merge a worktree branch. Contract mirrors mergeWorktree():
  * { ok: true } | { ok: false, conflictingFiles: string[] }
  */
@@ -208,6 +301,15 @@ function rtDevInjections(devModule) {
     _readFile: rtReadFile,
     _checkCi: rtMakeCheckCi(devModule),
     _mergeWorktree: rtMergeWorktree,
+    // TSPEC §3.10. `_writeFile`'s adapter existed since the first bundle but was
+    // never in this object; the other three are new with RLH-32.
+    _writeFile: rtWriteFile,
+    _appendFile: rtAppendFile,
+    _listFiles: rtListFiles,
+    _git: rtGit,
+    // `_recordHalt` is deliberately ABSENT: its implementation differs by caller,
+    // which a caller-independent adapter bundle cannot express. It is supplied
+    // per entrypoint by build-runtime.mjs (§3.10, §7.2 edit 2b).
   };
 }
 
@@ -252,6 +354,48 @@ const CI_COMPLETION_TIMEOUT_MS = 30 * 60 * 1000; // 30 min — overall cap once 
 // depth EXCEPT the Phase I implementation batches, which run on Sonnet for
 // throughput/cost. Passed to the runtime via the agent() opts.model field.
 const MODEL_DEFAULT = "opus"; // all phases except Phase I
+
+// ── TSPEC §4.8 — review-loop / authoring budgets ───────────────────────────────
+// Module-level, not main() parameters: they are policy, not capability, and the
+// workflow runtime's bundle has no configuration channel to override them from.
+// They are deliberately NOT exported — an export widens the bundle's published
+// surface for no caller. Tests reach them through observable behaviour (round
+// windows, dispatch counts), the same discipline DOD_MAX_ITERATIONS lives under.
+
+// TSPEC-ROUNDS-01: per-invocation review-round budget (AC-1.6a). NOT an absolute
+// round index — the gate and the reported counts derive from this plus the
+// branch-derived starting index.
+const MAX_REVIEW_ROUNDS = 5;
+
+const MAX_AUTHORING_ATTEMPTS = 3; // consecutive no-progress dispatches, per episode
+const MAX_AUTHORING_DISPATCHES = 6; // total dispatches, per episode
+const MAX_AUTHORING_WRITE_BYTES = 12000; // per-tool-call emission ceiling stated to authors
+
+// ── TSPEC §4.1 — the four closed failure catalogues (DC-01) ────────────────────
+// Frozen so a test can enumerate them and a switch can be checked exhaustive.
+// §4.2: `dir_missing` is the sole benign ListFailure; the other three mean
+// "cannot judge" and halt.
+const LIST_FAILURES = Object.freeze([
+  "dir_missing",
+  "not_a_directory",
+  "unreadable",
+  "bad_argument",
+]);
+const FILENAME_FAILURES = Object.freeze([
+  "not_cross_review",
+  "bad_role",
+  "bad_doc_type",
+  "bad_round",
+  "trailing_junk",
+]);
+const HASH_FAILURES = Object.freeze(["absent", "duplicated", "unparseable"]);
+const TRAILER_FAILURES = Object.freeze([
+  "declared_incomplete",
+  "absent",
+  "duplicated",
+  "unparseable",
+]);
+
 const MODEL_IMPLEMENTATION = "sonnet"; // Phase I se-implement batches only
 
 // TSPEC-SCRIPT-03: Exported meta object
@@ -265,6 +409,13 @@ const meta = {
         "Path to the approved REQ document, e.g. docs/{feature}/REQ-{feature}.md",
       type: "string",
       required: true,
+    },
+    {
+      name: "forcePhases",
+      description:
+        "Optional comma- or space-separated phases to re-run despite a recorded approval. Valid: R, F, T, P, D, PR, all.",
+      type: "string",
+      required: false,
     },
   ],
 };
@@ -350,9 +501,12 @@ const PHASE_DISPATCH = {
  * @param {string} message
  * @returns {Error}
  */
-function haltError(message) {
+function haltError(message, fields) {
   const err = new Error(message);
   err.isHalt = true;
+  // §4.7: a halt that already KNOWS its disposition carries it, so `main()`'s
+  // catch reports the fact rather than re-deriving it from a second `_checkFile`.
+  if (fields && typeof fields === "object") Object.assign(err, fields);
   return err;
 }
 
@@ -520,6 +674,25 @@ function parsePlanDepsCell(cell) {
 // ─── TSPEC-PARSE-01: parseVerdict ─────────────────────────────────────────────
 
 /**
+ * The closed verdict catalogue (TSPEC §3.9, §5.9; FSPEC §16.3).
+ *
+ * Lifted out of `parseVerdict`'s body to module scope — the same single-source
+ * move RLH-05 made for `reviewerRoleSlug`'s `MAP`, and for the same reason: §5.9's
+ * cross-review completeness criterion asks "is at least one `VERDICT: ` value in
+ * the catalogue?", and a second, hand-copied catalogue beside this one is exactly
+ * the desync defect this feature exists to remove (TSPEC §3.9 — "reused verbatim",
+ * one grammar family, three carriers).
+ *
+ * `parseVerdict` itself is otherwise untouched: same reverse-scan, same
+ * `malformed: true` fallback, same returns for every input (PLAN §12.3).
+ */
+const VALID_VERDICTS = Object.freeze([
+  "Approved",
+  "Approved with minor changes",
+  "Needs revision",
+]);
+
+/**
  * Extract VERDICT from a reviewer agent result string.
  *
  * When the trailer is missing or malformed (any path that logs the "returned no
@@ -534,11 +707,6 @@ function parsePlanDepsCell(cell) {
  * @returns {{ verdict: string, high: number, medium: number, low: number, malformed?: boolean }}
  */
 function parseVerdict(result, skillName) {
-  const VALID_VERDICTS = [
-    "Approved",
-    "Approved with minor changes",
-    "Needs revision",
-  ];
   const fallback = {
     verdict: "Needs revision",
     high: 0,
@@ -689,10 +857,986 @@ function parseDecisionsWarranted(result) {
   return true;
 }
 
+// ─── TSPEC §5.0 — the one fenced-region-aware scanner ─────────────────────────
+
+/**
+ * Visit every line of `text` that lies OUTSIDE a fenced code region.
+ *
+ * FSPEC §1.2 rule 5 governs every mechanical scan this pipeline performs over a
+ * markdown artifact; it is expressed here once and every scanner calls it. There
+ * is no per-site fence handling anywhere else.
+ *
+ * Three properties the callers depend on:
+ *  1. A closer must use the same fence character and a run at least as long as
+ *     the opener — a three-backtick line inside a four-backtick block is content,
+ *     which is exactly the case a quoted fenced template produces.
+ *  2. An unclosed fence swallows the remainder of the file. That fails closed in
+ *     the correct direction: fewer matches, so a phase runs rather than skipping.
+ *  3. The exclusion governs which lines may *match a scanned pattern*; it does
+ *     not empty a section's body (§5.9 counts a fenced block as body content).
+ *
+ * Total: any input is coerced, nothing throws, the return is undefined.
+ *
+ * @param {string} text - the artifact text.
+ * @param {function(string, number): void} visit - called as `visit(line, index)`
+ *   for each unfenced line, where `index` is the line's index in `text.split("\n")`.
+ * @returns {void}
+ */
+function scanLines(text, visit) {
+  const lines = String(text ?? "").split("\n");
+  let fenceChar = null; // "`" | "~" | null
+  let fenceLen = 0;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const m = /^\s*(`{3,}|~{3,})/.exec(line);
+    if (fenceChar === null) {
+      if (m) {
+        fenceChar = m[1][0];
+        fenceLen = m[1].length;
+      } // opener: the line is not visited
+      else visit(line, i);
+    } else if (m && m[1][0] === fenceChar && m[1].length >= fenceLen) {
+      fenceChar = null;
+      fenceLen = 0; // closer: the line is not visited
+    }
+    // lines inside a fence, and the fence lines themselves, are never visited
+  }
+}
+
+// ─── TSPEC §5.3 — the content digest: inlined, pure, no seam ──────────────────
+//
+// The workflow runtime has no `crypto` and no `TextEncoder`, so SHA-256 and the
+// UTF-8 encoding beneath it are hand-rolled here in `Number`-only arithmetic (no
+// `BigInt`). This family is deliberately NOT a seam: a seam exists to reach a
+// capability the runtime lacks, and a deterministic synchronous digest over an
+// in-memory string needs none — a seam would only add an awaitable boundary on
+// the hot path of every approval comparison and let a double return a hash the
+// production code never computes (§3.7).
+
+/**
+ * Canonicalise `text` before it is digested.
+ *
+ * N-1 normalises line endings (CRLF and lone CR both become LF); N-2 forces
+ * exactly one trailing newline. Both are applied INSIDE `sha256Hex`, never by a
+ * caller, so no two call sites can disagree about which bytes were digested —
+ * the defect class where a write path and a read path produce different hashes
+ * and every approval reads STALE.
+ *
+ * Total and idempotent: `canonicaliseForDigest(canonicaliseForDigest(t))` is
+ * `canonicaliseForDigest(t)` for every input, including `null` and `undefined`.
+ *
+ * @param {string} text
+ * @returns {string} the canonical form — LF-only, exactly one trailing newline.
+ */
+function canonicaliseForDigest(text) {
+  const lf = String(text ?? "")
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n"); // N-1
+  return lf.replace(/\n*$/, "\n"); // N-2
+}
+
+/**
+ * Encode `text` as UTF-8, by hand, because the runtime has no `TextEncoder`.
+ *
+ * Surrogate pairs are combined into their astral scalar value (the case a wrong
+ * encoder gets wrong); an UNPAIRED surrogate is encoded as the three-byte form
+ * of its own code unit, which is deterministic and total rather than throwing.
+ *
+ * @param {string} text
+ * @returns {number[]} the bytes, each in 0…255.
+ */
+function utf8Bytes(text) {
+  const s = String(text ?? "");
+  const out = [];
+  for (let i = 0; i < s.length; i++) {
+    const cp = s.codePointAt(i);
+    if (cp > 0xffff) i++; // a well-formed surrogate pair consumed two code units
+    if (cp < 0x80) {
+      out.push(cp);
+    } else if (cp < 0x800) {
+      out.push(0xc0 | (cp >> 6), 0x80 | (cp & 0x3f));
+    } else if (cp < 0x10000) {
+      out.push(0xe0 | (cp >> 12), 0x80 | ((cp >> 6) & 0x3f), 0x80 | (cp & 0x3f));
+    } else {
+      out.push(
+        0xf0 | (cp >> 18),
+        0x80 | ((cp >> 12) & 0x3f),
+        0x80 | ((cp >> 6) & 0x3f),
+        0x80 | (cp & 0x3f)
+      );
+    }
+  }
+  return out;
+}
+
+/** SHA-256 round constants (FIPS 180-4) — the first 32 bits of the fractional
+ *  parts of the cube roots of the first 64 primes. */
+const SHA256_K = [
+  0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1,
+  0x923f82a4, 0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3,
+  0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174, 0xe49b69c1, 0xefbe4786,
+  0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+  0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147,
+  0x06ca6351, 0x14292967, 0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13,
+  0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85, 0xa2bfe8a1, 0xa81a664b,
+  0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+  0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a,
+  0x5b9cca4f, 0x682e6ff3, 0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208,
+  0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
+];
+
+/** Right-rotate a 32-bit word. */
+function rotr32(x, n) {
+  return ((x >>> n) | (x << (32 - n))) >>> 0;
+}
+
+/** Two 32-bit words added modulo 2^32. Both operands are < 2^32, so the sum is
+ *  < 2^33 and therefore exactly representable as a `Number` before truncation. */
+function add32(a, b) {
+  return (a + b) >>> 0;
+}
+
+/**
+ * SHA-256 of `text`, as 64 lowercase hex characters.
+ *
+ * `canonicaliseForDigest` is applied HERE, inside the digest, so no call site can
+ * digest un-canonicalised bytes (§5.3 N-1/N-2) — that is the whole reason this
+ * function, and not its callers, owns the normalisation.
+ *
+ * `Math`, `>>>`, `|`, `^` and `Number` only: no `crypto`, no `BigInt`, no
+ * `TextEncoder` (C-2).
+ *
+ * @param {string} text
+ * @returns {string} 64 lowercase hex characters.
+ */
+function sha256Hex(text) {
+  const bytes = utf8Bytes(canonicaliseForDigest(text));
+
+  // Message length in BITS, as two 32-bit halves — `bytes.length * 8` can exceed
+  // 2^32, and `<<` would silently wrap.
+  const bitLenHi = Math.floor((bytes.length * 8) / 4294967296) >>> 0;
+  const bitLenLo = (bytes.length * 8) % 4294967296 >>> 0;
+
+  const padded = bytes.slice();
+  padded.push(0x80);
+  while (padded.length % 64 !== 56) padded.push(0);
+  padded.push(
+    (bitLenHi >>> 24) & 0xff,
+    (bitLenHi >>> 16) & 0xff,
+    (bitLenHi >>> 8) & 0xff,
+    bitLenHi & 0xff,
+    (bitLenLo >>> 24) & 0xff,
+    (bitLenLo >>> 16) & 0xff,
+    (bitLenLo >>> 8) & 0xff,
+    bitLenLo & 0xff
+  );
+
+  // Initial hash values: the fractional parts of the square roots of the first
+  // eight primes.
+  let h0 = 0x6a09e667;
+  let h1 = 0xbb67ae85;
+  let h2 = 0x3c6ef372;
+  let h3 = 0xa54ff53a;
+  let h4 = 0x510e527f;
+  let h5 = 0x9b05688c;
+  let h6 = 0x1f83d9ab;
+  let h7 = 0x5be0cd19;
+
+  const w = new Array(64);
+  for (let block = 0; block < padded.length; block += 64) {
+    for (let t = 0; t < 16; t++) {
+      const o = block + t * 4;
+      w[t] =
+        ((padded[o] << 24) |
+          (padded[o + 1] << 16) |
+          (padded[o + 2] << 8) |
+          padded[o + 3]) >>>
+        0;
+    }
+    for (let t = 16; t < 64; t++) {
+      const s0 = (rotr32(w[t - 15], 7) ^ rotr32(w[t - 15], 18) ^ (w[t - 15] >>> 3)) >>> 0;
+      const s1 = (rotr32(w[t - 2], 17) ^ rotr32(w[t - 2], 19) ^ (w[t - 2] >>> 10)) >>> 0;
+      w[t] = add32(add32(w[t - 16], s0), add32(w[t - 7], s1));
+    }
+
+    let a = h0;
+    let b = h1;
+    let c = h2;
+    let d = h3;
+    let e = h4;
+    let f = h5;
+    let g = h6;
+    let h = h7;
+
+    for (let t = 0; t < 64; t++) {
+      const S1 = (rotr32(e, 6) ^ rotr32(e, 11) ^ rotr32(e, 25)) >>> 0;
+      const ch = ((e & f) ^ (~e & g)) >>> 0;
+      const temp1 = add32(add32(add32(h, S1), add32(ch, SHA256_K[t])), w[t]);
+      const S0 = (rotr32(a, 2) ^ rotr32(a, 13) ^ rotr32(a, 22)) >>> 0;
+      const maj = ((a & b) ^ (a & c) ^ (b & c)) >>> 0;
+      const temp2 = add32(S0, maj);
+
+      h = g;
+      g = f;
+      f = e;
+      e = add32(d, temp1);
+      d = c;
+      c = b;
+      b = a;
+      a = add32(temp1, temp2);
+    }
+
+    h0 = add32(h0, a);
+    h1 = add32(h1, b);
+    h2 = add32(h2, c);
+    h3 = add32(h3, d);
+    h4 = add32(h4, e);
+    h5 = add32(h5, f);
+    h6 = add32(h6, g);
+    h7 = add32(h7, h);
+  }
+
+  const words = [h0, h1, h2, h3, h4, h5, h6, h7];
+  let hex = "";
+  for (const word of words) hex += `0000000${(word >>> 0).toString(16)}`.slice(-8);
+  return hex;
+}
+
+/**
+ * The prefixed form persisted as `APPROVAL-HASH:` (§4.4) and compared by §5.5.
+ * There is exactly one digest in this pipeline: this is `sha256Hex` plus the
+ * prefix, so the write path and the read path cannot diverge (A-11).
+ *
+ * @param {string} text
+ * @returns {string} `sha256:{64 lowercase hex}`
+ */
+function approvalHashOf(text) {
+  return `sha256:${sha256Hex(text)}`;
+}
+
+// ─── TSPEC §4.3 / §5.3 / §5.8 — the record parsers ────────────────────────────
+//
+// All five are total, synchronous, take no seam, and read the artifact through
+// `scanLines`, so a marker quoted inside a fenced region never counts.
+
+/**
+ * The six skip-eligible phase ids `forcePhases` accepts, and the SAME array the
+ * operator-facing rejection message is rendered from (§5.7, §6.2 row 12), so the
+ * catalogue and the message cannot desynchronise. `PR` entered the catalogue at
+ * REQ/FSPEC v1.6; a hand-written message would have been the one site that kept
+ * silently teaching the operator the old five-token set.
+ */
+const FORCE_PHASE_TOKENS = Object.freeze(["R", "F", "T", "P", "D", "PR"]);
+
+/** `sha256:` + 64 lowercase hex — the only well-formed APPROVAL-HASH value. */
+const APPROVAL_HASH_VALUE_RE = /^sha256:[0-9a-f]{64}$/;
+/** A commit sha as `REVIEWED-COMMIT:` may carry it: abbreviated or full lowercase hex. */
+const REVIEWED_COMMIT_VALUE_RE = /^[0-9a-f]{7,40}$/;
+/** The literal stored when no usable commit sha could be determined (§4.3, §4.4). */
+const COMMIT_UNAVAILABLE = "unavailable";
+
+/**
+ * Read the tier-1 approval record out of a cross-review file (§4.4, §5.3).
+ *
+ * `HASH_FAILURES` describes the `APPROVAL-HASH:` line and nothing else.
+ * `REVIEWED-COMMIT:` has no failure value because it has no failure: when it is
+ * absent outside a fence, duplicated, or carries a value that is not lowercase
+ * hex, `reviewedCommit` is the literal `"unavailable"` and `ok` stays `true`.
+ * That is safe in the only direction that matters — §5.5's comparison never
+ * reads the field (content-addressing is what makes the mechanism rebase-proof),
+ * and degrading such a record to UNEVALUABLE would re-run a converged phase over
+ * a field nothing consults.
+ *
+ * @param {string} fileText
+ * @returns {{ok: true, hash: string, reviewedCommit: string}
+ *          |{ok: false, reason: string}} `reason` is a `HASH_FAILURES` member.
+ */
+function parseApprovalHash(fileText) {
+  const hashes = [];
+  const commits = [];
+  scanLines(fileText, (line) => {
+    const h = /^\s*APPROVAL-HASH:\s*(\S*)\s*$/.exec(line);
+    if (h) hashes.push(h[1]);
+    const c = /^\s*REVIEWED-COMMIT:\s*(\S*)\s*$/.exec(line);
+    if (c) commits.push(c[1]);
+  });
+
+  if (hashes.length === 0) return { ok: false, reason: "absent" };
+  if (hashes.length > 1) return { ok: false, reason: "duplicated" };
+  if (!APPROVAL_HASH_VALUE_RE.test(hashes[0])) return { ok: false, reason: "unparseable" };
+
+  const reviewedCommit =
+    commits.length === 1 && REVIEWED_COMMIT_VALUE_RE.test(commits[0])
+      ? commits[0]
+      : COMMIT_UNAVAILABLE;
+
+  return { ok: true, hash: hashes[0], reviewedCommit };
+}
+
+// ─── TSPEC §5.1 — verdict extraction from a FILE ──────────────────────────────
+
+/**
+ * Read a reviewer's verdict out of a cross-review **file** (§5.1), in the three
+ * steps the spec fixes, reusing `parseVerdict` unmodified.
+ *
+ * 1. **Locate the trailing section.** `scanLines` over the whole file, recording
+ *    the index of the LAST visited `## Verdict` heading; the section is that line
+ *    to EOF. A heading inside a fence is never visited, so it can neither become
+ *    the boundary nor contribute a `VERDICT:` line. No such heading ⇒ no verdict
+ *    ⇒ the phase runs.
+ * 2. **Duplicate pre-count** over the section. More than one `VERDICT: ` line
+ *    fails closed — and it fails closed *before* step 3, because `parseVerdict`
+ *    scans from the end and would happily return the last of them.
+ * 3. **`parseVerdict(section, roleSlug)`**, unchanged. Feeding it file text
+ *    instead of a response string requires no change to it whatsoever.
+ *
+ * The scan is scoped to the trailing section rather than the whole file on
+ * purpose: "exactly one `VERDICT:` line in the file" misclassifies any
+ * cross-review that *quotes* the grammar — including a review of this very
+ * feature, whose TSPEC §4.4 fenced block contains a literal `VERDICT:` line.
+ *
+ * @param {string|null|undefined} fileText
+ * @param {string} roleSlug - for `parseVerdict`'s warning text only.
+ * @returns {{ok: true, verdict: string, high: number, medium: number,
+ *            low: number, malformed?: boolean}
+ *          |{ok: false, reason: "no_verdict_section"|"duplicated"}}
+ */
+function extractFileVerdict(fileText, roleSlug) {
+  const text = String(fileText ?? "");
+  const lines = text.split("\n");
+
+  let headingIndex = -1;
+  scanLines(text, (line, index) => {
+    if (/^\s*##\s+Verdict\s*$/.test(line)) headingIndex = index;
+  });
+  if (headingIndex === -1) return { ok: false, reason: "no_verdict_section" };
+
+  const section = lines.slice(headingIndex).join("\n");
+
+  let trailers = 0;
+  scanLines(section, (line) => {
+    if (line.trim().startsWith("VERDICT: ")) trailers += 1;
+  });
+  if (trailers > 1) return { ok: false, reason: "duplicated" };
+
+  return { ok: true, ...parseVerdict(section, roleSlug) };
+}
+
+/**
+ * Read an author's `REVISION-COMPLETE:` trailer out of its response (§4.3).
+ *
+ * Called ONLY on a revision episode (§5.6.2): a greenfield episode's terminal
+ * test is structural completeness alone, so `absent` never arises there and no
+ * greenfield episode can be held back by a trailer its SKILL was never amended
+ * to emit. All four failure reasons are non-terminal — none of them ends an
+ * episode, `declared_incomplete` least of all, which is the normal paced path.
+ *
+ * @param {string} response
+ * @returns {{complete: true}|{complete: false, reason: string}} `reason` is a
+ *   `TRAILER_FAILURES` member.
+ */
+function parseRevisionComplete(response) {
+  const values = [];
+  scanLines(response, (line) => {
+    const m = /^\s*REVISION-COMPLETE:\s*(\S*)\s*$/.exec(line);
+    if (m) values.push(m[1]);
+  });
+
+  if (values.length === 0) return { complete: false, reason: "absent" };
+  if (values.length > 1) return { complete: false, reason: "duplicated" };
+
+  const value = values[0].toLowerCase();
+  if (value === "yes") return { complete: true };
+  if (value === "no") return { complete: false, reason: "declared_incomplete" };
+  return { complete: false, reason: "unparseable" };
+}
+
+/**
+ * Read a POSTMORTEM's `RESOLVED:` marker (§5.8).
+ *
+ * The marker is positionally unconstrained — a `RESOLVED:` line anywhere outside
+ * a fenced region counts — and is HUMAN-WRITTEN ONLY. No agent and no script
+ * ever writes `yes`; a POSTMORTEM resolves when a person says it did.
+ *
+ * Absence and malformation are reported here as `ok: false`; §5.8's
+ * `checkPostmortem` maps both onto `unresolved`, failing closed, because a
+ * POSTMORTEM whose marker cannot be read costs an operator one edit whereas the
+ * opposite default silently re-runs a phase that failed for an unfixed reason.
+ *
+ * @param {string} fileText
+ * @returns {{ok: true, resolved: boolean}|{ok: false, reason: string}}
+ */
+function parseResolvedMarker(fileText) {
+  const values = [];
+  scanLines(fileText, (line) => {
+    const m = /^\s*RESOLVED:\s*(\S*)\s*$/.exec(line);
+    if (m) values.push(m[1]);
+  });
+
+  if (values.length === 0) return { ok: false, reason: "absent" };
+  if (values.length > 1) return { ok: false, reason: "duplicated" };
+
+  const value = values[0].toLowerCase();
+  if (value === "yes") return { ok: true, resolved: true };
+  if (value === "no") return { ok: true, resolved: false };
+  return { ok: false, reason: "unparseable" };
+}
+
+/** §5.8's truncation ceiling for the recommendation carried into a halt message. */
+const RECOMMENDATION_MAX_BYTES = 4000;
+
+/**
+ * Take the `## Recommendation` section of a POSTMORTEM — heading located via
+ * `scanLines`, so a quoted heading inside a fence is not mistaken for the real
+ * one — up to the next top-level heading or EOF (§5.8).
+ *
+ * The BODY is sliced from the raw lines rather than from the visited ones: the
+ * fenced-region exclusion governs which lines may match a scanned pattern, it
+ * does not empty a section's body (§5.0 property 3), so a recommendation whose
+ * content is a code fence survives intact.
+ *
+ * Truncated at 4,000 bytes with an explicit notice, because this text feeds the
+ * halt message so the operator sees what to do without opening the file.
+ *
+ * @param {string} fileText
+ * @returns {string} the recommendation body, or `""` when there is no such section.
+ */
+function extractRecommendation(fileText) {
+  const lines = String(fileText ?? "").split("\n");
+  let headingIndex = -1;
+  let nextHeadingIndex = -1;
+  scanLines(fileText, (line, index) => {
+    if (headingIndex === -1) {
+      if (/^\s*##\s+Recommendation\s*$/.test(line)) headingIndex = index;
+    } else if (nextHeadingIndex === -1 && /^#{1,2}\s/.test(line)) {
+      nextHeadingIndex = index;
+    }
+  });
+
+  if (headingIndex === -1) return "";
+  const end = nextHeadingIndex === -1 ? lines.length : nextHeadingIndex;
+  const body = lines.slice(headingIndex + 1, end).join("\n").trim();
+
+  if (body.length <= RECOMMENDATION_MAX_BYTES) return body;
+  return `${body.slice(0, RECOMMENDATION_MAX_BYTES)}\n\n[truncated at ${RECOMMENDATION_MAX_BYTES} bytes — see the POSTMORTEM for the rest]`;
+}
+
+/**
+ * Parse the operator's raw `forcePhases` string (§5.7).
+ *
+ * Total, case-sensitive, whitespace- and comma-tolerant. Absent and empty are
+ * the same thing: the empty set. An invalid token halts before any phase runs,
+ * with the operator-facing text ending `Valid: R, F, T, P, D, PR, all.` — the
+ * token catalogue and that message are derived from the SAME array, so they
+ * cannot desynchronise. That derivation is load-bearing: `PR` entered the
+ * catalogue at REQ/FSPEC v1.6, and a hand-written message would have been the
+ * one site that silently kept teaching the operator the old five-token set.
+ *
+ * `all` means SIX phases, not five.
+ *
+ * Precedence (§5.7): forcing overrides a recorded APPROVAL — §2.5 steps 3 and 4
+ * only — and never a recorded FAILURE. Step 2 is NOT skipped: `deriveRoundWindow`
+ * still runs, because entering `reviewLoop` on the shipped `iteration = 1`
+ * default on a branch that already carries `-v1` files re-creates H-1 on the one
+ * path an operator reaches for precisely because the phase was reviewed before.
+ *
+ * @param {string} raw
+ * @returns {{ok: true, phases: Set<string>}|{ok: false, badTokens: string[]}}
+ */
+function parseForcePhases(raw) {
+  if (raw == null || String(raw).trim() === "") return { ok: true, phases: new Set() };
+  const tokens = String(raw).split(/[,\s]+/).filter(Boolean);
+  const valid = FORCE_PHASE_TOKENS; // six — "PR" added at REQ/FSPEC v1.6
+  const bad = tokens.filter((t) => t !== "all" && !valid.includes(t));
+  if (bad.length) return { ok: false, badTokens: bad };
+  return { ok: true, phases: tokens.includes("all") ? new Set(valid) : new Set(tokens) };
+}
+
+// ─── TSPEC §5.5 — staleness ───────────────────────────────────────────────────
+
+/**
+ * Is a recorded approval hash still describing the document on disk?
+ *
+ * Three rules with teeth (§5.5), all of them structural rather than documented:
+ *
+ * 1. **Read at comparison time.** `documentBytes` is whatever the caller read at
+ *    the moment of comparison — never a read cached earlier in the run, which is
+ *    how a document edited between phases gets skipped as fresh.
+ * 2. **No history walk** (O-8, as narrowed at FSPEC v1.5). One hash equality. No
+ *    `git log` of the document, no reconstruction of past bytes.
+ * 3. **Rebase invariance.** The comparison never reads `REVIEWED-COMMIT`. Phase
+ *    DOD rebases `feat-{feature}` before every PR and rewrites every sha on the
+ *    branch; a sha- or timestamp-based test would report every approval stale at
+ *    that moment. Content-addressing is unaffected because content is unaffected.
+ *    This is enforced by the signature, not by a comment: neither parameter is a
+ *    commit, so there is no argument through which a sha could reach the compare.
+ *
+ * Only `FRESH` grants the skip. `STALE` and `UNEVALUABLE` both fall to §2.5 step
+ * G and run the phase — FSPEC §1.2 rule 4's uniform direction: wherever a
+ * machine-readable field cannot be read, the behaviour is *more* work, never less.
+ *
+ * Pure, total and synchronous: no seam, no throw, no IO (§3.7).
+ *
+ * @param {string} recordedHash - the `sha256:{64 hex}` literal carried by the
+ *   approval record, copied verbatim — never recomputed over the working tree.
+ * @param {string} documentBytes - the document's bytes, read at comparison time.
+ * @returns {"FRESH"|"STALE"|"UNEVALUABLE"}
+ */
+function isStale(recordedHash, documentBytes) {
+  if (typeof recordedHash !== "string" || !/^sha256:[0-9a-f]{64}$/.test(recordedHash))
+    return "UNEVALUABLE";
+  return approvalHashOf(documentBytes) === recordedHash ? "FRESH" : "STALE";
+}
+
+// ─── TSPEC §5.9 / FSPEC §16 — structural completeness ─────────────────────────
+//
+// Four wrapped artifact classes. The criterion is deliberately **shallow** and
+// script-decidable (C-5) over the only evidence available — the artifact on disk.
+// Anything richer would need an agent in the terminal decision, which is the loop
+// this feature exists to bound; §4.5's counters, not this test, are what bound a
+// badly behaved episode (FSPEC §16.2).
+
+/**
+ * The six spec classes' required top-level headings (TSPEC §5.9 = FSPEC §16.2).
+ *
+ * `title` is the **canonical** name — the form §5.9 lists first, and the form
+ * `missing` carries even when the document rendered `alt` or a case/spacing/
+ * numeric-prefix variant. `alt` is §5.9's parenthesised alternative, accepted as
+ * equivalent; `null` where the row states none.
+ */
+const REQUIRED_HEADINGS = Object.freeze({
+  REQ: Object.freeze([
+    { title: "Problem / Context", alt: null },
+    { title: "Goals", alt: null },
+    { title: "Non-Goals", alt: "Scope" },
+    { title: "Constraints", alt: null },
+    { title: "Acceptance Criteria", alt: null },
+    { title: "Risks", alt: null },
+    { title: "Obligations", alt: "Open Questions" },
+  ]),
+  FSPEC: Object.freeze([
+    { title: "Overview", alt: "Scope" },
+    { title: "Linked Requirements", alt: null },
+    { title: "Behavioral Flow", alt: null },
+    { title: "Business Rules", alt: null },
+    { title: "Edge Cases and Error Scenarios", alt: null },
+    { title: "Acceptance Tests", alt: null },
+    { title: "Open Questions", alt: null },
+  ]),
+  TSPEC: Object.freeze([
+    { title: "Overview", alt: null },
+    { title: "Architecture", alt: "Design" },
+    { title: "Interfaces", alt: null },
+    { title: "Data Model", alt: "State" },
+    { title: "Test Strategy", alt: null },
+    { title: "Open Questions", alt: null },
+  ]),
+  PLAN: Object.freeze([
+    { title: "Overview", alt: null },
+    { title: "Batches", alt: "Tasks" },
+    { title: "Dependencies", alt: null },
+    { title: "Verification", alt: null },
+  ]),
+  PROPERTIES: Object.freeze([
+    { title: "Overview", alt: null },
+    { title: "Properties", alt: null },
+    { title: "Oracles", alt: null },
+    { title: "Fixtures", alt: null },
+  ]),
+  DECISIONS: Object.freeze([
+    { title: "Context", alt: null },
+    { title: "Options Considered", alt: null },
+    { title: "Decision", alt: null },
+    { title: "Consequences", alt: null },
+  ]),
+});
+
+/**
+ * LEARNINGS' five numbered sections, as `harvest-learnings/SKILL.md` mandates
+ * them (FSPEC §16.5). `## 6. Approval Record` is **deliberately absent**: the
+ * record is best-effort (AC-4.2c), and making it part of the terminal criterion
+ * would let a record-writing bug re-dispatch harvest to MAX_AUTHORING_DISPATCHES
+ * and then halt the phase over an optimisation's bookkeeping.
+ *
+ * Matched by normalised prefix, so `## 3. Rejected Proposals (with rationale)`
+ * satisfies `Rejected Proposals`.
+ */
+const LEARNINGS_SECTIONS = Object.freeze([
+  "Non-Convergences",
+  "Cross-Feature Patterns",
+  "Rejected Proposals",
+  "Process Learnings",
+  "Open Items for Consolidation",
+]);
+
+/**
+ * FSPEC §16.5's **other** conjunct: the metadata table's `Harvested from` row.
+ *
+ * §16.5 states the LEARNINGS criterion as "the metadata table including its
+ * `Harvested from` row, AND its five numbered sections each with a non-empty
+ * body". TSPEC §5.9's restatement drops the first half; §16 owns the
+ * structural-completeness criteria and governs, so the conjunct is implemented
+ * here (CR F-2) and the TSPEC narrowing is documentation drift for Harvest.
+ *
+ * Why it matters and not merely tidiness: `harvest-learnings` step 8 deletes
+ * every `CROSS-REVIEW-*` / `CODE_REVIEW-*` once the episode reaches terminal, and
+ * `guard-harvest-before-delete.sh` checks only that the LEARNINGS file exists.
+ * This row is the record of **what was deleted** — the one thing whose absence is
+ * unrecoverable.
+ *
+ * Matched like §16.4's `Scope:` marker: one cheap, case-insensitive line scan,
+ * through `scanLines` so a row quoted inside a fenced template block (as the
+ * SKILL's own format section carries it) is not the document's own table.
+ */
+const HARVESTED_FROM_ROW = /^\s*\|\s*harvested\s+from\s*\|/i;
+
+/**
+ * §16.5's per-class resume clause for the absent row — the branch FSPEC names
+ * "when all five are satisfied", which was unreachable while the five sections
+ * were the whole criterion. Appended **last** to `missing`, so
+ * `firstUnwrittenSection` names an unwritten section ahead of it.
+ */
+const HARVESTED_FROM_CLAUSE = '(the metadata table\'s "Harvested from" row)';
+
+function hasHarvestedFromRow(fileText) {
+  let found = false;
+  scanLines(fileText, (line) => {
+    if (!found && HARVESTED_FROM_ROW.test(line)) found = true;
+  });
+  return found;
+}
+
+/** A top-level `##` heading — never `###`, up to three leading spaces. */
+const TOP_LEVEL_HEADING = /^ {0,3}##(?!#)\s+(.+?)\s*$/;
+
+/**
+ * §5.9's matching rules as one function: case-insensitive, whitespace-normalised,
+ * a leading `N.` / `N)` numeric prefix ignored.
+ */
+function normaliseHeadingTitle(raw) {
+  return String(raw ?? "")
+    .replace(/^\s*\d+[.)]\s*/, "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLowerCase();
+}
+
+/**
+ * The document's top-level sections, in document order.
+ *
+ * Headings are located through `scanLines`, so a `## …` line **quoted inside a
+ * fenced block is not a section** (§1.2 rule 5) — a reviewer stall-killed after
+ * quoting §6.2's template must not look like it reached the end. Bodies, by
+ * contrast, are the **raw** lines between one heading and the next, fences
+ * included: §5.0's exclusion governs which lines may *match a scanned pattern*,
+ * it does not empty a section's body. Both directions matter and they pull
+ * opposite ways (SE-v4 F-18 / TE-v4 F-01).
+ */
+function topLevelSections(fileText) {
+  const lines = String(fileText ?? "").split("\n");
+  const heads = [];
+  scanLines(fileText, (line, index) => {
+    const m = TOP_LEVEL_HEADING.exec(line);
+    if (m) heads.push({ index, title: m[1] });
+  });
+  return heads.map((h, i) => ({
+    title: h.title,
+    normalised: normaliseHeadingTitle(h.title),
+    index: h.index,
+    body: lines.slice(h.index + 1, i + 1 < heads.length ? heads[i + 1].index : lines.length),
+  }));
+}
+
+/**
+ * §5.9's body rule. A body consisting only of `TBD`, `TODO`, `_TBD_` or an HTML
+ * comment counts as **empty** — otherwise a skeleton written with placeholders
+ * would score complete on write 1.
+ *
+ * The **accepted shallowness** (FSPEC v1.5, SE-v5 F-20 / TE-v5 Q-01): a body that
+ * is only a fenced block containing `TBD` scores **non-empty**, because the fence
+ * lines themselves are ordinary body content here. A fence-aware placeholder test
+ * would reintroduce exactly the coupling that produced v1.4's false-halt.
+ */
+function isEmptyBody(bodyLines) {
+  const stripped = bodyLines.join("\n").replace(/<!--[\s\S]*?-->/g, "");
+  const meaningful = stripped
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
+  if (meaningful.length === 0) return true;
+  return meaningful.every((l) => /^[_*`~\s]*(?:TBD|TODO)[_*`~\s]*$/i.test(l));
+}
+
+/**
+ * Does `line` carry a catalogue verdict? One grammar, shared with `parseVerdict`
+ * (TSPEC §3.9): the same `VERDICT: ` prefix over the trimmed line, the same
+ * slice, the same `VALID_VERDICTS` array — which is why that array is now module
+ * scoped rather than copied here.
+ */
+function isCatalogueVerdictLine(line) {
+  const trimmed = String(line ?? "").trim();
+  if (!trimmed.startsWith("VERDICT: ")) return false;
+  return VALID_VERDICTS.includes(trimmed.slice("VERDICT: ".length).trim());
+}
+
+/**
+ * FSPEC §16.3's cross-review criterion: the **trailing** `## Verdict` section
+ * carries **at least one** `VERDICT: ` line whose value is in the catalogue.
+ *
+ * "Exactly one" was **withdrawn from the terminal test** at FSPEC v1.x and is
+ * retained only in §6.3's *approval* test. Under the old reading a duplicated
+ * verdict field made a finished review permanently non-terminal: the wrapper
+ * re-dispatched to MAX_AUTHORING_DISPATCHES and halted the phase over a review
+ * whose reviewer plainly reached the end (E-58). Terminal and approving are two
+ * questions — a duplicated field is terminal **yes**, approving **no**, and
+ * §5.1's own duplicate pre-count is what answers the second.
+ *
+ * The `APPROVAL-HASH:` / `REVIEWED-COMMIT:` lines §7 appends are not part of this
+ * criterion: they are written *after* the episode reaches terminal.
+ */
+function crossReviewComplete(fileText) {
+  const visited = [];
+  scanLines(fileText, (line, index) => visited.push({ line, index }));
+  let headingAt = -1;
+  for (const v of visited) {
+    const m = TOP_LEVEL_HEADING.exec(v.line);
+    if (m && normaliseHeadingTitle(m[1]) === "verdict") headingAt = v.index;
+  }
+  if (headingAt === -1) return false;
+  return visited.some((v) => v.index > headingAt && isCatalogueVerdictLine(v.line));
+}
+
+/**
+ * Structural completeness of one wrapped artifact (§5.9, §3.7).
+ *
+ * Pure, total and synchronous — no seam, no throw, no IO. Unknown class or doc
+ * type is **not complete**: FSPEC §1.2 rule 4's uniform direction is more work,
+ * never less.
+ *
+ * `T` (top-level headings present) and `S` (those with non-empty bodies) are
+ * carried for the run report and are **measured, not fixed**, so a document
+ * richer than the minimum reports honestly. `missing` names the **canonical**
+ * required titles that are absent or short; it is `[]` on the complete arm.
+ *
+ * @param {string} artifactClass - "spec" | "cross-review" | "code-review" | "LEARNINGS"
+ * @param {string} docType - the spec doc type for the "spec" class; ignored otherwise
+ * @param {string} fileText - the artifact's bytes
+ * @returns {{complete: boolean, missing: string[], T: number, S: number}}
+ */
+function isComplete(artifactClass, docType, fileText) {
+  const sections = topLevelSections(fileText);
+  const T = sections.length;
+  const S = sections.filter((s) => !isEmptyBody(s.body)).length;
+  const done = (complete, missing) => ({ complete, missing, T, S });
+
+  // A required row is satisfied when SOME section matches its canonical title or
+  // its alternative AND that section's body is non-empty. Extra headings are
+  // permitted, counted in `T`, and never subtract — a document richer than the
+  // minimum is not incomplete. Order is not required.
+  const shortfall = (rows) => {
+    const satisfied = new Set();
+    for (const s of sections) {
+      for (const row of rows) {
+        const matches = row.prefix
+          ? s.normalised.startsWith(normaliseHeadingTitle(row.title))
+          : s.normalised === normaliseHeadingTitle(row.title) ||
+            (row.alt && s.normalised === normaliseHeadingTitle(row.alt));
+        if (matches && !isEmptyBody(s.body)) satisfied.add(row.title);
+      }
+    }
+    return rows.map((r) => r.title).filter((t) => !satisfied.has(t));
+  };
+
+  if (artifactClass === "spec") {
+    const rows = REQUIRED_HEADINGS[docType];
+    if (!rows) return done(false, []);
+    const missing = shortfall(rows);
+    return done(missing.length === 0, missing);
+  }
+
+  if (artifactClass === "cross-review") {
+    return done(crossReviewComplete(fileText), []);
+  }
+
+  if (artifactClass === "code-review") {
+    // §16.4: the `Scope:` field — matched with the SAME expression
+    // `hooks/scripts/check-scope-field.sh` uses, so this criterion and the
+    // existing hook agree on one marker rather than drifting apart — plus the
+    // findings section the skill mandates. No verdict field: Phase DOD is out of
+    // AC-4's scope entirely (§10.7), so a verdict on it would carry no meaning.
+    const scoped = /scope|cross-feature/i.test(String(fileText ?? ""));
+    const findings = sections.some((s) => s.normalised.includes("findings") && !isEmptyBody(s.body));
+    return done(scoped && findings, []);
+  }
+
+  if (artifactClass === "LEARNINGS") {
+    // §16.5, in full: "the metadata table including its `Harvested from` row,
+    // AND its five numbered sections each with a non-empty body". The section
+    // half of the criterion is POSITIONAL, not title-based: harvest-learnings is free to name
+    // its five sections for the feature it distilled, and LEARNINGS_SECTIONS is
+    // this module's default naming, not a contract the skill is held to. What is
+    // fixed is that sections `1.`…`5.` all exist and all carry content.
+    //
+    // The approval record is EXCLUDED — it is section 6 when present, and
+    // best-effort (AC-4.2c); see LEARNINGS_SECTIONS.
+    const numbered = new Map();
+    for (const s of sections) {
+      const m = /^\s*(\d+)[.)]/.exec(String(s.title ?? ""));
+      if (!m) continue;
+      const n = Number(m[1]);
+      if (n < 1 || n > LEARNINGS_SECTIONS.length) continue;
+      if (!numbered.has(n) && !isEmptyBody(s.body)) numbered.set(n, s.title);
+    }
+    const missing = LEARNINGS_SECTIONS.filter((_, i) => !numbered.has(i + 1));
+    // The metadata conjunct, appended last so an unwritten section is still what
+    // the resume prompt names first (§16.5: the row is named "when all five are
+    // satisfied"). See HARVESTED_FROM_CLAUSE.
+    if (!hasHarvestedFromRow(fileText)) missing.push(HARVESTED_FROM_CLAUSE);
+    return done(missing.length === 0, missing);
+  }
+
+  return done(false, []);
+}
+
 // ─── isPass helper ────────────────────────────────────────────────────────────
 
 function isPass(verdict) {
   return verdict === "Approved" || verdict === "Approved with minor changes";
+}
+
+// ─── TSPEC §5.6.1 — selectMode; §5.6.2 — isTerminal ───────────────────────────
+
+/**
+ * Compute an episode's `mode` (TSPEC §5.6.1, FSPEC §15.2, AC-3.5 scope (d)).
+ *
+ * `EpisodeKey.mode` is not an input the caller invents. It is computed **once per
+ * episode, at that episode's entry**, by this pure function, from what the phase
+ * is dispatching an author to *do* — never from the artifact's structural state.
+ *
+ * **Invariant S-INV is the caller's obligation, not this function's.** `present`
+ * and `reviewFiles` must be the state of the branch at the instant the episode
+ * begins, read inside `reviewLoop` by `refreshReviewState`, never a snapshot taken
+ * before the loop. Under an entry-time snapshot on a clean branch `present` is
+ * empty for the life of the phase, every optimizer episode selects greenfield,
+ * `isTerminal` requires no trailer, and the wrapper reports success on a round
+ * whose findings were never addressed (TE-v2 N-01).
+ *
+ * The four rules, in the order §5.6.1 states them:
+ *
+ * 1. **The revision test is evaluated first** — structural completeness is never
+ *    consulted here, so it can never move an episode out of revision mode.
+ * 2. **Which round** — the highest round `present` holds that is not carrying
+ *    same-round dual approval: the round still owed an authoring pass. A resuming
+ *    invocation therefore re-enters the *same* round. §5.2's `max + 1` governs the
+ *    next *reviewer* dispatch and is a different question over the same map.
+ * 3. **Non-authoring wrapped dispatches are always greenfield**, without
+ *    evaluating rule 1 — a review / dod-verify / harvest episode is never
+ *    dispatched to address findings in its own artifact.
+ * 4. **Greenfield needs positive evidence.** An episode is greenfield *only if*
+ *    this episode's own refresh observed the branch and found no review round for
+ *    this (feature, doc type) — i.e. `present` is empty. Everything else, including
+ *    a non-empty `present` whose verdicts are unreadable, is revision. "Not read"
+ *    is never "no findings"; the directions are not symmetric.
+ *
+ * The unread-*listing* axis never reaches rule 4: a `refreshReviewState` whose
+ * `_listFiles` cannot be judged **halts** (§4.2, §6.2 rows 2 and 17), so `present`
+ * is a `Map` at every call — the input domain has no third value to rule on, which
+ * is what makes the rule total.
+ *
+ * @param {{dispatchKind: string, docType: string,
+ *          present: Map<string, number[]>,
+ *          reviewFiles: Map<string, {verdict: string, verdictReadable: boolean, anchorHash: string|null}>,
+ *          startIndex: number}} arg
+ * @returns {{mode: "authoring"|"revision", round: number|null, reason: string}}
+ */
+function selectMode({ dispatchKind, docType, present, reviewFiles, startIndex }) {
+  // Rule 3 — evaluated before rule 1, not after it.
+  if (dispatchKind !== "authoring") {
+    return {
+      mode: "authoring",
+      round: null,
+      reason: `non-authoring dispatch kind ${dispatchKind} is greenfield by construction`,
+    };
+  }
+
+  const rounds = new Set();
+  const roles = [];
+  if (present && typeof present.forEach === "function") {
+    present.forEach((list, role) => {
+      roles.push(role);
+      for (const n of list || []) rounds.add(n);
+    });
+  }
+
+  // Rule 4 — greenfield needs positive evidence: an observed, EMPTY `present`.
+  if (rounds.size === 0) {
+    return {
+      mode: "authoring",
+      round: null,
+      reason: `no review round on the branch for ${docType}`,
+    };
+  }
+
+  // Rule 2 — the highest round not carrying same-round dual approval.
+  const files = reviewFiles && typeof reviewFiles.get === "function" ? reviewFiles : new Map();
+  const dualApproved = (round) =>
+    roles.length > 0 &&
+    roles.every((role) => {
+      const rec = files.get(`${role}:${round}`);
+      return !!rec && rec.verdictReadable === true && isPass(rec.verdict);
+    });
+
+  const descending = [...rounds].sort((a, b) => b - a);
+  const owed = descending.find((r) => !dualApproved(r));
+  const round = owed === undefined ? descending[0] : owed;
+
+  return {
+    mode: "revision",
+    round,
+    reason:
+      owed === undefined
+        ? `every observed ${docType} round is dual-approved; addressing round ${round}`
+        : `${docType} round ${round} is still owed an authoring pass`,
+  };
+}
+
+/**
+ * The terminal test (TSPEC §5.6.2, FSPEC §8.4, AC-3.5b). Per mode, and it returns
+ * a **record, not a boolean**, because the trailer reason it computes is the only
+ * place that reason exists.
+ *
+ * | Mode | Terminal condition | Trailer |
+ * |---|---|---|
+ * | Greenfield | the required member of the artifact set is structurally complete | none required, none expected — `parseRevisionComplete` is not called |
+ * | Revision | structurally complete **and** `parseRevisionComplete(response)` → `{complete: true}` | required |
+ *
+ * **Why the conjunct is absent from the greenfield path rather than reconciled.**
+ * §7.4 amends only the three *author* SKILLs to emit `REVISION-COMPLETE:`; the
+ * three review SKILLs, `dod-verify` and `harvest-learnings` never will, and
+ * §5.6.1 rule 3 puts every one of those episodes in greenfield by construction. A
+ * mode-blind conjunct would make the numerically dominant episode population
+ * unable to *ever* reach terminal — H-3's own failure mode rebuilt by the
+ * mechanism meant to remove it.
+ *
+ * **Both members are read, and `structural` is not one of them** — v1.2 returned
+ * it as a third member no caller read, which is the shape AC-4.7a forbids, so it
+ * lives as the local below where its only two readers are.
+ *
+ * @param {string} mode - the episode's mode, from `selectMode`
+ * @param {string} response - the dispatch's response text
+ * @param {string} artifactClass - §5.9's wrapped artifact class
+ * @param {string} docType
+ * @param {string|null} after - the target's bytes read AFTER the dispatch
+ * @returns {{terminal: boolean, trailerReason: string|null}}
+ */
+function isTerminal(mode, response, artifactClass, docType, after) {
+  const structural = isComplete(artifactClass, docType, after).complete;
+  if (mode !== "revision") return { terminal: structural, trailerReason: null };
+  const t = parseRevisionComplete(response);
+  return {
+    terminal: structural && t.complete,
+    trailerReason: t.complete ? null : t.reason,
+  };
 }
 
 // ─── REQ-GATE-04: Non-convergence halt helper ─────────────────────────────────
@@ -707,8 +1851,24 @@ function isPass(verdict) {
  * @param {string} phaseLabel - human-readable phase label
  * @param {Function} recordPhase - the local recordPhase callback
  */
-function checkConverged(loopResult, phaseId, phaseLabel, recordPhase) {
+function checkConverged(
+  loopResult,
+  phaseId,
+  phaseLabel,
+  recordPhase,
+  feature,
+  startIndex,
+  endIndex
+) {
   if (loopResult.converged !== false) return;
+
+  // An authoring-budget halt is NOT a non-convergence: no reviewer disagreed, the
+  // wrapper simply stopped paying for a dispatch that was going nowhere. It writes
+  // no POSTMORTEM (§6.2 rows 10–11) and reports the wrapper's own detail.
+  if (loopResult.halted === true) {
+    recordPhase(phaseId, phaseLabel, "❌", loopResult.haltDetail);
+    throw haltError(loopResult.haltDetail);
+  }
 
   // Build reviewer detail string (PM-F02)
   let reviewerDetail = "";
@@ -720,12 +1880,45 @@ function checkConverged(loopResult, phaseId, phaseLabel, recordPhase) {
     reviewerDetail = details ? ` — non-approving reviewers: [${details}]` : "";
   }
 
-  const postmortemPath = `docs/{feature}/POSTMORTEM-${phaseId}-{feature}.md`;
-  recordPhase(phaseId, phaseLabel, "❌", `Non-convergence after 5 iterations${reviewerDetail}`, 5);
-
-  throw haltError(
-    `Phase ${phaseId} did not converge after 5 iterations${reviewerDetail}. POSTMORTEM written.`
+  // §6.3: the template is made CORRECT and made USED — `feature` is interpolated,
+  // and the path becomes §4.7's `postmortemPath` report field.
+  const postmortemPath = `docs/${feature}/POSTMORTEM-${phaseId}-${feature}.md`;
+  // AC-5.1: the window is RELATIVE. On a branch whose highest existing round is 3
+  // the phase was admitted rounds 4..8, and "after 5 iterations" would name an
+  // absolute index the run never used.
+  const first = startIndex === undefined ? 1 : startIndex;
+  const last = endIndex === undefined ? windowEnd(first) : endIndex;
+  const window = `rounds ${first}..${last}`;
+  recordPhase(
+    phaseId,
+    phaseLabel,
+    "❌",
+    `Non-convergence across ${window}${reviewerDetail}`,
+    MAX_REVIEW_ROUNDS
   );
+
+  // §6.3 step 3: the disposition is `reviewLoop`'s `_checkFile` CONFIRMATION,
+  // never the POSTMORTEM agent's reply.
+  const written = loopResult.postmortemWritten === true;
+
+  // §6.4's two conditional shapes. The unconditional `POSTMORTEM written.` is gone.
+  const reason = written
+    ? `Phase ${phaseId} did not converge across ${window}${reviewerDetail}. ` +
+      `Post-mortem written at ${postmortemPath}. ` +
+      // §6.4 row 1's recovery clause. The literal words "queue row" are
+      // deliberately NOT used: `RLH-AT-31-orch` and `-34-orch` require that a
+      // clean or absent row leaves no queue-shaped text anywhere in the report,
+      // so a phrase that names the queue in EVERY non-convergence halt would
+      // make "one failure, not two" unobservable.
+      `Recover: resolve it per AC-2.4, then set the feature's row back to pending.`
+    : `Phase ${phaseId} did not converge across ${window}${reviewerDetail}. ` +
+      `Post-mortem write FAILED — no artifact at ${postmortemPath}.`;
+
+  throw haltError(reason, {
+    haltPhase: phaseId,
+    postmortemPath,
+    postmortemStatus: written ? "written" : "write_failed",
+  });
 }
 
 // ─── TSPEC-LOOP-01 through TSPEC-LOOP-08: reviewLoop ─────────────────────────
@@ -746,14 +1939,80 @@ function checkConverged(loopResult, phaseId, phaseLabel, recordPhase) {
 async function reviewLoop({
   doc,
   phase,
+  docType,
   reviewers,
   optimizer,
   feature,
   iteration = 1,
+  startIndex = iteration,
+  endIndex = windowEnd(startIndex),
   _agent = agent,
   _parallel = parallel,
   _checkFile = checkFileNonEmpty,
+  _listFiles = defaultListFiles,
+  _readFile = defaultReadFile,
+  _appendFile = defaultAppendFile,
+  _log,
+  _git,
 }) {
+  // The doc type the round record is keyed by. Derived from `doc` when the caller
+  // does not name it, so Phase CR's directory target degrades to "no doc type"
+  // rather than to a wrong one.
+  const roundDocType = docType === undefined ? docTypeFromPath(doc) : docType;
+  const reviewFileType = roundDocType || "REVIEW";
+  const emit = typeof _log === "function" ? _log : log;
+
+  /** Wrap one dispatch of this loop in the §3.8 pacing wrapper. */
+  const wrapped = (skill, basePrompt, targetPath, dispatchKind) =>
+    dispatchAndVerify({
+      skill,
+      basePrompt,
+      targetPath,
+      docType: roundDocType,
+      feature,
+      dispatchKind,
+      phaseId: phase,
+      _agent,
+      _readFile,
+      _listFiles,
+      _log: emit,
+      _git,
+    });
+
+  // An episode that exhausts an authoring budget RETURNS through the loop rather
+  // than throwing past it: `checkConverged` is the one place that decides what a
+  // failed phase does, and `RLH-AT-61-loop` reads the trailer reason off this
+  // return. `halted` is the discriminator; `haltDetail` is the operator's text.
+  let haltedReturn = null;
+  const runWrapped = async (skill, basePrompt, targetPath, dispatchKind) => {
+    if (haltedReturn) return null;
+    try {
+      const episode = await wrapped(skill, basePrompt, targetPath, dispatchKind);
+      if (episode && episode.trailerReason !== undefined) {
+        lastTrailerReason = episode.trailerReason;
+      }
+      return episode;
+    } catch (err) {
+      if (err && err.isAuthoringHalt) {
+        haltedReturn = {
+          converged: false,
+          iterations: iteration,
+          halted: true,
+          haltDetail: err.message,
+          trailerReason: err.trailerReason ?? null,
+          postmortemWritten: false,
+          lastResults: [],
+        };
+        return null;
+      }
+      throw err;
+    }
+  };
+
+  /** The cross-review path a reviewer episode writes this round (§5.2). */
+  const reviewTargetPath = (skill, round) =>
+    `docs/${feature}/CROSS-REVIEW-${reviewerRoleSlug(skill) || skill}-${reviewFileType}-v${round}.md`;
+
   // TSPEC-LOOP-02: Entry precondition check (skip for Phase CR)
   if (phase !== "CR") {
     const checkResult = await _checkFile(doc);
@@ -769,16 +2028,19 @@ async function reviewLoop({
   // DECISIONS_WARRANTED trailer without a separate post-PASS agent session. Null
   // when the loop converges on iteration 1 with no optimizer run.
   let lastOptimizerResult = null;
+  // §3.9 / §5.6.1: the last episode's REVISION-COMPLETE trailer outcome, carried
+  // on every return of this function.
+  let lastTrailerReason = null;
 
   // TSPEC-LOOP-03: Iteration loop
   while (true) {
     // (a) Check iteration cap at loop-top
-    if (iteration > 5) {
+    if (iteration > endIndex) {
       // POSTMORTEM trigger
       const postmortemPath = `docs/${feature}/POSTMORTEM-${phase}-${feature}.md`;
       const postmortemPrompt = [
         `Write ${postmortemPath}.`,
-        `Include the required sections: Phase, Iterations (5 — limit reached), Reviewers, Pattern of Disagreement, Best-Guess Root Cause, Recommendation.`,
+        `Include the required sections: Phase, Iterations (${MAX_REVIEW_ROUNDS} — limit reached), Reviewers, Pattern of Disagreement, Best-Guess Root Cause, Recommendation.`,
         `Read all cross-review files for this phase (all versioned suffixes) to identify unresolved findings.`,
         `Commit and push.`,
       ].join(" ");
@@ -797,9 +2059,22 @@ async function reviewLoop({
         postmortemFailed = true;
       }
 
+      // §6.3 step 2 — CONFIRM, do not trust the agent's reply. `rtWriteFile`
+      // answers `"ok"` when it *believes* it wrote; AC-2.2 exists because that
+      // belief has been wrong. The confirmation is the only evidence admitted.
+      let postmortemWritten = false;
+      if (!postmortemFailed) {
+        const confirmation = await _checkFile(postmortemPath);
+        postmortemWritten = !!(confirmation && confirmation.ok);
+      }
+
       if (postmortemFailed) {
         log(
           `WARNING: POSTMORTEM agent failed — artifact not written for phase ${phase}`
+        );
+      } else if (!postmortemWritten) {
+        log(
+          `WARNING: POSTMORTEM agent reported success but no artifact was confirmed at ${postmortemPath} for phase ${phase}`
         );
       }
 
@@ -809,7 +2084,14 @@ async function reviewLoop({
         { skill: reviewers[1], ...parseVerdict(result2, reviewers[1]) },
       ];
 
-      return { converged: false, iterations: 5, lastResults };
+      return {
+        converged: false,
+        iterations: MAX_REVIEW_ROUNDS,
+        lastResults,
+        postmortemWritten,
+        postmortemPath,
+        trailerReason: null,
+      };
     }
 
     // (b) Emit iteration log
@@ -819,18 +2101,31 @@ async function reviewLoop({
       log(`Resuming from iteration ${iteration}`);
     }
 
+    // (b2) TSPEC §5.3 t0–t2 — capture the anchor BEFORE the reviewers are
+    // dispatched (t3), so what is recorded is the document this round actually
+    // reviewed, not whatever the optimizer left behind afterwards. Phase CR's
+    // target is a directory and carries no anchor.
+    let anchorHash = null;
+    let anchorCommit = "unavailable";
+    if (phase !== "CR") {
+      const anchorBytes = await _readFile(doc); // t0
+      if (anchorBytes != null) anchorHash = approvalHashOf(anchorBytes); // t1
+      anchorCommit = await headCommitSha(_git); // t2
+    }
+
     // (c) Dispatch reviewers in parallel. On iteration ≥2 each reviewer gets a
     // delta re-review prompt (read prior cross-review, diff-only scan) — see
     // reviewerPrompt. Iteration 1 is the full first-pass review.
-    const reviewerPrompt1 = reviewerPrompt(doc, phase, feature, iteration, reviewers[0]);
-    const reviewerPrompt2 = reviewerPrompt(doc, phase, feature, iteration, reviewers[1]);
+    const reviewerPrompt1 = reviewerPrompt(doc, phase, feature, iteration, reviewers[0], reviewFileType);
+    const reviewerPrompt2 = reviewerPrompt(doc, phase, feature, iteration, reviewers[1], reviewFileType);
 
     const [r1, r2] = await _parallel([
-      _agent(reviewers[0], reviewerPrompt1),
-      _agent(reviewers[1], reviewerPrompt2),
+      runWrapped(reviewers[0], reviewerPrompt1, reviewTargetPath(reviewers[0], iteration), "review"),
+      runWrapped(reviewers[1], reviewerPrompt2, reviewTargetPath(reviewers[1], iteration), "review"),
     ]);
-    result1 = r1;
-    result2 = r2;
+    if (haltedReturn) return haltedReturn;
+    result1 = r1 && r1.response;
+    result2 = r2 && r2.response;
 
     // (d) Parse verdicts. A missing/malformed VERDICT trailer sets malformed:true —
     // make one cheap Haiku recovery attempt to re-emit the trailer from the reviewer's
@@ -857,14 +2152,36 @@ async function reviewLoop({
     // (e) Evaluate gate
     const gatePass = isPass(verdict1.verdict) && isPass(verdict2.verdict);
 
-    // (f) PASS branch
+    // (f) PASS branch — t4. The round is terminal, so §5.3 t5 appends the anchor
+    // pair to each reviewer's cross-review file and t6 commits. A failed or
+    // ambiguous append is an operator-facing error that yields NO approval for the
+    // round and never halts the run (§6.2 row 8, `AT-17`): the phase simply has no
+    // recorded approval to skip on next time.
     if (gatePass) {
-      return { converged: true, iterations: iteration, lastOptimizerResult };
+      await appendApprovalAnchors({
+        paths: [reviewTargetPath(reviewers[0], iteration), reviewTargetPath(reviewers[1], iteration)],
+        hash: anchorHash,
+        commit: anchorCommit,
+        _readFile,
+        _appendFile,
+        _git,
+        emit,
+      });
+      // §3.9: `trailerReason` rides on EVERY return, `null` on the clean path —
+      // so `null` must be observable as a value, which a conditional spread is not.
+      return {
+        converged: true,
+        iterations: iteration,
+        lastOptimizerResult,
+        trailerReason: lastTrailerReason,
+      };
     }
 
     // (g) Invoke optimizer (FAIL path)
-    const optPrompt = optimizerPrompt(doc, phase, feature, iteration, reviewers);
-    const optimizerResult = await _agent(optimizer, optPrompt);
+    const optPrompt = optimizerPrompt(doc, phase, feature, iteration, reviewers, reviewFileType);
+    const optEpisode = await runWrapped(optimizer, optPrompt, doc, "authoring");
+    if (haltedReturn) return haltedReturn;
+    const optimizerResult = optEpisode && optEpisode.response;
     lastOptimizerResult = optimizerResult;
 
     if (
@@ -882,6 +2199,116 @@ async function reviewLoop({
   }
 }
 
+// ─── TSPEC §5.3 — approval anchor capture and append (t0…t6) ─────────────────
+
+/**
+ * §5.3 t2 — the commit the reviewed bytes were read at. Never a halt condition:
+ * a repo-less or failing `git` degrades to the `"unavailable"` sentinel §4.3 and
+ * §5.5 rule 3 both already accept (the comparison never reads it).
+ *
+ * @param {function|undefined} _git
+ * @returns {Promise<string>}
+ */
+async function headCommitSha(_git) {
+  if (typeof _git !== "function") return "unavailable";
+  try {
+    const result = await _git(["rev-parse", "HEAD"]);
+    const stdout = result && typeof result.stdout === "string" ? result.stdout.trim() : "";
+    return /^[0-9a-f]{7,40}$/.test(stdout) ? stdout : "unavailable";
+  } catch {
+    return "unavailable";
+  }
+}
+
+/**
+ * §5.3's pre-count over one cross-review file: the `APPROVAL-HASH:` values on
+ * unfenced lines, in order. `scanLines` already skips fenced regions, so a quoted
+ * example anchor cannot fabricate an ambiguity.
+ *
+ * @param {string} fileText
+ * @returns {string[]}
+ */
+function approvalAnchorPreCount(fileText) {
+  const found = [];
+  scanLines(String(fileText ?? ""), (line) => {
+    const m = /^APPROVAL-HASH:\s*(\S+)\s*$/.exec(line);
+    if (m) found.push(m[1]);
+  });
+  return found;
+}
+
+/**
+ * §5.3 t5–t6. The pre-count is a count AND a comparison (E-14/E-15):
+ *
+ *   0 existing anchors        ⇒ append the pair
+ *   1, equal to `hash`        ⇒ idempotent no-op; the approval stands
+ *   1, unequal                ⇒ error surfaced, no append, no approval
+ *   ≥ 2                       ⇒ history ambiguous, no append, no approval
+ *
+ * Nothing here throws: `AT-17`'s "does not halt".
+ */
+async function appendApprovalAnchors({
+  paths,
+  hash,
+  commit,
+  _readFile,
+  _appendFile,
+  _git,
+  emit,
+}) {
+  if (!hash) {
+    emit(
+      "Approval anchor not recorded: the reviewed document could not be read at " +
+        "capture time. The round yields no approval; the phase will re-run."
+    );
+    return;
+  }
+
+  let appended = false;
+  for (const path of paths) {
+    const existingText = await _readFile(path);
+    if (existingText == null) {
+      emit(`Approval anchor not recorded: ${path} is absent. The round yields no approval.`);
+      return;
+    }
+    const existing = approvalAnchorPreCount(existingText);
+    if (existing.length >= 2) {
+      emit(
+        `Approval anchor not recorded: ${path} already carries ${existing.length} ` +
+          "APPROVAL-HASH: lines, so its history is ambiguous. The round yields no approval."
+      );
+      return;
+    }
+    if (existing.length === 1) {
+      if (existing[0] === hash) continue; // E-14 — idempotent no-op.
+      emit(
+        `Approval anchor not recorded: ${path} already carries a DIFFERENT ` +
+          `APPROVAL-HASH: (${existing[0]} vs ${hash}). The round yields no approval.`
+      );
+      return;
+    }
+    try {
+      await _appendFile(path, `\nAPPROVAL-HASH: ${hash}\nREVIEWED-COMMIT: ${commit}\n`);
+      appended = true;
+    } catch (err) {
+      emit(
+        `Approval anchor not recorded: appending to ${path} failed (${err && err.message}). ` +
+          "The round yields no approval."
+      );
+      return;
+    }
+  }
+
+  if (!appended || typeof _git !== "function") return;
+  try {
+    await _git(["add", ...paths]); // t6
+    await _git(["commit", "-m", `chore(pdlc): record approval anchors ${hash}`]);
+  } catch {
+    // t6 is best-effort: the anchors are on disk either way, and §5.5's comparison
+    // reads the working tree, never the commit.
+  }
+}
+
 // ─── Prompt helpers ───────────────────────────────────────────────────────────
 
 /**
@@ -892,13 +2319,744 @@ async function reviewLoop({
  * @param {string} skill
  * @returns {string|null}
  */
+/**
+ * The single reviewer-skill → role-slug MAP (TSPEC §3.9). Lifted to module scope
+ * so the filename grammar's role alternation (§5.2 G-2), the dispatch table and
+ * the reverse accessor below all read the SAME catalogue and cannot desynchronise.
+ * Sharing the object is what makes the three consistent; `RLH-MAP-01` is what keeps
+ * this catalogue and `PHASE_DISPATCH`'s reviewer set consistent with each other.
+ */
+const MAP = {
+  "se-review": "software-engineer",
+  "pm-review": "product-manager",
+  "te-review": "test-engineer",
+};
+
+/** The closed role catalogue G-2 validates a parsed filename's role against. */
+const REVIEWER_ROLE_SLUGS = Object.freeze(Object.values(MAP));
+
 function reviewerRoleSlug(skill) {
-  const MAP = {
-    "se-review": "software-engineer",
-    "pm-review": "product-manager",
-    "te-review": "test-engineer",
-  };
   return MAP[skill] || null;
+}
+
+/**
+ * The reverse of `reviewerRoleSlug` (TSPEC §3.9): a role slug as it appears in a
+ * `CROSS-REVIEW-{role}-…` basename back to the reviewer skill that produced it.
+ *
+ * The desynchronisation this pair guards against is between `MAP` and
+ * `PHASE_DISPATCH`: a reviewer added to the dispatch table without a `MAP` entry
+ * derives its cross-review path at the `reviewerRoleSlug(skill) || skill` fallback
+ * (§5.2's call site), producing a basename whose role is outside G-2's closed
+ * catalogue and therefore unparseable on the next round. `RLH-MAP-01`
+ * (`__tests__/roundDerivation.test.js`) is what enforces that — both accessors are
+ * exported for it, and the guarantee this comment states holds only because that
+ * assertion runs. It is two-way: a dispatch reviewer with no slug reds, and a `MAP`
+ * entry no phase dispatches reds too.
+ *
+ * @param {string} slug
+ * @returns {string|null} the reviewer skill id, or `null` for a non-catalogue slug.
+ */
+function reviewerSkillForSlug(slug) {
+  for (const skill of Object.keys(MAP)) {
+    if (MAP[skill] === slug) return skill;
+  }
+  return null;
+}
+
+// ─── TSPEC §5.2 — filename grammar and round-index derivation (the H-1 fix) ────
+
+/** The G-1…G-4 cross-review basename grammar, applied to a BASENAME. */
+const CROSS_REVIEW_RE =
+  /^CROSS-REVIEW-(?<role>[a-z]+(?:-[a-z]+)*)-(?<docType>[A-Z][A-Z_]*)(?:-v(?<n>[1-9][0-9]*))?\.md$/;
+
+/** The same grammar with the round/extension tail left unconsumed, so a basename
+ *  that fails only on its tail can be told apart: `bad_round` from `trailing_junk`. */
+const CROSS_REVIEW_LOOSE_RE =
+  /^CROSS-REVIEW-(?<role>[a-z]+(?:-[a-z]+)*)-(?<docType>[A-Z][A-Z_]*)(?<rest>.*)$/;
+
+const CROSS_REVIEW_PREFIX = "CROSS-REVIEW-";
+
+/** The closed doc-type catalogue a cross-review may be written against (§4.4). */
+const REVIEW_DOC_TYPES = Object.freeze([
+  "REQ",
+  "FSPEC",
+  "TSPEC",
+  "PLAN",
+  "PROPERTIES",
+  "DECISIONS",
+]);
+
+/**
+ * Parse a cross-review basename against the §5.2 grammar. Total: a string goes
+ * in, a tagged union comes out, and it never throws.
+ *
+ * The four rules the grammar encodes, and the rejection each produces:
+ *   G-1 (case)                  — `[a-z]` role / `[A-Z]` doc type
+ *   G-2 (closed role catalogue) — validated AFTER the regex against `MAP`'s
+ *                                 values, not baked into the pattern ⇒ `bad_role`
+ *   G-3 (no leading zeros)      — `[1-9][0-9]*` ⇒ `bad_round`
+ *   G-4 (no other optional part)— `$` immediately after `\.md` ⇒ `trailing_junk`
+ *
+ * The un-suffixed form IS round 1: `CROSS-REVIEW-{role}-{DOC}.md` and
+ * `…-v1.md` denote the same round. That is not a convenience — the un-suffixed
+ * form is what pre-existing branches in this repo carry, and treating it as "no
+ * round" would make every historical approval invisible.
+ *
+ * @param {string} basename
+ * @returns {{ok: true, role: string, docType: string, round: number, suffixed: boolean}
+ *          |{ok: false, reason: string}} `reason` is a `FILENAME_FAILURES` member.
+ */
+function parseReviewFilename(basename) {
+  const name = typeof basename === "string" ? basename : "";
+  if (!name.startsWith(CROSS_REVIEW_PREFIX)) {
+    return { ok: false, reason: "not_cross_review" };
+  }
+
+  const m = CROSS_REVIEW_RE.exec(name);
+  if (m) {
+    const { role, docType, n } = m.groups;
+    if (!REVIEWER_ROLE_SLUGS.includes(role)) return { ok: false, reason: "bad_role" };
+    if (!REVIEW_DOC_TYPES.includes(docType)) return { ok: false, reason: "bad_doc_type" };
+    return {
+      ok: true,
+      role,
+      docType,
+      round: n === undefined ? 1 : Number(n),
+      suffixed: n !== undefined,
+    };
+  }
+
+  // The prefix is right but the rest is not. Classify the tail rather than
+  // collapsing every such name onto `not_cross_review`, so E-03/E-07's notice
+  // can tell an operator WHICH rule the file broke.
+  const loose = CROSS_REVIEW_LOOSE_RE.exec(name);
+  if (!loose) return { ok: false, reason: "bad_role" }; // G-1: the role segment itself
+  const rest = loose.groups.rest;
+  // Reachable only for a round token the strict pattern rejected — `-v0`, `-v01`.
+  if (/^-v[0-9]+\.md$/.test(rest)) return { ok: false, reason: "bad_round" };
+  return { ok: false, reason: "trailing_junk" };
+}
+
+/**
+ * Derive the round window for one phase entry from ONE directory listing.
+ *
+ * Step 4 is the H-1 fix in a line: `startIndex` is one past the highest round
+ * index already on the branch, so re-entering a phase never rewrites an existing
+ * `-v{N}` cross-review. Step 6 makes `MAX_REVIEW_ROUNDS` a per-invocation BUDGET
+ * rather than an absolute cap — on a branch whose highest existing round is 3,
+ * the re-entered phase starts at 4 and gets rounds 4…8, five rounds, not two.
+ *
+ * `present` and `skipped` are both carried out (step 7) precisely so one listing
+ * suffices for the whole phase entry: a caller that had to re-enumerate, or
+ * re-parse the listing itself, would violate AC-1.2 and the §2.4 layering rule.
+ *
+ * Step 5 halts rather than guessing: two files claiming round 1 for one role and
+ * doc type may carry different verdicts, so picking either is a coin flip on
+ * whether the phase is skipped, and picking "the newer" would import a filesystem
+ * timestamp into an otherwise purely content-addressed decision.
+ *
+ * Synchronous, total, and takes no seam (§3.7).
+ *
+ * @param {string[]} basenames - the directory listing, basenames only.
+ * @param {string} docType - the document type under derivation.
+ * @returns {{ok: true, startIndex: number, endIndex: number,
+ *            present: Map<string, number[]>,
+ *            skipped: Array<{basename: string, reason: string}>}
+ *          |{ok: false, reason: "malformed_round_one_duplicate", role: string}}
+ */
+function deriveRoundWindow(basenames, docType) {
+  const listing = Array.isArray(basenames) ? basenames : [];
+  // Deduplicated by basename, in the listing's own order — `skipped` is reported
+  // in that order and `present` records each round index once.
+  const unique = listing.filter((b, i) => listing.indexOf(b) === i);
+
+  // Step 1 — parse every basename, keeping BOTH the entries and the rejects.
+  const present = new Map();
+  const skipped = [];
+  // Per (role) record of which round-1 spelling was seen, for step 5.
+  const roundOneForms = new Map();
+
+  for (const basename of unique) {
+    const result = parseReviewFilename(basename);
+    if (!result.ok) {
+      skipped.push({ basename, reason: result.reason });
+      continue;
+    }
+    // A well-formed cross-review for a DIFFERENT doc type is a third outcome:
+    // neither an entry nor a reject (§5.2, §8.2's partition property).
+    if (result.docType !== docType) continue;
+
+    // Step 2 — per-role round indices, deduplicated.
+    const rounds = present.get(result.role) || [];
+    if (!rounds.includes(result.round)) rounds.push(result.round);
+    present.set(result.role, rounds);
+
+    if (result.round === 1) {
+      const forms = roundOneForms.get(result.role) || { plain: false, v1: false };
+      if (result.suffixed) forms.v1 = true;
+      else forms.plain = true;
+      roundOneForms.set(result.role, forms);
+      // Step 5 — one role, one doc type, two files both claiming round 1.
+      if (forms.plain && forms.v1) {
+        return {
+          ok: false,
+          reason: "malformed_round_one_duplicate",
+          role: result.role,
+        };
+      }
+    }
+  }
+
+  // Steps 3, 4 and 6.
+  const indices = [];
+  for (const rounds of present.values()) for (const round of rounds) indices.push(round);
+  const startIndex = indices.length ? Math.max(...indices) + 1 : 1;
+  const endIndex = windowEnd(startIndex);
+
+  // Step 7.
+  return { ok: true, startIndex, endIndex, present, skipped };
+}
+
+/**
+ * The last round index of the review window that opens at `startIndex`.
+ *
+ * This is the SOLE place in the module where the window width is expressed in
+ * terms of `MAX_REVIEW_ROUNDS`. `reviewLoop` takes `endIndex` as a parameter and
+ * defaults it through this helper rather than recomputing the arithmetic, so the
+ * budget can never be re-derived (and so drift) inside the loop itself.
+ *
+ * @param {number} startIndex
+ * @returns {number}
+ */
+function windowEnd(startIndex) {
+  return startIndex + MAX_REVIEW_ROUNDS - 1;
+}
+
+// ─── TSPEC §5.6.3 — the two prompt kinds, and the section walk behind them ────
+
+/** The doc type an artifact path names, e.g. `docs/f/FSPEC-f.md` → `"FSPEC"`. */
+function docTypeFromPath(path) {
+  const m = /\/([A-Z]+)-[^/]+\.md$/.exec(String(path ?? ""));
+  return m ? m[1] : null;
+}
+
+/**
+ * §5.9's artifact class for a target path. The three special classes are
+ * recognised by their filename convention; everything else is a spec-class
+ * document, which is also the safe default for Phase CR's directory target
+ * (`topLevelSections` of an unreadable target is empty, so the wrapper's
+ * unmeasurable-target escape takes over — see `dispatchAndVerify`).
+ */
+function artifactClassOf(path) {
+  const name = String(path ?? "");
+  if (/\/CROSS-REVIEW-[^/]*$/.test(name)) return "cross-review";
+  if (/\/CODE_REVIEW-[^/]*$/.test(name)) return "code-review";
+  if (/\/LEARNINGS-[^/]*$/.test(name)) return "LEARNINGS";
+  return "spec";
+}
+
+/**
+ * The heading the resume prompt names — **never empty** (§15.5's closing
+ * guarantee). It reuses the same module-scope walk `isComplete` uses; a second
+ * heading walker would be a second oracle for the same question.
+ *
+ * Resolution order:
+ * 1. an absent or blank target has no sections at all, so the resume prompt names
+ *    the skeleton rather than a heading;
+ * 2. a cross-review is scored whole-file (§5.9), so its one unwritten "section" is
+ *    the trailing verdict block — the only thing its criterion can be missing;
+ * 3. otherwise the first top-level section whose body is empty, by document order;
+ * 4. otherwise the first required heading `isComplete` reports missing.
+ *
+ * @param {string} artifactClass
+ * @param {string} docType
+ * @param {string|null} text
+ * @returns {string}
+ */
+function firstUnwrittenSection(artifactClass, docType, text) {
+  const body = String(text ?? "");
+  if (body.trim() === "") return "the document skeleton (no content on disk yet)";
+  if (artifactClass === "cross-review" && !crossReviewComplete(body)) {
+    return '(the trailing "## Verdict" section)';
+  }
+  const sections = topLevelSections(body);
+  const unwritten = sections.find((s) => isEmptyBody(s.body));
+  if (unwritten) return unwritten.title;
+  const { missing } = isComplete(artifactClass, docType, body);
+  if (Array.isArray(missing) && missing.length > 0) return missing[0];
+  return "the closing pass over the whole document";
+}
+
+/**
+ * §5.6.3's shared clause, carried by every wrapped authoring **and** review
+ * dispatch. `skillFiles.test.js` pins the same three literals in the SKILL
+ * templates, so the runtime prompt and the SKILL text say one thing.
+ */
+const PACING_CONTRACT_CLAUSE = [
+  "Pacing contract (H-3): lay down the skeleton first, then write ONE top-level",
+  "section per edit, keep every single write under 12,000 bytes, and commit after",
+  "each section. A monolithic write is killed by the 180 s stall watchdog and loses",
+  "everything it had not yet flushed.",
+].join(" ");
+
+/** The greenfield opener for a target that is not on disk yet. */
+function skeletonClause() {
+  return (
+    "This artifact is not on disk yet. Begin by laying out its top-level headings " +
+    "as a skeleton, then fill them one at a time under the pacing contract above."
+  );
+}
+
+/**
+ * The resume opener (§5.6.3 clause 2, FSPEC §15.5): the target already carries
+ * partial content, so the dispatch continues it instead of starting over. The
+ * section count and the heading are computed by THIS script's walk — the agent is
+ * never asked where it got to.
+ */
+function resumeClause(artifactClass, docType, text, targetPath) {
+  const { T, S } = isComplete(artifactClass, docType, text);
+  return [
+    `RESUMED: ${targetPath} already carries partial content`,
+    `(${S} of ${T} top-level sections carry a body).`,
+    "Read the document on disk first and do NOT rewrite what is already written.",
+    `The first unwritten section is ${firstUnwrittenSection(artifactClass, docType, text)}.`,
+    "Continue from there, one section per write, under the pacing contract above.",
+  ].join(" ");
+}
+
+/**
+ * The continuation opener (§5.6.3 clause 3, FSPEC §15.5): a revision-mode episode
+ * is addressing a specific round's findings on a document an earlier, interrupted
+ * dispatch may already have partly edited. The five clauses `RLH-AT-48` inspects
+ * are all here, and the cross-review basenames are the ones the episode's own
+ * refresh actually saw on disk — never a name derived from arithmetic.
+ *
+ * The round is written in lower case deliberately: the acceptance harness reads
+ * `Iteration N` out of prompts to key episodes, and a capitalised restatement here
+ * would re-key the episode mid-flight.
+ */
+function continuationClause(round, reviewBasenames, targetPath) {
+  const named = reviewBasenames.length > 0 ? reviewBasenames.join(", ") : "the cross-reviews of this round";
+  return [
+    `CONTINUATION of round ${round}. ${targetPath} may have been partially edited`,
+    "already by an earlier dispatch that was interrupted mid-write.",
+    `Address the findings in: ${named}.`,
+    "Read the document on disk first and apply only what is not already reflected",
+    "there; do NOT rewrite passages that already carry the change.",
+    "When every finding this round owes has been applied, end your reply with the",
+    "line `REVISION-COMPLETE: yes`. If you were stopped before finishing, end it",
+    "with `REVISION-COMPLETE: no` instead.",
+  ].join(" ");
+}
+
+// ─── TSPEC §5.6.1 S-INV — refreshReviewState ─────────────────────────────────
+
+/**
+ * Re-read the branch's review record for one (feature, doc type), at the instant
+ * an episode begins. **This is S-INV**: `selectMode` is never handed a snapshot
+ * taken before the loop, because on a clean branch such a snapshot stays empty for
+ * the life of the phase and every optimizer episode then selects greenfield
+ * (TE-v2 N-01).
+ *
+ * The `ListFailure` disposition lives HERE, above the `deriveRoundWindow` call, so
+ * that a listing which cannot be judged never reaches the round derivation:
+ *
+ * | reason | disposition |
+ * |---|---|
+ * | `dir_missing` | benign — the feature directory has no reviews yet, `files ← []` |
+ * | `not_a_directory`, `unreadable`, `bad_argument` | halt — "not read" is never "no findings" |
+ *
+ * @param {{feature: string, docType: string|null, _listFiles: function, _readFile: function}} arg
+ * @returns {Promise<{ok: true, startIndex: number, endIndex: number,
+ *                    present: Map, reviewFiles: Map, matched: object[], files: string[]}
+ *                  |{ok: false, message: string}>}
+ */
+async function refreshReviewState({ feature, docType, _listFiles, _readFile }) {
+  const dirPath = `docs/${feature}`;
+  const listing = await _listFiles(dirPath);
+
+  let files = [];
+  if (listing && listing.ok) {
+    files = Array.isArray(listing.files) ? listing.files : [];
+  } else {
+    const reason = (listing && listing.reason) || "unreadable";
+    if (reason !== "dir_missing") {
+      return { ok: false, message: `Cannot enumerate ${dirPath}: ${reason}` };
+    }
+  }
+
+  const window = deriveRoundWindow(files, docType);
+  if (!window.ok) {
+    return {
+      ok: false,
+      message: `Cannot derive the review round window for ${docType} in ${dirPath}: ${window.reason} (role ${window.role})`,
+    };
+  }
+
+  // The verdict record rule 2 reads. Unreadable is recorded as unreadable, never
+  // downgraded to "no findings" — the two directions are not symmetric (§5.6.1).
+  //
+  // §5.6.1 pins WHICH files are opened: "§5.4's tier-1 reads over round
+  // `w.startIndex - 1`, or empty when that is < 1". Reading every matched
+  // basename instead would blow §5.4's two-`_readFile` fan-out and would open
+  // rounds the approval search is forbidden to descend to (`RLH-AT-09`,
+  // `RLH-AT-57`). `matched` still carries every round — it is derived from the
+  // listing, costs no read, and `dispatchAndVerify` names the revision round's
+  // files from it.
+  const candidate = window.startIndex - 1;
+  const reviewFiles = new Map();
+  const matched = [];
+  for (const basename of files) {
+    const parsed = parseReviewFilename(basename);
+    if (!parsed.ok || parsed.docType !== docType) continue;
+    matched.push({ basename, role: parsed.role, round: parsed.round });
+    if (parsed.round !== candidate) continue;
+    const text = await _readFile(`${dirPath}/${basename}`);
+    const parsedVerdict = extractFileVerdict(text, parsed.role);
+    const anchor = parseApprovalHash(text);
+    reviewFiles.set(`${parsed.role}:${parsed.round}`, {
+      verdict: parsedVerdict.ok ? parsedVerdict.verdict : null,
+      verdictReadable: parsedVerdict.ok && parsedVerdict.malformed !== true,
+      anchorHash: anchor.ok ? anchor.hash : null,
+      anchorReason: anchor.ok ? null : anchor.reason,
+      path: `${dirPath}/${basename}`,
+    });
+  }
+
+  return {
+    ok: true,
+    startIndex: window.startIndex,
+    endIndex: window.endIndex,
+    present: window.present,
+    reviewFiles,
+    matched,
+    files,
+  };
+}
+
+// ─── TSPEC §5.8 — the POSTMORTEM query (§2.5 step G's subject) ───────────────
+
+/**
+ * Ask whether this (phase, feature) carries a POSTMORTEM, and whether a human
+ * has resolved it (§5.8).
+ *
+ * This is a **query, not a gate**. It never decides on its own whether a phase
+ * runs; the refusal lives at §2.5 step G, which is the single point every
+ * phase-running exit converges on (G-INV). Putting the refusal in here would
+ * invert AC-2.3b, because step 4's `FRESH` branch calls it for REPORTING ONLY.
+ *
+ * Absent or malformed marker ⇒ `unresolved`. Fail closed: a POSTMORTEM whose
+ * marker cannot be read costs an operator one edit, whereas the opposite default
+ * silently re-runs a phase that previously failed for an unfixed reason.
+ *
+ * @param {{phase: string, feature: string, _readFile: function}} arg
+ * @returns {Promise<{status: "none"|"resolved"|"unresolved", path: string,
+ *                    recommendation?: string}>}
+ */
+async function checkPostmortem({ phase, feature, _readFile }) {
+  const path = `docs/${feature}/POSTMORTEM-${phase}-${feature}.md`;
+  const text = await _readFile(path);
+  if (text == null || String(text).trim() === "") return { status: "none", path };
+
+  const marker = parseResolvedMarker(text);
+  if (marker.ok && marker.resolved) return { status: "resolved", path };
+  return { status: "unresolved", path, recommendation: extractRecommendation(text) };
+}
+
+// ─── TSPEC §5.4 — the approval search (the H-4 fix) ──────────────────────────
+
+/** The shape every non-approving exit of the search returns (§5.4). */
+function noApprovalRecord(candidate, unevaluable = []) {
+  return { approving: false, candidate, hash: null, unevaluable, tier1Empty: false };
+}
+
+/**
+ * TIER 1 — the candidate round's per-role CROSS-REVIEW records (§5.4).
+ *
+ * Pure: the reads were already performed by `refreshReviewState`, which §5.6.1
+ * defines as "§5.4's tier-1 reads over round `startIndex - 1`". That is what
+ * holds the fan-out at **two `_readFile` per phase entry** — this function opens
+ * nothing.
+ *
+ * Four properties, each load-bearing:
+ *   - single-highest-round candidate, **no descending walk** (`RLH-AT-57`);
+ *   - a role's absent `-v{candidate}` is **not approving**, not partially
+ *     approving (`RLH-AT-10`);
+ *   - unanimity is `isPass` on every role AND identical anchor hashes — a
+ *     partial or disagreeing anchor pair adopts neither value (`RLH-AT-56`);
+ *   - a duplicated `VERDICT:` line already failed closed upstream, in §5.1
+ *     (`RLH-AT-11`).
+ *
+ * @param {{reviewers: string[], startIndex: number, reviewFiles: Map}} arg
+ * @returns {{approving: boolean, candidate: number, hash: string|null,
+ *            unevaluable: string[], tier1Empty: boolean}}
+ */
+function tier1ApprovalRecord({ reviewers, startIndex, reviewFiles }) {
+  const candidate = startIndex - 1;
+  if (candidate < 1) return noApprovalRecord(candidate);
+
+  const roles = reviewers.map((skill) => reviewerRoleSlug(skill) || skill);
+  const records = roles.map((role) => reviewFiles.get(`${role}:${candidate}`) || null);
+
+  // "Tier 1 produced a file at all" is what makes the tiers exclusive.
+  if (records.every((r) => r === null)) {
+    return { ...noApprovalRecord(candidate), tier1Empty: true };
+  }
+  // Role-asymmetry: one reviewer wrote the candidate round and the other did not.
+  if (records.some((r) => r === null)) return noApprovalRecord(candidate);
+
+  // §6.2 row 6: an absent, duplicated or unparseable anchor is UNEVALUABLE and
+  // the offending file is named in the report. Adopting the *other* file's value
+  // is the failure FSPEC §19 calls out.
+  const unevaluable = records.filter((r) => !r.anchorHash).map((r) => r.path);
+  const verdictsPass = records.every((r) => r.verdictReadable && isPass(r.verdict));
+  if (!verdictsPass || unevaluable.length) return noApprovalRecord(candidate, unevaluable);
+
+  const hashes = records.map((r) => r.anchorHash);
+  if (!hashes.every((h) => h === hashes[0])) {
+    // Disagreement: neither value may be adopted, so BOTH files are offending.
+    return noApprovalRecord(candidate, records.map((r) => r.path));
+  }
+
+  return { approving: true, candidate, hash: hashes[0], unevaluable: [], tier1Empty: false };
+}
+
+/** The `## 6. Approval Record` heading tier 2 reads by name (§4.4, §5.4). */
+const APPROVAL_RECORD_HEADING = /^\s*##\s+\d*\.?\s*Approval Record\s*$/;
+
+/**
+ * TIER 2 — `## 6. Approval Record` in `LEARNINGS-{feature}.md` (§5.4).
+ *
+ * Consulted **only** when the candidate round produced no cross-review file at
+ * all: the tiers are exclusive, so there is no "both tiers disagree" merge to
+ * specify and no cross-tier completion (`RLH-AT-10` falsifies both).
+ *
+ * Under §5.2's `startIndex = max(present) + 1`, `candidate` is by construction a
+ * round some role holds, so post-harvest — the case this tier was written for —
+ * `present` is empty, `candidate` is 0 and §5.4's `candidate < 1` exit fires
+ * first (FSPEC §12.4 example B). This path therefore survives for a listing that
+ * changes under the run, and is deliberately kept rather than folded away: the
+ * grammar it reads is the one harvest writes (§4.4, RLH-09).
+ *
+ * @param {{feature: string, docType: string, candidate: number,
+ *          reviewers: string[], _readFile: function}} arg
+ */
+async function tier2ApprovalRecord({ feature, docType, candidate, reviewers, _readFile }) {
+  const text = await _readFile(`docs/${feature}/LEARNINGS-${feature}.md`);
+  if (text == null) return noApprovalRecord(candidate);
+
+  const rows = [];
+  let inSection = false;
+  scanLines(text, (line) => {
+    if (APPROVAL_RECORD_HEADING.test(line)) {
+      inSection = true;
+      return;
+    }
+    if (!inSection) return;
+    if (/^\s*#{1,2}\s/.test(line)) {
+      inSection = false;
+      return;
+    }
+    const cells = line.split("|").map((c) => c.trim());
+    if (cells.length < 8) return; // leading + 6 columns + trailing
+    rows.push(cells.slice(1, 7));
+  });
+
+  const roles = reviewers.map((skill) => reviewerRoleSlug(skill) || skill);
+  const matched = roles.map((role) =>
+    rows.find((r) => r[0] === docType && Number(r[1]) === candidate && r[2] === role) || null
+  );
+  if (matched.some((r) => r === null)) return noApprovalRecord(candidate);
+  if (!matched.every((r) => isPass(r[3]))) return noApprovalRecord(candidate);
+
+  const hashes = matched.map((r) => r[4]);
+  if (!hashes.every((h) => APPROVAL_HASH_VALUE_RE.test(h) && h === hashes[0])) {
+    return noApprovalRecord(candidate);
+  }
+  return { approving: true, candidate, hash: hashes[0], unevaluable: [], tier1Empty: false };
+}
+
+// ─── TSPEC §3.8 — dispatchAndVerify ──────────────────────────────────────────
+
+/** An authoring-budget halt: caught by `reviewLoop`, which turns it into a return. */
+function authoringHaltError(message, trailerReason) {
+  const err = haltError(message);
+  err.isAuthoringHalt = true;
+  err.trailerReason = trailerReason ?? null;
+  return err;
+}
+
+/**
+ * Dispatch one agent episode and verify its outcome against §5.6.2, re-dispatching
+ * inside the episode until it is terminal or a budget ends it. **Deliberately not
+ * exported** (§3.8) — its behaviour is observed through `main()` and `reviewLoop`.
+ *
+ * Order of evaluation, which is the whole of the H-3 fix:
+ * 1. **terminal first, then progress**. A dispatch that writes nothing and declares
+ *    the round complete is terminal; scoring progress first would re-dispatch it.
+ * 2. progress is `before !== after` over the WORKING TREE — not "a section was
+ *    completed", and not a git diff (§5.6.2, `RLH-AT-45`).
+ *
+ * **The unmeasurable-target escape.** When the target yields no top-level sections
+ * at all *and* the dispatch changed nothing, this wrapper has no measurement to
+ * make: `isComplete` cannot score a document it cannot see. Re-dispatching such an
+ * episode to the budget would convert every unmeasurable target (Phase CR's
+ * directory; any caller whose read seam is a stub) into a halt. The episode is
+ * therefore terminal after one dispatch — exactly the pre-feature behaviour.
+ *
+ * @returns {Promise<{response: any, mode: string, round: number|null,
+ *                    invocations: number, wroteBytes: boolean}>}
+ */
+async function dispatchAndVerify({
+  skill,
+  basePrompt,
+  targetPath,
+  docType,
+  feature,
+  dispatchKind,
+  phaseId,
+  model,
+  _agent,
+  _readFile,
+  _listFiles,
+  _log,
+  _git,
+}) {
+  const emit = typeof _log === "function" ? _log : () => {};
+  const artifactClass = artifactClassOf(targetPath);
+
+  // §5.6.1: mode is computed ONCE per episode, at the episode's entry, over state
+  // this episode itself observed.
+  let selection;
+  let roundFiles = [];
+  if (dispatchKind === "authoring") {
+    const state = await refreshReviewState({ feature, docType, _listFiles, _readFile });
+    if (!state.ok) throw haltError(state.message);
+    selection = selectMode({
+      dispatchKind,
+      docType,
+      present: state.present,
+      reviewFiles: state.reviewFiles,
+      startIndex: state.startIndex,
+    });
+    if (selection.mode === "revision") {
+      roundFiles = state.matched
+        .filter((m) => m.round === selection.round)
+        .map((m) => m.basename);
+    }
+  } else {
+    selection = selectMode({
+      dispatchKind,
+      docType,
+      present: new Map(),
+      reviewFiles: new Map(),
+      startIndex: 1,
+    });
+  }
+
+  let invocations = 0;
+  let consecutiveNoProgress = 0;
+  let wroteBytes = false;
+  let lastTrailerReason = null;
+  let response = null;
+
+  for (;;) {
+    const before = await _readFile(targetPath);
+    invocations += 1;
+
+    let opener;
+    if (selection.mode === "revision") {
+      opener = continuationClause(selection.round, roundFiles, targetPath);
+    } else if (invocations === 1 && String(before ?? "").trim() === "") {
+      opener = skeletonClause();
+    } else {
+      opener = resumeClause(artifactClass, docType, before, targetPath);
+    }
+    const prompt = `${basePrompt}\n\n${PACING_CONTRACT_CLAUSE}\n\n${opener}`;
+
+    let faulted = false;
+    try {
+      response = await _agent(skill, prompt, model ? { model } : undefined);
+    } catch {
+      faulted = true;
+      response = null;
+    }
+    if (faulted) {
+      // §15.4: only a THROWN dispatch is a runtime fault. A reply with no trailer
+      // is an omission, and an implementation that cannot tell them apart reports
+      // a kill that did not happen.
+      emit(`Dispatch fault observed: faultObserved=true (${skill}, phase ${phaseId}).`);
+    }
+
+    const after = await _readFile(targetPath);
+    const measured = isComplete(artifactClass, docType, after);
+    const verdict = isTerminal(selection.mode, response ?? "", artifactClass, docType, after);
+    lastTrailerReason = verdict.trailerReason;
+    const progressed = before !== after;
+    if (progressed) wroteBytes = true;
+
+    if (verdict.terminal) break;
+    // The unmeasurable-target escape — see the doc comment above.
+    if (measured.T === 0 && !progressed) break;
+
+    consecutiveNoProgress = progressed ? 0 : consecutiveNoProgress + 1;
+    const sections = `(${measured.S} of ${measured.T} sections complete)`;
+    const trailerNote = lastTrailerReason ? `; last trailer outcome: ${lastTrailerReason}` : "";
+
+    if (consecutiveNoProgress >= MAX_AUTHORING_ATTEMPTS) {
+      throw authoringHaltError(
+        `Phase ${phaseId}: ${skill} made no progress across ${MAX_AUTHORING_ATTEMPTS} consecutive attempts on ${targetPath} ${sections}${trailerNote}.`,
+        lastTrailerReason
+      );
+    }
+    if (invocations >= MAX_AUTHORING_DISPATCHES) {
+      throw authoringHaltError(
+        `Phase ${phaseId}: ${skill} spent ${MAX_AUTHORING_DISPATCHES} dispatches without reaching structural completeness on ${targetPath} ${sections}${trailerNote}.`,
+        lastTrailerReason
+      );
+    }
+  }
+
+  if (selection.mode === "revision") {
+    emit(`Phase ${phaseId} round ${selection.round}: episode ended on the author's REVISION-COMPLETE trailer.`);
+  }
+  await advisoryPacingCheck({ wroteBytes, targetPath, _git, emit });
+
+  return {
+    response,
+    mode: selection.mode,
+    round: selection.round,
+    invocations,
+    wroteBytes,
+    trailerReason: lastTrailerReason ?? null,
+  };
+}
+
+/**
+ * §15.7's advisory proxy for "did that section land in one over-large write?".
+ * No oracle for emitted bytes exists, so the per-artifact commit diff stands in —
+ * and it is **advisory only**: it is reported and never halts anything (O-20).
+ */
+async function advisoryPacingCheck({ wroteBytes, targetPath, _git, emit }) {
+  if (!wroteBytes || typeof _git !== "function") return;
+  let result;
+  try {
+    result = await _git(["diff", "--numstat", "--", targetPath]);
+  } catch {
+    return;
+  }
+  const stdout = result && typeof result.stdout === "string" ? result.stdout : "";
+  for (const line of stdout.split("\n")) {
+    const m = /^(\d+)\t(\d+)\t(.+)$/.exec(line.trim());
+    if (!m) continue;
+    const added = Number(m[1]);
+    if (added <= MAX_AUTHORING_WRITE_BYTES) continue;
+    emit(
+      `Advisory pacing check: ${m[3]} shows ${added} added lines against the ` +
+        `${MAX_AUTHORING_WRITE_BYTES} per-write figure. That figure is advisory ` +
+        `only — it is a proxy, not an oracle, and never a halt condition.`
+    );
+  }
 }
 
 /**
@@ -913,15 +3071,19 @@ function reviewerRoleSlug(skill) {
  * @param {string} [reviewer] - reviewer skill id (for the prior-cross-review path)
  * @returns {string}
  */
-function reviewerPrompt(doc, phase, feature, iteration, reviewer) {
+function reviewerPrompt(doc, phase, feature, iteration, reviewer, docType) {
   const base = `Review the document at ${doc} for phase ${phase} of feature ${feature}. This is iteration ${iteration}.`;
   if (iteration < 2) return base;
 
   const prev = iteration - 1;
   const role = reviewerRoleSlug(reviewer);
+  // §6.3's general rule: NO un-substituted template reaches an operator-facing
+  // string. `{DOC-TYPE}` and `{role}` were literal braces the reader had to
+  // resolve by hand; both are known here.
+  const type = docType || docTypeFromPath(doc) || "REVIEW";
   const priorFile = role
-    ? `docs/${feature}/CROSS-REVIEW-${role}-{DOC-TYPE}-v${prev}.md (your reviewer role is "${role}"; find the file for the previous iteration v${prev} matching this document's type)`
-    : `your own previous cross-review file for this document (docs/${feature}/CROSS-REVIEW-{role}-{DOC-TYPE}-v${prev}.md — find your reviewer role's file for iteration v${prev})`;
+    ? `docs/${feature}/CROSS-REVIEW-${role}-${type}-v${prev}.md (your reviewer role is "${role}")`
+    : `your own previous cross-review file for this document (docs/${feature}/CROSS-REVIEW-*-${type}-v${prev}.md — find your reviewer role's file for iteration v${prev})`;
 
   return (
     `${base}\n` +
@@ -935,16 +3097,17 @@ function reviewerPrompt(doc, phase, feature, iteration, reviewer) {
   );
 }
 
-function optimizerPrompt(doc, phase, feature, iteration, reviewers = []) {
+function optimizerPrompt(doc, phase, feature, iteration, reviewers = [], docType) {
   const base = `Address reviewer feedback on ${doc} for phase ${phase} of feature ${feature}. Iteration ${iteration} reviewers found issues. Update and commit.`;
 
   // Point the optimizer straight at this iteration's cross-review files so it does
   // not hunt for them. Both reviewer roles' expected paths for v{iteration}.
   const roles = reviewers.map(reviewerRoleSlug).filter(Boolean);
+  const type = docType || docTypeFromPath(doc) || "REVIEW";
   let feedback = "";
   if (roles.length > 0) {
     const paths = roles
-      .map((role) => `docs/${feature}/CROSS-REVIEW-${role}-{DOC-TYPE}-v${iteration}.md`)
+      .map((role) => `docs/${feature}/CROSS-REVIEW-${role}-${type}-v${iteration}.md`)
       .join(" and ");
     feedback =
       `\nRead the reviewers' cross-review files for this iteration directly: ${paths} ` +
@@ -1747,6 +3910,126 @@ function defaultReadFile(path) {
   }
 }
 
+// ─── TSPEC §3.2 — the listing seam's Node default ─────────────────────────────
+
+/**
+ * List a directory's file basenames. Never throws: every failure is reported as
+ * `{ ok: false, reason }` with `reason` drawn from the closed LIST_FAILURES
+ * catalogue (§4.2). Non-recursive; directories are excluded; basenames only, so
+ * parseReviewFilename's anchored grammar sees what it expects.
+ *
+ * The `{ fsMod = fs }` second-argument idiom is copied from checkFileNonEmpty so
+ * the two file-touching Node defaults are tested the same way.
+ *
+ * @param {string} dirPath - repo-relative directory path
+ * @param {{ fsMod?: object }} [opts] - injection point for tests (override fs)
+ * @returns {{ ok: true, files: string[] } | { ok: false, reason: string }}
+ */
+function defaultListFiles(dirPath, { fsMod = fs } = {}) {
+  if (typeof dirPath !== "string" || dirPath.trim() === "") {
+    return { ok: false, reason: "bad_argument" };
+  }
+  try {
+    const entries = fsMod.readdirSync(dirPath, { withFileTypes: true });
+    return {
+      ok: true,
+      files: entries
+        .filter((entry) => !entry.isDirectory())
+        .map((entry) => entry.name),
+    };
+  } catch (err) {
+    const code = err && err.code;
+    if (code === "ENOENT") return { ok: false, reason: "dir_missing" };
+    if (code === "ENOTDIR") return { ok: false, reason: "not_a_directory" };
+    return { ok: false, reason: "unreadable" };
+  }
+}
+
+// ─── TSPEC §3.3 — the two write seams' Node defaults ──────────────────────────
+
+/**
+ * Write a file, replacing its contents entirely. Throws on failure — deliberately
+ * the exception to §3.2's never-throw rule: a failed write is not a condition a
+ * caller can meaningfully continue past, and defaultReadFile / checkFileNonEmpty
+ * already establish throw-on-IO-failure as this module's idiom. Callers wrap it
+ * where FSPEC prescribes a specific halt.
+ *
+ * @param {string} path
+ * @param {string} contents
+ * @param {{ fsMod?: object }} [opts] - injection point for tests (override fs)
+ * @returns {void}
+ */
+function defaultWriteFile(path, contents, { fsMod = fs } = {}) {
+  fsMod.writeFileSync(path, contents, "utf8");
+}
+
+/**
+ * Append text to a file. APPEND-SHAPED, NEVER A WHOLE-FILE REWRITE (FSPEC §7.4):
+ * a read-modify-write would re-emit the reviewer's prose, and any divergence
+ * between what was read and what was written would silently rewrite a
+ * cross-review file. Hence appendFileSync, not writeFileSync(existing + text).
+ * Throws on failure, for the same reason defaultWriteFile does.
+ *
+ * @param {string} path
+ * @param {string} text
+ * @param {{ fsMod?: object }} [opts] - injection point for tests (override fs)
+ * @returns {void}
+ */
+function defaultAppendFile(path, text, { fsMod = fs } = {}) {
+  fsMod.appendFileSync(path, text, "utf8");
+}
+
+// ─── TSPEC §3.4 — the transport seam's Node default ───────────────────────────
+
+/**
+ * Run a git command. The caller branches on `ok`; the seam interprets nothing.
+ * Never throws. `argv` is an array, not a command string: a string would need
+ * quoting rules at the seam boundary and would make a feature name containing a
+ * space a shell-injection surface. The `{ execFn }` injection point mirrors
+ * mergeWorktree, which resolves child_process's execSync the same way.
+ *
+ * @param {string[]} argv - git arguments, NOT including the leading "git"
+ * @param {{ execFn?: function }} [opts] - injection point for tests
+ * @returns {Promise<{ ok: boolean, stdout: string, stderr: string }>}
+ */
+async function defaultGit(argv, { execFn } = {}) {
+  const { execFileSync: realExecFileSync } = await import("child_process");
+  const exec =
+    execFn ?? ((file, args, opts) => realExecFileSync(file, args, opts));
+
+  const args = Array.isArray(argv) ? argv : [];
+  const execOpts = { stdio: "pipe", encoding: "utf8" };
+
+  try {
+    const stdout = exec("git", args, execOpts);
+    return { ok: true, stdout: String(stdout ?? ""), stderr: "" };
+  } catch (err) {
+    return {
+      ok: false,
+      stdout: String((err && err.stdout) ?? ""),
+      stderr: String((err && (err.stderr || err.message)) ?? ""),
+    };
+  }
+}
+
+// ─── TSPEC §3.5 — the queue-row seam's Node default ───────────────────────────
+
+/**
+ * Record a halt against the feature's queue row. The default is a NO-OP that
+ * reports "none": a unit test, or a direct invocation in a repo with no queue,
+ * has no row to write and must not fail for it.
+ *
+ * The seam exists to preserve the dependency direction — row location and row
+ * writing stay in orchestrate-queue.js; orchestrate-dev.js never learns the
+ * queue's table grammar. orchestrate-queue's _runPipeline and the dev bundle's
+ * DEV_ENTRY supply the real closures.
+ *
+ * @returns {Promise<{ queueRow: string, detail?: string }>}
+ */
+async function defaultRecordHalt(/* { feature, status } */) {
+  return { queueRow: "none" };
+}
+
 // ─── TSPEC-SCRIPT-04: main() ──────────────────────────────────────────────────
 
 /**
@@ -1756,6 +4039,7 @@ function defaultReadFile(path) {
  */
 async function main({
   reqPath,
+  forcePhases = null,
   _agent: rawAgentFn = agent,
   _parallel: parallelFn = parallel,
   _log: logFn = log,
@@ -1772,6 +4056,11 @@ async function main({
   _phasePubEnabled: phasePubEnabled = PHASE_PUB_ENABLED,
   _now,
   _sleep,
+  _listFiles: listFilesFn = defaultListFiles,
+  _writeFile: writeFileFn = defaultWriteFile,
+  _appendFile: appendFileFn = defaultAppendFile,
+  _git: gitFn = defaultGit,
+  _recordHalt: recordHaltFn = defaultRecordHalt,
 } = {}) {
   // Override module-level log for injection
   const emit = logFn;
@@ -1785,6 +4074,15 @@ async function main({
   const phases = [];
   let haltReason;
 
+  /**
+   * §5.8/§4.7: an unresolved POSTMORTEM found on a SKIP path. The state is real
+   * whether or not the phase ran, so `postmortemStatus`/`postmortemPath` carry
+   * it on a successful run too — `haltPhase` staying `null` is what tells the
+   * operator this was "skipped, and by the way there is an open POSTMORTEM
+   * here" rather than "refused because of it".
+   */
+  let skipPostmortem = null;
+
   function recordPhase(phaseId, label, status, detail, iterations) {
     phases.push({
       phase: phaseId,
@@ -1793,6 +4091,166 @@ async function main({
       ...(iterations !== undefined ? { iterations } : {}),
       ...(detail ? { detail } : {}),
     });
+  }
+
+  // ─── TSPEC §5.6 — the pacing wrapper's main()-side seams ─────────────────
+
+  /**
+   * The branch-derived round window for one doc type, read at phase entry (§5.2).
+   * A listing that cannot be judged halts here rather than being read as "no
+   * reviews on the branch" (§6.2 rows 2 and 17).
+   */
+  async function phaseWindow(docType) {
+    const state = await refreshReviewState({
+      feature: featureName,
+      docType,
+      _listFiles: listFilesFn,
+      _readFile: readFileFn,
+    });
+    if (!state.ok) throw haltError(state.message);
+    return state;
+  }
+
+  // ─── TSPEC §2.5 — the phase gate (steps 1–4 and step G) ──────────────────
+
+  /**
+   * §4.7's report LINES — the skip notice's siblings. Additive on every report,
+   * so a note ("this anchor was UNEVALUABLE") reaches the operator without being
+   * smuggled into a phase row's `detail`, which other oracles pin verbatim.
+   */
+  const notices = [];
+
+  /**
+   * Set when §2.5 step G refuses a phase, so §4.7's `postmortemStatus` reports
+   * `"unresolved"` rather than the `"written"` a plain existence check would
+   * infer. `haltPhase` still names the phase — that field is what distinguishes
+   * "refused because of it" from a skip that merely mentions one.
+   */
+  let gatePostmortem = null;
+
+  /**
+   * Run §2.5 steps 1–4 and step G for one skip-eligible phase entry.
+   *
+   * Called BEFORE the phase's creator dispatch, because a skip elides the whole
+   * phase and a creator that had already run would have rewritten the very
+   * document the approval was anchored to.
+   *
+   * @param {{phaseId: string, docType: string, docPath: string}} arg
+   * @returns {Promise<{skip: true}|{skip: false, window: object, forced: boolean}>}
+   */
+  async function phaseGate({ phaseId, docType, docPath }) {
+    const label = PHASE_DISPATCH[phaseId].label;
+    // Step 1. Force overrides a recorded APPROVAL — steps 3 and 4, and only
+    // those. Step 2 is NOT skipped: entering reviewLoop on the shipped
+    // `iteration = 1` default re-creates H-1 on exactly the path an operator
+    // reaches for BECAUSE the phase was reviewed before (§5.7, RLH-AT-01a).
+    const forced = forcedPhases.has(phaseId);
+
+    // Step 2 — the branch-derived round window.
+    const window = await phaseWindow(docType);
+
+    if (!forced) {
+      // Step 3 — the approval search. Tier 1's reads already happened above.
+      let record = tier1ApprovalRecord({
+        reviewers: PHASE_DISPATCH[phaseId].reviewers,
+        startIndex: window.startIndex,
+        reviewFiles: window.reviewFiles,
+      });
+      if (record.tier1Empty) {
+        record = await tier2ApprovalRecord({
+          feature: featureName,
+          docType,
+          candidate: record.candidate,
+          reviewers: PHASE_DISPATCH[phaseId].reviewers,
+          _readFile: readFileFn,
+        });
+      }
+      for (const path of record.unevaluable) {
+        notices.push(
+          `Phase ${phaseId}: approval anchor UNEVALUABLE at ${path} — the phase runs.`
+        );
+      }
+
+      if (record.approving) {
+        // Step 4 — staleness. §5.5 rule 1: the bytes are read AT COMPARISON
+        // TIME, never from a read cached earlier in the run.
+        const freshness = isStale(record.hash, await readFileFn(docPath));
+        if (freshness === "FRESH") {
+          // The phase does not run. `checkPostmortem` is still evaluated, for
+          // REPORTING ONLY — AC-2.3's refusal is conditioned on the phase
+          // otherwise running, so a skip has nothing to refuse (§6.2 row 13a).
+          const pm = await checkPostmortem({
+            phase: phaseId,
+            feature: featureName,
+            _readFile: readFileFn,
+          });
+          let detail = `Skipped — approved round ${record.candidate}, hash FRESH`;
+          if (pm.status === "unresolved") {
+            detail += `; unresolved POSTMORTEM at ${pm.path}`;
+            skipPostmortem = pm;
+          }
+          recordPhase(phaseId, label, "⏭", detail);
+          return { skip: true };
+        }
+        if (freshness === "UNEVALUABLE") {
+          notices.push(
+            `Phase ${phaseId}: ${docPath} could not be compared against the recorded approval — the phase runs.`
+          );
+        }
+      }
+    }
+
+    // Step G — G-INV. Every exit that leads to running the phase arrives here,
+    // forced or not, and step 5 is reachable only through it. Force never
+    // overrides a recorded FAILURE (§5.7, §6.2 row 13, AC-4.6a).
+    const gate = await checkPostmortem({
+      phase: phaseId,
+      feature: featureName,
+      _readFile: readFileFn,
+    });
+    if (gate.status === "unresolved") {
+      gatePostmortem = gate;
+      recordPhase(phaseId, label, "❌", `Refused — unresolved POSTMORTEM at ${gate.path}`);
+      throw haltError(
+        `Phase ${phaseId} refused: unresolved POSTMORTEM at ${gate.path} records a previous failure. ` +
+          `Resolve it per AC-2.4 (set RESOLVED: yes) and re-run. Recommendation: ${gate.recommendation || "(none recorded)"}`
+      );
+    }
+
+    return { skip: false, window, forced };
+  }
+
+  /**
+   * §4.7's force-override notice, folded into the phase row so the run's own
+   * record says the phase was forced. The wording is not pinned to a literal
+   * anywhere in the TSPEC; that it is *said* is (RLH-AT-28).
+   */
+  const forcedDetail = (detail, forced) =>
+    forced ? `${detail} — forced (recorded approval overridden)` : detail;
+
+  /** The seams every wrapped dispatch and every reviewLoop entry shares. */
+  const wrapperSeams = {
+    _agent: agentFn,
+    _readFile: readFileFn,
+    _listFiles: listFilesFn,
+    _appendFile: appendFileFn,
+    _log: emit,
+    _git: gitFn,
+  };
+
+  /** Wrap one main()-level dispatch (a creator, or harvest) in §3.8's episode. */
+  async function wrappedDispatch({ skill, basePrompt, targetPath, docType, dispatchKind, phaseId }) {
+    const episode = await dispatchAndVerify({
+      skill,
+      basePrompt,
+      targetPath,
+      docType,
+      feature: featureName,
+      dispatchKind,
+      phaseId,
+      ...wrapperSeams,
+    });
+    return episode.response;
   }
 
   // ─── TSPEC-ENTRY-01: REQ path validation ─────────────────────────────────
@@ -1827,6 +4285,28 @@ async function main({
 
   const featureName = match[1];
 
+  // ─── TSPEC §5.7 / §6.2 row 12 — the forcePhases gate ──────────────────────
+  //
+  // An invalid token halts BEFORE any phase runs. The catalogue and the message
+  // are rendered from the same array, so they cannot desynchronise.
+
+  const forceParse = parseForcePhases(forcePhases);
+  if (!forceParse.ok) {
+    haltReason =
+      `Error: invalid forcePhases token${forceParse.badTokens.length === 1 ? "" : "s"}: ` +
+      `${forceParse.badTokens.join(", ")}. Valid: ${[...FORCE_PHASE_TOKENS, "all"].join(", ")}.`;
+    return buildFinalReport({
+      feature: featureName,
+      outcome: "halted",
+      phases,
+      artifactPaths: [],
+      testSummary: "Not run",
+      harvestStatus: "Not run",
+      haltReason,
+    });
+  }
+  const forcedPhases = forceParse.phases;
+
   // ─── TSPEC-ENTRY-03: deterministic REQ file existence check ───────────────
 
   const reqCheck = await checkFileFn(reqPath);
@@ -1860,70 +4340,107 @@ async function main({
     await pipelineFn("PDLC Pipeline", async () => {
       // ─── Phase R: REQ Cross-Review ───────────────────────────────────────
       phaseFn("Phase R: REQ Cross-Review");
+      const rGate = await phaseGate({ phaseId: "R", docType: "REQ", docPath: reqPath });
+      if (!rGate.skip) {
+      const rWindow = rGate.window;
       const rLoop = await reviewLoop({
         doc: reqPath,
         phase: "R",
+        docType: "REQ",
         reviewers: PHASE_DISPATCH.R.reviewers,
         optimizer: PHASE_DISPATCH.R.optimizer,
         feature: featureName,
-        _agent: agentFn,
+        iteration: rWindow.startIndex,
+        startIndex: rWindow.startIndex,
+        endIndex: rWindow.endIndex,
         _parallel: parallelFn,
         _checkFile: checkFileFn,
+        ...wrapperSeams,
       });
-      checkConverged(rLoop, "R", PHASE_DISPATCH.R.label, recordPhase);
-      recordPhase("R", PHASE_DISPATCH.R.label, "✅", `Approved (${rLoop.iterations} iteration${rLoop.iterations !== 1 ? "s" : ""})`, rLoop.iterations);
+      checkConverged(rLoop, "R", PHASE_DISPATCH.R.label, recordPhase, featureName, rWindow.startIndex, rWindow.endIndex);
+      recordPhase("R", PHASE_DISPATCH.R.label, "✅", forcedDetail(`Approved (${rLoop.iterations} iteration${rLoop.iterations !== 1 ? "s" : ""})`, rGate.forced), rLoop.iterations);
+      }
 
       // ─── Phase F: FSPEC Creation + Review ───────────────────────────────
       phaseFn("Phase F: FSPEC Creation + Review");
       const fspecPath = `docs/${featureName}/FSPEC-${featureName}.md`;
-      const fCreatorResult = await agentFn(
-        PHASE_DISPATCH.F.creator,
-        creatorPrompt("F", featureName, PHASE_DISPATCH.F.creatorInputs)
-      );
+      const fGate = await phaseGate({ phaseId: "F", docType: "FSPEC", docPath: fspecPath });
+      artifactPaths.push(fspecPath);
+      if (!fGate.skip) {
+      const fCreatorResult = await wrappedDispatch({
+        skill: PHASE_DISPATCH.F.creator,
+        basePrompt: creatorPrompt("F", featureName, PHASE_DISPATCH.F.creatorInputs),
+        targetPath: fspecPath,
+        docType: "FSPEC",
+        dispatchKind: "authoring",
+        phaseId: "F",
+      });
       if (!fCreatorResult || fCreatorResult.trim() === "") {
         throw haltError(
           `Error: creator agent ${PHASE_DISPATCH.F.creator} failed to produce ${fspecPath} for phase F`
         );
       }
-      artifactPaths.push(fspecPath);
+      const fWindow = fGate.window;
       const fLoop = await reviewLoop({
         doc: fspecPath,
         phase: "F",
+        docType: "FSPEC",
         reviewers: PHASE_DISPATCH.F.reviewers,
         optimizer: PHASE_DISPATCH.F.optimizer,
         feature: featureName,
-        _agent: agentFn,
+        iteration: fWindow.startIndex,
+        startIndex: fWindow.startIndex,
+        endIndex: fWindow.endIndex,
         _parallel: parallelFn,
         _checkFile: checkFileFn,
+        ...wrapperSeams,
       });
-      checkConverged(fLoop, "F", PHASE_DISPATCH.F.label, recordPhase);
-      recordPhase("F", PHASE_DISPATCH.F.label, "✅", `Approved (${fLoop.iterations} iterations)`, fLoop.iterations);
+      checkConverged(fLoop, "F", PHASE_DISPATCH.F.label, recordPhase, featureName, fWindow.startIndex, fWindow.endIndex);
+      recordPhase("F", PHASE_DISPATCH.F.label, "✅", forcedDetail(`Approved (${fLoop.iterations} iterations)`, fGate.forced), fLoop.iterations);
+      }
 
       // ─── Phase T: TSPEC Creation + Review ───────────────────────────────
       phaseFn("Phase T: TSPEC Creation + Review");
       const tspecPath = `docs/${featureName}/TSPEC-${featureName}.md`;
-      const tCreatorResult = await agentFn(
-        PHASE_DISPATCH.T.creator,
-        `${creatorPrompt("T", featureName, PHASE_DISPATCH.T.creatorInputs)}\n${decisionsWarrantedTrailerRequirement()}`
-      );
+      const tGate = await phaseGate({ phaseId: "T", docType: "TSPEC", docPath: tspecPath });
+      artifactPaths.push(tspecPath);
+      // Declared outside the gate's branch: Phase D's `DECISIONS_WARRANTED` read
+      // is downstream of Phase T and must survive a skipped Phase T, where the
+      // trailer was never re-emitted and the conservative answer is "no".
+      let tCreatorResult = null;
+      let tLoop = null;
+      if (!tGate.skip) {
+      tCreatorResult = await wrappedDispatch({
+        skill: PHASE_DISPATCH.T.creator,
+        basePrompt: `${creatorPrompt("T", featureName, PHASE_DISPATCH.T.creatorInputs)}\n${decisionsWarrantedTrailerRequirement()}`,
+        targetPath: tspecPath,
+        docType: "TSPEC",
+        dispatchKind: "authoring",
+        phaseId: "T",
+      });
       if (!tCreatorResult || tCreatorResult.trim() === "") {
         throw haltError(
           `Error: creator agent ${PHASE_DISPATCH.T.creator} failed to produce ${tspecPath} for phase T`
         );
       }
-      artifactPaths.push(tspecPath);
-      const tLoop = await reviewLoop({
+      const tWindow = tGate.window;
+      tLoop = await reviewLoop({
         doc: tspecPath,
         phase: "T",
+        docType: "TSPEC",
         reviewers: PHASE_DISPATCH.T.reviewers,
         optimizer: PHASE_DISPATCH.T.optimizer,
         feature: featureName,
-        _agent: agentFn,
+        iteration: tWindow.startIndex,
+        startIndex: tWindow.startIndex,
+        endIndex: tWindow.endIndex,
         _parallel: parallelFn,
         _checkFile: checkFileFn,
+        ...wrapperSeams,
       });
-      checkConverged(tLoop, "T", PHASE_DISPATCH.T.label, recordPhase);
-      recordPhase("T", PHASE_DISPATCH.T.label, "✅", `Approved (${tLoop.iterations} iterations)`, tLoop.iterations);
+      checkConverged(tLoop, "T", PHASE_DISPATCH.T.label, recordPhase, featureName, tWindow.startIndex, tWindow.endIndex);
+      recordPhase("T", PHASE_DISPATCH.T.label, "✅", forcedDetail(`Approved (${tLoop.iterations} iterations)`, tGate.forced), tLoop.iterations);
+      }
 
       // ─── TSPEC-DECISIONS-01: DECISIONS_WARRANTED read from Phase T ─────────
       // The trailer requirement is appended to the Phase T creator and optimizer
@@ -1931,7 +4448,7 @@ async function main({
       // post-PASS agent session. The last optimizer result carries it; if the loop
       // converged on iteration 1 (no optimizer run) the creator result does.
       const decisionsWarranted = parseDecisionsWarranted(
-        tLoop.lastOptimizerResult ?? tCreatorResult
+        (tLoop && tLoop.lastOptimizerResult) ?? tCreatorResult
       );
 
       // ─── Phase D: DECISIONS (conditional) ───────────────────────────────
@@ -1943,28 +4460,40 @@ async function main({
       } else {
         phaseFn("Phase D: DECISIONS Creation + Review");
         decisionsPath = `docs/${featureName}/DECISIONS-${featureName}.md`;
-        const dCreatorResult = await agentFn(
-          PHASE_DISPATCH.D.creator,
-          creatorPrompt("D", featureName, PHASE_DISPATCH.D.creatorInputs)
-        );
+        const dGate = await phaseGate({ phaseId: "D", docType: "DECISIONS", docPath: decisionsPath });
+        artifactPaths.push(decisionsPath);
+        if (!dGate.skip) {
+        const dCreatorResult = await wrappedDispatch({
+          skill: PHASE_DISPATCH.D.creator,
+          basePrompt: creatorPrompt("D", featureName, PHASE_DISPATCH.D.creatorInputs),
+          targetPath: decisionsPath,
+          docType: "DECISIONS",
+          dispatchKind: "authoring",
+          phaseId: "D",
+        });
         if (!dCreatorResult || dCreatorResult.trim() === "") {
           throw haltError(
             `Error: creator agent ${PHASE_DISPATCH.D.creator} failed to produce ${decisionsPath} for phase D`
           );
         }
-        artifactPaths.push(decisionsPath);
+        const dWindow = dGate.window;
         const dLoop = await reviewLoop({
           doc: decisionsPath,
           phase: "D",
+          docType: "DECISIONS",
           reviewers: PHASE_DISPATCH.D.reviewers,
           optimizer: PHASE_DISPATCH.D.optimizer,
           feature: featureName,
-          _agent: agentFn,
+          iteration: dWindow.startIndex,
+          startIndex: dWindow.startIndex,
+          endIndex: dWindow.endIndex,
           _parallel: parallelFn,
           _checkFile: checkFileFn,
+          ...wrapperSeams,
         });
-        checkConverged(dLoop, "D", PHASE_DISPATCH.D.label, recordPhase);
-        recordPhase("D", PHASE_DISPATCH.D.label, "✅", `Approved (${dLoop.iterations} iterations)`, dLoop.iterations);
+        checkConverged(dLoop, "D", PHASE_DISPATCH.D.label, recordPhase, featureName, dWindow.startIndex, dWindow.endIndex);
+        recordPhase("D", PHASE_DISPATCH.D.label, "✅", forcedDetail(`Approved (${dLoop.iterations} iterations)`, dGate.forced), dLoop.iterations);
+        }
       }
 
       // ─── Phase P: PLAN Creation + Review ────────────────────────────────
@@ -1972,54 +4501,78 @@ async function main({
       const planPath = `docs/${featureName}/PLAN-${featureName}.md`;
       const pInputs = [...PHASE_DISPATCH.P.creatorInputs.filter(i => i !== "DECISIONS?")];
       if (decisionsPath) pInputs.push("DECISIONS");
-      const pCreatorResult = await agentFn(
-        PHASE_DISPATCH.P.creator,
-        creatorPrompt("P", featureName, pInputs)
-      );
+      const pGate = await phaseGate({ phaseId: "P", docType: "PLAN", docPath: planPath });
+      artifactPaths.push(planPath);
+      if (!pGate.skip) {
+      const pCreatorResult = await wrappedDispatch({
+        skill: PHASE_DISPATCH.P.creator,
+        basePrompt: creatorPrompt("P", featureName, pInputs),
+        targetPath: planPath,
+        docType: "PLAN",
+        dispatchKind: "authoring",
+        phaseId: "P",
+      });
       if (!pCreatorResult || pCreatorResult.trim() === "") {
         throw haltError(
           `Error: creator agent ${PHASE_DISPATCH.P.creator} failed to produce ${planPath} for phase P`
         );
       }
-      artifactPaths.push(planPath);
+      const pWindow = pGate.window;
       const pLoop = await reviewLoop({
         doc: planPath,
         phase: "P",
+        docType: "PLAN",
         reviewers: PHASE_DISPATCH.P.reviewers,
         optimizer: PHASE_DISPATCH.P.optimizer,
         feature: featureName,
-        _agent: agentFn,
+        iteration: pWindow.startIndex,
+        startIndex: pWindow.startIndex,
+        endIndex: pWindow.endIndex,
         _parallel: parallelFn,
         _checkFile: checkFileFn,
+        ...wrapperSeams,
       });
-      checkConverged(pLoop, "P", PHASE_DISPATCH.P.label, recordPhase);
-      recordPhase("P", PHASE_DISPATCH.P.label, "✅", `Approved (${pLoop.iterations} iterations)`, pLoop.iterations);
+      checkConverged(pLoop, "P", PHASE_DISPATCH.P.label, recordPhase, featureName, pWindow.startIndex, pWindow.endIndex);
+      recordPhase("P", PHASE_DISPATCH.P.label, "✅", forcedDetail(`Approved (${pLoop.iterations} iterations)`, pGate.forced), pLoop.iterations);
+      }
 
       // ─── Phase PR: PROPERTIES Creation + Review ──────────────────────────
       phaseFn("Phase PR: PROPERTIES Creation + Review");
       const propertiesPath = `docs/${featureName}/PROPERTIES-${featureName}.md`;
-      const prCreatorResult = await agentFn(
-        PHASE_DISPATCH.PR.creator,
-        creatorPrompt("PR", featureName, PHASE_DISPATCH.PR.creatorInputs)
-      );
+      const prGate = await phaseGate({ phaseId: "PR", docType: "PROPERTIES", docPath: propertiesPath });
+      artifactPaths.push(propertiesPath);
+      if (!prGate.skip) {
+      const prCreatorResult = await wrappedDispatch({
+        skill: PHASE_DISPATCH.PR.creator,
+        basePrompt: creatorPrompt("PR", featureName, PHASE_DISPATCH.PR.creatorInputs),
+        targetPath: propertiesPath,
+        docType: "PROPERTIES",
+        dispatchKind: "authoring",
+        phaseId: "PR",
+      });
       if (!prCreatorResult || prCreatorResult.trim() === "") {
         throw haltError(
           `Error: creator agent ${PHASE_DISPATCH.PR.creator} failed to produce ${propertiesPath} for phase PR`
         );
       }
-      artifactPaths.push(propertiesPath);
+      const prWindow = prGate.window;
       const prLoop = await reviewLoop({
         doc: propertiesPath,
         phase: "PR",
+        docType: "PROPERTIES",
         reviewers: PHASE_DISPATCH.PR.reviewers,
         optimizer: PHASE_DISPATCH.PR.optimizer,
         feature: featureName,
-        _agent: agentFn,
+        iteration: prWindow.startIndex,
+        startIndex: prWindow.startIndex,
+        endIndex: prWindow.endIndex,
         _parallel: parallelFn,
         _checkFile: checkFileFn,
+        ...wrapperSeams,
       });
-      checkConverged(prLoop, "PR", PHASE_DISPATCH.PR.label, recordPhase);
-      recordPhase("PR", PHASE_DISPATCH.PR.label, "✅", `Approved (${prLoop.iterations} iterations)`, prLoop.iterations);
+      checkConverged(prLoop, "PR", PHASE_DISPATCH.PR.label, recordPhase, featureName, prWindow.startIndex, prWindow.endIndex);
+      recordPhase("PR", PHASE_DISPATCH.PR.label, "✅", forcedDetail(`Approved (${prLoop.iterations} iterations)`, prGate.forced), prLoop.iterations);
+      }
 
       // ─── Phase I: Implementation ─────────────────────────────────────────
       phaseFn("Phase I: Implementation");
@@ -2124,17 +4677,22 @@ async function main({
 
       // ─── Phase CR: Final Codebase Review ─────────────────────────────────
       phaseFn("Phase CR: Final Codebase Review");
+      const crWindow = await phaseWindow(null);
       const crResult = await reviewLoop({
         doc: `docs/${featureName}/`,
         phase: "CR",
+        docType: null,
         reviewers: PHASE_DISPATCH.CR.reviewers,
         optimizer: PHASE_DISPATCH.CR.optimizer,
         feature: featureName,
-        _agent: agentFn,
+        iteration: crWindow.startIndex,
+        startIndex: crWindow.startIndex,
+        endIndex: crWindow.endIndex,
         _parallel: parallelFn,
         _checkFile: checkFileFn,
+        ...wrapperSeams,
       });
-      checkConverged(crResult, "CR", PHASE_DISPATCH.CR.label, recordPhase);
+      checkConverged(crResult, "CR", PHASE_DISPATCH.CR.label, recordPhase, featureName, crWindow.startIndex, crWindow.endIndex);
       recordPhase("CR", PHASE_DISPATCH.CR.label, "✅", `Approved (${crResult.iterations} iterations)`, crResult.iterations);
 
       // ─── Phase DOD: Definition of Done Verification ─────────────────────
@@ -2188,10 +4746,26 @@ async function main({
         recordPhase("H", "Harvest", "⏭", "Phase H: ⏭ Skipped (prerequisite not yet landed)");
       } else {
         phaseFn("Phase H: Harvest");
-        const harvestResult = await agentFn(
-          "harvest-learnings",
-          harvestPrompt(featureName)
-        );
+        const learningsPath = `docs/${featureName}/LEARNINGS-${featureName}.md`;
+        const harvestResult = await wrappedDispatch({
+          skill: "harvest-learnings",
+          basePrompt: harvestPrompt(featureName),
+          targetPath: learningsPath,
+          docType: "LEARNINGS",
+          dispatchKind: "harvest",
+          phaseId: "H",
+        });
+
+        // AC-4.2c: the §4.4 approval record is best-effort and is deliberately NOT
+        // part of §5.9's LEARNINGS criterion — a record-writing bug must not
+        // re-dispatch harvest to its budget. Its absence is reported, not swallowed.
+        const learningsText = await readFileFn(learningsPath);
+        if (!/approval record/i.test(String(learningsText ?? ""))) {
+          emit(
+            `Harvest note: the approval record is missing from ${learningsPath}. ` +
+              `It is best-effort (AC-4.2c) and is not a halt condition.`
+          );
+        }
 
         // TSPEC-HARVEST-04: Guard block detection
         if (
@@ -2249,6 +4823,71 @@ async function main({
     if (testSummary === "Not run" && haltReason) {
       testSummary = haltReason;
     }
+
+    // ─── TSPEC §4.7 / §6.5 — what an operator gets on a halt ────────────────
+    // The phase that failed is read off the recorded rows rather than carried in
+    // a parallel variable, so it can never disagree with the phase table.
+    const failedRow = [...phases].reverse().find((row) => row.status === "❌");
+    const haltPhase = failedRow ? failedRow.phase : null;
+
+    // §6.3: the POSTMORTEM claim is a FILESYSTEM confirmation, never the agent's
+    // narration — the whole of H-2 is that the two were assumed to agree.
+    let postmortemStatus = "none";
+    let postmortemPath = null;
+    // §6.2 row 13: a step-G refusal names an EXISTING, unresolved POSTMORTEM.
+    // The existence check below would call the same artifact `"written"` — the
+    // refusal's whole point is that it was not written by this run.
+    if (gatePostmortem) {
+      postmortemStatus = "unresolved";
+      postmortemPath = gatePostmortem.path;
+    } else if (err && err.postmortemStatus) {
+      // §6.3/§6.4: `checkConverged` already resolved the disposition from
+      // `reviewLoop`'s `_checkFile` confirmation. Re-probing here would call a
+      // file that a LATER phase happens to have left behind this phase's
+      // POSTMORTEM, and would contradict the halt reason it already emitted.
+      postmortemStatus = err.postmortemStatus;
+      postmortemPath = err.postmortemPath ?? null;
+    } else if (haltPhase) {
+      const candidate = `docs/${featureName}/POSTMORTEM-${haltPhase}-${featureName}.md`;
+      let confirmation;
+      try {
+        confirmation = await checkFileFn(candidate);
+      } catch {
+        confirmation = { ok: false };
+      }
+      if (confirmation && confirmation.ok) {
+        postmortemStatus = "written";
+        postmortemPath = candidate;
+      }
+    }
+
+    // §6.5: EVERY halt class commits the queue row — exactly once per invocation.
+    let queueRow = null;
+    try {
+      const recorded = await recordHaltFn({ feature: featureName, status: "halted" });
+      queueRow = recorded && recorded.queueRow ? recorded.queueRow : null;
+      // §6.5 / E-38, E-40: a row write that failed or found nothing leaves the
+      // operator a REMAINING ACTION, and that action reaches them as its own
+      // report line — never folded into `haltReason`, which stays the phase's own
+      // reason (AT-33's "subordinate"). A clean write carries no detail and is
+      // therefore silent: AT-31's "one failure, not two" and AT-34's "no-op is
+      // not a fault" are both that silence.
+      if (recorded && recorded.detail) {
+        notices.push(`Queue row ${queueRow}: ${recorded.detail}`);
+      }
+    } catch {
+      queueRow = null;
+    }
+
+    if (postmortemStatus === "none") {
+      emit("No POSTMORTEM was written.");
+    }
+    // §14.4: exactly ONE recovery act is offered. A direct re-invocation is
+    // deliberately not offered — the queue row is the single entry point.
+    emit(
+      `Recover: set the ${featureName} row in docs/_queue/QUEUE.md back to pending, then re-run the queue.`
+    );
+
     return buildFinalReport({
       feature: featureName,
       outcome: "halted",
@@ -2259,12 +4898,25 @@ async function main({
       prUrl,
       ciStatus,
       haltReason,
+      haltPhase,
+      postmortemStatus,
+      postmortemPath,
+      queueRow,
+      notices,
     });
   }
 
   return buildFinalReport({
     feature: featureName,
     outcome: "success",
+    notices,
+    // §4.7: `queueRow` rides on every report. A successful run writes no status
+    // (`orchestrate-dev` owns no status write but the halt one — AC-2.7a), so the
+    // value is the same `"none"` the default `_recordHalt` reports.
+    queueRow: "none",
+    // §4.7: a phase skipped over an unresolved POSTMORTEM still reports it.
+    postmortemStatus: skipPostmortem ? "unresolved" : "none",
+    postmortemPath: skipPostmortem ? skipPostmortem.path : null,
     phases,
     artifactPaths,
     testSummary,
@@ -2339,6 +4991,11 @@ function buildFinalReport({
   prUrl,
   ciStatus,
   haltReason,
+  haltPhase = null,
+  postmortemStatus = "none",
+  postmortemPath = null,
+  queueRow = null,
+  notices = [],
 }) {
   return {
     feature,
@@ -2347,6 +5004,16 @@ function buildFinalReport({
     artifactPaths,
     testSummary,
     harvestStatus,
+    // §4.7's non-skip report lines. Carried as their own field rather than
+    // appended to a phase row's `detail`, which oracles pin verbatim.
+    notices,
+    // §4.7's four halt-disposition fields ride on EVERY report, present with a
+    // readable value on success too: a conditionally-spread field cannot express
+    // "no POSTMORTEM", which is precisely the fact `RLH-AT-46` reads.
+    haltPhase,
+    postmortemStatus,
+    postmortemPath,
+    queueRow,
     ...(prUrl ? { prUrl } : {}),
     ...(ciStatus ? { ciStatus } : {}),
     ...(haltReason ? { haltReason } : {}),
@@ -2672,16 +5339,25 @@ function parseTriageVerdict(result) {
 
 /**
  * Return a new QUEUE.md string with `feature`'s row Status cell set to newStatus.
- * Pure string transform — preserves all other formatting. If the feature row is not
- * found, returns the input unchanged (caller decides whether that's an error).
+ * Pure string transform — preserves all other formatting.
+ *
+ * TSPEC §4.6: the return is `{ markdown, matched }`, not a bare string. The old
+ * not-found path (`return markdown; // feature row not found`) was
+ * indistinguishable, to the caller, from a successful update whose replacement
+ * happened to be a no-op — so a status write against a row that had been deleted
+ * mid-run looked exactly like a write that landed. `matched` makes the
+ * difference observable, which is what `_recordHalt` needs in order to report
+ * `queueRow: "error"` (FSPEC §13.5) rather than claiming a write it never made.
  *
  * @param {string} markdown
  * @param {string} feature
  * @param {string} newStatus
- * @returns {string}
+ * @returns {{ markdown: string, matched: boolean }}
  */
 function updateQueueStatus(markdown, feature, newStatus) {
-  if (typeof markdown !== "string" || !feature) return markdown;
+  if (typeof markdown !== "string" || !feature) {
+    return { markdown, matched: false };
+  }
 
   const lines = markdown.split("\n");
 
@@ -2711,10 +5387,10 @@ function updateQueueStatus(markdown, feature, newStatus) {
     const newCells = cells.slice();
     newCells[statusCol] = newStatus;
     lines[i] = `| ${newCells.join(" | ")} |`;
-    return lines.join("\n");
+    return { markdown: lines.join("\n"), matched: true };
   }
 
-  return markdown; // feature row not found
+  return { markdown, matched: false }; // feature row not found
 }
 
 // ─── selectNextPending ───────────────────────────────────────────────────────
@@ -2850,6 +5526,42 @@ async function defaultWriteFile(path, contents) {
   writeFileSync(path, contents, "utf8");
 }
 
+// ─── TSPEC §3.4 — the transport seam's Node default ───────────────────────────
+
+/**
+ * Run a git command. The caller branches on `ok`; the seam interprets nothing
+ * and never throws. `argv` is an array, NOT a command string: a string would
+ * need quoting rules at the seam boundary and would make a feature name
+ * containing a space a shell-injection surface.
+ *
+ * Mirrors `defaultGit` in orchestrate-dev.js (RLH-18). The two modules are
+ * bundled into separate IIFEs, so the duplicate name is not a collision, and
+ * each module stays independently loadable by the runtime.
+ *
+ * @param {string[]} argv - git arguments, NOT including the leading "git"
+ * @param {{ execFn?: function }} [opts] - injection point for tests
+ * @returns {Promise<{ ok: boolean, stdout: string, stderr: string }>}
+ */
+async function defaultGit(argv, { execFn } = {}) {
+  const { execFileSync: realExecFileSync } = await import("child_process");
+  const exec =
+    execFn ?? ((file, args, opts) => realExecFileSync(file, args, opts));
+
+  const args = Array.isArray(argv) ? argv : [];
+  const execOpts = { stdio: "pipe", encoding: "utf8" };
+
+  try {
+    const stdout = exec("git", args, execOpts);
+    return { ok: true, stdout: String(stdout ?? ""), stderr: "" };
+  } catch (err) {
+    return {
+      ok: false,
+      stdout: String((err && err.stdout) ?? ""),
+      stderr: String((err && (err.stderr || err.message)) ?? ""),
+    };
+  }
+}
+
 // ─── main() ───────────────────────────────────────────────────────────────────
 
 /**
@@ -2860,6 +5572,9 @@ async function defaultWriteFile(path, contents) {
  * @param {function} [params._agent]      - Injected agent (triage).
  * @param {function} [params._readFile]   - async (path) => string|null.
  * @param {function} [params._writeFile]  - async (path, contents) => void.
+ * @param {function} [params._git]        - async (argv) => {ok, stdout, stderr};
+ *   TSPEC §3.6 — threads down to `rewriteStatus` so every status write is
+ *   committed (§6.5). Never throws; the caller branches on `ok`.
  * @param {function} [params._runPipeline]- async ({reqPath}) => FinalReport.
  * @param {function} [params._log]        - Injected logger.
  * @param {function} [params._phase]      - Injected phase marker.
@@ -2870,6 +5585,7 @@ async function main({
   _agent: rawAgentFn = agent,
   _readFile: readFileFn = defaultReadFile,
   _writeFile: writeFileFn = defaultWriteFile,
+  _git: gitFn = defaultGit,
   _runPipeline: runPipelineFn = realMain,
   _log: logFn = log,
   _phase: phaseFn = phase,
@@ -3041,6 +5757,10 @@ async function main({
       runPipelineFn,
       writeFileFn,
       readFileFn,
+      gitFn,
+      // `queueText` is deliberately NOT passed: every status write now re-reads
+      // at write time through `rewriteStatus`, so a pre-run snapshot would be
+      // stale by construction (TSPEC §3.6).
       phaseFn,
       emit,
       finish,
@@ -3068,12 +5788,12 @@ async function runPicked({
   dependsOn,
   triageReason,
   queuePath,
-  queueText,
   remainingPending,
   skipped,
   runPipelineFn,
   writeFileFn,
   readFileFn,
+  gitFn,
   phaseFn,
   emit,
   // `main`'s exit funnel — carries the proceeding drift notice onto whichever
@@ -3089,13 +5809,30 @@ async function runPicked({
   );
 
   // Persist in-progress BEFORE running so a crash leaves a visible marker.
-  await writeFileFn(queuePath, updateQueueStatus(queueText, entry.feature, "in-progress"));
+  // TSPEC §6.5 scopes the commit to *every* status write, not only `halted`:
+  // `in-progress` and `awaiting-merge` become durable too, which is a strict
+  // improvement and avoids a second, divergent code path.
+  await rewriteStatus(
+    queuePath,
+    entry.feature,
+    "in-progress",
+    readFileFn,
+    writeFileFn,
+    gitFn
+  );
 
   let report;
   try {
     report = await runPipelineFn({ reqPath: entry.reqPath });
   } catch (err) {
-    await rewriteStatus(queuePath, entry.feature, "halted", readFileFn, writeFileFn);
+    await rewriteStatus(
+      queuePath,
+      entry.feature,
+      "halted",
+      readFileFn,
+      writeFileFn,
+      gitFn
+    );
     return finish({
       outcome: "halted",
       reason: `Pipeline threw for ${entry.feature}: ${err && err.message}`,
@@ -3106,7 +5843,14 @@ async function runPicked({
 
   const succeeded = report && report.outcome === "success";
   const newStatus = succeeded ? "awaiting-merge" : "halted";
-  await rewriteStatus(queuePath, entry.feature, newStatus, readFileFn, writeFileFn);
+  await rewriteStatus(
+    queuePath,
+    entry.feature,
+    newStatus,
+    readFileFn,
+    writeFileFn,
+    gitFn
+  );
 
   emit(
     succeeded
@@ -3126,10 +5870,135 @@ async function runPicked({
   });
 }
 
-/** Re-read the queue (the pipeline may have touched it) and set a feature's status. */
-async function rewriteStatus(queuePath, feature, status, readFileFn, writeFileFn) {
-  const current = (await readFileFn(queuePath)) ?? "";
-  await writeFileFn(queuePath, updateQueueStatus(current, feature, status));
+/**
+ * Re-read the queue (the pipeline may have touched it), set a feature's status,
+ * and commit that one row (TSPEC §6.5).
+ *
+ * **Exported deliberately, and load-bearing** (TSPEC §3.6): the bundle can only
+ * publish names the module exports (`stripModuleSyntax` rewrites `export
+ * function` to `function`; `wrapModule` re-publishes only the names in its
+ * `exportedNames` list), and `build-runtime.mjs`'s `_recordHalt` closure has to
+ * reach this function through `__queue`.
+ *
+ * The re-read is not defensive padding: the pipeline that just ran may itself
+ * have rewritten the queue, so a snapshot taken before the run is stale by
+ * construction. Exactly one read, at write time.
+ *
+ * Never throws for a git failure — §6.5's "commit failure does not downgrade the
+ * halt". The row is on disk either way; only its durability is at stake.
+ *
+ * @param {string} queuePath
+ * @param {string} feature
+ * @param {string} status
+ * @param {function} readFileFn  - async (path) => string|null
+ * @param {function} writeFileFn - async (path, contents) => void
+ * @param {function} [gitFn]     - async (argv) => {ok, stdout, stderr}
+ * @returns {Promise<{ queueRow: string, detail?: string }>}
+ *   `queueRow` is drawn from TSPEC §4.7's closed catalogue
+ *   `"halted" | "halted (uncommitted)" | "none" | "error"`. The catalogue
+ *   describes the *row disposition*, not the status written, so a recorded
+ *   write reports `"halted"` whatever `status` was.
+ */
+async function rewriteStatus(
+  queuePath,
+  feature,
+  status,
+  readFileFn,
+  writeFileFn,
+  gitFn = defaultGit
+) {
+  const current = await readFileFn(queuePath);
+
+  // FSPEC §14.3 — no queue document at all. Reporting `"none"` (rather than an
+  // error) is what stops a direct, queue-less invocation turning one failure
+  // into two. No write, no git.
+  if (current === null || current === undefined) {
+    return { queueRow: "none" };
+  }
+
+  const { markdown, matched } = updateQueueStatus(current, feature, status);
+
+  // FSPEC §13.5 — document present, row expected, row absent. Distinct from
+  // "none": something removed the row mid-run, which the operator must see.
+  // Write nothing and touch git not at all; a write here would clobber the
+  // queue with an unchanged copy and hide the discrepancy.
+  if (!matched) {
+    return {
+      queueRow: "error",
+      detail:
+        `no row for ${feature} in ${queuePath}; ` +
+        `status "${status}" was not recorded`,
+    };
+  }
+
+  await writeFileFn(queuePath, markdown);
+  return await commitQueueRow(queuePath, feature, status, gitFn);
+}
+
+/** `git`'s idempotence signal. Emitted on stdout by some versions, stderr by others. */
+const NOTHING_TO_COMMIT_RE = /nothing to commit/i;
+
+/** First line only — a multi-line hook rejection must not flood the report. */
+function firstLine(text) {
+  return String(text ?? "").split("\n")[0].trim();
+}
+
+/**
+ * TSPEC §6.5 — exactly two `_git` invocations, in order:
+ *
+ *     git add    -- {queuePath}
+ *     git commit -m "chore(queue): {feature} → {status}" -- {queuePath}
+ *
+ * Both are pathspec-scoped after `--`. `git commit -a` would sweep unrelated
+ * working-tree changes into a queue-status commit, and a halted pipeline
+ * routinely leaves a partially written document in the tree — that partial
+ * progress is what the recovery path resumes from, so the tree is neither
+ * cleaned nor treated as an error. No `push`: the halt must survive the
+ * *process*, which a local commit achieves.
+ *
+ * @returns {Promise<{ queueRow: string, detail?: string }>}
+ */
+async function commitQueueRow(queuePath, feature, status, gitFn) {
+  const added = await gitFn(["add", "--", queuePath]);
+  if (!added.ok) return uncommitted(added, queuePath);
+
+  const committed = await gitFn([
+    "commit",
+    "-m",
+    `chore(queue): ${feature} → ${status}`,
+    "--",
+    queuePath,
+  ]);
+  if (committed.ok) return { queueRow: "halted" };
+
+  // E-39 — the row already read the target status and was already committed
+  // (the common case on a re-entry). Idempotence, not a fault: no warning, and
+  // nothing to narrate. `git` reports it on stdout or stderr depending on
+  // version, so both are inspected.
+  if (
+    NOTHING_TO_COMMIT_RE.test(committed.stdout ?? "") ||
+    NOTHING_TO_COMMIT_RE.test(committed.stderr ?? "")
+  ) {
+    return { queueRow: "halted" };
+  }
+
+  return uncommitted(committed, queuePath);
+}
+
+/**
+ * E-38 / FSPEC §13.4 — the row is correct on disk but git refused (hook
+ * rejection, missing identity, index lock). Distinct from `"error"` because the
+ * operator's remaining action differs: a manual commit, not a re-run.
+ */
+function uncommitted(result, queuePath) {
+  const reason = firstLine(result && result.stderr);
+  return {
+    queueRow: "halted (uncommitted)",
+    detail:
+      `queue row written but not committed` +
+      (reason ? `: ${reason}` : "") +
+      `; commit ${queuePath} manually`,
+  };
 }
 
 // ─── Report builder ───────────────────────────────────────────────────────────
@@ -3516,7 +6385,7 @@ async function readDriftStateSafely(readFileFn, path) {
   }
 }
 
-return { main, meta, DEFAULT_QUEUE_PATH };
+return { main, meta, DEFAULT_QUEUE_PATH, rewriteStatus, updateQueueStatus };
 })();
 
 
@@ -3534,7 +6403,14 @@ return await __queue.main({
   _agent: rtAgent,
   _readFile: rtReadFile,
   _writeFile: rtWriteFile,
+  _git: rtGit,
   _log: rtLog,
   _phase: rtPhase,
-  _runPipeline: ({ reqPath }) => __dev.main({ reqPath, ...__devInjections }),
+  _runPipeline: ({ reqPath }) =>
+    __dev.main({
+      reqPath,
+      ...__devInjections,
+      _recordHalt: async ({ feature, status }) =>
+        __queue.rewriteStatus(__queuePath, feature, status, rtReadFile, rtWriteFile, rtGit),
+    }),
 });

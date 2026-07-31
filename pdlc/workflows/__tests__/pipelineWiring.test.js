@@ -3,7 +3,7 @@
  * PROP-PIPELINE-01 through PROP-PIPELINE-03, PROP-ARTIFACTS-01/02, PROP-OBS-01/02, PROP-NFR-01
  */
 
-import main from "../orchestrate-dev.js";
+import main, { meta } from "../orchestrate-dev.js";
 import { readFileSync } from "fs";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
@@ -209,11 +209,13 @@ describe("PROP-NFR-01: No single parallel() call dispatches more than 5 agents",
     const scriptPath = resolve(__dirname, "../orchestrate-dev.js");
     const content = readFileSync(scriptPath, "utf8");
 
-    // Reviewer parallel calls should dispatch exactly 2 agents via _parallel([agent, agent])
-    // The pattern may be multiline — just check both dispatches exist
+    // Reviewer parallel calls should dispatch exactly 2 agents via _parallel([...]).
+    // RLH-23 routes both of them through the pacing wrapper, so the dispatch is
+    // written `runWrapped(reviewers[i], …)` rather than `_agent(reviewers[i], …)`;
+    // the property this test guards — two dispatches, not more — is unchanged.
     expect(content).toContain("_parallel([");
-    expect(content).toContain("_agent(reviewers[0]");
-    expect(content).toContain("_agent(reviewers[1]");
+    expect(content).toMatch(/runWrapped\(\s*reviewers\[0\]/);
+    expect(content).toMatch(/runWrapped\(\s*reviewers\[1\]/);
 
     // Batch dispatch uses .map() which is dynamically constrained to ≤ 5 by computeTopologicalBatches
     expect(content).toContain("batch.map(");
@@ -225,7 +227,7 @@ describe("PROP-NFR-01: No single parallel() call dispatches more than 5 agents",
     for (const match of parallelCallMatches) {
       // Count agent() calls in the literal array — should be ≤ 5
       const innerContent = match[1];
-      const agentCount = (innerContent.match(/_agent\(/g) || []).length;
+      const agentCount = (innerContent.match(/_agent\(|runWrapped\(/g) || []).length;
       expect(agentCount).toBeLessThanOrEqual(5);
     }
   });
@@ -372,5 +374,171 @@ describe("PROP-PIPELINE-03: phase() called with correct labels in order", () => 
     expect(phaseLabels).toMatch(/Phase DOD/);
     expect(phaseLabels).toMatch(/Phase H/);
     expect(phaseLabels).toMatch(/Phase PUB/);
+  });
+});
+
+// ─── RLH-WIRE-01: composition-root wiring (TSPEC §3.1) ────────────────────────
+// L3 composition-root assertion: it injects NOTHING (TSPEC §8.4). The parameter
+// list is *derived* from the production source text, never restated here, so a
+// new seam cannot be added to main() without this test seeing it.
+//
+// This assertion is deliberately NOT named AT-64 — TSPEC §8.3 assigns AT-64 to
+// __tests__/runtimeBundle.test.js alone.
+
+/** Extract main()'s destructured parameter names from the production source. */
+function mainParameterNames() {
+  const scriptPath = resolve(__dirname, "../orchestrate-dev.js");
+  const content = readFileSync(scriptPath, "utf8");
+
+  const anchor = "export default async function main({";
+  const start = content.indexOf(anchor);
+  if (start < 0) throw new Error("main() composition-root anchor not found");
+  if (content.indexOf(anchor, start + 1) >= 0) {
+    throw new Error("main() composition-root anchor occurs more than once");
+  }
+
+  const bodyStart = start + anchor.length;
+  const end = content.indexOf("} = {}) {", bodyStart);
+  if (end < 0) throw new Error("main() parameter list terminator not found");
+
+  const block = content
+    .slice(bodyStart, end)
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/\/\/[^\n]*/g, "");
+
+  return block
+    .split(",")
+    .map((entry) => entry.split(":")[0].split("=")[0].trim())
+    .filter((name) => name.length > 0);
+}
+
+describe("RLH-WIRE-01: main() composition root carries the new parameters", () => {
+  // The sixteen that exist today — TSPEC §3.1: "Nothing existing is renamed or
+  // reordered."
+  const EXISTING_PARAMS = [
+    "reqPath",
+    "_agent",
+    "_parallel",
+    "_log",
+    "_checkFile",
+    "_readFile",
+    "_phase",
+    "_pipeline",
+    "_mergeWorktree",
+    "_rebaseOntoDefault",
+    "_dodVerifyLoop",
+    "_raisePrAndVerifyCi",
+    "_checkCi",
+    "_phaseDodEnabled",
+    "_phasePubEnabled",
+    "_now",
+    "_sleep",
+  ];
+
+  // Exactly five new *seams*. `forcePhases` is NOT one of them: it is data —
+  // no default implementation, never called (TSPEC §3.1) — so there are five
+  // Node defaults and five adapter entries, not six of either.
+  const NEW_SEAMS = [
+    "_listFiles",
+    "_writeFile",
+    "_appendFile",
+    "_git",
+    "_recordHalt",
+  ];
+
+  it("RLH-WIRE-01: parameter list carries the five new seams plus forcePhases, and meta.inputs declares forcePhases", () => {
+    const names = mainParameterNames();
+
+    // Pre-existing surface is intact — nothing renamed or dropped (TSPEC §3.1).
+    for (const name of EXISTING_PARAMS) {
+      expect(names).toContain(name);
+    }
+
+    // The five new injected seams.
+    for (const seam of NEW_SEAMS) {
+      expect(names).toContain(seam);
+    }
+
+    // `forcePhases` — data, not a seam, hence no `_` prefix (TSPEC §3.1, §5.7).
+    expect(names).toContain("forcePhases");
+    expect(names).not.toContain("_forcePhases");
+
+    // Every new seam is `_`-prefixed; exactly five of the added names are.
+    const addedSeams = names.filter((n) => NEW_SEAMS.includes(n));
+    expect(addedSeams).toHaveLength(5);
+
+    // meta gains a second inputs entry beside reqPath (TSPEC §3.1). Note this is
+    // NOT the operator-facing surface: in the built bundle this `meta` sits inside
+    // the `__dev` IIFE, where nothing reads it. The `inputs` the runtime actually
+    // offers are declared by `DEV_META` in build-runtime.mjs, which CR F-1 edited
+    // for exactly that reason. The two copies are hand-maintained; RLH-CR-F7 below
+    // asserts they agree.
+    const inputNames = meta.inputs.map((input) => input.name);
+    expect(inputNames).toContain("reqPath");
+    expect(inputNames).toContain("forcePhases");
+
+    const forceInput = meta.inputs.find((i) => i.name === "forcePhases");
+    expect(forceInput.type).toBe("string");
+    expect(forceInput.required).toBe(false);
+  });
+});
+
+// ─── RLH-CR-F7: the two hand-maintained `meta.inputs` copies agree ────────────
+// Phase CR finding F-7. TSPEC Q-07 declined to declare `forcePhases` in
+// `DEV_META` precisely because "adding one creates a second declaration to keep
+// in sync". CR F-1 reversed that decision — correctly, since Q-07's premise was
+// false: the module's own `meta.inputs` is dead in the built artifact (it stays
+// inside the `__dev` IIFE, read by nothing), so it is not the operator-facing
+// surface and `DEV_META` had to declare the channel itself.
+//
+// The reversal is right and the duplication is therefore real. Q-07's stated
+// cost is what this suite pays down: nothing previously compared the two copies
+// (RLH-CR-F1 reads only DEV_META; RLH-WIRE-01 reads only the module's `meta`),
+// so they could diverge silently. Here they are compared directly, from source
+// text on both sides, so an edit to either copy alone reds.
+//
+// The TSPEC is an approved artifact and is not amended here; the Q-07 reversal
+// is carried to LEARNINGS §3 at harvest.
+
+/** The `DEV_META` template literal in build-runtime.mjs, evaluated. */
+function devMeta() {
+  const src = readFileSync(resolve(__dirname, "../build-runtime.mjs"), "utf8");
+  const anchor = "const DEV_META = `";
+  const start = src.indexOf(anchor);
+  if (start < 0) throw new Error("DEV_META anchor not found in build-runtime.mjs");
+  if (src.indexOf(anchor, start + 1) >= 0) {
+    throw new Error("DEV_META anchor occurs more than once");
+  }
+
+  const bodyStart = start + anchor.length;
+  // The literal carries no backticks by construction (a backtick would terminate
+  // it and break the build), so the first one after the anchor closes it.
+  const end = src.indexOf("`", bodyStart);
+  if (end < 0) throw new Error("DEV_META literal is unterminated");
+
+  const literal = src.slice(bodyStart, end).replace("export const meta = ", "");
+  // eslint-disable-next-line no-new-func
+  return Function(`"use strict"; return (${literal.replace(/;\s*$/, "")});`)();
+}
+
+describe("RLH-CR-F7: DEV_META and the module's meta declare the same inputs", () => {
+  it("RLH-CR-F7: the two meta.inputs copies are deep-equal", () => {
+    const shipped = devMeta();
+    expect(Array.isArray(shipped.inputs)).toBe(true);
+    expect(shipped.inputs.length).toBeGreaterThan(0);
+
+    // Order included: the runtime presents inputs in declaration order, so a
+    // reorder in one copy alone is a divergence worth reding on.
+    expect(shipped.inputs).toEqual(meta.inputs);
+  });
+
+  it("RLH-CR-F7: both copies name the same inputs with the same required-ness", () => {
+    const byName = (m) =>
+      Object.fromEntries(m.inputs.map((i) => [i.name, { type: i.type, required: i.required }]));
+
+    expect(byName(devMeta())).toEqual(byName(meta));
+    // Anchored so a copy that loses `forcePhases` entirely — the pre-F-1 state —
+    // cannot satisfy this suite by both copies being equally wrong.
+    expect(meta.inputs.map((i) => i.name).sort()).toEqual(["forcePhases", "reqPath"]);
   });
 });

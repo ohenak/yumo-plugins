@@ -19,6 +19,28 @@ Invoked as `/pdlc:<skill>`:
 | `se-implement` | Implements a PLAN phase via strict TDD (loads TS/Python supplement) |
 | `te-author` / `te-review` | Test Engineer — authors PROPERTIES; reviews from testing lens |
 | `tech-lead` / `tech-lead-python` | Parses PLAN, dispatches parallel se-implement agents |
+| `dod-verify` | Definition-of-Done verifier — documents stubs, unwired integrations, mock data and coverage gaps in `CODE_REVIEW-{feature}-v{N}.md`; **does not fix** |
+| `ship-pr` | Rebases the feature branch (Phase DOD) and raises or reuses the feature PR (Phase PUB) |
+| `harvest-learnings` | Distils cross-reviews + post-mortems → LEARNINGS, then deletes the harvested files |
+| `consolidate-learnings` | Merges LEARNINGS across features into project-level knowledge |
+
+## Review loop mechanics
+
+- **Round indices are derived, not assumed.** `deriveRoundWindow` computes the round window
+  from the `CROSS-REVIEW-{role}-{doc}-v{N}` files actually on disk — synchronous, total, no
+  clock, no seam. The loop refuses to overwrite an existing review file, so review history is
+  append-only. Five rounds maximum; exhausting them writes a POSTMORTEM and halts.
+- **Completeness is structural.** `isComplete` scores each artifact class (`spec`,
+  `cross-review`, `code-review`, `LEARNINGS`) and re-dispatches a document that is missing a
+  required section, rather than trusting an agent's claim that it finished.
+- **A halted phase stays halted until a human clears it.** A POSTMORTEM refuses its phase until
+  the file carries `RESOLVED: yes` outside any fenced block. That marker is **human-written
+  only** — no agent and no script ever writes it.
+- **Authoring is incremental by necessity.** The runtime kills any dispatch that makes no
+  progress for 180 s, which a monolithic write of a large spec reliably trips. Authoring
+  dispatches carry a pacing contract: skeleton first, one top-level section per edit, every
+  write under 12,000 bytes, commit after each section. Follow the same pacing when authoring
+  these artifacts by hand.
 
 ## Model selection
 

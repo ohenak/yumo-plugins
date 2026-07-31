@@ -80,7 +80,9 @@ const devModule = wrapModule("__dev", stripModuleSyntax(devSource), [
 const queueModule = wrapModule(
   "__queue",
   stripModuleSyntax(queueSource),
-  ["main", "meta", "DEFAULT_QUEUE_PATH"],
+  // §7.2 edit 3 — `rewriteStatus` / `updateQueueStatus` are what an entrypoint's
+  // `_recordHalt` closure calls; without them on `__queue` it has nothing to call.
+  ["main", "meta", "DEFAULT_QUEUE_PATH", "rewriteStatus", "updateQueueStatus"],
   "const realMain = __dev.main;"
 );
 
@@ -105,6 +107,26 @@ const DEV_META = `export const meta = {
   description:
     "Full PDLC pipeline for one REQ — spec authoring, reviews, TDD implementation, DoD, harvest, PR.",
   whenToUse: "Run the pipeline for a single named REQ path.",
+  // CR F-1 — the module's own meta.inputs is dead in this artifact (it stays
+  // inside the __dev IIFE, where nothing reads it), so the operator's declared
+  // channel is this copy. Keep it in step with orchestrate-dev.js's meta.inputs:
+  // forcePhases' catalogue here is FORCE_PHASE_TOKENS + "all".
+  inputs: [
+    {
+      name: "reqPath",
+      description:
+        "Path to the approved REQ document, e.g. docs/{feature}/REQ-{feature}.md",
+      type: "string",
+      required: true,
+    },
+    {
+      name: "forcePhases",
+      description:
+        "Optional comma- or space-separated phases to re-run despite a recorded approval. Valid: R, F, T, P, D, PR, all.",
+      type: "string",
+      required: false,
+    },
+  ],
   phases: [
     { title: "Phase R", detail: "REQ review" },
     { title: "Phase F", detail: "FSPEC author + review" },
@@ -134,9 +156,16 @@ return await __queue.main({
   _agent: rtAgent,
   _readFile: rtReadFile,
   _writeFile: rtWriteFile,
+  _git: rtGit,
   _log: rtLog,
   _phase: rtPhase,
-  _runPipeline: ({ reqPath }) => __dev.main({ reqPath, ...__devInjections }),
+  _runPipeline: ({ reqPath }) =>
+    __dev.main({
+      reqPath,
+      ...__devInjections,
+      _recordHalt: async ({ feature, status }) =>
+        __queue.rewriteStatus(__queuePath, feature, status, rtReadFile, rtWriteFile, rtGit),
+    }),
 });
 `;
 
@@ -149,11 +178,31 @@ const __reqPath =
       ? args.reqPath
       : null;
 
+// §7.2 edit 1 — the operator's phase override has no other channel into the bundle.
+const __forcePhases =
+  args && typeof args === "object" && args.forcePhases ? args.forcePhases : null;
+
 if (!__reqPath) {
   return { outcome: "halted", haltReason: "No reqPath supplied — pass the REQ path as args." };
 }
 
-return await __dev.main({ reqPath: __reqPath, ...rtDevInjections(__dev) });
+return await __dev.main({
+  reqPath: __reqPath,
+  forcePhases: __forcePhases,
+  ...rtDevInjections(__dev),
+  // §7.2 edits 3 + 4 — a direct dev invocation still owns its queue row, so it
+  // closes over __queue's row helpers at the default queue path. Absent this,
+  // the seam falls back to defaultRecordHalt's queueRow "none" no-op.
+  _recordHalt: async ({ feature, status }) =>
+    __queue.rewriteStatus(
+      __queue.DEFAULT_QUEUE_PATH,
+      feature,
+      status,
+      rtReadFile,
+      rtWriteFile,
+      rtGit
+    ),
+});
 `;
 
 const bundles = [
@@ -163,7 +212,10 @@ const bundles = [
   },
   {
     file: "orchestrate-dev.bundle.js",
-    contents: [DEV_META, BANNER, adapter, devModule, DEV_ENTRY].join("\n\n"),
+    // §7.2 edit 4 — `queueModule` joins the dev bundle so DEV_ENTRY's
+    // `_recordHalt` closure can reach the queue's row helpers. ORDERING HAZARD:
+    // queueModule's prelude references `__dev.main`, so devModule must precede it.
+    contents: [DEV_META, BANNER, adapter, devModule, queueModule, DEV_ENTRY].join("\n\n"),
   },
 ];
 

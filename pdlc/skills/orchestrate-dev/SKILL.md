@@ -35,6 +35,12 @@ Phase sequence (not a runbook — see workflow script for mechanics):
 
 ---
 
+## POSTMORTEM Lifecycle and the `RESOLVED:` Marker
+
+A review loop that exhausts its rounds writes `POSTMORTEM-{phase}-{feature}.md` and halts. Before that phase is allowed to run again the workflow reads the file's `RESOLVED:` marker — a `RESOLVED:` line anywhere outside a fenced block. `RESOLVED: yes` clears the POSTMORTEM and the phase proceeds; `RESOLVED: no`, or an absent or malformed marker, refuses the phase and reports the POSTMORTEM's `## Recommendation` so the operator sees what to do (fail closed: a marker that cannot be read is an unaddressed failure). The marker is **human-written only** — no agent and no script ever writes `yes`; a POSTMORTEM resolves when a person says it did.
+
+---
+
 ## Model Selection
 
 The workflow pins a model per phase via the runtime `agent()` `model` option:
@@ -60,9 +66,7 @@ The loop alternates verify → remediate up to 3 times; if findings persist, the
 
 ## Auto-PR & CI Verification (Phase PUB)
 
-After Harvest, the workflow automatically raises a pull request for `feat-{feature}` (reusing an open PR if one exists) and then verifies CI. The branch was already rebased onto the latest default branch in Phase DOD, so `ship-pr` does **not** rebase here — it just opens/reuses the PR. The PR runs **last** so it captures the complete branch, including harvested `LEARNINGS`. PR creation and CI reporting are delegated to the `ship-pr` skill; the **poll-timing logic lives in the workflow script**, not the agent.
-
-CI verification rule: the script polls the PR's GitHub Actions checks. Checks usually register within ~5 minutes. If **no** checks appear within **10 minutes**, the script concludes the repo has no PR checks configured and treats the phase as a pass (`ciStatus: no-checks`). Once checks appear, the script waits for completion: all-pass ⇒ ✅; any failure ⇒ the pipeline halts with the failing PR identified. The final report carries `prUrl` and `ciStatus`. Set `PHASE_PUB_ENABLED = false` in the workflow script to skip this phase.
+After Harvest, the workflow automatically raises a pull request for `feat-{feature}` (reusing an open PR if one exists) and then verifies CI. The branch was already rebased onto the latest default branch in Phase DOD, so `ship-pr` does **not** rebase here — it just opens/reuses the PR. The PR runs **last** so it captures the complete branch, including harvested `LEARNINGS`. PR creation and CI reporting are delegated to the `ship-pr` skill; the **poll-timing logic lives in the workflow script**, not the agent. CI verification rule: the script polls the PR's GitHub Actions checks. Checks usually register within ~5 minutes. If **no** checks appear within **10 minutes**, the script concludes the repo has no PR checks configured and treats the phase as a pass (`ciStatus: no-checks`). Once checks appear, the script waits for completion: all-pass ⇒ ✅; any failure ⇒ the pipeline halts with the failing PR identified. The final report carries `prUrl` and `ciStatus`. Set `PHASE_PUB_ENABLED = false` in the workflow script to skip this phase.
 
 ---
 
@@ -91,8 +95,4 @@ All artifacts live under `docs/{feature}/`. See CLAUDE.md §pdlc specifics for f
 
 The bundle is **generated** — do not edit it. Run `node pdlc/workflows/build-runtime.mjs` after any change to a workflow source; `--check` exits non-zero when a bundle is stale (CI-usable, and asserted by `__tests__/runtimeBundle.test.js`).
 
-The build exists because the workflow runtime is a restricted sandbox: `export const meta` must be the first statement and must be a pure literal, no other `export` is allowed, and `import` / `import()` / `process` / `fs` / `fetch` are all unavailable. The build strips module syntax and wraps each source in an IIFE; `pdlc/workflows/runtime-adapter.js` (inlined, never imported) re-expresses file reads/writes, existence checks, `gh` CI polling and worktree merges as `agent()` calls, and bridges the `agent` / `parallel` / `pipeline` signature differences. Everything is injected through the modules' existing `_agent`, `_readFile`, `_checkFile`, `_checkCi`, `_mergeWorktree` … parameters, so the ES modules stay the single tested source of truth.
-
-Because the adapter's IO is async, injected IO calls must be `await`ed at every call site in the source.
-
-Distribution is no longer a hand step. `node pdlc/workflows/build-runtime.mjs` writes the artifacts and `distribution-manifest.json` into `pdlc/workflows/dist/`; `pdlc/hooks/scripts/sync-workflows.sh` then installs them as the consumer's untracked runtime copy under `.claude/workflows/`, and `--check` on either command reports drift instead of hiding it.
+The build exists because the workflow runtime is a restricted sandbox: `export const meta` must be the first statement and must be a pure literal, no other `export` is allowed, and `import` / `import()` / `process` / `fs` / `fetch` are all unavailable. The build strips module syntax and wraps each source in an IIFE; `pdlc/workflows/runtime-adapter.js` (inlined, never imported) re-expresses file reads/writes, existence checks, `gh` CI polling and worktree merges as `agent()` calls, and bridges the `agent` / `parallel` / `pipeline` signature differences. Everything is injected through the modules' existing `_agent`, `_readFile`, `_checkFile`, `_checkCi`, `_mergeWorktree` … parameters, so the ES modules stay the single tested source of truth. Because the adapter's IO is async, injected IO calls must be `await`ed at every call site in the source. Distribution is no longer a hand step. `node pdlc/workflows/build-runtime.mjs` writes the artifacts and `distribution-manifest.json` into `pdlc/workflows/dist/`; `pdlc/hooks/scripts/sync-workflows.sh` then installs them as the consumer's untracked runtime copy under `.claude/workflows/`, and `--check` on either command reports drift instead of hiding it.

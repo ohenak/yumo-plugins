@@ -17,6 +17,30 @@ import main, {
   triagePrompt,
 } from "../orchestrate-queue.js";
 
+// RLH-19: a *namespace* import, deliberately, so this suite can observe whether
+// `rewriteStatus` is exported (TSPEC §3.6 — it is not, at HEAD) without a static
+// named import. Under native ESM (this package is `"type": "module"` and jest runs
+// with `transform: {}`), a static `import { rewriteStatus }` of a name the module
+// does not export is a *link-time* SyntaxError that stops the whole suite from
+// running. A namespace import yields `undefined` for the missing name instead, so
+// the absence is an assertion failure in one test rather than a dead file.
+import * as queueModule from "../orchestrate-queue.js";
+import { fakeFs, fakeGit } from "./helpers/seams.js";
+
+/**
+ * RLH-19: shape-tolerant unwrap of `updateQueueStatus`.
+ *
+ * TSPEC §4.6 changes the return from a bare string to `{ markdown, matched }`.
+ * Call sites below that merely *use* the rewritten markdown as a fixture (rather
+ * than asserting the contract) go through this helper so they are correct both
+ * before and after `RLH-20` lands the new shape. The contract itself is asserted
+ * explicitly, and only, in the `RLH-19` describe block at the end of this file.
+ */
+function applyQueueStatus(markdown, feature, newStatus) {
+  const out = updateQueueStatus(markdown, feature, newStatus);
+  return typeof out === "string" ? out : out.markdown;
+}
+
 let logMessages = [];
 const originalLog = console.log;
 
@@ -191,7 +215,7 @@ describe("parseTriageVerdict", () => {
 // ─── updateQueueStatus ───────────────────────────────────────────────────────
 describe("updateQueueStatus", () => {
   it("changes only the targeted feature's status cell", () => {
-    const out = updateQueueStatus(SAMPLE_QUEUE, "notification-v2", "in-progress");
+    const out = applyQueueStatus(SAMPLE_QUEUE, "notification-v2", "in-progress");
     const entries = parseQueue(out);
     expect(entries.find((e) => e.feature === "notification-v2").status).toBe(
       "in-progress"
@@ -204,13 +228,13 @@ describe("updateQueueStatus", () => {
   });
 
   it("preserves dependency cells through a round-trip", () => {
-    const out = updateQueueStatus(SAMPLE_QUEUE, "mobile-push", "awaiting-merge");
+    const out = applyQueueStatus(SAMPLE_QUEUE, "mobile-push", "awaiting-merge");
     const entry = parseQueue(out).find((e) => e.feature === "mobile-push");
     expect(entry.dependsOn).toEqual(["notification-v2", "auth-refresh"]);
   });
 
   it("returns input unchanged when the feature is not found", () => {
-    expect(updateQueueStatus(SAMPLE_QUEUE, "ghost", "done")).toBe(SAMPLE_QUEUE);
+    expect(applyQueueStatus(SAMPLE_QUEUE, "ghost", "done")).toBe(SAMPLE_QUEUE);
   });
 });
 
@@ -226,7 +250,7 @@ describe("selectNextPending", () => {
   });
 
   it("flags an in-progress entry as an active blocker", () => {
-    const q = updateQueueStatus(SAMPLE_QUEUE, "notification-v2", "in-progress");
+    const q = applyQueueStatus(SAMPLE_QUEUE, "notification-v2", "in-progress");
     const sel = selectNextPending(parseQueue(q));
     expect(sel.kind).toBe("blocked-active");
     expect(sel.entry.feature).toBe("notification-v2");
@@ -268,7 +292,7 @@ describe("precheckDependencies", () => {
   });
 
   it("blocks on the FIRST not-done dependency in a mixed list", () => {
-    const q = updateQueueStatus(SAMPLE_QUEUE, "notification-v2", "awaiting-merge");
+    const q = applyQueueStatus(SAMPLE_QUEUE, "notification-v2", "awaiting-merge");
     const mixed = parseQueue(q);
     // auth-refresh is done, notification-v2 is awaiting-merge → first blocker is notification-v2.
     const r = precheckDependencies(["auth-refresh", "notification-v2"], mixed);
@@ -450,7 +474,7 @@ describe("main()", () => {
   });
 
   it("does not pick up new work while an entry is in-progress", async () => {
-    const q = updateQueueStatus(SAMPLE_QUEUE, "notification-v2", "in-progress");
+    const q = applyQueueStatus(SAMPLE_QUEUE, "notification-v2", "in-progress");
     const fs = makeFs({ [DEFAULT_QUEUE_PATH]: q });
     let pipelineCalls = 0;
     const report = await main({
@@ -554,5 +578,235 @@ describe("main()", () => {
     expect(agentPrompts).toHaveLength(1);
     expect(agentPrompts[0]).toContain("feat-y");
     expect(report.picked).toBe("feat-y");
+  });
+});
+
+// ─── RLH-19 — the queue-row write/commit mechanism ───────────────────────────
+//
+// AT-30…AT-34, **module half only** (PLAN §7.4): the `rewriteStatus` /
+// `updateQueueStatus` mechanism itself — the row rewrite, TSPEC §6.5's `_git`
+// two-invocation commit, and each commit-failure branch — driven directly
+// against `orchestrate-queue.js`. *Which* halting exit of `orchestrate-dev`
+// reaches this write is the orchestrator half and belongs to `RLH-25`
+// (`RLH-AT-30-orch` …); nothing here asserts it.
+//
+// Contracts under test:
+//   TSPEC §4.6  `updateQueueStatus` returns `{ markdown, matched }`
+//   TSPEC §3.6  `rewriteStatus` is **exported**, gains a `_git` parameter,
+//               and commits after the write
+//   TSPEC §3.5  its return is `{ queueRow, detail? }`, `queueRow` drawn from
+//               `"halted" | "halted (uncommitted)" | "none" | "error"`
+//   TSPEC §6.5  exactly two `_git` invocations, `add` then `commit`, both
+//               pathspec-scoped to the queue path
+//   FSPEC §13.4/§13.5  the three failure dispositions
+describe("RLH-19: queue-row write and commit mechanism", () => {
+  const QUEUE_PATH = DEFAULT_QUEUE_PATH;
+
+  /** The exported-or-not `rewriteStatus`, read off the namespace (see the import). */
+  function rewriteStatusOf() {
+    return queueModule.rewriteStatus;
+  }
+
+  it("RLH-AT-30-module: an absent row is an error, never a silent no-op", async () => {
+    // TSPEC §4.6 — the not-found path stops being indistinguishable from a
+    // successful update whose replacement happened to be a no-op.
+    const miss = updateQueueStatus(SAMPLE_QUEUE, "ghost", "halted");
+    expect(miss).toEqual({ markdown: SAMPLE_QUEUE, matched: false });
+
+    const hit = updateQueueStatus(SAMPLE_QUEUE, "notification-v2", "halted");
+    expect(hit).toMatchObject({ matched: true });
+    expect(typeof hit.markdown).toBe("string");
+    expect(
+      parseQueue(hit.markdown).find((e) => e.feature === "notification-v2").status
+    ).toBe("halted");
+
+    // FSPEC §13.5 — on `matched: false` `rewriteStatus` writes nothing,
+    // performs no git operation, and returns an error result naming the
+    // feature, the queue path and the status that was not recorded.
+    const rewriteStatus = rewriteStatusOf();
+    expect(typeof rewriteStatus).toBe("function");
+
+    const fs = fakeFs({ [QUEUE_PATH]: SAMPLE_QUEUE });
+    const git = fakeGit();
+    const result = await rewriteStatus(
+      QUEUE_PATH,
+      "ghost",
+      "halted",
+      fs.readFile,
+      fs.writeFile,
+      git
+    );
+
+    expect(fs.writes).toEqual([]);
+    expect(git.callCount).toBe(0);
+    expect(result).toMatchObject({ queueRow: "error" });
+    expect(result.detail).toContain("ghost");
+    expect(result.detail).toContain(QUEUE_PATH);
+    expect(result.detail).toContain("halted");
+    expect(fs.files[QUEUE_PATH]).toBe(SAMPLE_QUEUE);
+  });
+
+  it("RLH-AT-31-module: no queue document is 'none', not an error", async () => {
+    // FSPEC §14.3 — "No QUEUE.md, or QUEUE.md with no row for this feature"
+    // reports `queueRow: "none"`; a direct invocation is never a double failure.
+    // The module half is that `rewriteStatus` distinguishes "no document" from
+    // §13.5's "document present, row expected, row absent" (RLH-AT-30-module).
+    const rewriteStatus = rewriteStatusOf();
+    expect(typeof rewriteStatus).toBe("function");
+
+    const fs = fakeFs({}); // readFile returns null for the queue path
+    const git = fakeGit();
+    const result = await rewriteStatus(
+      QUEUE_PATH,
+      "notification-v2",
+      "halted",
+      fs.readFile,
+      fs.writeFile,
+      git
+    );
+
+    expect(result).toEqual({ queueRow: "none" });
+    expect(fs.writes).toEqual([]);
+    expect(git.callCount).toBe(0);
+  });
+  it("RLH-AT-32-module: the row rewrite is re-read, targeted, and committed", async () => {
+    // AT-32's module half: `rewriteStatus` is the one function that owns a
+    // status write, so the row it leaves on disk is the row the queue reads
+    // back — a `halted` row stays `halted` until something calls this function
+    // again. (That a *bypass* run never calls it is `RLH-AT-32-orch`'s.)
+    const rewriteStatus = rewriteStatusOf();
+    expect(typeof rewriteStatus).toBe("function");
+
+    const fs = fakeFs({ [QUEUE_PATH]: SAMPLE_QUEUE });
+    const git = fakeGit();
+    const result = await rewriteStatus(
+      QUEUE_PATH,
+      "notification-v2",
+      "halted",
+      fs.readFile,
+      fs.writeFile,
+      git
+    );
+
+    // Re-reads at write time rather than trusting a stale snapshot.
+    expect(fs.reads.map((r) => r.path)).toEqual([QUEUE_PATH]);
+
+    // Exactly the targeted row moved; every other row is byte-identical.
+    const entries = parseQueue(fs.files[QUEUE_PATH]);
+    expect(entries.find((e) => e.feature === "notification-v2").status).toBe("halted");
+    expect(entries.find((e) => e.feature === "auth-refresh").status).toBe("done");
+    expect(entries.find((e) => e.feature === "mobile-push").status).toBe("pending");
+    expect(entries.find((e) => e.feature === "mobile-push").dependsOn).toEqual([
+      "notification-v2",
+      "auth-refresh",
+    ]);
+
+    // TSPEC §6.5 — exactly two `_git` invocations, in order, both pathspec-
+    // scoped to the queue path after `--`; never `git commit -a`.
+    expect(git.commands).toEqual([
+      `add -- ${QUEUE_PATH}`,
+      `commit -m chore(queue): notification-v2 → halted -- ${QUEUE_PATH}`,
+    ]);
+    expect(git.calls[1]).toEqual([
+      "commit",
+      "-m",
+      "chore(queue): notification-v2 → halted",
+      "--",
+      QUEUE_PATH,
+    ]);
+    expect(git.calls.some((argv) => argv.includes("-a"))).toBe(false);
+    expect(git.calls.some((argv) => argv[0] === "push")).toBe(false);
+
+    expect(result).toEqual({ queueRow: "halted" });
+  });
+
+  it("RLH-AT-33-module: a commit failure is non-fatal and surfaced", async () => {
+    // FSPEC §13.4 — `git commit` fails (hook rejection, no identity, index
+    // lock): the row is correct on disk, the mechanism does not throw, and the
+    // result is `"halted (uncommitted)"` carrying the stderr first line plus
+    // the manual-commit instruction. That the *original halt reason* is still
+    // reported first is `RLH-AT-33-orch`'s.
+    const rewriteStatus = rewriteStatusOf();
+    expect(typeof rewriteStatus).toBe("function");
+
+    const stderr = "pre-commit hook rejected the commit\nsee .git/hooks/pre-commit";
+    const fs = fakeFs({ [QUEUE_PATH]: SAMPLE_QUEUE });
+    const git = fakeGit({ commit: { ok: false, stderr } });
+    const result = await rewriteStatus(
+      QUEUE_PATH,
+      "notification-v2",
+      "halted",
+      fs.readFile,
+      fs.writeFile,
+      git
+    );
+
+    expect(result.queueRow).toBe("halted (uncommitted)");
+    expect(typeof result.detail).toBe("string");
+    expect(result.detail).toContain("pre-commit hook rejected the commit");
+    expect(result.detail).not.toContain("see .git/hooks/pre-commit"); // first line only
+    expect(result.detail).toContain(`commit ${QUEUE_PATH} manually`);
+
+    // The row is correct on disk even though its durability was lost.
+    expect(
+      parseQueue(fs.files[QUEUE_PATH]).find((e) => e.feature === "notification-v2").status
+    ).toBe("halted");
+    expect(git.callCount).toBe(2);
+  });
+
+  it("RLH-AT-33-module: a failing `git add` is surfaced the same way", async () => {
+    // FSPEC §13.4's first row — `git add` fails. Same disposition: non-fatal,
+    // surfaced, the row already correct on disk.
+    const rewriteStatus = rewriteStatusOf();
+    expect(typeof rewriteStatus).toBe("function");
+
+    const fs = fakeFs({ [QUEUE_PATH]: SAMPLE_QUEUE });
+    const git = fakeGit({ add: { ok: false, stderr: "fatal: not a git repository" } });
+    const result = await rewriteStatus(
+      QUEUE_PATH,
+      "notification-v2",
+      "halted",
+      fs.readFile,
+      fs.writeFile,
+      git
+    );
+
+    expect(result.queueRow).toBe("halted (uncommitted)");
+    expect(result.detail).toContain("fatal: not a git repository");
+    expect(
+      parseQueue(fs.files[QUEUE_PATH]).find((e) => e.feature === "notification-v2").status
+    ).toBe("halted");
+  });
+
+  it("RLH-AT-34-module: 'nothing to commit' is success, silently", async () => {
+    // FSPEC §13.4 / E-39 — the row already read the target status and was
+    // already committed, the common case on a re-entry. Idempotence, not an
+    // error: `queueRow: "halted"`, and **no** warning detail.
+    const rewriteStatus = rewriteStatusOf();
+    expect(typeof rewriteStatus).toBe("function");
+
+    const already = applyQueueStatus(SAMPLE_QUEUE, "notification-v2", "halted");
+    const fs = fakeFs({ [QUEUE_PATH]: already });
+    const git = fakeGit({
+      commit: {
+        ok: false,
+        stdout: "nothing to commit, working tree clean",
+        stderr: "",
+      },
+    });
+    const result = await rewriteStatus(
+      QUEUE_PATH,
+      "notification-v2",
+      "halted",
+      fs.readFile,
+      fs.writeFile,
+      git
+    );
+
+    expect(result.queueRow).toBe("halted");
+    expect(result.detail ?? null).toBeNull();
+    expect(
+      parseQueue(fs.files[QUEUE_PATH]).find((e) => e.feature === "notification-v2").status
+    ).toBe("halted");
   });
 });

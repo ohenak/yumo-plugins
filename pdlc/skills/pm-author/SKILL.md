@@ -119,6 +119,55 @@ When feedback arrives on your REQ or FSPEC:
 3. Address every High and Medium finding. Use judgment for Low.
 4. Update the document in place.
 5. Commit and push.
+6. Address only what is **not already reflected** in the document as it stands. A finding already
+   applied needs no new write — writing something gratuitously to "show progress" is an error.
+7. Observe the [Authoring Pacing Contract](#authoring-pacing-contract) while you edit, and end your
+   response with the [Revision-Completion Trailer](#revision-completion-trailer).
+
+---
+
+## Authoring Pacing Contract
+
+Every authoring and feedback-addressing dispatch observes this contract. A 180 s stall watchdog kills a
+monolithic document write, so one unbounded write produces **no output at all**.
+
+- **Skeleton first.** The first write emits the document's top-level heading skeleton — every required
+  `##` heading, empty bodies — and nothing else.
+- **Then one top-level section per write.** One `##` section per tool call. Never rewrite a whole
+  document in one call.
+- **At most `MAX_AUTHORING_WRITE_BYTES` (12,000) bytes per tool call.** This ceiling is stated, not
+  measured: nothing in the runtime counts the bytes you emit, so respecting it is your responsibility.
+- **Commit after each section.** One `git commit` per top-level section, so an interrupted dispatch
+  loses at most one section. Uncommitted content is real content — never discard it.
+- **Prefer a targeted edit to a whole-file write** when the section already exists on disk.
+
+When a dispatch resumes after an interruption, the prompt names the first unwritten section. Read what
+is on disk and continue from there; do not start over.
+
+---
+
+## Revision-Completion Trailer
+
+**Every response ends with `REVISION-COMPLETE: yes` or `REVISION-COMPLETE: no` as its last line.**
+
+```
+REVISION-COMPLETE: yes
+```
+
+| Aspect | Rule |
+|--------|------|
+| Position | The **last line** of the response — its final non-empty line, emitted after all edits are written **and committed**. |
+| Values | Exactly two, case-sensitive: `REVISION-COMPLETE: yes` and `REVISION-COMPLETE: no`. Nothing else parses. |
+| Uniqueness | Exactly one such line per response. Two of them is a parse failure, not a preference for the later one. |
+| When | Required on a **revision / feedback-addressing** dispatch, which is where it is parsed. On a fresh-authoring dispatch it is not parsed; emit it anyway so there is one convention to remember. |
+| `yes` means | No finding of this round remains unreflected in the document as it stands. |
+| `no` means | Work remains — budget ran out mid-round, or a finding is still unaddressed. |
+
+Emitting `yes` while a finding of this round remains unreflected is an **error, not an optimisation**.
+
+**The no-op case — the most important one.** Emit the trailer **even when the dispatch wrote nothing**.
+A continuation dispatch whose round is already fully applied should write nothing and emit
+`REVISION-COMPLETE: yes`; that is its correct and complete output.
 
 ---
 

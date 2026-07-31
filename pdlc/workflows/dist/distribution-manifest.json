@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
-  "pluginVersion": "0.12.0",
+  "pluginVersion": "0.13.0",
   "rows": [
     {
       "id": "orchestrate-dev",
       "pluginPath": "workflows/dist/orchestrate-dev.bundle.js",
       "consumerPath": ".claude/workflows/orchestrate-dev.bundle.js",
-      "artifactVersion": "0.12.0",
-      "pluginSha1": "758b46a73af4d3bd4b5f7c508b9d538f0b27899c",
+      "artifactVersion": "0.13.0",
+      "pluginSha1": "779135c236f9470639a5d79970acd47825b7eb27",
       "retires": [
         ".claude/workflows/orchestrate-dev.js"
       ]
@@ -16,8 +16,8 @@
       "id": "orchestrate-queue",
       "pluginPath": "workflows/dist/orchestrate-queue.bundle.js",
       "consumerPath": ".claude/workflows/orchestrate-queue.bundle.js",
-      "artifactVersion": "0.12.0",
-      "pluginSha1": "0c8d70811e4c0e1aee6587cbc38d8c528b88c6fe",
+      "artifactVersion": "0.13.0",
+      "pluginSha1": "ed70500a01fa1f18ea401c5bfb3e101e361be7e3",
       "retires": [
         ".claude/workflows/orchestrate-queue.js"
       ]

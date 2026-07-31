@@ -28,12 +28,28 @@ Runs a full pipeline from an approved requirements doc through to a reviewed, te
         ▼  Phase I  — Implementation (tech-lead dispatches parallel se-implement agents)
         ▼  Phase PT — PROPERTIES tests (se-implement, TDD, full suite)
         ▼  Phase CR — Final codebase review (pm-review + te-review → se-implement)
-        ▼  Phase H  — Harvest (cross-reviews → LEARNINGS, then deleted)
+        ▼  Phase DOD— Definition of Done (rebase, then dod-verify ⇄ se-implement, max 3 rounds)
+        ▼  Phase H  — Harvest (cross-reviews + code reviews → LEARNINGS, then deleted)
+        ▼  Phase PUB— Raise/reuse the PR (ship-pr), then poll GitHub checks
         │
-   Ready for PR
+   PR open, checks green — never auto-merged
 ```
 
 Each review loop runs reviewers **in parallel** as evaluators and the document owner as optimizer, repeating until all reviewers approve (max 5 iterations; non-convergence writes a POSTMORTEM).
+
+Round indices are derived from the `CROSS-REVIEW-{role}-{doc}-v{N}` files actually on disk, and the loop refuses to overwrite one — review history is append-only. A POSTMORTEM refuses its phase on any later run until a human adds `RESOLVED: yes` to it; no agent ever writes that marker.
+
+The PR is raised but **never merged** by the pipeline: `awaiting-merge` → `done` is a human step.
+
+### Running a whole queue
+
+For unattended, multi-feature delivery, list features in `docs/_queue/QUEUE.md` and run:
+
+```
+/loop run /pdlc:orchestrate-queue
+```
+
+Each iteration picks the next **ready** REQ in dependency order, runs the full pipeline for it, and stops. A REQ opts in with `ready: true` in its frontmatter, so an unfinished REQ can sit in the queue without being picked up. Between iterations a human reviews and merges PRs, which is what unblocks dependent features.
 
 ### Skills
 
@@ -41,6 +57,7 @@ Invoked as `/pdlc:<skill>`:
 
 | Skill | Role |
 |---|---|
+| `orchestrate-queue` | Serial queue driver — picks the next ready REQ from `docs/_queue/QUEUE.md` and runs `orchestrate-dev` for it |
 | `orchestrate-dev` | Runs the full pipeline end-to-end from a REQ path |
 | `pm-author` | Authors REQ, FSPEC; addresses feedback on PM-owned docs |
 | `pm-review` | Reviews from product lens (scope, value, acceptance criteria) |
@@ -51,6 +68,8 @@ Invoked as `/pdlc:<skill>`:
 | `te-review` | Reviews from testing lens (testability, coverage, edge cases) |
 | `tech-lead` | Parses PLAN, dispatches parallel `se-implement` agents (TypeScript) |
 | `tech-lead-python` | Same as `tech-lead` for Python repos |
+| `dod-verify` | Definition-of-Done verifier — documents stubs, unwired integrations, mock data and coverage gaps; does **not** fix them |
+| `ship-pr` | Rebases the feature branch, then raises or reuses the feature PR |
 | `harvest-learnings` | Distils cross-reviews + post-mortems → LEARNINGS, deletes harvested files |
 | `consolidate-learnings` | Merges LEARNINGS across features into project-level knowledge |
 
@@ -62,6 +81,8 @@ pdlc expects consuming repos to follow this layout:
 docs/
   _constraints/          # project-wide constraints (tech stack, non-negotiables)
   _decisions/            # project-wide architectural decisions
+  _queue/
+    QUEUE.md             # serial work queue (only for orchestrate-queue)
   {feature-name}/
     REQ-{feature-name}.md
     FSPEC-{feature-name}.md
@@ -69,10 +90,15 @@ docs/
     DECISIONS-{feature-name}.md   (conditional)
     PLAN-{feature-name}.md
     PROPERTIES-{feature-name}.md
+    CROSS-REVIEW-{role}-{doc}-v{N}.md   (deleted by harvest)
+    CODE_REVIEW-{feature-name}-v{N}.md  (Phase DOD; deleted by harvest)
+    POSTMORTEM-{phase}-{feature-name}.md (only on non-convergence)
     LEARNINGS-{feature-name}.md   (written by harvest-learnings)
 ```
 
 Start each run on a `feat-{feature-name}` branch with a user-approved REQ doc already present.
+
+Two of these are **parsed data contracts, not prose**. A cross-review must end with a trailing `## Verdict` section carrying exactly one `VERDICT: {value}` line — a second one is read fail-closed and the approval is not honoured. A LEARNINGS file must carry a `Harvested from` row in its metadata table and five numbered sections with non-empty bodies.
 
 ### Usage
 
@@ -87,17 +113,23 @@ claude plugin validate ./pdlc --strict
 claude plugin marketplace add ohenak/yumo-plugins
 claude plugin install pdlc
 
-# Run the pipeline
+# Run the pipeline for one feature
 /pdlc:orchestrate-dev docs/{feature-name}/REQ-{feature-name}.md
+
+# Or drive a whole queue, one ready feature per iteration
+/loop run /pdlc:orchestrate-queue
 ```
+
+Working **on this repo** rather than installing from it? The runtime artifacts are generated, so a fresh clone has none. See [pdlc/README.md](pdlc/README.md#fresh-clone-bootstrap) for the two-command bootstrap and the drift tooling.
 
 ### Hooks
 
 | Hook | When | Effect |
 |---|---|---|
-| `guard-harvest-before-delete` | Before any `rm`/`del` Bash call | Blocks deletion of `CROSS-REVIEW-*` files unless `LEARNINGS-{feature}.md` exists on the branch |
+| `guard-harvest-before-delete` | Before any `rm`/`del` Bash call | Blocks deletion of `CROSS-REVIEW-*` or `CODE_REVIEW-*` files unless `LEARNINGS-{feature}.md` exists on the branch |
 | `check-scope-field` | After Write or Edit | Warns if a skill output doc is missing the `Scope:` field |
 | `nudge-consolidation` | Session start | Reminds to run `consolidate-learnings` when stale LEARNINGS files are detected |
+| `check-workflow-drift` | Session start | Reports when the consumer's runtime copy has drifted from the built artifacts, so a stale copy is announced rather than silently executed |
 
 ---
 

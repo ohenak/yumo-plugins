@@ -505,7 +505,13 @@ describe("Phase I DAG parsing: parse-first, agent fallback on Haiku", () => {
     ].join("\n");
 
     const record = [];
-    const result = await main(baseArgs(record, { _readFile: () => planMd }));
+    // Scoped to the PLAN path. A blanket `() => planMd` also answers the
+    // `POSTMORTEM-{phase}-{feature}.md` probes TSPEC §5.8's step-G gate makes, and
+    // a non-empty POSTMORTEM with no `RESOLVED: yes` marker refuses the phase — a
+    // fixture artefact, not the DAG behaviour under test. The sibling case below
+    // already establishes that everything-null reaches Phase I.
+    const readPlanOnly = (path) => (String(path).includes("/PLAN-") ? planMd : null);
+    const result = await main(baseArgs(record, { _readFile: readPlanOnly }));
     expect(result.outcome).toBe("success");
 
     const dagAgentCalls = record.filter((c) =>
@@ -525,5 +531,86 @@ describe("Phase I DAG parsing: parse-first, agent fallback on Haiku", () => {
     );
     expect(dagAgentCalls.length).toBe(1);
     expect(dagAgentCalls[0].opts && dagAgentCalls[0].opts.model).toBe("haiku");
+  });
+});
+
+// ─── RLH-REPORT-01: buildFinalReport's widened field list (TSPEC §4.7) ───────
+// TSPEC §8.3's closing paragraph lists this suite as "unaffected in behaviour;
+// affected by buildFinalReport's widened field list". Nothing about Phase I's
+// behaviour is asserted here — only that the report this suite already drives
+// main() to build carries the four fields §4.7 adds to buildFinalReport's
+// destructured list, each within its stated domain.
+// PLAN §7.3: written at batch 2, green from batch 10 (RLH-30); red 2–9.
+describe("RLH-REPORT-01-impl", () => {
+  const REPORT_FIELDS_4_7 = [
+    "haltPhase",
+    "postmortemPath",
+    "postmortemStatus",
+    "queueRow",
+  ];
+  const POSTMORTEM_STATUS_DOMAIN = [
+    "written",
+    "write_failed",
+    "unresolved",
+    "none",
+  ];
+  const QUEUE_ROW_DOMAIN = ["halted", "halted (uncommitted)", "none", "error"];
+
+  const successAgent = async (skill, prompt) => {
+    if (["se-review", "te-review", "pm-review"].includes(skill)) {
+      return `Review.\nVERDICT: Approved\n{"high": 0, "medium": 0, "low": 0}\n`;
+    }
+    if (["pm-author", "se-author", "te-author"].includes(skill)) {
+      if (typeof prompt === "string" && prompt.includes("DECISIONS_WARRANTED")) {
+        return "Finalized.\nDECISIONS_WARRANTED: false";
+      }
+      if (typeof prompt === "string" && prompt.includes("Return a JSON object")) {
+        return JSON.stringify({
+          tasks: [{ id: "T1", description: "x", dependencies: [], planBatch: 1 }],
+        });
+      }
+      return "Document created.";
+    }
+    if (skill === "dod-verify") return "Clean.\nDOD_STATUS: passed";
+    if (skill === "ship-pr") {
+      if (String(prompt).includes("Raise a pull request")) {
+        return "PR opened.\nPR_URL: https://github.com/a/b/pull/1";
+      }
+      return "Rebased.\nREBASE_STATUS: clean";
+    }
+    return "Success.";
+  };
+
+  const args = () => ({
+    reqPath: "docs/test-feat/REQ-test-feat.md",
+    _agent: successAgent,
+    _parallel: (p) => Promise.all(p),
+    _checkFile: () => ({ ok: true }),
+    _checkCi: async () => "passed",
+    _phase: () => {},
+    _pipeline: async (l, fn) => fn(),
+    _mergeWorktree: async () => ({ ok: true }),
+  });
+
+  it("RLH-REPORT-01-impl: the final report carries §4.7's four new fields, each in its domain", async () => {
+    const result = await main(args());
+    expect(result.outcome).toBe("success");
+
+    expect(Object.keys(result)).toEqual(
+      expect.arrayContaining(REPORT_FIELDS_4_7)
+    );
+
+    // §4.7: haltPhase is null when the run did not halt — that field alone
+    // distinguishes a halt from a clean run.
+    expect(result.haltPhase).toBeNull();
+    expect(POSTMORTEM_STATUS_DOMAIN).toContain(result.postmortemStatus);
+    expect(QUEUE_ROW_DOMAIN).toContain(result.queueRow);
+    // §4.7: postmortemPath is populated whenever postmortemStatus is
+    // "unresolved", and is null otherwise.
+    if (result.postmortemStatus === "unresolved") {
+      expect(typeof result.postmortemPath).toBe("string");
+    } else {
+      expect(result.postmortemPath).toBeNull();
+    }
   });
 });
