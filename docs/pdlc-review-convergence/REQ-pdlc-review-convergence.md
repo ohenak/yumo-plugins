@@ -278,6 +278,117 @@ runtime fact — against the two specific unmeasured facts that killed the prede
 
 ## 5. Acceptance criteria
 
+Six requirements. Every acceptance criterion is in Who / Given / When / Then form and is stated over
+an in-band observable named in §4.
+
+**Vocabulary used throughout §5.** These three terms are defined once and used with exactly these
+meanings:
+
+| Term | Definition |
+|---|---|
+| **blocking count** of a round | The sum of `high` + `medium`, over every reviewer dispatched in that round, as returned by `parseVerdict` (M-2a). Low findings are excluded. |
+| **panel shape** of a round | The *set of reviewer role slugs* dispatched in that round — e.g. `{software-engineer, test-engineer}` or `{verifier}`. Two rounds have equal panel shape iff these sets are equal. |
+| **round growth** | The byte length of the reviewed document at the start of round N+1 minus its byte length at the start of round N (AC-4.1). |
+
+---
+
+### REQ-RCV-01 — Round budget reduced from five to three
+
+**Priority:** P0 · **Phase:** 1 · **Source:** US-01, US-02 · **Depends on:** BL-01
+
+A review loop that has not converged in three rounds has, on the two features measured, not converged
+at all: the predecessor's blocking count reached its minimum at round 2 and rose thereafter, and 66 KB
+— 40% of the finished document — was added by rounds that ran *after* its own fixed-point test fired.
+Three rounds buys the decay that was real (11 → 6) and declines to buy the plateau that was not.
+
+**AC-1.1 — The budget is three.**
+*Who:* the pipeline. *Given:* any review-loop phase. *When:* the review window is opened. *Then:*
+the window spans **three** rounds, and the loop halts on entering a fourth.
+
+**AC-1.2 — One constant, one arithmetic site.**
+*Who:* a maintainer. *Given:* the module at `pdlc/workflows/orchestrate-dev.js`. *When:* they change
+the budget. *Then:* they change exactly one module-scope constant (M-1a) and no arithmetic anywhere
+else, because the sole site that expresses the window *width* in terms of that constant is `windowEnd`
+(M-1b). The three value-reading sites at M-1c must continue to report the *effective* budget, so a
+halt message that says "5" while the budget is 3 is a defect.
+
+**AC-1.3 — The reduction is not silently partial.**
+*Who:* the operator. *Given:* a non-convergent phase. *When:* the loop halts on the budget. *Then:*
+the post-mortem's Iterations section and the phase record both state **three**, and the returned
+`iterations` field is consistent with them.
+
+**AC-1.4 — Existing halt behaviour is unchanged in kind.**
+*Who:* the operator. *Given:* the budget is exhausted. *When:* the loop halts. *Then:* it halts the
+way it halts today — writing `POSTMORTEM-{phase}-{feature}.md`, confirming the write rather than
+trusting the agent's reply, and refusing to re-run the phase until a human writes `RESOLVED: yes`.
+This REQ changes *when* the halt happens, not *what* a halt is.
+
+**Observability.** `MAX_REVIEW_ROUNDS === 3`; a fourth round never dispatches a reviewer; the
+post-mortem contains the literal `3`.
+
+---
+
+### REQ-RCV-02 — The fixed-point stop is enforced by the loop, not by prose
+
+**Priority:** P0 · **Phase:** 1 · **Source:** US-01, US-03 · **Depends on:** BL-01, BL-02
+
+The stopping rule has now been written into three consecutive REQ preambles and honoured by none of
+them, because nothing in `orchestrate-dev` reads a rule written in the document under review
+(P-2). Both counts the rule needs are already machine-readable (M-2a). The enforcement is available
+and simply unbuilt.
+
+**AC-2.1 — The rule.**
+*Who:* the review loop. *Given:* a failed round **N ≥ 2** — i.e. round N's reviewers did not all
+approve — whose blocking count and whose predecessor round N−1's blocking count are both **reliable**
+(AC-2.3) and whose panel shape equals round N−1's (AC-2.4). *When:* round N's verdicts have been
+parsed and **before** round N's optimizer episode is dispatched. *Then:* if
+`blocking(N) ≥ blocking(N−1)` **and** `blocking(N) > 0`, the loop halts on the existing post-mortem
+path (AC-1.4) instead of iterating, and does not dispatch that optimizer episode.
+
+**AC-2.2 — The halt is distinguishable from budget exhaustion.**
+*Who:* the operator. *Given:* a fixed-point halt. *When:* they read the post-mortem and the run
+report. *Then:* the halt reason names the fixed point and carries the two counts and the two round
+numbers that triggered it — e.g. *"fixed point: round 3 blocking 7 ≥ round 2 blocking 6"* — and is
+textually distinct from the budget-exhaustion reason. An operator must be able to tell, without
+reading the cross-review files, whether the loop ran out of rounds or stopped making progress.
+
+**AC-2.3 — Unreliable counts break the chain; they never fire the rule.**
+*Who:* the review loop. *Given:* any reviewer in round N or in round N−1 whose verdict parse is
+`malformed` (M-2b) after the existing recovery pass (M-2d) has been attempted and has also failed.
+*When:* AC-2.1 would be evaluated. *Then:* the comparison is **not made**, the loop continues to the
+next round, and the run report records that the round was not comparable and why. A count nobody could
+read is not evidence of a plateau. Because the rule compares only *consecutive* rounds, an unreliable
+round is neither a trigger nor a baseline: it breaks the chain in both directions.
+
+**AC-2.4 — Rounds of different panel shape are not comparable.**
+*Who:* the review loop. *Given:* rounds N and N−1 whose panel shapes differ — which, under AC-3, is
+the normal relationship between round 1 (dual) and round 2 (single verifier). *When:* AC-2.1 would be
+evaluated. *Then:* the comparison is **not made** and the run report says so. A sum over two reviewers
+and a sum over one are not the same measurement, and normalising them would be a guess this REQ
+declines to make. See R-2 for the consequence and its successor.
+
+**AC-2.5 — A zero-to-zero comparison must never fire.**
+*Who:* the review loop. *Given:* `blocking(N) = 0` and `blocking(N−1) = 0` on a round that
+nevertheless failed. *When:* AC-2.1 is evaluated. *Then:* the rule does **not** fire — this is the
+purpose of the `blocking(N) > 0` conjunct. `0/0/0` is a *genuine* parse in this codebase (M-2c: the
+truncated-output path returns real zeros and sets no `malformed` flag), so a naive `≥` would read a
+round with no blocking findings at all as a plateau and halt a document that is one Low finding away
+from approval. Zero blocking findings is the best possible round, not the worst.
+
+**AC-2.6 — The rule bounds work, and it is honest about how much.**
+*Who:* the operator. *Given:* the default configuration (AC-1's three rounds, AC-3's panel shape).
+*When:* the rule fires. *Then:* the only consecutive same-shape pair inside the window is
+(round 2, round 3), both verifier rounds, so the rule fires at most once per phase and saves **one
+optimizer episode** — the round-3 revision that today is written and then never reviewed, exactly as
+the predecessor's v1.5 was. It does not save a round of reviewers. This is a smaller saving than the
+rule would deliver at the old five-round budget, and it is stated here rather than left for a reviewer
+to discover: the rule's durable value is that it makes the budget a **backstop rather than the only
+stop**, and it bites harder immediately if the budget is ever raised or if AC-4 re-escalates two
+consecutive rounds to the full panel. R-2 records the residue.
+
+**Observability.** Two integers from `parseVerdict`, two role-slug sets, one comparison, one halt
+reason string. No unmeasured runtime behaviour is involved.
+
 ## 6. Declared thresholds
 
 ## 7. Non-goals and out of scope
