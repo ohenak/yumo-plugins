@@ -152,7 +152,57 @@ predecessor's Phase R.
 
 ## 2. Users and value
 
+The pdlc pipeline has three classes of actor. All three are affected.
+
+| ID | User story |
+|---|---|
+| **US-01** | *As the operator*, I want a review loop that stops when it stops making progress, so that a non-convergent phase costs me three rounds instead of five and I am told why. |
+| **US-02** | *As the operator*, I want a bounded, predictable cost per reviewed document, so that a queue of ten features does not become a 3 MB corpus of specs nobody can read. |
+| **US-03** | *As the operator*, I want the run report to tell me what stopped the loop and what remains unsettled, so that I can act on a halt without reading ten cross-review files and reconstructing a trajectory table by hand. |
+| **US-04** | *As an authoring agent*, I want a clear rule for which findings I am expected to answer in prose and which I must not, so that I stop producing 25 KB of speculative mechanism per round in answer to questions that only a measurement can close. |
+| **US-05** | *As a reviewing agent*, I want to know whether I am opening a document for the first time or checking the disposition of my own prior findings, so that I do not manufacture a fresh crop of findings in text that was written to answer me. |
+| **US-06** | *As a maintainer of these documents*, I want `file:line` citation accuracy checked by a program, so that a class of defect a machine can find never consumes a human or agent review round again. |
+
+**Value, stated concretely.** The predecessor's Phase R burned five rounds and produced a 165 KB
+document that was accepted only by operator-directed manual convergence, outside the loop. Under the
+six changes below, the same run would have halted at round 3 — the round its own fixed-point test
+fired — with a post-mortem naming the two generator classes that were unmeasurable, at roughly 60% of
+the byte cost and 60% of the agent cost. That is the whole claim; it is a claim about *cost and
+legibility*, not about making non-convergent documents converge. **This REQ does not promise that more
+documents will reach approval.** It promises that the ones that will not, fail faster and say why.
+
+### 2.1 Non-user-visible? No — the operator sees all six
+
+Every change surfaces to the operator through an artifact they already read:
+
+| Change | Operator-visible surface |
+|---|---|
+| AC-1 | The round budget in the run report and in the post-mortem's Iterations table |
+| AC-2 | A halt with a named reason, on a round the operator can see was non-decreasing |
+| AC-3 | Cross-review files with a distinct role slug and a `REVIEW-MODE:` marker |
+| AC-4 | A per-round growth figure in the loop's report |
+| AC-5 | A `## Measurement Required` section in the cross-review, carried into the run report |
+| AC-6 | A CLI the operator can run by hand, with an exit code and a list of bad citations |
+
 ## 3. Prerequisites
+
+This REQ is stacked on `pdlc-review-loop-hardening`. That feature's shipped mechanism is upstream
+input here, not something this REQ re-specifies.
+
+| # | Dependency | Resolution form | Gating logic |
+|---|---|---|---|
+| **BL-01** | Feature `pdlc-review-loop-hardening` merged to the default branch | PR merged; `docs/_queue/QUEUE.md` row `pdlc-review-loop-hardening` at `done` | Must hold at HEAD before FSPEC authoring for this feature begins |
+| **BL-02** | `parseVerdict` returns machine-readable `{verdict, high, medium, low, malformed?}` | Symbol present in `pdlc/workflows/orchestrate-dev.js` (see §4 M-1) | Must exist at HEAD before FSPEC authoring — AC-2 and AC-3 are stated over its output |
+| **BL-03** | Per-round cross-review state is refreshed from the branch inside the loop, and `selectMode` computes an episode's mode from that state | Symbols `refreshReviewState`, `selectMode` present (§4 M-4) | Must exist at HEAD — AC-3's panel-shape decision is taken at the same seam |
+| **BL-04** | Approval anchors (`APPROVAL-HASH:` / `REVIEWED-COMMIT:`) are appended to cross-review files on the terminal round | Symbol `appendApprovalAnchors` present (§4 M-6) | Must exist at HEAD — AC-3's verifier-round approval marker is appended by the same writer |
+| **BL-05** | `pdlc/workflows/lib/` exists as a home for non-bundled production libraries | Directory present, containing `document-oracles.mjs` (§4 M-8) | Must exist at HEAD — AC-6's new library is a sibling of that file and inherits its "not in the bundle" classification |
+
+All five hold at the Citation baseline commit `d11dad5`, which is the tip of
+`feat-pdlc-review-loop-hardening`'s stack. **BL-01 is the only one not yet satisfied on the default
+branch**: this branch is stacked, so the prerequisite is a merge order, not a missing capability. If
+`pdlc-review-loop-hardening` is abandoned rather than merged, BL-02 through BL-04 fail with it and
+AC-2, AC-3 and AC-4 lose their stated seams — that dependency is hard, and this REQ does not offer a
+fallback for it.
 
 ## 4. Measured facts
 
