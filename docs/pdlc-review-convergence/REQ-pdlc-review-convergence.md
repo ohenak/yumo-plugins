@@ -616,6 +616,80 @@ section and its single `VERDICT:` line, unchanged.
 the run report. Note the self-application: this REQ's §4.7 names the two unmeasured facts it declines
 to depend on, which is what AC-5 asks every reviewer and author to do.
 
+---
+
+### REQ-RCV-06 — Citation accuracy is checked by a program
+
+**Priority:** P1 · **Phase:** 1 · **Source:** US-06 · **Depends on:** BL-01, BL-05
+
+POSTMORTEM R-6 already ruled `file:line` citation drift *"verifiable by a script"* that *"should never
+consume a review round again"*. It then consumed part of every round anyway — surviving a dedicated
+`Citation baseline` header row, a symbol-plus-literal drift-proofing convention, and four rounds of
+attention, before reappearing at round 5 as two off-by-two line numbers **at the very sha the header
+row named**, plus a function cited in call form that does not exist at HEAD. That is sufficient
+evidence that prose discipline does not fix it. The remedy is a program.
+
+**AC-6.1 — A new library, and where it lives.**
+*Who:* a maintainer. *Given:* the repo. *When:* they look for the checker. *Then:* it is a module
+under `pdlc/workflows/lib/`, a sibling of `document-oracles.mjs` (M-6a).
+
+**AC-6.2 — Import-safe.**
+*Who:* anything importing it. *Given:* the module. *When:* it is imported. *Then:* **nothing
+happens** — no filesystem access, no argument parsing, no output, no process exit. Every export is a
+pure function of its arguments. This is the same discipline `document-oracles.mjs` states in its own
+header, and it is stated as an AC because `build-runtime.mjs` in this same repo is *import-unsafe* and
+that has already cost a finding (M-6c, LEARNINGS §2 and §5.3). A module that acts on import cannot be
+unit-tested, and cannot be called from a second caller.
+
+**AC-6.3 — A CLI entry.**
+*Who:* a reviewer, an author, or a human at a terminal. *Given:* one or more document paths and a
+repo root. *When:* they run the CLI. *Then:* it reports every bad citation with the file and line it
+was found at, what was expected and what was found, and exits **non-zero** if any citation is bad,
+zero otherwise. The CLI is a separate entry point from the library (AC-6.2), not a side effect of it.
+
+**AC-6.4 — What it extracts.**
+*Who:* the checker. *Given:* a markdown document. *When:* it runs. *Then:* it extracts `path:line`
+citations — including line **ranges** (`path:12-18`), which this repo's documents use — and, for each,
+checks three things:
+
+| # | Check | Fails when |
+|---|---|---|
+| 1 | **Path existence** | the cited path does not exist under the repo root |
+| 2 | **Line-range validity** | the cited line, or either end of the cited range, is beyond the end of the cited file, or the range is inverted |
+| 3 | **Nearby symbol presence** | the citation's surrounding prose names a backticked symbol or literal that does not appear in the cited file within a tolerance window around the cited line |
+
+Check 3 is the one that catches the defect that actually recurred — a line number that drifted by two
+while still pointing inside a real file. It is stated as *presence within a window* rather than
+*exact-line match* precisely because the symbol-plus-literal convention exists to survive small drift:
+the check should report a citation whose symbol is nowhere near it, not one that moved by a line.
+
+**AC-6.5 — Output is mechanical fixes, not findings.**
+*Who:* a reviewer. *Given:* the checker's output on a document under review. *When:* they write their
+cross-review. *Then:* bad citations are reported as **mechanical fixes** — a list to be applied — and
+are **not** filed as blocking findings, do not contribute to the `high`/`medium` counts AC-2 reads,
+and never prevent an `Approved` verdict on their own. An author fixes them without a round of
+discussion. Both the reviewer SKILLs and the author SKILLs are amended to run the checker and to treat
+its output this way.
+
+**AC-6.6 — Not in the runtime bundle.**
+*Who:* the build. *Given:* the new library. *When:* `build-runtime.mjs` runs. *Then:* the library is
+**not** inlined into `orchestrate-dev.bundle.js` or `orchestrate-queue.bundle.js`. It is the same class
+as `document-oracles.mjs` (M-6b): production code that runs under Node, called by SKILLs and by
+humans, never by the workflow runtime. The runtime's structural constraints (no `import`, no `fs`, no
+`process`) therefore do not apply to it, and it must not acquire a caller inside the bundle.
+
+**AC-6.7 — Tested by the existing suite.**
+*Who:* CI. *Given:* the new library. *When:* `npm test` runs in `pdlc/workflows`. *Then:* the library's
+tests run with it, under the existing jest configuration and with no new tooling or dependency
+(M-6d).
+
+**AC-6.8 — Advisory, never a gate.**
+*Who:* the pipeline. *Given:* a non-zero exit from the checker. *When:* a phase is running. *Then:*
+the pipeline does **not** halt. The checker's status is advisory: it produces a fix list. Making it a
+gate would convert a mechanical nuisance into a pipeline halt, which is the opposite of the change.
+
+**Observability.** A program, its stdout, and its exit code.
+
 ## 6. Declared thresholds
 
 ## 7. Non-goals and out of scope
