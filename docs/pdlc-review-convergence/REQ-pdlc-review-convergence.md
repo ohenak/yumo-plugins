@@ -692,7 +692,38 @@ gate would convert a mechanical nuisance into a pipeline halt, which is the oppo
 
 ## 6. Declared thresholds
 
+Every configured value any AC above depends on, with its default and its owner. A threshold not in
+this table is a defect in this document.
+
+| Name | Default | Owner | Cited by | Derivation |
+|---|---|---|---|---|
+| `MAX_REVIEW_ROUNDS` | **3** (was 5) | `pdlc/workflows/orchestrate-dev.js`, module scope (M-1a) | AC-1.1, AC-2.6 | Operator decision, evidenced by §1.1: the measured blocking count reached its minimum at round 2 and rose thereafter; rounds 4 and 5 added 40% of the document and ended with more blocking findings than round 2. |
+| `MAX_AUTHORING_WRITE_BYTES` | **12,000 bytes** (unchanged) | `pdlc/workflows/orchestrate-dev.js:56`, and stated verbatim in `PACING_CONTRACT_CLAUSE` at `:2279` (M-5a) | AC-4.2, AC-4.3 | **Inherited, not new.** It is one pacing write — the largest revision an author can emit in a single tool call. AC-4 deliberately reuses this quantity rather than introducing a second growth number, so the two cannot drift apart. |
+| Verifier role slug | *unfixed — FSPEC decides the name* | `pdlc/workflows/orchestrate-dev.js` + the verifier SKILL | AC-3.4, AC-3.5(a), AC-2 panel shape | AC-3.7 fixes only that it is **one stable slug**; the string itself is a naming decision, listed here so it is not forgotten. It is the key for the file path, the approval marker and the panel-shape comparison. |
+| `REVIEW-MODE: verification` | that exact literal | `appendApprovalAnchors` (M-4a) | AC-3.5(a), AC-3.5(b) | Follows the existing `APPROVAL-HASH:` / `REVIEWED-COMMIT:` anchor convention — a bare `KEY: value` line, appended by the same writer, parsed by the same style of anchored regex. |
+| `## Measurement Required` | that exact heading | the three review SKILLs | AC-5.2, AC-5.4 | Follows the existing `## Verdict` convention: an exactly-named top-level section the loop extracts. Deliberately **not** part of the completeness criterion (AC-5.5). |
+| Symbol-proximity window (AC-6.4 check 3) | *unfixed — FSPEC decides* | the new `pdlc/workflows/lib/` module | AC-6.4 | AC-6.4 fixes the *shape* (presence within a window, not exact-line match) and its reason; the window size is a tuning parameter with no product consequence and is an FSPEC decision (§8 O-6). |
+
+Two of the six are deliberately left to the FSPEC. Both are named here with their owner and their
+decision criterion, which is what the threshold-declaration obligation requires; neither has a product
+consequence that this REQ could decide better than the FSPEC can.
+
 ## 7. Non-goals and out of scope
+
+Stated so a reviewer does not file a blocking finding against an absence that is intentional.
+
+| # | Not in scope | Why |
+|---|---|---|
+| **N-1** | Making non-convergent documents converge. | This REQ bounds and explains failure. §2 says so explicitly. A finding of the form "this will not make the loop converge" is correct and is not a defect. |
+| **N-2** | Normalising blocking counts across panels of different size. | AC-2.4 declines it: a sum over two reviewers and a sum over one are not the same measurement, and any normalisation is a guess. R-2 records the cost. |
+| **N-3** | Changing the cross-review file grammar. | `CROSS-REVIEW-{role}-{doc}-v{N}.md`, the trailing `## Verdict` section, the single `VERDICT:` line and the count trailer are all **unchanged**. AC-3.4 has the verifier write the same grammar; AC-5.2 adds an optional section that is not part of the completeness criterion. |
+| **N-4** | Changing what a halt is. | AC-1.4: the POSTMORTEM path, the write confirmation, and the human-written `RESOLVED: yes` marker are untouched. This REQ changes *when* a halt happens and *what it says*. |
+| **N-5** | Extending tier-2 (LEARNINGS) approval records to verifier rounds. | AC-3.6 permits the limitation, provided it is documented. R-3. |
+| **N-6** | Taking the two measurements §4.7 names. | They are genuinely worth taking, and they are not this REQ's deliverable. R-4. |
+| **N-7** | Applying AC-3 or AC-4 to Phase CR. | AC-3.3: Phase CR's optimizer changes code, not the reviewed document, so growth is unmeasurable there and the mechanism does not apply. |
+| **N-8** | Applying AC-6's checker as a merge or pipeline gate. | AC-6.8: advisory only. |
+| **N-9** | Changing `orchestrate-queue`, the drift gate, or the queue schema. | Nothing here touches them. The queue row for this feature is added by the orchestrator, not by this document. |
+| **N-10** | Model selection per phase. | Unchanged: Opus everywhere except Phase I batches and the queue's Phase-0 triage. Whether a verifier round could run on a smaller model is a legitimate later question and is not asked here. |
 
 ## 8. Downstream obligations
 
