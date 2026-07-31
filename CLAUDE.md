@@ -67,6 +67,33 @@ All are **generated — never edit them**. `build-runtime.mjs --check` exits non
 
 Consequence for anyone editing a workflow source: **every injected IO call must be `await`ed** (the adapter's implementations are async, the test doubles are sync), and `pdlc/workflows/dist/` must be rebuilt in the same commit.
 
+`pdlc/workflows/lib/document-oracles.mjs` is ordinary Node production code, **not** part of the bundle — the runtime never loads it. Every export is a pure function of a `root` directory path (no `process.cwd()`, no ambient state), so tests, the release checklist and any future CLI can probe two roots in the same process. It provides `coveredViolations` (document-drift scan), `packagingViolations`, and `advertisedVersionViolation`.
+
+One consequence worth knowing before you debug a mystery red: `coveredViolations` walks the **entire** tree under `root`, skipping only `.git/` and `node_modules/`. An untracked local file — a tool cache, an editor backup, a database — can therefore fail a document oracle for reasons that have nothing to do with your diff. If a document oracle is red locally but green in CI, check for untracked files before you touch the code.
+
+### Review loop mechanics
+
+Three behaviours of the review loop are load-bearing and easy to violate accidentally:
+
+- **Round indices are derived, never assumed.** `deriveRoundWindow` (`orchestrate-dev.js:2151`) reads the directory listing and computes the round window from the `CROSS-REVIEW-{role}-{doc}-v{N}` basenames actually present. It is synchronous, total, takes no seam, and never consults a clock — the decision is purely content-addressed. The loop refuses to overwrite an existing review file, so review history is append-only. `MAX_REVIEW_ROUNDS = 5`; exhausting it writes a POSTMORTEM and halts.
+- **Documents are gated on structural completeness, not on an agent saying "done".** `isComplete(artifactClass, docType, fileText)` (`:1310`) scores a document per artifact class — `spec`, `cross-review`, `code-review`, `LEARNINGS` — and returns `{complete, missing, T, S}`. `LEARNINGS` is scored **positionally**: sections `1.`…`5.` must exist with non-empty bodies, whatever they are titled, plus the `Harvested from` row. Section 6 (Approval Record) is deliberately excluded from the criterion.
+- **Authoring is incremental because it has to be.** The workflow runtime kills any dispatch that makes no progress for **180 seconds**, which a whole-file write of a large spec reliably trips — losing everything not yet flushed. Every authoring dispatch therefore carries `PACING_CONTRACT_CLAUSE` (`:2279`): skeleton first, one top-level section per edit, every write under 12,000 bytes, commit after each section. `MAX_AUTHORING_ATTEMPTS = 3` consecutive no-progress dispatches per episode ends the attempt rather than looping forever. **Follow this pacing yourself when authoring these artifacts by hand** — the watchdog is runtime-side and not configurable from this repo.
+
+### Continuous integration
+
+`.github/workflows/pr-tests.yml` is the gate Phase PUB polls. Five checks must pass:
+
+| Check | What it asserts |
+|---|---|
+| `Unit tests (ubuntu-latest, node 20)` / `(macos-latest, node 20)` | `npm test` on both platforms — the matrix exists because the shipped bash scripts must work on both bash 3.2 (maintainer's macOS) and bash 5 (Linux CI) |
+| `Generated artifacts are in sync` | `build-runtime.mjs --check`, then a rebuild that must produce no diff — an independent observer, since `--check` and the builder share code |
+| `Fresh-clone bootstrap works` | executes the two documented bootstrap commands as written, by bare path, and fails loudly on exit 126 (lost execute bit) |
+| `Shell scripts parse` | `bash -n` over every tracked `*.sh`, plus index-mode assertions (`100755` for the two entrypoints, `100644` for the sourced library) |
+
+Keep every job deterministic: Phase PUB halts the pipeline on any failure, so a job that can fail for reasons unrelated to the diff blocks delivery.
+
+`pdlc/RELEASE-CHECKLIST.md` carries the pre-release commitments that CI cannot check mechanically.
+
 ### Fresh-clone bootstrap
 
 Runtime artifacts are generated, so a fresh clone has none. Two commands, **in this order**, bring a clone to a working state — no published release, no installed plugin, no `${CLAUDE_PLUGIN_ROOT}`, no network:
