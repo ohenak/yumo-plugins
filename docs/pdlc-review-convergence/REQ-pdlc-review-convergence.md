@@ -705,9 +705,21 @@ now reads both its operands from files (AC-2.1), a file without the trailer woul
 `parseVerdict`'s truncated-output path and return **genuine `0/0/0`** (M-2c), i.e. read as a perfect,
 comparable round (SE F-10). So:
 
-- the trailer is **required in the file**, in the `## Verdict` section, after the `VERDICT:` line;
-- exactly **one** trailer per file; two or more, or one that does not parse, is *malformed* (AC-2.3);
-  none at all is *unavailable* (AC-2.7). Those two ACs are the receive-side totality DC-01 requires;
+- the trailer is **required in the file**, in the `## Verdict` section, and its **placement is exact**:
+  it is the **first non-empty line after the `VERDICT:` line**, which is what `parseVerdict` requires
+  (M-2c). v1.1 fixed only *that* the trailer is in the file, not *where*, leaving a compliant-looking
+  file that `parseVerdict` rejects (SE F-04);
+- **anchor lines are not trailer candidates.** `APPROVAL-HASH:`, `REVIEWED-COMMIT:`, `REVIEW-MODE:` and
+  `DOC-BYTES:` are appended into this same section *after* the trailer, so on a file that never carried
+  a trailer an anchor line would otherwise present itself as the first non-empty line after `VERDICT:`
+  and parse as *malformed* — making *unavailable* unreachable in the normal case and inverting the
+  operator-facing distinction AC-2.7 draws (SE F-04, TE Q-03). The trailer reader therefore **skips
+  lines matching the anchor grammar** when locating the candidate line. This is a second amendment to
+  M-2c's reader, and O-9 carries it alongside the SKILL amendment below;
+- exactly **one** trailer per file; two or more, or a candidate line that does not parse, is
+  *malformed* (AC-2.3); **no candidate line at all** — the section ends, or contains nothing but anchor
+  lines, after `VERDICT:` — is *unavailable* (AC-2.7). Those two ACs are the receive-side totality
+  DC-01 requires, and the rule above is what keeps both of them reachable;
 - **N-3 is amended accordingly** and no longer claims the trailer is unchanged;
 - the corresponding review-SKILL amendment — write the trailer in the file as well as in the response
   — is added to **O-9**, which v1.0 did not list;
