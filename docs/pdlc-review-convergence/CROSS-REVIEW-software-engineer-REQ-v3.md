@@ -184,3 +184,18 @@ against REQ-RCV-05 or REQ-RCV-06, which are approvable as written. I raised no
 `## Measurement Required` items.
 
 ## Verdict
+
+**Needs revision.** The REQ is byte-identical to the v1.1 I reviewed at iteration 2
+(`git diff 2e1ccec` on the file is empty; the version row still reads 1.1). All seven round-2 findings
+are therefore open verbatim: three Highs — `DOC-BYTES:` and `REVIEW-MODE:` are assigned to
+`appendApprovalAnchors`, which runs only on the approving round, so both anchors are absent on
+precisely the failed rounds AC-2 and AC-4 read (F-01, F-02), and AC-3.2(2)'s "not counted" rule has no
+reader that can execute it (F-03) — plus two Mediums (F-04 AC-3.4's missing placement rule, F-05
+AC-1.5(3)'s missing reset observable) and two Lows. One new Low, `Process`-scoped: the round was
+dispatched with no intervening revision (F-08). Blocking count 5, unchanged from round 2, so the
+document's own two-round fixed-point rule fires — but because the input did not change, not because the
+findings are contested. The remedy is to run the authoring step against v2's required changes and
+re-review, not operator adjudication.
+
+VERDICT: Needs revision
+{"high": 3, "medium": 2, "low": 3}
