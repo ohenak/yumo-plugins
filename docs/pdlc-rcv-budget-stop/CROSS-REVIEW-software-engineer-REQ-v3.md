@@ -25,6 +25,15 @@ claim about the shipped code or a shared file, against that file at HEAD.
 
 ## 2. Disposition of the v2 questions
 
+All three v2 questions were explicitly marked *"no REQ change needed"* or *"I am not filing it"*, so
+none of them gates this round. Recording where each stands so the next reader does not re-open them:
+
+| v2 id | Status | Note |
+|---|---|---|
+| **Q-01** (does the `W` resolver share `deriveRoundWindow`'s doc-type-scoped derivation, or re-implement it?) | Still unstated, deliberately | AC-1.5(4) step 2's *"and it is the doc-type-scoped one, because a window is a property of a document"* is unchanged, and O-12 still covers only the forward direction (`W` reaching `deriveRoundWindow` as a resolved value). I said a TSPEC-level answer suffices and I hold to that — but the FSPEC/TSPEC reviewer should read this as an open obligation: **one** doc-type filter, not two. A second implementation that drifts from `parseReviewFilename`'s round-1 spelling would validate against a different listing than the loop windows over. |
+| **Q-02** (both a value fault and a counts fault present) | Answered by the unchanged text | Step 4's *"the **first failing line** in document order, and `counts-mismatch` only when every line passes step 2"* settles it deterministically in favour of the value reason, which is the reason with the non-destructive repair. Two operator round-trips, and that is the right order. Nothing to change. |
+| **Q-03** (reporting-only notice on the `{ skip: true }` path) | Not taken, as I expected | The REQ keeps deliberate silence on the skip path. I lean to that disposition and am not filing it in this round either. |
+
 ## 3. Findings
 
 ## 4. Questions
