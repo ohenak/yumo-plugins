@@ -211,4 +211,45 @@ in a sentence and neither blocking.
 
 ## 8. Recommendation
 
+**Needs revision**
+
+Mandatory per the approval rules: one Medium finding is open. **All four round-7 findings are
+resolved**, for the fifth consecutive round with nothing carried; every open finding is new, and none
+of them is in an acceptance criterion.
+
+What must change before this document can be approved:
+
+1. **F-01** — remove or scope O-10's *"or any later one"*. As written the counts-mismatch obligation
+   asserts that no later entry ever grants a window **and** that the entry after the sanctioned repair
+   does, so no implementation can satisfy both and the likelier reading of the two is the
+   permanent-halt oracle round 7 was spent removing. One clause. The AC it is stated over is already
+   correct and needs no change.
+
+That is the whole of the blocking list. F-02 and F-03 are Low and may be taken as mechanical if the
+author prefers: F-02 is one word in §5's S-16 row (and its echo in AC-1.5(4) step 4), and F-03 is one
+sentence in AC-3.2 plus, ideally, one more O-10 assertion for a second consecutive garbled dispatch.
+MF-20 … MF-23, MR-08 and Q-13/Q-14 are non-blocking and contribute nothing to the counts.
+
+Nothing here contests user need, scope, priority or phasing — that remains settled and out of scope.
+Nor do I contest any mechanism v1.6 introduces or amends: the refusal-is-not-a-halt boundary, the
+per-reason repair, AC-4.7's row A / row B split, S-17 and its receive side, and §5's amended
+*malformed* definition are all correct as far as I can trace them, and three of them are better than
+the wording I proposed. This is the first round in which I have found no defect in an AC.
+
+**Trajectory note (self-applied, per the preamble's fixed-point rule).** My own blocking counts (High +
+Medium): round 1 — 7, round 2 — 4, round 3 — 5, round 4 — 4, round 5 — 6, round 6 — 2, round 7 — 3,
+round 8 — **1**. Under AC-2.1 that is a **fall** (1 < 3) on a comparable, same-shape (full-panel)
+consecutive pair, so the rule this REQ specifies does **not** fire this round; it fired on round 7 and I
+said so then, which is the only reason saying it now means anything. The substantive change is not the
+number but where the findings live: rounds 5, 6 and 7 each found a defect in a **mechanism** (a free
+window, a swallowed clearance, a ratcheting refusal); round 8 finds none. The one blocking finding is a
+sentence in a test obligation that the AC above it already contradicts. My read is that the ACs have
+converged and the remaining risk has moved downstream — into O-10, which the PROPERTIES author will
+read *instead of* the ACs, and where a stale assertion is invisible to anyone not diffing it against
+the AC it cites. If there is a process signal in this round, it is that the O-10 bullets should be
+re-read against their own ACs whenever an AC changes, not only when a finding names the bullet.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 0, "medium": 1, "low": 2}
