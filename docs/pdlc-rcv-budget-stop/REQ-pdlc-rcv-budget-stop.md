@@ -92,7 +92,7 @@ refusal*, *approval refusal* — is defined in `docs/_constraints/pdlc-rcv-catal
 **not** restated here. The same file's §2 holds the closed catalogue `S-1 … S-17` and its §3 the
 run-report row schema.
 
-This REQ **owns** five catalogue ids and **reads** three:
+This REQ **owns** six catalogue ids and **reads** two:
 
 | id | Owned / read | Where it is used here |
 |---|---|---|
@@ -167,7 +167,10 @@ changes is its *argument*, which becomes `W` rather than `startIndex`. `W` is re
 integer), so `deriveRoundWindow` keeps its documented contract — *synchronous, total, takes no
 seam*, purely content-addressed over the basenames plus that value. **No IO seam is added to
 `deriveRoundWindow` or to `windowEnd`**; the async `_readFile` that reads the post-mortem lives in
-the caller. Any FSPEC or TSPEC that gives either function a seam violates this clause.
+the caller. Any FSPEC or TSPEC that gives either function a seam violates this clause. **`W` is
+`windowEnd`'s sole production argument:** the dormant `windowEnd(startIndex)` parameter defaults
+(`reviewLoop`'s `endIndex`, `checkConverged`'s fallback) compute a *wider* window whenever
+`W ≠ startIndex`, so they must be removed or made unreachable rather than left as a live trap.
 
 **AC-1.3 — The reduction is not silently partial, and the two quantities are named.** *Who:* the operator. *Given:* a non-convergent phase. *When:* the loop halts on the budget. *Then:*
 the post-mortem's Iterations section, the phase record and the returned `iterations` field all report the **effective budget** — the value of `MAX_REVIEW_ROUNDS`, 3 at the declared default
@@ -228,7 +231,7 @@ state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-)entered. *Then
    stated cell by cell here as the catalogue requires of the REQ owning the condition, because the
    per-round table would otherwise be empty for the commonest new halt and §2's promised surface would
    not exist. `round` = **one past the highest round of this document type on the branch** (from the
-   listing) — the round that *would* have opened; `panel-shape`, `blocking`, `growth-bytes`,
+   listing); `panel-shape`, `blocking`, `growth-bytes`,
    `classification` **empty**, nothing having been dispatched or measured; `notice` = this halt's
    **S-4** reason, `; `-joined with any co-occurring reason in catalogue §3 precedence order. Rows B
    and C are mutually exclusive: row B's entry takes no halt, row C's takes one;
@@ -297,7 +300,7 @@ state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-)entered. *Then
    - the operator-facing text is **this refusal's own**, not step G's. Reusing step G's row would tell the operator the opposite of the truth: step G refuses because the marker is
      *unresolved*, whereas step 4 fires on a post-mortem the operator **did** resolve. The ❌ phase row therefore reads `Refused — reset region corrupt at {path} ({reason})`, `{reason}`
      being the S-16 reason, and the halt reason carried to the run report and the queue **names the sanctioned repair for that reason** (AC-1.5(4)'s repair table) instead of the shipped
-     generic *"set the row back to pending, then re-run the queue"*, which on this path reproduces the refusal on every iteration. `postmortemStatus` is **not** reported as `unresolved`.
+     generic *"set the row back to pending, then re-run the queue"*, which on this path reproduces the refusal on every iteration. `postmortemStatus` reads `resolved` — the operator did clear it — or is unset; **never** `unresolved`.
      These two strings are operator-facing renders of S-16, declared in §6; they are **not** new catalogue ids, and no other new string is minted;
    - the phase is **refused, not halted** — a *phase refusal* in the catalogue §1 sense, the same shape as step G's refusal of an unresolved post-mortem. *Returns* means **the phase does not run and
      the invocation terminates on step G's path**: a ❌ phase row is recorded, the pipeline stops, and the feature's `docs/_queue/QUEUE.md` row is rewritten to `halted` and committed — the
@@ -361,7 +364,9 @@ state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-)entered. *Then
         belong to a successor (X-05), so until it ships the only region-creating halt is the budget halt, which by construction fires on a full window. The mid-window state is therefore
         **hand-built** — a legitimate, fully-specified test fixture, not a reachable operating state — and O-10 must construct it as such. This does not weaken §3.1's claim that AC-1 is
         *fully determined* without a successor: every branch's behaviour is stated; one of them is only **reachable in production** once the successor lands;
-   5. otherwise `W` = the greatest `WINDOW-START:` value present, or **1** if there is none.
+   5. otherwise `W` = the greatest `WINDOW-START:` value present, or **1** if there is none — read
+      **after** any answering line this entry confirmed, so on a granting entry step 5 and clause 4
+      agree that `W` = `N`. The grant is part of the algorithm, not a separate rule beside it.
 
    **`H − A ≤ 1` is the invariant clause 4's "exactly one answering line" relies on**, and step 3 gives it a stated domain: it holds on every path the document generates, and a refused
    entry leaves both counts unchanged. Validating rather than assuming matters because the region sits in a file the
@@ -429,12 +434,13 @@ defect.
 ## 7. Non-goals and out of scope
 
 The shared list is baseline §4, which defines **N-1 … N-10 only**; all of `N-1, N-2, N-3, N-4, N-7,
-N-9, N-10` apply unchanged and are not restated. **Ids above `N-10` are not shared.** Earlier drafts
+N-9, N-10` apply unchanged and are not restated, and `N-5`, `N-6` and `N-8` are **inapplicable to
+this REQ, not overlooked**. **Ids above `N-10` are not shared.** Earlier drafts
 of this document tabled `N-14` and `N-11` as though baseline §4 defined them; it does not, and the
 family has minted colliding `N-1x` ids in that namespace (`N-13` means different things in
 `pdlc-rcv-fixed-point-stop` §7 and `pdlc-rcv-finding-quality` §7). This document's own non-goals are
 therefore numbered in a **per-REQ namespace, `NB-*`**, which cannot be mistaken for the shared one;
-the shared row it restates keeps its shared id. Three are worth pointing at, because a reviewer of
+the shared row it restates keeps its shared id. Four are worth pointing at, because a reviewer of
 *this* document is most likely to file against them:
 
 | # | Not in scope | Why |
