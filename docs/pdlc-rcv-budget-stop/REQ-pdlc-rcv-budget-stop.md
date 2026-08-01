@@ -19,15 +19,13 @@ depends-on: []
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude + operator | 1.5 | 2026-08-01 |
+| pdlc | draft | Claude + operator | 1.6 | 2026-08-01 |
 
-**v1.5** addresses round-4 cross-review (`CROSS-REVIEW-software-engineer-REQ-v4.md`,
-`CROSS-REVIEW-test-engineer-REQ-v4.md`): `postmortemStatus` = **`written`**, with the shipped
-mechanism that produces it and the `No POSTMORTEM was written.` emit it keeps silent; the
-**byte-comparing** confirmation read (Q-04), which collapses the torn write to two outcomes and
-closes the silent well-formed-truncation case; one sanctioned repair per value fault; the pinned
-bytes of the shipped queue-reset string; O-10's per-variant dispatch count; and a compression pass.
-**v1.4** addressed round 3, **v1.3** round 2, **v1.2** round 1.
+**v1.6** addresses round-5 cross-review (`CROSS-REVIEW-{software-engineer,test-engineer}-REQ-v5.md`):
+the shipped generic recovery line at `orchestrate-dev.js:4928` is **suppressed**, not substituted
+(O-13); the unconfirmable-append refusal names **two** recovery acts, the first deleting its own
+unconfirmed residue before it can be spent; and O-10 gains the sequel leg.
+**v1.5** addressed round 4, **v1.4** round 3, **v1.3** round 2, **v1.2** round 1.
 
 ## 1. Problem
 
@@ -171,7 +169,7 @@ which a surviving reachable default fails whenever `W ≠ 1`.
 
 **AC-1.3 — The reduction is not silently partial, and the two quantities are named.** *Who:* the operator. *Given:* a non-convergent phase. *When:* the loop halts on the budget. *Then:*
 the post-mortem's Iterations section, the phase record and the returned `iterations` field all report the **effective budget** — the value of `MAX_REVIEW_ROUNDS`, 3 at the declared default
-(§6) — so a halt saying "5" while the budget is 3 is a defect. `iterations` is the **budget**, not the rounds run (M-1c). Because AC-1.5(1) makes a **zero-round** halt the commonest new
+(§6). `iterations` is the **budget**, not the rounds run (M-1c). Because AC-1.5(1) makes a **zero-round** halt the commonest new
 case, the Iterations section additionally states the **rounds this entry ran** — `0` there — so the two are never conflated where the operator reads them. Both are asserted **over the
 constant**, never the literal `3`.
 
@@ -217,8 +215,7 @@ state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-)entered. *Then
 1. the window's **end** is round 3 counted from the window's **origin** `W` (clause 4; `W = 1` when no reset is in effect), not from the highest existing round: with `W = 1`, a branch
    whose highest existing round is 2 is admitted **round 3 only**, and a branch whose highest existing round is 3 or more is admitted **no rounds** and halts immediately on the budget path
    (AC-1.4), emitting S-4 rendered as `rounds {W}..{windowEnd(W)} of {MAX_REVIEW_ROUNDS}` — the three slots are **computed from the constant**, never written as the literal `1..3 of 3`
-   (§6). **This clause is not reached on an entry whose reset region failed validation**: step 4 refuses the phase and returns before the budget is evaluated, so no halt is taken and no S-4
-   reason is emitted on that entry.
+   (§6). **Not reached on an entry step 4 refuses** (clause 4): it returns before the budget is evaluated, so no halt and no S-4.
 
    **The zero-round budget halt has a report row, and it is row C** — the **third** dispatch-less row,
    stated cell by cell here as the catalogue requires of the REQ owning the condition, because the
@@ -226,8 +223,7 @@ state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-)entered. *Then
    `round` = **one past the highest round of this document type on the branch** (from the
    listing); `panel-shape`, `blocking`, `growth-bytes`,
    `classification` **empty**, nothing having been dispatched or measured; `notice` = this halt's
-   **S-4** reason, `; `-joined with any co-occurring reason in catalogue §3 precedence order. Rows B
-   and C are mutually exclusive: row B's entry takes no halt, row C's takes one;
+   **S-4** reason, `; `-joined with any co-occurring reason in catalogue §3 precedence order;
 
    **`forcePhases` does not grant a window; the clearance is the only route past the cap.**
    `forcePhases` overrides a **recorded approval** and nothing else (`CLAUDE.md`, *Entry (single
@@ -306,8 +302,12 @@ state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-)entered. *Then
    - the post-mortem file is **byte-unchanged**; *scoped to that file*, the entry's only effect is the S-16 notice on row B. It is no claim about the rest of the invocation;
    - the operator-facing text is **this refusal's own**, not step G's, which would state the opposite of the truth: step G refuses because the marker is *unresolved*, whereas step 4 fires
      on a post-mortem the operator **did** resolve. The ❌ phase row therefore reads `Refused — reset region corrupt at {path} ({reason})`, `{reason}`
-     being the S-16 reason, and the halt reason carried to the run report and the queue **names the sanctioned repair for that reason** (AC-1.5(4)'s repair table) instead of the shipped
-     generic (pinned above), which on this path reproduces the refusal on every iteration. `postmortemStatus` reads **`written`** on **both** row-B variants, and by a named mechanism: the refusal sets no `gatePostmortem` and attaches none to its thrown halt, so the halt catch's third branch (`orchestrate-dev.js:4890`–`:4901`) probes `POSTMORTEM-{haltPhase}-{feature}.md`, the file this refusal is *about*, which exists by the path's premise. That is the probe's sense — *this phase has a post-mortem* — not a claim this run wrote one, which the ❌ text carries. `none` is **rejected, not merely unreachable**: `:4922` emits `No POSTMORTEM was written.` on `none` alone, beside a ❌ row naming the post-mortem the operator hand-resolved; O-10 asserts that line **absent**. **Never** `unresolved` (step G's, via `gatePostmortem`), nor any value outside the shipped enum `none | unresolved | written | write_failed`.
+     being the S-16 reason, and the halt reason carried to the run report and the queue **names the sanctioned repair for that reason** (AC-1.5(4)'s repair table). **The shipped generic recovery line is
+     suppressed on both row-B variants — a stated change to shipped behaviour (O-13), not a substitution the code affords.** Pinned as its shipped bytes, prefix and terminator included:
+     `Recover: set the {feature} row in docs/_queue/QUEUE.md back to pending, then re-run the queue.` (`orchestrate-dev.js:4928` — not `:1795`'s different string). It is **not** step G's and is
+     guarded by nothing — a bare emit in the halt catch, on **every** halt class — and `haltReason` is a different channel, so writing a repair there removes nothing: unsuppressed the operator
+     reads both, the generic last, which on the corrupt-region variant reproduces the refusal every iteration and on the unconfirmable-append variant omits act 1. Suppression keeps the shipped
+     *exactly one recovery act per halt* (`:4925`–`:4926`), generalised to *whose text depends on the halt class*; O-13 owns the seam, O-10 asserts the pinned bytes **absent** from both reports. `postmortemStatus` reads **`written`** on **both** row-B variants, and by a named mechanism: the refusal sets no `gatePostmortem` and attaches none to its thrown halt, so the halt catch's third branch (`orchestrate-dev.js:4890`–`:4901`) probes `POSTMORTEM-{haltPhase}-{feature}.md`, the file this refusal is *about*, which exists by the path's premise. That is the probe's sense — *this phase has a post-mortem* — not a claim this run wrote one, which the ❌ text carries. `none` is **rejected, not merely unreachable**: `:4922` emits `No POSTMORTEM was written.` on `none` alone, beside a ❌ row naming the post-mortem the operator hand-resolved; O-10 asserts that line **absent**. **Never** `unresolved` (step G's, via `gatePostmortem`), nor any value outside the shipped enum `none | unresolved | written | write_failed`.
      These two strings are operator-facing renders of S-16, declared in §6; they are **not** new catalogue ids, and §6's **three** refusal-render rows are the closed list of strings this REQ mints;
    - the phase is **refused, not halted** — a *phase refusal* in the catalogue §1 sense, the same shape as step G's refusal of an unresolved post-mortem. *Returns* means **the phase does not run and
      the invocation terminates on step G's path**: a ❌ phase row is recorded, the pipeline stops, and the feature's `docs/_queue/QUEUE.md` row is rewritten to `halted` and committed — reached
@@ -415,9 +415,9 @@ called 0 times** (a count, not an absence — O-10) and no new cross-review file
 ## 6. Declared thresholds
 
 The shared table is `docs/_constraints/pdlc-rcv-baseline.md` §3. This REQ **owns** six of its rows
-and reads two more; it changes none of the others, and a threshold used here and absent there is a defect. **Four rows below sit deliberately outside baseline §3's scope and are not that defect:**
+and reads two more; it changes none of the others, and a threshold used here and absent there is a defect. **Four rows below sit outside baseline §3's scope deliberately, not by defect:**
 `budget-exhausted:` is a render fixed by catalogue §2, and the three refusal-render rows are
-non-catalogue operator strings this REQ alone owns. Both have a registered authority — the catalogue,
+non-catalogue operator strings this REQ alone owns — each with a registered authority, the catalogue
 or this table.
 
 | Name | Default | Owned / read | Note |
