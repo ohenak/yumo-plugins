@@ -87,4 +87,54 @@ it is the cheapest fix for F-24. Q-05 is carried unchanged.
 
 ## Recommendation
 
+**Needs revision**
+
+Four of the five v3 findings are closed, one of them (F-18) across the document boundary in the same
+change, which is the harder and better fix. What blocks approval is **one High and two Mediums**, and
+they are narrower than the count suggests: F-22 and F-23 are the same clause, and F-24 is one
+paragraph that can be shortened rather than lengthened.
+
+1. **F-22 (High)** — `postmortemStatus` still cannot read the value the REQ names, and the citation
+   points at the wrong site. `:5035`/`:5054` are the *default parameter* and the unconditional emit;
+   the halt catch always passes the field explicitly and decides it at `:4875`–`:4902`. On a
+   step-G-shaped refusal with `gatePostmortem` unset and nothing attached to the thrown error, branch
+   3 probes `docs/{feature}/POSTMORTEM-{haltPhase}-{feature}.md` — the file this refusal is about,
+   which exists by the path's premise — and yields **`written`**, exactly as the shipped comment at
+   `:4877`–`:4879` warns. Either name `written`, or state that the thrown halt carries
+   `postmortemStatus: "none"` so branch 2 decides it, and cite `:4883`/`:4890`.
+
+2. **F-23 (Medium)** — under `none`, `:4922`'s unconditional `emit("No POSTMORTEM was written.")`
+   fires, so the operator's report says no post-mortem was written directly beside a ❌ row naming the
+   post-mortem they resolved by hand. Say whether that line is expected or suppressed, and give O-10
+   the leg. Naming `written` in F-22 dissolves this one.
+
+3. **F-24 (Medium)** — the torn-write paragraph promises *"only the torn write needs an operator, and
+   it says so on the next entry"*, but a truncation landing inside the **value** (`WINDOW-START: 12`
+   → `WINDOW-START: 1`) is well-formed: it validates, balances the counts, **spends the one-shot
+   clearance**, and moves the window origin to the wrong round with no S-16 and no notice. A
+   truncation inside the key is not a region line at all and behaves as "nothing landed". Only the
+   lost-newline case produces the stated S-16. Enumerate the three, or take Q-04's route — a
+   confirmation read that validates the region it just wrote catches the first two on the confirming
+   entry and collapses the clause to two outcomes, which is *shorter* than the text it replaces.
+
+The two Lows are one line each: pin the shipped generic recovery string to its actual bytes and cite
+`:4928` rather than the comment at `:4926` (F-25), and budget the edit against 117 bytes of headroom
+(F-26).
+
+**On room.** F-26 is not decoration, but this round earned some credit: v1.4 landed two behaviours
+and a cross-document amendment at net −5 bytes. F-22 and F-25 are in-place substitutions, F-23 is one
+clause, and F-24's cheapest form removes text. The remaining slack is still O-10, which restates the
+mid-window fixture's provenance that AC-1.5(4) step 4 and R-11 both already state.
+
+Explicitly **not** filed, per §8 and DC-09: fixtures, seams, test levels and oracle wiring — O-10 and
+O-12 own them and, F-22 … F-24 aside, name the conjuncts that matter. Also not filed: anything in
+§1, §2, §3, §4, §7, §9 or §10, approved earlier and changed here only by the compression the
+disposition table records; §5's row B and §6's rows beyond the two clauses named above; and the
+catalogue amendment, which I checked and which is correct. Nothing in this review contests user need,
+priority, phasing, the choice of three rounds, or the reset-region design.
+
 ## Verdict
+
+VERDICT: Needs revision
+
+{"high": 1, "medium": 2, "low": 2}
