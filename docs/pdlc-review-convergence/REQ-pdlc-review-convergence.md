@@ -911,7 +911,7 @@ Receive side, total over every input — the anchor condition is stated **here**
 | Both anchors present at round N−1, both endpoints equal | **halt**, S-11 |
 | Both anchors present, either endpoint differs | no halt; the round proceeds and AC-4 classifies the growth from the same read |
 | Either anchor absent, unparseable, or duplicated with unequal values at round N−1 | the test is **not evaluated**; the round proceeds. Fail-**open**, deliberately: a missing anchor is evidence about the writer, not about the author, and must never manufacture a halt |
-| N = 1, or `N − 1 < W` — round N is the first round of a window | not evaluated — there is no predecessor **in this window**. An operator who resets without revising the document is exercising the escape hatch deliberately; halting the fresh window on its first round would spend a reset on zero rounds (TE v4 F-04) |
+| N = 1, or `N ≤ W` — round N is the first round of a window | not evaluated — there is no predecessor **in this window**. An operator who resets without revising the document is exercising the escape hatch deliberately; halting the fresh window on its first round would spend a reset on zero rounds (TE v4 F-04). The document is not thereby exposed to a lone verifier: round `W` is a **full-panel** round (AC-3.1), so a reset without revision is read cold by two reviewers rather than waved through by one (TE v5 F-03) |
 
 **What the run report shows for the undispatched round.** Round N produces no cross-review files, so
 `panel-shape` and `blocking` have no source at all (SE v4 G-02). `growth-bytes` and `classification`
@@ -926,8 +926,10 @@ N**, and that row is fixed here: `round` = N, `panel-shape`, `blocking`, `growth
 evidence that the *author* did nothing as evidence that the *reviewers* crashed. Empty cells say
 "not run", which is what happened. O-10 asserts this row.
 
-**Clearing an S-11 halt does not consume the operator's reset** — AC-1.5(5). The halt is an authoring
-failure, and the window it interrupted resumes with the rounds it had already spent still spent.
+**Clearing an S-11 halt resumes the window rather than resetting it** — AC-1.5(5). The halt is an
+authoring failure: the origin `W` does not move and the rounds already spent stay spent, but the
+clearance **is** answered, by a `WINDOW-RESUMED: {W}` line (S-14). Leaving it unanswered, as v1.3 did,
+banked a free window for the next halt of any kind (SE v5 G-10, TE v5 F-01).
 
 **Why the byte length alone is not the test.** Two different revisions of the same length are possible
 and a halt on that evidence would be wrong. The SHA-256 endpoint is what makes the test exact, and it
@@ -1401,7 +1403,7 @@ module. Changing the pacing contract changes this classification with it, delibe
 same quantity and must not drift apart into two numbers.
 
 **AC-4.5 — Unmeasurable growth fails safe to the full panel, and says which case it was.**
-*Who:* the review loop. *Given:* the growth into round N ≥ 2 is unmeasurable in one of the four ways
+*Who:* the review loop. *Given:* the growth into a round `N > W` is unmeasurable in one of the four ways
 AC-4.1 enumerates. *When:* round N's panel is selected. *Then:* the **full panel** is dispatched
 and the run report carries the **S-6 notice** `growth-unmeasurable: {reason}` with the matching
 closed-enum reason and the round it applied to. Failing safe here means failing *toward more review*,
@@ -1432,8 +1434,8 @@ the run report. *Then:* it carries **one row per round**, with exactly these col
 | `round` | the round index N |
 | `panel-shape` | the on-disk role-slug set at that round (§5), or `crashed` |
 | `blocking` | `blocking(N)`, or `unavailable`, or `malformed` |
-| `growth-bytes` | the signed integer growth into that round, or empty for round 1 and for an unmeasurable boundary |
-| `classification` | `new-mechanism`, `incremental`, or `unmeasurable` (AC-4.2); empty for round 1 |
+| `growth-bytes` | the signed integer growth into that round, or empty for **the first round of a window** (round 1, or round `W` after a reset — AC-4.1) and for an unmeasurable boundary |
+| `classification` | `new-mechanism`, `incremental`, or `unmeasurable` (AC-4.2); empty for the first round of a window |
 | `notice` | a **possibly-empty, ordered list** of S-3 … S-6 and S-11 notices, rendered as a `; `-separated string in the precedence order below |
 
 **The AC-2.8 halt row is the one row with no dispatch behind it.** A round halted at open by AC-2.8 was
