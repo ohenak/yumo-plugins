@@ -47,6 +47,12 @@ halt path — and this time the emit is **unconditional**, so there is no value 
 
 ## 4. Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | F-01 asks the document to choose between suppressing `:4928`'s emit and admitting it. My reading of the intent is suppression, but suppression is a change to a line the shipped comment calls *"exactly ONE recovery act"* — i.e. deliberate, load-bearing, and shared by every halt class in the pipeline. Is the intent that this REQ changes that shipped invariant (one recovery act per halt, always the queue reset) into *one recovery act per halt, whose text depends on the halt class*? That is a defensible and probably correct generalisation, but it is a **cross-cutting** change and it is not what §6's *"on this path only"* currently says. If yes, say it once at the top of §6 rather than as a per-row exception. |
+| Q-02 | Carried from v3 and v4, still unanswered, and the clause that pointed at the dependant was deleted this round: is `W` guaranteed to appear on **no** operator-visible or downstream-visible surface on a refusing entry? `pdlc-rcv-fixed-point-stop` states both its tests over `W`. |
+| Q-03 | Carried from v3 and v4: was a single in-entry retry of the confirmation read considered and rejected? The byte comparison strictly widens the set of inputs that take the unattended-queue halt, so the unrecorded rationale now covers more ground than it did when I first asked. |
+
 ## 5. Positive Observations
 
 ## 6. Recommendation
