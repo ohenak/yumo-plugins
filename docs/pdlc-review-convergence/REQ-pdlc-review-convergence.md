@@ -763,19 +763,34 @@ findings; AC-4 stops a genuinely large revision from slipping past a verifier th
 read it cold.
 
 **AC-4.1 — Growth is measured per round, from a durable in-file anchor.**
-*Who:* the review loop. *Given:* a review-loop phase other than Phase CR. *When:* round N is opened.
-*Then:* the loop reads the reviewed document's byte length through the injected reader (M-5c) and
-**writes it into every cross-review file of round N as a `DOC-BYTES: {n}` anchor line** (S-2), in the
-same anchor block and by the same writer as `APPROVAL-HASH:` / `REVIEWED-COMMIT:` and
-`REVIEW-MODE:` (M-4a, M-4b). **Round growth** for the boundary between rounds N and N+1 is then
+*Who:* the review loop. *Given:* a review-loop phase other than Phase CR. *When:* round N's reviewers
+have returned — **before** AC-2 is evaluated, and regardless of the round's verdict. *Then:* the loop
+**writes a `DOC-BYTES: {n}` anchor line into every cross-review file of round N** (S-2), where `n` is
+the byte length the loop read through the injected reader (M-5c) **at round-open**, at the same instant
+`t0` at which AC-3.5 captures the document for `APPROVAL-HASH:`.
+
+**The read instant and the persist instant are deliberately different.** `n` describes the bytes the
+round's reviewers were actually given, so it must be read before they are dispatched; the round's files
+do not exist until they return, so it cannot be written until after. v1.1 collapsed the two into
+"when round N is opened", which asked for a write into files that did not yet exist (SE F-01, TE F-01).
+
+**The writer runs on every round.** `appendApprovalAnchors` is the *approving-round* writer — it runs
+only inside the gate-pass branch — and remains solely responsible for `APPROVAL-HASH:`,
+`REVIEWED-COMMIT:` and `REVIEW-MODE:`. `DOC-BYTES:` is written by an **unconditional sibling writer**
+that runs on the failing and approving path alike, appending to the same anchor block and under the
+same idempotence and multi-line rules (M-4a, M-4b). This separation is the whole of the fix: a failing
+round is the only kind of round whose growth AC-4 ever classifies, so a writer that skips failing
+rounds writes the anchor exactly when it is never needed and never when it is (SE F-01, TE F-01).
+
+**Round growth** is measured across the boundary between rounds N−1 and N:
 
 ```
-growth = DOC-BYTES(round N+1) − DOC-BYTES(round N)
+growth = DOC-BYTES(round N) − DOC-BYTES(round N−1)
 ```
 
-read from those two anchors on the branch. The measurement is taken at a **round boundary**, after the
-optimizer episode for round N has returned — the single boundary §4.7 also names — so it does not
-depend on whether a partial write is visible on disk mid-dispatch.
+Both endpoints are **in the past** when round N+1's panel is selected, so AC-4.2 reads only anchors
+that already exist on the branch. v1.1's formula reached forward to `DOC-BYTES(round N+1)` to choose
+round N+1's own panel, a value living in files that round N+1's dispatch creates — circular as stated.
 
 **The anchor exists because the in-memory endpoint does not survive an invocation.** v1.0 defined both
 endpoints as in-process `_readFile` results with no durable home, and the loop re-derives its state
