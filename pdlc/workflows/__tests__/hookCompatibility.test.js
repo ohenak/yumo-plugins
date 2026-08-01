@@ -284,3 +284,88 @@ describe("C7: hooks.json registers check-workflow-drift.sh as a second SessionSt
     );
   });
 });
+
+// ─── PROP-COMPAT-06: check-req-size.sh soft threshold ────────────────────────
+//
+// R-5 of POSTMORTEM-R-pdlc-rcv-budget-stop: proximity to the size budget must be
+// reported at authoring time, not filed as a Low at review time. The hook warns at
+// 90% of each hard limit (630 lines / 55296 bytes) and names relocation to
+// docs/_constraints/ as the remedy; the hard-limit behaviour is unchanged.
+
+describe("PROP-COMPAT-06: check-req-size.sh warns at the 90% soft threshold", () => {
+  const CHECK_REQ_SIZE_SCRIPT = join(HOOKS_DIR, "check-req-size.sh");
+
+  let tmpDir;
+
+  beforeEach(() => {
+    tmpDir = mkdtempSync(join(tmpdir(), "pdlc-compat-06-"));
+  });
+
+  afterEach(() => {
+    try {
+      rmSync(tmpDir, { recursive: true, force: true });
+    } catch {
+      // best-effort cleanup
+    }
+  });
+
+  /**
+   * Writes a REQ fixture of `lines` lines, each `width` bytes wide including its newline.
+   * @returns {string} absolute path to the fixture
+   */
+  function writeReq(name, lines, width) {
+    const file = join(tmpDir, name);
+    writeFileSync(file, ("y".repeat(width - 1) + "\n").repeat(lines));
+    return file;
+  }
+
+  /** Runs the hook over `file` and returns its advisory text ("" when silent). */
+  function advisoryFor(file) {
+    const { exitCode, stdout } = runHookScript(
+      CHECK_REQ_SIZE_SCRIPT,
+      JSON.stringify({ tool_input: { file_path: file } }),
+      { cwd: tmpDir }
+    );
+    // The hook is advisory: it never blocks.
+    expect(exitCode).toBe(0);
+    if (stdout.trim() === "") return "";
+    return JSON.parse(stdout).hookSpecificOutput.additionalContext;
+  }
+
+  (hasBash ? it : it.skip)("is silent below both soft thresholds", () => {
+    // 630 lines x 80 bytes = 50,400 bytes — exactly at the soft line threshold, under it in bytes.
+    expect(advisoryFor(writeReq("REQ-under.md", 630, 80))).toBe("");
+  });
+
+  (hasBash ? it : it.skip)(
+    "warns and names docs/_constraints/ when the soft line threshold is exceeded",
+    () => {
+      // 640 lines x 80 bytes = 51,200 bytes — over 630 lines, under both hard limits.
+      const msg = advisoryFor(writeReq("REQ-softlines.md", 640, 80));
+      expect(msg).toContain("640 lines");
+      expect(msg).toContain("90%");
+      expect(msg).toContain("docs/_constraints/");
+      // Not the hard-limit message.
+      expect(msg).not.toContain("Split it into phased REQs");
+    }
+  );
+
+  (hasBash ? it : it.skip)(
+    "warns when the soft byte threshold is exceeded even with few lines",
+    () => {
+      // 300 lines x 190 bytes = 57,000 bytes — over 55,296 bytes, under 61,440.
+      const msg = advisoryFor(writeReq("REQ-softbytes.md", 300, 190));
+      expect(msg).toContain("57000 bytes");
+      expect(msg).toContain("docs/_constraints/");
+      expect(msg).not.toContain("Split it into phased REQs");
+    }
+  );
+
+  (hasBash ? it : it.skip)("keeps the hard-limit message unchanged", () => {
+    // 720 lines x 100 bytes = 72,000 bytes — over both hard limits.
+    const msg = advisoryFor(writeReq("REQ-hard.md", 720, 100));
+    expect(msg).toContain("over the REQ size budget");
+    expect(msg).toContain("Split it into phased REQs");
+    expect(msg).not.toContain("90%");
+  });
+});
