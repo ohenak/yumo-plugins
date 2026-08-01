@@ -9,8 +9,9 @@ depends-on: [pdlc-rcv-budget-stop]
 | Field | Value |
 |---|---|
 | Shared baseline | `docs/_constraints/pdlc-rcv-baseline.md` — the measured run, the non-convergence analysis, the measured facts `M-*`, the declared thresholds and the shared non-goals `N-*`. **Read it first.** Facts are cited by id (`M-6a`) and are not restated here. |
+| Shared catalogue | `docs/_constraints/pdlc-rcv-catalogue.md` — the family vocabulary (§1), the closed catalogue `S-1 … S-17` (§2) and the run-report row schema (§3). Terms and ids are used by reference and never restated. |
 | Predecessor | `docs/pdlc-review-convergence/REQ-pdlc-review-convergence.md` v1.8 (**superseded 2026-08-01**) — this REQ carries its REQ-RCV-05 and REQ-RCV-06 unchanged in substance. |
-| Siblings | `docs/pdlc-rcv-budget-stop/REQ-pdlc-rcv-budget-stop.md` (REQ-RCV-01, REQ-RCV-02) — **the dependency**; `docs/pdlc-rcv-panel-topology/REQ-pdlc-rcv-panel-topology.md` (REQ-RCV-03, REQ-RCV-04) |
+| Siblings | `docs/pdlc-rcv-budget-stop/REQ-pdlc-rcv-budget-stop.md` (REQ-RCV-01) — **the dependency**; `docs/pdlc-rcv-fixed-point-stop/REQ-pdlc-rcv-fixed-point-stop.md` (REQ-RCV-02); `docs/pdlc-rcv-panel-topology/REQ-pdlc-rcv-panel-topology.md` (REQ-RCV-03, REQ-RCV-04) |
 | Upstream | `docs/completed/pdlc-review-loop-hardening/POSTMORTEM-R-pdlc-review-loop-hardening.md` (v1.0) root cause 1 and recommendations R-5, R-6; operator direction of 2026-07-29 |
 | Downstream | `FSPEC-pdlc-rcv-finding-quality.md` |
 | Targets | a new library under `pdlc/workflows/lib/`; the three review SKILLs (`pm-review`, `se-review`, `te-review`) and the three author SKILLs (`pm-author`, `se-author`, `te-author`). **No change to `pdlc/workflows/orchestrate-dev.js` is required by AC-6**; AC-5.4's extraction is the one loop-side change. |
@@ -63,23 +64,26 @@ hand, with an exit code and a list of bad citations.
 
 | # | Owed by | What this REQ needs | Behaviour until it ships |
 |---|---|---|---|
-| **X-04** | `pdlc-rcv-budget-stop` (the `depends-on`) | AC-5.5 states that `## Measurement Required` is **not** part of the cross-review completeness criterion, and that criterion is *"the trailing `## Verdict` section and its single `VERDICT:` line, plus the count trailer"*. The trailer clause is `pdlc-rcv-panel-topology` AC-3.4's; the reader that consumes it is `pdlc-rcv-budget-stop` AC-2.7(b). | AC-5.5's exclusion is stated over whatever the criterion is at the time, and is unaffected by either. The dependency on `pdlc-rcv-budget-stop` exists so the three documents share one definition of *unavailable* / *malformed* and one report surface, **not** because any AC here reads the window, the anchors or the panel. |
+| **X-04** | `pdlc-rcv-budget-stop` (the `depends-on`) | AC-5.5 states that `## Measurement Required` is **not** part of the cross-review completeness criterion, and that criterion is *"the trailing `## Verdict` section and its single `VERDICT:` line, plus the count trailer"*. The trailer clause is `pdlc-rcv-panel-topology` AC-3.4's; the reader that consumes it is `pdlc-rcv-fixed-point-stop` AC-2.7(b). | AC-5.5's exclusion is stated over whatever the criterion is at the time, and is unaffected by either. The dependency on `pdlc-rcv-budget-stop` exists so the family shares one definition of *unavailable* / *malformed* (`docs/_constraints/pdlc-rcv-catalogue.md` §1) and one report surface (§3), **not** because any AC here reads the window, the anchors or the panel. |
 
 **This REQ is otherwise independent.** AC-5 is a SKILL change plus a section extraction; AC-6 is a standalone library and CLI with no caller inside the runtime bundle. Neither reads
 `W`, the reset region, the anchors, or the panel shape.
 
 ## 4. This REQ's share of the closed catalogue
 
-DC-01 requires every string crossing a component boundary to be a **closed catalogue on the emitting side and a total function on the receiving side, before FSPEC authoring**. This REQ
-owns **one** id; `pdlc-rcv-budget-stop` owns S-3 … S-5, S-11 … S-16 and `pdlc-rcv-panel-topology` owns S-1, S-2, S-8, S-9, S-10, S-17. **FSPEC may not add a second here without amending
-this table.**
+The family's closed catalogue lives in `docs/_constraints/pdlc-rcv-catalogue.md` §2, and its
+vocabulary in §1; neither is restated here. This REQ **owns exactly one** of the seventeen ids —
+**S-7**, the section heading `## Measurement Required`, emitted by the three review SKILLs and the
+verifier (AC-5.2) and consumed by AC-5.4's extraction. Its receive side is total on every input,
+which is why nothing downstream of the extraction is gated: absent or empty contributes nothing
+and is never an error; an unparseable body is carried **verbatim** into the report under its round
+and role; two or more such sections in one file are concatenated in document order. **FSPEC may not
+add an eighteenth id to the catalogue.**
 
-| id | Exact string | Emitter | Receiver | Receiver is total because |
-|---|---|---|---|---|
-| **S-7** | Section heading `## Measurement Required`, exactly | the three review SKILLs, and the verifier (AC-5.2) | AC-5.4's extraction | AC-5.5 states every input: absent ⇒ contributes nothing, never an error; present but empty ⇒ contributes nothing; present with a body the loop cannot parse into items ⇒ the body is carried **verbatim** into the report under its round and role, never dropped and never an error; two or more such sections in one file ⇒ their bodies are concatenated in document order. There is no input on which extraction fails, because nothing downstream of it is gated |
-
-**AC-6's citation grammar is a second closed catalogue, of a different kind** — it classifies *tokens inside a reviewed document*, not strings crossing a component boundary — and is
-fixed in AC-6.4 as C-1 … C-4 with a total, accumulating receive side. It is named here so a reader looking for this REQ's catalogues finds both.
+**AC-6's citation grammar is a second closed catalogue, of a different kind** — it classifies
+*tokens inside a reviewed document*, not strings crossing a component boundary — and is fixed in
+AC-6.4 as C-1 … C-4 with a total, accumulating receive side. It is named here so a reader looking
+for this REQ's catalogues finds both.
 
 ## 5. Acceptance criteria
 

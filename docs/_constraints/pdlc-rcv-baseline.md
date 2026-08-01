@@ -9,7 +9,7 @@
 > **This is a read-only reference, not a reviewed pipeline artifact.** It is not a REQ, it is not an
 > FSPEC input in its own right, no cross-review is written against it, and nothing in the pipeline
 > gates on it. Cite it; do not re-litigate it here. Its successors —
-> `docs/pdlc-rcv-budget-stop/`, `docs/pdlc-rcv-panel-topology/`, `docs/pdlc-rcv-finding-quality/` —
+> `docs/pdlc-rcv-budget-stop/`, `docs/pdlc-rcv-fixed-point-stop/`, `docs/pdlc-rcv-panel-topology/`, `docs/pdlc-rcv-finding-quality/` —
 > are the documents that carry acceptance criteria and are reviewed.
 
 | Field | Value |
@@ -104,7 +104,7 @@ Not defects in themselves, but load-bearing for the fix:
 | Requirement | Change | Attacks | Carried by |
 |---|---|---|---|
 | REQ-RCV-01 | Round cap 5 → 3, absolute per document | P-1 (bounds the damage), P-2 | `pdlc-rcv-budget-stop` |
-| REQ-RCV-02 | Enforced fixed-point stop, computed from the reviewers' own count trailers | P-2 | `pdlc-rcv-budget-stop` |
+| REQ-RCV-02 | Enforced fixed-point stop, computed from the reviewers' own count trailers | P-2 | `pdlc-rcv-fixed-point-stop` |
 | REQ-RCV-03 | Round 1 dual-adversarial; later rounds a single verifier in disposition-check mode | P-1, §1.3 | `pdlc-rcv-panel-topology` |
 | REQ-RCV-04 | Revision-size bound: measure per-round byte growth; large growth re-escalates the panel | P-1 | `pdlc-rcv-panel-topology` |
 | REQ-RCV-05 | Measurement-required routing: such findings are non-blocking and carried to the report | P-3 | `pdlc-rcv-finding-quality` |
