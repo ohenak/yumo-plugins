@@ -53,7 +53,74 @@ design instead of completing it.
 
 ## 3. Requirements
 
-_(authored below — see §3.1–§3.6)_
+### REQ-RTCACHE-01 — Correctness bound: a cache never serves bytes that differ from disk (P0)
+
+**Source:** US-01, US-03.
+
+- **Who:** any workflow module calling the injected `_readFile`.
+- **Given:** `rtReadFile(path)` previously returned content for `path` in this
+  invocation, and the file at `path` **may have been mutated since** — including
+  by a **dispatched agent's own tools**, outside the adapter's write seam
+  (reviewer and author skills write `CROSS-REVIEW-*` and spec files themselves;
+  the adapter never sees those writes).
+- **When:** `_readFile(path)` is called again.
+- **Then:** the returned content is byte-identical to the file on disk at the
+  time of this call. A cached entry may be served **only** after the adapter has
+  positively established the file is unchanged (see RT_REVALIDATION_PROBE, §6);
+  any doubt — probe mismatch, probe failure, unparseable probe reply — falls
+  back to a full verified chunked read. Fail open to re-reading, never to stale
+  bytes.
+
+This is the load-bearing criterion: `isComplete`, `extractFileVerdict`,
+`deriveRoundWindow` inputs and approval anchors are all computed from these
+bytes, and a stale serve would corrupt gating decisions silently.
+
+### REQ-RTCACHE-02 — Repeated read of an unchanged file costs at most one IO agent (P1)
+
+**Source:** US-01, US-02.
+
+- **Who:** the operator paying for / observing the run.
+- **Given:** a file was fully read once in this invocation and has not changed.
+- **When:** any later `_readFile(path)` call in the same invocation asks for it.
+- **Then:** at most **one** IO agent is dispatched (the revalidation probe, §6)
+  — never the size-probe + chunk fan-out. For the measured floor in §1, the
+  three re-reads collapse from ≥21 chunk agents to 2 probe agents.
+
+### REQ-RTCACHE-03 — Adapter-seam writes invalidate before they return (P0)
+
+**Source:** US-03.
+
+- **Who:** any workflow module calling the injected `_writeFile` (or the
+  append-style write, `runtime-adapter.js:316`).
+- **Given:** a cached entry exists for `path`.
+- **When:** the adapter writes or appends to `path`.
+- **Then:** the entry for `path` is invalidated **before** the write call
+  resolves, so a read racing in after the write can never observe the
+  pre-write cache.
+
+### REQ-RTCACHE-04 — Cache lifetime is one workflow invocation (P0)
+
+**Source:** US-03.
+
+- **Who:** an operator resuming a run (`resumeFromRunId`) or re-invoking after
+  a halt.
+- **Given:** a prior invocation cached content.
+- **When:** a new invocation (or resume) starts.
+- **Then:** it starts with an empty cache — no persistence to disk, no sharing
+  across invocations. (Resume replay of completed `agent()` calls is the host
+  runtime's concern and is unaffected: the cache lives in script memory and is
+  rebuilt as replayed reads complete.)
+
+### REQ-RTCACHE-05 — Cache-hit observability (P2)
+
+**Source:** US-02.
+
+- **Who:** the operator watching `/workflows`.
+- **Given:** a `_readFile` call is served from cache.
+- **When:** the call completes.
+- **Then:** a `log()` line records the hit (`path`, agents avoided), so the
+  cheapness of a repeated read is visible in the run narration rather than
+  inferable only from the absence of chunk agents.
 
 ## 4. Scope
 
