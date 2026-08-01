@@ -156,6 +156,119 @@ It is the doc-type-scoped reading, because a window is a property of a document.
 
 ## 5. Acceptance criteria
 
+One requirement. Every acceptance criterion is in Who/Given/When/Then form over an in-band
+observable named in baseline §2.
+
+---
+
+### REQ-RCV-07 — The reset region validates, refuses and is repaired
+
+**Priority:** P0 · **Source:** US-04, US-07, US-08 · **Depends on:** BL-14, BL-06, BL-15
+
+**AC-7.1 — The region is read by one ordered algorithm, total and single-valued.** *Who:* the review
+loop. *Given:* the `## Reset Region` span of `POSTMORTEM-{phase}-{feature}.md` for the document type
+under review (S-12), and the doc-type-filtered cross-review basenames on the branch. *When:* the
+origin `W` and the clearance gate's third conjunct — *the region validates* (`REQ-RCV-01`
+AC-1.5(4)) — are resolved. *Then:* the loop runs **these five steps in this order**, and the
+predicate is exactly *"steps 1–3 all pass"*:
+
+1. **Collect.** Take every `HALT-REASON:` (S-15), `WINDOW-START:` (S-13) and `WINDOW-RESUMED:` (S-14)
+   line in the region, **in document order**, giving the counts `H` = the `HALT-REASON:` lines and
+   `A` = the `WINDOW-START:` **plus** `WINDOW-RESUMED:` lines. No other line in the span is collected;
+   a `RESOLVED:` line is never a region line and is never counted (catalogue §1).
+2. **Validate every answering line's value.** A `WINDOW-START:` value is valid iff it is a decimal
+   integer ≥ 1, **strictly greater than every `WINDOW-START:` value before it**, and **no greater than
+   one past the highest round on the branch**. A `WINDOW-RESUMED:` value is valid iff it is a decimal
+   integer ≥ 1 **equal to the greatest `WINDOW-START:` value before it**, or to 1 if there is none.
+3. **Validate the two counts against each other:** `H − A` must be **0 or 1**. `A > H` means more
+   clearances have been answered than halts have been taken, which only a hand-edit produces, since
+   the loop writes at most one answering line per halt; `A < H − 1` means a halt is recorded whose
+   clearance no line answers, reachable only if a line was removed. Both are corruption of the
+   **counts**, not of a value.
+4. **If any line fails step 2, or the counts fail step 3 ⇒ `W` = 1, fail-closed.** No reset is
+   honoured, **no answering line is written and the clearance is not consumed**, and the run report
+   emits `reset-region-corrupt: {reason}` (S-16) naming the file and, per reason, the offending
+   **line** or the pair `H`/`A`. **Exactly one S-16 notice is emitted, whatever the fault count:**
+   `{reason}` belongs to the **first failing line in document order**, and `counts-mismatch` only when
+   every line passes step 2, so two notices never co-occur in the row's `; `-joined `notice` cell. The
+   entry then **refuses the phase and returns** (AC-7.2), reporting row B's validation-failure variant
+   (AC-7.6).
+5. **Otherwise `W` = the greatest `WINDOW-START:` value present, or 1 if there is none** — read
+   **after** any answering line this entry confirmed (AC-7.5), so on a granting entry step 5 and
+   `REQ-RCV-01` AC-1.5(4)'s `N` agree. **The grant is part of this algorithm, not a rule beside it.**
+
+**Why ordered rather than independent rows.** DC-01 requires the receive side to be **total and
+single-valued**. Steps 2 and 3 partition the failure space — a value fault and a count fault are
+disjoint by step 4's own rule — and step 5 is defined only on the passing branch, so exactly one of
+{`W` = 1 + refusal, `W` = greatest} is produced on every input, including the empty region
+(`H = A = 0`, both steps vacuous, `W` = 1, **no** refusal: an empty region is valid, not corrupt).
+
+**`H − A ≤ 1` is the invariant `REQ-RCV-01` AC-1.5(4)'s *exactly one answering line* relies on, and
+step 3 gives it a stated domain.** Validating rather than assuming matters because on two
+`HALT-REASON:` lines and no answering line **every value-level check passes vacuously**: without step
+3 the loop would grant `H − A − 1` windows beyond the one paid for, every invocation, fail-**open**.
+Symmetrically, a region that fails step 2 or 3 must not spend the clearance — validation is a
+**conjunct of the gate**, not merely a constraint on `W`. Without that, two `HALT-REASON:` lines and
+one *invalid* `WINDOW-START:` give `A < H`, so the loop would write an answering line and consume the
+clearance while `W` is still 1 — permanently.
+
+**Step 2 is order-sensitive, and the append rule is therefore normative.** It reads what comes
+*before* each line. Under a prepending implementation a `WINDOW-RESUMED: 4` can land ahead of the
+`WINDOW-START: 4` it answers, failing step 2 ⇒ `W` = 1 permanently: `REQ-RCV-01` AC-1.4 clause 1
+preserves the region verbatim on every later halt, so no clearance repairs it.
+
+**Step 2's range check is re-evaluated on every read, against the current listing,** not fixed at
+write time. `harvest-learnings` deletes `CROSS-REVIEW-*` and `POSTMORTEM-*` together, so the ordinary
+path never sees a region outliving its rounds; a sequence that removes the cross-reviews while the
+post-mortem survives lands in the fail-closed case — S-16, sanctioned repair, no clearance spent.
+
+**AC-7.2 — A refusal is not a halt, and it terminates on step G's path.** *Who:* the review loop.
+*Given:* an entry on which step 4 fires. *When:* the phase would otherwise have been entered.
+*Then:* the entry **refuses the phase** — a *phase refusal* in the catalogue §1 sense, the same shape
+as the shipped refusal of an unresolved post-mortem — and specifically:
+
+- the entry **takes no halt**: it does not evaluate `REQ-RCV-01` AC-1.5(1)'s budget, writes **no
+  `HALT-REASON:` line**, writes no post-mortem, and AC-1.4 does not fire, so `H` is unchanged;
+- the operator's `RESOLVED:` marker is **left in place**, unstripped, so `checkPostmortem` still reads
+  `resolved` on the next entry (M-7a);
+- on the **validation-failure** variant the post-mortem file is **byte-unchanged**; *scoped to that
+  file*, the entry's only effect is the S-16 notice on row B. **This invariant does not hold on the
+  unconfirmable-append variant** (AC-7.5), where a partial append may have landed;
+- **the phase does not run and the invocation terminates on step G's path**: a ❌ phase row is
+  recorded, the pipeline stops, and the feature's `docs/_queue/QUEUE.md` row is rewritten to `halted`
+  and committed — reached *because* the refusal is step-G-shaped (M-7a, M-7b; O-6), where a literal
+  early `return` would not be, since the entry-validation halts nearby build their final report
+  directly and never call the queue-row writer (M-8a, M-7b). That is intended: the region needs an
+  operator, and an unattended queue must stop.
+
+**Why the whole of `REQ-RCV-01` AC-1.5 must not run on.** Left running, AC-1.5(1) would halt on the
+budget path, and AC-1.4 governs **every** halt, so that halt would append its own `HALT-REASON:`
+(`H += 1`) **and strip the operator's `RESOLVED:`** — spending the clearance the refusal declined to
+spend, and converting a repairable region into an unrepairable one.
+
+**The shipped generic recovery line is suppressed on both row-B variants.** That is a **stated change
+to shipped behaviour, not a substitution the code affords** (O-6). Three measured facts decide it and
+this REQ asserts nothing beyond them: the line is a **bare, unguarded `emit`** in the halt catch,
+firing on **every** halt class that reaches it (M-8d); the halt-reason channel and that `emit` are
+**disjoint** (M-8b), so writing a repair into `haltReason` removes nothing and the operator reads
+both, the generic last; and the only other `Recover:` string in the module is a **different** string
+on the halt-reason channel (M-8e), so it is not what is suppressed. Unsuppressed, the generic
+reproduces the refusal every iteration on the validation-failure variant and omits act 1 on the
+unconfirmable-append one. Suppression keeps the shipped *exactly one recovery act per halt*,
+generalised to *whose text depends on the halt class*; **every other halt class keeps the line
+unchanged** — and the four **entry-validation** halts never reached it in the first place (M-8a).
+
+**`postmortemStatus` reads `written` on both row-B variants, by a named mechanism.** The refusal sets
+no gate disposition and attaches none to its thrown halt, so the four-way first-match-wins chain
+(M-8f) falls through to the existence probe (M-8g: exactly one site in the module attaches a
+disposition, and it is not this one), which finds `POSTMORTEM-{haltPhase}-{feature}.md` — the file
+this refusal is *about*, which exists by the path's premise. That is the probe's sense — *this phase
+has a post-mortem* — not a claim this run wrote one, which the ❌ text carries. The probe degrades
+only towards `none`, never towards `written` (M-8i). **`none` is rejected, not merely unreachable**:
+it is the sole trigger of the shipped `No POSTMORTEM was written.` line (M-8c), which would appear
+beside a ❌ row naming the post-mortem the operator hand-resolved. Never `unresolved` (that is step
+G's), nor any value outside the shipped enum `none | unresolved | written | write_failed` (M-8f).
+
 ## 6. Declared thresholds
 
 ## 7. Non-goals and out of scope
