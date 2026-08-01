@@ -83,4 +83,48 @@ will have to decide, and deciding them here costs one clause each.
 
 ## Recommendation
 
+**Needs revision**
+
+Four of the five v2 findings are closed and the fifth is three-quarters closed. What blocks approval is
+**one High and one Medium**, and both live in the same two paragraphs of AC-1.5(4) — the paragraphs
+this round rewrote. Neither needs a decision about behaviour; both are about naming the thing the
+behaviour already is.
+
+1. **F-17 (High)** — `postmortemStatus` cannot read `resolved`, and it cannot be unset. The shipped
+   enum is `none | unresolved | written | write_failed` and `buildFinalReport` defaults the field to
+   `"none"` and always emits it, deliberately, because `RLH-AT-46` reads that fact. As written, O-10's
+   oracle is unwritable, and the only assertion derivable from the clause is `!== "unresolved"` — the
+   absence-only oracle this clause was added to retire. Name the shipped value the refusal path leaves
+   the field at (on that path `gatePostmortem` is unset and no post-mortem is written, so it is
+   `"none"`), or register a new one in §6 and say what sets it. **One word, plus deleting "or is
+   unset".**
+
+2. **F-18 (Medium)** — say which row the unconfirmable-append entry emits, in a way that does not
+   define row B twice. Row B's own cell says `notice` = S-16 alone; the new clause says row B with an
+   empty `notice`; O-10 asserts both, character for character. Catalogue §3 independently keys row B to
+   a **failed-validation** region and counts exactly **three** dispatch-less rows, so this entry is not
+   row B on the catalogue's own definition. Either widen row B's `notice` cell to the two-path form and
+   amend the catalogue's row-B key, or give the variant its own row id and amend the catalogue's count.
+   Either way, O-10 must say which entry class each character-for-character assertion belongs to.
+
+The three Lows are one line each and none needs a decision: fix the "no other new string is minted"
+count against §6's three rows (F-19), state AC-1.2's observable and give it a home in O-10 (F-20), and
+budget the edit against 112 bytes of headroom (F-21).
+
+**On room.** F-21 is not decoration. At 61,328 of 61,440 bytes, the fixes above have to be made *in
+place*: F-17 is a word, F-19 a phrase, and F-18 is cheapest as an amendment to row B's existing
+`notice` cell rather than a new paragraph. The one place a few hundred bytes are still recoverable is
+O-10, which now restates the mid-window fixture's synthetic provenance that AC-1.5(4) step 4 and R-11
+both already state.
+
+Explicitly **not** filed, per §8 and DC-09: fixtures, seams, test levels and oracle wiring — O-10 and
+O-12 own them and, F-17 and F-18 aside, now name the conjuncts that matter. Also not filed: anything in
+§1, §2, §3, §4, §9 or §10, approved at v1 and changed here only by the compression the disposition
+table records; and nothing in §5, §6 or §7 beyond the counts I re-derived. Nothing in this review
+contests user need, priority, phasing, the choice of three rounds, or the reset-region design.
+
 ## Verdict
+
+VERDICT: Needs revision
+
+{"high": 1, "medium": 1, "low": 3}
