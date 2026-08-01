@@ -136,6 +136,13 @@ const RT_READ_RETRIES = 3;
 const RT_HEX64_RE = /\b[0-9a-f]{64}\b/;
 const RT_CHUNK_BEGIN = "__PDLC_CHUNK_BEGIN__";
 const RT_CHUNK_END = "__PDLC_CHUNK_END__";
+// Appended by the CHUNK COMMAND itself (not by the model), so the payload's
+// final bytes — including trailing blank lines, which a model collapses when
+// they sit against a sentinel it writes — are interior to tool output the
+// model copies verbatim. Live failure: a chunk whose last line was blank
+// failed all 4 attempts with byte-perfect payloads short one newline
+// (run wf_c6751860-d4a).
+const RT_CHUNK_EOF = "__PDLC_CHUNK_EOF__";
 // Both platforms' hashers, first one wins: macOS ships `shasum`, minimal Linux
 // images ship `sha256sum`. Output of both starts with the 64-hex digest.
 const RT_SHA_CMD = '{ shasum -a 256 2>/dev/null || sha256sum; } | head -1';
@@ -247,45 +254,55 @@ function rtLinePlan(totalLines, perChunk) {
  * One line range, re-requested until the transcribed text matches the SHA-256
  * the agent's own tool computed over the same range. Returns the verified
  * chunk TEXT (a string — the VM boundary caps marshalled arrays at 4,096
- * elements, so byte arrays must never cross it).
- *
- * Trailing-newline note: `sed -n 'a,bp'` on the FINAL line of a file that has
- * no trailing newline emits platform-dependent bytes (GNU sed preserves the
- * absence, BSD sed appends one). Both candidates are checked against the
- * digest, which was computed over whatever sed actually emitted — so the
- * platform picks the candidate, not this code.
+ * elements, so byte arrays must never cross it). The payload is terminated
+ * by a tool-printed EOF marker (see RT_CHUNK_EOF) so its exact trailing
+ * bytes survive the model's copy; the digest arbitrates everything else.
  */
 async function rtReadChunk(path, range, index) {
   for (let attempt = 0; attempt <= RT_READ_RETRIES; attempt++) {
-    const reply = await RT.agent(
-      `Run these two exact commands from the repository root:\n` +
-        `  sed -n '${range.first},${range.last}p' "${path}" | ${RT_SHA_CMD}\n` +
-        `  sed -n '${range.first},${range.last}p' "${path}"\n` +
-        `Reply in exactly this shape, with the first command's 64-hex digest and the ` +
-        `second command's output copied EXACTLY, byte for byte — do not fix typos, ` +
-        `do not reformat, do not summarise, do not add code fences:\n` +
-        `SHA256: {digest}\n` +
-        `${RT_CHUNK_BEGIN}\n` +
-        `{the second command's output}\n` +
-        `${RT_CHUNK_END}`,
-      { label: `read:${path}#${index}`, model: RT_IO_MODEL }
-    );
+    let reply;
+    try {
+      reply = await RT.agent(
+        `Run these two exact commands from the repository root:\n` +
+          `  sed -n '${range.first},${range.last}p' "${path}" | ${RT_SHA_CMD}\n` +
+          `  { sed -n '${range.first},${range.last}p' "${path}"; printf '${RT_CHUNK_EOF}\\n'; }\n` +
+          `Reply in exactly this shape, with the first command's 64-hex digest and the ` +
+          `second command's output copied EXACTLY, byte for byte, including every blank ` +
+          `line and the ${RT_CHUNK_EOF} line it ends with — do not fix typos, do not ` +
+          `reformat, do not summarise, do not add code fences:\n` +
+          `SHA256: {digest}\n` +
+          `${RT_CHUNK_BEGIN}\n` +
+          `{the second command's output}\n` +
+          `${RT_CHUNK_END}`,
+        { label: `read:${path}#${index}`, model: RT_IO_MODEL }
+      );
+    } catch {
+      // An agent that dies (API error, tool-reference fault) is a failed
+      // ATTEMPT, not a failed read — observed live as a 400 killing the thunk
+      // and with it the whole file read (run wf_c6751860-d4a).
+      continue;
+    }
     if (typeof reply !== "string") continue;
     const beginAt = reply.indexOf(RT_CHUNK_BEGIN);
-    const endAt = reply.lastIndexOf(RT_CHUNK_END);
-    if (beginAt === -1 || endAt === -1 || endAt <= beginAt) continue;
+    if (beginAt === -1) continue;
     const shaMatch = RT_HEX64_RE.exec(reply.slice(0, beginAt));
     if (!shaMatch) continue;
     const sha = shaMatch[0];
     const afterBegin = reply.indexOf("\n", beginAt);
-    if (afterBegin === -1 || afterBegin >= endAt) continue;
-    // Between the sentinel lines: strip the newline that separates the payload
-    // from the END sentinel line, then re-add candidates below.
-    let payload = reply.slice(afterBegin + 1, endAt);
-    if (payload.slice(-1) === "\n") payload = payload.slice(0, -1);
-    // sed's output normally ends with a newline; on the no-trailing-newline
-    // final chunk it may not (see JSDoc). The digest decides.
-    for (const candidate of [payload + "\n", payload]) {
+    if (afterBegin === -1) continue;
+    const eofAt = reply.lastIndexOf(RT_CHUNK_EOF);
+    if (eofAt === -1 || eofAt <= afterBegin) continue;
+    // Everything between the BEGIN line and the EOF marker is the payload,
+    // byte for byte. When the range's final line has no trailing newline
+    // (GNU sed on the file's last line), the marker abuts the payload with no
+    // separator — which is exactly why no newline may be stripped or added
+    // here. The digest still gets the last word; the two fallbacks only give
+    // a model that moved the marker to its own line a chance to verify.
+    const payload = reply.slice(afterBegin + 1, eofAt);
+    const candidates = [payload];
+    if (payload.slice(-1) === "\n") candidates.push(payload.slice(0, -1));
+    candidates.push(payload + "\n");
+    for (const candidate of candidates) {
       let ok = false;
       try {
         ok = rtSha256Hex(rtUtf8Encode(candidate)) === sha;
@@ -316,15 +333,20 @@ async function rtReadFile(path) {
   // in this reply, and the digest anchors the reassembly check below.
   let size = null, newlines = null, endsWithNewline = null, fileSha = null;
   for (let attempt = 0; attempt <= RT_READ_RETRIES; attempt++) {
-    const reply = await RT.agent(
-      `Run this exact command from the repository root and report its output:\n` +
-        `  if [ ! -f "${path}" ] || [ ! -r "${path}" ]; then echo ${RT_MISSING}; ` +
-        `else wc -c < "${path}"; wc -l < "${path}"; tail -c 1 "${path}" | wc -l; ` +
-        `{ shasum -a 256 "${path}" 2>/dev/null || sha256sum "${path}"; } | head -1; fi\n` +
-        `Return ONLY that token, or the three numbers and the digest line, in order — ` +
-        `no commentary, no code fences, no units.`,
-      { label: `size:${path}`, model: RT_IO_MODEL }
-    );
+    let reply;
+    try {
+      reply = await RT.agent(
+        `Run this exact command from the repository root and report its output:\n` +
+          `  if [ ! -f "${path}" ] || [ ! -r "${path}" ]; then echo ${RT_MISSING}; ` +
+          `else wc -c < "${path}"; wc -l < "${path}"; tail -c 1 "${path}" | wc -l; ` +
+          `{ shasum -a 256 "${path}" 2>/dev/null || sha256sum "${path}"; } | head -1; fi\n` +
+          `Return ONLY that token, or the three numbers and the digest line, in order — ` +
+          `no commentary, no code fences, no units.`,
+        { label: `size:${path}`, model: RT_IO_MODEL }
+      );
+    } catch {
+      continue; // a dead probe agent is a failed attempt, same as a dead chunk agent
+    }
     const text = typeof reply === "string" ? reply : "";
     if (text.indexOf(RT_MISSING) !== -1) return null;
     const nums = text.match(/\d+/g) || [];

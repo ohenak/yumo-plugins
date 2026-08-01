@@ -182,7 +182,7 @@ describe("rtReadFile", () => {
     const agent = fileAgent({ "docs/f/TSPEC-f.md": contents }, (prompt, reply) => {
       if (!truncatedOnce && /sed -n/.test(prompt)) {
         truncatedOnce = true;
-        const cut = Math.floor(reply.length / 2);
+        const cut = Math.floor(reply.indexOf("__PDLC_CHUNK_EOF__") / 2);
         return reply.slice(0, cut) + "\n__PDLC_CHUNK_END__";
       }
       return undefined;
@@ -297,6 +297,47 @@ describe("rtReadFile", () => {
     const { rtReadChunk } = loadAdapter({ agent, parallel: hostParallel });
     const part = await rtReadChunk("docs/f/TSPEC-f.md", { first: 1, last: 40 }, 0);
     expect(typeof part).toBe("string");
+  });
+
+  it("reads a chunk whose final line is blank — the live trailing-newline defect", async () => {
+    // Run wf_c6751860-d4a: byte-perfect transcriptions failed all 4 attempts
+    // because the payload's trailing blank line collapsed into the model's own
+    // sentinel. The tool-printed EOF marker makes the blank line interior.
+    const contents = "# heading\n\nbody\n\n\n";
+    const agent = fileAgent({ "docs/f/REQ-f.md": contents });
+    const { rtReadFile } = loadAdapter({ agent, parallel: hostParallel });
+    expect(await rtReadFile("docs/f/REQ-f.md")).toBe(contents);
+  });
+
+  it("retries when the model collapses a trailing blank line inside the payload", async () => {
+    const contents = "# heading\n\nbody\n\n\n";
+    let collapsedOnce = false;
+    const agent = fileAgent({ "docs/f/REQ-f.md": contents }, (prompt, reply) => {
+      if (!collapsedOnce && /sed -n/.test(prompt)) {
+        collapsedOnce = true;
+        return reply.replace("\n\n\n__PDLC_CHUNK_EOF__", "\n\n__PDLC_CHUNK_EOF__");
+      }
+      return undefined;
+    });
+    const { rtReadFile } = loadAdapter({ agent, parallel: hostParallel });
+    expect(await rtReadFile("docs/f/REQ-f.md")).toBe(contents);
+    expect(collapsedOnce).toBe(true);
+  });
+
+  it("treats a dead agent (thrown API error) as a failed attempt, not a failed read", async () => {
+    const contents = bigDocument();
+    const inner = fileAgent({ "docs/f/TSPEC-f.md": contents });
+    let threwOnce = false;
+    const agent = async (prompt, opts) => {
+      if (!threwOnce && /sed -n '1,/.test(prompt)) {
+        threwOnce = true;
+        throw new Error("API Error: 400 Tool reference 'headroom_retrieve' not found");
+      }
+      return inner(prompt, opts);
+    };
+    const { rtReadFile } = loadAdapter({ agent, parallel: hostParallel });
+    expect(await rtReadFile("docs/f/TSPEC-f.md")).toBe(contents);
+    expect(threwOnce).toBe(true);
   });
 
   it("uses the cheap IO model for every call it makes", async () => {
