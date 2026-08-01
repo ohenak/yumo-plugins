@@ -100,6 +100,35 @@ non-convergent on *the document*.
 
 ## Reviewers
 
+| Role | Skill | Lens | Findings filed across all 5 rounds |
+|---|---|---|---|
+| Software Engineer | `pdlc:se-review` | Technical feasibility, implementability, integration risk; every existing-code claim re-verified against `pdlc/workflows/orchestrate-dev.js` at HEAD, once per round | 6H / 11M / 12L |
+| Test Engineer | `pdlc:te-review` | Testability of ACs, oracle falsifiability, edge-case completeness, threshold decidability; explicitly not product strategy, not architecture, not fixtures/seams/test levels (deferred to §8 and DC-09) | 5H / 10M / 14L |
+
+Both reviewers worked in **delta mode** from round 2 onward. Each names its baseline sha and its diff
+range in its own header (SE: *"the baseline reviewed at v4 was the REQ as of `68cfec7`; this review
+covers `68cfec7..HEAD`"*; TE: *"Reviewed range: `bdf893e..fc3410e`"*), re-read only changed sections,
+and did not re-litigate previously-approved material. TE persisted a machine-readable count trailer
+(`{"high": n, "medium": n, "low": n}`) in all five of its files; SE's counts are readable from its
+findings tables' severity column but were never emitted as a trailer — a small asymmetry that matters
+for R-6 below.
+
+Neither reviewer ever issued **Approved**. Neither ever disagreed with the other: across ten reviews
+there is **no round in which the two reviewers reached opposite verdicts**, and at rounds 4 and 5 they
+independently filed the *same* defect from different lenses (round 4: SE F-01 and TE F-22 both on
+`postmortemStatus` being pinned to a value the shipped code does not produce; round 5: SE F-02 and TE
+F-27 both on the byte-comparing confirmation's residue being consumed by the recovery act it
+prescribes). Where they differed at round 5 it was on **severity, not on substance** — SE graded the
+`:4928` unconditional-emit defect a second High that TE did not file at all, having scoped it out as
+an oracle-wiring question owned by O-10.
+
+Both reviewers spent a non-trivial fraction of every round **re-deriving the author's citations
+against the shipped source rather than trusting them**, and said so explicitly (SE-v5: *"I counted the
+catch block rather than trusting the citation, because the last three rounds each turned on one that
+was wrong"*). That check found a materially wrong citation in three of the five rounds.
+
+---
+
 ## Pattern of Disagreement
 
 ## Best-Guess Root Cause
