@@ -253,6 +253,16 @@ fastest route into the finding beside it.
 
 ## Mechanical fixes
 
+Not findings. Apply without discussion; none affects the recommendation.
+
+| id | Where | Fix |
+|---|---|---|
+| MF-1 | AC-2.6, table header and body | The lead-in is restated over windows (*"read over the three rounds of a window (rounds `W`, `W+1`, `W+2`)"*), but the table it introduces still reads `| Reachable sequence (rounds 1, 2, 3) |` and every cell names absolute indices — *"the growth into round 2"*, *"(1,2) and (2,3)"*, *"round 2 **or** round 3"*. The mapping is obvious, but this is the one table whose whole purpose is that *"a test author can derive the expected fire-sites"*, and a test author who resets a window derives them off by `W − 1`. Restate the header as `rounds W, W+1, W+2` and the cells as `W+1` / `(W, W+1)`. |
+| MF-2 | AC-3.4 step 1; AC-2.7's new row | Both say *"`VERDICT:` lines"*. The shipped counter is `line.trim().startsWith("VERDICT: ")` (`pdlc/workflows/orchestrate-dev.js:902`) — **with the trailing space** — so `VERDICT:Approved` is not a `VERDICT:` line to `extractFileVerdict`, and `parseVerdict` does not see it either (`:417`). The commentary under the table gets this right (*"counts lines beginning `VERDICT: `"*); the normative clauses do not. Write the space into both. |
+| MF-3 | AC-1.4, lead-in to clauses 1–2 | The clauses are conditioned on *"every halt that finds an **existing** post-mortem"*, so the **creating** halt — the common case — is governed only by AC-1.5(5)'s *"each halt appends … to the end of the reset region"*, and nothing says who first writes the `## Reset Region` heading. O-5's read-modify-write covers it if the captured region of a non-existent file is read as empty; say that, in one clause, where the region is defined. |
+| MF-4 | §5, `HALT-REASON:` paragraph, and S-12's row | S-12's *Exact string* cell now carries two different things — the `## Reset Region` heading **and** the `HALT-REASON:` grammar — while S-13 and S-14 are one literal each. Since §6 already gives `HALT-REASON:` its own row, give it its own catalogue id too (S-15) rather than nesting it; the lead-in's *"five kinds"* sentence already describes it as a member (*"the `HALT-REASON:` render inside S-12's row"*), which is the last residue of v1.3's "not a member" framing. |
+| MF-5 | §10.9, last row | *"TE MR-05 — Carried, and **taken off the critical path**"* is correct, but MR-05 is a **measurement request**, and §10.9 is headed *"Round-5 finding → where it is answered"*. Its final two rows carry questions and a measurement request, not findings; the heading's *"all thirteen findings below"* counts only the rows above them. Retitle or split, as §10.7 does. |
+
 ## Recommendation
 
 ## Verdict
