@@ -425,6 +425,10 @@ inside `if (gatePass)`, so on a failed round none of the five was written — an
 only kind AC-2 compares and AC-4 measures (SE F-01, TE F-01). The split is the fix, and it is
 REQ-altitude because it decides which panel gets dispatched.
 
+Ids are stable once assigned, so the two added in v1.2 keep the next free numbers; the table is
+therefore ordered **by kind** — anchor lines, halt reasons, report notices, section headings — and not
+by id, so `S-10` and `S-11` sit beside their kin rather than at the end.
+
 | id | Exact string | Emitter | Receiver | Receiver is total because |
 |---|---|---|---|---|
 | **S-1** | `REVIEW-MODE: verification` — one line, that exact casing and spacing, in the anchor block | **`appendRoundAnchors`**, on every verifier round (AC-3.5(a)) | `tier1ApprovalRecord` (M-3d) — the **approval** path only. AC-2.4's panel-shape read no longer consults it | AC-3.5(e) states all **six** rows of its table: absent on a lone file, one exact match, one line with any other value, two or more lines in one file, a marker on more than one file of the same round, and a marker on a dual round's file beside an unmarked second file. (v1.1's lead-in said "five" against a six-row table — TE F-05.) |
@@ -566,6 +570,14 @@ report. *Then:* the halt reason names the fixed point and carries the two counts
 numbers that triggered it — e.g. *"fixed point: round 3 blocking 7 ≥ round 2 blocking 6"* — and is
 textually distinct from the budget-exhaustion reason. An operator must be able to tell, without
 reading the cross-review files, whether the loop ran out of rounds or stopped making progress.
+
+**When more than one halt condition holds, the operator sees all of them, in AC-4.7's order** (TE Q-02,
+carried unanswered from round 1). On the last admitted round the fixed-point test and the budget can
+both be satisfied; the `notice` cell then carries S-3 and S-4 in that order, and the post-mortem's
+reason line carries the same string. AC-2.1 **is** evaluated on the last admitted round — it is
+defined as happening before that round's optimizer episode would be dispatched, and "would be" is not
+"is": a round that dispatches no optimizer still has verdicts to compare. AC-2.8's S-11 sorts ahead of
+both, because a round whose document did not change explains why the other two fired.
 
 **AC-2.3 — Unreliable counts break the chain; they never fire the rule.**
 *Who:* the review loop. *Given:* any reviewer in round N or in round N−1 whose verdict parse is
