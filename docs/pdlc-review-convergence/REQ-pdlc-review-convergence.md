@@ -637,8 +637,11 @@ them, because nothing in `orchestrate-dev` reads a rule written in the document 
 and simply unbuilt.
 
 **AC-2.1 — The rule, and where each operand comes from.**
-*Who:* the review loop. *Given:* a failed round **N ≥ 2** — i.e. round N's reviewers did not all
-approve — whose blocking count and whose predecessor round N−1's blocking count are both **available**
+*Who:* the review loop. *Given:* a failed round **N ≥ 2 of the current window** (§5) — i.e. round N's
+reviewers did not all approve, and round N−1 belongs to the same window, so `N − 1 ≥ W`; the first
+round of a window has no comparable predecessor, exactly as round 1 has none, because the operator has
+just declared the previous window's findings discharged (TE v4 F-04) — whose blocking count and whose
+predecessor round N−1's blocking count are both **available**
 (AC-2.7) and **reliable** (AC-2.3), and whose panel shape equals round N−1's (AC-2.4). *When:* round
 N's verdicts have been parsed and **before** round N's optimizer episode is dispatched. *Then:* if
 `blocking(N) ≥ blocking(N−1)` **and** `blocking(N) > 0`, the loop halts on the existing post-mortem
@@ -735,10 +738,16 @@ exactly these cases, and in no others:
 | The file is absent | *unavailable* |
 | The file carries no `## Verdict` heading | *unavailable* |
 | A `## Verdict` section exists and there is **no non-empty line after** the `VERDICT:` line | *unavailable* — `parseVerdict`'s truncated-output path, which returns genuine `0/0/0` (M-2c) |
-| A `## Verdict` section exists and the first non-empty line after `VERDICT:` is an **anchor line** (`APPROVAL-HASH:`, `REVIEWED-COMMIT:`, `REVIEW-MODE:`, `DOC-BYTES:`, `DOC-SHA256:`) rather than a count trailer | *unavailable* — the trailer was never written; an anchor is not a malformed trailer |
-| The first non-empty line after `VERDICT:` is present, is not an anchor line, and does not parse as `{"high": N, "medium": N, "low": N}` after `recoverVerdict` (M-2d) has been tried | *malformed* (AC-2.3) |
+| A `## Verdict` section exists and, after `VERDICT:`, contains **nothing but anchor lines** — no candidate line survives AC-3.4's skip rule | *unavailable* — the trailer was never written; an anchor is not a malformed trailer |
+| A candidate line exists — the first non-empty **non-anchor** line after `VERDICT:` — and does not parse as `{"high": N, "medium": N, "low": N}` after `recoverVerdict` (M-2d) has been tried | *malformed* (AC-2.3) |
 
-The fourth row is new in v1.2 and is the operator-facing half of AC-3.4's placement rule. Because
+The fourth row is new in v1.2 and is the operator-facing half of AC-3.4's placement rule; v1.3 restates
+it as *"nothing but anchor lines"* so that the table classifies exactly the observations AC-3.4's
+algorithm produces. v1.2 stated it as *"the **first** non-empty line after `VERDICT:` is an anchor
+line"*, which contradicted AC-3.4's skip rule on the input `VERDICT:` → anchor → valid trailer: the
+algorithm read a count, the table said *unavailable*, and DC-01 requires the receive side to be total
+**and single-valued** (SE v4 G-05, TE v4 F-06). **AC-3.4 states the reader; this table classifies its
+outputs; the anchor set is §5's catalogue and is enumerated in neither.** Because
 `extractFileVerdict` takes the `## Verdict` section to end-of-file, the anchor block AC-4.1 appends is
 *inside* that section; without this row a file that simply never carried a trailer would `JSON.parse`
 an anchor line, throw, and be reported as **malformed** — inverting the very distinction this AC exists
@@ -755,26 +764,51 @@ a missing trailer from being read as zero blocking findings. It is the receive-s
 requires of the count trailer, now that AC-2 reads that trailer from a file.
 
 **AC-2.8 — A round whose document did not change is a halt, not a consumed round.**
-*Who:* the review loop. *Given:* a round **N ≥ 2** about to be opened, where round N−1's anchors carry
-both `DOC-BYTES(N−1)` and `DOC-SHA256(N−1)` (S-2, S-10). *When:* the loop reads the document to take
-round N's own endpoints, **before** it dispatches round N's reviewers. *Then:* if the document's byte
-length equals `DOC-BYTES(N−1)` **and** its SHA-256 equals `DOC-SHA256(N−1)`, the loop **halts on the
+*Who:* the review loop. *Given:* a round **N ≥ 2 of the current window** about to be opened — i.e.
+`N − 1 ≥ W` (§5, AC-1.5(4)). *When:* the loop takes its single round-open read of the document (`t0`,
+the same read AC-4.1 measures growth from — there is exactly one read per round-open and both ACs use
+it, TE v4 Q-06), **before** it dispatches round N's reviewers. *Then:* if that read's byte length
+equals `DOC-BYTES(N−1)` **and** its `sha256Hex` digest equals `DOC-SHA256(N−1)`, the loop **halts on the
 existing post-mortem path** (AC-1.4) with the S-11 halt reason `no-revision: round {N} document
 identical to round {N-1}`, and round N is **not** dispatched and **not** counted against AC-1's budget.
 
-Receive side, total over the anchors:
+Receive side, total over every input — the anchor condition is stated **here**, not as a precondition of
+*Given*, because the third row is exactly the case in which it does not hold (TE v4 MF-07):
 
 | Observation | Behaviour |
 |---|---|
-| Both anchors present, both endpoints equal | **halt**, S-11 |
-| Both anchors present, either endpoint differs | no halt; the round proceeds and AC-4 classifies the growth as usual |
+| Both anchors present at round N−1, both endpoints equal | **halt**, S-11 |
+| Both anchors present, either endpoint differs | no halt; the round proceeds and AC-4 classifies the growth from the same read |
 | Either anchor absent, unparseable, or duplicated with unequal values at round N−1 | the test is **not evaluated**; the round proceeds. Fail-**open**, deliberately: a missing anchor is evidence about the writer, not about the author, and must never manufacture a halt |
-| N = 1 | not evaluated — there is no predecessor |
+| N = 1, or `N − 1 < W` — round N is the first round of a window | not evaluated — there is no predecessor **in this window**. An operator who resets without revising the document is exercising the escape hatch deliberately; halting the fresh window on its first round would spend a reset on zero rounds (TE v4 F-04) |
+
+**What the run report shows for the undispatched round.** Round N produces no cross-review files, so
+none of AC-4.7's other five columns has a source (SE v4 G-02). The table nevertheless gains **a row for
+round N**, and that row is fixed here: `round` = N, `panel-shape`, `blocking`, `growth-bytes` and
+`classification` all **empty** — round N was not dispatched, so there is nothing to report about it —
+and `notice` carrying **S-11 alone**. The mechanically-derived alternative (`crashed` / `unavailable` /
+`unmeasurable` plus three S-5/S-6 notices) is wrong on its face: it presents the operator's primary
+evidence that the *author* did nothing as evidence that the *reviewers* crashed. Empty cells say
+"not run", which is what happened. O-10 asserts this row.
+
+**Clearing an S-11 halt does not consume the operator's reset** — AC-1.5(5). The halt is an authoring
+failure, and the window it interrupted resumes with the rounds it had already spent still spent.
 
 **Why the byte length alone is not the test.** Two different revisions of the same length are possible
 and a halt on that evidence would be wrong. The SHA-256 endpoint is what makes the test exact, and it
-costs nothing new: the same hashing the tier-1 approval anchors already perform over the reviewed
+costs nothing new: the same `sha256Hex` the tier-1 approval anchors already call over the reviewed
 document (M-4a), written by the same per-round writer as `DOC-BYTES:` (AC-4.1).
+
+**Which bytes are digested, precisely.** `sha256Hex` canonicalises before it digests — CRLF and lone CR
+to LF, exactly one trailing newline — inside the function and never in a caller, by design
+(`pdlc/workflows/orchestrate-dev.js:848`, `sha256Hex`; `:767`, `canonicaliseForDigest`; JSDoc
+`:752-759`, *"applied INSIDE `sha256Hex`, never by a caller, so no two call sites can disagree about
+which bytes were digested"*). `DOC-SHA256:` **is that digest** — over the canonical form — and is
+therefore **not** a digest of the raw bytes `DOC-BYTES:` counts. v1.2 claimed both, which cannot hold
+(SE v4 G-03). The conjunction is what recovers the difference: a revision that changes only line
+endings or trailing newlines leaves the digest equal but the byte count different, so the test does not
+fire and the round proceeds — the safe direction, and the reason the two endpoints are ANDed rather
+than either taken alone.
 
 **Why this is a halt and not a notice.** A zero-delta round is the strongest observable form of
 non-convergence there is: the optimizer episode between the two rounds produced nothing, so round N's
