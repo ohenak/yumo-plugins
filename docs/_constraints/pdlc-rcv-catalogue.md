@@ -111,10 +111,15 @@ Every column is derivable from the branch alone — the cross-review basenames, 
 trailers, their anchors. **Where** the table is emitted, and in what rendering, is a TSPEC
 obligation; its columns are not open.
 
-**Three rows have no dispatch behind them**, and each is stated cell by cell in the REQ that owns
-the condition, because the mechanical derivation from absent files gives the wrong answer for all
-three: **row A**, the round halted at open by a zero-delta test, in `pdlc-rcv-fixed-point-stop`
-AC-2.8; **row B**, the row of an entry whose reset region failed validation, in
-`pdlc-rcv-budget-stop` AC-1.5(4); **row C**, the row of an entry admitted no rounds that halts
-immediately on the budget, in `pdlc-rcv-budget-stop` AC-1.5(1). Rows B and C are mutually
-exclusive: B's entry takes no halt, C's takes one, so B carries S-16 alone and C carries S-4.
+**Three rows have no dispatch behind them** — row B covering **two** entry classes, both
+dispatch-less — and each is stated cell by cell in the REQ that owns the condition, because the
+mechanical derivation from absent files gives the wrong answer for all three: **row A**, the round
+halted at open by a zero-delta test, in `pdlc-rcv-fixed-point-stop` AC-2.8; **row B**, the row of an
+entry that opens no round on `pdlc-rcv-budget-stop` AC-1.5(4)'s step-4 path — either because its
+reset region **failed validation** (the *validation-failure* variant) or because an answering line's
+write could **not be confirmed** (the *unconfirmable-append* variant); **row C**, the row of an entry
+admitted no rounds that halts immediately on the budget, in `pdlc-rcv-budget-stop` AC-1.5(1). Rows B
+and C are mutually exclusive: B's entry takes no halt, C's takes one, so B carries **S-16 alone on
+its validation-failure variant and an empty `notice` on its unconfirmable-append variant**, and C
+carries S-4. The two B variants are distinguished by the ❌ phase-row text `pdlc-rcv-budget-stop` §6
+fixes for each, never by the `notice` cell alone.
