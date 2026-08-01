@@ -84,8 +84,7 @@ once the successor ships (AC-1.5(4) step 4, O-10). `pdlc-rcv-panel-topology` dep
 ## 4. Definitions and the catalogue ids this REQ owns
 
 Every term this document uses with a family meaning — *current window* / round `W`, *reset region*,
-*zero-delta*, *panel shape*, *crashed* round, *blocking count*, *unavailable*, *malformed*, *phase
-refusal*, *approval refusal* — is defined in `docs/_constraints/pdlc-rcv-catalogue.md` §1 and **not**
+*phase refusal* and the rest — is defined in `docs/_constraints/pdlc-rcv-catalogue.md` §1 and **not**
 restated here; that file's §2 holds the closed catalogue `S-1 … S-17` and its §3 the row schema.
 
 This REQ **owns** six catalogue ids and **reads** two:
@@ -147,8 +146,7 @@ bounded. Stated here because the other reading is unsafe: with `docType: null` n
 so `deriveRoundWindow` always returns `startIndex = 1`, and a second CR clearance would recompute
 `N = 1`, fail step 2's strictly-increasing check, and refuse Phase CR **permanently** (O-10).
 
-This is a **second behavioural change** — §1's per-invocation defect: a phase re-entered at highest round 3 is admitted rounds 4…6, so §2's cost claim would bound nothing. AC-1.5 states the
-replacement rule and its escape hatch.
+This is a **second behavioural change** — §1's per-invocation defect, without which §2's cost claim would bound nothing. AC-1.5 states the replacement rule and its escape hatch.
 
 **AC-1.2 — One constant, one arithmetic site.** *Who:* a maintainer. *Given:* the module at `pdlc/workflows/orchestrate-dev.js`. *When:* they change the budget. *Then:* they change
 exactly one module-scope constant (M-1a) and no arithmetic anywhere else, because the sole site that expresses the window *width* in terms of that constant is `windowEnd` (M-1b). The
@@ -219,10 +217,9 @@ state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-)entered. *Then
 
    **The zero-round budget halt has a report row, and it is row C** — the **third** dispatch-less row,
    stated cell by cell here as the catalogue requires of the REQ owning the condition, because the
-   per-round table would otherwise be empty for the commonest new halt.
-   `round` = **one past the highest round of this document type on the branch** (from the
-   listing); `panel-shape`, `blocking`, `growth-bytes`,
-   `classification` **empty**, nothing having been dispatched or measured; `notice` = this halt's
+   per-round table would otherwise be empty for the commonest new halt. `round` = **one past the
+   highest round of this document type on the branch** (from the listing); `panel-shape`, `blocking`,
+   `growth-bytes`, `classification` **empty**, nothing dispatched or measured; `notice` = this halt's
    **S-4** reason, `; `-joined with any co-occurring reason in catalogue §3 precedence order;
 
    **`forcePhases` does not grant a window; the clearance is the only route past the cap.**
@@ -424,13 +421,13 @@ or this table.
 | `MAX_REVIEW_ROUNDS` | **3** (was 5) | owned | The one constant AC-1.2 changes. AC-1.1 makes it absolute per document, not per invocation. |
 | `## Reset Region` | that exact heading | owned | S-12. Created by the first halt of a phase, preserved by every later one (AC-1.4 clause 1). |
 | `HALT-REASON: {value}` | one line per halt, appended at the end of the region; `{value}` the `; `-joined render in the catalogue §3 precedence order | owned | S-15. `H` is exactly the number of halts taken. |
-| `WINDOW-START: {N}` | `{N}` a decimal integer ≥ 1 | owned | S-13. Written by the loop, **never authored by a human**. Scoped to *authoring*, so it exempts AC-1.5(4)'s two sanctioned repairs. **Deleting a single answering line is forbidden at every `H − A`**, because it lowers `A` alone. |
+| `WINDOW-START: {N}` | `{N}` a decimal integer ≥ 1 | owned | S-13. Written by the loop, **never authored by a human**. Scoped to *authoring*, so it exempts AC-1.5(4)'s two sanctioned repairs. **Deleting a single answering line is forbidden at every `H − A`**, because it lowers `A` alone — save for act 1 of the unconfirmable-append recovery, which removes a line that answered nothing (AC-1.5(4)). |
 | `WINDOW-RESUMED: {W}` | `{W}` a decimal integer ≥ 1 equal to the origin then in effect | owned | S-14. Answers a clearance without moving the origin. |
 | `reset-region-corrupt: …` | the render fixed in catalogue §2's S-16 row, character for character, and **not repeated elsewhere** | owned | S-16. One notice per entry whatever the fault count. |
 | `budget-exhausted: …` | the render fixed in catalogue §2's S-4 row | owned | Rendered from `W` and the constant: a clause that hard-codes `rounds 1..3 of 3` is a defect. |
 | Refusal phase-row text | `Refused — reset region corrupt at {path} ({reason})` | owned | The ❌ row of a step-4 refusal. **Not a catalogue id** — an operator-facing render of S-16, distinct from step G's `Refused — unresolved POSTMORTEM at …` (AC-1.5(4)). `postmortemStatus` is **`written`** here, never `none` or `unresolved`, so the shipped `No POSTMORTEM was written.` line (`orchestrate-dev.js:4922`) does **not** appear beside this row. |
-| Refusal recovery text | names the sanctioned repair for `{reason}` (AC-1.5(4)'s repair table) | owned | Replaces the shipped generic (AC-1.5(4)'s pinned bytes) on this path only (AC-1.5(4)). |
-| Unconfirmed-append text | `Refused — answering line unconfirmed at {path}` — `{path}` the same repo-root-relative post-mortem path S-16 fixes | owned | The ❌ row of row B's **unconfirmable-append** variant (AC-1.5(4)), whose recovery text is the **shipped generic** queue-reset string, in AC-1.5(4)'s pinned bytes, and `postmortemStatus` as that criterion fixes it for both variants. Not a catalogue id. |
+| Refusal recovery text | names the sanctioned repair for `{reason}` (AC-1.5(4)'s repair table) | owned | The shipped generic (AC-1.5(4)'s pinned bytes) is **suppressed**, not substituted: it is an unguarded emit firing on every halt class, so suppressing it on the two row-B variants is a stated change to shipped behaviour (O-6). |
+| Unconfirmed-append text | `Refused — answering line unconfirmed at {path}` — `{path}` the same repo-root-relative post-mortem path S-16 fixes | owned | The ❌ row of row B's **unconfirmable-append** variant (AC-1.5(4)), whose recovery text names **two** acts in order — delete the region's trailing answering line if one is present, then reset the queue row to `pending` and re-run — the shipped generic being suppressed here too, and `postmortemStatus` as that criterion fixes it for both variants. Not a catalogue id. |
 | `no-revision: …` / `fixed-point: …` | as the catalogue fixes them | **read only** | S-11 and S-3, emitted by `pdlc-rcv-fixed-point-stop` (X-05). AC-1.5(5) reads the **leading** reason of the last `HALT-REASON:` line; this REQ emits neither and may not change their grammar. |
 
 ## 7. Non-goals and out of scope
