@@ -146,11 +146,11 @@ that document**, and the loop halts on entering round 4 — *whatever invocation
 (`orchestrate-dev.js:4720`–`:4721`) and Phase DOD runs its own loop; N-7 excludes both and **this REQ
 does not change that**. For such a loop, AC-1.1's per-document window, AC-1.4's reset region and
 AC-1.5's `W`, clearance accounting and refusal **do not apply**. What does reach them is AC-1.2's
-constant, which they share: their **per-invocation** budget becomes 3 instead of 5 — unchanged in
-kind, still bounded. This is stated rather than left to FSPEC because the other reading is unsafe:
-with `docType: null` no basename matches, so `deriveRoundWindow` always returns `startIndex = 1`, and
-a second CR clearance would recompute `N = 1`, fail step 2's strictly-increasing check, and refuse
-Phase CR **permanently and unrepairably**. Test: no `## Reset Region` is created by a CR or DOD halt.
+shared constant: their **per-invocation** budget becomes 3 instead of 5 — unchanged in kind, still
+bounded. Stated here because the other reading is unsafe: with `docType: null` no basename matches,
+so `deriveRoundWindow` always returns `startIndex = 1`, and a second CR clearance would recompute
+`N = 1`, fail step 2's strictly-increasing check, and refuse Phase CR **permanently**. Test: no
+`## Reset Region` is created by a CR or DOD halt.
 
 This is a **second behavioural change** — §1's per-invocation defect: a phase re-entered at highest round 3 is admitted rounds 4…6, so §2's cost claim would bound nothing. AC-1.5 states the
 replacement rule and its escape hatch.
@@ -237,10 +237,10 @@ state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-)entered. *Then
    **`forcePhases` does not grant a window; the clearance is the only route past the cap.**
    `forcePhases` overrides a **recorded approval** and nothing else (`CLAUDE.md`, *Entry (single
    feature)*), so a forced Phase R on a document already at round 3 is admitted **no rounds**: it halts
-   on the budget path, writes the post-mortem and row C, and writes the queue row `halted` — it does
-   not re-review, and a second force changes nothing, because at `A = H` a marker grants nothing. This
-   is a deliberate change to a documented operator entry point, stated so it has an oracle. The
-   supported sequence after an exhausted document is *clear the post-mortem, then re-enter*;
+   on the budget path, writes the post-mortem and row C, and writes the queue row `halted` — and a
+   second force changes nothing, because at `A = H` a marker grants nothing. A deliberate change to a
+   documented operator entry point, stated so it has an oracle; the supported sequence after an
+   exhausted document is *clear the post-mortem, then re-enter*;
 2. the window's **start** is unchanged — one past the highest existing round (M-1d), so review history stays append-only and no existing file is ever overwritten;
 3. the **one** reset is an operator's: a `POSTMORTEM-{phase}-{feature}.md` carrying a human-written `RESOLVED: yes` outside any fenced block clears the halt, and the rounds recorded
    *before* that marker do not count against the budget of the window opened after it. This is the existing operator escape hatch, stated here because it is what makes an absolute cap
@@ -336,8 +336,8 @@ state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-)entered. *Then
    | `H = 1`, `A = 1`, `WINDOW-START: 99` (`H − A = 0`) | yes — the refusal left it in place | delete the line | `H = 1`, `A = 0` ⇒ `A < H` | **grants a fresh three-round window** off a clearance that was already answered, and writes `WINDOW-START:` |
    | either row above | either | **correct** the value | counts unchanged | `A < H` unchanged ⇒ no window is banked; the phase proceeds under the accounting the loop wrote |
 
-   The second row is the hand-edit §6's `WINDOW-START:` prohibition exists to prevent: lowering `A` while leaving `H` restores `A < H` with the marker untouched, and `A` exists precisely
-   to make a clearance one-shot. **Correcting is safe at every `H − A`** — both counts stay true, and any repair leaving `H − A ∉ {0, 1}` is rejected by the counts check.
+   The second row is the hand-edit §6's `WINDOW-START:` prohibition exists to prevent. **Correcting is safe at every `H − A`** — both counts stay true, and any repair leaving
+   `H − A ∉ {0, 1}` is rejected by the counts check.
 
    **Why `counts-mismatch` is repaired by deletion.** No line is offending, and both line-level repairs are forbidden elsewhere: **adding** an answering line contradicts §6, **deleting** a
    `HALT-REASON:` contradicts AC-1.4 clause 1. Deleting the **section** contradicts neither — S-12 reads an absent heading as the empty region (`H = A = 0`, `W = 1`, the never-reset state),
@@ -358,10 +358,10 @@ state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-)entered. *Then
       `; `-joined `notice` cell. A corrupt region is never partially believed. **The entry then refuses the phase and returns**, per *a refusal is not a halt* above.
       **Where `W`'s resolution runs: after the phase gate's skip decision, before any round opens.**
       `phaseGate` can exit `{ skip: true }` on an approved-and-fresh document (`orchestrate-dev.js:4213`–`:4225`); on that exit **neither step 4 nor the grant runs** — `W` is not resolved,
-      no answering line is written, no refusal is raised. A skipped phase reviews nothing, so a refusal there would halt the pipeline indefinitely over a phase no repair gains a round for,
-      and a grant there would spend the one-shot clearance on an entry that opens no round: both pure cost. The resolution therefore runs **inside the phase body that is going to review**,
-      which is also what keeps a refusal on step G's path (O-6). Within that body the refusal is **unconditional** — it fires whether or not rounds remain in an already-granted window and
-      whether or not a marker is pending. Three entry classes, the third being the skip; the justification is **fail-closed, not costless**:
+      no answering line is written, no refusal is raised. A skipped phase reviews nothing, so a refusal there would halt the pipeline over a phase no repair gains a round for, and a grant
+      there would spend the one-shot clearance on an entry that opens no round: both pure cost. The resolution therefore runs **inside the phase body that is going to review**, which is
+      also what keeps a refusal on step G's path (O-6), and within that body it is **unconditional** — it fires whether or not rounds remain and whether or not a marker is pending. Three
+      entry classes, the third being the skip; the justification is **fail-closed, not costless**:
       - On a **skipped** entry the algorithm does not run; the region is untouched and both counts unmoved.
       - On an **exhausted** branch — highest round ≥ 3 under `W` = 1 — the outcome is the same either way: the fallback admits `{1, 2, 3}`, all three are filled, and the entry would have halted
         on the budget path regardless. There the refusal is *indistinguishable* from the fallback.
@@ -449,12 +449,10 @@ or this table.
 
 The shared list is baseline §4, which defines **N-1 … N-10 only**; all of `N-1, N-2, N-3, N-4, N-7,
 N-9, N-10` apply unchanged and are not restated, and `N-5`, `N-6` and `N-8` are **inapplicable to
-this REQ, not overlooked**. **Ids above `N-10` are not shared.** Earlier drafts
-of this document tabled `N-14` and `N-11` as though baseline §4 defined them; it does not, and the
-family has minted colliding `N-1x` ids in that namespace (`N-13` means different things in
-`pdlc-rcv-fixed-point-stop` §7 and `pdlc-rcv-finding-quality` §7). This document's own non-goals are
-therefore numbered in a **per-REQ namespace, `NB-*`**, which cannot be mistaken for the shared one;
-the shared row it restates keeps its shared id. Four are worth pointing at, because a reviewer of
+this REQ, not overlooked**. **Ids above `N-10` are not shared** — the family has minted
+colliding `N-1x` ids (`N-13` means different things in `pdlc-rcv-fixed-point-stop` §7 and
+`pdlc-rcv-finding-quality` §7), so this document's own non-goals are numbered in a **per-REQ
+namespace, `NB-*`**; the shared rows it restates keep their shared ids. Four are worth pointing at, because a reviewer of
 *this* document is most likely to file against them:
 
 | # | Not in scope | Why |
