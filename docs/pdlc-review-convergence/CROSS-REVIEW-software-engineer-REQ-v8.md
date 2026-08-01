@@ -267,3 +267,46 @@ new one* — and in MF-9's measurement, which is the first on-branch instance of
 landing immediately before approval.
 
 ## Verdict
+
+**Approved with minor changes.** v1.6 (+239/−48, 11 commits) **closes all three of my round-7 findings**,
+the High on the option I called the better one and both Medium by routes better than either I proposed.
+The refusal path no longer halts: AC-1.5(4) step 4 *"refuses the phase and returns"*, AC-1.5(1) records
+that its budget clause is not reached, and AC-1.4 states the boundary (*a halt is an event the accounting
+records; a refusal is a decision not to enter*) **without** adding an exception to *"every halt, without
+exception"* — so `H` stays exactly the number of halts taken, the marker survives, `H − A` is stable
+across refusals, and O-10's *"byte-unchanged apart from the report"* assertion becomes satisfiable, with
+a new ratchet fixture asserting the same S-16 reason on two consecutive entries (G-18). The sanctioned
+repair is a per-reason table, and `counts-mismatch` is repaired by deleting the whole `## Reset Region`
+section — which contradicts no rule, because S-12 already reads an absent heading as the empty region,
+and §6's *"never by a human"* is scoped to **authoring** by failure direction rather than by edit shape;
+I traced the recovery leg to a granted window (G-19). AC-4.7 now states **row A** and **row B**
+separately, row B's six cells character for character, `notice` = S-16 alone with the S-4 question
+answered explicitly (G-20). All five of my mechanical fixes are applied and all three of my questions are
+answered. v1.6 adds no new `file:line` citation; I verified the two shipped-behaviour claims the new
+argument rests on at `9486c81` — `checkPostmortem` (`:2440-2448`) is pure, and the step-G refusal
+(`:3890-3901`) writes nothing — so the analogy the new rule is built on holds.
+
+Five new findings, all in text v1.6 added, **all Low, none blocking**: S-16's bracket content is called
+*the offending value* in §5's prose and *the offending line* in §6, with the specimen agreeing with §6
+(G-21); a region that fails more than one check has no stated `{reason}` (G-22); *"the only effect of the
+entry is the S-16 notice"* overstates a step-G-shaped refusal, which throws `haltError`, records a ❌
+phase row and leaves the queue row `halted` — harmless, but a literal *return* would let the pipeline
+advance past an unentered review phase (G-23); the value-reason repair's **delete** branch raises `H − A`
+and so converts `invalid-window-start` into `counts-mismatch` whenever the region already sits at
+`H − A = 1`, where **correct** is always safe (G-24); and *refusal* now carries three senses, the new
+term of art not being in §5's meanings table while AC-3.5 uses the word for something whose defining
+property is that *the window proceeds* (G-25). Each is one clause; MF-6 … MF-10 do not block either.
+
+On the stopping rule: `blocking(4) = 9`, `blocking(5) = 11`, `blocking(6) = 6`, `blocking(7) = 6` — both
+operands available, panel shape equal, so `blocking(7) ≥ blocking(6) > 0` and **AC-2.1 would have halted
+this phase at round 7**, one round before every blocking finding closed. That is R-9's false positive
+landing immediately before approval rather than mid-phase, and it is the first on-branch instance of it;
+MF-9 folds it into R-9's demonstration. My own series is 10, 5, 5, 5, 5, 4, 3, **0 blocking (5 Low)**.
+Rounds 5, 6 and 7 each took a finding in the reset-region accounting; round 8 takes none, and the residue
+has changed kind — five findings about how two sections spell the same string, none about a state. My
+recommendation to the operator: **apply the five clauses and MF-6 as a v1.7 consistency pass and close
+Phase R** rather than open a ninth round; every one is derivable from this file without a reviewer in the
+loop.
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 5}
