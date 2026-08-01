@@ -140,17 +140,14 @@ that was real (11 → 6) and the round that held it, and declines to buy the ris
 that document**, and the loop halts on entering round 4 — *whatever invocation opened the earlier rounds*.
 
 **Scope: `docType: null` loops are out.** Phase CR calls the same `reviewLoop` with `docType: null`
-(`orchestrate-dev.js:4720`–`:4721`), and Phase DOD runs its own evaluator loop; N-7 excludes both
-from this family's mechanisms and **this REQ does not change that**. Concretely, for a `docType:
-null` loop: AC-1.1's absolute per-document window, AC-1.4's reset region and AC-1.5's origin `W`,
-clearance accounting and refusal **do not apply**. What *does* reach them is AC-1.2's single
-constant, which they share: their existing **per-invocation** budget becomes 3 instead of 5 —
-unchanged in kind, still bounded, still halting the way it halts today. That is stated here rather
-than left to FSPEC because the alternative reading is not merely out of scope but unsafe: with
-`docType: null` no basename ever matches, so `deriveRoundWindow` returns `startIndex = 1` on every
-entry, and a second CR clearance would compute the same `N = 1`, fail AC-1.5(4) step 2's
-strictly-increasing check, and refuse Phase CR **permanently and unrepairably** for that feature.
-A test for this clause asserts that no `## Reset Region` is created by a Phase CR or Phase DOD halt.
+(`orchestrate-dev.js:4720`–`:4721`) and Phase DOD runs its own loop; N-7 excludes both and **this REQ
+does not change that**. For such a loop, AC-1.1's per-document window, AC-1.4's reset region and
+AC-1.5's `W`, clearance accounting and refusal **do not apply**. What does reach them is AC-1.2's
+constant, which they share: their **per-invocation** budget becomes 3 instead of 5 — unchanged in
+kind, still bounded. This is stated rather than left to FSPEC because the other reading is unsafe:
+with `docType: null` no basename matches, so `deriveRoundWindow` always returns `startIndex = 1`, and
+a second CR clearance would recompute `N = 1`, fail step 2's strictly-increasing check, and refuse
+Phase CR **permanently and unrepairably**. Test: no `## Reset Region` is created by a CR or DOD halt.
 
 This is a **second behavioural change**. At HEAD `MAX_REVIEW_ROUNDS` is a *per-invocation budget* (M-1d): a phase re-entered on a branch whose highest round is 3 is admitted rounds 4…6,
 so a fourth round *does* dispatch reviewers and the document is reviewed six times. Under that rule three-rounds-per-invocation bounds nothing about a document, and §2's cost claim
@@ -268,27 +265,23 @@ state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-)entered. *Then
    permanent refusal; whole-listing ⇒ granted). One reading has to be named because it decides a
    refusal, and it is the doc-type-scoped one, because a window is a property of a document.
 
-   **The answering line is written, and confirmed, before the window opens.** The append is the write
-   that makes `A = H`, and it is the *sole* mechanism that keeps the clearance one-shot; a lost append
-   re-grants a fresh window on every subsequent invocation, which is exactly the fail-open the whole
-   criterion exists to close, reachable with no hand-edit. It therefore carries the **same confirmation
-   obligation AC-1.4 puts on the post-mortem write**: the loop re-reads the file and confirms the line
-   is present, in the region, at the end, before any round of that entry is dispatched. The ordering is
-   stated, not left to TSPEC, and the **fail-closed disposition when the confirmation fails** is:
-   **no window is opened** — `W` keeps the value it had before this entry — no round is dispatched, the
-   entry **refuses the phase** on the same path as step 4's refusal, and the failure is reported through
-   the channel O-5 names for a lost or unwritable region. It mints **no new catalogue id and no new
-   S-16 reason** (that enum is closed at three), because an unconfirmable write is an IO fault of the
-   loop, not a state of the region. The disposition is safe in both directions: if the line did land,
-   `A = H` and the next entry grants nothing; if it did not, the next entry re-observes the same
-   unconsumed clearance and grants the one window that was paid for — never two.
+   **The answering line is written, and confirmed, before the window opens.** That append is the write
+   making `A = H`, and the *sole* mechanism keeping the clearance one-shot; a lost append re-grants a
+   fresh window on every invocation — the fail-open this criterion exists to close, reachable with no
+   hand-edit. It therefore carries the **same confirmation obligation AC-1.4 puts on the post-mortem
+   write**: the loop re-reads the file and confirms the line is present, in the region, at the end,
+   **before any round of that entry is dispatched**. When the confirmation fails, **fail closed**: no
+   window is opened (`W` keeps its prior value), no round is dispatched, the entry **refuses the phase**
+   on step 4's path, and the failure is reported through the channel O-5 names for a lost or unwritable
+   region. It mints **no new catalogue id and no new S-16 reason** (that enum is closed at three): an
+   unconfirmable write is an IO fault of the loop, not a state of the region. Safe both ways — if the
+   line landed, `A = H` and the next entry grants nothing; if not, the next entry re-observes the same
+   clearance and grants the one window paid for, never two.
 
-   **Consequence, stated because an operator will meet it:** an invocation that confirms the answering
-   line and then dies before dispatching round `W` has **spent the clearance** — `A = H` — while the
-   window at `N` is intact and usable. The next entry opens no new window and needs none: it finds
-   `W = N` with all three rounds unspent and runs them. That is the intended reading of a stall-killed
-   dispatch, and it is why the line is written first: the alternative — write it last — loses the
-   record of a window that has already been *used*, and re-grants it.
+   **Consequence an operator will meet:** an invocation that confirms the line and then dies before
+   dispatching round `W` has **spent the clearance** (`A = H`) while the window at `N` is intact and
+   unspent; the next entry needs no new window and runs those rounds. That is why the line is written
+   first — writing it last loses the record of a window already *used*, and re-grants it.
 
    **Answering lines are appended, like `HALT-REASON:` lines** — step 2's validation reads what comes *before* each line, so it is order-sensitive. Under a
    prepending implementation a `WINDOW-RESUMED: 4` can land ahead of the `WINDOW-START: 4` it answers, which fails step 2 ⇒ `W = 1` for the rest of the document's life, since AC-1.4 clause
