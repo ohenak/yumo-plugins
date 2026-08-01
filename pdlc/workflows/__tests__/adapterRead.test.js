@@ -211,23 +211,27 @@ describe("rtReadFile", () => {
     expect(fencedOnce).toBe(true);
   });
 
-  it("throws — never returns corrupted content — when a chunk stays mangled", async () => {
+  it("throws — never returns corrupted content — when every range stays mangled", async () => {
+    // Bisection heals a mangled range whose HALVES read honestly, so to pin
+    // the fail-closed exit the corruption must survive every split depth.
     const contents = bigDocument();
-    const agent = fileAgent({ "docs/f/TSPEC-f.md": contents }, (prompt, reply) => {
-      // Chunk covering line 1 is always mangled; every other chunk is honest.
-      if (/sed -n '1,/.test(prompt)) {
-        return reply.replace(/body line/, "b0dy line");
-      }
-      return undefined;
-    });
+    const agent = fileAgent({ "docs/f/TSPEC-f.md": contents }, (prompt, reply) =>
+      /sed -n/.test(prompt) ? reply.replace(/body line/, "b0dy line") : undefined
+    );
     const { rtReadFile } = loadAdapter({ agent, parallel: hostParallel });
 
     await expect(rtReadFile("docs/f/TSPEC-f.md")).rejects.toThrow(
-      /chunk 0 of "docs\/f\/TSPEC-f\.md"/
+      /did not verify|could not be transcribed verifiably/
     );
-    // Attempts are bounded: the mangled chunk retries out.
-    const failing = agent.calls.filter((c) => /sed -n '1,/.test(c.prompt));
-    expect(failing).toHaveLength(RT_READ_RETRIES + 1);
+  });
+
+  it("bisection heals a mangled range whose halves read honestly", async () => {
+    const contents = bigDocument();
+    const agent = fileAgent({ "docs/f/TSPEC-f.md": contents }, (prompt, reply) =>
+      /sed -n '1,/.test(prompt) ? reply.replace(/body line/, "b0dy line") : undefined
+    );
+    const { rtReadFile } = loadAdapter({ agent, parallel: hostParallel });
+    expect(await rtReadFile("docs/f/TSPEC-f.md")).toBe(contents);
   });
 
   it("throws when a hallucinated SHA accompanies a mangled payload", async () => {
@@ -294,8 +298,8 @@ describe("rtReadFile", () => {
     // reproduces the live failure here.
     const contents = bigDocument();
     const agent = fileAgent({ "docs/f/TSPEC-f.md": contents });
-    const { rtReadChunk } = loadAdapter({ agent, parallel: hostParallel });
-    const part = await rtReadChunk("docs/f/TSPEC-f.md", { first: 1, last: 40 }, 0);
+    const { rtReadRange } = loadAdapter({ agent, parallel: hostParallel });
+    const part = await rtReadRange("docs/f/TSPEC-f.md", 1, 40, 0, 0);
     expect(typeof part).toBe("string");
   });
 
@@ -403,6 +407,49 @@ describe("rtReadFile", () => {
     const { rtReadFile } = loadAdapter({ agent, parallel: hostParallel });
     expect(await rtReadFile("docs/f/TSPEC-f.md")).toBe(contents);
     expect(probes).toBe(2);
+  });
+
+  it("bisects a range whose reply exceeds the output budget — the live long-line defect", async () => {
+    // Run wf_4644344b-db9: a planned 53-line range carried 25,026 bytes (one
+    // line 8,004 chars) and every attempt truncated, Sonnet included. The
+    // output cap is modelled generically: any reply longer than the cap is
+    // cut, so only narrow-enough ranges can round-trip.
+    const CAP = 9000;
+    const longLine = "x".repeat(4000);
+    const contents =
+      "short one\n".repeat(200) + `${longLine}\n${longLine}\n${longLine}\n` + "short two\n".repeat(200);
+    const inner = fileAgent({ "docs/f/REQ-f.md": contents });
+    const sedCalls = [];
+    const agent = async (prompt, opts) => {
+      const reply = await inner(prompt, opts);
+      const m = /sed -n '(\d+),(\d+)p'/.exec(prompt);
+      if (m) {
+        sedCalls.push([Number(m[1]), Number(m[2])]);
+        if (reply.length > CAP) {
+          // Truncated mid-payload: BOF arrives, EOF never does.
+          return reply.slice(0, CAP);
+        }
+      }
+      return reply;
+    };
+    const { rtReadFile } = loadAdapter({ agent, parallel: hostParallel });
+    expect(await rtReadFile("docs/f/REQ-f.md")).toBe(contents);
+    // The dense region forced at least one split: some sed range is narrower
+    // than the planned width.
+    const widths = sedCalls.map(([a, b]) => b - a + 1);
+    expect(Math.min(...widths)).toBeLessThan(Math.max(...widths));
+  });
+
+  it("throws when a single line exceeds the output budget — the documented limit", async () => {
+    const CAP = 9000;
+    const contents = "y".repeat(20000) + "\n";
+    const inner = fileAgent({ "docs/f/REQ-f.md": contents });
+    const agent = async (prompt, opts) => {
+      const reply = await inner(prompt, opts);
+      return /sed -n/.test(prompt) && reply.length > CAP ? reply.slice(0, CAP) : reply;
+    };
+    const { rtReadFile } = loadAdapter({ agent, parallel: hostParallel });
+    await expect(rtReadFile("docs/f/REQ-f.md")).rejects.toThrow(/lines 1-1/);
   });
 
   it("uses the cheap IO model for every call on the happy path", async () => {

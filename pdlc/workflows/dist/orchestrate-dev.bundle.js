@@ -178,6 +178,13 @@ const RT_CHUNK_BOF = "__PDLC_CHUNK_BOF__";
 // no number of same-model retries converges on those chunks.
 const RT_READ_ESCALATE_AFTER = 2;
 const RT_IO_MODEL_HARD = "sonnet";
+// Bisection depth cap for ranges that cannot be transcribed at their planned
+// width. The line plan assumes uniform density, but a run of kilobyte-scale
+// single-line table rows can pack a planned range far past the output budget
+// — live: a 53-line range carried 25,026 bytes, one line 8,004 chars, and
+// every attempt truncated (run wf_4644344b-db9). 2^8 = 256 splits reaches
+// single lines from any plan this file produces.
+const RT_READ_MAX_DEPTH = 8;
 // Both platforms' hashers, first one wins: macOS ships `shasum`, minimal Linux
 // images ship `sha256sum`. Output of both starts with the 64-hex digest.
 const RT_SHA_CMD = '{ shasum -a 256 2>/dev/null || sha256sum; } | head -1';
@@ -294,8 +301,15 @@ function rtLinePlan(totalLines, perChunk) {
  * bytes survive the model's copy; the digest arbitrates everything else.
  */
 async function rtReadChunk(path, range, index) {
+  let sawTruncation = false;
   for (let attempt = 0; attempt <= RT_READ_RETRIES; attempt++) {
     const model = attempt < RT_READ_ESCALATE_AFTER ? RT_IO_MODEL : RT_IO_MODEL_HARD;
+    // A truncation-shaped reply (BOF seen, EOF never arrives) means the range
+    // exceeds the reply's output budget — same-model retries are doomed, so
+    // spend at most one escalated attempt before handing back to the caller,
+    // whose move is to SPLIT the range, not to retry it.
+    if (sawTruncation && model === RT_IO_MODEL) continue;
+    if (sawTruncation && attempt > RT_READ_ESCALATE_AFTER) break;
     let reply;
     try {
       reply = await RT.agent(
@@ -328,7 +342,10 @@ async function rtReadChunk(path, range, index) {
     const afterBof = reply.indexOf("\n", bofAt);
     if (afterBof === -1) continue;
     const eofAt = reply.lastIndexOf(RT_CHUNK_EOF);
-    if (eofAt === -1 || eofAt <= afterBof) continue;
+    if (eofAt === -1 || eofAt <= afterBof) {
+      sawTruncation = true;
+      continue;
+    }
     // Everything between the tool-printed BOF and EOF marker lines is the
     // payload, byte for byte — both boundaries come from tool output, so
     // blank lines at either edge are interior text the model preserves. When
@@ -348,24 +365,34 @@ async function rtReadChunk(path, range, index) {
       } catch {
         ok = false;
       }
-      if (ok) return candidate;
+      if (ok) return { ok: true, text: candidate };
     }
   }
-  throw new Error(
-    `rtReadFile: chunk ${index} of "${path}" (lines ${range.first}-${range.last}) ` +
-      `could not be transcribed verifiably after ${RT_READ_RETRIES + 1} attempts`
-  );
+  return { ok: false };
 }
 
 /**
- * Read a file through agents, in line-ranged, SHA-verified chunks. Returns
- * null when absent, "" when empty, and throws rather than returning bytes
- * that differ from the file on disk.
- *
- * Known limit: a file whose single LINE exceeds the IO agent's output budget
- * cannot be chunked below one line, so it fails loudly after retries. Every
- * artifact this pipeline reads is line-structured markdown.
+ * Read one planned range, bisecting on failure. A range that cannot be
+ * transcribed at its planned width — packed with long lines past the output
+ * budget, or content the models keep mangling — is split in half and each
+ * half read recursively, down to single lines. Every level keeps the same
+ * per-range SHA-256 verification, so splitting never weakens the guarantee.
  */
+async function rtReadRange(path, first, last, index, depth) {
+  const res = await rtReadChunk(path, { first, last }, index);
+  if (res.ok) return res.text;
+  if (first >= last || depth >= RT_READ_MAX_DEPTH) {
+    throw new Error(
+      `rtReadFile: chunk ${index} of "${path}" (lines ${first}-${last}) ` +
+        `could not be transcribed verifiably after ${RT_READ_RETRIES + 1} attempts`
+    );
+  }
+  const mid = Math.floor((first + last) / 2);
+  const left = await rtReadRange(path, first, mid, index, depth + 1);
+  const right = await rtReadRange(path, mid + 1, last, index, depth + 1);
+  return left + right;
+}
+
 /**
  * Probe one file: `null` when absent, `{empty: true}` for zero bytes, else
  * `{size, newlines, endsWithNewline, sha}`. The digest is printed TWICE by the
@@ -431,7 +458,7 @@ async function rtReadFile(path) {
   // The HOST `parallel` takes thunks, not started promises (that is rtParallel's
   // contract, not this one), and resolves a thrown thunk to null — hence the
   // explicit null check below rather than a rejection propagating on its own.
-  const chunks = await RT.parallel(plan.map((range, i) => () => rtReadChunk(path, range, i)));
+  const chunks = await RT.parallel(plan.map((range, i) => () => rtReadRange(path, range.first, range.last, i, 0)));
   let text = "";
   for (let i = 0; i < plan.length; i++) {
     const part = chunks && chunks[i];

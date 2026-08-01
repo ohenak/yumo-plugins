@@ -32,6 +32,7 @@ const EXPOSED = [
   "rtSha256Hex",
   "rtLinePlan",
   "rtReadChunk",
+  "rtReadRange",
   "rtReadFile",
   "rtCheckFile",
   "rtListFiles",
