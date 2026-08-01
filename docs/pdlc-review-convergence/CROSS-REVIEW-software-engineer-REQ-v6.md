@@ -336,3 +336,44 @@ decision to map a duplicated `VERDICT:` to *malformed*. I have no blocking findi
 REQ-RCV-06. I raised no `## Measurement Required` items.
 
 ## Verdict
+
+**Needs revision.** v1.4 (+342/−131, 14 commits) **closes every one of my six round-5 findings**, five
+of them exactly as recommended and one better: AC-1.4 now **strips** the spent `RESOLVED:` line so the
+file never carries two and every halt is unresolved on arrival, and AC-1.5(4) restates one-shot over
+`H` (`HALT-REASON:` lines) against `A` (`WINDOW-START:` + `WINDOW-RESUMED:`), which leaves
+`parseResolvedMarker`'s single-valued contract exactly as shipped (G-07); the S-11 path writes
+`WINDOW-RESUMED: {W}` so a clearance is always answered and no free window is banked (G-10); every halt
+**appends** its `HALT-REASON:` to the end of the named `## Reset Region`, so *"the last"* means *"the
+most recent"* (G-11); AC-3.4's scan stops and step 4's collecting clause is deleted (G-08); a duplicated
+`VERDICT:` line has an AC-2.7 row ⇒ *malformed* (G-09); and the AC-2.8 halt row's empty cells are
+justified as a choice with the ordering question carried into O-12 (G-12). All five mechanical fixes are
+applied, and the header's new universal citation claim survives testing: all nine changed or added
+sites, plus a 19-row sample of the untouched ones, resolve at `9486c81`.
+
+Four new findings, all in text v1.4 added, **no High**. AC-1.5(4)'s ordered algorithm validates every
+line's value but never the counts relation the mechanism rests on, so a region with `A < H − 1` — two
+`HALT-REASON:` lines and no answering line passes all four steps — hands out `H − A − 1` fresh
+three-round windows with no operator action, which is verbatim the failure the AC's own justification
+names (G-14, the only fail-**open** finding this round). The write position of the two answering lines
+is unstated while step 2's validation is order-sensitive (*"strictly greater than every `WINDOW-START:`
+before it"*), and a non-appending writer locks `W` = 1 permanently, because the region is preserved
+verbatim by every later halt — the same defect v1.4 fixed for `HALT-REASON:` and did not fix for the
+lines it newly made positional (G-13). AC-3.2's new *"of the current window"* scoping makes the
+verifier's `## Disposition` row set a function of `W`, and nothing in AC-3.2, O-3 or O-9(c) gives the
+verifier `W`, which lives behind AC-1.5(4)'s validation in the post-mortem (G-16). And a `## Verdict`
+section carrying **no** `VERDICT:` line is enumerated by AC-3.4 step 1, has no row in AC-2.7's
+self-declared exhaustive table, and is classified there as *unavailable* where HEAD returns the
+`malformed: true` fallback (`:906` → `:424-428`), not the genuine `0/0/0` truncated-output path
+(`:451`) — G-09's shape one case over (G-15). One Low: AC-1.4's strip reaches inside fenced blocks,
+which no other reader in this REQ does (G-17).
+
+On the stopping rule, honestly: read as §5 defines `blocking(N)`, rounds 1–3 are *unavailable*, round 4
+is 9 and round 5 is 11, so AC-2.1's condition **held at round 5** and this round exists by operator
+clearance. But round 6 is the first round with **no High**, the first decrease in my own series
+(10, 5, 5, 5, 5, 4), and the first in which v1.4 added *more* mechanism than its predecessor and drew
+*fewer and lighter* findings. Two of the four Mediums are one guard short of an otherwise correct
+algorithm. My recommendation to the operator is to land G-14 and G-13 — two clauses inside one AC — and
+carry G-15, G-16 and G-17 into FSPEC rather than open a seventh round.
+
+VERDICT: Needs revision
+{"high": 0, "medium": 4, "low": 1}
