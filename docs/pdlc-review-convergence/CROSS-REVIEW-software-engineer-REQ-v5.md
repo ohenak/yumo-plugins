@@ -271,6 +271,16 @@ respectively) and are not restated. Three new, each the fastest route into the f
 
 ## Mechanical fixes
 
+Not findings. Apply without discussion; none affects the recommendation.
+
+| id | Where | Fix |
+|---|---|---|
+| MF-1 | AC-1.4's new paragraph, and O-9(d) | The post-mortem prompt is cited as `pdlc/workflows/orchestrate-dev.js:1912-1918`, `writePostmortem`. Both halves are wrong at the declared citation baseline. At `9486c81` that prompt is at **`:1723-1730`**, and its enclosing symbol is **`reviewLoop`** — there is **no `writePostmortem` symbol** in the file at `9486c81` or at this branch's HEAD. `:1912-1918` is the range at *this branch's HEAD*, where the same literal sits after ~190 lines of drift; at `9486c81`, `:1912-1918` is `approvalAnchorPreCount`'s JSDoc. The distinctive literal (*"Write docs/…/POSTMORTEM-…"*) is what saves the citation, exactly as the header's drift convention intends — but a fabricated enclosing symbol defeats that convention, so it is worth correcting in both places rather than only re-baselining the number. |
+| MF-2 | §5, the `HALT-REASON:` paragraph | It says the line "is a **rendering** of the three strings above, not a twelfth catalogue member". Since it has a grammar, an emitter, a receiver (AC-1.5(5)) and a fail-closed receive side — all four columns of the catalogue — the distinction is doing no work and costs a reader one lookup. Either give it S-12 or say why a rendering with its own receiver is not a member. |
+| MF-3 | AC-2.7, commentary under the table | "The fourth row is new in v1.2 and is the operator-facing half of AC-3.4's placement rule; v1.3 restates it…" — the row is now the fourth of *five* in a table whose rows shifted, and it is no longer new. Restate as "the anchors-only row". |
+| MF-4 | §10.7, TE F-04 row | "a precedence table (six rows in v1.2, seven since v1.3 split S-3 from S-4 — §10.8)" — correct, but §10.7 is the round-2/3 map and now carries a v1.3 parenthetical. Consider a convention: earlier maps are frozen and later changes are recorded only in the latest §10.x, or the maps accrete edits every round. |
+| MF-5 | O-10 | The v1.3 additions are a single ~700-byte sentence carrying eight distinct test obligations. It is derivable but not scannable; a bulleted sub-list would cost nothing and PROPERTIES has to enumerate them individually anyway. |
+
 ## Recommendation
 
 ## Verdict
