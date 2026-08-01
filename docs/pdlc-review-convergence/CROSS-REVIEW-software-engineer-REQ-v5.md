@@ -350,3 +350,42 @@ and AC-2.8, or R-9's decision to record rather than fix. I have no blocking find
 or REQ-RCV-06. I raised no `## Measurement Required` items.
 
 ## Verdict
+
+**Needs revision.** v1.3 (+328/−105, 9 commits) **closes every one of my five round-4 findings**, four
+of them exactly as recommended: AC-4.7's precedence table splits S-3 from S-4 and the "at most one"
+clause is gone (G-01); the undispatched round gets a row with four empty cells and `notice` = S-11
+alone, stated identically in AC-2.8 and AC-4.7 (G-02); `DOC-SHA256:` is now `sha256Hex`'s digest over
+`canonicaliseForDigest`'s output, with the "same bytes" claim withdrawn and all four citations
+verifying at `9486c81` (G-03); AC-1.4 protects the reset region and O-9(d)/O-5 carry the prompt
+amendment and the write confirmation (G-04); and AC-3.4 states one reader algorithm whose skip-set is
+§5's catalogue by reference (G-05). G-06 became R-9 with a §9.3 binding row. All four mechanical fixes
+are applied. v1.3 also fixes, on TE F-01, a defect I twice reviewed and passed: v1.2's growth boundary
+classified the previous revision and left round 2 unclassifiable.
+
+Five new findings, all in text v1.3 added, four of them in the three mechanisms it introduced. One
+High: AC-1.4's obligation to preserve the post-mortem's `RESOLVED:` line collides with
+`parseResolvedMarker` (`pdlc/workflows/orchestrate-dev.js:953`, duplicated ⇒ fail-closed at `:961`)
+and `checkPostmortem` (`:2440`, `:2446-2447`) — one preserved `RESOLVED: yes` makes the *next* halt's
+post-mortem read as already resolved so step G never refuses, while the second `RESOLVED: yes`
+AC-1.5(4)'s counting rule requires reads as `duplicated` and bricks the phase permanently; those are
+the only two reachable states and they are opposite failures (G-07). Four Mediums: AC-1.5(5)'s "an
+S-11 halt does not consume the reset" leaves `R > S` true forever, so the next fixed-point halt
+consumes it with no operator action — one free window per S-11 event (G-10); AC-1.5(5) reads "the last
+`HALT-REASON:`" while AC-1.4 lets the halt write its own reason *around* the preserved region, so
+document-order-last may be the previous halt's (G-11); AC-3.4's step 2 defines a single candidate by a
+stopping scan while steps 4–5 quantify over "two or more parsing candidates", giving two answers on
+`VERDICT:` → prose → trailer (G-08); and a duplicated `VERDICT:` line — an outcome
+`extractFileVerdict` already returns at `:904` — is classified neither by AC-3.4 step 1 nor by
+AC-2.7's table (G-09). One Low: AC-4.7's justification that the halt row's cells have "no source" is
+false of `growth-bytes` and `classification`, which are 0/`incremental` by the halt condition itself
+(G-12).
+
+On the stopping rule: blocking counts are 10, 5, 5, 5, 5 and AC-2.1's condition has now held for three
+consecutive pairs. By the test I set myself at round 4, the fixed point is real. I record that
+plainly, and note the one thing that distinguishes this round — G-07 is the first finding in five
+rounds that contradicts *shipped code* rather than the document itself, and would have survived into
+implementation. My recommendation to the operator is to land G-07 and G-10 and carry the remaining
+three into FSPEC rather than open a sixth round.
+
+VERDICT: Needs revision
+{"high": 1, "medium": 4, "low": 1}
