@@ -175,6 +175,16 @@ new, each the shortest route into the finding beside it.
 
 ## Mechanical fixes
 
+Not findings. Apply without discussion; none affects the recommendation.
+
+| id | Where | Fix |
+|---|---|---|
+| MF-6 | §10.11 lead-in, and the *Revision note (v1.6)* opening | Both say **six** round-7 findings (*"all six findings below"*, *"five of the six"*). Round 7 filed **seven**: SE v7 one High and two Medium, TE v7 one High, two Medium and one Low — `{"high": 1, "medium": 2, "low": 0}` and `{"high": 1, "medium": 2, "low": 1}` in the two verdict trailers. §10.11's table carries **five** finding rows because two of them merge a duplicated pair (SE G-18/TE F-01, SE G-19/TE F-02). Write **seven filed, five distinct**; *"five of them in the refusal path"* is then correct as a count of **filed** findings and should say so. This is the same class of arithmetic MF-1 corrected last round, one section later. |
+| MF-7 | Header *Cross-Reviews* row | Add `CROSS-REVIEW-software-engineer-REQ-v8.md` and `CROSS-REVIEW-test-engineer-REQ-v8.md` with the next revision, per the row's own maintenance rule (SE v4 MF-4). |
+| MF-8 | §9, R-5 | R-5 lists *"AC-5, AC-4.6 and AC-3.2(2) are prompt clauses, so they are directive rather than enforced"*. **AC-3.2's S-17 receive side is now a fourth**: a verifier that ignores the clause and fabricates a range still writes a `## Disposition` section, which passes clause 1's completeness check — nothing checks the row set against the range. Unlike AC-3.2(2), whose failure direction R-5 argues is safe (a higher count halts earlier), a fabricated **narrower** range is the unsafe direction: it approves a document whose earlier-round findings are unresolved. One row, and worth stating explicitly because the mitigation is different in kind — the mechanical residue here is that the range is loop-emitted and therefore always present, so the case needs a misbehaving agent rather than a missing input. |
+| MF-9 | §9, R-9's demonstration | R-9's series stops at round 5 (*"round 4 is 9 … round 5 is 11"*). Extend it: round 6 = **6** (`(0+4) + (1+1)`), round 7 = **6** (`(1+2) + (1+2)`) — so `blocking(7) ≥ blocking(6)` with both operands available and panel shape equal, and **AC-2.1 would have halted the phase at round 7**, one round before the round on which every blocking finding closed and none replaced it. That is a sharper instance of R-9 than the one it records: the counts were flat while the severities went `1H+2M`/`1H+2M` → `0H+0M`. It costs one sentence and it is the first on-branch instance where the rule's false positive lands immediately **before** approval rather than mid-phase. |
+| MF-10 | §5 S-16, `(H={h}, A={a})` | The two counts are rendered in the notice but the two value reasons also carry `[{line}]`, so the cell can read `… (H=2, A=1) docs/f/POSTMORTEM-R-f.md [WINDOW-START: 99]`. The specimen in §5 shows exactly that, but §6's row lists the parts in a different order (*"`{h}`/`{a}` decimal integers, `{path}` repo-root-relative, and on the two value reasons a trailing ` [{line}]`"*) without repeating the render. Add the same specimen to §6's cell, or point it at §5's — the row already claims the render is fixed *"here and only here"*, and two homes each stating parts is how MF-17 arose in the first place. |
+
 ## Recommendation
 
 ## Verdict
