@@ -25,12 +25,13 @@ frontmatter is the pickup gate; the `Status` cell tracks lifecycle.
 |-------|--------|---------|----------|------------|
 | 0 | superseded | pdlc-review-convergence | docs/pdlc-review-convergence/REQ-pdlc-review-convergence.md | pdlc-review-loop-hardening |
 | 10 | pending | pdlc-rcv-budget-stop | docs/pdlc-rcv-budget-stop/REQ-pdlc-rcv-budget-stop.md | - |
-| 11 | pending | pdlc-rcv-panel-topology | docs/pdlc-rcv-panel-topology/REQ-pdlc-rcv-panel-topology.md | pdlc-rcv-budget-stop |
+| 11 | pending | pdlc-rcv-panel-topology | docs/pdlc-rcv-panel-topology/REQ-pdlc-rcv-panel-topology.md | pdlc-rcv-budget-stop, pdlc-rcv-fixed-point-stop |
 | 12 | pending | pdlc-rcv-finding-quality | docs/pdlc-rcv-finding-quality/REQ-pdlc-rcv-finding-quality.md | pdlc-rcv-budget-stop |
 | 13 | pending | pdlc-merge-phase | docs/pdlc-merge-phase/REQ-pdlc-merge-phase.md | pdlc-workflow-distribution |
 | 14 | pending | pdlc-advisory-tier | docs/pdlc-advisory-tier/REQ-pdlc-advisory-tier.md | pdlc-merge-phase |
 | 15 | pending | pdlc-consolidation-agent | docs/pdlc-consolidation-agent/REQ-pdlc-consolidation-agent.md | pdlc-workflow-distribution, pdlc-advisory-tier |
 | 16 | pending | pdlc-engineering-loop | docs/pdlc-engineering-loop/REQ-pdlc-engineering-loop.md | pdlc-workflow-distribution, pdlc-merge-phase, pdlc-advisory-tier, pdlc-consolidation-agent |
+| 17 | pending | pdlc-rcv-fixed-point-stop | docs/pdlc-rcv-fixed-point-stop/REQ-pdlc-rcv-fixed-point-stop.md | pdlc-rcv-budget-stop |
 | 6 | blocked | pdlc-install-mechanism | docs/pdlc-install-mechanism/REQ-pdlc-install-mechanism.md | pdlc-workflow-distribution |
 | 7 | blocked | pdlc-release-ci | docs/pdlc-release-ci/REQ-pdlc-release-ci.md | pdlc-workflow-distribution |
 | 9 | blocked | pdlc-authoring-contract | docs/pdlc-authoring-contract/REQ-pdlc-authoring-contract.md | pdlc-review-loop-hardening |
@@ -44,6 +45,32 @@ No value was reused; prose elsewhere that says "orders 2–5" refers to these fo
 their old numbers. Rationale: same self-referential argument as the previous `Order 0` entries —
 rows 10–12 harden the review loop every other row runs through, so they go first.
 
+**Row 17 — the second `pdlc-rcv` split — added 2026-08-01 by a REQ size audit.** Rows 10–12 were
+authored the same day by splitting the 2,629-line `pdlc-review-convergence` REQ. An audit of every
+REQ in this table against the pm-author **REQ Size Budget** (target 300–500 lines; hard ceiling 700
+lines **or 60 KB**) then found two of them still over the ceiling on the *byte* half, which the
+line count had hidden:
+
+| REQ | Before | After | Remedy |
+|---|---|---|---|
+| `pdlc-rcv-budget-stop` | 581 lines / 83 KB | 410 lines / 47 KB | split at the REQ-RCV-01 / REQ-RCV-02 seam → **row 17** `pdlc-rcv-fixed-point-stop` (424 lines / 41 KB), plus the shared-context extraction below |
+| `pdlc-rcv-panel-topology` | 489 lines / 64 KB | 491 lines / 59 KB | **no split** — 4% over, and its two requirements must ship together. Shared-context extraction plus removal of one duplicated narrative |
+
+The extraction is the skill's step 4: the family vocabulary, the closed catalogue `S-1 … S-17` and
+the run-report row schema now live once in `docs/_constraints/pdlc-rcv-catalogue.md`, and every
+child REQ cites ids rather than restating grammar that can then drift. No requirement id, AC id or
+`S-*` id changed in either remedy, so existing cross-references resolve.
+
+**Why `Order 17` and not a number between 10 and 11.** `Order` values are allocated and never
+reused, and every integer below 13 is spent (0–1 retired, 2–5 renumbered to 13–16, 6–9 allocated,
+10–12 in use), so the new row could not take a lower number without reusing one. It does **not**
+need one: `Order` only breaks ties among rows whose dependencies are already satisfied, and the
+`Depends-On` column plus the REQ's own `depends-on` is what enforces sequence. Row 11 now depends
+on **both** stop REQs, so the Phase-0 readiness triage skips it until row 17 is `done`; row 17
+depends on row 10 and is otherwise free. Row 12 is unchanged — `pdlc-rcv-finding-quality` depends
+on row 10 only, for the shared definitions, and can land before or after row 17. The net pickup
+order is therefore **10 → 12 → 17 → 11**, dependency-correct, with no renumbering of rows 13–16.
+
 **Rows 10–12 — the `pdlc-review-convergence` split — added 2026-08-01, and row 0 set `superseded`.**
 `docs/pdlc-review-convergence/REQ-pdlc-review-convergence.md` reached **2,629 lines / 311 KB at v1.8**
 and ran **nine review rounds without convergence** — every round closed every prior finding and filed
@@ -51,9 +78,10 @@ new ones in the text that answered them, which is the very failure mode (P-1) th
 It was too large for the review loop to converge on, so it has been **split into three phased REQs
 plus one shared read-only reference**, `docs/_constraints/pdlc-rcv-baseline.md`. The six requirement
 ids are carried forward **unchanged** (`REQ-RCV-01`…`06`), each appearing in exactly one successor:
-`pdlc-rcv-budget-stop` carries 01–02 (round budget, enforced fixed-point and zero-delta stops, the
-run-report row schema), `pdlc-rcv-panel-topology` carries 03–04 (verifier topology, revision-size
-bound), `pdlc-rcv-finding-quality` carries 05–06 (measurement routing, mechanised citation checking).
+`pdlc-rcv-budget-stop` carries 01, `pdlc-rcv-fixed-point-stop` carries 02 (see the 2026-08-01
+size-audit note below — 01 and 02 were one row until that audit), `pdlc-rcv-panel-topology` carries
+03–04 (verifier topology, revision-size bound), `pdlc-rcv-finding-quality` carries 05–06
+(measurement routing, mechanised citation checking).
 
 Ordering: **10 before 11**, because the panel and growth rules are stated over the window origin `W`,
 the reset region and the report schema that row 10 defines — shipping 11 first would leave them
