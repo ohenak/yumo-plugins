@@ -46,12 +46,12 @@ and P-4.
 | **US-02** | *As the operator*, I want a bounded, predictable cost per reviewed document, so that a queue of ten features does not become a 3 MB corpus of specs nobody can read. |
 | **US-04** | *As the operator*, I want my one escape hatch to be spent exactly once and to leave a record, so that clearing a halt grants one fresh window and not a window per invocation. |
 
-**Value.** This REQ delivers the baseline §1.4 **pessimistic-regime** saving on its own and
+**Value.** This REQ delivers the baseline §1.4 **pessimistic-regime** saving alone and
 unconditionally — ~40% fewer reviewer dispatches and ~40% fewer bytes than the measured run, from
-the round cap alone, which is one constant. It is the only member of the family whose saving is
-not contingent on a regime. **Operator-visible surfaces:** the budget in the run report and the
-post-mortem's Iterations table; the `## Reset Region` a halt writes and an operator reads; the
-no-round-admitted report row (AC-1.5(4)) that says why an invocation did nothing.
+one constant. It is the only member of the family whose saving is not contingent on a regime.
+**Operator-visible surfaces:** the budget in the run report and the post-mortem's Iterations table;
+the `## Reset Region`; and the two no-round rows — row C, the zero-round budget halt (AC-1.5(1)),
+and row B, the step-4 refusal (AC-1.5(4)) — each saying why an invocation did nothing.
 
 ## 3. Prerequisites
 
@@ -207,8 +207,8 @@ moves neither count. Within that scope the rule admits **no exception**:
    `WINDOW-START:` and `WINDOW-RESUMED:` lines only (catalogue §1: the operator's marker is never counted, wherever in the file it sits) — so "preserve every line in the region" and
    "strip every unfenced `RESOLVED:`" quantify over disjoint sets. A `RESOLVED: yes` an operator wrote inside the region is stripped like any other and preserves nothing.
 
-**Why the creating halt is stated.** Scoped only to a halt that finds an existing post-mortem, the first halt would be governed by nothing: no region ⇒ `H = 0` ⇒ AC-1.5(4)'s gate `A <
-H` false ⇒ the operator's **first** clearance silently swallowed and the phase halting again, self-healing on the second clearance — the worst shape an operator-facing failure can take.
+**Why the creating halt is stated.** Scoped only to a halt finding an existing post-mortem, the first halt would be governed by nothing: no region ⇒ `H = 0` ⇒ AC-1.5(4)'s gate `A < H`
+false ⇒ the operator's **first** clearance silently swallowed, the phase halting again, self-healing on the second — the worst shape an operator-facing failure takes.
 
 **Why clause 2.** `RESOLVED:` is a **single-valued, human-owned, fail-closed marker**, never a counter (M-7a). A preserved `RESOLVED: yes` makes the next halt's post-mortem read as already
 resolved, so the halt has no durable effect; a *second* one reads as `duplicated` ⇒ permanently `unresolved` ⇒ the phase can never be re-entered. Those are the only two reachable states of
@@ -290,7 +290,7 @@ state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-)entered. *Then
    dispatch, and it is why the line is written first: the alternative — write it last — loses the
    record of a window that has already been *used*, and re-grants it.
 
-   **Answering lines are appended, for the same reason `HALT-REASON:` lines are** — step 2's validation is stated over what comes *before* each line, so it is order-sensitive. Under a
+   **Answering lines are appended, like `HALT-REASON:` lines** — step 2's validation reads what comes *before* each line, so it is order-sensitive. Under a
    prepending implementation a `WINDOW-RESUMED: 4` can land ahead of the `WINDOW-START: 4` it answers, which fails step 2 ⇒ `W = 1` for the rest of the document's life, since AC-1.4 clause
    1 preserves the region verbatim on every later halt. That failure is closed but **absorbing**, and no clearance repairs it.
 
@@ -401,25 +401,21 @@ state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-)entered. *Then
    | `fixed-point:` (S-3) or `budget-exhausted:` (S-4) | the reset is granted and consumed as clause 4 states: a fresh three-round window opens at `N` | `WINDOW-START: {N}` (S-13) |
    | unparseable, or any other value | treated as S-3/S-4 — **fail-closed**, because the safe error is to consume a reset the operator can re-grant, never to hand out a free window | `WINDOW-START: {N}` |
 
-   Reading the **leading** reason is exact: S-11 is decided at round-open and never co-occurs with S-3 or S-4 (`pdlc-rcv-fixed-point-stop` AC-2.2), so a joined value never begins `no-revision:`. **The table has three
-   rows and not four, because "absent" is unreachable here** — this table is read only on the entry that observes an unconsumed clearance, and that gate requires `A < H`, hence `H ≥ 1`,
-   hence a last line exists. The *absent* case is real one level up, at the region, and is S-12's.
+   Reading the **leading** reason is exact: S-11 is decided at round-open and never co-occurs with S-3 or S-4 (`pdlc-rcv-fixed-point-stop` AC-2.2), so a joined value never begins
+   `no-revision:`. **The table has three rows, not four: "absent" is unreachable** — it is read only on an entry observing an unconsumed clearance, whose gate requires `A < H`, hence
+   `H ≥ 1`, hence a last line exists. The *absent* case is the region's, one level up, and is S-12's.
 
    **Every clearance is answered by exactly one line, including this one.** With nothing written on the S-11 path the clearance would stay unanswered forever, so the **next** halt of any
    kind would meet an unconsumed clearance and bank a free window on a marker written for an unrelated authoring failure — *k* authoring failures, *k* free windows. `WINDOW-RESUMED: {W}`
    keeps the intent — origin unmoved, spent rounds spent, operator not charged a window — while restoring `A = H`, and gives the S-11 path a **positive artifact** to assert on, which the
    absence of a `WINDOW-START:` does not. It carries the same confirmation obligation and the same fail-closed disposition as `WINDOW-START:`.
 
-   **Row B — what the run report shows when no round is admitted.** An entry that refuses the phase at
-   step 4 opens no round and dispatches nobody, but it still produces one row in the per-round report
-   table (catalogue §3), because the operator must be told why the invocation did nothing. `round` =
-   **one past the highest round on the branch** — derived from the directory listing alone
-   (`deriveRoundWindow`), **not** from `W`, which is 1 on this path by construction and says nothing
-   about where the branch got to; on the canonical exhausted-branch fixture no round would have opened
-   at all, so the cell is not "the round that would have opened". `panel-shape`, `blocking`,
-   `growth-bytes`, `classification` **empty**; `notice` = **S-16 alone**, carrying **no S-4 reason**,
-   because no halt was taken on this entry and the budget clause was never evaluated. It is stated
-   cell by cell because the mechanical derivation from absent files gives the wrong answer.
+   **Row B — the report row of a step-4 refusal.** The entry opens no round and dispatches nobody, but
+   still produces one row (catalogue §3), because the operator must be told why the invocation did
+   nothing. `round` = **one past the highest round of this document type on the branch**, from the
+   listing (`deriveRoundWindow`), **not** from `W`, which is 1 on this path by construction;
+   `panel-shape`, `blocking`, `growth-bytes`, `classification` **empty**; `notice` = **S-16 alone**,
+   with **no S-4 reason**, because no halt was taken and the budget clause was never evaluated.
 
 The durable observable for all five clauses is what the loop already reads: the cross-review basenames on the branch, plus the POSTMORTEM's single `RESOLVED:` marker and its preserved
 `HALT-REASON:`, `WINDOW-START:` and `WINDOW-RESUMED:` lines. Nothing here needs a clock, a process identity, or a memory of a previous invocation.
