@@ -37,7 +37,49 @@ Five, all in text added or rewritten since v2. One High.
 
 ## Questions
 
+Both are v2 questions the revision did not touch. Neither blocks approval; both are things PROPERTIES
+will have to decide, and deciding them here costs one clause each.
+
+| ID | Question |
+|----|---------|
+| Q-04 | *(carried from v2, unanswered)* Does the **confirmation read** of the answering line (AC-1.5(4)) also re-run steps 1–3 on the re-read region? The clause still says only *"the loop re-reads the file and confirms the line is present, in the region, at the end"*. If a partial write left the appended line malformed, presence-only confirmation passes while the region is now corrupt — and the entry opens a window on a region the *next* entry refuses with S-16. Confirming presence **and** validity makes the ratchet hold; confirming presence alone does not. PROPERTIES needs to know which assertion to write, and the two produce different fixtures. |
+| Q-05 | *(carried from v2, unanswered)* Can a single entry both **grant** and **halt** — grant `W` = `N`, then take some other halt path before round `N` opens? If so, `H − A` still lands in {0, 1}, but the **order** of the appended `WINDOW-START:` and `HALT-REASON:` lines decides step 2's `WINDOW-RESUMED:` check on the following entry, and the document fixes the order only for lines written by *different* entries. |
+| Q-06 | The refusal's recovery text is declared as *"names the sanctioned repair for `{reason}`"* (§6) and, for the unconfirmable-append entry, as *"re-run"*. Is *re-run* a distinct render with fixed wording, or does that entry emit the shipped generic *"set the row back to pending, then re-run the queue"* (`orchestrate-dev.js:4928`)? O-10 asserts the corrupt-region recovery text character for character and uses the shipped generic as a **negative control** — if the unconfirmable-append entry emits that same generic string, the negative control and this leg's positive assertion collide on the same string. |
+
 ## Positive Observations
+
+- **The v2 Lows were fixed at the mechanism, not at the sentence.** F-13 was not answered by asserting
+  that clause 4 governs; step 5 now *contains* the read order (*"read after any answering line this
+  entry confirmed"*) and says the grant is part of the algorithm. F-16 was not answered by deleting the
+  example; it was answered by demoting it in place (*"the `rounds 4..6 of 3` shape is illustrative,
+  never a literal expectation"*), which keeps the grammar visible to a reader while removing the trap
+  from the test obligation. Both are the durable form.
+- **The compression that paid for round 2 did not cost a single stated behaviour.** I diffed all 69
+  deleted lines: every one is a restated justification (the *"worst shape an operator-facing failure
+  takes"* gloss, the disjoint-sets re-derivation, the *"machine-maintained describes normal operation"*
+  aside, the round-history re-narration in §10). No AC clause, no cell, no oracle and no citation was
+  dropped to make room. That is the hard part of a size-constrained revision and it was done cleanly.
+- **O-10's new negative controls are the right shape.** *"with step G's shipped strings (`Refused —
+  unresolved POSTMORTEM at …` and `set the row back to pending, then re-run the queue`) as **negative
+  controls**"* turns a pair of look-alike renders into a mutation pair: an implementation that reuses
+  step G's row passes a naive assertion and fails this one. Both strings check out at HEAD
+  (`orchestrate-dev.js:4928` for the recovery line). This is the conjunct that makes "the refusal has
+  its own operator text" testable rather than aspirational.
+- **AC-1.2's new clause is a genuinely useful hazard call, and its citation is exact.** The two
+  `windowEnd` defaults it names are both real and both silently widen the window when `W ≠ startIndex`
+  — a defect that would have surfaced as an off-by-`W` in production and never in a unit test that
+  passes `endIndex` explicitly, which every existing call site does. F-20 asks only for its observable,
+  not for the clause.
+- **§6's new scope paragraph answers the right question.** Baseline §3 says a threshold used by a child
+  REQ and absent there is a defect; four rows of §6 are deliberately not baseline rows, and the
+  paragraph now names them and gives each a registered authority (catalogue §2, or this table). Without
+  it a reviewer of the baseline would have filed those four as defects on every future pass.
+- Citations re-spot-checked at HEAD for the **changed** text only: `reviewLoop`'s `endIndex =
+  windowEnd(startIndex)` default (`:1830`) and `checkConverged`'s `endIndex === undefined` fallback
+  (`:1771`–`:1772`) are as described; step G's two shipped strings are as quoted; baseline §3 contains
+  exactly six RCV-01-owned rows, matching §6's *"owns six of its rows"*; §5's table is six owned and two
+  read, matching its new count; catalogue §2's S-16 enum is still closed at three reasons. The only
+  citation that does **not** check out is `postmortemStatus`'s `resolved` (F-17).
 
 ## Recommendation
 
