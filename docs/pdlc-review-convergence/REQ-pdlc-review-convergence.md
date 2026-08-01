@@ -648,6 +648,45 @@ trailer would otherwise read as a perfect round and, worse, as a *comparable* on
 a missing trailer from being read as zero blocking findings. It is the receive-side totality DC-01
 requires of the count trailer, now that AC-2 reads that trailer from a file.
 
+**AC-2.8 — A round whose document did not change is a halt, not a consumed round.**
+*Who:* the review loop. *Given:* a round **N ≥ 2** about to be opened, where round N−1's anchors carry
+both `DOC-BYTES(N−1)` and `DOC-SHA256(N−1)` (S-2, S-10). *When:* the loop reads the document to take
+round N's own endpoints, **before** it dispatches round N's reviewers. *Then:* if the document's byte
+length equals `DOC-BYTES(N−1)` **and** its SHA-256 equals `DOC-SHA256(N−1)`, the loop **halts on the
+existing post-mortem path** (AC-1.4) with the S-11 halt reason `no-revision: round {N} document
+identical to round {N-1}`, and round N is **not** dispatched and **not** counted against AC-1's budget.
+
+Receive side, total over the anchors:
+
+| Observation | Behaviour |
+|---|---|
+| Both anchors present, both endpoints equal | **halt**, S-11 |
+| Both anchors present, either endpoint differs | no halt; the round proceeds and AC-4 classifies the growth as usual |
+| Either anchor absent, unparseable, or duplicated with unequal values at round N−1 | the test is **not evaluated**; the round proceeds. Fail-**open**, deliberately: a missing anchor is evidence about the writer, not about the author, and must never manufacture a halt |
+| N = 1 | not evaluated — there is no predecessor |
+
+**Why the byte length alone is not the test.** Two different revisions of the same length are possible
+and a halt on that evidence would be wrong. The SHA-256 endpoint is what makes the test exact, and it
+costs nothing new: the same hashing the tier-1 approval anchors already perform over the reviewed
+document (M-4a), written by the same per-round writer as `DOC-BYTES:` (AC-4.1).
+
+**Why this is a halt and not a notice.** A zero-delta round is the strongest observable form of
+non-convergence there is: the optimizer episode between the two rounds produced nothing, so round N's
+reviewers cannot resolve a finding, cannot change a verdict, and cannot produce a review that differs
+from round N−1's. Spending a round of a three-round budget on it converts an *authoring* failure into a
+*non-convergence* post-mortem, which names the wrong cause and burns the budget that would have paid
+for the real revision. Making it a distinct halt reason (S-11) tells the operator exactly what to fix —
+re-run the authoring step — rather than inviting them to adjudicate findings that were never contested.
+
+**This defect was observed on this document.** Round 3 of this REQ's own Phase R was dispatched against
+a byte-identical file: both reviewers verified the blob hash was unchanged across the round-2 and
+round-3 baselines, both carried every finding forward verbatim, and one round of a five-round budget
+bought a review that could not differ from its predecessor (SE F-08, TE F-07). AC-2's fixed-point test
+does not catch it — the blocking counts are trivially equal, which reads as a *plateau of disagreement*
+rather than as *no input* — so the byte-identity test is a separate clause, evaluated earlier and
+reported differently. AC-4's `DOC-BYTES:` datum is what makes it a two-anchor comparison rather than a
+new mechanism.
+
 **AC-2.6 — The rule bounds work, and it is honest about how much.**
 *Who:* the operator. *Given:* AC-1's three rounds. *When:* the rule fires. *Then:* how often it can
 fire depends on which of §2's two regimes the run is in, and v1.0 stated only one of them as though it
@@ -672,9 +711,9 @@ round 2. R-2 is restated to match.
 A test author can derive the expected fire-sites from this table plus AC-4.2's classification of each
 round's measured growth; nothing about it depends on which process opened which round.
 
-**Observability.** Two integers read from two files on the branch, two on-disk role-slug sets, one
-comparison, one halt reason string. No unmeasured runtime behaviour and no in-process state is
-involved.
+**Observability.** Two integers read from two files on the branch, two on-disk role-slug sets, two
+anchor pairs, three comparisons, two halt reason strings. No unmeasured runtime behaviour and no
+in-process state is involved.
 
 ---
 
