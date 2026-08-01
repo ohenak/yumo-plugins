@@ -914,10 +914,14 @@ Receive side, total over every input — the anchor condition is stated **here**
 | N = 1, or `N − 1 < W` — round N is the first round of a window | not evaluated — there is no predecessor **in this window**. An operator who resets without revising the document is exercising the escape hatch deliberately; halting the fresh window on its first round would spend a reset on zero rounds (TE v4 F-04) |
 
 **What the run report shows for the undispatched round.** Round N produces no cross-review files, so
-none of AC-4.7's other five columns has a source (SE v4 G-02). The table nevertheless gains **a row for
-round N**, and that row is fixed here: `round` = N, `panel-shape`, `blocking`, `growth-bytes` and
-`classification` all **empty** — round N was not dispatched, so there is nothing to report about it —
-and `notice` carrying **S-11 alone**. The mechanically-derived alternative (`crashed` / `unavailable` /
+`panel-shape` and `blocking` have no source at all (SE v4 G-02). `growth-bytes` and `classification`
+**do** have one — the halt condition is `bytes(t0) = DOC-BYTES(N−1)`, so the growth is exactly 0 and the
+classification `incremental`, both derivable with no round-N file in existence (SE v5 G-12) — and they
+are nevertheless left empty **by choice**, not for want of a source: reporting `0` / `incremental`
+invites the reader to think a round was measured, and no round ran. The table gains **a row for round
+N**, and that row is fixed here: `round` = N, `panel-shape`, `blocking`, `growth-bytes` and
+`classification` all **empty** — round N was not dispatched, so nothing is reported about it — and
+`notice` carrying **S-11 alone**. The mechanically-derived alternative (`crashed` / `unavailable` /
 `unmeasurable` plus three S-5/S-6 notices) is wrong on its face: it presents the operator's primary
 evidence that the *author* did nothing as evidence that the *reviewers* crashed. Empty cells say
 "not run", which is what happened. O-10 asserts this row.
@@ -962,7 +966,9 @@ new mechanism.
 *Who:* the operator. *Given:* AC-1's three rounds. *When:* the rule fires. *Then:* how often it can
 fire depends on which of §2's two regimes the run is in, and v1.0 stated only one of them as though it
 were a consequence. Both are enumerated here — these are **all** the panel-shape sequences reachable
-under AC-3.1 and AC-4.2:
+under AC-3.1 and AC-4.2, each stated over **the growth into the round in the row**, and each read over
+the three rounds of a window (rounds `W`, `W+1`, `W+2`; `W = 1` when no reset has been granted), since
+AC-3.1's first-round rule is over windows rather than over round indices (TE v5 MF-10, F-03):
 
 | Reachable sequence (rounds 1, 2, 3) | When | Comparable consecutive same-shape pairs | Rule can fire at |
 |---|---|---|---|
@@ -1431,8 +1437,9 @@ the run report. *Then:* it carries **one row per round**, with exactly these col
 | `notice` | a **possibly-empty, ordered list** of S-3 … S-6 and S-11 notices, rendered as a `; `-separated string in the precedence order below |
 
 **The AC-2.8 halt row is the one row with no dispatch behind it.** A round halted at open by AC-2.8 was
-never dispatched, so it produced no cross-review files and none of the five non-`round` columns has a
-source. Its row is: `round` = N; `panel-shape`, `blocking`, `growth-bytes` and `classification`
+never dispatched, so it produced no cross-review files: `panel-shape` and `blocking` have no source, and
+`growth-bytes` / `classification` are withheld deliberately rather than for want of one (AC-2.8, SE v5
+G-12). Its row is: `round` = N; `panel-shape`, `blocking`, `growth-bytes` and `classification`
 **empty**; `notice` = S-11 alone. It is stated in AC-2.8 and repeated here because AC-4.7's bar is
 character-for-character derivability, and the mechanical derivation from absent files would render
 `crashed` / `unavailable` / `unmeasurable` plus three spurious notices — reporting an authoring failure
