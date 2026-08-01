@@ -152,8 +152,8 @@ with `docType: null` no basename matches, so `deriveRoundWindow` always returns 
 a second CR clearance would recompute `N = 1`, fail step 2's strictly-increasing check, and refuse
 Phase CR **permanently and unrepairably**. Test: no `## Reset Region` is created by a CR or DOD halt.
 
-This is a **second behavioural change**. At HEAD `MAX_REVIEW_ROUNDS` is a *per-invocation budget* (M-1d): a phase re-entered at highest round 3 is admitted rounds 4…6, so the document is
-reviewed six times and §2's cost claim would bound nothing. AC-1.5 states the replacement rule and its escape hatch.
+This is a **second behavioural change** — §1's per-invocation defect: a phase re-entered at highest round 3 is admitted rounds 4…6, so §2's cost claim would bound nothing. AC-1.5 states the
+replacement rule and its escape hatch.
 
 **AC-1.2 — One constant, one arithmetic site.** *Who:* a maintainer. *Given:* the module at `pdlc/workflows/orchestrate-dev.js`. *When:* they change the budget. *Then:* they change
 exactly one module-scope constant (M-1a) and no arithmetic anywhere else, because the sole site that expresses the window *width* in terms of that constant is `windowEnd` (M-1b). The
@@ -257,11 +257,11 @@ state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-)entered. *Then
    **"The highest round on the branch" always means: of the document type under review.** Every such
    phrase in this REQ — clause 2's start, this clause's `N`, step 2's range check, row B's and row C's
    `round` cell — is taken over the basenames `deriveRoundWindow` already filters by `docType`
-   (M-1d), never over the whole directory listing. A feature directory holds cross-reviews for several
-   document types at once, and the two readings differ on a constructible fixture (a Phase F region
-   carrying `WINDOW-START: 4` with two FSPEC rounds and five REQ rounds: doc-type-scoped ⇒ invalid ⇒
-   permanent refusal; whole-listing ⇒ granted). One reading has to be named because it decides a
-   refusal, and it is the doc-type-scoped one, because a window is a property of a document.
+   (M-1d), never over the whole listing. A feature directory holds cross-reviews for several document
+   types at once, and the two readings differ on a constructible fixture (a Phase F region carrying
+   `WINDOW-START: 4` with two FSPEC rounds and five REQ rounds: doc-type-scoped ⇒ invalid ⇒ permanent
+   refusal; whole-listing ⇒ granted). One reading must be named because it decides a refusal, and it
+   is the doc-type-scoped one, because a window is a property of a document.
 
    **The answering line is written, and confirmed, before the window opens.** That append is the write
    making `A = H`, and the *sole* mechanism keeping the clearance one-shot; a lost append re-grants a
@@ -292,16 +292,15 @@ state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-)entered. *Then
 
    **Consequence an operator will meet:** an invocation that confirms the line and then dies before
    dispatching round `W` has **spent the clearance** (`A = H`) while the window at `N` is intact and
-   unspent; the next entry needs no new window and runs those rounds. That is why the line is written
-   first — writing it last loses the record of a window already *used*, and re-grants it.
+   unspent; the next entry needs no new window and runs those rounds. Writing the line last would
+   instead lose the record of a window already *used*, and re-grant it.
 
-   **Answering lines are appended, like `HALT-REASON:` lines** — step 2's validation reads what comes *before* each line, so it is order-sensitive. Under a
-   prepending implementation a `WINDOW-RESUMED: 4` can land ahead of the `WINDOW-START: 4` it answers, which fails step 2 ⇒ `W = 1` for the rest of the document's life, since AC-1.4 clause
-   1 preserves the region verbatim on every later halt — closed but **absorbing**, and no clearance repairs it.
+   **Answering lines are appended, like `HALT-REASON:` lines** — step 2 reads what comes *before* each line, so it is order-sensitive. Under a prepending implementation a
+   `WINDOW-RESUMED: 4` can land ahead of the `WINDOW-START: 4` it answers, failing step 2 ⇒ `W = 1` for the rest of the document's life, since AC-1.4 clause 1 preserves the region verbatim
+   on every later halt — closed but **absorbing**, and no clearance repairs it.
 
-   **A region that fails validation does not spend the clearance**, which is why validation is a conjunct of the gate, not merely a constraint on `W`. Without it, two
-   `HALT-REASON:` lines and one **invalid** `WINDOW-START:` give `A < H`, so the loop writes an answering line and consumes the clearance while `W` is still 1 — permanently, since nothing
-   removes a line.
+   **A region that fails validation does not spend the clearance** — validation is a conjunct of the gate, not merely a constraint on `W`. Without it, two `HALT-REASON:` lines and one
+   **invalid** `WINDOW-START:` give `A < H`, so the loop writes an answering line and consumes the clearance while `W` is still 1 — permanently, since nothing removes a line.
 
    **A refusal is not a halt: the entry returns without running the rest of AC-1.5.** Left running, clause 1 would halt on the budget path, and
    AC-1.4 governs **every** halt, so that halt would append its own `HALT-REASON:` (`H += 1`) and strip the operator's `RESOLVED:` — spending the clearance it declined to spend.
@@ -341,10 +340,9 @@ state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-)entered. *Then
    The second row is the hand-edit §6's `WINDOW-START:` prohibition exists to prevent: lowering `A` while leaving `H` restores `A < H` with the marker untouched, and `A` exists precisely
    to make a clearance one-shot. **Correcting is safe at every `H − A`** — both counts stay true, and any repair leaving `H − A ∉ {0, 1}` is rejected by the counts check.
 
-   **Why `counts-mismatch` is repaired by deletion, not by editing a line.** The fault is lines *missing* or *surplus*, so no line is offending, and both repairing edits are forbidden
-   elsewhere: **adding** an answering line contradicts §6, **deleting** a `HALT-REASON:` contradicts AC-1.4 clause 1. Deleting the **section** contradicts neither: S-12 reads an absent
-   heading as the empty region, `H = A = 0`, `W = 1` — the never-reset state. The next halt re-creates a one-line region and the clearance after it works, at a cost of one further halt and
-   the halt history.
+   **Why `counts-mismatch` is repaired by deletion.** No line is offending, and both line-level repairs are forbidden elsewhere: **adding** an answering line contradicts §6, **deleting** a
+   `HALT-REASON:` contradicts AC-1.4 clause 1. Deleting the **section** contradicts neither — S-12 reads an absent heading as the empty region (`H = A = 0`, `W = 1`, the never-reset state),
+   the next halt re-creates a one-line region, and the clearance after it works, at the cost of one further halt and the halt history.
 
    Receive side, an **ordered algorithm** rather than independent rows, because DC-01 requires it total **and single-valued**. Given the region, the loop:
 
