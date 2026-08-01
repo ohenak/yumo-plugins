@@ -121,6 +121,16 @@ const RT_CHUNK_END = "__PDLC_CHUNK_END__";
 // failed all 4 attempts with byte-perfect payloads short one newline
 // (run wf_c6751860-d4a).
 const RT_CHUNK_EOF = "__PDLC_CHUNK_EOF__";
+// Same reasoning at the payload's FRONT: a chunk whose first line is blank
+// loses it against the model-written BEGIN sentinel (run wf_a5b4ad68-885,
+// lines 113-168: one attempt was byte-perfect except that leading newline).
+const RT_CHUNK_BOF = "__PDLC_CHUNK_BOF__";
+// Attempts beyond this index escalate from RT_IO_MODEL to RT_IO_MODEL_HARD:
+// haiku deterministically REFORMATS some content instead of copying it (the
+// same run returned a markdown table as parsed JSON on all 4 attempts), so
+// no number of same-model retries converges on those chunks.
+const RT_READ_ESCALATE_AFTER = 2;
+const RT_IO_MODEL_HARD = "sonnet";
 // Both platforms' hashers, first one wins: macOS ships `shasum`, minimal Linux
 // images ship `sha256sum`. Output of both starts with the 64-hex digest.
 const RT_SHA_CMD = '{ shasum -a 256 2>/dev/null || sha256sum; } | head -1';
@@ -238,21 +248,23 @@ function rtLinePlan(totalLines, perChunk) {
  */
 async function rtReadChunk(path, range, index) {
   for (let attempt = 0; attempt <= RT_READ_RETRIES; attempt++) {
+    const model = attempt < RT_READ_ESCALATE_AFTER ? RT_IO_MODEL : RT_IO_MODEL_HARD;
     let reply;
     try {
       reply = await RT.agent(
         `Run these two exact commands from the repository root:\n` +
           `  sed -n '${range.first},${range.last}p' "${path}" | ${RT_SHA_CMD}\n` +
-          `  { sed -n '${range.first},${range.last}p' "${path}"; printf '${RT_CHUNK_EOF}\\n'; }\n` +
-          `Reply in exactly this shape, with the first command's 64-hex digest and the ` +
-          `second command's output copied EXACTLY, byte for byte, including every blank ` +
-          `line and the ${RT_CHUNK_EOF} line it ends with — do not fix typos, do not ` +
-          `reformat, do not summarise, do not add code fences:\n` +
+          `  { printf '${RT_CHUNK_BOF}\\n'; sed -n '${range.first},${range.last}p' "${path}"; printf '${RT_CHUNK_EOF}\\n'; }\n` +
+          `Reply with the first command's 64-hex digest, then the second command's ` +
+          `output copied EXACTLY, character for character, from the ${RT_CHUNK_BOF} line ` +
+          `through the ${RT_CHUNK_EOF} line. This is a byte transport, not a writing ` +
+          `task: preserve every blank line and every space, never summarise, never ` +
+          `convert tables or lists to JSON or any other shape, never fix typos, never ` +
+          `add code fences.\n` +
+          `Reply shape:\n` +
           `SHA256: {digest}\n` +
-          `${RT_CHUNK_BEGIN}\n` +
-          `{the second command's output}\n` +
-          `${RT_CHUNK_END}`,
-        { label: `read:${path}#${index}`, model: RT_IO_MODEL }
+          `{the second command's output}`,
+        { label: `read:${path}#${index}`, model }
       );
     } catch {
       // An agent that dies (API error, tool-reference fault) is a failed
@@ -261,22 +273,24 @@ async function rtReadChunk(path, range, index) {
       continue;
     }
     if (typeof reply !== "string") continue;
-    const beginAt = reply.indexOf(RT_CHUNK_BEGIN);
-    if (beginAt === -1) continue;
-    const shaMatch = RT_HEX64_RE.exec(reply.slice(0, beginAt));
+    const bofAt = reply.indexOf(RT_CHUNK_BOF);
+    if (bofAt === -1) continue;
+    const shaMatch = RT_HEX64_RE.exec(reply.slice(0, bofAt));
     if (!shaMatch) continue;
     const sha = shaMatch[0];
-    const afterBegin = reply.indexOf("\n", beginAt);
-    if (afterBegin === -1) continue;
+    const afterBof = reply.indexOf("\n", bofAt);
+    if (afterBof === -1) continue;
     const eofAt = reply.lastIndexOf(RT_CHUNK_EOF);
-    if (eofAt === -1 || eofAt <= afterBegin) continue;
-    // Everything between the BEGIN line and the EOF marker is the payload,
-    // byte for byte. When the range's final line has no trailing newline
-    // (GNU sed on the file's last line), the marker abuts the payload with no
-    // separator — which is exactly why no newline may be stripped or added
-    // here. The digest still gets the last word; the two fallbacks only give
-    // a model that moved the marker to its own line a chance to verify.
-    const payload = reply.slice(afterBegin + 1, eofAt);
+    if (eofAt === -1 || eofAt <= afterBof) continue;
+    // Everything between the tool-printed BOF and EOF marker lines is the
+    // payload, byte for byte — both boundaries come from tool output, so
+    // blank lines at either edge are interior text the model preserves. When
+    // the range's final line has no trailing newline (GNU sed on the file's
+    // last line), the EOF marker abuts the payload — which is exactly why no
+    // newline may be stripped or added here. The digest still gets the last
+    // word; the two fallbacks only give a model that nudged a marker onto its
+    // own line a chance to verify.
+    const payload = reply.slice(afterBof + 1, eofAt);
     const candidates = [payload];
     if (payload.slice(-1) === "\n") candidates.push(payload.slice(0, -1));
     candidates.push(payload + "\n");

@@ -183,7 +183,7 @@ describe("rtReadFile", () => {
       if (!truncatedOnce && /sed -n/.test(prompt)) {
         truncatedOnce = true;
         const cut = Math.floor(reply.indexOf("__PDLC_CHUNK_EOF__") / 2);
-        return reply.slice(0, cut) + "\n__PDLC_CHUNK_END__";
+        return reply.slice(0, cut);
       }
       return undefined;
     });
@@ -199,9 +199,9 @@ describe("rtReadFile", () => {
     const agent = fileAgent({ "docs/f/TSPEC-f.md": contents }, (prompt, reply) => {
       if (!fencedOnce && /sed -n/.test(prompt)) {
         fencedOnce = true;
-        // A fence swallows the sentinels' standalone shape but the sentinel
-        // text survives; the SHA over the fenced payload no longer matches.
-        return "```text\n" + reply.replace(/__PDLC_CHUNK_(BEGIN|END)__/g, "") + "\n```";
+        // A fence strips the tool-printed markers; extraction must fail and
+        // the attempt retry rather than verify.
+        return "```text\n" + reply.replace(/__PDLC_CHUNK_(BOF|EOF)__/g, "") + "\n```";
       }
       return undefined;
     });
@@ -340,7 +340,38 @@ describe("rtReadFile", () => {
     expect(threwOnce).toBe(true);
   });
 
-  it("uses the cheap IO model for every call it makes", async () => {
+  it("reads a chunk whose FIRST line is blank — the live leading-newline defect", async () => {
+    // Run wf_a5b4ad68-885, lines 113-168: the payload's leading blank line
+    // collapsed into the model-written BEGIN sentinel. The tool-printed BOF
+    // marker makes it interior.
+    const contents = "start\n" + "\nEither way, state explicitly\nmore body\n".repeat(3);
+    const agent = fileAgent({ "docs/f/REQ-f.md": contents });
+    const { rtReadFile } = loadAdapter({ agent, parallel: hostParallel });
+    expect(await rtReadFile("docs/f/REQ-f.md")).toBe(contents);
+  });
+
+  it("escalates a chunk that the cheap model keeps reformatting to the hard model", async () => {
+    // Run wf_a5b4ad68-885: haiku returned a markdown table as parsed JSON on
+    // all 4 attempts — same-model retries cannot converge on such content.
+    const contents = "| a | b |\n|---|---|\n| 1 | 2 |\n";
+    const models = [];
+    const inner = fileAgent({ "docs/f/REQ-f.md": contents });
+    const agent = async (prompt, opts) => {
+      if (/sed -n/.test(prompt)) {
+        models.push(opts.model);
+        if (opts.model !== adapter.RT_IO_MODEL) return inner(prompt, opts);
+        const honest = await inner(prompt, opts);
+        return honest.replace(contents, '[{"a":"1","b":"2"}]\n'); // the reformat
+      }
+      return inner(prompt, opts);
+    };
+    const { rtReadFile } = loadAdapter({ agent, parallel: hostParallel });
+    expect(await rtReadFile("docs/f/REQ-f.md")).toBe(contents);
+    expect(models.slice(0, 2)).toEqual([adapter.RT_IO_MODEL, adapter.RT_IO_MODEL]);
+    expect(models[2]).toBe("sonnet");
+  });
+
+  it("uses the cheap IO model for every call on the happy path", async () => {
     const agent = fileAgent({ "docs/f/REQ-f.md": "hello world\n" });
     const { rtReadFile } = loadAdapter({ agent, parallel: hostParallel });
     await rtReadFile("docs/f/REQ-f.md");

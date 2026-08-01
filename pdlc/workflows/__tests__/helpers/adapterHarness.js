@@ -155,10 +155,11 @@ export function fileAgent(files, corrupt, opts = {}) {
       else {
         const chunk = sedRange(text, Number(m[1]), Number(m[2]));
         const sha = createHash("sha256").update(Buffer.from(chunk, "utf8")).digest("hex");
-        // The second command's output is the chunk plus the tool-printed EOF
-        // marker line; when the chunk has no trailing newline the marker abuts
-        // it, exactly as `printf` after `sed` behaves live.
-        reply = `SHA256: ${sha}\n__PDLC_CHUNK_BEGIN__\n${chunk}__PDLC_CHUNK_EOF__\n__PDLC_CHUNK_END__`;
+        // The second command's output is the tool-printed BOF line, the chunk,
+        // then the tool-printed EOF marker line; when the chunk has no trailing
+        // newline the EOF marker abuts it, exactly as `printf` after `sed`
+        // behaves live.
+        reply = `SHA256: ${sha}\n__PDLC_CHUNK_BOF__\n${chunk}__PDLC_CHUNK_EOF__`;
       }
     }
     if (corrupt) {
