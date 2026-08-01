@@ -117,6 +117,17 @@ the operator the number they need to choose the branch; the table just does not 
 
 ## Questions
 
+Q-16, Q-17 and Q-18 from v7 are **closed** by v1.6 — the entry does not halt, so nothing strips the
+marker; `counts-mismatch` is repaired by deleting the section, not a line; and AC-4.7 row B states all
+six cells, with S-4 explicitly not co-occurring and `round` defined off the directory listing. Three
+new, each the shortest route into the finding beside it.
+
+| ID | Question |
+|----|---------|
+| Q-19 | A region with two faults — an invalid `WINDOW-START:` **and** `H − A = 2`, or two invalid answering lines. What is the `notice` cell, character for character: one S-16 with which `{reason}`, or two S-16s in the `; `-joined list? (G-22) |
+| Q-20 | An entry refused by AC-1.5(4) step 4: does the invocation terminate (step G's `throw haltError`) or return to the orchestrator, and does the feature's `QUEUE.md` row become `halted`? (G-23) |
+| Q-21 | The notice reports `invalid-window-start (H=2, A=1)`. Should the operator **correct** the line or **delete** it, given that deleting it makes the next entry report `counts-mismatch`? (G-24) |
+
 ## Positive Observations
 
 ## Mechanical fixes
