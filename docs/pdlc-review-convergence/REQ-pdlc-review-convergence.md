@@ -11,13 +11,33 @@ depends-on: [pdlc-review-loop-hardening]
 | Upstream | `docs/completed/pdlc-review-loop-hardening/POSTMORTEM-R-pdlc-review-loop-hardening.md` (v1.0) root causes 1–3 and recommendations R-4, R-5, R-6; `docs/completed/pdlc-review-loop-hardening/LEARNINGS-pdlc-review-loop-hardening.md` §2, §4, §5.3; operator direction of 2026-07-29 |
 | Downstream | `FSPEC-pdlc-review-convergence.md`; every subsequent `docs/_queue/QUEUE.md` row, all of which are reviewed by the loop this REQ changes |
 | Targets | `pdlc/workflows/orchestrate-dev.js`; a new library under `pdlc/workflows/lib/`; the three review SKILLs (`pm-review`, `se-review`, `te-review`); the three author SKILLs (`pm-author`, `se-author`, `te-author`); generated artifacts under `pdlc/workflows/dist/` rebuilt in the same commit |
-| Cross-Reviews | *(none yet — this document has not been reviewed)* |
+| Cross-Reviews | `docs/pdlc-review-convergence/CROSS-REVIEW-software-engineer-REQ-v1.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-test-engineer-REQ-v1.md` |
 | LEARNINGS | `docs/pdlc-review-convergence/LEARNINGS-pdlc-review-convergence.md` |
-| Citation baseline | Every `file:line` reference in this document was read from the working tree at HEAD **`d11dad5`** (`d11dad51952b090af4cfaabe97616e1850ba8d6b`), branch `feat-pdlc-review-convergence`, tree clean. Per the convention this repo adopted after `CROSS-REVIEW-software-engineer-REQ-v1` F-05 on the predecessor feature, **every** citation below names its enclosing symbol *and* a distinctive literal alongside the line number, so a line drift narrows the reader's search rather than invalidating the claim. A citation that names only a line number is a defect in this document; report it as a mechanical fix, not a finding (see AC-6). |
+| Citation baseline | Every `file:line` reference in this document was read from the working tree at **`9486c81`** on the **default branch `main`**, tree clean. The v1.0 header pinned `d11dad5` on `feat-pdlc-review-loop-hardening`, which is *not* an ancestor of `main` and therefore not reachable from where this document is reviewed (SE F-08); the predecessor feature has since merged (`7bc559a`), so the baseline is restated over the default branch and every row in §4 was re-verified against it. Per the convention this repo adopted after `CROSS-REVIEW-software-engineer-REQ-v1` F-05 on the predecessor feature, **every** citation below names its enclosing symbol *and* a distinctive literal alongside the line number, so a line drift narrows the reader's search rather than invalidating the claim. Citations are written **repo-root-relative** (`pdlc/workflows/orchestrate-dev.js:52`) — the closed grammar AC-6.4 defines. A citation that names only a line number, or only a basename, is a defect in this document; report it as a mechanical fix, not a finding (see AC-6). |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude + operator | 1.0 | 2026-07-30 |
+| pdlc | draft | Claude + operator | 1.1 | 2026-07-31 |
+
+> **Revision note (v1.1).** This version answers round 1 of cross-review in full: SE F-01 … F-12 and
+> TE F-01 … F-09, plus both mechanical-fix lists. §10.6 maps every finding to where it is answered.
+> Four things changed structurally:
+>
+> 1. **Durability.** The three High findings were one question — *what cross-round loop state survives
+>    an invocation boundary?* — answered in one place, §5's new **durability table**. AC-1.5 makes the
+>    round budget absolute per document; AC-2.1 reads both operands from the files; AC-4.1 gives the
+>    growth endpoints a durable `DOC-BYTES:` anchor. No AC is now stated over in-process state.
+> 2. **DC-01 totality.** §5 carries a **closed catalogue of nine** boundary-crossing strings, each with
+>    a total receiver stated at REQ altitude — including all five `REVIEW-MODE:` cases (AC-3.5(e)),
+>    all four `DOC-BYTES:` cases (AC-4.1), and AC-6.4's citation grammar C-1 … C-4 with its
+>    unparseable-input behaviour. O-4 and O-6 are narrowed to plumbing.
+> 3. **Oracles for AC-3.2.** `## Disposition` (S-8) and the per-finding `New-mechanism:` field (S-9)
+>    make both clauses falsifiable; v1.0's versions could not be distinguished from their own violation.
+> 4. **DC-08 binding.** All three deferrals are bound to successor REQ stub files that exist on the
+>    branch (§9.3), and §2 states the saving as **two named regimes** rather than one figure.
+>
+> Every citation is repo-root-relative with an ASCII-hyphen range, and the baseline is pinned to a
+> commit on the default branch.
 
 > **Stopping rule (binding on Phase R for this document).**
 >
@@ -166,10 +186,26 @@ The pdlc pipeline has three classes of actor. All three are affected.
 **Value, stated concretely.** The predecessor's Phase R burned five rounds and produced a 165 KB
 document that was accepted only by operator-directed manual convergence, outside the loop. Under the
 six changes below, the same run would have halted at round 3 — the round its own fixed-point test
-fired — with a post-mortem naming the two generator classes that were unmeasurable, at roughly 60% of
-the byte cost and 60% of the agent cost. That is the whole claim; it is a claim about *cost and
-legibility*, not about making non-convergent documents converge. **This REQ does not promise that more
-documents will reach approval.** It promises that the ones that will not, fail faster and say why.
+fired — with a post-mortem naming the two generator classes that were unmeasurable.
+
+The saving is stated as a **range with its two regimes named**, because AC-3's saving is contingent on
+AC-4's classification and the only run we have measured lands in the pessimistic regime (SE F-09,
+TE F-03):
+
+| Regime | When | Rounds run | Reviewer dispatches | Saving vs. the measured run (5 rounds × 2 reviewers = 10 dispatches, 165 KB) |
+|---|---|---|---|---|
+| **Pessimistic — every revision is large** | every round's growth exceeds 12,000 bytes, so AC-4.2 classifies **new-mechanism** and AC-3.1's exception re-escalates every round to the full panel. **This is what the predecessor's measured rounds (25.8 / 22.3 / 25.0 / 28.1 / 38.2 KB) would all have done.** | 3 | 6 | ~40% fewer dispatches and ~40% fewer bytes, from AC-1 alone. AC-3 contributes nothing. |
+| **Target — AC-4.6's minimal-revision clause takes effect** | rounds 2 and 3 revise under one pacing write, so AC-4.2 classifies **incremental** and AC-3.1 dispatches a single verifier. | 3 | 4 | ~60% fewer dispatches and ~60% fewer bytes. |
+
+**The pessimistic regime is the expected steady state at ship time**, and the REQ says so rather than
+quoting the target figure as though it were predicted. Moving from one regime to the other is the job
+of AC-4.6, which is a prompt clause and therefore directive rather than enforced (R-5); whether it
+moves is the first thing the run report of AC-4.7 will show, per round, in bytes. The claim this REQ
+makes unconditionally is the **pessimistic** row — it follows from AC-1 alone, which is one constant.
+
+That is the whole claim; it is a claim about *cost and legibility*, not about making non-convergent
+documents converge. **This REQ does not promise that more documents will reach approval.** It promises
+that the ones that will not, fail faster and say why.
 
 ### 2.1 Non-user-visible? No — the operator sees all six
 
@@ -186,82 +222,94 @@ Every change surfaces to the operator through an artifact they already read:
 
 ## 3. Prerequisites
 
-This REQ is stacked on `pdlc-review-loop-hardening`. That feature's shipped mechanism is upstream
-input here, not something this REQ re-specifies.
+This REQ is stacked on `pdlc-review-loop-hardening`, which has now merged. That feature's shipped
+mechanism is upstream input here, not something this REQ re-specifies.
 
 | # | Dependency | Resolution form | Gating logic |
 |---|---|---|---|
-| **BL-01** | Feature `pdlc-review-loop-hardening` merged to the default branch | PR merged; `docs/_queue/QUEUE.md` row `pdlc-review-loop-hardening` at `done` | Must hold at HEAD before FSPEC authoring for this feature begins |
-| **BL-02** | `parseVerdict` returns machine-readable `{verdict, high, medium, low, malformed?}` | Symbol present in `pdlc/workflows/orchestrate-dev.js` (see §4 M-1) | Must exist at HEAD before FSPEC authoring — AC-2 and AC-3 are stated over its output |
-| **BL-03** | Per-round cross-review state is refreshed from the branch inside the loop, and `selectMode` computes an episode's mode from that state | Symbols `refreshReviewState`, `selectMode` present (§4 M-4) | Must exist at HEAD — AC-3's panel-shape decision is taken at the same seam |
-| **BL-04** | Approval anchors (`APPROVAL-HASH:` / `REVIEWED-COMMIT:`) are appended to cross-review files on the terminal round | Symbol `appendApprovalAnchors` present (§4 M-6) | Must exist at HEAD — AC-3's verifier-round approval marker is appended by the same writer |
-| **BL-05** | `pdlc/workflows/lib/` exists as a home for non-bundled production libraries | Directory present, containing `document-oracles.mjs` (§4 M-8) | Must exist at HEAD — AC-6's new library is a sibling of that file and inherits its "not in the bundle" classification |
+| **BL-01** | Feature `pdlc-review-loop-hardening` merged to the default branch | **Directory `docs/completed/pdlc-review-loop-hardening/` exists on the default branch** and contains that feature's `REQ`, `FSPEC`, `TSPEC`, `PLAN`, `PROPERTIES` and `LEARNINGS`; the archived queue row is recorded in `docs/completed/QUEUE-HISTORY-rows-0-1.md` as `Order 0`. **Satisfied at `9486c81`** (merge commit `7bc559a`). The v1.0 form of this row named a live `docs/_queue/QUEUE.md` row at `done`; that row was archived out of the live table when the feature completed, so the gate as first written was unevaluable (SE F-07). | Must hold at HEAD before FSPEC authoring for this feature begins |
+| **BL-02** | `parseVerdict` returns machine-readable `{verdict, high, medium, low, malformed?}` | Symbol present in `pdlc/workflows/orchestrate-dev.js` (see §4 M-2a) | Must exist at HEAD before FSPEC authoring — AC-2 and AC-3 are stated over its output |
+| **BL-03** | Per-round cross-review state is refreshed from the branch inside the loop, and `selectMode` computes an episode's mode from that state | Symbols `refreshReviewState`, `selectMode` present (§4 M-3e, M-3c) | Must exist at HEAD — AC-3's panel-shape decision is taken at the same seam |
+| **BL-04** | Approval anchors (`APPROVAL-HASH:` / `REVIEWED-COMMIT:`) are appended to cross-review files on the terminal round | Symbol `appendApprovalAnchors` present (§4 M-4a) | Must exist at HEAD — AC-3's verifier-round approval marker is appended by the same writer |
+| **BL-05** | `pdlc/workflows/lib/` exists as a home for non-bundled production libraries | Directory present, containing `document-oracles.mjs` (§4 M-6a) | Must exist at HEAD — AC-6's new library is a sibling of that file and inherits its "not in the bundle" classification |
 
-All five hold at the Citation baseline commit `d11dad5`, which is the tip of
-`feat-pdlc-review-loop-hardening`'s stack. **BL-01 is the only one not yet satisfied on the default
-branch**: this branch is stacked, so the prerequisite is a merge order, not a missing capability. If
-`pdlc-review-loop-hardening` is abandoned rather than merged, BL-02 through BL-04 fail with it and
-AC-2, AC-3 and AC-4 lose their stated seams — that dependency is hard, and this REQ does not offer a
-fallback for it.
+**All five now hold on the default branch** at the Citation baseline commit `9486c81`, and each is
+checkable there by the observable in its Resolution-form column. At v1.0 this paragraph said BL-01 was
+*"the only one not yet satisfied on the default branch"* because the document was authored on a stacked
+branch before `pdlc-review-loop-hardening` merged; that merge has since happened (`7bc559a`), the
+feature's artifacts are archived under `docs/completed/pdlc-review-loop-hardening/`, and BL-02 …
+BL-05's symbols all resolve on `main` (`pdlc/workflows/orchestrate-dev.js:393` `parseVerdict`,
+`pdlc/workflows/orchestrate-dev.js:2358` `refreshReviewState`, `pdlc/workflows/orchestrate-dev.js:1436`
+`selectMode`, `pdlc/workflows/orchestrate-dev.js:1934` `appendApprovalAnchors`,
+`pdlc/workflows/lib/document-oracles.mjs`). The stacked-branch caveat is therefore **retracted, not
+weakened**: the prerequisite table is a gate that passes today, and FSPEC authoring may begin against
+it. Nothing in this REQ offers a fallback if that upstream mechanism is later reverted — AC-2, AC-3 and
+AC-4 are stated over its seams and would lose them.
 
 ## 4. Measured facts
 
-Every fact below was read from the working tree at the Citation baseline commit **`d11dad5`**. Each
-row names the **enclosing symbol** and a **distinctive literal** as well as the line, per the drift
-convention in the header. These are the seams AC-1 through AC-6 attach to; a reviewer verifying this
-REQ should verify these rows, not re-derive them from memory.
+Every fact below was read from the working tree at the Citation baseline commit **`9486c81`** on
+`main`. Each row names the **enclosing symbol** and a **distinctive literal** as well as the line, per
+the drift convention in the header, and every path is written **repo-root-relative** — the form AC-6.4
+check 1 resolves. These are the seams AC-1 through AC-6 attach to; a reviewer verifying this REQ should
+verify these rows, not re-derive them from memory.
 
 ### 4.1 The round budget
 
 | ID | Fact | Where | Literal |
 |---|---|---|---|
 | **M-1a** | The round budget is one module-scope constant. | `pdlc/workflows/orchestrate-dev.js:52`, module scope | `const MAX_REVIEW_ROUNDS = 5;` |
-| **M-1b** | The **sole** site where the window *width* is expressed in terms of that constant is the helper `windowEnd`. Its own doc comment says so: *"This is the SOLE place in the module where the window width is expressed in terms of `MAX_REVIEW_ROUNDS`."* `reviewLoop` takes `endIndex` as a parameter and defaults it through this helper rather than recomputing the arithmetic. | `orchestrate-dev.js:2215–2217`, function `windowEnd`; the default is applied at `:1574` inside `reviewLoop` | `return startIndex + MAX_REVIEW_ROUNDS - 1;` and `const last = endIndex === undefined ? windowEnd(first) : endIndex;` |
-| **M-1c** | Three further sites *read* the constant without doing width arithmetic: the non-convergence phase record, the post-mortem prompt's required-sections literal, and the returned `iterations` field. All three are value-sensitive but arithmetic-free. | `orchestrate-dev.js:1581`, `:1727`, `:1773` | `MAX_REVIEW_ROUNDS` as an argument to `recordPhase`; `` `Iterations (${MAX_REVIEW_ROUNDS} — limit reached)` ``; `iterations: MAX_REVIEW_ROUNDS,` |
+| **M-1b** | The **sole** site where the window *width* is expressed in terms of that constant is the helper `windowEnd`. Its own doc comment says so: *"This is the SOLE place in the module where the window width is expressed in terms of `MAX_REVIEW_ROUNDS`."* `reviewLoop` takes `endIndex` as a parameter and defaults it through this helper rather than recomputing the arithmetic. **`windowEnd` has exactly two callers**, and the v1.0 form of this row named neither correctly: `reviewLoop`'s own default, and `deriveRoundWindow` (M-1d). | `pdlc/workflows/orchestrate-dev.js:2215-2217`, function `windowEnd`; the `reviewLoop` default is applied at `pdlc/workflows/orchestrate-dev.js:1632`, inside the signature that opens at `pdlc/workflows/orchestrate-dev.js:1623`. (v1.0 attributed the default to `pdlc/workflows/orchestrate-dev.js:1574`; that line is inside the **non-convergence / post-mortem recorder**, not `reviewLoop` — SE F-04, MF-1.) | `return startIndex + MAX_REVIEW_ROUNDS - 1;` and `endIndex = windowEnd(startIndex),` |
+| **M-1c** | Three further sites *read* the constant without doing width arithmetic: the non-convergence phase record, the post-mortem prompt's required-sections literal, and the returned `iterations` field. All three are value-sensitive but arithmetic-free. | `pdlc/workflows/orchestrate-dev.js:1581`, `pdlc/workflows/orchestrate-dev.js:1727`, `pdlc/workflows/orchestrate-dev.js:1773` | `MAX_REVIEW_ROUNDS` as an argument to `recordPhase`; `` `Iterations (${MAX_REVIEW_ROUNDS} — limit reached)` ``; `iterations: MAX_REVIEW_ROUNDS,` |
+| **M-1d** | **`MAX_REVIEW_ROUNDS` is a per-invocation *budget* at HEAD, not an absolute cap on a document.** `deriveRoundWindow` computes the window's *start* from the cross-review basenames present on the branch — one past the highest existing round — and its *end* by adding the budget to that start. On a branch whose highest existing round is 3, a re-entered phase is therefore admitted rounds 4…6, and the document has been reviewed for six rounds. The function's own doc comment states this in terms. | `pdlc/workflows/orchestrate-dev.js:2151`, function `deriveRoundWindow`; the two lines at `pdlc/workflows/orchestrate-dev.js:2197-2198`; doc comment at `pdlc/workflows/orchestrate-dev.js:2129-2131` | `const startIndex = indices.length ? Math.max(...indices) + 1 : 1;` then `const endIndex = windowEnd(startIndex);`; doc comment *"Step 6 makes `MAX_REVIEW_ROUNDS` a per-invocation BUDGET rather than an absolute cap"* |
+| **M-1e** | The same relativity is restated on the halt path: the post-mortem recorder computes its `last` round from the same helper when no explicit end was given. | `pdlc/workflows/orchestrate-dev.js:1574`, inside the non-convergence recorder; the AC-5.1 comment at `pdlc/workflows/orchestrate-dev.js:1570-1572` | `const last = endIndex === undefined ? windowEnd(first) : endIndex;`; *"AC-5.1: the window is RELATIVE"* |
 
 ### 4.2 The counts AC-2 compares
 
 | ID | Fact | Where | Literal |
 |---|---|---|---|
-| **M-2a** | `parseVerdict` returns `{verdict, high, medium, low, malformed?}` — the blocking counts are already machine-readable, parsed from the reviewer's trailing `{"high": N, "medium": N, "low": N}` JSON object. | `orchestrate-dev.js:393`, function `parseVerdict` | `export function parseVerdict(result, skillName)`; JSDoc `@returns {{ verdict: string, high: number, medium: number, low: number, malformed?: boolean }}` |
-| **M-2b** | `malformed: true` is set **only** when the trailer is missing or unparseable. Its doc comment is explicit that a genuine parse — *"including the truncated-output zero-counts case"* — never sets it. | `orchestrate-dev.js` JSDoc immediately above `:393`, and the `fallback` object literal inside the function | `malformed: true,` in `const fallback = { verdict: "Needs revision", high: 0, medium: 0, low: 0, malformed: true }` |
-| **M-2c** | The truncated-output path returns **genuine zero counts** and no `malformed` flag, so `0/0/0` is a real observation, not an absence. | `orchestrate-dev.js:451`, inside `parseVerdict` | `return { verdict: rawVerdict, high: 0, medium: 0, low: 0 };` |
-| **M-2d** | A malformed trailer already has a cheap recovery path: a second, small-model pass over the raw reviewer output. | `orchestrate-dev.js:2824`, function `recoverVerdict` | `export async function recoverVerdict({ reviewer, rawResult, _agent = agent })` |
+| **M-2a** | `parseVerdict` returns `{verdict, high, medium, low, malformed?}` — the blocking counts are already machine-readable, parsed from the reviewer's trailing `{"high": N, "medium": N, "low": N}` JSON object. **It is a function of an agent *response*, not of a file**, so its result lives only in the invocation that took it. | `pdlc/workflows/orchestrate-dev.js:393`, function `parseVerdict` | `export function parseVerdict(result, skillName)`; JSDoc `@returns {{ verdict: string, high: number, medium: number, low: number, malformed?: boolean }}` |
+| **M-2b** | `malformed: true` is set **only** when the trailer is missing or unparseable. Its doc comment is explicit that a genuine parse — *"including the truncated-output zero-counts case"* — never sets it. | JSDoc immediately above `pdlc/workflows/orchestrate-dev.js:393`; the `fallback` object literal is inside the function body, below the signature | `malformed: true,` in `const fallback = { verdict: "Needs revision", high: 0, medium: 0, low: 0, malformed: true }` |
+| **M-2c** | The truncated-output path returns **genuine zero counts** and no `malformed` flag, so `0/0/0` is a real observation, not an absence. | `pdlc/workflows/orchestrate-dev.js:451`, inside `parseVerdict` | `return { verdict: rawVerdict, high: 0, medium: 0, low: 0 };` |
+| **M-2d** | A malformed trailer already has a cheap recovery path: a second, small-model pass over the raw reviewer output. | `pdlc/workflows/orchestrate-dev.js:2824`, function `recoverVerdict` | `export async function recoverVerdict({ reviewer, rawResult, _agent = agent })` |
+| **M-2e** | **There is a file-side reader of the same trailer, and it already exists.** `extractFileVerdict` locates a cross-review file's trailing `## Verdict` section, feeds it to `parseVerdict`, and returns the same `{verdict, high, medium, low, malformed?}` shape. Counts are therefore recoverable from a file **that carries the trailer** — which today's SKILLs do not require it to (M-2f). | `pdlc/workflows/orchestrate-dev.js:888`, function `extractFileVerdict` | `function extractFileVerdict(fileText, roleSlug)`; `if (/^\s*##\s+Verdict\s*$/.test(line)) headingIndex = index;` |
+| **M-2f** | **The branch-side state the loop rebuilds each invocation discards the counts.** `refreshReviewState` reads only the *candidate* round's files, and the record it builds keeps `verdict`, `verdictReadable`, `anchorHash`, `anchorReason` and `path` — no `high`, no `medium`, no `low`. Round N−2 and earlier are never read at all. So on a re-entered phase there is no in-memory left operand for AC-2, and today no on-disk one either. | `pdlc/workflows/orchestrate-dev.js:2358`, function `refreshReviewState`; candidate at `pdlc/workflows/orchestrate-dev.js:2390`, the skip at `pdlc/workflows/orchestrate-dev.js:2397`, the record at `pdlc/workflows/orchestrate-dev.js:2401-2407` | `const candidate = window.startIndex - 1;`; `if (parsed.round !== candidate) continue;`; `reviewFiles.set(...{ verdict, verdictReadable, anchorHash, anchorReason, path })` |
+| **M-2g** | **The count trailer is required in the reviewer's *response*, not in the reviewed file.** The three review SKILLs instruct the reviewer to *"append the following two lines as the last content of your **response**"*; the repo's documented **file** contract is the trailing `## Verdict` section and its single `VERDICT:` line. A correctly written cross-review file may therefore carry no trailer at all — in which case `extractFileVerdict` → `parseVerdict` takes the truncated-output path (M-2c) and returns **genuine `0/0/0`**, indistinguishable from a perfect round. | `pdlc/skills/se-review/SKILL.md:206`, `pdlc/skills/te-review/SKILL.md:231`, `pdlc/skills/pm-review/SKILL.md:192`; and `CLAUDE.md` § *Artifact convention*, the `## Verdict` data contract | *"append the following two lines as the last content of your response"*; *"the section must carry exactly one `VERDICT: {value}` line"* |
 
 ### 4.3 The panel AC-3 reshapes
 
 | ID | Fact | Where | Literal |
 |---|---|---|---|
-| **M-3a** | `reviewLoop` hardcodes **exactly two** reviewers. The results are two named bindings, and the reviewer array is indexed positionally at `[0]` and `[1]`. | `orchestrate-dev.js:1623` (`reviewLoop` signature), `:1710` (bindings), `:1803–1812` (dispatch) | `let result1, result2;`; `reviewers[0]` / `reviewers[1]`; `const [r1, r2] = await _parallel([...])` |
-| **M-3b** | The per-round cross-review path is derived from the reviewer's role slug and the round number, so a new reviewer role writes a file the existing machinery already indexes. | `orchestrate-dev.js`, arrow `reviewTargetPath` near `:1697` | `` `docs/${feature}/CROSS-REVIEW-${reviewerRoleSlug(skill) || skill}-${reviewFileType}-v${round}.md` `` |
-| **M-3c** | `selectMode` rule 2 requires **every** role in `present` to approve at the *same* round before that round is considered discharged. Its `dualApproved` predicate is `roles.every(...)` over the roles observed in `present`. | `orchestrate-dev.js:1436` (signature) and the `dualApproved` arrow near `:1462` | `const dualApproved = (round) => roles.length > 0 && roles.every((role) => {...})` |
-| **M-3d** | `tier1ApprovalRecord` treats **a lone file at the candidate round as role asymmetry and yields no approval**. This is deliberately fail-closed against a dual round one of whose reviewers crashed. | `orchestrate-dev.js:2478` (function), `:2490` (the asymmetry test) | `// Role-asymmetry: one reviewer wrote the candidate round and the other did not.` followed by `if (records.some((r) => r === null)) return noApprovalRecord(candidate);` |
-| **M-3e** | The state `selectMode` and the approval records read is refreshed **from the branch, inside the loop**, once per episode. | `orchestrate-dev.js:2358`, function `refreshReviewState` | `async function refreshReviewState({ feature, docType, _listFiles, _readFile })` |
-| **M-3f** | Tier 2 — the LEARNINGS approval record — is a separate, later reader of the same approvals. | `orchestrate-dev.js:2528`, method `tier2ApprovalRecord` | `async tier2ApprovalRecord({ feature, docType, candidate, reviewers, _readFile })` |
+| **M-3a** | `reviewLoop` hardcodes **exactly two** reviewers. The results are two named bindings, and the reviewer array is indexed positionally at `[0]` and `[1]`. | `pdlc/workflows/orchestrate-dev.js:1623` (`reviewLoop` signature), `pdlc/workflows/orchestrate-dev.js:1710` (bindings), `pdlc/workflows/orchestrate-dev.js:1803-1812` (dispatch) | `let result1, result2;`; `reviewers[0]` / `reviewers[1]`; `const [r1, r2] = await _parallel([...])` |
+| **M-3b** | The per-round cross-review path is derived from the reviewer's role slug and the round number, so a new reviewer role writes a file the existing machinery already indexes. | `pdlc/workflows/orchestrate-dev.js:1697`, arrow `reviewTargetPath` | `` `docs/${feature}/CROSS-REVIEW-${reviewerRoleSlug(skill) || skill}-${reviewFileType}-v${round}.md` `` |
+| **M-3c** | `selectMode` rule 2 requires **every** role in `present` to approve at the *same* round before that round is considered discharged. Its `dualApproved` predicate is `roles.every(...)` over the roles observed in `present`. | `pdlc/workflows/orchestrate-dev.js:1436` (`selectMode` signature) and the `dualApproved` arrow at `pdlc/workflows/orchestrate-dev.js:1466` | `const dualApproved = (round) => roles.length > 0 && roles.every((role) => {...})` |
+| **M-3d** | `tier1ApprovalRecord` treats **a lone file at the candidate round as role asymmetry and yields no approval**. This is deliberately fail-closed against a dual round one of whose reviewers crashed. | `pdlc/workflows/orchestrate-dev.js:2478` (function `tier1ApprovalRecord`), `pdlc/workflows/orchestrate-dev.js:2490` (the asymmetry test) | `// Role-asymmetry: one reviewer wrote the candidate round and the other did not.` followed by `if (records.some((r) => r === null)) return noApprovalRecord(candidate);` |
+| **M-3e** | The state `selectMode` and the approval records read is refreshed **from the branch, inside the loop**, once per episode. | `pdlc/workflows/orchestrate-dev.js:2358`, function `refreshReviewState` | `async function refreshReviewState({ feature, docType, _listFiles, _readFile })` |
+| **M-3f** | Tier 2 — the LEARNINGS approval record — is a separate, later reader of the same approvals. It is a **standalone function declaration**, not a method; v1.0 quoted it in method form, which is the very defect shape §1.2 P-4 names (TE MF-01). | `pdlc/workflows/orchestrate-dev.js:2528`, function `tier2ApprovalRecord` | `async function tier2ApprovalRecord({ feature, docType, candidate, reviewers, _readFile })` |
 
 ### 4.4 The approval anchors AC-3 extends
 
 | ID | Fact | Where | Literal |
 |---|---|---|---|
-| **M-4a** | On the terminal round the loop appends a two-line anchor block to each approving cross-review file. This is an existing writer of durable, in-file, machine-read markers — AC-3's verifier marker is a third line in the same block, written by the same function. | `orchestrate-dev.js:1934` (function `appendApprovalAnchors`), append at `:1975` | `` `\nAPPROVAL-HASH: ${hash}\nREVIEWED-COMMIT: ...` `` |
-| **M-4b** | The anchor pre-count is a count **and** a comparison: 0 ⇒ append; 1 equal ⇒ idempotent no-op; 1 unequal ⇒ error, no approval; ≥ 2 ⇒ history ambiguous, no approval. Nothing here throws. | JSDoc immediately above `:1934`, and `approvalAnchorPreCount` near `:1918` | `if (existing.length >= 2) {`; `/^APPROVAL-HASH:\s*(\S+)\s*$/` |
+| **M-4a** | On the terminal round the loop appends a two-line anchor block to each approving cross-review file. This is an existing writer of durable, in-file, machine-read markers — AC-3's verifier marker is a third line in the same block, written by the same function. | `pdlc/workflows/orchestrate-dev.js:1934` (function `appendApprovalAnchors`), append at `pdlc/workflows/orchestrate-dev.js:1975` | `` `\nAPPROVAL-HASH: ${hash}\nREVIEWED-COMMIT: ...` `` |
+| **M-4b** | The anchor pre-count is a count **and** a comparison: 0 ⇒ append; 1 equal ⇒ idempotent no-op; 1 unequal ⇒ error, no approval; ≥ 2 ⇒ history ambiguous, no approval. Nothing here throws. | JSDoc immediately above `pdlc/workflows/orchestrate-dev.js:1934`, and function `approvalAnchorPreCount` at `pdlc/workflows/orchestrate-dev.js:1915` | `if (existing.length >= 2) {`; `/^APPROVAL-HASH:\s*(\S+)\s*$/` |
 
 ### 4.5 The growth AC-4 measures
 
 | ID | Fact | Where | Literal |
 |---|---|---|---|
-| **M-5a** | `12000` already exists in the module as the per-tool-call authoring emission ceiling, and is the figure the runtime prompt states to every wrapped authoring dispatch. | `orchestrate-dev.js:56` (constant) and `:2279` (`PACING_CONTRACT_CLAUSE`) | `const MAX_AUTHORING_WRITE_BYTES = 12000;`; `"section per edit, keep every single write under 12,000 bytes, and commit after"` |
-| **M-5b** | There is already an **advisory** post-dispatch check that shells `git diff --numstat` and compares *added lines* against that byte constant, emitting a note and never halting. AC-4 does **not** reuse it: it compares lines to a byte figure, and it is scoped to one dispatch, not to a round. AC-4's measurement is a byte length of the document, taken from a read. | `orchestrate-dev.js:2725–2743`, the advisory pacing emitter | `result = await _git(["diff", "--numstat", "--", targetPath]);` and `"only — it is a proxy, not an oracle, and never a halt condition."` |
-| **M-5c** | The loop already reads the document's text through an injected reader on the same seam AC-4 needs, so no new IO primitive is required. | `orchestrate-dev.js`, `_readFile` parameter threaded through `reviewLoop` and `refreshReviewState` (`:2358`) | `_readFile` |
+| **M-5a** | `12000` already exists in the module as the per-tool-call authoring emission ceiling, and is the figure the runtime prompt states to every wrapped authoring dispatch. | `pdlc/workflows/orchestrate-dev.js:56` (constant) and `pdlc/workflows/orchestrate-dev.js:2279` (`PACING_CONTRACT_CLAUSE`) | `const MAX_AUTHORING_WRITE_BYTES = 12000;`; `"section per edit, keep every single write under 12,000 bytes, and commit after"` |
+| **M-5b** | There is already an **advisory** post-dispatch check that shells `git diff --numstat` and compares *added lines* against that byte constant, emitting a note and never halting. AC-4 does **not** reuse it: it compares lines to a byte figure, and it is scoped to one dispatch, not to a round. AC-4's measurement is a byte length of the document, taken from a read. | `pdlc/workflows/orchestrate-dev.js:2724-2743`, function `advisoryPacingCheck` | `result = await _git(["diff", "--numstat", "--", targetPath]);` and `"only — it is a proxy, not an oracle, and never a halt condition."` |
+| **M-5c** | The loop already reads the document's text through an injected reader on the same seam AC-4 needs, so no new IO primitive is required. | `pdlc/workflows/orchestrate-dev.js:1623` (`reviewLoop`) and `pdlc/workflows/orchestrate-dev.js:2358` (`refreshReviewState`), the threaded `_readFile` parameter | `_readFile` |
 
 ### 4.6 The library AC-6 adds
 
 | ID | Fact | Where | Literal |
 |---|---|---|---|
-| **M-6a** | `pdlc/workflows/lib/` exists and holds exactly one file today: `document-oracles.mjs`. It is **production code with no side effects on import** — its header says so, and every export is a pure function of a `root` directory path, with no `process.cwd()` and no `import.meta.url`-derived paths. It names *"a future CLI"* among its intended callers. | `pdlc/workflows/lib/document-oracles.mjs:1–12`, module header | `"Production code, no side effects: every exported function is a pure"` |
+| **M-6a** | `pdlc/workflows/lib/` exists and holds exactly one file today: `document-oracles.mjs`. It is **production code with no side effects on import** — its header says so, and every export is a pure function of a `root` directory path, with no `process.cwd()` and no `import.meta.url`-derived paths. It names *"a future CLI"* among its intended callers. | `pdlc/workflows/lib/document-oracles.mjs:1-12`, module header | `"Production code, no side effects: every exported function is a pure"` |
 | **M-6b** | That library is **not** part of the runtime bundle. `build-runtime.mjs` refers to it only in a comment about keeping two exact strings in step. AC-6's new library is the same class. | `pdlc/workflows/build-runtime.mjs:237`, comment | `` // `coveredViolations` (pdlc/workflows/lib/document-oracles.mjs) `` |
 | **M-6c** | `build-runtime.mjs` is itself **import-unsafe** (it acts on import), which is why a new checker must be a separate module rather than an addition to the builder. Recorded in `LEARNINGS-pdlc-review-loop-hardening.md` §2 and §5.3, citing `pdlc/workflows/__tests__/runtimeBundle.test.js:18` (`import { stripModuleSyntax } from "../build-runtime.mjs";` — the import that makes the unsafety observable) and `CODEBASE-v2 §7(a)`. | `docs/completed/pdlc-review-loop-hardening/LEARNINGS-pdlc-review-loop-hardening.md` §2, §5.3 | `` **`build-runtime.mjs` import-unsafe** `` |
-| **M-6d** | The workflow test suite is jest under `--experimental-vm-modules`; a new `lib/` module is testable by the existing `npm test` with no tooling change. | `pdlc/workflows/package.json:6–9`, `scripts` | `"test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"` |
+| **M-6d** | The workflow test suite is jest under `--experimental-vm-modules`; a new `lib/` module is testable by the existing `npm test` with no tooling change. | `pdlc/workflows/package.json:6-9`, `scripts` | `"test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"` |
 
 ### 4.7 What is deliberately **not** measured here
 
@@ -270,11 +318,20 @@ Two facts this REQ does **not** claim, and does not need:
 - **How an exhausted retry or a stall-killed dispatch surfaces to the caller.** Unmeasured at
   `d11dad5`; recorded as unmeasured by the predecessor REQ's §4a A-8. No AC below depends on it.
 - **Whether a partial write is visible on disk before its commit.** Also unmeasured. AC-4's growth
-  measurement is taken at a round boundary, after the optimizer episode has returned and committed, so
-  it does not depend on intra-dispatch write visibility.
+  measurement is taken at a **round boundary — after the optimizer episode has returned**, which is the
+  single boundary AC-4.1 also names. v1.0 said *"returned"* in AC-4.1 and *"returned and committed"*
+  here; the two are not the same boundary and the difference was load-bearing (TE F-08). **The boundary
+  is "returned"**, everywhere, and it is stated once in AC-4.1. The measurement therefore does not
+  depend on intra-dispatch write visibility, and it does not depend on the episode having committed.
 
 Both are named here so that a reviewer can check the claim in §1.4 — that no AC turns on an unmeasured
 runtime fact — against the two specific unmeasured facts that killed the predecessor.
+
+**What §4.7 did not cover, and now does.** Round 1 of cross-review found that all three High findings
+were about a third axis this section missed: not *unmeasured runtime behaviour*, but **in-process state
+that does not survive an invocation boundary**. §4.1's M-1d, §4.2's M-2f and §5's durability table are
+the answer; the axis is named here so a later reader does not read §4.7 as a completeness claim it
+never made.
 
 ## 5. Acceptance criteria
 
@@ -286,9 +343,53 @@ meanings:
 
 | Term | Definition |
 |---|---|
-| **blocking count** of a round | The sum of `high` + `medium`, over every reviewer dispatched in that round, as returned by `parseVerdict` (M-2a). Low findings are excluded. |
-| **panel shape** of a round | The *set of reviewer role slugs* dispatched in that round — e.g. `{software-engineer, test-engineer}` or `{verifier}`. Two rounds have equal panel shape iff these sets are equal. |
-| **round growth** | The byte length of the reviewed document at the start of round N+1 minus its byte length at the start of round N (AC-4.1). |
+| **blocking count** of a round | The sum of `high` + `medium`, over every reviewer whose cross-review file exists at that round, **read from the file** by `extractFileVerdict` → `parseVerdict` (M-2e), not from the agent response. A round for which any dispatched role's count cannot be read from its file has **no blocking count** — see *unavailable* below. |
+| **panel shape** of a round | The *set of reviewer role slugs whose cross-review files exist on the branch at that round* — `{software-engineer, test-engineer}` or `{verifier}` — each classified by its `REVIEW-MODE:` line (AC-3.5(a)). It is **not** the set of roles dispatched: nothing records a dispatch, and a crashed reviewer leaves no file. Two rounds have equal panel shape iff these sets are equal **and** neither is a *crashed* round (AC-2.4). |
+| **crashed** round | A round whose file set is a strict subset of the panel that opened it — one file with no `REVIEW-MODE: verification` marker, or zero files. A crashed round's panel shape is **undetermined**; it is never comparable and never a baseline (AC-2.4), and it never yields an approval (M-3d, AC-3.5(b)). |
+| **round growth** | The byte length of the reviewed document at the start of round N+1 minus its byte length at the start of round N, both read from the durable `DOC-BYTES:` anchor of AC-4.1. |
+| **unavailable** | A quantity that no reader can obtain from the branch — distinct from **malformed**, which is a quantity that was read and could not be parsed. Both break AC-2's comparison chain, and the run report distinguishes them (AC-2.3, AC-2.7). |
+
+**Durability: what survives an invocation boundary.** Round 1 of cross-review found three High
+findings that were one question — the loop *re-derives its state from the branch on every invocation*
+(M-2f, M-1d), so any AC stated over in-process state is undefined on a resumed phase, which is the
+normal case. Every quantity this REQ's ACs read is therefore listed here with its durable home. **An AC
+stated over a row marked *in-process only* is a defect in this document.**
+
+| Quantity | Read by | Durable home | If absent |
+|---|---|---|---|
+| Round index N | AC-1, AC-2, AC-4 | The `CROSS-REVIEW-{role}-{doc}-v{N}.md` basenames on the branch, via `deriveRoundWindow` (M-1d) | n/a — the listing is always readable |
+| Highest round reached for a document | AC-1.5 | Same basenames | Treated as 0; the window opens at round 1 |
+| `blocking(N)` | AC-2.1 | The **count trailer inside the round's cross-review files**, required there by AC-3.4 and read by `extractFileVerdict` (M-2e) | *unavailable* — AC-2.7 |
+| Panel shape of round N | AC-2.4, AC-3.1 | The role slugs of the files at round N, plus each file's `REVIEW-MODE:` line | *crashed* — not comparable |
+| `bytes(document at start of round N)` | AC-4.1 | The `DOC-BYTES: {n}` anchor line in the round's cross-review files (AC-4.1) | growth *unmeasurable* — AC-4.5 |
+| Approval at round N | AC-3.5 | `APPROVAL-HASH:` / `REVIEWED-COMMIT:` / `REVIEW-MODE:` anchors (M-4a) | no approval — fail-closed |
+| Prior rounds' finding ids | AC-3.2(1) | The `## Disposition` section of the verifier's file (AC-3.2) | the disposition is incomplete — AC-3.2 |
+
+Nothing in this table is *in-process only*. Where a quantity had no durable home at HEAD — the blocking
+counts and the byte anchor — this REQ gives it one, on a surface that already exists for exactly this
+purpose: the cross-review file's `KEY: value` anchor block (M-4a, M-4b).
+
+**Closed catalogue of boundary-crossing strings.** DC-01 requires every string that crosses a component
+boundary to be a **closed catalogue on the emitting side and a total function on the receiving side,
+before FSPEC authoring**. This REQ introduces nine. All nine are fixed here — id, exact emitted form,
+emitter, receiver, and the receiver's behaviour on **every** input outside the catalogue. FSPEC may not
+add a tenth without amending this table.
+
+| id | Exact string | Emitter | Receiver | Receiver is total because |
+|---|---|---|---|---|
+| **S-1** | `REVIEW-MODE: verification` — one line, that exact casing and spacing, in the anchor block | `appendApprovalAnchors` (M-4a) | `tier1ApprovalRecord` (M-3d), AC-2.4's panel-shape read | AC-3.5(e) states all five cases: absent, one exact match, one line with any other value, two or more lines, and a marker on more than one file of the same round |
+| **S-2** | `DOC-BYTES: {n}` — one line, `{n}` a decimal integer ≥ 0, no separators | `appendApprovalAnchors` (M-4a) | AC-4.1's growth computation | AC-4.1 states all four: no anchor, an unparseable value, two or more lines with unequal values, and a non-document target ⇒ *unmeasurable* ⇒ AC-4.5 with the matching S-6 reason. Two or more **equal** lines is an idempotent re-write (M-4b's rule) and reads as one value; **negative growth is measurable and normal** |
+| **S-3** | Halt reason `fixed-point: round {N} blocking {b(N)} >= round {N-1} blocking {b(N-1)}` | AC-2's halt path | the post-mortem prompt and the run report (AC-2.2) | it is a single format string with two integer and two round-index slots; nothing else is emitted on this path |
+| **S-4** | Halt reason `budget-exhausted: rounds {first}..{last} of {MAX_REVIEW_ROUNDS}` | the existing budget halt (AC-1.4) | same two readers | same |
+| **S-5** | Report notice `not-comparable: {reason}` where `{reason}` ∈ `{malformed-count, unavailable-count, unequal-panel-shape, crashed-round}` — a closed four-member enum | AC-2.3, AC-2.4, AC-2.7 | the run report row of AC-4.7 | the enum is closed here; a reason outside it is a defect, not a fallback |
+| **S-6** | Report notice `growth-unmeasurable: {reason}` where `{reason}` ∈ `{no-anchor, unreadable-anchor, non-document-target}` — a closed three-member enum | AC-4.5 | the run report row of AC-4.7 | same |
+| **S-7** | Section heading `## Measurement Required`, exactly | the three review SKILLs (AC-5.2) | AC-5.4's extraction | AC-5.5 states absent ⇒ contributes nothing, never an error; a malformed body is carried verbatim |
+| **S-8** | Section heading `## Disposition`, exactly | the verifier (AC-3.2) | AC-3.2(1)'s completeness check and the run report | AC-3.2 states all five cases: absent, unmatched prior id, unknown id, out-of-set disposition value, and the section on a dual round |
+| **S-9** | Findings-table field `New-mechanism: {section or clause reference}` on every blocking finding a verifier raises | the verifier (AC-3.2(2)) | AC-2's count of `high` + `medium`, and the run report | AC-3.2(2) states: empty or absent ⇒ the finding is **not counted** toward AC-2's blocking total and is reported as malformed; the field is ignored on a full-panel reviewer's findings |
+
+The **run-report row schema** these notices land in is fixed by AC-4.7 and is part of this catalogue:
+one row per round, columns `round | panel-shape | blocking | growth-bytes | classification | notice`,
+`notice` empty or one of S-3 … S-6. O-8 specifies where it is emitted, not what its columns are.
 
 ---
 
@@ -301,9 +402,18 @@ at all: the predecessor's blocking count reached its minimum at round 2 and rose
 — 40% of the finished document — was added by rounds that ran *after* its own fixed-point test fired.
 Three rounds buys the decay that was real (11 → 6) and declines to buy the plateau that was not.
 
-**AC-1.1 — The budget is three.**
-*Who:* the pipeline. *Given:* any review-loop phase. *When:* the review window is opened. *Then:*
-the window spans **three** rounds, and the loop halts on entering a fourth.
+**AC-1.1 — The budget is three, per document, not per invocation.**
+*Who:* the pipeline. *Given:* any review-loop phase for a document. *When:* the review window is
+opened. *Then:* the window ends at round **3 counted from round 1 of that document**, and the loop
+halts on entering round 4 — *whatever invocation opened the earlier rounds*.
+
+This is a **second behavioural change**, and v1.0 did not say so. At HEAD `MAX_REVIEW_ROUNDS` is a
+*per-invocation budget*: `deriveRoundWindow` starts the window one past the highest round already on
+the branch and then adds the budget to that start (M-1d), so a phase re-entered on a branch whose
+highest round is 3 is admitted rounds 4…6 — a fourth round *does* dispatch reviewers, and the document
+is reviewed six times. Under the relative rule, three-rounds-per-invocation bounds nothing about a
+document, and §2's cost claim would be stated over a number that does not bound the thing it costs.
+AC-1.5 states the replacement rule and its one escape hatch.
 
 **AC-1.2 — One constant, one arithmetic site.**
 *Who:* a maintainer. *Given:* the module at `pdlc/workflows/orchestrate-dev.js`. *When:* they change
@@ -323,8 +433,30 @@ way it halts today — writing `POSTMORTEM-{phase}-{feature}.md`, confirming the
 trusting the agent's reply, and refusing to re-run the phase until a human writes `RESOLVED: yes`.
 This REQ changes *when* the halt happens, not *what* a halt is.
 
-**Observability.** `MAX_REVIEW_ROUNDS === 3`; a fourth round never dispatches a reviewer; the
-post-mortem contains the literal `3`.
+**AC-1.5 — The window is absolute, and only an operator resets it.**
+*Who:* the review loop. *Given:* a phase whose document already carries cross-review rounds on the
+branch — the state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-)entered. *Then:*
+
+1. the window's **end** is round 3 counted from round 1, not from the highest existing round: a branch
+   whose highest existing round is 2 is admitted **round 3 only**; a branch whose highest existing
+   round is 3 or more is admitted **no rounds** and halts immediately on the budget path (AC-1.4),
+   emitting the S-4 halt reason with `rounds 1..3 of 3`;
+2. the window's **start** is unchanged — one past the highest existing round (M-1d), so review history
+   stays append-only and no existing file is ever overwritten;
+3. the **one** reset is an operator's: a `POSTMORTEM-{phase}-{feature}.md` carrying a human-written
+   `RESOLVED: yes` outside any fenced block clears the halt, and the rounds recorded *before* that
+   marker do not count against the budget of the window opened after it. This is the existing operator
+   escape hatch (AC-1.4), stated here because it is what makes an absolute cap operable rather than a
+   dead end: an operator who has addressed the finding gets a fresh window; an unattended re-invocation
+   does not. **No agent and no script ever writes `RESOLVED: yes`** — that rule is unchanged.
+
+The durable observable for all three clauses is the same one the loop already reads: the cross-review
+basenames on the branch, plus the POSTMORTEM's `RESOLVED:` marker. Nothing here needs a clock, a
+process identity, or a memory of a previous invocation.
+
+**Observability.** `MAX_REVIEW_ROUNDS === 3`; the highest `-v{N}` on the branch never exceeds 3 for a
+document with no resolved POSTMORTEM; a fourth round never dispatches a reviewer; the post-mortem
+contains the literal `3` and the S-4 reason string.
 
 ---
 
@@ -337,13 +469,27 @@ them, because nothing in `orchestrate-dev` reads a rule written in the document 
 (P-2). Both counts the rule needs are already machine-readable (M-2a). The enforcement is available
 and simply unbuilt.
 
-**AC-2.1 — The rule.**
+**AC-2.1 — The rule, and where each operand comes from.**
 *Who:* the review loop. *Given:* a failed round **N ≥ 2** — i.e. round N's reviewers did not all
-approve — whose blocking count and whose predecessor round N−1's blocking count are both **reliable**
-(AC-2.3) and whose panel shape equals round N−1's (AC-2.4). *When:* round N's verdicts have been
-parsed and **before** round N's optimizer episode is dispatched. *Then:* if
+approve — whose blocking count and whose predecessor round N−1's blocking count are both **available**
+(AC-2.7) and **reliable** (AC-2.3), and whose panel shape equals round N−1's (AC-2.4). *When:* round
+N's verdicts have been parsed and **before** round N's optimizer episode is dispatched. *Then:* if
 `blocking(N) ≥ blocking(N−1)` **and** `blocking(N) > 0`, the loop halts on the existing post-mortem
-path (AC-1.4) instead of iterating, and does not dispatch that optimizer episode.
+path (AC-1.4) instead of iterating, and does not dispatch that optimizer episode. The halt reason is
+S-3.
+
+**Both operands are read from the cross-review files on the branch**, by `extractFileVerdict` →
+`parseVerdict` (M-2e), never from the in-process agent response. This is the answer to the question the
+three round-1 High findings shared. `parseVerdict`'s response-side result (M-2a) lives only in the
+invocation that took it, and the branch-side state the loop rebuilds each invocation **discards the
+counts** (M-2f) — so an in-process operand is undefined for round N−1 on any resumed phase, which is
+the normal case. Reading both operands from the same durable surface makes the rule invocation-agnostic
+by construction: the same branch yields the same decision whoever evaluates it, and AC-2 can be
+re-derived after the fact from the files alone, which is what makes AC-4.7's report auditable.
+
+This is why AC-3.4 requires the count trailer **inside** the cross-review file. See N-3, which is
+amended accordingly: that requirement is the one file-grammar change this REQ makes, and it is stated
+rather than assumed.
 
 **AC-2.2 — The halt is distinguishable from budget exhaustion.**
 *Who:* the operator. *Given:* a fixed-point halt. *When:* they read the post-mortem and the run
@@ -360,12 +506,24 @@ next round, and the run report records that the round was not comparable and why
 read is not evidence of a plateau. Because the rule compares only *consecutive* rounds, an unreliable
 round is neither a trigger nor a baseline: it breaks the chain in both directions.
 
-**AC-2.4 — Rounds of different panel shape are not comparable.**
-*Who:* the review loop. *Given:* rounds N and N−1 whose panel shapes differ — which, under AC-3, is
-the normal relationship between round 1 (dual) and round 2 (single verifier). *When:* AC-2.1 would be
-evaluated. *Then:* the comparison is **not made** and the run report says so. A sum over two reviewers
-and a sum over one are not the same measurement, and normalising them would be a guess this REQ
-declines to make. See R-2 for the consequence and its successor.
+**AC-2.4 — Rounds of different panel shape are not comparable, and a crashed round has no shape.**
+*Who:* the review loop. *Given:* rounds N and N−1. *When:* AC-2.1 would be evaluated. *Then:* the
+comparison is **not made**, and the run report carries the S-5 notice with the matching reason, if
+either of the following holds:
+
+- **unequal panel shape** (`unequal-panel-shape`) — the two rounds' on-disk role-slug sets differ,
+  which under AC-3 is the normal relationship between round 1 (dual) and round 2 (single verifier). A
+  sum over two reviewers and a sum over one are not the same measurement, and normalising them would be
+  a guess this REQ declines to make (N-2). See R-2 for the consequence and its successor.
+- **either round is crashed** (`crashed-round`) — its file set is a strict subset of the panel that
+  opened it: one file with no `REVIEW-MODE: verification` marker, or zero files. This is the aliasing
+  AC-3.5(b) resolves for approval, resolved the same way here. Panel shape is read from the files on
+  disk, not from a record of what was dispatched (§5), so a dual round one of whose reviewers crashed
+  and a verifier round would otherwise be indistinguishable; the marker distinguishes them, and its
+  absence on a lone file means **crashed**, fail-closed, in both mechanisms.
+
+A crashed round is neither a trigger nor a baseline. It breaks the chain in both directions, exactly as
+an unreliable count does (AC-2.3).
 
 **AC-2.5 — A zero-to-zero comparison must never fire.**
 *Who:* the review loop. *Given:* `blocking(N) = 0` and `blocking(N−1) = 0` on a round that
@@ -375,19 +533,48 @@ truncated-output path returns real zeros and sets no `malformed` flag), so a nai
 round with no blocking findings at all as a plateau and halt a document that is one Low finding away
 from approval. Zero blocking findings is the best possible round, not the worst.
 
-**AC-2.6 — The rule bounds work, and it is honest about how much.**
-*Who:* the operator. *Given:* the default configuration (AC-1's three rounds, AC-3's panel shape).
-*When:* the rule fires. *Then:* the only consecutive same-shape pair inside the window is
-(round 2, round 3), both verifier rounds, so the rule fires at most once per phase and saves **one
-optimizer episode** — the round-3 revision that today is written and then never reviewed, exactly as
-the predecessor's v1.5 was. It does not save a round of reviewers. This is a smaller saving than the
-rule would deliver at the old five-round budget, and it is stated here rather than left for a reviewer
-to discover: the rule's durable value is that it makes the budget a **backstop rather than the only
-stop**, and it bites harder immediately if the budget is ever raised or if AC-4 re-escalates two
-consecutive rounds to the full panel. R-2 records the residue.
+**AC-2.7 — An unavailable count is not a malformed one, and it also breaks the chain.**
+*Who:* the review loop. *Given:* a round for which some dispatched role's blocking count cannot be
+obtained from the branch at all — the file is absent, carries no `## Verdict` section, or carries no
+count trailer inside it. *When:* AC-2.1 would be evaluated. *Then:* that round's blocking count is
+**unavailable**; the comparison is not made in either direction; the run report carries the S-5 notice
+with reason `unavailable-count`, naming the round and the role. The loop continues to the next round.
 
-**Observability.** Two integers from `parseVerdict`, two role-slug sets, one comparison, one halt
-reason string. No unmeasured runtime behaviour is involved.
+*Unavailable* and *malformed* (AC-2.3) are different states and are reported differently on purpose.
+Malformed means a trailer was found and could not be parsed even after `recoverVerdict` (M-2d);
+unavailable means no trailer was there to parse. The distinction matters because `parseVerdict`'s
+truncated-output path returns **genuine `0/0/0` with no `malformed` flag** (M-2c): a file with no
+trailer would otherwise read as a perfect round and, worse, as a *comparable* one. AC-2.7 is what stops
+a missing trailer from being read as zero blocking findings. It is the receive-side totality DC-01
+requires of the count trailer, now that AC-2 reads that trailer from a file.
+
+**AC-2.6 — The rule bounds work, and it is honest about how much.**
+*Who:* the operator. *Given:* AC-1's three rounds. *When:* the rule fires. *Then:* how often it can
+fire depends on which of §2's two regimes the run is in, and v1.0 stated only one of them as though it
+were a consequence. Both are enumerated here — these are **all** the panel-shape sequences reachable
+under AC-3.1 and AC-4.2:
+
+| Reachable sequence (rounds 1, 2, 3) | When | Comparable consecutive same-shape pairs | Rule can fire at |
+|---|---|---|---|
+| dual, dual, dual | growth > 12,000 at both round boundaries — **the measured regime** (AC-4.3: 5 of 5 predecessor rounds) | (1,2) and (2,3) | round 2 **or** round 3 |
+| dual, verifier, verifier | growth ≤ 12,000 at both boundaries — the target regime | (2,3) only | round 3 |
+| dual, verifier, dual | round 2's revision was large | none | never |
+| dual, dual, verifier | round 1's revision was large, round 2's was not | (1,2) | round 2 |
+| any sequence containing a crashed or unavailable round | a reviewer crashed or wrote no trailer | fewer than the above | correspondingly fewer |
+
+So AC-2.6's v1.0 claim — *"the only consecutive same-shape pair is (2,3) … it does not save a round of
+reviewers"* — is true **only** in the target regime, and is false in the measured one, where the rule
+can fire at round 2 and thereby save a full round of reviewers as well as an optimizer episode. The
+honest statement is: the rule fires **at most once per phase** in every reachable sequence, saves at
+least one optimizer episode when it fires, and saves a round of reviewers as well when it fires at
+round 2. R-2 is restated to match.
+
+A test author can derive the expected fire-sites from this table plus AC-4.2's classification of each
+round's measured growth; nothing about it depends on which process opened which round.
+
+**Observability.** Two integers read from two files on the branch, two on-disk role-slug sets, one
+comparison, one halt reason string. No unmeasured runtime behaviour and no in-process state is
+involved.
 
 ---
 
@@ -412,19 +599,46 @@ round N. *Then:* round 1 dispatches the **full reviewer panel** (today: `se-revi
 in parallel, as now), and every round N ≥ 2 dispatches a **single verifier** — unless AC-4 classified
 round N−1's revision as **new-mechanism**, in which case round N dispatches the full panel again.
 
-**AC-3.2 — What the verifier is asked to do.**
+**AC-3.2 — What the verifier is asked to do, and the artifact that proves it did.**
 *Who:* the verifier. *Given:* round N ≥ 2 on a document whose round N−1 findings have been addressed.
 *When:* it reviews. *Then:* it works in **disposition-check mode**:
 1. it verifies that **every** prior blocking finding from every prior round is resolved, and states a
-   per-finding disposition;
+   per-finding disposition **in a section headed exactly `## Disposition` (S-8)**, one row per prior
+   blocking finding, carrying that finding's **id exactly as the prior round wrote it** (`F-03`), its
+   round, its role, and one disposition from the closed set `{resolved, partially-resolved,
+   not-resolved, withdrawn}`;
 2. it may raise a **new blocking finding only in text that adds new mechanism** — a clause that
    changes what the system does. Text that restates, tightens, retracts, cites, or records a risk is
-   not new mechanism and is not a place a new blocking finding may be raised;
+   not new mechanism and is not a place a new blocking finding may be raised. **Every blocking finding
+   a verifier raises carries a `New-mechanism:` field** in its findings-table row, naming the section
+   or clause of the revision it judged to be new mechanism (`AC-4.1, sentence 2`). A blocking finding
+   with an empty or absent `New-mechanism:` field is **not counted** in the `high`/`medium` totals of
+   AC-2 and is reported as a malformed finding in the run report;
 3. it may raise Low findings and `## Measurement Required` items (AC-5) anywhere, without restriction.
 
 Restriction 2 is the direct answer to P-1. It is a rule about *where* a blocking finding may be
 raised, not about what is true; a verifier that believes a non-mechanism clause is wrong records it as
 Low or as a Measurement Required item.
+
+**Both clauses now have an oracle, because round 1 of cross-review established that neither did.** As
+written in v1.0, a verifier that obeyed clause 2 and one that ignored it produced byte-identical
+artifacts (TE F-05), and clause 1's disposition was prose no reader could check against the prior
+rounds' finding ids (TE F-06). The two named literals above — `## Disposition` and the
+`New-mechanism:` field — are the structural artifacts that make each clause falsifiable, and they are
+named on the same principle as `Scope:` and `## Verdict`: an exact string, in the file, machine-locatable.
+
+**Receive side (DC-01 totality) for `## Disposition` (S-8):**
+
+| Input | Behaviour |
+|---|---|
+| Section absent on a verifier round's file | The verifier's **approval is refused, fail-closed** — the round is treated as not approving; the run report says `disposition-missing` and names the round and role. It is not a halt: the loop opens the next round normally. |
+| Section present, but a prior round's blocking finding id has no row | Reported in the run report as an **unmatched id**, naming the id and its round. Never fatal, never a halt — an id the verifier did not see is evidence about the verifier, not about the document. |
+| A row whose id matches no prior finding | Reported the same way and ignored. |
+| A row whose disposition value is outside the closed four-member set | Read as `not-resolved` (fail-closed) and reported. |
+| Section present on a **dual** round's file (round 1, or a re-escalated round) | Permitted and ignored. AC-3.2 binds the verifier; a full-panel reviewer that also states dispositions is not in error. |
+
+The prior rounds' finding ids are read from the prior rounds' cross-review files on the branch — the
+durable home §5's table records for this quantity. Nothing here reads in-process state.
 
 **AC-3.3 — Phase CR keeps the full panel every round.**
 *Who:* the pipeline. *Given:* Phase CR, the final codebase review. *When:* any round runs. *Then:*
@@ -433,12 +647,34 @@ document, so the growth AC-4 measures does not exist there and the "new text is 
 mechanism this AC is designed around does not apply. Applying the verifier rule to a phase whose
 growth is unmeasurable would be applying it blind.
 
-**AC-3.4 — The verifier writes the same file grammar under its own role slug.**
-*Who:* the verifier. *Given:* round N ≥ 2. *When:* it finishes. *Then:* it writes
-`CROSS-REVIEW-{verifier-role-slug}-{doc}-v{N}.md` — the **unchanged** cross-review grammar: a trailing
-`## Verdict` section written last, carrying exactly **one** `VERDICT:` line, plus the machine-readable
-`{"high": N, "medium": N, "low": N}` count trailer that AC-2 reads. No parser changes; the loop's
-existing path-derivation already composes the path from the role slug and the round (M-3b).
+**AC-3.4 — The file grammar gains a required count trailer, and this REQ says so.**
+*Who:* every reviewer — verifier and full panel alike. *Given:* any round. *When:* it finishes.
+*Then:* it writes `CROSS-REVIEW-{role-slug}-{doc}-v{N}.md` with a trailing `## Verdict` section
+written last, carrying exactly **one** `VERDICT:` line **and, inside that same section, the
+machine-readable `{"high": N, "medium": N, "low": N}` count trailer**. The verifier uses the same
+grammar under its own slug; the loop's existing path-derivation already composes the path from the
+role slug and the round (M-3b), so no parser changes there.
+
+**This is a file-grammar change, and it is the only one this REQ makes.** v1.0 called the trailer part
+of the "unchanged" grammar; it is not. Today the three review SKILLs require the trailer in the
+reviewer's **response**, and the repo's documented **file** contract is the `## Verdict` section and
+its single `VERDICT:` line — a correctly written file may carry no trailer at all (M-2g). Because AC-2
+now reads both its operands from files (AC-2.1), a file without the trailer would take
+`parseVerdict`'s truncated-output path and return **genuine `0/0/0`** (M-2c), i.e. read as a perfect,
+comparable round (SE F-10). So:
+
+- the trailer is **required in the file**, in the `## Verdict` section, after the `VERDICT:` line;
+- exactly **one** trailer per file; two or more, or one that does not parse, is *malformed* (AC-2.3);
+  none at all is *unavailable* (AC-2.7). Those two ACs are the receive-side totality DC-01 requires;
+- **N-3 is amended accordingly** and no longer claims the trailer is unchanged;
+- the corresponding review-SKILL amendment — write the trailer in the file as well as in the response
+  — is added to **O-9**, which v1.0 did not list;
+- the trailer stays in the response too. Nothing about the in-process path (M-2a) changes; AC-2 simply
+  stops depending on it.
+
+The completeness criterion for a cross-review is unchanged in *kind* — a trailing `## Verdict` section
+with exactly one `VERDICT:` line — and now also requires the trailer inside it. `## Measurement
+Required` (AC-5.2) remains outside the criterion (AC-5.5).
 
 **AC-3.5 — A verifier-round approval is recorded, and a crashed dual round still is not.**
 
@@ -470,6 +706,27 @@ the loop records the approval. *Then:*
   two-element `lastResults` construction on the halt path (M-3a). A round's panel must be a list whose
   length the round determines, and every one of those sites must read from it.
 
+- **(e) The marker's reader is a total function — all five cases, at REQ altitude.** `REVIEW-MODE:` is
+  a machine-read string crossing a component boundary (S-1), and DC-01 requires the receiving side to
+  be total *before* FSPEC authoring. v1.0 stated only present/absent and deferred the rest to O-4,
+  which is an obligation on the FSPEC — the deferral DC-01 forbids (SE F-05, TE F-07). Each case below
+  decides whether an approval is granted, which is externally observable behaviour. The rule is
+  **fail-closed throughout**, matching M-3d's existing role-asymmetry posture and M-4b's `≥2`
+  ambiguity posture:
+
+  | Case on the candidate round's file(s) | Reading | Approval |
+  |---|---|---|
+  | **Absent** on a lone file | crashed dual round (§5) | **no approval** — the existing M-3d rule, intact |
+  | Exactly **one** line, exactly `REVIEW-MODE: verification` | verifier round | approval honoured, if the verdict approves |
+  | Exactly one line, **any other value** | unrecognised mode; the catalogue S-1 is closed and has one member | **no approval**; run report notice names the file and the value found |
+  | **Two or more** `REVIEW-MODE:` lines in one file | history ambiguous — the same state M-4b calls `≥ 2` | **no approval**, by the same rule and for the same reason |
+  | Marker present on **more than one file of the same round** | contradiction: a verifier round has one file by construction, so this is a dual round claiming to be a verifier round | **no approval**; the round's panel shape is *crashed* (§5) and therefore not comparable under AC-2.4 either |
+  | Marker present on a **dual** round's file alongside a second unmarked file | same contradiction as the row above, seen from the other side | **no approval**; same notice |
+
+  In every refusing row the loop does **not** halt: it records the refusal, the round remains owed an
+  authoring pass, and the window proceeds under AC-1. A refusal is the absence of an approval, not an
+  error, and it is exactly what M-3d does today.
+
 **AC-3.6 — Tier 2 may remain dual-only, and says so.**
 *Who:* the harvest step. *Given:* a feature whose approving round was a verifier round. *When:* the
 LEARNINGS approval record (tier 2, M-3f) is written. *Then:* it is acceptable for tier 2 to record no
@@ -482,9 +739,12 @@ it is not in this REQ's scope. R-3 binds the residue.
 *Who:* the operator. *Given:* the verifier role. *When:* they ask what lens it applies. *Then:* the
 verifier applies the **union** of the panel's lenses in disposition-check mode, not a new lens. It is
 not a tie-breaker between the two round-1 reviewers, because §1.3 measured that they do not disagree.
-The role's name, its skill file, and whether it is a new SKILL or a mode of an existing one are FSPEC
-decisions (§8 O-3); what this REQ fixes is that it has **one stable role slug**, because the slug is
-what the file path, the approval marker and AC-2's panel-shape comparison are all keyed on.
+Its slug is **`verifier`**, declared with a default in §6 — v1.0 left it unfixed, which left AC-2.4's
+panel-shape set equality comparing sets of an undefined string (SE F-11). Its skill file, and whether
+it is a new SKILL or a mode of an existing review SKILL, remain FSPEC decisions (§8 O-3); FSPEC may
+rename the slug only by amending §6's row, and may not leave it unset. What matters to the mechanisms
+is that there is **one stable slug**, because it is the key the file path, the approval marker and
+AC-2's panel-shape comparison are all stated over.
 
 **Observability.** Which files exist, under which role slug, at which round; whether a file carries
 `REVIEW-MODE: verification`; which round `selectMode` reports as owed. All on disk, all readable on a
@@ -502,13 +762,46 @@ round the review surface never shrinks. AC-3 stops the verifier from *mining* sm
 findings; AC-4 stops a genuinely large revision from slipping past a verifier that is not equipped to
 read it cold.
 
-**AC-4.1 — Growth is measured, per round.**
-*Who:* the review loop. *Given:* a review-loop phase other than Phase CR. *When:* an optimizer episode
-for round N has returned and the loop is about to open round N+1. *Then:* it computes **round growth**
-as `bytes(document at start of round N+1) − bytes(document at start of round N)`, using the same
-injected reader the loop already uses to take the round's anchor (M-5c). The measurement is taken at a
-**round boundary**, after the optimizer episode has returned — so it does not depend on whether a
-partial write is visible on disk mid-dispatch, which §4.7 records as unmeasured.
+**AC-4.1 — Growth is measured per round, from a durable in-file anchor.**
+*Who:* the review loop. *Given:* a review-loop phase other than Phase CR. *When:* round N is opened.
+*Then:* the loop reads the reviewed document's byte length through the injected reader (M-5c) and
+**writes it into every cross-review file of round N as a `DOC-BYTES: {n}` anchor line** (S-2), in the
+same anchor block and by the same writer as `APPROVAL-HASH:` / `REVIEWED-COMMIT:` and
+`REVIEW-MODE:` (M-4a, M-4b). **Round growth** for the boundary between rounds N and N+1 is then
+
+```
+growth = DOC-BYTES(round N+1) − DOC-BYTES(round N)
+```
+
+read from those two anchors on the branch. The measurement is taken at a **round boundary**, after the
+optimizer episode for round N has returned — the single boundary §4.7 also names — so it does not
+depend on whether a partial write is visible on disk mid-dispatch.
+
+**The anchor exists because the in-memory endpoint does not survive an invocation.** v1.0 defined both
+endpoints as in-process `_readFile` results with no durable home, and the loop re-derives its state
+from the branch on every invocation (M-1d, M-2f). On a resumed phase — the normal case — the round-N
+endpoint was never taken in this process and nothing on the branch recorded it, so **every** round's
+growth was unmeasurable, AC-4.5 fired, and AC-3's single-verifier path was dead on every resumed run
+without any operator-visible signal that this was structural (SE F-03, TE F-01). AC-3.5(a) had already
+solved exactly this problem for its own marker, for exactly this reason; AC-4 now uses the same
+surface. §5's durability table records the result: no AC in this REQ is stated over an in-process
+quantity.
+
+**Receive side (DC-01 totality) for `DOC-BYTES:` (S-2).** Growth is **unmeasurable** — AC-4.5, with the
+S-6 reason shown — in each of these cases, and in no others:
+
+| Input at either endpoint | S-6 reason |
+|---|---|
+| No `DOC-BYTES:` line in any of the round's cross-review files | `no-anchor` |
+| A line whose value is not a decimal integer ≥ 0 — non-numeric, signed, separators, empty | `unreadable-anchor` |
+| Two or more `DOC-BYTES:` lines in one file with **unequal** values | `unreadable-anchor` |
+| The phase's target is not a single readable document (Phase CR's directory target) | `non-document-target` |
+
+Two or more `DOC-BYTES:` lines with **equal** values is an idempotent re-write and is read as one
+value — the same rule M-4b already applies to `APPROVAL-HASH:`. A round whose several files disagree
+on the value is `unreadable-anchor`: the anchor is a property of the document at the round, so the
+files must agree. Negative growth is **measurable and normal** (a round that shortened the document)
+and classifies *incremental* under AC-4.2; it is not an error.
 
 **AC-4.2 — Classification.**
 *Who:* the review loop. *Given:* a measured round growth `g`. *When:* it selects round N+1's panel.
@@ -536,12 +829,18 @@ See §6. It is `MAX_AUTHORING_WRITE_BYTES`, default 12,000 bytes, owner: the `or
 module. Changing the pacing contract changes this classification with it, deliberately — they are the
 same quantity and must not drift apart into two numbers.
 
-**AC-4.5 — Unmeasurable growth fails safe to the full panel.**
-*Who:* the review loop. *Given:* either endpoint read returns nothing, or the phase's target is not a
-single readable document (Phase CR's directory target being the standing example). *When:* the panel
-for the next round is selected. *Then:* the **full panel** is dispatched and the run report records
-that growth was unmeasurable and why. Failing safe here means failing *toward more review*, which is
-the direction that cannot lose a finding.
+**AC-4.5 — Unmeasurable growth fails safe to the full panel, and says which case it was.**
+*Who:* the review loop. *Given:* either endpoint is unmeasurable in one of the four ways AC-4.1
+enumerates. *When:* the panel for the next round is selected. *Then:* the **full panel** is dispatched
+and the run report carries the **S-6 notice** `growth-unmeasurable: {reason}` with the matching
+closed-enum reason and the round it applied to. Failing safe here means failing *toward more review*,
+which is the direction that cannot lose a finding.
+
+The operator must be able to tell a *structural* unmeasurable — the target is a directory, so growth
+does not exist there — from an *incidental* one, a missing or unreadable anchor on a round that should
+have carried one. The reason enum is what carries that distinction: `non-document-target` is expected
+and permanent; `no-anchor` and `unreadable-anchor` are defects worth looking at. This is the signal
+round 1 of cross-review found missing (TE F-01).
 
 **AC-4.6 — The optimizer is told to revise minimally.**
 *Who:* an authoring agent addressing findings. *Given:* a revision dispatch. *When:* it receives its
@@ -553,15 +852,28 @@ next round to the full panel. This is a prompt clause, so it is directive rather
 is what actually bites, and the clause exists so the author knows the rule it is being measured
 against.
 
-**AC-4.7 — Growth is reported.**
-*Who:* the operator. *Given:* any completed review-loop phase. *When:* they read the run report.
-*Then:* it carries, per round: the round number, the panel shape, the blocking count, the round
-growth in bytes, and the resulting classification. This table is the artifact the predecessor's
-post-mortem had to be reconstructed by hand (US-03), and it is what makes AC-2's fixed-point
-determination auditable after the fact.
+**AC-4.7 — Growth is reported, in a fixed row schema.**
+*Who:* the operator. *Given:* any completed review-loop phase, converged or halted. *When:* they read
+the run report. *Then:* it carries **one row per round**, with exactly these columns:
 
-**Observability.** Two byte lengths of one file, one comparison against a constant, one row per round
-in a report.
+| Column | Value |
+|---|---|
+| `round` | the round index N |
+| `panel-shape` | the on-disk role-slug set at that round (§5), or `crashed` |
+| `blocking` | `blocking(N)`, or `unavailable`, or `malformed` |
+| `growth-bytes` | the signed integer growth into that round, or empty for round 1 and for an unmeasurable boundary |
+| `classification` | `new-mechanism`, `incremental`, or `unmeasurable` (AC-4.2) |
+| `notice` | empty, or exactly one of S-3 … S-6 |
+
+The schema is part of §5's closed catalogue and is fixed **here**, not downstream: O-8 specifies where
+the table is emitted and in what format, not what its columns are. Every column is derivable from the
+branch alone — the cross-review basenames, the files' count trailers, their `REVIEW-MODE:` and
+`DOC-BYTES:` anchors — which is what makes AC-2's fixed-point determination re-derivable after the
+fact by a reader who was not there. This is the artifact the predecessor's post-mortem had to be
+reconstructed by hand (US-03).
+
+**Observability.** Two integers read from two anchor lines on the branch, one comparison against a
+constant, one row per round in a report. No in-process state.
 
 ---
 
@@ -605,12 +917,25 @@ the loop extracts each file's `## Measurement Required` section and carries the 
 report, attributed to their round and role. The operator therefore ends every phase — converged or
 halted — with a list of the measurements the phase is waiting on, without opening a cross-review file.
 
+**An approval reached with items outstanding says so.** The phase outcome in the run report reads
+`approved, {n} measurements outstanding` when `n > 0`, and plain `approved` when `n = 0`. AC-5.2 makes
+the section non-blocking on purpose, but a terminal approval that leaves unsettled measurements
+recorded only inside a cross-review file is a state the operator should see named (TE F-09). The count
+is a report field only: it is **not** an approval condition, changes no verdict, and never gates the
+phase.
+
 **AC-5.5 — An absent section is normal.**
 *Who:* the review loop. *Given:* a cross-review file with no `## Measurement Required` section.
 *When:* extraction runs. *Then:* it contributes nothing and is not an error. Most rounds will have
 none. The section is optional and its absence is never a halt, a warning, or a completeness failure —
 it is **not** part of the cross-review completeness criterion, which remains the trailing `## Verdict`
-section and its single `VERDICT:` line, unchanged.
+section and its single `VERDICT:` line, plus the count trailer AC-3.4 adds.
+
+**Receive side (DC-01 totality) for `## Measurement Required` (S-7):** absent ⇒ contributes nothing,
+never an error; present but empty ⇒ contributes nothing; present with a body the loop cannot parse
+into items ⇒ the body is carried **verbatim** into the report under its round and role, never dropped
+and never an error; two or more such sections in one file ⇒ their bodies are concatenated in document
+order. There is no input on which extraction fails, because nothing downstream of it is gated.
 
 **Observability.** The presence and content of a named markdown section in files on disk; a list in
 the run report. Note the self-application: this REQ's §4.7 names the two unmeasured facts it declines
@@ -647,10 +972,27 @@ repo root. *When:* they run the CLI. *Then:* it reports every bad citation with 
 was found at, what was expected and what was found, and exits **non-zero** if any citation is bad,
 zero otherwise. The CLI is a separate entry point from the library (AC-6.2), not a side effect of it.
 
-**AC-6.4 — What it extracts.**
-*Who:* the checker. *Given:* a markdown document. *When:* it runs. *Then:* it extracts `path:line`
-citations — including line **ranges** (`path:12-18`), which this repo's documents use — and, for each,
-checks three things:
+**AC-6.4 — The citation grammar is a closed catalogue, and the checker is total over it.**
+*Who:* the checker. *Given:* a markdown document. *When:* it runs. *Then:* it extracts citations
+matching **exactly these forms, and no others**:
+
+| id | Form | Example | Resolution |
+|---|---|---|---|
+| **C-1** | repo-root-relative path + `:` + line | `pdlc/workflows/orchestrate-dev.js:52` | the path, resolved against the repo root |
+| **C-2** | repo-root-relative path + `:` + range | `pdlc/workflows/orchestrate-dev.js:2215-2217` | same; both endpoints checked |
+| **C-3** | bare basename + `:` + line or range | `orchestrate-dev.js:1436` | **reported as a grammar defect, not resolved.** A basename is ambiguous under the repo root and the checker does not guess. |
+| **C-4** | bare `:` + line or range, no path | `` `:1574` `` | **reported as a grammar defect, not resolved.** There is no anchor to resolve it against; "nearest preceding full path" is a heuristic that fails silently on the exact defect this checker exists to catch. |
+
+**Range separator:** the ASCII hyphen `-` only. An en-dash range (`2215–2217`) is form C-3/C-4's
+sibling defect and is **reported as a grammar defect** with the fix ("use `-`") named. One separator,
+stated in one place, so the document and the checker cannot disagree.
+
+**Unparseable input is reported, never silently skipped.** A token that looks like a citation — any
+`:` followed by digits inside backticks — but matches none of C-1 … C-4 is reported as `unparseable`
+with its file and line. The checker never fails, never throws, and never exits on a parse problem; it
+accumulates. This is the receive-side totality DC-01 requires (TE F-02).
+
+For each citation that resolves (C-1, C-2) the checker performs three checks:
 
 | # | Check | Fails when |
 |---|---|---|
@@ -658,10 +1000,22 @@ checks three things:
 | 2 | **Line-range validity** | the cited line, or either end of the cited range, is beyond the end of the cited file, or the range is inverted |
 | 3 | **Nearby symbol presence** | the citation's surrounding prose names a backticked symbol or literal that does not appear in the cited file within a tolerance window around the cited line |
 
-Check 3 is the one that catches the defect that actually recurred — a line number that drifted by two
-while still pointing inside a real file. It is stated as *presence within a window* rather than
-*exact-line match* precisely because the symbol-plus-literal convention exists to survive small drift:
-the check should report a citation whose symbol is nowhere near it, not one that moved by a line.
+**Why the grammar had to be fixed here rather than in the FSPEC.** Measured over v1.0 of this very
+document, 3 citations were C-1, 13 were bare basenames and 14 were bare `:NNN` — so the checker as
+first specified would have reported the 13 as nonexistent paths and never seen the 14 at all, i.e.
+been false-positive or blind on ~82% of the corpus it exists to check (TE F-02). The recurring P-4
+defect lived precisely in those two forms. v1.1 normalises every citation in this document to C-1/C-2
+(TE MF-02, MF-03) and the header states the convention; C-3 and C-4 remain in the catalogue as
+**named defects** so that a document which drifts back to them is told so, rather than passing
+vacuously.
+
+**Check 3's window has a stated direction.** It catches the defect that actually recurred — a line
+number that drifted by two while still pointing inside a real file — so the window must be **wide
+enough that the motivating two-line drift passes on symbol presence, and narrow enough that a symbol
+belonging to a different function fails**. Concretely: materially wider than 2 lines, materially
+narrower than a typical function's separation in this module. The exact value is a tuning parameter
+with no product consequence and remains an FSPEC decision (§6, O-6); the direction is fixed here so
+the AC determines the outcome of its own motivating example (SE F-12).
 
 **AC-6.5 — Output is mechanical fixes, not findings.**
 *Who:* a reviewer. *Given:* the checker's output on a document under review. *When:* they write their
@@ -698,15 +1052,20 @@ this table is a defect in this document.
 | Name | Default | Owner | Cited by | Derivation |
 |---|---|---|---|---|
 | `MAX_REVIEW_ROUNDS` | **3** (was 5) | `pdlc/workflows/orchestrate-dev.js`, module scope (M-1a) | AC-1.1, AC-2.6 | Operator decision, evidenced by §1.1: the measured blocking count reached its minimum at round 2 and rose thereafter; rounds 4 and 5 added 40% of the document and ended with more blocking findings than round 2. |
-| `MAX_AUTHORING_WRITE_BYTES` | **12,000 bytes** (unchanged) | `pdlc/workflows/orchestrate-dev.js:56`, and stated verbatim in `PACING_CONTRACT_CLAUSE` at `:2279` (M-5a) | AC-4.2, AC-4.3 | **Inherited, not new.** It is one pacing write — the largest revision an author can emit in a single tool call. AC-4 deliberately reuses this quantity rather than introducing a second growth number, so the two cannot drift apart. |
-| Verifier role slug | *unfixed — FSPEC decides the name* | `pdlc/workflows/orchestrate-dev.js` + the verifier SKILL | AC-3.4, AC-3.5(a), AC-2 panel shape | AC-3.7 fixes only that it is **one stable slug**; the string itself is a naming decision, listed here so it is not forgotten. It is the key for the file path, the approval marker and the panel-shape comparison. |
+| `MAX_AUTHORING_WRITE_BYTES` | **12,000 bytes** (unchanged) | `pdlc/workflows/orchestrate-dev.js:56`, and stated verbatim in `PACING_CONTRACT_CLAUSE` at `pdlc/workflows/orchestrate-dev.js:2279` (M-5a) | AC-4.2, AC-4.3 | **Inherited, not new.** It is one pacing write — the largest revision an author can emit in a single tool call. AC-4 deliberately reuses this quantity rather than introducing a second growth number, so the two cannot drift apart. |
+| Verifier role slug | **`verifier`** | `pdlc/workflows/orchestrate-dev.js` + the verifier SKILL | AC-3.4, AC-3.5(a), AC-2 panel shape | v1.0 left this unfixed. It is a **key** three mechanisms are stated over — the cross-review file path (M-3b), the approval marker's owning file, and AC-2.4's panel-shape set equality, which compares *sets of these strings* (SE F-11). A key with no value cannot be compared, so the REQ fixes the default here. It matches the existing slug shape (`software-engineer`, `test-engineer`: lower-case, hyphenated, no role suffix). FSPEC may rename it, but only by amending this row — it may not leave it unset. |
 | `REVIEW-MODE: verification` | that exact literal | `appendApprovalAnchors` (M-4a) | AC-3.5(a), AC-3.5(b) | Follows the existing `APPROVAL-HASH:` / `REVIEWED-COMMIT:` anchor convention — a bare `KEY: value` line, appended by the same writer, parsed by the same style of anchored regex. |
 | `## Measurement Required` | that exact heading | the three review SKILLs | AC-5.2, AC-5.4 | Follows the existing `## Verdict` convention: an exactly-named top-level section the loop extracts. Deliberately **not** part of the completeness criterion (AC-5.5). |
-| Symbol-proximity window (AC-6.4 check 3) | *unfixed — FSPEC decides* | the new `pdlc/workflows/lib/` module | AC-6.4 | AC-6.4 fixes the *shape* (presence within a window, not exact-line match) and its reason; the window size is a tuning parameter with no product consequence and is an FSPEC decision (§8 O-6). |
+| Symbol-proximity window (AC-6.4 check 3) | **±25 lines**, FSPEC may tune | the new `pdlc/workflows/lib/` module | AC-6.4 | AC-6.4 fixes the *shape* (presence within a window, not exact-line match), its reason, and now its **direction** — wide enough that the motivating two-line drift passes, narrow enough that a symbol in a different function fails (SE F-12). ±25 lines is a stated default satisfying both bounds against this module's function sizes; it is a tuning parameter with no product consequence and O-6 may change the number, not the direction. |
+| `DOC-BYTES: {n}` | that exact literal, `{n}` a decimal integer ≥ 0 | `appendApprovalAnchors` (M-4a) | AC-4.1, AC-4.2, AC-4.5 | The durable home of AC-4's growth endpoints (S-2). Follows the existing `KEY: value` anchor convention exactly, and is written by the same writer as `APPROVAL-HASH:` and `REVIEW-MODE:` so the three cannot drift into three mechanisms. |
+| `## Disposition` / `New-mechanism:` | those exact literals | the verifier SKILL (AC-3.2) | AC-3.2(1), AC-3.2(2), AC-2 | S-8 and S-9. Each is the structural artifact that makes one AC-3.2 clause falsifiable; without them a verifier that obeyed the clause and one that ignored it produced identical files (TE F-05, F-06). |
 
-Two of the six are deliberately left to the FSPEC. Both are named here with their owner and their
-decision criterion, which is what the threshold-declaration obligation requires; neither has a product
-consequence that this REQ could decide better than the FSPEC can.
+**Every threshold now carries a value.** v1.0 left two rows with *"unfixed — FSPEC decides"* in the
+Default column, against this section's own stated obligation (SE F-11). Both now have a default: the
+verifier slug because it is a comparison key and a key without a value cannot be compared, and the
+proximity window because AC-6.4 must determine the outcome of its own motivating example. FSPEC may
+change either number or string; it may not leave either unset, and a change is an amendment to this
+table.
 
 ## 7. Non-goals and out of scope
 
@@ -716,7 +1075,7 @@ Stated so a reviewer does not file a blocking finding against an absence that is
 |---|---|---|
 | **N-1** | Making non-convergent documents converge. | This REQ bounds and explains failure. §2 says so explicitly. A finding of the form "this will not make the loop converge" is correct and is not a defect. |
 | **N-2** | Normalising blocking counts across panels of different size. | AC-2.4 declines it: a sum over two reviewers and a sum over one are not the same measurement, and any normalisation is a guess. R-2 records the cost. |
-| **N-3** | Changing the cross-review file grammar. | `CROSS-REVIEW-{role}-{doc}-v{N}.md`, the trailing `## Verdict` section, the single `VERDICT:` line and the count trailer are all **unchanged**. AC-3.4 has the verifier write the same grammar; AC-5.2 adds an optional section that is not part of the completeness criterion. |
+| **N-3** | Changing the cross-review file grammar **beyond the one change AC-3.4 names**. | *Amended in v1.1 (SE F-10).* The filename form `CROSS-REVIEW-{role}-{doc}-v{N}.md`, the trailing `## Verdict` section and its single `VERDICT:` line are **unchanged**. The **one** change is AC-3.4's: the `{"high": N, "medium": N, "low": N}` count trailer, today required only in the reviewer's *response* (M-2g), becomes required **in the file**, inside the `## Verdict` section — because AC-2 now reads both its operands from files and a file without the trailer would read as a genuine `0/0/0` (M-2c). The corresponding SKILL amendment is O-9. `## Measurement Required` (AC-5.2), `## Disposition` (AC-3.2) and the `DOC-BYTES:` / `REVIEW-MODE:` anchor lines are **additions**, not changes: the first two are sections no existing reader looks for, and the anchors extend an anchor block that already exists (M-4a). |
 | **N-4** | Changing what a halt is. | AC-1.4: the POSTMORTEM path, the write confirmation, and the human-written `RESOLVED: yes` marker are untouched. This REQ changes *when* a halt happens and *what it says*. |
 | **N-5** | Extending tier-2 (LEARNINGS) approval records to verifier rounds. | AC-3.6 permits the limitation, provided it is documented. R-3. |
 | **N-6** | Taking the two measurements §4.7 names. | They are genuinely worth taking, and they are not this REQ's deliverable. R-4. |
@@ -735,14 +1094,14 @@ FSPEC, TSPEC, PLAN or PROPERTIES, not a REQ revision.
 |---|---|---|
 | **O-1** | Specify how the loop threads a **per-round reviewer list** through `reviewLoop`, replacing the two named result bindings, the positional `reviewers[0]`/`[1]` dispatch and the two-element `lastResults` construction (M-3a, AC-3.5(d)). | FSPEC → TSPEC |
 | **O-2** | Specify the amended same-round-approval rule: how `selectMode` evaluates rule 2 against the roles dispatched **at the round being judged** rather than the accumulated role set (M-3c, AC-3.5(c)), and what happens on a branch that carries a mixture of dual and verifier rounds. | FSPEC → TSPEC |
-| **O-3** | Name the verifier role: its slug, its SKILL file, and whether it is a new SKILL or a mode of an existing review SKILL (AC-3.7, §6). | FSPEC |
-| **O-4** | Specify the `REVIEW-MODE: verification` marker's exact write path through `appendApprovalAnchors`, and its interaction with that function's existing pre-count semantics (0 / 1-equal / 1-unequal / ≥2 — M-4b): what a duplicated or contradictory marker means, and how `tier1ApprovalRecord` reads it fail-closed (AC-3.5(a), AC-3.5(b)). | FSPEC → TSPEC |
+| **O-3** | Specify the verifier role's SKILL file and whether it is a new SKILL or a mode of an existing review SKILL (AC-3.7). **Its slug is not open**: §6 fixes it at `verifier`, and a rename is an amendment to §6, not an FSPEC decision. | FSPEC |
+| **O-4** | Specify the **write path** of the `REVIEW-MODE: verification` and `DOC-BYTES: {n}` anchors through `appendApprovalAnchors`, and how each composes with that function's existing pre-count semantics (0 / 1-equal / 1-unequal / ≥2 — M-4b). **The meaning of every non-canonical input is not open**: AC-3.5(e) fixes all five `REVIEW-MODE:` cases and AC-4.1 fixes all four `DOC-BYTES:` cases, both fail-closed, because DC-01 requires the receive side to be total *before* FSPEC authoring and v1.0 deferred it *to* the FSPEC (SE F-05, TE F-07). O-4 specifies the plumbing, not the semantics. | FSPEC → TSPEC |
 | **O-5** | Specify where in the loop AC-2's comparison is evaluated so that it precedes the optimizer dispatch (AC-2.1), and how its halt reason reaches both the post-mortem prompt and the run report distinctly from budget exhaustion (AC-2.2). | TSPEC |
-| **O-6** | Specify the citation grammar the checker recognises, the symbol-proximity window and its default, and the exact output format (AC-6.3, AC-6.4, §6). | FSPEC → TSPEC |
-| **O-7** | Specify the `## Measurement Required` extraction: how the section is located, what an empty or malformed one does (AC-5.5 requires: nothing), and the report format (AC-5.4). | TSPEC |
-| **O-8** | Specify the run-report row schema of AC-4.7 (round, panel shape, blocking count, growth, classification) and where it is emitted for both converged and halted phases. | TSPEC |
-| **O-9** | Write the SKILL amendments: the three review SKILLs (AC-5.1, AC-5.2, AC-6.5), the three author SKILLs (AC-5.3, AC-4.6, AC-6.5), and the verifier's disposition-check contract (AC-3.2). | FSPEC → implementation |
-| **O-10** | Properties and tests for all six ACs, including the negative cases this REQ names explicitly: the `0 ≥ 0` non-firing (AC-2.5), the malformed-count chain break in **both** directions (AC-2.3), the unequal-panel-shape non-comparison (AC-2.4), the lone-file-without-marker fail-closed (AC-3.5(b)), and unmeasurable growth escalating rather than degrading (AC-4.5). | PROPERTIES |
+| **O-6** | Specify the checker's **implementation and output format** against AC-6.4's closed grammar (C-1 … C-4), and tune the symbol-proximity window if ±25 lines proves wrong. **The grammar, the range separator, the unparseable-input behaviour and the window's direction are not open** — AC-6.4 and §6 fix them (TE F-02, SE F-12). | FSPEC → TSPEC |
+| **O-7** | Specify **how** the `## Measurement Required` section is located and rendered in the report (AC-5.2, AC-5.4). Its receive-side behaviour on absent, empty, unparseable and duplicated sections is fixed by AC-5.5 (S-7). | TSPEC |
+| **O-8** | Specify **where** AC-4.7's per-round table is emitted, for both converged and halted phases, and in what rendering. **Its columns are not open** — AC-4.7 fixes the six-column schema and §5 records it as part of the closed catalogue. | TSPEC |
+| **O-9** | Write the SKILL amendments: (a) the three review SKILLs — AC-5.1, AC-5.2, AC-6.5, **and AC-3.4's requirement that the count trailer appear inside the file's `## Verdict` section as well as in the response** (the one file-grammar change, SE F-10); (b) the three author SKILLs — AC-5.3, AC-4.6, AC-6.5; (c) the verifier's disposition-check contract — AC-3.2, including the `## Disposition` section (S-8) and the per-finding `New-mechanism:` field (S-9). | FSPEC → implementation |
+| **O-10** | Properties and tests for all six ACs, including the negative cases this REQ names explicitly: the `0 ≥ 0` non-firing (AC-2.5), the malformed-count chain break in **both** directions (AC-2.3), the *unavailable*-count chain break (AC-2.7), the unequal-panel-shape and crashed-round non-comparisons (AC-2.4), the lone-file-without-marker fail-closed (AC-3.5(b)), all five `REVIEW-MODE:` cases (AC-3.5(e)), all four `DOC-BYTES:` unmeasurable cases (AC-4.1) with unmeasurable growth escalating rather than degrading (AC-4.5), a missing `## Disposition` refusing approval without halting (AC-3.2), and AC-6.4's C-3/C-4/en-dash/unparseable citation forms each being *reported* rather than skipped or fatal. | PROPERTIES |
 | **O-11** | Rebuild `pdlc/workflows/dist/` in the same commit as every workflow-source change, and honour the C-2 runtime constraints: no new `import` into the bundle, and **every injected IO call `await`ed** (the adapter's implementations are async; the test doubles are sync, so a missing `await` passes the tests and fails at runtime). AC-6's library must acquire no caller inside the bundle (AC-6.6). | implementation |
 
 ## 9. Risks, assumptions and deferrals
@@ -761,28 +1120,38 @@ FSPEC, TSPEC, PLAN or PROPERTIES, not a REQ revision.
 | # | Risk | Disposition |
 |---|---|---|
 | **R-1** | **This REQ is reviewed by the loop it is changing, under the old behaviour.** Five rounds, dual panel, no enforced stop, no measured growth, no citation checker. The predecessor's Phase R died exactly here. | Mitigated by the preamble's stopping rule, by §4.7's explicit naming of the two unmeasured facts no AC depends on, and by keeping this document short. **Accepted, and unenforceable** — the enforcement is AC-2, which has not shipped. The operator is asked to watch the trajectory table and halt at the fixed point by hand. |
-| **R-2** | **AC-2 is nearly inert in the default configuration.** Under AC-1's three rounds and AC-3's panel shape, the only comparable consecutive same-shape pair is (2, 3), so the rule fires at most once and saves one optimizer episode. | **Accepted and stated in AC-2.6 rather than hidden.** The rule's value is durability, not immediate saving. Successor: revisit cross-panel comparability (N-2) once real runs exist to calibrate against. |
-| **R-3** | **Tier-2 approval records will have gaps** for verifier-approved rounds (AC-3.6). | Accepted, with the limitation documented in LEARNINGS and the run report. Tier 2 is already best-effort and excluded from the completeness criterion. Successor: extend tier 2 to verifier rounds. |
-| **R-4** | **The two unmeasured runtime facts (§4.7) remain unmeasured**, so the predecessor's generator classes A and B stay open. | Out of scope by N-6. AC-5 is what stops them consuming review rounds in the meantime; it does not settle them. Successor: a spike that measures both, per POSTMORTEM R-3. |
+| **R-2** | **How much AC-2 saves depends on the regime, and in one regime it is close to inert.** *Restated in v1.1 (SE F-09, TE F-03).* v1.0 asserted that the only comparable consecutive same-shape pair is (2, 3) and therefore that the rule fires at most once, saving one optimizer episode. That is true of the **target** regime only. In the **measured** regime — every round re-escalated to the full panel by AC-4.2 — rounds 1, 2 and 3 are all dual, both (1,2) and (2,3) are comparable, and a fire at round 2 saves a full round of *reviewers* as well. AC-2.6's table enumerates every reachable sequence. | **Accepted and enumerated in AC-2.6 rather than stated as a single figure.** In every reachable sequence the rule fires at most once per phase; what varies is where it can fire and therefore what it saves. Successor: `docs/pdlc-review-convergence-calibration/REQ-pdlc-review-convergence-calibration.md` — revisit cross-panel comparability (N-2) once real runs exist to calibrate against. |
+| **R-3** | **Tier-2 approval records will have gaps** for verifier-approved rounds (AC-3.6). | Accepted, with the limitation documented in LEARNINGS and the run report. Tier 2 is already best-effort and excluded from the completeness criterion. Successor: `docs/pdlc-approval-record-tier2/REQ-pdlc-approval-record-tier2.md`. |
+| **R-4** | **The two unmeasured runtime facts (§4.7) remain unmeasured**, so the predecessor's generator classes A and B stay open. | Out of scope by N-6. AC-5 is what stops them consuming review rounds in the meantime; it does not settle them. Successor: `docs/pdlc-runtime-measurement-spike/REQ-pdlc-runtime-measurement-spike.md`, which carries POSTMORTEM R-3's spike. |
+| **R-7** | **AC-3.4's file-grammar change lands before every reviewer emits the trailer in the file.** A review written by an un-amended SKILL carries no in-file trailer, so AC-2 reads its round as *unavailable* (AC-2.7). Measured on the predecessor, 7 of 10 files carried a trailer at all (A-1). | Accepted and degradation-only, by construction: an *unavailable* round breaks AC-2's chain in both directions and never fires the rule (AC-2.7), so a lagging SKILL costs a comparison, never a wrong halt. O-9 amends the three review SKILLs in the same delivery. |
 | **R-5** | **AC-5 and AC-4.6 are prompt clauses, so they are directive rather than enforced.** An agent that ignores them is not detected. | Accepted. AC-4.2 and AC-2 are the mechanical controls; AC-5's mechanical half is only the extraction (AC-5.4), and its classification half is prompt-borne. A-4 records the assumption. A finding that AC-5 is unenforceable is **correct and known** — file it as Low. |
 | **R-6** | **A branch carrying a mixture of dual and verifier rounds is a state the existing approval machinery has never seen.** Three separate call sites encode "two reviewers" (M-3a, M-3c, M-3d). | This is the highest-risk part of the change and is why AC-3.5 states four separate constraints rather than one. O-1, O-2, O-4 and O-10 discharge it downstream. |
 
 ### 9.3 Deferrals and their binding
 
-Per the deferral-binding obligation, every deferred capability must be bound to a successor that
-exists as a queue row or a named successor REQ file. **This is not satisfied at authoring time**, and
-the REQ says so plainly rather than offering prose intent as a binding:
+DC-08 requires every deferred capability to be bound to a **named successor surface** — a queue row, a
+hand-off row, or a follow-up REQ — not to prose. v1.0 declared all three of its deferrals **Unbound**
+and offered an "Unbound" label plus prose intent as the binding, which is precisely what DC-08 forbids
+(SE F-06). DC-08 accepts three binding surfaces and only one of them is the queue, which the authoring
+agent is correctly forbidden to touch. **All three are therefore now bound to successor REQ files that
+exist on this branch:**
 
-| Deferral | Named successor | Status |
+| Deferral | Bound to | Status |
 |---|---|---|
-| Cross-panel count comparability (R-2, N-2) | `pdlc-review-convergence-calibration` | **Unbound.** No queue row exists. |
-| Tier-2 approval for verifier rounds (R-3, N-5) | `pdlc-approval-record-tier2` | **Unbound.** No queue row exists. |
-| Measuring the two runtime facts of §4.7 (R-4, N-6) | POSTMORTEM R-3's spike | **Unbound.** No queue row exists; POSTMORTEM R-3 recommended creating them and they were not created. |
+| Cross-panel count comparability (R-2, N-2) | `docs/pdlc-review-convergence-calibration/REQ-pdlc-review-convergence-calibration.md` | **Bound.** Stub REQ, `ready: false`, depends-on `pdlc-review-convergence`. Carries the inherited problem, the three questions it would decide, and its prerequisite that ≥ 5 phases' AC-4.7 tables exist to calibrate against. |
+| Tier-2 approval for verifier rounds (R-3, N-5) | `docs/pdlc-approval-record-tier2/REQ-pdlc-approval-record-tier2.md` | **Bound.** Stub REQ, `ready: false`. Carries the three deliverables, including removing AC-3.6's documented-limitation text in the same change that closes the gap. |
+| Measuring the two runtime facts of §4.7 (R-4, N-6) | `docs/pdlc-runtime-measurement-spike/REQ-pdlc-runtime-measurement-spike.md` | **Bound.** Stub REQ, `ready: false`, no dependencies — it is measurable today. Carries both facts (MR-1, MR-2) with a proposed method and what each would settle. |
 
-The authoring agent was instructed not to modify `docs/_queue/QUEUE.md` — the orchestrator adds this
-feature's own row after authoring. **Creating the three successor rows above is therefore an operator
-action, and it is recorded here as an open item rather than papered over.** A reviewer is entitled to
-treat these as unbound deferrals; that reading is correct. They become bound when the rows exist.
+Each stub is `ready: false`, so none is queue-eligible until an operator specifies it and opts it in.
+That is the intended state: DC-08 asks for a **checkable successor surface**, not for scheduled work.
+Adding queue rows remains an operator action — the authoring agent does not modify
+`docs/_queue/QUEUE.md` — but the deferrals no longer depend on that action to be bound.
+
+The precedent is explicit in DC-08's origin note: `pdlc-workflow-distribution`'s deferral check passed
+three DoD rounds running **because** its deferrals were bound to real successor surfaces. The
+counter-precedent is equally explicit and is why the third row exists at all — POSTMORTEM R-3
+recommended creating successors for these very measurements and none were created, so the deferral
+survived into a second feature. A file on the branch is what stops that recurring a third time.
 
 ## 10. Traceability
 
@@ -818,10 +1187,10 @@ requirement.
 
 | Requirement | Facts it attaches to |
 |---|---|
-| REQ-RCV-01 | M-1a, M-1b, M-1c |
-| REQ-RCV-02 | M-2a, M-2b, M-2c, M-2d |
+| REQ-RCV-01 | M-1a, M-1b, M-1c, **M-1d, M-1e** (the per-invocation-budget facts AC-1.5 replaces) |
+| REQ-RCV-02 | M-2a, M-2b, M-2c, M-2d, **M-2e, M-2f, M-2g** (the file-side seam AC-2.1 reads and the trailer gap AC-3.4 closes) |
 | REQ-RCV-03 | M-3a … M-3f, M-4a, M-4b |
-| REQ-RCV-04 | M-5a, M-5b, M-5c |
+| REQ-RCV-04 | M-5a, M-5b, M-5c, **M-4a, M-4b** (the anchor block AC-4.1's `DOC-BYTES:` line joins) |
 | REQ-RCV-05 | *(no code seam — it is a SKILL change plus a section extraction; the extraction rides M-3e's existing file read)* |
 | REQ-RCV-06 | M-6a, M-6b, M-6c, M-6d |
 
@@ -849,8 +1218,33 @@ may raise blocking findings. The other four have no ordering constraint between 
 | REQ-RCV-01 | O-11 |
 | REQ-RCV-02 | O-5, O-8, O-10, O-11 |
 | REQ-RCV-03 | O-1, O-2, O-3, O-4, O-9, O-10, O-11 |
-| REQ-RCV-04 | O-8, O-9, O-10, O-11 |
+| REQ-RCV-04 | O-4 (the `DOC-BYTES:` write path), O-8, O-9, O-10, O-11 |
 | REQ-RCV-05 | O-7, O-8, O-9, O-10, O-11 |
 | REQ-RCV-06 | O-6, O-9, O-10, O-11 |
 
 No obligation is orphaned and no requirement is without one.
+
+### 10.6 Round-1 finding → where it is answered
+
+Recorded so a later round can check the disposition without re-reading v1.0. Both reviewers' round-1
+cross-review files are cited in the header's Cross-Reviews row.
+
+| Finding | Answered in |
+|---|---|
+| SE F-01, F-04 | §4.1 M-1b/M-1d/M-1e; AC-1.1; **AC-1.5** — the budget is per document, absolute, operator-resettable |
+| SE F-02, F-10 | §4.2 M-2e/M-2f/M-2g; **AC-2.1** (both operands read from files); **AC-2.7** (*unavailable*); **AC-3.4** (trailer required in the file); **N-3** amended; **O-9** |
+| SE F-03, TE F-01 | §5 durability table; **AC-4.1** (`DOC-BYTES:` anchor, S-2); AC-4.5's S-6 reasons |
+| SE F-05, TE F-07 | §5's closed catalogue S-1 … S-9; **AC-3.5(e)**; AC-4.1's receive-side table; AC-5.5's S-7 totality; O-4 narrowed to plumbing |
+| SE F-06 | §9.3 — three successor REQ stub files created and cited by path |
+| SE F-07 | §3 BL-01 restated over `docs/completed/pdlc-review-loop-hardening/`; §3 closing paragraph corrected |
+| SE F-08 | Header Citation baseline pinned to `9486c81` on `main`; §3 agrees |
+| SE F-09, TE F-03 | §2's two-regime saving table; **AC-2.6**'s reachable-sequence enumeration; R-2 restated |
+| SE F-11 | §6 — verifier slug `verifier`, proximity window ±25 lines; AC-3.7 |
+| SE F-12 | AC-6.4 — the window's direction stated; §6 |
+| TE F-02 | **AC-6.4** — closed grammar C-1 … C-4, one range separator, unparseable reported |
+| TE F-04 | §5 vocabulary — panel shape over on-disk slugs, *crashed* defined; AC-2.4 |
+| TE F-05, F-06 | **AC-3.2** — `## Disposition` (S-8) and `New-mechanism:` (S-9) |
+| TE F-08 | §4.7 and AC-4.1 — one boundary, "returned" |
+| TE F-09 | AC-5.4 — `approved, {n} measurements outstanding` |
+| SE MF-1…MF-5, TE MF-01…MF-03 | §4 — every citation repo-root-relative, symbols corrected, ASCII hyphen ranges |
+| TE MR-01, MR-02 | Carried, not answered — bound to `docs/pdlc-runtime-measurement-spike/REQ-pdlc-runtime-measurement-spike.md` per AC-5.3 |
