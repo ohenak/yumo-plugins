@@ -1467,10 +1467,25 @@ side (TE v6 F-03). Both halves are now fixed:
 
 The **loop-side response needs no new mechanism**, which is why this receive side was chosen over a new
 notice: a cross-review with no `## Disposition` section is already an enumerated case — clause 1's
-completeness check fails, so **approval is refused and the phase does not halt** (AC-3.5, and O-10's
-existing *"a missing `## Disposition` refusing approval without halting"* obligation). A garbled range
-therefore costs one round and is visible in the verifier's own file, rather than silently producing the
-wrong row set and refusing approval for a reason the operator cannot see. Guessing is forbidden for the
+completeness check fails, so **approval is refused and the phase does not halt** — an *approval
+refusal* in §5's sense, not a phase refusal (AC-3.5, and O-10's existing *"a missing `## Disposition`
+refusing approval without halting"* obligation). A garbled range is therefore visible in the verifier's
+own file rather than silently producing the wrong row set and refusing approval for a reason the
+operator cannot see.
+
+**What a garbled range costs is a sequence, not a round.** S-17's emitter is the **loop**, so a
+deterministic defect in the render — a wrong separator, a line the dispatch never carries — recurs on
+*every* round of the phase, and the cost is stated over the sequence rather than over its first step
+(TE v8 F-03). Each such round: the verifier omits `## Disposition`, approval is refused,
+`disposition-missing` is reported, the optimizer is dispatched to address feedback that names no defect
+in the document, and a plausible response is a byte-identical revision — which is AC-2.8's zero-delta
+halt (S-11), reported against the *author* for a failure that is the loop's. The operator clears, the
+window resumes (AC-1.5(5)), the same garbled dispatch is emitted again, and the loop repeats until the
+absolute cap terminates it. Two things make that survivable and neither is an accident: the diagnostic
+reaches the operator on **consecutive** rounds under the same name, so the repetition is itself the
+signal that the defect is the loop's and not the author's; and the cap is absolute, so the sequence is
+finite. O-10 asserts **two** consecutive garbled dispatches for exactly this reason — an obligation that
+asserts only the first round is green against an implementation that never converges. Guessing is forbidden for the
 same reason `W` is not derived here: the verifier cannot read `W`, so a fallback would be a fabricated
 scope, and a fabricated scope that happens to be right is indistinguishable from one that is wrong.
 
@@ -1633,9 +1648,11 @@ returned**. *When:* the round's file exists, i.e. after the verifier returns. *T
   | Marker present on **more than one file of the same round** | contradiction: a verifier round has one file by construction, so this is a dual round claiming to be a verifier round | **no approval**; the round's panel shape is *crashed* (§5) and therefore not comparable under AC-2.4 either |
   | Marker present on a **dual** round's file alongside a second unmarked file | same contradiction as the row above, seen from the other side | **no approval**; same notice |
 
-  In every refusing row the loop does **not** halt: it records the refusal, the round remains owed an
-  authoring pass, and the window proceeds under AC-1. A refusal is the absence of an approval, not an
-  error, and it is exactly what M-3d does today.
+  In every refusing row the loop does **not** halt: it records the **approval refusal**, the round
+  remains owed an authoring pass, and the window proceeds under AC-1. An approval refusal is the absence
+  of an approval, not an error, and it is exactly what M-3d does today. It is **not** the *phase
+  refusal* of §5 and AC-1.5(4), whose defining property is the opposite — that the phase is never
+  entered and the invocation terminates. The two are always named in full for that reason (SE v8 G-25).
 
 **AC-3.6 — Tier 2 may remain dual-only, and says so.**
 *Who:* the harvest step. *Given:* a feature whose approving round was a verifier round. *When:* the
