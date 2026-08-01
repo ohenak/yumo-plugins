@@ -17,7 +17,37 @@ depends-on: [pdlc-review-loop-hardening]
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude + operator | 1.1 | 2026-07-31 |
+| pdlc | draft | Claude + operator | 1.2 | 2026-07-31 |
+
+> **Revision note (v1.2).** This version answers rounds 2 and 3 of cross-review. Round 3's panel
+> reviewed a byte-identical document — the round-2 authoring episode produced no commit — so both
+> reviewers carried their round-2 findings forward verbatim and added one new `Process` finding about
+> the empty round itself. §10.7 maps every round-2/3 finding to where it is answered. Five things
+> changed structurally:
+>
+> 1. **The per-round anchor writer is separated from the approval writer (SE/TE F-01).** v1.1 named
+>    `appendApprovalAnchors` as the writer of `DOC-BYTES:` and `REVIEW-MODE:`. That function runs only
+>    on the approving terminal round, so on a *failed* round — the only kind AC-2 compares and AC-4
+>    measures — neither anchor was ever written, and both mechanisms were structurally dead. AC-4.1 now
+>    names an **unconditional per-round writer** that runs after every round's reviewers return,
+>    whatever they returned, and the growth formula is restated so that only the *earlier* endpoint has
+>    to be durable — removing v1.1's circular dependency on files that did not yet exist.
+> 2. **Panel shape is read from the on-disk role-slug set, not from the marker (SE F-02).** §5's
+>    *crashed* predicate no longer turns on `REVIEW-MODE:`. Every round produces role slugs, including
+>    failed ones; the marker remains the approval-path discriminator.
+> 3. **AC-3.2(2)'s "not counted" rule has a named reader (SE/TE F-03).** Reading 2 is chosen and stated:
+>    the verifier excludes such findings from the trailer it writes; the loop deducts nothing. R-5
+>    records that this half of S-9 is directive rather than enforced.
+> 4. **The operator reset has a durable window-start anchor and is one-shot (SE F-05, TE F-02).**
+>    AC-1.5(3) is restated over the POSTMORTEM's recorded round window plus a `WINDOW-START:` line, and
+>    §5's durability table gains the row.
+> 5. **A zero-delta round is a halt, not a consumed round (TE F-07, SE F-08).** AC-2.8 adds a
+>    byte-and-hash identity test over the reviewed document across consecutive rounds, with its own halt
+>    reason — the defect this very round of review exhibited.
+>
+> Also: AC-3.4 fixes the trailer's **placement** (SE F-04), AC-4.7's `notice` column gains a stated
+> precedence (TE F-04), AC-6.4 exempts its own example cells (TE F-06), and the Lows and mechanical
+> fixes of both v2 lists are applied.
 
 > **Revision note (v1.1).** This version answers round 1 of cross-review in full: SE F-01 … F-12 and
 > TE F-01 … F-09, plus both mechanical-fix lists. §10.6 maps every finding to where it is answered.
