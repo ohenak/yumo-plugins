@@ -69,3 +69,7 @@ The four Lows are one line each and none needs a decision: fold the grant into t
 Explicitly **not** filed, per §8 and DC-09: fixtures, seams, test levels and oracle wiring for AC-1.5(4)'s algorithm and for O-12's confirmation — O-10 and O-12 own them and now name the conjuncts that matter. Also not filed: anything in §1, §2, §3, §4, §9 or §10, which I approved at v1 and which the diff changes only in the ways the disposition table records. Nothing in this review contests user need, priority, phasing or the choice of three rounds.
 
 ## Verdict
+
+VERDICT: Needs revision
+
+{"high": 0, "medium": 1, "low": 4}
