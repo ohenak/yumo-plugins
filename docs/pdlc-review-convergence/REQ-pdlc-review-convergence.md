@@ -984,9 +984,25 @@ branch — the state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-
       phase and returns** — it takes no halt, writes nothing to the post-mortem and leaves the
       `RESOLVED:` marker in place, per the *refusal is not a halt* paragraph above (SE v6 G-18,
       TE v6 F-01). The refusal is **unconditional**: step 4 fires whether or not the branch has rounds
-      left in an already-granted window. On a mid-window branch the outcome is unchanged either way —
-      `W` falls back to 1, which admits no rounds, and the entry would have halted on the budget path —
-      so the widening costs nothing and keeps the refusal decidable from the region alone (TE v8 Q-13);
+      left in an already-granted window, and whether or not any `RESOLVED:` marker is pending — step 4
+      sits inside `W`'s resolution, which runs on **every** entry (TE v9 Q-15). The justification is
+      **fail-closed, not costless**, and the case split matters because the two halves are
+      behaviourally different (SE v9 G-28, TE v9 F-01):
+      - On an **exhausted** branch — highest round ≥ 3 under `W` = 1 — the outcome is the same either
+        way: the fallback `W` = 1 admits `{1, 2, 3}`, all three are filled, and the entry would have
+        halted on the budget path regardless. This is the canonical fixture AC-4.7 row A is written
+        over, and on it the refusal is *indistinguishable* from the fallback.
+      - On a **mid-window** branch with rounds remaining under `W` = 1 — reachable at highest round 2,
+        since AC-2.1 can fire on the comparable (1, 2) pair and AC-2.8 can halt at round 2, either of
+        which creates the region with `H = 1`, `A = 0` before a hand-edit corrupts it — the fallback
+        would admit **round 3** and the phase would run. Step 4 refuses instead: the phase is not
+        entered, no round-3 cross-review file is written, the invocation terminates on step G's path
+        and the queue row is written `halted`. That is a real cost, and it is accepted deliberately: a
+        region whose accounting cannot be trusted is not a state a review round should be opened over,
+        because the cross-review the round produced could not be placed in any window.
+      The second bullet is the refusal's **positive control** — the only branch on which honouring
+      step 4 and falling back to `W` = 1 are distinguishable — and O-10 carries it as an obligation
+      accordingly. AC-4.7 row B's `round` cell is stated over exactly this branch (TE v8 Q-13);
    5. otherwise `W` = the greatest `WINDOW-START:` value present, or **1** if there is none.
 
    **`H − A ≤ 1` is the invariant clause 4's "exactly one answering line" relies on**, and step 3 is
