@@ -446,15 +446,21 @@ defect.
 
 ## 7. Non-goals and out of scope
 
-The shared list is baseline §4; **N-1, N-2, N-3, N-4, N-7, N-9 and N-10 apply unchanged** and are
-not restated. Two are worth pointing at from here, because a reviewer of *this* document is most
-likely to file against them:
+The shared list is baseline §4, which defines **N-1 … N-10 only**; all of `N-1, N-2, N-3, N-4, N-7,
+N-9, N-10` apply unchanged and are not restated. **Ids above `N-10` are not shared.** Earlier drafts
+of this document tabled `N-14` and `N-11` as though baseline §4 defined them; it does not, and the
+family has minted colliding `N-1x` ids in that namespace (`N-13` means different things in
+`pdlc-rcv-fixed-point-stop` §7 and `pdlc-rcv-finding-quality` §7). This document's own non-goals are
+therefore numbered in a **per-REQ namespace, `NB-*`**, which cannot be mistaken for the shared one;
+the shared row it restates keeps its shared id. Three are worth pointing at, because a reviewer of
+*this* document is most likely to file against them:
 
 | # | Not in scope | Why |
 |---|---|---|
-| **N-4** | Changing what a halt is. | AC-1.4: the POSTMORTEM path, the write confirmation, and the rule that **only a human ever writes `RESOLVED: yes`** are untouched, as is the shipped gate that reads it (M-7a). This REQ changes *when* a halt happens and *what it says* — plus the one lifecycle change AC-1.4 clause 2 states, which is the fail-closed direction. |
-| **N-14** | Specifying the fixed-point test, the zero-delta test, or how a round's blocking count is read. | They are `pdlc-rcv-fixed-point-stop`'s. This REQ states only the window they are evaluated inside and the halt path they halt on. A finding that this document never says *when* the loop compares two rounds is **correct and known** — file it there. |
-| **N-11** | Specifying the verifier panel, the growth measurement or the anchor writer. | They are `pdlc-rcv-panel-topology`'s. A finding that this document does not define `DOC-BYTES:` is **correct and known** — file it as Low. |
+| **N-4** (shared) | Changing what a halt is. | AC-1.4: the POSTMORTEM path, the write confirmation, and the rule that **only a human ever writes `RESOLVED: yes`** are untouched, as is the shipped gate that reads it (M-7a). This REQ changes *when* a halt happens and *what it says* — plus the one lifecycle change AC-1.4 clause 2 states, which is the fail-closed direction. |
+| **N-7** (shared) | Applying these mechanisms to Phase CR or Phase DOD. | Restated here because AC-1.1 now says so explicitly: `docType: null` loops keep a per-invocation budget, take the new value of the shared constant, and get no reset region. |
+| **NB-1** | Specifying the fixed-point test, the zero-delta test, or how a round's blocking count is read. | They are `pdlc-rcv-fixed-point-stop`'s. This REQ states only the window they are evaluated inside and the halt path they halt on. A finding that this document never says *when* the loop compares two rounds is **correct and known** — file it there. |
+| **NB-2** | Specifying the verifier panel, the growth measurement or the anchor writer. | They are `pdlc-rcv-panel-topology`'s. A finding that this document does not define `DOC-BYTES:` is **correct and known** — file it as Low. |
 
 ## 8. Downstream obligations
 
@@ -473,7 +479,9 @@ here: it is an obligation on the FSPEC, TSPEC, PLAN or PROPERTIES, not a REQ rev
 
 | # | Risk | Disposition |
 |---|---|---|
-| **R-1** | **This REQ is reviewed by the loop it is changing, under the old behaviour** — a five-round per-invocation budget, no enforced stop, no measured growth. The predecessor's Phase R died exactly here, and the superseded parent died of the same cause across nine rounds. | Mitigated by splitting the parent into reviewable documents, by depending on no unmeasured runtime fact (baseline §5), and by keeping this document short. **Accepted and unenforceable** — the enforcement is this REQ and its successor, neither of which has shipped. The operator is asked to watch the trajectory and halt by hand. |
+| **R-1** | **This REQ is reviewed by the loop it is changing, under the old behaviour** — five per-invocation rounds, no enforced stop. The predecessor's Phase R died exactly here. | Mitigated by splitting the parent, depending on no unmeasured runtime fact (baseline §5), and keeping this document short. **Accepted and unenforceable** — the enforcement is this REQ and its successor, neither shipped. The operator watches the trajectory and halts by hand. |
+| **R-12** | **A repeating S-11 halt is unbounded.** Each S-11 clearance writes `WINDOW-RESUMED: {W}`, leaves `W` unchanged and (per the successor's AC-2.8) costs the window no round, so an authoring side that keeps producing zero-delta rounds yields an unbounded halt/clearance sequence with `H` and `A` growing together and the budget never exhausting. | **Accepted, and bounded by the operator rather than by the loop.** Every iteration costs one hand-written `RESOLVED: yes`, so the sequence is never unattended and never silent; capping it would require a second counter whose only effect is to deny an operator who is *choosing*, each time, to continue. Revisit if the S-11 path is observed to repeat in practice. |
+| **R-13** | **Migration: branches that already carry more than three rounds.** At the commit that lands `MAX_REVIEW_ROUNDS = 3`, every in-flight phase whose document has 3+ rounds is admitted no rounds and halts on the next entry, rendering S-4 as `rounds 1..3 of 3` while five rounds sit on disk. | **Correct and expected, not a defect** — the render states the *window*, not the file count. The escape is the ordinary one: clear the post-mortem with `RESOLVED: yes` and the next entry opens a fresh window at `N` = one past the highest round. No migration script, no back-fill of reset regions. |
 | **R-10** | **The reset region is machine state in a file an operator is instructed to edit.** AC-1.5(4)'s validation exists because a hand-edit can make the counts lie in either direction, and one of those directions restores the per-invocation budget AC-1.1 abolishes — silently and fail-open. | **Mechanised, not accepted.** Step 2 validates every answering line, step 3 validates the counts against each other, and either failure refuses the phase with S-16 rather than guessing. The residual is the operator's: §6 records that `WINDOW-START:` is never *authored* by a human, and AC-1.5(4) names the only two sanctioned repairs. |
 | **R-11** | **A refusal costs a mid-window round.** On a branch with rounds left under `W` = 1, a corrupt region refuses the phase where the fallback would have run the next round. | **Accepted deliberately, and stated as the positive control (AC-1.5(4) step 4, O-10).** A region whose accounting cannot be trusted is not a state a review round should be opened over, because the cross-review it produced could not be placed in any window. |
 
