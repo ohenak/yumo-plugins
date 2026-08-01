@@ -193,7 +193,15 @@ function rtChunkPlan(size, chunkSize) {
   return plan;
 }
 
-/** One byte range, re-requested until it decodes to exactly `count` bytes. */
+/**
+ * One byte range, re-requested until it decodes to exactly `count` bytes.
+ *
+ * Returns the verified base64 STRING, not the decoded byte array: this value
+ * crosses the host↔VM boundary through `RT.parallel`, and the runtime caps a
+ * marshalled array at 4,096 elements (a live run failed every 6,000-byte chunk
+ * with "array length 6000 exceeds the maximum of 4096 supported across the
+ * workflow VM boundary"). A string is not length-capped; the caller decodes.
+ */
 async function rtReadChunk(path, chunk, index) {
   for (let attempt = 0; attempt <= RT_READ_RETRIES; attempt++) {
     const reply = await RT.agent(
@@ -214,7 +222,7 @@ async function rtReadChunk(path, chunk, index) {
     // The size check is what makes a truncated reply visible: base64 of a short
     // read is still valid base64.
     if (bytes.length !== chunk.count) continue;
-    return bytes;
+    return compact;
   }
   throw new Error(
     `rtReadFile: chunk ${index} of "${path}" (offset ${chunk.offset}, ${chunk.count} bytes) ` +
@@ -248,11 +256,22 @@ async function rtReadFile(path) {
   const chunks = await RT.parallel(plan.map((chunk, i) => () => rtReadChunk(path, chunk, i)));
   const bytes = [];
   for (let i = 0; i < plan.length; i++) {
+    // Each part is the chunk's verified base64 string (see rtReadChunk); the
+    // decode happens on THIS side of the VM boundary. Verified there, verified
+    // again here — the string could not survive the boundary corrupted silently.
     const part = chunks && chunks[i];
-    if (!part || part.length !== plan[i].count) {
+    let partBytes = null;
+    if (typeof part === "string") {
+      try {
+        partBytes = rtBase64Decode(part);
+      } catch {
+        partBytes = null;
+      }
+    }
+    if (!partBytes || partBytes.length !== plan[i].count) {
       throw new Error(`rtReadFile: chunk ${i} of "${path}" did not return its ${plan[i].count} bytes`);
     }
-    for (let k = 0; k < part.length; k++) bytes.push(part[k]);
+    for (let k = 0; k < partBytes.length; k++) bytes.push(partBytes[k]);
   }
   if (bytes.length !== size) {
     throw new Error(`rtReadFile: "${path}" reassembled to ${bytes.length} bytes, expected ${size}`);

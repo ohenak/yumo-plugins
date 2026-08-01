@@ -120,6 +120,20 @@ describe("rtChunkPlan", () => {
     // ceiling, with headroom.
     expect(Math.ceil((RT_READ_CHUNK * 4) / 3)).toBeLessThanOrEqual(8000);
   });
+
+  it("returns each chunk across the VM boundary as a string, never a byte array", async () => {
+    // The runtime rejects marshalled arrays longer than 4,096 elements, and a
+    // chunk is 6,000 bytes — a live run failed every read this way (run
+    // wf_a4034a6e-597). hostParallel models that cap, so this test reproduces
+    // the live failure if rtReadChunk ever returns decoded bytes again.
+    const doc = "x".repeat(RT_READ_CHUNK);
+    const { rtReadChunk } = loadAdapter({
+      agent: async () => Buffer.from(doc, "utf8").toString("base64"),
+    });
+    const part = await rtReadChunk("docs/f/TSPEC-f.md", { offset: 0, count: RT_READ_CHUNK }, 0);
+    expect(typeof part).toBe("string");
+    expect(Buffer.from(part, "base64").length).toBe(RT_READ_CHUNK);
+  });
 });
 
 describe("rtReadFile", () => {

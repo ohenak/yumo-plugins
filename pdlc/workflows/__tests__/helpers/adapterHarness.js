@@ -38,15 +38,35 @@ const EXPOSED = [
 ];
 
 /**
+ * The runtime marshals each thunk's resolved value across the host↔VM boundary,
+ * and rejects an array longer than 4,096 elements ("array length N exceeds the
+ * maximum of 4096 supported across the workflow VM boundary", observed live on
+ * run wf_a4034a6e-597). Modelled here so a test fails the way the runtime does.
+ */
+export const VM_BOUNDARY_MAX_ARRAY = 4096;
+
+const marshal = (value) => {
+  if (Array.isArray(value) && value.length > VM_BOUNDARY_MAX_ARRAY) {
+    throw new Error(
+      `array length ${value.length} exceeds the maximum of ${VM_BOUNDARY_MAX_ARRAY} ` +
+        `supported across the workflow VM boundary`
+    );
+  }
+  return value;
+};
+
+/**
  * The host `parallel`: an array of THUNKS, every one started, a thrown thunk
  * resolved to `null` rather than rejecting the whole call. Mirrors the runtime,
- * which is what makes the adapter's own null-check meaningful.
+ * which is what makes the adapter's own null-check meaningful. Each resolved
+ * value passes through the boundary marshalling above, as it does live.
  */
 export const hostParallel = (thunks) =>
   Promise.all(
     (thunks || []).map((thunk) =>
       Promise.resolve()
         .then(() => thunk())
+        .then(marshal)
         .catch(() => null)
     )
   );
