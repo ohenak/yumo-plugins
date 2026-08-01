@@ -708,6 +708,17 @@ have no durable effect at all — while a *second* `RESOLVED: yes` reads as `dup
 rule and they are opposite failures (SE v5 G-07, TE v5 F-02). Stripping the spent marker is the
 fail-closed choice and keeps the shipped reader exact.
 
+**"Every halt" is exactly that, and an entry refused by AC-1.5(4) is not one.** Both clauses are
+unconditional over halts, and this REQ deliberately adds no exception to them — an exception would
+return `H` to being an approximation. What it does instead is stop one path from reaching a halt at all:
+an entry whose reset region fails AC-1.5(4)'s validation **refuses the phase and returns**, taking no
+halt, so there is nothing here for it to except. Nothing is appended, no marker is stripped, and the
+file is byte-unchanged; the operator's clearance is therefore still readable on the next entry, which is
+what makes AC-1.5(4)'s *"the clearance survives"* true and keeps `H − A` stable across refusals (SE v6
+G-18, TE v6 F-01). The distinction to hold onto: a **halt** is an event the accounting records; a
+**refusal** is a decision not to enter, exactly as step G refuses an unresolved post-mortem without
+recording anything.
+
 **This does not weaken clause 3's prohibition.** What no agent and no script may ever write is
 `RESOLVED: yes`; removing a marker that has already been spent is not writing one, and its only effect
 is to *refuse* a phase that would otherwise have run unattended. N-4 is amended accordingly.
@@ -736,7 +747,10 @@ branch — the state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-
    more is admitted **no rounds** and halts immediately on the budget path (AC-1.4), emitting the S-4
    halt reason rendered as `rounds {W}..{W+2} of 3` — `rounds 1..3 of 3` in that example, and
    `rounds 4..6 of 3` on a branch reset to `WINDOW-START: 4`. The literal varies with the window and
-   the format string is S-4's; a clause that hard-codes one window's render is a defect (TE v4 F-05);
+   the format string is S-4's; a clause that hard-codes one window's render is a defect (TE v4 F-05).
+   **This clause is not reached on an entry whose reset region failed validation**: clause 4's step 4
+   refuses the phase and returns before the budget is evaluated, so no halt is taken and no S-4 reason is
+   emitted on that entry (SE v6 G-18, TE v6 F-01);
 2. the window's **start** is unchanged — one past the highest existing round (M-1d), so review history
    stays append-only and no existing file is ever overwritten;
 3. the **one** reset is an operator's: a `POSTMORTEM-{phase}-{feature}.md` carrying a human-written
@@ -862,20 +876,27 @@ branch — the state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-
       decimal integer ≥ 1 equal to the greatest `WINDOW-START:` value before it, or to 1 if there is
       none;
    3. **validates the two counts against each other:** `H − A` must be **0 or 1**. `A > H` means more
-      clearances have been answered than halts have been taken; `A < H − 1` means a halt is recorded
-      whose clearance no line answers, which is only reachable if a line was removed from the region.
-      Both are corruption of the counts, not of a value;
+      clearances have been answered than halts have been taken — **which only a hand-edit produces**,
+      since the loop writes at most one answering line per halt (TE v6 MF-18); `A < H − 1` means a halt
+      is recorded whose clearance no line answers, which is only reachable if a line was removed from the
+      region. Both are corruption of the counts, not of a value;
    4. **if any line's value fails step 2, or the counts fail step 3 ⇒ `W` = 1, fail-closed**, no reset is
       honoured, **no answering line is written and the clearance is not consumed**, and the run report
       emits `reset-region-corrupt: {reason}` (S-16) naming the file and, per reason, the offending value
-      or the pair `H`/`A`. A corrupt region is never partially believed;
+      or the pair `H`/`A`. A corrupt region is never partially believed. **The entry then refuses the
+      phase and returns** — it takes no halt, writes nothing to the post-mortem and leaves the
+      `RESOLVED:` marker in place, per the *refusal is not a halt* paragraph above (SE v6 G-18,
+      TE v6 F-01);
    5. otherwise `W` = the greatest `WINDOW-START:` value present, or **1** if there is none.
 
    **`H − A ≤ 1` is the invariant clause 4's "exactly one answering line" relies on**, and step 3 is
    what gives that rule a stated domain. It holds on every path the document generates: a halt strips
    the marker (AC-1.4 clause 2) so `checkPostmortem` refuses re-entry until the operator clears again,
    and a clearance is answered before the next halt can be taken — so two halts cannot accumulate
-   without an answer between them (TE v6 Q-09). Validating it rather than assuming it matters because
+   without an answer between them (TE v6 Q-09). **The refusal path does not disturb it**, because a
+   refusal takes no halt and writes no answering line: `H` and `A` are both unchanged by a refused entry,
+   which is exactly why the reason S-16 reports is stable across entries (SE v6 G-18).
+   Validating it rather than assuming it matters because
    the region sits in a file the operator is *instructed* to edit, immediately below machine lines that
    look stale after a clearance. On a region reading two `HALT-REASON:` lines and no answering line — a
    deleted `WINDOW-START:`, a hand-merged post-mortem, or a partially-completed read-modify-write (O-5)
@@ -910,8 +931,9 @@ branch — the state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-
 
 5. **every halt records which halt it was, and a no-revision halt resumes the window rather than
    replacing it.** Each halt appends exactly one `HALT-REASON: {value}` line to the **end** of the reset
-   region (S-15, AC-1.4 clause 1), `{value}` being the `; `-joined render, in AC-4.7's precedence order, of every
-   halt reason that halt raised — so a round on which S-3 and S-4 both hold writes **one** line reading
+   region (S-15, AC-1.4 clause 1), `{value}` being the `; `-joined render, in AC-4.7's precedence
+   order, of every halt reason that halt raised — so a round on which S-3 and S-4 both hold writes
+   **one** line reading
    `fixed-point: …; budget-exhausted: …` and the operator sees the same string here and in the run
    report's `notice` cell (AC-2.2, TE v5 F-06). Because each halt appends and nothing is written after
    the region, the **last** such line is the most recent halt's (SE v5 G-11). On the entry that observes
