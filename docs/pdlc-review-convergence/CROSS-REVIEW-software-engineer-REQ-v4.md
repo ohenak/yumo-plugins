@@ -230,6 +230,15 @@ into the finding beside it.
 
 ## Mechanical fixes
 
+Not findings. Apply without discussion; none affects the recommendation.
+
+| id | Where | Fix |
+|---|---|---|
+| MF-1 | §5, S-4 | The row now shows only the **rendered specimen** `budget-exhausted: rounds 1..3 of 3`, so the general format string is no longer stated anywhere. After an AC-1.5(4) reset the render is `rounds 4..6 of 3`, which is derivable but nowhere written. Show the form and one specimen: `budget-exhausted: rounds {first}..{last} of {MAX_REVIEW_ROUNDS}` → *"e.g. `rounds 1..3 of 3`, or `rounds 4..6 of 3` after a reset"*. |
+| MF-2 | AC-3.4, second bullet | Add `DOC-SHA256:` to the anchor-key enumeration, or replace the enumeration with a reference to §5's catalogue. (Folded into G-05's required change; listed here so it is not lost if G-05 is answered only at AC-2.7.) |
+| MF-3 | §5, catalogue lead-in | "This REQ introduces eleven" is correct (S-1 … S-11) and the by-kind ordering note is welcome, but the table still reads S-1, S-2, **S-10, S-11**, S-3 … S-9. One sentence naming the four kinds in order would let a reader confirm the grouping without reconstructing it. |
+| MF-4 | Header, Cross-Reviews row | It lists v1 … v3 for both reviewers; v4 will need adding when this round is answered. Worth a note that the row is maintained per round, so it is not re-raised each time. |
+
 ## Recommendation
 
 ## Verdict
