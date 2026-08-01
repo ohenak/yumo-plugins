@@ -823,7 +823,7 @@ branch — the state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-
 
 5. **every halt records which halt it was, and a no-revision halt resumes the window rather than
    replacing it.** Each halt appends exactly one `HALT-REASON: {value}` line to the **end** of the reset
-   region (S-12, AC-1.4), `{value}` being the `; `-joined render, in AC-4.7's precedence order, of every
+   region (S-15, AC-1.4 clause 1), `{value}` being the `; `-joined render, in AC-4.7's precedence order, of every
    halt reason that halt raised — so a round on which S-3 and S-4 both hold writes **one** line reading
    `fixed-point: …; budget-exhausted: …` and the operator sees the same string here and in the run
    report's `notice` cell (AC-2.2, TE v5 F-06). Because each halt appends and nothing is written after
