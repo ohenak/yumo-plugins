@@ -170,6 +170,42 @@ a sentence and neither blocking.
 
 ## 7. Positive Observations
 
+- **The counts-mismatch obligation came back as a mutation pair, not just as a de-contradicted
+  sentence.** I asked for one clause to be deleted or scoped. v1.7 scoped it, and then said what the
+  two legs are *for*: *"an implementation that refuses permanently fails the recovery leg, and one that
+  grants a window on a corrupt region fails the refusal leg, so neither leg is green on both."* That is
+  the mutation criterion written into the obligation itself, which is the only place it survives to the
+  test suite. It then sequenced the recovery leg with two clearances off my Q-14 — an answer to a
+  question I had marked non-blocking, folded into the obligation rather than into a §10 row where a
+  PROPERTIES author would never see it.
+- **The S-16 render drift was closed by removing a home, not by synchronising two.** §6's row now
+  points at §5's specimen instead of restating it. My finding asked for one word to be changed in two
+  places; the revision observed that two independent renderings of one literal will drift again and
+  deleted one of them. That is the structurally correct fix and it is strictly better than what I
+  proposed.
+- **R-9's demonstration now includes the round on which it would have fired against this very
+  document.** `blocking(6)` = 6 and `blocking(7)` = 6 — I re-derived both from the four trailers rather
+  than trusting the arithmetic: SE v6 `0H+4M`, TE v6 `1H+1M`, SE v7 `1H+2M`, TE v7 `1H+2M`. Both
+  operands are available and both rounds are full-panel, so AC-2.1 **would** have halted this phase at
+  round 7 — one round before the round on which every blocking finding closed. A risk row that names
+  the case where its own mechanism misfires, on the branch the reader is standing on, is worth more
+  than the mitigation text beside it.
+- **The queue-row answer to MR-08 was confirmation, not assertion — and it is the right answer.** The
+  document could have said *"a refusal leaves the queue row alone"* and been internally consistent; it
+  instead reasoned about the operator consequence (an unattended `/loop` would re-pick the feature and
+  refuse once per iteration forever) and picked the outcome that terminates. Checking it against the
+  shipped code, the claim holds because the refusal is stated as step-G-shaped rather than as a literal
+  `return` — and the entry-validation halts nearby, which return directly, do **not** write the queue
+  row. The distinction the AC draws is exactly the one the code makes.
+- **Both mechanism widenings this round are correct; both of my Medium findings are in their
+  justifications.** Step 4's unconditional refusal is right. Correct-over-delete is right, and its
+  arithmetic (`delete` raises `H − A` by one, so it converts `invalid-window-start` into
+  `counts-mismatch` at `H − A = 1`) is a genuinely sharp piece of reasoning that I did not see and did
+  not ask for. F-01 and F-02 are both the *surroundings* failing to keep up with a good rule: a
+  justifying sentence that over-claims, and a grammar row that was exempted for the old repair set.
+  That is a materially different failure mode from the ones rounds 5–7 found, and it is the failure
+  mode of a document that is changing rules rather than discovering them.
+
 ## 8. Recommendation
 
 ## Verdict
