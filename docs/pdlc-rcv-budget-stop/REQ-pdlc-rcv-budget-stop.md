@@ -210,14 +210,13 @@ moves neither count. Within that scope the rule admits **no exception**:
 **Why the creating halt is stated.** Scoped only to a halt that finds an existing post-mortem, the first halt would be governed by nothing: no region ⇒ `H = 0` ⇒ AC-1.5(4)'s gate `A <
 H` false ⇒ the operator's **first** clearance silently swallowed and the phase halting again, self-healing on the second clearance — the worst shape an operator-facing failure can take.
 
-**Why clause 2.** `RESOLVED:` is a **single-valued, human-owned, fail-closed marker**, never a counter (M-7a). A preserved `RESOLVED: yes` makes the **next** halt's post-mortem read as
-already resolved, so the halt has no durable effect; a *second* one reads as `duplicated` ⇒ permanently `unresolved` ⇒ the phase can never be re-entered. Those are the only two
-reachable states of the alternative and they are opposite failures. **The prohibition is untouched:** removing a marker already spent is not writing one (N-4). **And "every halt" admits
-no exception** — an exception would return `H` to being an approximation; a refused entry simply never reaches a halt.
+**Why clause 2.** `RESOLVED:` is a **single-valued, human-owned, fail-closed marker**, never a counter (M-7a). A preserved `RESOLVED: yes` makes the next halt's post-mortem read as already
+resolved, so the halt has no durable effect; a *second* one reads as `duplicated` ⇒ permanently `unresolved` ⇒ the phase can never be re-entered. Those are the only two reachable states of
+the alternative and they are opposite failures. **The prohibition is untouched:** removing a marker already spent is not writing one (N-4).
 
 **The region is maintained by the loop, not by an agent's diligence.** At the Citation baseline the halt path dispatches an agent with a bare `Write {path}` prompt and no preservation
-obligation (M-7e). The loop therefore reads the existing file before the dispatch and **re-applies** the region deterministically after it: preserved lines, this halt's appended
-`HALT-REASON:`, any prior `RESOLVED:` stripped. O-5 carries that read-modify-write and its confirmation; O-9 keeps a prompt clause as belt-and-braces, not as the mechanism.
+obligation (M-7e). The loop reads the existing file before the dispatch and **re-applies** the region after it: preserved lines, this halt's appended `HALT-REASON:`, any prior `RESOLVED:`
+stripped. O-5 carries that read-modify-write and its confirmation; O-9 keeps a prompt clause as belt-and-braces, not as the mechanism.
 
 **AC-1.5 — The window is absolute, and only an operator resets it.** *Who:* the review loop. *Given:* a phase whose document already carries cross-review rounds on the branch — the
 state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-)entered. *Then:*
@@ -382,16 +381,13 @@ state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-)entered. *Then
 
    **`H − A ≤ 1` is the invariant clause 4's "exactly one answering line" relies on**, and step 3 gives it a stated domain. It holds on every path the document generates, and a refused
    entry leaves both counts unchanged — which is why the reason S-16 reports is stable across entries. Validating rather than assuming matters because the region sits in a file the
-   operator is *instructed* to edit: on a region with two `HALT-REASON:` lines and no answering line every value-level check passes vacuously, and the loop would grant a fresh window on
-   **every** subsequent invocation with no operator action — exactly `H − A − 1` windows beyond the one paid for. That is the per-invocation budget AC-1.1 exists to abolish, restored
-   silently and fail-**open**.
+   operator is *instructed* to edit: on a region with two `HALT-REASON:` lines and no answering line every value-level check passes vacuously, and the loop would grant `H − A − 1` windows
+   beyond the one paid for, on every invocation, with no operator action — the per-invocation budget AC-1.1 abolishes, restored silently and fail-**open**.
 
-   **Step 2's range check is re-evaluated on every read, against the current listing**, not fixed at write time — *"one past the highest round on the branch"* is a predicate over mutable
-   branch state by design. `harvest-learnings` deletes `CROSS-REVIEW-*` and `POSTMORTEM-*` together, so the ordinary path never sees a region outliving its rounds; a sequence that removes
-   the cross-reviews while the post-mortem survives lands in the fail-closed case — S-16, sanctioned repair, no clearance spent.
-
-   Both halves are load-bearing: without the anchor, nothing records *which* rounds preceded the marker, so "counted from round 1" is unstated for any document that has been reset; without
-   consumption, `RESOLVED: yes` re-grants a fresh window on **every** subsequent invocation;
+   **Step 2's range check is re-evaluated on every read, against the current listing**, not fixed at write time. `harvest-learnings` deletes `CROSS-REVIEW-*` and `POSTMORTEM-*` together, so
+   the ordinary path never sees a region outliving its rounds; a sequence that removes the cross-reviews while the post-mortem survives lands in the fail-closed case — S-16, sanctioned
+   repair, no clearance spent. Both halves are load-bearing: without the anchor, nothing records which rounds preceded the marker; without consumption, `RESOLVED: yes` re-grants a window on
+   every subsequent invocation;
 
 5. **every halt records which halt it was, and a no-revision halt resumes the window rather than replacing it.** Each halt appends exactly one `HALT-REASON: {value}` line to the **end** of
    the region (S-15, AC-1.4 clause 1), `{value}` being the `; `-joined render, in the catalogue §3 precedence order, of every halt reason that halt raised — so a round on which S-3 and S-4 both
