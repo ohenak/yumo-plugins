@@ -369,8 +369,8 @@ state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-)entered. *Then
       **after** any answering line this entry confirmed, so on a granting entry step 5 and clause 4
       agree that `W` = `N`. The grant is part of the algorithm, not a separate rule beside it.
 
-   **`H − A ≤ 1` is the invariant clause 4's "exactly one answering line" relies on**, and step 3 gives it a stated domain: it holds on every path the document generates, and a refused
-   entry leaves both counts unchanged. Validating rather than assuming matters because on two `HALT-REASON:` lines and no answering line every value-level check passes vacuously, and the loop would grant `H − A − 1` windows beyond the one paid for, on every invocation, fail-**open**.
+   **`H − A ≤ 1` is the invariant clause 4's "exactly one answering line" relies on**, and step 3 gives it a stated domain. Validating rather than assuming matters because on two
+   `HALT-REASON:` lines and no answering line every value-level check passes vacuously, and the loop would grant `H − A − 1` windows beyond the one paid for, every invocation, fail-**open**.
 
    **Step 2's range check is re-evaluated on every read, against the current listing**, not fixed at write time. `harvest-learnings` deletes `CROSS-REVIEW-*` and `POSTMORTEM-*` together, so
    the ordinary path never sees a region outliving its rounds; a sequence that removes the cross-reviews while the post-mortem survives lands in the fail-closed case — S-16, sanctioned
@@ -406,8 +406,7 @@ state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-)entered. *Then
    **validation-failure** variant and **empty** on the **unconfirmable-append** one, with **no S-4
    reason** on either, no halt having been taken. The variants are told apart by §6's two ❌ texts.
 
-The durable observable for all five clauses is what the loop already reads: the cross-review basenames on the branch, plus the POSTMORTEM's single `RESOLVED:` marker and its preserved
-`HALT-REASON:`, `WINDOW-START:` and `WINDOW-RESUMED:` lines. Nothing here needs a clock, a process identity, or a memory of a previous invocation.
+All five clauses' durable observables are §4.1's, all already read by the loop. Nothing here needs a clock, a process identity, or a memory of a previous invocation.
 
 **Observability.** `MAX_REVIEW_ROUNDS === 3`; the highest `-v{N}` for a document with no resolved POSTMORTEM never exceeds 3; on the entry past the window the **reviewer-dispatch seam is
 called 0 times** (a count, not an absence — O-10) and no new cross-review file appears; the post-mortem carries the budget and the S-4 reason string.
@@ -438,10 +437,10 @@ or this table.
 
 The shared list is baseline §4, which defines **N-1 … N-10 only**; all of `N-1, N-2, N-3, N-4, N-7,
 N-9, N-10` apply unchanged and are not restated, and `N-5`, `N-6` and `N-8` are **inapplicable to
-this REQ, not overlooked**. **Ids above `N-10` are not shared** — the family has minted
-colliding `N-1x` ids (`N-13` means different things in `pdlc-rcv-fixed-point-stop` §7 and
-`pdlc-rcv-finding-quality` §7), so this document's own non-goals are numbered in a **per-REQ
-namespace, `NB-*`**; the shared rows it restates keep their shared ids. Four are worth pointing at:
+this REQ, not overlooked**. **Ids above `N-10` are not shared** — the family has minted colliding
+`N-1x` ids (`N-13` differs between `pdlc-rcv-fixed-point-stop` §7 and `pdlc-rcv-finding-quality` §7)
+— so this document's own non-goals use a **per-REQ namespace, `NB-*`**; restated shared rows keep
+their shared ids. Four are worth pointing at:
 
 | # | Not in scope | Why |
 |---|---|---|
@@ -494,6 +493,5 @@ the ordering argument (`W` before AC-2.1/AC-2.8/AC-2.6) kept as a `depends-on` e
 AC or `S-*` id changed.
 
 **Round-by-round history is deliberately not restated here:** `harvest-learnings` deletes
-`CROSS-REVIEW-*` once LEARNINGS is written (the predecessor's nine rounds are in
-`docs/discarded/pdlc-review-convergence/LEARNINGS-pdlc-review-convergence.md`), so citing round files
-would be structurally wrong. This REQ traces *measured facts*, not review history.
+`CROSS-REVIEW-*` once LEARNINGS is written, so citing round files would be structurally wrong. This
+REQ traces *measured facts*, not review history.
