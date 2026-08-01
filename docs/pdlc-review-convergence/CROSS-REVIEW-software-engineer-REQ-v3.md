@@ -131,4 +131,56 @@ degrading with time — the document is not drifting, it is stationary.
 
 ## Recommendation
 
+**Needs revision** — three High and two Medium findings, all carried unchanged from round 2 because
+the document was not revised between the rounds. One new Low, `Process`-scoped, about the empty round
+itself.
+
+### The stopping rule fires
+
+The REQ's own preamble is binding on this phase:
+
+> *"Two consecutive rounds of non-decreasing blocking-finding count is a fixed point: escalate to the
+> operator, do not iterate."*
+
+Blocking count: round 1 = 10, round 2 = 5, **round 3 = 5**. Rounds 2 and 3 are non-decreasing. The
+condition is met on my side and I am reporting it as the preamble instructs rather than iterating.
+
+The preamble anticipates a fixed point caused by genuine disagreement. This one is not that: the
+count is unchanged because the *input* is unchanged, not because the author and I have converged on an
+irreconcilable reading. So the escalation carries a specific and cheap remedy — **run the authoring
+step against my v2 findings, then re-review** — rather than the operator adjudication the clause
+usually implies. I would not want an operator reading a POSTMORTEM to conclude these five findings are
+contested. They have not been answered.
+
+### What must change to close this out
+
+Unchanged from v2, restated in one line each so the author does not have to open the previous file:
+
+1. **F-01** — name a writer for `DOC-BYTES:` that runs on **every** round, at a moment when the round's
+   files exist ("after round N's reviewers return, before AC-2 is evaluated"), and state the growth
+   formula over endpoints that are both in the past. Or withdraw AC-3's single-verifier path and §2's
+   target regime as structurally unreachable.
+2. **F-02** — state the comparability test over the on-disk role-slug set (`{verifier}` vs
+   `{software-engineer, test-engineer}`, anything else *crashed*), which every round produces
+   including failed ones; keep the marker for the approval path only, or widen AC-3.5's Given so the
+   marker is written on every verifier round.
+3. **F-03** — choose reading 1 (re-derive from the findings table; then add its grammar as S-10 and
+   restate §5 and AC-2.1 over it) or reading 2 (the verifier's own trailer excludes it; then record in
+   R-5 that this half of S-9 is directive, not enforced). Say which in AC-3.2(2).
+4. **F-04** — in AC-3.4, require the trailer to be the **first non-empty line following** the
+   `VERDICT:` line, with the anchor block after it; restate AC-2.7's *unavailable* case over what is
+   then actually observable.
+5. **F-05** — name the durable surface for AC-1.5(3)'s reset offset (the POSTMORTEM's recorded
+   `rounds {first}..{last}` window is the natural one) and add the row to §5's durability table.
+
+F-06, F-07 and MF-1 … MF-4 are mechanical and do not block.
+
+### Explicit non-findings (carried)
+
+Recorded again so a later round does not re-raise them: I do not contest any of the six decisions; I do
+not file R-5's known unenforceability of AC-5 / AC-4.6; I do not file AC-3.5(c)/(d) or R-6's mixed-panel
+integration risk, which §8's obligations correctly discharge downstream; I have no blocking finding
+against REQ-RCV-05 or REQ-RCV-06, which are approvable as written. I raised no
+`## Measurement Required` items.
+
 ## Verdict
