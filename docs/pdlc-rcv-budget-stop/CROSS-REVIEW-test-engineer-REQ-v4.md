@@ -51,6 +51,40 @@ it is the cheapest fix for F-24. Q-05 is carried unchanged.
 
 ## Positive Observations
 
+- **F-18 was fixed across the document boundary, in the same change, which is the rare form.** The
+  cheap answer to "row B is defined twice" is to rename one of them locally and leave the shared
+  catalogue disagreeing. Instead `33bdf80` amends `docs/_constraints/pdlc-rcv-catalogue.md` §3 to
+  carry both variants under one row id, keeps its *"three rows have no dispatch behind them"* count
+  honest by saying *"row B covering **two** entry classes"*, restates both `notice` cells there, and
+  adds the distinguisher (*"told apart by the ❌ phase-row text `pdlc-rcv-budget-stop` §6 fixes for
+  each, never by the `notice` cell alone"*). The REQ's §5 row, AC-1.5(4)'s clause and O-10's legs all
+  now agree with it. A test author can derive either row's cells from either document and get the
+  same answer, which was the whole point.
+- **O-10's per-entry-class scoping is the right repair for a shared negative control.** *"…as
+  **negative controls** *for that entry class*"* plus *"— deliberately, on this class alone — the
+  shipped generic queue-reset string as its recovery text"* turns what would have been a
+  self-contradicting pair of assertions into a **mutation pair across classes**: an implementation
+  that emits one class's recovery text on the other fails exactly one leg, and which leg tells you
+  which direction it got wrong. That is a better oracle than either class alone would have been.
+- **The torn-write clause is a real hazard call, and filing F-24 is not a vote against it.** Nobody
+  asked for it; the author went looking for what happens when a confirmed-write fails *partially* and
+  wrote down an answer. F-24 says the answer enumerates one branch of three, not that the question
+  was wrong to ask — and (c), the case it does state, is correctly derived, including the
+  concatenation effect on the next appended line.
+- **Compression at net −5 bytes while adding two behaviours and a cross-document amendment.** I
+  diffed all deletions: every one is restated justification (the *"silently"* adverbs, the
+  disjoint-sets re-derivation, the `N-14`/`N-11` history in §7, the round-history narration in §10,
+  §8's *"it is an obligation"* filler). No AC clause, no cell, no oracle and no citation was dropped
+  to make room — the second round running that this has been true.
+- **Citations re-spot-checked at HEAD for the changed text only.** `buildFinalReport`'s default
+  parameter and unconditional emit (`:5035`, `:5054`) are as described *as far as they go* — the
+  problem in F-22 is that they are the wrong site, not that they were misread. The shipped enum
+  quoted in AC-1.5(4) is exactly the reachable set (`:4875`, `:4881`, `:4888`, `:4899`, `:1802`,
+  `:4958`), which is the fix v3 asked for and it is right. Step G's `Refused — unresolved POSTMORTEM
+  at …` is verbatim (`:4246`). `resolved` appears nowhere in the document. Catalogue §2's S-16 enum
+  is still closed at three reasons, and §3's amended row-B paragraph is internally consistent with
+  its own *"three rows"* count.
+
 ## Recommendation
 
 ## Verdict
