@@ -139,6 +139,7 @@ The workflow scripts pin a model per phase via the runtime `agent()` `model` opt
 |---|---|---|---|
 | `guard-harvest-before-delete` | PreToolUse: Bash | `hooks/scripts/guard-harvest-before-delete.sh` | Blocks deletion of any `CROSS-REVIEW-*` or `CODE_REVIEW-*` file unless `LEARNINGS-{feature}.md` exists on the branch |
 | `check-scope-field` | PostToolUse: Write\|Edit | `hooks/scripts/check-scope-field.sh` | Warns if a `CROSS-REVIEW-*` / `CODE_REVIEW-*` doc is missing the `Scope:` field |
+| `check-req-size` | PostToolUse: Write\|Edit | `hooks/scripts/check-req-size.sh` | Warns if a `REQ-*.md` doc exceeds the pdlc REQ size budget (700 lines or 60 KB) |
 | `nudge-consolidation` | SessionStart | `hooks/scripts/nudge-consolidation.sh` | Reminds to run consolidate-learnings if stale LEARNINGS files are detected |
 | `check-workflow-drift` | SessionStart | `hooks/scripts/check-workflow-drift.sh` | Reports when the consumer's runtime copy has drifted from the built artifacts under `pdlc/workflows/dist/`, so a stale copy is announced rather than silently executed |
 

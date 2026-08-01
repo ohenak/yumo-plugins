@@ -249,6 +249,23 @@ async function run({
           tasks: [{ id: "T1", description: "x", dependencies: [], planBatch: 1 }],
         });
       }
+      // Fix B (`orchestrate-dev.js` §5.6's optimizer no-op halt): the
+      // round-exhaustion fixture (`nonConvergingAtR`) needs the optimizer to
+      // visibly revise `doc` on every FAIL-path dispatch, or the very first
+      // such episode now halts on its own no-op before the round budget (§6.3)
+      // is ever reached — the wrong exit for every "did not converge" oracle
+      // below. `optimizerPrompt` puts the target path and iteration number in
+      // its own wording ("Address reviewer feedback on {doc} for phase {phase}
+      // of feature {feature}. Iteration {n} …"), so pull them straight out of
+      // it and write varying, still-complete content — leaving every OTHER
+      // AUTHOR_SKILLS shape (creator dispatches, DECISIONS_WARRANTED, the JSON
+      // plan) untouched.
+      const opt = /Address reviewer feedback on (\S+) for phase \S+ of feature \S+\. Iteration (\d+)/.exec(
+        text
+      );
+      if (opt) {
+        fs.writeFile(opt[1], `${REQ_TEXT}\n<!-- revision iteration ${opt[2]} -->`);
+      }
       // A COMPLIANT author (TSPEC §7.4 / §8.4) ends its reply with the
       // `REVISION-COMPLETE:` trailer. §5.6.2 makes a revision episode terminal
       // on structural completeness AND the trailer, so a double that narrates
@@ -278,6 +295,7 @@ async function run({
     _pipeline: async (label, fn) => fn(),
     _checkFile: fs.checkFile,
     _readFile: fs.readFile,
+    _hashFile: fs.hashFile,
     _writeFile: fs.writeFile,
     _appendFile: fs.appendFile,
     _listFiles: listFiles,

@@ -721,3 +721,133 @@ describe("RLH-CR-F2 — LEARNINGS completeness is FSPEC §16.5's conjunction", (
     expect(devModule.isComplete(CLASS_LEARNINGS, null, learningsDoc({ approvalRecord: true })).complete).toBe(true);
   });
 });
+
+// ═══════════ baseline-relative completeness in revision mode (`isTerminal`) ═══════════════════
+//
+// A revision episode must not be gated on a stricter structural shape than the document had
+// when the episode began. The live `REQ-pdlc-review-convergence.md` is the falsifier that
+// motivated this: 10 of 10 top-level sections written and non-empty, none of them carrying a
+// canonical title, so the strict test scored `{complete: false, missing: [all seven]}` — and a
+// revision episode over it could NEVER reach terminal however honestly the author declared
+// itself done. The wrapper re-dispatched to the budget and halted a phase whose findings were
+// in fact addressed.
+//
+// The relaxation is a **no-regression** test, not an amnesty: the missing-set at the end must
+// be a subset of the missing-set at entry, so an author that deletes a previously-satisfied
+// canonical section is still non-terminal.
+
+const MODE_REVISION = "revision";
+
+/** A REQ built from an explicit heading list, every heading carrying a body. */
+function reqWithHeadings(titles) {
+  const parts = ["# REQ — f", ""];
+  for (const title of titles) parts.push(`## ${title}`, "", `Substantive body for ${title}.`, "");
+  return parts.join("\n");
+}
+
+/** The trailer the three author SKILLs emit (§7.4). */
+const TRAILER_YES = "Edits applied.\nREVISION-COMPLETE: yes";
+
+describe("RLH-BASELINE — revision-mode completeness is measured against the episode's entry shape", () => {
+  // A document whose sections are all written but none canonically titled — the pre-oracle
+  // shape. Non-vacuity: the strict test must genuinely reject it, or every assertion below
+  // passes for the wrong reason.
+  const preOracle = reqWithHeadings([
+    "1. Why this exists",
+    "2. What good looks like",
+    "3. Out of bounds",
+    "4. What we must live with",
+    "5. How we will know",
+    "6. What could go wrong",
+    "7. What we still owe",
+  ]);
+  const entryMissing = devModule.isComplete(CLASS_SPEC, "REQ", preOracle).missing;
+
+  test("RLH-BASELINE: the fixture is genuinely incomplete under the strict test", () => {
+    const strict = devModule.isComplete(CLASS_SPEC, "REQ", preOracle);
+    expect(strict.complete).toBe(false);
+    expect(missingSet(strict)).toEqual(new Set(requiredSet("REQ")));
+    // …and it is incomplete for the *heading* reason only: all seven sections carry bodies.
+    expect(strict.T).toBe(7);
+    expect(strict.S).toBe(7);
+  });
+
+  test("RLH-BASELINE: revision + trailer yes + missing equal to a non-empty entry baseline is terminal", () => {
+    expect(entryMissing.length).toBeGreaterThan(0);
+    const verdict = devModule.isTerminal(
+      MODE_REVISION,
+      TRAILER_YES,
+      CLASS_SPEC,
+      "REQ",
+      preOracle,
+      entryMissing
+    );
+    expect(verdict).toEqual({ terminal: true, trailerReason: null });
+
+    // Without the baseline the SAME inputs are non-terminal — the bug, pinned.
+    expect(
+      devModule.isTerminal(MODE_REVISION, TRAILER_YES, CLASS_SPEC, "REQ", preOracle).terminal
+    ).toBe(false);
+  });
+
+  test("RLH-BASELINE: a missing-set that GREW beyond the baseline is not terminal", () => {
+    // The episode entered with `Acceptance Criteria` satisfied and ended having deleted it.
+    const entered = reqWithHeadings(["1. Why this exists", "Acceptance Criteria", "Goals"]);
+    const baseline = devModule.isComplete(CLASS_SPEC, "REQ", entered).missing;
+    expect(baseline).not.toContain("Acceptance Criteria");
+
+    const regressed = reqWithHeadings(["1. Why this exists", "Goals"]);
+    const verdict = devModule.isTerminal(
+      MODE_REVISION,
+      TRAILER_YES,
+      CLASS_SPEC,
+      "REQ",
+      regressed,
+      baseline
+    );
+    expect(verdict.terminal).toBe(false);
+
+    // A section merely emptied — not deleted — regresses just the same.
+    const emptied = `${reqWithHeadings(["1. Why this exists", "Goals"])}\n## Acceptance Criteria\n\nTBD\n`;
+    expect(
+      devModule.isTerminal(MODE_REVISION, TRAILER_YES, CLASS_SPEC, "REQ", emptied, baseline).terminal
+    ).toBe(false);
+  });
+
+  test("RLH-BASELINE: the baseline relaxes the STRUCTURAL conjunct only — no trailer is still not terminal", () => {
+    const verdict = devModule.isTerminal(
+      MODE_REVISION,
+      "Edits applied.",
+      CLASS_SPEC,
+      "REQ",
+      preOracle,
+      entryMissing
+    );
+    expect(verdict.terminal).toBe(false);
+    expect(verdict.trailerReason).toBeTruthy();
+  });
+
+  test("RLH-BASELINE: greenfield is unchanged — a canonical shortfall is non-terminal with or without a baseline", () => {
+    expect(
+      devModule.isTerminal(MODE_GREENFIELD, TRAILER_YES, CLASS_SPEC, "REQ", preOracle).terminal
+    ).toBe(false);
+    expect(
+      devModule.isTerminal(MODE_GREENFIELD, TRAILER_YES, CLASS_SPEC, "REQ", preOracle, entryMissing)
+    ).toEqual({ terminal: false, trailerReason: null });
+  });
+
+  test("RLH-BASELINE: non-spec classes are unchanged — a baseline argument does not relax them", () => {
+    const noVerdict = "# Cross-review\n\n## Findings\n\nSome findings.\n";
+    expect(
+      devModule.isTerminal(MODE_REVISION, TRAILER_YES, CLASS_CROSS_REVIEW, "REQ", noVerdict, [
+        "anything",
+      ]).terminal
+    ).toBe(false);
+  });
+
+  test("RLH-BASELINE: an empty baseline is the strict test, so a complete document is still required", () => {
+    const canonical = reqWithHeadings(requiredSet("REQ"));
+    expect(devModule.isTerminal(MODE_REVISION, TRAILER_YES, CLASS_SPEC, "REQ", canonical, []).terminal).toBe(true);
+    expect(devModule.isTerminal(MODE_REVISION, TRAILER_YES, CLASS_SPEC, "REQ", preOracle, []).terminal).toBe(false);
+  });
+});

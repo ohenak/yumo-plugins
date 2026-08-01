@@ -410,8 +410,21 @@ async function runPipeline(opts = {}) {
     if (kind === "creator" || kind === "optimizer" || kind === "author-other") {
       const ctx = { ...entry, write };
       const out = author ? author(ctx) : null;
-      if (out && Object.prototype.hasOwnProperty.call(out, "write")) write(out.write);
-      else if (docType) write(completeDoc(docType));
+      if (out && Object.prototype.hasOwnProperty.call(out, "write")) {
+        write(out.write);
+      } else if (docType) {
+        // Fix B (`orchestrate-dev.js` §5.6's optimizer no-op halt): the default
+        // fallback must not write byte-IDENTICAL content across dispatches, or an
+        // optimizer episode this fixture does not care about (any phase whose
+        // round a shared `reviewersFailing` plan fails, not just the phase under
+        // test) reads as a no-op revision and halts. Both `ctx.round` and `ctx.n`
+        // are folded in: a fresh episode on a later round starts a new dispatch
+        // count (`n` resets to 1 per round), so `n` alone can collide with a
+        // prior round's final on-disk bytes. `creator` / `author-other`
+        // dispatches are greenfield and need no such distinction, so only
+        // `optimizer` gets it.
+        write(completeDoc(docType, kind === "optimizer" ? `revision pass round ${ctx.round} #${ctx.n}` : undefined));
+      }
       let response = out && out.response !== undefined ? out.response : authorResponse("yes", "Document written.");
       if (phase === "T" && /DECISIONS_WARRANTED/.test(text)) response = `${response}\nDECISIONS_WARRANTED: false`;
       return response;
@@ -527,8 +540,16 @@ describe("RLH-AT-35 — no-op-with-trailer is terminal (FSPEC §19 AT-35, AC-3.5
     expect(optimizer).toHaveLength(1);
     expect(run.fs.writes.filter((w) => w.path === REQ_PATH)).toEqual([]);
 
-    // (iii) The phase does not halt.
-    expect(run.result.outcome).toBe("success");
+    // (iii) The EPISODE itself does not halt — dispatchAndVerify's terminal test
+    // fires on the trailer alone, in one dispatch, independent of `wroteBytes`.
+    // But the PHASE now halts one level up: `reviewLoop`'s no-op-optimizer guard
+    // (production incident SE F-08 / TE F-07) refuses to dispatch the reviewers
+    // again over a document this optimizer episode left byte-identical, since
+    // that re-review cannot converge. The zero-byte trailer-terminal episode
+    // fixture this test builds is exactly that scenario, so the phase-level
+    // outcome is "halted", not "success".
+    expect(run.result.outcome).toBe("halted");
+    expect(run.reportText).toMatch(/re-reviewing an unchanged document cannot converge/);
   });
 });
 
@@ -671,6 +692,53 @@ describe("RLH-AT-40 — a revision dispatch on a complete artifact is not no-pro
     expect(optimizer.length).toBeGreaterThanOrEqual(MAX_AUTHORING_ATTEMPTS + 1);
     expect(run.result.outcome).toBe("success");
     expect(run.reportText).not.toMatch(/no progress across/);
+  });
+});
+
+describe("Fix A — a single `_readFile` per authoring dispatch, not two (orchestrate-dev.js dispatchAndVerify)", () => {
+  test("Fix A: a 3-dispatch episode reads its target N+1 times, never 2N", async () => {
+    const N = 3; // == MAX_AUTHORING_ATTEMPTS, so the episode terminates on progress alone
+    const run = await runPipeline({
+      review: reviewersFailing([1]),
+      author: (ctx) => {
+        if (ctx.kind !== "optimizer" || ctx.phase !== "R") return {};
+        const write = completeDoc("REQ", `edit pass ${ctx.n}`);
+        return ctx.n < N
+          ? { write, response: authorResponse("declared_incomplete") }
+          : { write, response: authorResponse("yes") };
+      },
+    });
+
+    const optimizer = select(run, { kind: "optimizer", phase: "R", round: 1 });
+    expect(optimizer).toHaveLength(N);
+    expect(run.result.outcome).toBe("success");
+
+    // Every REQ_PATH read, across the whole run: `dispatchAndVerify`'s ONE `before`
+    // read at episode entry, plus one `after` read per dispatch (N). Under the OLD
+    // per-iteration `before` re-read this would have been `2N` (an extra `before`
+    // read on every dispatch); Fix A drops that to `N + 1`.
+    //
+    // `reviewLoop`'s own `t0` anchor of `doc` USED to add one whole-file read per
+    // round Phase R visits (round 1 fails, round 2 passes — the former `+ 2`). It
+    // is now a `_hashFile` call: the anchor only ever wanted the digest, and in
+    // the workflow runtime `_readFile` is a per-chunk agent fan-out. Those two
+    // calls are asserted below off the digest log, so the saving is pinned and not
+    // merely absent.
+    const reqReads = run.fs.reads.filter((r) => r.path === REQ_PATH);
+    expect(reqReads).toHaveLength(N + 1);
+
+    const reqHashes = run.fs.hashes.filter((h) => h.path === REQ_PATH);
+    expect(reqHashes).toHaveLength(2);
+
+    // Behaviour is unchanged: progress is still detected every dispatch (each
+    // carries distinct content), so the episode never trips the no-progress halt,
+    // and the resume clause still sees the PRIOR dispatch's own bytes as `before`
+    // (not a stale re-read) — visible as each later dispatch's prompt continuing
+    // to carry the full continuation contract for a revision episode.
+    expect(run.reportText).not.toMatch(/no progress across/);
+    for (const d of optimizer) {
+      expect(d.prompt).toMatch(/REVISION-COMPLETE:/);
+    }
   });
 });
 
@@ -1526,5 +1594,70 @@ describe("RLH-AT-61-report — each trailer reason is distinguishable in the ope
     expect(seen).toEqual(
       TRAILER_FIXTURES.map((f) => ({ reason: f.reason, mentioned: [f.reason] }))
     );
+  });
+});
+
+// ─── RLH-BASELINE — baseline-relative completeness, observed through `main()` ──
+//
+// The pre-oracle document: every top-level section written and non-empty, not one
+// of them carrying a canonical §5.9 title. This is the shape of every REQ authored
+// before the oracle existed, `docs/discarded/pdlc-review-convergence/REQ-pdlc-review-convergence.md`
+// among them. Under the strict revision test such an episode can NEVER reach
+// terminal — the author declares `REVISION-COMPLETE: yes`, the structural conjunct
+// stays false, and the wrapper spends all six dispatches before halting the phase
+// over findings that were in fact addressed.
+
+/** A REQ whose sections are all substantive and none canonically titled. */
+function preOracleReq(marker = "as authored") {
+  const titles = [
+    "1. Why this exists",
+    "2. What good looks like",
+    "3. Out of bounds",
+    "4. What we must live with",
+    "5. How we will know",
+    "6. What could go wrong",
+    "7. What we still owe",
+  ];
+  return specDoc(titles.map((t) => [t, `Substantive body for ${t} — ${marker}.`]));
+}
+
+describe("RLH-BASELINE — a revision episode is not gated on a shape the document never had", () => {
+  test("RLH-BASELINE: an optimizer that addresses the round and emits REVISION-COMPLETE: yes ends the episode in one dispatch, even though the document is missing every canonical heading", async () => {
+    const run = await runPipeline({
+      files: { [REQ_PATH]: preOracleReq() },
+      review: reviewersFailing([1]),
+      author: (ctx) =>
+        ctx.kind === "optimizer" && ctx.phase === "R"
+          ? {
+              // Bytes DO change — this is a revision that did work, not the
+              // no-op `RLH-AT-35` covers — and the shape is unchanged: still
+              // seven non-canonical headings.
+              write: preOracleReq("after addressing round 1"),
+              response: authorResponse("yes", "Round 1 findings applied."),
+            }
+          : {},
+    });
+
+    const optimizer = select(run, { kind: "optimizer", phase: "R", round: 1 });
+
+    // (i) Non-vacuity: the artifact the episode ended on is still structurally
+    // incomplete under the strict test, so a re-dispatch would be the *old*
+    // behaviour rather than a coincidence of the fixture.
+    const finalReq = run.fs.files[REQ_PATH];
+    expect(finalReq).toContain("after addressing round 1");
+    const strict = devModule.isComplete("spec", "REQ", finalReq);
+    expect(strict.complete).toBe(false);
+    expect(strict.missing.length).toBeGreaterThan(0);
+
+    // (ii) ONE dispatch — no re-dispatch loop, no authoring-budget halt.
+    expect(optimizer).toHaveLength(1);
+    expect(optimizer[0].prompt).toMatch(/REVISION-COMPLETE:/);
+    expect(run.result.outcome).toBe("success");
+    expect(run.reportText).not.toMatch(new RegExp(`${MAX_AUTHORING_DISPATCHES} dispatches`));
+
+    // (iii) The carried-over shortfall is REPORTED, not silent: an operator has to
+    // be able to see that the document never grew the canonical sections.
+    expect(run.reportText).toMatch(/pre-existing structural shortfall/);
+    for (const title of strict.missing) expect(run.reportText).toContain(title);
   });
 });

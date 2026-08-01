@@ -32,7 +32,7 @@
  * | Factory | Doubles | TSPEC |
  * |---|---|---|
  * | `fakeListFiles(spec)` | `_listFiles(dirPath)` | §3.2, §4.2 |
- * | `fakeFs(initialContents, opts)` | `_readFile` / `_writeFile` / `_appendFile` / `_checkFile` | §3.3 |
+ * | `fakeFs(initialContents, opts)` | `_readFile` / `_hashFile` / `_writeFile` / `_appendFile` / `_checkFile` | §3.3 |
  * | `fakeGit(script)` | `_git(argv)` | §3.4, §6.5 |
  * | `recordingRecordHalt(result)` | `_recordHalt({ feature, status })` | §3.5 |
  *
@@ -40,6 +40,12 @@
  * test can pass it straight into `main()`'s injection list and afterwards assert
  * call order, arguments and counts off the same object.
  */
+
+// The ONE production import in this file. `fakeFs`'s `_hashFile` double must
+// return the module's own `approvalHashOf` form — a hand-rolled digest here
+// could disagree with `defaultHashFile` about canonicalisation and make every
+// staleness test quietly wrong.
+import { approvalHashOf } from "../../orchestrate-dev.js";
 
 /**
  * The closed `ListFailure` catalogue (TSPEC §4.1 `LIST_FAILURES`), restated here
@@ -210,15 +216,17 @@ function maybeFail(option, path, text, verb) {
  * @returns {{
  *   files: Record<string, string>,                       // the live tree, readable and writable by the test
  *   readFile: (path: string) => (string|null),           // pass as `_readFile`
+ *   hashFile: (path: string) => (string|null),           // pass as `_hashFile`
  *   writeFile: (path: string, contents: string) => void, // pass as `_writeFile`
  *   appendFile: (path: string, text: string) => void,    // pass as `_appendFile`
  *   checkFile: (path: string) => ({ok: true}|{ok: false, reason: string}), // pass as `_checkFile`
  *   reads: Array<{ path: string, result: string|null }>,
+ *   hashes: Array<{ path: string, result: string|null }>,
  *   writes: Array<{ path: string, contents: string }>,
  *   appends: Array<{ path: string, text: string }>,
  *   checks: Array<{ path: string, result: object }>,
- *   calls: Array<{ op: "read"|"write"|"append"|"check", path: string, text?: string, result?: any }>,
- *   injections: () => ({ _readFile, _writeFile, _appendFile, _checkFile }),
+ *   calls: Array<{ op: "read"|"hash"|"write"|"append"|"check", path: string, text?: string, result?: any }>,
+ *   injections: () => ({ _readFile, _hashFile, _writeFile, _appendFile, _checkFile }),
  *   reset: () => void
  * }}
  *   `calls` is the **cross-operation ordered log** — the one to assert on when
@@ -236,6 +244,7 @@ export function fakeFs(initialContents = {}, opts = {}) {
   const self = {
     files: { ...initialContents },
     reads: [],
+    hashes: [],
     writes: [],
     appends: [],
     checks: [],
@@ -248,6 +257,21 @@ export function fakeFs(initialContents = {}, opts = {}) {
       : null;
     self.reads.push({ path, result });
     self.calls.push({ op: "read", path, result });
+    return result;
+  };
+
+  // `_hashFile`: the digest seam. It is a SEPARATE double from `readFile`, and
+  // deliberately does not delegate to it, because the two call sites that use it
+  // exist precisely so the bytes never cross the seam — a delegating double
+  // would log a `read` and make "this site no longer reads the whole file"
+  // untestable. `approvalHashOf` is the module's own, so the double cannot
+  // disagree with production about the digest's format; `null` for an absent
+  // path mirrors `defaultHashFile`, which mirrors `defaultReadFile`.
+  self.hashFile = (path) => {
+    const has = Object.prototype.hasOwnProperty.call(self.files, path);
+    const result = has ? approvalHashOf(self.files[path]) : null;
+    self.hashes.push({ path, result });
+    self.calls.push({ op: "hash", path, result });
     return result;
   };
 
@@ -283,13 +307,14 @@ export function fakeFs(initialContents = {}, opts = {}) {
 
   self.injections = () => ({
     _readFile: self.readFile,
+    _hashFile: self.hashFile,
     _writeFile: self.writeFile,
     _appendFile: self.appendFile,
     _checkFile: self.checkFile,
   });
 
   self.reset = () => {
-    for (const log of [self.reads, self.writes, self.appends, self.checks, self.calls]) {
+    for (const log of [self.reads, self.hashes, self.writes, self.appends, self.checks, self.calls]) {
       log.length = 0;
     }
   };

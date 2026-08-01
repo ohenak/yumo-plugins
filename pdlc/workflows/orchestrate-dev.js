@@ -1219,9 +1219,31 @@ export function parseForcePhases(raw) {
  * @returns {"FRESH"|"STALE"|"UNEVALUABLE"}
  */
 export function isStale(recordedHash, documentBytes) {
+  return isStaleByHash(recordedHash, approvalHashOf(documentBytes));
+}
+
+/**
+ * `isStale`'s comparison, over a document DIGEST rather than the document's
+ * bytes. Same three outcomes, same rules 1–3: the only difference is who paid
+ * for the digest.
+ *
+ * It exists because the transport under `_readFile` in the workflow runtime is
+ * a fan-out of one agent per ~6 KB chunk, so reading a 300 KB REQ *only* to
+ * hash it costs ~52 agents for 64 hex characters. `_hashFile` computes the
+ * digest at the far side of the seam in a single agent, and this function is
+ * the comparison that accepts it. `isStale` is preserved verbatim on top, so
+ * the byte-taking form remains the tested definition of the outcome.
+ *
+ * Pure, total and synchronous: no seam, no throw, no IO (§3.7).
+ *
+ * @param {string} recordedHash - the `sha256:{64 hex}` literal from the record.
+ * @param {string} documentHash - the document's digest in `approvalHashOf` form.
+ * @returns {"FRESH"|"STALE"|"UNEVALUABLE"}
+ */
+export function isStaleByHash(recordedHash, documentHash) {
   if (typeof recordedHash !== "string" || !/^sha256:[0-9a-f]{64}$/.test(recordedHash))
     return "UNEVALUABLE";
-  return approvalHashOf(documentBytes) === recordedHash ? "FRESH" : "STALE";
+  return documentHash === recordedHash ? "FRESH" : "STALE";
 }
 
 // ─── TSPEC §5.9 / FSPEC §16 — structural completeness ─────────────────────────
@@ -1658,15 +1680,39 @@ export function selectMode({ dispatchKind, docType, present, reviewFiles, startI
  * it as a third member no caller read, which is the shape AC-4.7a forbids, so it
  * lives as the local below where its only two readers are.
  *
+ * **Revision mode is BASELINE-RELATIVE for the spec class.** A revision episode
+ * must not be gated on a stricter structural shape than the document had when the
+ * episode began: reviewers reviewed *that* shape and the loop accepted it for the
+ * prior rounds, and the optimizer's job is to address findings, not to retrofit
+ * canonical headings onto a document authored before this oracle existed. So when
+ * `entryMissing` is supplied — the missing-set measured over the episode's entry
+ * bytes — the structural conjunct becomes "no **regression**": the current
+ * missing-set must be a subset of the entry one. A previously-satisfied canonical
+ * section may not be deleted; a pre-existing shortfall does not block. Without
+ * that relaxation a revision episode over such a document can NEVER reach
+ * terminal, and the wrapper burns `MAX_AUTHORING_DISPATCHES` on an author that
+ * already declared itself done.
+ *
+ * The baseline is **optional and defaults to the strict test**, so greenfield
+ * (where the canonical headings are still required in full) and every non-spec
+ * artifact class are untouched, as is every call site that does not pass one.
+ *
  * @param {string} mode - the episode's mode, from `selectMode`
  * @param {string} response - the dispatch's response text
  * @param {string} artifactClass - §5.9's wrapped artifact class
  * @param {string} docType
  * @param {string|null} after - the target's bytes read AFTER the dispatch
+ * @param {string[]|null} [entryMissing] - the missing-set measured at episode entry;
+ *   applied only in revision mode over the "spec" class
  * @returns {{terminal: boolean, trailerReason: string|null}}
  */
-export function isTerminal(mode, response, artifactClass, docType, after) {
-  const structural = isComplete(artifactClass, docType, after).complete;
+export function isTerminal(mode, response, artifactClass, docType, after, entryMissing) {
+  const measured = isComplete(artifactClass, docType, after);
+  let structural = measured.complete;
+  if (mode === "revision" && artifactClass === "spec" && Array.isArray(entryMissing)) {
+    const baseline = new Set(entryMissing);
+    structural = measured.missing.every((title) => baseline.has(title));
+  }
   if (mode !== "revision") return { terminal: structural, trailerReason: null };
   const t = parseRevisionComplete(response);
   return {
@@ -1787,6 +1833,7 @@ export async function reviewLoop({
   _checkFile = checkFileNonEmpty,
   _listFiles = defaultListFiles,
   _readFile = defaultReadFile,
+  _hashFile = defaultHashFile,
   _appendFile = defaultAppendFile,
   _log,
   _git,
@@ -1956,8 +2003,13 @@ export async function reviewLoop({
     let anchorHash = null;
     let anchorCommit = "unavailable";
     if (phase !== "CR") {
-      const anchorBytes = await _readFile(doc); // t0
-      if (anchorBytes != null) anchorHash = approvalHashOf(anchorBytes); // t1
+      // t0/t1 collapse into ONE seam call: the anchor never needed the bytes,
+      // only their digest, and `_hashFile` returns exactly what
+      // `approvalHashOf(await _readFile(doc))` returned — including `null` for
+      // an absent or unreadable document. In the workflow runtime `_readFile`
+      // is a per-chunk agent fan-out, so hashing the largest document in the
+      // pipeline once per round used to cost ~1 agent per 6 KB; it now costs 1.
+      anchorHash = (await _hashFile(doc)) ?? null; // t0–t1
       anchorCommit = await headCommitSha(_git); // t2
     }
 
@@ -2040,6 +2092,25 @@ export async function reviewLoop({
     ) {
       throw haltError(
         `Error: optimizer agent ${optimizer} failed during phase ${phase}, iteration ${iteration} — pipeline halted. Document at ${doc} may be in an inconsistent state.`
+      );
+    }
+
+    // A no-op optimizer episode: the episode completed (it is not the failure
+    // above) but changed no bytes of `doc`. Dispatching the reviewers again over
+    // byte-identical input cannot converge and only burns a review round — this
+    // exact waste happened in production (SE F-08, TE F-07: both reviewers filed
+    // a re-review of an unchanged document as a process defect). Halt now rather
+    // than advance `iteration` and loop.
+    //
+    // Gated on `measuredT > 0`: a target `isComplete` cannot score at all (the
+    // unmeasurable-target escape inside `dispatchAndVerify` — e.g. Phase CR's
+    // directory target, or any caller whose read seam is a stub) always shows
+    // `wroteBytes === false` on a no-op dispatch, with no way to distinguish
+    // "genuinely unchanged" from "nothing was ever measurable here". Halting on
+    // that would turn every unmeasurable target into a false-positive halt.
+    if (optEpisode && optEpisode.wroteBytes === false && optEpisode.measuredT > 0) {
+      throw haltError(
+        `Error: optimizer ${optimizer} completed without modifying ${doc} in phase ${phase}, iteration ${iteration} — re-reviewing an unchanged document cannot converge; pipeline halted.`
       );
     }
 
@@ -2827,10 +2898,28 @@ async function dispatchAndVerify({
   let wroteBytes = false;
   let lastTrailerReason = null;
   let response = null;
+  // The episode's structural baseline — see `isTerminal`. Measured ONCE, over the
+  // bytes this episode entered on, and only for a revision episode over a spec:
+  // every other combination keeps the strict test.
+  let entryMissing = null;
+  let lastMeasured = null;
+  // Single-read-per-dispatch: `before` is fetched from `_readFile` only on the
+  // episode's first iteration. On every later iteration this episode's own prior
+  // `after` — already known to equal the current on-disk bytes, since the
+  // dispatched skill is the only writer of `targetPath` during an episode — is
+  // reused as `before`, saving a full-file subagent echo per iteration. Trade-off:
+  // a concurrent external edit between iterations is attributed to the agent as
+  // progress; the previous per-iteration re-read tolerated that.
+  let before = null;
 
   for (;;) {
-    const before = await _readFile(targetPath);
+    if (invocations === 0) {
+      before = await _readFile(targetPath);
+    }
     invocations += 1;
+    if (invocations === 1 && selection.mode === "revision" && artifactClass === "spec") {
+      entryMissing = isComplete(artifactClass, docType, before).missing;
+    }
 
     let opener;
     if (selection.mode === "revision") {
@@ -2858,10 +2947,19 @@ async function dispatchAndVerify({
 
     const after = await _readFile(targetPath);
     const measured = isComplete(artifactClass, docType, after);
-    const verdict = isTerminal(selection.mode, response ?? "", artifactClass, docType, after);
+    lastMeasured = measured;
+    const verdict = isTerminal(
+      selection.mode,
+      response ?? "",
+      artifactClass,
+      docType,
+      after,
+      entryMissing
+    );
     lastTrailerReason = verdict.trailerReason;
     const progressed = before !== after;
     if (progressed) wroteBytes = true;
+    before = after;
 
     if (verdict.terminal) break;
     // The unmeasurable-target escape — see the doc comment above.
@@ -2887,6 +2985,15 @@ async function dispatchAndVerify({
 
   if (selection.mode === "revision") {
     emit(`Phase ${phaseId} round ${selection.round}: episode ended on the author's REVISION-COMPLETE trailer.`);
+    // A shortfall the episode inherited is carried over rather than fixed. That is
+    // deliberate (see `isTerminal`) but it must not be silent: the operator is the
+    // only one who can decide whether the document should be retro-fitted.
+    const carried = lastMeasured && Array.isArray(lastMeasured.missing) ? lastMeasured.missing : [];
+    if (carried.length > 0) {
+      emit(
+        `Phase ${phaseId} round ${selection.round}: ${targetPath} carries a pre-existing structural shortfall, unchanged since this episode began and therefore not blocking — missing canonical headings: ${carried.join(", ")}.`
+      );
+    }
   }
   await advisoryPacingCheck({ wroteBytes, targetPath, _git, emit });
 
@@ -2896,6 +3003,13 @@ async function dispatchAndVerify({
     round: selection.round,
     invocations,
     wroteBytes,
+    // The target's top-level-section count as last measured — i.e. whether this
+    // episode's target was measurable at all (see the unmeasurable-target escape
+    // above: a target `isComplete` cannot score, e.g. Phase CR's directory
+    // target, also has `measuredT === 0`). A caller deciding whether "wrote
+    // nothing" is meaningful must not conflate "genuinely unchanged" with
+    // "nothing to measure in the first place".
+    measuredT: lastMeasured ? lastMeasured.T : 0,
     trailerReason: lastTrailerReason ?? null,
   };
 }
@@ -3791,6 +3905,28 @@ function defaultReadFile(path) {
   }
 }
 
+/**
+ * Default `_hashFile`: the document's approval digest, without handing the
+ * document's bytes back across the seam.
+ *
+ * Returns EXACTLY what `approvalHashOf` returns for the file's contents —
+ * `sha256:{64 hex}` over the canonicalised text, not a raw digest of the bytes
+ * on disk — because every consumer compares it against an `APPROVAL-HASH:`
+ * literal. Null on any error, mirroring `defaultReadFile`'s contract, so a
+ * caller that used to test `bytes != null` can test the hash the same way.
+ *
+ * Injectable in tests via `_hashFile`; supplied in the workflow runtime by the
+ * adapter's `rtHashFile`, which is one IO agent instead of `_readFile`'s
+ * per-chunk fan-out. That saving is the whole reason this seam exists.
+ */
+function defaultHashFile(path) {
+  try {
+    return approvalHashOf(fs.readFileSync(path, "utf8"));
+  } catch {
+    return null;
+  }
+}
+
 // ─── TSPEC §3.2 — the listing seam's Node default ─────────────────────────────
 
 /**
@@ -3915,7 +4051,7 @@ export async function defaultRecordHalt(/* { feature, status } */) {
 
 /**
  * Main pipeline function — runs the full PDLC pipeline from REQ to harvest.
- * @param {{ reqPath: string, _agent?: function, _parallel?: function, _log?: function, _checkFile?: function, _readFile?: function, _phase?: function, _pipeline?: function }} params
+ * @param {{ reqPath: string, _agent?: function, _parallel?: function, _log?: function, _checkFile?: function, _readFile?: function, _hashFile?: function, _phase?: function, _pipeline?: function }} params
  * @returns {Promise<FinalReport>}
  */
 export default async function main({
@@ -3926,6 +4062,7 @@ export default async function main({
   _log: logFn = log,
   _checkFile: checkFileFn = checkFileNonEmpty,
   _readFile: readFileFn = defaultReadFile,
+  _hashFile: hashFileFn = defaultHashFile,
   _phase: phaseFn = phase,
   _pipeline: pipelineFn = pipeline,
   _mergeWorktree: mergeWorktreeFn = mergeWorktree,
@@ -4055,7 +4192,22 @@ export default async function main({
       if (record.approving) {
         // Step 4 — staleness. §5.5 rule 1: the bytes are read AT COMPARISON
         // TIME, never from a read cached earlier in the run.
-        const freshness = isStale(record.hash, await readFileFn(docPath));
+        // The digest is computed at the far side of the seam (`_hashFile`), so
+        // the comparison still reads the document AT COMPARISON TIME — it just
+        // never carries the bytes back. In the workflow runtime `_readFile` is a
+        // per-chunk agent fan-out, and this site never wanted the chunks.
+        //
+        // The absent/unreadable document keeps the byte-taking form verbatim:
+        // `_hashFile` reports it as `null`, exactly as the whole-file read did,
+        // and `isStale(hash, null)` is then the same call the previous line
+        // made. Stating that case as `isStale` rather than folding it into a
+        // digest constant is what makes the equivalence readable — and keeps
+        // §5.5's claim that the gate consults `isStale` literally true.
+        const docHash = await hashFileFn(docPath);
+        const freshness =
+          docHash == null
+            ? isStale(record.hash, null)
+            : isStaleByHash(record.hash, docHash);
         if (freshness === "FRESH") {
           // The phase does not run. `checkPostmortem` is still evaluated, for
           // REPORTING ONLY — AC-2.3's refusal is conditioned on the phase
@@ -4113,6 +4265,7 @@ export default async function main({
   const wrapperSeams = {
     _agent: agentFn,
     _readFile: readFileFn,
+    _hashFile: hashFileFn,
     _listFiles: listFilesFn,
     _appendFile: appendFileFn,
     _log: emit,

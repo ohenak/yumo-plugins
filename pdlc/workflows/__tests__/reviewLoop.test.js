@@ -300,6 +300,67 @@ describe("PROP-LOOP-07: Optimizer agent fails → halt with correct message", ()
   });
 });
 
+// ─── Fix B: a no-op optimizer episode halts rather than burns a review round ──
+describe("Fix B: optimizer episode writes nothing over a measurable document → halt, no re-review", () => {
+  it("halts with the no-revision detail and does not dispatch a second reviewer round", async () => {
+    // A real, measurable TSPEC (at least one top-level section, so `isComplete`'s
+    // `T` is > 0 and the unmeasurable-target escape does not swallow this case).
+    // The same constant text is returned on every `_readFile` call regardless of
+    // path, so the episode's `before` and `after` are trivially identical —
+    // exactly what "the optimizer wrote nothing" means in this harness, since no
+    // `_writeFile` is wired to mutate a backing store.
+    const DOC_TEXT = "## 1. Overview\n\nSome existing, unremarkable prose.\n";
+    // A structurally-complete cross-review body (a `## Verdict` heading with a
+    // catalogue `VERDICT:` line below it), so the REVIEWER episodes themselves
+    // reach terminal on their own first dispatch and never trip a no-progress
+    // halt of their own — this fixture is about the OPTIMIZER's episode only.
+    const REVIEW_TEXT = "## Findings\n\nSome finding.\n\n## Verdict\n\nVERDICT: Needs revision\n";
+    const readFile = (path) => (path === baseParams.doc ? DOC_TEXT : REVIEW_TEXT);
+
+    let reviewerCallCount = 0;
+    const mockAgent = async (skill, prompt) => {
+      if (skill === "guard") return existsGuard("guard", prompt);
+      if (skill === "pm-review" || skill === "te-review") {
+        reviewerCallCount += 1;
+        return makeNeedsRevisionResult();
+      }
+      if (skill === "se-author") {
+        // Declares itself done via the trailer, but the document (per `_readFile`
+        // above) never changed — the production scenario (SE F-08, TE F-07).
+        return "Nothing left to change.\nREVISION-COMPLETE: yes\n";
+      }
+      return "";
+    };
+
+    const mockParallel = (promises) => Promise.all(promises);
+
+    await expect(
+      reviewLoop({
+        ...baseParams,
+        _agent: mockAgent,
+        _parallel: mockParallel,
+        _checkFile: existsGuard,
+        _readFile: readFile,
+        // Round 1's cross-reviews already exist on the branch, so `selectMode`
+        // sees a non-empty `present` and puts the optimizer episode in REVISION
+        // mode (baseline-relative structural check, trailer required) rather than
+        // greenfield (strict completeness, no trailer) — the mode this fixture
+        // needs to reach terminal on its trailer alone.
+        _listFiles: fakeListFiles([
+          "CROSS-REVIEW-product-manager-TSPEC-v1.md",
+          "CROSS-REVIEW-test-engineer-TSPEC-v1.md",
+        ]),
+      })
+    ).rejects.toThrow(
+      "Error: optimizer se-author completed without modifying docs/test-feat/TSPEC-test-feat.md in phase T, iteration 1 — re-reviewing an unchanged document cannot converge; pipeline halted."
+    );
+
+    // Exactly one round's worth of reviewer dispatches — the halt fires before a
+    // second round is ever entered.
+    expect(reviewerCallCount).toBe(2);
+  });
+});
+
 // ─── PROP-LOOP-08: Both reviewers crash same iteration ────────────────────────
 describe("PROP-LOOP-08: Both reviewers crash in same iteration", () => {
   it("emits two warnings, invokes optimizer once, does not halt", async () => {

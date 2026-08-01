@@ -84,9 +84,53 @@ Before creating or revising any REQ or FSPEC, read `docs/_constraints/DOMAIN-CON
    - **Phase** — delivery phase assignment
    - **Source user stories** and **dependencies**
 7. Define scope boundaries: in scope, out of scope, assumptions.
+7a. **Required top-level sections.** The REQ must carry these seven `##` headings, each with a non-empty body:
+
+   | Section | Accepted alternative |
+   |---|---|
+   | Problem / Context | — |
+   | Goals | — |
+   | Non-Goals | Scope |
+   | Constraints | — |
+   | Acceptance Criteria | — |
+   | Risks | — |
+   | Obligations | Open Questions |
+
+   A numeric prefix is fine (`## 3. Constraints`), as is any additional section — extra headings never count against you. But the pipeline's structural-completeness gate checks for exactly this set, so a REQ that names these sections something else will not pass authoring: the phase re-dispatches until its budget is spent and then halts.
 8. Save to `docs/{feature-name}/REQ-{feature-name}.md`. Mark status as **Draft**.
 9. Update the traceability matrix at `docs/requirements/traceability-matrix.md`.
 10. Commit and push.
+
+---
+
+### REQ Size Budget
+
+**Target: 300–500 lines. Hard ceiling: 700 lines or 60 KB.** This is not a style preference —
+it is measured: a 2,629-line REQ burned 9 cross-review rounds without converging, and the
+workflow runtime transports every file through IO agents sized at roughly 6 KB per chunk, so
+a document's size is directly the number of agents every read of it costs. Small documents
+converge; large ones stall.
+
+If a feature's REQ would exceed the ceiling:
+
+1. **Split the feature, not the document.** Divide by phase or by requirement cluster into
+   multiple smaller REQs, each in its own `docs/{feature}/` directory, each under the target.
+2. **Wire the order in frontmatter.** Each child REQ carries `ready: true` and a `depends-on`
+   entry naming the REQ(s) it follows.
+3. **Register each child in the queue.** Add a row per child REQ to `docs/_queue/QUEUE.md` with
+   a new `Order` value — never reuse an existing one.
+4. **Factor out shared context once.** Measured baselines, thresholds, and non-goals common to
+   every child go into `docs/_constraints/`, written once, and each child REQ references that
+   file rather than restating it.
+
+**Growth discipline while under the ceiling:** revision notes and per-round traceability must
+not accumulate inside the document. Reference the relevant `CROSS-REVIEW-*` file instead of
+restating its findings inline round over round, and when a record is superseded, replace its
+text — don't append a new version alongside the old.
+
+**When addressing review feedback on a REQ already at or over the ceiling:** the correct
+remediation is to propose the split described above, not to keep growing the document to
+accommodate the finding.
 
 ---
 
