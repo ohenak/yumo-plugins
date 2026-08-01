@@ -136,6 +136,16 @@ change at all.
 
 ## 4. Mechanical fixes
 
+Reported per AC-6.5 as a fix list, not as blocking findings; excluded from the counts below. MF-20 …
+MF-22 of v8 are applied and are not carried. MF-23 is applied with one residue, MF-27.
+
+| # | Location | Issue | Fix |
+|---|---|---|---|
+| MF-24 | §5, **phase refusal** row (`:584`) | The row states three consequences — no halt recorded, `H`/`A` untouched, no post-mortem byte written — and then *"the phase does not run and the invocation terminates on the same path step G takes"*. It omits the two consequences AC-1.4 and AC-1.5(4) added in the same revision: the ❌ phase row, and the queue row rewritten to `halted` and committed. §5 is the meanings table a reader is sent to by name (*"a phase refusal in §5's sense"*), so the definition should carry the whole shape rather than half of it. | Add the ❌ row and the `halted` queue row to the meanings row, or replace the enumeration with a pointer: *"the full consequence set is AC-1.5(4) step 4's"*. |
+| MF-25 | AC-1.5(4), the *returns* bullet | *"on the shipped `orchestrate-dev` halt path the feature's `docs/_queue/QUEUE.md` row is rewritten to `halted` and committed"* is a claim about shipped behaviour with **no citation** — no `file:line`, no enclosing symbol, no distinctive literal — in a document whose Citation-baseline row asserts that *every* such reference carries all three. The claim is **true** (I verified it: step G throws `haltError` at `pdlc/workflows/orchestrate-dev.js:4178-4184`, and the halt catch calls `recordHaltFn({ …, status: "halted" })` at `:4838-4841`), but those are working-tree line numbers and the document owes the reader the pair read at the Citation baseline `9486c81`. Worth doing precisely because the claim is load-bearing: it is the whole reason the refusal is safe under an unattended queue. | Add the two citations at the baseline, in AC-6.4's C-1 form. |
+| MF-26 | §10.11 lead-in vs §10.12 lead-in | §10.11 now states its two counts on their bases (*"filed seven … carried on five rows … five of the seven filed"*), which is the fix MF-20 asked for. §10.12, written in the same revision, does not follow the pattern it establishes. This is the finding F-04 records; it is listed here as well because the *fix* is mechanical even though the recurrence is not. | Restate §10.12's lead-in on §10.11's pattern: filed count, merge list, row count derived. |
+| MF-27 | AC-1.5(5), clause 5 (`:1017`) | The MF-23 re-flow moved the orphan rather than removing it: line 1017 is 129 columns against 96–104 in every neighbour (`:1012-1018`). | Re-flow lines 1015–1018 as a block. |
+
 ## 5. Measurement Required
 
 ## 6. Questions
