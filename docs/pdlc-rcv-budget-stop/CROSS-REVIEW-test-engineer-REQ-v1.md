@@ -24,6 +24,32 @@
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Is the answering line written **before** or **after** the round dispatches of the entry that grants the window? O-6 assigns the *placement* to TSPEC, but the choice is observable: written first, an invocation that dies before round `W` has spent the operator's one escape hatch for nothing; written last, a converging invocation may never write it at all. Which of those two is the accepted outcome is a REQ-level decision, and PROPERTIES needs it to write the crash-fixture assertion. |
+| Q-02 | Does the S-16 refusal produce a `POSTMORTEM` **phase record** distinguishable from the step-G refusal it borrows its shape from? AC-1.5(4) says a ❌ phase row is recorded and the queue row becomes `halted`; if the recorded reason text is identical to step G's *"Refused — unresolved POSTMORTEM at …"* (M-7a), the operator is told the wrong thing (the marker **is** resolved — that is why step 4 ran) and the two branches are indistinguishable in the phase record. |
+| Q-03 | AC-1.4 clause 2 strips every unfenced `RESOLVED:` line on every halt. What happens to a post-mortem whose `RESOLVED: yes` sits inside the `## Reset Region` heading's span? The strip and the region-preserve rule are stated independently and both claim that span. |
+
 ## Positive Observations
 
+- **Every quantity the criteria read is given a durable on-branch home, and the table is explicit that an in-process-only row would be a defect (§4.1).** This is the failure mode that killed the predecessor, and answering it structurally rather than per-criterion is the right shape. It also makes almost every AC fixture-constructible from files alone: no clock, no process identity, no runtime fact anyone has to measure.
+- **AC-1.5(4)'s receive side is stated as an ordered algorithm rather than a table of independent rows**, with an explicit totality argument and a stated tie-break for multi-fault regions ("exactly one S-16 notice, first failing line in document order"). That is directly executable as a test oracle, and it removes the usual source of two-reviewers-two-readings.
+- **The `H`/`A` counting scheme is a genuinely good design for the one-shot property**, and the REQ does the hard part: it enumerates both directions of hand-edit corruption, shows the arithmetic for each repair in a table, and explains *why* deleting an answering line is unsafe at both reachable values of `H − A`. The `WINDOW-RESUMED:` line existing purely to give the S-11 path a **positive artifact** to assert on — rather than an absence — is exactly the oracle discipline DC-03 asks for, and is called out as such in the text.
+- **O-10 is unusually good as a downstream obligation**: it names the negative cases, the mutation pairs (counts-mismatch refusal ↔ recovery leg), the ratchet test, and the byte-unchanged assertion. F-06 is a gap in two of its legs, not a criticism of its structure.
+- **The append-not-prepend rule is justified by a stated failure** (a `WINDOW-RESUMED: 4` landing ahead of the `WINDOW-START: 4` it answers), and O-10 requires it asserted **positionally**. That is a property most specs leave implicit and most implementations then get wrong.
+- Citations spot-checked at HEAD: `MAX_REVIEW_ROUNDS` (:52), `windowEnd` (:2450-2451), `deriveRoundWindow` (:2386), `parseResolvedMarker` (:1105), `checkPostmortem` (:2695), `scanLines` (:721), `recordHaltFn` (:4907), the bare `Write ${postmortemPath}.` prompt (:1937). All present; line numbers have drifted from the baseline commit as the header predicts, and the symbol-plus-literal convention made every one of them findable in one grep.
+
 ## Recommendation
+
+**Needs revision**
+
+Three High findings, all of them contesting **scope or a delivered operator-visible surface** rather than an oracle that could be routed downstream under DC-09:
+
+1. **F-01** — say whether Phase CR (`docType: null`) is inside or outside AC-1.1/AC-1.4/AC-1.5. It shares the constant AC-1.2 owns and the halt path AC-1.4 quantifies over "every halt", while N-7 excludes it; as written, one reachable CR sequence is a permanent, unrepairable phase refusal.
+2. **F-02** — state, cell by cell, the run-report row for the entry that admits **no rounds and halts on the budget**. Catalogue §3 has rows A and B only, so AC-1.1's headline scenario currently cannot be rendered in the report §2 sells as a deliverable.
+3. **F-03** — say which listing "the highest round on the branch" is taken over. Doc-type-scoped and whole-directory readings give *refuse permanently* vs *grant the window* on the same bytes.
+
+The Mediums are all one-clause fixes and none of them requires new mechanism: confirm the answering-line write (F-04), resolve the `N-*` id namespace (F-05), add the dispatch-count conjunct to O-10's two absence-only legs (F-06), mark the mid-window control's fixture synthetic and reconcile it with §3.1 (F-07), state the `forcePhases` outcome (F-08).
+
+Explicitly **not** filed, per §8 and DC-09: the absence of fixtures, seams, oracle wiring or test-level assignment for AC-1.5(4)'s algorithm — that is O-10's and TSPEC's, and the REQ routes it correctly. Nothing in this review contests user need, priority or phasing.
+
