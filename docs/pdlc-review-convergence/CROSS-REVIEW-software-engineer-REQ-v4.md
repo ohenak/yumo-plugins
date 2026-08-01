@@ -290,3 +290,30 @@ N-7's widening to Phase DOD, all of which are correctly argued. I have no blocki
 REQ-RCV-05 or REQ-RCV-06. I raised no `## Measurement Required` items.
 
 ## Verdict
+
+**Needs revision.** v1.2 is a large, genuine revision (+354/−75, 20 commits) and it **closes every one
+of my eight prior findings at the mechanism, not at the wording**: `appendRoundAnchors` splits the
+per-round writer from the approval writer (F-01), panel shape is read from the on-disk slug set and the
+marker is written on every verifier round (F-02), AC-3.2(2) picks a reading and names the verifier as
+its own reader (F-03), AC-3.4 fixes exact trailer placement (F-04), AC-1.5(4) gives the operator reset a
+durable, one-shot `WINDOW-START:` anchor (F-05), and AC-2.8 turns my Low/Process empty-round finding
+into a first-class halt (F-08). Both Lows are fixed and three restated existing-code citations verify at
+`9486c81`.
+
+Five new findings, all in text v1.2 added. One High: AC-2.2 says S-3 and S-4 co-occur on the last
+admitted round and AC-4.7's precedence row 2 says at most one can appear, so the exact `notice` cell is
+undecidable in the case AC-2.2 was written to answer (G-01). Four Mediums: AC-2.8's S-11 notice has no
+report row, because the round it describes is never dispatched and so produces none of the files
+AC-4.7's other five columns are derived from (G-02); `DOC-SHA256:` is specified both as "the SHA-256 of
+the same bytes `DOC-BYTES:` counts" and as a reuse of the tier-1 hashing, which canonicalises line
+endings and trailing newlines inside `sha256Hex` (`pdlc/workflows/orchestrate-dev.js:848`, `:767`,
+JSDoc `:752-759`) — the two cannot both hold (G-03); AC-1.5(4)'s `WINDOW-START:` anchor lives in the
+POSTMORTEM the halt path rewrites via a bare `Write {path}` agent dispatch (`:1912-1918`) with no
+preservation obligation, so a second halt can silently un-consume the reset (G-04); and AC-3.4's
+skip-anchors algorithm and AC-2.7's row-4 classification define the same trailer reader as two different
+total functions (G-05). One Low, `Cross-Feature`: the blocking count is 5 for the third round running,
+so AC-2's own rule would fire — yet zero findings carried, which is the false-positive shape a count-only
+fixed point cannot see (G-06). All five blocking findings are one-clause fixes; none needs new mechanism.
+
+VERDICT: Needs revision
+{"high": 1, "medium": 4, "low": 1}
