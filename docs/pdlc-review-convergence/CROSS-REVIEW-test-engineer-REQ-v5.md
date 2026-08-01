@@ -69,6 +69,155 @@ preservation obligation of any kind (`pdlc/workflows/orchestrate-dev.js:1724-173
 
 ## 3. Findings
 
+Every finding below is **new** and lies in a section this revision changed. All six ids are fresh;
+none is a re-file of a round-2/3/4 finding. Three of them (F-01, F-02, F-03) are consequences of the
+same structural move — v1.3 made the POSTMORTEM into durable machine state and scoped two ACs to the
+window without scoping the rest.
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | High | Local | **AC-1.5(5) breaks AC-1.5(4)'s counting invariant: an S-11 clearance raises `R` without raising `S`, so `R > S` persists and the *next* halt of any kind is auto-cleared with a fresh window, without the operator doing anything.** See §3.1. | AC-1.5(4), AC-1.5(5), AC-1.1, AC-1.4, §5 durability rows 3–4 |
+| F-02 | High | Local | **AC-1.4's new preservation obligation makes one `RESOLVED: yes` clear *every* future halt of that phase, forever.** The gate is stated as presence — *"refusing to re-run the phase until a human writes `RESOLVED: yes`"* — and v1.3 now **forbids** the halt path to remove that line. So the marker an operator wrote to clear halt #1 is still in the file at halt #2, halt #3 and every halt after; the refusal never fires again and the phase re-enters unattended. This is not a pre-existing defect: before v1.3 the halt path rewrote the file with no obligation to keep anything, so each halt plausibly demanded a fresh marker; v1.3 makes staleness mandatory. The mechanism AC-1.1 relies on to be *absolute* — a human in the loop at every halt — is removed by the clause added to protect it. Fix: restate AC-1.4's gate over the same accounting AC-1.5(4) uses (re-entry is permitted iff `R > S`, i.e. an **unpaired** clearance exists), so preservation and one-shot are the same rule read twice, rather than two rules that disagree. | AC-1.4, AC-1.5(3)(4)(5), AC-1.1, §5 durability row 4 |
+| F-03 | High | Local | **The first round of a reset window is a single-verifier round, and on a reset-without-revision it can approve the byte-identical document the previous window's full panel rejected.** See §3.2. | AC-3.1, AC-3.2, AC-4.1, AC-4.2, AC-2.8 receive-side row 4, AC-1.5(3), §5 *current window* |
+| F-04 | Medium | Local | **AC-1.5(4)'s receive-side table is total but not single-valued — rows 2, 4 and 5 overlap on inputs that are reachable, and give different `W`.** A region carrying `WINDOW-START: 4` then `WINDOW-START: 9` on a branch whose highest round is 6 matches **row 2** (*"decimal integers ≥ 1 and strictly increasing"* ⇒ `W` = the greatest = 9) **and row 5** (*"a value greater than one past the highest round"* ⇒ `W` = 1, fail-closed). A region carrying one garbage value and two good increasing ones matches row 2 and row 3. Nothing states that the rows are evaluated in order, nor that the qualifying rows are a partition. This is the exact defect v1.3 fixed for the trailer reader — DC-01 requires the receive side to be total **and single-valued**, as AC-3.4's new preamble now says in terms — reproduced one AC earlier by the table added in the same revision. A PROPERTIES author writing the fail-closed cases (an O-10 obligation) has two expected values for the same fixture. Fix: state the table as an ordered algorithm (validate every line first; any invalid line ⇒ `W` = 1; otherwise take the greatest), the way AC-3.4 states its reader. | AC-1.5(4) receive-side table rows 2–5, AC-3.4, §5 durability row 3 |
+| F-05 | Medium | Local | **Every citation v1.3 adds resolves at `main`, not at the declared baseline, and one names a symbol that exists at neither commit.** See §3.3. | AC-1.4, AC-2.8 digest paragraph, AC-4.1 digest paragraph, §6 `DOC-SHA256:` row, O-9(d), header *Citation baseline* |
+| F-06 | Medium | Local | **`HALT-REASON:`'s value grammar is stated three ways and has no §6 row, so the line is underivable on exactly the round O-10 requires a test for.** AC-2.2 says the line *"carries the same `; `-joined string"* on a round where S-3 and S-4 co-occur. §5's new paragraph and AC-1.5(5) both say it carries *"the S-3, S-4 or S-11 string **verbatim**"* — singular, and *verbatim* excludes a joined pair. A test author asserting the post-mortem's line for O-10's new *two-halt row* has three candidate expectations: one line with the joined string, one line with S-3 only, or two `HALT-REASON:` lines. The choice is not academic: AC-1.5(5) reads *"the **last** `HALT-REASON:` line"*, which under the two-line reading is `budget-exhausted:` and under the joined reading is a string that *begins* `fixed-point:` — same branch here, but the receive side is stated over `begins`, and a reader that instead tested set-membership against §5's three strings would reject the joined form outright. §6 is declared authoritative for exactly this (*"a threshold not in this table is a defect in this document"*) and carries rows for the other two new literals, `DOC-BYTES:` and `DOC-SHA256:`, but none for `HALT-REASON:` or for `WINDOW-START:`. Fix: give `HALT-REASON:` (and `WINDOW-START:`) a §6 row fixing the literal, the value grammar and whether a halt writes one line or one per reason; then state §5 and AC-1.5(5) over that row. | AC-2.2, AC-1.5(5), §5 *How a halt reason reaches a later invocation*, §6, O-10 |
+
+### 3.1 F-01 in full — the counting invariant does not survive the clause that uses it
+
+AC-1.5(4) defines the whole reset mechanism over two counts taken on the preserved region: `R` =
+`RESOLVED: yes` lines, `S` = `WINDOW-START:` lines, and *"a reset is **unconsumed** exactly when
+`R > S`"*. The invariant that makes this work is stated explicitly: *"the region accumulates one
+`RESOLVED:` per operator clearance and one `WINDOW-START:` per granted window, so the counts are the
+state"*. That is a pairing argument: every clearance is answered by exactly one line that spends it.
+
+AC-1.5(5), added in the same revision, breaks the pairing. Its first row says an S-11 clearance is
+honoured — the halt is cleared and the window resumes — but *"no `WINDOW-START:` is written … and the
+reset is **not** consumed"*. So a clearance has happened and nothing was written to answer it. `R`
+went up; `S` did not. `R > S` is now **permanently** true for that file.
+
+Follow it through, using only reachable states:
+
+1. Window `W = 1`, rounds 1 and 2 spent. Round 3 opens on an unrevised document ⇒ AC-2.8 halts with
+   S-11. `R = 0`, `S = 0`.
+2. The operator writes `RESOLVED: yes` to clear it (AC-1.4 admits no other way). `R = 1`, `S = 0`.
+3. Re-entry: `R > S`, so clause 4 would write `WINDOW-START:` — but clause 5's S-11 row forbids it.
+   The window resumes at `W = 1` with round 3 still available. **`R = 1`, `S = 0`.** Correct so far,
+   and exactly what I asked for in round 4.
+4. Round 3 runs, fails, and the loop halts on the budget on entering round 4 (S-4).
+5. Re-entry. Clause 4 observes `R = 1 > S = 0` — *"the first entry that observes `R > S`"* — and
+   clause 5's second row says the last `HALT-REASON:` begins `budget-exhausted:`, so **the reset is
+   granted and consumed: `WINDOW-START: 4` is written and a fresh three-round window opens.** No
+   operator wrote anything between step 4 and step 5.
+
+The result is a free window, handed out by the machine, on the strength of a clearance the operator
+spent on an unrelated authoring failure three rounds earlier. And it compounds: each S-11 halt an
+operator clears adds one to the surplus `R − S`, so a pipeline that fails to author *k* times banks
+*k* free windows redeemable against future budget halts. That is precisely the *"unbounded supply of
+fresh windows — one per no-revision halt"* that clause 5's own justifying paragraph says it exists to
+prevent. The clause prevents the direct form and reintroduces the deferred form.
+
+The fix is small and is the one the counting formulation already implies: **an S-11 clearance must
+write a line too** — a distinct key, e.g. `WINDOW-RESUMED: {W}`, counted in `S` alongside
+`WINDOW-START:`. Then `R = S` after every clearance of either kind, the invariant *"one written line
+per clearance"* holds without exception, and the two rows of clause 5's table differ only in **which**
+line is written and therefore in whether `W` moves — which is exactly the distinction the clause is
+about. As a bonus it makes the S-11 path observable: today a resumed window leaves no trace at all in
+the file, so no test can distinguish "clause 5 ran and resumed" from "clause 5 was never reached",
+which makes O-10's new obligation *"an S-11 halt cleared without consuming the reset"* an
+unfalsifiable oracle — there is no positive artifact to assert on, only the absence of a
+`WINDOW-START:` line, and absence is also what a loop that ignored clause 5 entirely would produce.
+
+### 3.2 F-03 in full — the first round of a reset window is not treated as a first round
+
+v1.3 scopes **two** ACs to the current window and stops there. AC-2.1 and AC-2.8 both gain
+*"of the current window"* with the same justification, stated twice: a round whose predecessor is in
+an earlier window *"has no comparable predecessor, exactly as round 1 has none"* (§5), because
+*"the operator has just declared the previous window's findings discharged"* (AC-2.1).
+
+Three ACs that read the same boundary were not scoped:
+
+- **AC-3.1** still says *"every round `N ≥ 2` dispatches a single verifier"*, and the first round of a
+  reset window is `N ≥ 2` by construction (clause 4 sets `W` to one past the highest existing round,
+  so `W ≥ 2` always). §5 says such a round is like round 1; AC-3.1 says it is like round 5. The
+  document contains both.
+- **AC-3.2**'s *Given* is *"round `N ≥ 2` on a document whose round `N−1` findings **have been
+  addressed**"*, and its clause 1 requires a `## Disposition` row *"per prior blocking finding"* of
+  round `N−1`. At `N = W` those findings were not addressed by an optimizer episode; they were
+  discharged by the operator's marker. The precondition is false, and the required content of the
+  round's mandatory `## Disposition` section is underivable.
+- **AC-4.1** measures `growth = bytes(t0) − DOC-BYTES(N−1)` with no window scoping, so at `N = W` it
+  measures across the operator's intervention.
+
+Compose those three with AC-2.8's new row 4 and the failure is concrete, not theoretical. AC-2.8 row 4
+explicitly protects the reset-without-revision case: *"An operator who resets without revising the
+document is exercising the escape hatch deliberately; halting the fresh window on its first round
+would spend a reset on zero rounds."* Take that operator at their word:
+
+1. Round `W−1` ends with the full panel filing *Needs revision*; the budget is exhausted; halt.
+2. The operator judges the findings wrong and writes `RESOLVED: yes` **without touching the
+   document**. Clause 4/5 grant a fresh window, `W` = one past the highest round.
+3. Round `W` opens. AC-2.8 is **not evaluated** (row 4). AC-4.1 measures `growth = 0` ⇒ AC-4.2
+   classifies **incremental** ⇒ AC-3.1 dispatches a **single verifier**.
+4. The verifier's job (AC-3.2) is to check the disposition of findings nobody dispositioned, on bytes
+   nobody changed. If it approves, AC-3.5's same-round rule is satisfied — one dispatched role, one
+   approval — and the document **is approved**.
+
+So the byte-identical document that a two-reviewer panel rejected is approvable by one agent one round
+later, and the single mechanism that exists to catch "the document did not change" has been switched
+off for that round by this revision. AC-2.8's rationale for switching it off is sound in isolation —
+do not spend a reset on zero rounds — but it was written against AC-2.8 alone and not against AC-3.1.
+
+This is a testability finding as much as a correctness one. A PROPERTIES author cannot write the
+panel-selection property for `N = W` (two stated answers), cannot write the `## Disposition`
+expectation (precondition false), and — worse — the natural test for the reset path is
+*"reset ⇒ the fresh window runs"*, which passes under both readings and would never reveal the
+approval. The falsifying case is *"reset without revising, verifier approves, assert the document is
+**not** approved"*, and nothing in the REQ currently entitles a test author to that expectation.
+
+Fix, at REQ altitude, one of: (a) state that the first round of every window dispatches the **full
+panel**, exactly as round 1 does — which follows directly from §5's own *"exactly as round 1 has
+none"* and makes AC-3.1 total over windows rather than over rounds; or (b) keep the verifier but scope
+AC-3.2's disposition obligation to *within the window* and state what a verifier is asked to do at
+`N = W`; and, either way, say whether a round whose growth is zero because nothing was revised can
+yield an approval. Option (a) costs one round of one panel per operator reset — a price the operator
+has already signalled willingness to pay by resetting — and closes the hole outright.
+
+### 3.3 F-05 in full — v1.3's citations are read at a different commit than the header declares
+
+The header states, unqualified: *"Every `file:line` reference in this document was read from the
+working tree at **`9486c81`** on the **default branch `main`**, tree clean."* v1.3 adds five citations
+and I checked all of them at that commit:
+
+| Cited as | At `9486c81` | At `main` |
+|---|---|---|
+| `sha256Hex` — `:848` | `:696` | `:848` ✓ |
+| `canonicaliseForDigest` — `:767` | `:615` | `:767` ✓ |
+| JSDoc *"applied INSIDE `sha256Hex`"* — `:752-759` | `:600-608` | ✓ |
+| `approvalHashOf` — `:950` | `:797` | `:949` |
+| `writePostmortem` — `:1912-1918` | **no such symbol**; `:1912-1918` is `approvalAnchorPreCount`'s JSDoc | **no such symbol** |
+
+Four of the five are off by a constant ~+152 lines and land exactly on `main`, so this is not drift —
+the rows were read at `main` while the header still declares `9486c81`, and the document now mixes two
+baselines with nothing marking which row belongs to which. The header's remedy for drift (*"navigate
+by the row's named symbol and distinctive literal"*) does not apply, because the reader who follows the
+header opens the wrong commit and finds a SHA-256 compression loop where the JSDoc is claimed to be.
+Re-baselining is a mechanical fix and I would have filed it as one; **mixing** baselines silently is
+not, because it falsifies a universally-quantified claim the whole §4 evidence base rests on.
+
+The fifth row is a different problem and is why this is Medium rather than mechanical: `writePostmortem`
+**names no symbol at either commit**. AC-6.4's check 3 — the citation checker this REQ specifies — is
+symbol-proximity within ±25 lines; a symbol that exists nowhere fails it at every window size. The REQ
+therefore contains a citation its own AC-6.4 would report, and the row is load-bearing: it is the sole
+evidence for AC-1.4's premise that *"nothing today tells the agent either line is precious"*, and O-9(d)
+repeats it as the amendment target. I verified the premise independently and it holds — the post-mortem
+prompt is `Write ${postmortemPath}.` plus a section list, built inline in `reviewLoop` at
+`pdlc/workflows/orchestrate-dev.js:1724-1731` (baseline), local `postmortemPrompt`, no preservation
+clause of any kind. So the claim survives; only the locator is fabricated. Fix: re-baseline the header
+to the commit these rows were actually read at (and re-verify §4's older rows there), and replace
+`writePostmortem` with the enclosing symbol that exists, `reviewLoop`, plus the `postmortemPrompt`
+literal.
+
 ## 4. Mechanical fixes
 
 ## 5. Measurement Required
