@@ -263,4 +263,45 @@ in a sentence and neither blocking.
 
 ## 8. Recommendation
 
+**Needs revision**
+
+Mandatory per the approval rules: two High and two Medium findings are open. **All seven round-3
+findings are resolved**; every open finding is new and lies in text this revision added.
+
+What must change before this document can be approved:
+
+1. **F-01** — fix the growth boundary. Classify the revision *into* round N and select **round N's
+   own** panel from it: `growth = bytes(read at round N's open) − DOC-BYTES(N−1)`, sharing AC-2.8's
+   read. As written, round 2's panel is either always the full panel (AC-4.1/4.2/4.5 read literally)
+   or selected from an endpoint that is not yet durable (AC-3.1's reading) — and the document
+   contains both readings.
+2. **F-02** — state what a second halt does to `POSTMORTEM-{phase}-{feature}.md`, now that
+   `WINDOW-START:` is durable, load-bearing state living in it. Append-with-last-wins, a versioned
+   post-mortem, or a different surface — any of the three, stated at REQ altitude.
+3. **F-03** — reconcile AC-2.2 with AC-4.7: either S-3 and S-4 can co-occur (then split the
+   precedence row) or they cannot (then AC-2.2's paragraph is wrong).
+4. **F-04** — scope AC-2.8 and AC-2.1 to the current window, and say whether clearing an S-11 halt
+   consumes AC-1.5's one-shot reset.
+
+F-05 and F-06 are Low and may be taken as mechanical. MF-04 … MF-07, MR-03/MR-04 and Q-05/Q-06 are
+non-blocking and contribute nothing to the counts.
+
+Nothing here contests user need, scope, priority or phasing — that remains settled and out of scope.
+Nor do I contest any of the four mechanisms v1.2 introduces: `appendRoundAnchors`, the slug-based
+panel-shape predicate, `WINDOW-START:` and AC-2.8 are all, in my judgement, the right answers. F-01
+and F-02 are about where the new machinery is *anchored*, not about whether it should exist.
+
+**Trajectory note (self-applied, per the preamble's fixed-point rule).** Round 1: 2 High, 5 Medium =
+7 blocking. Round 2: 3 High, 1 Medium = 4. Round 3: 3 High, 2 Medium = 5 over a byte-identical
+document. Round 4: **2 High, 2 Medium = 4**, over +34.4 KB of revision, with **7 of 7 prior findings
+discharged and 0 carried**. This is the first round of this document's review with no carried
+finding, and the first whose blocking count is a strict decrease over a real revision. Under AC-2.1
+this round does **not** fire the fixed-point rule (4 < 5), and under AC-4.2 the revision classifies
+**new-mechanism**, which correctly explains why four new findings exist: they are findings against
+new text, not re-findings against old. That is convergent behaviour, not a plateau — the mechanism
+this REQ specifies would have made the same call.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 2, "medium": 2, "low": 2}
