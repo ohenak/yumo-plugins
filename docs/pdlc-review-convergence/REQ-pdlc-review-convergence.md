@@ -1195,9 +1195,27 @@ matching **exactly these forms, and no others**:
 sibling defect and is **reported as a grammar defect** with the fix ("use `-`") named. One separator,
 stated in one place, so the document and the checker cannot disagree.
 
-**Unparseable input is reported, never silently skipped.** A token that looks like a citation — any
-`:` followed by digits inside backticks — but matches none of C-1 … C-4 is reported as `unparseable`
-with its file and line. The checker never fails, never throws, and never exits on a parse problem; it
+**Exempt regions: a quoted example is not a citation.** Before extraction the checker excludes two
+regions, and reports nothing from either:
+
+1. **Fenced code blocks**, exactly as `scanLines` already excludes them so that *"a quoted example
+   anchor cannot fabricate an ambiguity"* — the JSDoc above `approvalAnchorPreCount` at
+   `pdlc/workflows/orchestrate-dev.js:1907-1910`, over the helper `scanLines` at
+   `pdlc/workflows/orchestrate-dev.js:569`. This REQ adopts that existing rule rather than inventing a
+   second one.
+2. **A table row whose first cell is an id in the C-1 … C-4 catalogue**, i.e. the catalogue's own
+   `Example` column above. Such a cell is a *specimen* of a form, not a claim about a file.
+
+Without exemption 2 this document is a permanent counter-example to its own rule: the C-3 and C-4 rows
+above contain the only two non-C-1/C-2 tokens in the file, they are illustrative by construction, and
+AC-6.5 tells an author to fix reported items **without a round of discussion** — so an author following
+both ACs would delete the catalogue's examples and leave the catalogue unable to show what it forbids
+(TE F-06). Exemption 2 is stated at REQ altitude, not left to FSPEC, because it decides the checker's
+output on a real corpus.
+
+**Unparseable input is reported, never silently skipped.** Outside the exempt regions, a token that
+looks like a citation — any `:` followed by digits inside backticks — but matches none of C-1 … C-4 is
+reported as `unparseable` with its file and line. The checker never fails, never throws, and never exits on a parse problem; it
 accumulates. This is the receive-side totality DC-01 requires (TE F-02).
 
 For each citation that resolves (C-1, C-2) the checker performs three checks:
