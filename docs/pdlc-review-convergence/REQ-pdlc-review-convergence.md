@@ -671,10 +671,18 @@ reading the cross-review files, whether the loop ran out of rounds or stopped ma
 **When more than one halt condition holds, the operator sees all of them, in AC-4.7's order** (TE Q-02,
 carried unanswered from round 1). On the last admitted round the fixed-point test and the budget can
 both be satisfied; the `notice` cell then carries S-3 and S-4 in that order, and the post-mortem's
-reason line carries the same string. AC-2.1 **is** evaluated on the last admitted round — it is
+`HALT-REASON:` line (AC-1.5(5)) carries the same `; `-joined string, so the operator sees the same two
+reasons in the same order in both places (SE v4 Q-07). AC-4.7's precedence table gives S-3 and S-4
+**two rows** for exactly this reason; v1.2's single row asserted that at most one could appear, which
+this paragraph denies, and the exact cell was therefore undecidable in the very case the paragraph was
+written to answer (SE v4 G-01, TE v4 F-03). AC-2.1 **is** evaluated on the last admitted round — it is
 defined as happening before that round's optimizer episode would be dispatched, and "would be" is not
-"is": a round that dispatches no optimizer still has verdicts to compare. AC-2.8's S-11 sorts ahead of
-both, because a round whose document did not change explains why the other two fired.
+"is": a round that dispatches no optimizer still has verdicts to compare.
+
+**S-11 never co-occurs with either of them**, although it sorts ahead of both. An S-11 halt is decided
+at round-open, before the round is dispatched, so its row is the undispatched round's row and carries
+S-11 alone (AC-2.8); S-3 and S-4 are decided after a round's verdicts exist. The precedence order still
+places S-11 first, because a reader scanning the column should meet the strongest explanation first.
 
 **AC-2.3 — Unreliable counts break the chain; they never fire the rule.**
 *Who:* the review loop. *Given:* any reviewer in round N or in round N−1 whose verdict parse is
@@ -876,7 +884,13 @@ paying for exactly once.
 *Who:* the review loop. *Given:* a review-loop phase other than Phase CR. *When:* it dispatches
 round N. *Then:* round 1 dispatches the **full reviewer panel** (today: `se-review` and `te-review`,
 in parallel, as now), and every round N ≥ 2 dispatches a **single verifier** — unless AC-4 classified
-round N−1's revision as **new-mechanism**, in which case round N dispatches the full panel again.
+**the growth into round N** as `new-mechanism` or `unmeasurable`, in which case round N dispatches the
+full panel again.
+
+The classified revision is the one round N's reviewers are about to read, not the one round N−1 already
+read: AC-4.1 measures it from the same round-open read that dispatches the round, so the escalation and
+the revision that triggers it belong to the same round (TE v4 F-01). Round 1 is the only round with no
+classification, and it is dual regardless, so the exception is total over rounds ≥ 2.
 
 **AC-3.2 — What the verifier is asked to do, and the artifact that proves it did.**
 *Who:* the verifier. *Given:* round N ≥ 2 on a document whose round N−1 findings have been addressed.
@@ -963,20 +977,27 @@ now reads both its operands from files (AC-2.1), a file without the trailer woul
 comparable round (SE F-10). So:
 
 - the trailer is **required in the file**, in the `## Verdict` section, and its **placement is exact**:
-  it is the **first non-empty line after the `VERDICT:` line**, which is what `parseVerdict` requires
-  (M-2c). v1.1 fixed only *that* the trailer is in the file, not *where*, leaving a compliant-looking
-  file that `parseVerdict` rejects (SE F-04);
-- **anchor lines are not trailer candidates.** `APPROVAL-HASH:`, `REVIEWED-COMMIT:`, `REVIEW-MODE:` and
-  `DOC-BYTES:` are appended into this same section *after* the trailer, so on a file that never carried
-  a trailer an anchor line would otherwise present itself as the first non-empty line after `VERDICT:`
-  and parse as *malformed* — making *unavailable* unreachable in the normal case and inverting the
-  operator-facing distinction AC-2.7 draws (SE F-04, TE Q-03). The trailer reader therefore **skips
-  lines matching the anchor grammar** when locating the candidate line. This is a second amendment to
-  M-2c's reader, and O-9 carries it alongside the SKILL amendment below;
-- exactly **one** trailer per file; two or more, or a candidate line that does not parse, is
-  *malformed* (AC-2.3); **no candidate line at all** — the section ends, or contains nothing but anchor
-  lines, after `VERDICT:` — is *unavailable* (AC-2.7). Those two ACs are the receive-side totality
-  DC-01 requires, and the rule above is what keeps both of them reachable;
+  it is written immediately after the `VERDICT:` line, before any anchor line, which is what
+  `parseVerdict` requires (M-2c). v1.1 fixed only *that* the trailer is in the file, not *where*,
+  leaving a compliant-looking file that `parseVerdict` rejects (SE F-04);
+- **the reader is one algorithm, stated once, here.** Given a file, the trailer reader:
+  1. locates the `## Verdict` section and its single `VERDICT:` line — absent ⇒ *unavailable*;
+  2. scans forward for the **candidate**: the first non-empty line that is **not an anchor line**. The
+     anchor set is **§5's catalogue** (S-1, S-2, S-10 and the M-4a approval anchors) **by reference**;
+     this REQ enumerates it nowhere else, so it has exactly one membership;
+  3. no candidate ⇒ *unavailable* (AC-2.7);
+  4. a candidate that does not parse as `{"high": N, "medium": N, "low": N}` after `recoverVerdict`
+     (M-2d) has been tried ⇒ *malformed* (AC-2.3); two or more parsing candidates ⇒ *malformed*;
+  5. exactly one parsing candidate ⇒ that is `blocking`'s source.
+
+  Skipping rather than first-line-testing is what keeps *unavailable* reachable: anchors are appended
+  into this same section *after* the trailer, so on a file that never carried a trailer an anchor line
+  would otherwise present itself as the first non-empty line after `VERDICT:` and parse as *malformed*,
+  inverting the operator-facing distinction AC-2.7 draws (SE F-04, TE Q-03). v1.2 stated the skip rule
+  here **and** a conflicting first-line rule in AC-2.7's table, and enumerated the anchor keys twice with
+  different membership — four keys here, five there (SE v4 G-05, TE v4 F-06, SE v4 MF-2). One algorithm,
+  one skip-set, by reference. This is a second amendment to M-2c's reader, and O-9 carries it alongside
+  the SKILL amendment below;
 - **N-3 is amended accordingly** and no longer claims the trailer is unchanged;
 - the corresponding review-SKILL amendment — write the trailer in the file as well as in the response
   — is added to **O-9**, which v1.0 did not list;
