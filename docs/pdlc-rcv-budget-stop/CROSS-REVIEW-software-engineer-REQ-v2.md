@@ -52,7 +52,41 @@ new operator-facing strings the v1 F-03 fix minted are declared but neither *reg
 
 ## 4. Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | AC-1.5(4) step 2 validates a `WINDOW-START:` value against *"one past the highest round on the branch"*, and AC-1.2 requires `W` to be resolved **before** `deriveRoundWindow` is called. So the resolver needs the doc-type-scoped highest-round derivation that today lives *inside* `deriveRoundWindow` (`result.docType !== docType` ⇒ `continue`, then `Math.max(...indices) + 1`, `orchestrate-dev.js:2407`, `:2431`). That means the filter is either factored out and shared, or re-implemented in the resolver — and a re-implementation that drifts from `parseReviewFilename`'s round-1 spelling rules would validate against a different listing than the loop windows over. O-12 covers how `W` reaches `deriveRoundWindow`; should it also cover the reverse direction — that the resolver reads the *same* doc-type-scoped derivation, not a second one? No REQ change needed if the answer is "O-12 already implies it"; I would rather it were said. |
+| Q-02 | The order of two checks inside step 4 is not stated, and it is observable. Step 2 validates values against *"one past the highest round on the branch"*; step 3 validates the counts. Consider a region with `H = 2`, `A = 1`, a `WINDOW-START: 99` on a branch at highest round 2, and a hand-deleted `HALT-REASON:` making `H − A = 2`. Both a value fault (`invalid-window-start`) and a counts fault hold. Step 4 says `{reason}` is *"the **first failing line** in document order, and `counts-mismatch` only when every line passes step 2"* — which does settle it in favour of the value reason. I read that as deliberate and correct (the value reason has the non-destructive repair). Confirming: is a region with **both** faults always reported as the value reason, so the operator performs the in-place correction, is refused again on the surviving counts fault, and only then performs the destructive whole-section deletion? That is two operator round-trips, which seems right but is worth being intended. |
+| Q-03 | AC-1.5(4)'s skip analysis says that on a `{ skip: true }` exit *"`W` is not resolved, no answering line is written, no refusal is raised"*. A phase can be approved-and-fresh **while** its post-mortem still carries an unconsumed clearance and a corrupt region — harvest has not run, so the file is still there, and the shipped skip path already surfaces `pm.status === "unresolved"` into the ⏭ detail string for reporting only (`orchestrate-dev.js:4221`–`:4224`). On a step-4-corrupt region the skip path reports nothing at all. Is a *reporting-only* notice on the skip path worth having (the operator learns the region is corrupt on the first invocation after approval rather than on the next halt), or is deliberate silence there part of "a skipped phase reviews nothing"? I lean to the latter and am not filing it; I want the choice recorded. |
+
 ## 5. Positive Observations
+
+- **Every v1 finding closed on its merits, and two of them closed better than I asked.** F-01 was
+  asked to state a confirmation; the answer states the confirmation, the fail-closed exit, *and* the
+  write-first ordering with the derivation of why writing last would be wrong — which subsumes Q-03
+  and turns a hole into a stated invariant. F-02 was asked to pick a placement; the answer picks one,
+  justifies it as fail-closed-not-costless, and enumerates all three entry classes with the cost of
+  each. Neither is the minimum edit that would have made the finding go away.
+- **The refusal's cost is now stated as a positive control with a named synthetic fixture.** The
+  mid-window branch is identified as the only branch on which honouring step 4 and falling back are
+  distinguishable, is bound to O-10, *and* is flagged as **hand-built** until the successor ships
+  (X-05) rather than being quietly asserted as reachable. That is the honest version of a claim most
+  documents would have left ambiguous, and §3.1's *fully determined* vs. *reachable in production*
+  distinction is the right way to say it.
+- **AC-1.2's seam clause is stated as a prohibition on downstream documents, not as an aspiration.**
+  *"Any FSPEC or TSPEC that gives either function a seam violates this clause"* is enforceable text.
+  It preserves the `deriveRoundWindow` contract `CLAUDE.md` documents as load-bearing while still
+  letting `W` reach the arithmetic, which is the narrow path between the two options I flagged.
+- **`forcePhases` was resolved in the direction that costs the REQ something.** The easy answer was
+  to let a force grant a window; instead the REQ states that it does not, accepts that this makes a
+  documented operator entry point weaker after round 3, says so explicitly, and gives it an oracle.
+  A REQ that names the cost of its own decision is reviewable; one that omits it is not.
+- **The two count errors (F-03) are the only mechanically-checkable defects I found in the changed
+  text.** I re-verified the code citations the revision added — the `phaseGate` skip exit at
+  `orchestrate-dev.js:4211`–`:4226`, Phase CR's `docType: null` at `:4721`–`:4724`, and AC-1.1's
+  chain of reasoning that `docType: null` ⇒ no basename matches ⇒ `startIndex = 1` ⇒ a second CR
+  clearance fails step 2's strictly-increasing check (confirmed: `if (result.docType !== docType)
+  continue;` at `:2407`, `startIndex = indices.length ? Math.max(...indices) + 1 : 1` at `:2431`).
+  All resolve. The N-7 exclusion is now argued from a real failure mode rather than asserted.
 
 ## 6. Recommendation
 
