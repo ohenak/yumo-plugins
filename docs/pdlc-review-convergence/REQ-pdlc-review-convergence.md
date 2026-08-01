@@ -39,8 +39,9 @@ depends-on: [pdlc-review-loop-hardening]
 >    the verifier excludes such findings from the trailer it writes; the loop deducts nothing. R-5
 >    records that this half of S-9 is directive rather than enforced.
 > 4. **The operator reset has a durable window-start anchor and is one-shot (SE F-05, TE F-02).**
->    AC-1.5(3) is restated over the POSTMORTEM's recorded round window plus a `WINDOW-START:` line, and
->    §5's durability table gains the row.
+>    AC-1.5 gains clause 4: the loop anchors the reset with a `WINDOW-START: {N}` line in the resolved
+>    POSTMORTEM and treats a marker that already carries one as consumed. §5's durability table gains
+>    both rows.
 > 5. **A zero-delta round is a halt, not a consumed round (TE F-07, SE F-08).** AC-2.8 adds a
 >    byte-and-hash identity test over the reviewed document across consecutive rounds, with its own halt
 >    reason — the defect this very round of review exhibited.
@@ -393,8 +394,8 @@ stated over a row marked *in-process only* is a defect in this document.**
 |---|---|---|---|
 | Round index N | AC-1, AC-2, AC-4 | The `CROSS-REVIEW-{role}-{doc}-v{N}.md` basenames on the branch, via `deriveRoundWindow` (M-1d) | n/a — the listing is always readable |
 | Highest round reached for a document | AC-1.5 | Same basenames | Treated as 0; the window opens at round 1 |
-| **First round of the current window** (the post-reset offset) | AC-1.5(3), AC-1.1 | The `WINDOW-START: {N}` line the operator's resolved `POSTMORTEM-{phase}-{feature}.md` carries, beside its recorded `rounds {first}..{last}` window (AC-1.5(3)) | Treated as **1** — i.e. no reset has occurred and the absolute cap of AC-1.1 applies from round 1. Fail-closed: an unparseable or absent marker never widens the window |
-| **Reset consumed** (the reset is one-shot) | AC-1.5(3) | The `WINDOW-START: {N}` line itself: a reset grants exactly the window `N … N+2`, and once the branch carries a round ≥ `N+2` that reset is spent (AC-1.5(3)) | Treated as unconsumed only if `WINDOW-START:` is present and parses; otherwise no reset is in effect at all |
+| **First round of the current window** (the post-reset offset) | AC-1.5(4), AC-1.1 | The `WINDOW-START: {N}` line the loop appends to the resolved `POSTMORTEM-{phase}-{feature}.md`, beside the `rounds {first}..{last}` window that file already records | Treated as **1** — no reset is in effect and AC-1.1's absolute cap applies from round 1. Fail-closed: an absent, unparseable or duplicated-and-unequal marker never widens the window |
+| **Reset consumed** (the reset is one-shot) | AC-1.5(4) | The presence of that same `WINDOW-START:` line: a `RESOLVED: yes` that already carries one has been spent and grants no further reset | A `RESOLVED: yes` with no `WINDOW-START:` is an *unconsumed* reset — the one state in which the loop writes the line |
 | `blocking(N)` | AC-2.1 | The **count trailer inside the round's cross-review files**, required there by AC-3.4 and read by `extractFileVerdict` (M-2e) | *unavailable* — AC-2.7 |
 | Panel shape of round N | AC-2.4, AC-3.1 | The **role slugs of the files at round N**, and nothing else | *crashed* — not comparable |
 | `bytes(document as reviewed at round N)` | AC-4.1, AC-2.8 | The `DOC-BYTES: {n}` anchor line in the round's cross-review files, written by AC-4.1's unconditional per-round writer | growth *unmeasurable* — AC-4.5 |
