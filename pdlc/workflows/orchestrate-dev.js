@@ -2067,6 +2067,25 @@ export async function reviewLoop({
       );
     }
 
+    // A no-op optimizer episode: the episode completed (it is not the failure
+    // above) but changed no bytes of `doc`. Dispatching the reviewers again over
+    // byte-identical input cannot converge and only burns a review round — this
+    // exact waste happened in production (SE F-08, TE F-07: both reviewers filed
+    // a re-review of an unchanged document as a process defect). Halt now rather
+    // than advance `iteration` and loop.
+    //
+    // Gated on `measuredT > 0`: a target `isComplete` cannot score at all (the
+    // unmeasurable-target escape inside `dispatchAndVerify` — e.g. Phase CR's
+    // directory target, or any caller whose read seam is a stub) always shows
+    // `wroteBytes === false` on a no-op dispatch, with no way to distinguish
+    // "genuinely unchanged" from "nothing was ever measurable here". Halting on
+    // that would turn every unmeasurable target into a false-positive halt.
+    if (optEpisode && optEpisode.wroteBytes === false && optEpisode.measuredT > 0) {
+      throw haltError(
+        `Error: optimizer ${optimizer} completed without modifying ${doc} in phase ${phase}, iteration ${iteration} — re-reviewing an unchanged document cannot converge; pipeline halted.`
+      );
+    }
+
     iteration += 1;
   }
 }
@@ -2856,9 +2875,19 @@ async function dispatchAndVerify({
   // every other combination keeps the strict test.
   let entryMissing = null;
   let lastMeasured = null;
+  // Single-read-per-dispatch: `before` is fetched from `_readFile` only on the
+  // episode's first iteration. On every later iteration this episode's own prior
+  // `after` — already known to equal the current on-disk bytes, since the
+  // dispatched skill is the only writer of `targetPath` during an episode — is
+  // reused as `before`, saving a full-file subagent echo per iteration. Trade-off:
+  // a concurrent external edit between iterations is attributed to the agent as
+  // progress; the previous per-iteration re-read tolerated that.
+  let before = null;
 
   for (;;) {
-    const before = await _readFile(targetPath);
+    if (invocations === 0) {
+      before = await _readFile(targetPath);
+    }
     invocations += 1;
     if (invocations === 1 && selection.mode === "revision" && artifactClass === "spec") {
       entryMissing = isComplete(artifactClass, docType, before).missing;
@@ -2902,6 +2931,7 @@ async function dispatchAndVerify({
     lastTrailerReason = verdict.trailerReason;
     const progressed = before !== after;
     if (progressed) wroteBytes = true;
+    before = after;
 
     if (verdict.terminal) break;
     // The unmeasurable-target escape — see the doc comment above.
@@ -2945,6 +2975,13 @@ async function dispatchAndVerify({
     round: selection.round,
     invocations,
     wroteBytes,
+    // The target's top-level-section count as last measured — i.e. whether this
+    // episode's target was measurable at all (see the unmeasurable-target escape
+    // above: a target `isComplete` cannot score, e.g. Phase CR's directory
+    // target, also has `measuredT === 0`). A caller deciding whether "wrote
+    // nothing" is meaningful must not conflate "genuinely unchanged" with
+    // "nothing to measure in the first place".
+    measuredT: lastMeasured ? lastMeasured.T : 0,
     trailerReason: lastTrailerReason ?? null,
   };
 }

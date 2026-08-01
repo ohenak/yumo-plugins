@@ -410,8 +410,21 @@ async function runPipeline(opts = {}) {
     if (kind === "creator" || kind === "optimizer" || kind === "author-other") {
       const ctx = { ...entry, write };
       const out = author ? author(ctx) : null;
-      if (out && Object.prototype.hasOwnProperty.call(out, "write")) write(out.write);
-      else if (docType) write(completeDoc(docType));
+      if (out && Object.prototype.hasOwnProperty.call(out, "write")) {
+        write(out.write);
+      } else if (docType) {
+        // Fix B (`orchestrate-dev.js` §5.6's optimizer no-op halt): the default
+        // fallback must not write byte-IDENTICAL content across dispatches, or an
+        // optimizer episode this fixture does not care about (any phase whose
+        // round a shared `reviewersFailing` plan fails, not just the phase under
+        // test) reads as a no-op revision and halts. Both `ctx.round` and `ctx.n`
+        // are folded in: a fresh episode on a later round starts a new dispatch
+        // count (`n` resets to 1 per round), so `n` alone can collide with a
+        // prior round's final on-disk bytes. `creator` / `author-other`
+        // dispatches are greenfield and need no such distinction, so only
+        // `optimizer` gets it.
+        write(completeDoc(docType, kind === "optimizer" ? `revision pass round ${ctx.round} #${ctx.n}` : undefined));
+      }
       let response = out && out.response !== undefined ? out.response : authorResponse("yes", "Document written.");
       if (phase === "T" && /DECISIONS_WARRANTED/.test(text)) response = `${response}\nDECISIONS_WARRANTED: false`;
       return response;
@@ -527,8 +540,16 @@ describe("RLH-AT-35 — no-op-with-trailer is terminal (FSPEC §19 AT-35, AC-3.5
     expect(optimizer).toHaveLength(1);
     expect(run.fs.writes.filter((w) => w.path === REQ_PATH)).toEqual([]);
 
-    // (iii) The phase does not halt.
-    expect(run.result.outcome).toBe("success");
+    // (iii) The EPISODE itself does not halt — dispatchAndVerify's terminal test
+    // fires on the trailer alone, in one dispatch, independent of `wroteBytes`.
+    // But the PHASE now halts one level up: `reviewLoop`'s no-op-optimizer guard
+    // (production incident SE F-08 / TE F-07) refuses to dispatch the reviewers
+    // again over a document this optimizer episode left byte-identical, since
+    // that re-review cannot converge. The zero-byte trailer-terminal episode
+    // fixture this test builds is exactly that scenario, so the phase-level
+    // outcome is "halted", not "success".
+    expect(run.result.outcome).toBe("halted");
+    expect(run.reportText).toMatch(/re-reviewing an unchanged document cannot converge/);
   });
 });
 
@@ -671,6 +692,45 @@ describe("RLH-AT-40 — a revision dispatch on a complete artifact is not no-pro
     expect(optimizer.length).toBeGreaterThanOrEqual(MAX_AUTHORING_ATTEMPTS + 1);
     expect(run.result.outcome).toBe("success");
     expect(run.reportText).not.toMatch(/no progress across/);
+  });
+});
+
+describe("Fix A — a single `_readFile` per authoring dispatch, not two (orchestrate-dev.js dispatchAndVerify)", () => {
+  test("Fix A: a 3-dispatch episode reads its target N+1 times, never 2N", async () => {
+    const N = 3; // == MAX_AUTHORING_ATTEMPTS, so the episode terminates on progress alone
+    const run = await runPipeline({
+      review: reviewersFailing([1]),
+      author: (ctx) => {
+        if (ctx.kind !== "optimizer" || ctx.phase !== "R") return {};
+        const write = completeDoc("REQ", `edit pass ${ctx.n}`);
+        return ctx.n < N
+          ? { write, response: authorResponse("declared_incomplete") }
+          : { write, response: authorResponse("yes") };
+      },
+    });
+
+    const optimizer = select(run, { kind: "optimizer", phase: "R", round: 1 });
+    expect(optimizer).toHaveLength(N);
+    expect(run.result.outcome).toBe("success");
+
+    // Every REQ_PATH read, across the whole run: `dispatchAndVerify`'s ONE `before`
+    // read at episode entry, plus one `after` read per dispatch (N), plus
+    // `reviewLoop`'s own `t0` anchor read of `doc` once per round Phase R visits
+    // (round 1 fails, round 2 passes — 2 rounds). Under the OLD per-iteration
+    // `before` re-read this would have been `2 + 2N` (an extra `before` read on
+    // every dispatch); Fix A drops that to `2 + (N + 1)`.
+    const reqReads = run.fs.reads.filter((r) => r.path === REQ_PATH);
+    expect(reqReads).toHaveLength(2 + (N + 1));
+
+    // Behaviour is unchanged: progress is still detected every dispatch (each
+    // carries distinct content), so the episode never trips the no-progress halt,
+    // and the resume clause still sees the PRIOR dispatch's own bytes as `before`
+    // (not a stale re-read) — visible as each later dispatch's prompt continuing
+    // to carry the full continuation contract for a revision episode.
+    expect(run.reportText).not.toMatch(/no progress across/);
+    for (const d of optimizer) {
+      expect(d.prompt).toMatch(/REVISION-COMPLETE:/);
+    }
   });
 });
 
