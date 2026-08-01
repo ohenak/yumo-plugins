@@ -124,16 +124,64 @@ bytes, and a stale serve would corrupt gating decisions silently.
 
 ## 4. Scope
 
-_(§4)_
+**In scope**
+
+- `pdlc/workflows/runtime-adapter.js` — the cache, keyed by `path`, wrapped
+  around `rtReadFile` / `rtWriteFile` / the append write; nothing above the
+  seam changes.
+- Jest coverage in `pdlc/workflows/__tests__/` for hit, revalidation-miss,
+  seam-write invalidation, out-of-seam mutation detection, and eviction.
+- `pdlc/workflows/dist/` rebuilt in the same commit (repo rule: the adapter is
+  inlined by `build-runtime.mjs`; a stale dist fails `--check` and CI).
+
+**Out of scope** (not deferred capabilities — explicitly not wanted here)
+
+- Caching `_listFiles` results: directory listings feed `deriveRoundWindow`,
+  whose whole design is to re-derive from the live listing; caching it would
+  change gating semantics, not just cost.
+- Deduplicating module call sites (`refreshReviewState` et al.): the
+  seam-per-concern shape is the tested design; this REQ completes it at the
+  adapter instead.
+- Persistence across invocations, or any shared cache between concurrent runs.
+
+**Assumptions**
+
+- Only this invocation's agents and the operator touch the repo during a run;
+  the cache defends against those mutations (REQ-RTCACHE-01), not against a
+  hostile concurrent writer.
 
 ## 5. Prerequisites
 
-_(§5)_
+| # | Dependency | Resolution form | Gating logic |
+|---|---|---|---|
+| BL-01 | Chunked, size-verified `rtReadFile` (`RT_READ_CHUNK`, `rtChunkPlan`, `rtReadChunk`) | Commits `f18c341`, `fb9ac66` merged | Must exist at HEAD before FSPEC authoring — **satisfied**: both are on `main` as of 2026-08-01 |
 
 ## 6. Non-Functional Requirements & Threshold Declarations
 
-_(§6)_
+**NFR-01 — Runtime constraints.** The adapter runs inside the workflow runtime:
+no Node APIs, no `Date.now()` / `Math.random()` / argless `new Date()`. Eviction
+order and probe retries must therefore be clock-free (insertion-order counters).
+
+**NFR-02 — Portability.** The revalidation probe's shell command must work on
+both macOS bash 3.2 and Linux bash 5 (the CI matrix exists for exactly this);
+the hash tool differs across platforms (`shasum -a 256` vs `sha256sum`) — the
+TSPEC owns the concrete command, this REQ owns only the fingerprint strength.
+
+**Declared thresholds** (config owner for all: the constants block at the top of
+`pdlc/workflows/runtime-adapter.js`, alongside `RT_READ_CHUNK`):
+
+| Threshold | Default | Derivation / meaning |
+|---|---|---|
+| `RT_REVALIDATION_PROBE` | 1 IO agent returning byte size **and** a SHA-256 of the file | Size alone cannot detect a same-size edit; size+SHA-256 makes a stale serve require a hash collision. One agent is the cost ceiling REQ-RTCACHE-02 promises. |
+| `RT_READ_CACHE_MAX_BYTES` | 2,097,152 bytes (2 MiB) | Measured floor: the largest document the adapter has transported is 209,953 bytes (`runtime-adapter.js:85-86`). 2 MiB ≈ 9.9 such documents — more than one review round's working set (REQ + spec + 2 reviews ≈ 4 docs). Over the cap, evict oldest-inserted entries; never refuse the read itself. |
+| `RT_REVALIDATION_RETRIES` | 2 (mirrors `RT_READ_RETRIES`) | A garbled probe reply is a transport fault; after retries are exhausted the entry is dropped and the read proceeds as a full chunked read (fail open to re-reading, per REQ-RTCACHE-01). |
 
 ## 7. Traceability
 
-_(§7)_
+| User Story | Requirements |
+|---|---|
+| US-01 | REQ-RTCACHE-01, REQ-RTCACHE-02 |
+| US-02 | REQ-RTCACHE-02, REQ-RTCACHE-05 |
+| US-03 | REQ-RTCACHE-01, REQ-RTCACHE-03, REQ-RTCACHE-04 |
+
+Roll-up recorded in `docs/requirements/traceability-matrix.md`.
