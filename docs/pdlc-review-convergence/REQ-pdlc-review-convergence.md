@@ -377,9 +377,10 @@ meanings:
 | Term | Definition |
 |---|---|
 | **blocking count** of a round | The sum of `high` + `medium`, over every reviewer whose cross-review file exists at that round, **read from the file** by `extractFileVerdict` → `parseVerdict` (M-2e), not from the agent response. A round for which any dispatched role's count cannot be read from its file has **no blocking count** — see *unavailable* below. |
-| **panel shape** of a round | The *set of reviewer role slugs whose cross-review files exist on the branch at that round* — `{software-engineer, test-engineer}` or `{verifier}` — each classified by its `REVIEW-MODE:` line (AC-3.5(a)). It is **not** the set of roles dispatched: nothing records a dispatch, and a crashed reviewer leaves no file. Two rounds have equal panel shape iff these sets are equal **and** neither is a *crashed* round (AC-2.4). |
-| **crashed** round | A round whose file set is a strict subset of the panel that opened it — one file with no `REVIEW-MODE: verification` marker, or zero files. A crashed round's panel shape is **undetermined**; it is never comparable and never a baseline (AC-2.4), and it never yields an approval (M-3d, AC-3.5(b)). |
-| **round growth** | The byte length of the reviewed document at the start of round N+1 minus its byte length at the start of round N, both read from the durable `DOC-BYTES:` anchor of AC-4.1. |
+| **panel shape** of a round | The *set of reviewer role slugs whose cross-review files exist on the branch at that round*. Exactly **two** sets are canonical: `{software-engineer, test-engineer}` (dual) and `{verifier}` (single verifier). Panel shape is read from the **role slugs alone** — every round writes them, including a round on which every reviewer filed *Needs revision*, because the slug is part of the filename the path derivation composes (M-3b). It is **not** the set of roles dispatched (nothing records a dispatch), and it does **not** turn on the `REVIEW-MODE:` marker: v1.1 defined it that way and the marker is written only into the anchor block, so a *failed* verifier round would have read as shapeless (SE F-02). Two rounds have equal panel shape iff their slug sets are equal **and** neither is a *crashed* round (AC-2.4). |
+| **crashed** round | A round whose on-disk role-slug set is **not** one of the two canonical sets — i.e. a strict subset of a canonical set (one file whose slug is `software-engineer` or `test-engineer` and no second panel file), the empty set, or any other set (e.g. `{verifier, test-engineer}`). A crashed round's panel shape is **undetermined**; it is never comparable and never a baseline (AC-2.4), and it never yields an approval (M-3d, AC-3.5(b)). The predicate is decided by the directory listing and nothing else, so it is total, computable on every round, and independent of any round's verdict. |
+| **round growth** *into* round N | The byte length of the reviewed document as round N was reviewed, minus the byte length recorded for round N−1. The **earlier** endpoint is always read from the durable `DOC-BYTES:` anchor of round N−1; the **later** endpoint is read live at the instant the decision is taken and is then persisted as round N's own anchor (AC-4.1). Only one endpoint has to be durable, which is what removes v1.1's circular dependency on files that did not yet exist. |
+| **zero-delta** round | A round N ≥ 2 whose reviewed document is byte-and-hash identical to the document reviewed at round N−1 — `DOC-BYTES(N) = DOC-BYTES(N−1)` **and** `DOC-SHA256(N) = DOC-SHA256(N−1)`. It is not a small revision; it is *no revision*, and it is a halt (AC-2.8), not a consumed round. |
 | **unavailable** | A quantity that no reader can obtain from the branch — distinct from **malformed**, which is a quantity that was read and could not be parsed. Both break AC-2's comparison chain, and the run report distinguishes them (AC-2.3, AC-2.7). |
 
 **Durability: what survives an invocation boundary.** Round 1 of cross-review found three High
@@ -392,6 +393,8 @@ stated over a row marked *in-process only* is a defect in this document.**
 |---|---|---|---|
 | Round index N | AC-1, AC-2, AC-4 | The `CROSS-REVIEW-{role}-{doc}-v{N}.md` basenames on the branch, via `deriveRoundWindow` (M-1d) | n/a — the listing is always readable |
 | Highest round reached for a document | AC-1.5 | Same basenames | Treated as 0; the window opens at round 1 |
+| **First round of the current window** (the post-reset offset) | AC-1.5(3), AC-1.1 | The `WINDOW-START: {N}` line the operator's resolved `POSTMORTEM-{phase}-{feature}.md` carries, beside its recorded `rounds {first}..{last}` window (AC-1.5(3)) | Treated as **1** — i.e. no reset has occurred and the absolute cap of AC-1.1 applies from round 1. Fail-closed: an unparseable or absent marker never widens the window |
+| **Reset consumed** (the reset is one-shot) | AC-1.5(3) | The `WINDOW-START: {N}` line itself: a reset grants exactly the window `N … N+2`, and once the branch carries a round ≥ `N+2` that reset is spent (AC-1.5(3)) | Treated as unconsumed only if `WINDOW-START:` is present and parses; otherwise no reset is in effect at all |
 | `blocking(N)` | AC-2.1 | The **count trailer inside the round's cross-review files**, required there by AC-3.4 and read by `extractFileVerdict` (M-2e) | *unavailable* — AC-2.7 |
 | Panel shape of round N | AC-2.4, AC-3.1 | The role slugs of the files at round N, plus each file's `REVIEW-MODE:` line | *crashed* — not comparable |
 | `bytes(document at start of round N)` | AC-4.1 | The `DOC-BYTES: {n}` anchor line in the round's cross-review files (AC-4.1) | growth *unmeasurable* — AC-4.5 |
@@ -481,11 +484,27 @@ branch — the state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-
    marker do not count against the budget of the window opened after it. This is the existing operator
    escape hatch (AC-1.4), stated here because it is what makes an absolute cap operable rather than a
    dead end: an operator who has addressed the finding gets a fresh window; an unattended re-invocation
-   does not. **No agent and no script ever writes `RESOLVED: yes`** — that rule is unchanged.
+   does not. **No agent and no script ever writes `RESOLVED: yes`** — that rule is unchanged;
+4. **the reset is anchored and consumed, in the POSTMORTEM, by the loop.** On the first entry that
+   observes a `RESOLVED: yes` with no `WINDOW-START:` line beneath it, the loop appends
+   `WINDOW-START: {N}` — where `N` is one past the highest round then on the branch — and that line is
+   thereafter the window's origin: the budget of 3 is counted from `N`, and rounds below `N` are
+   outside the window. A `RESOLVED: yes` that already carries a `WINDOW-START:` is **consumed** and
+   grants no further reset.
 
-The durable observable for all three clauses is the same one the loop already reads: the cross-review
-basenames on the branch, plus the POSTMORTEM's `RESOLVED:` marker. Nothing here needs a clock, a
-process identity, or a memory of a previous invocation.
+   Both halves are load-bearing. Without the anchor, nothing on the branch records *which* rounds
+   preceded the marker, so "counted from round 1" is unstated for any document that has ever been
+   reset and AC-1.1 is underivable there (SE F-05, TE F-02). Without consumption, `RESOLVED: yes` is a
+   persistent file state that re-grants a fresh window on **every** subsequent invocation — which
+   silently restores the per-invocation budget AC-1.1 exists to abolish. `WINDOW-START:` is written by
+   the loop, not by a human, and carries no authority of its own: it records where a reset the operator
+   already granted began. The prohibition in clause 3 is on writing `RESOLVED: yes`, and is untouched.
+   Receive side: two or more `WINDOW-START:` lines, or a value that is not a decimal integer ≥ 1, is
+   **fail-closed** — no reset is honoured, and the run report names the file and the value found.
+
+The durable observable for all four clauses is the same one the loop already reads: the cross-review
+basenames on the branch, plus the POSTMORTEM's `RESOLVED:` and `WINDOW-START:` lines. Nothing here
+needs a clock, a process identity, or a memory of a previous invocation.
 
 **Observability.** `MAX_REVIEW_ROUNDS === 3`; the highest `-v{N}` on the branch never exceeds 3 for a
 document with no resolved POSTMORTEM; a fourth round never dispatches a reviewer; the post-mortem
