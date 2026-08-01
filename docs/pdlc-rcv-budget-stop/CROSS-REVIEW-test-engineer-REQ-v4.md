@@ -40,6 +40,15 @@ the new torn-write paragraph.
 
 ## Questions
 
+Q-06 is answered and closed. Q-04 is carried for the third round and has stopped being optional —
+it is the cheapest fix for F-24. Q-05 is carried unchanged.
+
+| ID | Question |
+|----|---------|
+| Q-04 | *(carried from v2 and v3, still unanswered — now decides F-24)* Does the **confirmation read** of the answering line re-run steps 1–3 on the re-read region, or only check presence? The clause still says only *"the loop re-reads the file and confirms the line is present, in the region, at the end"*. Presence-only confirmation accepts a torn append whose truncated value is still well-formed (`WINDOW-START: 12` landing as `WINDOW-START: 1`), which validates, balances the counts, spends the clearance, and moves the window origin to the wrong round — silently. A confirmation that **validates** the region it just wrote catches that on the confirming entry, and would let AC-1.5(4) drop from three outcomes to two. PROPERTIES needs the answer either way, and the two produce different fixtures; the REQ now needs it to keep its own closing promise. |
+| Q-05 | *(carried from v2 and v3, unanswered)* Can a single entry both **grant** and **halt** — grant `W` = `N`, then take some other halt path before round `N` opens? If so, `H − A` still lands in {0, 1}, but the **order** of the appended `WINDOW-START:` and `HALT-REASON:` lines decides step 2's `WINDOW-RESUMED:` check on the following entry, and the document fixes the order only for lines written by *different* entries. |
+| Q-06 | **Answered.** v1.4 pins the unconfirmable-append recovery text to the shipped generic queue-reset string *"reused on this path alone"*, gives the asymmetry a reason (*"the fault is transient, nothing is hand-repairable, and step 4 has already written that row `halted`, so resetting it is the whole repair — the opposite disposition to the corrupt-region row, which forbids the same string because re-running reproduces its refusal"*), and O-10 scopes the negative controls *"for that entry class"*, so the collision I asked about cannot arise. F-25 is the residue: which **bytes** that string is. |
+
 ## Positive Observations
 
 ## Recommendation
