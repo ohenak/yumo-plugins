@@ -1515,16 +1515,36 @@ operator cannot see.
 **What a garbled range costs is a sequence, not a round.** S-17's emitter is the **loop**, so a
 deterministic defect in the render — a wrong separator, a line the dispatch never carries — recurs on
 *every* round of the phase, and the cost is stated over the sequence rather than over its first step
-(TE v8 F-03). Each such round: the verifier omits `## Disposition`, approval is refused,
-`disposition-missing` is reported, the optimizer is dispatched to address feedback that names no defect
-in the document, and a plausible response is a byte-identical revision — which is AC-2.8's zero-delta
-halt (S-11), reported against the *author* for a failure that is the loop's. The operator clears, the
-window resumes (AC-1.5(5)), the same garbled dispatch is emitted again, and the loop repeats until the
-absolute cap terminates it. Two things make that survivable and neither is an accident: the diagnostic
-reaches the operator on **consecutive** rounds under the same name, so the repetition is itself the
-signal that the defect is the loop's and not the author's; and the cap is absolute, so the sequence is
-finite. O-10 asserts **two** consecutive garbled dispatches for exactly this reason — an obligation that
-asserts only the first round is green against an implementation that never converges. Guessing is forbidden for the
+(TE v8 F-03). The sequence spans **three rounds and one operator clearance**, not two rounds, and the
+distinction is load-bearing because the middle round is not dispatched at all (SE v9 G-27, TE v9 F-03):
+
+1. **round `k`** — the garbled `REVIEW-SCOPE-ROUNDS:` line is emitted, the verifier omits
+   `## Disposition`, approval is refused and `disposition-missing` is reported. **Dispatch 1.**
+2. the optimizer is dispatched to address feedback that names no defect in the document, and a
+   plausible response is a byte-identical revision;
+3. **round `k+1` opens** — AC-2.8's round-open read fires **before** any reviewer is dispatched, so the
+   round halts on zero-delta (S-11), reported against the *author* for a failure that is the loop's.
+   **No verifier runs on this round**, so it carries no second `disposition-missing`;
+4. the operator clears; AC-1.5(5) writes `WINDOW-RESUMED:`, `W` is unchanged and round `k+1` re-opens;
+5. **round `k+1` re-opened** — the same garbled dispatch is emitted again. **Dispatch 2.**
+
+Step 5 is reachable **only if some byte of the document moved** between the two dispatches. If nothing
+changed it — and by hypothesis there is nothing in the document for the author to change — AC-2.8's
+anchors are unchanged too and step 3 fires again: halt, clear, halt, clear. So the pathology's real
+shape is **absorbing at the zero-delta halt**, which is worse than a cycle of garbled dispatches, and it
+is why O-10's fixture must supply the byte change explicitly (a cosmetic revision is the realistic model
+of a real optimizer, and it is also the input that makes the sequence progress at all).
+
+Two things make the sequence survivable and neither is an accident: the diagnostic reaches the operator
+under two **alternating** names — `disposition-missing` on the dispatched rounds and S-11 `no-revision:`
+on the rounds between them — so the alternation is itself the signal that the defect is the loop's and
+not the author's; and every iteration costs an **operator interaction**, and the operator sees the
+repeat. The bound is the operator, not a cap: `MAX_REVIEW_ROUNDS` is a per-invocation budget, **not** an
+absolute cap on a document (§4 M-1d), and AC-1.5(3) grants a fresh window on every clearance precisely
+so the escape hatch stays operable — so nothing in the mechanism makes the sequence finite by itself
+(SE v9 G-29). O-10 asserts **two** garbled dispatches across this sequence for exactly this reason — an
+obligation that asserts only the first round is green against an implementation that never converges.
+Guessing is forbidden for the
 same reason `W` is not derived here: the verifier cannot read `W`, so a fallback would be a fabricated
 scope, and a fabricated scope that happens to be right is indistinguishable from one that is wrong.
 
