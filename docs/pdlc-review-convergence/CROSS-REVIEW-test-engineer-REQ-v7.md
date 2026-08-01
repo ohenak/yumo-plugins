@@ -153,6 +153,66 @@ one per refused entry and step 3 guarantees the drift is terminal. Either way, O
 restated to match, and a bullet added for *the entry after a refusal* — that is the test neither
 reading currently asks for and it is the one that separates them.
 
+### 3.2 F-02 in full — one third of the closed enum has no exit
+
+S-16's reason enum is closed at three members, and the document is explicit that the notice is *"the
+operator's only signal that the region needs the sanctioned repair AC-1.5(4) describes"*. The repair is
+stated once:
+
+> When the run report emits S-16, the region is **human-repairable**: the operator **deletes or corrects
+> the offending line named in the report** — and nothing else — leaving `H` equal to the number of halts
+> the document has taken and `A` equal to the number of clearances already answered.
+
+That instruction is total over two of the three reasons and empty on the third:
+
+| Reason | What the report names (S-16) | Is "delete or correct the offending line" actionable? |
+|---|---|---|
+| `invalid-window-start` | the offending value | yes — one line, one edit |
+| `invalid-window-resumed` | the offending value | yes — one line, one edit |
+| `counts-mismatch` | *"the pair `H`/`A`"* — **no line** | **no** |
+
+A counts mismatch is by construction a statement about lines that are *missing* or *surplus*, not about
+a line that is wrong. Step 3 names both directions: `A > H` (surplus answers) and `A < H − 1` (*"a halt
+is recorded whose clearance no line answers, which is only reachable if a line was removed"*). Repairing
+the second — the reachable one, and the one F-01 shows the system generates by itself — means **adding**
+a `WINDOW-START:` or `WINDOW-RESUMED:` line, or **deleting** a `HALT-REASON:`. The first is neither a
+delete nor a correction of a named line, so *"and nothing else"* forbids it; the second is forbidden
+twice over, since it also breaks the same sentence's requirement that the repair leave *"`H` equal to
+the number of halts the document has taken"* — and it would falsify the invariant AC-1.4 clause 1 was
+just rewritten to guarantee. Adding an answering line is additionally the one edit the document is most
+emphatic a human never makes: §6's `WINDOW-START:` row says *"Written by the loop, **never by a
+human**; it carries no authority of its own"*.
+
+O-10 records the consequence without flagging it. The counts-mismatch bullet asks for a test asserting
+*"`W` = 1, **no** window granted on that entry **or any later one**"* — i.e. the obligation explicitly
+pins a permanent, unrecoverable halt — while the neighbouring invalid-value bullet asks for *"a later
+entry after the operator's sanctioned repair grants the window"*. Two adjacent obligations, one
+recoverable and one not, and nothing in the document says the asymmetry is deliberate.
+
+**Why it is Medium and not Low.** It is not that the operator has no move at all — there is an obvious
+one, and it is the absence of any statement about it that makes this a finding. Deleting the
+post-mortem outright restores `H = A = 0` (S-12: an absent heading is an empty region), so the phase
+halts once more, writes a fresh one-line region, and the next clearance works. That path costs one
+round-trip and is available today — I checked that nothing blocks it: `guard-harvest-before-delete.sh`
+matches only `CROSS-REVIEW` / `CODE_REVIEW` tokens (`pdlc/hooks/scripts/guard-harvest-before-delete.sh:35`,
+`if "CROSS-REVIEW" not in cmd and "CODE_REVIEW" not in cmd`), so a post-mortem deletion passes the hook
+even though the file is a harvest input. But that path is nowhere sanctioned and nowhere described, and
+it silently discards the halt history the region exists to keep. An operator who reasons from this REQ
+alone concludes the phase is bricked; an operator who guesses concludes the machine state is
+disposable, which is the opposite of what §5 says. Either way, a PROPERTIES author
+asked to prove the escape hatch is operable — which is the whole of AC-1.5(3)'s *"stated here because
+it is what makes an absolute cap operable rather than a dead end"* — cannot write a green recovery test
+for one third of the enum.
+
+**Fix, one paragraph in AC-1.5(4):** state the repair per reason. For the two value reasons, the
+existing sentence is right. For `counts-mismatch`, say what the operator does — my recommendation is
+the coarse, unambiguous one, since a counts mismatch means the machine state is no longer trustworthy:
+*"a `counts-mismatch` region is not line-repairable, because the mismatch is about lines that are
+absent; the operator's repair is to delete the `## Reset Region` section entirely (or the post-mortem
+with it), which returns the document to `H = A = 0` — the never-reset state — at the cost of one
+further halt to re-create it."* Then add the recovery leg to O-10's counts-mismatch bullet, so it no
+longer asserts a permanent halt as the specified outcome.
+
 ## 4. Mechanical fixes
 
 ## 5. Measurement Required
