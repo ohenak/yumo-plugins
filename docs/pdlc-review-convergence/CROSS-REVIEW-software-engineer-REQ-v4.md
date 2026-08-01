@@ -189,7 +189,44 @@ lines after `VERDICT:`" so the table classifies the same observations the algori
 
 ## Questions
 
+Q-01 … Q-06 from v2/v3 are **closed** by v1.2 and are not restated. Three new, each the fastest route
+into the finding beside it.
+
+| ID | Question |
+|----|---------|
+| Q-07 | AC-2.2 was added to answer TE Q-02, and it answers it by asserting co-occurrence; AC-4.7's row 2 was added to answer TE F-04, and it denies co-occurrence. Which is the intended rule — and if S-3 and S-4 do co-occur, is the POSTMORTEM's reason line the same `; `-joined string as the report cell, or only the first notice? (G-01) |
+| Q-08 | On an AC-2.8 halt, does the AC-4.7 table gain a row for the undispatched round N, and if so what do its four non-`notice` cells contain? (G-02) |
+| Q-09 | Is `DOC-SHA256:` computed over the document as read, or over `canonicaliseForDigest`'s output? The REQ asserts the first and prescribes reuse of a function that does the second. (G-03) |
+
 ## Positive Observations
+
+- **Every open finding from rounds 1–3 is closed, and closed at the mechanism rather than at the
+  wording.** The `appendRoundAnchors` / `appendApprovalAnchors` split (AC-4.1, §5's two-writer table) is
+  the correct shape of the fix for F-01, and separating the *read* instant from the *persist* instant is
+  a better answer than the one I asked for — it makes the anchor describe the bytes the reviewers were
+  actually given, which is the property that matters.
+- **F-02 is closed twice, independently.** Restating panel shape over the slug set *and* widening
+  AC-3.5(a)'s Given means either fix alone would suffice. AC-2.4's "why comparability is stated over
+  slugs" paragraph explains why the redundancy is deliberate. That is the right posture for a
+  fail-closed discriminator.
+- **AC-2.8 exceeds what F-08 asked for.** I filed the empty round as Low/Process and expected it to land
+  in the run report. Making it a first-class halt with its own reason, its own anchor, a stated
+  fail-open direction ("a missing anchor is evidence about the writer, not about the author, and must
+  never manufacture a halt"), and an R-8 that separates the symptom from the cause and binds the cause
+  to an existing spike — that is a materially better answer than the finding.
+- **R-5's new sentence about failure direction** — a verifier that ignores AC-3.2(2) writes a *higher*
+  count, so AC-2 halts earlier, never later — is the single most useful line added in v1.2. It converts
+  an unenforceable clause into one whose worst case is bounded and stated.
+- **Three restated existing-code claims verify.** At `9486c81`: `scanLines` is at `:569` and the JSDoc
+  quoting *"a quoted example anchor cannot fabricate an ambiguity"* is at `:1907-1910`, exactly as
+  AC-6.4's new exemption cites it; `tier1ApprovalRecord` is a plain declaration at `:2478` and
+  `tier2ApprovalRecord` is `async` at `:2528`, exactly as M-3d now says. The citation discipline is
+  holding under revision, which is the thing that usually breaks first.
+- **AC-6.4's exemption 2 is a real catch and correctly sited.** Without it the document is a permanent
+  counter-example to its own checker, and the argument for putting the exemption at REQ altitude
+  ("it decides the checker's output on a real corpus") is right.
+- **The header's baseline paragraph now says the baseline is a fixed ancestor and how to navigate from a
+  later commit.** That removes the whole class of "the line moved" findings from future rounds.
 
 ## Mechanical fixes
 
