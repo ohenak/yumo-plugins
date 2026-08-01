@@ -993,24 +993,38 @@ paying for exactly once.
 
 **AC-3.1 — Panel by round.**
 *Who:* the review loop. *Given:* a review-loop phase other than Phase CR. *When:* it dispatches
-round N. *Then:* round 1 dispatches the **full reviewer panel** (today: `se-review` and `te-review`,
-in parallel, as now), and every round N ≥ 2 dispatches a **single verifier** — unless AC-4 classified
+round N. *Then:* **round `W`** — the first round of the current window, which is round 1 when no reset
+has been granted — dispatches the **full reviewer panel** (today: `se-review` and `te-review`, in
+parallel, as now), and every round `N > W` dispatches a **single verifier** — unless AC-4 classified
 **the growth into round N** as `new-mechanism` or `unmeasurable`, in which case round N dispatches the
 full panel again.
 
+**The rule is over windows, not over round indices**, and v1.3's *"every round N ≥ 2"* was not. The
+first round of a reset window is `N ≥ 2` by construction (clause 4 sets `W` past the highest existing
+round), yet §5 and AC-2.1 both say such a round has no comparable predecessor *"exactly as round 1 has
+none"* — so v1.3 said both that it is like round 1 and that it is like round 5. Composed with AC-2.8's
+row 4, which deliberately does **not** evaluate the zero-delta test on a window's first round, the
+consequence was concrete: an operator who resets **without revising** got growth 0 ⇒ `incremental` ⇒ a
+single verifier, and that one agent could approve the byte-identical document a two-reviewer panel had
+just rejected, with the one mechanism that detects "the document did not change" switched off for that
+round (TE v5 F-03). Scoping the panel rule to the window closes it outright, and costs one round of one
+panel per operator reset — a price an operator who has just spent their escape hatch has already
+signalled willingness to pay.
+
 The classified revision is the one round N's reviewers are about to read, not the one round N−1 already
 read: AC-4.1 measures it from the same round-open read that dispatches the round, so the escalation and
-the revision that triggers it belong to the same round (TE v4 F-01). Round 1 is the only round with no
-classification, and it is dual regardless, so the exception is total over rounds ≥ 2.
+the revision that triggers it belong to the same round (TE v4 F-01). Round `W` is the only round with no
+classification, and it is dual regardless, so the exception is total over rounds `N > W`.
 
 **AC-3.2 — What the verifier is asked to do, and the artifact that proves it did.**
-*Who:* the verifier. *Given:* round N ≥ 2 on a document whose round N−1 findings have been addressed.
-*When:* it reviews. *Then:* it works in **disposition-check mode**:
-1. it verifies that **every** prior blocking finding from every prior round is resolved, and states a
-   per-finding disposition **in a section headed exactly `## Disposition` (S-8)**, one row per prior
-   blocking finding, carrying that finding's **id exactly as the prior round wrote it** (`F-03`), its
-   round, its role, and one disposition from the closed set `{resolved, partially-resolved,
-   not-resolved, withdrawn}`;
+*Who:* the verifier. *Given:* a round `N > W` — a round of the current window that is not its first —
+on a document whose round N−1 findings have been addressed. *When:* it reviews. *Then:* it works in
+**disposition-check mode**:
+1. it verifies that **every** prior blocking finding **of the current window** is resolved, and states a
+   per-finding disposition **in a section headed exactly `## Disposition` (S-8)**, one row per such
+   finding, carrying that finding's **id exactly as the prior round wrote it** (`F-03`), its round, its
+   role, and one disposition from the closed set `{resolved, partially-resolved, not-resolved,
+   withdrawn}`;
 2. it may raise a **new blocking finding only in text that adds new mechanism** — a clause that
    changes what the system does. Text that restates, tightens, retracts, cites, or records a risk is
    not new mechanism and is not a place a new blocking finding may be raised. **Every blocking finding
@@ -1032,6 +1046,15 @@ classification, and it is dual regardless, so the exception is total over rounds
 Restriction 2 is the direct answer to P-1. It is a rule about *where* a blocking finding may be
 raised, not about what is true; a verifier that believes a non-mechanism clause is wrong records it as
 Low or as a Measurement Required item.
+
+**Why *"of the current window"*, and why no verifier is ever asked to disposition a discharged
+finding.** A window's first round is a full-panel cold read (AC-3.1), so no verifier ever opens on a
+round `N = W`, and the findings of a *previous* window were not addressed by an optimizer episode at
+all — the operator discharged them by writing `RESOLVED: yes`. v1.3's *"every prior blocking finding
+from every prior round"* therefore asked the first verifier after a reset for rows whose content is
+underivable, on a precondition (*"whose round N−1 findings have been addressed"*) that is false there
+(TE v5 F-03). Scoping both the *Given* and clause 1 to the window makes the required content derivable
+from the branch on every round on which a verifier runs at all.
 
 **Both clauses now have an oracle, because round 1 of cross-review established that neither did.** As
 written in v1.0, a verifier that obeyed clause 2 and one that ignored it produced byte-identical
