@@ -860,12 +860,20 @@ branch — the state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-
      halts this document has taken**;
    - the operator's `RESOLVED:` marker is **left in place**, unstripped, so `checkPostmortem` still reads
      `resolved` on the next entry and the clearance is genuinely available to it;
-   - the file is **byte-unchanged**. The only effect of the entry is the S-16 notice in the run report,
-     on the row AC-4.7's *no-round-admitted* paragraph fixes;
-   - the phase is **refused, not halted** — the same shape as step G's refusal of an unresolved
-     post-mortem, which likewise declines to enter without recording an event. `H − A` is therefore
-     stable across refusals, and the reason S-16 reports on the second entry is the reason it reported on
-     the first.
+   - the file is **byte-unchanged**. *Scoped to the post-mortem file*, the only effect of the entry is
+     the S-16 notice in the run report, on the row AC-4.7's *no-round-admitted* paragraph fixes. It is
+     **not** a claim that the invocation is otherwise unaffected — see the next bullet (SE v8 G-23);
+   - the phase is **refused, not halted** — a *phase refusal* in §5's sense, the same shape as step G's
+     refusal of an unresolved post-mortem, which likewise declines to enter without recording an event
+     in the accounting. *Returns* means **the phase does not run and the invocation terminates on step
+     G's path**: exactly as there, a ❌ phase row is recorded and the pipeline stops, and on the shipped
+     `orchestrate-dev` halt path the feature's `docs/_queue/QUEUE.md` row is rewritten to `halted` and
+     committed. That is the intended outcome — the region needs an operator, so an unattended queue must
+     stop rather than re-pick the feature and refuse again once per iteration — and it is stated here
+     because a *return* read literally would let the pipeline advance past an unentered review phase
+     (SE v8 G-23, TE v8 MR-08). What the refusal does **not** do is touch the post-mortem or the
+     accounting: `H − A` is stable across refusals, and the reason S-16 reports on the second entry is
+     the reason it reported on the first.
 
    This is the reading that makes the paragraph above true as written, and it is the one O-10's
    *"the file is byte-unchanged apart from the report"* assertion is satisfiable against.
@@ -879,13 +887,20 @@ branch — the state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-
 
    | Reason | What the notice names | The sanctioned repair |
    |---|---|---|
-   | `invalid-window-start` | the offending `WINDOW-START:` value | delete or correct **that line** — and nothing else |
-   | `invalid-window-resumed` | the offending `WINDOW-RESUMED:` value | delete or correct **that line** — and nothing else |
+   | `invalid-window-start` | the offending `WINDOW-START:` line | **correct that line** — preferred, always safe. Delete it only when `H − A = 0` |
+   | `invalid-window-resumed` | the offending `WINDOW-RESUMED:` line | **correct that line** — preferred, always safe. Delete it only when `H − A = 0` |
    | `counts-mismatch` | the pair `H`/`A` — **no line** | delete the **whole `## Reset Region` section**, heading included |
 
+   **Prefer correcting to deleting, and the notice carries the number that decides it.** Deleting an
+   answering line decrements `A`, so it raises `H − A` by one: on a region already at `H − A = 1` — e.g.
+   `H = 2`, `A = 1` with `WINDOW-START: 99` — the delete branch lands at `H − A = 2`, and the next entry
+   refuses with a **different** reason, `counts-mismatch`, whose only repair is the destructive
+   whole-section deletion. Correcting the value is safe at every `H − A`; deleting is safe exactly when
+   `H − A = 0` beforehand, which the operator reads straight off S-16's `(H={h}, A={a})` (SE v8 G-24).
    A value repair leaves `H` equal to the number of halts the document has taken and `A` equal to the
    number of clearances already answered; any repair that leaves `H − A ∉ {0, 1}` is itself rejected by
-   the counts check below, so a mis-repair fails closed rather than banking windows.
+   the counts check below, so a mis-repair fails closed rather than banking windows — it costs a round of
+   operator attention, not state.
 
    **Why `counts-mismatch` is repaired by deletion and not by editing a line.** A counts mismatch is by
    construction a statement about lines that are *missing* or *surplus*, so there is no offending line to
@@ -932,11 +947,19 @@ branch — the state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-
       region. Both are corruption of the counts, not of a value;
    4. **if any line's value fails step 2, or the counts fail step 3 ⇒ `W` = 1, fail-closed**, no reset is
       honoured, **no answering line is written and the clearance is not consumed**, and the run report
-      emits `reset-region-corrupt: {reason}` (S-16) naming the file and, per reason, the offending value
-      or the pair `H`/`A`. A corrupt region is never partially believed. **The entry then refuses the
+      emits `reset-region-corrupt: {reason}` (S-16) naming the file and, per reason, the offending
+      **line** or the pair `H`/`A`. **Exactly one S-16 notice is emitted, whatever the fault count**:
+      when more than one check fails — two invalid answering lines, or an invalid value *and*
+      `H − A = 2` — the reported `{reason}` is the one belonging to the **first failing line in document
+      order**, and `counts-mismatch` is reported only when every line passes step 2. Two S-16 notices
+      never co-occur in AC-4.7's `; `-joined cell, so precedence row 8's single slot is always enough
+      (SE v8 G-21, G-22). A corrupt region is never partially believed. **The entry then refuses the
       phase and returns** — it takes no halt, writes nothing to the post-mortem and leaves the
       `RESOLVED:` marker in place, per the *refusal is not a halt* paragraph above (SE v6 G-18,
-      TE v6 F-01);
+      TE v6 F-01). The refusal is **unconditional**: step 4 fires whether or not the branch has rounds
+      left in an already-granted window. On a mid-window branch the outcome is unchanged either way —
+      `W` falls back to 1, which admits no rounds, and the entry would have halted on the budget path —
+      so the widening costs nothing and keeps the refusal decidable from the region alone (TE v8 Q-13);
    5. otherwise `W` = the greatest `WINDOW-START:` value present, or **1** if there is none.
 
    **`H − A ≤ 1` is the invariant clause 4's "exactly one answering line" relies on**, and step 3 is
