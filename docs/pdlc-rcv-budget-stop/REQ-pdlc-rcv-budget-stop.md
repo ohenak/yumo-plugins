@@ -332,14 +332,10 @@ state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-)entered. *Then
    keeps the intent — origin unmoved, spent rounds spent, no window charged — while restoring `A = H`, and gives the S-11 path a **positive artifact** to assert on. Same confirmation
    obligation and fail-closed disposition as `WINDOW-START:`.
 
-   **Row B — the report row of a step-4 refusal, in two variants.** The entry opens no round and
-   dispatches nobody, but still produces one row (catalogue §3), because the operator must be told why
-   the invocation did nothing. `round` = **one past the highest round of this document type on the
-   branch**, from the listing (`deriveRoundWindow`), **never** from `W` (1 on the validation-failure
-   variant, unchanged on the unconfirmable-append one — neither is this cell); `panel-shape`,
-   `blocking`, `growth-bytes`, `classification` **empty**; `notice` = **S-16 alone** on the
-   **validation-failure** variant and **empty** on the **unconfirmable-append** one, with **no S-4
-   reason** on either, no halt having been taken. The variants are told apart by §6's two ❌ texts.
+   **Row B — the report row of a refusing entry, in two variants** — is `REQ-RCV-07` AC-7.6's, stated
+   cell by cell there as catalogue §3 requires of the REQ owning the condition. It is **row C's
+   complement**: B's entry takes no halt, C's takes one, so B never carries S-4 and C never carries
+   S-16.
 
 All five clauses' durable observables are §4.1's, all already read by the loop. Nothing here needs a clock, a process identity, or a memory of a previous invocation.
 
@@ -349,23 +345,20 @@ called 0 times** and no new cross-review file appears; the post-mortem carries t
 ## 6. Declared thresholds
 
 The shared table is `docs/_constraints/pdlc-rcv-baseline.md` §3. This REQ **owns** six of its rows
-and reads two more; it changes none of the others, and a threshold used here and absent there is a defect. **Four rows below sit outside baseline §3's scope deliberately, not by defect:**
-`budget-exhausted:` is a render fixed by catalogue §2, and the three refusal-render rows are
-non-catalogue operator strings this REQ alone owns — each with a registered authority, the catalogue
-or this table.
+and reads two more; it changes none of the others, and a threshold used here and absent there is a
+defect. **One row below sits outside baseline §3's scope deliberately, not by defect:**
+`budget-exhausted:` is a render fixed by catalogue §2. **The three refusal-render rows v1.6 carried
+here are `REQ-RCV-07` §6's and catalogue §4's** — this REQ now mints no operator string of its own.
 
 | Name | Default | Owned / read | Note |
 |---|---|---|---|
 | `MAX_REVIEW_ROUNDS` | **3** (was 5) | owned | The one constant AC-1.2 changes. AC-1.1 makes it absolute per document, not per invocation. |
 | `## Reset Region` | that exact heading | owned | S-12. Created by the first halt of a phase, preserved by every later one (AC-1.4 clause 1). |
 | `HALT-REASON: {value}` | one line per halt, appended at the end of the region; `{value}` the `; `-joined render in the catalogue §3 precedence order | owned | S-15. `H` is exactly the number of halts taken. |
-| `WINDOW-START: {N}` | `{N}` a decimal integer ≥ 1 | owned | S-13. Written by the loop, **never authored by a human**. Scoped to *authoring*, so it exempts AC-1.5(4)'s two sanctioned repairs. **Deleting a single answering line is forbidden at every `H − A`**, because it lowers `A` alone — save for act 1 of the unconfirmable-append recovery, which removes a line that answered nothing (AC-1.5(4)). |
+| `WINDOW-START: {N}` | `{N}` a decimal integer ≥ 1 | owned | S-13. Written by the loop, **never authored by a human**. The prohibition is scoped to *authoring*, which is what exempts `REQ-RCV-07` AC-7.4's sanctioned repairs and AC-7.5's act 1. **Deleting a single answering line is forbidden at every `H − A`**, because it lowers `A` alone (AC-7.4). |
 | `WINDOW-RESUMED: {W}` | `{W}` a decimal integer ≥ 1 equal to the origin then in effect | owned | S-14. Answers a clearance without moving the origin. |
-| `reset-region-corrupt: …` | the render fixed in catalogue §2's S-16 row, character for character, and **not repeated elsewhere** | owned | S-16. One notice per entry whatever the fault count. |
+| `reset-region-corrupt: …` | the render fixed in catalogue §2's S-16 row, character for character, and **not repeated elsewhere** | owned | S-16. One notice per entry whatever the fault count. AC-1.5(4) fixes *when* it is emitted; its sole emitter and its `{reason}` selection are `REQ-RCV-07` AC-7.1 step 4's. |
 | `budget-exhausted: …` | the render fixed in catalogue §2's S-4 row | owned | Rendered from `W` and the constant: a clause that hard-codes `rounds 1..3 of 3` is a defect. |
-| Refusal phase-row text | `Refused — reset region corrupt at {path} ({reason})` | owned | The ❌ row of a step-4 refusal. **Not a catalogue id** — an operator-facing render of S-16, distinct from step G's `Refused — unresolved POSTMORTEM at …` (AC-1.5(4)). `postmortemStatus` is **`written`** here, never `none` or `unresolved`, so the shipped `No POSTMORTEM was written.` line (`orchestrate-dev.js:4922`) does **not** appear beside this row. |
-| Refusal recovery text | names the sanctioned repair for `{reason}` (AC-1.5(4)'s repair table) | owned | The shipped generic (AC-1.5(4)'s pinned bytes) is **suppressed**, not substituted: it is an unguarded emit firing on every halt class, so suppressing it on the two row-B variants is a stated change to shipped behaviour (O-6). |
-| Unconfirmed-append text | `Refused — answering line unconfirmed at {path}` — `{path}` the same repo-root-relative post-mortem path S-16 fixes | owned | The ❌ row of row B's **unconfirmable-append** variant (AC-1.5(4)), whose recovery text is AC-1.5(4)'s **two acts** in order, the shipped generic being suppressed here too, and `postmortemStatus` as that criterion fixes it for both variants. Not a catalogue id. |
 | `no-revision: …` / `fixed-point: …` | as the catalogue fixes them | **read only** | S-11 and S-3, emitted by `pdlc-rcv-fixed-point-stop` (X-05). AC-1.5(5) reads the **leading** reason of the last `HALT-REASON:` line; this REQ emits neither and may not change their grammar. |
 
 ## 7. Non-goals and out of scope
