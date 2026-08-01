@@ -260,6 +260,37 @@ state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-)entered. *Then
    one past the highest round then on the branch and becomes the origin `W`: the budget of 3 is counted from `W`, and rounds below `W` are outside the window. When `A = H` every halt so
    far has been answered and the loop writes nothing and grants nothing.
 
+   **"The highest round on the branch" always means: of the document type under review.** Every such
+   phrase in this REQ — clause 2's start, this clause's `N`, step 2's range check, row B's and row C's
+   `round` cell — is taken over the basenames `deriveRoundWindow` already filters by `docType`
+   (M-1d), never over the whole directory listing. A feature directory holds cross-reviews for several
+   document types at once, and the two readings differ on a constructible fixture (a Phase F region
+   carrying `WINDOW-START: 4` with two FSPEC rounds and five REQ rounds: doc-type-scoped ⇒ invalid ⇒
+   permanent refusal; whole-listing ⇒ granted). One reading has to be named because it decides a
+   refusal, and it is the doc-type-scoped one, because a window is a property of a document.
+
+   **The answering line is written, and confirmed, before the window opens.** The append is the write
+   that makes `A = H`, and it is the *sole* mechanism that keeps the clearance one-shot; a lost append
+   re-grants a fresh window on every subsequent invocation, which is exactly the fail-open the whole
+   criterion exists to close, reachable with no hand-edit. It therefore carries the **same confirmation
+   obligation AC-1.4 puts on the post-mortem write**: the loop re-reads the file and confirms the line
+   is present, in the region, at the end, before any round of that entry is dispatched. The ordering is
+   stated, not left to TSPEC, and the **fail-closed disposition when the confirmation fails** is:
+   **no window is opened** — `W` keeps the value it had before this entry — no round is dispatched, the
+   entry **refuses the phase** on the same path as step 4's refusal, and the failure is reported through
+   the channel O-5 names for a lost or unwritable region. It mints **no new catalogue id and no new
+   S-16 reason** (that enum is closed at three), because an unconfirmable write is an IO fault of the
+   loop, not a state of the region. The disposition is safe in both directions: if the line did land,
+   `A = H` and the next entry grants nothing; if it did not, the next entry re-observes the same
+   unconsumed clearance and grants the one window that was paid for — never two.
+
+   **Consequence, stated because an operator will meet it:** an invocation that confirms the answering
+   line and then dies before dispatching round `W` has **spent the clearance** — `A = H` — while the
+   window at `N` is intact and usable. The next entry opens no new window and needs none: it finds
+   `W = N` with all three rounds unspent and runs them. That is the intended reading of a stall-killed
+   dispatch, and it is why the line is written first: the alternative — write it last — loses the
+   record of a window that has already been *used*, and re-grants it.
+
    **Answering lines are appended, for the same reason `HALT-REASON:` lines are** — step 2's validation is stated over what comes *before* each line, so it is order-sensitive. Under a
    prepending implementation a `WINDOW-RESUMED: 4` can land ahead of the `WINDOW-START: 4` it answers, which fails step 2 ⇒ `W = 1` for the rest of the document's life, since AC-1.4 clause
    1 preserves the region verbatim on every later halt. That failure is closed but **absorbing**, and no clearance repairs it.
