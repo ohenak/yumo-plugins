@@ -163,6 +163,18 @@ stated over exactly this case (*"on a mid-window refusal this is also the round 
 
 ## Questions
 
+Q-19, Q-20 and Q-21 from v8 are **closed** by v1.7 — one S-16 per entry naming the first failing line;
+the invocation terminates on step G's path and the queue row becomes `halted`; and the repair table
+prefers *correct*. Three new, each the shortest route into the finding beside it, plus one that is not a
+finding.
+
+| ID | Question |
+|----|---------|
+| Q-22 | Region `H = 1`, `A = 1`, `WINDOW-START: 99`, `RESOLVED: yes` on disk. The notice reads `invalid-window-start (H=1, A=1)`, so the table licenses **delete**. After the delete, does the next entry grant a window — and if so, which halt is that window's clearance answering? (G-26) |
+| Q-23 | O-10's garbled-range fixture: on which round does the second `disposition-missing` land, given that the round carrying the byte-identical document is not dispatched at all — and what changes the bytes so that round ever re-opens with a dispatch? (G-27) |
+| Q-24 | A branch whose highest round is 2, with a corrupt region and a fresh `RESOLVED: yes`. Does the entry refuse, or does it open round 3? Both answers are stated in v1.7 — step 4 says `W = 1` admits no rounds, row B says a mid-window refusal has a round that would have opened. (G-28) |
+| Q-25 | Not a finding, asked so the answer is on the record before FSPEC: after a **phase refusal**, the only durable artifacts are the `halted` queue row and the unchanged post-mortem — the S-16 diagnosis lives in the run report, whose destination O-8 defers to TSPEC. Is re-invoking (and getting the same refusal and the same notice) the intended way for an operator to recover the diagnosis, or should O-8's report destination be constrained for this path? |
+
 ## Positive Observations
 
 ## Mechanical fixes
