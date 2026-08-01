@@ -23,7 +23,7 @@ frontmatter is the pickup gate; the `Status` cell tracks lifecycle.
 
 | Order | Status | Feature | REQ Path | Depends-On |
 |-------|--------|---------|----------|------------|
-| 0 | halted | pdlc-review-convergence | docs/pdlc-review-convergence/REQ-pdlc-review-convergence.md | pdlc-review-loop-hardening |
+| 0 | in-progress | pdlc-review-convergence | docs/pdlc-review-convergence/REQ-pdlc-review-convergence.md | pdlc-review-loop-hardening |
 | 2 | pending | pdlc-merge-phase | docs/pdlc-merge-phase/REQ-pdlc-merge-phase.md | pdlc-workflow-distribution |
 | 3 | pending | pdlc-advisory-tier | docs/pdlc-advisory-tier/REQ-pdlc-advisory-tier.md | pdlc-merge-phase |
 | 4 | pending | pdlc-consolidation-agent | docs/pdlc-consolidation-agent/REQ-pdlc-consolidation-agent.md | pdlc-workflow-distribution, pdlc-advisory-tier |
