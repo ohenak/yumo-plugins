@@ -221,7 +221,26 @@ literal.
 
 ## 4. Mechanical fixes
 
+Reported per AC-6.5 as a fix list, not as blocking findings; excluded from the counts below. MF-04 …
+MF-07 of v4 are all applied and are not carried.
+
+| # | Location | Issue | Fix |
+|---|---|---|---|
+| MF-08 | §5, *current window* | *"The rounds admitted by AC-1 **since the last operator reset**"* mis-describes the S-11 case: after an S-11 clearance the last operator reset is that clearance, and `W` is explicitly **unchanged** (AC-1.5(5)). | *"since the last **granted** window"*, or *"the window whose origin is `W`"*. |
+| MF-09 | AC-1.5(4) | *"On the **first entry** that observes `R > S`"* — "first entry" is not an observable; there is no record of which entry is first, and the condition `R > S` is the whole state. The word invites an implementer to look for an entry counter that does not exist. | Drop "first": *"On any entry that observes `R > S`"*. |
+| MF-10 | AC-2.6, table | The *When* column now reads *"the growth into round 2 and into round 3 both exceed 12,000"* — correct under v1.3's boundary — but the row for `dual, dual, verifier` says *"the growth into round 2 was large, into round 3 small"*, which under the new boundary makes round 2 dual **because** of round 2's own growth. That is right; the table's lead-in sentence above it still speaks of *"round N−1's revision"*. | Restate the lead-in over "the growth into round N", as AC-3.1 now does. |
+| MF-11 | §10.8, `TE MF-04` row | *"AC-4.7 precedence row 7 — 'last of the seven', not 'always last'"* — the row is correct; §10.7's amended `TE F-04` row says *"six rows in v1.2, seven since v1.3"*, which is also correct. Nothing to fix in either; noting only that the two rows are the only place the row count is stated twice, so a future split must touch both. | None required — a maintenance note. |
+
 ## 5. Measurement Required
+
+Filed under AC-5.2's convention. Non-blocking; excluded from the counts below. MR-01 and MR-02 remain
+bound to `docs/pdlc-runtime-measurement-spike/REQ-pdlc-runtime-measurement-spike.md`.
+
+| # | Fact to measure | How | What it would settle |
+|---|---|---|---|
+| MR-03 | *(carried, unchanged)* Does an append to a cross-review file that a reviewer agent has just written reliably land, and is the appended byte visible to the next read in the same invocation? | Append a marker line to a cross-review file immediately after the reviewer dispatch returns, in one throwaway phase, and read it back. | Whether `appendRoundAnchors` (AC-4.1) can share `appendApprovalAnchors`'s append seam. |
+| MR-04 | *(carried, unchanged)* Does the halt path's write of `POSTMORTEM-{phase}-{feature}.md` overwrite or append when the file already exists? | Read the existing writer at the Citation baseline and note which seam it uses. | Which of AC-1.4's preservation implementations is cheapest. The REQ correctly declines to wait on it. |
+| MR-05 | **New.** Does an agent dispatched with a `Write {path}` prompt, given a preservation clause, reliably preserve an arbitrary region of an existing file — and does the loop's `_checkFile` confirmation seam expose enough of the written bytes to verify that it did? | One throwaway phase: write a post-mortem containing three marker lines, re-dispatch the same prompt with AC-1.4's clause, and diff. | Whether O-5's *"confirms the reset region survived"* is implementable as a confirmation at all, or whether AC-1.4's obligation has to be discharged by a deterministic script write rather than by an agent prompt. F-01 and F-02 both assume the region survives; if it does not survive reliably, the whole `R`/`S` accounting is built on a datum the pipeline can silently lose. |
 
 ## 6. Questions
 
