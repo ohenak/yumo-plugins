@@ -283,4 +283,58 @@ in a sentence and neither blocking.
 
 ## 8. Recommendation
 
+**Needs revision**
+
+Mandatory per the approval rules: one High and two Medium findings are open. **All three round-6
+findings are resolved**; every open finding is new and lies in text this revision added.
+
+What must change before this document can be approved:
+
+1. **F-01** — state what the entry does after AC-1.5(4) refuses a clearance for corruption. As written,
+   the entry is admitted, halts on the budget path, appends a `HALT-REASON:` and strips the marker, so
+   *"an invalid region is inert"* and *"the operator's clearance survives"* are both false, `H − A`
+   ratchets to 2, and the sanctioned repair is then rejected by the new step 3 — permanently. My
+   recommendation is that a corrupt-region refusal **refuses the phase without halting**, exactly as
+   step G refuses an unresolved post-mortem. O-10 bullet 3 must be restated to match: as written it
+   asserts *"the file is byte-unchanged apart from the report"*, which no conformant implementation can
+   satisfy.
+2. **F-02** — state the sanctioned repair for `counts-mismatch`. The existing instruction (*"delete or
+   correct the offending line named in the report"*) is empty for that reason, because the report names
+   no line and the repair requires adding or removing one — both forbidden by the same sentence. O-10's
+   counts-mismatch bullet currently specifies a permanent, unrecoverable halt as the expected outcome.
+3. **F-03** — give the verifier's dispatched round range the treatment this document gives every other
+   boundary-crossing value: a fixed rendering, a catalogue id, and an AC-level statement of what a
+   verifier does on an absent or unparseable range (O-9(c)'s *"reports the missing input"* is an FSPEC
+   obligation with no report slot, no notice id and no loop-side response). AC-3.2's completeness check
+   is an approval gate, so an unstated receive side here refuses approval for the wrong reason.
+
+F-04 is Low and may be taken as mechanical, though I would rather §5's definitions and AC-2.7's rows
+agreed than that a reader had to know which wins. MF-16 … MF-19, MR-07 and Q-11/Q-12 are non-blocking
+and contribute nothing to the counts.
+
+Nothing here contests user need, scope, priority or phasing — that remains settled and out of scope.
+Nor do I contest any mechanism v1.5 introduces: the every-halt region rule, the counts check, the
+append rule, the dispatched range and AC-2.7 row 3 are all correct, and two of them are better than the
+wording I proposed. F-01 and F-02 are the same shape as my round-6 findings — a new branch stated
+without re-tracing the path the system takes after it — and F-03 is the same shape as my round-5 F-06
+and round-6 F-02: a new value crossing a component boundary without a receive side.
+
+**Trajectory note (self-applied, per the preamble's fixed-point rule).** My own blocking counts (High +
+Medium): round 1 — 7, round 2 — 4, round 3 — 5, round 4 — 4, round 5 — 6, round 6 — 2, round 7 — **3**.
+Under AC-2.1 that is a **rise** (3 ≥ 2) on a comparable, same-shape (full-panel) consecutive pair, so
+the rule this REQ specifies **would fire** on this round — and I say so plainly rather than shading a
+finding down to avoid it, because a reviewer who tunes their counts to the mechanism they are reviewing
+is the exact failure R-9 warns about. Two things temper what the number means, and both belong in the
+run report rather than in the count: **3 of 3 round-6 findings are discharged, 0 carried**, for the
+fourth consecutive round; and the growth into this round (+31,745 bytes) is `new-mechanism`, so the
+document under review is materially a different one, which is why AC-2.4's same-shape requirement is
+not the whole of comparability. The honest summary is the one the count alone cannot give: the
+mechanisms are converged and the *edges* are not, and the edges are getting narrower each round —
+round 5 found a free window, round 6 found a swallowed clearance, round 7 finds a swallowed clearance
+one invocation later. That is convergence, but it is convergence at one hop per round, and the next
+revision should re-trace the refusal path end to end rather than patch the sentence I quoted.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 2, "low": 1}
