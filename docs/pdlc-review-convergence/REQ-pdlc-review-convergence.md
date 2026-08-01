@@ -380,7 +380,7 @@ meanings:
 | **blocking count** of a round | The sum of `high` + `medium`, over every reviewer whose cross-review file exists at that round, **read from the file** by `extractFileVerdict` → `parseVerdict` (M-2e), not from the agent response. A round for which any dispatched role's count cannot be read from its file has **no blocking count** — see *unavailable* below. |
 | **panel shape** of a round | The *set of reviewer role slugs whose cross-review files exist on the branch at that round*. Exactly **two** sets are canonical: `{software-engineer, test-engineer}` (dual) and `{verifier}` (single verifier). Panel shape is read from the **role slugs alone** — every round writes them, including a round on which every reviewer filed *Needs revision*, because the slug is part of the filename the path derivation composes (M-3b). It is **not** the set of roles dispatched (nothing records a dispatch), and it does **not** turn on the `REVIEW-MODE:` marker: v1.1 defined it that way and the marker is written only into the anchor block, so a *failed* verifier round would have read as shapeless (SE F-02). Two rounds have equal panel shape iff their slug sets are equal **and** neither is a *crashed* round (AC-2.4). |
 | **crashed** round | A round whose on-disk role-slug set is **not** one of the two canonical sets — i.e. a strict subset of a canonical set (one file whose slug is `software-engineer` or `test-engineer` and no second panel file), the empty set, or any other set (e.g. `{verifier, test-engineer}`). A crashed round's panel shape is **undetermined**; it is never comparable and never a baseline (AC-2.4), and it never yields an approval (M-3d, AC-3.5(b)). The predicate is decided by the directory listing and nothing else, so it is total, computable on every round, and independent of any round's verdict. |
-| **round growth** *into* round N | The byte length of the reviewed document as round N was reviewed, minus the byte length recorded for round N−1. The **earlier** endpoint is always read from the durable `DOC-BYTES:` anchor of round N−1; the **later** endpoint is read live at the instant the decision is taken and is then persisted as round N's own anchor (AC-4.1). Only one endpoint has to be durable, which is what removes v1.1's circular dependency on files that did not yet exist. |
+| **round growth** *into* round N | `DOC-BYTES(N) − DOC-BYTES(N−1)` — the byte length of the reviewed document as round N's reviewers were given it, minus the same quantity for round N−1, both read from the durable anchors of AC-4.1. **Both endpoints are in the past** when the panel for round N+1 is selected, which is what removes v1.1's circular dependency on files that did not yet exist. |
 | **zero-delta** round | A round N ≥ 2 whose reviewed document is byte-and-hash identical to the document reviewed at round N−1 — `DOC-BYTES(N) = DOC-BYTES(N−1)` **and** `DOC-SHA256(N) = DOC-SHA256(N−1)`. It is not a small revision; it is *no revision*, and it is a halt (AC-2.8), not a consumed round. |
 | **unavailable** | A quantity that no reader can obtain from the branch — distinct from **malformed**, which is a quantity that was read and could not be parsed. Both break AC-2's comparison chain, and the run report distinguishes them (AC-2.3, AC-2.7). |
 
@@ -938,13 +938,23 @@ round's reviewers were actually given, so it must be read before they are dispat
 do not exist until they return, so it cannot be written until after. v1.1 collapsed the two into
 "when round N is opened", which asked for a write into files that did not yet exist (SE F-01, TE F-01).
 
-**The writer runs on every round.** `appendApprovalAnchors` is the *approving-round* writer — it runs
-only inside the gate-pass branch — and remains solely responsible for `APPROVAL-HASH:`,
-`REVIEWED-COMMIT:` and `REVIEW-MODE:`. `DOC-BYTES:` is written by an **unconditional sibling writer**
-that runs on the failing and approving path alike, appending to the same anchor block and under the
-same idempotence and multi-line rules (M-4a, M-4b). This separation is the whole of the fix: a failing
-round is the only kind of round whose growth AC-4 ever classifies, so a writer that skips failing
-rounds writes the anchor exactly when it is never needed and never when it is (SE F-01, TE F-01).
+**The writer runs on every round, and it is a named, separate function.** `appendApprovalAnchors` is
+the *approving-round* writer — it runs only inside the gate-pass branch — and remains solely
+responsible for `APPROVAL-HASH:` and `REVIEWED-COMMIT:`, which are properties of an *approval*.
+Everything that is a property of a *round* is written by **`appendRoundAnchors`**, an unconditional
+sibling writer that runs on the failing and approving path alike, appending to the same anchor block in
+each of the round's files and under the same idempotence and multi-line rules (M-4a, M-4b). It writes
+three lines: `DOC-BYTES:` (S-2), `DOC-SHA256:` (S-10) and — on a verifier round — `REVIEW-MODE:`
+(S-1, AC-3.5(a)). §5's two-writer table is the normative statement of the split.
+
+This separation is the whole of the fix: a failing round is the only kind of round whose growth AC-4
+ever classifies and whose counts AC-2 ever compares, so a writer that skips failing rounds writes its
+anchors exactly when they are never needed and never when they are (SE F-01, TE F-01, SE F-02).
+
+**`DOC-SHA256:` is written at the same instant, by the same writer, from the same read.** It is the
+SHA-256 of the same bytes `DOC-BYTES:` counts, captured at `t0`, and it exists so that AC-2.8 can
+decide *the document did not change* exactly rather than by length alone. It costs one hash of a
+string the loop has already read.
 
 **Round growth** is measured across the boundary between rounds N−1 and N:
 
@@ -1042,7 +1052,26 @@ the run report. *Then:* it carries **one row per round**, with exactly these col
 | `blocking` | `blocking(N)`, or `unavailable`, or `malformed` |
 | `growth-bytes` | the signed integer growth into that round, or empty for round 1 and for an unmeasurable boundary |
 | `classification` | `new-mechanism`, `incremental`, or `unmeasurable` (AC-4.2) |
-| `notice` | empty, or exactly one of S-3 … S-6 |
+| `notice` | a **possibly-empty, ordered list** of S-3 … S-6 and S-11 notices, rendered as a `; `-separated string in the precedence order below |
+
+**The `notice` column is a list, in a fixed order, because notices co-occur.** v1.1 admitted "exactly
+one of S-3 … S-6", which is unsatisfiable on a round that is reachable and unexceptional: a crashed
+round raises `not-comparable: crashed-round` (AC-2.4) **and** `not-comparable: unavailable-count`
+(AC-2.7) **and** `growth-unmeasurable: no-anchor` (AC-4.5) at once, so the expected report row was
+underivable and O-10's required PROPERTIES assertion for that case could not be written (TE F-04). The
+column therefore carries **every** notice the round raised, deduplicated, in this order:
+
+| # | Notice | Why it sorts here |
+|---|---|---|
+| 1 | S-11 `no-revision:` | it is a halt, and it explains why the round exists at all |
+| 2 | S-3 `fixed-point:` / S-4 `budget-exhausted:` | the other halts; at most one of the two can appear on a round |
+| 3 | S-5 `not-comparable: crashed-round` | the round's shape is the most general reason a comparison did not happen |
+| 4 | S-5 `not-comparable: unequal-panel-shape` | shape known, but different from the predecessor's |
+| 5 | S-5 `not-comparable: unavailable-count` / `malformed-count` | shape comparable, operand missing |
+| 6 | S-6 `growth-unmeasurable: {reason}` | independent of comparability; always last |
+
+An empty list renders as an empty cell. The order is fixed here and not downstream because a test
+author must be able to derive the exact cell, character for character, from this document alone.
 
 The schema is part of §5's closed catalogue and is fixed **here**, not downstream: O-8 specifies where
 the table is emitted and in what format, not what its columns are. Every column is derivable from the
