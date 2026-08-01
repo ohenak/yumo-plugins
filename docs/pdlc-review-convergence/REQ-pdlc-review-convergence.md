@@ -1716,9 +1716,37 @@ reviewer used and re-used.
 | TE F-06 — AC-6.4's own example cells are permanent must-not-fix defect reports | **AC-6.4** — two exempt regions stated: fenced blocks (adopting `scanLines`'s existing rule) and a catalogue row's own `Example` cell |
 | SE F-06, SE MF-1, TE MF-01 — §4.7 pins two claims to the unreachable `d11dad5` | **§4.7** — both restated at the Citation baseline `9486c81` |
 | SE F-07, SE MF-2 — `7bc559a` called a merge commit | **§3** BL-01 and its closing paragraph — the wording is corrected and the parenthetical dropped |
-| SE MF-3 | **§4.3 M-3d** — noted below; `tier1ApprovalRecord` is a plain declaration, not `async` |
+| SE MF-3 | **§4.3 M-3d** — `tier1ApprovalRecord` is a plain declaration, not `async` (TE v4 MF-06: v1.2's "noted below" pointed at nothing) |
 | SE MF-4 | **§5 S-4** — the halt reason shows the rendered form only |
 | TE MF-02 | **§5 S-2** and **AC-4.1** — stated once as "four inputs, three reasons" |
 | TE MF-03 | **Header Citation baseline** — the baseline is a fixed ancestor commit, and the drift convention (symbol + literal) is what a reader uses at a later commit; re-baselining is a mechanical fix |
 | TE MR-03 | Carried, not answered — bound to `docs/pdlc-runtime-measurement-spike/REQ-pdlc-runtime-measurement-spike.md` per AC-5.3, alongside MR-01 and MR-02 |
 | SE Q-01…Q-05, TE Q-01…Q-04 | Each is the fastest route into the finding beside it and is answered by that finding's row above; TE Q-01 (is Phase DOD in scope?) is answered by **N-7**'s neighbour — AC-1.1's *"any review-loop phase for a document"* covers a phase whose optimizer revises the reviewed **document**, and Phase DOD's optimizer revises **code**, so AC-3.3's reasoning applies to it exactly as it applies to Phase CR. **TE Q-02** (which halt reason does the operator see when the budget cap and the fixed point are satisfied on the same round, and does AC-2.1 evaluate on a round that dispatches no optimizer?) is answered by **AC-2.2**'s co-occurring-halt paragraph, which reports every holding condition in AC-4.7's order rather than one. **TE Q-04 and SE Q-06** (was an optimizer episode dispatched between rounds 2 and 3, and did it fail silently?) are the same question about this run: the answer is recorded in **R-8** and mechanised by **AC-2.8** — the loop cannot distinguish "not dispatched" from "dispatched and wrote nothing", so it halts on the byte identity itself rather than on a cause it cannot observe |
+
+### 10.8 Round-4 finding → where it is answered
+
+Round 4 is the first round of this document's review with **no carried finding**: both panels closed
+every prior finding (SE F-01…F-08, TE F-01…F-07) and every finding below lies in text v1.2 added.
+Ids are given as `{panel} {id}` because the two panels' round-4 series overlap numerically.
+
+| Finding | Answered in |
+|---|---|
+| SE G-01, TE F-03 — AC-2.2 and AC-4.7 contradict each other on S-3/S-4 co-occurrence | **AC-4.7**'s precedence table — S-3 and S-4 are now two rows and the "at most one" clause is deleted; **AC-2.2** states the render and that the `HALT-REASON:` line carries the same `; `-joined string (SE Q-07); **O-10** adds the two-halt row |
+| TE F-01 — the growth boundary selects the next round's panel, so round 2 is always the full panel | **AC-4.1** — one round-open read, `growth = bytes(t0) − DOC-BYTES(N−1)`, classified immediately; **AC-4.2** and **AC-4.5** restated over round N's own panel; **AC-3.1**'s exception restated; §5's *round growth*; AC-4.1's round-1 rule (no measurement, no S-6 notice) |
+| TE F-02, SE G-04 — `WINDOW-START:` lives in a file the halt path rewrites | **AC-1.4** — the halt path preserves the reset region verbatim, with the HEAD prompt cited as the defect; **AC-1.5(4)** restated over line *counts* so one-shot survives appending, with a five-row fail-closed receive side; §5's durability rows; **O-5** (write confirmation) and **O-9(d)** (prompt amendment) |
+| TE F-04 — AC-2.8 is not composed with AC-1.4/AC-1.5, and the reset is spent on an authoring failure | **AC-1.5(5)** — every halt writes `HALT-REASON:`, and an S-11 halt is cleared **without** consuming the reset: the interrupted window resumes; **AC-2.1** and **AC-2.8** are scoped to the current window (§5's *current window*), so neither compares across a reset boundary |
+| SE G-02 — S-11 has no report row | **AC-2.8** and **AC-4.7** — the undispatched round N gets a row with `panel-shape`, `blocking`, `growth-bytes` and `classification` **empty** and `notice` = S-11 alone; O-10 asserts it |
+| SE G-03 — `DOC-SHA256:` does not digest the bytes `DOC-BYTES:` counts | **AC-4.1** and **AC-2.8** — the digest is `sha256Hex`'s, over `canonicaliseForDigest`'s output, and the "same bytes" claim is withdrawn; the conjunction of the two anchors is what recovers byte-exactness; §5's S-10 row and §6's row state the provenance and the bare rendering |
+| SE G-05, TE F-06 — the trailer reader is two different total functions; the anchor set has two memberships | **AC-3.4** — one five-step algorithm, skip-set given **by reference** to §5's catalogue and enumerated nowhere else; **AC-2.7**'s row 4 restated as "nothing but anchor lines after `VERDICT:`" (SE MF-2 folded in) |
+| TE F-05, SE MF-1 — `rounds 1..3 of 3` is hard-coded and S-4's general form is stated nowhere | **AC-1.5(1)** renders `rounds {W}..{W+2} of 3`; **§5 S-4** shows the format string with two specimens, including a reset window's |
+| SE G-06 — a count-only fixed point cannot see complete finding turnover | **R-9** (new) and §9.3's new binding row; the calibration successor gains **Q-4**. Recorded, not fixed: the cost is a false-positive halt, and the fix needs a findings-table grammar N-3 declines to introduce |
+| SE MF-3 | **§5** catalogue lead-in — the four kinds named in row order |
+| SE MF-4 | **Header** Cross-Reviews row — round 4 added, and the row declared per-round maintenance |
+| TE MF-04 | **AC-4.7** precedence row 7 — "last of the seven", not "always last" |
+| TE MF-05 | **§5** two-writer table — `appendRoundAnchors` runs before **AC-2.1**, not before "AC-2" |
+| TE MF-06 | **§10.7** SE MF-3 row — "noted below" dropped |
+| TE MF-07 | **AC-2.8** — the anchor condition moved out of *Given* into the receive-side table |
+| SE Q-07, Q-08, Q-09 | Answered by the AC-2.2, AC-2.8/AC-4.7 and AC-4.1 rows above respectively |
+| TE Q-05 | **§5** two-writer table and **AC-4.1** step 3 — the writer writes into each of the round's files **that exist**: none on a wholly crashed round, one on a partly crashed one |
+| TE Q-06 | **AC-4.1** and **AC-2.8** — one read per round-open, shared; O-12 carries the plumbing |
+| TE MR-04 | Carried, not answered — whether the post-mortem seam appends or overwrites is an implementation question; AC-1.4 states the obligation either way, so nothing in this REQ waits on the measurement |
