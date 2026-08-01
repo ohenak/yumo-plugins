@@ -226,7 +226,40 @@ bound to `docs/pdlc-runtime-measurement-spike/REQ-pdlc-runtime-measurement-spike
 
 ## 6. Questions
 
+Q-01 … Q-04 of v3 are all answered in v1.2 (§2 above) and are closed. Two new ones, both answerable
+in a sentence and neither blocking.
+
+| ID | Question |
+|----|---------|
+| Q-05 | Is `appendRoundAnchors` expected to write into a round's files when the round is *crashed* — one file present, or none? AC-4.1 says it appends *"in each of the round's files"*, which is vacuous for zero files (correct, and yields AC-4.5's `no-anchor` next round) but ambiguous for one: writing the anchor into a lone file makes a crashed round's `DOC-BYTES:` readable, which AC-2.8 would then compare. I read the intent as "write whatever files exist" and the consequence as harmless, but it decides a PROPERTIES fixture. |
+| Q-06 | Does AC-2.8's fresh read at round-open share its bytes with AC-4.1's `t0` read, or are they two reads? AC-4.1 says `n` is read *"at round-open … at the same instant `t0` at which AC-3.5 captures the document for `APPROVAL-HASH:`"*, and AC-2.8 says the loop *"reads the document to take round N's own endpoints"*. If they are one read, F-01's fix is free; if two, the REQ has an unstated consistency obligation between them. |
+
 ## 7. Positive Observations
+
+- **The two-writer table in §5 is the right altitude for the fix, and it is normative rather than
+  narrative.** Naming `appendRoundAnchors` as a distinct function, tabulating when each writer runs
+  and what each writes, and then re-pointing §6's three rows and O-4 at it, means the round-2 F-01
+  defect cannot recur by a downstream author reading only one of the four places the writer is named.
+  The paragraph that follows it — *"a writer that skips failing rounds writes its anchors exactly
+  when they are never needed and never when they are"* — is the kind of statement that makes a
+  finding un-relitigable.
+- **AC-2.8 is a better mechanism than the one I asked for.** I proposed a byte-identity clause;
+  v1.2 added the SHA endpoint and, with it, closed a false positive I had not raised (two revisions
+  of equal length). Its receive side is deliberately fail-**open** with the reason stated — *"a
+  missing anchor is evidence about the writer, not about the author, and must never manufacture a
+  halt"* — which is the correct asymmetry and is the opposite posture from the fail-closed anchors
+  three ACs above it. Choosing different directions for different anchors, and justifying each, is
+  exactly the discrimination a total receive side needs.
+- **AC-2.7's five-row observation table converts a distinction that was rhetorical into one that is
+  mechanical.** Row 4 — an anchor line following `VERDICT:` reads as *unavailable*, not *malformed* —
+  is the answer to my Q-03 and it is stated as an observation on the file, not as an intent. Every
+  row is decidable by reading one file, and O-10 now names the case.
+- **§10.7 maps every round-2/3 finding to a location, and every location I checked contained what the
+  map claimed.** That is not the norm; on this document it is now twice in a row.
+- **The Lows were taken seriously.** F-05 (five vs six) and F-06 (the self-defeating example cells)
+  were both fixed properly rather than by deleting the offending text — exemption 2 in AC-6.4 keeps
+  the catalogue able to show what it forbids, which was the point of the finding and not merely its
+  letter.
 
 ## 8. Recommendation
 
