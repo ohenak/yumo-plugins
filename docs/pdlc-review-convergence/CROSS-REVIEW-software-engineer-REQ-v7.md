@@ -258,4 +258,90 @@ Not findings. Apply without discussion; none affects the recommendation.
 
 ## Recommendation
 
+**Needs revision** — one High and two Medium, **all three new in v1.5**, all three in the refusal path
+v1.5 introduced. Every finding from rounds 1–6 is closed, four of my five exactly as recommended and one
+(the dispatched range plus the SKILL's refusal to guess) better than recommended.
+
+### What must change to close this out
+
+Three clauses. None requires a new mechanism; the first is a decision the author has already made twice
+elsewhere in this document.
+
+1. **G-18** — decide whether an entry refused by AC-1.5(4) step 4 **halts as a halt**. The clean answer
+   is no: the refusal declines to enter the phase, so it writes no `HALT-REASON:` and strips no
+   `RESOLVED:` line, which makes *"the clearance survives for a later entry"* true as written, keeps
+   `H` = *"the number of halts this document has taken"*, keeps the reported reason stable across
+   entries, and makes O-10's *"byte-unchanged apart from the report"* assertion satisfiable. If the
+   author prefers the halt, then delete the three claims it falsifies and rewrite the O-10 bullet.
+   This is the only finding this round whose consequence is a **permanent dead end** under the
+   document's own repair procedure.
+2. **G-19** — state the sanctioned repair for `counts-mismatch`, whose evidence is a pair and not a
+   line, and scope whichever rule that repair contradicts (§6's *"never by a human"*, or AC-1.4's `H`
+   invariant).
+3. **G-20** — move the no-round-admitted report row out of AC-4.7's precedence table into a paragraph
+   beside the AC-2.8 one, name its six cells, say whether S-4 co-occurs with S-16 there, define `round`,
+   and fix the now-false *"the one row with no dispatch behind it"*.
+
+MF-1 … MF-5 do not block.
+
+### On the stopping rule
+
+Read as §5 defines `blocking(N)` — the sum over the round's two files, by `extractFileVerdict` — the
+series is: rounds 1–3 **unavailable**, round 4 = **9** (`(1+4) + (2+2)`), round 5 = **11**
+(`(1+4) + (3+3)`), round 6 = **6** (`(0+4) + (1+1)`). Round 6 is the **first decrease** since the
+document became measurable, and it is a large one: `blocking(6) = 6 < blocking(5) = 11`, so AC-2.1's
+fixed-point condition did **not** hold at round 6 and this round exists because the rule said continue,
+not because an operator overrode it. That is the first time in this phase that sentence can be written.
+
+My own panel-private series is 10, 5, 5, 5, 5, 4, **3** — a second consecutive decrease. But I have to
+record the counter-signal honestly, because it points the other way from the count: **a High reappeared
+after one round without one.** It is not a regression to an old defect — every prior finding is closed —
+it is a new hole in the mechanism v1.5 added to close last round's hole, and it has the same shape the
+last two rounds had: a state machine that is correct on every path the author traced, with one adjacent
+path (here, what the loop does *immediately after* it refuses) not traced. Three consecutive rounds have
+now found exactly that, in three different mechanisms.
+
+What I read from the pair of signals together: **the document is converging in volume and not yet in
+kind.** The new-mechanism defect rate per round is falling (7 → 8 findings on a bigger diff last round,
+3 from me this round on a comparable one), the mechanisms are landing right at the first attempt more
+often, and the residue is single missing clauses rather than wrong decompositions. But the reset-region
+accounting has now taken a finding in each of rounds 5, 6 and 7 — it is the one part of this REQ that
+keeps generating them, because each fix adds a state and each new state has an untraced neighbour.
+
+My read, offered to the operator rather than asserted, and consistent with the standing advice in
+`POSTMORTEM-R-pdlc-review-convergence.md` §Recommendation clause 2: **land G-18 — it is one clause, and
+it is a fail-closed permanent dead end in the operator escape hatch, which is the one failure mode this
+REQ cannot ship with — and carry G-19 and G-20 into FSPEC as inputs.** G-19 is an operator-procedure
+sentence FSPEC has to restate anyway; G-20 is a report-row schema paragraph, which is FSPEC-shaped work
+(O-8 already owns where the table is emitted). If the operator prefers the mechanical route: apply
+G-18 and MF-1, re-resolve the POSTMORTEM, and treat the phase as converged rather than opening round 8.
+
+I would also say plainly, as the reviewer who has filed against this AC three rounds running: if a
+fourth round is opened for the reset region alone, the right move is probably not another REQ round but
+to let FSPEC state the region's state machine as a table of (state, event) → (state, writes) and let
+the untraced neighbours fall out of the enumeration. That is a `Process` observation about where this
+kind of defect is cheapest to find, and I have tagged it as such below rather than inflating it into a
+finding.
+
+### Explicit non-findings (carried and extended)
+
+Recorded so a later round does not re-raise them: I do not contest any of the six decisions; I do not
+file R-5's known unenforceability of AC-5, AC-4.6 or AC-3.2(2); I do not file R-6's mixed-panel
+integration risk; I do not contest AC-2.8's fail-open posture, AC-1.5(4)'s fail-closed posture, N-7's
+widening to Phase DOD, AC-4.1's live later endpoint, the S-3/S-4 co-occurrence ordering, the AC-2.8 halt
+row's empty cells, R-9's decision to record rather than fix, the `H`/`A` decomposition, the
+`WINDOW-RESUMED:` literal, AC-1.4's strip, the window-scoping of AC-3.1/AC-3.2/AC-4.1/AC-4.5, AC-3.4's
+stopping scan, or the mapping of a duplicated trailer line to *malformed*. **New this round:** I do not
+contest making validation a conjunct of the grant gate (G-18 is about the halt that follows, not about
+the conjunct), the counts check's bounds `H − A ∈ {0, 1}`, the append rule, S-15's promotion to its own
+id, S-16's closed three-member enum, AC-2.7's ordered reading, AC-3.4 step 1's correction to *malformed*,
+or the dispatched round range `{W … N−1}`. I have no blocking finding against REQ-RCV-05 or REQ-RCV-06.
+I raised no `## Measurement Required` items.
+
+**Scope note.** All three findings are tagged `Local`: each is a missing clause in this document, not a
+constraint that outlives it. The durable signal from this round is in the Positive Observations
+(*a rule whose correct behaviour is "write nothing" needs a positive artifact*; *a frame change must
+move the derivable tables with it*) and in the `Process` observation above about enumerating a state
+machine rather than reviewing it path by path.
+
 ## Verdict
