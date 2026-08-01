@@ -19,13 +19,15 @@ depends-on: []
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude + operator | 1.3 | 2026-08-01 |
+| pdlc | draft | Claude + operator | 1.4 | 2026-08-01 |
 
-**v1.3** addresses round-2 cross-review (`CROSS-REVIEW-software-engineer-REQ-v2.md`,
-`CROSS-REVIEW-test-engineer-REQ-v2.md`): the unconfirmable-append render (AC-1.5(4), §6), O-10's
-oracle for the refusal's operator strings and `postmortemStatus`, §6's scope statement for its
-non-baseline rows, and the Low corrections in §4, §7, AC-1.2, AC-1.5(1), step 5 and O-10.
-**v1.2** addressed round 1.
+**v1.4** addresses round-3 cross-review (`CROSS-REVIEW-software-engineer-REQ-v3.md`,
+`CROSS-REVIEW-test-engineer-REQ-v3.md`): row B's **two** dispatch-less variants, with
+`docs/_constraints/pdlc-rcv-catalogue.md` §3 amended in the same change; the pinned
+unconfirmable-append recovery text and its O-10 leg; the torn-write outcome; `postmortemStatus` =
+`none` (the shipped value); AC-1.2's observable; and a compression pass to hold the size budget —
+which is also why row B was widened in the catalogue rather than a new row minted here.
+**v1.3** addressed round 2, **v1.2** round 1.
 
 ## 1. Problem
 
@@ -37,7 +39,7 @@ what an operator does when they run out.
 - **The budget is five, and the fifth round is measurably worse than the second.** On the predecessor the blocking count reached its minimum at round 2, held it at round 3, and rose thereafter (baseline §1.1: 11, 6, 6, 7, 9), and 66 KB —
   40% of the finished document — was added by rounds that ran *after* its own fixed-point test fired.
 - **An absolute cap needs an escape hatch, and the escape hatch needs durable state.** A cap counted from round 1 of the *document* is a dead end without an operator reset, and a reset
-  leaving no record is re-granted every invocation — the per-invocation budget restored silently and fail-open.
+  leaving no record is re-granted every invocation — the per-invocation budget restored fail-open.
 
 Successor `pdlc-rcv-fixed-point-stop` carries the two **tests** evaluated inside this window (P-2:
 the enforced fixed-point stop, and the zero-delta stop). Sibling `pdlc-rcv-panel-topology` carries
@@ -53,8 +55,8 @@ and P-4.
 | **US-04** | *As the operator*, I want my one escape hatch to be spent exactly once and to leave a record, so that clearing a halt grants one fresh window and not a window per invocation. |
 
 **Value.** This REQ delivers the baseline §1.4 **pessimistic-regime** saving alone and
-unconditionally — ~40% fewer reviewer dispatches and ~40% fewer bytes than the measured run, from
-one constant. It is the only member of the family whose saving is not contingent on a regime.
+unconditionally — ~40% fewer reviewer dispatches and ~40% fewer bytes than the measured run, from one
+constant, and is the only member of the family whose saving is not contingent on a regime.
 **Operator-visible surfaces:** the budget in the run report and the post-mortem's Iterations table;
 the `## Reset Region`; and the two no-round rows — row C, the zero-round budget halt (AC-1.5(1)),
 and row B, the step-4 refusal (AC-1.5(4)) — each saying why an invocation did nothing.
@@ -66,7 +68,7 @@ and row B, the step-4 refusal (AC-1.5(4)) — each saying why an invocation did 
 | **BL-01** | Feature `pdlc-review-loop-hardening` merged to the default branch | `docs/completed/pdlc-review-loop-hardening/` exists there with that feature's `REQ`, `FSPEC`, `TSPEC`, `PLAN`, `PROPERTIES` and `LEARNINGS`. **Satisfied at `9486c81`** (archived by `7bc559a`). | Must hold at HEAD before FSPEC authoring |
 | **BL-06** | The shipped POSTMORTEM gate is intact: `parseResolvedMarker` → `checkPostmortem` → the step-G refusal that records a ❌ row and throws, and the halt catch that writes the queue row `halted` | Symbols present (M-7a, M-7b) | Must exist at HEAD — AC-1.4 and AC-1.5's refusal path are stated over exactly that shape |
 
-**Both hold on the default branch** at `9486c81`, each checkable by the observable in its Resolution-form column. No fallback is offered if that upstream mechanism is later reverted.
+**Both hold on the default branch** at `9486c81`, each checkable by its Resolution-form observable. No fallback is offered if that upstream mechanism is later reverted.
 
 ### 3.1 One cross-REQ prerequisite, and what happens before it ships
 
@@ -78,18 +80,16 @@ This REQ is the **head of the family** — nothing it needs is owed by a sibling
 | **X-05** | `pdlc-rcv-fixed-point-stop` REQ-RCV-02 AC-2.8 — the S-11 halt reason `no-revision: …` | AC-1.5(5)'s first table row, which resumes rather than resets the window on an S-11 halt | Until that REQ ships no halt path emits S-11, so the row is **unreachable**, every halt is a convergence halt, and AC-1.5(5) reduces to its second row. The clause is stated over both from the start, so nothing is re-specified when the successor lands. |
 
 **Consequence for sequencing.** This REQ is deliverable alone: every branch's behaviour is fully
-determined without a successor — though one branch, the
-mid-window refusal, is only **reachable in production** once the successor ships, and its test
-fixture is synthetic until then (AC-1.5(4) step 4, O-10). `pdlc-rcv-fixed-point-stop` depends on this
-REQ because both its tests are stated over `W`; `pdlc-rcv-panel-topology` depends on both.
+determined without a successor, though one — the mid-window refusal — is only **production-reachable**
+once the successor ships (AC-1.5(4) step 4, O-10). `pdlc-rcv-fixed-point-stop` depends on this REQ
+because both its tests are stated over `W`; `pdlc-rcv-panel-topology` depends on both.
 
 ## 4. Definitions and the catalogue ids this REQ owns
 
 Every term this document uses with a family meaning — *current window* / round `W`, *reset region*,
 *zero-delta*, *panel shape*, *crashed* round, *blocking count*, *unavailable*, *malformed*, *phase
-refusal*, *approval refusal* — is defined in `docs/_constraints/pdlc-rcv-catalogue.md` §1 and is
-**not** restated here. The same file's §2 holds the closed catalogue `S-1 … S-17` and its §3 the
-run-report row schema.
+refusal*, *approval refusal* — is defined in `docs/_constraints/pdlc-rcv-catalogue.md` §1 and **not**
+restated here; that file's §2 holds the closed catalogue `S-1 … S-17` and its §3 the row schema.
 
 This REQ **owns** six catalogue ids and **reads** two:
 
@@ -104,14 +104,14 @@ This REQ **owns** six catalogue ids and **reads** two:
 | **S-11** `no-revision: …` | read only | AC-1.5(5)'s first row. Emitted by `pdlc-rcv-fixed-point-stop` AC-2.8 (X-05); this REQ never emits it |
 | **S-3** `fixed-point: …` | read only | AC-1.5(5)'s second row, and the `; `-joined `HALT-REASON:` value of a co-occurring halt |
 
-**FSPEC may not add an eighteenth id to the catalogue**, here or anywhere in the family.
+**FSPEC may not add an eighteenth catalogue id**, here or anywhere in the family.
 
 ### 4.1 Durability: what survives an invocation boundary
 
 The loop *re-derives its state from the branch on every invocation* (M-1d, M-2f), so any criterion
-stated over in-process state is undefined on a resumed phase — the normal case. Every quantity
-this REQ's criteria read is listed with its durable home. **A criterion stated over an
-in-process-only row is a defect in this document; there is no such row.**
+stated over in-process state is undefined on a resumed phase — the normal case. Every quantity this
+REQ's criteria read is listed below with its durable home. **A criterion stated over an
+in-process-only row would be a defect; there is no such row.**
 
 | Quantity | Read by | Durable home | If absent |
 |---|---|---|---|
@@ -126,8 +126,8 @@ in-process-only row is a defect in this document; there is no such row.**
 
 ## 5. Acceptance criteria
 
-One requirement. Every acceptance criterion is in Who / Given / When / Then form and is stated
-over an in-band observable named in the shared baseline §2.
+One requirement. Every acceptance criterion is in Who/Given/When/Then form over an in-band
+observable named in baseline §2.
 
 ---
 
@@ -135,8 +135,8 @@ over an in-band observable named in the shared baseline §2.
 
 **Priority:** P0 · **Source:** US-01, US-02 · **Depends on:** BL-01, BL-06
 
-A review loop that has not converged in three rounds has, on the two features measured, not converged at all (§1: the blocking count 11, 6, 6, 7, 9, and 66 KB added by rounds that ran
-after the fixed-point test fired). Three rounds buys the decay that was real (11 → 6) and the round that held it, and declines to buy the rise that followed.
+A review loop that has not converged in three rounds has, on the two features measured, not converged at all (§1). Three rounds buys the decay that was real (11 → 6) and the round that
+held it, and declines to buy the rise that followed.
 
 **AC-1.1 — The budget is three, per document, not per invocation.** *Who:* the pipeline. *Given:* any review-loop phase **that reviews a named document type** — the phases of
 `PHASE_DISPATCH`: R/REQ, F/FSPEC, T/TSPEC, D/DECISIONS, P/PLAN, PR/PROPERTIES (M-1d). *When:* the review window is opened. *Then:* the window ends at round **3 counted from round 1 of
@@ -289,7 +289,7 @@ state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-)entered. *Then
    sanctioned in-place **correction** or whole-section deletion, like any other invalid value. Never
    two windows; only the torn write needs an operator, and it says so on the next entry.
 
-   **Consequence an operator will meet:** an invocation that confirms the line and then dies before
+   **Consequence:** an invocation that confirms the line and then dies before
    dispatching round `W` has **spent the clearance** (`A = H`) while the window at `N` is intact and
    unspent; the next entry needs no new window and runs those rounds. Writing the line last would
    instead lose the record of a window already *used*, and re-grant it.
@@ -308,15 +308,15 @@ state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-)entered. *Then
    - the entry **takes no halt**: it does not evaluate clause 1's budget, writes no `HALT-REASON:` line, writes no post-mortem, and AC-1.4 does not fire, so `H` is unchanged;
    - the operator's `RESOLVED:` marker is **left in place**, unstripped, so `checkPostmortem` still reads `resolved` on the next entry;
    - the post-mortem file is **byte-unchanged**; *scoped to that file*, the entry's only effect is the S-16 notice on row B. It is no claim about the rest of the invocation;
-   - the operator-facing text is **this refusal's own**, not step G's. Reusing step G's row would tell the operator the opposite of the truth: step G refuses because the marker is
-     *unresolved*, whereas step 4 fires on a post-mortem the operator **did** resolve. The ❌ phase row therefore reads `Refused — reset region corrupt at {path} ({reason})`, `{reason}`
+   - the operator-facing text is **this refusal's own**, not step G's, which would state the opposite of the truth: step G refuses because the marker is *unresolved*, whereas step 4 fires
+     on a post-mortem the operator **did** resolve. The ❌ phase row therefore reads `Refused — reset region corrupt at {path} ({reason})`, `{reason}`
      being the S-16 reason, and the halt reason carried to the run report and the queue **names the sanctioned repair for that reason** (AC-1.5(4)'s repair table) instead of the shipped
      generic *"set the row back to pending, then re-run the queue"*, which on this path reproduces the refusal on every iteration. `postmortemStatus` reads **`none`** — the shipped default `buildFinalReport` always emits (`orchestrate-dev.js:5035`, `:5054`), no post-mortem being written this run and `gatePostmortem` unset; **never** `unresolved`, and no value outside the shipped enum `none | unresolved | written | write_failed`.
      These two strings are operator-facing renders of S-16, declared in §6; they are **not** new catalogue ids, and §6's **three** refusal-render rows are the closed list of strings this REQ mints;
    - the phase is **refused, not halted** — a *phase refusal* in the catalogue §1 sense, the same shape as step G's refusal of an unresolved post-mortem. *Returns* means **the phase does not run and
-     the invocation terminates on step G's path**: a ❌ phase row is recorded, the pipeline stops, and the feature's `docs/_queue/QUEUE.md` row is rewritten to `halted` and committed — the
-     queue write is reached *because* the refusal is step-G-shaped (M-7a, M-7b), where a literal early `return` would not reach it (the entry-validation halts nearby build their report
-     directly and never call `recordHaltFn`). That is intended: the region needs an operator, so an unattended queue must stop rather than refuse once per iteration.
+     the invocation terminates on step G's path**: a ❌ phase row is recorded, the pipeline stops, and the feature's `docs/_queue/QUEUE.md` row is rewritten to `halted` and committed — reached
+     *because* the refusal is step-G-shaped (M-7a, M-7b; O-6), where a literal early `return` would not be. That is intended: the region needs an operator, so an unattended queue must stop
+     rather than refuse once per iteration.
 
    **The sanctioned repair is the operator's, and it is the only hand-edit this document asks for to machine-written state.** When the run report emits S-16 the region is
    **human-repairable**, per reason:
@@ -327,8 +327,8 @@ state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-)entered. *Then
    | `invalid-window-resumed` | the offending `WINDOW-RESUMED:` line | **correct that line** — never delete an answering line |
    | `counts-mismatch` | the pair `H`/`A` — **no line** | delete the **whole `## Reset Region` section**, heading included |
 
-   **Correcting is the only sanctioned value repair, and deleting an answering line is forbidden at every `H − A`.** Deleting an answering line decrements `A`, so it raises `H − A` by one,
-   and both reachable values of that arithmetic are unsafe:
+   **Correcting is the only sanctioned value repair; deleting an answering line is forbidden at every `H − A`**, since it decrements `A` and raises `H − A` by one — and both reachable
+   values of that arithmetic are unsafe:
 
    | Region before | Marker on disk | Repair | Region after | What the next entry does |
    |---|---|---|---|---|
@@ -355,7 +355,7 @@ state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-)entered. *Then
    4. **if any line's value fails step 2, or the counts fail step 3 ⇒ `W` = 1, fail-closed**, no reset is honoured, **no answering line is written and the clearance is not consumed**, and the
       run report emits `reset-region-corrupt: {reason}` (S-16) naming the file and, per reason, the offending **line** or the pair `H`/`A`. **Exactly one S-16 notice is emitted, whatever the
       fault count**: `{reason}` belongs to the **first failing line in document order**, and `counts-mismatch` only when every line passes step 2, so two notices never co-occur in the row's
-      `; `-joined `notice` cell. A corrupt region is never partially believed. **The entry then refuses the phase and returns**, per *a refusal is not a halt* above.
+      `; `-joined `notice` cell. **The entry then refuses the phase and returns**, per *a refusal is not a halt* above.
       **Where `W`'s resolution runs: after the phase gate's skip decision, before any round opens.**
       `phaseGate` can exit `{ skip: true }` on an approved-and-fresh document (`orchestrate-dev.js:4213`–`:4225`); on that exit **neither step 4 nor the grant runs** — `W` is not resolved,
       no answering line is written, no refusal is raised. A skipped phase reviews nothing, so a refusal there would halt the pipeline over a phase no repair gains a round for, and a grant
@@ -424,8 +424,7 @@ called 0 times** (a count, not an absence — O-10) and no new cross-review file
 ## 6. Declared thresholds
 
 The shared table is `docs/_constraints/pdlc-rcv-baseline.md` §3. This REQ **owns** six of its rows
-and reads two more; it changes none of the others, and a threshold used here and absent there is a
-defect. **Four rows below sit deliberately outside baseline §3's scope and are not that defect:**
+and reads two more; it changes none of the others, and a threshold used here and absent there is a defect. **Four rows below sit deliberately outside baseline §3's scope and are not that defect:**
 `budget-exhausted:` is a render fixed by catalogue §2, and the three refusal-render rows are
 non-catalogue operator strings this REQ alone owns. Both have a registered authority — the catalogue,
 or this table.
@@ -451,8 +450,7 @@ N-9, N-10` apply unchanged and are not restated, and `N-5`, `N-6` and `N-8` are 
 this REQ, not overlooked**. **Ids above `N-10` are not shared** — the family has minted
 colliding `N-1x` ids (`N-13` means different things in `pdlc-rcv-fixed-point-stop` §7 and
 `pdlc-rcv-finding-quality` §7), so this document's own non-goals are numbered in a **per-REQ
-namespace, `NB-*`**; the shared rows it restates keep their shared ids. Four are worth pointing at, because a reviewer of
-*this* document is most likely to file against them:
+namespace, `NB-*`**; the shared rows it restates keep their shared ids. Four are worth pointing at, being the likeliest to be filed against:
 
 | # | Not in scope | Why |
 |---|---|---|
@@ -464,14 +462,14 @@ namespace, `NB-*`**; the shared rows it restates keep their shared ids. Four are
 ## 8. Downstream obligations
 
 A review finding of the form "this AC has no oracle / no fixture / no seam / no test" is answered
-here: it is an obligation on the FSPEC, TSPEC, PLAN or PROPERTIES, not a REQ revision.
+here: an obligation on the FSPEC, TSPEC, PLAN or PROPERTIES, not a REQ revision.
 
 | # | Obligation | Owner |
 |---|---|---|
 | **O-5** | Specify the **reset-region read-modify-write** AC-1.4 requires: before the halt dispatch the loop captures the existing `## Reset Region` — **the captured region of a file that does not exist is the empty region**, so the first halt creates a one-line region by the same path; after the write it re-applies it — preserved lines in order, this halt's `HALT-REASON:` last, any prior `RESOLVED:` stripped — and confirms the result, reporting a lost or unwritable region rather than proceeding on a silently widened window. The region is loop-owned state, **not** discharged by a prompt clause. A crash **between** the dispatch and the re-apply leaves the region missing or truncated: both land fail-closed (`W` = 1, or S-16 and a sanctioned repair), `H` understating the halts by at most the lost lines, and the next halt re-creates the region. | TSPEC |
 | **O-12** | Specify the **answering-line append and its confirmation** on the *granting* path (AC-1.5(4)) — the read-modify-write is O-5's for the halt path, and this is its counterpart for the entry that grants or resumes a window: append one `WINDOW-START:`/`WINDOW-RESUMED:` line at the end of the region, re-read to confirm it, and dispatch no round until it is confirmed; on an unconfirmable write take the stated fail-closed exit (no window, no round, phase refused, reported like a lost region). Also specify how `W` reaches `deriveRoundWindow` as a **resolved value** so that function and `windowEnd` keep their synchronous, seam-free contract (AC-1.2). | TSPEC |
 | **O-6** | Specify where AC-1.5(4)'s ordered algorithm runs *within the phase body* — the REQ fixes it **after** `phaseGate`'s `{ skip: true }` exit and before any round opens (AC-1.5(4)) — so that a refusal reaches step G's path (M-7a, M-7b) rather than returning early: the entry-validation halts nearby build their final report directly and never call `recordHaltFn`, and a literal early `return` would therefore leave the queue row unwritten. | TSPEC |
-| **O-9** | The post-mortem prompt gains a belt-and-braces clause telling the agent `## Reset Region` (S-12) is machine state to be left alone — at the Citation baseline it is a bare `Write ${postmortemPath}.` plus a section list (M-7e). **It is not the mechanism**; O-5 is. | FSPEC → implementation |
+| **O-9** | The post-mortem prompt gains a belt-and-braces clause telling the agent `## Reset Region` (S-12) is machine state to be left alone — the baseline prompt is a bare `Write ${postmortemPath}.` plus a section list (M-7e). **Not the mechanism**; O-5 is. | FSPEC → implementation |
 | **O-10** | Properties and tests for this requirement, including the negative cases named explicitly: **the first halt of a phase** leaving a file with `## Reset Region` and exactly one `HALT-REASON:` line, and the operator's **first** clearance then granting a window; a second halt preserving the region and **stripping** the spent marker so `checkPostmortem` returns `unresolved`; a **fenced** `RESOLVED: yes` surviving the strip while an unfenced one is removed; a region with two `HALT-REASON:` lines and one `WINDOW-START:` granting **exactly one** further window and a region with `A = H` granting none; an S-11 clearance writing `WINDOW-RESUMED: {W}`, leaving `W` unchanged, with a **subsequent** convergence halt then **not** auto-cleared; halt lines and answering lines both **appended**, asserted positionally, with a prepending implementation failing; `WINDOW-START: 4` then `WINDOW-START: 9` at highest round 6 ⇒ `W = 1`; the S-4 reason rendered from the window's own origin, its slots computed from `W`, `windowEnd` and the constant (the `rounds 4..6 of 3` shape is **illustrative**, never a literal expectation); **the counts-mismatch refusal and its recovery leg as a mutation pair** — a region with two `HALT-REASON:` lines and no answering line refusing on that entry **and on a later entry that has not performed the sanctioned repair**, with `RESOLVED: yes` **not** consumed and `reset-region-corrupt: counts-mismatch (H=2, A=0) {path}` in the report, then, after the sanctioned whole-section deletion, the next halt re-creating a one-line region and the operator's **second** clearance opening the window; the same pairing for a **value** repair, with the refusing entry's file byte-unchanged; **the ratchet test** — the refusing entry appends no `HALT-REASON:`, strips no marker, and emits S-16 with the **same** reason next entry; **row B's validation-failure variant** asserted character for character — S-16 alone, **no** S-4 reason; **the refusal's own operator strings** (§6) — the ❌ text `Refused — reset region corrupt at {path} ({reason})` and a recovery text naming *that reason's* sanctioned repair, both asserted character for character, with step G's shipped strings (`Refused — unresolved POSTMORTEM at …` and `set the row back to pending, then re-run the queue`) as **negative controls** *for that entry class*, plus `postmortemStatus` asserted **equal to `none`** with step G's `unresolved` as its negative control; **the unconfirmable-append entry** emitting §6's *Unconfirmed-append text*, row B's **empty** `notice` and — deliberately, on this class alone — the shipped generic queue-reset string as its recovery text, plus its **torn-write sequel**: an append that lands truncated refusing on the *next* entry with S-16 `invalid-window-start` and the corrupt-region texts; and **the mid-window refusal**, the positive control: on a branch whose highest round is 2 with a corrupt region and a fresh clearance, **no round-3 cross-review file is written**, the report carries row B with `round` = 3 and S-16 alone, and the invocation terminates with the queue row `halted` — an implementation that skips step 4 and falls back to `W` = 1 runs round 3 and fails this leg; **the admitted window is exactly `[W, windowEnd(W)]` on every production entry** (AC-1.2), asserted at the seam that opens the round, so a widened default fails. **Every "no round ran" leg is asserted with a positive conjunct, not by absence alone:** a **call-count oracle on the reviewer-dispatch seam** — exactly **0** dispatches on the refusing entry, on the exhausted-budget entry and on the skipped entry, and **≥ 1** on the control entry that does open a round — asserted *alongside* the file-absence check, since a test double that writes no file satisfies absence either way. Also: **row C** asserted cell by cell with its S-4 reason and **0** dispatches; a **forced** phase on an exhausted document halting rather than re-reviewing; a **Phase CR halt creating no `## Reset Region`**; the answering-line write **confirmed before** any dispatch; and both `iterations` and the post-mortem's Iterations section asserted **over the constant**, with rounds-run `0` on the zero-round halt. | PROPERTIES |
 | **O-11** | Rebuild `pdlc/workflows/dist/` in the same commit as every workflow-source change, and honour the runtime constraints: no new `import` into the bundle, and **every injected IO call `await`ed** (the adapter's implementations are async; the test doubles are sync, so a missing `await` passes the tests and fails at runtime). | implementation |
 
@@ -479,10 +477,10 @@ here: it is an obligation on the FSPEC, TSPEC, PLAN or PROPERTIES, not a REQ rev
 
 | # | Risk | Disposition |
 |---|---|---|
-| **R-1** | **This REQ is reviewed by the loop it is changing, under the old behaviour** — five per-invocation rounds, no enforced stop. The predecessor's Phase R died exactly here. | Mitigated by splitting the parent, depending on no unmeasured runtime fact (baseline §5), and keeping this document short. **Accepted and unenforceable** — the enforcement is this REQ and its successor, neither shipped. The operator watches the trajectory and halts by hand. |
-| **R-12** | **A repeating S-11 halt is unbounded.** Each S-11 clearance writes `WINDOW-RESUMED: {W}`, leaves `W` unchanged and (per the successor's AC-2.8) costs the window no round, so an authoring side that keeps producing zero-delta rounds yields an unbounded halt/clearance sequence with `H` and `A` growing together and the budget never exhausting. | **Accepted, and bounded by the operator rather than by the loop.** Every iteration costs one hand-written `RESOLVED: yes`, so the sequence is never unattended and never silent; capping it would require a second counter whose only effect is to deny an operator who is *choosing*, each time, to continue. Revisit if the S-11 path is observed to repeat in practice. |
-| **R-13** | **Migration: branches that already carry more than three rounds.** At the commit that lands `MAX_REVIEW_ROUNDS = 3`, every in-flight phase whose document has 3+ rounds is admitted no rounds and halts on the next entry, rendering S-4 as `rounds 1..3 of 3` while five rounds sit on disk. | **Correct and expected, not a defect** — the render states the *window*, not the file count. The escape is the ordinary one: clear the post-mortem with `RESOLVED: yes` and the next entry opens a fresh window at `N` = one past the highest round. No migration script, no back-fill of reset regions. |
-| **R-10** | **The reset region is machine state in a file an operator is instructed to edit.** A hand-edit can make the counts lie in either direction, and one direction restores the per-invocation budget AC-1.1 abolishes — silently and fail-open. | **Mechanised, not accepted.** Step 2 validates every answering line, step 3 the counts against each other; either failure refuses the phase with S-16 rather than guessing. The residual is the operator's: §6 records that `WINDOW-START:` is never *authored* by a human, and AC-1.5(4) names the only two sanctioned repairs. |
+| **R-1** | **This REQ is reviewed by the loop it is changing, under the old behaviour** — five per-invocation rounds, no enforced stop. The predecessor's Phase R died exactly here. | Mitigated by splitting the parent, depending on no unmeasured runtime fact (baseline §5), and keeping this document short. **Accepted and unenforceable** — the enforcement is this REQ and its successor, neither shipped; the operator watches the trajectory and halts by hand. |
+| **R-12** | **A repeating S-11 halt is unbounded.** Each S-11 clearance writes `WINDOW-RESUMED: {W}`, leaves `W` unchanged and (per the successor's AC-2.8) costs the window no round, so an authoring side that keeps producing zero-delta rounds yields an unbounded halt/clearance sequence with `H` and `A` growing together and the budget never exhausting. | **Accepted, and bounded by the operator rather than by the loop.** Every iteration costs one hand-written `RESOLVED: yes`, so the sequence is never unattended; capping it would need a second counter that could only deny an operator *choosing*, each time, to continue. Revisit if the S-11 path repeats in practice. |
+| **R-13** | **Migration: branches that already carry more than three rounds.** At the commit that lands `MAX_REVIEW_ROUNDS = 3`, every in-flight phase whose document has 3+ rounds is admitted no rounds and halts on the next entry, rendering S-4 as `rounds 1..3 of 3` while five rounds sit on disk. | **Correct and expected, not a defect** — the render states the *window*, not the file count. The escape is the ordinary one: clear the post-mortem and the next entry opens a fresh window at `N`. No migration script, no back-fill of reset regions. |
+| **R-10** | **The reset region is machine state in a file an operator is instructed to edit.** A hand-edit can make the counts lie in either direction, and one direction restores the per-invocation budget AC-1.1 abolishes — silently and fail-open. | **Mechanised, not accepted.** Step 2 validates every answering line and step 3 the counts; either failure refuses the phase with S-16. The residual is the operator's: §6 records that `WINDOW-START:` is never *authored* by a human, and AC-1.5(4) names the only two sanctioned repairs. |
 | **R-11** | **A refusal costs a mid-window round.** On a branch with rounds left under `W` = 1, a corrupt region refuses the phase where the fallback would have run the next round. | **Accepted deliberately, and stated as the positive control (AC-1.5(4) step 4, O-10)** — whose fixture is synthetic until the successor ships. A region whose accounting cannot be trusted is not a state to open a round over: the cross-review could not be placed in any window. |
 
 **Deferrals and their binding.** This REQ defers nothing of its own. The predecessor's deferrals
