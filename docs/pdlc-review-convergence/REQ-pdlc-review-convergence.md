@@ -266,7 +266,7 @@ mechanism is upstream input here, not something this REQ re-specifies.
 **All five now hold on the default branch** at the Citation baseline commit `9486c81`, and each is
 checkable there by the observable in its Resolution-form column. At v1.0 this paragraph said BL-01 was
 *"the only one not yet satisfied on the default branch"* because the document was authored on a stacked
-branch before `pdlc-review-loop-hardening` merged; that merge has since happened (`7bc559a`), the
+branch before `pdlc-review-loop-hardening` merged; that merge has since happened, the
 feature's artifacts are archived under `docs/completed/pdlc-review-loop-hardening/`, and BL-02 …
 BL-05's symbols all resolve on `main` (`pdlc/workflows/orchestrate-dev.js:393` `parseVerdict`,
 `pdlc/workflows/orchestrate-dev.js:2358` `refreshReviewState`, `pdlc/workflows/orchestrate-dev.js:1436`
@@ -345,9 +345,12 @@ verify these rows, not re-derive them from memory.
 
 Two facts this REQ does **not** claim, and does not need:
 
-- **How an exhausted retry or a stall-killed dispatch surfaces to the caller.** Unmeasured at
-  `d11dad5`; recorded as unmeasured by the predecessor REQ's §4a A-8. No AC below depends on it.
-- **Whether a partial write is visible on disk before its commit.** Also unmeasured. AC-4's growth
+- **How an exhausted retry or a stall-killed dispatch surfaces to the caller.** **Unmeasured at the
+  Citation baseline `9486c81`**, and unmeasured anywhere on `main` — the predecessor REQ recorded it as
+  unmeasured in its §4a A-8, and nothing has measured it since. (v1.1 pinned this claim to `d11dad5`,
+  which the header itself declares unreachable from `main`, so the claim could not be checked from
+  where this document is reviewed — SE F-06, MF-1.) No AC below depends on it.
+- **Whether a partial write is visible on disk before its commit.** Also unmeasured at `9486c81`. AC-4's growth
   measurement is taken at a **round boundary — after the optimizer episode has returned**, which is the
   single boundary AC-4.1 also names. v1.0 said *"returned"* in AC-4.1 and *"returned and committed"*
   here; the two are not the same boundary and the difference was load-bearing (TE F-08). **The boundary
