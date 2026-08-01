@@ -269,6 +269,71 @@ it is the sole trigger of the shipped `No POSTMORTEM was written.` line (M-8c), 
 beside a ❌ row naming the post-mortem the operator hand-resolved. Never `unresolved` (that is step
 G's), nor any value outside the shipped enum `none | unresolved | written | write_failed` (M-8f).
 
+**AC-7.3 — The resolution runs inside the phase body that is going to review, and is unconditional
+there.** *Who:* the review loop. *Given:* an entry into a document-typed review-loop phase
+(`REQ-RCV-01` AC-1.1's scope). *When:* the phase body runs. *Then:* AC-7.1 runs **after the phase
+gate's skip decision and before any round opens**, and within that body it is **unconditional** — it
+fires whether or not rounds remain under the fallback and whether or not a marker is pending.
+
+`phaseGate` can exit `{ skip: true }` on an approved-and-fresh document
+(`orchestrate-dev.js:4215`–`:4226` at `41f9369`, the `checkPostmortem` block ending
+`return { skip: true };`). **On that exit neither AC-7.1 nor the grant runs** — `W` is not resolved,
+no answering line is written, no refusal is raised. A skipped phase reviews nothing, so a refusal
+there would halt the pipeline over a phase no repair gains a round for, and a grant there would spend
+the one-shot clearance on an entry that opens no round: both are pure cost. Placing the resolution
+inside the reviewing body is also what keeps a refusal on step G's path (AC-7.2, O-6).
+
+Three entry classes, and the justification is **fail-closed, not costless**:
+
+| Entry class | What AC-7.1 does | Cost versus the `W` = 1 fallback |
+|---|---|---|
+| **Skipped** (`phaseGate` exits `{ skip: true }`) | does not run | none; the region is untouched and both counts unmoved |
+| **Exhausted** — highest round ≥ 3 under `W` = 1 | runs; refuses on a corrupt region | **none, and the two are indistinguishable**: the fallback admits `{1, 2, 3}`, all three are filled, and the entry would have halted on the budget path regardless |
+| **Mid-window** — rounds remaining under `W` = 1, reachable at highest round **2** | runs; refuses | **real, and accepted (R-11)**: the fallback would admit round 3 and the phase would run. Instead no round-3 cross-review file is written, the invocation terminates on step G's path and the queue row is written `halted` |
+
+The mid-window class is reachable because `pdlc-rcv-fixed-point-stop` AC-2.1 can fire on the (1, 2)
+pair and its AC-2.8 can halt at round 2, either of which creates the region with `H = 1`, `A = 0`
+before a hand-edit corrupts it. It is the refusal's **positive control** — the only branch on which
+honouring step 4 and falling back are distinguishable — and O-10 carries it; AC-7.6's `round` cell is
+stated over exactly this branch, whose fixture is hand-built while X-05 is unshipped (§3.1, R-11).
+
+**AC-7.4 — Every S-16 reason has exactly one sanctioned repair, and it is the operator's.** *Who:*
+the operator. *Given:* a run report carrying S-16. *When:* they repair the region by hand. *Then:*
+the region is **human-repairable**, per reason, by exactly this act and no other — the only hand-edit
+this family asks for to machine-written state:
+
+| Reason | What the notice names | The sanctioned repair |
+|---|---|---|
+| `invalid-window-start` | the offending `WINDOW-START:` line, in brackets after the path (S-16) | **correct that line** — never delete an answering line |
+| `invalid-window-resumed` | the offending `WINDOW-RESUMED:` line, likewise | **correct that line** — never delete an answering line |
+| `counts-mismatch` | the pair `H`/`A` — **no line** | delete the **whole `## Reset Region` section**, heading included |
+
+**Correcting is the only sanctioned value repair; deleting an answering line is forbidden at every
+`H − A`**, since it decrements `A` and raises `H − A` by one — and both reachable values of that
+arithmetic are unsafe:
+
+| Region before | Marker on disk | Repair | Region after | What the next entry does |
+|---|---|---|---|---|
+| `H = 2`, `A = 1`, `WINDOW-START: 99` (`H − A = 1`) | either | delete the line | `H = 2`, `A = 0` ⇒ `H − A = 2` | refuses under a **different** reason, `counts-mismatch`, whose only repair is the destructive whole-section deletion |
+| `H = 1`, `A = 1`, `WINDOW-START: 99` (`H − A = 0`) | yes — the refusal left it in place (AC-7.2) | delete the line | `H = 1`, `A = 0` ⇒ `A < H` | **grants a fresh three-round window** off a clearance that was already answered, and writes `WINDOW-START:` |
+
+The second row is the hand-edit S-13's *never authored by a human* prohibition exists to prevent; any
+repair leaving `H − A ∉ {0, 1}` is rejected by step 3.
+
+**Why `counts-mismatch` is repaired by deletion.** No line is offending, and both line-level repairs
+are forbidden elsewhere: **adding** an answering line contradicts S-13, **deleting** a `HALT-REASON:`
+contradicts `REQ-RCV-01` AC-1.4 clause 1. Deleting the **section** contradicts neither — S-12 reads
+an absent heading as the empty region (`H = A = 0`, `W = 1`, the never-reset state), the next halt
+re-creates a one-line region, and the clearance after it works, at the cost of one further halt and
+the halt history.
+
+**The one exception, and it is the only one.** Act 1 of AC-7.5's unconfirmable-append recovery
+deletes the region's trailing answering line. It is sanctioned **only there**, and it is not the
+operator repairing an *answer*: an unconfirmed line answered nothing — no round ran — so removing it
+restores `A < H` and the clearance the write never earned. S-13's prohibition is scoped to
+**authoring** a line, which is why it exempts both this act and the two corrections above (catalogue
+§4, *Residue disposition*).
+
 ## 6. Declared thresholds
 
 ## 7. Non-goals and out of scope
