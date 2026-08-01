@@ -202,6 +202,16 @@ a catalogue id and an AC-4.7 home, as S-5/S-6 have.
 
 ## 4. Mechanical fixes
 
+Reported per AC-6.5 as a fix list, not as blocking findings; excluded from the counts below. MF-08 …
+MF-11 of v5 are all applied and are not carried.
+
+| # | Location | Issue | Fix |
+|---|---|---|---|
+| MF-12 | AC-2.6, table | The lead-in is restated over *"the three rounds of a window (rounds `W`, `W+1`, `W+2`)"*, but the table's header still reads *"Reachable sequence (rounds 1, 2, 3)"* and every *When* cell still names *"the growth into round 2 … into round 3"*. The prose fixes the reading; the cells a test author copies do not. | Header → *"(rounds `W`, `W+1`, `W+2`)"*; cells → *"into round `W+1`"* / *"into round `W+2`"*. |
+| MF-13 | AC-2.7, table | The new duplicated-`VERDICT:` row overlaps rows 3 and 4 on a reachable input: a `## Verdict` section carrying two `VERDICT:` lines followed by nothing (or by nothing but anchor lines) matches *unavailable* under rows 3–4 and *malformed* under the new row. AC-3.4's step ordering resolves it — step 1 counts before step 2 scans — and the paragraph *"AC-3.4 states the reader; this table classifies its outputs"* imports that ordering by reference, so this is not a finding. But the table also says the cases are *"exactly these … and in no others"*, which reads as independent rows. | Either put the duplicated row **first** and say the table is read in order, or scope rows 3–5 to *"a section with a single `VERDICT:` line"*. |
+| MF-14 | AC-1.5, closing paragraph | The re-flow left one 105-column line (*"`HALT-REASON:`, `WINDOW-START:` and `WINDOW-RESUMED:` lines. Nothing here needs a clock, a process identity, or a memory of a previous"*), against ~100 everywhere else in the file. | Re-wrap. |
+| MF-15 | §5, *reset region* | *"the operator's `RESOLVED:` marker is **not** in it and is never counted"* is stated as a fact about the file, but nothing prevents an operator from writing the marker inside the region — and AC-1.4 clause 2 anticipates exactly that, stripping any `RESOLVED:` line *"wherever it sits"*. The two are compatible (the marker is never *counted*, wherever it sits) but the sentence reads as a placement constraint the document does not impose. | *"the operator's `RESOLVED:` marker is never counted, wherever in the file it sits"*. |
+
 ## 5. Measurement Required
 
 ## 6. Questions
