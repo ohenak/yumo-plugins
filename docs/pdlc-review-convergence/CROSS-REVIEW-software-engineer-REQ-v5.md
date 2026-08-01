@@ -157,6 +157,72 @@ existing fail-closed behaviour.
 was read and could not be resolved, which is exactly §5's definition, and it keeps the shipped
 `duplicated` return mapped onto a chain break rather than onto silence.
 
+### G-10 (Medium) — the unconsumed reset outlives the halt it was written for
+
+AC-1.5(5)'s first row is the new rule:
+
+> begins `no-revision:` (S-11) ⇒ the halt is cleared and the **interrupted window is resumed** — no
+> `WINDOW-START:` is written, `W` is unchanged, and the reset is **not** consumed.
+
+The intent is right — an authoring failure should not cost the operator's escape hatch. The
+consequence is that `R > S` **stays true forever after**, because nothing else ever consumes it. Trace
+it:
+
+| Step | Region state | What the loop does |
+|---|---|---|
+| S-11 halt, operator writes `RESOLVED: yes` | R=1, S=0 | entry sees `R > S`, last reason `no-revision:` ⇒ resume, write nothing |
+| the phase runs on and later halts at the fixed point (S-3) | R=1, S=0 | — |
+| next invocation, **no operator action at all** | R=1, S=0 | entry sees `R > S`, last reason `fixed-point:` ⇒ clause 4 grants and consumes a **fresh three-round window** |
+
+The convergence halt is cleared by a marker the operator wrote to clear a different, earlier halt.
+One free window per S-11 event, unattended. That is precisely the "silently restores the budget
+AC-1.1 exists to abolish" failure, arriving by a new route.
+
+The root cause is that clause 4's `R > S` is a *global* predicate over the file while clause 5's
+decision is *per halt*. A reset must be scoped to the halt it cleared.
+
+**Required change:** make the S-11 path consume-and-restore rather than not-consume. Concretely: on an
+S-11 clearance the loop writes a `WINDOW-START:` line **equal to the current `W`** — so `R = S` again
+(one-shot holds), the origin is unchanged (the window resumes, which is the behaviour AC-1.5(5)
+wants), and no free window survives. That requires relaxing AC-1.5(4)'s "strictly increasing ⇒ else
+fail-closed" row to admit a repeat that equals its predecessor, which is a one-cell change and is
+distinguishable from the corrupt case the row was written against. Alternatively, pair each
+`RESOLVED:` with the `HALT-REASON:` it cleared and make the predicate per-pair — but that reopens
+G-07's counting problem.
+
+### G-11 (Medium) — which `HALT-REASON:` is last
+
+AC-1.5(5) reads "the **last** `HALT-REASON:` line". AC-1.4 fixes the fate of the *prior* lines —
+preserved verbatim, in document order, under a heading the halt path does not touch — and says the
+halt "writes its own new content **around** that region". Nothing says where the halt's **own**
+`HALT-REASON:` goes. If it is written above the preserved region (a natural reading of "around", and
+the natural output of an agent told to write the standard sections first), the document-order-last
+`HALT-REASON:` is the **previous** halt's, and clause 5 decides on the wrong halt — turning a
+convergence halt into a resumed window or vice versa. Both directions are wrong and one of them
+(reading an old `no-revision:` when the real halt was `budget-exhausted:`) declines to consume a reset
+that should have been consumed, compounding G-10.
+
+**Required change:** one sentence in AC-1.4 or AC-1.5(5): the halt's own `HALT-REASON:` line is
+**appended to the end of the reset region**, so document order is halt order and "last" means "most
+recent". Say it where the region is defined, since the region's ordering is what makes every counting
+and last-value rule in AC-1.5 well defined.
+
+### G-12 (Low) — two of the four "sourceless" cells have sources
+
+AC-2.8 and AC-4.7 both justify the halt row's empty cells with "none of the five non-`round` columns
+has a source". For `panel-shape` and `blocking` that is true — they are derived from files round N
+never wrote. For `growth-bytes` and `classification` it is not: AC-4.1 step 1 takes the round-open
+read and computes `growth = bytes(t0) − DOC-BYTES(N−1)` **before** the dispatch, and AC-2.8's halt
+condition is precisely `bytes(t0) = DOC-BYTES(N−1)`, so the growth is 0 and the classification is
+`incremental` on every S-11 row, derivable with no round-N file in existence.
+
+Leaving the cells empty is still the right presentation — "not run" is what happened, and a `0` there
+invites the reader to think a round was measured. But the argument should be *"we choose not to report
+a measurement for a round that never ran"*, not *"there is no source"*, and the choice exposes an
+ordering question O-12 should carry: does AC-4.1 step 1 run before or after AC-2.8's test at
+round-open? Nothing turns on it for correctness (the read is shared, per TE Q-06), but an implementer
+needs to know whether a classification is computed and discarded or never computed.
+
 ## Questions
 
 ## Positive Observations
