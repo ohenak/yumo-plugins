@@ -128,18 +128,180 @@ function rtLog(message) {
   RT.log(String(message));
 }
 
-/** Read a file through an agent. Returns null when absent. */
-async function rtReadFile(path) {
-  const out = await RT.agent(
-    `Read the file at "${path}", relative to the repository root.\n` +
-      `Return ONLY its exact, complete contents as your final message: no commentary, ` +
-      `no summary, no markdown code fences, no leading or trailing blank lines you add yourself.\n` +
-      `If the file does not exist or cannot be read, return exactly: ${RT_MISSING}`,
-    { label: `read:${path}`, model: RT_IO_MODEL }
-  );
-  if (typeof out !== "string") return null;
-  if (out.trim() === RT_MISSING) return null;
+// An agent's final message is not a faithful transport for a large file: a
+// measured run returned 102,429 bytes of a 209,953-byte document, starting
+// mid-document, and a sibling read prepended a ```bash fence. Neither loss is
+// detectable in the reply itself, and orchestrate-dev's completeness gate reads
+// the result as a structurally incomplete document and re-authors it. So the
+// read is chunked, every chunk is size-verified against the bytes it asked for,
+// and anything that cannot be verified throws rather than returning garbage.
+//
+// 24000 source bytes is ~32 KB of base64 per final message — comfortably below
+// the ~100 KB truncation point observed above.
+const RT_READ_CHUNK = 24000;
+// Per chunk, beyond the first attempt. A truncated or fenced reply is a
+// transport fault, not a property of the file, so a retry is worth taking.
+const RT_READ_RETRIES = 2;
+
+const RT_BASE64_RE = /^[A-Za-z0-9+/]*={0,2}$/;
+const RT_B64_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+// The runtime has no Buffer, no atob and no TextDecoder (probed 2026-07-27), so
+// the decoders below are hand-rolled and dependency-free.
+const RT_B64_INDEX = (function () {
+  const map = {};
+  for (let i = 0; i < RT_B64_ALPHABET.length; i++) map[RT_B64_ALPHABET.charAt(i)] = i;
+  return map;
+})();
+
+/** base64 text → array of byte values. Throws on anything not decodable. */
+function rtBase64Decode(text) {
+  if (typeof text !== "string" || !RT_BASE64_RE.test(text)) {
+    throw new Error("rtBase64Decode: input is not base64");
+  }
+  if (text.length % 4 !== 0) {
+    throw new Error("rtBase64Decode: length is not a multiple of 4");
+  }
+  const pad = text.slice(-2) === "==" ? 2 : text.slice(-1) === "=" ? 1 : 0;
+  const bytes = [];
+  for (let i = 0; i < text.length; i += 4) {
+    const c0 = RT_B64_INDEX[text.charAt(i)];
+    const c1 = RT_B64_INDEX[text.charAt(i + 1)];
+    const c2 = RT_B64_INDEX[text.charAt(i + 2)];
+    const c3 = RT_B64_INDEX[text.charAt(i + 3)];
+    if (c0 === undefined || c1 === undefined) {
+      throw new Error("rtBase64Decode: misplaced padding");
+    }
+    const n = (c0 << 18) | (c1 << 12) | ((c2 === undefined ? 0 : c2) << 6) | (c3 === undefined ? 0 : c3);
+    const last = i + 4 >= text.length;
+    bytes.push((n >> 16) & 0xff);
+    if (!last || pad < 2) bytes.push((n >> 8) & 0xff);
+    if (!last || pad < 1) bytes.push(n & 0xff);
+  }
+  return bytes;
+}
+
+/** UTF-8 byte values → string. Handles 1–4-byte sequences, astral via surrogates. */
+function rtUtf8Decode(bytes) {
+  let out = "";
+  let units = [];
+  let i = 0;
+  while (i < bytes.length) {
+    const b0 = bytes[i];
+    let cp;
+    let len;
+    if (b0 < 0x80) {
+      cp = b0;
+      len = 1;
+    } else if ((b0 & 0xe0) === 0xc0) {
+      cp = b0 & 0x1f;
+      len = 2;
+    } else if ((b0 & 0xf0) === 0xe0) {
+      cp = b0 & 0x0f;
+      len = 3;
+    } else if ((b0 & 0xf8) === 0xf0) {
+      cp = b0 & 0x07;
+      len = 4;
+    } else {
+      throw new Error(`rtUtf8Decode: invalid leading byte 0x${b0.toString(16)} at ${i}`);
+    }
+    if (i + len > bytes.length) throw new Error(`rtUtf8Decode: truncated sequence at ${i}`);
+    for (let k = 1; k < len; k++) {
+      const b = bytes[i + k];
+      if ((b & 0xc0) !== 0x80) throw new Error(`rtUtf8Decode: invalid continuation byte at ${i + k}`);
+      cp = (cp << 6) | (b & 0x3f);
+    }
+    i += len;
+    if (cp > 0xffff) {
+      const rest = cp - 0x10000;
+      units.push(0xd800 + (rest >> 10), 0xdc00 + (rest & 0x3ff));
+    } else {
+      units.push(cp);
+    }
+    // Flushed in slices: String.fromCharCode.apply over a whole document's
+    // worth of code units risks an argument-count limit.
+    if (units.length >= 4096) {
+      out += String.fromCharCode.apply(null, units);
+      units = [];
+    }
+  }
+  if (units.length) out += String.fromCharCode.apply(null, units);
   return out;
+}
+
+/** Byte ranges covering [0, size). Empty for size 0; no empty trailing range. */
+function rtChunkPlan(size, chunkSize) {
+  const plan = [];
+  for (let offset = 0; offset < size; offset += chunkSize) {
+    plan.push({ offset, count: Math.min(chunkSize, size - offset) });
+  }
+  return plan;
+}
+
+/** One byte range, re-requested until it decodes to exactly `count` bytes. */
+async function rtReadChunk(path, chunk, index) {
+  for (let attempt = 0; attempt <= RT_READ_RETRIES; attempt++) {
+    const reply = await RT.agent(
+      `Run this exact command from the repository root and report its output:\n` +
+        `  tail -c +${chunk.offset + 1} "${path}" | head -c ${chunk.count} | base64\n` +
+        `Return ONLY the base64 text the command printed — no commentary, no summary, ` +
+        `no code fences, no leading or trailing prose. Line breaks inside the base64 are fine.`,
+      { label: `read:${path}#${index}`, model: RT_IO_MODEL }
+    );
+    const compact = typeof reply === "string" ? reply.replace(/\s+/g, "") : "";
+    if (!RT_BASE64_RE.test(compact)) continue;
+    let bytes;
+    try {
+      bytes = rtBase64Decode(compact);
+    } catch {
+      continue;
+    }
+    // The size check is what makes a truncated reply visible: base64 of a short
+    // read is still valid base64.
+    if (bytes.length !== chunk.count) continue;
+    return bytes;
+  }
+  throw new Error(
+    `rtReadFile: chunk ${index} of "${path}" (offset ${chunk.offset}, ${chunk.count} bytes) ` +
+      `could not be read verifiably after ${RT_READ_RETRIES + 1} attempts`
+  );
+}
+
+/**
+ * Read a file through agents, in verified chunks. Returns null when absent, and
+ * throws rather than returning bytes that differ from the file on disk.
+ */
+async function rtReadFile(path) {
+  const sizeReply = await RT.agent(
+    `Run this exact command from the repository root and report its output:\n` +
+      `  if [ ! -f "${path}" ] || [ ! -r "${path}" ]; then echo ${RT_MISSING}; else wc -c < "${path}"; fi\n` +
+      `Return ONLY that token or that number — no commentary, no code fences, no units.`,
+    { label: `size:${path}`, model: RT_IO_MODEL }
+  );
+  const sizeText = typeof sizeReply === "string" ? sizeReply.replace(/\s+/g, "") : "";
+  if (sizeText === "" || sizeText.indexOf(RT_MISSING) !== -1) return null;
+  if (!/^[0-9]+$/.test(sizeText)) {
+    throw new Error(`rtReadFile: unparseable size reply for "${path}": ${String(sizeReply).slice(0, 80)}`);
+  }
+  const size = Number(sizeText);
+  if (size === 0) return "";
+
+  const plan = rtChunkPlan(size, RT_READ_CHUNK);
+  // The HOST `parallel` takes thunks, not started promises (that is rtParallel's
+  // contract, not this one), and resolves a thrown thunk to null — hence the
+  // explicit null check below rather than a rejection propagating on its own.
+  const chunks = await RT.parallel(plan.map((chunk, i) => () => rtReadChunk(path, chunk, i)));
+  const bytes = [];
+  for (let i = 0; i < plan.length; i++) {
+    const part = chunks && chunks[i];
+    if (!part || part.length !== plan[i].count) {
+      throw new Error(`rtReadFile: chunk ${i} of "${path}" did not return its ${plan[i].count} bytes`);
+    }
+    for (let k = 0; k < part.length; k++) bytes.push(part[k]);
+  }
+  if (bytes.length !== size) {
+    throw new Error(`rtReadFile: "${path}" reassembled to ${bytes.length} bytes, expected ${size}`);
+  }
+  return rtUtf8Decode(bytes);
 }
 
 /** Write a file through an agent, verbatim. */
