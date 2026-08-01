@@ -39,10 +39,8 @@ what an operator does when they run out.
 - **An absolute cap needs an escape hatch, and the escape hatch needs durable state.** A cap counted from round 1 of the *document* is a dead end without an operator reset, and a reset
   leaving no record is re-granted every invocation — the per-invocation budget restored fail-open.
 
-Successor `pdlc-rcv-fixed-point-stop` carries the two **tests** evaluated inside this window (P-2:
-the enforced fixed-point stop, and the zero-delta stop). Sibling `pdlc-rcv-panel-topology` carries
-P-1's *review-surface* half (panel shape, revision size); `pdlc-rcv-finding-quality` carries P-3
-and P-4.
+Successor `pdlc-rcv-fixed-point-stop` carries the two **tests** evaluated inside this window (P-2);
+`pdlc-rcv-panel-topology` carries P-1's *review-surface* half; `pdlc-rcv-finding-quality` P-3 and P-4.
 
 ## 2. Users and value
 
@@ -115,7 +113,7 @@ in-process-only row would be a defect; there is no such row.**
 | Round index N | AC-1 | The `CROSS-REVIEW-{role}-{doc}-v{N}.md` basenames on the branch, via `deriveRoundWindow` (M-1d) | n/a — the listing is always readable |
 | Highest round reached for a document | AC-1.5 | Same basenames | Treated as 0; the window opens at round 1 |
 | **First round of the current window** `W` | AC-1.1, AC-1.5(4); `pdlc-rcv-fixed-point-stop` AC-2.1 and AC-2.8 | The `WINDOW-START: {N}` lines in the **reset region** — the **greatest** value present, and only if every line validates **and** `H − A ∈ {0, 1}` (AC-1.5(4)). Lines are appended, so document order is event order | Treated as **1** — no reset in effect, AC-1.1's cap applies from round 1. Fail-closed: no absent or invalid value ever widens the window. **Survives a second halt**, since AC-1.4 preserves the region |
-| **Whether a clearance is still unanswered** (the reset is one-shot) | AC-1.5(4), AC-1.5(5) | The **counts**, in that region, of `H` = `HALT-REASON:` lines and `A` = `WINDOW-START:` **plus** `WINDOW-RESUMED:` lines. A clearance is unconsumed exactly when a `RESOLVED: yes` is readable, `A < H`, **and the region validates** | `A = H` ⇒ every halt answered; nothing written, nothing granted. `H − A ∉ {0, 1}` ⇒ counts corrupt ⇒ the step-4 refusal (AC-1.5(4)), which moves neither count. `H` is exactly the number of **post-mortem-writing halts of this phase for this document** (AC-1.4's scope) |
+| **Whether a clearance is still unanswered** (the reset is one-shot) | AC-1.5(4), AC-1.5(5) | The **counts**, in that region, of `H` = `HALT-REASON:` lines and `A` = `WINDOW-START:` **plus** `WINDOW-RESUMED:` lines. A clearance is unconsumed exactly when a `RESOLVED: yes` is readable, `A < H`, **and the region validates** | `A = H` ⇒ every halt answered; nothing written, nothing granted. `H − A ∉ {0, 1}` ⇒ counts corrupt ⇒ the step-4 refusal (AC-1.5(4)), which moves neither count |
 | **That the post-mortem is readable at all** | AC-1.4, AC-1.5(4) | The file itself | An **unreadable-but-present** post-mortem is read by `checkPostmortem` as `status: "none"` (M-7a) ⇒ no halt in force **and** an empty region ⇒ `H = A = 0`, `W = 1` — the narrowest window, no clearance honoured, nothing written. |
 | **Whether the operator has cleared the current halt** | AC-1.4's re-entry gate (shipped), AC-1.5(4) | The **single** `RESOLVED:` line, read by `parseResolvedMarker` and mapped by `checkPostmortem` (M-7a) | absent, `no`, unparseable **or duplicated** ⇒ the phase is refused — the shipped fail-closed gate, unchanged. AC-1.4 keeps it exact by having each halt **strip** any prior `RESOLVED:` line |
 | **Which halt a POSTMORTEM records** | AC-1.5(4), AC-1.5(5) | The **last** `HALT-REASON: {string}` line in the region (S-15) — one per halt, appended, so document order is halt order | Read as a convergence halt (S-3/S-4) — fail-closed, so an unreadable reason never converts a consuming reset into a free one |
@@ -182,10 +180,9 @@ halts twice has its post-mortem written twice, and the reset region (catalogue �
 exactly one code path, the review loop's non-convergence halt (M-7e). **Not** over the pipeline's
 other halt classes — creator-agent failure, the branch guard, a listing failure, Phase PUB/CI, Phase
 DOD — none of which writes a post-mortem at HEAD, and none of which this REQ asks to start (N-4); nor
-over the phases N-7 excludes. So §4.1's *"`H` is exactly the
-number of halts this document has taken"* means **post-mortem-writing halts of this phase for this
-document** — the only halts that leave a marker for a clearance to clear, which is what makes the
-pairing exact. Within that scope the rule admits **no exception**:
+over the phases N-7 excludes. So §4.1's and §6's `H` counts **post-mortem-writing halts of this
+phase for this document** — the only halts that leave a marker for a clearance to clear, which is
+what makes the pairing exact. Within that scope the rule admits **no exception**:
 
 1. **the reset region exists after the halt, and it carries this halt's line.** A halt that finds **no existing post-mortem** — the first halt of a phase, which is the halt that creates
    the file — **creates `## Reset Region` containing exactly one `HALT-REASON:` line, its own**. A halt that finds an existing post-mortem **preserves** the region — every `WINDOW-START:`
@@ -226,8 +223,7 @@ state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-)entered. *Then
    feature)*), so a forced Phase R on a document already at round 3 is admitted **no rounds**: it halts
    on the budget path, writes the post-mortem and row C, and writes the queue row `halted` — and a
    second force changes nothing, because at `A = H` a marker grants nothing. A deliberate change to a
-   documented operator entry point, stated so it has an oracle; the supported sequence after an
-   exhausted document is *clear the post-mortem, then re-enter*;
+   documented operator entry point, stated so it has an oracle;
 2. the window's **start** is unchanged — one past the highest existing round (M-1d), so review history stays append-only and no existing file is ever overwritten;
 3. the **one** reset is an operator's: a `POSTMORTEM-{phase}-{feature}.md` carrying a human-written `RESOLVED: yes` outside any fenced block clears the halt, and the rounds recorded
    *before* that marker do not count against the budget of the window opened after it. This is the existing operator escape hatch, stated here because it is what makes an absolute cap
@@ -482,9 +478,8 @@ queue-eligible until an operator specifies it and opts it in.
 
 **Why one requirement and not two.** v1.0 carried REQ-RCV-01 and REQ-RCV-02 together at **581 lines
 / 83 KB**, past the 60 KB ceiling; v1.1 cut at the seam they already had — this REQ the **window**,
-`docs/pdlc-rcv-fixed-point-stop/REQ-pdlc-rcv-fixed-point-stop.md` the two **tests** inside it, with
-the ordering argument (`W` before AC-2.1/AC-2.8/AC-2.6) kept as a `depends-on` edge. No requirement,
-AC or `S-*` id changed.
+`docs/pdlc-rcv-fixed-point-stop/` the two **tests** inside it, with the ordering argument (`W` before
+AC-2.1/AC-2.8/AC-2.6) kept as a `depends-on` edge. No requirement, AC or `S-*` id changed.
 
 **Round-by-round history is deliberately not restated here:** `harvest-learnings` deletes
 `CROSS-REVIEW-*` once LEARNINGS is written, so citing round files would be structurally wrong. This
