@@ -187,4 +187,83 @@ Not findings. Apply without discussion; none affects the recommendation.
 
 ## Recommendation
 
+**Approved with minor changes** — five Low findings, no High and no Medium. All three of my round-7
+findings are closed at the mechanism, including the High, and the two Medium are closed by routes better
+than the ones I proposed. This is the first round in this phase in which I have no blocking finding.
+
+### What the five Lows are, and why none of them blocks
+
+All five are **rendering or naming** defects in text v1.6 added — none changes a decision, none leaves a
+state unreachable or a repair divergent, and every one is a single clause:
+
+1. **G-21** — say *the offending line*, not *the offending value*, in §5's S-16 row (the specimen already
+   says the line).
+2. **G-22** — say which `{reason}` a two-fault region reports: first failing line in document order,
+   `counts-mismatch` only when every line passes step 2.
+3. **G-23** — scope *"the only effect of the entry"* to the post-mortem file, and say the phase
+   terminates on step G's path rather than returning.
+4. **G-24** — in the repair table, prefer **correct** over **delete** for the two value reasons, and note
+   that deleting is safe only at `H − A = 0` (a number the notice now carries).
+5. **G-25** — add *phase refusal* to §5's meanings table, or qualify AC-3.5's and AC-3.2's uses as
+   *approval refusal*.
+
+MF-6 … MF-10 do not block either. **My recommendation to the operator is to apply the five clauses and
+MF-6 as a v1.7 consistency pass and close Phase R** — not to open a ninth review round for them. Every
+one is derivable from this file without a reviewer in the loop, and none of them is the kind of defect a
+further round is good at finding.
+
+### On the stopping rule
+
+`blocking(4) = 9`, `blocking(5) = 11`, `blocking(6) = 6`, `blocking(7) = 6`. Both operands available at
+round 7, panel shape `{software-engineer, test-engineer}` on both rounds, so AC-2.1's guard is satisfied
+and `blocking(7) ≥ blocking(6) > 0` **holds**: the rule this REQ is written to install would have halted
+the phase at round 7 with an S-3 fixed-point reason. It did not, because the rule has not shipped and the
+operator continued — and round 8 is the round on which every blocking finding closed and none replaced
+it. That is worth recording precisely because it cuts against the document's interest: the mechanism it
+proposes would have stopped this phase one round short of the approval it is now getting, and the reason
+is exactly R-9's — a flat *count* concealing a collapse in *severity* (`1H+2M` and `1H+2M` → `0H+0M`).
+MF-9 folds it into R-9's demonstration. It does not change my verdict on the mechanism: R-2 and R-9
+already accept count-only coarseness, the failure direction is a false-positive halt and never a wrong
+approval, and one operator interaction is the stated price.
+
+My own panel-private series is 10, 5, 5, 5, 5, 4, 3, **0 blocking (5 Low)**. Read honestly, the *total*
+finding count went up (3 → 5) while the blocking count went to zero — which is the same signal from the
+other side, and the reason I have written the recommendation as *apply and close* rather than *iterate*:
+when the residue is five naming clauses, another round buys naming clauses.
+
+### What changed in kind this round
+
+Rounds 5, 6 and 7 each produced a finding in the reset-region accounting, always the untraced neighbour
+of a state the previous fix had added. Round 8 produces none. The region is now closed over its own
+lifecycle — halt, corrupt, refuse, repair (per reason), recover — and I traced the recovery leg to a
+granted window rather than taking the document's word for it. The remaining five findings do not live in
+any state machine; they live in how two sections spell the same string. That is the transition worth
+recording in LEARNINGS: **a state machine stops generating findings when its enumeration closes, not
+when its prose improves — and the reviewer can tell the difference by whether the new findings are about
+states or about strings.**
+
+### Explicit non-findings (carried and extended)
+
+Recorded so a later round does not re-raise them: I do not contest any of the six decisions; I do not
+file R-5's known unenforceability of AC-5, AC-4.6 or AC-3.2(2) (MF-8 asks only that the list be
+widened); I do not file R-6's mixed-panel integration risk; I do not contest AC-2.8's fail-open posture,
+AC-1.5(4)'s fail-closed posture, N-7's widening to Phase DOD, AC-4.1's live later endpoint, the S-3/S-4
+co-occurrence ordering, the AC-2.8 halt row's empty cells, R-9's decision to record rather than fix, the
+`H`/`A` decomposition, the `WINDOW-RESUMED:` literal, AC-1.4's strip, the window-scoping of
+AC-3.1/AC-3.2/AC-4.1/AC-4.5, AC-3.4's stopping scan, the mapping of a duplicated trailer line to
+*malformed*, the counts check's bounds, the append rule, S-16's closed enum, AC-2.7's ordered reading, or
+the dispatched round range. **New this round:** I do not contest that a refusal takes no halt, that a
+refusal is unconditional even on a branch with rounds left in its budget (it is fail-closed and the
+repair is stated), the whole-section deletion repair for `counts-mismatch`, §6's direction-scoped
+*"never authored by a human"*, AC-4.7's row A / row B split, S-17's grammar or its four-input receive
+side, or §5's amended *malformed* definition. I have no blocking finding against REQ-RCV-05 or
+REQ-RCV-06. I raised no `## Measurement Required` items.
+
+**Scope note.** All five findings are tagged `Local`: each is a missing or doubled clause in this
+document, not a constraint that outlives it. The durable signal from this round is in the Positive
+Observations — *prefer deleting the path to excepting the invariant*; *scope a prohibition by failure
+direction, not by the edit's shape*; *close a Medium into an already-enumerated case rather than into a
+new one* — and in MF-9's measurement, which is the first on-branch instance of R-9's false positive
+landing immediately before approval.
+
 ## Verdict
