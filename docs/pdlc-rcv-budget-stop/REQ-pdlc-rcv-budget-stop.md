@@ -26,8 +26,8 @@ depends-on: []
 This REQ carries the **window**: how many rounds a document gets, what they are counted from, and
 what an operator does when they run out.
 
-- **P-1's cost half — the budget does not bound the document.** At HEAD `MAX_REVIEW_ROUNDS` is a *per-invocation* budget (M-1d), so "three rounds" bounds an invocation and not a document:
-  a document can be reviewed six times across two invocations with no operator action at all.
+- **P-1's cost half — the budget does not bound the document.** At HEAD `MAX_REVIEW_ROUNDS` is a *per-invocation* budget (M-1d), so a document can be reviewed six times across two
+  invocations with no operator action at all.
 - **The budget is five, and the fifth round is measurably worse than the second.** On the predecessor the blocking count reached its minimum at round 2, held it at round 3, and rose thereafter (baseline §1.1: 11, 6, 6, 7, 9), and 66 KB —
   40% of the finished document — was added by rounds that ran *after* its own fixed-point test fired.
 - **An absolute cap needs an escape hatch, and the escape hatch needs durable state.** A cap counted from round 1 of the *document* is a dead end without an operator reset, and a reset
@@ -166,11 +166,10 @@ seam*, purely content-addressed over the basenames plus that value. **No IO seam
 the caller. Any FSPEC or TSPEC that gives either function a seam violates this clause.
 
 **AC-1.3 — The reduction is not silently partial, and the two quantities are named.** *Who:* the operator. *Given:* a non-convergent phase. *When:* the loop halts on the budget. *Then:*
-the post-mortem's Iterations section, the phase record and the returned `iterations` field all report the **effective budget** — the value of `MAX_REVIEW_ROUNDS`, which is 3 at the
-declared default (§6) — so a halt that says "5" while the budget is 3 is a defect. `iterations` is the **budget**, not the rounds run: that is what the shipped site returns (M-1c) and this
-REQ does not change it. Because AC-1.5(1) makes a **zero-round** halt the commonest new case, the post-mortem's Iterations section additionally states the **rounds this entry ran** — `0` on
-the entry admitted no rounds — so budget and rounds-run are never conflated in the one place an operator reads them. A test asserts both quantities over the constant, not over the literal
-`3`, so a maintainer who changes the constant does not go red for the wrong reason.
+the post-mortem's Iterations section, the phase record and the returned `iterations` field all report the **effective budget** — the value of `MAX_REVIEW_ROUNDS`, 3 at the declared default
+(§6) — so a halt saying "5" while the budget is 3 is a defect. `iterations` is the **budget**, not the rounds run, which is what the shipped site returns (M-1c). Because AC-1.5(1) makes a
+**zero-round** halt the commonest new case, the Iterations section additionally states the **rounds this entry ran** — `0` there — so the two are never conflated in the one place an
+operator reads them. Both are asserted **over the constant**, never the literal `3`.
 
 **AC-1.4 — Existing halt behaviour is unchanged in kind, and every halt maintains the reset region.** *Who:* the operator. *Given:* the budget is exhausted. *When:* the loop halts.
 *Then:* it halts the way it halts today — writing `POSTMORTEM-{phase}-{feature}.md`, confirming the write rather than trusting the agent's reply, and refusing to re-run the phase until
@@ -181,22 +180,19 @@ Two things about that write do change, because this REQ puts machine-written sta
 
 **The scope of "every halt".** The rule below is quantified over **every halt that writes
 `POSTMORTEM-{phase}-{feature}.md` for a document-typed review-loop phase** (AC-1.1's scope) — at HEAD
-exactly one code path, the review loop's non-convergence halt (M-7e), and the phases it runs for.
-It is **not** quantified over the pipeline's other halt classes — a creator-agent failure, the branch
-guard, a listing failure, Phase PUB/CI, Phase DOD — none of which writes a post-mortem at HEAD and
-none of which this REQ asks to start writing one (that would be an N-4 violation). Nor over Phase CR
-and Phase DOD, which N-7 excludes. Read with that scope, §4.1's *"`H` is exactly the number of halts
-this document has taken"* means **the number of post-mortem-writing halts of this phase for this
-document** — the only halts that can leave a marker for a clearance to clear, which is what makes the
-pairing argument exact. A halt that writes no post-mortem leaves no marker, grants no clearance and
-moves neither count. Within that scope the rule admits **no exception**:
+exactly one code path, the review loop's non-convergence halt (M-7e). It is **not** quantified over
+the pipeline's other halt classes — creator-agent failure, the branch guard, a listing failure, Phase
+PUB/CI, Phase DOD — none of which writes a post-mortem at HEAD, and none of which this REQ asks to
+start (that would violate N-4); nor over the phases N-7 excludes. So §4.1's *"`H` is exactly the
+number of halts this document has taken"* means **post-mortem-writing halts of this phase for this
+document** — the only halts that leave a marker for a clearance to clear, which is what makes the
+pairing exact. Within that scope the rule admits **no exception**:
 
 1. **the reset region exists after the halt, and it carries this halt's line.** A halt that finds **no existing post-mortem** — the first halt of a phase, which is the halt that creates
    the file — **creates `## Reset Region` containing exactly one `HALT-REASON:` line, its own**. A halt that finds an existing post-mortem **preserves** the region — every `WINDOW-START:`
-   (S-13), `WINDOW-RESUMED:` (S-14) and `HALT-REASON:` (S-15) line already in it, in document order — and **appends its own `HALT-REASON:` line to the end of that region**. Nothing is
-   written above the preserved lines and nothing between them. Both cases are one rule under O-5's read-modify-write: the captured region of a file that does not exist is the **empty
-   region**, and re-applying it plus this halt's line yields a one-line region. So `H` — the count of `HALT-REASON:` lines — is **exactly the number of halts this document has taken**, on
-   every path, and AC-1.5(5)'s *"the last `HALT-REASON:`"* means *"the most recent halt's"*.
+   (S-13), `WINDOW-RESUMED:` (S-14) and `HALT-REASON:` (S-15) line already in it, in document order — and **appends its own `HALT-REASON:` to the end of that region**, nothing above or
+   between the preserved lines. Both cases are one rule under O-5's read-modify-write: the captured region of a file that does not exist is the **empty region**, so re-applying it plus this
+   halt's line yields a one-line region. So `H` is **exactly the number of halts in AC-1.4's scope**, on every path, and AC-1.5(5)'s *"the last `HALT-REASON:`"* is the most recent halt's.
 2. **any `RESOLVED:` line already in the file is stripped** — every **unfenced** one, wherever in the file it sits. The new post-mortem is therefore **unresolved on arrival**, and the
    operator must clear *this* halt before the phase runs again. The strip is scoped to unfenced lines because every other reader is (M-7a, M-7d): a fenced `RESOLVED: yes` is invisible to
    the gate either way, so scoping the strip changes no decision, keeps the document to **one** scoping rule, and stops the halt path editing prose inside a human's code fence.
@@ -224,26 +220,22 @@ state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-)entered. *Then
    (§6). **This clause is not reached on an entry whose reset region failed validation**: step 4 refuses the phase and returns before the budget is evaluated, so no halt is taken and no S-4
    reason is emitted on that entry.
 
-   **The zero-round budget halt has a report row, and it is row C.** The entry that is admitted no
-   rounds and halts immediately opens no round, so the per-round table (catalogue §3) would otherwise
-   be empty and §2's promised surface would not exist for the commonest new halt. It is therefore the
-   **third** dispatch-less row, stated cell by cell here as the catalogue requires of the REQ that owns
-   the condition: `round` = **one past the highest round of this document type on the branch** (from
-   the listing, `deriveRoundWindow`) — the round that *would* have opened had the budget allowed;
-   `panel-shape`, `blocking`, `growth-bytes`, `classification` **empty** — no round was dispatched, so
-   nothing was measured; `notice` = the **S-4** reason of this halt, `; `-joined with any co-occurring
-   reason in catalogue §3 precedence order. Row C carries S-4 and row B carries S-16, and the two are
-   mutually exclusive by construction: row B's entry takes no halt, row C's entry takes one;
+   **The zero-round budget halt has a report row, and it is row C** — the **third** dispatch-less row,
+   stated cell by cell here as the catalogue requires of the REQ owning the condition, because the
+   per-round table would otherwise be empty for the commonest new halt and §2's promised surface would
+   not exist. `round` = **one past the highest round of this document type on the branch** (from the
+   listing) — the round that *would* have opened; `panel-shape`, `blocking`, `growth-bytes`,
+   `classification` **empty**, nothing having been dispatched or measured; `notice` = this halt's
+   **S-4** reason, `; `-joined with any co-occurring reason in catalogue §3 precedence order. Rows B
+   and C are mutually exclusive: row B's entry takes no halt, row C's takes one;
 
-   **`forcePhases` does not grant a window, and this is the only route past the cap.** `forcePhases`
-   overrides a **recorded approval** and nothing else (`CLAUDE.md`, *Entry (single feature)*). Under
-   this clause a forced Phase R on a document whose highest round is already 3 is therefore admitted
-   **no rounds**: it halts immediately on the budget path, writes the post-mortem, emits row C, and
-   writes the queue row `halted` — it does not re-review. That is a deliberate behavioural change to a
-   documented operator entry point and it is stated here so it has an oracle: the **only** route to a
-   fresh window is the `RESOLVED: yes` clearance of clause 3, and a second force changes nothing,
-   because at `A = H` a marker on disk grants nothing. The operator's supported sequence after an
-   exhausted document is *clear the post-mortem, then re-enter* — with or without a force;
+   **`forcePhases` does not grant a window; the clearance is the only route past the cap.**
+   `forcePhases` overrides a **recorded approval** and nothing else (`CLAUDE.md`, *Entry (single
+   feature)*), so a forced Phase R on a document already at round 3 is admitted **no rounds**: it halts
+   on the budget path, writes the post-mortem and row C, and writes the queue row `halted` — it does
+   not re-review, and a second force changes nothing, because at `A = H` a marker grants nothing. This
+   is a deliberate change to a documented operator entry point, stated so it has an oracle. The
+   supported sequence after an exhausted document is *clear the post-mortem, then re-enter*;
 2. the window's **start** is unchanged — one past the highest existing round (M-1d), so review history stays append-only and no existing file is ever overwritten;
 3. the **one** reset is an operator's: a `POSTMORTEM-{phase}-{feature}.md` carrying a human-written `RESOLVED: yes` outside any fenced block clears the halt, and the rounds recorded
    *before* that marker do not count against the budget of the window opened after it. This is the existing operator escape hatch, stated here because it is what makes an absolute cap
@@ -295,21 +287,18 @@ state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-)entered. *Then
    AC-1.4 governs **every** halt, so that halt would append its own `HALT-REASON:` (`H += 1`) and strip the operator's `RESOLVED:` line — spending the clearance it declined to spend.
    Therefore, when step 4 refuses:
 
-   - the entry **takes no halt**: it does not evaluate clause 1's budget, writes no `HALT-REASON:` line, writes no post-mortem, and AC-1.4 does not fire, so `H` remains exactly the number of
-     halts this document has taken;
+   - the entry **takes no halt**: it does not evaluate clause 1's budget, writes no `HALT-REASON:` line, writes no post-mortem, and AC-1.4 does not fire, so `H` is unchanged;
    - the operator's `RESOLVED:` marker is **left in place**, unstripped, so `checkPostmortem` still reads `resolved` on the next entry;
-   - the post-mortem file is **byte-unchanged**. *Scoped to that file*, the only effect of the entry is the S-16 notice on row B below. It is **not** a claim that the invocation is
-     otherwise unaffected;
+   - the post-mortem file is **byte-unchanged**; *scoped to that file*, the entry's only effect is the S-16 notice on row B. It is no claim about the rest of the invocation;
    - the operator-facing text is **this refusal's own**, not step G's. Reusing step G's row would tell the operator the opposite of the truth: step G refuses because the marker is
      *unresolved*, whereas step 4 fires on a post-mortem the operator **did** resolve. The ❌ phase row therefore reads `Refused — reset region corrupt at {path} ({reason})`, `{reason}`
      being the S-16 reason, and the halt reason carried to the run report and the queue **names the sanctioned repair for that reason** (AC-1.5(4)'s repair table) instead of the shipped
      generic *"set the row back to pending, then re-run the queue"*, which on this path reproduces the refusal on every iteration. `postmortemStatus` is **not** reported as `unresolved`.
      These two strings are operator-facing renders of S-16, declared in §6; they are **not** new catalogue ids, and no other new string is minted;
    - the phase is **refused, not halted** — a *phase refusal* in the catalogue §1 sense, the same shape as step G's refusal of an unresolved post-mortem. *Returns* means **the phase does not run and
-     the invocation terminates on step G's path**: a ❌ phase row is recorded, the pipeline stops, and on the shipped halt path the feature's `docs/_queue/QUEUE.md` row is rewritten to
-     `halted` and committed — the queue write is reached *because* the refusal is step-G-shaped (M-7a, M-7b). A literal early `return` would **not** reach it: the entry-validation halts
-     nearby build their final report directly and never call `recordHaltFn`. That is the intended outcome — the region needs an operator, so an unattended queue must stop rather than re-pick
-     the feature and refuse again once per iteration.
+     the invocation terminates on step G's path**: a ❌ phase row is recorded, the pipeline stops, and the feature's `docs/_queue/QUEUE.md` row is rewritten to `halted` and committed — the
+     queue write is reached *because* the refusal is step-G-shaped (M-7a, M-7b), where a literal early `return` would not reach it (the entry-validation halts nearby build their report
+     directly and never call `recordHaltFn`). That is intended: the region needs an operator, so an unattended queue must stop rather than refuse once per iteration.
 
    **The sanctioned repair is the operator's, and it is the only hand-edit this document asks for to machine-written state** — "machine-maintained" describes normal operation, not repair.
    When the run report emits S-16 the region is **human-repairable**, per reason:
@@ -352,13 +341,12 @@ state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-)entered. *Then
       fault count**: the reported `{reason}` belongs to the **first failing line in document order**, and `counts-mismatch` only when every line passes step 2, so two S-16 notices never
       co-occur in the report row's `; `-joined `notice` cell. A corrupt region is never partially believed. **The entry then refuses the phase and returns**, per the *refusal is not a halt* paragraph above.
       **Where `W`'s resolution runs: after the phase gate's skip decision, before any round opens.**
-      `phaseGate` can exit with `{ skip: true }` on an approved-and-fresh document (`orchestrate-dev.js:4213`–`:4225`), and on that exit **neither step 4 nor the grant runs**: `W` is not
-      resolved, no region is read for a decision, no answering line is written, and no refusal is raised. A skipped phase reviews nothing, so a refusal there would halt the whole pipeline
-      over a phase that has no round to gain by the repair, indefinitely; and a grant there would spend the operator's one-shot clearance on an entry that opens no round. Both are pure cost.
-      The resolution therefore runs **inside the phase body that is actually going to review**, which is also what keeps a refusal on step G's path (O-6). Within that body the refusal is
-      **unconditional**: step 4 sits inside `W`'s resolution, which runs on **every** entry that reaches it, so it fires whether or not the branch has rounds left in an already-granted window
-      and whether or not a `RESOLVED:` marker is pending. There are exactly **three** entry classes, and the third is the skip: the justification is **fail-closed, not costless**:
-      - On a **skipped** entry the algorithm does not run at all, for the reasons just given; the region is untouched and both counts are unmoved.
+      `phaseGate` can exit `{ skip: true }` on an approved-and-fresh document (`orchestrate-dev.js:4213`–`:4225`); on that exit **neither step 4 nor the grant runs** — `W` is not resolved,
+      no answering line is written, no refusal is raised. A skipped phase reviews nothing, so a refusal there would halt the pipeline indefinitely over a phase no repair gains a round for,
+      and a grant there would spend the one-shot clearance on an entry that opens no round: both pure cost. The resolution therefore runs **inside the phase body that is going to review**,
+      which is also what keeps a refusal on step G's path (O-6). Within that body the refusal is **unconditional** — it fires whether or not rounds remain in an already-granted window and
+      whether or not a marker is pending. Three entry classes, the third being the skip; the justification is **fail-closed, not costless**:
+      - On a **skipped** entry the algorithm does not run; the region is untouched and both counts unmoved.
       - On an **exhausted** branch — highest round ≥ 3 under `W` = 1 — the outcome is the same either way: the fallback admits `{1, 2, 3}`, all three are filled, and the entry would have halted
         on the budget path regardless. There the refusal is *indistinguishable* from the fallback.
       - On a **mid-window** branch with rounds remaining under `W` = 1 — reachable at highest round **2**, since `pdlc-rcv-fixed-point-stop` AC-2.1 can fire on the (1, 2) pair and its AC-2.8 can halt at round 2, either of
