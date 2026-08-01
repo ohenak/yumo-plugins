@@ -79,6 +79,88 @@ Ids continue the `G-` series so they cannot be confused with the closed `F-01…
 
 ## Findings in detail
 
+Each of the three Mediums is a two-state trace, so each gets its own.
+
+### G-26 — the arithmetic of the delete branch, one level further out
+
+Last round I traced the delete branch *forward* from `H − A = 1` and found it converts the reported
+reason. The document accepted that and drew the licence at `H − A = 0`. That is where the same branch has
+its other effect, and it runs the other way:
+
+| Region before | Marker on disk? | Repair taken | Region after | Next entry |
+|---|---|---|---|---|
+| `H = 1`, `A = 1`, `WINDOW-START: 99` | yes (left in place by the refusal) | **correct** to a valid value | `H = 1`, `A = 1` | `A < H` **false** ⇒ no grant; `W` = the corrected value; the phase proceeds under the window already spent |
+| same | yes | **delete** the line (licensed: `H − A = 0`) | `H = 1`, `A = 0` | marker present, `A < H` **true**, region validates ⇒ **a window is granted** and `WINDOW-START:` is written |
+
+The two sanctioned repairs for one notice differ by an entire three-round window. The document's own
+words for what must not happen are §6's: the `WINDOW-START:` prohibition *"forbids the one hand-edit that
+could bank an unpaid window"*, and it excuses the `counts-mismatch` whole-section deletion on the ground
+that that edit *"can only cost windows, never grant them"* — true of that edit, because it zeroes **both**
+counts; false of this one, which lowers `A` and leaves `H`. So the licence added in v1.7 is precisely the
+shape the scoping argument in v1.6 was written to exclude, and it was added one revision later, in the
+row that argument sits above.
+
+Two smaller points fall out of the same trace and I mention them because they bear on the fix, not as
+separate findings. First, *safe* is doing two jobs: the paragraph proves *safe against step 3* (`H − A`
+stays in `{0, 1}`) and states it as *safe* full stop. Second, the licence is unnecessary — the same
+paragraph says *"Correcting the value is safe at every `H − A`"*, so there is no region on which the
+operator **needs** to delete an answering line. A repair table that offers only *correct* for the two
+value reasons loses nothing and closes this. If the delete branch is kept for some reason I have not
+seen, it needs the conjunct the grant gate uses: delete only when `H − A = 0` **and** no `RESOLVED:`
+marker is present — which is a condition the operator cannot reliably establish, since the refusal is
+what left the marker there.
+
+### G-27 — why the second dispatch cannot be on the halting round, and where the sequence actually stops
+
+AC-2.8 fixes the order precisely, which is what makes this checkable: *When:* the loop's round-open read
+happens *"**before** it dispatches round N's reviewers"*; *Then:* on a hit the loop halts and *"round N is
+**not** dispatched and **not** counted against AC-1's budget"*. So for the fixture:
+
+- round `k`: garbled `REVIEW-SCOPE-ROUNDS:` ⇒ verifier omits `## Disposition` ⇒ approval refused,
+  `disposition-missing` reported. **Dispatch 1.**
+- optimizer episode: no defect named, plausible response is a byte-identical document.
+- round `k+1` opens: `bytes = DOC-BYTES(k)` and `sha256 = DOC-SHA256(k)` ⇒ **halt, S-11**, no dispatch.
+  This round cannot assert `disposition-missing`, because no verifier ran on it.
+- operator clears; AC-1.5(5) writes `WINDOW-RESUMED:`, `W` unchanged, round `k+1` re-opens.
+
+O-10 asks for both the second `disposition-missing` **and** the byte-identical zero-delta halt as
+properties of *the second round*. They are properties of two different rounds separated by an operator
+interaction, which is exactly the sequencing TE Q-14 forced into the `counts-mismatch` bullet in this
+same revision. Write it the same way: three rounds and one clearance, not two rounds.
+
+There is a second-order point the fixture will hit as soon as someone writes it, and it is worth stating
+in AC-3.2 rather than discovering in PROPERTIES. When round `k+1` re-opens after the clearance, the
+document is *still* byte-identical to round `k`'s — nothing changed it, and by hypothesis there is nothing
+for the author to change. AC-2.8's anchors are unchanged too, so the test fires **again**: halt, clear,
+halt, clear. The loop never reaches *"the same garbled dispatch is emitted again"* unless some byte moves.
+So the pathology's real shape is **absorbing at the zero-delta halt**, not a cycle of garbled dispatches —
+worse than the paragraph describes, and it changes what the fixture must assert: the second dispatch is
+reachable only from an authoring pass that *did* change bytes, so the fixture must make it do so
+(a cosmetic revision is the realistic model of a real optimizer, and it is also the input that makes the
+sequence progress).
+
+### G-28 — the branch on which `W = 1` admits a round
+
+`W = 1` makes the window `{1, 2, 3}`. It admits nothing only when the branch already carries three rounds
+— the *canonical exhausted-branch fixture* row B is written over. The mid-window case is different, and it
+is reachable without any exotic state:
+
+1. rounds 1 and 2 run. Round 2 halts — AC-2.1's fixed point or AC-2.8's zero-delta, both of which can fire
+   at round 2 (AC-2.8's own *Given* is `N ≥ 2 of the current window`). AC-1.4 clause 1 creates the region
+   with one `HALT-REASON:` line: `H = 1`, `A = 0`.
+2. the operator writes `RESOLVED: yes`, and in the same pass hand-edits the region — the only way a region
+   becomes corrupt at all, per §5.
+3. next entry: step 2 fails ⇒ `W = 1` ⇒ **step 4 refuses**.
+
+Under the pre-v1.7 conditional reading the entry would have resolved `W = 1`, found the window `{1, 2, 3}`
+with round 3 unfilled, and **run round 3** with the full panel. Under v1.7 it refuses. That is a real
+behavioural widening, and it is the right one — a corrupt region means the accounting cannot be trusted,
+and running a round on it would produce a cross-review the loop cannot place in a window. What is wrong is
+only the sentence that says it costs nothing, and the cost matters twice: it is what makes the two
+implementations distinguishable (so O-10 must kill the conditional mutant), and row B's `round` cell is
+stated over exactly this case (*"on a mid-window refusal this is also the round that would have opened"*)
+— so the document currently asserts both that such a round exists and that it does not.
+
 ## Questions
 
 ## Positive Observations
