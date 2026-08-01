@@ -174,9 +174,9 @@ which a surviving reachable default fails whenever `W ≠ 1`.
 
 **AC-1.3 — The reduction is not silently partial, and the two quantities are named.** *Who:* the operator. *Given:* a non-convergent phase. *When:* the loop halts on the budget. *Then:*
 the post-mortem's Iterations section, the phase record and the returned `iterations` field all report the **effective budget** — the value of `MAX_REVIEW_ROUNDS`, 3 at the declared default
-(§6) — so a halt saying "5" while the budget is 3 is a defect. `iterations` is the **budget**, not the rounds run, which is what the shipped site returns (M-1c). Because AC-1.5(1) makes a
-**zero-round** halt the commonest new case, the Iterations section additionally states the **rounds this entry ran** — `0` there — so the two are never conflated in the one place an
-operator reads them. Both are asserted **over the constant**, never the literal `3`.
+(§6) — so a halt saying "5" while the budget is 3 is a defect. `iterations` is the **budget**, not the rounds run (M-1c). Because AC-1.5(1) makes a **zero-round** halt the commonest new
+case, the Iterations section additionally states the **rounds this entry ran** — `0` there — so the two are never conflated where the operator reads them. Both are asserted **over the
+constant**, never the literal `3`.
 
 **AC-1.4 — Existing halt behaviour is unchanged in kind, and every halt maintains the reset region.** *Who:* the operator. *Given:* the budget is exhausted. *When:* the loop halts.
 *Then:* it halts the way it halts today — writing `POSTMORTEM-{phase}-{feature}.md`, confirming the write rather than trusting the agent's reply, and refusing to re-run the phase until
@@ -187,10 +187,10 @@ halts twice has its post-mortem written twice, and the reset region (catalogue �
 
 **The scope of "every halt".** The rule below is quantified over **every halt that writes
 `POSTMORTEM-{phase}-{feature}.md` for a document-typed review-loop phase** (AC-1.1's scope) — at HEAD
-exactly one code path, the review loop's non-convergence halt (M-7e). It is **not** quantified over
-the pipeline's other halt classes — creator-agent failure, the branch guard, a listing failure, Phase
-PUB/CI, Phase DOD — none of which writes a post-mortem at HEAD, and none of which this REQ asks to
-start (that would violate N-4); nor over the phases N-7 excludes. So §4.1's *"`H` is exactly the
+exactly one code path, the review loop's non-convergence halt (M-7e). **Not** over the pipeline's
+other halt classes — creator-agent failure, the branch guard, a listing failure, Phase PUB/CI, Phase
+DOD — none of which writes a post-mortem at HEAD, and none of which this REQ asks to start (N-4); nor
+over the phases N-7 excludes. So §4.1's *"`H` is exactly the
 number of halts this document has taken"* means **post-mortem-writing halts of this phase for this
 document** — the only halts that leave a marker for a clearance to clear, which is what makes the
 pairing exact. Within that scope the rule admits **no exception**:
@@ -383,8 +383,7 @@ state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-)entered. *Then
 
    **Step 2's range check is re-evaluated on every read, against the current listing**, not fixed at write time. `harvest-learnings` deletes `CROSS-REVIEW-*` and `POSTMORTEM-*` together, so
    the ordinary path never sees a region outliving its rounds; a sequence that removes the cross-reviews while the post-mortem survives lands in the fail-closed case — S-16, sanctioned
-   repair, no clearance spent. Both halves are load-bearing: without the anchor, nothing records which rounds preceded the marker; without consumption, `RESOLVED: yes` re-grants a window on
-   every subsequent invocation;
+   repair, no clearance spent (§1's third bullet: without the anchor nothing records which rounds preceded the marker, without consumption the marker re-grants a window every invocation);
 
 5. **every halt records which halt it was, and a no-revision halt resumes the window rather than replacing it.** Each halt appends exactly one `HALT-REASON: {value}` line to the **end** of
    the region (S-15, AC-1.4 clause 1), `{value}` being the `; `-joined render, in the catalogue §3 precedence order, of every halt reason that halt raised — so a round on which S-3 and S-4 both
@@ -469,7 +468,7 @@ here: it is an obligation on the FSPEC, TSPEC, PLAN or PROPERTIES, not a REQ rev
 
 | # | Obligation | Owner |
 |---|---|---|
-| **O-5** | Specify the **reset-region read-modify-write** AC-1.4 requires: before the halt dispatch the loop captures the existing `## Reset Region` — **the captured region of a file that does not exist is the empty region**, so the first halt creates a one-line region by the same path; after the write it re-applies it — preserved lines in order, this halt's `HALT-REASON:` last, any prior `RESOLVED:` stripped — and confirms the result, reporting a lost or unwritable region rather than proceeding on a silently widened window. The region is loop-owned state, so it is **not** discharged by a prompt clause. A crash **between** the dispatch and the re-apply leaves the region missing or truncated: both land in the fail-closed direction (`W` = 1, or S-16 and a sanctioned repair), `H` then understating the halts by at most the lost lines, and the recovery is the ordinary one — the next halt re-creates the region. | TSPEC |
+| **O-5** | Specify the **reset-region read-modify-write** AC-1.4 requires: before the halt dispatch the loop captures the existing `## Reset Region` — **the captured region of a file that does not exist is the empty region**, so the first halt creates a one-line region by the same path; after the write it re-applies it — preserved lines in order, this halt's `HALT-REASON:` last, any prior `RESOLVED:` stripped — and confirms the result, reporting a lost or unwritable region rather than proceeding on a silently widened window. The region is loop-owned state, **not** discharged by a prompt clause. A crash **between** the dispatch and the re-apply leaves the region missing or truncated: both land fail-closed (`W` = 1, or S-16 and a sanctioned repair), `H` understating the halts by at most the lost lines, and the next halt re-creates the region. | TSPEC |
 | **O-12** | Specify the **answering-line append and its confirmation** on the *granting* path (AC-1.5(4)) — the read-modify-write is O-5's for the halt path, and this is its counterpart for the entry that grants or resumes a window: append one `WINDOW-START:`/`WINDOW-RESUMED:` line at the end of the region, re-read to confirm it, and dispatch no round until it is confirmed; on an unconfirmable write take the stated fail-closed exit (no window, no round, phase refused, reported like a lost region). Also specify how `W` reaches `deriveRoundWindow` as a **resolved value** so that function and `windowEnd` keep their synchronous, seam-free contract (AC-1.2). | TSPEC |
 | **O-6** | Specify where AC-1.5(4)'s ordered algorithm runs *within the phase body* — the REQ fixes it **after** `phaseGate`'s `{ skip: true }` exit and before any round opens (AC-1.5(4)) — so that a refusal reaches step G's path (M-7a, M-7b) rather than returning early: the entry-validation halts nearby build their final report directly and never call `recordHaltFn`, and a literal early `return` would therefore leave the queue row unwritten. | TSPEC |
 | **O-9** | The post-mortem prompt gains a belt-and-braces clause telling the agent `## Reset Region` (S-12) is machine state to be left alone — at the Citation baseline it is a bare `Write ${postmortemPath}.` plus a section list (M-7e). **It is not the mechanism**; O-5 is. | FSPEC → implementation |
@@ -507,8 +506,6 @@ it. The ordering argument (`W` must exist before AC-2.1/AC-2.8/AC-2.6) is preser
 `depends-on` edge. No requirement, AC or `S-*` id changed.
 
 **Round-by-round history is deliberately not restated here.** The predecessor's nine review rounds
-were harvested into
-`docs/discarded/pdlc-review-convergence/LEARNINGS-pdlc-review-convergence.md`:
-`harvest-learnings` deletes `CROSS-REVIEW-*` once LEARNINGS is written, so a citation to
-those round files would be structurally wrong. This REQ traces to the *measured facts*, not the
-review history.
+were harvested into `docs/discarded/pdlc-review-convergence/LEARNINGS-pdlc-review-convergence.md`;
+`harvest-learnings` deletes `CROSS-REVIEW-*` once LEARNINGS is written, so citing those round files
+would be structurally wrong. This REQ traces *measured facts*, not review history.
