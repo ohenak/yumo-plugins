@@ -177,6 +177,47 @@ finding.
 
 ## Positive Observations
 
+- **Every one of my five Lows was closed at the surface it named, and two were closed harder than I
+  asked.** G-21 could have been closed by making §6 agree with §5; instead §6 stopped restating the parts
+  and now points at §5's specimen, so the second home is *gone* rather than *synchronised* — the only
+  version of that fix that cannot drift again. G-25 could have been closed either by adding the §5 row or
+  by qualifying the two existing uses; the document did both, and defined the new row *against* the old
+  sense rather than beside it (*"the opposite shape … **the window proceeds**"*), which is what makes a
+  reader who lands on either one unable to apply the wrong machine. The durable version: **when a term is
+  ambiguous, define the new sense against the old one in the same row — a glossary of parallel
+  definitions is what produced the ambiguity.**
+- **The refusal's effect on the invocation is now stated at the two places a reader could enter it, and
+  the queue row is named.** I asked for the scope of *"only effect"* and for *returns* to be made
+  concrete. v1.7 does both and then adds the operational reason (*"an unattended queue must stop rather
+  than re-pick the feature and refuse again once per iteration"*), which is the sentence that makes the
+  ❌-row-and-`halted`-queue outcome obviously right rather than obviously lossy. This is the third time
+  in this document that a finding about an *unstated consequence* has been closed by stating the
+  consequence **and** why it is desirable; the second half is what stops the next round re-raising it.
+- **TE F-01's fix is a mutation pair, and it is stated as one.** The `counts-mismatch` bullet no longer
+  asserts a universal its own recovery leg contradicts; it scopes the universal to *"a later entry that
+  has not performed the sanctioned repair"* and then says explicitly that an implementation refusing
+  permanently fails one leg while one granting on a corrupt region fails the other. That is the right
+  vocabulary for a test obligation — **an obligation is complete when it names the two implementations it
+  separates**, and this is the first bullet in O-10 to say so in those terms. It is also why G-27 is
+  filed: the *adjacent* bullet, written in the same revision, does not meet that bar.
+- **R-9's demonstration now carries the round-7 instance, and it is stated against the document's own
+  interest.** MF-9 asked for the extension; v1.7 wrote it up including the conclusion that *"AC-2.1 would
+  have halted this phase at round 7"* and that round 8 was the round every blocking finding closed. A risk
+  row that records a live counter-example to the mechanism it is defending is worth more than one that
+  records the mechanism's successes, and it is the artifact the calibration successor will actually use.
+  Round 9 adds a second data point in the *other* direction, and I have written it up in MF-13 rather than
+  as a finding: `blocking(8) = 1`, `blocking(9) = 3 + TE`, so the count **rose** on a round where the
+  document got materially better — the same coarseness, seen from the other side.
+- **The residue has not gone back to being about strings.** I noted last round that the region's state
+  machine had closed and the findings had become naming defects. Three of this round's four are back in
+  state space — a grant that shouldn't happen, a round that isn't dispatched, a round that is or isn't
+  admitted — but every one of them is in text added by *this* revision, and each sits one step beyond the
+  state its own fix introduced. That is the same signature this phase has shown at rounds 5, 6 and 7, and
+  it says something narrower than "the document is unstable": **a fix that adds an operator-visible branch
+  needs its own trace, and the trace that matters is the one the fix's author did not need to take to
+  believe the fix.** Two of the three would have been caught by re-running the fix's own worked example
+  with the counts one step different.
+
 ## Mechanical fixes
 
 ## Recommendation
