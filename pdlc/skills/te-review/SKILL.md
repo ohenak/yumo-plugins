@@ -273,5 +273,6 @@ Rules:
 - The heading is exactly `## Verdict` — one `##`, that capitalisation, nothing else on the line.
 - `VERDICT: ` starts the line, followed by exactly one of (case-sensitive): `Approved`, `Approved with minor changes`, `Needs revision` — the same catalogue and the same mapping as `## Approval Rules` above.
 - The counts JSON is on the immediately following non-empty line: a single object with exactly the keys `high`, `medium`, `low` in that order, each a non-negative integer, matching your `## Findings` table.
+- The counts JSON is **mandatory, not decorative** — it is the machine-readable record of this round's finding counts, and the round-over-round stopping rule is computed from it. A `VERDICT:` line written outside a `## Verdict` heading, or written without its counts line, is an incomplete cross-review file: the verdict may parse and the round still cannot be counted.
 - Write **exactly one** `VERDICT:` line in this section. A second one is read as fail-closed and your approval will not be honoured.
 - This section is the **last section** of the file: nothing follows it. Its position is the signal that the file is complete — a verdict written mid-file would make a truncated write look finished. Write it last, in one edit, after everything else.
