@@ -237,6 +237,40 @@ in a sentence and neither blocking.
 
 ## 7. Positive Observations
 
+- **Taking MR-05 off the critical path is the strongest decision in this revision, and it was not
+  asked for.** I raised MR-05 as a measurement — *does an agent reliably preserve a region it is
+  asked to preserve?* — and the honest answer to a measurement request is usually "we will measure
+  it". v1.4 instead removed the dependency: the loop reads the region before the dispatch and
+  re-applies it after, and O-9(d)'s prompt clause is demoted to belt-and-braces *in terms*
+  (*"It is not the mechanism"*). Load-bearing state is now written by the component that can be
+  tested deterministically, and an entire class of flaky property disappears with it.
+- **The `H`/`A` reformulation is better than the fix I proposed.** I asked for a paired
+  `WINDOW-RESUMED:` line counted alongside `WINDOW-START:`, keeping `R` as the numerator. v1.4 took
+  the paired line **and** moved the numerator off the human's marker entirely, because
+  `parseResolvedMarker` rejects a second `RESOLVED:` line as `duplicated` — which my fix would have
+  eventually required the file to accumulate. Counting halts against answers is the general form;
+  my version was the special case that happened to work for one clearance. F-01 above is a gap in
+  *where the halt line is written*, not in the choice of mechanism.
+- **F-03's fix was taken whole rather than minimally.** I offered two options and argued for (a);
+  v1.4 took (a) and propagated it through AC-3.1, AC-3.2's *Given* and clause 1, AC-4.1 step 1,
+  AC-4.5's *Given*, AC-2.8 row 4, AC-2.6's lead-in, AC-4.7's two cells and §5's *current window* — and
+  then stated the result as a single sentence (*"all four ACs now share one boundary, and the boundary
+  is the window, not the round index"*). That sentence is the artifact a PROPERTIES author actually
+  needs: one predicate, four consumers, no composition required.
+- **The citation baseline claim was re-earned, not re-asserted.** I checked all 42 distinct
+  `orchestrate-dev.js` locators at `9486c81` and every one resolves, including the older §4 rows the
+  finding did not name. Fixing five bad rows is ordinary; re-verifying the universal claim that the
+  five falsified is what makes the header trustworthy again, and it is visible in the header rather
+  than only in §10.9.
+- **N-4 was amended instead of defended.** The easy move was to argue that stripping a spent marker is
+  not "changing what a halt is". v1.4 says both — that the prohibition is untouched *and* that the
+  marker's lifecycle does change — and records the second half in the non-goal itself, where a reader
+  checking whether the REQ overstepped will look. Withdrawing an unqualified claim in the place that
+  made it is the same discipline that produced the `DOC-SHA256:` correction in v1.3.
+- **O-10 is now nine bullets instead of one 700-byte sentence**, and each bullet names its AC and the
+  finding that motivated it. That is the difference between an obligation a PROPERTIES author can
+  partition into tests and one they have to parse first.
+
 ## 8. Recommendation
 
 ## Verdict
