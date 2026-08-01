@@ -231,4 +231,81 @@ Not findings. Apply without discussion; none affects the recommendation.
 
 ## Recommendation
 
+**Needs revision** — three Medium findings and one Low. All five of my round-8 findings are closed, four
+of them at the surface I named and two more thoroughly than I asked; every finding below is new and lies
+in text v1.7 added.
+
+I recommended *apply and close* last round, and I am reversing that. The reason is not that the document
+got worse — it did not — but that two of the three Mediums are **in the fixes to my own Lows and to TE's
+Medium**, and neither is a wording defect:
+
+1. **G-26** hands the operator a sanctioned edit that grants a review window nobody paid for. That is the
+   one property the whole `H`/`A` decomposition exists to hold, and §6 states it as the reason the
+   `WINDOW-START:` prohibition exists. A repair table that can bank a window is not a rendering defect.
+2. **G-27** leaves the garbled-range fixture unsatisfiable — the round it names as the second dispatch is
+   a round AC-2.8 does not dispatch. This is the same class as the Medium the panel filed at round 8, one
+   bullet away in the same section, introduced by the fix to it.
+3. **G-28** is the softest of the three and I would not file it alone; what makes it Medium is that the
+   two readings are behaviourally distinguishable on a two-round branch, no O-10 obligation separates
+   them, and the document asserts both.
+
+### What must change
+
+- **AC-1.5(4)'s repair table:** remove the *"Delete it only when `H − A = 0`"* licence from both value
+  rows, leaving **correct that line** as the only sanctioned repair for a value reason. The paragraph
+  beneath already says correcting is safe at every `H − A`, so nothing is lost. If the branch is kept, it
+  needs the marker conjunct, and the finding says why that is not operable.
+- **O-10's garbled-range bullet:** sequence it — dispatch, refusal, byte-identical revision, **S-11 halt
+  on a round that is not dispatched**, clearance, second dispatch — the same shape TE Q-14 put into the
+  `counts-mismatch` bullet. Say what changes the bytes so the second dispatch is reachable.
+- **AC-3.2's *sequence* paragraph:** replace *"the cap is absolute, so the sequence is finite"* (M-1d says
+  the opposite) with the operator bound that is already in the same sentence, and say that the diagnostic
+  **alternates** with S-11 rather than repeating on consecutive rounds.
+- **AC-1.5(4) step 4:** justify the unconditional refusal as fail-closed rather than as costless, and drop
+  *"`W` falls back to 1, which admits no rounds"* — true only on a branch already carrying three rounds.
+  Row B's gloss is the correct statement; §10.12's question row carries the same clause and needs the same
+  edit. Add the O-10 obligation that kills the conditional implementation.
+- MF-11 … MF-14.
+
+None of the four needs a new mechanism, and three are deletions of a clause rather than additions. I would
+expect v1.8 to be a smaller revision than v1.7.
+
+### On the stopping rule
+
+`blocking(6) = 6`, `blocking(7) = 6`, `blocking(8) = 1`. The rule does not fire at round 8 (`1 < 6`), and
+it will not fire at round 9 either, because `blocking(9) > blocking(8)` — a *rise*, which AC-2.1 reads as
+"not a fixed point". So the mechanism this REQ installs would have run rounds 8 and 9 exactly as the
+operator did, having wanted to stop at round 7. Read with R-9's own honesty, that is a second and opposite
+instance of its coarseness: at round 7 a flat count concealed collapsing severity (false halt), and at
+round 9 a rising count conceals a document that is converging (no halt, correctly, but for a reason the
+rule cannot see). MF-13 folds both into the demonstration. It does not change my verdict on the mechanism:
+the failure direction remains a false-positive halt or a missed stop, never a wrong approval.
+
+My own panel-private series is 10, 5, 5, 5, 5, 4, 3, 0 blocking (5 Low), **3 blocking (1 Low)**. I am not
+going to present that as progress. What I will say is narrower and checkable: **every finding I have filed
+since round 5 has been in text the immediately preceding revision added, and none has re-opened a closed
+one.** The document is not oscillating; it is growing a boundary faster than the boundary is being traced.
+
+### Explicit non-findings (carried and extended)
+
+Recorded so a later round does not re-raise them: I do not contest any of the six decisions; I do not file
+R-5's known unenforceability of AC-5, AC-4.6, AC-3.2(2) or (now) AC-3.2's S-17 receive side; I do not file
+R-6's mixed-panel integration risk; I do not contest AC-2.8's fail-open posture, AC-1.5(4)'s fail-closed
+posture, N-7's widening to Phase DOD, AC-4.1's live later endpoint, the S-3/S-4 co-occurrence ordering,
+R-9's decision to record rather than fix, the `H`/`A` decomposition, the `WINDOW-RESUMED:` literal,
+AC-1.4's strip, the window-scoping of AC-3.1/AC-3.2/AC-4.1/AC-4.5, AC-3.4's stopping scan, the counts
+check's bounds, the append rule, S-16's closed enum, AC-2.7's ordered reading, the dispatched round range,
+the whole-section `counts-mismatch` repair, AC-4.7's row A / row B split, or S-17's grammar. **New this
+round:** I do not contest the `phase refusal` / `approval refusal` split, the one-notice-per-entry rule,
+the ❌-row-and-`halted`-queue outcome of a phase refusal, the decision that step 4's refusal is
+unconditional (only its stated justification — G-28), or the scoping of O-10's `counts-mismatch` universal
+and its two-clearance recovery leg, which I re-traced. I have no blocking finding against REQ-RCV-05 or
+REQ-RCV-06. I raised no `## Measurement Required` items.
+
+**Scope note.** All four findings are tagged `Local`: each is a clause or an obligation inside this
+document, not a constraint that outlives it. The durable signal is in the Positive Observations —
+*define a new sense of a term against the old one in the same row*; *an obligation is complete when it
+names the two implementations it separates*; *a fix that adds an operator-visible branch needs the trace
+its author did not need to take* — and in MF-11's rule about counting rows after writing them.
+
 ## Verdict
