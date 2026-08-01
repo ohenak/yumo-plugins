@@ -93,4 +93,57 @@ the shared catalogue whose row-B definition it contradicts.
 
 ## 6. Recommendation
 
+**Needs revision**
+
+All six v2 findings are closed, and the two Mediums closed properly rather than minimally. The
+document regressed on nothing. What reopens the round is that closing them required minting a
+**fourth dispatch-less entry class** — the unconfirmable-append refusal — and that class was
+registered in §6 (which v2 F-02 forced) while the shared catalogue it contradicts was left
+untouched. §6 now says where every *string* lives; the catalogue still says row B is "an entry whose
+reset region failed validation" and "carries S-16 alone", and O-10 asks a test author to assert both
+that and its negation.
+
+What must change, in the order I would do it:
+
+1. **F-01** — pick one of the two resolutions and carry it through. I recommend **(i)**: amend
+   `docs/_constraints/pdlc-rcv-catalogue.md` §3 so row B's condition is "an entry that opens no
+   round on step 4's path", its `notice` is "S-16, or empty on the unconfirmable-append variant",
+   and the count of dispatch-less rows is four. It is the correct home under that file's own
+   amendment protocol, it keeps the four consequential edits in this REQ to single words
+   (*"third"* → *"fourth"*, §5 row B's `notice` cell, §2's *"the two no-round rows"*, O-10's row-B
+   clause), and — per F-05 — it puts the new prose in the file that has room for it. Option (ii),
+   minting row D, is defensible but costs this document several hundred bytes it does not have.
+   Whichever is chosen, §5 row B's `round` cell must lose its *"`W`, which is 1 on this path by
+   construction"* justification or scope it to the validation-failure variant, because on the new
+   variant it is false.
+2. **F-02** — pin the unconfirmable recovery text and give it an O-10 leg, as v1.3 did for the other
+   two. Say explicitly whether the shipped generic queue-recovery string is deliberately **reused**
+   here (I believe it should be — the queue row is `halted` and re-running requires resetting it) in
+   deliberate contrast to the corrupt-region row that forbids it.
+3. **F-03** — one sentence naming the torn-write outcome and where it lands.
+4. **F-04**, **F-05** — a citation in place of a restatement, and an acknowledgement that the
+   ceiling constrains F-01's choice.
+
+**F-05 is a constraint on how you make those edits, not a finding against the content:** 61,328 of
+61,440 bytes, 112 to spare. Prefer F-01 option (i) partly for that reason. If a net addition is
+unavoidable, trim a restated justification (F-04 is one such) rather than a criterion.
+
+Nothing in this round contests the mechanism, and nothing in it revisits a section approved earlier.
+The window, the anchored one-shot clearance, the ordered receive-side algorithm and now the
+unconfirmable-write disposition are all stated at the level of precision a TSPEC can be written
+from. The single open High is a registration defect on the newest branch — the same class this
+document has now hit twice, which is itself worth harvesting: **a REQ that mints a new
+operator-visible row must amend the shared row schema in the same revision, not only the shared
+threshold table.**
+
 ## Verdict
+
+All six v2 findings are closed. One High finding is open: AC-1.5(4)'s new unconfirmable-append entry
+is specified as emitting **row B with an empty `notice`**, which contradicts
+`docs/_constraints/pdlc-rcv-catalogue.md` §3 — where row B is defined as an entry whose reset region
+*failed validation* and is stated to carry *S-16 alone* — and contradicts this REQ's own row-B cell
+specification in §5. The catalogue was not amended, so O-10 now demands two mutually exclusive
+assertions of a PROPERTIES author. Two Medium and two Low findings accompany it. Per the approval
+rule, an open High means the document is not approved.
+
+VERDICT: Needs revision
