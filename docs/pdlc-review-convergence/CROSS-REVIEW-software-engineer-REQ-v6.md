@@ -36,6 +36,27 @@
 
 ## Round-5 disposition
 
+**All six prior findings are closed**, each checked at the surface it names rather than at the revision
+note or §10.9 row that claims it.
+
+| Prior finding | Sev | Disposition | Evidence |
+|---|---|---|---|
+| G-07 — the preserved `RESOLVED:` line collides with `parseResolvedMarker` in both directions | High | **closed**, and closed the better of the two ways I offered | AC-1.4 clause 2 has the halt path **strip** any prior `RESOLVED:` line, so the file carries at most one and every halt is unresolved on arrival; AC-1.5(4) restates one-shot over `H` (`HALT-REASON:` lines) and `A` (`WINDOW-START:` + `WINDOW-RESUMED:`), so nothing counts the human's marker any more. §5 gains a durability row citing `:953`/`:961`/`:2440`/`:2446-2447`; N-4 is amended to say the marker's **lifecycle** changed; O-10 asserts the unresolved-on-arrival case. I traced the resulting state machine over halt → strip → refuse → clear → grant and the invariant `H − A ∈ {0, 1}` holds on every reachable path — see G-14 for the one path where it does not, which is a new finding against the counting rule, not a re-raise. |
+| G-10 — an unconsumed reset outlives the S-11 halt it was written for | Medium | **closed exactly as recommended, modulo the literal** | AC-1.5(5) writes `WINDOW-RESUMED: {W}` (S-14) instead of writing nothing: `A = H` is restored, `W` does not move, spent rounds stay spent. I recommended a repeated `WINDOW-START:` equal to `W`; a distinct literal is strictly better — it needs no relaxation of the strictly-increasing rule and it distinguishes *resumed* from *reset* in the file. The stated motivation (the path gains a positive artifact O-10 can assert on, where absence of a `WINDOW-START:` is also what an unimplemented clause produces) is the right reason. |
+| G-11 — "the last `HALT-REASON:`" is not determined by AC-1.4's write rule | Medium | **closed** | AC-1.4 clause 1: the halt **appends its own `HALT-REASON:` to the end of that region**, *"Nothing is written above the preserved lines and nothing between them"*; AC-1.5(5) and §5's *Which halt a POSTMORTEM records* row both restate it. Document order is now halt order by construction. The same question for the **answering** lines is not answered — G-13. |
+| G-08 — AC-3.4's step 2 stops but steps 4–5 collect | Medium | **closed as recommended** | Step 2 now reads *"scans forward and **stops** at the first non-empty line that is not an anchor line — that line is *the* candidate, and there is at most one"*; step 4's *"two or more parsing candidates"* is deleted; step 5 states that a second parsing trailer *"is not observed and is therefore not a case"*. The duplicate concern moved up to step 1, over the datum a duplicate actually appears in, which is the correct level. |
+| G-09 — a duplicated `VERDICT:` line is classified nowhere | Medium | **closed as recommended** | AC-2.7 gains the row (*two or more `VERDICT:` lines ⇒ malformed*) and AC-3.4 step 1 gains the clause, both citing `extractFileVerdict` (`:888`, count at `:904`). The reasoning — *malformed* because the quantity was read and could not be resolved — matches §5's definition. One case adjacent to it is still unclassified: G-15. |
+| G-12 — two of the four "sourceless" cells have sources | Low | **closed** | AC-2.8 and AC-4.7 both now say `growth-bytes` / `classification` *"**do** have one"* and are withheld **by choice**; O-12 carries the round-open ordering question verbatim. |
+
+Also applied: **MF-1** (all five drifted citations re-based to `9486c81`, the fabricated
+`writePostmortem` symbol replaced by `reviewLoop` / local `postmortemPrompt`), **MF-2** (the
+`HALT-REASON:` line is a catalogue member with a §6 row), **MF-3** (*"the anchors-only row"*),
+**MF-4** (§10.8's freeze convention), **MF-5** (O-10 bulleted, one obligation per bullet).
+
+Every finding below is **new in v1.4** — each lies in text this revision added, and four of the five
+lie in the two mechanisms it introduced to close G-07/G-10/G-11 (the reset region's accounting) and
+G-08/G-09 (the trailer reader). None re-litigates a section I approved.
+
 ## Findings
 
 ## Findings in detail
