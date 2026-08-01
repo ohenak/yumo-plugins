@@ -136,9 +136,8 @@ over an in-band observable named in the shared baseline §2.
 
 **Priority:** P0 · **Source:** US-01, US-02 · **Depends on:** BL-01, BL-06
 
-A review loop that has not converged in three rounds has, on the two features measured, not converged at all: the predecessor's blocking count reached its minimum at round 2, held it at
-round 3, and rose thereafter (11, 6, 6, 7, 9), and 66 KB — 40% of the finished document — was added by rounds that ran *after* its own fixed-point test fired. Three rounds buys the decay
-that was real (11 → 6) and the round that held it, and declines to buy the rise that followed.
+A review loop that has not converged in three rounds has, on the two features measured, not converged at all (§1: the blocking count 11, 6, 6, 7, 9, and 66 KB added by rounds that ran
+after the fixed-point test fired). Three rounds buys the decay that was real (11 → 6) and the round that held it, and declines to buy the rise that followed.
 
 **AC-1.1 — The budget is three, per document, not per invocation.** *Who:* the pipeline. *Given:* any review-loop phase **that reviews a named document type** — the phases of
 `PHASE_DISPATCH`: R/REQ, F/FSPEC, T/TSPEC, D/DECISIONS, P/PLAN, PR/PROPERTIES (M-1d). *When:* the review window is opened. *Then:* the window ends at round **3 counted from round 1 of
@@ -265,14 +264,20 @@ state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-)entered. *Then
 
    **The answering line is written, and confirmed, before the window opens.** That append is the write
    making `A = H`, and the *sole* mechanism keeping the clearance one-shot; a lost append re-grants a
-   fresh window on every invocation — the fail-open this criterion exists to close, reachable with no
-   hand-edit. It therefore carries the **same confirmation obligation AC-1.4 puts on the post-mortem
+   fresh window on every invocation — the fail-open this criterion exists to close. It therefore
+   carries the **same confirmation obligation AC-1.4 puts on the post-mortem
    write**: the loop re-reads the file and confirms the line is present, in the region, at the end,
    **before any round of that entry is dispatched**. When the confirmation fails, **fail closed**: no
-   window is opened (`W` keeps its prior value), no round is dispatched, the entry **refuses the phase**
-   on step 4's path, and the failure is reported through the channel O-5 names for a lost or unwritable
-   region. It mints **no new catalogue id and no new S-16 reason** (that enum is closed at three): an
-   unconfirmable write is an IO fault of the loop, not a state of the region. Safe both ways — if the
+   window is opened (`W` keeps its prior value), no round is dispatched, and the entry **refuses the
+   phase** on step 4's path. It mints **no new catalogue id and no new S-16 reason** (that enum is
+   closed at three): an unconfirmable write is an IO fault of the loop, not a state of the region.
+   **Its render is stated here, because step 4's own renders all take an S-16 reason this entry has
+   not got** (the region passed steps 1–3 — that is why a grant was attempted): it emits **row B with
+   an empty `notice`** — no S-16, no S-4 — its ❌ text is §6's *Unconfirmed-append text*, and its
+   recovery text is *re-run*, there being nothing to repair. Two step-4 invariants are **scoped to the
+   validation-failure path** and do **not** hold here: the file is not byte-unchanged (a partial
+   append may have landed — that is what unconfirmable means), and the ratchet's *same reason next
+   entry* has no reason to be stable. Safe both ways — if the
    line landed, `A = H` and the next entry grants nothing; if not, the next entry re-observes the same
    clearance and grants the one window paid for, never two.
 
