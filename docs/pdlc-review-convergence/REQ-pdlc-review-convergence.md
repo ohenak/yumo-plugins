@@ -578,22 +578,51 @@ way it halts today — writing `POSTMORTEM-{phase}-{feature}.md`, confirming the
 trusting the agent's reply, and refusing to re-run the phase until a human writes `RESOLVED: yes`.
 This REQ changes *when* the halt happens, not *what* a halt is.
 
-**One thing about that write does change, because this REQ puts machine-written state in that file.**
+**Two things about that write do change, because this REQ puts machine-written state in that file.**
 `POSTMORTEM-{phase}-{feature}.md` is a **fixed** path — it is not versioned as `CROSS-REVIEW-…-v{N}` and
-`CODE_REVIEW-…-v{N}` are — so a document that halts twice has its post-mortem written twice, and
-AC-1.5(4)'s `WINDOW-START:` lines live there. Therefore: **a halt that rewrites an existing
-post-mortem preserves its reset region verbatim** — every `RESOLVED:` line, every `WINDOW-START:` line
-and every `HALT-REASON:` line already in the file, in document order, under a heading the halt path
-does not touch — and writes its own new content around that region. A rewrite that drops those lines
-would either destroy the operator's `RESOLVED: yes` (benign, fail-closed) or destroy only the loop's
-`WINDOW-START:` and thereby re-grant a fresh window on **every** subsequent invocation, which is the
-unbounded-review behaviour AC-1.1 exists to abolish (SE v4 G-04, TE v4 F-02). At HEAD the halt path
-dispatches an agent with a bare `Write {path}` prompt and no preservation obligation
-(`pdlc/workflows/orchestrate-dev.js:1912-1918`, `writePostmortem`, prompt literal *"Write
-docs/…/POSTMORTEM-…"*), so this is an amendment to that prompt and to its write confirmation: O-9
-carries the prompt clause, O-5 the confirmation that the region survived. Whether the seam appends or
-rewrites is an implementation question (TE v4 MR-04); the **obligation** is stated here because the
-datum is REQ-level durable state.
+`CODE_REVIEW-…-v{N}` are — so a document that halts twice has its post-mortem written twice, and the
+reset region (§5, S-12) lives there. Therefore, on **every** halt that finds an existing post-mortem:
+
+1. **the reset region is preserved** — every `WINDOW-START:` (S-13), `WINDOW-RESUMED:` (S-14) and
+   `HALT-REASON:` line already in `## Reset Region`, in document order — and the halt **appends its own
+   `HALT-REASON:` line to the end of that region**, so document order is halt order and AC-1.5(5)'s
+   *"the last `HALT-REASON:`"* means *"the most recent halt's"* (SE v5 G-11). Nothing is written above
+   the preserved lines and nothing between them;
+2. **any `RESOLVED:` line already in the file is stripped**, wherever it sits. The new post-mortem is
+   therefore **unresolved on arrival**, and the operator must clear *this* halt before the phase runs
+   again.
+
+Clause 2 is not fastidiousness; without it the mechanism is broken in both directions, because
+`RESOLVED:` is a **single-valued, human-owned, fail-closed marker** and never a counter.
+`parseResolvedMarker` (`pdlc/workflows/orchestrate-dev.js:953`) collects **every** unfenced
+`RESOLVED:` line — its JSDoc says the marker is positionally unconstrained — and returns
+`{ok: false, reason: "duplicated"}` for more than one (`:961`); `checkPostmortem` (`:2440`) returns
+`resolved` only for `marker.ok && marker.resolved` (`:2446`) and `unresolved` otherwise (`:2447`), and
+the step-G refusal every phase-running exit converges on reads exactly that (`:3895-3901`, literal
+*"Phase … refused: unresolved POSTMORTEM"*). So a preserved single `RESOLVED: yes` would make the
+**next** halt's post-mortem read as already resolved — step G would never refuse, and the halt would
+have no durable effect at all — while a *second* `RESOLVED: yes` reads as `duplicated` ⇒ permanently
+`unresolved` ⇒ the phase could never be re-entered. Those were the only two reachable states of v1.3's
+rule and they are opposite failures (SE v5 G-07, TE v5 F-02). Stripping the spent marker is the
+fail-closed choice and keeps the shipped reader exact.
+
+**This does not weaken clause 3's prohibition.** What no agent and no script may ever write is
+`RESOLVED: yes`; removing a marker that has already been spent is not writing one, and its only effect
+is to *refuse* a phase that would otherwise have run unattended. N-4 is amended accordingly.
+
+**The region is maintained by the loop, not by an agent's diligence.** At the Citation baseline the
+halt path dispatches an agent with a bare `Write {path}` prompt and no preservation obligation of any
+kind (`pdlc/workflows/orchestrate-dev.js:1725-1730`, inside **`reviewLoop`**, local `postmortemPrompt`,
+literal *"Write ${postmortemPath}."* plus a section list — v1.3 cited this as `writePostmortem` at
+`:1912-1918`, which is the range at `main` and a symbol that exists at neither commit: SE v5 MF-1,
+TE v5 F-05). Rather than trust a prompt with load-bearing state, the loop reads the existing file
+before the dispatch and **re-applies** the region deterministically after it: preserved lines,
+this halt's appended `HALT-REASON:`, any prior `RESOLVED:` stripped. O-5 carries that read-modify-write
+and its confirmation; O-9(d) keeps the prompt clause as a belt-and-braces measure, not as the
+mechanism. This also removes the dependency TE v5 MR-05 asks to measure — whether an agent reliably
+preserves an arbitrary region — from the correctness of AC-1.5. Whether the seam appends or rewrites
+remains an implementation question (TE v4 MR-04); the **obligation** is stated here because the datum
+is REQ-level durable state.
 
 **AC-1.5 — The window is absolute, and only an operator resets it.**
 *Who:* the review loop. *Given:* a phase whose document already carries cross-review rounds on the
