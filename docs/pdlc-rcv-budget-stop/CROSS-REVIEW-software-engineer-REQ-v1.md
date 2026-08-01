@@ -48,6 +48,64 @@ finding. Navigation was by symbol and literal.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Does `W`'s resolution — and therefore both the step-4 refusal and the clearance-consuming append — run **before** or **after** `phaseGate`'s skip decision? This is F-02's core, and I do not think either answer is obviously wrong; I need the REQ to pick one. |
+| Q-02 | Is a repeating S-11 halt bounded? Each S-11 clearance writes `WINDOW-RESUMED: {W}` and leaves `W` unchanged, and AC-2.8 says the undispatched round is "not counted against the budget". An authoring side that keeps producing zero-delta rounds therefore yields an unbounded sequence of halt/clearance pairs, `H` and `A` growing together, `W` never moving, and the budget never exhausting. Each iteration costs an operator action, so it is not unattended — is that considered sufficient, or should a resumed window that produces no round be capped? |
+| Q-03 | An entry that grants a window (writes `WINDOW-START: N`) and then fails before opening any round: the clearance is spent and `A = H`, so a subsequent entry grants nothing, but the window at `N` is intact and usable. Is that the intended reading? It is derivable but never stated, and it is the case an operator will hit after a stall-killed dispatch. |
+| Q-04 | Is anything required of the region's durability *between* the halt dispatch and O-5's re-apply? The post-mortem is written by an agent and the region re-applied afterwards; a crash in that gap leaves either no region (next halt re-creates a one-line region — `H` now understates the halts) or a truncated one (fail-closed refusal with no clearance to spend). O-5 says "reporting a lost or unwritable region rather than proceeding", which covers the report but not the resulting `H`. |
+| Q-05 | An unreadable-but-present post-mortem (an IO error rather than an absence) is read by `checkPostmortem` as `status: "none"` at HEAD, which means no halt is in force **and** the region reads empty ⇒ `W = 1`, `H = A = 0`. `W = 1` is the conservative direction, so this is not a fail-open on the window — but it is a fail-open on the halt gate, and the REQ now leans the whole window accounting on that same read. Worth one row in §4.1, or is it deliberately N-4's territory? |
+
 ## Positive Observations
 
+- **The document is inside the size budget it was cut to satisfy:** 410 lines / 48 KB, against the
+  700-line / 60 KB ceiling the `check-req-size` hook enforces. §10 documents the v1.0 → v1.1 cut and
+  claims no id was renumbered — I checked, and every `S-*`, `M-*`, `N-*`, `X-*`, `O-*` and sibling
+  `AC-*` reference in this document resolves in the file it names. That is the first REQ in this
+  family's lineage for which the citation-verification pass produced no unresolved reference.
+- **The §4.1 durability table is the right instrument, and it is honest.** Every quantity the ACs
+  read is named with an on-branch home and an if-absent disposition, and the table's own claim — "a
+  criterion stated over an in-process-only row is a defect in this document; there is no such row" —
+  held under checking. This is the discipline the predecessor's Phase R lacked (M-1d, M-2f).
+- **AC-1.5(4)'s `H`/`A` accounting is a genuinely good design.** Counting halts against answers keeps
+  the clearance one-shot *without* touching the single-valued human marker the shipped reader
+  requires (M-7a). The ratchet table that walks both reachable values of `H − A` under a hand-edit,
+  and the derivation that "deleting an answering line is unsafe at every `H − A`", close a real
+  fail-open hole rather than gesturing at it.
+- **"A refusal is not a halt" is exactly the right distinction to have noticed.** The observation
+  that leaving the entry running would let AC-1.4 fire and spend the clearance the refusal declined
+  to spend is subtle, correct, and would have been a very expensive implementation bug.
+- **The positive control is named as such.** Identifying the mid-window branch as the only branch on
+  which honouring step 4 and falling back are distinguishable — and binding it to a PROPERTIES
+  obligation in O-10 — is the kind of falsifiability the family's other documents should copy.
+
 ## Recommendation
+
+**Needs revision**
+
+Two High findings must close before FSPEC authoring:
+
+1. **F-01** — give the clearance-consuming append a stated write-confirmation and a fail-closed
+   disposition on failure, and add the obligation to §8. As written, the document's central promise
+   (the escape hatch is spent exactly once) rests on a write nothing checks.
+2. **F-02** — state whether `W`'s resolution runs before or after the phase gate's skip exit, and
+   extend the refusal's cost analysis to that third branch. Both the refusal and the grant behave
+   differently depending on the answer, and neither behaviour is currently derivable from the
+   document.
+
+The five Medium findings (F-03 the refusal's operator-facing text, F-04 `deriveRoundWindow`'s
+seam-free contract, F-05 `forcePhases`, F-06 the scope of "every halt", F-07 `iterations`) are each
+a decision the FSPEC would otherwise have to make on the REQ's behalf, and each is operator-visible.
+F-08 and F-09 are corrections, not blockers.
+
+Nothing here contests the requirement itself. The budget reduction, the absolute-per-document
+window, and the anchored one-shot reset are the right shape, and the mechanism is stated at a level
+of precision that made this review checkable rather than speculative.
+
+## Verdict
+
+The document is not yet implementable without the FSPEC author resolving decisions the REQ should
+own. Two High and five Medium findings are open.
+
+VERDICT: Needs revision
+
