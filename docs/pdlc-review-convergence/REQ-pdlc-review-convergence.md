@@ -920,8 +920,8 @@ document (M-4a), written by the same per-round writer as `DOC-BYTES:` (AC-4.1).
 
 **Which bytes are digested, precisely.** `sha256Hex` canonicalises before it digests — CRLF and lone CR
 to LF, exactly one trailing newline — inside the function and never in a caller, by design
-(`pdlc/workflows/orchestrate-dev.js:848`, `sha256Hex`; `:767`, `canonicaliseForDigest`; JSDoc
-`:752-759`, *"applied INSIDE `sha256Hex`, never by a caller, so no two call sites can disagree about
+(`pdlc/workflows/orchestrate-dev.js:696`, `sha256Hex`; `:615`, `canonicaliseForDigest`; its JSDoc
+`:600-614`, *"applied INSIDE `sha256Hex`, never by a caller, so no two call sites can disagree about
 which bytes were digested"*). `DOC-SHA256:` **is that digest** — over the canonical form — and is
 therefore **not** a digest of the raw bytes `DOC-BYTES:` counts. v1.2 claimed both, which cannot hold
 (SE v4 G-03). The conjunction is what recovers the difference: a revision that changes only line
@@ -1238,8 +1238,9 @@ read it cold.
 instant `t0` — the same read AC-2.8 tests and the same instant at which AC-3.5 captures the document for
 `APPROVAL-HASH:` — and from it derives `n = bytes(t0)` and `h = sha256Hex(t0)`. It then, in order:
 
-1. computes `growth = n − DOC-BYTES(N−1)` and classifies it under AC-4.2, **selecting round N's own
-   panel** (AC-3.1);
+1. **if `N > W`** — i.e. round N is not the first round of the current window — computes
+   `growth = n − DOC-BYTES(N−1)` and classifies it under AC-4.2, **selecting round N's own panel**
+   (AC-3.1). At `N = W` nothing is measured: that round's panel is fixed full by AC-3.1;
 2. dispatches round N's reviewers;
 3. after they return — **before AC-2.1 is evaluated**, and regardless of the round's verdict — writes
    `DOC-BYTES: {n}` (S-2) and `DOC-SHA256: {h}` (S-10) into each of round N's cross-review files that
@@ -1276,14 +1277,16 @@ anchors exactly when they are never needed and never when they are (SE F-01, TE 
 **`DOC-SHA256:` is written at the same instant, by the same writer, from the same read — but not over
 the same bytes.** It is `sha256Hex`'s digest of the `t0` text, i.e. taken over `canonicaliseForDigest`'s
 output: CRLF and lone CR normalised to LF, exactly one trailing newline, applied inside the function and
-never by a caller (`pdlc/workflows/orchestrate-dev.js:848`, `sha256Hex`; `:767`,
-`canonicaliseForDigest`; JSDoc `:752-759`). `DOC-BYTES:` counts the **raw** bytes. v1.2 asserted it was
+never by a caller (`pdlc/workflows/orchestrate-dev.js:696`, `sha256Hex`; `:615`,
+`canonicaliseForDigest`; its JSDoc `:600-614`, literal *"applied INSIDE `sha256Hex`, never by a caller,
+so no two call sites can disagree about which bytes were digested"*). `DOC-BYTES:` counts the **raw**
+bytes. v1.2 asserted it was
 "the SHA-256 of the same bytes `DOC-BYTES:` counts" *and* a reuse of the tier-1 hashing; only the second
 is true, and the REQ must be right about its own subject (SE v4 G-03). The reuse is deliberate — it
 inherits the canonicalisation discipline the digest family was built around — and AC-2.8's conjunction
 with `DOC-BYTES:` recovers the byte-exactness the canonical form drops. Rendering differs from
 `APPROVAL-HASH:` on purpose: that anchor carries the `sha256:{64 hex}` prefixed form produced by
-`approvalHashOf` (`pdlc/workflows/orchestrate-dev.js:950`), while S-10 is bare 64 hex, because the
+`approvalHashOf` (`pdlc/workflows/orchestrate-dev.js:797`), while S-10 is bare 64 hex, because the
 receivers differ. It costs one hash of a string the loop has already read.
 
 **Round growth** is measured across the boundary between rounds N−1 and N:
@@ -1328,10 +1331,15 @@ on the value is `unreadable-anchor`: the anchor is a property of the document at
 files must agree. Negative growth is **measurable and normal** (a round that shortened the document)
 and classifies *incremental* under AC-4.2; it is not an error.
 
-**Round 1 is not measured and raises no notice.** There is no round 0, so no growth exists to be
-measured; the `growth-bytes` and `classification` cells are empty (AC-4.7) and **no S-6 notice is
-raised** — an absent measurement that was never owed is not an unmeasurable one. Round 1's panel is
-fixed dual by AC-3.1 and needs no classification.
+**The first round of a window is not measured and raises no notice.** At round 1 there is no round 0,
+and at round `N = W` of a reset window the predecessor belongs to a window whose findings the operator
+has discharged, so a growth measured across that boundary would span the operator's intervention rather
+than an optimizer's revision (TE v5 Q-08 — the answer is *"no, not deliberately"*, and v1.4 declines
+it). In both cases the `growth-bytes` and `classification` cells are empty (AC-4.7) and **no S-6 notice
+is raised** — an absent measurement that was never owed is not an unmeasurable one. Round `W`'s panel is
+fixed full by AC-3.1 and needs no classification, which is the same treatment AC-2.1 and AC-2.8 already
+give that round: **all four ACs now share one boundary**, and the boundary is the window, not the round
+index (TE v5 F-03).
 
 **AC-4.2 — Classification.**
 *Who:* the review loop. *Given:* the growth `g` into round N, measured at round N's open (AC-4.1).
@@ -1634,7 +1642,7 @@ this table is a defect in this document.
 | `## Measurement Required` | that exact heading | the three review SKILLs | AC-5.2, AC-5.4 | Follows the existing `## Verdict` convention: an exactly-named top-level section the loop extracts. Deliberately **not** part of the completeness criterion (AC-5.5). |
 | Symbol-proximity window (AC-6.4 check 3) | **±25 lines**, FSPEC may tune | the new `pdlc/workflows/lib/` module | AC-6.4 | AC-6.4 fixes the *shape* (presence within a window, not exact-line match), its reason, and now its **direction** — wide enough that the motivating two-line drift passes, narrow enough that a symbol in a different function fails (SE F-12). ±25 lines is a stated default satisfying both bounds against this module's function sizes; it is a tuning parameter with no product consequence and O-6 may change the number, not the direction. |
 | `DOC-BYTES: {n}` | that exact literal, `{n}` a decimal integer ≥ 0 | **`appendRoundAnchors`** — every round (AC-4.1) | AC-4.1, AC-4.2, AC-4.5, AC-2.8 | The durable home of AC-4's growth endpoints (S-2). Follows the existing `KEY: value` anchor convention exactly. v1.1 named `appendApprovalAnchors` as its writer; that function runs only on the approving terminal round, so the anchor was absent on precisely the failing rounds AC-4 measures (SE F-01, TE F-01). |
-| `DOC-SHA256: {64 hex}` | that exact literal, `{64 hex}` lower-case, **bare** (no `sha256:` prefix) | **`appendRoundAnchors`** — every round, same instant, same read (AC-4.1) | AC-2.8 | The durable home of AC-2.8's identity test (S-10). It exists so *"the document did not change"* is decided exactly rather than by byte length alone. The value is `sha256Hex`'s (`pdlc/workflows/orchestrate-dev.js:848`), i.e. **over `canonicaliseForDigest`'s output** (`:767`; JSDoc `:752-759`) — the tier-1 hashing reused verbatim, and therefore **not** a digest of the raw bytes `DOC-BYTES:` counts. v1.2 claimed both, and the two cannot hold together (SE v4 G-03); AC-2.8's conjunction of the two anchors is what recovers byte-exactness. |
+| `DOC-SHA256: {64 hex}` | that exact literal, `{64 hex}` lower-case, **bare** (no `sha256:` prefix) | **`appendRoundAnchors`** — every round, same instant, same read (AC-4.1) | AC-2.8 | The durable home of AC-2.8's identity test (S-10). It exists so *"the document did not change"* is decided exactly rather than by byte length alone. The value is `sha256Hex`'s (`pdlc/workflows/orchestrate-dev.js:696`), i.e. **over `canonicaliseForDigest`'s output** (`:615`; its JSDoc `:600-614`) — the tier-1 hashing reused verbatim, and therefore **not** a digest of the raw bytes `DOC-BYTES:` counts. v1.2 claimed both, and the two cannot hold together (SE v4 G-03); AC-2.8's conjunction of the two anchors is what recovers byte-exactness. |
 | `## Disposition` / `New-mechanism:` | those exact literals | the verifier SKILL (AC-3.2) | AC-3.2(1), AC-3.2(2), AC-2 | S-8 and S-9. Each is the structural artifact that makes one AC-3.2 clause falsifiable; without them a verifier that obeyed the clause and one that ignored it produced identical files (TE F-05, F-06). |
 
 **Every threshold now carries a value.** v1.0 left two rows with *"unfixed — FSPEC decides"* in the
@@ -1678,7 +1686,7 @@ FSPEC, TSPEC, PLAN or PROPERTIES, not a REQ revision.
 | **O-6** | Specify the checker's **implementation and output format** against AC-6.4's closed grammar (C-1 … C-4), and tune the symbol-proximity window if ±25 lines proves wrong. **The grammar, the range separator, the unparseable-input behaviour and the window's direction are not open** — AC-6.4 and §6 fix them (TE F-02, SE F-12). | FSPEC → TSPEC |
 | **O-7** | Specify **how** the `## Measurement Required` section is located and rendered in the report (AC-5.2, AC-5.4). Its receive-side behaviour on absent, empty, unparseable and duplicated sections is fixed by AC-5.5 (S-7). | TSPEC |
 | **O-8** | Specify **where** AC-4.7's per-round table is emitted, for both converged and halted phases, and in what rendering. **Its columns are not open** — AC-4.7 fixes the six-column schema and §5 records it as part of the closed catalogue. | TSPEC |
-| **O-9** | Write the SKILL amendments: (a) the three review SKILLs — AC-5.1, AC-5.2, AC-6.5, **and AC-3.4's requirement that the count trailer appear inside the file's `## Verdict` section as well as in the response** (the one file-grammar change, SE F-10); (b) the three author SKILLs — AC-5.3, AC-4.6, AC-6.5; (c) the verifier's disposition-check contract — AC-3.2, including the `## Disposition` section (S-8) and the per-finding `New-mechanism:` field (S-9); **(d) the post-mortem prompt — AC-1.4's obligation to preserve an existing file's reset region verbatim (`RESOLVED:`, `WINDOW-START:`, `HALT-REASON:`) and AC-1.5(5)'s obligation to write a `HALT-REASON:` line.** At HEAD that prompt is a bare `Write {path}` with a section list (`pdlc/workflows/orchestrate-dev.js:1912-1918`, `writePostmortem`), so nothing today tells the agent either line is precious (SE v4 G-04, TE v4 F-02). | FSPEC → implementation |
+| **O-9** | Write the SKILL amendments: (a) the three review SKILLs — AC-5.1, AC-5.2, AC-6.5, **and AC-3.4's requirement that the count trailer appear inside the file's `## Verdict` section as well as in the response** (the one file-grammar change, SE F-10); (b) the three author SKILLs — AC-5.3, AC-4.6, AC-6.5; (c) the verifier's disposition-check contract — AC-3.2, including the `## Disposition` section (S-8) and the per-finding `New-mechanism:` field (S-9); **(d) the post-mortem prompt — a belt-and-braces clause telling the agent that the `## Reset Region` section (S-12) is machine state and must be left alone.** At the Citation baseline that prompt is a bare `Write ${postmortemPath}.` plus a section list, built inline in **`reviewLoop`** (`pdlc/workflows/orchestrate-dev.js:1725-1730`, local `postmortemPrompt`), so nothing today tells the agent anything in that file is precious (SE v4 G-04, TE v4 F-02). **It is not the mechanism**: AC-1.4 requires the loop to re-apply the region deterministically after the dispatch (O-5), precisely so correctness does not rest on an agent's compliance (TE v5 MR-05). v1.3 cited this prompt as `writePostmortem` at `:1912-1918` — the range at `main`, and a symbol that exists at neither commit (SE v5 MF-1, TE v5 F-05). | FSPEC → implementation |
 | **O-10** | Properties and tests for all six ACs, including the negative cases this REQ names explicitly: the `0 ≥ 0` non-firing (AC-2.5), the malformed-count chain break in **both** directions (AC-2.3), the *unavailable*-count chain break (AC-2.7), the unequal-panel-shape and crashed-round non-comparisons (AC-2.4), the lone-file-without-marker fail-closed (AC-3.5(b)), all **six** `REVIEW-MODE:` rows (AC-3.5(e)), the **four `DOC-BYTES:` inputs and their three reasons** (AC-4.1) with unmeasurable growth escalating rather than degrading (AC-4.5), a missing `## Disposition` refusing approval without halting (AC-3.2), and AC-6.4's C-3/C-4/en-dash/unparseable citation forms each being *reported* rather than skipped or fatal. Added in v1.2: **the crashed-round report row**, whose `notice` cell carries three co-occurring notices in AC-4.7's stated precedence order (TE F-04); **a failed verifier round comparing as `{verifier}` and not as *crashed*** (AC-2.4, SE F-02); **the zero-delta halt** and each of AC-2.8's three non-halting inputs, including the fail-open on an absent `DOC-SHA256:` (TE F-07); **an absent, unparseable and duplicated `WINDOW-START:` each yielding no reset** (AC-1.5(4)); **an anchor line following `VERDICT:` reading as *unavailable*, not *malformed*** (AC-2.7); and **AC-6.4's own C-3/C-4 example cells producing no report item** (TE F-06). Added in v1.3: **the two-halt row**, whose `notice` cell carries S-3 then S-4 on the last admitted round (AC-2.2, AC-4.7 — SE G-01/TE F-03); **the AC-2.8 halt row**, four empty cells and `notice` = S-11 alone (SE G-02); **round 2's panel selected from the growth into round 2**, both classifications, with round 1 raising no S-6 notice (TE F-01); **a second halt preserving the reset region**, and the counted one-shot rule over a region carrying two `RESOLVED: yes` lines and one `WINDOW-START:` (AC-1.4, AC-1.5(4) — TE F-02); **an S-11 halt cleared without consuming the reset** and **a first-round-of-window zero-delta not halting** (AC-1.5(5), AC-2.8 — TE F-04); **`VERDICT:` → anchor → valid trailer reading as a count, not as *unavailable*** (AC-3.4's algorithm, AC-2.7 — SE G-05/TE F-06); and **a line-endings-only revision not firing AC-2.8** (equal digest, unequal byte count — SE G-03). | PROPERTIES |
 | **O-11** | Rebuild `pdlc/workflows/dist/` in the same commit as every workflow-source change, and honour the C-2 runtime constraints: no new `import` into the bundle, and **every injected IO call `await`ed** (the adapter's implementations are async; the test doubles are sync, so a missing `await` passes the tests and fails at runtime). AC-6's library must acquire no caller inside the bundle (AC-6.6). | implementation |
 
