@@ -17,7 +17,48 @@ depends-on: [pdlc-review-loop-hardening]
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude + operator | 1.7 | 2026-08-01 |
+| pdlc | draft | Claude + operator | 1.8 | 2026-08-01 |
+
+> **Revision note (v1.8).** This version answers round 9. Both panels again closed **every** prior
+> finding — the sixth consecutive round of that — and filed **six** new ones, all in text v1.7 added:
+> SE 0 High / 3 Medium / 1 Low, TE 0 High / 3 Medium / 1 Low, with two pairs filed independently by
+> both panels (SE G-28 / TE F-01, SE G-27 / TE F-03) and one pair the same rule (SE MF-11 / TE F-04).
+> Every change below is a **deletion or a scoping of a clause added in v1.7**; none adds a mechanism.
+> What changed:
+>
+> 1. **The `H − A = 0` delete licence is withdrawn (SE G-26, Medium).** Deleting an answering line at
+>    `A = H` lowers `A` alone while the refusal leaves the operator's `RESOLVED:` marker in place, so
+>    the next entry grants a three-round window off a clearance already answered — the one hand-edit
+>    §6's `WINDOW-START:` prohibition exists to prevent. **Correct that line** is now the only
+>    sanctioned value repair, at every `H − A`; AC-1.5(4)'s table, its arithmetic paragraph and §5's
+>    *reset region* row all say so.
+> 2. **Step 4's unconditional refusal is justified as fail-closed, not as costless (SE G-28, TE F-01,
+>    Medium).** `W` = 1 admits rounds 1–3, so it admits none only on a branch already carrying three.
+>    The paragraph now splits the cases: unchanged on an exhausted branch, and on a mid-window branch
+>    (reachable at highest round **2**) the refusal costs the round the fallback would have admitted —
+>    accepted deliberately, because a corrupt region is not a state a round should be opened over.
+> 3. **O-10's garbled-range obligation is sequenced across the rounds it actually spans (SE G-27,
+>    TE F-03, Medium).** The second `disposition-missing` and the byte-identical zero-delta halt are
+>    properties of two different rounds separated by an operator clearance; AC-2.8 fires at round-open
+>    *before* any reviewer is dispatched. The obligation now states the sequence and requires the
+>    fixture to move a byte, because with the anchors unchanged it is absorbing at the S-11 halt.
+> 4. **§6's `WINDOW-START:` row exempts the sanctioned correction (TE F-02, Medium).** v1.7 made
+>    correction the preferred repair and left §6 forbidding the line it produces, which made O-10's
+>    value-repair fixture unconstructible. Both exemptions — whole-section deletion and in-place
+>    correction — are now stated, with the reason each grants nothing.
+> 5. **AC-3.2's survivability argument drops the absolute cap (SE G-29, Low).** §4 M-1d says
+>    `MAX_REVIEW_ROUNDS` is a per-invocation budget, not an absolute cap, and clause 3 grants a fresh
+>    window on every clearance. The bound is the **operator**, which the same sentence already named,
+>    and the diagnostic **alternates** with S-11 rather than repeating under one name.
+> 6. **§10.12's lead-in states filed count, merge list and derived row count (SE MF-11, TE F-04).**
+>    Eight filed, one merged pair, **seven** rows. Third consecutive §10.N lead-in to need this, so
+>    the rule is stated with the number.
+> 7. **Mechanical:** v9 cross-reviews listed (MF-12); R-9's series extended to rounds 8 and 9, both
+>    directions of its coarseness recorded (MF-13); the queue-row claim carries its two citations at
+>    the baseline (TE MF-25); §5's *phase refusal* row carries the ❌ row and the `halted` queue row
+>    (TE MF-24); two over-long lines re-flowed (SE MF-14, TE MF-27).
+>
+> §10.13 maps every round-9 finding, mechanical fix and question to where it is answered.
 
 > **Revision note (v1.7).** This version answers round 8. Both panels closed **every** prior finding —
 > the fifth consecutive round of that — and round 8 filed **one** blocking finding (TE F-01, Medium)
