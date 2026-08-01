@@ -419,19 +419,23 @@ called 0 times** (a count, not an absence — O-10) and no new cross-review file
 
 The shared table is `docs/_constraints/pdlc-rcv-baseline.md` §3. This REQ **owns** six of its rows
 and reads two more; it changes none of the others, and a threshold used here and absent there is a
-defect.
+defect. **Four rows below sit deliberately outside baseline §3's scope and are not that defect:**
+`budget-exhausted:` is a render fixed by catalogue §2, and the three refusal-render rows are
+non-catalogue operator strings this REQ alone owns. Both classes have a registered authority — the
+catalogue, or this table — so neither is an unregistered threshold.
 
 | Name | Default | Owned / read | Note |
 |---|---|---|---|
 | `MAX_REVIEW_ROUNDS` | **3** (was 5) | owned | The one constant AC-1.2 changes. AC-1.1 makes it absolute per document, not per invocation. |
 | `## Reset Region` | that exact heading | owned | S-12. Created by the first halt of a phase, preserved by every later one (AC-1.4 clause 1). |
 | `HALT-REASON: {value}` | one line per halt, appended at the end of the region; `{value}` the `; `-joined render in the catalogue §3 precedence order | owned | S-15. `H` is exactly the number of halts taken. |
-| `WINDOW-START: {N}` | `{N}` a decimal integer ≥ 1 | owned | S-13. Written by the loop, **never authored by a human**. Scoped to *authoring*, so it exempts AC-1.5(4)'s two sanctioned repairs — the whole-section deletion, which zeroes both counts and can only cost windows, and the in-place **correction**, which leaves both untouched. **Deleting a single answering line is forbidden at every `H − A`**, because it lowers `A` alone. |
+| `WINDOW-START: {N}` | `{N}` a decimal integer ≥ 1 | owned | S-13. Written by the loop, **never authored by a human**. Scoped to *authoring*, so it exempts AC-1.5(4)'s two sanctioned repairs — whole-section deletion (zeroes both counts) and in-place **correction** (leaves both untouched). **Deleting a single answering line is forbidden at every `H − A`**, because it lowers `A` alone. |
 | `WINDOW-RESUMED: {W}` | `{W}` a decimal integer ≥ 1 equal to the origin then in effect | owned | S-14. Answers a clearance without moving the origin. |
 | `reset-region-corrupt: …` | the render fixed in catalogue §2's S-16 row, character for character, and **not repeated elsewhere** | owned | S-16. One notice per entry whatever the fault count. |
 | `budget-exhausted: …` | the render fixed in catalogue §2's S-4 row | owned | Rendered from `W` and the constant: a clause that hard-codes `rounds 1..3 of 3` is a defect. |
 | Refusal phase-row text | `Refused — reset region corrupt at {path} ({reason})` | owned | The ❌ row of a step-4 refusal. **Not a catalogue id** — an operator-facing render of S-16, distinct from step G's `Refused — unresolved POSTMORTEM at …`, which on this path would state the opposite of the truth. `postmortemStatus` is not `unresolved` here. |
 | Refusal recovery text | names the sanctioned repair for `{reason}` (AC-1.5(4)'s repair table) | owned | Replaces the shipped generic *"set the row back to pending, then re-run the queue"* on this path only, which otherwise reproduces the refusal every iteration. Also **not** a catalogue id. |
+| Unconfirmed-append text | `Refused — answering line unconfirmed at {path}` | owned | The ❌ row when the answering-line write cannot be confirmed (AC-1.5(4)): row B with an **empty** `notice`, recovery text *re-run*. **Not a catalogue id** — the region is not corrupt, so no S-16 reason exists to bind. |
 | `no-revision: …` / `fixed-point: …` | as the catalogue fixes them | **read only** | S-11 and S-3, emitted by `pdlc-rcv-fixed-point-stop` (X-05). AC-1.5(5) reads the **leading** reason of the last `HALT-REASON:` line; this REQ emits neither and may not change their grammar. |
 
 ## 7. Non-goals and out of scope
