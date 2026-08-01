@@ -309,3 +309,46 @@ names the two implementations it separates*; *a fix that adds an operator-visibl
 its author did not need to take* — and in MF-11's rule about counting rows after writing them.
 
 ## Verdict
+
+**Needs revision.** v1.7 (+158/−41, 10 commits) **closes all five of my round-8 findings**, two of them
+more thoroughly than I asked: §6 no longer restates S-16's parts but points at §5's specimen, so the
+second home is gone rather than synchronised (G-21); one S-16 per entry, first failing line in document
+order, with precedence row 8's single slot shown to be sufficient (G-22); *"only effect"* scoped to the
+post-mortem file and *returns* stated as *the phase does not run and the invocation terminates on step G's
+path*, with the ❌ row and the committed `halted` queue row named as the intended outcome (G-23); the
+repair table prefers **correct** and states the arithmetic (G-24); and §5 gains a **phase refusal** row
+defined *against* approval refusal, with AC-3.5 and AC-3.2 both qualified in place (G-25). All five
+mechanical fixes are applied and all three questions answered. v1.7 adds no new `file:line` citation, so
+the verification pass this round was internal.
+
+Four new findings, all in text v1.7 added, **three Medium**. AC-1.5(4)'s new *"delete it only when
+`H − A` = 0"* licence is the one hand-edit that can **bank an unpaid window**: deleting an answering line
+at `A = H` moves the region to `A < H` while the refusal has left the operator's `RESOLVED:` marker in
+place, so the next entry grants a three-round window off a clearance already answered — the property the
+`H`/`A` decomposition exists to hold, and the one §6 cites as the reason `WINDOW-START:` is never
+human-authored (*"can only cost windows, never grant them"* is true of the whole-section deletion, which
+zeroes both counts, and false of this one). Correcting is stated to be safe at every `H − A`, so the
+branch is unnecessary as well as unsafe (G-26). O-10's *two consecutive garbled dispatches* obligation
+asks one round to carry both a second `disposition-missing` **and** the byte-identical zero-delta halt,
+but AC-2.8 fires at round-open *"before it dispatches"* and *"round N is not dispatched"* — so the two
+assertions are mutually exclusive on one round, and the clearance AC-3.2's own prose puts between them was
+compressed out, exactly the defect TE Q-14 forced out of the neighbouring bullet in this same revision
+(G-27). Step 4's justification for the unconditional refusal — *"`W` falls back to 1, which admits no
+rounds"* — is false on a branch carrying two rounds (a round-2 fixed-point or zero-delta halt creates the
+region; `W = 1` then admits round 3), and AC-4.7 row B, added by the same revision, states the opposite in
+terms; the decision is right as fail-closed, but the two readings are behaviourally distinguishable and no
+O-10 obligation separates them (G-28). One Low: *"the cap is absolute, so the sequence is finite"*
+contradicts §4's M-1d (*"a per-invocation budget … not an absolute cap"*) and clause 3's fresh window per
+clearance — the real bound is the operator, which the same sentence already names (G-29).
+
+Three of the four are removals of a clause rather than additions, and none needs a new mechanism. On the
+stopping rule: `blocking(6) = 6`, `blocking(7) = 6`, `blocking(8) = 1`, and round 9 rises — so AC-2.1
+would have halted at round 7 and would not halt at 8 or 9, which is R-9's coarseness showing in both
+directions on one branch; MF-13 folds the second instance in beside the first. My own series is 10, 5, 5,
+5, 5, 4, 3, 0 blocking, **3 blocking (1 Low)**. Every finding I have filed since round 5 lies in text the
+immediately preceding revision added and none re-opens a closed one — the document is not oscillating, it
+is growing a boundary faster than the boundary is being traced, and the four clauses above are the trace
+for the boundary v1.7 added.
+
+VERDICT: Needs revision
+{"high": 0, "medium": 3, "low": 1}
