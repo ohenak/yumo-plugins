@@ -47,6 +47,57 @@ Two facts about this feature's provenance matter for reading the rest of this do
 
 ## Iterations (5 — limit reached)
 
+| Loop iteration | REQ version reviewed | SE review | TE review | SE verdict | TE verdict | REQ revision produced |
+|---|---|---|---|---|---|---|
+| 1 | v1.1 (`624054c`) | `-v1` 2H/5M/2L | `-v1` 3H/5M/3L | Needs revision | Needs revision | v1.2 (`fa83925`) |
+| 2 | v1.2 (`fa83925`) | `-v2` 0H/2M/4L | `-v2` 0H/1M/4L | Needs revision | Needs revision | v1.3 (`94e2137`) |
+| 3 | v1.3 (`94e2137`) | `-v3` 1H/2M/2L | `-v3` 1H/1M/3L | Needs revision | Needs revision | v1.4 (`bdf893e`) |
+| 4 | v1.4 (`bdf893e`) | `-v4` 1H/2M/2L | `-v4` 1H/2M/2L | Needs revision | Needs revision | v1.5 (`779cc35`) |
+| 5 | v1.5 (`779cc35`) | `-v5` 2H/0M/2L | `-v5` 0H/1M/2L | Needs revision | Needs revision | v1.6 (`c74d1ed`) — **never reviewed; limit reached** |
+
+Trajectory of blocking findings (High + Medium), summed across both reviewers:
+
+| REQ version reviewed | v1.1 | v1.2 | v1.3 | v1.4 | v1.5 |
+|---|---|---|---|---|---|
+| H+M (SE+TE) | **15** | **3** | **5** | **6** | **3** |
+| of which High | 5 | 0 | 2 | 2 | 2 |
+
+The shape is **not** the monotonic blow-up recorded for `pdlc-review-loop-hardening`. Round 1's
+fifteen blocking findings collapsed to three in one round — an 80 % reduction — and the loop then sat
+on a **floor of three to six blocking findings and two Highs for four consecutive rounds**. It never
+diverged and it never reached zero. Rounds 2→3→4 were non-decreasing (3 → 5 → 6), which is the
+fixed-point signature the successor REQ `pdlc-rcv-fixed-point-stop` is written to detect; round 5
+came back down to 3 but kept both Highs, and both of those Highs are on text that round 4's fixes
+introduced.
+
+Document size across the same window:
+
+| REQ version | v1.1 | v1.2 | v1.3 | v1.4 | v1.5 | v1.6 |
+|---|---|---|---|---|---|---|
+| Lines | 410 | 497 | 508 | 509 | 502 | 486 |
+| Bytes | 48,175 | 60,892 | 61,328 | 61,323 | 61,437 | 61,101 |
+| Headroom to `BYTE_LIMIT=61440` | 13,265 | 548 | 112 | 117 | **3** | 339 |
+
+This is the second distinguishing fact. Unlike the predecessor loop, this document **did not grow**:
+after round 1 it was pinned to within 0.9 % of the ceiling and then held there, gaining
+114 bytes across the whole of round 4→5 while landing four behavioural changes. Every round from 3
+onward was funded by a compression pass — `af343ab`, `8ad8d85`, `b5728ef`, `f846e70`, `bdf893e`,
+`779cc35`, `f0fe75e`, `d4a8b4d` are all compression commits — and by round 5 the reserve was 3 bytes.
+The size budget (`pdlc/hooks/scripts/check-req-size.sh:41`) was filed as a Low **in every round from
+2 onward** (SE F-06, SE F-05 ×2, SE F-04; TE F-21, F-26, F-28) and by round 5 it had stopped being a
+style note: both reviewers state that the round's own fixes cannot be paid for by another compression
+pass, and one compression pass had already deleted a *reason* rather than a restatement (SE-v5 F-03 /
+TE-v5 F-29, the dangling *"depends on both"* in §3.1).
+
+**Resolution rate was 100 % in every delta round.** Rounds 2–5 opened with a disposition table and
+closed 6/6, 5/5, 5/5 and 5/5 of the prior round's findings respectively. The authoring side never
+failed to answer a finding, and twice (round 5's F-22 and F-24) took the more expensive of the two
+options offered. A 100 % resolution rate coexisting with a flat blocking count is the same signature
+recorded for the predecessor feature: the loop is convergent on *the text it reviewed* and
+non-convergent on *the document*.
+
+---
+
 ## Reviewers
 
 ## Pattern of Disagreement
