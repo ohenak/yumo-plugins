@@ -37,6 +37,14 @@ sub-case of the new two-outcome clause — and F-28/F-29 are one line each.
 
 ## Questions
 
+Q-04 is answered and closed after three rounds of carrying. Q-05 is carried unchanged for a fourth
+and remains genuinely optional — no finding depends on it.
+
+| ID | Question |
+|----|---------|
+| Q-04 | **Answered.** v1.5 chooses the validating form: *"a **byte comparison, not a presence check**: the loop re-reads the file, re-runs steps 1–3 on the region, and requires it to end with the answering line **exactly as written**"*, carried to the TSPEC by O-12 (*"re-read and confirm it **by byte comparison against what was written**, re-running steps 1–3"*). That is the answer that collapses the outcome enumeration to two and closes the silent well-formed truncation on the writing entry. F-27 is what is left over: the answer is right about *detection* and the round did not follow it through to *what the operator is then told*. |
+| Q-05 | *(carried from v2, v3 and v4, unanswered)* Can a single entry both **grant** and **halt** — grant `W` = `N`, then take some other halt path before round `N` opens? If so, `H − A` still lands in {0, 1}, but the **order** of the appended `WINDOW-START:` and `HALT-REASON:` lines decides step 2's `WINDOW-RESUMED:` check on the following entry, and the document fixes the order only for lines written by *different* entries. The new byte comparison narrows this rather than answering it: the confirmation requires the region to **end** with the answering line, so a `HALT-REASON:` appended by the *same* entry must land strictly after the confirmation, never between the append and the re-read. Worth one clause in the TSPEC even if the REQ leaves it alone. |
+
 ## Positive Observations
 
 ## Recommendation
