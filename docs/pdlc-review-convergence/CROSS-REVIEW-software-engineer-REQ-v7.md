@@ -40,6 +40,33 @@
 
 ## Round-6 disposition
 
+**All five prior findings are closed**, each checked at the surface it names rather than at the revision
+note or §10.10 row that claims it.
+
+| Prior finding | Sev | Disposition | Evidence |
+|---|---|---|---|
+| G-14 — the counting rule validates every line's *value* and never the relation `H − A ≤ 1`, and the unvalidated case fails **open** | Medium | **closed as recommended, and then some** | AC-1.5(4) gains **step 3** — `H − A` must be 0 or 1, both directions named (`A > H`, `A < H − 1`) — and step 4 folds it into the same fail-closed treatment as a corrupt value: `W` = 1, no grant, reported. The invariant is stated as clause 4's domain, with the reachability argument attached. The fail-open path I traced (`H − A − 1` unpaid windows) is gone. v1.5 went further than I asked and made validation a **conjunct of the grant gate** (TE F-02), which is the right call — see G-18 for what that additional step does not yet account for. |
+| G-13 — the write position of the two answering lines is unstated while step 2's validation is order-sensitive | Medium | **closed exactly as recommended** | Clause 4 now says the loop *"**appends** exactly one answering line to the **end** of the reset region"*, with a dedicated paragraph giving the reason (step 2 reads *"before it"*; a prepended `WINDOW-RESUMED: 4` inverts it and locks `W = 1` absorbingly). S-13 and S-14 carry *"appended to the end"* in their *Exact string* cells, §5's durability row carries *"Every such line is appended at the end … so document order is event order"*, and O-10 asserts it **positionally**, with a prepending implementation required to fail. |
+| G-16 — AC-3.2 scopes the verifier's required rows to `W`, and nothing gives the verifier `W` | Medium | **closed as recommended, at the better of the two options** | AC-3.2's *Given* now includes *"a dispatch that names the window"* — the inclusive round range `{W … N−1}`, *"as an explicit input, not as something the verifier derives"* — and clause 1 is restated over *"the round range it was given"*. The reasoning paragraph puts the obligation on the party that can discharge it and keeps `W`'s single reader in the loop. O-3 carries the dispatch input, O-9(c) carries it into the SKILL **plus** the refusal to guess when the range is absent, and O-10 asserts the row set is derived from the range and not from branch history. |
+| G-15 — a `## Verdict` section with **zero** trailer lines is classified by no AC-2.7 row, and AC-3.4 disagreed with HEAD | Medium | **closed as recommended, matching HEAD** | AC-2.7 gains **row 3** ⇒ *malformed*, with the full `9486c81` trace, and the table is now numbered and declared **read in order** so rows 5–7 are reached only for a section carrying exactly one trailer line. AC-3.4 step 1 is corrected from *unavailable* to *malformed* and cites the same fall-through. The distinction from the genuine `0/0/0` truncated-output return at `:451` is drawn in both places. I re-verified the whole chain at the baseline (see *Delta baseline*); the document and the shipped reader now agree on this input. |
+| G-17 — the strip reaches inside fenced blocks | Low | **closed** | AC-1.4 clause 2 now strips *"every **unfenced** one"*, citing `parseResolvedMarker` (`:953-958`) and `scanLines` (`:569`), and states the one-scoping-rule reason. O-10 asserts a fenced marker surviving while an unfenced one is removed. §5's *reset region* row is amended in the same direction (TE MF-15). |
+
+All five mechanical fixes are applied: **MF-1** (AC-2.6's table restated over `W`, `W+1`, `W+2` in the
+header *and* every cell, with the `W = 1` reading stated), **MF-2** (the trailing space written into both
+normative clauses and into AC-2.7's lead-in, with `VERDICT:Approved` named as not-a-line), **MF-3** (the
+creating halt is governed — see below), **MF-4** (`HALT-REASON:` gets its own id **S-15**), **MF-5**
+(§10.9's heading names its non-finding rows).
+
+I also checked TE F-01, the round's one High, because it changes the same clause my findings sit in:
+AC-1.4 clause 1 is now stated over **every** halt, create-or-preserve, unified under O-5's
+read-modify-write with *"the captured region of a file that does not exist is the empty region"*, and
+O-5 itself carries that sentence. `H` is now defensibly *"exactly the number of halts this document has
+taken"* — on every path **except** the one G-18 names, which is new in v1.5.
+
+Every finding below is **new in v1.5**. All three lie in text this revision added, and all three lie in
+the mechanism it added to close G-14 and TE F-02: the refusal path. None re-litigates a section I
+approved.
+
 ## Findings
 
 ## Findings in detail
