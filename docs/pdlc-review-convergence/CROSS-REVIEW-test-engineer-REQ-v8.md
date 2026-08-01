@@ -137,6 +137,16 @@ authority is unambiguous, the artifact a downstream author actually works from i
 
 ## 4. Mechanical fixes
 
+Reported per AC-6.5 as a fix list, not as blocking findings; excluded from the counts below. MF-16 …
+MF-19 of v7 are all applied and are not carried (MF-17 with the residue F-02 records).
+
+| # | Location | Issue | Fix |
+|---|---|---|---|
+| MF-20 | §10.11, lead-in | *"all six findings below lie in text v1.5 added — five of them in the refusal path"*. The table carries **five** finding rows (SE G-18/TE F-01, SE G-19/TE F-02, SE G-20, TE F-03, TE F-04); the two panels **filed seven** (SE 1 High + 2 Medium, TE 1 High + 2 Medium + 1 Low, with two pairs merged). Six is neither. The *"five of them"* clause is consistent with the filed count of seven and not with the row count of five, so the two numbers in the same sentence are counted on different bases. This is the same slip §10.10's lead-in carried until this round (MF-19) — the second occurrence, which is why it is worth stating the rule rather than the number. | Pick one basis and say which: *"all **seven** findings the two panels filed, on **five** rows below"*, or *"all **five** findings below, of which **three** are in the refusal path"*. |
+| MF-21 | AC-4.7, row B, `round` cell | *"one past the highest round on the branch — **the round that would have opened**"*. On the canonical fixture the gloss is false: the branch is exhausted, `W` = 1, and **no** round would have opened — that is the whole reason the entry has no round to report. The gloss is accurate only on a mid-window refusal, where the two coincide. The **definition** is total and correct and O-10's row-B bullet uses it, so nothing downstream is broken; but a test author deriving the cell on a differently-shaped fixture from the gloss rather than the definition gets no answer. | Drop the gloss, or scope it: *"— on a mid-window refusal this is also the round that would have opened; on an exhausted branch no round would have"*. |
+| MF-22 | §5, S-17 row | Two pointers do not resolve. (a) *"AC-3.2's *When the range is absent or unreadable* clause"* — AC-3.2 has no clause with that title; the receive side is stated in an unnumbered bullet beginning *"the receive side is total…"*. In a document whose convention is that italics quote the target, a quoted title that does not exist sends the reader looking for a clause. (b) *"lands in AC-3.2(1)'s already-stated absent-`## Disposition` case"* — the absent case is stated in AC-3.2's **receive-side table** (`docs/…/REQ-…md:1417`), not in clause 1; clause 1 is what *fails*, the table is what *states the behaviour*. | (a) *"AC-3.2's receive-side bullet for the range"*; (b) *"AC-3.2's `## Disposition` receive-side table, first row"*. |
+| MF-23 | AC-1.5(5), clause 5 | The re-wrap that applied SE MF-2/TE MF-16 left an orphan: `…of every halt reason that halt raised — so a round on which S-3 and S-4 both hold writes` / `**one** line reading` / `` `fixed-point: …; budget-exhausted: …` ``. The middle line is ~19 columns against 96–105 in its neighbours. | Re-flow the three lines. |
+
 ## 5. Measurement Required
 
 ## 6. Questions
