@@ -779,13 +779,65 @@ branch — the state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-
    conjunct, an invalid region is inert: nothing is written, nothing is granted, the run report names the
    file and the values found (S-16), and the operator's clearance survives for a later entry.
 
-   **The sanctioned repair is the operator's, and it is the only hand-edit this document asks for
-   besides the marker.** §5 calls the region machine-written and machine-maintained, which describes who
-   *writes* it in normal operation, not who may repair it. When the run report emits S-16, the region is
-   **human-repairable**: the operator deletes or corrects the offending line named in the report — and
-   nothing else — leaving `H` equal to the number of halts the document has taken and `A` equal to the
-   number of clearances already answered. Any repair that leaves `H − A > 1` is itself rejected by the
-   counts check below, so a mis-repair fails closed rather than banking windows.
+   **A refusal is not a halt: the entry returns without running the rest of AC-1.5.** *Inert* is only
+   true if the entry stops. v1.5 left it running: with `W` = 1, clause 1 admits **no rounds** on a branch
+   whose highest round is 3 or more and halts immediately on the budget path — and AC-1.4 governs
+   **every** halt, so that halt would append its own `HALT-REASON:` (`H += 1`) and strip the operator's
+   `RESOLVED:` line. The refusal would then have spent the clearance it declined to spend, moved `H − A`
+   one further from repairable, and changed the reported reason underneath the operator: a region refused
+   for `invalid-window-start` is refused for `counts-mismatch` on the next entry, and the sanctioned
+   repair below never converges, because each repair-and-clear cycle is met by one more halt. That is the
+   same permanent dead end clause 3 exists to prevent, reintroduced by the conjunct added to prevent it
+   (SE v6 G-18, TE v6 F-01). Therefore, when step 4 refuses:
+
+   - the entry **takes no halt**. It does not evaluate clause 1's budget, it writes no `HALT-REASON:`
+     line, it writes no post-mortem, and AC-1.4 does not fire — there is no halt for it to govern, so
+     the *"every halt, without exception"* rule is untouched and `H` remains **exactly the number of
+     halts this document has taken**;
+   - the operator's `RESOLVED:` marker is **left in place**, unstripped, so `checkPostmortem` still reads
+     `resolved` on the next entry and the clearance is genuinely available to it;
+   - the file is **byte-unchanged**. The only effect of the entry is the S-16 notice in the run report,
+     on the row AC-4.7's *no-round-admitted* paragraph fixes;
+   - the phase is **refused, not halted** — the same shape as step G's refusal of an unresolved
+     post-mortem, which likewise declines to enter without recording an event. `H − A` is therefore
+     stable across refusals, and the reason S-16 reports on the second entry is the reason it reported on
+     the first.
+
+   This is the reading that makes the paragraph above true as written, and it is the one O-10's
+   *"the file is byte-unchanged apart from the report"* assertion is satisfiable against.
+
+   **The sanctioned repair is the operator's, and it is the only hand-edit this document asks for to
+   machine-written state.** §5 calls the region machine-written and machine-maintained, which describes
+   who *writes* it in normal operation, not who may repair it; the operator's own `RESOLVED:` marker is
+   human-owned state and is not a repair (SE v6 MF-4). When the run report emits S-16, the region is
+   **human-repairable**, and the repair is stated **per reason**, because the three reasons do not name
+   the same kind of evidence:
+
+   | Reason | What the notice names | The sanctioned repair |
+   |---|---|---|
+   | `invalid-window-start` | the offending `WINDOW-START:` value | delete or correct **that line** — and nothing else |
+   | `invalid-window-resumed` | the offending `WINDOW-RESUMED:` value | delete or correct **that line** — and nothing else |
+   | `counts-mismatch` | the pair `H`/`A` — **no line** | delete the **whole `## Reset Region` section**, heading included |
+
+   A value repair leaves `H` equal to the number of halts the document has taken and `A` equal to the
+   number of clearances already answered; any repair that leaves `H − A ∉ {0, 1}` is itself rejected by
+   the counts check below, so a mis-repair fails closed rather than banking windows.
+
+   **Why `counts-mismatch` is repaired by deletion and not by editing a line.** A counts mismatch is by
+   construction a statement about lines that are *missing* or *surplus*, so there is no offending line to
+   name. The two edits that would restore the relation are each forbidden elsewhere in this document:
+   **adding** an answering line contradicts §6's `WINDOW-START:` row (*"written by the loop, never by a
+   human"*), and **deleting** a `HALT-REASON:` line contradicts AC-1.4 clause 1's guarantee that `H` is
+   exactly the number of halts taken — which §5's *Which halt a POSTMORTEM records* row depends on for
+   *"the last"* to mean *"the most recent"*. Deleting the **section** contradicts neither: S-12 already
+   states that an absent `## Reset Region` heading is read as the empty region, `H = A = 0`, `W = 1`, no
+   reset in effect and no clearance outstanding. The document returns to its never-reset state, the next
+   halt re-creates a one-line region by AC-1.4 clause 1, and the clearance after that one works. The cost
+   is one further halt and the loss of the halt history the region kept — which is the honest price of a
+   region whose counts are no longer trustworthy, and it is stated here so the operator does not have to
+   discover it (SE v6 G-19, TE v6 F-02). §6's `WINDOW-START:` row's *"never by a human"* is scoped to
+   normal operation accordingly: it forbids a human **authoring** an answering line, which is the edit
+   that would bank an unpaid window; it does not forbid this deletion, which can only cost windows.
 
    **The accounting is over lines the loop owns, not over the human's marker.** v1.2 tested for the
    presence of a `WINDOW-START:` beside a `RESOLVED: yes`, which is undecidable once the file carries
