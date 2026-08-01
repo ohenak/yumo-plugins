@@ -246,6 +246,16 @@ dispatched range) and are not restated. Three new, each the fastest route into t
 
 ## Mechanical fixes
 
+Not findings. Apply without discussion; none affects the recommendation.
+
+| id | Where | Fix |
+|---|---|---|
+| MF-1 | §10.10 lead-in, and the *Revision note (v1.5)* opening | Both say **seven** round-6 findings (*"all seven findings below"*, *"six of the seven"*). Round 6 produced **eight**: SE v6 filed four Medium and one Low (G-13 … G-17), TE v6 filed one High, one Medium and one Low (F-01, F-02, F-03) — `{"high": 0, "medium": 4, "low": 1}` and `{"high": 1, "medium": 1, "low": 1}` in the two verdict trailers. §10.10's own table has eight finding rows. Write eight in both places (and *"seven of the eight"* if the "in text v1.4 added" sub-count is recounted — by my reading all eight are, since TE F-03's *absent* row is v1.4 text too). |
+| MF-2 | AC-1.5(5), first sentence | The S-15 edit left line 826 at 113 characters — *"region (S-15, AC-1.4 clause 1), `{value}` being the `; `-joined render, in AC-4.7's precedence order,"* — against the ~100-column wrap the surrounding paragraph and the rest of the document keep. v1.5 re-wrapped AC-1.5's closing paragraph for exactly this reason (TE v6 MF-14); re-wrap this one too. |
+| MF-3 | §5, catalogue lead-in | *"The five kinds, in the order the rows appear"* now lists **report notices** as (S-5, S-6, S-16) and **reset-region lines** as (S-13, S-14, S-15), but the rows themselves appear in the order S-12, S-15, S-16, S-13, S-14 — so S-16, a report notice, sits between two reset-region rows and the *"beside their kin"* justification no longer describes the table. Either move the S-16 row up beside S-5/S-6, or drop the clause claiming kind-adjacency. |
+| MF-4 | AC-1.5(4), *sanctioned repair* paragraph | *"it is the only hand-edit this document asks for besides the marker"* — the document also asks the operator to hand-write `RESOLVED: yes` **and**, per AC-1.5(3), nothing else; but §10.10's TE Q-10 row contemplates a third hand path (a post-mortem surviving a partial harvest). One clause: say the repair is the only hand-edit to *machine-written state*. |
+| MF-5 | O-10, v1.5 bullet for TE F-02 | *"a later entry after the operator's sanctioned repair grants the window"* is asserted for a `WINDOW-START:` that *"fails step 2 with `A < H`"*. Under G-18 the intervening halt changes `H`, so the fixture as written does not reach the asserted state; and if G-18 is closed by exempting the refusal from the halt, this bullet becomes correct unchanged. Re-check the bullet once G-18 is decided rather than editing it now. |
+
 ## Recommendation
 
 ## Verdict
