@@ -80,6 +80,41 @@ Ids continue the `G-` series so they cannot be confused with the closed `F-01…
 
 ## Findings in detail
 
+None of the five needs a page; each is one clause, and I have written the clause into the finding row.
+Two are worth a short trace because the reasoning is not obvious from the row.
+
+### G-23 — what the analogy carries and what it does not
+
+The document's argument is sound and I verified both halves of it at `9486c81`: `checkPostmortem`
+(`:2440-2448`) reads and returns without writing, and the step-G refusal (`:3890-3901`) records a phase
+row and throws. So *"a refusal is a decision not to enter, exactly as step G refuses an unresolved
+post-mortem without recording anything"* is true **about the post-mortem file**, which is the only thing
+the ratchet cared about. What it is not true about is the invocation: `throw haltError(…)` is how the
+shipped code ends a phase, and orchestrate-dev's halt path then rewrites the feature's `QUEUE.md` row to
+`halted` and commits that one file. So an entry refused by AC-1.5(4) does more than emit a notice —
+it ends the run and marks the queue. That is the **right** behaviour (the region needs an operator, and
+an unattended queue must stop rather than spin), which is why this is Low and not a design finding. The
+defect is only that the document says *"the only effect of the entry is the S-16 notice in the run
+report"* and a reader who takes the sentence at face value would implement a plain `return`, which lets
+Phase F run on an unreviewed document. Two words fix it: scope *"only effect"* to the post-mortem, and
+say the phase terminates on the step-G path.
+
+### G-24 — the arithmetic of the delete branch
+
+Take the smallest reachable case. A region with `HALT-REASON:` ×2 and one answering line reading
+`WINDOW-START: 0`: `H = 2`, `A = 1`, `H − A = 1` — the counts pass step 3, and step 2 rejects the value,
+so the reported reason is `invalid-window-start`. Both sanctioned repairs are offered as equals:
+
+| Repair | Region after | Next entry |
+|---|---|---|
+| **correct** the line to a valid value | `H = 2`, `A = 1` | step 2 passes, step 3 passes ⇒ the window is granted |
+| **delete** the line | `H = 2`, `A = 0` | `H − A = 2` ⇒ `counts-mismatch` ⇒ refused again, and now only the whole-section deletion repairs it |
+
+The general rule is one line of arithmetic: deleting an answering line raises `H − A` by one, so it is
+safe exactly when `H − A = 0` beforehand — which the operator can read off the notice, since S-16 now
+carries `(H={h}, A={a})`. That is why the fix is a clause and not a mechanism: the notice already gives
+the operator the number they need to choose the branch; the table just does not tell them to look.
+
 ## Questions
 
 ## Positive Observations
