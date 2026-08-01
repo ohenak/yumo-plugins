@@ -286,4 +286,60 @@ in a sentence and neither blocking.
 
 ## 8. Recommendation
 
+**Needs revision**
+
+Mandatory per the approval rules: three High and three Medium findings are open. **All six round-4
+findings are resolved**; every open finding is new and lies in text this revision added.
+
+What must change before this document can be approved:
+
+1. **F-01** — make an S-11 clearance write a paired line (`WINDOW-RESUMED: {W}` or equivalent) counted
+   in `S`, so `R = S` holds after every clearance of either kind. As written, `R > S` persists after
+   an S-11 clearance and the next halt of any kind is auto-cleared with a fresh window, unattended —
+   one banked window per no-revision halt, which is the behaviour clause 5's own justification says
+   it exists to prevent. It also gives the S-11 path a positive artifact to assert on; today O-10's
+   *"an S-11 halt cleared without consuming the reset"* has no falsifiable oracle.
+2. **F-02** — restate AC-1.4's re-entry gate over the same accounting: re-entry is permitted iff an
+   **unpaired** clearance exists, not iff a `RESOLVED: yes` line is present. v1.3 forbids the halt
+   path to delete that line, so under the present wording one marker clears every future halt of the
+   phase forever and AC-1.1's cap stops being operator-gated.
+3. **F-03** — scope AC-3.1 (and with it AC-3.2) to the window as AC-2.1 and AC-2.8 now are, or state
+   explicitly that the first round of a reset window is a verifier round and that it may approve a
+   document nobody revised. Today: reset without revising ⇒ AC-2.8 disabled by its own row 4 ⇒
+   growth 0 ⇒ `incremental` ⇒ one verifier ⇒ approval of the byte-identical document the full panel
+   had just rejected.
+4. **F-04** — restate AC-1.5(4)'s receive side as an ordered algorithm. It is total but not
+   single-valued; DC-01 requires both, as AC-3.4's own new preamble says.
+5. **F-05** — re-baseline the header to the commit v1.3's citations were read at, re-verify §4's
+   older rows there, and replace the nonexistent `writePostmortem` with `reviewLoop` /
+   `postmortemPrompt`. The claims are all true; the locators point at a different commit and, in one
+   case, at nothing.
+6. **F-06** — give `HALT-REASON:` (and `WINDOW-START:`) a §6 row and one statement of the value
+   grammar, so the co-occurring-halt line O-10 now requires a test for has one expected literal.
+
+F-07 is Low and may be taken as mechanical. MF-08 … MF-11, MR-03/MR-04/MR-05 and Q-07/Q-08 are
+non-blocking and contribute nothing to the counts.
+
+Nothing here contests user need, scope, priority or phasing — that remains settled and out of scope.
+Nor do I contest any mechanism v1.3 introduces: the round-open read, the counted one-shot, the
+`HALT-REASON:` line, the window scoping and the preservation obligation are, in my judgement, all the
+right answers. F-01, F-02 and F-03 are three places where the *new* durable state has not been
+composed with the rules that already read it.
+
+**Trajectory note (self-applied, per the preamble's fixed-point rule).** My own blocking counts:
+round 1 — 7, round 2 — 4, round 3 — 5 (over a byte-identical document), round 4 — 4, round 5 — **6**.
+Under AC-2.1 that is a rise (6 ≥ 4) on a comparable same-shape pair, so on this round the rule
+this REQ specifies **would fire** and halt the phase. I record that plainly, and I also record what
+the count hides, which is R-9's exact point measured a second time: **6 of 6 round-4 findings are
+discharged and 0 are carried**, and all six new findings are defects in text v1.3 added — three of
+them in the single clause (AC-1.5(5)) that answered my round-4 F-04. The revision classifies
+`new-mechanism` at +27.4 KB, so AC-4.2 and AC-2.1 disagree about this round exactly as R-9 predicts
+they will. My judgement, offered to the operator who has to make the call the mechanism cannot: this
+is not a plateau. It is a document whose remaining defects are concentrated in one clause added two
+days ago, and they are individually small — a missing paired line, a gate stated over presence
+instead of counts, one AC not scoped alongside two others. Round 6 should close them.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 3, "medium": 3, "low": 1}
