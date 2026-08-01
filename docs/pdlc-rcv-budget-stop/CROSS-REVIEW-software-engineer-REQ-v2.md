@@ -90,4 +90,43 @@ new operator-facing strings the v1 F-03 fix minted are declared but neither *reg
 
 ## 6. Recommendation
 
+**Needs revision**
+
+No High finding remains. Both v1 Highs are closed, and closed properly. What is left is two Medium
+findings that are, in substance, **one gap wearing two hats**: the v1 F-03 fix minted two new
+operator-facing strings, and neither was registered in the family's shared threshold table (F-02)
+nor given a PROPERTIES oracle (F-01). Either omission alone would be survivable; together they mean
+the fix cannot fail — an implementation that keeps the shipped, actively misleading strings passes
+every leg O-10 states, and no family-level consistency check would notice.
+
+What must change, in the order I would do it:
+
+1. **F-01** — add one O-10 clause asserting the ❌ phase-row text and the recovery text on a step-4
+   refusal, alongside `postmortemStatus` (F-04). This is the load-bearing one: the recovery string
+   is the difference between an operator who repairs the region and one who resets the queue row to
+   `pending` and reproduces the refusal on every iteration.
+2. **F-02** — reconcile §6's preamble with §6's table. One sentence either way: register the two
+   refusal-text rows in `docs/_constraints/pdlc-rcv-baseline.md` §3, or state that catalogue-§2
+   renders and non-catalogue operator strings sit outside baseline §3's scope. Leave the preamble
+   asserting a rule its own table breaks and the next reviewer files this again.
+3. **F-03**, **F-04**, **F-05** — three sentences, no design content.
+
+**F-06 is a constraint on how you make those edits, not a finding against the content:** the
+document is at 60,892 of 61,440 bytes. F-01 and F-03 are cheap, F-02 is one sentence, F-04 and F-05
+are one clause each. If the revision cannot land inside the ceiling, prefer trimming a justification
+paragraph over dropping a criterion — §4.1 and §10 both contain prose that could shrink without
+losing an obligation.
+
+Nothing in this round contests the mechanism. The window, the anchored one-shot clearance, the
+ordered receive-side algorithm and its fail-closed defaults are, after one revision, stated at a
+level of precision where the remaining work is registration and oracles rather than design. That is
+the right place for a REQ to be at the end of round 2.
+
 ## Verdict
+
+Both v1 High findings are closed. Two Medium findings are open, both on the anchoring of the two new
+operator-facing strings — no PROPERTIES oracle, and no row in the shared threshold table §6 cites as
+their authority. Four Low findings accompany them. Per the approval rule, an open Medium means the
+document is not yet approved.
+
+VERDICT: Needs revision
