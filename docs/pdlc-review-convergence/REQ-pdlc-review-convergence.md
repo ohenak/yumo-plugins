@@ -11,9 +11,9 @@ depends-on: [pdlc-review-loop-hardening]
 | Upstream | `docs/completed/pdlc-review-loop-hardening/POSTMORTEM-R-pdlc-review-loop-hardening.md` (v1.0) root causes 1–3 and recommendations R-4, R-5, R-6; `docs/completed/pdlc-review-loop-hardening/LEARNINGS-pdlc-review-loop-hardening.md` §2, §4, §5.3; operator direction of 2026-07-29 |
 | Downstream | `FSPEC-pdlc-review-convergence.md`; every subsequent `docs/_queue/QUEUE.md` row, all of which are reviewed by the loop this REQ changes |
 | Targets | `pdlc/workflows/orchestrate-dev.js`; a new library under `pdlc/workflows/lib/`; the three review SKILLs (`pm-review`, `se-review`, `te-review`); the three author SKILLs (`pm-author`, `se-author`, `te-author`); generated artifacts under `pdlc/workflows/dist/` rebuilt in the same commit |
-| Cross-Reviews | `docs/pdlc-review-convergence/CROSS-REVIEW-software-engineer-REQ-v1.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-test-engineer-REQ-v1.md` |
+| Cross-Reviews | `docs/pdlc-review-convergence/CROSS-REVIEW-software-engineer-REQ-v1.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-test-engineer-REQ-v1.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-software-engineer-REQ-v2.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-test-engineer-REQ-v2.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-software-engineer-REQ-v3.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-test-engineer-REQ-v3.md` |
 | LEARNINGS | `docs/pdlc-review-convergence/LEARNINGS-pdlc-review-convergence.md` |
-| Citation baseline | Every `file:line` reference in this document was read from the working tree at **`9486c81`** on the **default branch `main`**, tree clean. The v1.0 header pinned `d11dad5` on `feat-pdlc-review-loop-hardening`, which is *not* an ancestor of `main` and therefore not reachable from where this document is reviewed (SE F-08); the predecessor feature has since merged (`7bc559a`), so the baseline is restated over the default branch and every row in §4 was re-verified against it. Per the convention this repo adopted after `CROSS-REVIEW-software-engineer-REQ-v1` F-05 on the predecessor feature, **every** citation below names its enclosing symbol *and* a distinctive literal alongside the line number, so a line drift narrows the reader's search rather than invalidating the claim. Citations are written **repo-root-relative** (`pdlc/workflows/orchestrate-dev.js:52`) — the closed grammar AC-6.4 defines. A citation that names only a line number, or only a basename, is a defect in this document; report it as a mechanical fix, not a finding (see AC-6). |
+| Citation baseline | Every `file:line` reference in this document was read from the working tree at **`9486c81`** on the **default branch `main`**, tree clean. The v1.0 header pinned `d11dad5` on `feat-pdlc-review-loop-hardening`, which is *not* an ancestor of `main` and therefore not reachable from where this document is reviewed (SE F-08); the predecessor feature has since merged (`7bc559a`), so the baseline is restated over the default branch and every row in §4 was re-verified against it. Per the convention this repo adopted after `CROSS-REVIEW-software-engineer-REQ-v1` F-05 on the predecessor feature, **every** citation below names its enclosing symbol *and* a distinctive literal alongside the line number, so a line drift narrows the reader's search rather than invalidating the claim. Citations are written **repo-root-relative** (`pdlc/workflows/orchestrate-dev.js:52`) — the closed grammar AC-6.4 defines. A citation that names only a line number, or only a basename, is a defect in this document; report it as a mechanical fix, not a finding (see AC-6). **The baseline is a fixed commit, not "HEAD".** `9486c81` is an ancestor of `main`, so every citation below resolves there; `main` has since advanced and `pdlc/workflows/orchestrate-dev.js` has gained ~217 lines, so a reader checking a row at a *later* commit should navigate by the row's named symbol and distinctive literal — which is exactly the drift tolerance the convention exists to provide — rather than by the line number alone (TE v3 MF-03). Re-baselining is a mechanical fix, not a finding. |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
@@ -681,15 +681,19 @@ Required` (AC-5.2) remains outside the criterion (AC-5.5).
 This is the load-bearing integration constraint, and it exists because three separate places in
 `orchestrate-dev.js` currently encode "two reviewers" as an invariant. All three must be satisfied.
 
-*Who:* the review loop. *Given:* round N ≥ 2 dispatched a single verifier which approved. *When:*
-the loop records the approval. *Then:*
+*Who:* the review loop. *Given:* round N ≥ 2 dispatched a single verifier — **whatever verdict it
+returned**. *When:* the round's file exists, i.e. after the verifier returns. *Then:*
 
-- **(a) A durable, in-file marker distinguishes a verifier round from a crashed dual round.** The
-  loop appends `REVIEW-MODE: verification` to the verifier's cross-review file, alongside the
-  `APPROVAL-HASH:` / `REVIEWED-COMMIT:` anchors the terminal round already writes (M-4a) — same
-  writer, same append, same idempotence and ambiguity rules as M-4b. The marker is **in the file**,
-  not in memory, because the reader that needs it (M-3d) runs on a later invocation with nothing but
-  the branch to read.
+- **(a) A durable, in-file marker distinguishes a verifier round from a crashed dual round, and it is
+  written on every verifier round.** The loop appends `REVIEW-MODE: verification` to the verifier's
+  cross-review file, in the same anchor block, with the same idempotence and ambiguity rules as M-4b.
+  Its writer is the **unconditional sibling writer of AC-4.1**, not `appendApprovalAnchors`: the marker
+  describes the round's *panel shape*, which is a fact about the round, not about its verdict.
+  Writing it only on an approving round would leave every **failed** verifier round as one file with no
+  marker — indistinguishable from a crashed dual round under the §5 predicate, and AC-2.1 compares only
+  failed rounds, so AC-2 could never fire in the `dual, verifier, verifier` regime AC-2.6 row 2 states
+  it fires in (SE F-02). The marker is **in the file**, not in memory, because the reader that needs it
+  (M-3d) runs on a later invocation with nothing but the branch to read.
 - **(b) A lone cross-review file at the candidate round WITHOUT the marker remains fail-closed.**
   The existing role-asymmetry rule (M-3d) exists to refuse approval when one reviewer of a dual round
   crashed, and that refusal must survive intact. Only the marker converts "one file" from *evidence of
@@ -706,7 +710,7 @@ the loop records the approval. *Then:*
   two-element `lastResults` construction on the halt path (M-3a). A round's panel must be a list whose
   length the round determines, and every one of those sites must read from it.
 
-- **(e) The marker's reader is a total function — all five cases, at REQ altitude.** `REVIEW-MODE:` is
+- **(e) The marker's reader is a total function — all six cases below, at REQ altitude.** `REVIEW-MODE:` is
   a machine-read string crossing a component boundary (S-1), and DC-01 requires the receiving side to
   be total *before* FSPEC authoring. v1.0 stated only present/absent and deferred the rest to O-4,
   which is an obligation on the FSPEC — the deferral DC-01 forbids (SE F-05, TE F-07). Each case below
