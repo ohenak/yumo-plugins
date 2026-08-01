@@ -57,6 +57,136 @@ New ids (`G-`) so they cannot be confused with the closed `F-` series.
 
 ## Findings in detail
 
+### G-01 (High) — the two new co-occurrence clauses disagree
+
+AC-2.2, the paragraph added to answer TE Q-02:
+
+> On the last admitted round the fixed-point test and the budget can both be satisfied; the `notice`
+> cell then carries S-3 and S-4 in that order.
+
+AC-4.7, the precedence table added to answer TE F-04, row 2:
+
+> S-3 `fixed-point:` / S-4 `budget-exhausted:` — the other halts; **at most one of the two can appear
+> on a round**.
+
+These are the same round and the same cell. The rest of the precedence table is sound and the ordering
+choice is defensible; the defect is one justification clause that asserts mutual exclusion the sibling
+AC explicitly denies.
+
+**Required change:** delete "at most one of the two can appear on a round" from row 2 and state instead
+that when both hold they render in the order S-3 then S-4 (which is what AC-2.2 says and what the row's
+own position already implies). Then make O-10 name the two-halt row alongside the crashed-round row it
+already names, so the case is asserted rather than assumed.
+
+### G-02 (Medium) — S-11 has no row
+
+AC-2.8 is well argued and I agree with the halt. Its report surface is the gap.
+
+Round N is never dispatched, so it writes no `CROSS-REVIEW-{role}-{doc}-v{N}.md`. Every column of
+AC-4.7's schema except `round` is derived from files at that round: `panel-shape` from the slug set
+(empty ⇒ `crashed`), `blocking` from the trailers (absent ⇒ `unavailable`), `growth-bytes` and
+`classification` from the round's `DOC-BYTES:` anchor (absent ⇒ `unmeasurable`). Applied literally, the
+halt row reads
+
+```
+N | crashed | unavailable | | unmeasurable | no-revision: … ; not-comparable: crashed-round ; not-comparable: unavailable-count ; growth-unmeasurable: no-anchor
+```
+
+— i.e. the operator's primary evidence that the *author* did nothing is presented as a *crash*, with
+three notices that are artefacts of the halt rather than observations about the run. The alternative
+reading — the round does not exist, so there is no row — makes S-11 unreachable in the very column
+AC-4.7 lists it in, and leaves the halt reason visible only in the POSTMORTEM.
+
+**Required change:** state in AC-2.8 (or AC-4.7) which of the two it is. The cheaper and more honest
+one is a row for N whose `panel-shape`, `blocking`, `growth-bytes` and `classification` cells are all
+**empty** — round N was not dispatched, so there is nothing to report about it — with `notice` carrying
+S-11 alone. Say so explicitly, because AC-4.7's own bar is character-for-character derivability, and
+add the row to O-10 beside the crashed-round row.
+
+### G-03 (Medium) — which bytes are digested
+
+Verified at the citation baseline `9486c81`:
+
+- `sha256Hex(text)` (`pdlc/workflows/orchestrate-dev.js:848`) computes `utf8Bytes(canonicaliseForDigest(text))`.
+- `canonicaliseForDigest` (`:767`) normalises CRLF and lone CR to LF and forces exactly one trailing
+  newline.
+- Its JSDoc (`:752-759`) makes the normalisation non-optional and caller-invisible on purpose: *"Both
+  are applied INSIDE `sha256Hex`, never by a caller, so no two call sites can disagree about which bytes
+  were digested."*
+
+So the digest the tier-1 anchors perform is **not** over the bytes `DOC-BYTES:` counts, and AC-4.1's
+sentence *"It is the SHA-256 of the same bytes `DOC-BYTES:` counts"* is false of the mechanism the same
+paragraph tells FSPEC to reuse. Consequence for AC-2.8: on a revision that changes only line endings or
+trailing newlines, `DOC-SHA256` is unchanged while `DOC-BYTES` differs, so the conjunction fails and the
+round proceeds. That is the safe direction, which is why this is Medium and not High — but the REQ
+should be right about its own subject, and the choice is REQ-altitude precisely because §6 closes it
+("reuses the hashing … already perform") rather than leaving it to O-4.
+
+Note also that the two anchors render the same digest differently: `APPROVAL-HASH:` carries the
+`sha256:{64 hex}` prefixed form produced by `approvalHashOf` (`pdlc/workflows/orchestrate-dev.js:950`),
+while S-10 fixes `DOC-SHA256:` as bare 64 hex. That is a legitimate choice — the receivers differ — but
+it is a second reason to say plainly which function produces the value.
+
+**Required change:** in AC-4.1 and §6, state which bytes are digested. Either (a) `DOC-SHA256:` is
+`sha256Hex` of the document as read at `t0`, i.e. **over the canonical form**, and say so, dropping the
+"same bytes `DOC-BYTES:` counts" claim; or (b) it is a raw digest, in which case it is **not** a reuse
+of the tier-1 hashing and O-4 must say so. (a) is preferable: it inherits the canonicalisation
+discipline the digest family was built around, and AC-2.8's conjunction with `DOC-BYTES:` already
+recovers the byte-exactness the canonical form drops.
+
+### G-04 (Medium) — the reset anchor is not protected from the halt path
+
+Verified at `9486c81`: the budget halt writes the POSTMORTEM by dispatching an agent with the prompt
+`Write docs/${feature}/POSTMORTEM-${phase}-${feature}.md.` plus a section list
+(`pdlc/workflows/orchestrate-dev.js:1912-1918`), then confirms only that the path exists
+(`:1939-1940`). There is no read of the prior file, no merge, and no instruction to preserve anything.
+AC-1.5(4) places both the reset's origin and its consumption record inside that same path.
+
+Three outcomes are possible and the REQ picks none:
+
+| The halt agent … | Result |
+|---|---|
+| overwrites the file wholesale | `RESOLVED: yes` and `WINDOW-START:` both vanish ⇒ unresolved POSTMORTEM ⇒ phase refuses, fail-closed. Benign. |
+| preserves `RESOLVED: yes` and drops `WINDOW-START:` | the reset reads **unconsumed** ⇒ a fresh 3-round window on **every** subsequent invocation — the exact defect clause 4 names. |
+| preserves both | correct. |
+
+The middle row is not exotic: `RESOLVED: yes` is documented repo-wide as operator-owned and precious,
+`WINDOW-START:` is a line this REQ invents and no prompt mentions.
+
+**Required change:** one clause. Either (a) require the halt path to preserve any existing
+`RESOLVED:` / `WINDOW-START:` lines when it rewrites the POSTMORTEM, and add that obligation to O-5 (it
+is a prompt amendment, so O-9 is the natural home); or (b) put `WINDOW-START:` somewhere the halt path
+does not rewrite. (a) is smaller and keeps the reset's two halves in one file, which is what makes the
+one-shot rule readable.
+
+### G-05 (Medium) — one reader, two definitions
+
+AC-3.4:
+
+> The trailer reader therefore **skips lines matching the anchor grammar** when locating the candidate
+> line.
+
+AC-2.7, row 4 of the observation table:
+
+> A `## Verdict` section exists and the first non-empty line after `VERDICT:` is an **anchor line**
+> (`APPROVAL-HASH:`, `REVIEWED-COMMIT:`, `REVIEW-MODE:`, `DOC-BYTES:`, `DOC-SHA256:`) rather than a
+> count trailer ⇒ *unavailable*.
+
+On `VERDICT:` / anchor / trailer these disagree. AC-3.4's placement rule makes that input
+non-conforming, but DC-01 totality is *about* non-conforming input, and R-7 accepts a transitional
+period in which files are written by un-amended SKILLs — the ordering is not hypothetical while an
+idempotent re-append (M-4b) and a lagging SKILL coexist.
+
+Secondly, AC-3.4's enumeration lists four anchor keys and omits `DOC-SHA256:`, which v1.2 itself added.
+The generic phrase "matching the anchor grammar" saves it, but the closed catalogue is stated twice with
+different membership, which is the defect shape §5 exists to prevent.
+
+**Required change:** state the reader once. Recommended: *skip anchor lines; the candidate is the first
+non-empty non-anchor line after `VERDICT:`; no candidate ⇒ unavailable; candidate that does not parse
+after `recoverVerdict` ⇒ malformed*, with the anchor set given once by reference to §5's catalogue
+rather than re-enumerated. Then rewrite AC-2.7's row 4 as "the section contains **nothing but** anchor
+lines after `VERDICT:`" so the table classifies the same observations the algorithm produces.
+
 ## Questions
 
 ## Positive Observations
