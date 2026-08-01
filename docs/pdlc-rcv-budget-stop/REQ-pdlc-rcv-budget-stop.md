@@ -399,8 +399,8 @@ here: an obligation on the FSPEC, TSPEC, PLAN or PROPERTIES, not a REQ revision.
 | **R-1** | **This REQ is reviewed by the loop it is changing, under the old behaviour** — five per-invocation rounds, no enforced stop. The predecessor's Phase R died exactly here. | Mitigated by splitting the parent, depending on no unmeasured runtime fact (baseline §5), and keeping this document short. **Accepted and unenforceable** — the enforcement is this REQ and its successor, neither shipped; the operator watches the trajectory and halts by hand. |
 | **R-12** | **A repeating S-11 halt is unbounded.** Each S-11 clearance writes `WINDOW-RESUMED: {W}`, leaves `W` unchanged and (per the successor's AC-2.8) costs the window no round, so an authoring side that keeps producing zero-delta rounds yields an unbounded halt/clearance sequence with `H` and `A` growing together and the budget never exhausting. | **Accepted, and bounded by the operator rather than by the loop.** Every iteration costs one hand-written `RESOLVED: yes`, so the sequence is never unattended; capping it would need a second counter that could only deny an operator *choosing*, each time, to continue. Revisit if the S-11 path repeats in practice. |
 | **R-13** | **Migration: branches that already carry more than three rounds.** At the commit that lands `MAX_REVIEW_ROUNDS = 3`, every in-flight phase whose document has 3+ rounds is admitted no rounds and halts on the next entry, rendering S-4 as `rounds 1..3 of 3` while five rounds sit on disk. | **Correct and expected, not a defect** — the render states the *window*, not the file count. The escape is the ordinary clearance (AC-1.5(3)). No migration script, no back-fill of reset regions. |
-| **R-10** | **The reset region is machine state in a file an operator is instructed to edit.** A hand-edit can make the counts lie in either direction, and one direction restores the per-invocation budget AC-1.1 abolishes — silently and fail-open. | **Mechanised, not accepted.** Step 2 validates every answering line and step 3 the counts; either failure refuses the phase with S-16. The residual is the operator's (§6's *never authored by a human*; AC-1.5(4)'s sanctioned repairs, act 1 of the unconfirmable-append recovery included). |
-| **R-11** | **A refusal costs a mid-window round.** On a branch with rounds left under `W` = 1, a corrupt region refuses the phase where the fallback would have run the next round. | **Accepted deliberately, and stated as the positive control (AC-1.5(4) step 4, O-10)** — whose fixture is synthetic until the successor ships. A region whose accounting cannot be trusted is not a state to open a round over: the cross-review could not be placed in any window. |
+| **R-10** | **The reset region is machine state in a file an operator is instructed to edit.** A hand-edit can make the counts lie in either direction, and one direction restores the per-invocation budget AC-1.1 abolishes — silently and fail-open. | **Mechanised, not accepted.** AC-1.5(4) makes *the region validates* a **conjunct of the clearance gate**, so a region whose accounting cannot be trusted consumes nothing and opens nothing. The mechanism that decides it, and the sanctioned repairs that leave the operator a way back, are `REQ-RCV-07` AC-7.1 and AC-7.4 (that REQ's R-10). The residual carried here is §6's *never authored by a human*. |
+| **R-14** | **This REQ's step-4 conjunct is not implementable until `REQ-RCV-07` ships** (X-06), so an implementation of row 10 alone must stub the predicate. | **Accepted; sequencing is the mitigation.** The queue orders `pdlc-rcv-reset-region` immediately behind this row, and AC-1.5(4) fixes the fail-closed disposition — so a stub returning *invalid* refuses rather than grants and is safe by construction. A stub returning *valid* is the fail-open AC-1.5(4) exists to close, and is a defect, not a shortcut. O-10 requires the gate legs to be driven from that stub, so the seam is exercised either way. |
 
 **Deferrals and their binding.** This REQ defers nothing of its own. The predecessor's deferrals
 belong to the successors carrying the criteria that raise them: cross-panel comparability and finding
@@ -413,12 +413,62 @@ queue-eligible until an operator specifies it and opts it in.
 
 | Requirement | Baseline measured facts | Baseline defect | User story | Obligations |
 |---|---|---|---|---|
-| REQ-RCV-01 | M-1a, M-1b, M-1c, M-1d, M-1e; M-7a, M-7b, M-7d, M-7e | P-1 (cost half) | US-01, US-02, US-04 | O-5, O-6, O-9, O-10, O-11, O-12 |
+| REQ-RCV-01 | M-1a, M-1b, M-1c, M-1d, M-1e; M-7a, M-7b, M-7d, M-7e | P-1 (cost half) | US-01, US-02, US-04 | O-5, O-9, O-10, O-11, O-12 |
 
 **Why one requirement and not two.** v1.0 carried REQ-RCV-01 and REQ-RCV-02 together at **581 lines
 / 83 KB**, past the 60 KB ceiling; v1.1 cut at the seam they already had — this REQ the **window**,
 `docs/pdlc-rcv-fixed-point-stop/` the two **tests** inside it, with the ordering argument (`W` before
 AC-2.1/AC-2.8/AC-2.6) kept as a `depends-on` edge. No requirement, AC or `S-*` id changed.
+
+### v2.0 — the altitude split
+
+**What happened.** Phase R ran five rounds without a dual approval and wrote
+`docs/pdlc-rcv-budget-stop/POSTMORTEM-R-pdlc-rcv-budget-stop.md`. Its finding is precise: the
+document **converged as a requirements artifact by round 2** — across ten reviews not one blocking
+finding contests user need, scope, priority, phasing, the choice of three rounds or the reset-region
+design — and every blocking finding from round 2 onward landed in **AC-1.5(4)'s machinery, §6's
+render rows and O-10's corresponding legs**. **Root cause 1:** the REQ was *specifying, at
+requirements altitude, the behaviour of shipped code it does not own and cannot change from inside a
+requirements document* — a claim a reviewer with the source open can falsify by reading one line
+further, answered by pinning one more fact, falsified one line further still. **Root cause 3:** the
+v1.1 split reduced the document's **size** and not its **altitude**, because *"splitting by topic
+does not separate the requirements-altitude material from the implementation-altitude material when
+both live in the same acceptance criterion."*
+
+**What moved, and where.** The cut is at that altitude seam, not at a topic boundary:
+
+| v1.6 clause | v2.0 home |
+|---|---|
+| AC-1.5(4)'s ordered algorithm, steps 1–5, and the `H − A ∈ {0, 1}` invariant with its stated domain | `REQ-RCV-07` **AC-7.1** |
+| *A refusal is not a halt*, its four bullets, the step-G routing, the suppression of the shipped generic recovery line, the `postmortemStatus` mechanism | **AC-7.2** (renders in catalogue §4) |
+| *Where `W`'s resolution runs*, and the three entry classes | **AC-7.3** |
+| The sanctioned-repair table and the delete-an-answering-line table | **AC-7.4** |
+| The answering line's byte confirmation, the torn-write and value-tear analysis, act 1 | **AC-7.5** |
+| Row B, in two variants | **AC-7.6** |
+| §6's *Refusal phase-row text*, *Refusal recovery text*, *Unconfirmed-append text* | `REQ-RCV-07` §6 and catalogue §4 |
+| O-6, and O-12's append-and-confirm half | `REQ-RCV-07` O-6, O-12 |
+| O-10's algorithm, refusal, string, confirmation, row-B and placement legs | `REQ-RCV-07` O-10 |
+| R-11 (a refusal costs a mid-window round) | `REQ-RCV-07` R-11 |
+
+**What stayed, and why that is the whole test of the cut.** §1–§4.1, AC-1.1, AC-1.2, AC-1.3, AC-1.4,
+AC-1.5(1)–(3) and (5), O-5, O-9, O-11 and the O-10 legs that test them are exactly the material that
+drew **zero blocking findings after round 2**. AC-1.5(4) keeps the clearance gate's three conjuncts,
+the answering-line append and its confirmation *obligation*, and states *the region validates* as a
+**named predicate** with its fail-closed outcome — delegating only the decision procedure (X-06).
+
+**Three consequences worth stating.**
+
+1. **No `S-*` id changed, and none was minted.** The catalogue stays closed at seventeen; every id
+   this REQ owned at v1.6 it still owns (§4), and `REQ-RCV-07` owns none. Where catalogue §2 says
+   *"AC-1.5(4)'s ordered algorithm"*, read `REQ-RCV-07` AC-7.1 — the delegation stated in §4.
+2. **No requirement id, AC id, threshold or user story changed meaning.** `REQ-RCV-07`'s criteria are
+   numbered `AC-7.x` because they sit under a new requirement id, not because any clause was
+   re-decided, and **every round-5 finding v1.6 closed remains closed** in whichever document now
+   owns the material.
+3. **This document now carries no line citation and no claim about shipped control flow**, only `M-*`
+   ids (NB-4). That is root cause 1's remedy applied to the surface that generated it, and it is what
+   makes the two documents reviewable independently — which the postmortem records as the thing five
+   rounds of in-place revision could not achieve in one.
 
 **Round-by-round history is deliberately not restated here:** `harvest-learnings` deletes
 `CROSS-REVIEW-*` once LEARNINGS is written, so citing round files would be structurally wrong. This
