@@ -71,6 +71,135 @@ Ids continue the `G-` series so they cannot be confused with the closed `F-01…
 
 ## Findings in detail
 
+### G-14 (Medium) — the counting rule assumes an invariant it never checks
+
+I traced the new state machine before filing this, because the counting rule is otherwise sound and I
+want to be precise about where it stops being sound.
+
+On every reachable path the invariant `H − A ∈ {0, 1}` **does** hold, and that is a real achievement:
+
+| Event | Precondition the document guarantees | Effect on the counts |
+|---|---|---|
+| a halt | the entry passed step G, so `RESOLVED: yes` was readable, so clause 4 already answered any outstanding clearance ⇒ `A = H` | `H += 1`, and AC-1.4 strips `RESOLVED:` ⇒ the next entry is refused |
+| an entry with `RESOLVED: yes` and `A < H` | only one halt can be outstanding, by the row above | `A += 1` ⇒ `A = H` |
+| an entry with `RESOLVED: yes` and `A = H` (a stale, already-spent marker) | — | nothing written, nothing granted |
+
+So one operator clearance buys exactly one window, which is what G-10 asked for.
+
+The gap is that **nothing enforces the precondition in column 2**, and the algorithm that exists to be
+total over an arbitrary region does not test it. Its four steps collect the answering lines, validate
+each *value*, fail closed on any invalid value, and otherwise take the greatest. A region reading
+
+```
+## Reset Region
+HALT-REASON: budget-exhausted: rounds 1..3 of 3
+HALT-REASON: fixed-point: blocking(6)=5 ≥ blocking(5)=5
+```
+
+passes all four steps vacuously — there is no answering line to invalidate — and yields `H = 2`,
+`A = 0`, `W = 1`. With a live `RESOLVED: yes` in the file, entry *n* observes `A < H` and grants
+`WINDOW-START: 7`; `A = 1`, still `< H`. The phase runs its three rounds, or the invocation ends for any
+other reason. Entry *n+1* re-reads the same file: `RESOLVED: yes` is still there (only a **halt** strips
+it, and no halt occurred), `A(1) < H(2)` still holds, and the loop grants **another** fresh three-round
+window with no operator action at all. The general statement is: **the number of windows handed out
+beyond the one the operator paid for is exactly `H − A − 1`**, and the document places no bound on that
+quantity — the algorithm that was rewritten to be total over an arbitrary region does not look at it.
+
+How it arises without malice: the region sits in a human-facing post-mortem whose `RESOLVED:` line the
+operator is instructed to write, immediately below machine lines the operator has every reason to
+believe are stale after a clearance. Delete one `WINDOW-START:` and the budget becomes advisory. A
+partially-completed read-modify-write (O-5's seam) or a hand-merged post-mortem does the same.
+
+**Required change:** one step in AC-1.5(4)'s algorithm. After collection, if `A > H` **or** `A < H − 1`,
+the region is corrupt in its counts ⇒ `W` = 1, no grant, and the run report names the file and the two
+counts — the same fail-closed treatment step 3 already gives a corrupt value. Then state `H − A ≤ 1` as
+the invariant clause 4 relies on, so the "exactly one answering line" rule has a stated domain. This
+also gives O-10 a negative case it currently lacks (`A < H − 1` ⇒ no grant, not `H − A − 1` grants).
+
+### G-13 (Medium) — where the answering line goes
+
+AC-1.4 clause 1 fixes the position of `HALT-REASON:` because AC-1.5(5) reads *the last* one. The two
+lines AC-1.5(4) reads are positional in exactly the same way, and their position is stated nowhere:
+
+> 2. **validates every one of them.** A `WINDOW-START:` value is valid iff it is … strictly greater than
+>    every `WINDOW-START:` value **before it** … A `WINDOW-RESUMED:` value is valid iff it is … equal to
+>    the greatest `WINDOW-START:` value **before it**, or to 1 if there is none;
+
+`W` itself is order-free (*"the greatest value present"*). Validity is not. Under append the region is
+consistent by construction; under any other placement it is not, and the failure is absorbing: a region
+that once fails validation is preserved verbatim by every subsequent halt (AC-1.4 clause 1), so `W` = 1
+forever, AC-1.1 admits no rounds on a branch that already carries three, and each new clearance produces
+one more immediate halt. There is no operator action that repairs it short of hand-editing the machine
+region — which is the thing §6's `## Reset Region` row is proud of having made unnecessary.
+
+**Required change:** one clause where the lines are defined — the loop **appends** its answering line to
+the end of the reset region, exactly as a halt appends its `HALT-REASON:`, so document order is event
+order for every line in the region. Say it in §6's S-13/S-14 rows or in clause 4; §5's durability row
+already says it for `HALT-REASON:` and can carry it for both.
+
+### G-16 (Medium) — the verifier is asked for a window it cannot see
+
+AC-3.2 clause 1's required rows are now *"every prior blocking finding **of the current window**"*. The
+row set is therefore a function of `W`. Everything else the verifier needs is on the branch in a form an
+agent can read directly — prior `CROSS-REVIEW-{role}-{doc}-v{N}.md` files, their findings tables, their
+ids. `W` is not: it is in `POSTMORTEM-{phase}-{feature}.md`'s `## Reset Region`, behind a four-step
+validation whose last clause needs the directory listing (*"no greater than one past the highest round
+on the branch"*), and the document nowhere tells the verifier to go there.
+
+The consequence is not a cosmetic one. AC-3.2(1)'s `## Disposition` completeness check refuses approval
+when rows are missing, and the paragraph that justifies the scoping says the point of it is that *"the
+required content [is] derivable from the branch on every round on which a verifier runs at all"*. That
+is true of the branch; it is not true of the **party required to derive it**, which is where DC-01
+places the obligation.
+
+**Required change:** state that the loop supplies the window to the verifier in its dispatch — the
+origin `W`, or better the explicit inclusive round range `{W … N−1}` whose findings are in scope — and
+route the wording into O-9(c) (the verifier's disposition-check contract) and O-3. One sentence in
+AC-3.2, one clause in O-9(c). This keeps `W`'s single reader in the loop, which is the property
+AC-1.5(4) was restated to preserve.
+
+### G-15 (Medium) — the section with no `VERDICT:` line
+
+AC-3.4's rewritten step 1:
+
+> locates the trailing `## Verdict` section and counts the `VERDICT:` lines in it. No section, or **no
+> `VERDICT:` line** ⇒ *unavailable*; two or more `VERDICT:` lines ⇒ *malformed*
+
+AC-2.7's table classifies AC-3.4's outputs and asserts it does so exhaustively (*"in exactly these
+cases, and in no others"*). Its six rows cover: absent file; no `## Verdict` heading; **a `VERDICT:`
+line with nothing after it**; anchors-only after `VERDICT:`; a non-parsing candidate; two or more
+`VERDICT:` lines. Every one of the last four presupposes a `VERDICT:` line exists. The heading-present /
+line-absent case has no row.
+
+Verified at `9486c81`, the shipped path for that input is not the one AC-3.4 names:
+
+- `extractFileVerdict` finds the heading, counts `trailers === 0` (`:900-903`; the predicate is
+  `line.trim().startsWith("VERDICT: ")`), skips the `> 1` return at `:904`, and falls through to
+  `return { ok: true, ...parseVerdict(section, roleSlug) }` at `:906`;
+- `parseVerdict` scans the section in reverse for a `VERDICT: ` line (`:415-422`), finds none, and
+  returns the fallback at `:424-428` — `{verdict: "Needs revision", 0, 0, 0, **malformed: true**}`
+  (`:394-400`);
+- that is a different object from the truncated-output path AC-2.7 row 3 correctly cites, which returns
+  `{verdict: rawVerdict, high: 0, medium: 0, low: 0}` with **no** `malformed` flag (`:451`). M-2c draws
+  exactly this distinction, so the REQ already knows the two are different.
+
+R-7 makes the input reachable: a lagging SKILL writes the heading (it is in the existing file contract)
+without the trailer the amendment adds.
+
+**Required change:** one row in AC-2.7 and one word in AC-3.4 step 1. *Malformed* is the answer that
+matches HEAD; if *unavailable* is preferred on the grounds that no trailer was written, say so and say
+that the `malformed: true` flag is deliberately not honoured here, so an implementer does not read the
+REQ and the code as agreeing when they do not.
+
+### G-17 (Low) — one scoping rule, not two
+
+Clause 2 reads *"any `RESOLVED:` line already in the file is stripped, **wherever it sits**"*. Every
+other reader in this REQ — `parseResolvedMarker` (`:953-958`), the reset region (§5), S-12, the `##
+Reset Region` §6 row — is scoped *outside any fenced block*, via `scanLines` (`:569`). A fenced
+`RESOLVED: yes` is invisible to the gate, so stripping it changes no decision; not stripping it changes
+no decision either. The only difference is whether the halt path edits prose inside a human's code
+fence. Scope the strip to unfenced lines and the document has one rule instead of two.
+
 ## Questions
 
 ## Positive Observations
