@@ -11,13 +11,41 @@ depends-on: [pdlc-review-loop-hardening]
 | Upstream | `docs/completed/pdlc-review-loop-hardening/POSTMORTEM-R-pdlc-review-loop-hardening.md` (v1.0) root causes 1–3 and recommendations R-4, R-5, R-6; `docs/completed/pdlc-review-loop-hardening/LEARNINGS-pdlc-review-loop-hardening.md` §2, §4, §5.3; operator direction of 2026-07-29 |
 | Downstream | `FSPEC-pdlc-review-convergence.md`; every subsequent `docs/_queue/QUEUE.md` row, all of which are reviewed by the loop this REQ changes |
 | Targets | `pdlc/workflows/orchestrate-dev.js`; a new library under `pdlc/workflows/lib/`; the three review SKILLs (`pm-review`, `se-review`, `te-review`); the three author SKILLs (`pm-author`, `se-author`, `te-author`); generated artifacts under `pdlc/workflows/dist/` rebuilt in the same commit |
-| Cross-Reviews | `docs/pdlc-review-convergence/CROSS-REVIEW-software-engineer-REQ-v1.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-test-engineer-REQ-v1.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-software-engineer-REQ-v2.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-test-engineer-REQ-v2.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-software-engineer-REQ-v3.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-test-engineer-REQ-v3.md` |
+| Cross-Reviews | `docs/pdlc-review-convergence/CROSS-REVIEW-software-engineer-REQ-v1.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-test-engineer-REQ-v1.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-software-engineer-REQ-v2.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-test-engineer-REQ-v2.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-software-engineer-REQ-v3.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-test-engineer-REQ-v3.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-software-engineer-REQ-v4.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-test-engineer-REQ-v4.md`. **This row is maintained per round** — the revision that answers round N adds round N's two files — so a missing later round is a mechanical fix, not a finding (SE v4 MF-4). |
 | LEARNINGS | `docs/pdlc-review-convergence/LEARNINGS-pdlc-review-convergence.md` |
 | Citation baseline | Every `file:line` reference in this document was read from the working tree at **`9486c81`** on the **default branch `main`**, tree clean. The v1.0 header pinned `d11dad5` on `feat-pdlc-review-loop-hardening`, which is *not* an ancestor of `main` and therefore not reachable from where this document is reviewed (SE F-08); the predecessor feature has since merged (`7bc559a`), so the baseline is restated over the default branch and every row in §4 was re-verified against it. Per the convention this repo adopted after `CROSS-REVIEW-software-engineer-REQ-v1` F-05 on the predecessor feature, **every** citation below names its enclosing symbol *and* a distinctive literal alongside the line number, so a line drift narrows the reader's search rather than invalidating the claim. Citations are written **repo-root-relative** (`pdlc/workflows/orchestrate-dev.js:52`) — the closed grammar AC-6.4 defines. A citation that names only a line number, or only a basename, is a defect in this document; report it as a mechanical fix, not a finding (see AC-6). **The baseline is a fixed commit, not "HEAD".** `9486c81` is an ancestor of `main`, so every citation below resolves there; `main` has since advanced and `pdlc/workflows/orchestrate-dev.js` has gained ~217 lines, so a reader checking a row at a *later* commit should navigate by the row's named symbol and distinctive literal — which is exactly the drift tolerance the convention exists to provide — rather than by the line number alone (TE v3 MF-03). Re-baselining is a mechanical fix, not a finding. |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude + operator | 1.2 | 2026-07-31 |
+| pdlc | draft | Claude + operator | 1.3 | 2026-07-31 |
+
+> **Revision note (v1.3).** This version answers round 4. Both panels closed **every** prior finding
+> (SE F-01…F-08, TE F-01…F-07) and every round-4 finding lies in text v1.2 added. §10.8 maps each one.
+> Five things changed:
+>
+> 1. **The growth boundary selects the panel of the round it measures (TE F-01).** v1.2's formula
+>    classified the revision *into* round N and selected round **N+1's** panel from it, so the revision a
+>    verifier must read cold was never the one classified, and round 2 was unclassifiable (there is no
+>    `DOC-BYTES(0)`) and therefore always the full panel. AC-4.1 now states one read at round N's open —
+>    shared with AC-2.8 (TE Q-06) — `growth = bytes(t0) − DOC-BYTES(N−1)`, classified immediately, and
+>    **round N's own** panel selected from it. Round 1 is the only unclassified round, and it is dual by
+>    AC-3.1 regardless.
+> 2. **The POSTMORTEM's lifecycle under a second halt is stated (TE F-02, SE G-04).** `WINDOW-START:` is
+>    machine-written, load-bearing state living in a fixed path the halt path rewrites. AC-1.4 now
+>    requires that rewrite to preserve the reset region verbatim; AC-1.5(4) is restated over the
+>    *counts* of `RESOLVED: yes` and `WINDOW-START:` lines, so one-shot survives appending, and clause 5
+>    states the halt-reason line every halt writes.
+> 3. **An S-11 halt does not spend the operator's reset, and neither AC-2.1 nor AC-2.8 compares across a
+>    window boundary (TE F-04).** A no-revision halt is an authoring failure; clearing it restores the
+>    window it interrupted rather than replacing it.
+> 4. **The two halt notices co-occur, and the undispatched round has a row (SE G-01/TE F-03, SE G-02).**
+>    AC-4.7's precedence table splits S-3 and S-4 into two rows and states the AC-2.8 halt row: four
+>    empty cells and `notice` = S-11 alone.
+> 5. **`DOC-SHA256:` names the bytes it digests (SE G-03), and the trailer reader is stated once
+>    (SE G-05, TE F-06).** The digest is `sha256Hex`'s — i.e. over `canonicaliseForDigest`'s output — and
+>    the reader is one algorithm whose skip-set is §5's catalogue by reference, not a second enumeration.
+>
+> Also: AC-1.5(1)'s halt literal is parameterised (TE F-05), and both mechanical-fix lists are applied.
 
 > **Revision note (v1.2).** This version answers rounds 2 and 3 of cross-review. Round 3's panel
 > reviewed a byte-identical document — the round-2 authoring episode produced no commit — so both
