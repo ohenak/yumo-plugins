@@ -1974,15 +1974,39 @@ function selectMode({ dispatchKind, docType, present, reviewFiles, startIndex })
  * it as a third member no caller read, which is the shape AC-4.7a forbids, so it
  * lives as the local below where its only two readers are.
  *
+ * **Revision mode is BASELINE-RELATIVE for the spec class.** A revision episode
+ * must not be gated on a stricter structural shape than the document had when the
+ * episode began: reviewers reviewed *that* shape and the loop accepted it for the
+ * prior rounds, and the optimizer's job is to address findings, not to retrofit
+ * canonical headings onto a document authored before this oracle existed. So when
+ * `entryMissing` is supplied — the missing-set measured over the episode's entry
+ * bytes — the structural conjunct becomes "no **regression**": the current
+ * missing-set must be a subset of the entry one. A previously-satisfied canonical
+ * section may not be deleted; a pre-existing shortfall does not block. Without
+ * that relaxation a revision episode over such a document can NEVER reach
+ * terminal, and the wrapper burns `MAX_AUTHORING_DISPATCHES` on an author that
+ * already declared itself done.
+ *
+ * The baseline is **optional and defaults to the strict test**, so greenfield
+ * (where the canonical headings are still required in full) and every non-spec
+ * artifact class are untouched, as is every call site that does not pass one.
+ *
  * @param {string} mode - the episode's mode, from `selectMode`
  * @param {string} response - the dispatch's response text
  * @param {string} artifactClass - §5.9's wrapped artifact class
  * @param {string} docType
  * @param {string|null} after - the target's bytes read AFTER the dispatch
+ * @param {string[]|null} [entryMissing] - the missing-set measured at episode entry;
+ *   applied only in revision mode over the "spec" class
  * @returns {{terminal: boolean, trailerReason: string|null}}
  */
-function isTerminal(mode, response, artifactClass, docType, after) {
-  const structural = isComplete(artifactClass, docType, after).complete;
+function isTerminal(mode, response, artifactClass, docType, after, entryMissing) {
+  const measured = isComplete(artifactClass, docType, after);
+  let structural = measured.complete;
+  if (mode === "revision" && artifactClass === "spec" && Array.isArray(entryMissing)) {
+    const baseline = new Set(entryMissing);
+    structural = measured.missing.every((title) => baseline.has(title));
+  }
   if (mode !== "revision") return { terminal: structural, trailerReason: null };
   const t = parseRevisionComplete(response);
   return {
@@ -2356,6 +2380,25 @@ async function reviewLoop({
     ) {
       throw haltError(
         `Error: optimizer agent ${optimizer} failed during phase ${phase}, iteration ${iteration} — pipeline halted. Document at ${doc} may be in an inconsistent state.`
+      );
+    }
+
+    // A no-op optimizer episode: the episode completed (it is not the failure
+    // above) but changed no bytes of `doc`. Dispatching the reviewers again over
+    // byte-identical input cannot converge and only burns a review round — this
+    // exact waste happened in production (SE F-08, TE F-07: both reviewers filed
+    // a re-review of an unchanged document as a process defect). Halt now rather
+    // than advance `iteration` and loop.
+    //
+    // Gated on `measuredT > 0`: a target `isComplete` cannot score at all (the
+    // unmeasurable-target escape inside `dispatchAndVerify` — e.g. Phase CR's
+    // directory target, or any caller whose read seam is a stub) always shows
+    // `wroteBytes === false` on a no-op dispatch, with no way to distinguish
+    // "genuinely unchanged" from "nothing was ever measurable here". Halting on
+    // that would turn every unmeasurable target into a false-positive halt.
+    if (optEpisode && optEpisode.wroteBytes === false && optEpisode.measuredT > 0) {
+      throw haltError(
+        `Error: optimizer ${optimizer} completed without modifying ${doc} in phase ${phase}, iteration ${iteration} — re-reviewing an unchanged document cannot converge; pipeline halted.`
       );
     }
 
@@ -3143,10 +3186,28 @@ async function dispatchAndVerify({
   let wroteBytes = false;
   let lastTrailerReason = null;
   let response = null;
+  // The episode's structural baseline — see `isTerminal`. Measured ONCE, over the
+  // bytes this episode entered on, and only for a revision episode over a spec:
+  // every other combination keeps the strict test.
+  let entryMissing = null;
+  let lastMeasured = null;
+  // Single-read-per-dispatch: `before` is fetched from `_readFile` only on the
+  // episode's first iteration. On every later iteration this episode's own prior
+  // `after` — already known to equal the current on-disk bytes, since the
+  // dispatched skill is the only writer of `targetPath` during an episode — is
+  // reused as `before`, saving a full-file subagent echo per iteration. Trade-off:
+  // a concurrent external edit between iterations is attributed to the agent as
+  // progress; the previous per-iteration re-read tolerated that.
+  let before = null;
 
   for (;;) {
-    const before = await _readFile(targetPath);
+    if (invocations === 0) {
+      before = await _readFile(targetPath);
+    }
     invocations += 1;
+    if (invocations === 1 && selection.mode === "revision" && artifactClass === "spec") {
+      entryMissing = isComplete(artifactClass, docType, before).missing;
+    }
 
     let opener;
     if (selection.mode === "revision") {
@@ -3174,10 +3235,19 @@ async function dispatchAndVerify({
 
     const after = await _readFile(targetPath);
     const measured = isComplete(artifactClass, docType, after);
-    const verdict = isTerminal(selection.mode, response ?? "", artifactClass, docType, after);
+    lastMeasured = measured;
+    const verdict = isTerminal(
+      selection.mode,
+      response ?? "",
+      artifactClass,
+      docType,
+      after,
+      entryMissing
+    );
     lastTrailerReason = verdict.trailerReason;
     const progressed = before !== after;
     if (progressed) wroteBytes = true;
+    before = after;
 
     if (verdict.terminal) break;
     // The unmeasurable-target escape — see the doc comment above.
@@ -3203,6 +3273,15 @@ async function dispatchAndVerify({
 
   if (selection.mode === "revision") {
     emit(`Phase ${phaseId} round ${selection.round}: episode ended on the author's REVISION-COMPLETE trailer.`);
+    // A shortfall the episode inherited is carried over rather than fixed. That is
+    // deliberate (see `isTerminal`) but it must not be silent: the operator is the
+    // only one who can decide whether the document should be retro-fitted.
+    const carried = lastMeasured && Array.isArray(lastMeasured.missing) ? lastMeasured.missing : [];
+    if (carried.length > 0) {
+      emit(
+        `Phase ${phaseId} round ${selection.round}: ${targetPath} carries a pre-existing structural shortfall, unchanged since this episode began and therefore not blocking — missing canonical headings: ${carried.join(", ")}.`
+      );
+    }
   }
   await advisoryPacingCheck({ wroteBytes, targetPath, _git, emit });
 
@@ -3212,6 +3291,13 @@ async function dispatchAndVerify({
     round: selection.round,
     invocations,
     wroteBytes,
+    // The target's top-level-section count as last measured — i.e. whether this
+    // episode's target was measurable at all (see the unmeasurable-target escape
+    // above: a target `isComplete` cannot score, e.g. Phase CR's directory
+    // target, also has `measuredT === 0`). A caller deciding whether "wrote
+    // nothing" is meaningful must not conflate "genuinely unchanged" with
+    // "nothing to measure in the first place".
+    measuredT: lastMeasured ? lastMeasured.T : 0,
     trailerReason: lastTrailerReason ?? null,
   };
 }
