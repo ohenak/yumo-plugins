@@ -48,6 +48,12 @@ the shipped code for it — and the cited code does not produce `none` on this p
 
 ## 4. Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | The step-4 refusal is stated to be *"step-G-shaped"* so it reaches `recordHaltFn` and the queue write (O-6). Step G's shape is `recordPhase(… "❌" …)` then `throw haltError(…)` (`orchestrate-dev.js:4244`–`:4249`), and the thrown error is what carries a disposition into the catch. Is the intent that the refusal throws a **halt error carrying its own fields** — the `err.postmortemStatus` seam at `:4883`, and a `haltReason` string that is the recovery text — or that it sets a new gate variable beside `gatePostmortem`? F-01 needs *a* mechanism named; I raise it as a question because both are defensible and the choice also settles F-03's emit. If the answer is "the error carries it", one clause in AC-1.5(4) and one in O-6 covers both findings at once. |
+| Q-02 | Carried from v3, unanswered: is `W` guaranteed to appear on **no** operator-visible or downstream-visible surface on a refusing entry? §5's row-B `round` cell now says `W` is not that cell, which is a step, but `pdlc-rcv-fixed-point-stop` states both its tests over `W` and would benefit from the general statement rather than the per-cell one. |
+| Q-03 | Carried from v3, unanswered: was a single in-entry retry of the confirmation read considered and rejected? Still not filed — halting is fail-closed and consistent — but the unconfirmable path is now fully specified in every other respect, which makes the absent rationale the one thing a reader must infer about it. |
+
 ## 5. Positive Observations
 
 ## 6. Recommendation
