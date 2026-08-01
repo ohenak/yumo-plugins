@@ -1574,7 +1574,7 @@ the run report. *Then:* it carries **one row per round**, with exactly these col
 | `blocking` | `blocking(N)`, or `unavailable`, or `malformed` |
 | `growth-bytes` | the signed integer growth into that round, or empty for **the first round of a window** (round 1, or round `W` after a reset — AC-4.1) and for an unmeasurable boundary |
 | `classification` | `new-mechanism`, `incremental`, or `unmeasurable` (AC-4.2); empty for the first round of a window |
-| `notice` | a **possibly-empty, ordered list** of S-3 … S-6 and S-11 notices, rendered as a `; `-separated string in the precedence order below |
+| `notice` | a **possibly-empty, ordered list** of S-3 … S-6, S-11 and S-16 notices, rendered as a `; `-separated string in the precedence order below |
 
 **The AC-2.8 halt row is the one row with no dispatch behind it.** A round halted at open by AC-2.8 was
 never dispatched, so it produced no cross-review files: `panel-shape` and `blocking` have no source, and
@@ -1601,9 +1601,18 @@ column therefore carries **every** notice the round raised, deduplicated, in thi
 | 5 | S-5 `not-comparable: unequal-panel-shape` | shape known, but different from the predecessor's |
 | 6 | S-5 `not-comparable: unavailable-count` / `malformed-count` | shape comparable, operand missing |
 | 7 | S-6 `growth-unmeasurable: {reason}` | independent of comparability; **last of the seven** (TE v4 MF-04 — the ordering is over this closed list, not a standing rule about notices yet to exist) |
+| 8 | S-16 `reset-region-corrupt: {reason}` | it is a property of the **phase's** post-mortem, not of the round, and it is decided before any round of the entry opens. It is emitted on the **first** row the entry produces, and — where the entry admits no round at all, because the refused clearance left `W = 1` on an exhausted branch — on a row carrying `round` = the round that would have opened and every other column empty. Sorting it last keeps the seven round-scoped notices in the order a v1.4 test author already derived (TE v6 F-02) |
 
 An empty list renders as an empty cell. The order is fixed here and not downstream because a test
 author must be able to derive the exact cell, character for character, from this document alone.
+
+**S-16 is why AC-1.5(4)'s reporting obligation is satisfiable.** That AC requires a corrupt reset region
+to be reported with the file and the values found, and v1.4 gave the report no slot for it: this schema
+fixes six columns and declares them closed, and §5's catalogue — which FSPEC may not extend — had no
+member for it. A PROPERTIES author writing AC-1.5(4)'s fail-closed cases could assert `W = 1` and
+nothing about what the operator is shown, which is the half of the behaviour that decides whether the
+dead end is diagnosable (TE v6 F-02). The notice has a catalogue id, a closed reason enum and a home
+here, on the same footing as S-5 and S-6.
 
 The schema is part of §5's closed catalogue and is fixed **here**, not downstream: O-8 specifies where
 the table is emitted and in what format, not what its columns are. Every column is derivable from the
