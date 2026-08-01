@@ -1316,11 +1316,13 @@ classification, and it is dual regardless, so the exception is total over rounds
 **AC-3.2 — What the verifier is asked to do, and the artifact that proves it did.**
 *Who:* the verifier. *Given:* a round `N > W` — a round of the current window that is not its first —
 on a document whose round N−1 findings have been addressed, **and a dispatch that names the window**:
-the loop passes the verifier the inclusive round range `{W … N−1}` whose findings are in scope, as an
-explicit input, not as something the verifier derives. *When:* it reviews. *Then:* it works in
+the loop passes the verifier the inclusive round range whose findings are in scope, as an explicit
+input, not as something the verifier derives, on one line of the dispatch rendered
+`REVIEW-SCOPE-ROUNDS: {W}..{N−1}` — **S-17**, whose grammar §5 fixes and §6 records. *When:* it reviews.
+*Then:* it works in
 **disposition-check mode**:
-1. it verifies that **every** prior blocking finding **of the round range it was given** — the current
-   window's rounds — is resolved, and states a
+1. it verifies that **every** prior blocking finding **of the round range it was given** (S-17) — the
+   current window's rounds — is resolved, and states a
    per-finding disposition **in a section headed exactly `## Disposition` (S-8)**, one row per such
    finding, carrying that finding's **id exactly as the prior round wrote it** (`F-03`), its round, its
    role, and one disposition from the closed set `{resolved, partially-resolved, not-resolved,
@@ -1366,8 +1368,34 @@ would relocate the *"content is underivable"* failure from the document into the
 whole-history reading would emit a row set that refuses approval for the wrong reason (SE v6 G-16).
 DC-01's standard — a receive side stated once, with exactly one membership — puts the obligation on the
 party that can discharge it: `W`'s single reader stays the loop, exactly as AC-1.5(4) is written to
-keep it, and the verifier receives the resulting range `{W … N−1}` in its dispatch. O-3 carries the
-dispatch input; O-9(c) carries it into the verifier SKILL's disposition-check contract.
+keep it, and the verifier receives the resulting range in its dispatch. O-3 carries the dispatch input;
+O-9(c) carries it into the verifier SKILL's disposition-check contract.
+
+**The range is a boundary-crossing value, so it has a rendering and a total receive side.** DC-01 is the
+standard this document applies to every other such value, and v1.5 introduced this one with neither: the
+rendering was unfixed (`{W … N−1}`? `4..6`? `rounds 4–6`?), it had no catalogue id, and the only
+statement of what a verifier does without it lived in O-9(c) — an FSPEC obligation, not an AC, naming no
+report slot and no loop-side response. That relocates SE v6 G-16's failure into the seam rather than
+removing it, and it is the third round running in which a new loop→agent value shipped without a receive
+side (TE v6 F-03). Both halves are now fixed:
+
+- **the emitted form** is S-17, `REVIEW-SCOPE-ROUNDS: {W}..{N−1}` — one line, two decimal integers ≥ 1,
+  the two-character `..` separator this document already uses for a round range in S-4;
+- **the receive side is total, and it is one behaviour for all four non-canonical inputs.** *When* the
+  line is **absent**, **empty**, **unparseable** (anything that is not two decimal integers ≥ 1 around a
+  `..`), or carries endpoints with `{W}` **greater than** `{N−1}`, *then* the verifier **does not guess
+  and does not fall back to the whole branch history**: it **omits the `## Disposition` section
+  entirely** and states, in its findings table, which input was missing or unreadable. It reviews
+  normally otherwise, and writes its count trailer as usual.
+
+The **loop-side response needs no new mechanism**, which is why this receive side was chosen over a new
+notice: a cross-review with no `## Disposition` section is already an enumerated case — clause 1's
+completeness check fails, so **approval is refused and the phase does not halt** (AC-3.5, and O-10's
+existing *"a missing `## Disposition` refusing approval without halting"* obligation). A garbled range
+therefore costs one round and is visible in the verifier's own file, rather than silently producing the
+wrong row set and refusing approval for a reason the operator cannot see. Guessing is forbidden for the
+same reason `W` is not derived here: the verifier cannot read `W`, so a fallback would be a fabricated
+scope, and a fabricated scope that happens to be right is indistinguishable from one that is wrong.
 
 **Both clauses now have an oracle, because round 1 of cross-review established that neither did.** As
 written in v1.0, a verifier that obeyed clause 2 and one that ignored it produced byte-identical
