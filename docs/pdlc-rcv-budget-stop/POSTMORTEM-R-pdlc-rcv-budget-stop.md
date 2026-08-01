@@ -131,6 +131,59 @@ was wrong"*). That check found a materially wrong citation in three of the five 
 
 ## Pattern of Disagreement
 
+**1. There is no product disagreement, and there never was.** Across ten reviews, **not one blocking
+finding contests user need, scope, priority, phasing, the choice of three rounds, the reset-region
+design, or any externally observable behaviour.** TE-v5 says so in terms: *"Nothing in this review
+contests user need, priority, phasing, the choice of three rounds, the reset-region design, or the
+decision to confirm by byte comparison — which is the right call and closes a real fail-open."* Every
+blocking finding in rounds 2–5 is about the internal mechanism of one clause: **AC-1.5(4)**, the
+answering-line write and the refusal it can raise. The document converged as a *requirements*
+artifact somewhere around round 2 and spent rounds 3, 4 and 5 failing to converge as something else.
+
+**2. The fix generates the next defect, and every round-5 finding lands in text round 4 created.**
+Both reviewers state this independently. SE-v5: *"Both are on text this revision added, and both are
+the same shape as the finding it just closed."* TE-v5: *"Three, all in text added or rewritten since
+v4 … F-27 is the residue of F-24's fix."* The same holds at rounds 3 and 4. Each round retires the
+previous round's defects completely (100 % resolution) and manufactures a comparable number of new
+ones inside the replacement clauses. Under delta review that is self-sustaining: the answer to a
+finding is new text, and new text is unreviewed text.
+
+**3. Two generator classes account for every blocking finding from round 2 onward. Both were open at
+round 5.**
+
+| Class | Chain across rounds | State at round 5 |
+|---|---|---|
+| **A — The answering-line write, its confirmation, and what the failure leaves behind** | SE-v1 F-01 + TE-v1 F-04 (the write consumes the one-shot clearance with no confirmation and no failure disposition — a fail-open in the property the REQ exists to establish) → v1.2 adds a confirmed write with a fail-closed disposition (`8490ed4`) → SE-v3 F-02/F-03 (the unconfirmable-append recovery text is neither pinned nor complete; *"safe both ways"* enumerates two outcomes in a paragraph that has just admitted a third) → SE-v4 F-02 + TE-v4 F-24 (the torn-write sentence offers two sanctioned repairs for one fault; of three torn-write outcomes, one silently spends the clearance on a window the operator never bought) → v1.5 replaces the presence check with a **byte comparison**, collapsing three outcomes to two → SE-v5 F-02 + TE-v5 F-27 (the byte comparison correctly *announces* the well-formed value-tear `WINDOW-START: 12` → `WINDOW-START: 1`, and then the recovery text the same criterion prescribes — *"reset the row, re-run the queue"* — lets the residue validate on the **next** entry, spend the clearance and produce the very *"unexplained budget halt later"* the mechanism exists to prevent) | **Open.** Five rounds on one question: what state does a failed write leave on disk, and who repairs it. Each answer was correct about the entry that fails and silent about the entry that follows. |
+| **B — Which shipped string appears, with which value, under which guard** | SE-v1 F-03 (the refusal's operator-facing text is unspecified and the shipped recovery line actively misleads on this path) → v1.3 pins the strings and adds O-10 oracles → SE-v2 F-01 (the two new strings carry no PROPERTIES obligation, so the fix is unfalsifiable), SE-v2 F-02 + TE-v2 F-12 (§6 declares three rows the shared catalogue does not contain) → SE-v3 F-01 + TE-v3 F-17/F-18 (row B is defined twice with mutually exclusive `notice` cells; the `postmortemStatus` oracle asserts a value the shipped field cannot take; the catalogue must be amended first — done at `33bdf80`) → SE-v4 F-01/F-03 + TE-v4 F-22/F-23/F-25 (`postmortemStatus` pinned `none` where the shipped disposition returns `written`; the coupled `No POSTMORTEM was written.` emit; the recovery string quoted three ways, none of them the shipped bytes, with its citation off by two lines) → v1.5 pins the bytes, names the deciding branch (`orchestrate-dev.js:4890`–`:4901`) and cites the near-miss (`:1795`) → **SE-v5 F-01**: the newly pinned recovery string at `:4928` is emitted **unconditionally** on every halt class, so §6's *"Replaces the shipped generic … on this path only"* names a substitution the shipped code has no seam for, and O-10 asserts absent a line a faithful implementation always prints | **Open.** Four rounds of the same shape at increasing precision: pin a value → the value is wrong; pin the right value → the *guard* around the emit is wrong; pin the guard → the *next* emit has no guard at all. SE-v5's own summary is the cleanest statement of the class: *"pinning a shipped string's bytes is only half a pin — the other half is the guard around the site that emits them."* |
+
+**4. Two further classes were real but never blocking.**
+
+| Class | Chain | State |
+|---|---|---|
+| **C — Shared-artifact coupling** | SE-v1 F-04 (`deriveRoundWindow` is contractually seam-free, so the REQ never says how `W` reaches it), SE-v1 F-05 + TE-v1 F-08 (`forcePhases` is a documented operator entry point whose behaviour the REQ silently changes), TE-v1 F-05 (§7 mints ids in a shared namespace), SE-v2 F-02, SE-v3 F-01 + TE-v3 F-18 (row B versus the shared catalogue) | **Closed** by round 4, via a real amendment to `docs/_constraints/pdlc-rcv-catalogue.md` (`33bdf80`) rather than by re-wording the REQ. This class was handled correctly and is the loop's clearest success. |
+| **D — Size budget** | SE-v2 F-06 (548 bytes) → SE-v3 F-05 + TE-v3 F-21 (112) → SE-v4 F-05 + TE-v4 F-26 (117) → SE-v5 F-04 + TE-v5 F-28 (**3**) | **Open and, at round 5, binding.** Filed as Low in every round from 2 onward and therefore never blocked a verdict, while quietly determining *how* every round could be fixed. By round 5 both reviewers state the fix cannot be appended and must be paid for by relocating content to the catalogue. One compression pass had already deleted a reason (SE-v5 F-03 / TE-v5 F-29). |
+
+**5. The reviewers agree with the author about almost everything, and say so at length.** Every round
+carries a Positive Observations section that grows rather than shrinks; round 5's two sections
+between them approve the byte-comparing confirmation (*"the right mechanism, and it was found by
+asking the right question"*), the `postmortemStatus` mechanism (*"names a mechanism I did not offer,
+and it is better than both I did"*), the per-variant dispatch oracle, the parameterised torn-write
+property, and the compression discipline. TE-v5 checked each of the round's deletions individually
+and confirms *"no AC clause, no §5/§6 cell, no oracle leg and no citation was traded for room."* This
+is not an adversarial deadlock. It is two reviewers correctly and repeatedly reporting that a
+mechanism specified in prose, over shipped code the document does not control, is under-determined —
+and one of them (SE) declining to approve while any such under-determination remains, which is the
+correct application of the approval rule as written.
+
+**6. The one substantive disagreement is about altitude, and it is implicit.** TE scoped fixtures,
+seams, test levels and oracle wiring **out** of review (*"per §8 and DC-09"*) and consequently filed
+no High at rounds 2 or 5. SE holds every claim the REQ makes about `orchestrate-dev.js` to
+implementation-grade precision — line numbers re-counted, guards traced, near-miss strings
+disambiguated — and consequently filed a High in three of five rounds, all in class B. Neither lens
+is wrong. They are reviewing two different documents, and the REQ is trying to be both.
+
+---
+
 ## Best-Guess Root Cause
 
 ## Recommendation
