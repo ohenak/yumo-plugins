@@ -11,13 +11,57 @@ depends-on: [pdlc-review-loop-hardening]
 | Upstream | `docs/completed/pdlc-review-loop-hardening/POSTMORTEM-R-pdlc-review-loop-hardening.md` (v1.0) root causes 1–3 and recommendations R-4, R-5, R-6; `docs/completed/pdlc-review-loop-hardening/LEARNINGS-pdlc-review-loop-hardening.md` §2, §4, §5.3; operator direction of 2026-07-29 |
 | Downstream | `FSPEC-pdlc-review-convergence.md`; every subsequent `docs/_queue/QUEUE.md` row, all of which are reviewed by the loop this REQ changes |
 | Targets | `pdlc/workflows/orchestrate-dev.js`; a new library under `pdlc/workflows/lib/`; the three review SKILLs (`pm-review`, `se-review`, `te-review`); the three author SKILLs (`pm-author`, `se-author`, `te-author`); generated artifacts under `pdlc/workflows/dist/` rebuilt in the same commit |
-| Cross-Reviews | `docs/pdlc-review-convergence/CROSS-REVIEW-software-engineer-REQ-v1.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-test-engineer-REQ-v1.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-software-engineer-REQ-v2.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-test-engineer-REQ-v2.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-software-engineer-REQ-v3.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-test-engineer-REQ-v3.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-software-engineer-REQ-v4.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-test-engineer-REQ-v4.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-software-engineer-REQ-v5.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-test-engineer-REQ-v5.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-software-engineer-REQ-v6.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-test-engineer-REQ-v6.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-software-engineer-REQ-v7.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-test-engineer-REQ-v7.md`. **This row is maintained per round** — the revision that answers round N adds round N's two files — so a missing later round is a mechanical fix, not a finding (SE v4 MF-4). |
+| Cross-Reviews | `docs/pdlc-review-convergence/CROSS-REVIEW-software-engineer-REQ-v1.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-test-engineer-REQ-v1.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-software-engineer-REQ-v2.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-test-engineer-REQ-v2.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-software-engineer-REQ-v3.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-test-engineer-REQ-v3.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-software-engineer-REQ-v4.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-test-engineer-REQ-v4.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-software-engineer-REQ-v5.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-test-engineer-REQ-v5.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-software-engineer-REQ-v6.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-test-engineer-REQ-v6.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-software-engineer-REQ-v7.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-test-engineer-REQ-v7.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-software-engineer-REQ-v8.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-test-engineer-REQ-v8.md`. **This row is maintained per round** — the revision that answers round N adds round N's two files — so a missing later round is a mechanical fix, not a finding (SE v4 MF-4). |
 | LEARNINGS | `docs/pdlc-review-convergence/LEARNINGS-pdlc-review-convergence.md` |
 | Citation baseline | Every `file:line` reference in this document was read from the working tree at **`9486c81`** on the **default branch `main`**, tree clean. The v1.0 header pinned `d11dad5` on `feat-pdlc-review-loop-hardening`, which is *not* an ancestor of `main` and therefore not reachable from where this document is reviewed (SE F-08); the predecessor feature has since merged (`7bc559a`), so the baseline is restated over the default branch and every row in §4 was re-verified against it. Per the convention this repo adopted after `CROSS-REVIEW-software-engineer-REQ-v1` F-05 on the predecessor feature, **every** citation below names its enclosing symbol *and* a distinctive literal alongside the line number, so a line drift narrows the reader's search rather than invalidating the claim. Citations are written **repo-root-relative** (`pdlc/workflows/orchestrate-dev.js:52`) — the closed grammar AC-6.4 defines. A citation that names only a line number, or only a basename, is a defect in this document; report it as a mechanical fix, not a finding (see AC-6). **The baseline is a fixed commit, not "HEAD".** `9486c81` is an ancestor of `main`, so every citation below resolves there; `main` has since advanced and `pdlc/workflows/orchestrate-dev.js` has gained ~217 lines, so a reader checking a row at a *later* commit should navigate by the row's named symbol and distinctive literal — which is exactly the drift tolerance the convention exists to provide — rather than by the line number alone (TE v3 MF-03). Re-baselining is a mechanical fix, not a finding. **v1.4 re-verified every citation this document makes against `9486c81` itself, line by line.** v1.3 added five rows whose line numbers were read at `main` rather than at the baseline — off by a constant ~+152 lines — and one (`writePostmortem`) named a symbol that exists at neither commit; that is not drift, it is two baselines mixed in one document, which falsifies the universal claim this row makes (TE v5 F-05, SE v5 MF-1). All five are corrected below to their `9486c81` values, and the citations v1.4 itself adds were read there in the same pass. |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude + operator | 1.6 | 2026-08-01 |
+| pdlc | draft | Claude + operator | 1.7 | 2026-08-01 |
+
+> **Revision note (v1.7).** This version answers round 8. Both panels closed **every** prior finding —
+> the fifth consecutive round of that — and round 8 filed **one** blocking finding (TE F-01, Medium)
+> against **seven** Low, all of them in text v1.6 added. SE v8 filed no High and no Medium at all, the
+> first round in this phase in which that is true. §10.12 maps each one. What changed:
+>
+> 1. **O-10's `counts-mismatch` obligation no longer asserts a permanent refusal (TE F-01, Medium).**
+>    The v1.5 bullet said *"no window granted on that entry **or any later one**"*; v1.6 appended a
+>    recovery leg saying the clearance after the sanctioned repair grants one. Both stood, so no
+>    implementation could satisfy the bullet, and the likelier reading — the older sentence, the one
+>    carrying the AC citation — is exactly the permanent-halt oracle round 7 was spent removing. The
+>    universal is now scoped to *a later entry that has not performed the sanctioned repair*, so the
+>    refusal leg and the recovery leg are a mutation pair rather than a contradiction.
+> 2. **The S-16 bracket carries the offending *line*, said the same way in all four places (SE G-21,
+>    TE F-02).** §5's prose and AC-1.5(4) step 4's summary said *value* while the specimen beside them
+>    and §6's row said *line*. The render was already declared fixed *"here and only here, character for
+>    character"*; the prose was the outlier and is corrected, and §6's row now points at §5's specimen
+>    rather than restating the parts (SE MF-10).
+> 3. **A region that fails more than one check reports exactly one reason (SE G-22).** Step 4's
+>    `{reason}` is single-valued and precedence row 8 gives S-16 one slot, but step 4 fires on *any*
+>    failing line **or** the counts. The rule is now stated: the **first** failing line in document
+>    order, and `counts-mismatch` only when every line passes step 2 — one S-16 notice, never two.
+> 4. **What a refused entry does to the invocation is stated, not left to the analogy (SE G-23).**
+>    *"The only effect of the entry is the S-16 notice"* is scoped to the **post-mortem file**; the
+>    phase does not run and the invocation terminates on step G's path, so a literal `return` cannot let
+>    the pipeline advance past an unentered review phase.
+> 5. **The repair table prefers *correct* to *delete* (SE G-24).** Deleting an answering line raises
+>    `H − A` by one, so on a region already at `H − A = 1` the sanctioned delete converts
+>    `invalid-window-start` into `counts-mismatch` and forces the destructive whole-section repair.
+>    Correcting is always safe; deleting is safe exactly at `H − A = 0`, a number the notice carries.
+> 6. **"Refusal" is disambiguated (SE G-25).** *Phase refusal* — a decision not to enter — is now a §5
+>    meanings row, and AC-3.5's and AC-3.2's uses are qualified as *approval refusal*, whose defining
+>    property is that the window proceeds.
+> 7. **A garbled `REVIEW-SCOPE-ROUNDS:` costs more than one round, and the document says so (TE F-03).**
+>    S-17's emitter is the loop, so a deterministic bad render recurs every round; the *"costs one
+>    round"* claim is replaced by the sequence it actually produces, and O-10 asks for **two**
+>    consecutive garbled dispatches.
+>
+> Also: §9's R-5 gains AC-3.2's S-17 receive side as a fourth unenforceable clause, with its failure
+> direction named (a fabricated *narrower* range is the unsafe one — MF-8); R-9's demonstration is
+> extended to rounds 6 and 7, the first on-branch instance of its false positive landing immediately
+> **before** approval (MF-9); §10.11's lead-in is counted on one stated basis (SE MF-6, TE MF-20);
+> AC-4.7 row B's `round` gloss is scoped (MF-21); §5's S-17 pointers are corrected (MF-22); and
+> AC-1.5(5) clause 5 is re-flowed (MF-23).
 
 > **Revision note (v1.6).** This version answers round 7. Both panels again closed **every** prior
 > finding — the fourth consecutive round of that — and every round-7 finding lies in text v1.5 added,
