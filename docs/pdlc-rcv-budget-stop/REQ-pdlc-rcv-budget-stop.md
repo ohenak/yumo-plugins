@@ -28,7 +28,7 @@ what an operator does when they run out.
 
 - **P-1's cost half — the budget does not bound the document.** At HEAD `MAX_REVIEW_ROUNDS` is a *per-invocation* budget (M-1d), so "three rounds" bounds an invocation and not a document:
   a document can be reviewed six times across two invocations with no operator action at all.
-- **The budget is five, and the fifth round is measurably worse than the second.** On the predecessor the blocking count reached its minimum at round 2 and rose thereafter, and 66 KB —
+- **The budget is five, and the fifth round is measurably worse than the second.** On the predecessor the blocking count reached its minimum at round 2, held it at round 3, and rose thereafter (baseline §1.1: 11, 6, 6, 7, 9), and 66 KB —
   40% of the finished document — was added by rounds that ran *after* its own fixed-point test fired.
 - **An absolute cap needs an escape hatch, and the escape hatch needs durable state.** A cap counted from round 1 of the *document* is a dead end without an operator reset, and a reset
   that leaves no record is re-granted on every subsequent invocation — the per-invocation budget restored silently and fail-open.
@@ -131,9 +131,9 @@ over an in-band observable named in the shared baseline §2.
 
 **Priority:** P0 · **Source:** US-01, US-02 · **Depends on:** BL-01, BL-06
 
-A review loop that has not converged in three rounds has, on the two features measured, not converged at all: the predecessor's blocking count reached its minimum at round 2 and rose
-thereafter, and 66 KB — 40% of the finished document — was added by rounds that ran *after* its own fixed-point test fired. Three rounds buys the decay that was real (11 → 6) and
-declines to buy the plateau that was not.
+A review loop that has not converged in three rounds has, on the two features measured, not converged at all: the predecessor's blocking count reached its minimum at round 2, held it at
+round 3, and rose thereafter (11, 6, 6, 7, 9), and 66 KB — 40% of the finished document — was added by rounds that ran *after* its own fixed-point test fired. Three rounds buys the decay
+that was real (11 → 6) and the round that held it, and declines to buy the rise that followed.
 
 **AC-1.1 — The budget is three, per document, not per invocation.** *Who:* the pipeline. *Given:* any review-loop phase for a document. *When:* the review window is opened. *Then:* the
 window ends at round **3 counted from round 1 of that document**, and the loop halts on entering round 4 — *whatever invocation opened the earlier rounds*.
