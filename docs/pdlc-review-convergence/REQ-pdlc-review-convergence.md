@@ -766,8 +766,12 @@ halt, so there is nothing here for it to except. Nothing is appended, no marker 
 file is byte-unchanged; the operator's clearance is therefore still readable on the next entry, which is
 what makes AC-1.5(4)'s *"the clearance survives"* true and keeps `H − A` stable across refusals (SE v6
 G-18, TE v6 F-01). The distinction to hold onto: a **halt** is an event the accounting records; a
-**refusal** is a decision not to enter, exactly as step G refuses an unresolved post-mortem without
-recording anything.
+**phase refusal** is a decision not to enter, exactly as step G refuses an unresolved post-mortem
+without recording anything in the accounting. *Recording anything* is scoped to the post-mortem and the
+`H`/`A` counts: like step G's refusal, a phase refusal still records a ❌ phase row, terminates the
+invocation and leaves the queue row `halted` (AC-1.5(4)). The term is defined in §5 and is **not** the
+*approval refusal* of AC-3.5 and AC-3.2, where the round has already run and the window proceeds
+(SE v8 G-23, G-25).
 
 **This does not weaken clause 3's prohibition.** What no agent and no script may ever write is
 `RESOLVED: yes`; removing a marker that has already been spent is not writing one, and its only effect
@@ -1006,10 +1010,9 @@ branch — the state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-
    replacing it.** Each halt appends exactly one `HALT-REASON: {value}` line to the **end** of the reset
    region (S-15, AC-1.4 clause 1), `{value}` being the `; `-joined render, in AC-4.7's precedence
    order, of every halt reason that halt raised — so a round on which S-3 and S-4 both hold writes
-   **one** line reading
-   `fixed-point: …; budget-exhausted: …` and the operator sees the same string here and in the run
-   report's `notice` cell (AC-2.2, TE v5 F-06). Because each halt appends and nothing is written after
-   the region, the **last** such line is the most recent halt's (SE v5 G-11). On the entry that observes
+   **one** line reading `fixed-point: …; budget-exhausted: …`, and the operator sees the same string
+   here and in the run report's `notice` cell (AC-2.2, TE v5 F-06). Because each halt appends and
+   nothing is written after the region, the **last** such line is the most recent halt's (SE v5 G-11). On the entry that observes
    an unconsumed clearance (clause 4), the loop reads that last line and its **leading** reason:
 
    | Last `HALT-REASON:` begins | Effect of the `RESOLVED: yes` | Line the loop writes |
