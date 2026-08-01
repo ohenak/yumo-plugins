@@ -10,7 +10,7 @@ depends-on: [pdlc-rcv-budget-stop, pdlc-rcv-fixed-point-stop]
 |---|---|
 | Shared baseline | `docs/_constraints/pdlc-rcv-baseline.md` — the measured run, the non-convergence analysis, the measured facts `M-*`, the declared thresholds and the shared non-goals `N-*`. **Read it first.** Facts are cited by id (`M-3a`) and are not restated here. |
 | Shared catalogue | `docs/_constraints/pdlc-rcv-catalogue.md` — the family vocabulary (§1), the closed catalogue `S-1 … S-17` (§2) and the run-report row schema (§3). Terms and ids are used by reference and never restated. |
-| Predecessor | `docs/pdlc-review-convergence/REQ-pdlc-review-convergence.md` v1.8 (**superseded 2026-08-01**) — this REQ carries its REQ-RCV-03 and REQ-RCV-04 unchanged in substance. |
+| Predecessor | `docs/discarded/pdlc-review-convergence/REQ-pdlc-review-convergence.md` v1.8 (**superseded 2026-08-01**) — this REQ carries its REQ-RCV-03 and REQ-RCV-04 unchanged in substance. |
 | Siblings | `docs/pdlc-rcv-budget-stop/REQ-pdlc-rcv-budget-stop.md` (REQ-RCV-01) and `docs/pdlc-rcv-fixed-point-stop/REQ-pdlc-rcv-fixed-point-stop.md` (REQ-RCV-02) — **the two dependencies**; `docs/pdlc-rcv-finding-quality/REQ-pdlc-rcv-finding-quality.md` (REQ-RCV-05, REQ-RCV-06) |
 | Upstream | `docs/completed/pdlc-review-loop-hardening/POSTMORTEM-R-pdlc-review-loop-hardening.md` (v1.0) root cause 3 and recommendation R-6; operator direction of 2026-07-29 |
 | Downstream | `FSPEC-pdlc-rcv-panel-topology.md` |
@@ -464,7 +464,7 @@ The shared list is baseline §4; **N-1, N-2, N-4, N-6, N-8, N-9 and N-10 apply u
 | **R-7** | **AC-3.4's file-grammar change lands before every reviewer emits the trailer in the file.** A review written by an un-amended SKILL carries no in-file trailer, so its round reads *unavailable*. Measured on the predecessor, 7 of 10 files carried a trailer at all. | Accepted and degradation-only by construction: an *unavailable* round breaks the fixed-point chain in both directions and never fires the rule, so a lagging SKILL costs a comparison, never a wrong halt. O-9 amends the three review SKILLs in the same delivery. |
 
 **Deferrals and their binding.** R-3 is bound to `docs/pdlc-approval-record-tier2/REQ-pdlc-approval-record-tier2.md`; the cross-panel comparability question AC-2.4 declines (N-2) is
-bound, with `pdlc-rcv-fixed-point-stop`'s R-2 and R-9, to `docs/pdlc-review-convergence-calibration/REQ-pdlc-review-convergence-calibration.md`. Both stubs are `ready: false`, so neither is
+bound, with `pdlc-rcv-fixed-point-stop`'s R-2 and R-9, to `docs/discarded/pdlc-review-convergence-calibration/REQ-pdlc-review-convergence-calibration.md`. Both stubs are `ready: false`, so neither is
 queue-eligible until an operator specifies it and opts it in.
 
 ## 10. Traceability
@@ -479,7 +479,7 @@ revision is large enough to warrant it (A-2). Shipping AC-3 alone would leave la
 blocking findings. That is why the two are one REQ and one delivery. Across the family, the constraint is BL-09: this REQ ships **after** `pdlc-rcv-budget-stop`;
 `pdlc-rcv-finding-quality` is independent of both.
 
-**Round-by-round history is deliberately not restated here.** The nine review rounds that produced this material live in `docs/pdlc-review-convergence/CROSS-REVIEW-*-REQ-v{1..9}.md`
+**Round-by-round history is deliberately not restated here.** The nine review rounds that produced this material live in `docs/discarded/pdlc-review-convergence/CROSS-REVIEW-*-REQ-v{1..9}.md`
 alongside the superseded parent; those files remain the record of which finding produced which clause. This REQ traces to the *measured facts*, not to the review history.
 
 **Size discipline — read before revising.** This document sits close to the pm-author ceiling of

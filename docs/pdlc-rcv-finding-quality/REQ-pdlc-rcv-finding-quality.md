@@ -10,7 +10,7 @@ depends-on: [pdlc-rcv-budget-stop]
 |---|---|
 | Shared baseline | `docs/_constraints/pdlc-rcv-baseline.md` — the measured run, the non-convergence analysis, the measured facts `M-*`, the declared thresholds and the shared non-goals `N-*`. **Read it first.** Facts are cited by id (`M-6a`) and are not restated here. |
 | Shared catalogue | `docs/_constraints/pdlc-rcv-catalogue.md` — the family vocabulary (§1), the closed catalogue `S-1 … S-17` (§2) and the run-report row schema (§3). Terms and ids are used by reference and never restated. |
-| Predecessor | `docs/pdlc-review-convergence/REQ-pdlc-review-convergence.md` v1.8 (**superseded 2026-08-01**) — this REQ carries its REQ-RCV-05 and REQ-RCV-06 unchanged in substance. |
+| Predecessor | `docs/discarded/pdlc-review-convergence/REQ-pdlc-review-convergence.md` v1.8 (**superseded 2026-08-01**) — this REQ carries its REQ-RCV-05 and REQ-RCV-06 unchanged in substance. |
 | Siblings | `docs/pdlc-rcv-budget-stop/REQ-pdlc-rcv-budget-stop.md` (REQ-RCV-01) — **the dependency**; `docs/pdlc-rcv-fixed-point-stop/REQ-pdlc-rcv-fixed-point-stop.md` (REQ-RCV-02); `docs/pdlc-rcv-panel-topology/REQ-pdlc-rcv-panel-topology.md` (REQ-RCV-03, REQ-RCV-04) |
 | Upstream | `docs/completed/pdlc-review-loop-hardening/POSTMORTEM-R-pdlc-review-loop-hardening.md` (v1.0) root cause 1 and recommendations R-5, R-6; operator direction of 2026-07-29 |
 | Downstream | `FSPEC-pdlc-rcv-finding-quality.md` |
@@ -275,5 +275,5 @@ REQ-RCV-05 is **P0** — it addresses the post-mortem's primary root cause. REQ-
 recurring and never blocking. There is **no ordering constraint between the two**, and none between this REQ and `pdlc-rcv-panel-topology`; the `depends-on` is `pdlc-rcv-budget-stop` so
 the three documents share one definition of *unavailable* / *malformed* and one report surface (X-04).
 
-**Round-by-round history is deliberately not restated here.** The nine review rounds that produced this material live in `docs/pdlc-review-convergence/CROSS-REVIEW-*-REQ-v{1..9}.md`
+**Round-by-round history is deliberately not restated here.** The nine review rounds that produced this material live in `docs/discarded/pdlc-review-convergence/CROSS-REVIEW-*-REQ-v{1..9}.md`
 alongside the superseded parent; those files remain the record of which finding produced which clause. This REQ traces to the *measured facts*, not to the review history.

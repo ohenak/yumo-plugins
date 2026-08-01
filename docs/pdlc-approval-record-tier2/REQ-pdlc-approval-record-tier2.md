@@ -8,7 +8,7 @@ depends-on: [pdlc-rcv-panel-topology]
 
 | Field | Value |
 |---|---|
-| Upstream | `docs/pdlc-review-convergence/REQ-pdlc-review-convergence.md` — R-3, N-5, AC-3.6 |
+| Upstream | `docs/discarded/pdlc-review-convergence/REQ-pdlc-review-convergence.md` — R-3, N-5, AC-3.6 |
 | Downstream | `FSPEC-pdlc-approval-record-tier2.md` |
 | Cross-Reviews | *(none yet — this is a stub)* |
 | LEARNINGS | `docs/pdlc-approval-record-tier2/LEARNINGS-pdlc-approval-record-tier2.md` |

@@ -3,7 +3,7 @@
 > **What this is.** The measured baseline, the non-convergence analysis, the measured facts, the
 > declared thresholds and the shared non-goals that the three `pdlc-rcv-*` REQs are all stated over.
 > Every section below is extracted **verbatim in substance** from
-> `docs/pdlc-review-convergence/REQ-pdlc-review-convergence.md` **v1.8** (superseded 2026-08-01),
+> `docs/discarded/pdlc-review-convergence/REQ-pdlc-review-convergence.md` **v1.8** (superseded 2026-08-01),
 > trimmed of that document's per-round review bookkeeping and of prose that only defended a revision.
 >
 > **This is a read-only reference, not a reviewed pipeline artifact.** It is not a REQ, it is not an
@@ -14,7 +14,7 @@
 
 | Field | Value |
 |---|---|
-| Extracted from | `docs/pdlc-review-convergence/REQ-pdlc-review-convergence.md` v1.8, §1, §4, §6, §7 |
+| Extracted from | `docs/discarded/pdlc-review-convergence/REQ-pdlc-review-convergence.md` v1.8, §1, §4, §6, §7 |
 | Upstream evidence | `docs/completed/pdlc-review-loop-hardening/POSTMORTEM-R-pdlc-review-loop-hardening.md` (v1.0) root causes 1–3, recommendations R-4, R-5, R-6; `docs/completed/pdlc-review-loop-hardening/LEARNINGS-pdlc-review-loop-hardening.md` §2, §4, §5.3 |
 | Citation baseline | Commit **`9486c81`** on the default branch `main`, tree clean. Every `file:line` below was read there. Citations are **repo-root-relative** and name the enclosing symbol *and* a distinctive literal alongside the line number, so a later line drift narrows the reader's search rather than invalidating the claim. `main` has advanced since; navigate by symbol and literal, not by line number alone. Re-baselining is a mechanical fix, not a finding. |
 | Date | 2026-08-01 |

@@ -1601,7 +1601,7 @@ describe("RLH-AT-61-report — each trailer reason is distinguishable in the ope
 //
 // The pre-oracle document: every top-level section written and non-empty, not one
 // of them carrying a canonical §5.9 title. This is the shape of every REQ authored
-// before the oracle existed, `docs/pdlc-review-convergence/REQ-pdlc-review-convergence.md`
+// before the oracle existed, `docs/discarded/pdlc-review-convergence/REQ-pdlc-review-convergence.md`
 // among them. Under the strict revision test such an episode can NEVER reach
 // terminal — the author declares `REVISION-COMPLETE: yes`, the structural conjunct
 // stays false, and the wrapper spends all six dispatches before halting the phase

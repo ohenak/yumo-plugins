@@ -10,7 +10,7 @@
 **Why this file exists.** Four REQs in one family share one vocabulary, one closed catalogue of
 boundary-crossing strings, and one run-report row schema. Restated per document they drift into
 four meanings; the superseded parent
-(`docs/pdlc-review-convergence/REQ-pdlc-review-convergence.md`) is the record of what that costs.
+(`docs/discarded/pdlc-review-convergence/REQ-pdlc-review-convergence.md`) is the record of what that costs.
 Written once here, each REQ cites the id and states only what it **owns** — which criterion emits
 the string and which reads it.
 

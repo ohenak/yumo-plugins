@@ -23,7 +23,7 @@ frontmatter is the pickup gate; the `Status` cell tracks lifecycle.
 
 | Order | Status | Feature | REQ Path | Depends-On |
 |-------|--------|---------|----------|------------|
-| 0 | superseded | pdlc-review-convergence | docs/pdlc-review-convergence/REQ-pdlc-review-convergence.md | pdlc-review-loop-hardening |
+| 0 | superseded | pdlc-review-convergence | docs/discarded/pdlc-review-convergence/REQ-pdlc-review-convergence.md | pdlc-review-loop-hardening |
 | 10 | pending | pdlc-rcv-budget-stop | docs/pdlc-rcv-budget-stop/REQ-pdlc-rcv-budget-stop.md | - |
 | 11 | pending | pdlc-rcv-panel-topology | docs/pdlc-rcv-panel-topology/REQ-pdlc-rcv-panel-topology.md | pdlc-rcv-budget-stop, pdlc-rcv-fixed-point-stop |
 | 12 | pending | pdlc-rcv-finding-quality | docs/pdlc-rcv-finding-quality/REQ-pdlc-rcv-finding-quality.md | pdlc-rcv-budget-stop |
@@ -72,7 +72,7 @@ on row 10 only, for the shared definitions, and can land before or after row 17.
 order is therefore **10 → 12 → 17 → 11**, dependency-correct, with no renumbering of rows 13–16.
 
 **Rows 10–12 — the `pdlc-review-convergence` split — added 2026-08-01, and row 0 set `superseded`.**
-`docs/pdlc-review-convergence/REQ-pdlc-review-convergence.md` reached **2,629 lines / 311 KB at v1.8**
+`docs/discarded/pdlc-review-convergence/REQ-pdlc-review-convergence.md` reached **2,629 lines / 311 KB at v1.8**
 and ran **nine review rounds without convergence** — every round closed every prior finding and filed
 new ones in the text that answered them, which is the very failure mode (P-1) the document analyses.
 It was too large for the review loop to converge on, so it has been **split into three phased REQs

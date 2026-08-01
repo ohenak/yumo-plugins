@@ -10,7 +10,7 @@ depends-on: []
 |---|---|
 | Shared baseline | `docs/_constraints/pdlc-rcv-baseline.md` — the measured run, the non-convergence analysis, the measured facts `M-*`, the declared thresholds and the shared non-goals `N-*`. **Read it first.** Facts are cited by id (`M-1d`) and are not restated here. |
 | Shared catalogue | `docs/_constraints/pdlc-rcv-catalogue.md` — the family vocabulary (§1), the closed catalogue `S-1 … S-17` (§2) and the run-report row schema (§3). Terms and ids are used by reference and never restated. |
-| Predecessor | `docs/pdlc-review-convergence/REQ-pdlc-review-convergence.md` v1.8 (**superseded 2026-08-01**) — this REQ carries its REQ-RCV-01 unchanged in substance. Its REQ-RCV-02 moved to `docs/pdlc-rcv-fixed-point-stop/` at v1.1 of this document; see §10. |
+| Predecessor | `docs/discarded/pdlc-review-convergence/REQ-pdlc-review-convergence.md` v1.8 (**superseded 2026-08-01**) — this REQ carries its REQ-RCV-01 unchanged in substance. Its REQ-RCV-02 moved to `docs/pdlc-rcv-fixed-point-stop/` at v1.1 of this document; see §10. |
 | Siblings | `docs/pdlc-rcv-fixed-point-stop/REQ-pdlc-rcv-fixed-point-stop.md` (REQ-RCV-02) — **the successor that depends on this one**; `docs/pdlc-rcv-panel-topology/REQ-pdlc-rcv-panel-topology.md` (REQ-RCV-03, REQ-RCV-04); `docs/pdlc-rcv-finding-quality/REQ-pdlc-rcv-finding-quality.md` (REQ-RCV-05, REQ-RCV-06) |
 | Upstream | `docs/completed/pdlc-review-loop-hardening/POSTMORTEM-R-pdlc-review-loop-hardening.md` (v1.0) root causes 2 and 3; operator direction of 2026-07-29 |
 | Downstream | `FSPEC-pdlc-rcv-budget-stop.md`; every subsequent `docs/_queue/QUEUE.md` row, all of which are reviewed by the loop this REQ changes |
@@ -382,7 +382,7 @@ here: it is an obligation on the FSPEC, TSPEC, PLAN or PROPERTIES, not a REQ rev
 **Deferrals and their binding.** This REQ defers nothing of its own. The deferrals its predecessor
 carried belong to the successors that carry the criteria raising them:
 cross-panel comparability and finding identity to
-`docs/pdlc-review-convergence-calibration/REQ-pdlc-review-convergence-calibration.md`, and the
+`docs/discarded/pdlc-review-convergence-calibration/REQ-pdlc-review-convergence-calibration.md`, and the
 authoring-side zero-write residue to
 `docs/pdlc-runtime-measurement-spike/REQ-pdlc-runtime-measurement-spike.md`; both are recorded in
 `pdlc-rcv-fixed-point-stop` §9. Each stub is `ready: false`, so neither is queue-eligible until an
@@ -405,6 +405,6 @@ before AC-2.1, AC-2.8 or AC-2.6 can be stated over a window* — is preserved ex
 AC id or `S-*` id changed in the cut, so every existing cross-reference resolves.
 
 **Round-by-round history is deliberately not restated here.** The nine review rounds that produced
-this material live in `docs/pdlc-review-convergence/CROSS-REVIEW-*-REQ-v{1..9}.md` alongside the
+this material live in `docs/discarded/pdlc-review-convergence/CROSS-REVIEW-*-REQ-v{1..9}.md` alongside the
 superseded parent; those files remain the record of which finding produced which clause. This REQ
 traces to the *measured facts*, not to the review history.

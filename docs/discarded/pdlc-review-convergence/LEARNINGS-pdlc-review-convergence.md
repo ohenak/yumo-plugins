@@ -3,7 +3,7 @@
 | Field | Detail |
 |---|---|
 | Feature | pdlc-review-convergence |
-| REQ | docs/pdlc-review-convergence/REQ-pdlc-review-convergence.md (**SUPERSEDED 2026-08-01**) |
+| REQ | docs/discarded/pdlc-review-convergence/REQ-pdlc-review-convergence.md (**SUPERSEDED 2026-08-01**) |
 | Date Completed | 2026-08-01 — *not shipped*; Phase R abandoned and the REQ split into four successors |
 | Total Iterations | REQ: **9**, FSPEC: 0, TSPEC: 0, PLAN: 0, PROPERTIES: 0, IMPL: 0 |
 | Upstream | REQ → *(pipeline never advanced past Phase R)* |
@@ -64,7 +64,7 @@
 4. **Add a repair-safety constraint** (§2, SE v8 G-24): a per-reason repair table must state its effect on every counter it mutates, across every reachable value.
 5. **Amend the review-round tagging guidance**: promote a recurring finding to `Cross-Feature`/`Process` on its **second** occurrence (§4.4).
 6. **Record the supersession pattern itself.** Splitting a non-converging REQ into phased successors **with requirement ids unchanged**, plus a read-only shared baseline document for the analysis sections, worked cleanly and is reusable. Candidate: `docs/_decisions/`.
-7. **Calibration follow-up.** `docs/pdlc-review-convergence-calibration/` was a deferral stub bound to this feature and is archived with it; its four open questions now belong to `docs/pdlc-rcv-fixed-point-stop`. Confirm nothing was lost in that hand-off.
+7. **Calibration follow-up.** `docs/discarded/pdlc-review-convergence-calibration/` was a deferral stub bound to this feature and is archived with it; its four open questions now belong to `docs/pdlc-rcv-fixed-point-stop`. Confirm nothing was lost in that hand-off.
 
 ## 6. Approval Record
 

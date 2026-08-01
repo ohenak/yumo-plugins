@@ -8,7 +8,7 @@ depends-on: []
 
 | Field | Value |
 |---|---|
-| Upstream | `docs/completed/pdlc-review-loop-hardening/POSTMORTEM-R-pdlc-review-loop-hardening.md` R-3; `docs/pdlc-review-convergence/REQ-pdlc-review-convergence.md` §4.7, R-4, N-6 |
+| Upstream | `docs/completed/pdlc-review-loop-hardening/POSTMORTEM-R-pdlc-review-loop-hardening.md` R-3; `docs/discarded/pdlc-review-convergence/REQ-pdlc-review-convergence.md` §4.7, R-4, N-6 |
 | Downstream | `FSPEC-pdlc-runtime-measurement-spike.md`; any future REQ that would otherwise guess at these facts |
 | Cross-Reviews | *(none yet — this is a stub)* |
 | LEARNINGS | `docs/pdlc-runtime-measurement-spike/LEARNINGS-pdlc-runtime-measurement-spike.md` |
