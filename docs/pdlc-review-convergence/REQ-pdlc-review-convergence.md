@@ -937,17 +937,39 @@ is **unavailable**; the comparison is not made in either direction; the run repo
 notice with reason `unavailable-count`, naming the round and the role. The loop continues to the next
 round.
 
-**The two states are separated by what is observable, not by intent.** A count is *unavailable* in
-exactly these cases, and in no others:
+**The two states are separated by what is observable, not by intent.** These are the cases, and there
+are no others. The table is **read in order** — the first row whose observation holds decides, which is
+the order AC-3.4's algorithm evaluates them in (it counts `VERDICT: ` lines in step 1 before it scans
+for a candidate in step 2). Rows 5–7 are therefore reached only for a section carrying **exactly one**
+`VERDICT: ` line (TE v6 MF-13). Throughout, a "`VERDICT: ` line" is one whose trimmed text begins with
+the seven characters `VERDICT: ` — **including the trailing space** — which is exactly what
+`extractFileVerdict` counts (`pdlc/workflows/orchestrate-dev.js:902`,
+`line.trim().startsWith("VERDICT: ")`) and what `parseVerdict` matches (`:417`). `VERDICT:Approved` is
+not one, to either function (SE v6 MF-2, TE v6 MF-13).
 
-| Observation on the role's file at that round | State |
-|---|---|
-| The file is absent | *unavailable* |
-| The file carries no `## Verdict` heading | *unavailable* |
-| A `## Verdict` section exists and there is **no non-empty line after** the `VERDICT:` line | *unavailable* — `parseVerdict`'s truncated-output path, which returns genuine `0/0/0` (M-2c) |
-| A `## Verdict` section exists and, after `VERDICT:`, contains **nothing but anchor lines** — no candidate line survives AC-3.4's skip rule | *unavailable* — the trailer was never written; an anchor is not a malformed trailer |
-| A candidate line exists — the first non-empty **non-anchor** line after `VERDICT:` — and does not parse as `{"high": N, "medium": N, "low": N}` after `recoverVerdict` (M-2d) has been tried | *malformed* (AC-2.3) |
-| The `## Verdict` section carries **two or more `VERDICT:` lines** | *malformed* (AC-2.3) — the quantity was read and could not be resolved, which is §5's definition of *malformed* exactly |
+| # | Observation on the role's file at that round | State |
+|---|---|---|
+| 1 | The file is absent | *unavailable* |
+| 2 | The file carries no `## Verdict` heading | *unavailable* |
+| 3 | A `## Verdict` section exists and carries **no `VERDICT: ` line at all** | *malformed* (AC-2.3) — see the note below; this is what HEAD returns |
+| 4 | The `## Verdict` section carries **two or more `VERDICT: ` lines** | *malformed* (AC-2.3) — the quantity was read and could not be resolved, which is §5's definition of *malformed* exactly |
+| 5 | Exactly one `VERDICT: ` line, and there is **no non-empty line after** it | *unavailable* — `parseVerdict`'s truncated-output path, which returns genuine `0/0/0` (M-2c) |
+| 6 | Exactly one `VERDICT: ` line, and after it the section contains **nothing but anchor lines** — no candidate line survives AC-3.4's skip rule | *unavailable* — the trailer was never written; an anchor is not a malformed trailer |
+| 7 | Exactly one `VERDICT: ` line, and the candidate — the first non-empty **non-anchor** line after it — does not parse as `{"high": N, "medium": N, "low": N}` after `recoverVerdict` (M-2d) has been tried | *malformed* (AC-2.3) |
+
+**Row 3 is new in v1.5 and is the case v1.4's table presupposed away.** Every one of rows 4–7 assumes a
+`VERDICT: ` line exists; a `## Verdict` heading with none had no row, while AC-3.4's step 1 called it
+*unavailable* — so the document classified one input two ways and neither matched HEAD (SE v6 G-15).
+Verified at the Citation baseline: `extractFileVerdict` finds the heading, counts `trailers === 0`
+(`pdlc/workflows/orchestrate-dev.js:900-903`), skips the `> 1` return at `:904`, and falls through to
+`return { ok: true, ...parseVerdict(section, roleSlug) }` at `:906`; `parseVerdict` scans the section in
+reverse for a `VERDICT: ` line (`:415-422`), finds none, and returns the fallback at `:424-428` —
+`{verdict: "Needs revision", high: 0, medium: 0, low: 0, malformed: true}` (the object at `:394-400`).
+That is a **different** object from the truncated-output path row 5 cites, which returns
+`{verdict: rawVerdict, high: 0, medium: 0, low: 0}` with no `malformed` flag (`:451`); M-2c draws
+exactly that distinction. *Malformed* is therefore the classification, and AC-3.4 step 1 is corrected to
+match: the REQ and the shipped reader agree on this input, which R-7 makes reachable whenever a lagging
+SKILL writes the heading (already in the file contract) without the trailer this REQ adds.
 
 **The duplicated-`VERDICT:` row is new in v1.4 and is not a new behaviour**: `extractFileVerdict`
 (`pdlc/workflows/orchestrate-dev.js:888`) scopes its scan to the trailing `## Verdict` section, counts
