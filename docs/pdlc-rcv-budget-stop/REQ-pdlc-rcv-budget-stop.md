@@ -19,15 +19,15 @@ depends-on: []
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude + operator | 1.4 | 2026-08-01 |
+| pdlc | draft | Claude + operator | 1.5 | 2026-08-01 |
 
-**v1.4** addresses round-3 cross-review (`CROSS-REVIEW-software-engineer-REQ-v3.md`,
-`CROSS-REVIEW-test-engineer-REQ-v3.md`): row B's **two** dispatch-less variants, with
-`docs/_constraints/pdlc-rcv-catalogue.md` §3 amended in the same change; the pinned
-unconfirmable-append recovery text and its O-10 leg; the torn-write outcome; `postmortemStatus` =
-`none` (the shipped value); AC-1.2's observable; and a compression pass to hold the size budget —
-which is also why row B was widened in the catalogue rather than a new row minted here.
-**v1.3** addressed round 2, **v1.2** round 1.
+**v1.5** addresses round-4 cross-review (`CROSS-REVIEW-software-engineer-REQ-v4.md`,
+`CROSS-REVIEW-test-engineer-REQ-v4.md`): `postmortemStatus` = **`written`**, with the shipped
+mechanism that produces it and the `No POSTMORTEM was written.` emit it keeps silent; the
+**byte-comparing** confirmation read (Q-04), which collapses the torn write to two outcomes and
+closes the silent well-formed-truncation case; one sanctioned repair per value fault; the pinned
+bytes of the shipped queue-reset string; O-10's per-variant dispatch count; and a compression pass.
+**v1.4** addressed round 3, **v1.3** round 2, **v1.2** round 1.
 
 ## 1. Problem
 
@@ -204,12 +204,10 @@ pairing exact. Within that scope the rule admits **no exception**:
    **The strip reaches inside the `## Reset Region` span too, and the two rules do not collide:** a `RESOLVED:` line is *never* a region line — the region is read as `HALT-REASON:`,
    `WINDOW-START:` and `WINDOW-RESUMED:` lines only (catalogue §1) — so they quantify over disjoint sets, and a `RESOLVED: yes` inside the region is stripped like any other.
 
-**Why the creating halt is stated.** Scoped only to a halt finding an existing post-mortem, the first halt would be governed by nothing: no region ⇒ `H = 0` ⇒ AC-1.5(4)'s gate `A < H`
-false ⇒ the operator's **first** clearance silently swallowed, the phase halting again, self-healing on the second.
+**Why the creating halt is stated.** Scoped only to a halt finding an existing post-mortem, the first halt would be governed by nothing: no region ⇒ `H = 0` ⇒ AC-1.5(4)'s gate `A < H` false ⇒ the operator's **first** clearance silently swallowed.
 
 **Why clause 2.** `RESOLVED:` is a **single-valued, human-owned, fail-closed marker**, never a counter (M-7a). Preserved, it makes the next halt's post-mortem read as already resolved, so
-that halt has no durable effect; a *second* marker reads as `duplicated` ⇒ permanently `unresolved` ⇒ the phase can never be re-entered — the alternative's only two reachable states, and
-opposite failures. **The prohibition is untouched:** removing a marker already spent is not writing one (N-4).
+that halt has no durable effect; a *second* marker reads as `duplicated` ⇒ permanently `unresolved` — opposite failures, and the alternative's only two reachable states. **The prohibition is untouched:** removing a marker already spent is not writing one (N-4).
 
 **The region is maintained by the loop, not by an agent's diligence** — the halt path dispatches a bare `Write {path}` prompt with no preservation obligation (M-7e), so the loop reads the
 file before the dispatch and **re-applies** the region after it. O-5 carries that read-modify-write; O-9's prompt clause is belt-and-braces, not the mechanism.
@@ -257,8 +255,8 @@ state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-)entered. *Then
    (M-1d), never over the whole listing. A feature directory holds cross-reviews for several document
    types at once, and the two readings differ on a constructible fixture (a Phase F region carrying
    `WINDOW-START: 4` with two FSPEC rounds and five REQ rounds: doc-type-scoped ⇒ invalid ⇒ permanent
-   refusal; whole-listing ⇒ granted). One reading must be named because it decides a refusal, and it
-   is the doc-type-scoped one, because a window is a property of a document.
+   refusal; whole-listing ⇒ granted). It is the doc-type-scoped reading, because a window is a
+   property of a document.
 
    **The answering line is written, and confirmed, before the window opens.** That append is the write
    making `A = H`, and the *sole* mechanism keeping the clearance one-shot; a lost append re-grants a
@@ -273,9 +271,10 @@ state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-)entered. *Then
    **Its render is stated here, because step 4's own renders all take an S-16 reason this entry has
    not got** (the region passed steps 1–3): it emits row B's **unconfirmable-append variant** (§5,
    catalogue §3) — `notice` **empty**, no S-16, no S-4 — its ❌ text is §6's *Unconfirmed-append text*,
-   and its recovery text is the **shipped generic** *"set the `{feature}` row in
-   `docs/_queue/QUEUE.md` back to pending, then re-run the queue"* (`orchestrate-dev.js:4926`), reused
-   **on this path alone**: the fault is transient, nothing is hand-repairable, and step 4 has already
+   and its recovery text is the **shipped generic**, pinned as the shipped bytes, prefix and terminator
+   included: `Recover: set the {feature} row in docs/_queue/QUEUE.md back to pending, then re-run the
+   queue.` (`orchestrate-dev.js:4928` — not `:1795`'s different recovery string), reused **on this
+   path alone**: the fault is transient, nothing is hand-repairable, and step 4 has already
    written that row `halted`, so resetting it is the whole repair — the opposite disposition to the
    corrupt-region row, which forbids the same string because re-running reproduces its refusal. O-10
    pins the asymmetry. Two step-4 invariants are **scoped to the validation-failure path** and do
@@ -370,16 +369,13 @@ state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-)entered. *Then
         cross-review file is written, the invocation terminates on step G's path and the queue row is written `halted`. That is a real cost, accepted deliberately (R-11). This is the refusal's **positive control**
         — the only branch on which honouring step 4 and falling back are distinguishable — and O-10 carries it; row B's `round` cell is stated over exactly this branch. **Its fixture is
         hand-built while this REQ ships alone:** both halts that create a region at highest round 2 (`pdlc-rcv-fixed-point-stop` AC-2.1, AC-2.8) belong to a successor (X-05), so until it
-        ships the mid-window state is a legitimate, fully-specified **fixture** rather than a reachable one — which does not weaken §3.1's *fully determined* claim: every branch's
-        behaviour is stated, one is only **production-reachable** once the successor lands;
+        ships the mid-window state is a legitimate, fully-specified **fixture** rather than a reachable one (§3.1);
    5. otherwise `W` = the greatest `WINDOW-START:` value present, or **1** if there is none — read
       **after** any answering line this entry confirmed, so on a granting entry step 5 and clause 4
       agree that `W` = `N`. The grant is part of the algorithm, not a separate rule beside it.
 
    **`H − A ≤ 1` is the invariant clause 4's "exactly one answering line" relies on**, and step 3 gives it a stated domain: it holds on every path the document generates, and a refused
-   entry leaves both counts unchanged. Validating rather than assuming matters because the region sits in a file the
-   operator is *instructed* to edit — on two `HALT-REASON:` lines and no answering line every value-level check passes vacuously, and the loop would grant `H − A − 1` windows
-   beyond the one paid for, on every invocation, fail-**open**.
+   entry leaves both counts unchanged. Validating rather than assuming matters because on two `HALT-REASON:` lines and no answering line every value-level check passes vacuously, and the loop would grant `H − A − 1` windows beyond the one paid for, on every invocation, fail-**open**.
 
    **Step 2's range check is re-evaluated on every read, against the current listing**, not fixed at write time. `harvest-learnings` deletes `CROSS-REVIEW-*` and `POSTMORTEM-*` together, so
    the ordinary path never sees a region outliving its rounds; a sequence that removes the cross-reviews while the post-mortem survives lands in the fail-closed case — S-16, sanctioned
@@ -470,7 +466,7 @@ here: an obligation on the FSPEC, TSPEC, PLAN or PROPERTIES, not a REQ revision.
 | **O-12** | Specify the **answering-line append and its confirmation** on the *granting* path (AC-1.5(4)) — the read-modify-write is O-5's for the halt path, and this is its counterpart for the entry that grants or resumes a window: append one `WINDOW-START:`/`WINDOW-RESUMED:` line at the end of the region, re-read and confirm it **by byte comparison against what was written**, re-running steps 1–3, and dispatch no round until it is confirmed; on an unconfirmable write take the stated fail-closed exit (no window, no round, phase refused, reported like a lost region). Also specify how `W` reaches `deriveRoundWindow` as a **resolved value** so that function and `windowEnd` keep their synchronous, seam-free contract (AC-1.2). | TSPEC |
 | **O-6** | Specify where AC-1.5(4)'s ordered algorithm runs *within the phase body* — the REQ fixes it **after** `phaseGate`'s `{ skip: true }` exit and before any round opens (AC-1.5(4)) — so that a refusal reaches step G's path (M-7a, M-7b) rather than returning early: the entry-validation halts nearby build their final report directly and never call `recordHaltFn`, and a literal early `return` would therefore leave the queue row unwritten. | TSPEC |
 | **O-9** | The post-mortem prompt gains a belt-and-braces clause telling the agent `## Reset Region` (S-12) is machine state to be left alone — the baseline prompt is a bare `Write ${postmortemPath}.` plus a section list (M-7e). **Not the mechanism**; O-5 is. | FSPEC → implementation |
-| **O-10** | Properties and tests for this requirement, including the negative cases named explicitly: **the first halt of a phase** leaving a file with `## Reset Region` and exactly one `HALT-REASON:` line, and the operator's **first** clearance then granting a window; a second halt preserving the region and **stripping** the spent marker so `checkPostmortem` returns `unresolved`; a **fenced** `RESOLVED: yes` surviving the strip while an unfenced one is removed; a region with two `HALT-REASON:` lines and one `WINDOW-START:` granting **exactly one** further window and a region with `A = H` granting none; an S-11 clearance writing `WINDOW-RESUMED: {W}`, leaving `W` unchanged, with a **subsequent** convergence halt then **not** auto-cleared; halt lines and answering lines both **appended**, asserted positionally, with a prepending implementation failing; `WINDOW-START: 4` then `WINDOW-START: 9` at highest round 6 ⇒ `W = 1`; the S-4 reason rendered from the window's own origin, its slots computed from `W`, `windowEnd` and the constant (the `rounds 4..6 of 3` shape is **illustrative**, never a literal expectation); **the counts-mismatch refusal and its recovery leg as a mutation pair** — a region with two `HALT-REASON:` lines and no answering line refusing on that entry **and on a later entry that has not performed the sanctioned repair**, with `RESOLVED: yes` **not** consumed and `reset-region-corrupt: counts-mismatch (H=2, A=0) {path}` in the report, then, after the sanctioned whole-section deletion, the next halt re-creating a one-line region and the operator's **second** clearance opening the window; the same pairing for a **value** repair, with the refusing entry's file byte-unchanged; **the ratchet test** — the refusing entry appends no `HALT-REASON:`, strips no marker, and emits S-16 with the **same** reason next entry; **row B's validation-failure variant** asserted character for character — S-16 alone, **no** S-4 reason; **the refusal's own operator strings** (§6) — the ❌ text `Refused — reset region corrupt at {path} ({reason})` and a recovery text naming *that reason's* sanctioned repair, both asserted character for character, with step G's shipped strings (`Refused — unresolved POSTMORTEM at …` and the pinned queue-reset string) as **negative controls** *for that entry class*, plus `postmortemStatus` asserted **equal to `written`** on **each** refusing entry, with step G's `unresolved` as its negative control and the shipped `No POSTMORTEM was written.` line asserted **absent** from the report; **the unconfirmable-append entry** emitting §6's *Unconfirmed-append text*, row B's **empty** `notice` and — deliberately, on this class alone — the shipped generic queue-reset string as its recovery text, plus its **torn-write legs**, parameterised over the truncation offset: every offset — inside the key, inside the value, newline lost — fails the byte confirmation and refuses on **this** entry, the well-formed `WINDOW-START: 1` case included, and no offset opens a round; and **the mid-window refusal**, the positive control: on a branch whose highest round is 2 with a corrupt region and a fresh clearance, **no round-3 cross-review file is written**, the report carries row B with `round` = 3 and S-16 alone, and the invocation terminates with the queue row `halted` — an implementation that skips step 4 and falls back to `W` = 1 runs round 3 and fails this leg; **the admitted window is exactly `[W, windowEnd(W)]` on every production entry** (AC-1.2), asserted at the seam that opens the round, so a widened default fails. **Every "no round ran" leg is asserted with a positive conjunct, not by absence alone:** a **call-count oracle on the reviewer-dispatch seam** — exactly **0** dispatches on the refusing entry, on the exhausted-budget entry and on the skipped entry, and **≥ 1** on the control entry that does open a round — asserted *alongside* the file-absence check, since a test double that writes no file satisfies absence either way. Also: **row C** asserted cell by cell with its S-4 reason and **0** dispatches; a **forced** phase on an exhausted document halting rather than re-reviewing; a **Phase CR halt creating no `## Reset Region`**; the answering-line write **confirmed before** any dispatch; and both `iterations` and the post-mortem's Iterations section asserted **over the constant**, with rounds-run `0` on the zero-round halt. | PROPERTIES |
+| **O-10** | Properties and tests for this requirement, including the negative cases named explicitly: **the first halt of a phase** leaving a file with `## Reset Region` and exactly one `HALT-REASON:` line, and the operator's **first** clearance then granting a window; a second halt preserving the region and **stripping** the spent marker so `checkPostmortem` returns `unresolved`; a **fenced** `RESOLVED: yes` surviving the strip while an unfenced one is removed; a region with two `HALT-REASON:` lines and one `WINDOW-START:` granting **exactly one** further window and a region with `A = H` granting none; an S-11 clearance writing `WINDOW-RESUMED: {W}`, leaving `W` unchanged, with a **subsequent** convergence halt then **not** auto-cleared; halt lines and answering lines both **appended**, asserted positionally, with a prepending implementation failing; `WINDOW-START: 4` then `WINDOW-START: 9` at highest round 6 ⇒ `W = 1`; the S-4 reason rendered from the window's own origin, its slots computed from `W`, `windowEnd` and the constant (the `rounds 4..6 of 3` shape is **illustrative**, never a literal expectation); **the counts-mismatch refusal and its recovery leg as a mutation pair** — a region with two `HALT-REASON:` lines and no answering line refusing on that entry **and on a later entry that has not performed the sanctioned repair**, with `RESOLVED: yes` **not** consumed and `reset-region-corrupt: counts-mismatch (H=2, A=0) {path}` in the report, then, after the sanctioned whole-section deletion, the next halt re-creating a one-line region and the operator's **second** clearance opening the window; the same pairing for a **value** repair, with the refusing entry's file byte-unchanged; **the ratchet test** — the refusing entry appends no `HALT-REASON:`, strips no marker, and emits S-16 with the **same** reason next entry; **row B's validation-failure variant** asserted character for character — S-16 alone, **no** S-4 reason; **the refusal's own operator strings** (§6) — the ❌ text `Refused — reset region corrupt at {path} ({reason})` and a recovery text naming *that reason's* sanctioned repair, both asserted character for character, with step G's shipped strings (`Refused — unresolved POSTMORTEM at …` and the pinned queue-reset string) as **negative controls** *for that entry class*, plus `postmortemStatus` asserted **equal to `written`** on **each** refusing entry, with step G's `unresolved` as its negative control and the shipped `No POSTMORTEM was written.` line asserted **absent** from the report; **the unconfirmable-append entry** emitting §6's *Unconfirmed-append text*, row B's **empty** `notice` and — deliberately, on this class alone — the shipped generic queue-reset string as its recovery text, plus its **torn-write legs**, parameterised over the truncation offset: every offset — inside the key, inside the value, newline lost — fails the byte confirmation and refuses on **this** entry, the well-formed `WINDOW-START: 1` case included, and no offset opens a round; and **the mid-window refusal**, the positive control: on a branch whose highest round is 2 with a corrupt region and a fresh clearance, **no round-3 cross-review file is written**, the report carries row B with `round` = 3 and S-16 alone, and the invocation terminates with the queue row `halted` — an implementation that skips step 4 and falls back to `W` = 1 runs round 3 and fails this leg; **the admitted window is exactly `[W, windowEnd(W)]` on every production entry** (AC-1.2), asserted at the seam that opens the round, so a widened default fails. **Every "no round ran" leg is asserted with a positive conjunct, not by absence alone:** a **call-count oracle on the reviewer-dispatch seam** — exactly **0** dispatches on **each** refusing entry (both row-B variants), on the exhausted-budget entry and on the skipped entry, and **≥ 1** on the control entry that does open a round — asserted *alongside* the file-absence check, since a test double that writes no file satisfies absence either way. Also: **row C** asserted cell by cell with its S-4 reason and **0** dispatches; a **forced** phase on an exhausted document halting rather than re-reviewing; a **Phase CR halt creating no `## Reset Region`**; the answering-line write **confirmed before** any dispatch; and both `iterations` and the post-mortem's Iterations section asserted **over the constant**, with rounds-run `0` on the zero-round halt. | PROPERTIES |
 | **O-11** | Rebuild `pdlc/workflows/dist/` in the same commit as every workflow-source change, and honour the runtime constraints: no new `import` into the bundle, and **every injected IO call `await`ed** (the adapter's implementations are async; the test doubles are sync, so a missing `await` passes the tests and fails at runtime). | implementation |
 
 ## 9. Risks, assumptions and deferrals
@@ -497,11 +493,10 @@ queue-eligible until an operator specifies it and opts it in.
 | REQ-RCV-01 | M-1a, M-1b, M-1c, M-1d, M-1e; M-7a, M-7b, M-7d, M-7e | P-1 (cost half) | US-01, US-02, US-04 | O-5, O-6, O-9, O-10, O-11, O-12 |
 
 **Why one requirement and not two.** v1.0 carried REQ-RCV-01 and REQ-RCV-02 together at **581 lines
-/ 83 KB**, beyond the 60 KB ceiling and therefore beyond what the loop converges on. v1.1 cuts at
-the seam the two already had: this REQ defines the **window**, and
-`docs/pdlc-rcv-fixed-point-stop/REQ-pdlc-rcv-fixed-point-stop.md` the two **tests** evaluated inside
-it. The ordering argument (`W` must exist before AC-2.1/AC-2.8/AC-2.6) is preserved as a
-`depends-on` edge. No requirement, AC or `S-*` id changed.
+/ 83 KB**, past the 60 KB ceiling; v1.1 cut at the seam they already had — this REQ the **window**,
+`docs/pdlc-rcv-fixed-point-stop/REQ-pdlc-rcv-fixed-point-stop.md` the two **tests** inside it, with
+the ordering argument (`W` before AC-2.1/AC-2.8/AC-2.6) kept as a `depends-on` edge. No requirement,
+AC or `S-*` id changed.
 
 **Round-by-round history is deliberately not restated here:** `harvest-learnings` deletes
 `CROSS-REVIEW-*` once LEARNINGS is written (the predecessor's nine rounds are in
