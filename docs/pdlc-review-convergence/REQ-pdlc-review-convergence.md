@@ -396,8 +396,9 @@ stated over a row marked *in-process only* is a defect in this document.**
 | **First round of the current window** (the post-reset offset) | AC-1.5(3), AC-1.1 | The `WINDOW-START: {N}` line the operator's resolved `POSTMORTEM-{phase}-{feature}.md` carries, beside its recorded `rounds {first}..{last}` window (AC-1.5(3)) | Treated as **1** — i.e. no reset has occurred and the absolute cap of AC-1.1 applies from round 1. Fail-closed: an unparseable or absent marker never widens the window |
 | **Reset consumed** (the reset is one-shot) | AC-1.5(3) | The `WINDOW-START: {N}` line itself: a reset grants exactly the window `N … N+2`, and once the branch carries a round ≥ `N+2` that reset is spent (AC-1.5(3)) | Treated as unconsumed only if `WINDOW-START:` is present and parses; otherwise no reset is in effect at all |
 | `blocking(N)` | AC-2.1 | The **count trailer inside the round's cross-review files**, required there by AC-3.4 and read by `extractFileVerdict` (M-2e) | *unavailable* — AC-2.7 |
-| Panel shape of round N | AC-2.4, AC-3.1 | The role slugs of the files at round N, plus each file's `REVIEW-MODE:` line | *crashed* — not comparable |
-| `bytes(document at start of round N)` | AC-4.1 | The `DOC-BYTES: {n}` anchor line in the round's cross-review files (AC-4.1) | growth *unmeasurable* — AC-4.5 |
+| Panel shape of round N | AC-2.4, AC-3.1 | The **role slugs of the files at round N**, and nothing else | *crashed* — not comparable |
+| `bytes(document as reviewed at round N)` | AC-4.1, AC-2.8 | The `DOC-BYTES: {n}` anchor line in the round's cross-review files, written by AC-4.1's unconditional per-round writer | growth *unmeasurable* — AC-4.5 |
+| `sha256(document as reviewed at round N)` | AC-2.8 | The `DOC-SHA256: {64 hex}` anchor line beside it, same writer, same round | AC-2.8's zero-delta test is **not evaluated** and the round proceeds — fail-open, because a missing anchor must not manufacture a halt |
 | Approval at round N | AC-3.5 | `APPROVAL-HASH:` / `REVIEWED-COMMIT:` / `REVIEW-MODE:` anchors (M-4a) | no approval — fail-closed |
 | Prior rounds' finding ids | AC-3.2(1) | The `## Disposition` section of the verifier's file (AC-3.2) | the disposition is incomplete — AC-3.2 |
 
@@ -407,25 +408,40 @@ purpose: the cross-review file's `KEY: value` anchor block (M-4a, M-4b).
 
 **Closed catalogue of boundary-crossing strings.** DC-01 requires every string that crosses a component
 boundary to be a **closed catalogue on the emitting side and a total function on the receiving side,
-before FSPEC authoring**. This REQ introduces nine. All nine are fixed here — id, exact emitted form,
-emitter, receiver, and the receiver's behaviour on **every** input outside the catalogue. FSPEC may not
-add a tenth without amending this table.
+before FSPEC authoring**. This REQ introduces eleven. All eleven are fixed here — id, exact emitted
+form, emitter, receiver, and the receiver's behaviour on **every** input outside the catalogue. FSPEC
+may not add a twelfth without amending this table.
+
+Two **writers** appear in the Emitter column and they are deliberately different functions:
+
+| Writer | When it runs | What it writes |
+|---|---|---|
+| `appendApprovalAnchors` (M-4a), unchanged | the **approving terminal round only**, inside the existing `gatePass` branch | `APPROVAL-HASH:`, `REVIEWED-COMMIT:` |
+| **`appendRoundAnchors`** — new, named by AC-4.1 | after **every** round's reviewers return, whatever verdict they returned, before AC-2 is evaluated | `DOC-BYTES:`, `DOC-SHA256:`, and on a verifier round `REVIEW-MODE: verification` |
+
+v1.1 assigned all five lines to `appendApprovalAnchors`. That function has one call site and it is
+inside `if (gatePass)`, so on a failed round none of the five was written — and a failed round is the
+only kind AC-2 compares and AC-4 measures (SE F-01, TE F-01). The split is the fix, and it is
+REQ-altitude because it decides which panel gets dispatched.
 
 | id | Exact string | Emitter | Receiver | Receiver is total because |
 |---|---|---|---|---|
-| **S-1** | `REVIEW-MODE: verification` — one line, that exact casing and spacing, in the anchor block | `appendApprovalAnchors` (M-4a) | `tier1ApprovalRecord` (M-3d), AC-2.4's panel-shape read | AC-3.5(e) states all five cases: absent, one exact match, one line with any other value, two or more lines, and a marker on more than one file of the same round |
-| **S-2** | `DOC-BYTES: {n}` — one line, `{n}` a decimal integer ≥ 0, no separators | `appendApprovalAnchors` (M-4a) | AC-4.1's growth computation | AC-4.1 states all four: no anchor, an unparseable value, two or more lines with unequal values, and a non-document target ⇒ *unmeasurable* ⇒ AC-4.5 with the matching S-6 reason. Two or more **equal** lines is an idempotent re-write (M-4b's rule) and reads as one value; **negative growth is measurable and normal** |
+| **S-1** | `REVIEW-MODE: verification` — one line, that exact casing and spacing, in the anchor block | **`appendRoundAnchors`**, on every verifier round (AC-3.5(a)) | `tier1ApprovalRecord` (M-3d) — the **approval** path only. AC-2.4's panel-shape read no longer consults it | AC-3.5(e) states all **six** rows of its table: absent on a lone file, one exact match, one line with any other value, two or more lines in one file, a marker on more than one file of the same round, and a marker on a dual round's file beside an unmarked second file. (v1.1's lead-in said "five" against a six-row table — TE F-05.) |
+| **S-2** | `DOC-BYTES: {n}` — one line, `{n}` a decimal integer ≥ 0, no separators | **`appendRoundAnchors`**, every round (AC-4.1) | AC-4.1's growth computation; AC-2.8's zero-delta test | AC-4.1 states **four inputs producing three reasons**: no anchor (`no-anchor`); an unparseable value and two-or-more unequal lines (both `unreadable-anchor`); a non-document target (`non-document-target`) ⇒ *unmeasurable* ⇒ AC-4.5. Two or more **equal** lines is an idempotent re-write (M-4b's rule) and reads as one value; **negative growth is measurable and normal** (TE MF-02) |
+| **S-10** | `DOC-SHA256: {64 lower-case hex}` — one line, in the same anchor block | **`appendRoundAnchors`**, every round (AC-4.1) | AC-2.8's zero-delta test | AC-2.8 states all four: absent, unparseable, two or more unequal lines, and equal to the previous round's value. The first three ⇒ the test is **not evaluated** and the round proceeds (fail-open, so a missing anchor cannot manufacture a halt); the fourth ⇒ halt with S-11 |
+| **S-11** | Halt reason `no-revision: round {N} document identical to round {N-1}` | AC-2.8's halt path | the post-mortem prompt and the run report (AC-2.2) | a single format string with two round-index slots; nothing else is emitted on this path |
 | **S-3** | Halt reason `fixed-point: round {N} blocking {b(N)} >= round {N-1} blocking {b(N-1)}` | AC-2's halt path | the post-mortem prompt and the run report (AC-2.2) | it is a single format string with two integer and two round-index slots; nothing else is emitted on this path |
-| **S-4** | Halt reason `budget-exhausted: rounds {first}..{last} of {MAX_REVIEW_ROUNDS}` | the existing budget halt (AC-1.4) | same two readers | same |
+| **S-4** | Halt reason `budget-exhausted: rounds 1..3 of 3` — the **rendered** form, three integer slots, no constant name in the user-facing string | the existing budget halt (AC-1.4) | same two readers | same. (v1.1 showed `{MAX_REVIEW_ROUNDS}` interpolated by name here and the rendered form in AC-1.5, so the catalogue entry and its own example disagreed — SE MF-4.) |
 | **S-5** | Report notice `not-comparable: {reason}` where `{reason}` ∈ `{malformed-count, unavailable-count, unequal-panel-shape, crashed-round}` — a closed four-member enum | AC-2.3, AC-2.4, AC-2.7 | the run report row of AC-4.7 | the enum is closed here; a reason outside it is a defect, not a fallback |
 | **S-6** | Report notice `growth-unmeasurable: {reason}` where `{reason}` ∈ `{no-anchor, unreadable-anchor, non-document-target}` — a closed three-member enum | AC-4.5 | the run report row of AC-4.7 | same |
 | **S-7** | Section heading `## Measurement Required`, exactly | the three review SKILLs (AC-5.2) | AC-5.4's extraction | AC-5.5 states absent ⇒ contributes nothing, never an error; a malformed body is carried verbatim |
 | **S-8** | Section heading `## Disposition`, exactly | the verifier (AC-3.2) | AC-3.2(1)'s completeness check and the run report | AC-3.2 states all five cases: absent, unmatched prior id, unknown id, out-of-set disposition value, and the section on a dual round |
-| **S-9** | Findings-table field `New-mechanism: {section or clause reference}` on every blocking finding a verifier raises | the verifier (AC-3.2(2)) | AC-2's count of `high` + `medium`, and the run report | AC-3.2(2) states: empty or absent ⇒ the finding is **not counted** toward AC-2's blocking total and is reported as malformed; the field is ignored on a full-panel reviewer's findings |
+| **S-9** | Findings-table field `New-mechanism: {section or clause reference}` on every blocking finding a verifier raises | the verifier (AC-3.2(2)) | **the verifier itself**, when it composes its own count trailer; and a human or the citation checker reading the file. **Not** the loop: no component deducts anything from the trailer | AC-3.2(2) states the rule as **directive to the emitter**: a verifier does not count a finding it cannot bind to new mechanism, so the trailer it writes already excludes it. The receive side is therefore the ordinary S-2/trailer receive side and needs no new grammar (SE F-03, TE F-03). R-5 records that this half is unenforced |
 
 The **run-report row schema** these notices land in is fixed by AC-4.7 and is part of this catalogue:
 one row per round, columns `round | panel-shape | blocking | growth-bytes | classification | notice`,
-`notice` empty or one of S-3 … S-6. O-8 specifies where it is emitted, not what its columns are.
+`notice` a **possibly-empty list** of S-3 … S-6 and S-11 in the precedence order AC-4.7 fixes. O-8
+specifies where it is emitted, not what its columns are.
 
 ---
 
