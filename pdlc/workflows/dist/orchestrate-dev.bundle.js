@@ -136,9 +136,12 @@ function rtLog(message) {
 // read is chunked, every chunk is size-verified against the bytes it asked for,
 // and anything that cannot be verified throws rather than returning garbage.
 //
-// 24000 source bytes is ~32 KB of base64 per final message — comfortably below
-// the ~100 KB truncation point observed above.
-const RT_READ_CHUNK = 24000;
+// The binding limit is NOT the ~100 KB body truncation above — it is the IO
+// agent's max output tokens: a live chunk agent's Bash tool returned 18,140
+// base64 chars intact, but its final message carried only 9,885 (≈4096 tokens
+// at base64's ~2.4 chars/token). 6000 source bytes is 8,000 base64 chars,
+// ~3.3k tokens — under that cap with margin for the reply's framing.
+const RT_READ_CHUNK = 6000;
 // Per chunk, beyond the first attempt. A truncated or fenced reply is a
 // transport fault, not a property of the file, so a retry is worth taking.
 const RT_READ_RETRIES = 2;

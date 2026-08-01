@@ -113,10 +113,12 @@ describe("rtChunkPlan", () => {
     expect(rtChunkPlan(1, 10)).toEqual([{ offset: 0, count: 1 }]);
   });
 
-  it("keeps the shipped chunk size under the observed truncation point", () => {
-    // ~4/3 base64 expansion; the measured truncation was near 100 KB.
-    expect(RT_READ_CHUNK).toBeLessThanOrEqual(60000);
-    expect(Math.ceil((RT_READ_CHUNK * 4) / 3)).toBeLessThan(100000);
+  it("keeps a chunk's base64 within the IO agent's final-message token cap", () => {
+    // A live agent's final message truncated at 9,885 base64 chars (≈4096
+    // tokens at ~2.4 chars/token) even though its tool result held the full
+    // 18,140. The shipped chunk must encode to fewer chars than that observed
+    // ceiling, with headroom.
+    expect(Math.ceil((RT_READ_CHUNK * 4) / 3)).toBeLessThanOrEqual(8000);
   });
 });
 
@@ -194,7 +196,7 @@ describe("rtReadFile", () => {
     const contents = bigDocument();
     const agent = fileAgent({ "docs/f/TSPEC-f.md": contents }, (prompt, reply) => {
       // Chunk 1 is always short; every other chunk is honest.
-      if (/tail -c \+/.test(prompt) && /\+24001 /.test(prompt)) {
+      if (prompt.includes(`tail -c +${RT_READ_CHUNK + 1} `)) {
         return reply.slice(0, Math.floor(reply.length / 8) * 4);
       }
       return undefined;
@@ -204,8 +206,8 @@ describe("rtReadFile", () => {
     await expect(rtReadFile("docs/f/TSPEC-f.md")).rejects.toThrow(
       /chunk 1 of "docs\/f\/TSPEC-f\.md"/
     );
-    // Attempts are bounded: 1 size probe + 3 honest chunks + the retries of chunk 1.
-    const failing = agent.calls.filter((c) => /\+24001 /.test(c.prompt));
+    // Attempts are bounded: the honest chunks resolve once; chunk 1 retries out.
+    const failing = agent.calls.filter((c) => c.prompt.includes(`tail -c +${RT_READ_CHUNK + 1} `));
     expect(failing).toHaveLength(RT_READ_RETRIES + 1);
   });
 
@@ -230,7 +232,7 @@ describe("rtReadFile", () => {
     // null check that would concatenate `undefined` into the document.
     const contents = bigDocument();
     const agent = fileAgent({ "docs/f/TSPEC-f.md": contents }, (prompt) =>
-      /tail -c \+24001 /.test(prompt) ? "not base64 at all" : undefined
+      prompt.includes(`tail -c +${RT_READ_CHUNK + 1} `) ? "not base64 at all" : undefined
     );
     const { rtReadFile } = loadAdapter({ agent, parallel: hostParallel });
     await expect(rtReadFile("docs/f/TSPEC-f.md")).rejects.toThrow(/chunk 1/);
