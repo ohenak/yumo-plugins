@@ -104,6 +104,56 @@ here but consume none of it (§10), so neither gains a `depends-on` edge.
 
 ## 4. Definitions and the catalogue ids this REQ reads
 
+Every term used with a family meaning — *reset region*, *current window* / origin `W`, *phase
+refusal*, *approval refusal* — is defined in `docs/_constraints/pdlc-rcv-catalogue.md` §1 and **not**
+restated here. §2 holds the closed catalogue `S-1 … S-17`, §3 the run-report row schema, and §4 row
+B's unconfirmable-append render.
+
+**This REQ owns no catalogue id.** The catalogue is closed at seventeen and this REQ mints none; it
+**reads** five ids that `pdlc-rcv-budget-stop` owns and states the receive side the catalogue's
+`Receiver is total because` column already attributes to *"AC-1.5(4)'s ordered algorithm"* — which is
+AC-7.1 below. Where catalogue §2 says *AC-1.5(4)'s ordered algorithm*, read **AC-7.1**; that
+delegation is stated in `REQ-RCV-01` §4 and is the only sense in which any catalogue row moved.
+
+| id | Owned by | What this REQ does with it |
+|---|---|---|
+| **S-12** `## Reset Region` | budget-stop (AC-1.4) | AC-7.1 reads it. Its absent/empty case (`H = A = 0`, `W = 1`) is S-12's, not this REQ's |
+| **S-13** `WINDOW-START: {N}` | budget-stop (AC-1.5(4)) | AC-7.1 step 2 validates its value; AC-7.5 confirms its bytes; AC-7.4 fixes the one sanctioned deletion of it |
+| **S-14** `WINDOW-RESUMED: {W}` | budget-stop (AC-1.5(5)) | AC-7.1 step 2 validates its value; AC-7.5 confirms its bytes on the same terms |
+| **S-15** `HALT-REASON: {value}` | budget-stop (AC-1.4 clause 1) | AC-7.1 step 1 counts it. This REQ never writes one, and AC-7.2 turns on its **not** being written |
+| **S-16** `reset-region-corrupt: {reason} (H={h}, A={a}) {path}` | budget-stop | AC-7.1 step 4 is the sole emitter. Its render — including the bracketed offending line on the two value reasons — is fixed **character for character in catalogue §2 and nowhere else**, and its `{reason}` enum stays closed at three |
+
+**Four operator-facing renders are not catalogue ids and are cited, not restated.** Row B's
+unconfirmable-append variant's ❌ text, its recovery text, its `postmortemStatus` and its residue
+disposition are fixed in **catalogue §4**, which holds them beside the row they discriminate and
+beside the `M-8*` facts they rest on. §6 below registers each by name and authority; AC-7.5 and
+AC-7.6 state the **conditions** under which the variant is emitted, which catalogue §4 explicitly
+leaves to this family. The validation-failure variant's ❌ text and recovery text are §6's own.
+
+**FSPEC may not add an eighteenth catalogue id**, here or anywhere in the family.
+
+### 4.1 Durability: what survives an invocation boundary
+
+The loop re-derives its state from the branch on every invocation (M-1d, M-2f), so **every** quantity
+below has a durable home on disk. There is no criterion here stated over in-process state, and one
+would be a defect.
+
+| Quantity | Read by | Durable home | If absent |
+|---|---|---|---|
+| The region's line sequence, **in document order** | AC-7.1 steps 1–2 | The `## Reset Region` span of `POSTMORTEM-{phase}-{feature}.md`, outside fenced blocks (S-12, M-7d). Every line is appended, so document order is event order | The empty region: `H = A = 0`, `W = 1`, no reset in effect, nothing granted (S-12) |
+| The counts `H` and `A` | AC-7.1 steps 1, 3 | Derived from that same span on every read — **never** cached, never carried across an entry | n/a — a readable region always yields two integers, possibly both 0 |
+| The highest round of **the document type under review** | AC-7.1 step 2's range check; AC-7.6's `round` cell | The `CROSS-REVIEW-{role}-{docType}-v{N}.md` basenames `deriveRoundWindow` already filters by `docType` (M-1d) | Treated as 0; the range check admits only `WINDOW-START: 1` |
+| The bytes of the answering line **as written** | AC-7.5's confirmation | Held for the duration of one write-then-read pair inside a single entry, and compared against a **re-read of the file**. It is the only in-entry value here, and it is not state: nothing reads it on a later entry, and a crash between write and read lands on AC-7.5's *anything else* branch | n/a — an entry that does not reach the write has nothing to confirm |
+| Whether the operator has cleared the halt | AC-7.2's *marker left in place* | The single unfenced `RESOLVED:` line, read by `parseResolvedMarker` and mapped by `checkPostmortem` (M-7a) | Absent, `no`, unparseable or duplicated ⇒ the shipped step-G refusal fires first and this REQ's criteria are never reached |
+
+**"The highest round on the branch" always means: of the document type under review.** Every such
+phrase below — step 2's range check, row B's `round` cell — is taken over the doc-type-filtered
+basenames (M-1d), never over the whole listing. A feature directory holds cross-reviews for several
+document types at once, and the two readings differ on a constructible fixture: a Phase F region
+carrying `WINDOW-START: 4` with two FSPEC rounds and five REQ rounds is **invalid** under the
+doc-type-scoped reading (permanent refusal until repaired) and **valid** under the whole-listing one.
+It is the doc-type-scoped reading, because a window is a property of a document.
+
 ## 5. Acceptance criteria
 
 ## 6. Declared thresholds
