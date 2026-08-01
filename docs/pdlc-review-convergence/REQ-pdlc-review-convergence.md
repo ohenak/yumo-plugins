@@ -581,16 +581,38 @@ This REQ changes *when* the halt happens, not *what* a halt is.
 **Two things about that write do change, because this REQ puts machine-written state in that file.**
 `POSTMORTEM-{phase}-{feature}.md` is a **fixed** path — it is not versioned as `CROSS-REVIEW-…-v{N}` and
 `CODE_REVIEW-…-v{N}` are — so a document that halts twice has its post-mortem written twice, and the
-reset region (§5, S-12) lives there. Therefore, on **every** halt that finds an existing post-mortem:
+reset region (§5, S-12) lives there. Therefore, on **every** halt, without exception:
 
-1. **the reset region is preserved** — every `WINDOW-START:` (S-13), `WINDOW-RESUMED:` (S-14) and
-   `HALT-REASON:` line already in `## Reset Region`, in document order — and the halt **appends its own
-   `HALT-REASON:` line to the end of that region**, so document order is halt order and AC-1.5(5)'s
-   *"the last `HALT-REASON:`"* means *"the most recent halt's"* (SE v5 G-11). Nothing is written above
-   the preserved lines and nothing between them;
-2. **any `RESOLVED:` line already in the file is stripped**, wherever it sits. The new post-mortem is
-   therefore **unresolved on arrival**, and the operator must clear *this* halt before the phase runs
-   again.
+1. **the reset region exists after the halt, and it carries this halt's line.** A halt that finds **no
+   existing post-mortem** — the first halt of a phase, which is the halt that creates the file —
+   **creates `## Reset Region` containing exactly one `HALT-REASON:` line, its own**. A halt that finds
+   an existing post-mortem **preserves** the region — every `WINDOW-START:` (S-13), `WINDOW-RESUMED:`
+   (S-14) and `HALT-REASON:` (S-15) line already in `## Reset Region`, in document order — and
+   **appends its own `HALT-REASON:` line to the end of that region**. Nothing is written above the
+   preserved lines and nothing between them. Both cases are one rule under O-5's read-modify-write: the
+   captured region of a file that does not exist is the **empty region**, and re-applying it plus this
+   halt's line yields a one-line region. So `H` — the count of `HALT-REASON:` lines — is **exactly the
+   number of halts this document has taken**, on every path, and AC-1.5(5)'s *"the last
+   `HALT-REASON:`"* means *"the most recent halt's"* (SE v5 G-11, TE v6 F-01, SE v6 MF-3);
+2. **any `RESOLVED:` line already in the file is stripped** — every **unfenced** one, wherever in the
+   file it sits. The new post-mortem is therefore **unresolved on arrival**, and the operator must
+   clear *this* halt before the phase runs again. The strip is scoped to unfenced lines because every
+   other reader in this document is: `parseResolvedMarker` counts only unfenced lines
+   (`pdlc/workflows/orchestrate-dev.js:953-958`, via `scanLines` `:569`), and §5's *reset region*, S-12
+   and §6's `## Reset Region` row all read *"outside any fenced block"*. A fenced `RESOLVED: yes` is
+   invisible to the gate either way, so scoping the strip changes no decision and keeps the document to
+   **one** scoping rule instead of two — and it stops the halt path editing prose inside a human's code
+   fence, which a post-mortem for *this* feature will certainly contain (SE v6 G-17).
+
+**Why the first halt is stated and not left to inference.** Clause 1 was scoped to *"every halt that
+finds an existing post-mortem"* in v1.4, which left the creating halt — the common case — governed by
+nothing: AC-1.5(5) *appends to the region*, which presupposes one, and §6's `## Reset Region` row
+delegates back to this AC. Under the resulting reading the first post-mortem has no region, so `H = 0`,
+so AC-1.5(4)'s gate `A < H` is false, so the operator's **first** clearance is silently swallowed and
+the phase halts again on the budget path — self-healing on the second clearance, which is the worst
+shape an operator-facing failure can take (TE v6 F-01). Stating the obligation over every halt also
+gives a PROPERTIES author the falsifying test the v1.4 text did not entitle them to: *first halt of a
+phase ⇒ the post-mortem carries `## Reset Region` with exactly one `HALT-REASON:` line* (O-10).
 
 Clause 2 is not fastidiousness; without it the mechanism is broken in both directions, because
 `RESOLVED:` is a **single-valued, human-owned, fail-closed marker** and never a counter.
