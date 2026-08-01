@@ -59,6 +59,38 @@ the shared catalogue whose row-B definition it contradicts.
 
 ## 5. Positive Observations
 
+- **O-10's negative controls are the strongest single edit in this revision.** v2 F-01 asked for an
+  assertion; what landed asserts the two strings *and* names the two shipped strings an
+  implementation would otherwise reach for as **negative controls**, by their exact text. That
+  converts a leg that could be satisfied by accident into one that fails for the specific,
+  identified reason it exists to catch. Very few review findings get closed with a test that names
+  the wrong answer as well as the right one.
+- **The revision paid for its additions instead of growing.** Four substantive additions landed for
+  a net +436 bytes, funded by compressing eleven justification paragraphs — and I checked the
+  compressions, not just the byte count: none of them dropped an obligation. *"the only two
+  reachable states of the alternative, and opposite failures"*, *"closed but **absorbing**, and no
+  clearance repairs it"*, *"both counts stay true"* all preserve their arguments in fewer words.
+  The one place I looked hardest — AC-1.4 clause 2's disjoint-sets argument — kept both quantifiers
+  and dropped only the restatement.
+- **The unconfirmable-append case was recognised as needing its own render at all.** The easy
+  revision was to leave step 4's existing strings covering it by implication. Instead the REQ
+  noticed that *"step 4's own renders all take an S-16 reason this entry has not got"* — which is
+  exactly right and is the kind of thing that is normally discovered in implementation. F-01 is
+  about where that new row is registered, **not** about the observation, which is correct and was
+  the document's own to make.
+- **The two step-4 invariants that do not hold on the new path are named rather than left to
+  collide.** *"the file is not byte-unchanged"* and *"the ratchet's *same reason next entry* has no
+  reason to be stable"* are both scoped explicitly to the validation-failure path. A document that
+  adds a branch and does not go back to check which of its existing invariants that branch breaks
+  is how contradictory test suites get written; this one went back and checked. F-03 is that the
+  check found two and stopped at two.
+- **§6's scope statement resolves v2 F-02 by making the authority explicit per row.** *"Both have a
+  registered authority — the catalogue, or this table"* is the sentence that makes the family-level
+  consistency check possible: every row now points somewhere, so a future reviewer of the baseline
+  can enumerate what is deliberately absent from it rather than inferring it. That principle is
+  precisely what F-01 says has not yet been applied to the new **row**, as opposed to the new
+  string.
+
 ## 6. Recommendation
 
 ## Verdict
