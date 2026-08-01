@@ -148,7 +148,7 @@ A feature can pass criteria 1–5 in isolation and still ship a defect: it can s
 
 ## Execution Steps
 
-1. **Identify the feature branch and its changed files.** `git diff --name-only` against the default branch scopes the implementation scan. The spec documents are read regardless — they define what "done" means.
+1. **Identify the feature branch and its changed files.** Verify the working tree is on `feat-{feature-name}` before scoping anything: run `git rev-parse --abbrev-ref HEAD` and confirm it prints `feat-{feature-name}`. Only check out the branch when invoked standalone and the tree is confirmed not already on it — never while dispatched by the orchestrator. `git diff --name-only` against the default branch scopes the implementation scan. The spec documents are read regardless — they define what "done" means.
 
 2. **Read the specs first.** Before scanning code, read `REQ-{feature}.md`, `FSPEC-{feature}.md`, and `PROPERTIES-{feature}.md`. Extract every acceptance criterion, functional requirement, error case, and property into a working checklist. This is criterion 5's input.
 
@@ -166,7 +166,7 @@ A feature can pass criteria 1–5 in isolation and still ship a defect: it can s
 
 9. **Write `CODE_REVIEW-{feature}-v{N}.md`** (format below). Record every violation from all six criteria with a Scope tag. Do not fix anything.
 
-10. **Commit and push the review file.** `git add docs/{feature}/CODE_REVIEW-{feature}-v{N}.md && git commit -m "dod: code review v{N} for {feature}"` then push. The file is a tracked process artifact (harvested and deleted in Phase H, like cross-reviews).
+10. **Commit and push the review file.** Immediately before committing, re-run `git rev-parse --abbrev-ref HEAD` and confirm it still prints `feat-{feature-name}`. If it prints anything else — especially `main` — STOP and report the mismatch; never commit to the default branch. Then `git add docs/{feature}/CODE_REVIEW-{feature}-v{N}.md && git commit -m "dod: code review v{N} for {feature}"` then push. The file is a tracked process artifact (harvested and deleted in Phase H, like cross-reviews).
 
 11. **Emit the trailer.**
 

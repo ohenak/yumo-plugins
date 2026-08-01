@@ -40,8 +40,9 @@ Concrete manifestations of this mindset:
 
 ## Git Workflow
 
-1. **Before starting:** check out or create the feature branch `feat-{feature-name}`. Pull latest from remote.
-2. **After completing:** write the cross-review file, stage, commit, and push.
+1. **Before starting:** when dispatched by the orchestrator, the shared working tree is already on `feat-{feature-name}` — verify, don't check out: run `git rev-parse --abbrev-ref HEAD` and confirm it prints `feat-{feature-name}`. Reviewer agents run in parallel in this same tree, so never `git checkout` here — checkout is only for a standalone invocation, outside the parallel review fan-out, where the tree is confirmed not already on the feature branch.
+2. **Immediately before committing:** re-run `git rev-parse --abbrev-ref HEAD`. If it prints anything other than `feat-{feature-name}` — especially `main` — STOP and report the mismatch; never commit the cross-review file to the default branch.
+3. **After completing:** write the cross-review file, stage, commit, and push.
 
 ---
 
@@ -56,7 +57,7 @@ Before issuing a recommendation, read `docs/_constraints/DOMAIN-CONSTRAINTS.md` 
 1. Read the document under review alongside the approved REQ and FSPEC.
 2. Evaluate through the product lens only (see scope above).
 3. Write structured feedback to the cross-review file (see format below).
-4. Commit and push.
+4. Re-verify the branch per **Git Workflow** step 2, then commit and push.
 
 ---
 

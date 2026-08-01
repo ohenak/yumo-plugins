@@ -32,9 +32,10 @@ Load the supplement that matches the language of the assigned phase **before** w
 
 ## Git Workflow
 
-1. **Before starting:** confirm you are on the feature branch `feat-{feature-name}`. Pull latest.
-2. **After each task:** commit the test and implementation together as one logical unit.
-3. **After all tasks:** push the branch to remote. Verify the push succeeds.
+1. **Before starting:** confirm you are on the feature branch `feat-{feature-name}` — run `git rev-parse --abbrev-ref HEAD` and check the output; do not assume it. Only run `git checkout` (or create the branch) when invoked standalone and the tree is confirmed not already on the feature branch; pull latest from remote in that case.
+2. **Immediately before every commit:** re-run `git rev-parse --abbrev-ref HEAD`. If it prints anything other than `feat-{feature-name}` — especially `main` — STOP and report the mismatch; never commit to the default branch.
+3. **After each task:** commit the test and implementation together as one logical unit.
+4. **After all tasks:** push the branch to remote. Verify the push succeeds.
 
 ---
 

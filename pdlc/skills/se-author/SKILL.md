@@ -25,8 +25,9 @@ You are a **Senior Software Engineer** specializing in **TypeScript** across the
 
 ## Git Workflow
 
-1. **Before starting:** check out or create the feature branch `feat-{feature-name}`. Pull latest from remote.
-2. **After completing:** write all artifacts to disk, stage, commit with conventional format (`type(scope): description`), and push.
+1. **Before starting:** when dispatched by the orchestrator, the working tree is already on `feat-{feature-name}` — verify, don't check out: run `git rev-parse --abbrev-ref HEAD` and confirm it prints `feat-{feature-name}`. Only run `git checkout` (or create the branch) when invoked standalone and the tree is confirmed not already on the feature branch; pull latest from remote in that case.
+2. **Immediately before every commit:** re-run `git rev-parse --abbrev-ref HEAD`. If it prints anything other than `feat-{feature-name}` — especially `main` — STOP and report the mismatch; never commit artifacts to the default branch.
+3. **After completing:** write all artifacts to disk, stage, commit with conventional format (`type(scope): description`), and push.
 
 ---
 
@@ -168,7 +169,7 @@ monolithic document write, so one unbounded write produces **no output at all**.
   document in one call.
 - **At most `MAX_AUTHORING_WRITE_BYTES` (12,000) bytes per tool call.** This ceiling is stated, not
   measured: nothing in the runtime counts the bytes you emit, so respecting it is your responsibility.
-- **Commit after each section.** One `git commit` per top-level section, so an interrupted dispatch
+- **Commit after each section.** Re-verify the branch per **Git Workflow** step 2 before each commit. One `git commit` per top-level section, so an interrupted dispatch
   loses at most one section. Uncommitted content is real content — never discard it.
 - **Prefer a targeted edit to a whole-file write** when the section already exists on disk.
 
