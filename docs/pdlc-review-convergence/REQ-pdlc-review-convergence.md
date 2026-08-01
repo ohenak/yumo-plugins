@@ -11,13 +11,56 @@ depends-on: [pdlc-review-loop-hardening]
 | Upstream | `docs/completed/pdlc-review-loop-hardening/POSTMORTEM-R-pdlc-review-loop-hardening.md` (v1.0) root causes 1–3 and recommendations R-4, R-5, R-6; `docs/completed/pdlc-review-loop-hardening/LEARNINGS-pdlc-review-loop-hardening.md` §2, §4, §5.3; operator direction of 2026-07-29 |
 | Downstream | `FSPEC-pdlc-review-convergence.md`; every subsequent `docs/_queue/QUEUE.md` row, all of which are reviewed by the loop this REQ changes |
 | Targets | `pdlc/workflows/orchestrate-dev.js`; a new library under `pdlc/workflows/lib/`; the three review SKILLs (`pm-review`, `se-review`, `te-review`); the three author SKILLs (`pm-author`, `se-author`, `te-author`); generated artifacts under `pdlc/workflows/dist/` rebuilt in the same commit |
-| Cross-Reviews | `docs/pdlc-review-convergence/CROSS-REVIEW-software-engineer-REQ-v1.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-test-engineer-REQ-v1.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-software-engineer-REQ-v2.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-test-engineer-REQ-v2.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-software-engineer-REQ-v3.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-test-engineer-REQ-v3.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-software-engineer-REQ-v4.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-test-engineer-REQ-v4.md`. **This row is maintained per round** — the revision that answers round N adds round N's two files — so a missing later round is a mechanical fix, not a finding (SE v4 MF-4). |
+| Cross-Reviews | `docs/pdlc-review-convergence/CROSS-REVIEW-software-engineer-REQ-v1.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-test-engineer-REQ-v1.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-software-engineer-REQ-v2.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-test-engineer-REQ-v2.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-software-engineer-REQ-v3.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-test-engineer-REQ-v3.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-software-engineer-REQ-v4.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-test-engineer-REQ-v4.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-software-engineer-REQ-v5.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-test-engineer-REQ-v5.md`. **This row is maintained per round** — the revision that answers round N adds round N's two files — so a missing later round is a mechanical fix, not a finding (SE v4 MF-4). |
 | LEARNINGS | `docs/pdlc-review-convergence/LEARNINGS-pdlc-review-convergence.md` |
-| Citation baseline | Every `file:line` reference in this document was read from the working tree at **`9486c81`** on the **default branch `main`**, tree clean. The v1.0 header pinned `d11dad5` on `feat-pdlc-review-loop-hardening`, which is *not* an ancestor of `main` and therefore not reachable from where this document is reviewed (SE F-08); the predecessor feature has since merged (`7bc559a`), so the baseline is restated over the default branch and every row in §4 was re-verified against it. Per the convention this repo adopted after `CROSS-REVIEW-software-engineer-REQ-v1` F-05 on the predecessor feature, **every** citation below names its enclosing symbol *and* a distinctive literal alongside the line number, so a line drift narrows the reader's search rather than invalidating the claim. Citations are written **repo-root-relative** (`pdlc/workflows/orchestrate-dev.js:52`) — the closed grammar AC-6.4 defines. A citation that names only a line number, or only a basename, is a defect in this document; report it as a mechanical fix, not a finding (see AC-6). **The baseline is a fixed commit, not "HEAD".** `9486c81` is an ancestor of `main`, so every citation below resolves there; `main` has since advanced and `pdlc/workflows/orchestrate-dev.js` has gained ~217 lines, so a reader checking a row at a *later* commit should navigate by the row's named symbol and distinctive literal — which is exactly the drift tolerance the convention exists to provide — rather than by the line number alone (TE v3 MF-03). Re-baselining is a mechanical fix, not a finding. |
+| Citation baseline | Every `file:line` reference in this document was read from the working tree at **`9486c81`** on the **default branch `main`**, tree clean. The v1.0 header pinned `d11dad5` on `feat-pdlc-review-loop-hardening`, which is *not* an ancestor of `main` and therefore not reachable from where this document is reviewed (SE F-08); the predecessor feature has since merged (`7bc559a`), so the baseline is restated over the default branch and every row in §4 was re-verified against it. Per the convention this repo adopted after `CROSS-REVIEW-software-engineer-REQ-v1` F-05 on the predecessor feature, **every** citation below names its enclosing symbol *and* a distinctive literal alongside the line number, so a line drift narrows the reader's search rather than invalidating the claim. Citations are written **repo-root-relative** (`pdlc/workflows/orchestrate-dev.js:52`) — the closed grammar AC-6.4 defines. A citation that names only a line number, or only a basename, is a defect in this document; report it as a mechanical fix, not a finding (see AC-6). **The baseline is a fixed commit, not "HEAD".** `9486c81` is an ancestor of `main`, so every citation below resolves there; `main` has since advanced and `pdlc/workflows/orchestrate-dev.js` has gained ~217 lines, so a reader checking a row at a *later* commit should navigate by the row's named symbol and distinctive literal — which is exactly the drift tolerance the convention exists to provide — rather than by the line number alone (TE v3 MF-03). Re-baselining is a mechanical fix, not a finding. **v1.4 re-verified every citation this document makes against `9486c81` itself, line by line.** v1.3 added five rows whose line numbers were read at `main` rather than at the baseline — off by a constant ~+152 lines — and one (`writePostmortem`) named a symbol that exists at neither commit; that is not drift, it is two baselines mixed in one document, which falsifies the universal claim this row makes (TE v5 F-05, SE v5 MF-1). All five are corrected below to their `9486c81` values, and the citations v1.4 itself adds were read there in the same pass. |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude + operator | 1.3 | 2026-07-31 |
+| pdlc | draft | Claude + operator | 1.4 | 2026-07-31 |
+
+> **Revision note (v1.4).** This version answers round 5. Both panels again closed **every** prior
+> finding, and every round-5 finding lies in text v1.3 added — six of the seven in the three mechanisms
+> v1.3 introduced. §10.9 maps each one. Six things changed:
+>
+> 1. **`RESOLVED:` is no longer overloaded as a counter, and the halt path leaves the file unresolved
+>    (SE G-07, TE F-02).** `parseResolvedMarker` (`pdlc/workflows/orchestrate-dev.js:953`) reads **every**
+>    unfenced `RESOLVED:` line and returns `duplicated` — fail-closed — for more than one (`:961`), and
+>    `checkPostmortem` (`:2440`) maps anything but a single `yes` to `unresolved` (`:2446-2447`). v1.3's
+>    preservation rule therefore either left a stale `RESOLVED: yes` that made the *next* halt read as
+>    already resolved (fail-open on the repo's central gate), or accumulated a second one that bricked
+>    the phase permanently. AC-1.4 now has the halt path **strip** any prior `RESOLVED:` line while
+>    preserving the rest of the reset region, so exactly one marker can ever exist and every halt demands
+>    a fresh human clearance.
+> 2. **One-shot is restated over lines that may legally repeat (SE G-07, TE F-01).** The reset region
+>    accounts `H` — `HALT-REASON:` lines — against `A` — `WINDOW-START:` **plus** `WINDOW-RESUMED:` lines.
+>    A clearance is unconsumed exactly when `A < H`, and **every** clearance writes exactly one answering
+>    line: `WINDOW-START:` on a convergence halt, the new `WINDOW-RESUMED: {W}` on an S-11 halt. The
+>    S-11 path therefore no longer banks a free window for the next fixed-point halt, and it gains a
+>    positive artifact a test can assert on.
+> 3. **The reset region is a named section, and the loop maintains it deterministically (TE Q-07,
+>    TE MR-05).** It is `## Reset Region` (S-12), scanned outside fenced blocks; each halt **appends** its
+>    own `HALT-REASON:` to the end of it, so document order is halt order and AC-1.5(5)'s *"last"* means
+>    *"most recent"* (SE G-11). The region is written by the loop around the agent's post-mortem write,
+>    not by asking an agent to preserve bytes.
+> 4. **The first round of every window is treated exactly as round 1 (TE F-03).** Round `W` dispatches
+>    the full panel, is not compared by AC-2.1, is not tested by AC-2.8, and has no measured growth. v1.3
+>    scoped two ACs to the window and left AC-3.1, AC-3.2 and AC-4.1 unscoped, which let a single verifier
+>    approve the byte-identical document a full panel had just rejected.
+> 5. **The trailer reader stops, and a duplicated `VERDICT:` is classified (SE G-08, SE G-09).** AC-3.4
+>    step 2's scan stops at the first candidate, so steps 4–5 no longer quantify over a set that cannot
+>    have two members; and `extractFileVerdict`'s third return value (`duplicated`,
+>    `pdlc/workflows/orchestrate-dev.js:904`) now has a row in AC-2.7 ⇒ *malformed*.
+> 6. **`HALT-REASON:`, `WINDOW-START:` and `WINDOW-RESUMED:` are catalogue members with §6 rows
+>    (TE F-06, SE MF-2).** One `HALT-REASON:` line per halt, carrying the `; `-joined render of every
+>    reason that halt raised in AC-4.7's order — so the co-occurring-halt line O-10 requires a test for
+>    has exactly one expected literal.
+>
+> Also: AC-1.5(4)'s receive side is restated as an ordered algorithm (TE F-04), R-9's demonstration is
+> restated over counts that are obtainable from the branch (TE F-07), the AC-2.8 halt row's empty cells
+> are justified as a presentation choice rather than as an absence of sources (SE G-12), every v1.3
+> citation is corrected to the declared baseline (TE F-05, SE MF-1), and both mechanical-fix lists are
+> applied.
 
 > **Revision note (v1.3).** This version answers round 4. Both panels closed **every** prior finding
 > (SE F-01…F-08, TE F-01…F-07) and every round-4 finding lies in text v1.2 added. §10.8 maps each one.
