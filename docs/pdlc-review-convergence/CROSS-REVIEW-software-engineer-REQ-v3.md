@@ -106,7 +106,28 @@ report and, at harvest, in process learnings.
 
 ## Questions
 
+Q-01 … Q-05 from v2 are all still open and are not restated here; they are the fastest route into
+F-01 … F-05 and the author should answer them from
+`docs/pdlc-review-convergence/CROSS-REVIEW-software-engineer-REQ-v2.md`. One new question, addressed to
+the operator rather than to the author:
+
+| ID | Question |
+|----|---------|
+| Q-06 | Did the authoring step between rounds 2 and 3 fail, or was it not dispatched? The REQ has no round-2 revision note, no version bump and no commit. Whichever it is, round 3 has consumed a round of a 5-round budget without a target to review, and rounds 4 and 5 will do the same unless the author step runs. |
+
 ## Positive Observations
+
+Nothing changed, so nothing new can be observed. v2's six positive observations stand as written —
+in particular that §5's durability table generalises the round-1 Highs into one property of the
+document, that §5's closed catalogue is a complete DC-01 discharge, and that AC-2.6's
+reachable-sequence table is a model of how to retract a claim. None of that is diminished by this
+round; it is simply unrepeated.
+
+One thing worth saying positively about the *state*: all five open findings remain closable without
+new mechanism. F-01 needs a writer named that runs per round; F-02 needs the comparability test
+stated over the on-disk role-slug set; F-03 needs one of two readings the document already contains to
+be chosen; F-04 and F-05 are one clause each. That estimate is unchanged from round 2 and is not
+degrading with time — the document is not drifting, it is stationary.
 
 ## Recommendation
 
