@@ -268,7 +268,7 @@ describe("rtReadFile", () => {
     const contents = bigDocument();
     const agent = fileAgent({ "docs/f/TSPEC-f.md": contents }, (prompt, reply) =>
       /wc -c/.test(prompt)
-        ? reply.replace(/[0-9a-f]{64}/, "ab".repeat(32))
+        ? reply.replace(/[0-9a-f]{64}/g, "ab".repeat(32))
         : undefined
     );
     const { rtReadFile } = loadAdapter({ agent, parallel: hostParallel });
@@ -369,6 +369,40 @@ describe("rtReadFile", () => {
     expect(await rtReadFile("docs/f/REQ-f.md")).toBe(contents);
     expect(models.slice(0, 2)).toEqual([adapter.RT_IO_MODEL, adapter.RT_IO_MODEL]);
     expect(models[2]).toBe("sonnet");
+  });
+
+  it("retries the probe when its two digest transcriptions disagree", async () => {
+    // The live defect: one flipped hex digit in the probe's digest sank an
+    // otherwise perfect read (run wf_52840d61-aee). Two copies must agree.
+    const contents = "hello world\n";
+    let flippedOnce = false;
+    const agent = fileAgent({ "docs/f/REQ-f.md": contents }, (prompt, reply) => {
+      if (!flippedOnce && /wc -c/.test(prompt)) {
+        flippedOnce = true;
+        return reply.replace(/[0-9a-f]{64}/, "ab".repeat(32)); // first copy only
+      }
+      return undefined;
+    });
+    const { rtReadFile } = loadAdapter({ agent, parallel: hostParallel });
+    expect(await rtReadFile("docs/f/REQ-f.md")).toBe(contents);
+    expect(flippedOnce).toBe(true);
+  });
+
+  it("accepts a verified reassembly when a fresh re-probe confirms it", async () => {
+    // A consistently-flipped digest passes the two-copy check; the reassembly
+    // then mismatches, and the fresh re-probe — not the throw — decides.
+    const contents = bigDocument();
+    let probes = 0;
+    const agent = fileAgent({ "docs/f/TSPEC-f.md": contents }, (prompt, reply) => {
+      if (/wc -c/.test(prompt)) {
+        probes++;
+        if (probes === 1) return reply.replace(/[0-9a-f]{64}/g, "ab".repeat(32));
+      }
+      return undefined;
+    });
+    const { rtReadFile } = loadAdapter({ agent, parallel: hostParallel });
+    expect(await rtReadFile("docs/f/TSPEC-f.md")).toBe(contents);
+    expect(probes).toBe(2);
   });
 
   it("uses the cheap IO model for every call on the happy path", async () => {

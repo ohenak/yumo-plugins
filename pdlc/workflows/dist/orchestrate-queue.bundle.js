@@ -341,11 +341,15 @@ async function rtReadChunk(path, range, index) {
  * cannot be chunked below one line, so it fails loudly after retries. Every
  * artifact this pipeline reads is line-structured markdown.
  */
-async function rtReadFile(path) {
-  // Probe: size, newline count, whether the last byte is a newline, whole-file
-  // digest. Four short values — the transcription-hostile payload never rides
-  // in this reply, and the digest anchors the reassembly check below.
-  let size = null, newlines = null, endsWithNewline = null, fileSha = null;
+/**
+ * Probe one file: `null` when absent, `{empty: true}` for zero bytes, else
+ * `{size, newlines, endsWithNewline, sha}`. The digest is printed TWICE by the
+ * command and both transcriptions must agree: a live probe lost the whole read
+ * to a single flipped hex digit (`...db9e63c34...` transcribed as
+ * `...db9e67c34...`, run wf_52840d61-aee), and a random flip does not repeat
+ * identically across two copies. Unparseable or disagreeing replies retry.
+ */
+async function rtReadProbe(path) {
   for (let attempt = 0; attempt <= RT_READ_RETRIES; attempt++) {
     let reply;
     try {
@@ -353,9 +357,10 @@ async function rtReadFile(path) {
         `Run this exact command from the repository root and report its output:\n` +
           `  if [ ! -f "${path}" ] || [ ! -r "${path}" ]; then echo ${RT_MISSING}; ` +
           `else wc -c < "${path}"; wc -l < "${path}"; tail -c 1 "${path}" | wc -l; ` +
+          `{ shasum -a 256 "${path}" 2>/dev/null || sha256sum "${path}"; } | head -1; ` +
           `{ shasum -a 256 "${path}" 2>/dev/null || sha256sum "${path}"; } | head -1; fi\n` +
-          `Return ONLY that token, or the three numbers and the digest line, in order — ` +
-          `no commentary, no code fences, no units.`,
+          `Return ONLY that token, or the three numbers and the two digest lines, in ` +
+          `order — no commentary, no code fences, no units.`,
         { label: `size:${path}`, model: RT_IO_MODEL }
       );
     } catch {
@@ -364,23 +369,38 @@ async function rtReadFile(path) {
     const text = typeof reply === "string" ? reply : "";
     if (text.indexOf(RT_MISSING) !== -1) return null;
     const nums = text.match(/\d+/g) || [];
-    const sha = RT_HEX64_RE.exec(text);
-    if (nums.length >= 3 && Number(nums[0]) === 0) return "";
-    if (nums.length >= 3 && sha) {
-      size = Number(nums[0]);
-      newlines = Number(nums[1]);
-      endsWithNewline = Number(nums[2]) === 1;
-      fileSha = sha[0];
-      break;
+    const shas = text.match(/\b[0-9a-f]{64}\b/g) || [];
+    if (nums.length >= 3 && Number(nums[0]) === 0) return { empty: true };
+    if (nums.length >= 3 && shas.length >= 2 && shas[0] === shas[1]) {
+      return {
+        size: Number(nums[0]),
+        newlines: Number(nums[1]),
+        endsWithNewline: Number(nums[2]) === 1,
+        sha: shas[0],
+      };
     }
   }
-  if (size === null) {
-    throw new Error(`rtReadFile: unparseable probe reply for "${path}" after ${RT_READ_RETRIES + 1} attempts`);
-  }
-  if (size === 0) return "";
+  throw new Error(
+    `rtReadFile: unparseable probe reply for "${path}" after ${RT_READ_RETRIES + 1} attempts`
+  );
+}
 
-  const displayLines = newlines + (endsWithNewline ? 0 : 1);
-  const chunkCount = Math.max(1, Math.ceil(size / RT_READ_CHUNK));
+/**
+ * Read a file through agents, in line-ranged, SHA-verified chunks. Returns
+ * null when absent, "" when empty, and throws rather than returning bytes
+ * that differ from the file on disk.
+ *
+ * Known limit: a file whose single LINE exceeds the IO agent's output budget
+ * cannot be chunked below one line, so it fails loudly after retries. Every
+ * artifact this pipeline reads is line-structured markdown.
+ */
+async function rtReadFile(path) {
+  const probe = await rtReadProbe(path);
+  if (probe === null) return null;
+  if (probe.empty) return "";
+
+  const displayLines = probe.newlines + (probe.endsWithNewline ? 0 : 1);
+  const chunkCount = Math.max(1, Math.ceil(probe.size / RT_READ_CHUNK));
   const perChunk = Math.max(1, Math.ceil(displayLines / chunkCount));
   const plan = rtLinePlan(displayLines, perChunk);
   // The HOST `parallel` takes thunks, not started promises (that is rtParallel's
@@ -398,12 +418,25 @@ async function rtReadFile(path) {
     text += part;
   }
   // Whole-file check against the probe's digest. Each chunk verified alone;
-  // this catches the residual cross-chunk case (a BSD sed newline appended to
-  // a no-trailing-newline final chunk — see rtReadChunk's JSDoc).
-  for (const candidate of text.slice(-1) === "\n" ? [text, text.slice(0, -1)] : [text]) {
-    const bytes = rtUtf8Encode(candidate);
-    if (bytes.length === size && rtSha256Hex(bytes) === fileSha) return candidate;
+  // this catches the residual cross-chunk cases (a BSD sed newline appended
+  // to a no-trailing-newline final chunk, or a probe whose numbers were
+  // mistranscribed so the plan missed lines). A mismatch re-probes once with
+  // a fresh agent before giving up: the reassembly carries per-chunk proof,
+  // so when a FRESH probe agrees with it the first probe was the liar.
+  const candidates = text.slice(-1) === "\n" ? [text, text.slice(0, -1)] : [text];
+  const matches = (sizeWanted, shaWanted) => {
+    for (const candidate of candidates) {
+      const bytes = rtUtf8Encode(candidate);
+      if (bytes.length === sizeWanted && rtSha256Hex(bytes) === shaWanted) return candidate;
+    }
+    return null;
+  };
+  let verified = matches(probe.size, probe.sha);
+  if (verified === null) {
+    const reProbe = await rtReadProbe(path);
+    if (reProbe && !reProbe.empty) verified = matches(reProbe.size, reProbe.sha);
   }
+  if (verified !== null) return verified;
   throw new Error(`rtReadFile: "${path}" reassembled but did not match the file's size and SHA-256`);
 }
 

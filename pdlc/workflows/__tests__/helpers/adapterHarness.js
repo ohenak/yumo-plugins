@@ -147,7 +147,7 @@ export function fileAgent(files, corrupt, opts = {}) {
         const newlines = (text.match(/\n/g) || []).length;
         const endsNL = text.endsWith("\n") ? 1 : 0;
         const sha = createHash("sha256").update(bytes).digest("hex");
-        reply = `${bytes.length}\n${newlines}\n${endsNL}\n${sha}  ${name}`;
+        reply = `${bytes.length}\n${newlines}\n${endsNL}\n${sha}  ${name}\n${sha}  ${name}`;
       }
     } else {
       const m = /sed -n '(\d+),(\d+)p' "[^"]+"/.exec(prompt);
