@@ -204,7 +204,25 @@ no-revision post-mortem as a window reset at all.
 
 ## 4. Mechanical fixes
 
+Reported per AC-6.5 as a fix list, not as blocking findings; excluded from the counts below. MF-01 …
+MF-03 of v3 are all applied and are not carried.
+
+| # | Location | Issue | Fix |
+|---|---|---|---|
+| MF-04 | AC-4.7, precedence table row 6 | *"S-6 `growth-unmeasurable: {reason}` — independent of comparability; **always last**"* sits in a table whose row 1 is a halt (S-11). "Always last" is true of the six rows shown but the phrase reads as a global rule; if a future notice is added it will conflict. | Say "last of the six" or drop the word "always". |
+| MF-05 | §5, two-writer table | The `appendRoundAnchors` row says it runs *"before AC-2 is evaluated"*; AC-2.8 is part of AC-2 and is evaluated **before** the round's reviewers are dispatched, i.e. before this writer runs for that round. The row is right about AC-2.1 and wrong about AC-2.8. | Name AC-2.1 rather than "AC-2". |
+| MF-06 | §10.7, row for SE MF-3 | Reads *"**§4.3 M-3d** — noted below"*; there is no "below" — the note is in the row itself. | Drop "noted below". |
+| MF-07 | AC-2.8, *Given* clause | *"where round N−1's anchors carry both `DOC-BYTES(N−1)` and `DOC-SHA256(N−1)`"* is stated as a precondition, but the receive-side table's third row handles the case where they do **not** — so the *Given* excludes the input the table is total over. | Move the anchor condition out of *Given* into the table, which already covers it. |
+
 ## 5. Measurement Required
+
+Filed under AC-5.2's convention. Non-blocking; excluded from the counts below. MR-01 and MR-02 remain
+bound to `docs/pdlc-runtime-measurement-spike/REQ-pdlc-runtime-measurement-spike.md`.
+
+| # | Fact to measure | How | What it would settle |
+|---|---|---|---|
+| MR-03 | *(carried, narrowed)* Does an append to a cross-review file that a reviewer agent has just written reliably land, and is the appended byte visible to the next read in the same invocation? | Append a marker line to a cross-review file immediately after the reviewer dispatch returns, in one throwaway phase, and read it back. | Whether `appendRoundAnchors` (AC-4.1) can share `appendApprovalAnchors`'s append seam. Now scoped only to the *plumbing* — AC-4.1's decision that the writer runs on every round no longer depends on the answer. |
+| MR-04 | **New.** Does the halt path's write of `POSTMORTEM-{phase}-{feature}.md` overwrite or append when the file already exists? | Read the existing writer at the Citation baseline and note which seam it uses. | F-02's branch. It does not change the finding — the REQ must *state* the lifecycle either way, because `WINDOW-START:` is now REQ-level durable state — but it tells the author which of the three fixes is cheapest. |
 
 ## 6. Questions
 
