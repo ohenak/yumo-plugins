@@ -643,31 +643,44 @@ branch — the state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-
    escape hatch (AC-1.4), stated here because it is what makes an absolute cap operable rather than a
    dead end: an operator who has addressed the finding gets a fresh window; an unattended re-invocation
    does not. **No agent and no script ever writes `RESOLVED: yes`** — that rule is unchanged;
-4. **the reset is anchored and consumed, in the POSTMORTEM, by the loop.** The post-mortem's **reset
-   region** — the lines AC-1.4 requires every halt to preserve — is read as two counts: `R`, the number
-   of `RESOLVED: yes` lines, and `S`, the number of `WINDOW-START:` lines. A reset is **unconsumed**
-   exactly when `R > S`. On the first entry that observes `R > S`, the loop appends
-   `WINDOW-START: {N}` — where `N` is one past the highest round then on the branch — which makes
-   `R = S` again, and `N` becomes the window's origin `W`: the budget of 3 is counted from `W`, and
-   rounds below `W` are outside the window. When `R = S` every granted reset is spent and the loop
-   writes nothing.
+4. **the reset is anchored and consumed, in the POSTMORTEM, by the loop.** The **reset region** (§5) is
+   read as two counts: `H`, the number of `HALT-REASON:` lines, and `A`, the number of `WINDOW-START:`
+   **plus** `WINDOW-RESUMED:` lines — the lines the loop writes to *answer* a clearance. A clearance is
+   **unconsumed** exactly when `checkPostmortem` reads a `RESOLVED: yes` **and** `A < H`. On any entry
+   that observes both (TE v5 MF-09: there is no observable "first entry"; the counts are the whole
+   state), the loop writes exactly one answering line — `WINDOW-START: {N}` on a convergence halt,
+   `WINDOW-RESUMED: {W}` on an S-11 halt (clause 5) — which makes `A = H` again. For `WINDOW-START:`,
+   `N` is one past the highest round then on the branch and becomes the window's origin `W`: the budget
+   of 3 is counted from `W`, and rounds below `W` are outside the window. When `A = H` every halt so far
+   has been answered and the loop writes nothing and grants nothing.
 
-   **Counting, rather than testing for presence, is what keeps one-shot true on a file that has halted
-   more than once.** v1.2 said "a `RESOLVED: yes` that already carries a `WINDOW-START:` is consumed",
-   which is undecidable once the file carries several of each (TE v4 F-02). With AC-1.4's preservation
-   rule the region accumulates one `RESOLVED:` per operator clearance and one `WINDOW-START:` per
-   granted window, so the counts are the state and the pairing is positional-free.
+   **The accounting is over lines the loop owns, not over the human's marker.** v1.2 tested for the
+   presence of a `WINDOW-START:` beside a `RESOLVED: yes`, which is undecidable once the file carries
+   several of each; v1.3 counted `RESOLVED:` lines against `WINDOW-START:` lines, which requires the
+   file to accumulate a datum `parseResolvedMarker` rejects as `duplicated`
+   (`pdlc/workflows/orchestrate-dev.js:961`) — the file can hold **at most one** `RESOLVED:` line and
+   still be readable at all (SE v5 G-07). Counting **halts against answers** keeps the pairing exact
+   without touching the marker: every halt appends one `HALT-REASON:` (AC-1.4), every honoured clearance
+   writes one answering line, and both kinds of line may legally repeat.
 
-   Receive side, total, **fail-closed** in every non-canonical case — no reset is honoured, `W` is
-   treated as 1, and the run report names the file and the values found:
+   Receive side, stated as an **ordered algorithm** rather than as a table of independent rows, because
+   DC-01 requires it to be total **and single-valued** and v1.3's rows overlapped on reachable inputs —
+   e.g. `WINDOW-START: 4` then `WINDOW-START: 9` on a branch whose highest round is 6 matched both the
+   strictly-increasing row and the out-of-range row, with different answers (TE v5 F-04). Given the
+   region, the loop:
 
-   | Observation on the reset region | Resolved `W` |
-   |---|---|
-   | No `WINDOW-START:` line | **1** — no reset in effect; if `R > S` the loop writes one and `W` becomes that value |
-   | One or more `WINDOW-START:` lines whose values are decimal integers ≥ 1 and **strictly increasing** in document order | the **greatest** (i.e. last) value — each reset opens a later window and supersedes its predecessor |
-   | Any value that is not a decimal integer ≥ 1 | **1**, fail-closed |
-   | Two or more values that are equal, or that decrease in document order | **1**, fail-closed — a window origin never repeats and never moves backwards, so this is a corrupt region, not a history |
-   | A value greater than one past the highest round on the branch | **1**, fail-closed — the origin claims rounds that were never opened |
+   1. collects every `WINDOW-START:` and `WINDOW-RESUMED:` line in it, in document order;
+   2. **validates every one of them.** A `WINDOW-START:` value is valid iff it is a decimal integer ≥ 1,
+      strictly greater than every `WINDOW-START:` value before it, and no greater than one past the
+      highest round on the branch. A `WINDOW-RESUMED:` value is valid iff it is a decimal integer ≥ 1
+      equal to the greatest `WINDOW-START:` value before it, or to 1 if there is none;
+   3. **if any line fails validation ⇒ `W` = 1, fail-closed**, no reset is honoured, and the run report
+      names the file and the values found. A corrupt region is never partially believed;
+   4. otherwise `W` = the greatest `WINDOW-START:` value present, or **1** if there is none.
+
+   Fail-closed in every non-canonical case is the point: an absent, unparseable, repeated, decreasing or
+   out-of-range value never widens the window, and a region with no `WINDOW-START:` line at all is
+   simply a document that has never been reset.
 
    Both halves are load-bearing. Without the anchor, nothing on the branch records *which* rounds
    preceded the marker, so "counted from round 1" is unstated for any document that has ever been
@@ -675,28 +688,48 @@ branch — the state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-
    persistent file state that re-grants a fresh window on **every** subsequent invocation — which
    silently restores the per-invocation budget AC-1.1 exists to abolish. `WINDOW-START:` is written by
    the loop, not by a human, and carries no authority of its own: it records where a reset the operator
-   already granted began. The prohibition in clause 3 is on writing `RESOLVED: yes`, and is untouched;
+   already granted began. The prohibition in clause 3 is on **writing** `RESOLVED: yes`, and is
+   untouched: AC-1.4's strip removes a marker the operator has already spent, which can only refuse a
+   phase, never admit one;
 
-5. **every halt records which halt it was, and a no-revision halt does not spend the reset.** The halt
-   path writes `HALT-REASON: {string}` into the post-mortem, outside any fenced block, carrying the S-3,
-   S-4 or S-11 string verbatim (§5). On the entry that observes `R > S`, the loop reads the **last**
-   `HALT-REASON:` line:
+5. **every halt records which halt it was, and a no-revision halt resumes the window rather than
+   replacing it.** Each halt appends exactly one `HALT-REASON: {value}` line to the **end** of the reset
+   region (S-12, AC-1.4), `{value}` being the `; `-joined render, in AC-4.7's precedence order, of every
+   halt reason that halt raised — so a round on which S-3 and S-4 both hold writes **one** line reading
+   `fixed-point: …; budget-exhausted: …` and the operator sees the same string here and in the run
+   report's `notice` cell (AC-2.2, TE v5 F-06). Because each halt appends and nothing is written after
+   the region, the **last** such line is the most recent halt's (SE v5 G-11). On the entry that observes
+   an unconsumed clearance (clause 4), the loop reads that last line and its **leading** reason:
 
-   | Last `HALT-REASON:` | Effect of the `RESOLVED: yes` |
-   |---|---|
-   | begins `no-revision:` (S-11) | the halt is cleared and the **interrupted window is resumed** — no `WINDOW-START:` is written, `W` is unchanged, and the reset is **not** consumed. The rounds the window had already spent stay spent |
-   | begins `fixed-point:` (S-3) or `budget-exhausted:` (S-4) | the reset is granted and consumed as clause 4 states: `WINDOW-START: {N}` is written and a fresh three-round window opens |
-   | absent, unparseable, or any other value | treated as S-3/S-4 — **fail-closed**, because the safe error is to consume a reset the operator can re-grant, never to hand out a free window on every S-11 |
+   | Last `HALT-REASON:` begins | Effect of the `RESOLVED: yes` | Line the loop writes |
+   |---|---|---|
+   | `no-revision:` (S-11) | the halt is cleared and the **interrupted window is resumed** — `W` is unchanged and the rounds the window had already spent stay spent | `WINDOW-RESUMED: {W}` (S-14) |
+   | `fixed-point:` (S-3) or `budget-exhausted:` (S-4) | the reset is granted and consumed as clause 4 states: a fresh three-round window opens at `N` | `WINDOW-START: {N}` (S-13) |
+   | absent, unparseable, or any other value | treated as S-3/S-4 — **fail-closed**, because the safe error is to consume a reset the operator can re-grant, never to hand out a free window | `WINDOW-START: {N}` |
+
+   Reading the **leading** reason is exact: S-11 is decided at round-open and never co-occurs with S-3
+   or S-4 (AC-2.2), so a joined value never begins `no-revision:`.
+
+   **Every clearance is answered by exactly one line, including this one.** v1.3 had the S-11 path write
+   nothing, on the reasoning that an authoring failure should not cost the operator's escape hatch. The
+   reasoning is right and the mechanism was not: with nothing written, the clearance stayed unanswered
+   forever, so the **next** halt of any kind — a fixed-point halt three rounds later, with no operator
+   action at all — met an unconsumed clearance and was granted a fresh three-round window on the
+   strength of a marker written for an unrelated authoring failure. A pipeline that failed to author *k*
+   times banked *k* free windows (SE v5 G-10, TE v5 F-01). Writing `WINDOW-RESUMED: {W}` keeps the
+   intent — the origin does not move, the spent rounds stay spent, the operator is not charged a window
+   — while restoring `A = H`, and it gives the S-11 path a **positive artifact** to assert on, which
+   O-10's obligation *"an S-11 halt cleared without consuming the reset"* previously lacked: absence of a
+   `WINDOW-START:` is also what a loop that ignored this clause entirely would produce.
 
    AC-2.8 calls a zero-delta round an **authoring** failure whose remedy is re-running the authoring
-   step; charging the operator's single escape hatch for it would both misprice an unrelated failure and
-   hand a pipeline that keeps failing to author an unbounded supply of fresh windows — one per
-   no-revision halt (TE v4 F-04). Resuming rather than resetting keeps AC-1.1's cap absolute across the
-   S-11 path, and it is derivable from one line the halt already had to write.
+   step; charging the operator's single escape hatch for it would misprice an unrelated failure
+   (TE v4 F-04). Resuming rather than resetting keeps AC-1.1's cap absolute across the S-11 path, and it
+   is derivable from one line the halt already had to write.
 
 The durable observable for all five clauses is the same one the loop already reads: the cross-review
-basenames on the branch, plus the POSTMORTEM's preserved `RESOLVED:`, `WINDOW-START:` and
-`HALT-REASON:` lines. Nothing here needs a clock, a process identity, or a memory of a previous
+basenames on the branch, plus the POSTMORTEM's single `RESOLVED:` marker and its preserved
+`HALT-REASON:`, `WINDOW-START:` and `WINDOW-RESUMED:` lines. Nothing here needs a clock, a process identity, or a memory of a previous
 invocation.
 
 **Observability.** `MAX_REVIEW_ROUNDS === 3`; the highest `-v{N}` on the branch never exceeds 3 for a
