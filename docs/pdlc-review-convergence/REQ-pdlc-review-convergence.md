@@ -1735,7 +1735,12 @@ the run report. *Then:* it carries **one row per round**, with exactly these col
 | `classification` | `new-mechanism`, `incremental`, or `unmeasurable` (AC-4.2); empty for the first round of a window |
 | `notice` | a **possibly-empty, ordered list** of S-3 … S-6, S-11 and S-16 notices, rendered as a `; `-separated string in the precedence order below |
 
-**The AC-2.8 halt row is the one row with no dispatch behind it.** A round halted at open by AC-2.8 was
+**Two rows have no dispatch behind them, and both are stated explicitly.** Every other row describes a
+round whose reviewers ran; these two describe a round that did not. They are stated here, cell by cell,
+rather than left to the mechanical derivation, because AC-4.7's bar is character-for-character
+derivability and the derivation from absent files gives the wrong answer for both (SE v6 G-20).
+
+**Row A — the AC-2.8 halt row.** A round halted at open by AC-2.8 was
 never dispatched, so it produced no cross-review files: `panel-shape` and `blocking` have no source, and
 `growth-bytes` / `classification` are withheld deliberately rather than for want of one (AC-2.8, SE v5
 G-12). Its row is: `round` = N; `panel-shape`, `blocking`, `growth-bytes` and `classification`
@@ -1743,6 +1748,26 @@ G-12). Its row is: `round` = N; `panel-shape`, `blocking`, `growth-bytes` and `c
 character-for-character derivability, and the mechanical derivation from absent files would render
 `crashed` / `unavailable` / `unmeasurable` plus three spurious notices — reporting an authoring failure
 as a reviewer crash (SE v4 G-02).
+
+**Row B — the no-round-admitted row.** An entry whose reset region failed AC-1.5(4)'s validation refuses
+the phase and returns without taking a halt, so it opens no round and dispatches nobody. It still
+produces one report row, because the operator must be told why the invocation did nothing. Its row is:
+
+| Column | Value on row B |
+|---|---|
+| `round` | **one past the highest round on the branch** — the round that would have opened. It is derived from the directory listing alone (§5, `deriveRoundWindow`), not from `W`, which is 1 on this path by construction and says nothing about where the branch got to |
+| `panel-shape` | **empty** |
+| `blocking` | **empty** |
+| `growth-bytes` | **empty** |
+| `classification` | **empty** |
+| `notice` | **S-16 alone** — `reset-region-corrupt: {reason} (H={h}, A={a}) {path}` |
+
+`notice` is S-16 alone and carries **no S-4 reason**: no halt was taken on this entry, so AC-1.5(1)'s
+budget clause was never evaluated and emitted nothing (AC-1.4, AC-1.5(4) step 4). The four empty cells
+are licensed here for the same reason row A's are — the round was never dispatched, so `panel-shape` and
+`blocking` have no source, and the growth pair is withheld deliberately — and they are stated rather
+than derived because the column definitions above admit `empty` only where a paragraph like this one
+says so.
 
 **The `notice` column is a list, in a fixed order, because notices co-occur.** v1.1 admitted "exactly
 one of S-3 … S-6", which is unsatisfiable on a round that is reachable and unexceptional: a crashed
@@ -1760,7 +1785,7 @@ column therefore carries **every** notice the round raised, deduplicated, in thi
 | 5 | S-5 `not-comparable: unequal-panel-shape` | shape known, but different from the predecessor's |
 | 6 | S-5 `not-comparable: unavailable-count` / `malformed-count` | shape comparable, operand missing |
 | 7 | S-6 `growth-unmeasurable: {reason}` | independent of comparability; **last of the seven** (TE v4 MF-04 — the ordering is over this closed list, not a standing rule about notices yet to exist) |
-| 8 | S-16 `reset-region-corrupt: {reason}` | it is a property of the **phase's** post-mortem, not of the round, and it is decided before any round of the entry opens. It is emitted on the **first** row the entry produces, and — where the entry admits no round at all, because the refused clearance left `W = 1` on an exhausted branch — on a row carrying `round` = the round that would have opened and every other column empty. Sorting it last keeps the seven round-scoped notices in the order a v1.4 test author already derived (TE v6 F-02) |
+| 8 | S-16 `reset-region-corrupt: {reason}` | it is a property of the **phase's** post-mortem, not of the round, and it is decided before any round of the entry opens, so it is emitted on the **first** row the entry produces — row B above where the entry admits no round at all. Sorting it last keeps the seven round-scoped notices in the order a v1.4 test author already derived (TE v6 F-02) |
 
 An empty list renders as an empty cell. The order is fixed here and not downstream because a test
 author must be able to derive the exact cell, character for character, from this document alone.
