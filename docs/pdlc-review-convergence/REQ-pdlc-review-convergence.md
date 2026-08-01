@@ -1099,16 +1099,32 @@ findings; AC-4 stops a genuinely large revision from slipping past a verifier th
 read it cold.
 
 **AC-4.1 — Growth is measured per round, from a durable in-file anchor.**
-*Who:* the review loop. *Given:* a review-loop phase other than Phase CR. *When:* round N's reviewers
-have returned — **before** AC-2 is evaluated, and regardless of the round's verdict. *Then:* the loop
-**writes a `DOC-BYTES: {n}` anchor line into every cross-review file of round N** (S-2), where `n` is
-the byte length the loop read through the injected reader (M-5c) **at round-open**, at the same instant
-`t0` at which AC-3.5 captures the document for `APPROVAL-HASH:`.
+*Who:* the review loop. *Given:* a review-loop phase other than Phase CR. *When:* round N is opened.
+*Then:* the loop takes **one** read of the reviewed document through the injected reader (M-5c) at that
+instant `t0` — the same read AC-2.8 tests and the same instant at which AC-3.5 captures the document for
+`APPROVAL-HASH:` — and from it derives `n = bytes(t0)` and `h = sha256Hex(t0)`. It then, in order:
 
-**The read instant and the persist instant are deliberately different.** `n` describes the bytes the
-round's reviewers were actually given, so it must be read before they are dispatched; the round's files
-do not exist until they return, so it cannot be written until after. v1.1 collapsed the two into
+1. computes `growth = n − DOC-BYTES(N−1)` and classifies it under AC-4.2, **selecting round N's own
+   panel** (AC-3.1);
+2. dispatches round N's reviewers;
+3. after they return — **before AC-2.1 is evaluated**, and regardless of the round's verdict — writes
+   `DOC-BYTES: {n}` (S-2) and `DOC-SHA256: {h}` (S-10) into each of round N's cross-review files that
+   exists (`appendRoundAnchors`; zero files on a wholly crashed round, one on a partly crashed one —
+   TE v4 Q-05).
+
+**The read instant and the persist instant are deliberately different.** `n` and `h` describe the bytes
+the round's reviewers were actually given, so they must be read before the dispatch; the round's files
+do not exist until it returns, so they cannot be written until after. v1.1 collapsed the two into
 "when round N is opened", which asked for a write into files that did not yet exist (SE F-01, TE F-01).
+
+**Only the earlier endpoint has to be durable, and that is the whole point of the anchor.** v1.2 made
+*both* endpoints durable by shifting the window back a round — `DOC-BYTES(N) − DOC-BYTES(N−1)`,
+selecting round **N+1's** panel — which classified the revision round N's reviewers had *already* read
+rather than the one round N+1 must read cold, defeating this AC's stated purpose. It also left round 2
+unclassifiable in every run: there is no round 0 and therefore no `DOC-BYTES(0)`, so the growth into
+round 1 is `no-anchor` ⇒ unmeasurable ⇒ AC-4.5's full panel, making `dual, dual, …` the opening of
+every run and AC-2.6's target-regime rows unreachable (TE v4 F-01). With the live later endpoint, round
+1 is the only unclassified round and it is dual by AC-3.1 anyway.
 
 **The writer runs on every round, and it is a named, separate function.** `appendApprovalAnchors` is
 the *approving-round* writer — it runs only inside the gate-pass branch — and remains solely
@@ -1123,20 +1139,31 @@ This separation is the whole of the fix: a failing round is the only kind of rou
 ever classifies and whose counts AC-2 ever compares, so a writer that skips failing rounds writes its
 anchors exactly when they are never needed and never when they are (SE F-01, TE F-01, SE F-02).
 
-**`DOC-SHA256:` is written at the same instant, by the same writer, from the same read.** It is the
-SHA-256 of the same bytes `DOC-BYTES:` counts, captured at `t0`, and it exists so that AC-2.8 can
-decide *the document did not change* exactly rather than by length alone. It costs one hash of a
-string the loop has already read.
+**`DOC-SHA256:` is written at the same instant, by the same writer, from the same read — but not over
+the same bytes.** It is `sha256Hex`'s digest of the `t0` text, i.e. taken over `canonicaliseForDigest`'s
+output: CRLF and lone CR normalised to LF, exactly one trailing newline, applied inside the function and
+never by a caller (`pdlc/workflows/orchestrate-dev.js:848`, `sha256Hex`; `:767`,
+`canonicaliseForDigest`; JSDoc `:752-759`). `DOC-BYTES:` counts the **raw** bytes. v1.2 asserted it was
+"the SHA-256 of the same bytes `DOC-BYTES:` counts" *and* a reuse of the tier-1 hashing; only the second
+is true, and the REQ must be right about its own subject (SE v4 G-03). The reuse is deliberate — it
+inherits the canonicalisation discipline the digest family was built around — and AC-2.8's conjunction
+with `DOC-BYTES:` recovers the byte-exactness the canonical form drops. Rendering differs from
+`APPROVAL-HASH:` on purpose: that anchor carries the `sha256:{64 hex}` prefixed form produced by
+`approvalHashOf` (`pdlc/workflows/orchestrate-dev.js:950`), while S-10 is bare 64 hex, because the
+receivers differ. It costs one hash of a string the loop has already read.
 
 **Round growth** is measured across the boundary between rounds N−1 and N:
 
 ```
-growth = DOC-BYTES(round N) − DOC-BYTES(round N−1)
+growth = bytes(t0 of round N) − DOC-BYTES(round N−1)
 ```
 
-Both endpoints are **in the past** when round N+1's panel is selected, so AC-4.2 reads only anchors
-that already exist on the branch. v1.1's formula reached forward to `DOC-BYTES(round N+1)` to choose
-round N+1's own panel, a value living in files that round N+1's dispatch creates — circular as stated.
+The **earlier** endpoint is a durable anchor already on the branch; the **later** endpoint is the
+round-open read this AC's step 1 takes. That is the minimum durability the measurement needs, and it is
+what lets the classification select the panel of the round whose revision it measured. v1.1's formula
+reached forward to `DOC-BYTES(round N+1)` — a value living in files that round N+1's dispatch creates,
+circular as stated — and v1.2's over-corrected by making both endpoints past, which is not circular but
+measures the wrong revision (TE v4 F-01).
 
 **The anchor exists because the in-memory endpoint does not survive an invocation.** v1.0 defined both
 endpoints as in-process `_readFile` results with no durable home, and the loop re-derives its state
@@ -1151,9 +1178,12 @@ quantity.
 **Receive side (DC-01 totality) for `DOC-BYTES:` (S-2).** Growth is **unmeasurable** — AC-4.5, with the
 S-6 reason shown — in each of these cases, and in no others:
 
-| Input at either endpoint | S-6 reason |
+The **later** endpoint is the live round-open read and is unmeasurable only in the last row's case; the
+first three rows are all observations on round N−1's anchor.
+
+| Input | S-6 reason |
 |---|---|
-| No `DOC-BYTES:` line in any of the round's cross-review files | `no-anchor` |
+| At round N ≥ 2: no `DOC-BYTES:` line in any of round N−1's cross-review files | `no-anchor` |
 | A line whose value is not a decimal integer ≥ 0 — non-numeric, signed, separators, empty | `unreadable-anchor` |
 | Two or more `DOC-BYTES:` lines in one file with **unequal** values | `unreadable-anchor` |
 | The phase's target is not a single readable document (Phase CR's directory target) | `non-document-target` |
@@ -1164,11 +1194,16 @@ on the value is `unreadable-anchor`: the anchor is a property of the document at
 files must agree. Negative growth is **measurable and normal** (a round that shortened the document)
 and classifies *incremental* under AC-4.2; it is not an error.
 
-**AC-4.2 — Classification.**
-*Who:* the review loop. *Given:* a measured round growth `g`. *When:* it selects round N+1's panel.
-*Then:*
+**Round 1 is not measured and raises no notice.** There is no round 0, so no growth exists to be
+measured; the `growth-bytes` and `classification` cells are empty (AC-4.7) and **no S-6 notice is
+raised** — an absent measurement that was never owed is not an unmeasurable one. Round 1's panel is
+fixed dual by AC-3.1 and needs no classification.
 
-| Condition | Classification | Round N+1's panel |
+**AC-4.2 — Classification.**
+*Who:* the review loop. *Given:* the growth `g` into round N, measured at round N's open (AC-4.1).
+*When:* it selects **round N's** panel, before dispatching it. *Then:*
+
+| Condition | Classification | Round N's panel |
 |---|---|---|
 | `g > 12,000` bytes | **new-mechanism** | full panel (AC-3.1's exception) |
 | `g ≤ 12,000` bytes, including zero and negative | **incremental** | single verifier |
@@ -1191,8 +1226,8 @@ module. Changing the pacing contract changes this classification with it, delibe
 same quantity and must not drift apart into two numbers.
 
 **AC-4.5 — Unmeasurable growth fails safe to the full panel, and says which case it was.**
-*Who:* the review loop. *Given:* either endpoint is unmeasurable in one of the four ways AC-4.1
-enumerates. *When:* the panel for the next round is selected. *Then:* the **full panel** is dispatched
+*Who:* the review loop. *Given:* the growth into round N ≥ 2 is unmeasurable in one of the four ways
+AC-4.1 enumerates. *When:* round N's panel is selected. *Then:* the **full panel** is dispatched
 and the run report carries the **S-6 notice** `growth-unmeasurable: {reason}` with the matching
 closed-enum reason and the round it applied to. Failing safe here means failing *toward more review*,
 which is the direction that cannot lose a finding.
@@ -1223,8 +1258,16 @@ the run report. *Then:* it carries **one row per round**, with exactly these col
 | `panel-shape` | the on-disk role-slug set at that round (§5), or `crashed` |
 | `blocking` | `blocking(N)`, or `unavailable`, or `malformed` |
 | `growth-bytes` | the signed integer growth into that round, or empty for round 1 and for an unmeasurable boundary |
-| `classification` | `new-mechanism`, `incremental`, or `unmeasurable` (AC-4.2) |
+| `classification` | `new-mechanism`, `incremental`, or `unmeasurable` (AC-4.2); empty for round 1 |
 | `notice` | a **possibly-empty, ordered list** of S-3 … S-6 and S-11 notices, rendered as a `; `-separated string in the precedence order below |
+
+**The AC-2.8 halt row is the one row with no dispatch behind it.** A round halted at open by AC-2.8 was
+never dispatched, so it produced no cross-review files and none of the five non-`round` columns has a
+source. Its row is: `round` = N; `panel-shape`, `blocking`, `growth-bytes` and `classification`
+**empty**; `notice` = S-11 alone. It is stated in AC-2.8 and repeated here because AC-4.7's bar is
+character-for-character derivability, and the mechanical derivation from absent files would render
+`crashed` / `unavailable` / `unmeasurable` plus three spurious notices — reporting an authoring failure
+as a reviewer crash (SE v4 G-02).
 
 **The `notice` column is a list, in a fixed order, because notices co-occur.** v1.1 admitted "exactly
 one of S-3 … S-6", which is unsatisfiable on a round that is reachable and unexceptional: a crashed
@@ -1235,12 +1278,13 @@ column therefore carries **every** notice the round raised, deduplicated, in thi
 
 | # | Notice | Why it sorts here |
 |---|---|---|
-| 1 | S-11 `no-revision:` | it is a halt, and it explains why the round exists at all |
-| 2 | S-3 `fixed-point:` / S-4 `budget-exhausted:` | the other halts; at most one of the two can appear on a round |
-| 3 | S-5 `not-comparable: crashed-round` | the round's shape is the most general reason a comparison did not happen |
-| 4 | S-5 `not-comparable: unequal-panel-shape` | shape known, but different from the predecessor's |
-| 5 | S-5 `not-comparable: unavailable-count` / `malformed-count` | shape comparable, operand missing |
-| 6 | S-6 `growth-unmeasurable: {reason}` | independent of comparability; always last |
+| 1 | S-11 `no-revision:` | it is a halt decided before the round was dispatched, and it explains why the round exists at all. It appears alone (AC-2.8) |
+| 2 | S-3 `fixed-point:` | a halt on the evidence of the round's own counts |
+| 3 | S-4 `budget-exhausted:` | the other halt. **S-3 and S-4 can appear together**, on the last admitted round, in this order — AC-2.2 constructs exactly that case, and v1.2's single row claimed at most one could appear, which made the cell undecidable there (SE v4 G-01, TE v4 F-03) |
+| 4 | S-5 `not-comparable: crashed-round` | the round's shape is the most general reason a comparison did not happen |
+| 5 | S-5 `not-comparable: unequal-panel-shape` | shape known, but different from the predecessor's |
+| 6 | S-5 `not-comparable: unavailable-count` / `malformed-count` | shape comparable, operand missing |
+| 7 | S-6 `growth-unmeasurable: {reason}` | independent of comparability; **last of the seven** (TE v4 MF-04 — the ordering is over this closed list, not a standing rule about notices yet to exist) |
 
 An empty list renders as an empty cell. The order is fixed here and not downstream because a test
 author must be able to derive the exact cell, character for character, from this document alone.
