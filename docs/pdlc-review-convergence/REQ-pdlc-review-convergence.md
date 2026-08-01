@@ -11,13 +11,48 @@ depends-on: [pdlc-review-loop-hardening]
 | Upstream | `docs/completed/pdlc-review-loop-hardening/POSTMORTEM-R-pdlc-review-loop-hardening.md` (v1.0) root causes 1–3 and recommendations R-4, R-5, R-6; `docs/completed/pdlc-review-loop-hardening/LEARNINGS-pdlc-review-loop-hardening.md` §2, §4, §5.3; operator direction of 2026-07-29 |
 | Downstream | `FSPEC-pdlc-review-convergence.md`; every subsequent `docs/_queue/QUEUE.md` row, all of which are reviewed by the loop this REQ changes |
 | Targets | `pdlc/workflows/orchestrate-dev.js`; a new library under `pdlc/workflows/lib/`; the three review SKILLs (`pm-review`, `se-review`, `te-review`); the three author SKILLs (`pm-author`, `se-author`, `te-author`); generated artifacts under `pdlc/workflows/dist/` rebuilt in the same commit |
-| Cross-Reviews | `docs/pdlc-review-convergence/CROSS-REVIEW-software-engineer-REQ-v1.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-test-engineer-REQ-v1.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-software-engineer-REQ-v2.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-test-engineer-REQ-v2.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-software-engineer-REQ-v3.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-test-engineer-REQ-v3.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-software-engineer-REQ-v4.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-test-engineer-REQ-v4.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-software-engineer-REQ-v5.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-test-engineer-REQ-v5.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-software-engineer-REQ-v6.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-test-engineer-REQ-v6.md`. **This row is maintained per round** — the revision that answers round N adds round N's two files — so a missing later round is a mechanical fix, not a finding (SE v4 MF-4). |
+| Cross-Reviews | `docs/pdlc-review-convergence/CROSS-REVIEW-software-engineer-REQ-v1.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-test-engineer-REQ-v1.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-software-engineer-REQ-v2.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-test-engineer-REQ-v2.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-software-engineer-REQ-v3.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-test-engineer-REQ-v3.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-software-engineer-REQ-v4.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-test-engineer-REQ-v4.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-software-engineer-REQ-v5.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-test-engineer-REQ-v5.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-software-engineer-REQ-v6.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-test-engineer-REQ-v6.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-software-engineer-REQ-v7.md`; `docs/pdlc-review-convergence/CROSS-REVIEW-test-engineer-REQ-v7.md`. **This row is maintained per round** — the revision that answers round N adds round N's two files — so a missing later round is a mechanical fix, not a finding (SE v4 MF-4). |
 | LEARNINGS | `docs/pdlc-review-convergence/LEARNINGS-pdlc-review-convergence.md` |
 | Citation baseline | Every `file:line` reference in this document was read from the working tree at **`9486c81`** on the **default branch `main`**, tree clean. The v1.0 header pinned `d11dad5` on `feat-pdlc-review-loop-hardening`, which is *not* an ancestor of `main` and therefore not reachable from where this document is reviewed (SE F-08); the predecessor feature has since merged (`7bc559a`), so the baseline is restated over the default branch and every row in §4 was re-verified against it. Per the convention this repo adopted after `CROSS-REVIEW-software-engineer-REQ-v1` F-05 on the predecessor feature, **every** citation below names its enclosing symbol *and* a distinctive literal alongside the line number, so a line drift narrows the reader's search rather than invalidating the claim. Citations are written **repo-root-relative** (`pdlc/workflows/orchestrate-dev.js:52`) — the closed grammar AC-6.4 defines. A citation that names only a line number, or only a basename, is a defect in this document; report it as a mechanical fix, not a finding (see AC-6). **The baseline is a fixed commit, not "HEAD".** `9486c81` is an ancestor of `main`, so every citation below resolves there; `main` has since advanced and `pdlc/workflows/orchestrate-dev.js` has gained ~217 lines, so a reader checking a row at a *later* commit should navigate by the row's named symbol and distinctive literal — which is exactly the drift tolerance the convention exists to provide — rather than by the line number alone (TE v3 MF-03). Re-baselining is a mechanical fix, not a finding. **v1.4 re-verified every citation this document makes against `9486c81` itself, line by line.** v1.3 added five rows whose line numbers were read at `main` rather than at the baseline — off by a constant ~+152 lines — and one (`writePostmortem`) named a symbol that exists at neither commit; that is not drift, it is two baselines mixed in one document, which falsifies the universal claim this row makes (TE v5 F-05, SE v5 MF-1). All five are corrected below to their `9486c81` values, and the citations v1.4 itself adds were read there in the same pass. |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude + operator | 1.5 | 2026-08-01 |
+| pdlc | draft | Claude + operator | 1.6 | 2026-08-01 |
+
+> **Revision note (v1.6).** This version answers round 7. Both panels again closed **every** prior
+> finding — the fourth consecutive round of that — and every round-7 finding lies in text v1.5 added,
+> five of the six in the **refusal path** v1.5 introduced to close round 6. §10.11 maps each one. Four
+> things changed:
+>
+> 1. **A refusal is not a halt (SE G-18, TE F-01, High).** v1.5 made validation a conjunct of the grant
+>    gate and said an invalid region *"is inert … the operator's clearance survives for a later entry"*.
+>    It did not survive: `W` = 1 on an exhausted branch admits no rounds, AC-1.5(1) halts on the budget
+>    path, and AC-1.4 governs *every* halt — so the halt appended a `HALT-REASON:` (`H += 1`) and
+>    stripped the very marker the refusal declined to spend, ratcheting `H − A` one further from
+>    repairable on every retry: a permanent dead end in the escape hatch AC-1.5(3) exists to keep open.
+>    AC-1.5(4) step 4 now **refuses the phase and returns** — no halt is taken, so AC-1.4 has nothing to
+>    govern, the marker is untouched, `H` stays *exactly the number of halts taken*, and the reported
+>    reason is stable across entries.
+> 2. **The sanctioned repair is stated per reason (SE G-19, TE F-02).** *"Delete or correct the offending
+>    line"* is empty for `counts-mismatch`, whose evidence is the pair `H`/`A` and not a line, and both
+>    edits that would restore the relation are forbidden elsewhere. The repair is now given per reason,
+>    with `counts-mismatch` repaired by deleting the whole `## Reset Region` section — returning the
+>    document to `H = A = 0` at the cost of one further halt to re-create it — and §6's *"never by a
+>    human"* is scoped to normal operation.
+> 3. **The no-round-admitted report row has its own paragraph and its six cells (SE G-20).** v1.5 stated
+>    a second dispatchless row inside AC-4.7's *notice-ordering* table, contradicting the *"one row with
+>    no dispatch behind it"* paragraph beside it and asserting empty cells the column definitions do not
+>    admit. The row is now stated where the AC-2.8 row is stated, character for character, and precedence
+>    row 8 keeps only its sort justification.
+> 4. **The verifier's dispatched round range is a catalogue member with a receive side (TE F-03).** The
+>    range crossed a component boundary with no grammar, no id and no stated behaviour on an absent or
+>    unparseable value — the DC-01 defect the paragraph introducing it cites DC-01 to justify. It is now
+>    **S-17** (`REVIEW-SCOPE-ROUNDS: {W}..{N−1}`), with a §6 row and an AC-3.2 clause fixing what a
+>    verifier does when it is absent, empty or unparseable and what the loop does with the result.
+>
+> Also: §5's *malformed* definition is amended to cover AC-2.7 row 3's structurally-absent trailer
+> (TE F-04); the catalogue's kind-ordering clause and the S-16 render are corrected; step 3 records that
+> `A > H` is hand-edit-only; and both mechanical-fix lists are applied.
 
 > **Revision note (v1.5).** This version answers round 6. Both panels again closed **every** prior
 > finding — the third consecutive round of that — and every round-6 finding lies in text v1.4 added, six
