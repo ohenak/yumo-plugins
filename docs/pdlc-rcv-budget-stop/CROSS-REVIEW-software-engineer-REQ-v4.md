@@ -94,4 +94,57 @@ the shipped code for it — and the cited code does not produce `none` on this p
 
 ## 6. Recommendation
 
+**Needs revision**
+
+All five v3 findings are closed, the High by the resolution I recommended and in the same change as
+the catalogue amendment it required. Nothing regressed, and the mechanism is not in question. What
+reopens the round is one clause I did not ask to be changed: `postmortemStatus`, which v1.3 left as
+*"`resolved` — or unset"* and v1.4 pinned to **`none`**, citing `buildFinalReport`'s default
+parameter. The halt path never uses that default — it computes the field itself and, on this exact
+path, the existence probe at `orchestrate-dev.js:4890` finds the operator's post-mortem and returns
+**`written`**. O-10 asserts `none`; a faithful implementation returns `written`; and the value the
+REQ chose additionally trips a shipped emit that tells the operator no post-mortem was written,
+about a refusal caused by one that was.
+
+What must change, in the order I would do it:
+
+1. **F-01** — name the **mechanism** that produces whatever `postmortemStatus` this refusal reports,
+   not only the value. The shipped `err.postmortemStatus` branch (`:4883`) is the natural seam and is
+   already used this way by `checkConverged`; saying the refusal throws with an explicit disposition
+   settles the value, keeps the refusal step-G-shaped, and reaches branch 2 instead of the existence
+   probe. State it for **both** row-B variants, and move §6's row and O-10's negative-control leg
+   with it. If no shipped enum member is honest here, say so and state the extension — do not pick
+   the least-wrong member.
+2. **F-03** — decide the `"No POSTMORTEM was written."` emit: either the chosen status does not
+   trigger it, or the REQ states it is suppressed on this path and O-10 asserts its absence as a
+   negative control. This falls out of (1) and should be one clause, not a new paragraph.
+3. **F-02** — delete *"or whole-section deletion"* from the torn-write sentence (or, if the widening
+   was deliberate, move the repair table, the *"only sanctioned value repair"* sentence, §6's
+   derivation rule and R-10 together, and say which repair the pinned string names when two apply).
+4. **F-04**, **F-05** — *"each refusing entry (both row-B variants)"* in O-10's dispatch-count
+   oracle, and the standing byte constraint.
+
+**F-05 remains a constraint on how those edits are made, not a finding against the content:** 61,323
+of 61,440 bytes. This round is fundable — (1) replaces an existing justification clause, (3) deletes
+four words, (4) is one word — but nothing here should be paid for by dropping an obligation.
+
+The window, the anchored one-shot clearance, the ordered receive-side algorithm, the two row-B
+variants and the torn-write sequel are all stated at the level a TSPEC can be written from. The open
+High is, once again, a **claim about existing code that the cited code does not support** — the third
+consecutive round in that class (v2 F-02: a rule its own table broke; v3 F-01: a catalogue row that
+said the opposite; now a default parameter the live path always overrides). That is the durable
+signal worth harvesting: **a citation must name the site that *produces* the value on the path under
+discussion, not a site where the same name appears.**
+
 ## Verdict
+
+All five v3 findings are closed, including the High — the shared catalogue was amended in the same
+change and correctly. One new High is open: AC-1.5(4), §6 and O-10 pin `postmortemStatus` to `none`
+on the step-4 refusal, citing `buildFinalReport`'s default parameter (`orchestrate-dev.js:5035`,
+`:5054`), but the halt path computes that field itself at `:4875`–`:4901` and its existence probe
+(`:4890`) returns **`written`** on this path, because the refusal's premise is a post-mortem that
+exists — so O-10's oracle fails against a faithful implementation, and the pinned value additionally
+triggers the shipped `"No POSTMORTEM was written."` emit at `:4922`. Two Medium and two Low findings
+accompany it. Per the approval rule, an open High means the document is not approved.
+
+VERDICT: Needs revision
