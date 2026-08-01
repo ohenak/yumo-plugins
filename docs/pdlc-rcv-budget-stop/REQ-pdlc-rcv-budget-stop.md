@@ -271,14 +271,24 @@ state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-)entered. *Then
    phase** on step 4's path. It mints **no new catalogue id and no new S-16 reason** (that enum is
    closed at three): an unconfirmable write is an IO fault of the loop, not a state of the region.
    **Its render is stated here, because step 4's own renders all take an S-16 reason this entry has
-   not got** (the region passed steps 1–3): it emits **row B with
-   an empty `notice`** — no S-16, no S-4 — its ❌ text is §6's *Unconfirmed-append text*, and its
-   recovery text is *re-run*, there being nothing to repair. Two step-4 invariants are **scoped to the
-   validation-failure path** and do **not** hold here: the file is not byte-unchanged (a partial
-   append may have landed — that is what unconfirmable means), and the ratchet's *same reason next
-   entry* has no reason to be stable. Safe both ways — if the
-   line landed, `A = H` and the next entry grants nothing; if not, the next entry re-observes the same
-   clearance and grants the one window paid for, never two.
+   not got** (the region passed steps 1–3): it emits row B's **unconfirmable-append variant** (§5,
+   catalogue §3) — `notice` **empty**, no S-16, no S-4 — its ❌ text is §6's *Unconfirmed-append text*,
+   and its recovery text is the **shipped generic** *"set the `{feature}` row in
+   `docs/_queue/QUEUE.md` back to pending, then re-run the queue"* (`orchestrate-dev.js:4926`),
+   deliberately reused **here and nowhere else in this REQ**: the fault is transient, there is nothing
+   to hand-repair, and step 4's path has already written the queue row `halted`, so resetting that row
+   is the whole of the repair. That is the opposite disposition to the corrupt-region row, which
+   forbids the same string because re-running reproduces its refusal — an asymmetry O-10 pins.
+   Two step-4 invariants are **scoped to the validation-failure path** and do **not** hold here: the
+   file is not byte-unchanged (a partial append may have landed — that is what unconfirmable means),
+   and the ratchet's *same reason next entry* has no reason to be stable. **Three** outcomes, all
+   safe: if the line landed whole, `A = H` and the next entry grants nothing; if nothing landed, the
+   next entry re-observes the same clearance and grants the one window paid for, never two; and if the
+   write **tore** — a truncated line, or a value without its newline — the next entry reads it as a
+   value fault at step 2 ⇒ S-16 `invalid-window-start`/`invalid-window-resumed` ⇒ the *corrupt-region*
+   refusal, with its own ❌ and recovery texts and the sanctioned in-place **correction** (or
+   whole-section deletion) applying to it like any other invalid value. Never two windows on any of
+   the three; only the torn-write outcome needs an operator, and it says so on the next entry.
 
    **Consequence an operator will meet:** an invocation that confirms the line and then dies before
    dispatching round `W` has **spent the clearance** (`A = H`) while the window at `N` is intact and
@@ -401,12 +411,14 @@ state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-)entered. *Then
    keeps the intent — origin unmoved, spent rounds spent, no window charged — while restoring `A = H`, and gives the S-11 path a **positive artifact** to assert on. Same confirmation
    obligation and fail-closed disposition as `WINDOW-START:`.
 
-   **Row B — the report row of a step-4 refusal.** The entry opens no round and dispatches nobody, but
-   still produces one row (catalogue §3), because the operator must be told why the invocation did
-   nothing. `round` = **one past the highest round of this document type on the branch**, from the
-   listing (`deriveRoundWindow`), **not** from `W`, which is 1 on this path by construction;
-   `panel-shape`, `blocking`, `growth-bytes`, `classification` **empty**; `notice` = **S-16 alone**,
-   with **no S-4 reason**, because no halt was taken and the budget clause was never evaluated.
+   **Row B — the report row of a step-4 refusal, in two variants.** The entry opens no round and
+   dispatches nobody, but still produces one row (catalogue §3), because the operator must be told why
+   the invocation did nothing. `round` = **one past the highest round of this document type on the
+   branch**, from the listing (`deriveRoundWindow`), **never** from `W` (1 on the validation-failure
+   variant, unchanged on the unconfirmable-append one — neither is this cell); `panel-shape`,
+   `blocking`, `growth-bytes`, `classification` **empty**; `notice` = **S-16 alone** on the
+   **validation-failure** variant and **empty** on the **unconfirmable-append** one, with **no S-4
+   reason** on either, no halt having been taken. The variants are told apart by §6's two ❌ texts.
 
 The durable observable for all five clauses is what the loop already reads: the cross-review basenames on the branch, plus the POSTMORTEM's single `RESOLVED:` marker and its preserved
 `HALT-REASON:`, `WINDOW-START:` and `WINDOW-RESUMED:` lines. Nothing here needs a clock, a process identity, or a memory of a previous invocation.
