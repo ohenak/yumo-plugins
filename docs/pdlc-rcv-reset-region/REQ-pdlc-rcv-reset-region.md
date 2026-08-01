@@ -334,6 +334,76 @@ restores `A < H` and the clearance the write never earned. S-13's prohibition is
 **authoring** a line, which is why it exempts both this act and the two corrections above (catalogue
 §4, *Residue disposition*).
 
+**AC-7.5 — The answering line is confirmed by byte comparison before the window opens, and a failed
+confirmation refuses on the entry that wrote it.** *Who:* the review loop. *Given:* an entry that has
+observed an unconsumed clearance (`REQ-RCV-01` AC-1.5(4)'s three conjuncts) and has appended its one
+answering line — `WINDOW-START: {N}` or `WINDOW-RESUMED: {W}` (AC-1.5(5)). *When:* the append
+returns. *Then:* the loop **re-reads the file, re-runs AC-7.1 steps 1–3 on the region, and requires
+it to end with the answering line exactly as written**, byte for byte — **before any round of that
+entry is dispatched**. On failure it **fails closed**: no window is opened (`W` keeps its prior
+value), no round is dispatched, and the entry **refuses the phase** on AC-7.2's terms, reporting row
+B's **unconfirmable-append** variant (AC-7.6).
+
+**Why a byte comparison and not a presence check.** The append is the write making `A = H` and the
+*sole* mechanism keeping the clearance one-shot; a lost append re-grants a fresh window on every
+invocation — the fail-open the criterion exists to close. A presence check leaves **three** outcomes,
+one of which is silent. Comparing bytes collapses them to **two**:
+
+| Outcome | Under a presence check | Under the byte comparison |
+|---|---|---|
+| The line landed whole | confirms ⇒ `A = H`, next entry grants nothing | same |
+| Nothing landed, or a truncated key, or a lost newline | detected ⇒ refusal | same |
+| A **value tear** — `WINDOW-START: 12` landing as `WINDOW-START: 1` | **silent**: well-formed, so it validates, balances the counts, and moves the origin **down** — spending the clearance on a window the operator never bought | **announced**: the bytes differ, so the confirmation fails and this entry refuses |
+
+**Never two windows.** Every offset — inside the key, inside the value, newline lost, the well-formed
+`WINDOW-START: 1` case included — fails the confirmation and refuses on **this** entry, and no offset
+opens a round.
+
+**Announcing the tear is only half of it; act 1 is what stops the residue being spent.** Left in
+place, a well-formed residue validates on the **next** entry, makes `A = H`, and reaches exactly the
+budget halt the announcement exists to prevent. The recovery text therefore names **two acts in
+order** — *act 1*: delete the region's trailing answering line if one is present; *act 2*: reset the
+`{feature}` row and re-run the queue — fixed **character for character in catalogue §4**, with the
+residue disposition it rests on, and **not restated here**. A tear leaving an *invalid* line instead
+reaches AC-7.1's corrupt-region refusal on the next entry if act 1 is skipped.
+
+**Two of AC-7.2's invariants are scoped to the validation-failure path and do not hold here**, which
+is why the two variants are separate rows and not one: the post-mortem file is **not** byte-unchanged
+(a partial append may have landed), and the ratchet's *same reason next entry* has no reason to be
+stable. Catalogue §4's *Residue disposition* cell is the authority for both.
+
+**This entry mints no S-16 reason** — that enum stays closed at three (S-16). The region passed steps
+1–3, so an S-16 reason would name a state the region is not in: an unconfirmable write is an **IO
+fault of the loop**, not a state of the region, which is why the variant carries **no reason token**
+and an **empty** `notice` cell (catalogue §3), and is told apart by its ❌ text alone.
+
+**Consequence, and it is the right way round.** An entry that confirms the line then dies before
+dispatching has **spent the clearance** (`A = H`) while the window at `N` is intact; the next entry
+runs those rounds. Writing the line last would instead lose the record of a window already *used*,
+and re-grant it.
+
+**AC-7.6 — Row B is one row in two variants, and the operator is always told why the invocation did
+nothing.** *Who:* the operator. *Given:* an entry that refuses under AC-7.1 step 4 or AC-7.5.
+*When:* the run report is emitted. *Then:* the entry opens no round and dispatches nobody, but still
+produces **exactly one** row of catalogue §3's schema — row B — with these cells:
+
+| Cell | Validation-failure variant | Unconfirmable-append variant |
+|---|---|---|
+| `round` | **one past the highest round of this document type on the branch**, from the listing (`deriveRoundWindow`, M-1d) — **never** from `W` | same rule; `W` is unchanged on this path and is likewise not this cell |
+| `panel-shape`, `blocking`, `growth-bytes`, `classification` | **empty** — nothing dispatched, nothing measured | **empty**, same reason |
+| `notice` | **S-16 alone**, with **no S-4 reason**, no halt having been taken | **empty**, with no S-16 and no S-4 (catalogue §3) |
+| ❌ phase-row text | `Refused — reset region corrupt at {path} ({reason})`, §6 | `Refused — answering line unconfirmed at {path}`, **catalogue §4** |
+| Recovery text | names *that reason's* sanctioned repair (AC-7.4), §6 | the **two acts in order**, **catalogue §4** |
+| `postmortemStatus` | **`written`** (AC-7.2) | **`written`**, same mechanism |
+
+**The variants are told apart by the ❌ phase-row text, never by the `notice` cell alone** — catalogue
+§3 says so, and it matters: an empty `notice` is also what a perfectly ordinary quiet row carries.
+**Rows B and C are mutually exclusive**: B's entry takes no halt, C's takes one (catalogue §3), so B
+never carries S-4 and C never carries S-16 from this path.
+
+**The `round` cell is stated over the mid-window branch** (AC-7.3), the only branch on which it is
+observably different from what the fallback would have produced: highest round 2 ⇒ `round` = 3.
+
 ## 6. Declared thresholds
 
 ## 7. Non-goals and out of scope
