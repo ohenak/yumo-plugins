@@ -92,4 +92,57 @@ and remains genuinely optional — no finding depends on it.
 
 ## Recommendation
 
+**Needs revision**
+
+All five v4 findings are closed, the High among them by naming the value the shipped code actually
+produces and citing the branch that decides it, and the two Mediums by the options that *shorten* the
+document. There is **no High this round**. What blocks approval is a single **Medium**, and it is the
+tail of the fix that closed F-24 rather than a new area of the document.
+
+1. **F-27 (Medium)** — the byte comparison detects the silent value-tear on the entry that wrote it,
+   which is the right call and the reason F-24 is closed. But the refusal it raises is row B's
+   unconfirmable-append variant, whose cells this REQ fixes as `notice` **empty**, **no S-16**, no
+   reason token in the ❌ text, and the shipped generic *"set the row back to pending, then re-run the
+   queue"* as its recovery text. On the value-tear offset that recovery act does not repair anything:
+   the torn `WINDOW-START: 1` persists (§6 forbids deleting an answering line), the next entry reads
+   a region that validates with `H − A = 0`, step 4 does not fire, `W` resolves to 1, and on the
+   branch this mechanism exists for that is an immediate row-C `budget-exhausted: rounds 1..3 of 3`
+   with the clearance gone and no S-16 anywhere. The "unexplained budget halt later" is reached
+   *through* the sanctioned recovery, one entry later. The clause's own aside — *"its residue is the
+   operator's sanctioned in-place correction"* — is the right disposition and is not on any
+   operator-facing surface. Cheapest fix: name **two** acts in the unconfirmable-append recovery text
+   (check and correct a partial trailing answering line, then reset the row), one clause.
+
+   The testability half is what makes it a Medium rather than a Low, and it needs an answer even if
+   the prose half were waved through: O-10 asserts the generic recovery string for the whole
+   unconfirmable-append class *and* parameterises the torn-write legs over every truncation offset,
+   so the property asserts one recovery text on an offset whose stated disposition is a different
+   one. Pick the reading, and restore the **sequel** leg v4 had and this round dropped — after a
+   value-tear refusal, what the *next* entry does, asserted positively. That entry is where the
+   clearance is actually lost, and nothing currently tests it.
+
+The two Lows are one line each and neither needs a byte spent on it unless the compression pass frees
+one: three bytes of headroom against the 61,440 ceiling, which constrains where F-27 can land (F-28),
+and a dangling *"depends on both"* left by a compression deletion in §3.1, whose dependency edge
+survives intact in §10 (F-29).
+
+**On room.** F-28 is the sharpest it has been — 3 bytes — and F-27's fix lands in AC-1.5(4), §6 and
+O-10, the three densest surfaces. The pairing I would make: AC-1.5(4)'s *"Consequence:"* paragraph
+re-derives the write-line-first argument the sentence above it already makes, and O-10 restates the
+mid-window fixture's provenance that AC-1.5(4) step 4, §3.1 and R-11 each state independently.
+Either buys the clause.
+
+Explicitly **not** filed, per §8 and DC-09: fixtures, seams, test levels and oracle wiring — O-10 and
+O-12 own them and, F-27's sequel leg aside, name the conjuncts that matter. Also not filed: anything
+in §1, §2, §4, §5, §7 or §9, approved earlier and changed here only by the compression the
+disposition table records; §6's rows beyond the two the closed findings touched; and the
+`postmortemStatus` mechanism, which I re-derived from the shipped source and which is correct in
+every branch, including its extension to the second row-B variant. Nothing in this review contests
+user need, priority, phasing, the choice of three rounds, the reset-region design, or the decision to
+confirm by byte comparison — which is the right call and closes a real fail-open.
+
 ## Verdict
+
+VERDICT: Needs revision
+
+{"high": 0, "medium": 1, "low": 2}
