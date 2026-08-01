@@ -56,4 +56,16 @@ Five, all in text added or rewritten since v1. No High.
 
 ## Recommendation
 
+**Needs revision**
+
+All three v1 Highs and all five v1 Mediums are closed, and the three Lows with them. What blocks approval is a **single Medium** — and, in the interest of not spending a round on it, it is the smallest revision this document has been asked for:
+
+1. **F-12** — say what the operator sees when the answering-line write cannot be confirmed. The path is stated, the dispatch behaviour is stated, the safety argument is stated; only the render is missing, and it is missing because the clause borrows step 4's path, whose ❌ text, recovery text and row B all take an S-16 reason this entry has not got. Any of three one-clause answers works: emit row B with an empty `notice` and its own ❌ text; take step G's generic refusal explicitly; or state that no row is emitted and why. Then scope *"byte-unchanged"* and the ratchet's *"same reason next entry"* to the validation-failure path, which is where they are true.
+
+The four Lows are one line each and none needs a decision: fold the grant into the ordered algorithm or fix the read order (F-13), drop row C's misleading gloss (F-14), fix the §7 count and name the three omitted shared ids (F-15), render O-10's sample S-4 over the constant (F-16). They would not, alone, block approval.
+
+**A note on room.** The document is at **60,892 bytes against the 61,440-byte ceiling** `pdlc/hooks/scripts/check-req-size.sh` enforces — 548 bytes of headroom, under 1%. F-12 costs more than that if it is written as prose. The cheapest form is a table row in §6 next to the two refusal-render rows it sits beside, and the compression to pay for it is available in AC-1.5(4), whose justification paragraphs now restate the same fail-closed argument three times.
+
+Explicitly **not** filed, per §8 and DC-09: fixtures, seams, test levels and oracle wiring for AC-1.5(4)'s algorithm and for O-12's confirmation — O-10 and O-12 own them and now name the conjuncts that matter. Also not filed: anything in §1, §2, §3, §4, §9 or §10, which I approved at v1 and which the diff changes only in the ways the disposition table records. Nothing in this review contests user need, priority, phasing or the choice of three rounds.
+
 ## Verdict
