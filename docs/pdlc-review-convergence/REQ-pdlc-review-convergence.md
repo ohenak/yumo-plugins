@@ -1082,20 +1082,25 @@ under AC-3.1 and AC-4.2, each stated over **the growth into the round in the row
 the three rounds of a window (rounds `W`, `W+1`, `W+2`; `W = 1` when no reset has been granted), since
 AC-3.1's first-round rule is over windows rather than over round indices (TE v5 MF-10, F-03):
 
-| Reachable sequence (rounds 1, 2, 3) | When | Comparable consecutive same-shape pairs | Rule can fire at |
+| Reachable sequence (rounds `W`, `W+1`, `W+2`) | When | Comparable consecutive same-shape pairs | Rule can fire at |
 |---|---|---|---|
-| dual, dual, dual | the growth into round 2 and into round 3 both exceed 12,000 — **the measured regime** (AC-4.3: 5 of 5 predecessor rounds) | (1,2) and (2,3) | round 2 **or** round 3 |
-| dual, verifier, verifier | both growths ≤ 12,000 — the target regime | (2,3) only | round 3 |
-| dual, verifier, dual | the growth into round 2 was small, into round 3 large | none | never |
-| dual, dual, verifier | the growth into round 2 was large, into round 3 small | (1,2) | round 2 |
+| dual, dual, dual | the growth into round `W+1` and into round `W+2` both exceed 12,000 — **the measured regime** (AC-4.3: 5 of 5 predecessor rounds) | (`W`, `W+1`) and (`W+1`, `W+2`) | round `W+1` **or** round `W+2` |
+| dual, verifier, verifier | both growths ≤ 12,000 — the target regime | (`W+1`, `W+2`) only | round `W+2` |
+| dual, verifier, dual | the growth into round `W+1` was small, into round `W+2` large | none | never |
+| dual, dual, verifier | the growth into round `W+1` was large, into round `W+2` small | (`W`, `W+1`) | round `W+1` |
 | any sequence containing a crashed or unavailable round | a reviewer crashed or wrote no trailer | fewer than the above | correspondingly fewer |
+
+Every cell is stated over the window's offsets and not over absolute round indices, because the table's
+whole purpose is that a test author can derive the expected fire-sites from it: on a branch reset to
+`WINDOW-START: 4` the absolute-index reading is off by `W − 1` on every row (SE v6 MF-1, TE v6 MF-12).
+With `W = 1` — no reset granted — the rows read as rounds 1, 2, 3 exactly as they did in v1.0.
 
 So AC-2.6's v1.0 claim — *"the only consecutive same-shape pair is (2,3) … it does not save a round of
 reviewers"* — is true **only** in the target regime, and is false in the measured one, where the rule
-can fire at round 2 and thereby save a full round of reviewers as well as an optimizer episode. The
+can fire at round `W+1` and thereby save a full round of reviewers as well as an optimizer episode. The
 honest statement is: the rule fires **at most once per phase** in every reachable sequence, saves at
-least one optimizer episode when it fires, and saves a round of reviewers as well when it fires at
-round 2. R-2 is restated to match.
+least one optimizer episode when it fires, and saves a round of reviewers as well when it fires at the
+window's second round. R-2 is restated to match.
 
 A test author can derive the expected fire-sites from this table plus AC-4.2's classification of each
 round's measured growth; nothing about it depends on which process opened which round.
