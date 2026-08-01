@@ -130,6 +130,49 @@ new, each the shortest route into the finding beside it.
 
 ## Positive Observations
 
+- **The High is closed by removing a path rather than by adding an exception, and that distinction is
+  stated.** I offered two routes; v1.6 took the one that keeps `H` exact, and AC-1.4's new paragraph says
+  *why* in the sentence that matters — *"this REQ deliberately adds no exception to them — an exception
+  would return `H` to being an approximation. What it does instead is stop one path from reaching a halt
+  at all"*. That is the difference between patching a rule and re-drawing the boundary the rule is stated
+  over, and it is the third time in this document that the author has chosen the second. The durable
+  version: **when an invariant is threatened by a path, prefer deleting the path to excepting the
+  invariant — an excepted invariant is no longer checkable.**
+- **The `counts-mismatch` repair is better than either repair I proposed.** I offered two, and said both
+  contradicted a stated rule; v1.6 found a third that contradicts none, because S-12 already defines the
+  absent section as the empty region — so the repair is not a new mechanism, it is an existing case
+  reached deliberately. The scoping argument for §6's *"never by a human"* is the part worth harvesting:
+  it is scoped by **failure direction** (*"it forbids a human **authoring** an answering line, which is
+  the edit that would bank an unpaid window; it does not forbid this deletion, which can only cost
+  windows"*), not by the edit's shape. A prohibition scoped by direction survives cases its author never
+  enumerated; one scoped by shape does not.
+- **The same move is made twice more, and both times it removes work rather than adding it.** AC-3.2's
+  garbled range lands in the already-enumerated *missing `## Disposition`* case — no new notice, no new
+  loop branch, and the failure is visible in the verifier's own file. AC-4.7's row B is licensed by the
+  paragraph that already licensed row A. Both are the cheapest possible closure of a Medium, and neither
+  costs the catalogue a member it did not need. S-17 does cost one, and it earns it: a value that crosses
+  a component boundary now has a render, an id and a total receive side over four named inputs, which is
+  precisely the DC-01 obligation the paragraph introducing it had been citing without discharging.
+- **The stopping rule fired this round, and the document is right that it should not have been obeyed.**
+  Read as §5 defines `blocking(N)` — the high+medium sum over the round's two files, `low` excluded per
+  AC-2.5's *"one Low finding away from approval … zero blocking findings is the best possible round"* —
+  the series is: rounds 1–3 **unavailable**, 4 = **9**, 5 = **11**, 6 = **6**, 7 = **6**. So
+  `blocking(7) ≥ blocking(6)` and `blocking(7) > 0`, both operands available, panel shape equal across
+  both rounds: **AC-2.1 would have halted this phase at round 7 with an S-3 fixed-point reason.** Round 8
+  is the round on which every blocking finding was closed and none replaced it. That is a live, on-branch
+  demonstration of **R-9** pointing the *opposite* way from the one R-9 records: R-9 accepts a
+  false-positive halt *"on a round that made large, correct progress"*, and this instance is a
+  false-positive halt on the round immediately **before** approval — the counts were flat while the
+  severities collapsed from `1H+2M` and `1H+2M` to `0H+0M`. I have written it up in MF-9 as a
+  measurement to fold into R-9's demonstration rather than as a finding, because R-9 already accepts the
+  cost and the calibration successor already owns the question.
+- **Four consecutive rounds with zero carried findings, and the residue has changed kind.** Rounds 5, 6
+  and 7 each produced a finding in the reset-region accounting — always the untraced neighbour of a state
+  the previous fix added. Round 8 does not: the region's state machine is now closed over refusal,
+  repair and recovery, and every one of my five findings is a **rendering or naming** defect, not a state
+  defect. That is the transition I said in v7 I was watching for, and it arrived one round after the
+  region took its third finding rather than after a fourth.
+
 ## Mechanical fixes
 
 ## Recommendation
