@@ -208,4 +208,50 @@ a sentence and neither blocking.
 
 ## 8. Recommendation
 
+**Needs revision**
+
+Mandatory per the approval rules: three Medium findings are open. **All three round-8 findings are
+resolved**, for the sixth consecutive round with nothing carried; every open finding is new.
+
+What must change before this document can be approved:
+
+1. **F-01** — replace step 4's *"the outcome is unchanged either way"* with the case split. On an
+   exhausted branch it is unchanged; on a branch with rounds remaining under `W` = 1 the refusal is the
+   difference between the phase running and the invocation terminating, and that branch is reachable at
+   highest round 2. Then add that fixture to O-10 as the refusal's positive control, because it is the
+   only one on which the refusal has an observable consequence the `W` = 1 fallback does not.
+2. **F-02** — widen §6's `WINDOW-START:` exemption to the repair set AC-1.5(4) now states. As written
+   the row forbids the corrected line the preferred repair produces, so O-10's value-repair fixture is
+   unconstructible under the closed grammar. One clause in one row; no AC changes.
+3. **F-03** — split O-10's *two consecutive garbled dispatches* bullet into the rounds it actually
+   spans. A byte-identical intervening revision halts the next round at AC-2.8 before any verifier is
+   dispatched, so *"asserts `disposition-missing` again"* and *"the intervening pass produced a
+   byte-identical document"* cannot both be true of one round. AC-3.2's paragraph already states the
+   full sequence including the clearance; the obligation should mirror it.
+
+That is the whole of the blocking list. F-04 is Low and may be taken as mechanical if the author
+prefers, though the rule matters more than the number. MF-24 … MF-27 and Q-15/Q-16 are non-blocking and
+contribute nothing to the counts; MR-08 is closed.
+
+Nothing here contests user need, scope, priority or phasing — that remains settled and out of scope.
+Nor do I contest either mechanism v1.7 widens: step 4's unconditional refusal and the
+correct-over-delete preference are both right, and the arithmetic given for the second is better than
+anything either panel asked for.
+
+**Trajectory note (self-applied, per the preamble's fixed-point rule).** My own blocking counts (High +
+Medium): round 1 — 7, round 2 — 4, round 3 — 5, round 4 — 4, round 5 — 6, round 6 — 2, round 7 — 3,
+round 8 — 1, round 9 — **3**. Under AC-2.1 that is a **rise** (3 ≥ 1) on a comparable, same-shape
+consecutive pair, so on my counts alone the rule **would** fire this round. I record that rather than
+soften it, and I record what I think it means, because a rise after the round I called converged is
+exactly the case R-9 exists for. Rounds 5–7 found defects in mechanisms; round 8 found a stale test
+obligation; round 9 finds two rule *widenings* whose surroundings did not move with them, plus one new
+obligation defect. That is not the same document regressing — it is a document that answered a round by
+changing rules rather than by clarifying them, which re-opened the neighbourhood of each rule it
+touched. The mechanisms themselves are still, as of round 8, the part I have no findings in. If there
+is a process signal here it is the sibling of last round's: when an answer **widens a rule**, the fixed
+statements *around* that rule — the closed grammar in §6, the justifying prose, the O-10 obligations —
+all need re-reading against the new rule, not only the section the finding named. F-02 is a §6 row that
+was correct for the repair set that existed when it was written, and nothing pointed at it when the
+repair set grew.
+
 ## Verdict
