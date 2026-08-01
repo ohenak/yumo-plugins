@@ -1370,6 +1370,7 @@ exist on this branch:**
 | Cross-panel count comparability (R-2, N-2) | `docs/pdlc-review-convergence-calibration/REQ-pdlc-review-convergence-calibration.md` | **Bound.** Stub REQ, `ready: false`, depends-on `pdlc-review-convergence`. Carries the inherited problem, the three questions it would decide, and its prerequisite that ≥ 5 phases' AC-4.7 tables exist to calibrate against. |
 | Tier-2 approval for verifier rounds (R-3, N-5) | `docs/pdlc-approval-record-tier2/REQ-pdlc-approval-record-tier2.md` | **Bound.** Stub REQ, `ready: false`. Carries the three deliverables, including removing AC-3.6's documented-limitation text in the same change that closes the gap. |
 | Measuring the two runtime facts of §4.7 (R-4, N-6) | `docs/pdlc-runtime-measurement-spike/REQ-pdlc-runtime-measurement-spike.md` | **Bound.** Stub REQ, `ready: false`, no dependencies — it is measurable today. Carries both facts (MR-1, MR-2) with a proposed method and what each would settle. |
+| **Detecting an authoring episode that produced no write** (R-8's residue) | the same stub, `docs/pdlc-runtime-measurement-spike/REQ-pdlc-runtime-measurement-spike.md` | **Bound.** AC-2.8 catches the *symptom* on the review side — a round whose document did not change — and halts. Catching the *cause* on the authoring side means knowing how an exhausted or stall-killed dispatch surfaces to its caller, which is exactly MR-1's unmeasured fact (§4.7), so the residue is bound to the same spike rather than to a new file. Nothing in this REQ depends on that measurement (§1.4). |
 
 Each stub is `ready: false`, so none is queue-eligible until an operator specifies it and opts it in.
 That is the intended state: DC-08 asks for a **checkable successor surface**, not for scheduled work.
@@ -1477,3 +1478,29 @@ cross-review files are cited in the header's Cross-Reviews row.
 | TE F-09 | AC-5.4 — `approved, {n} measurements outstanding` |
 | SE MF-1…MF-5, TE MF-01…MF-03 | §4 — every citation repo-root-relative, symbols corrected, ASCII hyphen ranges |
 | TE MR-01, MR-02 | Carried, not answered — bound to `docs/pdlc-runtime-measurement-spike/REQ-pdlc-runtime-measurement-spike.md` per AC-5.3 |
+
+### 10.7 Round-2 and round-3 finding → where it is answered
+
+Round 3 reviewed a byte-identical document (SE F-08, TE F-07), so both panels carried their round-2
+findings forward verbatim. The two rounds are therefore mapped as one set, keyed by the round-2 id each
+reviewer used and re-used.
+
+| Finding | Answered in |
+|---|---|
+| SE F-01, TE F-01 — `DOC-BYTES:` written only on the approving round; growth formula circular | **AC-4.1** — `appendRoundAnchors`, the unconditional per-round writer, named; read instant separated from persist instant; growth restated over two past endpoints. §5's two-writer table; §6's `DOC-BYTES:` row; O-4 restated |
+| SE F-02 — a failed verifier round reads as *crashed*, so AC-2 cannot fire in the target regime | **§5** *panel shape* / *crashed* restated over the on-disk role-slug set alone; **AC-2.4**'s "why over slugs" paragraph; **AC-3.5(a)** widened so the marker is written on every verifier round; §6's `REVIEW-MODE:` row |
+| SE F-03, TE F-03 — AC-3.2(2)'s "not counted" has no reader | **AC-3.2(2)** — reading 2 chosen and stated: the verifier excludes the finding from its own trailer, the loop deducts nothing and parses no findings table. §5's S-9 receiver; N-3; R-5 widened |
+| SE F-04 — the trailer's placement is unspecified; an anchor makes a trailer-less file *malformed* | **AC-3.4** — the trailer is the first non-empty line after `VERDICT:`, anchors follow it; **AC-2.7**'s five-row observation table, whose fourth row makes an anchor line read as *unavailable* |
+| SE F-05, TE F-02 — AC-1.5(3)'s reset has no durable observable and is not one-shot | **AC-1.5(4)** — `WINDOW-START: {N}` appended by the loop to the resolved POSTMORTEM; a marker already carrying one is consumed; fail-closed receive side. §5's durability table gains both rows |
+| TE F-04 — AC-4.7's `notice` column admits one notice, but three co-occur | **AC-4.7** — the column is an ordered list with a six-row precedence table; §5's row-schema paragraph; O-10 names the crashed-round row explicitly |
+| TE F-07, SE F-08 — a round dispatched against an unrevised document | **AC-2.8** — the zero-delta halt, with `DOC-SHA256:` (S-10) as the exact endpoint and S-11 as its halt reason. R-8 records the authoring-side residue and binds it; O-12 specifies the plumbing |
+| TE F-05 — AC-3.5(e) says "five cases" over six rows | **AC-3.5(e)** lead-in and **§5's S-1 row** both say six |
+| TE F-06 — AC-6.4's own example cells are permanent must-not-fix defect reports | **AC-6.4** — two exempt regions stated: fenced blocks (adopting `scanLines`'s existing rule) and a catalogue row's own `Example` cell |
+| SE F-06, TE MF-01 — §4.7 pins two claims to the unreachable `d11dad5` | **§4.7** — both restated at the Citation baseline `9486c81` |
+| SE F-07, SE MF-2 — `7bc559a` called a merge commit | **§3** BL-01 and its closing paragraph — the wording is corrected and the parenthetical dropped |
+| SE MF-3 | **§4.3 M-3d** — noted below; `tier1ApprovalRecord` is a plain declaration, not `async` |
+| SE MF-4 | **§5 S-4** — the halt reason shows the rendered form only |
+| TE MF-02 | **§5 S-2** and **AC-4.1** — stated once as "four inputs, three reasons" |
+| TE MF-03 | **Header Citation baseline** — the baseline is a fixed ancestor commit, and the drift convention (symbol + literal) is what a reader uses at a later commit; re-baselining is a mechanical fix |
+| TE MR-03 | Carried, not answered — bound to `docs/pdlc-runtime-measurement-spike/REQ-pdlc-runtime-measurement-spike.md` per AC-5.3, alongside MR-01 and MR-02 |
+| SE Q-01…Q-05, TE Q-01…Q-04 | Each is the fastest route into the finding beside it and is answered by that finding's row above; TE Q-01 (is Phase DOD in scope?) is answered by **N-7**'s neighbour — AC-1.1's *"any review-loop phase for a document"* covers a phase whose optimizer revises the reviewed **document**, and Phase DOD's optimizer revises **code**, so AC-3.3's reasoning applies to it exactly as it applies to Phase CR |
