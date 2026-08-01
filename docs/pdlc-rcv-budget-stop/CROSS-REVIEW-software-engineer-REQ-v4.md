@@ -25,6 +25,12 @@ amending the shared catalogue rather than minting a row here.
 
 ## 2. Disposition of the v3 questions
 
+| v3 id | Status | Note |
+|---|---|---|
+| **Q-01** (was a single in-entry retry of the confirmation read considered and rejected?) | Still unrecorded | R-11's gloss is unchanged and the unconfirmable path still halts an unattended queue on a transient read. I said I was not filing it and I am not filing it now either — but it is the only place in this document where a *transient* fault takes the same exit as a fault only a human can repair, and one clause in R-11 would record the choice. Carried, not escalated. |
+| **Q-02** (is `W` guaranteed not to be emitted on a refusing entry?) | Still unanswered, and now slightly larger | AC-1.5(4) still says the unconfirmable entry keeps `W` at *"its prior value"*, and §5's row-B `round` cell now says explicitly that `W` is *"unchanged on the unconfirmable-append one — **neither is this cell**"*, which is the right disposition for the row but still does not say `W` is invisible everywhere on a refusal. Inert today; a half-sentence would close it for `pdlc-rcv-fixed-point-stop`'s author, who states both tests over `W`. |
+| **Q-03** (is `{path}` in the unconfirmed-append string the same post-mortem path S-16 fixes?) | ✅ answered in the document | §6's row now reads *"`{path}` the same repo-root-relative post-mortem path S-16 fixes"*. Checkable without inference, which is what I asked for. |
+
 ## 3. Findings
 
 ## 4. Questions
