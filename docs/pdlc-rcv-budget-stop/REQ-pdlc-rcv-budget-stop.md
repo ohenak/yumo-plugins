@@ -135,8 +135,22 @@ A review loop that has not converged in three rounds has, on the two features me
 round 3, and rose thereafter (11, 6, 6, 7, 9), and 66 KB — 40% of the finished document — was added by rounds that ran *after* its own fixed-point test fired. Three rounds buys the decay
 that was real (11 → 6) and the round that held it, and declines to buy the rise that followed.
 
-**AC-1.1 — The budget is three, per document, not per invocation.** *Who:* the pipeline. *Given:* any review-loop phase for a document. *When:* the review window is opened. *Then:* the
-window ends at round **3 counted from round 1 of that document**, and the loop halts on entering round 4 — *whatever invocation opened the earlier rounds*.
+**AC-1.1 — The budget is three, per document, not per invocation.** *Who:* the pipeline. *Given:* any review-loop phase **that reviews a named document type** — the phases of
+`PHASE_DISPATCH`: R/REQ, F/FSPEC, T/TSPEC, D/DECISIONS, P/PLAN, PR/PROPERTIES (M-1d). *When:* the review window is opened. *Then:* the window ends at round **3 counted from round 1 of
+that document**, and the loop halts on entering round 4 — *whatever invocation opened the earlier rounds*.
+
+**Scope: `docType: null` loops are out.** Phase CR calls the same `reviewLoop` with `docType: null`
+(`orchestrate-dev.js:4720`–`:4721`), and Phase DOD runs its own evaluator loop; N-7 excludes both
+from this family's mechanisms and **this REQ does not change that**. Concretely, for a `docType:
+null` loop: AC-1.1's absolute per-document window, AC-1.4's reset region and AC-1.5's origin `W`,
+clearance accounting and refusal **do not apply**. What *does* reach them is AC-1.2's single
+constant, which they share: their existing **per-invocation** budget becomes 3 instead of 5 —
+unchanged in kind, still bounded, still halting the way it halts today. That is stated here rather
+than left to FSPEC because the alternative reading is not merely out of scope but unsafe: with
+`docType: null` no basename ever matches, so `deriveRoundWindow` returns `startIndex = 1` on every
+entry, and a second CR clearance would compute the same `N = 1`, fail AC-1.5(4) step 2's
+strictly-increasing check, and refuse Phase CR **permanently and unrepairably** for that feature.
+A test for this clause asserts that no `## Reset Region` is created by a Phase CR or Phase DOD halt.
 
 This is a **second behavioural change**. At HEAD `MAX_REVIEW_ROUNDS` is a *per-invocation budget* (M-1d): a phase re-entered on a branch whose highest round is 3 is admitted rounds 4…6,
 so a fourth round *does* dispatch reviewers and the document is reviewed six times. Under that rule three-rounds-per-invocation bounds nothing about a document, and §2's cost claim
@@ -146,8 +160,20 @@ would be stated over a number that does not bound the thing it costs. AC-1.5 sta
 exactly one module-scope constant (M-1a) and no arithmetic anywhere else, because the sole site that expresses the window *width* in terms of that constant is `windowEnd` (M-1b). The
 three value-reading sites at M-1c must continue to report the *effective* budget, so a halt message that says "5" while the budget is 3 is a defect.
 
-**AC-1.3 — The reduction is not silently partial.** *Who:* the operator. *Given:* a non-convergent phase. *When:* the loop halts on the budget. *Then:* the post-mortem's Iterations
-section and the phase record both state **three**, and the returned `iterations` field is consistent with them.
+**What changes at `windowEnd` and what does not.** `windowEnd` remains the only width site; what
+changes is its *argument*, which becomes `W` rather than `startIndex`. `W` is resolved **before**
+`deriveRoundWindow` is called and is passed to it as an ordinary **resolved value** (a decimal
+integer), so `deriveRoundWindow` keeps its documented contract — *synchronous, total, takes no
+seam*, purely content-addressed over the basenames plus that value. **No IO seam is added to
+`deriveRoundWindow` or to `windowEnd`**; the async `_readFile` that reads the post-mortem lives in
+the caller. Any FSPEC or TSPEC that gives either function a seam violates this clause.
+
+**AC-1.3 — The reduction is not silently partial, and the two quantities are named.** *Who:* the operator. *Given:* a non-convergent phase. *When:* the loop halts on the budget. *Then:*
+the post-mortem's Iterations section, the phase record and the returned `iterations` field all report the **effective budget** — the value of `MAX_REVIEW_ROUNDS`, which is 3 at the
+declared default (§6) — so a halt that says "5" while the budget is 3 is a defect. `iterations` is the **budget**, not the rounds run: that is what the shipped site returns (M-1c) and this
+REQ does not change it. Because AC-1.5(1) makes a **zero-round** halt the commonest new case, the post-mortem's Iterations section additionally states the **rounds this entry ran** — `0` on
+the entry admitted no rounds — so budget and rounds-run are never conflated in the one place an operator reads them. A test asserts both quantities over the constant, not over the literal
+`3`, so a maintainer who changes the constant does not go red for the wrong reason.
 
 **AC-1.4 — Existing halt behaviour is unchanged in kind, and every halt maintains the reset region.** *Who:* the operator. *Given:* the budget is exhausted. *When:* the loop halts.
 *Then:* it halts the way it halts today — writing `POSTMORTEM-{phase}-{feature}.md`, confirming the write rather than trusting the agent's reply, and refusing to re-run the phase until
