@@ -55,6 +55,8 @@ New ids (`G-`) so they cannot be confused with the closed `F-` series.
 | G-04 | Medium | Local | **AC-1.5(4)'s `WINDOW-START:` anchor lives in a file the halt path rewrites, and nothing protects it.** The existing halt dispatches an agent with the bare prompt `Write docs/{feature}/POSTMORTEM-{phase}-{feature}.md` (`pdlc/workflows/orchestrate-dev.js:1912-1918`) — no read-modify-write, no preservation obligation, and the REQ amends neither that prompt nor O-5/O-12 to add one. After a reset (`RESOLVED: yes` + `WINDOW-START: 4`) the loop can halt again and rewrite that same path. If the agent preserves the human's `RESOLVED: yes` but not the loop's `WINDOW-START:` — the likelier outcome, since only the former is documented as precious — the reset reads as **unconsumed** on every subsequent invocation, which is precisely the "silently restores the per-invocation budget AC-1.1 exists to abolish" failure clause 4 was added to prevent. AC-1.5(4)'s fail-closed receive side covers absent/duplicate/unparseable values, not a clobbered file. | AC-1.5(4), §5 durability table rows 3–4, AC-1.4, O-5, O-12 |
 | G-05 | Medium | Local | **AC-3.4 and AC-2.7 define the trailer reader as two different total functions.** AC-3.4 says the reader "**skips** lines matching the anchor grammar when locating the candidate line"; AC-2.7's table row 4 says that when "the first non-empty line after `VERDICT:` is an **anchor line** … rather than a count trailer", the count is *unavailable*. On the input `VERDICT:` → anchor line → valid count trailer, AC-3.4 yields a readable count and AC-2.7 yields *unavailable*. DC-01 requires the receive side to be total **and single-valued** before FSPEC authoring; two clauses of the same REQ giving different answers to the same observation is not that. Separately, AC-3.4's enumeration of the anchor set omits `DOC-SHA256:` (four keys where AC-2.7's row 4 lists five), so the skip-set itself has two memberships. | AC-3.4, AC-2.7 observation table, S-10, O-9, O-10 |
 
+| G-06 | Low | Cross-Feature | **A count-only fixed point cannot distinguish a plateau from complete finding turnover, and this round demonstrates it.** Blocking count: round 1 = 10, round 2 = 5, round 3 = 5, round 4 = 5. AC-2.1 would fire on rounds 3→4 — yet **zero** of round 3's five findings survive: all eight were closed and all five open findings are new text v1.2 added. AC-4.2 would classify the revision as `new-mechanism` (+354 lines ≫ one pacing write), so AC-3 would already re-escalate to the full panel; AC-2 nonetheless reads it as non-convergence. This is not N-1 ("this will not make the loop converge") — it is a false-positive halt on a round that made large, correct progress. It costs an operator interaction, not correctness, and R-2 already accepts the coarseness of count-only comparison, so it is **Low and does not block**. Recorded because it is durable signal for the calibration successor. | AC-2.1, AC-2.5, R-2, N-1, `docs/pdlc-review-convergence-calibration/` |
+
 ## Findings in detail
 
 ### G-01 (High) — the two new co-occurrence clauses disagree
@@ -240,5 +242,51 @@ Not findings. Apply without discussion; none affects the recommendation.
 | MF-4 | Header, Cross-Reviews row | It lists v1 … v3 for both reviewers; v4 will need adding when this round is answered. Worth a note that the row is maintained per round, so it is not re-raised each time. |
 
 ## Recommendation
+
+**Needs revision** — one High and four Medium findings, **all new in v1.2**, plus one Low recorded for
+harvest. Every finding from rounds 1, 2 and 3 is closed.
+
+### What must change to close this out
+
+Five clauses. None needs a new mechanism; four are single sentences.
+
+1. **G-01** — delete "at most one of the two can appear on a round" from AC-4.7's precedence row 2 and
+   state the S-3-then-S-4 render AC-2.2 already specifies. Add the two-halt row to O-10.
+2. **G-02** — state whether an AC-2.8 halt emits an AC-4.7 row for the undispatched round N and what its
+   four non-`notice` cells contain. Recommended: a row with those cells **empty** and `notice` = S-11
+   alone.
+3. **G-03** — say which bytes `DOC-SHA256:` digests: the canonical form produced by
+   `canonicaliseForDigest` inside `sha256Hex` (recommended — then drop AC-4.1's "same bytes
+   `DOC-BYTES:` counts" claim), or the raw bytes (then O-4 must say it is not a reuse of the tier-1
+   hashing).
+4. **G-04** — require the halt path to preserve any existing `RESOLVED:` / `WINDOW-START:` lines when it
+   rewrites the POSTMORTEM, and carry that obligation in O-9 (it is a prompt amendment).
+5. **G-05** — state the trailer reader once, as an algorithm, with the anchor set given by reference to
+   §5's catalogue; restate AC-2.7's row 4 as "nothing but anchor lines after `VERDICT:`".
+
+G-06 and MF-1 … MF-4 do not block.
+
+### On the stopping rule
+
+By the letter it fires again: blocking count 5 at round 3 and 5 at round 4, two consecutive
+non-decreasing rounds. I am reporting it, as the preamble requires, and I am also reporting that **this
+is the false-positive case** — the two 5s share no finding, no section and no cause. Round 3's 5 were
+round 2's carried verbatim against an unrevised document; round 4's 5 are defects in text that did not
+exist before v1.2, in clauses added to answer round 2. Treating that as a plateau would halt a phase
+that is converging fast: 10 → 5 (all resolved) → 5 (all new, all one-clause fixes).
+
+My read, offered to the operator rather than asserted: **iterate once more.** If round 5 returns
+findings that are again wholly new and again one-clause, that is a different signal and worth halting
+on. If it returns any of G-01 … G-05 unaddressed, the fixed point is real. G-06 records the underlying
+mechanism gap for the calibration successor either way.
+
+### Explicit non-findings (carried and extended)
+
+Recorded so a later round does not re-raise them: I do not contest any of the six decisions; I do not
+file R-5's known unenforceability of AC-5, AC-4.6 or AC-3.2(2) — R-5 now names all three and states the
+safe failure direction; I do not file R-6's mixed-panel integration risk, which O-1/O-2/O-4/O-10
+discharge downstream; I do not contest AC-2.8's fail-open posture, AC-1.5(4)'s fail-closed posture, or
+N-7's widening to Phase DOD, all of which are correctly argued. I have no blocking finding against
+REQ-RCV-05 or REQ-RCV-06. I raised no `## Measurement Required` items.
 
 ## Verdict
