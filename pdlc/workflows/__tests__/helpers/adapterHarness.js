@@ -15,6 +15,7 @@
  */
 
 import { readFileSync } from "fs";
+import { createHash } from "crypto";
 import { dirname, resolve } from "path";
 import { fileURLToPath } from "url";
 
@@ -27,9 +28,9 @@ const EXPOSED = [
   "RT_READ_RETRIES",
   "RT_MISSING",
   "RT_IO_MODEL",
-  "rtBase64Decode",
-  "rtUtf8Decode",
-  "rtChunkPlan",
+  "rtUtf8Encode",
+  "rtSha256Hex",
+  "rtLinePlan",
   "rtReadChunk",
   "rtReadFile",
   "rtCheckFile",
@@ -99,36 +100,62 @@ export function loadAdapter(globals = {}) {
 
 /**
  * An `agent` double backed by an in-memory file tree, answering the two prompts
- * `rtReadFile` issues (the `wc -c` size probe and the `tail | head | base64`
- * chunk fetch) from the real bytes of `files`.
+ * `rtReadFile` issues (the probe — size, newline count, last-byte-newline flag,
+ * whole-file SHA-256 — and the `sed -n 'a,bp'` chunk transcription with its
+ * range digest) from the real bytes of `files`.
  *
- * `corrupt(prompt, base64, callIndex)` may return a replacement reply — the
- * point of the harness: it is how a truncated chunk, a fenced reply or a
- * garbage size is injected without touching production code.
+ * The double behaves like GNU sed: the final line of a no-trailing-newline
+ * file is emitted WITHOUT an appended newline. `bsdSed: true` flips that, so
+ * a test can pin the other platform's behaviour.
+ *
+ * `corrupt(prompt, reply, callIndex)` may return a replacement reply — the
+ * point of the harness: it is how a mangled transcription, a fenced reply or
+ * a garbage probe is injected without touching production code.
  *
  * @param {Record<string, string>} files  path -> contents (decoded text)
- * @param {(prompt: string, base64: string, callIndex: number) => (string|undefined)} [corrupt]
+ * @param {(prompt: string, reply: string, callIndex: number) => (string|undefined)} [corrupt]
+ * @param {{bsdSed?: boolean}} [opts]
  */
-export function fileAgent(files, corrupt) {
+export function fileAgent(files, corrupt, opts = {}) {
   const calls = [];
-  const agent = async (prompt, opts) => {
+
+  const sedRange = (text, first, last) => {
+    const endsNL = text.endsWith("\n");
+    const body = endsNL ? text.slice(0, -1) : text;
+    const lines = body === "" ? [] : body.split("\n");
+    const slice = lines.slice(first - 1, last);
+    if (slice.length === 0) return "";
+    let out = slice.join("\n");
+    const tookFinalLine = last >= lines.length;
+    if (!tookFinalLine || endsNL || opts.bsdSed) out += "\n";
+    return out;
+  };
+
+  const agent = async (prompt, optsIgnored) => {
     const index = calls.length;
-    calls.push({ prompt, opts });
+    calls.push({ prompt, opts: optsIgnored });
     const path = /"([^"]+)"/.exec(prompt);
     const name = path ? path[1] : "";
-    const bytes = Object.prototype.hasOwnProperty.call(files, name)
-      ? Buffer.from(files[name], "utf8")
-      : null;
+    const has = Object.prototype.hasOwnProperty.call(files, name);
+    const text = has ? files[name] : null;
+    const bytes = has ? Buffer.from(text, "utf8") : null;
 
     let reply;
     if (/wc -c/.test(prompt)) {
-      reply = bytes === null ? "__PDLC_FILE_MISSING__" : String(bytes.length);
+      if (bytes === null) reply = "__PDLC_FILE_MISSING__";
+      else {
+        const newlines = (text.match(/\n/g) || []).length;
+        const endsNL = text.endsWith("\n") ? 1 : 0;
+        const sha = createHash("sha256").update(bytes).digest("hex");
+        reply = `${bytes.length}\n${newlines}\n${endsNL}\n${sha}  ${name}`;
+      }
     } else {
-      const m = /tail -c \+(\d+) "[^"]+" \| head -c (\d+)/.exec(prompt);
+      const m = /sed -n '(\d+),(\d+)p' "[^"]+"/.exec(prompt);
       if (!m || bytes === null) reply = "__PDLC_FILE_MISSING__";
       else {
-        const offset = Number(m[1]) - 1;
-        reply = bytes.subarray(offset, offset + Number(m[2])).toString("base64");
+        const chunk = sedRange(text, Number(m[1]), Number(m[2]));
+        const sha = createHash("sha256").update(Buffer.from(chunk, "utf8")).digest("hex");
+        reply = `SHA256: ${sha}\n__PDLC_CHUNK_BEGIN__\n${chunk}\n__PDLC_CHUNK_END__`;
       }
     }
     if (corrupt) {

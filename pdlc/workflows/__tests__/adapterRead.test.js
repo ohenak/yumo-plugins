@@ -1,150 +1,112 @@
 /**
- * adapterRead.test.js — `rtReadFile`'s chunked, verified read.
+ * adapterRead.test.js — `rtReadFile`'s line-ranged, SHA-verified read.
  *
- * The defect this suite pins: the previous implementation asked ONE agent to
- * echo a file's contents as its final message. A measured run returned 102,429
- * bytes of a 209,953-byte document, starting mid-document, and a sibling read
- * prepended a ```bash fence — both indistinguishable, in the reply, from a
- * healthy read. orchestrate-dev then scored the truncated echo with
- * `isComplete()`, judged a finished revision incomplete, and re-dispatched the
- * author in a loop.
+ * The defects this suite pins, in the order they were discovered live:
+ *   1. a single-agent echo returned 102,429 bytes of a 209,953-byte document;
+ *   2. a chunk agent's final message truncated at ≈4096 output tokens;
+ *   3. the VM boundary rejected marshalled arrays over 4,096 elements;
+ *   4. base64 replies of EXACTLY the right length diverged from the file
+ *      mid-stream — 23 of 25 measured replies were corrupted transcriptions,
+ *      one of them length-correct (runs wf_a985bc0f-d18 / wf_20fb1a29-246).
  *
- * So the property under test is not "reads usually work". It is: the adapter
- * returns the file's exact bytes, or it throws. A short, fenced or otherwise
- * unverifiable reply must never become a return value.
+ * Defect 4 is why length verification is not verification. The property under
+ * test: the adapter returns the file's exact bytes, or it throws. A truncated,
+ * fenced, or plausibly-mangled-but-same-length reply must never become a
+ * return value — the per-chunk SHA-256, computed by the agent's own tool over
+ * the same byte range, is what catches what a length check cannot.
  *
- * The pure helpers (`rtBase64Decode`, `rtUtf8Decode`, `rtChunkPlan`) are tested
+ * The pure helpers (`rtUtf8Encode`, `rtSha256Hex`, `rtLinePlan`) are tested
  * directly, because they are the whole verification argument: the runtime has
- * no Buffer, no atob and no TextDecoder, so a bug in either decoder silently
- * corrupts every document the pipeline reads.
+ * no Buffer, no crypto and no TextEncoder, so a bug in either silently
+ * corrupts or falsely rejects every document the pipeline reads.
  */
 
+import { createHash } from "crypto";
 import { fileAgent, hostParallel, loadAdapter } from "./helpers/adapterHarness.js";
 
 const adapter = loadAdapter();
-const { rtBase64Decode, rtUtf8Decode, rtChunkPlan, RT_READ_CHUNK, RT_READ_RETRIES } = adapter;
+const { rtUtf8Encode, rtSha256Hex, rtLinePlan, RT_READ_CHUNK, RT_READ_RETRIES } = adapter;
 
-const b64 = (text) => Buffer.from(text, "utf8").toString("base64");
 const utf8Bytes = (text) => [...Buffer.from(text, "utf8")];
+const nodeSha = (text) => createHash("sha256").update(Buffer.from(text, "utf8")).digest("hex");
 
-describe("rtBase64Decode", () => {
-  it("decodes each padding variant to the right byte count", () => {
-    // Lengths 3/2/1 mod 3 give 0/1/2 '=' characters respectively.
-    expect(rtBase64Decode(b64("abc"))).toEqual(utf8Bytes("abc")); // "YWJj", no padding
-    expect(b64("ab")).toBe("YWI=");
-    expect(rtBase64Decode(b64("ab"))).toEqual(utf8Bytes("ab"));
-    expect(b64("a")).toBe("YQ==");
-    expect(rtBase64Decode(b64("a"))).toEqual(utf8Bytes("a"));
-    expect(rtBase64Decode("")).toEqual([]);
-  });
-
-  it("round-trips arbitrary binary bytes, including 0x00 and 0xff", () => {
-    const bytes = [];
-    for (let i = 0; i < 256; i++) bytes.push(i);
-    const encoded = Buffer.from(bytes).toString("base64");
-    expect(rtBase64Decode(encoded)).toEqual(bytes);
-  });
-
-  it("rejects anything that is not decodable rather than returning partial bytes", () => {
-    expect(() => rtBase64Decode("YWJ")).toThrow(/multiple of 4/); // truncated group
-    expect(() => rtBase64Decode("YW J=")).toThrow(/not base64/); // whitespace not pre-stripped
-    expect(() => rtBase64Decode("```bash\nYWJj\n```")).toThrow(/not base64/);
-    expect(() => rtBase64Decode("YWJ*")).toThrow(/not base64/);
-    expect(() => rtBase64Decode("YWJj====")).toThrow(/not base64/); // over-padded
-    expect(() => rtBase64Decode("=Y==")).toThrow(/not base64/); // padding not at the end
-    expect(() => rtBase64Decode(null)).toThrow(/not base64/);
-  });
-});
-
-describe("rtUtf8Decode", () => {
-  it("decodes 1-, 2-, 3- and 4-byte sequences", () => {
-    for (const text of ["plain ascii", "café", "中文字", "𝄞 clef", "🙂🚀", "a\nb\tc"]) {
-      expect(rtUtf8Decode(utf8Bytes(text))).toBe(text);
+describe("rtUtf8Encode", () => {
+  it("encodes 1-, 2-, 3- and 4-byte sequences exactly as Node does", () => {
+    for (const text of ["plain ascii", "café", "中文字", "𝄞 clef", "🙂🚀", "a\nb\tc", ""]) {
+      expect(rtUtf8Encode(text)).toEqual(utf8Bytes(text));
     }
   });
 
-  it("emits a surrogate pair for an astral code point", () => {
-    // U+1F600 → D83D DE00. A decoder that pushed the raw code point would
-    // produce a string of the wrong .length and break every byte offset after it.
-    const decoded = rtUtf8Decode(utf8Bytes("😀"));
-    expect(decoded).toBe("😀");
-    expect(decoded.length).toBe(2);
-    expect(decoded.charCodeAt(0)).toBe(0xd83d);
-    expect(decoded.charCodeAt(1)).toBe(0xde00);
-  });
-
-  it("decodes a string longer than its internal flush window", () => {
-    const long = "é🚀x".repeat(5000);
-    expect(rtUtf8Decode(utf8Bytes(long))).toBe(long);
-  });
-
-  it("throws on a malformed sequence instead of substituting a replacement char", () => {
-    expect(() => rtUtf8Decode([0xff])).toThrow(/invalid leading byte/);
-    expect(() => rtUtf8Decode([0x80])).toThrow(/invalid leading byte/);
-    expect(() => rtUtf8Decode([0xe4, 0xb8])).toThrow(/truncated sequence/);
-    expect(() => rtUtf8Decode([0xe4, 0x41, 0xad])).toThrow(/invalid continuation byte/);
-  });
-
-  it("decodes an empty byte array to an empty string", () => {
-    expect(rtUtf8Decode([])).toBe("");
+  it("throws on a lone surrogate instead of emitting replacement bytes", () => {
+    expect(() => rtUtf8Encode("\ud83d")).toThrow(/lone surrogate/);
+    expect(() => rtUtf8Encode("\ude00x")).toThrow(/lone surrogate/);
   });
 });
 
-describe("rtChunkPlan", () => {
-  it("covers [0, size) with no gap and no overlap", () => {
-    const plan = rtChunkPlan(25, 10);
-    expect(plan).toEqual([
-      { offset: 0, count: 10 },
-      { offset: 10, count: 10 },
-      { offset: 20, count: 5 },
+describe("rtSha256Hex", () => {
+  it("matches Node's crypto over ascii, multi-byte and multi-block inputs", () => {
+    for (const text of [
+      "",
+      "abc",
+      "The quick brown fox jumps over the lazy dog",
+      "## sección — 中文 🚀\n".repeat(400), // several 64-byte blocks, multi-byte
+      "x".repeat(55), // padding boundary: length % 64 == 55
+      "x".repeat(56), // padding spills into a second block
+      "x".repeat(64),
+    ]) {
+      expect(rtSha256Hex(rtUtf8Encode(text))).toBe(nodeSha(text));
+    }
+  });
+});
+
+describe("rtLinePlan", () => {
+  it("covers [1, totalLines] inclusively with no gap and no overlap", () => {
+    expect(rtLinePlan(25, 10)).toEqual([
+      { first: 1, last: 10 },
+      { first: 11, last: 20 },
+      { first: 21, last: 25 },
     ]);
-    expect(plan.reduce((n, c) => n + c.count, 0)).toBe(25);
   });
 
-  it("emits no empty trailing range when the size is an exact multiple", () => {
-    expect(rtChunkPlan(20, 10)).toEqual([
-      { offset: 0, count: 10 },
-      { offset: 10, count: 10 },
+  it("emits no empty trailing range when the count is an exact multiple", () => {
+    expect(rtLinePlan(20, 10)).toEqual([
+      { first: 1, last: 10 },
+      { first: 11, last: 20 },
     ]);
   });
 
-  it("plans nothing for an empty file, and one short range for a small one", () => {
-    expect(rtChunkPlan(0, 10)).toEqual([]);
-    expect(rtChunkPlan(1, 10)).toEqual([{ offset: 0, count: 1 }]);
+  it("plans nothing for zero lines, and one short range for one line", () => {
+    expect(rtLinePlan(0, 10)).toEqual([]);
+    expect(rtLinePlan(1, 10)).toEqual([{ first: 1, last: 1 }]);
   });
 
-  it("keeps a chunk's base64 within the IO agent's final-message token cap", () => {
-    // A live agent's final message truncated at 9,885 base64 chars (≈4096
-    // tokens at ~2.4 chars/token) even though its tool result held the full
-    // 18,140. The shipped chunk must encode to fewer chars than that observed
-    // ceiling, with headroom.
-    expect(Math.ceil((RT_READ_CHUNK * 4) / 3)).toBeLessThanOrEqual(8000);
-  });
-
-  it("returns each chunk across the VM boundary as a string, never a byte array", async () => {
-    // The runtime rejects marshalled arrays longer than 4,096 elements, and a
-    // chunk is 6,000 bytes — a live run failed every read this way (run
-    // wf_a4034a6e-597). hostParallel models that cap, so this test reproduces
-    // the live failure if rtReadChunk ever returns decoded bytes again.
-    const doc = "x".repeat(RT_READ_CHUNK);
-    const { rtReadChunk } = loadAdapter({
-      agent: async () => Buffer.from(doc, "utf8").toString("base64"),
-    });
-    const part = await rtReadChunk("docs/f/TSPEC-f.md", { offset: 0, count: RT_READ_CHUNK }, 0);
-    expect(typeof part).toBe("string");
-    expect(Buffer.from(part, "base64").length).toBe(RT_READ_CHUNK);
+  it("keeps a chunk's target bytes within the IO agent's final-message token cap", () => {
+    // A live agent's final message truncated at 9,885 chars (≈4096 output
+    // tokens). A prose chunk's chars ≈ its bytes, so the target must sit under
+    // that observed ceiling with headroom for the SHA line and sentinels.
+    expect(RT_READ_CHUNK).toBeLessThanOrEqual(8000);
   });
 });
 
 describe("rtReadFile", () => {
   /** A document large enough to need several chunks, with multi-byte characters
-   *  deliberately straddling chunk boundaries. */
+   *  and line lengths that vary across chunk boundaries. */
   function bigDocument() {
     let text = "";
     while (Buffer.byteLength(text, "utf8") < RT_READ_CHUNK * 2 + 100) {
       text += `## sección ${text.length} — 中文 🚀\nbody line with ascii padding\n`;
     }
     return text;
+  }
+
+  /** The chunk plan rtReadFile derives for `contents`, reproduced for call counts. */
+  function expectedChunks(contents) {
+    const size = Buffer.byteLength(contents, "utf8");
+    const newlines = (contents.match(/\n/g) || []).length;
+    const displayLines = newlines + (contents.endsWith("\n") || contents === "" ? 0 : 1);
+    const chunkCount = Math.max(1, Math.ceil(size / RT_READ_CHUNK));
+    const perChunk = Math.max(1, Math.ceil(displayLines / chunkCount));
+    return rtLinePlan(displayLines, perChunk).length;
   }
 
   it("returns null when the file is missing, without fetching any chunk", async () => {
@@ -154,7 +116,7 @@ describe("rtReadFile", () => {
     expect(agent.calls).toHaveLength(1);
   });
 
-  it("returns \"\" for an empty file, without fetching any chunk", async () => {
+  it('returns "" for an empty file, without fetching any chunk', async () => {
     const agent = fileAgent({ "docs/f/REQ-f.md": "" });
     const { rtReadFile } = loadAdapter({ agent, parallel: hostParallel });
     expect(await rtReadFile("docs/f/REQ-f.md")).toBe("");
@@ -167,20 +129,61 @@ describe("rtReadFile", () => {
     const { rtReadFile } = loadAdapter({ agent, parallel: hostParallel });
 
     expect(await rtReadFile("docs/f/TSPEC-f.md")).toBe(contents);
-    // 1 size probe + one call per planned chunk — no whole-file echo remains.
-    const expected = rtChunkPlan(Buffer.byteLength(contents, "utf8"), RT_READ_CHUNK).length;
-    expect(expected).toBeGreaterThan(2);
+    // 1 probe + one call per planned chunk — no whole-file echo remains.
+    const expected = expectedChunks(contents);
+    expect(expected).toBeGreaterThan(1);
     expect(agent.calls).toHaveLength(1 + expected);
   });
 
-  it("retries a truncated chunk and returns the verified bytes", async () => {
+  it("reads a file with no trailing newline under GNU sed behaviour", async () => {
+    const contents = "line one\nline two\nno final newline";
+    const agent = fileAgent({ "docs/f/REQ-f.md": contents });
+    const { rtReadFile } = loadAdapter({ agent, parallel: hostParallel });
+    expect(await rtReadFile("docs/f/REQ-f.md")).toBe(contents);
+  });
+
+  it("reads a file with no trailing newline under BSD sed behaviour", async () => {
+    // BSD sed appends a newline to the final line; the whole-file SHA check
+    // must strip it rather than throw or return the extra byte.
+    const contents = "line one\nline two\nno final newline";
+    const agent = fileAgent({ "docs/f/REQ-f.md": contents }, undefined, { bsdSed: true });
+    const { rtReadFile } = loadAdapter({ agent, parallel: hostParallel });
+    expect(await rtReadFile("docs/f/REQ-f.md")).toBe(contents);
+  });
+
+  it("reads a document with CRLF line endings byte-for-byte", async () => {
+    const contents = "col a\tcol b\r\nrow 1\r\nrow 2\r\n";
+    const agent = fileAgent({ "docs/f/REQ-f.md": contents });
+    const { rtReadFile } = loadAdapter({ agent, parallel: hostParallel });
+    expect(await rtReadFile("docs/f/REQ-f.md")).toBe(contents);
+  });
+
+  it("retries a mangled same-length transcription and returns the verified text", async () => {
+    // Defect 4's exact shape: the reply has a plausible length but the model
+    // drifted mid-stream. Only the SHA can catch this.
+    const contents = bigDocument();
+    let mangledOnce = false;
+    const agent = fileAgent({ "docs/f/TSPEC-f.md": contents }, (prompt, reply) => {
+      if (!mangledOnce && /sed -n/.test(prompt)) {
+        mangledOnce = true;
+        return reply.replace(/body line/, "b0dy line"); // same length, wrong bytes
+      }
+      return undefined;
+    });
+    const { rtReadFile } = loadAdapter({ agent, parallel: hostParallel });
+
+    expect(await rtReadFile("docs/f/TSPEC-f.md")).toBe(contents);
+    expect(mangledOnce).toBe(true);
+  });
+
+  it("retries a truncated chunk transcription", async () => {
     const contents = bigDocument();
     let truncatedOnce = false;
     const agent = fileAgent({ "docs/f/TSPEC-f.md": contents }, (prompt, reply) => {
-      if (!truncatedOnce && /tail -c/.test(prompt)) {
+      if (!truncatedOnce && /sed -n/.test(prompt)) {
         truncatedOnce = true;
-        // Valid base64 of HALF the bytes — the defect's exact shape.
-        return reply.slice(0, Math.floor(reply.length / 8) * 4);
+        const cut = Math.floor(reply.length / 2);
+        return reply.slice(0, cut) + "\n__PDLC_CHUNK_END__";
       }
       return undefined;
     });
@@ -194,9 +197,11 @@ describe("rtReadFile", () => {
     const contents = bigDocument();
     let fencedOnce = false;
     const agent = fileAgent({ "docs/f/TSPEC-f.md": contents }, (prompt, reply) => {
-      if (!fencedOnce && /tail -c/.test(prompt)) {
+      if (!fencedOnce && /sed -n/.test(prompt)) {
         fencedOnce = true;
-        return "```bash\n" + reply + "\n```";
+        // A fence swallows the sentinels' standalone shape but the sentinel
+        // text survives; the SHA over the fenced payload no longer matches.
+        return "```text\n" + reply.replace(/__PDLC_CHUNK_(BEGIN|END)__/g, "") + "\n```";
       }
       return undefined;
     });
@@ -206,54 +211,96 @@ describe("rtReadFile", () => {
     expect(fencedOnce).toBe(true);
   });
 
-  it("throws — never returns partial content — when a chunk stays unverifiable", async () => {
+  it("throws — never returns corrupted content — when a chunk stays mangled", async () => {
     const contents = bigDocument();
     const agent = fileAgent({ "docs/f/TSPEC-f.md": contents }, (prompt, reply) => {
-      // Chunk 1 is always short; every other chunk is honest.
-      if (prompt.includes(`tail -c +${RT_READ_CHUNK + 1} `)) {
-        return reply.slice(0, Math.floor(reply.length / 8) * 4);
+      // Chunk covering line 1 is always mangled; every other chunk is honest.
+      if (/sed -n '1,/.test(prompt)) {
+        return reply.replace(/body line/, "b0dy line");
       }
       return undefined;
     });
     const { rtReadFile } = loadAdapter({ agent, parallel: hostParallel });
 
     await expect(rtReadFile("docs/f/TSPEC-f.md")).rejects.toThrow(
-      /chunk 1 of "docs\/f\/TSPEC-f\.md"/
+      /chunk 0 of "docs\/f\/TSPEC-f\.md"/
     );
-    // Attempts are bounded: the honest chunks resolve once; chunk 1 retries out.
-    const failing = agent.calls.filter((c) => c.prompt.includes(`tail -c +${RT_READ_CHUNK + 1} `));
+    // Attempts are bounded: the mangled chunk retries out.
+    const failing = agent.calls.filter((c) => /sed -n '1,/.test(c.prompt));
     expect(failing).toHaveLength(RT_READ_RETRIES + 1);
   });
 
-  it("throws on an unparseable size reply rather than guessing", async () => {
+  it("throws when a hallucinated SHA accompanies a mangled payload", async () => {
+    // The model cannot compute the digest of its own mangled copy — but it can
+    // emit 64 plausible hex chars. That must verify as a mismatch, not a pass.
+    const contents = bigDocument();
+    const agent = fileAgent({ "docs/f/TSPEC-f.md": contents }, (prompt, reply) => {
+      if (/sed -n '1,/.test(prompt)) {
+        return reply
+          .replace(/body line/, "b0dy line")
+          .replace(/SHA256: [0-9a-f]{64}/, `SHA256: ${"ab".repeat(32)}`);
+      }
+      return undefined;
+    });
+    const { rtReadFile } = loadAdapter({ agent, parallel: hostParallel });
+    await expect(rtReadFile("docs/f/TSPEC-f.md")).rejects.toThrow(/chunk 0/);
+  });
+
+  it("throws on an unparseable probe reply rather than guessing", async () => {
     const agent = fileAgent({ "docs/f/REQ-f.md": "hello" }, (prompt) =>
       /wc -c/.test(prompt) ? "The file is about five bytes." : undefined
     );
     const { rtReadFile } = loadAdapter({ agent, parallel: hostParallel });
-    await expect(rtReadFile("docs/f/REQ-f.md")).rejects.toThrow(/unparseable size reply/);
+    await expect(rtReadFile("docs/f/REQ-f.md")).rejects.toThrow(/unparseable probe reply/);
   });
 
-  it("accepts a size reply padded with whitespace, as `wc -c` prints on BSD", async () => {
-    const agent = fileAgent({ "docs/f/REQ-f.md": "hello" }, (prompt, reply) =>
-      /wc -c/.test(prompt) ? `      ${reply}\n` : undefined
+  it("accepts a probe reply padded with whitespace, as BSD `wc` prints", async () => {
+    const agent = fileAgent({ "docs/f/REQ-f.md": "hello\n" }, (prompt, reply) =>
+      /wc -c/.test(prompt) ? `   ${reply.split("\n").join("\n   ")}\n` : undefined
     );
     const { rtReadFile } = loadAdapter({ agent, parallel: hostParallel });
-    expect(await rtReadFile("docs/f/REQ-f.md")).toBe("hello");
+    expect(await rtReadFile("docs/f/REQ-f.md")).toBe("hello\n");
+  });
+
+  it("throws when the reassembled text does not match the whole-file SHA", async () => {
+    // Both chunks verify individually, but the probe's whole-file digest is
+    // for different bytes — e.g. the file changed between probe and chunks.
+    const contents = bigDocument();
+    const agent = fileAgent({ "docs/f/TSPEC-f.md": contents }, (prompt, reply) =>
+      /wc -c/.test(prompt)
+        ? reply.replace(/[0-9a-f]{64}/, "ab".repeat(32))
+        : undefined
+    );
+    const { rtReadFile } = loadAdapter({ agent, parallel: hostParallel });
+    await expect(rtReadFile("docs/f/TSPEC-f.md")).rejects.toThrow(
+      /did not match the file's size and SHA-256/
+    );
   });
 
   it("throws when the host parallel resolves a failed chunk thunk to null", async () => {
     // The host `parallel` swallows a thrown thunk. Without the adapter's own
-    // null check that would concatenate `undefined` into the document.
+    // check that would concatenate `undefined` into the document.
     const contents = bigDocument();
     const agent = fileAgent({ "docs/f/TSPEC-f.md": contents }, (prompt) =>
-      prompt.includes(`tail -c +${RT_READ_CHUNK + 1} `) ? "not base64 at all" : undefined
+      /sed -n '1,/.test(prompt) ? "no sentinels at all" : undefined
     );
     const { rtReadFile } = loadAdapter({ agent, parallel: hostParallel });
-    await expect(rtReadFile("docs/f/TSPEC-f.md")).rejects.toThrow(/chunk 1/);
+    await expect(rtReadFile("docs/f/TSPEC-f.md")).rejects.toThrow(/chunk 0/);
+  });
+
+  it("returns each chunk across the VM boundary as a string, never a byte array", async () => {
+    // The runtime rejects marshalled arrays longer than 4,096 elements (run
+    // wf_a4034a6e-597). hostParallel models that cap, so a byte-array return
+    // reproduces the live failure here.
+    const contents = bigDocument();
+    const agent = fileAgent({ "docs/f/TSPEC-f.md": contents });
+    const { rtReadChunk } = loadAdapter({ agent, parallel: hostParallel });
+    const part = await rtReadChunk("docs/f/TSPEC-f.md", { first: 1, last: 40 }, 0);
+    expect(typeof part).toBe("string");
   });
 
   it("uses the cheap IO model for every call it makes", async () => {
-    const agent = fileAgent({ "docs/f/REQ-f.md": "hello world" });
+    const agent = fileAgent({ "docs/f/REQ-f.md": "hello world\n" });
     const { rtReadFile } = loadAdapter({ agent, parallel: hostParallel });
     await rtReadFile("docs/f/REQ-f.md");
     expect(agent.calls.every((c) => c.opts && c.opts.model === adapter.RT_IO_MODEL)).toBe(true);

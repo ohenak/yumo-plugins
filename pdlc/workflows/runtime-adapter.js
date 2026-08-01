@@ -81,202 +81,272 @@ function rtLog(message) {
   RT.log(String(message));
 }
 
-// An agent's final message is not a faithful transport for a large file: a
-// measured run returned 102,429 bytes of a 209,953-byte document, starting
-// mid-document, and a sibling read prepended a ```bash fence. Neither loss is
-// detectable in the reply itself, and orchestrate-dev's completeness gate reads
-// the result as a structurally incomplete document and re-authors it. So the
-// read is chunked, every chunk is size-verified against the bytes it asked for,
-// and anything that cannot be verified throws rather than returning garbage.
+// An agent's final message is not a faithful transport for a large file — and
+// not only by TRUNCATION. Measured failures, in order of discovery:
+//   1. a single-agent echo returned 102,429 bytes of a 209,953-byte document;
+//   2. a chunk agent's final message carried 9,885 of 18,140 base64 chars
+//      (≈4096-token output cap);
+//   3. the VM boundary rejected 6,000-element byte arrays (max 4,096);
+//   4. base64 replies of EXACTLY the right length diverged from the file
+//      mid-stream — the IO model cannot transcribe 8,000 chars of base64, and
+//      in 25 measured replies 23 were corrupted, one of them length-correct
+//      (run wf_20fb1a29-246 / wf_a985bc0f-d18, 2026-08-01).
 //
-// The binding limit is NOT the ~100 KB body truncation above — it is the IO
-// agent's max output tokens: a live chunk agent's Bash tool returned 18,140
-// base64 chars intact, but its final message carried only 9,885 (≈4096 tokens
-// at base64's ~2.4 chars/token). 6000 source bytes is 8,000 base64 chars,
-// ~3.3k tokens — under that cap with margin for the reply's framing.
+// Failure 4 is the binding one: a length check cannot catch same-length
+// corruption. So the transport is now (a) PROSE, which a model copies far more
+// faithfully than base64's structureless entropy, (b) chunked on LINE
+// boundaries so no UTF-8 sequence is ever split, and (c) verified per chunk
+// against a SHA-256 the agent's OWN TOOL computed over the same byte range —
+// the model cannot hand-compute a digest of its mangled copy, so a mismatch is
+// detected and retried, and an exhausted retry throws rather than serving
+// garbage. The reassembled file is verified once more against the whole-file
+// digest from the size probe.
+//
+// Target bytes per chunk. ~6,000 bytes of markdown is ≲2,500 output tokens —
+// under the ≈4,096-token final-message cap with margin for the framing.
 const RT_READ_CHUNK = 6000;
-// Per chunk, beyond the first attempt. A truncated or fenced reply is a
-// transport fault, not a property of the file, so a retry is worth taking.
-const RT_READ_RETRIES = 2;
+// Per chunk, beyond the first attempt. A mangled or truncated reply is a
+// transport fault, not a property of the file, so retries are worth taking.
+// Prose transcription fails far less often than base64's measured 23/25, but
+// it is still a model output: four attempts bound the tail.
+const RT_READ_RETRIES = 3;
 
-const RT_BASE64_RE = /^[A-Za-z0-9+/]*={0,2}$/;
-const RT_B64_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-// The runtime has no Buffer, no atob and no TextDecoder (probed 2026-07-27), so
-// the decoders below are hand-rolled and dependency-free.
-const RT_B64_INDEX = (function () {
-  const map = {};
-  for (let i = 0; i < RT_B64_ALPHABET.length; i++) map[RT_B64_ALPHABET.charAt(i)] = i;
-  return map;
-})();
+const RT_HEX64_RE = /\b[0-9a-f]{64}\b/;
+const RT_CHUNK_BEGIN = "__PDLC_CHUNK_BEGIN__";
+const RT_CHUNK_END = "__PDLC_CHUNK_END__";
+// Both platforms' hashers, first one wins: macOS ships `shasum`, minimal Linux
+// images ship `sha256sum`. Output of both starts with the 64-hex digest.
+const RT_SHA_CMD = '{ shasum -a 256 2>/dev/null || sha256sum; } | head -1';
 
-/** base64 text → array of byte values. Throws on anything not decodable. */
-function rtBase64Decode(text) {
-  if (typeof text !== "string" || !RT_BASE64_RE.test(text)) {
-    throw new Error("rtBase64Decode: input is not base64");
+/** string → UTF-8 byte values. Astral pairs via surrogates; lone surrogates throw. */
+function rtUtf8Encode(text) {
+  const out = [];
+  for (let i = 0; i < text.length; i++) {
+    let cp = text.charCodeAt(i);
+    if (cp >= 0xd800 && cp <= 0xdbff) {
+      const lo = text.charCodeAt(i + 1);
+      if (!(lo >= 0xdc00 && lo <= 0xdfff)) throw new Error(`rtUtf8Encode: lone surrogate at ${i}`);
+      cp = 0x10000 + ((cp - 0xd800) << 10) + (lo - 0xdc00);
+      i++;
+    } else if (cp >= 0xdc00 && cp <= 0xdfff) {
+      throw new Error(`rtUtf8Encode: lone surrogate at ${i}`);
+    }
+    if (cp < 0x80) out.push(cp);
+    else if (cp < 0x800) out.push(0xc0 | (cp >> 6), 0x80 | (cp & 0x3f));
+    else if (cp < 0x10000) out.push(0xe0 | (cp >> 12), 0x80 | ((cp >> 6) & 0x3f), 0x80 | (cp & 0x3f));
+    else out.push(0xf0 | (cp >> 18), 0x80 | ((cp >> 12) & 0x3f), 0x80 | ((cp >> 6) & 0x3f), 0x80 | (cp & 0x3f));
   }
-  if (text.length % 4 !== 0) {
-    throw new Error("rtBase64Decode: length is not a multiple of 4");
-  }
-  const pad = text.slice(-2) === "==" ? 2 : text.slice(-1) === "=" ? 1 : 0;
-  const bytes = [];
-  for (let i = 0; i < text.length; i += 4) {
-    const c0 = RT_B64_INDEX[text.charAt(i)];
-    const c1 = RT_B64_INDEX[text.charAt(i + 1)];
-    const c2 = RT_B64_INDEX[text.charAt(i + 2)];
-    const c3 = RT_B64_INDEX[text.charAt(i + 3)];
-    if (c0 === undefined || c1 === undefined) {
-      throw new Error("rtBase64Decode: misplaced padding");
-    }
-    const n = (c0 << 18) | (c1 << 12) | ((c2 === undefined ? 0 : c2) << 6) | (c3 === undefined ? 0 : c3);
-    const last = i + 4 >= text.length;
-    bytes.push((n >> 16) & 0xff);
-    if (!last || pad < 2) bytes.push((n >> 8) & 0xff);
-    if (!last || pad < 1) bytes.push(n & 0xff);
-  }
-  return bytes;
-}
-
-/** UTF-8 byte values → string. Handles 1–4-byte sequences, astral via surrogates. */
-function rtUtf8Decode(bytes) {
-  let out = "";
-  let units = [];
-  let i = 0;
-  while (i < bytes.length) {
-    const b0 = bytes[i];
-    let cp;
-    let len;
-    if (b0 < 0x80) {
-      cp = b0;
-      len = 1;
-    } else if ((b0 & 0xe0) === 0xc0) {
-      cp = b0 & 0x1f;
-      len = 2;
-    } else if ((b0 & 0xf0) === 0xe0) {
-      cp = b0 & 0x0f;
-      len = 3;
-    } else if ((b0 & 0xf8) === 0xf0) {
-      cp = b0 & 0x07;
-      len = 4;
-    } else {
-      throw new Error(`rtUtf8Decode: invalid leading byte 0x${b0.toString(16)} at ${i}`);
-    }
-    if (i + len > bytes.length) throw new Error(`rtUtf8Decode: truncated sequence at ${i}`);
-    for (let k = 1; k < len; k++) {
-      const b = bytes[i + k];
-      if ((b & 0xc0) !== 0x80) throw new Error(`rtUtf8Decode: invalid continuation byte at ${i + k}`);
-      cp = (cp << 6) | (b & 0x3f);
-    }
-    i += len;
-    if (cp > 0xffff) {
-      const rest = cp - 0x10000;
-      units.push(0xd800 + (rest >> 10), 0xdc00 + (rest & 0x3ff));
-    } else {
-      units.push(cp);
-    }
-    // Flushed in slices: String.fromCharCode.apply over a whole document's
-    // worth of code units risks an argument-count limit.
-    if (units.length >= 4096) {
-      out += String.fromCharCode.apply(null, units);
-      units = [];
-    }
-  }
-  if (units.length) out += String.fromCharCode.apply(null, units);
   return out;
 }
 
-/** Byte ranges covering [0, size). Empty for size 0; no empty trailing range. */
-function rtChunkPlan(size, chunkSize) {
+/** FIPS 180-4 round constants. */
+const RT_SHA256_K = [
+  0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1,
+  0x923f82a4, 0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3,
+  0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174, 0xe49b69c1, 0xefbe4786,
+  0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+  0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147,
+  0x06ca6351, 0x14292967, 0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13,
+  0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85, 0xa2bfe8a1, 0xa81a664b,
+  0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+  0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a,
+  0x5b9cca4f, 0x682e6ff3, 0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208,
+  0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
+];
+
+function rtRotr32(x, n) {
+  return ((x >>> n) | (x << (32 - n))) >>> 0;
+}
+
+/**
+ * SHA-256 of a byte array, as 64 lowercase hex chars. Distinct from the
+ * module-scope `sha256Hex`, which the bundle's IIFEs enclose out of reach and
+ * which canonicalises its input — this one digests the EXACT bytes, because
+ * its whole job is comparing them to what `shasum` saw on disk. `Math`, `>>>`
+ * and `|` only: the runtime has no `crypto`, `BigInt` or `TextEncoder`.
+ */
+function rtSha256Hex(bytes) {
+  const bitLenHi = Math.floor((bytes.length * 8) / 4294967296) >>> 0;
+  const bitLenLo = (bytes.length * 8) % 4294967296 >>> 0;
+  const padded = bytes.slice();
+  padded.push(0x80);
+  while (padded.length % 64 !== 56) padded.push(0);
+  padded.push(
+    (bitLenHi >>> 24) & 0xff, (bitLenHi >>> 16) & 0xff, (bitLenHi >>> 8) & 0xff, bitLenHi & 0xff,
+    (bitLenLo >>> 24) & 0xff, (bitLenLo >>> 16) & 0xff, (bitLenLo >>> 8) & 0xff, bitLenLo & 0xff
+  );
+  let h0 = 0x6a09e667, h1 = 0xbb67ae85, h2 = 0x3c6ef372, h3 = 0xa54ff53a;
+  let h4 = 0x510e527f, h5 = 0x9b05688c, h6 = 0x1f83d9ab, h7 = 0x5be0cd19;
+  const w = new Array(64);
+  for (let block = 0; block < padded.length; block += 64) {
+    for (let t = 0; t < 16; t++) {
+      const o = block + t * 4;
+      w[t] = ((padded[o] << 24) | (padded[o + 1] << 16) | (padded[o + 2] << 8) | padded[o + 3]) >>> 0;
+    }
+    for (let t = 16; t < 64; t++) {
+      const s0 = (rtRotr32(w[t - 15], 7) ^ rtRotr32(w[t - 15], 18) ^ (w[t - 15] >>> 3)) >>> 0;
+      const s1 = (rtRotr32(w[t - 2], 17) ^ rtRotr32(w[t - 2], 19) ^ (w[t - 2] >>> 10)) >>> 0;
+      w[t] = (((w[t - 16] + s0) >>> 0) + ((w[t - 7] + s1) >>> 0)) >>> 0;
+    }
+    let a = h0, b = h1, c = h2, d = h3, e = h4, f = h5, g = h6, h = h7;
+    for (let t = 0; t < 64; t++) {
+      const S1 = (rtRotr32(e, 6) ^ rtRotr32(e, 11) ^ rtRotr32(e, 25)) >>> 0;
+      const ch = ((e & f) ^ (~e & g)) >>> 0;
+      const temp1 = (((((h + S1) >>> 0) + ch) >>> 0) + ((RT_SHA256_K[t] + w[t]) >>> 0)) >>> 0;
+      const S0 = (rtRotr32(a, 2) ^ rtRotr32(a, 13) ^ rtRotr32(a, 22)) >>> 0;
+      const maj = ((a & b) ^ (a & c) ^ (b & c)) >>> 0;
+      const temp2 = (S0 + maj) >>> 0;
+      h = g; g = f; f = e; e = (d + temp1) >>> 0;
+      d = c; c = b; b = a; a = (temp1 + temp2) >>> 0;
+    }
+    h0 = (h0 + a) >>> 0; h1 = (h1 + b) >>> 0; h2 = (h2 + c) >>> 0; h3 = (h3 + d) >>> 0;
+    h4 = (h4 + e) >>> 0; h5 = (h5 + f) >>> 0; h6 = (h6 + g) >>> 0; h7 = (h7 + h) >>> 0;
+  }
+  let hex = "";
+  for (const word of [h0, h1, h2, h3, h4, h5, h6, h7]) {
+    hex += ("0000000" + (word >>> 0).toString(16)).slice(-8);
+  }
+  return hex;
+}
+
+/**
+ * 1-based inclusive line ranges covering [1, totalLines], at most `perChunk`
+ * lines each. Empty for totalLines 0; no empty trailing range.
+ */
+function rtLinePlan(totalLines, perChunk) {
   const plan = [];
-  for (let offset = 0; offset < size; offset += chunkSize) {
-    plan.push({ offset, count: Math.min(chunkSize, size - offset) });
+  for (let first = 1; first <= totalLines; first += perChunk) {
+    plan.push({ first, last: Math.min(first + perChunk - 1, totalLines) });
   }
   return plan;
 }
 
 /**
- * One byte range, re-requested until it decodes to exactly `count` bytes.
+ * One line range, re-requested until the transcribed text matches the SHA-256
+ * the agent's own tool computed over the same range. Returns the verified
+ * chunk TEXT (a string — the VM boundary caps marshalled arrays at 4,096
+ * elements, so byte arrays must never cross it).
  *
- * Returns the verified base64 STRING, not the decoded byte array: this value
- * crosses the host↔VM boundary through `RT.parallel`, and the runtime caps a
- * marshalled array at 4,096 elements (a live run failed every 6,000-byte chunk
- * with "array length 6000 exceeds the maximum of 4096 supported across the
- * workflow VM boundary"). A string is not length-capped; the caller decodes.
+ * Trailing-newline note: `sed -n 'a,bp'` on the FINAL line of a file that has
+ * no trailing newline emits platform-dependent bytes (GNU sed preserves the
+ * absence, BSD sed appends one). Both candidates are checked against the
+ * digest, which was computed over whatever sed actually emitted — so the
+ * platform picks the candidate, not this code.
  */
-async function rtReadChunk(path, chunk, index) {
+async function rtReadChunk(path, range, index) {
   for (let attempt = 0; attempt <= RT_READ_RETRIES; attempt++) {
     const reply = await RT.agent(
-      `Run this exact command from the repository root and report its output:\n` +
-        `  tail -c +${chunk.offset + 1} "${path}" | head -c ${chunk.count} | base64\n` +
-        `Return ONLY the base64 text the command printed — no commentary, no summary, ` +
-        `no code fences, no leading or trailing prose. Line breaks inside the base64 are fine.`,
+      `Run these two exact commands from the repository root:\n` +
+        `  sed -n '${range.first},${range.last}p' "${path}" | ${RT_SHA_CMD}\n` +
+        `  sed -n '${range.first},${range.last}p' "${path}"\n` +
+        `Reply in exactly this shape, with the first command's 64-hex digest and the ` +
+        `second command's output copied EXACTLY, byte for byte — do not fix typos, ` +
+        `do not reformat, do not summarise, do not add code fences:\n` +
+        `SHA256: {digest}\n` +
+        `${RT_CHUNK_BEGIN}\n` +
+        `{the second command's output}\n` +
+        `${RT_CHUNK_END}`,
       { label: `read:${path}#${index}`, model: RT_IO_MODEL }
     );
-    const compact = typeof reply === "string" ? reply.replace(/\s+/g, "") : "";
-    if (!RT_BASE64_RE.test(compact)) continue;
-    let bytes;
-    try {
-      bytes = rtBase64Decode(compact);
-    } catch {
-      continue;
+    if (typeof reply !== "string") continue;
+    const beginAt = reply.indexOf(RT_CHUNK_BEGIN);
+    const endAt = reply.lastIndexOf(RT_CHUNK_END);
+    if (beginAt === -1 || endAt === -1 || endAt <= beginAt) continue;
+    const shaMatch = RT_HEX64_RE.exec(reply.slice(0, beginAt));
+    if (!shaMatch) continue;
+    const sha = shaMatch[0];
+    const afterBegin = reply.indexOf("\n", beginAt);
+    if (afterBegin === -1 || afterBegin >= endAt) continue;
+    // Between the sentinel lines: strip the newline that separates the payload
+    // from the END sentinel line, then re-add candidates below.
+    let payload = reply.slice(afterBegin + 1, endAt);
+    if (payload.slice(-1) === "\n") payload = payload.slice(0, -1);
+    // sed's output normally ends with a newline; on the no-trailing-newline
+    // final chunk it may not (see JSDoc). The digest decides.
+    for (const candidate of [payload + "\n", payload]) {
+      let ok = false;
+      try {
+        ok = rtSha256Hex(rtUtf8Encode(candidate)) === sha;
+      } catch {
+        ok = false;
+      }
+      if (ok) return candidate;
     }
-    // The size check is what makes a truncated reply visible: base64 of a short
-    // read is still valid base64.
-    if (bytes.length !== chunk.count) continue;
-    return compact;
   }
   throw new Error(
-    `rtReadFile: chunk ${index} of "${path}" (offset ${chunk.offset}, ${chunk.count} bytes) ` +
-      `could not be read verifiably after ${RT_READ_RETRIES + 1} attempts`
+    `rtReadFile: chunk ${index} of "${path}" (lines ${range.first}-${range.last}) ` +
+      `could not be transcribed verifiably after ${RT_READ_RETRIES + 1} attempts`
   );
 }
 
 /**
- * Read a file through agents, in verified chunks. Returns null when absent, and
- * throws rather than returning bytes that differ from the file on disk.
+ * Read a file through agents, in line-ranged, SHA-verified chunks. Returns
+ * null when absent, "" when empty, and throws rather than returning bytes
+ * that differ from the file on disk.
+ *
+ * Known limit: a file whose single LINE exceeds the IO agent's output budget
+ * cannot be chunked below one line, so it fails loudly after retries. Every
+ * artifact this pipeline reads is line-structured markdown.
  */
 async function rtReadFile(path) {
-  const sizeReply = await RT.agent(
-    `Run this exact command from the repository root and report its output:\n` +
-      `  if [ ! -f "${path}" ] || [ ! -r "${path}" ]; then echo ${RT_MISSING}; else wc -c < "${path}"; fi\n` +
-      `Return ONLY that token or that number — no commentary, no code fences, no units.`,
-    { label: `size:${path}`, model: RT_IO_MODEL }
-  );
-  const sizeText = typeof sizeReply === "string" ? sizeReply.replace(/\s+/g, "") : "";
-  if (sizeText === "" || sizeText.indexOf(RT_MISSING) !== -1) return null;
-  if (!/^[0-9]+$/.test(sizeText)) {
-    throw new Error(`rtReadFile: unparseable size reply for "${path}": ${String(sizeReply).slice(0, 80)}`);
+  // Probe: size, newline count, whether the last byte is a newline, whole-file
+  // digest. Four short values — the transcription-hostile payload never rides
+  // in this reply, and the digest anchors the reassembly check below.
+  let size = null, newlines = null, endsWithNewline = null, fileSha = null;
+  for (let attempt = 0; attempt <= RT_READ_RETRIES; attempt++) {
+    const reply = await RT.agent(
+      `Run this exact command from the repository root and report its output:\n` +
+        `  if [ ! -f "${path}" ] || [ ! -r "${path}" ]; then echo ${RT_MISSING}; ` +
+        `else wc -c < "${path}"; wc -l < "${path}"; tail -c 1 "${path}" | wc -l; ` +
+        `{ shasum -a 256 "${path}" 2>/dev/null || sha256sum "${path}"; } | head -1; fi\n` +
+        `Return ONLY that token, or the three numbers and the digest line, in order — ` +
+        `no commentary, no code fences, no units.`,
+      { label: `size:${path}`, model: RT_IO_MODEL }
+    );
+    const text = typeof reply === "string" ? reply : "";
+    if (text.indexOf(RT_MISSING) !== -1) return null;
+    const nums = text.match(/\d+/g) || [];
+    const sha = RT_HEX64_RE.exec(text);
+    if (nums.length >= 3 && Number(nums[0]) === 0) return "";
+    if (nums.length >= 3 && sha) {
+      size = Number(nums[0]);
+      newlines = Number(nums[1]);
+      endsWithNewline = Number(nums[2]) === 1;
+      fileSha = sha[0];
+      break;
+    }
   }
-  const size = Number(sizeText);
+  if (size === null) {
+    throw new Error(`rtReadFile: unparseable probe reply for "${path}" after ${RT_READ_RETRIES + 1} attempts`);
+  }
   if (size === 0) return "";
 
-  const plan = rtChunkPlan(size, RT_READ_CHUNK);
+  const displayLines = newlines + (endsWithNewline ? 0 : 1);
+  const chunkCount = Math.max(1, Math.ceil(size / RT_READ_CHUNK));
+  const perChunk = Math.max(1, Math.ceil(displayLines / chunkCount));
+  const plan = rtLinePlan(displayLines, perChunk);
   // The HOST `parallel` takes thunks, not started promises (that is rtParallel's
   // contract, not this one), and resolves a thrown thunk to null — hence the
   // explicit null check below rather than a rejection propagating on its own.
-  const chunks = await RT.parallel(plan.map((chunk, i) => () => rtReadChunk(path, chunk, i)));
-  const bytes = [];
+  const chunks = await RT.parallel(plan.map((range, i) => () => rtReadChunk(path, range, i)));
+  let text = "";
   for (let i = 0; i < plan.length; i++) {
-    // Each part is the chunk's verified base64 string (see rtReadChunk); the
-    // decode happens on THIS side of the VM boundary. Verified there, verified
-    // again here — the string could not survive the boundary corrupted silently.
     const part = chunks && chunks[i];
-    let partBytes = null;
-    if (typeof part === "string") {
-      try {
-        partBytes = rtBase64Decode(part);
-      } catch {
-        partBytes = null;
-      }
+    if (typeof part !== "string") {
+      throw new Error(
+        `rtReadFile: chunk ${i} of "${path}" (lines ${plan[i].first}-${plan[i].last}) did not verify`
+      );
     }
-    if (!partBytes || partBytes.length !== plan[i].count) {
-      throw new Error(`rtReadFile: chunk ${i} of "${path}" did not return its ${plan[i].count} bytes`);
-    }
-    for (let k = 0; k < partBytes.length; k++) bytes.push(partBytes[k]);
+    text += part;
   }
-  if (bytes.length !== size) {
-    throw new Error(`rtReadFile: "${path}" reassembled to ${bytes.length} bytes, expected ${size}`);
+  // Whole-file check against the probe's digest. Each chunk verified alone;
+  // this catches the residual cross-chunk case (a BSD sed newline appended to
+  // a no-trailing-newline final chunk — see rtReadChunk's JSDoc).
+  for (const candidate of text.slice(-1) === "\n" ? [text, text.slice(0, -1)] : [text]) {
+    const bytes = rtUtf8Encode(candidate);
+    if (bytes.length === size && rtSha256Hex(bytes) === fileSha) return candidate;
   }
-  return rtUtf8Decode(bytes);
+  throw new Error(`rtReadFile: "${path}" reassembled but did not match the file's size and SHA-256`);
 }
 
 /** Write a file through an agent, verbatim. */
