@@ -347,11 +347,17 @@ async function runPipeline(opts = {}) {
   const listFiles = makeListFiles
     ? makeListFiles(fs)
     : fakeListFiles((dirPath) => basenamesIn(fs.files, dirPath));
-  const git = fakeGit((argv) =>
-    argv.some((a) => /numstat|--stat/.test(String(a)))
+  const git = fakeGit((argv) => {
+    // The branch guard's probe: this harness's tree is, by construction, already
+    // on the feature branch, so the guard is a no-op and every assertion below
+    // is about the pacing wrapper rather than about branch placement.
+    if (argv.join(" ") === "rev-parse --abbrev-ref HEAD") {
+      return { ok: true, stdout: `feat-${FEATURE}\n` };
+    }
+    return argv.some((a) => /numstat|--stat/.test(String(a)))
       ? { ok: true, stdout: `20000\t0\t${FSPEC_PATH}\n` }
-      : { ok: true }
-  );
+      : { ok: true };
+  });
   const recordHalt = recordingRecordHalt({ queueRow: "halted" });
   const dispatches = [];
   const logs = [];

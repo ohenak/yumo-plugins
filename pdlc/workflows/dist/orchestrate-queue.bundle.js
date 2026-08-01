@@ -510,6 +510,158 @@ function haltError(message, fields) {
   return err;
 }
 
+// ─── Branch guard — every commit of a run lands on feat-{feature} ─────────────
+//
+// The failure this exists for: nothing in the pipeline ever established the
+// feature branch. A session whose working tree happened to sit on the default
+// branch ran a whole review round there — cross-reviews, REQ revisions and the
+// queue row were committed and pushed to `main`. The only mention of the branch
+// was a "check out or create the feature branch" step inside the reviewer SKILL
+// files, which is both skippable and racy: the two reviewers of a round run in
+// PARALLEL in ONE shared working tree, so a checkout by either of them is a
+// mutation the other never asked for. The branch is therefore established ONCE,
+// by the orchestrator, before any phase runs, and the agents are told not to
+// touch it.
+
+/** The branch a feature's every commit belongs on. */
+function featureBranchName(feature) {
+  return `feat-${String(feature ?? "").trim()}`;
+}
+
+/**
+ * The git transport the branch guard is allowed to ACT on.
+ *
+ * The guard is the one thing in this module that mutates the checkout, so it
+ * runs only against an **injected** seam. Every production entrypoint injects
+ * one (`rtDevInjections`'s `_git: rtGit`, for both the dev and the queue
+ * bundle); a unit test that injects none keeps `defaultGit`, and must never
+ * have its own worktree checked out from under it by a pipeline under test.
+ * Absent transport ⇒ the guard reports that it is inert rather than pretending
+ * it verified anything.
+ *
+ * @param {function|undefined} _git
+ * @returns {function|null}
+ */
+function branchGuardTransport(_git) {
+  return typeof _git === "function" && _git !== defaultGit ? _git : null;
+}
+
+/** The branch name `git rev-parse --abbrev-ref HEAD` reported, or null. */
+function parseAbbrevRef(result) {
+  if (!result || result.ok !== true) return null;
+  const name = String((result && result.stdout) ?? "").trim();
+  return name === "" ? null : name;
+}
+
+/** The one-line operator instruction every branch-guard halt ends with. */
+function branchGuardRemedy(branch) {
+  return `Check out ${branch} yourself (git checkout -B ${branch}) and re-invoke; nothing was committed.`;
+}
+
+/**
+ * Place the working tree on `feat-{feature}` — called ONCE at pipeline entry,
+ * before any phase runs.
+ *
+ * | HEAD reads | action |
+ * |---|---|
+ * | `feat-{feature}` | nothing — already there |
+ * | anything else, branch exists | `git checkout feat-{feature}` |
+ * | anything else, branch absent | `git checkout -b feat-{feature}` |
+ *
+ * Every other outcome HALTS. That includes the checkout *reporting* success
+ * while HEAD still names another branch: the post-checkout `rev-parse` is a
+ * second, independent observation, because "the command exited 0" and "the tree
+ * is on the branch" are not the same claim, and it is the second one the rest
+ * of the pipeline depends on.
+ *
+ * @param {{feature: string, _git?: function, _log?: function}} params
+ * @returns {Promise<{ok: true, branch: string, action: "already-on"|"checked-out"|"created"|"skipped"}>}
+ */
+async function ensureFeatureBranch({ feature, _git, _log } = {}) {
+  const branch = featureBranchName(feature);
+  const emit = typeof _log === "function" ? _log : log;
+  const git = branchGuardTransport(_git);
+  if (!git) {
+    emit(`Branch guard: inert — no git seam injected, ${branch} was not verified.`);
+    return { ok: true, branch, action: "skipped" };
+  }
+
+  const head = await git(["rev-parse", "--abbrev-ref", "HEAD"]);
+  const current = parseAbbrevRef(head);
+  if (current === null) {
+    throw haltError(
+      `Error: branch guard — could not read the current branch ` +
+        `(git rev-parse --abbrev-ref HEAD failed: ${String((head && head.stderr) || "no output").trim()}). ` +
+        `Refusing to run the pipeline without knowing that commits will land on ${branch}. ` +
+        branchGuardRemedy(branch)
+    );
+  }
+  if (current === branch) return { ok: true, branch, action: "already-on" };
+
+  // An existing branch first; `-b` only when the plain checkout could not find
+  // one. Ordered this way round so a branch that already carries work is joined,
+  // never shadowed by a fresh one cut from wherever HEAD happened to be.
+  let action = "checked-out";
+  const checkout = await git(["checkout", branch]);
+  if (!checkout || checkout.ok !== true) {
+    const created = await git(["checkout", "-b", branch]);
+    if (!created || created.ok !== true) {
+      throw haltError(
+        `Error: branch guard — the working tree is on "${current}" and neither ` +
+          `\`git checkout ${branch}\` nor \`git checkout -b ${branch}\` succeeded ` +
+          `(${String((created && created.stderr) || (checkout && checkout.stderr) || "no output").trim()}). ` +
+          `Refusing to run: every commit of this run would land on "${current}". ` +
+          branchGuardRemedy(branch)
+      );
+    }
+    action = "created";
+  }
+
+  const after = parseAbbrevRef(await git(["rev-parse", "--abbrev-ref", "HEAD"]));
+  if (after !== branch) {
+    throw haltError(
+      `Error: branch guard — after checking out ${branch} the working tree is still on ` +
+        `"${after ?? "an unreadable branch"}". Refusing to run: every commit of this run would ` +
+        `land there. ` +
+        branchGuardRemedy(branch)
+    );
+  }
+
+  emit(`Branch guard: working tree is on ${branch} (${action}).`);
+  return { ok: true, branch, action };
+}
+
+/**
+ * The cheap re-check, run at every `reviewLoop` entry: read HEAD and halt if it
+ * is no longer `feat-{feature}`.
+ *
+ * Deliberately **verify-only, never a checkout**. By the time a phase is
+ * running, dispatched agents may be mid-flight in the same working tree, and a
+ * checkout underneath them would corrupt work in progress. A tree that drifted
+ * between phases is an operator problem, and the only safe act is to stop before
+ * the round's cross-reviews are committed somewhere else — which is exactly the
+ * failure this guard exists for.
+ *
+ * @param {{feature: string, context?: string, _git?: function, _log?: function}} params
+ * @returns {Promise<{ok: true, branch: string, verified: boolean}>}
+ */
+async function verifyFeatureBranch({ feature, context, _git, _log } = {}) {
+  const branch = featureBranchName(feature);
+  const git = branchGuardTransport(_git);
+  if (!git) return { ok: true, branch, verified: false };
+
+  const where = context ? ` before ${context}` : "";
+  const current = parseAbbrevRef(await git(["rev-parse", "--abbrev-ref", "HEAD"]));
+  if (current === branch) return { ok: true, branch, verified: true };
+
+  throw haltError(
+    `Error: branch guard${where} — the working tree is on ` +
+      `"${current ?? "an unreadable branch"}", not ${branch}. Refusing to continue: ` +
+      `this round's commits would land there. ` +
+      branchGuardRemedy(branch)
+  );
+}
+
 // ─── Deterministic file-existence check (replaces the guard agent) ────────────
 
 /**
@@ -2013,6 +2165,18 @@ async function reviewLoop({
   const reviewTargetPath = (skill, round) =>
     `docs/${feature}/CROSS-REVIEW-${reviewerRoleSlug(skill) || skill}-${reviewFileType}-v${round}.md`;
 
+  // The branch guard's cheap re-check: `main()` placed the tree on
+  // feat-{feature} at entry, but phases run for a long time and a tree can drift
+  // between them. Verify-only — reviewers of an earlier round may still be
+  // flushing writes into this same tree, so a checkout here would be a mutation
+  // under their feet.
+  await verifyFeatureBranch({
+    feature,
+    context: `phase ${phase}'s review round`,
+    _git,
+    _log: emit,
+  });
+
   // TSPEC-LOOP-02: Entry precondition check (skip for Phase CR)
   if (phase !== "CR") {
     const checkResult = await _checkFile(doc);
@@ -2599,6 +2763,26 @@ const PACING_CONTRACT_CLAUSE = [
   "everything it had not yet flushed.",
 ].join(" ");
 
+/**
+ * §6.3's branch pin, carried by every dispatch prompt that ends in a commit.
+ *
+ * The orchestrator's guard already placed the tree on the branch; this clause is
+ * the agent-side half of the same invariant — a last-moment check by the one
+ * process that is about to write, and an explicit prohibition on "fixing" the
+ * branch itself, because reviewers run in parallel in one shared tree and a
+ * checkout by either of them lands on the other. Fully substituted, per §6.3: no
+ * un-substituted placeholder reaches an operator-facing (or agent-facing) string.
+ */
+function branchPinClause(feature) {
+  const branch = featureBranchName(feature);
+  return (
+    `All commits for this task must land on branch ${branch}. ` +
+    "Immediately before each commit run `git rev-parse --abbrev-ref HEAD`; if it prints " +
+    "anything else — especially the default branch — STOP and report instead of committing. " +
+    "Do not run `git checkout` yourself; the orchestrator has already placed the tree on the branch."
+  );
+}
+
 /** The greenfield opener for a target that is not on disk yet. */
 function skeletonClause() {
   return (
@@ -3072,7 +3256,9 @@ async function advisoryPacingCheck({ wroteBytes, targetPath, _git, emit }) {
  * @returns {string}
  */
 function reviewerPrompt(doc, phase, feature, iteration, reviewer, docType) {
-  const base = `Review the document at ${doc} for phase ${phase} of feature ${feature}. This is iteration ${iteration}.`;
+  const base =
+    `Review the document at ${doc} for phase ${phase} of feature ${feature}. This is iteration ${iteration}.\n` +
+    branchPinClause(feature);
   if (iteration < 2) return base;
 
   const prev = iteration - 1;
@@ -3098,7 +3284,10 @@ function reviewerPrompt(doc, phase, feature, iteration, reviewer, docType) {
 }
 
 function optimizerPrompt(doc, phase, feature, iteration, reviewers = [], docType) {
-  const base = `Address reviewer feedback on ${doc} for phase ${phase} of feature ${feature}. Iteration ${iteration} reviewers found issues. Update and commit.`;
+  const base =
+    `Address reviewer feedback on ${doc} for phase ${phase} of feature ${feature}. ` +
+    `Iteration ${iteration} reviewers found issues. Update and commit.\n` +
+    branchPinClause(feature);
 
   // Point the optimizer straight at this iteration's cross-review files so it does
   // not hunt for them. Both reviewer roles' expected paths for v{iteration}.
@@ -3166,7 +3355,11 @@ function decisionsWarrantedTrailerRequirement() {
 
 function creatorPrompt(phase, featureName, inputs) {
   const dispatch = PHASE_DISPATCH[phase];
-  return `Create ${dispatch.creatorOutputPath.replace(/\{feature\}/g, featureName)} for feature ${featureName}. Input documents: ${inputs.join(", ")}. Commit and push.`;
+  return (
+    `Create ${dispatch.creatorOutputPath.replace(/\{feature\}/g, featureName)} for feature ${featureName}. ` +
+    `Input documents: ${inputs.join(", ")}. Commit and push.\n` +
+    branchPinClause(featureName)
+  );
 }
 
 function implementPrompt(task, featureName) {
@@ -3176,7 +3369,8 @@ function implementPrompt(task, featureName) {
     `TSPEC: docs/${featureName}/TSPEC-${featureName}.md\n` +
     `PROPERTIES: docs/${featureName}/PROPERTIES-${featureName}.md\n` +
     `Dependencies completed: ${task.dependencies.join(", ") || "none"}\n` +
-    `Follow TDD. Run tests. Commit and push.`
+    `Follow TDD. Run tests. Commit and push.\n` +
+    branchPinClause(featureName)
   );
 }
 
@@ -3185,7 +3379,8 @@ function propertiesTestPrompt(featureName) {
     `Implement PROPERTIES tests for feature ${featureName}.\n` +
     `Read: docs/${featureName}/PROPERTIES-${featureName}.md\n` +
     `For each property without a corresponding test, write it using TDD at the specified test level.\n` +
-    `Run the full test suite. All tests must pass before committing. Commit and push.`
+    `Run the full test suite. All tests must pass before committing. Commit and push.\n` +
+    branchPinClause(featureName)
   );
 }
 
@@ -3197,7 +3392,8 @@ function harvestPrompt(featureName) {
     `3. Write docs/${featureName}/LEARNINGS-${featureName}.md.\n` +
     `4. Commit and push LEARNINGS before any delete operation.\n` +
     `5. Only after the LEARNINGS commit is confirmed on remote, delete the harvested CROSS-REVIEW-* and CODE_REVIEW-* files.\n` +
-    `6. Commit and push the deletions.`
+    `6. Commit and push the deletions.\n` +
+    branchPinClause(featureName)
   );
 }
 
@@ -3560,7 +3756,8 @@ function dodRemediatePrompt(featureName, version) {
     `2. Fix every finding via strict TDD: write or update the failing test first, then the minimum production code. ` +
     `Derive correct behavior from the TSPEC/FSPEC/PROPERTIES (REQ for intent).\n` +
     `3. Run the full test suite with branch coverage. All tests must pass.\n` +
-    `4. Commit and push the fixes. Do NOT edit the CODE_REVIEW file.`
+    `4. Commit and push the fixes. Do NOT edit the CODE_REVIEW file.\n` +
+    branchPinClause(featureName)
   );
 }
 
@@ -4337,6 +4534,12 @@ async function main({
   let ciStatus;
 
   try {
+    // The branch guard, once, BEFORE any phase runs: every artifact this run
+    // writes — cross-reviews, spec revisions, implementation commits, the queue
+    // row — is committed from this one working tree, so the branch it sits on is
+    // established here rather than left to whichever agent commits first.
+    await ensureFeatureBranch({ feature: featureName, _git: gitFn, _log: emit });
+
     await pipelineFn("PDLC Pipeline", async () => {
       // ─── Phase R: REQ Cross-Review ───────────────────────────────────────
       phaseFn("Phase R: REQ Cross-Review");

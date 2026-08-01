@@ -23,8 +23,9 @@ The argument is the feature's docs directory. Invoked by `orchestrate-dev` in Ph
 
 ## Git Workflow
 
-1. **Before starting:** confirm you are on `feat-{feature-name}` with the latest pulled. Every artifact you read must be on this branch (the feature branch is the single source of truth).
-2. **After completing:** write `LEARNINGS-{feature-name}.md`, commit and push it **first**, then delete the `CROSS-REVIEW-*` and `CODE_REVIEW-*` files in a second commit and push. Never delete before LEARNINGS is committed — a guard hook enforces this, but the ordering is yours to honor.
+1. **Before starting:** confirm you are on `feat-{feature-name}` — run `git rev-parse --abbrev-ref HEAD` and check the output; do not assume it — with the latest pulled. Every artifact you read must be on this branch (the feature branch is the single source of truth). Only run `git checkout` (or create the branch) when invoked standalone and the tree is confirmed not already on the feature branch.
+2. **Immediately before every commit:** re-run `git rev-parse --abbrev-ref HEAD`. If it prints anything other than `feat-{feature-name}` — especially `main` — STOP and report the mismatch; never commit or delete artifacts on the default branch.
+3. **After completing:** write `LEARNINGS-{feature-name}.md`, commit and push it **first**, then delete the `CROSS-REVIEW-*` and `CODE_REVIEW-*` files in a second commit and push. Never delete before LEARNINGS is committed — a guard hook enforces this, but the ordering is yours to honor.
 
 ---
 
@@ -55,7 +56,7 @@ The argument is the feature's docs directory. Invoked by `orchestrate-dev` in Ph
    **Copy, never recompute.** Take the `APPROVAL-HASH:` and `REVIEWED-COMMIT:` bytes verbatim out of the cross-review file. Never recompute the digest and never substitute a harvest-time hash — recomputing at harvest time would hash the document as it stands *after* the phase, turning every harvested approval into a false "fresh" one. If either anchor line is missing, write `unavailable`; do not invent a value.
 
    One row per (document type, round, role) — a round approved by two roles contributes two rows. Order the rows totally: document type in pipeline order (REQ → FSPEC → TSPEC → PLAN → PROPERTIES → DECISIONS), then round ascending, then role slug ascending, so the section is byte-stable across re-derivations.
-8. Write the document, commit, push. Then delete the `CROSS-REVIEW-*` and `CODE_REVIEW-*` files, commit, push.
+8. Write the document. Re-verify the branch per **Git Workflow** step 2, then commit, push. Then delete the `CROSS-REVIEW-*` and `CODE_REVIEW-*` files, re-verify the branch again, commit, push.
 
 ---
 
