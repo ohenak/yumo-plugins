@@ -171,6 +171,44 @@ in a sentence and neither blocking.
 
 ## 7. Positive Observations
 
+- **The refusal was fixed by removing a path, not by adding an exception.** I offered two readings and
+  said either would do provided the document picked one. v1.6 picked the one that costs nothing: it
+  left AC-1.4's *"every halt, without exception"* untouched and made the refusal not be a halt. The new
+  AC-1.4 paragraph says why in one line — *"a **halt** is an event the accounting records; a
+  **refusal** is a decision not to enter"* — and that distinction is now doing work in five places
+  (AC-1.4, AC-1.5(1), AC-1.5(4) step 4, §5's durability row, AC-4.7 row B) without any of them
+  restating the rule differently. An exception would have made `H` conditional; this keeps `H` a
+  counted quantity, which is the property every one of my last three findings depended on.
+- **The per-reason repair table answers the finding *and* the reason the finding existed.** I asked for
+  a repair for `counts-mismatch`. The document gives one, and then does the thing I could not do from
+  outside: it shows that the two obvious repairs are each forbidden by a *named* rule elsewhere, and
+  that the deletion is forbidden by none — with S-12's empty-region case supplying the landing state.
+  That is a proof, not a decision, and it is why §6's *"never by a human"* could be scoped safely
+  rather than deleted. The scoping is the better half: the prohibition now names the harm (*"the edit
+  that could bank an unpaid window"*) instead of a syntactic class, so a future repair can be checked
+  against it rather than blocked by it.
+- **S-17's non-canonical inputs were routed to an existing enumerated case rather than to a new
+  notice.** The temptation on a finding like my F-03 is to add a catalogue member for the failure as
+  well as for the value — an eighteenth string, a new precedence slot, a new report cell, all of which
+  a test author then has to learn. v1.6 instead observed that *"no `## Disposition` section"* is
+  already total and already has a run-report signal, and reused it. The catalogue grew by exactly one.
+  I verified the delegation resolves rather than taking it on trust: `:1417` states the absent case as
+  a fail-closed refusal that is explicitly *"not a halt"*, so the loop-side response the new paragraph
+  claims is real.
+- **O-10's new bullets keep carrying their own mutation criteria.** The ratchet fixture names the
+  implementation that must fail it (*"any implementation that lets AC-1.5(1)'s budget halt run after
+  step 4"*); the row-B bullet says *"asserted character for character, with **no** S-4 reason
+  present"*, which is a positive **and** a negative conjunct on the same cell; the S-17 bullet
+  enumerates all four inputs rather than saying "a bad range". Those are three different anti-false-green
+  devices in three consecutive bullets. F-01 is a defect in this same set, and it is a defect of
+  *retention* — an old assertion left standing beside a new one — not of specificity, which is a
+  materially easier class to prevent than the ones the last three rounds found.
+- **The one-word slips are now the interesting findings, which is itself the signal.** F-02 is a
+  *value*/*line* mismatch inside a render the document declares fixed character for character; MF-20 is
+  a count of findings in a paragraph about counting findings. Neither would have been visible three
+  rounds ago because larger things were wrong. A review whose residue is orthography and one stale
+  clause in a test obligation is a document that has converged on mechanism.
+
 ## 8. Recommendation
 
 ## Verdict
