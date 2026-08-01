@@ -224,8 +224,30 @@ state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-)entered. *Then
 
 1. the window's **end** is round 3 counted from the window's **origin** `W` (clause 4; `W = 1` when no reset is in effect), not from the highest existing round: with `W = 1`, a branch
    whose highest existing round is 2 is admitted **round 3 only**, and a branch whose highest existing round is 3 or more is admitted **no rounds** and halts immediately on the budget path
-   (AC-1.4), emitting S-4 rendered as `rounds {W}..{W+2} of 3`. **This clause is not reached on an entry whose reset region failed validation**: step 4 refuses the phase and returns before
-   the budget is evaluated, so no halt is taken and no S-4 reason is emitted on that entry;
+   (AC-1.4), emitting S-4 rendered as `rounds {W}..{windowEnd(W)} of {MAX_REVIEW_ROUNDS}` — the three slots are **computed from the constant**, never written as the literal `1..3 of 3`
+   (§6). **This clause is not reached on an entry whose reset region failed validation**: step 4 refuses the phase and returns before the budget is evaluated, so no halt is taken and no S-4
+   reason is emitted on that entry.
+
+   **The zero-round budget halt has a report row, and it is row C.** The entry that is admitted no
+   rounds and halts immediately opens no round, so the per-round table (catalogue §3) would otherwise
+   be empty and §2's promised surface would not exist for the commonest new halt. It is therefore the
+   **third** dispatch-less row, stated cell by cell here as the catalogue requires of the REQ that owns
+   the condition: `round` = **one past the highest round of this document type on the branch** (from
+   the listing, `deriveRoundWindow`) — the round that *would* have opened had the budget allowed;
+   `panel-shape`, `blocking`, `growth-bytes`, `classification` **empty** — no round was dispatched, so
+   nothing was measured; `notice` = the **S-4** reason of this halt, `; `-joined with any co-occurring
+   reason in catalogue §3 precedence order. Row C carries S-4 and row B carries S-16, and the two are
+   mutually exclusive by construction: row B's entry takes no halt, row C's entry takes one;
+
+   **`forcePhases` does not grant a window, and this is the only route past the cap.** `forcePhases`
+   overrides a **recorded approval** and nothing else (`CLAUDE.md`, *Entry (single feature)*). Under
+   this clause a forced Phase R on a document whose highest round is already 3 is therefore admitted
+   **no rounds**: it halts immediately on the budget path, writes the post-mortem, emits row C, and
+   writes the queue row `halted` — it does not re-review. That is a deliberate behavioural change to a
+   documented operator entry point and it is stated here so it has an oracle: the **only** route to a
+   fresh window is the `RESOLVED: yes` clearance of clause 3, and a second force changes nothing,
+   because at `A = H` a marker on disk grants nothing. The operator's supported sequence after an
+   exhausted document is *clear the post-mortem, then re-enter* — with or without a force;
 2. the window's **start** is unchanged — one past the highest existing round (M-1d), so review history stays append-only and no existing file is ever overwritten;
 3. the **one** reset is an operator's: a `POSTMORTEM-{phase}-{feature}.md` carrying a human-written `RESOLVED: yes` outside any fenced block clears the halt, and the rounds recorded
    *before* that marker do not count against the budget of the window opened after it. This is the existing operator escape hatch, stated here because it is what makes an absolute cap
