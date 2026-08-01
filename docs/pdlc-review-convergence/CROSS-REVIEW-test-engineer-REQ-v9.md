@@ -255,3 +255,6 @@ was correct for the repair set that existed when it was written, and nothing poi
 repair set grew.
 
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 0, "medium": 3, "low": 1}
