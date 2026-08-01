@@ -314,7 +314,7 @@ verify these rows, not re-derive them from memory.
 | **M-3a** | `reviewLoop` hardcodes **exactly two** reviewers. The results are two named bindings, and the reviewer array is indexed positionally at `[0]` and `[1]`. | `pdlc/workflows/orchestrate-dev.js:1623` (`reviewLoop` signature), `pdlc/workflows/orchestrate-dev.js:1710` (bindings), `pdlc/workflows/orchestrate-dev.js:1803-1812` (dispatch) | `let result1, result2;`; `reviewers[0]` / `reviewers[1]`; `const [r1, r2] = await _parallel([...])` |
 | **M-3b** | The per-round cross-review path is derived from the reviewer's role slug and the round number, so a new reviewer role writes a file the existing machinery already indexes. | `pdlc/workflows/orchestrate-dev.js:1697`, arrow `reviewTargetPath` | `` `docs/${feature}/CROSS-REVIEW-${reviewerRoleSlug(skill) || skill}-${reviewFileType}-v${round}.md` `` |
 | **M-3c** | `selectMode` rule 2 requires **every** role in `present` to approve at the *same* round before that round is considered discharged. Its `dualApproved` predicate is `roles.every(...)` over the roles observed in `present`. | `pdlc/workflows/orchestrate-dev.js:1436` (`selectMode` signature) and the `dualApproved` arrow at `pdlc/workflows/orchestrate-dev.js:1466` | `const dualApproved = (round) => roles.length > 0 && roles.every((role) => {...})` |
-| **M-3d** | `tier1ApprovalRecord` treats **a lone file at the candidate round as role asymmetry and yields no approval**. This is deliberately fail-closed against a dual round one of whose reviewers crashed. | `pdlc/workflows/orchestrate-dev.js:2478` (function `tier1ApprovalRecord`), `pdlc/workflows/orchestrate-dev.js:2490` (the asymmetry test) | `// Role-asymmetry: one reviewer wrote the candidate round and the other did not.` followed by `if (records.some((r) => r === null)) return noApprovalRecord(candidate);` |
+| **M-3d** | `tier1ApprovalRecord` treats **a lone file at the candidate round as role asymmetry and yields no approval**. It is a **plain (non-`async`) function declaration**, unlike its neighbour M-3f's `tier2ApprovalRecord`, which is `async`; the asymmetry is real and is named here so a reader does not infer symmetry (SE MF-3). This is deliberately fail-closed against a dual round one of whose reviewers crashed. | `pdlc/workflows/orchestrate-dev.js:2478` (function `tier1ApprovalRecord`), `pdlc/workflows/orchestrate-dev.js:2490` (the asymmetry test) | `// Role-asymmetry: one reviewer wrote the candidate round and the other did not.` followed by `if (records.some((r) => r === null)) return noApprovalRecord(candidate);` |
 | **M-3e** | The state `selectMode` and the approval records read is refreshed **from the branch, inside the loop**, once per episode. | `pdlc/workflows/orchestrate-dev.js:2358`, function `refreshReviewState` | `async function refreshReviewState({ feature, docType, _listFiles, _readFile })` |
 | **M-3f** | Tier 2 — the LEARNINGS approval record — is a separate, later reader of the same approvals. It is a **standalone function declaration**, not a method; v1.0 quoted it in method form, which is the very defect shape §1.2 P-4 names (TE MF-01). | `pdlc/workflows/orchestrate-dev.js:2528`, function `tier2ApprovalRecord` | `async function tier2ApprovalRecord({ feature, docType, candidate, reviewers, _readFile })` |
 
@@ -794,6 +794,17 @@ the full panel is dispatched, every round. Phase CR's optimizer changes **code**
 document, so the growth AC-4 measures does not exist there and the "new text is unreviewed text"
 mechanism this AC is designed around does not apply. Applying the verifier rule to a phase whose
 growth is unmeasurable would be applying it blind.
+
+**Phase DOD is out of scope for the same reason, and this REQ now says so** (TE Q-01, carried
+unanswered from round 1). Phase DOD runs its own evaluator→optimizer loop — `dod-verify` writing
+`CODE_REVIEW-{feature}-v{N}.md`, `se-implement` remediating — under its own three-round budget. Its
+optimizer changes **code**, not the reviewed document, so `DOC-BYTES:` has no subject there and AC-4
+cannot classify a revision; and its artifacts are not `CROSS-REVIEW-{role}-{doc}-v{N}.md`, so
+`deriveRoundWindow`'s basenames, AC-2's panel shape and AC-1's window are all stated over a naming
+convention Phase DOD does not use. **AC-1, AC-2, AC-3 and AC-4 therefore apply to `reviewLoop` phases
+only** — the phases that review a document. AC-5 and AC-6 are prompt- and tool-level and are not scoped
+by phase at all. Extending the convergence mechanism to Phase DOD is a legitimate later question and is
+not asked here; N-7 is widened to name it.
 
 **AC-3.4 — The file grammar gains a required count trailer, and this REQ says so.**
 *Who:* every reviewer — verifier and full panel alike. *Given:* any round. *When:* it finishes.
@@ -1306,7 +1317,7 @@ Stated so a reviewer does not file a blocking finding against an absence that is
 | **N-4** | Changing what a halt is. | AC-1.4: the POSTMORTEM path, the write confirmation, and the human-written `RESOLVED: yes` marker are untouched. This REQ changes *when* a halt happens and *what it says*. |
 | **N-5** | Extending tier-2 (LEARNINGS) approval records to verifier rounds. | AC-3.6 permits the limitation, provided it is documented. R-3. |
 | **N-6** | Taking the two measurements §4.7 names. | They are genuinely worth taking, and they are not this REQ's deliverable. R-4. |
-| **N-7** | Applying AC-3 or AC-4 to Phase CR. | AC-3.3: Phase CR's optimizer changes code, not the reviewed document, so growth is unmeasurable there and the mechanism does not apply. |
+| **N-7** | Applying AC-1 … AC-4 to Phase CR **or to Phase DOD**. | AC-3.3: both phases' optimizers change code, not the reviewed document, so growth is unmeasurable and the mechanism does not apply; Phase DOD additionally writes `CODE_REVIEW-*` artifacts, which none of the round-window, panel-shape or anchor mechanisms is stated over. *Widened in v1.2 (TE Q-01).* |
 | **N-8** | Applying AC-6's checker as a merge or pipeline gate. | AC-6.8: advisory only. |
 | **N-9** | Changing `orchestrate-queue`, the drift gate, or the queue schema. | Nothing here touches them. The queue row for this feature is added by the orchestrator, not by this document. |
 | **N-10** | Model selection per phase. | Unchanged: Opus everywhere except Phase I batches and the queue's Phase-0 triage. Whether a verifier round could run on a smaller model is a legitimate later question and is not asked here. |
