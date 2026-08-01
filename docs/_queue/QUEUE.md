@@ -24,7 +24,7 @@ frontmatter is the pickup gate; the `Status` cell tracks lifecycle.
 | Order | Status | Feature | REQ Path | Depends-On |
 |-------|--------|---------|----------|------------|
 | 0 | superseded | pdlc-review-convergence | docs/discarded/pdlc-review-convergence/REQ-pdlc-review-convergence.md | pdlc-review-loop-hardening |
-| 10 | pending | pdlc-rcv-budget-stop | docs/pdlc-rcv-budget-stop/REQ-pdlc-rcv-budget-stop.md | - |
+| 10 | halted | pdlc-rcv-budget-stop | docs/pdlc-rcv-budget-stop/REQ-pdlc-rcv-budget-stop.md | - |
 | 11 | pending | pdlc-rcv-panel-topology | docs/pdlc-rcv-panel-topology/REQ-pdlc-rcv-panel-topology.md | pdlc-rcv-budget-stop, pdlc-rcv-fixed-point-stop |
 | 12 | pending | pdlc-rcv-finding-quality | docs/pdlc-rcv-finding-quality/REQ-pdlc-rcv-finding-quality.md | pdlc-rcv-budget-stop |
 | 13 | pending | pdlc-merge-phase | docs/pdlc-merge-phase/REQ-pdlc-merge-phase.md | pdlc-workflow-distribution |
