@@ -1148,9 +1148,12 @@ classification, and it is dual regardless, so the exception is total over rounds
 
 **AC-3.2 — What the verifier is asked to do, and the artifact that proves it did.**
 *Who:* the verifier. *Given:* a round `N > W` — a round of the current window that is not its first —
-on a document whose round N−1 findings have been addressed. *When:* it reviews. *Then:* it works in
+on a document whose round N−1 findings have been addressed, **and a dispatch that names the window**:
+the loop passes the verifier the inclusive round range `{W … N−1}` whose findings are in scope, as an
+explicit input, not as something the verifier derives. *When:* it reviews. *Then:* it works in
 **disposition-check mode**:
-1. it verifies that **every** prior blocking finding **of the current window** is resolved, and states a
+1. it verifies that **every** prior blocking finding **of the round range it was given** — the current
+   window's rounds — is resolved, and states a
    per-finding disposition **in a section headed exactly `## Disposition` (S-8)**, one row per such
    finding, carrying that finding's **id exactly as the prior round wrote it** (`F-03`), its round, its
    role, and one disposition from the closed set `{resolved, partially-resolved, not-resolved,
@@ -1185,6 +1188,19 @@ from every prior round"* therefore asked the first verifier after a reset for ro
 underivable, on a precondition (*"whose round N−1 findings have been addressed"*) that is false there
 (TE v5 F-03). Scoping both the *Given* and clause 1 to the window makes the required content derivable
 from the branch on every round on which a verifier runs at all.
+
+**And the window is given, not derived, because the verifier cannot derive it.** Everything else clause
+1 needs is on the branch in a form an agent reads directly — the prior `CROSS-REVIEW-{role}-{doc}-v{N}.md`
+files, their findings tables, their ids. `W` is not: it lives in `POSTMORTEM-{phase}-{feature}.md`'s
+`## Reset Region`, behind AC-1.5(4)'s ordered algorithm, whose step 2 additionally needs the directory
+listing (*"no greater than one past the highest round on the branch"*). Leaving the verifier to find it
+would relocate the *"content is underivable"* failure from the document into the agent, and clause 1's
+`## Disposition` completeness check is an approval gate, so a verifier that silently kept the
+whole-history reading would emit a row set that refuses approval for the wrong reason (SE v6 G-16).
+DC-01's standard — a receive side stated once, with exactly one membership — puts the obligation on the
+party that can discharge it: `W`'s single reader stays the loop, exactly as AC-1.5(4) is written to
+keep it, and the verifier receives the resulting range `{W … N−1}` in its dispatch. O-3 carries the
+dispatch input; O-9(c) carries it into the verifier SKILL's disposition-check contract.
 
 **Both clauses now have an oracle, because round 1 of cross-review established that neither did.** As
 written in v1.0, a verifier that obeyed clause 2 and one that ignored it produced byte-identical
@@ -1245,12 +1261,19 @@ comparable round (SE F-10). So:
   `parseVerdict` requires (M-2c). v1.1 fixed only *that* the trailer is in the file, not *where*,
   leaving a compliant-looking file that `parseVerdict` rejects (SE F-04);
 - **the reader is one algorithm, stated once, here.** Given a file, the trailer reader:
-  1. locates the trailing `## Verdict` section and counts the `VERDICT:` lines in it. No section, or no
-     `VERDICT:` line ⇒ *unavailable*; **two or more `VERDICT:` lines ⇒ *malformed*** — the outcome
-     `extractFileVerdict` already returns as `{ok: false, reason: "duplicated"}`
-     (`pdlc/workflows/orchestrate-dev.js:888`, the count at `:904`), classified here rather than left
-     unmapped (SE v5 G-09, AC-2.7);
-  2. from the single `VERDICT:` line, **scans forward and stops at the first non-empty line that is not
+  1. locates the trailing `## Verdict` section and counts the `VERDICT: ` lines in it — lines whose
+     trimmed text begins with the seven characters `VERDICT: `, **trailing space included**, which is
+     what `extractFileVerdict` counts (`pdlc/workflows/orchestrate-dev.js:902`) and what `parseVerdict`
+     matches (`:417`), so `VERDICT:Approved` is not one (SE v6 MF-2). **No section ⇒ *unavailable***;
+     **no `VERDICT: ` line in a section that exists ⇒ *malformed*** — `extractFileVerdict` falls through
+     to `parseVerdict` at `:906` with `trailers === 0`, and `parseVerdict` returns its `malformed: true`
+     fallback (`:424-428`, the object at `:394-400`), which is a different object from the genuine
+     `0/0/0` truncated-output return at `:451`; v1.4 called this input *unavailable*, which agreed with
+     neither HEAD nor AC-2.7's table (SE v6 G-15, AC-2.7 row 3); **two or more `VERDICT: ` lines ⇒
+     *malformed*** — the outcome `extractFileVerdict` already returns as
+     `{ok: false, reason: "duplicated"}` (`:888`, the count at `:904`), classified here rather than left
+     unmapped (SE v5 G-09, AC-2.7 row 4);
+  2. from the single `VERDICT: ` line, **scans forward and stops at the first non-empty line that is not
      an anchor line — that line is *the* candidate, and there is at most one.** The anchor set is
      **§5's catalogue** (S-1, S-2, S-10 and the M-4a approval anchors) **by reference**; this REQ
      enumerates it nowhere else, so it has exactly one membership;
