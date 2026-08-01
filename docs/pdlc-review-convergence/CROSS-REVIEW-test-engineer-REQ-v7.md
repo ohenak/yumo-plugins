@@ -215,6 +215,16 @@ longer asserts a permanent halt as the specified outcome.
 
 ## 4. Mechanical fixes
 
+Reported per AC-6.5 as a fix list, not as blocking findings; excluded from the counts below. MF-12 …
+MF-15 of v6 are all applied and are not carried.
+
+| # | Location | Issue | Fix |
+|---|---|---|---|
+| MF-16 | AC-1.5(5), lead-in | The `S-12` → `S-15` edit left the sentence unwrapped at 113 columns (`docs/…/REQ-…md:826`), against 96–105 in the surrounding lines of the same clause. | Re-wrap. |
+| MF-17 | §5, S-16 row and AC-4.7 row 8 | The reason enum's payload is stated twice and not identically: S-16 says the notice *"carries the post-mortem's path and, per reason, the offending value or the pair `H`/`A`"*; AC-4.7 row 8 says only that it is emitted on the first row. Neither fixes the **rendering** of that payload, while every sibling notice's render is fixed character-for-character *"because a test author must be able to derive the exact cell, character for character, from this document alone"* (AC-4.7's own words). | Fix the render once, e.g. `reset-region-corrupt: counts-mismatch (H=3, A=1) {path}`, in the S-16 row only. |
+| MF-18 | AC-1.5(4), step 3 | *"`A > H` means more clearances have been answered than halts have been taken"* — under AC-1.4 clause 1 as v1.5 now states it, `A > H` is unreachable by any path the loop takes (a halt always precedes its answer, and `H` counts halts exactly). Stating it as one of the two corruption cases is right; stating it without noting it is only reachable through a hand-edit invites a PROPERTIES author to look for a machine path to it. | Add four words: *"…which only a hand-edit produces"*. |
+| MF-19 | §10.10, lead-in | *"all seven findings below lie in text v1.4 added"* — the table carries eight finding rows (TE F-01, SE G-13 … G-17, TE F-02, TE F-03). The prose count and the row count disagree, which is the same class of slip §10.9's heading was amended to prevent this round. | Seven → eight, or say which row is not counted. |
+
 ## 5. Measurement Required
 
 ## 6. Questions
