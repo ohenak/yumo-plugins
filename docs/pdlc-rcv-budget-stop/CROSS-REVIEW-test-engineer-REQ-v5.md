@@ -47,6 +47,49 @@ and remains genuinely optional — no finding depends on it.
 
 ## Positive Observations
 
+- **Both Mediums were answered by taking the option that removes text, not the one that adds it.**
+  F-24's cheapest fix was the Q-04 route and the author took it: the three-outcome enumeration
+  becomes a two-outcome one, the sub-case I derived is named in a single clause rather than
+  enumerated as a table, and O-12 carries the obligation onward. F-22's two options were "name
+  `written`" and "state an implementation obligation"; the author took the first — the one that
+  matches what the shipped code does unaided — and then spent the saved bytes on saying *why* the
+  value is honest (*"That is the probe's sense — *this phase has a post-mortem* — not a claim this
+  run wrote one, which the ❌ text carries"*). That sentence is the review's answer to the objection,
+  not a restatement of the value.
+- **F-23 was closed by asserting the negative, not by noting it was unreachable.** The natural fix
+  once `postmortemStatus` reads `written` is to say nothing further — `:4922` simply does not fire.
+  Instead AC-1.5(4) says *"`none` is **rejected, not merely unreachable**"* and O-10 gains a leg
+  asserting `No POSTMORTEM was written.` **absent** from the report. That is the difference between
+  a property that happens to hold and one an implementation cannot regress silently: an
+  implementation that reverts to `none` fails a named leg rather than merely producing a slightly
+  odd report.
+- **O-10's torn-write leg is now a real property, and it names its own hardest case.** *"parameterised
+  over the truncation offset: every offset — inside the key, inside the value, newline lost — fails
+  the byte confirmation and refuses on **this** entry, the well-formed `WINDOW-START: 1` case
+  included, and no offset opens a round."* v4 asked for a clause that a property-based author could
+  satisfy; this is one, with the universally-quantified conjunct (*no offset opens a round*) that
+  makes the parameterisation load-bearing rather than decorative. F-27 asks for its sequel, not for
+  its retraction.
+- **The dispatch oracle is now per-variant.** O-10's call-count leg reads *"exactly **0** dispatches
+  on **each** refusing entry (both row-B variants)"* — previously one refusing entry stood for both.
+  Since the two variants reach the refusal by different routes (validation failure at step 4 versus
+  confirmation failure after a write), an implementation that opens a round on one of them is now
+  caught by a leg rather than by luck.
+- **Every citation in the changed text re-derived at HEAD, and all of them hold.** `:4890`–`:4901`
+  is the third branch as described, `:4899` is the `written` assignment, `:4891` builds the candidate
+  path; `haltPhase` = `failedRow.phase` (`:4870`–`:4871`) is the phase **id**, which is exactly the
+  token every post-mortem path uses (`:1767`, `:1935`, `:2696`), so the probe cannot miss the file;
+  `:4922` is the `none` guard; `:4928` is the shipped recovery string, byte-for-byte as quoted
+  including prefix and terminator, and `:1795` is indeed a different one. The `:5035`/`:5054`
+  citations v4 objected to are gone.
+- **A deleted test sentence did not delete its coverage.** AC-1.2's *"Test: no `## Reset Region` is
+  created by a CR or DOD halt"* was compressed away, but the leg survives verbatim in O-10 (*"a
+  **Phase CR halt creating no `## Reset Region`**"*) and the AC now cites O-10 in its place. I
+  checked each of this round's deletions the same way: the removals are restated justification
+  (`R-13`'s escape narration, `R-10`'s residual restatement, `§10`'s cut-seam re-derivation, the
+  *"self-healing on the second"* and *"absorbing"* asides) and one referent that should have stayed
+  (F-29). No AC clause, no §5/§6 cell, no oracle leg and no citation was traded for room.
+
 ## Recommendation
 
 ## Verdict
