@@ -11,21 +11,22 @@ depends-on: []
 | Shared baseline | `docs/_constraints/pdlc-rcv-baseline.md` — the measured run, the measured facts `M-*`, the declared thresholds and the shared non-goals `N-1 … N-10`. **Read it first.** Facts are cited by id (`M-1d`), never restated. |
 | Shared catalogue | `docs/_constraints/pdlc-rcv-catalogue.md` — the family vocabulary (§1), the closed catalogue `S-1 … S-17` (§2) and the run-report row schema (§3), used by reference. |
 | Predecessor | `docs/discarded/pdlc-review-convergence/REQ-pdlc-review-convergence.md` v1.8 (**superseded 2026-08-01**) — this REQ carries its REQ-RCV-01 unchanged in substance. Its REQ-RCV-02 moved to `docs/pdlc-rcv-fixed-point-stop/` at v1.1 of this document; see §10. |
-| Siblings | `docs/pdlc-rcv-fixed-point-stop/REQ-pdlc-rcv-fixed-point-stop.md` (REQ-RCV-02) — **the successor that depends on this one**; `docs/pdlc-rcv-panel-topology/REQ-pdlc-rcv-panel-topology.md` (REQ-RCV-03, REQ-RCV-04); `docs/pdlc-rcv-finding-quality/REQ-pdlc-rcv-finding-quality.md` (REQ-RCV-05, REQ-RCV-06) |
-| Upstream | `docs/completed/pdlc-review-loop-hardening/POSTMORTEM-R-pdlc-review-loop-hardening.md` (v1.0) root causes 2 and 3; operator direction of 2026-07-29 |
-| Downstream | `FSPEC-pdlc-rcv-budget-stop.md`; every subsequent `docs/_queue/QUEUE.md` row, all of which are reviewed by the loop this REQ changes |
+| Siblings | `docs/pdlc-rcv-reset-region/REQ-pdlc-rcv-reset-region.md` (**REQ-RCV-07**) — **the implementation-altitude half split out of this document's v1.6 on 2026-08-01** (§10); `docs/pdlc-rcv-fixed-point-stop/REQ-pdlc-rcv-fixed-point-stop.md` (REQ-RCV-02) — the successor that depends on this one; `docs/pdlc-rcv-panel-topology/REQ-pdlc-rcv-panel-topology.md` (REQ-RCV-03, REQ-RCV-04); `docs/pdlc-rcv-finding-quality/REQ-pdlc-rcv-finding-quality.md` (REQ-RCV-05, REQ-RCV-06) |
+| Upstream | `docs/completed/pdlc-review-loop-hardening/POSTMORTEM-R-pdlc-review-loop-hardening.md` (v1.0) root causes 2 and 3; `docs/pdlc-rcv-budget-stop/POSTMORTEM-R-pdlc-rcv-budget-stop.md` (v1.0) root causes 1 and 3; operator direction of 2026-07-29 and 2026-08-01 |
+| Downstream | `FSPEC-pdlc-rcv-budget-stop.md`; `REQ-RCV-07`; every subsequent `docs/_queue/QUEUE.md` row, all of which are reviewed by the loop this REQ changes |
 | Targets | `pdlc/workflows/orchestrate-dev.js`; generated artifacts under `pdlc/workflows/dist/` rebuilt in the same commit |
-| Citation baseline | Commit **`9486c81`** on `main`, per the shared baseline. Citations are repo-root-relative and name the enclosing symbol and a distinctive literal. Re-baselining is a mechanical fix, not a finding. |
+| Citation baseline | Commit **`9486c81`** on `main`, per the shared baseline. **This document cites shipped behaviour only by measured-fact id (`M-*`)** — it contains no line citation and no claim about control flow of its own (§10). Facts are cited by id, never restated. |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude + operator | 1.6 | 2026-08-01 |
+| pdlc | draft | Claude + operator | 2.0 | 2026-08-01 |
 
-**v1.6** addresses round-5 cross-review (`CROSS-REVIEW-{software-engineer,test-engineer}-REQ-v5.md`):
-the shipped generic recovery line at `orchestrate-dev.js:4928` is **suppressed**, not substituted
-(O-6); the unconfirmable-append refusal names **two** recovery acts, the first deleting its own
-unconfirmed residue before it can be spent; and O-10 gains the sequel leg.
-**v1.5** addressed round 4, **v1.4** round 3, **v1.3** round 2, **v1.2** round 1.
+**v2.0** is the operator-directed split resolving
+`docs/pdlc-rcv-budget-stop/POSTMORTEM-R-pdlc-rcv-budget-stop.md`. AC-1.5(4)'s validation algorithm,
+its refusal semantics and repair taxonomy, the answering line's byte confirmation, §6's three
+refusal-render rows and the matching O-10 legs move to **`REQ-RCV-07`**; what stays is the window
+itself. **No requirement id, AC id, `S-*` id or threshold changed meaning** — see §10.
+**v1.6** addressed round 5, **v1.5** round 4, **v1.4** round 3, **v1.3** round 2, **v1.2** round 1.
 
 ## 1. Problem
 
