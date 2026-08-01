@@ -164,7 +164,7 @@ both the *Given* and clause 1 to the window makes the required content derivable
 
 **And the window is given, not derived, because the verifier cannot derive it.** Everything else clause 1 needs is on the branch in a form an agent reads directly — the prior
 `CROSS-REVIEW-{role}-{doc}-v{N}.md` files, their findings tables, their ids. `W` is not: it lives in `POSTMORTEM-{phase}-{feature}.md`'s `## Reset Region`, behind `pdlc-rcv-budget-stop`
-AC-1.5(4) ordered algorithm, whose step 2 additionally needs the directory listing. Leaving the verifier to find it would relocate the "content is underivable" failure from the document
+AC-1.5(4)'s clearance gate and the ordered algorithm that decides it (`pdlc-rcv-reset-region` AC-7.1), whose step 2 additionally needs the directory listing. Leaving the verifier to find it would relocate the "content is underivable" failure from the document
 into the agent, and clause 1's completeness check is an approval gate, so a verifier that silently kept the whole-history reading would emit a row set that refuses approval for the
 wrong reason. DC-01 puts the obligation on the party that can discharge it: **`W`'s single reader stays the loop**, and the verifier receives the resulting range in its dispatch.
 
@@ -275,7 +275,7 @@ constraints must be satisfied.
   | Marker present on a **dual** round's file alongside a second unmarked file | the same contradiction seen from the other side | **no approval**; same notice |
 
   In every refusing row the loop does **not** halt: it records the **approval refusal**, the round remains owed an authoring pass, and the window proceeds under AC-1. An approval refusal
-  is the absence of an approval, not an error, and it is exactly what M-3d does today. It is **not** the *phase refusal* of `pdlc-rcv-budget-stop` AC-1.5(4), whose defining property is the
+  is the absence of an approval, not an error, and it is exactly what M-3d does today. It is **not** the *phase refusal* of `pdlc-rcv-reset-region` AC-7.2, whose defining property is the
   opposite — that the phase is never entered and the invocation terminates.
 
 **AC-3.6 — Tier 2 may remain dual-only, and says so.**
@@ -405,7 +405,7 @@ it is unenforced.
 | S-6 `growth-unmeasurable: {reason}` | the closed three-member enum of AC-4.1's table, in the `notice` cell, at the catalogue's precedence position **7** — last of the seven round-scoped notices |
 
 One consequence of that schema bears on cells this REQ populates: on both rows that have no dispatch behind them — row A (a round halted at open by
-`pdlc-rcv-fixed-point-stop` AC-2.8) and row B (an entry that refused the phase, `pdlc-rcv-budget-stop` AC-1.5(4)) — `growth-bytes` and `classification` are **withheld deliberately**,
+`pdlc-rcv-fixed-point-stop` AC-2.8) and row B (an entry that refused the phase, `pdlc-rcv-reset-region` AC-7.6) — `growth-bytes` and `classification` are **withheld deliberately**,
 even where derivable, because reporting them invites the reader to think a round was measured when none ran. Neither row licenses a new column or a new notice.
 
 **Observability.** Two integers read from two anchor lines on the branch, one comparison against a constant, one row per round in a report. No in-process state.

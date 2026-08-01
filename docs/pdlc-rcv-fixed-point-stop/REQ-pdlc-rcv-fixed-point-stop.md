@@ -333,7 +333,7 @@ ships; `round` and the S-16 notice are `pdlc-rcv-budget-stop`'s.
 
 The two rows with no dispatch behind them are stated cell by cell rather than derived: **row A** is
 AC-2.8's halt row, above; **row B**, the no-round-admitted row of an entry whose reset region
-failed validation, is `pdlc-rcv-budget-stop` AC-1.5(4)'s. Every column is derivable from the branch
+failed validation, is `pdlc-rcv-reset-region` AC-7.6's. Every column is derivable from the branch
 alone — the cross-review basenames, the files' count trailers, their anchors — which is what makes
 AC-2.1's determination re-derivable after the fact by a reader who was not there. This is the
 artifact the predecessor's post-mortem had to be reconstructed by hand (US-03).
