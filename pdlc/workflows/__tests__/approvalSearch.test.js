@@ -389,8 +389,14 @@ describe("RLH-AT-08: same-round dual approval skips the phase", () => {
     const paths = readPaths(fs);
     expect(paths).toContain(crossReviewPath(SE_SLUG, 2));
     expect(paths).toContain(crossReviewPath(TE_SLUG, 2));
-    // §5.5 rule 1: the comparison reads the document at comparison time.
-    expect(paths).toContain(FSPEC_PATH);
+    // §5.5 rule 1: the comparison consults the document at comparison time — but
+    // through `_hashFile`, which yields the digest without carrying the bytes
+    // back across the seam. The comparison never wanted the bytes, and in the
+    // workflow runtime `_readFile` is a per-chunk agent fan-out, so the whole
+    // document was being transported to produce 64 hex characters. Both halves
+    // are asserted: the digest IS taken, and the whole-file read is NOT.
+    expect(fs.hashes.map((h) => h.path)).toContain(FSPEC_PATH);
+    expect(paths).not.toContain(FSPEC_PATH);
 
     // A skipped phase dispatches no reviewer for its document.
     expect(reviewerDispatchesFor(agentCalls, FSPEC_PATH)).toEqual([]);

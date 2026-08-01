@@ -111,6 +111,18 @@ const RT_READ_CHUNK = 6000;
 // it is still a model output: four attempts bound the tail.
 const RT_READ_RETRIES = 3;
 
+// Invocation-scoped read cache (REQ-RTCACHE-01..05,
+// docs/pdlc-adapter-read-cache/REQ-pdlc-adapter-read-cache.md §6).
+//
+// Ceiling on the bytes the cache may hold at once. REQ §6: the largest document
+// this adapter has transported is 209,953 bytes, so 2 MiB is ≈9.9 such
+// documents — comfortably more than one review round's working set (REQ + spec
+// + two cross-reviews). Over the cap, the OLDEST-INSERTED entries are evicted;
+// the read itself is never refused, and an entry larger than the cap alone is
+// simply not cached. Eviction order is an insertion counter, not a clock: the
+// runtime has no `Date.now()` and no `Math.random()` (REQ §6 NFR-01).
+const RT_READ_CACHE_MAX_BYTES = 2097152;
+
 const RT_HEX64_RE = /\b[0-9a-f]{64}\b/;
 const RT_CHUNK_BEGIN = "__PDLC_CHUNK_BEGIN__";
 const RT_CHUNK_END = "__PDLC_CHUNK_END__";
@@ -390,22 +402,128 @@ async function rtReadProbe(path) {
   );
 }
 
+// ─── the read cache (REQ-RTCACHE-01..05) ─────────────────────────────────────
+//
+// Lives in the adapter's MODULE SCOPE, which is one workflow invocation's
+// script memory: a new invocation (or a resume) evaluates the bundle afresh and
+// therefore starts empty, with nothing on disk and nothing shared between
+// concurrent runs — REQ-RTCACHE-04 holds by construction, not by a reset call.
+//
+// A plain object rather than a `Map`, matching the rest of this file's
+// deliberately conservative surface (the sandbox was probed for globals, not
+// for built-ins). Keys are prefixed so a path named `__proto__` or `toString`
+// cannot reach `Object.prototype`; every lookup is an own-property check.
+//
+// Entry shape: { text, size, sha, seq }. `size`/`sha` are the probe values the
+// text was VERIFIED against, so a later probe can be compared to them directly;
+// `seq` is the insertion counter eviction orders by.
+const rtReadCache = {};
+let rtReadCacheSeq = 0;
+let rtReadCacheBytes = 0;
+
+const rtCacheKey = (path) => `p:${path}`;
+
+function rtCacheGet(path) {
+  const key = rtCacheKey(path);
+  return Object.prototype.hasOwnProperty.call(rtReadCache, key) ? rtReadCache[key] : null;
+}
+
+/** Drop `path`'s entry, if any. Total: invalidating an absent path is a no-op. */
+function rtCacheInvalidate(path) {
+  const key = rtCacheKey(path);
+  if (!Object.prototype.hasOwnProperty.call(rtReadCache, key)) return false;
+  rtReadCacheBytes -= rtReadCache[key].size;
+  delete rtReadCache[key];
+  return true;
+}
+
+/** The key of the oldest-inserted entry, or null when the cache is empty. */
+function rtCacheOldestKey() {
+  let oldest = null;
+  for (const key of Object.keys(rtReadCache)) {
+    if (oldest === null || rtReadCache[key].seq < rtReadCache[oldest].seq) oldest = key;
+  }
+  return oldest;
+}
+
+/**
+ * Record `text` for `path`, verified against probe values `size`/`sha`.
+ *
+ * An entry bigger than the whole cap is never stored (storing it would evict
+ * everything else and still not fit) — the caller's read still succeeds, it
+ * just will not be served from cache next time. Otherwise oldest-inserted
+ * entries are evicted until the new one fits.
+ */
+function rtCachePut(path, text, size, sha) {
+  rtCacheInvalidate(path);
+  if (size > RT_READ_CACHE_MAX_BYTES) return false;
+  while (rtReadCacheBytes + size > RT_READ_CACHE_MAX_BYTES) {
+    const oldest = rtCacheOldestKey();
+    if (oldest === null) break;
+    rtReadCacheBytes -= rtReadCache[oldest].size;
+    delete rtReadCache[oldest];
+  }
+  rtReadCache[rtCacheKey(path)] = { text, size, sha, seq: rtReadCacheSeq++ };
+  rtReadCacheBytes += size;
+  return true;
+}
+
+/** Chunk agents a full read of `size` bytes would have cost (RT_READ_CHUNK plan). */
+const rtChunkCount = (size) => Math.max(1, Math.ceil(size / RT_READ_CHUNK));
+
 /**
  * Read a file through agents, in line-ranged, SHA-verified chunks. Returns
  * null when absent, "" when empty, and throws rather than returning bytes
  * that differ from the file on disk.
+ *
+ * Cached (REQ-RTCACHE-01/02): the size probe this read already had to pay for
+ * doubles as the REVALIDATION probe. When its size AND whole-file SHA-256 both
+ * match what a cached entry was verified against, the cached text is served and
+ * the chunk fan-out is skipped — so a repeated read of an unchanged file costs
+ * exactly ONE agent, and no extra agent is spent on the miss path. Any doubt —
+ * differing size or digest, an absent file, a probe that never parsed — drops
+ * the entry and takes the full read: fail open to re-reading, never to stale
+ * bytes. Note the probe sees the file as it is on disk, so a mutation made by a
+ * dispatched agent's own tools OUTSIDE this adapter's write seam is caught too.
  *
  * Known limit: a file whose single LINE exceeds the IO agent's output budget
  * cannot be chunked below one line, so it fails loudly after retries. Every
  * artifact this pipeline reads is line-structured markdown.
  */
 async function rtReadFile(path) {
-  const probe = await rtReadProbe(path);
-  if (probe === null) return null;
-  if (probe.empty) return "";
+  const cached = rtCacheGet(path);
+  let probe;
+  try {
+    probe = await rtReadProbe(path);
+  } catch (err) {
+    // The probe is also the read's plan, so an exhausted probe is a failed READ
+    // — there is no fuller read to fall back to. What matters for
+    // REQ-RTCACHE-01 is that the entry does not survive to be served later on
+    // the strength of a probe that never answered.
+    rtCacheInvalidate(path);
+    throw err;
+  }
+  if (probe === null) {
+    rtCacheInvalidate(path);
+    return null;
+  }
+  if (probe.empty) {
+    rtCacheInvalidate(path);
+    return "";
+  }
+  if (cached && cached.size === probe.size && cached.sha === probe.sha) {
+    rtLog(
+      `read cache: "${path}" unchanged since it was read (${probe.size} bytes) — ` +
+        `served from cache, ${rtChunkCount(probe.size)} chunk agent(s) avoided`
+    );
+    return cached.text;
+  }
+  // Revalidation failed (or there was nothing to revalidate): the entry is
+  // worthless from here on, and must not outlive a read that then throws.
+  if (cached) rtCacheInvalidate(path);
 
   const displayLines = probe.newlines + (probe.endsWithNewline ? 0 : 1);
-  const chunkCount = Math.max(1, Math.ceil(probe.size / RT_READ_CHUNK));
+  const chunkCount = rtChunkCount(probe.size);
   const perChunk = Math.max(1, Math.ceil(displayLines / chunkCount));
   const plan = rtLinePlan(displayLines, perChunk);
   // The HOST `parallel` takes thunks, not started promises (that is rtParallel's
@@ -437,16 +555,98 @@ async function rtReadFile(path) {
     return null;
   };
   let verified = matches(probe.size, probe.sha);
+  let verifiedBy = probe;
   if (verified === null) {
     const reProbe = await rtReadProbe(path);
-    if (reProbe && !reProbe.empty) verified = matches(reProbe.size, reProbe.sha);
+    if (reProbe && !reProbe.empty) {
+      verified = matches(reProbe.size, reProbe.sha);
+      verifiedBy = reProbe;
+    }
   }
-  if (verified !== null) return verified;
+  if (verified !== null) {
+    // Cache the bytes together with the probe values they were verified
+    // against — the re-probe's, when that is what arbitrated, since those are
+    // what a future revalidation will be compared to.
+    rtCachePut(path, verified, verifiedBy.size, verifiedBy.sha);
+    return verified;
+  }
   throw new Error(`rtReadFile: "${path}" reassembled but did not match the file's size and SHA-256`);
 }
 
-/** Write a file through an agent, verbatim. */
+/**
+ * The document's APPROVAL-HASH digest, in ONE agent.
+ *
+ * `rtReadFile` costs one agent per ~6 KB chunk plus a probe, which is the right
+ * price for bytes the pipeline is going to use — and an absurd one for the two
+ * call sites that read a whole document only to hash it (the review loop's
+ * round anchor, and the approval-staleness compare). A 300 KB REQ cost ~52
+ * agents for 64 hex characters; this costs one.
+ *
+ * The digest is NOT `shasum` over the file as it sits on disk: the module hashes
+ * `canonicaliseForDigest(text)` — CRLF and lone CR folded to LF, then all
+ * trailing newlines replaced by exactly one — so the command canonicalises
+ * first, in the same order:
+ *   1. `sed 's/\r$//'` removes the CR of a CRLF (sed splits on LF, so the CR is
+ *      end-of-line), and
+ *   2. `tr '\r' '\n'` maps every SURVIVING lone CR to LF.
+ *   3. `"$( … )"` strips every trailing newline (that is what command
+ *      substitution does) and `printf '%s\n'` puts exactly one back — which is
+ *      N-2 verbatim, including the empty file, whose digest is that of "\n".
+ * Both hashers are tried, first one wins: macOS ships `shasum`, minimal Linux
+ * images ship `sha256sum`.
+ *
+ * The digest is printed TWICE and both transcriptions must agree, for the same
+ * reason rtReadProbe does it: a live probe lost a whole read to a single
+ * flipped hex digit, and a random flip does not repeat identically across two
+ * copies. Unparseable or disagreeing replies retry; the missing-file sentinel
+ * returns null, matching `defaultHashFile` and `rtReadFile`.
+ *
+ * Deliberately NOT wired into the read cache (REQ-RTCACHE-01/02). Serving a
+ * digest from a cached entry without revalidating would be a stale serve, and
+ * revalidating costs one probe agent — exactly what this function already
+ * spends. There is no saving to be had, only a second canonicalisation
+ * implementation (the shell pipeline above, and a JS twin) that could drift
+ * from `canonicaliseForDigest`. The cache is a read cache; this is not a read.
+ *
+ * @returns {Promise<string|null>} `sha256:{64 hex}`, or null when absent.
+ */
+async function rtHashFile(path) {
+  for (let attempt = 0; attempt <= RT_READ_RETRIES; attempt++) {
+    let reply;
+    try {
+      reply = await RT.agent(
+        `Run this exact command from the repository root and report its output:\n` +
+          `  if [ ! -f "${path}" ] || [ ! -r "${path}" ]; then echo ${RT_MISSING}; ` +
+          `else D=$(printf '%s\\n' "$(sed -e 's/\\r$//' "${path}" | tr '\\r' '\\n')" | ` +
+          `${RT_SHA_CMD}); echo "$D"; echo "$D"; fi\n` +
+          `Return ONLY that token, or the two digest lines, in order — no ` +
+          `commentary, no code fences.`,
+        { label: `hash:${path}`, model: RT_IO_MODEL }
+      );
+    } catch {
+      continue; // a dead agent is a failed attempt, same as in rtReadProbe
+    }
+    const text = typeof reply === "string" ? reply : "";
+    if (text.indexOf(RT_MISSING) !== -1) return null;
+    const shas = text.match(/\b[0-9a-f]{64}\b/g) || [];
+    if (shas.length >= 2 && shas[0] === shas[1]) return `sha256:${shas[0]}`;
+  }
+  throw new Error(
+    `rtHashFile: unparseable digest reply for "${path}" after ${RT_READ_RETRIES + 1} attempts`
+  );
+}
+
+/**
+ * Write a file through an agent, verbatim.
+ *
+ * The cache entry is dropped BEFORE the agent is dispatched (REQ-RTCACHE-03),
+ * so no read racing in against the write can observe the pre-write cache. The
+ * entry is deliberately NOT repopulated from `contents`: an agent-mediated
+ * write is a request, not proof of the bytes on disk — the next read
+ * re-verifies against a probe, which is the only evidence this adapter trusts.
+ */
 async function rtWriteFile(path, contents) {
+  rtCacheInvalidate(path);
   await RT.agent(
     `Write the following content to "${path}", relative to the repository root, ` +
       `replacing the file's current contents exactly. Do not reformat, re-wrap, ` +
@@ -501,8 +701,13 @@ function rtMakeCheckCi(devModule) {
  * this is deliberately NOT `rtWriteFile(path, existing + text)` — a
  * read-modify-write would re-emit the reviewer's prose and any divergence would
  * silently rewrite a cross-review file.
+ *
+ * Invalidates before dispatching, for the same reason as rtWriteFile
+ * (REQ-RTCACHE-03) — and here the point is sharper still: the adapter never
+ * holds the post-append bytes at all, only the suffix.
  */
 async function rtAppendFile(path, text) {
+  rtCacheInvalidate(path);
   await RT.agent(
     `APPEND the following content to the END of "${path}", relative to the repository root.\n` +
       `Do not read, rewrite, reformat, re-wrap, summarise, or alter any existing content — ` +
@@ -627,6 +832,7 @@ function rtDevInjections(devModule) {
     _log: rtLog,
     _checkFile: rtCheckFile,
     _readFile: rtReadFile,
+    _hashFile: rtHashFile,
     _checkCi: rtMakeCheckCi(devModule),
     _mergeWorktree: rtMergeWorktree,
     // TSPEC §3.10. `_writeFile`'s adapter existed since the first bundle but was

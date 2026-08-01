@@ -34,6 +34,16 @@ const EXPOSED = [
   "rtReadChunk",
   "rtReadRange",
   "rtReadFile",
+  // The read cache (REQ-RTCACHE-01..05). The eviction ladder is exercised
+  // through these directly: driving it end-to-end would mean transporting
+  // 2 MiB through the chunk agents, ~350 agent calls per megabyte.
+  "RT_READ_CACHE_MAX_BYTES",
+  "rtCacheGet",
+  "rtCachePut",
+  "rtCacheInvalidate",
+  "rtWriteFile",
+  "rtAppendFile",
+  "rtHashFile",
   "rtCheckFile",
   "rtListFiles",
   "rtDevInjections",

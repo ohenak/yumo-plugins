@@ -1219,9 +1219,31 @@ export function parseForcePhases(raw) {
  * @returns {"FRESH"|"STALE"|"UNEVALUABLE"}
  */
 export function isStale(recordedHash, documentBytes) {
+  return isStaleByHash(recordedHash, approvalHashOf(documentBytes));
+}
+
+/**
+ * `isStale`'s comparison, over a document DIGEST rather than the document's
+ * bytes. Same three outcomes, same rules 1–3: the only difference is who paid
+ * for the digest.
+ *
+ * It exists because the transport under `_readFile` in the workflow runtime is
+ * a fan-out of one agent per ~6 KB chunk, so reading a 300 KB REQ *only* to
+ * hash it costs ~52 agents for 64 hex characters. `_hashFile` computes the
+ * digest at the far side of the seam in a single agent, and this function is
+ * the comparison that accepts it. `isStale` is preserved verbatim on top, so
+ * the byte-taking form remains the tested definition of the outcome.
+ *
+ * Pure, total and synchronous: no seam, no throw, no IO (§3.7).
+ *
+ * @param {string} recordedHash - the `sha256:{64 hex}` literal from the record.
+ * @param {string} documentHash - the document's digest in `approvalHashOf` form.
+ * @returns {"FRESH"|"STALE"|"UNEVALUABLE"}
+ */
+export function isStaleByHash(recordedHash, documentHash) {
   if (typeof recordedHash !== "string" || !/^sha256:[0-9a-f]{64}$/.test(recordedHash))
     return "UNEVALUABLE";
-  return approvalHashOf(documentBytes) === recordedHash ? "FRESH" : "STALE";
+  return documentHash === recordedHash ? "FRESH" : "STALE";
 }
 
 // ─── TSPEC §5.9 / FSPEC §16 — structural completeness ─────────────────────────
@@ -1811,6 +1833,7 @@ export async function reviewLoop({
   _checkFile = checkFileNonEmpty,
   _listFiles = defaultListFiles,
   _readFile = defaultReadFile,
+  _hashFile = defaultHashFile,
   _appendFile = defaultAppendFile,
   _log,
   _git,
@@ -1980,8 +2003,13 @@ export async function reviewLoop({
     let anchorHash = null;
     let anchorCommit = "unavailable";
     if (phase !== "CR") {
-      const anchorBytes = await _readFile(doc); // t0
-      if (anchorBytes != null) anchorHash = approvalHashOf(anchorBytes); // t1
+      // t0/t1 collapse into ONE seam call: the anchor never needed the bytes,
+      // only their digest, and `_hashFile` returns exactly what
+      // `approvalHashOf(await _readFile(doc))` returned — including `null` for
+      // an absent or unreadable document. In the workflow runtime `_readFile`
+      // is a per-chunk agent fan-out, so hashing the largest document in the
+      // pipeline once per round used to cost ~1 agent per 6 KB; it now costs 1.
+      anchorHash = (await _hashFile(doc)) ?? null; // t0–t1
       anchorCommit = await headCommitSha(_git); // t2
     }
 
@@ -3877,6 +3905,28 @@ function defaultReadFile(path) {
   }
 }
 
+/**
+ * Default `_hashFile`: the document's approval digest, without handing the
+ * document's bytes back across the seam.
+ *
+ * Returns EXACTLY what `approvalHashOf` returns for the file's contents —
+ * `sha256:{64 hex}` over the canonicalised text, not a raw digest of the bytes
+ * on disk — because every consumer compares it against an `APPROVAL-HASH:`
+ * literal. Null on any error, mirroring `defaultReadFile`'s contract, so a
+ * caller that used to test `bytes != null` can test the hash the same way.
+ *
+ * Injectable in tests via `_hashFile`; supplied in the workflow runtime by the
+ * adapter's `rtHashFile`, which is one IO agent instead of `_readFile`'s
+ * per-chunk fan-out. That saving is the whole reason this seam exists.
+ */
+function defaultHashFile(path) {
+  try {
+    return approvalHashOf(fs.readFileSync(path, "utf8"));
+  } catch {
+    return null;
+  }
+}
+
 // ─── TSPEC §3.2 — the listing seam's Node default ─────────────────────────────
 
 /**
@@ -4001,7 +4051,7 @@ export async function defaultRecordHalt(/* { feature, status } */) {
 
 /**
  * Main pipeline function — runs the full PDLC pipeline from REQ to harvest.
- * @param {{ reqPath: string, _agent?: function, _parallel?: function, _log?: function, _checkFile?: function, _readFile?: function, _phase?: function, _pipeline?: function }} params
+ * @param {{ reqPath: string, _agent?: function, _parallel?: function, _log?: function, _checkFile?: function, _readFile?: function, _hashFile?: function, _phase?: function, _pipeline?: function }} params
  * @returns {Promise<FinalReport>}
  */
 export default async function main({
@@ -4012,6 +4062,7 @@ export default async function main({
   _log: logFn = log,
   _checkFile: checkFileFn = checkFileNonEmpty,
   _readFile: readFileFn = defaultReadFile,
+  _hashFile: hashFileFn = defaultHashFile,
   _phase: phaseFn = phase,
   _pipeline: pipelineFn = pipeline,
   _mergeWorktree: mergeWorktreeFn = mergeWorktree,
@@ -4141,7 +4192,22 @@ export default async function main({
       if (record.approving) {
         // Step 4 — staleness. §5.5 rule 1: the bytes are read AT COMPARISON
         // TIME, never from a read cached earlier in the run.
-        const freshness = isStale(record.hash, await readFileFn(docPath));
+        // The digest is computed at the far side of the seam (`_hashFile`), so
+        // the comparison still reads the document AT COMPARISON TIME — it just
+        // never carries the bytes back. In the workflow runtime `_readFile` is a
+        // per-chunk agent fan-out, and this site never wanted the chunks.
+        //
+        // The absent/unreadable document keeps the byte-taking form verbatim:
+        // `_hashFile` reports it as `null`, exactly as the whole-file read did,
+        // and `isStale(hash, null)` is then the same call the previous line
+        // made. Stating that case as `isStale` rather than folding it into a
+        // digest constant is what makes the equivalence readable — and keeps
+        // §5.5's claim that the gate consults `isStale` literally true.
+        const docHash = await hashFileFn(docPath);
+        const freshness =
+          docHash == null
+            ? isStale(record.hash, null)
+            : isStaleByHash(record.hash, docHash);
         if (freshness === "FRESH") {
           // The phase does not run. `checkPostmortem` is still evaluated, for
           // REPORTING ONLY — AC-2.3's refusal is conditioned on the phase
@@ -4199,6 +4265,7 @@ export default async function main({
   const wrapperSeams = {
     _agent: agentFn,
     _readFile: readFileFn,
+    _hashFile: hashFileFn,
     _listFiles: listFilesFn,
     _appendFile: appendFileFn,
     _log: emit,

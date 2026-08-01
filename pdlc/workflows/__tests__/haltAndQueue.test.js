@@ -295,6 +295,7 @@ async function run({
     _pipeline: async (label, fn) => fn(),
     _checkFile: fs.checkFile,
     _readFile: fs.readFile,
+    _hashFile: fs.hashFile,
     _writeFile: fs.writeFile,
     _appendFile: fs.appendFile,
     _listFiles: listFiles,

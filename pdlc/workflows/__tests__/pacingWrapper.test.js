@@ -714,13 +714,21 @@ describe("Fix A — a single `_readFile` per authoring dispatch, not two (orches
     expect(run.result.outcome).toBe("success");
 
     // Every REQ_PATH read, across the whole run: `dispatchAndVerify`'s ONE `before`
-    // read at episode entry, plus one `after` read per dispatch (N), plus
-    // `reviewLoop`'s own `t0` anchor read of `doc` once per round Phase R visits
-    // (round 1 fails, round 2 passes — 2 rounds). Under the OLD per-iteration
-    // `before` re-read this would have been `2 + 2N` (an extra `before` read on
-    // every dispatch); Fix A drops that to `2 + (N + 1)`.
+    // read at episode entry, plus one `after` read per dispatch (N). Under the OLD
+    // per-iteration `before` re-read this would have been `2N` (an extra `before`
+    // read on every dispatch); Fix A drops that to `N + 1`.
+    //
+    // `reviewLoop`'s own `t0` anchor of `doc` USED to add one whole-file read per
+    // round Phase R visits (round 1 fails, round 2 passes — the former `+ 2`). It
+    // is now a `_hashFile` call: the anchor only ever wanted the digest, and in
+    // the workflow runtime `_readFile` is a per-chunk agent fan-out. Those two
+    // calls are asserted below off the digest log, so the saving is pinned and not
+    // merely absent.
     const reqReads = run.fs.reads.filter((r) => r.path === REQ_PATH);
-    expect(reqReads).toHaveLength(2 + (N + 1));
+    expect(reqReads).toHaveLength(N + 1);
+
+    const reqHashes = run.fs.hashes.filter((h) => h.path === REQ_PATH);
+    expect(reqHashes).toHaveLength(2);
 
     // Behaviour is unchanged: progress is still detected every dispatch (each
     // carries distinct content), so the episode never trips the no-progress halt,

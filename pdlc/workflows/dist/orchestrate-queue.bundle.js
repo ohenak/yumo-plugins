@@ -133,6 +133,18 @@ const RT_READ_CHUNK = 6000;
 // it is still a model output: four attempts bound the tail.
 const RT_READ_RETRIES = 3;
 
+// Invocation-scoped read cache (REQ-RTCACHE-01..05,
+// docs/pdlc-adapter-read-cache/REQ-pdlc-adapter-read-cache.md §6).
+//
+// Ceiling on the bytes the cache may hold at once. REQ §6: the largest document
+// this adapter has transported is 209,953 bytes, so 2 MiB is ≈9.9 such
+// documents — comfortably more than one review round's working set (REQ + spec
+// + two cross-reviews). Over the cap, the OLDEST-INSERTED entries are evicted;
+// the read itself is never refused, and an entry larger than the cap alone is
+// simply not cached. Eviction order is an insertion counter, not a clock: the
+// runtime has no `Date.now()` and no `Math.random()` (REQ §6 NFR-01).
+const RT_READ_CACHE_MAX_BYTES = 2097152;
+
 const RT_HEX64_RE = /\b[0-9a-f]{64}\b/;
 const RT_CHUNK_BEGIN = "__PDLC_CHUNK_BEGIN__";
 const RT_CHUNK_END = "__PDLC_CHUNK_END__";
@@ -412,22 +424,128 @@ async function rtReadProbe(path) {
   );
 }
 
+// ─── the read cache (REQ-RTCACHE-01..05) ─────────────────────────────────────
+//
+// Lives in the adapter's MODULE SCOPE, which is one workflow invocation's
+// script memory: a new invocation (or a resume) evaluates the bundle afresh and
+// therefore starts empty, with nothing on disk and nothing shared between
+// concurrent runs — REQ-RTCACHE-04 holds by construction, not by a reset call.
+//
+// A plain object rather than a `Map`, matching the rest of this file's
+// deliberately conservative surface (the sandbox was probed for globals, not
+// for built-ins). Keys are prefixed so a path named `__proto__` or `toString`
+// cannot reach `Object.prototype`; every lookup is an own-property check.
+//
+// Entry shape: { text, size, sha, seq }. `size`/`sha` are the probe values the
+// text was VERIFIED against, so a later probe can be compared to them directly;
+// `seq` is the insertion counter eviction orders by.
+const rtReadCache = {};
+let rtReadCacheSeq = 0;
+let rtReadCacheBytes = 0;
+
+const rtCacheKey = (path) => `p:${path}`;
+
+function rtCacheGet(path) {
+  const key = rtCacheKey(path);
+  return Object.prototype.hasOwnProperty.call(rtReadCache, key) ? rtReadCache[key] : null;
+}
+
+/** Drop `path`'s entry, if any. Total: invalidating an absent path is a no-op. */
+function rtCacheInvalidate(path) {
+  const key = rtCacheKey(path);
+  if (!Object.prototype.hasOwnProperty.call(rtReadCache, key)) return false;
+  rtReadCacheBytes -= rtReadCache[key].size;
+  delete rtReadCache[key];
+  return true;
+}
+
+/** The key of the oldest-inserted entry, or null when the cache is empty. */
+function rtCacheOldestKey() {
+  let oldest = null;
+  for (const key of Object.keys(rtReadCache)) {
+    if (oldest === null || rtReadCache[key].seq < rtReadCache[oldest].seq) oldest = key;
+  }
+  return oldest;
+}
+
+/**
+ * Record `text` for `path`, verified against probe values `size`/`sha`.
+ *
+ * An entry bigger than the whole cap is never stored (storing it would evict
+ * everything else and still not fit) — the caller's read still succeeds, it
+ * just will not be served from cache next time. Otherwise oldest-inserted
+ * entries are evicted until the new one fits.
+ */
+function rtCachePut(path, text, size, sha) {
+  rtCacheInvalidate(path);
+  if (size > RT_READ_CACHE_MAX_BYTES) return false;
+  while (rtReadCacheBytes + size > RT_READ_CACHE_MAX_BYTES) {
+    const oldest = rtCacheOldestKey();
+    if (oldest === null) break;
+    rtReadCacheBytes -= rtReadCache[oldest].size;
+    delete rtReadCache[oldest];
+  }
+  rtReadCache[rtCacheKey(path)] = { text, size, sha, seq: rtReadCacheSeq++ };
+  rtReadCacheBytes += size;
+  return true;
+}
+
+/** Chunk agents a full read of `size` bytes would have cost (RT_READ_CHUNK plan). */
+const rtChunkCount = (size) => Math.max(1, Math.ceil(size / RT_READ_CHUNK));
+
 /**
  * Read a file through agents, in line-ranged, SHA-verified chunks. Returns
  * null when absent, "" when empty, and throws rather than returning bytes
  * that differ from the file on disk.
+ *
+ * Cached (REQ-RTCACHE-01/02): the size probe this read already had to pay for
+ * doubles as the REVALIDATION probe. When its size AND whole-file SHA-256 both
+ * match what a cached entry was verified against, the cached text is served and
+ * the chunk fan-out is skipped — so a repeated read of an unchanged file costs
+ * exactly ONE agent, and no extra agent is spent on the miss path. Any doubt —
+ * differing size or digest, an absent file, a probe that never parsed — drops
+ * the entry and takes the full read: fail open to re-reading, never to stale
+ * bytes. Note the probe sees the file as it is on disk, so a mutation made by a
+ * dispatched agent's own tools OUTSIDE this adapter's write seam is caught too.
  *
  * Known limit: a file whose single LINE exceeds the IO agent's output budget
  * cannot be chunked below one line, so it fails loudly after retries. Every
  * artifact this pipeline reads is line-structured markdown.
  */
 async function rtReadFile(path) {
-  const probe = await rtReadProbe(path);
-  if (probe === null) return null;
-  if (probe.empty) return "";
+  const cached = rtCacheGet(path);
+  let probe;
+  try {
+    probe = await rtReadProbe(path);
+  } catch (err) {
+    // The probe is also the read's plan, so an exhausted probe is a failed READ
+    // — there is no fuller read to fall back to. What matters for
+    // REQ-RTCACHE-01 is that the entry does not survive to be served later on
+    // the strength of a probe that never answered.
+    rtCacheInvalidate(path);
+    throw err;
+  }
+  if (probe === null) {
+    rtCacheInvalidate(path);
+    return null;
+  }
+  if (probe.empty) {
+    rtCacheInvalidate(path);
+    return "";
+  }
+  if (cached && cached.size === probe.size && cached.sha === probe.sha) {
+    rtLog(
+      `read cache: "${path}" unchanged since it was read (${probe.size} bytes) — ` +
+        `served from cache, ${rtChunkCount(probe.size)} chunk agent(s) avoided`
+    );
+    return cached.text;
+  }
+  // Revalidation failed (or there was nothing to revalidate): the entry is
+  // worthless from here on, and must not outlive a read that then throws.
+  if (cached) rtCacheInvalidate(path);
 
   const displayLines = probe.newlines + (probe.endsWithNewline ? 0 : 1);
-  const chunkCount = Math.max(1, Math.ceil(probe.size / RT_READ_CHUNK));
+  const chunkCount = rtChunkCount(probe.size);
   const perChunk = Math.max(1, Math.ceil(displayLines / chunkCount));
   const plan = rtLinePlan(displayLines, perChunk);
   // The HOST `parallel` takes thunks, not started promises (that is rtParallel's
@@ -459,16 +577,98 @@ async function rtReadFile(path) {
     return null;
   };
   let verified = matches(probe.size, probe.sha);
+  let verifiedBy = probe;
   if (verified === null) {
     const reProbe = await rtReadProbe(path);
-    if (reProbe && !reProbe.empty) verified = matches(reProbe.size, reProbe.sha);
+    if (reProbe && !reProbe.empty) {
+      verified = matches(reProbe.size, reProbe.sha);
+      verifiedBy = reProbe;
+    }
   }
-  if (verified !== null) return verified;
+  if (verified !== null) {
+    // Cache the bytes together with the probe values they were verified
+    // against — the re-probe's, when that is what arbitrated, since those are
+    // what a future revalidation will be compared to.
+    rtCachePut(path, verified, verifiedBy.size, verifiedBy.sha);
+    return verified;
+  }
   throw new Error(`rtReadFile: "${path}" reassembled but did not match the file's size and SHA-256`);
 }
 
-/** Write a file through an agent, verbatim. */
+/**
+ * The document's APPROVAL-HASH digest, in ONE agent.
+ *
+ * `rtReadFile` costs one agent per ~6 KB chunk plus a probe, which is the right
+ * price for bytes the pipeline is going to use — and an absurd one for the two
+ * call sites that read a whole document only to hash it (the review loop's
+ * round anchor, and the approval-staleness compare). A 300 KB REQ cost ~52
+ * agents for 64 hex characters; this costs one.
+ *
+ * The digest is NOT `shasum` over the file as it sits on disk: the module hashes
+ * `canonicaliseForDigest(text)` — CRLF and lone CR folded to LF, then all
+ * trailing newlines replaced by exactly one — so the command canonicalises
+ * first, in the same order:
+ *   1. `sed 's/\r$//'` removes the CR of a CRLF (sed splits on LF, so the CR is
+ *      end-of-line), and
+ *   2. `tr '\r' '\n'` maps every SURVIVING lone CR to LF.
+ *   3. `"$( … )"` strips every trailing newline (that is what command
+ *      substitution does) and `printf '%s\n'` puts exactly one back — which is
+ *      N-2 verbatim, including the empty file, whose digest is that of "\n".
+ * Both hashers are tried, first one wins: macOS ships `shasum`, minimal Linux
+ * images ship `sha256sum`.
+ *
+ * The digest is printed TWICE and both transcriptions must agree, for the same
+ * reason rtReadProbe does it: a live probe lost a whole read to a single
+ * flipped hex digit, and a random flip does not repeat identically across two
+ * copies. Unparseable or disagreeing replies retry; the missing-file sentinel
+ * returns null, matching `defaultHashFile` and `rtReadFile`.
+ *
+ * Deliberately NOT wired into the read cache (REQ-RTCACHE-01/02). Serving a
+ * digest from a cached entry without revalidating would be a stale serve, and
+ * revalidating costs one probe agent — exactly what this function already
+ * spends. There is no saving to be had, only a second canonicalisation
+ * implementation (the shell pipeline above, and a JS twin) that could drift
+ * from `canonicaliseForDigest`. The cache is a read cache; this is not a read.
+ *
+ * @returns {Promise<string|null>} `sha256:{64 hex}`, or null when absent.
+ */
+async function rtHashFile(path) {
+  for (let attempt = 0; attempt <= RT_READ_RETRIES; attempt++) {
+    let reply;
+    try {
+      reply = await RT.agent(
+        `Run this exact command from the repository root and report its output:\n` +
+          `  if [ ! -f "${path}" ] || [ ! -r "${path}" ]; then echo ${RT_MISSING}; ` +
+          `else D=$(printf '%s\\n' "$(sed -e 's/\\r$//' "${path}" | tr '\\r' '\\n')" | ` +
+          `${RT_SHA_CMD}); echo "$D"; echo "$D"; fi\n` +
+          `Return ONLY that token, or the two digest lines, in order — no ` +
+          `commentary, no code fences.`,
+        { label: `hash:${path}`, model: RT_IO_MODEL }
+      );
+    } catch {
+      continue; // a dead agent is a failed attempt, same as in rtReadProbe
+    }
+    const text = typeof reply === "string" ? reply : "";
+    if (text.indexOf(RT_MISSING) !== -1) return null;
+    const shas = text.match(/\b[0-9a-f]{64}\b/g) || [];
+    if (shas.length >= 2 && shas[0] === shas[1]) return `sha256:${shas[0]}`;
+  }
+  throw new Error(
+    `rtHashFile: unparseable digest reply for "${path}" after ${RT_READ_RETRIES + 1} attempts`
+  );
+}
+
+/**
+ * Write a file through an agent, verbatim.
+ *
+ * The cache entry is dropped BEFORE the agent is dispatched (REQ-RTCACHE-03),
+ * so no read racing in against the write can observe the pre-write cache. The
+ * entry is deliberately NOT repopulated from `contents`: an agent-mediated
+ * write is a request, not proof of the bytes on disk — the next read
+ * re-verifies against a probe, which is the only evidence this adapter trusts.
+ */
 async function rtWriteFile(path, contents) {
+  rtCacheInvalidate(path);
   await RT.agent(
     `Write the following content to "${path}", relative to the repository root, ` +
       `replacing the file's current contents exactly. Do not reformat, re-wrap, ` +
@@ -523,8 +723,13 @@ function rtMakeCheckCi(devModule) {
  * this is deliberately NOT `rtWriteFile(path, existing + text)` — a
  * read-modify-write would re-emit the reviewer's prose and any divergence would
  * silently rewrite a cross-review file.
+ *
+ * Invalidates before dispatching, for the same reason as rtWriteFile
+ * (REQ-RTCACHE-03) — and here the point is sharper still: the adapter never
+ * holds the post-append bytes at all, only the suffix.
  */
 async function rtAppendFile(path, text) {
+  rtCacheInvalidate(path);
   await RT.agent(
     `APPEND the following content to the END of "${path}", relative to the repository root.\n` +
       `Do not read, rewrite, reformat, re-wrap, summarise, or alter any existing content — ` +
@@ -649,6 +854,7 @@ function rtDevInjections(devModule) {
     _log: rtLog,
     _checkFile: rtCheckFile,
     _readFile: rtReadFile,
+    _hashFile: rtHashFile,
     _checkCi: rtMakeCheckCi(devModule),
     _mergeWorktree: rtMergeWorktree,
     // TSPEC §3.10. `_writeFile`'s adapter existed since the first bundle but was
@@ -1885,9 +2091,31 @@ function parseForcePhases(raw) {
  * @returns {"FRESH"|"STALE"|"UNEVALUABLE"}
  */
 function isStale(recordedHash, documentBytes) {
+  return isStaleByHash(recordedHash, approvalHashOf(documentBytes));
+}
+
+/**
+ * `isStale`'s comparison, over a document DIGEST rather than the document's
+ * bytes. Same three outcomes, same rules 1–3: the only difference is who paid
+ * for the digest.
+ *
+ * It exists because the transport under `_readFile` in the workflow runtime is
+ * a fan-out of one agent per ~6 KB chunk, so reading a 300 KB REQ *only* to
+ * hash it costs ~52 agents for 64 hex characters. `_hashFile` computes the
+ * digest at the far side of the seam in a single agent, and this function is
+ * the comparison that accepts it. `isStale` is preserved verbatim on top, so
+ * the byte-taking form remains the tested definition of the outcome.
+ *
+ * Pure, total and synchronous: no seam, no throw, no IO (§3.7).
+ *
+ * @param {string} recordedHash - the `sha256:{64 hex}` literal from the record.
+ * @param {string} documentHash - the document's digest in `approvalHashOf` form.
+ * @returns {"FRESH"|"STALE"|"UNEVALUABLE"}
+ */
+function isStaleByHash(recordedHash, documentHash) {
   if (typeof recordedHash !== "string" || !/^sha256:[0-9a-f]{64}$/.test(recordedHash))
     return "UNEVALUABLE";
-  return approvalHashOf(documentBytes) === recordedHash ? "FRESH" : "STALE";
+  return documentHash === recordedHash ? "FRESH" : "STALE";
 }
 
 // ─── TSPEC §5.9 / FSPEC §16 — structural completeness ─────────────────────────
@@ -2477,6 +2705,7 @@ async function reviewLoop({
   _checkFile = checkFileNonEmpty,
   _listFiles = defaultListFiles,
   _readFile = defaultReadFile,
+  _hashFile = defaultHashFile,
   _appendFile = defaultAppendFile,
   _log,
   _git,
@@ -2646,8 +2875,13 @@ async function reviewLoop({
     let anchorHash = null;
     let anchorCommit = "unavailable";
     if (phase !== "CR") {
-      const anchorBytes = await _readFile(doc); // t0
-      if (anchorBytes != null) anchorHash = approvalHashOf(anchorBytes); // t1
+      // t0/t1 collapse into ONE seam call: the anchor never needed the bytes,
+      // only their digest, and `_hashFile` returns exactly what
+      // `approvalHashOf(await _readFile(doc))` returned — including `null` for
+      // an absent or unreadable document. In the workflow runtime `_readFile`
+      // is a per-chunk agent fan-out, so hashing the largest document in the
+      // pipeline once per round used to cost ~1 agent per 6 KB; it now costs 1.
+      anchorHash = (await _hashFile(doc)) ?? null; // t0–t1
       anchorCommit = await headCommitSha(_git); // t2
     }
 
@@ -4543,6 +4777,28 @@ function defaultReadFile(path) {
   }
 }
 
+/**
+ * Default `_hashFile`: the document's approval digest, without handing the
+ * document's bytes back across the seam.
+ *
+ * Returns EXACTLY what `approvalHashOf` returns for the file's contents —
+ * `sha256:{64 hex}` over the canonicalised text, not a raw digest of the bytes
+ * on disk — because every consumer compares it against an `APPROVAL-HASH:`
+ * literal. Null on any error, mirroring `defaultReadFile`'s contract, so a
+ * caller that used to test `bytes != null` can test the hash the same way.
+ *
+ * Injectable in tests via `_hashFile`; supplied in the workflow runtime by the
+ * adapter's `rtHashFile`, which is one IO agent instead of `_readFile`'s
+ * per-chunk fan-out. That saving is the whole reason this seam exists.
+ */
+function defaultHashFile(path) {
+  try {
+    return approvalHashOf(fs.readFileSync(path, "utf8"));
+  } catch {
+    return null;
+  }
+}
+
 // ─── TSPEC §3.2 — the listing seam's Node default ─────────────────────────────
 
 /**
@@ -4667,7 +4923,7 @@ async function defaultRecordHalt(/* { feature, status } */) {
 
 /**
  * Main pipeline function — runs the full PDLC pipeline from REQ to harvest.
- * @param {{ reqPath: string, _agent?: function, _parallel?: function, _log?: function, _checkFile?: function, _readFile?: function, _phase?: function, _pipeline?: function }} params
+ * @param {{ reqPath: string, _agent?: function, _parallel?: function, _log?: function, _checkFile?: function, _readFile?: function, _hashFile?: function, _phase?: function, _pipeline?: function }} params
  * @returns {Promise<FinalReport>}
  */
 async function main({
@@ -4678,6 +4934,7 @@ async function main({
   _log: logFn = log,
   _checkFile: checkFileFn = checkFileNonEmpty,
   _readFile: readFileFn = defaultReadFile,
+  _hashFile: hashFileFn = defaultHashFile,
   _phase: phaseFn = phase,
   _pipeline: pipelineFn = pipeline,
   _mergeWorktree: mergeWorktreeFn = mergeWorktree,
@@ -4807,7 +5064,22 @@ async function main({
       if (record.approving) {
         // Step 4 — staleness. §5.5 rule 1: the bytes are read AT COMPARISON
         // TIME, never from a read cached earlier in the run.
-        const freshness = isStale(record.hash, await readFileFn(docPath));
+        // The digest is computed at the far side of the seam (`_hashFile`), so
+        // the comparison still reads the document AT COMPARISON TIME — it just
+        // never carries the bytes back. In the workflow runtime `_readFile` is a
+        // per-chunk agent fan-out, and this site never wanted the chunks.
+        //
+        // The absent/unreadable document keeps the byte-taking form verbatim:
+        // `_hashFile` reports it as `null`, exactly as the whole-file read did,
+        // and `isStale(hash, null)` is then the same call the previous line
+        // made. Stating that case as `isStale` rather than folding it into a
+        // digest constant is what makes the equivalence readable — and keeps
+        // §5.5's claim that the gate consults `isStale` literally true.
+        const docHash = await hashFileFn(docPath);
+        const freshness =
+          docHash == null
+            ? isStale(record.hash, null)
+            : isStaleByHash(record.hash, docHash);
         if (freshness === "FRESH") {
           // The phase does not run. `checkPostmortem` is still evaluated, for
           // REPORTING ONLY — AC-2.3's refusal is conditioned on the phase
@@ -4865,6 +5137,7 @@ async function main({
   const wrapperSeams = {
     _agent: agentFn,
     _readFile: readFileFn,
+    _hashFile: hashFileFn,
     _listFiles: listFilesFn,
     _appendFile: appendFileFn,
     _log: emit,
