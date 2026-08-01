@@ -859,10 +859,22 @@ exactly these cases, and in no others:
 | A `## Verdict` section exists and there is **no non-empty line after** the `VERDICT:` line | *unavailable* — `parseVerdict`'s truncated-output path, which returns genuine `0/0/0` (M-2c) |
 | A `## Verdict` section exists and, after `VERDICT:`, contains **nothing but anchor lines** — no candidate line survives AC-3.4's skip rule | *unavailable* — the trailer was never written; an anchor is not a malformed trailer |
 | A candidate line exists — the first non-empty **non-anchor** line after `VERDICT:` — and does not parse as `{"high": N, "medium": N, "low": N}` after `recoverVerdict` (M-2d) has been tried | *malformed* (AC-2.3) |
+| The `## Verdict` section carries **two or more `VERDICT:` lines** | *malformed* (AC-2.3) — the quantity was read and could not be resolved, which is §5's definition of *malformed* exactly |
 
-The fourth row is new in v1.2 and is the operator-facing half of AC-3.4's placement rule; v1.3 restates
-it as *"nothing but anchor lines"* so that the table classifies exactly the observations AC-3.4's
-algorithm produces. v1.2 stated it as *"the **first** non-empty line after `VERDICT:` is an anchor
+**The duplicated-`VERDICT:` row is new in v1.4 and is not a new behaviour**: `extractFileVerdict`
+(`pdlc/workflows/orchestrate-dev.js:888`) scopes its scan to the trailing `## Verdict` section, counts
+lines beginning `VERDICT: `, and returns `{ok: false, reason: "duplicated"}` when there is more than
+one (`:904`) — *before* `parseVerdict` ever runs — and the repo's documented file contract already says
+a second `VERDICT:` line is read fail-closed. v1.3 classified that outcome nowhere: AC-3.4 step 1
+presumed a *single* line and enumerated only *absent*, and this table had no row, so a third failure
+mode of AC-2's operand mapped to neither of the two chain-breaking states (SE v5 G-09). Mapping it to
+*malformed* keeps the shipped return value on a chain break rather than on silence, and leaves an
+implementer reading only this REQ no reason to drop the existing behaviour.
+
+The anchors-only row is the operator-facing half of AC-3.4's placement rule; v1.3 restates it as
+*"nothing but anchor lines"* so that the table classifies exactly the observations AC-3.4's algorithm
+produces (SE v5 MF-3: it is no longer new, and the rows have shifted, so it is named rather than
+numbered). v1.2 stated it as *"the **first** non-empty line after `VERDICT:` is an anchor
 line"*, which contradicted AC-3.4's skip rule on the input `VERDICT:` → anchor → valid trailer: the
 algorithm read a count, the table said *unavailable*, and DC-01 requires the receive side to be total
 **and single-valued** (SE v4 G-05, TE v4 F-06). **AC-3.4 states the reader; this table classifies its
@@ -1115,14 +1127,29 @@ comparable round (SE F-10). So:
   `parseVerdict` requires (M-2c). v1.1 fixed only *that* the trailer is in the file, not *where*,
   leaving a compliant-looking file that `parseVerdict` rejects (SE F-04);
 - **the reader is one algorithm, stated once, here.** Given a file, the trailer reader:
-  1. locates the `## Verdict` section and its single `VERDICT:` line — absent ⇒ *unavailable*;
-  2. scans forward for the **candidate**: the first non-empty line that is **not an anchor line**. The
-     anchor set is **§5's catalogue** (S-1, S-2, S-10 and the M-4a approval anchors) **by reference**;
-     this REQ enumerates it nowhere else, so it has exactly one membership;
+  1. locates the trailing `## Verdict` section and counts the `VERDICT:` lines in it. No section, or no
+     `VERDICT:` line ⇒ *unavailable*; **two or more `VERDICT:` lines ⇒ *malformed*** — the outcome
+     `extractFileVerdict` already returns as `{ok: false, reason: "duplicated"}`
+     (`pdlc/workflows/orchestrate-dev.js:888`, the count at `:904`), classified here rather than left
+     unmapped (SE v5 G-09, AC-2.7);
+  2. from the single `VERDICT:` line, **scans forward and stops at the first non-empty line that is not
+     an anchor line — that line is *the* candidate, and there is at most one.** The anchor set is
+     **§5's catalogue** (S-1, S-2, S-10 and the M-4a approval anchors) **by reference**; this REQ
+     enumerates it nowhere else, so it has exactly one membership;
   3. no candidate ⇒ *unavailable* (AC-2.7);
-  4. a candidate that does not parse as `{"high": N, "medium": N, "low": N}` after `recoverVerdict`
-     (M-2d) has been tried ⇒ *malformed* (AC-2.3); two or more parsing candidates ⇒ *malformed*;
-  5. exactly one parsing candidate ⇒ that is `blocking`'s source.
+  4. the candidate does not parse as `{"high": N, "medium": N, "low": N}` after `recoverVerdict`
+     (M-2d) has been tried ⇒ *malformed* (AC-2.3);
+  5. the candidate parses ⇒ that is `blocking`'s source. **A second parsing trailer later in the section
+     is not observed and is therefore not a case**: the scan has already stopped.
+
+  **The scan stops; it does not collect.** v1.3 defined the candidate by a stopping scan in step 2 and
+  then quantified over *"two or more parsing candidates"* in steps 4–5, which presupposes a collecting
+  scan — two readings that answer differently on a reachable input (`VERDICT:` → a prose line → a valid
+  trailer: stopping ⇒ *malformed*, collecting ⇒ a readable count), reachable during R-7's transition
+  because a lagging SKILL writes whatever prose it likes under `## Verdict` (SE v5 G-08). Stopping is
+  chosen: it matches `parseVerdict`'s own *"first non-empty line after `VERDICT:`"* and is the cheaper
+  reader. The duplicate-trailer concern that motivated the deleted clause is answered one level up, in
+  step 1, over the datum a duplicate actually shows up in.
 
   Skipping rather than first-line-testing is what keeps *unavailable* reachable: anchors are appended
   into this same section *after* the trailer, so on a file that never carried a trailer an anchor line
