@@ -529,14 +529,34 @@ way it halts today — writing `POSTMORTEM-{phase}-{feature}.md`, confirming the
 trusting the agent's reply, and refusing to re-run the phase until a human writes `RESOLVED: yes`.
 This REQ changes *when* the halt happens, not *what* a halt is.
 
+**One thing about that write does change, because this REQ puts machine-written state in that file.**
+`POSTMORTEM-{phase}-{feature}.md` is a **fixed** path — it is not versioned as `CROSS-REVIEW-…-v{N}` and
+`CODE_REVIEW-…-v{N}` are — so a document that halts twice has its post-mortem written twice, and
+AC-1.5(4)'s `WINDOW-START:` lines live there. Therefore: **a halt that rewrites an existing
+post-mortem preserves its reset region verbatim** — every `RESOLVED:` line, every `WINDOW-START:` line
+and every `HALT-REASON:` line already in the file, in document order, under a heading the halt path
+does not touch — and writes its own new content around that region. A rewrite that drops those lines
+would either destroy the operator's `RESOLVED: yes` (benign, fail-closed) or destroy only the loop's
+`WINDOW-START:` and thereby re-grant a fresh window on **every** subsequent invocation, which is the
+unbounded-review behaviour AC-1.1 exists to abolish (SE v4 G-04, TE v4 F-02). At HEAD the halt path
+dispatches an agent with a bare `Write {path}` prompt and no preservation obligation
+(`pdlc/workflows/orchestrate-dev.js:1912-1918`, `writePostmortem`, prompt literal *"Write
+docs/…/POSTMORTEM-…"*), so this is an amendment to that prompt and to its write confirmation: O-9
+carries the prompt clause, O-5 the confirmation that the region survived. Whether the seam appends or
+rewrites is an implementation question (TE v4 MR-04); the **obligation** is stated here because the
+datum is REQ-level durable state.
+
 **AC-1.5 — The window is absolute, and only an operator resets it.**
 *Who:* the review loop. *Given:* a phase whose document already carries cross-review rounds on the
 branch — the state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-)entered. *Then:*
 
-1. the window's **end** is round 3 counted from round 1, not from the highest existing round: a branch
-   whose highest existing round is 2 is admitted **round 3 only**; a branch whose highest existing
-   round is 3 or more is admitted **no rounds** and halts immediately on the budget path (AC-1.4),
-   emitting the S-4 halt reason with `rounds 1..3 of 3`;
+1. the window's **end** is round 3 counted from the window's **origin** `W` (clause 4; `W = 1` when no
+   reset is in effect), not from the highest existing round: with `W = 1`, a branch whose highest
+   existing round is 2 is admitted **round 3 only**, and a branch whose highest existing round is 3 or
+   more is admitted **no rounds** and halts immediately on the budget path (AC-1.4), emitting the S-4
+   halt reason rendered as `rounds {W}..{W+2} of 3` — `rounds 1..3 of 3` in that example, and
+   `rounds 4..6 of 3` on a branch reset to `WINDOW-START: 4`. The literal varies with the window and
+   the format string is S-4's; a clause that hard-codes one window's render is a defect (TE v4 F-05);
 2. the window's **start** is unchanged — one past the highest existing round (M-1d), so review history
    stays append-only and no existing file is ever overwritten;
 3. the **one** reset is an operator's: a `POSTMORTEM-{phase}-{feature}.md` carrying a human-written
@@ -545,12 +565,31 @@ branch — the state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-
    escape hatch (AC-1.4), stated here because it is what makes an absolute cap operable rather than a
    dead end: an operator who has addressed the finding gets a fresh window; an unattended re-invocation
    does not. **No agent and no script ever writes `RESOLVED: yes`** — that rule is unchanged;
-4. **the reset is anchored and consumed, in the POSTMORTEM, by the loop.** On the first entry that
-   observes a `RESOLVED: yes` with no `WINDOW-START:` line beneath it, the loop appends
-   `WINDOW-START: {N}` — where `N` is one past the highest round then on the branch — and that line is
-   thereafter the window's origin: the budget of 3 is counted from `N`, and rounds below `N` are
-   outside the window. A `RESOLVED: yes` that already carries a `WINDOW-START:` is **consumed** and
-   grants no further reset.
+4. **the reset is anchored and consumed, in the POSTMORTEM, by the loop.** The post-mortem's **reset
+   region** — the lines AC-1.4 requires every halt to preserve — is read as two counts: `R`, the number
+   of `RESOLVED: yes` lines, and `S`, the number of `WINDOW-START:` lines. A reset is **unconsumed**
+   exactly when `R > S`. On the first entry that observes `R > S`, the loop appends
+   `WINDOW-START: {N}` — where `N` is one past the highest round then on the branch — which makes
+   `R = S` again, and `N` becomes the window's origin `W`: the budget of 3 is counted from `W`, and
+   rounds below `W` are outside the window. When `R = S` every granted reset is spent and the loop
+   writes nothing.
+
+   **Counting, rather than testing for presence, is what keeps one-shot true on a file that has halted
+   more than once.** v1.2 said "a `RESOLVED: yes` that already carries a `WINDOW-START:` is consumed",
+   which is undecidable once the file carries several of each (TE v4 F-02). With AC-1.4's preservation
+   rule the region accumulates one `RESOLVED:` per operator clearance and one `WINDOW-START:` per
+   granted window, so the counts are the state and the pairing is positional-free.
+
+   Receive side, total, **fail-closed** in every non-canonical case — no reset is honoured, `W` is
+   treated as 1, and the run report names the file and the values found:
+
+   | Observation on the reset region | Resolved `W` |
+   |---|---|
+   | No `WINDOW-START:` line | **1** — no reset in effect; if `R > S` the loop writes one and `W` becomes that value |
+   | One or more `WINDOW-START:` lines whose values are decimal integers ≥ 1 and **strictly increasing** in document order | the **greatest** (i.e. last) value — each reset opens a later window and supersedes its predecessor |
+   | Any value that is not a decimal integer ≥ 1 | **1**, fail-closed |
+   | Two or more values that are equal, or that decrease in document order | **1**, fail-closed — a window origin never repeats and never moves backwards, so this is a corrupt region, not a history |
+   | A value greater than one past the highest round on the branch | **1**, fail-closed — the origin claims rounds that were never opened |
 
    Both halves are load-bearing. Without the anchor, nothing on the branch records *which* rounds
    preceded the marker, so "counted from round 1" is unstated for any document that has ever been
@@ -558,13 +597,29 @@ branch — the state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-
    persistent file state that re-grants a fresh window on **every** subsequent invocation — which
    silently restores the per-invocation budget AC-1.1 exists to abolish. `WINDOW-START:` is written by
    the loop, not by a human, and carries no authority of its own: it records where a reset the operator
-   already granted began. The prohibition in clause 3 is on writing `RESOLVED: yes`, and is untouched.
-   Receive side: two or more `WINDOW-START:` lines, or a value that is not a decimal integer ≥ 1, is
-   **fail-closed** — no reset is honoured, and the run report names the file and the value found.
+   already granted began. The prohibition in clause 3 is on writing `RESOLVED: yes`, and is untouched;
 
-The durable observable for all four clauses is the same one the loop already reads: the cross-review
-basenames on the branch, plus the POSTMORTEM's `RESOLVED:` and `WINDOW-START:` lines. Nothing here
-needs a clock, a process identity, or a memory of a previous invocation.
+5. **every halt records which halt it was, and a no-revision halt does not spend the reset.** The halt
+   path writes `HALT-REASON: {string}` into the post-mortem, outside any fenced block, carrying the S-3,
+   S-4 or S-11 string verbatim (§5). On the entry that observes `R > S`, the loop reads the **last**
+   `HALT-REASON:` line:
+
+   | Last `HALT-REASON:` | Effect of the `RESOLVED: yes` |
+   |---|---|
+   | begins `no-revision:` (S-11) | the halt is cleared and the **interrupted window is resumed** — no `WINDOW-START:` is written, `W` is unchanged, and the reset is **not** consumed. The rounds the window had already spent stay spent |
+   | begins `fixed-point:` (S-3) or `budget-exhausted:` (S-4) | the reset is granted and consumed as clause 4 states: `WINDOW-START: {N}` is written and a fresh three-round window opens |
+   | absent, unparseable, or any other value | treated as S-3/S-4 — **fail-closed**, because the safe error is to consume a reset the operator can re-grant, never to hand out a free window on every S-11 |
+
+   AC-2.8 calls a zero-delta round an **authoring** failure whose remedy is re-running the authoring
+   step; charging the operator's single escape hatch for it would both misprice an unrelated failure and
+   hand a pipeline that keeps failing to author an unbounded supply of fresh windows — one per
+   no-revision halt (TE v4 F-04). Resuming rather than resetting keeps AC-1.1's cap absolute across the
+   S-11 path, and it is derivable from one line the halt already had to write.
+
+The durable observable for all five clauses is the same one the loop already reads: the cross-review
+basenames on the branch, plus the POSTMORTEM's preserved `RESOLVED:`, `WINDOW-START:` and
+`HALT-REASON:` lines. Nothing here needs a clock, a process identity, or a memory of a previous
+invocation.
 
 **Observability.** `MAX_REVIEW_ROUNDS === 3`; the highest `-v{N}` on the branch never exceeds 3 for a
 document with no resolved POSTMORTEM; a fourth round never dispatches a reviewer; the post-mortem
