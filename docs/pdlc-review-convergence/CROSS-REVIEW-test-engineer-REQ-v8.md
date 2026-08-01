@@ -149,7 +149,25 @@ MF-19 of v7 are all applied and are not carried (MF-17 with the residue F-02 rec
 
 ## 5. Measurement Required
 
+Filed under AC-5.2's convention. Non-blocking; excluded from the counts below. MR-01 and MR-02 remain
+bound to `docs/pdlc-runtime-measurement-spike/REQ-pdlc-runtime-measurement-spike.md`. MR-03, MR-04,
+MR-06 and MR-07 are carried unchanged and are correctly recorded in §10.10/§10.11 as non-blocking; I do
+not restate them. MR-07 is now the more interesting of them, because v1.6's refusal is stated as a
+*return* and the shipped code's control flow at that point decides how large the FSPEC's change is.
+
+| # | Fact to measure | How | What it would settle |
+|---|---|---|---|
+| MR-08 | **New.** Does a phase refusal — the step-G shape v1.6 states the AC-1.5(4) refusal *"is the same shape as"* — write `halted` to `docs/_queue/QUEUE.md` and commit it? A refusal takes no halt in this REQ's accounting, but the queue's row is written by `orchestrate-dev` on a **pipeline** halt, which is a different notion of halt with the same name. | Read the queue-row write site and the step-G refusal path at the Citation baseline, and note whether a refused phase reaches it. | Whether a corrupt-region refusal leaves the queue row `in-progress` (so `/loop` re-picks the feature and refuses again, once per iteration, forever) or `halted` (so it stops). It changes no AC — the REQ's `H`/`A` accounting is right either way — but it decides whether O-10 needs an obligation about the queue row, and it is the only place I can see where *refusal* and *halt* being different words for adjacent things could bite an operator. |
+
 ## 6. Questions
+
+Q-11 and Q-12 of v7 are both answered in §10.11 (§2 above) and are closed. Two new ones, both answerable
+in a sentence and neither blocking.
+
+| ID | Question |
+|----|---------|
+| Q-13 | Does step 4's refusal fire on an entry that has rounds left in an already-granted window? Step 4 is unconditional — *"the entry then refuses the phase and returns"* — but every sentence justifying it is stated over the exhausted branch (`W` = 1, no rounds admitted, the ratchet). On a branch at round 4 of window `4..6` whose region a hand-edit has corrupted, v1.6 refuses the phase outright where v1.5 would have fallen back to `W` = 1 and then halted on the budget anyway, so I believe the outcome is the same and the widening is harmless. Confirming it is worth one clause, because a PROPERTIES author choosing a fixture for the refusal will otherwise reach for the exhausted branch only, and the mid-window case is the one where the two readings could have differed. |
+| Q-14 | After a `counts-mismatch` repair, how many operator actions are there before a window opens? Tracing it: the operator deletes the section (`H = A = 0`), re-invokes; the gate's `A < H` conjunct is now **false**, so no window is granted, and on an exhausted branch the entry halts, appends one `HALT-REASON:` and **strips the marker the refusal preserved**; the operator must write `RESOLVED: yes` a second time; the entry after that grants the window. So the cost is one halt **and two clearances**, not one halt and the clearance already on disk. The document's *"the clearance after it grants a window"* is consistent with this — *after it* is the second clearance — but *"at the cost of one further halt to re-create it"* reads like the only cost. Is it worth naming the second clearance explicitly? O-10's recovery leg has to sequence it correctly to be green. |
 
 ## 7. Positive Observations
 
