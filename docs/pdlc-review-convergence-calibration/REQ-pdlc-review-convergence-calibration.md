@@ -41,6 +41,7 @@ evidence rather than on judgement.
 | Q-1 | Is a verifier round's blocking count systematically related to a dual round's on the same document? | The per-round tables AC-4.7 emits, across ≥ 5 completed review-loop phases under the new panel shape |
 | Q-2 | If so, is the relationship stable enough to normalise, or only stable enough to bound? | Same corpus |
 | Q-3 | Should AC-2.4's unequal-panel-shape non-comparison be replaced, narrowed, or left as is? | Q-1, Q-2 |
+| Q-4 | Does the fixed-point test need **finding identity**, not just count? A non-decreasing count can hide complete turnover — every prior finding closed, every new one raised against new text — which AC-2.1 reads as a plateau and AC-4.2 simultaneously classifies as `new-mechanism`. Observed on the parent REQ's own Phase R: counts 10, 5, 5, 5 with zero findings carried into the last round (parent R-9, SE v4 G-06). | The same corpus, plus the cross-review files themselves — deciding this needs a findings-table grammar the parent's N-3 declines to introduce, so the cost of that grammar is part of the question |
 
 ## 3. Prerequisites
 
