@@ -406,7 +406,44 @@ observably different from what the fallback would have produced: highest round 2
 
 ## 6. Declared thresholds
 
+The shared table is `docs/_constraints/pdlc-rcv-baseline.md` §3. **This REQ owns no row of it and
+changes none** — it reads three, listed first below. **Two rows sit outside baseline §3's scope
+deliberately, not by defect:** the validation-failure variant's two operator strings are
+non-catalogue renders that no other document states, so this table is their registered authority.
+Four further renders this REQ depends on are **registered elsewhere and cited, not restated**; a
+second statement of a render is a second place to be wrong.
+
+| Name | Default | Owned / read | Note |
+|---|---|---|---|
+| `reset-region-corrupt: {reason} (H={h}, A={a}) {path}` | the render fixed in catalogue §2's S-16 row, character for character, bracketed offending line included | **read only** | Owned by `pdlc-rcv-budget-stop`. AC-7.1 step 4 is its sole emitter; one notice per entry whatever the fault count. The `{reason}` enum stays closed at three |
+| `WINDOW-START: {N}` / `WINDOW-RESUMED: {W}` | as catalogue §2's S-13 and S-14 rows fix them | **read only** | Owned by `pdlc-rcv-budget-stop`. AC-7.1 step 2 validates their values, AC-7.5 confirms their bytes; this REQ may not change either grammar |
+| `## Reset Region` | that exact heading (S-12) | **read only** | Owned by `pdlc-rcv-budget-stop` AC-1.4. AC-7.4's `counts-mismatch` repair deletes the section, heading included |
+| **Refusal phase-row text** | `Refused — reset region corrupt at {path} ({reason})` | **owned** | The ❌ row of AC-7.1 step 4's refusal. **Not a catalogue id** — an operator-facing render of S-16, `{path}` the same repo-root-relative post-mortem path S-16 renders, `{reason}` the S-16 reason. Deliberately distinct from step G's `Refused — unresolved POSTMORTEM at …` (`orchestrate-dev.js:4246` at `41f9369`), which states the opposite of the truth here: step G refuses because the marker is *unresolved*, this refusal fires on a post-mortem the operator **did** resolve |
+| **Refusal recovery text** | names the sanctioned repair for `{reason}` (AC-7.4's table) | **owned** | The shipped generic queue-reset line is **suppressed**, not substituted, on this variant — an unguarded emit firing on every halt class (M-8d), so suppressing it is a stated change to shipped behaviour (AC-7.2, O-6) |
+| **Unconfirmed-append ❌ text** and **its two-act recovery text** | as **catalogue §4** fixes them, character for character | **read only** | Registered in catalogue §4 beside the row they discriminate and beside the `M-8*` facts they rest on. AC-7.5 and AC-7.6 state the *conditions*; the bytes are not restated here |
+| **`postmortemStatus`** on both row-B variants | **`written`** | **read only** | Fixed by catalogue §4 for the unconfirmable-append variant and by AC-7.2 for both, over the shipped enum `none \| unresolved \| written \| write_failed` (M-8f). Never `none`, never `unresolved` |
+
+**Two renders in this table, and no third.** §6's two owned rows plus catalogue §4's two are the
+**closed list of operator strings the row-B path emits**. A finding that some other string ought to
+appear on a refusal is a finding against this list, not an omission from it.
+
 ## 7. Non-goals and out of scope
+
+The shared list is baseline §4, which defines **N-1 … N-10 only**; all of `N-1, N-2, N-3, N-4, N-7,
+N-9, N-10` apply unchanged and are not restated, and `N-5`, `N-6` and `N-8` are **inapplicable to
+this REQ, not overlooked**. **Ids above `N-10` are not shared** — the family has minted colliding
+`N-1x` ids — so this document's own non-goals use a **per-REQ namespace, `NR-*`**; restated shared
+rows keep their shared ids.
+
+| # | Not in scope | Why |
+|---|---|---|
+| **N-4** (shared) | Changing what a halt is. | AC-7.2's whole point is that a refusal is **not** a halt: no post-mortem is written, no `HALT-REASON:` is appended, and the rule that **only a human ever writes `RESOLVED: yes`** is untouched. Act 1's deletion of an unconfirmed line removes a line the loop wrote and no operator answered; it writes no marker. |
+| **N-7** (shared) | Applying these mechanisms to Phase CR or Phase DOD. | Those loops have no reset region to validate (`REQ-RCV-01` AC-1.1's scope note), so AC-7.1 never runs for them. |
+| **NR-1** | Defining the window, the budget, the counts `H`/`A`, the clearance gate, or which answering line a given halt reason calls for. | They are `pdlc-rcv-budget-stop`'s AC-1.1–AC-1.5. This REQ discharges the *predicate* AC-1.5(4) names and states what a failed write leaves behind. A finding that this document never says *why* the window is three is **correct and known** — file it there. |
+| **NR-2** | Emitting S-11, or specifying when a document is zero-delta. | They are `pdlc-rcv-fixed-point-stop`'s (X-05). AC-7.1 step 2 validates `WINDOW-RESUMED:` values without ever deciding when one is written. |
+| **NR-3** | Changing the shipped halt catch's behaviour for **any** halt class other than the two row-B variants. | O-6's suppression seam is scoped to those two. Every other class keeps the generic recovery line unchanged, and the four entry-validation halts never reach it at all (M-8a). Widening the seam is a different feature. |
+| **NR-4** | Re-measuring the halt catch. | Baseline §2.8 is the measurement (`M-8a … M-8j`). This REQ **cites** those facts and asserts nothing about shipped control flow beyond them. A claim here that contradicts an `M-8*` row is a defect in this REQ; a claim in an `M-8*` row that no longer holds at HEAD is fixed **in the baseline**, and this REQ follows it without re-deriving. This is root cause 1 of the predecessor's post-mortem, applied. |
+| **NR-5** | Recovering automatically from a corrupt region or an unconfirmed write. | Both refuse and wait for an operator (AC-7.2, AC-7.5). A loop that repaired its own accounting could not distinguish its own torn write from a hand-edit, which is the fail-open R-10 exists to close. |
 
 ## 8. Downstream obligations
 
