@@ -49,3 +49,14 @@ Downstream: `docs/completed/pdlc-review-loop-hardening/FSPEC-pdlc-review-loop-ha
 | H-3 (monolithic authoring unsurvivable) | AC-3 | §8 FSPEC-TRAILER-01, §15 FSPEC-PACE-01, §16 FSPEC-COMPLETE-01 |
 | H-4 (no approved-phase skip) | AC-4 | §5 FSPEC-ROUND-01, §6 FSPEC-VERDICT-01, §7 FSPEC-DIGEST-01, §9 FSPEC-APPROVAL-01, §10 FSPEC-STALE-01, §11 FSPEC-FORCE-01 |
 | — (harness consistency) | AC-5 | §17 FSPEC-CONST-01 |
+
+## pdlc-adapter-read-cache
+
+Authoritative per-AC mapping lives in §7 of
+`docs/pdlc-adapter-read-cache/REQ-pdlc-adapter-read-cache.md`; this is the roll-up.
+
+| User Story | Requirement | FSPEC |
+|---|---|---|
+| US-01 | REQ-RTCACHE-01, REQ-RTCACHE-02 | — (pending) |
+| US-02 | REQ-RTCACHE-02, REQ-RTCACHE-05 | — (pending) |
+| US-03 | REQ-RTCACHE-01, REQ-RTCACHE-03, REQ-RTCACHE-04 | — (pending) |
