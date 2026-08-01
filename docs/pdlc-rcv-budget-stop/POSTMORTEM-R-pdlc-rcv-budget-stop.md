@@ -255,3 +255,91 @@ features.**
 ---
 
 ## Recommendation
+
+**R-1 — Escalate to the operator now. Do not run a sixth round, and do not leave the queue row
+`pending`.**
+Set `docs/_queue/QUEUE.md` row `Order 10` (`pdlc-rcv-budget-stop`) to `halted` and leave this
+post-mortem as the named resolution artifact; the phase stays refused until a human writes
+`RESOLVED: yes` into it. Leaving the row `pending` after a non-convergent Phase R is the act that
+produced `pdlc-review-loop-hardening`'s second five-round run. A sixth round here would review v1.6,
+whose changes are entirely inside AC-1.5(4), §6 and O-10 — the three surfaces that have generated
+every blocking finding since round 2 — and would land where rounds 3–5 landed. Note that four
+downstream queue rows (`Order 11`, `12`, `17`, and the panel work behind them) declare
+`depends-on: pdlc-rcv-budget-stop`, so this halt blocks the family; that argues for resolving it this
+week, not for running another round.
+
+**R-2 — Resolve v1.6 by an operator-directed convergence pass, not by a sixth dual review.**
+v1.6 (`c74d1ed`) exists, is unreviewed, and addresses all four round-5 blocking findings by the route
+both reviewers recommended: the shipped generic recovery line at `orchestrate-dev.js:4928` is
+**suppressed** rather than substituted (SE-v5 F-01 option (i)); the unconfirmable-append refusal now
+names **two** recovery acts, the first deleting its own unconfirmed residue before the next entry can
+spend it (SE-v5 F-02 option (i) / TE-v5 F-27 option (i), each reviewer's own first choice); O-10
+gains the sequel leg and corrected negative controls; and the round was funded to **339 bytes** of
+headroom rather than 3. The precedent is exact — `POSTMORTEM-R-pdlc-review-loop-hardening` §Resolution
+records the same disposition on the same shape of loop. The pass must do three things and no more:
+
+| Check | Against |
+|---|---|
+| Every round-5 finding closed, with its retraction recorded in place | `CROSS-REVIEW-{se,te}-REQ-v5.md`, findings F-01…F-04 and F-27…F-29 |
+| Every line citation re-derived at HEAD, not trusted | `pdlc/workflows/orchestrate-dev.js` — specifically `:4862`, `:4870`–`:4871`, `:4880`–`:4901`, `:4922`, `:4925`–`:4929`, and `:1795` |
+| No obligation traded for bytes | diff `779cc35..c74d1ed`; each deletion classified as restatement or reason |
+
+Do **not** dispatch reviewers at v1.6. If the operator wants independent confidence, dispatch a
+single reviewer against the third row only — the byte-for-byte deletion audit — which is mechanical
+and cannot generate a class-A or class-B finding.
+
+**R-3 — Take the altitude decision the loop kept deferring: move AC-1.5(4)'s render and repair
+material into `docs/_constraints/pdlc-rcv-catalogue.md`, as a decision, not as a byte-scavenging
+tactic.**
+The catalogue already owns row B's schema and its two-variant discriminator and has a working
+amendment protocol (`33bdf80`). The unconfirmable-append variant's full render — ❌ text, recovery
+text, `postmortemStatus`, residue disposition — is catalogue material by that file's own definition;
+SE proposed the move at rounds 4 and 5 and TE at round 5. Making it once, wholesale, with a citation
+left behind, does three things simultaneously: it puts the shipped-string facts in the file whose
+amendment protocol requires them to be verified against source, it restores real headroom to the REQ,
+and it removes the surface that generated every class-B finding from the document under review.
+
+**R-4 — Settle class B by measurement, not by prose, and record the measurement in the shared
+baseline.**
+One code-reading pass over `orchestrate-dev.js`'s halt catch settles every open class-B question and
+several not yet asked: enumerate every `emit` in the catch, record each one's guard (or record that
+it has none), and record which halt classes reach it. That table belongs in
+`docs/_constraints/pdlc-rcv-baseline.md` as measured facts `M-*`, cited by id from this REQ and from
+its four successors — all of which will otherwise re-derive the same chain independently. The REQ's
+own §1–§2, §4, §5, §7 and §9 are the evidence that this works: they cite measured facts and drew zero
+findings after round 1.
+
+**R-5 — Make the size budget a blocking constraint at REQ-authoring time, not a Low at review
+time.**
+`check-req-size.sh` already warns on the PostToolUse hook, and the warning was heeded — the document
+never breached the ceiling. What failed is that *proximity* to the ceiling was reported through a
+severity channel that cannot compel a decision. Two cheap changes: have the hook warn at a **soft**
+threshold (say 90 %, i.e. 55,296 bytes) with the message naming relocation to `docs/_constraints/`
+as the remedy; and add to `pdlc:pm-author`'s quality checklist that a REQ inside 5 % of the budget at
+the start of a review round must relocate content before addressing findings, never after. A
+constraint that can only be satisfied by deleting reasons is a constraint that will eventually delete
+one — and at round 5 it did.
+
+**R-6 — Require the machine-readable count trailer from `se-review`, as `te-review` already
+emits.**
+TE persisted `{"high": n, "medium": n, "low": n}` in all five files; SE persisted none. The
+fixed-point rule that `pdlc-rcv-fixed-point-stop` will implement needs both counts per round, and its
+own predecessor post-mortem (`pdlc-review-loop-hardening`, R-4) already recorded that the
+enforcement is "available and simply unbuilt". It is now two-thirds available on its third
+consecutive feature. This is a one-line addition to `pdlc/skills/se-review/SKILL.md` and it is a
+prerequisite for R-7, not a nicety.
+
+**R-7 — Unblock the fixed-point stopping rule from its own dependency.**
+`pdlc-rcv-fixed-point-stop` (`Order 17`) depends on this REQ because both its tests are stated over
+the window origin `W`. That dependency is real for its *tests*, not for the **counting rule** — "two
+consecutive rounds of non-decreasing blocking-finding count halts the phase" needs only the two
+verdict trailers from R-6 and the existing round window. Splitting that rule out as its own small,
+dependency-free queue row, ahead of `Order 10`, would have halted this loop at round 4 and would halt
+the next one. Three consecutive features in this family have now run to the five-round ceiling while
+the mechanism that stops them sat behind them in the queue.
+
+**On the trajectory specifically.** This loop is a materially better outcome than its predecessor —
+the document did not grow, the split held, product substance was settled by round 2, resolution rate
+was 100 % every round, and the two reviewers never diverged. It failed on a single acceptance
+criterion whose correctness is decided by shipped control flow. R-2 finishes the document; R-3 and
+R-4 stop the next one from being decided the same way.
