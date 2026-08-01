@@ -56,6 +56,42 @@ the shipped code for it — and the cited code does not produce `none` on this p
 
 ## 5. Positive Observations
 
+- **The catalogue was amended in the same change, and amended correctly.** v3 F-01 offered two
+  resolutions and recommended the harder-to-write one; `33bdf80` took it, widened row B in the file
+  that owns the row schema, and — the part I did not ask for and would have filed if it were missing
+  — added the **discriminator**: *"The two B variants are distinguished by the ❌ phase-row text
+  `pdlc-rcv-budget-stop` §6 fixes for each, never by the `notice` cell alone."* Without that sentence
+  a test author with an empty `notice` cell cannot tell a row-B unconfirmable-append row from a
+  malformed validation-failure row. The amendment is self-sufficient for a reader who never opens
+  the REQ, which is the bar a shared file has to meet.
+- **O-10's negative controls were re-scoped when the second entry class made them wrong.** v1.3
+  named step G's two shipped strings as negative controls for the refusal; v1.4 makes one of those
+  strings the *correct* recovery text for the new variant. A revision that added the new leg and left
+  the control unscoped would have shipped two mutually exclusive assertions — the exact defect v3
+  F-01 filed, one round earlier. Instead the control is now qualified *"for that entry class"* and
+  the new leg says *"deliberately, on this class alone"*. That is the document catching its own
+  previous failure mode without being told to.
+- **The torn write is stated as a sequence, not as a caveat.** *"the write **tore** … ⇒ the next
+  entry reads a step-2 value fault ⇒ S-16 … ⇒ the corrupt-region refusal"* plus O-10's *"torn-write
+  sequel"* leg gives the case a fixture and an oracle rather than a sentence of prose. It also
+  answers the operator question I actually cared about — *"only the torn write needs an operator, and
+  it says so on the next entry"* — which converts three outcomes into one rule an operator can hold
+  in their head.
+- **The size budget was held while adding two variants, a pinned string and a third outcome.** Net
+  −5 bytes, achieved by moving prose to the file that owns the schema rather than by dropping
+  obligations. I checked the eleven compressed passages in this round's diff against their
+  predecessors: §4.1's two rows, AC-1.1's scope note, AC-1.4's *why clause 2*, the `counts-mismatch`
+  rationale and §7's namespace paragraph all lost restatement and kept their quantifiers and their
+  citations. The one deletion I looked hardest at — O-10's *"its fixture is hand-built, since no
+  shipped halt creates a mid-window region"* — is still stated at AC-1.5(4) step 4's third bullet, so
+  the obligation survives its own compression.
+- **AC-1.2's dormant-defaults clause became an observable.** v1.3 said the defaults *"must be removed
+  or made unreachable"* — an implementation instruction with no oracle. v1.4 states the property
+  instead: *"on every production entry the admitted window is exactly `[W, windowEnd(W)]`, asserted
+  at the seam that opens the round"*, with the failure condition named (*"which a surviving reachable
+  default fails whenever `W ≠ 1`"*), and O-10 carries it. Strictly better: it is falsifiable, and it
+  does not over-constrain the implementation.
+
 ## 6. Recommendation
 
 ## Verdict
