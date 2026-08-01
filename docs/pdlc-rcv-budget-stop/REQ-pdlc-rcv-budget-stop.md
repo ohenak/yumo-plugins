@@ -40,8 +40,11 @@ what an operator does when they run out.
 - **An absolute cap needs an escape hatch, and the escape hatch needs durable state.** A cap counted from round 1 of the *document* is a dead end without an operator reset, and a reset
   leaving no record is re-granted every invocation — the per-invocation budget restored fail-open.
 
-Successor `pdlc-rcv-fixed-point-stop` carries the two **tests** evaluated inside this window (P-2);
-`pdlc-rcv-panel-topology` carries P-1's *review-surface* half; `pdlc-rcv-finding-quality` P-3 and P-4.
+Successor `pdlc-rcv-reset-region` (`REQ-RCV-07`) carries **how the reset region is validated, what a
+partially-written answering line leaves behind, and what an operator does about either** — the
+implementation-altitude half of AC-1.5(4). Successor `pdlc-rcv-fixed-point-stop` carries the two
+**tests** evaluated inside this window (P-2); `pdlc-rcv-panel-topology` carries P-1's
+*review-surface* half; `pdlc-rcv-finding-quality` P-3 and P-4.
 
 ## 2. Users and value
 
@@ -55,8 +58,8 @@ Successor `pdlc-rcv-fixed-point-stop` carries the two **tests** evaluated inside
 unconditionally — ~40% fewer reviewer dispatches and ~40% fewer bytes than the measured run, from one
 constant, and is the only member of the family whose saving is not contingent on a regime.
 **Operator-visible surfaces:** the budget in the run report and the post-mortem's Iterations table;
-the `## Reset Region`; and the two no-round rows, C (AC-1.5(1)) and B (AC-1.5(4)), each saying why an
-invocation did nothing.
+the `## Reset Region`; and row C (AC-1.5(1)), the no-round budget halt, saying why an invocation did
+nothing. Row B — the other no-round row — is `REQ-RCV-07` AC-7.6's.
 
 ## 3. Prerequisites
 
@@ -70,16 +73,18 @@ invocation did nothing.
 ### 3.1 One cross-REQ prerequisite, and what happens before it ships
 
 This REQ is the **head of the family** — nothing it needs is owed by a sibling, which is why
-`depends-on` is empty. One clause reads a string a successor emits:
+`depends-on` is empty. Two clauses reach across:
 
-| # | Owed by | What this REQ reads | Behaviour until it ships |
+| # | Direction | What crosses | Behaviour until it ships |
 |---|---|---|---|
-| **X-05** | `pdlc-rcv-fixed-point-stop` REQ-RCV-02 AC-2.8 — the S-11 halt reason `no-revision: …` | AC-1.5(5)'s first table row, which resumes rather than resets the window on an S-11 halt | Until that REQ ships no halt path emits S-11, so the row is **unreachable**, every halt is a convergence halt, and AC-1.5(5) reduces to its second row. The clause is stated over both from the start, so nothing is re-specified when the successor lands. |
+| **X-05** | **read from** `pdlc-rcv-fixed-point-stop` REQ-RCV-02 AC-2.8 — the S-11 halt reason `no-revision: …` | AC-1.5(5)'s first table row, which resumes rather than resets the window on an S-11 halt | Until that REQ ships no halt path emits S-11, so the row is **unreachable**, every halt is a convergence halt, and AC-1.5(5) reduces to its second row. The clause is stated over both from the start, so nothing is re-specified when the successor lands. |
+| **X-06** | **owed to** `pdlc-rcv-reset-region` REQ-RCV-07 AC-7.1 — the ordered validation algorithm behind AC-1.5(4)'s *region validates* predicate, and AC-7.2/AC-7.5's refusal | AC-1.5(4)'s third gate conjunct, and everything that follows a failure of it | This is a **forward** edge, not a `depends-on`: the predicate's *meaning* and its fail-closed outcome are fixed below, so nothing here is under-determined. What is not implementable until `REQ-RCV-07` ships is the predicate's **decision procedure** — so an implementation of this REQ alone must stub it **fail-closed** (invalid ⇒ refuse). A stub returning *valid* is the fail-open AC-1.5(4) exists to close. |
 
-**Consequence for sequencing.** This REQ is deliverable alone: every branch's behaviour is fully
-determined without a successor, though one — the mid-window refusal — is only **production-reachable**
-once the successor ships (AC-1.5(4) step 4, O-10). `pdlc-rcv-fixed-point-stop` depends on this REQ
-because both its tests are stated over `W`, and `pdlc-rcv-panel-topology` depends on the two of them.
+**Consequence for sequencing.** This REQ is deliverable alone as a **requirement**, and its window,
+budget, halt path and clearance accounting are fully determined without any successor.
+`pdlc-rcv-reset-region` is queued immediately behind it; `pdlc-rcv-fixed-point-stop` depends on this
+REQ because both its tests are stated over `W`, and `pdlc-rcv-panel-topology` depends on the two of
+them.
 
 ## 4. Definitions and the catalogue ids this REQ owns
 
@@ -95,12 +100,18 @@ This REQ **owns** six catalogue ids and **reads** two:
 | **S-13** `WINDOW-START: {N}` | owned | AC-1.5(4)'s answering line on a convergence-halt clearance |
 | **S-14** `WINDOW-RESUMED: {W}` | owned | AC-1.5(5)'s answering line on an S-11 clearance |
 | **S-15** `HALT-REASON: {value}` | owned | Written by every halt in AC-1.4's scope; read by AC-1.5(5) |
-| **S-16** `reset-region-corrupt: …` | owned | AC-1.5(4) step 4's report notice |
+| **S-16** `reset-region-corrupt: …` | owned | AC-1.5(4)'s report notice when the region does not validate. Its render is catalogue §2's; its **sole emitter and its `{reason}` selection are `REQ-RCV-07` AC-7.1 step 4's** |
 | **S-4** `budget-exhausted: …` | owned | AC-1.5(1)'s halt reason, rendered from the window's origin |
 | **S-11** `no-revision: …` | read only | AC-1.5(5)'s first row. Emitted by `pdlc-rcv-fixed-point-stop` AC-2.8 (X-05); this REQ never emits it |
 | **S-3** `fixed-point: …` | read only | AC-1.5(5)'s second row, and the `; `-joined `HALT-REASON:` value of a co-occurring halt |
 
 **FSPEC may not add an eighteenth catalogue id**, here or anywhere in the family.
+
+**One delegation, stated once.** Catalogue §2's S-12, S-13, S-14 and S-16 rows describe their receive
+side as *"AC-1.5(4)'s ordered algorithm"*. That algorithm is **`REQ-RCV-07` AC-7.1**, which this
+REQ's AC-1.5(4) names as its predicate's decision procedure (X-06). **Ownership of the ids is
+unchanged and the catalogue is untouched**: read *AC-1.5(4)'s ordered algorithm* as *AC-7.1*
+wherever the catalogue says it.
 
 ### 4.1 Durability: what survives an invocation boundary
 
