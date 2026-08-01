@@ -214,7 +214,26 @@ MF-11 of v5 are all applied and are not carried.
 
 ## 5. Measurement Required
 
+Filed under AC-5.2's convention. Non-blocking; excluded from the counts below. MR-01 and MR-02 remain
+bound to `docs/pdlc-runtime-measurement-spike/REQ-pdlc-runtime-measurement-spike.md`. **MR-05 is
+closed** — AC-1.4 no longer depends on an agent preserving a region, so the fact it asked for has no
+consumer.
+
+| # | Fact to measure | How | What it would settle |
+|---|---|---|---|
+| MR-03 | *(carried, unchanged)* Does an append to a cross-review file that a reviewer agent has just written reliably land, and is the appended byte visible to the next read in the same invocation? | Append a marker line to a cross-review file immediately after the reviewer dispatch returns, in one throwaway phase, and read it back. | Whether `appendRoundAnchors` (AC-4.1) can share `appendApprovalAnchors`'s append seam. |
+| MR-04 | *(carried, unchanged)* Does the halt path's write of `POSTMORTEM-{phase}-{feature}.md` overwrite or append when the file already exists? | Read the existing writer at the Citation baseline and note which seam it uses. | Which of AC-1.4's preservation implementations is cheapest. The REQ correctly declines to wait on it. |
+| MR-06 | **New.** Is the loop's post-dispatch re-apply of the reset region (O-5) observable to the *same* invocation — i.e. does a `_readFile` of the post-mortem immediately after the agent's write see the agent's bytes, so the read-modify-write has something to modify? | One throwaway phase: dispatch a write of a small file, then `_readFile` it in the same invocation and compare. | Whether O-5's read-modify-write can be a same-invocation seam at all, or must be deferred to the next entry (which would move `H`'s increment one invocation later and change F-01's arithmetic). Non-blocking: AC-1.4 states the obligation either way. |
+
 ## 6. Questions
+
+Q-07 and Q-08 of v5 are both answered in v1.4 (§2 above) and are closed. Two new ones, both answerable
+in a sentence and neither blocking.
+
+| ID | Question |
+|----|---------|
+| Q-09 | Is `H − A ≤ 1` an invariant, and is it worth stating? Every reachable path I can construct keeps the difference at 0 or 1, because a halt strips the marker (AC-1.4 clause 2) and `checkPostmortem` then refuses re-entry until the operator clears again — so two halts cannot accumulate without a clearance between them. That matters, because clause 4 writes **exactly one** answering line per honoured clearance: if `H − A` could ever reach 2, one clearance would answer one halt, `A < H` would survive it, and the *next* halt would be auto-cleared — the v1.3 defect (my round-5 F-01) returning by a different route. Stating the invariant, or stating that a clearance answers **all** outstanding halts, would close the question for a PROPERTIES author who has to decide whether that fixture is worth writing. |
+| Q-10 | What happens to the region when harvest deletes the round files? `harvest-learnings` deletes `CROSS-REVIEW-*` and `POSTMORTEM-*` together, so the ordinary path is fine. But AC-1.5(4) step 2 validates every `WINDOW-START:` against *"one past the highest round **on the branch**"* — a predicate over mutable branch state — so any sequence that removes cross-review files while the post-mortem survives turns a previously-valid region invalid and lands in F-02's territory. Is the validity predicate deliberately re-evaluated against the current listing on every read, rather than being a write-time check? If so, a sentence saying the region is only meaningful alongside the rounds it describes would save a future reader the trace. |
 
 ## 7. Positive Observations
 
