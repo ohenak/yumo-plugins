@@ -283,4 +283,70 @@ Not findings. Apply without discussion; none affects the recommendation.
 
 ## Recommendation
 
+**Needs revision** — one High and four Medium findings, **all new in v1.3**, plus one Low. Every
+finding from rounds 1–4 is closed, and four of the five round-4 findings are closed exactly as this
+reviewer recommended.
+
+### What must change to close this out
+
+Five clauses. Four are single sentences; one (G-07) needs a small mechanism choice, not a new
+mechanism.
+
+1. **G-07** — stop overloading `RESOLVED:` as a counter. Require the halt path to remove or supersede
+   any prior `RESOLVED:` line (so `parseResolvedMarker` still sees at most one and the new halt is
+   unresolved on arrival), and restate AC-1.5(4)'s one-shot rule over a datum that may legally repeat.
+   Cite `pdlc/workflows/orchestrate-dev.js:953`/`:961` and amend N-4, which currently claims the
+   `RESOLVED: yes` marker is untouched.
+2. **G-10** — on an S-11 clearance, write a `WINDOW-START:` equal to the current `W` (consume-and-
+   restore) rather than writing nothing, and relax AC-1.5(4)'s strictly-increasing row to admit that
+   one repeat. Otherwise the unconsumed reset is spent unattended by the next S-3/S-4 halt.
+3. **G-11** — state that a halt appends its own `HALT-REASON:` to the **end** of the reset region, so
+   AC-1.5(5)'s "last" means "most recent".
+4. **G-08** — make AC-3.4's step 2 and steps 4–5 agree on whether the scan stops or collects.
+   Recommended: stopping, and delete "two or more parsing candidates ⇒ *malformed*".
+5. **G-09** — add a `duplicated VERDICT:` row to AC-2.7 (⇒ *malformed*) and the matching clause to
+   AC-3.4 step 1, so `extractFileVerdict`'s third return value is classified.
+
+G-12 and MF-1 … MF-5 do not block.
+
+### On the stopping rule
+
+By the letter it fires again, and this time I am not going to argue it away. Blocking counts: 10, 5,
+5, 5, **5**. AC-2.1's condition — `blocking(N) ≥ blocking(N−1)` and `blocking(N) > 0`, comparable
+same-shape rounds — has now held for three consecutive round pairs.
+
+The v4 test I set myself was explicit: *"If round 5 returns findings that are again wholly new and
+again one-clause, that is a different signal and worth halting on."* Round 5's findings **are** again
+wholly new, and four of the five are again one-clause. By my own stated criterion the fixed point is
+real, and the honest reading is that this document is in the regime R-9 describes from the other side:
+each revision is correct, closes everything asked of it, and introduces a comparable number of defects
+in the new text — not because the author is failing, but because each round's fix adds mechanism at
+REQ altitude and mechanism at REQ altitude is where defects live.
+
+What is different this round, and what I weigh against halting: **G-07 is not the same kind of finding
+as its predecessors.** G-01 … G-06 were internal inconsistencies — the document disagreeing with
+itself. G-07 is the document disagreeing with **shipped code**, in the fail-open direction, on the
+repo's central halt gate. It is the first finding in five rounds that would have survived into FSPEC
+and TSPEC and been discovered in implementation, and it exists *because* v1.3 added the mechanism
+round 4 asked for. That is a finding worth having found, and it is worth fixing at REQ altitude
+whatever happens to the phase.
+
+My read, offered to the operator rather than asserted: **fix G-07 and G-10 and stop taking new
+rounds.** G-08, G-09, G-11 and G-12 are editorial-scale and can be carried into FSPEC as inputs
+without another full panel — FSPEC authoring is the natural place to settle a reader's scan discipline
+and a table row. Another full round on this document is, on this evidence, more likely to produce a
+sixth generation of new findings than to converge. If the operator prefers the mechanical path, the
+POSTMORTEM route with `RESOLVED: yes` after G-07/G-10 land is the same outcome with a record.
+
+### Explicit non-findings (carried and extended)
+
+Recorded so a later round does not re-raise them: I do not contest any of the six decisions; I do not
+file R-5's known unenforceability of AC-5, AC-4.6 or AC-3.2(2); I do not file R-6's mixed-panel
+integration risk; I do not contest AC-2.8's fail-open posture, AC-1.5(4)'s fail-closed posture, or
+N-7's widening to Phase DOD. **New this round:** I do not contest AC-4.1's shift to a live later
+endpoint (it is correct and it fixes a defect I twice failed to see), the S-3/S-4 co-occurrence
+ordering, the AC-2.8 halt row's empty cells as a *presentation* choice, the window-scoping of AC-2.1
+and AC-2.8, or R-9's decision to record rather than fix. I have no blocking finding against REQ-RCV-05
+or REQ-RCV-06. I raised no `## Measurement Required` items.
+
 ## Verdict
