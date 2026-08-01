@@ -893,20 +893,36 @@ branch — the state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-
 
    | Reason | What the notice names | The sanctioned repair |
    |---|---|---|
-   | `invalid-window-start` | the offending `WINDOW-START:` line | **correct that line** — preferred, always safe. Delete it only when `H − A = 0` |
-   | `invalid-window-resumed` | the offending `WINDOW-RESUMED:` line | **correct that line** — preferred, always safe. Delete it only when `H − A = 0` |
+   | `invalid-window-start` | the offending `WINDOW-START:` line | **correct that line** — the only sanctioned repair. Never delete an answering line |
+   | `invalid-window-resumed` | the offending `WINDOW-RESUMED:` line | **correct that line** — the only sanctioned repair. Never delete an answering line |
    | `counts-mismatch` | the pair `H`/`A` — **no line** | delete the **whole `## Reset Region` section**, heading included |
 
-   **Prefer correcting to deleting, and the notice carries the number that decides it.** Deleting an
-   answering line decrements `A`, so it raises `H − A` by one: on a region already at `H − A = 1` — e.g.
-   `H = 2`, `A = 1` with `WINDOW-START: 99` — the delete branch lands at `H − A = 2`, and the next entry
-   refuses with a **different** reason, `counts-mismatch`, whose only repair is the destructive
-   whole-section deletion. Correcting the value is safe at every `H − A`; deleting is safe exactly when
-   `H − A = 0` beforehand, which the operator reads straight off S-16's `(H={h}, A={a})` (SE v8 G-24).
-   A value repair leaves `H` equal to the number of halts the document has taken and `A` equal to the
-   number of clearances already answered; any repair that leaves `H − A ∉ {0, 1}` is itself rejected by
-   the counts check below, so a mis-repair fails closed rather than banking windows — it costs a round of
-   operator attention, not state.
+   **Correcting is the only sanctioned value repair, and deleting an answering line is forbidden at
+   every `H − A`.** Deleting an answering line decrements `A`, so it raises `H − A` by one, and both
+   reachable values of that arithmetic are unsafe — in two different directions, which is why v1.8
+   withdraws the `H − A = 0` licence v1.7 granted:
+
+   | Region before | Marker on disk | Repair | Region after | What the next entry does |
+   |---|---|---|---|---|
+   | `H = 2`, `A = 1`, `WINDOW-START: 99` (`H − A = 1`) | either | delete the line | `H = 2`, `A = 0` ⇒ `H − A = 2` | refuses under a **different** reason, `counts-mismatch`, whose only repair is the destructive whole-section deletion (SE v8 G-24) |
+   | `H = 1`, `A = 1`, `WINDOW-START: 99` (`H − A = 0`) | yes — the refusal left it in place | delete the line | `H = 1`, `A = 0` ⇒ `A < H` | **grants a fresh three-round window** off a clearance that was already answered, and writes `WINDOW-START:` (SE v9 G-26) |
+   | either row above | either | **correct** the value | counts unchanged | `A < H` unchanged ⇒ no window is banked; the phase proceeds under the accounting the loop wrote |
+
+   The second row is the one hand-edit §6's `WINDOW-START:` prohibition exists to prevent. `A` exists
+   precisely to make a clearance one-shot: at `A = H` every halt has been answered, so a marker still on
+   disk grants nothing. Lowering `A` while leaving `H` restores `A < H` with the marker untouched — the
+   refusal explicitly leaves the marker in place — so the next entry hands out a window nobody paid for.
+   §6 excuses the `counts-mismatch` whole-section deletion on the ground that it *"can only cost windows,
+   never grant them"*; that argument is true of the whole-section deletion, which zeroes **both** counts,
+   and false of deleting a single answering line, which lowers `A` alone. *Safe* in v1.7's sense meant
+   only *step 3 still passes*, which is a strictly weaker property than the one §6 asserts.
+
+   **Correcting is safe at every `H − A`, so the delete branch was never needed.** A value repair leaves
+   `H` equal to the number of halts the document has taken and `A` equal to the number of clearances
+   already answered; any repair that leaves `H − A ∉ {0, 1}` is itself rejected by the counts check
+   below, so a mis-repair fails closed rather than banking windows — it costs a round of operator
+   attention, not state. There is therefore no region on which the operator **needs** to delete an
+   answering line, and the table above offers `correct` alone for the two value reasons.
 
    **Why `counts-mismatch` is repaired by deletion and not by editing a line.** A counts mismatch is by
    construction a statement about lines that are *missing* or *surplus*, so there is no offending line to
@@ -921,8 +937,13 @@ branch — the state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-
    is one further halt and the loss of the halt history the region kept — which is the honest price of a
    region whose counts are no longer trustworthy, and it is stated here so the operator does not have to
    discover it (SE v6 G-19, TE v6 F-02). §6's `WINDOW-START:` row's *"never by a human"* is scoped to
-   normal operation accordingly: it forbids a human **authoring** an answering line, which is the edit
-   that would bank an unpaid window; it does not forbid this deletion, which can only cost windows.
+   normal operation accordingly: it forbids a human **authoring** an answering line — introducing a
+   `WINDOW-START:` where none stood, which is the edit that would bank an unpaid window. It does not
+   forbid this deletion, which zeroes both counts and can only cost windows, and it does not forbid the
+   sanctioned **correction** of a line the loop already wrote, which changes a value in place and leaves
+   `H` and `A` untouched. §6's row states both exemptions, so the fixture O-10 needs — a corrected
+   `WINDOW-START:` line, then a later entry that grants the window — is constructible under the closed
+   grammar rather than in violation of it (TE v9 F-02).
 
    **The accounting is over lines the loop owns, not over the human's marker.** v1.2 tested for the
    presence of a `WINDOW-START:` beside a `RESOLVED: yes`, which is undecidable once the file carries
