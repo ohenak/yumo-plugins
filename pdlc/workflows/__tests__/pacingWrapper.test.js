@@ -1528,3 +1528,68 @@ describe("RLH-AT-61-report — each trailer reason is distinguishable in the ope
     );
   });
 });
+
+// ─── RLH-BASELINE — baseline-relative completeness, observed through `main()` ──
+//
+// The pre-oracle document: every top-level section written and non-empty, not one
+// of them carrying a canonical §5.9 title. This is the shape of every REQ authored
+// before the oracle existed, `docs/pdlc-review-convergence/REQ-pdlc-review-convergence.md`
+// among them. Under the strict revision test such an episode can NEVER reach
+// terminal — the author declares `REVISION-COMPLETE: yes`, the structural conjunct
+// stays false, and the wrapper spends all six dispatches before halting the phase
+// over findings that were in fact addressed.
+
+/** A REQ whose sections are all substantive and none canonically titled. */
+function preOracleReq(marker = "as authored") {
+  const titles = [
+    "1. Why this exists",
+    "2. What good looks like",
+    "3. Out of bounds",
+    "4. What we must live with",
+    "5. How we will know",
+    "6. What could go wrong",
+    "7. What we still owe",
+  ];
+  return specDoc(titles.map((t) => [t, `Substantive body for ${t} — ${marker}.`]));
+}
+
+describe("RLH-BASELINE — a revision episode is not gated on a shape the document never had", () => {
+  test("RLH-BASELINE: an optimizer that addresses the round and emits REVISION-COMPLETE: yes ends the episode in one dispatch, even though the document is missing every canonical heading", async () => {
+    const run = await runPipeline({
+      files: { [REQ_PATH]: preOracleReq() },
+      review: reviewersFailing([1]),
+      author: (ctx) =>
+        ctx.kind === "optimizer" && ctx.phase === "R"
+          ? {
+              // Bytes DO change — this is a revision that did work, not the
+              // no-op `RLH-AT-35` covers — and the shape is unchanged: still
+              // seven non-canonical headings.
+              write: preOracleReq("after addressing round 1"),
+              response: authorResponse("yes", "Round 1 findings applied."),
+            }
+          : {},
+    });
+
+    const optimizer = select(run, { kind: "optimizer", phase: "R", round: 1 });
+
+    // (i) Non-vacuity: the artifact the episode ended on is still structurally
+    // incomplete under the strict test, so a re-dispatch would be the *old*
+    // behaviour rather than a coincidence of the fixture.
+    const finalReq = run.fs.files[REQ_PATH];
+    expect(finalReq).toContain("after addressing round 1");
+    const strict = devModule.isComplete("spec", "REQ", finalReq);
+    expect(strict.complete).toBe(false);
+    expect(strict.missing.length).toBeGreaterThan(0);
+
+    // (ii) ONE dispatch — no re-dispatch loop, no authoring-budget halt.
+    expect(optimizer).toHaveLength(1);
+    expect(optimizer[0].prompt).toMatch(/REVISION-COMPLETE:/);
+    expect(run.result.outcome).toBe("success");
+    expect(run.reportText).not.toMatch(new RegExp(`${MAX_AUTHORING_DISPATCHES} dispatches`));
+
+    // (iii) The carried-over shortfall is REPORTED, not silent: an operator has to
+    // be able to see that the document never grew the canonical sections.
+    expect(run.reportText).toMatch(/pre-existing structural shortfall/);
+    for (const title of strict.missing) expect(run.reportText).toContain(title);
+  });
+});

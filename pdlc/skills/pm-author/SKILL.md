@@ -84,6 +84,19 @@ Before creating or revising any REQ or FSPEC, read `docs/_constraints/DOMAIN-CON
    - **Phase** — delivery phase assignment
    - **Source user stories** and **dependencies**
 7. Define scope boundaries: in scope, out of scope, assumptions.
+7a. **Required top-level sections.** The REQ must carry these seven `##` headings, each with a non-empty body:
+
+   | Section | Accepted alternative |
+   |---|---|
+   | Problem / Context | — |
+   | Goals | — |
+   | Non-Goals | Scope |
+   | Constraints | — |
+   | Acceptance Criteria | — |
+   | Risks | — |
+   | Obligations | Open Questions |
+
+   A numeric prefix is fine (`## 3. Constraints`), as is any additional section — extra headings never count against you. But the pipeline's structural-completeness gate checks for exactly this set, so a REQ that names these sections something else will not pass authoring: the phase re-dispatches until its budget is spent and then halts.
 8. Save to `docs/{feature-name}/REQ-{feature-name}.md`. Mark status as **Draft**.
 9. Update the traceability matrix at `docs/requirements/traceability-matrix.md`.
 10. Commit and push.
