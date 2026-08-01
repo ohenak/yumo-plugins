@@ -343,3 +343,31 @@ the document did not grow, the split held, product substance was settled by roun
 was 100 % every round, and the two reviewers never diverged. It failed on a single acceptance
 criterion whose correctness is decided by shipped control flow. R-2 finishes the document; R-3 and
 R-4 stop the next one from being decided the same way.
+
+---
+
+## Resolution
+
+Remediation performed 2026-08-01 under operator direction; the operator writes the marker below
+after reviewing this record. Disposition, mapped to the recommendations:
+
+- **R-3 / R-4 done** — baseline §2.8 now carries measured facts `M-8a`…`M-8j` (the halt catch's
+  emit inventory, guards and `postmortemStatus` chain, commits `806c2ac`/`732c66a`); catalogue §4
+  carries row B's unconfirmable-append render (`41f9369`).
+- **R-5 / R-6 done** — `check-req-size.sh` warns at 90 % naming relocation as the remedy
+  (`547e9d0`); pm-author gained size-discipline / altitude / split-trigger rules 5e–5g
+  (`fc7f019`); both review SKILLs now state the counts trailer is mandatory (`67e6c45`).
+- **Root causes 1 and 3 answered by an altitude split, going beyond R-2** — v1.6 was not
+  finished in place; it was split at the seam this document identified. REQ-RCV-01 v2.0
+  (477 lines / 52,052 B) keeps the window, budget and reset-region maintenance with the region
+  validation stated as a named fail-closed predicate; new `REQ-RCV-07`
+  (`docs/pdlc-rcv-reset-region/`, queue row 18, depends-on this feature) carries the ordered
+  algorithm, refusal semantics, repairs, byte confirmation and row-B variants, stated over the
+  `M-8*` facts. All four round-5 blocking findings remain closed in their new homes.
+- **R-7 deferred** — splitting the counting rule ahead in the queue is noted for the operator; the
+  trailer prerequisite (R-6) is now in place.
+
+Phase R may re-enter once resolved: the window derives rounds 6..10 from the ten `-v{1..5}` files
+on the branch.
+
+RESOLVED: yes
