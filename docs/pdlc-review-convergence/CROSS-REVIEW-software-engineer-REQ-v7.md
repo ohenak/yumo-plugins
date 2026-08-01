@@ -345,3 +345,49 @@ move the derivable tables with it*) and in the `Process` observation above about
 machine rather than reviewing it path by path.
 
 ## Verdict
+
+**Needs revision.** v1.5 (+304/−84, 13 commits) **closes every one of my five round-6 findings**, four
+exactly as recommended and one better: AC-1.5(4) gains a two-sided counts check (`H − A ∈ {0, 1}`)
+folded into the same fail-closed step as a corrupt value, with the invariant stated as clause 4's domain
+(G-14); the loop **appends** its answering line to the end of the region, with S-13/S-14, §5's
+durability row and an O-10 positional assertion carrying the rule (G-13); AC-3.2's *Given* now names the
+dispatch and the loop passes the inclusive range `{W … N−1}`, with O-9(c) telling the verifier not to
+guess when it is absent (G-16); AC-2.7 gains row 3 ⇒ *malformed* with the full baseline trace and the
+table is declared read-in-order, and AC-3.4 step 1 is corrected to match HEAD (G-15); and the strip is
+scoped to **unfenced** lines (G-17). All five mechanical fixes are applied. I re-read every citation
+v1.5 adds at `9486c81` — `:900-903`, `:902`, `:904`, `:906`, `:415-422`, `:417`, `:424-428`,
+`:394-400`, `:451`, `:953-958`, `:569` — and every one resolves, including the trailing-space predicate
+and the distinction between `parseVerdict`'s `malformed: true` fallback and its genuine `0/0/0`
+truncated-output return.
+
+Three new findings, all in text v1.5 added, all three in the refusal path it introduced. **One High:**
+AC-1.5(4)'s refusal is immediately followed by a halt — `W` = 1 on an exhausted branch admits no rounds
+and AC-1.5(1) halts on the budget path, and AC-1.4 governs *every* halt — so the halt appends a
+`HALT-REASON:` (`H += 1`) and **strips the very `RESOLVED:` line the refusal declined to spend**. This
+falsifies three statements v1.5 makes (*"the operator's clearance survives for a later entry"*,
+*"`H − A ≤ 1` holds on every path the document generates"*, and the stability of S-16's reported
+reason), makes O-10's *"the file is byte-unchanged apart from the report"* assertion unsatisfiable
+against any conforming implementation, and leaves the document's stated repair procedure divergent: each
+repair-and-clear cycle is met by one more halt and a mismatch one larger than the operator just fixed —
+a fail-closed **permanent dead end** in the escape hatch AC-1.5(3) exists to keep open (G-18). Two
+Medium: the sanctioned repair is stated only over an *offending line* and is therefore inoperable for
+`counts-mismatch`, whose evidence is the pair `H`/`A` — and both edits that would fix the counts are
+forbidden elsewhere (§6's *"never by a human"*; AC-1.4's *"`H` is exactly the number of halts"*) —
+G-19; and AC-4.7's precedence row 8 introduces a **second** dispatchless report row inside a
+notice-ordering table, contradicting the *"the one row with no dispatch behind it"* paragraph above it,
+asserting empty `panel-shape` / `blocking` cells the column definitions do not admit, and leaving the
+`notice` cell doubly specified (AC-1.5(1) says that entry emits the S-4 reason; row 8 says every other
+column is empty) — under a schema whose declared bar is character-for-character derivability (G-20).
+
+On the stopping rule: `blocking(4) = 9`, `blocking(5) = 11`, `blocking(6) = 6` — the **first decrease**
+since the document became measurable, so AC-2.1's condition did not hold at round 6 and round 7 exists
+because the rule said continue. My own series is 10, 5, 5, 5, 5, 4, **3**. The counter-signal, recorded
+honestly: a High reappeared after a round without one, and the reset-region accounting has now taken a
+finding in each of rounds 5, 6 and 7 — always the same shape, an untraced neighbour of a state the
+previous fix added. My recommendation to the operator is to land G-18 (one clause: a refusal is not a
+halt) and carry G-19 and G-20 into FSPEC rather than open an eighth round; and, if the region takes a
+fourth finding, to let FSPEC enumerate its (state, event) → (state, writes) table rather than review it
+path by path.
+
+VERDICT: Needs revision
+{"high": 1, "medium": 2, "low": 0}
