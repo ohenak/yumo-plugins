@@ -244,6 +244,14 @@ bound to `docs/pdlc-runtime-measurement-spike/REQ-pdlc-runtime-measurement-spike
 
 ## 6. Questions
 
+Q-05 and Q-06 of v4 are both answered in v1.3 (§2 above) and are closed. Two new ones, both answerable
+in a sentence and neither blocking.
+
+| ID | Question |
+|----|---------|
+| Q-07 | What is the *reset region*, syntactically? AC-1.4 calls it *"under a heading the halt path does not touch"* and AC-1.5(4) reads counts *"on the reset region"*, but no AC names the heading. If the region is "the whole file", then a `RESOLVED: yes` an operator wrote inside a quoted example, or a `HALT-REASON:` the post-mortem's own Recommendation section quotes, both count — and `R`/`S` are then attacker-writable by ordinary prose. Every other line-scanning rule in this REQ is scoped (`outside any fenced block`, `scanLines`); this one is not, and it is the only one whose miscount grants a review window. I read the intent as an exactly-named section, which would make it S-12 and give it a §6 row alongside F-06's ask. |
+| Q-08 | Is AC-4.1's growth measured across a window boundary deliberately? At `N = W` it spans the operator's intervention, so a reset that follows a large revision classifies `new-mechanism` and escalates to the full panel — which is the behaviour F-03 asks for, but reached by accident and only when the operator happened to revise. If the answer is "yes, deliberately", saying so in AC-4.1 resolves half of F-03 by itself; the other half (reset **without** revising ⇒ growth 0 ⇒ verifier) is what still needs a rule. |
+
 ## 7. Positive Observations
 
 ## 8. Recommendation
