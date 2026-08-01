@@ -75,6 +75,65 @@ AC-1.5(4) now draws, so the AC is right; it is right without a citation, which i
 
 ## 3. Findings
 
+Every finding below is **new** and lies in text this revision changed. None is a re-file. Two are in
+acceptance criteria — the first round in three where that is true, and it is a direct consequence of
+this round's answers being *rule widenings* rather than clarifications. The third is in O-10, in the
+bullet that answers my own round-8 F-03.
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Medium | Local | **Step 4's justification for the unconditional refusal is false on a reachable branch, and the branch it is false on is the only one that can falsify the widening.** The new paragraph says the widening costs nothing because *"on a mid-window branch the outcome is unchanged either way — `W` falls back to 1, which admits no rounds, and the entry would have halted on the budget path"*. `W` = 1 admits rounds 1–3, so it admits no rounds only when the branch's highest round is ≥ 3. A corrupt region is reachable at highest round **2** (AC-2.1 can fire on the (1,2) pair and AC-2.8 can halt at round 2; both append a `HALT-REASON:` and create the region, after which a hand-edit corrupts it). On that branch the two readings differ completely: without step 4's refusal, `W` = 1 admits round 3 and the phase runs; with it, the phase is never entered and the invocation terminates with the queue row `halted`. So the widening does not cost nothing — and the fixture where it costs something is precisely the fixture that distinguishes an implementation of step 4's refusal from one that only falls back to `W` = 1. The AC's *rule* is correct and decidable; the paragraph tells a PROPERTIES author that the distinguishing fixture is not distinguishing. See §3.1. | AC-1.5(4) step 4, the *unconditional* paragraph (`:965-969`); AC-1.5(1); AC-2.1; AC-2.8; O-10's refusal bullets |
+| F-02 | Medium | Local | **§6's `WINDOW-START:` row forbids the repair AC-1.5(4) now prefers, so O-10's value-repair fixture cannot be constructed.** v1.6 scoped §6's *"never authored by a human"* prohibition and exempted exactly one repair: *"it does not forbid AC-1.5(4)'s sanctioned `counts-mismatch` repair, which **deletes** the whole `## Reset Region` section and can only cost windows, never grant them"*. v1.7 then changed the *value*-reason repair from *"delete or correct that line"* to **correct that line — preferred, always safe**, and left §6's row untouched. Correcting a `WINDOW-START:` line is a human authoring a `WINDOW-START: {N}` value, which is the one thing that row says never happens; and unlike the exempted deletion it **can** grant a window, so it is not covered by the exemption's stated reason either. O-10 carries an obligation whose fixture is *"a later entry after the operator's sanctioned repair grants the window"* — under AC-1.5(4) and §5 the repair is a corrected line, under §6 that line cannot exist. A test author cannot build the region the obligation requires without violating the closed grammar §6 declares. | §6's `WINDOW-START:` row (`:2142`); AC-1.5(4)'s per-reason repair table and its *prefer correcting* paragraph; §5's *reset region* row; O-10's `WINDOW-START:`-fails-step-2 bullet |
+| F-03 | Medium | Local | **O-10's new *two consecutive garbled dispatches* obligation asserts two properties of the same round that cannot both hold.** It requires that *"the second round asserts `disposition-missing` again **and** that the intervening authoring pass produced a byte-identical document, which is AC-2.8's zero-delta halt (S-11)"*. If the intervening pass produced a byte-identical document, AC-2.8 halts the round at its `t0` read — §5 is explicit that a zero-delta round *"is a halt, not a consumed round"* — so no verifier is dispatched and there is no second `disposition-missing`. The two assertions belong to two different rounds separated by a halt **and an operator clearance** (AC-1.5(5)), which the bullet does not mention at all. AC-3.2's prose states the sequence correctly, so the authority exists; the obligation compresses it into one round and is unsatisfiable as written. Same class as my round-8 F-01 — an O-10 bullet the AC above it contradicts — and it is in the bullet that answers my round-8 F-03, which is why I am filing it at the same severity rather than as a mechanical fix. | O-10's S-17 bullet; AC-3.2's *what a garbled range costs is a sequence* paragraph (`:1476-1487`); AC-2.8; §5 *zero-delta*; AC-1.5(5) |
+| F-04 | Low | Process | **The §10.N lead-in count has been wrong in three consecutive revisions, each time fixed by naming the number rather than the rule.** §10.12 says the eight round-8 findings are *"carried on **six** rows below, because two pairs are the same finding filed independently (SE G-21/TE F-02, and SE G-23's invocation question shares its answer with TE MR-08)"*. The table has **seven** finding rows (TE F-01; SE G-21/TE F-02; G-22; G-23; G-24; G-25; TE F-03), and the second "pair" is not a merge — MR-08 is a measurement request with its own row, not a finding, so it removes nothing from the count. 8 findings − 1 genuine merge = 7. §10.10's lead-in carried this slip until v1.6 (MF-19), §10.11's until v1.7 (MF-20), and §10.12 carries it now. I filed it as a mechanical fix twice; the third occurrence in the third consecutive section of the same kind is a process signal, not a typo, which is why it is a finding this time and tagged `Process`. The durable rule is one sentence: state the filed count and the row count separately, and derive the row count as *filed minus merges*, listing the merges. | §10.12 lead-in; §10.11 lead-in; §10.10 lead-in |
+
+### 3.1 F-01 in full — the fixture the paragraph rules out is the one that proves the rule
+
+Step 4's widening is the right call and I am not contesting it. The defect is the sentence that
+justifies it, because a PROPERTIES author reads that sentence as a statement about *which fixtures
+matter*.
+
+Take a phase whose highest round on the branch is **2**:
+
+1. Round 1 and round 2 run. Round 2 halts — either AC-2.1's fixed point on the comparable (1, 2) pair,
+   or AC-2.8's zero-delta. Either way AC-1.4 clause 1 appends one `HALT-REASON:` line and the
+   `## Reset Region` now exists with `H` = 1, `A` = 0.
+2. A hand-edit corrupts the region — say it adds `WINDOW-RESUMED: 7`, or mangles a later
+   `WINDOW-START:` value. Step 2 of AC-1.5(4)'s algorithm now fails.
+3. The next entry resolves `W`. Under **v1.6** it falls back to `W` = 1, and the current window is
+   `{1, 2, 3}`; the branch's highest round is 2, so **round 3 is admitted and the phase runs**. Under
+   **v1.7** step 4 fires unconditionally: the phase is refused, the invocation terminates on step G's
+   path, and the queue row is written `halted`.
+
+Those are not the same outcome. The paragraph's two clauses are both false here: `W` = 1 does admit a
+round, and the entry would **not** have halted on the budget path. The claim is true only on the
+canonical exhausted-branch fixture the rest of the section is written over — which is the fixture where
+the refusal is *indistinguishable* from the fallback.
+
+**Why this is a testability finding and not a wording quibble.** Step 4's refusal, on the exhausted
+branch, is behaviourally observable only through S-16's notice and the ratchet (no `HALT-REASON:`
+appended, marker not stripped). Those are asserted, and they are good assertions. But the *refusal
+itself* — the decision not to enter — has no observable difference from the `W` = 1 fallback on that
+branch, because `W` = 1 halts too. The one fixture where the refusal has a distinct, positive,
+falsifiable consequence is the rounds-remaining branch: an implementation that skips step 4 runs round
+3 and produces a cross-review file; an implementation that honours it produces a ❌ phase row and a
+`halted` queue row and no round-3 file. That is a two-conjunct positive oracle over the exact behaviour
+this revision introduced. The paragraph tells the author it is not worth writing.
+
+There is also a second-order consequence the paragraph's framing hides. Step 4 runs on **every** entry
+that resolves `W`, not only on an entry carrying a clearance. So on the branch above, a corrupt region
+refuses the phase permanently and unconditionally with **no** operator clearance pending and rounds
+still available — a state that did not exist before v1.7. That is defensible (the region needs an
+operator either way) but it is a strictly larger blast radius than *"the widening costs nothing"*
+describes, and nothing in O-10 asserts it.
+
+**The fix is small and is a scoping, not a retraction.** Replace the equivalence claim with the case
+split: on an **exhausted** branch the outcome is the same either way; on a branch with rounds remaining
+under `W` = 1 the refusal is the difference between the phase running and the invocation terminating,
+and that is intended, because a corrupt region is not a state a review round should be opened over.
+Then add the rounds-remaining fixture to O-10 as the refusal's positive control. The rule needs no
+change at all.
+
 ## 4. Mechanical fixes
 
 ## 5. Measurement Required
