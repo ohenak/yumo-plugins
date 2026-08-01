@@ -73,19 +73,18 @@ One clause reads a string a successor emits:
 |---|---|---|---|
 | **X-05** | `pdlc-rcv-fixed-point-stop` REQ-RCV-02 AC-2.8 — the S-11 halt reason `no-revision: …` | AC-1.5(5)'s first table row, which resumes rather than resets the window on an S-11 halt | Until that REQ ships no halt path emits S-11, so the row is **unreachable**, every halt is a convergence halt, and AC-1.5(5) reduces to its second row. The clause is stated over both from the start, so nothing is re-specified when the successor lands. |
 
-**Consequence for sequencing.** This REQ is deliverable and useful alone: AC-1 is complete in
-itself and its behaviour is fully determined without any successor. `pdlc-rcv-fixed-point-stop`
-depends on this REQ because both its tests are stated over the window origin `W`;
-`pdlc-rcv-panel-topology` depends on both, because its panel rule and growth boundary are stated
-over `W` and its anchor writer is consumed by AC-2.8.
+**Consequence for sequencing.** This REQ is deliverable and useful alone: AC-1 is complete in itself
+and every branch's behaviour is fully determined without any successor — though one branch, the
+mid-window refusal, is only **reachable in production** once the successor ships, and its test
+fixture is synthetic until then (AC-1.5(4) step 4, O-10). `pdlc-rcv-fixed-point-stop` depends on this
+REQ because both its tests are stated over `W`; `pdlc-rcv-panel-topology` depends on both.
 
 ## 4. Definitions and the catalogue ids this REQ owns
 
-Every term this document uses with a family meaning — *current window* / round `W`, *reset
-region*, *zero-delta*, *panel shape*, *crashed* round, *blocking count*, *unavailable*,
-*malformed*, *phase refusal*, *approval refusal* — is defined in
-`docs/_constraints/pdlc-rcv-catalogue.md` §1 and is **not** restated here, so the family cannot
-drift into two meanings. The same file's §2 holds the closed catalogue `S-1 … S-17` and its §3 the
+Every term this document uses with a family meaning — *current window* / round `W`, *reset region*,
+*zero-delta*, *panel shape*, *crashed* round, *blocking count*, *unavailable*, *malformed*, *phase
+refusal*, *approval refusal* — is defined in `docs/_constraints/pdlc-rcv-catalogue.md` §1 and is
+**not** restated here. The same file's §2 holds the closed catalogue `S-1 … S-17` and its §3 the
 run-report row schema.
 
 This REQ **owns** five catalogue ids and **reads** three:
@@ -115,7 +114,8 @@ in-process-only row is a defect in this document; there is no such row.**
 | Round index N | AC-1 | The `CROSS-REVIEW-{role}-{doc}-v{N}.md` basenames on the branch, via `deriveRoundWindow` (M-1d) | n/a — the listing is always readable |
 | Highest round reached for a document | AC-1.5 | Same basenames | Treated as 0; the window opens at round 1 |
 | **First round of the current window** `W` | AC-1.1, AC-1.5(4); `pdlc-rcv-fixed-point-stop` AC-2.1 and AC-2.8 | The `WINDOW-START: {N}` lines in the **reset region**. The origin is the **greatest** value present, and only if every line in the region validates **and** the counts satisfy `H − A ∈ {0, 1}` (AC-1.5(4)'s ordered algorithm). Every such line is appended at the end, so document order is event order | Treated as **1** — no reset is in effect and AC-1.1's absolute cap applies from round 1. Fail-closed: an absent, unparseable, non-increasing or out-of-range value never widens the window. **Survives a second halt** because AC-1.4 requires the halt path to preserve the region |
-| **Whether a clearance is still unanswered** (the reset is one-shot) | AC-1.5(4), AC-1.5(5) | The **counts**, in that region, of `H` = `HALT-REASON:` lines and `A` = `WINDOW-START:` **plus** `WINDOW-RESUMED:` lines. A clearance is unconsumed exactly when a `RESOLVED: yes` is readable, `A < H`, **and the region validates** | `A = H` ⇒ every halt so far has been answered; the loop writes nothing and grants nothing. `H − A ∉ {0, 1}` ⇒ the counts are corrupt ⇒ `W` = 1, nothing written, nothing granted, S-16 reported, and **the entry refuses the phase and returns without taking a halt**, so the marker survives and neither count moves. `H` is exactly the number of halts taken, because **every** halt writes one `HALT-REASON:` line, including the halt that creates the file |
+| **Whether a clearance is still unanswered** (the reset is one-shot) | AC-1.5(4), AC-1.5(5) | The **counts**, in that region, of `H` = `HALT-REASON:` lines and `A` = `WINDOW-START:` **plus** `WINDOW-RESUMED:` lines. A clearance is unconsumed exactly when a `RESOLVED: yes` is readable, `A < H`, **and the region validates** | `A = H` ⇒ every halt so far has been answered; the loop writes nothing and grants nothing. `H − A ∉ {0, 1}` ⇒ the counts are corrupt ⇒ `W` = 1, nothing written, nothing granted, S-16 reported, and **the entry refuses the phase and returns without taking a halt**, so the marker survives and neither count moves. `H` is exactly the number of **post-mortem-writing halts of this phase for this document** (AC-1.4's stated scope), because every such halt writes one `HALT-REASON:` line, including the halt that creates the file |
+| **That the post-mortem is readable at all** | AC-1.4, AC-1.5(4) | The file itself | An **unreadable-but-present** post-mortem is read by `checkPostmortem` as `status: "none"` (M-7a) ⇒ no halt in force **and** an empty region ⇒ `H = A = 0`, `W = 1`. That is the conservative direction on the window — the narrowest window, no clearance honoured, nothing written — and the halt-gate half is the shipped reader's, unchanged here (N-4) |
 | **Whether the operator has cleared the current halt** | AC-1.4's re-entry gate (shipped), AC-1.5(4) | The **single** `RESOLVED:` line, read by `parseResolvedMarker` and mapped by `checkPostmortem` (M-7a) | absent, `no`, unparseable **or duplicated** ⇒ the phase is refused — the shipped fail-closed gate, unchanged. AC-1.4 keeps it exact by having each halt **strip** any prior `RESOLVED:` line |
 | **Which halt a POSTMORTEM records** | AC-1.5(4), AC-1.5(5) | The **last** `HALT-REASON: {string}` line in the reset region (S-15) — one line per halt, on **every** halt including the one that creates the file, appended to the end, so document order is halt order | Read as a convergence halt (S-3/S-4) — fail-closed, so an unreadable reason never converts a consuming reset into a free one |
 
