@@ -180,8 +180,19 @@ the entry admitted no rounds — so budget and rounds-run are never conflated in
 a human writes `RESOLVED: yes`. This REQ changes *when* the halt happens, not *what* a halt is.
 
 Two things about that write do change, because this REQ puts machine-written state in that file. `POSTMORTEM-{phase}-{feature}.md` is a **fixed** path — it is not versioned as
-`CROSS-REVIEW-…-v{N}` is — so a document that halts twice has its post-mortem written twice, and the reset region (catalogue §1, S-12) lives there. Therefore, on **every** halt, without
-exception:
+`CROSS-REVIEW-…-v{N}` is — so a document that halts twice has its post-mortem written twice, and the reset region (catalogue §1, S-12) lives there.
+
+**The scope of "every halt".** The rule below is quantified over **every halt that writes
+`POSTMORTEM-{phase}-{feature}.md` for a document-typed review-loop phase** (AC-1.1's scope) — at HEAD
+exactly one code path, the review loop's non-convergence halt (M-7e), and the phases it runs for.
+It is **not** quantified over the pipeline's other halt classes — a creator-agent failure, the branch
+guard, a listing failure, Phase PUB/CI, Phase DOD — none of which writes a post-mortem at HEAD and
+none of which this REQ asks to start writing one (that would be an N-4 violation). Nor over Phase CR
+and Phase DOD, which N-7 excludes. Read with that scope, §4.1's *"`H` is exactly the number of halts
+this document has taken"* means **the number of post-mortem-writing halts of this phase for this
+document** — the only halts that can leave a marker for a clearance to clear, which is what makes the
+pairing argument exact. A halt that writes no post-mortem leaves no marker, grants no clearance and
+moves neither count. Within that scope the rule admits **no exception**:
 
 1. **the reset region exists after the halt, and it carries this halt's line.** A halt that finds **no existing post-mortem** — the first halt of a phase, which is the halt that creates
    the file — **creates `## Reset Region` containing exactly one `HALT-REASON:` line, its own**. A halt that finds an existing post-mortem **preserves** the region — every `WINDOW-START:`
@@ -192,6 +203,9 @@ exception:
 2. **any `RESOLVED:` line already in the file is stripped** — every **unfenced** one, wherever in the file it sits. The new post-mortem is therefore **unresolved on arrival**, and the
    operator must clear *this* halt before the phase runs again. The strip is scoped to unfenced lines because every other reader is (M-7a, M-7d): a fenced `RESOLVED: yes` is invisible to
    the gate either way, so scoping the strip changes no decision, keeps the document to **one** scoping rule, and stops the halt path editing prose inside a human's code fence.
+   **The strip reaches inside the `## Reset Region` span too, and the two rules do not collide:** a `RESOLVED:` line is *never* a region line — the region is read as `HALT-REASON:`,
+   `WINDOW-START:` and `WINDOW-RESUMED:` lines only (catalogue §1: the operator's marker is never counted, wherever in the file it sits) — so "preserve every line in the region" and
+   "strip every unfenced `RESOLVED:`" quantify over disjoint sets. A `RESOLVED: yes` an operator wrote inside the region is stripped like any other and preserves nothing.
 
 **Why the creating halt is stated.** Scoped only to a halt that finds an existing post-mortem, the first halt would be governed by nothing: no region ⇒ `H = 0` ⇒ AC-1.5(4)'s gate `A <
 H` false ⇒ the operator's **first** clearance silently swallowed and the phase halting again, self-healing on the second clearance — the worst shape an operator-facing failure can take.
