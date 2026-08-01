@@ -584,12 +584,24 @@ either of the following holds:
   which under AC-3 is the normal relationship between round 1 (dual) and round 2 (single verifier). A
   sum over two reviewers and a sum over one are not the same measurement, and normalising them would be
   a guess this REQ declines to make (N-2). See R-2 for the consequence and its successor.
-- **either round is crashed** (`crashed-round`) — its file set is a strict subset of the panel that
-  opened it: one file with no `REVIEW-MODE: verification` marker, or zero files. This is the aliasing
-  AC-3.5(b) resolves for approval, resolved the same way here. Panel shape is read from the files on
-  disk, not from a record of what was dispatched (§5), so a dual round one of whose reviewers crashed
-  and a verifier round would otherwise be indistinguishable; the marker distinguishes them, and its
-  absence on a lone file means **crashed**, fail-closed, in both mechanisms.
+- **either round is crashed** (`crashed-round`) — its on-disk role-slug set is not one of the two
+  canonical sets (§5): a strict subset of a canonical set, the empty set, or a mixed set. The
+  discriminator is the **slug**, not the `REVIEW-MODE:` marker: a lone file under slug `verifier` is a
+  verifier round on its face, a lone file under `software-engineer` or `test-engineer` is a dual round
+  one of whose reviewers crashed, and the two are already distinguishable without reading a single byte
+  of file content.
+
+**Why comparability is stated over slugs and not over the marker.** v1.1 defined *crashed* as "one file
+with no `REVIEW-MODE: verification` marker". Composed with AC-2.1 — which is scoped to *failed* rounds
+— and with v1.1's writer, which ran only on an approving round, that made **every failed verifier round
+crashed**, so AC-2 could never fire in the `dual, verifier, verifier` regime AC-2.6's second row says
+it fires in (SE F-02). AC-3.5(a) now writes the marker on every verifier round, which closes the gap
+from the other side; stating the comparability test over the slug set closes it independently of the
+marker, which is the property that matters: **the slug set is produced by the path derivation (M-3b) on
+every round, including a round on which every reviewer crashed after writing nothing at all — in which
+case the set is empty and the round is crashed, correctly.** The marker remains load-bearing for the
+*approval* path (AC-3.5(b), M-3d), where fail-closed on a lone unmarked file is the right posture and
+is unchanged.
 
 A crashed round is neither a trigger nor a baseline. It breaks the chain in both directions, exactly as
 an unreliable count does (AC-2.3).
@@ -604,10 +616,29 @@ from approval. Zero blocking findings is the best possible round, not the worst.
 
 **AC-2.7 — An unavailable count is not a malformed one, and it also breaks the chain.**
 *Who:* the review loop. *Given:* a round for which some dispatched role's blocking count cannot be
-obtained from the branch at all — the file is absent, carries no `## Verdict` section, or carries no
-count trailer inside it. *When:* AC-2.1 would be evaluated. *Then:* that round's blocking count is
-**unavailable**; the comparison is not made in either direction; the run report carries the S-5 notice
-with reason `unavailable-count`, naming the round and the role. The loop continues to the next round.
+obtained from the branch at all. *When:* AC-2.1 would be evaluated. *Then:* that round's blocking count
+is **unavailable**; the comparison is not made in either direction; the run report carries the S-5
+notice with reason `unavailable-count`, naming the round and the role. The loop continues to the next
+round.
+
+**The two states are separated by what is observable, not by intent.** A count is *unavailable* in
+exactly these cases, and in no others:
+
+| Observation on the role's file at that round | State |
+|---|---|
+| The file is absent | *unavailable* |
+| The file carries no `## Verdict` heading | *unavailable* |
+| A `## Verdict` section exists and there is **no non-empty line after** the `VERDICT:` line | *unavailable* — `parseVerdict`'s truncated-output path, which returns genuine `0/0/0` (M-2c) |
+| A `## Verdict` section exists and the first non-empty line after `VERDICT:` is an **anchor line** (`APPROVAL-HASH:`, `REVIEWED-COMMIT:`, `REVIEW-MODE:`, `DOC-BYTES:`, `DOC-SHA256:`) rather than a count trailer | *unavailable* — the trailer was never written; an anchor is not a malformed trailer |
+| The first non-empty line after `VERDICT:` is present, is not an anchor line, and does not parse as `{"high": N, "medium": N, "low": N}` after `recoverVerdict` (M-2d) has been tried | *malformed* (AC-2.3) |
+
+The fourth row is new in v1.2 and is the operator-facing half of AC-3.4's placement rule. Because
+`extractFileVerdict` takes the `## Verdict` section to end-of-file, the anchor block AC-4.1 appends is
+*inside* that section; without this row a file that simply never carried a trailer would `JSON.parse`
+an anchor line, throw, and be reported as **malformed** — inverting the very distinction this AC exists
+to draw, on the most common lagging-SKILL case R-7 accepts (SE F-04). Recognising the closed set of
+anchor keys is sufficient to tell "no trailer was written" from "a trailer was written badly", and that
+set is fixed by §5's catalogue.
 
 *Unavailable* and *malformed* (AC-2.3) are different states and are reported differently on purpose.
 Malformed means a trailer was found and could not be parsed even after `recoverVerdict` (M-2d);
