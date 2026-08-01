@@ -65,6 +65,98 @@ Ids continue the `G-` series so they cannot be confused with the closed `F-01…
 
 ## Findings in detail
 
+### G-07 (High) — the preserved `RESOLVED:` line collides with the gate that reads it
+
+Verified at the declared citation baseline `9486c81`:
+
+- `parseResolvedMarker(fileText)` (`pdlc/workflows/orchestrate-dev.js:953`) pushes **every** unfenced
+  line matching `/^\s*RESOLVED:\s*(\S*)\s*$/` into `values`, then: `values.length === 0` ⇒
+  `{ok: false, reason: "absent"}`; **`values.length > 1` ⇒ `{ok: false, reason: "duplicated"}`**
+  (`:961`); otherwise `yes`/`no`.
+- Its JSDoc (`:939-947`) states the marker is "positionally unconstrained — a `RESOLVED:` line
+  **anywhere** outside a fenced region counts".
+- `checkPostmortem` (`:2440`) reads the file, and returns `{status: "resolved"}` when
+  `marker.ok && marker.resolved` (`:2446`), `{status: "unresolved", …}` otherwise (`:2447`).
+- The refusal is at step G (`:3895-3899`), which is the single point every phase-running exit converges
+  on: `status === "unresolved"` ⇒ *"Phase {id} refused: unresolved POSTMORTEM …"*.
+
+Now run AC-1.4's new rule against that. The post-mortem path is fixed, so a document that halts twice
+has one file, and AC-1.4 requires the second halt's rewrite to preserve "every `RESOLVED:` line …
+already in the file".
+
+| State after halt #2 rewrote the file | `parseResolvedMarker` | `checkPostmortem` | Effect |
+|---|---|---|---|
+| exactly one preserved `RESOLVED: yes` (AC-1.4 obeyed literally) | `{ok: true, resolved: true}` | `resolved` | **step G does not refuse.** The halt has no durable effect: the phase re-runs on the next invocation as if nothing happened |
+| the operator adds a second `RESOLVED: yes` to clear halt #2 (what AC-1.5(4)'s counting rule requires, and what O-10 asks for a test of) | `{ok: false, reason: "duplicated"}` | `unresolved` | **the phase can never be re-entered.** No edit to the region can ever produce `R > S` *and* a readable marker |
+
+Those are the only two reachable states, and they are opposite failures — one fails open on the halt
+this REQ's whole first AC is about, the other bricks the escape hatch. There is no third: the counting
+rule *is* the requirement that the file accumulate one `RESOLVED:` per clearance, and the reader *is*
+the function that rejects exactly that.
+
+This is not a re-raise of G-04. G-04 said `WINDOW-START:` had no protection; v1.3 protected it by
+making the region durable, which is correct. The new fact is that `RESOLVED:` was never a countable
+datum — it is a **single-valued, human-owned, fail-closed marker** whose duplication is already an
+error at HEAD — and AC-1.5(4) reinterprets it as a counter without amending the reader, while AC-1.4
+guarantees the duplication.
+
+**Required change.** Separate the two roles; do not overload `RESOLVED:`. The smallest version that
+keeps every property v1.3 wanted:
+
+1. keep AC-1.4's preservation obligation for `WINDOW-START:` and `HALT-REASON:` only, and require the
+   halt path to **remove or supersede** any prior `RESOLVED:` line when it rewrites the file, so the
+   new post-mortem is unresolved on arrival (fail-closed, and `parseResolvedMarker` still sees at most
+   one line); **and**
+2. restate one-shot over a datum that *may* repeat. `count(WINDOW-START:)` vs `count(RESET-GRANTED:)`,
+   or — cheaper — pair each `WINDOW-START:` with the `HALT-REASON:` it cleared, so "has this clearance
+   been spent?" is answered without counting a marker whose reader forbids repetition.
+
+Either way, state explicitly that `parseResolvedMarker`'s duplicated-⇒-fail-closed behaviour
+(`pdlc/workflows/orchestrate-dev.js:961`) is a constraint the mechanism must satisfy, and cite it —
+N-4 currently claims the human-written `RESOLVED: yes` marker is "untouched", which v1.3 makes untrue.
+
+### G-08 (Medium) — one candidate, or all of them?
+
+AC-3.4's step 2 defines the candidate by a stopping scan:
+
+> scans forward for the **candidate**: the first non-empty line that is **not an anchor line**.
+
+Steps 4 and 5 quantify over a set:
+
+> two or more parsing candidates ⇒ *malformed*; … exactly **one** parsing candidate ⇒ that is
+> `blocking`'s source.
+
+Under step 2 the set has cardinality ≤ 1, so "two or more" is unreachable and "exactly one" is
+vacuous — but the clause was clearly written to preserve v1.2's "exactly one trailer per file; two or
+more … is *malformed*", which is a *collecting* rule. The two readings differ on the input
+`VERDICT:` → prose line → valid trailer: stopping yields *malformed*, collecting yields a readable
+count. R-7 makes that input reachable during the transition, since a lagging SKILL writes whatever
+prose it likes under `## Verdict`.
+
+**Required change:** pick one and say it in step 2. Recommended: keep the stopping scan (it matches
+`parseVerdict`'s "first non-empty line after `VERDICT:`" and is the cheaper reader), delete "two or
+more parsing candidates ⇒ *malformed*" from step 4, and move the duplicate-trailer concern to where it
+belongs — a second *parsing* trailer later in the section is not observed by a stopping reader and
+therefore is not a case at all.
+
+### G-09 (Medium) — the third failure mode
+
+`extractFileVerdict` (`pdlc/workflows/orchestrate-dev.js:888`, verified at `9486c81`) scopes its scan
+to the trailing `## Verdict` section, counts lines beginning `VERDICT: `, and returns
+`{ok: false, reason: "duplicated"}` when `trailers > 1` (`:904`) — *before* `parseVerdict` ever runs.
+So AC-2's operand can be `duplicated`, and this REQ classifies it nowhere: AC-3.4 step 1 presumes "its
+**single** `VERDICT:` line" and enumerates only *absent*, and AC-2.7's table has no row for it.
+
+That matters because AC-2.7's table is the operator-facing classifier and AC-2.3/AC-2.7 are the two
+chain-breaking outcomes. A round whose file carries two `VERDICT:` lines is neither, so the run report
+cell is underivable and — worse — an implementer reading only this REQ has no reason to keep the
+existing fail-closed behaviour.
+
+**Required change:** one row in AC-2.7's table (*"the `## Verdict` section carries two or more
+`VERDICT:` lines ⇒ …"*) and one clause in AC-3.4 step 1. *Malformed* is the right answer: the quantity
+was read and could not be resolved, which is exactly §5's definition, and it keeps the shipped
+`duplicated` return mapped onto a chain break rather than onto silence.
+
 ## Questions
 
 ## Positive Observations
