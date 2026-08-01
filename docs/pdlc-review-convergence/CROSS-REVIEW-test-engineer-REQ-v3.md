@@ -75,9 +75,35 @@ narrowed or widened. F-07 is new — it is about this round, not about the docum
 
 ## 4. Mechanical fixes
 
+Reported per AC-6.5 as a fix list, not as blocking findings; excluded from the counts below.
+
+| # | Location | Issue | Fix |
+|---|---|---|---|
+| MF-01 | §4.7, first bullet | *(carried from v2)* *"Unmeasured at `d11dad5`"* — the header's Citation baseline was moved off that sha precisely because it is not reachable from where this document is reviewed. | Restate as unmeasured at the current baseline, or drop the sha. |
+| MF-02 | §5, S-2 row / O-10 | *(carried from v2)* "four unmeasurable cases" vs three reason strings; a PROPERTIES author will hunt for a fourth reason. | Say "four inputs, three reasons" once, where the counts first appear. |
+| MF-03 | AC-4.1, §6 `DOC-BYTES:` row | **New.** Both pin `appendApprovalAnchors` to `pdlc/workflows/orchestrate-dev.js:1845`. At the review baseline `2e1ccec` the call site is `:2009` and the declaration `:2098`; that file gained 217 lines since the round-2 baseline. This is an M-row citation going stale exactly as AC-6 predicts, in the document that specifies AC-6. | Re-anchor to `:2009` (call site) / `:2098` (declaration) at the stated Citation baseline, and re-state the baseline sha in the header. |
+
 ## 5. Measurement Required
 
+Filed under AC-5.2's convention. Non-blocking; excluded from the counts below. MR-01 and MR-02 remain
+bound to `docs/pdlc-runtime-measurement-spike/REQ-pdlc-runtime-measurement-spike.md` and are not
+repeated. MR-03 is carried unchanged from v2.
+
+| # | Fact to measure | How | What it would settle |
+|---|---|---|---|
+| MR-03 | *(carried)* Does `_appendFile` on a cross-review file that a reviewer agent has just written reliably land, and is the appended byte visible to the next `_readFile` in the same invocation? | Append a marker line to a cross-review file immediately after the reviewer dispatch returns, in one throwaway phase, and read it back. | Whether F-01's fix — writing `DOC-BYTES:` on **every** round — can reuse `appendApprovalAnchors`'s append seam, or needs a different write point. Does not change the fact that the current writer runs only on the PASS branch. |
+
 ## 6. Questions
+
+Q-01 … Q-03 are carried from v2 unanswered; they are not restated here — see
+`docs/pdlc-review-convergence/CROSS-REVIEW-test-engineer-REQ-v2.md` §5. Q-04 is new.
+
+| ID | Question |
+|----|---------|
+| Q-01 | *(carried, unanswered)* Is Phase DOD's `dod-verify` → `se-implement` loop in or out of scope for AC-1, AC-2 and AC-4? |
+| Q-02 | *(carried, unanswered)* On the last admitted round, AC-2's fixed point and AC-1's budget can be satisfied at once — which halt reason does the operator see, and does AC-2.1 evaluate at all on a round that dispatches no optimizer? |
+| Q-03 | *(carried, unanswered)* Does a count trailer written one line *below* the `## Verdict` section by an un-amended SKILL read as *unavailable* (AC-2.3) or as *malformed* (AC-2.7)? The two report differently. |
+| Q-04 | Was an optimizer episode dispatched between round 2 and round 3 at all, and if so did it fail silently? The answer determines whether F-07's fix belongs in the convergence AC (detect the zero-delta round) or additionally in the authoring watchdog (an episode that produced no write should not report success). I can see only the artifact, which is unchanged. |
 
 ## 7. Positive Observations
 
