@@ -79,6 +79,129 @@ Ids continue the `G-` series so they cannot be confused with the closed `F-01…
 
 ## Findings in detail
 
+### G-18 (High) — the refusal is followed by a halt, and the halt undoes the refusal's guarantees
+
+I traced this the same way I traced G-14, because the conjunct v1.5 added is right and I want to be
+precise about where it stops being right. The three clauses in tension are all v1.5's:
+
+> **A region that fails validation does not spend the clearance.** … an invalid region is inert: nothing
+> is written, nothing is granted, the run report names the file and the values found (S-16), and the
+> operator's clearance survives for a later entry.
+
+> 1. … a branch whose highest existing round is 3 or more is admitted **no rounds** and halts
+>    immediately on the budget path (AC-1.4), emitting the S-4 halt reason …
+
+> Therefore, on **every** halt, without exception: 1. the reset region exists after the halt, and it
+> carries this halt's line … 2. any `RESOLVED:` line already in the file is stripped …
+
+The entry sequence, on a branch with rounds 1–3 and a region that fails step 2 or step 3:
+
+| Step | State |
+|---|---|
+| operator writes `RESOLVED: yes`, re-invokes | `checkPostmortem` ⇒ `resolved`; step G admits the phase |
+| AC-1.5(4) runs | region invalid ⇒ `W` = 1, no answering line, clearance *"not consumed"*, S-16 reported |
+| AC-1.5(1) runs with `W` = 1 on a branch whose highest round is 3 | **no rounds admitted ⇒ immediate budget halt** |
+| AC-1.4 clause 1 | appends this halt's `HALT-REASON:` ⇒ `H += 1` |
+| AC-1.4 clause 2 | **strips the operator's `RESOLVED:` line** |
+
+So on the next entry the marker is gone (the operator must clear again) and `H − A` is one **larger**
+than it was when S-16 named it. Three separate statements v1.5 makes are falsified by its own path:
+
+1. *"the operator's clearance survives for a later entry"* — it does not. It survives only when the
+   branch is **not** exhausted, which is the case where no clearance was needed.
+2. *"It holds on every path the document generates"*, of `H − A ≤ 1` — the refusal path generates
+   `H − A = 2`, then 3, then 4. The paragraph's own argument (*"a clearance is answered before the next
+   halt can be taken"*) presumes the clearance is always answered; the refusal is precisely the case
+   where it is not, and the halt still follows.
+3. The reported **reason** is unstable: a region refused for `invalid-window-start` is refused for
+   `counts-mismatch` on the next entry, because the halt moved `H`. An operator who fixes what the first
+   report named is told something different the second time, for a defect they did not introduce.
+
+And it makes a required PROPERTIES obligation unsatisfiable. O-10's v1.5 TE F-02 bullet reads: *"a region
+whose `WINDOW-START:` fails step 2 with `A < H` ⇒ **nothing written**, the clearance survives … the
+assertion is *the file is byte-unchanged apart from the report*"*. A conforming implementation **must**
+change that file on that entry — one appended `HALT-REASON:`, one stripped marker — so the test as
+specified fails against a correct implementation. That is the shape of defect this REQ exists to catch
+in other documents.
+
+Why it does not self-heal: following the stated repair literally, each cycle is *(operator repairs the
+line the report named; operator writes `RESOLVED: yes`; entry refuses on the counts, which the previous
+halt moved; entry halts; `H` increments; marker stripped)*. `H − A` is never smaller at the end of a
+cycle than at the start. Only a repair the document does not sanction — deleting `HALT-REASON:` lines,
+or hand-writing an answering line — breaks the loop, and G-19 is about the fact that neither is allowed.
+
+**Required change**, and it is small — one clause, in whichever of the two places the author prefers:
+
+- **Either** exempt the refusal from the halt's file mutations: state that an entry refused by
+  AC-1.5(4) step 4 halts **without** writing a `HALT-REASON:` line and **without** stripping the marker
+  (it is not a halt of the loop's own budget; it is a refusal to enter), which makes *"the clearance
+  survives"* true as written and keeps `H` = *"the number of halts this document has taken"* — the
+  refusal took none;
+- **or** keep the halt and delete the three claims it falsifies: say that the refusal costs the
+  clearance, that `H − A` grows on refusal, and that the sanctioned repair must therefore restore the
+  counts rather than only the line — and rewrite the O-10 bullet accordingly.
+
+The first is the better mechanism (it keeps the invariant true and the report stable) and, notably, it
+is the same shape as v1.5's own answer to TE F-03: a gate that refuses is not an event the accounting
+records.
+
+### G-19 (Medium) — the repair clause does not cover the reason it was written for
+
+`counts-mismatch` is the third member of S-16's enum and the only one whose evidence is not a line —
+S-16's row says so itself (*"the offending value **or the pair `H`/`A`**"*). The repair clause is stated
+only over lines:
+
+> the operator deletes or corrects the offending line named in the report — and nothing else — leaving
+> `H` equal to the number of halts the document has taken and `A` equal to the number of clearances
+> already answered.
+
+For `A < H − 1` there is no offending line to delete or correct. The two edits that would restore the
+relation are each forbidden elsewhere in this document:
+
+- **adding** a `WINDOW-START:` / `WINDOW-RESUMED:` line — §6's row says *"Written by the loop, never by
+  a human; it carries no authority of its own"*, and *"and nothing else"* excludes it explicitly;
+- **deleting** a `HALT-REASON:` line — this falsifies *"`H` is exactly the number of halts this document
+  has taken, on every path"* (AC-1.4 clause 1, restated in §5's durability row and §10.10's TE F-01 row),
+  and §5's *Which halt a POSTMORTEM records* row reads *the last* such line to decide S-11 versus
+  S-3/S-4, so deleting one can change the clearance semantics of the next entry.
+
+The trailing instruction compounds it: the operator is to leave `H` and `A` at their true values, but the
+document gives them no independent record of either — the lines under repair *are* the record.
+
+**Required change:** state the repair per reason. For the two value reasons, the current sentence is
+right. For `counts-mismatch`, say which line class the operator may delete or add, and amend the rule it
+contradicts (either §6's *"never by a human"*, scoped to normal operation, or the `H` invariant, scoped
+to un-repaired regions). One sentence and one scoping word; the alternative — making the counts
+unrepairable — leaves the dead end AC-1.5(3) forbids.
+
+### G-20 (Medium) — the no-round-admitted report row
+
+Precedence row 8 does three things at once, and only the first belongs in a precedence table: it fixes
+S-16's sort position (fine), it states *when* the notice is emitted (*"on the **first** row the entry
+produces"*), and it introduces **a new report row** for an entry that opens no round. The third collides
+with the schema it sits under:
+
+- *"The AC-2.8 halt row is the one row with no dispatch behind it"* is still the text above the table.
+  It is now false; and it was written precisely because AC-4.7's bar is character-for-character
+  derivability, so the reader is entitled to trust it.
+- `panel-shape` is *"the on-disk role-slug set at that round (§5), or `crashed`"* and `blocking` is
+  *"`blocking(N)`, or `unavailable`, or `malformed`"*. Neither admits *empty*. The AC-2.8 halt row needed
+  a whole paragraph to license its four empty cells against exactly these column definitions; the new row
+  asserts *"every other column empty"* in a table cell and licenses nothing.
+- The `notice` cell is doubly specified. The entry that admits no round **halts on the budget path** and
+  AC-1.5(1) says it emits the S-4 halt reason; precedence row 8 says every column other than `round` is
+  empty. So the cell is `budget-exhausted: rounds 1..3 of 3; reset-region-corrupt: counts-mismatch`
+  under one clause and `reset-region-corrupt: counts-mismatch` under the other. Given precedence 8 sorts
+  S-16 **after** S-4, the first reading looks intended — but the document says both.
+- `round` = *"the round that would have opened"* is the one round index the branch does not and will not
+  carry a file for, and §5 defines round indices by the basenames present. The row is derivable only if
+  the schema says how that index is computed (`W + 3`? one past the highest round?).
+
+**Required change:** move the row out of the precedence table into its own paragraph beside the AC-2.8
+one, restate the *"one row with no dispatch"* sentence as *"two rows"* (or generalise it), name the four
+empty cells explicitly as that paragraph does, say whether the S-4 notice co-occurs, and define the
+`round` value. Precedence row 8 then keeps only the sort justification.
+
 ## Questions
 
 ## Positive Observations
