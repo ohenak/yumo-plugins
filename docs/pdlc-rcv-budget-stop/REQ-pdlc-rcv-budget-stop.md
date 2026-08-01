@@ -270,29 +270,26 @@ state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-)entered. *Then
    **Its render is stated here, because step 4's own renders all take an S-16 reason this entry has
    not got** (the region passed steps 1–3): it emits row B's **unconfirmable-append variant** (§5,
    catalogue §3) — `notice` **empty**, no S-16, no S-4 — its ❌ text is §6's *Unconfirmed-append text*,
-   and its recovery text is the **shipped generic**, pinned as the shipped bytes, prefix and terminator
-   included: `Recover: set the {feature} row in docs/_queue/QUEUE.md back to pending, then re-run the
-   queue.` (`orchestrate-dev.js:4928` — not `:1795`'s different recovery string), reused **on this
-   path alone**: the fault is transient, nothing is hand-repairable, and step 4 has already
-   written that row `halted`, so resetting it is the whole repair — the opposite disposition to the
-   corrupt-region row, which forbids the same string because re-running reproduces its refusal. O-10
-   pins the asymmetry. Two step-4 invariants are **scoped to the validation-failure path** and do
-   **not** hold here: the file is not byte-unchanged (a partial append may have landed), and the
-   ratchet's *same reason next entry* has no reason to be stable. **Two** outcomes, because the
-   confirmation compares bytes: the line landed whole and confirms ⇒ `A = H`, and the next entry
-   grants nothing; **anything else** — nothing landed, a truncated key or value, a lost newline —
-   fails the confirmation ⇒ this refusal, on the entry that wrote it. Never two windows. The tear that
-   would otherwise be **silent** is one inside the *value* (`WINDOW-START: 12` landing as
-   `WINDOW-START: 1`): well-formed, so it validates, balances the counts and moves the origin
-   **down** — spending the clearance on a window the operator never bought. Comparing bytes is what
-   makes it announce itself here rather than as an unexplained budget halt later; its residue is the
-   operator's sanctioned in-place **correction**, like any other bad value, and a tear leaving an
-   *invalid* line reaches the *corrupt-region* refusal on the next entry.
+   and its recovery text names **two** acts in order (§6): **delete the region's trailing answering
+   line if one is present**, then reset the `{feature}` row to `pending` and re-run the queue. Two
+   step-4 invariants are **scoped to the validation-failure path** and do **not** hold here: the file
+   is not byte-unchanged (a partial append may have landed), and the ratchet's *same reason next
+   entry* has no reason to be stable. **Two** outcomes, because the confirmation compares bytes: the
+   line landed whole and confirms ⇒ `A = H`, and the next entry grants nothing; **anything else** —
+   nothing landed, a truncated key or value, a lost newline — fails the confirmation ⇒ this refusal,
+   on the entry that wrote it. Never two windows. The tear that would otherwise be **silent** is one
+   inside the *value* (`WINDOW-START: 12` landing as `WINDOW-START: 1`): well-formed, so it validates,
+   balances the counts and moves the origin **down** — spending the clearance on a window the operator
+   never bought. Comparing bytes announces it here; **act 1 is what stops it being spent anyway**,
+   since a residue left in place validates on the next entry, makes `A = H`, and reaches exactly the
+   budget halt the announcement exists to prevent. Deleting it is sanctioned **only here**, and is not
+   the operator repairing an answer: an unconfirmed line answered nothing — no round ran — so removing
+   it restores `A < H` and the clearance the write never earned. A tear leaving an *invalid* line
+   reaches the *corrupt-region* refusal on the next entry if act 1 is skipped.
 
-   **Consequence:** an invocation that confirms the line and then dies before
-   dispatching round `W` has **spent the clearance** (`A = H`) while the window at `N` is intact and
-   unspent; the next entry needs no new window and runs those rounds. Writing the line last would
-   instead lose the record of a window already *used*, and re-grant it.
+   **Consequence:** an entry that confirms the line then dies before dispatching has **spent the
+   clearance** (`A = H`) while the window at `N` is intact; the next entry runs those rounds. Writing
+   the line last would instead lose the record of a window already *used*, and re-grant it.
 
    **Answering lines are appended, like `HALT-REASON:` lines** — step 2 reads what comes *before* each line, so it is order-sensitive. Under a prepending implementation a
    `WINDOW-RESUMED: 4` can land ahead of the `WINDOW-START: 4` it answers, failing step 2 ⇒ `W = 1` permanently: AC-1.4 clause 1 preserves the region verbatim on every later halt, so no clearance repairs it.
