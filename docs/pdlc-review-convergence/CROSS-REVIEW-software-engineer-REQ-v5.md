@@ -225,7 +225,49 @@ needs to know whether a classification is computed and discarded or never comput
 
 ## Questions
 
+Q-07, Q-08 and Q-09 from v4 are **closed** by v1.3 (AC-2.2/AC-4.7, AC-2.8/AC-4.7, AC-4.1/§6
+respectively) and are not restated. Three new, each the fastest route into the finding beside it.
+
+| ID | Question |
+|----|---------|
+| Q-10 | After AC-1.4's preservation rule runs, how many `RESOLVED:` lines does the post-mortem carry, and what does `parseResolvedMarker` (`pdlc/workflows/orchestrate-dev.js:953`) return for that file? If the answer is "one, `yes`", the second halt does not refuse; if it is "two", the file is `duplicated` and the phase never runs again. Which was intended? (G-07) |
+| Q-11 | On the input `VERDICT:` → a prose line → a valid count trailer, does AC-3.4's reader return *malformed* (step 2's stopping scan) or the count (steps 4–5's collecting scan)? (G-08) |
+| Q-12 | After an S-11 halt is cleared under AC-1.5(5), what ever makes `R = S` again — and if nothing does, what stops the next fixed-point halt from consuming that same reset without any operator action? (G-10) |
+
 ## Positive Observations
+
+- **Every open finding from round 4 is closed, and closed at the mechanism.** Three of the five (G-01,
+  G-02, G-05) are closed exactly as recommended; G-03 is closed the better of the two ways I offered,
+  with all four citations verifying; G-06 became R-9 plus a §9.3 binding row plus a fourth question on
+  the calibration successor, which is more than a Low deserved. Round 4's four mechanical fixes are all
+  applied.
+- **TE F-01's growth-boundary fix is the most valuable change in v1.3, and it is mine to have missed.**
+  v1.2 measured `DOC-BYTES(N) − DOC-BYTES(N−1)` and selected round **N+1's** panel from it. I reviewed
+  that formula twice and read it as correct because it removed the circularity I had filed at F-01 —
+  and it does, but it classifies the revision the *previous* panel already read, and it makes round 2
+  permanently unclassifiable for want of a `DOC-BYTES(0)`, so the target-regime rows of AC-2.6 were
+  unreachable in every run. AC-4.1's single round-open read, with the later endpoint live and only the
+  earlier one durable, is the right shape: minimum durability, and the classified revision is the one
+  the cold reader must actually read. AC-4.1's new round-1 paragraph (*"an absent measurement that was
+  never owed is not an unmeasurable one"*) is the correct corollary.
+- **The one-read-shared-by-AC-4.1-and-AC-2.8 constraint is stated in three places and carried into
+  O-12.** Two ACs deriving different quantities from the same instant is the classic place a
+  time-of-check race enters an otherwise pure design; naming the read as singular in §5, AC-2.8,
+  AC-4.1 and the obligation is exactly the discipline that prevents it.
+- **AC-4.7's precedence table now splits S-3 from S-4 and carries the co-occurrence in the row that
+  needs it**, and the new "S-11 never co-occurs" paragraph derives that from *when* each halt is
+  decided rather than asserting it. Deriving the exclusion rather than declaring it is what makes the
+  table checkable.
+- **AC-2.7's row 4 restated as "nothing but anchor lines" is the right shape of the G-05 fix** — the
+  table now classifies outputs of the algorithm rather than competing with it — and giving the anchor
+  set **by reference** to §5's catalogue, "enumerated nowhere else, so it has exactly one membership",
+  is the general form of the lesson, not the local patch. That sentence is worth harvesting.
+- **§10.8 exists and is honest about the shape of round 4** — first round with no carried finding,
+  every finding in text v1.2 added. A revision note that says which of its own predecessors' text was
+  wrong is much cheaper to re-review than one that only says what is now true.
+- **The `sha256Hex` / `canonicaliseForDigest` / `approvalHashOf` citations all verify at `9486c81`**
+  (`:848`, `:767`, JSDoc `:752-759`, `:950`), including the JSDoc quotation, which is reproduced
+  accurately. Citation discipline continues to hold under revision.
 
 ## Mechanical fixes
 
