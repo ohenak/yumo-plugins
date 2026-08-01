@@ -319,8 +319,8 @@ state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-)entered. *Then
      nearby build their final report directly and never call `recordHaltFn`. That is the intended outcome — the region needs an operator, so an unattended queue must stop rather than re-pick
      the feature and refuse again once per iteration.
 
-   **The sanctioned repair is the operator's, and it is the only hand-edit this document asks for to machine-written state.** "Machine-written and machine-maintained" describes who writes
-   the region in normal operation, not who may repair it. When the run report emits S-16 the region is **human-repairable**, per reason:
+   **The sanctioned repair is the operator's, and it is the only hand-edit this document asks for to machine-written state** — "machine-maintained" describes normal operation, not repair.
+   When the run report emits S-16 the region is **human-repairable**, per reason:
 
    | Reason | What the notice names | The sanctioned repair |
    |---|---|---|
@@ -337,19 +337,14 @@ state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-)entered. *Then
    | `H = 1`, `A = 1`, `WINDOW-START: 99` (`H − A = 0`) | yes — the refusal left it in place | delete the line | `H = 1`, `A = 0` ⇒ `A < H` | **grants a fresh three-round window** off a clearance that was already answered, and writes `WINDOW-START:` |
    | either row above | either | **correct** the value | counts unchanged | `A < H` unchanged ⇒ no window is banked; the phase proceeds under the accounting the loop wrote |
 
-   The second row is the one hand-edit §6's `WINDOW-START:` prohibition exists to prevent. `A` exists precisely to make a clearance one-shot: at `A = H` every halt has been answered, so a
+   The second row is the hand-edit §6's `WINDOW-START:` prohibition exists to prevent. `A` exists precisely to make a clearance one-shot: at `A = H` every halt has been answered, so a
    marker still on disk grants nothing; lowering `A` while leaving `H` restores `A < H` with the marker untouched. **Correcting is safe at every `H − A`** — it leaves both counts true, and
    any repair leaving `H − A ∉ {0, 1}` is rejected by the counts check, so a mis-repair fails closed.
 
-   **Why `counts-mismatch` is repaired by deletion and not by editing a line.** A counts mismatch is by construction about lines *missing* or *surplus*, so there is no offending line to
-   name, and both repairing edits are forbidden elsewhere: **adding** an answering line contradicts §6's *"written by the loop, never authored by a human"*, **deleting** a `HALT-REASON:`
-   line contradicts AC-1.4 clause
-   1. Deleting the **section** contradicts neither: S-12 reads an absent heading as the empty region, `H = A = 0`, `W = 1`. The document returns to its never-reset state, the next halt
-      re-creates a one-line region, and the clearance after that one works. The cost is one further halt and the loss of the halt history — the honest price of a region whose counts are no
-      longer trustworthy.
-
-   **The accounting is over lines the loop owns, not over the human's marker.** Counting halts against answers keeps the pairing exact without touching the marker, which the shipped reader
-   requires to be single-valued (M-7a); both kinds of line may legally repeat, and `RESOLVED:` may not.
+   **Why `counts-mismatch` is repaired by deletion, not by editing a line.** The fault is about lines *missing* or *surplus*, so no line is offending, and both repairing edits are forbidden
+   elsewhere: **adding** an answering line contradicts §6, **deleting** a `HALT-REASON:` contradicts AC-1.4 clause 1. Deleting the **section** contradicts neither: S-12 reads an absent
+   heading as the empty region, `H = A = 0`, `W = 1` — the never-reset state. The next halt re-creates a one-line region and the clearance after that one works, at a cost of one further
+   halt and the halt history. The accounting is over lines the loop owns rather than the human's marker, which the shipped reader requires to be single-valued (M-7a).
 
    Receive side, stated as an **ordered algorithm** rather than as a table of independent rows, because DC-01 requires it to be total **and single-valued**. Given the region, the loop:
 
@@ -415,10 +410,9 @@ state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-)entered. *Then
    hence a last line exists. The *absent* case is real one level up, at the region, and is S-12's.
 
    **Every clearance is answered by exactly one line, including this one.** With nothing written on the S-11 path the clearance would stay unanswered forever, so the **next** halt of any
-   kind — a fixed-point halt three rounds later, with no operator action — would meet an unconsumed clearance and be granted a fresh window on the strength of a marker written for an
-   unrelated authoring failure; a pipeline that failed to author *k* times would bank *k* free windows. `WINDOW-RESUMED: {W}` keeps the intent — origin unmoved, spent rounds spent,
-   operator not charged a window — while restoring `A = H`, and it gives the S-11 path a **positive artifact** to assert on, which absence of a `WINDOW-START:` does not (a loop ignoring
-   the clause produces the same absence). A zero-delta round is an **authoring** failure (`pdlc-rcv-fixed-point-stop` AC-2.8); charging the operator's single escape hatch for it would misprice an unrelated failure.
+   kind would meet an unconsumed clearance and bank a free window on a marker written for an unrelated authoring failure — *k* authoring failures, *k* free windows. `WINDOW-RESUMED: {W}`
+   keeps the intent — origin unmoved, spent rounds spent, operator not charged a window — while restoring `A = H`, and gives the S-11 path a **positive artifact** to assert on, which the
+   absence of a `WINDOW-START:` does not. It carries the same confirmation obligation and the same fail-closed disposition as `WINDOW-START:`.
 
    **Row B — what the run report shows when no round is admitted.** An entry that refuses the phase at
    step 4 opens no round and dispatches nobody, but it still produces one row in the per-round report
@@ -502,17 +496,16 @@ operator specifies it and opts it in.
 |---|---|---|---|---|
 | REQ-RCV-01 | M-1a, M-1b, M-1c, M-1d, M-1e; M-7a, M-7b, M-7d, M-7e | P-1 (cost half) | US-01, US-02, US-04 | O-5, O-6, O-9, O-10, O-11 |
 
-**Why this document carries one requirement and not two.** v1.0 carried REQ-RCV-01 and REQ-RCV-02
-together and measured **581 lines / 83 KB** — beyond the 60 KB REQ size ceiling, and therefore
-beyond what the review loop converges on. v1.1 cuts at the seam the two requirements already had:
-this REQ defines the **window** (the budget, its origin `W`, the reset region and the halt path),
-and `docs/pdlc-rcv-fixed-point-stop/REQ-pdlc-rcv-fixed-point-stop.md` states the two **tests**
-evaluated inside it. The ordering argument v1.0 gave for keeping them together — *`W` must exist
-before AC-2.1, AC-2.8 or AC-2.6 can be stated over a window* — is preserved exactly, as a
-`depends-on` edge rather than as a shared document: the successor ships second. No requirement id,
-AC id or `S-*` id changed in the cut, so every existing cross-reference resolves.
+**Why one requirement and not two.** v1.0 carried REQ-RCV-01 and REQ-RCV-02 together at **581 lines
+/ 83 KB**, beyond the 60 KB ceiling and therefore beyond what the loop converges on. v1.1 cuts at
+the seam the two already had: this REQ defines the **window**, and
+`docs/pdlc-rcv-fixed-point-stop/REQ-pdlc-rcv-fixed-point-stop.md` the two **tests** evaluated inside
+it. The ordering argument — `W` must exist before AC-2.1/AC-2.8/AC-2.6 can be stated — is preserved
+as a `depends-on` edge: the successor ships second. No requirement, AC or `S-*` id changed.
 
-**Round-by-round history is deliberately not restated here.** The nine review rounds that produced
-this material live in `docs/discarded/pdlc-review-convergence/CROSS-REVIEW-*-REQ-v{1..9}.md` alongside the
-superseded parent; those files remain the record of which finding produced which clause. This REQ
-traces to the *measured facts*, not to the review history.
+**Round-by-round history is deliberately not restated here.** The predecessor's nine review rounds
+were harvested into
+`docs/discarded/pdlc-review-convergence/LEARNINGS-pdlc-review-convergence.md`, which is what
+survives: `harvest-learnings` deletes `CROSS-REVIEW-*` once LEARNINGS is written, so a citation to
+those round files would be structurally wrong for any harvested feature. This REQ traces to the
+*measured facts*, not to the review history.
