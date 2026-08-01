@@ -781,10 +781,19 @@ branch — the state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-
    |---|---|---|
    | `no-revision:` (S-11) | the halt is cleared and the **interrupted window is resumed** — `W` is unchanged and the rounds the window had already spent stay spent | `WINDOW-RESUMED: {W}` (S-14) |
    | `fixed-point:` (S-3) or `budget-exhausted:` (S-4) | the reset is granted and consumed as clause 4 states: a fresh three-round window opens at `N` | `WINDOW-START: {N}` (S-13) |
-   | absent, unparseable, or any other value | treated as S-3/S-4 — **fail-closed**, because the safe error is to consume a reset the operator can re-grant, never to hand out a free window | `WINDOW-START: {N}` |
+   | unparseable, or any other value | treated as S-3/S-4 — **fail-closed**, because the safe error is to consume a reset the operator can re-grant, never to hand out a free window | `WINDOW-START: {N}` |
 
    Reading the **leading** reason is exact: S-11 is decided at round-open and never co-occurs with S-3
    or S-4 (AC-2.2), so a joined value never begins `no-revision:`.
+
+   **The table has three rows and not four, because "absent" is unreachable here.** This table is read
+   only on the entry that observes an unconsumed clearance, and that gate requires `A < H`, which
+   requires `H ≥ 1`, which means at least one `HALT-REASON:` line is present — so there is always a last
+   one. A PROPERTIES author asked for a fixture per case would have found *absent* unconstructible
+   (TE v6 F-03). The **absent** case is real one level up, at the region: an absent `## Reset Region`
+   heading, or a present region with no `HALT-REASON:` line, is read as `H = A = 0`, `W = 1`, no reset in
+   effect and no clearance outstanding — stated in S-12 and in §5's durability rows, which is its one
+   home.
 
    **Every clearance is answered by exactly one line, including this one.** v1.3 had the S-11 path write
    nothing, on the reasoning that an authoring failure should not cost the operator's escape hatch. The
@@ -805,8 +814,8 @@ branch — the state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-
 
 The durable observable for all five clauses is the same one the loop already reads: the cross-review
 basenames on the branch, plus the POSTMORTEM's single `RESOLVED:` marker and its preserved
-`HALT-REASON:`, `WINDOW-START:` and `WINDOW-RESUMED:` lines. Nothing here needs a clock, a process identity, or a memory of a previous
-invocation.
+`HALT-REASON:`, `WINDOW-START:` and `WINDOW-RESUMED:` lines. Nothing here needs a clock, a process
+identity, or a memory of a previous invocation.
 
 **Observability.** `MAX_REVIEW_ROUNDS === 3`; the highest `-v{N}` on the branch never exceeds 3 for a
 document with no resolved POSTMORTEM; a fourth round never dispatches a reviewer; the post-mortem
