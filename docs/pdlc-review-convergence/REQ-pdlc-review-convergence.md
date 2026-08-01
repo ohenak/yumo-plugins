@@ -668,13 +668,44 @@ branch — the state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-
 4. **the reset is anchored and consumed, in the POSTMORTEM, by the loop.** The **reset region** (§5) is
    read as two counts: `H`, the number of `HALT-REASON:` lines, and `A`, the number of `WINDOW-START:`
    **plus** `WINDOW-RESUMED:` lines — the lines the loop writes to *answer* a clearance. A clearance is
-   **unconsumed** exactly when `checkPostmortem` reads a `RESOLVED: yes` **and** `A < H`. On any entry
-   that observes both (TE v5 MF-09: there is no observable "first entry"; the counts are the whole
-   state), the loop writes exactly one answering line — `WINDOW-START: {N}` on a convergence halt,
+   **unconsumed** exactly when all three hold: `checkPostmortem` reads a `RESOLVED: yes`, `A < H`, **and
+   the region validates** (steps 1–3 below). On any entry that observes all three (TE v5 MF-09: there is
+   no observable "first entry"; the counts are the whole state), the loop **appends** exactly one
+   answering line to the **end** of the reset region — `WINDOW-START: {N}` on a convergence halt,
    `WINDOW-RESUMED: {W}` on an S-11 halt (clause 5) — which makes `A = H` again. For `WINDOW-START:`,
    `N` is one past the highest round then on the branch and becomes the window's origin `W`: the budget
    of 3 is counted from `W`, and rounds below `W` are outside the window. When `A = H` every halt so far
    has been answered and the loop writes nothing and grants nothing.
+
+   **Answering lines are appended, for the same reason `HALT-REASON:` lines are.** Step 2's validation is
+   stated over what comes *before* each line, so it is order-sensitive; `W` itself (step 4) is not. The
+   loop therefore writes its answering line at the **end** of the reset region, exactly as AC-1.4 clause
+   1 has each halt append its `HALT-REASON:` there, so **document order is event order for every line in
+   the region**. Under any other placement — a loop that prepends into a named section is a natural
+   implementation — a `WINDOW-RESUMED: 4` can land ahead of the `WINDOW-START: 4` it answers, which fails
+   step 2 ⇒ `W = 1` for the rest of the document's life, because AC-1.4 clause 1 preserves the region
+   verbatim on every later halt. That failure is closed but **absorbing**: AC-1.1 then admits no rounds
+   on a branch that already carries three, and no clearance repairs it (SE v6 G-13). §5's durability rows
+   for the origin and for `HALT-REASON:` state the same placement rule, and S-13/S-14 carry it.
+
+   **A region that fails validation does not spend the clearance.** Fail-closed on `W` means fail-closed
+   on *spending* too — which is why validation is a conjunct of the gate above and not merely a
+   constraint on `W`. Without that conjunct the gate is evaluated on the raw counts, so a region carrying
+   two `HALT-REASON:` lines and one **invalid** `WINDOW-START:` has `A < H`, the loop writes an answering
+   line, the clearance is consumed, and `W` is still 1 because the invalid line is still there and fails
+   again on every later read. Nothing ever removes a line from the region, so that state is permanent:
+   every subsequent clearance would be consumed and grant nothing, and the phase would halt on entry
+   forever — precisely the dead end clause 3's escape hatch exists to prevent (TE v6 F-02). With the
+   conjunct, an invalid region is inert: nothing is written, nothing is granted, the run report names the
+   file and the values found (S-16), and the operator's clearance survives for a later entry.
+
+   **The sanctioned repair is the operator's, and it is the only hand-edit this document asks for
+   besides the marker.** §5 calls the region machine-written and machine-maintained, which describes who
+   *writes* it in normal operation, not who may repair it. When the run report emits S-16, the region is
+   **human-repairable**: the operator deletes or corrects the offending line named in the report — and
+   nothing else — leaving `H` equal to the number of halts the document has taken and `A` equal to the
+   number of clearances already answered. Any repair that leaves `H − A > 1` is itself rejected by the
+   counts check below, so a mis-repair fails closed rather than banking windows.
 
    **The accounting is over lines the loop owns, not over the human's marker.** v1.2 tested for the
    presence of a `WINDOW-START:` beside a `RESOLVED: yes`, which is undecidable once the file carries
@@ -691,18 +722,41 @@ branch — the state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-
    strictly-increasing row and the out-of-range row, with different answers (TE v5 F-04). Given the
    region, the loop:
 
-   1. collects every `WINDOW-START:` and `WINDOW-RESUMED:` line in it, in document order;
-   2. **validates every one of them.** A `WINDOW-START:` value is valid iff it is a decimal integer ≥ 1,
-      strictly greater than every `WINDOW-START:` value before it, and no greater than one past the
-      highest round on the branch. A `WINDOW-RESUMED:` value is valid iff it is a decimal integer ≥ 1
-      equal to the greatest `WINDOW-START:` value before it, or to 1 if there is none;
-   3. **if any line fails validation ⇒ `W` = 1, fail-closed**, no reset is honoured, and the run report
-      names the file and the values found. A corrupt region is never partially believed;
-   4. otherwise `W` = the greatest `WINDOW-START:` value present, or **1** if there is none.
+   1. collects every `HALT-REASON:`, `WINDOW-START:` and `WINDOW-RESUMED:` line in it, in document
+      order, giving the counts `H` and `A`;
+   2. **validates every one of the answering lines' values.** A `WINDOW-START:` value is valid iff it is
+      a decimal integer ≥ 1, strictly greater than every `WINDOW-START:` value before it, and no greater
+      than one past the highest round on the branch. A `WINDOW-RESUMED:` value is valid iff it is a
+      decimal integer ≥ 1 equal to the greatest `WINDOW-START:` value before it, or to 1 if there is
+      none;
+   3. **validates the two counts against each other:** `H − A` must be **0 or 1**. `A > H` means more
+      clearances have been answered than halts have been taken; `A < H − 1` means a halt is recorded
+      whose clearance no line answers, which is only reachable if a line was removed from the region.
+      Both are corruption of the counts, not of a value;
+   4. **if any line's value fails step 2, or the counts fail step 3 ⇒ `W` = 1, fail-closed**, no reset is
+      honoured, **no answering line is written and the clearance is not consumed**, and the run report
+      emits `reset-region-corrupt: {reason}` (S-16) naming the file and, per reason, the offending value
+      or the pair `H`/`A`. A corrupt region is never partially believed;
+   5. otherwise `W` = the greatest `WINDOW-START:` value present, or **1** if there is none.
+
+   **`H − A ≤ 1` is the invariant clause 4's "exactly one answering line" relies on**, and step 3 is
+   what gives that rule a stated domain. It holds on every path the document generates: a halt strips
+   the marker (AC-1.4 clause 2) so `checkPostmortem` refuses re-entry until the operator clears again,
+   and a clearance is answered before the next halt can be taken — so two halts cannot accumulate
+   without an answer between them (TE v6 Q-09). Validating it rather than assuming it matters because
+   the region sits in a file the operator is *instructed* to edit, immediately below machine lines that
+   look stale after a clearance. On a region reading two `HALT-REASON:` lines and no answering line — a
+   deleted `WINDOW-START:`, a hand-merged post-mortem, or a partially-completed read-modify-write (O-5)
+   — every value-level check passes vacuously, `A < H` survives the one line clause 4 writes, and the
+   loop would grant a fresh three-round window on **every** subsequent invocation with no operator
+   action at all: exactly `H − A − 1` windows beyond the one the operator paid for, a quantity nothing
+   else in this document bounds. That is the per-invocation budget AC-1.1 exists to abolish, restored
+   silently and fail-**open** (SE v6 G-14). Step 3 converts it into a named, reported, fail-closed refusal
+   the operator repairs.
 
    Fail-closed in every non-canonical case is the point: an absent, unparseable, repeated, decreasing or
-   out-of-range value never widens the window, and a region with no `WINDOW-START:` line at all is
-   simply a document that has never been reset.
+   out-of-range value never widens the window, mismatched counts never widen it either, and a region with
+   no `WINDOW-START:` line at all is simply a document that has never been reset.
 
    Both halves are load-bearing. Without the anchor, nothing on the branch records *which* rounds
    preceded the marker, so "counted from round 1" is unstated for any document that has ever been
