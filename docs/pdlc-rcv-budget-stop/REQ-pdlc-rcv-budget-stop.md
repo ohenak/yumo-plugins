@@ -182,8 +182,8 @@ operator reads them. Both are asserted **over the constant**, never the literal 
 *Then:* it halts the way it halts today — writing `POSTMORTEM-{phase}-{feature}.md`, confirming the write rather than trusting the agent's reply, and refusing to re-run the phase until
 a human writes `RESOLVED: yes`. This REQ changes *when* the halt happens, not *what* a halt is.
 
-Two things about that write do change, because this REQ puts machine-written state in that file. `POSTMORTEM-{phase}-{feature}.md` is a **fixed** path — it is not versioned as
-`CROSS-REVIEW-…-v{N}` is — so a document that halts twice has its post-mortem written twice, and the reset region (catalogue §1, S-12) lives there.
+Two things about that write do change, because this REQ puts machine-written state in that file. `POSTMORTEM-{phase}-{feature}.md` is a **fixed**, unversioned path, so a document that
+halts twice has its post-mortem written twice, and the reset region (catalogue §1, S-12) lives there.
 
 **The scope of "every halt".** The rule below is quantified over **every halt that writes
 `POSTMORTEM-{phase}-{feature}.md` for a document-typed review-loop phase** (AC-1.1's scope) — at HEAD
@@ -202,17 +202,16 @@ pairing exact. Within that scope the rule admits **no exception**:
    halt's line yields a one-line region. So `H` is **exactly the number of halts in AC-1.4's scope**, on every path, and AC-1.5(5)'s *"the last `HALT-REASON:`"* is the most recent halt's.
 2. **any `RESOLVED:` line already in the file is stripped** — every **unfenced** one, wherever in the file it sits. The new post-mortem is therefore **unresolved on arrival**, and the
    operator must clear *this* halt before the phase runs again. The strip is scoped to unfenced lines because every other reader is (M-7a, M-7d): a fenced `RESOLVED: yes` is invisible to
-   the gate either way, so scoping the strip changes no decision, keeps the document to **one** scoping rule, and stops the halt path editing prose inside a human's code fence.
+   the gate either way, so the scoping changes no decision and stops the halt path editing prose inside a human's code fence.
    **The strip reaches inside the `## Reset Region` span too, and the two rules do not collide:** a `RESOLVED:` line is *never* a region line — the region is read as `HALT-REASON:`,
-   `WINDOW-START:` and `WINDOW-RESUMED:` lines only (catalogue §1: the operator's marker is never counted, wherever in the file it sits) — so "preserve every line in the region" and
-   "strip every unfenced `RESOLVED:`" quantify over disjoint sets. A `RESOLVED: yes` an operator wrote inside the region is stripped like any other and preserves nothing.
+   `WINDOW-START:` and `WINDOW-RESUMED:` lines only (catalogue §1) — so the two rules quantify over disjoint sets. A `RESOLVED: yes` written inside the region is stripped like any other.
 
 **Why the creating halt is stated.** Scoped only to a halt finding an existing post-mortem, the first halt would be governed by nothing: no region ⇒ `H = 0` ⇒ AC-1.5(4)'s gate `A < H`
 false ⇒ the operator's **first** clearance silently swallowed, the phase halting again, self-healing on the second — the worst shape an operator-facing failure takes.
 
 **Why clause 2.** `RESOLVED:` is a **single-valued, human-owned, fail-closed marker**, never a counter (M-7a). A preserved `RESOLVED: yes` makes the next halt's post-mortem read as already
-resolved, so the halt has no durable effect; a *second* one reads as `duplicated` ⇒ permanently `unresolved` ⇒ the phase can never be re-entered. Those are the only two reachable states of
-the alternative and they are opposite failures. **The prohibition is untouched:** removing a marker already spent is not writing one (N-4).
+resolved, so the halt has no durable effect; a *second* one reads as `duplicated` ⇒ permanently `unresolved` ⇒ the phase can never be re-entered — the only two reachable states of the
+alternative, and opposite failures. **The prohibition is untouched:** removing a marker already spent is not writing one (N-4).
 
 **The region is maintained by the loop, not by an agent's diligence.** At the Citation baseline the halt path dispatches an agent with a bare `Write {path}` prompt and no preservation
 obligation (M-7e). The loop reads the existing file before the dispatch and **re-applies** the region after it: preserved lines, this halt's appended `HALT-REASON:`, any prior `RESOLVED:`
@@ -229,8 +228,8 @@ state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-)entered. *Then
 
    **The zero-round budget halt has a report row, and it is row C** — the **third** dispatch-less row,
    stated cell by cell here as the catalogue requires of the REQ owning the condition, because the
-   per-round table would otherwise be empty for the commonest new halt and §2's promised surface would
-   not exist. `round` = **one past the highest round of this document type on the branch** (from the
+   per-round table would otherwise be empty for the commonest new halt.
+   `round` = **one past the highest round of this document type on the branch** (from the
    listing); `panel-shape`, `blocking`, `growth-bytes`,
    `classification` **empty**, nothing having been dispatched or measured; `notice` = this halt's
    **S-4** reason, `; `-joined with any co-occurring reason in catalogue §3 precedence order. Rows B
@@ -307,8 +306,8 @@ state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-)entered. *Then
      queue write is reached *because* the refusal is step-G-shaped (M-7a, M-7b), where a literal early `return` would not reach it (the entry-validation halts nearby build their report
      directly and never call `recordHaltFn`). That is intended: the region needs an operator, so an unattended queue must stop rather than refuse once per iteration.
 
-   **The sanctioned repair is the operator's, and it is the only hand-edit this document asks for to machine-written state** — "machine-maintained" describes normal operation, not repair.
-   When the run report emits S-16 the region is **human-repairable**, per reason:
+   **The sanctioned repair is the operator's, and it is the only hand-edit this document asks for to machine-written state.** When the run report emits S-16 the region is
+   **human-repairable**, per reason:
 
    | Reason | What the notice names | The sanctioned repair |
    |---|---|---|
@@ -357,8 +356,7 @@ state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-)entered. *Then
         on the budget path regardless. There the refusal is *indistinguishable* from the fallback.
       - On a **mid-window** branch with rounds remaining under `W` = 1 — reachable at highest round **2**, since `pdlc-rcv-fixed-point-stop` AC-2.1 can fire on the (1, 2) pair and its AC-2.8 can halt at round 2, either of
         which creates the region with `H = 1`, `A = 0` before a hand-edit corrupts it — the fallback would admit **round 3** and the phase would run. Step 4 refuses instead: no round-3
-        cross-review file is written, the invocation terminates on step G's path and the queue row is written `halted`. That is a real cost, accepted deliberately: a region whose accounting
-        cannot be trusted is not a state a review round should be opened over, because the cross-review it produced could not be placed in any window. This is the refusal's **positive control**
+        cross-review file is written, the invocation terminates on step G's path and the queue row is written `halted`. That is a real cost, accepted deliberately (R-11). This is the refusal's **positive control**
         — the only branch on which honouring step 4 and falling back are distinguishable — and O-10 carries it; row B's `round` cell is stated over exactly this branch. **Its fixture is
         synthetic while this REQ ships alone, and that is stated rather than glossed:** both halts that can create a region at highest round 2 (`pdlc-rcv-fixed-point-stop` AC-2.1, AC-2.8)
         belong to a successor (X-05), so until it ships the only region-creating halt is the budget halt, which by construction fires on a full window. The mid-window state is therefore
