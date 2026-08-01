@@ -41,7 +41,18 @@ Five, all in text added or rewritten since v1. No High.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-04 | Does the **confirmation read** of the answering line (AC-1.5(4)) also re-run steps 1–3 on the re-read region? It matters for one fixture: if a concurrent or partial write left the appended line malformed, a confirmation that only checks *"the line is present, in the region, at the end"* passes while the region is now corrupt — and the entry then opens a window on a region that the *next* entry will refuse with S-16. Confirming presence and validity together makes the ratchet hold; confirming presence alone does not. PROPERTIES needs to know which assertion to write. |
+| Q-05 | On the exhausted-branch entry (`W` = 1, highest ≥ 3) that takes the budget halt, AC-1.4 clause 1 appends a `HALT-REASON:` line — including when the operator has just cleared the *previous* halt and the grant path ran on the same entry. Is the sequence *grant (A += 1) → rounds → later halt (H += 1)* the only reachable order, or can a single entry both grant and halt (grant `W` = `N`, then some other halt path fires before round `N` opens)? If the latter is reachable, `H − A` still lands in {0, 1}, but the **order of the two appended lines** decides step 2's `WINDOW-RESUMED:` check on the following entry, and the document fixes the order only for lines written by different entries. |
+
 ## Positive Observations
+
+- **Every High closed with a scope statement rather than a new mechanism.** F-01, F-02 and F-03 were all answered by *deciding* something the document had left open — which loops are in, which row renders, which listing is read — and each fix carries the counter-reading and why it was rejected. That is the shape that survives a later reader; a fix that only stated the chosen reading would have re-opened at TSPEC.
+- **F-06's fix is better than what I asked for.** I asked for a dispatch-count conjunct on two legs; O-10 now applies it to **every** "no round ran" leg — refusing, exhausted, skipped, plus the `≥ 1` control — and AC-1's Observability was rewritten to carry the same idea (*"a count, not an absence"*). The three-entry-class enumeration under step 4 (skipped / exhausted / mid-window) is now, on its own, a sufficient specification of the fixture matrix.
+- **The crash-consequence paragraph added to AC-1.5(4) is the right kind of answer to Q-01**: it does not just pick write-first, it states what an operator meets when the invocation dies in the window between the confirmed line and the first dispatch, and derives write-first from the cost of the alternative. That is directly a PROPERTIES fixture.
+- **`W`'s reaching `deriveRoundWindow` as a resolved decimal integer (AC-1.2, O-12) keeps the one function this repo's CLAUDE.md documents as synchronous, total and seam-free exactly that.** It is the difference between a testable pure function and a function that needs an async double in every existing test.
+- Citations re-spot-checked at HEAD for the *changed* text only: `phaseGate`'s `{ skip: true }` exit (`orchestrate-dev.js:4211`–`:4225`, the `hash FRESH` skip row) and Phase CR's `phaseWindow(null)` / `docType: null` (`:4720`–`:4721`) are both as described; baseline §4 defines `N-1 … N-10` and no more; catalogue §2's S-16 enum is closed at exactly the three reasons §6 quotes; catalogue §3 now names three dispatch-less rows and keys B and C to this REQ's ACs. The REQ and the catalogue agree on rows B and C in both directions.
 
 ## Recommendation
 
