@@ -254,6 +254,36 @@ in a sentence and neither blocking.
 
 ## 7. Positive Observations
 
+- **The growth-boundary fix is the right fix, taken at the right place.** I proposed moving the later
+  endpoint to the round-open read; v1.3 did that *and* propagated it through every dependent
+  statement in one pass — AC-4.1's three ordered steps, AC-4.2's *When* and column title, AC-4.5's
+  *Given*, AC-3.1's exception, §5's definition, AC-2.6's *When* column, AC-4.7's `classification`
+  cell, and the new round-1 rule (*"no measurement, no S-6 notice"*) that I had not asked for and
+  that closes the one hole the change would otherwise have left. Nine locations, no stragglers. That
+  is the difference between answering a finding and closing it.
+- **AC-3.1 now escalates on `unmeasurable` as well as `new-mechanism`.** v1.2 left AC-4.5's
+  fail-safe stated only in AC-4.5, so the panel rule and the fail-safe rule had to be composed by the
+  reader. Stating both in AC-3.1's one sentence makes the panel derivable from one AC, which is what
+  a PROPERTIES author actually needs.
+- **The `R > S` reformulation is a better idea than the presence test it replaces**, and its
+  justification — *"the pairing is positional-free"* — is exactly why. My finding was that presence
+  is undecidable on an accumulating file; counting is the general answer, not a patch. F-01 is a
+  defect in one clause's arithmetic, not in the choice of mechanism, and the fix I propose keeps the
+  mechanism intact.
+- **AC-3.4's five-step reader with the skip-set *by reference* is the strongest single edit in this
+  revision.** *"This REQ enumerates it nowhere else, so it has exactly one membership"* converts a
+  recurring class of defect — the same set written twice and drifting — into one that cannot recur
+  by construction. It is also the pattern F-06 asks for one more time, for `HALT-REASON:`.
+- **SE G-03 was accepted rather than argued with.** The REQ had claimed `DOC-SHA256:` was both a
+  digest of the raw bytes and a reuse of the tier-1 hashing; v1.3 states plainly that only the second
+  is true, explains what the canonical form drops, and then shows that the AND with `DOC-BYTES:`
+  recovers it — including the falsifying case (*"a revision that changes only line endings"*), which
+  is now an O-10 obligation. Withdrawing a claim and keeping the mechanism is harder than defending
+  the claim, and it is what a receive side that has to be exact requires.
+- **R-9 exists at all.** SE G-06 is a finding about the mechanism this REQ is building, raised from
+  the review of the REQ itself, and the author recorded it as an accepted risk with a named successor
+  rather than burying it. F-07 is about the arithmetic in its evidence, not about the judgement.
+
 ## 8. Recommendation
 
 ## Verdict
