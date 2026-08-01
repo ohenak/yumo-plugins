@@ -308,6 +308,11 @@ state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-)entered. *Then
    - the operator's `RESOLVED:` marker is **left in place**, unstripped, so `checkPostmortem` still reads `resolved` on the next entry;
    - the post-mortem file is **byte-unchanged**. *Scoped to that file*, the only effect of the entry is the S-16 notice on row B below. It is **not** a claim that the invocation is
      otherwise unaffected;
+   - the operator-facing text is **this refusal's own**, not step G's. Reusing step G's row would tell the operator the opposite of the truth: step G refuses because the marker is
+     *unresolved*, whereas step 4 fires on a post-mortem the operator **did** resolve. The ❌ phase row therefore reads `Refused — reset region corrupt at {path} ({reason})`, `{reason}`
+     being the S-16 reason, and the halt reason carried to the run report and the queue **names the sanctioned repair for that reason** (AC-1.5(4)'s repair table) instead of the shipped
+     generic *"set the row back to pending, then re-run the queue"*, which on this path reproduces the refusal on every iteration. `postmortemStatus` is **not** reported as `unresolved`.
+     These two strings are operator-facing renders of S-16, declared in §6; they are **not** new catalogue ids, and no other new string is minted;
    - the phase is **refused, not halted** — a *phase refusal* in the catalogue §1 sense, the same shape as step G's refusal of an unresolved post-mortem. *Returns* means **the phase does not run and
      the invocation terminates on step G's path**: a ❌ phase row is recorded, the pipeline stops, and on the shipped halt path the feature's `docs/_queue/QUEUE.md` row is rewritten to
      `halted` and committed — the queue write is reached *because* the refusal is step-G-shaped (M-7a, M-7b). A literal early `return` would **not** reach it: the entry-validation halts
@@ -359,15 +364,25 @@ state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-)entered. *Then
       run report emits `reset-region-corrupt: {reason}` (S-16) naming the file and, per reason, the offending **line** or the pair `H`/`A`. **Exactly one S-16 notice is emitted, whatever the
       fault count**: the reported `{reason}` belongs to the **first failing line in document order**, and `counts-mismatch` only when every line passes step 2, so two S-16 notices never
       co-occur in the report row's `; `-joined `notice` cell. A corrupt region is never partially believed. **The entry then refuses the phase and returns**, per the *refusal is not a halt* paragraph above.
-      The refusal is **unconditional**: step 4 sits inside `W`'s resolution, which runs on **every** entry, so it fires whether or not the branch has rounds left in an already-granted window
-      and whether or not a `RESOLVED:` marker is pending. The justification is **fail-closed, not costless**:
+      **Where `W`'s resolution runs: after the phase gate's skip decision, before any round opens.**
+      `phaseGate` can exit with `{ skip: true }` on an approved-and-fresh document (`orchestrate-dev.js:4213`–`:4225`), and on that exit **neither step 4 nor the grant runs**: `W` is not
+      resolved, no region is read for a decision, no answering line is written, and no refusal is raised. A skipped phase reviews nothing, so a refusal there would halt the whole pipeline
+      over a phase that has no round to gain by the repair, indefinitely; and a grant there would spend the operator's one-shot clearance on an entry that opens no round. Both are pure cost.
+      The resolution therefore runs **inside the phase body that is actually going to review**, which is also what keeps a refusal on step G's path (O-6). Within that body the refusal is
+      **unconditional**: step 4 sits inside `W`'s resolution, which runs on **every** entry that reaches it, so it fires whether or not the branch has rounds left in an already-granted window
+      and whether or not a `RESOLVED:` marker is pending. There are exactly **three** entry classes, and the third is the skip: the justification is **fail-closed, not costless**:
+      - On a **skipped** entry the algorithm does not run at all, for the reasons just given; the region is untouched and both counts are unmoved.
       - On an **exhausted** branch — highest round ≥ 3 under `W` = 1 — the outcome is the same either way: the fallback admits `{1, 2, 3}`, all three are filled, and the entry would have halted
         on the budget path regardless. There the refusal is *indistinguishable* from the fallback.
       - On a **mid-window** branch with rounds remaining under `W` = 1 — reachable at highest round **2**, since `pdlc-rcv-fixed-point-stop` AC-2.1 can fire on the (1, 2) pair and its AC-2.8 can halt at round 2, either of
         which creates the region with `H = 1`, `A = 0` before a hand-edit corrupts it — the fallback would admit **round 3** and the phase would run. Step 4 refuses instead: no round-3
         cross-review file is written, the invocation terminates on step G's path and the queue row is written `halted`. That is a real cost, accepted deliberately: a region whose accounting
         cannot be trusted is not a state a review round should be opened over, because the cross-review it produced could not be placed in any window. This is the refusal's **positive control**
-        — the only branch on which honouring step 4 and falling back are distinguishable — and O-10 carries it; row B's `round` cell is stated over exactly this branch;
+        — the only branch on which honouring step 4 and falling back are distinguishable — and O-10 carries it; row B's `round` cell is stated over exactly this branch. **Its fixture is
+        synthetic while this REQ ships alone, and that is stated rather than glossed:** both halts that can create a region at highest round 2 (`pdlc-rcv-fixed-point-stop` AC-2.1, AC-2.8)
+        belong to a successor (X-05), so until it ships the only region-creating halt is the budget halt, which by construction fires on a full window. The mid-window state is therefore
+        **hand-built** — a legitimate, fully-specified test fixture, not a reachable operating state — and O-10 must construct it as such. This does not weaken §3.1's claim that AC-1 is
+        *fully determined* without a successor: every branch's behaviour is stated; one of them is only **reachable in production** once the successor lands;
    5. otherwise `W` = the greatest `WINDOW-START:` value present, or **1** if there is none.
 
    **`H − A ≤ 1` is the invariant clause 4's "exactly one answering line" relies on**, and step 3 gives it a stated domain. It holds on every path the document generates, and a refused
