@@ -86,4 +86,63 @@ halt path — and this time the emit is **unconditional**, so there is no value 
 
 ## 6. Recommendation
 
+**Needs revision**
+
+All five v4 findings are closed, the High by the better of three available routes, with every line
+number I re-counted at HEAD correct. Nothing regressed, and no mechanism in the document is in
+question. What reopens the round is two Highs on text v1.5 added:
+
+1. **F-01** — `orchestrate-dev.js:4928`'s recovery emit is **unconditional**. §6 says the refusal's
+   recovery text *"Replaces"* it and AC-1.5(4) says *"instead of"*, but `haltReason` and this `emit`
+   are different channels, so nothing is replaced: on the corrupt-region refusal the operator reads
+   the sanctioned repair **and then** *"set the row back to pending, then re-run the queue"* — the
+   line the same criterion says reproduces the refusal on every iteration. O-10 asserts that string
+   **absent** on this entry class, and a faithful implementation prints it. Choose: state that the
+   emit is **suppressed** on the corrupt-region variant (and only there — the unconfirmable-append
+   variant needs it), with an O-* obligation carrying the change; or admit it, turn *"Replaces"* into
+   *"in addition to"*, and change O-10's negative control into an assertion over both lines and their
+   order. While you are there, stop calling it *"step G's"* — `:4928` fires on every halt class.
+2. **F-02** — the byte comparison correctly *announces* the well-formed truncation
+   (`WINDOW-START: 12` → `WINDOW-START: 1`), then prescribes a recovery — *"nothing is
+   hand-repairable, re-run the queue"* — that consumes it: the residue validates on the next entry,
+   `A = H`, the clearance is spent, `W` = 1, no S-16, no mention of the residue. The document's claim
+   that comparing bytes makes the case *"announce itself here rather than as an unexplained budget
+   halt later"* is therefore true of the refusing entry and false of the sequence. Decide who removes
+   the residue — the refusing entry (my recommendation: it is the only party that knows the intended
+   bytes, and it restores the pinned generic recovery text's justification), a second recovery text,
+   or an accepted residual stated in R-10/R-11 — and give O-10 the sequel leg that performs the
+   *prescribed* recovery and asserts what the next entry does.
+3. **F-03** — §3.1's *"depends on both"* has no antecedent since the compression pass deleted the
+   clause naming the second member. Two words.
+
+**F-04 is now a real constraint on this round, not a note.** 61,437 of 61,440 bytes: 3 bytes. Both
+Highs need net-positive text and another compression pass would start removing reasons. The lever
+that funded rounds 3 and 4 is still there and is the correct home for what needs to move — the
+unconfirmable-append variant's render belongs with row B's schema in
+`docs/_constraints/pdlc-rcv-catalogue.md`, cited from here. Nothing may be paid for by dropping an
+obligation.
+
+The window, the anchored one-shot clearance, the ordered receive-side algorithm, the two row-B
+variants, the byte-comparing confirmation and the `postmortemStatus` mechanism are all stated at the
+level a TSPEC can be written from. The durable signal from this round is narrower than last round's
+and worth harvesting on its own: **pinning a shipped string's bytes is only half a pin — the other
+half is the guard around the site that emits them.** v4 closed on a value whose *conditional* emit
+mattered; v5 opens on the very next emit, which has no condition at all.
+
 ## Verdict
+
+All five v4 findings are closed, including the High — `postmortemStatus` is now `written` by a named
+mechanism (`orchestrate-dev.js:4890`–`:4901`) whose citations I re-counted at HEAD and found exact,
+and the `No POSTMORTEM was written.` coupling is stated in §6 and asserted absent by O-10. Two new
+Highs are open, both on text v1.5 added. (1) The pinned recovery string at `orchestrate-dev.js:4928`
+is emitted **unconditionally** on every halt class, so §6's *"Replaces the shipped generic … on this
+path only"* names a substitution the shipped code has no seam for, and O-10 asserts that string
+absent on an entry where a faithful implementation prints it. (2) The byte-comparing confirmation
+announces the well-formed truncation (`WINDOW-START: 12` landing as `WINDOW-START: 1`) and then
+prescribes the generic *"re-run the queue"* recovery, which lets the residue validate on the next
+entry and spend the clearance silently — so the case v1.5 says it closes is closed on the refusing
+entry and reopened by the document's own repair instruction. Two Low findings accompany them, one of
+which (3 bytes of size headroom) constrains how the fixes can be paid for. Per the approval rule, an
+open High means the document is not approved.
+
+VERDICT: Needs revision
