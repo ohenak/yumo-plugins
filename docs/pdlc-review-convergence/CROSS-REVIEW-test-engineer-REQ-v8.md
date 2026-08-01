@@ -70,6 +70,71 @@ the mechanisms, which is the first round of this review in which that has been t
 
 ## 3. Findings
 
+Every finding below is **new** and lies in text this revision changed. All three ids are fresh; none is
+a re-file. None is in an AC: the mechanisms v1.6 states are, as far as I can trace them, correct and
+consistent. Both blocking-eligible findings are in the artifacts a downstream author reads *instead of*
+the ACs — O-10's obligations and §5's fixed renders — which is exactly where a defect is most likely to
+survive review and reach a test suite unchallenged.
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Medium | Local | **O-10's counts-mismatch bullet asserts two opposite outcomes in one obligation.** The v1.5 sentence *"**no** window granted on that entry **or any later one**"* is retained verbatim, and v1.6 appends *"the clearance after it grants a window, so the fixture asserts a **recoverable** refusal and not a permanent one"*. A PROPERTIES author cannot satisfy both: the first forbids any later grant, the second requires one. §10.11's own row says the bullet *"gains the recovery leg it previously specified away"* — but the specifying-away sentence is still there. This is the same defect class as my round-7 F-01 (an O-10 obligation unsatisfiable by a conformant implementation), relocated from the ACs into the obligation that survives them. See §3.1. | O-10, the v1.5 counts-mismatch bullet; AC-1.5(4)'s per-reason repair table; §10.11 row 2 |
+| F-02 | Low | Local | **The S-16 render is fixed in three places and two of them disagree about what goes in the brackets.** §5's S-16 row: *"the offending **value** follows the path in square brackets"*, immediately followed by an example carrying the whole **line**, `… docs/f/POSTMORTEM-R-f.md [WINDOW-START: 99]`. §6's row: *"a trailing ` [{line}]` carrying the offending **line**"*. AC-1.5(4) step 4: *"the offending **value**"*. So a test author derives `[99]` from two of the four statements and `[WINDOW-START: 99]` from the other two, on a row whose own text says the render is fixed *"**here and only here**, character for character"* precisely so that cannot happen. The example and §6 agree, so the likely intent is the line; the prose is the outlier. Fix: one word in §5's S-16 row (*value* → *line*) and in step 4's summary. | §5 S-16, §6 `reset-region-corrupt:` row, AC-1.5(4) step 4, AC-4.7's character-for-character bar |
+| F-03 | Low | Cross-Feature | **The claim that a garbled `REVIEW-SCOPE-ROUNDS:` line *"costs one round"* is not supported by any mechanism, and no obligation asserts the round after it.** S-17's emitter is the **loop**, so the four non-canonical inputs are loop-side defects, and a deterministic one (a wrong render, a line the dispatch never carries) recurs on every round of the phase. Each such round: verifier omits `## Disposition` ⇒ approval refused, `disposition-missing` reported ⇒ the optimizer is dispatched to address feedback that names no document defect ⇒ a plausible byte-identical revision ⇒ **AC-2.8 zero-delta halt (S-11)**, whose reported reason attributes to the author a failure that is the loop's. The operator clears, the window resumes (AC-1.5(5)), and the same dispatch is emitted again. The document is not wrong about the single round; it is silent about the sequence, and O-10's new bullet asserts only the single round — so all four assertions are **green** on an implementation that never converges. Non-blocking because the diagnostic does reach the operator (`disposition-missing` on consecutive rounds) and the absolute cap terminates it; but the *"costs one round"* sentence should either go or say what the second round costs, and O-10 should ask for two consecutive garbled dispatches. Tagged `Cross-Feature` because the shape — *an obligation that asserts the branch and never the path after it* — is now the third round running in which I have filed it. | AC-3.2's loop-side-response paragraph (`:1397-1402`), S-17, O-10's S-17 bullet, AC-2.8, AC-1.5(5) |
+
+### 3.1 F-01 in full — one obligation, two contradictory assertions
+
+O-10's counts-mismatch bullet now reads, in full (line breaks mine):
+
+> • a region with two `HALT-REASON:` lines and **no** answering line ⇒ counts-mismatch ⇒ `W` = 1,
+> **no** window granted on that entry or any later one, `RESOLVED: yes` **not** consumed, and
+> `reset-region-corrupt: counts-mismatch (H=2, A=0) {path}` in the report row (AC-1.5(4) steps 3–4,
+> S-16 — SE v6 G-14). The positive control is the same region with one answering line, which grants
+> exactly one window. **The recovery leg is part of this obligation**: after the operator's sanctioned
+> `counts-mismatch` repair — deleting the whole `## Reset Region` section — the next halt re-creates a
+> one-line region and the clearance after it grants a window, so the fixture asserts a *recoverable*
+> refusal and not a permanent one (SE v6 G-19, TE v6 F-02).
+
+The first sentence and the last are contradictory over the same fixture. *"No window granted on that
+entry **or any later one**"* is a universal over later entries; *"the clearance after it grants a
+window"* names a later entry that grants one. Nothing in the bullet scopes the universal — it does not
+say *"or any later one **absent a repair**"*, which is the reading that would make both true and which
+is presumably what is meant now that AC-1.5(4) states a repair for this reason.
+
+**Why this is not a wording quibble.** O-10 is the input to the PROPERTIES phase, and this bullet is one
+of the two obligations in the whole document that pins a *non-recovery*. A PROPERTIES author has three
+available moves and two of them are bad:
+
+1. Write both assertions. The suite is red on one of them against every implementation, conformant or
+   not. The author reports the REQ as internally contradictory and the phase stalls — the good outcome,
+   and the least likely one, because the bullet reads as settled.
+2. Take the first sentence as normative — it is the older text, it is the one carrying the AC citation
+   (*"steps 3–4"*), and it is stated in the imperative shape the other bullets use. The author writes a
+   fixture that refuses, then asserts **no** grant on a later entry, and to make that assertion pass
+   must build a later entry that does **not** include the repair. That test is green against an
+   implementation that has correctly implemented recovery **and** against one that has bricked the
+   phase — it cannot distinguish them. That is an unfalsifiable oracle for the exact property round 7
+   was spent establishing.
+3. Take the last sentence as normative and drop the universal. Correct, and available only to an author
+   who notices the contradiction and resolves it in the right direction with no textual authority for
+   doing so.
+
+Move 2 is the default, and move 2 is precisely the *permanent-halt* oracle that made this a finding in
+round 7. The AC was fixed; the test obligation that encodes the old reading was not.
+
+**The residue is one clause.** Delete *"or any later one"*, or scope it: *"no window granted on that
+entry, and none on a later entry that has not performed the sanctioned repair"*. Then the recovery leg
+is the positive control for the same fixture rather than its negation, and the pair is exactly the
+mutation criterion this obligation wants — an implementation that refuses permanently fails the
+recovery leg, and one that grants on a corrupt region fails the refusal leg. As written, no
+implementation passes both, so neither leg can be trusted.
+
+I checked whether the AC itself carries the same residue: it does not. AC-1.5(4)'s per-reason table,
+the *why counts-mismatch is repaired by deletion* paragraph and §5's *reset region* row all state the
+recoverable reading and none of them asserts permanence. §10.11's TE F-02 row states the intent
+correctly too. The contradiction is confined to O-10, which is why this is Medium and not High — the
+authority is unambiguous, the artifact a downstream author actually works from is not.
+
 ## 4. Mechanical fixes
 
 ## 5. Measurement Required
