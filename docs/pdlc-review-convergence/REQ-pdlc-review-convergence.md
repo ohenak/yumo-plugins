@@ -64,9 +64,11 @@ depends-on: [pdlc-review-loop-hardening]
 > AC-1.5(5) clause 5 is re-flowed (MF-23).
 
 > **Revision note (v1.6).** This version answers round 7. Both panels again closed **every** prior
-> finding — the fourth consecutive round of that — and every round-7 finding lies in text v1.5 added,
-> five of the six in the **refusal path** v1.5 introduced to close round 6. §10.11 maps each one. Four
-> things changed:
+> finding — the fourth consecutive round of that — and every round-7 finding lies in text v1.5 added.
+> The two panels **filed seven** (SE: 1 High, 2 Medium; TE: 1 High, 2 Medium, 1 Low), carried on **five**
+> rows in §10.11 because two pairs are the same finding filed twice; **five of the seven filed** are in
+> the **refusal path** v1.5 introduced to close round 6 (corrected in v1.7 — SE v8 MF-6, TE v8 MF-20).
+> §10.11 maps each one. Four things changed:
 >
 > 1. **A refusal is not a halt (SE G-18, TE F-01, High).** v1.5 made validation a conjunct of the grant
 >    gate and said an invalid region *"is inert … the operator's clearance survives for a later entry"*.
