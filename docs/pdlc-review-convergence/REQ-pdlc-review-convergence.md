@@ -874,7 +874,15 @@ branch — the state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-
      in the accounting. *Returns* means **the phase does not run and the invocation terminates on step
      G's path**: exactly as there, a ❌ phase row is recorded and the pipeline stops, and on the shipped
      `orchestrate-dev` halt path the feature's `docs/_queue/QUEUE.md` row is rewritten to `halted` and
-     committed. That is the intended outcome — the region needs an operator, so an unattended queue must
+     committed. Both halves are citable at the Citation baseline `9486c81`: step G's gate records the
+     ❌ row and then **throws** `haltError`
+     (`pdlc/workflows/orchestrate-dev.js:3895-3901`, in `main`, literal
+     `Refused — unresolved POSTMORTEM at`), and the halt catch calls
+     `recordHaltFn({ feature: featureName, status: "halted" })` (`:4551`, same symbol) — so the queue
+     write is reached *because* the refusal is step-G-shaped. A literal early `return` would **not**
+     reach it: the entry-validation halts nearby build their final report directly and never call
+     `recordHaltFn`, which is exactly the distinction this bullet draws (TE v9 MF-25). That is the
+     intended outcome — the region needs an operator, so an unattended queue must
      stop rather than re-pick the feature and refuse again once per iteration — and it is stated here
      because a *return* read literally would let the pipeline advance past an unentered review phase
      (SE v8 G-23, TE v8 MR-08). What the refusal does **not** do is touch the post-mortem or the
@@ -1051,8 +1059,9 @@ branch — the state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-
    order, of every halt reason that halt raised — so a round on which S-3 and S-4 both hold writes
    **one** line reading `fixed-point: …; budget-exhausted: …`, and the operator sees the same string
    here and in the run report's `notice` cell (AC-2.2, TE v5 F-06). Because each halt appends and
-   nothing is written after the region, the **last** such line is the most recent halt's (SE v5 G-11). On the entry that observes
-   an unconsumed clearance (clause 4), the loop reads that last line and its **leading** reason:
+   nothing is written after the region, the **last** such line is the most recent halt's (SE v5
+   G-11). On the entry that observes an unconsumed clearance (clause 4), the loop reads that last
+   line and its **leading** reason:
 
    | Last `HALT-REASON:` begins | Effect of the `RESOLVED: yes` | Line the loop writes |
    |---|---|---|
@@ -2123,9 +2132,10 @@ both ACs would delete the catalogue's examples and leave the catalogue unable to
 output on a real corpus.
 
 **Unparseable input is reported, never silently skipped.** Outside the exempt regions, a token that
-looks like a citation — any `:` followed by digits inside backticks — but matches none of C-1 … C-4 is
-reported as `unparseable` with its file and line. The checker never fails, never throws, and never exits on a parse problem; it
-accumulates. This is the receive-side totality DC-01 requires (TE F-02).
+looks like a citation — any `:` followed by digits inside backticks — but matches none of C-1 …
+C-4 is reported as `unparseable` with its file and line. The checker never fails, never throws,
+and never exits on a parse problem; it accumulates. This is the receive-side totality DC-01
+requires (TE F-02).
 
 For each citation that resolves (C-1, C-2) the checker performs three checks:
 
