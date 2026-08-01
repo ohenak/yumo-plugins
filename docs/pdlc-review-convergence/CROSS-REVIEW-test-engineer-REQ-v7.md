@@ -247,6 +247,40 @@ in a sentence and neither blocking.
 
 ## 7. Positive Observations
 
+- **The first-halt fix was taken at the right altitude.** I proposed adding a clause for the creating
+  halt alongside the existing one — two cases, two sentences. v1.5 instead found the single rule that
+  covers both: *"the captured region of a file that does not exist is the **empty region**"*, stated in
+  O-5 where the implementation lives, so AC-1.4 has one obligation rather than a case split that a
+  later edit could desynchronise. That is the third round running in which the answer generalised the
+  fix rather than applying it, and it is the reason `H` can now be described in five words
+  (*"exactly the number of halts taken"*) in four different places without any of them drifting.
+- **Step 3 is the one addition this revision made that no reviewer's proposed wording contained.**
+  SE G-14 asked for the invariant to be validated; my Q-09 asked whether it was worth *stating*. v1.5
+  did both and, crucially, gave the invariant a reachability argument rather than an assertion — *"a
+  halt strips the marker … so two halts cannot accumulate without an answer between them"*. That
+  argument is what let me find F-01: I could only construct the counts drift by looking for a path the
+  argument does not cover. A stated invariant with a stated reason is testable *and* attackable; an
+  assumed one is neither.
+- **O-10's v1.5 bullets carry their own justification, not just their assertion.** The first-halt
+  bullet explains why the existing test does not cover it; the append bullet says *"with a prepending
+  implementation failing the test"*, which is a mutation criterion, not a description; the `VERDICT: `
+  bullet names the exact object the assertion must match and the exact object it must **not**
+  (`malformed: true` vs the genuine `0/0/0`). Those are the three shapes that most often false-green in
+  this repo, and each is pre-empted in the obligation itself. F-01 is a defect in one of these bullets,
+  which is precisely because the bullets are specific enough to be wrong — a vaguer obligation would
+  have hidden the contradiction.
+- **AC-2.7 row 3 was verified against HEAD rather than reasoned from the model.** The trace
+  (`:900-903` → `:906` → `:415-422` → `:424-428`, the object at `:394-400`, distinct from `:451`) is
+  the kind of citation that survives a reader who disbelieves it. I re-read all six of those locators
+  at `9486c81` and they resolve as described, including the distinction between the two zero-count
+  return objects — which is the whole content of the row. F-04 below contests where the *definition*
+  lives, not the value.
+- **The trailing space is now normative in both places it is read.** `VERDICT:Approved` counting as
+  zero is a one-character behaviour that would otherwise have been discovered in implementation, and it
+  is now in AC-2.7's preamble, AC-3.4 step 1 and an O-10 bullet with the counter-example spelled out.
+  That is the cheapest possible moment to fix it and it was fixed from a **mechanical** note, not a
+  finding — the fix list is doing the job it exists for.
+
 ## 8. Recommendation
 
 ## Verdict
