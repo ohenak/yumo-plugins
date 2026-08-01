@@ -204,7 +204,45 @@ empty cells explicitly as that paragraph does, say whether the S-4 notice co-occ
 
 ## Questions
 
+Q-13, Q-14 and Q-15 from v6 are **closed** by v1.5 (step 3's counts check; the append rule; AC-3.2's
+dispatched range) and are not restated. Three new, each the fastest route into the finding beside it.
+
+| ID | Question |
+|----|---------|
+| Q-16 | On an exhausted branch with a corrupt reset region and a fresh `RESOLVED: yes`: after AC-1.5(4) step 4 refuses, does the entry halt? If it does, what in the document stops AC-1.4 clause 2 from stripping the marker the refusal just declined to spend? (G-18) |
+| Q-17 | The report says `reset-region-corrupt: counts-mismatch`. Which line does the operator delete or correct, given that §6 forbids a human writing an answering line and AC-1.4 clause 1 defines `H` as the number of halts taken? (G-19) |
+| Q-18 | For an entry that admits no round, what exactly are the six cells of its report row — including whether `notice` carries the S-4 halt reason alongside S-16, and how `round` is computed for a round that has no file? (G-20) |
+
 ## Positive Observations
+
+- **Every one of my five round-6 findings is closed at the mechanism, and two are closed better than I
+  asked.** G-14's counts check is stated in both directions, folded into the same fail-closed step as a
+  bad value, and given a reachability argument; G-16's window is *dispatched* rather than derived, with
+  the SKILL told not to guess when the input is absent — a refusal I did not think to ask for and which
+  is the difference between a missing input and a silently wrong row set. The pattern across three
+  rounds now is that the author closes the mechanism rather than the sentence.
+- **Validation became a conjunct of the grant gate, not just a constraint on `W`.** This was TE's finding
+  and it is the sharper of the two readings: fail-closed on `W` without fail-closed on *spending* leaves
+  a state where every future clearance is consumed and nothing is granted. The paragraph that argues it
+  (*"Nothing ever removes a line from the region, so that state is permanent"*) is the right kind of
+  argument to have in a REQ. G-18 is not a disagreement with that decision — it is the observation that
+  the halt which follows the refusal was not carried through the same analysis.
+- **The trailer reader now agrees with the shipped code on every enumerated input, and I verified it.**
+  Row 3's `malformed` classification, the `:906` fall-through, the `:424-428` fallback and its
+  distinction from `:451`'s genuine `0/0/0` all hold at `9486c81`, and the trailing space in
+  `VERDICT: ` is written into both normative clauses and named as excluding `VERDICT:Approved`. Making
+  the table **ordered** — so rows 5–7 are reached only for a section with exactly one trailer line — is
+  what converts six independent rows into a single-valued function, which is DC-01's actual requirement
+  and not merely tidiness.
+- **AC-1.4's unification of the creating and preserving halts is the correct altitude.** One rule over
+  every halt, with the empty region as the identity element of the read-modify-write, is a better answer
+  than two clauses with a shared postcondition — and it is what lets §5 say `H` is exactly the number of
+  halts taken. My G-18 is precisely a test of that sentence, which was worth having stated so plainly:
+  the claim is checkable *because* v1.5 made it universal.
+- **AC-2.6's table is now stated over window offsets in its cells and not only in its lead-in**, with the
+  `W = 1` reading spelled out. The general lesson worth harvesting is the one that keeps recurring in
+  this document: **when a rule moves from absolute indices to a relative frame, the derivable artifacts
+  — tables a test author reads off — must move with it, or the frame change is only half applied.**
 
 ## Mechanical fixes
 
