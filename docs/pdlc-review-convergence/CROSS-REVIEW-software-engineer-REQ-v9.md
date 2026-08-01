@@ -220,6 +220,15 @@ finding.
 
 ## Mechanical fixes
 
+Not findings. Apply without discussion; none affects the recommendation.
+
+| id | Where | Fix |
+|---|---|---|
+| MF-11 | §10.12 lead-in | It says the eight filed findings are *"carried on **six** rows below"*. The table has **seven** finding rows (TE F-01; SE G-21/TE F-02; G-22; G-23; G-24; G-25; TE F-03), which is what 8 filed minus one merged pair gives. The second "pair" the lead-in names — *"SE G-23's invocation question shares its answer with TE MR-08"* — cannot reduce the row count, because MR-08 is a **measurement request**, not one of the eight filed findings; it has its own row at the bottom of the table. Write **eight filed, seven rows, one merged pair**. This is the third consecutive round in which the §10.x lead-in's arithmetic needed a mechanical fix (MF-1 at round 7, MF-6 at round 8), and the recurrence is now worth a rule rather than a correction: **state the count and the derivation in the same sentence, and count the rows after writing them, not before.** |
+| MF-12 | Header *Cross-Reviews* row | Add `CROSS-REVIEW-software-engineer-REQ-v9.md` and `CROSS-REVIEW-test-engineer-REQ-v9.md` with the next revision, per the row's own maintenance rule (SE v4 MF-4). |
+| MF-13 | §9, R-9's demonstration | Extend the series once more: round 8 = **1** (`(0+0) + (0+1)`), round 9 = SE `(0+3)` plus TE's. `blocking(8) = 1 < blocking(6) = blocking(7) = 6`, so the rule does not fire at round 8 — and round 9's count is **higher** than round 8's on a revision that closed five findings and left the document materially better. Round 7 was the false positive on a flat count with collapsing severity; round 9 is its mirror — a *rising* count on a round that also made correct progress, which the rule reads as "no fixed point" and therefore does not halt on. Both directions in one demonstration is worth more to the calibration successor than either alone, and it costs one sentence. |
+| MF-14 | AC-1.5(5) clause 5, and AC-3.2's *What a garbled range costs* paragraph | Two re-flows in v1.7 left an over-long line each (*"nothing is written after the region, the **last** such line is the most recent halt's (SE v5 G-11). On the entry that observes"* and *"asserts only the first round is green against an implementation that never converges. Guessing is forbidden for the"*). Re-wrap to the document's width; MF-23's fix introduced the first of them. |
+
 ## Recommendation
 
 ## Verdict
