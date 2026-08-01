@@ -67,6 +67,139 @@ more. That was the right call and it is the single most load-bearing decision in
 
 ## 3. Findings
 
+Every finding below is **new** and lies in text this revision changed. All three ids are fresh; none
+is a re-file of a round-2/3/4/5 finding. Two of the three are consequences of one structural move —
+v1.4 re-based the one-shot accounting from the human's `RESOLVED:` marker onto lines **the loop
+writes**, without stating everywhere that the loop always writes them.
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | High | Local | **No AC requires the *first* halt of a phase to write a reset region, and under the new `H`/`A` accounting that makes the operator's escape hatch a no-op on the most common path.** See §3.1. | AC-1.4 clauses 1–2, AC-1.5(4), AC-1.5(5), §5 durability row *"Whether a clearance is still unanswered"*, §5 S-12, §6 `## Reset Region` row |
+| F-02 | Medium | Local | **On a region that fails AC-1.5(4) step 2's validation, nothing says whether the clearance is consumed — and both readings are derivable, one of which is a permanent dead end with no stated repair path and no report slot.** See §3.2. | AC-1.5(4) steps 2–4 and clause 4's gate, AC-1.4 clause 1, §5 catalogue (S-5/S-6), AC-4.7 |
+| F-03 | Low | Local | **AC-1.5(5)'s third row enumerates a case that clause 4's gate makes unreachable, so one of the three receive-side rows has no constructible fixture.** Clause 5's table is read *"on the entry that observes an unconsumed clearance (clause 4)"*, and clause 4's condition is `A < H`. `A < H` implies `H ≥ 1`, which implies at least one `HALT-REASON:` line is present — so *"absent"*, the first of the third row's three inputs, cannot co-occur with the precondition under which the row is read. The other two inputs (*unparseable*, *any other value*) are reachable and the row is still needed for them; only *absent* is dead. This matters because §5's S-12 row advertises the receive side as *"all four cases … absent; anything else"*, and O-10 will be read as asking for a fixture per case. Fix: either drop *absent* from row 3 and from S-12's enumeration, or state where it **is** reachable (I could not construct it: `H` is by definition the count of the lines whose absence the row describes). | AC-1.5(5) table row 3, AC-1.5(4) clause-4 gate, §5 S-12, O-10 |
+
+### 3.1 F-01 in full — the accounting moved onto lines the halt path is not always required to write
+
+v1.3 anchored one-shot on `R > S`, counting the operator's `RESOLVED:` lines against the loop's
+`WINDOW-START:` lines. That formulation needed nothing from the halt path to make the **first** grant
+work: on a fresh post-mortem `R = 1 > S = 0` held the moment the operator wrote the marker. v1.4
+re-bases the same decision onto `A < H`, where **both** counts are lines the loop writes. The gate is
+now:
+
+> A clearance is **unconsumed** exactly when `checkPostmortem` reads a `RESOLVED: yes` **and**
+> `A < H`. (AC-1.5(4) clause 4)
+
+So the first grant now depends on `H ≥ 1` — i.e. on the halt that produced the post-mortem having
+written a `HALT-REASON:` line into a `## Reset Region` section. Three statements bear on whether it
+did, and they do not compose:
+
+- **AC-1.4** is the AC that owns the write, and both of its clauses are scoped: *"Therefore, on
+  **every halt that finds an existing post-mortem**: 1. the reset region is preserved … and the halt
+  **appends its own `HALT-REASON:` line to the end of that region**; 2. any `RESOLVED:` line already
+  in the file is stripped."* A halt that finds **no** existing post-mortem — the first halt of a
+  phase, which is the case that creates the file — is outside both clauses. Nothing in AC-1.4 says it
+  creates `## Reset Region` or writes anything into it.
+- **AC-1.5(5)** says *"Each halt appends exactly one `HALT-REASON: {value}` line to the **end** of the
+  reset region (S-12, AC-1.4)"* — unconditional, but *appends to the region*, which presupposes the
+  region exists, and delegates to AC-1.4 for the write.
+- **§6**'s `## Reset Region` row names the emitter as *"the halt path (AC-1.4)"* — delegating back to
+  the AC whose clauses do not fire. The circle does not close anywhere.
+
+The wrong reading is not exotic and its consequence is total. Take the ordinary first halt:
+
+1. Phase R, rounds 1–3 run and fail. Entering round 4 ⇒ S-4 ⇒ the loop writes
+   `POSTMORTEM-R-{feature}.md` for the first time. Under the reading AC-1.4 licenses, the file has no
+   `## Reset Region`. §5's S-12 row is explicit about what that means: *"An absent `## Reset Region`
+   heading is read as an empty region: `H = A = 0`, `W = 1`, no reset in effect."*
+2. The operator addresses the findings and writes `RESOLVED: yes`. `checkPostmortem` returns
+   `resolved`, so step G admits the phase.
+3. AC-1.5(4) evaluates the gate: `A = 0`, `H = 0`, so `A < H` is **false**. No answering line is
+   written and **no window is granted**. `W` stays 1.
+4. AC-1.1 admits rounds 1…3 counted from `W = 1`; the branch's highest round is already 3; the phase
+   is admitted **no rounds** and halts immediately on the budget path — appending, on this second
+   halt, the `HALT-REASON:` line clause 1 now does require, and stripping the operator's marker.
+5. The operator clears again. Now `H = 1`, `A = 0`, so the *second* clearance is honoured. The first
+   one was silently swallowed.
+
+Step 5 is why this is a defect and not merely a paperwork gap: the mechanism is not permanently
+broken, it costs the operator exactly one wasted round-trip per document and produces a halt that
+looks identical to a real budget halt. That is the worst shape for an operator-facing failure — it
+self-heals on the second attempt, so it will be reported as flakiness rather than as a bug, and §5's
+durability row will keep saying *"`A = H` ⇒ every halt so far has been answered"* while a halt has
+plainly not been.
+
+The testability half is why I file it High rather than Medium. The falsifying test is
+*"first halt of a phase ⇒ the post-mortem carries `## Reset Region` with exactly one `HALT-REASON:`
+line"*, and **the REQ does not currently entitle a PROPERTIES author to that expectation** — AC-1.4's
+clauses do not apply to that halt, and the competing expectation (*"the first post-mortem has no
+region; the region appears on the second halt"*) is equally derivable from the same text. Worse, the
+natural O-10 test for the whole mechanism — *"halt, clear, assert a fresh window opens"* — is written
+against a fixture that already has a region (because that is how one writes the fixture), so it
+passes under **both** readings and never touches the first-halt path. This is an unfalsifiable-oracle
+shape, not a wording quibble: the one property that distinguishes the readings is the one nobody will
+write unless the REQ asks for it.
+
+Fix, and it is one clause: state AC-1.4's obligations over **every halt**, not only over a halt that
+finds an existing file — *"a halt that finds no existing post-mortem creates `## Reset Region`
+containing its own `HALT-REASON:` line; a halt that finds one preserves the region, appends its
+`HALT-REASON:` line to the end of it, and strips any `RESOLVED:` line"* — and add the first-halt case
+to O-10 alongside the second-halt case already there. The `H`/`A` invariant then reads
+*"exactly one `HALT-REASON:` per halt, exactly one answering line per honoured clearance"* with no
+exception, which is what the accounting already assumes everywhere else.
+
+### 3.2 F-02 in full — the fail-closed branch does not say whether it spends the clearance
+
+AC-1.5(4)'s ordered algorithm is a genuine improvement and it is total and single-valued **on `W`**.
+It is silent on the other half of the same entry. Its step 3 says:
+
+> **if any line fails validation ⇒ `W` = 1, fail-closed**, no reset is honoured, and the run report
+> names the file and the values found. A corrupt region is never partially believed.
+
+But the decision to *write an answering line* is taken by clause 4's gate, which is stated over
+`checkPostmortem`'s marker and the two raw counts — `A` = *"the number of `WINDOW-START:` **plus**
+`WINDOW-RESUMED:` lines"* — and mentions validation nowhere. So on a region carrying, say,
+`WINDOW-START: 9` when the branch's highest round is 6, plus one `HALT-REASON:`:
+
+- **Reading A** — the counts are counts of *lines*, so `A = 1`, `H = 1`, `A < H` is false, nothing is
+  written, and the clearance is *not* consumed. Benign, and the operator can retry after repairing
+  the file.
+- **Reading B** — *"no reset is honoured"* constrains only `W`, and the gate is evaluated on the raw
+  counts regardless. Take the reachable region carrying two `HALT-REASON:` lines and one **invalid**
+  `WINDOW-START:`: `H = 2`, `A = 1`, so `A < H` holds, clause 4 writes `WINDOW-START: {N}` and `A = H`
+  again. The clearance is **spent** and `W` is still 1, because the invalid line is still in the
+  region and step 3 fails it again on every subsequent read.
+
+Reading B is a dead end with no exit. Nothing ever removes a line from the region — AC-1.4 clause 1
+preserves *"every `WINDOW-START:`, `WINDOW-RESUMED:` and `HALT-REASON:` line already in
+`## Reset Region`"* — so once one invalid line is present, `W = 1` is permanent, every subsequent
+clearance is consumed and grants nothing, and the phase halts on entry forever. That is precisely the
+*"dead end"* AC-1.5(3) says the escape hatch exists to prevent, and no AC gives the operator a
+sanctioned repair: §5 calls the region *"machine-written and machine-maintained"*, and the one thing a
+human is told to write into this file is the marker, not the region.
+
+Reachability is not hypothetical. The human is *directed* to hand-edit this exact file, the agent that
+writes the post-mortem body has no obligation to leave the region alone beyond O-9(d)'s
+belt-and-braces prompt clause, and a crash between the read and the re-apply that O-5 specifies leaves
+a partially-written region behind. A mechanism whose corrupt state is unrecoverable needs to say so
+deliberately, or not be unrecoverable.
+
+There is a third gap in the same sentence, and it is the one a test author hits first: step 3 requires
+that *"the run report names the file and the values found"*, and the run report has **no slot for
+it**. AC-4.7 fixes the row schema at six columns, one row per round, and declares the columns closed;
+the `notice` column takes *"a possibly-empty, ordered list of S-3 … S-6 and S-11 notices"*, and §5's
+catalogue — now explicitly *"fourteen"*, with *"FSPEC may not add a fifteenth without amending this
+table"* — has no member for a corrupt reset region. So AC-1.5(4) mandates a report output that this
+REQ's own closed catalogue forbids FSPEC to invent. A PROPERTIES author writing the fail-closed cases
+(an O-10 bullet as of v1.4) can assert `W = 1` but cannot assert anything about what the operator is
+shown, which is the half of the behaviour that decides whether the dead end is diagnosable.
+
+Fix, all three in one edit to AC-1.5(4): (a) state whether a region that fails validation consumes the
+clearance — I would say **it must not**: fail-closed on `W` should mean fail-closed on spending too,
+so the gate becomes *"`RESOLVED: yes`, `A < H`, **and** the region validates"*; (b) say what an
+operator does with a region that never validates again (a sanctioned repair, or an explicit statement
+that the region is human-repairable when the report names it); and (c) give the corrupt-region notice
+a catalogue id and an AC-4.7 home, as S-5/S-6 have.
+
 ## 4. Mechanical fixes
 
 ## 5. Measurement Required
