@@ -257,7 +257,7 @@ mechanism is upstream input here, not something this REQ re-specifies.
 
 | # | Dependency | Resolution form | Gating logic |
 |---|---|---|---|
-| **BL-01** | Feature `pdlc-review-loop-hardening` merged to the default branch | **Directory `docs/completed/pdlc-review-loop-hardening/` exists on the default branch** and contains that feature's `REQ`, `FSPEC`, `TSPEC`, `PLAN`, `PROPERTIES` and `LEARNINGS`; the archived queue row is recorded in `docs/completed/QUEUE-HISTORY-rows-0-1.md` as `Order 0`. **Satisfied at `9486c81`** (merge commit `7bc559a`). The v1.0 form of this row named a live `docs/_queue/QUEUE.md` row at `done`; that row was archived out of the live table when the feature completed, so the gate as first written was unevaluable (SE F-07). | Must hold at HEAD before FSPEC authoring for this feature begins |
+| **BL-01** | Feature `pdlc-review-loop-hardening` merged to the default branch | **Directory `docs/completed/pdlc-review-loop-hardening/` exists on the default branch** and contains that feature's `REQ`, `FSPEC`, `TSPEC`, `PLAN`, `PROPERTIES` and `LEARNINGS`; the archived queue row is recorded in `docs/completed/QUEUE-HISTORY-rows-0-1.md` as `Order 0`. **Satisfied at `9486c81`** (the artifacts were archived to `docs/completed/` by `7bc559a`, which is single-parent, not a merge commit — SE F-07). The v1.0 form of this row named a live `docs/_queue/QUEUE.md` row at `done`; that row was archived out of the live table when the feature completed, so the gate as first written was unevaluable (SE F-07). | Must hold at HEAD before FSPEC authoring for this feature begins |
 | **BL-02** | `parseVerdict` returns machine-readable `{verdict, high, medium, low, malformed?}` | Symbol present in `pdlc/workflows/orchestrate-dev.js` (see §4 M-2a) | Must exist at HEAD before FSPEC authoring — AC-2 and AC-3 are stated over its output |
 | **BL-03** | Per-round cross-review state is refreshed from the branch inside the loop, and `selectMode` computes an episode's mode from that state | Symbols `refreshReviewState`, `selectMode` present (§4 M-3e, M-3c) | Must exist at HEAD — AC-3's panel-shape decision is taken at the same seam |
 | **BL-04** | Approval anchors (`APPROVAL-HASH:` / `REVIEWED-COMMIT:`) are appended to cross-review files on the terminal round | Symbol `appendApprovalAnchors` present (§4 M-4a) | Must exist at HEAD — AC-3's verifier-round approval marker is appended by the same writer |
@@ -642,8 +642,17 @@ round N−1's revision as **new-mechanism**, in which case round N dispatches th
    not new mechanism and is not a place a new blocking finding may be raised. **Every blocking finding
    a verifier raises carries a `New-mechanism:` field** in its findings-table row, naming the section
    or clause of the revision it judged to be new mechanism (`AC-4.1, sentence 2`). A blocking finding
-   with an empty or absent `New-mechanism:` field is **not counted** in the `high`/`medium` totals of
-   AC-2 and is reported as a malformed finding in the run report;
+   with an empty or absent `New-mechanism:` field **must be excluded by the verifier from the
+   `high`/`medium` numbers it writes into its own count trailer** (AC-3.4), and recorded as a Low
+   instead. **The loop performs no subtraction and parses no findings table.** `blocking(N)` has
+   exactly one definition everywhere in this REQ — the `high` + `medium` operand of the count trailer
+   read by `extractFileVerdict` → `parseVerdict` (§5) — and this clause changes *what the verifier
+   writes into it*, never how it is read. v1.1 said such a finding "is not counted", which read as a
+   loop-side deduction from a single integer that no reader can perform, and as a second, incompatible
+   definition of `blocking(N)` requiring a findings-table grammar N-3 declines to introduce (SE F-03,
+   TE F-03). Like AC-4.6 this is therefore a **prompt-directive** clause: it binds the verifier and is
+   unenforceable by the loop, and it is stated here so the obligation has one owner rather than two
+   readings;
 3. it may raise Low findings and `## Measurement Required` items (AC-5) anywhere, without restriction.
 
 Restriction 2 is the direct answer to P-1. It is a rule about *where* a blocking finding may be
