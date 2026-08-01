@@ -265,4 +265,74 @@ Not findings. Apply without discussion; none affects the recommendation.
 
 ## Recommendation
 
+**Needs revision** — four Medium findings, **all new in v1.4**, plus one Low. **No High.** Every
+finding from rounds 1–5 is closed, five of the six exactly as this reviewer recommended and one
+(`WINDOW-RESUMED:`) better than recommended.
+
+### What must change to close this out
+
+Four clauses, each a single sentence or a single algorithm step. None requires a new mechanism.
+
+1. **G-14** — add a counts check to AC-1.5(4)'s algorithm: `A > H` or `A < H − 1` ⇒ the region is
+   corrupt ⇒ `W` = 1, no grant, reported — and state `H − A ≤ 1` as the invariant clause 4's "exactly
+   one answering line" relies on. This is the only finding this round whose failure direction is
+   **open**.
+2. **G-13** — state that the loop **appends** its `WINDOW-START:` / `WINDOW-RESUMED:` line to the end of
+   the reset region, so step 2's *"before it"* is well defined for the same reason AC-1.4 made *"the
+   last `HALT-REASON:`"* well defined.
+3. **G-16** — state that the loop passes the verifier its window (the origin `W`, or the inclusive round
+   range `{W … N−1}`), and carry it into O-9(c).
+4. **G-15** — one AC-2.7 row and one clause in AC-3.4 step 1 for a `## Verdict` section with **no**
+   `VERDICT:` line, matching whichever of *malformed* (what HEAD returns) or *unavailable* the author
+   intends, and saying which.
+
+G-17 and MF-1 … MF-5 do not block.
+
+### On the stopping rule
+
+Read as the REQ itself now defines `blocking(N)` — the sum over the round's files, by
+`extractFileVerdict` — the series is: rounds 1–3 **unavailable**, round 4 = **9**, round 5 = **11**.
+`blocking(5) ≥ blocking(4)`, both rounds available, reliable and same-shape: **AC-2.1's condition held
+at round 5**, and this round exists because the operator cleared the post-mortem rather than because
+the rule said continue. My own panel-private series is 10, 5, 5, 5, 5, **4** — the first decrease in
+four rounds, and the first round in six with **no High finding**.
+
+I set myself a test at round 4 and applied it at round 5. Here is what round 6 actually shows, stated
+plainly because it points the other way from rounds 4 and 5:
+
+- **The findings are getting smaller and the mechanisms are getting right.** Round 5's High was the
+  document contradicting shipped code on the repo's central gate. Round 6 has no High. Two of the four
+  Mediums (G-13, G-14) are *one step short* on an algorithm that is otherwise correct — not a wrong
+  mechanism, a mechanism missing a guard. Two (G-15, G-16) are a missing table row and a missing
+  dispatch input.
+- **The new-defect rate per unit of new mechanism fell.** v1.4 added more mechanism than v1.3 (a named
+  region, two new literals, an ordered algorithm, a window-scoped panel rule across six ACs) and drew
+  fewer and lighter findings. That is the first round of which that is true.
+- **It is still true that every finding is in new text.** R-9's regime has not been escaped; it has
+  been attenuated.
+
+My read, offered to the operator rather than asserted, and consistent with the standing advice recorded
+in `POSTMORTEM-R-pdlc-review-convergence.md` §Recommendation clause 2: **land G-14 and G-13 — they are
+two clauses inside one AC — and carry G-15, G-16 and G-17 into FSPEC as inputs rather than opening
+round 7.** G-16 is naturally an FSPEC concern (it is about what the loop puts in a dispatch), G-15 is a
+table row FSPEC has to restate anyway, and G-17 is one word. G-14 is the one I would not defer: it is a
+fail-open hole in the budget mechanism this whole REQ exists to make absolute, and a fail-open defect
+carried into FSPEC tends to be re-derived rather than inherited.
+
+If the operator prefers the mechanical route, the same outcome with a record is: apply G-14 and G-13,
+re-resolve the POSTMORTEM, and treat the phase as converged rather than opening a seventh review round.
+
+### Explicit non-findings (carried and extended)
+
+Recorded so a later round does not re-raise them: I do not contest any of the six decisions; I do not
+file R-5's known unenforceability of AC-5, AC-4.6 or AC-3.2(2); I do not file R-6's mixed-panel
+integration risk; I do not contest AC-2.8's fail-open posture, AC-1.5(4)'s fail-closed posture, N-7's
+widening to Phase DOD, AC-4.1's live later endpoint, the S-3/S-4 co-occurrence ordering, the AC-2.8 halt
+row's empty cells, or R-9's decision to record rather than fix. **New this round:** I do not contest
+the `H`/`A` decomposition itself, the choice of a distinct `WINDOW-RESUMED:` literal, AC-1.4's strip as
+the fail-closed choice (including its interaction with clause 3's prohibition, which the amended N-4
+states correctly), the window-scoping of AC-3.1/AC-3.2/AC-4.1/AC-4.5, AC-3.4's stopping scan, or the
+decision to map a duplicated `VERDICT:` to *malformed*. I have no blocking finding against REQ-RCV-05 or
+REQ-RCV-06. I raised no `## Measurement Required` items.
+
 ## Verdict
