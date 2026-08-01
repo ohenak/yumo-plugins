@@ -153,7 +153,8 @@ refusal **do not apply**. What does reach them is AC-1.2's
 shared constant: their **per-invocation** budget becomes 3 instead of 5 — unchanged in kind, still
 bounded. Stated here because the other reading is unsafe: with `docType: null` no basename matches,
 so `deriveRoundWindow` always returns `startIndex = 1`, and a second CR clearance would recompute
-`N = 1`, fail step 2's strictly-increasing check, and refuse Phase CR **permanently** (O-10).
+`N = 1`, fail the strictly-increasing check on `WINDOW-START:` values (`REQ-RCV-07` AC-7.1 step 2),
+and refuse Phase CR **permanently** (O-10).
 
 This is a **second behavioural change** — §1's per-invocation defect, without which §2's cost claim would bound nothing. AC-1.5 states the replacement rule and its escape hatch.
 
@@ -221,7 +222,7 @@ state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-)entered. *Then
 1. the window's **end** is round 3 counted from the window's **origin** `W` (clause 4; `W = 1` when no reset is in effect), not from the highest existing round: with `W = 1`, a branch
    whose highest existing round is 2 is admitted **round 3 only**, and a branch whose highest existing round is 3 or more is admitted **no rounds** and halts immediately on the budget path
    (AC-1.4), emitting S-4 rendered as `rounds {W}..{windowEnd(W)} of {MAX_REVIEW_ROUNDS}` — the three slots are **computed from the constant**, never written as the literal `1..3 of 3`
-   (§6). **Not reached on an entry step 4 refuses** (clause 4): it returns before the budget is evaluated, so no halt and no S-4.
+   (§6). **Not reached on an entry whose region fails to validate** (clause 4): that entry refuses and returns before the budget is evaluated, so no halt and no S-4.
 
    **The zero-round budget halt has a report row, and it is row C** — the **third** dispatch-less row,
    stated cell by cell here as the catalogue requires of the REQ owning the condition, because the
@@ -243,14 +244,15 @@ state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-)entered. *Then
    yes`**;
 4. **the reset is anchored and consumed, in the POSTMORTEM, by the loop.** The **reset region** is read as two counts: `H`, the number of `HALT-REASON:` lines, and `A`, the number of
    `WINDOW-START:` **plus** `WINDOW-RESUMED:` lines. A clearance is **unconsumed** exactly when all three hold: `checkPostmortem` reads a `RESOLVED: yes`, `A < H`, **and the region
-   validates** (steps 1–3 below). On any entry that observes all three — there is no observable "first entry"; the counts are the whole state — the loop **appends** exactly one answering
+   validates** (the named predicate below). On any entry that observes all three — there is no observable "first entry"; the counts are the whole state — the loop **appends** exactly one answering
    line to the **end** of the region — `WINDOW-START: {N}` on a convergence halt, `WINDOW-RESUMED: {W}` on an S-11 halt (clause 5) — which makes `A = H` again. For `WINDOW-START:`, `N` is
    one past the highest round then on the branch and becomes the origin `W`: the budget of 3 is counted from `W`, and rounds below `W` are outside the window. When `A = H` every halt so
    far has been answered and the loop writes nothing and grants nothing.
 
    **"The highest round on the branch" always means: of the document type under review.** Every such
-   phrase in this REQ — clause 2's start, this clause's `N`, step 2's range check, row B's and row C's
-   `round` cell — is taken over the basenames `deriveRoundWindow` already filters by `docType`
+   phrase in this REQ — clause 2's start, this clause's `N`, row C's `round` cell, and (in the
+   successor) the validation range check and row B's `round` cell — is taken over the basenames
+   `deriveRoundWindow` already filters by `docType`
    (M-1d), never over the whole listing. A feature directory holds cross-reviews for several document
    types at once, and the two readings differ on a constructible fixture (a Phase F region carrying
    `WINDOW-START: 4` with two FSPEC rounds and five REQ rounds: doc-type-scoped ⇒ invalid ⇒ permanent
