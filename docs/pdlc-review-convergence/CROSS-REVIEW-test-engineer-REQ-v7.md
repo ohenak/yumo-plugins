@@ -82,6 +82,77 @@ the entry does something: it halts.
 | F-03 | Medium | Cross-Feature | **The verifier's dispatched round range is a new boundary-crossing input with no grammar, no catalogue id and no total receive side — the exact DC-01 defect the paragraph that introduces it cites DC-01 to justify.** AC-3.2's *Given* now requires *"a dispatch that names the window: the loop passes the verifier the inclusive round range `{W … N−1}` … as an explicit input"*, and clause 1's required `## Disposition` row set is a function of it. But: §5's catalogue is declared closed at **sixteen** and this input is not among them, so its rendering is unfixed (`{W … N−1}`? `4..6`? `rounds 4–6`?) while AC-6.4 elsewhere fixes a *range separator* precisely because ranges are ambiguous; AC-3.2's *Then* states no behaviour for an absent, empty or unparseable range; and the only statement of that behaviour lives in **O-9(c)** — *"a verifier given no range does not guess … it reports the missing input"* — which is an FSPEC/implementation obligation, not an AC, and names no report slot, no notice id and no loop-side response. AC-3.2's completeness check is an approval gate, so a verifier that receives a garbled range emits the wrong row set and refuses approval for the wrong reason — which is SE v6 G-16's failure relocated into the seam, not removed from it. A PROPERTIES author can write the happy-path range test (O-10 bullet 6 asks for exactly that) and has nothing assertable for any other input. This is the third consecutive round in which a new loop→agent value shipped without a receive side (v1.4's `HALT-REASON:` → TE v5 F-06; v1.5's S-16 → TE v6 F-02); the recurrence is why I tag it `Cross-Feature`. | AC-3.2 *Given* and clause 1, its new justifying paragraph, §5 catalogue lead-in, O-3, O-9(c), O-10 bullet 6 |
 | F-04 | Low | Local | **AC-2.7's new row 3 assigns *malformed* to an input that §5 defines as *unavailable*, and §5 is not amended.** §5: *"**unavailable** — a quantity that no reader can obtain from the branch — distinct from **malformed**, which is a quantity that was read and could not be parsed."* Row 3 is a `## Verdict` section carrying **no `VERDICT: ` line at all**: no quantity was read, so §5's own words classify it *unavailable*. Row 4 explicitly appeals to that definition to justify itself (*"which is §5's definition of *malformed* exactly"*), so the definition is load-bearing in the same table. The classification row 3 asserts is correct against HEAD and the trace is verified — I am not contesting the value. But a test author who reasons from §5 rather than from the row gets the opposite answer, and the document's own convention is that §5's definitions are the authority the ACs are stated over. Fix: amend §5's *malformed* entry to cover the structurally-absent-trailer case explicitly (e.g. *"…or a `## Verdict` section that structurally should carry the quantity and does not — see AC-2.7 row 3, which is stated over `parseVerdict`'s `malformed: true` fallback"*), or add one sentence to row 3 saying it is a deliberate exception to §5's split and why. | AC-2.7 row 3, §5 *unavailable* / *malformed* definitions, AC-2.3 |
 
+### 3.1 F-01 in full — the refusal branch does not survive the halt that follows it
+
+AC-1.5(4)'s new non-consumption paragraph closes with a claim about what happens after a refusal:
+
+> With the conjunct, an invalid region is **inert**: nothing is written, nothing is granted, the run
+> report names the file and the values found (S-16), and **the operator's clearance survives for a
+> later entry**.
+
+Neither half is true on the path the document specifies, because the refusal happens *inside* an entry
+that has already been admitted and that must now do something with the rounds it has.
+
+**The trace, entirely from ACs this document fixes.** The refusal is evaluated by AC-1.5(4), which runs
+on an entry the phase gate already let through: clause 3's gate — the shipped one — is
+`checkPostmortem`'s reading of the **marker**, and the marker says `RESOLVED: yes`. AC-1.5(4) then
+refuses the grant, so `W` stays 1. AC-1.5(1) is unambiguous about what a branch with three or more
+rounds and `W = 1` gets: *"a branch whose highest existing round is 3 or more is admitted **no rounds**
+and **halts immediately on the budget path (AC-1.4)**, emitting the S-4 halt reason"*. And AC-1.4, as
+v1.5 restated it, is unconditional: on **every** halt, without exception, (1) the halt appends its own
+`HALT-REASON:` line to the region, and (2) every unfenced `RESOLVED:` line in the file is stripped.
+
+So the entry that "wrote nothing" writes two things, and both of them are the load-bearing ones:
+
+1. **The clearance does not survive.** Clause 2 strips it on the way out. The operator returns to a
+   post-mortem with no marker, which is the state `checkPostmortem` maps to `unresolved` and step G
+   refuses on. The sentence *"the operator's clearance survives for a later entry"* is false as
+   written, and it is the sentence that makes the fail-closed branch tolerable.
+2. **`H − A` ratchets, and step 3 turns the ratchet into a brick.** Take the reachable region my round-6
+   F-02 was filed about: two `HALT-REASON:` lines, one **invalid** `WINDOW-START: 99`. `H = 2`, `A = 1`,
+   `H − A = 1` — counts fine — step 2 fails ⇒ S-16 `invalid-window-start`, no grant. The entry then
+   halts: `H = 3`, `A = 1`. The operator reads the report, performs the **sanctioned repair** exactly as
+   written (correct `99` → `4`, *and nothing else*), and clears again. Step 2 now passes. Step 3 does
+   not: `H − A = 2 ∉ {0, 1}` ⇒ `counts-mismatch` ⇒ `W = 1`, no grant — and the entry halts again,
+   `H = 4`. Every retry moves the counts one further from repairable. The repair the document sanctions
+   **cannot** succeed after a single refusal, and the phase is a permanent halt.
+
+That is precisely the dead end the same paragraph says the conjunct exists to prevent — *"every
+subsequent clearance would be consumed and grant nothing, and the phase would halt on entry forever"*.
+v1.5 removed the consumption and left the halting, and then added a counts check that converts the
+halting into permanence. Step 3 is not wrong; it is correct and necessary (SE v6 G-14 is real). What is
+missing is that the refusal path was never re-traced through AC-1.5(1) and AC-1.4 after step 3 landed.
+
+**The testability half, which is why this is High and not Medium.** O-10's third v1.5 bullet is the
+falsifying test for this branch, and as written it is unsatisfiable by a conformant implementation:
+
+> • a region whose `WINDOW-START:` fails step 2 with `A < H` ⇒ **nothing written**, the clearance
+> survives, and a later entry after the operator's sanctioned repair grants the window (AC-1.5(4) —
+> TE v6 F-02). The v1.4 reading spent the clearance here, so the assertion is *the file is
+> byte-unchanged apart from the report*.
+
+A PROPERTIES author who writes that test against an implementation that obeys AC-1.4 gets RED on all
+three conjuncts: the file **is** changed (a `HALT-REASON:` appended, the marker removed), the clearance
+does **not** survive, and the later entry after the repair grants **no** window. There are only two
+outcomes and both are bad: the author reports the REQ as internally contradictory and the phase stalls,
+or — far more likely, because the bullet reads like a settled expectation — the author writes the test
+against a fixture that stops at the refusal and never runs the following halt, which is an oracle that
+structurally cannot observe the defect. That is the unfalsifiable-oracle shape again: the one property
+that distinguishes "inert" from "ratcheting" is the one the obligation as written steers away from.
+
+**Fix.** State what the entry does when AC-1.5(4) refuses a clearance for corruption. The reading that
+makes the paragraph's own claim true is that the entry **refuses the phase rather than taking a halt** —
+it emits S-16, leaves the file untouched (marker included), and returns, exactly as step G refuses an
+unresolved post-mortem without writing one. One sentence in AC-1.5(4), plus a matching exception in
+AC-1.4 clause 1's *"every halt, without exception"* (there is no halt to except — the entry never
+halts), plus AC-4.7's row-8 note already anticipates the shape (*"a row carrying `round` = the round
+that would have opened and every other column empty"*, which is only accurate if no halt occurs). If
+instead the halt is intended, then say so and state that its `HALT-REASON:` is **not** counted in `H`
+(or that clause 2 does not strip on this path), because otherwise the counts are guaranteed to drift by
+one per refused entry and step 3 guarantees the drift is terminal. Either way, O-10 bullet 3 must be
+restated to match, and a bullet added for *the entry after a refusal* — that is the test neither
+reading currently asks for and it is the one that separates them.
+
 ## 4. Mechanical fixes
 
 ## 5. Measurement Required
