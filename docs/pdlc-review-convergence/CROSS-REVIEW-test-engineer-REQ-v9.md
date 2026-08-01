@@ -148,7 +148,25 @@ MF-22 of v8 are applied and are not carried. MF-23 is applied with one residue, 
 
 ## 5. Measurement Required
 
+Filed under AC-5.2's convention. Non-blocking; excluded from the counts below. MR-01 and MR-02 remain
+bound to `docs/pdlc-runtime-measurement-spike/REQ-pdlc-runtime-measurement-spike.md`. MR-03, MR-04,
+MR-06 and MR-07 are carried unchanged and are correctly recorded as non-blocking; I do not restate
+them. **MR-08 is closed** — §2 above records the answer and the verification.
+
+I raise no new measurement request this round. The one candidate I considered — whether the shipped
+window-origin resolution runs on entries that carry no clearance, which decides how large F-01's
+second-order consequence is — is not a measurement: AC-1.5(4) states it normatively (`W` is resolved on
+every entry), so the answer is in the REQ and the question is Q-15 below, not an MR.
+
 ## 6. Questions
+
+Q-13 and Q-14 of v8 are both answered in the document and are closed. Two new ones, both answerable in
+a sentence and neither blocking.
+
+| ID | Question |
+|----|---------|
+| Q-15 | Is a phase whose region is corrupt refused on entries that carry **no** clearance at all? Step 4 sits inside `W`'s resolution, which AC-1.5(4) runs on every entry, so I read it as yes — a corrupt region refuses the phase whether or not a `RESOLVED:` marker is present, and the marker's presence only decides whether the *repair* can then be honoured. That is the reading F-01 is written against and I believe it is intended. Confirming it is worth one clause, because if the refusal were gated on a pending clearance the blast radius would be much smaller and F-01's fixture would change shape. |
+| Q-16 | On a *correct*-the-line repair, what value may the operator write? The repair table says correcting is *"always safe"*, and step 2 validates only that the value is a decimal integer ≥ 1, is ≥ every value before it, and is ≤ the branch's highest round. Within those bounds the operator picks the origin, and the choice decides which rounds the resumed window admits. If any step-2-valid value is acceptable, say so — it makes the repair fixture trivially constructible. If the operator is expected to restore the value the loop originally wrote, then the repair needs a source for it (the value is not recoverable from the region once corrupted), and O-10's repair fixture needs to say which value it writes. |
 
 ## 7. Positive Observations
 
