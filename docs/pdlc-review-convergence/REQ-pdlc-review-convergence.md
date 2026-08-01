@@ -2086,11 +2086,13 @@ revision that changes something an earlier map describes records the change in t
 only; the earlier map is not amended. §10.7's `TE F-04` row carries one v1.3 parenthetical from before
 this convention was adopted and is left as it stands.
 
-### 10.9 Round-5 finding → where it is answered
+### 10.9 Round-5 finding, mechanical fix, question and measurement request → where it is answered
 
 Round 5 is the second consecutive round with **no carried finding**: both panels closed every prior
-finding, and all thirteen findings below lie in text v1.3 added — nine of them in the three mechanisms
-v1.3 introduced to answer round 4.
+finding, and all thirteen **findings** below lie in text v1.3 added — nine of them in the three
+mechanisms v1.3 introduced to answer round 4. The count of thirteen is over the findings rows only; the
+last three rows carry mechanical fixes, questions and a measurement request, which are not findings and
+are not counted — hence the heading, which §10.7 already models (SE v6 MF-5).
 
 | Finding | Answered in |
 |---|---|
@@ -2109,3 +2111,23 @@ v1.3 introduced to answer round 4.
 | SE MF-4; TE MF-11 | **§10.8** closing note — earlier maps are frozen; later changes are recorded in the latest §10.x only |
 | SE Q-10 … Q-12, TE Q-07, TE Q-08 | Answered by the rows above: Q-10 by AC-1.4's strip (**none** — the file carries no `RESOLVED:` line after a halt); Q-11 by AC-3.4's stopping scan (*malformed*); Q-12 by `WINDOW-RESUMED:`; Q-07 by §5's *reset region* and §6's `## Reset Region` row; Q-08 by AC-4.1's first-round-of-window rule |
 | TE MR-05 | Carried, and **taken off the critical path**: AC-1.4 has the loop re-apply the region deterministically rather than asking an agent to preserve it (O-5), so no AC depends on the answer |
+
+### 10.10 Round-6 finding, mechanical fix, question and measurement request → where it is answered
+
+Round 6 is the third consecutive round with **no carried finding**: both panels closed every prior
+finding, and all seven findings below lie in text v1.4 added — six of them in the two mechanisms v1.4
+introduced to answer round 5 (the reset region's accounting, and the trailer reader). One is High.
+
+| Finding | Answered in |
+|---|---|
+| TE F-01 (High) — no AC requires the **first** halt to write a reset region, so under `H`/`A` the operator's first clearance is a no-op | **AC-1.4 clause 1** — restated over **every** halt: a halt that finds no post-mortem **creates** `## Reset Region` with its own `HALT-REASON:` line; a halt that finds one preserves and appends. Both are one rule under O-5's read-modify-write, whose captured region of a non-existent file is empty (this also discharges SE v6 MF-3). `H` is therefore exactly the number of halts taken; §5's durability rows, §6's `## Reset Region` row and S-12 all state it; **O-10** gains the first-halt fixture the v1.4 text did not entitle a PROPERTIES author to |
+| SE G-14 — AC-1.5(4) validates every line's *value* and never the relation `H − A ≤ 1`, and the unvalidated case fails **open** (`H − A − 1` unpaid windows) | **AC-1.5(4) step 3** — a counts check: `H − A ∉ {0, 1}` ⇒ the region is corrupt ⇒ `W` = 1, no grant, `reset-region-corrupt: counts-mismatch` reported. The invariant `H − A ≤ 1` is stated as the domain clause 4's "exactly one answering line" relies on, with the reachability argument (a halt strips the marker, so two halts cannot accumulate unanswered) — which also answers **TE Q-09**. **O-10** gains the negative case |
+| TE F-02 — a region that fails validation may or may not consume the clearance; one reading is a permanent dead end with no repair path and no report slot | **AC-1.5(4)** — validation becomes a **conjunct of the gate**, so a corrupt region consumes nothing; the **sanctioned operator repair** is stated (delete or correct the line the report names, nothing else, and a mis-repair fails closed on step 3); and the notice gains a catalogue id **S-16** (`reset-region-corrupt: {reason}`, closed three-member enum) with a home in **AC-4.7**'s `notice` column at precedence 8 and a **§6** row |
+| SE G-13 — the write position of the two answering lines is unstated, and step 2's validation is order-sensitive; a prepend locks `W = 1` permanently | **AC-1.5(4)** — the loop **appends** its answering line to the end of the region, exactly as AC-1.4 clause 1 has each halt append its `HALT-REASON:`, so document order is event order for every line in the region; **S-13**/**S-14** and §5's durability rows carry the rule; **O-10** asserts it positionally |
+| SE G-16 — AC-3.2 scopes the verifier's required rows to `W`, and nothing gives the verifier `W` | **AC-3.2** — the *Given* now includes the dispatch: the loop passes the inclusive round range `{W … N−1}`, so `W`'s single reader stays the loop. **O-3** carries the dispatch input; **O-9(c)** carries it into the verifier SKILL, including the refusal to guess when the range is absent; **O-10** asserts the row set is derived from the range |
+| SE G-15 — a `## Verdict` section with **zero** `VERDICT: ` lines is classified by no AC-2.7 row, and AC-3.4 calls it *unavailable* where HEAD returns *malformed* | **AC-2.7 row 3** ⇒ *malformed*, with the `9486c81` trace (`:900-903` → `:906` → `:415-422` → the `malformed: true` fallback at `:424-428`, distinct from the genuine `0/0/0` at `:451`); **AC-3.4 step 1** corrected to match, so the REQ and the shipped reader agree |
+| SE G-17 (Low) — AC-1.4 clause 2 strips `RESOLVED:` *"wherever it sits"*, reaching inside fenced blocks that every other reader excludes | **AC-1.4 clause 2** — the strip is scoped to **unfenced** lines, citing `parseResolvedMarker` (`:953-958`) and `scanLines` (`:569`), so the document has one scoping rule; **O-10** asserts a fenced marker surviving |
+| TE F-03 (Low) — AC-1.5(5)'s third row enumerates *absent*, which clause 4's gate makes unreachable | **AC-1.5(5)** — the row drops *absent* and keeps *unparseable / any other value*; the paragraph beneath states why (`A < H` ⇒ `H ≥ 1` ⇒ a last line exists), and the empty-region case keeps its one home in **S-12** and §5's durability rows |
+| SE MF-1, MF-2, MF-4, MF-5; TE MF-12 … MF-15 | **AC-2.6**'s table restated over `W`, `W+1`, `W+2` in header and cells (MF-1, MF-12); **AC-2.7** and **AC-3.4 step 1** write the trailing space into the normative clauses and read the table in order (MF-2, MF-13); **§5** gives `HALT-REASON:` its own id **S-15** rather than nesting it in S-12 (MF-4); **§10.9**'s heading names its non-finding rows (MF-5); **AC-1.5**'s closing paragraph re-wrapped (MF-14); **§5**'s *reset region* says the marker is never *counted* wherever it sits, rather than implying a placement constraint (MF-15) |
+| SE Q-13 … Q-15, TE Q-09, TE Q-10 | Answered by the rows above: Q-13 by step 3's counts check (**one** window, then a fail-closed refusal); Q-14 by the append rule; Q-15 by AC-3.2's dispatched range; Q-09 by the stated invariant. **Q-10** — what happens to the region when harvest deletes the round files — is answered in **AC-1.5(4)**: step 2's validity predicate is deliberately re-evaluated against the **current** listing on every read, and the region is only meaningful alongside the rounds it describes; harvest deletes `CROSS-REVIEW-*` and `POSTMORTEM-*` together, so the ordinary path never reaches it, and any sequence that removes one without the other lands in the S-16 fail-closed case with a sanctioned repair |
+| TE MR-03, MR-04, MR-06 | Carried, none blocking. MR-06 (is O-5's re-apply observable in the same invocation?) is recorded here rather than answered: AC-1.4 states the obligation either way, and the arithmetic TE F-01 raised is now settled by *"every halt writes one `HALT-REASON:`"* independently of which invocation the write lands in. All three remain bound to `docs/pdlc-runtime-measurement-spike/REQ-pdlc-runtime-measurement-spike.md` per AC-5.3 |
