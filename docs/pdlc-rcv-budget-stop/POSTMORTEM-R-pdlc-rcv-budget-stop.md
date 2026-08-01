@@ -186,4 +186,72 @@ is wrong. They are reviewing two different documents, and the REQ is trying to b
 
 ## Best-Guess Root Cause
 
+**Root cause 1 (primary) — the REQ is specifying, at requirements altitude, the behaviour of shipped
+code it does not own and cannot change from inside a requirements document.**
+
+Both open classes are the same defect wearing different clothes. Class B pins the bytes, the value
+and the guard of strings emitted by `pdlc/workflows/orchestrate-dev.js`'s halt catch. Class A
+specifies what a partially-completed append leaves on disk and who repairs it. In both cases the
+REQ's correctness is decided **not** by anything the REQ says, but by control flow in a file the REQ
+is not permitted to restate and did not change: the `postmortemStatus` disposition chain
+(`:4880`–`:4901`), the `none` guard at `:4922`, and the unguarded recovery emit at `:4928`. A
+reviewer with the source open can falsify any prose claim about that chain by reading one line
+further, and the author can only respond by pinning one more fact — which the next round falsifies
+one line further still. The progression is exact and is visible in the disposition tables: v1.3 pins
+a value; v1.4's review shows the value is wrong; v1.5 pins the right value *and* the branch that
+decides it; v1.5's review shows the **next** emit has no branch at all.
+
+That is not a requirements question. It is a two-hour code-reading task over one function — enumerate
+every `emit` in the halt catch, record its guard, decide which ones this feature suppresses — and its
+output belongs in a TSPEC or a measured constraints file, not in an AC. The REQ family already knows
+this technique works: `docs/_constraints/pdlc-rcv-baseline.md` exists because measuring first is what
+made this REQ's §1–§2, §4, §5, §7 and §9 converge and stay converged for four rounds without a single
+finding. **The sections that did not converge are exactly the sections whose facts were asserted
+rather than measured.**
+
+**Root cause 2 — the size budget converted every round into a zero-sum trade, and the trade was
+priced as a Low.**
+
+From round 2 onward the document sat within 548 bytes of the 61,440-byte ceiling, and from round 3
+within 120. Every subsequent fix therefore had to be funded by deleting existing text in the same
+round: eight of the REQ's commits across rounds 3–5 are compression passes. This has three
+consequences the loop never accounted for.
+
+- **Compression is itself reviewable new text.** A compressed paragraph is a changed paragraph, so
+  delta review reads it. Round 5's F-03/F-29 is precisely this: a compression pass deleted the clause
+  naming the second member of a *"depends on both"*, creating a finding out of an edit made to pay
+  for a different finding.
+- **The constraint was never allowed to block.** Both reviewers filed it as **Low** in four
+  consecutive rounds, which is defensible per-round and wrong cumulatively — a Low never blocks a
+  verdict, so nothing in the loop ever forced the decision the constraint was demanding. By round 5
+  the reserve was **3 bytes** and both reviewers had to spend a paragraph of their recommendation
+  telling the author *where the bytes must come from*, which is architecture advice delivered through
+  a severity channel that cannot compel it.
+- **The correct answer was available from round 2 and was never taken as a decision.**
+  `docs/_constraints/pdlc-rcv-catalogue.md` already owns row B's schema and its two-variant
+  discriminator, and has an amendment protocol that was successfully exercised once (`33bdf80`).
+  Moving §6's render rows there was proposed by SE at rounds 4 and 5 and by TE at round 5; it was
+  partially done, per-round, as a byte-scavenging tactic rather than as a structural decision.
+
+**Root cause 3 — the split that produced this REQ solved the size problem, not the altitude
+problem.** The predecessor `pdlc-review-convergence` REQ was split into five because it was 83 KB.
+The split worked on that axis — this REQ opened at 48 KB and never exceeded 61.4 KB. But `REQ-RCV-01`
+retained the one clause whose correctness depends on shipped control flow, so it inherited the
+predecessor's non-convergence at a quarter of the size. Splitting by *topic* does not separate the
+requirements-altitude material from the implementation-altitude material when both live in the same
+acceptance criterion. **AC-1.5(4) is the only clause that generated a blocking finding after round
+2**, and it is the only clause in the document that is really a design.
+
+**Root cause 4 (contributing) — the stopping rule that applies to this loop is queued behind this
+loop.** Rounds 2→3→4 were 3 → 5 → 6 blocking findings: non-decreasing for two consecutive rounds,
+which is the fixed-point condition `pdlc-rcv-fixed-point-stop` (`Order 17`) is written to detect and
+halt on. That feature depends on this one and does not exist yet, so nothing observed the condition
+and the loop ran to the hard ceiling, consuming rounds 4 and 5. Additionally, only TE emits the
+machine-readable `{"high": n, …}` trailer; SE does not, so even a hand-run fixed-point test cannot be
+computed from the artifacts without parsing SE's findings tables. **The counts needed to enforce the
+rule are two-thirds present and one-third missing, and that has been true for three consecutive
+features.**
+
+---
+
 ## Recommendation
