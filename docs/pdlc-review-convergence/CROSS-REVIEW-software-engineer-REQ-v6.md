@@ -202,7 +202,54 @@ fence. Scope the strip to unfenced lines and the document has one rule instead o
 
 ## Questions
 
+Q-10, Q-11 and Q-12 from v5 are **closed** by v1.4 (AC-1.4's strip — the answer is *"none"*; AC-3.4's
+stopping scan — *malformed*; `WINDOW-RESUMED:` respectively) and are not restated. Three new, each the
+fastest route into the finding beside it.
+
+| ID | Question |
+|----|---------|
+| Q-13 | On a region with two `HALT-REASON:` lines, no answering line, and a readable `RESOLVED: yes`, how many windows does the loop grant before it stops — and what in AC-1.5(4) bounds that number? (G-14) |
+| Q-14 | Does the loop append its `WINDOW-START:` / `WINDOW-RESUMED:` line to the end of the reset region, and where is that said? If it may write elsewhere, what does step 2's *"before it"* mean? (G-13) |
+| Q-15 | How does the verifier at round N learn `W`, so that *"every prior blocking finding of the current window"* names a determinate set of rows? (G-16) |
+
 ## Positive Observations
+
+- **All six round-5 findings are closed at the mechanism, and the High is closed the better of the two
+  ways I offered.** Separating the human's marker from the loop's accounting — `H` against `A` rather
+  than `RESOLVED:` against `WINDOW-START:` — is the correct decomposition, not a patch: it leaves
+  `parseResolvedMarker`'s single-valued contract exactly as shipped, makes the halt path fail closed on
+  arrival, and gives both counted quantities a legal reason to repeat. The state machine that results
+  is right on every path I could reach; G-14 is about a precondition it never checks, not about the
+  decomposition.
+- **`WINDOW-RESUMED:` is a better answer than the one I recommended.** I suggested a repeated
+  `WINDOW-START:` equal to `W`, which needed AC-1.5(4)'s strictly-increasing row relaxed. A distinct
+  literal needs no relaxation, is self-describing in the file, and — as the AC says — gives the S-11
+  path a *positive* artifact, where the absence of a `WINDOW-START:` was indistinguishable from an
+  unimplemented clause. That last observation is the general lesson and is worth harvesting: **a rule
+  whose correct behaviour is "write nothing" cannot be tested apart from its own absence.**
+- **The citation baseline claim was made universal and it survives testing.** Every one of the nine
+  changed or added sites resolves at `9486c81`, including the JSDoc quotation reproduced verbatim, and a
+  19-row sample of the untouched §4 rows resolves there too. v1.3 mixed two baselines and invented a
+  symbol; v1.4 does not merely re-base the five bad rows, it states in the header *why* mixing baselines
+  is worse than drift (it falsifies the universal claim the row makes). That is the right altitude for
+  the fix.
+- **R-9's demonstration is now derivable, and I checked it against the files.** `blocking(N)` read as §5
+  defines it: rounds 1 and 2 carry no trailer in either file; round 3 has one only in the SE file
+  (`3+2`) so the round is *unavailable*; round 4 is `(1+4) + (2+2) = 9`; round 5 is `(1+4) + (3+3) = 11`.
+  Every figure matches the trailers on the branch. v1.3's "10, 5, 5, 5" was a panel-private series
+  presented as the document's; replacing it with the series AC-2 would actually read — three of five
+  rounds *unavailable*, exactly as R-7 predicts — makes the risk self-demonstrating in the mechanism's
+  own terms.
+- **The window boundary is now one boundary.** AC-2.1, AC-2.8, AC-3.1, AC-3.2, AC-4.1 and AC-4.5 all
+  turn on `N > W`, §5's *current window* states it once, and AC-2.8's row 4 and AC-3.1's new paragraph
+  each derive the same consequence from opposite directions. v1.3 had two ACs scoped to the window and
+  three to the round index, which is precisely the shape that let a lone verifier approve a document a
+  panel had rejected. Fixing it by moving every AC onto the same boundary — rather than by adding a
+  special case at the one place the hole was visible — is the durable form.
+- **AC-1.5(4)'s receive side became an ordered algorithm.** Replacing a table of independent rows with
+  *collect → validate all → any failure ⇒ fail closed → else the greatest* is the correct answer to a
+  totality-without-single-valuedness defect, and *"a corrupt region is never partially believed"* is a
+  sentence worth keeping. G-14 is a request to extend the same principle from values to counts.
 
 ## Mechanical fixes
 
