@@ -107,6 +107,53 @@ Q-01 … Q-03 are carried from v2 unanswered; they are not restated here — see
 
 ## 7. Positive Observations
 
+The v2 positives stand unchanged and are not restated — the durability axis as a first-class part of
+the document, AC-2.6's reachable-sequence table, the eight `M-*` rows that verified, the genuinely
+total receive-side tables, deferrals bound to files that exist, and the growth in negative cases. See
+`docs/pdlc-review-convergence/CROSS-REVIEW-test-engineer-REQ-v2.md` §6.
+
+One observation specific to this round:
+
+- **The document's own instrumentation is what made this round diagnosable in three commands.**
+  Because AC-4 already frames convergence in terms of *document bytes at a round boundary*, "is this
+  round a no-op?" reduces to one blob-hash comparison, and F-07 is a two-line clause away rather than
+  a new mechanism. That is a good sign about the design: the datum the REQ chose to make durable is
+  the datum a reviewer actually needed, in a case its author had not anticipated.
+
 ## 8. Recommendation
 
+**Needs revision**
+
+Mandatory per the approval rules: three High and two Medium findings are open. Four of the five are
+round-2 findings carried against a document that did not change; the fifth (F-07) is about the round
+itself.
+
+What must change before this document can be approved is unchanged from v2, item for item:
+
+1. **F-01** — write `DOC-BYTES:` on every round, not only the approving terminal one, and separate the
+   instant the length is read from the instant it is persisted. Re-anchor the citation to
+   `pdlc/workflows/orchestrate-dev.js:2009` (call site, inside `if (gatePass)`).
+2. **F-02** — give AC-1.5's post-reset window a durable start anchor, and say what makes the
+   `RESOLVED: yes` reset one-shot.
+3. **F-03** — decide which component performs AC-3.2(2)'s "not counted" deduction, and follow the
+   consequence through §5's catalogue and N-3.
+4. **F-04** — state a precedence over S-3 … S-6, or widen AC-4.7's `notice` column to a list.
+5. **F-07** — add a byte-identity halt: a round whose document is unchanged from the previous round is
+   a distinct halt reason, not a consumed round.
+
+F-05 and F-06 are Low and may be taken as mechanical. MF-01 … MF-03, MR-03 and Q-01 … Q-04 are
+non-blocking and contribute nothing to the counts.
+
+Nothing here contests user need, scope, priority or phasing — that is settled and out of scope.
+
+**Trajectory note (self-applied, per the preamble's fixed-point rule).** Round 1: 2 High, 5 Medium =
+7 blocking. Round 2: 3 High, 1 Medium = 4 blocking. Round 3: 3 High, 2 Medium = 5 blocking — and the
+increase is entirely F-07, which is not a new defect in the document. Discounting F-07, round 3 is
+identical to round 2 at 4 blocking, over identical bytes. **Under this REQ's own AC-2.1 that is a
+fixed point on my side of the panel**: same document, same blocking operand, no progress. Document
+bytes: 116,569 at round 2, 116,569 at round 3 — zero growth, which under AC-4.2 is not a *revision*
+of any regime. The next round should not be dispatched against these bytes.
+
 ## Verdict
+
+VERDICT: Needs revision
