@@ -23,14 +23,59 @@ frontmatter is the pickup gate; the `Status` cell tracks lifecycle.
 
 | Order | Status | Feature | REQ Path | Depends-On |
 |-------|--------|---------|----------|------------|
-| 0 | in-progress | pdlc-review-convergence | docs/pdlc-review-convergence/REQ-pdlc-review-convergence.md | pdlc-review-loop-hardening |
-| 2 | pending | pdlc-merge-phase | docs/pdlc-merge-phase/REQ-pdlc-merge-phase.md | pdlc-workflow-distribution |
-| 3 | pending | pdlc-advisory-tier | docs/pdlc-advisory-tier/REQ-pdlc-advisory-tier.md | pdlc-merge-phase |
-| 4 | pending | pdlc-consolidation-agent | docs/pdlc-consolidation-agent/REQ-pdlc-consolidation-agent.md | pdlc-workflow-distribution, pdlc-advisory-tier |
-| 5 | pending | pdlc-engineering-loop | docs/pdlc-engineering-loop/REQ-pdlc-engineering-loop.md | pdlc-workflow-distribution, pdlc-merge-phase, pdlc-advisory-tier, pdlc-consolidation-agent |
+| 0 | superseded | pdlc-review-convergence | docs/pdlc-review-convergence/REQ-pdlc-review-convergence.md | pdlc-review-loop-hardening |
+| 10 | pending | pdlc-rcv-budget-stop | docs/pdlc-rcv-budget-stop/REQ-pdlc-rcv-budget-stop.md | - |
+| 11 | pending | pdlc-rcv-panel-topology | docs/pdlc-rcv-panel-topology/REQ-pdlc-rcv-panel-topology.md | pdlc-rcv-budget-stop |
+| 12 | pending | pdlc-rcv-finding-quality | docs/pdlc-rcv-finding-quality/REQ-pdlc-rcv-finding-quality.md | pdlc-rcv-budget-stop |
+| 13 | pending | pdlc-merge-phase | docs/pdlc-merge-phase/REQ-pdlc-merge-phase.md | pdlc-workflow-distribution |
+| 14 | pending | pdlc-advisory-tier | docs/pdlc-advisory-tier/REQ-pdlc-advisory-tier.md | pdlc-merge-phase |
+| 15 | pending | pdlc-consolidation-agent | docs/pdlc-consolidation-agent/REQ-pdlc-consolidation-agent.md | pdlc-workflow-distribution, pdlc-advisory-tier |
+| 16 | pending | pdlc-engineering-loop | docs/pdlc-engineering-loop/REQ-pdlc-engineering-loop.md | pdlc-workflow-distribution, pdlc-merge-phase, pdlc-advisory-tier, pdlc-consolidation-agent |
 | 6 | blocked | pdlc-install-mechanism | docs/pdlc-install-mechanism/REQ-pdlc-install-mechanism.md | pdlc-workflow-distribution |
 | 7 | blocked | pdlc-release-ci | docs/pdlc-release-ci/REQ-pdlc-release-ci.md | pdlc-workflow-distribution |
 | 9 | blocked | pdlc-authoring-contract | docs/pdlc-authoring-contract/REQ-pdlc-authoring-contract.md | pdlc-review-loop-hardening |
+
+**Reprioritisation 2026-08-01 — rows 10–12 moved to the head of the queue.** The pickup key is
+the numeric `Order` (lowest `pending` first), and values `0`/`1` are retired, so the split rows
+could not take a lower number without reusing one. Instead the four rows behind them were
+renumbered to fresh, never-used values — `pdlc-merge-phase` 2→13, `pdlc-advisory-tier` 3→14,
+`pdlc-consolidation-agent` 4→15, `pdlc-engineering-loop` 5→16 — preserving their relative order.
+No value was reused; prose elsewhere that says "orders 2–5" refers to these four features under
+their old numbers. Rationale: same self-referential argument as the previous `Order 0` entries —
+rows 10–12 harden the review loop every other row runs through, so they go first.
+
+**Rows 10–12 — the `pdlc-review-convergence` split — added 2026-08-01, and row 0 set `superseded`.**
+`docs/pdlc-review-convergence/REQ-pdlc-review-convergence.md` reached **2,629 lines / 311 KB at v1.8**
+and ran **nine review rounds without convergence** — every round closed every prior finding and filed
+new ones in the text that answered them, which is the very failure mode (P-1) the document analyses.
+It was too large for the review loop to converge on, so it has been **split into three phased REQs
+plus one shared read-only reference**, `docs/_constraints/pdlc-rcv-baseline.md`. The six requirement
+ids are carried forward **unchanged** (`REQ-RCV-01`…`06`), each appearing in exactly one successor:
+`pdlc-rcv-budget-stop` carries 01–02 (round budget, enforced fixed-point and zero-delta stops, the
+run-report row schema), `pdlc-rcv-panel-topology` carries 03–04 (verifier topology, revision-size
+bound), `pdlc-rcv-finding-quality` carries 05–06 (measurement routing, mechanised citation checking).
+
+Ordering: **10 before 11**, because the panel and growth rules are stated over the window origin `W`,
+the reset region and the report schema that row 10 defines — shipping 11 first would leave them
+stated over a window nothing defines. **12 is independent of 11** and depends on 10 only so the three
+documents share one definition of *unavailable* / *malformed* and one report surface. Row 0's REQ is
+now `ready: false` and carries a `SUPERSEDED` banner naming these three; its `CROSS-REVIEW-*` files
+stay in place as the record of the nine rounds. **`superseded` is not one of the driver's recognised
+statuses** (`QUEUE_STATUSES` in `pdlc/workflows/orchestrate-queue.js`) and does not need to be:
+`selectNextPending` picks only `pending` and treats only `in-progress` as an active-run marker, so an
+unrecognised value is simply skipped, never halted on and never misparsed. The dependency pre-check
+reads any non-`done` status as "blocked", which is the correct reading for a superseded row and
+affects nothing here — no live row depends on `pdlc-review-convergence`. It is preferred to `blocked`
+because it says *why* the row will never run.
+
+**One consequence an operator should decide on.** `Order` values are allocated and never reused, so the
+successors take 10, 11 and 12 — *behind* rows 2–5 in pickup order, where the retired row 0 sat *ahead*
+of them. The original priority argument (below) still applies: these features harden the review loop
+every other row runs through, so landing them first means rows 2–5 run through a harness that already
+carries the fixes. Rows 2–5 are dependency-blocked today (`pdlc-workflow-distribution` /
+`pdlc-merge-phase` are not `done`), so the queue will reach 10 first in practice — but if that changes,
+reprioritise deliberately rather than by accident, and record the move here as the earlier
+`row 8 → 0` reprioritisation was recorded.
 
 **Order 0 — `pdlc-review-convergence` — added 2026-07-30, ahead of orders 2-9.** Same
 self-referential argument that put the previous `Order 0` (`pdlc-review-loop-hardening`) ahead of

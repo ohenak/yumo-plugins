@@ -1,7 +1,7 @@
 ---
 feature: pdlc-approval-record-tier2
 ready: false
-depends-on: [pdlc-review-convergence]
+depends-on: [pdlc-rcv-panel-topology]
 ---
 
 # REQ — pdlc-approval-record-tier2

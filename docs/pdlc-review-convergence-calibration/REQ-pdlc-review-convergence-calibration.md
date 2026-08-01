@@ -1,7 +1,7 @@
 ---
 feature: pdlc-review-convergence-calibration
 ready: false
-depends-on: [pdlc-review-convergence]
+depends-on: [pdlc-rcv-budget-stop]
 ---
 
 # REQ — pdlc-review-convergence-calibration

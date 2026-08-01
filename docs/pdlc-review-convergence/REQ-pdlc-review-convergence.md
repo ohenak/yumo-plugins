@@ -1,10 +1,38 @@
 ---
 feature: pdlc-review-convergence
-ready: true
+ready: false
 depends-on: [pdlc-review-loop-hardening]
 ---
 
 # REQ — pdlc-review-convergence
+
+> **SUPERSEDED (2026-08-01).** This document is **not** the specification of record and is **not**
+> queue-eligible (`ready: false`). It is retained unchanged below as the historical record and as the
+> home of the nine rounds of cross-review that produced it.
+>
+> **Why it was superseded.** At v1.8 it was **2,629 lines / 311 KB** — beyond the size the pdlc review
+> loop can converge on. It ran **nine review rounds without convergence**: every round both panels
+> closed every prior finding and filed new ones, all of them in text the previous round had added, so
+> the document grew monotonically while the blocking count never reached zero. That is the exact
+> failure mode the document itself analyses (§1.2, P-1: *new text is unreviewed text, so the finding
+> rate is self-sustaining*). It could not be fixed by another round.
+>
+> **What replaces it.** Its six requirements are carried forward **with their ids unchanged**, split
+> into three phased, independently reviewable REQs plus one shared read-only reference:
+>
+> | Successor | Carries | Depends on |
+> |---|---|---|
+> | `docs/pdlc-rcv-budget-stop/REQ-pdlc-rcv-budget-stop.md` | **REQ-RCV-01** (round budget five → three, absolute per document) and **REQ-RCV-02** (fixed-point stop enforced by the loop, plus the zero-delta halt and the run-report row schema) | — |
+> | `docs/pdlc-rcv-panel-topology/REQ-pdlc-rcv-panel-topology.md` | **REQ-RCV-03** (round 1 dual-adversarial, later rounds a single verifier) and **REQ-RCV-04** (revisions measured, a large revision re-escalates the panel) | `pdlc-rcv-budget-stop` |
+> | `docs/pdlc-rcv-finding-quality/REQ-pdlc-rcv-finding-quality.md` | **REQ-RCV-05** (findings requiring a measurement are routed, not answered in prose) and **REQ-RCV-06** (citation accuracy checked by a program) | `pdlc-rcv-budget-stop` |
+> | `docs/_constraints/pdlc-rcv-baseline.md` | The shared reference all three cite: the measured baseline run and non-convergence analysis (§1), the measured facts `M-*` (§4), the declared thresholds (§6) and the shared non-goals `N-*` (§7). **Read-only; not a reviewed pipeline artifact.** | — |
+>
+> **How to read this file now.** §5's acceptance criteria are carried into the successors in substance
+> — trimmed of duplication and of the per-round justification prose, never weakened. §10.6–§10.13, the
+> per-round finding maps, are **deliberately not carried forward**: they are this document's own review
+> bookkeeping, and the record they summarise is the `CROSS-REVIEW-*-REQ-v{1..9}.md` files in this
+> directory, which remain. Cite a successor REQ for any normative claim; cite this file only for
+> history.
 
 | Field | Value |
 |---|---|
