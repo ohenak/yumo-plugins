@@ -18,20 +18,26 @@ depends-on: [pdlc-review-loop-hardening]
 > rate is self-sustaining*). It could not be fixed by another round.
 >
 > **What replaces it.** Its six requirements are carried forward **with their ids unchanged**, split
-> into three phased, independently reviewable REQs plus one shared read-only reference:
+> into four phased, independently reviewable REQs plus two shared read-only references. (The split
+> was three ways on 2026-08-01; a REQ size audit the same day found `pdlc-rcv-budget-stop` over the
+> 60 KB byte ceiling and split **REQ-RCV-02** out into `pdlc-rcv-fixed-point-stop`, extracting the
+> shared catalogue at the same time.)
 >
 > | Successor | Carries | Depends on |
 > |---|---|---|
-> | `docs/pdlc-rcv-budget-stop/REQ-pdlc-rcv-budget-stop.md` | **REQ-RCV-01** (round budget five → three, absolute per document) and **REQ-RCV-02** (fixed-point stop enforced by the loop, plus the zero-delta halt and the run-report row schema) | — |
+> | `docs/pdlc-rcv-budget-stop/REQ-pdlc-rcv-budget-stop.md` | **REQ-RCV-01** (round budget five → three, absolute per document; the window origin `W`, reset region and halt path) | — |
+> | `docs/pdlc-rcv-fixed-point-stop/REQ-pdlc-rcv-fixed-point-stop.md` | **REQ-RCV-02** (fixed-point stop enforced by the loop, plus the zero-delta halt) | `pdlc-rcv-budget-stop` |
 > | `docs/pdlc-rcv-panel-topology/REQ-pdlc-rcv-panel-topology.md` | **REQ-RCV-03** (round 1 dual-adversarial, later rounds a single verifier) and **REQ-RCV-04** (revisions measured, a large revision re-escalates the panel) | `pdlc-rcv-budget-stop` |
 > | `docs/pdlc-rcv-finding-quality/REQ-pdlc-rcv-finding-quality.md` | **REQ-RCV-05** (findings requiring a measurement are routed, not answered in prose) and **REQ-RCV-06** (citation accuracy checked by a program) | `pdlc-rcv-budget-stop` |
-> | `docs/_constraints/pdlc-rcv-baseline.md` | The shared reference all three cite: the measured baseline run and non-convergence analysis (§1), the measured facts `M-*` (§4), the declared thresholds (§6) and the shared non-goals `N-*` (§7). **Read-only; not a reviewed pipeline artifact.** | — |
+> | `docs/_constraints/pdlc-rcv-baseline.md` | The shared reference all successors cite: the measured baseline run and non-convergence analysis (§1), the measured facts `M-*` (§4), the declared thresholds (§6) and the shared non-goals `N-*` (§7). **Read-only; not a reviewed pipeline artifact.** | — |
+> | `docs/_constraints/pdlc-rcv-catalogue.md` | The family vocabulary, the closed catalogue `S-1 … S-17` with owners, and the run-report row schema with notice precedence — stated once so the successors cite ids rather than restating grammar. **Read-only; not a reviewed pipeline artifact.** | — |
 >
 > **How to read this file now.** §5's acceptance criteria are carried into the successors in substance
 > — trimmed of duplication and of the per-round justification prose, never weakened. §10.6–§10.13, the
 > per-round finding maps, are **deliberately not carried forward**: they are this document's own review
-> bookkeeping, and the record they summarise is the `CROSS-REVIEW-*-REQ-v{1..9}.md` files in this
-> directory, which remain. Cite a successor REQ for any normative claim; cite this file only for
+> bookkeeping. The eighteen `CROSS-REVIEW-*-REQ-v{1..9}.md` files and the POSTMORTEM were harvested on
+> 2026-08-01 into `LEARNINGS-pdlc-review-convergence.md` in this directory and then deleted, per the
+> harvest-learnings lifecycle. Cite a successor REQ for any normative claim; cite this file only for
 > history.
 
 | Field | Value |
