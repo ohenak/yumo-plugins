@@ -273,4 +273,46 @@ in a sentence and neither blocking.
 
 ## 8. Recommendation
 
+**Needs revision**
+
+Mandatory per the approval rules: one High and one Medium finding are open. **All seven round-5
+findings are resolved**; every open finding is new and lies in text this revision added.
+
+What must change before this document can be approved:
+
+1. **F-01** — state AC-1.4's obligations over **every** halt, not only over a halt that finds an
+   existing post-mortem: a halt with no existing file creates `## Reset Region` containing its own
+   `HALT-REASON:` line. Without it, `H = 0` on the first clearance, `A < H` is false, no window is
+   granted, and the operator's first clearance is silently swallowed — self-healing on the second
+   attempt, which is why no test will catch it unless O-10 asks for the first-halt case explicitly.
+2. **F-02** — say whether a region that fails AC-1.5(4) step 2's validation consumes the clearance.
+   I recommend that it must not (fold validation into clause 4's gate); as written, the reading in
+   which it does is a permanent dead end with no sanctioned repair. In the same edit, give the
+   corrupt-region report output a catalogue id and an AC-4.7 home — step 3 currently mandates a report
+   line that §5's closed fourteen-member catalogue forbids FSPEC to invent.
+
+F-03 is Low and may be taken as mechanical. MF-12 … MF-15, MR-03/MR-04/MR-06 and Q-09/Q-10 are
+non-blocking and contribute nothing to the counts.
+
+Nothing here contests user need, scope, priority or phasing — that remains settled and out of scope.
+Nor do I contest any mechanism v1.4 introduces: the `H`/`A` accounting, `WINDOW-RESUMED:`, the named
+reset region, the loop-owned read-modify-write, the window-scoped panel rule and the stopping trailer
+scan are, in my judgement, all the right answers, and three of them are better answers than the ones I
+asked for. F-01 and F-02 are two places where the new accounting has not been composed with the halt
+path that feeds it.
+
+**Trajectory note (self-applied, per the preamble's fixed-point rule).** My own blocking counts:
+round 1 — 7, round 2 — 4, round 3 — 5, round 4 — 4, round 5 — 6, round 6 — **2**. Under AC-2.1 that is
+a fall (2 < 6) on a comparable same-shape pair, so the rule this REQ specifies would **not** fire on
+this round. The trajectory and the finding-turnover measure agree for the first time in this review:
+**7 of 7 round-5 findings are discharged, 0 carried**, the count fell by two thirds, and the two open
+findings are both narrower than anything filed in rounds 1–5 — one missing clause in AC-1.4 and one
+unstated branch in AC-1.5(4). Both are single-edit fixes with a named target and a proposed wording.
+The document is one revision from approvable, and I say so plainly because R-9 is about exactly this:
+the count alone would have told the operator the same thing this round, and it would have been right
+by luck rather than by construction.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 1, "low": 1}
