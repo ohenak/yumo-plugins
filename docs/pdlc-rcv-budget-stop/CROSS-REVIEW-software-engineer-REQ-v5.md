@@ -55,6 +55,35 @@ halt path — and this time the emit is **unconditional**, so there is no value 
 
 ## 5. Positive Observations
 
+- **The `postmortemStatus` fix names a mechanism I did not offer, and it is better than both I did.**
+  I proposed the `err.postmortemStatus` seam (branch 2) or a new gate variable. v1.5 chose the third
+  option — carry **nothing**, let branch 3's existence probe answer, and state that this is the
+  probe's *sense*: *"this phase has a post-mortem, not a claim this run wrote one, which the ❌ text
+  carries."* That adds no seam, keeps the refusal step-G-shaped, and turns a value assertion into a
+  statement about the thrown error that a test can falsify. Every line number in it is right; I
+  counted the catch block rather than trusting the citation, because the last three rounds each
+  turned on one that was wrong.
+- **The byte-comparing confirmation is the right mechanism, and it was found by asking the right
+  question.** A presence check would have accepted `WINDOW-START: 1` where `WINDOW-START: 12` was
+  written — well-formed, self-consistent, counts balanced, origin silently moved **down**. Nothing in
+  my v4 review found that case; the revision found it by reasoning about what a partial write can
+  produce rather than by answering a finding. It also collapses three torn-write outcomes into two,
+  which is a simplification bought with a stronger check rather than with a dropped case. F-02 is
+  about the *sequel* to that announcement, not about the mechanism — the mechanism should stay.
+- **The recovery string was pinned with its negative.** *"(`orchestrate-dev.js:4928` — not `:1795`'s
+  different recovery string)"* is the shape a pin should have: the site that produces the bytes on
+  this path, plus the near-miss a test author would otherwise grep their way into. `:1795` really is
+  a different string (`Recover: resolve it per AC-2.4, …`) and really would be the first hit for
+  someone searching for a recovery text in that file. This is the discipline v4's F-01 asked for,
+  applied without being asked, to a different value.
+- **The compression pass mostly cut restatement, not reasons.** I diffed the shortened passages
+  against their predecessors: AC-1.4's *why clause 2*, AC-1.5(4)'s ordering and validation
+  paragraphs, R-10 and R-13, and §10's split rationale all lost a clause of consequence-restatement
+  and kept their quantifiers, their mechanisms and their citations. Two deletions I checked
+  specifically because they looked like dropped obligations are not: AC-1.2's *"Test: no `## Reset
+  Region` is created by a CR or DOD halt"* survives as an explicit O-10 leg, and AC-1.5(4) step 4's
+  hand-built-fixture note survives at §3.1. Only one cut went too far (F-03), and it is two words.
+
 ## 6. Recommendation
 
 ## Verdict
