@@ -227,7 +227,23 @@ MF-15 of v6 are all applied and are not carried.
 
 ## 5. Measurement Required
 
+Filed under AC-5.2's convention. Non-blocking; excluded from the counts below. MR-01 and MR-02 remain
+bound to `docs/pdlc-runtime-measurement-spike/REQ-pdlc-runtime-measurement-spike.md`. MR-03, MR-04 and
+MR-06 are carried unchanged and are correctly recorded in §10.10 as non-blocking; I do not restate them.
+
+| # | Fact to measure | How | What it would settle |
+|---|---|---|---|
+| MR-07 | **New.** When the loop refuses a clearance for corruption (AC-1.5(4) step 4) and the phase then has no rounds to run, does the shipped code path reach the post-mortem writer at all, or does it return before it? | Read `reviewLoop`'s entry sequence at the Citation baseline and note whether the zero-admitted-rounds case reaches the halt writer or short-circuits. | Whether F-01's ratchet is a specification defect only, or also matches an implementation that already halts. It does not change the fix — the REQ must state the behaviour either way — but it decides whether the FSPEC is describing a change or a preservation. |
+
 ## 6. Questions
+
+Q-09 and Q-10 of v6 are both answered in v1.5 (§2 above) and are closed. Two new ones, both answerable
+in a sentence and neither blocking.
+
+| ID | Question |
+|----|---------|
+| Q-11 | Is the S-11 (`no-revision:`) clearance path subject to the same refusal arithmetic as the convergence path? AC-1.5(5) routes an S-11 clearance to `WINDOW-RESUMED: {W}`, which does not move the origin — so on a window whose three rounds are already spent, a resumed window admits **no** rounds and the entry halts immediately, incrementing `H` again. `A` is incremented too (the clearance was honoured), so `H − A` stays at 1 and step 3 is satisfied; the mechanism is safe. But the operator sees a clearance answered and a halt in the same entry, and the run report row carries S-14's answer and S-4's halt together. Is that intended, and is it worth one sentence? A PROPERTIES author writing the S-11 path needs to know whether "resumed" and "halted" co-occurring is a pass or a bug. |
+| Q-12 | Does the *first* halt's region creation compose with a post-mortem the **agent** writes? AC-1.4 clause 1 now says the creating halt produces a file carrying `## Reset Region` with one line, and O-5 says the loop captures the region *before* the dispatch and re-applies it *after*. On the first halt there is no "before" — the file does not exist — so the loop's only opportunity is the re-apply, which must now **create** a section in a document the agent has just authored, at a position no AC fixes (§5 defines the region as running to *"the next top-level heading or end of file"*, so appending at end of file is the only placement that is self-consistent). Is end-of-file the intended placement, and is it worth saying? It is the one detail the first-halt fixture in O-10 has to assert positionally. |
 
 ## 7. Positive Observations
 
