@@ -109,4 +109,37 @@ opened no ground in sections I approved earlier, per my v3 pre-commitment.
 
 ## Recommendation
 
+**Approved with minor changes** — zero High, zero Medium, three Low.
+
+All three of my v3 Lows are closed with exactly the edits I named, and the blocking count has now
+been **0 High / 0 Medium for two consecutive rounds** (v3 and v4). By §13.4's own stopping rule that
+is a fixed point on the blocking axis, and every finding I have left is of the classes that rule
+directs downstream: F-09 and F-10 are precision defects in prose that changes no branch and no
+fixture; F-11 is an index entry for a boundary §7.2 already states.
+
+**Nothing here blocks TSPEC authoring.** The three fixes are two edits:
+
+1. **F-09 + F-10** — one sentence pair in AT-CLR-04: widen §11.4's antecedent to *"in each row in
+   which rounds are dispatched inside a window, whether or not the row grants it"*, and drop the
+   retired word *convergence* from the row's parenthetical. Both are in text this round rewrote.
+2. **F-11** — extend §1.1's **F-N-4** cell to name probe selection. One cell, no new id.
+
+I would take all three in this document because all three are inside spans v1.3 changed, and none
+touches a branch, a fixture or a catalogue literal — so the risk of a v1.4 is close to zero. But I
+would not hold the document for them: if the PM prefers to route F-11 to TSPEC directly and leave
+F-09/F-10 to the next revision of this file, §13.4's second and third clauses cover that, and my
+verdict does not change either way.
+
+**On the finding I considered raising as Medium and did not.** F-09 would be Medium if AT-CLR-04's
+entry-1 outcome were unpinned, because an acceptance test whose negative conjuncts depend on an
+unstated fixture fact can red a correct implementation — that is the class te F-11 was. It is not
+unpinned: this round's rewrite put the outcome in the Given. I record the reasoning so the next
+reviewer does not have to redo it, and so that if a later edit removes that Given sentence while
+"fixing" the §11.4 citation, the severity moves back up.
+
+**Pre-commitment.** I open no new ground on this document. If a v1.4 takes any of the three, I
+re-read only the touched clauses; if it takes none, my verdict is unchanged.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
