@@ -34,6 +34,11 @@ body is re-litigated.
 
 ## Questions
 
+| ID | Question |
+|---|---|
+| Q-01 | **On a creating halt, does clause 3 running before clause 1 ever place the Iterations heading below `## Reset Region`?** I worked it and I believe not — at clause 3 time the region does not exist yet, so the not-found path falls to "at the end of the file when there is none", and clause 1 then creates the region after it. That is the right order, but it holds *because* of the clause order, and clause 3's not-found rule is written as if the region's presence were the interesting case. One parenthetical ("on a creating halt the region does not yet exist, so the section lands at the end and clause 1 appends below it") would stop an implementer reading the two clauses in the order they are numbered and producing a file whose region is not last. Not a finding — the outcome is already determined. |
+| Q-02 | **Is a torn `HALT-REASON:` line inside R-14's residual ledger?** R-14 registers two residuals time-boxed to row 18: the hand-edited-region fail-open, and row-17 `WINDOW-RESUMED:` lines landing in regions nothing validates. This REQ starts writing region lines at **row 10**, and NB-3 routes a torn one to `REQ-RCV-07` AC-7.5 — which ships at row 18. So there is an eight-row interval in which this REQ writes lines whose tear has no disposition, and R-14's "(ii) … *not* covered by that, since HEAD writes no region lines" is the argument that would apply to it too. Either it belongs in R-14 as residual (iii) or R-14 should say why it does not. I did not file it because the mechanism predates this round and I did not flag it at v2; it is cheap to settle while F-01's sentences are being written. |
+
 ## Positive Observations
 
 ## Recommendation
