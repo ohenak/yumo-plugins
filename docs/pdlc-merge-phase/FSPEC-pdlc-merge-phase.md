@@ -514,7 +514,9 @@ Required behaviour (AC-5.6):
 | `outcome: halted` or the pipeline threw | `halted` (unchanged) | unchanged |
 
 The driver still always writes *something*; what changes is that its value derives from `mergeStatus`
-as well as `outcome`. Writing `done` over a `done` is idempotent and produces no commit.
+as well as `outcome`. Writing `done` over a `done` is idempotent and produces no commit. This write
+is step M5 of §8.2 and therefore lands on the **default branch**, the same branch Phase MERGE's own
+write landed on at M4 — the two agree by construction rather than by coincidence.
 
 **F-13 — the superseded criterion, named.** `pdlc-rcv-budget-stop`'s AC-2.7a states that
 `orchestrate-dev` owns no status write but the halt one, and the shipped success path hard-codes its
@@ -539,32 +541,61 @@ and runs its dependency triage against whatever the tree is on, so after a merge
 the repository's **default branch, updated to contain the merge**. Otherwise the following feature is
 cut from a base that does not contain its dependency — the exact stall this feature exists to remove.
 
-### 8.2 Order relative to the queue write (F-14)
+### 8.2 The ordering, pinned once (F-14, SE F-01)
 
-**The queue write-and-commit of §7 happens first, while the tree is still on `feat-{feature}`. The
-default-branch checkout and update follow.** This order is normative.
+**This is the single place the post-merge order is stated.** §7.5's driver transition and §8.3's
+update are both defined against it and neither restates it.
 
-The recording channel commits the queue row against whatever branch `HEAD` is on, pathspec-scoped and
-unpushed. If the checkout happened first, the `done` commit would land on the **local default
-branch** — which in this repo cannot be pushed, so the next pass's fast-forward pull fails and the
-following feature is cut from a diverged local base. That is the same class of failure AC-5.7 exists
-to prevent, arriving through AC-5.7's own fix.
+| Step | Action | Branch it happens on |
+|---|---|---|
+| M1 | merge the PR (§6.2) | `feat-{feature}` |
+| M2 | delete the **remote** feature branch, if configured (§6.4) | — |
+| M3 | **check out the default branch and update it to contain the merge** (§8.3) | → default |
+| M4 | queue write-back: `done` row + `Evidence` cell, then commit (§7) | default |
+| M5 | pipeline returns; on the queue path the driver writes `done` (§7.5) | default |
 
-So the `done` commit is expected to land on the feature branch, and to reach the default branch by
-the ordinary route: it is already part of the merged PR's branch, and where it is not (the commit is
-made after the merge), it rides the next PR. The queue row on disk is correct either way, which is
-what the next pass reads.
+**The checkout precedes the queue write, reversing v1.0.** v1.0 put M4 first, on the feature branch,
+reasoning that the commit would reach the default branch through the PR. It would not: by M2 that
+branch is merged, its remote deleted, and the PR closed, so a commit added to it afterwards has no
+route anywhere. Worse, M5 is outside this phase entirely — it runs after the pipeline returns, hence
+after M3 — so under v1.0's order M4 and M5 committed the same file on two different branches. One
+ordering for both is the only version that is internally consistent.
+
+**The consequence, stated and accepted.** M4 and M5 commit `QUEUE.md` on the **local** default
+branch, which therefore sits ahead of its remote by one or two queue-row commits. pdlc never pushes
+them — that is unchanged from the shipped halt-row behaviour, which likewise commits and never
+pushes. They reach the remote by the ordinary route: the next feature's branch is cut from the local
+default branch, so they ride that feature's PR. Two facts make this safe rather than merely tolerable:
+the row the next pass reads is the **file on disk**, which is correct the moment M4 writes it,
+independent of any commit; and §8.3's update reconciles the divergence rather than assuming it away.
+
+The operator-facing consequence is named in the run report once per merged run:
+
+```
+Local {defaultBranch} is ahead of its remote by the queue-row commit for {feature}; pdlc does not
+push it. It reaches the remote with the next feature's PR.
+```
 
 ### 8.3 The update, and its failure
 
-After the queue write: fetch the default branch, check it out, and fast-forward it to the remote tip
-so it contains the merge. The step is complete when the tree is on the default branch and the merge
-commit is an ancestor of `HEAD`.
+M3 is: fetch the remote default branch, check it out, and bring it to a state containing the merge.
 
-If any part cannot be completed — a dirty tree, a non-fast-forward, a fetch failure — the step
-escalates (§9.3) and `mergeStatus` **remains `merged`**. The merge is real; re-reporting it as
-anything else would be false. The local feature branch is not deleted (§6.4), so the operator can
-inspect it after the escalation.
+- If the local default branch can fast-forward to the fetched tip, it does. This is the ordinary case
+  on a fresh clone and on the first merged feature.
+- If it cannot — because M4/M5 of an earlier run left local queue-row commits on top — those local
+  commits are **replayed onto the fetched tip**. Commits whose content is already upstream (having
+  arrived via a later PR) drop out as empty; the rest survive. The result contains the merge and
+  every queue row not yet upstream.
+
+The step is complete when the tree is on the default branch and the merge commit is an ancestor of
+`HEAD`. If any part cannot be completed — a dirty tree, a fetch failure, a replay that conflicts —
+the step escalates (§9.3) and `mergeStatus` **remains `merged`**: the merge is real, and re-reporting
+it as anything else would be false.
+
+**A failed M3 does not cancel M4.** The queue write-back still runs, on whichever branch `HEAD` is
+left on, so the `done` row is correct on disk even when the tree could not be moved — the escalation
+tells the operator the tree needs attention, not that the queue is wrong. The local feature branch is
+never deleted (§6.4), so it is still there to inspect.
 
 ## 9. FSPEC-MERGE-08 — Reporting contract
 
