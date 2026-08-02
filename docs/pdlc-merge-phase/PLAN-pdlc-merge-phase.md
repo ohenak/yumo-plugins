@@ -192,11 +192,20 @@ for every failure the observation and execution paths can produce, so a future p
 TSPEC edit is required — the catalogue is declared frozen and enumerable precisely so it can absorb a
 member without a second list appearing.
 
+**Declared divergence from TSPEC §13.2's test-file list.** This PLAN introduces a ninth test file,
+`mergePostMerge.test.js` (A6), which §13.2 does not name, and puts `evidenceCellFor` there rather than
+in `mergeQueueWriteback` where TSPEC §14 traces it. The reason is rule 2, not preference: A6's
+helper-level coverage of `executeMerge` / `deleteRemoteBranch` / `updateDefaultBranch` would otherwise
+share `mergePhase.test.js` with A7, and the two cannot occupy one file in adjacent waves.
+**TSPEC §13.2's `mergePhase` coverage therefore splits into `mergePhase` (phase-level, A7) and
+`mergePostMerge` (helper-level, A6); no assertion is dropped, and every §13.2 bullet keeps a home.**
+Recorded here so the DoD phase traces §14's rows without wondering (PM advisory 4).
+
 ## 8. Risk register
 
 | ID | Risk | Owning task | Mitigation, and what it costs if it fires |
 |---|---|---|---|
-| K-1 | **`git rebase --empty=drop` requires git ≥ 2.26.** TSPEC §7.4 relies on it to drop queue-row commits already upstream. DC-02 bars any platform fact inferred from documentation | A6, verified by V1 | **Measure, do not assume**: run `git --version` on `ubuntu-latest` and `macos-latest` in CI and record both in the task's commit message. If either is older, fall back to a plain `git rebase FETCH_HEAD` and record the change in the TSPEC — the fallback still fast-forwards and still drops already-applied patches, it merely relies on the backend default |
+| K-1 | **`git rebase --empty=drop` requires git ≥ 2.26.** TSPEC §7.4 relies on it to drop queue-row commits already upstream. DC-02 bars any platform fact inferred from documentation | A6; local reading by V1, two-runner reading in Phase DOD/PUB | **Measure, do not assume**: run `git --version` on `ubuntu-latest` and `macos-latest` in CI and record both. V1 cannot take that reading — it runs before the PR exists — so V1 records the local version and the two-runner reading is taken at the first CI run (§10 step 5). If either runner is older, fall back to a plain `git rebase FETCH_HEAD`: **pre-approved, no re-review**, because the fallback still fast-forwards and still drops already-applied patches, it merely relies on the backend default |
 | K-2 | **The bash / CI matrix.** Five checks gate Phase PUB, including `npm test` on both platforms and `bash -n` over every tracked `*.sh`. This feature adds no shell script, but D2 regenerates tracked artifacts that the *Generated artifacts are in sync* job re-derives independently | D2, V1 | Run `build-runtime.mjs --check` locally before pushing; a stale `dist/` is the single most likely red in this feature. No `*.sh` changes means the shell jobs are untouched — if one goes red, the cause is not this diff |
 | K-3 | **The `_recordHalt` rename can go vacuous, not red.** `runtimeBundle.test.js:1038` opens `if (!recordHalt) return;`, so a rename without a test update silently stops asserting | R1 | R1's red-first list makes the negative assertion (no seam named `_recordHalt` remains) the first test written, so the trap is closed in the same task that opens it |
 | K-4 | **Parallel worktrees and last-writer-wins.** Two tasks in one wave writing one file lose each other's content silently while the suite stays green on the survivor | all | §4's manifest is the audit surface; §5's derivation was checked with the real dispatcher. Any new task must be added to both or it is unreviewed |
@@ -229,16 +238,29 @@ Owned by **V1**, run from the repository root, in this order:
 3. `pdlc/hooks/scripts/sync-workflows.sh --check` — invoked **by bare path**, no `bash` prefix; exit
    126 means the execute bit was lost. Advisory for this feature (the consumer copy is untracked), but
    a non-zero exit that names a `local-edit` or `unverified` row must be read before it is forced.
-4. Document oracles — `npm test -- documentOracles`. **Before treating a red as a defect**, check for
+4. `cd pdlc/workflows && npm test -- documentOracles` — **the `cd` is required**: there is no
+   `package.json` at the repository root, and an agent's shell resets its cwd between calls, so this
+   step cannot inherit step 1's directory (TE F-03). **Before treating a red as a defect**, check for
    untracked files (K-6): `git status --porcelain --ignored | head`. A tool cache in the tree fails
    `coveredViolations` for reasons that have nothing to do with this diff.
-5. Record in V1's commit message: the two `git --version` readings from CI (K-1), and the confirmation
-   that `mergeStatus` is `refused` for this repo's own PRs by design (K-5).
+5. Record in V1's commit message: the **local** `git --version` reading, and the confirmation that
+   `mergeStatus` is `refused` for this repo's own PRs by design (K-5). The **two-runner** measurement
+   K-1 calls for is *not* V1's to take — V1 runs before the PR exists, so there is no CI run to read.
+   It is deferred to the first CI run and read during **Phase DOD / Phase PUB**, with the plain-`rebase`
+   fallback **pre-approved** if either runner is older than 2.26: it still fast-forwards and still
+   drops already-applied patches, so no re-review is needed to take it (PM advisory 2).
+6. Walk §11's checklist and record each box in V1's commit message — several boxes are not implied by
+   steps 1–5 (the 25-row count, the seven ATs, "no seam named `_recordHalt` remains", NFR-4). This
+   makes V1 the *recording* gate; the *judging* gate is Phase DOD's `dod-verify` (§11).
 
 A failure at any step **re-opens the owning task**; it is never patched at this step. V1 changes no
 production code.
 
 ## 11. Definition of Done
+
+**Verifier:** V1 records each box (§10 step 6); **`dod-verify` in Phase DOD is the judging gate** —
+it traces every REQ/FSPEC criterion to real implementation and tests and writes
+`CODE_REVIEW-pdlc-merge-phase-v{N}.md`. V1 is not a substitute for it (PM advisory 5).
 
 - [ ] All 17 tasks ✅, each committed on `feat-pdlc-merge-phase` with its tests written first
 - [ ] Every task's own test file green via `npm test -- <file>`, and the whole suite green
@@ -250,7 +272,10 @@ production code.
       call awaited
 - [ ] `build-runtime.mjs --check` exits 0 with `dist/` committed in D2's commit
 - [ ] The `not-confirmed` reason is a member of §4.1's single frozen catalogue (§7)
-- [ ] `git --version` measured on both CI runners and recorded (K-1)
+- [ ] Local `git --version` recorded by V1; the two-runner reading taken at the first CI run and read
+      in Phase DOD/PUB, with the plain-`rebase` fallback pre-approved (K-1)
+- [ ] `AT19_SEAM_NAMES` contains `_ghRun` and no longer contains `_recordHalt`; `NEW_SEAMS` names
+      `_recordQueueRow`; `RLH-WIRE-01` green in every wave (§5)
 - [ ] No new agent dispatch anywhere in the diff (NFR-4), and no override of the guard (NFR-3)
 - [ ] This PLAN still parses to exactly 17 tasks / 12 waves via `parsePlanTasks` +
       `computeTopologicalBatches` (§3), if any section above §12 was edited
