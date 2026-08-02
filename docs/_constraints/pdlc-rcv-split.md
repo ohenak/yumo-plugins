@@ -82,6 +82,17 @@ Relocated from `REQ-RCV-01` X-06 (2026-08-01, round 8) so both ends of the paire
 of the argument instead of restating it; nothing changed meaning in the move. `REQ-RCV-01` X-06/R-14
 and `REQ-RCV-07` X-07/R-16 state the **decision**; this states the **reasons** behind it.
 
+**The pickup-order derivation** (relocated from `REQ-RCV-01` §3.1, 2026-08-01 round 1 of the reset
+window). Net order after `REQ-RCV-01`'s own row: **12 → 13 → 17 → 18**. `orchestrate-queue`'s
+`precheckDependencies` blocks only on a dependency **present** in `QUEUE.md` with a non-`done`
+status and falls through to readiness triage for one that is **absent** or `done`, and the candidate
+walk runs in `Order` order over `pending` rows; so row 13 is pickable and row **17** precedes row 18.
+Rows 6/7/9 are `blocked`, not `pending`, so they do not precede row 10. QUEUE.md's gloss
+*"10 → 12 → 18, with 18 ahead of 17"* inverts the comparison and is superseded. This is a
+**queue-driver** claim about `orchestrate-queue.js`, not an `orchestrate-dev.js` control-flow claim,
+so `REQ-RCV-01` NB-4's `M-*`-only discipline does not reach it; the function is named here so the
+claim is checkable without re-derivation.
+
 - **Refusing horn.** An interim procedure that refuses what it cannot decide refuses on
   **non-emptiness** — and a region is non-empty exactly when the phase has halted (`REQ-RCV-01`
   AC-1.4 clause 1) — so the first halt of each phase would be terminal, `RESOLVED: yes` could not
