@@ -277,6 +277,23 @@ owners and derivations above are unchanged and remain authoritative.
 | `budget-exhausted: …` (S-4) | Outside this table's scope deliberately: a render fixed by catalogue §2. Rendered from `W` and the constant — a clause that hard-codes `rounds 1..3 of 3` is a defect. |
 | `no-revision: …` / `fixed-point: …` | **Read only** by `REQ-RCV-01`: AC-1.5(5) reads the **leading** reason of the last `HALT-REASON:` line; that REQ emits neither and may not change their grammar. |
 
+### 3.2 Durable homes of the window-accounting quantities
+
+Relocated from `REQ-RCV-01` §4.1 (2026-08-01, round 9); nothing changed meaning in the move. The loop
+**re-derives its state from the branch on every invocation** (M-1d, M-2f), so any criterion stated
+over in-process state is undefined on a resumed phase — the normal case. Every quantity the family's
+window criteria read has a durable home; **there is no in-process-only row.** `REQ-RCV-01` §4.1 keeps
+the two rows its own gate turns on (`W`, and whether a clearance is still unanswered); the rest are
+here, read by `REQ-RCV-01`, `REQ-RCV-07` and `pdlc-rcv-fixed-point-stop` alike.
+
+| Quantity | Read by | Durable home | If absent |
+|---|---|---|---|
+| Round index N | `REQ-RCV-01` AC-1 | The `CROSS-REVIEW-{role}-{doc}-v{N}.md` basenames on the branch, via `deriveRoundWindow` (M-1d) | n/a — the listing is always readable |
+| Highest round reached for a document | `REQ-RCV-01` AC-1.5 | Same basenames | Treated as 0; the window opens at round 1 |
+| **That the post-mortem is readable at all** | `REQ-RCV-01` AC-1.4, AC-1.5(4) | The file itself | An **unreadable-but-present** post-mortem is read by `checkPostmortem` as `status: "none"` (M-7a) ⇒ no halt in force **and** an empty region ⇒ `H = A = 0`, `W = 1` — the narrowest window, no clearance honoured, nothing written. |
+| **Whether the operator has cleared the current halt** | `REQ-RCV-01` AC-1.4's re-entry gate (shipped), AC-1.5(4) | The **single** `RESOLVED:` line, read by `parseResolvedMarker` and mapped by `checkPostmortem` (M-7a) | absent, `no`, unparseable **or duplicated** ⇒ the phase is refused — the shipped fail-closed gate, unchanged. AC-1.4 keeps it exact by having each halt **strip** any prior `RESOLVED:` line |
+| **Which halt a POSTMORTEM records** | `REQ-RCV-01` AC-1.5(4), AC-1.5(5) | The **last** `HALT-REASON: {string}` line in the region (S-15) — one per halt, appended, so document order is halt order | Read as a convergence halt (S-3/S-4) — fail-closed, so an unreadable reason never converts a consuming reset into a free one |
+
 ## 4. Shared non-goals
 
 Stated so a reviewer does not file a blocking finding against an absence that is intentional. Each
