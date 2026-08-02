@@ -285,12 +285,15 @@ owners and derivations above are unchanged and remain authoritative.
 Relocated from `REQ-RCV-01` §4.1 (2026-08-01, round 9); nothing changed meaning in the move. The loop
 **re-derives its state from the branch on every invocation** (M-1d, M-2f), so any criterion stated
 over in-process state is undefined on a resumed phase — the normal case. Every quantity the family's
-window criteria read has a durable home; **there is no in-process-only row.** `REQ-RCV-01` §4.1 keeps
-the two rows its own gate turns on (`W`, and whether a clearance is still unanswered); the rest are
-here, read by `REQ-RCV-01`, `REQ-RCV-07` and `pdlc-rcv-fixed-point-stop` alike.
+window criteria read has a durable home; **there is no in-process-only row.** All rows are here,
+read by `REQ-RCV-01`, `REQ-RCV-07` and `pdlc-rcv-fixed-point-stop` alike — including the two
+`REQ-RCV-01`'s clearance gate turns on, relocated from that REQ's §4.1 on 2026-08-01 (round 1 of
+the reset window, v2.9) with nothing changed in meaning.
 
 | Quantity | Read by | Durable home | If absent |
 |---|---|---|---|
+| **First round of the current window** `W` | `REQ-RCV-01` AC-1.1, AC-1.5(4); `pdlc-rcv-fixed-point-stop` AC-2.1, AC-2.8 | The `WINDOW-START: {N}` lines in the **reset region** of `POSTMORTEM-{phase}-{feature}.md` — the **greatest** value present, and only if the region **validates**. Appended, so document order is event order; and since `REQ-RCV-01` AC-1.5(4) writes the **resolved** start the values never descend, so *greatest* and *last well-formed* name one line | **1** — no reset in effect, the cap applies from round 1. Fail-closed: no absent or malformed value widens the window. §3's `WINDOW-START:` grammar is **in force at `REQ-RCV-01`'s ship**, so a value that is not a decimal integer ≥ 1 contributes no origin; only the **consistency** half is target state (`REQ-RCV-01` X-06). Survives a second halt, since AC-1.4 preserves the region |
+| **Whether a clearance is still unanswered** (the reset is one-shot) | `REQ-RCV-01` AC-1.5(4), AC-1.5(5) | The **counts**, in that region, of `H` = `HALT-REASON:` lines and `A` = `WINDOW-START:` **plus** `WINDOW-RESUMED:` lines — **by line prefix, not by value**. Unconsumed exactly when a `RESOLVED: yes` is readable, `A < H`, **and the region validates** | `A = H` ⇒ every halt answered; nothing written, nothing granted. A non-validating region ⇒ the refusal `REQ-RCV-01` AC-1.5(4) fixes, moving neither count — **target state, not in force until `REQ-RCV-07` (X-06)** |
 | Round index N | `REQ-RCV-01` AC-1 | The `CROSS-REVIEW-{role}-{doc}-v{N}.md` basenames on the branch, via `deriveRoundWindow` (M-1d) | n/a — the listing is always readable |
 | Highest round reached for a document | `REQ-RCV-01` AC-1.5 | Same basenames | Treated as 0; the window opens at round 1 |
 | **That the post-mortem is readable at all** | `REQ-RCV-01` AC-1.4, AC-1.5(4) | The file itself | An **unreadable-but-present** post-mortem is read by `checkPostmortem` as `status: "none"` (M-7a) ⇒ no halt in force **and** an empty region ⇒ `H = A = 0`, `W = 1` — the narrowest window, no clearance honoured, nothing written. |
