@@ -150,7 +150,16 @@ constant**, never the literal `3`.
 a human writes `RESOLVED: yes`. This REQ changes *when* the halt happens, not *what* a halt is.
 
 Two things about that write do change, because this REQ puts machine-written state in that file. `POSTMORTEM-{phase}-{feature}.md` is a **fixed**, unversioned path, so a document that
-halts twice has its post-mortem written twice, and the reset region (catalogue §1, S-12) lives there.
+halts twice would have its post-mortem written twice, and the reset region (catalogue §1, S-12) lives there.
+
+**So a halt that finds an existing post-mortem does not re-author it.** *Who:* the operator. *Given:* a halt in the scope below whose `POSTMORTEM-{phase}-{feature}.md` already exists. *When:* the halt is taken. *Then:* the loop performs the region maintenance clauses 1 and 2 mandate and **changes nothing else in the file** — no authoring dispatch is made, and every other section, the `## Recommendation` included, is left byte-unchanged. Only a halt that finds **no** post-mortem authors one, the way HEAD authors it (M-7e).
+
+This is a requirement, not an optimisation, and it has two independent reasons:
+
+- **The operator's own text must survive.** The `RESOLVED: yes` an operator writes is a response to a specific `## Recommendation`. A re-author replaces that recommendation with one written by an agent that has just been told the phase halted — on the commonest new case (AC-1.5(1)) with **zero rounds of new evidence** to write it from. The operator would be reading advice about a halt, generated after they acted on the previous advice, with the previous advice gone.
+- **The zero-round halt must stay cheap.** AC-1.5(1) makes a halt with no reviewer dispatched the commonest new case; paying a full authoring dispatch for it would spend on the cheapest entry roughly what a review round costs, against a §2 value claim stated in dispatches.
+
+**What the operator sees on a re-halt, then:** the same body, plus one new `HALT-REASON:` line in the region, minus the spent `RESOLVED:` marker (clause 2) — which is exactly the record the clearance accounting needs and exactly what tells the operator this halt is not the one they already answered.
 
 **The scope of "every halt".** The rule below is quantified over **every halt that writes `POSTMORTEM-{phase}-{feature}.md` for a document-typed review-loop phase** (AC-1.1's scope, M-7e). **Not** over the pipeline's other halt classes — creator-agent failure, the branch guard, a listing failure, Phase PUB/CI, Phase DOD — none of which writes a post-mortem at HEAD, and none of which this REQ asks to start (N-4); nor over the phases N-7 excludes. So §4.1's and §6's `H` counts **post-mortem-writing halts of this phase for this document** — the only halts that leave a marker for a clearance to clear, which is what makes the pairing exact. Within that scope, no exception:
 
