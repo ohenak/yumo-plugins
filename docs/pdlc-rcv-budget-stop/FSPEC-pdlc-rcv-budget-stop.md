@@ -288,6 +288,78 @@ every line still answers or records exactly one halt.
 
 ## 6. FSPEC-CLR-01 — The clearance gate and the answering line
 
+**Linked criteria:** AC-1.5(3), AC-1.5(4), AC-1.5(5). **Runs before** the window arithmetic of §4.
+
+### 6.1 The gate
+
+A clearance is **unconsumed** exactly when all three hold:
+
+1. a `RESOLVED: yes` is readable — a single unfenced marker, the shipped fail-closed reading (M-7a);
+2. **`A < H`**;
+3. **the region validates** (§5.4) — **target state**, not in force at this ship.
+
+**There is no observable "first entry".** The counts are the whole state, so any entry that observes
+all three grants; an entry that observes `A = H` grants nothing, however many times it runs. This is
+what makes the reset **one-shot** across invocations rather than per-invocation.
+
+**Only an operator resets.** The `RESOLVED: yes` marker is human-written, always. No agent and no
+script ever writes it, and this feature does not change that (`N-4`). What the loop does on that
+marker is everything below.
+
+| Branch | Observed | Outcome |
+|---|---|---|
+| **B-CLR-1** | gate open; last `HALT-REASON:` begins `fixed-point:` or `budget-exhausted:` | a fresh window is granted: exactly one `WINDOW-START: {N}` appended (§6.2), `N` becomes the new `W` |
+| **B-CLR-2** | gate open; last `HALT-REASON:` begins `no-revision:` (S-11) | the interrupted window is **resumed**: exactly one `WINDOW-RESUMED: {W}` appended, `W` **unchanged**, rounds already spent stay spent |
+| **B-CLR-3** | gate open; last `HALT-REASON:` unparseable or any other value | treated as B-CLR-1 — **fail-closed**: the safe error is to consume a reset the operator can re-grant, never to hand out a free window |
+| **B-CLR-4** | `A = H` (marker readable or not) | nothing written, nothing granted; `W` stays as §5.2 resolves it and the entry proceeds to §4 |
+| **B-CLR-5** | no readable `RESOLVED: yes` — absent, `no`, unparseable, or **duplicated** | the **shipped step-G refusal**, unchanged: the phase does not run, the invocation terminates, the queue row is written `halted`. No region byte is written and neither count moves |
+
+Both B-CLR-1 and B-CLR-2 leave `A = H`. **Every clearance is answered by exactly one line** — the
+S-11 path included. Left unanswered, a clearance written for an unrelated authoring failure would
+bank a free window for the *next* halt of any kind, once per such failure.
+
+**B-CLR-2 is unreachable at this ship.** No halt path emits S-11 until `pdlc-rcv-fixed-point-stop`
+ships (X-05), so every halt is a convergence halt and the table reduces to B-CLR-1/B-CLR-3. It is
+stated over both from the start so nothing is re-specified when the successor lands.
+
+**Three rows, not four — *absent* is not a case here.** The table is read only on an entry whose
+gate is open, which requires `A < H`, hence `H ≥ 1`. An absent `HALT-REASON:` is the empty region's
+case (B-REG-1/B-REG-2), one level up.
+
+### 6.2 What the granting line carries
+
+`N` is **the start §4.1 resolves — `max(D, W)`, the later of one past the highest existing round of
+that document type and the origin then in effect** — and it becomes the new `W`. It is the
+**resolved** start, never the derived one: writing the derived value where files were deleted would
+make the region's values descend, which breaks the *greatest*-value reading, refuses under
+`REQ-RCV-07` AC-7.1's later analysis, and grants a window that opens nothing.
+
+**Accepted consequence:** after such a deletion the granted window may span round numbers the
+deleted files held. That is correct — those rounds no longer exist on the branch, so all `BUDGET`
+slots are dispatchable and nothing is overwritten.
+
+### 6.3 Recording the grant, and the two orderings that matter
+
+**B-CLR-6 — the answering line durably exists before any round of that entry is dispatched.** The
+line is the sole record keeping the clearance one-shot. An entry that records it and then dies
+before dispatching has spent a clearance whose rounds are still available, so the next entry runs
+them — a bounded loss of nothing. Recording it last loses the record of a window already **used**
+and re-grants it every invocation. The ordering fails toward the recoverable direction.
+
+**Appended, never inserted.** Answering lines and `HALT-REASON:` lines alike are appended to the
+**end** of the region, so document order is event order and each line is read against the lines
+before it. This is normative: lines landing out of order fail validation, and because every later
+halt preserves the region verbatim (§7), that failure would be permanent.
+
+**B-CLR-7 — an unconfirmed answering-line write refuses the phase.** The write carries a
+**present-in-the-region** confirmation — that *this* line is in the region, not merely that the file
+exists. On failure: **no window, no dispatch**, the entry takes a **phase refusal**, both counts
+unmoved, and the operator reads row B's *unconfirmable-append* variant with `{which}` =
+**`answering line`** and an **empty** `notice` cell (§8.3). An IO fault of the loop is not a state of
+the region, so no `reset-region-corrupt` reason is minted and the S-16 enum stays closed at three.
+**What a partially-landed line leaves behind, and the sanctioned recovery, are `REQ-RCV-07`
+AC-7.5's** (F-N-1) — this flow owns the condition and the disposition, not the residue analysis.
+
 ## 7. FSPEC-HALT-01 — Halt-path region maintenance
 
 ## 8. FSPEC-RPT-01 — Operator-visible reporting
