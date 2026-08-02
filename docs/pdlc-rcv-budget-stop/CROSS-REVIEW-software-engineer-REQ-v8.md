@@ -110,4 +110,55 @@ none changes a behaviour, an acceptance criterion's meaning, or a threshold.
 
 ## 6. Recommendation
 
+**Approved with minor changes**
+
+The v7 High and both Mediums are closed, and closed at the root rather than at the symptom. v2.2
+takes the exit I recommended — AC-1.5(4)'s third conjunct is **not wired at this REQ's ship**, so the
+interim is HEAD's behaviour: no refusal, no S-16, no branch put on a path AC-1.1–AC-1.5(3) and (5)
+does not already put it on. The bricking chain I traced at v7 (region non-empty ⇔ the phase has
+halted ⇒ refuse ⇒ `RESOLVED: yes` read inside the failing gate ⇒ terminal) is now the document's own
+stated reason for shipping no interim procedure at all, in X-06, R-14 and O-10 with one vocabulary,
+and carried to `REQ-RCV-07` X-07 and R-16 in the same words — I read both at HEAD and they agree on
+wiring, on queue distance (`Order 18`, net pickup 10 → 12 → 18) and on what an interim procedure
+would have cost. O-10's interim legs now grant rather than refuse, assert **no** S-16, and are stated
+to survive row 18. The size finding was answered by relocating the split record to
+`docs/_constraints/pdlc-rcv-split.md` — a real shared artifact both halves cite — rather than by
+compression. Every citation I could check mechanically holds: the new file exists and is tracked, its
+§1–§4 and §5 resolve as cited, and the collision rule survived the move.
+
+Four Low findings remain, all of them one sentence each and none of them behavioural:
+
+1. **F-01** — AC-1.5(4) and §4.1's clearance row still state the conjunct and its false branch
+   unconditionally with no back-pointer to X-06. Three guards stand between that and a wrong
+   implementation (AC-1.5(4)'s own X-06 citation, X-06's explicit naming of AC-1.5(4), and O-10's
+   executable interim legs), which is why it is Low — but the reader who arrives at the criterion
+   first sees a requirement to wire it. Add the *target state / not wired at this ship* clause.
+2. **F-02** — X-06 and R-14 (and their paired ends) state *any* interim procedure as either
+   refusing-on-non-emptiness or fail-open; a procedure deciding only what this REQ specifies is
+   neither. The right objection to it is narrower — it must disagree with AC-7.1 on ordering and
+   highest-round, and a refusing-direction disagreement is unclearable until AC-7.4. Narrow the
+   claim, and carry it to X-07/R-16 per `pdlc-rcv-split.md` §5.
+3. **F-03** — the deliberately-unconsulted seam is exactly the shape `dod-verify` flags as an unwired
+   integration, and its natural remediation is to wire it. Declare it in O-11 or NB-3, using NB-3's
+   existing *correct and known by construction* formula.
+4. **F-04** — O-10 leg 1's `{N}` is bound twice in one sentence (window origin vs. the appended
+   answering line's value); state the fixture with concrete numbers as the neighbouring legs do.
+
+None of these is a reason to hold the document. Per the approval rule — Low findings only —
+**Approved with minor changes**: take them in the next authoring pass, alongside Q-02's relocation
+so the edits fit under the size soft threshold.
+
+Durable signal from this round, for `docs/_constraints/DOMAIN-CONSTRAINTS.md`:
+
+- **When a gate conjunct's decision procedure is owed by a successor, the honest interim is usually
+  to leave the conjunct unwired** — an interim procedure that refuses what it cannot decide refuses
+  on the feature's own domain, and one that grants it is the fail-open the conjunct exists to close.
+  Judge the interim against HEAD's behaviour, not against the finished feature's.
+- **A seam introduced ahead of its consumer, deliberately unconsulted in production, must be declared
+  as such at the REQ that introduces it** — otherwise the DoD verifier files it as an unwired
+  integration and the remediation loop wires it.
+- **Split documents need a named paired-edge register, not a norm of care.** Two rounds of divergence
+  between `REQ-RCV-01` and `REQ-RCV-07` closed in one once the four clauses and the three facts they
+  must agree on were written down in a shared file.
+
 ## Verdict
