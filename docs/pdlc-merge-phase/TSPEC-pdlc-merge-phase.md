@@ -718,7 +718,7 @@ after the only status it ever wrote. It becomes
 
 | Role | Site | Change |
 |---|---|---|
-| Producer | `commitQueueRow`, `orchestrate-queue.js:948` and `:961` | `return { queueRow: "recorded" }` |
+| Producer | `commitQueueRow`, `orchestrate-queue.js:946` and `:956` | `return { queueRow: "recorded" }` |
 | Producer | `uncommitted`, `:967` | `queueRow: "recorded (uncommitted)"` |
 | Producer | `rewriteStatus`, `:889` / `:900` | `"none"` / `"error"` unchanged |
 | Producer | `defaultRecordQueueRow`, `orchestrate-dev.js:4286` | `"none"` unchanged |
@@ -790,7 +790,7 @@ structural changes, and no fourth:
    `` ` Evidence ` ``. If a cell already contains `evidence`, return `{ markdown, migrated: false }`
    — an already-migrated queue is never migrated twice;
 2. the **separator row** immediately following it: append one `---` cell (recognised as "every cell
-   is a dash run or empty", the same predicate `parseQueue:150` and `updateQueueStatus:352` already
+   is a dash run or empty", the same predicate `parseQueue:145` and `updateQueueStatus:357` already
    use);
 3. every other data row: append **one empty cell**.
 
@@ -798,7 +798,7 @@ Rows that are not part of the table (prose, blank lines, anything not starting w
 untouched, and no other cell of any row is rewritten. `Evidence` is safe against the header lookup:
 `parseQueue`'s `colIndex` resolves columns by substring over `order`/`#`, `status`, `feature`,
 `req path`/`req`/`path`, `depends`/`deps`, and `evidence` contains none of those tokens — verified
-against `orchestrate-queue.js:134`–`:139`. A sixth cell therefore round-trips unchanged.
+against `orchestrate-queue.js:133`–`:137`. A sixth cell therefore round-trips unchanged.
 
 **`mergeEvidenceCell(prev, next) => string`** — FSPEC §7.2's no-downgrade rule:
 if `prev` is a non-empty string and `next` matches `/^merged #/`, return `prev`; otherwise return
@@ -809,13 +809,13 @@ that could not resolve the oid, while a real SHA always wins over a placeholder.
 `| a | b |` form — what this transform emits and what this repo's `QUEUE.md` uses. A consumer queue
 with column-aligned padding is re-emitted canonically on the first write to that row and produces a
 real commit; the guarantee is **no semantic change** (FSPEC §7.4). `commitQueueRow`'s
-`nothing to commit` branch (`:952`) already makes the no-change case silent and non-faulty.
+`nothing to commit` branch (`:953`) already makes the no-change case silent and non-faulty.
 
 ## 9. The queue driver's post-pipeline transition
 
 Implements FSPEC §7.5 and §9.5. Three edits, all in `orchestrate-queue.js`, none of them structural.
 
-### 9.1 `runPicked`'s status derivation (`:816`–`:836`)
+### 9.1 `runPicked`'s status derivation (`:818`–`:836`)
 
 ```js
 const succeeded = report && report.outcome === "success";
@@ -827,13 +827,13 @@ await rewriteStatus(queuePath, entry.feature, newStatus, readFileFn, writeFileFn
 The driver still **always writes something** — the change is only that its value now derives from
 `mergeStatus` as well as `outcome` (FSPEC §7.5). It passes **no evidence**: Phase MERGE already wrote
 the `Evidence` cell at M4, and a second writer for the same cell is exactly the divergence FSPEC §7.4
-forbids. Writing `done` over `done` is idempotent and produces no commit (`:952`).
+forbids. Writing `done` over `done` is idempotent and produces no commit (`:953`).
 
 `report.mergeStatus` is read defensively — a pipeline report without the field (an older bundle, a
 throw-path stub) is `undefined`, which is not `"merged"`, so the driver falls back to today's
 behaviour. Fail-safe direction: the failure mode is "left `awaiting-merge`", never "wrongly `done`".
 
-### 9.2 The operator message (`:826`–`:830`)
+### 9.2 The operator message (`:829`–`:833`)
 
 | Case | Message |
 |---|---|
@@ -847,7 +847,7 @@ partial variant survives.
 
 ### 9.3 `buildQueueReport` pass-through (`:994`)
 
-**No change is required.** `pipelineReport` is already carried whole (`:1021`), so `mergeStatus`,
+**No change is required.** `pipelineReport` is already carried whole (`:1010`), so `mergeStatus`,
 `mergeSha`, `mergeMethod` and every `MERGE ESCALATION: ` notice inside `report.notices` are visible
 from the queue's run report the moment `orchestrate-dev` puts them there (FSPEC §9.5). §13.2 asserts
 the pass-through positively anyway — a future `buildQueueReport` that projected selected fields would
