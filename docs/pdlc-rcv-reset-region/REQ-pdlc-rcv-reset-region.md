@@ -317,8 +317,11 @@ re-creates a one-line region, and the clearance after it works, at the cost of o
 the halt history.
 
 **The one exception, and it is the only one.** Act 1 of AC-7.5's unconfirmable-append recovery
-deletes the region's trailing answering line. It is sanctioned **only there**, and it is not the
-operator repairing an *answer*: an unconfirmed line answered nothing — no round ran — so removing it
+deletes the region's trailing answering line — **on the `answering line` source of the `{which}`
+token, and only when `A = H`**, the count test catalogue §4 states in place of an unobservable
+"unconfirmed" predicate; when `A < H` the write did not land and nothing is deleted. It is sanctioned
+**only there**, and it is not the
+operator repairing an *answer*: an unconfirmed line that landed answered nothing — no round ran — so removing it
 restores `A < H` and the clearance the write never earned. S-13's prohibition is scoped to
 **authoring** a line, which is why it exempts both this act and the two corrections above (catalogue
 §4, *Residue disposition*).
@@ -372,7 +375,7 @@ runs those rounds. Writing the line last would instead lose the record of a wind
 and re-grant it.
 
 **AC-7.6 — Row B is one row in two variants, and the operator is always told why the invocation did
-nothing.** *Who:* the operator. *Given:* an entry that refuses under AC-7.1 step 4, under AC-7.5, or under `REQ-RCV-01` AC-1.4's unconfirmed halt-path write (added in that REQ's v3.0, this same revision — a third **source**, not a third variant: it reports the *unconfirmable-append* variant, whose ❌ text catalogue §4 generalises to *region line*).
+nothing.** *Who:* the operator. *Given:* an entry that refuses under AC-7.1 step 4, under AC-7.5, or under either of `REQ-RCV-01` AC-1.4's unconfirmed halt-path writes (added in that REQ's v3.0–v3.1, this same revision — second and third **sources**, not new variants: they report the *unconfirmable-append* variant, whose ❌ text catalogue §4 discriminates by a `{which}` token because its recovery differs by source).
 *When:* the run report is emitted. *Then:* the entry opens no round and dispatches nobody, but still
 produces **exactly one** row of catalogue §3's schema — row B — with these cells:
 
@@ -381,13 +384,13 @@ produces **exactly one** row of catalogue §3's schema — row B — with these 
 | `round` | **one past the highest round of this document type on the branch**, from the listing (`deriveRoundWindow`, M-1d) — **never** from `W` | same rule; `W` is unchanged on this path and is likewise not this cell |
 | `panel-shape`, `blocking`, `growth-bytes`, `classification` | **empty** — nothing dispatched, nothing measured | **empty**, same reason |
 | `notice` | **S-16 alone**, with **no S-4 reason**, no halt having been taken | **empty**, with no S-16 and no S-4 (catalogue §3) |
-| ❌ phase-row text | `Refused — reset region corrupt at {path} ({reason})`, §6 | `Refused — region line unconfirmed at {path}`, **catalogue §4** |
-| Recovery text | names *that reason's* sanctioned repair (AC-7.4), §6 | the **two acts in order**, **catalogue §4** |
+| ❌ phase-row text | `Refused — reset region corrupt at {path} ({reason})`, §6 | `Refused — {which} unconfirmed at {path}`, **catalogue §4** — `{which}` names the attempted write: `answering line` (AC-7.5), `halt line` or `iterations section` (`REQ-RCV-01` AC-1.4) |
+| Recovery text | names *that reason's* sanctioned repair (AC-7.4), §6 | the **two acts in order**, **catalogue §4**, act 1 scoped by `{which}` and decided by a count of the region's own lines |
 | `postmortemStatus` | **`written`** (AC-7.2) | **`written`**, same mechanism |
 
 **The variants are told apart by the ❌ phase-row text, never by the `notice` cell alone** — catalogue
 §3 says so, and it matters: an empty `notice` is also what a perfectly ordinary quiet row carries.
-**Rows B and C are mutually exclusive**: B's entry takes no halt, C's takes one (catalogue §3), so B
+**Rows B and C are mutually exclusive**: B's entry **records** no halt, C's records one (catalogue §3 — *records*, not *takes*, since `REQ-RCV-01` AC-1.4's source does take a halt and is refused before recording it), so B
 never carries S-4 and C never carries S-16 from this path. The `round` cell is stated over AC-7.3's
 mid-window branch, the only one on which it differs observably from the fallback's: highest round
 2 ⇒ `round` = 3.
