@@ -93,7 +93,7 @@ worktrees**, so no file may appear twice in a row below. Verified: no row has a 
 | Batch | Task | Files created or appended |
 |---|---|---|
 | 1 | F1 | `__tests__/helpers/mergeDoubles.js`, `__tests__/helpers/mergeDoubles.test.js`, `__tests__/fixtures/queue-goldens/` |
-| 1 | R1 | `orchestrate-dev.js`, `orchestrate-queue.js`, `build-runtime.mjs`, `__tests__/haltAndQueue.test.js`, `__tests__/runtimeBundle.test.js`, `__tests__/orchestrateQueue.test.js` |
+| 1 | R1 | `orchestrate-dev.js`, `orchestrate-queue.js`, `build-runtime.mjs`, `__tests__/haltAndQueue.test.js`, `__tests__/runtimeBundle.test.js`, `__tests__/orchestrateQueue.test.js`, `__tests__/helpers/seams.js`, `__tests__/pipelineWiring.test.js`, `__tests__/pacingWrapper.test.js`, `__tests__/forcePhases.test.js` |
 | 2 | A1 | `orchestrate-dev.js`, `__tests__/mergeConfig.test.js` |
 | 2 | B1 | `orchestrate-queue.js`, `__tests__/mergeQueueWriteback.test.js` |
 | 3 | A2 | `orchestrate-dev.js`, `__tests__/mergeObservations.test.js` |
@@ -105,16 +105,29 @@ worktrees**, so no file may appear twice in a row below. Verified: no row has a 
 | 7 | A6 | `orchestrate-dev.js`, `__tests__/mergePostMerge.test.js` |
 | 7 | D1 | `runtime-adapter.js`, `__tests__/mergeAdapter.test.js` |
 | 8 | A7 | `orchestrate-dev.js`, `__tests__/mergePhase.test.js` |
-| 9 | A8 | `orchestrate-dev.js`, `__tests__/mergePhase.test.js`, `__tests__/pipelineWiring.test.js`, `__tests__/reportTemplates.test.js` |
+| 9 | A8 | `orchestrate-dev.js`, `__tests__/mergePhase.test.js`, `__tests__/haltAndQueue.test.js`, `__tests__/pipelineWiring.test.js`, `__tests__/reportTemplates.test.js`, `__tests__/runtimeBundle.test.js` |
 | 10 | A9 | `__tests__/haltAndQueue.test.js` |
 | 11 | D2 | `build-runtime.mjs`, `dist/*`, `__tests__/runtimeBundle.test.js` |
 | 12 | V1 | *(none)* |
 
-Paths are relative to `pdlc/workflows/`. Four files are written by more than one task —
-`orchestrate-dev.js` (9), `orchestrate-queue.js` (4), `runtimeBundle.test.js` (2, R1 and D2),
-`haltAndQueue.test.js` (2, R1 and A9), `mergeObservations.test.js` (2, A2 and A5),
-`mergeQueueWriteback.test.js` (2, B1 and B2), `build-runtime.mjs` (2, R1 and D2) — and **every one of
-those pairs is separated by a real `Deps` edge**, never by a prose note.
+Paths are relative to `pdlc/workflows/`. **Ten** files are written by more than one task (TE F-06 —
+v1.0 said "four" and then listed seven):
+
+| File | Writers | Separated by |
+|---|---|---|
+| `orchestrate-dev.js` | R1, A1, A2, A3, A4, A5, A6, A7, A8 | the A-chain, one wave each |
+| `orchestrate-queue.js` | R1, B1, B2, B3 | the B-chain |
+| `runtimeBundle.test.js` | R1, A8, D2 | R1→…→A8→D2 |
+| `haltAndQueue.test.js` | R1, A8, A9 | R1→…→A8→A9 |
+| `pipelineWiring.test.js` | R1, A8 | R1→A1→…→A8 |
+| `mergePhase.test.js` | A7, A8 | A7→A8 |
+| `mergeObservations.test.js` | A2, A5 | A2→A5 |
+| `mergeQueueWriteback.test.js` | B1, B2 | B1→B2 |
+| `orchestrateQueue.test.js` | R1, B2 | R1→B1→B2 |
+| `build-runtime.mjs` | R1, D2 | R1→…→D2 |
+
+**Every one of those pairs is separated by a real `Deps` edge**, never by a prose note.
+`helpers/seams.js`, `pacingWrapper.test.js` and `forcePhases.test.js` have exactly one writer (R1).
 
 ## 5. Dependency notes and the batch derivation
 
@@ -135,8 +148,24 @@ Edges that are not obvious from the file list:
 - **R1 first, and alone in its chain**: the seam rename is the one cross-cutting edit. Doing it in
   batch 1 rather than at the end means every later task writes the new name once, instead of every
   later task being rewritten by a late rename.
-- **F1 before everything**: rule 4's shared-prerequisite obligation. The goldens in particular must be
-  captured **before B2 changes `updateQueueStatus`**, which the `F1 → B1 → B2` chain guarantees.
+- **F1 before everything that consumes it**: rule 4's shared-prerequisite obligation. The goldens in
+  particular must be captured **before B2 changes `updateQueueStatus`**, which the `F1 → B1 → B2`
+  chain guarantees. R1 is the declared non-consumer (§2).
+
+**The `RLH-WIRE-01` hazard, and how it is resolved.** `pipelineWiring.test.js:441`–`:447` declares
+`NEW_SEAMS` with `_recordHalt` as a member, and `RLH-WIRE-01` (`:449`) asserts `main()`'s parameter
+list contains every member. R1 renames that parameter in wave 1; **A8 does not touch `main()`'s
+parameter list until wave 9**, so a rename that left `NEW_SEAMS` alone would leave the suite red for
+eight waves — and §2 rule 3 requires the whole suite green before *every* task is reported done, so
+the second wave could not start. **R1 therefore changes the `NEW_SEAMS` member in the same commit as
+the rename**, which keeps the assertion true continuously: after R1, `main()` declares
+`_recordQueueRow` and the list names it. No interim red is declared, because none is needed.
+
+Two related closed sets are worth stating so they are not discovered late. `AT19_SEAM_NAMES`
+(`runtimeBundle.test.js:210`–`:214`) seeds the await-discipline scan and is deliberately *not* derived
+from `main()`: R1 renames its `_recordHalt` member, and **A8 adds `_ghRun`** so the new transport's
+call sites are scanned. `RLH-WIRE-01`'s `addedSeams` length assertion counts only `NEW_SEAMS`
+members, so A8 adding two parameters to `main()` cannot break it — verified against the test body.
 
 ## 6. Integration points
 
