@@ -482,6 +482,104 @@ belt-and-braces, never the mechanism.
 
 ## 8. FSPEC-RPT-01 — Operator-visible reporting
 
+**Linked criteria:** AC-1.3, AC-1.5(1). **Obligation:** O-14's FSPEC half.
+
+### 8.1 The Iterations section
+
+**B-RPT-1 — the render, and the two quantities it names.** The post-mortem's Iterations section
+reads exactly:
+
+```
+## Iterations (budget {MAX_REVIEW_ROUNDS}, rounds run {k})
+```
+
+two decimal integers ≥ 0, where the first is the **effective budget** and `{k}` is **the number of
+rounds this halting entry dispatched**. It **replaces** the shipped literal, whose single number and
+*"limit reached"* phrase are false on a zero-round halt. The render is **one line** — the heading's
+own text, not a heading plus a body line — so an oracle over it has a single target and can be an
+**equality**, not a substring match that any rendering satisfies.
+
+**It is the loop's output, not an agent's.** The render is the operator's guarantee, so it may not
+rest on an agent's compliance with a prompt, and the loop writes it on every halt in scope (§7.2,
+clause 3) — which is what makes an equality assertion falsifiable against production.
+
+**On every halt in scope, re-halt included.** This is the case the criterion exists for: a second
+entry into an exhausted window is by construction a zero-round halt, so an operator reading the
+*previous* halt's `rounds run {k}` would read exactly the conflation this forbids.
+
+**B-RPT-2 — where the section is found.** The **first top-level heading whose text begins
+`Iterations`**, case-sensitively, outside any fenced block. Whatever that heading carried is
+replaced by the render.
+
+**B-HALT-3 — when no such heading is found, the loop inserts one rather than failing.** The new
+heading goes **immediately above `## Reset Region`**, wherever that section sits, or at the **end of
+the file** when there is none. Total in both directions, and region parsing is unaffected either
+way. Two paths reach it: a post-mortem written before this feature landed, and one an authoring
+agent wrote without the section.
+
+**B-RPT-3 — the other two budget surfaces.** The non-convergence phase record and the returned
+`iterations` field both carry the **budget**, not the rounds run (B-BUD-4). All three surfaces are
+asserted **over the constant**, never over the literal `3`.
+
+### 8.2 Row C — the report row of a zero-round budget halt
+
+**B-RPT-4 — cell by cell.** A halt admitted no rounds (B-WIN-2) still produces one run-report row,
+in catalogue §3's schema:
+
+| Column | Value |
+|---|---|
+| `round` | **the start §4.1 resolves** (`S`) |
+| `panel-shape` | **empty** — nothing was dispatched |
+| `blocking` | **empty** |
+| `growth-bytes` | **empty** — nothing was measured |
+| `classification` | **empty** |
+| `notice` | **exactly this halt's S-4 render**, with no separator and nothing else |
+
+The `notice` cell is a `; `-joined list in catalogue §3's precedence order in general, but is
+**vacuous on row C by construction**: no round is dispatched, so no S-3, S-5 or S-6 can be raised;
+and rows B and C are mutually exclusive, so no S-16 either. A test may assert the cell is **exactly**
+the S-4 render.
+
+**B-RPT-5 — the returned per-reviewer verdict list is empty on a zero-round halt.** Not a carry-over
+of the previous round's reviewers and their verdicts, which would report verdicts for reviewers this
+entry never ran, in the same report as row C's deliberately empty cells.
+
+### 8.3 Row B — the report row of a refusing entry
+
+**B-RPT-6.** An entry that **records no halt** emits row B. It has two variants and, at this ship,
+**three sources**, all dispatch-less:
+
+| Variant | Source | `notice` | ❌ phase-row text |
+|---|---|---|---|
+| *unconfirmable-append* | the answering line (B-CLR-7) | **empty** | `Refused — answering line unconfirmed at {path}` |
+| *unconfirmable-append* | clause 1-and-2, the halt line (B-HALT-5) | **empty** | `Refused — halt line unconfirmed at {path}` |
+| *unconfirmable-append* | clause 3, the Iterations section (B-HALT-4) | **empty** | `Refused — iterations section unconfirmed at {path}` |
+| *validation-failure* — **target state** | a region that does not validate (§5.4) | **S-16 alone** | `REQ-RCV-07` §6's |
+
+`{path}` is the post-mortem's repo-root-relative path. **The three unconfirmable-append sources are
+distinguished by the ❌ text, never by the `notice` cell**, which is empty on all three: the
+`{which}` token is what scopes the operator's recovery, and one of the three attempts no region line
+at all. **The render, the recovery text and the residue analysis are catalogue §4's** and are cited,
+not restated here; the *conditions* under which each fires are §6.3 and §7.3's.
+
+**Rows B and C are mutually exclusive, discriminated by *records*, not by *takes*.** B's entry
+records no halt — including the two sources that **do** take a halt and are refused before recording
+it; C's entry records one. So **B never carries S-4 and C never carries S-16**.
+
+**A refusal is not a halt.** The entry returns without running the rest of the flow, leaves the
+`RESOLVED:` marker in place, writes no post-mortem byte on the validation-failure variant, and
+terminates the invocation on the same path an unresolved post-mortem takes — ❌ phase row, queue row
+`halted` (M-7a, M-7b). Left running instead, the entry would reach the budget halt of §4, which
+would append its own `HALT-REASON:` and strip the operator's marker — spending the clearance it
+declined to spend and converting a repairable region into an unrepairable one.
+
+### 8.4 The operator-visible surfaces, gathered
+
+So that a reader can check the value claim without reassembling it: the **budget and rounds-run** in
+the post-mortem's Iterations section and in the run report; the **`## Reset Region`** and its lines;
+**row C**, saying why an invocation did nothing; **row B**, saying why an invocation refused; and
+the **S-4 reason**, identical in the post-mortem and in the report.
+
 ## 9. FSPEC-PROMPT-01 — The post-mortem authoring prompt
 
 ## 10. Edge cases and error scenarios
