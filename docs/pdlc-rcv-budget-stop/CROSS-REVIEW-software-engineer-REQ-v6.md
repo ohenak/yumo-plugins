@@ -113,4 +113,48 @@ queue row.
 
 ## 6. Recommendation
 
+**Needs revision**
+
+All four v5 findings are closed, two of them at a better altitude than I asked for, and the split
+itself is sound: every relocated clause has a real home, every `M-*` id resolves, every `REQ-RCV-07`
+cross-reference resolves including the two step-level ones, NB-4 holds mechanically, and nothing that
+stayed regressed. If F-01 were not present I would approve this document.
+
+What reopens the round is **one High, and it is on the clause the split created rather than on
+anything it moved**:
+
+1. **F-01** — X-06 and R-14 prescribe stubbing *the region validates* as the **constant** *invalid*
+   and call that *"safe by construction"*. It is not. AC-1.5(4)'s false-branch **refuses the phase**,
+   the predicate is resolved on every entry (§4.1's `W` row; `REQ-RCV-07` AC-7.3's *unconditional*),
+   and this REQ itself declares the **empty region valid** — the exact input a constant stub gets
+   wrong. So the prescribed interim implementation refuses every document-typed review phase on every
+   feature, including branches that have never halted, until row 18 ships. Per `docs/_queue/QUEUE.md`
+   the pickup order is **10 → 12 → 18**, so a whole feature runs its five review phases in that
+   interval — and row 18's own Phase R would be refused by the code row 10 shipped, so the stub blocks
+   the delivery of its own replacement. **State the stub's shape, not its value:** valid on the empty
+   region, invalid on any non-empty one — which cannot grant a window, cannot open one over an
+   unvalidated region, and leaves every branch with no reset region behaving as it does today. Put the
+   same words in X-06's *Behaviour until it ships* cell and in R-14's disposition, and give O-10's
+   *stub or double* leg an assertion about the stub's shape (a constant-`invalid` stub satisfies
+   today's leg while bricking production). If the intended answer is instead a `depends-on` edge and
+   co-delivery, say that — but then §3.1's *"deliverable alone"* must go with it.
+
+Three Lows accompany it and none of them is the reason for the verdict: **F-02**, *"queued
+immediately behind it"* is off by one feature against the queue's own stated pickup order, and it is
+R-14's mitigation, so it should move with F-01; **F-03**, `O-10/O-11/O-12` and `R-10/R-14` now collide
+across the two halves of a split whose §7 mints `NB-*` precisely because id collisions have already
+bitten this family — every current citation is qualified, so this is hygiene, not ambiguity; **F-04**,
+X-06's *Direction* cell labels an inbound edge *"owed to"* where X-05 labels the same direction *"read
+from"*, and §3.1's *head of the family* sentence needs the qualifier the rest of the paragraph
+already implies.
+
+Size is no longer a constraint on how the fixes are paid for: 477 lines / 52,052 bytes, under the new
+90% soft threshold, with room for the sentences F-01 needs.
+
+The durable signal from this round is one line, and it belongs in
+`docs/_constraints/DOMAIN-CONSTRAINTS.md` if it recurs: **a "fail-closed stub" of a total predicate is
+a *shape*, not a constant — a constant that always fails closed does not degrade the feature the
+predicate gates, it denies every surface the predicate is evaluated on.** The v2.0 split is otherwise
+the model for how this family should have been cut in the first place.
+
 ## Verdict
