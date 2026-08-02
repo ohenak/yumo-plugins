@@ -141,6 +141,23 @@ check reads the same count, so it is stated here once rather than at either end.
 
 *Leg 1, well-formed non-empty region:* one `HALT-REASON:` line, no answering line (`H = 1`, `A = 0`), a readable `RESOLVED: yes`, and highest round on the branch = `windowEnd(1)` = **3** ⇒ the entry **grants** — exactly one `WINDOW-START: 4` appended at the end of the region, `A = H = 1` after, **no** `reset-region-corrupt` notice, no refusal and no ❌ row, and **≥ 1** reviewer dispatch. *Leg 2, no region at all:* `H = A = 0`, highest round below `windowEnd(1)` ⇒ `W = 1`, the ordinary window opens — **no** refusal, **no** S-16, **no** answering line written, both counts still `0`, and **≥ 1** dispatch. *Leg 3, a malformed answering-line value* — decidable at row 10 from §6's grammar alone, which is why it is this REQ's: one `HALT-REASON:` line, one `WINDOW-START: abc` (equally `-2`, or empty), a readable `RESOLVED: yes` and — as in leg 2 — **highest round below `windowEnd(1)`**, since a fixture about the *origin* must leave the window open or the budget halt masks what it exists to pin ⇒ the malformed line **still counts toward `A`** (AC-1.5(4) clause 4: counted by line prefix, whatever the value), so `A = H = 1` and no clearance is observed; it contributes **no value**, so `W` = **1**, never `NaN` into `windowEnd` or `deriveRoundWindow` (AC-1.2, O-12). The ordinary window `[1, 3]` opens — **no** refusal, **no** S-16, **no** answering line, counts unmoved, **≥ 1** dispatch. Unlike legs 1 and 2 it is **interim-only and inverts at row 18**, where AC-7.1 step 4 refuses this fixture with `invalid-window-start`; it is marked as such so that commit replaces it rather than deleting an assertion it cannot explain. What it pins today is the one thing both wirings must agree on: `W` is a decimal integer.
 
+### 5.5 Why the answering line is recorded before dispatch, and why every clearance is answered
+
+Relocated from `REQ-RCV-01` AC-1.5(4) and (5) (2026-08-01, v2.7) so both ends cite one copy of the
+argument; nothing changed meaning in the move. `REQ-RCV-01` states the **rules** — the line durably
+exists before any round of that entry is dispatched, and *every* clearance is answered by exactly one
+line, `WINDOW-RESUMED:` on the S-11 path included; `REQ-RCV-07` AC-7.5 states what a partially-landed
+line leaves behind. This states the reasons behind them.
+
+- **The ordering.** An entry that records the line and then dies before dispatching has spent the
+  clearance while the window at `N` is intact, so the next entry runs those rounds — a bounded loss of
+  nothing. Recording it last loses the record of a window already **used** and re-grants it, which is
+  the fail-open the criterion exists to close. Fail toward the recoverable direction.
+- **Answering the S-11 clearance.** With nothing written on that path the clearance stays unanswered
+  forever, so the **next** halt of any kind banks a free window on a marker written for an unrelated
+  authoring failure — *k* authoring failures, *k* free windows. `WINDOW-RESUMED: {W}` keeps the
+  intent — origin unmoved, spent rounds spent, no window charged — while restoring `A = H`.
+
 ## 6. The catalogue delegation, stated once
 
 Relocated from `REQ-RCV-01` §4 (2026-08-01, round 8) so both halves cite one copy; no clause changed
