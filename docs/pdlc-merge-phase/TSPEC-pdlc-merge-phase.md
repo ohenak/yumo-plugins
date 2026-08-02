@@ -1371,7 +1371,10 @@ Fixture constraints, stated in the file header so they cannot be edited away:
 | AC-1.2a / FSPEC §3.3 | the retry demand in `decideMerge` + `_sleep` (§4.3) | `mergeObservations`, `mergeDecision` |
 | AC-1.2b / FSPEC §3.2 | `classify*`'s shared `{ok:false,reason}` shape (§4.1) | `mergeObservations` |
 | AC-1.3 | never-throws (§5.2) + `⚠️` glyph, never `❌` (§10.3) | `mergePhase` |
-| AC-1.6 / FSPEC §2.2 | `decideMerge`'s ordered guard sequence (§5.3) | `mergeDecision` (row table) |
+| AC-1.6 / FSPEC §2.2 | `decideMerge`'s ordered guard sequence (§5.3) | `mergeDecision` |
+| **AC-6.1a / FSPEC §11** | the 24-row condition table as `phaseMerge`'s primary suite (§13.3) | `mergePhase` (row table) |
+| **§11 rows 19–22** | post-merge annotations, composable (§7.1, §10.2) | `mergePhase` (AT-M6) |
+| **AC-2.3** | exhaustion ⇒ row 17 with per-attempt reasons (§5.6, §12 E10) | `mergeDecision` |
 | REQ-MERGE-02 / FSPEC §6 | `mergeCandidates` (§5.6), `executeMerge` (§4.7) | `mergeObservations`, `mergeDecision` |
 | AC-2.5a/b | `classifyRepoCaps` fail-closed; empty chain ⇒ row 16 | `mergeDecision` |
 | AC-2.6 / 2.6a | `deleteRemoteBranch` (§7.2) | `mergePhase` |
@@ -1379,17 +1382,22 @@ Fixture constraints, stated in the file header so they cannot be edited away:
 | AC-3.4 | `ok !== true` ⇒ `fired` (§6.3) | `mergeGuard` |
 | AC-3.5 | the two-arm design (§6.4) | `mergeGuard` (AT-M3) |
 | AC-3.6 | `startsWith` semantics (§6.2) | `mergeGuard` |
+| **AC-3.3 / AC-3.7** | `effectiveGuardPaths`' union with the four frozen defaults, `.claude/workflows/` among them (§6.1) | `mergeGuard` |
 | REQ-MERGE-04 / FSPEC §5 | the CI rule (§5.4), reusing `checkPrCi` | `mergeDecision` |
+| **AC-4.2** | `no-checks` + `mergeRequiresCi` ⇒ row 9 + escalation (§5.4, §10.2) | `mergePhase`, `mergeDecision` |
+| **AC-4.3** | `mergeRequiresCi: false` relaxes exactly the `none` cell (§5.4) | `mergeDecision` |
 | REQ-MERGE-05 / FSPEC §7 | `rewriteStatus` + `updateQueueStatus` + the two helpers (§8) | `mergeQueueWriteback` |
 | AC-5.2 | row-3 recovery + the queue-write escalation (§5.5, §10.2) | `mergeQueueWriteback` (AT-M2a) |
 | AC-5.3 / Q-02 | `ensureEvidenceColumn` (§8.5) | `mergeQueueWriteback` (AT-M1) |
 | AC-5.6 | `runPicked` (§9.1) | `mergeQueueDriver` (AT-M4) |
 | AC-5.7 / FSPEC §8 | `updateDefaultBranch` (§7.4) | `mergePhase` |
+| AC-5.4 | no `QUEUE.md` ⇒ `"none"`, no error, notice suppressed (§7.5, §12 E17) | `mergeQueueWriteback`, `mergePhase` |
 | AC-5.8 | `nothing to commit` branch, untouched (§8.5) | `mergeQueueWriteback` (AT-M2) |
 | REQ-MERGE-06 / FSPEC §9 | `buildFinalReport` fields + notices (§10) | `mergePhase`, `reportTemplates` |
+| **AC-6.2a** | the `MERGE ESCALATION: ` prefix as one frozen catalogue, accumulating in §9.3 order (§10.2) | `mergePhase` (AT-M6) |
 | AC-6.3 | `buildQueueReport` pass-through (§9.3), no selection change (§9.4) | `mergeQueueDriver` (AT-M5) |
 | REQ-MERGE-07 / FSPEC §10 | `parseMergeConfig`, `readMergeConfigSafely` (§3) | `mergeObservations` (config block) |
-| NFR-1 / NFR-4 | raw-output-only transport; no agent decides (§4.1, §11.3, §11.5) | `mergeObservations`, adapter scan |
+| NFR-1 / NFR-4 | raw-output-only transport; no agent decides (§4.1, §11.3, §11.5) | `mergeObservations`, `mergeAdapter` |
 | NFR-2 | one mutating call, reachable from one branch (§4.7, §5.2) | `mergeDecision` |
 | NFR-5 | row 5 / §11 row 3 (§5.5) | `mergeDecision`, `mergeQueueWriteback` |
 
