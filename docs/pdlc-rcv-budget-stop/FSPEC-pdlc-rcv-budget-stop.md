@@ -329,8 +329,18 @@ line reads exactly as B-REG-1 does. **Empty is valid, not corrupt**: it satisfie
 predicate vacuously and raises no notice.
 
 **B-REG-6 — a present but unreadable post-mortem.** Read as `status: "none"` (M-7a) ⇒ **no halt in
-force** *and* an empty region ⇒ `H = A = 0`, `W = 1`. Nothing is honoured and nothing is written —
-the narrowest window, fail-closed in both directions at once.
+force** *and* an empty region ⇒ `H = A = 0`, `W = 1`. Nothing is honoured **at the gate** — the
+narrowest window, fail-closed in the read direction.
+
+**This reading does not end the entry, and the continuation is what matters.** `H = A = 0` closes
+the gate (B-CLR-4) and `W = 1`, so a document with rounds on disk resolves `S > E` and the entry
+reaches a halt (B-WIN-2) — a **writing** path. The rule that keeps this fail-closed is §7.2's
+**file-presence discriminator**: a post-mortem that exists but cannot be read is an **existing**
+post-mortem, so nothing is re-authored over it, and the halt-path's first confirmation (clause 3's
+equality read-back) cannot succeed on a file that cannot be read, so the entry takes B-HALT-4's
+**phase refusal** — region byte-unchanged, no halt recorded, no marker stripped, both counts
+unmoved. **Nothing is written that survives the entry, on either the read side or the write side.**
+Read the two together: this branch fixes the *reading*; §7.2 fixes the *entry*.
 
 ### 5.4 Validation — the named predicate, and what it does at this ship
 
@@ -360,10 +370,20 @@ is satisfied by every implementation, including the one it exists to exclude. Wh
 1. **Same-branch equivalence, positively asserted.** Over a family of regions that **would** fail
    validation at target state — for each of the S-16 reasons, and at minimum: a value inconsistent
    with the highest round on the branch, a descending answering value, and `H − A ∉ {0, 1}` — the
-   entry takes the **same branch** as an equivalent well-formed region: it grants, dispatches
+   entry takes the **same branch** as an **equivalent** well-formed region: it grants, dispatches
    **≥ 1** round, and writes the **same** answering line with the same value. This is a presence
    assertion, not an absence one, and it fails on any interim procedure that inspects the region's
    shape at all, inline or not.
+
+   **Equivalence is over the gate-relevant state, never over the counts.** Two regions are
+   equivalent here exactly when they agree on: the **truth of `A < H`**, the **resolved `W`**, the
+   **highest existing round** of that document type (hence the same `D`), and therefore the same
+   resolved `N = max(D, W)`. Equivalence over *same counts* would be unsatisfiable for one mandated
+   member: `H − A ∉ {0, 1}` **is** a malformation of the counts, so a well-formed region with the
+   same counts does not exist by construction and that member would have no pair. Under the
+   gate-relevant relation it does: `H = 3, A = 1` pairs with `H = 2, A = 1` — same open gate, same
+   `W`, same `D`, same granting value — and all three mandated members are constructible. The
+   relation is this flow's; **the fixtures that realise it are PROPERTIES'** (O-10).
 2. **The enumeration of consultation sites is empty** — a structural assertion over the sites, not a
    call count at runtime, so it is decidable while no callable exists. Which enumeration mechanism
    carries it is TSPEC's (**F-N-4**, `REQ-RCV-01` O-13).
