@@ -328,9 +328,29 @@ procedure is `REQ-RCV-07` AC-7.1's (**F-N-1**, forward edge X-06).
 
 **B-REG-7 — the interim, and its one observable.** At this ship the conjunct is **not wired**: the
 predicate is **consulted zero times**, no entry refuses for a region reason, no `reset-region-corrupt`
-notice is ever emitted, and every branch behaves as it does at HEAD. The observable is a count of
-**0 consultations**, not an absence of effect — the two are distinguishable, and only the count
-falsifies *"wired with an ad-hoc interim procedure"* (split §5.1, §5.4). The cost, time-boxed to
+notice is ever emitted, and every branch behaves as it does at HEAD.
+
+**The observable is a positive one, because a count over a symbol that does not yet exist cannot
+fail.** There is no *region validates* callable at this ship — it is `REQ-RCV-07` AC-7.1's — and an
+ad-hoc **inline** interim procedure would not call one either, so "0 consultations" over that symbol
+is satisfied by every implementation, including the one it exists to exclude. What falsifies
+*"wired with an ad-hoc interim procedure"* (split §5.1, §5.4) is stated as two conjuncts:
+
+1. **Same-branch equivalence, positively asserted.** Over a family of regions that **would** fail
+   validation at target state — for each of the S-16 reasons, and at minimum: a value inconsistent
+   with the highest round on the branch, a descending answering value, and `H − A ∉ {0, 1}` — the
+   entry takes the **same branch** as an equivalent well-formed region: it grants, dispatches
+   **≥ 1** round, and writes the **same** answering line with the same value. This is a presence
+   assertion, not an absence one, and it fails on any interim procedure that inspects the region's
+   shape at all, inline or not.
+2. **The enumeration of consultation sites is empty** — a structural assertion over the sites, not a
+   call count at runtime, so it is decidable while no callable exists. Which enumeration mechanism
+   carries it is TSPEC's (**F-N-4**, `REQ-RCV-01` O-13).
+
+The absence conjuncts — no `reset-region-corrupt` notice, no region-reason refusal — are retained,
+but they are the weaker half and neither alone discharges this rule. **Fixture construction for the
+family in conjunct 1 is PROPERTIES'** (O-10); what this flow fixes is the observable. The cost,
+time-boxed to
 `REQ-RCV-07`'s queue row: a hand-edited region and the loop's own newly written region lines land in
 a region nothing validates. Both are bounded by the accounting the two live conjuncts enforce —
 every line still answers or records exactly one halt.
@@ -770,7 +790,7 @@ test composes it from the constant.
 | **AT-REG-04** | B-REG-4 | a region with one `HALT-REASON:`, one `WINDOW-START: abc`, a readable `RESOLVED: yes`, and highest existing round below the window end | the phase is entered | `W = 1` (never a non-numeric value in the arithmetic), `A = H = 1` so **no** clearance is observed, the ordinary window 1…3 opens with **≥ 1** dispatch, and **no** answering line is written |
 | **AT-REG-05** | B-REG-5 | a post-mortem with one real region line, one `HALT-REASON:` quoted in `## Recommendation`, and one inside a fenced block | the counts are taken | `H = 1` |
 | **AT-REG-06** | B-REG-6 | a post-mortem that is present but unreadable | the phase is entered | `H = A = 0`, `W = 1`, no halt in force, nothing written |
-| **AT-REG-07** | B-REG-7 | the granting region of AT-CLR-01 — the one fixture that defeats **both** decidable conjuncts | the phase is entered | the *region validates* predicate is consulted **exactly 0 times** (a count, not an absence), the entry grants, and **no** `reset-region-corrupt` notice is emitted anywhere |
+| **AT-REG-07** | B-REG-7 | a **family** of granting regions that would fail validation at target state — at minimum an answering value inconsistent with the highest round on the branch, a descending answering value, and `H − A ∉ {0, 1}` — each paired with an **equivalent well-formed** region (same counts, same origin, same highest existing round) | each pair is entered | **positively:** each malformed member takes the **same branch** as its well-formed pair — grants, dispatches **≥ 1** round, and writes the **same** answering line with the same value. **Structurally:** the enumeration of *region validates* consultation sites is **empty**. **And:** no `reset-region-corrupt` notice and no region-reason refusal anywhere. The first two conjuncts are what fail on an ad-hoc inline interim procedure; the third alone would not |
 
 ### 11.4 FSPEC-CLR-01 — *Who:* the review loop
 
