@@ -345,7 +345,10 @@ workflow sources, skill prompts, hook scripts, and the consumer's runtime copy o
 ## 5. Scope
 
 **In scope:** Phase MERGE, merge-method policy, self-modification guard, CI evidence rule, queue
-write-back, reporting, configuration flags, tests.
+write-back, reporting, configuration flags, tests — **and the queue driver's post-pipeline status
+transition** (AC-5.6), which today writes `awaiting-merge` unconditionally after the pipeline returns
+and would otherwise un-do every `done` this feature writes; **and the post-merge working-tree state**
+(AC-5.7), which no one restores once the human stops merging.
 
 **Out of scope:** resolving CI failures or rebase conflicts (`pdlc-advisory-tier`); the loop driver
 (`pdlc-engineering-loop`); merging PRs the pipeline did not raise.
@@ -358,9 +361,13 @@ write-back, reporting, configuration flags, tests.
   rebase merges. Both are queryable up front (`gh repo view --json rebaseMergeAllowed,
   mergeCommitAllowed,squashMergeAllowed`) and AC-2.5 requires the phase to read them rather than
   assume them; a repo that forbids rebase merges is a supported configuration, not a failure.
-- **BL-03** — Existing `ship-pr` skill unchanged. This phase calls `gh` directly rather than adding
-  a third job to `ship-pr`, keeping that skill's "one discrete action per invocation, never merges"
-  contract intact.
+- **BL-03** — Existing `ship-pr` skill unchanged. This phase performs its own `gh` work rather than
+  adding a third job to `ship-pr`, keeping that skill's "one discrete action per invocation, never
+  merges" contract intact.
+- **BL-04** — Acceptance evidence in this repo. Because every PR raised from this repo's own queue
+  touches a guard path (AC-3.7), the `merged` path cannot be exercised end-to-end here; it is
+  evidenced through tests exercising the phase's inputs directly. A future reader should not read
+  "never observed merging in `yumo-plugins`" as "never worked".
 
 ## 7. Deferrals
 
@@ -371,3 +378,27 @@ write-back, reporting, configuration flags, tests.
 | D-MERGE-03 | Merge queues / batched merges | Serial queue makes a merge queue unnecessary at current scale | — |
 | D-MERGE-04 | Relaxing `gated` vs `on` (AC-1.5) | Requires operational evidence that the preconditions are over-strict | `pdlc-engineering-loop` |
 | D-MERGE-05 | Auto-revert on post-merge base breakage | Detecting it needs cross-run base health monitoring | `pdlc-engineering-loop` |
+
+## 8. Review stopping rule
+
+This REQ carries its own stopping rule, per DC-09:
+
+- A round whose blocking findings are **all** implementability or oracle-falsifiability defects — none
+  contesting user need, scope, priority, or phasing — means this REQ has met its bar. Approve it and
+  move the findings downstream as named entry obligations for FSPEC or TSPEC.
+- A finding of the form "this AC has no oracle" is closable by **deferring** the oracle to TSPEC, not
+  only by writing one into this document. Otherwise the finding is closable only by adding prose the
+  next round reviews — the fix-begets-finding loop.
+- **Two consecutive rounds with a non-decreasing blocking count is a fixed point, not slow
+  convergence**, and a round in which the document grows while the count does not fall is stronger
+  evidence of the same. Plateau is distinguishable from churn — a non-decreasing count is not a fixed
+  point when all prior findings closed and the new blockers were introduced by the latest revision —
+  but that must be said explicitly, with a pre-commitment to escalate if the next round does not close
+  them.
+- Any AC carrying blocking findings for two consecutive rounds is split into its own REQ with a
+  `depends-on` edge, not revised in place a third time.
+
+**Round-1 disposition of advisory findings.** All blocking findings from both round-1 cross-reviews
+are addressed above. One advisory is declined: SE F-11 (recording the two shipped-behaviour claims in
+§1 and AC-4.2 as `M-*` measured facts in a constraints file) — both claims are load-bearing only as
+motivation, and creating a constraints-file section for two sentences costs more than it protects.
