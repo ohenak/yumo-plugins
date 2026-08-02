@@ -525,6 +525,78 @@ distinct from row 17's exhaustion reason.
 
 ## 6. The self-modification guard
 
+Implements FSPEC §4 and NFR-3.
+
+### 6.1 `effectiveGuardPaths(configured)` — additive by construction
+
+```js
+export function effectiveGuardPaths(configured) {
+  const extra = Array.isArray(configured) ? configured : [];
+  const norm = (p) => (p.endsWith("/") ? p : `${p}/`);
+  return [...new Set([...MERGE_GUARD_DEFAULTS, ...extra.filter(isNonEmptyString).map(norm)])];
+}
+```
+
+The defaults are **first and unconditional**: there is no code path that filters, subtracts or
+re-orders them, and `MERGE_GUARD_DEFAULTS` is `Object.freeze`d so a caller cannot mutate the source
+array either. A configuration listing fewer paths, none, or a path that looks like a removal (a
+`"!"`-prefixed string, say) is simply unioned — the `"!pdlc/workflows/"` entry becomes a guard path
+that matches nothing, which is the FSPEC's "silently unioned, no warning, no error, no report line".
+
+Trailing-slash normalisation is applied to configured paths only; defaults already carry it. So
+`src/pipeline` and `src/pipeline/` are the same guard path and neither matches `src/pipeline-notes/`.
+
+### 6.2 `guardVerdict(changed, guardPaths)` — the pure decision
+
+```js
+export function guardVerdict(changed, guardPaths) {
+  if (!changed || changed.ok !== true)
+    return { fired: true, kind: "unretrievable", matched: [] };            // FSPEC §4.4
+  const matched = changed.files.filter((p) => guardPaths.some((g) => p.startsWith(g)));
+  return { fired: matched.length > 0, kind: matched.length ? "match" : "clear", matched };
+}
+```
+
+`String.prototype.startsWith` on repo-relative paths **is** FSPEC §4.2's semantics: case-sensitive,
+`/`-delimited (because every guard path ends in `/`), position-0 anchored, no globbing, no
+normalisation, no case folding. The five-row near-miss table of §4.2 falls out of it directly, and
+§13.2 asserts all five plus the two positive rows. No regex is used anywhere in the guard — a regex
+would reintroduce metacharacter semantics the FSPEC excludes.
+
+`matched` preserves the observed order and every match is reported (FSPEC §4.5), so the escalation
+delimits the operator's review scope. Deletions and renames need no special handling: they are paths
+in the observed list, and `O5`'s fallback adds `previous_filename` where the surface supplies it
+(§4.6) — the phase synthesises nothing.
+
+### 6.3 Fail-closed, and the absence of an override (NFR-3)
+
+`ok !== true` fires the guard before any list is inspected, so command failure, unparseable output,
+an absent `files` field and an incomplete list all fire it (FSPEC §4.4). `kind` selects which of the
+two §9.3 lines is emitted; the phase resolves `refused` at §11 row 4 (`match`) or row 5
+(`unretrievable`).
+
+**There is no override.** `guardVerdict` takes exactly two arguments, neither of which can disable
+it; `config` is not in scope in the guard branch of `decideMerge`; and no `force`, `skip`, `bypass`
+or `override` token appears in any of the new code. §13.2 encodes that as a *source scan* over the
+new production symbols, so adding an override in future turns a test red rather than passing review.
+
+### 6.4 AC-3.5 — the guard-falsifiability test design
+
+FSPEC AT-M3 requires two arms that differ in exactly one guard-matching path and produce **opposite
+positive terminal values**. Implemented at two levels, both of which a guard-deleting mutant reds:
+
+| Level | Fixture | Assertion |
+|---|---|---|
+| Pure | `guardVerdict({ok:true,files:[...]}, defaults)` for each arm | `fired` is `false` / `true`, and `matched` is exactly `["pdlc/skills/x.md"]` on the second |
+| Integration (AT-M3) | one `phaseMerge` fixture whose every other precondition passes, run twice with the two file lists | arm A: `mergeStatus === "merged"`, `row === 18`, and **no** notice starting `MERGE ESCALATION: `; arm B: `mergeStatus === "refused"`, `row === 4`, and the exact escalation line |
+
+The mutant analysis, stated so the reviewer can check it rather than trust it: a guard that always
+returns `fired: false` reds arm B (it would merge); a guard that always returns `fired: true` reds
+arm A (it would refuse); a guard deleted entirely reds arm B. Only a correct guard passes both.
+The three near-miss lists (`pdlc/skills-notes/x.md`, `docs/pdlc/skills/x.md`, `PDLC/Skills/x.md`)
+each reproduce arm A **exactly** — same row, same status, same empty escalation set — which is what
+makes a substring, case-insensitive or unanchored implementation red instead of merely unasserted.
+
 ## 7. Merge execution and the post-merge sequence M1–M5 (O-M8)
 
 ## 8. The recording seam and the queue write-back (O-M1, O-M2)
