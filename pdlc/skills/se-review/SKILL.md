@@ -91,12 +91,26 @@ When the orchestrator marks the review as iteration ≥2, you are re-reviewing a
 
 Every spec sentence that asserts a fact about *existing* code — signature, return type, field/attribute existence, enum membership, or "the existing code already does X" — must cite the actual source file and line number. When reviewing, collect **all** such claims in a single pass and diff them against the real codebase before writing findings. Do not surface one claim per review round; batching them ends the one-claim-per-iteration tax.
 
+### Altitude Rule for REQ and FSPEC (read first)
+
+A REQ or FSPEC that states **observable outcomes** without implementation mechanics is **correct, not incomplete**. Requirements say what must be true; contracts say how. Never file a finding asking a REQ/FSPEC to specify:
+
+- function or seam signatures (arity, parameter names, return types), injected-dependency design
+- algorithms, decision procedures, control flow, module or constant placement
+- byte-level write mechanics, test-fixture or oracle design, exact internal strings
+
+All of that is **TSPEC/PLAN material** — you review it there, in full, and it is not missing here. Asking for it now creates text you will contest next round.
+
+If the document **already contains** such material, the correct finding is *"remove it / route it to the TSPEC"* — never a finding that refines, corrects, or contests the contract's content.
+
+**Existing-code claims in a REQ.** Scope the cross-cutting check above accordingly: a REQ should carry shipped-behaviour facts only as **measured-fact ids cited from a constraints file** (`M-*` style), not as inline line-cited code claims. So for a REQ the finding for an inline line-cited code claim is *"relocate to the constraints file as a measured fact"*, not *"add the citation"*. Line-level citation remains the bar for TSPEC, PLAN, and PROPERTIES.
+
 ### Reviewing REQ
 - Are acceptance criteria technically implementable and unambiguous?
 - Are non-functional requirements realistic and measurable (response times, limits)?
 - Are there missing technical constraints (auth, rate limits, concurrency)?
 - Are loading, error, and empty states addressed?
-- Are API or data contract implications considered?
+- Are API or data contract implications considered *(as outcomes, not contracts — the shape belongs to the TSPEC)*?
 - For every acceptance criterion that cites a "configured" threshold (staleness window, penalty value, fallback order, enum set, numeric cutoff): is the threshold declared in config with a named owner and a default value? Missing threshold declarations are a **High** finding — they must be resolved before FSPEC authoring begins.
 
 ### REQ/FSPEC Verification Checks (apply to both — *promoted 2026-07-19 consolidation*)
@@ -110,7 +124,7 @@ Every spec sentence that asserts a fact about *existing* code — signature, ret
 - Are business rules explicit enough to implement without PM involvement?
 - Are error scenarios complete — what happens when each external dependency fails?
 - Are edge cases that have technical implications covered?
-- Are there implied technical decisions that belong in the FSPEC explicitly?
+- Are there implied technical decisions that belong in the FSPEC explicitly? FSPEC decisions are **behavioral and business rules** — which branch is taken, what the user observes, which rule wins a conflict. This bullet never licenses implementation contracts (see the Altitude Rule above).
 
 ### Reviewing PROPERTIES
 - Are properties testable with the chosen architecture and test infrastructure?
@@ -248,6 +262,7 @@ Rules:
 - The heading is exactly `## Verdict` — one `##`, that capitalisation, nothing else on the line.
 - `VERDICT: ` starts the line, followed by exactly one of (case-sensitive): `Approved`, `Approved with minor changes`, `Needs revision` — the same catalogue and the same mapping as `## Approval Rules` above.
 - The counts JSON is on the immediately following non-empty line: a single object with exactly the keys `high`, `medium`, `low` in that order, each a non-negative integer, matching your `## Findings` table.
+- The counts JSON is **mandatory, not decorative** — it is the machine-readable record of this round's finding counts, and the round-over-round stopping rule is computed from it. A `VERDICT:` line written outside a `## Verdict` heading, or written without its counts line, is an incomplete cross-review file: the verdict may parse and the round still cannot be counted.
 - Write **exactly one** `VERDICT:` line in this section. A second one is read as fail-closed and your approval will not be honoured.
 - This section is the **last section** of the file: nothing follows it. Its position is the signal that the file is complete — a verdict written mid-file would make a truncated write look finished. Write it last, in one edit, after everything else.
 

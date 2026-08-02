@@ -90,8 +90,21 @@ When the orchestrator marks the review as iteration ≥2, you are re-reviewing a
 
 ## Review Scope by Document
 
+### Altitude Rule for REQ and FSPEC (read first)
+
+A REQ or FSPEC that states **observable outcomes** without implementation or test mechanics is **correct, not incomplete**. Your testability findings on a REQ/FSPEC ask for outcomes precise enough to write a **black-box** test from — observable state, files on disk, report contents, exit behavior, user-visible strings. They never ask for:
+
+- seam design, injection points, call-count or spy oracles, runtime-oracle placement
+- fixture construction, test-double design, assertion placement, test file or level assignment
+
+Those belong to **TSPEC and PROPERTIES review**, where this lens applies in full — they are not missing here.
+
+**The "write the test right now" check, at REQ altitude, means a black-box acceptance test.** If answering your clarifying question would require implementation-grade detail, the REQ is *not* underspecified — file nothing; the detail arrives in TSPEC/PROPERTIES.
+
+If the REQ/FSPEC **already contains** implementation or test-design contracts, the finding is *"remove it / route it to the TSPEC or PROPERTIES"* — never a finding that refines or contests them.
+
 ### Reviewing REQ
-- Are acceptance criteria testable, precise, and unambiguous?
+- Are acceptance criteria testable, precise, and unambiguous *(as black-box outcomes)*?
 - Are edge cases and error scenarios complete enough to write tests?
 - Are there implied behaviors that need to be stated explicitly?
 - Are negative cases present (what must NOT happen)?
@@ -273,5 +286,6 @@ Rules:
 - The heading is exactly `## Verdict` — one `##`, that capitalisation, nothing else on the line.
 - `VERDICT: ` starts the line, followed by exactly one of (case-sensitive): `Approved`, `Approved with minor changes`, `Needs revision` — the same catalogue and the same mapping as `## Approval Rules` above.
 - The counts JSON is on the immediately following non-empty line: a single object with exactly the keys `high`, `medium`, `low` in that order, each a non-negative integer, matching your `## Findings` table.
+- The counts JSON is **mandatory, not decorative** — it is the machine-readable record of this round's finding counts, and the round-over-round stopping rule is computed from it. A `VERDICT:` line written outside a `## Verdict` heading, or written without its counts line, is an incomplete cross-review file: the verdict may parse and the round still cannot be counted.
 - Write **exactly one** `VERDICT:` line in this section. A second one is read as fail-closed and your approval will not be honoured.
 - This section is the **last section** of the file: nothing follows it. Its position is the signal that the file is complete — a verdict written mid-file would make a truncated write look finished. Write it last, in one edit, after everything else.

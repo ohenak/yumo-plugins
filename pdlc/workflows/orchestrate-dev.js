@@ -1707,7 +1707,27 @@ export function selectMode({ dispatchKind, docType, present, reviewFiles, startI
  * @returns {{terminal: boolean, trailerReason: string|null}}
  */
 export function isTerminal(mode, response, artifactClass, docType, after, entryMissing) {
-  const measured = isComplete(artifactClass, docType, after);
+  return terminalFrom(mode, response, artifactClass, isComplete(artifactClass, docType, after), entryMissing);
+}
+
+/**
+ * `isTerminal`'s decision over a measurement that has ALREADY been made, rather
+ * than over the bytes it would be made from. The exported form above is this
+ * function plus one `isComplete` call, so there is one terminal rule, not two.
+ *
+ * It exists for the probe seams (§3.8's `_probeDoc`): a probe answers
+ * `{complete, missing, T, S}` at the far side of the seam, and the bytes it
+ * measured never enter this module. Deliberately NOT exported — `isTerminal`'s
+ * signature is the pinned one.
+ *
+ * @param {string} mode
+ * @param {string} response
+ * @param {string} artifactClass
+ * @param {{complete: boolean, missing: string[], T: number, S: number}} measured
+ * @param {string[]|null} [entryMissing]
+ * @returns {{terminal: boolean, trailerReason: string|null}}
+ */
+function terminalFrom(mode, response, artifactClass, measured, entryMissing) {
   let structural = measured.complete;
   if (mode === "revision" && artifactClass === "spec" && Array.isArray(entryMissing)) {
     const baseline = new Set(entryMissing);
@@ -1835,6 +1855,11 @@ export async function reviewLoop({
   _readFile = defaultReadFile,
   _hashFile = defaultHashFile,
   _appendFile = defaultAppendFile,
+  // The optional probe seams (see `probeDocument` / `resolveReviewState`). They
+  // default to `null` rather than to a working implementation on purpose: absent
+  // is the shipped state, and every site that consults one falls back.
+  _probeDoc = NO_PROBE,
+  _probeReviewState = NO_PROBE,
   _log,
   _git,
 }) {
@@ -1858,6 +1883,8 @@ export async function reviewLoop({
       _agent,
       _readFile,
       _listFiles,
+      _probeDoc,
+      _probeReviewState,
       _log: emit,
       _git,
     });
@@ -2009,7 +2036,11 @@ export async function reviewLoop({
       // an absent or unreadable document. In the workflow runtime `_readFile`
       // is a per-chunk agent fan-out, so hashing the largest document in the
       // pipeline once per round used to cost ~1 agent per 6 KB; it now costs 1.
-      anchorHash = (await _hashFile(doc)) ?? null; // t0–t1
+      // `_probeDoc` already carries that digest, under the same `approvalHashOf`
+      // contract and with the same `null` for a document it could not read, so a
+      // probing runtime pays for no second observation here.
+      const probe = await probeDocument(_probeDoc, doc, roundDocType);
+      anchorHash = (probe ? probe.hash : await _hashFile(doc)) ?? null; // t0–t1
       anchorCommit = await headCommitSha(_git); // t2
     }
 
@@ -2063,6 +2094,7 @@ export async function reviewLoop({
         hash: anchorHash,
         commit: anchorCommit,
         _readFile,
+        _probeDoc,
         _appendFile,
         _git,
         emit,
@@ -2147,7 +2179,7 @@ async function headCommitSha(_git) {
  * @param {string} fileText
  * @returns {string[]}
  */
-function approvalAnchorPreCount(fileText) {
+export function approvalAnchorPreCount(fileText) {
   const found = [];
   scanLines(String(fileText ?? ""), (line) => {
     const m = /^APPROVAL-HASH:\s*(\S+)\s*$/.exec(line);
@@ -2171,6 +2203,7 @@ async function appendApprovalAnchors({
   hash,
   commit,
   _readFile,
+  _probeDoc,
   _appendFile,
   _git,
   emit,
@@ -2185,12 +2218,21 @@ async function appendApprovalAnchors({
 
   let appended = false;
   for (const path of paths) {
-    const existingText = await _readFile(path);
-    if (existingText == null) {
+    // The pre-count is a JUDGMENT about the file, not its prose, so `_probeDoc`
+    // can answer it: `anchors` is `approvalAnchorPreCount`'s array and `exists`
+    // is the same absence the `null` read reports. `docType` is `null` because a
+    // cross-review is scored whole-file (§5.9) — the probe's completeness fields
+    // are not read here, only its anchors. The APPEND itself stays on
+    // `_appendFile`: §7.4's append shape is not a read and has no probe.
+    const probe = await probeDocument(_probeDoc, path, null);
+    const existingText = probe ? null : await _readFile(path);
+    if (probe ? probe.exists !== true : existingText == null) {
       emit(`Approval anchor not recorded: ${path} is absent. The round yields no approval.`);
       return;
     }
-    const existing = approvalAnchorPreCount(existingText);
+    const existing = probe
+      ? (Array.isArray(probe.anchors) ? probe.anchors : [])
+      : approvalAnchorPreCount(existingText);
     if (existing.length >= 2) {
       emit(
         `Approval anchor not recorded: ${path} already carries ${existing.length} ` +
@@ -2466,7 +2508,7 @@ function docTypeFromPath(path) {
  * (`topLevelSections` of an unreadable target is empty, so the wrapper's
  * unmeasurable-target escape takes over — see `dispatchAndVerify`).
  */
-function artifactClassOf(path) {
+export function artifactClassOf(path) {
   const name = String(path ?? "");
   if (/\/CROSS-REVIEW-[^/]*$/.test(name)) return "cross-review";
   if (/\/CODE_REVIEW-[^/]*$/.test(name)) return "code-review";
@@ -2492,7 +2534,7 @@ function artifactClassOf(path) {
  * @param {string|null} text
  * @returns {string}
  */
-function firstUnwrittenSection(artifactClass, docType, text) {
+export function firstUnwrittenSection(artifactClass, docType, text) {
   const body = String(text ?? "");
   if (body.trim() === "") return "the document skeleton (no content on disk yet)";
   if (artifactClass === "cross-review" && !crossReviewComplete(body)) {
@@ -2549,16 +2591,17 @@ function skeletonClause() {
 /**
  * The resume opener (§5.6.3 clause 2, FSPEC §15.5): the target already carries
  * partial content, so the dispatch continues it instead of starting over. The
- * section count and the heading are computed by THIS script's walk — the agent is
- * never asked where it got to.
+ * section count and the heading are MEASUREMENTS the caller passes in — this
+ * script's own walk over the bytes (`isComplete` / `firstUnwrittenSection`), or
+ * `_probeDoc`'s answer over the same criterion. The agent is never asked where it
+ * got to, under either.
  */
-function resumeClause(artifactClass, docType, text, targetPath) {
-  const { T, S } = isComplete(artifactClass, docType, text);
+function resumeClause({ T, S, firstUnwritten, targetPath }) {
   return [
     `RESUMED: ${targetPath} already carries partial content`,
     `(${S} of ${T} top-level sections carry a body).`,
     "Read the document on disk first and do NOT rewrite what is already written.",
-    `The first unwritten section is ${firstUnwrittenSection(artifactClass, docType, text)}.`,
+    `The first unwritten section is ${firstUnwritten}.`,
     "Continue from there, one section per write, under the pacing contract above.",
   ].join(" ");
 }
@@ -2610,7 +2653,7 @@ function continuationClause(round, reviewBasenames, targetPath) {
  *                    present: Map, reviewFiles: Map, matched: object[], files: string[]}
  *                  |{ok: false, message: string}>}
  */
-async function refreshReviewState({ feature, docType, _listFiles, _readFile }) {
+export async function refreshReviewState({ feature, docType, _listFiles, _readFile }) {
   const dirPath = `docs/${feature}`;
   const listing = await _listFiles(dirPath);
 
@@ -2692,7 +2735,7 @@ async function refreshReviewState({ feature, docType, _listFiles, _readFile }) {
  * @returns {Promise<{status: "none"|"resolved"|"unresolved", path: string,
  *                    recommendation?: string}>}
  */
-async function checkPostmortem({ phase, feature, _readFile }) {
+export async function checkPostmortem({ phase, feature, _readFile }) {
   const path = `docs/${feature}/POSTMORTEM-${phase}-${feature}.md`;
   const text = await _readFile(path);
   if (text == null || String(text).trim() === "") return { status: "none", path };
@@ -2700,6 +2743,177 @@ async function checkPostmortem({ phase, feature, _readFile }) {
   const marker = parseResolvedMarker(text);
   if (marker.ok && marker.resolved) return { status: "resolved", path };
   return { status: "unresolved", path, recommendation: extractRecommendation(text) };
+}
+
+// ─── The optional probe seams — `_probeDoc`, `_probeReviewState`, `_probePostmortem` ─
+//
+// Every content read in this module crosses `_readFile`, which in the workflow
+// runtime is a probe agent plus roughly one transcription agent per 6 KB. But the
+// module almost never wants the content: it wants a JUDGMENT about it — the
+// document's digest, its structural completeness, its round record, a POSTMORTEM's
+// resolved marker. A probe seam answers that judgment at the FAR side of the
+// transport, so the bytes never enter this module at all.
+//
+// The invariant that makes them safe to add anywhere: **a probe is an
+// optimisation, never a correctness dependency.** Absent, `null`, ill-shaped or
+// throwing, every one of the three falls back to the byte-taking path it replaced,
+// which runs unchanged. That is why the resolvers below swallow the throw rather
+// than propagating it — a probe that fails is a probe that was not there.
+//
+// The one exception is `_probeReviewState`'s explicit `{ok: false, message}`: that
+// is not a failed probe but a SUCCESSFUL judgment that the review state cannot be
+// derived, and it maps onto exactly the halt `refreshReviewState`'s own `ok: false`
+// produces (§5.6.1, §6.2 rows 2 and 17). Downgrading it to a fallback would re-read
+// the listing this module was just told it cannot judge.
+
+/**
+ * The absent probe — the shipped default of all three seams, and the value that
+ * makes each of them a POLICY rather than a capability: a probe that is `null` is
+ * a probe that was never installed, and every site falls back. Named rather than
+ * spelled `null` at each site so the composition-root oracle (`RLH-AT-64`) can
+ * resolve the default to a module-level non-function value, which is what
+ * distinguishes "this parameter needs no runtime wiring" from "someone forgot to
+ * wire it".
+ */
+const NO_PROBE = null;
+
+/**
+ * `_probeDoc(path, docType)` — one document's state, without its bytes:
+ * `{ok, exists, empty, hash, artifactClass, complete, missing, T, S,
+ *   firstUnwritten, anchors}`, semantically identical to reading the document and
+ * applying `approvalHashOf` / `isComplete` / `firstUnwrittenSection` /
+ * `approvalAnchorPreCount` to it.
+ *
+ * @returns {Promise<object|null>} the probe record, or `null` to fall back.
+ */
+async function probeDocument(probe, path, docType) {
+  if (typeof probe !== "function") return null;
+  try {
+    const result = await probe(path, docType);
+    return result && result.ok === true ? result : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The `{ok: true}` half of a `_probeReviewState` reply, with its two maps
+ * rehydrated: `present` arrives as `{role: number[]}` and `reviewFiles` as an
+ * object keyed `"role:round"`, because the seam is a JSON transport and a `Map`
+ * does not survive it. `selectMode` reads both through `Map`'s interface, so the
+ * rehydration is not cosmetic (§5.6.1 rule 4's `present.forEach`, rule 2's
+ * `files.get`).
+ */
+function rehydrateReviewState(result) {
+  const present = new Map();
+  const rawPresent = result.present && typeof result.present === "object" ? result.present : {};
+  for (const role of Object.keys(rawPresent)) {
+    present.set(role, Array.isArray(rawPresent[role]) ? rawPresent[role].slice() : []);
+  }
+
+  const reviewFiles = new Map();
+  const rawFiles = result.reviewFiles && typeof result.reviewFiles === "object" ? result.reviewFiles : {};
+  for (const key of Object.keys(rawFiles)) reviewFiles.set(key, rawFiles[key]);
+
+  return {
+    ok: true,
+    startIndex: result.startIndex,
+    endIndex: result.endIndex,
+    present,
+    reviewFiles,
+    matched: Array.isArray(result.matched) ? result.matched : [],
+    files: Array.isArray(result.files) ? result.files : [],
+  };
+}
+
+/**
+ * `refreshReviewState`'s result, from `_probeReviewState` when that seam can
+ * answer and from the local computation otherwise. Both arms return the SAME
+ * shape, including the `{ok: false, message}` a caller turns into a halt.
+ *
+ * @param {{feature: string, docType: string|null, _listFiles: function,
+ *          _readFile: function, _probeReviewState: function|null}} arg
+ */
+async function resolveReviewState({ feature, docType, _listFiles, _readFile, _probeReviewState }) {
+  if (typeof _probeReviewState === "function") {
+    let probed = null;
+    try {
+      probed = await _probeReviewState({ feature, docType });
+    } catch {
+      probed = null;
+    }
+    if (probed && probed.ok === false) return { ok: false, message: probed.message };
+    if (probed && probed.ok === true) return rehydrateReviewState(probed);
+  }
+  return refreshReviewState({ feature, docType, _listFiles, _readFile });
+}
+
+/** The closed status catalogue §5.8 answers with, and `_probePostmortem` reports. */
+const POSTMORTEM_STATUSES = Object.freeze(["none", "resolved", "unresolved"]);
+
+/**
+ * `checkPostmortem`'s result, from `_probePostmortem` when that seam can answer
+ * and from the local read otherwise. A reply whose `status` is outside §5.8's
+ * closed catalogue is not a judgment this module can act on, so it falls back
+ * rather than being coerced — fail-closed stays with `checkPostmortem`.
+ *
+ * @param {{phase: string, feature: string, _readFile: function,
+ *          _probePostmortem: function|null}} arg
+ */
+async function resolvePostmortem({ phase, feature, _readFile, _probePostmortem }) {
+  if (typeof _probePostmortem === "function") {
+    let probed = null;
+    try {
+      probed = await _probePostmortem({ phase, feature });
+    } catch {
+      probed = null;
+    }
+    if (probed && POSTMORTEM_STATUSES.includes(probed.status)) return probed;
+  }
+  return checkPostmortem({ phase, feature, _readFile });
+}
+
+/**
+ * §5.6.2's view of one target, taken through `_probeDoc` when that seam answers
+ * and through `_readFile` otherwise. The two arms carry the same fields, so
+ * `dispatchAndVerify`'s loop reads only these and never branches on which it got:
+ *
+ * | field | meaning |
+ * |---|---|
+ * | `probed` | which arm produced this record — the loop compares only LIKE records |
+ * | `identity` | the value progress is scored on: the bytes on the read arm, the digest on the probe arm |
+ * | `empty` | the skeleton-opener test (§5.6.3 clause 1) |
+ * | `measured` | `isComplete`'s `{complete, missing, T, S}` |
+ * | `firstUnwritten` | the heading the resume opener names |
+ *
+ * `firstUnwritten` is computed EAGERLY on the read arm even though only the resume
+ * opener reads it: it keeps the record total, and both are pure walks over bytes
+ * this arm already holds.
+ */
+async function targetState({ targetPath, artifactClass, docType, _readFile, _probeDoc }) {
+  const probe = await probeDocument(_probeDoc, targetPath, docType);
+  if (probe) {
+    return {
+      probed: true,
+      identity: probe.hash ?? null,
+      empty: probe.empty === true,
+      measured: {
+        complete: probe.complete === true,
+        missing: Array.isArray(probe.missing) ? probe.missing : [],
+        T: probe.T ?? 0,
+        S: probe.S ?? 0,
+      },
+      firstUnwritten: probe.firstUnwritten,
+    };
+  }
+  const text = await _readFile(targetPath);
+  return {
+    probed: false,
+    identity: text,
+    empty: String(text ?? "").trim() === "",
+    measured: isComplete(artifactClass, docType, text),
+    firstUnwritten: firstUnwrittenSection(artifactClass, docType, text),
+  };
 }
 
 // ─── TSPEC §5.4 — the approval search (the H-4 fix) ──────────────────────────
@@ -2836,6 +3050,11 @@ function authoringHaltError(message, trailerReason) {
  * 2. progress is `before !== after` over the WORKING TREE — not "a section was
  *    completed", and not a git diff (§5.6.2, `RLH-AT-45`).
  *
+ * **Both observations of the target go through `targetState`**, so the optional
+ * `_probeDoc` seam answers them without the document's bytes ever crossing into
+ * this module, and an absent or failing probe falls back to `_readFile` with the
+ * loop below unchanged.
+ *
  * **The unmeasurable-target escape.** When the target yields no top-level sections
  * at all *and* the dispatch changed nothing, this wrapper has no measurement to
  * make: `isComplete` cannot score a document it cannot see. Re-dispatching such an
@@ -2858,6 +3077,8 @@ async function dispatchAndVerify({
   _agent,
   _readFile,
   _listFiles,
+  _probeDoc,
+  _probeReviewState,
   _log,
   _git,
 }) {
@@ -2869,7 +3090,13 @@ async function dispatchAndVerify({
   let selection;
   let roundFiles = [];
   if (dispatchKind === "authoring") {
-    const state = await refreshReviewState({ feature, docType, _listFiles, _readFile });
+    const state = await resolveReviewState({
+      feature,
+      docType,
+      _listFiles,
+      _readFile,
+      _probeReviewState,
+    });
     if (!state.ok) throw haltError(state.message);
     selection = selectMode({
       dispatchKind,
@@ -2903,31 +3130,38 @@ async function dispatchAndVerify({
   // every other combination keeps the strict test.
   let entryMissing = null;
   let lastMeasured = null;
-  // Single-read-per-dispatch: `before` is fetched from `_readFile` only on the
+  // Single-read-per-dispatch: `before` is taken from the target ONCE, on the
   // episode's first iteration. On every later iteration this episode's own prior
-  // `after` — already known to equal the current on-disk bytes, since the
+  // `after` — already known to describe the current on-disk state, since the
   // dispatched skill is the only writer of `targetPath` during an episode — is
   // reused as `before`, saving a full-file subagent echo per iteration. Trade-off:
   // a concurrent external edit between iterations is attributed to the agent as
   // progress; the previous per-iteration re-read tolerated that.
   let before = null;
+  const observe = () =>
+    targetState({ targetPath, artifactClass, docType, _readFile, _probeDoc });
 
   for (;;) {
     if (invocations === 0) {
-      before = await _readFile(targetPath);
+      before = await observe();
     }
     invocations += 1;
     if (invocations === 1 && selection.mode === "revision" && artifactClass === "spec") {
-      entryMissing = isComplete(artifactClass, docType, before).missing;
+      entryMissing = before.measured.missing;
     }
 
     let opener;
     if (selection.mode === "revision") {
       opener = continuationClause(selection.round, roundFiles, targetPath);
-    } else if (invocations === 1 && String(before ?? "").trim() === "") {
+    } else if (invocations === 1 && before.empty) {
       opener = skeletonClause();
     } else {
-      opener = resumeClause(artifactClass, docType, before, targetPath);
+      opener = resumeClause({
+        T: before.measured.T,
+        S: before.measured.S,
+        firstUnwritten: before.firstUnwritten,
+        targetPath,
+      });
     }
     const prompt = `${basePrompt}\n\n${PACING_CONTRACT_CLAUSE}\n\n${opener}`;
 
@@ -2945,19 +3179,25 @@ async function dispatchAndVerify({
       emit(`Dispatch fault observed: faultObserved=true (${skill}, phase ${phaseId}).`);
     }
 
-    const after = await _readFile(targetPath);
-    const measured = isComplete(artifactClass, docType, after);
+    const after = await observe();
+    const measured = after.measured;
     lastMeasured = measured;
-    const verdict = isTerminal(
+    const verdict = terminalFrom(
       selection.mode,
       response ?? "",
       artifactClass,
-      docType,
-      after,
+      measured,
       entryMissing
     );
     lastTrailerReason = verdict.trailerReason;
-    const progressed = before !== after;
+    // §5.6.2's progress predicate, over whichever identity BOTH records carry:
+    // the bytes on the read arm, the digest on the probe arm (two `null` digests
+    // — an absent document, twice — are not progress). The arms are never
+    // compared across each other: a probe that answered one observation and fell
+    // back on the next leaves two incomparable identities, and scoring that as
+    // progress spends dispatches rather than mis-halting an episode as stalled.
+    const progressed =
+      before.probed === after.probed ? before.identity !== after.identity : true;
     if (progressed) wroteBytes = true;
     before = after;
 
@@ -3897,7 +4137,7 @@ async function sleep(ms) {
 
 // Default file read — real fs, returns null on any error (mirrors orchestrate-queue's
 // defaultReadFile). Injectable in tests via _readFile. Used for PLAN DAG parsing.
-function defaultReadFile(path) {
+export function defaultReadFile(path) {
   try {
     return fs.readFileSync(path, "utf8");
   } catch {
@@ -4051,7 +4291,7 @@ export async function defaultRecordHalt(/* { feature, status } */) {
 
 /**
  * Main pipeline function — runs the full PDLC pipeline from REQ to harvest.
- * @param {{ reqPath: string, _agent?: function, _parallel?: function, _log?: function, _checkFile?: function, _readFile?: function, _hashFile?: function, _phase?: function, _pipeline?: function }} params
+ * @param {{ reqPath: string, _agent?: function, _parallel?: function, _log?: function, _checkFile?: function, _readFile?: function, _hashFile?: function, _phase?: function, _pipeline?: function, _probeDoc?: function, _probeReviewState?: function, _probePostmortem?: function }} params
  * @returns {Promise<FinalReport>}
  */
 export default async function main({
@@ -4079,6 +4319,12 @@ export default async function main({
   _appendFile: appendFileFn = defaultAppendFile,
   _git: gitFn = defaultGit,
   _recordHalt: recordHaltFn = defaultRecordHalt,
+  // The three optional probe seams. `null` is the shipped state: a runtime that
+  // supplies none of them runs every read below exactly as it did before they
+  // existed (see the probe-seam section above `probeDocument`).
+  _probeDoc: probeDocFn = NO_PROBE,
+  _probeReviewState: probeReviewStateFn = NO_PROBE,
+  _probePostmortem: probePostmortemFn = NO_PROBE,
 } = {}) {
   // Override module-level log for injection
   const emit = logFn;
@@ -4119,11 +4365,12 @@ export default async function main({
    * reviews on the branch" (§6.2 rows 2 and 17).
    */
   async function phaseWindow(docType) {
-    const state = await refreshReviewState({
+    const state = await resolveReviewState({
       feature: featureName,
       docType,
       _listFiles: listFilesFn,
       _readFile: readFileFn,
+      _probeReviewState: probeReviewStateFn,
     });
     if (!state.ok) throw haltError(state.message);
     return state;
@@ -4203,7 +4450,13 @@ export default async function main({
         // made. Stating that case as `isStale` rather than folding it into a
         // digest constant is what makes the equivalence readable — and keeps
         // §5.5's claim that the gate consults `isStale` literally true.
-        const docHash = await hashFileFn(docPath);
+        // `_probeDoc` reports the same digest under the same contract, so when it
+        // answers it stands in for `_hashFile` here — including its `null`, which
+        // keeps the byte-taking `isStale(hash, null)` branch below. That branch is
+        // NOT `isStaleByHash(hash, null)`: the two disagree on exactly one input,
+        // a recorded hash of an empty document, where `isStale` says FRESH.
+        const probe = await probeDocument(probeDocFn, docPath, docType);
+        const docHash = probe ? probe.hash ?? null : await hashFileFn(docPath);
         const freshness =
           docHash == null
             ? isStale(record.hash, null)
@@ -4212,10 +4465,11 @@ export default async function main({
           // The phase does not run. `checkPostmortem` is still evaluated, for
           // REPORTING ONLY — AC-2.3's refusal is conditioned on the phase
           // otherwise running, so a skip has nothing to refuse (§6.2 row 13a).
-          const pm = await checkPostmortem({
+          const pm = await resolvePostmortem({
             phase: phaseId,
             feature: featureName,
             _readFile: readFileFn,
+            _probePostmortem: probePostmortemFn,
           });
           let detail = `Skipped — approved round ${record.candidate}, hash FRESH`;
           if (pm.status === "unresolved") {
@@ -4236,10 +4490,11 @@ export default async function main({
     // Step G — G-INV. Every exit that leads to running the phase arrives here,
     // forced or not, and step 5 is reachable only through it. Force never
     // overrides a recorded FAILURE (§5.7, §6.2 row 13, AC-4.6a).
-    const gate = await checkPostmortem({
+    const gate = await resolvePostmortem({
       phase: phaseId,
       feature: featureName,
       _readFile: readFileFn,
+      _probePostmortem: probePostmortemFn,
     });
     if (gate.status === "unresolved") {
       gatePostmortem = gate;
@@ -4268,6 +4523,8 @@ export default async function main({
     _hashFile: hashFileFn,
     _listFiles: listFilesFn,
     _appendFile: appendFileFn,
+    _probeDoc: probeDocFn,
+    _probeReviewState: probeReviewStateFn,
     _log: emit,
     _git: gitFn,
   };

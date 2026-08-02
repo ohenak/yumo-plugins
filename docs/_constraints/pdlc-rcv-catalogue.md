@@ -111,8 +111,51 @@ Every column is derivable from the branch alone — the cross-review basenames, 
 trailers, their anchors. **Where** the table is emitted, and in what rendering, is a TSPEC
 obligation; its columns are not open.
 
-**Two rows have no dispatch behind them**, and each is stated cell by cell in the REQ that owns
-the condition, because the mechanical derivation from absent files gives the wrong answer for
-both: **row A**, the round halted at open by a zero-delta test, in `pdlc-rcv-fixed-point-stop`
-AC-2.8; **row B**, the no-round-admitted row of an entry whose reset region failed validation, in
-`pdlc-rcv-budget-stop` AC-1.5(4).
+**Three rows have no dispatch behind them** — row B covering **three** entry classes, all
+dispatch-less — and each is stated cell by cell in the REQ that owns the condition, because the
+mechanical derivation from absent files gives the wrong answer for all three: **row A**, the round
+halted at open by a zero-delta test, in `pdlc-rcv-fixed-point-stop` AC-2.8; **row B**, the row of an
+entry that opens no round on `pdlc-rcv-budget-stop` AC-1.5(4)'s step-4 path **or on its AC-1.4 halt
+path** — either because its reset region **failed validation** (the *validation-failure* variant) or
+because a write of the loop's own could **not be confirmed** (the *unconfirmable-append* variant),
+which has **three sources**: an answering line (`pdlc-rcv-reset-region` AC-7.5), and either of
+AC-1.4's two halt-path writes, the `HALT-REASON:` append and the Iterations section; **row C**, the
+row of an entry admitted no rounds that halts immediately on the budget, in `pdlc-rcv-budget-stop`
+AC-1.5(1). Rows B and C are mutually exclusive: **B's entry records no halt, C's records one** —
+*records*, not *takes*, because AC-1.4's source **does** take a halt and is refused before recording
+it, which is the discriminator `pdlc-rcv-budget-stop` AC-1.5(1) states (widened here 2026-08-01 with
+that REQ, same revision). So B carries **S-16 alone on its validation-failure variant and an empty
+`notice` on its unconfirmable-append variant**, and C carries S-4. The two B variants are
+distinguished by the ❌ phase-row text, never by the `notice` cell alone: the **validation-failure**
+variant's is fixed by `pdlc-rcv-budget-stop` §6, the **unconfirmable-append** variant's by §4 below —
+where a `{which}` token further discriminates its three sources, because its recovery differs by
+source.
+
+## 4. Row B's unconfirmable-append render
+
+**Why this is here.** Row B's *unconfirmable-append* variant is the only row in §3 whose distinguishing
+text was fixed in a REQ rather than in this file, and every claim it makes is a claim about strings
+`pdlc/workflows/orchestrate-dev.js` emits from its halt catch. Under this file's own rule — a shared
+render, cited by more than one document, whose correctness is decided by shipped code — that belongs
+here, beside the row it discriminates, with the measurement behind it. The material below was moved
+**wholesale** from `docs/pdlc-rcv-budget-stop/REQ-pdlc-rcv-budget-stop.md` v1.6 §6 and AC-1.5(4),
+which cite this section in its place; the *conditions* under which the variant is emitted remain that
+REQ's and are not restated here.
+
+**These four cells are not catalogue ids.** §2's seventeen `S-*` ids are closed and this section adds
+none — an operator-facing render is not a string crossing a component boundary, and giving it an
+`S-*` would make it comparable to things it is not. Cite the cells by name, as §3 does.
+
+Every shipped-string and guard claim below is cited to a measured fact in
+`docs/_constraints/pdlc-rcv-baseline.md` §2.8 (`M-8a` … `M-8j`), read at commit `cf207bd`. Amending a
+cell without re-reading the fact it rests on is the failure this section exists to end.
+
+| Cell | Value | Rests on |
+|---|---|---|
+| **❌ phase-row text** | `Refused — {which} unconfirmed at {path}`, where `{path}` is the same repo-root-relative post-mortem path S-16 renders and `{which}` is exactly one of three literals naming the write that was attempted: **`answering line`** (`REQ-RCV-07` AC-7.5), **`halt line`** (`REQ-RCV-01` AC-1.4 clause 1), **`iterations section`** (`REQ-RCV-01` AC-1.4 clause 3). **History:** generalised from a fixed *answering line* text on 2026-08-01 (`REQ-RCV-01` v3.0 / `REQ-RCV-07`, same revision) because the variant acquired two further sources, then **re-discriminated by `{which}` in `REQ-RCV-01` v3.1** (2026-08-01, same revision as the v3.0 generalisation's paired edits) because the generalised text left the *Recovery* cell's act 1 without a decidable subject — it told the operator to delete a region line on the one source that attempts none. The token is a **discriminator, not a reason token**: it names an **IO fault of the loop**, not a state of the region, so it still mints no S-16 reason and that enum stays closed at three. Deliberately distinct from step G's `Refused — unresolved POSTMORTEM at {path}`, which states the opposite of the truth on this path: step G refuses because the marker is *unresolved*, this variant fires on a post-mortem the operator **did** resolve | `pdlc-rcv-budget-stop` AC-1.5(4) and AC-1.4; step G's own ❌ row at `orchestrate-dev.js:4246` (`cf207bd`) |
+| **Recovery text** | **Two acts, in this order.** *Act 1* is **conditional, scoped by `{which}`, and decided by a count the operator can take from the file** — never by identifying an "unconfirmed" line by inspection, because *present* and *unconfirmed* are different predicates and only the first is observable. Let `H` be the region's `HALT-REASON:` lines and `A` its `WINDOW-START:` + `WINDOW-RESUMED:` lines. **`answering line`** → delete the region's trailing answering line **only if `A = H`**; if `A < H` the write did not land, the region is already correct, and deleting anything is the harm. **`halt line`** → delete the region's trailing `HALT-REASON:` **only if `H > A`**; if `H = A` the append did not land. **`iterations section`** → **act 1 does not apply and must not be performed**: clause 3 runs *before* clause 1 (`REQ-RCV-01` AC-1.4's clause order), so no region line was attempted and every line present belongs to an earlier, confirmed write. *Act 2*, on every source: reset the `{feature}` row and re-run the queue. The shipped generic queue-reset line is **suppressed**, not substituted — a stated change to shipped behaviour, owned by `pdlc-rcv-budget-stop` O-6 | `REQ-RCV-01` AC-1.4's clause order and its one-update rule over clauses 1 and 2 (v3.1), which is what makes the two count tests total — a landed-but-unconfirmed write moves exactly one of `H`/`A` by one, and no reachable state moves both. **M-8d** — the generic is a bare, unguarded `emit` in the halt catch, firing on **every** halt class that reaches it. **M-8b** — the halt reason and that `emit` are disjoint channels, so writing a repair into the halt reason removes nothing and the operator reads both, the generic last. **M-8e** — the near-miss in `checkConverged` is a *different* string on the halt-reason channel, and is not what is suppressed here. **M-8a** — an entry-validation halt reaches none of this, so "every halt class" excludes those four |
+| **`postmortemStatus`** | **`written`**, by a named mechanism rather than by assertion: the refusal sets no `gatePostmortem` and attaches no disposition to its thrown halt, so the chain falls through to the existence probe, which finds `POSTMORTEM-{haltPhase}-{feature}.md` — the file this refusal is *about*, which exists by the path's premise. That is the probe's sense — *this phase has a post-mortem* — not a claim this run wrote one, which the ❌ text carries. **Never `none`**, and never `unresolved`, and never a value outside the shipped enum | **M-8g** — exactly one `haltError` site in the module attaches a disposition, so a refusal that attaches nothing lands on branch 3 by construction. **M-8f** — the chain is four-way first-match-wins and its enum is exactly `none \| unresolved \| written \| write_failed`. **M-8i** — branch 3 is entered on a non-null `haltPhase` and degrades only towards `none`, never towards `written`. **M-8c** — `none` would emit `No POSTMORTEM was written.` beside a ❌ row naming the post-mortem the operator hand-resolved, which is why `none` is *rejected*, not merely unreachable |
+| **Residue disposition** | The refusing entry's own write may have landed **partially**, so — unlike the validation-failure variant — the post-mortem file is **not** byte-unchanged, and the ratchet's *same reason next entry* does not hold. Act 1 is what stops the residue being spent: a well-formed value-tear (`WINDOW-START: 12` landing as `WINDOW-START: 1`) validates on the **next** entry, balances the counts, moves the origin down and reaches exactly the budget halt the announcement exists to prevent. Deleting the line is sanctioned **only here** and is not the operator repairing an answer — an unconfirmed line answered nothing, no round ran, so removing it restores `A < H` and the clearance the write never earned. A tear leaving an *invalid* line instead reaches the corrupt-region refusal on the next entry if act 1 is skipped. **The other two sources' residues, added 2026-08-01 with the `{which}` discriminator** — a torn **`HALT-REASON:`** carries no origin, so nothing moves down; what it can do is still parse as S-15 and **over-count `H`**, making `A < H` true against a clearance nobody spent, the same direction as the value-tear by a different cause. Its disposition is `REQ-RCV-07` AC-7.5's, as `REQ-RCV-01` NB-3 routes it; act 1's `H > A` test reaches the untorn case, and act 1's *only if* is what keeps it from firing when the write never landed. A torn **Iterations** rewrite is **region-external and benign**: it is not a region line, so neither act 1 nor AC-7.5 owns it, and the next halt in scope rewrites the section unconditionally — a tear that leaves `## Iterations…` still matches AC-1.4 clause 3's anchor, and a tear destroying the `## ` leaves an inert prose line the not-found path steps around. Named so a fixture author is not left guessing which | `pdlc-rcv-budget-stop` AC-1.5(4), AC-1.4 clause 3 and NB-3; `REQ-RCV-07` AC-7.5; §2's S-13 row, whose *never authored by a human* prohibition is scoped to **authoring** and therefore exempts act 1 |
+
+The `notice` cell is not repeated here: §3 fixes it as **empty** for this variant, and a second
+statement of it is a second place to be wrong.

@@ -60,3 +60,17 @@ Authoritative per-AC mapping lives in §7 of
 | US-01 | REQ-RTCACHE-01, REQ-RTCACHE-02 | — (pending) |
 | US-02 | REQ-RTCACHE-02, REQ-RTCACHE-05 | — (pending) |
 | US-03 | REQ-RTCACHE-01, REQ-RTCACHE-03, REQ-RTCACHE-04 | — (pending) |
+
+## pdlc-rcv-budget-stop
+
+Upstream: `docs/pdlc-rcv-budget-stop/REQ-pdlc-rcv-budget-stop.md` (v3.1).
+Downstream: `docs/pdlc-rcv-budget-stop/FSPEC-pdlc-rcv-budget-stop.md` (v1.0).
+Authoritative per-criterion mapping lives in §13.1 of the FSPEC; this is the roll-up.
+
+| User Story | Requirement | AC group | FSPEC sections |
+|---|---|---|---|
+| US-01, US-02 | REQ-RCV-01 | AC-1.1, AC-1.2 | §3 FSPEC-BUD-01, §4 FSPEC-WIN-01 |
+| US-01 | REQ-RCV-01 | AC-1.3 | §8 FSPEC-RPT-01 |
+| US-01, US-04 | REQ-RCV-01 | AC-1.4 | §7 FSPEC-HALT-01, §9 FSPEC-PROMPT-01 |
+| US-02, US-04 | REQ-RCV-01 | AC-1.5(1)–(3) | §4 FSPEC-WIN-01, §6 FSPEC-CLR-01, §8 FSPEC-RPT-01 |
+| US-04 | REQ-RCV-01 | AC-1.5(4)–(5) | §5 FSPEC-REG-01, §6 FSPEC-CLR-01 |
