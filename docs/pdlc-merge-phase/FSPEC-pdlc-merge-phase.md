@@ -170,9 +170,9 @@ that fails makes `O3` `unknown` under §3.2.
 ### 3.2 Fail-closed parse rule — one rule, applied per surface
 
 For every observation: **if the command cannot be run, its output cannot be parsed as JSON, the
-expected field is absent, or the field's value is not a member of that row's recognised set, the
-observation yields `unknown`, and `unknown` is a failed precondition.** This is AC-1.2b, and it is
-the only rule; no surface has a permissive variant.
+expected field is absent, or its value is not in that row's recognised set, the observation yields
+`unknown`, and `unknown` is a failed precondition.** That is AC-1.2b and it is the only rule — no
+surface has a permissive variant.
 
 | ID | Recognised values | Passes when | `unknown` resolves to |
 |---|---|---|---|
@@ -215,10 +215,10 @@ not a retry-worthy `UNKNOWN`.
 ### 4.1 Decision
 
 The guard is evaluated at §2.2 row 6 — after the two off switches, the `prUrl` check and the `O1`
-read, before every other precondition. It takes `O5`'s changed-file list and the effective guard
-path set (§4.3), and fires when **any** reported path matches **any** guard path. Firing resolves the
-phase to `refused` and produces an escalation (§4.5). The guard has no override of any kind — no
-configuration value, no environment variable, no argument, no force flag (NFR-3).
+read, before every other precondition. It takes `O5`'s changed-file list and the effective guard path
+set (§4.3), and fires when **any** reported path matches **any** guard path, resolving the phase to
+`refused` with an escalation (§4.5). It has no override of any kind — no configuration value, no
+environment variable, no argument, no force flag (NFR-3).
 
 ### 4.2 Prefix-match semantics (AC-3.6)
 
@@ -259,9 +259,9 @@ pipeline-affecting code, and `.claude/workflows/` is a default because it exists
 ### 4.4 Fail closed on an unretrievable list (AC-3.4)
 
 If `O5` yields `unknown` under §3.2 — command failure, unparseable output, absent `files` field, a
-truncated or paginated list the phase cannot complete — the guard **fires**. An unknown diff is
-treated as pipeline-affecting. The escalation names the retrieval failure rather than a matched path,
-so the operator can tell "the pipeline touched itself" from "I could not find out".
+truncated or paginated list the phase cannot complete — the guard **fires**: an unknown diff is
+pipeline-affecting. The escalation names the retrieval failure rather than a matched path, so the
+operator can tell "the pipeline touched itself" from "I could not find out".
 
 ### 4.5 Escalation notice format (AC-3.2, AC-6.2a)
 
@@ -345,11 +345,10 @@ attempt and the chain continues — the phase never reports a merge it did not o
 
 ### 6.3 Exhaustion (AC-2.3)
 
-Each attempt records its method and its failure detail. When every candidate has been attempted and
-failed, the phase **stops attempting merge methods**. It does *not* halt: outcome `success`,
-`mergeStatus: deferred`, reason naming each attempted method and its failure, queue status left
-`awaiting-merge`, no queue commit. "Stops attempting methods" and "the pipeline halts" are different
-events; only the former happens here.
+Each attempt records its method and failure detail. When every candidate has been attempted and
+failed, the phase **stops attempting merge methods** — it does *not* halt: outcome `success`,
+`mergeStatus: deferred`, reason naming each attempted method and its failure, queue status unchanged,
+no queue commit. "Stops attempting methods" and "the pipeline halts" are different events.
 
 ### 6.4 Branch handling after a successful merge (AC-2.6, AC-2.6a)
 
@@ -373,10 +372,9 @@ on it.
 
 ### 7.1 When it runs
 
-The write-back runs **only** when `mergeStatus` is `merged` — i.e. §2.2 row 8 succeeded, or row 5
-found the PR already merged. Every other resolution (`skipped`, `refused`, `deferred`) writes
-nothing to the queue and makes no queue commit: the feature's row is left exactly as the driver left
-it, `awaiting-merge` or `in-progress` (AC-1.3).
+The write-back runs **only** when `mergeStatus` is `merged` — §2.2 row 8 succeeded, or row 5 found the
+PR already merged. Every other resolution (`skipped`, `refused`, `deferred`) writes nothing to the
+queue and makes no queue commit; the feature's row is left exactly as it was (AC-1.3).
 
 ### 7.2 The row transformation
 
@@ -505,8 +503,8 @@ it would lose an invariant that still holds on the majority path.
 
 Once the human stops merging, nobody restores the working tree. The next queue pass cuts its branch
 and runs its dependency triage against whatever the tree is on, so after a merge the tree must be on
-the repository's **default branch, updated to contain the merge**. Otherwise the following feature is
-cut from a base that does not contain its dependency — the exact stall this feature exists to remove.
+the **default branch, updated to contain the merge** — otherwise the following feature is cut from a
+base without its dependency, the exact stall this feature exists to remove.
 
 ### 8.2 The ordering, pinned once (F-14, SE F-01)
 
@@ -576,9 +574,8 @@ where they describe a phase that never ran:
 | `mergeSha` | the full merge commit SHA when this run merged (§6.2). On §2.2 row 5 (already merged): `O1.mergeCommit.oid` when it is present and parseable, else `null` — never invented. `null` on every non-merge |
 | `mergeMethod` | `rebase` or `merge` when this run merged; `unknown` when the PR was already merged on entry (a pipeline that did not merge cannot know how someone else did); `null` otherwise |
 
-A run that halts before Phase MERGE reports `mergeStatus: skipped` — the phase did not run, and
-`skipped` is the value that means "no merge was considered". That run is §11 row 22, and it is the
-one row of that table whose pipeline outcome is `halted`.
+A run that halts before Phase MERGE reports `mergeStatus: skipped` — "no merge was considered". That
+is §11 row 23, the one row of that table whose pipeline outcome is `halted`.
 
 `prUrl` and `ciStatus` continue to carry Phase PUB's results and are unchanged. `ciStatus` is Phase
 PUB's snapshot; the merge-time CI evidence is not re-reported as `ciStatus` (§5).
@@ -586,10 +583,9 @@ PUB's snapshot; the merge-time CI evidence is not re-reported as `ciStatus` (§5
 ### 9.2 The reason line
 
 `deferred` and `refused` each carry, in **one line**, the condition from §11's table that produced
-them — the condition, singular, per §2.3's ordering. It rides the Phase MERGE row's detail and is
-what an operator reads without opening the report object. Every non-merge keeps the pipeline outcome
-`success` (AC-1.3): a merge that did not happen is not a pipeline failure, so the halt path and its
-`halted` queue commit are not taken.
+them — singular, per §2.3's ordering. It rides the Phase MERGE row's detail. Every non-merge keeps
+the pipeline outcome `success` (AC-1.3): a merge that did not happen is not a pipeline failure, so
+the halt path and its `halted` queue commit are not taken.
 
 ### 9.3 Escalations
 
@@ -608,10 +604,10 @@ that state blocks the entire serial queue and its cause is invisible from the qu
 halt: halting would misreport the run and write a `halted` row over a feature that has landed. The
 recovery path is the escalation plus the idempotent re-attempt of §7.4.
 
-**Escalations accumulate, in table order.** A single run can produce more than one — the queue write
-and the tree update can both fail after the same merge. When several apply, every line is emitted, in
-the order of the table above, and the report's notices channel carries them all. Only the guard and
-CI lines are mutually exclusive with the other two (a run that refuses never merges).
+**Escalations accumulate, in table order.** One run can produce more than one — the queue write and
+the tree update can both fail after the same merge. When several apply, every line is emitted in the
+order of the table above. Only the guard and CI lines are mutually exclusive with the other two (a
+run that refuses never merges).
 
 **No escalation implies a halt.** Every escalating condition above keeps outcome `success`.
 
