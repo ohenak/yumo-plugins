@@ -439,53 +439,20 @@ AC-2.1/AC-2.8/AC-2.6) kept as a `depends-on` edge. No requirement, AC or `S-*` i
 
 ### v2.0 — the altitude split
 
-**What happened.** Phase R ran five rounds without a dual approval and wrote
-`docs/pdlc-rcv-budget-stop/POSTMORTEM-R-pdlc-rcv-budget-stop.md`. Its finding is precise: the
-document **converged as a requirements artifact by round 2** — across ten reviews not one blocking
-finding contests user need, scope, priority, phasing, the choice of three rounds or the reset-region
-design — and every blocking finding from round 2 onward landed in **AC-1.5(4)'s machinery, §6's
-render rows and O-10's corresponding legs**. **Root cause 1:** the REQ was *specifying, at
-requirements altitude, the behaviour of shipped code it does not own and cannot change from inside a
-requirements document* — a claim a reviewer with the source open can falsify by reading one line
-further, answered by pinning one more fact, falsified one line further still. **Root cause 3:** the
-v1.1 split reduced the document's **size** and not its **altitude**, because *"splitting by topic
-does not separate the requirements-altitude material from the implementation-altitude material when
-both live in the same acceptance criterion."*
+**Relocated, not deleted.** The split's narrative, its *what moved / what stayed* mapping and its
+three consequences are shared with `REQ-RCV-07` and are stated once, for both halves, in
+**`docs/_constraints/pdlc-rcv-split.md`** (§1–§4). In one line: v1.6 was cut at the **altitude** seam
+the postmortem named — AC-1.5(4)'s decision procedure, its refusal semantics, its repair taxonomy,
+the answering line's byte confirmation, §6's refusal renders and the matching O-10 legs moved to
+`REQ-RCV-07`; the window itself stayed; **no requirement id, AC id, `S-*` id, threshold or user story
+changed meaning**, and no `S-*` id was minted.
 
-**What moved, and where.** The cut is at that altitude seam, not at a topic boundary:
-
-| v1.6 clause | v2.0 home |
-|---|---|
-| AC-1.5(4)'s ordered algorithm, steps 1–5, and the `H − A ∈ {0, 1}` invariant with its stated domain | `REQ-RCV-07` **AC-7.1** |
-| *A refusal is not a halt*, its four bullets, the step-G routing, the suppression of the shipped generic recovery line, the `postmortemStatus` mechanism | **AC-7.2** (renders in catalogue §4) |
-| *Where `W`'s resolution runs*, and the three entry classes | **AC-7.3** |
-| The sanctioned-repair table and the delete-an-answering-line table | **AC-7.4** |
-| The answering line's byte confirmation, the torn-write and value-tear analysis, act 1 | **AC-7.5** |
-| Row B, in two variants | **AC-7.6** |
-| §6's *Refusal phase-row text*, *Refusal recovery text*, *Unconfirmed-append text* | `REQ-RCV-07` §6 and catalogue §4 |
-| O-6, and O-12's append-and-confirm half | `REQ-RCV-07` O-6, O-12 |
-| O-10's algorithm, refusal, string, confirmation, row-B and placement legs | `REQ-RCV-07` O-10 |
-| R-11 (a refusal costs a mid-window round) | `REQ-RCV-07` R-11 |
-
-**What stayed, and why that is the whole test of the cut.** §1–§4.1, AC-1.1, AC-1.2, AC-1.3, AC-1.4,
-AC-1.5(1)–(3) and (5), O-5, O-9, O-11 and the O-10 legs that test them are exactly the material that
-drew **zero blocking findings after round 2**. AC-1.5(4) keeps the clearance gate's three conjuncts,
-the answering-line append and its confirmation *obligation*, and states *the region validates* as a
-**named predicate** with its fail-closed outcome — delegating only the decision procedure (X-06).
-
-**Three consequences worth stating.**
-
-1. **No `S-*` id changed, and none was minted.** The catalogue stays closed at seventeen; every id
-   this REQ owned at v1.6 it still owns (§4), and `REQ-RCV-07` owns none. Where catalogue §2 says
-   *"AC-1.5(4)'s ordered algorithm"*, read `REQ-RCV-07` AC-7.1 — the delegation stated in §4.
-2. **No requirement id, AC id, threshold or user story changed meaning.** `REQ-RCV-07`'s criteria are
-   numbered `AC-7.x` because they sit under a new requirement id, not because any clause was
-   re-decided, and **every round-5 finding v1.6 closed remains closed** in whichever document now
-   owns the material.
-3. **This document now carries no line citation and no claim about shipped control flow**, only `M-*`
-   ids (NB-4). That is root cause 1's remedy applied to the surface that generated it, and it is what
-   makes the two documents reviewable independently — which the postmortem records as the thing five
-   rounds of in-place revision could not achieve in one.
+**Paired edges must be revised together**, and that obligation is this document's because it owns the
+split. `REQ-RCV-01` X-06/R-14 and `REQ-RCV-07` X-07/R-16 are the **same edge described from both
+ends**: an implementer who reads only the successor's end gets whatever the successor still says. Any
+revision to X-06 or R-14 is carried to X-07 and R-16 **in the same commit, in the same words** —
+including v2.2's, which replaced an interim decision procedure with none. The edge table, and the
+`O-*`/`R-*`/`X-*` collision rule it depends on (§7), are in `pdlc-rcv-split.md` §5.
 
 **Round-by-round history is deliberately not restated here:** `harvest-learnings` deletes
 `CROSS-REVIEW-*` once LEARNINGS is written, so citing round files would be structurally wrong. This
