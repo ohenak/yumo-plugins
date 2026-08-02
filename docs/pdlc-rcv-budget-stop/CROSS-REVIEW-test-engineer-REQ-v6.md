@@ -94,8 +94,57 @@ Q-04 and Q-05 are both closed — Q-04 answered at v5, Q-05 withdrawn above as b
 
 ## Recommendation
 
-_(pending)_
+**Needs revision**
+
+All three v5 findings are closed, the Medium among them on the merits before the split and then
+structurally by it. **No High this round**, and nothing in the material the split *moved* is
+contested — I checked all nine mapping rows against their destinations and every clause is there,
+including the two O-10 legs I asked for at v5, which `REQ-RCV-07` now carries in a stronger form than
+I specified. What blocks approval is a single **Medium** in text that did not exist at v5.
+
+1. **F-30 (Medium)** — X-06 and R-14 mandate a **constant fail-closed** stub for the delegated
+   predicate (*"a stub returning valid is the fail-open AC-1.5(4) exists to close"*), while O-10
+   requires four legs that can only run when that predicate returns **true**: the two-halts-one-answer
+   region granting exactly one window, the `A = H` region granting none, the write confirmed before
+   dispatch, and the S-11 clearance writing `WINDOW-RESUMED: {W}`. A constant-invalid predicate
+   short-circuits the gate before any of that behaviour occurs. O-10's *"stub or double"* names both
+   shapes and picks neither, so a property author has two incompatible readings and whichever they
+   pin, the other is untested — the same shape as the finding this round closed. Say which: I would
+   take a controllable seam whose **production default** is invalid, scope X-06's prohibition to that
+   default, and have O-10 name the seam value each granting leg drives.
+
+   Independently, and this is the half that needs an answer even if the seam question were waved
+   through: the stub's state is **operator-visible and has no oracle**. With `REQ-RCV-07` unshipped
+   and the predicate at its fail-closed default, a `RESOLVED: yes` yields the AC-1.5(4) refusal on
+   every entry — so US-04's escape hatch and AC-1.5(3)'s *"an operator who has addressed the finding
+   gets a fresh window"* are inert on the artifact this REQ ships, and no leg says so. Add the leg
+   positively: at the production default, with a readable `RESOLVED: yes`, the entry refuses, emits
+   its S-16 notice, dispatches **0** reviewers, and leaves `A` and `H` unmoved. That is also the
+   regression oracle for a later implementer quietly relaxing the stub to *valid*.
+
+The two Lows are one clause each and neither is load-bearing: R-14's and §3.1's *"immediately behind"*
+is contradicted by `QUEUE.md`'s own *"Net pickup order: 10 → 12 → 18 → 17 → 11"* — the mitigation
+survives, the wording does not (F-31); and §4's delegation rule is keyed to a phrase only two of the
+four catalogue rows it names actually use, with catalogue §3's two pointers at the moved material
+outside any rule — every one recovers in one hop through §6's forwarding sentence, so no obligation is
+lost (F-32). Both are Cross-Feature-adjacent bookkeeping; F-32 is tagged so because the drift sits in
+the shared catalogue three REQs read.
+
+**On room.** F-28 is emphatically closed — 9,388 bytes and 223 lines of headroom — so for the first
+time in this document's history the fix does not have to be paid for by a compression pass. F-30's
+answer is one scoping clause in X-06 and two legs in O-10, and there is room for all three.
+
+Explicitly **not** filed: anything in §1, §2, §4.1, §5's AC-1.1–AC-1.4, AC-1.5(1)–(3) and (5), §6, §7
+or §9 beyond R-14 — approved across five rounds and changed here only by the split's excisions, each
+of which I traced to its destination; the decision to delegate the procedure while keeping the
+meaning, which is the right seam; the fail-closed disposition itself, which is correct in all four
+respects; and the whole of `REQ-RCV-07`, which is not this review's document — findings against its
+AC-7.x, its §6 or its O-10 belong to its own Phase R. Nothing here contests user need, priority,
+phasing, the choice of three rounds, the reset-region design, or the split itself, which is the right
+response to the post-mortem and is executed more carefully than the mapping table alone would prove.
 
 ## Verdict
 
-_(pending)_
+VERDICT: Needs revision
+
+{"high": 0, "medium": 1, "low": 2}
