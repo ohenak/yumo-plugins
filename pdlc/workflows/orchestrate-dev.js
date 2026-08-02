@@ -492,6 +492,60 @@ export function classifyMergeResult(mergeRaw, readbackRaw) {
   return { ok: false, reason: "not-confirmed" };
 }
 
+// ─── TSPEC §6 — Phase MERGE: the self-modification guard (O-M7) ────────────
+//
+// PLAN §12 A3. Implements FSPEC §4 / NFR-3. Two pure functions only — no IO,
+// no clock, no config/env/argv read anywhere in either body (§6.3's no-
+// override boundary, asserted by mergeGuard.test.js's source scan).
+
+function isNonEmptyString(v) {
+  return typeof v === "string" && v.length > 0;
+}
+
+/**
+ * The effective guard-path set: `MERGE_GUARD_DEFAULTS` unioned with whatever
+ * the caller configured, additively and unconditionally (TSPEC §6.1, FSPEC
+ * §4.3). Defaults are never filtered, subtracted or re-ordered — a
+ * configuration that lists fewer paths, none, or one shaped like a removal
+ * (a `"!"`-prefixed string, say) is simply unioned in: it becomes a guard
+ * path that matches nothing, silently, with no warning and no report line.
+ * Non-string members are dropped; every configured string gains a trailing
+ * `/` so a bare form and its slash-terminated twin are the same guard path.
+ *
+ * @param {*} configured - the config's `guardPaths` value, any shape
+ * @returns {string[]} the de-duplicated effective guard-path set
+ */
+export function effectiveGuardPaths(configured) {
+  const extra = Array.isArray(configured) ? configured : [];
+  const norm = (p) => (p.endsWith("/") ? p : `${p}/`);
+  return [
+    ...new Set([...MERGE_GUARD_DEFAULTS, ...extra.filter(isNonEmptyString).map(norm)]),
+  ];
+}
+
+/**
+ * The pure guard decision (TSPEC §6.2, FSPEC §4.2/§4.4). `changed` is O5's
+ * classified changed-file observation, `{ ok: true, files: string[] }` or a
+ * failure shape; anything not exactly `{ ok: true, ... }` fails CLOSED —
+ * command failure, unparseable output, an absent `files` field and an
+ * incomplete list all resolve as `ok !== true` one layer up (O5), so this
+ * function's single check covers every one of them. Matching is
+ * `String.prototype.startsWith`: case-sensitive, `/`-delimited (every guard
+ * path ends in `/`), position-0 anchored — no globbing, no regex, no case
+ * folding, no substring search.
+ *
+ * @param {{ok:boolean, files?: string[]}|null|undefined} changed - O5's observation
+ * @param {string[]} guardPaths - the effective guard-path set
+ * @returns {{fired:boolean, kind:"match"|"clear"|"unretrievable", matched:string[]}}
+ */
+export function guardVerdict(changed, guardPaths) {
+  if (!changed || changed.ok !== true) {
+    return { fired: true, kind: "unretrievable", matched: [] }; // FSPEC §4.4
+  }
+  const matched = changed.files.filter((p) => guardPaths.some((g) => p.startsWith(g)));
+  return { fired: matched.length > 0, kind: matched.length ? "match" : "clear", matched };
+}
+
 // MODEL-01: per-phase model selection. Every phase runs on Opus for reasoning
 // depth EXCEPT the Phase I implementation batches, which run on Sonnet for
 // throughput/cost. Passed to the runtime via the agent() opts.model field.
