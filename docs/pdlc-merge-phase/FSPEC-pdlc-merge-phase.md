@@ -9,7 +9,7 @@
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.2 | 2026-08-02 |
+| pdlc | draft | Claude | 1.3 | 2026-08-02 |
 
 ## 1. Scope and entry obligations
 
@@ -68,7 +68,7 @@ later row that needs PR state reuses that one observation — so no input can re
 | 2 | `mergeMode` resolves to `off` | `skipped` | `prUrl` check, `O1`, guard, every observation |
 | 3 | `prUrl` from Phase PUB is absent or empty | `deferred` — "no PR URL from Phase PUB" | `O1`, guard, every observation. Hoisted here because every later row addresses the PR *by* `prUrl` |
 | 4 | `O1` is observed once. Its `state` is unparseable or unrecognised (§3.2) | `refused` — "PR state could not be determined"; **no escalation** | guard, remaining preconditions, merge attempt |
-| 5 | that same `O1.state` is `MERGED` | `merged` (§9.1 for `mergeSha` / `mergeMethod`) | guard, remaining preconditions, merge attempt — but **not** the queue write-back (§7.4), which still runs |
+| 5 | that same `O1.state` is `MERGED` | `merged` (§9.1 for `mergeSha` / `mergeMethod`) | guard, remaining preconditions, merge attempt — but **not** the queue write-back (§7.4), nor the `O4` **observation** of §2.5, both of which still run |
 | 6 | self-modification guard fires | `refused` | remaining preconditions, merge attempt |
 | 7 | a remaining precondition fails (§2.3) | `refused` or `deferred` | merge attempt |
 | 8 | merge attempted | `merged` or `deferred` | — |
@@ -100,7 +100,7 @@ them (7c), never silently.
 | 7a | PR open | row 4's `O1.state` (re-used, not re-read) | `deferred` — "PR is CLOSED" |
 | 7b | CI evidence | `O2` (§5) | `refused` |
 | 7c | Mergeable | row 4's `O1.mergeable` / `mergeStateStatus` + bounded re-read (§3.3) | `refused` when either field is unretrievable or holds a value outside §3.2's recognised set; `deferred` when both parse and the values are simply not mergeable — `CONFLICTING`, `DIRTY`, `BLOCKED`, or `UNKNOWN` surviving §3.3's re-reads |
-| 7d | No unresolved review threads | `O3` | `deferred` — "N unresolved review thread(s)" |
+| 7d | No unresolved review threads | `O3` | `refused` when the thread list is unretrievable or unparseable (§3.2); `deferred` when it is retrieved and any thread is unresolved — "N unresolved review thread(s)" |
 | 7e | Merge-method capability retrievable | `O4` | `refused` on unretrievable/unparseable (AC-2.5a); `deferred` when retrieved and no permitted method remains (AC-2.5b) |
 
 **The tie-break is positional, not class-based.** A run holding both `CI pending` (7b, `refused`) and
@@ -128,6 +128,13 @@ Row 5 is what makes a re-invocation safe. Against an already-merged PR the phase
 merges, evaluates **no** guard, reports `merged` with `mergeMethod: unknown` and `mergeSha` resolved
 from the same `O1` observation (§9.1), and re-attempts only the queue write-back idempotently (§7.4).
 A PR merged by a human counts. This is the recovery path for AC-5.2's "merged, queue not updated".
+
+**Row 5 takes `O4` as an observation, never a precondition.** M3 still runs on this path and its only
+source for the default branch name is `O4.defaultBranchRef.name` (§3.1), so row 5 observes `O4` — for
+that name alone. An `unknown` `O4` here does **not** refuse: the resolution stays `merged`, the name
+is simply unavailable, M3 cannot be performed, and the run reports §11 **row 22** with "default
+branch name unavailable" as its escalation reason. §2.2's "zero merges, no guard evaluated" holds
+literally: no capability of `O4` is consulted, and NFR-2 is untouched because nothing is mutated.
 
 **Which statuses row 5 writes (SE Q-02).** The write-back applies `done` when the row's current status
 is `in-progress`, `awaiting-merge` or already `done`. Any other — `pending`, `blocked`, `halted` — is
@@ -562,7 +569,7 @@ included, where they describe a phase that never ran:
 |---|---|
 | `mergeStatus` | exactly one of `merged`, `deferred`, `refused`, `skipped` |
 | `mergeSha` | the full merge commit SHA when this run merged (§6.2). On §2.2 row 5 (already merged): `O1.mergeCommit.oid` when it is present and parseable, else `null` — never invented. `null` on every non-merge |
-| `mergeMethod` | `rebase` or `merge` when this run merged; `unknown` when the PR was already merged on entry (a pipeline that did not merge cannot know how someone else did); `null` otherwise |
+| `mergeMethod` | `rebase`, `merge`, or `squash` when this run merged; `unknown` when the PR was already merged on entry (a pipeline that did not merge cannot know how someone else did); `null` otherwise. **`squash` is reachable only where `allowSquashMerge: true` is explicitly configured** — it is never in a fallback chain (§6.1), so on shipped defaults the domain of a merged run is `rebase` or `merge` |
 
 A run that halts before Phase MERGE reports `mergeStatus: skipped` — "no merge was considered". That
 is §11 row 23, the one row of that table whose pipeline outcome is `halted`.
@@ -694,7 +701,7 @@ REQ AC-6.1a's condition table, refined to spec level and naming per row the reso
 reason line's subject, whether the queue is written and whether an escalation is emitted. It is the
 parameterised suite the TSPEC and tests pin.
 
-**Exclusivity, stated precisely.** Rows 1–18, 11a included, are **terminal**: exactly one applies to any run
+**Exclusivity, stated precisely.** Rows 1–18, 11a and 13a included, are **terminal**: exactly one applies to any run
 that reaches the phase, and no two can apply together. Rows 19–22 are **composable post-merge
 annotations** over §11 row 18 (or row 3): each is independently present or absent, any subset can
 hold at once, all of them report `merged`, and their notices accumulate in §9.3's order. Row 23 is
@@ -716,6 +723,7 @@ the one run that never reaches the phase. Every row's pipeline outcome is `succe
 | 11a | `O1`'s `mergeable`, `mergeStateStatus` or `number` unparseable/unrecognised | §2.3 7c | `refused` | no | no |
 | 12 | `mergeable` `CONFLICTING`, or `mergeStateStatus` `DIRTY`/`BLOCKED` | §2.3 7c | `deferred` | no | no |
 | 13 | `mergeable` still `UNKNOWN` after the bounded re-reads | §3.3 | `deferred` | no | no |
+| 13a | Review-thread list (`O3`) unretrievable/unparseable | §2.3 7d | `refused` | no | no |
 | 14 | One or more unresolved review threads | §2.3 7d | `deferred` | no | no |
 | 15 | Capability query unretrievable/unparseable | §2.3 7e | `refused` | no | no |
 | 16 | No permitted merge method remains | §6.1 | `deferred` (reason "no permitted merge method") | no | no |
