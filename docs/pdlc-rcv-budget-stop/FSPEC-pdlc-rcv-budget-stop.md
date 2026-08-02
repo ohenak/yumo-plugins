@@ -582,6 +582,39 @@ the **S-4 reason**, identical in the post-mortem and in the report.
 
 ## 9. FSPEC-PROMPT-01 — The post-mortem authoring prompt
 
+**Obligation:** O-9, in full. **Linked criterion:** AC-1.4's no-re-author path.
+
+### 9.1 The belt-and-braces clause
+
+**B-PMT-1 — the prompt tells the authoring agent that `## Reset Region` is machine state.** The
+post-mortem authoring dispatch's prompt gains a clause stating that the section headed
+`## Reset Region`, and every line inside it, is written and maintained by the loop: the agent does
+not create it, edit it, reorder it, quote its lines into another section, or delete it.
+
+**B-PMT-2 — and that it never writes a resolution marker.** The same clause restates the standing
+rule that `RESOLVED:` is human-written only. Agents already do not write it; stating it at the one
+prompt that authors this file removes the accident.
+
+**This clause is not the mechanism.** Region maintenance is the loop's (§7, O-5), and every
+guarantee this FSPEC makes about the region holds whether or not the agent honours the clause. A
+finding that the clause is unenforced is **correct and by design** — enforcement would be a
+different feature, and the loop already overwrites or preserves what matters.
+
+**B-PMT-3 — whatever the agent writes as an Iterations section is replaced.** Clause 3 runs after
+the authoring dispatch on a creating halt (§7.3), so the agent's version of that heading never
+reaches the operator. The prompt's required-section list is otherwise unchanged.
+
+### 9.2 What the prompt is *not* asked to do
+
+**Not in scope: changing what the authoring agent writes into a post-mortem created by a
+zero-round halt.** On such an entry no reviewer of *this* window ran, so the agent's evidence-bearing
+sections are thin or drawn from the **previous** window. This is **correct, known and accepted**:
+the two things the `RESOLVED: yes` decision needs are both **loop-written and pinned** — §8.1's
+render, showing `rounds run 0` so the vacuity is visible rather than disguised, and the
+`HALT-REASON:` line naming S-4. Changing the prompt's content beyond B-PMT-1/B-PMT-2 would change
+*what a halt is* (`N-4`). The cost is one authoring dispatch on the **first** halt only; every later
+entry dispatches none (§7.4).
+
 ## 10. Edge cases and error scenarios
 
 ## 11. Acceptance tests
