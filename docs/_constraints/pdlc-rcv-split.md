@@ -73,7 +73,7 @@ must name the owning REQ.
 
 | Edge | `REQ-RCV-01` end | `REQ-RCV-07` end | Obligation |
 |---|---|---|---|
-| The *region validates* decision procedure, and what happens before it ships | **X-06**, **R-14** | **X-07**, **R-16** | Revise all four **in the same commit**, in the same words. Both ends must agree on whether the conjunct is wired in the interim, on the queue distance between the two rows, and on what an interim procedure would cost. |
+| The *region validates* decision procedure, and what happens before it ships | **X-06**, **R-14** | **X-07**, **R-16** | Revise all four **within the same revision**, in the same words, before that revision is submitted for review — the reviewer checks both ends **at HEAD**, not at a commit boundary. (Stated over the revision rather than the commit because the authoring pacing contract mandates one top-level section per edit and a commit after each, so an edit spanning two documents' several clauses is structurally more than one commit; a rule the authoring discipline forbids would keep being violated and reported as satisfied.) Both ends must agree on whether the conjunct is wired in the interim, on the queue distance between the two rows, and on what an interim procedure would cost. |
 | The catalogue delegation of AC-1.5(4)'s algorithm, its steps and its renders | §4's pointer to §6 below | AC-7.1, §6 | The catalogue itself is edited **once**, by `REQ-RCV-07`, when the clauses become true of it. |
 
 ### 5.1 Why the validation conjunct is not wired before its procedure ships
@@ -100,6 +100,20 @@ and `REQ-RCV-07` X-07/R-16 state the **decision**; this states the **reasons** b
 Leaving the conjunct unwired is therefore the only interim whose behaviour is **HEAD's**. The cost,
 stated: R-10's hand-edited-region fail-open stays open until row 18 — operator-caused,
 operator-visible, and no wider than HEAD's, where it is open unconditionally.
+
+### 5.2 Why validation is a conjunct of the gate, not merely a constraint on `W`
+
+Relocated from `REQ-RCV-01` AC-1.5(4) (2026-08-01, round 9) so both ends of the paired edge cite one
+copy; nothing changed meaning in the move. `REQ-RCV-01` AC-1.5(4) states the **claim**; this states
+the **arithmetic** behind it, which both halves depend on and neither restates.
+
+- **Were validation only a constraint on `W`**, two `HALT-REASON:` lines and one *invalid*
+  `WINDOW-START:` would give `A < H`, so the loop would write an answering line and consume the
+  clearance while `W` is still 1 — permanently, since the region is preserved by every later halt.
+- **`H − A ≤ 1` is the invariant** that AC-1.5(4)'s *exactly one answering line* relies on: without a
+  stated domain, two `HALT-REASON:` lines and no answering line pass every value-level check
+  vacuously, and the loop grants `H − A − 1` windows beyond the one paid for, every invocation,
+  fail-**open**.
 
 ## 6. The catalogue delegation, stated once
 
