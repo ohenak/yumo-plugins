@@ -34,7 +34,7 @@ them; §11 is written against DC-02 in particular — every runtime claim it mak
 | `pdlc/workflows/orchestrate-dev.js` | new: Phase MERGE — config reader, six observations, pure decision core, guard, merge execution, post-merge sequence, phase wiring in `main()`, report fields |
 | `pdlc/workflows/orchestrate-queue.js` | changed: `updateQueueStatus`, `rewriteStatus`, `commitQueueRow`, `uncommitted`, `runPicked`; new pure helpers for the `Evidence` column |
 | `pdlc/workflows/build-runtime.mjs` | changed: `exportedNames` for both IIFEs, both entrypoint `_recordQueueRow` closures, `DEV_META.phases` |
-| `pdlc/workflows/runtime-adapter.js` | new: `rtMergeObservations`; one new key in `rtDevInjections` |
+| `pdlc/workflows/runtime-adapter.js` | new: `rtGhRun`; one new key (`_ghRun`) in `rtDevInjections` |
 
 **Obligation index.** FSPEC §13's entry obligations are discharged as follows; §15 restates the
 result with evidence.
@@ -139,14 +139,13 @@ the callee; `main()`'s corresponding parameter is `_phaseMergeEnabled` and it fo
 `_enabled` (§10.4). Two names for two scopes, and both are injectable — §13.3's row-1 case needs
 `_readFile` provably uncalled, which requires reaching row 1 without editing a module constant.
 
-**One new capability seam, not six (TE F-03, F-04).** v1.0 proposed a `_mergeObservations` table of
-six functions. It is replaced by a single seam, **`_ghRun(command) => { ok, stdout }`** — "run this
-`gh` command, give me its raw stdout" — because that is the only capability the runtime must supply.
-Every command string, every fallback, every pagination loop and the `O6` read-back then live in this
-module, in one place, and the adapter carries no `gh` knowledge at all (§11.3). FSPEC §3.1's "one
-substitutable observation point per external surface" is satisfied by the six `observe*` functions:
-each is separately importable and separately drivable, because a test's `fakeGhRun` is keyed on the
-command shape and can answer one surface while leaving the others alone (§13.1).
+**One new capability seam, not six (TE F-03, F-04).** v1.0's `_mergeObservations` table of six
+functions is replaced by a single seam, **`_ghRun(command) => { ok, stdout }`** — the only capability
+the runtime must supply. Every command string, fallback, pagination loop and read-back then lives in
+this module (§4.1) and the adapter carries no `gh` knowledge (§11.3); §10.4 derives why the object
+shape was also *red* under RLH-AT-64. FSPEC §3.1's per-surface substitutability is satisfied by the
+six `observe*` functions, each separately importable and separately drivable through a command-keyed
+`fakeGhRun` (§13.1).
 
 ### 2.4 The two record types
 
@@ -238,13 +237,11 @@ Returns `{ config, sectionMalformed }`. Never throws; never reads anything.
 its own value (FSPEC §10.3). The `distribution` section is never touched, read or re-emitted.
 
 **Why `mergeableRetries` has an upper bound (TE F-02).** FSPEC §10.3 accepts "integers ≥ 0" without a
-ceiling, and v1.0 transcribed that literally — which made §5.2's decision-step bound reachable from
-configuration: `mergeableRetries: 25` would exhaust the loop, throw, be caught, and report `refused,
-row: "internal"` where FSPEC §11 row 13 requires `deferred`. A configuration value must not be able
-to convert one FSPEC row into another. The out-of-domain value therefore **takes the default**, which
-is exactly FSPEC §10.3's own rule for a value outside its accepted domain — no new behaviour class,
-just a domain that is bounded above as well as below. `11` is out of domain and yields `3`, and
-§13.2 tests the boundary pair (`10` accepted, `11` defaulted) plus the row-13 case at `10`.
+ceiling; transcribed literally, `mergeableRetries: 25` would exhaust §5.2's decision-step bound,
+throw, and report `refused, row: "internal"` where FSPEC §11 row 13 requires `deferred` — a config
+value converting one FSPEC row into another. An out-of-domain value therefore takes the default,
+which is FSPEC §10.3's own rule; the domain is simply bounded above as well as below. §13.2 tests the
+boundary pair (`10` accepted, `11` defaulted) and the row-13 case at the cap.
 
 ### 3.2 `readMergeConfigSafely(readFileFn, path)`
 
@@ -1221,20 +1218,18 @@ comment at `:1004` explains why) and is renamed in that comment to `_recordQueue
 
 ### 11.4 The runtime's structural constraints
 
-Nothing in this feature introduces `process.`, `fetch(`, a static `import`, a second `export`, or a
-`meta` that is not the first statement — the four things `runtimeBundle.test.js` (`:461`–`:485`,
-`:938`) asserts. The dynamic `import("child_process")` inside `defaultGhRun` follows the
-existing precedent (`checkPrCi:3486`, `defaultGit:4253`): the bundle never evaluates it because the
-adapter always supplies `_ghRun`, and the scan's "leaves dynamic imports alone" ruling (`:454`)
-already covers that shape.
+Nothing here introduces `process.`, `fetch(`, a static `import`, a second `export`, or a `meta` that
+is not the first statement — the four things `runtimeBundle.test.js` (`:461`–`:485`, `:938`) asserts.
+The dynamic `import("child_process")` inside `defaultGhRun` follows `checkPrCi:3486` /
+`defaultGit:4253`: the bundle never evaluates it because the adapter always supplies `_ghRun`, and
+the scan's "leaves dynamic imports alone" ruling (`:454`) covers the shape.
 
 ### 11.5 Pacing and dispatch budget
 
 Phase MERGE adds **no agent dispatch of any kind** (NFR-4) — every agent turn it causes is an
-adapter-mediated mechanical IO turn that already exists as a class. The 180-second no-progress
-watchdog therefore has no new authoring dispatch to threaten, and the `PACING_CONTRACT_CLAUSE`
-(`:2556`) is not extended. The only new *latency* is §3.3's config read and §4.3's retry waits, both
-bounded and both injectable to zero in tests.
+adapter-mediated mechanical IO turn that already exists as a class. The 180-second watchdog therefore
+has no new authoring dispatch to threaten and `PACING_CONTRACT_CLAUSE` (`:2556`) is not extended. The
+only new latency is §3.3's config read and §4.3's retry waits, both bounded and injectable to zero.
 
 ## 12. Error handling catalogue
 
@@ -1401,50 +1396,70 @@ Fixture constraints, stated in the file header so they cannot be edited away:
 | NFR-2 | one mutating call, reachable from one branch (§4.7, §5.2) | `mergeDecision` |
 | NFR-5 | row 5 / §11 row 3 (§5.5) | `mergeDecision`, `mergeQueueWriteback` |
 
-## 15. Obligations discharged, risks, and the DECISIONS verdict
+## 15. Round-1 dispositions, errata, risks, and the DECISIONS verdict
 
-### 15.1 Obligations
+The FSPEC entry-obligation index lives in §1 and is not repeated here (PM F-07).
 
-| ID | Discharge |
-|---|---|
-| O-M1 | §8.2 — catalogue migrated to `recorded` / `recorded (uncommitted)` / `none` / `error`; every producer and reader named; the seam **is** renamed to `_recordQueueRow`, with the `runtimeBundle.test.js:1038` vacuity trap named and closed |
-| O-M2 | §4 (six observation names, signatures, `{ execFn }` injection, the `_mergeObservations` seam) and §8.1/§8.3/§8.4 (the four touch points + the row transform, with the evidence-free byte-identity property pinned as a differential test) |
-| O-M3 | §4.4 — the GraphQL query text, `-F`/`-f` typing, cursor pagination bounded at 10 pages fail-closed, `parsePrRef` plus the `O1.number` cross-check; `reviewDecision` appears nowhere |
-| O-M4 | §4.6 — the four-verdict completeness procedure, the `< 100` completeness criterion, the `--paginate --slurp` fallback, and empty-list ≠ unretrievable |
-| O-M5 | §3.3 — read once at the top of `phaseMerge`, after the enable check by construction; local `const`, **no module-level cache**, with the in-process queue→dev call as the reason |
-| O-M6 | PLAN-owned; §13.4 states the exact re-expression and the sibling case so the PLAN task has a specification to reference |
-| O-M7 | §4.3 — `_sleep`/`_now` defaulted **in `phaseMerge`'s own parameter list**, the `raisePrAndVerifyCi:3899` pattern; wait is `mergeableRetryDelay × 1000` |
-| O-M8 | §7.4 — the seven-step argv sequence, `--empty=drop` as the already-upstream detection, exit-status-only failure detection, and the ancestry confirmation |
-| SE-v3 advisory / TE-v3 N-02 | §5.5 — row 5 observes `O4` for the branch name only; an unknown `O4` there does not refuse, it produces row 22 |
-| TE-v3 N-01 | §4.6 + §13.3 — resolved as a stated fixture constraint on the row-11a and row-5 cases, asserted rather than documented |
+### 15.1 Round-1 cross-review dispositions
 
-### 15.2 Risks and costs, named
+| ID | Sev | Disposition |
+|---|---|---|
+| PM F-01 | High | **Fixed.** §2.4 declares `row` as always a FSPEC §11 identifier; §5.3's table carries the §11 id per guard (no-`prUrl` → row 6, unparseable `O1.state` → row 8, guard match/unretrievable split to rows 4/5); §12 E8 corrected; §13.3's cases keyed on those ids |
+| PM F-02 | High | **Fixed.** FSPEC §8.2's notice specified verbatim in §7.1 with its emission point, enumerated in §10.2, and asserted in `mergePhase` including its three suppression cases (§13.2) |
+| PM F-03 | High | **Fixed.** `mergeableRetryDelay` restored everywhere (§2.2, §3.1, §4.3, §13.2); the seconds unit is documented, not encoded in the name |
+| PM F-04 / M-01 | Medium | **Fixed by the erratum route the finding prescribes.** `mergeMethod`'s `squash` member is declared in §2.4/§5.6/§10.1 as reachable only under `allowSquashMerge: true`, and raised as erratum **E-1** below. If E-1 is refused the fix is one line in `mergeCandidates` |
+| PM F-05 | Low | **Fixed.** Erratum **E-3** stated inline at §5.5 |
+| PM F-06 | Low | **Fixed.** §14 gains eight rows: AC-6.1a, §11 rows 19–22, AC-2.3, AC-3.3/3.7, AC-4.2, AC-4.3, AC-5.4, AC-6.2a |
+| PM F-07 | Low | **Applied.** v1.0's duplicate obligation table and its feasibility prose are gone and §12's restating rows are collapsed into §5.3/§11 references |
+| PM Q-01 | — | Answered in §7.1: emitted on a `merged` run iff M4's disposition is `recorded`, row 3 included |
+| PM Q-02 | — | Answered in §9.1: the driver's M5 and §2.5's non-overwrite case are mutually exclusive by construction, and §13.2 asserts the boundary |
+| TE F-01 | High | **Fixed.** The 24-row table moves to `mergePhase.test.js` driven by `fakeGhRun`; `decideMerge` keeps the guard sequence, tie-breaks, short-circuit and termination properties. §2.1, §5.1 and §13 now agree, and v1.0's "pure-function suite" claim is withdrawn |
+| TE F-02 | High | **Fixed.** `mergeableRetries` accepts 0…10 (§3.1); `MERGE_MAX_DECISION_STEPS` derived as 19 + slack (§5.2); the boundary pair and the row-13-at-cap case are tests |
+| TE F-03 | High | **Fixed, and the review's reading confirmed.** §10.4 now derives the classification from `runtimeBundle.test.js:787`–`:816` step by step: a frozen-object default is E-1 **resolved**, which combined with wiring would have failed anti-rot clause 1 (`:1025`). The seam is `_ghRun` defaulted to the module **function** `defaultGhRun` (no `_agent`) — E-3 unresolved, not exempt, wired — `_recordHalt`'s blessed shape |
+| TE F-04 | High | **Fixed.** One transport seam removes the export contradiction: `exportedNames` gains nothing, the adapter holds no `gh` catalogue, and every command string lives once in `mergeCommandFor`. `mergeAdapter.test.js` added to §13.2 with the four assertions the finding asks for |
+| TE F-05 | Medium | **Fixed.** `_enabled` is in §2.3's signature; §2.3 states the two-scope naming (`_enabled` in the callee, `_phaseMergeEnabled` on `main()`) |
+| TE F-06 | Medium | **Fixed.** `mergeConfig.test.js` added, with the totality property |
+| TE F-07 | Medium | **Fixed.** §11.3 cites `rtGit` alone at **`:935`** (verified: one occurrence in the file) and states that `rtGhRun` establishes the at-most-once sentence rather than inheriting it |
+| TE F-08 | Medium | **Fixed.** AT-M5's precondition restated as a drift-state record with `checkEnabled: false` and empty `writeFailures`, with the row-3 caveat |
+| TE F-09 | Medium | **Fixed.** §7.5 pins `parsePrRef(prUrl).number`, `record.o1.number` as fallback, and a skipped write-back with a note when neither resolves; three test arms |
+| TE F-10 | Medium | **Fixed.** §6.3's scan is scoped to arity plus the two extracted function bodies |
+| TE F-11 | Medium | **Fixed.** §13.5's identity property compares against goldens captured at HEAD **before** the change |
+| TE F-12 | Low | **Fixed.** `:383` and `:428` added to §13.4, with `:428` pointed at `QUEUE_ROW_DISPOSITIONS` |
+| TE F-13 | Low | **Fixed.** 24 rows, and the suite asserts its own case count |
+| TE F-14 | Low | **Fixed.** Three positive conjuncts named in §13.2 |
+| TE Q-03 | — | Answered: `mergeObservations.test.js` has two explicitly listed blocks, pure and transport-level |
+
+### 15.2 FSPEC errata requested
+
+Each is a divergence this TSPEC could not resolve inside its own lens. None blocks implementation;
+all three should be reflected in the FSPEC so the two documents agree in writing.
+
+| ID | Site | Requested change | Raised by |
+|---|---|---|---|
+| **E-1** | FSPEC §9.1 | `mergeMethod`'s enumeration gains `squash`, reachable only under `allowSquashMerge: true` — implied by §6.1's opt-in but absent from §9.1's list | PM F-04 |
+| **E-2** | FSPEC §11 | Add a terminal row for an **unretrievable `O3`** (`refused`, no escalation, resolving at §2.3 7d). §3.2 assigns the value; §11's table has no row, so §2.4 designates it `"7d-unknown"` until the row exists | this TSPEC (§5.3 guard 17) |
+| **E-3** | FSPEC §2.2 r5, §2.5 | "Row 5 takes `O4` as an observation, never as a precondition" — the accepted resolution of the SE-v3 / TE-v3 N-02 riders (§5.5) | PM F-05 |
+
+### 15.3 Risks and costs, named
 
 | Risk | Assessment |
 |---|---|
-| **Six new `gh` command shapes cross the adapter** (§11.3) | The largest new surface. Each is a fixed command with an exact-reply contract and one parser; but every one is agent-transported, so a transport that mangles a *value* inside its recognised set is undetectable — the same residual `validateDriftRecord` records (`orchestrate-queue.js:1163` block comment). Mitigated by fail-closed parsing everywhere and by the fact that only `O6` mutates |
-| **`git rebase --empty=drop` needs git ≥ 2.26** (§7.4) | The one new platform assumption. Per DC-02 it must be **measured** on both CI runners (`git --version` on ubuntu-latest and macos-latest) during implementation, not inferred; if either is older, fall back to a plain `rebase` and record the change |
-| **The `_recordHalt` rename touches four files and one vacuous test** (§8.2) | Mechanical but wide. The mitigation is the added negative assertion, without which the rename can silently disable a guard test |
-| **Permanent `refused` in this repo** (FSPEC §4.5, BL-04) | Accepted and unavoidable: every PR this repo's queue raises touches `pdlc/workflows/` or `pdlc/skills/`. The `merged` path is therefore evidenced entirely through tests driving the observation points. Stated here so the first operator to see `refused` in `yumo-plugins` reads it as designed behaviour, not a defect |
-| **`decideMerge`'s demand loop is an unusual shape** for this codebase | No precedent in `pdlc/workflows/` — the cost is one reviewer's unfamiliarity. The benefit is that purity and short-circuiting stop competing; §5.1 states the alternative that was rejected and why |
-
-### 15.3 Feasibility
-
-No infeasible requirement was found. Every capability this design needs already exists in the
-codebase and is cited: `{ execFn }` observation, `defaultGit`'s argv seam, the `_recordHalt` channel,
-the notices array, the phase-flag pattern, and the adapter's fixed-command discipline. The one
-genuinely new capability — a `gh` command catalogue in the adapter — is an extension of
-`rtMakeCheckCi`, not a new mechanism. Nothing here is routed back to the product side.
+| **Six new `gh` command shapes** (§4, §11.3) | The largest new surface, though now confined to one pure builder and one transport. Every command is agent-transported, so a transport that mangles a *value* inside its recognised set is undetectable — the residual `validateDriftRecord` records (`orchestrate-queue.js:1163`). Mitigated by fail-closed parsing everywhere and by only `O6` mutating |
+| **`git rebase --empty=drop` needs git ≥ 2.26** (§7.4) | The one new platform assumption. Per DC-02 it must be **measured** on both CI runners during implementation, not inferred; if either is older, fall back to a plain `rebase` and record the change |
+| **The `_recordHalt` rename touches four files and one vacuous test** (§8.2) | Mechanical but wide. The added negative assertion is the mitigation, without which the rename silently disables a guard test |
+| **Permanent `refused` in this repo** (FSPEC §4.5, BL-04) | Accepted: every PR this repo's queue raises touches `pdlc/workflows/` or `pdlc/skills/`, so the `merged` path is evidenced entirely through tests. Stated so the first operator to see `refused` in `yumo-plugins` reads it as designed behaviour |
+| **`decideMerge`'s demand loop is an unusual shape** here | No precedent in `pdlc/workflows/`; the cost is one reviewer's unfamiliarity. §5.1 states the rejected alternative and why |
+| **Three open FSPEC errata** (§15.2) | Implementation can proceed against this TSPEC either way; only E-1 changes shipped behaviour if refused, and its fix is one line |
 
 ### 15.4 DECISIONS verdict
 
-**Not warranted.** The FSPEC pinned every load-bearing product alternative before this document
-started: the positional tie-break (Q-01), the `Evidence` migration timing (Q-02), squash's exclusion,
-`mergeMode`'s three values with no bypass, the M1–M5 ordering, and the AC-2.7a supersession are all
-decided there with their rejected alternatives recorded. What this TSPEC decided is engineering
-shape — demand-driven core (§5.1), appended positional parameters (§8.3), seam rename (§8.2), row 5
-observing `O4` (§5.5) — and each of those states its rejected alternative **in place**, next to the
-design it explains, which is where a future reader will be standing when the question arises. A
+**Not warranted**, unchanged from v1.0 and re-checked against the round-1 findings. The FSPEC pinned
+every load-bearing product alternative before this document started: the positional tie-break (Q-01),
+the `Evidence` migration timing (Q-02), squash's exclusion by default, `mergeMode`'s three values with
+no bypass, the M1–M5 ordering, and the AC-2.7a supersession. What this TSPEC decided is engineering
+shape — the demand-driven core (§5.1), appended positional parameters (§8.3), the seam rename (§8.2),
+row 5 observing `O4` (§5.5), and now the single `_ghRun` transport in place of a six-function seam
+(§2.3, §10.4) — and each states its rejected alternative in place, next to the design it explains. A
 separate DECISIONS document would duplicate those paragraphs without adding a decision.
 
 `DECISIONS_WARRANTED: no`
