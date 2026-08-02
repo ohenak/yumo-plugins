@@ -826,14 +826,25 @@ describe("RLH-25: which halting exit reaches the committing status write", () =>
     expect(text).not.toContain("uncommitted");
   });
 
-  it("RLH-AT-32-orch: a successful bypass run never writes a status", async () => {
-    // AC-2.7a / E-42. A direct invocation that succeeds does not recover a
-    // `halted` row — `orchestrate-dev` owns no status write but the halt one,
-    // so the row survives the bypass and the next `/loop` iteration is `idle`.
-    // (That the row itself stays put is `RLH-AT-32-module`'s.)
+  it("RLH-AT-32-orch: a successful run whose Phase MERGE did NOT merge never writes a status", async () => {
+    // AC-2.7a / E-42; PLAN A9 (TSPEC §13.4, FSPEC §7.5 row F-13) re-expresses
+    // this case against A8's `mergeOutcome.queueRow ?? "none"` fallback: the
+    // "success never writes" premise holds only while Phase MERGE resolves to
+    // a NON-merged `mergeStatus` — `skipped`, `deferred`, or `refused` — or is
+    // disabled outright, so `mergeOutcome.queueRow` is `null` and the `?? "none"`
+    // fallback is the one that fires. This double supplies no merge config
+    // (`MERGE_DEFAULTS.mergeMode` is `"off"`), so Phase MERGE's own guard 1
+    // (`orchestrate-dev.js` §2.2) resolves `mergeStatus: "skipped"` before any
+    // status write is attempted — `orchestrate-dev` owns no status write but
+    // the halt one, so the row survives the bypass and the next `/loop`
+    // iteration is `idle`. (That the row itself stays put is
+    // `RLH-AT-32-module`'s.) The merged half of the old contract — a run whose
+    // Phase MERGE DOES merge, which DOES write a status — is the sibling
+    // `RLH-AT-32-orch-merged` immediately below (PLAN A8).
     const { result, recordQueueRow } = await run();
 
     expect(result.outcome).toBe("success");
+    expect(result.mergeStatus).toBe("skipped");
     expect(recordQueueRow.statuses).not.toContain("halted");
     expect(recordQueueRow.statuses).not.toContain("pending");
     expect(recordQueueRow.statuses).not.toContain("done");
