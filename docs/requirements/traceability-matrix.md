@@ -74,3 +74,17 @@ Authoritative per-criterion mapping lives in §13.1 of the FSPEC; this is the ro
 | US-01, US-04 | REQ-RCV-01 | AC-1.4 | §7 FSPEC-HALT-01, §9 FSPEC-PROMPT-01 |
 | US-02, US-04 | REQ-RCV-01 | AC-1.5(1)–(3) | §4 FSPEC-WIN-01, §6 FSPEC-CLR-01, §8 FSPEC-RPT-01 |
 | US-04 | REQ-RCV-01 | AC-1.5(4)–(5) | §5 FSPEC-REG-01, §6 FSPEC-CLR-01 |
+
+## pdlc-merge-phase
+
+Upstream: `docs/pdlc-merge-phase/REQ-pdlc-merge-phase.md` (v1.1). Downstream:
+`docs/pdlc-merge-phase/FSPEC-pdlc-merge-phase.md` (v1.0). Authoritative section mapping lives in §14
+of the FSPEC; roll-up below.
+
+| User Story | Requirement | FSPEC sections |
+|---|---|---|
+| US-01 | REQ-MERGE-01, REQ-MERGE-05, REQ-MERGE-06 | §2 FSPEC-MERGE-01, §7 FSPEC-MERGE-06, §8 FSPEC-MERGE-07, §9 FSPEC-MERGE-08 |
+| US-02 | REQ-MERGE-02 | §6 FSPEC-MERGE-05 |
+| US-03 | REQ-MERGE-03, REQ-MERGE-07 | §4 FSPEC-MERGE-03, §10 FSPEC-MERGE-09 |
+| US-04 | REQ-MERGE-04, REQ-MERGE-07 | §3 FSPEC-MERGE-02, §5 FSPEC-MERGE-04, §10 FSPEC-MERGE-09 |
+| US-05 | REQ-MERGE-05, REQ-MERGE-06 | §7 FSPEC-MERGE-06, §9 FSPEC-MERGE-08, §11 |
