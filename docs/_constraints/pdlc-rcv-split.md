@@ -126,6 +126,16 @@ Left running, `REQ-RCV-01` AC-1.5's clause 1 would halt on the budget path, and 
 `RESOLVED:`, spending the clearance it declined to spend and converting a repairable region into an
 unrepairable one. The refusal therefore takes no halt and leaves the marker in place.
 
+### 5.4 The three interim-composition legs, stated once
+
+Relocated from `REQ-RCV-01` O-10 (2026-08-01, round 10) so both ends of the split cite one copy —
+`REQ-RCV-07` O-10 receives the non-validating legs and leg 3's inversion, so the fixtures are read
+from both ends; nothing changed meaning in the move. `REQ-RCV-01` O-10 states which legs it owes and
+why (the 0-call contract leg is asserted on leg 1); this states the fixtures and their asserted
+dispositions.
+
+*Leg 1, well-formed non-empty region:* one `HALT-REASON:` line, no answering line (`H = 1`, `A = 0`), a readable `RESOLVED: yes`, and highest round on the branch = `windowEnd(1)` = **3** ⇒ the entry **grants** — exactly one `WINDOW-START: 4` appended at the end of the region, `A = H = 1` after, **no** `reset-region-corrupt` notice, no refusal and no ❌ row, and **≥ 1** reviewer dispatch. *Leg 2, no region at all:* `H = A = 0`, highest round below `windowEnd(1)` ⇒ `W = 1`, the ordinary window opens — **no** refusal, **no** S-16, **no** answering line written, both counts still `0`, and **≥ 1** dispatch. *Leg 3, a malformed answering-line value* — decidable at row 10 from §6's grammar alone, which is why it is this REQ's: one `HALT-REASON:` line, one `WINDOW-START: abc` (equally `-2`, or empty), a readable `RESOLVED: yes` and — as in leg 2 — **highest round below `windowEnd(1)`**, since a fixture about the *origin* must leave the window open or the budget halt masks what it exists to pin ⇒ the malformed line **still counts toward `A`** (AC-1.5(4) clause 4: counted by line prefix, whatever the value), so `A = H = 1` and no clearance is observed; it contributes **no value**, so `W` = **1**, never `NaN` into `windowEnd` or `deriveRoundWindow` (AC-1.2, O-12). The ordinary window `[1, 3]` opens — **no** refusal, **no** S-16, **no** answering line, counts unmoved, **≥ 1** dispatch. Unlike legs 1 and 2 it is **interim-only and inverts at row 18**, where AC-7.1 step 4 refuses this fixture with `invalid-window-start`; it is marked as such so that commit replaces it rather than deleting an assertion it cannot explain. What it pins today is the one thing both wirings must agree on: `W` is a decimal integer.
+
 ## 6. The catalogue delegation, stated once
 
 Relocated from `REQ-RCV-01` §4 (2026-08-01, round 8) so both halves cite one copy; no clause changed
