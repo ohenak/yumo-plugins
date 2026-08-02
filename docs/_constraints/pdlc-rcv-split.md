@@ -211,6 +211,12 @@ reads the region those rules maintain. This states the reasons.
 Relocated from `REQ-RCV-01` §4 (2026-08-01, round 8) so both halves cite one copy; no clause changed
 meaning in the move.
 
+**One dangling citation, recorded, not left silent** (relocated from `REQ-RCV-01` §4, 2026-08-01
+round 1 of the reset window). Catalogue §4's Recovery-text row attributes the queue-reset line's
+suppression to *"`pdlc-rcv-budget-stop` O-6"*; `REQ-RCV-01` has **no O-6** (§2 moved it to
+`REQ-RCV-07`). Read it as **`REQ-RCV-07` O-6**; the catalogue is edited once, by that REQ (§5), so
+the correction lands there.
+
 `pdlc-rcv-catalogue.md` §2's **S-12**, **S-13**, **S-14** and **S-16** rows describe their receive
 side as *"AC-1.5(4)'s ordered algorithm"*. That algorithm is **`REQ-RCV-07` AC-7.1**, which
 `REQ-RCV-01` AC-1.5(4) names as its predicate's decision procedure (`REQ-RCV-01` X-06 / `REQ-RCV-07`
