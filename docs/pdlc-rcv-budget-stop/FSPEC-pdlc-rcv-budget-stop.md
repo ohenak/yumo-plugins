@@ -358,17 +358,30 @@ marker is everything below.
 | Branch | Observed | Outcome |
 |---|---|---|
 | **B-CLR-1** | gate open; last `HALT-REASON:` begins `fixed-point:` or `budget-exhausted:` | a fresh window is granted: exactly one `WINDOW-START: {N}` appended (§6.2), `N` becomes the new `W` |
-| **B-CLR-2** | gate open; last `HALT-REASON:` begins `no-revision:` (S-11) | the interrupted window is **resumed**: exactly one `WINDOW-RESUMED: {W}` appended, `W` **unchanged**, rounds already spent stay spent |
+| **B-CLR-2** | gate open; last `HALT-REASON:` begins `no-revision:` (S-11); **the interrupted window still has a round left** — the resolved start `D = max(D, W)` is `≤ E`, the window's last round `W + BUDGET − 1` | the interrupted window is **resumed**: exactly one `WINDOW-RESUMED: {W}` appended, `W` **unchanged**, rounds already spent stay spent |
+| **B-CLR-2a** | gate open; last `HALT-REASON:` begins `no-revision:`; **the interrupted window has no round left** — `D > E` (the S-11 halt was taken on the window's last round) | treated as **B-CLR-1**: exactly one `WINDOW-START: {D}` appended, `D` becomes the new `W`. There is nothing to resume into, so a resume would admit **zero** rounds |
 | **B-CLR-3** | gate open; last `HALT-REASON:` unparseable or any other value | treated as B-CLR-1 — **fail-closed**: the safe error is to consume a reset the operator can re-grant, never to hand out a free window |
 | **B-CLR-4** | `A = H` (marker readable or not) | nothing written, nothing granted; `W` stays as §5.2 resolves it and the entry proceeds to §4 |
 | **B-CLR-5** | no readable `RESOLVED: yes` — absent, `no`, unparseable, or **duplicated** | the **shipped step-G refusal**, unchanged: the phase does not run, the invocation terminates, the queue row is written `halted`. No region byte is written and neither count moves |
+
+**Why B-CLR-2a is a fresh window and not a resume.** Every other branch grants at least one round,
+so one hand-written `RESOLVED: yes` buys at least one round of work. A resume into an exhausted
+window would be the single exception: the clearance is consumed (`A = H`), zero rounds are admitted,
+the entry falls through to §4's budget halt, appends a **second** `HALT-REASON:` and strips the
+marker — so the operator pays two clearances for one window, and the second is spent on the re-halt
+the first created. B-CLR-2a removes that state rather than dispositioning it. It is **not** a free
+window: `A = H` still holds, one clearance still yields exactly one window, and `W` still only ever
+moves forward. **The whole of B-CLR-2/B-CLR-2a is target state** — no path emits S-11 at this ship —
+but the split is stated now so `pdlc-rcv-fixed-point-stop` inherits a decided rule rather than this
+gap.
 
 Both B-CLR-1 and B-CLR-2 leave `A = H`. **Every clearance is answered by exactly one line** — the
 S-11 path included. Left unanswered, a clearance written for an unrelated authoring failure would
 bank a free window for the *next* halt of any kind, once per such failure.
 
-**B-CLR-2 is unreachable at this ship.** No halt path emits S-11 until `pdlc-rcv-fixed-point-stop`
-ships (X-05), so every halt is a convergence halt and the table reduces to B-CLR-1/B-CLR-3. It is
+**B-CLR-2 and B-CLR-2a are unreachable at this ship.** No halt path emits S-11 until
+`pdlc-rcv-fixed-point-stop` ships (X-05), so every halt is a convergence halt and the table reduces
+to B-CLR-1/B-CLR-3. It is
 stated over both from the start so nothing is re-specified when the successor lands.
 
 **Three rows, not four — *absent* is not a case here.** The table is read only on an entry whose
@@ -698,7 +711,7 @@ the right-hand column points; none is new, and none may be weakened by a flow th
 | **E-4** | A post-mortem with no heading beginning `Iterations` — pre-feature, or an agent that omitted it | the section is **inserted** immediately above `## Reset Region`, or at end of file; never a failure | B-HALT-3 |
 | **E-5** | Two or more unfenced `RESOLVED:` lines | the shipped gate reads the marker as **unresolved** (duplicated); the phase is refused. Not this feature's change — and each halt's strip is what keeps the marker single-valued | B-CLR-5 |
 | **E-6** | **Phase H deletes the post-mortem** once `LEARNINGS-{feature}.md` exists | the region's home goes with it. Benign within a feature — Phase H runs after every review phase, so no window outlives its post-mortem. A post-harvest `forcePhases` re-entry reads `W = 1, H = A = 0`: the default of a document that never halted. **A surviving home is a new artifact, hence a new REQ** | B-REG-1 |
-| **E-7** | A repeating S-11 halt (target state, once `pdlc-rcv-fixed-point-stop` ships) | `H` and `A` grow together and the window is never charged, so the sequence is unbounded **in principle**. **Accepted, bounded by the operator**: every iteration costs one hand-written `RESOLVED: yes`, so it is never unattended. Capping it would need a second counter that could only deny an operator choosing to continue | B-CLR-2 |
+| **E-7** | A repeating S-11 halt (target state, once `pdlc-rcv-fixed-point-stop` ships) | `H` and `A` grow together and the window is never charged, so the sequence is unbounded **in principle**. **Accepted, bounded by the operator**: every iteration costs one hand-written `RESOLVED: yes`, so it is never unattended. Capping it would need a second counter that could only deny an operator choosing to continue. The sequence is *never charged* only while the window has rounds left; the S-11 halt taken on its last round is B-CLR-2a and does move `W` forward | B-CLR-2, B-CLR-2a |
 | **E-8** | The post-mortem exists but cannot be read | no halt in force **and** an empty region: `W = 1`, `H = A = 0`, nothing honoured, nothing written | B-REG-6 |
 | **E-9** | A `HALT-REASON:` or `WINDOW-START:` line quoted in `## Recommendation` or inside a fenced block | counts for nothing — not in the region span | B-REG-5 |
 | **E-10** | `WINDOW-START: abc` / `-2` / empty in the region | counts toward `A`, contributes no origin; `W` falls back to the greatest well-formed value, else **1**. No non-numeric value ever reaches the window arithmetic | B-REG-4 |
@@ -763,7 +776,8 @@ test composes it from the constant.
 | AT | Branch | Given | When | Then |
 |---|---|---|---|---|
 | **AT-CLR-01** | B-CLR-1 | `H = 1`, `A = 0`, a readable `RESOLVED: yes`, last `HALT-REASON:` beginning `budget-exhausted:`, highest existing round **3** | the phase is entered | **exactly one** `WINDOW-START: 4` appended at the **end** of the region; `A = H = 1`; `W = 4`; no notice, no ❌ row; **≥ 1** dispatch |
-| **AT-CLR-02** | B-CLR-2 | the same, with the last `HALT-REASON:` beginning `no-revision:` | the phase is entered | **exactly one** `WINDOW-RESUMED: {W}` appended; `W` **unchanged**; rounds already spent stay spent; a later convergence halt is **not** auto-cleared. **[target state — no path emits S-11 at this ship]** |
+| **AT-CLR-02** | B-CLR-2 | `W = 1`, `H = 1`, `A = 0`, a readable `RESOLVED: yes`, last `HALT-REASON:` beginning `no-revision:`, **highest existing round 1** — so `D = 2 ≤ E = 3`, the window still has rounds | the phase is entered | **exactly one** `WINDOW-RESUMED: 1` appended; `W` **unchanged at 1**; rounds already spent stay spent; **≥ 1** dispatch, at round **2**; a later convergence halt is **not** auto-cleared. **[target state — no path emits S-11 at this ship]** |
+| **AT-CLR-02a** | B-CLR-2a | the same, but **highest existing round 3** — the S-11 halt was taken on the window's last round, so `D = 4 > E = 3` | the phase is entered | **exactly one** `WINDOW-START: 4` appended — **not** `WINDOW-RESUMED:`; `W = 4`; `A = H = 1`; **≥ 1** dispatch; and **no second `HALT-REASON:` is appended and the `RESOLVED:` marker is not stripped** in that entry — the two conjuncts that fail if the branch resumes instead. **[target state]** |
 | **AT-CLR-03** | B-CLR-3 | the same, with the last `HALT-REASON:` value unparseable | the phase is entered | treated as a convergence halt: `WINDOW-START: {N}` written, the clearance consumed |
 | **AT-CLR-04** | B-CLR-4 | `A = H = 1` and a readable `RESOLVED: yes` | the phase is entered, and entered again | **nothing** is appended and **nothing** granted on either entry; `W` is unchanged — one clearance grants **exactly one** window |
 | **AT-CLR-05** | B-CLR-5 | a post-mortem whose marker is absent, `no`, unparseable, or duplicated | the phase is entered | the shipped step-G refusal; **no** region byte written; both counts unmoved; queue row `halted` |
@@ -814,9 +828,15 @@ direction, the default is the specified behaviour and the question closes.
 | **OQ-02** | On **row C** — a real, recorded halt — does the shipped generic queue-reset recovery line still fire? | **Yes.** Its suppression is scoped to row B's refusal recovery, which is `REQ-RCV-07` O-6's; a genuine halt keeps the shipped line and the operator's ordinary recovery is unchanged | `REQ-RCV-07` O-6 |
 | **OQ-03** | An operator deletes the whole post-mortem by hand, outside Phase H, after a window was granted | **No special case.** The region is gone, so the document reads as one that never halted (B-REG-1): `W = 1`, `H = A = 0`. Recorded so no downstream phase invents a recovery for it | operator, before TSPEC |
 
-**Answered here so they are not re-asked.** (a) A granting entry can never immediately re-halt on the
-budget: the granting line carries `N = max(D, W)`, which becomes the new `W`, so the entry's start
-equals its own origin and the window is open by construction. (b) `{k}` on a zero-round halt is `0`
+**Answered here so they are not re-asked.** (a) **A granting entry can never immediately re-halt on
+the budget — on every branch, and the reason differs by branch.** On the two `WINDOW-START:`
+branches (B-CLR-1, B-CLR-3, and B-CLR-2a which resolves to them) the granting line carries
+`N = max(D, W)`, which becomes the new `W`, so the entry's start equals its own origin and the
+window is open by construction. On the `WINDOW-RESUMED:` branch (B-CLR-2) `W` is **unchanged**, so
+that argument does not apply and the guarantee is instead carried by B-CLR-2's own guard: the branch
+is taken only when `D ≤ E`, i.e. only when the resumed window still has a round left. The
+`D > E` case is not resumed at all — it is B-CLR-2a, a fresh window, and the argument above covers
+it. There is therefore no branch on which a consumed clearance admits zero rounds. (b) `{k}` on a zero-round halt is `0`
 on both the creating and the re-halt path. (c) Phase CR halts keep the shipped Iterations render
 carrying the new budget value — the two-integer render is scoped to document-typed halts (B-BUD-4,
 B-HALT-8).
@@ -835,7 +855,7 @@ B-HALT-8).
 | AC-1.5(2) (start unchanged; origin wins) | FSPEC-WIN-01 | B-WIN-3 | AT-WIN-03 |
 | AC-1.5(3) (the one operator reset) | FSPEC-CLR-01 | B-CLR-4, B-CLR-5 | AT-CLR-04, AT-CLR-05 |
 | AC-1.5(4) (anchored and consumed; counts; the named predicate; ordering) | FSPEC-REG-01, FSPEC-CLR-01 | B-REG-1…B-REG-7, B-CLR-1, B-CLR-3, B-CLR-6, B-CLR-7 | AT-REG-01…07, AT-CLR-01, AT-CLR-03, AT-CLR-06, AT-CLR-07 |
-| AC-1.5(5) (which halt it was; S-11 resumes; row B) | FSPEC-CLR-01, FSPEC-HALT-01, FSPEC-RPT-01 | B-CLR-2, B-HALT-7, B-RPT-6 | AT-CLR-02, AT-HALT-07, AT-RPT-06 |
+| AC-1.5(5) (which halt it was; S-11 resumes; row B) | FSPEC-CLR-01, FSPEC-HALT-01, FSPEC-RPT-01 | B-CLR-2, B-CLR-2a, B-HALT-7, B-RPT-6 | AT-CLR-02, AT-CLR-02a, AT-HALT-07, AT-RPT-06 |
 
 **User stories.** US-01 (a loop that stops when it stops making progress) → FSPEC-WIN-01,
 FSPEC-RPT-01. US-02 (bounded, predictable cost per document) → FSPEC-BUD-01, FSPEC-WIN-01. US-04
