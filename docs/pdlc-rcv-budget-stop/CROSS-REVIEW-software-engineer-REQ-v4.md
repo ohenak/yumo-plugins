@@ -35,7 +35,13 @@ unchanged body is re-litigated, and I did not re-open the sections I approved at
 
 ## Questions
 
-*(pending)*
+Neither is a finding. Both are things I worked while checking F-01's closure, and both are already
+dispositioned by the document — I am recording the reasoning so the next reader does not redo it.
+
+| ID | Question |
+|---|---|
+| Q-01 | **The one-update rule removes the fail-open from the *write* path; a torn update is the same state by a different cause, and its disposition ships eight rows later.** I traced this before deciding not to file it. A single read-modify-write that lands the `HALT-REASON:` line but not the strip is exactly the state §5.8 says is unreachable — `H` incremented, `A` unmoved, a **readable** marker — and a torn write reaches it. The document does not hide this: it says so in terms ("a **torn** single update is `REQ-RCV-07` AC-7.5's, as for clause 1 alone (NB-3)"), and R-14 (iii) time-boxes it to row 18. So it is routed, named and bounded, and the distinction that keeps it out of my findings list is real — a *persistent* fault (permissions, read-only FS, full disk on open) fails the whole update and refuses, so the "re-grants on every subsequent halt" limb of my v3 F-01 is genuinely gone; only a **one-off** tear survives, and one tear costs one extra window, not an unbounded stream. Worth noting for TSPEC anyway: an atomic write (temp file + rename) makes the torn state unreachable too, and this repo already ships that discipline as a cross-cutting mechanism (`docs/_constraints/DOMAIN-CONSTRAINTS.md` DC-08's cite-and-reuse rule). That is O-5's call at TSPEC altitude, not a REQ outcome, and I mention it only so the choice is made deliberately rather than defaulted. |
+| Q-02 | **The *Accepted cost* paragraph states one of the two cases that cost an extra clearance cycle; the other is now reachable.** It states the creating-halt case: append fails, `H = 0`, the first `RESOLVED: yes` grants nothing, the re-halt needs a second. The landed-but-unconfirmed `halt line` case has the same shape and is not stated: the update landed, so the marker was **stripped** and `H = A + 1`; catalogue §4 act 1 then has the operator delete the trailing `HALT-REASON:` (`H > A` holds), leaving `H = A` and **no** marker, so the operator's next `RESOLVED: yes` also grants nothing and the following entry must halt again before a clearance can be spent. Fail-closed in the right direction, recoverable in one cycle, no window granted that nobody cleared — so nothing is wrong. It is one clause in the same sentence if the author wants the operator to have read it before they meet it. |
 
 ## Positive Observations
 
