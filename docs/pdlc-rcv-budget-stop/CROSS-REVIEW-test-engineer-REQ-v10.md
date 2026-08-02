@@ -36,7 +36,57 @@ carried over from v1…v9 is reopened.
 
 ## Questions
 
+One, and it is genuinely a question rather than a finding in disguise — F-43 stands whichever way it
+is answered, but the answer selects which repair is right.
+
+| ID | Question |
+|----|---------|
+| Q-01 | Who **emits** the `reset-region-corrupt: {reason}` notice once the conjunct is wired — the caller's run-report builder, or the seam's own implementation? AC-1.5(4) says *"the run report emits"* (agentless), while §6's relocated note says the **sole emitter** is `REQ-RCV-07` AC-7.1 step 4. If the caller emits, the seam must return the reason (F-43 repair (i)); if the seam emits, it needs a report sink and arity 2 is wrong. I could not settle it from either document, and the answer determines the signature that O-10's contract leg pins today. |
+
 ## Positive Observations
+
+- **F-41's repair carries its own rejection record, which is what makes it survive a compression
+  pass.** The clause does not merely name leg 1 — it says *why leg 2 is the wrong fixture*, in one
+  parenthetical, with the short-circuit argument intact. A future editor looking to save 80 bytes
+  reads a reason rather than an apparently redundant aside. That is the difference between a repair
+  and a patch, and it is the second consecutive round in which the revision anticipated the
+  compression that would undo it.
+- **Leg 3 is the best-constructed leg in the document, and it is the model F-43 should follow.** It
+  states what it pins (*"the one thing both wirings must agree on: `W` is a decimal integer"*), it is
+  explicitly **marked interim-only**, it names its inversion (*"row 18, where AC-7.1 step 4 refuses
+  this fixture with `invalid-window-start`"*), and it says what happens to it at that commit
+  (*"replaces it rather than deleting an assertion it cannot explain"*). An interim-only assertion
+  that announces its own expiry is a genuinely hard thing to get right and this one is right. My F-43
+  is, in effect, the observation that the *other* new leg was not given the same treatment.
+- **The paired edge was discharged again, and this time in both directions and at three sites.** I
+  checked `REQ-RCV-07` at HEAD: X-07 (`:96`) and R-16 carry v2.4's revisions in the same words — the
+  **injection point** exists / **no call site is emitted** / the interim composition calls it **0
+  times**, and the *grammar vs analysis* layer split with AC-7.1 **step 2** re-checking rather than
+  first-checking the grammar. That REQ's O-10 also received leg 3's inversion (*"Row 10 also keeps
+  one **interim-only** leg this REQ replaces … an expected inversion: the leg is rewritten here, not
+  deleted"*). Both ends therefore agree on the interim behaviour, the layer split and the row-18
+  replacement — three facts, both directions. This is the fourth consecutive round the rule has been
+  honoured.
+- **Restating §10's atomicity rule over the *revision* rather than the *commit* is the right call and
+  it is a testing-relevant one.** *"the reviewer checks both ends **at HEAD** — the unit is the
+  revision, not the commit, because the authoring pacing contract makes a two-document edit
+  structurally more than one commit"* is exactly how I verify it (I diff both documents at HEAD, not
+  commit-by-commit), and the previous wording made a faithful multi-commit discharge look like a
+  violation. Encoding the verification procedure rather than the file state is what makes the rule
+  checkable by whoever holds the review next.
+- **The grammar/analysis split is a real reduction in deferred surface, not a re-labelling.** Before
+  this round the whole *invalid* half was target state; now only its **consistency** half is, and
+  `W`'s fallback to **1** on a malformed value is a property this REQ's PROPERTIES can assert today —
+  leg 3 exists because of it. Moving a testable claim from *target state* to *shipped* is the only
+  kind of edit that makes a forward-edge REQ smaller in the sense that matters, and it is why F-44 is
+  a Medium about wording rather than a High about scope.
+- **All four relocations are faithful.** I read the destinations against the text that left: split
+  §5.2 carries both arithmetic horns (the `W`-only reading consuming a clearance at `W = 1`, and the
+  `H − A ≤ 1` vacuity argument); split §5.3 carries the full refusal-is-not-a-halt chain (`H += 1`,
+  the stripped marker, repairable → unrepairable); baseline §3.1 keeps the S-13 authoring prohibition
+  and the answering-line deletion rule; baseline §3.2 keeps all five durability rows including the
+  unreadable-post-mortem row and the `checkPostmortem` mapping. Nothing test-derivable was lost in
+  any of the four — which is the only reason F-46 is Low.
 
 ## Recommendation
 
