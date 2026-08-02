@@ -995,6 +995,38 @@ async function rtGit(argv) {
 }
 
 /**
+ * Transport seam for `gh` (TSPEC §11.3). `command` is a fully-built shell
+ * command string the module already assembled from `mergeCommandFor` — this
+ * function holds no `gh` knowledge and interpolates only what it was handed.
+ * Returns { ok, stdout, stderr } and never throws; the caller interprets.
+ * The reply shape is rtGit's, verbatim: same three fields, same escaping
+ * instruction, same unparseable-reply fallback, plus the at-most-once
+ * mutation sentence since some `gh` commands mutate.
+ */
+async function rtGhRun(command) {
+  const out = await RT.agent(
+    `Run exactly this command from the repository root, and nothing else:\n` +
+      `  ${command}\n` +
+      `If it exits 0, return exactly: {"ok":true,"stdout":"<its stdout>","stderr":""}\n` +
+      `If it exits non-zero, return exactly: {"ok":false,"stdout":"","stderr":"<its stderr>"}\n` +
+      `Return ONLY that JSON object, correctly escaped — no commentary, no code fences.\n` +
+      `This command may change repository state. Issue it AT MOST ONCE. ` +
+      `Do not retry, do not repair, and do not run any other command.`,
+    { label: `gh:${command.slice(0, 40)}`, model: RT_IO_MODEL }
+  );
+  try {
+    const parsed = JSON.parse(String(out).trim());
+    return {
+      ok: parsed && parsed.ok === true,
+      stdout: typeof (parsed && parsed.stdout) === "string" ? parsed.stdout : "",
+      stderr: typeof (parsed && parsed.stderr) === "string" ? parsed.stderr : "",
+    };
+  } catch {
+    return { ok: false, stdout: "", stderr: "unparseable adapter response" };
+  }
+}
+
+/**
  * Merge a worktree branch. Contract mirrors mergeWorktree():
  * { ok: true } | { ok: false, conflictingFiles: string[] }
  */
@@ -1042,15 +1074,16 @@ function rtDevInjections(devModule) {
     _appendFile: rtAppendFile,
     _listFiles: rtListFiles,
     _git: rtGit,
+    _ghRun: rtGhRun,
     // The three probe seams. Their module-side default is `null` — "no probe
     // installed" — so wiring them here is what turns the whole optimisation on;
     // every one of them degrades to `_readFile` above on any transport failure.
     _probeDoc: rtProbeDoc,
     _probeReviewState: rtProbeReviewState,
     _probePostmortem: rtProbePostmortem,
-    // `_recordHalt` is deliberately ABSENT: its implementation differs by caller,
-    // which a caller-independent adapter bundle cannot express. It is supplied
-    // per entrypoint by build-runtime.mjs (§3.10, §7.2 edit 2b).
+    // `_recordQueueRow` is deliberately ABSENT: its implementation differs by
+    // caller, which a caller-independent adapter bundle cannot express. It is
+    // supplied per entrypoint by build-runtime.mjs (§3.10, §7.2 edit 2b).
   };
 }
 
@@ -2067,6 +2100,195 @@ function decideMerge(record, config) {
     mergeMethod: null,
   };
 }
+
+// ─── PLAN §12 A6 — merge execution and the post-merge helpers (TSPEC §7) ──
+//
+// `executeMerge` is O6 (§4.7): the phase's one mutating observation. The
+// post-merge helpers — `deleteRemoteBranch` (M2, §7.2), `updateDefaultBranch`
+// (M3, §7.4) and `evidenceCellFor` (§7.3) — run only once `decideMerge` has
+// already resolved `merged`; none of them decide anything, they only report
+// what they observed. All IO goes through the injected `_git` seam
+// (`defaultGit`, `:5229`) — the same three-field `{ ok, stdout, stderr }`
+// contract `_ghRun` uses, so every step below is a plain `if (!r.ok)`.
+
+/** First line only — mirrors orchestrate-queue.js's `firstLine` exactly
+ * (TSPEC §4.1); not imported across files because the runtime bundle forbids
+ * cross-module `import` (build-runtime.mjs inlines each module standalone). */
+function firstLine(text) {
+  return String(text ?? "").split("\n")[0].trim();
+}
+
+/**
+ * `executeMerge` — O6 (TSPEC §4.7). Issues exactly one `gh pr merge` variant
+ * for `method`, then — only when that command itself exited zero —
+ * independently reads back `gh pr view --json mergeCommit,state` and
+ * classifies the pair via `classifyMergeResult`. A zero-exit merge command is
+ * never itself confirmation; only the read-back is (FSPEC §6.2).
+ *
+ * `reason` is a two-member closed set, `"command-failed" | "not-confirmed"`
+ * (§4.7): `classifyMergeResult`'s own third possibility, `"unparseable"`
+ * (an unreadable read-back), is folded into `"not-confirmed"` here — the
+ * read-back ran and simply did not establish `MERGED`, whatever shape its
+ * output took. `detail` is always populated: the transport's first `stderr`
+ * line when non-empty, else the fixed token `"merge not confirmed"`.
+ *
+ * @param {string} prUrl
+ * @param {"rebase"|"merge"|"squash"} method
+ * @param {{ _ghRun: function }} seams
+ * @returns {Promise<{ok: true, oid: string}|{ok: false, reason: string, detail: string}>}
+ */
+async function executeMerge(prUrl, method, { _ghRun }) {
+  const mergeResult = await _ghRun(mergeCommandFor("merge", { prUrl, method }));
+  const mergeStderr = (mergeResult && mergeResult.stderr) || "";
+  const detailFor = (stderr) => firstLine(stderr) || "merge not confirmed";
+
+  if (!mergeResult || mergeResult.ok !== true) {
+    return { ok: false, reason: "command-failed", detail: detailFor(mergeStderr) };
+  }
+
+  const readback = await _ghRun(mergeCommandFor("mergeReadback", { prUrl }));
+  const readbackRaw = readback && readback.ok === true ? readback.stdout : null;
+  const classified = classifyMergeResult(mergeResult.stdout, readbackRaw);
+  if (classified.ok) return classified;
+
+  const reason = classified.reason === "command-failed" ? "command-failed" : "not-confirmed";
+  return { ok: false, reason, detail: detailFor(mergeStderr) };
+}
+
+/**
+ * `evidenceCellFor` — TSPEC §7.3. A fixed 7-character truncation of the full
+ * oid, never `git rev-parse --short` — the cell is then a pure function of
+ * the observed value. `merged` is a literal token, never a SHA-shaped
+ * placeholder.
+ *
+ * @param {string|null} mergeSha
+ * @param {number} prNumber
+ * @returns {string}
+ */
+function evidenceCellFor(mergeSha, prNumber) {
+  return typeof mergeSha === "string" && mergeSha.length >= 7
+    ? `${mergeSha.slice(0, 7)} #${prNumber}`
+    : `merged #${prNumber}`;
+}
+
+/**
+ * `deleteRemoteBranch` — M2 (TSPEC §7.2, FSPEC §6.4). One command through the
+ * existing git seam: `git push origin --delete feat-{feature}`. The local
+ * branch is never touched. A failure is reported plainly — it never becomes
+ * an escalation and never changes `mergeStatus` (that decision belongs to
+ * the caller, `phaseMerge`, A7).
+ *
+ * @param {{ feature: string, _git: function }} args
+ * @returns {Promise<{ok: true}|{ok: false, reason: string}>}
+ */
+async function deleteRemoteBranch({ feature, _git }) {
+  const branch = featureBranchName(feature);
+  const result = await _git(["push", "origin", "--delete", branch]);
+  if (result && result.ok === true) return { ok: true };
+  const reason = firstLine(result && result.stderr) || "git push --delete failed";
+  return { ok: false, reason };
+}
+
+/**
+ * `updateDefaultBranch` — M3 (TSPEC §7.4, FSPEC §8.3). Every command goes
+ * through the injected `_git(argv)` seam, whose contract never throws, so
+ * this function contains no `try/catch` — each step is a plain `if (!r.ok)`.
+ * `argv` arrays only, never command strings (a branch name is untrusted
+ * input at the seam boundary).
+ *
+ * On any failure past step 0, an additional `rev-parse --abbrev-ref HEAD`
+ * reports where the tree actually is (falling back to `"unknown"`) — the
+ * escalation names the branch the operator must deal with, not the branch
+ * the step intended to reach.
+ *
+ * @param {{ defaultBranch: string|null, mergeSha: string|null, _git: function }} args
+ * @returns {Promise<{ok: true, branch: string}|{ok: false, reason: string, branch?: string}>}
+ */
+async function updateDefaultBranch({ defaultBranch, mergeSha, _git }) {
+  if (defaultBranch == null) {
+    return { ok: false, reason: "default branch name unavailable" };
+  }
+
+  const fail = async (reason) => {
+    const abbrev = await _git(["rev-parse", "--abbrev-ref", "HEAD"]);
+    const reported =
+      abbrev && abbrev.ok === true ? String(abbrev.stdout ?? "").trim() : "";
+    return { ok: false, reason, branch: reported || "unknown" };
+  };
+
+  // Step 1 — the tree must be clean before anything is checked out over it.
+  const status = await _git(["status", "--porcelain"]);
+  if (!status || status.ok !== true || String(status.stdout ?? "").trim() !== "") {
+    return await fail("working tree is dirty");
+  }
+
+  // Step 2 — fetch the remote default branch, named by O4's own observation.
+  const fetch = await _git(["fetch", "origin", defaultBranch]);
+  if (!fetch || fetch.ok !== true) {
+    return await fail(`git fetch failed: ${firstLine(fetch && fetch.stderr)}`);
+  }
+
+  // Step 3 — does the local branch exist yet? `!ok` is not itself a failure.
+  const revParse = await _git([
+    "rev-parse",
+    "--verify",
+    "--quiet",
+    `refs/heads/${defaultBranch}`,
+  ]);
+  const branchExists = !!(revParse && revParse.ok === true);
+
+  // Steps 4a/4b — check it out, creating it from FETCH_HEAD if it is new.
+  const checkout = branchExists
+    ? await _git(["checkout", defaultBranch])
+    : await _git(["checkout", "-B", defaultBranch, "FETCH_HEAD"]);
+  if (!checkout || checkout.ok !== true) {
+    return await fail(`checkout failed: ${firstLine(checkout && checkout.stderr)}`);
+  }
+
+  // Step 5 — only when the branch already existed: replay any local
+  // queue-row commits onto the fetched tip. One `rebase` covers both the
+  // fast-forward case and the replay case (§7.4) — already-upstream commits
+  // drop out as empty via `--empty=drop`, explicit so behaviour never
+  // depends on the operator's rebase backend default.
+  if (branchExists) {
+    const rebase = await _git(["rebase", "--empty=drop", "FETCH_HEAD"]);
+    if (!rebase || rebase.ok !== true) {
+      await _git(["rebase", "--abort"]); // best-effort; result ignored
+      return await fail(
+        `replay of local queue-row commits onto ${defaultBranch} conflicted: ` +
+          firstLine(rebase && rebase.stderr),
+      );
+    }
+  }
+
+  // Step 6 — the positive confirmation: the merge commit must be an
+  // ancestor of HEAD after the update, turning a silently-wrong checkout
+  // into a reported one. Exit-status only; no stdout is parsed for meaning.
+  const ancestor = await _git(["merge-base", "--is-ancestor", mergeSha ?? "FETCH_HEAD", "HEAD"]);
+  if (!ancestor || ancestor.ok !== true) {
+    return await fail("merge commit is not an ancestor of HEAD after update");
+  }
+
+  return { ok: true, branch: defaultBranch };
+}
+
+// TSPEC §7.1/§10.2 — the plain (non-escalating) notice catalogue this phase
+// emits (DC-01). A6 lands the constant here, closest to the M-helpers that
+// produce most of its members, and resolves PROPERTIES §8's SE F-04 naming
+// drift in the same commit: TSPEC §7.1's snippet writes the ahead-of-remote
+// notice as a standalone `AHEAD_OF_REMOTE_NOTE(...)` while §10.2 names the
+// frozen `MERGE_NOTES` catalogue — one symbol, `MERGE_NOTES.aheadOfRemote`,
+// not two. The catalogue's remaining six members and every `notes.push(...)`
+// call site belong to `phaseMerge` (A7), which extends this object literal
+// rather than re-declaring it.
+const MERGE_NOTES = Object.freeze({
+  // FSPEC §8.2 — emitted once per merged run whose M4 disposition is
+  // `recorded`; `defaultBranch` is always O4's own `defaultBranchRef.name`,
+  // the same value M3 fetched, so the two cannot disagree.
+  aheadOfRemote: (defaultBranch, feature) =>
+    `Local ${defaultBranch} is ahead of its remote by the queue-row commit for ${feature}; ` +
+    `pdlc does not push it — it reaches the remote with the next feature's PR.`,
+});
 
 // MODEL-01: per-phase model selection. Every phase runs on Opus for reasoning
 // depth EXCEPT the Phase I implementation batches, which run on Sonnet for
