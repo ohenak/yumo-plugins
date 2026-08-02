@@ -43,6 +43,13 @@ same commit-shaped discipline the v7 F-03 asked for.
 
 ## 2. Disposition of the v7 questions
 
+| v7 id | Status | Note |
+|---|---|---|
+| **Q-01** (was option (a) rejected, and on what grounds?) | ✅ answered by adopting it | v2.2 takes option (a) and X-06 states the rejection of the alternatives in the cell: co-delivery *"was rejected because it would make this REQ's unconditional saving wait on a successor it does not need as a requirement"*, and an interim procedure is rejected by the non-emptiness argument. The reason now sits next to the choice, which is what I asked for. One over-reach in the rejection's scope — F-02 below, Low. |
+| **Q-02** (is co-release required, and does that owe a `RELEASE-CHECKLIST.md` line?) | ✅ answered, and the answer follows from the new design | R-14: *"**Nothing therefore requires the two halves to land in the same plugin release**: distribution is per-commit (O-11), and a consumer installing between rows 10 and 18 gets an interim that behaves as HEAD does, so no `pdlc/RELEASE-CHECKLIST.md` line is owed."* That is the right shape of answer — it is a *consequence* of the interim being HEAD's behaviour, not an independent assertion, so it stays true exactly as long as X-06 does. Under v2.1's shape the answer would have had to be *yes*; the design change made the question moot rather than the answer convenient. |
+| **Q-03** (does anything exercise the seam's **production** wiring on a granting path?) | ✅ answered, and inverted | There is now no production wiring to exercise: the interim composition *"does not consult it — so there is no production default to get wrong"*, and O-10's two interim legs run the production composition *"with no seam override"*. The question moves to `REQ-RCV-07` for the commit that wires it. It does raise a different implementability point about a seam production never calls — F-03 below, Low. |
+| **Q-04** (carried, `REQ-RCV-07`'s `W`-visibility question) | — | Still that REQ's. Recorded only so the trail is unbroken for harvest. |
+
 ## 3. Findings
 
 ## 4. Questions
