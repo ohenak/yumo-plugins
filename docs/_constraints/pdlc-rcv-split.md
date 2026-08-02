@@ -134,6 +134,14 @@ from both ends; nothing changed meaning in the move. `REQ-RCV-01` O-10 states wh
 why (the 0-call contract leg is asserted on leg 1); this states the fixtures and their asserted
 dispositions.
 
+**Why the 0-call contract leg sits on leg 1** (relocated from `REQ-RCV-01` O-10, 2026-08-01 round 2 of
+the reset window; nothing changed meaning). Leg 1 is the only interim fixture that defeats **both**
+decidable conjuncts, hence the only one a **wired** implementation answers differently — so it is the
+interim ship's *only* falsifiable oracle for X-06: without it, *"deliberately not consulted"* and
+*"wired with an ad-hoc interim procedure"* (§5.1's granting horn) pass every other leg identically.
+It is asserted as a **count of 0 calls**, not an absence, and it is a **contract** leg — replaced,
+not deleted, when row 18 wires the call.
+
 **The counting rule both ends read:** `H` and `A` are counted **by line prefix, whatever the
 value** — a malformed `WINDOW-START:` value contributes no origin (`REQ-RCV-01` §6) but still
 answers a halt (`REQ-RCV-01` AC-1.5(4) clause 4). `REQ-RCV-07` AC-7.1 step 3's `H − A ∈ {0, 1}`
