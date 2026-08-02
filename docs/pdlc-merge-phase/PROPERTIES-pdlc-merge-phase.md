@@ -276,6 +276,70 @@ value; every other cell is preserved.**
 
 ## 6. Phase-level integration properties
 
+**PROP-M-16 — `merged` is never downgraded. No post-merge failure, in any combination, changes
+`mergeStatus`.**
+*(Error Handling · **I** · `enum(2⁴ = 16)` annotation subsets × 2 entry rows (18 and 3) = 32 · A7 — `mergePhase.test.js`)*
+- **Domain:** the full power set of FSPEC §11's four composable annotations — M2 branch-deletion
+  failure, M3 tree-update failure, M4 disposition `error`, M4 disposition `recorded (uncommitted)` —
+  applied over both the merge-performed row 18 and the already-merged row 3.
+- **Oracle:** every one of the 32 runs reports `mergeStatus: "merged"` with the merge SHA present, and
+  the notices channel carries exactly the escalation/note lines the applied subset predicts, in
+  §9.3's order (guard, CI, queue-write, tree-update). The empty subset asserts **no** notice beginning
+  `MERGE ESCALATION: `; the all-four subset is AT-M6 and asserts all lines with their order. The
+  pipeline `outcome` is `success` in all 32 — the second half of AC-1.3's shape.
+
+**PROP-M-17 — Report totality. Every pipeline path reports a `mergeStatus` from the closed set, and
+every non-`merged` value carries a one-line reason.**
+*(Contract · **I** · `enum(25 §11 rows + 3 halt paths)` · A8 — `mergePhase.test.js`, `pipelineWiring.test.js`, `reportTemplates.test.js`)*
+- **Domain:** all 25 §11 rows driven through `phaseMerge` into `buildFinalReport`, plus three runs
+  halted before Phase MERGE (at R, at I, at DOD) and one with `PHASE_MERGE_ENABLED: false`.
+- **Oracle:** every report — success path *and* halt path — carries the keys `mergeStatus`, `mergeSha`
+  and `mergeMethod` (`Object.hasOwn`, not truthiness, so `null` counts as present);
+  `mergeStatus ∈ MERGE_STATUSES`; for `deferred` and `refused` the `reason` is a non-empty single line
+  naming the condition from AC-6.1a's table and the §9.4 merge-deferred note is emitted; for `skipped`
+  and `merged` that note is **absent**; `mergeSha` is a non-empty string **iff** `mergeStatus` is
+  `merged` and an oid was observed; `mergeMethod ∈ {rebase, merge, squash, unknown, null}` and is
+  `"unknown"` exactly on row 3. Halt paths report `mergeStatus: "skipped"` (row 23).
+
+**PROP-M-18 — No mutation before resolution (NFR-2). A run that does not report `merged` issues no
+state-changing command.**
+*(Security · **I** · `enum(25 rows)` × `rand(200)` observation perturbations · A7 — `mergePhase.test.js`)*
+- **Domain:** every §11 row, plus 200 seeded `passingGh` perturbations (each overriding one surface
+  with a randomly drawn recognised-or-degraded value) — the domain in which a mis-ordered guard would
+  show up as an unexpected merge.
+- **Oracle:** for every run whose `mergeStatus` is not `merged`, `fakeGhRun`'s recorded commands
+  contain **zero** matching `/^gh pr merge/`, and `fakeGit`'s recorded argv contain zero `push`,
+  `checkout`, `rebase` or `merge` verbs, and `_recordQueueRow` was **not called**. For every run that
+  does report `merged`, the count of `/^gh pr merge/` commands is **≥ 1 and ≤ 3** and `_recordQueueRow`
+  was called **exactly once** — the behavioural call-count oracle, because a merge that happened twice
+  and a merge that happened once produce the same envelope.
+
+**PROP-M-19 — Notice-catalogue closure. Every operator-visible line the phase emits is a member of a
+frozen catalogue, and every escalation carries the exact prefix.**
+*(Observability · **I** · `enum(25 rows + 32 annotation runs)` · A7 — `mergePhase.test.js`)*
+- **Domain:** the union of PROP-M-16's and PROP-M-17's runs; every line the phase pushed onto
+  `notices` is collected across all of them.
+- **Oracle:** each collected line either starts with `MERGE ESCALATION: ` and matches a template
+  produced by `MERGE_ESCALATIONS` under some parameters, or matches a `MERGE_NOTES` template — checked
+  by rendering both catalogues with the run's own parameters and comparing exact strings, never by
+  substring sniffing. Cardinality is asserted positively: `MERGE_ESCALATIONS` has **4** members,
+  `MERGE_NOTES` has **7** (TSPEC §10.2), both `Object.isFrozen`, and the union of lines observed
+  across the domain covers **every** member at least once — so a catalogue member that no run can
+  produce is a failure, not dead weight.
+
+**PROP-M-20 — Phase MERGE never throws. For any fault at any single injected call site, the phase
+returns a well-formed `MergeOutcome` and the pipeline does not halt.**
+*(Error Handling · **I** · `enum(4 seams × ≈14 call indices ≈ 56)` · A7 — `mergePhase.test.js`)*
+- **Domain:** for each of `_ghRun`, `_git`, `_readFile`, `_recordQueueRow`, a double that behaves
+  normally for the first *k* calls and then throws, for every reachable *k* on a merging fixture
+  (TSPEC §11.1 enumerates the await sites, so the index range is derived from that list, not guessed).
+- **Oracle:** `phaseMerge` **resolves** (never rejects) in every case; the outcome's `mergeStatus ∈
+  MERGE_STATUSES` and `row ∈ ROW_IDS ∪ {"internal"}`; when `row === "internal"` the status is
+  `refused` and a reason is present; and — driven through `main()` — the pipeline `outcome` is
+  `success` and the phase row's glyph is never `❌`, since a `❌` would make a non-merge look like the
+  halting phase (TSPEC §10.3). Positive control: the same fixture with no fault injected reports
+  `merged`, so the property is not passing because everything refuses.
+
 ## 7. Coverage matrix
 
 ## 8. Gaps, residuals, and what this document does not prove
