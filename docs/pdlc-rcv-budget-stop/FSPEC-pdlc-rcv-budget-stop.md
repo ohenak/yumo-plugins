@@ -17,7 +17,22 @@ feature: pdlc-rcv-budget-stop
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude + operator | 1.2 | 2026-08-02 |
+| pdlc | draft | Claude + operator | 1.3 | 2026-08-02 |
+
+**v1.3 — feedback round 3** (`CROSS-REVIEW-software-engineer-FSPEC-v3.md`,
+`CROSS-REVIEW-test-engineer-FSPEC-v3.md`). te F-10 (Medium): §7.2 adds **B-HALT-4a** — on an
+unreadable post-mortem clause 3 locates no heading and therefore attempts **no write**, so §8.1's
+B-HALT-3 insert is not reached and the **whole file** is byte-unchanged; §5.3 states that *unreadable*
+is one behavioural class (answering te Q-06), §7.3 names the two sub-cases of B-HALT-4, and
+AT-REG-06's byte-equality conjunct is now a total oracle rather than a fixture-dependent one. te F-11
+(Medium): AT-CLR-04 states entry 2's precondition — a **`forcePhases` re-entry** after entry 1's
+approval at round 2 — with the arithmetic (`D = 3 ≤ E = 3`, `A = H = 1`), so the row's two entries
+are jointly realisable. te F-12: AT-CLR-02's *"a later convergence halt is not auto-cleared"*
+conjunct is dropped as vacuous under §11.4's clause. te F-13 / se F-06: the gate-relevant equivalence
+gains **same last `HALT-REASON:` prefix class** in §5.4 and AT-REG-07. se F-07: §11.4's clause says
+*an approval is reached* and states that §6.1's *convergence halt* is not an exception to it. se
+F-08: §7.2 scopes the presence probe's **false-negative** out of this feature and gives TSPEC probe
+selection.
 
 **v1.2 — feedback round 2** (`CROSS-REVIEW-software-engineer-FSPEC-v2.md`,
 `CROSS-REVIEW-test-engineer-FSPEC-v2.md`). se F-01 (High): §7.2 states the *creating* vs *existing*
@@ -398,8 +413,17 @@ is satisfied by every implementation, including the one it exists to exclude. Wh
 
    **Equivalence is over the gate-relevant state, never over the counts.** Two regions are
    equivalent here exactly when they agree on: the **truth of `A < H`**, the **resolved `W`**, the
-   **highest existing round** of that document type (hence the same `D`), and therefore the same
-   resolved `N = max(D, W)`. Equivalence over *same counts* would be unsatisfiable for one mandated
+   **highest existing round** of that document type (hence the same `D`), therefore the same
+   resolved `N = max(D, W)`, **and the same last `HALT-REASON:` prefix class** — equivalently, the
+   same §6.1 gate branch. The prefix is part of the relation because the first four fix the *value*
+   the answering line carries but not the *kind* of line: §6.1 discriminates B-CLR-1
+   (`fixed-point:` / `budget-exhausted:`), B-CLR-2/2a (`no-revision:`) and B-CLR-3 (unparseable) on
+   that prefix alone, and B-CLR-2 writes `WINDOW-RESUMED: {W}` where B-CLR-1 writes
+   `WINDOW-START: {N}`. Without the conjunct a pair could satisfy the relation and still take
+   different branches, so *"takes the same branch … writes the same answering line"* would fail on a
+   **correct** implementation. It is latent at this ship — no path emits S-11, so every constructible
+   member lands on B-CLR-1 — and binding once `pdlc-rcv-fixed-point-stop` makes B-CLR-2 reachable.
+   Equivalence over *same counts* would be unsatisfiable for one mandated
    member: `H − A ∉ {0, 1}` **is** a malformation of the counts, so a well-formed region with the
    same counts does not exist by construction and that member would have no pair. Under the
    gate-relevant relation it does: `H = 3, A = 1` pairs with `H = 2, A = 1` — same open gate, same
@@ -861,7 +885,7 @@ the right-hand column points; none is new, and none may be weakened by a flow th
 | **E-5** | Two or more unfenced `RESOLVED:` lines | the shipped gate reads the marker as **unresolved** (duplicated); the phase is refused. Not this feature's change — and each halt's strip is what keeps the marker single-valued | B-CLR-5 |
 | **E-6** | **Phase H deletes the post-mortem** once `LEARNINGS-{feature}.md` exists | the region's home goes with it. Benign within a feature — Phase H runs after every review phase, so no window outlives its post-mortem. A post-harvest `forcePhases` re-entry reads `W = 1, H = A = 0`: the default of a document that never halted. **A surviving home is a new artifact, hence a new REQ** | B-REG-1 |
 | **E-7** | A repeating S-11 halt (target state, once `pdlc-rcv-fixed-point-stop` ships) | `H` and `A` grow together and the window is never charged, so the sequence is unbounded **in principle**. **Accepted, bounded by the operator**: every iteration costs one hand-written `RESOLVED: yes`, so it is never unattended. Capping it would need a second counter that could only deny an operator choosing to continue. The sequence is *never charged* only while the window has rounds left; the S-11 halt taken on its last round is B-CLR-2a and does move `W` forward | B-CLR-2, B-CLR-2a |
-| **E-8** | The post-mortem exists but cannot be read | **At the gate:** no halt in force **and** an empty region — `W = 1`, `H = A = 0`, nothing honoured, no answering line. **In the entry:** the file **is present**, so §7.2's discriminator makes this an **existing** post-mortem — **no authoring dispatch**, the prior region and `## Recommendation` are never written over. `W = 1` with rounds on disk means `S > E`, so the entry reaches the budget halt, whose clause-3 confirmation is an equality read-back that cannot succeed on an unreadable file: **B-HALT-4's phase refusal**, region byte-unchanged, no halt recorded, no marker stripped, both counts unmoved, ❌ row `Refused — iterations section unconfirmed at {path}`, `notice` empty. The operator repairs or removes the file and re-runs. **Nothing survives the entry, on the read side or the write side** | B-REG-6, B-HALT-2, B-HALT-4 |
+| **E-8** | The post-mortem exists but cannot be read | **At the gate:** no halt in force **and** an empty region — `W = 1`, `H = A = 0`, nothing honoured, no answering line. **In the entry:** the file **is present**, so §7.2's discriminator makes this an **existing** post-mortem — **no authoring dispatch**, the prior region and `## Recommendation` are never written over. `W = 1` with rounds on disk means `S > E`, so the entry reaches the budget halt, whose clause-3 confirmation is an equality read-back that cannot succeed on an unreadable file: **B-HALT-4's phase refusal**, and by **B-HALT-4a** clause 3 attempts **no write** at all on an unreadable file, so the **whole file** — not only the region — is byte-unchanged: no halt recorded, no marker stripped, both counts unmoved, ❌ row `Refused — iterations section unconfirmed at {path}`, `notice` empty. The operator repairs or removes the file and re-runs. **Nothing is written, on the read side or the write side** | B-REG-6, B-HALT-2, B-HALT-4, B-HALT-4a |
 | **E-9** | A `HALT-REASON:` or `WINDOW-START:` line quoted in `## Recommendation` or inside a fenced block | counts for nothing — not in the region span | B-REG-5 |
 | **E-10** | `WINDOW-START: abc` / `-2` / empty in the region | counts toward `A`, contributes no origin; `W` falls back to the greatest well-formed value, else **1**. No non-numeric value ever reaches the window arithmetic | B-REG-4 |
 | **E-11** | A halt whose queue-row commit is refused (hook, missing identity, index lock) | the shipped `halted (uncommitted)` outcome, unchanged — the row is correct on disk and the halt is never downgraded. Outside this feature's change | B-HALT-9 |
@@ -918,8 +942,8 @@ test composes it from the constant.
 | **AT-REG-03** | B-REG-3 | a region with two `HALT-REASON:` lines and one `WINDOW-START:` whose value is malformed | the counts are taken | `H = 2`, `A = 1` — counted by line prefix, whatever the value |
 | **AT-REG-04** | B-REG-4 | a region with one `HALT-REASON:`, one `WINDOW-START: abc`, a readable `RESOLVED: yes`, and highest existing round below the window end | the phase is entered | `W = 1` (never a non-numeric value in the arithmetic), `A = H = 1` so **no** clearance is observed, the ordinary window 1…3 opens with **≥ 1** dispatch, and **no** answering line is written |
 | **AT-REG-05** | B-REG-5 | a post-mortem with one real region line, one `HALT-REASON:` quoted in `## Recommendation`, and one inside a fenced block | the counts are taken | `H = 1` |
-| **AT-REG-06** | B-REG-6, B-HALT-2, B-HALT-4 | a post-mortem that is present but unreadable, on a document whose highest existing round is **3** (so `S > E` and the entry reaches a halt) | the phase is entered **and run to its end** — the row asserts the whole entry, not the read alone | `H = A = 0`, `W = 1`, no halt in force, no answering line; **zero authoring dispatches** (the file is present, so §7.2's discriminator takes the *existing* path); a **phase refusal** at clause 3 with ❌ row `Refused — iterations section unconfirmed at {path}` and `notice` empty; the post-mortem's **whole-file bytes are unchanged** — clause 3 attempts no write on an unreadable file (**B-HALT-4a**), so this is a total oracle for either realisation of *unreadable* (undecodable-but-writable, denied-in-both-directions) and not only for the region span — no `HALT-REASON:` line is appended and no `RESOLVED:` line is stripped. The dispatch-count and byte-equality conjuncts are the ones that fail if the entry re-authors |
-| **AT-REG-07** | B-REG-7 | a **family** of granting regions that would fail validation at target state — at minimum an answering value inconsistent with the highest round on the branch, a descending answering value, and `H − A ∉ {0, 1}` — each paired with an **equivalent well-formed** region — equivalent over the **gate-relevant state** (§5.4): same truth of `A < H`, same resolved `W`, same highest existing round hence same `D`, therefore the same resolved `N`. **Not** *same counts*: the `H − A ∉ {0, 1}` member is a malformation of the counts, so a same-counts pair does not exist for it; under this relation `H = 3, A = 1` pairs with `H = 2, A = 1` and all three members are constructible | each pair is entered | **positively:** each malformed member takes the **same branch** as its well-formed pair — grants, dispatches **≥ 1** round, and writes the **same** answering line with the same value. **Structurally:** the enumeration of *region validates* consultation sites is **empty**. **And:** no `reset-region-corrupt` notice and no region-reason refusal anywhere. The first two conjuncts are what fail on an ad-hoc inline interim procedure; the third alone would not |
+| **AT-REG-06** | B-REG-6, B-HALT-2, B-HALT-4, B-HALT-4a | a post-mortem that is present but unreadable, on a document whose highest existing round is **3** (so `S > E` and the entry reaches a halt) | the phase is entered **and run to its end** — the row asserts the whole entry, not the read alone | `H = A = 0`, `W = 1`, no halt in force, no answering line; **zero authoring dispatches** (the file is present, so §7.2's discriminator takes the *existing* path); a **phase refusal** at clause 3 with ❌ row `Refused — iterations section unconfirmed at {path}` and `notice` empty; the post-mortem's **whole-file bytes are unchanged** — clause 3 attempts no write on an unreadable file (**B-HALT-4a**), so this is a total oracle for either realisation of *unreadable* (undecodable-but-writable, denied-in-both-directions) and not only for the region span — no `HALT-REASON:` line is appended and no `RESOLVED:` line is stripped. The dispatch-count and byte-equality conjuncts are the ones that fail if the entry re-authors |
+| **AT-REG-07** | B-REG-7 | a **family** of granting regions that would fail validation at target state — at minimum an answering value inconsistent with the highest round on the branch, a descending answering value, and `H − A ∉ {0, 1}` — each paired with an **equivalent well-formed** region — equivalent over the **gate-relevant state** (§5.4): same truth of `A < H`, same resolved `W`, same highest existing round hence same `D`, therefore the same resolved `N`, **and the same last `HALT-REASON:` prefix class** (equivalently, the same §6.1 gate branch — without it a pair may write `WINDOW-RESUMED:` against `WINDOW-START:` and the same-branch conjunct reds on a correct implementation). **Not** *same counts*: the `H − A ∉ {0, 1}` member is a malformation of the counts, so a same-counts pair does not exist for it; under this relation `H = 3, A = 1` pairs with `H = 2, A = 1` and all three members are constructible | each pair is entered | **positively:** each malformed member takes the **same branch** as its well-formed pair — grants, dispatches **≥ 1** round, and writes the **same** answering line with the same value. **Structurally:** the enumeration of *region validates* consultation sites is **empty**. **And:** no `reset-region-corrupt` notice and no region-reason refusal anywhere. The first two conjuncts are what fail on an ad-hoc inline interim procedure; the third alone would not |
 
 ### 11.4 FSPEC-CLR-01 — *Who:* the review loop
 
@@ -1037,7 +1061,7 @@ inherits this choice (O-10).
 | AC-1.1 (budget of three, per document, absolute; scope of typed vs untyped loops) | FSPEC-BUD-01, FSPEC-WIN-01 | B-BUD-1, B-BUD-2, B-BUD-3, B-WIN-1, B-WIN-4, B-WIN-5 | AT-BUD-01, AT-BUD-02, AT-BUD-03a, AT-BUD-03b, AT-WIN-01, AT-WIN-04, AT-WIN-05 |
 | AC-1.2 (one constant, one budget) | FSPEC-BUD-01 | B-BUD-4, B-BUD-5 | AT-BUD-04, AT-BUD-05 |
 | AC-1.3 (reported quantities named; empty verdict list) | FSPEC-RPT-01 | B-RPT-1, B-RPT-2, B-RPT-3, B-RPT-5, B-HALT-3 | AT-RPT-01…03, AT-RPT-05, AT-HALT-03 |
-| AC-1.4 (halt unchanged in kind; region maintained; no re-author; the file-presence discriminator) | FSPEC-HALT-01, FSPEC-PROMPT-01 | B-HALT-1…B-HALT-9, B-PMT-3 | AT-HALT-01…09, AT-PMT-03, AT-REG-06 (the unreadable-file continuation: B-HALT-2, B-HALT-4) |
+| AC-1.4 (halt unchanged in kind; region maintained; no re-author; the file-presence discriminator) | FSPEC-HALT-01, FSPEC-PROMPT-01 | B-HALT-1…B-HALT-9, B-HALT-4a, B-PMT-3 | AT-HALT-01…09, AT-PMT-03, AT-REG-06 (the unreadable-file continuation: B-HALT-2, B-HALT-4, B-HALT-4a) |
 | AC-1.5(1) (window end; zero-round halt; row C; `forcePhases`) | FSPEC-WIN-01, FSPEC-RPT-01 | B-WIN-2, B-WIN-6, B-WIN-7, B-RPT-4 | AT-WIN-02, AT-WIN-06, AT-WIN-07, AT-RPT-04 |
 | AC-1.5(2) (start unchanged; origin wins) | FSPEC-WIN-01 | B-WIN-3 | AT-WIN-03 |
 | AC-1.5(3) (the one operator reset) | FSPEC-CLR-01 | B-CLR-4, B-CLR-5 | AT-CLR-04, AT-CLR-05, AT-CLR-08, AT-RPT-07 |
