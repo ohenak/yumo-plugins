@@ -32,7 +32,21 @@ All four are in text **added at v2.7**. None re-litigates an unchanged section.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | On a re-halt, what does the operator read in the Iterations section — this entry's `rounds run 0`, the prior halt's number, or a list? (F-01.) The three answers differ in what the region-maintenance write is permitted to touch, so the answer belongs in AC-1.4 rather than in FSPEC. |
+| Q-02 | After a deletion-induced start-below-`W` entry, which number does the *next* clearance write: `highest + 1`, or the resolved start? (F-03.) The first produces a descending pair that `REQ-RCV-07` AC-7.1 will refuse; the second keeps the region monotone. |
+| Q-03 | Is AC-1.2's repo-wide quantifier meant to bind `CLAUDE.md`, or only executable declarations? (F-02.) If the former, what discharges it — a documentation-update line on O-13, or a document-drift oracle row? |
+
 ## Positive Observations
+
+- **Thirteen findings answered, no requirement added.** All eight of v1's findings are genuinely closed, and the two that needed cross-document work were done properly rather than promised: the pickup-order correction landed at **both** ends of the paired edge in the same revision (`REQ-RCV-07` X-07/R-16 carry the identical order and the identical two residuals), and O-12's mutual citation — the two obligations pointing at each other so neither fixed the seam — was decircularised at both ends, with `REQ-RCV-07` O-12 now reading *"fixed here, this obligation, nowhere else"*.
+- **R-14's residual (ii) is the honest version of the answer.** It would have been easy to restate "no wider than HEAD's" over the corrected order and move on. Instead the REQ says plainly that from row 17 machine-written `WINDOW-RESUMED:` lines land in regions nothing validates, that HEAD writes no region lines at all so the old comparison does not cover it, and names the queue move that would fix it while declining to make it a requirement. That is the right boundary between a requirement and a queue decision.
+- **The pickup-order derivation is now derived rather than quoted** — from the driver's own rule (lowest pending `Order`; a dependency absent from the table deferred to triage) rather than from QUEUE.md's prose. Verified independently: rows 12, 13, 17 and 18 all carry `ready: true`, and row 13's sole dependency is absent because it merged, so `10 → 12 → 13 → 17 → 18` is what the shipped `selectNextPending`/`precheckDependencies` pair produces.
+- **M-7f is a real new baseline fact, added for the right reason.** O-10's Phase-CR leg (*a Phase CR halt creates no `## Reset Region`*) was vacuous unless the untyped halt writes a file at all; rather than assert that in the REQ, v2.7 had the fact measured (`pdlc-rcv-baseline.md` M-7f, Phase CR reaching the same `reviewLoop` halt path with `docType: null`) and cites it by id. That is NB-4 working as designed.
+- **The 0-call contract leg is the strongest thing in §8.** Identifying that *"deliberately not consulted"* and *"wired with an ad-hoc interim procedure"* are indistinguishable on every interim fixture except split §5.4 leg 1, and turning that into a **count** assertion rather than an absence, gives the interim ship its only falsifiable oracle for X-06 — and marking it a *contract* leg to be replaced rather than deleted at row 18 pre-empts the commit that would otherwise silently drop it.
+- **The interim-only malformed-value leg is labelled as inverting at row 18.** A test that is expected to be rewritten by a future feature, flagged as such with the reason, is the difference between a later engineer rewriting it and a later engineer deleting an assertion they cannot explain.
+- **Pasting DC-09 rather than citing it** is the constraint's own evidence applied to the document that most needs it, and R-1's disposition was correctly upgraded from *"accepted and unenforceable"* to a structural mitigation with a named residual.
 
 ## Recommendation
 
