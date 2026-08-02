@@ -731,4 +731,73 @@ test composes it from the constant.
 
 ## 12. Open questions
 
+Each carries a **stated default**, so none of them blocks TSPEC authoring: absent operator
+direction, the default is the specified behaviour and the question closes.
+
+| # | Question | Stated default | Owner |
+|---|---|---|---|
+| **OQ-01** | Does `{k}` — *rounds run* — count a round this entry **dispatched** but whose reviewers returned nothing readable? | **Yes.** `{k}` counts rounds this entry **dispatched**, whatever their outcome. The quantity exists to expose the vacuity of a zero-round halt, not to grade a round's quality; counting only "successful" rounds would make `rounds run 0` ambiguous between *nothing was dispatched* and *nothing came back* | operator, before TSPEC |
+| **OQ-02** | On **row C** — a real, recorded halt — does the shipped generic queue-reset recovery line still fire? | **Yes.** Its suppression is scoped to row B's refusal recovery, which is `REQ-RCV-07` O-6's; a genuine halt keeps the shipped line and the operator's ordinary recovery is unchanged | `REQ-RCV-07` O-6 |
+| **OQ-03** | An operator deletes the whole post-mortem by hand, outside Phase H, after a window was granted | **No special case.** The region is gone, so the document reads as one that never halted (B-REG-1): `W = 1`, `H = A = 0`. Recorded so no downstream phase invents a recovery for it | operator, before TSPEC |
+
+**Answered here so they are not re-asked.** (a) A granting entry can never immediately re-halt on the
+budget: the granting line carries `N = max(D, W)`, which becomes the new `W`, so the entry's start
+equals its own origin and the window is open by construction. (b) `{k}` on a zero-round halt is `0`
+on both the creating and the re-halt path. (c) Phase CR halts keep the shipped Iterations render
+carrying the new budget value — the two-integer render is scoped to document-typed halts (B-BUD-4,
+B-HALT-8).
+
 ## 13. Traceability
+
+### 13.1 Criterion → flow → branch → test
+
+| REQ criterion | Flow | Branches | Acceptance tests |
+|---|---|---|---|
+| AC-1.1 (budget of three, per document, absolute; scope of typed vs untyped loops) | FSPEC-BUD-01, FSPEC-WIN-01 | B-BUD-1, B-BUD-2, B-BUD-3, B-WIN-1, B-WIN-4, B-WIN-5 | AT-BUD-01…03, AT-WIN-01, AT-WIN-04, AT-WIN-05 |
+| AC-1.2 (one constant, one budget) | FSPEC-BUD-01 | B-BUD-4, B-BUD-5 | AT-BUD-04, AT-BUD-05 |
+| AC-1.3 (reported quantities named; empty verdict list) | FSPEC-RPT-01 | B-RPT-1, B-RPT-2, B-RPT-3, B-RPT-5, B-HALT-3 | AT-RPT-01…03, AT-RPT-05, AT-HALT-03 |
+| AC-1.4 (halt unchanged in kind; region maintained; no re-author) | FSPEC-HALT-01, FSPEC-PROMPT-01 | B-HALT-1…B-HALT-9, B-PMT-3 | AT-HALT-01…09, AT-PMT-03 |
+| AC-1.5(1) (window end; zero-round halt; row C; `forcePhases`) | FSPEC-WIN-01, FSPEC-RPT-01 | B-WIN-2, B-WIN-6, B-WIN-7, B-RPT-4 | AT-WIN-02, AT-WIN-06, AT-WIN-07, AT-RPT-04 |
+| AC-1.5(2) (start unchanged; origin wins) | FSPEC-WIN-01 | B-WIN-3 | AT-WIN-03 |
+| AC-1.5(3) (the one operator reset) | FSPEC-CLR-01 | B-CLR-4, B-CLR-5 | AT-CLR-04, AT-CLR-05 |
+| AC-1.5(4) (anchored and consumed; counts; the named predicate; ordering) | FSPEC-REG-01, FSPEC-CLR-01 | B-REG-1…B-REG-7, B-CLR-1, B-CLR-3, B-CLR-6, B-CLR-7 | AT-REG-01…07, AT-CLR-01, AT-CLR-03, AT-CLR-06, AT-CLR-07 |
+| AC-1.5(5) (which halt it was; S-11 resumes; row B) | FSPEC-CLR-01, FSPEC-HALT-01, FSPEC-RPT-01 | B-CLR-2, B-HALT-7, B-RPT-6 | AT-CLR-02, AT-HALT-07, AT-RPT-06 |
+
+**User stories.** US-01 (a loop that stops when it stops making progress) → FSPEC-WIN-01,
+FSPEC-RPT-01. US-02 (bounded, predictable cost per document) → FSPEC-BUD-01, FSPEC-WIN-01. US-04
+(one escape hatch, spent once, leaving a record) → FSPEC-CLR-01, FSPEC-REG-01, FSPEC-HALT-01.
+
+### 13.2 Obligation disposition
+
+| Obligation | Owner | Disposition here |
+|---|---|---|
+| **O-5** | TSPEC | **Not discharged.** §7 fixes the outcome — creation, preservation, append, strip, the one-update rule, both confirmations and their fail-closed refusals; the mechanism is TSPEC's |
+| **O-9** | FSPEC → implementation | **Discharged** in §9 (B-PMT-1, B-PMT-2), with AT-PMT-01/02 |
+| **O-10** | PROPERTIES | **Not discharged.** §11 states the branch-level acceptance tests; fixtures, generation axes, the 0-call count's construction and the falsification cycle are PROPERTIES' |
+| **O-11** | implementation | **Not discharged.** Named in B-BUD-5 as what keeps generated copies honest |
+| **O-12** | TSPEC | **Not discharged.** §4.4 fixes the ordering outcome (the gate runs before the window arithmetic) and §5.4 the interim's observable; the seam is `REQ-RCV-07` O-12's contract, adopted by TSPEC |
+| **O-13** | TSPEC | **Not discharged.** B-BUD-5 fixes the decidable observable — a closed, five-class enumeration compared by machine — and leaves the mechanism and the site list to TSPEC |
+| **O-14** | FSPEC → implementation | **FSPEC half discharged**: §8.1's render, its anchor, its not-found insertion point; §8.2's empty verdict list; §7.4's no-re-author path. The threading is implementation's |
+| **O-15** | PLAN | **Not discharged.** Named so the lifecycle line is not invented downstream |
+
+### 13.3 Catalogue ids this FSPEC uses
+
+**Owned by REQ-RCV-01 and specified here as behaviour:** S-12 (§5.1, §7.2), S-13 (§6.2), S-14
+(§6.1), S-15 (§7.2), S-16 (§5.4, target state), S-4 (§4.1, §8.2). **Read only:** S-3 and S-11 (§6.1),
+emitted by `pdlc-rcv-fixed-point-stop`. **No eighteenth id is minted**, here or anywhere in this
+family; the ❌ row texts of §8.3 are catalogue §4's cells, which are deliberately **not** `S-*` ids.
+
+### 13.4 The stopping rule for this document's own review loop
+
+Inherited from the REQ (§9 there) and from `DOMAIN-CONSTRAINTS.md` DC-09, restated because this
+document is reviewed by the loop it changes:
+
+- a round whose blocking findings are **all** implementability, altitude or oracle-design defects —
+  none contesting behaviour, scope, priority or phasing — means the FSPEC has met its bar: approve
+  it and route the findings downstream, to §13.2's owners;
+- a finding of the form *"this branch has no fixture / seam / property"* is closable by **deferring**
+  it to TSPEC or PROPERTIES; §1.1 and §13.2 exist to receive it;
+- an FSPEC does not specify algorithms, signatures, fixture construction, coverage floors or
+  property-generation axes. A finding that it omits one is evidence it is at its layer;
+- two consecutive rounds with a non-decreasing blocking count is a fixed point, not slow
+  convergence.
