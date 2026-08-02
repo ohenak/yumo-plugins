@@ -166,6 +166,30 @@ line leaves behind. This states the reasons behind them.
   authoring failure — *k* authoring failures, *k* free windows. `WINDOW-RESUMED: {W}` keeps the
   intent — origin unmoved, spent rounds spent, no window charged — while restoring `A = H`.
 
+### 5.6 Why a re-halt strips the marker and does not re-author the post-mortem
+
+Relocated from `REQ-RCV-01` AC-1.4 (2026-08-01, v2.8) so both ends cite one copy; nothing changed
+meaning in the move. `REQ-RCV-01` AC-1.4 states the **rules** — a halt finding an existing
+post-mortem preserves the region and appends its own `HALT-REASON:`, strips every unfenced
+`RESOLVED:` line, refreshes the Iterations section, and changes nothing else. `REQ-RCV-07` AC-7.1
+reads the region those rules maintain. This states the reasons.
+
+- **Why not re-author.** The operator's `RESOLVED: yes` answers a *specific* `## Recommendation`, and
+  re-authoring would replace it with one written from **zero rounds of new evidence** — the commonest
+  new case. That case must also stay cheap: an authoring dispatch on an entry that dispatched no
+  reviewer spends roughly a review round against a value claim stated in dispatches.
+- **Why the Iterations section is nonetheless refreshed.** It is a loop-computed two-integer render,
+  not an authoring dispatch, and leaving it stale would show the operator the *previous* halt's
+  rounds-run on exactly the entry `REQ-RCV-01` AC-1.3 promises reports this one's.
+- **Why the strip.** `RESOLVED:` is a single-valued, human-owned, fail-closed marker, never a counter.
+  Preserved, it makes the next halt's post-mortem read as already resolved, so that halt has no
+  durable effect; a *second* marker reads as duplicated, hence permanently unresolved. Those are the
+  alternative's only two reachable states, and they fail in opposite directions. Removing a spent
+  marker is not writing one, so the human-only prohibition is untouched.
+- **Why the creating halt is stated too.** Scoped only to a halt finding an existing post-mortem, the
+  first halt would be governed by nothing: no region ⇒ `H = 0` ⇒ the gate `A < H` is false ⇒ the
+  operator's **first** clearance is silently swallowed.
+
 ## 6. The catalogue delegation, stated once
 
 Relocated from `REQ-RCV-01` §4 (2026-08-01, round 8) so both halves cite one copy; no clause changed
