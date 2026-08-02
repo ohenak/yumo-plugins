@@ -92,7 +92,7 @@ worktrees**, so no file may appear twice in a row below. Verified: no row has a 
 
 | Batch | Task | Files created or appended |
 |---|---|---|
-| 1 | F1 | `__tests__/helpers/mergeDoubles.js`, `__tests__/helpers/mergeDoubles.test.js`, `__tests__/fixtures/queue-goldens/` |
+| 1 | F1 | `__tests__/helpers/mergeDoubles.js` (doubles **and** PROPERTIES §1.2's seeded generators), `__tests__/mergeDoubles.test.js`, `__tests__/fixtures/queue-goldens/` |
 | 1 | R1 | `orchestrate-dev.js`, `orchestrate-queue.js`, `build-runtime.mjs`, `__tests__/haltAndQueue.test.js`, `__tests__/runtimeBundle.test.js`, `__tests__/orchestrateQueue.test.js`, `__tests__/helpers/seams.js`, `__tests__/pipelineWiring.test.js`, `__tests__/pacingWrapper.test.js`, `__tests__/forcePhases.test.js` |
 | 2 | A1 | `orchestrate-dev.js`, `__tests__/mergeConfig.test.js` |
 | 2 | B1 | `orchestrate-queue.js`, `__tests__/mergeQueueWriteback.test.js` |
@@ -127,7 +127,17 @@ v1.0 said "four" and then listed seven):
 | `build-runtime.mjs` | R1, D2 | R1→…→D2 |
 
 **Every one of those pairs is separated by a real `Deps` edge**, never by a prose note.
-`helpers/seams.js`, `pacingWrapper.test.js` and `forcePhases.test.js` have exactly one writer (R1).
+`helpers/seams.js`, `pacingWrapper.test.js` and `forcePhases.test.js` have exactly one writer (R1);
+**`helpers/mergeDoubles.js` has exactly one writer (F1)**, which is what lets PROPERTIES §1.2 route
+its generators there without a new file or a new batch — F1 is alone in wave 1 apart from R1, and R1
+owns none of F1's paths, so the widening introduces no collision (PROPERTIES §8.6).
+
+**One placement constraint the widening makes load-bearing.** `package.json`'s
+`testPathIgnorePatterns` excludes `/__tests__/helpers/` and `/__tests__/fixtures/` from collection, so
+`helpers/mergeDoubles.js` is a library jest never runs as a suite — correct, and the same arrangement
+`driftGenerators.js` relies on. F1's own self-test therefore sits at **`__tests__/mergeDoubles.test.js`**,
+outside `helpers/`; a self-test written inside `helpers/` would be silently uncollected and its
+assertions would never run.
 
 ## 5. Dependency notes and the batch derivation
 
@@ -292,7 +302,7 @@ its commit (§2 rule 3).
 
 | Task ID | Description | Test File | Source File | Batch | Dependencies | Status |
 |---|---|---|---|---|---|---|
-| F1 | **[Fake first]** Shared doubles and goldens for every downstream task — TSPEC §13.1's six doubles (`fakeGhRun` returning `{ok,stdout,stderr}`, `passingGh`, `fakeGit` recording argv in order, `fakeQueueFs`, `recordingRecordQueueRow`, fixed `_now`/`_sleep`/`_enabled`) plus TSPEC §13.5's byte-identity goldens **captured from `updateQueueStatus` at HEAD before any change**, one per `QUEUE_STATUSES` member. Red first: a self-test that `passingGh` answers all six surfaces and that each golden differs from the others | `pdlc/workflows/__tests__/helpers/mergeDoubles.test.js` | `pdlc/workflows/__tests__/helpers/mergeDoubles.js`, `pdlc/workflows/__tests__/fixtures/queue-goldens/` | 1 | - | ⬚ |
+| F1 | **[Fake first]** Shared doubles, **seeded generators** and goldens for every downstream task. (a) TSPEC §13.1's six doubles — `fakeGhRun` returning `{ok,stdout,stderr}`, `passingGh`, `fakeGit` recording argv in order, `fakeQueueFs`, `recordingRecordQueueRow`, fixed `_now`/`_sleep`/`_enabled`. (b) **PROPERTIES §1.2 / §8.6's widening**: the property generators live in this same file — no new file and no new batch — following `helpers/driftGenerators.js`'s shipped idiom: a `seeded(seed)` xorshift32 exposing `{int, pick, shuffle, bytes, seed}`, plus `resolveSeed(literalSeed)` applying the **`PDLC_PROP_SEED`** env override over the literal **`MERGE_PROP_SEED = 0x5ED`**, so a failure prints the seed and the case value and a replay reproduces it. **No property-testing dependency is added** — jest stays `package.json`'s only devDependency. (c) TSPEC §13.5's byte-identity goldens **captured from `updateQueueStatus` at HEAD before any change**, one per `QUEUE_STATUSES` member. Red first: a self-test that `passingGh` answers all six surfaces, that each golden differs from the others, and that `seeded(MERGE_PROP_SEED)` is reproducible while `PDLC_PROP_SEED` genuinely overrides it | `pdlc/workflows/__tests__/mergeDoubles.test.js` | `pdlc/workflows/__tests__/helpers/mergeDoubles.js`, `pdlc/workflows/__tests__/fixtures/queue-goldens/` | 1 | - | ⬚ |
 | R1 | Seam + disposition rename — **whole-repo, and the whole surface** (TSPEC §8.1, §8.2). Source: `orchestrate-dev.js:4286` (`defaultRecordHalt`), `:4321` (the declaration), **`:5164` (the call site)**, `:5212` (the comment); `orchestrate-queue.js` `commitQueueRow`/`uncommitted` return `recorded`/`recorded (uncommitted)` plus a new frozen `QUEUE_ROW_DISPOSITIONS` export; both `build-runtime.mjs` closures `:182`, `:212`. Tests: `haltAndQueue.test.js` **injection** lines `:302`, `:362` — without which every case falls through to the no-op default and reds AT-30/33/34 — plus assertion lines `:383`, `:428`, `:831`, `:837`, `:857`, `:860` (`:428`'s inline literals → the export); `runtimeBundle.test.js:1038` **and `:212`'s frozen `AT19_SEAM_NAMES` member**; `helpers/seams.js` `recordingRecordHalt` → `recordingRecordQueueRow` (`:37`, `:436`, `:467`, `:471`); `pacingWrapper.test.js` `:59`, `:361`, `:457`, `:469`, `:1061`; `forcePhases.test.js:408`; **`pipelineWiring.test.js:446` — the `_recordHalt` member of `NEW_SEAMS`, changed in this same commit (see the hazard note in §5)**. Red first: **the negative assertion that no seam named `_recordHalt` remains anywhere in the repo** — closing the `if (!recordHalt) return;` vacuity trap | `pdlc/workflows/__tests__/haltAndQueue.test.js`, `pdlc/workflows/__tests__/runtimeBundle.test.js`, `pdlc/workflows/__tests__/orchestrateQueue.test.js`, `pdlc/workflows/__tests__/helpers/seams.js`, `pdlc/workflows/__tests__/pipelineWiring.test.js`, `pdlc/workflows/__tests__/pacingWrapper.test.js`, `pdlc/workflows/__tests__/forcePhases.test.js` | `pdlc/workflows/orchestrate-dev.js`, `pdlc/workflows/orchestrate-queue.js`, `pdlc/workflows/build-runtime.mjs` | 1 | - | ⬚ |
 | A1 | Constants and the configuration reader — TSPEC §2.2, §3.1–§3.3. `PHASE_MERGE_ENABLED`, `MERGE_CONFIG_PATH`, frozen `MERGE_GUARD_DEFAULTS`/`MERGE_DEFAULTS`/`MERGE_MODES`/`MERGE_STATUSES`, `MERGE_MAX_RETRIES`, and `MERGE_MAX_DECISION_STEPS` **as the expression** `1+MERGE_MAX_RETRIES+4+3+1+5`; `parseMergeConfig` (4 steps, 7-key independent fallback, `sectionMalformed` only for step 3) and `readMergeConfigSafely`. Red first: E1–E5, the `mergeableRetries` boundary pair (10 accepted / 11 defaulted), `mergeableRetryDelay`'s seconds unit, and the totality property | `pdlc/workflows/__tests__/mergeConfig.test.js` | `pdlc/workflows/orchestrate-dev.js` | 2 | F1, R1 | ⬚ |
 | B1 | `Evidence` column pure helpers — TSPEC §8.5, §2.5. `ensureEvidenceColumn` (header + separator + one empty cell per other data row, never migrating twice) and `mergeEvidenceCell` (no-downgrade rule). Red first: AT-M1's structural assertions on a five-column queue, and a cell already holding `{shortSha} #{n}` surviving a `merged #{n}` re-entry | `pdlc/workflows/__tests__/mergeQueueWriteback.test.js` | `pdlc/workflows/orchestrate-queue.js` | 2 | F1, R1 | ⬚ |
