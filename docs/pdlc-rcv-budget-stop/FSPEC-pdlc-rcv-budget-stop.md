@@ -253,7 +253,19 @@ count test and not a new halt. The counts are what the operator's *next* `RESOLV
 ### 4.4 Ordering against the gate
 
 The window is resolved **after** the clearance gate has run (§6), because the gate can move `W` on
-that same entry. Two consequences stated as outcomes:
+that same entry.
+
+**`D` is derived before the gate; only the admission arithmetic follows it.** The Behavioral Flow
+lists the gate as step 2 and the window arithmetic as step 3, which is the order of the **admission**
+decision — `S = max(D, W)` and `E = W + BUDGET − 1` are resolved against the origin the gate leaves
+behind. It is **not** the order in which `D` becomes available: `D` is one past the highest existing
+round of that document type, read from the branch listing, and it depends on nothing the gate does.
+The gate itself consumes `D` — B-CLR-2/B-CLR-2a branch on it and §6.2's granting value is
+`N = max(D, W)` — so `D`, and the pre-gate `W` and `E` derived from the region, are all resolved
+**before** step 2 decides. There is no cycle: the gate reads `D`, the gate may move `W`, and the
+admission arithmetic is then evaluated once, after the gate.
+
+Two consequences stated as outcomes:
 
 - an entry that grants a clearance runs its rounds under the **new** origin, in the same entry;
 - **target state (X-06):** an entry whose region fails to validate refuses **before** the budget is
@@ -387,7 +399,7 @@ marker is everything below.
 | Branch | Observed | Outcome |
 |---|---|---|
 | **B-CLR-1** | gate open; last `HALT-REASON:` begins `fixed-point:` or `budget-exhausted:` | a fresh window is granted: exactly one `WINDOW-START: {N}` appended (§6.2), `N` becomes the new `W` |
-| **B-CLR-2** | gate open; last `HALT-REASON:` begins `no-revision:` (S-11); **the interrupted window still has a round left** — the resolved start `D = max(D, W)` is `≤ E`, the window's last round `W + BUDGET − 1` | the interrupted window is **resumed**: exactly one `WINDOW-RESUMED: {W}` appended, `W` **unchanged**, rounds already spent stay spent |
+| **B-CLR-2** | gate open; last `HALT-REASON:` begins `no-revision:` (S-11); **the interrupted window still has a round left** — the resolved start `S = max(D, W)` is `≤ E`, the window's last round `W + BUDGET − 1`. On this branch `W ≤ D`, so `S = D` and the guard may be read as `D ≤ E`; the three quantities keep the meanings §4.1 gives them and none is reassigned | the interrupted window is **resumed**: exactly one `WINDOW-RESUMED: {W}` appended, `W` **unchanged**, rounds already spent stay spent |
 | **B-CLR-2a** | gate open; last `HALT-REASON:` begins `no-revision:`; **the interrupted window has no round left** — `D > E` (the S-11 halt was taken on the window's last round) | treated as **B-CLR-1**: exactly one `WINDOW-START: {D}` appended, `D` becomes the new `W`. There is nothing to resume into, so a resume would admit **zero** rounds |
 | **B-CLR-3** | gate open; last `HALT-REASON:` unparseable or any other value | treated as B-CLR-1 — **fail-closed**: the safe error is to consume a reset the operator can re-grant, never to hand out a free window |
 | **B-CLR-4** | `A = H` (marker readable or not) | nothing written, nothing granted; `W` stays as §5.2 resolves it and the entry proceeds to §4 |
