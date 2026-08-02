@@ -9,7 +9,7 @@ depends-on: []
 | Field | Value |
 |---|---|
 | Shared baseline | `docs/_constraints/pdlc-rcv-baseline.md` — the measured run, the measured facts `M-*`, the declared thresholds and the shared non-goals `N-1 … N-10`. **Read it first.** Facts are cited by id (`M-1d`), never restated. |
-| Shared split record | `docs/_constraints/pdlc-rcv-split.md` — the v2.0 altitude split, what moved, and the **paired edges** this REQ and `REQ-RCV-07` must revise together (§5). |
+| Shared split record | `docs/_constraints/pdlc-rcv-split.md` — the v2.0 altitude split, what moved, and the **paired edges** this REQ and `REQ-RCV-07` must revise together (§5), the shared *why the validation conjunct is unwired* argument (§5.1) and the catalogue delegation (§6). |
 | Shared catalogue | `docs/_constraints/pdlc-rcv-catalogue.md` — the family vocabulary (§1), the closed catalogue `S-1 … S-17` (§2) and the run-report row schema (§3), used by reference. |
 | Predecessor | `docs/discarded/pdlc-review-convergence/REQ-pdlc-review-convergence.md` v1.8 (**superseded 2026-08-01**) — this REQ carries its REQ-RCV-01 unchanged in substance. Its REQ-RCV-02 moved to `docs/pdlc-rcv-fixed-point-stop/` at v1.1 of this document; see §10. |
 | Siblings | `docs/pdlc-rcv-reset-region/REQ-pdlc-rcv-reset-region.md` (**REQ-RCV-07**) — **the implementation-altitude half split out of this document's v1.6 on 2026-08-01** (§10); `docs/pdlc-rcv-fixed-point-stop/REQ-pdlc-rcv-fixed-point-stop.md` (REQ-RCV-02) — the successor that depends on this one; `docs/pdlc-rcv-panel-topology/REQ-pdlc-rcv-panel-topology.md` (REQ-RCV-03, REQ-RCV-04); `docs/pdlc-rcv-finding-quality/REQ-pdlc-rcv-finding-quality.md` (REQ-RCV-05, REQ-RCV-06) |
@@ -20,14 +20,18 @@ depends-on: []
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude + operator | 2.2 | 2026-08-01 |
+| pdlc | draft | Claude + operator | 2.3 | 2026-08-01 |
 
-**v2.2** addressed round 7: X-06, R-14 and O-10 now say, in one vocabulary, that AC-1.5(4)'s third
-conjunct is **not wired until `REQ-RCV-07` ships** — *any* interim procedure either bricks each
-phase at its first halt or is the fail-open itself — so the interim is HEAD's behaviour, O-10's
-interim legs assert cells that stay true after row 18 and assert **no** S-16, and the v2.0 split
-record moved to `docs/_constraints/pdlc-rcv-split.md`, which also carries the paired-edge rule.
-**v2.1** addressed round 6 (seam, sequencing corrected to **10 → 12 → 18**).
+**v2.3** addressed round 8 by carrying v2.2's *conjunct not wired here* decision into the two
+surfaces a test author derives from: **AC-1.5(4)** and **§4.1's two derivation rows** now mark those
+dispositions **target state**, reachable at `REQ-RCV-07`'s commit; **O-10** hands the non-validating
+legs wholly to that REQ and keeps one production-path contract leg (the seam is called **0 times**);
+**NB-3** declares the deliberately unconsulted seam so DoD does not remediate it by wiring it; X-06
+and R-14 narrow the *any interim procedure* claim; and the catalogue delegation moved to
+`pdlc-rcv-split.md` §6.
+**v2.2** addressed round 7 (the third conjunct is **not wired until `REQ-RCV-07` ships**, so the
+interim is HEAD's behaviour; split record relocated). **v2.1** addressed round 6 (seam, sequencing
+**10 → 12 → 18**).
 **v2.0** is the operator-directed altitude split resolving this feature's POSTMORTEM, recorded in
 full in `pdlc-rcv-split.md` and summarised at §10.
 **v1.6** addressed round 5, **v1.5** round 4, **v1.4** round 3, **v1.3** round 2, **v1.2** round 1.
@@ -83,7 +87,7 @@ sibling owes, which is a forward edge and not a dependency (§10). Two clauses r
 | # | Direction | What crosses | Behaviour until it ships |
 |---|---|---|---|
 | **X-05** | **read from** `pdlc-rcv-fixed-point-stop` REQ-RCV-02 AC-2.8 — the S-11 halt reason `no-revision: …` | AC-1.5(5)'s first table row, which resumes rather than resets the window on an S-11 halt | Until that REQ ships no halt path emits S-11, so the row is **unreachable**, every halt is a convergence halt, and AC-1.5(5) reduces to its second row. The clause is stated over both from the start, so nothing is re-specified when the successor lands. |
-| **X-06** | **read from** `pdlc-rcv-reset-region` REQ-RCV-07 AC-7.1 — the ordered validation algorithm behind AC-1.5(4)'s *region validates* predicate, and AC-7.2/AC-7.5's refusal | AC-1.5(4)'s third gate conjunct, and everything that follows a failure of it | This is a **forward** edge, not a `depends-on`: the predicate's *meaning* and its fail-closed disposition are fixed below, so nothing here is under-determined. But the conjunct is **not wired into the gate at this REQ's own ship** — `REQ-RCV-07` wires it in the same commit that lands AC-7.1's decision procedure. Until then AC-1.5(4)'s gate is its **two decidable conjuncts** (a readable `RESOLVED: yes`, and `A < H`), and `W` is read as §4.1 states without the validation guard. The call site exists as an **injected, controllable seam** so row 18 replaces a stub rather than a call graph, but the interim production composition **does not consult it** — so there is no production default to get wrong, and no interim entry is refused that AC-1.5(1)–(3) would have admitted: **no refusal and no S-16 on any branch, region or none, leaving every branch on the path AC-1.1–AC-1.5(3) and (5) already put it on.** **Why the conjunct is not shipped early.** Any interim procedure that refuses what it cannot decide refuses on **non-emptiness** — and a region is non-empty exactly when the phase has halted (AC-1.4 clause 1) — so the first halt of each phase would be terminal, `RESOLVED: yes` could not clear it (the marker is read *inside* the failing gate), no sanctioned repair exists until AC-7.4, and `MAX_REVIEW_ROUNDS` 3 produces *more* halts reaching that disabled path — including row 18's own Phase R, gating the replacement on not halting. Any interim procedure that *grants* what it cannot decide is the fail-open below. Leaving it unwired is the only interim whose behaviour is **today's**, and it is the choice made here; co-delivery under a `depends-on` edge was rejected because it would make this REQ's unconditional saving wait on a successor it does not need as a requirement. **The cost, stated:** R-10's hand-edited-region fail-open stays open for one queue interval (R-14) — operator-caused, operator-visible, and no wider than HEAD's. A production wiring of *valid* once the conjunct **is** wired is the fail-open AC-1.5(4) exists to close: a defect, not a shortcut; tests drive the seam to either value (O-10). |
+| **X-06** | **read from** `pdlc-rcv-reset-region` REQ-RCV-07 AC-7.1 — the ordered validation algorithm behind AC-1.5(4)'s *region validates* predicate, and AC-7.2/AC-7.5's refusal | AC-1.5(4)'s third gate conjunct, and everything that follows a failure of it | This is a **forward** edge, not a `depends-on`: the predicate's *meaning* and its fail-closed disposition are fixed below, so nothing here is under-determined. But the conjunct is **not wired into the gate at this REQ's own ship** — `REQ-RCV-07` wires it in the same commit that lands AC-7.1's decision procedure. Until then AC-1.5(4)'s gate is its **two decidable conjuncts** (a readable `RESOLVED: yes`, and `A < H`), and `W` is read as §4.1 states without the validation guard. The call site exists as an **injected, controllable seam** so row 18 replaces a stub rather than a call graph, but the interim production composition **does not consult it** — so there is no production default to get wrong, and no interim entry is refused that AC-1.5(1)–(3) would have admitted: **no refusal and no S-16 on any branch, region or none, leaving every branch on the path AC-1.1–AC-1.5(3) and (5) already put it on.** **Why the conjunct is not shipped early — the argument is stated once for both ends of the edge in `pdlc-rcv-split.md` §5.1** and summarised here: an interim procedure that refuses what it cannot decide refuses on **non-emptiness**, which is exactly *the phase has halted* (AC-1.4 clause 1), so the first halt of each phase would be terminal and `RESOLVED: yes` could not clear it; one that grants it is the fail-open below; and a **narrower** one deciding only what this REQ specifies must still disagree with AC-7.1 on ordering and highest round, unclearable in the **refusing** direction until AC-7.4. Leaving it unwired is the only interim whose behaviour is **today's**. **The cost, stated:** R-10's hand-edited-region fail-open stays open for one queue interval (R-14) — operator-caused, operator-visible, and no wider than HEAD's. A production wiring of *valid* once the conjunct **is** wired is the fail-open AC-1.5(4) exists to close: a defect, not a shortcut (`REQ-RCV-07` O-10). |
 
 **Consequence for sequencing.** This REQ is deliverable alone as a **requirement**: its window,
 budget, halt path and clearance accounting are determined without any successor.
@@ -123,8 +127,7 @@ unchanged, the catalogue is untouched, and this REQ mints no operator string (§
 
 The loop *re-derives its state from the branch on every invocation* (M-1d, M-2f), so any criterion
 stated over in-process state is undefined on a resumed phase — the normal case. Every quantity this
-REQ's criteria read is listed below with its durable home. **A criterion stated over an
-in-process-only row would be a defect; there is no such row.**
+REQ's criteria read is listed below with its durable home; **there is no in-process-only row.**
 
 | Quantity | Read by | Durable home | If absent |
 |---|---|---|---|
@@ -416,7 +419,7 @@ here: an obligation on the FSPEC, TSPEC, PLAN or PROPERTIES, not a REQ revision.
 | **R-12** | **A repeating S-11 halt is unbounded.** Each S-11 clearance writes `WINDOW-RESUMED: {W}`, leaves `W` unchanged and (per the successor's AC-2.8) costs the window no round, so an authoring side that keeps producing zero-delta rounds yields an unbounded halt/clearance sequence with `H` and `A` growing together and the budget never exhausting. | **Accepted, and bounded by the operator rather than by the loop.** Every iteration costs one hand-written `RESOLVED: yes`, so the sequence is never unattended; capping it would need a second counter that could only deny an operator *choosing*, each time, to continue. Revisit if the S-11 path repeats in practice. |
 | **R-13** | **Migration: branches that already carry more than three rounds.** At the commit that lands `MAX_REVIEW_ROUNDS = 3`, every in-flight phase whose document has 3+ rounds is admitted no rounds and halts on the next entry, rendering S-4 as `rounds 1..3 of 3` while five rounds sit on disk. | **Correct and expected, not a defect** — the render states the *window*, not the file count. The escape is the ordinary clearance (AC-1.5(3)). No migration script, no back-fill of reset regions. |
 | **R-10** | **The reset region is machine state in a file an operator is instructed to edit.** A hand-edit can make the counts lie in either direction, and one direction restores the per-invocation budget AC-1.1 abolishes — silently and fail-open. | **Mechanised, not accepted.** AC-1.5(4) makes *the region validates* a **conjunct of the clearance gate**, so a region whose accounting cannot be trusted consumes nothing and opens nothing. The mechanism that decides it, and the sanctioned repairs that leave the operator a way back, are `REQ-RCV-07` AC-7.1 and AC-7.4 (that REQ's R-10). The residual carried here is §6's *never authored by a human*. |
-| **R-14** | **This REQ's *region validates* decision procedure is not implementable until `REQ-RCV-07` ships** (X-06), and that REQ is a whole intervening feature away — row 18, net pickup 10 → 12 → 18 (§3.1). | **Mitigated by not wiring the conjunct until its procedure exists, not by sequencing and not by an interim procedure.** Sequencing is too weak at that distance; and *any* interim procedure is worse than none, because one that refuses what it cannot decide refuses on non-emptiness — which is exactly *the phase has halted* (AC-1.4 clause 1) — making the first halt of each phase terminal with `RESOLVED: yes` unable to clear it, while one that grants what it cannot decide is the fail-open itself (X-06). So AC-1.5(4)'s third conjunct is absent from the interim composition behind an injected seam, and every branch keeps HEAD's behaviour: no refusal, no S-16, nothing this REQ's own AC-1.1–AC-1.5(3) and (5) do not already do. **Residual, accepted and time-boxed:** R-10's hand-edited-region fail-open stays open until row 18 — operator-caused and no wider than HEAD's, where it is open unconditionally. **Nothing therefore requires the two halves to land in the same plugin release**: distribution is per-commit (O-11), and a consumer installing between rows 10 and 18 gets an interim that behaves as HEAD does, so no `pdlc/RELEASE-CHECKLIST.md` line is owed. O-10 pins the interim composition's observable behaviour with legs that stay true once row 18 wires the conjunct. |
+| **R-14** | **This REQ's *region validates* decision procedure is not implementable until `REQ-RCV-07` ships** (X-06), and that REQ is a whole intervening feature away — row 18, net pickup 10 → 12 → 18 (§3.1). | **Mitigated by not wiring the conjunct until its procedure exists, not by sequencing and not by an interim procedure.** Sequencing is too weak at that distance, and every interim procedure available now is worse than none — the refusing horn (a refusal on non-emptiness, which is exactly *the phase has halted*, unclearable by `RESOLVED: yes`), the granting horn (the fail-open itself) and the narrower procedure that must still disagree with AC-7.1 are stated once for both ends at `pdlc-rcv-split.md` §5.1 (X-06). So AC-1.5(4)'s third conjunct is absent from the interim composition behind an injected seam, and every branch keeps HEAD's behaviour: no refusal, no S-16, nothing this REQ's own AC-1.1–AC-1.5(3) and (5) do not already do. **Residual, accepted and time-boxed:** R-10's hand-edited-region fail-open stays open until row 18 — operator-caused and no wider than HEAD's, where it is open unconditionally. **Nothing therefore requires the two halves to land in the same plugin release**: distribution is per-commit (O-11), and a consumer installing between rows 10 and 18 gets an interim that behaves as HEAD does, so no `pdlc/RELEASE-CHECKLIST.md` line is owed. O-10 pins the interim composition's observable behaviour with legs that stay true once row 18 wires the conjunct. |
 
 **Deferrals and their binding.** This REQ defers nothing of its own. The predecessor's deferrals
 belong to the successors carrying the criteria that raise them: cross-panel comparability and finding
@@ -431,20 +434,17 @@ queue-eligible until an operator specifies it and opts it in.
 |---|---|---|---|---|
 | REQ-RCV-01 | M-1a, M-1b, M-1c, M-1d, M-1e; M-7a, M-7b, M-7d, M-7e | P-1 (cost half) | US-01, US-02, US-04 | O-5, O-9, O-10, O-11, O-12 |
 
-**Why one requirement and not two.** v1.0 carried REQ-RCV-01 and REQ-RCV-02 together at **581 lines
-/ 83 KB**, past the 60 KB ceiling; v1.1 cut at the seam they already had — this REQ the **window**,
-`docs/pdlc-rcv-fixed-point-stop/` the two **tests** inside it, with the ordering argument (`W` before
-AC-2.1/AC-2.8/AC-2.6) kept as a `depends-on` edge. No requirement, AC or `S-*` id changed.
+**Why one requirement and not two.** v1.0 carried REQ-RCV-01 and REQ-RCV-02 together past the 60 KB
+ceiling; v1.1 cut at the seam they already had — this REQ the **window**,
+`docs/pdlc-rcv-fixed-point-stop/` the two **tests** inside it, kept as a `depends-on` edge.
 
 ### v2.0 — the altitude split
 
-**Relocated, not deleted.** The split's narrative, its *what moved / what stayed* mapping and its
-three consequences are shared with `REQ-RCV-07` and stated once for both halves in
-**`docs/_constraints/pdlc-rcv-split.md`** (§1–§4). In one line: v1.6 was cut at the **altitude** seam
-the postmortem named — AC-1.5(4)'s decision procedure, refusal semantics, repair taxonomy, the
-answering line's byte confirmation, §6's refusal renders and the matching O-10 legs moved to
-`REQ-RCV-07`; the window stayed; **no requirement, AC, `S-*` id, threshold or user story changed
-meaning**, and no `S-*` id was minted.
+**Relocated, not deleted.** The narrative, the *what moved / what stayed* mapping and the three
+consequences are stated once for both halves in **`docs/_constraints/pdlc-rcv-split.md`** (§1–§4). In
+one line: v1.6 was cut at the **altitude** seam the postmortem named, the implementation-altitude
+half of AC-1.5(4) moved to `REQ-RCV-07`, the window stayed, and **no requirement, AC, `S-*` id,
+threshold or user story changed meaning**.
 
 **Paired edges must be revised together.** `REQ-RCV-01` X-06/R-14 and `REQ-RCV-07` X-07/R-16 are the
 **same edge described from both ends**, so any revision to X-06 or R-14 is carried to X-07 and R-16
@@ -452,5 +452,4 @@ meaning**, and no `S-*` id was minted.
 both ends must agree on, and the `O-*`/`R-*`/`X-*` collision rule are in `pdlc-rcv-split.md` §5.
 
 **Round-by-round history is deliberately not restated here:** `harvest-learnings` deletes
-`CROSS-REVIEW-*` once LEARNINGS is written, so citing round files would be structurally wrong. This
-REQ traces *measured facts*, not review history.
+`CROSS-REVIEW-*` once LEARNINGS is written, so citing round files would be structurally wrong.

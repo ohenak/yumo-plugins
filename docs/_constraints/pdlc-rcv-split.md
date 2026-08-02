@@ -76,6 +76,31 @@ must name the owning REQ.
 | The *region validates* decision procedure, and what happens before it ships | **X-06**, **R-14** | **X-07**, **R-16** | Revise all four **in the same commit**, in the same words. Both ends must agree on whether the conjunct is wired in the interim, on the queue distance between the two rows, and on what an interim procedure would cost. |
 | The catalogue delegation of AC-1.5(4)'s algorithm, its steps and its renders | §4's pointer to §6 below | AC-7.1, §6 | The catalogue itself is edited **once**, by `REQ-RCV-07`, when the clauses become true of it. |
 
+### 5.1 Why the validation conjunct is not wired before its procedure ships
+
+Relocated from `REQ-RCV-01` X-06 (2026-08-01, round 8) so both ends of the paired edge cite one copy
+of the argument instead of restating it; nothing changed meaning in the move. `REQ-RCV-01` X-06/R-14
+and `REQ-RCV-07` X-07/R-16 state the **decision**; this states the **reasons** behind it.
+
+- **Refusing horn.** An interim procedure that refuses what it cannot decide refuses on
+  **non-emptiness** — and a region is non-empty exactly when the phase has halted (`REQ-RCV-01`
+  AC-1.4 clause 1) — so the first halt of each phase would be terminal, `RESOLVED: yes` could not
+  clear it (the marker is read *inside* the failing gate), no sanctioned repair exists until AC-7.4,
+  and `MAX_REVIEW_ROUNDS` 3 produces *more* halts reaching that disabled path — including row 18's
+  own Phase R, gating the replacement on not halting.
+- **Granting horn.** One that grants what it cannot decide is the fail-open the conjunct exists to
+  close.
+- **The narrower procedure.** One deciding only what `REQ-RCV-01` AC-1.5(4) specifies (well-formed
+  answering lines, `H − A ∈ {0, 1}`) escapes both horns, but must still disagree with AC-7.1 on
+  ordering and highest-round analysis, and a disagreement in the **refusing** direction is
+  unclearable for the same reason, until AC-7.4 ships.
+- **Co-delivery** under a `depends-on` edge was rejected because it would make `REQ-RCV-01`'s
+  unconditional saving wait on a successor it does not need as a requirement.
+
+Leaving the conjunct unwired is therefore the only interim whose behaviour is **HEAD's**. The cost,
+stated: R-10's hand-edited-region fail-open stays open until row 18 — operator-caused,
+operator-visible, and no wider than HEAD's, where it is open unconditionally.
+
 ## 6. The catalogue delegation, stated once
 
 Relocated from `REQ-RCV-01` §4 (2026-08-01, round 8) so both halves cite one copy; no clause changed
