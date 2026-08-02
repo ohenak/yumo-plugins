@@ -132,6 +132,76 @@ this flow fixes only the outcome.
 
 ## 4. FSPEC-WIN-01 — Window resolution and round admission
 
+**Linked criteria:** AC-1.1, AC-1.5(1), AC-1.5(2). **Scope:** document-typed phases only (B-BUD-1).
+
+### 4.1 The three quantities, and the rule that relates them
+
+| Name | Meaning | Where it comes from |
+|---|---|---|
+| **`W`** — the window origin | the first round of the current window | the reset region (§5); **1** when no reset is in effect |
+| **`D`** — the derived start | one past the **highest existing round of the document type under review** on the branch; **1** when that type has no cross-review file | the branch listing (M-1d) |
+| **`E`** — the window end | `W + BUDGET − 1` | computed |
+
+**The rule.** The entry's start is **`S = max(D, W)`**, and the window is the rounds `S … E`.
+Three consequences, each a named branch:
+
+**B-WIN-1 — an open window dispatches.** When `S ≤ E`, rounds `S … E` are admitted and the loop
+proceeds exactly as it does today: reviewers dispatched, cross-review files written at those round
+indices, approval or the next round.
+
+**B-WIN-2 — an exhausted window halts with zero rounds.** When `S > E`, **no round is admitted, no
+reviewer is dispatched, no new cross-review file appears**, and the entry halts at once on the
+budget path (§7). The halt raises **S-4**, rendered from the window and the constant — `rounds {W}..{E}
+of {BUDGET}` — never a hard-coded `rounds 1..3 of 3`. With `W = 1` this is `rounds 1..3 of 3`; on a
+post-clearance branch with `W = 4` it is `rounds 4..6 of 3`, which is correct and is the point of
+rendering it.
+
+**B-WIN-3 — the origin wins over a lower derived start.** When `D < W` the entry starts at `W`, not
+at `D`. Reachable by one documented operator act and by no loop path: deleting cross-review files
+after a window was granted, while the post-mortem survives. Both standing properties hold — review
+history stays **append-only** (a start above `D` collides with no file) and **no window is widened**
+(the window is still `BUDGET` rounds from `W`). Rounds below `W` are outside every window.
+
+### 4.2 The origin's effect on the window's end
+
+**B-WIN-4 — no reset in effect.** `W = 1`, so the window is `{1, 2, 3}` and the loop halts on
+entering round **4**. A branch whose highest existing round is 2 is admitted **round 3 only**; one at
+3 or more is admitted **no rounds** (B-WIN-2). This is the ordinary reading of *three rounds per
+document*.
+
+**B-WIN-5 — a reset in effect.** `W = 4` gives the window `{4, 5, 6}` and the halt on entering round
+**7**. The origin qualifier is normative: the window's end is counted from `W`, never from the
+highest existing round, so an operator's one clearance buys exactly `BUDGET` further rounds and no
+more.
+
+**Per document, always.** *"The highest round on the branch"* means **of the document type under
+review** — in `D`, in the granting line's value (§6), and in row C's `round` cell (§8.2) — never the
+whole directory. A window is a property of a document, not of a feature.
+
+### 4.3 The escape hatch is the only route past the cap
+
+**B-WIN-6 — `forcePhases` does not grant a window.** Forcing overrides a recorded **approval** and
+nothing else. A forced entry into a document-typed phase whose document is already at or past `E` is
+admitted **no rounds**: it takes B-WIN-2's zero-round halt, maintains the region (§7), emits row C
+(§8.2), and writes the feature's `docs/_queue/QUEUE.md` row `halted`. This is a deliberate change to
+a documented entry point.
+
+**B-WIN-7 — a second force changes nothing, and the shipped gate is what stops it.** The first
+forced halt strips the spent `RESOLVED:` marker (§7, clause 2), leaving the post-mortem unresolved
+with `H = 1, A = 0`. A second force therefore meets the **shipped step-G refusal** — `Refused —
+unresolved POSTMORTEM at {path}`, invocation terminated, queue row `halted` (M-7a, M-7b) — not a
+count test and not a new halt. The counts are what the operator's *next* `RESOLVED: yes` spends.
+
+### 4.4 Ordering against the gate
+
+The window is resolved **after** the clearance gate has run (§6), because the gate can move `W` on
+that same entry. Two consequences stated as outcomes:
+
+- an entry that grants a clearance runs its rounds under the **new** origin, in the same entry;
+- **target state (X-06):** an entry whose region fails to validate refuses **before** the budget is
+  evaluated, so it produces no halt and no S-4. At this ship that branch is unreachable and every
+  entry reaches the window arithmetic.
+
 ## 5. FSPEC-REG-01 — The reset region as a read model
 
 ## 6. FSPEC-CLR-01 — The clearance gate and the answering line
