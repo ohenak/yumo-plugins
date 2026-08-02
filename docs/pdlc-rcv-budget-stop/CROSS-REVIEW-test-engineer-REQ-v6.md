@@ -49,7 +49,48 @@ Q-04 and Q-05 are both closed — Q-04 answered at v5, Q-05 withdrawn above as b
 
 ## Positive Observations
 
-_(pending)_
+- **The split was cut where the findings were, and the cut is checkable rather than asserted.** §10's
+  *"What stayed, and why that is the whole test of the cut"* names the criterion — the material that
+  drew **zero blocking findings after round 2** — and I could verify it against my own five reviews:
+  every one of my Highs and Mediums from v2 onward (F-12, F-16, F-22, F-24, F-27) landed in
+  AC-1.5(4)'s machinery, §6's render rows or O-10's corresponding legs, and every one of those three
+  surfaces is on the moved side of the table. Nothing I approved moved, and nothing I blocked stayed.
+  That is the strongest evidence a split of this kind can offer, and it is stated as a falsifiable
+  claim rather than a summary.
+- **The mapping table is honest — I checked all nine rows against the destination file.** AC-7.1
+  carries the ordered algorithm with the `H − A ∈ {0, 1}` invariant and its stated domain; AC-7.2 the
+  *refusal is not a halt* bullets, the step-G routing, the generic-line suppression and the
+  `postmortemStatus` mechanism; AC-7.3 the three entry classes; AC-7.4 the sanctioned-repair and
+  delete-a-line tables; AC-7.5 the byte confirmation, the torn-write and value-tear analysis and act
+  1; AC-7.6 row B in two variants; §6 and catalogue §4 the render rows; and `REQ-RCV-07`'s O-6, O-10
+  and R-11 the obligations. Nothing on that table lands nowhere. A relocation review is mostly a
+  search for the row that quietly evaporated, and there isn't one.
+- **The delegated conjunct is delegated by *procedure only*, which is the right seam.** AC-1.5(4)
+  keeps the predicate's **meaning**, its **fail-closed disposition in all four respects at once**, and
+  the arithmetic argument for why validation is a conjunct of the gate rather than a constraint on
+  `W`. Only the decision procedure crosses. That is what makes X-06 a forward edge instead of a
+  `depends-on`, and it means a reviewer of the successor cannot re-open the semantics by re-deciding
+  the algorithm. F-30 is about the seam's **oracle**, not about where the line was drawn.
+- **Every `M-*` id this document now cites exists, and the four references repointed by `8d77618`
+  land on clauses that say what this REQ claims they say.** All of `M-1a`–`M-1e`, `M-2f`, `M-7a`,
+  `M-7b`, `M-7d`, `M-7e` are rows of `pdlc-rcv-baseline.md`. AC-1.1's *"fail the strictly-increasing
+  check on `WINDOW-START:` values (`REQ-RCV-07` AC-7.1 step 2)"* is exact — step 2 requires each value
+  *"strictly greater than every `WINDOW-START:` value before it"*; §4's and §6's S-16 rows correctly
+  name AC-7.1 **step 4** as the sole emitter and the `{reason}` selector, which is what step 4 does;
+  and X-06 correctly names AC-7.1 as the decision procedure. §1's cost figures (`11, 6, 6, 7, 9`;
+  66 KB / 40%) are baseline §1.1's verbatim. NB-4's *no line citation* rule holds throughout — I found
+  none.
+- **Row C is still stated cell by cell and still matches the schema exactly.** AC-1.5(1) populates
+  `round`, `panel-shape`, `blocking`, `growth-bytes`, `classification` and `notice` — all six columns
+  of catalogue §3, no more and no fewer — and the mutual-exclusion claim it makes with row B (*"B's
+  entry takes no halt, C's takes one, so B never carries S-4 and C never carries S-16"*) is the
+  catalogue's own sentence, unchanged by the split. The row that survived the cut survived it intact.
+- **The dispatch-count oracle and its positive control survived the compression.** O-10 still reads
+  *"exactly **0** dispatches on the exhausted-budget entry and on a non-validating entry, **≥ 1** on
+  the control entry that does open a round — asserted *alongside* the file-absence check, since a test
+  double that writes no file satisfies absence either way."* A split is where negative controls
+  usually get lost to the other document; this one kept its own, and kept the sentence explaining why
+  absence alone would not do.
 
 ## Recommendation
 
