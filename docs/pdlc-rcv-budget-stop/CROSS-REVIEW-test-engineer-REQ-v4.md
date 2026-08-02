@@ -43,8 +43,16 @@
 
 ## Recommendation
 
-_TBD_
+**Approved with minor changes**
+
+Both blocking findings are closed, and closed in the shared files, exactly as I pre-committed at v3: *"if round 4 closes F-01 and F-02 in the catalogue without changing AC-1.4, I approve."* AC-1.4 **did** change — but the change is the one-update rule over clauses 1 and 2, which closes a fail-open neither reviewer had found and which I have re-derived independently above. That is a strictly better outcome than the fixed point I asked for, and it is not the shape I pre-committed against (another round of clause-1/clause-3 restatement).
+
+**No High or Medium finding is open.** The three Lows are prose or routing, not oracles: F-01 names a residue that is already routed to `REQ-RCV-07` AC-7.5 and already has the right repair in catalogue §4; F-02 and F-03 are one phrase and two words. None of them changes an AC, a threshold, an `S-*` id, a user story or a fixture, and none needs to be resolved before FSPEC — carry them as FSPEC-time cleanups or close them in the catalogue whenever it is next touched.
+
+**Testability at this point.** Every leg split §5.4 declares is writable today from the REQ plus the catalogue without a clarifying question: leg (i)'s three Iterations fixtures against a single-line heading equality; leg (ii)'s byte-equality expected file, derivable because clause 3's placement rule is total and clauses 1 and 2 are one update with a closed three-place change list; leg (iii)'s two refusal fixtures, discriminated by ❌ text, each with four positive conjuncts. The property obligation's four invariants remain fail-closed in direction. That was the bar I have been applying since v1, and it is met.
+
+**Trajectory (R-1).** Blocking count 4 → 2 → 2 → **0**. The residual risk in this document is now concentrated where it has been declared all along — the *region validates* conjunct waiting on row 18 (X-06, R-14), with three time-boxed residuals stated and bounded. I have nothing further at REQ altitude.
 
 ## Verdict
 
-_TBD_
+VERDICT: Approved with minor changes
