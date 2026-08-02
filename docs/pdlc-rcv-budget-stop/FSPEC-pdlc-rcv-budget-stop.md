@@ -362,6 +362,124 @@ AC-7.5's** (F-N-1) — this flow owns the condition and the disposition, not the
 
 ## 7. FSPEC-HALT-01 — Halt-path region maintenance
 
+**Linked criterion:** AC-1.4. **Obligation:** O-5 (TSPEC owns the mechanism; this flow owns the
+outcome).
+
+### 7.1 What a halt still is, and what "every halt" quantifies over
+
+**B-HALT-9 — unchanged in kind.** A halt writes `POSTMORTEM-{phase}-{feature}.md`, confirms the
+write rather than trusting the agent's reply, refuses to re-run the phase until a human writes
+`RESOLVED: yes`, and rewrites the feature's queue row to `halted`. This feature changes **when** a
+halt happens and **what it says** — never what a halt is (`N-4`).
+
+**Scope.** The rules below are quantified over **every halt that writes
+`POSTMORTEM-{phase}-{feature}.md` for a document-typed review-loop phase**, with no exception inside
+that set. They do **not** reach the pipeline's other halt classes — creator-agent failure, branch
+guard, listing failure, Phase PUB/CI, Phase DOD — none of which writes a post-mortem, nor the
+untyped phases (B-BUD-2, B-BUD-3). So **`H` counts exactly the halts in scope**: the only halts that
+leave a marker for a clearance to clear.
+
+**B-HALT-8 — a Phase CR halt creates no region.** Phase CR reaches the same post-mortem-writing path
+(M-7f) and writes `POSTMORTEM-CR-{feature}.md`, but creates **no** `## Reset Region`, appends no
+`HALT-REASON:` line and reads none. Its Iterations line keeps the shipped render, carrying the new
+budget value (B-BUD-4).
+
+### 7.2 The three clauses
+
+**Clause 1 — the region exists after the halt, and carries this halt's line.**
+
+- a halt finding **no** existing post-mortem **creates** `## Reset Region` containing exactly one
+  `HALT-REASON:` line, its own (**B-HALT-1**);
+- a halt finding an existing post-mortem **preserves** the region — every S-13, S-14 and S-15 line
+  already in it, in document order — and **appends** its own `HALT-REASON:` to the end, with nothing
+  above or between them (**B-HALT-2**).
+
+One rule, read over an empty starting region. So `H` is exactly the number of halts in scope on
+every path, and *"the last `HALT-REASON:`"* (§6.1) is the most recent halt's.
+
+**Clause 2 — every unfenced `RESOLVED:` line in the file is stripped**, wherever it sits. The
+post-mortem is therefore **unresolved after the halt**, and the operator must clear *this* halt
+before the phase runs again. **B-HALT-6:** a **fenced** `RESOLVED: yes` survives — it is invisible to
+the gate either way, so scoping the strip to unfenced lines changes no decision and stops the halt
+path editing prose inside a human's code fence. The strip and clause 1 quantify over **disjoint**
+sets: a `RESOLVED:` line is never a region line, so the strip reaching inside the region span
+collides with nothing.
+
+**Clause 3 — the Iterations section states *this* halt's two quantities**, at §8.1's render, on
+**every** halt in scope, creating halt and re-halt alike. On a creating halt it overwrites whatever
+the authoring agent emitted there; on a re-halt it rewrites that one section and nothing around it.
+Placement and the not-found case are §8.1's.
+
+**B-HALT-7 — one line per halt, carrying every reason that halt raised.** `{value}` is the
+`; `-joined render, in catalogue §3's precedence order, of every halt reason raised by that halt, so
+a round on which both the fixed-point and the budget conditions hold writes **one** line reading
+`fixed-point: …; budget-exhausted: …`. The operator reads the identical string in the post-mortem
+and in the report's `notice` cell.
+
+### 7.3 The order, the one-update rule, and confirmation
+
+**The clauses run in one order: 3 → 1 → 2**, in **two** confirmed writes, not three, because
+**clauses 1 and 2 are one update of one file**.
+
+**The invariant that makes it one update:** after a halt in scope there is **no reachable state in
+which this halt's `HALT-REASON:` line is present and an unfenced `RESOLVED:` line survives.** Clause
+2 therefore owes no disposition of its own — its confirmation is clause 1's, and its failure is
+clause 1's failure. A separately losable strip would leave a readable marker beside an incremented
+`H`, which is exactly what §6.1's gate reads as an unconsumed clearance: a window no operator
+cleared, re-granted on every later halt while the fault lasted, with no notice and nothing in the
+report (split §5.8).
+
+**Both writes are confirmed, and both confirmations are content reads, not return codes:**
+
+| Write | Confirmed by |
+|---|---|
+| clause 3 (the Iterations section) | an **equality read-back** — the located heading's text equals §8.1's render for this halt |
+| the clause 1-and-2 update | **this halt's `HALT-REASON:` line is present in the region**, *and* no unfenced `RESOLVED:` line remains in the file |
+
+An existence-shaped check on the file is **not** sufficient for clause 1: on a re-halt the file
+always exists, so such a check passes whether or not the line landed — and that is the path that
+matters. A lost line under-counts `H`, so `A = H` would hold forever and no later `RESOLVED: yes`
+would ever grant.
+
+**Failure disposition — fail-closed, both writes.**
+
+**B-HALT-4 — clause 3 unconfirmed.** The entry ends there: clause 1 and clause 2 do not run, so the
+region is **byte-unchanged**, **no halt is recorded**, and **no `RESOLVED:` line is stripped**. The
+entry takes a **phase refusal** and the operator reads row B's *unconfirmable-append* variant with
+`{which}` = **`iterations section`**.
+
+**B-HALT-5 — the clause 1-and-2 update unconfirmed.** No halt is recorded, nothing is stripped, and
+this entry's Iterations render is present (clause 3 already landed). The entry takes a **phase
+refusal**; `{which}` = **`halt line`**.
+
+In both cases both counts are unmoved, `notice` is **empty**, `A ≤ H` is preserved, and **no
+`RESOLVED:` marker is ever stripped against a halt that left no line**. A **torn** write —
+partially landed — is `REQ-RCV-07` AC-7.5's (F-N-1).
+
+**Accepted cost, stated.** A **creating** halt whose clause 1-and-2 update fails leaves an
+unresolved post-mortem with `H = 0`, so the operator's first `RESOLVED: yes` grants nothing and the
+re-halt needs a second. Fail-closed in the right direction: no window without a recorded halt.
+
+### 7.4 A halt that finds an existing post-mortem does not re-author it
+
+**B-HALT-2, stated as a closed list.** Such a halt performs clauses 1, 2 and 3 and **changes nothing
+else**: **no authoring dispatch**, and every other section — `## Recommendation` included — is
+**byte-unchanged**. The complete list of what a re-halt changes is therefore: the region span, every
+unfenced `RESOLVED:` line, and the Iterations section.
+
+Only a halt finding **no** post-mortem authors one (M-7e) — including on a zero-round entry, where
+that dispatch runs unchanged at the shipped prompt (§9.2).
+
+**Why.** The operator's `RESOLVED: yes` answers a *specific* `## Recommendation`; re-authoring would
+replace it with one written from zero rounds of new evidence — the commonest new case — and would
+spend roughly a review round on an entry that dispatched no reviewer. The Iterations section is
+nonetheless refreshed because it is a loop-computed two-integer render, not an authoring dispatch,
+and leaving it stale would show the operator the *previous* halt's rounds-run on exactly the entry
+AC-1.3 promises reports this one's.
+
+**The region is the loop's guarantee, not an agent's diligence** — §9's prompt clause is
+belt-and-braces, never the mechanism.
+
 ## 8. FSPEC-RPT-01 — Operator-visible reporting
 
 ## 9. FSPEC-PROMPT-01 — The post-mortem authoring prompt
