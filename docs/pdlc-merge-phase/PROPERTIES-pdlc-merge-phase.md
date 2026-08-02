@@ -193,120 +193,105 @@ merge.**
 **PROP-M-12 — Evidence-null identity. `updateQueueStatus(md, f, s, null)` is byte-identical to the
 3-parameter call, for every input.**
 *(Data Integrity · **P** · `enum(4 statuses × 6 queue shapes = 24)` against goldens · B2 — `mergeQueueWriteback.test.js`)*
-- **Domain:** the six queue shapes F1 captures (5-column canonical, already-`Evidence`-migrated,
-  padded/aligned cells, one data row, feature absent, no table at all) × every `QUEUE_STATUSES`
-  member, applied to the target feature.
+- **Domain:** the six queue shapes F1 captures (5-column canonical, already-migrated, padded cells,
+  one data row, feature absent, no table at all) × every `QUEUE_STATUSES` member.
 - **Oracle:** a **three-way** equality — the 4-parameter `null` call, the 3-parameter call, and the
-  **committed golden captured from `updateQueueStatus` at HEAD before the change** (PLAN F1) — all
-  byte-identical, including the `matched` and `written` fields. TSPEC §13.5's TE F-11 point applies:
-  comparing the new code against itself proves nothing, so the golden is the only non-circular arm and
-  is the one that must be able to fail. Positive-presence conjunct: each golden is asserted to
-  *contain* the target feature's row and to *differ* from the other three statuses' goldens, so a
-  suite whose goldens were captured empty cannot pass.
+  **committed golden captured from `updateQueueStatus` at HEAD before the change** (PLAN F1) —
+  byte-identical including `matched` and `written`. Per TE F-11, comparing the new code against
+  itself proves nothing: the golden is the only non-circular arm and the one that must be able to
+  fail. Positive-presence conjunct: each golden is asserted to *contain* the target feature's row and
+  to *differ* from the other statuses' goldens, so goldens captured empty cannot pass.
 
 **PROP-M-13 — Write-back idempotence. Applying the `done` write twice equals applying it once, byte
 for byte, and never downgrades evidence.**
 *(Idempotency · **P** · `enum(6 shapes × 3 evidence forms = 18)` + `rand(200)` cell pairs · B1/B2 — `mergeQueueWriteback.test.js`)*
-- **Domain:** each canonical queue × evidence ∈ `{"abc1234 #42", "merged #42", "abc1234 #7"}`, applied
-  twice; and `mergeEvidenceCell(prev, next)` over 200 seeded `(prev, next)` pairs drawn from
-  `{"", sha-form, merged-form, arbitrary string}`.
-- **Oracle:** `md2 === md1` exactly (second application is a fixed point); `ensureEvidenceColumn`
-  reports `migrated: false` on the second pass; the Status cell holds the single token `done` with no
-  surrounding decoration on both passes. For the cell helper: whenever `prev` is a non-empty string
-  and `next` matches `/^merged #/`, the result **is `prev`**; otherwise it **is `next`** — asserted as
-  an equality against an independent reference, so no-downgrade cannot degenerate into never-update.
+- **Domain:** each canonical queue × evidence ∈ `{"abc1234 #42", "merged #42", "abc1234 #7"}` applied
+  twice; and `mergeEvidenceCell(prev, next)` over 200 seeded pairs from `{"", sha-form, merged-form,
+  arbitrary string}`.
+- **Oracle:** `md2 === md1` exactly (a fixed point); `ensureEvidenceColumn` reports
+  `migrated: false` on the second pass; the Status cell holds the single token `done`, undecorated, on
+  both passes. For the cell helper: when `prev` is a non-empty string and `next` matches
+  `/^merged #/` the result **is `prev`**, otherwise it **is `next`** — an equality against an
+  independent reference, so no-downgrade cannot degenerate into never-update.
 
 **PROP-M-14 — Structural containment. Only the target row's Status and Evidence cells ever change
 value; every other cell is preserved.**
 *(Data Integrity · **P** · `enum(6 shapes × 8 target positions)` · B1/B2 — `mergeQueueWriteback.test.js`)*
-- **Domain:** generated queues of 1–8 data rows (seeded feature names, statuses drawn from
-  `QUEUE_STATUSES`, mixed `Depends-On` cells, interleaved prose paragraphs and a trailing history
-  table), with each row in turn the write target.
-- **Oracle:** after the write, for every **non-target** data row the first five cells are string-equal
-  to their pre-write values and the sixth is `""`; the header gains exactly the cell `Evidence`; the
-  separator row gains exactly one dash cell; **every row has the same cell count**; every non-table
-  line (prose, blanks, the trailing table) is byte-identical. Positive conjunct: the target row's
-  Status changed *from* the fixture's known prior value *to* `done`, and its Evidence cell holds the
-  expected string — so "changed nothing at all" fails.
+- **Domain:** seeded queues of 1–8 data rows (generated feature names, statuses from
+  `QUEUE_STATUSES`, mixed `Depends-On` cells, interleaved prose and a trailing history table), each
+  row in turn the write target.
+- **Oracle:** every **non-target** data row's first five cells are string-equal to their pre-write
+  values and its sixth is `""`; the header gains exactly the cell `Evidence`; the separator gains one
+  dash cell; **every row has the same cell count**; every non-table line is byte-identical. Positive
+  conjunct: the target row's Status changed *from* its known prior value *to* `done` and its Evidence
+  cell holds the expected string — so "changed nothing at all" fails.
 
 **PROP-M-15 — Round-trip. A written `done` row re-parses as `done`, and its dependents unblock.**
 *(Integration · **I** · `enum(6 shapes × 3 dependency graphs)` · B2/B3 — `mergeQueueWriteback.test.js`, `mergeQueueDriver.test.js`)*
 - **Domain:** each written queue from PROP-M-14 fed back through the *shipped, unmodified*
-  `parseQueue`, `selectNextPending` and `precheckDependencies`, over three graphs: a dependent whose
-  sole dependency is the target, a dependent with two dependencies one of which is still `pending`,
-  and no dependent at all.
-- **Oracle:** `parseQueue` resolves the same five columns as before migration (the sixth is ignored by
-  `colIndex` — asserted by comparing the parsed row objects to the pre-migration parse, field by
-  field); the target row's `status` is **exactly** the string `done`; the first graph's dependent is
-  **selected** by `selectNextPending`; the second is **not** (and the reason names the still-pending
-  dependency); the third selects nothing. Both halves of AC-6.3 are asserted, so the gate is proven to
-  have been what was holding the dependent shut.
+  `parseQueue` / `selectNextPending` / `precheckDependencies`, over three graphs: a dependent whose
+  sole dependency is the target; one with two dependencies, the other still `pending`; and none.
+- **Oracle:** `parseQueue` resolves the same five columns as before migration (the sixth ignored by
+  `colIndex`, asserted by comparing parsed row objects field by field); the target row's `status` is
+  **exactly** `done`; graph 1's dependent is **selected**, graph 2's is **not** (with the reason naming
+  the pending dependency), graph 3 selects nothing. Both halves of AC-6.3, so the gate is proven to
+  have been what held the dependent shut.
 
 ## 6. Phase-level integration properties
 
 **PROP-M-16 — `merged` is never downgraded. No post-merge failure, in any combination, changes
 `mergeStatus`.**
 *(Error Handling · **I** · `enum(2⁴ = 16)` annotation subsets × 2 entry rows (18 and 3) = 32 · A7 — `mergePhase.test.js`)*
-- **Domain:** the full power set of FSPEC §11's four composable annotations — M2 branch-deletion
-  failure, M3 tree-update failure, M4 disposition `error`, M4 disposition `recorded (uncommitted)` —
-  applied over both the merge-performed row 18 and the already-merged row 3.
-- **Oracle:** every one of the 32 runs reports `mergeStatus: "merged"` with the merge SHA present, and
-  the notices channel carries exactly the escalation/note lines the applied subset predicts, in
-  §9.3's order (guard, CI, queue-write, tree-update). The empty subset asserts **no** notice beginning
-  `MERGE ESCALATION: `; the all-four subset is AT-M6 and asserts all lines with their order. The
-  pipeline `outcome` is `success` in all 32 — the second half of AC-1.3's shape.
+- **Domain / oracle:** the full power set of §11's four composable annotations (M2 deletion failure,
+  M3 tree failure, M4 `error`, M4 `recorded (uncommitted)`) over both row 18 and row 3. All 32 runs
+  report `mergeStatus: "merged"` with the SHA present, pipeline `outcome: "success"`, and exactly the
+  escalation/note lines the applied subset predicts in §9.3's order. The empty subset asserts **no**
+  notice beginning `MERGE ESCALATION: `; the all-four subset is AT-M6, asserting all lines in order.
 
 **PROP-M-17 — Report totality. Every pipeline path reports a `mergeStatus` from the closed set, and
 every non-`merged` value carries a one-line reason.**
 *(Contract · **I** · `enum(25 §11 rows + 3 halt paths)` · A8 — `mergePhase.test.js`, `pipelineWiring.test.js`, `reportTemplates.test.js`)*
 - **Domain:** all 25 §11 rows driven through `phaseMerge` into `buildFinalReport`, plus three runs
-  halted before Phase MERGE (at R, at I, at DOD) and one with `PHASE_MERGE_ENABLED: false`.
-- **Oracle:** every report — success path *and* halt path — carries the keys `mergeStatus`, `mergeSha`
-  and `mergeMethod` (`Object.hasOwn`, not truthiness, so `null` counts as present);
-  `mergeStatus ∈ MERGE_STATUSES`; for `deferred` and `refused` the `reason` is a non-empty single line
-  naming the condition from AC-6.1a's table and the §9.4 merge-deferred note is emitted; for `skipped`
-  and `merged` that note is **absent**; `mergeSha` is a non-empty string **iff** `mergeStatus` is
-  `merged` and an oid was observed; `mergeMethod ∈ {rebase, merge, squash, unknown, null}` and is
-  `"unknown"` exactly on row 3. Halt paths report `mergeStatus: "skipped"` (row 23).
+  halted before Phase MERGE (at R, I, DOD) and one with `PHASE_MERGE_ENABLED: false`.
+- **Oracle:** every report — success *and* halt path — carries `mergeStatus`, `mergeSha`,
+  `mergeMethod` by `Object.hasOwn` (so `null` counts as present); `mergeStatus ∈ MERGE_STATUSES`; for
+  `deferred`/`refused` the `reason` is a non-empty single line naming AC-6.1a's condition and the
+  §9.4 note is emitted, for `skipped`/`merged` that note is **absent**; `mergeSha` is a non-empty
+  string **iff** `merged` with an observed oid; `mergeMethod ∈ {rebase, merge, squash, unknown, null}`
+  and is `"unknown"` exactly on row 3; halt paths report `skipped` (row 23).
 
 **PROP-M-18 — No mutation before resolution (NFR-2). A run that does not report `merged` issues no
 state-changing command.**
 *(Security · **I** · `enum(25 rows)` × `rand(200)` observation perturbations · A7 — `mergePhase.test.js`)*
-- **Domain:** every §11 row, plus 200 seeded `passingGh` perturbations (each overriding one surface
-  with a randomly drawn recognised-or-degraded value) — the domain in which a mis-ordered guard would
-  show up as an unexpected merge.
-- **Oracle:** for every run whose `mergeStatus` is not `merged`, `fakeGhRun`'s recorded commands
-  contain **zero** matching `/^gh pr merge/`, and `fakeGit`'s recorded argv contain zero `push`,
-  `checkout`, `rebase` or `merge` verbs, and `_recordQueueRow` was **not called**. For every run that
-  does report `merged`, the count of `/^gh pr merge/` commands is **≥ 1 and ≤ 3** and `_recordQueueRow`
-  was called **exactly once** — the behavioural call-count oracle, because a merge that happened twice
-  and a merge that happened once produce the same envelope.
+- **Domain:** every §11 row, plus 200 seeded `passingGh` perturbations each overriding one surface
+  with a drawn recognised-or-degraded value — the domain where a mis-ordered guard shows up as an
+  unexpected merge.
+- **Oracle:** every non-`merged` run recorded **zero** `/^gh pr merge/` commands, **zero** `push` /
+  `checkout` / `rebase` / `merge` git verbs, and **no** `_recordQueueRow` call. Every `merged` run
+  recorded **≥ 1 and ≤ 3** merge commands and **exactly one** `_recordQueueRow` call — a behavioural
+  call-count oracle, because one merge and two merges produce the same envelope.
 
 **PROP-M-19 — Notice-catalogue closure. Every operator-visible line the phase emits is a member of a
 frozen catalogue, and every escalation carries the exact prefix.**
 *(Observability · **I** · `enum(25 rows + 32 annotation runs)` · A7 — `mergePhase.test.js`)*
-- **Domain:** the union of PROP-M-16's and PROP-M-17's runs; every line the phase pushed onto
-  `notices` is collected across all of them.
-- **Oracle:** each collected line either starts with `MERGE ESCALATION: ` and matches a template
-  produced by `MERGE_ESCALATIONS` under some parameters, or matches a `MERGE_NOTES` template — checked
-  by rendering both catalogues with the run's own parameters and comparing exact strings, never by
-  substring sniffing. Cardinality is asserted positively: `MERGE_ESCALATIONS` has **4** members,
-  `MERGE_NOTES` has **7** (TSPEC §10.2), both `Object.isFrozen`, and the union of lines observed
-  across the domain covers **every** member at least once — so a catalogue member that no run can
-  produce is a failure, not dead weight.
+- **Domain / oracle:** every line pushed onto `notices` across PROP-M-16's and PROP-M-17's runs either
+  starts with `MERGE ESCALATION: ` and equals a `MERGE_ESCALATIONS` template rendered with the run's
+  own parameters, or equals a `MERGE_NOTES` template — exact-string comparison, never substring
+  sniffing. Cardinality positive: `MERGE_ESCALATIONS` has **4** members and `MERGE_NOTES` **7**
+  (TSPEC §10.2), both `Object.isFrozen`, and the observed union covers **every** member at least once,
+  so a catalogue member no run can produce is a failure rather than dead weight.
 
 **PROP-M-20 — Phase MERGE never throws. For any fault at any single injected call site, the phase
 returns a well-formed `MergeOutcome` and the pipeline does not halt.**
 *(Error Handling · **I** · `enum(4 seams × ≈14 call indices ≈ 56)` · A7 — `mergePhase.test.js`)*
 - **Domain:** for each of `_ghRun`, `_git`, `_readFile`, `_recordQueueRow`, a double that behaves
-  normally for the first *k* calls and then throws, for every reachable *k* on a merging fixture
-  (TSPEC §11.1 enumerates the await sites, so the index range is derived from that list, not guessed).
-- **Oracle:** `phaseMerge` **resolves** (never rejects) in every case; the outcome's `mergeStatus ∈
-  MERGE_STATUSES` and `row ∈ ROW_IDS ∪ {"internal"}`; when `row === "internal"` the status is
-  `refused` and a reason is present; and — driven through `main()` — the pipeline `outcome` is
-  `success` and the phase row's glyph is never `❌`, since a `❌` would make a non-merge look like the
-  halting phase (TSPEC §10.3). Positive control: the same fixture with no fault injected reports
-  `merged`, so the property is not passing because everything refuses.
+  normally for *k* calls then throws, for every reachable *k* on a merging fixture — the index range
+  derived from TSPEC §11.1's enumeration of await sites, not guessed.
+- **Oracle:** `phaseMerge` **resolves** (never rejects) in every case; `mergeStatus ∈ MERGE_STATUSES`
+  and `row ∈ ROW_IDS ∪ {"internal"}`; `row === "internal"` implies `refused` with a reason; and
+  through `main()` the pipeline `outcome` is `success` with the phase glyph never `❌` (a `❌` would
+  make a non-merge look like the halting phase, TSPEC §10.3). Positive control: the same fixture with
+  no fault reports `merged`, so this does not pass by refusing everything.
 
 ## 7. Coverage matrix
 
