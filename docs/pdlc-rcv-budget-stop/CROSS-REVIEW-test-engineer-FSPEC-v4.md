@@ -27,11 +27,17 @@ Two, both Low, both in text v1.3 added. No High, no Medium.
 
 ## Questions
 
-_(pending)_
+None. Q-06 was answered in §5.3 and I am opening no new ones — every question I could ask at this altitude is now either answered or forwarded to TSPEC/PROPERTIES by a named edge (F-N-4, O-10).
 
 ## Positive Observations
 
-_(pending)_
+- **F-10 was closed by the stronger route, not the cheaper one.** I offered two fixes and said the first was stronger; v1.3 took it. B-HALT-4a does not merely narrow AT-REG-06's conjunct to what the old text guaranteed — it makes the guarantee *bigger*, so whole-file byte equality becomes a total oracle and the fail-closed claim becomes total with it. The argument it rests on is the right one and is stated rather than assumed: *heading absent* and *file unreadable* are different observations, and only the first admits an insert position.
+- **§5.3's *one behavioural class* paragraph answers Q-06 in the only way that keeps the oracle total.** Collapsing undecodable-but-writable and denied-in-both-directions into one class is defensible **because** of B-HALT-4a — they differ only in what a write would have done, and no write is attempted — and the paragraph says exactly that. Leaving both fixtures available to PROPERTIES as *evidence that the no-write rule holds, not two branches* is the right split: the FSPEC fixes the class, PROPERTIES chooses the realisations.
+- **§7.2 scopes the presence probe's false-negative out explicitly instead of letting it hide inside §7.4's safe rule.** A probe that *cannot be evaluated* takes the existing path; a probe that *answers absent for a present file* would take the creating path and cause the exact harm the clause exists to prevent. Naming that second direction, deferring it to `REQ-RCV-07` AC-7.5 (F-N-1), and giving TSPEC the obligation to choose a probe whose failure mode is *unevaluable*-rather-than-*absent* (F-N-4) is a boundary stated rather than worked around — and it is the difference between a deferral and a gap.
+- **§11.4's *Wording, because the root is overloaded* note is the kind of paragraph that survives editing.** *Convergence halt* (§6.1's `fixed-point:` / `no-revision:` stop) and *converge* (the clause's outcome) are opposite outcomes sharing a root; the note separates them and states flatly that a convergence halt is **not** an exception to the clause. That closes the reading under which a granting row could reach §6.1's halt and still claim to satisfy the clause.
+- **AT-CLR-02's dropped conjunct records why it was dropped.** *"The conjunct could not fail"* plus the re-homing to AT-CLR-04/AT-CLR-08 means the property is still covered and the vacuous assertion cannot be restored by an editor who reads the row without this review. Deleting an unfalsifiable conjunct and saying so beats keeping it for the appearance of coverage.
+- **F-13's fix generalised past the field I asked for.** I asked for *the same last `HALT-REASON:` prefix*; §5.4 gives *the same prefix class — equivalently, the same §6.1 gate branch*, which also covers B-CLR-3's unparseable value, the one member that has no prefix to share. It also records that the conjunct is latent at this ship and binding at `pdlc-rcv-fixed-point-stop`, so a future editor knows it is load-bearing rather than decorative.
+- **I re-derived every arithmetic claim in the changed rows.** AT-CLR-04's new precondition (entry 1 approves at round 2 ⇒ highest existing 2 ⇒ `D = 3 ≤ E = 3`; `A = H = 1` at the gate; `forcePhases` moves no count; step G still passes because the marker was never stripped), AT-REG-06 (`W = 1`, highest 3 ⇒ `S = 4 > E = 3`, a halt is reached, clause 3 refuses with no write), AT-REG-07's worked pair (`H = 3, A = 1` ~ `H = 2, A = 1`), and F-14's proposed *no later than* wording against all four granting rows. Nothing in the changed sections is arithmetically wrong, and §13.1 carries B-HALT-4a on the AC-1.4 row with no orphaned branch ids.
 
 ## Recommendation
 
