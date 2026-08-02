@@ -17,7 +17,20 @@ feature: pdlc-rcv-budget-stop
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude + operator | 1.1 | 2026-08-02 |
+| pdlc | draft | Claude + operator | 1.2 | 2026-08-02 |
+
+**v1.2 — feedback round 2** (`CROSS-REVIEW-software-engineer-FSPEC-v2.md`,
+`CROSS-REVIEW-test-engineer-FSPEC-v2.md`). se F-01 (High): §7.2 states the *creating* vs *existing*
+discriminator — **file presence**, never the region read or the shipped status — so a
+present-but-unreadable post-mortem is never re-authored over, and its halt refuses at clause 3
+(B-HALT-4, no new `{which}` literal, catalogue unchanged); §7.4, §5.3, E-8 and AT-REG-06 carry the
+entry's continuation instead of stopping at "nothing written". se F-02 / te F-08: §5.4 and AT-REG-07
+restate the pairing relation over the **gate-relevant state**, so the `H − A ∉ {0, 1}` member has a
+constructible pair. te F-09 (Medium): §11.4 fixes the dispatch outcome for every clearance row —
+granted windows converge before their last round unless the row says otherwise. se F-03: §4.4 states
+that `D` is derived before the gate and only the admission arithmetic follows it. se F-04: B-CLR-2's
+guard names `S`, not `D`. se F-05: E-14b and §7.3 state the clause-3 creating-halt cost. se Q-01:
+AT-CLR-04's Given is marked a constructed state.
 
 **v1.1 — feedback round 1** (`CROSS-REVIEW-test-engineer-FSPEC-v1.md`). F-01: B-BUD-3 gains a
 discriminating observable and AT-BUD-03 splits into 03a/03b. F-02: B-CLR-2a dispositions a resume
@@ -980,7 +993,7 @@ inherits this choice (O-10).
 | AC-1.1 (budget of three, per document, absolute; scope of typed vs untyped loops) | FSPEC-BUD-01, FSPEC-WIN-01 | B-BUD-1, B-BUD-2, B-BUD-3, B-WIN-1, B-WIN-4, B-WIN-5 | AT-BUD-01, AT-BUD-02, AT-BUD-03a, AT-BUD-03b, AT-WIN-01, AT-WIN-04, AT-WIN-05 |
 | AC-1.2 (one constant, one budget) | FSPEC-BUD-01 | B-BUD-4, B-BUD-5 | AT-BUD-04, AT-BUD-05 |
 | AC-1.3 (reported quantities named; empty verdict list) | FSPEC-RPT-01 | B-RPT-1, B-RPT-2, B-RPT-3, B-RPT-5, B-HALT-3 | AT-RPT-01…03, AT-RPT-05, AT-HALT-03 |
-| AC-1.4 (halt unchanged in kind; region maintained; no re-author) | FSPEC-HALT-01, FSPEC-PROMPT-01 | B-HALT-1…B-HALT-9, B-PMT-3 | AT-HALT-01…09, AT-PMT-03 |
+| AC-1.4 (halt unchanged in kind; region maintained; no re-author; the file-presence discriminator) | FSPEC-HALT-01, FSPEC-PROMPT-01 | B-HALT-1…B-HALT-9, B-PMT-3 | AT-HALT-01…09, AT-PMT-03, AT-REG-06 (the unreadable-file continuation: B-HALT-2, B-HALT-4) |
 | AC-1.5(1) (window end; zero-round halt; row C; `forcePhases`) | FSPEC-WIN-01, FSPEC-RPT-01 | B-WIN-2, B-WIN-6, B-WIN-7, B-RPT-4 | AT-WIN-02, AT-WIN-06, AT-WIN-07, AT-RPT-04 |
 | AC-1.5(2) (start unchanged; origin wins) | FSPEC-WIN-01 | B-WIN-3 | AT-WIN-03 |
 | AC-1.5(3) (the one operator reset) | FSPEC-CLR-01 | B-CLR-4, B-CLR-5 | AT-CLR-04, AT-CLR-05, AT-CLR-08, AT-RPT-07 |
