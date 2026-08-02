@@ -186,6 +186,40 @@ as a case-sensitive, position-0, `/`-terminated prefix — and never otherwise.*
 
 ## 4. Configuration and method-policy properties
 
+**PROP-M-09 — Config totality. For any input text, `parseMergeConfig` returns a complete config whose
+every key is inside its accepted domain, and never throws.**
+*(Contract · **P** · `enum(40)` shapes + `rand(500)` JSON values · A1 — `mergeConfig.test.js`)*
+- **Domain:** `null`, `""`, non-JSON bytes, JSON scalars, arrays, `{}`, `{merge: <non-object>}`, and a
+  seeded generator producing `{merge: {...}}` where each of the seven keys independently takes a value
+  drawn from `{valid, wrong type, out of domain, null, missing}` — plus the boundary pair
+  `mergeableRetries: 10` (accepted) and `11` (defaulted), and `0` for both integers.
+- **Oracle:** the returned object has **exactly** the seven `MERGE_DEFAULTS` keys; `mergeMode ∈
+  MERGE_MODES`; the three booleans are `typeof "boolean"`; both integers are `Number.isInteger` and
+  within `0…MERGE_MAX_RETRIES` / `≥ 0`; `guardPaths` is an array of non-empty strings. `MERGE_DEFAULTS`
+  is deep-equal to its snapshot afterwards — the mutation this property exists to catch.
+
+**PROP-M-10 — Independent fallback. One bad key never defaults another.**
+*(Error Handling · **P** · `enum(7 keys × 4 bad values = 28)` · A1 — `mergeConfig.test.js`)*
+- **Domain:** a fully valid non-default `merge` section (every key set away from its default), with
+  exactly one key replaced by each of four out-of-domain values.
+- **Oracle:** the corrupted key equals its `MERGE_DEFAULTS` value **and** all six others equal the
+  non-default values supplied — the positive half, without which "everything defaulted" would pass.
+  `sectionMalformed` is `true` **only** for the `merge`-is-not-an-object shape and `false` for all 28,
+  which is what keeps E3's note off the other 27 paths.
+
+**PROP-M-11 — Squash unreachability. Under the shipped configuration, no code path can issue a squash
+merge.**
+*(Security · **P + I** · `enum(8 caps × 5 configs)` + `enum(25)` phase rows · A4 unit + A7 phase — `mergeDecision.test.js`, `mergePhase.test.js`)*
+- **Domain:** `mergeCandidates(caps, config)` over all 8 capability triples × configs where
+  `allowSquashMerge ∈ {absent, false, null, "true", 1}` (every non-`true` shape the config reader can
+  emit); and, at phase level, every §11 row driven with the shipped defaults.
+- **Oracle:** `"squash"` is **absent from the returned array** — not merely skipped at attempt time —
+  for every non-`true` case; the array's order is `["rebase", "merge"]` filtered by capability;
+  `fakeGhRun`'s recorded commands contain **zero** occurrences of `--squash` across every phase run.
+  Positive control: the single `allowSquashMerge: true` × `squash-allowed` case **does** yield
+  `"squash"` last and, at phase level, reports `mergeMethod: "squash"` on success — so the property is
+  falsifiable in both directions and an implementation that dropped squash entirely also reds.
+
 ## 5. Queue write-back properties
 
 ## 6. Phase-level integration properties
