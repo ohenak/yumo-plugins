@@ -85,6 +85,51 @@ acceptance test. §11's first row is the index.
 
 ## 3. FSPEC-BUD-01 — The budget constant and every place it is reported
 
+**Linked criteria:** AC-1.1 (scope), AC-1.2. **Threshold:** `MAX_REVIEW_ROUNDS`, default **3**
+(baseline §3; note at §3.1). Written **`BUDGET`** below when the value, not the name, is meant.
+
+### 3.1 Which loops the window mechanisms reach
+
+The discriminator is *"the phase names a document type"*, not membership of a dispatch table.
+
+| Branch | Loop | Window | Reset region, `W`, clearance, refusal |
+|---|---|---|---|
+| **B-BUD-1** | A **document-typed** review phase — R/REQ, F/FSPEC, T/TSPEC, D/DECISIONS, P/PLAN, PR/PROPERTIES | `BUDGET` rounds from the origin `W` (§4), **absolute per document** | apply in full |
+| **B-BUD-2** | **Phase CR** — names no document type (M-7f) | `BUDGET` rounds from wherever that invocation starts — **per-invocation**, unchanged in kind, narrowed from 5 to 3 | **do not apply.** A Phase CR halt creates **no** `## Reset Region` and reads none |
+| **B-BUD-3** | **Phase DOD** — runs its own loop, bounded by its own constant | takes **no value** from `BUDGET` | do not apply |
+
+**Behavioural rule.** A phase that names no document type has no cross-review basenames of that type
+to count from, so it has nothing an absolute window could be anchored to; giving it one would
+silently anchor it to another document's history. This is `N-7` restated because AC-1.1 narrows it.
+
+### 3.2 One budget, reported everywhere as the effective value
+
+**B-BUD-4 — every report of the budget is the effective budget.** Wherever the pipeline reports the
+budget to an operator — the non-convergence phase record, the post-mortem's Iterations section
+(§8.1), and the returned `iterations` field (M-1c) — the value shown is the effective budget. A halt
+message saying `5` while the loop admits 3 rounds is a defect, on any of the three surfaces and on
+either loop class above. Phase CR keeps its shipped Iterations render, now carrying **3**; the
+two-integer render of §8.1 is scoped to document-typed halts.
+
+**B-BUD-5 — the width changes in one place.** After this feature ships, **exactly one
+hand-maintained declaration in executable code states the budget's value**, repo-wide, production
+and test code alike, and everything needing the value reads that declaration. Three classes of site
+sit outside that count and are individually accounted for rather than forbidden (split §5.7):
+
+| Class | Disposition |
+|---|---|
+| **Generated copy** — every occurrence under `pdlc/workflows/dist/` and `.claude/workflows/` | rebuilt in the same commit (**O-11**); CI's *Generated artifacts are in sync* job makes the rebuild non-optional. Outside the count, inside the enumeration |
+| **Prose stating the number** — `CLAUDE.md`'s *Review loop mechanics* paragraph is the known one | updated **in the same commit** |
+| **Deliberately pinned non-budget literal** — an expectation whose value happens to equal today's width but whose meaning is a fixed round count | stays a literal and **says so at its site** |
+
+**The decidable observable is the enumeration, not a grep.** The change ships with a closed list of
+every textual occurrence of the width, each classified into one of five classes — *the declaration*,
+*read from it*, *generated copy*, *prose*, *pinned non-budget literal* — and that list is compared
+against a repo scan **by machine**. A site absent from the list, or a second hand-maintained
+executable declaration, is the violation. **Which** mechanism carries the comparison, **how** the
+declaration is reachable from test code, and **which** sites exist are `REQ-RCV-01` O-13's (TSPEC);
+this flow fixes only the outcome.
+
 ## 4. FSPEC-WIN-01 — Window resolution and round admission
 
 ## 5. FSPEC-REG-01 — The reset region as a read model
