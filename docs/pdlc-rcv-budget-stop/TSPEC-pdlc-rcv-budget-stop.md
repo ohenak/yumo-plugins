@@ -1149,4 +1149,51 @@ but **not** this file), is **PLAN's** per DC-10.
 
 ## 10. Traceability
 
+### 10.1 REQ criterion → FSPEC branch → component
+
+| REQ criterion | FSPEC branches | Owning symbol(s) | §|
+|---|---|---|---|
+| **AC-1.1** — budget of three, per document, absolute; typed vs untyped scope | B-BUD-1…3, B-WIN-1, B-WIN-4, B-WIN-5 | `MAX_REVIEW_ROUNDS`, `windowEnd`, `phaseWindow`, `deriveRoundWindow` | §6.1, §8.1 |
+| **AC-1.2** — one constant, one budget | B-BUD-4, B-BUD-5 | the exported declaration; `budgetWidthViolations` | §8 |
+| **AC-1.3** — reported quantities named; empty verdict list | B-RPT-1, B-RPT-2, B-RPT-3, B-RPT-5, B-HALT-3 | `renderIterationsHeading`, `applyIterationsSection`, `locateIterationsHeading`, `LoopResult.roundsRun` | §6.5, §6.6 |
+| **AC-1.4** — halt unchanged in kind; region maintained; no re-author; file-presence discriminator | B-HALT-1…9, B-HALT-4a, B-PMT-3 | `maintainRegionOnHalt`, `applyHaltUpdate`, `_statFile` | §5.2, §6.4 |
+| **AC-1.5(1)** — window end; zero-round halt; row C; `forcePhases` | B-WIN-2, B-WIN-6, B-WIN-7, B-RPT-4 | `reviewLoop`'s `iteration > endIndex` branch; `reviewRows` | §2.3, §4.4, §6.6 |
+| **AC-1.5(2)** — start unchanged; origin wins | B-WIN-3 | `phaseWindow`'s `Math.max(D, W)` | §6.1 |
+| **AC-1.5(3)** — the one operator reset | B-CLR-4, B-CLR-5 | `resolveClearance` steps 1–2; shipped step G | §6.3 |
+| **AC-1.5(4)** — anchored and consumed; counts; named predicate; ordering | B-REG-1…7, B-CLR-1, B-CLR-3, B-CLR-6, B-CLR-7 | `parseResetRegion`, `resolveClearance`, `validationConjunct`, `_validateRegion` | §6.2, §6.3 |
+| **AC-1.5(5)** — which halt it was; S-11 resumes; row B | B-CLR-2, B-CLR-2a, B-HALT-7, B-RPT-6 | `gateBranch`, `haltReasonValue`, §7.2's refusal shape | §6.3.1, §6.6, §7.2 |
+
+### 10.2 FSPEC acceptance test → the seam that makes it possible
+
+Only the rows where a seam choice is what makes the test writable at all; the rest follow from
+§9.1's levels.
+
+| AT | Depends on |
+|---|---|
+| **AT-BUD-03b** | the exported constant (§8.1) — otherwise `BUDGET` cannot be varied from test code |
+| **AT-BUD-05** | `budgetWidthViolations(root)` over a fixture root (§8.3) |
+| **AT-REG-06** | `_statFile` answering `{exists:true}` while `_readFile` answers `null` (§9.2's fault map) — the pair that realises *present but unreadable* |
+| **AT-CLR-06** | the answering line being written from `phaseGate`, before `reviewLoop` is constructed (§6.3) |
+| **AT-CLR-07 / AT-HALT-04 / AT-HALT-05** | the `write-noop` fault mode (§9.2); without a write that lies, no confirmation can fail |
+| **AT-HALT-02** | the separate authoring-dispatch counter (§9.2) plus a checked-in golden (§9.3) |
+| **AT-RPT-04 / AT-RPT-06 / AT-RPT-07** | `reviewRows` on the final report (§4.4) — row B and row C need a schema'd carrier, and AT-RPT-07 asserts its **absence** |
+| **AT-PMT-01/02** | the post-mortem prompt composed in `reviewLoop` (`:1962`–`:1967`), asserted as a string, as `skillFiles.test.js` already asserts prompt literals |
+
+### 10.3 Files touched
+
+| Path | Change | Kind |
+|---|---|---|
+| `pdlc/workflows/orchestrate-dev.js` | the declaration, the two model clusters, `phaseWindow`, `resolveClearance`, `maintainRegionOnHalt`, `reviewLoop`, `checkConverged`, `buildFinalReport`, `defaultStatFile` | modified |
+| `pdlc/workflows/runtime-adapter.js` | `rtStatFile`, wired into the seam bundle beside `rtCheckFile` | modified |
+| `pdlc/workflows/lib/budget-sites.mjs` | `budgetWidthViolations`, `validatorConsultationSites` | **new** |
+| `pdlc/workflows/lib/budget-width-sites.json` | the classified enumeration (§8.2) | **new** |
+| `pdlc/workflows/__tests__/resetRegion.test.js`, `resetRegionIO.test.js`, `budgetSites.test.js` | L1/L3 suites | **new** |
+| `pdlc/workflows/__tests__/{roundDerivation,reviewLoop,pacingWrapper,haltAndQueue}.test.js` | width re-expression, key-set growth, new pipeline legs | modified |
+| `pdlc/workflows/dist/*` | rebuilt (**O-11**) | **generated — never hand-edited** |
+| `CLAUDE.md`, `README.md` | the prose width sites (§8.2) | modified, same commit |
+
+`docs/_constraints/*` and every `pdlc/skills/*/SKILL.md` are **untouched**: O-9's clause lands in
+the workflow's inline post-mortem prompt (`:1962`–`:1967`, M-7e), not in a SKILL file, because that
+prompt is composed by the loop and has no SKILL of its own.
+
 ## 11. Obligation disposition
