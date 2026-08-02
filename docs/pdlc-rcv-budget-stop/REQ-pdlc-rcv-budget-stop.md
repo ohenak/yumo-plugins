@@ -356,22 +356,20 @@ called 0 times** and no new cross-review file appears; the post-mortem carries t
 
 ## 6. Declared thresholds
 
-The shared table is `docs/_constraints/pdlc-rcv-baseline.md` §3. This REQ **owns** six of its rows
-and reads two more; it changes none of the others, and a threshold used here and absent there is a
-defect. **One row below sits outside baseline §3's scope deliberately, not by defect:**
-`budget-exhausted:` is a render fixed by catalogue §2. **The three refusal-render rows v1.6 carried
-here are `REQ-RCV-07` §6's and catalogue §4's** — this REQ now mints no operator string of its own.
+The shared table is `docs/_constraints/pdlc-rcv-baseline.md` §3, and this REQ's per-row notes are
+**baseline §3.1** (relocated there at round 9). This REQ **owns** six of its rows and reads two more;
+it changes none of the others, and a threshold used here and absent there is a defect. **The three
+refusal-render rows v1.6 carried here are `REQ-RCV-07` §6's and catalogue §4's** — this REQ now mints
+no operator string of its own. Two grammars are restated below because §4.1 and AC-1.5(4) depend on
+their being **in force at this ship** rather than deferred with the consistency checks (X-06).
 
-| Name | Default | Owned / read | Note |
-|---|---|---|---|
-| `MAX_REVIEW_ROUNDS` | **3** (was 5) | owned | The one constant AC-1.2 changes. AC-1.1 makes it absolute per document, not per invocation. |
-| `## Reset Region` | that exact heading | owned | S-12. Created by the first halt of a phase, preserved by every later one (AC-1.4 clause 1). |
-| `HALT-REASON: {value}` | one line per halt, appended at the end of the region; `{value}` the `; `-joined render in the catalogue §3 precedence order | owned | S-15. `H` is exactly the number of halts taken. |
-| `WINDOW-START: {N}` | `{N}` a decimal integer ≥ 1 | owned | S-13. Written by the loop, **never authored by a human**. The prohibition is scoped to *authoring*, which is what exempts `REQ-RCV-07` AC-7.4's sanctioned repairs and AC-7.5's act 1. **Deleting a single answering line is forbidden at every `H − A`**, because it lowers `A` alone (AC-7.4). |
-| `WINDOW-RESUMED: {W}` | `{W}` a decimal integer ≥ 1 equal to the origin then in effect | owned | S-14. Answers a clearance without moving the origin. |
-| `reset-region-corrupt: …` | the render fixed in catalogue §2's S-16 row, character for character, and **not repeated elsewhere** | owned | S-16. One notice per entry whatever the fault count. AC-1.5(4) fixes *when* it is emitted; its sole emitter and its `{reason}` selection are `REQ-RCV-07` AC-7.1 step 4's. |
-| `budget-exhausted: …` | the render fixed in catalogue §2's S-4 row | owned | Rendered from `W` and the constant: a clause that hard-codes `rounds 1..3 of 3` is a defect. |
-| `no-revision: …` / `fixed-point: …` | as the catalogue fixes them | **read only** | S-11 and S-3, emitted by `pdlc-rcv-fixed-point-stop` (X-05). AC-1.5(5) reads the **leading** reason of the last `HALT-REASON:` line; this REQ emits neither and may not change their grammar. |
+| Row | Owned / read | Default and note |
+|---|---|---|
+| `MAX_REVIEW_ROUNDS` | owned | **3** (was 5); baseline §3 for the derivation, §3.1 for this REQ's note |
+| `## Reset Region` (S-12), `HALT-REASON: {value}` (S-15), `reset-region-corrupt: …` (S-16), `budget-exhausted: …` (S-4) | owned | **Stated once in baseline §3, with this REQ's local notes at baseline §3.1** — relocated there at round 9, nothing changed meaning in the move |
+| **`WINDOW-START: {N}` (S-13)** | owned | **`{N}` a decimal integer ≥ 1** — the grammar, restated here because it is **in force at this ship** and §4.1's `W` row depends on it: a line whose value is not one is not a `WINDOW-START: {N}` line and contributes no value. Baseline §3.1 for the authoring prohibition and the deletion rule |
+| **`WINDOW-RESUMED: {W}` (S-14)** | owned | **`{W}` a decimal integer ≥ 1** equal to the origin then in effect — same grammar, same in-force status |
+| `no-revision: …` (S-11) / `fixed-point: …` (S-3) | **read only** | As the catalogue fixes them; emitted by `pdlc-rcv-fixed-point-stop` (X-05). Baseline §3.1 for how AC-1.5(5) reads them |
 
 ## 7. Non-goals and out of scope
 
