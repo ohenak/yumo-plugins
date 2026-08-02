@@ -72,17 +72,22 @@ nothing. Row B — the other no-round row — is `REQ-RCV-07` AC-7.6's.
 
 ### 3.1 One cross-REQ prerequisite, and what happens before it ships
 
-This REQ is the **head of the family** — nothing it needs is owed by a sibling, which is why
-`depends-on` is empty. Two clauses reach across:
+This REQ is the **head of the family at requirements altitude** — nothing it needs *as a requirement*
+is owed by a sibling, which is why `depends-on` is empty. X-06 below is a decision **procedure** a
+sibling owes, which is a forward edge and not a dependency (§10). Two clauses reach across:
 
 | # | Direction | What crosses | Behaviour until it ships |
 |---|---|---|---|
 | **X-05** | **read from** `pdlc-rcv-fixed-point-stop` REQ-RCV-02 AC-2.8 — the S-11 halt reason `no-revision: …` | AC-1.5(5)'s first table row, which resumes rather than resets the window on an S-11 halt | Until that REQ ships no halt path emits S-11, so the row is **unreachable**, every halt is a convergence halt, and AC-1.5(5) reduces to its second row. The clause is stated over both from the start, so nothing is re-specified when the successor lands. |
-| **X-06** | **owed to** `pdlc-rcv-reset-region` REQ-RCV-07 AC-7.1 — the ordered validation algorithm behind AC-1.5(4)'s *region validates* predicate, and AC-7.2/AC-7.5's refusal | AC-1.5(4)'s third gate conjunct, and everything that follows a failure of it | This is a **forward** edge, not a `depends-on`: the predicate's *meaning* and its fail-closed outcome are fixed below, so nothing here is under-determined. What is not implementable until `REQ-RCV-07` ships is the predicate's **decision procedure** — so an implementation of this REQ alone must stub it **fail-closed** (invalid ⇒ refuse). A stub returning *valid* is the fail-open AC-1.5(4) exists to close. |
+| **X-06** | **read from** `pdlc-rcv-reset-region` REQ-RCV-07 AC-7.1 — the ordered validation algorithm behind AC-1.5(4)'s *region validates* predicate, and AC-7.2/AC-7.5's refusal | AC-1.5(4)'s third gate conjunct, and everything that follows a failure of it | This is a **forward** edge, not a `depends-on`: the predicate's *meaning* and its fail-closed outcome are fixed below, so nothing here is under-determined. The conjunct **is wired into the gate at this REQ's own ship** — only the **decision procedure** waits. An implementation of this REQ alone therefore supplies that procedure as an **injected, controllable seam** whose **production default is the interim shape**: *valid on the empty region, invalid on any non-empty one* — it decides only what it can verify and treats any answering line as unvalidatable. **Fail-closed here is a shape, not a constant.** A constant *invalid* is **not** the fail-closed reading: the predicate is resolved on every entry and the empty region is declared **valid** below, so a constant would refuse every document-typed review phase on every feature — including branches that have never halted — and would block the delivery of its own replacement. The stated shape cannot grant a window, cannot open one over an unvalidated region, and leaves every branch with no reset region behaving exactly as today. A production default of *valid* is the fail-open AC-1.5(4) exists to close; that prohibition scopes to the **default**, not to the seam, which tests drive to either value (O-10). |
 
 **Consequence for sequencing.** This REQ is deliverable alone as a **requirement**, and its window,
 budget, halt path and clearance accounting are fully determined without any successor.
-`pdlc-rcv-reset-region` is queued immediately behind it; `pdlc-rcv-fixed-point-stop` depends on this
+`pdlc-rcv-reset-region` is queued at **`Order 18`**, picked up after `pdlc-rcv-finding-quality`
+(row 12) — `docs/_queue/QUEUE.md`'s own stated net pickup order is **10 → 12 → 18**, so X-06's
+interim shape is the shipped behaviour across one full intervening feature *and* across row 18's own
+Phase R, which is why it is fixed here as a shape rather than left to an implementer;
+`pdlc-rcv-fixed-point-stop` depends on this
 REQ because both its tests are stated over `W`, and `pdlc-rcv-panel-topology` depends on the two of
 them.
 
