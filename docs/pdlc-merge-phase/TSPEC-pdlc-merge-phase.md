@@ -233,6 +233,166 @@ makes the config path itself testable without a filesystem.
 
 ## 4. Observation points O1–O6 (O-M2, O-M3, O-M4, O-M7)
 
+Implements FSPEC §3. Each surface is **one function** that issues **one fixed command shape** and
+classifies its raw output against a closed value set. Every one takes `{ execFn }` exactly as
+`checkPrCi` does (`orchestrate-dev.js:3485`): `execFn` defaults to `child_process.execSync` resolved
+through the module's existing dynamic `import()` — the one construct the runtime forbids and never
+reaches, because in the bundle `execFn` is always supplied by the adapter (§11.3).
+
+### 4.1 The shared transport and the shared failure shape
+
+```js
+function ghJson(command, execFn) {          // module-private, not exported
+  let raw; try { raw = execFn(command, { stdio: "pipe", encoding: "utf8" }); }
+  catch { return { ok: false, reason: "command-failed" }; }
+  try { return { ok: true, json: JSON.parse(raw) }; }
+  catch { return { ok: false, reason: "unparseable" }; }
+}
+```
+
+Split from the classifiers deliberately: every `classify*` function is pure and takes the **raw
+string**, so the §3.2 fail-closed table is a pure-function suite with no `execFn` at all, and the
+`observe*` wrappers contain nothing but the command string and the delegation. This is `checkPrCi`'s
+own shape (`:3485`–`:3520`) generalised, not a new pattern.
+
+`reason` is drawn from the closed set `"command-failed" | "unparseable" | "field-absent" |
+"unrecognised-value" | "incomplete"` (DC-01). Every one of them is FSPEC §3.2's `unknown`; the
+distinction exists only for the operator-facing detail line.
+
+### 4.2 `O1` — PR state
+
+```
+gh pr view {prUrl} --json state,mergeable,mergeStateStatus,number,mergeCommit
+```
+
+`classifyPrState(raw)` returns
+`{ ok: true, state, mergeable, mergeStateStatus, number, mergeCommitOid } | { ok: false, reason }`,
+per-field:
+
+| Field | Recognised | On violation |
+|---|---|---|
+| `state` | `OPEN` / `CLOSED` / `MERGED` | `{ ok: false }` — FSPEC §2.2 row 4 |
+| `mergeable` | `MERGEABLE` / `CONFLICTING` / `UNKNOWN` | field is set to the sentinel `"__unrecognised__"` |
+| `mergeStateStatus` | the eight of FSPEC §3.2 | same sentinel |
+| `number` | `Number.isInteger(n) && n > 0` | `null` |
+| `mergeCommit.oid` | a string; **absent is legal** on an open PR | `null`, never a failure |
+
+The asymmetry is FSPEC §2.3's 7c split, made mechanical: an unreadable `state` is a *whole-observation*
+failure (it resolves at row 4, above the guard), while an unreadable `mergeable`, `mergeStateStatus`
+or `number` leaves the observation `ok` and is decided at **7c** by `decideMerge` (§5.4, §11 row 11a).
+Encoding that as one sentinel value rather than three booleans keeps the core's 7c branch a single
+membership test.
+
+### 4.3 `O1` re-observation on `mergeable: UNKNOWN` (FSPEC §3.3, O-M7)
+
+The loop lives in `decideMerge`/`phaseMerge`, **not** inside `observePrState` — the core demands a
+re-observation, the orchestrator sleeps and takes it (§5.3). Consequences pinned:
+
+- A run that exhausts the loop makes exactly `1 + mergeableRetries` observations, counted in
+  `record.o1Count`. Reason line: `` `mergeability still UNKNOWN after ${record.o1Count} observations` ``
+  — interpolating the counter, so the number cannot drift from the loop.
+- `mergeableRetries: 0` yields `after 1 observations`, ungrammatical and deliberately unspecial-cased.
+- A re-read that returns `{ ok: false }` ends the loop with `refused` (§11 row 11a), never `deferred`.
+- **O-M7 — the wait.** `phaseMerge` declares `_sleep = sleep` and `_now = () => Date.now()` **in its
+  own parameter list**, the default-in-callee pattern `raisePrAndVerifyCi` already uses (`:3899`,
+  `:3901`). `main()`'s `_now`/`_sleep` are declared with no default (`:4315`–`:4316`) and forwarded;
+  forwarding `undefined` therefore lands on the callee default rather than on an undefined value.
+  The wait is `config.mergeableRetryDelaySeconds * 1000` milliseconds, computed at the call site.
+
+### 4.4 `O2` — CI rollup, and `O3` — review threads (O-M3)
+
+**`O2` reuses `checkPrCi` unchanged.** `observeCi(prUrl, { execFn, _checkCi = checkPrCi })` is a
+one-line delegation returning `passed | pending | failed | none | unknown`. FSPEC §3.1's "two
+classifications of the same rollup that disagree is the defect AC-4.0 prevents" is satisfied
+structurally: there is no second classifier, and `classifyCheckRollupEntry` (`:3532`) is not copied.
+
+**`O3`** needs owner/repo/number, so `parsePrRef(prUrl)` comes first: a pure parse of
+`https://github.com/{owner}/{repo}/pull/{n}` (host ignored, trailing segments and query string
+tolerated, `n` an integer > 0), returning `null` on anything else. `null` ⇒ `O3` is `{ ok: false,
+reason: "unparseable" }` (FSPEC §3.1). When `O1` is `ok` and carries a `number`, a mismatch against
+`ref.number` also yields `{ ok: false }` — the cross-check FSPEC §3.1 requires.
+
+The query, issued through `gh api graphql`, one page per call:
+
+```
+gh api graphql -f owner={owner} -f repo={repo} -F number={number} -f cursor={cursor|""} -f query='
+query($owner:String!,$repo:String!,$number:Int!,$cursor:String){
+  repository(owner:$owner,name:$repo){ pullRequest(number:$number){
+    reviewThreads(first:100, after:$cursor){
+      pageInfo{ hasNextPage endCursor } nodes{ isResolved } } } } }'
+```
+
+`-F` (not `-f`) for `number` so it is sent as an `Int`; `cursor` is omitted on the first call and
+passed as `endCursor` thereafter. Pagination: loop while `hasNextPage`, at most
+`MERGE_MAX_THREAD_PAGES` (10) pages — 1 000 threads. Exceeding the bound, a page that fails to parse,
+a missing `nodes`, or a node whose `isResolved` is not a boolean each yield `{ ok: false }`, which is
+a **failed precondition** (`refused`, §11 row 15's sibling at 7d). Success yields
+`{ ok: true, unresolved: n }` where `n` counts `isResolved === false`; `n === 0` (including an empty
+list) passes. `reviewDecision` is **not** consulted anywhere — REQ AC-1.2 forbids the substitute, and
+its absence from every command string in this document is the check.
+
+### 4.5 `O4` — repository capabilities and default branch
+
+```
+gh repo view --json rebaseMergeAllowed,mergeCommitAllowed,squashMergeAllowed,deleteBranchOnMerge,defaultBranchRef
+```
+
+`classifyRepoCaps` requires all four booleans to be `typeof === "boolean"` **and**
+`defaultBranchRef.name` to be a non-empty string; anything else is `{ ok: false }` ⇒ `refused`
+(FSPEC §3.2, AC-2.5a — "never guess a branch name to check out"). Success:
+`{ ok: true, rebase, mergeCommit, squash, deleteBranchOnMerge, defaultBranch }`.
+
+`O4` carries no PR URL, so it is the one observation reusable across runs in principle — and
+deliberately **not** cached: one run, one observation, no cross-run state (§3.3's reasoning).
+
+### 4.6 `O5` — changed files, and the completeness rule (O-M4)
+
+Two commands, in order:
+
+1. `gh pr view {prUrl} --json files` → `files[].path`.
+2. Fallback, when and only when step 1 is **possibly incomplete**:
+   `gh api --paginate --slurp repos/{owner}/{repo}/pulls/{number}/files`, whose reply is a JSON array
+   of pages; paths come from each element's `filename`, and `previous_filename` is added when present
+   (FSPEC §4.2's rename rule — both paths matched where the surface supplies both).
+
+**The completeness rule (O-M4), stated as a decision procedure — the phase never assumes a list is
+complete, it establishes it:**
+
+| Step-1 result | Verdict |
+|---|---|
+| not `ok`, or `files` absent / not an array | **possibly incomplete** → try the fallback |
+| `files.length < MERGE_FILES_PAGE_LIMIT` | **complete** — GitHub returned fewer than a full page, so there is no next page |
+| `files.length >= MERGE_FILES_PAGE_LIMIT` | **possibly incomplete** → try the fallback |
+| any member without a string `path` | `{ ok: false, reason: "unparseable" }`, no fallback — a malformed page is not a pagination problem |
+
+The fallback is complete when it runs, parses as an array of arrays, and every element carries a
+string `filename`; otherwise `{ ok: false, reason: "incomplete" }`. `parsePrRef` failing also lands
+here. **An empty list is `{ ok: true, files: [] }`** — a valid observation of a PR with no changed
+files, which passes the guard (FSPEC §3.2's second note). `{ ok: false }` from either path makes the
+guard **fire** (§6.3), never pass.
+
+**TE-v3 N-01, resolved.** An unparseable `O1.number` reaches `O5`'s fallback before it reaches 7c,
+so the same bad input resolves at §11 row 5 when the fallback is needed and at row 11a when it is not.
+Both refuse; the difference is only the escalation. The TSPEC makes this a *fixture obligation*
+rather than a code change: §13.3 states that a row-11a fixture must keep step 1 complete
+(`files.length < 100` and parseable), and a row-5-via-`number` fixture must force the fallback. The
+test file names the constraint at the top of the parameterised table so a future author cannot
+reintroduce the ambiguity by editing a fixture.
+
+### 4.7 `O6` — merge execution
+
+`executeMerge(prUrl, method, { execFn })` issues exactly one of
+`gh pr merge {prUrl} --rebase` / `--merge` / `--squash`, then **always** reads back
+`gh pr view {prUrl} --json mergeCommit,state`. Success requires `state === "MERGED"` **and** a string
+`mergeCommit.oid`; a zero-exit command whose read-back does not confirm both is a **failed attempt**
+and the chain continues (FSPEC §6.2). Returns
+`{ ok: true, oid } | { ok: false, reason, detail }` where `detail` is the first line of stderr, kept
+for the exhaustion reason line (FSPEC §6.3).
+
+`O6` is the only mutating observation. NFR-2 is preserved by construction: it is reachable from
+exactly one place in `phaseMerge` — the `act` branch of §5.2's loop — and that branch is reachable
+only from a `decideMerge` resolution that every precondition passed.
+
 ## 5. The pure decision core — `decideMerge`
 
 ## 6. The self-modification guard
