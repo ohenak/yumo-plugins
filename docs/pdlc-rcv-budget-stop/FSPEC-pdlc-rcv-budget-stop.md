@@ -89,6 +89,33 @@ path — in §7 and §8, as observable outcomes; the threading is TSPEC's. **O-5
 **DC-05 is honoured by construction:** every `B-*` id above appears in §11 with at least one
 acceptance test. §11's first row is the index.
 
+## Behavioral Flow
+
+The behaviour of one entry into a document-typed review phase, end to end. Each step is specified in
+full by the numbered flow named beside it; this section fixes only the **order** in which the steps
+are observable, which no single flow can state on its own.
+
+| Step | What happens | Specified in | Branches |
+|---|---|---|---|
+| **0. Loop discrimination** | the phase either names a document type or does not; only a document-typed phase reaches steps 1–5 | §3 | B-BUD-1 … B-BUD-3 |
+| **1. Read the region** | `H`, `A` and `W` are read from `## Reset Region` in `POSTMORTEM-{phase}-{feature}.md`; no region, an empty region or an unreadable file all read `H = A = 0`, `W = 1` | §5 | B-REG-1 … B-REG-7 |
+| **2. Clearance gate** | with a readable `RESOLVED: yes` and `A < H`, exactly one answering line is appended and `W` may move; with `A = H` nothing is written; with no readable marker the shipped step-G refusal terminates the invocation | §6 | B-CLR-1 … B-CLR-7 |
+| **3. Window arithmetic** | `D` is derived from the branch listing, `S = max(D, W)`, `E = W + BUDGET − 1`; the window is `S … E` | §4 | B-WIN-1 … B-WIN-7 |
+| **4a. Open window** | `S ≤ E` — rounds `S … E` are dispatched exactly as today; the loop may approve, exhaust or halt for another reason | §4.1 | B-WIN-1 |
+| **4b. Exhausted window** | `S > E` — **no reviewer is dispatched and no cross-review file appears**; the entry halts at once, raising S-4 rendered from `W`, `E` and `BUDGET` | §4.1, §7 | B-WIN-2 |
+| **5. Halt-path maintenance** | on every halt in scope: the Iterations section is rewritten (clause 3), this halt's `HALT-REASON:` line is appended to the region (clause 1) and every unfenced `RESOLVED:` line is stripped (clause 2), in the order 3 → 1 → 2, in two confirmed writes | §7 | B-HALT-1 … B-HALT-9 |
+| **6. Reporting** | the operator reads the Iterations section, and the run report carries row C for a zero-round budget halt or row B for a refusing entry | §8 | B-RPT-1 … B-RPT-6 |
+| **7. Post-mortem authoring** | only a halt finding **no** post-mortem dispatches the authoring prompt; a re-halt changes the region, the `RESOLVED:` lines and the Iterations section and nothing else | §9, §7.4 | B-PMT-1 … B-PMT-3, B-HALT-2 |
+
+**The two orderings that are normative, not incidental.** The gate (step 2) runs **before** the
+window arithmetic (step 3), because a granted clearance must move `W` for the same entry that
+granted it (§4.4). Within step 5 the clauses run 3 → 1 → 2, because a strip that outlives its halt
+line is exactly what the gate would later read as an unconsumed clearance (§7.3).
+
+**Where a step refuses, the following steps do not run.** A phase refusal at step 2 (B-CLR-5,
+B-CLR-7) or at step 5 (B-HALT-4, B-HALT-5) terminates the invocation with the queue row written
+`halted`; no round is dispatched afterwards and both counts stay where the refusal found them.
+
 ## 3. FSPEC-BUD-01 — The budget constant and every place it is reported
 
 **Linked criteria:** AC-1.1 (scope), AC-1.2. **Threshold:** `MAX_REVIEW_ROUNDS`, default **3**
