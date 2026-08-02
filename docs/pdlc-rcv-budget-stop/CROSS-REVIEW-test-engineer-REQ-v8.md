@@ -40,11 +40,54 @@ production never reaches.
 
 ## Questions
 
-_pending_
+Q-06 was optional and unanswered at v7; I said I would not carry it a third time and I am not. It is
+partly overtaken anyway — with the conjunct unwired, the conformance leg it asked for can only live
+in `REQ-RCV-07`'s O-10, which is where I would file it if I were reviewing that document. No new
+questions: F-37 and F-38 are findings with stated repairs, not requests for information.
 
 ## Positive Observations
 
-_pending_
+- **The v2.2 design change is right, and it was reached by rejecting my own preferred fix twice
+  over.** At v6 I asked for a seam defaulting to *invalid*; v2.1 rejected that and gave a restricted
+  predicate; v7 I asked for that predicate's cells; v2.2 concluded the predicate itself should not
+  exist yet. The argument is checkable and I checked both horns. *Refusing horn:* an interim that
+  refuses what it cannot decide refuses on **non-emptiness**, and AC-1.4 clause 1 makes the region
+  non-empty **exactly** when the phase has halted — so the first halt of every phase would be
+  terminal, and `RESOLVED: yes` cannot clear it because `parseResolvedMarker`'s result is read
+  *inside* the gate that is failing. With `MAX_REVIEW_ROUNDS = 3` landing in the same commit, halts
+  get **more** frequent, so the disabled path gets **more** traffic — including row 18's own Phase R,
+  which would gate the replacement on the replacement not being needed. That is a genuine deadlock,
+  not a hypothetical. *Granting horn:* trivially the fail-open. Concluding that the only safe interim
+  is **no interim** is the correct reading of a two-horned dilemma, and it is the third round running
+  that this document has answered a reviewer's proposal on the merits rather than by compliance.
+- **The interim legs were rebuilt to be swap-stable, and the claim survives checking.** O-10 asserts
+  *"both its legs stay true after row 18 wires the conjunct — so neither is deleted at that commit;
+  what row 18 adds is the refusing leg"*. I verified it against AC-7.1 as the sibling states it: leg
+  1's region is `H = 1, A = 0` with no answering line, so `H − A = 1 ∈ {0, 1}` holds and there is no
+  answering-line value to range-check ⇒ valid ⇒ still grants; leg 2's region is empty, which
+  AC-1.5(4) declares valid vacuously, and `A < H` is false there under either wiring. A property that
+  does not have to be rewritten when its forward edge lands is worth much more than one that merely
+  passes today, and this is the property v7 could not have produced — the v2.1 shape would have had
+  its refusing leg deleted at row 18.
+- **The `A = H` fail-open is now closed by conjuncts rather than by adjective.** Leg 2's *"no
+  answering line written, both counts still `0`"* is exactly the pair that discriminates the two
+  readings of the old *"grants the window normally"*, and O-10 states **why** it carries them, citing
+  AC-1.5(4)'s *"the loop writes nothing and grants nothing"*. Stating the reason next to the conjunct
+  is what stops a later compression pass from deleting it as redundant — which is the failure mode
+  F-40 is about.
+- **The paired-edge rule is real, and the sibling actually carries the same words.** §10's new
+  paragraph says X-06/R-14 and `REQ-RCV-07` X-07/R-16 are *"the **same edge described from both
+  ends**"* and must be revised *"in the same commit, in the same words — including v2.2's"*. I read
+  the sibling: `REQ-pdlc-rcv-reset-region.md:96` (X-07) and `:463` (R-16) both carry the unwired
+  design, both name the two rejected horns in the same vocabulary, both cite `pdlc-rcv-split.md` §5,
+  and both agree on the queue order. The obligation was discharged in the same revision that created
+  it, which is the only evidence that a paired-edge rule is more than a promise.
+- **The relocation kept the pointer and the summary, not just the file.** `pdlc-rcv-split.md` exists
+  with §1–§4 (the narrative, the moved-clause table, what stayed, the three consequences) and §5 (the
+  paired edges), §10 keeps a one-sentence restatement of the cut plus *"no requirement, AC, `S-*` id,
+  threshold or user story changed meaning"*, and the header table gained a **Shared split record**
+  row so a reader arriving at the document cold is routed before §10. Relocation that leaves a
+  dangling reference is worse than no relocation; this one does not.
 
 ## Recommendation
 
