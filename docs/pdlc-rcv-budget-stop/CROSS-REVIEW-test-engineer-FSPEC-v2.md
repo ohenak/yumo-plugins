@@ -46,4 +46,17 @@ Ordered highest severity first. Both are new; neither is a re-litigation of an u
 
 ## Recommendation
 
+**Needs revision**
+
+One Medium and one Low. **This is not the same review again.** All five must-change items from v1 are closed on their own terms — F-01 and F-04 with genuinely discriminating oracles, F-02 by removing the bad state rather than accepting it, F-03 with a stated and argued disposition plus a test, and F-05 with exactly the Given I prescribed. No new *behavioural* hole was opened: I re-derived every arithmetic claim in the changed sections and found none wrong. My v1 pre-commitment was to approve if F-01…F-05 closed without a new behavioural hole, and I would be approving now but for one thing — F-05's residue survives the fix I asked for, and it turns out to be a **family** defect rather than one row's.
+
+**Exactly what must change:**
+
+1. **F-09 (Medium)** — add one clause to §11.4 fixing the dispatch outcome for clearance rows: in every row that grants a window, the granted window's dispatched rounds **converge before the window's last round**, unless the row states otherwise. Without it, AT-CLR-02a's discriminating conjunct (*no second `HALT-REASON:`, marker not stripped*) false-reds on a correct implementation whenever the granted window is allowed to run to exhaustion, and AT-CLR-04's *"nothing appended on either entry"* is false one round after the point v1 F-05 addressed. This is the one item I would hold a round for: AT-CLR-02a **is** F-02's fix, and its oracle has to be robust or F-02 is not actually closed in a testable sense.
+2. **F-08 (Low)** — restate AT-REG-07's "equivalent well-formed" as equivalence over the **gate-relevant state** (same truth of `A < H`, same resolved `W`, same resolved `D`) instead of *same counts*, so the `H − A ∉ {0, 1}` member has a constructible pair. Need not gate the round on its own.
+
+**Pre-commitment for round 3.** F-09 is one sentence in §11.4 and F-08 is a phrase in one AT row. If round 3 lands both — or answers F-09 by naming the exception rows explicitly instead of the blanket clause, which is equally fine — **I approve**, and I will not open new ground: I have now re-derived every changed section twice and the document's behaviour is settled as far as testability is concerned. Q-04 and Q-05 are for TSPEC and do not need to be answered here. Should the author judge F-09 to be PROPERTIES' fixture concern rather than FSPEC's, say so in §11.4 in one line and I will treat that as a disposition and approve — what I am refusing is an oracle whose stated discriminating conjunct can fail for a reason the document does not exclude, not a particular place to exclude it.
+
 ## Verdict
+
+VERDICT: Needs revision
