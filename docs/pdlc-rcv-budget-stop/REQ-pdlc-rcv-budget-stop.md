@@ -122,13 +122,13 @@ One requirement. Every acceptance criterion is in Who/Given/When/Then form over 
 **AC-1.1 — The budget is three, per document, not per invocation.** *Who:* the pipeline. *Given:* any review-loop phase **that reviews a named document type** — R/REQ, F/FSPEC, T/TSPEC, D/DECISIONS, P/PLAN, PR/PROPERTIES. The discriminator is *"the phase names a document type"*, not membership of any particular dispatch table: the round history the window is counted from is derived from that document type's cross-review basenames (M-1d), so a phase naming no document type has nothing to count. *When:* the review window is opened. *Then:* the window ends at round **3 counted from round 1 of
 that document**, and the loop halts on entering round 4 — *whatever invocation opened the earlier rounds*.
 
-**Scope: untyped loops are out.** Phase CR reviews no named document type and Phase DOD runs its own loop; N-7 excludes both and **this REQ does not change that**. For such a loop, AC-1.1's per-document window, AC-1.4's reset region and AC-1.5's `W`, clearance accounting and refusal **do not apply**. What does reach them is AC-1.2's shared constant: their **per-invocation** budget becomes 3 instead of 5 — unchanged in kind, still bounded. **That narrowing is deliberate, not a side effect the REQ is tolerating**: the same §1 evidence — blocking counts reaching their minimum at round 2 and rising after round 3 — was measured on review rounds, and nothing about Phase CR argues it converges later than a document review does. If a later measurement shows otherwise, the answer is a second declared constant for the untyped loops, which is a new threshold and therefore a new REQ; it is **not** a reason to keep 5 here. Stated here because the other reading is unsafe: an untyped loop has no per-document round history to anchor a window on, so giving it a reset region would refuse Phase CR permanently after the second clearance (O-10).
+**Scope: untyped loops are out.** Phase CR reviews no named document type and Phase DOD runs its own loop; N-7 excludes both and **this REQ does not change that**. For such a loop, AC-1.1's per-document window, AC-1.4's reset region and AC-1.5's `W`, clearance accounting and refusal **do not apply**. What does reach them is AC-1.2's shared constant: their **per-invocation** budget becomes 3 instead of 5 — unchanged in kind, still bounded. **That narrowing is deliberate, not tolerated**: §1's evidence — blocking counts bottoming at round 2 and rising after round 3 — was measured on review rounds, and nothing about Phase CR argues it converges later. If a later measurement disagrees, the answer is a second declared constant for the untyped loops — a new threshold, hence a new REQ — never keeping 5 here. Stated here because the other reading is unsafe: an untyped loop has no per-document round history to anchor a window on, so giving it a reset region would refuse Phase CR permanently after the second clearance (O-10).
 
 This is a **second behavioural change** — §1's per-invocation defect, without which §2's cost claim would bound nothing. AC-1.5 states the replacement rule and its escape hatch.
 
 **AC-1.2 — One constant, one budget.** *Who:* a maintainer. *Given:* the pipeline. *When:* they change the budget. *Then:* they change exactly one declared constant (M-1a) and no arithmetic anywhere else (M-1b). Every place the budget is reported (M-1c) must show the *effective* budget, so a halt message that says "5" while the budget is 3 is a defect.
 
-**"One" is quantified over the whole repository, not over production code**, and that is the part this criterion adds: after the change there is **no second place where the budget's value is written down** — no restated literal and no second declaration, in production or in test code. A test that needs the budget obtains it from the one declaration. This is stated as a requirement because the alternative has an operator-visible failure: a duplicate that is not updated in the same commit leaves a green suite asserting the old width while the pipeline runs the new one, which is exactly the *"reported budget disagrees with the effective budget"* defect one line up, moved into the oracle. **How** the single declaration is made reachable from test code, and **which** existing assertions encode today's width and must move with it, are O-13's — this criterion fixes the outcome, not the mechanism.
+**"One" is quantified over the whole repository, not over production code** — that is what this criterion adds: afterwards there is **no second place where the budget's value is written down**, in production or in test code, and a test needing the budget obtains it from the one declaration. Required because the alternative fails operator-visibly: a duplicate not updated in the same commit leaves a green suite asserting the old width while the pipeline runs the new one — the *"reported budget disagrees with the effective budget"* defect one line up, moved into the oracle. **How** the declaration is made reachable from tests, and **which** assertions encode today's width, are O-13's; this criterion fixes the outcome, not the mechanism.
 
 **The observable:** on every production entry of a **document-typed** phase (AC-1.1's scope) the admitted window runs from the window's origin `W` for exactly the budget's number of rounds — no entry is ever admitted a window wider than that. On an **untyped** loop, which has no `W` (AC-1.1 *Scope*), the observable is the same width with an unconstrained origin: the per-invocation window is exactly the budget's number of rounds, counted from wherever that invocation starts.
 
@@ -138,7 +138,7 @@ the post-mortem's Iterations section, the phase record and the returned `iterati
 case, the Iterations section additionally states the **rounds this entry ran** — `0` there — so the two are never conflated where the operator reads them. Both are asserted **over the
 constant**, never the literal `3`.
 
-**The render is declared, not left to the implementer.** At HEAD that section is a fixed literal carrying one number and the phrase *"limit reached"* (M-1c), which is false on a zero-round entry, so this criterion replaces it rather than extending it. The declared render is §6's `Iterations (budget {MAX_REVIEW_ROUNDS}, rounds run {k})` row — two labelled integers in one line, which is what makes the O-10 leg an equality on a fixed string instead of a substring match that any rendering satisfies. **O-14 owns producing it**; O-10 owns asserting it.
+**The render is declared, not left to the implementer.** HEAD's section is a fixed literal carrying one number and the phrase *"limit reached"* (M-1c), false on a zero-round entry, so this replaces it. The declared render is §6's `Iterations (budget {MAX_REVIEW_ROUNDS}, rounds run {k})` — two labelled integers, which makes O-10's leg an equality rather than a substring match any rendering satisfies. **O-14 produces it; O-10 asserts it.**
 
 **AC-1.4 — Existing halt behaviour is unchanged in kind, and every halt maintains the reset region.** *Who:* the operator. *Given:* the budget is exhausted. *When:* the loop halts.
 *Then:* it halts the way it halts today — writing `POSTMORTEM-{phase}-{feature}.md`, confirming the write rather than trusting the agent's reply, and refusing to re-run the phase until
@@ -147,14 +147,7 @@ a human writes `RESOLVED: yes`. This REQ changes *when* the halt happens, not *w
 Two things about that write do change, because this REQ puts machine-written state in that file. `POSTMORTEM-{phase}-{feature}.md` is a **fixed**, unversioned path, so a document that
 halts twice would have its post-mortem written twice, and the reset region (catalogue §1, S-12) lives there.
 
-**So a halt that finds an existing post-mortem does not re-author it.** *Who:* the operator. *Given:* a halt in the scope below whose `POSTMORTEM-{phase}-{feature}.md` already exists. *When:* the halt is taken. *Then:* the loop performs the region maintenance clauses 1 and 2 mandate and **changes nothing else in the file** — no authoring dispatch is made, and every other section, the `## Recommendation` included, is left byte-unchanged. Only a halt that finds **no** post-mortem authors one, the way HEAD authors it (M-7e).
-
-This is a requirement, not an optimisation, and it has two independent reasons:
-
-- **The operator's own text must survive.** The `RESOLVED: yes` an operator writes is a response to a specific `## Recommendation`. A re-author replaces that recommendation with one written by an agent that has just been told the phase halted — on the commonest new case (AC-1.5(1)) with **zero rounds of new evidence** to write it from. The operator would be reading advice about a halt, generated after they acted on the previous advice, with the previous advice gone.
-- **The zero-round halt must stay cheap.** AC-1.5(1) makes a halt with no reviewer dispatched the commonest new case; paying a full authoring dispatch for it would spend on the cheapest entry roughly what a review round costs, against a §2 value claim stated in dispatches.
-
-**What the operator sees on a re-halt, then:** the same body, plus one new `HALT-REASON:` line in the region, minus the spent `RESOLVED:` marker (clause 2) — which is exactly the record the clearance accounting needs and exactly what tells the operator this halt is not the one they already answered.
+**So a halt that finds an existing post-mortem does not re-author it.** *Who:* the operator. *Given:* a halt in the scope below whose post-mortem already exists. *When:* the halt is taken. *Then:* the loop performs the region maintenance clauses 1 and 2 mandate and **changes nothing else in the file** — no authoring dispatch, every other section including `## Recommendation` byte-unchanged. Only a halt finding **no** post-mortem authors one, as HEAD does (M-7e). Two independent reasons: the operator's `RESOLVED: yes` answers a *specific* `## Recommendation`, and re-authoring replaces it with one an agent writes from **zero rounds of new evidence** on the commonest new case; and that same case must stay cheap, since paying an authoring dispatch on an entry that dispatched no reviewer spends roughly a review round against a §2 value claim stated in dispatches. **What a re-halt looks like:** the same body, one new `HALT-REASON:` line, the spent `RESOLVED:` marker gone — exactly the record the accounting needs and exactly what tells the operator this is not the halt they already answered.
 
 **The scope of "every halt".** The rule below is quantified over **every halt that writes `POSTMORTEM-{phase}-{feature}.md` for a document-typed review-loop phase** (AC-1.1's scope, M-7e). **Not** over the pipeline's other halt classes — creator-agent failure, the branch guard, a listing failure, Phase PUB/CI, Phase DOD — none of which writes a post-mortem at HEAD, and none of which this REQ asks to start (N-4); nor over the phases N-7 excludes. So §4.1's and §6's `H` counts **post-mortem-writing halts of this phase for this document** — the only halts that leave a marker for a clearance to clear, which is what makes the pairing exact. Within that scope, no exception:
 
@@ -189,37 +182,31 @@ round history the loop derives from the branch (M-1d). *When:* the phase is (re-
    resolves** — one past the highest round of this document type on the branch, or `W` when that is
    higher; `panel-shape`, `blocking`, `growth-bytes`, `classification` **empty**, nothing dispatched or
    measured; `notice` = this halt's **S-4** reason, `; `-joined with any co-occurring reason in
-   catalogue §3 precedence order. **On row C that join is vacuous, and deliberately so**: no round is
-   dispatched, so no S-3, S-5 or S-6 can be raised, and catalogue §3 makes rows B and C mutually
-   exclusive so no S-16 appears either. A test may assert the cell is **exactly** the S-4 render, with
-   no separator. The join is written into the cell rather than dropped so that the rule is one rule at
-   every row, and so a future halt reason that *can* co-occur needs no amendment here;
+   catalogue §3 precedence order — **vacuous on row C, deliberately**: no round is dispatched, so no
+   S-3/S-5/S-6 can be raised, and rows B and C are mutually exclusive, so no S-16 either. A test may
+   assert the cell is **exactly** the S-4 render, no separator. The join is kept in the cell so the
+   rule is one rule at every row;
 
    **`forcePhases` does not grant a window; the clearance is the only route past the cap.**
    `forcePhases` overrides a **recorded approval** and nothing else (`CLAUDE.md`, *Entry (single
    feature)*), so a forced Phase R on a document already at round 3 is admitted **no rounds**: it halts
    on the budget path, maintains the post-mortem's region and row C, and writes the queue row
-   `halted`. **A second force then changes nothing, and the mechanism that stops it is the shipped
-   step-G refusal, not the counts.** Trace it: the first forced entry's halt leaves `H = 1` and, by
-   AC-1.4 clause 2, **strips** the `RESOLVED:` line — so the region stands at `H = 1, A = 0`, which is
-   `A < H`, a clearance *outstanding*, not `A = H`. What refuses the second force is that the
-   post-mortem is now unresolved, and an unresolved post-mortem refuses the phase (M-7a) — a refusal
-   `forcePhases` does not override, as stated two lines above, because it overrides a recorded
-   approval only. The counts are not the gate here; they are what the operator's *next*
-   `RESOLVED: yes` will spend. A deliberate change to a documented operator entry point, stated so it
+   `halted`. **A second force changes nothing, and what stops it is the shipped step-G refusal, not
+   the counts.** The first forced halt leaves `H = 1` and, by AC-1.4 clause 2, **strips** the
+   `RESOLVED:` line — so the region reads `H = 1, A = 0`: `A < H`, a clearance *outstanding*, not
+   `A = H`. The second force is refused because the post-mortem is now unresolved (M-7a), and
+   `forcePhases` overrides a recorded approval only. The counts are not the gate here; they are what
+   the operator's *next* `RESOLVED: yes` will spend. A deliberate change to a documented operator entry point, stated so it
    has an oracle;
 2. the window's **start** is unchanged — one past the highest existing round (M-1d), so review history stays append-only and no existing file is ever overwritten. **When that derived start falls
-   *below* the origin `W`, the origin wins: the entry starts at `W`.** The start is therefore the
-   later of the two, always inside the window `{W … W+2}` and never below it, which is what clause 4's
-   *"rounds below `W` are outside the window"* asserts. The case is reachable by a documented operator
-   act and not by any loop path — deleting cross-review files after a window was granted, while the
-   post-mortem carrying the region survives (this branch's own `e9f3264` did exactly that). Both
-   properties this REQ turns on survive the choice: **append-only** holds, because a start above
-   `highest + 1` collides with no existing file; and **no window is widened**, because the window is
-   still the three rounds from `W` — the entry simply finds some of them unspent again. The
-   alternative reading (start below `W`) would place a round outside every window, which no clause can
-   then count, and the deleted-file case would silently hand back rounds *below* the origin the
-   operator's clearance moved past;
+   *below* the origin `W`, the origin wins: the entry starts at `W`** — the start is the later of the
+   two, always inside `{W … W+2}` and never below it, which is what clause 4's *"rounds below `W` are
+   outside the window"* asserts. Reachable by a documented operator act and by no loop path: deleting
+   cross-review files after a window was granted while the post-mortem survives (this branch's own
+   `e9f3264`). Both properties survive the choice — **append-only**, since a start above `highest + 1`
+   collides with no file; and **no window widened**, since the window is still three rounds from `W`,
+   some now unspent again. The alternative would place a round outside every window, countable by no
+   clause;
 3. the **one** reset is an operator's: a `POSTMORTEM-{phase}-{feature}.md` carrying a human-written `RESOLVED: yes` outside any fenced block clears the halt, and the rounds recorded
    *before* that marker do not count against the budget of the window opened after it. This is the existing operator escape hatch, stated here because it is what makes an absolute cap
    operable rather than a dead end: an operator who has addressed the finding gets a fresh window; an unattended re-invocation does not. **No agent and no script ever writes `RESOLVED:
