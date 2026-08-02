@@ -389,13 +389,39 @@ here: an obligation on the FSPEC, TSPEC, PLAN or PROPERTIES, not a REQ revision.
 
 ## 9. Risks, assumptions and deferrals
 
+### The stopping rule for this document's own review loop
+
+Pasted here in full from `docs/_constraints/DOMAIN-CONSTRAINTS.md` **DC-09**, deliberately and not by
+reference, because DC-09's own evidence is that a stopping rule *"living only in a constraints file or
+a method document nobody loads does nothing"*, while the same rule written into the REQ changed both
+reviewers' behaviour immediately. This is the document that most needs it: it has already exhausted
+one Phase R window (`POSTMORTEM-R-pdlc-rcv-budget-stop.md`, ten rounds removed by an operator reset),
+and R-1 below records that it is reviewed by the loop it is changing. **Reviewers may cite these
+conditions by name to route a finding downstream instead of blocking on it.**
+
+- A round whose blocking findings are **all** implementability or oracle-falsifiability defects — none
+  contesting user need, scope, priority, or phasing — means the REQ has met its bar. **Approve it and
+  move the findings downstream** as named entry obligations for the receiving phase. §8 exists to
+  receive them.
+- A finding of the form *"this AC has no oracle"* must be closable by **deferring** the oracle to
+  TSPEC or PROPERTIES, not only by writing one into the REQ. Otherwise it is closable only by adding
+  prose that the next round reviews — the fix-begets-finding loop this feature exists to bound.
+- **Two consecutive rounds with a non-decreasing blocking count is a fixed point, not slow
+  convergence**, and a round in which the document grows while the count does not fall is stronger
+  evidence of the same. Distinguish plateau from **churn**: a non-decreasing count is not a fixed
+  point when all prior findings closed and the new blockers were introduced by the latest revision —
+  but say so explicitly, and pre-commit to escalating if the next round does not close them.
+- A REQ does **not** specify trace grammars, fault-injection vocabularies, fixture construction,
+  coverage floors, emitter escaping or property-generation axis tables. A finding that this document
+  omits one of those is evidence it is at its layer, not evidence of a gap.
+
 | # | Risk | Disposition |
 |---|---|---|
-| **R-1** | **This REQ is reviewed by the loop it is changing, under the old behaviour** — five per-invocation rounds, no enforced stop. The predecessor's Phase R died exactly here. | Mitigated by splitting the parent, depending on no unmeasured runtime fact (baseline §5), and keeping this document short. **Accepted and unenforceable** — the enforcement is this REQ and its successor, neither shipped; the operator watches the trajectory and halts by hand. |
+| **R-1** | **This REQ is reviewed by the loop it is changing, under the old behaviour** — five per-invocation rounds, no enforced stop. The predecessor's Phase R died exactly here. | **Mitigated by the stopping rule pasted above**, which is the structural mitigation DC-09 evidences and replaces v2.6's *"accepted and unenforceable"* disposition — that shape is the advisory one §1's P-2 identifies as having failed on three features. Also mitigated by splitting the parent, by depending on no unmeasured runtime fact (baseline §5) and by keeping this document short. **Residual:** the rule binds reviewer and author behaviour, not the loop — the mechanical enforcement is this REQ and its successor, neither shipped — so the operator still watches the trajectory and can halt by hand. |
 | **R-12** | **A repeating S-11 halt is unbounded.** Each S-11 clearance writes `WINDOW-RESUMED: {W}`, leaves `W` unchanged and (per the successor's AC-2.8) costs the window no round, so an authoring side that keeps producing zero-delta rounds yields an unbounded halt/clearance sequence with `H` and `A` growing together and the budget never exhausting. | **Accepted, and bounded by the operator rather than by the loop.** Every iteration costs one hand-written `RESOLVED: yes`, so the sequence is never unattended; capping it would need a second counter that could only deny an operator *choosing*, each time, to continue. Revisit if the S-11 path repeats in practice. |
 | **R-13** | **Migration: branches that already carry more than three rounds.** At the commit that lands `MAX_REVIEW_ROUNDS = 3`, every in-flight phase whose document has 3+ rounds is admitted no rounds and halts on the next entry, rendering S-4 as `rounds 1..3 of 3` while five rounds sit on disk. | **Correct and expected, not a defect** — the render states the *window*, not the file count. The escape is the ordinary clearance (AC-1.5(3)). No migration script, no back-fill of reset regions. |
 | **R-10** | **The reset region is machine state in a file an operator is instructed to edit.** A hand-edit can make the counts lie in either direction, and one direction restores the per-invocation budget AC-1.1 abolishes — silently and fail-open. | **Mechanised, not accepted.** AC-1.5(4) makes *the region validates* a **conjunct of the clearance gate**, so a region whose accounting cannot be trusted consumes nothing and opens nothing. The mechanism that decides it, and the sanctioned repairs that leave the operator a way back, are `REQ-RCV-07` AC-7.1 and AC-7.4 (that REQ's R-10). The residual carried here is §6's *never authored by a human*. |
-| **R-14** | **This REQ's *region validates* decision procedure is not implementable until `REQ-RCV-07` ships** (X-06), and that REQ is a whole intervening feature away — row 18, net pickup 10 → 12 → 18 (§3.1). | **Mitigated by not bringing the conjunct into force until its procedure exists** — not by sequencing, which is too weak at that distance, and not by an interim procedure, all three of which are rejected once for both ends at `pdlc-rcv-split.md` §5.1 (X-06). Until `REQ-RCV-07` ships, every branch keeps HEAD's behaviour: no refusal, no S-16, nothing AC-1.1–AC-1.5(3) and (5) do not already do. **Residual, accepted and time-boxed:** R-10's hand-edited-region fail-open stays open until row 18 — operator-caused and no wider than HEAD's, where it is open unconditionally. Nothing requires the two halves to land in the same plugin release, so no `pdlc/RELEASE-CHECKLIST.md` line is owed. |
+| **R-14** | **This REQ's *region validates* decision procedure is not implementable until `REQ-RCV-07` ships** (X-06), and that REQ is **three** intervening features away — row 18, with net pickup **10 → 12 → 13 → 17 → 18** (§3.1). The distance is longer than v2.6 stated, and one of the intervening rows is **row 17**, which emits S-11. | **Mitigated by not bringing the conjunct into force until its procedure exists** — not by sequencing, which is weaker still at this distance, and not by an interim procedure, all three of which are rejected once for both ends at `pdlc-rcv-split.md` §5.1 (X-06). Until `REQ-RCV-07` ships, every branch keeps HEAD's behaviour: no refusal, no S-16, nothing AC-1.1–AC-1.5(3) and (5) do not already do. **Two residuals, both accepted and time-boxed to row 18.** (i) R-10's hand-edited-region fail-open — operator-caused and no wider than HEAD's, where it is open unconditionally. (ii) **From row 17 onward, machine-written `WINDOW-RESUMED:` lines land in regions nothing validates.** This one is *not* covered by "no wider than HEAD's", because HEAD writes no region lines at all; it is accepted rather than closed because the alternative is an interim procedure, rejected on all three horns above, and because the exposure is bounded by the same accounting the two live conjuncts enforce — a `WINDOW-RESUMED:` line still answers exactly one halt, so the worst case is an origin the operator can read in the file and repair once AC-7.4's sanctioned repairs exist. If row 17 is picked up before row 18, that is the moment to reconsider **moving row 18 ahead of it by `Order`** — a queue decision, deliberately not a requirement here. Nothing requires the two halves to land in the same plugin release, so no `pdlc/RELEASE-CHECKLIST.md` line is owed. |
 
 **Deferrals and their binding.** This REQ defers nothing of its own. The predecessor's deferrals
 belong to the successors carrying the criteria that raise them: cross-panel comparability and finding
@@ -408,7 +434,7 @@ queue-eligible until an operator specifies it and opts it in.
 
 | Requirement | Baseline measured facts | Baseline defect | User story | Obligations |
 |---|---|---|---|---|
-| REQ-RCV-01 | M-1a, M-1b, M-1c, M-1d, M-1e; M-7a, M-7b, M-7d, M-7e | P-1 (cost half) | US-01, US-02, US-04 | O-5, O-9, O-10, O-11, O-12 |
+| REQ-RCV-01 | M-1a, M-1b, M-1c, M-1d, M-1e; M-7a, M-7b, M-7d, M-7e, M-7f | P-1 (cost half) | US-01, US-02, US-04 | O-5, O-9, O-10, O-11, O-12, O-13, O-14 |
 
 **Why one requirement and not two.** v1.0 carried REQ-RCV-01 and REQ-RCV-02 together past the 60 KB
 ceiling; v1.1 cut at the seam they already had — this REQ the **window**,
