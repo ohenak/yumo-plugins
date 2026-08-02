@@ -86,4 +86,37 @@ spans this diff changed; I opened no ground in sections I approved in v2.
 
 ## Recommendation
 
+**Approved with minor changes** — zero High, zero Medium, three Low.
+
+My v2 pre-commitment was that a v1.2 doing the two required things clears my side, and it does. F-01
+is closed on the write path with the discriminator named and the harmful direction made
+unreachable; F-02's equivalence is now constructible for all three mandated members. Both blockers
+are down, and the blocking count went 1 High + 1 Medium → 0 + 0, so the trajectory is convergence,
+not churn. I am not re-opening either.
+
+**The three Lows are recorded, not required.** None blocks TSPEC authoring, and all three are
+one-clause edits:
+
+1. **F-06** — add *same last `HALT-REASON:` prefix class* (or "same gate branch") to §5.4/AT-REG-07's
+   equivalence conjuncts. Latent until `pdlc-rcv-fixed-point-stop` makes B-CLR-2 reachable, so it can
+   land with this document or with that feature; it should not land nowhere.
+2. **F-07** — say "an approval is reached" in §11.4 instead of "converge", so the clause does not
+   share a root with §6.1's *convergence halt*.
+3. **F-08** — one line in §7.2 naming which direction of the presence probe this feature relies on.
+
+I would take F-06 and F-07 in this document because both are wording inside spans that were rewritten
+this round. F-08 is legitimately arguable as TSPEC's (probe selection), and §13.4's stopping rule
+covers it either way.
+
+**Applying §13.4's stopping rule.** All three findings are Low by that rule's own classes — F-06 and
+F-07 are precision defects in prose that changes no branch at this ship, F-08 is a boundary statement
+about a mechanism TSPEC selects. None of them is a specified branch with an unspecified continuation,
+which is the class F-01 was and the reason it was High. Holding a fourth round for them would be the
+churn I said I would recommend against.
+
+**Pre-commitment.** I will not open new ground on this document. If a v1.3 takes any of the three
+Lows, I will re-read only the touched clauses.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
