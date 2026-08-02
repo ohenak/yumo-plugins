@@ -741,6 +741,133 @@ row 18 replaces it, and it must not be deleted.
 
 ### 6.4 `maintainRegionOnHalt` — the halt path
 
+Called from `reviewLoop`'s `iteration > endIndex` branch (`:1960`), replacing the block that today
+dispatches the post-mortem agent and confirms with `_checkFile`. Scope is **document-typed phases
+only**: `roundDocType === null` (Phase CR) skips the whole of §6.4 and keeps the shipped path
+byte-for-byte, which is B-HALT-8 and N-7.
+
+```
+maintainRegionOnHalt({phase, feature, haltReasons, roundsRun, seams}) →
+  path ← `docs/${feature}/POSTMORTEM-${phase}-${feature}.md`
+
+  1. DISCRIMINATE — creating vs existing, by FILE PRESENCE ONLY (§5.2)
+       stat ← await _statFile(path)
+       creating ← stat.exists === false          // `unevaluable` ⇒ EXISTING (safe rule)
+
+  2. AUTHOR (creating only)                                             (B-HALT-1, B-PMT-*)
+       if creating: dispatch the shipped post-mortem prompt via _agent, then the
+         shipped `_checkFile` confirmation, unchanged in kind (M-7e).
+         The prompt gains O-9's clause (FSPEC §9's text, not re-authored here) and
+         its Iterations item is dropped — clause 3 owns that heading now (B-PMT-3).
+       if !creating: NO DISPATCH AT ALL                                       (B-HALT-2)
+
+  3. CLAUSE 3 — the Iterations section                                        (§6.5)
+       text ← await _readFile(path)
+       if text == null:  → REFUSE, which = "iterations section", NO WRITE ATTEMPTED
+                            (B-HALT-4a: heading-absent and file-unreadable are
+                             different observations; only the first admits an
+                             insert position, so the WHOLE FILE is byte-unchanged)
+       next ← applyIterationsSection(text, renderIterationsHeading(BUDGET, roundsRun))
+       await _writeFile(path, next)
+       back ← await _readFile(path)
+       CONFIRM: locateIterationsHeading(back).text === renderIterationsHeading(...)
+                (an EQUALITY read-back, never the write's return code — BR-11)
+       on failure → REFUSE, which = "iterations section"                      (B-HALT-4)
+
+  4. CLAUSES 1 AND 2 — ONE update of ONE file                          (§4.3, split §5.8)
+       text2 ← await _readFile(path)
+       upd   ← applyHaltUpdate(text2, haltReasonValue(haltReasons))
+       await _writeFile(path, upd.text)
+       back2 ← await _readFile(path)
+       CONFIRM, both conjuncts against back2:
+         (a) parseResetRegion(back2).lines includes upd.haltLine, and H increased by 1
+         (b) NO unfenced `RESOLVED:` line remains anywhere in back2
+       on failure → REFUSE, which = "halt line"                               (B-HALT-5)
+
+  5. return { regionRecorded: true, haltLine: upd.haltLine }
+```
+
+**The order is 3 → 1 → 2 and the write count is two, not three.** Clause 2 has no failure
+disposition of its own because it is not a separate write: its confirmation is (b) above and its
+failure is clause 1's failure. Why it must be one update — a separately losable strip leaves a
+readable marker beside an incremented `H`, which §6.3's gate reads as an unconsumed clearance,
+re-granting a window on every later halt while the fault lasts — is split §5.8's, not restated.
+
+**Confirmation (a) is presence-in-the-region, not existence-of-file.** On a re-halt the file always
+exists, so an existence-shaped check passes whether or not the line landed, and that is the path
+that matters (AC-1.4 clause 1). This is also why `_checkFile` is *not* reused here: its contract
+(`:361`) is exactly the existence check that would silently pass.
+
+**Every refusal from step 3 or 4 leaves both counts unmoved and strips nothing** — step 3's
+refusal ends the entry before clause 1 runs, so the region is byte-unchanged; step 4's refusal
+means the single update did not land, so nothing was appended and nothing was stripped. `A ≤ H` is
+preserved on both, and no `RESOLVED:` marker is ever stripped against a halt that left no line
+(BR-12). The accepted two-clearance costs of a *creating* halt refusing at either write are
+FSPEC E-14 and E-14b, and no code compensates for them.
+
+### 6.5 The Iterations section — render, anchor, replacement, insertion
+
+Three pure functions, all total.
+
+**`renderIterationsHeading(budget, roundsRun) → string`** — the declared render, in one place:
+
+```js
+`## Iterations (budget ${budget}, rounds run ${roundsRun})`
+```
+
+Two decimal integers ≥ 0. `budget` is **always** the constant, never a literal (AC-1.3, B-RPT-3).
+This is the **whole heading line** — not a heading plus a body line — so the oracle over it is an
+equality with a single target (B-RPT-1).
+
+**`locateIterationsHeading(text) → {index, text}|null`** — the **first** top-level heading whose
+title begins `Iterations`, case-sensitively, outside any fenced block. Built on `topLevelSections`
+(`:1393`), so it inherits the shipped fence-scoping and adds no second heading walker. A **second**
+such heading is left byte-unchanged (FSPEC §12(e), accepted).
+
+**`applyIterationsSection(text, rendered) → string`** — total in both directions:
+
+| Input | Result | Branch |
+|---|---|---|
+| a located heading | its **whole line** is replaced by `rendered`; every other byte unchanged | B-RPT-2 |
+| no located heading, `## Reset Region` present | `rendered` inserted as a new line **immediately above** the `## Reset Region` heading | B-HALT-3 |
+| no located heading, no region | `rendered` appended at the **end of the file** | B-HALT-3 |
+
+Region parsing is unaffected either way: the insert lands *above* the region heading, so the span
+`heading → next top-level heading | EOF` is unchanged, and an end-of-file insert follows a region
+that has already been closed by EOF.
+
+**Threading `{k}` (O-14).** `roundsRun` is a counter local to `reviewLoop`, incremented once per
+loop pass **at the reviewer dispatch site** (immediately after the `_parallel` call at `:2058`),
+so it counts rounds this entry **dispatched**, whatever came back (OQ-01's stated default). It is
+`0` on a zero-round halt on both the creating and the re-halt path, it is carried on `LoopResult`
+(§4.5), and it is passed to `maintainRegionOnHalt`. It is **not** `iterations`, which stays the
+budget (M-1c).
+
+### 6.6 The three reporting changes in `reviewLoop` / `checkConverged` / `buildFinalReport`
+
+1. **The empty verdict list.** `lastResults` (`:2004`–`:2007`) is built unconditionally from
+   `result1`/`result2`, which are `undefined` on a zero-round entry, so `parseVerdict` fabricates
+   two *Needs revision* rows for reviewers this entry never ran. It becomes
+   `roundsRun === 0 ? [] : [ …as today… ]` (B-RPT-5, AC-1.3's fourth quantity). `checkConverged`
+   already guards on `lastResults.length > 0` (`:1777`), so an empty list yields an empty
+   `reviewerDetail` with no further change.
+
+2. **The S-4 render and row C.** The halt branch composes
+   `budget-exhausted: rounds ${origin}..${endIndex} of ${MAX_REVIEW_ROUNDS}` — catalogue S-2's
+   grammar, **rendered from the window and the constant**, never the literal `rounds 1..3 of 3`
+   (B-WIN-2). When `roundsRun === 0` it pushes **row C** (§4.4) onto `reviewRows`, with `round` =
+   `startIndex` and the four middle cells `""`. The same string is the `HALT-REASON:` value
+   (`haltReasonValue`), so the operator reads the identical bytes in both places (B-HALT-7).
+
+3. **`reviewRows` on the report.** `buildFinalReport` (`:5281`) gains `reviewRows = []` beside
+   `notices = []`, carried on **every** report — present as a readable value on success too, for
+   the reason the shipped comment at `:5300`–`:5302` gives about the four halt-disposition fields:
+   a conditionally-spread field cannot express *"no rows"*.
+
+The **shipped Iterations literal** at `:1965` is removed from the post-mortem prompt in the same
+edit as step 2 of §6.4: the loop owns that heading now, so leaving the item in the prompt would ask
+an agent to write a string the loop immediately overwrites (B-PMT-3).
+
 ## 7. Error handling
 
 ## 8. O-13 — the budget-width blast radius
