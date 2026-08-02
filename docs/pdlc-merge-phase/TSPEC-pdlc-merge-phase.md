@@ -1160,7 +1160,8 @@ is the obvious move and it is the wrong one here.
 doubles are sync, so a missing `await` is green in jest and broken in production. The rule is
 machine-enforced: `runtimeBundle.test.js`'s `RLH-SCAN-01` scan (`:577`) classifies every seam call
 site in both modules and fails on any that is neither awaited nor covered by a §8.5 ruling. New await
-sites, exhaustively: `_readFile` (§3.2), the six observation calls (§5.2), `_sleep` (§5.2),
+sites, exhaustively: `_readFile` (§3.2), `_ghRun` at every `ghJson` call and inside the `O3`
+pagination, `O5` fallback and `O6` read-back (§4), the six `observe*` calls (§5.2), `_sleep` (§5.2),
 `_git` × up to 7 (§7.4), `_recordQueueRow` (§7.5), `phaseMerge` itself (§10.4).
 
 `decideMerge`, `guardVerdict`, `mergeCandidates`, `parseMergeConfig`, `effectiveGuardPaths`,
@@ -1171,7 +1172,7 @@ function that returns a promise is a seam waiting to be forgotten.
 
 | Site | Change |
 |---|---|
-| `devModule` `exportedNames`, `:87`–`:94` | no addition required — the entrypoints reach only `main`/`meta`; the new functions live inside the IIFE. **Except** `defaultMergeObservations`, which the adapter's `rtMergeObservations` wraps: add it, plus `checkPrCi` is already there |
+| `devModule` `exportedNames`, `:87`–`:94` | **no addition at all.** The adapter needs nothing from `__dev`: `rtGhRun` is a pure transport (§11.3), so every command string, classifier and sequencing loop stays inside the IIFE. v1.0's §11.2/§11.3 contradicted each other here — §11.2 published one name while §11.3's snippet called six others (TE F-04); the single-transport-seam design removes the question rather than answering it |
 | `queueModule` `exportedNames`, `:101` | unchanged — `rewriteStatus` and `updateQueueStatus` are already published |
 | `QUEUE_ENTRY`, `:182` | `_recordHalt` → `_recordQueueRow`, and the closure forwards `evidence` as `rewriteStatus`'s 7th argument |
 | `DEV_ENTRY`, `:212` | same two changes |
@@ -1184,44 +1185,47 @@ the rebuild is a red PR, not a follow-up.
 
 ### 11.3 `runtime-adapter.js`
 
-One new function and one new key. `rtMergeObservations(devModule)` returns the six-key object,
-each entry an agent-transported command whose **parsing is delegated to the module's own classifier**
-via a sync `execFn` closure — literally `rtMakeCheckCi`'s shape (`:838`–`:850`), which exists for
-exactly this reason: the none/pending/passed/failed/unknown mapping stays in one place.
+**One new function, one new key, and no `gh` knowledge in the adapter.** `rtGhRun(command)` is a
+transport and nothing else — it receives a command string the module built, runs it, and returns raw
+stdout:
 
 ```js
-const raw = await RT.agent(
-  `Run exactly: {command}\n` +
-  `Return ONLY the raw JSON it prints — no commentary, no code fences.\n` +
-  `If the command fails, return exactly: ${RT_MISSING}\n` +
-  `Do not retry, do not repair, and do not run any other command.`,
-  { label: `merge:{surface}`, model: RT_IO_MODEL });
-return devModule.observeX(prUrl, { execFn: () => raw });     // one place parses
+async function rtGhRun(command) {
+  const out = await RT.agent(
+    `Run exactly this command from the repository root, and nothing else:\n` +
+      `  ${command}\n` +
+      `If it exits 0, return ONLY its raw stdout — no commentary, no code fences.\n` +
+      `If it exits non-zero, return exactly: ${RT_MISSING}\n` +
+      `This command may change repository state. Issue it AT MOST ONCE. ` +
+      `Do not retry, do not repair, and do not run any other command.`,
+    { label: `gh:${command.slice(0, 40)}`, model: RT_IO_MODEL });
+  const text = typeof out === "string" ? out.trim() : "";
+  return text && text !== RT_MISSING ? { ok: true, stdout: text } : { ok: false, stdout: "" };
+}
 ```
 
-The final prompt line is **not decoration**. `rtGit` (`:927`) and `rtMergeWorktree` (`:954`) already
-carry it; for `O6` it is load-bearing: an agent that "helpfully" retried `gh pr merge` after a
-transport hiccup would attempt a second merge, which NFR-2 forbids. The `O6` prompt additionally
-states that the command is a mutation and must be issued at most once.
+Because the adapter holds no catalogue, each `gh` string exists **once**, in `mergeCommandFor`
+(§4.1) — the duplication `rtMakeCheckCi` (`:838`–`:850`) shows for `gh pr view … --json
+statusCheckRollup` is not repeated five more times, and there is nothing for an adapter test to
+diff against a module copy because there is no copy.
 
-Does the existing adapter already cover these shapes? **`git` yes, `gh` no.** `rtGit` covers every
-argv in §7.4 unchanged. `gh` is reachable today only through `rtMakeCheckCi`'s single hard-coded
-`gh pr view … --json statusCheckRollup` string, so the five other `gh` shapes (`gh pr view --json
-state,…`, `gh api graphql`, `gh repo view --json`, `gh api --paginate --slurp`, `gh pr merge`) are
-genuinely new adapter commands and are enumerated as a frozen catalogue in the adapter, one entry per
-surface, with no string interpolation beyond `prUrl`, `owner`, `repo`, `number` and `cursor`.
+**The precedent, corrected (TE F-07).** v1.0 claimed `rtGit` (`:927`) *and* `rtMergeWorktree`
+(`:954`) both carry "Do not retry, do not repair, and do not run any other command." The string
+occurs **exactly once** in the file, at **`:935`**, inside `rtGit`; `rtMergeWorktree` does not carry
+it. So `rtGhRun` **inherits the clause from `rtGit` and establishes the at-most-once mutation
+sentence itself** — which strengthens rather than weakens the case for asserting that sentence
+directly (§13.2's adapter file), since it has no second instance to drift from.
 
-`rtDevInjections` (`:980`) gains `_mergeObservations: rtMergeObservations(devModule)`. `_recordHalt`
-stays deliberately absent (its comment at `:1004` explains why) and is renamed in that comment to
-`_recordQueueRow`.
+`rtDevInjections` (`:980`) gains `_ghRun: rtGhRun`. `_recordHalt` stays deliberately absent (its
+comment at `:1004` explains why) and is renamed in that comment to `_recordQueueRow`.
 
 ### 11.4 The runtime's structural constraints
 
 Nothing in this feature introduces `process.`, `fetch(`, a static `import`, a second `export`, or a
 `meta` that is not the first statement — the four things `runtimeBundle.test.js` (`:461`–`:485`,
-`:938`) asserts. The dynamic `import("child_process")` inside `ghJson`'s default `execFn` follows the
+`:938`) asserts. The dynamic `import("child_process")` inside `defaultGhRun` follows the
 existing precedent (`checkPrCi:3486`, `defaultGit:4253`): the bundle never evaluates it because the
-adapter always supplies `execFn`, and the scan's "leaves dynamic imports alone" ruling (`:454`)
+adapter always supplies `_ghRun`, and the scan's "leaves dynamic imports alone" ruling (`:454`)
 already covers that shape.
 
 ### 11.5 Pacing and dispatch budget
