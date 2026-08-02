@@ -44,6 +44,158 @@ const CI_NO_CHECKS_TIMEOUT_MS = 10 * 60 * 1000; // 10 min — no checks ⇒ assu
 const CI_POLL_INTERVAL_MS = 30 * 1000; // 30 s between status polls
 const CI_COMPLETION_TIMEOUT_MS = 30 * 60 * 1000; // 30 min — overall cap once checks are running
 
+// TSPEC §2.2: compile-time flag for the merge phase (Phase MERGE), the last phase
+// of the pipeline. Same shape as PHASE_DOD_ENABLED above.
+const PHASE_MERGE_ENABLED = true; // Set to false to skip Phase MERGE
+
+// TSPEC §3 — where the per-repo `merge` config section lives, read once per
+// phaseMerge invocation (§3.3). Same convention as the drift-state path.
+const MERGE_CONFIG_PATH = ".claude/pdlc.config.json";
+
+// TSPEC §2.2 — Phase MERGE's closed catalogues and defaults (DC-01). Frozen so
+// no code path can mutate a shipped default or widen a closed set silently.
+const MERGE_GUARD_DEFAULTS = Object.freeze([
+  "pdlc/workflows/",
+  "pdlc/skills/",
+  "pdlc/hooks/",
+  ".claude/workflows/",
+]);
+
+const MERGE_MODES = Object.freeze(["off", "gated", "on"]);
+const MERGE_STATUSES = Object.freeze(["merged", "deferred", "refused", "skipped"]);
+
+// `mergeableRetryDelay` is in SECONDS (TSPEC §2.2 note; REQ §7 / FSPEC §10.1 key
+// name) — the unit is documented here rather than encoded into the key name.
+const MERGE_DEFAULTS = Object.freeze({
+  mergeMode: "off",
+  mergeRequiresCi: true,
+  allowSquashMerge: false,
+  deleteBranchOnPdlcMerge: true,
+  mergeableRetries: 3,
+  mergeableRetryDelay: 10,
+  guardPaths: [],
+});
+
+const MERGE_FILES_PAGE_LIMIT = 100; // TSPEC §4.6 — GitHub's `files` page size
+const MERGE_THREAD_PAGE_LIMIT = 100; // TSPEC §4.4
+const MERGE_MAX_THREAD_PAGES = 10; // TSPEC §4.4 — bounded, fail-closed
+
+// TSPEC §3.1 — the accepted upper bound on `mergeableRetries`; a config value
+// above it is out of domain and takes the default (TE F-02).
+const MERGE_MAX_RETRIES = 10;
+
+// TSPEC §5.2 — a COMPUTED EXPRESSION, not a literal: raising MERGE_MAX_RETRIES
+// re-derives the decision-step bound automatically (TE N-04). Term-by-term:
+// 1 (O1 count is 1+retries, so this is the "+1" over MERGE_MAX_RETRIES) +
+// MERGE_MAX_RETRIES (additional O1 re-observations) + 4 (O2, O3, O4, O5, each
+// demanded at most once) + 3 (the longest merge-candidate chain) + 1 (the
+// resolving step) + 5 (slack).
+const MERGE_MAX_DECISION_STEPS = 1 + MERGE_MAX_RETRIES + 4 + 3 + 1 + 5;
+
+// ─── TSPEC §3 — Phase MERGE: configuration reader (O-M5) ──────────────────────
+
+/**
+ * Parse the repo's `merge` config section. Pure and total: never throws, never
+ * reads anything. TSPEC §3.1's four steps:
+ *   1. `text` is `null`/unparseable JSON → defaults, section not malformed (an
+ *      absent or unparseable FILE is not a malformed SECTION).
+ *   2. Parsed value isn't a plain object, or `merge` is absent → defaults, not
+ *      malformed.
+ *   3. `merge` present but not a plain object → defaults, `sectionMalformed: true`.
+ *   4. Otherwise every key is validated and falls back INDEPENDENTLY (FSPEC
+ *      §10.3) — one bad key defaults only itself.
+ *
+ * @param {string|null} text - raw file contents, or null (file absent/unreadable)
+ * @returns {{ config: object, sectionMalformed: boolean }}
+ */
+function parseMergeConfig(text) {
+  let parsed;
+  if (text == null) {
+    return { config: MERGE_DEFAULTS, sectionMalformed: false };
+  }
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return { config: MERGE_DEFAULTS, sectionMalformed: false };
+  }
+
+  if (!isPlainObject(parsed) || !("merge" in parsed)) {
+    return { config: MERGE_DEFAULTS, sectionMalformed: false };
+  }
+
+  const section = parsed.merge;
+  if (!isPlainObject(section)) {
+    return { config: MERGE_DEFAULTS, sectionMalformed: true };
+  }
+
+  const config = {
+    mergeMode: MERGE_MODES.includes(section.mergeMode)
+      ? section.mergeMode
+      : MERGE_DEFAULTS.mergeMode,
+    mergeRequiresCi:
+      typeof section.mergeRequiresCi === "boolean"
+        ? section.mergeRequiresCi
+        : MERGE_DEFAULTS.mergeRequiresCi,
+    allowSquashMerge:
+      typeof section.allowSquashMerge === "boolean"
+        ? section.allowSquashMerge
+        : MERGE_DEFAULTS.allowSquashMerge,
+    deleteBranchOnPdlcMerge:
+      typeof section.deleteBranchOnPdlcMerge === "boolean"
+        ? section.deleteBranchOnPdlcMerge
+        : MERGE_DEFAULTS.deleteBranchOnPdlcMerge,
+    mergeableRetries: isValidRetryCount(section.mergeableRetries)
+      ? section.mergeableRetries
+      : MERGE_DEFAULTS.mergeableRetries,
+    mergeableRetryDelay: isValidRetryDelay(section.mergeableRetryDelay)
+      ? section.mergeableRetryDelay
+      : MERGE_DEFAULTS.mergeableRetryDelay,
+    guardPaths: Array.isArray(section.guardPaths)
+      ? section.guardPaths.filter(
+          (p) => typeof p === "string" && p.length > 0,
+        )
+      : MERGE_DEFAULTS.guardPaths,
+  };
+
+  return { config, sectionMalformed: false };
+}
+
+function isPlainObject(v) {
+  return (
+    typeof v === "object" &&
+    v !== null &&
+    !Array.isArray(v)
+  );
+}
+
+function isValidRetryCount(v) {
+  return Number.isInteger(v) && v >= 0 && v <= MERGE_MAX_RETRIES;
+}
+
+function isValidRetryDelay(v) {
+  return Number.isInteger(v) && v >= 0;
+}
+
+/**
+ * Read the merge config file, never throwing. Byte-for-byte the shape of
+ * `readDriftStateSafely` (orchestrate-queue.js) and adopted for the same
+ * reason: the injected read is agent-mediated in production and returns
+ * `null` for a missing file rather than throwing — but a throw from some
+ * future read implementation must not abort the pipeline. AWAITED at its one
+ * call site (phaseMerge, TSPEC §3.3).
+ *
+ * @param {function} readFileFn - async (path) => string|null (or throws)
+ * @param {string} path - MERGE_CONFIG_PATH
+ * @returns {Promise<string|null>}
+ */
+async function readMergeConfigSafely(readFileFn, path) {
+  try {
+    return await readFileFn(path);
+  } catch {
+    return null;
+  }
+}
+
 // MODEL-01: per-phase model selection. Every phase runs on Opus for reasoning
 // depth EXCEPT the Phase I implementation batches, which run on Sonnet for
 // throughput/cost. Passed to the runtime via the agent() opts.model field.
