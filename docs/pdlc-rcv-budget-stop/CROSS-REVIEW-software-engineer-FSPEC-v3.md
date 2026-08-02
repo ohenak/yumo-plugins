@@ -46,7 +46,43 @@ spans this diff changed; I opened no ground in sections I approved in v2.
 
 ## Questions
 
+| ID | Question |
+|---|---|
+| Q-03 | **An unreadable post-mortem on a document with rounds still available runs a normal window over a file whose marker is unknown — I checked, and it is HEAD's behaviour, not this feature's.** §5.3's continuation is written for the case with rounds on disk (`S > E`, halt, refusal). Where `D = 1`, `W = 1` and `E = 3`, the entry admits rounds and dispatches normally over a present-but-unreadable post-mortem, because the shipped `checkPostmortem` maps unreadable to `status: "none"` and step G does not refuse. If those rounds converge, nothing is written and the file is never touched; if they exhaust, the entry reaches the same B-HALT-4 refusal §5.3 describes. So both exits are specified and fail-closed, and the "runs anyway" half is unchanged from HEAD (`orchestrate-dev.js:2738`). Not a finding — recorded so the next reader does not re-derive it, and because AT-REG-06 deliberately pins only the halting arm. |
+
 ## Positive Observations
+
+- **F-01 was closed on the write path, with no new surface.** The disposition I feared — restating
+  E-8 so it reads better while the entry still authors — is not what happened. The document names the
+  predicate (file presence), states the outcome, derives the refusal from the clause order it already
+  had, and reuses an existing `{which}` literal rather than minting a fourth. The catalogue is
+  genuinely unchanged: `Refused — iterations section unconfirmed at {path}` was already in §8.3 for
+  B-HALT-4, and the string E-8 and AT-REG-06 quote matches it byte for byte. Closing a High by
+  discovering that a shipped refusal already covers the case is the cheapest correct fix available.
+- **The asymmetry argument in §7.4 is the right justification, stated at the right altitude.** *"A
+  false creating reading is unrecoverable … a false existing reading costs at most one refused entry
+  that the operator re-runs"* is a one-sentence derivation of the fail-safe direction from the cost of
+  each error, not an assertion of it. It is also what makes F-08 a Low rather than a reopening: the
+  rule generalises, only its domain is stated narrowly.
+- **AT-REG-06 now falsifies the thing it exists to falsify.** The old row's Then stopped at "nothing
+  written" and could pass on an implementation that re-authored. The new one pins the Given so the
+  entry actually reaches a halt (`highest existing round 3` ⇒ `D = 4 > E = 3` — I checked the
+  arithmetic), asserts **zero authoring dispatches** and **byte equality** of the post-mortem, and
+  says in the row which conjuncts fail on a re-author. That is a test that discriminates.
+- **§4.4's ordering clause resolves the apparent cycle by naming the dependency direction rather than
+  reordering the flow table.** `D` is read from the branch listing and depends on nothing the gate
+  does; the gate consumes `D`; the admission arithmetic runs once, after. The flow table keeps its
+  operator-facing order and the seam is now unambiguous — a better fix than the renumbering I
+  half-expected.
+- **§7.3's accepted-cost paragraph now states both writes symmetrically, including the surprise.**
+  E-14b's *"a file that reads like a recorded halt but records none"* is the sentence an operator
+  needs, and pinning it as **accepted** rather than discovering it in implementation is the same
+  discipline E-1b showed for the migration case.
+- **§11.4's clause is the right kind of fix even with F-07's wording collision.** It fixes an
+  *outcome* the Givens did not pin, explains precisely which conjuncts would false-red without it
+  (*"a granted window whose rounds run to exhaustion budget-halts at its end, appending exactly that
+  line and stripping exactly that marker"*), and leaves the verdict sequence to PROPERTIES. Naming
+  the failure mode a missing clause would cause is what makes it reviewable.
 
 ## Recommendation
 
