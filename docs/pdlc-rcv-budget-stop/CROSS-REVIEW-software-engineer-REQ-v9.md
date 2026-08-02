@@ -106,4 +106,85 @@ the conjunct it was meant to defer, and what it sweeps up is decidable at this R
 
 ## 6. Recommendation
 
+**Needs revision**
+
+All four v8 Lows are closed, each at the surface I named, and two of them are closed better than I
+asked: the seam's unconsulted status became a falsifiable 0-call leg rather than an adjective, and
+the interim-procedure argument was de-duplicated into `pdlc-rcv-split.md` §5.1 so both ends of the
+paired edge cite one copy. I re-read `REQ-RCV-07` X-07, R-16 and O-10 at HEAD: they carry the same
+decision, the same narrower-procedure objection and the same `Order 18` / 10 → 12 → 18 distance.
+
+**One Medium blocks approval, and it is a defect in the v8 F-01 fix rather than a new disagreement.**
+§4.1's `W` row now says the *invalid* half of *"no absent or invalid value ever widens the window"* is
+**target state**, deferred to `REQ-RCV-07`. But *invalid* spans two disjoint checks and only one of
+them is that REQ's: §6's own S-13 grammar (`{N}` a decimal integer ≥ 1) is decidable from a single
+line at row 10 and needs no AC-7.1, while ordering, highest-round and `H − A ∈ {0, 1}` genuinely are
+AC-7.1's. Deferring both leaves the interim with no stated `W` for a malformed value, and the two
+available readings differ observably: the value contributes nothing and `W` = 1 (fail-closed,
+matching the row's own *If absent* cell), or the greatest *parsed* value is taken and `NaN` reaches
+`windowEnd` and `deriveRoundWindow` — whose contract AC-1.2 and O-12 pin as *a decimal integer*.
+No O-10 leg discriminates them: the two interim legs are a well-formed region and no region at all,
+and the non-validating legs have just been handed to `REQ-RCV-07`, which does not run them against
+this REQ's interim composition. **What must change:** narrow the §4.1 qualifier to the *consistency*
+half, state that §6's grammar is in force at this ship with `W` falling back to 1, and add the
+matching interim leg to O-10.
+
+Three Lows accompany it, each a one-clause fix:
+
+1. **F-02** — O-10's new contract leg is owed over *the injected function's signature*, and no
+   document names that seam's parameter, arity or convention. Add it to O-12.
+2. **F-03** — X-06's *"the call site exists … but the composition does not consult it"* is
+   contradictory, and now has a test (the 0-call leg) that a literal reading fails. Say *injection
+   point exists, no call site is emitted at this ship*, and carry it to X-07.
+3. **F-04** — `pdlc-rcv-split.md` §5's *revise all four **in the same commit*** was not honoured
+   (X-06/R-14 in `21297cd`, X-07/R-16 in `3105033`) and cannot be, under the authoring pacing
+   contract; the words do agree at HEAD, so restate the rule over the revision rather than the
+   commit, and drop §10's compliance claim.
+
+Take F-01 first, and per Q-01 relocate §4.1's durability table or §6's threshold rows before writing
+any of them — 58 bytes of headroom does not absorb this round's fixes.
+
+Durable signal from this round, for `docs/_constraints/DOMAIN-CONSTRAINTS.md`:
+
+- **When a criterion is deferred to a successor, defer the *check*, not the *word*.** A qualifier
+  like *"the invalid half is target state"* silently defers every rule the word covers, including the
+  ones the current REQ owns and can decide today. Name the deferred checks; leave the rest in force.
+- **A seam introduced ahead of its consumer should ship with a call-count contract leg, not a
+  declaration.** *Called 0 times* is falsifiable, inverts cleanly at the successor's commit, and
+  makes the DoD declaration enforceable rather than merely honest.
+- **A cross-document atomicity rule must be stated over a unit the authoring pacing contract can
+  deliver.** *In the same commit* is unachievable when the pipeline mandates one section per commit;
+  state it over the revision and let the reviewer check both ends at HEAD.
+
 ## Verdict
+
+The four v8 Lows are all closed at the surfaces they named, and two are closed better than asked:
+AC-1.5(4) gained the *target state / not wired at this ship* paragraph and both §4.1 rows the
+matching qualifier (F-01); the *any interim procedure* over-claim was narrowed and the whole argument
+de-duplicated into `pdlc-rcv-split.md` §5.1, cited by X-06, R-14, X-07 and R-16 (F-02); NB-3 now
+declares the unconsulted seam to the DoD verifier in its own *correct and known by construction*
+formula, adding *"not to be remediated by wiring it here"* (F-03); and O-10 leg 1 is stated with
+literals — `windowEnd(1)` = 3, `WINDOW-START: 4` (F-04). I verified the relocations lost nothing:
+`pdlc-rcv-split.md` §6 carries every clause of the deleted §4 delegation, §5.1 carries the three
+horns and the co-delivery rejection, and the `O-*`/`R-*`/`X-*` collision rule survived §7's rewrite
+as a pointer. `REQ-RCV-07` X-07, R-16 and O-10 at HEAD agree with this REQ's X-06, R-14 and O-10 on
+wiring, on the narrower-procedure objection, on `Order 18` / 10 → 12 → 18, and on which end owns the
+non-validating legs.
+
+**One Medium remains and it holds the document.** §4.1's new qualifier defers the whole word
+*invalid* to `REQ-RCV-07`, but only the consistency half — ordering, highest round, `H − A ∈ {0, 1}`
+— is that REQ's; §6's S-13 grammar (`{N}` a decimal integer ≥ 1) is this REQ's own and decidable from
+one line at row 10. With both deferred, the interim has no stated `W` for a malformed value, and the
+two readings differ observably: fail-closed to 1, or `NaN` into `windowEnd` and `deriveRoundWindow`,
+whose contract AC-1.2 and O-12 pin as a decimal integer. No O-10 leg discriminates them now that the
+non-validating legs belong to the sibling. Narrow the qualifier to the consistency half, state §6's
+grammar as in force, and add the malformed-value interim leg. Three Lows accompany it: the new
+0-call contract leg is owed over a seam signature no document fixes (add to O-12); X-06's *the call
+site exists … does not consult it* contradicts the 0-call leg and should read *injection point
+exists, no call site emitted*; and `pdlc-rcv-split.md` §5's *same commit* rule was not honoured this
+round and cannot be under the authoring pacing contract, though both ends do agree at HEAD — restate
+it over the revision. Per the approval rule, any Medium → **Needs revision**; take F-01 first and
+relocate §4.1's durability table or §6's threshold rows before writing the fixes, since 58 bytes of
+headroom under the size soft threshold will not absorb them.
+
+VERDICT: Needs revision
