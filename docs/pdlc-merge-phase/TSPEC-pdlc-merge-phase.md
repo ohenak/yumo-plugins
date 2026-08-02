@@ -952,6 +952,84 @@ is the obvious move and it is the wrong one here.
 
 ## 11. Runtime, bundle, and adapter changes
 
+### 11.1 The await discipline
+
+**Every injected IO call is `await`ed.** The adapter's implementations are async while the test
+doubles are sync, so a missing `await` is green in jest and broken in production. The rule is
+machine-enforced: `runtimeBundle.test.js`'s `RLH-SCAN-01` scan (`:577`) classifies every seam call
+site in both modules and fails on any that is neither awaited nor covered by a §8.5 ruling. New await
+sites, exhaustively: `_readFile` (§3.2), the six observation calls (§5.2), `_sleep` (§5.2),
+`_git` × up to 7 (§7.4), `_recordQueueRow` (§7.5), `phaseMerge` itself (§10.4).
+
+`decideMerge`, `guardVerdict`, `mergeCandidates`, `parseMergeConfig`, `effectiveGuardPaths`,
+`evidenceCellFor`, `ensureEvidenceColumn` and `mergeEvidenceCell` are synchronous by design — a pure
+function that returns a promise is a seam waiting to be forgotten.
+
+### 11.2 `build-runtime.mjs`
+
+| Site | Change |
+|---|---|
+| `devModule` `exportedNames`, `:87`–`:94` | no addition required — the entrypoints reach only `main`/`meta`; the new functions live inside the IIFE. **Except** `defaultMergeObservations`, which the adapter's `rtMergeObservations` wraps: add it, plus `checkPrCi` is already there |
+| `queueModule` `exportedNames`, `:101` | unchanged — `rewriteStatus` and `updateQueueStatus` are already published |
+| `QUEUE_ENTRY`, `:182` | `_recordHalt` → `_recordQueueRow`, and the closure forwards `evidence` as `rewriteStatus`'s 7th argument |
+| `DEV_ENTRY`, `:212` | same two changes |
+| `DEV_META.phases`, `:146`–`:157` | append `{ title: "Phase MERGE", detail: "merge the PR + advance the queue row" }`. The bundle's `meta` is hand-written and dead-copies the module's (`:126`), so this is the only place the operator-visible phase list can be updated |
+
+**Rebuild in the same commit.** `node pdlc/workflows/build-runtime.mjs` regenerates the three tracked
+artifacts under `pdlc/workflows/dist/` plus `distribution-manifest.json`; CI's *Generated artifacts
+are in sync* job runs `--check` and then a rebuild that must produce no diff. A source change without
+the rebuild is a red PR, not a follow-up.
+
+### 11.3 `runtime-adapter.js`
+
+One new function and one new key. `rtMergeObservations(devModule)` returns the six-key object,
+each entry an agent-transported command whose **parsing is delegated to the module's own classifier**
+via a sync `execFn` closure — literally `rtMakeCheckCi`'s shape (`:838`–`:850`), which exists for
+exactly this reason: the none/pending/passed/failed/unknown mapping stays in one place.
+
+```js
+const raw = await RT.agent(
+  `Run exactly: {command}\n` +
+  `Return ONLY the raw JSON it prints — no commentary, no code fences.\n` +
+  `If the command fails, return exactly: ${RT_MISSING}\n` +
+  `Do not retry, do not repair, and do not run any other command.`,
+  { label: `merge:{surface}`, model: RT_IO_MODEL });
+return devModule.observeX(prUrl, { execFn: () => raw });     // one place parses
+```
+
+The final prompt line is **not decoration**. `rtGit` (`:927`) and `rtMergeWorktree` (`:954`) already
+carry it; for `O6` it is load-bearing: an agent that "helpfully" retried `gh pr merge` after a
+transport hiccup would attempt a second merge, which NFR-2 forbids. The `O6` prompt additionally
+states that the command is a mutation and must be issued at most once.
+
+Does the existing adapter already cover these shapes? **`git` yes, `gh` no.** `rtGit` covers every
+argv in §7.4 unchanged. `gh` is reachable today only through `rtMakeCheckCi`'s single hard-coded
+`gh pr view … --json statusCheckRollup` string, so the five other `gh` shapes (`gh pr view --json
+state,…`, `gh api graphql`, `gh repo view --json`, `gh api --paginate --slurp`, `gh pr merge`) are
+genuinely new adapter commands and are enumerated as a frozen catalogue in the adapter, one entry per
+surface, with no string interpolation beyond `prUrl`, `owner`, `repo`, `number` and `cursor`.
+
+`rtDevInjections` (`:980`) gains `_mergeObservations: rtMergeObservations(devModule)`. `_recordHalt`
+stays deliberately absent (its comment at `:1004` explains why) and is renamed in that comment to
+`_recordQueueRow`.
+
+### 11.4 The runtime's structural constraints
+
+Nothing in this feature introduces `process.`, `fetch(`, a static `import`, a second `export`, or a
+`meta` that is not the first statement — the four things `runtimeBundle.test.js` (`:461`–`:485`,
+`:938`) asserts. The dynamic `import("child_process")` inside `ghJson`'s default `execFn` follows the
+existing precedent (`checkPrCi:3486`, `defaultGit:4253`): the bundle never evaluates it because the
+adapter always supplies `execFn`, and the scan's "leaves dynamic imports alone" ruling (`:454`)
+already covers that shape.
+
+### 11.5 Pacing and dispatch budget
+
+Phase MERGE adds **no agent dispatch of any kind** (NFR-4) — every agent turn it causes is an
+adapter-mediated mechanical IO turn that already exists as a class. The 180-second no-progress
+watchdog therefore has no new authoring dispatch to threaten, and the `PACING_CONTRACT_CLAUSE`
+(`:2556`) is not extended. The only new *latency* is §3.3's config read and §4.3's retry waits, both
+bounded and both injectable to zero in tests.
+
 ## 12. Error handling catalogue
 
 ## 13. Test strategy
