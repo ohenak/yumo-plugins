@@ -986,6 +986,15 @@ forbids. Writing `done` over `done` is idempotent and produces no commit (`:953`
 throw-path stub) is `undefined`, which is not `"merged"`, so the driver falls back to today's
 behaviour. Fail-safe direction: the failure mode is "left `awaiting-merge`", never "wrongly `done`".
 
+**Q-02 — does M5 overwrite the status §2.5 preserved?** No, and the reason is structural rather than
+a check. FSPEC §2.5's non-overwrite case fires when the row reads `pending`, `blocked` or `halted` at
+M4. On the **queue** path the driver itself set the row to `in-progress` before running the pipeline
+(`orchestrate-queue.js:788`–`:795`), so none of those three can be the value M4 finds; on the
+**direct** path there is no driver and therefore no M5. The two are mutually exclusive by
+construction, and §13.2 asserts it: a queue-driven fixture whose row is forced to `blocked` mid-run
+records the non-overwrite note at M4 **and** is the one case where M5's unconditional write is
+visible — so the assertion documents the boundary instead of assuming it away.
+
 ### 9.2 The operator message (`:829`–`:833`)
 
 | Case | Message |
@@ -1032,6 +1041,10 @@ was considered", which is exactly what §11 row 23 (a run that halted before Pha
 Both call sites pass them; the halt path (`:5188`) passes the defaults, giving row 23's
 `mergeStatus: "skipped"` with no code at the halt site beyond the literal.
 
+`mergeMethod`'s domain is FSPEC §9.1's `rebase` | `merge` | `unknown` | `null`, **plus `squash`,
+which is reachable only under `allowSquashMerge: true`** (FSPEC §6.1) and is raised as FSPEC erratum
+E-1 in §15.2 rather than shipped as an unreviewed enum member (PM F-04).
+
 `queueRow`'s success-path value changes from the hardcoded `"none"` (`:5213`) to
 `mergeOutcome.queueRow ?? "none"` — carrying the §7.4 disposition on a `merged` run and `"none"`
 everywhere else (FSPEC §9.1's fourth field). The halt path's `queueRow` is untouched.
@@ -1058,9 +1071,18 @@ The `MERGE ESCALATION: ` prefix is applied **once**, at the construction site of
 lines, and the four templates live in one frozen object `MERGE_ESCALATIONS` so the prefix cannot
 drift and the catalogue is enumerable by tests (DC-01).
 
-The §9.4 merge-deferred note — one plain line, emitted for `deferred` and `refused` only, never for
-`skipped`, `merged` or a run that never reached the phase — is produced by `phaseMerge` from the same
-`reason` string that rides the phase row, so the two cannot disagree.
+Two plain (non-escalating) notes complete the channel, both produced by `phaseMerge`:
+
+- the **§9.4 merge-deferred note** — one line, emitted for `deferred` and `refused` only, never for
+  `skipped`, `merged` or a run that never reached the phase — built from the same `reason` string
+  that rides the phase row, so the two cannot disagree;
+- the **FSPEC §8.2 "local default is ahead of its remote" note** (§7.1) — emitted on a `merged` run
+  whose M4 disposition is `recorded`, and on no other run.
+
+Together with M2's deletion-failure note, the `recorded (uncommitted)` note, the §2.5 non-overwrite
+note, the missing-`prNumber` note and §10.3's malformed-`merge`-section note, that is the **seven**
+plain notes this phase can emit; like the four escalations they live in one frozen catalogue
+(`MERGE_NOTES`) so DC-01's closed-catalogue rule holds for them too.
 
 ### 10.3 The phase row
 
@@ -1084,7 +1106,7 @@ covered by the same guarded try (`:5117`) — and reaching that catch is precise
 ```js
 const mergeOutcome = await phaseMerge({
   feature: featureName, prUrl,
-  _observations: mergeObservationsFn, _git: gitFn, _readFile: readFileFn,
+  _ghRun: ghRunFn, _git: gitFn, _readFile: readFileFn,
   _recordQueueRow: recordQueueRowFn, _log: emit, _now, _sleep,
   _enabled: phaseMergeEnabled,
 });
@@ -1095,9 +1117,36 @@ const mergeOutcome = await phaseMerge({
 | Seam | Default | RLH-AT-64 classification |
 |---|---|---|
 | `_phaseMergeEnabled` | `PHASE_MERGE_ENABLED` | **exempt**, E-1 module-level constant — identical in shape to `_phaseDodEnabled` (`:4313`), which ships green today |
-| `_mergeObservations` | `defaultMergeObservations` | **wired**, in `rtDevInjections` (§11.3). Not exempt: E-3 resolves only for a default function declaring `_agent` (`runtimeBundle.test.js:855`–`:857`), and this default is a frozen object of `execFn`-taking functions |
+| `_ghRun` | `defaultGhRun` | **wired**, in `rtDevInjections` (§11.3), and **not exempt** — see the derivation below |
 
-`phaseMerge` is deliberately **not** a `main()` seam. A `_phaseMerge = phaseMerge` parameter would be
+**The classification, derived from the classifier rather than asserted (TE F-03).** v1.0 proposed a
+`_mergeObservations` seam defaulted to a frozen *object* and claimed it would be non-exempt. That was
+false, and the review's reading of `runtimeBundle.test.js` is the correct one, which I re-verified
+line by line:
+
+| Step | Code | Result for a frozen-object default |
+|---|---|---|
+| E-3 candidate? | `moduleFunctionParams` (`:787`–`:793`) matches only `function NAME(` | returns `null` — **not** an E-3 candidate |
+| falls through to | `moduleValueInit` (`:797`–`:801`) captures the rest of the declaration line | `"Object.freeze({"` |
+| `isAbsenceDefault`? | `/^(?:null\|undefined)$/` (`:816`) | no |
+| `looksLikeFunction`? | `/^(?:async\s+)?function\b/ \|\| includes("=>")` (`:803`) | **no** |
+| verdict | E-1 `resolved: true` | **exempt** |
+
+An exempt-and-wired seam is not merely unguarded — it is a **failure** of RLH-AT-64's anti-rot
+clause 1 (`classified.filter(c => c.wired && c.exempt)` must be empty, `:1025`–`:1028`). So the v1.0
+shape was not just unprotected, it was red.
+
+`defaultGhRun` is a `function` **declaration** whose parameter list is `(command, { execFn } = {})` —
+no `_agent`. `moduleFunctionParams` therefore returns those params, E-3 is a candidate, and
+`hasAgent` is false, so E-3 is `resolved: false` → **not exempt**. Wired in `rtDevInjections` → both
+anti-rot clauses pass and RLH-AT-64 genuinely reds if the adapter ever drops the key. This is exactly
+`_recordHalt`/`defaultRecordHalt`'s shape, which the test at `:1038`–`:1060` documents as the
+intended "wired, not exempt" pattern. §13.2's adapter file additionally pins the key directly, so the
+guarantee does not rest on one derivation.
+
+`phaseMerge` is deliberately **not** a `main()` seam.
+
+ A `_phaseMerge = phaseMerge` parameter would be
 neither wired nor E-3-exempt — `phaseMerge` declares no `_agent`, and it must not (NFR-4: no new
 reasoning dispatch) — so RLH-AT-64 would red it. Tests reach `phaseMerge` through `main()` via the
 seams above, and directly by importing it. Recorded because "add a seam for the new phase function"
