@@ -87,11 +87,81 @@ its commit (§2 rule 3).
 
 ## 4. Per-batch file-ownership manifest
 
+Rule 2's premise, made mechanically auditable. Tasks in the same batch may run in **parallel
+worktrees**, so no file may appear twice in a row below. Verified: no row has a repeated path.
+
+| Batch | Task | Files created or appended |
+|---|---|---|
+| 1 | F1 | `__tests__/helpers/mergeDoubles.js`, `__tests__/helpers/mergeDoubles.test.js`, `__tests__/fixtures/queue-goldens/` |
+| 1 | R1 | `orchestrate-dev.js`, `orchestrate-queue.js`, `build-runtime.mjs`, `__tests__/haltAndQueue.test.js`, `__tests__/runtimeBundle.test.js`, `__tests__/orchestrateQueue.test.js` |
+| 2 | A1 | `orchestrate-dev.js`, `__tests__/mergeConfig.test.js` |
+| 2 | B1 | `orchestrate-queue.js`, `__tests__/mergeQueueWriteback.test.js` |
+| 3 | A2 | `orchestrate-dev.js`, `__tests__/mergeObservations.test.js` |
+| 3 | B2 | `orchestrate-queue.js`, `__tests__/mergeQueueWriteback.test.js`, `__tests__/orchestrateQueue.test.js` |
+| 4 | A3 | `orchestrate-dev.js`, `__tests__/mergeGuard.test.js` |
+| 4 | B3 | `orchestrate-queue.js`, `__tests__/mergeQueueDriver.test.js` |
+| 5 | A4 | `orchestrate-dev.js`, `__tests__/mergeDecision.test.js` |
+| 6 | A5 | `orchestrate-dev.js`, `__tests__/mergeObservations.test.js` |
+| 7 | A6 | `orchestrate-dev.js`, `__tests__/mergePostMerge.test.js` |
+| 7 | D1 | `runtime-adapter.js`, `__tests__/mergeAdapter.test.js` |
+| 8 | A7 | `orchestrate-dev.js`, `__tests__/mergePhase.test.js` |
+| 9 | A8 | `orchestrate-dev.js`, `__tests__/mergePhase.test.js`, `__tests__/pipelineWiring.test.js`, `__tests__/reportTemplates.test.js` |
+| 10 | A9 | `__tests__/haltAndQueue.test.js` |
+| 11 | D2 | `build-runtime.mjs`, `dist/*`, `__tests__/runtimeBundle.test.js` |
+| 12 | V1 | *(none)* |
+
+Paths are relative to `pdlc/workflows/`. Four files are written by more than one task —
+`orchestrate-dev.js` (9), `orchestrate-queue.js` (4), `runtimeBundle.test.js` (2, R1 and D2),
+`haltAndQueue.test.js` (2, R1 and A9), `mergeObservations.test.js` (2, A2 and A5),
+`mergeQueueWriteback.test.js` (2, B1 and B2), `build-runtime.mjs` (2, R1 and D2) — and **every one of
+those pairs is separated by a real `Deps` edge**, never by a prose note.
+
 ## 5. Dependency notes and the batch derivation
+
+**The `Batch` column re-derives.** Verified mechanically against this repo's own dispatcher: feeding
+this document to `parsePlanTasks` yields 17 tasks, and `computeTopologicalBatches` produces exactly
+the twelve waves the column states — `F1,R1` / `A1,B1` / `A2,B2` / `A3,B3` / `A4` / `A5` / `A6,D1` /
+`A7` / `A8` / `A9` / `D2` / `V1`. No wave exceeds the dispatcher's five-task sub-batch cap, so no
+wave is silently split.
+
+Edges that are not obvious from the file list:
+
+- **A5 → A2** as well as A4: the transport-level observation tests append to the same test file A2
+  created, so the edge is required by rule 2 even though A5's dependency on A4 already orders it.
+- **A8 → B3**: `main()`'s report wiring is asserted end-to-end through the queue driver's
+  pass-through, so the driver must exist first.
+- **D2 → A9**: the bundle rebuild must not run against a test suite still asserting the superseded
+  `RLH-AT-32-orch`; otherwise a green rebuild would certify a suite that is about to change.
+- **R1 first, and alone in its chain**: the seam rename is the one cross-cutting edit. Doing it in
+  batch 1 rather than at the end means every later task writes the new name once, instead of every
+  later task being rewritten by a late rename.
+- **F1 before everything**: rule 4's shared-prerequisite obligation. The goldens in particular must be
+  captured **before B2 changes `updateQueueStatus`**, which the `F1 → B1 → B2` chain guarantees.
 
 ## 6. Integration points
 
+| Point | Task | Existing code it meets |
+|---|---|---|
+| Pipeline body | A8 | `main()`'s guarded `pipelineFn` block, immediately after Phase PUB (`orchestrate-dev.js:5115`) |
+| Halt reporting | A8, R1 | `buildFinalReport` (`:5281`) and the halt path's `queueRow` handling (`:5162`–`:5175`) |
+| Queue recording channel | R1, B2 | `rewriteStatus` (`orchestrate-queue.js:876`), `commitQueueRow` (`:935`), `uncommitted` (`:967`) |
+| Queue driver | B3 | `runPicked` (`:760`), `buildQueueReport` (`:994`) |
+| Runtime injection | D1, D2 | `rtDevInjections` (`runtime-adapter.js:980`), both entrypoint closures (`build-runtime.mjs:182`, `:212`) |
+| CI classification | A5 | `checkPrCi` (`orchestrate-dev.js:3485`) — reused, never re-derived |
+| Git transport | A6 | `defaultGit` (`:4252`) — reused for all seven M3 commands |
+| Seam classification | A8 | `runtimeBundle.test.js`'s RLH-AT-64 (`:986`) and RLH-SCAN-01 await discipline (`:577`) |
+
 ## 7. Absorbed review items
+
+**TE-v3 (low) — `not-confirmed` belongs to the shared reason catalogue.** TSPEC §4.1 declares one
+frozen `reason` catalogue (`command-failed`, `unparseable`, `field-absent`, `unrecognised-value`,
+`incomplete`) and §4.7 later introduces `not-confirmed` for a zero-exit merge whose read-back does not
+confirm `MERGED`. Left as written, §4.7 would carry a private second set — exactly the two-catalogues
+defect DC-01 forbids. **Task A6 owns the fix**: extend §4.1's frozen catalogue with `not-confirmed` in
+the same commit that introduces `executeMerge`, and assert membership (`REASONS.includes(r.reason)`)
+for every failure the observation and execution paths can produce, so a future private value reds. No
+TSPEC edit is required — the catalogue is declared frozen and enumerable precisely so it can absorb a
+member without a second list appearing.
 
 ## 8. Risk register
 
