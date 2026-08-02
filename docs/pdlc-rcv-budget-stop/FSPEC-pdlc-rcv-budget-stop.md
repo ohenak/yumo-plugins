@@ -520,6 +520,26 @@ budget value (B-BUD-4).
 One rule, read over an empty starting region. So `H` is exactly the number of halts in scope on
 every path, and *"the last `HALT-REASON:`"* (§6.1) is the most recent halt's.
 
+**The discriminator between *creating* and *existing* is file presence — never the region read, and
+never the shipped post-mortem status.** *"Finding no existing post-mortem"* means exactly that
+`POSTMORTEM-{phase}-{feature}.md` **is not present on the branch**. It does **not** mean that the
+region read `H = A = 0` (an empty or unreadable region reads that way while the file is present,
+§5.3), and it does not mean that the shipped resolution status answered *none* — that status is a
+statement about a marker, not about the file. Stated as an outcome: **a halt that can see a
+post-mortem it cannot read takes the *existing* path.** No authoring dispatch fires, so nothing is
+written over the prior region's lines or over the operator's `## Recommendation`.
+
+**And such a halt records nothing, because its first confirmation cannot succeed.** Both
+confirmations are content reads (§7.3, BR-11), and a file that cannot be read yields neither. Clause
+3 runs first, so the entry takes **B-HALT-4**'s phase refusal: the region is byte-unchanged, no halt
+is recorded, no `RESOLVED:` line is stripped, both counts are unmoved, and the operator reads row B's
+*unconfirmable-append* variant with `{which}` = **`iterations section`**. **No fourth `{which}`
+literal is minted and the catalogue is unchanged** (BR-16): an unreadable file is an unconfirmable
+write of exactly the kind §7.3 already dispositions, reached one step earlier. This is the branch
+that keeps BR-7 and BR-13 true against a **read** failure, which is otherwise the one way to reach
+`H − A > 1` without a torn write or a hand-edit: a region whose earlier lines were erased by a
+re-author. That state is unreachable on every specified path.
+
 **Clause 2 — every unfenced `RESOLVED:` line in the file is stripped**, wherever it sits. The
 post-mortem is therefore **unresolved after the halt**, and the operator must clear *this* halt
 before the phase runs again. **B-HALT-6:** a **fenced** `RESOLVED: yes` survives — it is invisible to
@@ -579,9 +599,16 @@ In both cases both counts are unmoved, `notice` is **empty**, `A ≤ H` is prese
 `RESOLVED:` marker is ever stripped against a halt that left no line**. A **torn** write —
 partially landed — is `REQ-RCV-07` AC-7.5's (F-N-1).
 
-**Accepted cost, stated.** A **creating** halt whose clause 1-and-2 update fails leaves an
-unresolved post-mortem with `H = 0`, so the operator's first `RESOLVED: yes` grants nothing and the
-re-halt needs a second. Fail-closed in the right direction: no window without a recorded halt.
+**Accepted cost, stated — and it is the same cost on both writes.** A **creating** halt whose
+clause 1-and-2 update fails leaves an unresolved post-mortem with `H = 0`, so the operator's first
+`RESOLVED: yes` grants nothing and the re-halt needs a second. A **creating** halt whose clause-3
+write fails costs the same two clearances by the other write, with one extra surprise: clause 3 runs
+**after** the authoring dispatch (B-PMT-3), so the refusal leaves a **fully authored** post-mortem on
+the branch with no `## Reset Region`, `H = 0`, and no `RESOLVED:` marker — a file that reads like a
+recorded halt but records none. The next entry meets the shipped step-G refusal, and the operator
+writes `RESOLVED: yes` once to clear a halt the accounting never recorded, then again after the
+re-halt records it. Both are **accepted** and fail-closed in the right direction: no window without a
+recorded halt. Neither is a torn write (`REQ-RCV-07` AC-7.5).
 
 ### 7.4 A halt that finds an existing post-mortem does not re-author it
 
@@ -591,7 +618,12 @@ else**: **no authoring dispatch**, and every other section — `## Recommendatio
 unfenced `RESOLVED:` line, and the Iterations section.
 
 Only a halt finding **no** post-mortem authors one (M-7e) — including on a zero-round entry, where
-that dispatch runs unchanged at the shipped prompt (§9.2).
+that dispatch runs unchanged at the shipped prompt (§9.2). **"Finding no post-mortem" is §7.2's
+file-presence discriminator**, so a present-but-unreadable post-mortem authors nothing and the entry
+refuses at clause 3 (B-HALT-4). The rule is stated in the safe direction: **when the discriminator
+cannot be evaluated, the halt takes the *existing* path.** A false *creating* reading is
+unrecoverable — it erases a live region and the `## Recommendation` a clearance is meant to answer;
+a false *existing* reading costs at most one refused entry that the operator re-runs.
 
 **Why.** The operator's `RESOLVED: yes` answers a *specific* `## Recommendation`; re-authoring would
 replace it with one written from zero rounds of new evidence — the commonest new case — and would
