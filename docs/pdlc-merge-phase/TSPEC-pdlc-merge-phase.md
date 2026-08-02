@@ -696,6 +696,121 @@ surfaces as a plain note here — so `orchestrate-dev` still never learns the qu
 
 ## 8. The recording seam and the queue write-back (O-M1, O-M2)
 
+Implements FSPEC §7 and discharges O-M1 and the second half of O-M2. **One channel, extended — not
+duplicated** (FSPEC §7.4): the four touch points below are the shipped ones, and no fifth path to
+`QUEUE.md` is created.
+
+### 8.1 The four touch points
+
+| # | Site | Today | After |
+|---|---|---|---|
+| 1 | `main()`'s seam declaration, `orchestrate-dev.js:4321` | `_recordHalt: recordHaltFn = defaultRecordHalt` | `_recordQueueRow: recordQueueRowFn = defaultRecordQueueRow` |
+| 2 | default implementation, `:4286` | `defaultRecordHalt` → `{ queueRow: "none" }` | renamed `defaultRecordQueueRow`, body unchanged |
+| 3 | `QUEUE_ENTRY` closure, `build-runtime.mjs:182` | `_recordHalt: async ({feature,status}) => __queue.rewriteStatus(…, 6 args)` | `_recordQueueRow: async ({feature,status,evidence}) => __queue.rewriteStatus(…, evidence)` |
+| 4 | `DEV_ENTRY` closure, `build-runtime.mjs:212` | same, at `DEFAULT_QUEUE_PATH` | same change |
+| 5 | shared row transform, `orchestrate-queue.js:331` | `updateQueueStatus(md, feature, status)` | 4th parameter `evidence = null` |
+
+### 8.2 O-M1 — the disposition catalogue migration
+
+The shipped catalogue `"halted" | "halted (uncommitted)" | "none" | "error"` is a *disposition* named
+after the only status it ever wrote. It becomes
+**`"recorded" | "recorded (uncommitted)" | "none" | "error"`** — same four members, same meanings.
+
+| Role | Site | Change |
+|---|---|---|
+| Producer | `commitQueueRow`, `orchestrate-queue.js:948` and `:961` | `return { queueRow: "recorded" }` |
+| Producer | `uncommitted`, `:967` | `queueRow: "recorded (uncommitted)"` |
+| Producer | `rewriteStatus`, `:889` / `:900` | `"none"` / `"error"` unchanged |
+| Producer | `defaultRecordQueueRow`, `orchestrate-dev.js:4286` | `"none"` unchanged |
+| Reader | `main()`'s halt path, `orchestrate-dev.js:5162`–`:5175` | reads the value opaquely — pushes `Queue row {queueRow}: {detail}`; **no code change**, but its output text changes from `Queue row halted (uncommitted): …` to `Queue row recorded (uncommitted): …` |
+| Reader | `buildFinalReport`, `:5294` | pass-through, no change |
+| Reader | `haltAndQueue.test.js:831`, `:837`, `:857`, `:860` | assertions updated to the new members (§13.4) |
+| Doc | `rewriteStatus` docblock, `:872` | catalogue restated, plus the new `evidence` parameter |
+| New | `QUEUE_ROW_DISPOSITIONS` frozen array in `orchestrate-queue.js` | DC-01 — the catalogue exists as a value tests can enumerate, not only as prose |
+
+A repo-wide search for the two retiring literals confirms there is **no other production reader**:
+the only occurrences of `"halted (uncommitted)"` outside tests are the producer at `:970` and the
+docblock at `:872`. The word `halted` survives everywhere it means *a status* (`QUEUE_STATUSES:74`,
+`runPicked`'s `newStatus`, the halt commit message) — only the *disposition* vocabulary moves.
+
+**The seam is renamed** (O-M1 asks explicitly). `_recordHalt` writing a `done` row is a name that
+lies, and the same rename motivation as the catalogue's applies. The rename has one non-obvious
+cost, stated so it is reviewed rather than discovered: `runtimeBundle.test.js:1038`'s
+`RLH-AT-64: _recordHalt is wired, not exempt` **opens with `if (!recordHalt) return;`**, so a rename
+that does not update the test makes it silently vacuous rather than red. §13.4 makes updating that
+test a named task, and the updated test additionally asserts that a seam by the old name is *not*
+present, so the vacuity trap cannot be re-entered.
+
+### 8.3 `rewriteStatus`'s new parameter
+
+```js
+export async function rewriteStatus(queuePath, feature, status, readFileFn, writeFileFn, gitFn = defaultGit, evidence = null)
+```
+
+**Appended, positional, defaulted `null`.** Appending is what keeps the five existing call sites
+(`runPicked`'s three, and both entrypoint closures) byte-identical in behaviour; a reshuffle into an
+options object would touch every one of them and the bundle closures for no behavioural gain. The
+`evidence` value is an opaque string to this function — it is *placed*, never parsed.
+
+### 8.4 `updateQueueStatus`'s new parameter, and the byte-identity property
+
+```js
+export function updateQueueStatus(markdown, feature, newStatus, evidence = null)
+```
+
+Control flow:
+
+1. `evidence == null` → **exactly today's code path**, character for character: column resolution,
+   row match, `newCells[statusCol] = newStatus`, `| ${newCells.join(" | ")} |`. No migration, no
+   sixth cell, no re-emission of any other row. This is FSPEC §7.4's required property — an
+   evidence-free call produces today's bytes for the `in-progress` / `awaiting-merge` / `halted`
+   writes — and §13.2 pins it as a **differential test** against a frozen expected output, not as a
+   claim.
+2. `evidence != null` →
+   a. `ensureEvidenceColumn(markdown)` first (§8.5);
+   b. locate the target row by feature, as today;
+   c. **the §2.5 non-overwrite rule**: if the row's current status is not one of
+      `in-progress` / `awaiting-merge` / `done`, return
+      `{ markdown, matched: true, written: false, foundStatus }` — the file is unchanged and the
+      caller reports `"recorded"` with a note naming the status found (FSPEC §2.5, §11 row 18's
+      exception). This lives here, with the table grammar, not in `orchestrate-dev`;
+   d. otherwise set the status cell to `newStatus` and the evidence cell to
+      `mergeEvidenceCell(existingCell, evidence)`;
+   e. re-emit the row canonically.
+
+`rewriteStatus` skips the write and the commit entirely when `written === false`, so a non-overwrite
+case touches neither disk nor git.
+
+### 8.5 The two new pure helpers
+
+**`ensureEvidenceColumn(markdown) => { markdown, migrated }`** — FSPEC §7.3's exactly three
+structural changes, and no fourth:
+
+1. header row (the row whose cells include `status` and one containing `feature`): append
+   `` ` Evidence ` ``. If a cell already contains `evidence`, return `{ markdown, migrated: false }`
+   — an already-migrated queue is never migrated twice;
+2. the **separator row** immediately following it: append one `---` cell (recognised as "every cell
+   is a dash run or empty", the same predicate `parseQueue:150` and `updateQueueStatus:352` already
+   use);
+3. every other data row: append **one empty cell**.
+
+Rows that are not part of the table (prose, blank lines, anything not starting with `|`) are
+untouched, and no other cell of any row is rewritten. `Evidence` is safe against the header lookup:
+`parseQueue`'s `colIndex` resolves columns by substring over `order`/`#`, `status`, `feature`,
+`req path`/`req`/`path`, `depends`/`deps`, and `evidence` contains none of those tokens — verified
+against `orchestrate-queue.js:134`–`:139`. A sixth cell therefore round-trips unchanged.
+
+**`mergeEvidenceCell(prev, next) => string`** — FSPEC §7.2's no-downgrade rule:
+if `prev` is a non-empty string and `next` matches `/^merged #/`, return `prev`; otherwise return
+`next`. So a cell already holding `abc1234 #42` is never downgraded to `merged #42` by a re-entry
+that could not resolve the oid, while a real SHA always wins over a placeholder.
+
+**Idempotence, honestly scoped.** Byte-identity on re-entry holds for rows already in the canonical
+`| a | b |` form — what this transform emits and what this repo's `QUEUE.md` uses. A consumer queue
+with column-aligned padding is re-emitted canonically on the first write to that row and produces a
+real commit; the guarantee is **no semantic change** (FSPEC §7.4). `commitQueueRow`'s
+`nothing to commit` branch (`:952`) already makes the no-change case silent and non-faulty.
+
 ## 9. The queue driver's post-pipeline transition
 
 ## 10. Reporting — report fields, notices, phase row
