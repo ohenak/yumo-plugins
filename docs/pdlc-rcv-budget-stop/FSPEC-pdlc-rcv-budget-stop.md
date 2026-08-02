@@ -204,6 +204,88 @@ that same entry. Two consequences stated as outcomes:
 
 ## 5. FSPEC-REG-01 — The reset region as a read model
 
+**Linked criteria:** AC-1.5(4), §4.1. **Catalogue ids:** S-12 (`## Reset Region`), S-13
+(`WINDOW-START: {N}`), S-14 (`WINDOW-RESUMED: {W}`), S-15 (`HALT-REASON: {value}`), S-16
+(`reset-region-corrupt: …`). Grammars are the catalogue's and are **not restated**.
+
+### 5.1 Where the region lives, and what counts as being in it
+
+The region is the section headed exactly `## Reset Region` in `POSTMORTEM-{phase}-{feature}.md`,
+from that heading to the next top-level heading or end of file, **outside any fenced block**. It is
+the **only** place S-13, S-14 and S-15 lines are read from.
+
+**One region per phase, per feature.** The post-mortem path is keyed by phase, so Phase R and Phase
+F each have their own file and therefore their own region and their own `W`. A halt in one never
+answers a clearance in the other. The path is **fixed and unversioned**: a document that halts twice
+has one post-mortem, which is what makes the region cumulative.
+
+**B-REG-5 — a line outside the region span counts for nothing.** A `HALT-REASON:` or
+`WINDOW-START:` line quoted in the post-mortem's prose, inside its `## Recommendation`, or inside a
+fenced block, is not a region line: it moves neither count and contributes no origin. This is what
+stops the accounting being writable by ordinary prose.
+
+### 5.2 The two counts and the origin
+
+| Quantity | Read as |
+|---|---|
+| **`H`** | the number of `HALT-REASON:` lines in the region |
+| **`A`** | the number of `WINDOW-START:` **plus** `WINDOW-RESUMED:` lines in the region |
+| **`W`** | the **greatest** well-formed `WINDOW-START:` value in the region; **1** when there is none |
+
+**B-REG-3 — both counts are taken by line prefix, whatever the value.** A malformed value still
+answers a halt. This is what keeps the accounting balanced when a value is unreadable: the clearance
+was spent, and the region records that it was spent, even though the origin it claimed is unusable.
+
+**B-REG-4 — a malformed answering value contributes no origin.** A `WINDOW-START:` whose value is
+not a decimal integer ≥ 1 — `abc`, `-2`, empty — counts toward `A` and contributes **no value** to
+`W`. When no well-formed value remains, `W` falls back to **1**: the narrowest window, never an
+unbounded or non-numeric one. The S-13/S-14 grammars are **in force at this ship** (§1.2); only the
+consistency analysis is target state.
+
+**Values never descend.** Every granting line carries the **resolved** start (§6.2), so well-formed
+`WINDOW-START:` values are non-descending across the region on every path. *Greatest* and *last
+well-formed* therefore name the same line, and the operator act B-WIN-3 accommodates does not make
+the region inconsistent.
+
+### 5.3 The empty and unreadable readings
+
+**B-REG-1 — no region.** No post-mortem file, or a post-mortem with no `## Reset Region` heading
+outside fences ⇒ `H = A = 0`, `W = 1`, no reset in effect and no clearance outstanding. This is the
+state of every document that has never halted, and of a feature whose post-mortem Phase H has
+deleted (§10, E-6).
+
+**B-REG-2 — a present but empty region.** A `## Reset Region` heading containing no `HALT-REASON:`
+line reads exactly as B-REG-1 does. **Empty is valid, not corrupt**: it satisfies the validation
+predicate vacuously and raises no notice.
+
+**B-REG-6 — a present but unreadable post-mortem.** Read as `status: "none"` (M-7a) ⇒ **no halt in
+force** *and* an empty region ⇒ `H = A = 0`, `W = 1`. Nothing is honoured and nothing is written —
+the narrowest window, fail-closed in both directions at once.
+
+### 5.4 Validation — the named predicate, and what it does at this ship
+
+*The region validates* is a predicate on the region and the branch listing, **total and
+single-valued**. This FSPEC fixes only its **meaning** and **failure disposition**; its decision
+procedure is `REQ-RCV-07` AC-7.1's (**F-N-1**, forward edge X-06).
+
+- **True** exactly when every answering-line value is well-formed and consistent with the lines
+  before it and with the highest round on the branch, **and** `H − A ∈ {0, 1}`. The empty region
+  satisfies it vacuously.
+- **False** ⇒ fail-closed in four respects at once, all four **target state**: `W = 1`; the
+  clearance is **not** consumed, so neither count moves and no answering line is written; the run
+  report emits **exactly one** `reset-region-corrupt: {reason}` notice (S-16); and the entry
+  **refuses the phase** — a *phase refusal*, terminating the invocation as an unresolved post-mortem
+  does, with the queue row written `halted`.
+
+**B-REG-7 — the interim, and its one observable.** At this ship the conjunct is **not wired**: the
+predicate is **consulted zero times**, no entry refuses for a region reason, no `reset-region-corrupt`
+notice is ever emitted, and every branch behaves as it does at HEAD. The observable is a count of
+**0 consultations**, not an absence of effect — the two are distinguishable, and only the count
+falsifies *"wired with an ad-hoc interim procedure"* (split §5.1, §5.4). The cost, time-boxed to
+`REQ-RCV-07`'s queue row: a hand-edited region and the loop's own newly written region lines land in
+a region nothing validates. Both are bounded by the accounting the two live conjuncts enforce —
+every line still answers or records exactly one halt.
+
 ## 6. FSPEC-CLR-01 — The clearance gate and the answering line
 
 ## 7. FSPEC-HALT-01 — Halt-path region maintenance
