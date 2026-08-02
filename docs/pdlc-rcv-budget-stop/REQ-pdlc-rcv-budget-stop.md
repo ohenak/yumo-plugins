@@ -30,9 +30,9 @@ depends-on: []
 
 This REQ carries the **window**: how many rounds a document gets, what they are counted from, and what an operator does when they run out.
 
-- **P-1's cost half — the budget does not bound the document.** At HEAD `MAX_REVIEW_ROUNDS` is a *per-invocation* budget (M-1d), so a document can be reviewed six times across two invocations with no operator action.
-- **The budget is five, and the fifth round is measurably worse than the second.** On the predecessor the blocking count bottomed at round 2, held at round 3 and rose thereafter (baseline §1.1: 11, 6, 6, 7, 9), and 66 KB — 40% of the finished document — was added by rounds run *after* its own fixed-point test fired.
-- **An absolute cap needs an escape hatch, and the hatch needs durable state.** A cap counted from round 1 of the *document* is a dead end without an operator reset, and a reset leaving no record is re-granted every invocation — the per-invocation budget restored fail-open.
+- **P-1's cost half — the budget does not bound the document.** At HEAD `MAX_REVIEW_ROUNDS` is a *per-invocation* budget (M-1d): a document can be reviewed six times across two invocations with no operator action.
+- **The budget is five, and the fifth round is measurably worse than the second.** On the predecessor the blocking count bottomed at round 2, held at 3 and rose thereafter (baseline §1.1: 11, 6, 6, 7, 9); 66 KB — 40% of the finished document — was added *after* its own fixed-point test fired.
+- **An absolute cap needs an escape hatch, and the hatch needs durable state.** A cap counted from the *document*'s round 1 is a dead end without an operator reset, and a reset leaving no record is re-granted every invocation — the per-invocation budget restored fail-open.
 
 `REQ-RCV-07` carries **how the region is validated, what a partially-written answering line leaves behind, and what an operator does about either** — AC-1.5(4)'s implementation-altitude half. `pdlc-rcv-fixed-point-stop` carries the two **tests** evaluated inside this window (P-2); `pdlc-rcv-panel-topology` P-1's *review-surface* half; `pdlc-rcv-finding-quality` P-3 and P-4.
 
@@ -131,9 +131,11 @@ the post-mortem's Iterations section, the phase record and the returned `iterati
 `iterations` is the **budget**, not the rounds run (M-1c). Because AC-1.5(1) makes a **zero-round** halt the commonest new case, the Iterations section also states the **rounds this
 entry ran** — `0` there — so the two are never conflated where the operator reads them. Both asserted **over the constant**, never the literal `3`.
 
-**On every halt in scope, including one that finds an existing post-mortem** — no exception for a re-halt, the case this criterion exists for: a second entry into an exhausted window is by construction a zero-round halt, so an operator reading the *previous* halt's `rounds run {k}` there reads exactly the conflation this criterion prohibits, on the commonest new case. **So the section is refreshed by the halt, and AC-1.4 carves it out of its byte-unchanged rule** (split §5.6) — not re-authoring, but a two-integer render the loop computes, no agent and no `## Recommendation` involved.
+**A fourth quantity: the per-reviewer verdict list the halt returns.** A zero-round halt dispatched no reviewer, so **that list is empty** — not a carry-over of the previous round's reviewers and their verdicts, which would report verdicts for reviewers this entry never ran, in the same report as row C's deliberately empty cells. Named here rather than left for the implementer to discover, because AC-1.5(1) is what makes the path reachable.
 
-**The render is declared, not left to the implementer.** HEAD's section is a fixed literal carrying one number and the phrase *"limit reached"* (M-1c), false on a zero-round entry, so this replaces it: §6's `Iterations (budget {MAX_REVIEW_ROUNDS}, rounds run {k})` — two labelled integers, making O-10's leg an equality, not a substring match any rendering satisfies. **O-14 produces it on both the creating halt and the re-halt; O-10 asserts it on both.**
+**On every halt in scope, including one that finds an existing post-mortem** — no exception for a re-halt, the case this criterion exists for: a second entry into an exhausted window is by construction a zero-round halt, so an operator reading the *previous* halt's `rounds run {k}` there reads exactly the conflation this criterion prohibits. **So the section is refreshed by the halt, and AC-1.4 carves it out of its byte-unchanged rule** (split §5.6).
+
+**The render is declared, and it is the loop's, not an agent's.** HEAD's section is a fixed literal carrying one number and the phrase *"limit reached"* (M-1c), false on a zero-round entry, so this replaces it: §6's `Iterations (budget {MAX_REVIEW_ROUNDS}, rounds run {k})` — two labelled integers, making O-10's leg an equality, not a substring match any rendering satisfies. **The loop computes and writes it on every halt in scope — creating halt and re-halt alike (AC-1.4 clause 3)** — so the string an operator reads is production's, and O-10's equality is falsifiable against production rather than against a test double's canned text. O-14 produces it; O-10 asserts it on both.
 
 **AC-1.4 — Existing halt behaviour is unchanged in kind, and every halt maintains the reset region.** *Who:* the operator. *Given:* the budget is exhausted. *When:* the loop halts.
 *Then:* it halts as it does today — writing `POSTMORTEM-{phase}-{feature}.md`, confirming the write, not trusting the agent's reply, and refusing to re-run the phase until
@@ -170,7 +172,8 @@ halts twice would have its post-mortem written twice, and the reset region (S-12
    **The zero-round budget halt has a report row, row C** — the **third** dispatch-less row, stated
    cell by cell here as the catalogue requires of the REQ owning the condition. `round` = **the start
    clause 2 resolves**; `panel-shape`, `blocking`, `growth-bytes`, `classification` **empty**, nothing
-   dispatched or measured; `notice` = this halt's **S-4** reason, `; `-joined with any co-occurring
+   dispatched or measured, **and the returned per-reviewer verdict list empty** (AC-1.3);
+   `notice` = this halt's **S-4** reason, `; `-joined with any co-occurring
    reason in catalogue §3 precedence order — **vacuous on row C, deliberately**: no round is
    dispatched, so no S-3/S-5/S-6 can be raised, and rows B and C are mutually exclusive, so no S-16
    either. A test may assert the cell is **exactly** the S-4 render, no separator. The join stays in
