@@ -1218,6 +1218,312 @@ async function readMergeConfigSafely(readFileFn, path) {
   }
 }
 
+// ─── TSPEC §4 — Phase MERGE: observation points, pure classifiers (O-M2) ───
+//
+// PLAN §12 A2. The PURE half of the six observation points (§4.1–§4.7):
+// `mergeCommandFor` — the single place every literal `gh` command string is
+// built (TSPEC §2.3/§4.1) — `parsePrRef`, and the six `classify*` functions.
+// Every classifier is total and shares one fail-closed shape, DC-11:
+// `{ ok: true, ... } | { ok: false, reason }`, `reason` drawn from the one
+// shared, frozen `OBSERVATION_REASONS` catalogue (DC-01). None of these
+// functions perform IO — the `raw` string(s) they read are handed in by
+// A5's `observe*` wrappers, which own the `_ghRun` transport seam.
+
+// The closed reason catalogue every classify* function draws from (DC-01).
+// `not-confirmed` is `classifyMergeResult`'s own addition (TSPEC §4.7); §7
+// records that A6 extends this catalogue's *usage*, not its membership —
+// the value already needs to exist here for `classifyMergeResult` (an
+// A2-owned function) to be correct on its own.
+const OBSERVATION_REASONS = Object.freeze([
+  "command-failed",
+  "unparseable",
+  "field-absent",
+  "unrecognised-value",
+  "incomplete",
+  "not-confirmed",
+]);
+
+const PR_STATE_VALUES = ["OPEN", "CLOSED", "MERGED"];
+const MERGEABLE_VALUES = ["MERGEABLE", "CONFLICTING", "UNKNOWN"];
+const MERGE_STATE_STATUS_VALUES = [
+  "CLEAN",
+  "UNSTABLE",
+  "BEHIND",
+  "BLOCKED",
+  "DIRTY",
+  "DRAFT",
+  "HAS_HOOKS",
+  "UNKNOWN",
+];
+const UNRECOGNISED_SENTINEL = "__unrecognised__";
+
+/**
+ * `mergeCommandFor` — TSPEC §4.1: the SOLE place every `gh` command string
+ * used by Phase MERGE is built, so a single audit of this function's body
+ * accounts for every literal command the phase can run.
+ *
+ * @param {string} surface - one of prState, ci, repoCaps, changedFiles,
+ *   changedFilesFallback, merge, mergeReadback, reviewThreads
+ * @param {object} params - surface-specific parameters (see call sites)
+ * @returns {string}
+ */
+function mergeCommandFor(surface, params = {}) {
+  switch (surface) {
+    case "prState":
+      return `gh pr view ${params.prUrl} --json state,mergeable,mergeStateStatus,number,mergeCommit`;
+    case "ci":
+      return `gh pr view ${params.prUrl} --json statusCheckRollup`;
+    case "repoCaps":
+      return "gh repo view --json rebaseMergeAllowed,mergeCommitAllowed,squashMergeAllowed,deleteBranchOnMerge,defaultBranchRef";
+    case "changedFiles":
+      return `gh pr view ${params.prUrl} --json files`;
+    case "changedFilesFallback":
+      return `gh api --paginate --slurp repos/${params.owner}/${params.repo}/pulls/${params.number}/files`;
+    case "merge":
+      return `gh pr merge ${params.prUrl} --${params.method}`;
+    case "mergeReadback":
+      return `gh pr view ${params.prUrl} --json mergeCommit,state`;
+    case "reviewThreads": {
+      const { owner, repo, number, cursor } = params;
+      const query =
+        "\n" +
+        "query($owner:String!,$repo:String!,$number:Int!,$cursor:String){\n" +
+        "  repository(owner:$owner,name:$repo){ pullRequest(number:$number){\n" +
+        `    reviewThreads(first:${MERGE_THREAD_PAGE_LIMIT}, after:$cursor){\n` +
+        "      pageInfo{ hasNextPage endCursor } nodes{ isResolved } } } } }";
+      let cmd = `gh api graphql -f owner=${owner} -f repo=${repo} -F number=${number} -f query='${query}'`;
+      if (cursor !== undefined && cursor !== null) {
+        cmd += ` -f cursor=${cursor}`;
+      }
+      return cmd;
+    }
+    default:
+      throw new Error(`mergeCommandFor: unrecognised surface "${surface}"`);
+  }
+}
+
+/**
+ * `parsePrRef` — TSPEC §4.4: pure parse of a PR URL into
+ * `{ owner, repo, number }`, or `null` for anything malformed. Tolerates
+ * trailing path segments and query strings; the host is never validated
+ * (GitHub Enterprise, etc.).
+ *
+ * @param {*} input
+ * @returns {{owner: string, repo: string, number: number}|null}
+ */
+function parsePrRef(input) {
+  if (typeof input !== "string") return null;
+  const match = input.match(/^https?:\/\/[^/]+\/([^/]+)\/([^/]+)\/pull\/(\d+)(?:[/?].*)?$/);
+  if (!match) return null;
+  const number = parseInt(match[3], 10);
+  if (!Number.isInteger(number) || number <= 0) return null;
+  return { owner: match[1], repo: match[2], number };
+}
+
+/**
+ * `classifyPrState` — O1 (TSPEC §4.2). Whole-observation failure only for
+ * `state`; `mergeable` and `mergeStateStatus` each fail closed to a
+ * per-field sentinel instead, since the decision function can act on
+ * "unrecognised" without the whole observation being unusable.
+ *
+ * @param {string|null} raw
+ * @returns {{ok: true, state, mergeable, mergeStateStatus, number, mergeCommitOid}|{ok: false, reason}}
+ */
+function classifyPrState(raw) {
+  if (raw === null) return { ok: false, reason: "command-failed" };
+  let obj;
+  try {
+    obj = JSON.parse(raw);
+  } catch {
+    return { ok: false, reason: "unparseable" };
+  }
+  if (obj?.state === undefined) return { ok: false, reason: "field-absent" };
+  if (!PR_STATE_VALUES.includes(obj.state)) return { ok: false, reason: "unrecognised-value" };
+
+  const mergeable = MERGEABLE_VALUES.includes(obj.mergeable) ? obj.mergeable : UNRECOGNISED_SENTINEL;
+  const mergeStateStatus = MERGE_STATE_STATUS_VALUES.includes(obj.mergeStateStatus)
+    ? obj.mergeStateStatus
+    : UNRECOGNISED_SENTINEL;
+  const number = Number.isInteger(obj.number) && obj.number > 0 ? obj.number : null;
+  const mergeCommitOid =
+    obj.mergeCommit && typeof obj.mergeCommit.oid === "string" ? obj.mergeCommit.oid : null;
+
+  return { ok: true, state: obj.state, mergeable, mergeStateStatus, number, mergeCommitOid };
+}
+
+/**
+ * `classifyReviewThreads` — O3 (TSPEC §4.4), one GraphQL page at a time.
+ * Cross-page aggregation and cursor advancement are A5's `observeReviewThreads`.
+ *
+ * @param {string|null} raw
+ * @returns {{ok: true, hasNextPage: boolean, endCursor: string|null, unresolved: number}|{ok: false, reason}}
+ */
+function classifyReviewThreads(raw) {
+  if (raw === null) return { ok: false, reason: "command-failed" };
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return { ok: false, reason: "unparseable" };
+  }
+  const rt = parsed?.data?.repository?.pullRequest?.reviewThreads;
+  if (!rt || typeof rt !== "object") return { ok: false, reason: "field-absent" };
+  const { nodes, pageInfo } = rt;
+  if (!Array.isArray(nodes) || !pageInfo || typeof pageInfo !== "object") {
+    return { ok: false, reason: "field-absent" };
+  }
+  if (typeof pageInfo.hasNextPage !== "boolean") return { ok: false, reason: "field-absent" };
+
+  let unresolved = 0;
+  for (const node of nodes) {
+    if (typeof node?.isResolved !== "boolean") return { ok: false, reason: "unrecognised-value" };
+    if (!node.isResolved) unresolved += 1;
+  }
+  return {
+    ok: true,
+    hasNextPage: pageInfo.hasNextPage,
+    endCursor: pageInfo.endCursor ?? null,
+    unresolved,
+  };
+}
+
+/**
+ * `classifyRepoCaps` — O4 (TSPEC §4.5). Every capability flag and the
+ * default branch name are required; any absent or wrongly-typed field
+ * fails the whole observation closed.
+ *
+ * @param {string|null} raw
+ * @returns {{ok: true, rebase, mergeCommit, squash, deleteBranchOnMerge, defaultBranch}|{ok: false, reason}}
+ */
+function classifyRepoCaps(raw) {
+  if (raw === null) return { ok: false, reason: "command-failed" };
+  let obj;
+  try {
+    obj = JSON.parse(raw);
+  } catch {
+    return { ok: false, reason: "unparseable" };
+  }
+
+  const boolFields = [
+    "rebaseMergeAllowed",
+    "mergeCommitAllowed",
+    "squashMergeAllowed",
+    "deleteBranchOnMerge",
+  ];
+  for (const field of boolFields) {
+    if (!obj || !(field in obj)) return { ok: false, reason: "field-absent" };
+    if (typeof obj[field] !== "boolean") return { ok: false, reason: "unrecognised-value" };
+  }
+  if (!obj.defaultBranchRef || typeof obj.defaultBranchRef !== "object") {
+    return { ok: false, reason: "field-absent" };
+  }
+  if (typeof obj.defaultBranchRef.name !== "string" || obj.defaultBranchRef.name.length === 0) {
+    return { ok: false, reason: "field-absent" };
+  }
+
+  return {
+    ok: true,
+    rebase: obj.rebaseMergeAllowed,
+    mergeCommit: obj.mergeCommitAllowed,
+    squash: obj.squashMergeAllowed,
+    deleteBranchOnMerge: obj.deleteBranchOnMerge,
+    defaultBranch: obj.defaultBranchRef.name,
+  };
+}
+
+/**
+ * `classifyChangedFiles` — O5 (TSPEC §4.6). Step 1 (`gh pr view --json
+ * files`) is complete on its own whenever it returns fewer than
+ * `pageLimit` well-formed entries — GitHub's own page size is the only
+ * signal that step 1 might be truncated. A well-formed-but-full step 1, or
+ * a step 1 that came back some other, non-array shape, escalates to the
+ * step 2 fallback (`gh api --paginate --slurp .../files`); a step 1 whose
+ * entries are individually malformed fails closed immediately, without
+ * ever trying the fallback.
+ *
+ * @param {string|null} primaryRaw
+ * @param {string|null} fallbackRaw
+ * @param {{pageLimit?: number}} [opts]
+ * @returns {{ok: true, files: string[]}|{ok: false, reason}}
+ */
+function classifyChangedFiles(primaryRaw, fallbackRaw, opts = {}) {
+  const pageLimit = opts.pageLimit ?? MERGE_FILES_PAGE_LIMIT;
+
+  if (primaryRaw !== null) {
+    let obj;
+    try {
+      obj = JSON.parse(primaryRaw);
+    } catch {
+      return { ok: false, reason: "unparseable" };
+    }
+    const arr = obj?.files;
+    if (Array.isArray(arr)) {
+      const paths = [];
+      for (const entry of arr) {
+        if (!entry || typeof entry.path !== "string") {
+          return { ok: false, reason: "unparseable" };
+        }
+        paths.push(entry.path);
+      }
+      if (paths.length < pageLimit) {
+        return { ok: true, files: paths };
+      }
+      // Full page: possibly incomplete, fall through to the fallback below.
+    }
+    // A non-array `files` shape is treated the same way: not a hard
+    // failure, just a signal that the fallback is needed.
+  }
+
+  if (fallbackRaw === null) return { ok: false, reason: "incomplete" };
+  let pages;
+  try {
+    pages = JSON.parse(fallbackRaw);
+  } catch {
+    return { ok: false, reason: "incomplete" };
+  }
+  if (!Array.isArray(pages)) return { ok: false, reason: "incomplete" };
+
+  const files = [];
+  for (const page of pages) {
+    if (!Array.isArray(page)) return { ok: false, reason: "incomplete" };
+    for (const entry of page) {
+      if (!entry || typeof entry.filename !== "string") {
+        return { ok: false, reason: "incomplete" };
+      }
+      files.push(entry.filename);
+      if (typeof entry.previous_filename === "string") {
+        files.push(entry.previous_filename);
+      }
+    }
+  }
+  return { ok: true, files };
+}
+
+/**
+ * `classifyMergeResult` — O6 (TSPEC §4.7). `gh pr merge` exiting zero is not
+ * itself confirmation; the read-back (`gh pr view --json mergeCommit,state`)
+ * must independently show `state: "MERGED"` with a string commit oid, or the
+ * result is `not-confirmed` (TSPEC §7) rather than assumed successful.
+ *
+ * @param {string|null} mergeRaw - the merge command's own stdout, or null if it didn't run
+ * @param {string|null} readbackRaw - the read-back command's stdout, or null if it didn't run
+ * @returns {{ok: true, oid: string}|{ok: false, reason}}
+ */
+function classifyMergeResult(mergeRaw, readbackRaw) {
+  if (mergeRaw === null) return { ok: false, reason: "command-failed" };
+  if (readbackRaw === null) return { ok: false, reason: "command-failed" };
+  let obj;
+  try {
+    obj = JSON.parse(readbackRaw);
+  } catch {
+    return { ok: false, reason: "unparseable" };
+  }
+  if (obj?.state === "MERGED" && obj?.mergeCommit && typeof obj.mergeCommit.oid === "string") {
+    return { ok: true, oid: obj.mergeCommit.oid };
+  }
+  return { ok: false, reason: "not-confirmed" };
+}
+
 // MODEL-01: per-phase model selection. Every phase runs on Opus for reasoning
 // depth EXCEPT the Phase I implementation batches, which run on Sonnet for
 // throughput/cost. Passed to the runtime via the agent() opts.model field.
@@ -6844,12 +7150,25 @@ function parseTriageVerdict(result) {
  * report `queueRow: "error"` (FSPEC §13.5) rather than claiming a write it
  * never made.
  *
+ * `evidence` (TSPEC §8.4) is the 4th, defaulted, parameter. `evidence == null`
+ * is exactly today's code path, character for character: column resolution,
+ * row match, `newCells[statusCol] = newStatus`, re-emit — no migration, no
+ * sixth cell, no re-emission of any other row (FSPEC §7.4's required
+ * evidence-free identity property, PROP-M-12). `evidence != null` first
+ * applies the §2.5 non-overwrite rule (only `in-progress` / `awaiting-merge`
+ * / `done` rows are overwritten; any other status is reported back,
+ * untouched, as `{ matched: true, written: false, foundStatus }`) and, when
+ * overwritable, migrates the `Evidence` column via `ensureEvidenceColumn`
+ * (once — never twice) before setting the status cell and merging the
+ * evidence cell through `mergeEvidenceCell`'s no-downgrade rule.
+ *
  * @param {string} markdown
  * @param {string} feature
  * @param {string} newStatus
- * @returns {{ markdown: string, matched: boolean }}
+ * @param {string|null} [evidence]
+ * @returns {{ markdown: string, matched: boolean, written?: boolean, foundStatus?: string }}
  */
-function updateQueueStatus(markdown, feature, newStatus) {
+function updateQueueStatus(markdown, feature, newStatus, evidence = null) {
   if (typeof markdown !== "string" || !feature) {
     return { markdown, matched: false };
   }
@@ -6878,14 +7197,94 @@ function updateQueueStatus(markdown, feature, newStatus) {
     if (cells.every((c) => /^:?-{2,}:?$/.test(c) || c === "")) continue;
     if ((cells[featureCol] || "").trim() !== feature) continue;
 
-    // Replace the status cell, preserving the original pipe layout.
-    const newCells = cells.slice();
-    newCells[statusCol] = newStatus;
-    lines[i] = `| ${newCells.join(" | ")} |`;
-    return { markdown: lines.join("\n"), matched: true };
+    // evidence == null: exactly today's code path, byte for byte (§8.4.1).
+    if (evidence == null) {
+      const newCells = cells.slice();
+      newCells[statusCol] = newStatus;
+      lines[i] = `| ${newCells.join(" | ")} |`;
+      return { markdown: lines.join("\n"), matched: true };
+    }
+
+    // evidence != null: §2.5's non-overwrite rule first — the file is
+    // returned byte-unchanged whenever the row's current status is not
+    // one the write-back is permitted to overwrite.
+    const foundStatus = (cells[statusCol] || "").trim();
+    if (!EVIDENCE_OVERWRITABLE_STATUSES.includes(foundStatus)) {
+      return { markdown, matched: true, written: false, foundStatus };
+    }
+
+    // Overwritable: migrate the Evidence column (once), re-locate the row in
+    // the migrated table, set the status and evidence cells, and re-emit.
+    return writeEvidenceCarryingRow(markdown, feature, newStatus, evidence, {
+      statusCol,
+      featureCol,
+    });
   }
 
   return { markdown, matched: false }; // feature row not found
+}
+
+// TSPEC §8.4c / FSPEC §2.5 — the only statuses the evidence-carrying write is
+// permitted to overwrite. Any other status (`pending`, `blocked`, `halted`)
+// is left untouched: it describes work this run did not drive to completion.
+const EVIDENCE_OVERWRITABLE_STATUSES = ["in-progress", "awaiting-merge", "done"];
+
+/**
+ * The evidence-carrying write itself (TSPEC §8.4, steps a/d/e), split out so
+ * `updateQueueStatus`'s non-overwrite early-return never touches
+ * `ensureEvidenceColumn` — the file it returns on that path is the pristine
+ * input, not a discarded migration.
+ *
+ * @param {string} markdown
+ * @param {string} feature
+ * @param {string} newStatus
+ * @param {string} evidence
+ * @param {{statusCol: number, featureCol: number}} hint - column indices
+ *   resolved from the pre-migration header (unaffected by the appended
+ *   Evidence column, which lands after them).
+ * @returns {{ markdown: string, matched: boolean, written?: boolean }}
+ */
+function writeEvidenceCarryingRow(markdown, feature, newStatus, evidence, hint) {
+  const { markdown: migrated } = ensureEvidenceColumn(markdown);
+  const lines = migrated.split("\n");
+
+  let statusCol = hint.statusCol;
+  let featureCol = hint.featureCol;
+  let evidenceCol = -1;
+  for (const line of lines) {
+    if (!line.trim().startsWith("|")) continue;
+    const cells = splitRow(line.trim()).map((c) => c.toLowerCase());
+    if (cells.includes("status") && cells.some((c) => c.includes("feature"))) {
+      const s = cells.findIndex((c) => c.includes("status"));
+      const f = cells.findIndex((c) => c.includes("feature"));
+      const e = cells.findIndex((c) => c.includes("evidence"));
+      if (s >= 0) statusCol = s;
+      if (f >= 0) featureCol = f;
+      if (e >= 0) evidenceCol = e;
+      break;
+    }
+  }
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line.trim().startsWith("|")) continue;
+    const cells = splitRow(line.trim());
+    if (cells.every((c) => /^:?-{2,}:?$/.test(c) || c === "")) continue;
+    if ((cells[featureCol] || "").trim() !== feature) continue;
+
+    const newCells = cells.slice();
+    newCells[statusCol] = newStatus;
+    if (evidenceCol >= 0) {
+      const prevEvidence = (newCells[evidenceCol] || "").trim();
+      newCells[evidenceCol] = mergeEvidenceCell(prevEvidence, evidence);
+    }
+    lines[i] = `| ${newCells.join(" | ")} |`;
+    return { markdown: lines.join("\n"), matched: true, written: true };
+  }
+
+  // Unreachable in practice — the caller already located this exact row
+  // before migrating — but stay defensive rather than throw.
+  return { markdown, matched: false };
 }
 
 // ─── QUEUE-WRITE-02: ensureEvidenceColumn / mergeEvidenceCell ────────────────
@@ -7494,7 +7893,8 @@ async function rewriteStatus(
   status,
   readFileFn,
   writeFileFn,
-  gitFn = defaultGit
+  gitFn = defaultGit,
+  evidence = null
 ) {
   const current = await readFileFn(queuePath);
 
@@ -7505,7 +7905,12 @@ async function rewriteStatus(
     return { queueRow: "none" };
   }
 
-  const { markdown, matched } = updateQueueStatus(current, feature, status);
+  const { markdown, matched, written, foundStatus } = updateQueueStatus(
+    current,
+    feature,
+    status,
+    evidence
+  );
 
   // FSPEC §13.5 — document present, row expected, row absent. Distinct from
   // "none": something removed the row mid-run, which the operator must see.
@@ -7517,6 +7922,17 @@ async function rewriteStatus(
       detail:
         `no row for ${feature} in ${queuePath}; ` +
         `status "${status}" was not recorded`,
+    };
+  }
+
+  // §2.5 / TSPEC §8.4c — evidence supplied, but the row's current status is
+  // not one this write is allowed to overwrite. `updateQueueStatus` already
+  // returned the file byte-unchanged; skip the write and the git commit
+  // entirely, and name the status that blocked it.
+  if (written === false) {
+    return {
+      queueRow: "recorded",
+      detail: `row for ${feature} left unchanged: found status "${foundStatus}", not overwritable`,
     };
   }
 
