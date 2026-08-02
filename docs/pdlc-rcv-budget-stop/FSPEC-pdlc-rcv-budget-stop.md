@@ -19,7 +19,9 @@ feature: pdlc-rcv-budget-stop
 |---|---|---|---|---|
 | pdlc | draft | Claude + operator | 1.0 | 2026-08-02 |
 
-## 1. Scope, inputs and altitude
+## 1. Overview
+
+*Scope, inputs and altitude.*
 
 This FSPEC specifies the **behaviour** of REQ-RCV-01's one requirement: a review window that is three
 rounds wide, counted per document from an origin the operator can move exactly once per halt, and a
