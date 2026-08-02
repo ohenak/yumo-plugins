@@ -43,4 +43,24 @@ Ordered highest severity first. All four are new and all four sit in text v1.2 a
 
 ## Recommendation
 
+**Needs revision**
+
+Two Medium, two Low.
+
+**I owe an account of my v2 pre-commitment before anything else.** I said: *"if round 3 lands both F-08 and F-09 — or answers F-09 by naming the exception rows — I approve, and I will not open new ground."* Both landed, and F-09 landed on exactly the row it was raised for. I am nonetheless not approving, for two reasons I want stated plainly rather than buried in a table:
+
+1. **Round 3 was not confined to my two items.** v1.2 also answers four software-engineer findings and adds genuinely new behaviour — §7.2's file-presence discriminator, the clause-3 refusal path, E-8's rewritten continuation, E-14b, §4.4's ordering paragraph — and rewrites AT-REG-06 around it. Under the delta protocol that new text is in scope for this pass, and it is where **F-10** and **F-13** come from. That is not me opening new ground; it is ground the revision opened.
+2. **F-11 is F-09's residue, and it is the third time this same row has moved rather than closed.** v1 F-05 → v2's pinned-open window → v3's convergence clause: each fix was correct and each displaced the failure one step. I would rather name the shape than patch it a fourth time — **AT-CLR-04 is the only row in the document that asserts across two entries, and a two-entry assertion needs the second entry's precondition stated, because an entry with an open window has exactly two exits and both of them break one of the row's conjuncts.** The fix I propose is checked and reachable.
+
+**Exactly what must change:**
+
+1. **F-10 (Medium)** — either state in §7.2 that clause 3 attempts **no write** when the file cannot be read (preferred: it makes the fail-closed claim total and the whole-file oracle deterministic), or scope AT-REG-06's byte-equality conjunct to what §7.3 actually guarantees — the region span, `## Recommendation`, and every pre-existing section.
+2. **F-11 (Medium)** — give AT-CLR-04's entry 2 a precondition: a **`forcePhases` re-entry after entry 1's convergence**. Arithmetic checked: `A = H = 1` still holds at the gate, nothing is granted, `W` is unchanged, `D = 3 ≤ E = 3` so entry 2 still dispatches.
+3. **F-12 (Low)** — either mark AT-CLR-02 as §11.4's stated exception, or drop the *"a later convergence halt is not auto-cleared"* conjunct.
+4. **F-13 (Low)** — add *"the same last `HALT-REASON:` prefix"* to the gate-relevant equivalence relation in §5.4 and AT-REG-07.
+
+**Pre-commitment for round 4, and this one I will hold to whatever the revision's shape.** F-10 and F-11 are one clause each, in places the author already chose; F-12 and F-13 are a phrase each. If round 4 lands F-10 and F-11 — by either of the two routes offered for F-10, and by the named precondition or any other stated precondition that makes AT-CLR-04's two entries jointly realisable — **I approve**, and I will not raise a testability finding against any section of this document again: I have now derived every branch, window bound and answering value in it, twice for the changed ones. If the author judges F-11 to be better solved by **deleting** AT-CLR-04's second entry and letting AT-CLR-05 and AT-CLR-08 carry *one clearance grants exactly one window*, say so in the row and I will treat that as a disposition and approve — the cross-entry assertion is the part I cannot write, not the property it covers. F-12 and F-13 will not hold a round on their own.
+
 ## Verdict
+
+VERDICT: Needs revision
