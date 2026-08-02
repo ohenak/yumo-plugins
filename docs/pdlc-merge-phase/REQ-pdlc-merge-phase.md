@@ -113,7 +113,7 @@ that is already in base — a stall with a misleading cause.
   | 2 | `mergeMode: "off"` | `skipped` |
   | 3 | PR state is already `MERGED` | `merged` — no merge attempted, no guard evaluation, and the queue write-back of REQ-MERGE-05 **is still performed** (idempotently) |
   | 4 | self-modification guard (REQ-MERGE-03) | `refused` |
-  | 5 | remaining preconditions (AC-1.2) | `deferred` on the first failure |
+  | 5 | remaining preconditions (AC-1.2) | `refused` or `deferred` on the first failure, per AC-6.1a |
   | 6 | merge attempted (REQ-MERGE-02) | `merged` or `deferred` |
 
   Rows 1 and 2 fix the precedence between the two independent off switches: the compile-time flag is
@@ -196,13 +196,20 @@ workflow sources, skill prompts, hook scripts, and the consumer's runtime copy o
 
 ### REQ-MERGE-04 — CI evidence requirement
 
-- **AC-4.1** — Given `ciStatus == "passed"`, Then the CI precondition is satisfied.
-- **AC-4.2** — Given `ciStatus == "no-checks"` and `mergeRequiresCi` is true (the default), Then
+- **AC-4.0** — Given Phase MERGE evaluates CI, Then the evidence is established **at merge time** by
+  re-reading the PR's check rollup, not inherited from Phase PUB's earlier snapshot. Phase PUB's
+  result is a snapshot taken before Phase DOD remediation and before any base movement; merging on it
+  would merge on stale evidence, and re-reading is what gives AC-4.4 a reachable domain.
+- **AC-4.1** — Given the re-read reports `passed`, Then the CI precondition is satisfied.
+- **AC-4.2** — Given the re-read reports `no-checks` and `mergeRequiresCi` is true (the default), Then
   the merge is refused and escalated. Phase PUB legitimately treats `no-checks` as a pass for
   *raising* a PR; it is not a pass for *merging* one.
 - **AC-4.3** — Given `mergeRequiresCi: false`, Then `no-checks` satisfies the CI precondition. A
   repository genuinely without CI can opt in deliberately.
-- **AC-4.4** — Given CI status is any other value, Then the merge is refused.
+- **AC-4.4** — Given the re-read reports any other value — `failed`, `pending`, or a rollup that
+  cannot be retrieved or parsed — Then the merge is refused. `pending` and `failed` are both reachable
+  at merge time: checks re-run when the base moves, and a check that passed at Phase PUB can fail on
+  a re-run.
 
 ### REQ-MERGE-05 — Queue status write-back
 
@@ -210,14 +217,42 @@ workflow sources, skill prompts, hook scripts, and the consumer's runtime copy o
   is written from `awaiting-merge` (or `in-progress`) to `done`.
 - **AC-5.2** — Given the merge succeeded but the queue write fails, Then an escalation is raised
   naming both facts explicitly — "merged, queue not updated" — because this state blocks the
-  entire serial queue and its cause is not visible from the queue file.
-- **AC-5.3** — Given the queue write, Then only the target feature's row is modified; no other row
-  and no prose section changes.
+  entire serial queue and its cause is not visible from the queue file. It does **not** halt the
+  pipeline — the merge succeeded, so halting would misreport the run and write a `halted` queue row
+  over a feature that has landed; the escalation plus AC-5.8's idempotent re-attempt is the recovery
+  path.
+- **AC-5.3** — Given the queue write, Then only the target feature's row is modified; no other data
+  row and no prose section changes. Two structural changes are permitted, and only these two: adding
+  the `Evidence` column of AC-5.5 to the header row, and adding the corresponding empty cell to every
+  other data row so cell counts stay uniform. No other row's Status, Feature, REQ Path or Depends-On
+  cell may change.
 - **AC-5.4** — Given the queue file does not exist (a direct `orchestrate-dev` invocation rather
   than a queue-driven one), Then the merge still proceeds and the write-back is skipped without
   error.
-- **AC-5.5** — Given the row is written to `done`, Then the merge commit SHA and PR URL are
-  recorded alongside it, so `done` carries its evidence.
+- **AC-5.5** — Given the row is written to `done`, Then the merge evidence — the short merge commit
+  SHA and the PR number or URL — is recorded in a sixth `Evidence` cell on that same row, and the
+  `Status` cell holds the single token `done` and nothing else. Every reader that compares the status
+  by exact string (the pending-selection and dependency pre-checks) must still read exactly `done`;
+  an evidence-decorated status cell such as `done (abc1234)` would block every dependent permanently,
+  which is the outcome US-05 exists to prevent. The column is named `Evidence` so it collides with
+  none of the five existing column names the queue's header lookup recognises.
+- **AC-5.6** — Given the pipeline report carries `mergeStatus: merged`, Then the queue driver's
+  post-pipeline status write records the feature as `done` rather than overwriting it to
+  `awaiting-merge`, and its operator-facing "merge the PR, then set it to done" message is not
+  emitted. Without this the driver's own write, which happens after the pipeline returns, silently
+  un-does AC-5.1 on exactly the path this feature exists for. A **direct** `orchestrate-dev`
+  invocation records `done` through the same queue-row write-and-commit path that already records a
+  `halted` row today, so both entry paths leave the same durable result.
+- **AC-5.7** — Given a merge succeeds, Then before the pipeline reports completion the working tree
+  is on the repository's default branch, updated to include the merge, so the next queue pass cuts
+  its branch and runs its dependency triage against a base that actually contains the merged work.
+  Given that update cannot be completed, Then it is escalated (REQ-MERGE-06) and `mergeStatus`
+  remains `merged` — the merge is real and re-reporting it as anything else would be false — with the
+  stale-working-tree condition named in the escalation.
+- **AC-5.8** — Given Phase MERGE re-runs against an already-merged PR (AC-1.6 row 3), Then the queue
+  write-back is re-attempted idempotently: a row already `done` is left byte-identical, a row still
+  `awaiting-merge` or `in-progress` is written to `done`. This is what makes AC-5.2's "merged, queue
+  not updated" state recoverable by re-invocation rather than only by hand.
 
 ### REQ-MERGE-06 — Reporting
 
