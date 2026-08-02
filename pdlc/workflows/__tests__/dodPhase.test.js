@@ -656,12 +656,13 @@ describe("Phase DOD static guarantees", () => {
     expect(content).toContain("boundary_gaps");
   });
 
-  it("dod-verify SKILL.md has challenger persona", () => {
+  it("dod-verify SKILL.md has constructive verifier persona", () => {
     const skillPath = resolve(__dirname, "../../skills/dod-verify/SKILL.md");
     const content = readFileSync(skillPath, "utf8");
-    // Must establish bar-raiser mindset — not a passive scanner
-    expect(content).toContain("## Persona: The Challenger");
-    expect(content).toMatch(/hostile auditor|challenger|assume.*incomplete|burden of proof/i);
+    // Must establish an evidence-based verification mindset — not a passive scanner
+    expect(content).toContain("## Persona: The Constructive Verifier");
+    expect(content).toMatch(/evidence|test that could fail|file and line/i);
+    expect(content).not.toMatch(/hostile|burden of proof/i);
   });
 
   it("dodVerifyPrompt includes req_gaps and boundary_gaps in the trailer instruction", () => {

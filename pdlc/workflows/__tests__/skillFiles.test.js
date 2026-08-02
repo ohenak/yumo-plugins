@@ -78,13 +78,16 @@ describe("Review SKILL.md VERDICT trailers (TSPEC-SKILL-01)", () => {
         expect(commToVerdict).toContain("---");
       });
 
-      // PROP-SKILL-CHALLENGER: each reviewer must have an adversarial challenger persona
-      it("has a Challenger persona section establishing hostile auditor mindset", () => {
-        expect(content).toContain("## Persona: The Challenger");
-        // Must frame the reviewer as adversarial, not passive
-        expect(content).toMatch(/hostile|burden of proof|default position/i);
-        // Must make "Needs revision" the default, not "Approved"
-        expect(content).toMatch(/Needs revision.*default|default.*Needs revision/i);
+      // PROP-SKILL-PERSONA: each reviewer must have a constructive, evidence-based persona
+      it("has a Constructive Reviewer persona section establishing a collaborative, rigorous mindset", () => {
+        expect(content).toContain("## Persona: The Constructive Reviewer");
+        // Must frame the review as collaborative and evidence-based, not adversarial
+        expect(content).toMatch(/supportive|constructive|collaborat/i);
+        expect(content).not.toMatch(/hostile|burden of proof/i);
+        // The shared team principles are present
+        expect(content).toContain("## Team Principles");
+        // The mechanical approval rule is intact: any High or Medium finding → Needs revision
+        expect(content).toContain("| Any High or Medium finding | Needs revision |");
       });
     });
   }

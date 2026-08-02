@@ -40,7 +40,7 @@ The argument is the feature's docs directory. Invoked by `orchestrate-dev` in Ph
    - `Process` findings, and any phase that needed ≥3 iterations → §4 Process Learnings.
    - Any review loop that hit the iteration limit (has a POSTMORTEM) → §1 Non-Convergences.
    - Explicitly-rejected reviewer proposals where the reason matters later → §3 Rejected Proposals.
-5. **Be ruthless about signal.** Omit transient `Local` findings already fixed upstream — they are noise. A short, high-signal LEARNINGS beats an exhaustive one.
+5. **Be selective about signal.** Omit transient `Local` findings already fixed upstream — they are noise. A short, high-signal LEARNINGS beats an exhaustive one.
 6. **Flag, don't promote.** Anything you believe should become a project-level constraint or decision goes in §5 Open Items for Consolidation, for `consolidate-learnings` to act on later. You do not edit `docs/_constraints/` or `docs/_decisions/` yourself.
 7. **Build the Approval Record (`## 6. Approval Record`) before deleting anything.** Every `CROSS-REVIEW-*` whose `## Verdict` section is approving (`Approved` or `Approved with minor changes`) contributes one row, in the six columns below, in this order:
 
