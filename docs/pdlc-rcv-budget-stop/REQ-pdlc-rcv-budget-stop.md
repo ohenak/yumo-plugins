@@ -116,14 +116,12 @@ This REQ **owns** six catalogue ids and **reads** two:
 side as *"AC-1.5(4)'s ordered algorithm"*. That algorithm is **`REQ-RCV-07` AC-7.1**, which this
 REQ's AC-1.5(4) names as its predicate's decision procedure (X-06). **Ownership of the ids is
 unchanged and the catalogue is untouched**: read **every catalogue reference to AC-1.5(4)'s
-algorithm, to its numbered steps, or to the refusal renders it produces** as `REQ-RCV-07` AC-7.1
-(and, for renders, that REQ's §6 and catalogue §4). The rule is stated over the references, not over
-one phrase, because the four rows word them differently — S-12 and S-13 say *"AC-1.5(4)'s ordered
-algorithm"*, S-14 says *"AC-1.5(4)'s validation"*, S-16 says *"AC-1.5(4) step 4"* — and it reaches
-catalogue **§3**'s row-schema clauses on the same terms: its *"AC-1.5(4)'s step-4 path"* is AC-7.1
-step 4's, and its *"the validation-failure variant's is fixed by `pdlc-rcv-budget-stop` §6"* is
-`REQ-RCV-07` §6's, since this REQ now mints no operator string of its own (§6). The catalogue may be
-corrected to say so directly when `REQ-RCV-07` ships; until then this rule is the reading.
+algorithm, its numbered steps, or the refusal renders it produces** as `REQ-RCV-07` AC-7.1 — renders
+as that REQ's §6 and catalogue §4. The rule is over the references, not one phrase, because the rows
+word them differently (*"ordered algorithm"*, *"AC-1.5(4)'s validation"*, *"AC-1.5(4) step 4"*), and
+it reaches catalogue **§3**'s row schema on the same terms: its *"AC-1.5(4)'s step-4 path"* is
+AC-7.1 step 4's, and its *"fixed by `pdlc-rcv-budget-stop` §6"* is `REQ-RCV-07` §6's, since this REQ
+mints no operator string (§6). The catalogue may say so directly once `REQ-RCV-07` ships.
 
 ### 4.1 Durability: what survives an invocation boundary
 
@@ -382,7 +380,10 @@ N-9, N-10` apply unchanged and are not restated, and `N-5`, `N-6` and `N-8` are 
 this REQ, not overlooked**. **Ids above `N-10` are not shared** — the family has minted colliding
 `N-1x` ids (`N-13` differs between `pdlc-rcv-fixed-point-stop` §7 and `pdlc-rcv-finding-quality` §7)
 — so this document's own non-goals use a **per-REQ namespace, `NB-*`**; restated shared rows keep
-their shared ids. Four are worth pointing at:
+their shared ids. The `O-*`, `R-*` and `X-*` classes are **not** namespaced and do collide across the
+v2.0 split (this REQ's and `REQ-RCV-07`'s `O-10`, `O-12`, `R-10` and `R-14` are different rows), so
+**every citation of one of those ids across documents must name the owning REQ** — as each one here
+does. Four non-goals are worth pointing at:
 
 | # | Not in scope | Why |
 |---|---|---|
@@ -414,7 +415,7 @@ here: an obligation on the FSPEC, TSPEC, PLAN or PROPERTIES, not a REQ revision.
 | **R-12** | **A repeating S-11 halt is unbounded.** Each S-11 clearance writes `WINDOW-RESUMED: {W}`, leaves `W` unchanged and (per the successor's AC-2.8) costs the window no round, so an authoring side that keeps producing zero-delta rounds yields an unbounded halt/clearance sequence with `H` and `A` growing together and the budget never exhausting. | **Accepted, and bounded by the operator rather than by the loop.** Every iteration costs one hand-written `RESOLVED: yes`, so the sequence is never unattended; capping it would need a second counter that could only deny an operator *choosing*, each time, to continue. Revisit if the S-11 path repeats in practice. |
 | **R-13** | **Migration: branches that already carry more than three rounds.** At the commit that lands `MAX_REVIEW_ROUNDS = 3`, every in-flight phase whose document has 3+ rounds is admitted no rounds and halts on the next entry, rendering S-4 as `rounds 1..3 of 3` while five rounds sit on disk. | **Correct and expected, not a defect** — the render states the *window*, not the file count. The escape is the ordinary clearance (AC-1.5(3)). No migration script, no back-fill of reset regions. |
 | **R-10** | **The reset region is machine state in a file an operator is instructed to edit.** A hand-edit can make the counts lie in either direction, and one direction restores the per-invocation budget AC-1.1 abolishes — silently and fail-open. | **Mechanised, not accepted.** AC-1.5(4) makes *the region validates* a **conjunct of the clearance gate**, so a region whose accounting cannot be trusted consumes nothing and opens nothing. The mechanism that decides it, and the sanctioned repairs that leave the operator a way back, are `REQ-RCV-07` AC-7.1 and AC-7.4 (that REQ's R-10). The residual carried here is §6's *never authored by a human*. |
-| **R-14** | **This REQ's *region validates* decision procedure is not implementable until `REQ-RCV-07` ships** (X-06), so row 10 alone ships an interim one — and per `docs/_queue/QUEUE.md`'s net pickup order **10 → 12 → 18** it is the shipped behaviour across one whole intervening feature and across row 18's own Phase R. | **Mitigated by fixing the interim *shape*, not by sequencing.** Sequencing is too weak a mitigation at that distance, and a constant would be worse than none: because the predicate is resolved on every entry and AC-1.5(4) declares the empty region **valid**, a constant *invalid* refuses every document-typed review phase on every feature and blocks its own replacement. X-06 therefore fixes the interim shape — an injected seam whose **production default** is *valid on the empty region, invalid on any non-empty one*. It cannot grant a window, cannot open one over an unvalidated region, and leaves branches with no reset region unchanged. A production default of *valid* is the fail-open AC-1.5(4) exists to close, and is a defect, not a shortcut. O-10 pins the default's observable behaviour and names the seam value each granting leg drives, so neither reading is left untested. |
+| **R-14** | **This REQ's *region validates* decision procedure is not implementable until `REQ-RCV-07` ships** (X-06), so row 10 alone ships an interim one, live across one whole intervening feature and row 18's own Phase R (§3.1). | **Mitigated by fixing the interim *shape*, not by sequencing.** Sequencing is too weak at that distance, and a constant *invalid* would be worse than none — it refuses every document-typed review phase on every feature and blocks its own replacement (X-06). X-06 therefore fixes the shape: an injected seam defaulting to *valid on the empty region, invalid on any non-empty one*, which can neither grant a window nor open one over an unvalidated region. A **default** of *valid* is the fail-open AC-1.5(4) exists to close: a defect, not a shortcut. O-10 pins that default's observable behaviour and names the seam value each granting leg drives. |
 
 **Deferrals and their binding.** This REQ defers nothing of its own. The predecessor's deferrals
 belong to the successors carrying the criteria that raise them: cross-panel comparability and finding
