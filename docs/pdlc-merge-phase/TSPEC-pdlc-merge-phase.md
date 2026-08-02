@@ -79,8 +79,8 @@ main()  ──►  phaseMerge()  ──►  decideMerge()          [pure, total,
 `decideMerge` never performs IO and never receives a seam; `phaseMerge` performs no parsing and takes
 no decision beyond "which observation the core just demanded".
 
-**What that split does and does not buy (TE F-01, F-13).** FSPEC §11's table has **24** rows (1–23
-plus 11a), and it is **not** a pure-function suite: three of its four columns — *queue written*,
+**What that split does and does not buy (TE F-01, F-13).** FSPEC §11's table has **25** rows (1–23
+plus 11a and 13a), and it is **not** a pure-function suite: three of its four columns — *queue written*,
 *escalation*, and the observation-traffic assertions §13.3 requires — are `phaseMerge`'s, not
 `decideMerge`'s. The row table is therefore driven through `phaseMerge` (§13.2), and `decideMerge`
 carries a thinner suite of its own: the ordered guard sequence, the two §2.3 tie-breaks, the
@@ -164,7 +164,7 @@ ObservationRecord = {
 MergeOutcome = {
   mergeStatus: "merged" | "deferred" | "refused" | "skipped",
   mergeSha: string | null,
-  mergeMethod: "rebase" | "merge" | "unknown" | null,   // + "squash", pending erratum E-1 (§15.2)
+  mergeMethod: "rebase" | "merge" | "squash" | "unknown" | null,   // FSPEC v1.3 §9.1
   row: RowId,                      // see the rule below — reported, and asserted by tests
   reason: string | null,           // FSPEC §9.2, one line
   escalations: string[],           // each already prefixed "MERGE ESCALATION: "
@@ -179,13 +179,11 @@ different `mergeStatus` and escalation expectations. The rule, stated once and e
 
 | `row` value | Meaning |
 |---|---|
-| `1`…`23`, `"11a"` | the FSPEC §11 row that resolved. This is the normal case and covers every row of §11's table |
-| `"7d-unknown"` | the **one** condition FSPEC §11 has no row for: an unretrievable `O3` (FSPEC §3.2 assigns it `refused` at §2.3 **7d**, but §11's table has no corresponding row). Requested as FSPEC erratum E-2 (§15.2); until it lands, this designator names the gap rather than borrowing a row that means something else |
+| `1`…`23`, `"11a"`, `"13a"` | the FSPEC §11 row that resolved. This is the **only** normal case and covers every row of §11's table. FSPEC v1.3 added row **13a** (review-thread list unretrievable, `refused`, resolving at §2.3 7d), which retires v1.1's provisional `"7d-unknown"` designator — see erratum E-2, accepted, §15.2 |
 | `"internal"` | E30 only — `phaseMerge` caught a throw (§5.2). Never produced by a correct implementation |
 
-`mergeMethod`'s `"squash"` member is likewise **not** in FSPEC §9.1's enumeration and is reachable
-only under `allowSquashMerge: true` (FSPEC §6.1). It is declared here and raised as erratum E-1
-(§15.2, PM F-04) rather than shipped silently.
+`mergeMethod`'s `"squash"` member is reachable only under `allowSquashMerge: true` and is now in
+FSPEC §9.1's enumeration (erratum E-1, accepted in FSPEC v1.3 — §15.2).
 
 Every observation type is a discriminated union `{ ok: true, … } | { ok: false, reason }` where
 `ok: false` **is** FSPEC §3.2's `unknown`. One shape for all six (DC-11: sibling oracles share an
@@ -546,7 +544,7 @@ test asserts the resolving row rather than inferring it:
 | 14 | `mergeable === "UNKNOWN"` (retries exhausted) | 7c | **§11 row 13**, `deferred` |
 | 15 | `mergeable === "CONFLICTING"` or `mergeStateStatus ∈ {DIRTY, BLOCKED}` | 7c | **§11 row 12**, `deferred` |
 | 16 | `record.o3 === null` | 7d | **need `O3`** |
-| 17 | `!record.o3.ok` | 7d | **`"7d-unknown"`**, `refused` — the one condition §11 has no row for (§2.4; erratum E-2) |
+| 17 | `!record.o3.ok` | 7d | **§11 row 13a**, `refused` — FSPEC v1.3's 7d split, the sibling of 7c's row 11a |
 | 18 | `record.o3.unresolved > 0` | 7d | **§11 row 14**, `deferred`, "N unresolved review thread(s)" |
 | 19 | `record.o4 === null` | 7e | **need `O4`** |
 | 20 | `!record.o4.ok` | 7e | **§11 row 15**, `refused` |
@@ -605,12 +603,11 @@ Three properties make this safe rather than a widening of row 5:
    permanently, which the reviewer judged "probably not the intent". Recorded here because it is the
    one place this TSPEC extends the FSPEC's control flow rather than transcribing it.
 
-> **FSPEC erratum E-3 (requested).** FSPEC §2.2 row 5's "Nothing later runs, including … remaining
-> preconditions" and §2.5's wording now over-state the contract. The corrected sentence is: *"row 5
-> takes `O4` as an observation, never as a precondition — an unretrievable `O4` there does not refuse,
-> it leaves the default-branch name unavailable and produces §11 row 22."* Raised because a future
-> reader will read the FSPEC, not this section (PM F-05). It is the FSPEC author's accepted resolution
-> of the SE-v3 advisory and TE-v3 N-02 riders, recorded in writing rather than left implicit.
+> **FSPEC erratum E-3 — accepted in FSPEC v1.3 (§2.5).** The FSPEC now carries the sentence itself:
+> *"Row 5 takes `O4` as an observation, never a precondition"*, with the unretrievable-`O4` case
+> resolving to §11 row 22 and "default branch name unavailable" as its escalation reason, and §2.2's
+> "zero merges, no guard evaluated" preserved. This section and the FSPEC now agree in writing; what
+> follows is the derivation, not a divergence.
 
 ### 5.6 Merge candidates
 
@@ -620,14 +617,11 @@ Three properties make this safe rather than a widening of row 5:
 array**, not skipped at attempt time, so no code path can issue `gh pr merge --squash` with the
 shipped configuration.
 
-**The reported member (PM F-04).** A successful squash reports `mergeMethod: "squash"`, which FSPEC
-§9.1's enumeration (`rebase` | `merge` | `unknown` | `null`) does not contain. The widening follows
-from FSPEC §6.1's opt-in and is almost certainly an FSPEC omission rather than a TSPEC invention — but
-`mergeMethod` is a reported field consumers may switch on, so it is **not** shipped silently: §2.4 and
-§10.1 declare the member as reachable only under `allowSquashMerge: true`, and §15.2 raises it as
-FSPEC erratum **E-1**. If the erratum is refused, the fix is one line — drop `squash` from
-`mergeCandidates` and the config key becomes inert — and §13.2's squash case becomes the negative
-assertion that it is. An empty chain is row 16 (`deferred`, "no permitted merge method"), textually
+**The reported member (PM F-04, closed).** A successful squash reports `mergeMethod: "squash"`.
+v1.1 raised this as erratum **E-1** because FSPEC §9.1's enumeration did not contain it; FSPEC v1.3
+accepted the erratum and §9.1 now carries the member with the same "reachable only where
+`allowSquashMerge: true` is explicitly configured, never in a fallback chain" scoping this section
+states. The two documents agree; nothing here is unreviewed. An empty chain is row 16 (`deferred`, "no permitted merge method"), textually
 distinct from row 17's exhaustion reason.
 
 ## 6. The self-modification guard
@@ -1038,9 +1032,8 @@ was considered", which is exactly what §11 row 23 (a run that halted before Pha
 Both call sites pass them; the halt path (`:5188`) passes the defaults, giving row 23's
 `mergeStatus: "skipped"` with no code at the halt site beyond the literal.
 
-`mergeMethod`'s domain is FSPEC §9.1's `rebase` | `merge` | `unknown` | `null`, **plus `squash`,
-which is reachable only under `allowSquashMerge: true`** (FSPEC §6.1) and is raised as FSPEC erratum
-E-1 in §15.2 rather than shipped as an unreviewed enum member (PM F-04).
+`mergeMethod`'s domain is FSPEC v1.3 §9.1's `rebase` | `merge` | `squash` | `unknown` | `null`, with
+`squash` reachable only under `allowSquashMerge: true` (FSPEC §6.1) — erratum E-1, accepted (§15.2).
 
 `queueRow`'s success-path value changes from the hardcoded `"none"` (`:5213`) to
 `mergeOutcome.queueRow ?? "none"` — carrying the §7.4 disposition on a `merged` run and `"none"`
@@ -1251,7 +1244,7 @@ transport, the post-merge effects, and the two whole-phase safety nets.
 | E6 | `gh` missing / unauthenticated / non-zero exit | `defaultGhRun` → `{ ok: false }` | that surface is `unknown`; §5.3's row for that surface applies |
 | E7 | `gh` prints non-JSON (a login prompt, a warning banner) | `JSON.parse` throws → `"unparseable"` | as E6 |
 | E8 | Every observation- or precondition-level failure | §5.3 guards 4, 7–8, 11–20 | see §5.3 — `refused` or `deferred` with the FSPEC §11 row id that guard carries. Notably guard 4 is **§11 row 8** (`refused`, **no** escalation), not row 4 |
-| E9 | `O3` unretrievable — the one condition §11 has no row for | §5.3 guard 17 | `refused`, `row: "7d-unknown"`; erratum E-2 (§15.2) |
+| E9 | `O3` unretrievable/unparseable | §5.3 guard 17 | `refused`, `row: "13a"` (FSPEC v1.3 §11) |
 | E10 | Merge attempt fails, or exits zero without a `MERGED` read-back | `executeMerge` | that attempt fails; the chain continues; all failed ⇒ §11 row 17 |
 | E11 | Remote branch deletion fails | `deleteRemoteBranch` `!ok` | plain note; `mergeStatus` stays `merged` (§11 row 19) |
 | E12 | Working tree dirty at M3 | `git status --porcelain` non-empty | escalation (§11 row 22); `merged` stands; M4 still runs |
@@ -1288,7 +1281,7 @@ Jest, run with `cd pdlc/workflows && npm test` (never bare `npx jest`). **No net
 | `_sleep: async () => {}`, `_now: () => fixed`, `_enabled: false` | — | the clock and the phase flag |
 
 `passingGh` is the most load-bearing fixture: every §11 row is that baseline plus **one** override,
-which is what makes the row table a parameterised suite rather than 24 hand-built fixtures, and what
+which is what makes the row table a parameterised suite rather than 25 hand-built fixtures, and what
 makes "this row is caused by this input" a property of the test data. Per-surface substitution is by
 command shape — FSPEC §3.1's "drive one surface with a constructed answer while leaving the others
 alone" (§2.3).
@@ -1299,7 +1292,7 @@ alone" (§2.3).
 |---|---|
 | `__tests__/mergeConfig.test.js` | **E1–E5** (TE F-06). `parseMergeConfig` over the four steps and the seven-key independent-fallback table; the `mergeableRetries` boundary pair (`10` accepted, `11` defaulted, TE F-02); `mergeableRetryDelay`'s name and seconds unit; `sectionMalformed` true only for step 3; `readMergeConfigSafely` against a throwing read. **Property:** for *any* JSON input, every returned key is within its accepted domain and `MERGE_DEFAULTS` is never mutated |
 | `__tests__/mergeDecision.test.js` | `decideMerge` only, and only what a pure function can answer: §5.3's ordered guard sequence and the FSPEC §11 row id each guard carries; the two §2.3 tie-break pairs; the short-circuit property (a surface the run must not reach is never *demanded*); the termination bound with `mergeableRetries` at its cap; `mergeCandidates` including the squash arm |
-| `__tests__/mergePhase.test.js` | **the §11 row table — all 24 rows — driven through `phaseMerge`** with `passingGh` (TE F-01), asserting FSPEC §11's four columns (`mergeStatus`, resolving row, queue written, escalation) plus the reason line; rows 1–2's "no `_ghRun` call at all" and row 1's "`_readFile` never called"; row 3's "`gh repo view` was issued and no other precondition command was"; rows 19–22 as composable annotations over rows 18 and 3, including all four at once (**AT-M6**); M1–M4 ordering on `fakeGit`'s recorded argv; the FSPEC §8.2 ahead-of-remote notice and its three suppression cases; §5.2's never-throws guarantee via a `_ghRun` that throws; the phase-row glyphs; report fields on success, on every non-merge, and on the halt path (row 23) |
+| `__tests__/mergePhase.test.js` | **the §11 row table — all 25 rows — driven through `phaseMerge`** with `passingGh` (TE F-01), asserting FSPEC §11's four columns (`mergeStatus`, resolving row, queue written, escalation) plus the reason line; rows 1–2's "no `_ghRun` call at all" and row 1's "`_readFile` never called"; row 3's "`gh repo view` was issued and no other precondition command was"; rows 19–22 as composable annotations over rows 18 and 3, including all four at once (**AT-M6**); M1–M4 ordering on `fakeGit`'s recorded argv; the FSPEC §8.2 ahead-of-remote notice and its three suppression cases; §5.2's never-throws guarantee via a `_ghRun` that throws; the phase-row glyphs; report fields on success, on every non-merge, and on the halt path (row 23) |
 | `__tests__/mergeObservations.test.js` | Two blocks, listed separately (**TE Q-03**). **(a) Pure:** every `classify*` over raw strings — §3.2's whole table, one case per recognised value and per failure mode; `parsePrRef`; `mergeCommandFor`'s exact bytes per surface. **(b) Transport-level:** each `observe*` against `fakeGhRun`, covering **E6/E7**, §3.3's observation counts for `mergeableRetries` ∈ {0, 1, 3} including the `after 1 observations` wording, `O3` pagination (1 page, 3 pages, over-bound), `O5`'s four completeness verdicts and the rename/deletion paths, and `O6`'s zero-exit-but-not-merged case |
 | `__tests__/mergeGuard.test.js` | §4.2's five near-miss rows and two positives; `effectiveGuardPaths` additivity (empty, absent, non-list, non-string members, a removal-shaped entry); trailing-slash normalisation; **AT-M3 both arms** (§6.4); the scoped no-override assertion — arity plus the two extracted function bodies (§6.3, TE F-10) |
 | `__tests__/mergeQueueWriteback.test.js` | `ensureEvidenceColumn`, `mergeEvidenceCell`, `evidenceCellFor`; **AT-M1, AT-M2, AT-M2a**; §8.4's byte-identity differential against committed goldens (§13.5); the §2.5 non-overwrite case with **three positive conjuncts** — queue bytes unchanged, `fakeGit` recorded **zero** argv, and the `detail` names the status found (TE F-14); `prNumber`'s three arms (`parsePrRef`, `O1` fallback, neither ⇒ skipped with a note, TE F-09); `QUEUE_ROW_DISPOSITIONS`' four members |
@@ -1309,7 +1302,7 @@ alone" (§2.3).
 ### 13.3 The §11 row table → parameterised test mapping
 
 One `it.each` case per FSPEC §11 row, keyed by the row identifier of §2.4, in `mergePhase.test.js`.
-The suite asserts its own case count is **24** (rows 1–23 plus 11a) so a dropped row is a failure
+The suite asserts its own case count is **25** (rows 1–23 plus 11a and 13a) so a dropped row is a failure
 rather than an absence, and each case asserts §11's four columns plus the reason line's subject.
 Fixture constraints, stated in the file header so they cannot be edited away:
 
@@ -1320,6 +1313,9 @@ Fixture constraints, stated in the file header so they cannot be edited away:
 - rows 4 and 5 assert different escalation text and are separate cases, because §11 gives the two
   guard outcomes separate rows; row 8 asserts `refused` with **no** escalation, which is what
   distinguishes it from them (FSPEC §11's closing paragraph);
+- rows 11a and 13a are the two fail-closed siblings of FSPEC §2.3's 7c and 7d splits: each asserts
+  `refused` with **no** escalation, and 13a is asserted distinct from row 14 (`deferred`, threads
+  retrieved and unresolved) — "could not read the list" versus "read it, and it says no";
 - **row 11a's fixture keeps `O5` step 1 complete** (`files.length < 100`, parseable) so an unparseable
   `O1.number` cannot instead resolve at row 5 via the paginated fallback (TE-v3 N-01); the row-5
   fixture forces the fallback deliberately. Both constraints are asserted, not merely documented;
@@ -1367,7 +1363,7 @@ Fixture constraints, stated in the file header so they cannot be edited away:
 | AC-1.2b / FSPEC §3.2 | `classify*`'s shared `{ok:false,reason}` shape (§4.1) | `mergeObservations` |
 | AC-1.3 | never-throws (§5.2) + `⚠️` glyph, never `❌` (§10.3) | `mergePhase` |
 | AC-1.6 / FSPEC §2.2 | `decideMerge`'s ordered guard sequence (§5.3) | `mergeDecision` |
-| **AC-6.1a / FSPEC §11** | the 24-row condition table as `phaseMerge`'s primary suite (§13.3) | `mergePhase` (row table) |
+| **AC-6.1a / FSPEC §11** | the 25-row condition table as `phaseMerge`'s primary suite (§13.3) | `mergePhase` (row table) |
 | **§11 rows 19–22** | post-merge annotations, composable (§7.1, §10.2) | `mergePhase` (AT-M6) |
 | **AC-2.3** | exhaustion ⇒ row 17 with per-attempt reasons (§5.6, §12 E10) | `mergeDecision` |
 | REQ-MERGE-02 / FSPEC §6 | `mergeCandidates` (§5.6), `executeMerge` (§4.7) | `mergeObservations`, `mergeDecision` |
@@ -1413,7 +1409,7 @@ The FSPEC entry-obligation index lives in §1 and is not repeated here (PM F-07)
 | PM F-07 | Low | **Applied.** v1.0's duplicate obligation table and its feasibility prose are gone and §12's restating rows are collapsed into §5.3/§11 references |
 | PM Q-01 | — | Answered in §7.1: emitted on a `merged` run iff M4's disposition is `recorded`, row 3 included |
 | PM Q-02 | — | Answered in §9.1: the driver's M5 and §2.5's non-overwrite case are mutually exclusive by construction, and §13.2 asserts the boundary |
-| TE F-01 | High | **Fixed.** The 24-row table moves to `mergePhase.test.js` driven by `fakeGhRun`; `decideMerge` keeps the guard sequence, tie-breaks, short-circuit and termination properties. §2.1, §5.1 and §13 now agree, and v1.0's "pure-function suite" claim is withdrawn |
+| TE F-01 | High | **Fixed.** The 25-row table (FSPEC v1.3) moves to `mergePhase.test.js` driven by `fakeGhRun`; `decideMerge` keeps the guard sequence, tie-breaks, short-circuit and termination properties. §2.1, §5.1 and §13 now agree, and v1.0's "pure-function suite" claim is withdrawn |
 | TE F-02 | High | **Fixed.** `mergeableRetries` accepts 0…10 (§3.1); `MERGE_MAX_DECISION_STEPS` derived as 19 + slack (§5.2); the boundary pair and the row-13-at-cap case are tests |
 | TE F-03 | High | **Fixed, and the review's reading confirmed.** §10.4 now derives the classification from `runtimeBundle.test.js:787`–`:816` step by step: a frozen-object default is E-1 **resolved**, which combined with wiring would have failed anti-rot clause 1 (`:1025`). The seam is `_ghRun` defaulted to the module **function** `defaultGhRun` (no `_agent`) — E-3 unresolved, not exempt, wired — `_recordHalt`'s blessed shape |
 | TE F-04 | High | **Fixed.** One transport seam removes the export contradiction: `exportedNames` gains nothing, the adapter holds no `gh` catalogue, and every command string lives once in `mergeCommandFor`. `mergeAdapter.test.js` added to §13.2 with the four assertions the finding asks for |
@@ -1425,20 +1421,21 @@ The FSPEC entry-obligation index lives in §1 and is not repeated here (PM F-07)
 | TE F-10 | Medium | **Fixed.** §6.3's scan is scoped to arity plus the two extracted function bodies |
 | TE F-11 | Medium | **Fixed.** §13.5's identity property compares against goldens captured at HEAD **before** the change |
 | TE F-12 | Low | **Fixed.** `:383` and `:428` added to §13.4, with `:428` pointed at `QUEUE_ROW_DISPOSITIONS` |
-| TE F-13 | Low | **Fixed.** 24 rows, and the suite asserts its own case count |
+| TE F-13 | Low | **Fixed.** 25 rows under FSPEC v1.3 (1–23, 11a, 13a), and the suite asserts its own case count |
 | TE F-14 | Low | **Fixed.** Three positive conjuncts named in §13.2 |
 | TE Q-03 | — | Answered: `mergeObservations.test.js` has two explicitly listed blocks, pure and transport-level |
 
-### 15.2 FSPEC errata requested
+### 15.2 FSPEC errata — all three accepted in FSPEC v1.3
 
-Each is a divergence this TSPEC could not resolve inside its own lens. None blocks implementation;
-all three should be reflected in the FSPEC so the two documents agree in writing.
+v1.1 raised three divergences this TSPEC could not resolve inside its own lens. **FSPEC v1.3
+(commit `7028537`) accepted all three**, so no divergence between the two documents remains and no
+provisional designator survives in this one.
 
-| ID | Site | Requested change | Raised by |
-|---|---|---|---|
-| **E-1** | FSPEC §9.1 | `mergeMethod`'s enumeration gains `squash`, reachable only under `allowSquashMerge: true` — implied by §6.1's opt-in but absent from §9.1's list | PM F-04 |
-| **E-2** | FSPEC §11 | Add a terminal row for an **unretrievable `O3`** (`refused`, no escalation, resolving at §2.3 7d). §3.2 assigns the value; §11's table has no row, so §2.4 designates it `"7d-unknown"` until the row exists | this TSPEC (§5.3 guard 17) |
-| **E-3** | FSPEC §2.2 r5, §2.5 | "Row 5 takes `O4` as an observation, never as a precondition" — the accepted resolution of the SE-v3 / TE-v3 N-02 riders (§5.5) | PM F-05 |
+| ID | Site | Change | Raised by | Status |
+|---|---|---|---|---|
+| **E-1** | FSPEC §9.1 | `mergeMethod`'s enumeration gains `squash`, scoped "reachable only where `allowSquashMerge: true` is explicitly configured — never in a fallback chain" | PM F-04 | **Accepted, FSPEC v1.3 §9.1.** §2.4, §5.6, §10.1 updated |
+| **E-2** | FSPEC §11 | A terminal row for an unretrievable/unparseable review-thread list — now **row 13a**, `refused`, no escalation, resolving at §2.3 **7d**, whose cell is split like 7c's and 7e's | this TSPEC (§5.3 guard 17) | **Accepted, FSPEC v1.3 §11 row 13a + §2.3 7d.** v1.1's provisional `"7d-unknown"` designator is **retired**: §2.4, §5.3, §12 E9 and §13 now use `13a`, and §11's table is 25 rows |
+| **E-3** | FSPEC §2.2 r5, §2.5 | "Row 5 takes `O4` as an observation, never a precondition", with an unretrievable `O4` resolving to §11 row 22 | PM F-05 | **Accepted, FSPEC v1.3 §2.5.** §5.5's note restated as a derivation rather than a request |
 
 ### 15.3 Risks and costs, named
 
@@ -1449,7 +1446,7 @@ all three should be reflected in the FSPEC so the two documents agree in writing
 | **The `_recordHalt` rename touches four files and one vacuous test** (§8.2) | Mechanical but wide. The added negative assertion is the mitigation, without which the rename silently disables a guard test |
 | **Permanent `refused` in this repo** (FSPEC §4.5, BL-04) | Accepted: every PR this repo's queue raises touches `pdlc/workflows/` or `pdlc/skills/`, so the `merged` path is evidenced entirely through tests. Stated so the first operator to see `refused` in `yumo-plugins` reads it as designed behaviour |
 | **`decideMerge`'s demand loop is an unusual shape** here | No precedent in `pdlc/workflows/`; the cost is one reviewer's unfamiliarity. §5.1 states the rejected alternative and why |
-| **Three open FSPEC errata** (§15.2) | Implementation can proceed against this TSPEC either way; only E-1 changes shipped behaviour if refused, and its fix is one line |
+| ~~Three open FSPEC errata~~ | **Closed.** All three were accepted in FSPEC v1.3 (§15.2); no divergence between TSPEC and FSPEC remains |
 
 ### 15.4 DECISIONS verdict
 
