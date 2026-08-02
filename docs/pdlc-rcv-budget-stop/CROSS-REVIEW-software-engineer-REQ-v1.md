@@ -21,6 +21,37 @@
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | AC-1.3 demands assertions *over the constant*; `MAX_REVIEW_ROUNDS` is deliberately unexported and `pacingWrapper.test.js:77` keeps a private copy. Which resolution does the REQ intend — export the constant, or accept a second declaration and drop AC-1.2's "one constant" claim? Whichever it is, which obligation owns it (F-01)? |
+| Q-02 | On the zero-round budget halt (AC-1.5(1)), is the existing post-mortem re-authored, appended to, or left alone apart from the region maintenance AC-1.4 mandates? The path is fixed and unversioned, so the three answers are operator-visibly different (F-05). |
+| Q-03 | Given the real pickup order `10 → 12 → 13 → 17 → 18` (F-03), is the interim still acceptable once row 17 ships — i.e. once `WINDOW-RESUMED:` lines are machine-written into regions that nothing validates? If yes, R-14's residual needs restating over that composition; if no, row 18 needs to move ahead of row 17 by `Order`. |
+| Q-04 | `MAX_REVIEW_ROUNDS` 5→3 also narrows Phase CR's per-invocation budget (AC-1.1 *Scope*). Is three rounds of Final Codebase Review a deliberate product decision, or a side effect the REQ is accepting because the constant is shared? |
+
 ## Positive Observations
 
+- The `M-*`-only citation discipline (NB-4) works: apart from F-06 the document makes no line claim, and the facts it does lean on — `MAX_REVIEW_ROUNDS` at `orchestrate-dev.js:52`, `deriveRoundWindow`'s `Math.max(...indices) + 1` at `:2432`, `windowEnd` at `:2450`, `parseResolvedMarker` at `:1105`, the bare `Write ${postmortemPath}` prompt at `:1936`, the step-G refusal string at `:4246` — all verify at HEAD, with only the line drift the baseline header already warns about.
+- N-7's `docType: null` characterisation is **accurate**, not a guess: Phase CR's `reviewLoop` call passes `docType: null` literally (`orchestrate-dev.js:4724`), so AC-1.1's scope boundary rests on a real discriminator the implementation can branch on.
+- §4.1's *"there is no in-process-only row"* is the right invariant for this codebase and is actually satisfied — every quantity the gate reads has a branch-derived home, which is what makes the criteria decidable on a resumed invocation (M-1d, M-2f).
+- Stating *the region validates* as a named, total, single-valued predicate with a fixed **meaning and failure disposition**, while delegating only the decision procedure, is a clean seam: an implementer can build the two-conjunct interim gate today and add a third conjunct later without re-reading the requirement.
+- The counting rule *by line prefix, whatever the value* (AC-1.5(4) clause 4) is the detail that makes `H`/`A` implementable without a parser, and the accompanying argument for why a malformed value must still answer a halt is correct.
+- AC-1.5(4)'s ordering argument — record the answering line **before** dispatching, because losing a record of a window *already used* is worse than losing an unused one — is the right fail direction and is justified rather than asserted.
+
 ## Recommendation
+
+**Needs revision**
+
+Blocking, in priority order:
+
+1. **F-01** — give AC-1.2/AC-1.3 an owner for the export-vs-duplicate decision and enumerate the width-5 test surface (`reviewLoop.test.js`, `pacingWrapper.test.js`, `roundDerivation.test.js`), or the "one constant, one budget" claim ships false.
+2. **F-03** — correct the pickup-order premise in §3.1 and R-14 to the order the driver actually produces, restate R-14's residual over the row-17-before-row-18 composition, and carry the same words into `REQ-RCV-07` X-07/R-16 **within this revision**.
+3. **F-02** — replace AC-1.5(1)'s `A = H` justification with the step-G refusal that actually blocks the second force, so O-10's test asserts the real state.
+4. **F-04** — add the obligation that owns the post-mortem's "rounds this entry ran" figure.
+5. **F-05** — say what the zero-round halt writes, and whether it re-authors the file.
+
+F-06, F-07 and F-08 are one-sentence corrections and are not individually blocking.
+
+## Verdict
+
+VERDICT: Needs revision
+
