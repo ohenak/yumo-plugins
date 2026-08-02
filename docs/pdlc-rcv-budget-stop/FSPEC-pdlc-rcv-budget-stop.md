@@ -17,7 +17,16 @@ feature: pdlc-rcv-budget-stop
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude + operator | 1.0 | 2026-08-02 |
+| pdlc | draft | Claude + operator | 1.1 | 2026-08-02 |
+
+**v1.1 — feedback round 1** (`CROSS-REVIEW-test-engineer-FSPEC-v1.md`). F-01: B-BUD-3 gains a
+discriminating observable and AT-BUD-03 splits into 03a/03b. F-02: B-CLR-2a dispositions a resume
+into an exhausted window; §12(a) is scoped per branch; AT-CLR-02a added. F-03: E-1b states the
+pre-feature-post-mortem migration disposition (accepted cost); AT-CLR-08 added. F-04: B-REG-7's
+observable becomes a positive same-branch equivalence plus an empty site enumeration; AT-REG-07
+rewritten. F-05: AT-CLR-04's window pinned open. F-06: §8.3 states that the step-G refusal emits no
+row; AT-CLR-05, AT-WIN-07 and new AT-RPT-07 carry the conjunct. F-07: AT-RPT-06 discriminates all
+three sources. Q-01…Q-03 answered in §12(d)–(f).
 
 ## 1. Overview
 
@@ -638,6 +647,11 @@ entry never ran, in the same report as row C's deliberately empty cells.
 | *unconfirmable-append* | clause 3, the Iterations section (B-HALT-4) | **empty** | `Refused — iterations section unconfirmed at {path}` |
 | *validation-failure* — **target state** | a region that does not validate (§5.4) | **S-16 alone** | `REQ-RCV-07` §6's |
 
+**The shipped step-G refusal (B-CLR-5) emits no row at all — it is not row B**, and row B's source
+list above is closed at those three plus the target-state variant. Its refusal is the shipped
+unresolved-post-mortem path, which reports as it does at HEAD (M-7a, M-7b) and is unchanged by this
+feature; a test over that branch asserts the **absence** of any row B, not a row B variant.
+
 `{path}` is the post-mortem's repo-root-relative path. **The three unconfirmable-append sources are
 distinguished by the ❌ text, never by the `notice` cell**, which is empty on all three: the
 `{which}` token is what scopes the operator's recovery, and one of the three attempts no region line
@@ -778,7 +792,7 @@ test composes it from the constant.
 | **AT-WIN-04** | B-WIN-4 | no reset in effect, highest existing round **2** | the phase is entered | **round 3 only** is admitted |
 | **AT-WIN-05** | B-WIN-5 | `W = 4`, highest existing round **6** | the phase is entered | zero rounds admitted and the S-4 reason renders `rounds 4..6 of 3` |
 | **AT-WIN-06** | B-WIN-6 | **no prior post-mortem**, a document already at round 3 | Phase R is run with `forcePhases` naming it | a zero-round budget halt: no re-review, region created, row C emitted, queue row written `halted` |
-| **AT-WIN-07** | B-WIN-7 | the state AT-WIN-06 leaves (`H = 1`, `A = 0`, unresolved) | the phase is forced a **second** time | the shipped `Refused — unresolved POSTMORTEM at {path}`; no new halt, no dispatch, counts unmoved |
+| **AT-WIN-07** | B-WIN-7 | the state AT-WIN-06 leaves (`H = 1`, `A = 0`, unresolved) | the phase is forced a **second** time | the shipped `Refused — unresolved POSTMORTEM at {path}`; no new halt, no dispatch, counts unmoved; and **no row B** — that refusal emits none (§8.3) |
 
 ### 11.3 FSPEC-REG-01 — *Who:* the review loop
 
@@ -800,9 +814,9 @@ test composes it from the constant.
 | **AT-CLR-02** | B-CLR-2 | `W = 1`, `H = 1`, `A = 0`, a readable `RESOLVED: yes`, last `HALT-REASON:` beginning `no-revision:`, **highest existing round 1** — so `D = 2 ≤ E = 3`, the window still has rounds | the phase is entered | **exactly one** `WINDOW-RESUMED: 1` appended; `W` **unchanged at 1**; rounds already spent stay spent; **≥ 1** dispatch, at round **2**; a later convergence halt is **not** auto-cleared. **[target state — no path emits S-11 at this ship]** |
 | **AT-CLR-02a** | B-CLR-2a | the same, but **highest existing round 3** — the S-11 halt was taken on the window's last round, so `D = 4 > E = 3` | the phase is entered | **exactly one** `WINDOW-START: 4` appended — **not** `WINDOW-RESUMED:`; `W = 4`; `A = H = 1`; **≥ 1** dispatch; and **no second `HALT-REASON:` is appended and the `RESOLVED:` marker is not stripped** in that entry — the two conjuncts that fail if the branch resumes instead. **[target state]** |
 | **AT-CLR-03** | B-CLR-3 | the same, with the last `HALT-REASON:` value unparseable | the phase is entered | treated as a convergence halt: `WINDOW-START: {N}` written, the clearance consumed |
-| **AT-CLR-04** | B-CLR-4 | `A = H = 1` and a readable `RESOLVED: yes` | the phase is entered, and entered again | **nothing** is appended and **nothing** granted on either entry; `W` is unchanged — one clearance grants **exactly one** window |
+| **AT-CLR-04** | B-CLR-4 | `A = H = 1`, a readable `RESOLVED: yes`, **`W = 1` and highest existing round 1 — so the window is open** (`D = 2 ≤ E = 3`) and neither entry budget-halts | the phase is entered, and entered again | **nothing** is appended and **nothing** granted on either entry; `W` is unchanged; both entries reach the gate, observe `A = H`, and proceed to §4 dispatching normally — one clearance grants **exactly one** window. (The window must be pinned open: on an exhausted window the first entry budget-halts, appends a `HALT-REASON:` and strips the marker, so the second entry meets B-CLR-5's step-G refusal and "nothing appended" is false for reasons that are not this branch's) |
 | **AT-CLR-08** | B-CLR-4, B-REG-1 (**E-1b**) | a **pre-feature** post-mortem: `## Iterations (5 — limit reached)`, a readable unfenced `RESOLVED: yes`, **no `## Reset Region`**, highest existing round **5** | the phase is entered, the operator writes `RESOLVED: yes` again, and the phase is entered a **second** time | **first entry:** nothing granted, no answering line, **zero** dispatches, a budget halt that creates the region with `H = 1`, `A = 0` and strips the marker. **Second entry:** the gate opens (`A = 0 < H = 1`), **exactly one** `WINDOW-START: 6` appended, `W = 6`, **≥ 1** dispatch. Two clearances for the first window is the **specified** behaviour here, not a defect |
-| **AT-CLR-05** | B-CLR-5 | a post-mortem whose marker is absent, `no`, unparseable, or duplicated | the phase is entered | the shipped step-G refusal; **no** region byte written; both counts unmoved; queue row `halted` |
+| **AT-CLR-05** | B-CLR-5 | a post-mortem whose marker is absent, `no`, unparseable, or duplicated | the phase is entered | the shipped step-G refusal; **no** region byte written; both counts unmoved; queue row `halted`; and **no row B** of any variant in the run report (§8.3) |
 | **AT-CLR-06** | B-CLR-6 | an entry that grants a clearance | the entry's first reviewer dispatch is observed | the answering line is already **durably present in the region** at that instant |
 | **AT-CLR-07** | B-CLR-7 | a granting entry whose answering-line write cannot be confirmed | the entry runs | **phase refusal**; **zero** dispatches; `H` and `A` unmoved; ❌ row `Refused — answering line unconfirmed at {path}`; `notice` **empty** |
 
@@ -829,7 +843,8 @@ test composes it from the constant.
 | **AT-RPT-03** | B-RPT-3 | a zero-round budget halt | the operator reads the run report | the phase record and the returned `iterations` field both equal the **budget**, not `0` |
 | **AT-RPT-04** | B-RPT-4 | a zero-round budget halt | the operator reads the round row | `round` is the resolved start; `panel-shape`, `blocking`, `growth-bytes`, `classification` are **empty**; `notice` is **exactly** the S-4 render with no separator |
 | **AT-RPT-05** | B-RPT-5 | a zero-round budget halt on a document whose previous window had reviewers | the returned report is read | the per-reviewer verdict list is **empty** — not a carry-over of the previous round's verdicts |
-| **AT-RPT-06** | B-RPT-6 | the two refusal fixtures of AT-HALT-04 and AT-HALT-05 | both are run | they are **discriminated by the ❌ text**; both carry an **empty** `notice`; neither carries S-4; and row C never carries S-16 |
+| **AT-RPT-06** | B-RPT-6 | **all three** unconfirmable-append fixtures — AT-CLR-07's (answering line), AT-HALT-05's (halt line) and AT-HALT-04's (iterations section) | all three are run | the three ❌ texts are **pairwise distinct** and each is the exact catalogue render for its `{which}`; all three carry an **empty** `notice`, so the discrimination is **never** by that cell; none carries S-4; and row C never carries S-16. The three-way comparison is one row's `Then` precisely so a rendering collapse between any two sources fails the test whose purpose is the discrimination |
+| **AT-RPT-07** | B-RPT-6, B-CLR-5 | AT-CLR-05's fixture — the shipped step-G refusal | the phase is entered | **no row B of any variant** is emitted; the run reports on the shipped unresolved-post-mortem path unchanged |
 
 ### 11.7 FSPEC-PROMPT-01 — *Who:* the post-mortem authoring agent
 
@@ -863,6 +878,21 @@ on both the creating and the re-halt path. (c) Phase CR halts keep the shipped I
 carrying the new budget value — the two-integer render is scoped to document-typed halts (B-BUD-4,
 B-HALT-8).
 
+**Three review questions, answered so a fixture author need not guess.** (d) **A zero-round entry's
+report carries row C and nothing else.** It dispatched no round, so there is no round to render; it
+does **not** re-render rows for rounds earlier invocations ran, even though those files are on disk
+and derivable — a row is the record of *this* invocation's dispatch, and re-rendering would report
+work this entry did not do. Row C's `round` cell naming the resolved start `S` is deliberate: it
+says where the entry *would* have started. (e) **A second heading beginning `Iterations` is left
+byte-unchanged.** Clause 3 locates the **first** such heading (B-RPT-2) and the equality read-back
+confirms that one only; a stale second heading below it survives. **Accepted**, and it is what
+AT-HALT-02's byte-equality already pins as *unchanged elsewhere* — making the render unique would
+mean deleting content this feature does not own, on a file an agent also writes (B-PMT-3 scopes the
+loop to replacing the located heading, not to policing the file). (f) **AT-HALT-02's expected file
+is a checked-in golden**, constructed by the test author — not derived in-test by applying the three
+edits, which would re-implement the production transform in the test and could not fail. PROPERTIES
+inherits this choice (O-10).
+
 ## 13. Traceability
 
 ### 13.1 Criterion → flow → branch → test
@@ -875,7 +905,7 @@ B-HALT-8).
 | AC-1.4 (halt unchanged in kind; region maintained; no re-author) | FSPEC-HALT-01, FSPEC-PROMPT-01 | B-HALT-1…B-HALT-9, B-PMT-3 | AT-HALT-01…09, AT-PMT-03 |
 | AC-1.5(1) (window end; zero-round halt; row C; `forcePhases`) | FSPEC-WIN-01, FSPEC-RPT-01 | B-WIN-2, B-WIN-6, B-WIN-7, B-RPT-4 | AT-WIN-02, AT-WIN-06, AT-WIN-07, AT-RPT-04 |
 | AC-1.5(2) (start unchanged; origin wins) | FSPEC-WIN-01 | B-WIN-3 | AT-WIN-03 |
-| AC-1.5(3) (the one operator reset) | FSPEC-CLR-01 | B-CLR-4, B-CLR-5 | AT-CLR-04, AT-CLR-05 |
+| AC-1.5(3) (the one operator reset) | FSPEC-CLR-01 | B-CLR-4, B-CLR-5 | AT-CLR-04, AT-CLR-05, AT-CLR-08, AT-RPT-07 |
 | AC-1.5(4) (anchored and consumed; counts; the named predicate; ordering) | FSPEC-REG-01, FSPEC-CLR-01 | B-REG-1…B-REG-7, B-CLR-1, B-CLR-3, B-CLR-6, B-CLR-7 | AT-REG-01…07, AT-CLR-01, AT-CLR-03, AT-CLR-06, AT-CLR-07 |
 | AC-1.5(5) (which halt it was; S-11 resumes; row B) | FSPEC-CLR-01, FSPEC-HALT-01, FSPEC-RPT-01 | B-CLR-2, B-CLR-2a, B-HALT-7, B-RPT-6 | AT-CLR-02, AT-CLR-02a, AT-HALT-07, AT-RPT-06 |
 
