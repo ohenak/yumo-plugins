@@ -170,6 +170,67 @@ dependency direction `rewriteStatus`'s docblock states (`orchestrate-queue.js:86
 
 ## 3. Configuration reader (O-M5)
 
+Implements FSPEC §10. This is the **first script-side read of `.claude/pdlc.config.json`** — verified:
+the only reader today is `pdlc_resolve_check_enabled` in `pdlc/hooks/scripts/lib/pdlc-drift.sh:840`,
+and the queue's drift gate reads the drift-state record, not the config
+(`orchestrate-queue.js:1354`).
+
+### 3.1 `parseMergeConfig(text)` — pure and total
+
+Returns `{ config, sectionMalformed }`. Never throws; never reads anything.
+
+1. `text == null` or `JSON.parse` throws → `{ config: MERGE_DEFAULTS, sectionMalformed: false }`.
+   An absent or unparseable **file** is not a malformed **section**: FSPEC §10.3's note exists for an
+   operator who wrote a `merge` section, and a repo with no config file wrote none.
+2. Parsed value is not a plain object, or `merge` is absent → defaults, `sectionMalformed: false`.
+3. `merge` is present but not a plain object → defaults, `sectionMalformed: **true**`.
+4. Otherwise each key is validated independently and **falls back independently** (FSPEC §10.3):
+
+| Key | Accepted | Otherwise |
+|---|---|---|
+| `mergeMode` | one of `MERGE_MODES` | `"off"` |
+| `mergeRequiresCi`, `allowSquashMerge`, `deleteBranchOnPdlcMerge` | `typeof === "boolean"` — the strings `"true"`/`"false"` are not | the default |
+| `mergeableRetries`, `mergeableRetryDelaySeconds` | `Number.isInteger(v) && v >= 0` | the default |
+| `guardPaths` | an array; **each member** that is a non-empty string is kept, others dropped | contributes nothing |
+
+`0` is honoured for both integers, so a deterministic suite that sets `mergeableRetryDelaySeconds: 0`
+tests its own value (FSPEC §10.3). The `distribution` section is never touched, read or re-emitted.
+
+### 3.2 `readMergeConfigSafely(readFileFn, path)`
+
+Byte-for-byte the shape of `readDriftStateSafely` (`orchestrate-queue.js:1354`) and adopted for the
+same reason: the injected read is agent-mediated in production (`rtReadFile`,
+`runtime-adapter.js:493`), which returns `null` for a missing file rather than throwing — but a
+throw from some future read implementation must not abort the pipeline. Wraps the call in
+`try/catch`, returns the string or `null`. **Awaited** at its one call site (§11.1).
+
+### 3.3 Where it is read, and where it is cached (O-M5)
+
+Read **once per `phaseMerge` invocation**, at the top of the function, **after** the
+`PHASE_MERGE_ENABLED` check and **before** everything else:
+
+```js
+if (!enabled) return skippedOutcome(1, "Phase MERGE disabled");   // FSPEC §2.2 row 1 — no read
+const { config, sectionMalformed } = parseMergeConfig(
+  await readMergeConfigSafely(_readFile, _configPath)             // exactly one read per run
+);
+if (sectionMalformed) notes.push(`…`);                            // FSPEC §10.3, suppressed on row 1 by construction
+if (config.mergeMode === "off") return skippedOutcome(2, "mergeMode is off");
+```
+
+Row 1 resolving before the read is **structural, not a checked precondition**: the `return` above it
+means no code path exists on which a disabled phase reads the file, so FSPEC §10.3's "the note is
+suppressed when row 1 resolves" holds by construction and cannot regress into an ordering bug.
+
+The value lives in a **local `const` of `phaseMerge`** and is passed down explicitly. There is
+deliberately **no module-level cache**: `orchestrate-queue` calls `orchestrate-dev.main` *in process*
+(`build-runtime.mjs:178`–`184`), so a module-level cache would leak one feature's configuration into
+the next feature of the same `/loop` iteration. A test may bypass the read entirely by passing
+`config` directly to `phaseMerge`; when `config` is supplied the read is skipped, which is also what
+makes the config path itself testable without a filesystem.
+
+`_configPath` defaults to `MERGE_CONFIG_PATH` in the callee, so no new `main()` seam is needed for it.
+
 ## 4. Observation points O1–O6 (O-M2, O-M3, O-M4, O-M7)
 
 ## 5. The pure decision core — `decideMerge`
