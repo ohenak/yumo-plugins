@@ -16,7 +16,51 @@ v9 were not re-litigated.
 
 ## 1. Disposition of the v9 findings
 
+**The Medium and all three Lows are closed**, each at the surface the finding named, and the Medium
+was closed by the two-part fix I asked for rather than by narrowing the claim.
+
+| v9 id | Sev | Status | What was checked |
+|---|---|---|---|
+| **F-01** (§4.1's *target state* qualifier defers the whole word *invalid*; no stated `W` for a malformed value; `NaN` reachable) | **Medium** | ✅ closed, both halves | `3b6f3df` rewrites the §4.1 `W` row to defer only the named checks: *"Only *invalid*'s **consistency** half — ordering, the highest round, `H − A ∈ {0, 1}` — is **target state** (`REQ-RCV-07` AC-7.1, X-06); **§6's S-13/S-14 grammar is in force at this ship**, so a value that is not a decimal integer ≥ 1 contributes none and `W` falls back to **1**, never `NaN` into `windowEnd` (AC-1.2, O-12)."* That is the *defer the check, not the word* fix. `987f2c3` keeps the two grammars in §6 with an explicit in-force marker, `19dccf4` adds the grammar/analysis layer split to X-06 (*"AC-7.1 step 2 therefore re-checks that grammar rather than first-checking it"*, carried to X-07 — v9 Q-02 answered *yes*), and `3fe6120` adds the matching interim leg to O-10 as **leg 3**. `O-12` gained the closing half — *"origin resolution takes the greatest **well-formed** `WINDOW-START:` value (§6), falling back to `1` when none is, so `W` is a decimal integer on every path"* — so the `NaN` path is now closed at the TSPEC obligation as well as at the criterion. Leg 3 itself carries two defects of its own: F-01 and F-02 below. |
+| **F-02** (the 0-call contract leg is owed over a seam signature no document fixes) | Low | ✅ closed, in O-12 as proposed | `3fe6120` appends to O-12: *"Also specify the **injected *validate* seam** O-10's contract leg asserts against — its parameter name, per this repo's `_`-prefixed injection convention (`_agent`, `_readFile`, …), its arity 2 and its boolean return (AC-1.5(4) fixes the predicate as total and single-valued over the region and the branch listing) — accepted by the interim composition and not called; `REQ-RCV-07` AC-7.1 supplies its implementation."* Name, arity, return and convention, at the obligation that owns how `W` reaches `deriveRoundWindow`. O-10 now cites `(O-12)` at the point it asserts the signature, so the two ends are linked in both directions. |
+| **F-03** (X-06's *"the call site exists … but does not consult it"* contradicts the 0-call leg) | Low | ✅ closed, with the wording proposed, and carried | `19dccf4`: *"The **injection point** exists — the interim composition accepts the seam as a parameter — so row 18 adds a call rather than rebuilding a call graph, and **no call site is emitted at this ship**: the interim composition calls it **0 times** (O-10)."* `REQ-RCV-07` X-07 carries the same sentence verbatim in the same revision. |
+| **F-04** (`pdlc-rcv-split.md` §5's *same commit* rule is unachievable under the pacing contract) | Low | ✅ closed at both the rule and the compliance claim | `ba952c2` restates §5's obligation over the **revision**, with the reason recorded in the split record itself: *"Revise all four **within the same revision**, in the same words, before that revision is submitted for review — the reviewer checks both ends **at HEAD**, not at a commit boundary. (Stated over the revision rather than the commit because the authoring pacing contract mandates one top-level section per edit and a commit after each …)"*. §10 drops the *in the same commit* claim to match and now says *"v2.4's were, in this revision."* I checked that claim rather than accepting it: X-06/R-14 and X-07/R-16 all carry, at HEAD, the *injection point / no call site emitted / 0 times* wording, the grammar-vs-analysis layer split, the three-horn rejection by reference to §5.1, and `Order 18` / 10 → 12 → 18. **True as stated.** |
+
+**Independent re-verification of the four relocations.** The round moved four blocks out of this
+document; I diffed each against its new home clause by clause rather than trusting the *nothing
+changed meaning* note.
+
+- **`pdlc-rcv-split.md` §5.2** carries both halves of the deleted AC-1.5(4) arithmetic — the
+  *constraint-on-`W`-only* counter-example (two `HALT-REASON:`, one invalid `WINDOW-START:`, `A < H`,
+  clearance consumed while `W` is still 1, permanently) and the `H − A ≤ 1` vacuity argument
+  (`H − A − 1` free windows, every invocation, fail-open). `REQ-RCV-07`'s duplicate copy of the same
+  argument was deleted in the same revision and replaced by a pointer, so this is a real
+  de-duplication across both ends, not a one-way move.
+- **`pdlc-rcv-split.md` §5.3** carries the refusal-is-not-a-halt argument in full: clause 1 halting on
+  the budget path, AC-1.4 governing every halt, `H += 1`, the stripped `RESOLVED:`, *"spending the
+  clearance it declined to spend and converting a repairable region into an unrepairable one."*
+- **`pdlc-rcv-baseline.md` §3.1** carries all eight per-row notes from the deleted §6 table, including
+  the two that are load-bearing elsewhere: `WINDOW-START:`'s *never authored by a human* with the
+  authoring-scoped exemption and the *deleting a single answering line is forbidden at every `H − A`*
+  rule (R-10's residual cites it), and S-16's *sole emitter and `{reason}` selection are
+  `REQ-RCV-07` AC-7.1 step 4's*.
+- **`pdlc-rcv-baseline.md` §3.2** carries all five relocated §4.1 rows, including the three that
+  AC-1.4 and AC-1.5(5) read: the unreadable-but-present post-mortem (`status: "none"` ⇒ `H = A = 0`),
+  the single `RESOLVED:` line's fail-closed gate, and *the last `HALT-REASON:` line* read as a
+  convergence halt when unreadable. §4.1 correctly keeps exactly the two rows its own gate turns on.
+
+**Sizes are mine, not the document's:** `wc -lc` gives **442 lines / 55,273 bytes** against
+`check-req-size.sh:47-48`'s soft thresholds (630 / 55,296). Headroom is **23 bytes**, down from 58 —
+Q-01 below.
+
 ## 2. Disposition of the v9 questions
+
+| v9 id | Status | Note |
+|---|---|---|
+| **Q-01** (relocate before writing the fixes — 58 bytes will not absorb them) | ✅ acted on, and the answer was *relocate more than I named* | Four blocks moved, not the two I suggested, and the two I did suggest (§4.1's durability table, §6's row notes) are among them. The fixes then landed inside the freed space: 442 lines / 55,273 bytes, still under both soft thresholds. The margin is now 23 bytes, which is the same question one round later — Q-01 below. |
+| **Q-02** (should X-06 name the grammar/analysis layer split explicitly, and is it a paired edge?) | ✅ answered *yes*, at both ends | X-06: *"**What is *not* deferred:** §6's S-13/S-14 **grammar** is in force at this ship — the predicate's grammar layer is this REQ's, its **analysis** layer (ordering, highest round, `H − A ∈ {0, 1}`) is AC-7.1's, so that step re-checks rather than first-checks the grammar."* X-07 carries it: *"**AC-7.1 step 2 therefore re-checks that grammar rather than first-checking it**, and what this REQ first adds is the **analysis** layer."* R-16 carries the same split. Treated as a paired edge per `pdlc-rcv-split.md` §5, as I asked. |
+| **Q-03** (carried, `REQ-RCV-07`'s `W`-visibility question) | — | Still that REQ's. Recorded only so the trail is unbroken for harvest. |
+
 
 ## 3. Findings
 
