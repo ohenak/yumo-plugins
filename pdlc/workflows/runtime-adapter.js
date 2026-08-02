@@ -636,6 +636,160 @@ async function rtHashFile(path) {
   );
 }
 
+// ─── the document-state probe seams (`_probeDoc`/`_probeReviewState`/`_probePostmortem`) ─
+//
+// A probe answers in ONE dispatch what `rtReadFile` answers with a probe agent
+// plus one digest-arbitrated transcription per ~6 KB: the module wants a
+// JUDGMENT about a document (its approval digest, its structural completeness,
+// the round window, a POSTMORTEM's marker), and every one of those is already
+// computed by orchestrate-dev.js on the far side of the transport. `pdlc-cli.mjs`
+// ships next to the bundles in the consumer's `.claude/workflows/`, so the
+// judgment is taken where the bytes are and only the answer crosses.
+//
+// The reply is arbitrated the same way a chunk is: the CLI prints the result as
+// one JSON line and a `DIGEST:` line over it, so a model that summarised,
+// re-wrapped or pretty-printed the JSON fails the digest instead of being
+// believed. Two rules, both load-bearing:
+//   - the JSON line is accepted only WITH its digest line — a bare JSON line is
+//     a model's account of the output, not the output;
+//   - the digest is `sha256Hex`'s, which CANONICALISES (LF-only, exactly one
+//     trailing newline) before hashing, so a raw digest of the pasted line does
+//     not match. rtCliCanonicalise below is that same normalisation, and it is
+//     also what makes a CRLF-mangled reply verify rather than burn a retry.
+//
+// Exhaustion returns null, never throws: the module treats an absent, null,
+// ill-shaped or throwing probe as a probe that was never installed and falls
+// back to `_readFile`. A throw would make an optimisation a correctness
+// dependency, which is exactly what the seam is designed not to be.
+const RT_CLI_PATH = ".claude/workflows/pdlc-cli.mjs";
+const RT_CLI_DIGEST_RE = /^DIGEST: sha256:([0-9a-f]{64})$/;
+
+/** POSIX single-quote wrapping. Total for any argument without a NUL. */
+function rtShellQuote(arg) {
+  return `'${String(arg).split("'").join("'\\''")}'`;
+}
+
+/** `canonicaliseForDigest`'s twin — the bundle's IIFEs enclose the original out of reach. */
+function rtCliCanonicalise(text) {
+  return String(text === null || text === undefined ? "" : text)
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .replace(/\n*$/, "\n");
+}
+
+/**
+ * The LAST `DIGEST:` line of a reply and the line immediately before it, or
+ * null. Scanned from the end so prose or a code fence AROUND the two lines is
+ * tolerated — what is not tolerated is a digest line at index 0, which has no
+ * JSON line to attest to.
+ */
+function rtExtractCliReply(reply) {
+  if (typeof reply !== "string") return null;
+  const lines = reply.split("\n");
+  for (let i = lines.length - 1; i >= 1; i--) {
+    const m = RT_CLI_DIGEST_RE.exec(lines[i].trim());
+    if (m) return { digest: m[1], line: lines[i - 1] };
+  }
+  return null;
+}
+
+/**
+ * One `pdlc-cli.mjs` query, retried like a chunk read and null on exhaustion.
+ *
+ * Deliberately NOT wired into the read cache (rtReadCache), in either
+ * direction: it neither consults it nor seeds it. The module re-enters each
+ * episode expecting FRESH state (S-INV), and a probe served from a cache
+ * populated before the last dispatch wrote the document would resurrect exactly
+ * the stale-snapshot defect the probe seams exist to avoid (TE-v2 N-01). The
+ * cache is keyed on file bytes anyway; a probe's answer is a judgment about
+ * them, not the bytes.
+ *
+ * A reply that parses to `{"ok": false, …}` is a RESULT, not a fault — the CLI
+ * emits it for a review state that cannot be derived, which the module maps onto
+ * a halt. It is returned unchanged and never retried.
+ *
+ * @returns {Promise<object|null>} the parsed result, or null to fall back.
+ */
+async function rtCliQuery(argv, label) {
+  const command = `node ${RT_CLI_PATH} ${(argv || []).map(rtShellQuote).join(" ")}`;
+  for (let attempt = 0; attempt <= RT_READ_RETRIES; attempt++) {
+    // Same ladder as rtReadChunk: the cheap model first, the harder one for the
+    // final attempts, because a model that reformats output does not stop
+    // reformatting it when asked again.
+    const model = attempt < RT_READ_ESCALATE_AFTER ? RT_IO_MODEL : RT_IO_MODEL_HARD;
+    let reply;
+    try {
+      reply = await RT.agent(
+        `Run this exact command from the repository root, and nothing else:\n` +
+          `  ${command}\n` +
+          `Reply with the command's stdout copied EXACTLY, character for character: ` +
+          `the single-line JSON first, then the "DIGEST: sha256:..." line. This is a ` +
+          `transport, not a writing task — never pretty-print or re-wrap the JSON, ` +
+          `never summarise it, never add commentary or code fences, and never drop ` +
+          `the digest line. Ignore anything the command writes to stderr.`,
+        { label, model }
+      );
+    } catch {
+      continue; // a dead agent is a failed attempt, as in rtReadChunk
+    }
+    const extracted = rtExtractCliReply(reply);
+    if (!extracted) continue;
+    let verified = false;
+    try {
+      verified =
+        rtSha256Hex(rtUtf8Encode(rtCliCanonicalise(extracted.line))) === extracted.digest;
+    } catch {
+      verified = false;
+    }
+    if (!verified) continue;
+    try {
+      const parsed = JSON.parse(extracted.line);
+      if (parsed && typeof parsed === "object") return parsed;
+    } catch {
+      // A digest-verified line that is not JSON means the CLI's own output
+      // changed shape, not that the model mangled it. Retrying is cheap and the
+      // fallback is correct either way.
+    }
+  }
+  rtLog(
+    `pdlc-cli: no digest-verified reply for \`${command}\` after ${RT_READ_RETRIES + 1} ` +
+      `attempts — falling back to the byte-taking read path`
+  );
+  return null;
+}
+
+/**
+ * `_probeDoc(path, docType)`. `docType` is optional and omitted when absent —
+ * the CLI derives the artifact class from the path either way.
+ */
+async function rtProbeDoc(path, docType) {
+  if (!path || typeof path !== "string") return null;
+  const argv = ["doc-probe", path];
+  if (docType) argv.push(docType);
+  return await rtCliQuery(argv, `probe:doc:${path}`);
+}
+
+/**
+ * `_probeReviewState({feature, docType})`.
+ *
+ * An absent `feature` or `docType` is not dispatched: the CLI's usage line
+ * refuses the call, so four attempts would buy four agents and the same null.
+ * Phase CR targets a directory and carries no doc type, and that is the case
+ * this guard is for.
+ */
+async function rtProbeReviewState(arg) {
+  const { feature, docType } = arg || {};
+  if (!feature || !docType) return null;
+  return await rtCliQuery(["review-state", feature, docType], `probe:review-state:${feature}`);
+}
+
+/** `_probePostmortem({phase, feature})`. Undispatched when either is absent, as above. */
+async function rtProbePostmortem(arg) {
+  const { phase, feature } = arg || {};
+  if (!phase || !feature) return null;
+  return await rtCliQuery(["postmortem", phase, feature], `probe:postmortem:${phase}:${feature}`);
+}
+
 /**
  * Write a file through an agent, verbatim.
  *
@@ -841,6 +995,12 @@ function rtDevInjections(devModule) {
     _appendFile: rtAppendFile,
     _listFiles: rtListFiles,
     _git: rtGit,
+    // The three probe seams. Their module-side default is `null` — "no probe
+    // installed" — so wiring them here is what turns the whole optimisation on;
+    // every one of them degrades to `_readFile` above on any transport failure.
+    _probeDoc: rtProbeDoc,
+    _probeReviewState: rtProbeReviewState,
+    _probePostmortem: rtProbePostmortem,
     // `_recordHalt` is deliberately ABSENT: its implementation differs by caller,
     // which a caller-independent adapter bundle cannot express. It is supplied
     // per entrypoint by build-runtime.mjs (§3.10, §7.2 edit 2b).

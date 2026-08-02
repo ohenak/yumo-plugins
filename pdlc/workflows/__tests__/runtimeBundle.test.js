@@ -502,6 +502,36 @@ describe("bundle freshness", () => {
     expect(() => readFileSync(resolve(DIST, file), "utf8")).not.toThrow();
   });
 
+  // pdlc-cli.mjs is a dist/ artifact but NOT a workflow bundle: it is plain Node,
+  // keeps its imports and has no `meta`, so it is deliberately outside `BUNDLES`
+  // and outside every runtime-constraint assertion above. What it shares with the
+  // bundles is the output directory, the freshness gate and the manifest.
+  it("keeps pdlc-cli.mjs under pdlc/workflows/dist/ with a manifest row", () => {
+    expect(() => readFileSync(resolve(DIST, "pdlc-cli.mjs"), "utf8")).not.toThrow();
+    const manifest = JSON.parse(readFileSync(MANIFEST_PATH, "utf8"));
+    const row = manifest.rows.find((r) => r.id === "pdlc-cli");
+    expect(row).toMatchObject({
+      id: "pdlc-cli",
+      pluginPath: "workflows/dist/pdlc-cli.mjs",
+      consumerPath: ".claude/workflows/pdlc-cli.mjs",
+      artifactVersion: manifest.pluginVersion,
+      retires: [],
+    });
+    expect(row.pluginSha1).toMatch(/^[0-9a-f]{40}$/);
+  });
+
+  it("a perturbed pdlc-cli.mjs is a --check subject like any other row", () => {
+    // Covered end-to-end in the DOD-03 temp-tree suite below; here only the
+    // artifact's membership in the emitted row set is asserted, so this case
+    // cannot write into the live dist/.
+    const manifest = JSON.parse(readFileSync(MANIFEST_PATH, "utf8"));
+    expect(manifest.rows.map((r) => r.id).sort()).toEqual([
+      "orchestrate-dev",
+      "orchestrate-queue",
+      "pdlc-cli",
+    ]);
+  });
+
   it("keeps distribution-manifest.json in dist/ as a --check subject (TSPEC §2.3 point 3)", () => {
     // Fails with ENOENT until T-14 emits the manifest; once it exists, --check above must
     // also treat it as a freshness subject (that behavior lives in build-runtime.mjs, T-14).
@@ -773,6 +803,20 @@ function moduleValueInit(masked, name) {
 const looksLikeFunction = (text) => /^(?:async\s+)?function\b/.test(text) || text.includes("=>");
 
 /**
+ * `null`/`undefined` — the ABSENCE of a capability, not a policy value.
+ *
+ * E-1 exempts a parameter whose default already IS the shipped behaviour: a
+ * clock, a feature flag, a threshold. A default of `null` says the opposite —
+ * the capability is not installed and every call site falls back — so it is no
+ * evidence that the composition root needs to supply nothing. Treating it as
+ * E-1 would let a real seam (`_probeDoc` and its two siblings, defaulted to
+ * `NO_PROBE = null`) be exempt AND wired at once, which is precisely the drift
+ * anti-rot clause 1 exists to catch. Tightening the predicate here keeps that
+ * clause meaningful instead of muting it.
+ */
+const isAbsenceDefault = (text) => /^(?:null|undefined)$/.test(text.trim().replace(/[;,]\s*$/, ""));
+
+/**
  * TSPEC §8.5's three exemption forms, each decided from source text — a
  * predicate over the parameter's OWN declaration, never a list of names.
  * Returns `{ form, resolved, why }`, or null when no form is even a candidate.
@@ -821,12 +865,14 @@ function classifyExemption(masked, param) {
     if (value === null) {
       return { form: "E-1", resolved: false, why: `${init} has no module-level declaration` };
     }
+    if (isAbsenceDefault(value)) return null; // an absent capability, not a policy value
     return looksLikeFunction(value)
       ? { form: "E-1", resolved: false, why: `${init} resolves to a function value` }
       : { form: "E-1", resolved: true, why: `${init} = ${value}` };
   }
 
   // E-1's other half — a non-function literal default.
+  if (isAbsenceDefault(init)) return null;
   if (!looksLikeFunction(init)) return { form: "E-1", resolved: true, why: `literal ${init}` };
   return null;
 }
@@ -1030,6 +1076,9 @@ describe("DOD-03 — build-runtime.mjs --check detects staleness", () => {
     "orchestrate-dev.js",
     "orchestrate-queue.js",
     "runtime-adapter.js",
+    // dist/pdlc-cli.mjs's source: the builder reads it like any other input, so
+    // a tree without it cannot build at all.
+    "cli.mjs",
   ];
   const tmpRoots = [];
 
@@ -1122,6 +1171,26 @@ describe("DOD-03 — build-runtime.mjs --check detects staleness", () => {
     for (const name of [...BUNDLES, "distribution-manifest.json"]) {
       expect(output).toMatch(new RegExp(`STALE {4}pdlc/workflows/dist/${name.replace(/\./g, "\\.")}`));
     }
+  });
+
+  it("a perturbed pdlc-cli.mjs makes --check exit non-zero and print a STALE row naming it", () => {
+    const root = makeBuildTree();
+    perturb(root, "pdlc-cli.mjs");
+
+    const { status, output } = runCheck(root);
+    expect(status).not.toBe(0);
+    expect(output).toMatch(/STALE {4}pdlc\/workflows\/dist\/pdlc-cli\.mjs/);
+    expect(output).not.toMatch(/STALE {4}pdlc\/workflows\/dist\/orchestrate-\w+\.bundle\.js/);
+  });
+
+  it("the built pdlc-cli.mjs parses as a plain-Node ES module (node --check)", () => {
+    const root = makeBuildTree();
+    // `stripModuleSyntax` removed the dev module's own imports, so this passes
+    // only if the artifact re-supplies every module-scope identifier the
+    // stripped body still references.
+    expect(() =>
+      execFileSync("node", ["--check", distFile(root, "pdlc-cli.mjs")], { stdio: "pipe" })
+    ).not.toThrow();
   });
 
   it("--check writes nothing: a stale tree stays stale after the check", () => {

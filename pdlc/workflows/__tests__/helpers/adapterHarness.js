@@ -46,6 +46,17 @@ const EXPOSED = [
   "rtHashFile",
   "rtCheckFile",
   "rtListFiles",
+  // The pdlc-cli probe seams and their transport.
+  "RT_IO_MODEL_HARD",
+  "RT_READ_ESCALATE_AFTER",
+  "RT_CLI_PATH",
+  "rtShellQuote",
+  "rtCliCanonicalise",
+  "rtExtractCliReply",
+  "rtCliQuery",
+  "rtProbeDoc",
+  "rtProbeReviewState",
+  "rtProbePostmortem",
   "rtDevInjections",
 ];
 

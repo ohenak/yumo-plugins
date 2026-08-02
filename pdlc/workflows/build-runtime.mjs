@@ -64,6 +64,22 @@ function wrapModule(varName, body, exportedNames, prelude = "") {
     .join("\n");
 }
 
+/** The import lines `stripModuleSyntax` removes, verbatim and in order.
+ *
+ * The CLI artifact is plain Node, not the workflow runtime, so the stripped dev
+ * body's module-scope identifiers (`fs`) must be re-supplied. Re-emitting the
+ * module's OWN import lines is the only form that cannot drift: a hand-written
+ * `import * as fs` here would silently miss any import added upstream. Matches
+ * `stripModuleSyntax`'s predicate exactly, so the two can never disagree about
+ * which lines are imports.
+ */
+export function moduleImportLines(source) {
+  return source
+    .split("\n")
+    .filter((line) => /^import\s.+;\s*$/.test(line.trim()))
+    .map((line) => line.trim());
+}
+
 const devSource = readFileSync(resolve(HERE, "orchestrate-dev.js"), "utf8");
 const queueSource = readFileSync(resolve(HERE, "orchestrate-queue.js"), "utf8");
 const adapter = readFileSync(resolve(HERE, "runtime-adapter.js"), "utf8");
@@ -205,6 +221,48 @@ return await __dev.main({
 });
 `;
 
+// ─── dist/pdlc-cli.mjs — the document-state query CLI ────────────────────────
+//
+// Not a workflow bundle: plain Node, run as `node .../pdlc-cli.mjs <command>`,
+// so it keeps its imports and needs no `meta`. It ships through the same
+// manifest/sync channel as the bundles, which is why it is built here.
+//
+// The dev module's exports it reaches — the ONLY names `__dev` publishes for it.
+const CLI_DEV_EXPORTS = [
+  "isComplete",
+  "approvalHashOf",
+  "sha256Hex",
+  "approvalAnchorPreCount",
+  "artifactClassOf",
+  "firstUnwrittenSection",
+  "refreshReviewState",
+  "checkPostmortem",
+  "defaultReadFile",
+  "defaultListFiles",
+];
+
+const cliSource = readFileSync(resolve(HERE, "cli.mjs"), "utf8");
+
+// The marked line is the whole seam between source and artifact. Its replacement
+// binds the same identifier to the IIFE's published record, so no other line of
+// cli.mjs differs between the two forms. A shebang is only a shebang on line 1;
+// mid-file it is a syntax error, so it is dropped here rather than re-emitted.
+const CLI_IMPORT_MARK = /^import .*\/\/ BUILD:REPLACE-DEV-IMPORT$/m;
+if (!CLI_IMPORT_MARK.test(cliSource)) {
+  console.error("cli.mjs has no `// BUILD:REPLACE-DEV-IMPORT` import line to replace.");
+  process.exit(1);
+}
+const cliBody = cliSource
+  .replace(/^#![^\n]*\n/, "")
+  .replace(CLI_IMPORT_MARK, "const dev = __dev;");
+
+const cliArtifact = [
+  moduleImportLines(devSource).join("\n"),
+  BANNER,
+  wrapModule("__dev", stripModuleSyntax(devSource), CLI_DEV_EXPORTS),
+  cliBody,
+].join("\n\n");
+
 const bundles = [
   {
     file: "orchestrate-queue.bundle.js",
@@ -216,6 +274,13 @@ const bundles = [
     // `_recordHalt` closure can reach the queue's row helpers. ORDERING HAZARD:
     // queueModule's prelude references `__dev.main`, so devModule must precede it.
     contents: [DEV_META, BANNER, adapter, devModule, queueModule, DEV_ENTRY].join("\n\n"),
+  },
+  {
+    file: "pdlc-cli.mjs",
+    // Explicit: the id is not derivable from this filename by the `.bundle.js`
+    // rule the two rows above use.
+    id: "pdlc-cli",
+    contents: cliArtifact,
   },
 ];
 
@@ -247,7 +312,7 @@ const RETIRES_BY_ID = {
 
 const manifestRows = [];
 
-for (const { file, contents } of bundles) {
+for (const { file, contents, id: declaredId } of bundles) {
   const path = resolve(OUT_DIR, file);
   const current = existsSync(path) ? readFileSync(path, "utf8") : null;
   if (current === contents) {
@@ -260,7 +325,7 @@ for (const { file, contents } of bundles) {
     console.log(`  wrote    pdlc/workflows/dist/${file}  (${contents.length} bytes)`);
   }
 
-  const id = file.replace(/\.bundle\.js$/, "");
+  const id = declaredId ?? file.replace(/\.bundle\.js$/, "");
   manifestRows.push({
     id,
     pluginPath: `workflows/dist/${file}`,
