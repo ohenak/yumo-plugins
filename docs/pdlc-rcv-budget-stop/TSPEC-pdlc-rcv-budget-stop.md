@@ -1069,6 +1069,84 @@ sixth required check.
 
 ## 9. Test strategy
 
+**PROPERTIES owns the properties, the fixtures, the generation axes and the falsification ledger**
+(O-10). What this section owns is the *testability design*: which level each obligation is tested
+at, which test doubles exist, and which seams make each assertion possible at all. A finding that
+this section states no fixture is correct — §1.2.
+
+### 9.1 The four levels
+
+| Level | Subject | Doubles | New suite |
+|---|---|---|---|
+| **L1 — pure** | `parseResetRegion`, `resolveOrigin`, `gateBranch`, `applyHaltUpdate`, `applyIterationsSection`, `renderIterationsHeading`, `locateIterationsHeading` | **none** — string in, value out | `__tests__/resetRegion.test.js` |
+| **L2 — window** | `deriveRoundWindow` with an origin, `windowEnd`, `phaseWindow`'s arithmetic | listing arrays | extends `__tests__/roundDerivation.test.js` |
+| **L3 — composition** | `readRegionState`, `resolveClearance`, `maintainRegionOnHalt` | seam doubles (§9.2) | `__tests__/resetRegionIO.test.js` |
+| **L4 — pipeline** | one whole entry: gate → window → dispatch-or-halt → report | the existing `main()` harness | extends `__tests__/pacingWrapper.test.js` / `haltAndQueue.test.js` |
+
+L1 carries the great majority of the logic and needs no double at all, which is the compensation
+§3.1 promised for not having a `lib/` module: the read and write models are pure by construction,
+so *"the parser is untestable inside a 5 000-line module"* is false.
+
+### 9.2 Test doubles
+
+| Double | Stands in for | Shape |
+|---|---|---|
+| **in-memory file map** | `_readFile` / `_writeFile` / `_statFile` | `Map<path, string>`; `_statFile` answers from key presence. The **one** double all three IO seams share, so a write is observable by a subsequent read exactly as in production |
+| **fault-injecting file map** | the same, with a per-path fault mode | `{mode: "unreadable"}` → `_readFile` returns `null`, `_statFile` returns `{exists:true}` (F-4); `{mode: "unevaluable"}` → `_statFile` returns `{unevaluable:true}` (F-5); `{mode: "write-noop"}` → `_writeFile` returns `"ok"` and changes nothing (F-8/F-9/F-10). **This is what makes the two confirmations falsifiable**: without a write that lies, an equality read-back always passes |
+| **dispatch counter** | `_agent`, `_parallel` | counts reviewer dispatches and authoring dispatches **separately**, because *0 authoring dispatches* (B-HALT-2) and *0 reviewer dispatches* (B-WIN-2) are different assertions on the same entry |
+| **validator counter** | `_validateRegion` | a function that increments and throws if called; the 0-call contract leg asserts the count is `0` (§6.3.2) |
+
+**Every "no round ran" assertion carries a positive conjunct**, never absence alone: a dispatch
+count of `0` **alongside** the absence of any new cross-review file, because a double that writes
+no file satisfies the absence check either way. This is `REQ-RCV-07` O-10's rule and it applies
+identically here.
+
+### 9.3 What each obligation is tested by
+
+| Obligation | Level | The assertion that makes it falsifiable |
+|---|---|---|
+| **O-5** | L1 + L3 | `applyHaltUpdate` byte-equality against a checked-in golden (FSPEC §12(f): the expected file is **authored**, never derived in-test by re-applying the transform, which would re-implement production in the oracle); plus the three fault modes above |
+| **O-12** | L3 | the validator counter at `0`; `validatorConsultationSites(root) === 0`; the same-branch equivalence family (PROPERTIES') |
+| **O-13** | L1 (`lib/`) | `budgetWidthViolations(root)` over a **fixture root** carrying a deliberately unenumerated site, asserted to report `unenumerated-site` — the oracle must be shown red before it is trusted, never asserted only on the clean repo (DC-03) |
+| **O-14** | L1 + L4 | equality on the whole heading line, on all three fixtures (creating, re-halt with `k > 0`, no-heading); `roundsRun` threaded end to end at L4 |
+| **AC-1.2 / AC-1.3** | all | every budget assertion is written **over the imported constant**, never the literal `3`. Where a test quotes a rendered string containing `3`, it composes the string from the constant |
+
+### 9.4 The assertions that are load-bearing under DC-03
+
+Each of these is the **only** signal of its defect, so each passes the falsification cycle —
+mutation named in writing first, red ids recorded, revert re-verified green — and the record lands
+in `FALSIFICATION-LEDGER.md` (whose lifecycle line is **O-15's**, PLAN's):
+
+| # | Assertion | Named mutation that must red it |
+|---|---|---|
+| 1 | the validator 0-call count | wire `validationConjunct` to call `_validateRegion` |
+| 2 | budget and `iterations` over the constant | change the declaration to 4 without touching a test |
+| 3 | one clearance grants exactly one window | delete clause 2's strip from `applyHaltUpdate` |
+| 4 | row C's zero-dispatch conjunct | admit `startIndex` unconditionally, ignoring `endIndex` |
+| 5 | the Iterations equality | emit `## Iterations (budget 3)` — one integer |
+| 6 | the re-halt byte comparison | re-author on the existing path |
+| 7 | the two unconfirmed-write refusals | drop the read-back and trust `_writeFile`'s `"ok"` |
+| 8 | the three ❌ texts pairwise distinct | collapse `{which}` to a single generic literal |
+| 9 | O-11's freshness gate | mutate the built artifact and observe the check red — **not** by running it on an already-fresh tree |
+
+### 9.5 Suite-level obligations of the change itself
+
+- **`RLH-LOOP-03` stays green.** `MAX_REVIEW_ROUNDS - 1` must still occur exactly once in
+  `orchestrate-dev.js` after `windowEnd` is re-pointed (§6.1).
+- **`build-runtime.mjs --check` and `sync-workflows.sh --check`** are run in the same commit; the
+  three artifacts under `pdlc/workflows/dist/` are rebuilt (O-11).
+- **`runtimeBundle.test.js`** must still pass with the new `export const`: `stripModuleSyntax`
+  removes the prefix (C-3), so the bundle gains no `export` statement.
+- **The macOS/Linux matrix** is unaffected — no shell script changes.
+
+### 9.6 Not discharged here
+
+`REQ-RCV-01` **O-10** in full — the enumerated points, the four kept legs, the three added legs
+and the property-based obligation over generated line sequences — is **PROPERTIES'**, stated at
+split §5.4 and read from there rather than re-derived. **O-15**, the lifecycle disposition of
+`FALSIFICATION-LEDGER.md` (harvest deletes `CROSS-REVIEW-*`, `CODE_REVIEW-*` and `POSTMORTEM-*`
+but **not** this file), is **PLAN's** per DC-10.
+
 ## 10. Traceability
 
 ## 11. Obligation disposition
