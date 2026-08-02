@@ -23,19 +23,24 @@ frontmatter is the pickup gate; the `Status` cell tracks lifecycle.
 
 | Order | Status | Feature | REQ Path | Depends-On |
 |-------|--------|---------|----------|------------|
-| 0 | superseded | pdlc-review-convergence | docs/discarded/pdlc-review-convergence/REQ-pdlc-review-convergence.md | pdlc-review-loop-hardening |
-| 10 | pending | pdlc-rcv-budget-stop | docs/pdlc-rcv-budget-stop/REQ-pdlc-rcv-budget-stop.md | - |
-| 11 | pending | pdlc-rcv-panel-topology | docs/pdlc-rcv-panel-topology/REQ-pdlc-rcv-panel-topology.md | pdlc-rcv-budget-stop, pdlc-rcv-fixed-point-stop |
-| 12 | pending | pdlc-rcv-finding-quality | docs/pdlc-rcv-finding-quality/REQ-pdlc-rcv-finding-quality.md | pdlc-rcv-budget-stop |
 | 13 | pending | pdlc-merge-phase | docs/pdlc-merge-phase/REQ-pdlc-merge-phase.md | pdlc-workflow-distribution |
 | 14 | pending | pdlc-advisory-tier | docs/pdlc-advisory-tier/REQ-pdlc-advisory-tier.md | pdlc-merge-phase |
 | 15 | pending | pdlc-consolidation-agent | docs/pdlc-consolidation-agent/REQ-pdlc-consolidation-agent.md | pdlc-workflow-distribution, pdlc-advisory-tier |
 | 16 | pending | pdlc-engineering-loop | docs/pdlc-engineering-loop/REQ-pdlc-engineering-loop.md | pdlc-workflow-distribution, pdlc-merge-phase, pdlc-advisory-tier, pdlc-consolidation-agent |
-| 17 | pending | pdlc-rcv-fixed-point-stop | docs/pdlc-rcv-fixed-point-stop/REQ-pdlc-rcv-fixed-point-stop.md | pdlc-rcv-budget-stop |
-| 18 | pending | pdlc-rcv-reset-region | docs/pdlc-rcv-reset-region/REQ-pdlc-rcv-reset-region.md | pdlc-rcv-budget-stop |
 | 6 | blocked | pdlc-install-mechanism | docs/pdlc-install-mechanism/REQ-pdlc-install-mechanism.md | pdlc-workflow-distribution |
 | 7 | blocked | pdlc-release-ci | docs/pdlc-release-ci/REQ-pdlc-release-ci.md | pdlc-workflow-distribution |
 | 9 | blocked | pdlc-authoring-contract | docs/pdlc-authoring-contract/REQ-pdlc-authoring-contract.md | pdlc-review-loop-hardening |
+
+**Rows 0, 10, 11, 12, 17 and 18 removed 2026-08-02 by operator direction.** The `pdlc-rcv` family
+(rows 10–12, 17, 18 — the five-way split of the superseded row 0, `pdlc-review-convergence`) is
+**abandoned**, not shipped: its process cost proved disproportionate to its code delta (see
+`docs/abandoned/pdlc-rcv-budget-stop/LEARNINGS-pdlc-rcv-budget-stop.md` §4). `pdlc-rcv-budget-stop`
+was harvested and its surviving artifacts moved to `docs/abandoned/pdlc-rcv-budget-stop/`. The
+family's *intent* — bounded review rounds, a deterministic stop, an operator clearance — is to be
+absorbed by the `orchestrate-dev` closed-loop rewrite carried by rows 13, 14 and 16
+(`pdlc-merge-phase`, `pdlc-advisory-tier`, `pdlc-engineering-loop`). `Order` values stay
+allocated-never-reused; the prose notes below this line describing the removed rows are historical
+record.
 
 **Row 18 — the altitude split of row 10 — added 2026-08-01 to resolve a non-convergent Phase R.**
 Row 10's Phase R ran the five-round ceiling without a dual approval and wrote
