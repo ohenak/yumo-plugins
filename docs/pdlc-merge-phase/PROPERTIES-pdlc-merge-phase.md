@@ -62,20 +62,52 @@ transcription — that is the point (SE Q-02).
 ## 2. Decision-core properties
 
 All five drive **`decideMerge`** and TSPEC §5.2's step loop directly, with a scripted observation supplier in place of
-`phaseMerge`'s IO. **The shared axis product** (`D_core`), from TSPEC §2.4's record shape: `mergeMode ∈ 3` × `prUrl ∈
-2` × `o1 ∈ 7` (`{ok:false}`, and `ok` × state ∈ 3 × `mergeable` ∈ 4 incl. the `__unrecognised__` sentinel) × `ci ∈ 5`
-× `o3 ∈ 4` × `o4 ∈ 3` × `o5 ∈ 4` × `caps ∈ 8` × `attempt ∈ 2`. Most combinations are unreachable behind the
-short-circuit; enumerating the product *proves* that rather than assuming it.
+`phaseMerge`'s IO — **the loop is harness code** (SE F-06): TSPEC §2.3 exports `decideMerge` and `phaseMerge`, and
+§5.2's `for (let step …)` lives inside the latter's body, so every `P`-kind conjunct below (step count, "the exit
+`throw` is never reached") is about the harness's re-drive of the exported pure function. The **production** throw and
+its `row: "internal"` mapping belong to PROP-M-20 and TSPEC §12 E21, which drive `phaseMerge` itself.
+
+**`D_core` is a reachability-pruned enumeration, not a cross product (SE F-01, Q-01).** v1.0 wrote the raw product
+(161 280 cases) beside a size of ≈4 800; both are withdrawn. The generator walks TSPEC §5.3's guard sequence and, at
+each guard, branches over **only the values that guard can distinguish**, fixing every axis that cannot yet affect the
+resolution at a representative value. Unreachability is thereby a property of the *generator*, proved by construction,
+rather than something the suite discovers by enumerating 161 280 records — and every case is a distinct decision path,
+so no case is redundant. The arithmetic, which the suite asserts as one number:
+
+| Level | Branches | Cases |
+|---|---|---|
+| `mergeMode: "off"` | 1 (row 2) | **1** |
+| `mergeMode ∈ {gated, on}` | 2 × the subtree below | **418** |
+| — subtree: no `prUrl` (row 6) `1` + `o1` not-ok (row 8) `1` + `state: MERGED` × `o4 ∈ {ok, not-ok}` (row 3) `2` + `o5` not-ok / matched (rows 5, 4) `2` + `state: CLOSED` (row 7) `1` + CI-refusing `(ci, mergeRequiresCi)` combos `7` + 3 CI-passing combos × 65 | | **209** |
+| — 7c onward `65` | field sentinel (11a) `1` + `mergeableRetries ∈ 0…10` × terminal re-read ∈ {UNKNOWN → 13, not-ok → 11a} `22` + CONFLICTING / DIRTY / BLOCKED (12) `3` + 39 | |
+| — 7d onward `39` | `o3` not-ok (13a) `1` + unresolved > 0 (14) `1` + 37 | |
+| — 7e onward `37` | `o4` not-ok (15) `1` + 36 | |
+| — candidates `36` | `caps ∈ 8` × `allowSquashMerge ∈ 2`; per config, chain length `L` gives `L+1` outcome patterns (`L = 0` → row 16; else `L` first-success patterns → row 18, plus all-fail → row 17): 16 with squash off, 20 with it on | |
+| **`D_core`** | | **419** |
+
+`mergeRequiresCi` is an axis at the CI level (PM F-01, SE F-02) and `mergeableRetries` sweeps its full `0…10` domain
+at the retry level (PM F-07) — both are crossed only where they can change an outcome, which is what keeps 419 small.
+
+**Cost budget, stated so it can be checked.** The whole document is budgeted at **≤ 5 000 loop runs and ≤ 50 000
+`decideMerge` calls**. Actual: PROP-M-01 419 runs (PROP-M-05 rides the same pass, 0 extra), PROP-M-02 838,
+PROP-M-03 602, PROP-M-04 418, PROP-M-21 20 — **≈ 2 300 runs**, and since no run reaches the step cap (PROP-M-01
+asserts it), ≈ 20 000 `decideMerge` calls. **Full product:** M-01, M-02, M-05. **Reduced sets:** M-03 (the 120
+row-18 cases × 5 degradations, + 2 exception cases), M-04 (the 209-case subtree, mode-differential), M-21 (a 10-case
+CI sub-domain). Integration properties are budgeted separately at **≤ 2 000 phase runs**; §7's counts sum to ≈ 1 550.
 
 **PROP-M-01 — Totality and termination. Every observation record resolves to exactly one FSPEC §11 row, within the
 step bound, for every configuration.**
-- **Domain / oracle:** `D_core` driven through §5.2's loop (a demand for a slot the case did not fix is itself a
-  failure). Every case returns `kind: "resolved"` with `row ∈ ROW_IDS`, `mergeStatus ∈ MERGE_STATUSES`, and a step
-  count **strictly below `MERGE_MAX_DECISION_STEPS`**; the loop's exit `throw` is never reached and `row ===
-  "internal"` never occurs. *Exactly one* is positive, not disjointness-by-absence: the resolving guard index is
-  recorded and the `(row, mergeStatus)` pair compared to §5.3's table, so two guards claiming one row reds. The bound
-  is asserted as the **relation** `MERGE_MAX_DECISION_STEPS > 1 + MERGE_MAX_RETRIES + 4 + 3 + 1` recomputed from the
-  constants — never the literal `24` (TE N-04) — re-run with `mergeableRetries` at its cap of 10.
+- **Domain / oracle:** all **419** `D_core` cases (the count itself asserted) driven through the harness loop — a
+  demand for a slot the case did not fix is itself a failure. Every case returns `kind: "resolved"` with `row ∈
+  ROW_IDS`, `mergeStatus ∈ MERGE_STATUSES`, and a step count **strictly below `MERGE_MAX_DECISION_STEPS`**. *Exactly
+  one* is positive, not disjointness-by-absence: the resolving guard index is recorded and the `(row, mergeStatus)`
+  pair compared to §5.3's table, so two guards claiming one row reds. The bound is asserted as the **relation**
+  `MERGE_MAX_DECISION_STEPS > 1 + MERGE_MAX_RETRIES + 4 + 3 + 1` recomputed from the constants, never the literal `24`
+  (TE N-04).
+- **AC-1.2a conjunct (PM F-07), free on the retry sub-path:** for every `mergeableRetries = R ∈ 0…10`, an exhausting
+  run demands `O1` exactly `1 + R` times and its reason line interpolates that same count — `after 1 observations` at
+  `R = 0` included. Eleven enumerated values where TSPEC §13.2 samples `{0, 1, 3}`; the counter and the sentence
+  cannot drift apart because the oracle reads both.
 
 **PROP-M-02 — Purity. `decideMerge` is a deterministic, non-mutating function of `(record, config)`.**
 - **Domain / oracle:** each case evaluated twice against a structural clone captured first: the two results
@@ -85,27 +117,39 @@ step bound, for every configuration.**
 
 **PROP-M-03 — Fail-closed monotonicity. Degrading any single precondition observation never moves the outcome toward
 `merged`.**
-- **Domain / oracle:** every `D_core` case reaching row 18 or a later guard, paired with each degradation `o1 | ci |
-  o3 | o5 | o4 := unknown`; the degraded run reports `refused` **at the specific fail-closed row §5.3 assigns that
-  slot** — 8 / 11 / 13a / 5 / 15 — a named row rather than "not 18", so landing on the wrong fail-closed row still
-  reds.
+- **Domain / oracle:** the **120** `D_core` cases resolving at row 18 (20 candidate-block leaves × 3 CI-passing combos
+  × 2 modes), each paired with the five degradations `o1 | ci | o3 | o5 | o4 := unknown` — **600 cases**, plus the two
+  exception cases below, asserted as **602**. The degraded run reports `refused` **at the specific fail-closed row
+  §5.3 assigns that slot** — 8 / 11 / 13a / 5 / 15 — a named row rather than "not 18", so landing on the wrong
+  fail-closed row still reds.
 - **The one declared exception, asserted as a case rather than filtered out:** on the already-merged path (§11 row 3)
   `O4` is an *observation, not a precondition* (TSPEC §5.5), so degrading it there keeps `mergeStatus: merged` and
   adds row 22's escalation — asserted as that positive pair. Making `O4` a precondition on row 5 reds this case;
   making it one everywhere reds the main arm.
 
 **PROP-M-04 — No-bypass equivalence. `mergeMode: "gated"` and `"on"` are the same function.**
-- **Domain / oracle:** each `D_core` record decided under both modes; the two resolutions are **deep-equal** — row,
-  status, reason, escalations, sha, method. Positive conjunct: the enumeration is asserted by count to contain at
-  least one `merged` and one `refused` outcome, so the equivalence is not proven over a domain where both arms are
-  trivially `skipped`. Any branch on `"on"` anywhere in the core reds this, which is AC-1.5's "no mode bypasses the
-  preconditions" made falsifiable.
+- **Domain / oracle:** each of the **209** subtree records decided under both modes; the two resolutions are
+  **deep-equal** — row, status, reason, escalations, sha, method. Positive conjunct: the domain is asserted by count
+  to contain at least one `merged` and one `refused` outcome, so the equivalence is not proven where both arms are
+  trivially `skipped`. Any branch on `"on"` anywhere in the core reds this — AC-1.5's "no mode bypasses the
+  preconditions", made falsifiable.
 
 **PROP-M-05 — Short-circuit minimality. An observation the resolution does not depend on is never demanded.**
-- **Domain / oracle:** with the supplier recording demands in order, each case's demand sequence is a **prefix of
-  §5.3's demand order** (`O1, O5, O2, O1*, O3, O4`) truncated at the resolving guard, with no later slot present: a
-  row-8 case demanded `O1` and nothing else; a row-7 case never demanded `O2`, `O3` or `O4`. This is what makes NFR-2
-  cheap to hold — an unobserved surface is one nothing asked for.
+- **Domain / oracle:** PROP-M-01's 419 runs, with the supplier recording demands in order (no extra evaluations).
+  Each case's demand sequence is a **prefix of §5.3's demand order** (`O1, O5, O2, O1*, O3, O4`) truncated at the
+  resolving guard, with no later slot present: a row-8 case demanded `O1` and nothing else; a row-7 case never
+  demanded `O2`, `O3` or `O4`. This is what makes NFR-2 cheap to hold — an unobserved surface is one nothing asked for.
+
+**PROP-M-21 — CI-rule relaxation is exactly one cell. `mergeRequiresCi: false` relaxes `no-checks` and nothing else.**
+- **Domain:** the CI rule's own exhaustive sub-domain, `ci ∈ {passed, none, pending, failed, unknown}` ×
+  `mergeRequiresCi ∈ {true, false}` = **10** cases, each on a fixture that reaches guard 11 — `O5` clear (so guard 7
+  cannot preempt it, SE F-02), `state: OPEN`, everything below unfixed.
+- **Oracle:** each case's `(mergeStatus, row, escalation?)` equals a column **transcribed from FSPEC §5's table**:
+  `passed` ⇒ precondition satisfied under both settings; `(none, true)` ⇒ `refused` row 9 **with** the CI escalation;
+  `(none, false)` ⇒ satisfied, no escalation; `pending`/`failed` ⇒ `refused` row 10 and `unknown` ⇒ `refused` row 11,
+  **identically under both settings**. The differential conjunct is the mutant-killer: for every `ci ≠ "none"` the two
+  settings are **deep-equal**, so a rule widened to `ci === "none" || ci === "pending"` reds at `(pending, false)` —
+  the mutant §8.5 named and v1.0's suite could not kill (PM F-01).
 
 ## 3. Self-modification guard properties
 
