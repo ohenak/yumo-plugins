@@ -19,6 +19,32 @@ feature: pdlc-rcv-budget-stop
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
 | pdlc | draft | Claude + operator | 1.0 | 2026-08-02 |
+| pdlc | draft | Claude + operator | 1.1 | 2026-08-02 |
+
+**Revision note (v1.1).** Addresses round-1 cross-review (SE F-01…F-11, TE F-01…F-10). The
+substantive changes are five. (1) **The clearance gate moved.** It no longer lives inside
+`phaseWindow`; `phaseWindow` now returns only the *derived* facts, and the region read, the gate and
+the admission arithmetic run in `phaseGate` **after step G and after the skip-on-approval branch**,
+so no clearance can be consumed by an entry that then returns `{skip: true}` (§3.3, §6.1, §6.3
+— SE F-03). (2) **`origin` is a real parameter, threaded end to end** — `deriveRoundWindow`,
+`reviewLoop`, `checkConverged` — and **one** render function, `renderWindow`, produces both the
+phase-row window and the `HALT-REASON:` value, so B-HALT-7 holds by construction and the backwards
+`rounds 7..5` render on the zero-round halt is gone (§4.2, §4.5, §6.1, §6.6 — SE F-01, F-05).
+Its default is **`derivedStart`, not `1`** — v1.0's "reproduces today's value" claim was false at
+`1` and is corrected (§6.1 note 3 — TE F-01). (3) **Every consumer of the re-pointed `startIndex`
+is enumerated** (§4.2.1), including `tier1ApprovalRecord`'s `candidate = startIndex − 1`, which is
+routed to `derivedStart` (SE F-02). (4) **`reviewRows` and `_statFile` have carriers**: `reviewRows`
+rides on `LoopResult` and reaches `buildFinalReport` through `main`; `checkConverged` gains a row
+sink; `_statFile` is threaded through `main` → `wrapperSeams` → `reviewLoop` (§4.5, §5.2, §5.6,
+§6.6, §7.2 — TE F-03, F-04). (5) **The test-side dispositions are honest**: §9.5 gains a sub-table
+of shipped assertions whose semantics invert or whose value moves, §9.2 gains a `lying-write`
+transform-hook fault mode so each conjunct of a two-conjunct confirmation can fail alone, §8.2 gains
+a sixth site class for identifier mentions in source comments, §8.3 gains a fourth scan rule and a
+site-granularity `stale-prose` predicate, and §9.1/§9.3/§9.4 gain the missing `defaultStatFile`
+level and four ledger rows (TE F-01, F-02, F-05, F-06, F-07, F-09; SE F-08). Every line citation is
+re-baselined to **`8801109`** (§2.7 — SE F-09, F-10; TE F-10), and the remaining Minor findings
+(SE F-04, F-11; TE F-08) are fixed in place. Nothing in the module map, the seam contracts, the
+algorithms' behaviour on a named input or the failure dispositions is reopened.
 
 ## 1. Overview, altitude and what this document owes
 
@@ -52,9 +78,17 @@ construction and the falsification ledger's contents are **PROPERTIES'** (`REQ-R
 the per-artifact lifecycle line is **PLAN's** (O-15).
 
 Shipped behaviour is cited by measured-fact id (`M-*`) as the family requires, **and additionally
-by symbol and line at the citation baseline `9486c81`** where this document asserts a fact about
+by symbol and line at the citation baseline `8801109`** where this document asserts a fact about
 existing code that a reader must be able to check — `REQ-RCV-01` NB-4's `M-*`-only discipline is a
 rule for the *REQ*, and §2.7 records why a TSPEC must cite the source it is going to edit.
+
+> **Baseline correction (v1.1, SE F-09).** v1.0 declared `9486c81`. That commit is docs-only and
+> predates 691 lines of change to `orchestrate-dev.js`; only `:25` and `:52` resolved against it.
+> Every citation in this document was in fact taken against the **working tree**, and the whole
+> document is re-baselined to `8801109` — the tip of `feat-pdlc-rcv-budget-stop` at revision time,
+> whose `pdlc/` tree is byte-identical to `38c87f1`'s (`git diff 38c87f1 HEAD -- pdlc/` is empty),
+> the tree both round-1 reviewers verified against. The citations SE F-09 and F-10 and TE F-10
+> found stale **even at HEAD** are corrected at their sites and listed together in §2.7.1.
 
 ### 1.3 What this TSPEC owes, by obligation
 
@@ -62,7 +96,7 @@ rule for the *REQ*, and §2.7 records why a TSPEC must cite the source it is goi
 |---|---|---|
 | **O-5** | how AC-1.4's region survives every halt — loop-owned state, the clause order, the one-update rule over clauses 1 and 2, both confirmations, the fail-closed refusal | §5.3, §6.4, §7 |
 | **O-12** | how `W` is resolved before the round window is computed; how the *region validates* predicate is supplied to the gate; the interim's **0-consultation** observable. The seam's **contract** is `REQ-RCV-07` O-12's and is **adopted, not restated** | §5.4, §6.2, §6.3 |
-| **O-13** | (a) how test code obtains the effective budget; (b) the closed, five-class enumeration of width sites and the machine that compares it against a repo scan | §8 |
+| **O-13** | (a) how test code obtains the effective budget; (b) the closed, **six-class** enumeration of width sites (AC-1.2's five plus *documentation occurrence in source*, §8.2) and the machine that compares it against a repo scan | §8 |
 | **O-14**'s implementation half | threading *rounds this entry ran* to the loop's post-write step; the Iterations anchor, placement and not-found insert; the empty reviewer-verdict list; the no-re-author path | §6.4, §6.5 |
 | **O-9** | named where it attaches (the post-mortem prompt) — the clause's **text** is FSPEC §9's and is not re-authored here | §6.4 step 2 |
 | **O-11** | the rebuild's placement in the change | §2.1, §9.5 |
@@ -81,7 +115,7 @@ rule for the *REQ*, and §2.7 records why a TSPEC must cite the source it is goi
 
 These are the facts that make several otherwise-reasonable designs illegal. Each is checkable at
 the cited path; where the fact is a shipped-code fact it carries its symbol and its line at
-`9486c81`.
+`8801109` (§2.7.1).
 
 ### 2.1 The workflow runtime, and what that forbids
 
@@ -120,16 +154,36 @@ rows (AC-1.3's fourth quantity, B-RPT-5), and the Iterations literal is `M-1c`'s
 
 ### 2.4 The three budget read sites, and the one arithmetic site
 
-`M-1a` … `M-1c`, re-verified at HEAD: the declaration is `orchestrate-dev.js:52`; the width
+`M-1a` … `M-1c`, re-verified at `8801109`: the declaration is `orchestrate-dev.js:52`; the width
 arithmetic is written **once**, in `windowEnd` (`:2492`–`:2494`), and
 `pdlc/workflows/__tests__/reviewLoop.test.js:964` (`RLH-LOOP-03`) asserts the string
-`MAX_REVIEW_ROUNDS - 1` occurs **exactly once** in the module. The three arithmetic-free reads are
-`checkConverged`'s `recordPhase` argument (`:1799`), the post-mortem prompt's required-sections
-literal (`:1965`) and the returned `iterations` field (`:2011`).
+`MAX_REVIEW_ROUNDS - 1` occurs **exactly once** in the module, and (`:979`, `RLH-LOOP-03b`) that
+the occurrence lies **outside the source spans of `reviewLoop` and `checkConverged`**. The three
+arithmetic-free reads are `checkConverged`'s `recordPhase` argument (`:1799`), the post-mortem
+prompt's required-sections literal (`:1965`) and the returned `iterations` field (`:2011`).
 
 **This is a design asset, not an obstacle.** `windowEnd` is the single place the window's *width*
 is expressed, so re-pointing it from *"start + width"* to *"origin + width"* changes the window's
-meaning repo-wide in one line and keeps `RLH-LOOP-03` green.
+meaning repo-wide in one edit and keeps `RLH-LOOP-03` green.
+
+**But `windowEnd` has three call sites, not one** (SE F-05). The re-point is one edit to the
+*declaration*; it is **three** decided call sites, each stated here and each carried into §6.1
+note 3 and §10.3:
+
+| Site | Call at `8801109` | Argument's meaning after the re-point |
+|---|---|---|
+| `:2475` | `const endIndex = windowEnd(startIndex);` inside `deriveRoundWindow` | becomes `windowEnd(origin)`, `origin` defaulting to the derived start (§6.1 note 3) |
+| `:1850` | `endIndex = windowEnd(startIndex)` — `reviewLoop`'s parameter default | becomes `windowEnd(origin)`, `origin` defaulting to `startIndex` (§4.5) |
+| `:1792` | `endIndex === undefined ? windowEnd(first) : endIndex` — `checkConverged` | becomes `windowEnd(origin)`, `origin` defaulting to `startIndex` (§6.6(2)) |
+
+The parameter is **renamed at the declaration** — `function windowEnd(origin)` — so the mismatch is
+visible at every call site rather than inferred. All seven production `reviewLoop` and
+`checkConverged` call sites pass `endIndex` explicitly (`:4652`, `:4690`, `:4733`, `:4786`, `:4827`,
+`:4865`, `:4987` and `:4657`, `:4695`, `:4738`, `:4791`, `:4832`, `:4870`, `:4992`), so the two
+default sites are unreached in production and reached only by the suite — which is exactly why
+leaving them computing the *relative* window AC-1.1 abolishes would have produced a **green suite
+asserting the pre-change semantics**, the same silent-green failure §8.1 rejects the
+duplicate-constant design for.
 
 ### 2.5 `deriveRoundWindow` is synchronous, total and content-addressed
 
@@ -152,10 +206,11 @@ shipped fail-closed reading (M-7a). Step G in `phaseGate` (`:4493`–`:4506`) co
 
 Two properties of that shape are load-bearing for this feature's refusals (§7.2):
 
-- `recordPhase(…, "❌", …)` is called **before** the throw, so `main`'s catch finds the ❌ row;
+- `recordPhase(…, "❌", …)` is called **before** the throw, so `main`'s catch (`:5118`) finds the
+  ❌ row;
 - the thrown error carries **no** `postmortemStatus` field. `M-8g`: exactly one `haltError` site
-  in the module passes a second argument (`checkConverged`, `:1799`–`:1803`), so any refusal built
-  in step G's shape falls through to `main`'s branch 3 existence probe (`:4890`–`:4901`) and
+  in the module passes a second argument (`checkConverged`, `:1819`–`:1823`), so any refusal built
+  in step G's shape falls through to `main`'s branch 3 existence probe (`:5147`–`:5159`) and
   reports `postmortemStatus: "written"` — which is catalogue §4's mandated value for row B.
 
 ### 2.7 Why this TSPEC cites lines where the REQ may not
@@ -164,9 +219,42 @@ Two properties of that shape are load-bearing for this feature's refusals (§7.2
 flow that is not a measured fact, because the predecessor's Phase R died litigating exactly such
 claims at requirements altitude. A TSPEC is the document that *edits* that control flow: it cannot
 state where a block goes without naming the block it goes beside. The discipline this document
-adopts instead is **every line citation names its enclosing symbol and the commit** (`9486c81`),
+adopts instead is **every line citation names its enclosing symbol and the commit** (`8801109`),
 so a drifted line number is a mechanical re-baseline rather than a finding — the rule
 `docs/_constraints/pdlc-rcv-baseline.md` §2.8 already applies to its own `M-8*` rows.
+
+#### 2.7.1 The v1.0 → v1.1 re-baseline, in full
+
+Corrected at their sites; gathered here so a reader can audit the sweep in one place. Every row was
+re-resolved against `8801109` while revising.
+
+| Claim | v1.0 said | Correct at `8801109` |
+|---|---|---|
+| `main`'s single `try` (M-8a) | `:4373` | **`:4630`** (`:4373` is `_probeReviewState: probeReviewStateFn,` inside `phaseWindow`) |
+| `main`'s single `catch` (M-8a) | `:4861` | **`:5118`** |
+| branch-3 existence probe | `:4890`–`:4901` | **`:5147`–`:5159`** |
+| `M-8d`'s unguarded recovery `emit` | `:4927` | **`:5184`** |
+| the module's only two-argument `haltError` (M-8g) | `:1799`–`:1803` | **`:1819`–`:1823`**. The *claim* is correct — verified as the only two-argument site across every `haltError(` call in the module |
+| the `detail`-pinned-verbatim comment | `:5300`–`:5302` | **`:5307`–`:5309`** in `buildFinalReport`; the sibling comment on `notices` is **`:4382`–`:4385`** |
+| `wrapperSeams` | `:4516`–`:4526` | **`:4520`–`:4530`**. `_writeFile` **is** absent — §5.3's claim verified |
+| Phase CR's `docType: null` (M-7f) | `:4985` | **`:4981`**; its `checkConverged` call is `:4992` |
+| Phase DOD's injectable iteration cap | `runDodPhase` `:3833` | the symbol is **`dodVerifyLoop`** (`:3831`); `maxIterations = DOD_MAX_ITERATIONS` is its second destructured parameter at **`:3833`** (SE F-10) |
+| `phaseGate` | `:4403` | **`:4406`**; `phaseWindow` is **`:4367`–`:4377`** |
+| `scanLines` (M-7d) | `:569` | **`:721`** (`:569` is inside `parseVerdict`) |
+| "a second heading walker would be a second oracle" | `:2527` | **`:2521`–`:2522`** |
+| the confirm-don't-trust comment and its `_checkFile` | `:1994`–`:1996` / `:1998` / `:1994`–`:2000` | **`:1984`–`:1986`** (comment), **`:1989`** (`_checkFile`), **`:1984`–`:1991`** (the shape) |
+| the reviewer dispatch site `roundsRun` increments after | `:2058` | the `_parallel` call is **`:2053`–`:2056`**; `:2058` is the response assignment |
+| the post-mortem prompt (M-7e) | `:1962`–`:1967` | **`:1962`–`:1968`** |
+| `rtWriteFile` | `runtime-adapter.js:994` | **`runtime-adapter.js:802`**; `rtCheckFile` is `:817`, as cited |
+| `MAX_REVIEW_ROUNDS` in `CLAUDE.md` | `:78`–`:84` | **`:78` only** (TE F-10). `README.md:38` carries the width as the **prose phrase** *"max 5 iterations"*, not the identifier — which is the form §8.3 rule 3 must match at that site |
+| `deriveRoundWindow`'s internal `endIndex` | `:2475` | **`:2475`**, as cited; `windowEnd` is `:2492`–`:2494` |
+
+Citations not listed here were re-resolved and are correct as written, including `:25`, `:52`,
+`:361`/`:377`–`:379`, `:525`, `:1385`–`:1393`, `:1756`/`:1765`/`:1770`/`:1777`/`:1791`–`:1793`/`:1799`,
+`:1841`, `:1960`, `:1965`, `:2004`–`:2007`, `:2011`, `:2252`, `:2406`, `:2428`, `:2485`, `:2493`,
+`:2556`, `:2656`, `:2738`, `:2778`, `:2837`, `:2852`, `:2948`, `:4219`, `:4235`, `:4297`, `:4318`,
+`:4386`, `:4415`, `:4419`–`:4423`, `:4480`, `:4493`–`:4506`, `:5281`, and
+`build-runtime.mjs:48`/`:51`/`:83`–`:85`/`:87`–`:94`.
 
 ## 3. Architecture — module map, placement and data flow
 
@@ -179,8 +267,9 @@ existing style:
 | Cluster | New symbols | Placed | Character |
 |---|---|---|---|
 | **Region read model** | `RESET_REGION_HEADING`, `HALT_REASON_PREFIX`, `WINDOW_START_PREFIX`, `WINDOW_RESUMED_PREFIX`, `parseResetRegion`, `resolveOrigin` | immediately **above** `checkPostmortem` (`:2738`), beside the other post-mortem readers | **pure**, synchronous, total, no seam |
-| **Region write model** | `renderIterationsHeading`, `applyIterationsSection`, `applyHaltUpdate`, `haltReasonValue` | immediately **below** the read model | **pure** string→string transforms; the IO is the caller's |
-| **Composition** | `readRegionState`, `resolveClearance`, `maintainRegionOnHalt`, `phaseWindow` (extended), `reviewLoop` (extended), `checkConverged` (extended), `buildFinalReport` (extended) | at their existing sites | `async`, seam-taking |
+| **Region write model** | `renderIterationsHeading`, `applyIterationsSection`, `applyHaltUpdate`, `locateIterationsHeading` | immediately **below** the read model | **pure** string→string transforms; the IO is the caller's |
+| **Window model** | `renderWindow`, `haltReasonValue`, `admitWindow` | beside `windowEnd` (`:2492`) | **pure**, synchronous, total, no seam |
+| **Composition** | `readRegionState`, `resolveClearance`, `maintainRegionOnHalt`, `phaseWindow` (**narrowed**), `phaseGate` (extended — step W), `reviewLoop` (extended), `checkConverged` (extended), `buildFinalReport` (extended) | at their existing sites | `async`, seam-taking |
 
 **Rejected: a `pdlc/workflows/lib/reset-region.mjs` module.** It is the shape this repo already
 uses for pure logic (`lib/document-oracles.mjs`), it would be unit-testable without touching the
@@ -214,8 +303,11 @@ serves — a pure function of a `root` path. It lands as `pdlc/workflows/lib/bud
                       └───────────────┬─────────────────────────┘
                                       │ W (possibly moved)
                       ┌───────────────▼─────────────────────────┐
-                      │ phaseWindow → {derivedStart, startIndex,│
-                      │                endIndex, origin}        │
+                      │ admitWindow (pure) → WindowState        │
+                      │   {origin, derivedStart,                │
+                      │    startIndex = max(D,W),               │
+                      │    endIndex   = windowEnd(W)}           │
+                      │   — evaluated in phaseGate step W       │
                       └───────────────┬─────────────────────────┘
                                       │
                       ┌───────────────▼─────────────────────────┐
@@ -232,16 +324,36 @@ serves — a pure function of a `root` path. It lands as `pdlc/workflows/lib/bud
 
 The arrow from `deriveRoundWindow` into `resolveClearance` is FSPEC §4.4's normative ordering
 made structural: `D` is a **parameter** of the gate, and the gate's output `W` is a **parameter**
-of the window arithmetic. There is no cycle because `deriveRoundWindow` is called once, with
-`origin = 1`, purely to obtain `derivedStart`; the admission arithmetic is evaluated afterwards
-from `(derivedStart, W)` without re-listing the directory (§6.1).
+of the window arithmetic. There is no cycle because `deriveRoundWindow` is called once, **without
+an origin**, purely to obtain `derivedStart`; the admission arithmetic is evaluated afterwards by
+`admitWindow(D, W)` without re-listing the directory (§6.1).
 
 ### 3.3 The two entry points, and what each owns
 
 | Entry | Symbol | Owns |
 |---|---|---|
-| **Phase entry** | `phaseGate` (`:4403`) | steps 1–4 (shipped), step G (shipped), **then** the region read, the clearance gate and the window arithmetic (§6.1–§6.3) |
+| **Phase entry** | `phaseGate` (`:4406`) | steps 1–4 (shipped), step G (shipped), **then** — as a new **step W**, between step G and the return (`:4508`) — the region read, the clearance gate and the admission arithmetic (§6.1–§6.3) |
+| **Derived facts** | `phaseWindow` (`:4367`–`:4377`) | `derivedStart`, `present`, `skipped`, `reviewFiles`. **Nothing else** — it is called at step 2 (`:4415`) and owns no origin, no clearance and no window (§6.1) |
 | **Halt** | `reviewLoop`'s `iteration > endIndex` branch (`:1960`) | the authoring decision, clause 3, the clause 1-and-2 update, the two confirmations, the refusal (§6.4) |
+
+**Why the gate is in `phaseGate` and not in `phaseWindow` (SE F-03, v1.1).** v1.0's §3.3 and §6.1
+described opposite orderings, and only one of them is admissible. Shipped `phaseGate` calls
+`phaseWindow(docType)` as its **step 2** (`:4415`), *before* the approval search (steps 3–4,
+`:4419`–`:4487`) and *before* step G (`:4493`). Putting the gate inside `phaseWindow` would
+therefore have made it run **first**, with two consequences the document did not name:
+
+1. an entry with a **FRESH** recorded approval would append `WINDOW-START: N`, move `W`, and then
+   return `{skip: true}` (`:4480`) having dispatched nothing — the operator's one clearance spent
+   on an entry that ran no round;
+2. §6.3's footnote-`*` premise (*"step G … already ran and threw"*) would be **false**, so a future
+   reader would delete the marker conjunct as redundant when it was in fact load-bearing.
+
+Both are removed by **splitting the gate out of `phaseWindow`**. `phaseWindow` narrows to the
+derived facts; `phaseGate` gains **step W** after step G, which reads the region, runs the clearance
+gate and evaluates the admission arithmetic. This is the ordering §3.3 always claimed, it makes
+step 3's `tier1ApprovalRecord` argument necessarily `window.derivedStart` (resolving SE F-02 for
+free, §4.2.1), and it restores §6.3's footnote to a true statement. Its cost is one more moving part
+in `phaseGate`, which is accepted and recorded as **D-5** (§11.2).
 
 Nothing else in the pipeline reads or writes the region. `orchestrate-queue.js` is **untouched**:
 the queue forwards no `forcePhases` and takes no window state, and the `halted` row it reads is
@@ -251,20 +363,29 @@ written by the shipped `_recordHalt` path, unchanged by this feature.
 
 FSPEC's Behavioral Flow, with the owning symbol against each step:
 
+Ordered as `phaseGate` actually executes them at `8801109` (SE F-03):
+
 | Step | FSPEC | Symbol | Seams used |
 |---|---|---|---|
-| 0 | loop discrimination | `phaseGate`'s caller — a phase's `docType` argument; Phase CR passes `docType: null` (`:4985`, M-7f) | — |
-| 1 | read the region | `readRegionState` | `_readFile` |
-| 2 | clearance gate | `resolveClearance` | `_readFile` (marker, via `resolvePostmortem`), `_writeFile` |
-| 3 | window arithmetic | `phaseWindow` → `deriveRoundWindow` + `windowEnd` | `_listFiles` (via `refreshReviewState`) |
-| 4a/4b | dispatch or zero-round halt | `reviewLoop` | `_agent`, `_parallel` |
-| 5 | halt-path maintenance | `maintainRegionOnHalt` | `_statFile`, `_readFile`, `_writeFile`, `_checkFile` |
-| 6 | reporting | `checkConverged`, `buildFinalReport` | — |
-| 7 | post-mortem authoring | `reviewLoop`'s halt branch | `_agent` |
+| 0 | loop discrimination | `phaseGate`'s caller — a phase's `docType` argument; Phase CR passes `docType: null` (`:4981`, M-7f) | — |
+| 1 | derived facts (`phaseGate` step 2, `:4415`) | `phaseWindow` → `resolveReviewState` → `deriveRoundWindow` | `_listFiles`, `_readFile`, `_probeReviewState` |
+| 2 | approval search and staleness (shipped steps 3–4, `:4419`–`:4487`) — **may return `{skip:true}`** | `tier1ApprovalRecord` / `tier2ApprovalRecord`, over `derivedStart` (§4.2.1) | `_readFile`, `_hashFile`, `_probeDoc`, `_probePostmortem` |
+| 3 | the post-mortem gate (shipped step G, `:4493`) | `resolvePostmortem` | `_readFile`, `_probePostmortem` |
+| 4 | read the region (**step W**, typed phases only) | `readRegionState` | `_readFile` |
+| 5 | clearance gate (**step W**) | `resolveClearance` | `_readFile`, `_writeFile` |
+| 6 | admission arithmetic (**step W**) | `admitWindow` → `windowEnd` | — (pure) |
+| 7a/7b | dispatch or zero-round halt | `reviewLoop` | `_agent`, `_parallel` |
+| 8 | halt-path maintenance | `maintainRegionOnHalt` | `_statFile`, `_readFile`, `_writeFile`, `_checkFile` |
+| 9 | reporting | `checkConverged`, `buildFinalReport` | — |
+| 10 | post-mortem authoring | `reviewLoop`'s halt branch | `_agent` |
 
-**Where a step refuses, the following steps do not run** — structurally, because steps 2 and 5
+**Steps 4–6 are reached only by an entry that will run.** Every skip and every refusal above them
+has already returned or thrown, so a clearance is never consumed by an entry that dispatches
+nothing (SE F-03 consequence 1; §7.1 F-17 records the state that no longer exists).
+
+**Where a step refuses, the following steps do not run** — structurally, because steps 5 and 8
 refuse by `throw`ing a `haltError` after recording their ❌ row (§7.2), and every one of them sits
-inside `main`'s single `try` (`:4373`, M-8a).
+inside `main`'s single `try` (`:4630`, M-8a), whose single `catch` is `:5118`.
 
 ## 4. Types and data model
 
@@ -299,9 +420,11 @@ Invariants the producer guarantees on **every** input, including an unreadable f
 `lines` is carried rather than derived on demand because AC-1.4 clause 1 requires every prior line
 **preserved verbatim in document order**, and the writer (§4.3) rebuilds the region from it.
 
-### 4.2 `WindowState` — what `phaseWindow` returns
+### 4.2 `WindowState` — what `phaseGate` step W returns
 
-`deriveRoundWindow`'s shipped return grows two fields and changes the meaning of one:
+`deriveRoundWindow`'s shipped return grows two fields and changes the meaning of one. **It is
+`phaseGate` step W, not `phaseWindow`, that produces the value below** (§3.3): `phaseWindow` returns
+`{ok, derivedStart, present, skipped, reviewFiles}` and no window at all.
 
 ```js
 /**
@@ -332,6 +455,34 @@ deleted** — it is the oracle that a future field is added deliberately, and it
 The `{ok: false, reason: "malformed_round_one_duplicate", role}` arm is **unchanged**: it is a
 listing fault, decided before any origin is relevant, and it still halts (`refreshReviewState`,
 `:2656`).
+
+### 4.2.1 Every shipped consumer of `startIndex`, and which quantity each one wants
+
+`startIndex`'s meaning changes from `max(present) + 1` to `max(derivedStart, origin)`, so **every**
+reader of the old quantity is a potential silent defect. This is the closed enumeration SE F-02
+asked for; each row states the quantity that site actually wants and what it gets after the change.
+The rule that makes most rows no-ops: **`deriveRoundWindow` called without an origin still returns
+`startIndex === derivedStart`** (§6.1 note 3), so every consumer that reads a *derived* state — not
+`phaseGate`'s admitted window — is correct by construction.
+
+| # | Consumer | Site at `8801109` | Quantity it wants | Change |
+|---|---|---|---|---|
+| 1 | `refreshReviewState`'s tier-1 read set — `const candidate = window.startIndex - 1` | `:2688` | **`derivedStart`** — the highest existing round of this doc type | **none.** `window` here is `deriveRoundWindow`'s own origin-less return, so `startIndex === derivedStart` |
+| 2 | `refreshReviewState`'s returned `startIndex` / `endIndex` | `:2710`–`:2711` | **`derivedStart`** and its relative end | **none**, same reason; `phaseWindow` renames the field to `derivedStart` at its own boundary |
+| 3 | `rehydrateReviewState` (the `_probeReviewState` arm) | `:2820` | **`derivedStart`** | **none** — it mirrors row 2's shape, and §6.1 step 1 keeps the probe-aware call (SE F-06) |
+| 4 | `selectMode` via `dispatchAndVerify` — the revision-round selector | `:3106`, `:3119` | **`derivedStart`** — the round the author is revising | **none**; it takes a *fresh* `resolveReviewState`, not `phaseGate`'s window |
+| 5 | `phaseGate` step 3 → `tier1ApprovalRecord`'s `const candidate = startIndex - 1` | `:4421` → `:2948` | **`derivedStart`** | **the fix.** Under §3.3's step-W ordering the admitted window does not exist yet at step 3, so the argument is necessarily `window.derivedStart`. Had it stayed `window.startIndex`, an entry with `W > D` (`D = 4`, `W = 6`) would search round `5` — a round with no cross-review file by the definition of `D` — set `tier1Empty`, fall through to tier 2 (`:2980`+), and never consult the recorded tier-1 approval at round 3 |
+| 6 | the seven `reviewLoop` `iteration` / `startIndex` arguments | `:4650`–`:4651`, `:4688`–`:4689`, `:4731`–`:4732`, `:4784`–`:4785`, `:4825`–`:4826`, `:4863`–`:4864`, `:4985`–`:4986` | **`startIndex` = `max(D, W)`** — where the loop opens | **none in form**; the value is the admitted one, which is the point |
+| 7 | the seven `checkConverged` `startIndex` arguments | `:4657`, `:4695`, `:4738`, `:4791`, `:4832`, `:4870`, `:4992` | **`origin`** for the render, `startIndex` for nothing else | each call gains `{origin, reviewRows}` as an eighth argument (§6.6(2)); the render reads `origin`, never `startIndex` |
+| 8 | `reviewLoop`'s loop-top guard `if (iteration > endIndex)` | `:1960` | **`startIndex`** vs **`endIndex`** | **none** — this is the shipped zero-round halt (§2.3) |
+| 9 | `checkConverged`'s `const first = startIndex === undefined ? 1 : startIndex` | `:1791` | **`origin`** | **replaced** by the origin (SE F-01). Without this, the zero-round halt renders `rounds ${max(D,W)}..${W+B−1}` — a **backwards** range such as `rounds 7..5` — beside a `HALT-REASON:` reading `rounds 3..5`, and B-HALT-7's *identical bytes in both places* fails |
+| 10 | `reviewLoop`'s `endIndex = windowEnd(startIndex)` default | `:1850` | **`origin`** | `windowEnd(origin)`, `origin = startIndex` (§2.4) |
+| 11 | `deriveRoundWindow`'s `endIndex = windowEnd(startIndex)` | `:2475` | **`origin`** | `windowEnd(origin)`, `origin` defaulting to `derivedStart` (§6.1 note 3) |
+
+Rows 1–4 are the sweep of `main` and the module that SE F-02 asked to be recorded: **no further
+reader of the re-pointed quantity exists.** The enumeration was produced by
+`grep -n '\.startIndex\|startIndex:' pdlc/workflows/orchestrate-dev.js` at `8801109` and every hit
+is classified above; §10.3 carries rows 5, 7, 9, 10 and 11 as edits.
 
 ### 4.3 `HaltUpdate` — the write model's one-shot transform
 
@@ -395,14 +546,58 @@ Row B's *validation-failure* variant, and every other row kind, are **not produc
 the path that **records** a halt, row B on the paths that record none (catalogue §3's *records*,
 not *takes*), and no code path emits both.
 
-### 4.5 `LoopResult` — the two fields `reviewLoop` gains
+**The exclusivity rule on the one entry that reaches both branches** (TE Q-03). A *creating*
+zero-round halt enters `maintainRegionOnHalt` and can refuse at clause 3 (F-9) or clause 4 (F-10)
+— the same entry that would otherwise emit row C. The rule, stated so AT-RPT-07's absence assertion
+is unambiguous: **row C is pushed only on the path that returns a `LoopResult` with
+`refusal === null`.** Concretely, `reviewLoop` composes row C *after* `maintainRegionOnHalt`
+returns, and returns early with `{refusal}` and `reviewRows: [] ` when it refuses; `checkConverged`
+then pushes **row B** and throws. So such an entry emits **row B only**, which is what AT-REG-06
+expects, and no entry ever carries two rows. The `roundsRun === 0` predicate is therefore necessary
+but not sufficient for row C; the sufficient condition is `roundsRun === 0 && refusal === null`.
+
+**Who owns the array** (TE F-03). `main` owns `const reviewRows = []` beside `const notices = []`
+(`:4386`). `reviewLoop` accumulates its own rows on `LoopResult.reviewRows` (§4.5) and
+`checkConverged` receives a **row sink** so both the loop's rows and its own row B reach `main`'s
+array; `phaseGate` (a closure of `main`, `:4406`) pushes directly. `buildFinalReport` (`:5281`)
+receives the array as a **defaulted** parameter `reviewRows = []` (SE Q-02), so every existing
+caller and every existing report-shape oracle stays green while the field is present on **every**
+report — which is what makes AT-RPT-07's *absence* assertion falsifiable rather than vacuously
+true against a missing carrier.
+
+### 4.5 `LoopResult` — the four fields `reviewLoop` gains, and the two parameters
 
 ```js
  // existing: {converged, iterations, lastResults, postmortemWritten, postmortemPath, trailerReason}
  // existing: {converged, iterations, halted, haltDetail, trailerReason, …}
  /** @property {number} roundsRun  - rounds THIS entry dispatched; 0 on a zero-round halt (O-14) */
  /** @property {{which: string, path: string, round: number}|null} refusal - §7.2's phase refusal */
+ /** @property {number} origin     - W, echoed back so ONE render serves both sites (§6.6(2)) [NEW v1.1] */
+ /** @property {ReviewRow[]} reviewRows - rows this entry produced; `[]` always present [NEW v1.1] */
 ```
+
+**`reviewLoop`'s parameter list grows too** — v1.0 stated the fields and forgot the inputs
+(SE F-01, TE F-03, TE F-04). At `:1841`–`:1865` it destructures `iteration`, `startIndex`,
+`endIndex` and the seams; it gains, in the same destructuring:
+
+| Parameter | Default | Why |
+|---|---|---|
+| `origin` | `startIndex` | the window's origin. The default reproduces today's value for Phase CR and for every existing suite that constructs `reviewLoop` from `iteration` alone (`reviewLoop.test.js`'s `baseParams`), and it re-points `:1850`'s `endIndex = windowEnd(origin)` (§2.4) |
+| `_writeFile` | `defaultWriteFile` | §5.3 — the region writes |
+| `_statFile` | `defaultStatFile` | §5.2 — the creating/existing discriminator. Threaded through `main` (`:4297`ff) and `wrapperSeams` (`:4520`) so **AT-REG-06 and AT-HALT-02 are writable at L4**, which is the level their FSPEC rows demand (TE F-04) |
+
+**Deriving the origin inside `reviewLoop` is forbidden**, and this is not a stylistic preference:
+`endIndex − MAX_REVIEW_ROUNDS + 1` re-expresses the width inside the loop, which is exactly the
+recomputation `RLH-LOOP-03b` (`reviewLoop.test.js:979`) exists to red — that test asserts the single
+occurrence of `MAX_REVIEW_ROUNDS - 1` lies *outside the source spans of `reviewLoop` and
+`checkConverged`*. The origin is threaded, never re-derived.
+
+**`converged` on the refusal path** (SE Q-03). `checkConverged` returns early on
+`loopResult.converged !== false` (`:1765`), so a refusal that left `converged` unset would never
+reach the new branch. `reviewLoop` therefore returns `{converged: false, refusal: {…}, roundsRun,
+origin, reviewRows: []}` on a refusal, exactly as the shipped halt branch returns `converged:
+false` (`:2010`). `halted` stays **unset** on that path, so the refusal branch — placed *above*
+`:1770`'s `halted === true` branch — is the one that fires (§7.2).
 
 `roundsRun` is the `{k}` of §6's Iterations render. It counts rounds this **entry dispatched**,
 whatever their outcome — FSPEC OQ-01's stated default — and is therefore incremented at the
@@ -424,7 +619,7 @@ seams are reused unchanged, one is threaded further, one is new, and one is decl
 | Seam | Contract | Used by |
 |---|---|---|
 | `_readFile(path) → Promise<string\|null>` | the file's text, or `null` for absent **or unreadable** — the two are not distinguished, which is precisely why the presence probe is a separate seam (§5.2) | `readRegionState`, both confirmations |
-| `_checkFile(path) → Promise<{ok:true}\|{ok:false, reason:"file_missing"\|"file_empty"}>` | `checkFileNonEmpty`'s shipped contract (`:361`); swallows every throw into `{ok:false}` | the shipped post-mortem write confirmation (`:1998`), unchanged |
+| `_checkFile(path) → Promise<{ok:true}\|{ok:false, reason:"file_missing"\|"file_empty"}>` | `checkFileNonEmpty`'s shipped contract (`:361`); swallows every throw into `{ok:false}` | the shipped post-mortem write confirmation (`:1989`), unchanged |
 | `_agent(skill, prompt, opts) → Promise<string>` | shipped | the post-mortem authoring dispatch, unchanged in kind |
 | `_listFiles(dir)` | shipped | `refreshReviewState` → `deriveRoundWindow` |
 
@@ -466,6 +661,14 @@ export function defaultStatFile(path, { fsMod = fs } = {}) {
 }
 ```
 
+**Threading, stated (TE F-04).** `_statFile` is added, symmetrically with `_writeFile` (§5.3), to
+**three** parameter lists: `main`'s (`:4297`ff, as `_statFile: statFileFn = defaultStatFile`),
+`wrapperSeams` (`:4520`–`:4530`), and `reviewLoop`'s destructuring (`:1841`–`:1865`). Without the
+`main`-side thread there is no path from the `main()` harness to `maintainRegionOnHalt`, and
+**AT-REG-06** (*"phase entered and run to its end — the row asserts the whole entry, not the read
+alone"*) and **AT-HALT-02** could only be written at L3, a weaker proof than their FSPEC rows
+demand. §10.3 carries the thread so the PLAN derives a task for it.
+
 `ENOENT` is the **only** errno that answers *absent*; every other outcome is `unevaluable`. The
 runtime adapter's implementation follows `rtCheckFile`'s shape (`runtime-adapter.js:817`) with a
 three-way command — `test -e` distinguishing `PRESENT` / `ABSENT`, and any unparseable reply
@@ -480,13 +683,14 @@ on exactly one errno.
 ### 5.3 Threaded further — `_writeFile`
 
 `_writeFile(path, contents) → Promise<"ok"|…>` already exists on `main` (`:4318`,
-`defaultWriteFile` at `:4219`; the adapter's `rtWriteFile` at `runtime-adapter.js:994`), but is
-**not** in `wrapperSeams` (`:4516`–`:4526`), so `reviewLoop` cannot write today. It is added to
-`wrapperSeams` and to `reviewLoop`'s parameter list.
+`defaultWriteFile` at `:4219`; the adapter's `rtWriteFile` at `runtime-adapter.js:802`), but is
+**not** in `wrapperSeams` (`:4520`–`:4530`, verified — the list is `_agent`, `_readFile`,
+`_hashFile`, `_listFiles`, `_appendFile`, `_probeDoc`, `_probeReviewState`, `_log`, `_git`), so
+`reviewLoop` cannot write today. It is added to `wrapperSeams` and to `reviewLoop`'s parameter list.
 
 **Its return value is never trusted.** Every write this feature performs is followed by a
 **content read-back** (BR-11) — the adapter's `rtWriteFile` answers `"ok"` when it *believes* it
-wrote, and the shipped comment at `:1994`–`:1996` records that this belief has been wrong. The
+wrote, and the shipped comment at `:1984`–`:1986` records that this belief has been wrong. The
 confirmation contracts are §6.4's, not this seam's.
 
 **`_appendFile` is deliberately not used for region lines.** It exists (`:4235`) and is used by
@@ -542,15 +746,23 @@ has a symbol to assert emptiness against.
 
 ### 5.6 The seam table, gathered
 
-| Seam | Default | New? | Consumers |
-|---|---|---|---|
-| `_readFile` | `defaultReadFile` | no | `readRegionState`, both confirmations |
-| `_writeFile` | `defaultWriteFile` | threaded into `reviewLoop` | `resolveClearance`, `maintainRegionOnHalt` |
-| `_statFile` | `defaultStatFile` | **yes** | `maintainRegionOnHalt`'s creating/existing discriminator |
-| `_checkFile` | `checkFileNonEmpty` | no | shipped post-mortem write confirmation |
-| `_listFiles` | `defaultListFiles` | no | `refreshReviewState` |
-| `_agent` | `agent` | no | post-mortem authoring |
-| `_validateRegion` | `NO_VALIDATOR` (`null`) | **yes, unwired** | nothing at this ship (§6.3) |
+| Seam | Default | New? | Threaded through | Consumers |
+|---|---|---|---|---|
+| `_readFile` | `defaultReadFile` | no | already on `main`, `wrapperSeams`, `reviewLoop` | `readRegionState`, both confirmations |
+| `_writeFile` | `defaultWriteFile` | threaded further | `main` `:4318` ✔ → **`wrapperSeams` (add)** → **`reviewLoop` (add)** | `resolveClearance`, `maintainRegionOnHalt` |
+| `_statFile` | `defaultStatFile` | **yes** | **`main` (add)** → **`wrapperSeams` (add)** → **`reviewLoop` (add)** | `maintainRegionOnHalt`'s creating/existing discriminator |
+| `_checkFile` | `checkFileNonEmpty` | no | already on `main` and passed per-call at `:4989`-shaped sites | shipped post-mortem write confirmation (`:1989`) |
+| `_listFiles` | `defaultListFiles` | no | already | `refreshReviewState` |
+| `_probeReviewState` | `NO_PROBE` (`null`) | no | already on `main` and `wrapperSeams` (`:4527`) | `resolveReviewState` (`:2837`) → `phaseWindow` (`:4373`). **§6.1 step 1 keeps this call, not `refreshReviewState`** (SE F-06) |
+| `_probePostmortem` | `NO_PROBE` (`null`) | no | already on `main` (`probePostmortemFn`), in `phaseGate`'s closure | `resolvePostmortem` at step 4 (`:4472`) and at step G (`:4497`). **Step W consumes step G's already-resolved `gate.status` rather than re-probing** (§6.3 step 2) |
+| `_agent` | `agent` | no | already | post-mortem authoring |
+| `_validateRegion` | `NO_VALIDATOR` (`null`) | **yes, unwired** | not threaded — no consumer at this ship | nothing at this ship (§6.3) |
+
+`_probePostmortem` was missing from v1.0's table (SE F-07). It matters twice over: it is what
+`resolveClearance`'s step 2 reads *through* (as a threaded value, see §6.3), and it is the
+`NO_PROBE` precedent (`:2778`) §5.4 cites for `NO_VALIDATOR` — leaving it off weakened the analogy
+the section rests on. This table is what a PLAN reads to decide what `wrapperSeams` must carry and
+what every test double must supply, so it is now complete: **nine** seams, three of them edited.
 
 Per C-4, **every one of these is `await`ed at every call site**, including `_statFile`, whose Node
 default is synchronous — the adapter's is not, and the module may not depend on which it got.
@@ -562,54 +774,128 @@ input class. Purity is stated explicitly because §3.1's read/write model cluste
 compensation for not having a `lib/` module.
 
 **Cite-and-reuse, stated once.** Three cross-cutting obligations here are already solved in this
-module and are **reused, not reinvented**: fence-scoped line scanning is `scanLines` (`:569`,
+module and are **reused, not reinvented**: fence-scoped line scanning is `scanLines` (`:721`,
 M-7d) — the same helper `approvalAnchorPreCount` and `parseResolvedMarker` use, so a
 `HALT-REASON:` quoted inside a fenced block is invisible for the same reason a quoted anchor is;
 top-level section location is `topLevelSections` (`:1393`), which is itself built on `scanLines`,
-so this feature adds **no second heading walker** (the module's own comment at `:2527` states why
-a second one would be a second oracle); and the confirm-don't-trust write discipline is §6.3 step
-2's shipped shape (`:1994`–`:2000`), generalised from existence to content.
+so this feature adds **no second heading walker** (the module's own comment at `:2521`–`:2522`
+states why a second one would be a second oracle); and the confirm-don't-trust write discipline is
+the shipped post-mortem shape at `:1984`–`:1991`, generalised from existence to content.
 
-### 6.1 `phaseWindow` — resolving `D`, then `W`, then the window
+**How `scanLines` composes with a section body (SE F-11).** The two do not compose by accident and
+the composition is worth stating, because an implementer reading §6.2 alone cannot derive it.
+`topLevelSections` returns `body` as a **raw `string[]`**, fences included — deliberately, per its
+own comment at `:1385`–`:1391` — whereas `scanLines(text, visit)` takes a whole text string and
+tracks fence state from its first line. The region's lines are therefore scanned as
+**`scanLines(spanLines.join("\n"), …)`**, and this is sound because `topLevelSections` locates
+headings *through* `scanLines`: a heading inside an open fence is not a section at all, so fence
+state is always **closed** at the first line of any section body, and re-scanning that body starts
+from the same state production does. The obvious alternative — scanning the whole file and
+filtering by index range — is a different and more fragile shape and is not used.
 
-Extends the existing `phaseWindow(docType)` closure in `main` (`:4403`'s neighbourhood), which
-today delegates to `refreshReviewState` → `deriveRoundWindow`.
+### 6.1 `phaseWindow` and `phaseGate` step W — resolving `D`, then `W`, then the window
+
+Two symbols, in the order `phaseGate` executes them (§3.3). v1.0 collapsed both into `phaseWindow`
+and contradicted §3.3; v1.1 splits them, which is what makes the gate provably run **after** step G
+and **after** the skip-on-approval branch (SE F-03).
+
+**(i) `phaseWindow(docType)` — narrowed to the derived facts.** Extends the shipped closure at
+`:4367`–`:4377`, called from `phaseGate` step 2 (`:4415`) and directly by Phase CR (`:4977`).
 
 ```
-phaseWindow(docType, phaseId) →
-  1. state ← await refreshReviewState({feature, docType, _listFiles, _readFile})
-        // unchanged; `state.startIndex` is D, renamed `derivedStart` downstream
-        // `{ok:false}` still halts, unchanged (§2.5)
-  2. D ← state.startIndex
-  3. region ← await readRegionState({phase: phaseId, feature, _readFile})     (§6.2)
-  4. W ← await resolveClearance({phase: phaseId, feature, region, D, …})      (§6.3)
-  5. return { ok: true, origin: W, derivedStart: D,
-              startIndex: Math.max(D, W), endIndex: windowEnd(W),
+phaseWindow(docType) →
+  1. state ← await resolveReviewState({feature, docType,
+                                       _listFiles, _readFile, _probeReviewState})
+        // the SHIPPED call at :4368–:4374, unchanged. NOT `refreshReviewState`:
+        // `resolveReviewState` (:2837) consults `_probeReviewState` first and falls
+        // back to `refreshReviewState` (:2848) only when the probe does not answer,
+        // so calling the latter directly would silently delete a shipped seam from
+        // the phase-entry path (SE F-06).
+        // `{ok:false}` still throws `haltError(state.message)` at :4375 (§2.5)
+  2. return { ok: true, derivedStart: state.startIndex,
               present: state.present, skipped: state.skipped,
-              reviewFiles: state.reviewFiles }
+              reviewFiles: state.reviewFiles, message: state.message }
 ```
 
-Four things are load-bearing about this ordering:
+**On the narrowing (SE Q-01).** The field list *is* exhaustive and the return *is* narrowed:
+`startIndex` and `endIndex` are deliberately **absent**, so a reader that still wants a window gets
+a `TypeError`-shaped `undefined` at the arithmetic rather than a plausible wrong number. The
+readers were swept (§4.2.1): the only ones are `phaseGate` step 3 — which now reads
+`window.derivedStart` — and Phase CR (below). `message` is carried because `resolveReviewState`
+returns it on the `{ok:false}` arm; `reviewFiles` because `phaseGate` step 3 reads it.
 
-1. **`D` is resolved before the gate** (step 2 precedes step 4) because the gate *consumes* it —
-   B-CLR-2/B-CLR-2a branch on `D ≤ E`, and the granting value is `N = max(D, W)` (FSPEC §4.4).
-2. **The admission arithmetic is evaluated once, after the gate** (step 5), against the origin the
-   gate left behind. There is no cycle and no re-listing: `deriveRoundWindow` is called exactly
-   once per entry, as it is today.
-3. **`windowEnd` is re-pointed at the origin, not the start.** Its body is unchanged —
-   `return origin + MAX_REVIEW_ROUNDS - 1;` — only its parameter's *meaning* changes, so
-   `RLH-LOOP-03`'s *"`MAX_REVIEW_ROUNDS - 1` occurs exactly once"* assertion stays green (§2.4).
-   `deriveRoundWindow`'s internal `endIndex = windowEnd(startIndex)` becomes
-   `windowEnd(origin)` with `origin` defaulting to `1`, which reproduces today's value on every
-   caller that passes no origin.
-4. **`startIndex > endIndex` is returned, not thrown.** It is the zero-round window (B-WIN-2), and
+**(ii) `phaseGate` step W — inserted between step G (`:4493`–`:4506`) and the return (`:4508`).**
+
+```
+step W(phaseId, docType, window, gate) →
+  D ← window.derivedStart
+  if docType === null:                                            // Phase CR, B-BUD-2
+      return admitWindow({ derivedStart: D, origin: D })           // the SHIPPED relative window
+  region ← await readRegionState({phase: phaseId, feature, _readFile})        (§6.2)
+  W      ← await resolveClearance({phase: phaseId, feature, region, D,
+                                   postmortemStatus: gate.status, …})         (§6.3)
+  return admitWindow({ derivedStart: D, origin: W })
+
+admitWindow({derivedStart, origin = derivedStart}) →              // PURE, total, no seam
+  { ok: true, origin, derivedStart,
+    startIndex: Math.max(derivedStart, origin),
+    endIndex:   windowEnd(origin) }
+```
+
+`phaseGate` then returns `{skip: false, window: {...phaseWindow's fields, ...step W's fields},
+forced}`, so every downstream reader of `window.startIndex` / `window.endIndex` (§4.2.1 rows 6–7)
+is unchanged in form.
+
+Five things are load-bearing about this ordering:
+
+1. **`D` is resolved before the gate** because the gate *consumes* it — B-CLR-2/B-CLR-2a branch on
+   `D ≤ E`, and the granting value is `N = max(D, W)` (FSPEC §4.4).
+2. **The gate runs after every skip and every refusal.** Steps 3–4 can return `{skip: true}`
+   (`:4480`) and step G can throw (`:4502`); both happen **above** step W, so no clearance is ever
+   consumed by an entry that dispatches nothing. This is the state SE F-03 asked to be either
+   dispositioned or removed — it is **removed**, which is why §7.1 gains F-17 recording it as
+   unreachable rather than accepted.
+3. **The admission arithmetic is evaluated once, after the gate**, against the origin the gate left
+   behind. There is no cycle and no re-listing: `deriveRoundWindow` is called exactly once per
+   entry, as it is today.
+4. **`windowEnd` is re-pointed at the origin, not the start**, and its parameter is **renamed**
+   (`function windowEnd(origin)`) so the change is visible at all three call sites (§2.4). Its body
+   is unchanged — `return origin + MAX_REVIEW_ROUNDS - 1;` — so `RLH-LOOP-03`'s *"occurs exactly
+   once"* and `RLH-LOOP-03b`'s *"outside `reviewLoop` and `checkConverged`"* both stay green.
+
+   **`deriveRoundWindow`'s origin defaults to `derivedStart`, not to `1`** (TE F-01, TE Q-01).
+   v1.0 said *"`origin` defaulting to `1` … reproduces today's value on every caller that passes no
+   origin"*, and that was **false**: it reproduces today's value only where `derivedStart === 1`;
+   for every other listing `windowEnd(1) ≠ windowEnd(derivedStart)`. The corrected signature is
+
+   ```js
+   deriveRoundWindow(basenames, docType, { origin } = {})
+   //   origin ??= derivedStart   →  endIndex = windowEnd(origin)
+   //                                startIndex = Math.max(derivedStart, origin)
+   ```
+
+   so an **origin-less call remains a supported contract** and means, precisely, *"no reset is in
+   effect for this listing"* — the shipped relative window. That is the reading three shipped
+   consumers already depend on (§4.2.1 rows 1–4: `refreshReviewState`'s `candidate =
+   window.startIndex - 1` at `:2688`, its passthrough at `:2710`–`:2711`, `rehydrateReviewState` at
+   `:2820`, and `selectMode` at `:3106`), and defaulting to `1` would have silently broken all four.
+   The residual risk — a *typed* caller that forgets the origin silently gets the relative window —
+   is bounded by there being exactly one production caller (`phaseGate` step W, which always passes
+   one) and is pinned by an L2 leg asserting the default equals `derivedStart` (§9.5).
+
+5. **`startIndex > endIndex` is returned, not thrown.** It is the zero-round window (B-WIN-2), and
    `reviewLoop`'s shipped guard consumes it (§2.3).
 
-**Phase CR and Phase DOD take none of this.** Phase CR calls `reviewLoop` with `docType: null`
-(`:4985`, M-7f); its window is derived with `origin = 1` and no region is read or written — steps 3
-and 4 are **skipped when `docType` is `null`**, which is the one discriminator (AC-1.1: *"the phase
-names a document type"*, B-BUD-1/B-BUD-2). Phase DOD does not call `reviewLoop` at all and reads
-`DOD_MAX_ITERATIONS` (`:25`), a separate declaration (B-BUD-3, §8.2).
+**Phase CR and Phase DOD take none of the region machinery.** Phase CR calls `phaseWindow(null)`
+(`:4977`) and `reviewLoop` with `docType: null` (`:4981`, M-7f). Its origin is **`derivedStart`**,
+not `1` (TE Q-02): AC-1.1's budget is absolute only where *"the phase names a document type"*, and
+B-BUD-2 requires *exactly `BUDGET` rounds run in the invocation* on the untyped path — which is the
+shipped **relative** window, and which `origin = derivedStart` reproduces exactly. Were the origin
+`1`, a Phase CR re-entry with existing `…-REVIEW-v{N}` files would zero-round-halt and contradict
+AT-BUD-02. No region is read or written on that path: the region read and the clearance gate are
+**skipped when `docType` is `null`**, which is the one discriminator (B-BUD-1/B-BUD-2). Phase DOD
+does not call `reviewLoop` at all and reads `DOD_MAX_ITERATIONS` (`:25`), a separate declaration
+(B-BUD-3, §8.2).
 
 ### 6.2 `parseResetRegion` / `readRegionState` — the read model
 
@@ -629,10 +915,24 @@ including `""`, and over `null` / `undefined` (coerced to `""`).
      if trimmed startsWith "WINDOW-START: "    → A++,          lines.push(line)
      if trimmed startsWith "WINDOW-RESUMED: "  → A++,          lines.push(line)
      otherwise                                 → ignored entirely
-5. W ← the GREATEST value among `WINDOW-START:` lines whose value matches /^[0-9]+$/
-       and parses to an integer ≥ 1;  1 when there is none                            (RS-2, RS-3)
+5. W ← resolveOrigin(lines)                                                     (RS-2, RS-3)
 6. return { present:true, H, A, W, lastHaltReason, lines }
 ```
+
+**`resolveOrigin(lines) → number`** — pure, synchronous, **total over every array**, including
+`[]` and over `null` / `undefined` (coerced to `[]`). TE F-08 correctly observed that v1.0 named
+this as an L1 test subject (§3.1, §9.1) while specifying it nowhere; it is step 5 extracted, and it
+is kept as a named function rather than inlined because §9.4's RS-3 ledger row needs a symbol to
+mutate:
+
+| Input class | Result |
+|---|---|
+| no `WINDOW-START:` line at all | **`1`** — total over the empty set, where a bare `Math.max(...values)` would yield `-Infinity` (RS-3) |
+| every `WINDOW-START:` value malformed (`abc`, `-2`, `""`, `3.5`, `007x`) | **`1`** — no well-formed value contributes an origin (RS-2, B-REG-4) |
+| one or more well-formed values | the **greatest** of them; each value must match `/^[0-9]+$/` and parse to an integer `≥ 1` |
+
+Its return is a **decimal integer ≥ 1**, never `NaN`, never a string — which is RS-2, and which is
+what guarantees no `NaN` reaches `windowEnd` or `Math.max` (§7.1 F-6).
 
 | Input class | Result | Branch |
 |---|---|---|
@@ -664,31 +964,47 @@ different seam (`_statFile`), which is exactly why the two are separate (§5.2).
 
 ### 6.3 `resolveClearance` — the gate, and the unwired conjunct
 
-**`resolveClearance({phase, feature, region, D, _readFile, _writeFile, _probePostmortem, _validateRegion}) → Promise<number>`** — returns the origin `W` to use for this entry.
+**`resolveClearance({phase, feature, region, D, postmortemStatus, _readFile, _writeFile, _validateRegion}) → Promise<number>`** — returns the origin `W` to use for this entry.
 
 ```
 1. if region.H === 0 or region.A >= region.H         → return region.W        (B-CLR-4)
-2. pm ← await resolvePostmortem({phase, feature, …}) // shipped, fail-closed (M-7a)
-   if pm.status !== "resolved"                       → return region.W        (B-CLR-5*)
+2. if postmortemStatus !== "resolved"                → return region.W        (B-CLR-5*)
 3. // THE THIRD CONJUNCT — X-06. See "the interim composition" below.
 4. kind ← gateBranch(region.lastHaltReason, D, region.W)                      (§6.3.1)
 5. line ← kind === "resume" ? `WINDOW-RESUMED: ${region.W}`
                             : `WINDOW-START: ${Math.max(D, region.W)}`
 6. await appendAnsweringLine(path, region, line, {_readFile, _writeFile})
-   // confirmed by CONTENT: re-read, re-parse, assert `line` is present in the
-   // region span AND A increased by exactly 1.  On failure → refuse (§7.2,
-   // which = "answering line").  NOTHING IS DISPATCHED BEFORE THIS RETURNS.
+   // confirmed by CONTENT: re-read, re-parse, and assert BOTH conjuncts
+   //   (a) `line` is present in the region span of the re-read text
+   //   (b) A increased by EXACTLY 1  (A_after === region.A + 1)
+   // Each conjunct has a fault mode that fails it ALONE (§9.2): (a) alone under
+   // `write-noop`; (b) alone under `lying-write` duplicating the appended line.
+   // On failure → refuse (§7.2, which = "answering line").
+   // NOTHING IS DISPATCHED BEFORE THIS RETURNS.
 7. return kind === "resume" ? region.W : Math.max(D, region.W)
 ```
 
-`*` Step 2 never *causes* B-CLR-5's refusal — that is step G's, which already ran and threw
-(§2.6). Step 2 exists because `phaseGate` reaches this code only on `"none"` or `"resolved"`, and
-`"none"` (no post-mortem at all) must grant nothing. It is written as an explicit conjunct rather
-than assumed, so a future reordering of `phaseGate` cannot silently open the gate.
+`*` **Step 2's premise, corrected (SE F-03).** v1.0's footnote said *"that is step G's, which
+already ran and threw"* while §6.1 placed the gate **before** step G — the two could not both be
+true. Under §3.3's step-W ordering the footnote is now **true as written**: step G (`:4493`–`:4506`)
+has run, and an `"unresolved"` post-mortem has already refused the phase there, so
+`resolveClearance` is reached only on `"none"` or `"resolved"`. Step 2 is therefore genuinely
+**defensive** — `"none"` (no post-mortem at all) must grant nothing, and the conjunct is written
+explicitly so a future reordering of `phaseGate` cannot silently open the gate. It must not be
+deleted as redundant.
+
+**And the marker is threaded, not re-probed.** v1.0 had `resolveClearance` call `resolvePostmortem`
+itself, which under the corrected ordering would evaluate the same probe **twice per entry** (once
+at step G, once here) for a value that cannot have changed in between. Step W passes step G's
+already-resolved `gate.status` in as `postmortemStatus`, so there is **one** probe per entry and one
+answer. This is why `_probePostmortem` is not in `resolveClearance`'s signature but **is** in §5.6's
+table (SE F-07): its consumer is `resolvePostmortem`, called from `phaseGate` steps 4 and G.
 
 **Step 6's ordering is normative** (B-CLR-6, split §5.5): the answering line is durably present
 **before any round of the entry is dispatched**. Structurally guaranteed here because
-`resolveClearance` is called from `phaseGate`, which returns *before* `reviewLoop` is constructed.
+`resolveClearance` is called from `phaseGate` step W, which returns *before* `reviewLoop` is
+constructed — and, since step W sits below the skip branch, before any entry that will not
+dispatch has been eliminated.
 
 #### 6.3.1 `gateBranch(lastHaltReason, D, W)` — pure, total, three-valued
 
@@ -767,10 +1083,12 @@ maintainRegionOnHalt({phase, feature, haltReasons, roundsRun, seams}) →
                             (B-HALT-4a: heading-absent and file-unreadable are
                              different observations; only the first admits an
                              insert position, so the WHOLE FILE is byte-unchanged)
-       next ← applyIterationsSection(text, renderIterationsHeading(BUDGET, roundsRun))
+       rendered ← renderIterationsHeading(BUDGET, roundsRun)
+       next ← applyIterationsSection(text, rendered)
        await _writeFile(path, next)
-       back ← await _readFile(path)
-       CONFIRM: locateIterationsHeading(back).text === renderIterationsHeading(...)
+       back ← await _readFile(path)                 // null when the read-back itself fails
+       loc  ← locateIterationsHeading(back)         // TOTAL: null for null, "" or heading-absent
+       CONFIRM: loc !== null && loc.text === rendered
                 (an EQUALITY read-back, never the write's return code — BR-11)
        on failure → REFUSE, which = "iterations section"                      (B-HALT-4)
 
@@ -778,22 +1096,49 @@ maintainRegionOnHalt({phase, feature, haltReasons, roundsRun, seams}) →
        text2 ← await _readFile(path)
        upd   ← applyHaltUpdate(text2, haltReasonValue(haltReasons))
        await _writeFile(path, upd.text)
-       back2 ← await _readFile(path)
-       CONFIRM, both conjuncts against back2:
-         (a) parseResetRegion(back2).lines includes upd.haltLine, and H increased by 1
-         (b) NO unfenced `RESOLVED:` line remains anywhere in back2
+       back2 ← await _readFile(path)                // null-safe: parseResetRegion is total
+       reg2  ← parseResetRegion(back2)              // null ⇒ the empty reading (RS-4)
+       CONFIRM, THREE conjuncts against back2, each separately falsifiable (§9.2):
+         (a) reg2.lines includes upd.haltLine
+         (b) reg2.H === H_before + 1                          — EXACTLY one, not ≥ 1
+         (c) NO unfenced `RESOLVED:` line remains anywhere in back2
        on failure → REFUSE, which = "halt line"                               (B-HALT-5)
 
   5. return { regionRecorded: true, haltLine: upd.haltLine }
 ```
 
+**Step 3's confirmation is a total predicate, not a dereference (SE F-04).** v1.0 wrote
+`locateIterationsHeading(back).text === …`, which throws a bare `TypeError` on precisely the input
+F-9 exists to catch: under the `write-noop` fault mode `back` is the **pre-write** text, and if that
+text has no `Iterations` heading — the *no located heading* branch of `applyIterationsSection`,
+i.e. the creating-halt case and the B-HALT-3 case — `locateIterationsHeading` returns `null`. The
+same happens when the read-back itself fails and `back` is `null`. A thrown `TypeError` is **not** a
+`haltError`, so none of §7.2's four properties holds: no `recordPhase(…, "❌", …)` row is written
+before it escapes, no row B is pushed, and the `{which}` discriminator never reaches the operator —
+the disposition failing on its own named input. Binding `loc` first and testing `loc !== null &&
+…` makes the predicate total over every value `_readFile` can return.
+
+Step 4's conjunct (a) needs no such guard because `parseResetRegion` is already total over `null`
+(§6.2, RS-4) — but it is stated here so an implementer does not add a redundant one, and so the
+**`H_before`** the delta is measured against is named: it is the count from the `parseResetRegion`
+of `text2`, read in the same step, never a value cached from step 1.
+
+**Splitting v1.0's conjunct (a) into (a) and (b) is TE F-02's fix at this site.** v1.0 wrote
+*"includes `upd.haltLine`, **and** `H` increased by 1"* as one conjunct, so no fault could fail the
+delta alone. They are now separate, and §9.2's `lying-write` mode supplies a fault for each:
+`write-noop` fails (a) first; a transform that lands the halt line **twice** satisfies (a) and fails
+(b); a transform that appends the halt line but **preserves the marker** satisfies (a) and (b) and
+fails (c). Conjunct (c) is the one D-3's whole argument rests on — *a separately losable strip
+leaves a readable marker beside an incremented `H`, which the gate reads as an unconsumed
+clearance* — and it is the state that had **no** double able to produce it.
+
 **The order is 3 → 1 → 2 and the write count is two, not three.** Clause 2 has no failure
-disposition of its own because it is not a separate write: its confirmation is (b) above and its
+disposition of its own because it is not a separate write: its confirmation is **(c)** above and its
 failure is clause 1's failure. Why it must be one update — a separately losable strip leaves a
 readable marker beside an incremented `H`, which §6.3's gate reads as an unconsumed clearance,
 re-granting a window on every later halt while the fault lasts — is split §5.8's, not restated.
 
-**Confirmation (a) is presence-in-the-region, not existence-of-file.** On a re-halt the file always
+**Confirmations (a) and (b) are presence-in-the-region, not existence-of-file.** On a re-halt the file always
 exists, so an existence-shaped check passes whether or not the line landed, and that is the path
 that matters (AC-1.4 clause 1). This is also why `_checkFile` is *not* reused here: its contract
 (`:361`) is exactly the existence check that would silently pass.
@@ -837,7 +1182,8 @@ Region parsing is unaffected either way: the insert lands *above* the region hea
 that has already been closed by EOF.
 
 **Threading `{k}` (O-14).** `roundsRun` is a counter local to `reviewLoop`, incremented once per
-loop pass **at the reviewer dispatch site** (immediately after the `_parallel` call at `:2058`),
+loop pass **at the reviewer dispatch site** (immediately after the `_parallel` call at
+`:2053`–`:2056`),
 so it counts rounds this entry **dispatched**, whatever came back (OQ-01's stated default). It is
 `0` on a zero-round halt on both the creating and the re-halt path, it is carried on `LoopResult`
 (§4.5), and it is passed to `maintainRegionOnHalt`. It is **not** `iterations`, which stays the
@@ -852,21 +1198,65 @@ budget (M-1c).
    already guards on `lastResults.length > 0` (`:1777`), so an empty list yields an empty
    `reviewerDetail` with no further change.
 
-2. **The S-4 render and row C.** The halt branch composes
-   `budget-exhausted: rounds ${origin}..${endIndex} of ${MAX_REVIEW_ROUNDS}` — catalogue S-2's
-   grammar, **rendered from the window and the constant**, never the literal `rounds 1..3 of 3`
-   (B-WIN-2). When `roundsRun === 0` it pushes **row C** (§4.4) onto `reviewRows`, with `round` =
-   `startIndex` and the four middle cells `""`. The same string is the `HALT-REASON:` value
-   (`haltReasonValue`), so the operator reads the identical bytes in both places (B-HALT-7).
+2. **One render function, two sites (SE F-01, B-HALT-7).** v1.0 required *"the identical bytes in
+   both places"* and then left two independent renders in the code: `checkConverged`'s
+   `rounds ${first}..${last}` at `:1791`–`:1793`, computed from `startIndex`, and the halt branch's
+   `HALT-REASON:` value, computed from the origin. On the zero-round halt those differ **by
+   construction** — the entry condition *is* `max(D, W) > W + BUDGET − 1`, so `first > last` and the
+   phase row reads a **backwards** range like `Non-convergence across rounds 7..5` beside a
+   `HALT-REASON: budget-exhausted: rounds 3..5`. Both defects are removed by one pure function:
 
-3. **`reviewRows` on the report.** `buildFinalReport` (`:5281`) gains `reviewRows = []` beside
-   `notices = []`, carried on **every** report — present as a readable value on success too, for
-   the reason the shipped comment at `:5300`–`:5302` gives about the four halt-disposition fields:
-   a conditionally-spread field cannot express *"no rows"*.
+   ```js
+   /** The ONE window render. Both the phase row and HALT-REASON: read this. */
+   function renderWindow(origin, endIndex) { return `rounds ${origin}..${endIndex}`; }
+
+   /** Catalogue S-2/S-4's value. `kind` ∈ {"budget-exhausted", "fixed-point", "no-revision"}. */
+   function haltReasonValue(kind, origin, endIndex) {
+     return `${kind}: ${renderWindow(origin, endIndex)} of ${MAX_REVIEW_ROUNDS}`;
+   }
+   ```
+
+   `checkConverged`'s `:1791`–`:1793` becomes `const window = renderWindow(origin, last)`, where
+   `origin` is the eighth argument (below) and `last` is `endIndex === undefined ? windowEnd(origin)
+   : endIndex`. Because `origin ≤ windowEnd(origin)` for every `origin ≥ 1` and every `BUDGET ≥ 1`,
+   **the render can no longer be backwards on any input**. B-HALT-7 is then true because one
+   function produced both strings, not because two sites happen to agree — which is what the
+   §9.4 row-8-adjacent mutation (*render the phase row from `startIndex`*) must red.
+
+   `checkConverged` keeps its shipped seven positional parameters and gains an **eighth, an options
+   object** `{origin = startIndex, reviewRows} = {}`. An options object rather than two more
+   positionals because nine positional arguments is where a call site starts transposing them; a
+   defaulted eighth argument keeps all seven shipped call sites (`:4657`, `:4695`, `:4738`, `:4791`,
+   `:4832`, `:4870`, `:4992`) compiling and keeps Phase CR's render byte-identical to today's when
+   `origin` falls back to `startIndex`.
+
+   **Row C.** When `roundsRun === 0 && refusal === null` the halt branch pushes **row C** (§4.4)
+   onto its own `reviewRows`, with `round` = `startIndex` and the four middle cells `""`, and
+   `notice` = `haltReasonValue("budget-exhausted", origin, endIndex)` — catalogue S-2's grammar,
+   rendered from the window and the constant, never the literal `rounds 1..3 of 3` (B-WIN-2).
+
+3. **`reviewRows` on the report, end to end (TE F-03).** The carrier is explicit at every hop, so
+   AT-RPT-04/06/07 are writable and AT-RPT-07's *absence* assertion is made against a channel that
+   demonstrably exists on every run:
+
+   | Hop | Mechanism |
+   |---|---|
+   | `reviewLoop` → `LoopResult` | `reviewRows: ReviewRow[]`, default `[]` (§4.5) — the same shape `postmortemWritten` / `trailerReason` already use to cross the module-scope boundary |
+   | `checkConverged` → `main` | the eighth argument's `reviewRows` **row sink**, stated beside the existing `recordPhase` injection and injected for the same reason: `checkConverged` is module-scope (`:1756`) and cannot see `main`'s closure. It concatenates `loopResult.reviewRows` and pushes its own row B |
+   | `phaseGate` → `main` | direct push; `phaseGate` is a closure of `main` (`:4406`) and already owns `notices` (`:4386`) |
+   | `main` → report | `main` owns `const reviewRows = []` beside `const notices = []`; `buildFinalReport` (`:5281`) gains `reviewRows = []` as a **defaulted** parameter beside `notices = []` |
+
+   Carried on **every** report — present as a readable value on success too, for the reason the
+   shipped comment at `:5307`–`:5309` gives about the four halt-disposition fields: a
+   conditionally-spread field cannot express *"no rows"*.
 
 The **shipped Iterations literal** at `:1965` is removed from the post-mortem prompt in the same
 edit as step 2 of §6.4: the loop owns that heading now, so leaving the item in the prompt would ask
 an agent to write a string the loop immediately overwrites (B-PMT-3).
+
+**Where `haltReasonValue`'s `kind` comes from at this ship.** Only `"budget-exhausted"` is emitted
+here: `"fixed-point"` is `pdlc-rcv-fixed-point-stop`'s and `"no-revision"` is S-11, which no path
+emits (§6.3.1). The parameter exists so the successor adds a caller rather than a second render.
 
 ## 7. Error handling
 
@@ -885,14 +1275,18 @@ toward the narrower window, never toward a free one** (BR-10).
 | **F-6** | malformed `WINDOW-START:` value | step 5's grammar test fails | counts toward `A`, contributes no origin; `W` falls back to the greatest well-formed value, else **1**. **No `NaN` ever reaches `windowEnd` or `Math.max`** (RS-2) | B-REG-4 |
 | **F-7** | last `HALT-REASON:` unparseable or absent-valued | `gateBranch`'s default arm | treated as a convergence halt — the clearance is **consumed**, a window the operator can re-grant. Never a free window | B-CLR-3 |
 | **F-8** | answering-line write unconfirmed | §6.3 step 6's content read-back | **phase refusal**, `which = "answering line"`; no window, **zero dispatches**, both counts unmoved, `notice` empty | B-CLR-7 |
-| **F-9** | clause-3 write unconfirmed | §6.4 step 3's equality read-back | **phase refusal**, `which = "iterations section"`; region byte-unchanged, no halt recorded, nothing stripped | B-HALT-4 |
+| **F-8a** | answering-line read-back returns `null` (the read itself failed) | §6.3 step 6, conjunct (a) over a `null` re-read — `parseResetRegion` is total, so the empty reading fails (a) | as F-8: **phase refusal**, `which = "answering line"`. Distinct *observation*, same disposition | B-CLR-7 |
+| **F-9** | clause-3 write unconfirmed | §6.4 step 3's equality read-back, `loc !== null && loc.text === rendered` | **phase refusal**, `which = "iterations section"`; region byte-unchanged, no halt recorded, nothing stripped | B-HALT-4 |
+| **F-9a** | clause-3 read-back returns `null`, **or** returns text with **no** `Iterations` heading | §6.4 step 3, `loc === null` — the total form (SE F-04). This is the *creating* and the B-HALT-3 input, i.e. the input F-9 exists to catch | as F-9. Explicitly **not** a thrown `TypeError`: the refusal must reach `recordPhase` and row B, or none of §7.2's four properties holds | B-HALT-4 |
 | **F-10** | clause 1-and-2 update unconfirmed | §6.4 step 4's two conjuncts | **phase refusal**, `which = "halt line"`; nothing stripped, this entry's Iterations render present, counts unmoved | B-HALT-5 |
 | **F-11** | `RESOLVED:` absent / `no` / unparseable / duplicated | `parseResolvedMarker` (shipped, M-7a) | the **shipped step-G refusal**, unchanged; **no row B of any variant** is emitted | B-CLR-5 |
 | **F-12** | directory listing unreadable | `refreshReviewState`'s `{ok:false}` | the shipped halt, unchanged — decided before any origin is relevant | §2.5 |
-| **F-13** | post-mortem **authoring agent** fails or writes nothing | shipped `postmortemFailed` / `_checkFile` (`:1985`–`:2000`) | shipped warning and `postmortemWritten:false`, unchanged. Clause 3 then finds no readable file and refuses (F-4's shape) | — |
+| **F-13** | post-mortem **authoring agent** fails or writes nothing | shipped `postmortemFailed` / `_checkFile` (`:1970`–`:2001`) | shipped warning **and** `postmortemWritten:false`, unchanged — the refusal does **not** replace it (SE Q-04). Clause 3 then finds no readable file and refuses as F-9a. The refusal's `haltError` carries no fields (§7.2 property 3), so `main`'s branch-3 probe (`:5147`–`:5159`) decides `postmortemStatus`: `"none"` when the agent truly wrote nothing, `"written"` when a file exists but clause 3 could not confirm the heading. **`postmortemWritten:false` on `LoopResult` and `postmortemStatus` in the report are different quantities and are allowed to disagree** — the first records what the authoring dispatch did, the second what is on disk when the report is built | — |
 | **F-14** | region **hand-edited** so the counts lie | nothing, at this ship | **accepted, time-boxed**: operator-caused, operator-visible, **no wider than HEAD's**, where the fail-open is unconditional. Closed at target state by the third conjunct | B-REG-7, E-13 |
 | **F-15** | a **torn** (partially landed) region or answering line | not analysed here | `REQ-RCV-07` AC-7.5's (**T-N-1**). Correct and known by construction | — |
 | **F-16** | queue-row commit refused (hook, identity, index lock) | shipped | the shipped `halted (uncommitted)` outcome, unchanged; the halt is never downgraded | E-11 |
+| **F-17** | a clearance granted on an entry that then **skips** on a FRESH recorded approval | — | **unreachable by construction** (SE F-03). §3.3's step-W ordering puts the region read and the gate *below* steps 3–4, so an entry that returns `{skip:true}` at `:4480` never reaches them. Recorded as a row so a future reordering that reintroduces the state is a diff against a written statement, not a silent regression; FSPEC §6.3's *recoverable direction* would have made it acceptable, but it is better removed than accepted | — |
+| **F-18** | a clearance granted on an entry that step G then **refuses** | — | **unreachable by construction**, same mechanism: step G (`:4493`) throws above step W | — |
 
 ### 7.2 The phase refusal, as one code shape
 
@@ -915,25 +1309,32 @@ Four properties, each load-bearing and each falsifiable:
 2. **`notice` is empty, so no S-16 and no eighteenth catalogue id.** An IO fault of the loop is not
    a state of the region (BR-16). `REGION_CORRUPT_REASONS` (§5.5) is emitted by nothing here.
 3. **`postmortemStatus` resolves to `"written"`**, not by assertion but by mechanism: the throw
-   attaches no fields, so by `M-8g` the chain falls through to `main`'s branch 3 existence probe
-   (`:4890`–`:4901`), which finds the file the refusal is *about* — it exists by the path's
+   attaches no fields, so by `M-8g` — the module's only two-argument `haltError` is
+   `checkConverged`'s at `:1819`–`:1823` — the chain falls through to `main`'s branch 3 existence
+   probe (`:5147`–`:5159`), which finds the file the refusal is *about* — it exists by the path's
    premise. Never `none` (which would print `No POSTMORTEM was written.` beside a ❌ row naming the
-   post-mortem, M-8c), never `unresolved`.
+   post-mortem, M-8c, `:5179`–`:5181`), never `unresolved`. The one exception is F-13's, stated in
+   its §7.1 row: when the authoring dispatch wrote nothing at all there is no file to find, and
+   `"none"` is then the *correct* answer.
 4. **The invocation terminates on the shipped path** — the ❌ row is recorded *before* the throw,
-   `main`'s single catch (`:4861`, M-8a) runs, and the feature's `docs/_queue/QUEUE.md` row is
+   `main`'s single catch (`:5118`, M-8a) runs, and the feature's `docs/_queue/QUEUE.md` row is
    written `halted` (M-7b). *A refusal is not a halt*: the `RESOLVED:` marker is left in place,
    both counts are unmoved, and the rest of the entry does not run.
 
-**Where the refusal is raised from.** F-8 is raised inside `phaseGate`, which already owns
-`recordPhase` and step G's shape, so it throws directly. F-9 and F-10 are raised inside
-`reviewLoop`, which has **no** `recordPhase`; `maintainRegionOnHalt` therefore returns
-`{refusal: {which, path, round}}`, `reviewLoop` carries it on `LoopResult` (§4.5), and
-`checkConverged` gains a branch — placed **above** its `halted === true` branch (`:1770`) and
-shaped like it — that records the ❌ row and throws. This keeps `recordPhase` ownership exactly
-where the module already puts it and adds no second reporting path.
+**Where the refusal is raised from, and how its row travels.** F-8 and F-8a are raised inside
+`phaseGate` step W, which already owns `recordPhase`, `notices` and `main`'s `reviewRows`, so it
+records, pushes and throws directly. F-9, F-9a and F-10 are raised inside `reviewLoop`, which has
+**no** `recordPhase` and **no** row array: `maintainRegionOnHalt` returns
+`{refusal: {which, path, round}}`, `reviewLoop` returns `{converged: false, refusal, roundsRun,
+origin, reviewRows: []}` on `LoopResult` (§4.5), and `checkConverged` — which receives the
+`reviewRows` sink as its eighth argument (§6.6(3)) — gains a branch, placed **above** its
+`halted === true` branch (`:1770`) and shaped like it, that records the ❌ row, pushes row B onto
+the sink, and throws. `recordPhase` is injected into `checkConverged` for exactly the reason the row
+sink now is: the function is module-scope (`:1756`) and cannot reach `main`'s closure. This keeps
+`recordPhase` ownership where the module already puts it and adds **no second reporting path**.
 
 **Suppression of the shipped generic queue-reset line is NOT this feature's.** `M-8d`'s unguarded
-`emit` at `:4927` fires on every halt class reaching the catch, and the seam that suppresses it for
+`emit` at `:5184` fires on every halt class reaching the catch, and the seam that suppresses it for
 a refusal is `REQ-RCV-07` **O-6** (catalogue §4's Recovery-text row; the dangling *"budget-stop
 O-6"* citation is corrected at split §6). This feature **leaves it firing** and states so, rather
 than building a suppression seam one notch too wide — `REQ-RCV-07` R-14 records the regression that
@@ -975,8 +1376,8 @@ Test code then `import`s it from the ES module, as every other test in the suite
 
 | Site | Today | After |
 |---|---|---|
-| `__tests__/pacingWrapper.test.js:77` | `const MAX_REVIEW_ROUNDS = 5;` | removed; the import is used at `:1458` and `:1501` unchanged |
-| `__tests__/roundDerivation.test.js:61` | `const EXPECTED_WINDOW_WIDTH = 5;` | `const EXPECTED_WINDOW_WIDTH = MAX_REVIEW_ROUNDS;` — the alias stays, so `:300`, `:316` and `:558` are untouched, but it now **reads** the declaration |
+| `__tests__/pacingWrapper.test.js:77` | `const MAX_REVIEW_ROUNDS = 5;` | removed in favour of the import. Its two readers are `:1458` (`LAST = HIGHEST_EXISTING + MAX_REVIEW_ROUNDS`) and `:1501`; **both are inside RLH-AT-54, whose premise this feature inverts** — see §9.5.1 row 3. The *form* of those two lines is unchanged; the *test around them* is rewritten |
+| `__tests__/roundDerivation.test.js:61` | `const EXPECTED_WINDOW_WIDTH = 5;` | `const EXPECTED_WINDOW_WIDTH = MAX_REVIEW_ROUNDS;` — the alias stays and now **reads** the declaration. Its readers `:300`, `:316` and `:558` keep their **form**, but their **values move 5 → 3**, so none of them is "untouched" in the sense §9.5.1 cares about; each is dispositioned there |
 
 **Why not keep two and assert they agree.** A cross-check test is a third hand-maintained site
 that can itself be forgotten, and the failure it guards against is silent in exactly the way AC-1.2
@@ -989,29 +1390,78 @@ Two shipped assertions must be re-expressed rather than deleted, and both keep t
 
 - `roundDerivation.test.js:57`'s comment states *"the constant is deliberately **not** exported"*.
   That statement is now false and is replaced by one naming O-13(a) and the reason.
-- `roundDerivation.test.js:389` pins the exact key set of `deriveRoundWindow`'s return; it grows
-  by `derivedStart` and `origin` (§4.2).
+- `roundDerivation.test.js:389` pins the exact key set of `deriveRoundWindow`'s return
+  (`["endIndex", "ok", "present", "skipped", "startIndex"]`); it grows by `derivedStart` and
+  `origin` (§4.2).
+
+**And four more do not merely re-express — their semantics move or invert.** v1.0 called them
+*untouched* / *unchanged*, which was wrong and would have told an implementer *"do not touch
+these"*, whose only obedient reading is *"do not ship the feature"* (TE F-01). They are
+enumerated with their replacement invariants in **§9.5.1**, and each appears in §8.2's *read from
+it* class and in §10.3's modified-test row.
 
 ### 8.2 (b) The closed enumeration of width-encoding sites
 
-Every textual occurrence of the width, classified into AC-1.2's five classes. The list is
-**checked in** as `pdlc/workflows/lib/budget-width-sites.json` and is the artifact §8.3 compares
-against a repo scan. Enumerated at `9486c81`; a PLAN task re-runs the scan at implementation time
-and reconciles any drift **before** the width changes.
+Every textual occurrence of the width, classified into AC-1.2's five classes **plus a sixth this
+revision adds** (SE F-08). The list is **checked in** as
+`pdlc/workflows/lib/budget-width-sites.json` and is the artifact §8.3 compares against a repo scan.
+Enumerated at `8801109`; a PLAN task re-runs the scan at implementation time and reconciles any
+drift **before** the width changes.
+
+**Ground truth, re-taken at `8801109`.** `grep -n MAX_REVIEW_ROUNDS pdlc/workflows/orchestrate-dev.js`
+returns **seven** hits: `:52`, `:1799`, `:1965`, `:2011`, `:2406`, `:2485`, `:2493`. v1.0 enumerated
+five and omitted `:2406` and `:2485`, both **JSDoc prose inside the module** — with two consequences.
+First, `budgetWidthViolations(root)` as specified would have reported two `unenumerated-site`
+violations against the **clean repo** on the day it landed, so `__tests__/budgetSites.test.js` would
+be red before any mutation. Second, and this is the design point rather than the bookkeeping one,
+v1.0's five classes had **no home** for a source-comment occurrence: it is not *the declaration*,
+not *read from it* (it is never evaluated), not a *generated copy*, not *prose* (that class is
+scoped to prose **files**), and not a *pinned non-budget literal* (it carries no literal). The
+taxonomy did not close over the tree the scanner walks.
 
 | Class | Sites | Disposition |
 |---|---|---|
 | **the declaration** | `pdlc/workflows/orchestrate-dev.js:52` | becomes `export const MAX_REVIEW_ROUNDS = 3;` (§8.1). **Exactly one** |
-| **read from it** | `orchestrate-dev.js:1799` (phase record), `:1965` (post-mortem prompt — this occurrence is **deleted**, §6.6), `:2011` (`iterations`), `:2493` (`windowEnd`); `pacingWrapper.test.js:1458`, `:1501`; `roundDerivation.test.js:61`, `:300`, `:316`, `:558` | already read the identifier, or are re-expressed over the import in §8.1. No literal |
-| **generated copy** | every occurrence in `pdlc/workflows/dist/orchestrate-dev.bundle.js` and `dist/orchestrate-queue.bundle.js`; the untracked consumer copies under `.claude/workflows/` | rebuilt in the same commit (**O-11**); CI's *Generated artifacts are in sync* job makes it non-optional. Outside the count, **inside** the enumeration |
-| **prose** | `CLAUDE.md:78`–`:84` (*Review loop mechanics*, `MAX_REVIEW_ROUNDS = 5`); `README.md:38`; `docs/_constraints/pdlc-rcv-baseline.md` §3's row (already states **3**) | updated **in the same commit** (split §5.7). Historical documents under `docs/completed/`, `docs/discarded/` and this family's own review files are **records of what was true then** and are deliberately **not** updated — they are enumerated under this class with `frozen: true` |
-| **pinned non-budget literal** | `orchestrate-dev.js:25` — `const DOD_MAX_ITERATIONS = 3;`; the acceptance-test **titles** at `reviewLoop.test.js:139` and `:477` (*"all 5 iterations"*, *"exactly 5 iterations"*) and any fixture literal a re-expression would make circular | each **stays a literal and says so at its site**, in a one-line comment naming this class and the reason. `DOD_MAX_ITERATIONS` is the B-BUD-3 case: after this ship both values are `3`, so only the enumeration — never a round count — distinguishes *reads its own declaration* from *wrongly reads `BUDGET`* |
+| **read from it** | `orchestrate-dev.js:1799` (phase record), `:1965` (post-mortem prompt — this occurrence is **deleted**, §6.6), `:2011` (`iterations`), `:2493` (`windowEnd`); `pacingWrapper.test.js:1458`, `:1501`; `roundDerivation.test.js:61`, `:300`, `:316`, `:558`; **and, newly re-expressed here, `reviewLoop.test.js:139`, `:140`, `:171`, `:214`, `:238`, `:477`, `:478`, `:510`, `:511`, `:512`** | already read the identifier, or are re-expressed over the import in §8.1. No literal. The `reviewLoop.test.js` sites move **out of** the *pinned non-budget literal* class — see the note below |
+| **generated copy** | every occurrence in `pdlc/workflows/dist/orchestrate-dev.bundle.js` (`:1082`, `:1109`), `dist/orchestrate-queue.bundle.js` (`:1057`, `:1084`) and `dist/pdlc-cli.mjs` (`:35`, `:62`); the untracked consumer copies under `.claude/workflows/` | rebuilt in the same commit (**O-11**); CI's *Generated artifacts are in sync* job makes it non-optional. Outside the count, **inside** the enumeration |
+| **prose** | `CLAUDE.md:78` **only** (*Review loop mechanics*, the phrase `` `MAX_REVIEW_ROUNDS = 5` `` — `:79`–`:84` are the *Documents are gated…* and *Authoring is incremental…* bullets and the `### Continuous integration` heading, and carry no width); `README.md:38`, which carries the width as the **prose phrase** *"max 5 iterations"*, **not** the identifier — the form §8.3 rule 3 must match at that site; `docs/_constraints/pdlc-rcv-baseline.md` §3's row (already states **3**) | updated **in the same commit** (split §5.7). Historical documents under `docs/completed/`, `docs/discarded/` and this family's own review files are **records of what was true then** and are deliberately **not** updated — they are enumerated under this class with `frozen: true` |
+| **pinned non-budget literal** | `orchestrate-dev.js:25` — `const DOD_MAX_ITERATIONS = 3;`; `pacingWrapper.test.js:74`–`:76` (`MAX_AUTHORING_ATTEMPTS`, `MAX_AUTHORING_DISPATCHES`, `MAX_AUTHORING_WRITE_BYTES` — different budgets that happen to share a digit); and any fixture literal a re-expression would make circular | each **stays a literal and says so at its site**, in a one-line comment naming this class and the reason. `DOD_MAX_ITERATIONS` is the B-BUD-3 case: after this ship both values are `3`, so only the enumeration — never a round count — distinguishes *reads its own declaration* from *wrongly reads `BUDGET`* |
+| **documentation occurrence in source** *(new, SE F-08)* | `orchestrate-dev.js:2406` (*"Step 6 makes `MAX_REVIEW_ROUNDS` a per-invocation BUDGET…"*), `:2485` (*"…in terms of `MAX_REVIEW_ROUNDS`"*) | an identifier **mention inside a comment or JSDoc block** — never evaluated, so it encodes no value and needs no re-expression. Disposition: **no action on the value; the identifier is already the single source.** Both are nonetheless **reworded in the same commit**, because each asserts the *relative, per-invocation* window this feature abolishes and would otherwise become a false comment beside the code that falsifies it |
+
+**Why `reviewLoop.test.js:139` / `:477` left the pinned class (TE F-01 row 4).** v1.0 called them
+*acceptance-test **titles*** and dispositioned them *"stays a literal and says so at its site"*.
+They are not titles: `:139` is `describe("PROP-LOOP-03: Both reviewers fail all 5 iterations …")`
+and `:477` is `describe("PROP-LOOP-12: Cap fires after exactly 5 iterations …")`, but the **bodies**
+assert the width — `expect(result).toMatchObject({ converged: false, iterations: 5 })` at `:171`,
+`:238` and `:510`, and `expect(reviewerPairCount).toBe(5)` / `expect(optimizerCount).toBe(5)` at
+`:173`–`:174` and `:511`–`:512`. Those are **behavioural dispatch counts**, they red at width 3, and
+leaving them literal would be a green suite asserting the old budget — the exact failure §8.1
+rejects the duplicate-constant design for. All ten sites (titles and bodies) are re-expressed over
+the imported constant and move to *read from it*; the titles are composed as template literals so
+the name and the assertion can never disagree.
 
 **B-BUD-3's second leg is a runtime one, and it needs the export.** AT-BUD-03b varies `BUDGET`
 away from Phase DOD's value and asserts Phase DOD's admitted count is unchanged, then varies
-`DOD_MAX_ITERATIONS` and asserts it moves. `runDodPhase` already takes `maxIterations` as a
-parameter defaulting to `DOD_MAX_ITERATIONS` (`:3833`), so the second leg is injectable today; the
-first needs the width reachable from test code, which §8.1 supplies.
+`DOD_MAX_ITERATIONS` and asserts it moves. The symbol is **`dodVerifyLoop`** (`:3831`) — SE F-10:
+`runDodPhase` does not exist anywhere in `pdlc/` — and it already takes `maxIterations` as its
+second destructured parameter defaulting to `DOD_MAX_ITERATIONS` (`:3833`), so the second leg is
+injectable today; the first needs the width reachable from test code, which §8.1 supplies.
+
+**The rule-2 hit set, reconciled here rather than left to the PLAN (SE Q-05).** §8.3 rule 2 matches
+module-scope `const` names against `/ROUND|WINDOW.?WIDTH|BUDGET|ITERATIONS?/i`. Run over the tree at
+`8801109` the hit set is exactly **four** non-generated sites — `orchestrate-dev.js:25`
+(`DOD_MAX_ITERATIONS`), `:52` (`MAX_REVIEW_ROUNDS`), `pacingWrapper.test.js:77`
+(`MAX_REVIEW_ROUNDS`), `roundDerivation.test.js:61` (`EXPECTED_WINDOW_WIDTH`) — plus the generated
+copies below. `MAX_AUTHORING_ATTEMPTS`, `MAX_AUTHORING_DISPATCHES` and `MAX_AUTHORING_WRITE_BYTES`
+do **not** match the regex, so they need no pinning comment for rule 2's sake; they are enumerated
+under *pinned non-budget literal* only because they carry the digit `3` and a reader may mistake
+them. All four hits are enumerated above, so **the hit set equals the enumeration at the baseline**
+— the PLAN task re-runs the comparison rather than discovering it.
+
+**One more generated artifact than v1.0 named.** The same scan finds `pdlc/workflows/dist/pdlc-cli.mjs`
+(`:35`, `:62`) alongside the two bundles. It is produced by the same `build-runtime.mjs` run and is
+covered by the same O-11 rebuild and the same CI *Generated artifacts are in sync* job, but it is
+added to the *generated copy* class explicitly so the scanner's hits are all classified.
 
 ### 8.3 The machine that compares the enumeration against a repo scan
 
@@ -1038,15 +1488,39 @@ oracle for reasons unrelated to the diff, which `CLAUDE.md` already warns about)
    hand-maintained declaration under a different name, which is the violation a grep for
    `MAX_REVIEW_ROUNDS` cannot see;
 3. every occurrence of the **rendered** width in a prose file declared under the `prose` class
-   whose `frozen` flag is false.
+   whose `frozen` flag is false — matching **both** the identifier form
+   (`` `MAX_REVIEW_ROUNDS = {n}` ``, `CLAUDE.md:78`) and the bare-phrase form (*"max {n}
+   iterations"*, `README.md:38`), because the enumeration contains one of each;
+4. **(new, TE F-05)** in `pdlc/workflows/__tests__/**` only, every **bare numeric literal equal to
+   the effective width or to the prior width** — i.e. `3` or `5` at the baseline — appearing
+   anywhere in a test file, reported as `unenumerated-site` unless the JSON carries that
+   `path` + `text` with a `pinned` classification.
+
+**Why rule 4 exists, and why its noise is the point.** §8.2's *pinned non-budget literal* class is
+defined over **bare numeric literals inside test bodies**, and rules 1–3 are all structurally blind
+to those: a bare `5` inside `expect(reviewerPairCount).toBe(5)` matches no identifier, is not a
+module-scope `const` initialiser, and is not in a prose file. So the one class §8.2 enumerates by
+hand was exactly the class the machine could not see, `unenumerated-site` — *"the case a human-read
+checklist structurally cannot detect"* — could not be raised for it, and AC-1.2's *"repo-wide,
+production and test alike"* was not achievable by the stated rules. Rule 4 is deliberately noisy;
+the JSON absorbs the noise **once**, and thereafter the machine sees the class. The alternative
+considered and rejected was to declare the class *hand-maintained by design* and name the residual
+risk — rejected because it re-creates, one layer up, the very hand-maintenance §8.1 rejects.
 
 **What it reports as a violation.** Three, and only three:
 
 | Violation | Meaning |
 |---|---|
-| `unenumerated-site` | a scan hit absent from `budget-width-sites.json` — **the case a human-read checklist structurally cannot detect** |
+| `unenumerated-site` | a scan hit (any rule) absent from `budget-width-sites.json` — **the case a human-read checklist structurally cannot detect** |
 | `second-declaration` | a second scan hit classified as *the declaration*, or a rule-2 hit not classified as *pinned non-budget literal* |
-| `stale-prose` | a non-frozen `prose` site whose file no longer states the effective width |
+| `stale-prose` | **an enumerated non-frozen `prose` site whose recorded `text` is absent from the file at its `path`** |
+
+`stale-prose` is stated at **site** granularity, matching §8.3's own `path` + `text` match key
+(TE F-05). v1.0 stated it at **file** granularity — *"a … site whose **file** no longer states the
+effective width"* — which is close to unfalsifiable for a large file: `CLAUDE.md` contains the digit
+`3` in `DOD_MAX_ITERATIONS = 3` and `MAX_AUTHORING_ATTEMPTS = 3`, so it would satisfy *"states the
+effective width"* while still carrying `MAX_REVIEW_ROUNDS = 5`. The site-granular predicate reds
+exactly when a prose site was missed, and only then.
 
 An enumerated site that has **moved** (same file, different line) is reconciled by the PLAN task,
 not by the oracle — line numbers in the JSON are informational and the match is on `path` +
@@ -1078,8 +1552,8 @@ this section states no fixture is correct — §1.2.
 
 | Level | Subject | Doubles | New suite |
 |---|---|---|---|
-| **L1 — pure** | `parseResetRegion`, `resolveOrigin`, `gateBranch`, `applyHaltUpdate`, `applyIterationsSection`, `renderIterationsHeading`, `locateIterationsHeading` | **none** — string in, value out | `__tests__/resetRegion.test.js` |
-| **L2 — window** | `deriveRoundWindow` with an origin, `windowEnd`, `phaseWindow`'s arithmetic | listing arrays | extends `__tests__/roundDerivation.test.js` |
+| **L1 — pure** | `parseResetRegion`, `resolveOrigin` (§6.2), `gateBranch`, `applyHaltUpdate`, `applyIterationsSection`, `renderIterationsHeading`, `locateIterationsHeading`, `renderWindow`, `haltReasonValue`, `admitWindow`; **plus `defaultStatFile`, with `fsMod` as its double** | **none** — string in, value out — except `defaultStatFile`, whose `fsMod` parameter (`defaultStatFile(path, {fsMod = fs})`) is the injection point | `__tests__/resetRegion.test.js` |
+| **L2 — window** | `deriveRoundWindow` with and without an origin, `windowEnd`, `admitWindow` | listing arrays | extends `__tests__/roundDerivation.test.js` |
 | **L3 — composition** | `readRegionState`, `resolveClearance`, `maintainRegionOnHalt` | seam doubles (§9.2) | `__tests__/resetRegionIO.test.js` |
 | **L4 — pipeline** | one whole entry: gate → window → dispatch-or-halt → report | the existing `main()` harness | extends `__tests__/pacingWrapper.test.js` / `haltAndQueue.test.js` |
 
@@ -1087,14 +1561,44 @@ L1 carries the great majority of the logic and needs no double at all, which is 
 §3.1 promised for not having a `lib/` module: the read and write models are pure by construction,
 so *"the parser is untestable inside a 5 000-line module"* is false.
 
+**`defaultStatFile` is added to L1 because v1.0 tested it at no level at all (TE F-06).** It is
+where the whole `unevaluable` design lands — §5.2's *"`ENOENT` is the **only** errno that answers
+absent"* is the sole mechanism behind F-5, ND-1 and D-2's justification — and v1.0's L1 row omitted
+it, §9.2's in-memory map *replaces* it (answering from key presence) rather than exercising it, and
+§9.3 had no row. So the one branch deciding whether a live region gets erased was covered nowhere.
+It is trivially testable: the signature already takes `fsMod`, which reads as though it were written
+for exactly this.
+
+**L4 is reachable because `_statFile` is threaded** (§5.2, §5.6). Without the `main`-side thread,
+AT-REG-06 and AT-HALT-02 — both explicitly whole-entry rows — could only be written at L3.
+
 ### 9.2 Test doubles
 
 | Double | Stands in for | Shape |
 |---|---|---|
 | **in-memory file map** | `_readFile` / `_writeFile` / `_statFile` | `Map<path, string>`; `_statFile` answers from key presence. The **one** double all three IO seams share, so a write is observable by a subsequent read exactly as in production |
-| **fault-injecting file map** | the same, with a per-path fault mode | `{mode: "unreadable"}` → `_readFile` returns `null`, `_statFile` returns `{exists:true}` (F-4); `{mode: "unevaluable"}` → `_statFile` returns `{unevaluable:true}` (F-5); `{mode: "write-noop"}` → `_writeFile` returns `"ok"` and changes nothing (F-8/F-9/F-10). **This is what makes the two confirmations falsifiable**: without a write that lies, an equality read-back always passes |
+| **fault-injecting file map** | the same, with a per-path fault mode | `{mode: "unreadable"}` → `_readFile` returns `null`, `_statFile` returns `{exists:true}` (F-4); `{mode: "unevaluable"}` → `_statFile` returns `{unevaluable:true}` (F-5); `{mode: "write-noop"}` → `_writeFile` returns `"ok"` and changes nothing (F-8/F-9/F-10); `{mode: "read-back-null"}` → the write lands but the **next** `_readFile` returns `null` (F-8a/F-9a); **`{mode: "lying-write", transform}`** → a per-path **transform hook** applied to the bytes handed to `_writeFile` **before they land**, so what is stored is `transform(bytes)` while `_writeFile` still answers `"ok"` (below). **This is what makes the confirmations falsifiable**: without a write that lies, an equality read-back always passes |
 | **dispatch counter** | `_agent`, `_parallel` | counts reviewer dispatches and authoring dispatches **separately**, because *0 authoring dispatches* (B-HALT-2) and *0 reviewer dispatches* (B-WIN-2) are different assertions on the same entry |
 | **validator counter** | `_validateRegion` | a function that increments and throws if called; the 0-call contract leg asserts the count is `0` (§6.3.2) |
+
+**The rule `lying-write` generalises, stated as a rule (TE F-02): every conjunct of a
+multi-conjunct confirmation needs a fault that fails it *alone*.** v1.0's catalogue offered only
+whole-write faults, and `write-noop` changes nothing — so it fails the **first** conjunct of both
+content confirmations and the later conjuncts were branches no test in the stated design could red.
+That mattered most for §6.4's marker-strip conjunct, which is *precisely* the state D-3's whole
+argument rests on (*a separately losable strip leaves a readable marker beside an incremented `H`,
+which the gate reads as an unconsumed clearance*) — the design named the state and then contained no
+double able to produce it. §9.4's row 3 mutation (*delete clause 2's strip from `applyHaltUpdate`*)
+does not close the gap: it reds the **L1 golden**, proving the pure transform, and says nothing
+about whether the L3 confirmation would catch a **write-side** loss.
+
+The three realisations that isolate the later conjuncts, each named at its site:
+
+| Confirmation | Conjunct isolated | `transform` that fails it **alone** |
+|---|---|---|
+| §6.3 step 6 | (b) `A` increased by **exactly 1** | append the answering line **twice** — (a) passes, `A` moves by 2 |
+| §6.4 step 4 | (b) `H === H_before + 1` | append the halt line **twice** — (a) passes, `H` moves by 2 |
+| §6.4 step 4 | (c) no unfenced `RESOLVED:` remains | apply clause 1 (append the halt line) but **re-insert** the `RESOLVED:` line clause 2 removed — (a) and (b) both pass |
 
 **Every "no round ran" assertion carries a positive conjunct**, never absence alone: a dispatch
 count of `0` **alongside** the absence of any new cross-review file, because a double that writes
@@ -1106,8 +1610,9 @@ identically here.
 | Obligation | Level | The assertion that makes it falsifiable |
 |---|---|---|
 | **O-5** | L1 + L3 | `applyHaltUpdate` byte-equality against a checked-in golden (FSPEC §12(f): the expected file is **authored**, never derived in-test by re-applying the transform, which would re-implement production in the oracle); plus the three fault modes above |
-| **O-12** | L3 | the validator counter at `0`; `validatorConsultationSites(root) === 0`; the same-branch equivalence family (PROPERTIES') |
-| **O-13** | L1 (`lib/`) | `budgetWidthViolations(root)` over a **fixture root** carrying a deliberately unenumerated site, asserted to report `unenumerated-site` — the oracle must be shown red before it is trusted, never asserted only on the clean repo (DC-03) |
+| **O-12** | L3 | the validator counter at `0`; `validatorConsultationSites(root) === 0` **plus** the same function asserted `=== 1` against a fixture root carrying a synthetic `_validateRegion(` call site, so the scanner's **positive** direction is a recorded fact and not an inference (TE F-09); the same-branch equivalence family (PROPERTIES') |
+| **O-13** | L1 (`lib/`) | `budgetWidthViolations(root)` over **one fixture root per violation kind** — an unenumerated site ⇒ `unenumerated-site`; a second module-scope `const NEW_ROUND_BUDGET = 3` ⇒ `second-declaration`; a `prose` site whose recorded `text` was removed from its file ⇒ `stale-prose` — each shown **red** before the oracle is trusted, never asserted only on the clean repo (DC-03, TE F-05). v1.0 covered only the first of the three |
+| **D-2 / F-5** | L1 | `defaultStatFile` against a stubbed `fsMod` (TE F-06): one leg per outcome class — `statSync` succeeding ⇒ `{exists:true}`; `statSync` throwing `{code:"ENOENT"}` ⇒ `{exists:false}`; `statSync` throwing `{code:"EACCES"}` ⇒ `{unevaluable:true}`; `statSync` throwing an error with **no `code` at all** ⇒ `{unevaluable:true}`; `""` / whitespace / `null` path ⇒ `{exists:false}` without touching `fsMod`. The EACCES and no-`code` legs are the ones that make §5.2's *"`ENOENT` is the only errno that answers absent"* a tested claim rather than a comment |
 | **O-14** | L1 + L4 | equality on the whole heading line, on all three fixtures (creating, re-halt with `k > 0`, no-heading); `roundsRun` threaded end to end at L4 |
 | **AC-1.2 / AC-1.3** | all | every budget assertion is written **over the imported constant**, never the literal `3`. Where a test quotes a rendered string containing `3`, it composes the string from the constant |
 
@@ -1119,7 +1624,8 @@ in `FALSIFICATION-LEDGER.md` (whose lifecycle line is **O-15's**, PLAN's):
 
 | # | Assertion | Named mutation that must red it |
 |---|---|---|
-| 1 | the validator 0-call count | wire `validationConjunct` to call `_validateRegion` |
+| 1a | the validator 0-call count (runtime observable) | wire `validationConjunct` to call `_validateRegion` |
+| 1b | `validatorConsultationSites(root) === 0` (static observable) | the **same** mutation must red **both** rows — and, separately, the scanner is asserted `=== 1` against a fixture root carrying a synthetic `_validateRegion(` call, so a regex that never matches (which would report `0` forever) is excluded (TE F-09) |
 | 2 | budget and `iterations` over the constant | change the declaration to 4 without touching a test |
 | 3 | one clearance grants exactly one window | delete clause 2's strip from `applyHaltUpdate` |
 | 4 | row C's zero-dispatch conjunct | admit `startIndex` unconditionally, ignoring `endIndex` |
@@ -1128,16 +1634,45 @@ in `FALSIFICATION-LEDGER.md` (whose lifecycle line is **O-15's**, PLAN's):
 | 7 | the two unconfirmed-write refusals | drop the read-back and trust `_writeFile`'s `"ok"` |
 | 8 | the three ❌ texts pairwise distinct | collapse `{which}` to a single generic literal |
 | 9 | O-11's freshness gate | mutate the built artifact and observe the check red — **not** by running it on an already-fresh tree |
+| 10 | **F-5's safe rule: `unevaluable ⇒ existing`** (TE F-07) | `creating ← stat.exists !== true` in §6.4 step 1 — i.e. treat `unevaluable` as absent. Every fixture whose file simply *exists* still passes, so **only** the `{mode:"unevaluable"}` fault-mode fixture reds it. This is D-2's entire justification and §7.3 ND-1's boundary |
+| 11 | **RS-3: `resolveOrigin` returns `1` over the empty set** (TE F-07) | replace the fallback with a bare `Math.max(...values)`, which yields `-Infinity`. A `-Infinity` origin produces a window that silently admits nothing and reports nothing — the failure mode hardest to notice in a report — and §7.1 F-6 states it must never reach `windowEnd` or `Math.max` |
+| 12 | **BR-9's split: counting is by prefix, resolution is by grammar** | make §6.2 step 4 count **only** well-formed values, so a malformed `WINDOW-START:` stops answering a halt. Currently pinned only by an L1 example, not by a ledger row |
+| 13 | **B-HALT-7: one render serves both sites** (SE F-01) | render `checkConverged`'s phase-row window from `startIndex` instead of `origin`. Reds on the zero-round halt, where the two disagree and one is backwards |
+| 14 | **§6.4 step 4 conjunct (c)** — the strip is confirmed on the **write** side (TE F-02) | drop conjunct (c) from step 4, then run the `lying-write` fixture that re-inserts the marker. Distinct from row 3, which reds the L1 golden and proves only the pure transform |
+| 15 | **§6.3 step 6 conjunct (b)** — the `A` delta is **exactly** one | weaken `A_after === region.A + 1` to `>= 1`, then run the `lying-write` fixture that appends the answering line twice |
 
 ### 9.5 Suite-level obligations of the change itself
 
 - **`RLH-LOOP-03` stays green.** `MAX_REVIEW_ROUNDS - 1` must still occur exactly once in
-  `orchestrate-dev.js` after `windowEnd` is re-pointed (§6.1).
+  `orchestrate-dev.js` after `windowEnd` is re-pointed (§6.1), and — `RLH-LOOP-03b`
+  (`reviewLoop.test.js:979`) — that occurrence must still lie **outside** the source spans of
+  `reviewLoop` and `checkConverged`, which is why `origin` is threaded rather than re-derived
+  (§4.5).
 - **`build-runtime.mjs --check` and `sync-workflows.sh --check`** are run in the same commit; the
   three artifacts under `pdlc/workflows/dist/` are rebuilt (O-11).
 - **`runtimeBundle.test.js`** must still pass with the new `export const`: `stripModuleSyntax`
   removes the prefix (C-3), so the bundle gains no `export` statement.
 - **The macOS/Linux matrix** is unaffected — no shell script changes.
+
+### 9.5.1 Shipped assertions whose value moves or whose semantics invert
+
+The section v1.0 lacked (TE F-01). v1.0's §8.1 and §6.1 dispositioned four shipped assertions as
+*untouched* / *unchanged* that the design does not leave alone; an implementer reading them
+literally would conclude the only test-side work is a width re-expression, and the only way to obey
+that reading is not to ship the feature. Each row below names what the site asserts today, what the
+design does to it, and its **replacement invariant**. Every id is kept; nothing here is deleted to
+fit the change.
+
+| # | Site (`8801109`) | Asserts today | What the design does | Replacement invariant |
+|---|---|---|---|---|
+| 1 | `roundDerivation.test.js:300` (RLH-AT-02) | `w.endIndex === 2 + EXPECTED_WINDOW_WIDTH - 1` for a listing whose highest round is 1 | **value moves 5 → 3** with the alias (§8.1); the *form* survives because §6.1 note 3 defaults `origin` to `derivedStart`, so `startIndex 2`, `endIndex windowEnd(2) = 4`. Had the default been `1` — v1.0's claim — `endIndex` would be `3` and this would be **red** | `endIndex === origin + BUDGET − 1` and `startIndex === max(derivedStart, origin)`, evaluated over the imported constant. Add a **third leg** asserting the origin-less default *is* `derivedStart`, so the property this row now depends on is pinned rather than assumed |
+| 2 | `roundDerivation.test.js:558` | the window-width **property** over generated listings: `endIndex === startIndex + WIDTH - 1` | same as row 1: green under the corrected default, **red** under `origin = 1`. Its statement is nonetheless **too weak** after the change — it cannot distinguish the two defaults, which is how v1.0's error survived review | restate the property as the pair `endIndex === origin + BUDGET − 1` **and** `startIndex === max(derivedStart, origin)`, generated over listings **× origins** (including `origin > derivedStart`, the zero-round case) rather than over listings alone. The generation axis is PROPERTIES' (O-10); the invariant is here |
+| 3 | `pacingWrapper.test.js:1455`–`:1501` (RLH-AT-54) | a branch whose highest FSPEC round is 3 ⇒ the gate admits **rounds 4..8** and the report matches `rounds 4..8` | **semantics invert.** `D = 4`, `W = 1` (no region), `E = windowEnd(1) = 3` ⇒ `startIndex 4 > endIndex 3` ⇒ the **zero-round halt**. The assertion pins the pre-feature *relative* window, which AC-1.1 abolishes for typed phases | rewrite the expectation to the zero-round halt: **0 reviewer dispatches**, no new cross-review file, phase row `Non-convergence across rounds 1..3`, `HALT-REASON: budget-exhausted: rounds 1..3 of 3` — the same bytes in both places (B-HALT-7). This is **AT-WIN-02 / AT-WIN-04** territory and the rewritten test cites them. Its sibling assertion — *no message claims `after N iterations` against an absolute index* (`:1501`) — is **kept verbatim**, since it is orthogonal to the window's origin |
+| 4 | `reviewLoop.test.js:139`/`:171`/`:173`–`:174` (PROP-LOOP-03) and `:477`/`:510`–`:512` (PROP-LOOP-12) | behavioural counts: `iterations: 5`, five reviewer pairs, five optimizer calls | **value moves 5 → 3.** These are **bodies, not titles** — v1.0 mis-classified them as *pinned non-budget literal* (§8.2) | re-expressed over the imported constant: `iterations: MAX_REVIEW_ROUNDS`, `toBe(MAX_REVIEW_ROUNDS)`, and the `describe` titles composed as template literals so the name and the assertion cannot disagree. The **property** each pins — *the cap fires after exactly `BUDGET` reviewer pairs and `BUDGET` optimizer calls* — is unchanged and is the point of keeping them |
+
+Rows 1 and 2 are green **because of** §6.1 note 3's corrected default, not in spite of it; they are
+listed here rather than omitted precisely so the dependency is written down. Rows 3 and 4 are real
+work and appear in §10.3's modified-test row.
 
 ### 9.6 Not discharged here
 
@@ -1172,28 +1707,60 @@ Only the rows where a seam choice is what makes the test writable at all; the re
 |---|---|
 | **AT-BUD-03b** | the exported constant (§8.1) — otherwise `BUDGET` cannot be varied from test code |
 | **AT-BUD-05** | `budgetWidthViolations(root)` over a fixture root (§8.3) |
-| **AT-REG-06** | `_statFile` answering `{exists:true}` while `_readFile` answers `null` (§9.2's fault map) — the pair that realises *present but unreadable* |
-| **AT-CLR-06** | the answering line being written from `phaseGate`, before `reviewLoop` is constructed (§6.3) |
-| **AT-CLR-07 / AT-HALT-04 / AT-HALT-05** | the `write-noop` fault mode (§9.2); without a write that lies, no confirmation can fail |
-| **AT-HALT-02** | the separate authoring-dispatch counter (§9.2) plus a checked-in golden (§9.3) |
-| **AT-RPT-04 / AT-RPT-06 / AT-RPT-07** | `reviewRows` on the final report (§4.4) — row B and row C need a schema'd carrier, and AT-RPT-07 asserts its **absence** |
-| **AT-PMT-01/02** | the post-mortem prompt composed in `reviewLoop` (`:1962`–`:1967`), asserted as a string, as `skillFiles.test.js` already asserts prompt literals |
+| **AT-REG-06** | `_statFile` answering `{exists:true}` while `_readFile` answers `null` (§9.2's fault map) — the pair that realises *present but unreadable* — **and** `_statFile` threaded through `main` → `wrapperSeams` → `reviewLoop` (§5.2), without which the row can only be written at L3 |
+| **AT-CLR-06** | the answering line being written from `phaseGate` **step W**, after step G and before `reviewLoop` is constructed (§3.3, §6.3) |
+| **AT-CLR-07 / AT-HALT-04 / AT-HALT-05** | the `write-noop` fault mode (§9.2); without a write that lies, no confirmation can fail. Their **later-conjunct** legs additionally need `lying-write` (§9.2, TE F-02) |
+| **AT-HALT-02** | the separate authoring-dispatch counter (§9.2), a checked-in golden (§9.3), **and** the `_statFile` thread to L4 (§5.2) |
+| **AT-RPT-04 / AT-RPT-06 / AT-RPT-07** | `reviewRows` carried end to end — `LoopResult` → `checkConverged`'s row sink → `main` → `buildFinalReport`'s defaulted parameter (§4.4, §6.6(3)). AT-RPT-07 asserts row B's **absence**, which is only falsifiable because the carrier is present on every report; against a missing carrier it would pass vacuously |
+| **AT-BUD-03b** *(second leg)* | `dodVerifyLoop`'s injectable `maxIterations` (`:3831`–`:3833`) — **not** `runDodPhase`, which does not exist (SE F-10) |
+| **AT-PMT-01/02** | the post-mortem prompt composed in `reviewLoop` (`:1962`–`:1968`), asserted as a string, as `skillFiles.test.js` already asserts prompt literals |
 
 ### 10.3 Files touched
 
 | Path | Change | Kind |
 |---|---|---|
-| `pdlc/workflows/orchestrate-dev.js` | the declaration, the two model clusters, `phaseWindow`, `resolveClearance`, `maintainRegionOnHalt`, `reviewLoop`, `checkConverged`, `buildFinalReport`, `defaultStatFile` | modified |
-| `pdlc/workflows/runtime-adapter.js` | `rtStatFile`, wired into the seam bundle beside `rtCheckFile` | modified |
+| `pdlc/workflows/orchestrate-dev.js` | see the per-symbol breakdown below | modified |
+| `pdlc/workflows/runtime-adapter.js` | `rtStatFile`, wired into the seam bundle beside `rtCheckFile` (`:817`; `rtWriteFile` is `:802`) | modified |
 | `pdlc/workflows/lib/budget-sites.mjs` | `budgetWidthViolations`, `validatorConsultationSites` | **new** |
 | `pdlc/workflows/lib/budget-width-sites.json` | the classified enumeration (§8.2) | **new** |
 | `pdlc/workflows/__tests__/resetRegion.test.js`, `resetRegionIO.test.js`, `budgetSites.test.js` | L1/L3 suites | **new** |
-| `pdlc/workflows/__tests__/{roundDerivation,reviewLoop,pacingWrapper,haltAndQueue}.test.js` | width re-expression, key-set growth, new pipeline legs | modified |
+| `pdlc/workflows/__tests__/{roundDerivation,reviewLoop,pacingWrapper,haltAndQueue}.test.js` | width re-expression, key-set growth, new pipeline legs, **and §9.5.1's four semantics-moving sites**: `roundDerivation.test.js:57`/`:61`/`:300`/`:316`/`:389`/`:558`; `reviewLoop.test.js:139`/`:171`/`:173`–`:174`/`:477`/`:510`–`:512`; `pacingWrapper.test.js:77` (deleted, replaced by the import) and `:1455`–`:1501` (RLH-AT-54 rewritten to the zero-round halt) | modified |
 | `pdlc/workflows/dist/*` | rebuilt (**O-11**) | **generated — never hand-edited** |
 | `CLAUDE.md`, `README.md` | the prose width sites (§8.2) | modified, same commit |
 
+**`orchestrate-dev.js`, per symbol** — the enumeration §10.3 owed and v1.0 gave as a list of names
+(SE F-02, F-05; TE F-04). Every row is an edit an implementer can locate:
+
+| Symbol / site | Edit |
+|---|---|
+| `:52` | `export const MAX_REVIEW_ROUNDS = 3;` (§8.1) |
+| `:2406`, `:2485` | JSDoc reworded: both assert the *relative, per-invocation* window this feature abolishes (§8.2's sixth class) |
+| `windowEnd` `:2492`–`:2494` | parameter **renamed** to `origin`; body unchanged |
+| `deriveRoundWindow` `:2428`, `:2474`–`:2478` | third parameter `{origin}` defaulting to `derivedStart`; return grows `origin` and `derivedStart`; `endIndex = windowEnd(origin)`; `startIndex = Math.max(derivedStart, origin)` |
+| **new** `admitWindow`, `renderWindow`, `haltReasonValue` | pure; §6.1, §6.6(2) |
+| **new** region read model + write model clusters | above `checkPostmortem` (`:2738`); §3.1 |
+| `phaseWindow` `:4367`–`:4377` | return **narrowed** to `{ok, derivedStart, present, skipped, reviewFiles, message}`; the `resolveReviewState` call at `:4368`–`:4374` is kept verbatim (SE F-06) |
+| `phaseGate` step 3 `:4421` | `startIndex: window.startIndex` → `startIndex: window.derivedStart` (SE F-02) |
+| `phaseGate` **step W**, inserted at `:4508` | region read, `resolveClearance` (taking step G's `gate.status`), `admitWindow`; skipped when `docType === null` |
+| `wrapperSeams` `:4520`–`:4530` | add `_writeFile`, `_statFile` |
+| `main` `:4297`ff | add `_statFile: statFileFn = defaultStatFile`; add `const reviewRows = []` beside `:4386`'s `notices`; pass `reviewRows` to `buildFinalReport` at all six call sites (`:4551`, `:4566`, `:4589`, `:4611`, `:5188`, `:5206`) |
+| **new** `defaultStatFile` | beside `defaultWriteFile` (`:4219`) / `defaultAppendFile` (`:4235`); §5.2 |
+| `reviewLoop` `:1841`–`:1865` | parameters gain `origin = startIndex`, `_writeFile`, `_statFile`; `:1850` becomes `endIndex = windowEnd(origin)` |
+| `reviewLoop` halt branch `:1960`–`:2016` | `maintainRegionOnHalt` replaces the inline author-and-`_checkFile` block for typed phases; `:1965`'s Iterations item deleted; `:2004`–`:2007`'s `lastResults` becomes `roundsRun === 0 ? [] : […]`; return grows `roundsRun`, `refusal`, `origin`, `reviewRows` |
+| `reviewLoop` `:2053`–`:2058` | `roundsRun += 1` immediately after the `_parallel` call |
+| `checkConverged` `:1756`–`:1764` | eighth parameter `{origin = startIndex, reviewRows} = {}` |
+| `checkConverged` `:1770` | a **refusal branch inserted above** the `halted === true` branch |
+| `checkConverged` `:1791`–`:1793` | `first`/`last` replaced by `renderWindow(origin, last)` where `last = endIndex ?? windowEnd(origin)` |
+| the seven `checkConverged` call sites `:4657`, `:4695`, `:4738`, `:4791`, `:4832`, `:4870`, `:4992` | gain the eighth argument |
+| `buildFinalReport` `:5281`–`:5293` | `reviewRows = []` as a defaulted parameter, emitted unconditionally beside `notices` |
+
+**Not touched, and verified so** (§4.2.1 rows 1–4): `refreshReviewState`'s `candidate =
+window.startIndex - 1` (`:2688`) and its passthrough (`:2710`–`:2711`), `rehydrateReviewState`
+(`:2820`), and `selectMode`'s call sites (`:3106`, `:3119`). All four read an **origin-less**
+`deriveRoundWindow`, so `startIndex === derivedStart` there and the sites are correct unchanged.
+
 `docs/_constraints/*` and every `pdlc/skills/*/SKILL.md` are **untouched**: O-9's clause lands in
-the workflow's inline post-mortem prompt (`:1962`–`:1967`, M-7e), not in a SKILL file, because that
+the workflow's inline post-mortem prompt (`:1962`–`:1968`, M-7e), not in a SKILL file, because that
 prompt is composed by the loop and has no SKILL of its own.
 
 ## 11. Obligation disposition, decisions and the stopping rule
@@ -1203,11 +1770,11 @@ prompt is composed by the loop and has no SKILL of its own.
 | Obligation | Owner | Disposition here |
 |---|---|---|
 | **O-5** | TSPEC | **Discharged.** §6.4's clause order, the one-update rule (§4.3, §5.3), both content confirmations, and §7's fail-closed refusals |
-| **O-9** | FSPEC → implementation | **Attached, not authored.** The clause's text is FSPEC §9's; §6.4 step 2 fixes where it lands (`orchestrate-dev.js:1962`–`:1967`) and §7.3 ND-3 states why it is belt-and-braces |
+| **O-9** | FSPEC → implementation | **Attached, not authored.** The clause's text is FSPEC §9's; §6.4 step 2 fixes where it lands (`orchestrate-dev.js:1962`–`:1968`) and §7.3 ND-3 states why it is belt-and-braces |
 | **O-10** | PROPERTIES | **Not discharged.** §9 fixes the levels, the doubles and the DC-03 routing; the legs, fixtures, generation axes and the ledger's contents are PROPERTIES', stated at split §5.4 |
 | **O-11** | implementation | **Placed.** §2.1, §9.5 — the rebuild is in the same commit and its freshness gate is falsified by mutation (§9.4 row 9) |
 | **O-12** | TSPEC | **Discharged, by adoption.** The seam's contract is `REQ-RCV-07` O-12's and is restated nowhere; §6.1 fixes how `W` reaches the window arithmetic, §5.4 the declared-unwired seam, §6.3.2 the interim's two observables |
-| **O-13** | TSPEC | **Discharged.** §8.1 (the export), §8.2 (the five-class enumeration), §8.3 (the machine) |
+| **O-13** | TSPEC | **Discharged.** §8.1 (the export), §8.2 (the six-class enumeration, re-taken at `8801109`), §8.3 (the machine, four scan rules) |
 | **O-14** | FSPEC → implementation | **Implementation half discharged.** §6.5's render, anchor, replacement and insertion; §6.5's `roundsRun` threading; §6.6's empty verdict list and no-re-author path |
 | **O-15** | PLAN | **Not discharged.** Named in §9.6 so the lifecycle line is not invented downstream |
 
@@ -1222,10 +1789,13 @@ otherwise confidently reconsider, so each belongs in `DECISIONS-pdlc-rcv-budget-
 | **D-2** | A **new `_statFile` seam** discriminates creating from existing | Reusing `_readFile` (conflates absent with unreadable ⇒ re-authors over a live region) or `_checkFile` (same conflation under `reason:"file_missing"`). The choice is forced by FSPEC §7.4's safe rule, which needs a third answer, `unevaluable` (§5.2) |
 | **D-3** | Clauses 1 and 2 are **one read-modify-whole-file-write**, confirmed by two content conjuncts | Two ordered writes with `_appendFile` — cheaper, and the shape `appendApprovalAnchors` already uses. Rejected: a separately losable strip leaves a readable marker beside an incremented `H`, which the gate reads as an unconsumed clearance and re-grants on every later halt while the fault lasts (split §5.8) |
 | **D-4** | The width is made reachable by **exporting the constant**; row-B/row-C rows ride on a **new `reviewRows` report field** | Keeping two hand-maintained copies with a cross-check test (a third site that can itself be forgotten; the failure is a green suite asserting the old width). And carrying rows in `notices` or a phase-row `detail` string — rejected because existing oracles pin `detail` verbatim and catalogue §3 needs a schema two later features extend (§4.4, §8.1) |
+| **D-5** *(new, v1.1)* | The clearance gate lives in **`phaseGate` step W**, after step G; `phaseWindow` narrows to the derived facts | Leaving the gate inside `phaseWindow`, which shipped `phaseGate` calls at step 2 (`:4415`). Cheaper — one symbol instead of two — and it is what v1.0's §6.1 described. **Rejected**: it puts the gate *above* the approval search and step G, so an entry with a FRESH recorded approval spends the operator's one clearance and then returns `{skip:true}` (`:4480`) having dispatched nothing, and §6.3's marker conjunct loses the premise that makes it defensive. The cost of the split — one more moving part in `phaseGate` — buys F-17/F-18 becoming *unreachable* rather than *accepted*, and makes step 3's `derivedStart` argument structural rather than remembered (§3.3, §4.2.1 row 5) |
+| **D-6** *(new, v1.1)* | `deriveRoundWindow`'s `origin` **defaults to `derivedStart`** | Defaulting to `1`, which v1.0 assumed. **Rejected**: it silently changes four shipped consumers that read an origin-less derivation as *"no reset in effect"* (§4.2.1 rows 1–4), reds `roundDerivation.test.js:300` and `:558` for no design reason, and would give Phase CR an absolute window that contradicts B-BUD-2 / AT-BUD-02 (§6.1, TE Q-01/Q-02) |
 
 **Reversibility.** D-1 is **hard to reverse** — it is a consequence of the distribution mechanism,
 and reversing it means adding a fourth inlined source with its own manifest row, freshness gate and
-sync semantics. D-2, D-3 and D-4 are each **easy** — local to one function or one field.
+sync semantics. D-2, D-3, D-4 and D-6 are each **easy** — local to one function, one field or one
+default. D-5 is **moderate**: reversing it moves a block between two symbols and re-opens F-17.
 **Re-evaluation trigger for D-1:** the day `build-runtime.mjs` gains a general module-inlining
 step, at which point the pure clusters move to `lib/` unchanged.
 
@@ -1258,3 +1828,45 @@ the loop it changes and this feature's Phase R has already exhausted one window:
 - two consecutive rounds with a non-decreasing blocking count is a **fixed point**, not slow
   convergence — and a round in which the document grows while the count does not fall is stronger
   evidence of the same.
+
+### 11.5 Round-1 finding disposition (v1.1)
+
+Every finding of round 1 and where it landed. **No finding was closed by deferral**: both reviewers
+correctly filed only findings inside §11.4's protected categories or its explicit carve-out, and all
+twenty-one are fixed in this document.
+
+| Finding | Severity | Landed in |
+|---|---|---|
+| SE F-01 — `origin` not threaded; two disagreeing renders | Blocking | §2.4, §4.2.1 rows 7/9/10, §4.5, §6.6(2), §9.4 row 13 |
+| SE F-02 — `startIndex` meaning change redirects the approval search | Blocking | §4.2.1 (full enumeration), §3.3 (structural fix), §10.3 |
+| SE F-03 — §3.3 / §6.1 ordering contradiction | Blocking | §3.3 (step W), §3.4, §6.1, §6.3 footnote `*`, §7.1 F-17/F-18, §11.2 D-5 |
+| SE F-04 — step 3's confirmation faults on its own input | Major | §6.4 step 3, §7.1 F-9a |
+| SE F-05 — `windowEnd`'s two unenumerated call sites | Major | §2.4's call-site table, §6.1 note 4, §10.3 |
+| SE F-06 — wrong callee, dropped `_probeReviewState` | Major | §6.1 step 1, §5.6 |
+| SE F-07 — `_probePostmortem` absent from the seam table | Major | §5.6, §6.3 step 2 |
+| SE F-08 — §8.2's enumeration incomplete at its own baseline | Major | §8.2 ground truth + sixth class |
+| SE F-09 — the declared baseline does not resolve | Minor | §1.2, §2.7.1 |
+| SE F-10 — `runDodPhase` does not exist | Minor | §2.7.1, §8.2, §10.2 |
+| SE F-11 — `scanLines`-over-a-body composition unstated | Minor | §6 preamble |
+| SE Q-01…Q-05 | — | §6.1(i), §4.4, §4.5, §7.1 F-13, §8.2 |
+| TE F-01 — four oracles mis-dispositioned; false compat claim | Blocking | §6.1 note 4, §8.1, §9.5.1, §11.2 D-6 |
+| TE F-02 — no fault isolates the second conjunct | Blocking | §6.3 step 6, §6.4 step 4, §9.2, §9.4 rows 14–15 |
+| TE F-03 — `reviewRows` has no carrier | Blocking | §4.4, §4.5, §6.6(3), §7.2, §10.2 |
+| TE F-04 — `_statFile` not threaded to L4 | Major | §5.2, §5.6, §9.1, §10.3 |
+| TE F-05 — the scan's blind class; two-granularity `stale-prose` | Major | §8.3 rules 3–4 and the violation table, §9.3 O-13 |
+| TE F-06 — `defaultStatFile` tested at no level | Major | §9.1 L1, §9.3 D-2/F-5 row |
+| TE F-07 — two missing mutation-ledger rows | Major | §9.4 rows 10, 11 (and 12) |
+| TE F-08 — `resolveOrigin` has no contract | Minor | §6.2 |
+| TE F-09 — §9.4 row 1 collapses two observables | Minor | §9.4 rows 1a/1b, §9.3 O-12 |
+| TE F-10 — prose citations stale as authored | Minor | §2.7.1, §8.2 prose class |
+| TE Q-01…Q-03 | — | §6.1 note 4, §6.1 closing, §4.4 |
+
+**What is genuinely routed downstream, and to whom** — none of it as a substitute for a fix:
+
+| Routed | Owner | Because |
+|---|---|---|
+| §9.5.1 row 2's **generation axis** (listings **× origins**, including `origin > derivedStart`) | PROPERTIES (O-10) | the restated *invariant* is here; the axis table and the shrinker are §1.4/§9.6's, per §11.4's third clause |
+| §9.3's per-violation-kind **fixture roots** for `budgetWidthViolations`, and §9.2's `lying-write` **transform bodies** | PROPERTIES (O-10) | fixture construction, explicitly not a TSPEC concern; the *requirement* that one exist per kind and per conjunct is stated here |
+| the `FALSIFICATION-LEDGER.md` **lifecycle line** for §9.4's fifteen rows | PLAN (O-15) | DC-10; §9.6 names it |
+| `_validateRegion`'s **implementation** | `REQ-RCV-07` AC-7.1 / O-12, queue row 18 | §11.3, unchanged |
+| suppression of `M-8d`'s generic recovery line (`:5184`) on a refusal | `REQ-RCV-07` **O-6** | §7.2, §11.3, unchanged — a seam one notch too wide silences it on every halt class |
