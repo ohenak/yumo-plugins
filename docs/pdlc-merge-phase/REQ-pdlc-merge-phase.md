@@ -10,12 +10,12 @@ depends-on: [pdlc-workflow-distribution]
 |---|---|
 | Upstream | `docs/design/MASTER-PLAN-engineering-loop.md` (Break 1, DEC-E1/E2/E3, order 2) |
 | Downstream | `pdlc-advisory-tier`, `pdlc-engineering-loop` |
-| Cross-Reviews | — |
+| Cross-Reviews | `CROSS-REVIEW-software-engineer-REQ-v1.md`, `CROSS-REVIEW-test-engineer-REQ-v1.md` |
 | LEARNINGS | — |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.0 | 2026-07-27 |
+| pdlc | draft | Claude | 1.1 | 2026-08-02 |
 
 > **Scope in one line.** A Phase MERGE after Phase PUB that rebase-merges the green PR, deletes
 > the branch, and writes the queue row to `done` — closing the dependency gate that currently
@@ -67,19 +67,60 @@ that is already in base — a stall with a misleading cause.
 
 - **AC-1.1** — Given Phase PUB completed, Then Phase MERGE runs after it and is the last phase of
   the pipeline.
-- **AC-1.2** — Given Phase MERGE begins, Then it merges only when **all** hold: Phase PUB returned
-  a `prUrl`; `ciStatus == "passed"`; the PR reports mergeable with no conflicts; the PR has no
-  unresolved review threads; and the self-modification guard (REQ-MERGE-03) does not fire.
-- **AC-1.3** — Given any precondition fails, Then no merge is attempted, the phase records the
-  failed precondition by name, the feature's queue status remains `awaiting-merge`, and the
-  pipeline outcome is `success` with a merge-deferred note — a merge that did not happen is not a
-  pipeline failure.
+- **AC-1.2** — Given Phase MERGE begins, Then it merges only when **all** of these observations hold,
+  each read from the named GitHub surface at merge time:
+
+  | Precondition | Observed from | Merges when | Fails when |
+  |---|---|---|---|
+  | PR exists | Phase PUB's `prUrl` | present and non-empty | absent |
+  | PR open | `gh pr view --json state` | `OPEN` | `CLOSED` (`MERGED` is handled by AC-1.6) |
+  | CI evidence | re-read at merge time per REQ-MERGE-04 | per AC-4.1/AC-4.3 | per AC-4.2/AC-4.4 |
+  | Mergeable | `gh pr view --json mergeable,mergeStateStatus` | `MERGEABLE` and `mergeStateStatus` not `DIRTY`/`BLOCKED` | `CONFLICTING`, `DIRTY`, `BLOCKED` |
+  | No unresolved review threads | the PR's review threads and their resolved flag (a GraphQL-only field; `reviewDecision` is **not** an accepted substitute) | every thread resolved, or none exist | any thread unresolved |
+  | Self-modification guard | REQ-MERGE-03 | guard does not fire | guard fires |
+
+- **AC-1.2a** — Given `mergeable` reads `UNKNOWN` (GitHub computes mergeability asynchronously, and
+  the window after Phase DOD's push and Phase PUB is exactly when it is most likely), Then the phase
+  re-reads it a bounded number of times (`mergeableRetries`, default 3, spaced `mergeableRetryDelay`,
+  default 10 s) before treating it as failed. A still-`UNKNOWN` answer after the last read is a
+  **deferral**, not a merge.
+- **AC-1.2b** — Given the evidence for **any** precondition in AC-1.2 cannot be retrieved, or is
+  retrieved in a form the phase cannot parse into one of that row's stated values, Then that
+  precondition is treated as failed. This generalises AC-3.4 to the whole precondition set: unknown
+  is never merged on.
+- **AC-1.3** — Given any precondition fails, Then no merge is attempted and three facts hold together:
+  the phase names the failed precondition; the **pipeline outcome is `success`** with a
+  merge-deferred note (a merge that did not happen is not a pipeline failure, so the halt path and
+  its `halted` queue commit are not taken); and the feature's queue status is left `awaiting-merge`
+  with no queue commit made by Phase MERGE. This holds identically for a guard refusal (AC-3.1) and
+  for method exhaustion (AC-2.3) — every non-merge shares one outcome shape and differs only in the
+  `mergeStatus` value assigned by the table in AC-6.1a.
 - **AC-1.4** — Given `PHASE_MERGE_ENABLED = false`, Then the phase is skipped and behavior is
-  identical to today. The flag exists so the change is reversible without a revert.
+  identical to today **except** that the final report carries `mergeStatus: skipped`; no merge is
+  attempted, no queue cell is written, and no guard evaluation occurs. The flag exists so the change
+  is reversible without a revert.
 - **AC-1.5** — Given the merge mode configuration `mergeMode` ∈ {`off`, `gated`, `on`}, Then `off`
   never merges, `gated` merges only when every precondition in AC-1.2 holds, and `on` behaves as
   `gated` — there is deliberately **no mode that bypasses the preconditions**. The distinction
   between `gated` and `on` is reserved for future relaxation and today they are equivalent.
+
+- **AC-1.6** — Given Phase MERGE runs, Then its decisions are taken in this order, and the first one
+  that resolves is the answer:
+
+  | # | Evaluated | Resolves to |
+  |---|---|---|
+  | 1 | `PHASE_MERGE_ENABLED = false` | `skipped` |
+  | 2 | `mergeMode: "off"` | `skipped` |
+  | 3 | PR state is already `MERGED` | `merged` — no merge attempted, no guard evaluation, and the queue write-back of REQ-MERGE-05 **is still performed** (idempotently) |
+  | 4 | self-modification guard (REQ-MERGE-03) | `refused` |
+  | 5 | remaining preconditions (AC-1.2) | `deferred` on the first failure |
+  | 6 | merge attempted (REQ-MERGE-02) | `merged` or `deferred` |
+
+  Rows 1 and 2 fix the precedence between the two independent off switches: the compile-time flag is
+  evaluated first, and both produce the same reported value, so no run can report two answers. Row 3
+  fixes NFR-5 against AC-1.2 and AC-3.1: the guard governs a merge *this run would perform*, and a
+  merge that already happened is not one — refusing it would neither un-merge anything nor unblock
+  the queue. Row 3 is the only place `merged` is reported without this run having merged.
 
 AC-1.5 is written this way on purpose: a three-valued flag where one value means "skip the safety
 checks" is the flag that eventually gets set in a hurry.
