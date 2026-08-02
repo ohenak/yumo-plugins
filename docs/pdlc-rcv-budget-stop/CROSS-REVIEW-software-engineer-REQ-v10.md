@@ -79,7 +79,41 @@ literally would write an assertion that either fails or asserts the wrong dispos
 
 ## 4. Questions
 
+| ID | Question |
+|---|---|
+| Q-01 | Headroom under the size soft threshold is **23 bytes** (442 lines / 55,273 against 630 / 55,296) — the round relocated four blocks and still ended tighter than it started, for the third round running. F-01 and F-03's fixes are roughly 250–350 bytes together and F-02's about 150, so the next revision warns unless something else relocates first. Everything obviously shared is now out; what remains are this REQ's own §5 clauses. Is the intent to keep trading, or to accept the hook's warning (it is advisory, not a gate) once the document is otherwise done? A stated answer would stop this question recurring every round. |
+| Q-02 | F-01 turns on whether `A` counts **line prefixes** or **grammar-conforming lines**, and `REQ-RCV-07` AC-7.1 step 3 (`H − A ∈ {0, 1}`) reads the same count on a fixture that may contain a malformed line. Under *prefixes* leg 3's fixture is `H − A = 0` at row 18; under *grammar-conforming* it is `H − A = 1`. Both pass step 3 and both then fail step 2 with `invalid-window-start`, so the refusal is the same either way — but the two readings differ on any fixture with **two** malformed lines. Is the *counts are over line prefixes* rule worth stating in the shared baseline (§3.2 or catalogue §2) rather than only inside this REQ's O-10 leg, so both ends of the paired edge and the fixed-point-stop successor read one copy? |
+| Q-03 | Carried, `REQ-RCV-07`'s: is `W` guaranteed absent from every operator- and downstream-visible surface on a refusing entry? Recorded so the trail is unbroken for harvest; **not** a finding against this document. |
+
 ## 5. Positive Observations
+
+- **The v9 Medium was closed by splitting the predicate, not by weakening the claim — and the split
+  was carried to both ends of the paired edge in the same revision.** *Grammar layer here, analysis
+  layer at row 18, and step 2 re-checks rather than first-checks* is a better formulation than the
+  one I proposed: it says what row 18 does with the check that already shipped, which is the question
+  an implementer of AC-7.1 actually has. X-07 and R-16 carry it verbatim.
+- **The `NaN` path is now closed at two altitudes, not one.** §4.1 states the fallback as a criterion
+  (*"contributes none and `W` falls back to 1, never `NaN` into `windowEnd`"*) and O-12 states it as
+  a TSPEC obligation (*"origin resolution takes the greatest **well-formed** value …, falling back to
+  `1` when none is, so `W` is a decimal integer on every path"*). A criterion without the matching
+  obligation would have left the TSPEC free to satisfy it by accident.
+- **Leg 3 is marked as the one interim-only leg and its inversion is named, at both ends.** *"Unlike
+  legs 1 and 2 it is **interim-only and inverts at row 18**, where AC-7.1 step 4 refuses this fixture
+  with `invalid-window-start`; it is marked as such so that commit **replaces** it rather than
+  deleting an assertion it cannot explain."* `REQ-RCV-07` O-10 picks up the other half — *"the leg is
+  rewritten here, not deleted"*. I verified `invalid-window-start` is a real member of the S-16
+  closed enum (catalogue §2, baseline §3), not an invented render. An interim assertion that says in
+  advance how it will die is worth more than one that leaves the successor guessing.
+- **The 0-call oracle was moved onto a fixture where it can fail, and the document says why.** *"On
+  leg 2's region `A < H` is false, so a wired gate short-circuits and never reaches the seam either —
+  0 calls under every wiring, an oracle that cannot fail."* That is the right objection to the leg as
+  v2.3 stated it, found before a test author would have. Naming leg 1 also settles evaluation order
+  without having to specify it, which is the cheaper of the two available fixes.
+- **All four relocations were checked clause by clause and none lost anything** — including the two
+  that matter most downstream, `WINDOW-START:`'s *never authored by a human* with its authoring-scoped
+  exemption, and §4.1's three post-mortem-readability rows that AC-1.4 and AC-1.5(5) read. The split
+  record's §5.2 duplicate in `REQ-RCV-07` was deleted in the same revision, so the de-duplication is
+  real in both directions rather than leaving a second copy to drift.
 
 ## 6. Recommendation
 
