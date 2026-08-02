@@ -9,7 +9,7 @@
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.1 | 2026-08-02 |
+| pdlc | draft | Claude | 1.2 | 2026-08-02 |
 
 ## 1. Scope, inputs, and how to read this document
 
@@ -100,7 +100,7 @@ short-circuit property and the termination bound. v1.0 claimed otherwise; the cl
 | `MERGE_THREAD_PAGE_LIMIT` | `100` | §4.4 |
 | `MERGE_MAX_THREAD_PAGES` | `10` | §4.4 — bounded, fail-closed |
 | `MERGE_MAX_RETRIES` | `10` | §3.1 — the accepted upper bound on `mergeableRetries` (TE F-02) |
-| `MERGE_MAX_DECISION_STEPS` | `24` | §5.2 — termination bound, **derived** from `MERGE_MAX_RETRIES` (§5.2) |
+| `MERGE_MAX_DECISION_STEPS` | `1 + MERGE_MAX_RETRIES + 4 + 3 + 1 + 5` (= 24) | §5.2 — a **computed expression, not a literal**: raising `MERGE_MAX_RETRIES` re-derives the bound automatically (TE N-04) |
 
 ### 2.3 Function inventory — `orchestrate-dev.js`
 
@@ -119,7 +119,7 @@ bundle additionally publishes. Every function is total and never throws unless t
 | `classifyChangedFiles` | `(primaryRaw, fallbackRaw, opts) => O5Observation` | pure |
 | `classifyMergeResult` | `(mergeRaw, readbackRaw) => O6Observation` | pure |
 | `mergeCommandFor` | `(surface, params) => string` | pure — the **single** home of every `gh` command string (§4.1) |
-| `defaultGhRun` | `async (command, { execFn }) => { ok, stdout }` | IO — the one new capability seam's default |
+| `defaultGhRun` | `async (command, { execFn }) => { ok, stdout, stderr }` | IO — the one new capability seam's default; `defaultGit`'s three-field contract (`:4252`) |
 | `observePrState` | `async (prUrl, { _ghRun }) => O1Observation` | IO |
 | `observeCi` | `async (prUrl, { _ghRun, _checkCi }) => CiStatus` | IO — delegates to `checkPrCi` |
 | `observeReviewThreads` | `async (ref, { _ghRun }) => O3Observation` | IO |
@@ -140,8 +140,13 @@ the callee; `main()`'s corresponding parameter is `_phaseMergeEnabled` and it fo
 `_readFile` provably uncalled, which requires reaching row 1 without editing a module constant.
 
 **One new capability seam, not six (TE F-03, F-04).** v1.0's `_mergeObservations` table of six
-functions is replaced by a single seam, **`_ghRun(command) => { ok, stdout }`** — the only capability
-the runtime must supply. Every command string, fallback, pagination loop and read-back then lives in
+functions is replaced by a single seam, **`_ghRun(command) => { ok, stdout, stderr }`** — the only
+capability the runtime must supply. The third field is not decoration: `stderr` is where a failed
+`gh pr merge` states *why*, and FSPEC §6.3 requires each attempt to record its method **and its
+failure detail** (§2.4's `attempts`, §4.7's `detail`). v1.1 returned two fields and left that detail
+unobtainable (TE N-01); the three-field shape is `defaultGit`'s house contract (`:4252`) and `rtGit`
+already carries `stderr` in its JSON reply (`runtime-adapter.js:932`–`:933`), so this aligns with the
+precedent rather than extending it. Every command string, fallback, pagination loop and read-back then lives in
 this module (§4.1) and the adapter carries no `gh` knowledge (§11.3); §10.4 derives why the object
 shape was also *red* under RLH-AT-64. FSPEC §3.1's per-surface substitutability is satisfied by the
 six `observe*` functions, each separately importable and separately drivable through a command-keyed
@@ -292,8 +297,12 @@ export function mergeCommandFor(surface, params) { … }     // pure: the ONLY h
 export async function defaultGhRun(command, { execFn } = {}) {   // the seam's default
   const { execSync } = await import("child_process");
   const run = execFn ?? ((c, o) => execSync(c, o));
-  try { return { ok: true, stdout: String(run(command, { stdio: "pipe", encoding: "utf8" })) }; }
-  catch { return { ok: false, stdout: "" }; }
+  try {
+    const out = run(command, { stdio: "pipe", encoding: "utf8" });
+    return { ok: true, stdout: String(out ?? ""), stderr: "" };
+  } catch (err) {
+    return { ok: false, stdout: "", stderr: String((err && (err.stderr || err.message)) ?? "") };
+  }
 }
 
 async function ghJson(surface, params, _ghRun) {            // module-private
@@ -309,9 +318,12 @@ Three separations, each doing work:
 - **`mergeCommandFor` is pure and singular.** Every `gh` command string in this feature is built
   there and nowhere else, so the adapter needs no catalogue of its own (§11.3) and a test can assert
   a command's exact bytes without running anything (TE F-04).
-- **`defaultGhRun` never throws** and returns `{ ok, stdout }` — `defaultGit`'s contract
-  (`orchestrate-dev.js:4252`), for the same reason: the caller branches on `ok`, the seam interprets
-  nothing. Its `{ execFn }` injection is `checkPrCi`'s (`:3485`–`:3490`).
+- **`defaultGhRun` never throws** and returns `{ ok, stdout, stderr }` — `defaultGit`'s exact
+  contract and its exact `catch` shape (`orchestrate-dev.js:4252`–`:4270`, including
+  `err.stderr || err.message`), for the same reason: the caller branches on `ok`, the seam interprets
+  nothing. Its `{ execFn }` injection is `checkPrCi`'s (`:3485`–`:3490`). `stderr` is carried on the
+  failure branch and is empty on success; only `executeMerge` (§4.7) reads it, and only its first
+  line — via `firstLine`, the helper `orchestrate-queue.js:916` already defines for the same purpose.
 - **Every `classify*` is pure and takes the raw string**, so the §3.2 fail-closed table is a
   pure-function suite with no transport at all, and the `observe*` wrappers contain nothing but a
   `ghJson` call and a classifier call.
@@ -449,8 +461,14 @@ reintroduce the ambiguity by editing a fixture.
 `gh pr view {prUrl} --json mergeCommit,state`. Success requires `state === "MERGED"` **and** a string
 `mergeCommit.oid`; a zero-exit command whose read-back does not confirm both is a **failed attempt**
 and the chain continues (FSPEC §6.2). Returns
-`{ ok: true, oid } | { ok: false, reason, detail }` where `detail` is the first line of stderr, kept
-for the exhaustion reason line (FSPEC §6.3).
+`{ ok: true, oid } | { ok: false, reason, detail }` where `detail` is **the first line of the
+transport's `stderr`** — obtainable because `_ghRun` carries it (§4.1) — kept for §11 row 17's
+exhaustion reason, which FSPEC §6.3 requires to name each attempted method *and its failure*. When
+`stderr` is empty (the zero-exit-but-unconfirmed case below), `detail` is the fixed token
+`"merge not confirmed"`, so the field is never empty and never `undefined`; `reason` is drawn from the
+closed set `"command-failed" | "not-confirmed"`. Each attempt is appended to `record.attempts` as
+`{ method, ok, detail }` (§2.4), and §11 row 17's reason line is those rows joined — so a suite can
+assert the text of a specific attempt's failure, not merely that some attempt failed.
 
 `O6` is the only mutating observation. NFR-2 is preserved by construction: it is reachable from
 exactly one place in `phaseMerge` — the `act` branch of §5.2's loop — and that branch is reachable
@@ -510,10 +528,16 @@ therefore bounded by the sum of its parts:
 | other observations | 4 | `O2`, `O3`, `O4`, `O5`, each demanded at most once |
 | merge attempts | 3 | the longest possible candidate chain (rebase, merge, squash) |
 | the resolving step | 1 | the iteration that returns `kind: "resolved"` |
-| **total** | **19** | `MERGE_MAX_DECISION_STEPS = 24` leaves 5 steps of slack |
+| **total** | **19** | plus 5 steps of slack ⇒ `MERGE_MAX_DECISION_STEPS` = 24 |
 
-The cap in §3.1 is what makes this a derivation rather than a hope: without it, `mergeableRetries: 25`
-reaches the bound from a config file. The bound is an assertion, not a control-flow device: reaching it is a coding defect, and the loop's exit therefore throws — but
+**The constant is the expression, not the number (TE N-04).** `MERGE_MAX_DECISION_STEPS` is declared
+as `1 + MERGE_MAX_RETRIES + 4 + 3 + 1 + 5` (§2.2), so raising `MERGE_MAX_RETRIES` re-derives the bound
+instead of silently re-opening the defect that a literal `24` would. §13.2's termination test asserts
+the **relation** — the bound strictly exceeds the worst-case sum recomputed from the constants — never
+the literal, so a future edit to either constant is checked rather than assumed.
+
+The cap in §3.1 is the other half: without it, `mergeableRetries: 25` reaches the bound from a config
+file. The bound is an assertion, not a control-flow device: reaching it is a coding defect, and the loop's exit therefore throws — but
 **`phaseMerge` wraps its whole body in `try/catch`** and maps any throw to
 `{ mergeStatus: "refused", row: "internal", reason }`, because FSPEC §2.1 requires that **Phase MERGE
 never throws** (a throw would take `main()`'s halt path at `:5117` and write a `halted` queue row over
@@ -746,6 +770,16 @@ run or an earlier one created it. It is **suppressed** for `none` (no `QUEUE.md`
 committed) and `error` (nothing was written), which are exactly the two cases in which the sentence
 would be false. `recorded (uncommitted)` also suppresses it: the row is on disk but no commit exists,
 so the branch is not ahead — and that case has its own note already.
+
+**One residual, pinned rather than engineered away (PM Q-03).** `recorded` also covers AC-5.8's
+"already `done` with the same evidence, nothing to commit" case. If that earlier queue-row commit has
+since reached the remote inside a later feature's PR, the local default is no longer ahead and the
+sentence over-states. Deciding it properly would need an extra `git` observation — an ahead-count —
+on the happy path, which is not worth a network round trip for a note. It is accepted as a **benign
+over-statement on a recovery path**: the note is advisory, its action ("nothing; it rides the next
+PR") is correct either way, and no decision reads it. `mergePhase`'s assertion for the row-3 re-entry
+therefore records it as *may be present*, and §13.2 pins the boundary in one line so a future reader
+does not read the notice as a guarantee.
 
 M3 **precedes** M4 (FSPEC §8.2, F-14) and a failed M3 does **not** cancel M4 (FSPEC §8.3) — the write
 runs on whichever branch `HEAD` is left on. `mergeStatus` stays `merged` through every one of these
@@ -1118,7 +1152,7 @@ line by line:
 |---|---|---|
 | E-3 candidate? | `moduleFunctionParams` (`:787`–`:793`) matches only `function NAME(` | returns `null` — **not** an E-3 candidate |
 | falls through to | `moduleValueInit` (`:797`–`:801`) captures the rest of the declaration line | `"Object.freeze({"` |
-| `isAbsenceDefault`? | `/^(?:null\|undefined)$/` (`:816`) | no |
+| `isAbsenceDefault`? | `/^(?:null\|undefined)$/` (`:817`) | no |
 | `looksLikeFunction`? | `/^(?:async\s+)?function\b/ \|\| includes("=>")` (`:803`) | **no** |
 | verdict | E-1 `resolved: true` | **exempt** |
 
@@ -1184,15 +1218,30 @@ async function rtGhRun(command) {
   const out = await RT.agent(
     `Run exactly this command from the repository root, and nothing else:\n` +
       `  ${command}\n` +
-      `If it exits 0, return ONLY its raw stdout — no commentary, no code fences.\n` +
-      `If it exits non-zero, return exactly: ${RT_MISSING}\n` +
+      `If it exits 0, return exactly: {"ok":true,"stdout":"<its stdout>","stderr":""}\n` +
+      `If it exits non-zero, return exactly: {"ok":false,"stdout":"","stderr":"<its stderr>"}\n` +
+      `Return ONLY that JSON object, correctly escaped — no commentary, no code fences.\n` +
       `This command may change repository state. Issue it AT MOST ONCE. ` +
       `Do not retry, do not repair, and do not run any other command.`,
     { label: `gh:${command.slice(0, 40)}`, model: RT_IO_MODEL });
-  const text = typeof out === "string" ? out.trim() : "";
-  return text && text !== RT_MISSING ? { ok: true, stdout: text } : { ok: false, stdout: "" };
+  try {
+    const parsed = JSON.parse(String(out).trim());
+    return {
+      ok: parsed && parsed.ok === true,
+      stdout: typeof (parsed && parsed.stdout) === "string" ? parsed.stdout : "",
+      stderr: typeof (parsed && parsed.stderr) === "string" ? parsed.stderr : "",
+    };
+  } catch {
+    return { ok: false, stdout: "", stderr: "unparseable adapter response" };
+  }
 }
 ```
+
+**The reply shape is `rtGit`'s, verbatim (TE N-01).** v1.1 had the non-zero branch collapse to
+`RT_MISSING`, which discarded the only text `executeMerge`'s `detail` can carry. The JSON-object reply
+above is `rtGit`'s (`runtime-adapter.js:932`–`:938`) with one command substituted and the mutation
+sentence added — same three fields, same escaping instruction, same unparseable-reply fallback. Two
+adapters answering the same shape is one contract, not two.
 
 Because the adapter holds no catalogue, each `gh` string exists **once**, in `mergeCommandFor`
 (§4.1) — the duplication `rtMakeCheckCi` (`:838`–`:850`) shows for `gh pr view … --json
@@ -1273,7 +1322,7 @@ Jest, run with `cd pdlc/workflows && npm test` (never bare `npx jest`). **No net
 
 | Double | Shape | Replaces |
 |---|---|---|
-| `fakeGhRun(map)` | `async (command) => map[matchKey(command)] ?? { ok: false, stdout: "" }`, recording every command in order | `_ghRun` — the single transport for all six surfaces |
+| `fakeGhRun(map)` | `async (command) => map[matchKey(command)] ?? { ok: false, stdout: "", stderr: "no fixture for this command" }`, recording every command in order | `_ghRun` — the single transport for all six surfaces. Fixtures for a failing `gh pr merge` supply a real `stderr` string, which is what row 17's reason assertion reads |
 | `passingGh(overrides)` | the "everything passes" command map, with per-surface override | the fixture baseline for the §11 row table |
 | `fakeGit(script)` | `async (argv) => script[argv[0]] ?? { ok: true, stdout: "", stderr: "" }`, recording every `argv` in order | `_git` |
 | `fakeQueueFs()` | in-memory `{path: contents}` for `_readFile`/`_writeFile` | the filesystem |
@@ -1291,12 +1340,12 @@ alone" (§2.3).
 | File | Covers |
 |---|---|
 | `__tests__/mergeConfig.test.js` | **E1–E5** (TE F-06). `parseMergeConfig` over the four steps and the seven-key independent-fallback table; the `mergeableRetries` boundary pair (`10` accepted, `11` defaulted, TE F-02); `mergeableRetryDelay`'s name and seconds unit; `sectionMalformed` true only for step 3; `readMergeConfigSafely` against a throwing read. **Property:** for *any* JSON input, every returned key is within its accepted domain and `MERGE_DEFAULTS` is never mutated |
-| `__tests__/mergeDecision.test.js` | `decideMerge` only, and only what a pure function can answer: §5.3's ordered guard sequence and the FSPEC §11 row id each guard carries; the two §2.3 tie-break pairs; the short-circuit property (a surface the run must not reach is never *demanded*); the termination bound with `mergeableRetries` at its cap; `mergeCandidates` including the squash arm |
-| `__tests__/mergePhase.test.js` | **the §11 row table — all 25 rows — driven through `phaseMerge`** with `passingGh` (TE F-01), asserting FSPEC §11's four columns (`mergeStatus`, resolving row, queue written, escalation) plus the reason line; rows 1–2's "no `_ghRun` call at all" and row 1's "`_readFile` never called"; row 3's "`gh repo view` was issued and no other precondition command was"; rows 19–22 as composable annotations over rows 18 and 3, including all four at once (**AT-M6**); M1–M4 ordering on `fakeGit`'s recorded argv; the FSPEC §8.2 ahead-of-remote notice and its three suppression cases; §5.2's never-throws guarantee via a `_ghRun` that throws; the phase-row glyphs; report fields on success, on every non-merge, and on the halt path (row 23) |
+| `__tests__/mergeDecision.test.js` | `decideMerge` only, and only what a pure function can answer: §5.3's ordered guard sequence and the FSPEC §11 row id each guard carries; the two §2.3 tie-break pairs; the short-circuit property (a surface the run must not reach is never *demanded*); the termination bound with `mergeableRetries` at its cap, asserted as the **relation** `MERGE_MAX_DECISION_STEPS > 1 + MERGE_MAX_RETRIES + 4 + 3 + 1` recomputed from the constants, never against the literal `24` (TE N-04); `mergeCandidates` including the squash arm; row 17's reason line assembled from an `attempts` array carrying per-attempt `detail` |
+| `__tests__/mergePhase.test.js` | **the §11 row table — all 25 rows — driven through `phaseMerge`** with `passingGh` (TE F-01), asserting FSPEC §11's four columns (`mergeStatus`, resolving row, queue written, escalation) plus the reason line; rows 1–2's "no `_ghRun` call at all" and row 1's "`_readFile` never called"; row 3's "`gh repo view` was issued and no other precondition command was"; rows 19–22 as composable annotations over rows 18 and 3, including all four at once (**AT-M6**); M1–M4 ordering on `fakeGit`'s recorded argv; the FSPEC §8.2 ahead-of-remote notice and its three suppression cases; §5.2's never-throws guarantee via a `_ghRun` that throws; the phase-row glyphs; report fields on success, on every non-merge, and on the halt path (row 23). **Row 17 additionally asserts the reason line contains each attempted method *and* the `stderr` first line the fixture supplied for it** (TE N-01), plus the `"merge not confirmed"` token for the zero-exit-unconfirmed arm |
 | `__tests__/mergeObservations.test.js` | Two blocks, listed separately (**TE Q-03**). **(a) Pure:** every `classify*` over raw strings — §3.2's whole table, one case per recognised value and per failure mode; `parsePrRef`; `mergeCommandFor`'s exact bytes per surface. **(b) Transport-level:** each `observe*` against `fakeGhRun`, covering **E6/E7**, §3.3's observation counts for `mergeableRetries` ∈ {0, 1, 3} including the `after 1 observations` wording, `O3` pagination (1 page, 3 pages, over-bound), `O5`'s four completeness verdicts and the rename/deletion paths, and `O6`'s zero-exit-but-not-merged case |
 | `__tests__/mergeGuard.test.js` | §4.2's five near-miss rows and two positives; `effectiveGuardPaths` additivity (empty, absent, non-list, non-string members, a removal-shaped entry); trailing-slash normalisation; **AT-M3 both arms** (§6.4); the scoped no-override assertion — arity plus the two extracted function bodies (§6.3, TE F-10) |
 | `__tests__/mergeQueueWriteback.test.js` | `ensureEvidenceColumn`, `mergeEvidenceCell`, `evidenceCellFor`; **AT-M1, AT-M2, AT-M2a**; §8.4's byte-identity differential against committed goldens (§13.5); the §2.5 non-overwrite case with **three positive conjuncts** — queue bytes unchanged, `fakeGit` recorded **zero** argv, and the `detail` names the status found (TE F-14); `prNumber`'s three arms (`parsePrRef`, `O1` fallback, neither ⇒ skipped with a note, TE F-09); `QUEUE_ROW_DISPOSITIONS`' four members |
-| `__tests__/mergeAdapter.test.js` | **The adapter surface (TE F-04).** (a) `rtDevInjections(devModule)` carries `_ghRun` — the direct pin behind §10.4's derivation; (b) `rtGhRun`'s prompt is a fixed command with an exact-reply contract, built by string-interpolating **only** the command it was handed — asserted by feeding it a sentinel command and matching the prompt; (c) the prompt carries both the at-most-once mutation sentence and the "do not retry, do not repair, do not run any other command" clause (§11.3); (d) a non-`RT_MISSING` reply yields `{ ok: true, stdout }` and `RT_MISSING` yields `{ ok: false }`. Built on the existing `helpers/adapterHarness.js` used by `adapterProbe.test.js` |
+| `__tests__/mergeAdapter.test.js` | **The adapter surface (TE F-04).** (a) `rtDevInjections(devModule)` carries `_ghRun` — the direct pin behind §10.4's derivation; (b) `rtGhRun`'s prompt is a fixed command with an exact-reply contract, built by string-interpolating **only** the command it was handed — asserted by feeding it a sentinel command and matching the prompt; (c) the prompt carries both the at-most-once mutation sentence and the "do not retry, do not repair, do not run any other command" clause (§11.3); (d) the reply mapping over all three arms — an `{"ok":true,…}` reply yields `{ ok: true, stdout, stderr: "" }`, an `{"ok":false,…}` reply **preserves `stderr`** (the TE N-01 fix, and the arm a two-field implementation reds), and an unparseable reply yields `{ ok: false, stderr: "unparseable adapter response" }`, matching `rtGit`'s fallback. Built on the existing `helpers/adapterHarness.js` used by `adapterProbe.test.js` |
 | `__tests__/mergeQueueDriver.test.js` | `runPicked`'s `done` transition and message suppression (**AT-M4**); the `undefined mergeStatus` fallback; Q-02's mutual-exclusion boundary (§9.1); `buildQueueReport` pass-through of `mergeStatus`/`mergeSha`/escalations; **AT-M5** end-to-end selection, whose drift-gate precondition is **a drift-state record with `checkEnabled: false` and empty `writeFailures`** — the gate reads that record, never `.claude/pdlc.config.json` (`orchestrate-queue.js:1081`, `:1260`, `readDriftStateSafely:1354`), and a non-empty `writeFailures` blocks at row 3 even when `checkEnabled` is false (`queueDriftGate.test.js:107`ff). TE F-08 |
 
 ### 13.3 The §11 row table → parameterised test mapping
@@ -1313,6 +1362,10 @@ Fixture constraints, stated in the file header so they cannot be edited away:
 - rows 4 and 5 assert different escalation text and are separate cases, because §11 gives the two
   guard outcomes separate rows; row 8 asserts `refused` with **no** escalation, which is what
   distinguishes it from them (FSPEC §11's closing paragraph);
+- **the row-3 and row-18 fixtures supply a `parsePrRef`-parseable `prUrl`** (TE N-02). Both rows
+  record *queue written: yes*, and E16 — neither `parsePrRef` nor `O1.number` resolving — legitimately
+  skips the write with a note, so an unparseable fixture would make those two rows ambiguous. E16's
+  own case lives in `mergeQueueWriteback`, where §13.2 already places it;
 - rows 11a and 13a are the two fail-closed siblings of FSPEC §2.3's 7c and 7d splits: each asserts
   `refused` with **no** escalation, and 13a is asserted distinct from row 14 (`deferred`, threads
   retrieved and unresolved) — "could not read the list" versus "read it, and it says no";
@@ -1411,7 +1464,7 @@ The FSPEC entry-obligation index lives in §1 and is not repeated here (PM F-07)
 | PM Q-02 | — | Answered in §9.1: the driver's M5 and §2.5's non-overwrite case are mutually exclusive by construction, and §13.2 asserts the boundary |
 | TE F-01 | High | **Fixed.** The 25-row table (FSPEC v1.3) moves to `mergePhase.test.js` driven by `fakeGhRun`; `decideMerge` keeps the guard sequence, tie-breaks, short-circuit and termination properties. §2.1, §5.1 and §13 now agree, and v1.0's "pure-function suite" claim is withdrawn |
 | TE F-02 | High | **Fixed.** `mergeableRetries` accepts 0…10 (§3.1); `MERGE_MAX_DECISION_STEPS` derived as 19 + slack (§5.2); the boundary pair and the row-13-at-cap case are tests |
-| TE F-03 | High | **Fixed, and the review's reading confirmed.** §10.4 now derives the classification from `runtimeBundle.test.js:787`–`:816` step by step: a frozen-object default is E-1 **resolved**, which combined with wiring would have failed anti-rot clause 1 (`:1025`). The seam is `_ghRun` defaulted to the module **function** `defaultGhRun` (no `_agent`) — E-3 unresolved, not exempt, wired — `_recordHalt`'s blessed shape |
+| TE F-03 | High | **Fixed, and the review's reading confirmed.** §10.4 now derives the classification from `runtimeBundle.test.js:787`–`:817` step by step: a frozen-object default is E-1 **resolved**, which combined with wiring would have failed anti-rot clause 1 (`:1025`). The seam is `_ghRun` defaulted to the module **function** `defaultGhRun` (no `_agent`) — E-3 unresolved, not exempt, wired — `_recordHalt`'s blessed shape |
 | TE F-04 | High | **Fixed.** One transport seam removes the export contradiction: `exportedNames` gains nothing, the adapter holds no `gh` catalogue, and every command string lives once in `mergeCommandFor`. `mergeAdapter.test.js` added to §13.2 with the four assertions the finding asks for |
 | TE F-05 | Medium | **Fixed.** `_enabled` is in §2.3's signature; §2.3 states the two-scope naming (`_enabled` in the callee, `_phaseMergeEnabled` on `main()`) |
 | TE F-06 | Medium | **Fixed.** `mergeConfig.test.js` added, with the totality property |
@@ -1425,17 +1478,46 @@ The FSPEC entry-obligation index lives in §1 and is not repeated here (PM F-07)
 | TE F-14 | Low | **Fixed.** Three positive conjuncts named in §13.2 |
 | TE Q-03 | — | Answered: `mergeObservations.test.js` has two explicitly listed blocks, pure and transport-level |
 
-### 15.2 FSPEC errata — all three accepted in FSPEC v1.3
+### 15.1a Round-2 cross-review dispositions
+
+Round 2: **PM `APPROVED`** (1 low), **TE `REVISE`** (1 medium, 3 lows). All four are closed in v1.2.
+
+| ID | Sev | Disposition |
+|---|---|---|
+| TE N-01 | Medium | **Fixed.** `_ghRun` / `defaultGhRun` / `rtGhRun` return `{ ok, stdout, stderr }` — `defaultGit`'s three-field house contract (`:4252`–`:4270`) and `rtGit`'s JSON reply (`runtime-adapter.js:932`–`:938`). §4.7's `detail` is now obtainable (first line of `stderr`, `"merge not confirmed"` when empty, `reason` closed over two values), §2.4's `attempts` rows are producible, and §13.2's row-17 case asserts the per-attempt failure text. Touched §2.3, §4.1, §4.7, §11.3, §13.2 |
+| TE N-02 | Low | **Fixed.** §13.3 requires the row-3 and row-18 fixtures to supply a `parsePrRef`-parseable `prUrl`, so the *queue written: yes* column is unambiguous against E16 |
+| TE N-03 | Low | **Fixed.** `isAbsenceDefault` cited at `runtimeBundle.test.js:817` (verified; `:816` is the docblock's closing line); §15.1's TE F-03 row updated to the `:787`–`:817` span |
+| TE N-04 | Low | **Fixed.** `MERGE_MAX_DECISION_STEPS` is the expression `1 + MERGE_MAX_RETRIES + 4 + 3 + 1 + 5`, and §13.2's termination test asserts the relation recomputed from the constants rather than the literal `24` |
+| PM M-01 | Low | **Fixed.** Erratum **E-4** added to §15.2 as a declared downstream tightening, and §15.3's "no divergence remains" claim corrected |
+| PM Q-03 | — | Answered in §7.1 |
+
+### 15.2 Errata — three accepted upstream, one downstream tightening
 
 v1.1 raised three divergences this TSPEC could not resolve inside its own lens. **FSPEC v1.3
-(commit `7028537`) accepted all three**, so no divergence between the two documents remains and no
-provisional designator survives in this one.
+(commit `7028537`) accepted all three**, so no provisional designator survives in this document.
+**E-4** is a different class and is recorded as such: a *downstream tightening* of an FSPEC-stated
+domain, declared here rather than routed upstream (PM M-01).
 
 | ID | Site | Change | Raised by | Status |
 |---|---|---|---|---|
 | **E-1** | FSPEC §9.1 | `mergeMethod`'s enumeration gains `squash`, scoped "reachable only where `allowSquashMerge: true` is explicitly configured — never in a fallback chain" | PM F-04 | **Accepted, FSPEC v1.3 §9.1.** §2.4, §5.6, §10.1 updated |
 | **E-2** | FSPEC §11 | A terminal row for an unretrievable/unparseable review-thread list — now **row 13a**, `refused`, no escalation, resolving at §2.3 **7d**, whose cell is split like 7c's and 7e's | this TSPEC (§5.3 guard 17) | **Accepted, FSPEC v1.3 §11 row 13a + §2.3 7d.** v1.1's provisional `"7d-unknown"` designator is **retired**: §2.4, §5.3, §12 E9 and §13 now use `13a`, and §11's table is 25 rows |
 | **E-3** | FSPEC §2.2 r5, §2.5 | "Row 5 takes `O4` as an observation, never a precondition", with an unretrievable `O4` resolving to §11 row 22 | PM F-05 | **Accepted, FSPEC v1.3 §2.5.** §5.5's note restated as a derivation rather than a request |
+| **E-4** | FSPEC §10.3, REQ §7 | `mergeableRetries` accepts integers **`0…10`**, not "integers ≥ 0" without ceiling; a value above the cap takes the default (`3`) | PM M-01 (raised in §3.1) | **Declared here as a downstream tightening — no FSPEC edit requested.** See the note below |
+
+**Why E-4 is not routed upstream.** It narrows an accepted domain rather than contradicting a stated
+behaviour, and it narrows it *in the direction FSPEC §10.3 already prescribes*: an out-of-domain value
+takes the default, which is §10.3's own rule verbatim. The operator-visible effect is confined to
+retry counts above 10 — a value nobody sensible sets — and the alternative, literal transcription, is
+the unsafe reading: an unbounded count exhausts §5.2's decision-step bound and converts FSPEC §11
+row 13 (`deferred`) into `refused, row: "internal"`, which is a *behavioural* divergence rather than a
+documentary one. It is declared here, in §3.1 where the reasoning lives, and in §13.2's boundary pair
+(`10` accepted, `11` defaulted), so the narrowing is reviewed rather than discovered.
+
+**If the FSPEC should carry it, one line does:** FSPEC §10.3's "Accepted domains" paragraph would
+change `mergeableRetries` from "integers ≥ 0" to "integers 0…10". This TSPEC does not request that
+edit — the tightening is safe and self-documenting downstream — but it is a one-line change if the
+FSPEC author prefers the domain stated once, upstream.
 
 ### 15.3 Risks and costs, named
 
@@ -1446,7 +1528,7 @@ provisional designator survives in this one.
 | **The `_recordHalt` rename touches four files and one vacuous test** (§8.2) | Mechanical but wide. The added negative assertion is the mitigation, without which the rename silently disables a guard test |
 | **Permanent `refused` in this repo** (FSPEC §4.5, BL-04) | Accepted: every PR this repo's queue raises touches `pdlc/workflows/` or `pdlc/skills/`, so the `merged` path is evidenced entirely through tests. Stated so the first operator to see `refused` in `yumo-plugins` reads it as designed behaviour |
 | **`decideMerge`'s demand loop is an unusual shape** here | No precedent in `pdlc/workflows/`; the cost is one reviewer's unfamiliarity. §5.1 states the rejected alternative and why |
-| ~~Three open FSPEC errata~~ | **Closed.** All three were accepted in FSPEC v1.3 (§15.2); no divergence between TSPEC and FSPEC remains |
+| ~~Three open FSPEC errata~~ | **Closed.** All three accepted in FSPEC v1.3 (§15.2). One **declared downstream tightening** remains by design — E-4's `mergeableRetries` cap — recorded in §15.2 rather than left implicit; it is a narrowing in FSPEC §10.3's own fallback direction, not an unstated divergence |
 
 ### 15.4 DECISIONS verdict
 
