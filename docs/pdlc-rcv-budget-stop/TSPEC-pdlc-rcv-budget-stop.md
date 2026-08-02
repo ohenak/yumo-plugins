@@ -1196,4 +1196,65 @@ Only the rows where a seam choice is what makes the test writable at all; the re
 the workflow's inline post-mortem prompt (`:1962`–`:1967`, M-7e), not in a SKILL file, because that
 prompt is composed by the loop and has no SKILL of its own.
 
-## 11. Obligation disposition
+## 11. Obligation disposition, decisions and the stopping rule
+
+### 11.1 Obligations
+
+| Obligation | Owner | Disposition here |
+|---|---|---|
+| **O-5** | TSPEC | **Discharged.** §6.4's clause order, the one-update rule (§4.3, §5.3), both content confirmations, and §7's fail-closed refusals |
+| **O-9** | FSPEC → implementation | **Attached, not authored.** The clause's text is FSPEC §9's; §6.4 step 2 fixes where it lands (`orchestrate-dev.js:1962`–`:1967`) and §7.3 ND-3 states why it is belt-and-braces |
+| **O-10** | PROPERTIES | **Not discharged.** §9 fixes the levels, the doubles and the DC-03 routing; the legs, fixtures, generation axes and the ledger's contents are PROPERTIES', stated at split §5.4 |
+| **O-11** | implementation | **Placed.** §2.1, §9.5 — the rebuild is in the same commit and its freshness gate is falsified by mutation (§9.4 row 9) |
+| **O-12** | TSPEC | **Discharged, by adoption.** The seam's contract is `REQ-RCV-07` O-12's and is restated nowhere; §6.1 fixes how `W` reaches the window arithmetic, §5.4 the declared-unwired seam, §6.3.2 the interim's two observables |
+| **O-13** | TSPEC | **Discharged.** §8.1 (the export), §8.2 (the five-class enumeration), §8.3 (the machine) |
+| **O-14** | FSPEC → implementation | **Implementation half discharged.** §6.5's render, anchor, replacement and insertion; §6.5's `roundsRun` threading; §6.6's empty verdict list and no-re-author path |
+| **O-15** | PLAN | **Not discharged.** Named in §9.6 so the lifecycle line is not invented downstream |
+
+### 11.2 The decisions worth recording
+
+Four load-bearing alternatives were weighed and rejected. Each is a decision a future agent will
+otherwise confidently reconsider, so each belongs in `DECISIONS-pdlc-rcv-budget-stop.md`:
+
+| # | Decision | Rejected alternative, and why |
+|---|---|---|
+| **D-1** | The region parser and writer live **inside `orchestrate-dev.js`** as pure module-scope functions | A `pdlc/workflows/lib/reset-region.mjs` module — the shape `document-oracles.mjs` established and the one a reader will propose. **Not viable**: `build-runtime.mjs` inlines three named sources and `import` does not exist in the runtime, so the pipeline would throw on first call (§3.1) |
+| **D-2** | A **new `_statFile` seam** discriminates creating from existing | Reusing `_readFile` (conflates absent with unreadable ⇒ re-authors over a live region) or `_checkFile` (same conflation under `reason:"file_missing"`). The choice is forced by FSPEC §7.4's safe rule, which needs a third answer, `unevaluable` (§5.2) |
+| **D-3** | Clauses 1 and 2 are **one read-modify-whole-file-write**, confirmed by two content conjuncts | Two ordered writes with `_appendFile` — cheaper, and the shape `appendApprovalAnchors` already uses. Rejected: a separately losable strip leaves a readable marker beside an incremented `H`, which the gate reads as an unconsumed clearance and re-grants on every later halt while the fault lasts (split §5.8) |
+| **D-4** | The width is made reachable by **exporting the constant**; row-B/row-C rows ride on a **new `reviewRows` report field** | Keeping two hand-maintained copies with a cross-check test (a third site that can itself be forgotten; the failure is a green suite asserting the old width). And carrying rows in `notices` or a phase-row `detail` string — rejected because existing oracles pin `detail` verbatim and catalogue §3 needs a schema two later features extend (§4.4, §8.1) |
+
+**Reversibility.** D-1 is **hard to reverse** — it is a consequence of the distribution mechanism,
+and reversing it means adding a fourth inlined source with its own manifest row, freshness gate and
+sync semantics. D-2, D-3 and D-4 are each **easy** — local to one function or one field.
+**Re-evaluation trigger for D-1:** the day `build-runtime.mjs` gains a general module-inlining
+step, at which point the pure clusters move to `lib/` unchanged.
+
+### 11.3 Interfaces this TSPEC leaves open on purpose
+
+| Left open | Closed by |
+|---|---|
+| `_validateRegion`'s **implementation** (never its contract) | `REQ-RCV-07` AC-7.1 / O-12 at queue row 18 |
+| `panelShape`, `blocking` cell population | `pdlc-rcv-fixed-point-stop` |
+| `growthBytes`, `classification` cell population | `pdlc-rcv-panel-topology` |
+| Suppression of `M-8d`'s generic queue-reset line on a refusal | `REQ-RCV-07` **O-6** — deliberately **not** built here (§7.2), because a seam one notch too wide silences the recovery line on every halt class that reaches the catch |
+
+None of these is a stub. Each is a **named successor surface** with a queue row behind it (DC-08),
+and at this ship each behaves exactly as HEAD does.
+
+### 11.4 The stopping rule for this document's own review loop
+
+Inherited from `REQ-RCV-01` §9 and `FSPEC` §13.4, restated because this document is reviewed by
+the loop it changes and this feature's Phase R has already exhausted one window:
+
+- a round whose blocking findings are **all** oracle-design, fixture-construction or
+  property-coverage defects — none contesting the module map, the seam contracts, the algorithms'
+  behaviour on a named input, or the failure dispositions — means the TSPEC has met its bar:
+  approve it and route the findings to §11.1's owners;
+- a finding of the form *"this component has no property / no fixture / no generation axis"* is
+  closable by **deferring** it to PROPERTIES or PLAN; §1.4 and §11.1 exist to receive it;
+- a TSPEC does not specify fixture construction, coverage floors, property-generation axis tables
+  or the falsification ledger's contents. A finding that it omits one is evidence it is at its
+  layer, not of a gap;
+- two consecutive rounds with a non-decreasing blocking count is a **fixed point**, not slow
+  convergence — and a round in which the document grows while the count does not fall is stronger
+  evidence of the same.
