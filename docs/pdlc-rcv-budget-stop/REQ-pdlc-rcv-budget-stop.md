@@ -314,13 +314,8 @@ state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-)entered. *Then
    adds no requirement; O-10's interim legs are what this REQ's PROPERTIES derive from.
 
    **Validation is a conjunct of the gate, not merely a constraint on `W`** — that is this REQ's
-   claim, and the reason is arithmetic. Were it only a constraint on `W`, two `HALT-REASON:` lines and
-   one *invalid* `WINDOW-START:` would give `A < H`, so the loop would write an answering line and
-   consume the clearance while `W` is still 1 — permanently, since the region is preserved by every
-   later halt. Equally, `H − A ≤ 1` is the invariant this clause's *exactly one answering line* relies
-   on: without a stated domain, two `HALT-REASON:` lines and no answering line pass every value-level
-   check vacuously, and the loop grants `H − A − 1` windows beyond the one paid for, every invocation,
-   fail-**open**.
+   claim; the arithmetic behind it is stated once for both ends of the edge at
+   `pdlc-rcv-split.md` **§5.2**.
 
    **A refusal is not a halt: the entry returns without running the rest of AC-1.5.** Left running,
    clause 1 would halt on the budget path, and AC-1.4 governs **every** halt, so that halt would append
