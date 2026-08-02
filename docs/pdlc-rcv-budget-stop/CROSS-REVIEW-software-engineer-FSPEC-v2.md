@@ -62,6 +62,14 @@ exists to protect, reachable through a branch the document already names.
 
 ## Questions
 
+Neither is a finding. Both are things I worked while checking something else and dispositioned;
+recorded so the next reader does not redo them.
+
+| ID | Question |
+|---|---|
+| Q-01 | **AT-CLR-04's given state is unreachable by any specified path at this ship — deliberately, but say so.** It pins `A = H = 1`, `W = 1`, highest existing round 1. `A = 1` requires an answering line. A `WINDOW-START: 1` cannot be written: `N = max(D, W)` and a budget halt needs `S > E`, i.e. `D ≥ 4`, so every granting line at `W = 1` carries at least 4. A `WINDOW-RESUMED: 1` is B-CLR-2, which §6.1 says no path emits until `pdlc-rcv-fixed-point-stop` lands. So the fixture is a hand-built state the loop cannot produce. That is **fine and I am not filing it** — B-CLR-4 must hold over hand-edited regions too (E-13), and the te round's F-05 pinning is what forced the window open here. But an implementer who tries to reach the state through production will not, and one line saying the fixture is constructed rather than driven would save that. It also means AT-CLR-04 is evidence about the gate, not about production reachability, which is worth PROPERTIES knowing. |
+| Q-02 | **The `H − A ∈ {0, 1}` invariant and the unconfirmed-write refusals are consistent — I checked, because F-01's erasure case is the one thing that breaks it.** Every path moves `H` and `A` by at most one and only in the answering direction: clause 1 appends one `HALT-REASON:` per halt in scope (§7.2), the gate appends exactly one answering line per consumed clearance (§6.1), and both refusals move neither count (§7.3, §6.3). So `A ≤ H` and `H − A ≤ 1` hold on every specified path, which is what makes catalogue §4's act-1 count tests total. The **only** way to reach `H − A > 1` without a torn write or a hand-edit is a region whose earlier lines were lost — i.e. F-01. That is a second reason F-01 is High rather than Medium: it is the one specified path that can produce the state the validation predicate is later supposed to treat as corrupt, and it produces it silently. |
+
 ## Positive Observations
 
 ## Recommendation
