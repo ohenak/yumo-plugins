@@ -72,6 +72,46 @@ recorded so the next reader does not redo them.
 
 ## Positive Observations
 
+- **The altitude discipline is real, not claimed.** §1's altitude paragraph promises no algorithm,
+  seam, signature or fixture design, and the document keeps it for 949 lines while still being
+  implementable. §1.1's five-row *not specified here* table and §13.2's obligation dispositions mean
+  every gap a reviewer could file is already routed by owner and id. This is the first document in
+  this family where I could not find a single place the FSPEC reaches down into TSPEC's layer.
+- **B-BUD-3's structural observable is the best piece of engineering in the document.** Phase DOD's
+  cap and the post-ship budget are both 3, so the obvious round-count oracle is satisfied identically
+  by the correct and the broken implementation — and the document *says so* rather than shipping the
+  useless test. The replacement is two legs (`BUDGET` varied ⇒ DOD unchanged; DOD's own declaration
+  varied ⇒ DOD follows) plus an enumeration-class assertion, with the reason each leg alone is
+  insufficient stated in the row. I verified the coincidence is real at `orchestrate-dev.js:25` and
+  `:52`. Deriving the oracle from the collision instead of assuming it away is exactly right.
+- **§5.4's rewrite of the interim observable from an absence to a presence is the same move, done
+  harder.** "The predicate is consulted zero times" is unfalsifiable when no callable exists — the
+  document says so in terms — so the leg becomes a same-branch equivalence that *fails* on any
+  implementation that inspects the region's shape at all, inline or not. F-02 is a defect in the
+  equivalence relation, not in the idea; the idea is right and I have not seen it done elsewhere in
+  this family.
+- **The confirmation contract is stated as content reads with the reason each existence check is
+  insufficient.** §7.3's table plus *"on a re-halt the file always exists, so such a check passes
+  whether or not the line landed — and that is the path that matters"* is the whole argument in two
+  lines, and it is the argument F-01 turns back on the read direction. BR-11 restates it as an
+  invariant so a flow cannot weaken it locally.
+- **The one-update rule survived the trip from REQ to FSPEC intact, including its reason.** §7.3
+  carries the unreachability claim (BR-12) *and* the fail-open it removes (a readable marker beside
+  an incremented `H`, re-granted on every later halt) rather than just the rule. That is what makes
+  the two confirmations reviewable instead of ceremonial.
+- **E-1b picks this branch's own post-mortem as the migration fixture, and the shape checks out.**
+  `## Iterations (5 — limit reached)` at line 48, unfenced `RESOLVED: yes` at 373, no
+  `## Reset Region` — exactly as claimed. Choosing a fixture that already exists on disk, and
+  stating the two-clearance cost as specified behaviour rather than discovering it in implementation,
+  is the right way to close a migration question.
+- **§12(a)'s per-branch proof that a granting entry can never immediately re-halt is complete.** It
+  works the `WINDOW-START:` branches by construction (`N` becomes `W`, so `S = W ≤ E`) and the
+  `WINDOW-RESUMED:` branch by B-CLR-2's own `D ≤ E` guard, and notes that the argument differs by
+  branch rather than pretending one covers both. I checked all four branches; the claim holds.
+- **DC-05 is discharged mechanically.** Every `B-*` id in the document has at least one row in §11,
+  and §13.1 closes the criterion → flow → branch → test loop in one table. I spot-checked the
+  branch ids in both directions and found no orphan on either side.
+
 ## Recommendation
 
 ## Verdict
