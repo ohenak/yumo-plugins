@@ -1239,45 +1239,41 @@ bounded and both injectable to zero in tests.
 ## 12. Error handling catalogue
 
 Every failure scenario, its detection, and its behaviour. **No row halts the pipeline** — that is the
-whole of FSPEC §2.1, and the rows below are the enumeration behind the claim.
+whole of FSPEC §2.1, and this enumeration is the evidence behind the claim.
+
+**Scope, after PM F-07.** The rows that only restated §5.3 and FSPEC §11 are gone; §5.3's table is
+the authority for every observation-and-precondition failure and each one's `mergeStatus`, row id and
+escalation. What remains here is the set §11 does *not* express: the configuration reader, the
+transport, the post-merge effects, and the two whole-phase safety nets.
 
 | # | Failure | Detected by | Behaviour |
 |---|---|---|---|
-| E1 | Config file absent / unreadable | `readMergeConfigSafely` → `null` | all defaults; `mergeMode: "off"` ⇒ `skipped`, silent |
+| E1 | Config file absent / unreadable | `readMergeConfigSafely` → `null` | all defaults; `mergeMode: "off"` ⇒ `skipped` (§11 row 2), silent |
 | E2 | Config not JSON, or not an object | `parseMergeConfig` `try/catch` | as E1, silent |
-| E3 | `merge` section present but not an object | `parseMergeConfig` step 3 | defaults + one plain note (suppressed on row 1 by construction, §3.3) |
-| E4 | One config key wrong type / value | per-key validator | that key defaults; the others honoured; silent |
+| E3 | `merge` section present but not an object | `parseMergeConfig` step 3 | defaults + one plain note (suppressed on §11 row 1 by construction, §3.3) |
+| E4 | One config key wrong type / out of domain (incl. `mergeableRetries > 10`) | per-key validator | that key defaults; the others honoured; silent |
 | E5 | `_readFile` throws | `readMergeConfigSafely`'s `try/catch` | treated as E1 |
-| E6 | `gh` binary missing / not authenticated | `ghJson` `catch` → `{ok:false,"command-failed"}` | the observation is `unknown`; §3.2's fail-closed row applies to that surface |
+| E6 | `gh` missing / unauthenticated / non-zero exit | `defaultGhRun` → `{ ok: false }` | that surface is `unknown`; §5.3's row for that surface applies |
 | E7 | `gh` prints non-JSON (a login prompt, a warning banner) | `JSON.parse` throws → `"unparseable"` | as E6 |
-| E8 | `O1.state` unrecognised | `classifyPrState` | row 4, `refused`, **no** escalation |
-| E9 | `O1.mergeable`/`mergeStateStatus`/`number` unrecognised | sentinel + 7c | row 11a, `refused` |
-| E10 | `mergeable: UNKNOWN` persists | retry loop exhausted | row 13, `deferred`, reason interpolates `o1Count` |
-| E11 | Re-read fails mid-retry | `!ok` ends the loop | row 11a, `refused` — never a retry-worthy `UNKNOWN` |
-| E12 | CI rollup unretrievable | `checkPrCi` → `"unknown"` | row 11, `refused`, no escalation |
-| E13 | No checks, `mergeRequiresCi` | §5.4 | row 9, `refused` + escalation |
-| E14 | `prUrl` malformed ⇒ no owner/repo/number | `parsePrRef` → `null` | `O3` and `O5`'s fallback are `unknown`; guard fires (row 5) or 7d refuses, per §4.6 |
-| E15 | `O3` exceeds `MERGE_MAX_THREAD_PAGES` | page counter | `{ok:false}` ⇒ 7d `refused` |
-| E16 | `O5` list truncated / paginated | §4.6 completeness rule | fallback; still incomplete ⇒ guard **fires**, row 5 + escalation |
-| E17 | `O4` unretrievable | `classifyRepoCaps` | row 15, `refused` (AC-2.5a) |
-| E18 | Repository forbids every permitted method | empty chain | row 16, `deferred`, "no permitted merge method" |
-| E19 | `gh pr merge` exits non-zero | `executeMerge` | that attempt fails; chain continues; all failed ⇒ row 17 `deferred` |
-| E20 | `gh pr merge` exits zero but read-back is not `MERGED` | read-back check | treated as E19 — never report a merge not observed |
-| E21 | Remote branch deletion fails | `deleteRemoteBranch` `!ok` | plain note; `mergeStatus` stays `merged` |
-| E22 | Working tree dirty at M3 | `git status --porcelain` non-empty | escalation (row 22); `merged` stands; M4 still runs |
-| E23 | Fetch / checkout / rebase fails at M3 | `!ok` per step; `rebase --abort` on step 5 | as E22, reason names the step |
-| E24 | Merge commit not an ancestor after M3 | `merge-base --is-ancestor` | as E22 |
-| E25 | Default branch name unavailable (row-5 path, `O4` unknown) | §5.5 | as E22, reason "default branch name unavailable" |
-| E26 | No `QUEUE.md` | `rewriteStatus` → `"none"` | write-back skipped without error (AC-5.4); silent |
-| E27 | `QUEUE.md` present, row absent | `"error"` | escalation (row 20); `merged` stands |
-| E28 | Row written, `git` refuses | `"recorded (uncommitted)"` | plain note; **not** an escalation (FSPEC §7.4) |
-| E29 | Row in `pending`/`blocked`/`halted` | §8.4 step 2c | file unchanged, plain note naming the status found |
-| E30 | Anything in `phaseMerge` throws | its outer `try/catch` (§5.2) | `refused`, `row: "internal"`; the pipeline does **not** halt |
-| E31 | Pipeline halts before Phase MERGE | phase never runs | report carries `mergeStatus: "skipped"` (row 23); the §9.4 note is not emitted |
+| E8 | Every observation- or precondition-level failure | §5.3 guards 4, 7–8, 11–20 | see §5.3 — `refused` or `deferred` with the FSPEC §11 row id that guard carries. Notably guard 4 is **§11 row 8** (`refused`, **no** escalation), not row 4 |
+| E9 | `O3` unretrievable — the one condition §11 has no row for | §5.3 guard 17 | `refused`, `row: "7d-unknown"`; erratum E-2 (§15.2) |
+| E10 | Merge attempt fails, or exits zero without a `MERGED` read-back | `executeMerge` | that attempt fails; the chain continues; all failed ⇒ §11 row 17 |
+| E11 | Remote branch deletion fails | `deleteRemoteBranch` `!ok` | plain note; `mergeStatus` stays `merged` (§11 row 19) |
+| E12 | Working tree dirty at M3 | `git status --porcelain` non-empty | escalation (§11 row 22); `merged` stands; M4 still runs |
+| E13 | Fetch / checkout / rebase fails at M3 | `!ok` per step; `rebase --abort` on step 5 | as E12, reason names the step |
+| E14 | Merge commit not an ancestor after M3 | `merge-base --is-ancestor` | as E12 |
+| E15 | Default branch name unavailable (row-3 path, `O4` unknown) | §5.5 | as E12, reason "default branch name unavailable" |
+| E16 | `prNumber` resolvable from neither `prUrl` nor `O1` | §7.5 | write-back skipped, plain note; never `#null` |
+| E17 | No `QUEUE.md` | `rewriteStatus` → `"none"` | write-back skipped without error (AC-5.4); silent; §8.2 notice suppressed |
+| E18 | `QUEUE.md` present, row absent | `"error"` | escalation (§11 row 20); `merged` stands; §8.2 notice suppressed |
+| E19 | Row written, `git` refuses | `"recorded (uncommitted)"` | plain note, **not** an escalation (FSPEC §7.4); §8.2 notice suppressed (§11 row 21) |
+| E20 | Row in `pending`/`blocked`/`halted` | §8.4 step 2c | file unchanged, plain note naming the status found (§11 row 18's exception) |
+| E21 | Anything in `phaseMerge` throws | its outer `try/catch` (§5.2) | `refused`, `row: "internal"`; the pipeline does **not** halt |
+| E22 | Pipeline halts before Phase MERGE | phase never runs | report carries `mergeStatus: "skipped"` (§11 row 23); the §9.4 note is not emitted |
 
-**Two invariants the table encodes.** (1) `mergeStatus: merged` is never downgraded by any post-merge
-failure — E21 through E29 all keep it. (2) Nothing that is only an *observation* failure mutates
-anything: the sole mutating call is E19/E20's, reached only after every precondition passed.
+**Two invariants this table encodes.** (1) `mergeStatus: merged` is never downgraded by any
+post-merge failure — E11 through E20 all keep it. (2) Nothing that is only an *observation* failure
+mutates anything: the sole mutating call is E10's, reached only after every precondition passed.
 
 ## 13. Test strategy
 
