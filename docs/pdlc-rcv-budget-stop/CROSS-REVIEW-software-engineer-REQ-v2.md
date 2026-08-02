@@ -50,4 +50,23 @@ All four are in text **added at v2.7**. None re-litigates an unchanged section.
 
 ## Recommendation
 
+**Needs revision**
+
+Blocking count **5 → 3**, and every v1 finding is closed; all three blockers are defects **introduced by this revision**, not survivors. That is convergence, not a plateau — but per §9's own stopping rule I state the distinction explicitly and pre-commit: if the next round does not close these three, that is a fixed point and I will say so rather than open a fourth round.
+
+Why the stopping rule does not discharge this round: it applies when a round's blocking findings are *all* implementability or oracle-falsifiability defects, none contesting user need, scope, priority or phasing. F-01 and F-03 are neither — they are two of this REQ's own acceptance criteria disagreeing about an **operator-visible** outcome (which number the operator reads after a re-halt; which window a clearance actually opens). Neither is closable by deferring an oracle, because there is no single behaviour for a downstream document to build an oracle *for*. F-02 contests the scope of a criterion's quantifier.
+
+What must change, in priority order:
+
+1. **F-01** — decide, in AC-1.3 or AC-1.4, what the Iterations section says after a re-halt, and delete O-14's licence for FSPEC to *"amend the clause"*. A REQ obligation may defer a mechanism; it may not authorise the downstream document to overrule an AC.
+2. **F-03** — reconcile the answering line's `N` with §4.1's *greatest value present* over the descending sequence AC-1.5(2)'s new clause makes reachable, so a fresh clearance opens a fresh window rather than re-opening the spent one and leaving a region `REQ-RCV-07` AC-7.1 will refuse.
+3. **F-02** — either scope AC-1.2's quantifier to executable declarations and give O-13 the documentation half, or say what a document may write instead of the number. `CLAUDE.md:78` is the live counter-example.
+
+F-04 is a one-row correction to §8 and is not individually blocking.
+
+Nothing in §7's NB-* rows covers any of the three: F-01 and F-03 are this REQ's own window accounting, not `REQ-RCV-07`'s validation procedure (NB-3), not the fixed-point tests (NB-1), and not the panel (NB-2).
+
 ## Verdict
+
+VERDICT: Needs revision
+
