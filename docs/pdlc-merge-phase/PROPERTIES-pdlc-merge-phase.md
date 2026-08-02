@@ -155,13 +155,17 @@ step bound, for every configuration.**
 
 **PROP-M-06 — Guard dominance. A changed-file list matching a guard path yields `refused` at row 4 regardless of every
 other input, configuration included.**
-- **Domain:** `passingGh` with `O5` overridden to a list containing one guard-matching path, crossed with `mergeMode ∈
-  {gated, on}` × `mergeRequiresCi ∈ {T, F}` × `ci ∈ 5` × `o3 ∈ {0, 3 unresolved, unretrievable}` × `caps ∈
-  {rebase-only, merge-only, none}` × `guardPaths ∈ {absent, [], ["!pdlc/workflows/"], ["extra/"], 42,
-  "not-an-array"}`.
+- **Domain:** `passingGh` with `O5` overridden to a list containing one guard-matching path, **crossed** (every axis,
+  not one-at-a-time) over `mergeMode ∈ {gated, on}` × `mergeRequiresCi ∈ {T, F}` × `ci ∈ 5` × `o3 ∈ {0, 3 unresolved,
+  unretrievable}` × `caps ∈ {rebase-only, merge-only, none}` × `guardPaths ∈ {absent, [], ["!pdlc/workflows/"],
+  ["extra/"], 42, "not-an-array"}` = **1 080** phase runs, which is the number the suite asserts (SE F-05; v1.0 said
+  360 and was simply wrong).
 - **Oracle:** every case reports `mergeStatus: "refused"`, `row: 4`, **zero** `/^gh pr merge/` commands in
-  `fakeGhRun`'s record, and exactly one notice equal to `MERGE ESCALATION: self-modification guard fired for {prUrl} —
-  matched paths: {paths}`, naming every matched path in observed order.
+  `fakeGhRun`'s record, and **exactly one line beginning `MERGE ESCALATION: `**, equal to `MERGE ESCALATION:
+  self-modification guard fired for {prUrl} — matched paths: {paths}` with every matched path in observed order —
+  **plus** FSPEC §9.4's plain merge-deferred note, which every `refused` run emits, and nothing else. Counting
+  escalations rather than notices is the fix for PM F-04; asserting the §9.4 note here makes its presence on the guard
+  path a fact rather than an accident.
 - **Scoping, so the property is true rather than nearly true:** dominance is over every guard *below* it. The five
   conditions resolving above it — rows 1, 2, 6, 8 and 3 — are excluded from the domain **and asserted as a five-case
   control block** showing each preempts the guard, so the exclusion is evidenced, not assumed.
