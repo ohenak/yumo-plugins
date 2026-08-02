@@ -75,6 +75,38 @@ opened no ground in sections I approved earlier, per my v3 pre-commitment.
 
 ## Positive Observations
 
+- **B-HALT-4a turns a fixture-dependent oracle into a total one, which is the rarer kind of fix.**
+  At v1.2 AT-REG-06 asserted the *region span* was byte-unchanged, and whether that held for a file
+  that was undecodable-but-writable depended on which realisation of *unreadable* the fixture chose.
+  v1.3 removes the dependence at the source — clause 3 attempts no write on either realisation — so
+  the assertion strengthens to **whole-file** byte equality and holds for both. Strengthening an
+  oracle by removing a branch, rather than by enumerating the branch's cases in the test, is the
+  cheaper direction and the one that stays true when PROPERTIES picks fixtures I cannot see.
+- **§5.3's *one behavioural class, deliberately* paragraph states the discrimination criterion, not
+  just the conclusion.** *"They differ only in what a write would have done. Because clause 3 attempts
+  no write on either, both take the same path with the same observable, so this flow specifies one
+  class"* — that is a derivation from the observable, and it also tells PROPERTIES what a two-fixture
+  realisation would *mean* (evidence for the no-write rule, not two branches). A spec that says which
+  distinctions are behavioural and why is one a TSPEC author can extend without asking.
+- **The F-08 closure kept the argument, not only the conclusion.** The easy version of that fix is one
+  sentence declaring the false-negative out of scope. What landed also carries why presence is
+  nonetheless the strongest available predicate (*"a content read cannot distinguish absent from
+  unreadable, which is what disqualified both the region read and the shipped status"*), so a later
+  reader who wants to re-open the discriminator choice has to defeat the argument rather than
+  rediscover it.
+- **§5.4's prefix conjunct is dated as well as stated.** *"Latent at this ship — no path emits S-11
+  … binding once `pdlc-rcv-fixed-point-stop` makes B-CLR-2 reachable"* is the half of my F-06 I was
+  least confident would survive the edit, and it is what stops a future reader deleting the conjunct
+  as redundant when every constructible member still lands on B-CLR-1.
+- **AT-CLR-04 now shows its arithmetic instead of asserting realisability.** `D = 3 ≤ E = 3`,
+  `A = H = 1`, and the explicit note that `forcePhases` does not take B-WIN-6's zero-round halt here
+  because `D ≤ E` — three checks a reviewer can redo in a minute, which is why F-09 is a citation
+  defect rather than a correctness one.
+- **Both AT-CLR-02 changes are subtractive.** A vacuous conjunct dropped with its obligation re-homed
+  to two rows that genuinely carry it, and a rationale left in the cell explaining why. Removing a
+  test assertion is the change most likely to lose coverage silently; doing it with the re-homing
+  named in the same sentence is how it stays reviewable.
+
 ## Recommendation
 
 ## Verdict
