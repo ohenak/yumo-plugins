@@ -110,10 +110,9 @@ short-circuit AC-1.6 already fixes, and it would report a CI failure on a PR nob
 No safety is lost: the failure of *any* precondition means no merge, and that is invariant under the
 ordering.
 
-**Evaluation is short-circuit within row 5 as well.** Once a precondition fails, later ones are not
-observed. NFR-2's "no state-mutating call is issued before every precondition has been evaluated" is
-satisfied because the merge attempt (row 6) is the only state-mutating call and it is reached only
-when every precondition has resolved *pass* — NFR-2 constrains mutation, not observation.
+**Evaluation short-circuits within row 5 too:** once a precondition fails, later ones are not
+observed. NFR-2 is satisfied because the merge attempt (row 6) is the only state-mutating call and is
+reached only when every precondition resolved *pass* — NFR-2 constrains mutation, not observation.
 
 ### 2.4 Enable/skip resolution
 
@@ -142,9 +141,9 @@ independently substitutable, so a test can drive the phase with a constructed an
 while leaving the others alone; that is what makes §11's table testable without a live repository.
 
 Every observation runs through the runtime's existing mechanical transport (the shipped runtime
-reaches `gh` and `git` through IO agents). NFR-1/NFR-4 hold because the transport carries **raw
-output only** and every decision below is taken by parsing that output against the stated value sets —
-no agent is asked to judge, summarise, or decide, and no new reasoning dispatch is added.
+reaches `gh` and `git` through IO agents). NFR-1/NFR-4 hold because that transport carries **raw
+output only**: every decision below is taken by parsing it against the stated value sets, no agent is
+asked to judge or summarise anything, and no new reasoning dispatch is added.
 
 | ID | Surface | Command | Fields consumed |
 |---|---|---|---|
@@ -178,10 +177,9 @@ the only rule; no surface has a permissive variant.
 | `O5` | a list of repo-relative path strings | the list parses and is complete | `refused` (AC-3.4 — the guard fires) |
 | `O6` | see §6 | see §6 | the attempt counts as failed (§6.3) |
 
-Two notes the TSPEC must carry: a `mergeable` of literal `UNKNOWN` is a *recognised* value, so §3.3
-handles it and it must not be swallowed by the general rule; and `O5` returning an empty list is a
-**valid** observation (a PR with no changed files) that passes the guard, distinct from an
-unretrievable list.
+Two notes the TSPEC must carry: a literal `mergeable: UNKNOWN` is a *recognised* value handled by
+§3.3 and must not be swallowed by the general rule; and `O5` returning an empty list is a **valid**
+observation (a PR with no changed files) that passes the guard, distinct from an unretrievable one.
 
 ### 3.3 Bounded re-read of `mergeable: UNKNOWN` (AC-1.2a)
 
@@ -271,9 +269,8 @@ Every matched path appears, so the operator's review has its scope delimited bef
 An escalation never implies a halt: outcome stays `success` (AC-1.3).
 
 **Consequence accepted in this repo (AC-3.7, BL-04).** Every PR this repo's own queue raises touches
-`pdlc/workflows/` or `pdlc/skills/`, so Phase MERGE here is expected to report `refused`
-permanently. The `merged` path is evidenced through tests that drive the observation points
-directly, not through a live merge here.
+`pdlc/workflows/` or `pdlc/skills/`, so Phase MERGE here is expected to report `refused` permanently;
+the `merged` path is evidenced through tests that drive the observation points directly.
 
 ## 5. FSPEC-MERGE-04 — CI evidence rule
 
@@ -298,14 +295,9 @@ acceptable: a repository with no CI is a supported configuration, a repository w
 Phase PUB legitimately treats `no-checks` as a pass for *raising* a PR; that is not a pass for
 *merging* one.
 
-The `no-checks` refusal escalates (AC-4.2):
-
-```
-MERGE ESCALATION: CI evidence absent for {prUrl} — no checks reported and mergeRequiresCi is true
-```
-
-`pending`, `failed` and `unknown` are reported as `refused` with a reason line (§9.2) and do not
-escalate — they are ordinary, self-explanatory states an operator can read off the PR.
+The `no-checks` refusal escalates (AC-4.2, line in §9.3). `pending`, `failed` and `unknown` are
+reported as `refused` with a reason line (§9.2) and do not escalate — they are ordinary,
+self-explanatory states an operator can read off the PR.
 
 ## 6. FSPEC-MERGE-05 — Merge execution and method policy
 
@@ -360,16 +352,14 @@ events; only the former happens here.
 | `deleteBranchOnPdlcMerge: true` (default) | the **remote** feature branch is deleted after the merge is confirmed |
 | `deleteBranchOnPdlcMerge: false` | the phase deletes nothing; GitHub's own repository setting `deleteBranchOnMerge` may still act, and that is not this phase's concern |
 
-The **local** branch is left alone in both cases — §8 needs a tree that can still be reasoned about,
-and deleting the branch the working tree may be standing on is a foot-gun for zero benefit.
+The **local** branch is left alone in both cases — deleting the branch the working tree may be
+standing on is a foot-gun for zero benefit. A deletion failure does **not** downgrade the outcome:
+`mergeStatus` stays `merged` and the failure is reported as a plain note, never a
+`MERGE ESCALATION: ` line. The merge is the outcome that matters; a leftover branch is harmless.
 
-A deletion failure does **not** downgrade the outcome: `mergeStatus` stays `merged` and the failure
-is reported as a plain note, not an escalation and not a `MERGE ESCALATION: ` line. The merge is the
-outcome that matters; a leftover branch is harmless.
-
-Naming: `deleteBranchOnPdlcMerge` is pdlc's own setting, named to avoid collision with GitHub's
-repository setting `deleteBranchOnMerge`, which `O4` reads only so the phase can report it, never so
-it can act on it.
+`deleteBranchOnPdlcMerge` is pdlc's own setting, named to avoid collision with GitHub's repository
+setting `deleteBranchOnMerge`, which `O4` reads only so the phase can report it, never so it can act
+on it.
 
 ## 7. FSPEC-MERGE-06 — Queue write-back
 
@@ -471,12 +461,11 @@ reported row disposition accordingly. `RLH-AT-32-orch` pins it positively: a suc
 recorded statuses must not contain `done`. AC-5.6 requires precisely that write.
 
 The disposition is recorded here so it is a decision, not a red test resolved by deleting an
-assertion: **AC-5.6 supersedes AC-2.7a for the `merged` case only.** The halt path is unchanged, and
-a successful run that did *not* merge still writes no status and still reports the queue-less
-disposition. `RLH-AT-32-orch` is **re-expressed, not removed**: its assertion becomes "a successful
-direct run that did not merge records no status", and a sibling case asserts the new fact — "a
-successful direct run reporting `mergeStatus: merged` records `done`". Deleting the assertion would
-lose the invariant that still holds on the majority path.
+assertion: **AC-5.6 supersedes AC-2.7a for the `merged` case only.** The halt path is unchanged, and a
+successful run that did *not* merge still writes no status. `RLH-AT-32-orch` is **re-expressed, not
+removed**: its assertion becomes "a successful direct run that did not merge records no status", with
+a sibling case for the new fact — "a successful direct run reporting `mergeStatus: merged` records
+`done`". Deleting it would lose an invariant that still holds on the majority path.
 
 ## 8. FSPEC-MERGE-07 — Post-merge working tree and branch handling
 
@@ -512,14 +501,9 @@ so it contains the merge. The step is complete when the tree is on the default b
 commit is an ancestor of `HEAD`.
 
 If any part cannot be completed — a dirty tree, a non-fast-forward, a fetch failure — the step
-escalates and `mergeStatus` **remains `merged`**. The merge is real; re-reporting it as anything else
-would be false.
-
-```
-MERGE ESCALATION: working tree not updated after merging {prUrl} — {reason}; tree is on {branch}
-```
-
-The local feature branch is not deleted (§6.4), so the operator can inspect it after the escalation.
+escalates (§9.3) and `mergeStatus` **remains `merged`**. The merge is real; re-reporting it as
+anything else would be false. The local feature branch is not deleted (§6.4), so the operator can
+inspect it after the escalation.
 
 ## 9. FSPEC-MERGE-08 — Reporting contract
 
