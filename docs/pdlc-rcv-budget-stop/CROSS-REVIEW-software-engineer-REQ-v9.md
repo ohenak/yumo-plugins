@@ -71,7 +71,38 @@ the conjunct it was meant to defer, and what it sweeps up is decidable at this R
 
 ## 4. Questions
 
+| ID | Question |
+|---|---|
+| Q-01 | Headroom under the size soft threshold is now **58 bytes** (455 lines / 55,238 against 630 / 55,296). F-01's fix costs roughly 400–500 bytes and F-02's and F-03's another 300–400, so the next revision crosses it unless something relocates first. §4.1's durability table and §6's threshold rows are still the two candidates I named at v8, and `pdlc-rcv-baseline.md` is their natural home. Is the intent to relocate **before** writing the fixes? This is sequencing, not a finding — but it is now the third round in a row where the answer decides whether the hook warns. |
+| Q-02 | F-01 asks for §6's S-13/S-14 grammar to be declared **in force at this ship** while the consistency checks are deferred. That splits the *region validates* predicate into a grammar layer this REQ owns and an analysis layer `REQ-RCV-07` owns. Is that split worth naming explicitly in X-06 — *"the predicate's **grammar** layer is §6's and ships here; its **analysis** layer is AC-7.1's and ships at row 18"* — so `REQ-RCV-07`'s AC-7.1 step 2 knows it is re-checking rather than first-checking? If yes it is a paired edge and belongs at both ends per `pdlc-rcv-split.md` §5. |
+| Q-03 | Carried, `REQ-RCV-07`'s: is `W` guaranteed absent from every operator- and downstream-visible surface on a refusing entry? Recorded so the trail is unbroken for harvest; **not** a finding against this document. |
+
 ## 5. Positive Observations
+
+- **Q-01 was answered with a falsifier instead of an adjective, and that is the round's best move.**
+  I asked whether the document should *say* the seam is structural only. v2.3 instead made it
+  **checkable**: the interim composition calls the seam *exactly 0 times*, asserted on the production
+  path, *"which falsifies an accidental early wiring and inverts cleanly at row 18"*. A claim that
+  can go red is worth more than a claim that reads well, and this one closes v8 F-03's DoD hazard
+  from the other side — NB-3 tells the verifier the finding is known, O-10 tells the suite what to do
+  if someone acts on it anyway.
+- **Handing the non-validating legs wholly to `REQ-RCV-07` is the right cut, for a reason I had not
+  articulated.** O-10: *"driving an unconsulted seam here would assert over a call graph this REQ's
+  entrypoint never traverses, and would keep passing if the seam were deleted."* That is the precise
+  objection to a test that injects a value nothing reads — it is not merely redundant, it is
+  **unfalsifiable**, and an unfalsifiable leg in a PROPERTIES doc is worse than an absent one because
+  it looks like coverage. The sibling's O-10 picked them up in full and says so.
+- **The relocation to `pdlc-rcv-split.md` §5.1/§6 is a real de-duplication, not an archive move.**
+  Both ends of the paired edge now cite one copy of the interim-procedure argument rather than
+  carrying two paraphrases that can drift — which is exactly the failure this feature already had
+  twice. §5.1 even records *why* it was relocated and asserts that nothing changed meaning in the
+  move, which is the provenance line that makes the next reader trust it. §6 did the same for the
+  catalogue delegation, and I checked every clause survived.
+- **v8's F-01 fix went in at the surface where the misreading starts, not where the argument lives.**
+  The new AC-1.5(4) paragraph names §4.1's two rows as restatements of itself, so the three surfaces
+  (criterion, derivation table, forward edge) now point at each other in all directions rather than
+  one way outward. F-01 above is a defect *in* that fix, not a rejection of it — the shape is right,
+  the scope of one word is too wide.
 
 ## 6. Recommendation
 
