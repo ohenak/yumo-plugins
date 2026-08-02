@@ -130,8 +130,8 @@ in-process-only row would be a defect; there is no such row.**
 |---|---|---|---|
 | Round index N | AC-1 | The `CROSS-REVIEW-{role}-{doc}-v{N}.md` basenames on the branch, via `deriveRoundWindow` (M-1d) | n/a — the listing is always readable |
 | Highest round reached for a document | AC-1.5 | Same basenames | Treated as 0; the window opens at round 1 |
-| **First round of the current window** `W` | AC-1.1, AC-1.5(4); `pdlc-rcv-fixed-point-stop` AC-2.1 and AC-2.8 | The `WINDOW-START: {N}` lines in the **reset region** — the **greatest** value present, and only if the region **validates** (AC-1.5(4)). Lines are appended, so document order is event order | Treated as **1** — no reset in effect, AC-1.1's cap applies from round 1. Fail-closed: no absent or invalid value ever widens the window. **Survives a second halt**, since AC-1.4 preserves the region |
-| **Whether a clearance is still unanswered** (the reset is one-shot) | AC-1.5(4), AC-1.5(5) | The **counts**, in that region, of `H` = `HALT-REASON:` lines and `A` = `WINDOW-START:` **plus** `WINDOW-RESUMED:` lines. A clearance is unconsumed exactly when a `RESOLVED: yes` is readable, `A < H`, **and the region validates** | `A = H` ⇒ every halt answered; nothing written, nothing granted. A region that does not validate ⇒ the refusal AC-1.5(4) fixes, which moves neither count |
+| **First round of the current window** `W` | AC-1.1, AC-1.5(4); `pdlc-rcv-fixed-point-stop` AC-2.1 and AC-2.8 | The `WINDOW-START: {N}` lines in the **reset region** — the **greatest** value present, and only if the region **validates** (AC-1.5(4)). Lines are appended, so document order is event order | Treated as **1** — no reset in effect, AC-1.1's cap applies from round 1. Fail-closed: no absent or invalid value ever widens the window — **the validation guard is unwired until `REQ-RCV-07` (X-06)**, so the *invalid* half is target state. **Survives a second halt**, since AC-1.4 preserves the region |
+| **Whether a clearance is still unanswered** (the reset is one-shot) | AC-1.5(4), AC-1.5(5) | The **counts**, in that region, of `H` = `HALT-REASON:` lines and `A` = `WINDOW-START:` **plus** `WINDOW-RESUMED:` lines. A clearance is unconsumed exactly when a `RESOLVED: yes` is readable, `A < H`, **and the region validates** | `A = H` ⇒ every halt answered; nothing written, nothing granted. A region that does not validate ⇒ the refusal AC-1.5(4) fixes, which moves neither count — **target state; that conjunct is unwired until `REQ-RCV-07` (X-06)** |
 | **That the post-mortem is readable at all** | AC-1.4, AC-1.5(4) | The file itself | An **unreadable-but-present** post-mortem is read by `checkPostmortem` as `status: "none"` (M-7a) ⇒ no halt in force **and** an empty region ⇒ `H = A = 0`, `W = 1` — the narrowest window, no clearance honoured, nothing written. |
 | **Whether the operator has cleared the current halt** | AC-1.4's re-entry gate (shipped), AC-1.5(4) | The **single** `RESOLVED:` line, read by `parseResolvedMarker` and mapped by `checkPostmortem` (M-7a) | absent, `no`, unparseable **or duplicated** ⇒ the phase is refused — the shipped fail-closed gate, unchanged. AC-1.4 keeps it exact by having each halt **strip** any prior `RESOLVED:` line |
 | **Which halt a POSTMORTEM records** | AC-1.5(4), AC-1.5(5) | The **last** `HALT-REASON: {string}` line in the region (S-15) — one per halt, appended, so document order is halt order | Read as a convergence halt (S-3/S-4) — fail-closed, so an unreadable reason never converts a consuming reset into a free one |
@@ -303,6 +303,12 @@ state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-)entered. *Then
      (M-7a, M-7b) with the feature's queue row written `halted`. The refusal's semantics, its
      operator-facing strings and the sanctioned repair per reason are `REQ-RCV-07` AC-7.2, AC-7.4 and
      §6; the report row it produces is that REQ's AC-7.6 (row B).
+
+   **This conjunct's wiring waits for its decision procedure** (X-06): at this REQ's ship the gate
+   evaluates its **first two conjuncts only**, so the dispositions above — and §4.1's two rows that
+   restate them — are the **target state**, reachable at `REQ-RCV-07`'s commit, not behaviour this
+   REQ's own delivery exhibits. The predicate's meaning and disposition are fixed here so that commit
+   adds no requirement; O-10's interim legs are what this REQ's PROPERTIES derive from.
 
    **Validation is a conjunct of the gate, not merely a constraint on `W`** — that is this REQ's
    claim, and the reason is arithmetic. Were it only a constraint on `W`, two `HALT-REASON:` lines and
