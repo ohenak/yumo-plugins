@@ -261,10 +261,12 @@ cell is preserved.**
 
 **PROP-M-16 — `merged` is never downgraded. No post-merge failure, in any combination, changes `mergeStatus`.**
 - **Domain / oracle:** the full power set of §11's four composable annotations (M2 deletion failure, M3 tree failure,
-  M4 `error`, M4 `recorded (uncommitted)`) over both row 18 and row 3. All 32 runs report `mergeStatus: "merged"` with
+  M4 `error`, M4 `recorded (uncommitted)`) over both row 18 and row 3 — 32 runs — **plus two §2.5 non-overwrite
+  overlays** (row 18 and row 3 against a queue row reading `blocked`), which are §11 row 18's stated exception and the
+  only runs that produce the non-overwrite note (SE F-04). **34** in total. All 34 report `mergeStatus: "merged"` with
   the SHA present, pipeline `outcome: "success"`, and exactly the escalation/note lines the applied subset predicts in
-  §9.3's order. The empty subset asserts **no** notice beginning `MERGE ESCALATION: `; the all-four subset is AT-M6,
-  asserting all lines in order.
+  §9.3's order; the two overlays additionally assert the queue file byte-unchanged with a note naming the status found.
+  The empty subset asserts **no** notice beginning `MERGE ESCALATION: `; the all-four subset is AT-M6, in order.
 
 **PROP-M-17 — Report totality. Every pipeline path reports a `mergeStatus` from the closed set, and every non-`merged`
 value carries a one-line reason.**
@@ -280,19 +282,29 @@ value carries a one-line reason.**
 command.**
 - **Domain:** every §11 row, plus 200 seeded `passingGh` perturbations each overriding one surface with a drawn
   recognised-or-degraded value — the domain where a mis-ordered guard shows up as an unexpected merge.
-- **Oracle:** every non-`merged` run recorded **zero** `/^gh pr merge/` commands, **zero** `push` / `checkout` /
-  `rebase` / `merge` git verbs, and **no** `_recordQueueRow` call. Every `merged` run recorded **≥ 1 and ≤ 3** merge
-  commands and **exactly one** `_recordQueueRow` call — a behavioural call-count oracle, because one merge and two
-  merges produce the same envelope.
+- **Oracle, split by resolving row (PM F-02 — v1.0's single ≥ 1 conjunct contradicted FSPEC §2.5 on row 3):**
+  **row 18** recorded **≥ 1 and ≤ 3** `/^gh pr merge/` commands; **row 3** recorded **exactly zero** — the
+  already-merged path attempts no merge and evaluates no guard, and asserting that positively is what pins NFR-5's
+  idempotence; **every non-`merged` row** recorded zero merge commands, zero `push` / `checkout` / `rebase` / `merge`
+  git verbs and **no** `_recordQueueRow` call. Both merged rows recorded **exactly one** `_recordQueueRow` call — the
+  conjunct carrying AC-5.2's recovery, and a behavioural call-count because one merge and two produce one envelope.
 
 **PROP-M-19 — Notice-catalogue closure. Every operator-visible line the phase emits is a member of a frozen catalogue,
 and every escalation carries the exact prefix.**
-- **Domain / oracle:** every line pushed onto `notices` across PROP-M-16's and PROP-M-17's runs either starts with
-  `MERGE ESCALATION: ` and equals a `MERGE_ESCALATIONS` template rendered with the run's own parameters, or equals a
-  `MERGE_NOTES` template — exact-string comparison, never substring sniffing. Cardinality positive:
-  `MERGE_ESCALATIONS` has **4** members and `MERGE_NOTES` **7** (TSPEC §10.2), both `Object.isFrozen`, and the
-  observed union covers **every** member at least once, so a catalogue member no run can produce is a failure rather
-  than dead weight.
+- **Domain (SE F-04, PM F-05 — v1.0's domain could not produce three of the seven notes):** PROP-M-16's **34** runs +
+  PROP-M-17's **29** + **two named extra fixtures** — a config whose `merge` section is present but not an object
+  (§10.3's malformed-section note) and a merged run whose `prUrl` neither `parsePrRef` nor `O1.number` resolves
+  (§7.5's missing-`prNumber` note) — = **65**. The third missing member, the §2.5 non-overwrite note, now arrives with
+  PROP-M-16's two overlays.
+- **Oracle:** every line pushed onto `notices` either starts with `MERGE ESCALATION: ` and equals a
+  `MERGE_ESCALATIONS` template rendered with the run's own parameters, or equals a `MERGE_NOTES` template — exact
+  strings, never substring sniffing. Cardinality positive: **4** escalations and **7** notes (TSPEC §10.2), both
+  `Object.isFrozen`, and the observed union covers **every** member at least once.
+- **Catalogue naming, reconciled rather than assumed:** TSPEC §10.2 names both frozen objects (`MERGE_ESCALATIONS`,
+  `MERGE_NOTES`) while §7.1's snippet writes the ahead-of-remote note as a standalone `AHEAD_OF_REMOTE_NOTE(…)`. This
+  property reads §10.2's catalogues and treats that note as a member reached through `MERGE_NOTES`; **task A7 owns
+  making the two sites agree** — one symbol, not two. §4.1's `reason` catalogue is a different, non-operator-facing
+  set and is out of this closure.
 
 **PROP-M-20 — Phase MERGE never throws. For any fault at any single injected call site, the phase returns a
 well-formed `MergeOutcome` and the pipeline does not halt.**
