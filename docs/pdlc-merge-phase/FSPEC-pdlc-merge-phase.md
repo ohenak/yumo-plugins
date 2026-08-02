@@ -9,7 +9,7 @@
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.1 | 2026-08-02 |
+| pdlc | draft | Claude | 1.2 | 2026-08-02 |
 
 ## 1. Scope and entry obligations
 
@@ -90,14 +90,16 @@ configuration file is read, so a disabled phase cannot fail on a malformed confi
 ### 2.3 Order within row 7 (N-02, Q-01)
 
 Row 7's preconditions are evaluated in **the AC-1.2 table's own top-to-bottom order**, and the
-**first** failure in that order is the one reported. `prUrl` presence and `O1`'s parseability are
-*not* here — they are rows 3 and 4, above the guard.
+**first** failure in that order is the one reported. `prUrl` presence and `O1.state`'s parseability
+are *not* here — they are rows 3 and 4, above the guard. Row 4's trigger is scoped to `state` alone,
+so the parseability of `O1`'s **other** fields is decided here, at the precondition that consumes
+them (7c), never silently.
 
 | Order | Precondition | Observation | Failure resolves to |
 |---|---|---|---|
 | 7a | PR open | row 4's `O1.state` (re-used, not re-read) | `deferred` — "PR is CLOSED" |
 | 7b | CI evidence | `O2` (§5) | `refused` |
-| 7c | Mergeable | row 4's `O1` + bounded re-read (§3.3) | `deferred` |
+| 7c | Mergeable | row 4's `O1.mergeable` / `mergeStateStatus` + bounded re-read (§3.3) | `refused` when either field is unretrievable or holds a value outside §3.2's recognised set; `deferred` when both parse and the values are simply not mergeable — `CONFLICTING`, `DIRTY`, `BLOCKED`, or `UNKNOWN` surviving §3.3's re-reads |
 | 7d | No unresolved review threads | `O3` | `deferred` — "N unresolved review thread(s)" |
 | 7e | Merge-method capability retrievable | `O4` | `refused` on unretrievable/unparseable (AC-2.5a); `deferred` when retrieved and no permitted method remains (AC-2.5b) |
 
@@ -152,7 +154,7 @@ stated value sets, no agent judges or summarises anything, and no reasoning disp
 | `O1` | PR state | `gh pr view {prUrl} --json state,mergeable,mergeStateStatus,number,mergeCommit` | `state`, `mergeable`, `mergeStateStatus`, `number`, `mergeCommit.oid` |
 | `O2` | CI rollup | `gh pr view {prUrl} --json statusCheckRollup` | `statusCheckRollup` |
 | `O3` | Review threads | `gh api graphql` query returning each review thread's `isResolved` for the PR | `isResolved` per thread |
-| `O4` | Repo merge capabilities | `gh repo view --json rebaseMergeAllowed,mergeCommitAllowed,squashMergeAllowed,deleteBranchOnMerge` | the four booleans |
+| `O4` | Repo merge capabilities and default branch | `gh repo view --json rebaseMergeAllowed,mergeCommitAllowed,squashMergeAllowed,deleteBranchOnMerge,defaultBranchRef` | the four booleans, and `defaultBranchRef.name` — the **only** source of the default branch name §8 fetches, checks out and interpolates into its report line |
 | `O5` | Changed files | `gh pr view {prUrl} --json files` (`files[].path`), falling back to `gh api repos/{owner}/{repo}/pulls/{number}/files` when the list is paginated or the field is absent | `files[].path` (and `previous_filename` where the API supplies it) |
 | `O6` | Merge execution | `gh pr merge {prUrl} --rebase` / `gh pr merge {prUrl} --merge`, plus `gh pr view {prUrl} --json mergeCommit,state` to read back the result | `mergeCommit.oid`, `state` |
 
@@ -175,11 +177,12 @@ surface has a permissive variant.
 | ID | Recognised values | Passes when | `unknown` resolves to |
 |---|---|---|---|
 | `O1` `state` | `OPEN`, `CLOSED`, `MERGED` | `OPEN` (`MERGED` resolves at §2.2 row 5) | `refused` at §2.2 row 4 (AC-1.2b) |
-| `O1` `mergeable` | `MERGEABLE`, `CONFLICTING`, `UNKNOWN` | `MERGEABLE` | `refused` — except the literal `UNKNOWN`, which is a recognised value handled by §3.3 |
-| `O1` `mergeStateStatus` | `CLEAN`, `UNSTABLE`, `BEHIND`, `BLOCKED`, `DIRTY`, `DRAFT`, `HAS_HOOKS`, `UNKNOWN` | any value other than `DIRTY` and `BLOCKED` | `refused` |
+| `O1` `mergeable` | `MERGEABLE`, `CONFLICTING`, `UNKNOWN` | `MERGEABLE` | `refused` at §2.3 **7c** — except the literal `UNKNOWN`, which is a recognised value handled by §3.3 |
+| `O1` `mergeStateStatus` | `CLEAN`, `UNSTABLE`, `BEHIND`, `BLOCKED`, `DIRTY`, `DRAFT`, `HAS_HOOKS`, `UNKNOWN` | any value other than `DIRTY` and `BLOCKED` | `refused` at §2.3 **7c** |
+| `O1` `number` | a positive integer | it parses | `refused` at §2.3 **7c**, with `mergeable`'s — an unusable PR number would be written into the Evidence cell and into three §9.3 escalation lines |
 | `O2` | `passed`, `pending`, `failed`, `none`, `unknown` | per §5 | `refused` |
 | `O3` | a list of booleans | every thread `isResolved: true`, or the list is empty | `refused` |
-| `O4` | four booleans | all four parse as booleans | `refused` (AC-2.5a — never assume a method is permitted) |
+| `O4` | four booleans + a non-empty `defaultBranchRef.name` | all four parse as booleans and the name is present | `refused` (AC-2.5a — never assume a method is permitted, and never guess a branch name to check out) |
 | `O5` | a list of repo-relative path strings | the list parses and is complete | `refused` (AC-3.4 — the guard fires) |
 | `O6` | see §6 | see §6 | the attempt counts as failed (§6.3) |
 
@@ -526,7 +529,8 @@ feature's PR.`
 
 ### 8.3 The update, and its failure
 
-M3 is: fetch the remote default branch, check it out, and bring it to a state containing the merge.
+M3 is: fetch the remote default branch — named by `O4`'s `defaultBranchRef.name`, the same value
+§8.2's report line interpolates — check it out, and bring it to a state containing the merge.
 
 - If the local default branch can fast-forward to the fetched tip, it does — the ordinary case on a
   fresh clone and on the first merged feature.
@@ -551,8 +555,8 @@ never deleted (§6.4), so it is still there to inspect.
 
 ### 9.1 Report fields
 
-The pipeline's final report gains three fields, present on **every** report — halt reports included,
-where they describe a phase that never ran:
+The pipeline's final report gains three **new** fields, present on **every** report — halt reports
+included, where they describe a phase that never ran:
 
 | Field | Value |
 |---|---|
@@ -562,6 +566,12 @@ where they describe a phase that never ran:
 
 A run that halts before Phase MERGE reports `mergeStatus: skipped` — "no merge was considered". That
 is §11 row 23, the one row of that table whose pipeline outcome is `halted`.
+
+A **fourth**, existing field also changes. The report already carries `queueRow`, hardcoded to the
+queue-less value on the success path because a successful run wrote no status — the very criterion
+§7.5 supersedes. On a run reporting `mergeStatus: merged`, `queueRow` carries the §7.4 disposition
+that run produced (`recorded`, `recorded (uncommitted)`, `none` or `error`); every other run's
+`queueRow` is unchanged. Stated here so the site is a reviewed change, not a discovered one.
 
 `prUrl` and `ciStatus` continue to carry Phase PUB's results and are unchanged. `ciStatus` is Phase
 PUB's snapshot; the merge-time CI evidence is not re-reported as `ciStatus` (§5).
@@ -684,7 +694,7 @@ REQ AC-6.1a's condition table, refined to spec level and naming per row the reso
 reason line's subject, whether the queue is written and whether an escalation is emitted. It is the
 parameterised suite the TSPEC and tests pin.
 
-**Exclusivity, stated precisely.** Rows 1–18 are **terminal**: exactly one of them applies to any run
+**Exclusivity, stated precisely.** Rows 1–18, 11a included, are **terminal**: exactly one applies to any run
 that reaches the phase, and no two can apply together. Rows 19–22 are **composable post-merge
 annotations** over §11 row 18 (or row 3): each is independently present or absent, any subset can
 hold at once, all of them report `merged`, and their notices accumulate in §9.3's order. Row 23 is
@@ -703,13 +713,14 @@ the one run that never reaches the phase. Every row's pipeline outcome is `succe
 | 9 | CI `no-checks` and `mergeRequiresCi` true | §5 | `refused` | no | **yes** |
 | 10 | CI `pending` or `failed` | §5 | `refused` | no | no |
 | 11 | CI rollup unretrievable/unparseable | §5 | `refused` | no | no |
+| 11a | `O1`'s `mergeable`, `mergeStateStatus` or `number` unparseable/unrecognised | §2.3 7c | `refused` | no | no |
 | 12 | `mergeable` `CONFLICTING`, or `mergeStateStatus` `DIRTY`/`BLOCKED` | §2.3 7c | `deferred` | no | no |
 | 13 | `mergeable` still `UNKNOWN` after the bounded re-reads | §3.3 | `deferred` | no | no |
 | 14 | One or more unresolved review threads | §2.3 7d | `deferred` | no | no |
 | 15 | Capability query unretrievable/unparseable | §2.3 7e | `refused` | no | no |
 | 16 | No permitted merge method remains | §6.1 | `deferred` (reason "no permitted merge method") | no | no |
 | 17 | Every permitted method attempted and failed | §6.3 | `deferred` (reason names each attempt) | no | no |
-| 18 | Merge performed and succeeded | §6.2 | `merged` + `mergeSha` + `mergeMethod` | **yes** | no |
+| 18 | Merge performed and succeeded | §6.2 | `merged` + `mergeSha` + `mergeMethod` | **yes**, *except* when the row holds a status §2.5 does not overwrite (`pending` / `blocked` / `halted`) — then the file is unchanged and a plain note names the status found | no |
 | 19 | *(annotation)* remote branch deletion failed | §6.4 | `merged` | unaffected | no — a plain note |
 | 20 | *(annotation)* queue row absent — disposition `error` | §7.4 | `merged` | attempted, not written | **yes** |
 | 21 | *(annotation)* queue row written but not committed | §7.4 | `merged` | **yes**, on disk | no — a plain note |
