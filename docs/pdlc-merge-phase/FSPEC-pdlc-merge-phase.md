@@ -309,7 +309,174 @@ escalate — they are ordinary, self-explanatory states an operator can read off
 
 ## 6. FSPEC-MERGE-05 — Merge execution and method policy
 
+**Links:** REQ-MERGE-02, US-02, BL-02.
+
+### 6.1 Candidate chain
+
+The chain is built **before** any attempt, from `O4` and the configuration, and is filtered — never
+attempted-and-failed — for methods the repository forbids (AC-2.5):
+
+| Order | Method | Command | Included when |
+|---|---|---|---|
+| 1 | rebase | `gh pr merge {prUrl} --rebase` | `rebaseMergeAllowed` is `true` |
+| 2 | merge commit | `gh pr merge {prUrl} --merge` | `mergeCommitAllowed` is `true` |
+| — | squash | never issued | never — see below |
+
+**Squash is not in the chain.** `allowSquashMerge` ships `false` and is not part of any fallback:
+`se-implement` produces a TDD commit sequence, Phase DOD produces versioned remediation commits, and
+harvest and any post-mortem read that history. Squash destroys it. Setting `allowSquashMerge: true`
+appends squash as a third and last candidate, gated additionally on `squashMergeAllowed`; nothing
+else changes.
+
+If `O4` is `unknown`, no chain is built and the phase is `refused` (AC-2.5a). If the chain is empty —
+every method this phase may use is forbidden by the repository, e.g. a squash-only repo with
+`allowSquashMerge` false — no attempt is made and the phase is `deferred` with the reason **"no
+permitted merge method"**, which is a different reason line from §6.3's exhaustion (AC-2.5b). The
+value is the same; the reason is what tells the operator whether to change a repository setting or
+investigate a failure.
+
+### 6.2 A successful attempt
+
+The first candidate that succeeds ends the chain. Success is confirmed by reading back `O6`: `state`
+is `MERGED` and `mergeCommit.oid` is present. The phase records `mergeStatus: merged`, `mergeSha` =
+the merge commit SHA (full oid; the short form is what §7.3 records as evidence), and `mergeMethod` =
+the candidate that succeeded (`rebase` or `merge`).
+
+A command that exits zero but whose read-back does not confirm `MERGED` is treated as a **failed**
+attempt and the chain continues — the phase never reports a merge it did not observe.
+
+### 6.3 Exhaustion (AC-2.3)
+
+Each attempt records its method and its failure detail. When every candidate has been attempted and
+failed, the phase **stops attempting merge methods**. It does *not* halt: outcome `success`,
+`mergeStatus: deferred`, reason naming each attempted method and its failure, queue status left
+`awaiting-merge`, no queue commit. "Stops attempting methods" and "the pipeline halts" are different
+events; only the former happens here.
+
+### 6.4 Branch handling after a successful merge (AC-2.6, AC-2.6a)
+
+| Setting | Behaviour |
+|---|---|
+| `deleteBranchOnPdlcMerge: true` (default) | the **remote** feature branch is deleted after the merge is confirmed |
+| `deleteBranchOnPdlcMerge: false` | the phase deletes nothing; GitHub's own repository setting `deleteBranchOnMerge` may still act, and that is not this phase's concern |
+
+The **local** branch is left alone in both cases — §8 needs a tree that can still be reasoned about,
+and deleting the branch the working tree may be standing on is a foot-gun for zero benefit.
+
+A deletion failure does **not** downgrade the outcome: `mergeStatus` stays `merged` and the failure
+is reported as a plain note, not an escalation and not a `MERGE ESCALATION: ` line. The merge is the
+outcome that matters; a leftover branch is harmless.
+
+Naming: `deleteBranchOnPdlcMerge` is pdlc's own setting, named to avoid collision with GitHub's
+repository setting `deleteBranchOnMerge`, which `O4` reads only so the phase can report it, never so
+it can act on it.
+
 ## 7. FSPEC-MERGE-06 — Queue write-back
+
+**Links:** REQ-MERGE-05, US-01, US-05.
+
+### 7.1 When it runs
+
+The write-back runs **only** when `mergeStatus` is `merged` — i.e. §2.2 row 6 succeeded, or row 3
+found the PR already merged. Every other resolution (`skipped`, `refused`, `deferred`) writes
+nothing to the queue and makes no queue commit: the feature's row is left exactly as the driver left
+it, `awaiting-merge` or `in-progress` (AC-1.3).
+
+### 7.2 The row transformation
+
+The target feature's `Status` cell becomes the single token `done` — nothing else, no decoration.
+Every reader that selects pending work or checks a dependency compares the lowercased status cell by
+exact string, so an evidence-decorated cell such as `done (abc1234)` would block every dependent
+permanently, which is exactly the outcome US-05 exists to prevent.
+
+The merge evidence goes in a sixth **`Evidence`** cell on the same row:
+
+```
+{shortSha} #{prNumber}          e.g.   abc1234 #42
+```
+
+`Evidence` is safe as a column name against the queue's header lookup, which resolves columns by
+*substring* over `order`/`#`, `status`, `feature`, `req path`/`req`/`path`, and
+`depends`/`depends-on`/`deps`. `evidence` contains none of those tokens, and columns the lookup does
+not recognise are ignored — so an added sixth cell round-trips through parse and rewrite unchanged.
+
+Only the target feature's row changes. No other data row's Status, Feature, REQ Path or Depends-On
+cell may change, and no prose section of `QUEUE.md` may change.
+
+### 7.3 The `Evidence` column migration (Q-02)
+
+The queue table ships with five columns. The migration to six is performed **by the first `done`
+write**, in the same write, so a repository never needs a manual edit and no operator step stands
+between a merge and an advanced queue. Exactly three structural changes are permitted, and only
+these:
+
+1. `| Evidence |` appended to the header row;
+2. one cell appended to the header **separator** row, so the rendered table stays well-formed;
+3. one **empty** cell appended to every other data row, so cell counts stay uniform.
+
+The separator row is named explicitly because AC-5.3 lists only the header and the data rows: it is
+neither a data row nor prose, and a six-column header over a five-column separator is a broken table.
+Appending an empty cell there is safe — the separator is recognised by every cell being a dash run
+**or empty**.
+
+A queue already carrying an `Evidence` column is not migrated again; the write sets the target row's
+sixth cell and leaves every other row byte-identical.
+
+### 7.4 Recording channel, idempotence, and the missing cases
+
+The write-back reaches `QUEUE.md` through **the same injected recording channel that records a
+`halted` row today**, invoked with status `done` and with the merge evidence. The channel already
+takes the status as an argument, so `done` needs no second, divergent path — this is deliberate:
+AC-5.6 requires a direct `orchestrate-dev` invocation and a queue-driven one to leave the same
+durable result, and one channel is how that is guaranteed. Its behaviour, unchanged:
+
+| Situation | Behaviour |
+|---|---|
+| No `QUEUE.md` at all (direct invocation) | no write, no git; the merge still proceeds and the write-back is skipped without error (AC-5.4). Reported row disposition `none` |
+| `QUEUE.md` present, no row for this feature | nothing written, git untouched; reported row disposition `error` with a detail naming the missing row |
+| Row present | file written, then `git add -- {queuePath}` and `git commit -m "chore(queue): {feature} → done" -- {queuePath}` — pathspec-scoped, never `-a`, never pushed |
+| Row already `done` with the same evidence | the file is byte-identical; `git` reports nothing to commit and that is **not** a fault — no warning, no notice (AC-5.8) |
+| `git` refuses (hook, missing identity, index lock) | the row is correct on disk; reported as written-but-uncommitted with a detail telling the operator to commit it manually. Never downgrades `mergeStatus` |
+
+**Row-disposition vocabulary (obligation).** The channel today reports a successful recorded write
+with the literal token `halted`, because a halt was the only status it ever wrote. A `done` write
+reported as `halted` is actively misleading in the final report. The disposition vocabulary must
+become status-neutral (or gain `done` / `done (uncommitted)` members) so the reported row disposition
+describes the row that was written. This is a required change, not a preference; §13 carries it as a
+TSPEC obligation.
+
+### 7.5 The driver's post-pipeline write, and F-13
+
+Today the queue driver, after the pipeline returns, computes its own status from the pipeline outcome
+alone — `awaiting-merge` on success, `halted` otherwise — and writes it unconditionally, then emits
+"…complete — status set to awaiting-merge. Merge the PR, then set it to done to unblock dependents."
+That write happens **after** Phase MERGE's, so without a change it silently un-does every `done` this
+feature writes, on exactly the path the feature exists for.
+
+Required behaviour (AC-5.6):
+
+| Pipeline report | Driver's post-pipeline status | Operator message |
+|---|---|---|
+| `outcome: success`, `mergeStatus: merged` | `done` | the "merge the PR, then set it to done" message is **not** emitted; the driver reports the feature complete and merged, naming the merge SHA |
+| `outcome: success`, any other `mergeStatus` | `awaiting-merge` (unchanged) | unchanged |
+| `outcome: halted` or the pipeline threw | `halted` (unchanged) | unchanged |
+
+The driver's write remains unconditional in the sense that it always writes *something*; what changes
+is that its value is derived from `mergeStatus` as well as `outcome`. Writing `done` over a `done` is
+idempotent and produces no commit.
+
+**F-13 — the superseded criterion, named.** `pdlc-rcv-budget-stop`'s AC-2.7a states that
+`orchestrate-dev` owns no status write but the halt one, and the shipped success path hard-codes its
+reported row disposition accordingly. `RLH-AT-32-orch` pins it positively: a successful direct run's
+recorded statuses must not contain `done`. AC-5.6 requires precisely that write.
+
+The disposition is recorded here so it is a decision, not a red test resolved by deleting an
+assertion: **AC-5.6 supersedes AC-2.7a for the `merged` case only.** The halt path is unchanged, and
+a successful run that did *not* merge still writes no status and still reports the queue-less
+disposition. `RLH-AT-32-orch` is **re-expressed, not removed**: its assertion becomes "a successful
+direct run that did not merge records no status", and a sibling case asserts the new fact — "a
+successful direct run reporting `mergeStatus: merged` records `done`". Deleting the assertion would
+lose the invariant that still holds on the majority path.
 
 ## 8. FSPEC-MERGE-07 — Post-merge working tree and branch handling
 
