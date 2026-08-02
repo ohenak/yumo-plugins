@@ -4,12 +4,12 @@
 |---|---|
 | Upstream | REQ → FSPEC → **TSPEC** |
 | Downstream | PLAN, PROPERTIES, IMPL |
-| Cross-Reviews | `CROSS-REVIEW-software-engineer-FSPEC-v3.md`, `CROSS-REVIEW-test-engineer-FSPEC-v3.md` |
+| Cross-Reviews | `CROSS-REVIEW-software-engineer-FSPEC-v3.md`, `CROSS-REVIEW-test-engineer-FSPEC-v3.md`, `CROSS-REVIEW-product-manager-TSPEC-v1.md`, `CROSS-REVIEW-test-engineer-TSPEC-v1.md` |
 | LEARNINGS | `docs/pdlc-merge-phase/LEARNINGS-pdlc-merge-phase.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.0 | 2026-08-02 |
+| pdlc | draft | Claude | 1.1 | 2026-08-02 |
 
 ## 1. Scope, inputs, and how to read this document
 
@@ -51,6 +51,10 @@ result with evidence.
 | O-M8 — the M3 replay command sequence and its failure detection | §7.4 |
 | SE-v3 advisory / TE-v3 **N-02** — `O4` on the already-merged path | §5.5 |
 | TE-v3 **N-01** — an unparseable `O1.number` resolving at two rows | §4.6, §13.3 |
+
+This is **v1.1**, revised against the two round-1 cross-reviews (PM `Needs revision`, TE `REVISE`).
+§15.1 records the per-finding disposition and the two FSPEC errata this revision requests. The
+obligation index above is the document's single one — v1.0's duplicate in §15 is gone.
 
 **House idioms this feature inherits, not invents.** `{ execFn }` injection for a command-running
 observation (`checkPrCi`, `orchestrate-dev.js:3485`); `defaultGit(argv, { execFn })`'s never-throwing
