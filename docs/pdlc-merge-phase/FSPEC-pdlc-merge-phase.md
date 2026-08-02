@@ -9,7 +9,7 @@
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.0 | 2026-08-02 |
+| pdlc | draft | Claude | 1.1 | 2026-08-02 |
 
 ## 1. Scope and entry obligations
 
@@ -61,57 +61,68 @@ phase:
   (`✅` merged, `⏭` skipped, `⚠️` deferred or refused) and a one-line detail naming the resolving
   condition.
 - It reads `prUrl` from Phase PUB's result. When Phase PUB is disabled or produced no `prUrl`, the
-  phase resolves at §2.1 row for "no PR" (`deferred`).
+  phase resolves at §2.2 row 3 (`deferred`).
 
 ### 2.2 The evaluation order is the control flow (N-01)
 
-AC-1.6's ordered table **is** the phase's control flow. It is evaluated top to bottom and the first
-row that resolves is the answer; no later row is evaluated once one resolves.
+AC-1.6's ordered table **is** the phase's control flow, refined here into the single sequence the
+TSPEC implements. It is evaluated top to bottom and the first row that resolves is the answer; no
+later row is evaluated once one resolves. **`O1` is observed exactly once, at row 4**, and every
+later row that needs PR state reuses that one observation — so no input can resolve at two rows.
 
 | # | Evaluated | Resolves to | Nothing later runs, including |
 |---|---|---|---|
-| 1 | `PHASE_MERGE_ENABLED` is false | `skipped` | config read, guard, every observation |
-| 2 | `mergeMode` resolves to `off` | `skipped` | guard, every observation |
-| 3 | PR state is already `MERGED` | `merged` (method `unknown`) | guard, remaining preconditions, merge attempt — but **not** the queue write-back (§7.4), which still runs |
-| 4 | self-modification guard fires | `refused` | remaining preconditions, merge attempt |
-| 5 | a remaining precondition fails (§2.3) | `refused` or `deferred` | merge attempt |
-| 6 | merge attempted | `merged` or `deferred` | — |
+| 1 | `PHASE_MERGE_ENABLED` is false | `skipped` | config read, `prUrl` check, `O1`, guard, every observation |
+| 2 | `mergeMode` resolves to `off` | `skipped` | `prUrl` check, `O1`, guard, every observation |
+| 3 | `prUrl` from Phase PUB is absent or empty | `deferred` — "no PR URL from Phase PUB" | `O1`, guard, every observation. Hoisted here because every later row addresses the PR *by* `prUrl` |
+| 4 | `O1` is observed once. Its `state` is unparseable or unrecognised (§3.2) | `refused` — "PR state could not be determined"; **no escalation** | guard, remaining preconditions, merge attempt |
+| 5 | that same `O1.state` is `MERGED` | `merged` (§9.1 for `mergeSha` / `mergeMethod`) | guard, remaining preconditions, merge attempt — but **not** the queue write-back (§7.4), which still runs |
+| 6 | self-modification guard fires | `refused` | remaining preconditions, merge attempt |
+| 7 | a remaining precondition fails (§2.3) | `refused` or `deferred` | merge attempt |
+| 8 | merge attempted | `merged` or `deferred` | — |
+
+Rows 3–5 are hoisted above the guard deliberately, and the consequence is stated rather than left to
+be discovered: **a run whose `O1` is unparseable resolves at row 4 even when its diff matches a guard
+path.** Both readings refuse, so nothing is merged and no safety property turns on the choice; what
+turns on it is which `MERGE ESCALATION: ` line a test may assert, and row 4 emits none. The guard's
+own fail-closed input (`O5`, the changed-file list) is unaffected — §4.4 still fires the guard when
+that list is unretrievable, because the guard is reached in that scenario.
 
 **N-01 is resolved by this table, not by re-reading AC-3.1.** A PR that touches a guard path in a
-repo with `mergeMode: "off"` reports **`skipped`**, because row 2 resolves before row 4 is reached.
+repo with `mergeMode: "off"` reports **`skipped`**, because row 2 resolves before row 6 is reached.
 AC-3.1's "regardless of CI status, merge mode, or any other configuration" is scoped to the
-situation in which the guard is *evaluated at all* — rows 4 through 6. Neither reading merges
+situation in which the guard is *evaluated at all* — rows 6 through 8. Neither reading merges
 anything, so no safety property depends on the choice; determinacy of the reported value does, and
 this table is the single answer.
 
 Row 1 is evaluated before the configuration file is read at all, so a disabled phase cannot fail on
 a malformed config.
 
-### 2.3 Order within row 5 (N-02, Q-01)
+### 2.3 Order within row 7 (N-02, Q-01)
 
-Row 5's preconditions are evaluated in **the AC-1.2 table's own top-to-bottom order**, and the
-**first** failure in that order is the one reported:
+Row 7's preconditions are evaluated in **the AC-1.2 table's own top-to-bottom order**, and the
+**first** failure in that order is the one reported. `prUrl` presence and `O1`'s parseability are
+*not* here — they are rows 3 and 4, above the guard.
 
 | Order | Precondition | Observation | Failure resolves to |
 |---|---|---|---|
-| 5a | PR exists | Phase PUB's `prUrl` | `deferred` — "no PR URL from Phase PUB" |
-| 5b | PR open | `O1` (§3) | `deferred` — "PR is CLOSED" |
-| 5c | CI evidence | `O2` (§5) | `refused` |
-| 5d | Mergeable | `O1` + bounded re-read (§3.3) | `deferred` |
-| 5e | No unresolved review threads | `O3` | `deferred` — "N unresolved review thread(s)" |
-| 5f | Merge-method capability retrievable | `O4` | `refused` on unretrievable/unparseable (AC-2.5a); `deferred` when retrieved and no permitted method remains (AC-2.5b) |
+| 7a | PR open | row 4's `O1.state` (re-used, not re-read) | `deferred` — "PR is CLOSED" |
+| 7b | CI evidence | `O2` (§5) | `refused` |
+| 7c | Mergeable | row 4's `O1` + bounded re-read (§3.3) | `deferred` |
+| 7d | No unresolved review threads | `O3` | `deferred` — "N unresolved review thread(s)" |
+| 7e | Merge-method capability retrievable | `O4` | `refused` on unretrievable/unparseable (AC-2.5a); `deferred` when retrieved and no permitted method remains (AC-2.5b) |
 
-**The tie-break is positional, not class-based.** A run holding both `CI pending` (5c, `refused`) and
-`mergeable: CONFLICTING` (5d, `deferred`) reports **`refused`** — because 5c precedes 5d, not because
-`refused` outranks `deferred`. A run holding both `PR CLOSED` (5b, `deferred`) and `CI failed` (5c,
+**The tie-break is positional, not class-based.** A run holding both `CI pending` (7b, `refused`) and
+`mergeable: CONFLICTING` (7c, `deferred`) reports **`refused`** — because 7b precedes 7c, not because
+`refused` outranks `deferred`. A run holding both `PR CLOSED` (7a, `deferred`) and `CI failed` (7b,
 `refused`) reports **`deferred`**. This is deliberate and is Q-01's answer: a class-based re-sort
 would require every observation to be taken before any can be reported, which contradicts the
 short-circuit AC-1.6 already fixes, and it would report a CI failure on a PR nobody can merge anyway.
 No safety is lost: the failure of *any* precondition means no merge, and that is invariant under the
 ordering.
 
-**Evaluation short-circuits within row 5 too:** once a precondition fails, later ones are not
-observed. NFR-2 is satisfied because the merge attempt (row 6) is the only state-mutating call and is
+**Evaluation short-circuits within row 7 too:** once a precondition fails, later ones are not
+observed. NFR-2 is satisfied because the merge attempt (row 8) is the only state-mutating call and is
 reached only when every precondition resolved *pass* — NFR-2 constrains mutation, not observation.
 
 ### 2.4 Enable/skip resolution
@@ -124,10 +135,16 @@ answer.
 
 ### 2.5 Idempotent re-entry (NFR-5)
 
-Row 3 is what makes a re-invocation safe. Against an already-merged PR the phase attempts **zero**
-merges, evaluates **no** guard, reports `merged` with `mergeMethod: unknown` and no `mergeSha` it did
-not observe, and re-attempts only the queue write-back idempotently (§7.4). A PR merged by a human
-counts. This is the recovery path for AC-5.2's "merged, queue not updated".
+Row 5 is what makes a re-invocation safe. Against an already-merged PR the phase attempts **zero**
+merges, evaluates **no** guard, reports `merged` with `mergeMethod: unknown` and `mergeSha` resolved
+from the same `O1` observation (§9.1), and re-attempts only the queue write-back idempotently (§7.4).
+A PR merged by a human counts. This is the recovery path for AC-5.2's "merged, queue not updated".
+
+**Which statuses row 5 writes (SE Q-02).** The write-back applies `done` when the row's current
+status is `in-progress`, `awaiting-merge` or already `done`. Any other status — `pending`, `blocked`,
+`halted` — is left untouched and reported as a plain note naming the status found, because a row in
+one of those states describes work this run did not drive to completion and overwriting it would
+destroy the operator's own record.
 
 ## 3. FSPEC-MERGE-02 — GitHub observations
 
