@@ -56,70 +56,64 @@ reds these properties instead of escaping them.
 
 ## 2. Decision-core properties
 
-All five drive **`decideMerge`** and the §5.2 step loop directly, with a scripted observation supplier
-in place of `phaseMerge`'s IO. The axis product is the record shape of TSPEC §2.4:
-`mergeMode ∈ 3` × `prUrl ∈ {present, null}` × `o1 ∈ 7` (`{ok:false}`, and `ok` × state ∈ 3 ×
-`mergeable` ∈ 4 incl. the sentinel) × `ci ∈ 5` × `o3 ∈ 4` × `o4 ∈ 3` × `o5 ∈ 4` × `caps ∈ 8` ×
-`attempt outcome ∈ 2`. Enumerated in full where a property needs it; the short-circuit means most
-combinations are unreachable and the enumeration *proves* that rather than assuming it.
+All five drive **`decideMerge`** and TSPEC §5.2's step loop directly, with a scripted observation
+supplier in place of `phaseMerge`'s IO. **The shared axis product** (`D_core`), from the record shape
+of TSPEC §2.4: `mergeMode ∈ 3` × `prUrl ∈ 2` × `o1 ∈ 7` (`{ok:false}`, and `ok` × state ∈ 3 ×
+`mergeable` ∈ 4 incl. the `__unrecognised__` sentinel) × `ci ∈ 5` × `o3 ∈ 4` × `o4 ∈ 3` × `o5 ∈ 4` ×
+`caps ∈ 8` × `attempt outcome ∈ 2`. Most combinations are unreachable behind the short-circuit, and
+enumerating the product *proves* that rather than assuming it.
 
 **PROP-M-01 — Totality and termination. Every observation record resolves to exactly one FSPEC §11
 row, within the step bound, for every configuration.**
-*(Contract · **P** · `enum(≈4 800)` reachable records · A4 — `mergeDecision.test.js`)*
-- **Domain:** the full axis product above, driven through a faithful re-implementation of §5.2's loop
-  whose observation supplier answers each demand from the case's axis value (so a demand for a slot
-  the case did not fix is itself a failure).
-- **Oracle:** for every case, the loop returns `kind: "resolved"` with `row ∈ ROW_IDS`,
-  `mergeStatus ∈ MERGE_STATUSES`, and a **step count strictly below `MERGE_MAX_DECISION_STEPS`**;
-  the `throw` at the loop's exit is never reached, and `row === "internal"` never occurs. Exactly-one
-  is asserted positively: the resolving guard index is recorded per case and the case's expected
-  `(row, mergeStatus)` pair is compared to §5.3's table, so two guards claiming one row reds.
-- **Bound conjunct:** asserted as the **relation** `MERGE_MAX_DECISION_STEPS > 1 + MERGE_MAX_RETRIES
-  + 4 + 3 + 1` recomputed from the constants, never against the literal `24` (TSPEC §5.2, TE N-04),
-  and re-run with `mergeableRetries` at its cap of 10.
+*(Contract · **P** · `enum(D_core ≈ 4 800)` · A4 — `mergeDecision.test.js`)*
+- **Domain:** `D_core`, driven through §5.2's loop whose supplier answers each demand from the case's
+  axis value — a demand for a slot the case did not fix is itself a failure.
+- **Oracle:** every case returns `kind: "resolved"` with `row ∈ ROW_IDS`, `mergeStatus ∈
+  MERGE_STATUSES`, and a step count **strictly below `MERGE_MAX_DECISION_STEPS`**; the loop's exit
+  `throw` is never reached and `row === "internal"` never occurs. *Exactly one* is positive, not
+  disjointness-by-absence: the resolving guard index is recorded and the `(row, mergeStatus)` pair
+  compared against §5.3's table, so two guards claiming one row reds. The bound is asserted as the
+  **relation** `MERGE_MAX_DECISION_STEPS > 1 + MERGE_MAX_RETRIES + 4 + 3 + 1` recomputed from the
+  constants — never the literal `24` (TE N-04) — and re-run with `mergeableRetries` at its cap of 10.
 
 **PROP-M-02 — Purity. `decideMerge` is a deterministic, non-mutating function of `(record, config)`.**
-*(Functional · **P** · `enum(≈4 800)` shared with PROP-M-01 · A4 — `mergeDecision.test.js`)*
-- **Domain:** each PROP-M-01 case, evaluated twice, with a deep-frozen structural clone of both
-  arguments captured before the first call.
-- **Oracle:** the two results are deep-equal; `record` and `config` are deep-equal to their
-  pre-call clones; `MERGE_DEFAULTS`, `MERGE_MODES` and `MERGE_GUARD_DEFAULTS` are unchanged. Positive
-  conjunct: the clone is asserted **non-empty and equal to a fixture-known value** first, so a
-  vacuous "undefined equals undefined" cannot pass.
+*(Functional · **P** · `enum(D_core)`, shared cases · A4 — `mergeDecision.test.js`)*
+- **Domain:** each `D_core` case evaluated twice, with a structural clone of both arguments captured
+  first. **Oracle:** the two results deep-equal; `record` and `config` deep-equal their pre-call
+  clones; `MERGE_DEFAULTS` / `MERGE_MODES` / `MERGE_GUARD_DEFAULTS` unchanged. Positive conjunct: the
+  clone is first asserted non-empty and equal to a fixture-known value, so no `undefined ==
+  undefined` passes vacuously.
 
 **PROP-M-03 — Fail-closed monotonicity. Degrading any single precondition observation never moves the
 outcome toward `merged`.**
 *(Security · **P** · `enum(5 slots × ≈600 baselines)` · A4 — `mergeDecision.test.js`)*
-- **Domain:** every PROP-M-01 case that resolves `merged` (row 18) or reaches a later guard, paired
-  with each of the five degradations `o1 := {ok:false}`, `ci := "unknown"`, `o3 := {ok:false}`,
-  `o5 := {ok:false}`, `o4 := {ok:false}`.
-- **Oracle:** the degraded run's `mergeStatus` is `refused` (never `merged`, never `skipped`), and its
-  `row` is the specific fail-closed row §5.3 assigns that slot (8 / 11 / 13a / 5 / 15) — a *named
-  row*, not merely "not 18", so a degradation that lands on the wrong fail-closed row still reds.
-- **The one declared exception, asserted as its own case, not excluded by a filter:** on the
+- **Domain:** every `D_core` case reaching row 18 or a later guard, paired with each degradation
+  `o1 | ci | o3 | o5 | o4 := unknown`.
+- **Oracle:** the degraded run reports `refused` **at the specific fail-closed row §5.3 assigns that
+  slot** — 8 / 11 / 13a / 5 / 15 — a named row rather than "not 18", so landing on the wrong
+  fail-closed row still reds.
+- **The one declared exception, asserted as a case rather than excluded by a filter:** on the
   already-merged path (§11 row 3) `O4` is an *observation, not a precondition* (TSPEC §5.5), so
-  `o4 := {ok:false}` there keeps `mergeStatus: merged` and adds row 22's escalation. This case
-  asserts that positive pair explicitly; an implementation that made `O4` a precondition on row 5
-  would red it, and one that made it a precondition everywhere would red the main arm.
+  degrading it there keeps `mergeStatus: merged` and adds row 22's escalation — asserted as that
+  positive pair. Making `O4` a precondition on row 5 reds this case; making it one everywhere reds
+  the main arm.
 
-**PROP-M-04 — No-bypass equivalence. `mergeMode: "gated"` and `mergeMode: "on"` are the same function.**
-*(Functional · **P** · `enum(≈4 800)` · A4 — `mergeDecision.test.js`)*
-- **Domain:** every PROP-M-01 record, with the config's `mergeMode` set to `"gated"` and to `"on"`.
-- **Oracle:** the two resolutions are **deep-equal** — same row, status, reason, escalations, sha and
-  method. Positive conjunct: at least one case in the enumeration resolves `merged` and at least one
-  resolves `refused`, asserted by counting, so the equivalence is not proven over a domain where both
-  arms are trivially `skipped`. Falsifies AC-1.5's "no mode bypasses the preconditions" directly: any
-  branch on `"on"` anywhere in the core reds this.
+**PROP-M-04 — No-bypass equivalence. `mergeMode: "gated"` and `"on"` are the same function.**
+*(Functional · **P** · `enum(D_core)` · A4 — `mergeDecision.test.js`)*
+- **Domain / oracle:** each `D_core` record decided under both modes; the two resolutions are
+  **deep-equal** — row, status, reason, escalations, sha, method. Positive conjunct: the enumeration
+  is asserted by count to contain at least one `merged` and one `refused` outcome, so the equivalence
+  is not proven over a domain where both arms are trivially `skipped`. Any branch on `"on"` anywhere
+  in the core reds this, which is AC-1.5's "no mode bypasses the preconditions" made falsifiable.
 
 **PROP-M-05 — Short-circuit minimality. An observation the resolution does not depend on is never
 demanded.**
-*(Performance · **P** · `enum(≈4 800)` · A4 — `mergeDecision.test.js`)*
-- **Domain:** PROP-M-01's cases, with the observation supplier recording every demand in order.
-- **Oracle:** for each case, the recorded demand sequence is a **prefix of §5.3's demand order**
-  (`O1, O5, O2, O1*, O3, O4`) truncated at the resolving guard, and contains no slot below it.
-  Concretely: a case resolving at row 8 demanded `O1` and nothing else; a case resolving at row 7
-  never demanded `O2`, `O3` or `O4`. This is the property that makes NFR-2's "no state-mutating call
-  before every precondition" cheap to hold — an unobserved surface is one nothing asked for.
+*(Performance · **P** · `enum(D_core)` · A4 — `mergeDecision.test.js`)*
+- **Domain / oracle:** with the supplier recording demands in order, each case's demand sequence is a
+  **prefix of §5.3's demand order** (`O1, O5, O2, O1*, O3, O4`) truncated at the resolving guard, with
+  no later slot present: a row-8 case demanded `O1` and nothing else; a row-7 case never demanded
+  `O2`, `O3` or `O4`. This is what makes NFR-2 cheap to hold — an unobserved surface is one nothing
+  asked for.
 
 ## 3. Self-modification guard properties
 
@@ -127,80 +121,72 @@ demanded.**
 regardless of every other input, configuration included.**
 *(Security · **I** · `enum(2 × 3 × 5 × 4 × 3 = 360)` phase runs · A3 unit + A7 — `mergeGuard.test.js`, `mergePhase.test.js`)*
 - **Domain:** `passingGh` with `O5` overridden to a list containing one guard-matching path, crossed
-  with `mergeMode ∈ {gated, on}`, `mergeRequiresCi ∈ {true, false}` × `ci ∈ {passed, none, pending,
-  failed, unknown}`, `o3 ∈ {0 unresolved, 3 unresolved, unretrievable}`, `caps ∈ {rebase-only,
-  merge-only, none}`, and a `guardPaths` config value drawn from `{absent, [], ["!pdlc/workflows/"],
-  ["extra/"], 42, "not-an-array"}`.
-- **Oracle:** every case reports `mergeStatus: "refused"`, `row: 4`, **zero** commands matching
-  `/^gh pr merge/` in `fakeGhRun`'s record, and exactly one notice equal to
-  `MERGE ESCALATION: self-modification guard fired for {prUrl} — matched paths: {paths}` naming every
-  matched path in observed order.
-- **Scoping, stated so the property is true rather than nearly true:** dominance is over every guard
-  *below* it. The four conditions that resolve above it — `PHASE_MERGE_ENABLED false` (row 1),
-  `mergeMode: off` (row 2), no `prUrl` (row 6), unreadable `O1.state` (row 8) and `state: MERGED`
-  (row 3) — are excluded from the domain **and asserted separately as a five-case control block**
-  showing each one preempts the guard, so the exclusion is evidenced, not assumed.
+  with `mergeMode ∈ {gated, on}` × `mergeRequiresCi ∈ {T, F}` × `ci ∈ 5` × `o3 ∈ {0, 3 unresolved,
+  unretrievable}` × `caps ∈ {rebase-only, merge-only, none}` × `guardPaths ∈ {absent, [],
+  ["!pdlc/workflows/"], ["extra/"], 42, "not-an-array"}`.
+- **Oracle:** every case reports `mergeStatus: "refused"`, `row: 4`, **zero** `/^gh pr merge/`
+  commands in `fakeGhRun`'s record, and exactly one notice equal to `MERGE ESCALATION:
+  self-modification guard fired for {prUrl} — matched paths: {paths}`, naming every matched path in
+  observed order.
+- **Scoping, so the property is true rather than nearly true:** dominance is over every guard *below*
+  it. The five conditions resolving above it — rows 1, 2, 6, 8 and 3 — are excluded from the domain
+  **and asserted as a five-case control block** showing each preempts the guard, so the exclusion is
+  evidenced, not assumed.
 
 **PROP-M-07 — Additivity and irremovability. No configuration value removes a shipped default.**
-*(Security · **P** · `rand(500)` config values + `enum(12)` adversarial shapes · A3 — `mergeGuard.test.js`)*
-- **Domain:** `effectiveGuardPaths(v)` for `v` drawn from a seeded generator over arrays of random
-  strings (including `""`, whitespace, `"!"`-prefixed, duplicate-of-a-default, with and without
-  trailing slash) plus the enumerated non-array shapes `undefined, null, 42, "str", {}, [], [null],
-  [1,2], [{}], [" "], ["pdlc/workflows"], [".claude/workflows/"]`.
-- **Oracle:** the result **contains all four members of `MERGE_GUARD_DEFAULTS`** (positive presence,
-  by exact string), every member ends in `/`, no member is a duplicate, and `MERGE_GUARD_DEFAULTS`
-  itself is deep-equal to its captured snapshot afterwards. A configuration is additive by
-  construction: `result ⊇ defaults` for every input, with no filter, subtraction or reorder.
+*(Security · **P** · `rand(500)` + `enum(12)` adversarial shapes · A3 — `mergeGuard.test.js`)*
+- **Domain:** `effectiveGuardPaths(v)` over seeded arrays of strings (`""`, whitespace, `"!"`-prefixed,
+  duplicate-of-a-default, with and without trailing slash) plus the enumerated non-array shapes
+  `undefined, null, 42, "str", {}, [], [null], [1,2], [{}], [" "], ["pdlc/workflows"], [".claude/workflows/"]`.
+- **Oracle:** the result **contains all four `MERGE_GUARD_DEFAULTS` members by exact string**, every
+  member ends in `/`, none is duplicated, and the frozen source array deep-equals its snapshot
+  afterwards. `result ⊇ defaults` holds for every input — additive by construction, no filter,
+  subtraction or reorder.
 
 **PROP-M-08 — Prefix exactness. `guardVerdict` fires exactly when some changed path has a guard path
 as a case-sensitive, position-0, `/`-terminated prefix — and never otherwise.**
 *(Data Integrity · **P** · `rand(1 000)` paths + `enum(7)` FSPEC §4.2 rows · A3 — `mergeGuard.test.js`)*
-- **Domain:** a seeded path generator that, for each guard path `g`, emits the six mutation classes
-  FSPEC §4.2 names — `g + rand`, `g` with a segment suffix (`pdlc/workflows-notes/x`), `g` prefixed
-  (`docs/` + g), `g` case-flipped, `g` with the trailing slash removed and a non-`/` char appended,
-  and an unrelated path — plus the five near-miss literals of §4.2 enumerated exactly.
+- **Domain:** per guard path `g`, the six mutation classes §4.2 names — `g + rand`, segment-suffixed
+  (`pdlc/workflows-notes/x`), prefixed (`docs/` + g), case-flipped, slash-stripped, unrelated — plus
+  §4.2's five near-miss literals enumerated exactly.
 - **Oracle:** `verdict.fired` equals an **independently written reference predicate**
-  (`files.some(p => guards.some(g => p.slice(0, g.length) === g))`) for every case, and `verdict.matched`
-  equals the reference's filtered list in observed order. Writing the oracle twice, in two shapes, is
-  what makes a `startsWith` → `includes` or case-folding mutant red rather than merely unasserted;
-  the generator guarantees each mutation class has at least one *firing* and one *non-firing* case,
-  asserted by count so no branch is covered only negatively.
+  (`files.some(p => guards.some(g => p.slice(0, g.length) === g))`) and `verdict.matched` equals its
+  filtered list, in order. Writing the oracle twice in two shapes is what reds a `startsWith` →
+  `includes` or case-folding mutant; the generator guarantees each mutation class has at least one
+  firing **and** one non-firing case, asserted by count, so no branch is covered only negatively.
 
 ## 4. Configuration and method-policy properties
 
 **PROP-M-09 — Config totality. For any input text, `parseMergeConfig` returns a complete config whose
 every key is inside its accepted domain, and never throws.**
 *(Contract · **P** · `enum(40)` shapes + `rand(500)` JSON values · A1 — `mergeConfig.test.js`)*
-- **Domain:** `null`, `""`, non-JSON bytes, JSON scalars, arrays, `{}`, `{merge: <non-object>}`, and a
-  seeded generator producing `{merge: {...}}` where each of the seven keys independently takes a value
-  drawn from `{valid, wrong type, out of domain, null, missing}` — plus the boundary pair
-  `mergeableRetries: 10` (accepted) and `11` (defaulted), and `0` for both integers.
-- **Oracle:** the returned object has **exactly** the seven `MERGE_DEFAULTS` keys; `mergeMode ∈
-  MERGE_MODES`; the three booleans are `typeof "boolean"`; both integers are `Number.isInteger` and
-  within `0…MERGE_MAX_RETRIES` / `≥ 0`; `guardPaths` is an array of non-empty strings. `MERGE_DEFAULTS`
-  is deep-equal to its snapshot afterwards — the mutation this property exists to catch.
+- **Domain:** `null`, `""`, non-JSON bytes, JSON scalars, arrays, `{}`, `{merge: <non-object>}`, and
+  seeded `{merge:{…}}` objects where each of the seven keys independently takes `{valid, wrong type,
+  out of domain, null, missing}` — plus `mergeableRetries` at `10` (accepted), `11` (defaulted) and
+  `0` (honoured), and `mergeableRetryDelay: 0`.
+- **Oracle:** the result has **exactly** the seven `MERGE_DEFAULTS` keys; `mergeMode ∈ MERGE_MODES`;
+  the three booleans are `typeof "boolean"`; the integers satisfy `Number.isInteger` within
+  `0…MERGE_MAX_RETRIES` and `≥ 0`; `guardPaths` is an array of non-empty strings; nothing throws; and
+  `MERGE_DEFAULTS` deep-equals its snapshot — the mutation this property exists to catch.
 
 **PROP-M-10 — Independent fallback. One bad key never defaults another.**
 *(Error Handling · **P** · `enum(7 keys × 4 bad values = 28)` · A1 — `mergeConfig.test.js`)*
-- **Domain:** a fully valid non-default `merge` section (every key set away from its default), with
-  exactly one key replaced by each of four out-of-domain values.
-- **Oracle:** the corrupted key equals its `MERGE_DEFAULTS` value **and** all six others equal the
-  non-default values supplied — the positive half, without which "everything defaulted" would pass.
-  `sectionMalformed` is `true` **only** for the `merge`-is-not-an-object shape and `false` for all 28,
-  which is what keeps E3's note off the other 27 paths.
+- **Domain / oracle:** a fully valid **non-default** section with exactly one key corrupted: the
+  corrupted key equals its default **and all six others equal the non-default values supplied** — the
+  positive half, without which "everything defaulted" would pass. `sectionMalformed` is `true` only
+  for the `merge`-is-not-an-object shape and `false` for all 28, keeping E3's note off 27 paths.
 
 **PROP-M-11 — Squash unreachability. Under the shipped configuration, no code path can issue a squash
 merge.**
-*(Security · **P + I** · `enum(8 caps × 5 configs)` + `enum(25)` phase rows · A4 unit + A7 phase — `mergeDecision.test.js`, `mergePhase.test.js`)*
-- **Domain:** `mergeCandidates(caps, config)` over all 8 capability triples × configs where
-  `allowSquashMerge ∈ {absent, false, null, "true", 1}` (every non-`true` shape the config reader can
-  emit); and, at phase level, every §11 row driven with the shipped defaults.
-- **Oracle:** `"squash"` is **absent from the returned array** — not merely skipped at attempt time —
-  for every non-`true` case; the array's order is `["rebase", "merge"]` filtered by capability;
-  `fakeGhRun`'s recorded commands contain **zero** occurrences of `--squash` across every phase run.
-  Positive control: the single `allowSquashMerge: true` × `squash-allowed` case **does** yield
-  `"squash"` last and, at phase level, reports `mergeMethod: "squash"` on success — so the property is
-  falsifiable in both directions and an implementation that dropped squash entirely also reds.
+*(Security · **P + I** · `enum(8 caps × 5 configs)` + `enum(25)` phase rows · A4 + A7 — `mergeDecision.test.js`, `mergePhase.test.js`)*
+- **Domain:** `mergeCandidates(caps, config)` over all 8 capability triples × `allowSquashMerge ∈
+  {absent, false, null, "true", 1}` (every non-`true` shape the reader can emit); and every §11 row
+  driven at phase level with the shipped defaults.
+- **Oracle:** `"squash"` is **absent from the returned array**, not merely skipped at attempt time;
+  the array is `["rebase","merge"]` filtered by capability; `fakeGhRun` records **zero** `--squash`
+  occurrences across every phase run. Positive control: the one `allowSquashMerge: true` ×
+  squash-allowed case **does** yield `"squash"` last and reports `mergeMethod: "squash"` on success —
+  so an implementation that dropped squash entirely also reds.
 
 ## 5. Queue write-back properties
 
