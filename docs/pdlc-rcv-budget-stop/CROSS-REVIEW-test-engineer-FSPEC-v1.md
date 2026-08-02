@@ -37,4 +37,24 @@
 
 ## Recommendation
 
+**Needs revision**
+
+Four Medium findings and one High. **On §13.4's own stopping rule this is not a round of altitude complaints:** F-02 and F-03 contest **behaviour** — a stated universal that is false on a named branch, and a migration path that is on disk in this repo today and costs the operator a clearance nobody has accounted for. Neither is closable by deferring a fixture to TSPEC or PROPERTIES, and neither is a finding of the form *"this branch has no seam"*. F-01 and F-04 are oracle-design defects, but of the kind the FSPEC cannot route downstream, because in both cases the document **asserts** an observable that does not discriminate: PROPERTIES can build any fixture, and neither fixture can fail.
+
+**Exactly what must change:**
+
+1. **F-01** — replace AT-BUD-03's Given/When/Then with an observable that fails when Phase DOD takes its bound from `BUDGET`. `DOD_MAX_ITERATIONS = 3` and the post-ship budget are both `3`, so a round-count oracle is satisfied either way.
+2. **F-02** — scope §12's answer (a) to the `WINDOW-START:` branches and disposition a resume into an exhausted window (B-CLR-2 with `D > E`); give AT-CLR-02 the leg.
+3. **F-03** — state E-1's disposition for a surviving pre-feature post-mortem with a readable marker and no region (two clearances for one window), and add one acceptance test.
+4. **F-04** — restate B-REG-7's observable so it is positive and falsifiable, or drop the "0 consultations, not an absence" claim in favour of the same-branch-as-a-valid-region assertion.
+5. **F-05** — pin `W`/`D` in AT-CLR-04's Given so both entries reach the gate.
+
+F-06 and F-07 are one sentence and one row and need not gate the next round.
+
+**What I will re-review.** Iteration 2 will be a delta re-review against this commit: the five items above, plus only the sections the revision touches. I do not expect §5, §6.3, §7.3 or §8.1 to move — they are the strongest parts of the document and they are not what these findings are about.
+
+**Pre-commitment.** If round 2 closes F-01 through F-05 without opening a new behavioural hole, I approve. If it answers F-02 or F-03 by declaring them target state or accepted cost **with the disposition written into §10 or §12 and a test row**, that also closes them — what I am refusing is silence, not a particular resolution.
+
 ## Verdict
+
+VERDICT: Needs revision
