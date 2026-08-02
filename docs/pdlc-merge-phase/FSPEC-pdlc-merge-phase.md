@@ -474,7 +474,7 @@ bytes. §13 O-M2 carries the enumeration; the invariance is a required property,
 | `QUEUE.md` present, no row for this feature | `error` | nothing written, git untouched; detail names the missing row | 20 | **yes** |
 | Row present, written and committed | `recorded` | `git add -- {queuePath}` then `git commit -m "chore(queue): {feature} → done" -- {queuePath}` — pathspec-scoped, never `-a`, never pushed | 18 | no |
 | Row present, already `done` with the same evidence | `recorded` | no semantic change; `git` reports nothing to commit, which is **not** a fault — no warning, no notice (AC-5.8) | 18 | no |
-| Row present, written; `git` refuses (hook, missing identity, index lock) | `recorded (uncommitted)` | the row is correct on disk; detail tells the operator to commit it manually | 19 | no — a plain note |
+| Row present, written; `git` refuses (hook, missing identity, index lock) | `recorded (uncommitted)` | the row is correct on disk; detail tells the operator to commit it manually | 21 | no — a plain note |
 | Row present in a status §2.5 does not overwrite | `recorded` | file unchanged; plain note naming the status found | 18 | no |
 
 **Why a git refusal does not escalate.** AC-5.2's escalation exists because "merged, queue not
@@ -738,38 +738,47 @@ false` run emits nothing to the notices channel at all.
 
 ## 11. Observable outcomes per scenario
 
-REQ AC-6.1a's condition table, refined to spec level: each row now names the resolving step, the
-reason line's subject, whether the queue is written, and whether an escalation is emitted. It is
-exhaustive and exclusive — exactly one row applies to any run — and it is the parameterised suite the
-TSPEC and tests pin. Every row's pipeline outcome is `success`.
+REQ AC-6.1a's condition table, refined to spec level: each row names the resolving step, the reason
+line's subject, whether the queue is written, and whether an escalation is emitted. It is the
+parameterised suite the TSPEC and tests pin.
+
+**Exclusivity, stated precisely.** Rows 1–18 are **terminal**: exactly one of them applies to any run
+that reaches the phase, and no two can apply together. Rows 19–22 are **composable post-merge
+annotations** over row 18 (or over row 3): each is independently present or absent, any subset can
+hold at once, all of them report `merged`, and their notices accumulate in §9.3's order. Row 23 is
+the one run that never reaches the phase. Every row's pipeline outcome is `success` except row 23.
 
 | # | Condition | Resolves at | `mergeStatus` | Queue written | Escalation |
 |---|---|---|---|---|---|
 | 1 | `PHASE_MERGE_ENABLED` false | §2.2 r1 | `skipped` | no | no |
 | 2 | `mergeMode` resolves `off` (incl. malformed config) | §2.2 r2 | `skipped` | no | no |
-| 3 | PR already `MERGED` on entry | §2.2 r3 | `merged` (method `unknown`, no `mergeSha`) | **yes**, idempotent | no |
+| 3 | PR already `MERGED` on entry | §2.2 r5 | `merged`, method `unknown`, `mergeSha` per §9.1 | **yes**, idempotent | no |
 | 4 | Guard fired — a changed path matched | §4.1 | `refused` | no | **yes** |
 | 5 | Guard fired — changed-file list unretrievable | §4.4 | `refused` | no | **yes** |
-| 6 | No `prUrl` from Phase PUB | §2.3 5a | `deferred` | no | no |
-| 7 | PR state `CLOSED` | §2.3 5b | `deferred` | no | no |
-| 8 | PR state unparseable/unrecognised | §3.2 | `refused` | no | no |
+| 6 | No `prUrl` from Phase PUB | §2.2 r3 | `deferred` | no | no |
+| 7 | PR state `CLOSED` | §2.3 7a | `deferred` | no | no |
+| 8 | PR state unparseable/unrecognised | §2.2 r4 | `refused` | no | no |
 | 9 | CI `no-checks` and `mergeRequiresCi` true | §5 | `refused` | no | **yes** |
 | 10 | CI `pending` or `failed` | §5 | `refused` | no | no |
 | 11 | CI rollup unretrievable/unparseable | §5 | `refused` | no | no |
-| 12 | `mergeable` `CONFLICTING`, or `mergeStateStatus` `DIRTY`/`BLOCKED` | §2.3 5d | `deferred` | no | no |
+| 12 | `mergeable` `CONFLICTING`, or `mergeStateStatus` `DIRTY`/`BLOCKED` | §2.3 7c | `deferred` | no | no |
 | 13 | `mergeable` still `UNKNOWN` after the bounded re-reads | §3.3 | `deferred` | no | no |
-| 14 | One or more unresolved review threads | §2.3 5e | `deferred` | no | no |
-| 15 | Capability query unretrievable/unparseable | §2.3 5f | `refused` | no | no |
+| 14 | One or more unresolved review threads | §2.3 7d | `deferred` | no | no |
+| 15 | Capability query unretrievable/unparseable | §2.3 7e | `refused` | no | no |
 | 16 | No permitted merge method remains | §6.1 | `deferred` (reason "no permitted merge method") | no | no |
 | 17 | Every permitted method attempted and failed | §6.3 | `deferred` (reason names each attempt) | no | no |
 | 18 | Merge performed and succeeded | §6.2 | `merged` + `mergeSha` + `mergeMethod` | **yes** | no |
-| 19 | Merged, remote branch deletion failed | §6.4 | `merged` | **yes** | no — a plain note |
-| 20 | Merged, queue write failed | §7.4 | `merged` | attempted, failed | **yes** |
-| 21 | Merged, working tree not updated | §8.3 | `merged` | **yes** | **yes** |
+| 19 | *(annotation)* remote branch deletion failed | §6.4 | `merged` | unaffected | no — a plain note |
+| 20 | *(annotation)* queue row absent — disposition `error` | §7.4 | `merged` | attempted, not written | **yes** |
+| 21 | *(annotation)* queue row written but not committed | §7.4 | `merged` | **yes**, on disk | no — a plain note |
+| 22 | *(annotation)* working tree not updated | §8.3 | `merged` | **yes** | **yes** |
+| 23 | Run halted before Phase MERGE | — | `skipped` | no (the halt path writes its own `halted` row) | no; the §9.4 note is **not** emitted |
 
 Rows 1–2 and 4–5 are the two pairs a reader is most likely to conflate. Rows 1–2 both report
 `skipped` and neither evaluates the guard (§2.2). Rows 4–5 both report `refused` and differ only in
-the escalation's text, which is the operator's whole signal about which happened.
+the escalation's text, which is the operator's whole signal about which happened. Row 8 is the third
+member of that family and is deliberately **not** escalating: it resolves above the guard (§2.2), so
+a run that could not read PR state never reaches a guard verdict to report.
 
 `refused` means a safety rule said no; `deferred` means an ordinary not-ready condition a later
 re-invocation could satisfy. Rows 16 and 17 share a value and differ in the reason line, because that
@@ -778,29 +787,34 @@ line is what tells the operator whether to change a repository setting or invest
 ## 12. Acceptance tests
 
 §11's table is itself the primary acceptance suite: one case per row, asserting the four columns plus
-the reason line. These five cover behaviour the table does not express.
+the reason line. These seven cover behaviour the table does not express.
 
 | ID | Who / Given / When / Then |
 |---|---|
-| AT-M1 | **Operator.** Given a five-column `QUEUE.md` with three data rows and a merged PR for row 2, When Phase MERGE writes back, Then the header gains `Evidence`, the separator and the other two data rows each gain one empty cell, row 2's Status cell reads exactly `done`, its Evidence cell reads `{shortSha} #{prNumber}`, and no other cell in the file changes |
-| AT-M2 | **Operator.** Given the same queue already carrying an `Evidence` column and row 2 already `done` with the same evidence, When Phase MERGE re-runs against the already-merged PR, Then the file is byte-identical, no commit is produced, and no notice is emitted |
-| AT-M3 | **Operator.** Given two changed-file lists identical except that one contains `pdlc/skills/x.md`, When the guard evaluates each, Then the outcomes are opposite — `refused` with that path named, and not-refused — and the near-miss paths `pdlc/skills-notes/x.md`, `docs/pdlc/skills/x.md` and `PDLC/Skills/x.md` all fall on the not-refused side |
+| AT-M1 | **Operator.** Given a five-column `QUEUE.md` with three data rows and a merged PR for row 2, When Phase MERGE writes back, Then the header gains `Evidence`, the separator and the other two data rows each gain one empty cell, row 2's Status cell reads exactly `done`, its Evidence cell reads `{shortSha} #{prNumber}` with `shortSha` the first 7 characters of the observed oid, and no other cell in the file changes |
+| AT-M2 | **Operator.** Given the same queue already carrying an `Evidence` column and row 2 already `done` with the same evidence, When Phase MERGE re-runs against the already-merged PR whose `O1.mergeCommit.oid` is the same oid, Then the file is byte-identical, no commit is produced, and no notice is emitted |
+| AT-M2a | **Operator.** Given that queue with row 2 still `awaiting-merge` and an already-merged PR, When Phase MERGE runs, Then row 2 becomes `done`; its Evidence cell reads `{shortSha} #{prNumber}` when `O1.mergeCommit.oid` is present and `merged #{prNumber}` when it is absent; `mergeMethod` is `unknown`; and the §9.4 merge-deferred note is not emitted. This is AC-5.2's recovery path and the one row-3 case that mutates the file |
+| AT-M3 | **Operator.** Given a fixture that otherwise merges — every precondition passing — and a changed-file list **without** any guard-matching path, When Phase MERGE runs, Then it resolves at §11 **row 18** with `mergeStatus: merged` and **no** notice beginning `MERGE ESCALATION: `; and given the identical fixture with `pdlc/skills/x.md` added to the list and nothing else changed, Then it resolves at **row 4** with `mergeStatus: refused` and a notice reading `MERGE ESCALATION: self-modification guard fired for {prUrl} — matched paths: pdlc/skills/x.md`. Both arms assert a positive terminal value, so deleting the guard turns the second arm red. The near-miss paths `pdlc/skills-notes/x.md`, `docs/pdlc/skills/x.md` and `PDLC/Skills/x.md` each reproduce the **first** arm exactly — row 18, `merged`, no escalation |
 | AT-M4 | **Operator.** Given a queue-driven run whose pipeline report carries `mergeStatus: merged`, When the driver takes its post-pipeline transition, Then it records `done` (not `awaiting-merge`) and does not emit the "merge the PR, then set it to done" message |
-| AT-M5 | **Operator.** Given a queue whose only unblocked dependent depends solely on this feature, When a run reports `mergeStatus: merged`, Then the next queue invocation selects that dependent with no human turn; and given the same queue with this feature left `awaiting-merge`, that dependent is not selected |
+| AT-M5 | **Operator.** Given a queue whose only unblocked dependent depends solely on this feature, **and a distribution drift gate that passes** — a clean drift-state record, or `distribution.checkEnabled: false` — When a run reports `mergeStatus: merged`, Then the next queue invocation selects that dependent with no human turn; and given the same queue with this feature left `awaiting-merge`, that dependent is not selected. The gate precondition is stated because it runs before `QUEUE.md` is read at all and can return `blocked`, selecting nothing, for reasons unrelated to this feature |
+| AT-M6 | **Operator.** Given a merged PR, a `QUEUE.md` whose row is absent, and a working tree that cannot be moved to the default branch, When Phase MERGE completes, Then `mergeStatus` is `merged`, §11 rows 20 and 22 both apply, and the notices channel carries both escalation lines in §9.3's order — the composability claim, asserted rather than assumed |
 
 ## 13. Obligations and open questions
 
 | ID | Owner | Obligation |
 |---|---|---|
-| O-M1 | TSPEC | The row-disposition vocabulary of §7.4 must stop reporting a `done` write as `halted`. Name the members and the migration for existing readers |
-| O-M2 | TSPEC | Names, signatures and injection mechanics for the six observation points of §3.1 and for the queue-recording channel of §7.4 |
-| O-M3 | TSPEC | The `O3` review-thread GraphQL query text and its pagination behaviour. `reviewDecision` is **not** an accepted substitute (REQ AC-1.2) |
+| O-M1 | TSPEC | Migrate the row-disposition catalogue to §7.4's `recorded` / `recorded (uncommitted)` / `none` / `error`. The shipped members are produced by `rewriteStatus` and consumed through the `_recordHalt` seam and `defaultRecordHalt`; name every producer and reader, and say whether the seam itself is renamed |
+| O-M2 | TSPEC | Names, signatures and injection mechanics for the six observation points of §3.1, and the evidence-carrying extension of the recording channel — its two entrypoint closures, its default implementation, its per-run seam, and the shared row transform — including the property that an evidence-free call still emits today's bytes for the `in-progress` / `awaiting-merge` / `halted` writes |
+| O-M3 | TSPEC | The `O3` review-thread GraphQL query text, its pagination behaviour, and the derivation of owner/repo/number from `prUrl` that addresses it. `reviewDecision` is **not** an accepted substitute (REQ AC-1.2) |
 | O-M4 | TSPEC | `O5`'s pagination completeness rule: how the phase knows a changed-file list is complete, since an incomplete list must fail closed (§4.4) rather than silently pass the guard |
 | O-M5 | TSPEC | Where `.claude/pdlc.config.json`'s `merge` section is read and cached within a run, given §2.2 row 1 must resolve before any read occurs |
 | O-M6 | PLAN | Re-expression of `RLH-AT-32-orch` per §7.5, plus its new sibling case — as a task, so the change is reviewed rather than discovered as a red test |
+| O-M7 | TSPEC | §3.3's wait between re-reads. The pipeline's sleep seam is declared without a default and is not supplied by the runtime's injection bundle; the retry loop must inherit the same default-in-callee pattern the CI poll already uses rather than reading an undefined value |
+| O-M8 | TSPEC | §8.3's replay of local queue-row commits onto the fetched default tip: the exact command sequence, how an already-upstream commit is detected as empty, and the failure detection that triggers the escalation |
 
-No open questions remain for the requester. Both round-2 questions (TE Q-01, Q-02) are answered in
-§2.3 and §7.3.
+No open questions remain for the requester. The REQ round-2 questions (TE Q-01, Q-02) are answered in
+§2.3 and §7.3; the FSPEC round-1 questions are answered in §8.2 (SE Q-01), §2.5 (SE Q-02), §9.4
+(TE Q-01) and §10.3 (TE Q-02).
 
 ## 14. Traceability
 
