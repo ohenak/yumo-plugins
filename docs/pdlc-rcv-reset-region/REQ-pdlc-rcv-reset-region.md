@@ -202,13 +202,9 @@ disjoint by step 4's own rule — and step 5 is defined only on the passing bran
 (`H = A = 0`, both steps vacuous, `W` = 1, **no** refusal: an empty region is valid, not corrupt).
 
 **`H − A ≤ 1` is the invariant `REQ-RCV-01` AC-1.5(4)'s *exactly one answering line* relies on, and
-step 3 gives it a stated domain.** Validating rather than assuming matters because on two
-`HALT-REASON:` lines and no answering line **every value-level check passes vacuously**: without step
-3 the loop would grant `H − A − 1` windows beyond the one paid for, every invocation, fail-**open**.
-Symmetrically, a region that fails step 2 or 3 must not spend the clearance — validation is a
-**conjunct of the gate**, not merely a constraint on `W`. Without that, two `HALT-REASON:` lines and
-one *invalid* `WINDOW-START:` give `A < H`, so the loop would write an answering line and consume the
-clearance while `W` is still 1 — permanently.
+step 3 gives it a stated domain**; symmetrically, a region that fails step 2 or 3 must not spend the
+clearance — validation is a **conjunct of the gate**, not merely a constraint on `W`. The arithmetic
+behind both halves is stated once for both ends at `pdlc-rcv-split.md` **§5.2** and not restated here.
 
 **Step 2 is order-sensitive, and the append rule is therefore normative.** It reads what comes
 *before* each line. Under a prepending implementation a `WINDOW-RESUMED: 4` can land ahead of the
