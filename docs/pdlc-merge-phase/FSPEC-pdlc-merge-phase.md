@@ -75,10 +75,10 @@ later row that needs PR state reuses that one observation — so no input can re
 
 Rows 3–5 are hoisted above the guard deliberately, and the consequence is stated rather than left to
 be discovered: **a run whose `O1` is unparseable resolves at row 4 even when its diff matches a guard
-path.** Both readings refuse, so nothing is merged and no safety property turns on the choice; what
-turns on it is which `MERGE ESCALATION: ` line a test may assert, and row 4 emits none. The guard's
-own fail-closed input (`O5`) is unaffected — §4.4 still fires the guard when the changed-file list is
-unretrievable, because the guard *is* reached in that scenario.
+path.** Both readings refuse, so nothing is merged; what turns on the choice is only which
+`MERGE ESCALATION: ` line a test may assert, and row 4 emits none. The guard's own fail-closed input
+(`O5`) is unaffected — §4.4 still fires the guard on an unretrievable changed-file list, because
+there the guard *is* reached.
 
 **N-01 is resolved by this table, not by re-reading AC-3.1.** A PR touching a guard path in a repo
 with `mergeMode: "off"` reports **`skipped`**: row 2 resolves before row 6 is reached, and AC-3.1's
@@ -109,9 +109,9 @@ observation to be taken before any can be reported, contradicting the short-circ
 would report a CI failure on a PR nobody can merge anyway. No safety is lost — the failure of *any*
 precondition means no merge, invariant under the ordering.
 
-**Evaluation short-circuits within row 7 too:** once a precondition fails, later ones are not
-observed. NFR-2 is satisfied because the merge attempt (row 8) is the only state-mutating call and is
-reached only when every precondition resolved *pass* — NFR-2 constrains mutation, not observation.
+**Row 7 short-circuits too:** once a precondition fails, later ones are not observed. NFR-2 holds
+because the merge attempt (row 8) is the only state-mutating call and is reached only when every
+precondition resolved *pass* — NFR-2 constrains mutation, not observation.
 
 ### 2.4 Enable/skip resolution
 
@@ -269,10 +269,8 @@ The guard's escalation is emitted onto the final report's existing operator-faci
 one line per notice, each beginning with the stable prefix `MERGE ESCALATION: `. The prefix is the
 whole contract — an escalation is something a reader or a test finds by string.
 
-```
-MERGE ESCALATION: self-modification guard fired for {prUrl} — matched paths: {path}, {path}, …
-MERGE ESCALATION: self-modification guard fired for {prUrl} — changed-file list could not be retrieved
-```
+Its two lines — one naming the matched paths, one naming an unretrievable list — are given verbatim
+with every other escalation in §9.3, written once so the two cannot drift.
 
 Every matched path appears, so the operator's review has its scope delimited before they open the PR.
 An escalation never implies a halt: outcome stays `success` (AC-1.3). **Consequence accepted here
@@ -396,24 +394,19 @@ cell already holding the first form is **not** downgraded to the second by a lat
 cannot resolve the oid: an existing non-empty `Evidence` cell is left byte-identical whenever the new
 value would be the `merged #{prNumber}` form.
 
-`Evidence` is safe as a column name against the queue's header lookup, which resolves columns by
-*substring* over `order`/`#`, `status`, `feature`, `req path`/`req`/`path`, and
-`depends`/`depends-on`/`deps`. `evidence` contains none of those tokens, and columns the lookup does
-not recognise are ignored — so an added sixth cell round-trips through parse and rewrite unchanged.
-
-Only the target feature's row changes. No other data row's Status, Feature, REQ Path or Depends-On
-cell may change, and no prose section of `QUEUE.md` may change.
+`Evidence` is safe against the queue's header lookup, which resolves columns by *substring* over
+`order`/`#`, `status`, `feature`, `req path`/`req`/`path` and `depends`/`deps`: `evidence` contains
+none of those tokens, and unrecognised columns are ignored, so a sixth cell round-trips unchanged.
+Only the target feature's row changes — no other data row's cells, and no prose section.
 
 ### 7.3 The `Evidence` column migration (Q-02)
 
 The queue table ships with five columns. The migration to six is performed **by the first `done`
 write**, in the same write, so a repository never needs a manual edit and no operator step stands
-between a merge and an advanced queue. Exactly three structural changes are permitted, and only
-these:
-
-1. `| Evidence |` appended to the header row;
-2. one cell appended to the header **separator** row, so the rendered table stays well-formed;
-3. one **empty** cell appended to every other data row, so cell counts stay uniform.
+between a merge and an advanced queue. Exactly three structural changes are permitted: `| Evidence |`
+appended to the header row; one cell appended to the header **separator** row, so the rendered table
+stays well-formed; and one **empty** cell appended to every other data row, so cell counts stay
+uniform.
 
 The separator row is named explicitly because AC-5.3 lists only the header and the data rows: it is
 neither a data row nor prose, and a six-column header over a five-column separator is a broken table.
@@ -776,12 +769,12 @@ No open questions remain for the requester. The REQ round-2 questions (TE Q-01, 
 
 | FSPEC | REQ | User stories |
 |---|---|---|
-| §2 FSPEC-MERGE-01 | REQ-MERGE-01, NFR-2, NFR-5 | US-01 |
-| §3 FSPEC-MERGE-02 | AC-1.2, AC-1.2a, AC-1.2b, NFR-1, NFR-4 | US-04 |
-| §4 FSPEC-MERGE-03 | REQ-MERGE-03, NFR-3 | US-03 |
-| §5 FSPEC-MERGE-04 | REQ-MERGE-04 | US-04 |
-| §6 FSPEC-MERGE-05 | REQ-MERGE-02 | US-02 |
-| §7 FSPEC-MERGE-06 | REQ-MERGE-05 | US-01, US-05 |
-| §8 FSPEC-MERGE-07 | AC-5.7, AC-2.6, AC-2.6a | US-01 |
-| §9 FSPEC-MERGE-08 | REQ-MERGE-06 | US-01, US-05 |
-| §10 FSPEC-MERGE-09 | REQ-MERGE-07 | US-03, US-04 |
+| §2 MERGE-01 | REQ-MERGE-01, NFR-2, NFR-5 | US-01 |
+| §3 MERGE-02 | AC-1.2, AC-1.2a, AC-1.2b, NFR-1, NFR-4 | US-04 |
+| §4 MERGE-03 | REQ-MERGE-03, NFR-3 | US-03 |
+| §5 MERGE-04 | REQ-MERGE-04 | US-04 |
+| §6 MERGE-05 | REQ-MERGE-02 | US-02 |
+| §7 MERGE-06 | REQ-MERGE-05 | US-01, US-05 |
+| §8 MERGE-07 | AC-5.7, AC-2.6, AC-2.6a | US-01 |
+| §9 MERGE-08 | REQ-MERGE-06 | US-01, US-05 |
+| §10 MERGE-09 | REQ-MERGE-07 | US-03, US-04 |
