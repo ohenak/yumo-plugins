@@ -71,7 +71,7 @@ Four layers, with the dependency arrow pointing one way only:
 
 ```
 main()  ──►  phaseMerge()  ──►  decideMerge()          [pure, total, no IO]
-                   │        ──►  observations O1…O6     [{ execFn } transport]
+                   │        ──►  observations O1…O6     [one _ghRun transport seam]
                    │        ──►  post-merge effects M2…M5 (_git, _recordQueueRow)
                    └──► returns one MergeOutcome record
 ```
@@ -368,8 +368,9 @@ re-observation, the orchestrator sleeps and takes it (§5.3). Consequences pinne
 
 ### 4.4 `O2` — CI rollup, and `O3` — review threads (O-M3)
 
-**`O2` reuses `checkPrCi` unchanged.** `observeCi(prUrl, { execFn, _checkCi = checkPrCi })` is a
-one-line delegation returning `passed | pending | failed | none | unknown`. FSPEC §3.1's "two
+**`O2` reuses `checkPrCi` unchanged.** `observeCi(prUrl, { _ghRun, _checkCi = checkPrCi })` fetches
+the rollup through `_ghRun` and hands the raw text to `checkPrCi(prUrl, { execFn: () => raw })` — a
+delegation returning `passed | pending | failed | none | unknown`. FSPEC §3.1's "two
 classifications of the same rollup that disagree is the defect AC-4.0 prevents" is satisfied
 structurally: there is no second classifier, and `classifyCheckRollupEntry` (`:3532`) is not copied.
 
@@ -448,7 +449,7 @@ reintroduce the ambiguity by editing a fixture.
 
 ### 4.7 `O6` — merge execution
 
-`executeMerge(prUrl, method, { execFn })` issues exactly one of
+`executeMerge(prUrl, method, { _ghRun })` issues exactly one of
 `gh pr merge {prUrl} --rebase` / `--merge` / `--squash`, then **always** reads back
 `gh pr view {prUrl} --json mergeCommit,state`. Success requires `state === "MERGED"` **and** a string
 `mergeCommit.oid`; a zero-exit command whose read-back does not confirm both is a **failed attempt**
@@ -476,13 +477,19 @@ and returns either a demand for the next one or a resolution:
 ```
 decideMerge(record, config) =>
   | { kind: "need", observation: "O1"|"O2"|"O3"|"O4"|"O5", waitMs?: number }
-  | { kind: "act",  method: "rebase" | "merge" | "squash" }
+  | { kind: "act",  method: "rebase" | "merge" | "squash" }   // "squash" only under allowSquashMerge
   | { kind: "resolved", row, mergeStatus, reason, escalations, mergeSha, mergeMethod }
 ```
 
 No IO, no clock, no randomness: the same record and config always produce the same answer. Short-
 circuiting is not a property the implementation must remember to preserve — an observation that is
 never demanded is never taken, because taking it is the orchestrator's response to a demand.
+
+**What the resolution does *not* carry (TE F-01).** There is no `queueWritten` field and no
+escalation *emission* here: the core names the escalations that apply, `phaseMerge` emits them, and
+the queue write is entirely `phaseMerge`'s (§7.5). So two of FSPEC §11's four columns are outside
+this function, which is why §13.2 drives the row table through `phaseMerge` and gives `decideMerge`
+its own narrower suite.
 
 ### 5.2 The orchestrator loop
 
@@ -498,10 +505,20 @@ for (let step = 0; step < MERGE_MAX_DECISION_STEPS; step++) {
 throw new Error("unreachable: decideMerge did not resolve");   // see below
 ```
 
-**Termination.** Every iteration either fills a slot that was empty, appends an attempt from a
-finite candidate chain, or resolves. `MERGE_MAX_DECISION_STEPS = 24` bounds `1 + maxRetries` `O1`
-observations, four other observations and three attempts with slack. The bound is an assertion, not
-a control-flow device: reaching it is a coding defect, and the loop's exit therefore throws — but
+**Termination, and why the bound is genuinely unreachable (TE F-02).** Every iteration either fills a
+slot that was empty, appends an attempt from a finite candidate chain, or resolves. The worst case is
+therefore bounded by the sum of its parts:
+
+| Term | Max | Why |
+|---|---|---|
+| `O1` observations | `1 + MERGE_MAX_RETRIES` = 11 | §3.1 caps `mergeableRetries` at 10; a value above it takes the default |
+| other observations | 4 | `O2`, `O3`, `O4`, `O5`, each demanded at most once |
+| merge attempts | 3 | the longest possible candidate chain (rebase, merge, squash) |
+| the resolving step | 1 | the iteration that returns `kind: "resolved"` |
+| **total** | **19** | `MERGE_MAX_DECISION_STEPS = 24` leaves 5 steps of slack |
+
+The cap in §3.1 is what makes this a derivation rather than a hope: without it, `mergeableRetries: 25`
+reaches the bound from a config file. The bound is an assertion, not a control-flow device: reaching it is a coding defect, and the loop's exit therefore throws — but
 **`phaseMerge` wraps its whole body in `try/catch`** and maps any throw to
 `{ mergeStatus: "refused", row: "internal", reason }`, because FSPEC §2.1 requires that **Phase MERGE
 never throws** (a throw would take `main()`'s halt path at `:5117` and write a `halted` queue row over
@@ -510,34 +527,44 @@ enforced, and §13.2 pins it with an observation double that throws.
 
 ### 5.3 The resolution order — a literal transcription of FSPEC §2.2
 
-`decideMerge`'s body is one ordered sequence of guarded returns, in FSPEC §2.2's row order. The row
-number is *carried in the result*, so a test asserts the resolving row rather than inferring it:
+`decideMerge`'s body is one ordered sequence of guarded returns, in FSPEC §2.2's row order. The
+**FSPEC §11 row identifier** (§2.4's rule, never a §2.2 row number) is carried in the result, so a
+test asserts the resolving row rather than inferring it:
 
-| Guard, in order | Result |
-|---|---|
-| `config.mergeMode === "off"` | row 2, `skipped` |
-| `!record.prUrl` | row 3, `deferred`, "no PR URL from Phase PUB" |
-| `record.o1 === null` | **need `O1`** |
-| `!record.o1.ok` | row 4, `refused`, "PR state could not be determined", **no escalation** |
-| `record.o1.state === "MERGED"` | see §5.5 (already-merged path) |
-| `record.o5 === null` | **need `O5`** |
-| `guardVerdict(record.o5, guardPaths).fired` | row 4/5, `refused` + escalation (§6) |
-| `record.o1.state === "CLOSED"` | 7a → row 7, `deferred`, "PR is CLOSED" |
-| `record.ci === null` | **need `O2`** |
-| CI rule (§5.4) fails | 7b → rows 9/10/11, `refused` |
-| `mergeable` / `mergeStateStatus` / `number` unreadable | 7c → row 11a, `refused` |
-| `mergeable === "UNKNOWN"` and `o1Count <= retries` | **need `O1`**, `waitMs = delay × 1000` |
-| `mergeable === "UNKNOWN"` (retries exhausted) | row 13, `deferred` |
-| `mergeable === "CONFLICTING"` or `mergeStateStatus ∈ {DIRTY, BLOCKED}` | row 12, `deferred` |
-| `record.o3 === null` | **need `O3`** |
-| `!record.o3.ok` | 7d → `refused` |
-| `record.o3.unresolved > 0` | row 14, `deferred`, "N unresolved review thread(s)" |
-| `record.o4 === null` | **need `O4`** |
-| `!record.o4.ok` | 7e → row 15, `refused` |
-| `mergeCandidates(...)` is empty | row 16, `deferred`, "no permitted merge method" |
-| an untried candidate remains | **act** with it |
-| the last attempt succeeded | row 18, `merged` + `mergeSha` + `mergeMethod` |
-| every candidate attempted and failed | row 17, `deferred`, reason naming each attempt |
+| # | Guard, in order | §2.2 row | Result |
+|---|---|---|---|
+| 1 | `config.mergeMode === "off"` | r2 | **§11 row 2**, `skipped` |
+| 2 | `!record.prUrl` | r3 | **§11 row 6**, `deferred`, "no PR URL from Phase PUB" |
+| 3 | `record.o1 === null` | r4 | **need `O1`** |
+| 4 | `!record.o1.ok` | r4 | **§11 row 8**, `refused`, "PR state could not be determined", **no escalation** |
+| 5 | `record.o1.state === "MERGED"` | r5 | see §5.5 → **§11 row 3** |
+| 6 | `record.o5 === null` | r6 | **need `O5`** |
+| 7 | `guardVerdict(...).kind === "match"` | r6 | **§11 row 4**, `refused` + escalation (§6) |
+| 8 | `guardVerdict(...).kind === "unretrievable"` | r6 | **§11 row 5**, `refused` + escalation (§6) |
+| 9 | `record.o1.state === "CLOSED"` | 7a | **§11 row 7**, `deferred`, "PR is CLOSED" |
+| 10 | `record.ci === null` | 7b | **need `O2`** |
+| 11 | CI rule (§5.4) fails | 7b | **§11 rows 9 / 10 / 11**, `refused` |
+| 12 | `mergeable` / `mergeStateStatus` / `number` unreadable | 7c | **§11 row 11a**, `refused` |
+| 13 | `mergeable === "UNKNOWN"` and `o1Count <= retries` | 7c | **need `O1`**, `waitMs = delay × 1000` |
+| 14 | `mergeable === "UNKNOWN"` (retries exhausted) | 7c | **§11 row 13**, `deferred` |
+| 15 | `mergeable === "CONFLICTING"` or `mergeStateStatus ∈ {DIRTY, BLOCKED}` | 7c | **§11 row 12**, `deferred` |
+| 16 | `record.o3 === null` | 7d | **need `O3`** |
+| 17 | `!record.o3.ok` | 7d | **`"7d-unknown"`**, `refused` — the one condition §11 has no row for (§2.4; erratum E-2) |
+| 18 | `record.o3.unresolved > 0` | 7d | **§11 row 14**, `deferred`, "N unresolved review thread(s)" |
+| 19 | `record.o4 === null` | 7e | **need `O4`** |
+| 20 | `!record.o4.ok` | 7e | **§11 row 15**, `refused` |
+| 21 | `mergeCandidates(...)` is empty | r8 | **§11 row 16**, `deferred`, "no permitted merge method" |
+| 22 | an untried candidate remains | r8 | **act** with it |
+| 23 | the last attempt succeeded | r8 | **§11 row 18**, `merged` + `mergeSha` + `mergeMethod` |
+| 24 | every candidate attempted and failed | r8 | **§11 row 17**, `deferred`, reason naming each attempt |
+
+**Two corrections v1.0 got wrong (PM F-01).** Guard 2 resolves **§11 row 6**, not row 3 — row 3 is
+*PR already MERGED*. Guard 4 resolves **§11 row 8**, not row 4 — row 4 is *guard fired, path matched*,
+which escalates, whereas row 8 deliberately does not (FSPEC §11's closing paragraph makes that
+distinction the operator's signal). Under v1.0's numbering rows 6 and 8 were unreachable and rows 3
+and 4 were each claimed by two conditions with different escalation expectations, which would have
+made the row-table suite self-contradictory. Guards 7 and 8 are also split here, because §11 gives
+the two guard outcomes distinct rows and distinct escalation text.
 
 `PHASE_MERGE_ENABLED` (row 1) is **not** in this table: it is checked in `phaseMerge` before the
 config is read (§3.3), so the core never sees a disabled run. That is the one row the core does not
@@ -1256,7 +1283,7 @@ be edited away:
 | O-M4 | §4.6 — the four-verdict completeness procedure, the `< 100` completeness criterion, the `--paginate --slurp` fallback, and empty-list ≠ unretrievable |
 | O-M5 | §3.3 — read once at the top of `phaseMerge`, after the enable check by construction; local `const`, **no module-level cache**, with the in-process queue→dev call as the reason |
 | O-M6 | PLAN-owned; §13.4 states the exact re-expression and the sibling case so the PLAN task has a specification to reference |
-| O-M7 | §4.3 — `_sleep`/`_now` defaulted **in `phaseMerge`'s own parameter list**, the `raisePrAndVerifyCi:3899` pattern; wait is `mergeableRetryDelaySeconds × 1000` |
+| O-M7 | §4.3 — `_sleep`/`_now` defaulted **in `phaseMerge`'s own parameter list**, the `raisePrAndVerifyCi:3899` pattern; wait is `mergeableRetryDelay × 1000` |
 | O-M8 | §7.4 — the seven-step argv sequence, `--empty=drop` as the already-upstream detection, exit-status-only failure detection, and the ancestry confirmation |
 | SE-v3 advisory / TE-v3 N-02 | §5.5 — row 5 observes `O4` for the branch name only; an unknown `O4` there does not refuse, it produces row 22 |
 | TE-v3 N-01 | §4.6 + §13.3 — resolved as a stated fixture constraint on the row-11a and row-5 cases, asserted rather than documented |
