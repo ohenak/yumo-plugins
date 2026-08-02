@@ -95,7 +95,7 @@ The loop *re-derives its state from the branch on every invocation* (M-1d, M-2f)
 
 | Quantity | Read by | Durable home | If absent |
 |---|---|---|---|
-| **First round of the current window** `W` | AC-1.1, AC-1.5(4); `pdlc-rcv-fixed-point-stop` AC-2.1, AC-2.8 | The `WINDOW-START: {N}` lines in the **reset region** of `POSTMORTEM-{phase}-{feature}.md` — the **greatest** value present, and only if the region **validates** (AC-1.5(4)). Appended, so document order is event order | **1** — no reset in effect, the cap applies from round 1. Fail-closed: no absent or malformed value ever widens the window. **§6's grammar is in force at this ship**, so a value that is not a decimal integer ≥ 1 contributes no origin; only the **consistency** half is target state (`REQ-RCV-07` AC-7.1, X-06). Survives a second halt, since AC-1.4 preserves the region |
+| **First round of the current window** `W` | AC-1.1, AC-1.5(4); `pdlc-rcv-fixed-point-stop` AC-2.1, AC-2.8 | The `WINDOW-START: {N}` lines in the **reset region** of `POSTMORTEM-{phase}-{feature}.md` — the **greatest** value present, and only if the region **validates** (AC-1.5(4)). Appended, so document order is event order — and because AC-1.5(4) writes the **resolved** start, the values never descend, so *greatest* and *last well-formed* name the same line | **1** — no reset in effect, the cap applies from round 1. Fail-closed: no absent or malformed value ever widens the window. **§6's grammar is in force at this ship**, so a value that is not a decimal integer ≥ 1 contributes no origin; only the **consistency** half is target state (`REQ-RCV-07` AC-7.1, X-06). Survives a second halt, since AC-1.4 preserves the region |
 | **Rounds this entry ran** (AC-1.3) | AC-1.3 only | Not durable and not required to be — a property of the **entry**, computed inside the invocation that reports it; no criterion reads it later. Listed so the *"no in-process-only row"* invariant is read correctly: that invariant is over quantities the **criteria** read across a boundary | n/a — an entry knows what it dispatched; `0` on the zero-round halt |
 | **Whether a clearance is still unanswered** (the reset is one-shot) | AC-1.5(4), AC-1.5(5) | The **counts**, in that same region, of `H` = `HALT-REASON:` lines and `A` = `WINDOW-START:` **plus** `WINDOW-RESUMED:` lines — **by line prefix, not by value** (AC-1.5(4) clause 4). A clearance is unconsumed exactly when a `RESOLVED: yes` is readable, `A < H`, **and the region validates** | `A = H` ⇒ every halt answered; nothing written, nothing granted. A region that does not validate ⇒ the refusal AC-1.5(4) fixes, which moves neither count — **target state; that conjunct is not in force until `REQ-RCV-07` (X-06)** |
 
@@ -213,8 +213,24 @@ halts twice would have its post-mortem written twice, and the reset region (cata
    `WINDOW-START:` **plus** `WINDOW-RESUMED:` lines — both counted **by line prefix, whatever the value**, so a malformed value contributes no origin (§6) but still answers a halt. A clearance is **unconsumed** exactly when all three hold: a `RESOLVED: yes` is readable, `A < H`, **and the region
    validates** (the named predicate below). On any entry that observes all three — there is no observable "first entry"; the counts are the whole state — the loop **appends** exactly one answering
    line to the **end** of the region — `WINDOW-START: {N}` on a convergence halt, `WINDOW-RESUMED: {W}` on an S-11 halt (clause 5) — which makes `A = H` again. For `WINDOW-START:`, `N` is
-   one past the highest round then on the branch and becomes the origin `W`: the budget of 3 is counted from `W`, and rounds below `W` are outside the window. When `A = H` every halt so
-   far has been answered and the loop writes nothing and grants nothing.
+   **the start clause 2 resolves — the later of one past the highest round then on the branch and the origin `W` then in effect** — and becomes the new origin `W`: the budget of 3 is counted
+   from `W`, and rounds below `W` are outside the window. When `A = H` every halt so far has been answered and the loop writes nothing and grants nothing.
+
+   **Why `N` is the resolved start and not the derived one.** The two differ only where clause 2's rule
+   bites — cross-review files deleted after a window was granted — and there the derived value is
+   *below* the origin. Writing it would make the region's `WINDOW-START:` values **descend**, with
+   three consequences the REQ refuses: §4.1 reads `W` as the **greatest** value present, so the entry
+   would run from the old origin while the line claims a lower one — a line whose stated job is to
+   record the origin then in effect recording a value that is not it (§6, S-14's row reasoning one
+   clause over); the descending pair is precisely the ordering fault `REQ-RCV-07` AC-7.1 refuses, so
+   the operator act clause 2 exists to accommodate would leave a region permanently `invalid` once row
+   18 ships (AC-1.4 clause 1 preserves it verbatim and no clearance repairs it); and the grant would
+   open nothing. With `N` resolved, **`WINDOW-START:` values are non-descending on every path**, so
+   §4.1's *greatest* and *last well-formed* readings coincide and the region stays valid. **Accepted
+   consequence, stated rather than hidden:** after such a deletion the granted window may span the same
+   round numbers as the window whose files were deleted — correct, because those rounds no longer exist
+   on the branch, so all three slots are genuinely dispatchable and append-only is not violated. An
+   operator wanting numerically fresh rounds keeps the files.
 
    **"The highest round on the branch" always means: of the document type under review.** Every such
    phrase here — clause 2's start, this clause's `N`, row C's `round` cell, and in the successor the
@@ -306,7 +322,7 @@ this ship** rather than deferred with the consistency checks (X-06).
 | `MAX_REVIEW_ROUNDS` | owned | **3** (was 5); baseline §3 for the derivation, §3.1 for this REQ's note. **Exactly one *executable* declaration repo-wide** (AC-1.2), test code included; prose sites and pinned non-budget literals are outside that count but inside O-13(b)'s enumeration, which is the criterion's decidable observable |
 | **`Iterations (budget {MAX_REVIEW_ROUNDS}, rounds run {k})`** | owned | **That exact render**, two decimal integers ≥ 0, in the post-mortem's Iterations section. **New at v2.7**, restated here because AC-1.3 needs a fixed string rather than a shape. It **replaces** the baseline literal, whose single number and *"limit reached"* phrase are false on the zero-round halt (M-1c). `{k}` is the rounds the halting **entry** dispatched. Baseline §3 carries the row; O-14 produces it, O-10 asserts it |
 | `## Reset Region` (S-12), `HALT-REASON:` (S-15), `reset-region-corrupt:` (S-16), `budget-exhausted:` (S-4) | owned | **Stated once in baseline §3, local notes at baseline §3.1.** **S-4 excepted: outside baseline §3 deliberately, its render fixed by catalogue §2** |
-| **`WINDOW-START: {N}` (S-13)** | owned | **`{N}` a decimal integer ≥ 1** — restated because it is **in force at this ship** and §4.1's `W` row depends on it: a line whose value is not one contributes **no value to `W`**, while still counting toward `A` (AC-1.5(4) clause 4). Baseline §3.1 for the authoring prohibition and the deletion rule |
+| **`WINDOW-START: {N}` (S-13)** | owned | **`{N}` a decimal integer ≥ 1** — restated because it is **in force at this ship** and §4.1's `W` row depends on it: a line whose value is not one contributes **no value to `W`**, while still counting toward `A` (AC-1.5(4) clause 4). **Well-formed values are non-descending** across the region, since AC-1.5(4) writes the resolved start. Baseline §3.1 for the authoring prohibition and the deletion rule |
 | **`WINDOW-RESUMED: {W}` (S-14)** | owned | **`{W}` a decimal integer ≥ 1** equal to the origin then in effect — same grammar, same in-force status as S-13 |
 | `no-revision: …` (S-11) / `fixed-point: …` (S-3) | **read** | As the catalogue fixes them; emitted by `pdlc-rcv-fixed-point-stop` (X-05). Baseline §3.1 for how AC-1.5(5) reads them |
 
