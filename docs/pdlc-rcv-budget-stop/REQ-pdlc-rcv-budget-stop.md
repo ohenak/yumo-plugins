@@ -57,7 +57,7 @@ This REQ carries the **window**: how many rounds a document gets, what they are 
 
 ### 3.1 One cross-REQ prerequisite, and what happens before it ships
 
-This REQ is the **head of the family at requirements altitude** — nothing it needs *as a requirement* is owed by a sibling, hence the empty `depends-on`. X-06 is a decision **procedure** a sibling owes: a forward edge, not a dependency. Two clauses reach across:
+This REQ is the **head of the family at requirements altitude** — nothing it needs *as a requirement* is owed by a sibling, hence the empty `depends-on`. Two clauses reach across:
 
 | # | Direction | What crosses | Behaviour until it ships |
 |---|---|---|---|
@@ -66,11 +66,11 @@ This REQ is the **head of the family at requirements altitude** — nothing it n
 
 **Consequence for sequencing.** This REQ is deliverable alone as a **requirement**: its window, budget, halt path and clearance accounting are determined without any successor. `pdlc-rcv-reset-region` is queued at **`Order 18`**, and the net pickup order after this row is **12 → 13 → 17 → 18** — the driver picks the lowest `Order` among `pending` rows and defers a dependency **absent from the table** to the readiness triage, so row 13 is pickable and row **17** precedes row 18. QUEUE.md's gloss *"10 → 12 → 18, with 18 ahead of 17"* inverts that comparison and is superseded here; the table is corrected with the row it describes. **R-14 states the two consequences** — a three-feature interim, and row 17's machine-written `WINDOW-RESUMED:` lines landing in unvalidated regions — and both are why X-06's interim must not be able to refuse.
 
-`pdlc-rcv-fixed-point-stop` depends on this REQ because both its tests are stated over `W`, and `pdlc-rcv-panel-topology` on the two of them.
+`pdlc-rcv-fixed-point-stop` depends on this REQ because both its tests are stated over `W`; `pdlc-rcv-panel-topology` on the two of them.
 
 ## 4. Definitions and the catalogue ids this REQ owns
 
-Every term used with a family meaning — *current window* / round `W`, *reset region*, *phase refusal* and the rest — is defined in `pdlc-rcv-catalogue.md` §1 and **not** restated; that file's §2 holds the closed catalogue `S-1 … S-17` and §3 the row schema. This REQ **owns** six ids and **reads** two:
+Every term used with a family meaning — *current window* / round `W`, *reset region*, *phase refusal* and the rest — is defined in `pdlc-rcv-catalogue.md` §1 and **not** restated; §2 holds the closed catalogue `S-1 … S-17`, §3 the row schema. This REQ **owns** six ids and **reads** two:
 
 | id | Owned / read | Where it is used here |
 |---|---|---|
@@ -129,7 +129,7 @@ This is a **second behavioural change** — §1's per-invocation defect, without
 
 **The decidable observable is the enumeration, not the grep:** O-13(b)'s inventory is a closed list of every textual occurrence of the width, each classified as *the declaration*, *derived from it*, *prose updated in the same commit*, or *pinned non-budget literal with a stated reason*; a site absent from that list, or a second executable declaration, is the violation. **How** the declaration is reachable from tests, and **which** sites exist, are O-13's; this criterion fixes the outcome.
 
-**The observable:** on every production entry of a **document-typed** phase (AC-1.1's scope) the admitted window runs from the window's origin `W` for exactly the budget's number of rounds — no entry is ever admitted a window wider than that. On an **untyped** loop, which has no `W` (AC-1.1 *Scope*), the observable is the same width with an unconstrained origin: the per-invocation window is exactly the budget's number of rounds, counted from wherever that invocation starts.
+**The observable:** on every production entry of a **document-typed** phase (AC-1.1's scope) the admitted window runs from the origin `W` for exactly the budget's number of rounds — never wider. On an **untyped** loop, which has no `W`, the observable is the same width with an unconstrained origin: the per-invocation window is the budget's number of rounds from wherever that invocation starts.
 
 **AC-1.3 — The reduction is not silently partial, and the two quantities are named.** *Who:* the operator. *Given:* a non-convergent phase. *When:* the loop halts on the budget. *Then:*
 the post-mortem's Iterations section, the phase record and the returned `iterations` field all report the **effective budget** — the value of `MAX_REVIEW_ROUNDS`, 3 at the declared default
@@ -150,7 +150,7 @@ halts twice would have its post-mortem written twice, and the reset region (cata
 
 **So a halt that finds an existing post-mortem does not re-author it.** *Who:* the operator. *Given:* a halt in the scope below whose post-mortem already exists. *When:* the halt is taken. *Then:* the loop performs the region maintenance clauses 1 and 2 mandate, **refreshes the Iterations section to AC-1.3's render for *this* halt (clause 3)**, and **changes nothing else in the file** — no authoring dispatch, every other section including `## Recommendation` byte-unchanged. Only a halt finding **no** post-mortem authors one, as HEAD does (M-7e). Two reasons: the operator's `RESOLVED: yes` answers a *specific* `## Recommendation`, which re-authoring would replace with one written from **zero rounds of new evidence**; and that case must stay cheap, since an authoring dispatch on an entry that dispatched no reviewer spends roughly a review round against a §2 value claim stated in dispatches. **What a re-halt looks like:** the same body, one new `HALT-REASON:` line, the spent `RESOLVED:` marker gone, the Iterations line rewritten to this halt's numbers — exactly the record the accounting needs and exactly what tells the operator this is not the halt they already answered.
 
-**The scope of "every halt".** The rule below is quantified over **every halt that writes `POSTMORTEM-{phase}-{feature}.md` for a document-typed review-loop phase** (AC-1.1's scope, M-7e) — **not** over the pipeline's other halt classes (creator-agent failure, branch guard, listing failure, Phase PUB/CI, Phase DOD), none of which writes a post-mortem at HEAD or is asked to start (N-4), nor over the phases N-7 excludes. So `H` counts **post-mortem-writing halts of this phase for this document** — the only halts leaving a marker for a clearance to clear, which is what makes the pairing exact. Within that scope, no exception:
+**The scope of "every halt".** The rule below is quantified over **every halt that writes `POSTMORTEM-{phase}-{feature}.md` for a document-typed review-loop phase** (AC-1.1's scope, M-7e) — **not** over the pipeline's other halt classes (creator-agent failure, branch guard, listing failure, Phase PUB/CI, Phase DOD), none of which writes a post-mortem at HEAD or is asked to start (N-4), nor over the phases N-7 excludes. So `H` counts **post-mortem-writing halts of this phase for this document** — the only halts leaving a marker for a clearance to clear, which is what makes the pairing exact. No exception within that scope:
 
 1. **the reset region exists after the halt, and it carries this halt's line.** A halt finding **no existing post-mortem** — the first halt of a phase, which creates the file —
    **creates `## Reset Region` containing exactly one `HALT-REASON:` line, its own**. A halt finding an existing post-mortem **preserves** the region — every `WINDOW-START:` (S-13),
@@ -232,17 +232,15 @@ halts twice would have its post-mortem written twice, and the reset region (cata
 
    **The clearance is spent only when the answering line durably exists**, and it must exist **before
    any round of that entry is dispatched** — that line is the sole record keeping the clearance
-   one-shot, and a lost one re-grants a fresh window every invocation, the fail-open this criterion
-   closes. So it carries the **same confirmation obligation AC-1.4 puts on the post-mortem write**, and
-   failure is fail-closed: no window, no dispatch, the entry **refuses the phase**. A partially-landed
-   line is **`REQ-RCV-07` AC-7.5**, rendered per **catalogue §4**, minting **no new catalogue id and no
-   new S-16 reason** — that enum is closed at three — being a fault of the loop, not a state of the
-   region. Why the ordering, once for both ends at `pdlc-rcv-split.md` **§5.5**.
+   one-shot, and a lost one re-grants a window every invocation, the fail-open this criterion closes.
+   So it carries the **same confirmation obligation AC-1.4 puts on the post-mortem write**, fail-closed
+   on failure: no window, no dispatch, the entry **refuses the phase**. A partially-landed line is
+   **`REQ-RCV-07` AC-7.5**, rendered per **catalogue §4**, minting **no new catalogue id and no new
+   S-16 reason** — a fault of the loop, not a state of the region. Why the ordering: split **§5.5**.
 
    **Answering lines are appended, like `HALT-REASON:` lines** — **normative**: document order is
    event order, and validation reads each line against those before it. Lines landing out of order
-   fail validation ⇒ `W = 1` permanently, since AC-1.4 clause 1 preserves the region verbatim and no
-   clearance repairs it.
+   fail validation ⇒ `W = 1` permanently, since AC-1.4 clause 1 preserves the region verbatim.
 
    **The third conjunct, as a named predicate.** *The region validates* is a predicate on the region
    and the branch listing, **total and single-valued** (DC-01), whose decision procedure is
@@ -292,7 +290,7 @@ halts twice would have its post-mortem written twice, and the reset region (cata
 
 All five clauses' durable observables are §4.1's, already read by the loop. Nothing here needs a clock, a process identity or a memory of a previous invocation.
 
-**Observability.** The declared budget is 3; the highest `-v{N}` for a document with no resolved POSTMORTEM never exceeds 3; past the window **no reviewer is dispatched** and no new cross-review file appears; the post-mortem carries both quantities (§6) and the S-4 reason.
+**Observability.** The highest `-v{N}` for a document with no resolved POSTMORTEM never exceeds 3; past the window **no reviewer is dispatched** and no new cross-review file appears; the post-mortem carries both quantities (§6) and the S-4 reason.
 
 ## 6. Declared thresholds
 
