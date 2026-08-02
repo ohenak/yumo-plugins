@@ -599,6 +599,101 @@ makes a substring, case-insensitive or unanchored implementation red instead of 
 
 ## 7. Merge execution and the post-merge sequence M1–M5 (O-M8)
 
+Implements FSPEC §6.2–§6.4 and §8. M1 is `decideMerge`'s `act` branch (§5.2); M2–M4 run in
+`phaseMerge` after the core resolves `merged`; M5 belongs to the queue driver (§9).
+
+### 7.1 The order is a straight-line sequence, not a scheduler
+
+```js
+// reached only when resolution.mergeStatus === "merged"
+if (config.deleteBranchOnPdlcMerge) { const d = await deleteRemoteBranch(…); if (!d.ok) notes.push(…); }  // M2
+const tree = await updateDefaultBranch({ defaultBranch, mergeSha, _git });                                 // M3
+if (!tree.ok) escalations.push(`MERGE ESCALATION: working tree not updated after merging ${prUrl} — ${tree.reason}; tree is on ${tree.branch}`);
+const rec = await _recordQueueRow({ feature, status: "done", evidence });                                  // M4
+```
+
+M3 **precedes** M4 (FSPEC §8.2, F-14) and a failed M3 does **not** cancel M4 (FSPEC §8.3) — the write
+runs on whichever branch `HEAD` is left on. `mergeStatus` stays `merged` through every one of these
+failures; none of them may downgrade it, which §13.2 asserts directly rather than by inspection.
+
+### 7.2 M2 — remote branch deletion
+
+`deleteRemoteBranch({ feature, _git })` runs one command through the existing git seam:
+`git push origin --delete feat-{feature}` (`featureBranchName`, `orchestrate-dev.js:211`). The
+**local** branch is never touched, in either configuration (FSPEC §6.4). A failure yields a plain
+note, never an escalation, and never changes `mergeStatus`. `deleteBranchOnPdlcMerge: false` issues no
+command at all; GitHub's own `deleteBranchOnMerge` (read by `O4`) is reported and never acted on.
+
+### 7.3 `evidenceCellFor(mergeSha, prNumber)`
+
+```js
+export function evidenceCellFor(mergeSha, prNumber) {
+  return typeof mergeSha === "string" && mergeSha.length >= 7
+    ? `${mergeSha.slice(0, 7)} #${prNumber}`
+    : `merged #${prNumber}`;
+}
+```
+
+A **fixed 7-character truncation** of the full oid, never `git rev-parse --short` (FSPEC §6.2): the
+cell is then a pure function of the observed value and an assertion on it cannot flake on repository
+size. `merged` is a literal token, never a SHA-shaped placeholder. The full oid is what
+`mergeSha` reports; only this cell is truncated.
+
+### 7.4 M3 — `updateDefaultBranch`, the command sequence (O-M8)
+
+Every command goes through the injected `_git(argv)` seam (`defaultGit`, `:4252`), whose contract is
+`{ ok, stdout, stderr }` and which never throws — so each step below is a plain `if (!r.ok)` and
+there is no `try/catch` in this function. `argv` arrays, never command strings (a branch name is
+untrusted input at the seam boundary).
+
+| # | Command (`argv`) | On `!ok` |
+|---|---|---|
+| 0 | — | `defaultBranch == null` ⇒ return `{ ok: false, reason: "default branch name unavailable" }` before any command (§5.5) |
+| 1 | `["status", "--porcelain"]` | fail; and a **non-empty stdout** is also a failure: `reason: "working tree is dirty"` — nothing is checked out over uncommitted work |
+| 2 | `["fetch", "origin", defaultBranch]` | `reason: "git fetch failed: {firstLine(stderr)}"` |
+| 3 | `["rev-parse", "--verify", "--quiet", "refs/heads/" + defaultBranch]` | not a failure — `!ok` simply means the local branch does not exist yet |
+| 4a | branch absent: `["checkout", "-B", defaultBranch, "FETCH_HEAD"]` | `reason: "checkout failed: …"` |
+| 4b | branch present: `["checkout", defaultBranch]` | `reason: "checkout failed: …"` |
+| 5 | branch present only: `["rebase", "--empty=drop", "FETCH_HEAD"]` | run `["rebase", "--abort"]` (result ignored) and return `reason: "replay of local queue-row commits onto {defaultBranch} conflicted: …"` |
+| 6 | `["merge-base", "--is-ancestor", mergeSha ?? "FETCH_HEAD", "HEAD"]` | `reason: "merge commit is not an ancestor of HEAD after update"` |
+
+Then `{ ok: true, branch: defaultBranch }`. On any failure the function additionally runs
+`["rev-parse", "--abbrev-ref", "HEAD"]` to report **where the tree actually is** (`branch`), falling
+back to `"unknown"` — the escalation names the branch the operator must deal with, so it cannot be
+the branch the step *intended* to reach.
+
+**Why one `rebase` covers both of FSPEC §8.3's bullets.** When the local default branch has no
+commits the remote lacks, `git rebase FETCH_HEAD` fast-forwards — the ordinary case. When M4/M5 of an
+earlier run left local queue-row commits on top, the same command replays them onto the fetched tip.
+Two commands would have to agree about which case they are in; one command cannot disagree with
+itself.
+
+**How an already-upstream commit is detected as empty.** `git rebase` computes patch-ids and drops a
+commit whose change is already present upstream — the exact case of a queue-row commit that reached
+the remote inside a later feature's PR. `--empty=drop` is passed **explicitly** rather than relying on
+the backend default, so the behaviour does not depend on which rebase backend the operator's git
+selects. This requires **git ≥ 2.26** (`--empty` on non-interactive rebase); recorded in §12 as the
+one new platform assumption, per DC-02, to be measured on both CI platforms rather than assumed.
+
+**Failure detection is exit-status only.** No stdout of these commands is parsed for meaning; step 6
+is the positive confirmation that the sequence achieved its purpose, and it is the step that turns a
+silently-wrong outcome (checked out, but not containing the merge) into a reported one.
+
+### 7.5 M4 — the queue write-back call
+
+One call, always, on the `merged` path — including §11 row 3's already-merged path, which is what
+makes AC-5.2's recovery idempotent:
+
+```js
+const rec = await _recordQueueRow({ feature, status: "done", evidence: evidenceCellFor(mergeSha, prNumber) });
+```
+
+`rec.queueRow` becomes the outcome's `queueRow` (§10.1). `"error"` — the row is absent — pushes the
+AC-5.2 escalation; `"recorded (uncommitted)"` pushes a plain note; `"none"` and `"recorded"` are
+silent (FSPEC §7.4). The `pending`/`blocked`/`halted` non-overwrite case is decided **inside**
+`updateQueueStatus` (§8.4), reported as `"recorded"` with a detail naming the status found, and
+surfaces as a plain note here — so `orchestrate-dev` still never learns the queue's grammar.
+
 ## 8. The recording seam and the queue write-back (O-M1, O-M2)
 
 ## 9. The queue driver's post-pipeline transition
