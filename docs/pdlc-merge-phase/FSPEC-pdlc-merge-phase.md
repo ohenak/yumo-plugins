@@ -115,11 +115,10 @@ reached only when every precondition resolved *pass* — NFR-2 constrains mutati
 
 ### 2.4 Enable/skip resolution
 
-`PHASE_MERGE_ENABLED` is a pipeline-level flag, defaulting **true**, evaluated first (row 1).
-`mergeMode` is read from the consuming repo's configuration (§10), defaults **`off`**, and any
-absent, unreadable, malformed or unrecognised value resolves to `off` (AC-7.3). Both produce
-`mergeStatus: skipped` and neither evaluates the guard, so a skipped run has exactly one reported
-answer.
+`PHASE_MERGE_ENABLED` is a pipeline-level flag defaulting **true**, evaluated first (row 1).
+`mergeMode` comes from the consuming repo's configuration (§10), defaults **`off`**, and any absent,
+unreadable, malformed or unrecognised value resolves to `off` (AC-7.3). Both produce
+`mergeStatus: skipped` and neither evaluates the guard, so a skipped run has one reported answer.
 
 ### 2.5 Idempotent re-entry (NFR-5)
 
@@ -235,33 +234,27 @@ Matching is a **case-sensitive, `/`-delimited directory-prefix** test on repo-re
 | `docs/pdlc/workflows/x.md` | no match | prefix must start at position 0 |
 | `PDLC/Workflows/x.js` | no match | case-sensitive |
 
-Every path the changed-file list reports is matched, including **deletions** and, for a rename,
-**both** the old and the new path. Where the surface reports a rename with a previous path, both are
-tested; where it reports only the new path, that is the list as observed and the phase does not
-synthesise the other.
+Every path the list reports is matched, including **deletions** and, for a rename, **both** the old
+and the new path where the surface supplies both; where it reports only the new path, that is the
+list as observed and the phase synthesises nothing.
 
-Falsifiability (AC-3.5): the guard's decision is a pure function of (changed-file list, guard path
-set), so two lists differing only in the presence of one guard path produce opposite outcomes. A
-weakened or removed guard is observably different from an intact one.
+Falsifiability (AC-3.5): the decision is a pure function of (changed-file list, guard path set), so
+two lists differing only in one guard path produce opposite outcomes — AT-M3 asserts both arms.
 
 ### 4.3 Additive configuration (AC-3.3)
 
-Shipped defaults, which cannot be removed:
+Shipped defaults, which cannot be removed: `pdlc/workflows/`, `pdlc/skills/`, `pdlc/hooks/`,
+`.claude/workflows/`.
 
-```
-pdlc/workflows/   pdlc/skills/   pdlc/hooks/   .claude/workflows/
-```
+The effective set is `defaults ∪ configured`. A configuration listing fewer paths, none, or one that
+attempts to remove a default is **silently unioned** with the defaults — no warning, no error, no
+report line. A value that is absent, not a list, or whose members are not strings contributes nothing
+(§10.3). Configured paths not ending in `/` gain one, so `src/pipeline` and `src/pipeline/` behave
+identically and neither matches `src/pipeline-notes/`.
 
-The effective set is `defaults ∪ configured`. A configuration listing fewer paths, listing none, or
-explicitly attempting to remove a default is **silently unioned** with the defaults — no warning, no
-error, no report line; the defaults simply hold. A configuration value that is absent, not a list, or
-whose members are not strings contributes nothing and the defaults hold (§10.3). Configured paths not
-ending in `/` are treated as directory prefixes with a `/` appended, so `src/pipeline` and
-`src/pipeline/` behave identically and neither matches `src/pipeline-notes/`.
-
-The four defaults are this repo's own layout. A consuming repo where pdlc arrives as an installed
-plugin is expected to add the paths carrying its own pipeline-affecting code; `.claude/workflows/` is
-a default because it is the one such path that exists in every consumer (AC-3.7).
+The four defaults are this repo's own layout; a consuming repo adds the paths carrying its own
+pipeline-affecting code, and `.claude/workflows/` is a default because it exists in every consumer
+(AC-3.7).
 
 ### 4.4 Fail closed on an unretrievable list (AC-3.4)
 
@@ -282,11 +275,10 @@ MERGE ESCALATION: self-modification guard fired for {prUrl} — changed-file lis
 ```
 
 Every matched path appears, so the operator's review has its scope delimited before they open the PR.
-An escalation never implies a halt: outcome stays `success` (AC-1.3).
-
-**Consequence accepted in this repo (AC-3.7, BL-04).** Every PR this repo's own queue raises touches
-`pdlc/workflows/` or `pdlc/skills/`, so Phase MERGE here is expected to report `refused` permanently;
-the `merged` path is evidenced through tests that drive the observation points directly.
+An escalation never implies a halt: outcome stays `success` (AC-1.3). **Consequence accepted here
+(AC-3.7, BL-04):** every PR this repo's queue raises touches `pdlc/workflows/` or `pdlc/skills/`, so
+Phase MERGE reports `refused` permanently in `yumo-plugins`, and the `merged` path is evidenced
+through tests that drive the observation points directly.
 
 ## 5. FSPEC-MERGE-04 — CI evidence rule
 
@@ -496,16 +488,14 @@ is step M5 of §8.2 and therefore lands on the **default branch**, the same bran
 write landed on at M4 — the two agree by construction rather than by coincidence.
 
 **F-13 — the superseded criterion, named.** `pdlc-rcv-budget-stop`'s AC-2.7a states that
-`orchestrate-dev` owns no status write but the halt one, and the shipped success path hard-codes its
-reported row disposition accordingly. `RLH-AT-32-orch` pins it positively: a successful direct run's
-recorded statuses must not contain `done`. AC-5.6 requires precisely that write.
-
-The disposition is recorded here so it is a decision, not a red test resolved by deleting an
-assertion: **AC-5.6 supersedes AC-2.7a for the `merged` case only.** The halt path is unchanged, and a
+`orchestrate-dev` owns no status write but the halt one, and `RLH-AT-32-orch` pins it positively: a
+successful direct run's recorded statuses must not contain `done`. AC-5.6 requires precisely that
+write. Recorded here as a decision rather than a red test resolved by deleting an assertion:
+**AC-5.6 supersedes AC-2.7a for the `merged` case only** — the halt path is unchanged and a
 successful run that did *not* merge still writes no status. `RLH-AT-32-orch` is **re-expressed, not
 removed**: its assertion becomes "a successful direct run that did not merge records no status", with
-a sibling case for the new fact — "a successful direct run reporting `mergeStatus: merged` records
-`done`". Deleting it would lose an invariant that still holds on the majority path.
+a sibling case for "a successful direct run reporting `mergeStatus: merged` records `done`". Deleting
+it would lose an invariant that still holds on the majority path.
 
 ## 8. FSPEC-MERGE-07 — Post-merge working tree and branch handling
 
@@ -669,19 +659,18 @@ both halves need to be determinate.
 | `mergeableRetries` / `mergeableRetryDelay` | same | `3` / `10 s` | consuming repo's operator |
 
 `mergeMode` ∈ {`off`, `gated`, `on`}. `off` never merges; `gated` merges only when every precondition
-holds; `on` behaves identically to `gated` today — there is deliberately **no mode that bypasses the
-preconditions**, and the `gated`/`on` distinction is reserved for a future relaxation. A three-valued
-flag where one value means "skip the safety checks" is the flag that eventually gets set in a hurry.
-It ships `off` so installing this feature does not begin auto-merging anyone's repository: that
-decision stays the operator's, and dated.
+holds; `on` is identical to `gated` today — there is deliberately **no mode that bypasses the
+preconditions**, the `gated`/`on` distinction being reserved for a future relaxation, because a
+three-valued flag where one value means "skip the safety checks" is the flag that gets set in a
+hurry. It ships `off` so installing this feature does not begin auto-merging anyone's repository.
 
 ### 10.2 Where the configuration comes from
 
 `.claude/pdlc.config.json` is the documented home of pdlc's per-repo settings, but **no workflow
-script reads it today** — the one existing consumer of that file is the shell distribution tooling,
-which passes its single key through a separate record. Phase MERGE therefore introduces the first
-script-side read of this file. The `merge` section is new and independent of the existing
-`distribution` section; reading one must not disturb the other.
+script reads it today** — its one existing consumer is the shell distribution tooling, which passes
+its single key through a separate record. Phase MERGE introduces the first script-side read. The
+`merge` section is independent of the existing `distribution` section; reading one must not disturb
+the other.
 
 ### 10.3 Degraded reads (AC-7.3)
 
@@ -710,8 +699,8 @@ false` run emits nothing to the notices channel at all.
 
 ## 11. Observable outcomes per scenario
 
-REQ AC-6.1a's condition table, refined to spec level: each row names the resolving step, the reason
-line's subject, whether the queue is written, and whether an escalation is emitted. It is the
+REQ AC-6.1a's condition table, refined to spec level and naming per row the resolving step, the
+reason line's subject, whether the queue is written and whether an escalation is emitted. It is the
 parameterised suite the TSPEC and tests pin.
 
 **Exclusivity, stated precisely.** Rows 1–18 are **terminal**: exactly one of them applies to any run
@@ -746,11 +735,10 @@ the one run that never reaches the phase. Every row's pipeline outcome is `succe
 | 22 | *(annotation)* working tree not updated | §8.3 | `merged` | **yes** | **yes** |
 | 23 | Run halted before Phase MERGE | — | `skipped` | no (the halt path writes its own `halted` row) | no; the §9.4 note is **not** emitted |
 
-Rows 1–2 and 4–5 are the two pairs a reader is most likely to conflate. Rows 1–2 both report
-`skipped` and neither evaluates the guard (§2.2). Rows 4–5 both report `refused` and differ only in
-the escalation's text, which is the operator's whole signal about which happened. Row 8 is the third
-member of that family and is deliberately **not** escalating: it resolves above the guard (§2.2), so
-a run that could not read PR state never reaches a guard verdict to report.
+Rows 1–2 both report `skipped` and neither evaluates the guard. Rows 4–5 both report `refused` and
+differ only in the escalation's text, which is the operator's whole signal about which happened. Row
+8 is the third member of that family and is deliberately **not** escalating: it resolves above the
+guard, so a run that could not read PR state never reaches a guard verdict to report.
 
 `refused` means a safety rule said no; `deferred` means an ordinary not-ready condition a later
 re-invocation could satisfy. Rows 16 and 17 share a value and differ in the reason line, because that
