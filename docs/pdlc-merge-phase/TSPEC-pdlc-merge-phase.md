@@ -230,11 +230,21 @@ Returns `{ config, sectionMalformed }`. Never throws; never reads anything.
 |---|---|---|
 | `mergeMode` | one of `MERGE_MODES` | `"off"` |
 | `mergeRequiresCi`, `allowSquashMerge`, `deleteBranchOnPdlcMerge` | `typeof === "boolean"` — the strings `"true"`/`"false"` are not | the default |
-| `mergeableRetries`, `mergeableRetryDelaySeconds` | `Number.isInteger(v) && v >= 0` | the default |
+| `mergeableRetries` | `Number.isInteger(v) && v >= 0 && v <= MERGE_MAX_RETRIES` (0…10) | the default (`3`) |
+| `mergeableRetryDelay` | `Number.isInteger(v) && v >= 0`, **in seconds** | the default (`10`) |
 | `guardPaths` | an array; **each member** that is a non-empty string is kept, others dropped | contributes nothing |
 
-`0` is honoured for both integers, so a deterministic suite that sets `mergeableRetryDelaySeconds: 0`
-tests its own value (FSPEC §10.3). The `distribution` section is never touched, read or re-emitted.
+`0` is honoured for both integers, so a deterministic suite that sets `mergeableRetryDelay: 0` tests
+its own value (FSPEC §10.3). The `distribution` section is never touched, read or re-emitted.
+
+**Why `mergeableRetries` has an upper bound (TE F-02).** FSPEC §10.3 accepts "integers ≥ 0" without a
+ceiling, and v1.0 transcribed that literally — which made §5.2's decision-step bound reachable from
+configuration: `mergeableRetries: 25` would exhaust the loop, throw, be caught, and report `refused,
+row: "internal"` where FSPEC §11 row 13 requires `deferred`. A configuration value must not be able
+to convert one FSPEC row into another. The out-of-domain value therefore **takes the default**, which
+is exactly FSPEC §10.3's own rule for a value outside its accepted domain — no new behaviour class,
+just a domain that is bounded above as well as below. `11` is out of domain and yields `3`, and
+§13.2 tests the boundary pair (`10` accepted, `11` defaulted) plus the row-13 case at `10`.
 
 ### 3.2 `readMergeConfigSafely(readFileFn, path)`
 
@@ -273,27 +283,43 @@ makes the config path itself testable without a filesystem.
 
 ## 4. Observation points O1–O6 (O-M2, O-M3, O-M4, O-M7)
 
-Implements FSPEC §3. Each surface is **one function** that issues **one fixed command shape** and
-classifies its raw output against a closed value set. Every one takes `{ execFn }` exactly as
-`checkPrCi` does (`orchestrate-dev.js:3485`): `execFn` defaults to `child_process.execSync` resolved
-through the module's existing dynamic `import()` — the one construct the runtime forbids and never
-reaches, because in the bundle `execFn` is always supplied by the adapter (§11.3).
+Implements FSPEC §3. Each surface is **one function** that issues its command through the single
+`_ghRun` transport seam (§2.3) and classifies the raw output against a closed value set. `_ghRun`
+defaults to `defaultGhRun`, whose own `execFn` defaults to `child_process.execSync` resolved through
+the module's existing dynamic `import()` — the one construct the runtime forbids and never reaches,
+because in the bundle `_ghRun` is always supplied by the adapter (§11.3).
 
 ### 4.1 The shared transport and the shared failure shape
 
 ```js
-function ghJson(command, execFn) {          // module-private, not exported
-  let raw; try { raw = execFn(command, { stdio: "pipe", encoding: "utf8" }); }
-  catch { return { ok: false, reason: "command-failed" }; }
-  try { return { ok: true, json: JSON.parse(raw) }; }
+export function mergeCommandFor(surface, params) { … }     // pure: the ONLY home of every gh string
+
+export async function defaultGhRun(command, { execFn } = {}) {   // the seam's default
+  const { execSync } = await import("child_process");
+  const run = execFn ?? ((c, o) => execSync(c, o));
+  try { return { ok: true, stdout: String(run(command, { stdio: "pipe", encoding: "utf8" })) }; }
+  catch { return { ok: false, stdout: "" }; }
+}
+
+async function ghJson(surface, params, _ghRun) {            // module-private
+  const r = await _ghRun(mergeCommandFor(surface, params));
+  if (!r || r.ok !== true) return { ok: false, reason: "command-failed" };
+  try { return { ok: true, json: JSON.parse(r.stdout) }; }
   catch { return { ok: false, reason: "unparseable" }; }
 }
 ```
 
-Split from the classifiers deliberately: every `classify*` function is pure and takes the **raw
-string**, so the §3.2 fail-closed table is a pure-function suite with no `execFn` at all, and the
-`observe*` wrappers contain nothing but the command string and the delegation. This is `checkPrCi`'s
-own shape (`:3485`–`:3520`) generalised, not a new pattern.
+Three separations, each doing work:
+
+- **`mergeCommandFor` is pure and singular.** Every `gh` command string in this feature is built
+  there and nowhere else, so the adapter needs no catalogue of its own (§11.3) and a test can assert
+  a command's exact bytes without running anything (TE F-04).
+- **`defaultGhRun` never throws** and returns `{ ok, stdout }` — `defaultGit`'s contract
+  (`orchestrate-dev.js:4252`), for the same reason: the caller branches on `ok`, the seam interprets
+  nothing. Its `{ execFn }` injection is `checkPrCi`'s (`:3485`–`:3490`).
+- **Every `classify*` is pure and takes the raw string**, so the §3.2 fail-closed table is a
+  pure-function suite with no transport at all, and the `observe*` wrappers contain nothing but a
+  `ghJson` call and a classifier call.
 
 `reason` is drawn from the closed set `"command-failed" | "unparseable" | "field-absent" |
 "unrecognised-value" | "incomplete"` (DC-01). Every one of them is FSPEC §3.2's `unknown`; the
@@ -337,7 +363,8 @@ re-observation, the orchestrator sleeps and takes it (§5.3). Consequences pinne
   own parameter list**, the default-in-callee pattern `raisePrAndVerifyCi` already uses (`:3899`,
   `:3901`). `main()`'s `_now`/`_sleep` are declared with no default (`:4315`–`:4316`) and forwarded;
   forwarding `undefined` therefore lands on the callee default rather than on an undefined value.
-  The wait is `config.mergeableRetryDelaySeconds * 1000` milliseconds, computed at the call site.
+  The wait is `config.mergeableRetryDelay * 1000` milliseconds (the key is in seconds), computed at
+  the call site.
 
 ### 4.4 `O2` — CI rollup, and `O3` — review threads (O-M3)
 
