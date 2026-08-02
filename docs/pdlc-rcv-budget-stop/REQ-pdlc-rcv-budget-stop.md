@@ -20,19 +20,20 @@ depends-on: []
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude + operator | 2.4 | 2026-08-01 |
+| pdlc | draft | Claude + operator | 2.5 | 2026-08-01 |
 
-**v2.4** addressed round 9 by **deferring the check, not the word**: only *invalid*'s **consistency**
-half is `REQ-RCV-07`'s, so §6's S-13/S-14 **grammar is in force at this ship** and `W` falls back to
-**1** on a malformed value, never `NaN` (§4.1, X-06, O-12). **O-10** gains interim-only **leg 3** and
-names **leg 1** as its 0-call leg's fixture; **O-12** fixes the seam's name, arity and return; **X-06**
-says the *injection point* exists and **no call site is emitted**; §5's atomicity rule is restated over
-the **revision** (§10). Four blocks relocated: split **§5.2**/**§5.3**, baseline **§3.1**/**§3.2**.
-**v2.3** (round 8) marked the unwired conjunct's dispositions *target state* at AC-1.5(4), §4.1 and
-O-10, declared the unconsulted seam to DoD at NB-3, and moved the catalogue delegation to split §6.
-**v2.2** (round 7): the third conjunct is **not wired until `REQ-RCV-07` ships**, so the interim is
-HEAD's behaviour. **v2.1** (round 6): seam, sequencing **10 → 12 → 18**. **v2.0** is the
-operator-directed altitude split resolving this feature's POSTMORTEM (`pdlc-rcv-split.md`, §10).
+**v2.5** (round 10) fixes the *validate* seam's **return**: a result carrying the verdict and, on
+false, AC-7.1 step 4's `{reason}` — not a boolean, which cannot render S-16 — so O-10's contract leg
+survives row 18 (carried to `REQ-RCV-07` O-12). It scopes §6's grammar exclusion to `W` and states
+`A`/`H` are counted **by line prefix, whatever the value** (AC-1.5(4) clause 4, §4.1); pins leg 3's
+branch listing; restores S-4's baseline-§3 exemption; relocates O-10's three fixture legs to split
+**§5.4**. **On size:** shared relocation targets are now exhausted; the 90% soft threshold is
+advisory, so later rounds accept its warning rather than trade load-bearing text; the hard ceiling
+stays binding.
+**v2.4** (round 9) deferred the check, not the word: only *invalid*'s **consistency** half is
+`REQ-RCV-07`'s, so §6's grammar is in force at this ship and `W` falls back to **1** on a malformed
+value (§4.1, X-06, O-12); O-10 gained leg 3; §5's atomicity rule was restated over the **revision**
+(§10); four blocks relocated.
 **v1.6** … **v1.2** addressed rounds 5 … 1.
 
 ## 1. Problem
@@ -435,7 +436,7 @@ threshold or user story changed meaning**.
 **same edge described from both ends**, so any revision to X-06 or R-14 is carried to X-07 and R-16
 **within the same revision, in the same words**, and the reviewer checks both ends **at HEAD** — the
 unit is the revision, not the commit, because the authoring pacing contract makes a two-document edit
-structurally more than one commit (`pdlc-rcv-split.md` §5). v2.4's were, in this revision. The edge
+structurally more than one commit (`pdlc-rcv-split.md` §5). v2.5 revised neither; O-12's seam signature was carried to `REQ-RCV-07` O-12 (an edge outside this rule). The edge
 table, the three facts both ends must agree on, and the `O-*`/`R-*`/`X-*` collision rule are in §5.
 
 **Round-by-round history is deliberately not restated here:** `harvest-learnings` deletes
