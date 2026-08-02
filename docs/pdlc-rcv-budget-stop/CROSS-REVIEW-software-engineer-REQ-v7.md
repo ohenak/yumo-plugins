@@ -77,6 +77,33 @@ pins that refusal as a required test rather than flagging it as the cost of ship
 
 ## 5. Positive Observations
 
+- **The register of the argument changed, and that is the round's real progress.** v2.0 said *stub it
+  fail-closed (invalid ⇒ refuse)* — a value. v2.1 says *"**Fail-closed here is a shape, not a
+  constant**"* and then specifies the shape, the seam it lives behind, the prohibition's scope (*"that
+  prohibition scopes to the **default**, not to the seam"*), and the tests that drive it. Whatever the
+  next revision does with F-01, the vocabulary to state the answer now exists in the document, which
+  is why F-01 is one sentence of choice rather than another round of re-deriving the problem.
+- **O-10's *"each gate leg names the seam value it drives"* is the right fix to the oracle hole I
+  raised, and it is stated as a property of the tests rather than a note.** A leg that drives the seam
+  to `true` explicitly cannot be satisfied by a stub that happens to return `true` — which was exactly
+  how a constant-`invalid` stub could pass the old leg while bricking production. That is the class of
+  fix that survives the feature.
+- **The delegation rule was widened at the right level of generality, and it reaches §3.** Going from
+  *"read *AC-1.5(4)'s ordered algorithm* as *AC-7.1*"* to *"read **every catalogue reference to
+  AC-1.5(4)'s algorithm, its numbered steps, or the refusal renders it produces**"* — with the reason
+  given (*"because the four rows word them differently"*) and catalogue §3's row schema named
+  explicitly — closes the gap a phrase-scoped rule would have left. I checked both strings it quotes
+  from §3 and they are verbatim; the catalogue is still untouched, which keeps the split reversible.
+- **§7's id-collision paragraph is the cheapest correct answer to my v6 F-03** and it generalises
+  better than the rename I proposed: it names the four id classes, names the four actual collisions,
+  and states the obligation on citations rather than on ids. It is also honest about the split's cost
+  in a section a reader reaches before the citations that depend on it.
+- **The sequencing correction was made in both places and repointed at the queue's own words.** §3.1
+  and R-14 now both say `Order 18` and 10 → 12 → 18, and R-14 goes further than the correction —
+  *"Sequencing is too weak at that distance"* — abandoning the mitigation the fact had just falsified
+  instead of restating it more carefully. That is the right response to a load-bearing claim being
+  wrong.
+
 ## 6. Recommendation
 
 ## Verdict
