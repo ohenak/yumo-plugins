@@ -164,7 +164,7 @@ asked to judge or summarise anything, and no new reasoning dispatch is added.
 
 | ID | Surface | Command | Fields consumed |
 |---|---|---|---|
-| `O1` | PR state | `gh pr view {prUrl} --json state,mergeable,mergeStateStatus,number` | `state`, `mergeable`, `mergeStateStatus`, `number` |
+| `O1` | PR state | `gh pr view {prUrl} --json state,mergeable,mergeStateStatus,number,mergeCommit` | `state`, `mergeable`, `mergeStateStatus`, `number`, `mergeCommit.oid` |
 | `O2` | CI rollup | `gh pr view {prUrl} --json statusCheckRollup` | `statusCheckRollup` |
 | `O3` | Review threads | `gh api graphql` query returning each review thread's `isResolved` for the PR | `isResolved` per thread |
 | `O4` | Repo merge capabilities | `gh repo view --json rebaseMergeAllowed,mergeCommitAllowed,squashMergeAllowed,deleteBranchOnMerge` | the four booleans |
@@ -175,6 +175,12 @@ asked to judge or summarise anything, and no new reasoning dispatch is added.
 `passed` / `pending` / `failed` / `none` / `unknown` mean exactly what they mean there. Reuse is a
 requirement, not an optimisation: two classifications of the same rollup that disagree is the defect
 AC-4.0 exists to prevent.
+
+`O1`'s `mergeCommit.oid` is populated by GitHub only for a merged PR; it is absent, and that absence
+is not a parse failure, for every open PR (§9.1 defines what it is used for). `O3` is the one
+observation that cannot be addressed by PR URL — its query needs owner, repo and PR number, all three
+of which are derived from `prUrl` (with the number cross-checked against `O1.number`); a derivation
+that fails makes `O3` `unknown` under §3.2.
 
 ### 3.2 Fail-closed parse rule — one rule, applied per surface
 
@@ -204,8 +210,16 @@ GitHub computes mergeability asynchronously, and the window right after Phase DO
 PUB is when `UNKNOWN` is most likely. On `UNKNOWN`, `O1` is re-observed up to `mergeableRetries`
 additional times (default 3), each after waiting `mergeableRetryDelay` (default 10 s). The first
 re-read yielding `MERGEABLE` or `CONFLICTING` ends the loop and is the answer. Still `UNKNOWN` after
-the last re-read is a **deferral** (`mergeStatus: deferred`, reason "mergeability still UNKNOWN after
-N re-reads"), never a merge and never a `refused`.
+the last re-read is a **deferral**, never a merge and never a `refused`.
+
+**The counts are pinned.** With `mergeableRetries: R`, the total number of `O1` observations in a run
+that exhausts the loop is `1 + R` — the row-4 observation plus `R` re-reads — so the default is
+**4 observations, 3 re-reads, 3 waits**. The reason line is
+`mergeability still UNKNOWN after {1+R} observations`, counting **observations, not re-reads**, so a
+suite asserting it never has to guess which number it is reading. `mergeableRetries: 0` is a legal
+value meaning "observe once, never re-read", and its reason line reads `after 1 observations` —
+ungrammatical and deliberately unspecial-cased, because a format that changes shape at one value is a
+format tests get wrong.
 
 A re-read that fails to parse follows §3.2 and ends the loop with `refused` — a transport failure is
 not a retry-worthy `UNKNOWN`.
