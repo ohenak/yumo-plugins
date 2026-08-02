@@ -51,4 +51,52 @@ body is re-litigated.
 
 ## Recommendation
 
+**Needs revision** — one High (F-01), no Medium. Both v2 blockers, both v2 Lows and all three v2
+Questions are closed.
+
+**On my own v2 pre-commitment, because it applies and I want to be held to it.** I wrote that "a v3.0
+doing these two things and nothing else clears my side". The author did both, in the order I asked
+(relocate first), and took option (i) of the two I offered whole. F-01 is not a re-opening of either
+item: it is a hole in the paragraph *written to close* v2's F-01, on the one clause of the three that
+paragraph did not disposition. Had the ordering been stated for all three clauses, this review would
+have been an approval. I would rather say that plainly than pretend the round was contested.
+
+**Why F-01 is a blocker and not a Low.** The consequence is not cosmetic and it is not a missing
+oracle. An unconfirmed strip leaves a **readable clearance the operator already spent**, and
+AC-1.5(4)'s gate reads the marker plus `A < H` — both of which then hold — so the loop grants a window
+nobody cleared, and re-grants on every subsequent halt while the fault lasts. That inverts the single
+outcome this REQ exists to deliver (an absolute cap only an operator resets) and it does so silently:
+no notice, no ❌ row, nothing in the run report. It is also the exact failure class the clause-1
+confirmation was added for, so the document already agrees this class must be dispositioned; F-01 is
+that the third clause was not included.
+
+**Why it cannot be routed downstream.** §8's obligations "may not vary an outcome the ACs fix", and
+here no AC fixes one — AC-1.4 clause 2 states the strip's *effect* and nothing about its failure, and
+O-5 is explicitly scoped to region lines, which a `RESOLVED:` line is stated never to be. A TSPEC that
+invented a disposition would be inventing an operator-visible outcome. So it is REQ-altitude, and it
+is two sentences.
+
+**Plateau or churn (§9's third bullet), stated rather than assumed.** **Churn.** Blocking count
+5 → 2 → 1, every prior finding closed each round, and this round's single blocker is a consequence of
+this round's edit. **My v2 escalation pre-commitment stands and is not triggered**: the count
+decreased. I renew it in the same form — if a v3.1 addressing the item below does not close it, or if
+the next round is non-decreasing, I will say so and recommend the operator halt by hand rather than
+open a fifth.
+
+**Exactly what must change — this is the whole list, and I pre-commit that a v3.1 doing this one thing
+and nothing else clears my side:**
+
+1. **F-01:** in AC-1.4's *the ordering and its report*, disposition **clause 2**. Either give the strip
+   the same confirmation obligation and the same fail-closed refusal — and say what `H` and `A` are
+   left at, since unlike clauses 3 and 1 the halt **is** recorded by then — or state that clauses 1 and
+   2 are one read-modify-write and cannot fail independently, and reword "each loop write confirmed
+   before the next runs" over an explicit three-step order accordingly. Whichever, carry the matching
+   sentence (or leg) to split §5.4 leg (iii), which currently asserts "no `RESOLVED:` line is stripped,
+   clause 2 never running" for the 3-and-1 cases only.
+
+F-02 and F-03 are routable at the author's discretion and I will not raise either as a blocker. Q-01
+and Q-02 touch sentences near (1) and are free to answer while there; neither is a finding.
+
 ## Verdict
+
+VERDICT: Needs revision
