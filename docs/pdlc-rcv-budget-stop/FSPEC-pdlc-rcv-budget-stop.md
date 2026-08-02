@@ -684,6 +684,51 @@ test composes it from the constant.
 | **AT-REG-06** | B-REG-6 | a post-mortem that is present but unreadable | the phase is entered | `H = A = 0`, `W = 1`, no halt in force, nothing written |
 | **AT-REG-07** | B-REG-7 | the granting region of AT-CLR-01 — the one fixture that defeats **both** decidable conjuncts | the phase is entered | the *region validates* predicate is consulted **exactly 0 times** (a count, not an absence), the entry grants, and **no** `reset-region-corrupt` notice is emitted anywhere |
 
+### 11.4 FSPEC-CLR-01 — *Who:* the review loop
+
+| AT | Branch | Given | When | Then |
+|---|---|---|---|---|
+| **AT-CLR-01** | B-CLR-1 | `H = 1`, `A = 0`, a readable `RESOLVED: yes`, last `HALT-REASON:` beginning `budget-exhausted:`, highest existing round **3** | the phase is entered | **exactly one** `WINDOW-START: 4` appended at the **end** of the region; `A = H = 1`; `W = 4`; no notice, no ❌ row; **≥ 1** dispatch |
+| **AT-CLR-02** | B-CLR-2 | the same, with the last `HALT-REASON:` beginning `no-revision:` | the phase is entered | **exactly one** `WINDOW-RESUMED: {W}` appended; `W` **unchanged**; rounds already spent stay spent; a later convergence halt is **not** auto-cleared. **[target state — no path emits S-11 at this ship]** |
+| **AT-CLR-03** | B-CLR-3 | the same, with the last `HALT-REASON:` value unparseable | the phase is entered | treated as a convergence halt: `WINDOW-START: {N}` written, the clearance consumed |
+| **AT-CLR-04** | B-CLR-4 | `A = H = 1` and a readable `RESOLVED: yes` | the phase is entered, and entered again | **nothing** is appended and **nothing** granted on either entry; `W` is unchanged — one clearance grants **exactly one** window |
+| **AT-CLR-05** | B-CLR-5 | a post-mortem whose marker is absent, `no`, unparseable, or duplicated | the phase is entered | the shipped step-G refusal; **no** region byte written; both counts unmoved; queue row `halted` |
+| **AT-CLR-06** | B-CLR-6 | an entry that grants a clearance | the entry's first reviewer dispatch is observed | the answering line is already **durably present in the region** at that instant |
+| **AT-CLR-07** | B-CLR-7 | a granting entry whose answering-line write cannot be confirmed | the entry runs | **phase refusal**; **zero** dispatches; `H` and `A` unmoved; ❌ row `Refused — answering line unconfirmed at {path}`; `notice` **empty** |
+
+### 11.5 FSPEC-HALT-01 — *Who:* the review loop
+
+| AT | Branch | Given | When | Then |
+|---|---|---|---|---|
+| **AT-HALT-01** | B-HALT-1 | a halt in scope with **no** existing post-mortem | the halt is taken | the post-mortem is authored, and `## Reset Region` exists containing **exactly one** `HALT-REASON:` line — its own |
+| **AT-HALT-02** | B-HALT-2 | a halt in scope whose post-mortem already exists, carrying prior region lines and an unfenced `RESOLVED: yes` | the halt is taken | **0** authoring dispatches, **and** the file is **byte-equal** to the prior bytes with clauses 1, 2 and 3's edits applied — prior region lines preserved in document order with this halt's appended last, `## Recommendation` untouched |
+| **AT-HALT-03** | B-HALT-3 | a re-halt on a post-mortem carrying **no** heading beginning `Iterations` | the halt is taken | the file gains **exactly one** such heading, immediately **above** `## Reset Region`; region parsing is unaffected |
+| **AT-HALT-04** | B-HALT-4 | a halt in scope whose clause-3 write cannot be confirmed | the halt is taken | **phase refusal**; the region **byte-unchanged**; **no** `RESOLVED:` line stripped; no halt recorded; ❌ row `Refused — iterations section unconfirmed at {path}`; `notice` **empty** |
+| **AT-HALT-05** | B-HALT-5 | a halt in scope whose clause 1-and-2 update cannot be confirmed | the halt is taken | **phase refusal**; **nothing** stripped; **this entry's** Iterations render present; both counts unmoved; ❌ row `Refused — halt line unconfirmed at {path}`; `notice` **empty** |
+| **AT-HALT-06** | B-HALT-6 | a post-mortem carrying one **fenced** `RESOLVED: yes` and one **unfenced** one | a halt in scope is taken | the unfenced line is gone; the fenced block is **byte-identical**; the phase reads unresolved |
+| **AT-HALT-07** | B-HALT-7 | a halt raising two reasons at once | the halt is taken | **one** `HALT-REASON:` line, `; `-joined in catalogue §3's precedence order, and the report's `notice` cell carries the identical string. **[target state — a second reason requires `pdlc-rcv-fixed-point-stop`]** |
+| **AT-HALT-08** | B-HALT-8 | an exhausted Phase CR window | the halt is taken | `POSTMORTEM-CR-{feature}.md` is written **and contains no `## Reset Region`** |
+| **AT-HALT-09** | B-HALT-9 | any halt in scope | the halt is taken | the post-mortem is written and its write confirmed; the phase refuses to re-run until a human writes `RESOLVED: yes`; the feature's queue row is written `halted` |
+
+### 11.6 FSPEC-RPT-01 — *Who:* the operator
+
+| AT | Branch | Given | When | Then |
+|---|---|---|---|---|
+| **AT-RPT-01** | B-RPT-1, B-RPT-2 | a **creating** halt taken after this entry dispatched 2 rounds | the operator reads the post-mortem | the located heading's text **equals** `## Iterations (budget 3, rounds run 2)` — an equality on the whole heading, not a substring match |
+| **AT-RPT-02** | B-RPT-1 | a post-mortem whose heading reads `## Iterations (budget 3, rounds run 2)`, and a **zero-round** re-halt | the halt is taken | the heading's text **equals** `## Iterations (budget 3, rounds run 0)` |
+| **AT-RPT-03** | B-RPT-3 | a zero-round budget halt | the operator reads the run report | the phase record and the returned `iterations` field both equal the **budget**, not `0` |
+| **AT-RPT-04** | B-RPT-4 | a zero-round budget halt | the operator reads the round row | `round` is the resolved start; `panel-shape`, `blocking`, `growth-bytes`, `classification` are **empty**; `notice` is **exactly** the S-4 render with no separator |
+| **AT-RPT-05** | B-RPT-5 | a zero-round budget halt on a document whose previous window had reviewers | the returned report is read | the per-reviewer verdict list is **empty** — not a carry-over of the previous round's verdicts |
+| **AT-RPT-06** | B-RPT-6 | the two refusal fixtures of AT-HALT-04 and AT-HALT-05 | both are run | they are **discriminated by the ❌ text**; both carry an **empty** `notice`; neither carries S-4; and row C never carries S-16 |
+
+### 11.7 FSPEC-PROMPT-01 — *Who:* the post-mortem authoring agent
+
+| AT | Branch | Given | When | Then |
+|---|---|---|---|---|
+| **AT-PMT-01** | B-PMT-1 | the post-mortem authoring dispatch | the prompt is composed | it carries a clause naming `## Reset Region` as loop-maintained machine state the agent does not create, edit, reorder, quote or delete |
+| **AT-PMT-02** | B-PMT-2 | the same | the prompt is composed | it states that `RESOLVED:` is human-written only |
+| **AT-PMT-03** | B-PMT-3 | a creating halt whose authoring agent emits its own Iterations heading with different text | the halt completes | the file carries **the loop's** render (AT-RPT-01), not the agent's |
+
 ## 12. Open questions
 
 ## 13. Traceability
