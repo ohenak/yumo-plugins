@@ -609,11 +609,12 @@ where they describe a phase that never ran:
 | Field | Value |
 |---|---|
 | `mergeStatus` | exactly one of `merged`, `deferred`, `refused`, `skipped` |
-| `mergeSha` | the merge commit SHA when this run merged; `null` otherwise, including when the PR was already merged on entry |
+| `mergeSha` | the full merge commit SHA when this run merged (§6.2). On §2.2 row 5 (already merged): `O1.mergeCommit.oid` when it is present and parseable, else `null` — never invented. `null` on every non-merge |
 | `mergeMethod` | `rebase` or `merge` when this run merged; `unknown` when the PR was already merged on entry (a pipeline that did not merge cannot know how someone else did); `null` otherwise |
 
 A run that halts before Phase MERGE reports `mergeStatus: skipped` — the phase did not run, and
-`skipped` is the value that means "no merge was considered".
+`skipped` is the value that means "no merge was considered". That run is §11 row 22, and it is the
+one row of that table whose pipeline outcome is `halted`.
 
 `prUrl` and `ciStatus` continue to carry Phase PUB's results and are unchanged. `ciStatus` is Phase
 PUB's snapshot; the merge-time CI evidence is not re-reported as `ciStatus` (§5).
@@ -643,6 +644,11 @@ that state blocks the entire serial queue and its cause is invisible from the qu
 halt: halting would misreport the run and write a `halted` row over a feature that has landed. The
 recovery path is the escalation plus the idempotent re-attempt of §7.4.
 
+**Escalations accumulate, in table order.** A single run can produce more than one — the queue write
+and the tree update can both fail after the same merge. When several apply, every line is emitted, in
+the order of the table above, and the report's notices channel carries them all. Only the guard and
+CI lines are mutually exclusive with the other two (a run that refuses never merges).
+
 **No escalation implies a halt.** Every escalating condition above keeps outcome `success`.
 
 ### 9.4 The merge-deferred note
@@ -652,8 +658,14 @@ merge did not happen and the queue row was therefore left as it was, so a reader
 sees the queue's state without inferring it:
 
 ```
-Merge deferred for {feature}: {reason}. Queue row left at awaiting-merge; merge the PR to advance it.
+Merge deferred for {feature}: {reason}. The queue row is unchanged; merge the PR to advance it.
 ```
+
+The note does not name a status. On the queue-driven path Phase MERGE runs *inside* the pipeline —
+before the driver writes `awaiting-merge` — so the row is `in-progress` at that moment on exactly the
+path this feature exists for, and a note hard-coding `awaiting-merge` would pin a false statement.
+The note is emitted for `deferred` and `refused` only: `skipped` and `merged` runs do not emit it,
+including §2.2 row 5, whose write-back did advance the row.
 
 ### 9.5 Queue-driver pass-through (AC-6.3)
 
@@ -709,10 +721,20 @@ script-side read of this file. The `merge` section is new and independent of the
 | One key holds an unrecognised value or wrong type | that key takes its default; the others are honoured |
 | Guard-path list absent, not a list, or containing non-strings | contributes nothing; the four defaults hold (§4.3) |
 
+**Accepted domains.** `mergeMode` accepts the three literals of §10.1. `mergeRequiresCi`,
+`allowSquashMerge` and `deleteBranchOnPdlcMerge` accept booleans only — the strings `"true"` and
+`"false"` are *not* booleans and take the default, which for `mergeRequiresCi` means the safe `true`.
+`mergeableRetries` accepts **integers ≥ 0**; `mergeableRetryDelay` accepts **integers ≥ 0, in
+seconds**. Anything else — a negative, a non-integer, a numeric string — takes the default. `0` is
+legal for both and is the value a deterministic suite sets for the delay; because `0` is honoured
+rather than reset, such a suite is testing its own value and not the 10 s default.
+
 A malformed configuration **never enables merging**, and a degraded read is never an error that
 halts: it resolves to the safe default and the run continues. No warning is required, with one
-exception worth stating: a `merge` section present but unparseable is reported as a plain note, so an
-operator who *intended* to enable merging is not left wondering why nothing merged.
+exception: a `merge` section present but unparseable is reported as a plain note, so an operator who
+*intended* to enable merging is not left wondering why nothing merged. That note is **suppressed when
+§2.2 row 1 resolves**, because the configuration is never read on that path — a `PHASE_MERGE_ENABLED:
+false` run emits nothing to the notices channel at all.
 
 ## 11. Observable outcomes per scenario
 
