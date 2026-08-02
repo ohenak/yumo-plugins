@@ -864,6 +864,92 @@ cell: `done (abc1234)` would fail every one of those exact-string comparisons.
 
 ## 10. Reporting — report fields, notices, phase row
 
+Implements FSPEC §9.
+
+### 10.1 `buildFinalReport` (`orchestrate-dev.js:5281`) gains three always-present fields
+
+```js
+mergeStatus = "skipped", mergeSha = null, mergeMethod = null
+```
+
+Declared as **defaulted parameters and emitted unconditionally**, alongside `queueRow`,
+`postmortemStatus` and `haltPhase` — not conditionally spread like `prUrl`/`ciStatus` (`:5314`). The
+reason is the one already recorded at `:5308`: a conditionally-spread field cannot express "no merge
+was considered", which is exactly what §11 row 23 (a run that halted before Phase MERGE) must report.
+Both call sites pass them; the halt path (`:5188`) passes the defaults, giving row 23's
+`mergeStatus: "skipped"` with no code at the halt site beyond the literal.
+
+`queueRow`'s success-path value changes from the hardcoded `"none"` (`:5213`) to
+`mergeOutcome.queueRow ?? "none"` — carrying the §7.4 disposition on a `merged` run and `"none"`
+everywhere else (FSPEC §9.1's fourth field). The halt path's `queueRow` is untouched.
+
+`prUrl` and `ciStatus` keep Phase PUB's values; the merge-time CI evidence is **not** re-reported as
+`ciStatus` (FSPEC §5).
+
+### 10.2 Notices and escalations
+
+`main()` already owns a `notices` array (`:4386`) whose entries reach the report verbatim. Phase
+MERGE contributes to it in one place, in FSPEC §9.3's table order:
+
+```js
+for (const line of merge.escalations) notices.push(line);   // already prefixed
+for (const note of merge.notes) notices.push(note);
+```
+
+Ordering within `merge.escalations` is fixed by `phaseMerge`'s straight-line construction: guard, CI,
+queue-write, tree-update — the §9.3 table order, because that is the order the code that produces
+them runs in. Accumulation is therefore structural, and AT-M6 (rows 20 + 22 together) asserts both
+lines and their order.
+
+The `MERGE ESCALATION: ` prefix is applied **once**, at the construction site of each of the four
+lines, and the four templates live in one frozen object `MERGE_ESCALATIONS` so the prefix cannot
+drift and the catalogue is enumerable by tests (DC-01).
+
+The §9.4 merge-deferred note — one plain line, emitted for `deferred` and `refused` only, never for
+`skipped`, `merged` or a run that never reached the phase — is produced by `phaseMerge` from the same
+`reason` string that rides the phase row, so the two cannot disagree.
+
+### 10.3 The phase row
+
+```js
+recordPhase("MERGE", "Merge PR", glyph, detail)
+```
+
+`glyph` is `✅` for `merged`, `⏭` for `skipped`, `⚠️` for `deferred` and `refused` (FSPEC §2.1).
+`detail` is the one-line reason, or for a merge `` `Merged ${prUrl} (${mergeMethod}, ${shortSha})` ``.
+Never `❌`: `main()`'s halt path derives the failed phase from the recorded rows
+(`const failedRow = […].reverse().find(r => r.status === "❌")`, `:5158`), so a `❌` here would make a
+non-merge look like the halting phase. This is the second structural reason Phase MERGE never halts,
+and it is worth stating because it is invisible from the FSPEC.
+
+### 10.4 The wiring in `main()`
+
+Placed immediately after the Phase PUB block (`:5115`), inside the same `pipelineFn` body so it is
+covered by the same guarded try (`:5117`) — and reaching that catch is precisely what §5.2's internal
+`try/catch` prevents.
+
+```js
+const mergeOutcome = await phaseMerge({
+  feature: featureName, prUrl,
+  _observations: mergeObservationsFn, _git: gitFn, _readFile: readFileFn,
+  _recordQueueRow: recordQueueRowFn, _log: emit, _now, _sleep,
+  _enabled: phaseMergeEnabled,
+});
+```
+
+`main()` gains exactly **two** new seam parameters:
+
+| Seam | Default | RLH-AT-64 classification |
+|---|---|---|
+| `_phaseMergeEnabled` | `PHASE_MERGE_ENABLED` | **exempt**, E-1 module-level constant — identical in shape to `_phaseDodEnabled` (`:4313`), which ships green today |
+| `_mergeObservations` | `defaultMergeObservations` | **wired**, in `rtDevInjections` (§11.3). Not exempt: E-3 resolves only for a default function declaring `_agent` (`runtimeBundle.test.js:855`–`:857`), and this default is a frozen object of `execFn`-taking functions |
+
+`phaseMerge` is deliberately **not** a `main()` seam. A `_phaseMerge = phaseMerge` parameter would be
+neither wired nor E-3-exempt — `phaseMerge` declares no `_agent`, and it must not (NFR-4: no new
+reasoning dispatch) — so RLH-AT-64 would red it. Tests reach `phaseMerge` through `main()` via the
+seams above, and directly by importing it. Recorded because "add a seam for the new phase function"
+is the obvious move and it is the wrong one here.
+
 ## 11. Runtime, bundle, and adapter changes
 
 ## 12. Error handling catalogue
