@@ -74,6 +74,71 @@ literal, so a catalogue that gains a member reds the properties instead of silen
 
 ## 2. Decision-core properties
 
+All five drive **`decideMerge`** and the §5.2 step loop directly, with a scripted observation supplier
+in place of `phaseMerge`'s IO. The axis product is the record shape of TSPEC §2.4:
+`mergeMode ∈ 3` × `prUrl ∈ {present, null}` × `o1 ∈ 7` (`{ok:false}`, and `ok` × state ∈ 3 ×
+`mergeable` ∈ 4 incl. the sentinel) × `ci ∈ 5` × `o3 ∈ 4` × `o4 ∈ 3` × `o5 ∈ 4` × `caps ∈ 8` ×
+`attempt outcome ∈ 2`. Enumerated in full where a property needs it; the short-circuit means most
+combinations are unreachable and the enumeration *proves* that rather than assuming it.
+
+**PROP-M-01 — Totality and termination. Every observation record resolves to exactly one FSPEC §11
+row, within the step bound, for every configuration.**
+*(Contract · **P** · `enum(≈4 800)` reachable records · A4 — `mergeDecision.test.js`)*
+- **Domain:** the full axis product above, driven through a faithful re-implementation of §5.2's loop
+  whose observation supplier answers each demand from the case's axis value (so a demand for a slot
+  the case did not fix is itself a failure).
+- **Oracle:** for every case, the loop returns `kind: "resolved"` with `row ∈ ROW_IDS`,
+  `mergeStatus ∈ MERGE_STATUSES`, and a **step count strictly below `MERGE_MAX_DECISION_STEPS`**;
+  the `throw` at the loop's exit is never reached, and `row === "internal"` never occurs. Exactly-one
+  is asserted positively: the resolving guard index is recorded per case and the case's expected
+  `(row, mergeStatus)` pair is compared to §5.3's table, so two guards claiming one row reds.
+- **Bound conjunct:** asserted as the **relation** `MERGE_MAX_DECISION_STEPS > 1 + MERGE_MAX_RETRIES
+  + 4 + 3 + 1` recomputed from the constants, never against the literal `24` (TSPEC §5.2, TE N-04),
+  and re-run with `mergeableRetries` at its cap of 10.
+
+**PROP-M-02 — Purity. `decideMerge` is a deterministic, non-mutating function of `(record, config)`.**
+*(Functional · **P** · `enum(≈4 800)` shared with PROP-M-01 · A4 — `mergeDecision.test.js`)*
+- **Domain:** each PROP-M-01 case, evaluated twice, with a deep-frozen structural clone of both
+  arguments captured before the first call.
+- **Oracle:** the two results are deep-equal; `record` and `config` are deep-equal to their
+  pre-call clones; `MERGE_DEFAULTS`, `MERGE_MODES` and `MERGE_GUARD_DEFAULTS` are unchanged. Positive
+  conjunct: the clone is asserted **non-empty and equal to a fixture-known value** first, so a
+  vacuous "undefined equals undefined" cannot pass.
+
+**PROP-M-03 — Fail-closed monotonicity. Degrading any single precondition observation never moves the
+outcome toward `merged`.**
+*(Security · **P** · `enum(5 slots × ≈600 baselines)` · A4 — `mergeDecision.test.js`)*
+- **Domain:** every PROP-M-01 case that resolves `merged` (row 18) or reaches a later guard, paired
+  with each of the five degradations `o1 := {ok:false}`, `ci := "unknown"`, `o3 := {ok:false}`,
+  `o5 := {ok:false}`, `o4 := {ok:false}`.
+- **Oracle:** the degraded run's `mergeStatus` is `refused` (never `merged`, never `skipped`), and its
+  `row` is the specific fail-closed row §5.3 assigns that slot (8 / 11 / 13a / 5 / 15) — a *named
+  row*, not merely "not 18", so a degradation that lands on the wrong fail-closed row still reds.
+- **The one declared exception, asserted as its own case, not excluded by a filter:** on the
+  already-merged path (§11 row 3) `O4` is an *observation, not a precondition* (TSPEC §5.5), so
+  `o4 := {ok:false}` there keeps `mergeStatus: merged` and adds row 22's escalation. This case
+  asserts that positive pair explicitly; an implementation that made `O4` a precondition on row 5
+  would red it, and one that made it a precondition everywhere would red the main arm.
+
+**PROP-M-04 — No-bypass equivalence. `mergeMode: "gated"` and `mergeMode: "on"` are the same function.**
+*(Functional · **P** · `enum(≈4 800)` · A4 — `mergeDecision.test.js`)*
+- **Domain:** every PROP-M-01 record, with the config's `mergeMode` set to `"gated"` and to `"on"`.
+- **Oracle:** the two resolutions are **deep-equal** — same row, status, reason, escalations, sha and
+  method. Positive conjunct: at least one case in the enumeration resolves `merged` and at least one
+  resolves `refused`, asserted by counting, so the equivalence is not proven over a domain where both
+  arms are trivially `skipped`. Falsifies AC-1.5's "no mode bypasses the preconditions" directly: any
+  branch on `"on"` anywhere in the core reds this.
+
+**PROP-M-05 — Short-circuit minimality. An observation the resolution does not depend on is never
+demanded.**
+*(Performance · **P** · `enum(≈4 800)` · A4 — `mergeDecision.test.js`)*
+- **Domain:** PROP-M-01's cases, with the observation supplier recording every demand in order.
+- **Oracle:** for each case, the recorded demand sequence is a **prefix of §5.3's demand order**
+  (`O1, O5, O2, O1*, O3, O4`) truncated at the resolving guard, and contains no slot below it.
+  Concretely: a case resolving at row 8 demanded `O1` and nothing else; a case resolving at row 7
+  never demanded `O2`, `O3` or `O4`. This is the property that makes NFR-2's "no state-mutating call
+  before every precondition" cheap to hold — an unobserved surface is one nothing asked for.
+
 ## 3. Self-modification guard properties
 
 ## 4. Configuration and method-policy properties
