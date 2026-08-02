@@ -166,6 +166,16 @@ line leaves behind. This states the reasons behind them.
   authoring failure — *k* authoring failures, *k* free windows. `WINDOW-RESUMED: {W}` keeps the
   intent — origin unmoved, spent rounds spent, no window charged — while restoring `A = H`.
 
+- **Why the granting line carries the *resolved* start, not the derived one** (added 2026-08-01,
+  `REQ-RCV-01` v2.8, from that REQ's AC-1.5(4)). The two differ only where files were deleted after a
+  window was granted, and there the derived value is *below* the origin. Writing it would make the
+  region's `WINDOW-START:` values **descend**, which breaks all three readers: `REQ-RCV-01` §4.1
+  resolves `W` as the **greatest** value present, so the entry would run from the old origin while the
+  line claims a lower one; `REQ-RCV-07` AC-7.1 refuses a descending sequence, so the operator act the
+  rule exists to accommodate would leave the region permanently `invalid`; and the grant would open
+  nothing. With the resolved start the values are **non-descending on every path**, so *greatest* and
+  *last well-formed* name the same line and the region stays valid.
+
 ### 5.6 Why a re-halt strips the marker and does not re-author the post-mortem
 
 Relocated from `REQ-RCV-01` AC-1.4 (2026-08-01, v2.8) so both ends cite one copy; nothing changed
