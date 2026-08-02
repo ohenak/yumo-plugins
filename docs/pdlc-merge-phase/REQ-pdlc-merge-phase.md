@@ -130,15 +130,31 @@ checks" is the flag that eventually gets set in a hurry.
 - **AC-2.1** — Given a merge is authorized, Then it is attempted with `gh pr merge --rebase`.
 - **AC-2.2** — Given rebase-merge fails and the repository permits merge commits, Then a merge
   commit is attempted as the single fallback.
-- **AC-2.3** — Given both fail, Then the phase halts merging, records both failures, and leaves
-  the queue status `awaiting-merge`.
+- **AC-2.3** — Given every permitted method has been attempted and failed, Then the phase **stops
+  attempting merge methods** — it does not halt the pipeline — records each attempt and its failure,
+  and takes AC-1.3's outcome shape: pipeline `success`, `mergeStatus: deferred`, queue status left
+  `awaiting-merge`, no queue commit. "Stops attempting methods" and "the pipeline halts" are
+  different events; only the former happens here.
 - **AC-2.4** — Given the configuration, Then **squash is never attempted** unless
   `allowSquashMerge: true` is explicitly set; it ships `false` and is not part of any fallback
   chain.
 - **AC-2.5** — Given the repository's allowed merge methods (queryable via `gh repo view`), Then a
   method the repository forbids is skipped rather than attempted and failed.
+- **AC-2.5a** — Given the repository capability query cannot be retrieved or parsed, Then it is a
+  failed precondition (AC-1.2b) and no merge is attempted — the phase never assumes a method is
+  permitted.
+- **AC-2.5b** — Given the repository permits none of the methods this phase may use (e.g. a
+  squash-only repository, with `allowSquashMerge` false), Then no method is attempted and the reason
+  reported is "no permitted merge method", distinct from AC-2.3's "attempted and failed". The
+  reported value is `deferred` in both cases; the distinction is in the reason line, which is what
+  tells the operator whether to change a repository setting or investigate a failure.
 - **AC-2.6** — Given a successful merge, Then the remote feature branch is deleted when
-  `deleteBranchOnMerge` is configured true, and the local branch is left alone.
+  `deleteBranchOnPdlcMerge` is configured true, and the local branch is left alone. The setting is
+  pdlc's own, named to avoid collision with GitHub's repository setting `deleteBranchOnMerge`; when
+  the pdlc setting is false the phase deletes nothing and GitHub's own setting may still act.
+- **AC-2.6a** — Given the merge succeeded and the branch deletion failed, Then `mergeStatus` is
+  `merged` (the merge is the outcome that matters; a leftover branch is harmless) and the failure is
+  reported as a named note. It is not an escalation and never downgrades the merge.
 
 Rationale for AC-2.4, recorded here because it will otherwise read as arbitrary: `se-implement`
 produces a TDD commit sequence, Phase DOD produces versioned remediation commits, and
@@ -146,17 +162,37 @@ produces a TDD commit sequence, Phase DOD produces versioned remediation commits
 
 ### REQ-MERGE-03 — Self-modification guard
 
-- **AC-3.1** — Given the PR's changed-file list includes any path under `pdlc/workflows/` or
-  `pdlc/skills/`, Then the merge is **refused** and escalated to the operator, regardless of CI
-  status, merge mode, or any other configuration.
-- **AC-3.2** — Given AC-3.1 fires, Then the escalation names every pipeline-affecting path in the
+The guard's subject is any path whose **contents participate in the pipeline's own execution** —
+workflow sources, skill prompts, hook scripts, and the consumer's runtime copy of the workflows.
+
+- **AC-3.1** — Given the PR's changed-file list includes any path matching a guard path, Then the
+  merge is **refused** and escalated to the operator, regardless of CI status, merge mode, or any
+  other configuration. The shipped default set is `pdlc/workflows/`, `pdlc/skills/`, `pdlc/hooks/`
+  and `.claude/workflows/`.
+- **AC-3.2** — Given AC-3.1 fires, Then the escalation (REQ-MERGE-06) names every matched path in the
   diff and links the PR, so the operator's review has its scope already delimited.
-- **AC-3.3** — Given the guard's path patterns, Then they live in configuration and are additive;
-  a repo may add paths but the two defaults cannot be removed by configuration.
+- **AC-3.3** — Given the guard's path patterns, Then they live in configuration and are additive; a
+  repo may add paths but the four defaults cannot be removed by configuration. A configuration that
+  attempts to remove one is silently unioned with the defaults — no warning, no error; the defaults
+  simply hold.
 - **AC-3.4** — Given the changed-file list cannot be retrieved, Then the guard **fires** — an
   unknown diff is treated as pipeline-affecting. The guard fails closed.
-- **AC-3.5** — Given the guard fires, Then this is asserted by a test that would fail if the guard
-  were removed, so the guard cannot be silently deleted.
+- **AC-3.5** — Given the guard, Then its decision is falsifiable by construction: two changed-file
+  lists differing only in whether they contain a guard path produce opposite guard outcomes, so a
+  guard that has been weakened or removed is observably different from one that has not.
+- **AC-3.6** — Given path matching, Then it is **case-sensitive**, applied to repo-relative paths, and
+  matches on `/`-delimited **directory prefixes**: `pdlc/workflows/` matches `pdlc/workflows/x.js` and
+  `pdlc/workflows/dist/y.js`, and does **not** match `pdlc/workflows-notes/x`, `docs/pdlc/skills/x.md`,
+  or `PDLC/Workflows/x.js`. Matching applies to every path the changed-file list reports, including
+  deletions and both the old and new path of a rename.
+- **AC-3.7** — Given the four defaults are this **pipeline-authoring** repo's own layout, Then a
+  consuming repo — where the pipeline arrives as an installed plugin — is expected to add the paths
+  that carry its own pipeline-affecting code via the additive configuration of AC-3.3;
+  `.claude/workflows/` is a default precisely because it is the one such path that exists in every
+  consumer. The consequence in `yumo-plugins` itself is accepted and stated in §6: every PR this
+  repo's own queue raises touches `pdlc/workflows/` or `pdlc/skills/`, so Phase MERGE here is
+  expected to report `refused` permanently, and `merged` is evidenced through tests rather than
+  through a live merge in this repo.
 
 ### REQ-MERGE-04 — CI evidence requirement
 
