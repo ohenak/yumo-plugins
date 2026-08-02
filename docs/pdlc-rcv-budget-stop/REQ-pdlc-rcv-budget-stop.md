@@ -24,9 +24,7 @@ depends-on: []
 
 **v2.7** (round 1 of the reset window) answered thirteen findings, adding no requirement: pickup order corrected to **10 → 12 → 13 → 17 → 18** (§3.1, R-14, paired into `REQ-RCV-07` X-07/R-16 in this revision); the second `forcePhases` blocked by the step-G refusal, not by the counts; the zero-round halt **does not re-author an existing post-mortem** (AC-1.4); a derived start **below `W`** decided (AC-1.5(2)); the Iterations render **declared** (§6, baseline §3); O-10 regains the **0-call** and interim-only legs `REQ-RCV-07` and split §5.4 cite, plus a property obligation and DC-03's ledger; O-13/O-14 own the budget-width blast radius and the render; DC-09's stopping rule pasted into §9.
 **v2.6** (operator-directed): all implementation contracts removed to TSPEC altitude per the updated `pm-author` altitude rule; no requirement, AC, `S-*` id or threshold changed meaning. What went: function and seam signatures, injected-dependency design, interim call-graph statements, algorithms and control flow, byte-level write mechanics, test-fixture and oracle design, and module-internal placement. What stayed: every id, the window/budget/halt/clearance semantics, the durable-state homes, the operator-facing grammars, the fail-closed dispositions, and the cross-REQ delegations.
-**v2.5** (round 10) fixed the validation result's ability to carry a `{reason}`, scoped §6's grammar exclusion to `W`, and relocated O-10's fixture legs to split **§5.4**. **On size:** shared relocation targets are exhausted; the 90% soft threshold is advisory, the hard ceiling binding.
-**v2.4** (round 9) deferred the consistency check, not the word: §6's grammar is in force at this ship and `W` falls back to **1** on a malformed value (§4.1, X-06, O-12).
-**v1.6** … **v1.2** addressed rounds 5 … 1.
+**v2.5** (round 10) let the validation result carry a `{reason}`, scoped §6's grammar exclusion to `W`, relocated O-10's fixtures to split **§5.4**. **v2.4** (round 9) deferred the consistency check, not the word: §6's grammar is in force at this ship and `W` falls back to **1** on a malformed value. **v1.6 … v1.2** addressed rounds 5 … 1. **On size:** shared relocation targets are exhausted; the hard ceiling is binding, so every revision since v2.5 pays for its additions by compressing prose.
 
 ## 1. Problem
 
@@ -98,11 +96,11 @@ This REQ **owns** six catalogue ids and **reads** two:
 
 ### 4.1 Durability: what survives an invocation boundary
 
-The loop *re-derives its state from the branch on every invocation* (M-1d, M-2f), so any criterion stated over in-process state is undefined on a resumed phase — the normal case. Every quantity this REQ's criteria read has a durable home and **there is no in-process-only row**; the full map is `pdlc-rcv-baseline.md` **§3.2** (relocated there at round 9, read by the whole family). The two rows this REQ's own clearance gate turns on stay here:
+The loop *re-derives its state from the branch on every invocation* (M-1d, M-2f), so any criterion over in-process state is undefined on a resumed phase — the normal case. Every quantity this REQ's criteria read across that boundary has a durable home; the full map is baseline **§3.2**. The rows this REQ's clearance gate turns on stay here:
 
 | Quantity | Read by | Durable home | If absent |
 |---|---|---|---|
-| **First round of the current window** `W` | AC-1.1, AC-1.5(4); `pdlc-rcv-fixed-point-stop` AC-2.1 and AC-2.8 | The `WINDOW-START: {N}` lines in the **reset region** of `POSTMORTEM-{phase}-{feature}.md` — the **greatest** value present, and only if the region **validates** (AC-1.5(4)). Lines are appended, so document order is event order | Treated as **1** — no reset in effect, AC-1.1's cap applies from round 1. Fail-closed: no absent or malformed value ever widens the window. Only *invalid*'s **consistency** half — ordering, the highest round, `H − A ∈ {0, 1}` — is **target state** (`REQ-RCV-07` AC-7.1, X-06); **§6's S-13/S-14 grammar is in force at this ship**, so a value that is not a decimal integer ≥ 1 contributes no origin and `W` falls back to **1**. **Survives a second halt**, since AC-1.4 preserves the region |
+| **First round of the current window** `W` | AC-1.1, AC-1.5(4); `pdlc-rcv-fixed-point-stop` AC-2.1, AC-2.8 | The `WINDOW-START: {N}` lines in the **reset region** of `POSTMORTEM-{phase}-{feature}.md` — the **greatest** value present, and only if the region **validates** (AC-1.5(4)). Appended, so document order is event order | **1** — no reset in effect, the cap applies from round 1. Fail-closed: no absent or malformed value ever widens the window. **§6's grammar is in force at this ship**, so a value that is not a decimal integer ≥ 1 contributes no origin; only the **consistency** half is target state (`REQ-RCV-07` AC-7.1, X-06). Survives a second halt, since AC-1.4 preserves the region |
 | **Rounds this entry ran** (AC-1.3) | AC-1.3 only | Not durable and not required to be — a property of the **entry**, computed inside the invocation that reports it; no criterion reads it later. Listed so the *"no in-process-only row"* invariant is read correctly: that invariant is over quantities the **criteria** read across a boundary | n/a — an entry knows what it dispatched; `0` on the zero-round halt |
 | **Whether a clearance is still unanswered** (the reset is one-shot) | AC-1.5(4), AC-1.5(5) | The **counts**, in that same region, of `H` = `HALT-REASON:` lines and `A` = `WINDOW-START:` **plus** `WINDOW-RESUMED:` lines — **by line prefix, not by value** (AC-1.5(4) clause 4). A clearance is unconsumed exactly when a `RESOLVED: yes` is readable, `A < H`, **and the region validates** | `A = H` ⇒ every halt answered; nothing written, nothing granted. A region that does not validate ⇒ the refusal AC-1.5(4) fixes, which moves neither count — **target state; that conjunct is not in force until `REQ-RCV-07` (X-06)** |
 
@@ -162,11 +160,7 @@ halts twice would have its post-mortem written twice, and the reset region (cata
    **The strip reaches inside the `## Reset Region` span too, and the two rules do not collide:** a `RESOLVED:` line is *never* a region line — the region is read as `HALT-REASON:`,
    `WINDOW-START:` and `WINDOW-RESUMED:` lines only (catalogue §1) — so they quantify over disjoint sets, and a `RESOLVED: yes` inside the region is stripped like any other.
 
-**Why the creating halt is stated.** Scoped only to a halt finding an existing post-mortem, the first halt would be governed by nothing: no region ⇒ `H = 0` ⇒ AC-1.5(4)'s gate `A < H` false ⇒ the operator's **first** clearance silently swallowed.
-
-**Why clause 2.** `RESOLVED:` is a **single-valued, human-owned, fail-closed marker**, never a counter (M-7a). Preserved, it makes the next halt's post-mortem read as already resolved, so that halt has no durable effect; a *second* marker reads as duplicated and therefore permanently unresolved — opposite failures, and the alternative's only two reachable states. **The prohibition is untouched:** removing a marker already spent is not writing one (N-4).
-
-**The region is maintained by the loop, not by an agent's diligence** — the shipped halt path asks an agent to write the post-mortem under no preservation obligation (M-7e), so the region's survival must be the loop's own guarantee. O-5 owns that obligation; O-9's prompt clause is belt-and-braces, not the mechanism.
+**Why the creating halt is stated.** Scoped only to a halt finding an existing post-mortem, the first halt would be governed by nothing: no region ⇒ `H = 0` ⇒ gate `A < H` false ⇒ the operator's **first** clearance silently swallowed. **Why clause 2.** `RESOLVED:` is a single-valued, human-owned, fail-closed marker, never a counter (M-7a): preserved, it makes the next halt's post-mortem read as already resolved, so that halt has no durable effect; a *second* marker reads as duplicated and therefore permanently unresolved — opposite failures, and the alternative's only two reachable states. **The prohibition is untouched:** removing a marker already spent is not writing one (N-4). **The region is the loop's guarantee, not an agent's diligence** — the shipped halt path imposes no preservation obligation (M-7e). O-5 owns it; O-9's prompt clause is belt-and-braces.
 
 **AC-1.5 — The window is absolute, and only an operator resets it.** *Who:* the review loop. *Given:* a phase whose document already carries cross-review rounds on the branch — the
 round history the loop derives from the branch (M-1d). *When:* the phase is (re-)entered. *Then:*
@@ -219,29 +213,26 @@ round history the loop derives from the branch (M-1d). *When:* the phase is (re-
    far has been answered and the loop writes nothing and grants nothing.
 
    **"The highest round on the branch" always means: of the document type under review.** Every such
-   phrase in this REQ — clause 2's start, this clause's `N`, row C's `round` cell, and (in the
-   successor) the validation range check and row B's `round` cell — is taken over that document
-   type's cross-review rounds only (M-1d), never over the whole directory. A feature directory holds
-   cross-reviews for several document types at once, and the two readings disagree on such a
-   directory; it is the doc-type-scoped one, because a window is a property of a document.
+   phrase here — clause 2's start, this clause's `N`, row C's `round` cell, and in the successor the
+   range check and row B's `round` cell — is over that document type's cross-review rounds only
+   (M-1d), never the whole directory: a feature directory holds several document types at once and the
+   two readings disagree there. A window is a property of a document.
 
-   **The clearance is spent only when the answering line durably exists**, and it must durably exist
-   **before any round of that entry is dispatched**. That line is the sole record keeping the
-   clearance one-shot; a lost one re-grants a fresh window on every invocation — the fail-open this
-   criterion exists to close — so it carries the **same confirmation obligation AC-1.4 puts on the
-   post-mortem write**. Failure is fail-closed: no window opens (`W` keeps its prior value), no round
-   is dispatched, and the entry **refuses the phase**. What a partially-landed line leaves behind is
-   **`REQ-RCV-07` AC-7.5**; its operator-facing render is **catalogue §4**'s, and it mints **no new
-   catalogue id and no new S-16 reason** — that enum is closed at three — because it is a fault of the
-   loop, not a state of the region. The ordering is deliberate: an entry that records the line then
-   dies before dispatching has spent the clearance while the window at `N` is intact, and the next
-   entry runs those rounds; recording it last would instead lose the record of a window already
-   *used*, and re-grant it.
+   **The clearance is spent only when the answering line durably exists**, and it must exist **before
+   any round of that entry is dispatched**. That line is the sole record keeping the clearance
+   one-shot; a lost one re-grants a fresh window every invocation — the fail-open this criterion
+   closes — so it carries the **same confirmation obligation AC-1.4 puts on the post-mortem write**.
+   Failure is fail-closed: no window, no dispatch, the entry **refuses the phase**. A partially-landed
+   line is **`REQ-RCV-07` AC-7.5**; its render is **catalogue §4**'s, and it mints **no new catalogue
+   id and no new S-16 reason** — that enum is closed at three — being a fault of the loop, not a state
+   of the region. The ordering is deliberate: an entry recording the line then dying has spent the
+   clearance while the window at `N` is intact and the next entry runs those rounds; recording it last
+   would lose the record of a window already *used*, and re-grant it.
 
-   **Answering lines are appended, like `HALT-REASON:` lines**, and that is **normative**: document
-   order is event order, and validation reads each line against the lines before it. A region whose
-   lines land out of order fails validation ⇒ `W = 1` permanently, since AC-1.4 clause 1 preserves the
-   region verbatim on every later halt and no clearance repairs it.
+   **Answering lines are appended, like `HALT-REASON:` lines** — **normative**: document order is
+   event order, and validation reads each line against those before it. Lines landing out of order
+   fail validation ⇒ `W = 1` permanently, since AC-1.4 clause 1 preserves the region verbatim and no
+   clearance repairs it.
 
    **The third conjunct, as a named predicate.** *The region validates* is a predicate on the region
    and the branch listing, **total and single-valued** (DC-01), whose decision procedure is
@@ -324,12 +315,11 @@ their being **in force at this ship** rather than deferred with the consistency 
 
 ## 7. Non-goals and out of scope
 
-The shared list is baseline §4, which defines **N-1 … N-10 only**; all of `N-1, N-2, N-3, N-4, N-7,
-N-9, N-10` apply unchanged and are not restated, and `N-5`, `N-6` and `N-8` are **inapplicable to
-this REQ, not overlooked**. **Ids above `N-10` are not shared** — the family has minted
-colliding `N-1x` ids — so this document's own non-goals use a **per-REQ namespace, `NB-*`**; restated
-shared rows keep their shared ids. `O-*`, `R-*` and `X-*` are **not** namespaced, so
-`pdlc-rcv-split.md` §5's rule applies — every cross-document citation names the owning REQ. Four non-goals are worth pointing at:
+The shared list is baseline §4 (**N-1 … N-10 only**): `N-1, N-2, N-3, N-4, N-7, N-9, N-10` apply
+unchanged and are not restated; `N-5`, `N-6`, `N-8` are **inapplicable, not overlooked**. **Ids above
+`N-10` are not shared** — the family minted colliding `N-1x` ids — so this document's own non-goals
+use the per-REQ namespace `NB-*`. `O-*`, `R-*` and `X-*` are **not** namespaced, so split §5's rule
+applies: every cross-document citation names the owning REQ. The rows worth pointing at:
 
 | # | Not in scope | Why |
 |---|---|---|
@@ -412,23 +402,19 @@ queue-eligible until an operator specifies it and opts it in.
 |---|---|---|---|---|
 | REQ-RCV-01 | M-1a, M-1b, M-1c, M-1d, M-1e; M-7a, M-7b, M-7d, M-7e, M-7f | P-1 (cost half) | US-01, US-02, US-04 | O-5, O-9, O-10, O-11, O-12, O-13, O-14 |
 
-**Why one requirement and not two.** v1.0 carried REQ-RCV-01 and REQ-RCV-02 together past the 60 KB
-ceiling; v1.1 cut at the seam they already had — this REQ the **window**,
-`docs/pdlc-rcv-fixed-point-stop/` the two **tests** inside it, kept as a `depends-on` edge.
+**Why one requirement and not two.** v1.0 carried REQ-RCV-01 and REQ-RCV-02 past the 60 KB ceiling;
+v1.1 cut at the seam they already had — this REQ the **window**, `docs/pdlc-rcv-fixed-point-stop/` the
+two **tests** inside it, kept as a `depends-on` edge. **v2.0 then cut at the altitude seam** the
+postmortem named: the implementation-altitude half of AC-1.5(4) moved to `REQ-RCV-07`, the window
+stayed, and **no requirement, AC, `S-*` id, threshold or user story changed meaning**. The narrative,
+the *what moved / what stayed* mapping and the consequences are stated once for both halves in
+`docs/_constraints/pdlc-rcv-split.md` §1–§4.
 
-### v2.0 — the altitude split
+**Paired edges are revised together.** `REQ-RCV-01` X-06/R-14 and `REQ-RCV-07` X-07/R-16 are the same
+edge from both ends, so a revision to either is carried to the other **within the same revision** (the
+unit is the revision, not the commit) and the reviewer checks both ends **at HEAD**. v2.7 exercised
+this: the pickup-order correction landed at both ends. The edge table, the facts both ends must agree
+on, and the `O-*`/`R-*`/`X-*` collision rule are in split §5.
 
-**Relocated, not deleted.** The narrative, the *what moved / what stayed* mapping and the three
-consequences are stated once for both halves in **`docs/_constraints/pdlc-rcv-split.md`** (§1–§4). In
-one line: v1.6 was cut at the **altitude** seam the postmortem named, the implementation-altitude
-half of AC-1.5(4) moved to `REQ-RCV-07`, the window stayed, and **no requirement, AC, `S-*` id,
-threshold or user story changed meaning**.
-
-**Paired edges must be revised together.** `REQ-RCV-01` X-06/R-14 and `REQ-RCV-07` X-07/R-16 are the
-**same edge described from both ends**, so any revision to X-06 or R-14 is carried to X-07 and R-16
-**within the same revision**, and the reviewer checks both ends **at HEAD**. The unit is the
-revision, not the commit. The edge table, the three facts both ends must agree on, and the
-`O-*`/`R-*`/`X-*` collision rule are in `pdlc-rcv-split.md` §5.
-
-**Round-by-round history is deliberately not restated here:** `harvest-learnings` deletes
-`CROSS-REVIEW-*` once LEARNINGS is written, so citing round files would be structurally wrong.
+**Round-by-round history is deliberately not restated here:** harvest deletes `CROSS-REVIEW-*` once
+LEARNINGS is written, so citing round files would be structurally wrong.
