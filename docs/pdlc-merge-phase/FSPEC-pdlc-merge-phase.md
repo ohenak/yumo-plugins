@@ -641,8 +641,80 @@ operator who *intended* to enable merging is not left wondering why nothing merg
 
 ## 11. Observable outcomes per scenario
 
+REQ AC-6.1a's condition table, refined to spec level: each row now names the resolving step, the
+reason line's subject, whether the queue is written, and whether an escalation is emitted. It is
+exhaustive and exclusive — exactly one row applies to any run — and it is the parameterised suite the
+TSPEC and tests pin. Every row's pipeline outcome is `success`.
+
+| # | Condition | Resolves at | `mergeStatus` | Queue written | Escalation |
+|---|---|---|---|---|---|
+| 1 | `PHASE_MERGE_ENABLED` false | §2.2 r1 | `skipped` | no | no |
+| 2 | `mergeMode` resolves `off` (incl. malformed config) | §2.2 r2 | `skipped` | no | no |
+| 3 | PR already `MERGED` on entry | §2.2 r3 | `merged` (method `unknown`, no `mergeSha`) | **yes**, idempotent | no |
+| 4 | Guard fired — a changed path matched | §4.1 | `refused` | no | **yes** |
+| 5 | Guard fired — changed-file list unretrievable | §4.4 | `refused` | no | **yes** |
+| 6 | No `prUrl` from Phase PUB | §2.3 5a | `deferred` | no | no |
+| 7 | PR state `CLOSED` | §2.3 5b | `deferred` | no | no |
+| 8 | PR state unparseable/unrecognised | §3.2 | `refused` | no | no |
+| 9 | CI `no-checks` and `mergeRequiresCi` true | §5 | `refused` | no | **yes** |
+| 10 | CI `pending` or `failed` | §5 | `refused` | no | no |
+| 11 | CI rollup unretrievable/unparseable | §5 | `refused` | no | no |
+| 12 | `mergeable` `CONFLICTING`, or `mergeStateStatus` `DIRTY`/`BLOCKED` | §2.3 5d | `deferred` | no | no |
+| 13 | `mergeable` still `UNKNOWN` after the bounded re-reads | §3.3 | `deferred` | no | no |
+| 14 | One or more unresolved review threads | §2.3 5e | `deferred` | no | no |
+| 15 | Capability query unretrievable/unparseable | §2.3 5f | `refused` | no | no |
+| 16 | No permitted merge method remains | §6.1 | `deferred` (reason "no permitted merge method") | no | no |
+| 17 | Every permitted method attempted and failed | §6.3 | `deferred` (reason names each attempt) | no | no |
+| 18 | Merge performed and succeeded | §6.2 | `merged` + `mergeSha` + `mergeMethod` | **yes** | no |
+| 19 | Merged, remote branch deletion failed | §6.4 | `merged` | **yes** | no — a plain note |
+| 20 | Merged, queue write failed | §7.4 | `merged` | attempted, failed | **yes** |
+| 21 | Merged, working tree not updated | §8.3 | `merged` | **yes** | **yes** |
+
+Rows 1–2 and 4–5 are the two pairs a reader is most likely to conflate. Rows 1–2 both report
+`skipped` and neither evaluates the guard (§2.2). Rows 4–5 both report `refused` and differ only in
+the escalation's text, which is the operator's whole signal about which happened.
+
+`refused` means a safety rule said no; `deferred` means an ordinary not-ready condition a later
+re-invocation could satisfy. Rows 16 and 17 share a value and differ in the reason line, because that
+line is what tells the operator whether to change a repository setting or investigate a failure.
+
 ## 12. Acceptance tests
+
+§11's table is itself the primary acceptance suite: one case per row, asserting the four columns plus
+the reason line. These five cover behaviour the table does not express.
+
+| ID | Who / Given / When / Then |
+|---|---|
+| AT-M1 | **Operator.** Given a five-column `QUEUE.md` with three data rows and a merged PR for row 2, When Phase MERGE writes back, Then the header gains `Evidence`, the separator and the other two data rows each gain one empty cell, row 2's Status cell reads exactly `done`, its Evidence cell reads `{shortSha} #{prNumber}`, and no other cell in the file changes |
+| AT-M2 | **Operator.** Given the same queue already carrying an `Evidence` column and row 2 already `done` with the same evidence, When Phase MERGE re-runs against the already-merged PR, Then the file is byte-identical, no commit is produced, and no notice is emitted |
+| AT-M3 | **Operator.** Given two changed-file lists identical except that one contains `pdlc/skills/x.md`, When the guard evaluates each, Then the outcomes are opposite — `refused` with that path named, and not-refused — and the near-miss paths `pdlc/skills-notes/x.md`, `docs/pdlc/skills/x.md` and `PDLC/Skills/x.md` all fall on the not-refused side |
+| AT-M4 | **Operator.** Given a queue-driven run whose pipeline report carries `mergeStatus: merged`, When the driver takes its post-pipeline transition, Then it records `done` (not `awaiting-merge`) and does not emit the "merge the PR, then set it to done" message |
+| AT-M5 | **Operator.** Given a queue whose only unblocked dependent depends solely on this feature, When a run reports `mergeStatus: merged`, Then the next queue invocation selects that dependent with no human turn; and given the same queue with this feature left `awaiting-merge`, that dependent is not selected |
 
 ## 13. Obligations and open questions
 
+| ID | Owner | Obligation |
+|---|---|---|
+| O-M1 | TSPEC | The row-disposition vocabulary of §7.4 must stop reporting a `done` write as `halted`. Name the members and the migration for existing readers |
+| O-M2 | TSPEC | Names, signatures and injection mechanics for the six observation points of §3.1 and for the queue-recording channel of §7.4 |
+| O-M3 | TSPEC | The `O3` review-thread GraphQL query text and its pagination behaviour. `reviewDecision` is **not** an accepted substitute (REQ AC-1.2) |
+| O-M4 | TSPEC | `O5`'s pagination completeness rule: how the phase knows a changed-file list is complete, since an incomplete list must fail closed (§4.4) rather than silently pass the guard |
+| O-M5 | TSPEC | Where `.claude/pdlc.config.json`'s `merge` section is read and cached within a run, given §2.2 row 1 must resolve before any read occurs |
+| O-M6 | PLAN | Re-expression of `RLH-AT-32-orch` per §7.5, plus its new sibling case — as a task, so the change is reviewed rather than discovered as a red test |
+
+No open questions remain for the requester. Both round-2 questions (TE Q-01, Q-02) are answered in
+§2.3 and §7.3.
+
 ## 14. Traceability
+
+| FSPEC | REQ | User stories |
+|---|---|---|
+| §2 FSPEC-MERGE-01 | REQ-MERGE-01, NFR-2, NFR-5 | US-01 |
+| §3 FSPEC-MERGE-02 | AC-1.2, AC-1.2a, AC-1.2b, NFR-1, NFR-4 | US-04 |
+| §4 FSPEC-MERGE-03 | REQ-MERGE-03, NFR-3 | US-03 |
+| §5 FSPEC-MERGE-04 | REQ-MERGE-04 | US-04 |
+| §6 FSPEC-MERGE-05 | REQ-MERGE-02 | US-02 |
+| §7 FSPEC-MERGE-06 | REQ-MERGE-05 | US-01, US-05 |
+| §8 FSPEC-MERGE-07 | AC-5.7, AC-2.6, AC-2.6a | US-01 |
+| §9 FSPEC-MERGE-08 | REQ-MERGE-06 | US-01, US-05 |
+| §10 FSPEC-MERGE-09 | REQ-MERGE-07 | US-03, US-04 |
