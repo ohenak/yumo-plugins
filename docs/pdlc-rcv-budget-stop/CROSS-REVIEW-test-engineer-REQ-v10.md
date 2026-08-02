@@ -90,4 +90,65 @@ is answered, but the answer selects which repair is right.
 
 ## Recommendation
 
+**Needs revision**
+
+Both v9 findings are closed — F-41 in the exact form I proposed, and F-42's relocations all landed
+and are all faithful. The design is not contested at any point: the conjunct staying unwired, the
+target-state framing, the handover of the non-validating legs, leg 1's and leg 2's cells, the
+grammar/analysis split and its `W = 1` fallback, and the paired-edge discharge at three sites in both
+directions — I re-derived or re-read every one of these and none is filed. What blocks is narrower
+than any round since v6: **two of the sentences added this round to close v9 each contradict another
+sentence in the same revision**, and in both cases a test author would derive the wrong test.
+
+1. **F-43 (High)** — O-12 pins the *validate* seam at **arity 2 and a boolean return**, and O-10
+   asserts that signature as a contract leg claimed to survive row 18. AC-1.5(4)'s own false bullet
+   requires the run report to emit `reset-region-corrupt: {reason}` with a reason selected by AC-7.1
+   step 4. A boolean carries no reason, and arity 2 provides no report sink, so under either emitter
+   the row-18 implementation needs a wider signature — the asserted leg **breaks** at row 18 instead
+   of inverting, which is precisely what O-10 promises it will not do. Repair either by widening the
+   return to a verdict-plus-`{reason}` result (preferred — it makes the target state reachable
+   without a second signature change) or by marking the contract leg **interim-only, inverting at row
+   18** in leg 3's own words. Whichever is chosen, carry the signature to `REQ-RCV-07` O-12: it
+   constrains that REQ's implementation and §10's paired-edge rule does not reach O-12.
+
+2. **F-44 (Medium)** — §6's *"a line whose value is not one **is not a `WINDOW-START: {N}` line**"*
+   and leg 3's *"the malformed line **still counts toward `A`**"* give `A = 0` and `A = 1`
+   respectively on leg 3's own fixture, so the interim gate **grants** under one reading and grants
+   nothing under the other. The §6 reading is the fail-open one. The resolving rule appears only as a
+   parenthetical inside a PROPERTIES obligation; move it to AC-1.5(4) clause 4 (*counted by line
+   prefix, whatever the value*) and strike the redundant half of §6's sentence. **This repair is a
+   net byte reduction.**
+
+3. **F-45 (Low)** — leg 3 does not state the branch's highest round, which decides both its
+   *window opens* and its *≥ 1 dispatch* conjuncts; legs 1 and 2 both state theirs. Add leg 2's
+   phrase, *"highest round below `windowEnd(1)`"*, ~28 bytes.
+
+4. **F-46 (Low, Process)** — 23 bytes under the soft threshold (55,273 / 55,296), 442/630 lines;
+   headroom across rounds 9 → 171 → 58 → 23 despite four relocations this round, including the
+   ~800-byte block F-42 nominated. Filed for the recurrence only.
+
+**On room.** F-44's repair frees bytes and F-45's costs ~28, so those two are affordable together.
+F-43's is not, on top of them, without a further move. Relocate rather than compress: O-10's leg-1 /
+leg-2 / leg-3 fixture prose (~1.4 KB) is PROPERTIES-altitude and the obligation already names the
+document that should hold it; the alternative — collapsing X-06's *what is not deferred* paragraph
+into a citation of `REQ-RCV-07` X-07, which now states it almost verbatim — is a paired-edge change
+and must be agreed at both ends. Do **not** shorten leg 3's marked-interim-only clause, or leg 1's
+concrete rounds, or leg 2's *no answering line, counts unmoved* conjuncts to make budget: each is a
+conjunct that a compression pass reads as redundant and each is load-bearing.
+
+Explicitly **not** filed, and not to be reopened: the decision to leave the conjunct unwired and the
+three-horn argument behind it, verified at `pdlc-rcv-split.md` §5.1; the target-state framing at
+AC-1.5(4) and §4.1; the grammar/analysis layer split, `W`'s fallback to 1 and the fact that leg 3 is
+this REQ's to own; the handover of the non-validating legs and their receipt at `REQ-RCV-07` O-10;
+legs 1 and 2 and their swap-stability after row 18; §10's revision-scoped atomicity rule; all four
+round-9 relocations, whose destinations I read (split §5.2 and §5.3, baseline §3.1 and §3.2); and
+everything in §1, §2, §3.1 beyond X-06's new paragraph, §4.1's remaining rows, AC-1.1–AC-1.4,
+AC-1.5(1)–(3) and (5), §7, §9 and the unchanged parts of §8 — approved across nine rounds. Nothing
+here contests user need, priority, phasing, the budget of three, the split, or shipping this REQ
+ahead of its successor.
+
 ## Verdict
+
+VERDICT: Needs revision
+
+{"high": 1, "medium": 1, "low": 2}
