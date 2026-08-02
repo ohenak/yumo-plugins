@@ -117,4 +117,94 @@ literally would write an assertion that either fails or asserts the wrong dispos
 
 ## 6. Recommendation
 
+**Needs revision**
+
+The v9 Medium and all three Lows are closed, and the Medium was closed the way I hoped rather than
+the way I proposed: the *invalid* predicate is split into a **grammar** layer this REQ owns and in
+force at its ship, and an **analysis** layer `REQ-RCV-07` first adds at row 18 and whose step 2
+re-checks the grammar. That formulation is carried at both ends of the paired edge in the same
+revision, together with X-06's *injection point exists / no call site emitted* wording and the
+seam signature in O-12. §5's atomicity rule is restated over the **revision** with the pacing-contract
+reason recorded in the split record, and §10's compliance claim now matches — and is true at HEAD, as
+I checked rather than accepted. All four relocations were verified clause by clause and none lost
+anything.
+
+**Two Mediums block approval, and both live inside the same new artefact: O-10's leg 3.** Leg 3 is
+the right thing to have added — the interim origin behaviour needed a fixture — but as written it is
+not yet buildable.
+
+1. **F-01 — §6 and leg 3 contradict each other on the `A` count, and the two answers sit on opposite
+   sides of the fail-open line.** §6 says a malformed line *"is **not** a `WINDOW-START: {N}` line"*,
+   which composed with §4.1's *"`A` = `WINDOW-START:` plus `WINDOW-RESUMED:` lines"* removes it from
+   the count; leg 3 says it *"still counts toward `A`"*. Counting it gives `A = H`, no grant,
+   fail-closed — leg 3's own assertion. Not counting it gives `A < H` with a readable
+   `RESOLVED: yes`, so the gate **grants a window over a region already known to be corrupt** — the
+   exact fail-open `pdlc-rcv-split.md` §5.2 exists to name, reached *because* the grammar was put in
+   force. **Fix:** scope §6's exclusion to value derivation (*contributes no value to `W`; it remains
+   a `WINDOW-START:` line for §4.1's `A` count*) and put the *prefixes, not values* half-sentence in
+   §4.1's clearance row, which is where a TSPEC author reads the count.
+2. **F-02 — leg 3 does not pin the branch listing, and its natural completion falsifies its own
+   conclusion.** Legs 1 and 2 both pin it because in this REQ the listing decides whether a round can
+   open. Built by analogy with leg 1 (highest round = `windowEnd(1)` = 3), leg 3's `W` = 1 leaves the
+   window `[1, 3]` exhausted, so the entry halts on the budget path with **0** dispatches — failing
+   the `≥ 1`-dispatch conjunct the leg relies on. **Fix:** pin the listing as leg 2 does, *highest
+   round below `windowEnd(1)`*, with one line of rationale: a fixture about the **origin** must leave
+   the window open, or the budget halt masks the behaviour it exists to pin.
+
+One Low accompanies them: **F-03** — §6's collapsed row now claims S-4 `budget-exhausted:` is *stated
+once in baseline §3*, but baseline §3 has no such row and baseline §3.1 still records the exemption
+that v2.3's §6 stated and this round deleted. Restore six words of exception, or split S-4 out of the
+collapsed row.
+
+Take F-02 first — it is the smallest edit and it makes leg 3 buildable — then F-01, which touches
+two rows in two sections. Per Q-01, 23 bytes of headroom will not absorb the three fixes; decide the
+relocate-or-accept-the-warning question before writing them rather than after.
+
+Durable signal from this round, for `docs/_constraints/DOMAIN-CONSTRAINTS.md`:
+
+- **A grammar rule stated as an *identity* claim silently rewrites every count taken over that
+  kind.** *"A malformed line is not a `WINDOW-START:` line"* reads as a statement about parsing but
+  lands as a statement about set membership, and any criterion counting those lines changes meaning
+  with it. State grammar exclusions over the **derived value**, and say separately what the line
+  still counts as.
+- **A test-fixture leg must pin every input its asserted disposition depends on, including the ones
+  its sibling legs pin implicitly.** Leg 3 pinned the region and inherited nothing about the branch
+  listing; legs 1 and 2 pinned both. The omitted input was the one that decided the assertion.
+- **When a block is relocated, the sentences that explained why the block was *incomplete* must move
+  with it.** §6's *this row is deliberately outside the shared table* exemption was dropped in the
+  relocation while the rule that makes its absence a defect stayed behind.
+
 ## Verdict
+
+The v9 Medium and its three Lows are all closed. The Medium was closed by splitting the *region
+validates* predicate into a **grammar** layer in force at this ship and an **analysis** layer
+`REQ-RCV-07` adds at row 18 — §4.1 defers only *invalid*'s consistency half, §6 restates the S-13/S-14
+grammars as in force, X-06 states the layer split and says AC-7.1 step 2 re-checks rather than
+first-checks, O-12 closes the `NaN` path as a TSPEC obligation, and O-10 gains interim leg 3.
+The three Lows are closed too: the seam's name, arity, return and `_`-prefixed convention are fixed
+in O-12 (F-02); X-06 now reads *the **injection point** exists … **no call site is emitted at this
+ship**: the interim composition calls it **0 times*** (F-03); and `pdlc-rcv-split.md` §5's atomicity
+rule is restated over the **revision**, with the pacing-contract reason recorded in the split record
+and §10's compliance claim corrected to match (F-04). I verified rather than accepted the claims this
+round makes about other files: X-07, R-16 and O-10 in `REQ-RCV-07` carry the same wording at HEAD in
+the same revision; `invalid-window-start` is a real member of the closed S-16 enum; and all four
+relocations — split §5.2, split §5.3, baseline §3.1, baseline §3.2 — carry every clause of what they
+replaced, including `WINDOW-START:`'s *never authored by a human* rule and §4.1's three
+post-mortem-readability rows.
+
+**Two Mediums remain, both inside the new O-10 leg 3, and they hold the document.** First, §6 and
+leg 3 disagree about whether a malformed `WINDOW-START:` line counts toward `A`: §6 says such a line
+*is not a `WINDOW-START: {N}` line*, which composed with §4.1's count removes it, while leg 3 says it
+*still counts*. The two readings land on opposite sides of the fail-open line — `A = H` and no grant,
+or `A < H` with a readable `RESOLVED: yes` and a window granted over a region already known to be
+corrupt, which is the failure `pdlc-rcv-split.md` §5.2 exists to name. Second, leg 3 omits the branch
+listing that legs 1 and 2 both pin; completed by analogy with leg 1 (highest round 3), `W` = 1 leaves
+`[1, 3]` exhausted, the entry halts on the budget path and dispatches **0** rounds, failing the leg's
+own `≥ 1`-dispatch conjunct. Scope §6's grammar exclusion to value derivation and restate the count
+as over line prefixes in §4.1; pin leg 3's listing below `windowEnd(1)` as leg 2 does. One Low
+accompanies: §6's collapsed row claims S-4 `budget-exhausted:` is stated in baseline §3, which has no
+such row, while baseline §3.1 still carries the exemption v2.3's §6 stated and this round deleted.
+Per the approval rule, any Medium → **Needs revision**; take F-02 first, then F-01, and settle Q-01's
+relocate-or-accept question before writing them, since 23 bytes of headroom will not absorb the three.
+
+VERDICT: Needs revision
