@@ -131,6 +131,22 @@ The discriminator is *"the phase names a document type"*, not membership of a di
 | **B-BUD-2** | **Phase CR** — names no document type (M-7f) | `BUDGET` rounds from wherever that invocation starts — **per-invocation**, unchanged in kind, narrowed from 5 to 3 | **do not apply.** A Phase CR halt creates **no** `## Reset Region` and reads none |
 | **B-BUD-3** | **Phase DOD** — runs its own loop, bounded by its own constant | takes **no value** from `BUDGET` | do not apply |
 
+**B-BUD-3's observable is structural, because the two values coincide.** Phase DOD's bound and the
+post-ship budget are **both 3** (baseline `M-*`: Phase DOD's own declared iteration cap, and §3's
+default), so *"Phase DOD ran the same number of rounds"* is satisfied identically whether the phase
+reads its own declaration or wrongly reads `BUDGET`. The discriminating observable is therefore
+stated here rather than left to a round count:
+
+1. **Two distinct declarations exist**, and Phase DOD's bound resolves from the one that is **not**
+   the budget declaration. Phase DOD's is a *deliberately pinned non-budget literal* in B-BUD-5's
+   third class — it **says so at its site**, and it therefore appears in the §3.2 enumeration under
+   that class, never under *the declaration* or *read from it*. A Phase DOD bound classified as
+   *read from it* is the defect, and the enumeration is where it is visible.
+2. **Phase DOD's admitted count tracks its own declaration, not `BUDGET`.** Where `BUDGET` is
+   varied away from Phase DOD's value, Phase DOD's admitted count is **unchanged**; where Phase
+   DOD's own declaration is varied, its admitted count follows it. Both legs are needed: the first
+   alone is satisfied by a phase that reads neither, the second alone by a phase that reads both.
+
 **Behavioural rule.** A phase that names no document type has no cross-review basenames of that type
 to count from, so it has nothing an absolute window could be anchored to; giving it one would
 silently anchor it to another document's history. This is `N-7` restated because AC-1.1 narrows it.
@@ -713,7 +729,8 @@ test composes it from the constant.
 |---|---|---|---|---|
 | **AT-BUD-01** | B-BUD-1 | a document-typed phase whose document has no cross-review file and no post-mortem | the phase is entered | rounds 1…3 are admitted; a later entry finding round 3 present admits none |
 | **AT-BUD-02** | B-BUD-2 | Phase CR, which names no document type | the loop runs to exhaustion in one invocation | exactly `BUDGET` rounds run in that invocation, and the post-mortem it writes contains **no** `## Reset Region` |
-| **AT-BUD-03** | B-BUD-3 | Phase DOD | the budget changes from 5 to 3 | Phase DOD's admitted round count is **unchanged** — it takes no value from this constant |
+| **AT-BUD-03a** | B-BUD-3 | the repo at the ship commit, and §3.2's classified enumeration | the enumeration is read | Phase DOD's bound appears under **deliberately pinned non-budget literal** and says so at its site; it is **not** *the declaration* and **not** *read from it*; the two declarations are **distinct**. A count-based oracle cannot substitute — both values are `3` after this ship |
+| **AT-BUD-03b** | B-BUD-3 | Phase DOD, with `BUDGET` **varied** to a value ≠ Phase DOD's bound (the declaration is reachable from test code — O-13) | the phase runs | Phase DOD's admitted round count **follows its own declaration and is unchanged by the variation**; varying Phase DOD's own declaration instead **does** move it. Both legs asserted — either alone passes on an implementation that reads neither, or both |
 | **AT-BUD-04** | B-BUD-4 | a document-typed phase that halts on the budget | the operator reads the run report and the post-mortem | the phase record, the returned `iterations` field and the Iterations heading all state the **effective budget**, each asserted over the constant |
 | **AT-BUD-05** | B-BUD-5 | the repo at the ship commit | the classified enumeration of width occurrences is compared **by machine** against a repo scan | every occurrence appears in the enumeration under one of the five classes, and **exactly one** hand-maintained executable declaration states the value |
 
@@ -810,7 +827,7 @@ B-HALT-8).
 
 | REQ criterion | Flow | Branches | Acceptance tests |
 |---|---|---|---|
-| AC-1.1 (budget of three, per document, absolute; scope of typed vs untyped loops) | FSPEC-BUD-01, FSPEC-WIN-01 | B-BUD-1, B-BUD-2, B-BUD-3, B-WIN-1, B-WIN-4, B-WIN-5 | AT-BUD-01…03, AT-WIN-01, AT-WIN-04, AT-WIN-05 |
+| AC-1.1 (budget of three, per document, absolute; scope of typed vs untyped loops) | FSPEC-BUD-01, FSPEC-WIN-01 | B-BUD-1, B-BUD-2, B-BUD-3, B-WIN-1, B-WIN-4, B-WIN-5 | AT-BUD-01, AT-BUD-02, AT-BUD-03a, AT-BUD-03b, AT-WIN-01, AT-WIN-04, AT-WIN-05 |
 | AC-1.2 (one constant, one budget) | FSPEC-BUD-01 | B-BUD-4, B-BUD-5 | AT-BUD-04, AT-BUD-05 |
 | AC-1.3 (reported quantities named; empty verdict list) | FSPEC-RPT-01 | B-RPT-1, B-RPT-2, B-RPT-3, B-RPT-5, B-HALT-3 | AT-RPT-01…03, AT-RPT-05, AT-HALT-03 |
 | AC-1.4 (halt unchanged in kind; region maintained; no re-author) | FSPEC-HALT-01, FSPEC-PROMPT-01 | B-HALT-1…B-HALT-9, B-PMT-3 | AT-HALT-01…09, AT-PMT-03 |
