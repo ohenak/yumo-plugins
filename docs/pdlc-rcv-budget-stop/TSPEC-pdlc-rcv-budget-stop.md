@@ -951,6 +951,122 @@ would be.
 
 ## 8. O-13 — the budget-width blast radius
 
+AC-1.2 states the outcome — *exactly one hand-maintained declaration in executable code states the
+budget's value, repo-wide, production and test alike* — and routes both halves of *how* to this
+document. O-13(a) is §8.1, O-13(b) is §8.2, and the machine that makes the enumeration decidable
+is §8.3.
+
+### 8.1 (a) How test code obtains the effective budget
+
+**The constant is exported.** `orchestrate-dev.js:52` becomes:
+
+```js
+export const MAX_REVIEW_ROUNDS = 3;
+```
+
+Feasible without any change to the distribution mechanism, for the reason C-3 records:
+`stripModuleSyntax` (`build-runtime.mjs:51`) rewrites `^export const ` to `const `, so the bundle
+sees exactly today's declaration. The bundle's `wrapModule` export list (`:87`–`:94`) is **not**
+extended — the runtime never needs the value, only the tests do, and adding it would put a symbol
+in the runtime's public surface for no consumer.
+
+Test code then `import`s it from the ES module, as every other test in the suite already imports
+`deriveRoundWindow`, `isComplete` and the rest. The two hand-maintained duplicates die:
+
+| Site | Today | After |
+|---|---|---|
+| `__tests__/pacingWrapper.test.js:77` | `const MAX_REVIEW_ROUNDS = 5;` | removed; the import is used at `:1458` and `:1501` unchanged |
+| `__tests__/roundDerivation.test.js:61` | `const EXPECTED_WINDOW_WIDTH = 5;` | `const EXPECTED_WINDOW_WIDTH = MAX_REVIEW_ROUNDS;` — the alias stays, so `:300`, `:316` and `:558` are untouched, but it now **reads** the declaration |
+
+**Why not keep two and assert they agree.** A cross-check test is a third hand-maintained site
+that can itself be forgotten, and the failure it guards against is silent in exactly the way AC-1.2
+names: a duplicate not updated in the same commit leaves a **green** suite asserting the old width
+while the pipeline runs the new one — the defect moved one line up, into the oracle.
+
+**Why not `process.env` or a config file.** C-2: neither exists in the workflow runtime.
+
+Two shipped assertions must be re-expressed rather than deleted, and both keep their ids:
+
+- `roundDerivation.test.js:57`'s comment states *"the constant is deliberately **not** exported"*.
+  That statement is now false and is replaced by one naming O-13(a) and the reason.
+- `roundDerivation.test.js:389` pins the exact key set of `deriveRoundWindow`'s return; it grows
+  by `derivedStart` and `origin` (§4.2).
+
+### 8.2 (b) The closed enumeration of width-encoding sites
+
+Every textual occurrence of the width, classified into AC-1.2's five classes. The list is
+**checked in** as `pdlc/workflows/lib/budget-width-sites.json` and is the artifact §8.3 compares
+against a repo scan. Enumerated at `9486c81`; a PLAN task re-runs the scan at implementation time
+and reconciles any drift **before** the width changes.
+
+| Class | Sites | Disposition |
+|---|---|---|
+| **the declaration** | `pdlc/workflows/orchestrate-dev.js:52` | becomes `export const MAX_REVIEW_ROUNDS = 3;` (§8.1). **Exactly one** |
+| **read from it** | `orchestrate-dev.js:1799` (phase record), `:1965` (post-mortem prompt — this occurrence is **deleted**, §6.6), `:2011` (`iterations`), `:2493` (`windowEnd`); `pacingWrapper.test.js:1458`, `:1501`; `roundDerivation.test.js:61`, `:300`, `:316`, `:558` | already read the identifier, or are re-expressed over the import in §8.1. No literal |
+| **generated copy** | every occurrence in `pdlc/workflows/dist/orchestrate-dev.bundle.js` and `dist/orchestrate-queue.bundle.js`; the untracked consumer copies under `.claude/workflows/` | rebuilt in the same commit (**O-11**); CI's *Generated artifacts are in sync* job makes it non-optional. Outside the count, **inside** the enumeration |
+| **prose** | `CLAUDE.md:78`–`:84` (*Review loop mechanics*, `MAX_REVIEW_ROUNDS = 5`); `README.md:38`; `docs/_constraints/pdlc-rcv-baseline.md` §3's row (already states **3**) | updated **in the same commit** (split §5.7). Historical documents under `docs/completed/`, `docs/discarded/` and this family's own review files are **records of what was true then** and are deliberately **not** updated — they are enumerated under this class with `frozen: true` |
+| **pinned non-budget literal** | `orchestrate-dev.js:25` — `const DOD_MAX_ITERATIONS = 3;`; the acceptance-test **titles** at `reviewLoop.test.js:139` and `:477` (*"all 5 iterations"*, *"exactly 5 iterations"*) and any fixture literal a re-expression would make circular | each **stays a literal and says so at its site**, in a one-line comment naming this class and the reason. `DOD_MAX_ITERATIONS` is the B-BUD-3 case: after this ship both values are `3`, so only the enumeration — never a round count — distinguishes *reads its own declaration* from *wrongly reads `BUDGET`* |
+
+**B-BUD-3's second leg is a runtime one, and it needs the export.** AT-BUD-03b varies `BUDGET`
+away from Phase DOD's value and asserts Phase DOD's admitted count is unchanged, then varies
+`DOD_MAX_ITERATIONS` and asserts it moves. `runDodPhase` already takes `maxIterations` as a
+parameter defaulting to `DOD_MAX_ITERATIONS` (`:3833`), so the second leg is injectable today; the
+first needs the width reachable from test code, which §8.1 supplies.
+
+### 8.3 The machine that compares the enumeration against a repo scan
+
+A new pure module, `pdlc/workflows/lib/budget-sites.mjs`, in exactly the shape
+`lib/document-oracles.mjs` established — **a pure function of a `root` directory path, no
+`process.cwd()`, no ambient state**, so tests, the release checklist and any future CLI can probe
+two roots in the same process.
+
+```js
+/**
+ * @param {string} root
+ * @returns {Array<{path: string, line: number, text: string, violation: string}>}
+ */
+export function budgetWidthViolations(root)
+```
+
+**What it scans.** Walking the tree under `root`, skipping `.git/` and `node_modules/` (the same
+walk `coveredViolations` uses — and the same caveat applies: an untracked local file can fail this
+oracle for reasons unrelated to the diff, which `CLAUDE.md` already warns about):
+
+1. every occurrence of the identifier `MAX_REVIEW_ROUNDS` in any tracked file;
+2. in `*.js` / `*.mjs` only, every **numeric literal initialiser of a module-scope `const` whose
+   name matches** `/ROUND|WINDOW.?WIDTH|BUDGET|ITERATIONS?/i` — this is what catches a *second*
+   hand-maintained declaration under a different name, which is the violation a grep for
+   `MAX_REVIEW_ROUNDS` cannot see;
+3. every occurrence of the **rendered** width in a prose file declared under the `prose` class
+   whose `frozen` flag is false.
+
+**What it reports as a violation.** Three, and only three:
+
+| Violation | Meaning |
+|---|---|
+| `unenumerated-site` | a scan hit absent from `budget-width-sites.json` — **the case a human-read checklist structurally cannot detect** |
+| `second-declaration` | a second scan hit classified as *the declaration*, or a rule-2 hit not classified as *pinned non-budget literal* |
+| `stale-prose` | a non-frozen `prose` site whose file no longer states the effective width |
+
+An enumerated site that has **moved** (same file, different line) is reconciled by the PLAN task,
+not by the oracle — line numbers in the JSON are informational and the match is on `path` +
+`text`, so ordinary edits above a site do not red the suite.
+
+**Why in `lib/` and not in the module.** It is a repo scanner, never loaded by the runtime, and it
+needs `fs` — which does not exist there (C-2). `document-oracles.mjs` is the standing precedent
+and `__tests__/documentOracles.test.js` the standing test shape.
+
+**One scanner, two enumerations.** §6.3.2's *consultation-site enumeration is empty* observable is
+the same kind of question over the same tree, so `budget-sites.mjs` also exports
+`validatorConsultationSites(root)` — the count of call expressions on `_validateRegion` in
+`pdlc/workflows/orchestrate-dev.js`, asserted **0** at this ship and replaced (not deleted) when
+row 18 wires the conjunct. A second scanner module for one predicate would be a second thing to
+keep in sync.
+
+**Not a CI job of its own.** It runs as an ordinary jest test (`__tests__/budgetSites.test.js`)
+inside the existing *Unit tests* matrix, so it gates the PR on both platforms without adding a
+sixth required check.
+
 ## 9. Test strategy
 
 ## 10. Traceability
