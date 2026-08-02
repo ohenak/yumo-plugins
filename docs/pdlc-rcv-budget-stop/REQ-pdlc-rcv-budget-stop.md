@@ -436,8 +436,10 @@ threshold or user story changed meaning**.
 
 **Paired edges must be revised together.** `REQ-RCV-01` X-06/R-14 and `REQ-RCV-07` X-07/R-16 are the
 **same edge described from both ends**, so any revision to X-06 or R-14 is carried to X-07 and R-16
-**in the same commit, in the same words** — v2.2's and v2.3's were. The edge table, the three facts
-both ends must agree on, and the `O-*`/`R-*`/`X-*` collision rule are in `pdlc-rcv-split.md` §5.
+**within the same revision, in the same words**, and the reviewer checks both ends **at HEAD** — the
+unit is the revision, not the commit, because the authoring pacing contract makes a two-document edit
+structurally more than one commit (`pdlc-rcv-split.md` §5). v2.4's were, in this revision. The edge
+table, the three facts both ends must agree on, and the `O-*`/`R-*`/`X-*` collision rule are in §5.
 
 **Round-by-round history is deliberately not restated here:** `harvest-learnings` deletes
 `CROSS-REVIEW-*` once LEARNINGS is written, so citing round files would be structurally wrong.
