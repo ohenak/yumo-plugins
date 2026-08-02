@@ -68,6 +68,12 @@ none changes a behaviour, an acceptance criterion's meaning, or a threshold.
 
 ## 4. Questions
 
+| ID | Question |
+|---|---|
+| Q-01 | With the conjunct unwired, is anything at row 10 still **observable** about the seam other than its existence? If the answer is no, is the seam worth shipping at all at row 10 — or is F-03's declaration cheaper than the parameter it declares? I am not asking for it to be removed: *"row 18 replaces a stub rather than a call graph"* is a real saving and I would keep it. I am asking whether the document should say, once, that the seam is **structural only** at this ship, which would also answer F-03 in the same clause. |
+| Q-02 | Headroom under the size soft threshold is now **171 bytes** (458 lines / 55,125 against 630 / 55,296). If the four Low fixes above are taken as written they cost roughly 700–900 bytes, which crosses it. Is the intent to relocate §4.1's durability table or §6's threshold rows to `pdlc-rcv-baseline.md` **before** writing them, per the check's own message? This is not a finding — it is the sequencing question that decides whether the next revision trips the hook. |
+| Q-03 | Carried, `REQ-RCV-07`'s: is `W` guaranteed absent from every operator- and downstream-visible surface on a refusing entry? Recorded so the trail is unbroken for harvest; **not** a finding against this document. |
+
 ## 5. Positive Observations
 
 ## 6. Recommendation
