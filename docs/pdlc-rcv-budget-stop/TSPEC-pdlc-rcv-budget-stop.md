@@ -557,6 +557,190 @@ default is synchronous — the adapter's is not, and the module may not depend o
 
 ## 6. Algorithms
 
+Every algorithm below is stated as: signature, the ordered steps, and its behaviour on **every**
+input class. Purity is stated explicitly because §3.1's read/write model clusters are the
+compensation for not having a `lib/` module.
+
+**Cite-and-reuse, stated once.** Three cross-cutting obligations here are already solved in this
+module and are **reused, not reinvented**: fence-scoped line scanning is `scanLines` (`:569`,
+M-7d) — the same helper `approvalAnchorPreCount` and `parseResolvedMarker` use, so a
+`HALT-REASON:` quoted inside a fenced block is invisible for the same reason a quoted anchor is;
+top-level section location is `topLevelSections` (`:1393`), which is itself built on `scanLines`,
+so this feature adds **no second heading walker** (the module's own comment at `:2527` states why
+a second one would be a second oracle); and the confirm-don't-trust write discipline is §6.3 step
+2's shipped shape (`:1994`–`:2000`), generalised from existence to content.
+
+### 6.1 `phaseWindow` — resolving `D`, then `W`, then the window
+
+Extends the existing `phaseWindow(docType)` closure in `main` (`:4403`'s neighbourhood), which
+today delegates to `refreshReviewState` → `deriveRoundWindow`.
+
+```
+phaseWindow(docType, phaseId) →
+  1. state ← await refreshReviewState({feature, docType, _listFiles, _readFile})
+        // unchanged; `state.startIndex` is D, renamed `derivedStart` downstream
+        // `{ok:false}` still halts, unchanged (§2.5)
+  2. D ← state.startIndex
+  3. region ← await readRegionState({phase: phaseId, feature, _readFile})     (§6.2)
+  4. W ← await resolveClearance({phase: phaseId, feature, region, D, …})      (§6.3)
+  5. return { ok: true, origin: W, derivedStart: D,
+              startIndex: Math.max(D, W), endIndex: windowEnd(W),
+              present: state.present, skipped: state.skipped,
+              reviewFiles: state.reviewFiles }
+```
+
+Four things are load-bearing about this ordering:
+
+1. **`D` is resolved before the gate** (step 2 precedes step 4) because the gate *consumes* it —
+   B-CLR-2/B-CLR-2a branch on `D ≤ E`, and the granting value is `N = max(D, W)` (FSPEC §4.4).
+2. **The admission arithmetic is evaluated once, after the gate** (step 5), against the origin the
+   gate left behind. There is no cycle and no re-listing: `deriveRoundWindow` is called exactly
+   once per entry, as it is today.
+3. **`windowEnd` is re-pointed at the origin, not the start.** Its body is unchanged —
+   `return origin + MAX_REVIEW_ROUNDS - 1;` — only its parameter's *meaning* changes, so
+   `RLH-LOOP-03`'s *"`MAX_REVIEW_ROUNDS - 1` occurs exactly once"* assertion stays green (§2.4).
+   `deriveRoundWindow`'s internal `endIndex = windowEnd(startIndex)` becomes
+   `windowEnd(origin)` with `origin` defaulting to `1`, which reproduces today's value on every
+   caller that passes no origin.
+4. **`startIndex > endIndex` is returned, not thrown.** It is the zero-round window (B-WIN-2), and
+   `reviewLoop`'s shipped guard consumes it (§2.3).
+
+**Phase CR and Phase DOD take none of this.** Phase CR calls `reviewLoop` with `docType: null`
+(`:4985`, M-7f); its window is derived with `origin = 1` and no region is read or written — steps 3
+and 4 are **skipped when `docType` is `null`**, which is the one discriminator (AC-1.1: *"the phase
+names a document type"*, B-BUD-1/B-BUD-2). Phase DOD does not call `reviewLoop` at all and reads
+`DOD_MAX_ITERATIONS` (`:25`), a separate declaration (B-BUD-3, §8.2).
+
+### 6.2 `parseResetRegion` / `readRegionState` — the read model
+
+**`parseResetRegion(text) → RegionState`** — pure, synchronous, **total over every string**,
+including `""`, and over `null` / `undefined` (coerced to `""`).
+
+```
+1. sections ← topLevelSections(text)                      // fence-scoped, shipped (:1393)
+2. region   ← the FIRST section whose title trims to exactly "Reset Region"
+              (case-sensitive; catalogue S-12 fixes the heading exactly)
+   if none  → return { present:false, H:0, A:0, W:1, lastHaltReason:null, lines:[] }   (RS-4)
+3. spanLines ← region.body                                 // heading → next top-level heading | EOF
+4. for each line of spanLines, IN DOCUMENT ORDER, considered only when scanLines
+   admits it (outside fenced blocks):
+     trimmed ← line.trim()
+     if trimmed startsWith "HALT-REASON: "     → H++, lastHaltReason ← value, lines.push(line)
+     if trimmed startsWith "WINDOW-START: "    → A++,          lines.push(line)
+     if trimmed startsWith "WINDOW-RESUMED: "  → A++,          lines.push(line)
+     otherwise                                 → ignored entirely
+5. W ← the GREATEST value among `WINDOW-START:` lines whose value matches /^[0-9]+$/
+       and parses to an integer ≥ 1;  1 when there is none                            (RS-2, RS-3)
+6. return { present:true, H, A, W, lastHaltReason, lines }
+```
+
+| Input class | Result | Branch |
+|---|---|---|
+| no heading | `{present:false, H:0, A:0, W:1}` | B-REG-1 |
+| heading, no lines | same values, `present:true` | B-REG-2 — **empty is valid, not corrupt**; no notice, no refusal |
+| `WINDOW-START: abc` / `-2` / empty | counts toward `A`, contributes **no** origin | B-REG-4, split §5.4 leg 3 |
+| a prefix line in prose, in `## Recommendation`, or inside a fence | not in the span, or not admitted by `scanLines` ⇒ counts for nothing | B-REG-5, BR-8 |
+| a second `## Reset Region` heading | only the **first** is the region; the second's lines are outside the span and count for nothing | catalogue §1's *"the section headed"*, singular |
+
+Two deliberate details. **Counting is by prefix, resolution is by grammar** (BR-9): step 4 counts
+without parsing, step 5 parses without counting, so a malformed value answers a halt while
+contributing no origin — the invariant split §5.4's counting rule fixes for both ends of the split.
+And **`W` is the greatest, not the last**: the two coincide because AC-1.5(4) writes the *resolved*
+start so values never descend (split §5.5), and *greatest* is the reading that stays fail-closed if
+they ever did.
+
+**`readRegionState({phase, feature, _readFile}) → Promise<RegionState>`** — the async wrapper:
+
+```
+path ← `docs/${feature}/POSTMORTEM-${phase}-${feature}.md`
+text ← await _readFile(path)                    // null for absent OR unreadable
+return parseResetRegion(text)                   // null ⇒ "" ⇒ the empty reading (RS-4)
+```
+
+That last line is B-REG-6 in one step: **a present-but-unreadable post-mortem reads as an empty
+region** — `H = A = 0`, `W = 1`, nothing honoured at the gate, the narrowest window. The
+*entry*'s continuation on that same file is §6.4's, and it is a different decision made by a
+different seam (`_statFile`), which is exactly why the two are separate (§5.2).
+
+### 6.3 `resolveClearance` — the gate, and the unwired conjunct
+
+**`resolveClearance({phase, feature, region, D, _readFile, _writeFile, _probePostmortem, _validateRegion}) → Promise<number>`** — returns the origin `W` to use for this entry.
+
+```
+1. if region.H === 0 or region.A >= region.H         → return region.W        (B-CLR-4)
+2. pm ← await resolvePostmortem({phase, feature, …}) // shipped, fail-closed (M-7a)
+   if pm.status !== "resolved"                       → return region.W        (B-CLR-5*)
+3. // THE THIRD CONJUNCT — X-06. See "the interim composition" below.
+4. kind ← gateBranch(region.lastHaltReason, D, region.W)                      (§6.3.1)
+5. line ← kind === "resume" ? `WINDOW-RESUMED: ${region.W}`
+                            : `WINDOW-START: ${Math.max(D, region.W)}`
+6. await appendAnsweringLine(path, region, line, {_readFile, _writeFile})
+   // confirmed by CONTENT: re-read, re-parse, assert `line` is present in the
+   // region span AND A increased by exactly 1.  On failure → refuse (§7.2,
+   // which = "answering line").  NOTHING IS DISPATCHED BEFORE THIS RETURNS.
+7. return kind === "resume" ? region.W : Math.max(D, region.W)
+```
+
+`*` Step 2 never *causes* B-CLR-5's refusal — that is step G's, which already ran and threw
+(§2.6). Step 2 exists because `phaseGate` reaches this code only on `"none"` or `"resolved"`, and
+`"none"` (no post-mortem at all) must grant nothing. It is written as an explicit conjunct rather
+than assumed, so a future reordering of `phaseGate` cannot silently open the gate.
+
+**Step 6's ordering is normative** (B-CLR-6, split §5.5): the answering line is durably present
+**before any round of the entry is dispatched**. Structurally guaranteed here because
+`resolveClearance` is called from `phaseGate`, which returns *before* `reviewLoop` is constructed.
+
+#### 6.3.1 `gateBranch(lastHaltReason, D, W)` — pure, total, three-valued
+
+| `lastHaltReason` begins | and | → | Line written |
+|---|---|---|---|
+| `no-revision:` | `max(D, W) ≤ windowEnd(W)` | `"resume"` | `WINDOW-RESUMED: {W}` (B-CLR-2) |
+| `no-revision:` | `max(D, W) > windowEnd(W)` | `"grant"` | `WINDOW-START: {max(D,W)}` (B-CLR-2a) |
+| `fixed-point:` or `budget-exhausted:` | — | `"grant"` | `WINDOW-START: {max(D,W)}` (B-CLR-1) |
+| anything else, `null`, unparseable | — | `"grant"` | fail-closed (B-CLR-3) |
+
+Reading the **leading** reason is exact: S-11 never co-occurs with S-3/S-4, so a `; `-joined value
+never begins `no-revision:` (`pdlc-rcv-fixed-point-stop` AC-2.2). The `no-revision:` rows are
+**unreachable at this ship** — no path emits S-11 — and are implemented anyway so the successor
+inherits a decided rule (FSPEC §6.1).
+
+#### 6.3.2 The interim composition, and the two observables that falsify it
+
+Step 3 is, verbatim, one call to a **named total predicate**:
+
+```js
+/**
+ * The third conjunct of AC-1.5(4)'s clearance gate.
+ *
+ * X-06: the *region validates* decision procedure is `REQ-RCV-07` AC-7.1's and
+ * does not exist yet, so at this ship this conjunct is TRUE ON EVERY INPUT and
+ * the `_validateRegion` seam is NEVER CALLED. Row 18 replaces this body with the
+ * seam call and the S-16 emission; the seam's contract (§5.4) does not change.
+ */
+function validationConjunct(/* region, basenames, _validateRegion */) {
+  return { valid: true };
+}
+```
+
+Two observables make *"deliberately not consulted"* falsifiable rather than vacuous, which is the
+whole of what O-12 owes at this ship (FSPEC §5.4, B-REG-7):
+
+1. **The consultation-site enumeration is empty**, asserted **structurally over the source** —
+   the count of call expressions on `_validateRegion` in `orchestrate-dev.js` is **0**. Decidable
+   while no callable exists, and carried by the same `lib/` scanner §8 introduces (one scanner,
+   two enumerations), not by a runtime call count.
+2. **Same-branch equivalence, positively asserted** (FSPEC §5.4 conjunct 1). This is the conjunct
+   that fails on an **ad-hoc inline** interim procedure, which observable 1 alone would not catch.
+   Its fixtures and the equivalence relation are PROPERTIES' (O-10); what this TSPEC guarantees is
+   that the code has **no** shape-inspecting branch between step 2 and step 4 — steps 1, 2 and 4
+   read `H`, `A`, the marker status and one line prefix, and nothing else.
+
+The **0-call contract leg** (split §5.4) is asserted against `_validateRegion` on leg 1's fixture:
+the seam is injected as a counting double, and the count must be `0`. It is a **contract** leg —
+row 18 replaces it, and it must not be deleted.
+
+### 6.4 `maintainRegionOnHalt` — the halt path
+
 ## 7. Error handling
 
 ## 8. O-13 — the budget-width blast radius
