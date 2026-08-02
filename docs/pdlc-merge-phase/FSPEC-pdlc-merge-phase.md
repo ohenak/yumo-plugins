@@ -480,9 +480,164 @@ lose the invariant that still holds on the majority path.
 
 ## 8. FSPEC-MERGE-07 — Post-merge working tree and branch handling
 
+**Links:** AC-5.7, AC-2.6/2.6a, SE F-14.
+
+### 8.1 Why the tree must move
+
+Once the human stops merging, nobody restores the working tree. The next queue pass cuts its branch
+and runs its dependency triage against whatever the tree is on, so after a merge the tree must be on
+the repository's **default branch, updated to contain the merge**. Otherwise the following feature is
+cut from a base that does not contain its dependency — the exact stall this feature exists to remove.
+
+### 8.2 Order relative to the queue write (F-14)
+
+**The queue write-and-commit of §7 happens first, while the tree is still on `feat-{feature}`. The
+default-branch checkout and update follow.** This order is normative.
+
+The recording channel commits the queue row against whatever branch `HEAD` is on, pathspec-scoped and
+unpushed. If the checkout happened first, the `done` commit would land on the **local default
+branch** — which in this repo cannot be pushed, so the next pass's fast-forward pull fails and the
+following feature is cut from a diverged local base. That is the same class of failure AC-5.7 exists
+to prevent, arriving through AC-5.7's own fix.
+
+So the `done` commit is expected to land on the feature branch, and to reach the default branch by
+the ordinary route: it is already part of the merged PR's branch, and where it is not (the commit is
+made after the merge), it rides the next PR. The queue row on disk is correct either way, which is
+what the next pass reads.
+
+### 8.3 The update, and its failure
+
+After the queue write: fetch the default branch, check it out, and fast-forward it to the remote tip
+so it contains the merge. The step is complete when the tree is on the default branch and the merge
+commit is an ancestor of `HEAD`.
+
+If any part cannot be completed — a dirty tree, a non-fast-forward, a fetch failure — the step
+escalates and `mergeStatus` **remains `merged`**. The merge is real; re-reporting it as anything else
+would be false.
+
+```
+MERGE ESCALATION: working tree not updated after merging {prUrl} — {reason}; tree is on {branch}
+```
+
+The local feature branch is not deleted (§6.4), so the operator can inspect it after the escalation.
+
 ## 9. FSPEC-MERGE-08 — Reporting contract
 
+**Links:** REQ-MERGE-06.
+
+### 9.1 Report fields
+
+The pipeline's final report gains three fields, present on **every** report — halt reports included,
+where they describe a phase that never ran:
+
+| Field | Value |
+|---|---|
+| `mergeStatus` | exactly one of `merged`, `deferred`, `refused`, `skipped` |
+| `mergeSha` | the merge commit SHA when this run merged; `null` otherwise, including when the PR was already merged on entry |
+| `mergeMethod` | `rebase` or `merge` when this run merged; `unknown` when the PR was already merged on entry (a pipeline that did not merge cannot know how someone else did); `null` otherwise |
+
+A run that halts before Phase MERGE reports `mergeStatus: skipped` — the phase did not run, and
+`skipped` is the value that means "no merge was considered".
+
+`prUrl` and `ciStatus` continue to carry Phase PUB's results and are unchanged. `ciStatus` is Phase
+PUB's snapshot; the merge-time CI evidence is not re-reported as `ciStatus` (§5).
+
+### 9.2 The reason line
+
+`deferred` and `refused` each carry, in **one line**, the condition from §11's table that produced
+them — the condition, singular, per §2.3's ordering. It rides the Phase MERGE row's detail and is
+what an operator reads without opening the report object. Every non-merge keeps the pipeline outcome
+`success` (AC-1.3): a merge that did not happen is not a pipeline failure, so the halt path and its
+`halted` queue commit are not taken.
+
+### 9.3 Escalations
+
+Escalations are lines on the report's existing operator-facing notices channel, each beginning
+`MERGE ESCALATION: `. The four escalating conditions and their lines:
+
+| Condition | Line |
+|---|---|
+| Guard fired (§4.5) | `MERGE ESCALATION: self-modification guard fired for {prUrl} — matched paths: …` / `— changed-file list could not be retrieved` |
+| CI absent with `mergeRequiresCi` (§5) | `MERGE ESCALATION: CI evidence absent for {prUrl} — no checks reported and mergeRequiresCi is true` |
+| Merged, queue not updated (AC-5.2) | `MERGE ESCALATION: merged {prUrl} ({shortSha}) but the queue row for {feature} was not updated — {detail}` |
+| Merged, tree not updated (§8.3) | `MERGE ESCALATION: working tree not updated after merging {prUrl} — {reason}; tree is on {branch}` |
+
+The queue-write escalation names **both** facts explicitly — merged, and queue not updated — because
+that state blocks the entire serial queue and its cause is invisible from the queue file. It does not
+halt: halting would misreport the run and write a `halted` row over a feature that has landed. The
+recovery path is the escalation plus the idempotent re-attempt of §7.4.
+
+**No escalation implies a halt.** Every escalating condition above keeps outcome `success`.
+
+### 9.4 The merge-deferred note
+
+Every `deferred` and `refused` run also emits one plain (non-escalation) note recording that the
+merge did not happen and the queue row was therefore left as it was, so a reader of the run report
+sees the queue's state without inferring it:
+
+```
+Merge deferred for {feature}: {reason}. Queue row left at awaiting-merge; merge the PR to advance it.
+```
+
+### 9.5 Queue-driver pass-through (AC-6.3)
+
+`orchestrate-queue` carries the pipeline report through to its own run report unchanged, so
+`mergeStatus`, `mergeSha`, `mergeMethod` and every `MERGE ESCALATION: ` notice are visible from the
+queue run without opening the pipeline's report. The driver adds only its own status transition
+(§7.5).
+
+The end-to-end effect AC-6.3 asserts, in both halves: given a queue whose only unblocked dependent
+lists this feature as its sole dependency, after a run reporting `mergeStatus: merged` that
+dependent's row is selected by the **next** `orchestrate-queue` invocation with no human turn; and
+given the same queue with this feature's row left `awaiting-merge`, that dependent is **not**
+selected. The first asserts the gate opens; the second asserts it was this gate holding it shut.
+
 ## 10. FSPEC-MERGE-09 — Configuration
+
+**Links:** REQ-MERGE-07.
+
+### 10.1 Inventory
+
+| Setting | Home | Default | Owner |
+|---|---|---|---|
+| `PHASE_MERGE_ENABLED` | pipeline-level flag, alongside the existing phase-enable flags | `true` | pdlc maintainer; changed by editing the pipeline |
+| `mergeMode` | `.claude/pdlc.config.json` → `merge` | `off` | consuming repo's operator |
+| `mergeRequiresCi` | same | `true` | consuming repo's operator |
+| `allowSquashMerge` | same | `false` | consuming repo's operator |
+| `deleteBranchOnPdlcMerge` | same | `true` | consuming repo's operator |
+| guard paths (additive, §4.3) | same | the four of §4.3 | consuming repo's operator, additive only |
+| `mergeableRetries` / `mergeableRetryDelay` | same | `3` / `10 s` | consuming repo's operator |
+
+`mergeMode` ∈ {`off`, `gated`, `on`}. `off` never merges; `gated` merges only when every precondition
+holds; `on` behaves identically to `gated` today — there is deliberately **no mode that bypasses the
+preconditions**, and the `gated`/`on` distinction is reserved for a future relaxation. A three-valued
+flag where one value means "skip the safety checks" is the flag that eventually gets set in a hurry.
+
+`mergeMode` ships `off` so installing this feature does not begin auto-merging anyone's repository:
+that decision stays the operator's, and dated.
+
+### 10.2 Where the configuration comes from
+
+`.claude/pdlc.config.json` is the documented home of pdlc's per-repo settings, but **no workflow
+script reads it today** — the one existing consumer of that file is the shell distribution tooling,
+which passes its single key through a separate record. Phase MERGE therefore introduces the first
+script-side read of this file. The `merge` section is new and independent of the existing
+`distribution` section; reading one must not disturb the other.
+
+### 10.3 Degraded reads (AC-7.3)
+
+| Situation | Behaviour |
+|---|---|
+| File absent, unreadable, or not valid JSON | every setting takes its default; `mergeMode` is therefore `off` and nothing merges |
+| `merge` section absent or not an object | as above |
+| One key absent | that key takes its default; the others are honoured |
+| One key holds an unrecognised value or wrong type | that key takes its default; the others are honoured |
+| Guard-path list absent, not a list, or containing non-strings | contributes nothing; the four defaults hold (§4.3) |
+
+A malformed configuration **never enables merging**, and a degraded read is never an error that
+halts: it resolves to the safe default and the run continues. No warning is required, with one
+exception worth stating: a `merge` section present but unparseable is reported as a plain note, so an
+operator who *intended* to enable merging is not left wondering why nothing merged.
 
 ## 11. Observable outcomes per scenario
 
