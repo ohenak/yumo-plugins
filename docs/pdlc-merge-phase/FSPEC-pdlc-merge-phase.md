@@ -17,27 +17,22 @@ This FSPEC specifies the behaviour of **Phase MERGE**, the last phase of the `or
 pipeline, plus the two adjacent behaviours REQ §5 scopes in: the queue driver's post-pipeline status
 transition (AC-5.6) and the post-merge working-tree state (AC-5.7).
 
-It is written against an approved REQ (v1.1, both cross-reviews `APPROVED`). Per the REQ's §8
-stopping rule, four non-blocking round-2 findings were routed here as **named entry obligations**.
-Each is resolved below; this table is the record.
+It is written against an approved REQ (v1.1). Per the REQ's §8 stopping rule, four non-blocking
+round-2 findings were routed here as **named entry obligations**; each is resolved below.
 
 | Finding | Obligation | Resolved in |
 |---|---|---|
-| TE **N-01** | AC-3.1's "regardless of … merge mode" vs AC-1.6 rows 1–2 | §2.2 — the ordered evaluation of §2.1 is the sole authority; `skipped` wins over `refused` because the guard is never reached. AC-3.1's "regardless" is read as scoped to rows 4–6 |
-| TE **N-02** | Precedence among simultaneous precondition failures | §2.3 — the AC-1.2 table's own top-to-bottom row order is *the* evaluation order, one failure reported, no `refused`-beats-`deferred` re-sort |
-| SE **F-13** | Name the superseded criterion and the test to re-express | §7.5 — AC-5.6 supersedes `pdlc-rcv-budget-stop` AC-2.7a for the `merged` case only; `RLH-AT-32-orch` is re-expressed, not deleted |
-| SE **F-14** | Order of AC-5.7's checkout vs the queue write-and-commit | §8.2 — the queue write-and-commit happens **first**, on the feature branch; the default-branch checkout follows |
-
-Two round-2 questions are also answered here: TE **Q-01** (the N-02 tie-break — §2.3) and TE **Q-02**
-(when the `Evidence` column migration happens — §7.3).
+| TE **N-01** | AC-3.1's "regardless of … merge mode" vs AC-1.6 rows 1–2 | §2.2 — the ordered evaluation is the sole authority; `skipped` wins because the guard is never reached |
+| TE **N-02** | Precedence among simultaneous precondition failures | §2.3 — the AC-1.2 table's own top-to-bottom order is *the* evaluation order, one failure reported |
+| SE **F-13** | Name the superseded criterion and the test to re-express | §7.5 — AC-5.6 supersedes `pdlc-rcv-budget-stop` AC-2.7a for the `merged` case only |
+| SE **F-14** | Order of AC-5.7's checkout vs the queue write-and-commit | §8.2 — the checkout happens first; both queue writes land on the default branch |
 
 **Altitude.** This document states *observable behaviour*: which external surface each fact is read
 from, what values are recognised, which decision follows, and what the operator sees. Where a
-behaviour requires an internal substitution point so a test can drive it, this FSPEC states that a
-**single substitutable observation point per external surface is required** and names it by its
-behavioural role (`O1`…`O6`, §3). The seam's actual name, signature and injection mechanics are
-TSPEC-owned (§13). Commands and JSON field names *are* stated: they are the contract with GitHub, not
-an internal contract, and the REQ already names them (AC-1.2, BL-02).
+behaviour needs an internal substitution point so a test can drive it, this FSPEC requires **one
+substitutable observation point per external surface** and names it by behavioural role (`O1`…`O6`,
+§3); names, signatures and injection are TSPEC-owned (§13). Commands and JSON field names *are*
+stated: they are the contract with GitHub, not an internal one, and the REQ names them (AC-1.2).
 
 **Out of scope**, unchanged from REQ §5: resolving CI failures or rebase conflicts, the loop driver,
 and merging PRs the pipeline did not raise.
@@ -54,14 +49,11 @@ phase:
 
 - It runs inside the same guarded body as every other phase, so anything it throws is caught by the
   pipeline's halt path. **Phase MERGE never throws.** Every failure it can observe resolves to a
-  reported value (§9); AC-1.3 requires the pipeline outcome to stay `success` for every non-merge,
-  and a throw here would take the halt path and write a `halted` queue row over a feature whose only
-  fault is that its PR was not ready.
-- It records a phase row like every other phase: `MERGE`, title `Merge PR`, one status glyph
-  (`✅` merged, `⏭` skipped, `⚠️` deferred or refused) and a one-line detail naming the resolving
-  condition.
-- It reads `prUrl` from Phase PUB's result. When Phase PUB is disabled or produced no `prUrl`, the
-  phase resolves at §2.2 row 3 (`deferred`).
+  reported value (§9); a throw would take the halt path and write a `halted` queue row over a feature
+  whose only fault is that its PR was not ready, contradicting AC-1.3.
+- It records a phase row: `MERGE`, title `Merge PR`, one status glyph (`✅` merged, `⏭` skipped,
+  `⚠️` deferred or refused) and a one-line detail naming the resolving condition.
+- It reads `prUrl` from Phase PUB's result; absent or empty resolves at §2.2 row 3 (`deferred`).
 
 ### 2.2 The evaluation order is the control flow (N-01)
 
@@ -85,18 +77,15 @@ Rows 3–5 are hoisted above the guard deliberately, and the consequence is stat
 be discovered: **a run whose `O1` is unparseable resolves at row 4 even when its diff matches a guard
 path.** Both readings refuse, so nothing is merged and no safety property turns on the choice; what
 turns on it is which `MERGE ESCALATION: ` line a test may assert, and row 4 emits none. The guard's
-own fail-closed input (`O5`, the changed-file list) is unaffected — §4.4 still fires the guard when
-that list is unretrievable, because the guard is reached in that scenario.
+own fail-closed input (`O5`) is unaffected — §4.4 still fires the guard when the changed-file list is
+unretrievable, because the guard *is* reached in that scenario.
 
-**N-01 is resolved by this table, not by re-reading AC-3.1.** A PR that touches a guard path in a
-repo with `mergeMode: "off"` reports **`skipped`**, because row 2 resolves before row 6 is reached.
-AC-3.1's "regardless of CI status, merge mode, or any other configuration" is scoped to the
-situation in which the guard is *evaluated at all* — rows 6 through 8. Neither reading merges
-anything, so no safety property depends on the choice; determinacy of the reported value does, and
-this table is the single answer.
-
-Row 1 is evaluated before the configuration file is read at all, so a disabled phase cannot fail on
-a malformed config.
+**N-01 is resolved by this table, not by re-reading AC-3.1.** A PR touching a guard path in a repo
+with `mergeMode: "off"` reports **`skipped`**: row 2 resolves before row 6 is reached, and AC-3.1's
+"regardless of CI status, merge mode, or any other configuration" is scoped to the situation in which
+the guard is *evaluated at all* — rows 6 through 8. Neither reading merges anything, so only
+determinacy turns on the choice, and this table is the single answer. Row 1 is evaluated before the
+configuration file is read, so a disabled phase cannot fail on a malformed config.
 
 ### 2.3 Order within row 7 (N-02, Q-01)
 
@@ -115,11 +104,10 @@ Row 7's preconditions are evaluated in **the AC-1.2 table's own top-to-bottom or
 **The tie-break is positional, not class-based.** A run holding both `CI pending` (7b, `refused`) and
 `mergeable: CONFLICTING` (7c, `deferred`) reports **`refused`** — because 7b precedes 7c, not because
 `refused` outranks `deferred`. A run holding both `PR CLOSED` (7a, `deferred`) and `CI failed` (7b,
-`refused`) reports **`deferred`**. This is deliberate and is Q-01's answer: a class-based re-sort
-would require every observation to be taken before any can be reported, which contradicts the
-short-circuit AC-1.6 already fixes, and it would report a CI failure on a PR nobody can merge anyway.
-No safety is lost: the failure of *any* precondition means no merge, and that is invariant under the
-ordering.
+`refused`) reports **`deferred`**. This is Q-01's answer: a class-based re-sort would require every
+observation to be taken before any can be reported, contradicting the short-circuit AC-1.6 fixes, and
+would report a CI failure on a PR nobody can merge anyway. No safety is lost — the failure of *any*
+precondition means no merge, invariant under the ordering.
 
 **Evaluation short-circuits within row 7 too:** once a precondition fails, later ones are not
 observed. NFR-2 is satisfied because the merge attempt (row 8) is the only state-mutating call and is
@@ -152,15 +140,14 @@ destroy the operator's own record.
 
 ### 3.1 One substitutable observation point per surface
 
-Phase MERGE reads six external surfaces. Each is an **observation point** — a single place where the
-external command is issued and its output turned into one of a closed set of values. Each must be
+Phase MERGE reads six external surfaces. Each is an **observation point** — one place where the
+command is issued and its output turned into one of a closed set of values — and each must be
 independently substitutable, so a test can drive the phase with a constructed answer for one surface
-while leaving the others alone; that is what makes §11's table testable without a live repository.
+while leaving the others alone. That is what makes §11's table testable without a live repository.
 
-Every observation runs through the runtime's existing mechanical transport (the shipped runtime
-reaches `gh` and `git` through IO agents). NFR-1/NFR-4 hold because that transport carries **raw
-output only**: every decision below is taken by parsing it against the stated value sets, no agent is
-asked to judge or summarise anything, and no new reasoning dispatch is added.
+Every observation runs through the runtime's existing mechanical transport. NFR-1/NFR-4 hold because
+that transport carries **raw output only**: every decision below is taken by parsing it against the
+stated value sets, no agent judges or summarises anything, and no reasoning dispatch is added.
 
 | ID | Surface | Command | Fields consumed |
 |---|---|---|---|
@@ -171,10 +158,9 @@ asked to judge or summarise anything, and no new reasoning dispatch is added.
 | `O5` | Changed files | `gh pr view {prUrl} --json files` (`files[].path`), falling back to `gh api repos/{owner}/{repo}/pulls/{number}/files` when the list is paginated or the field is absent | `files[].path` (and `previous_filename` where the API supplies it) |
 | `O6` | Merge execution | `gh pr merge {prUrl} --rebase` / `gh pr merge {prUrl} --merge`, plus `gh pr view {prUrl} --json mergeCommit,state` to read back the result | `mergeCommit.oid`, `state` |
 
-`O2` is the same rollup classification Phase PUB already uses, reused rather than re-derived, so
+`O2` reuses Phase PUB's rollup classification rather than re-deriving it, so
 `passed` / `pending` / `failed` / `none` / `unknown` mean exactly what they mean there. Reuse is a
-requirement, not an optimisation: two classifications of the same rollup that disagree is the defect
-AC-4.0 exists to prevent.
+requirement: two classifications of the same rollup that disagree is the defect AC-4.0 prevents.
 
 `O1`'s `mergeCommit.oid` is populated by GitHub only for a merged PR; it is absent, and that absence
 is not a parse failure, for every open PR (§9.1 defines what it is used for). `O3` is the one
@@ -191,7 +177,7 @@ the only rule; no surface has a permissive variant.
 
 | ID | Recognised values | Passes when | `unknown` resolves to |
 |---|---|---|---|
-| `O1` `state` | `OPEN`, `CLOSED`, `MERGED` | `OPEN` (`MERGED` resolves at §2.2 row 3) | `refused` (AC-1.2b) |
+| `O1` `state` | `OPEN`, `CLOSED`, `MERGED` | `OPEN` (`MERGED` resolves at §2.2 row 5) | `refused` at §2.2 row 4 (AC-1.2b) |
 | `O1` `mergeable` | `MERGEABLE`, `CONFLICTING`, `UNKNOWN` | `MERGEABLE` | `refused` — except the literal `UNKNOWN`, which is a recognised value handled by §3.3 |
 | `O1` `mergeStateStatus` | `CLEAN`, `UNSTABLE`, `BEHIND`, `BLOCKED`, `DIRTY`, `DRAFT`, `HAS_HOOKS`, `UNKNOWN` | any value other than `DIRTY` and `BLOCKED` | `refused` |
 | `O2` | `passed`, `pending`, `failed`, `none`, `unknown` | per §5 | `refused` |
@@ -212,14 +198,13 @@ additional times (default 3), each after waiting `mergeableRetryDelay` (default 
 re-read yielding `MERGEABLE` or `CONFLICTING` ends the loop and is the answer. Still `UNKNOWN` after
 the last re-read is a **deferral**, never a merge and never a `refused`.
 
-**The counts are pinned.** With `mergeableRetries: R`, the total number of `O1` observations in a run
-that exhausts the loop is `1 + R` — the row-4 observation plus `R` re-reads — so the default is
-**4 observations, 3 re-reads, 3 waits**. The reason line is
-`mergeability still UNKNOWN after {1+R} observations`, counting **observations, not re-reads**, so a
-suite asserting it never has to guess which number it is reading. `mergeableRetries: 0` is a legal
-value meaning "observe once, never re-read", and its reason line reads `after 1 observations` —
-ungrammatical and deliberately unspecial-cased, because a format that changes shape at one value is a
-format tests get wrong.
+**The counts are pinned.** With `mergeableRetries: R`, a run that exhausts the loop makes `1 + R`
+`O1` observations — the row-4 observation plus `R` re-reads — so the default is **4 observations,
+3 re-reads, 3 waits**. The reason line is `mergeability still UNKNOWN after {1+R} observations`,
+counting **observations, not re-reads**, so a suite asserting it never has to guess which number it
+reads. `mergeableRetries: 0` is legal ("observe once, never re-read") and yields `after 1
+observations` — ungrammatical and deliberately unspecial-cased, because a format that changes shape
+at one value is a format tests get wrong.
 
 A re-read that fails to parse follows §3.2 and ends the loop with `refused` — a transport failure is
 not a retry-worthy `UNKNOWN`.
@@ -230,8 +215,8 @@ not a retry-worthy `UNKNOWN`.
 
 ### 4.1 Decision
 
-The guard is evaluated at §2.2 row 4 — after the two off switches and after the already-`MERGED`
-check, before every other precondition. It takes `O5`'s changed-file list and the effective guard
+The guard is evaluated at §2.2 row 6 — after the two off switches, the `prUrl` check and the `O1`
+read, before every other precondition. It takes `O5`'s changed-file list and the effective guard
 path set (§4.3), and fires when **any** reported path matches **any** guard path. Firing resolves the
 phase to `refused` and produces an escalation (§4.5). The guard has no override of any kind — no
 configuration value, no environment variable, no argument, no force flag (NFR-3).
