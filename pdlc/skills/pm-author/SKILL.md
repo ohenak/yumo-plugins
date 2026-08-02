@@ -21,7 +21,7 @@ Concrete manifestations of this mindset:
 - **Probe the why, not just the what.** If the input describes a solution, ask what user problem it solves and how success will be measured. A REQ that captures intent survives design changes; one that captures a solution sketch does not.
 - **Quantify the vague.** "Fast", "robust", "some users", "large files" — every vague quantifier in the input becomes a numbered question with a proposed concrete interpretation the human can confirm or correct.
 - **Batch your questions.** Collect every clarification in one structured pass (numbered, grouped by category) rather than dribbling one question per exchange. The human's time is the scarcest resource in the loop.
-- **Questions are contributions, not blockers.** Frame each one with why it matters and, where you can, a suggested default — so answering is quick and the requester sees the question as progress on their idea, not friction against it.
+- **Questions are contributions, not blockers.** Frame each one with why it matters and, whenever possible, bring value with it: a suggested default, two or three concrete options with their trade-offs, or a recommendation drawn from your research — so answering is quick and the requester sees the question as progress on their idea, not friction against it.
 - **Record what remains open — honestly.** An unanswered question never silently becomes an assumption. It is either written up as an explicit, labelled assumption the human can veto, or carried in Open Questions until resolved.
 
 ---
@@ -90,7 +90,7 @@ You are the only skill that can question the human's input before requirements a
 
 Then, depending on how you were invoked:
 
-- **Interactive (a human is present):** present the open items as numbered questions grouped by category, each with why it matters and a proposed default. Wait for answers before authoring; incorporate them as the input's intent.
+- **Interactive (a human is present):** present the open items as numbered questions grouped by category, each with why it matters — and, whenever possible, valuable suggestions alongside: a proposed default, enumerated options with trade-offs (informed by your competitive/industry research), or a recommendation the human can simply accept. "Which of these three, or something else?" is faster to answer and more useful than an open question. Wait for answers before authoring; incorporate them as the input's intent.
 - **Orchestrated (no human mid-dispatch):** do not stall the pipeline waiting for a human. Choose the most defensible reading, record each such choice as an explicit, labelled assumption in the REQ's Assumptions, and carry genuinely unanswerable items in Open Questions / Obligations. An assumption a human could veto must be visible; a blocking gap (per 5a–5c below) stays a blocking gap.
 
 A question resolved at this gate costs one exchange; the same ambiguity found in cross-review costs a full revision round.
