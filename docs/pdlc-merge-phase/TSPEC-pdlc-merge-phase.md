@@ -395,6 +395,134 @@ only from a `decideMerge` resolution that every precondition passed.
 
 ## 5. The pure decision core — `decideMerge`
 
+### 5.1 Why demand-driven rather than all-inputs-up-front
+
+FSPEC §2.2 and §2.3 both **short-circuit**: `O1` is observed once at row 4, `O2` only if 7a passed,
+`O3` only if 7c passed, and a failing precondition means later ones are never observed. A pure
+`decideMerge(allObservations, config)` would require every observation to be taken before any
+decision — the precise shape FSPEC §2.3 rejects ("a class-based re-sort would require every
+observation to be taken before any can be reported, contradicting the short-circuit AC-1.6 fixes").
+
+So the core is **pure and demand-driven**. It is a total function of the observations taken *so far*
+and returns either a demand for the next one or a resolution:
+
+```
+decideMerge(record, config) =>
+  | { kind: "need", observation: "O1"|"O2"|"O3"|"O4"|"O5", waitMs?: number }
+  | { kind: "act",  method: "rebase" | "merge" | "squash" }
+  | { kind: "resolved", row, mergeStatus, reason, escalations, mergeSha, mergeMethod }
+```
+
+No IO, no clock, no randomness: the same record and config always produce the same answer. Short-
+circuiting is not a property the implementation must remember to preserve — an observation that is
+never demanded is never taken, because taking it is the orchestrator's response to a demand.
+
+### 5.2 The orchestrator loop
+
+```js
+for (let step = 0; step < MERGE_MAX_DECISION_STEPS; step++) {
+  const d = decideMerge(record, config);
+  if (d.kind === "resolved") return finish(d);
+  if (d.kind === "act")  { record.attempts.push(await observe.merge(prUrl, d.method)); continue; }
+  if (d.waitMs) await _sleep(d.waitMs);
+  record[slotFor(d.observation)] = await observe[nameFor(d.observation)](…);
+  if (d.observation === "O1") record.o1Count += 1;
+}
+throw new Error("unreachable: decideMerge did not resolve");   // see below
+```
+
+**Termination.** Every iteration either fills a slot that was empty, appends an attempt from a
+finite candidate chain, or resolves. `MERGE_MAX_DECISION_STEPS = 24` bounds `1 + maxRetries` `O1`
+observations, four other observations and three attempts with slack. The bound is an assertion, not
+a control-flow device: reaching it is a coding defect, and the loop's exit therefore throws — but
+**`phaseMerge` wraps its whole body in `try/catch`** and maps any throw to
+`{ mergeStatus: "refused", row: "internal", reason }`, because FSPEC §2.1 requires that **Phase MERGE
+never throws** (a throw would take `main()`'s halt path at `:5117` and write a `halted` queue row over
+a feature whose only fault is an unmergeable PR). The catch is the single place that guarantee is
+enforced, and §13.2 pins it with an observation double that throws.
+
+### 5.3 The resolution order — a literal transcription of FSPEC §2.2
+
+`decideMerge`'s body is one ordered sequence of guarded returns, in FSPEC §2.2's row order. The row
+number is *carried in the result*, so a test asserts the resolving row rather than inferring it:
+
+| Guard, in order | Result |
+|---|---|
+| `config.mergeMode === "off"` | row 2, `skipped` |
+| `!record.prUrl` | row 3, `deferred`, "no PR URL from Phase PUB" |
+| `record.o1 === null` | **need `O1`** |
+| `!record.o1.ok` | row 4, `refused`, "PR state could not be determined", **no escalation** |
+| `record.o1.state === "MERGED"` | see §5.5 (already-merged path) |
+| `record.o5 === null` | **need `O5`** |
+| `guardVerdict(record.o5, guardPaths).fired` | row 4/5, `refused` + escalation (§6) |
+| `record.o1.state === "CLOSED"` | 7a → row 7, `deferred`, "PR is CLOSED" |
+| `record.ci === null` | **need `O2`** |
+| CI rule (§5.4) fails | 7b → rows 9/10/11, `refused` |
+| `mergeable` / `mergeStateStatus` / `number` unreadable | 7c → row 11a, `refused` |
+| `mergeable === "UNKNOWN"` and `o1Count <= retries` | **need `O1`**, `waitMs = delay × 1000` |
+| `mergeable === "UNKNOWN"` (retries exhausted) | row 13, `deferred` |
+| `mergeable === "CONFLICTING"` or `mergeStateStatus ∈ {DIRTY, BLOCKED}` | row 12, `deferred` |
+| `record.o3 === null` | **need `O3`** |
+| `!record.o3.ok` | 7d → `refused` |
+| `record.o3.unresolved > 0` | row 14, `deferred`, "N unresolved review thread(s)" |
+| `record.o4 === null` | **need `O4`** |
+| `!record.o4.ok` | 7e → row 15, `refused` |
+| `mergeCandidates(...)` is empty | row 16, `deferred`, "no permitted merge method" |
+| an untried candidate remains | **act** with it |
+| the last attempt succeeded | row 18, `merged` + `mergeSha` + `mergeMethod` |
+| every candidate attempted and failed | row 17, `deferred`, reason naming each attempt |
+
+`PHASE_MERGE_ENABLED` (row 1) is **not** in this table: it is checked in `phaseMerge` before the
+config is read (§3.3), so the core never sees a disabled run. That is the one row the core does not
+own, and it is stated here so the omission reads as a decision rather than a gap.
+
+**Positional tie-break (FSPEC §2.3, Q-01).** The table above *is* the tie-break: 7b precedes 7c, so
+`CI pending` + `mergeable: CONFLICTING` reports `refused`; 7a precedes 7b, so `CLOSED` + `CI failed`
+reports `deferred`. No class-based re-sort exists anywhere in the code, and §13.2 asserts both pairs.
+
+### 5.4 The CI rule
+
+Pure, inlined as a two-line table lookup over `(record.ci, config.mergeRequiresCi)` exactly as
+FSPEC §5 states it. Only `("none", true)` escalates; `pending`, `failed` and `unknown` are `refused`
+with a reason line and no escalation, under both settings. `mergeRequiresCi: false` relaxes exactly
+the one cell — expressed as a single `if (ci === "none") return requiresCi ? refuse : pass;` so no
+future edit can accidentally widen it to `pending`.
+
+### 5.5 The already-merged path, and `O4` for the branch name (SE-v3 advisory / TE-v3 N-02)
+
+FSPEC §2.2 row 5 short-circuits the guard, the remaining preconditions and the merge attempt. But M3
+(§7.4) needs a default-branch name, and after v1.2 the **only** source of that name is
+`O4.defaultBranchRef.name` — which 7e would have observed and row 5 never reaches. The carried rider
+asks the TSPEC to resolve this. **Decision: row 5 observes `O4`, and only for the name.**
+
+```
+row 5 reached ⇒ if (record.o4 === null) need "O4";
+               resolve row 3-of-§11 (merged, method "unknown", sha = o1.mergeCommitOid ?? null),
+               carrying defaultBranch = record.o4.ok ? record.o4.defaultBranch : null
+```
+
+Three properties make this safe rather than a widening of row 5:
+
+1. **It is an observation, not a precondition.** `!record.o4.ok` on this path does **not** refuse —
+   the resolution is still `merged`. It only leaves `defaultBranch === null`, which makes M3
+   unperformable and produces §11 row 22's escalation with the reason "default branch name
+   unavailable". Row 5's terminal value is unchanged for every input.
+2. **No guard is evaluated and no merge is attempted**, so FSPEC §2.5's "zero merges, no guard"
+   still holds literally, and NFR-2 is untouched — `O4` is a read.
+3. It is the cheapest of the two options the rider names; the alternative (narrowing row 22 off the
+   already-merged path) would leave AT-M2a's recovery run reporting an un-updated working tree
+   permanently, which the reviewer judged "probably not the intent". Recorded here because it is the
+   one place this TSPEC extends the FSPEC's control flow rather than transcribing it.
+
+### 5.6 Merge candidates
+
+`mergeCandidates(caps, config)` is pure and builds the chain **before any attempt** (FSPEC §6.1):
+`rebase` if `caps.rebase`, then `merge` if `caps.mergeCommit`, then — only when
+`config.allowSquashMerge === true` — `squash` if `caps.squash`. Squash is otherwise **absent from the
+array**, not skipped at attempt time, so no code path can issue `gh pr merge --squash` with the
+shipped configuration. An empty chain is row 16 (`deferred`, "no permitted merge method"), textually
+distinct from row 17's exhaustion reason.
+
 ## 6. The self-modification guard
 
 ## 7. Merge execution and the post-merge sequence M1–M5 (O-M8)
