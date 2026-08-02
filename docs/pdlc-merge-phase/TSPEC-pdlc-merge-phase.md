@@ -813,6 +813,55 @@ real commit; the guarantee is **no semantic change** (FSPEC §7.4). `commitQueue
 
 ## 9. The queue driver's post-pipeline transition
 
+Implements FSPEC §7.5 and §9.5. Three edits, all in `orchestrate-queue.js`, none of them structural.
+
+### 9.1 `runPicked`'s status derivation (`:816`–`:836`)
+
+```js
+const succeeded = report && report.outcome === "success";
+const merged = succeeded && report.mergeStatus === "merged";        // NEW
+const newStatus = merged ? "done" : succeeded ? "awaiting-merge" : "halted";
+await rewriteStatus(queuePath, entry.feature, newStatus, readFileFn, writeFileFn, gitFn);
+```
+
+The driver still **always writes something** — the change is only that its value now derives from
+`mergeStatus` as well as `outcome` (FSPEC §7.5). It passes **no evidence**: Phase MERGE already wrote
+the `Evidence` cell at M4, and a second writer for the same cell is exactly the divergence FSPEC §7.4
+forbids. Writing `done` over `done` is idempotent and produces no commit (`:952`).
+
+`report.mergeStatus` is read defensively — a pipeline report without the field (an older bundle, a
+throw-path stub) is `undefined`, which is not `"merged"`, so the driver falls back to today's
+behaviour. Fail-safe direction: the failure mode is "left `awaiting-merge`", never "wrongly `done`".
+
+### 9.2 The operator message (`:826`–`:830`)
+
+| Case | Message |
+|---|---|
+| `merged` | `` `"${feature}" complete and merged (${report.mergeSha ?? "sha unknown"}) — status set to done.` `` |
+| `succeeded`, not merged | unchanged: `…complete — status set to awaiting-merge. Merge the PR, then set it to done to unblock dependents.` |
+| halted | unchanged |
+
+The "merge the PR, then set it to done" sentence is **not emitted** on the merged path (AT-M4). It is
+suppressed by branching, not by string surgery, so a test can assert its absence by substring and no
+partial variant survives.
+
+### 9.3 `buildQueueReport` pass-through (`:994`)
+
+**No change is required.** `pipelineReport` is already carried whole (`:1021`), so `mergeStatus`,
+`mergeSha`, `mergeMethod` and every `MERGE ESCALATION: ` notice inside `report.notices` are visible
+from the queue's run report the moment `orchestrate-dev` puts them there (FSPEC §9.5). §13.2 asserts
+the pass-through positively anyway — a future `buildQueueReport` that projected selected fields would
+silently drop the escalations, and this is the assertion that would catch it.
+
+### 9.4 What does **not** change
+
+`QUEUE_STATUSES` (`:74`) already contains `done`; `parseQueue` already ignores unrecognised columns;
+`selectNextPending` (`:382`) already selects on `status === "pending"` and treats `done` as terminal;
+`precheckDependencies` (`:429`) already compares the lowercased status by exact string. So AC-6.3's
+end-to-end effect — the dependent becomes selectable the moment the row reads `done` — needs **no
+queue-selection change at all**, only the write. That is why FSPEC §7.2 forbids decorating the status
+cell: `done (abc1234)` would fail every one of those exact-string comparisons.
+
 ## 10. Reporting — report fields, notices, phase row
 
 ## 11. Runtime, bundle, and adapter changes
