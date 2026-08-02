@@ -381,6 +381,100 @@ export function updateQueueStatus(markdown, feature, newStatus) {
   return { markdown, matched: false }; // feature row not found
 }
 
+// ─── QUEUE-WRITE-02: ensureEvidenceColumn / mergeEvidenceCell ────────────────
+// TSPEC §8.5, FSPEC §7.3 (Q-02) and §7.2. Pure helpers behind the `Evidence`
+// column Phase MERGE's queue write-back needs; `updateQueueStatus` (B2)
+// drives them, they do not drive it.
+
+/**
+ * Migrate a QUEUE.md table to carry a sixth `Evidence` column, once.
+ *
+ * Exactly three structural changes, and no fourth (FSPEC §7.3): `Evidence`
+ * appended to the header row (the row whose cells include "status" and one
+ * containing "feature" — the same predicate `parseQueue`/`updateQueueStatus`
+ * use); one `---` cell appended to the separator row immediately below it,
+ * recognised by "every cell is a dash run or empty"; and one empty cell
+ * appended to every other data row, so cell counts stay uniform. Rows that
+ * are not part of the table (prose, blank lines, anything not starting with
+ * `|`) are untouched, and no other cell of any row is rewritten — the
+ * append is a string splice after the row's trailing `|`, never a
+ * split/rejoin of the row's existing cells. A queue already carrying an
+ * `Evidence` column is returned unchanged (`migrated: false`) — never
+ * migrated twice. A queue with no recognisable header is also returned
+ * unchanged.
+ *
+ * @param {string} markdown
+ * @returns {{ markdown: string, migrated: boolean }}
+ */
+export function ensureEvidenceColumn(markdown) {
+  if (typeof markdown !== "string") return { markdown, migrated: false };
+
+  const lines = markdown.split("\n");
+  const isSeparatorRow = (cells) => cells.every((c) => /^:?-{2,}:?$/.test(c) || c === "");
+  const appendCell = (line, cellText) => `${line.replace(/\|\s*$/, "")}| ${cellText} |`;
+
+  // Locate the header row exactly as parseQueue/updateQueueStatus do.
+  let headerIdx = -1;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line.trim().startsWith("|")) continue;
+    const cells = splitRow(line.trim()).map((c) => c.toLowerCase());
+    if (cells.includes("status") && cells.some((c) => c.includes("feature"))) {
+      headerIdx = i;
+      break;
+    }
+  }
+  if (headerIdx === -1) return { markdown, migrated: false }; // no table found
+
+  const headerCells = splitRow(lines[headerIdx].trim()).map((c) => c.toLowerCase());
+  if (headerCells.some((c) => c.includes("evidence"))) {
+    return { markdown, migrated: false }; // already migrated — never twice
+  }
+
+  lines[headerIdx] = appendCell(lines[headerIdx].trim(), "Evidence");
+
+  // The separator row is the very next `|`-starting line, if it is
+  // separator-shaped; appending an empty-shaped dash cell keeps the
+  // rendered table well-formed over a six-column header.
+  const sepIdx = headerIdx + 1;
+  if (sepIdx < lines.length && lines[sepIdx].trim().startsWith("|")) {
+    const sepLine = lines[sepIdx].trim();
+    if (isSeparatorRow(splitRow(sepLine))) {
+      lines[sepIdx] = appendCell(sepLine, "---");
+    }
+  }
+
+  // Every other `|`-starting row is a data row: append one empty cell.
+  for (let i = sepIdx + 1; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line.trim().startsWith("|")) continue;
+    const trimmed = line.trim();
+    if (isSeparatorRow(splitRow(trimmed))) continue; // a stray separator-shaped row
+    lines[i] = appendCell(trimmed, "");
+  }
+
+  return { markdown: lines.join("\n"), migrated: true };
+}
+
+/**
+ * FSPEC §7.2's no-downgrade rule for the `Evidence` cell: a cell already
+ * holding a non-empty value is never downgraded to the `merged #{prNumber}`
+ * placeholder form by a later re-entry that could not resolve the oid — a
+ * real SHA always wins over a placeholder. Everything else takes the new
+ * value, including a `merged #{n}` cell being overwritten by a later
+ * `{shortSha} #{n}` once the oid resolves.
+ *
+ * @param {string} prev - the cell's current content (e.g. "" for a freshly migrated row).
+ * @param {string} next - the value this write would set absent the rule.
+ * @returns {string}
+ */
+export function mergeEvidenceCell(prev, next) {
+  if (typeof prev === "string" && prev !== "" && /^merged #/.test(next)) {
+    return prev;
+  }
+  return next;
+}
+
 // ─── selectNextPending ───────────────────────────────────────────────────────
 
 /**
