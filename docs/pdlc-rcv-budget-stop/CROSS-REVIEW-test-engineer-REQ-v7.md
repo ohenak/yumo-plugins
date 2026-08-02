@@ -36,6 +36,13 @@ stated, and the other is stated so that it does not falsify what it claims to fa
 
 ## Questions
 
+Q-04 and Q-05 stay closed. Q-06 is unanswered but was explicitly optional and no finding depends on
+it; I restate it once, compressed, and will not carry it a third time.
+
+| ID | Question |
+|----|---------|
+| Q-06 | AC-1.5(4) fixes the *region validates* predicate's **meaning**; `REQ-RCV-07` AC-7.1 fixes its **procedure**. I checked them against each other again and they still agree clause for clause. Neither document asks for a **conformance leg** pinning the agreement — a shared table of regions labelled valid/invalid *by the meaning*, asserted against the procedure — so a later revision of AC-7.1 that drifts from AC-1.5(4)'s definition fails nothing. Review-time obligation only, or a leg in one of the two O-10s? The split made this seam, and it is now also the seam X-06's interim shape is a restriction of, which is a second reason to want it pinned. |
+
 ## Positive Observations
 
 ## Recommendation
