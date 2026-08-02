@@ -180,11 +180,10 @@ halts twice would have its post-mortem written twice, and the reset region (S-12
    overrides a **recorded approval** and nothing else (`CLAUDE.md`, *Entry (single feature)*), so a
    forced Phase R on a document already at round 3 is admitted **no rounds**: it halts on the budget
    path, maintains the region and row C, and writes the queue row `halted`. **A second force changes
-   nothing, and what stops it is the shipped step-G refusal, not the counts.** The first forced halt
-   leaves `H = 1` and, by AC-1.4 clause 2, strips the `RESOLVED:` line, so the region reads
-   `H = 1, A = 0` — `A < H`, a clearance *outstanding*. The second force is refused because the
-   post-mortem is now unresolved (M-7a). The counts are not the gate here; they are what the operator's
-   *next* `RESOLVED: yes` will spend. A deliberate change to a documented entry point, stated so it has
+   nothing, and what stops it is the shipped step-G refusal, not the counts** — the first forced halt
+   strips the `RESOLVED:` line (AC-1.4 clause 2), leaving `H = 1, A = 0`, so the post-mortem is
+   unresolved and the second force is refused (M-7a). The counts are what the operator's *next*
+   `RESOLVED: yes` will spend. A deliberate change to a documented entry point, stated so it has
    an oracle;
 2. the window's **start** is unchanged — one past the highest existing round (M-1d), so review history stays append-only and no existing file is ever overwritten. **When that derived start falls
    *below* the origin `W`, the origin wins: the entry starts at `W`** — the start is the later of the
@@ -370,7 +369,7 @@ to route a finding downstream, not block on it.**
 | **R-12** | **A repeating S-11 halt is unbounded.** Each S-11 clearance leaves `W` unchanged and (per the successor's AC-2.8) costs the window no round, so a zero-delta authoring side yields an unbounded halt/clearance sequence with `H` and `A` growing together. | **Accepted, bounded by the operator, not the loop.** Every iteration costs one hand-written `RESOLVED: yes`, so it is never unattended; capping it needs a second counter that could only deny an operator *choosing* to continue. |
 | **R-13** | **Migration: branches already carrying more than three rounds.** At the landing commit, every in-flight phase whose document has 3+ rounds is admitted no rounds and halts, rendering S-4 as `rounds 1..3 of 3` while five rounds sit on disk. | **Correct and expected** — the render states the *window*, not the file count. The escape is the ordinary clearance (AC-1.5(3)); no migration script. |
 | **R-10** | **The region is machine state in a file an operator is instructed to edit.** A hand-edit can make the counts lie either way, and one way restores the per-invocation budget AC-1.1 abolishes — silently, fail-open. | **Mechanised, not accepted.** AC-1.5(4) makes *the region validates* a **conjunct of the clearance gate**, so an untrustworthy region consumes and opens nothing; the deciding mechanism and sanctioned repairs are `REQ-RCV-07` AC-7.1/AC-7.4. Residual: §6's *never authored by a human*. |
-| **R-14** | **This REQ's *region validates* decision procedure is not implementable until `REQ-RCV-07` ships** (X-06), **three** intervening features away — row 18, net pickup **10 → 12 → 13 → 17 → 18** (§3.1). One intervening row is **row 17**, emitting S-11. | **Mitigated by not bringing the conjunct into force until its procedure exists** — not by sequencing, weaker still at this distance, and not by an interim procedure; all three rejected once for both ends at split §5.1. Until then every branch keeps HEAD's behaviour: no refusal, no S-16. **Two residuals, accepted and time-boxed to row 18.** (i) R-10's hand-edited-region fail-open — operator-caused, no wider than HEAD's, where it is open unconditionally. (ii) **From row 17 onward, machine-written `WINDOW-RESUMED:` lines land in regions nothing validates** — *not* covered by "no wider than HEAD's", since HEAD writes no region lines at all. Accepted because the exposure is bounded by the accounting the two live conjuncts enforce: the line still answers exactly one halt, so the worst case is an origin the operator can read and repair once AC-7.4 exists. If row 17 is picked up first, that is the moment to reconsider **moving row 18 ahead of it by `Order`** — a queue decision, not a requirement. Nothing requires the two halves in one plugin release, so no `pdlc/RELEASE-CHECKLIST.md` line is owed. |
+| **R-14** | **This REQ's *region validates* decision procedure is not implementable until `REQ-RCV-07` ships** (X-06), **three** intervening features away — row 18, net pickup **10 → 12 → 13 → 17 → 18** (§3.1). One intervening row is **row 17**, emitting S-11. | **Mitigated by not bringing the conjunct into force until its procedure exists** — not by sequencing, weaker still at this distance, and not by an interim procedure; all three rejected once for both ends at split §5.1. Until then every branch keeps HEAD's behaviour: no refusal, no S-16. **Two residuals, accepted and time-boxed to row 18.** (i) R-10's hand-edited-region fail-open — operator-caused, no wider than HEAD's, where it is open unconditionally. (ii) **From row 17 onward, machine-written `WINDOW-RESUMED:` lines land in regions nothing validates** — *not* covered by "no wider than HEAD's", since HEAD writes no region lines at all. Accepted because the accounting the two live conjuncts enforce bounds it: the line still answers exactly one halt, so the worst case is an origin the operator can read and repair once AC-7.4 exists. If row 17 is picked up first, reconsider **moving row 18 ahead of it by `Order`** — a queue decision. No `pdlc/RELEASE-CHECKLIST.md` line is owed: nothing requires the two halves in one release. |
 
 **Deferrals and their binding.** This REQ defers nothing of its own. The predecessor's deferrals go to
 the successors carrying the criteria that raise them — cross-panel comparability and finding identity
@@ -384,17 +383,15 @@ to `docs/discarded/pdlc-review-convergence-calibration/`, the authoring-side zer
 |---|---|---|---|---|
 | REQ-RCV-01 | M-1a, M-1b, M-1c, M-1d, M-1e; M-7a, M-7b, M-7d, M-7e, M-7f | P-1 (cost half) | US-01, US-02, US-04 | O-5, O-9, O-10, O-11, O-12, O-13, O-14, O-15 |
 
-**Why one requirement and not two.** v1.0 carried REQ-RCV-01 and REQ-RCV-02 past the 60 KB ceiling;
-v1.1 cut at the seam they already had — this REQ the **window**, `docs/pdlc-rcv-fixed-point-stop/` the
-two **tests** inside it, as a `depends-on` edge. **v2.0 then cut at the altitude seam** the postmortem
-named: the implementation-altitude half of AC-1.5(4) moved to `REQ-RCV-07`, the window stayed, and
-**no requirement, AC, `S-*` id, threshold or user story changed meaning**. The narrative and the
-*what moved / what stayed* mapping are in `pdlc-rcv-split.md` §1–§4.
+**Why one requirement and not two**, and the *what moved / what stayed* mapping of both cuts — v1.1's
+seam (window here, the two **tests** in `docs/pdlc-rcv-fixed-point-stop/`) and v2.0's altitude seam
+(AC-1.5(4)'s implementation half to `REQ-RCV-07`) — are in `pdlc-rcv-split.md` §1–§4. **No requirement,
+AC, `S-*` id, threshold or user story changed meaning in either.**
 
 **Paired edges are revised together.** `REQ-RCV-01` X-06/R-14 and `REQ-RCV-07` X-07/R-16 are the same
 edge from both ends, so a revision to either is carried to the other **within the same revision** and
-the reviewer checks both ends **at HEAD**. v2.7 carried the pickup-order correction; v2.8 carries
-split §6's redirect wording and the relocations into split §5.4 and §5.6. The edge table and the
+the reviewer checks both ends **at HEAD**. v2.9 carries no change to that edge — its relocations are
+into split §5.4 and baseline §3.2, neither of which the edge reads. The edge table and the
 `O-*`/`R-*`/`X-*` collision rule are in split §5.
 
 **Round-by-round history is deliberately not restated here:** harvest deletes `CROSS-REVIEW-*` once
