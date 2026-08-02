@@ -4293,7 +4293,7 @@ async function defaultGit(argv, { execFn } = {}) {
  *
  * @returns {Promise<{ queueRow: string, detail?: string }>}
  */
-async function defaultRecordHalt(/* { feature, status } */) {
+async function defaultRecordQueueRow(/* { feature, status } */) {
   return { queueRow: "none" };
 }
 
@@ -4328,7 +4328,7 @@ async function main({
   _writeFile: writeFileFn = defaultWriteFile,
   _appendFile: appendFileFn = defaultAppendFile,
   _git: gitFn = defaultGit,
-  _recordHalt: recordHaltFn = defaultRecordHalt,
+  _recordQueueRow: recordQueueRowFn = defaultRecordQueueRow,
   // The three optional probe seams. `null` is the shipped state: a runtime that
   // supplies none of them runs every read below exactly as it did before they
   // existed (see the probe-seam section above `probeDocument`).
@@ -5171,7 +5171,7 @@ async function main({
     // §6.5: EVERY halt class commits the queue row — exactly once per invocation.
     let queueRow = null;
     try {
-      const recorded = await recordHaltFn({ feature: featureName, status: "halted" });
+      const recorded = await recordQueueRowFn({ feature: featureName, status: "halted" });
       queueRow = recorded && recorded.queueRow ? recorded.queueRow : null;
       // §6.5 / E-38, E-40: a row write that failed or found nothing leaves the
       // operator a REMAINING ACTION, and that action reaches them as its own
@@ -5219,7 +5219,7 @@ async function main({
     notices,
     // §4.7: `queueRow` rides on every report. A successful run writes no status
     // (`orchestrate-dev` owns no status write but the halt one — AC-2.7a), so the
-    // value is the same `"none"` the default `_recordHalt` reports.
+    // value is the same `"none"` the default `_recordQueueRow` reports.
     queueRow: "none",
     // §4.7: a phase skipped over an unresolved POSTMORTEM still reports it.
     postmortemStatus: skipPostmortem ? "unresolved" : "none",

@@ -5340,7 +5340,7 @@ async function defaultGit(argv, { execFn } = {}) {
  *
  * @returns {Promise<{ queueRow: string, detail?: string }>}
  */
-async function defaultRecordHalt(/* { feature, status } */) {
+async function defaultRecordQueueRow(/* { feature, status } */) {
   return { queueRow: "none" };
 }
 
@@ -5375,7 +5375,7 @@ async function main({
   _writeFile: writeFileFn = defaultWriteFile,
   _appendFile: appendFileFn = defaultAppendFile,
   _git: gitFn = defaultGit,
-  _recordHalt: recordHaltFn = defaultRecordHalt,
+  _recordQueueRow: recordQueueRowFn = defaultRecordQueueRow,
   // The three optional probe seams. `null` is the shipped state: a runtime that
   // supplies none of them runs every read below exactly as it did before they
   // existed (see the probe-seam section above `probeDocument`).
@@ -6218,7 +6218,7 @@ async function main({
     // §6.5: EVERY halt class commits the queue row — exactly once per invocation.
     let queueRow = null;
     try {
-      const recorded = await recordHaltFn({ feature: featureName, status: "halted" });
+      const recorded = await recordQueueRowFn({ feature: featureName, status: "halted" });
       queueRow = recorded && recorded.queueRow ? recorded.queueRow : null;
       // §6.5 / E-38, E-40: a row write that failed or found nothing leaves the
       // operator a REMAINING ACTION, and that action reaches them as its own
@@ -6266,7 +6266,7 @@ async function main({
     notices,
     // §4.7: `queueRow` rides on every report. A successful run writes no status
     // (`orchestrate-dev` owns no status write but the halt one — AC-2.7a), so the
-    // value is the same `"none"` the default `_recordHalt` reports.
+    // value is the same `"none"` the default `_recordQueueRow` reports.
     queueRow: "none",
     // §4.7: a phase skipped over an unresolved POSTMORTEM still reports it.
     postmortemStatus: skipPostmortem ? "unresolved" : "none",
@@ -6459,6 +6459,19 @@ const QUEUE_STATUSES = [
   "blocked",
   "halted",
 ];
+
+// TSPEC §8.2 — the closed *row disposition* catalogue `rewriteStatus` /
+// `commitQueueRow` / `uncommitted` report through `_recordQueueRow`. This is
+// vocabulary about the queue-row *write*, never about the queue *status*
+// column (`QUEUE_STATUSES` above): a disposition of `"recorded"` can be
+// reported whatever `status` was written, including `"halted"`. Exported and
+// frozen (DC-01) so a test enumerates membership rather than pinning prose.
+const QUEUE_ROW_DISPOSITIONS = Object.freeze([
+  "recorded",
+  "recorded (uncommitted)",
+  "none",
+  "error",
+]);
 
 // ─── Halt helper (same shape as orchestrate-dev) ─────────────────────────────
 function haltError(message) {
@@ -6700,8 +6713,9 @@ function parseTriageVerdict(result) {
  * indistinguishable, to the caller, from a successful update whose replacement
  * happened to be a no-op — so a status write against a row that had been deleted
  * mid-run looked exactly like a write that landed. `matched` makes the
- * difference observable, which is what `_recordHalt` needs in order to report
- * `queueRow: "error"` (FSPEC §13.5) rather than claiming a write it never made.
+ * difference observable, which is what `_recordQueueRow` needs in order to
+ * report `queueRow: "error"` (FSPEC §13.5) rather than claiming a write it
+ * never made.
  *
  * @param {string} markdown
  * @param {string} feature
@@ -7231,8 +7245,8 @@ async function runPicked({
  * **Exported deliberately, and load-bearing** (TSPEC §3.6): the bundle can only
  * publish names the module exports (`stripModuleSyntax` rewrites `export
  * function` to `function`; `wrapModule` re-publishes only the names in its
- * `exportedNames` list), and `build-runtime.mjs`'s `_recordHalt` closure has to
- * reach this function through `__queue`.
+ * `exportedNames` list), and `build-runtime.mjs`'s `_recordQueueRow` closure
+ * has to reach this function through `__queue`.
  *
  * The re-read is not defensive padding: the pipeline that just ran may itself
  * have rewritten the queue, so a snapshot taken before the run is stale by
@@ -7248,10 +7262,10 @@ async function runPicked({
  * @param {function} writeFileFn - async (path, contents) => void
  * @param {function} [gitFn]     - async (argv) => {ok, stdout, stderr}
  * @returns {Promise<{ queueRow: string, detail?: string }>}
- *   `queueRow` is drawn from TSPEC §4.7's closed catalogue
- *   `"halted" | "halted (uncommitted)" | "none" | "error"`. The catalogue
- *   describes the *row disposition*, not the status written, so a recorded
- *   write reports `"halted"` whatever `status` was.
+ *   `queueRow` is drawn from `QUEUE_ROW_DISPOSITIONS`, TSPEC §4.7's / §8.2's
+ *   closed catalogue: `"recorded" | "recorded (uncommitted)" | "none" |
+ *   "error"`. The catalogue describes the *row disposition*, not the status
+ *   written, so a recorded write reports `"recorded"` whatever `status` was.
  */
 async function rewriteStatus(
   queuePath,
@@ -7323,7 +7337,7 @@ async function commitQueueRow(queuePath, feature, status, gitFn) {
     "--",
     queuePath,
   ]);
-  if (committed.ok) return { queueRow: "halted" };
+  if (committed.ok) return { queueRow: "recorded" };
 
   // E-39 — the row already read the target status and was already committed
   // (the common case on a re-entry). Idempotence, not a fault: no warning, and
@@ -7333,7 +7347,7 @@ async function commitQueueRow(queuePath, feature, status, gitFn) {
     NOTHING_TO_COMMIT_RE.test(committed.stdout ?? "") ||
     NOTHING_TO_COMMIT_RE.test(committed.stderr ?? "")
   ) {
-    return { queueRow: "halted" };
+    return { queueRow: "recorded" };
   }
 
   return uncommitted(committed, queuePath);
@@ -7347,7 +7361,7 @@ async function commitQueueRow(queuePath, feature, status, gitFn) {
 function uncommitted(result, queuePath) {
   const reason = firstLine(result && result.stderr);
   return {
-    queueRow: "halted (uncommitted)",
+    queueRow: "recorded (uncommitted)",
     detail:
       `queue row written but not committed` +
       (reason ? `: ${reason}` : "") +
@@ -7765,8 +7779,8 @@ return await __dev.main({
   ...rtDevInjections(__dev),
   // §7.2 edits 3 + 4 — a direct dev invocation still owns its queue row, so it
   // closes over __queue's row helpers at the default queue path. Absent this,
-  // the seam falls back to defaultRecordHalt's queueRow "none" no-op.
-  _recordHalt: async ({ feature, status }) =>
+  // the seam falls back to defaultRecordQueueRow's queueRow "none" no-op.
+  _recordQueueRow: async ({ feature, status }) =>
     __queue.rewriteStatus(
       __queue.DEFAULT_QUEUE_PATH,
       feature,

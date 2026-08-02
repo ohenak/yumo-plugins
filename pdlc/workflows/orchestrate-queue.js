@@ -80,6 +80,19 @@ export const QUEUE_STATUSES = [
   "halted",
 ];
 
+// TSPEC §8.2 — the closed *row disposition* catalogue `rewriteStatus` /
+// `commitQueueRow` / `uncommitted` report through `_recordQueueRow`. This is
+// vocabulary about the queue-row *write*, never about the queue *status*
+// column (`QUEUE_STATUSES` above): a disposition of `"recorded"` can be
+// reported whatever `status` was written, including `"halted"`. Exported and
+// frozen (DC-01) so a test enumerates membership rather than pinning prose.
+export const QUEUE_ROW_DISPOSITIONS = Object.freeze([
+  "recorded",
+  "recorded (uncommitted)",
+  "none",
+  "error",
+]);
+
 // ─── Halt helper (same shape as orchestrate-dev) ─────────────────────────────
 function haltError(message) {
   const err = new Error(message);
@@ -320,8 +333,9 @@ export function parseTriageVerdict(result) {
  * indistinguishable, to the caller, from a successful update whose replacement
  * happened to be a no-op — so a status write against a row that had been deleted
  * mid-run looked exactly like a write that landed. `matched` makes the
- * difference observable, which is what `_recordHalt` needs in order to report
- * `queueRow: "error"` (FSPEC §13.5) rather than claiming a write it never made.
+ * difference observable, which is what `_recordQueueRow` needs in order to
+ * report `queueRow: "error"` (FSPEC §13.5) rather than claiming a write it
+ * never made.
  *
  * @param {string} markdown
  * @param {string} feature
@@ -851,8 +865,8 @@ async function runPicked({
  * **Exported deliberately, and load-bearing** (TSPEC §3.6): the bundle can only
  * publish names the module exports (`stripModuleSyntax` rewrites `export
  * function` to `function`; `wrapModule` re-publishes only the names in its
- * `exportedNames` list), and `build-runtime.mjs`'s `_recordHalt` closure has to
- * reach this function through `__queue`.
+ * `exportedNames` list), and `build-runtime.mjs`'s `_recordQueueRow` closure
+ * has to reach this function through `__queue`.
  *
  * The re-read is not defensive padding: the pipeline that just ran may itself
  * have rewritten the queue, so a snapshot taken before the run is stale by
@@ -868,10 +882,10 @@ async function runPicked({
  * @param {function} writeFileFn - async (path, contents) => void
  * @param {function} [gitFn]     - async (argv) => {ok, stdout, stderr}
  * @returns {Promise<{ queueRow: string, detail?: string }>}
- *   `queueRow` is drawn from TSPEC §4.7's closed catalogue
- *   `"halted" | "halted (uncommitted)" | "none" | "error"`. The catalogue
- *   describes the *row disposition*, not the status written, so a recorded
- *   write reports `"halted"` whatever `status` was.
+ *   `queueRow` is drawn from `QUEUE_ROW_DISPOSITIONS`, TSPEC §4.7's / §8.2's
+ *   closed catalogue: `"recorded" | "recorded (uncommitted)" | "none" |
+ *   "error"`. The catalogue describes the *row disposition*, not the status
+ *   written, so a recorded write reports `"recorded"` whatever `status` was.
  */
 export async function rewriteStatus(
   queuePath,
@@ -943,7 +957,7 @@ async function commitQueueRow(queuePath, feature, status, gitFn) {
     "--",
     queuePath,
   ]);
-  if (committed.ok) return { queueRow: "halted" };
+  if (committed.ok) return { queueRow: "recorded" };
 
   // E-39 — the row already read the target status and was already committed
   // (the common case on a re-entry). Idempotence, not a fault: no warning, and
@@ -953,7 +967,7 @@ async function commitQueueRow(queuePath, feature, status, gitFn) {
     NOTHING_TO_COMMIT_RE.test(committed.stdout ?? "") ||
     NOTHING_TO_COMMIT_RE.test(committed.stderr ?? "")
   ) {
-    return { queueRow: "halted" };
+    return { queueRow: "recorded" };
   }
 
   return uncommitted(committed, queuePath);
@@ -967,7 +981,7 @@ async function commitQueueRow(queuePath, feature, status, gitFn) {
 function uncommitted(result, queuePath) {
   const reason = firstLine(result && result.stderr);
   return {
-    queueRow: "halted (uncommitted)",
+    queueRow: "recorded (uncommitted)",
     detail:
       `queue row written but not committed` +
       (reason ? `: ${reason}` : "") +

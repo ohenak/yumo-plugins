@@ -254,7 +254,7 @@ describe("parseForcePhases — catalogue closure (property)", () => {
 
 // ─── L2 harness — driving `main()` (RLH-AT-28, RLH-AT-01a) ───────────────────────────
 
-// TODO(RLH-02): `fakeFs` and `recordingRecordHalt` belong to `__tests__/helpers/seams.js`,
+// TODO(RLH-02): `fakeFs` and `recordingRecordQueueRow` belong to `__tests__/helpers/seams.js`,
 // which RLH-02 owns and is writing in this same batch (only `fakeListFiles` had landed
 // when this file was authored). The two local doubles below are the minimum this file
 // needs; replace them with the canonical factories once seams.js publishes them. This
@@ -405,7 +405,7 @@ function makeHarness({ listing = [], files = {} } = {}) {
       _readFile: fs.readFile,
       _writeFile: fs.writeFile,
       _appendFile: fs.appendFile,
-      _recordHalt: async () => ({ queueRow: "none" }),
+      _recordQueueRow: async () => ({ queueRow: "none" }),
       _mergeWorktree: async () => ({ ok: true }),
       _rebaseOntoDefault: async () => "clean",
       _dodVerifyLoop: async () => ({ passed: true, iterations: 1 }),

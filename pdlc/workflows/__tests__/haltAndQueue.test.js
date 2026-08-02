@@ -47,7 +47,7 @@ import {
   fakeFs,
   fakeGit,
   fakeListFiles,
-  recordingRecordHalt,
+  recordingRecordQueueRow,
 } from "./helpers/seams.js";
 
 // ─── Fixture vocabulary ──────────────────────────────────────────────────────
@@ -209,7 +209,7 @@ function basenamesUnder(files, dirPath) {
  *   files?: Record<string,string>,
  *   verdictFor?: (skill: string, prompt: string) => string,
  *   postmortem?: "write"|"throw",
- *   recordHaltResult?: any,
+ *   recordQueueRowResult?: any,
  *   extraArgs?: object,
  * }} [opts]
  */
@@ -218,14 +218,14 @@ async function run({
   files = baseTree(),
   verdictFor = () => APPROVING_REVIEW,
   postmortem = "write",
-  recordHaltResult = undefined,
+  recordQueueRowResult = undefined,
   extraArgs = {},
 } = {}) {
   const fs = fakeFs(files);
   const listFiles = fakeListFiles((dirPath) =>
     basenamesUnder(fs.files, dirPath)
   );
-  const recordHalt = recordingRecordHalt(recordHaltResult);
+  const recordQueueRow = recordingRecordQueueRow(recordQueueRowResult);
   const logs = [];
   const dispatches = [];
 
@@ -299,7 +299,7 @@ async function run({
     _writeFile: fs.writeFile,
     _appendFile: fs.appendFile,
     _listFiles: listFiles,
-    _recordHalt: recordHalt,
+    _recordQueueRow: recordQueueRow,
     _mergeWorktree: async () => ({ ok: true }),
     _raisePrAndVerifyCi: async () => ({
       prUrl: "https://x/pull/1",
@@ -312,7 +312,7 @@ async function run({
     result,
     fs,
     listFiles,
-    recordHalt,
+    recordQueueRow,
     logs,
     dispatches,
     phaseOf: (id) => (result.phases || []).find((p) => p.phase === id),
@@ -347,7 +347,7 @@ describe("RLH-25: the terminal exit and the queue row", () => {
     const rewriteStatus = queueModule.rewriteStatus;
     expect(typeof rewriteStatus).toBe("function");
 
-    const queueBackedRecordHalt = async ({ feature, status }) =>
+    const queueBackedRecordQueueRow = async ({ feature, status }) =>
       rewriteStatus(
         DEFAULT_QUEUE_PATH,
         feature,
@@ -359,7 +359,7 @@ describe("RLH-25: the terminal exit and the queue row", () => {
 
     const { result } = await run({
       verdictFor: nonConvergingAtR,
-      extraArgs: { _recordHalt: queueBackedRecordHalt },
+      extraArgs: { _recordQueueRow: queueBackedRecordQueueRow },
     });
 
     expect(result.outcome).toBe("halted");
@@ -380,7 +380,7 @@ describe("RLH-25: the terminal exit and the queue row", () => {
       `add -- ${DEFAULT_QUEUE_PATH}`,
       `commit -m chore(queue): foo → halted -- ${DEFAULT_QUEUE_PATH}`,
     ]);
-    expect(result.queueRow).toBe("halted");
+    expect(result.queueRow).toBe("recorded");
   });
 
   it("RLH-AT-22: the halt never claims a POSTMORTEM that was not written", async () => {
@@ -425,7 +425,7 @@ describe("RLH-25: the terminal exit and the queue row", () => {
     expect(result.postmortemPath).toBe(POSTMORTEM_R);
     expect(result.postmortemPath).not.toContain("{feature}");
     expect(result.postmortemStatus).toBe("written");
-    expect(["halted", "halted (uncommitted)", "none", "error"]).toContain(
+    expect(Object.values(queueModule.QUEUE_ROW_DISPOSITIONS)).toContain(
       result.queueRow
     );
 
@@ -751,11 +751,11 @@ describe("RLH-25: which halting exit reaches the committing status write", () =>
     // exactly once, with `status: "halted"` and the resolved feature name.
     const seen = [];
     for (const { exit, opts } of HALTING_EXITS) {
-      const { result, recordHalt } = await run(opts);
+      const { result, recordQueueRow } = await run(opts);
       seen.push({
         exit,
         outcome: result.outcome,
-        recorded: recordHalt.records,
+        recorded: recordQueueRow.records,
       });
     }
     // Every exit halts …
@@ -776,7 +776,7 @@ describe("RLH-25: which halting exit reaches the committing status write", () =>
     const detail = `no row for ${FEATURE} in ${DEFAULT_QUEUE_PATH}`;
     const { result } = await run({
       verdictFor: nonConvergingAtR,
-      recordHaltResult: { queueRow: "error", detail },
+      recordQueueRowResult: { queueRow: "error", detail },
     });
 
     expect(result.queueRow).toBe("error");
@@ -788,11 +788,11 @@ describe("RLH-25: which halting exit reaches the committing status write", () =>
   });
 
   it("RLH-AT-31-orch: a direct invocation with no queue reports one failure, not two", async () => {
-    // AC-2.6a / E-41. `_recordHalt`'s default is a no-op reporting "none"
+    // AC-2.6a / E-41. `_recordQueueRow`'s default is a no-op reporting "none"
     // (§3.5): a repo with no queue must not turn one halt into two.
     const { result } = await run({
       verdictFor: nonConvergingAtR,
-      recordHaltResult: { queueRow: "none" },
+      recordQueueRowResult: { queueRow: "none" },
     });
 
     expect(result.outcome).toBe("halted");
@@ -811,12 +811,12 @@ describe("RLH-25: which halting exit reaches the committing status write", () =>
     // `halted` row — `orchestrate-dev` owns no status write but the halt one,
     // so the row survives the bypass and the next `/loop` iteration is `idle`.
     // (That the row itself stays put is `RLH-AT-32-module`'s.)
-    const { result, recordHalt } = await run();
+    const { result, recordQueueRow } = await run();
 
     expect(result.outcome).toBe("success");
-    expect(recordHalt.statuses).not.toContain("halted");
-    expect(recordHalt.statuses).not.toContain("pending");
-    expect(recordHalt.statuses).not.toContain("done");
+    expect(recordQueueRow.statuses).not.toContain("halted");
+    expect(recordQueueRow.statuses).not.toContain("pending");
+    expect(recordQueueRow.statuses).not.toContain("done");
     expect(result.queueRow).toBe("none");
   });
 
@@ -827,14 +827,14 @@ describe("RLH-25: which halting exit reaches the committing status write", () =>
     const manual = `git commit -m "chore(queue): ${FEATURE} → halted" -- ${DEFAULT_QUEUE_PATH}`;
     const { result } = await run({
       verdictFor: nonConvergingAtR,
-      recordHaltResult: {
-        queueRow: "halted (uncommitted)",
+      recordQueueRowResult: {
+        queueRow: "recorded (uncommitted)",
         detail: `queue row written but not committed; run: ${manual}`,
       },
     });
 
     expect(result.outcome).toBe("halted");
-    expect(result.queueRow).toBe("halted (uncommitted)");
+    expect(result.queueRow).toBe("recorded (uncommitted)");
     // The manual-commit instruction reaches the operator …
     //
     // Compared against the JSON-ESCAPED form: `manual` carries the double quotes
@@ -854,10 +854,10 @@ describe("RLH-25: which halting exit reaches the committing status write", () =>
     // status write is a no-op. A no-op is not a fault and must not be narrated.
     const { result, logs } = await run({
       verdictFor: nonConvergingAtR,
-      recordHaltResult: { queueRow: "halted" },
+      recordQueueRowResult: { queueRow: "recorded" },
     });
 
-    expect(result.queueRow).toBe("halted");
+    expect(result.queueRow).toBe("recorded");
 
     const noise = /nothing to commit|queue row|uncommitted|WARNING: .*queue/i;
     expect(logs.filter((line) => noise.test(line))).toEqual([]);

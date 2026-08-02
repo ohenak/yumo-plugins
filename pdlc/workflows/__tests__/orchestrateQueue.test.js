@@ -595,7 +595,8 @@ describe("main()", () => {
 //   TSPEC §3.6  `rewriteStatus` is **exported**, gains a `_git` parameter,
 //               and commits after the write
 //   TSPEC §3.5  its return is `{ queueRow, detail? }`, `queueRow` drawn from
-//               `"halted" | "halted (uncommitted)" | "none" | "error"`
+//               `QUEUE_ROW_DISPOSITIONS` — "recorded" | "recorded (uncommitted)" |
+//               "none" | "error"
 //   TSPEC §6.5  exactly two `_git` invocations, `add` then `commit`, both
 //               pathspec-scoped to the queue path
 //   FSPEC §13.4/§13.5  the three failure dispositions
@@ -717,13 +718,13 @@ describe("RLH-19: queue-row write and commit mechanism", () => {
     expect(git.calls.some((argv) => argv.includes("-a"))).toBe(false);
     expect(git.calls.some((argv) => argv[0] === "push")).toBe(false);
 
-    expect(result).toEqual({ queueRow: "halted" });
+    expect(result).toEqual({ queueRow: "recorded" });
   });
 
   it("RLH-AT-33-module: a commit failure is non-fatal and surfaced", async () => {
     // FSPEC §13.4 — `git commit` fails (hook rejection, no identity, index
     // lock): the row is correct on disk, the mechanism does not throw, and the
-    // result is `"halted (uncommitted)"` carrying the stderr first line plus
+    // result is `"recorded (uncommitted)"` carrying the stderr first line plus
     // the manual-commit instruction. That the *original halt reason* is still
     // reported first is `RLH-AT-33-orch`'s.
     const rewriteStatus = rewriteStatusOf();
@@ -741,7 +742,7 @@ describe("RLH-19: queue-row write and commit mechanism", () => {
       git
     );
 
-    expect(result.queueRow).toBe("halted (uncommitted)");
+    expect(result.queueRow).toBe("recorded (uncommitted)");
     expect(typeof result.detail).toBe("string");
     expect(result.detail).toContain("pre-commit hook rejected the commit");
     expect(result.detail).not.toContain("see .git/hooks/pre-commit"); // first line only
@@ -771,7 +772,7 @@ describe("RLH-19: queue-row write and commit mechanism", () => {
       git
     );
 
-    expect(result.queueRow).toBe("halted (uncommitted)");
+    expect(result.queueRow).toBe("recorded (uncommitted)");
     expect(result.detail).toContain("fatal: not a git repository");
     expect(
       parseQueue(fs.files[QUEUE_PATH]).find((e) => e.feature === "notification-v2").status
@@ -781,7 +782,7 @@ describe("RLH-19: queue-row write and commit mechanism", () => {
   it("RLH-AT-34-module: 'nothing to commit' is success, silently", async () => {
     // FSPEC §13.4 / E-39 — the row already read the target status and was
     // already committed, the common case on a re-entry. Idempotence, not an
-    // error: `queueRow: "halted"`, and **no** warning detail.
+    // error: `queueRow: "recorded"`, and **no** warning detail.
     const rewriteStatus = rewriteStatusOf();
     expect(typeof rewriteStatus).toBe("function");
 
@@ -803,7 +804,7 @@ describe("RLH-19: queue-row write and commit mechanism", () => {
       git
     );
 
-    expect(result.queueRow).toBe("halted");
+    expect(result.queueRow).toBe("recorded");
     expect(result.detail ?? null).toBeNull();
     expect(
       parseQueue(fs.files[QUEUE_PATH]).find((e) => e.feature === "notification-v2").status

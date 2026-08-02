@@ -97,7 +97,7 @@ const queueModule = wrapModule(
   "__queue",
   stripModuleSyntax(queueSource),
   // §7.2 edit 3 — `rewriteStatus` / `updateQueueStatus` are what an entrypoint's
-  // `_recordHalt` closure calls; without them on `__queue` it has nothing to call.
+  // `_recordQueueRow` closure calls; without them on `__queue` it has nothing to call.
   ["main", "meta", "DEFAULT_QUEUE_PATH", "rewriteStatus", "updateQueueStatus"],
   "const realMain = __dev.main;"
 );
@@ -179,7 +179,7 @@ return await __queue.main({
     __dev.main({
       reqPath,
       ...__devInjections,
-      _recordHalt: async ({ feature, status }) =>
+      _recordQueueRow: async ({ feature, status }) =>
         __queue.rewriteStatus(__queuePath, feature, status, rtReadFile, rtWriteFile, rtGit),
     }),
 });
@@ -208,8 +208,8 @@ return await __dev.main({
   ...rtDevInjections(__dev),
   // §7.2 edits 3 + 4 — a direct dev invocation still owns its queue row, so it
   // closes over __queue's row helpers at the default queue path. Absent this,
-  // the seam falls back to defaultRecordHalt's queueRow "none" no-op.
-  _recordHalt: async ({ feature, status }) =>
+  // the seam falls back to defaultRecordQueueRow's queueRow "none" no-op.
+  _recordQueueRow: async ({ feature, status }) =>
     __queue.rewriteStatus(
       __queue.DEFAULT_QUEUE_PATH,
       feature,
@@ -271,7 +271,7 @@ const bundles = [
   {
     file: "orchestrate-dev.bundle.js",
     // §7.2 edit 4 — `queueModule` joins the dev bundle so DEV_ENTRY's
-    // `_recordHalt` closure can reach the queue's row helpers. ORDERING HAZARD:
+    // `_recordQueueRow` closure can reach the queue's row helpers. ORDERING HAZARD:
     // queueModule's prelude references `__dev.main`, so devModule must precede it.
     contents: [DEV_META, BANNER, adapter, devModule, queueModule, DEV_ENTRY].join("\n\n"),
   },

@@ -443,7 +443,7 @@ describe("RLH-WIRE-01: main() composition root carries the new parameters", () =
     "_writeFile",
     "_appendFile",
     "_git",
-    "_recordHalt",
+    "_recordQueueRow",
   ];
 
   it("RLH-WIRE-01: parameter list carries the five new seams plus forcePhases, and meta.inputs declares forcePhases", () => {

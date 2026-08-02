@@ -209,7 +209,7 @@ function maskLiterals(src) {
 // shipped, correct source (TSPEC §8.5, PLAN §9.2).
 const AT19_SEAM_NAMES = Object.freeze([
   "_agent", "_readFile", "_writeFile", "_appendFile", "_checkFile", "_listFiles",
-  "_git", "_checkCi", "_mergeWorktree", "_recordHalt", "_rebaseOntoDefault",
+  "_git", "_checkCi", "_mergeWorktree", "_recordQueueRow", "_rebaseOntoDefault",
   "_dodVerifyLoop", "_raisePrAndVerifyCi",
 ]);
 
@@ -760,7 +760,7 @@ function rtDevInjectionKeys(adapterSource) {
  * Every `_`-prefixed key supplied by a bundle entrypoint's injection object,
  * read from build-runtime.mjs's DEV_ENTRY / QUEUE_ENTRY template literals.
  * Every `.main({…})` argument object counts, including the one nested inside
- * QUEUE_ENTRY's `_runPipeline` closure — the only place `_recordHalt` is
+ * QUEUE_ENTRY's `_runPipeline` closure — the only place `_recordQueueRow` is
  * supplied on the queue path (TSPEC §8.5, §7.2 edit 2b).
  */
 function entrypointInjectionKeys(builderSource) {
@@ -1035,28 +1035,39 @@ describe("RLH-AT-64: orchestrate-dev's composition root wires every seam", () =>
     ).toEqual([]);
   });
 
-  it("RLH-AT-64: _recordHalt is wired, not exempt, whenever main() declares it", () => {
+  it("RLH-AT-64: _recordQueueRow is wired, not exempt, whenever main() declares it", () => {
     // Deliberately absent from rtDevInjections because its implementation
     // differs by caller; satisfied by QUEUE_ENTRY's _runPipeline closure and by
     // DEV_ENTRY. If either is dropped, this reds — which is the whole point.
-    const recordHalt = classified.find((c) => c.name === "_recordHalt");
-    if (!recordHalt) return; // not yet declared on main() — RLH-18 adds it
+    const recordQueueRow = classified.find((c) => c.name === "_recordQueueRow");
+    if (!recordQueueRow) return; // not yet declared on main() — RLH-18 adds it
     // The claim is TSPEC §8.5's and PLAN §9.3 item 1's, in their words: "wired,
     // NOT exempt" — asserted as the two derived fields, with `report` carrying
     // the derivation into the failure message.
     //
     // Not `exemption=none`. TSPEC §3.1 mandates the declaration
-    // `_recordHalt: recordHaltFn = defaultRecordHalt`, and §8.5 says of that very
-    // default: "`defaultRecordHalt` — a deliberate no-op — declares no `_agent`
-    // either, so it stays on the wired side". An identifier default that names a
-    // module function makes E-3 a CANDIDATE form by construction; what §8.5 asks
-    // is that it not RESOLVE, i.e. `exempt === false`. Demanding the rendered
-    // string be `exemption=none` would instead demand main() drop the default
-    // §3.1 prescribes — the test dictating the composition root, backwards.
-    expect(report(recordHalt)).toContain("wired=true");
-    expect({ name: recordHalt.name, exempt: recordHalt.exempt, why: report(recordHalt) }).toMatchObject({
+    // `_recordQueueRow: recordQueueRowFn = defaultRecordQueueRow`, and §8.5 says
+    // of that very default: "`defaultRecordQueueRow` — a deliberate no-op —
+    // declares no `_agent` either, so it stays on the wired side". An identifier
+    // default that names a module function makes E-3 a CANDIDATE form by
+    // construction; what §8.5 asks is that it not RESOLVE, i.e. `exempt ===
+    // false`. Demanding the rendered string be `exemption=none` would instead
+    // demand main() drop the default §3.1 prescribes — the test dictating the
+    // composition root, backwards.
+    expect(report(recordQueueRow)).toContain("wired=true");
+    expect({ name: recordQueueRow.name, exempt: recordQueueRow.exempt, why: report(recordQueueRow) }).toMatchObject({
       exempt: false,
     });
+  });
+
+  it("RLH-AT-64 vacuity guard: no seam named _recordHalt remains anywhere in the repo", () => {
+    // R1's negative assertion (PLAN §12, K-3): a rename that is not also
+    // followed through here would leave the test above silently vacuous
+    // (`if (!recordHalt) return;`) instead of red. Scanning the classified seam
+    // list — derived from main()'s own parameter list — closes the trap: the
+    // renamed seam must be present, and the retired name must not.
+    expect(classified.some((c) => c.name === "_recordQueueRow")).toBe(true);
+    expect(classified.some((c) => c.name === "_recordHalt")).toBe(false);
   });
 
   it("RLH-AT-64: the E-2 alias hop is one hop, through main()'s own destructuring pattern", () => {

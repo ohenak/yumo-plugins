@@ -34,7 +34,7 @@
  * | `fakeListFiles(spec)` | `_listFiles(dirPath)` | §3.2, §4.2 |
  * | `fakeFs(initialContents, opts)` | `_readFile` / `_hashFile` / `_writeFile` / `_appendFile` / `_checkFile` | §3.3 |
  * | `fakeGit(script)` | `_git(argv)` | §3.4, §6.5 |
- * | `recordingRecordHalt(result)` | `_recordHalt({ feature, status })` | §3.5 |
+ * | `recordingRecordQueueRow(result)` | `_recordQueueRow({ feature, status })` | §3.5 |
  *
  * Every double is a **callable with recording properties hung off it**, so a
  * test can pass it straight into `main()`'s injection list and afterwards assert
@@ -430,14 +430,14 @@ export function fakeGit(script) {
   return git;
 }
 
-// ─── recordingRecordHalt ──────────────────────────────────────────────────────
+// ─── recordingRecordQueueRow ────────────────────────────────────────────────────
 
 /**
- * Double for the `_recordHalt({ feature, status })` queue-row seam (TSPEC §3.5).
+ * Double for the `_recordQueueRow({ feature, status })` queue-row seam (TSPEC §3.5).
  *
  * The shipped default is a no-op reporting `{ queueRow: "none" }`, and so is
  * this double's default — a unit test has no queue row to write and must not
- * fail for it. `queueRow` is one of `"halted"` | `"halted (uncommitted)"` |
+ * fail for it. `queueRow` is one of `"recorded"` | `"recorded (uncommitted)"` |
  * `"none"` | `"error"`, with an optional `detail`; §6.5's "commit failure does
  * not downgrade the halt" case is scripted by returning
  * `{ queueRow: "error", detail }` and asserting the pipeline still halts for its
@@ -463,41 +463,41 @@ export function fakeGit(script) {
  * }}
  *
  * @example
- * const recordHalt = recordingRecordHalt();
- * await main({ reqPath, _recordHalt: recordHalt, ...rest });
- * expect(recordHalt.callCount).toBe(1);
- * expect(recordHalt.last).toEqual({ feature: "f", status: "halted" });
+ * const recordQueueRow = recordingRecordQueueRow();
+ * await main({ reqPath, _recordQueueRow: recordQueueRow, ...rest });
+ * expect(recordQueueRow.callCount).toBe(1);
+ * expect(recordQueueRow.last).toEqual({ feature: "f", status: "halted" });
  */
-export function recordingRecordHalt(result) {
-  const recordHalt = (arg) => {
+export function recordingRecordQueueRow(result) {
+  const recordQueueRow = (arg) => {
     const record = {
       feature: arg && arg.feature,
       status: arg && arg.status,
     };
     const value =
       typeof result === "function"
-        ? result(arg, recordHalt.calls.length)
+        ? result(arg, recordQueueRow.calls.length)
         : (result ?? { queueRow: "none" });
-    recordHalt.records.push(record);
-    recordHalt.calls.push({ arg, result: value });
+    recordQueueRow.records.push(record);
+    recordQueueRow.calls.push({ arg, result: value });
     return value;
   };
 
-  recordHalt.records = [];
-  recordHalt.calls = [];
-  Object.defineProperties(recordHalt, {
-    statuses: { get: () => recordHalt.records.map((r) => r.status) },
+  recordQueueRow.records = [];
+  recordQueueRow.calls = [];
+  Object.defineProperties(recordQueueRow, {
+    statuses: { get: () => recordQueueRow.records.map((r) => r.status) },
     last: {
       get: () =>
-        recordHalt.records.length
-          ? recordHalt.records[recordHalt.records.length - 1]
+        recordQueueRow.records.length
+          ? recordQueueRow.records[recordQueueRow.records.length - 1]
           : null,
     },
-    callCount: { get: () => recordHalt.calls.length },
+    callCount: { get: () => recordQueueRow.calls.length },
   });
-  recordHalt.reset = () => {
-    recordHalt.records.length = 0;
-    recordHalt.calls.length = 0;
+  recordQueueRow.reset = () => {
+    recordQueueRow.records.length = 0;
+    recordQueueRow.calls.length = 0;
   };
-  return recordHalt;
+  return recordQueueRow;
 }
