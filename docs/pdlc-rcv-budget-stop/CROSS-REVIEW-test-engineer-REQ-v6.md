@@ -40,7 +40,12 @@ split moved.
 
 ## Questions
 
-_(pending)_
+Q-04 and Q-05 are both closed — Q-04 answered at v5, Q-05 withdrawn above as belonging to
+`REQ-RCV-07`. One new question, and it is genuinely optional: no finding depends on it.
+
+| ID | Question |
+|----|---------|
+| Q-06 | AC-1.5(4) fixes the predicate's **meaning** (*"true exactly when every answering-line value is well-formed and consistent with the lines before it and with the highest round on the branch, **and** the counts satisfy `H − A ∈ {0, 1}`"*) while `REQ-RCV-07` AC-7.1 fixes its **procedure** (*"the predicate is exactly 'steps 1–3 all pass'"*). I checked the two against each other and they agree, clause for clause — AC-7.1 step 2 carries the strictly-greater and range checks the meaning calls *consistent with the lines before it and with the highest round*, step 3 carries the count invariant, and step 5's *greatest `WINDOW-START:` present, or 1* matches §4.1's durable-home row. What neither document asks for is a **conformance leg** pinning that agreement: a test that the shipped procedure decides exactly the stated meaning, so a later revision of AC-7.1 that drifts from AC-1.5(4)'s definition fails something. Both documents' O-10s test the procedure's own cases. Is the agreement meant to be a review-time obligation only, or should one of the two O-10s carry a leg over a shared table of regions labelled valid/invalid **by the meaning** and asserted against the procedure? Cheap either way, and it is the seam the split created, which is why I am asking rather than filing. |
 
 ## Positive Observations
 
