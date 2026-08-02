@@ -83,6 +83,34 @@ queue row.
 
 ## 5. Positive Observations
 
+- **The split is the right cut, and it is the first one in this family that separated *altitude*
+  rather than *topic*.** The v1.1 split reduced size and not altitude; v2.0's own §10 says so in the
+  postmortem's words and then acts on it. The test of the cut is stated and it holds: everything that
+  stayed — §1–§4.1, AC-1.1–AC-1.4, AC-1.5(1)–(3) and (5), O-5, O-9, O-11 — is exactly the material
+  that drew no blocking finding after round 2, and everything that generated the last three rounds of
+  findings went across. I checked the *What moved* table row by row against
+  `REQ-pdlc-rcv-reset-region.md` and every clause has a real home, not a forwarding address.
+- **Both of my v5 Highs were closed by promoting facts into the baseline instead of arguing them in
+  the REQ.** `M-8a`–`M-8j` are the best answer available to the failure mode that produced five
+  rounds: `M-8b` (*the two channels are disjoint; a criterion that says one replaces text on the other
+  names a substitution the module has no seam for*) is my v5 F-01 turned into a measured fact any
+  sibling can cite, and `M-8h` (*`No POSTMORTEM was written.` is not emitted on the class where the
+  write actually failed*) is a trap nobody had found yet, stated before it cost anyone a round. That
+  is the durable output of this Phase R.
+- **NB-4 is a rule the document actually obeys, and it is checkable in one grep.** Zero line
+  citations, ten `M-*` ids, all ten resolving to real baseline rows. A discipline stated in §7 and
+  verifiable mechanically is worth more than the same discipline stated in prose and enforced by
+  reviewer attention — which is what the last five rounds tried.
+- **The Process finding became a tool.** `check-req-size.sh`'s new 90% soft threshold, with a message
+  naming the correct remedy (*relocate to `docs/_constraints/` — do not fund the next revision by
+  compressing this document*) and a test pinning it, converts my v5 F-04 from advice into an
+  executing check that will fire on the next REQ before it reaches 3 bytes of headroom. Both halves of
+  the split now sit under it.
+- **The delegation is stated once and made mechanical.** §4's *"read *AC-1.5(4)'s ordered algorithm* as
+  *AC-7.1* wherever the catalogue says it"* is the right shape for a cross-document repoint: one
+  substitution rule, catalogue untouched, ownership unchanged, seventeen ids still closed. I checked
+  the catalogue rows it quotes and they say what it says they say.
+
 ## 6. Recommendation
 
 ## Verdict
