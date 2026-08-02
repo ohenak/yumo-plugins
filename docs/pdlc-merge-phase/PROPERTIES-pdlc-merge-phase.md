@@ -141,6 +141,49 @@ demanded.**
 
 ## 3. Self-modification guard properties
 
+**PROP-M-06 — Guard dominance. A changed-file list matching a guard path yields `refused` at row 4
+regardless of every other input, configuration included.**
+*(Security · **I** · `enum(2 × 3 × 5 × 4 × 3 = 360)` phase runs · A3 unit + A7 — `mergeGuard.test.js`, `mergePhase.test.js`)*
+- **Domain:** `passingGh` with `O5` overridden to a list containing one guard-matching path, crossed
+  with `mergeMode ∈ {gated, on}`, `mergeRequiresCi ∈ {true, false}` × `ci ∈ {passed, none, pending,
+  failed, unknown}`, `o3 ∈ {0 unresolved, 3 unresolved, unretrievable}`, `caps ∈ {rebase-only,
+  merge-only, none}`, and a `guardPaths` config value drawn from `{absent, [], ["!pdlc/workflows/"],
+  ["extra/"], 42, "not-an-array"}`.
+- **Oracle:** every case reports `mergeStatus: "refused"`, `row: 4`, **zero** commands matching
+  `/^gh pr merge/` in `fakeGhRun`'s record, and exactly one notice equal to
+  `MERGE ESCALATION: self-modification guard fired for {prUrl} — matched paths: {paths}` naming every
+  matched path in observed order.
+- **Scoping, stated so the property is true rather than nearly true:** dominance is over every guard
+  *below* it. The four conditions that resolve above it — `PHASE_MERGE_ENABLED false` (row 1),
+  `mergeMode: off` (row 2), no `prUrl` (row 6), unreadable `O1.state` (row 8) and `state: MERGED`
+  (row 3) — are excluded from the domain **and asserted separately as a five-case control block**
+  showing each one preempts the guard, so the exclusion is evidenced, not assumed.
+
+**PROP-M-07 — Additivity and irremovability. No configuration value removes a shipped default.**
+*(Security · **P** · `rand(500)` config values + `enum(12)` adversarial shapes · A3 — `mergeGuard.test.js`)*
+- **Domain:** `effectiveGuardPaths(v)` for `v` drawn from a seeded generator over arrays of random
+  strings (including `""`, whitespace, `"!"`-prefixed, duplicate-of-a-default, with and without
+  trailing slash) plus the enumerated non-array shapes `undefined, null, 42, "str", {}, [], [null],
+  [1,2], [{}], [" "], ["pdlc/workflows"], [".claude/workflows/"]`.
+- **Oracle:** the result **contains all four members of `MERGE_GUARD_DEFAULTS`** (positive presence,
+  by exact string), every member ends in `/`, no member is a duplicate, and `MERGE_GUARD_DEFAULTS`
+  itself is deep-equal to its captured snapshot afterwards. A configuration is additive by
+  construction: `result ⊇ defaults` for every input, with no filter, subtraction or reorder.
+
+**PROP-M-08 — Prefix exactness. `guardVerdict` fires exactly when some changed path has a guard path
+as a case-sensitive, position-0, `/`-terminated prefix — and never otherwise.**
+*(Data Integrity · **P** · `rand(1 000)` paths + `enum(7)` FSPEC §4.2 rows · A3 — `mergeGuard.test.js`)*
+- **Domain:** a seeded path generator that, for each guard path `g`, emits the six mutation classes
+  FSPEC §4.2 names — `g + rand`, `g` with a segment suffix (`pdlc/workflows-notes/x`), `g` prefixed
+  (`docs/` + g), `g` case-flipped, `g` with the trailing slash removed and a non-`/` char appended,
+  and an unrelated path — plus the five near-miss literals of §4.2 enumerated exactly.
+- **Oracle:** `verdict.fired` equals an **independently written reference predicate**
+  (`files.some(p => guards.some(g => p.slice(0, g.length) === g))`) for every case, and `verdict.matched`
+  equals the reference's filtered list in observed order. Writing the oracle twice, in two shapes, is
+  what makes a `startsWith` → `includes` or case-folding mutant red rather than merely unasserted;
+  the generator guarantees each mutation class has at least one *firing* and one *non-firing* case,
+  asserted by count so no branch is covered only negatively.
+
 ## 4. Configuration and method-policy properties
 
 ## 5. Queue write-back properties
