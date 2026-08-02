@@ -58,6 +58,8 @@ const EXPOSED = [
   "rtProbeReviewState",
   "rtProbePostmortem",
   "rtDevInjections",
+  // The `gh` transport (TSPEC §11.3).
+  "rtGhRun",
 ];
 
 /**
