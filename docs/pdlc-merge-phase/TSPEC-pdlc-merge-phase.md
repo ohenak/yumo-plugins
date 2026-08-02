@@ -1075,6 +1075,77 @@ anything: the sole mutating call is E19/E20's, reached only after every precondi
 
 ## 13. Test strategy
 
+Jest, run with `cd pdlc/workflows && npm test` (never bare `npx jest`). **No network, no `gh`, no
+`git`, no filesystem, no clock in any test**: every interaction reaches production code through
+`execFn`, `_git`, `_readFile`/`_writeFile`, `_recordQueueRow`, `_sleep` or `_now`, all injectable.
+
+### 13.1 Test doubles
+
+| Double | Shape | Replaces |
+|---|---|---|
+| `fakeExec(map)` | `(cmd) => map[matchKey(cmd)]`; throws for a key marked `fail` | `child_process.execSync` at every observation |
+| `fakeObservations(overrides)` | `{...passingSix, ...overrides}` — a frozen "everything passes" baseline with per-surface override | `_mergeObservations` |
+| `fakeGit(script)` | `(argv) => script[argv[0]] ?? {ok:true,stdout:"",stderr:""}`, recording every `argv` in order | `_git` |
+| `fakeQueueFs()` | in-memory `{path: contents}` for `_readFile`/`_writeFile` | the filesystem |
+| `recordingRecordQueueRow()` | captures `{feature,status,evidence}` calls, returns a scripted disposition | `_recordQueueRow` |
+| `_sleep: async () => {}`, `_now: () => fixed` | — | the clock |
+
+`fakeObservations`' passing baseline is the single most load-bearing fixture: every §11 row is that
+baseline plus **one** override, which is what makes the row table a parameterised suite rather than
+23 hand-built fixtures, and what makes "this row is caused by this input" a property of the test data.
+
+### 13.2 New test files
+
+| File | Covers |
+|---|---|
+| `__tests__/mergeDecision.test.js` | `decideMerge` — **FSPEC §11 rows 1–18 + 11a as one `it.each` over the row table**, asserting `{row, mergeStatus, queueWritten, escalated, reason}`; the two §2.3 tie-break pairs; short-circuit assertions (an override on a surface the run must not reach is never demanded); the demand loop's termination bound; §5.2's never-throws guarantee via a double that throws |
+| `__tests__/mergeObservations.test.js` | `classify*` purely over raw strings — §3.2's whole table, one case per recognised value and per failure mode; `parsePrRef`; §3.3's observation counts for `mergeableRetries` ∈ {0,1,3} including the `after 1 observations` wording; `O3` pagination (1 page, 3 pages, over-bound); `O5`'s four completeness verdicts and the rename/deletion paths; `O6`'s zero-exit-but-not-merged case |
+| `__tests__/mergeGuard.test.js` | §4.2's five near-miss rows and two positives; `effectiveGuardPaths` additivity (empty, absent, non-list, non-string members, a removal-shaped entry); the trailing-slash normalisation; **AT-M3 both arms** (§6.4); the no-override source scan |
+| `__tests__/mergeQueueWriteback.test.js` | `ensureEvidenceColumn`, `mergeEvidenceCell`, `evidenceCellFor`; **AT-M1, AT-M2, AT-M2a**; §8.4's byte-identity differential (`updateQueueStatus` with no evidence vs a frozen golden); the §2.5 non-overwrite statuses; the disposition catalogue's four members |
+| `__tests__/mergePhase.test.js` | `phaseMerge` and its wiring through `main()`: M1–M4 ordering asserted on `fakeGit`'s recorded argv sequence; rows 19–22 as composable annotations; **AT-M6**; report fields on success, on every non-merge, and on the halt path (row 23); the phase-row glyphs; `mergeStatus: merged` surviving E21–E29 |
+| `__tests__/mergeQueueDriver.test.js` | `runPicked`'s `done` transition and message suppression (**AT-M4**); the `undefined mergeStatus` fallback; `buildQueueReport` pass-through of `mergeStatus`/`mergeSha`/escalations; **AT-M5** end-to-end selection, with the drift gate satisfied by `distribution.checkEnabled: false` so the assertion is about this feature and not about drift |
+
+### 13.3 The §11 row table → parameterised test mapping
+
+One `it.each` row per FSPEC §11 row, keyed by row number, each asserting the FSPEC table's own four
+columns plus the reason line's subject. Fixture constraints stated in the file header so they cannot
+be edited away:
+
+- rows 1–2 assert that **no observation function was called at all** (the strongest form of "nothing
+  later runs"), and row 1 additionally that `_readFile` was never called (§3.3);
+- row 3 (already merged) asserts zero merge attempts, no guard evaluation, `mergeMethod: "unknown"`,
+  and — per §5.5 — that `O4` **was** observed and no other precondition was;
+- **row 11a's fixture keeps `O5` step 1 complete** (`files.length < 100`, parseable) so an unparseable
+  `O1.number` cannot instead resolve at row 5 via the paginated fallback (TE-v3 N-01); the row-5
+  fixture forces the fallback deliberately. Both constraints are asserted, not just documented;
+- rows 19–22 are applied as annotation overlays **on top of** row 18's and row 3's fixtures, and one
+  case applies all four at once to assert the subset property;
+- row 23 is driven through `main()` with a halt injected before Phase PUB.
+
+### 13.4 Superseded and updated existing tests
+
+| Test | Change |
+|---|---|
+| `haltAndQueue.test.js:809` **`RLH-AT-32-orch`** | **Re-expressed, not removed** (FSPEC §7.5, F-13). Its assertion becomes "a successful direct run **that did not merge** records no status" — same three `not.toContain` assertions, plus `mergeStatus` pinned to a non-`merged` value in the fixture so the premise is explicit. A **sibling case** `RLH-AT-32-orch-merged` asserts that a successful direct run reporting `mergeStatus: "merged"` records `done` and reports `queueRow: "recorded"`. Deleting the original would lose an invariant that still holds on the majority path |
+| `haltAndQueue.test.js:831`, `:837`, `:857`, `:860` | `"halted (uncommitted)"` → `"recorded (uncommitted)"`, `"halted"` → `"recorded"` (§8.2) |
+| `orchestrateQueue.test.js` | `rewriteStatus`/`commitQueueRow` disposition assertions updated to the new catalogue; a new case asserts the 7-argument call with `evidence` and the 6-argument call without |
+| `runtimeBundle.test.js:1038` | `_recordHalt` → `_recordQueueRow`, **plus** a new assertion that no seam named `_recordHalt` remains — closing the `if (!recordHalt) return;` vacuity trap (§8.2) |
+| `runtimeBundle.test.js` RLH-AT-64 | passes unchanged for the two new seams by construction (§10.4); no edit expected, and if one is needed the classification in §10.4 is wrong and must be fixed rather than the test |
+| `pipelineWiring.test.js`, `reportTemplates.test.js` | extended for the three new report fields being present on **every** report |
+
+### 13.5 Property-based and mutation obligations
+
+- **Property (guard).** For any file list and any configured path set, `guardVerdict` fires whenever
+  some path has a shipped default as a prefix — the additivity property, checked over generated
+  inputs rather than the five table rows alone.
+- **Property (write-back idempotence).** Applying `updateQueueStatus(…, evidence)` twice to a
+  canonical queue is a fixed point.
+- **Property (no-evidence identity).** For every status in `QUEUE_STATUSES`, the no-evidence call is
+  byte-identical to the shipped implementation's output on the same input.
+- **Mutation targets** named for the DoD phase: the guard's `startsWith`, the §5.3 row order, the CI
+  rule's single relaxed cell, and `evidenceCellFor`'s truncation length. Each has at least one test
+  that a plausible mutant reds (§6.4 does this explicitly for the guard).
+
 ## 14. Requirements traceability
 
 ## 15. Obligations discharged, risks, and the DECISIONS verdict
