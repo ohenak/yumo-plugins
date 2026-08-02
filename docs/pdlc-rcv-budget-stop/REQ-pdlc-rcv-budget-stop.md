@@ -114,15 +114,10 @@ This REQ **owns** six catalogue ids and **reads** two:
 
 **FSPEC may not add an eighteenth catalogue id**, here or anywhere in the family.
 
-**One delegation, stated once.** Catalogue §2's S-12, S-13, S-14 and S-16 rows describe their receive
-side as *"AC-1.5(4)'s ordered algorithm"*. That algorithm is **`REQ-RCV-07` AC-7.1**, which this
-REQ's AC-1.5(4) names as its predicate's decision procedure (X-06). **Ownership of the ids is
-unchanged and the catalogue is untouched**: read **every catalogue reference to AC-1.5(4)'s
-algorithm, its numbered steps, or the refusal renders it produces** as `REQ-RCV-07` AC-7.1 — renders
-as that REQ's §6 and catalogue §4. The rule is over the references, not one phrase, because the four
-rows word them differently, and it reaches catalogue **§3**'s row schema on the same terms: its *"AC-1.5(4)'s step-4 path"* is
-AC-7.1 step 4's, and its *"fixed by `pdlc-rcv-budget-stop` §6"* is `REQ-RCV-07` §6's, since this REQ
-mints no operator string (§6). The catalogue may say so directly once `REQ-RCV-07` ships.
+**One delegation, stated once — and stated in `docs/_constraints/pdlc-rcv-split.md` §6**, which both
+halves cite: every catalogue reference to *AC-1.5(4)'s ordered algorithm*, its numbered steps or the
+refusal renders it produces reads as **`REQ-RCV-07` AC-7.1** (X-06). Ownership of the ids is
+unchanged, the catalogue is untouched, and this REQ mints no operator string (§6).
 
 ### 4.1 Durability: what survives an invocation boundary
 

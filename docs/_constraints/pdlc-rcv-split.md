@@ -74,4 +74,20 @@ must name the owning REQ.
 | Edge | `REQ-RCV-01` end | `REQ-RCV-07` end | Obligation |
 |---|---|---|---|
 | The *region validates* decision procedure, and what happens before it ships | **X-06**, **R-14** | **X-07**, **R-16** | Revise all four **in the same commit**, in the same words. Both ends must agree on whether the conjunct is wired in the interim, on the queue distance between the two rows, and on what an interim procedure would cost. |
-| The catalogue delegation of AC-1.5(4)'s algorithm, its steps and its renders | §4's delegation rule | AC-7.1, §6 | The catalogue itself is edited **once**, by `REQ-RCV-07`, when the clauses become true of it. |
+| The catalogue delegation of AC-1.5(4)'s algorithm, its steps and its renders | §4's pointer to §6 below | AC-7.1, §6 | The catalogue itself is edited **once**, by `REQ-RCV-07`, when the clauses become true of it. |
+
+## 6. The catalogue delegation, stated once
+
+Relocated from `REQ-RCV-01` §4 (2026-08-01, round 8) so both halves cite one copy; no clause changed
+meaning in the move.
+
+`pdlc-rcv-catalogue.md` §2's **S-12**, **S-13**, **S-14** and **S-16** rows describe their receive
+side as *"AC-1.5(4)'s ordered algorithm"*. That algorithm is **`REQ-RCV-07` AC-7.1**, which
+`REQ-RCV-01` AC-1.5(4) names as its predicate's decision procedure (`REQ-RCV-01` X-06 / `REQ-RCV-07`
+X-07). **Ownership of the ids is unchanged and the catalogue is untouched**: read **every catalogue
+reference to AC-1.5(4)'s algorithm, its numbered steps, or the refusal renders it produces** as
+`REQ-RCV-07` AC-7.1 — renders as that REQ's §6 and catalogue §4. The rule is over the references, not
+one phrase, because the four rows word them differently, and it reaches catalogue **§3**'s row schema
+on the same terms: its *"AC-1.5(4)'s step-4 path"* is AC-7.1 step 4's, and its *"fixed by
+`pdlc-rcv-budget-stop` §6"* is `REQ-RCV-07` §6's, since `REQ-RCV-01` mints no operator string (its
+§6). The catalogue may say so directly once `REQ-RCV-07` ships.
