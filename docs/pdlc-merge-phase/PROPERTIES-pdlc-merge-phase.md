@@ -26,8 +26,8 @@ in **§7's matrix**, stated once rather than twice.
 ### 1.2 No property-testing dependency — bounded enumeration and a seeded RNG
 
 `pdlc/workflows/package.json` has **exactly one devDependency (jest)** and TSPEC §1 refuses to widen it: **`fast-check` is not added.** Every
-property is plain jest — either **exhaustive bounded enumeration** (each `enum(n)` row states its *n* and the suite asserts its own case count, so
-a dropped axis reds) or a **seeded loop** for the two string-shaped domains (path strings, queue markdown). The PRNG and the seed override are
+property is plain jest — either **exhaustive bounded enumeration** (each `enum(n)` row states its *n* and the suite asserts its own case count,
+so a dropped axis reds) or a **seeded loop** for the two string-shaped domains (path strings, queue markdown). The PRNG and the seed override are
 **imported, never re-declared** (SE F-07): `helpers/driftGenerators.js` exports `seeded(seed)` (xorshift32: `int`/`pick`/`shuffle`/`bytes`) and
 `resolveSeed(literal)`, and its header forbids re-declaring either. Merge-specific generators live in **`__tests__/helpers/mergeDoubles.js`**,
 their self-test at **`__tests__/mergeDoubles.test.js`** — not beside them, because jest's `testPathIgnorePatterns` skips `/__tests__/helpers/`.
@@ -39,8 +39,7 @@ Four rules every property inherits:
    messages print the seed **and the case value**, never only an index, so reproduction replays a value.
 2. **No clock, filesystem, network, `gh` or `git`** — `_sleep`/`_now`/`_ghRun`/`_git`/`_readFile`/`_writeFile`/`_recordQueueRow` are injected
    (TSPEC §13).
-3. **Frozen inputs stay frozen** — any property passing `MERGE_DEFAULTS`, `MERGE_GUARD_DEFAULTS` or `MERGE_MODES` asserts it deep-equals a
-   captured snapshot afterwards.
+3. **Frozen inputs stay frozen** — a property passing `MERGE_DEFAULTS`, `MERGE_GUARD_DEFAULTS` or `MERGE_MODES` asserts it deep-equals a snapshot.
 4. **Positive-presence conjuncts are mandatory** — no property asserts only an absence; every "never merged" / "never mutates" / "no escalation"
    row pins the exact terminal value and the named row id, and every preservation claim asserts the fixture *contained* the content.
 
@@ -84,14 +83,14 @@ configuration.**
   **strictly below `MERGE_MAX_DECISION_STEPS`**. *Exactly one* is positive, not disjointness-by-absence: the resolving guard index is recorded
   and the `(row, mergeStatus)` pair compared to §5.3's table, so two guards claiming one row reds. The bound is asserted as the **relation**
   `MERGE_MAX_DECISION_STEPS > 1 + MERGE_MAX_RETRIES + 4 + 3 + 1` recomputed from the constants, never the literal `24` (TE N-04).
-- **AC-1.2a conjunct (PM F-07), free on the retry sub-path:** for every `mergeableRetries = R ∈ 0…10` an exhausting run demands `O1` exactly
-  `1 + R` times and its reason line interpolates that same count (`after 1 observations` at `R = 0` included) — eleven enumerated values where
-  TSPEC §13.2 samples `{0, 1, 3}`, with counter and sentence read by one oracle so they cannot drift.
+- **AC-1.2a conjunct (PM F-07), free on the retry sub-path:** for every `mergeableRetries = R ∈ 0…10` an exhausting run demands `O1` exactly `1 +
+  R` times and its reason line interpolates that same count (`after 1 observations` at `R = 0` included) — eleven enumerated values where TSPEC
+  §13.2 samples `{0, 1, 3}`, with counter and sentence read by one oracle so they cannot drift.
 
 **PROP-M-02 — Purity. `decideMerge` is a deterministic, non-mutating function of `(record, config)`.**
 - **Domain / oracle:** each case evaluated twice against a structural clone captured first: the two results deep-equal, `record`/`config`
-  deep-equal their clones, and `MERGE_DEFAULTS` / `MERGE_MODES` / `MERGE_GUARD_DEFAULTS` unchanged. Positive conjunct: the clone is first
-  asserted non-empty and equal to a fixture-known value, so no `undefined == undefined` passes vacuously.
+  deep-equal their clones, the three frozen constants unchanged. Positive conjunct: the clone is first asserted non-empty and equal to a
+  fixture-known value, so no `undefined == undefined` passes vacuously.
 
 **PROP-M-03 — Fail-closed monotonicity. Degrading any single precondition observation never moves the outcome toward `merged`.**
 - **Domain / oracle:** the **120** `D_core` cases resolving at row 18 (20 candidate-block leaves × 3 CI-passing combos × 2 modes), each paired
@@ -103,10 +102,9 @@ configuration.**
   precondition on row 5 reds this case; making it one everywhere reds the main arm.
 
 **PROP-M-04 — No-bypass equivalence. `mergeMode: "gated"` and `"on"` are the same function.**
-- **Domain / oracle:** each of the **209** subtree records decided under both modes; the two resolutions are **deep-equal** — row, status,
-  reason, escalations, sha, method. Positive conjunct: the domain is asserted by count to contain at least one `merged` and one `refused`
-  outcome, so the equivalence is not proven where both arms are trivially `skipped`. Any branch on `"on"` anywhere in the core reds this —
-  AC-1.5's "no mode bypasses the preconditions", made falsifiable.
+- **Domain / oracle:** each of the **209** subtree records decided under both modes; the two resolutions are **deep-equal** — row, status, reason,
+  escalations, sha, method. Positive conjunct: the domain is asserted by count to contain ≥ 1 `merged` and ≥ 1 `refused` outcome, so equivalence
+  is not proven where both arms are trivially `skipped`. Any branch on `"on"` in the core reds this — AC-1.5 made falsifiable.
 
 **PROP-M-05 — Short-circuit minimality. An observation the resolution does not depend on is never demanded.**
 - **Domain / oracle:** PROP-M-01's 419 runs with the supplier recording demands in order (no extra evaluations). Each demand sequence is a
@@ -118,8 +116,8 @@ configuration.**
   cases, each on a fixture that reaches guard 11 — `O5` clear (so guard 7 cannot preempt it, SE F-02) and `state: OPEN`.
 - **Oracle:** each case's `(mergeStatus, row, escalation?)` equals a column **transcribed from FSPEC §5's table** — `passed` ⇒ satisfied under
   both settings; `(none, true)` ⇒ `refused` row 9 **with** the CI escalation; `(none, false)` ⇒ satisfied, no escalation; `pending`/`failed` ⇒
-  `refused` row 10 and `unknown` ⇒ row 11, **identically under both settings**. The mutant-killer is the differential: for every `ci ≠ "none"` the
-  two settings are **deep-equal**, so a rule widened to `ci === "none" || ci === "pending"` reds at `(pending, false)` (PM F-01).
+  `refused` row 10 and `unknown` ⇒ row 11, **identically under both settings**. The mutant-killer is the differential: for every `ci ≠ "none"`
+  the two settings are **deep-equal**, so a rule widened to `ci === "none" || ci === "pending"` reds at `(pending, false)` (PM F-01).
 
 ## 3. Self-modification guard properties
 
@@ -130,8 +128,8 @@ included.**
   none}` × `guardPaths ∈ {absent, [], ["!pdlc/workflows/"], ["extra/"], 42, "not-an-array"}` = **1 080** phase runs, which is the number the
   suite asserts (SE F-05; v1.0 said 360 and was simply wrong).
 - **Oracle:** every case reports `mergeStatus: "refused"`, `row: 4`, **zero** `/^gh pr merge/` commands, and **exactly one line beginning `MERGE
-  ESCALATION: `** — `MERGE ESCALATION: self-modification guard fired for {prUrl} — matched paths: {paths}`, every matched path in observed order —
-  **plus** FSPEC §9.4's merge-deferred note, which every `refused` run emits, and nothing else (counting escalations rather than notices is PM
+  ESCALATION: `** — `MERGE ESCALATION: self-modification guard fired for {prUrl} — matched paths: {paths}`, every matched path in observed order
+  — **plus** FSPEC §9.4's merge-deferred note, which every `refused` run emits, and nothing else (counting escalations rather than notices is PM
   F-04's fix; asserting the §9.4 note makes its presence here a fact rather than an accident).
 - **Scoped so the property is true rather than nearly true:** dominance is over every guard *below* it; the five conditions resolving above —
   rows 1, 2, 6, 8, 3 — are excluded **and asserted as a five-case control block** showing each preempts the guard.
@@ -169,8 +167,8 @@ and never throws.**
 - **Domain:** `mergeCandidates(caps, config)` over all 8 capability triples × `allowSquashMerge ∈ {absent, false, null, "true", 1}` (every
   non-`true` shape the reader can emit); and every §11 row driven at phase level with the shipped defaults.
 - **Oracle:** `"squash"` is **absent from the returned array**, not merely skipped at attempt time; the array is `["rebase","merge"]` filtered by
-  capability **in that order** (AC-2.1/AC-2.2); `fakeGhRun` records **zero** `--squash` occurrences. Positive control: the one
-  `allowSquashMerge: true` × squash-allowed case yields `"squash"` last and reports `mergeMethod: "squash"`, so dropping squash entirely reds too.
+  capability **in that order** (AC-2.1/AC-2.2); `fakeGhRun` records **zero** `--squash` occurrences. Positive control: the one `allowSquashMerge:
+  true` × squash-allowed case yields `"squash"` last and reports `mergeMethod: "squash"`, so dropping squash entirely reds too.
 
 ## 5. Queue write-back properties
 
@@ -178,45 +176,44 @@ and never throws.**
 - **Domain:** the six queue shapes F1 captures (5-column canonical, already-migrated, padded cells, one data row, feature absent, no table at
   all) × every `QUEUE_STATUSES` member.
 - **Oracle:** a **three-way** equality — the 4-parameter `null` call, the 3-parameter call, and the **committed golden captured from
-  `updateQueueStatus` at HEAD before the change** (PLAN F1) — byte-identical including `matched` and `written`. Per TE F-11 the golden is the only
-  non-circular arm, and the one that must be able to fail; each is asserted to *contain* the target row and to *differ* from the other statuses'
-  goldens, so goldens captured empty cannot pass.
+  `updateQueueStatus` at HEAD before the change** (PLAN F1) — byte-identical including `matched` and `written`. Per TE F-11 the golden is the
+  only non-circular arm, and the one that must be able to fail; each is asserted to *contain* the target row and to *differ* from the other
+  statuses' goldens, so goldens captured empty cannot pass.
 
 **PROP-M-13 — Write-back idempotence. Applying the `done` write twice equals applying it once, byte for byte, and never downgrades evidence.**
 - **Domain:** each canonical queue × evidence ∈ `{"abc1234 #42", "merged #42", "abc1234 #7"}`, applied twice; plus `mergeEvidenceCell(prev,
   next)` over 200 seeded pairs from `{"", sha-form, merged-form, arbitrary string}`.
 - **Oracle:** `md2 === md1` exactly (a fixed point); `ensureEvidenceColumn` reports `migrated: false` on the second pass; the Status cell holds
-  the single token `done`, undecorated, on both passes. Cell helper: when `prev` is a non-empty string and `next` matches `/^merged #/` the
-  result **is `prev`**, else **is `next`** — an equality against an independent reference, so no-downgrade cannot become never-update.
+  the undecorated token `done` on both. Cell helper: `prev` non-empty and `next` matching `/^merged #/` ⇒ **`prev`**, else **`next`** — an
+  equality against an independent reference, so no-downgrade cannot become never-update.
 
 **PROP-M-14 — Structural containment. Only the target row's Status and Evidence cells ever change value; every other cell is preserved.**
 - **Domain:** seeded queues of 1–8 data rows (generated feature names, statuses from `QUEUE_STATUSES`, mixed `Depends-On` cells, interleaved
   prose and a trailing history table), each row in turn the write target.
 - **Oracle:** every **non-target** data row's first five cells are string-equal to their pre-write values and its sixth is `""`; the header gains
   exactly the cell `Evidence`; the separator gains one dash cell; **every row has the same cell count**; every non-table line is byte-identical.
-  Positive conjunct: the target Status changed *from* its known prior value *to* `done` and its Evidence cell holds the expected string, so
-  "changed nothing at all" fails.
+  Positive conjunct: the target Status changed *from* its prior value *to* `done` with the expected Evidence cell, so "changed nothing" fails.
 
 **PROP-M-15 — Round-trip. A written `done` row re-parses as `done`, and its dependents unblock.**
 - **Domain:** each written queue from PROP-M-14 fed back through the *shipped, unmodified* `parseQueue` / `selectNextPending` /
   `precheckDependencies`, over three graphs: sole-dependency dependent; two-dependency dependent with the other still `pending`; no dependent.
-- **Oracle:** `parseQueue` resolves the same five columns as before migration (the sixth ignored by `colIndex`, asserted by comparing parsed row
-  objects field by field); the target row's `status` is **exactly** `done`; graph 1's dependent is **selected**, graph 2's is **not** (the reason
-  naming the pending dependency), graph 3 selects nothing — both halves of AC-6.3, so the gate is proven to be what held the dependent shut.
+- **Oracle:** `parseQueue` resolves the same five columns as before migration (the sixth ignored by `colIndex`, asserted by comparing parsed rows
+  field by field); the target `status` is **exactly** `done`; graph 1's dependent is **selected**, graph 2's is **not** (the reason naming the
+  pending dependency), graph 3 selects nothing — both halves of AC-6.3, so the gate is proven to be what held the dependent shut.
 
 ## 6. Phase-level integration properties
 
 **PROP-M-16 — `merged` is never downgraded. No post-merge failure, in any combination, changes `mergeStatus`.**
-- **Domain / oracle:** the power set of §11's four composable annotations (M2 deletion failure, M3 tree failure, M4 `error`, M4 `recorded
-  (uncommitted)`) over rows 18 and 3 — 32 runs — **plus two §2.5 non-overwrite overlays** (each row against a queue row reading `blocked`), which
-  are row 18's stated exception and the only runs producing the non-overwrite note (SE F-04): **34**. All 34 report `mergeStatus: "merged"` with
-  the SHA present, `outcome: "success"`, and exactly the lines the applied subset predicts in §9.3's order; the overlays additionally assert the
-  queue file byte-unchanged with a note naming the status found. Empty subset ⇒ **no** `MERGE ESCALATION: ` line; all four ⇒ AT-M6, in order.
+- **Domain / oracle:** the power set of §11's four annotations (M2 deletion failure, M3 tree failure, M4 `error`, M4 `recorded (uncommitted)`)
+  over rows 18 and 3 — 32 runs — **plus two §2.5 non-overwrite overlays** (each row against a queue row reading `blocked`), row 18's stated
+  exception and the only runs producing that note (SE F-04): **34**. All 34 report `merged` with the SHA present, `outcome: "success"`, and
+  exactly the lines the subset predicts in §9.3's order; the overlays also assert the queue byte-unchanged with a note naming the status found.
+  Empty subset ⇒ **no** `MERGE ESCALATION: ` line; all four ⇒ AT-M6, in order.
 
 **PROP-M-17 — Report totality. Every pipeline path reports a `mergeStatus` from the closed set, and every non-`merged` value carries a one-line
 reason.**
-- **Domain:** all 25 §11 rows driven through `phaseMerge` into `buildFinalReport`, plus three runs halted before Phase MERGE (at R, I, DOD) and
-  one with `PHASE_MERGE_ENABLED: false`.
+- **Domain:** all 25 §11 rows through `phaseMerge` into `buildFinalReport`, plus three halted before Phase MERGE (R, I, DOD) and one with
+  `PHASE_MERGE_ENABLED: false`.
 - **Oracle:** every report — success *and* halt path — carries `mergeStatus`, `mergeSha`, `mergeMethod` by `Object.hasOwn` (so `null` counts as
   present); `mergeStatus ∈ MERGE_STATUSES`; `deferred`/`refused` carry a non-empty one-line `reason` naming AC-6.1a's condition **and** the §9.4
   note, `skipped`/`merged` carry no such note; `mergeSha` is non-empty **iff** `merged` with an observed oid; `mergeMethod ∈ {rebase, merge,
@@ -280,29 +277,27 @@ Classification, placement and traceability, stated once. **Kind**: `P` pure, `I`
 | PROP-M-19 | Observability | I | `enum(65)` | A7 → `mergePhase.test.js` | AC-6.2a; TSPEC §10.2 |
 | PROP-M-20 | Error Handling | I | `enum(≈56)` | A7 → `mergePhase.test.js` | AC-1.3, NFR-2; TSPEC §5.2, §12 E21 |
 
-**Requirements without a property, and why (PM F-03, PM F-06).** AC-2.3/AC-2.5b are *counting* behaviours whose whole content is an exact number
-and an exact reason string, which TSPEC §13.2's cases pin better than a quantifier would (AC-1.2a is no longer here — PROP-M-01 now sweeps
-`0…10`). AC-5.4/AC-5.6 are single-branch, covered by AT-M4 and E17. **AC-4.0** — CI read at merge time, never inherited from Phase PUB — is
-carried *structurally* by **PROP-M-02**: `decideMerge` is a function of `(record, config)` alone and `record.ci` can only come from `O2`, so no
-report field can reach the decision. **AC-1.1** (placement after Phase PUB) is TSPEC §10.4's call site, asserted by `pipelineWiring`; **AC-1.2**
-is the *union* of guards PROP-M-01/-03/-21 already quantify, with no separate content; **AC-2.5** (a forbidden method is skipped, not attempted)
-is inside PROP-M-11's candidate-chain oracle, since the chain is built from `caps` before any attempt.
+**Requirements without a property, and why (PM F-03, PM F-06).** AC-2.3/AC-2.5b are *counting* behaviours whose content is an exact number and an
+exact reason string, which TSPEC §13.2's cases pin better than a quantifier (AC-1.2a has left this list — PROP-M-01 now sweeps `0…10`);
+AC-5.4/AC-5.6 are single-branch, covered by AT-M4 and E17. **AC-4.0** — CI read at merge time, never inherited from Phase PUB — is carried
+*structurally* by **PROP-M-02**: `decideMerge` is a function of `(record, config)` alone and `record.ci` can only come from `O2`. **AC-1.1** is
+TSPEC §10.4's call site, asserted by `pipelineWiring`; **AC-1.2** is the *union* of guards PROP-M-01/-03/-21 quantify; **AC-2.5** is inside
+PROP-M-11's candidate-chain oracle, the chain being built from `caps` before any attempt.
 
 ## 8. Gaps, residuals, and what this document does not prove
 
 1. **The `merged` path is never observed live in this repo** (BL-04, PLAN K-5): every PR this queue raises touches a guard path, so PROP-M-06 is
-   the *shipped* behaviour here and the merged arms of PROP-M-11/-16/-18 are evidenced through doubles — "never merged in `yumo-plugins`" is not
-   "never worked".
+   the *shipped* behaviour here and the merged arms of M-11/-16/-18 rest on doubles — "never merged here" is not "never worked".
 2. **Transport fidelity is out of reach.** Observations arrive through an agent-mediated `_ghRun`; a transport that mangles a *value* inside its
-   recognised set is undetectable here (TSPEC §15.3). These properties quantify over what the classifier receives, not over what `gh` sent.
-3. **`git rebase --empty=drop` (git ≥ 2.26) is a measured platform fact, not a property** — DC-02 routes it to PLAN K-1.
-4. **Negative properties, named as a set:** PROP-M-03, PROP-M-08's non-firing arms, PROP-M-11, PROP-M-18, PROP-M-21's equal-under-both-settings
-   arm and PROP-M-19's closure. Each carries a positive control in the same suite.
-5. **Mutation targets these properties must kill** (TSPEC §13.5): the guard's `startsWith` (M-08), §5.3's row order and ids (M-01/-03), **the CI
-   rule's single relaxed cell (M-21, *not* M-03 — v1.0 named a property that could not kill it)**, `evidenceCellFor`'s truncation (M-13/-14), the
+   recognised set is undetectable here (TSPEC §15.3) — these properties quantify over what the classifier receives, not over what `gh` sent. For
+   the same reason `git rebase --empty=drop` (git ≥ 2.26) stays a **measured** platform fact, DC-02-routed to PLAN K-1, not a property.
+3. **Negative properties, as a set:** M-03, M-08's non-firing arms, M-11, M-18, M-21's equal-under-both-settings arm, M-19's closure — each with
+   a positive control in the same suite.
+4. **Mutation targets these properties must kill** (TSPEC §13.5): the guard's `startsWith` (M-08), §5.3's row order and ids (M-01/-03), **the CI
+   rule's relaxed cell (M-21, *not* M-03 — v1.0 named a property that could not kill it)**, `evidenceCellFor`'s truncation (M-13/-14), the
    `recorded`-only gate on the §8.2 notice (M-16). A survivor is a defect in the property.
-6. **Routed downstream:** task **A7** reconciles TSPEC §7.1's `AHEAD_OF_REMOTE_NOTE` with §10.2's `MERGE_NOTES` — one symbol, which PROP-M-19's
-   closure needs. F1's generators and the `__tests__/mergeDoubles.test.js` self-test path are already in PLAN v1.2, so nothing is open there.
+5. **Routed downstream:** **A7** reconciles TSPEC §7.1's `AHEAD_OF_REMOTE_NOTE` with §10.2's `MERGE_NOTES` — one symbol, which M-19's closure
+   needs. F1's generators and the `__tests__/mergeDoubles.test.js` path are already in PLAN v1.2, so nothing is open there.
 
 ## 9. Round-1 cross-review dispositions
 
