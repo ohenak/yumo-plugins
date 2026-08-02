@@ -157,3 +157,31 @@ be introduced where some enum member is true of it** — an incomplete implement
 reason the vocabulary cannot express is not shippable behind that vocabulary.
 
 ## Verdict
+
+All four v6 findings are closed and my v6 Q-01 is answered in the cell I asked for it in: the
+constant *invalid* is gone, X-06 now specifies an **injected, controllable seam** with a stated
+production default, R-14 carries the same words, and O-10 requires each granting leg to name the seam
+value it drives — which closes the oracle hole that let a bricking stub pass. The sequencing claim now
+matches `QUEUE.md` (`Order 18`, net pickup 10 → 12 → 18), X-06's direction label matches X-05, §3.1's
+head-of-family claim is qualified to requirements altitude, and §7 states the `O-*`/`R-*`/`X-*`
+collision and the citation rule it implies. I re-verified every new cross-document claim: the queue
+citation, catalogue §3's two quoted strings, the S-16 enum's closure and the four id collisions all
+check out.
+
+One High is open, on the shape v2.1 chose rather than on its refusal to choose one. *Valid on the
+empty region, invalid on any non-empty one* refuses precisely when the phase has halted — a region is
+non-empty iff a halt created it — and AC-1.5(4)'s false branch refuses the phase and writes the queue
+row `halted`. So at the interim ship each phase gets one halt and is then terminal, `RESOLVED: yes`
+cannot clear it, no sanctioned repair exists or would help, and this lands together with
+`MAX_REVIEW_ROUNDS` 5 → 3 made absolute per document, which produces more halts reaching that disabled
+path. X-06's safety claim holds only for branches with no region; row 12's five phases and row 18's
+own Phase R are inside the interval, so the replacement remains gated on not halting. O-10 makes it a
+verdict rather than an accepted risk by pinning the refusal as a required property that must be
+deleted when the defect is fixed. Two Mediums accompany it: O-10's interim oracle demands an S-16
+notice for which no member of the closed three-reason enum is true, and `REQ-RCV-07` X-07 and R-16
+still prescribe the constant *invalid* as safe and the superseded *"immediately behind row 10"*
+sequencing, so the two halves of the split now contradict each other on the same two-ended edge. One
+Low, Process: 9 bytes of headroom under the size soft threshold, with this round funded by
+compression. Per the approval rule, an open High means the document is not approved.
+
+VERDICT: Needs revision
