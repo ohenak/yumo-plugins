@@ -1017,7 +1017,14 @@ async function runPicked({
   }
 
   const succeeded = report && report.outcome === "success";
-  const newStatus = succeeded ? "awaiting-merge" : "halted";
+  // TSPEC §9.1 — `mergeStatus` rides the pipeline report Phase MERGE (A7/A8)
+  // populates. Read defensively: a report without the field (an older bundle,
+  // a throw-path stub) is `undefined`, which is not `"merged"`, so a missing
+  // field falls back to today's `awaiting-merge` behaviour rather than a
+  // wrongly-recorded `done` (fail-safe direction, FSPEC §7.5). `merged` can
+  // only be true when `succeeded` is also true — Q-02's mutual exclusion.
+  const merged = succeeded && report.mergeStatus === "merged";
+  const newStatus = merged ? "done" : succeeded ? "awaiting-merge" : "halted";
   await rewriteStatus(
     queuePath,
     entry.feature,
@@ -1028,7 +1035,9 @@ async function runPicked({
   );
 
   emit(
-    succeeded
+    merged
+      ? `"${entry.feature}" complete and merged (${report.mergeSha ?? "sha unknown"}) — status set to done.`
+      : succeeded
       ? `"${entry.feature}" complete — status set to awaiting-merge. Merge the PR, then set it to done to unblock dependents.`
       : `"${entry.feature}" halted: ${report && report.haltReason}. Status set to halted.`
   );
