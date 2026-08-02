@@ -36,3 +36,25 @@
 - **The region is correctly assigned to the loop, not to the authoring agent** (AC-1.4, O-5, with O-9's prompt clause explicitly belt-and-braces). Given that the post-mortem is agent-authored and multi-write under the pacing contract, making machine state depend on agent diligence would have been the obvious mistake and the document does not make it.
 
 ## Recommendation
+
+**Needs revision** — one High (F-01) and four Medium (F-02…F-05).
+
+**On §9's stopping rule, explicitly.** The rule says a round whose blocking findings are *all* implementability or oracle-falsifiability defects means the REQ has met its bar and the findings move downstream. I applied it, and it disposes of most of this review: **nothing here contests user need, scope, priority, phasing, the choice of three rounds, the reset-region design, the absolute-window model, the clearance accounting, or the X-06 interim** — that material is settled and I would approve it as it stands. F-06 and F-07 are Low precisely because they are routable. But the five blocking findings are not oracle-placement questions:
+
+- **F-01 is a criterion that no implementation can satisfy**, and §8/O-14 state that no downstream document amends an AC. It cannot be closed by deferring an oracle; the enumeration *is* the oracle, and it is the AC's quantifier that is wrong.
+- **F-02, F-03 and F-04 are three faces of one omission — the zero-round halt's operator-visible output is under-determined** on the path AC-1.5(1) newly makes reachable. Each is closable by a sentence stating a disposition (including "accepted, known" as an `NB-*`), and none needs an algorithm, a fixture, a seam or a string.
+- **F-05 is the constraint the predecessor loop mis-priced as a Low for four consecutive rounds.** At 242 bytes of headroom it determines *how* F-01…F-04 may be fixed, and the document names its own relocation targets.
+
+**Exactly what must change** — and this is the whole list; I am pre-committing that a v2.9 doing these five things and nothing else clears my side:
+
+1. **Relocate first** (F-05): collapse §4.1's two rows and §6's S-13/S-14 rows to citations of baseline §3.2 / §3.1 plus the in-force sentence they exist to assert. Do this **before** 2–5, per R-5.
+2. **F-01:** one clause in AC-1.2 (and the matching phrase in §6's `MAX_REVIEW_ROUNDS` row) excluding artifacts `build-runtime.mjs` derives from the declaration, plus the corresponding fifth class in O-13(b).
+3. **F-02:** one sentence in AC-1.4 giving the zero-round **creating** halt's authored content a disposition — either accepted-and-known as an `NB-*`, or an O-14 obligation over the non-Iterations sections.
+4. **F-03:** decide, in AC-1.4 clause 3, whether the loop or the agent renders the Iterations section on the creating halt; O-14 and AC-1.3 already imply the loop, so the cheapest fix is to make clause 3 say so.
+5. **F-04:** name the reviewer-verdict quantity in AC-1.3's list (or in row C), so a zero-round halt cannot report verdicts for reviewers it never dispatched.
+
+If the author judges that (3) or (5) is genuinely FSPEC-altitude, an `NB-*` line saying so — the same move NB-1/NB-2/NB-3 already make successfully — closes them from my side without further prose. What I will not accept is silence on the path, because it is the path this REQ creates and the one the operator will meet first (R-13).
+
+## Verdict
+
+VERDICT: Needs revision
