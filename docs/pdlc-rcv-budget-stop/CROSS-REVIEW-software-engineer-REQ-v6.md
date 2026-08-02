@@ -158,3 +158,26 @@ predicate gates, it denies every surface the predicate is evaluated on.** The v2
 the model for how this family should have been cut in the first place.
 
 ## Verdict
+
+All four v5 findings are closed. Both v5 Highs were closed at the root rather than patched: the
+control-flow facts they turned on were promoted into `docs/_constraints/pdlc-rcv-baseline.md` as
+`M-8a`–`M-8j`, and the criteria that needed them moved to `REQ-RCV-07`, where O-6 specifies the
+suppression seam, NR-3 scopes it, R-14 names the regression and O-10 carries both the control leg and
+the torn-write sequel pair I asked for. I re-verified the split independently: all ten `M-*` ids
+cited here resolve to real baseline rows, all twelve `REQ-RCV-07` cross-references resolve including
+the two step-level ones, NB-4's *no line citation* claim is true in a grep, the catalogue delegation
+quotes the catalogue accurately, and the `N-13` collision it cites is real. The v5 Process finding
+was mechanised into `check-req-size.sh` as a 90% soft threshold with a test.
+
+One High is open, on text v2.0 added rather than on anything it moved: X-06 and R-14 prescribe
+stubbing *the region validates* as the **constant** *invalid* and call it *"safe by construction"*,
+but AC-1.5(4)'s false-branch **refuses the phase**, the predicate is resolved on every entry, and the
+empty region is declared valid — so the prescribed stub refuses every document-typed review phase on
+every feature until `REQ-RCV-07` ships, and the queue's own stated pickup order (10 → 12 → 18) puts a
+whole feature, and row 18's own Phase R, inside that interval. The fix is to state the stub's shape
+rather than its value. Three Low findings accompany it: an *"immediately behind"* sequencing claim
+that the queue contradicts, `O-*`/`R-*` id collisions across the two halves of the split, and a
+mislabelled direction cell in §3.1. Per the approval rule, an open High means the document is not
+approved.
+
+VERDICT: Needs revision
