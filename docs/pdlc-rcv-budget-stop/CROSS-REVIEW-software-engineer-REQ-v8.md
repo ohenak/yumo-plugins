@@ -76,6 +76,38 @@ none changes a behaviour, an acceptance criterion's meaning, or a threshold.
 
 ## 5. Positive Observations
 
+- **The round removed the defect instead of mitigating it, and that is the whole difference between
+  this verdict and the last one.** v2.1 answered *what should the interim procedure do?*; v2.2
+  answered *should there be an interim procedure?* — and shipping none is the only interim whose
+  behaviour is the one already in production. X-06 says exactly that (*"Leaving it unwired is the
+  only interim whose behaviour is **today's**"*), and every consequence I checked follows from it
+  rather than being asserted alongside it: no S-16 to render from a closed enum (F-02 closed), no
+  release-checklist line owed (Q-02 answered), no production default to get wrong (Q-03 dissolved).
+  Three of my open items closed as *consequences of one design change*, which is what a correct
+  design change looks like.
+- **The paired edge was revised at both ends in the same words, and the obligation was made
+  mechanical rather than remembered.** `pdlc-rcv-split.md` §5 does not just say *keep them in sync* —
+  it names the four clauses, and names the three things the two ends must agree on: *"whether the
+  conjunct is wired in the interim, … the queue distance between the two rows, and … what an interim
+  procedure would cost."* That is a checkable obligation, and I checked it: X-07 and R-16 agree with
+  X-06 and R-14 on all three, including the retraction of *"a stub returning **invalid** [is] safe by
+  construction"*, which is now stated as its own negation. A two-round divergence closed in one.
+- **The size fix was paid for the way the check asks, and it produced a shared artifact rather than
+  an archive.** `pdlc-rcv-split.md` is cited by both halves of the split and carries material that was
+  duplicated or about to be; the REQ's §10 keeps a one-paragraph summary and a pointer, which is the
+  right residue. Compare v7's remedy — deleting a clause to clear nine bytes.
+- **R-14's residual is stated with the right comparator.** *"R-10's hand-edited-region fail-open stays
+  open until row 18 — operator-caused and **no wider than HEAD's, where it is open unconditionally**."*
+  Measuring the interim exposure against HEAD rather than against the finished feature is what makes
+  the deferral honest; the same sentence is what lets Q-02's co-release answer be *no* without
+  hand-waving.
+- **O-10's interim legs are falsifiers, not documentation.** Each carries a `≥ 1` dispatch conjunct
+  and the note that says why (*"what makes each leg falsify an interim that refuses"*), and leg 2
+  keeps the *no answering line, counts unmoved* conjuncts so it cannot green the `A = H` fail-open.
+  Both legs are stated to survive row 18 — *"neither is deleted at that commit; what row 18 adds is
+  the refusing leg"* — which is the property I asked for last round and the reason F-01 (v7) could
+  close rather than recur.
+
 ## 6. Recommendation
 
 ## Verdict
