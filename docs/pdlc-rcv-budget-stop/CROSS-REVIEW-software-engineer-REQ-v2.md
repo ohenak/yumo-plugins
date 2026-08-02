@@ -50,8 +50,21 @@ Two blocking, both about material **added in this round**. Nothing in the unchan
 
 ## Recommendation
 
-_(filled below)_
+**Needs revision** — one High (F-01), one Medium (F-02). Both are new material from this round; all seven v1 findings are closed.
+
+**On §9's stopping rule, explicitly, because it applies and I applied it.** Nothing in this review contests user need, scope, priority, phasing, the choice of three rounds, the absolute-window model, the reset-region design, the clearance accounting, the X-06 interim, or any threshold. That material was settled at v1 and is settled now; I would approve it as it stands. F-03 and F-04 are Low precisely because they are routable, and I am not blocking on F-03 even though it is a mis-implementable sentence, because it is unchanged text I did not flag at v1.
+
+**Why F-01 is not closable by deferring an oracle.** §9's second bullet says a "this AC has no oracle" finding must be closable by deferring the oracle downstream. F-01 is not that finding. AC-1.4 clause 1 is **in force at this ship** and ends in an operator-visible refusal; §4 forbids this REQ minting a refusal string; NB-3 routes refusal strings to `REQ-RCV-07`; and `REQ-RCV-07` AC-7.6's two variants are both stated over the *answering* line and both ship at row 18, three features later. There is therefore no downstream document that can receive it without a REQ-altitude decision being made first — which surface, and what happens before row 18. §8 cannot receive it because §8's obligations may not vary an outcome the ACs fix, and here no AC fixes one. This is the same class as v1's F-01: the criterion's own declared observable is under-determined, not its test.
+
+**Plateau or churn (§9's third bullet), stated rather than assumed.** This is **churn**: blocking count fell 5 → 2, every prior finding closed, and both new blockers are consequences of the v2.9 edits — F-01 of the confirmation obligation added for TE F-04, F-02 of the bytes those edits consumed. **I pre-commit to escalating** if a v3.0 addressing the two items below does not close them: if the next round is non-decreasing I will say so and recommend the operator halt by hand rather than open a fourth.
+
+**Exactly what must change — this is the whole list, and I pre-commit that a v3.0 doing these two things and nothing else clears my side:**
+
+1. **Relocate first** (F-02): collapse the lines 25–27 revision narrative to a single current-version line (§10 already says round history does not belong here — 1,542 bytes), and make one of §4.1's harvest paragraph / NB-5 a cross-reference to the other (~600 bytes). Do this **before** 2, per R-5.
+2. **F-01:** in AC-1.4 clause 1, name the surface a halt-reason-append failure presents to the operator, **and** what it presents **before `REQ-RCV-07` ships**. Two sentences suffice. If the answer is "row B's unconfirmable-append variant, its ❌ text generalised from *answering line* to *region line*", then per §10's paired-edge rule carry that edit to `REQ-RCV-07` AC-7.6 and catalogue §4 **in the same revision**, and amend §10's "v2.9 carries no change to that edge" accordingly. If the answer is that this REQ owns one refusal render after all, say so in §4 and put the render in §6.
+
+Q-01 and Q-02 touch the same sentences as (2) and are free to answer while there; neither is a finding. F-03 and F-04 are routable at the author's discretion and I will not raise them again as blockers.
 
 ## Verdict
 
-_(filled below)_
+VERDICT: Needs revision
