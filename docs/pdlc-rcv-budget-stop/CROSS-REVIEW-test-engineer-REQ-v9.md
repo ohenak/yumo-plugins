@@ -35,11 +35,54 @@ must run on is not named — on the wrong fixture it is an oracle that cannot fa
 
 ## Questions
 
-_pending_
+None. F-41 is a finding with a stated repair, not a request for information, and F-42 is a recurrence
+record. No question from any earlier round is still open.
 
 ## Positive Observations
 
-_pending_
+- **The repair landed where a test author reads, and it went one clause further than I asked.**
+  AC-1.5(4)'s new paragraph closes with *"O-10's interim legs are what this REQ's PROPERTIES derive
+  from"* — I asked only that the AC stop asserting behaviour this ship does not have. Telling the
+  author where to go instead is the difference between a caveat and a routing rule, and it is what
+  stops the next PROPERTIES pass from re-deriving the three tests that must fail. The §4.1 repairs
+  are better than the five-word clauses I proposed, because they are **scoped rather than
+  wholesale**: the `W` row marks the *invalid* half target state and leaves the *absent* half
+  shipped, which is right — `W = 1` on an absent value is decidable today and is a real property this
+  REQ owes.
+- **F-38 was answered by subtracting, including the part I did not have to name.** The stranded
+  *"and on a non-validating entry"* clause in the closing call-count sentence was tracked down and
+  removed, and so was v2.2's *"the granting legs above drive the *validate* seam explicitly to
+  **true**"* — which had to go, since a leg that drives the seam contradicts a composition that calls
+  it zero times. Two rounds ago that consistency check would have been mine to file. A revision that
+  finds its own downstream contradictions is the thing that ends a review loop.
+- **The handover has a receiver, and I checked it.** *"The non-validating legs are `REQ-RCV-07`
+  O-10's in full"* is only a repair if that REQ actually took them. Commit `3105033` carries v2.3's
+  X-06/R-14 revisions into `REQ-pdlc-rcv-reset-region.md` X-07 (`:96`), R-16 (`:463`) **and** its
+  O-10 (`:452`), which now states *"the non-validating legs [are] this REQ's in full"* and carries
+  the *consumes no clearance* leg with its own 0-dispatch oracle. Both ends cite `pdlc-rcv-split.md`
+  §5.1, agree the conjunct is unwired in the interim, and agree on the 10 → 12 → 18 distance — the
+  three facts §5's obligation row requires them to agree on. This is the third consecutive round the
+  paired-edge rule has been discharged in the same commit that triggered it.
+- **The relocations moved reasons, not just bytes, and the destinations are complete.** I read
+  `pdlc-rcv-split.md` §5.1 against the X-06 text it replaced: all four horns survive — refusing,
+  granting, **the narrower procedure**, co-delivery — with their mechanism citations intact
+  (`AC-1.4` clause 1 for non-emptiness, `AC-7.4` for the missing repair, `MAX_REVIEW_ROUNDS` 3 for
+  the traffic argument, row 18's own Phase R for the self-gating). §6 likewise keeps the catalogue
+  §3 row-schema clause that the compressed §4 pointer drops. A relocation that quietly loses the
+  clause a reviewer will next ask about is worse than the prose it saved; neither of these does.
+- **NB-3's new sentence is the one piece of v2.3 nobody asked for and it is the most operationally
+  valuable.** *"So is the *validate* seam being **present and unconsulted in production** at this ship
+  (X-06): a DoD finding that it is an unwired integration is correct and known by construction …
+  and it is **not** to be remediated by wiring it here."* An injected seam with no production caller
+  is precisely what `dod-verify` is built to flag, and the default remediation — wire it — is the
+  fail-open this whole edge exists to avoid. Declaring the exception at the non-goal, in the
+  verifier's own vocabulary, converts a predictable Phase DOD round-trip into a no-op. That is a
+  process-level saving reached by reasoning about a downstream phase's behaviour, not about this
+  document's.
+- **Leg 1 is now a fixture, not a shape.** Concrete rounds (`highest = 3`, `WINDOW-START: 4`,
+  granted window `[4, 6]`) make every conjunct re-derivable by the reader, which is how I caught
+  F-41 at all — the same concreteness applied to the contract leg would have made its fixture
+  question answer itself.
 
 ## Recommendation
 
