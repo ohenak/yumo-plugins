@@ -34,8 +34,11 @@ frontmatter is the pickup gate; the `Status` cell tracks lifecycle.
 **Rows 0, 10, 11, 12, 17 and 18 removed 2026-08-02 by operator direction.** The `pdlc-rcv` family
 (rows 10–12, 17, 18 — the five-way split of the superseded row 0, `pdlc-review-convergence`) is
 **abandoned**, not shipped: its process cost proved disproportionate to its code delta (see
-`docs/abandoned/pdlc-rcv-budget-stop/LEARNINGS-pdlc-rcv-budget-stop.md` §4). `pdlc-rcv-budget-stop`
-was harvested and its surviving artifacts moved to `docs/abandoned/pdlc-rcv-budget-stop/`. The
+`docs/discarded/pdlc-rcv-budget-stop/LEARNINGS-pdlc-rcv-budget-stop.md` §4). `pdlc-rcv-budget-stop`
+was harvested and its surviving artifacts moved to `docs/discarded/pdlc-rcv-budget-stop/`; the
+other family dirs (`pdlc-rcv-finding-quality`, `pdlc-rcv-fixed-point-stop`,
+`pdlc-rcv-panel-topology`, `pdlc-rcv-reset-region`) and `pdlc-runtime-measurement-spike` moved to
+`docs/discarded/` unharvested on the same date. The
 family's *intent* — bounded review rounds, a deterministic stop, an operator clearance — is to be
 absorbed by the `orchestrate-dev` closed-loop rewrite carried by rows 13, 14 and 16
 (`pdlc-merge-phase`, `pdlc-advisory-tier`, `pdlc-engineering-loop`). `Order` values stay
