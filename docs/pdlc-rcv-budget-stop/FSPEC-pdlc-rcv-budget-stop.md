@@ -617,6 +617,29 @@ entry dispatches none (§7.4).
 
 ## 10. Edge cases and error scenarios
 
+| # | Scenario | Behaviour | Branch |
+|---|---|---|---|
+| **E-1** | **Migration.** At the landing commit a branch's document already carries 4 or 5 rounds | admitted **no rounds**; halts on the budget path; S-4 renders `rounds 1..3 of 3` while five files sit on disk — the render states the **window**, not the file count. The escape is the ordinary clearance. **No migration script** | B-WIN-2 |
+| **E-2** | Cross-review files deleted after a window was granted, post-mortem surviving | derived start falls below the origin; the entry starts at `W`. Append-only preserved, window not widened | B-WIN-3 |
+| **E-3** | A round on which two halt conditions hold at once | **one** `HALT-REASON:` line, `; `-joined in catalogue §3 precedence order; the same string in the report's `notice` cell | B-HALT-7 |
+| **E-4** | A post-mortem with no heading beginning `Iterations` — pre-feature, or an agent that omitted it | the section is **inserted** immediately above `## Reset Region`, or at end of file; never a failure | B-HALT-3 |
+| **E-5** | Two or more unfenced `RESOLVED:` lines | the shipped gate reads the marker as **unresolved** (duplicated); the phase is refused. Not this feature's change — and each halt's strip is what keeps the marker single-valued | B-CLR-5 |
+| **E-6** | **Phase H deletes the post-mortem** once `LEARNINGS-{feature}.md` exists | the region's home goes with it. Benign within a feature — Phase H runs after every review phase, so no window outlives its post-mortem. A post-harvest `forcePhases` re-entry reads `W = 1, H = A = 0`: the default of a document that never halted. **A surviving home is a new artifact, hence a new REQ** | B-REG-1 |
+| **E-7** | A repeating S-11 halt (target state, once `pdlc-rcv-fixed-point-stop` ships) | `H` and `A` grow together and the window is never charged, so the sequence is unbounded **in principle**. **Accepted, bounded by the operator**: every iteration costs one hand-written `RESOLVED: yes`, so it is never unattended. Capping it would need a second counter that could only deny an operator choosing to continue | B-CLR-2 |
+| **E-8** | The post-mortem exists but cannot be read | no halt in force **and** an empty region: `W = 1`, `H = A = 0`, nothing honoured, nothing written | B-REG-6 |
+| **E-9** | A `HALT-REASON:` or `WINDOW-START:` line quoted in `## Recommendation` or inside a fenced block | counts for nothing — not in the region span | B-REG-5 |
+| **E-10** | `WINDOW-START: abc` / `-2` / empty in the region | counts toward `A`, contributes no origin; `W` falls back to the greatest well-formed value, else **1**. No non-numeric value ever reaches the window arithmetic | B-REG-4 |
+| **E-11** | A halt whose queue-row commit is refused (hook, missing identity, index lock) | the shipped `halted (uncommitted)` outcome, unchanged — the row is correct on disk and the halt is never downgraded. Outside this feature's change | B-HALT-9 |
+| **E-12** | One feature, several document-typed phases | one post-mortem, one region and one `W` **per phase**. A halt in Phase R never answers a clearance in Phase F | §5.1 |
+| **E-13** | The region is hand-edited so the counts lie | **at this ship** nothing validates it, so a hand-edit can grant or deny a window — operator-caused, operator-visible, and **no wider than HEAD's**, where the fail-open is unconditional. Closed at target state by the third conjunct (§5.4) | B-REG-7 |
+| **E-14** | A **creating** halt whose halt-line update is unconfirmed | phase refusal, no halt recorded, `H = 0` on an unresolved post-mortem: the operator's first `RESOLVED: yes` grants nothing and the re-halt needs a second. **Accepted** — fail-closed, no window without a recorded halt | B-HALT-5 |
+| **E-15** | An entry that grants a clearance and then dies before dispatching a round | the clearance is spent while its rounds are still available, so the next entry runs them. **A bounded loss of nothing**, and the deliberate direction of §6.3's ordering | B-CLR-6 |
+
+**Two error classes deliberately not dispositioned here.** A **torn** (partially landed) region or
+answering line, and the sanctioned repair per S-16 reason, are `REQ-RCV-07` AC-7.5 and AC-7.4's
+(F-N-1). A finding that this document does not say what a torn write leaves behind is **correct and
+known by construction**.
+
 ## 11. Acceptance tests
 
 ## 12. Open questions
