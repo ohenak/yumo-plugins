@@ -41,8 +41,21 @@ None. Q-06 was answered in §5.3 and I am opening no new ones — every question
 
 ## Recommendation
 
-_(pending)_
+**Approved with minor changes**
+
+Zero High, zero Medium, two Low.
+
+**My v3 pre-commitment is honoured, and I want the account explicit.** I said: *"If round 4 lands F-10 and F-11 — by either of the two routes offered for F-10, and by the named precondition or any other stated precondition that makes AT-CLR-04's two entries jointly realisable — I approve, and I will not raise a testability finding against any section of this document again."* Both landed. F-10 took the stronger route and made the oracle total rather than narrower. F-11 took the precondition I proposed, with the arithmetic restated in the row, and I re-derived it including the step-G check the row does not state. AT-CLR-04's two entries **are** jointly realisable — a fixture exists in which every conjunct of the row holds — which is the bar I set.
+
+F-14 is the residue of that fix, and I have graded it **Low** deliberately rather than filing a third Medium on the same row. The distinction is the one that matters for a test author: v2 F-09 and v3 F-11 described rows where **no** fixture satisfied every conjunct, so the row could not be written at all; F-14 describes a row where a fixture does satisfy every conjunct and §11.4's clause merely fails to *select* it. PROPERTIES (O-10) owns verdict sequences by this FSPEC's own split, so a test author picking an approving round-3 verdict for entry 2 writes a green, discriminating row today. That is a wording tightening, not a blocked oracle, and it does not warrant a fifth round on a five-round budget for a feature whose whole subject is unbounded review loops.
+
+**The two changes I recommend, neither of which needs another review round:**
+
+1. **F-14 (Low)** — in §11.4, change *"an approval is reached **before** the window's last round"* to *"an approval is reached **no later than** the window's last round"*. Checked against AT-CLR-01, AT-CLR-02, AT-CLR-02a and AT-CLR-08's second entry: none relies on the strict form, and the weakened form pins AT-CLR-04's entry 2, whose only admitted round *is* the window's last. The strict wording was mine at v3 and was stricter than the rows needed.
+2. **F-15 (Low)** — qualify §8.1's B-HALT-3 and §10's E-4 with *"read and carries no such heading"*, pointing at B-HALT-4a for the unreadable case, and add *readable* to AT-HALT-03's Given. No behaviour changes; it removes the only place where two sections of this document read as disagreeing.
+
+I have now derived every branch, window bound, answering value and gate transition in this document — twice for everything the last two revisions touched. Per my v3 pre-commitment I will raise no further testability finding against this FSPEC. Both Low items are safe to carry into TSPEC/PROPERTIES if the author prefers to fold them into the next artifact rather than reopen this one.
 
 ## Verdict
 
-_(pending)_
+VERDICT: Approved with minor changes
