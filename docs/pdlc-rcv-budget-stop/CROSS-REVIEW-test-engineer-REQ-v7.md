@@ -91,4 +91,65 @@ it; I restate it once, compressed, and will not carry it a third time.
 
 ## Recommendation
 
+**Needs revision**
+
+All three v6 findings are closed, the Medium among them in a stronger form than I proposed — the
+revision rejected my suggested constant-*invalid* default with a correct argument and adopted an
+injected seam whose interim default is a **restriction** of the shipped predicate. **No High**, and
+nothing about the interim design is contested: the seam shape is right, the scoping of the fail-open
+prohibition to the *default* is right, and the decision to give the production default its own oracle
+instead of leaning on a test double is right. What blocks approval is **two Mediums, both inside the
+cells of the one new O-10 paragraph** — the interim-ship pair I asked for at v6. The paragraph exists;
+it is not yet writable as a test.
+
+1. **F-33 (Medium)** — the refusing leg requires *"exactly one S-16 notice"* on a region that is
+   `H = 1`, `A = 0`, well-formed and (on AC-1.5(4)'s own *meaning*) **valid**. S-16's reason token is
+   a closed three-member enum whose selection is delegated to `REQ-RCV-07` AC-7.1 step 4 — the step
+   that by construction does not run in the interim — and all three members are factually false on
+   that fixture. So the assertion's expected string is neither derivable from the documents (against
+   catalogue §3's character-for-character bar) nor truthfully instantiable. Cheapest close: state
+   that the interim refusal emits **no** S-16 — it is not a corrupt region, and S-16 is defined as the
+   corrupt-region signal — and have the leg assert zero S-16 notices plus the refusal's ❌ phase-row
+   text. The alternative, minting a fourth reason scoped to the interim, also works but costs an id
+   and a caveat on the catalogue's closure claim.
+
+2. **F-34 (Medium)** — the pair is not yet the both-ways regression oracle it says it is.
+   *(a)* The empty-region leg's *"grants the window normally"* has two observably different readings,
+   and the one a property author is likelier to take — clearance honoured, answering line appended,
+   fresh window at `N` — is precisely what AC-1.5(4) forbids at `A = H` (*"the loop writes nothing and
+   grants nothing"*), i.e. it would green a fail-open. The leg names no cells. *(b)* The refusing leg
+   fixes no `A`/`H` relation, so a fixture matching its stated description with `A = H` passes all
+   four conjuncts even under a *valid* default — the regression it claims to catch escapes. Repair is
+   cells, which is what the rest of O-10 does everywhere else: pin the refusing leg at `H = 1, A = 0`,
+   and give the empty-region leg its discriminating conjuncts — no refusal, no S-16, `W = 1`, no
+   answering line, both counts still `0`, and **≥ 1 dispatch** on a branch below `windowEnd(1)`, that
+   last one being what makes *"a default collapsed to the constant invalid fails the second"* true
+   rather than an absence-only claim.
+
+The two Lows are one clause each. X-06's *"leaves branches with no reset region behaving **exactly as
+today**"* is falsified by this REQ's own AC-1.1 and AC-1.5(1) — R-13 says so explicitly — and it
+matters slightly more than a wording slip because it is the sentence a test author would read when
+deciding what F-34(a)'s leg should assert (F-35). And the document is 9 bytes under the 90% soft byte
+threshold, so for the third time in its history the next fix must be paid for by compression; filed
+`Process` because the recurrence, not this instance, is the signal (F-36).
+
+**On room.** F-33's preferred repair is net-neutral or shorter, F-35's is shorter, and F-34 needs
+roughly 300 bytes of cells. The fixes fit inside the 9 bytes plus what F-33 and F-35 give back — but
+only just. If any of them grows, relocate rather than delete a reason: §4's delegation paragraph and
+§7's namespace rule are both candidates for `docs/_constraints/`.
+
+Explicitly **not** filed: everything in §1, §2, §4.1, §5's AC-1.1–AC-1.4, AC-1.5(1)–(3) and (5), §6,
+§8 beyond O-10, §9 beyond R-14 and §10 — approved across six rounds and unchanged here; the interim
+seam's **shape**, which is correct and is a restriction of the shipped semantics rather than a rival
+to it; the scoping of the fail-open prohibition to the production default; the direction relabel of
+X-06 to *read from*, which matches X-05's convention and the forward-edge argument; the id-namespace
+rule, whose four claimed collisions I verified in `REQ-RCV-07`; the widened §4 rule and its deferral
+of the catalogue edit; and the whole of `REQ-RCV-07`, which is not this review's document. Nothing
+here contests user need, priority, phasing, the budget of three, the split, or the decision to ship
+this REQ ahead of its successor.
+
 ## Verdict
+
+VERDICT: Needs revision
+
+{"high": 0, "medium": 2, "low": 2}
