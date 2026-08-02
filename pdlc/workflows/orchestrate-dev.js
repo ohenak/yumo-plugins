@@ -492,6 +492,116 @@ export function classifyMergeResult(mergeRaw, readbackRaw) {
   return { ok: false, reason: "not-confirmed" };
 }
 
+// ─── TSPEC §4.1 — the `_ghRun` transport seam's Node default ──────────────
+//
+// PLAN §12 A5. Mirrors `defaultGit`'s exact three-field contract and its
+// exact `catch` shape (`err.stderr || err.message`), never throws. `gh`
+// commands are single shell strings (unlike `git`'s argv array), so this
+// uses `execSync`, matching `checkPrCi`'s existing default exactly.
+export async function defaultGhRun(command, { execFn } = {}) {
+  const { execSync: realExecSync } = await import("child_process");
+  const exec = execFn ?? ((cmd, opts) => realExecSync(cmd, opts));
+
+  try {
+    const stdout = exec(command, { stdio: "pipe", encoding: "utf8" });
+    return { ok: true, stdout: String(stdout ?? ""), stderr: "" };
+  } catch (err) {
+    return {
+      ok: false,
+      stdout: "",
+      stderr: String((err && (err.stderr || err.message)) ?? ""),
+    };
+  }
+}
+
+/**
+ * `observePrState` — O1 (TSPEC §4.2). One `_ghRun` call, classified by
+ * `classifyPrState`. Re-observation on `mergeable: UNKNOWN` is the caller's
+ * (`decideMerge`/`phaseMerge`) responsibility, counted via `o1Count` — this
+ * function itself is stateless.
+ */
+export async function observePrState(prUrl, { _ghRun }) {
+  const r = await _ghRun(mergeCommandFor("prState", { prUrl }));
+  const raw = r && r.ok === true ? r.stdout : null;
+  return classifyPrState(raw);
+}
+
+/**
+ * `observeCi` — O2 (TSPEC §4.4). Reuses `checkPrCi` verbatim rather than
+ * re-deriving CI classification: the raw rollup text is handed through via
+ * an injected `execFn`, so `checkPrCi`'s own parsing/aggregation is never
+ * duplicated. `defaultGhRun`'s failure contract always yields `stdout: ""`
+ * (never `null`), which naturally fails `checkPrCi`'s internal `JSON.parse`
+ * and yields `"unknown"` — no separate error branch is needed here.
+ */
+export async function observeCi(prUrl, { _ghRun, _checkCi = checkPrCi }) {
+  const r = await _ghRun(mergeCommandFor("ci", { prUrl }));
+  const raw = r && r.ok === true ? r.stdout : "";
+  return _checkCi(prUrl, { execFn: () => raw });
+}
+
+/**
+ * `observeReviewThreads` — O3 (TSPEC §4.4). Bounded cursor pagination over
+ * `classifyReviewThreads`, aggregating `unresolved` across pages. Exceeding
+ * `MERGE_MAX_THREAD_PAGES` fails closed as `incomplete` rather than looping
+ * forever or guessing partial state.
+ */
+export async function observeReviewThreads(ref, { _ghRun }) {
+  if (!ref) return { ok: false, reason: "unparseable" };
+
+  let cursor;
+  let unresolved = 0;
+  for (let page = 0; page < MERGE_MAX_THREAD_PAGES; page++) {
+    const r = await _ghRun(
+      mergeCommandFor("reviewThreads", { owner: ref.owner, repo: ref.repo, number: ref.number, cursor }),
+    );
+    const raw = r && r.ok === true ? r.stdout : null;
+    const parsed = classifyReviewThreads(raw);
+    if (!parsed.ok) return parsed;
+    unresolved += parsed.unresolved;
+    if (!parsed.hasNextPage) return { ok: true, unresolved };
+    cursor = parsed.endCursor;
+  }
+  return { ok: false, reason: "incomplete" };
+}
+
+/**
+ * `observeRepoCaps` — O4 (TSPEC §4.5). One `_ghRun` call, no PR URL
+ * involved — repo-level capabilities only.
+ */
+export async function observeRepoCaps({ _ghRun }) {
+  const r = await _ghRun(mergeCommandFor("repoCaps", {}));
+  const raw = r && r.ok === true ? r.stdout : null;
+  return classifyRepoCaps(raw);
+}
+
+/**
+ * `observeChangedFiles` — O5 (TSPEC §4.6). Reuses `classifyChangedFiles`
+ * itself to decide whether the fallback is needed at all, rather than
+ * duplicating its completeness logic: a first pass with `fallbackRaw: null`
+ * either resolves outright (short list, or a malformed entry failing
+ * closed as `unparseable` without ever trying the fallback) or reports
+ * `incomplete`, which is this function's own signal to fetch and re-run
+ * classification with the fallback page attached. A missing `ref` when the
+ * fallback would be needed fails closed as `incomplete` rather than
+ * building an unparsable fallback command (TE-v3 N-01).
+ */
+export async function observeChangedFiles(prUrl, ref, { _ghRun }) {
+  const primary = await _ghRun(mergeCommandFor("changedFiles", { prUrl }));
+  const primaryRaw = primary && primary.ok === true ? primary.stdout : null;
+
+  const attempt = classifyChangedFiles(primaryRaw, null);
+  if (attempt.ok === true) return attempt;
+  if (attempt.reason === "unparseable") return attempt;
+
+  if (!ref) return { ok: false, reason: "incomplete" };
+  const fallback = await _ghRun(
+    mergeCommandFor("changedFilesFallback", { owner: ref.owner, repo: ref.repo, number: ref.number }),
+  );
+  const fallbackRaw = fallback && fallback.ok === true ? fallback.stdout : null;
+  return classifyChangedFiles(primaryRaw, fallbackRaw);
+}
+
 // ─── TSPEC §6 — Phase MERGE: the self-modification guard (O-M7) ────────────
 //
 // PLAN §12 A3. Implements FSPEC §4 / NFR-3. Two pure functions only — no IO,
@@ -785,7 +895,7 @@ export function decideMerge(record, config) {
       kind: "resolved",
       row: "13",
       mergeStatus: "deferred",
-      reason: `mergeability still UNKNOWN after ${record.o1Count} observation(s)`,
+      reason: `mergeability still UNKNOWN after ${record.o1Count} observations`,
       escalations: [],
       mergeSha: null,
       mergeMethod: null,

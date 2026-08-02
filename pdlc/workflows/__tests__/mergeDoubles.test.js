@@ -33,12 +33,13 @@ describe("fakeGhRun / passingGh", () => {
     return Promise.all(
       GH_SURFACE_NAMES.map(async (name) => {
         const canonicalCommand = {
-          prState: "gh pr view 42 --json state,mergeable",
-          ci: "gh pr checks 42 --json name,state",
-          reviewThreads: "gh api graphql -f query=reviewThreads",
-          repoCaps: "gh repo view owner/repo --json squashMergeAllowed",
-          changedFiles: "gh pr diff 42 --name-only",
-          merge: "gh pr merge 42 --merge",
+          prState: "gh pr view https://github.com/o/r/pull/42 --json state,mergeable,mergeStateStatus,number,mergeCommit",
+          ci: "gh pr view https://github.com/o/r/pull/42 --json statusCheckRollup",
+          reviewThreads: "gh api graphql -f owner=o -f repo=r -F number=42 -f query='reviewThreads'",
+          repoCaps:
+            "gh repo view --json rebaseMergeAllowed,mergeCommitAllowed,squashMergeAllowed,deleteBranchOnMerge,defaultBranchRef",
+          changedFiles: "gh pr view https://github.com/o/r/pull/42 --json files",
+          merge: "gh pr merge https://github.com/o/r/pull/42 --merge",
         }[name];
         const reply = await _ghRun(canonicalCommand);
         expect(reply.ok).toBe(true);
@@ -49,7 +50,28 @@ describe("fakeGhRun / passingGh", () => {
   test("matchKey reduces varying arguments to the same shape", () => {
     expect(matchKey("gh pr merge 42 --squash")).toBe(matchKey("gh pr merge 7 --merge"));
     expect(matchKey("gh pr merge 42 --squash")).not.toBe(matchKey("gh pr view 42 --json state"));
-    expect(matchKey(["gh", "pr", "checks", "42"])).toBe("gh pr checks");
+    expect(matchKey(["gh", "auth", "status"])).toBe("gh auth status");
+  });
+
+  test("matchKey distinguishes every gh-pr-view-shaped surface by its --json field list", () => {
+    expect(matchKey("gh pr view https://x/pull/1 --json state,mergeable,mergeStateStatus,number,mergeCommit")).toBe(
+      "gh pr view --json state,mergeable,mergeStateStatus,number,mergeCommit",
+    );
+    expect(matchKey("gh pr view https://x/pull/1 --json statusCheckRollup")).toBe(
+      "gh pr view --json statusCheckRollup",
+    );
+    expect(matchKey("gh pr view https://x/pull/1 --json files")).toBe("gh pr view --json files");
+    expect(matchKey("gh pr view https://x/pull/1 --json mergeCommit,state")).toBe(
+      "gh pr view --json mergeCommit,state",
+    );
+    // Four distinct keys, no collisions.
+    const keys = new Set([
+      matchKey("gh pr view https://x/pull/1 --json state,mergeable,mergeStateStatus,number,mergeCommit"),
+      matchKey("gh pr view https://x/pull/1 --json statusCheckRollup"),
+      matchKey("gh pr view https://x/pull/1 --json files"),
+      matchKey("gh pr view https://x/pull/1 --json mergeCommit,state"),
+    ]);
+    expect(keys.size).toBe(4);
   });
 
   test("passingGh(overrides) drives exactly one surface, leaving the rest untouched", async () => {
@@ -60,7 +82,7 @@ describe("fakeGhRun / passingGh", () => {
     expect(mergeReply.ok).toBe(false);
     expect(mergeReply.stderr).toBe("not confirmed");
 
-    const ciReply = await _ghRun("gh pr checks 42 --json name,state");
+    const ciReply = await _ghRun("gh pr view 42 --json statusCheckRollup");
     expect(ciReply.ok).toBe(true);
   });
 

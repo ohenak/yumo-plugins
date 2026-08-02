@@ -23,7 +23,16 @@ import {
   classifyChangedFiles,
   classifyMergeResult,
   OBSERVATION_REASONS,
+  defaultGhRun,
+  observePrState,
+  observeCi,
+  observeReviewThreads,
+  observeRepoCaps,
+  observeChangedFiles,
+  decideMerge,
+  MERGE_DEFAULTS,
 } from "../orchestrate-dev.js";
+import { fakeGhRun, passingGh } from "./helpers/mergeDoubles.js";
 
 // ─── (a) mergeCommandFor — exact bytes per surface (TSPEC §4.1–§4.7) ───────
 
@@ -510,5 +519,433 @@ describe("classifyMergeResult", () => {
     for (const c of cases) {
       expect(OBSERVATION_REASONS).toContain(c.reason);
     }
+  });
+});
+
+// ─── (b) defaultGhRun — the seam's Node default (TSPEC §4.1) ──────────────
+//
+// PLAN §12 A5. Mirrors `defaultGit`'s exact three-field contract and its
+// exact `catch` shape (`err.stderr || err.message`), never throws.
+
+describe("defaultGhRun", () => {
+  test("success: ok true, stdout carried, stderr empty", async () => {
+    const execFn = () => "output text\n";
+    const result = await defaultGhRun("gh pr view https://x/pull/1 --json state", { execFn });
+    expect(result).toEqual({ ok: true, stdout: "output text\n", stderr: "" });
+  });
+
+  test("success with a falsy return value still yields a string stdout", async () => {
+    const execFn = () => undefined;
+    const result = await defaultGhRun("gh repo view --json x", { execFn });
+    expect(result).toEqual({ ok: true, stdout: "", stderr: "" });
+  });
+
+  test("failure: prefers err.stderr over err.message, matching defaultGit exactly", async () => {
+    const execFn = () => {
+      const err = new Error("exec failed generically");
+      err.stderr = "gh: command not found";
+      throw err;
+    };
+    const result = await defaultGhRun("gh pr view https://x/pull/1 --json state", { execFn });
+    expect(result).toEqual({ ok: false, stdout: "", stderr: "gh: command not found" });
+  });
+
+  test("failure: falls back to err.message when err.stderr is absent", async () => {
+    const execFn = () => {
+      throw new Error("spawn gh ENOENT");
+    };
+    const result = await defaultGhRun("gh pr view https://x/pull/1 --json state", { execFn });
+    expect(result).toEqual({ ok: false, stdout: "", stderr: "spawn gh ENOENT" });
+  });
+
+  test("failure: a thrown non-Error still yields a string stderr, never throws out", async () => {
+    const execFn = () => {
+      // eslint-disable-next-line no-throw-literal
+      throw "raw string throw";
+    };
+    await expect(defaultGhRun("gh pr view https://x/pull/1 --json state", { execFn })).resolves.toEqual({
+      ok: false,
+      stdout: "",
+      stderr: "",
+    });
+  });
+
+  test("passes the exact command string through to execFn, untouched", async () => {
+    const seen = [];
+    const execFn = (cmd) => {
+      seen.push(cmd);
+      return "{}";
+    };
+    const command = mergeCommandFor("repoCaps", {});
+    await defaultGhRun(command, { execFn });
+    expect(seen).toEqual([command]);
+  });
+});
+
+// ─── (b) observePrState — O1 (TSPEC §4.2) ──────────────────────────────────
+
+describe("observePrState", () => {
+  test("issues exactly mergeCommandFor's prState command, and nothing else", async () => {
+    const prUrl = "https://github.com/o/r/pull/42";
+    const { calls, _ghRun } = fakeGhRun(passingGh());
+    await observePrState(prUrl, { _ghRun });
+    expect(calls).toEqual([mergeCommandFor("prState", { prUrl })]);
+  });
+
+  test("a passing reply classifies through to a full O1Observation", async () => {
+    const prUrl = "https://github.com/o/r/pull/42";
+    const { _ghRun } = fakeGhRun(passingGh({ prState: { stdout: JSON.stringify({ state: "OPEN", mergeable: "MERGEABLE", mergeStateStatus: "CLEAN", number: 42 }) } }));
+    const result = await observePrState(prUrl, { _ghRun });
+    expect(result).toEqual({ ok: true, state: "OPEN", mergeable: "MERGEABLE", mergeStateStatus: "CLEAN", number: 42, mergeCommitOid: null });
+  });
+
+  test("a transport failure fails closed with command-failed, never throws", async () => {
+    const prUrl = "https://github.com/o/r/pull/42";
+    const { _ghRun } = fakeGhRun({}); // no fixture at all — fails closed
+    const result = await observePrState(prUrl, { _ghRun });
+    expect(result).toEqual({ ok: false, reason: "command-failed" });
+  });
+
+  test("garbage (unparseable) stdout fails closed with unparseable", async () => {
+    const prUrl = "https://github.com/o/r/pull/42";
+    const { _ghRun } = fakeGhRun(passingGh({ prState: { stdout: "not json {{{" } }));
+    const result = await observePrState(prUrl, { _ghRun });
+    expect(result).toEqual({ ok: false, reason: "unparseable" });
+  });
+});
+
+// ─── (b) observeCi — O2, delegating to checkPrCi unchanged (TSPEC §4.4) ───
+
+describe("observeCi", () => {
+  test("issues exactly mergeCommandFor's ci command", async () => {
+    const prUrl = "https://github.com/o/r/pull/42";
+    const { calls, _ghRun } = fakeGhRun(passingGh());
+    await observeCi(prUrl, { _ghRun });
+    expect(calls).toEqual([mergeCommandFor("ci", { prUrl })]);
+  });
+
+  test("hands the raw rollup text to checkPrCi and returns its verdict — passed", async () => {
+    const prUrl = "https://github.com/o/r/pull/42";
+    const { _ghRun } = fakeGhRun(
+      passingGh({ ci: { stdout: JSON.stringify({ statusCheckRollup: [{ status: "COMPLETED", conclusion: "SUCCESS" }] }) } }),
+    );
+    expect(await observeCi(prUrl, { _ghRun })).toBe("passed");
+  });
+
+  test("a failed check rolls up to failed", async () => {
+    const prUrl = "https://github.com/o/r/pull/42";
+    const { _ghRun } = fakeGhRun(
+      passingGh({ ci: { stdout: JSON.stringify({ statusCheckRollup: [{ status: "COMPLETED", conclusion: "FAILURE" }] }) } }),
+    );
+    expect(await observeCi(prUrl, { _ghRun })).toBe("failed");
+  });
+
+  test("no rollup entries reported is none", async () => {
+    const prUrl = "https://github.com/o/r/pull/42";
+    const { _ghRun } = fakeGhRun(passingGh({ ci: { stdout: JSON.stringify({ statusCheckRollup: [] }) } }));
+    expect(await observeCi(prUrl, { _ghRun })).toBe("none");
+  });
+
+  test("a transport failure never throws and classifies unknown (no second classifier — AC-4.0)", async () => {
+    const prUrl = "https://github.com/o/r/pull/42";
+    const { _ghRun } = fakeGhRun({});
+    expect(await observeCi(prUrl, { _ghRun })).toBe("unknown");
+  });
+
+  test("garbage stdout also classifies unknown", async () => {
+    const prUrl = "https://github.com/o/r/pull/42";
+    const { _ghRun } = fakeGhRun(passingGh({ ci: { stdout: "not json" } }));
+    expect(await observeCi(prUrl, { _ghRun })).toBe("unknown");
+  });
+
+  test("_checkCi is injectable and receives the raw rollup text via execFn", async () => {
+    const prUrl = "https://github.com/o/r/pull/42";
+    const { _ghRun } = fakeGhRun(passingGh({ ci: { stdout: "the-raw-rollup-text" } }));
+    const seenExecFn = [];
+    const _checkCi = async (url, { execFn }) => {
+      seenExecFn.push(execFn());
+      return "passed";
+    };
+    const result = await observeCi(prUrl, { _ghRun, _checkCi });
+    expect(result).toBe("passed");
+    expect(seenExecFn).toEqual(["the-raw-rollup-text"]);
+  });
+});
+
+// ─── (b) observeReviewThreads — O3, bounded cursor pagination (TSPEC §4.4) ─
+
+describe("observeReviewThreads", () => {
+  const ref = { owner: "o", repo: "r", number: 42 };
+
+  test("null ref (unparseable PR URL) fails closed without issuing any command", async () => {
+    const { calls, _ghRun } = fakeGhRun(passingGh());
+    const result = await observeReviewThreads(null, { _ghRun });
+    expect(result).toEqual({ ok: false, reason: "unparseable" });
+    expect(calls).toEqual([]);
+  });
+
+  test("a single page with no next page: one call, aggregated count", async () => {
+    const page = JSON.stringify({
+      data: { repository: { pullRequest: { reviewThreads: { pageInfo: { hasNextPage: false, endCursor: null }, nodes: [{ isResolved: true }, { isResolved: false }] } } } },
+    });
+    const { calls, _ghRun } = fakeGhRun(passingGh({ reviewThreads: { stdout: page } }));
+    const result = await observeReviewThreads(ref, { _ghRun });
+    expect(result).toEqual({ ok: true, unresolved: 1 });
+    expect(calls).toHaveLength(1);
+  });
+
+  test("cursor is omitted on the first call and forwarded as endCursor on the next", async () => {
+    const pageOne = { data: { repository: { pullRequest: { reviewThreads: { pageInfo: { hasNextPage: true, endCursor: "CUR1" }, nodes: [{ isResolved: false }] } } } } };
+    const pageTwo = { data: { repository: { pullRequest: { reviewThreads: { pageInfo: { hasNextPage: false, endCursor: null }, nodes: [{ isResolved: false }] } } } } };
+    let call = 0;
+    const _ghRun = async (command) => {
+      call += 1;
+      if (call === 1) {
+        expect(command).not.toMatch(/-f cursor=/);
+        return { ok: true, stdout: JSON.stringify(pageOne), stderr: "" };
+      }
+      expect(command).toMatch(/-f cursor=CUR1/);
+      return { ok: true, stdout: JSON.stringify(pageTwo), stderr: "" };
+    };
+    const result = await observeReviewThreads(ref, { _ghRun });
+    expect(result).toEqual({ ok: true, unresolved: 2 });
+    expect(call).toBe(2);
+  });
+
+  test("three pages aggregate across all of them", async () => {
+    const mkPage = (hasNextPage, endCursor, unresolvedCount) => ({
+      data: {
+        repository: {
+          pullRequest: {
+            reviewThreads: {
+              pageInfo: { hasNextPage, endCursor },
+              nodes: Array.from({ length: unresolvedCount }, () => ({ isResolved: false })),
+            },
+          },
+        },
+      },
+    });
+    const pages = [mkPage(true, "c1", 2), mkPage(true, "c2", 3), mkPage(false, null, 1)];
+    let call = 0;
+    const _ghRun = async () => {
+      const reply = pages[call];
+      call += 1;
+      return { ok: true, stdout: JSON.stringify(reply), stderr: "" };
+    };
+    const result = await observeReviewThreads(ref, { _ghRun });
+    expect(result).toEqual({ ok: true, unresolved: 6 });
+    expect(call).toBe(3);
+  });
+
+  test("exceeding MERGE_MAX_THREAD_PAGES (10) fails closed as incomplete, after exactly 10 fetches", async () => {
+    let call = 0;
+    const _ghRun = async () => {
+      call += 1;
+      return {
+        ok: true,
+        stdout: JSON.stringify({
+          data: { repository: { pullRequest: { reviewThreads: { pageInfo: { hasNextPage: true, endCursor: `c${call}` }, nodes: [] } } } },
+        }),
+        stderr: "",
+      };
+    };
+    const result = await observeReviewThreads(ref, { _ghRun });
+    expect(result).toEqual({ ok: false, reason: "incomplete" });
+    expect(call).toBe(10);
+  });
+
+  test("a page that fails to parse fails the whole observation closed, without further pages", async () => {
+    let call = 0;
+    const _ghRun = async () => {
+      call += 1;
+      return { ok: true, stdout: "not json", stderr: "" };
+    };
+    const result = await observeReviewThreads(ref, { _ghRun });
+    expect(result.ok).toBe(false);
+    expect(call).toBe(1);
+  });
+
+  test("reviewDecision never appears in the issued command (REQ AC-1.2)", async () => {
+    const { calls, _ghRun } = fakeGhRun(passingGh());
+    await observeReviewThreads(ref, { _ghRun });
+    for (const c of calls) {
+      expect(c).not.toMatch(/reviewDecision/);
+    }
+  });
+});
+
+// ─── (b) observeRepoCaps — O4 (TSPEC §4.5) ─────────────────────────────────
+
+describe("observeRepoCaps", () => {
+  test("issues exactly mergeCommandFor's repoCaps command, no PR URL involved", async () => {
+    const { calls, _ghRun } = fakeGhRun(passingGh());
+    await observeRepoCaps({ _ghRun });
+    expect(calls).toEqual([mergeCommandFor("repoCaps", {})]);
+  });
+
+  test("a passing reply classifies through", async () => {
+    const { _ghRun } = fakeGhRun(passingGh());
+    const result = await observeRepoCaps({ _ghRun });
+    expect(result.ok).toBe(true);
+    expect(result.defaultBranch).toBe("main");
+  });
+
+  test("garbage stdout fails closed, never guessing a branch name (AC-2.5a)", async () => {
+    const { _ghRun } = fakeGhRun(passingGh({ repoCaps: { stdout: "not json" } }));
+    const result = await observeRepoCaps({ _ghRun });
+    expect(result.ok).toBe(false);
+  });
+
+  test("a transport failure fails closed with command-failed", async () => {
+    const { _ghRun } = fakeGhRun({});
+    expect(await observeRepoCaps({ _ghRun })).toEqual({ ok: false, reason: "command-failed" });
+  });
+});
+
+// ─── (b) observeChangedFiles — O5, the completeness rule (TSPEC §4.6) ────
+
+describe("observeChangedFiles", () => {
+  const prUrl = "https://github.com/o/r/pull/42";
+  const ref = { owner: "o", repo: "r", number: 42 };
+
+  test("a short well-formed step-1 list is complete: only ONE command issued, no fallback", async () => {
+    const { calls, _ghRun } = fakeGhRun(
+      passingGh({ changedFiles: { stdout: JSON.stringify({ files: [{ path: "a.js" }, { path: "b.js" }] }) } }),
+    );
+    const result = await observeChangedFiles(prUrl, ref, { _ghRun });
+    expect(result).toEqual({ ok: true, files: ["a.js", "b.js"] });
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toBe(mergeCommandFor("changedFiles", { prUrl }));
+  });
+
+  test("an empty step-1 list is a VALID observation, and still only one command", async () => {
+    const { calls, _ghRun } = fakeGhRun(passingGh({ changedFiles: { stdout: JSON.stringify({ files: [] }) } }));
+    const result = await observeChangedFiles(prUrl, ref, { _ghRun });
+    expect(result).toEqual({ ok: true, files: [] });
+    expect(calls).toHaveLength(1);
+  });
+
+  test("a full-page step-1 list triggers exactly the fallback command, second", async () => {
+    const fullPage = Array.from({ length: 100 }, (_, i) => ({ path: `f${i}.js` }));
+    const fallbackPages = [[{ filename: "f0.js" }, { filename: "f1.js" }]];
+    const { calls, _ghRun } = fakeGhRun(
+      passingGh({
+        changedFiles: { stdout: JSON.stringify({ files: fullPage }) },
+      }),
+    );
+    // fakeGhRun's default "changedFilesFallback" fixture is not part of the
+    // six passingGh surfaces (it is a secondary command mergeCommandFor also
+    // builds) — supply it directly via a wrapping fake.
+    const map = passingGh({ changedFiles: { stdout: JSON.stringify({ files: fullPage }) } });
+    map["gh api --paginate --slurp"] = { ok: true, stdout: JSON.stringify(fallbackPages), stderr: "" };
+    const { calls: calls2, _ghRun: ghRun2 } = fakeGhRun(map);
+    const result = await observeChangedFiles(prUrl, ref, { _ghRun: ghRun2 });
+    expect(result).toEqual({ ok: true, files: ["f0.js", "f1.js"] });
+    expect(calls2).toEqual([
+      mergeCommandFor("changedFiles", { prUrl }),
+      mergeCommandFor("changedFilesFallback", { owner: ref.owner, repo: ref.repo, number: ref.number }),
+    ]);
+    expect(calls).toBeDefined(); // unused first fakeGhRun instance — kept out of the assertion path
+  });
+
+  test("a malformed entry in step 1 fails closed as unparseable — the fallback is NEVER attempted", async () => {
+    const { calls, _ghRun } = fakeGhRun(
+      passingGh({ changedFiles: { stdout: JSON.stringify({ files: [{ notPath: "x" }] }) } }),
+    );
+    const result = await observeChangedFiles(prUrl, ref, { _ghRun });
+    expect(result).toEqual({ ok: false, reason: "unparseable" });
+    expect(calls).toHaveLength(1);
+  });
+
+  test("a null ref reaching a needed fallback fails closed as incomplete, without attempting it (TE-v3 N-01)", async () => {
+    const fullPage = Array.from({ length: 100 }, (_, i) => ({ path: `f${i}.js` }));
+    const { calls, _ghRun } = fakeGhRun(passingGh({ changedFiles: { stdout: JSON.stringify({ files: fullPage }) } }));
+    const result = await observeChangedFiles(prUrl, null, { _ghRun });
+    expect(result).toEqual({ ok: false, reason: "incomplete" });
+    expect(calls).toHaveLength(1); // step 1 only — no fallback command was ever built
+  });
+
+  test("a fallback command that itself fails to run is incomplete", async () => {
+    const fullPage = Array.from({ length: 100 }, (_, i) => ({ path: `f${i}.js` }));
+    const map = passingGh({ changedFiles: { stdout: JSON.stringify({ files: fullPage }) } });
+    map["gh api --paginate --slurp"] = { ok: false, stdout: "", stderr: "rate limited" };
+    const { _ghRun } = fakeGhRun(map);
+    const result = await observeChangedFiles(prUrl, ref, { _ghRun });
+    expect(result).toEqual({ ok: false, reason: "incomplete" });
+  });
+
+  test("a transport failure at step 1 alone (short-circuit no fallback available) is incomplete", async () => {
+    const { calls, _ghRun } = fakeGhRun({});
+    const result = await observeChangedFiles(prUrl, ref, { _ghRun });
+    expect(result).toEqual({ ok: false, reason: "incomplete" });
+    expect(calls).toHaveLength(2); // step 1 attempted, then the fallback attempted too — both failed closed
+  });
+});
+
+// ─── (b) §3.3 re-observation counting — the reason-line wording (TSPEC §4.3)
+//
+// The retry LOOP itself lives in decideMerge/phaseMerge (A4/A7), never in
+// observePrState — this block only pins the exact interpolated wording the
+// loop's exhaustion produces, for mergeableRetries ∈ {0, 1, 3}, and proves
+// observePrState is itself stateless (repeated calls are independent — the
+// counting is the caller's, never the observation's).
+
+describe("§3.3 re-observation counting (mergeableRetries ∈ {0, 1, 3})", () => {
+  const baseRecord = () => ({
+    prUrl: "https://github.com/o/r/pull/42",
+    o1: { ok: true, state: "OPEN", mergeable: "UNKNOWN", mergeStateStatus: "CLEAN", number: 42, mergeCommitOid: null },
+    o1Count: 1,
+    ci: "passed",
+    o3: { ok: true, unresolved: 0 },
+    o4: null,
+    o5: { ok: true, files: ["src/example.js"] },
+    attempts: [],
+  });
+  const config = { ...MERGE_DEFAULTS, mergeMode: "on" };
+
+  test.each([0, 1, 3])(
+    "mergeableRetries=%i: o1Count still within bound demands another O1, o1Count beyond it resolves 'deferred' with the exact wording",
+    (mergeableRetries) => {
+      const cfg = { ...config, mergeableRetries };
+
+      // Within bound: o1Count === 1 + mergeableRetries - 1 (i.e. still <= retries after the first observation)
+      // when mergeableRetries > 0 there is room for at least one more demand.
+      if (mergeableRetries > 0) {
+        const stillWithin = decideMerge({ ...baseRecord(), o1Count: 1 }, cfg);
+        expect(stillWithin).toEqual({ kind: "need", observation: "O1", waitMs: cfg.mergeableRetryDelay * 1000 });
+      }
+
+      // Exhausted: o1Count === 1 + mergeableRetries (one more than the accepted bound).
+      const exhaustedCount = 1 + mergeableRetries;
+      const exhausted = decideMerge({ ...baseRecord(), o1Count: exhaustedCount }, cfg);
+      expect(exhausted.kind).toBe("resolved");
+      expect(exhausted.mergeStatus).toBe("deferred");
+      expect(exhausted.reason).toBe(`mergeability still UNKNOWN after ${exhaustedCount} observations`);
+    },
+  );
+
+  test("mergeableRetries=0 produces the deliberately ungrammatical 'after 1 observations'", () => {
+    const cfg = { ...config, mergeableRetries: 0 };
+    const result = decideMerge({ ...baseRecord(), o1Count: 1 }, cfg);
+    expect(result.reason).toBe("mergeability still UNKNOWN after 1 observations");
+  });
+
+  test("observePrState is stateless: repeated calls each independently reflect only their own reply", async () => {
+    const prUrl = "https://github.com/o/r/pull/42";
+    const replies = [
+      JSON.stringify({ state: "OPEN", mergeable: "UNKNOWN", mergeStateStatus: "CLEAN", number: 42 }),
+      JSON.stringify({ state: "OPEN", mergeable: "MERGEABLE", mergeStateStatus: "CLEAN", number: 42 }),
+    ];
+    let call = 0;
+    const _ghRun = async () => {
+      const stdout = replies[call];
+      call += 1;
+      return { ok: true, stdout, stderr: "" };
+    };
+    const first = await observePrState(prUrl, { _ghRun });
+    const second = await observePrState(prUrl, { _ghRun });
+    expect(first.mergeable).toBe("UNKNOWN");
+    expect(second.mergeable).toBe("MERGEABLE");
+    expect(call).toBe(2);
   });
 });

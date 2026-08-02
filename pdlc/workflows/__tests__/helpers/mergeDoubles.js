@@ -31,15 +31,32 @@ export const MERGE_PROP_SEED = 0x5ed;
 // ─── fakeGhRun / passingGh — the single `_ghRun` transport double ─────────
 //
 // `matchKey` normalizes whatever shape `command` arrives in (a plain
-// string, an argv array, or `{ argv }`) down to its first three
-// whitespace-separated tokens — e.g. `"gh pr merge 42 --squash"` and
-// `"gh pr merge 7 --merge"` both key to `"gh pr merge"`. That is the
-// "command shape" TSPEC §13.1 describes: per-surface substitution keys on
-// the recognisable subcommand, not on the volatile arguments (PR numbers,
-// repo slugs, flag values) riding along with it.
+// string, an argv array, or `{ argv }`) down to a stable per-surface shape
+// that ignores volatile arguments (PR numbers, repo slugs, cursors, flag
+// values) riding along with the real command. A plain first-three-token
+// reduction is NOT enough here: `mergeCommandFor`'s "prState", "ci",
+// "changedFiles" and "mergeReadback" surfaces all begin `gh pr view {url}
+// --json …` — they share the same first three tokens and would collide on
+// a single fixture entry. The `--json` field list is what actually
+// distinguishes them, so a command carrying `--json X` keys on
+// "{first three tokens} --json X"; `graphql`, the `--paginate --slurp`
+// fallback and `gh pr merge` are recognised structurally instead, since
+// none of them carry `--json` at all.
 export function matchKey(command) {
-  const str = normalizeCommand(command);
-  return str.trim().split(/\s+/).slice(0, 3).join(" ");
+  const str = normalizeCommand(command).trim();
+
+  if (/^gh api graphql\b/.test(str)) return "gh api graphql";
+  if (/^gh api --paginate --slurp\b/.test(str)) return "gh api --paginate --slurp";
+  if (/^gh pr merge\b/.test(str)) return "gh pr merge";
+
+  const jsonMatch = str.match(/--json\s+(\S+)/);
+  if (jsonMatch) {
+    const headMatch = str.match(/^(\S+\s+\S+\s+\S+)/);
+    const head = headMatch ? headMatch[1] : str;
+    return `${head} --json ${jsonMatch[1]}`;
+  }
+
+  return str.split(/\s+/).slice(0, 3).join(" ");
 }
 
 function normalizeCommand(command) {
@@ -68,44 +85,55 @@ export function fakeGhRun(map) {
   return { calls, _ghRun };
 }
 
-// The six canonical surfaces `_ghRun` is the single transport for. Each key
-// is the `matchKey` shape a real invocation is expected to reduce to; each
-// value is an "everything passes" `{ ok, stdout, stderr }` reply.
+// The six canonical surfaces `_ghRun` is the single transport for, keyed by
+// the EXACT shape `matchKey` reduces `mergeCommandFor`'s own strings to
+// (TSPEC §4.1 — `mergeCommandFor` is the sole home of every `gh` command
+// string, so these keys are derived from it, not invented independently).
+// Each value is an "everything passes" `{ ok, stdout, stderr }` reply.
 const PASSING_GH_DEFAULTS = {
-  "gh pr view": {
+  "gh pr view --json state,mergeable,mergeStateStatus,number,mergeCommit": {
     ok: true,
     stdout: JSON.stringify({
       state: "OPEN",
       mergeable: "MERGEABLE",
       mergeStateStatus: "CLEAN",
-      reviewDecision: "APPROVED",
-      headRefOid: "abc1234abc1234abc1234abc1234abc1234abc1",
+      number: 42,
+      mergeCommit: null,
     }),
     stderr: "",
   },
-  "gh pr checks": {
+  "gh pr view --json statusCheckRollup": {
     ok: true,
-    stdout: JSON.stringify([{ name: "build", state: "SUCCESS", bucket: "pass" }]),
+    stdout: JSON.stringify({ statusCheckRollup: [{ name: "build", state: "SUCCESS" }] }),
     stderr: "",
   },
   "gh api graphql": {
     ok: true,
-    stdout: JSON.stringify({ data: { repository: { pullRequest: { reviewThreads: { nodes: [] } } } } }),
-    stderr: "",
-  },
-  "gh repo view": {
-    ok: true,
     stdout: JSON.stringify({
-      deleteBranchOnMerge: true,
-      squashMergeAllowed: true,
-      mergeCommitAllowed: true,
-      rebaseMergeAllowed: true,
+      data: {
+        repository: {
+          pullRequest: {
+            reviewThreads: { pageInfo: { hasNextPage: false, endCursor: null }, nodes: [] },
+          },
+        },
+      },
     }),
     stderr: "",
   },
-  "gh pr diff": {
+  "gh repo view --json rebaseMergeAllowed,mergeCommitAllowed,squashMergeAllowed,deleteBranchOnMerge,defaultBranchRef": {
     ok: true,
-    stdout: "src/example.js\n",
+    stdout: JSON.stringify({
+      rebaseMergeAllowed: true,
+      mergeCommitAllowed: true,
+      squashMergeAllowed: true,
+      deleteBranchOnMerge: true,
+      defaultBranchRef: { name: "main" },
+    }),
+    stderr: "",
+  },
+  "gh pr view --json files": {
+    ok: true,
+    stdout: JSON.stringify({ files: [{ path: "src/example.js" }] }),
     stderr: "",
   },
   "gh pr merge": {
@@ -117,11 +145,12 @@ const PASSING_GH_DEFAULTS = {
 
 // Friendly override names, mapped to the canonical surface key above.
 const SURFACE_KEY_BY_NAME = {
-  prState: "gh pr view",
-  ci: "gh pr checks",
+  prState: "gh pr view --json state,mergeable,mergeStateStatus,number,mergeCommit",
+  ci: "gh pr view --json statusCheckRollup",
   reviewThreads: "gh api graphql",
-  repoCaps: "gh repo view",
-  changedFiles: "gh pr diff",
+  repoCaps:
+    "gh repo view --json rebaseMergeAllowed,mergeCommitAllowed,squashMergeAllowed,deleteBranchOnMerge,defaultBranchRef",
+  changedFiles: "gh pr view --json files",
   merge: "gh pr merge",
 };
 
