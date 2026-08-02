@@ -114,4 +114,57 @@ recorded so the next reader does not redo them.
 
 ## Recommendation
 
+**Needs revision** — one High, one Medium, three Low.
+
+**Exactly what must change to clear my side.** Two things; the three Lows are recorded, not required.
+
+1. **F-01.** State, in §7.2 clause 1 and §7.4, the predicate that decides *creating* vs. *existing*,
+   and make the unreadable-but-present case fail **closed**. Either disposition works: (a) the
+   discriminator is **file presence**, not `checkPostmortem` status, and an entry that can see a
+   post-mortem it cannot read takes a **phase refusal** — no authoring dispatch, no halt recorded,
+   nothing stripped, both counts unmoved, a fourth `{which}`-scoped source alongside §7.3's two; or
+   (b) the discriminator stays the shipped status and the **read failure itself** refuses before the
+   window arithmetic, on the same path §5.4's validation-failure variant will take at target state.
+   (a) is cheaper — it reuses a refusal shape the catalogue already renders and needs no new string.
+   Whichever is chosen, E-8 and AT-REG-06 must carry the entry's continuation rather than stopping
+   at "nothing written", which is currently false.
+2. **F-02.** Restate AT-REG-07's equivalence over what the gate consumes — same gate decision, same
+   resolved origin, same highest existing round, same resolved `N` — instead of over *same counts*,
+   so the mandatory `H − A ∉ {0, 1}` member has a constructible pair. Fixtures stay PROPERTIES';
+   the relation is this document's.
+
+**Why F-01 is High and not routed downstream under §13.4's stopping rule.** I applied that rule
+before assigning severity. F-01 is not an implementability defect, an altitude defect, or an
+oracle-design defect — the three classes §13.4 says to approve over. It is a **specified branch with
+an unspecified continuation whose only available default is wrong**: the document names the state
+(B-REG-6, E-8), asserts a property of it that its own flow contradicts, and leaves the write path to
+resolve the discriminator by the one shipped predicate that resolves it the harmful way. Deferring
+it to TSPEC would hand a TSPEC author a choice between two observable behaviours the FSPEC is
+supposed to have already made — and BR-7 and BR-13 are stated as invariants precisely so no
+downstream layer may weaken them. It is a one-clause fix at this altitude and an unrecoverable data
+loss if it lands wrong.
+
+**Why F-02 is Medium and not Low.** It would be Low if AT-REG-07 were one leg among several. It is
+not: §5.4 states in terms that the absence conjuncts are "the weaker half and neither alone
+discharges this rule", and conjunct 2 is structural. So the equivalence relation is the *only*
+behavioural evidence separating "unwired" from "wired with an inline interim procedure", and it is
+undefined on the member an inline procedure is cheapest to get wrong. That is an oracle that does
+not falsify what it exists to falsify — a Medium by the Challenger bar, and closable in one sentence.
+
+**Plateau or churn, stated rather than assumed.** Not applicable as a trajectory: there is no prior
+software-engineer FSPEC review to compare against (see *Review basis*), so this round establishes the
+baseline rather than continuing a series. For the record, the te round's seven closures are visible
+in the text and three of them (F-01's B-BUD-3 observable, F-04's B-REG-7 rewrite, F-06's step-G
+no-row conjunct) are among the strongest parts of the document — this is a well-worked v1.1, and my
+two blockers are new ground, not re-litigation.
+
+**Pre-commitment for the next round.** A v1.2 that does the two things above and nothing else clears
+my side; I will not open new ground on sections I have approved here. If a v1.2 closes F-01 with a
+refusal, I will check the `{which}` literal against catalogue §4 rather than accept the claim — a
+fourth literal is a catalogue edit and must land in the same revision. If the next round's blocking
+count is non-decreasing, or if F-01 is closed by restating E-8 rather than by fixing the write path,
+I will recommend the operator halt rather than open a fourth round.
+
 ## Verdict
+
+VERDICT: Needs revision
