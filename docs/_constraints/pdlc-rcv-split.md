@@ -171,5 +171,7 @@ reference to AC-1.5(4)'s algorithm, its numbered steps, or the refusal renders i
 `REQ-RCV-07` AC-7.1 — renders as that REQ's §6 and catalogue §4. The rule is over the references, not
 one phrase, because the four rows word them differently, and it reaches catalogue **§3**'s row schema
 on the same terms: its *"AC-1.5(4)'s step-4 path"* is AC-7.1 step 4's, and its *"fixed by
-`pdlc-rcv-budget-stop` §6"* is `REQ-RCV-07` §6's, since `REQ-RCV-01` mints no operator string (its
-§6). The catalogue may say so directly once `REQ-RCV-07` ships.
+`pdlc-rcv-budget-stop` §6"* is `REQ-RCV-07` §6's, since `REQ-RCV-01` mints no **refusal** string (its
+§6) — the clause being redirected is row B's ❌ refusal text. Worded that way from `REQ-RCV-01` v2.7
+onward, which added one non-refusal operator string of its own (AC-1.3's Iterations render), so
+*"mints no operator string"* is no longer true of that REQ even though the redirect is. The catalogue may say so directly once `REQ-RCV-07` ships.
