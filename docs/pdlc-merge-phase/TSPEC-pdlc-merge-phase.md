@@ -77,8 +77,14 @@ main()  ──►  phaseMerge()  ──►  decideMerge()          [pure, total,
 ```
 
 `decideMerge` never performs IO and never receives a seam; `phaseMerge` performs no parsing and takes
-no decision beyond "which observation the core just demanded". That split is what makes §11's
-23-row table a pure-function suite (§13.2) rather than an integration suite.
+no decision beyond "which observation the core just demanded".
+
+**What that split does and does not buy (TE F-01, F-13).** FSPEC §11's table has **24** rows (1–23
+plus 11a), and it is **not** a pure-function suite: three of its four columns — *queue written*,
+*escalation*, and the observation-traffic assertions §13.3 requires — are `phaseMerge`'s, not
+`decideMerge`'s. The row table is therefore driven through `phaseMerge` (§13.2), and `decideMerge`
+carries a thinner suite of its own: the ordered guard sequence, the two §2.3 tie-breaks, the
+short-circuit property and the termination bound. v1.0 claimed otherwise; the claim was wrong.
 
 ### 2.2 New constants — `orchestrate-dev.js`, alongside the existing phase flags (`:19`–`:35`)
 
@@ -87,13 +93,14 @@ no decision beyond "which observation the core just demanded". That split is wha
 | `PHASE_MERGE_ENABLED` | `true` | FSPEC §2.4 row 1; same shape as `PHASE_DOD_ENABLED` (`:22`) |
 | `MERGE_CONFIG_PATH` | `".claude/pdlc.config.json"` | §3 |
 | `MERGE_GUARD_DEFAULTS` | `Object.freeze(["pdlc/workflows/", "pdlc/skills/", "pdlc/hooks/", ".claude/workflows/"])` | FSPEC §4.3; frozen so no code path can remove a default |
-| `MERGE_DEFAULTS` | `Object.freeze({ mergeMode: "off", mergeRequiresCi: true, allowSquashMerge: false, deleteBranchOnPdlcMerge: true, mergeableRetries: 3, mergeableRetryDelaySeconds: 10, guardPaths: [] })` | FSPEC §10.1 |
+| `MERGE_DEFAULTS` | `Object.freeze({ mergeMode: "off", mergeRequiresCi: true, allowSquashMerge: false, deleteBranchOnPdlcMerge: true, mergeableRetries: 3, mergeableRetryDelay: 10, guardPaths: [] })` — `mergeableRetryDelay` is **in seconds**, the REQ §7 / FSPEC §10.1 key name, with the unit documented rather than encoded in the name (PM F-03) | FSPEC §10.1 |
 | `MERGE_MODES` | `Object.freeze(["off", "gated", "on"])` | closed catalogue (DC-01) |
 | `MERGE_STATUSES` | `Object.freeze(["merged", "deferred", "refused", "skipped"])` | FSPEC §9.1 |
 | `MERGE_FILES_PAGE_LIMIT` | `100` | §4.6 — GitHub's `files` page size |
 | `MERGE_THREAD_PAGE_LIMIT` | `100` | §4.4 |
 | `MERGE_MAX_THREAD_PAGES` | `10` | §4.4 — bounded, fail-closed |
-| `MERGE_MAX_DECISION_STEPS` | `24` | §5.2 — termination bound on the demand loop |
+| `MERGE_MAX_RETRIES` | `10` | §3.1 — the accepted upper bound on `mergeableRetries` (TE F-02) |
+| `MERGE_MAX_DECISION_STEPS` | `24` | §5.2 — termination bound, **derived** from `MERGE_MAX_RETRIES` (§5.2) |
 
 ### 2.3 Function inventory — `orchestrate-dev.js`
 
@@ -111,20 +118,35 @@ bundle additionally publishes. Every function is total and never throws unless t
 | `classifyRepoCaps` | `(raw: string \| null) => O4Observation` | pure |
 | `classifyChangedFiles` | `(primaryRaw, fallbackRaw, opts) => O5Observation` | pure |
 | `classifyMergeResult` | `(mergeRaw, readbackRaw) => O6Observation` | pure |
-| `observePrState` | `async (prUrl, { execFn }) => O1Observation` | IO |
-| `observeCi` | `async (prUrl, { execFn, _checkCi }) => CiStatus` | IO — delegates to `checkPrCi` |
-| `observeReviewThreads` | `async (ref, { execFn }) => O3Observation` | IO |
-| `observeRepoCaps` | `async ({ execFn }) => O4Observation` | IO |
-| `observeChangedFiles` | `async (prUrl, ref, { execFn }) => O5Observation` | IO |
-| `executeMerge` | `async (prUrl, method, { execFn }) => O6Observation` | IO, mutating |
-| `defaultMergeObservations` | `Object.freeze({ prState, ci, reviewThreads, repoCaps, changedFiles, merge })` | the six-key seam value |
+| `mergeCommandFor` | `(surface, params) => string` | pure — the **single** home of every `gh` command string (§4.1) |
+| `defaultGhRun` | `async (command, { execFn }) => { ok, stdout }` | IO — the one new capability seam's default |
+| `observePrState` | `async (prUrl, { _ghRun }) => O1Observation` | IO |
+| `observeCi` | `async (prUrl, { _ghRun, _checkCi }) => CiStatus` | IO — delegates to `checkPrCi` |
+| `observeReviewThreads` | `async (ref, { _ghRun }) => O3Observation` | IO |
+| `observeRepoCaps` | `async ({ _ghRun }) => O4Observation` | IO |
+| `observeChangedFiles` | `async (prUrl, ref, { _ghRun }) => O5Observation` | IO |
+| `executeMerge` | `async (prUrl, method, { _ghRun }) => O6Observation` | IO, mutating |
 | `guardVerdict` | `(changed: O5Observation, guardPaths: string[]) => { fired, kind, matched }` | pure |
 | `mergeCandidates` | `(caps: O4Observation, config) => Array<"rebase" \| "merge" \| "squash">` | pure |
 | `decideMerge` | `(record: ObservationRecord, config) => Demand \| Resolution` | pure, total |
 | `deleteRemoteBranch` | `async ({ feature, _git }) => { ok, reason }` | IO |
 | `updateDefaultBranch` | `async ({ defaultBranch, mergeSha, _git }) => { ok, branch, reason }` | IO |
 | `evidenceCellFor` | `(mergeSha: string \| null, prNumber: number) => string` | pure |
-| `phaseMerge` | `async ({ feature, prUrl, config?, _observations, _git, _readFile, _recordQueueRow, _log, _now, _sleep, _configPath }) => MergeOutcome` | orchestrator |
+| `phaseMerge` | `async ({ feature, prUrl, config?, _enabled = PHASE_MERGE_ENABLED, _ghRun = defaultGhRun, _git, _readFile, _recordQueueRow, _log, _now, _sleep, _configPath = MERGE_CONFIG_PATH }) => MergeOutcome` | orchestrator |
+
+**The enable seam, named once (TE F-05).** `phaseMerge`'s parameter is **`_enabled`**, defaulted in
+the callee; `main()`'s corresponding parameter is `_phaseMergeEnabled` and it forwards its value into
+`_enabled` (§10.4). Two names for two scopes, and both are injectable — §13.3's row-1 case needs
+`_readFile` provably uncalled, which requires reaching row 1 without editing a module constant.
+
+**One new capability seam, not six (TE F-03, F-04).** v1.0 proposed a `_mergeObservations` table of
+six functions. It is replaced by a single seam, **`_ghRun(command) => { ok, stdout }`** — "run this
+`gh` command, give me its raw stdout" — because that is the only capability the runtime must supply.
+Every command string, every fallback, every pagination loop and the `O6` read-back then live in this
+module, in one place, and the adapter carries no `gh` knowledge at all (§11.3). FSPEC §3.1's "one
+substitutable observation point per external surface" is satisfied by the six `observe*` functions:
+each is separately importable and separately drivable, because a test's `fakeGhRun` is keyed on the
+command shape and can answer one surface while leaving the others alone (§13.1).
 
 ### 2.4 The two record types
 
@@ -143,14 +165,28 @@ ObservationRecord = {
 MergeOutcome = {
   mergeStatus: "merged" | "deferred" | "refused" | "skipped",
   mergeSha: string | null,
-  mergeMethod: "rebase" | "merge" | "squash" | "unknown" | null,
-  row: number | string,            // the §11 row that resolved — reported, and asserted by tests
+  mergeMethod: "rebase" | "merge" | "unknown" | null,   // + "squash", pending erratum E-1 (§15.2)
+  row: RowId,                      // see the rule below — reported, and asserted by tests
   reason: string | null,           // FSPEC §9.2, one line
   escalations: string[],           // each already prefixed "MERGE ESCALATION: "
   notes: string[],                 // plain, non-escalating notices
   queueRow: "recorded" | "recorded (uncommitted)" | "none" | "error" | null,
 }
 ```
+
+**`row` is a FSPEC §11 row identifier — always (PM F-01).** v1.0 leaked §2.2's row numbers into this
+field, making §11 rows 6 and 8 unreachable and rows 3 and 4 double-claimed by conditions with
+different `mergeStatus` and escalation expectations. The rule, stated once and enforced by §5.3:
+
+| `row` value | Meaning |
+|---|---|
+| `1`…`23`, `"11a"` | the FSPEC §11 row that resolved. This is the normal case and covers every row of §11's table |
+| `"7d-unknown"` | the **one** condition FSPEC §11 has no row for: an unretrievable `O3` (FSPEC §3.2 assigns it `refused` at §2.3 **7d**, but §11's table has no corresponding row). Requested as FSPEC erratum E-2 (§15.2); until it lands, this designator names the gap rather than borrowing a row that means something else |
+| `"internal"` | E30 only — `phaseMerge` caught a throw (§5.2). Never produced by a correct implementation |
+
+`mergeMethod`'s `"squash"` member is likewise **not** in FSPEC §9.1's enumeration and is reachable
+only under `allowSquashMerge: true` (FSPEC §6.1). It is declared here and raised as erratum E-1
+(§15.2, PM F-04) rather than shipped silently.
 
 Every observation type is a discriminated union `{ ok: true, … } | { ok: false, reason }` where
 `ok: false` **is** FSPEC §3.2's `unknown`. One shape for all six (DC-11: sibling oracles share an
