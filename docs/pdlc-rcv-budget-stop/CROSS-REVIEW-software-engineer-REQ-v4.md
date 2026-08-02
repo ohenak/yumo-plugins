@@ -55,8 +55,38 @@ dispositioned by the document — I am recording the reasoning so the next reade
 
 ## Recommendation
 
-*(pending)*
+**Approved with minor changes** — no High, no Medium, four Low. v3's blocker is closed, v3's F-02 is
+closed, both v3 Questions are answered, and v3's F-03 is held open only by my own pre-commitment not
+to block on it.
+
+**On my v3 pre-commitment, which applies exactly.** I wrote that "a v3.1 doing this one thing and
+nothing else clears my side". The author did that one thing, chose the stronger of the two options I
+offered, carried it to every site I named, and closed F-02 and both Questions besides. My side is
+clear and I am not looking for a reason to hold it open. The four Lows are recorded, not required:
+none of them changes an outcome, an oracle, a threshold or a data contract, and every one is
+addressable in a single sentence at the author's discretion — including, legitimately, "not now".
+
+**Why F-01, F-02 and F-04 are Low and not Medium.** All three are counts or nouns in prose that this
+revision's own edit left behind. In each case the ground truth is stated correctly somewhere that a
+consumer actually reads: catalogue §4's `{which}` enum fixes the three literals, `REQ-RCV-07` AC-7.6's
+*Given* enumerates the four refusal conditions, and R-14's own table carries the three residuals. No
+FSPEC, TSPEC or PROPERTIES author who follows the cross-references arrives at the wrong contract; they
+arrive at a sentence that disagrees with itself and go check. That is a documentation defect, not an
+implementation-blocking ambiguity, and inflating it to Medium to force a round would be exactly the
+behaviour my own escalation pre-commitment exists to prevent.
+
+**Plateau or churn (§9's third bullet), stated rather than assumed.** **Converged.** Blocking count
+5 → 2 → 1 → **0**, monotonically decreasing every round, with every prior finding closed on the round
+after it was raised and no finding ever re-opened. My v3 escalation pre-commitment — that I would
+recommend an operator halt if the count went non-decreasing or if v3.1 failed to close F-01 — is
+**not triggered** and is now discharged.
+
+**If a v3.2 is written for any reason** (F-01/F-02/F-04 are the candidates, and F-02 lands in the
+catalogue rather than the REQ), do the relocation before the addition: F-03's headroom is 129 bytes,
+which is not enough to add a sentence to the REQ without moving one out first. F-01 and F-04 are both
+one-word edits and cost nothing; F-02 is a catalogue-side edit and costs the REQ nothing at all. I
+will not raise any of them as a blocker in a later round.
 
 ## Verdict
 
-*(pending)*
+VERDICT: Approved with minor changes
