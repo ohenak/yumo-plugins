@@ -27,11 +27,19 @@
 
 ## Questions
 
-_TBD_
+| ID | Question |
+|----|---------|
+| Q-01 | Act 1's count tests are total **because** a halt is unreachable while `A < H` — step G refuses an unresolved post-mortem and a force does not bypass it (AC-1.5(2) clause 1). That premise is load-bearing for the operator recovery, is derivable from two ACs, and is stated in neither the catalogue nor split §5.8, which say only *"a landed-but-unconfirmed write moves exactly one of `H`/`A` by one, and no reachable state moves both"*. Is it worth one clause in §5.8 recording *why* no reachable state moves both? A property leg over generated regions would otherwise be the only place the premise is checked, and split §5.4's property axes are over line sequences, not over reachability. |
+| Q-02 | The document is **61,311 bytes** against the hook's hard ceiling of 61,440 (`pdlc/hooks/scripts/check-req-size.sh`, `LINE_LIMIT=700` / 60 KiB) — 129 bytes of headroom, down from ~690 at v3.0. Any further round that adds a clause must relocate first. Stated as a fact, not a finding; the relocation of §5.8 in this revision is exactly the right response and is why the round fit at all. |
 
 ## Positive Observations
 
-_TBD_
+- **F-01 was closed by the option that costs the family least, and then closed one level deeper than I asked.** I asked for a discriminator and for act 1 to be scoped to it. What landed is a discriminator **plus** a restatement of act 1 over an observable — the region's own line counts — replacing an instruction to recognise an *unconfirmed* line, which is not a property of the file. That is the difference between a recovery a test can specify a fixture for and one that needs the operator to know something the bytes do not carry. Catalogue §4 says so in the cell, in those terms.
+- **The `{which}` token is a discriminator, not a reason token, and the document says so.** *"It names an IO fault of the loop, not a state of the region, so it still mints no S-16 reason and that enum stays closed at three."* The pressure in this family is always to answer a refusal with a new id; three rounds running, this REQ has declined to, and this round declined while adding a token to a shipped string.
+- **The one-update rule over clauses 1 and 2 removes a state instead of dispositioning it.** I re-derived the fail-open §5.8 names — unconfirmed strip after a landed append leaves `H` incremented, `A` unmoved and a readable marker, and AC-1.5(4)'s gate reads exactly those two things, so a persistent write fault re-grants a window on every halt with no notice, no ❌ row and nothing in the run report. That is a genuine hole in v3.0, it was not in either reviewer's findings, and the fix is the strong form: an unreachable state rather than a fourth disposition. F-01 above is the one path it leaves.
+- **Leg (iii) went from an oracle that could not fail to two fixtures that discriminate.** Split §5.4 now names the ❌ text per fixture, the region's byte state per fixture, and the reason the merged leg was worthless. It also carries the positive conjuncts I want on a refusal leg — counts unmoved **and** nothing stripped **and** `notice` empty **and** the exact ❌ text — so it is not an absence-only oracle in any of its four parts.
+- **Every paired end moved in the same revision, and I checked all four at HEAD.** Catalogue §3 (three classes, *records* for *takes*), catalogue §4 (❌ text, act 1, residue), split §5.4 and the new §5.8, `REQ-RCV-07` AC-7.6 (❌ row, recovery row, closing paragraph) and its *one exception* paragraph (now carrying the `A = H` condition). Each edit carries its date and its citing REQ. `1858865` and `1ad20a5` are separate commits from `18faa48` but the same revision, which is what the rule asks.
+- **Compression paid for the round again, and the relocation was to a reason-bearing section.** §5.8 takes the *why* and leaves the rule, the confirmation and the disposition in AC-1.4 — the split the family declares. I diffed the relocated text: nothing that was an obligation became prose, and O-5 gained the one-update rule explicitly (*"the strip has no failure mode of its own to specify"*), so the TSPEC owner is told what not to specify.
 
 ## Recommendation
 
