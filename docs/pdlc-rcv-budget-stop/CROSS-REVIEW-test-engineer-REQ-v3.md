@@ -43,4 +43,19 @@
 
 ## Recommendation
 
+**Needs revision**
+
+Both v2 findings are closed, and closed by the options I named. Two things must change, and **neither fix belongs in AC-1.4** — both are in the shared files this revision already edited, which is why they are not a third round of the shape I pre-committed against:
+
+1. **F-01 (High)** — restore the discriminator the generalised ❌ text removed, or scope act 1 to a precondition the operator can decide. As written, the recovery for a failed **Iterations** write tells the operator to delete a trailing `HALT-REASON:` line that on a re-halt belongs to a real, confirmed halt, and doing so drives `A > H` — after which AC-1.5(4)'s gate never grants a window again. Add the leg that discriminates the two fixtures by ❌ text; leg (iii) as written passes either way.
+2. **F-02 (Medium)** — carry the edge into **catalogue §3** as well as §4. §3 still enumerates two entry classes, still pins row B's condition to AC-1.5(4)'s step-4 path, and still discriminates B from C by *"takes no halt"* — the predicate AC-1.5(1) replaced with *records* in this same revision. Three words in one paragraph.
+
+**Honouring my v2 pre-commitment.** I said that if round 3 opened another finding inside the AC-1.4 clause 1 / clause 3 pair I would **treat that pair as a fixed point and say so** rather than file a third round of the same shape. I am doing that: **F-03** (clause order 3 → 1 leaving a render on an unrecorded halt) and **F-04** (clause 3's confirmation stated only by reference) are both consequences inside that pair, both are filed **Low**, both are routed rather than blocking, and I will not raise either again at REQ altitude. The pair has converged; what has not is the *outward* half of the v2 fix — the catalogue cells and the row schema it now shares with two other documents.
+
+**Explicitly not blocking.** Q-01 and Q-02 are answerable in a sentence each or left as known. I re-raise nothing about the algorithm behind *region validates*, the fixed-point test, `DOC-BYTES:`, the torn-write taxonomy or the authored post-mortem body — NB-1, NB-2, NB-3, NB-5 and NB-6 receive those correctly and by construction, and NB-3's new *"one exception, stated not deferred"* clause is the right way to record that AC-1.4's refusal is live while the validation conjunct is not.
+
+**Trajectory note for the operator (R-1).** Blocking count 4 → 2 → 2, but the composition changed: this round's two are in `pdlc-rcv-catalogue.md` and are one edit each, where the previous rounds' were in the REQ's own criteria. Both fixes are mechanical and neither touches an AC, a threshold, an `S-*` id or a user story. I pre-commit again: if round 4 closes F-01 and F-02 in the catalogue without changing AC-1.4, I approve.
+
 ## Verdict
+
+VERDICT: Needs revision
