@@ -314,11 +314,9 @@ state `deriveRoundWindow` reads (M-1d). *When:* the phase is (re-)entered. *Then
    claim; the arithmetic behind it is stated once for both ends of the edge at
    `pdlc-rcv-split.md` **§5.2**.
 
-   **A refusal is not a halt: the entry returns without running the rest of AC-1.5.** Left running,
-   clause 1 would halt on the budget path, and AC-1.4 governs **every** halt, so that halt would append
-   its own `HALT-REASON:` (`H += 1`) and strip the operator's `RESOLVED:` — spending the clearance it
-   declined to spend, and converting a repairable region into an unrepairable one. The refusal
-   therefore takes no halt, leaves the marker in place, and is stated in full at `REQ-RCV-07` AC-7.2.
+   **A refusal is not a halt: the entry returns without running the rest of AC-1.5**, takes no halt
+   and leaves the marker in place — why, stated once for both ends at `pdlc-rcv-split.md` **§5.3**;
+   the refusal itself in full at `REQ-RCV-07` AC-7.2.
 
 5. **every halt records which halt it was, and a no-revision halt resumes the window rather than replacing it.** Each halt appends exactly one `HALT-REASON: {value}` line to the **end** of
    the region (S-15, AC-1.4 clause 1), `{value}` being the `; `-joined render, in the catalogue §3 precedence order, of every halt reason that halt raised — so a round on which S-3 and S-4 both

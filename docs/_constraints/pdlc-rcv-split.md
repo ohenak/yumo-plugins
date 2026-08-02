@@ -115,6 +115,17 @@ the **arithmetic** behind it, which both halves depend on and neither restates.
   vacuously, and the loop grants `H − A − 1` windows beyond the one paid for, every invocation,
   fail-**open**.
 
+### 5.3 Why a refusal is not a halt
+
+Relocated from `REQ-RCV-01` AC-1.5(4) (2026-08-01, round 9); nothing changed meaning in the move.
+`REQ-RCV-01` AC-1.5(4) states the **rule** (the entry returns without running the rest of AC-1.5);
+`REQ-RCV-07` AC-7.2 states the **refusal** in full; this states why the two cannot be the same act.
+
+Left running, `REQ-RCV-01` AC-1.5's clause 1 would halt on the budget path, and its AC-1.4 governs
+**every** halt — so that halt would append its own `HALT-REASON:` (`H += 1`) and strip the operator's
+`RESOLVED:`, spending the clearance it declined to spend and converting a repairable region into an
+unrepairable one. The refusal therefore takes no halt and leaves the marker in place.
+
 ## 6. The catalogue delegation, stated once
 
 Relocated from `REQ-RCV-01` §4 (2026-08-01, round 8) so both halves cite one copy; no clause changed
