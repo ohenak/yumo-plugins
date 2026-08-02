@@ -154,6 +154,11 @@ const DEV_META = `export const meta = {
     { title: "Phase DOD", detail: "definition-of-done verify + remediate" },
     { title: "Phase H", detail: "harvest learnings" },
     { title: "Phase PUB", detail: "raise PR + verify CI" },
+    // TSPEC §11.2 — Phase MERGE runs immediately after Phase PUB. The
+    // module's own meta.phases is dead in this artifact (same reason
+    // meta.inputs is, above), so this hand-written copy is the only place
+    // the operator-visible phase list can carry the new row.
+    { title: "Phase MERGE", detail: "merge the PR + advance the queue row" },
   ],
 };`;
 
@@ -179,8 +184,11 @@ return await __queue.main({
     __dev.main({
       reqPath,
       ...__devInjections,
-      _recordQueueRow: async ({ feature, status }) =>
-        __queue.rewriteStatus(__queuePath, feature, status, rtReadFile, rtWriteFile, rtGit),
+      // TSPEC §11.2 — the 7th (evidence) argument threads a merged run's
+      // Evidence cell through to the queue row (§8.3/§8.4); absent, it is
+      // undefined, and rewriteStatus treats that exactly as it does today.
+      _recordQueueRow: async ({ feature, status, evidence }) =>
+        __queue.rewriteStatus(__queuePath, feature, status, rtReadFile, rtWriteFile, rtGit, evidence),
     }),
 });
 `;
@@ -209,14 +217,18 @@ return await __dev.main({
   // §7.2 edits 3 + 4 — a direct dev invocation still owns its queue row, so it
   // closes over __queue's row helpers at the default queue path. Absent this,
   // the seam falls back to defaultRecordQueueRow's queueRow "none" no-op.
-  _recordQueueRow: async ({ feature, status }) =>
+  // TSPEC §11.2 — same evidence thread as QUEUE_ENTRY's closure (§7.2 edits
+  // 3 + 4): a direct run's own queue-row write also carries the merged
+  // Evidence cell when Phase MERGE produced one.
+  _recordQueueRow: async ({ feature, status, evidence }) =>
     __queue.rewriteStatus(
       __queue.DEFAULT_QUEUE_PATH,
       feature,
       status,
       rtReadFile,
       rtWriteFile,
-      rtGit
+      rtGit,
+      evidence
     ),
 });
 `;

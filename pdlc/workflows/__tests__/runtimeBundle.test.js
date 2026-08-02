@@ -759,6 +759,45 @@ function rtDevInjectionKeys(adapterSource) {
 }
 
 /**
+ * D2 (TSPEC §11.2): the `_recordQueueRow` closure's own value text — the
+ * arrow function assigned to that key inside a `.main({ … })` call in the
+ * given entrypoint template (`DEV_ENTRY` / `QUEUE_ENTRY`), read from
+ * build-runtime.mjs. Boundaries are found on the MASKED copy (so a comma or
+ * brace inside a string/comment cannot mislead the walk), but the returned
+ * text is sliced from the ORIGINAL body so it evaluates as real JS.
+ */
+function recordQueueRowClosureText(builderSource, entryName) {
+  const decl = new RegExp(`const\\s+${entryName}\\s*=\\s*\``).exec(builderSource);
+  expect(decl).not.toBeNull();
+  const tplStart = builderSource.indexOf("`", decl.index) + 1;
+  const tplEnd = builderSource.indexOf("`", tplStart);
+  const body = builderSource.slice(tplStart, tplEnd);
+  const masked = maskLiterals(body);
+  const key = /_recordQueueRow\s*:/.exec(masked);
+  expect(key).not.toBeNull();
+  const valueStart = key.index + key[0].length;
+  let depth = 0;
+  let end = -1;
+  for (let i = valueStart; i < masked.length; i++) {
+    const c = masked[i];
+    if (OPENERS[c]) {
+      depth += 1;
+    } else if (CLOSERS[c]) {
+      if (depth === 0) {
+        end = i;
+        break;
+      }
+      depth -= 1;
+    } else if (c === "," && depth === 0) {
+      end = i;
+      break;
+    }
+  }
+  expect(end).toBeGreaterThan(valueStart);
+  return body.slice(valueStart, end).trim();
+}
+
+/**
  * Every `_`-prefixed key supplied by a bundle entrypoint's injection object,
  * read from build-runtime.mjs's DEV_ENTRY / QUEUE_ENTRY template literals.
  * Every `.main({…})` argument object counts, including the one nested inside
@@ -1346,4 +1385,90 @@ describe("RLH-CR-F1: the shipped dev bundle declares and honours its inputs", ()
       __forcePhases: null,
     });
   });
+
+  it("D2 (TSPEC §11.2): DEV_META.phases gains a trailing Phase MERGE row", () => {
+    const meta = shippedMeta(DEV_BUNDLE);
+    expect(Array.isArray(meta.phases)).toBe(true);
+    const mergeRow = meta.phases.find((p) => p.title === "Phase MERGE");
+    expect(mergeRow).toBeDefined();
+    expect(mergeRow.detail).toBe("merge the PR + advance the queue row");
+    // §10.4: Phase MERGE runs immediately after Phase PUB — the only place the
+    // operator-visible phase list can show that ordering is as the last row.
+    expect(meta.phases[meta.phases.length - 1].title).toBe("Phase MERGE");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// D2 (TSPEC §11.2, §7.2 edit 3+4) — both entrypoint closures thread a merged
+// run's evidence through to `rewriteStatus`'s 7th argument, so the queue row
+// an operator reads after a merge carries the `{shortSha} #{n}` / `merged
+// #{n}` cell §8.3/§8.4 compute rather than an empty one.
+// ---------------------------------------------------------------------------
+
+describe("D2: both entrypoints thread evidence through _recordQueueRow (TSPEC §11.2)", () => {
+  const builderSource = readFileSync(resolve(WORKFLOWS, "build-runtime.mjs"), "utf8");
+
+  it.each(["QUEUE_ENTRY", "DEV_ENTRY"])(
+    "%s's _recordQueueRow closure forwards evidence as rewriteStatus's 7th argument",
+    async (entryName) => {
+      const closureText = recordQueueRowClosureText(builderSource, entryName);
+      const calls = [];
+      const stubQueue = {
+        DEFAULT_QUEUE_PATH: "docs/_queue/QUEUE.md",
+        rewriteStatus: (...args) => {
+          calls.push(args);
+          return { queueRow: "recorded" };
+        },
+      };
+      // eslint-disable-next-line no-new-func
+      const closure = Function(
+        "__queue",
+        "__queuePath",
+        "rtReadFile",
+        "rtWriteFile",
+        "rtGit",
+        `"use strict"; return (${closureText});`
+      )(stubQueue, "docs/_queue/QUEUE.md", "READ", "WRITE", "GIT");
+
+      await closure({ feature: "f", status: "done", evidence: "abc1234 #45" });
+
+      expect(calls).toHaveLength(1);
+      // rewriteStatus's signature is (queuePath, feature, status, readFileFn,
+      // writeFileFn, gitFn, evidence) — 7 positional arguments, evidence last.
+      expect(calls[0]).toHaveLength(7);
+      expect(calls[0][1]).toBe("f");
+      expect(calls[0][2]).toBe("done");
+      expect(calls[0][6]).toBe("abc1234 #45");
+    }
+  );
+
+  it.each(["QUEUE_ENTRY", "DEV_ENTRY"])(
+    "%s's _recordQueueRow closure still forwards a null/absent evidence unchanged",
+    async (entryName) => {
+      const closureText = recordQueueRowClosureText(builderSource, entryName);
+      const calls = [];
+      const stubQueue = {
+        DEFAULT_QUEUE_PATH: "docs/_queue/QUEUE.md",
+        rewriteStatus: (...args) => {
+          calls.push(args);
+          return { queueRow: "none" };
+        },
+      };
+      // eslint-disable-next-line no-new-func
+      const closure = Function(
+        "__queue",
+        "__queuePath",
+        "rtReadFile",
+        "rtWriteFile",
+        "rtGit",
+        `"use strict"; return (${closureText});`
+      )(stubQueue, "docs/_queue/QUEUE.md", "READ", "WRITE", "GIT");
+
+      await closure({ feature: "f", status: "halted" });
+
+      expect(calls).toHaveLength(1);
+      expect(calls[0]).toHaveLength(7);
+      expect(calls[0][6]).toBeUndefined();
+    }
+  );
 });

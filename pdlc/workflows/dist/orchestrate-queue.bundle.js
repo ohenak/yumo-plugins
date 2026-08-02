@@ -9503,7 +9503,10 @@ return await __queue.main({
     __dev.main({
       reqPath,
       ...__devInjections,
-      _recordQueueRow: async ({ feature, status }) =>
-        __queue.rewriteStatus(__queuePath, feature, status, rtReadFile, rtWriteFile, rtGit),
+      // TSPEC §11.2 — the 7th (evidence) argument threads a merged run's
+      // Evidence cell through to the queue row (§8.3/§8.4); absent, it is
+      // undefined, and rewriteStatus treats that exactly as it does today.
+      _recordQueueRow: async ({ feature, status, evidence }) =>
+        __queue.rewriteStatus(__queuePath, feature, status, rtReadFile, rtWriteFile, rtGit, evidence),
     }),
 });
