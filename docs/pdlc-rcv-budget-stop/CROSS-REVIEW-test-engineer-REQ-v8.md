@@ -91,8 +91,67 @@ questions: F-37 and F-38 are findings with stated repairs, not requests for info
 
 ## Recommendation
 
-_pending_
+**Needs revision**
+
+All four v7 findings are closed, and the two Mediums are closed by a **better** change than the one I
+asked for: rather than making the interim decision procedure writable as a test, v2.2 establishes
+that no interim procedure is safe and removes it. I checked both horns of that argument and both
+hold. **No High**, nothing about the interim *decision* is contested, and the O-10 legs that replaced
+the v2.1 pair are cell-by-cell, positively asserted, and — I verified this — still true after row 18
+wires the conjunct.
+
+What blocks approval is that the decision landed in **§3.1, §9 and §10 but not in §5 and §4.1**, the
+two surfaces a PROPERTIES author derives tests from.
+
+1. **F-37 (Medium)** — AC-1.5(4) clause 4 still says a clearance is unconsumed *"exactly when all
+   three hold … **and the region validates**"*, and fixes four consequences for the false case, with
+   no interim caveat; §4.1 repeats the conjunct in both derivation rows, one of whose default columns
+   asserts *"no absent or invalid value ever widens the window"* — which the interim falsifies, since
+   an invalid hand-edited `WINDOW-START:` **does** widen it at row 10 (R-14's own accepted residual).
+   A test author working from those two sections derives at least three tests that must fail at this
+   REQ's ship, and DoD tracing AC-1.5(4) to implementation finds an unwired conjunct with nothing at
+   the AC to explain it. Repair is one sentence at AC-1.5(4)'s false bullet scoping the **wiring**
+   (not the meaning) to `REQ-RCV-07` per X-06, plus a five-word clause in each of §4.1's two default
+   columns. Note the asymmetry with the X-05 precedent this document leans on: X-05's interim follows
+   from unreachability, so no clause is contradicted; X-06's removes a conjunct from a **reachable**
+   gate, which has to be said where the conjunct is stated.
+
+2. **F-38 (Medium)** — O-10 still carries the non-validating legs (*"a region that does not validate
+   consuming no clearance"*, and *"**0** dispatches … on a non-validating entry"*) while X-06 states
+   the production composition *"does not consult"* the seam. Driving an unconsulted seam to `false`
+   and asserting a refusal is a test against a call graph the production entrypoint never traverses —
+   it would keep passing if the seam were deleted. *"Is `REQ-RCV-07`'s to run in production"*
+   acknowledges this but leaves a PROPERTIES author two readings, one of which is the false-green.
+   The repair is a subtraction: hand those legs wholly to `REQ-RCV-07` O-10, and let this REQ own one
+   seam leg it can actually run on the production path — a **call-count oracle asserting the interim
+   composition calls the seam 0 times**, which falsifies an accidental early wiring and inverts
+   cleanly at row 18.
+
+The two Lows are small. Leg 1's *"highest round below `windowEnd(N)`"* is vacuous by AC-1.5(4)'s own
+definition of `N`, where leg 2's parallel phrase is load-bearing, so the two read as a pair when only
+one constrains anything (F-39). And the relocation to `pdlc-rcv-split.md` bought ~2.4 KB of which
+~2.2 KB was spent in the same revision, leaving 171 bytes under the soft byte threshold with two
+Mediums outstanding — filed `Process` for the fourth-round recurrence, not for this instance (F-40).
+
+**On room.** F-38's repair subtracts more than it adds, F-39's is a deletion, and F-37 needs roughly
+450 bytes across three insertions. Net it fits inside 171 bytes plus what F-38 and F-39 return — but
+apply F-38 and F-39 **first**, then F-37, so the budget is never the reason a sentence gets shortened
+into ambiguity. If it still does not fit, relocate rather than delete: §4's delegation paragraph and
+§7's `O-*`/`R-*`/`X-*` collision rule are both already shared with `REQ-RCV-07` and belong beside the
+paired-edge rule in `pdlc-rcv-split.md` §5.
+
+Explicitly **not** filed: the decision to leave the conjunct unwired, which is correct and whose
+supporting argument I verified on both horns; the shape and cells of O-10's two interim legs and
+their swap-stability claim, which I checked against `REQ-RCV-07` AC-7.1; the absence of any S-16 in
+the interim; the relocation of the split record and its pointers; the paired-edge rule, whose
+discharge I verified at `REQ-pdlc-rcv-reset-region.md:96` and `:463`; the release-coupling answer in
+R-14; and everything in §1, §2, §4, §4.1's unaffected rows, AC-1.1–AC-1.4, AC-1.5(1)–(3) and (5),
+§6, §7, §8 beyond O-10 and §9 beyond R-14 — approved across seven rounds and unchanged here. Nothing
+here contests user need, priority, phasing, the budget of three, the split, or shipping this REQ
+ahead of its successor.
 
 ## Verdict
 
-_pending_
+VERDICT: Needs revision
+
+{"high": 0, "medium": 2, "low": 2}
