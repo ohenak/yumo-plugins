@@ -106,4 +106,54 @@ pins that refusal as a required test rather than flagging it as the cost of ship
 
 ## 6. Recommendation
 
+**Needs revision**
+
+All four v6 findings are textually closed, my v6 Q-01 is answered unambiguously, and the round's
+central move — arguing about the interim implementation's *shape* rather than its value, and putting
+the seam and its production default in the document — is correct and reusable. The three claims v2.1
+added that I could check mechanically all hold: the queue citation, the two catalogue §3 strings, and
+the id-collision list.
+
+What reopens the round is **one High and two Mediums, all on the clause v2.1 added**:
+
+1. **F-01 (High)** — the chosen shape, *valid on the empty region, invalid on any non-empty one*,
+   refuses on exactly the input the feature exists to serve. A region is non-empty **iff** the phase
+   has halted (AC-1.4 clause 1; catalogue S-12), the predicate is resolved on every entry (X-06's own
+   words), and the false branch **refuses the phase** and writes the queue row `halted` (AC-1.5(4)).
+   So at the interim ship every phase gets one halt and is then terminal, `RESOLVED: yes` cannot clear
+   it, and no sanctioned repair exists or would help — while `MAX_REVIEW_ROUNDS` 5 → 3 made absolute
+   per document produces *more* halts reaching that disabled path. X-06's safety claim is true only of
+   branches with no region, which are the ones the REQ is not about. Row 12's five phases and **row
+   18's own Phase R** sit inside the interval, so the replacement is still gated on not halting. Pick
+   one of the three exits and state it in X-06, R-14 and O-10 with one vocabulary: (a) do not wire the
+   third conjunct until row 18 — my recommendation, since its interim behaviour *is* today's; (b) take
+   the `depends-on` edge and co-deliver, qualifying §3.1's *"deliverable alone"*; (c) keep the
+   conjunct wired but let the interim default decide what this REQ already specifies — S-13/S-14
+   grammar plus `H − A ∈ {0, 1}` — deferring only AC-7.1's ordering analysis.
+2. **F-02 (Medium)** — O-10's new interim oracle demands *"exactly one S-16 notice"* on a region for
+   which none of the three closed enum reasons is true, so the leg forces either a false reason (which
+   routes the operator to a repair for a fault that is not there, and cannot lift the refusal) or a
+   fourth one (which §6 and the catalogue both declare a defect). It resolves with F-01 under options
+   (a) or (c); under any other answer O-10 must name the reason and §6 must justify it.
+3. **F-03 (Medium)** — `REQ-RCV-07` X-07 and R-16 still prescribe the constant *invalid* as *"safe by
+   construction"* and still carry the *"immediately behind row 10"* claim this REQ just corrected. The
+   two halves of the split now contradict each other on the same two-ended edge, and an implementer
+   reading the successor's end gets the bricking prescription. Revise X-07 and R-16 in the same commit
+   as X-06 and R-14, and mark the pair in §10 as an edge that must be revised together.
+
+**F-04 (Low, Process)** does not affect the verdict but affects how the fixes are paid for: the
+document is 492 lines / **55,287 bytes** against a 55,296-byte soft threshold — **9 bytes** of
+headroom — and this round was funded by a commit whose title is *"trim X-06 to stay under the size
+soft threshold"*. Relocate §4.1's durability table or §6's threshold rows to
+`docs/_constraints/pdlc-rcv-baseline.md` **before** writing the v2.2 sentences, not after.
+
+Durable signal from this round, for `docs/_constraints/DOMAIN-CONSTRAINTS.md` if it recurs — a
+sharper version of last round's line: **an interim implementation of a gate conjunct must be judged on
+the inputs the feature exists to serve, not on the inputs that are safe to refuse.** A default that
+refuses on *"anything I cannot verify"* is fail-closed and useless when *anything I cannot verify* is
+the feature's whole domain; the honest interim is usually to leave the conjunct unwired and say so.
+Second line, from F-02: **a fail-closed refusal that must render a reason from a closed enum can only
+be introduced where some enum member is true of it** — an incomplete implementation that refuses for a
+reason the vocabulary cannot express is not shippable behind that vocabulary.
+
 ## Verdict
