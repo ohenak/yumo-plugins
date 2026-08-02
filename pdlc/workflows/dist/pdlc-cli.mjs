@@ -556,6 +556,361 @@ function guardVerdict(changed, guardPaths) {
   return { fired: matched.length > 0, kind: matched.length ? "match" : "clear", matched };
 }
 
+// ─── TSPEC §5 — Phase MERGE: the pure decision core ────────────────────────
+//
+// PLAN §12 A4. `decideMerge` is pure, total and demand-driven (TSPEC §5.1):
+// one call in, one of three shapes out — `need` (the next observation to
+// take), `act` (the next merge method to attempt) or `resolved` (a §11 row).
+// It never loops, never calls IO/clock seams, and never mutates its
+// arguments; the orchestrating step loop (the `for` loop that re-drives this
+// function until it resolves, and the try/catch around the whole thing that
+// maps a thrown/exhausted loop to `row: "internal"`, TSPEC §12 E21) is
+// `phaseMerge`'s (A7), not this function's.
+
+/**
+ * FSPEC §5 / TSPEC §5.4 — the CI evidence rule, as a single lookup:
+ * `mergeRequiresCi` relaxes exactly the `"none"` cell. `pending`, `failed`
+ * and `unknown` refuse under both settings; `passed` always passes.
+ *
+ * @param {"passed"|"none"|"pending"|"failed"|"unknown"} ci
+ * @param {boolean} requiresCi
+ * @returns {{result:"pass"}|{result:"refused", row:string, reason:string, escalate:boolean}}
+ */
+function ciRule(ci, requiresCi) {
+  if (ci === "passed") return { result: "pass" };
+  if (ci === "none") {
+    if (requiresCi) {
+      return {
+        result: "refused",
+        row: "9",
+        reason: "no CI checks reported and mergeRequiresCi is true",
+        escalate: true,
+      };
+    }
+    return { result: "pass" };
+  }
+  if (ci === "pending") {
+    return { result: "refused", row: "10", reason: "CI is pending", escalate: false };
+  }
+  if (ci === "failed") {
+    return { result: "refused", row: "10", reason: "CI failed", escalate: false };
+  }
+  // "unknown" — CI rollup could not be classified.
+  return {
+    result: "refused",
+    row: "11",
+    reason: "CI status could not be determined",
+    escalate: false,
+  };
+}
+
+function o1FieldUnreadable(o1) {
+  return (
+    o1.mergeable === UNRECOGNISED_SENTINEL ||
+    o1.mergeStateStatus === UNRECOGNISED_SENTINEL ||
+    o1.number === null
+  );
+}
+
+/**
+ * `mergeCandidates` — TSPEC §5.6 / FSPEC §6.1. Pure: builds the merge-method
+ * candidate chain, in the fixed order rebase, merge, squash. Squash is
+ * included only when BOTH the repository capability (`caps.squash`) and the
+ * configuration (`config.allowSquashMerge === true`, strict equality) allow
+ * it — under the shipped default (`allowSquashMerge: false`) squash is
+ * absent from the returned array entirely, never merely skipped at attempt
+ * time (PROP-M-11).
+ *
+ * @param {{rebase:boolean, mergeCommit:boolean, squash:boolean}} caps - O4's classified capabilities
+ * @param {{allowSquashMerge:boolean}} config
+ * @returns {Array<"rebase"|"merge"|"squash">}
+ */
+function mergeCandidates(caps, config) {
+  const chain = [];
+  if (caps && caps.rebase) chain.push("rebase");
+  if (caps && caps.mergeCommit) chain.push("merge");
+  if (config && config.allowSquashMerge === true && caps && caps.squash) chain.push("squash");
+  return chain;
+}
+
+/**
+ * `decideMerge(record, config)` — TSPEC §5.1–§5.3. See module docblock
+ * above; guards are numbered and ordered exactly as TSPEC §5.3's table,
+ * evaluated top to bottom, first match wins.
+ *
+ * `record` is the ObservationRecord (TSPEC §2.4): `{ prUrl, o1, o1Count, ci,
+ * o3, o4, o5, attempts }`. `config` is a parsed merge config
+ * (`MERGE_DEFAULTS`-shaped, TSPEC §3).
+ *
+ * @param {object} record
+ * @param {object} config
+ * @returns {
+ *   {kind:"need", observation:string, waitMs?:number} |
+ *   {kind:"act", method:"rebase"|"merge"|"squash"} |
+ *   {kind:"resolved", row:string, mergeStatus:string, reason:string|null,
+ *    escalations:string[], mergeSha:string|null, mergeMethod:string|null,
+ *    defaultBranch?:string|null}
+ * }
+ */
+function decideMerge(record, config) {
+  // Guard 1 (§2.2 r2): mergeMode is "off".
+  if (config.mergeMode === "off") {
+    return {
+      kind: "resolved",
+      row: "2",
+      mergeStatus: "skipped",
+      reason: "mergeMode is off",
+      escalations: [],
+      mergeSha: null,
+      mergeMethod: null,
+    };
+  }
+  // Guard 2 (§2.2 r3): no PR URL from Phase PUB.
+  if (!record.prUrl) {
+    return {
+      kind: "resolved",
+      row: "6",
+      mergeStatus: "deferred",
+      reason: "no PR URL from Phase PUB",
+      escalations: [],
+      mergeSha: null,
+      mergeMethod: null,
+    };
+  }
+  // Guard 3 (§2.2 r4): O1 not yet observed.
+  if (record.o1 === null) {
+    return { kind: "need", observation: "O1" };
+  }
+  // Guard 4 (§2.2 r4): O1 whole-observation failure.
+  if (!record.o1.ok) {
+    return {
+      kind: "resolved",
+      row: "8",
+      mergeStatus: "refused",
+      reason: "PR state could not be determined",
+      escalations: [],
+      mergeSha: null,
+      mergeMethod: null,
+    };
+  }
+  // Guard 5 (§2.2 r5, §5.5): PR already MERGED. O4 is an OBSERVATION here,
+  // never a precondition — only its default-branch name is consulted, and
+  // its absence/failure never turns an already-merged PR into a refusal.
+  if (record.o1.state === "MERGED") {
+    if (record.o4 === null) {
+      return { kind: "need", observation: "O4" };
+    }
+    return {
+      kind: "resolved",
+      row: "3",
+      mergeStatus: "merged",
+      reason: null,
+      escalations: [],
+      mergeSha: record.o1.mergeCommitOid ?? null,
+      mergeMethod: "unknown",
+      defaultBranch: record.o4.ok ? record.o4.defaultBranch : null,
+    };
+  }
+  // Guard 6 (§2.2 r6): O5 not yet observed.
+  if (record.o5 === null) {
+    return { kind: "need", observation: "O5" };
+  }
+  const guardPaths = effectiveGuardPaths(config.guardPaths);
+  const verdict = guardVerdict(record.o5, guardPaths);
+  // Guard 7 (§2.2 r6): self-modification guard fired — a path matched.
+  if (verdict.kind === "match") {
+    const reason = `self-modification guard fired — matched paths: ${verdict.matched.join(", ")}`;
+    return {
+      kind: "resolved",
+      row: "4",
+      mergeStatus: "refused",
+      reason,
+      escalations: [`MERGE ESCALATION: self-modification guard fired for ${record.prUrl} — matched paths: ${verdict.matched.join(", ")}`],
+      mergeSha: null,
+      mergeMethod: null,
+    };
+  }
+  // Guard 8 (§2.2 r6): self-modification guard fail-closed, O5 unretrievable.
+  if (verdict.kind === "unretrievable") {
+    return {
+      kind: "resolved",
+      row: "5",
+      mergeStatus: "refused",
+      reason: "changed-file list could not be retrieved",
+      escalations: [`MERGE ESCALATION: self-modification guard fired for ${record.prUrl} — changed-file list could not be retrieved`],
+      mergeSha: null,
+      mergeMethod: null,
+    };
+  }
+  // Guard 9 (§2.3 7a): PR is CLOSED.
+  if (record.o1.state === "CLOSED") {
+    return {
+      kind: "resolved",
+      row: "7",
+      mergeStatus: "deferred",
+      reason: "PR is CLOSED",
+      escalations: [],
+      mergeSha: null,
+      mergeMethod: null,
+    };
+  }
+  // Guard 10 (§2.3 7b): O2 (CI) not yet observed.
+  if (record.ci === null) {
+    return { kind: "need", observation: "O2" };
+  }
+  // Guard 11 (§2.3 7b, §5.4): the CI rule.
+  const ci = ciRule(record.ci, config.mergeRequiresCi);
+  if (ci.result === "refused") {
+    return {
+      kind: "resolved",
+      row: ci.row,
+      mergeStatus: "refused",
+      reason: ci.reason,
+      escalations: ci.escalate
+        ? [`MERGE ESCALATION: CI evidence absent for ${record.prUrl} — no checks reported and mergeRequiresCi is true`]
+        : [],
+      mergeSha: null,
+      mergeMethod: null,
+    };
+  }
+  // Guard 12 (§2.3 7c): mergeable / mergeStateStatus / number unparseable.
+  if (o1FieldUnreadable(record.o1)) {
+    return {
+      kind: "resolved",
+      row: "11a",
+      mergeStatus: "refused",
+      reason: "PR mergeability could not be determined",
+      escalations: [],
+      mergeSha: null,
+      mergeMethod: null,
+    };
+  }
+  // Guard 13 (§2.3 7c, §3.3): mergeable still UNKNOWN, bounded re-reads remain.
+  if (record.o1.mergeable === "UNKNOWN" && record.o1Count <= config.mergeableRetries) {
+    return { kind: "need", observation: "O1", waitMs: config.mergeableRetryDelay * 1000 };
+  }
+  // Guard 14 (§2.3 7c, §3.3): mergeable still UNKNOWN, retries exhausted.
+  if (record.o1.mergeable === "UNKNOWN") {
+    return {
+      kind: "resolved",
+      row: "13",
+      mergeStatus: "deferred",
+      reason: `mergeability still UNKNOWN after ${record.o1Count} observation(s)`,
+      escalations: [],
+      mergeSha: null,
+      mergeMethod: null,
+    };
+  }
+  // Guard 15 (§2.3 7c): CONFLICTING / DIRTY / BLOCKED.
+  if (
+    record.o1.mergeable === "CONFLICTING" ||
+    record.o1.mergeStateStatus === "DIRTY" ||
+    record.o1.mergeStateStatus === "BLOCKED"
+  ) {
+    return {
+      kind: "resolved",
+      row: "12",
+      mergeStatus: "deferred",
+      reason: `PR not mergeable (${record.o1.mergeable}/${record.o1.mergeStateStatus})`,
+      escalations: [],
+      mergeSha: null,
+      mergeMethod: null,
+    };
+  }
+  // Guard 16 (§2.3 7d): O3 (review threads) not yet observed.
+  if (record.o3 === null) {
+    return { kind: "need", observation: "O3" };
+  }
+  // Guard 17 (§2.3 7d): O3 unretrievable/unparseable.
+  if (!record.o3.ok) {
+    return {
+      kind: "resolved",
+      row: "13a",
+      mergeStatus: "refused",
+      reason: "review-thread list could not be determined",
+      escalations: [],
+      mergeSha: null,
+      mergeMethod: null,
+    };
+  }
+  // Guard 18 (§2.3 7d): unresolved review threads remain.
+  if (record.o3.unresolved > 0) {
+    return {
+      kind: "resolved",
+      row: "14",
+      mergeStatus: "deferred",
+      reason: `${record.o3.unresolved} unresolved review thread(s)`,
+      escalations: [],
+      mergeSha: null,
+      mergeMethod: null,
+    };
+  }
+  // Guard 19 (§2.3 7e): O4 (capabilities) not yet observed.
+  if (record.o4 === null) {
+    return { kind: "need", observation: "O4" };
+  }
+  // Guard 20 (§2.3 7e): O4 unretrievable/unparseable.
+  if (!record.o4.ok) {
+    return {
+      kind: "resolved",
+      row: "15",
+      mergeStatus: "refused",
+      reason: "merge-method capability could not be determined",
+      escalations: [],
+      mergeSha: null,
+      mergeMethod: null,
+    };
+  }
+  const candidates = mergeCandidates(record.o4, config);
+  // Guard 21 (r8): no permitted merge method.
+  if (candidates.length === 0) {
+    return {
+      kind: "resolved",
+      row: "16",
+      mergeStatus: "deferred",
+      reason: "no permitted merge method",
+      escalations: [],
+      mergeSha: null,
+      mergeMethod: null,
+    };
+  }
+  // Guards 22-24 (r8) drive the candidate chain. TSPEC §5.3 lists "an
+  // untried candidate remains" (22) ahead of "the last attempt succeeded"
+  // (23), but the only reading under which those two do not race is to
+  // check success FIRST: once an attempt has succeeded the chain must stop
+  // (NFR-2 — no more of the repo's merge surface is touched than the
+  // decision needs), so an untried candidate remaining after a success must
+  // never trigger another attempt.
+  const attemptedMethods = record.attempts.map((a) => a.method);
+  const lastAttempt = record.attempts[record.attempts.length - 1];
+  if (lastAttempt && lastAttempt.ok) {
+    return {
+      kind: "resolved",
+      row: "18",
+      mergeStatus: "merged",
+      reason: null,
+      escalations: [],
+      mergeSha: lastAttempt.oid ?? null,
+      mergeMethod: lastAttempt.method,
+    };
+  }
+  const nextCandidate = candidates.find((c) => !attemptedMethods.includes(c));
+  if (nextCandidate) {
+    return { kind: "act", method: nextCandidate };
+  }
+  // Guard 24: every candidate attempted, none succeeded.
+  const reason = record.attempts.map((a) => `${a.method} failed (${a.detail})`).join("; ");
+  return {
+    kind: "resolved",
+    row: "17",
+    mergeStatus: "deferred",
+    reason,
+    escalations: [],
+    mergeSha: null,
+    mergeMethod: null,
+  };
+}
+
 // MODEL-01: per-phase model selection. Every phase runs on Opus for reasoning
 // depth EXCEPT the Phase I implementation batches, which run on Sonnet for
 // throughput/cost. Passed to the runtime via the agent() opts.model field.
