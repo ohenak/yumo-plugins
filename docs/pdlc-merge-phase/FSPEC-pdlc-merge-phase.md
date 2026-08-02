@@ -451,9 +451,8 @@ Required behaviour (AC-5.6):
 | `outcome: success`, any other `mergeStatus` | `awaiting-merge` (unchanged) | unchanged |
 | `outcome: halted` or the pipeline threw | `halted` (unchanged) | unchanged |
 
-The driver's write remains unconditional in the sense that it always writes *something*; what changes
-is that its value is derived from `mergeStatus` as well as `outcome`. Writing `done` over a `done` is
-idempotent and produces no commit.
+The driver still always writes *something*; what changes is that its value derives from `mergeStatus`
+as well as `outcome`. Writing `done` over a `done` is idempotent and produces no commit.
 
 **F-13 — the superseded criterion, named.** `pdlc-rcv-budget-stop`'s AC-2.7a states that
 `orchestrate-dev` owns no status write but the halt one, and the shipped success path hard-codes its
@@ -596,9 +595,8 @@ selected. The first asserts the gate opens; the second asserts it was this gate 
 holds; `on` behaves identically to `gated` today — there is deliberately **no mode that bypasses the
 preconditions**, and the `gated`/`on` distinction is reserved for a future relaxation. A three-valued
 flag where one value means "skip the safety checks" is the flag that eventually gets set in a hurry.
-
-`mergeMode` ships `off` so installing this feature does not begin auto-merging anyone's repository:
-that decision stays the operator's, and dated.
+It ships `off` so installing this feature does not begin auto-merging anyone's repository: that
+decision stays the operator's, and dated.
 
 ### 10.2 Where the configuration comes from
 
