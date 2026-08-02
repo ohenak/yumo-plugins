@@ -385,7 +385,7 @@ on it.
 
 ### 7.1 When it runs
 
-The write-back runs **only** when `mergeStatus` is `merged` — i.e. §2.2 row 6 succeeded, or row 3
+The write-back runs **only** when `mergeStatus` is `merged` — i.e. §2.2 row 8 succeeded, or row 5
 found the PR already merged. Every other resolution (`skipped`, `refused`, `deferred`) writes
 nothing to the queue and makes no queue commit: the feature's row is left exactly as the driver left
 it, `awaiting-merge` or `in-progress` (AC-1.3).
@@ -405,10 +405,10 @@ The merge evidence goes in a sixth **`Evidence`** cell on the same row, in one o
 | the PR was already merged and `mergeCommit.oid` is absent or unparseable | `merged #{prNumber}` | `merged #42` |
 
 The second form exists because `O1.mergeCommit` is the only SHA source on the already-merged path and
-GitHub does not always populate it. `merged` is a literal token, never a SHA-shaped placeholder, so a
-reader can never mistake it for a truncated commit. A cell already holding the first form is **not**
-downgraded to the second by a later re-entry that cannot resolve the oid: an existing non-empty
-`Evidence` cell is left byte-identical whenever the new value would be the `merged #{prNumber}` form.
+GitHub does not always populate it. `merged` is a literal token, never a SHA-shaped placeholder. A
+cell already holding the first form is **not** downgraded to the second by a later re-entry that
+cannot resolve the oid: an existing non-empty `Evidence` cell is left byte-identical whenever the new
+value would be the `merged #{prNumber}` form.
 
 `Evidence` is safe as a column name against the queue's header lookup, which resolves columns by
 *substring* over `order`/`#`, `status`, `feature`, `req path`/`req`/`path`, and
@@ -432,10 +432,7 @@ these:
 The separator row is named explicitly because AC-5.3 lists only the header and the data rows: it is
 neither a data row nor prose, and a six-column header over a five-column separator is a broken table.
 Appending an empty cell there is safe — the separator is recognised by every cell being a dash run
-**or empty**.
-
-A queue already carrying an `Evidence` column is not migrated again; the write sets the target row's
-sixth cell and leaves every other row byte-identical.
+**or empty**. A queue already carrying an `Evidence` column is not migrated again.
 
 ### 7.4 Recording channel, idempotence, and the missing cases
 
@@ -444,14 +441,14 @@ today**, extended — not duplicated. One channel is not an optimisation: AC-5.6
 `orchestrate-dev` invocation and a queue-driven one to leave the same durable result, and a second
 path is how the two would silently diverge.
 
-**This is a change, and the FSPEC states it as one.** The shipped channel already carries the status,
-but it carries *only* the status: there is no evidence argument, and its row transform replaces a
-single `Status` cell and can neither append a sixth cell nor perform §7.3's header/separator/all-rows
-migration. So the extension touches four places — the two entrypoint closures that bind the channel,
-the channel's default implementation, its per-run seam, and the shared row transform — and that last
-one is also used by the halt path and by the driver's `in-progress` / `awaiting-merge` / `halted`
-writes. Those writes must be unaffected: a call carrying no evidence must produce exactly today's
-bytes. §13 O-M2 carries the enumeration; the invariance is a required property, not an assumption.
+**This is a change, and the FSPEC states it as one.** The shipped channel carries the status and
+*only* the status: there is no evidence argument, and its row transform replaces a single `Status`
+cell and can neither append a sixth cell nor perform §7.3's migration. The extension therefore
+touches four places — the two entrypoint closures that bind the channel, its default implementation,
+its per-run seam, and the shared row transform — and that last one also serves the halt path and the
+driver's `in-progress` / `awaiting-merge` / `halted` writes. Those must be unaffected: a call
+carrying no evidence produces exactly today's bytes. That invariance is a required property, not an
+assumption; §13 O-M2 carries the enumeration.
 
 | Situation | Disposition | Behaviour | §11 row | Escalates |
 |---|---|---|---|---|
@@ -463,32 +460,31 @@ bytes. §13 O-M2 carries the enumeration; the invariance is a required property,
 | Row present in a status §2.5 does not overwrite | `recorded` | file unchanged; plain note naming the status found | 18 | no |
 
 **Why a git refusal does not escalate.** AC-5.2's escalation exists because "merged, queue not
-updated" *blocks the serial queue*. An uncommitted row is correct on disk, and the next queue pass
-reads the file, not the commit — so nothing is blocked, and it takes the same shape as §6.4's branch
-deletion: a real remaining action, reported as a note, never downgrading `merged`. A missing row
-(`error`) does block, and escalates.
+updated" *blocks the serial queue*. An uncommitted row is correct on disk and the next queue pass
+reads the file, not the commit — so nothing is blocked, and it takes §6.4's shape: a real remaining
+action, reported as a note, never downgrading `merged`. A missing row (`error`) does block, so it
+escalates.
 
 **Row-disposition vocabulary (required change).** The shipped catalogue is
-`"halted" | "halted (uncommitted)" | "none" | "error"` — the write's *disposition* named after the
-only status it ever wrote. A `done` write reported as `halted` is actively misleading in the final
-report. The catalogue becomes **`"recorded" | "recorded (uncommitted)" | "none" | "error"`**: same
-four members, same meanings, the two status-bearing ones renamed status-neutral, so one vocabulary
-describes a halt row and a done row alike. Existing readers that compare against `halted` change with
-it; §13 O-M1 carries the enumeration.
+`"halted" | "halted (uncommitted)" | "none" | "error"` — a *disposition* named after the only status
+it ever wrote, so a `done` write would report as `halted`. It becomes
+**`"recorded" | "recorded (uncommitted)" | "none" | "error"`**: same four members, same meanings, the
+two status-bearing ones renamed status-neutral, so one vocabulary describes a halt row and a done row
+alike. Readers comparing against `halted` change with it; §13 O-M1 carries the enumeration.
 
-**Idempotence caveat (F-07).** "Byte-identical" holds for rows already in the canonical
-`| a | b |` form, which is what the row transform emits and what this repo's `QUEUE.md` uses. A
-consumer queue with column-aligned padding is re-emitted canonically on the first write to that row,
-producing a real commit. The guarantee is therefore stated as **no semantic change**, and only rows
-already canonical are byte-identical.
+**Idempotence caveat.** "Byte-identical" holds for rows already in the canonical `| a | b |` form,
+which is what the row transform emits and what this repo's `QUEUE.md` uses. A consumer queue with
+column-aligned padding is re-emitted canonically on the first write to that row, producing a real
+commit. The guarantee is therefore **no semantic change**; only already-canonical rows are
+byte-identical.
 
 ### 7.5 The driver's post-pipeline write, and F-13
 
 Today the queue driver, after the pipeline returns, computes its own status from the pipeline outcome
-alone — `awaiting-merge` on success, `halted` otherwise — and writes it unconditionally, then emits
+alone — `awaiting-merge` on success, `halted` otherwise — writes it unconditionally, then emits
 "…complete — status set to awaiting-merge. Merge the PR, then set it to done to unblock dependents."
-That write happens **after** Phase MERGE's, so without a change it silently un-does every `done` this
-feature writes, on exactly the path the feature exists for.
+That write happens **after** Phase MERGE's, so unchanged it silently un-does every `done` this feature
+writes, on exactly the path the feature exists for.
 
 Required behaviour (AC-5.6):
 
@@ -540,37 +536,34 @@ update are both defined against it and neither restates it.
 | M5 | pipeline returns; on the queue path the driver writes `done` (§7.5) | default |
 
 **The checkout precedes the queue write, reversing v1.0.** v1.0 put M4 first, on the feature branch,
-reasoning that the commit would reach the default branch through the PR. It would not: by M2 that
-branch is merged, its remote deleted, and the PR closed, so a commit added to it afterwards has no
-route anywhere. Worse, M5 is outside this phase entirely — it runs after the pipeline returns, hence
-after M3 — so under v1.0's order M4 and M5 committed the same file on two different branches. One
-ordering for both is the only version that is internally consistent.
+reasoning the commit would reach the default branch through the PR. It would not: by M2 that branch
+is merged, its remote deleted and the PR closed, so a commit added afterwards has no route anywhere.
+And M5 is outside this phase — it runs after the pipeline returns, hence after M3 — so under v1.0's
+order M4 and M5 committed the same file on two different branches. One ordering for both is the only
+internally consistent version.
 
-**The consequence, stated and accepted.** M4 and M5 commit `QUEUE.md` on the **local** default
-branch, which therefore sits ahead of its remote by one or two queue-row commits. pdlc never pushes
-them — that is unchanged from the shipped halt-row behaviour, which likewise commits and never
-pushes. They reach the remote by the ordinary route: the next feature's branch is cut from the local
-default branch, so they ride that feature's PR. Two facts make this safe rather than merely tolerable:
-the row the next pass reads is the **file on disk**, which is correct the moment M4 writes it,
-independent of any commit; and §8.3's update reconciles the divergence rather than assuming it away.
+**The consequence, stated and accepted.** M4 and M5 commit `QUEUE.md` on the **local** default branch,
+which therefore sits ahead of its remote by one or two queue-row commits. pdlc never pushes them —
+unchanged from the shipped halt-row behaviour, which likewise commits and never pushes. They reach
+the remote by the ordinary route: the next feature's branch is cut from the local default branch, so
+they ride that feature's PR. Two facts make this safe rather than merely tolerable: the row the next
+pass reads is the **file on disk**, correct the moment M4 writes it and independent of any commit;
+and §8.3's update reconciles the divergence rather than assuming it away.
 
-The operator-facing consequence is named in the run report once per merged run:
-
-```
-Local {defaultBranch} is ahead of its remote by the queue-row commit for {feature}; pdlc does not
-push it. It reaches the remote with the next feature's PR.
-```
+It is named in the run report once per merged run: `Local {defaultBranch} is ahead of its remote by
+the queue-row commit for {feature}; pdlc does not push it — it reaches the remote with the next
+feature's PR.`
 
 ### 8.3 The update, and its failure
 
 M3 is: fetch the remote default branch, check it out, and bring it to a state containing the merge.
 
-- If the local default branch can fast-forward to the fetched tip, it does. This is the ordinary case
-  on a fresh clone and on the first merged feature.
-- If it cannot — because M4/M5 of an earlier run left local queue-row commits on top — those local
-  commits are **replayed onto the fetched tip**. Commits whose content is already upstream (having
-  arrived via a later PR) drop out as empty; the rest survive. The result contains the merge and
-  every queue row not yet upstream.
+- If the local default branch can fast-forward to the fetched tip, it does — the ordinary case on a
+  fresh clone and on the first merged feature.
+- If it cannot, because M4/M5 of an earlier run left local queue-row commits on top, those commits are
+  **replayed onto the fetched tip**. Commits whose content is already upstream (having arrived via a
+  later PR) drop out as empty; the rest survive. The result contains the merge and every queue row not
+  yet upstream.
 
 The step is complete when the tree is on the default branch and the merge commit is an ancestor of
 `HEAD`. If any part cannot be completed — a dirty tree, a fetch failure, a replay that conflicts —
@@ -729,7 +722,7 @@ parameterised suite the TSPEC and tests pin.
 
 **Exclusivity, stated precisely.** Rows 1–18 are **terminal**: exactly one of them applies to any run
 that reaches the phase, and no two can apply together. Rows 19–22 are **composable post-merge
-annotations** over row 18 (or over row 3): each is independently present or absent, any subset can
+annotations** over §11 row 18 (or row 3): each is independently present or absent, any subset can
 hold at once, all of them report `merged`, and their notices accumulate in §9.3's order. Row 23 is
 the one run that never reaches the phase. Every row's pipeline outcome is `success` except row 23.
 
