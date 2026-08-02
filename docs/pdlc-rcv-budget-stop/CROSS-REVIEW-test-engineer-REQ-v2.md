@@ -39,8 +39,38 @@ All six are in text **added at v2.7**. No unchanged section is re-litigated.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | AC-1.5(1)'s second-force clause reasons over a first forced halt leaving `H = 1, A = 0` after clause 2's strip. Reaching a *forced* entry at all requires a **resolved** post-mortem (step G, M-7a); a resolved post-mortem with `A < H` is an **unconsumed clearance**, which AC-1.5(4) says grants a window on that very entry — so the forced entry would dispatch, not halt. The clause is sound on the path where the force meets `A = H` (or no post-mortem at all). Is the intended fixture for O-10's "second force refused as unresolved" leg therefore *no prior post-mortem, force → zero-round halt → force again*? Naming it would stop the leg being built on the unreachable `A < H` variant. |
+| Q-02 | O-10 leg (4)'s granting fixture is "`W = 4` with **every** cross-review file removed". With no cross-review files of that document type on the branch, `deriveRoundWindow`'s derived start is 1 and the origin wins at 4 — but the *region* survives only because the post-mortem does. Does that fixture also require `A = H` (clearance already spent, `W` durable), or is a fresh clearance intended to be present and re-grant at `N = highest + 1 = 1`, which would move `W` **down** to 1? The two readings differ on the leg's expected `W`, and neither AC-1.5(2) nor (4) says whether a grant may lower the origin. |
+
 ## Positive Observations
+
+- **The paired edge was actually revised at both ends within the revision, and it checks out at HEAD.** `REQ-RCV-07` O-12 now fixes the seam alone and says so ("corrected at `REQ-RCV-01` v2.7 … because the two O-12s previously cited each other and no document fixed it"), its X-07 and R-16 carry the same pickup order (`10 → 12 → 13 → 17 → 18`) and the same two residuals in the same words as §3.1 and R-14. This is the first revision in this family where a reviewer checking both ends found them agreeing rather than one lagging.
+- **The 0-call contract leg is now argued, not merely asserted.** O-10 explains *why* it must sit on split §5.4 leg 1 — the only interim fixture defeating both decidable conjuncts, hence the only one a wired implementation answers differently — and marks it a **contract** leg replaced rather than deleted at row 18. That is the correct treatment of an oracle whose expected value inverts on a known future commit, and it is rare.
+- **The property obligation names its invariants and its direction.** "The fail-closed direction is the property" is exactly the right framing for a generated-input suite over a parser whose failure mode is *widening*, and the four invariants are stated in a form a strategy author can encode without further clarification (modulo F-05's empty-draw bound).
+- **DC-03 routing is specific rather than ceremonial.** It names the five assertions whose failure is the only signal of their defect, requires the mutation to be **named in writing before the run**, and provides for `Residual` filing where no mutation can be named — which prevents the ledger degenerating into a list of assertions someone ran once. DC-10's lifecycle disposition (harvest does not delete it) closes the gap that would otherwise make the record vanish at Phase H.
+- **The zero-dispatch conjuncts survived the compression pass intact.** Row C still carries "a dispatch count of `0` **alongside** the absence of any new cross-review file, since a double that writes nothing satisfies absence either way", and legs 1 and 2 still carry `≥ 1` dispatch positively. Under a hard byte ceiling these are the first clauses usually lost.
+- **AC-1.5(2)'s new rule is argued from both invariants it could have broken** (append-only, and no window widened) rather than asserted, and it names the concrete operator act that reaches it — this branch's own `e9f3264`. The rule is right; only the control fixture in O-10 is wrong.
 
 ## Recommendation
 
+**Needs revision.**
+
+Exactly what must change:
+
+1. **F-01** — correct O-10 leg (4)'s control to a start **above** the window end (`highest + 1 = 7` at `W = 4`), or restate it in terms of the highest existing round rather than the derived start, so the pair discriminates.
+2. **F-02** — decide, in AC-1.3 or AC-1.4, which clause governs the Iterations section on a halt that finds an existing post-mortem, and make O-10's equality leg name the fixture it is asserted on. If the answer is "the section is refreshed", say so and carve it out of AC-1.4's byte-unchanged quantification alongside the region; if it is "left stale", scope AC-1.3's rounds-run requirement to a halt that authors the post-mortem and say what the operator reads otherwise.
+3. **F-03** — extend the re-halt leg's excision to clause 2's stripped lines (or state it as byte-equality after applying clauses 1 and 2), so the oracle is satisfiable on the only reachable fixture.
+4. **F-04** — reconcile AC-1.2's repo-wide "no second place" with O-13(b)'s sanctioned width expectations, so the criterion has a decidable observable.
+
+F-05 and F-06 are Low. F-05 is a one-clause fix here; F-06 may be routed to the split file's next edit rather than fixed in this REQ.
+
+**Note under §9's pasted stopping rule.** Two of the four findings (F-01, F-03) are oracle-construction defects in §8 and would ordinarily be routed downstream under that rule. They are held as blockers only because each is an **arithmetic or set error in the declared leg itself** — a wrong expected value and an unsatisfiable comparison — not a missing oracle a TSPEC could supply; deferring them ships a leg that is wrong rather than absent. F-02 and F-04 are contradictions between two ACs, which no downstream phase may resolve. None of the four contests user need, scope, priority or phasing, and none asks for new prose beyond a corrected clause — so if the next round closes these four, the stopping rule's first condition is met and the document should be approved with anything remaining routed to §8.
+
 ## Verdict
+
+VERDICT: Needs revision
+
+{"high": 2, "medium": 2, "low": 2}
+
