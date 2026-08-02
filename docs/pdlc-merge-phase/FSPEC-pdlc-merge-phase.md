@@ -127,11 +127,10 @@ merges, evaluates **no** guard, reports `merged` with `mergeMethod: unknown` and
 from the same `O1` observation (§9.1), and re-attempts only the queue write-back idempotently (§7.4).
 A PR merged by a human counts. This is the recovery path for AC-5.2's "merged, queue not updated".
 
-**Which statuses row 5 writes (SE Q-02).** The write-back applies `done` when the row's current
-status is `in-progress`, `awaiting-merge` or already `done`. Any other status — `pending`, `blocked`,
-`halted` — is left untouched and reported as a plain note naming the status found, because a row in
-one of those states describes work this run did not drive to completion and overwriting it would
-destroy the operator's own record.
+**Which statuses row 5 writes (SE Q-02).** The write-back applies `done` when the row's current status
+is `in-progress`, `awaiting-merge` or already `done`. Any other — `pending`, `blocked`, `halted` — is
+left untouched with a plain note naming the status found: such a row describes work this run did not
+drive to completion, and overwriting it would destroy the operator's own record.
 
 ## 3. FSPEC-MERGE-02 — GitHub observations
 
@@ -161,11 +160,10 @@ stated value sets, no agent judges or summarises anything, and no reasoning disp
 `passed` / `pending` / `failed` / `none` / `unknown` mean exactly what they mean there. Reuse is a
 requirement: two classifications of the same rollup that disagree is the defect AC-4.0 prevents.
 
-`O1`'s `mergeCommit.oid` is populated by GitHub only for a merged PR; it is absent, and that absence
-is not a parse failure, for every open PR (§9.1 defines what it is used for). `O3` is the one
-observation that cannot be addressed by PR URL — its query needs owner, repo and PR number, all three
-of which are derived from `prUrl` (with the number cross-checked against `O1.number`); a derivation
-that fails makes `O3` `unknown` under §3.2.
+`O1`'s `mergeCommit.oid` is populated only for a merged PR; its absence on an open PR is **not** a
+parse failure (§9.1 uses it). `O3` is the one observation not addressable by PR URL — its query needs
+owner, repo and number, all derived from `prUrl` (number cross-checked against `O1.number`); a
+derivation that fails makes `O3` `unknown` under §3.2.
 
 ### 3.2 Fail-closed parse rule — one rule, applied per surface
 
@@ -357,12 +355,9 @@ no queue commit. "Stops attempting methods" and "the pipeline halts" are differe
 
 The **local** branch is left alone in both cases — deleting the branch the working tree may be
 standing on is a foot-gun for zero benefit. A deletion failure does **not** downgrade the outcome:
-`mergeStatus` stays `merged` and the failure is reported as a plain note, never a
-`MERGE ESCALATION: ` line. The merge is the outcome that matters; a leftover branch is harmless.
-
-`deleteBranchOnPdlcMerge` is pdlc's own setting, named to avoid collision with GitHub's repository
-setting `deleteBranchOnMerge`, which `O4` reads only so the phase can report it, never so it can act
-on it.
+`mergeStatus` stays `merged` and the failure is a plain note, never a `MERGE ESCALATION: ` line. The
+merge is the outcome that matters; a leftover branch is harmless. `deleteBranchOnPdlcMerge` is pdlc's
+own setting, distinct from GitHub's `deleteBranchOnMerge`, which `O4` reads only to report.
 
 ## 7. FSPEC-MERGE-06 — Queue write-back
 
@@ -421,13 +416,12 @@ today**, extended — not duplicated. One channel is not an optimisation: AC-5.6
 path is how the two would silently diverge.
 
 **This is a change, and the FSPEC states it as one.** The shipped channel carries the status and
-*only* the status: there is no evidence argument, and its row transform replaces a single `Status`
-cell and can neither append a sixth cell nor perform §7.3's migration. The extension therefore
-touches four places — the two entrypoint closures that bind the channel, its default implementation,
-its per-run seam, and the shared row transform — and that last one also serves the halt path and the
-driver's `in-progress` / `awaiting-merge` / `halted` writes. Those must be unaffected: a call
-carrying no evidence produces exactly today's bytes. That invariance is a required property, not an
-assumption; §13 O-M2 carries the enumeration.
+*only* the status: no evidence argument, and a row transform that replaces a single `Status` cell and
+can neither append a sixth cell nor perform §7.3's migration. The extension therefore touches four
+places — the two entrypoint closures that bind the channel, its default implementation, its per-run
+seam, and the shared row transform — and that last one also serves the halt path and the driver's
+`in-progress` / `awaiting-merge` / `halted` writes. Those must be unaffected: a call carrying no
+evidence produces exactly today's bytes — a required property, not an assumption (§13 O-M2).
 
 | Situation | Disposition | Behaviour | §11 row | Escalates |
 |---|---|---|---|---|
@@ -515,17 +509,16 @@ update are both defined against it and neither restates it.
 **The checkout precedes the queue write, reversing v1.0.** v1.0 put M4 first, on the feature branch,
 reasoning the commit would reach the default branch through the PR. It would not: by M2 that branch
 is merged, its remote deleted and the PR closed, so a commit added afterwards has no route anywhere.
-And M5 is outside this phase — it runs after the pipeline returns, hence after M3 — so under v1.0's
-order M4 and M5 committed the same file on two different branches. One ordering for both is the only
-internally consistent version.
+And M5 runs after the pipeline returns, hence after M3, so under v1.0's order M4 and M5 committed the
+same file on two different branches.
 
 **The consequence, stated and accepted.** M4 and M5 commit `QUEUE.md` on the **local** default branch,
 which therefore sits ahead of its remote by one or two queue-row commits. pdlc never pushes them —
-unchanged from the shipped halt-row behaviour, which likewise commits and never pushes. They reach
-the remote by the ordinary route: the next feature's branch is cut from the local default branch, so
-they ride that feature's PR. Two facts make this safe rather than merely tolerable: the row the next
-pass reads is the **file on disk**, correct the moment M4 writes it and independent of any commit;
-and §8.3's update reconciles the divergence rather than assuming it away.
+unchanged from the shipped halt-row behaviour. They reach the remote by the ordinary route: the next
+feature's branch is cut from the local default branch, so they ride that feature's PR. Two facts make
+this safe rather than merely tolerable: the row the next pass reads is the **file on disk**, correct
+the moment M4 writes it and independent of any commit; and §8.3's update reconciles the divergence
+rather than assuming it away.
 
 It is named in the run report once per merged run: `Local {defaultBranch} is ahead of its remote by
 the queue-row commit for {feature}; pdlc does not push it — it reaches the remote with the next
@@ -656,10 +649,9 @@ hurry. It ships `off` so installing this feature does not begin auto-merging any
 ### 10.2 Where the configuration comes from
 
 `.claude/pdlc.config.json` is the documented home of pdlc's per-repo settings, but **no workflow
-script reads it today** — its one existing consumer is the shell distribution tooling, which passes
-its single key through a separate record. Phase MERGE introduces the first script-side read. The
-`merge` section is independent of the existing `distribution` section; reading one must not disturb
-the other.
+script reads it today** — its one consumer is the shell distribution tooling, which passes its single
+key through a separate record. Phase MERGE introduces the first script-side read. Its `merge` section
+is independent of the `distribution` section; reading one must not disturb the other.
 
 ### 10.3 Degraded reads (AC-7.3)
 
@@ -729,9 +721,8 @@ differ only in the escalation's text, which is the operator's whole signal about
 8 is the third member of that family and is deliberately **not** escalating: it resolves above the
 guard, so a run that could not read PR state never reaches a guard verdict to report.
 
-`refused` means a safety rule said no; `deferred` means an ordinary not-ready condition a later
-re-invocation could satisfy. Rows 16 and 17 share a value and differ in the reason line, because that
-line is what tells the operator whether to change a repository setting or investigate a failure.
+Rows 16 and 17 share a value and differ only in the reason line, which is what tells the operator
+whether to change a repository setting or investigate a failure.
 
 ## 12. Acceptance tests
 
@@ -742,7 +733,7 @@ the reason line. These seven cover behaviour the table does not express.
 |---|---|
 | AT-M1 | **Operator.** Given a five-column `QUEUE.md` with three data rows and a merged PR for row 2, When Phase MERGE writes back, Then the header gains `Evidence`, the separator and the other two data rows each gain one empty cell, row 2's Status cell reads exactly `done`, its Evidence cell reads `{shortSha} #{prNumber}` with `shortSha` the first 7 characters of the observed oid, and no other cell in the file changes |
 | AT-M2 | **Operator.** Given the same queue already carrying an `Evidence` column and row 2 already `done` with the same evidence, When Phase MERGE re-runs against the already-merged PR whose `O1.mergeCommit.oid` is the same oid, Then the file is byte-identical, no commit is produced, and no notice is emitted |
-| AT-M2a | **Operator.** Given that queue with row 2 still `awaiting-merge` and an already-merged PR, When Phase MERGE runs, Then row 2 becomes `done`; its Evidence cell reads `{shortSha} #{prNumber}` when `O1.mergeCommit.oid` is present and `merged #{prNumber}` when it is absent; `mergeMethod` is `unknown`; and the §9.4 merge-deferred note is not emitted. This is AC-5.2's recovery path and the one row-3 case that mutates the file |
+| AT-M2a | **Operator.** Given that queue with row 2 still `awaiting-merge` and an already-merged PR, When Phase MERGE runs, Then row 2 becomes `done`; its Evidence cell reads `{shortSha} #{prNumber}` when `O1.mergeCommit.oid` is present and `merged #{prNumber}` when it is absent; `mergeMethod` is `unknown`; and the §9.4 merge-deferred note is not emitted. This is AC-5.2's recovery path and the one §11-row-3 case that mutates the file |
 | AT-M3 | **Operator.** Given a fixture that otherwise merges — every precondition passing — and a changed-file list **without** any guard-matching path, When Phase MERGE runs, Then it resolves at §11 **row 18** with `mergeStatus: merged` and **no** notice beginning `MERGE ESCALATION: `; and given the identical fixture with `pdlc/skills/x.md` added to the list and nothing else changed, Then it resolves at **row 4** with `mergeStatus: refused` and a notice reading `MERGE ESCALATION: self-modification guard fired for {prUrl} — matched paths: pdlc/skills/x.md`. Both arms assert a positive terminal value, so deleting the guard turns the second arm red. The near-miss paths `pdlc/skills-notes/x.md`, `docs/pdlc/skills/x.md` and `PDLC/Skills/x.md` each reproduce the **first** arm exactly — row 18, `merged`, no escalation |
 | AT-M4 | **Operator.** Given a queue-driven run whose pipeline report carries `mergeStatus: merged`, When the driver takes its post-pipeline transition, Then it records `done` (not `awaiting-merge`) and does not emit the "merge the PR, then set it to done" message |
 | AT-M5 | **Operator.** Given a queue whose only unblocked dependent depends solely on this feature, **and a distribution drift gate that passes** — a clean drift-state record, or `distribution.checkEnabled: false` — When a run reports `mergeStatus: merged`, Then the next queue invocation selects that dependent with no human turn; and given the same queue with this feature left `awaiting-merge`, that dependent is not selected. The gate precondition is stated because it runs before `QUEUE.md` is read at all and can return `blocked`, selecting nothing, for reasons unrelated to this feature |
@@ -761,9 +752,8 @@ the reason line. These seven cover behaviour the table does not express.
 | O-M7 | TSPEC | §3.3's wait between re-reads. The pipeline's sleep seam is declared without a default and is not supplied by the runtime's injection bundle; the retry loop must inherit the same default-in-callee pattern the CI poll already uses rather than reading an undefined value |
 | O-M8 | TSPEC | §8.3's replay of local queue-row commits onto the fetched default tip: the exact command sequence, how an already-upstream commit is detected as empty, and the failure detection that triggers the escalation |
 
-No open questions remain for the requester. The REQ round-2 questions (TE Q-01, Q-02) are answered in
-§2.3 and §7.3; the FSPEC round-1 questions are answered in §8.2 (SE Q-01), §2.5 (SE Q-02), §9.4
-(TE Q-01) and §10.3 (TE Q-02).
+No open questions remain. REQ round-2: TE Q-01 → §2.3, Q-02 → §7.3. FSPEC round-1: SE Q-01 → §8.2,
+SE Q-02 → §2.5, TE Q-01 → §9.4, TE Q-02 → §10.3.
 
 ## 14. Traceability
 
