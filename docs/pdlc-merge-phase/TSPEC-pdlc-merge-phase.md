@@ -685,10 +685,22 @@ an absent `files` field and an incomplete list all fire it (FSPEC §4.4). `kind`
 two §9.3 lines is emitted; the phase resolves `refused` at §11 row 4 (`match`) or row 5
 (`unretrievable`).
 
-**There is no override.** `guardVerdict` takes exactly two arguments, neither of which can disable
-it; `config` is not in scope in the guard branch of `decideMerge`; and no `force`, `skip`, `bypass`
-or `override` token appears in any of the new code. §13.2 encodes that as a *source scan* over the
-new production symbols, so adding an override in future turns a test red rather than passing review.
+**There is no override, and the assertion has a boundary (TE F-10).** v1.0 asked for a scan over
+"the new code", which a jest test has no notion of — and `orchestrate-dev.js` already contains
+`forcePhases`, `FORCE_PHASE_TOKENS`, `parseForcePhases` and `skipPostmortem`, so an unscoped token
+scan can neither pass nor fail meaningfully. The assertion is scoped to **two named symbols**:
+
+1. **Arity.** `guardVerdict.length === 2` and `effectiveGuardPaths.length === 1` — a third parameter
+   is the shape an override would take, and `Function.prototype.length` is decidable at runtime.
+2. **Extracted source text.** The bodies of those two functions only, extracted from
+   `orchestrate-dev.js` by the same `moduleFunctionParams`-style forward brace match
+   `runtimeBundle.test.js:787`–`:793` already uses, scanned for `config`, `process`, `argv`, `env`,
+   `force`, `override`, `bypass` and `skip`. Neither body legitimately contains any of them, so the
+   scan has a decidable pass condition and a real failure mode.
+
+Additionally `config` is not in scope at `decideMerge`'s guard branch by construction — the guard call
+passes only `record.o5` and the path set — which §13.2 asserts by calling `guardVerdict` with a
+`config`-shaped third argument and observing that the verdict is unchanged.
 
 ### 6.4 AC-3.5 — the guard-falsifiability test design
 
@@ -718,9 +730,31 @@ Implements FSPEC §6.2–§6.4 and §8. M1 is `decideMerge`'s `act` branch (§5.
 // reached only when resolution.mergeStatus === "merged"
 if (config.deleteBranchOnPdlcMerge) { const d = await deleteRemoteBranch(…); if (!d.ok) notes.push(…); }  // M2
 const tree = await updateDefaultBranch({ defaultBranch, mergeSha, _git });                                 // M3
-if (!tree.ok) escalations.push(`MERGE ESCALATION: working tree not updated after merging ${prUrl} — ${tree.reason}; tree is on ${tree.branch}`);
+if (!tree.ok) escalations.push(MERGE_ESCALATIONS.tree({ prUrl, reason: tree.reason, branch: tree.branch }));
 const rec = await _recordQueueRow({ feature, status: "done", evidence });                                  // M4
+if (rec.queueRow === "recorded") notes.push(AHEAD_OF_REMOTE_NOTE(defaultBranch, feature));                 // FSPEC §8.2
 ```
+
+**The "local default is ahead of its remote" notice (PM F-02, Q-01).** FSPEC §8.2 requires, once per
+merged run, the plain notice
+
+```
+Local {defaultBranch} is ahead of its remote by the queue-row commit for {feature}; pdlc does not
+push it — it reaches the remote with the next feature's PR.
+```
+
+v1.0 dropped it: it is the only place an operator learns that M4 and M5 commit to a branch pdlc will
+never push, and it is on the happy path. It is a **plain note, never an escalation** (nothing is
+wrong), it carries `O4`'s `defaultBranchRef.name` — the same value M3 fetched, so the two cannot
+disagree — and its emission point is fixed above: immediately after M4, gated on the disposition.
+
+**Q-01's answer, pinned rather than left to the implementer.** The notice is emitted when, and only
+when, M4's disposition is **`recorded`** — which includes FSPEC §11 row 3's already-merged re-entry,
+because a queue-row commit for this feature does then sit on the local default branch whether this
+run or an earlier one created it. It is **suppressed** for `none` (no `QUEUE.md`, so nothing was ever
+committed) and `error` (nothing was written), which are exactly the two cases in which the sentence
+would be false. `recorded (uncommitted)` also suppresses it: the row is on disk but no commit exists,
+so the branch is not ahead — and that case has its own note already.
 
 M3 **precedes** M4 (FSPEC §8.2, F-14) and a failed M3 does **not** cancel M4 (FSPEC §8.3) — the write
 runs on whichever branch `HEAD` is left on. `mergeStatus` stays `merged` through every one of these
@@ -795,8 +829,17 @@ One call, always, on the `merged` path — including §11 row 3's already-merged
 makes AC-5.2's recovery idempotent:
 
 ```js
-const rec = await _recordQueueRow({ feature, status: "done", evidence: evidenceCellFor(mergeSha, prNumber) });
+const prNumber = parsePrRef(prUrl)?.number ?? record.o1?.number ?? null;
+if (prNumber === null) { notes.push(NO_PR_NUMBER_NOTE); }        // no write — never "#null"
+else { rec = await _recordQueueRow({ feature, status: "done", evidence: evidenceCellFor(mergeSha, prNumber) }); }
 ```
+
+**`prNumber`'s source, pinned (TE F-09).** Primary is **`parsePrRef(prUrl).number`** — a pure parse of
+the URL Phase PUB produced, available on every path including FSPEC §11 row 3, which short-circuits
+7c and therefore never validates `O1.number`. `record.o1.number` is the fallback for a `prUrl` shape
+`parsePrRef` cannot read. If both are absent the write-back is **skipped with a plain note**: FSPEC
+§7.2 fixes the cell to `{shortSha} #{prNumber}` or `merged #{prNumber}`, and `abc1234 #null` is
+neither. §13.2 covers all three arms in `mergeQueueWriteback`.
 
 `rec.queueRow` becomes the outcome's `queueRow` (§10.1). `"error"` — the row is absent — pushes the
 AC-5.2 escalation; `"recorded (uncommitted)"` pushes a plain note; `"none"` and `"recorded"` are
