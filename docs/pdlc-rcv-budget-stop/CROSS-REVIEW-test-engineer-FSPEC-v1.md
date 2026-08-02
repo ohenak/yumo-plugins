@@ -20,7 +20,20 @@
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | **Row C is one row — but is it the only row the report carries for that entry?** §8.2 fixes row C cell by cell, and catalogue §3 says the report carries *one row per round*. A zero-round entry dispatched nothing, so row C's `round` cell (`S`) names a round that does not exist on the branch. Does the report for that entry carry **only** row C, or does it also re-render rows for the rounds earlier invocations ran (which are on disk and derivable)? AT-RPT-04 asserts the cells of one row and is silent on the row count, so a fixture author has to guess. A stated default is enough. |
+| Q-02 | **Clause 3 locates the *first* heading beginning `Iterations` (B-RPT-2). What happens to a second one?** A pre-feature post-mortem plus an agent-written heading can leave two. The equality read-back confirms the located heading only, so a stale second heading survives and the operator can read `## Iterations (5 — limit reached)` below the fresh render. Is that accepted (and therefore something AT-HALT-03's sibling should pin as *byte-unchanged elsewhere*), or should the render be unique? |
+| Q-03 | **AT-HALT-02 asserts byte-equality "with clauses 1, 2 and 3's edits applied".** Is the expected file constructed by the test author (a checked-in golden) or derived in-test by applying the three edits? The first is what makes the oracle falsifiable against a re-authoring regression; the second re-implements the production transform in the test and cannot fail. I read the FSPEC as intending the first — worth one word, since PROPERTIES will inherit the choice. |
+
 ## Positive Observations
+
+- **§11 discharges DC-05 mechanically, and I checked it rather than trusting it.** Every `B-*` id named anywhere in the document has at least one row in §11: B-BUD-1…5, B-WIN-1…7, B-REG-1…7, B-CLR-1…7, B-HALT-1…9, B-RPT-1…6, B-PMT-1…3. No orphan branch, no orphan test.
+- **The Iterations oracle is an equality on a single line, and the FSPEC says why.** §8.1's "one line — the heading's own text, not a heading plus a body line — so an oracle over it has a single target and can be an **equality**, not a substring match that any rendering satisfies" is precisely the property that makes AT-RPT-01/02 falsifiable, and B-RPT-1's "it is the loop's output, not an agent's" is what makes it falsifiable *against production* rather than against a prompt.
+- **The refusal legs carry positive conjuncts, not absence-only ones.** AT-CLR-07, AT-HALT-04 and AT-HALT-05 each assert an exact ❌ string, an exact empty `notice`, both counts unmoved, and — where it applies — *nothing stripped* and *this entry's render present*. That is the four-conjunct shape I asked for at REQ v3/v4, carried into FSPEC without dilution.
+- **Confirmations are content reads, and §7.3 states why an existence check is insufficient** ("on a re-halt the file always exists, so such a check passes whether or not the line landed — and that is the path that matters"). That is the builder-not-wired failure mode argued at the right altitude.
+- **The one-update rule over clauses 1 and 2 removes a state instead of dispositioning it**, and BR-12 states the invariant as an unreachable state. An oracle can attack it directly by fault-injecting the strip and asserting the halt line is also absent.
+- **Fixtures are largely derivable today.** AT-REG-01…06, AT-CLR-01…03/05…07, AT-HALT-01…09 and AT-RPT-01…05 each pin the region contents, the marker, the highest existing round and the expected observable well enough that I could write the fixture now without a clarifying question. F-05 is the one exception.
 
 ## Recommendation
 
