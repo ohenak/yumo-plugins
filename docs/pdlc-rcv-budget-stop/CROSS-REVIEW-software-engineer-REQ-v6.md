@@ -75,6 +75,12 @@ queue row.
 
 ## 4. Questions
 
+| ID | Question |
+|---|---|
+| Q-01 | F-01 assumes the conjunct is **wired into the gate** from the moment row 10 ships, with only the decision procedure stubbed. Is that the intent, or is the intent that row 10 ships AC-1.5(4)'s counts-and-marker gate with the third conjunct **not yet present**, and row 18 adds it? Both are defensible; they differ in what an implementer builds and in what O-10 can assert, and X-06's *"must stub it fail-closed"* only makes sense under the first. Say which, in X-06's *Behaviour until it ships* cell. |
+| Q-02 | Does anything in the family require the two split halves to land in the **same release** of the plugin, as opposed to the same queue sweep? The distribution story is per-commit (`pdlc/workflows/dist/` rebuilt in the same commit, O-11), so a consumer who installs between row 10 and row 18 gets the stub whatever the queue does. If co-release is required, that is a constraint on `pdlc/RELEASE-CHECKLIST.md`, not on the queue, and it is currently stated nowhere. |
+| Q-03 | Carried from v3–v5, now `REQ-RCV-07`'s: is `W` guaranteed absent from every operator- and downstream-visible surface on a refusing entry? Recorded here only so the trail is unbroken when harvest reads these files; **not** a finding against this document. |
+
 ## 5. Positive Observations
 
 ## 6. Recommendation
