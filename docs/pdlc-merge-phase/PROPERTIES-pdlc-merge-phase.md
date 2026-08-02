@@ -4,12 +4,12 @@
 |---|---|
 | Upstream | REQ → FSPEC → TSPEC → PLAN → **PROPERTIES** |
 | Downstream | IMPL tests (`pdlc/workflows/__tests__/**`) |
-| Cross-Reviews | *(none yet — PROPERTIES round 1 pending)* |
+| Cross-Reviews | `CROSS-REVIEW-product-manager-PROPERTIES-v1.md`, `CROSS-REVIEW-software-engineer-PROPERTIES-v1.md` |
 | LEARNINGS | `docs/pdlc-merge-phase/LEARNINGS-pdlc-merge-phase.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.0 | 2026-08-02 |
+| pdlc | draft | Claude | 1.1 | 2026-08-02 |
 
 > **Scope in one line.** The invariants Phase MERGE must satisfy over *all* inputs — the quantified
 > layer beneath TSPEC §13's example-based ATs and FSPEC §11's 25-row table.
@@ -29,10 +29,12 @@ draws), owning PLAN task, test file and traced ACs all live in **§7's matrix**,
 **`fast-check` is not added.** Every property is plain jest — either **exhaustive bounded enumeration** (every axis
 here is 2–11 wide, so the domain is enumerated, not sampled; each `enum(n)` row states its *n* and the suite asserts
 its own case count, so a dropped axis reds) or a **seeded loop** for the two string-shaped domains (path strings,
-queue markdown) over a `seeded(seed)` xorshift32 generator, the shape `driftGenerators.js` already ships here. **The
-generators live in `__tests__/helpers/mergeDoubles.js`** — the file PLAN task **F1** already creates and every
-consumer depends on; a widening of F1's scope and **no new file**, flagged rather than assumed because PLAN §4's
-ownership manifest is the audit surface.
+queue markdown). The PRNG and the seed override are **imported, never re-declared** (SE F-07):
+`helpers/driftGenerators.js` already exports `seeded(seed)` (xorshift32: `int`/`pick`/`shuffle`/`bytes`) and
+`resolveSeed(literal)`, and its header forbids a consumer re-declaring either. The merge-specific generators live in
+**`__tests__/helpers/mergeDoubles.js`** and its self-test at **`__tests__/mergeDoubles.test.js`** — not beside it,
+because jest's `testPathIgnorePatterns` skips `/__tests__/helpers/`. PLAN v1.2 already records both (§4 batch 1, §12
+task F1); nothing here asks for a new file or a new batch.
 
 Four rules every property inherits:
 
@@ -47,9 +49,15 @@ Four rules every property inherits:
    mutates" / "no escalation" row also pins the exact terminal value and the named row id, and every preservation
    claim asserts the fixture *contained* the preserved content.
 
-`ROW_IDS` (FSPEC §11's 25 identifiers `1…23, "11a", "13a"`) and `MERGE_STATUSES` are read from the exported frozen
-catalogues (DC-01), never from local literals, so a catalogue that gains a member reds these properties instead of
-escaping them.
+**The two vocabularies, and why they are sourced differently (SE F-03).** `MERGE_STATUSES` is a real frozen export
+(TSPEC §2.2) and is read from the module — a status outside it is a production defect the export cannot hide.
+`ROW_IDS` is **not** an export and must not become one for this purpose: TSPEC §2.4 declares the 25 row identifiers
+as prose (`1…23`, `"11a"`, `"13a"`) and a membership oracle read from the implementation's own catalogue would pass
+vacuously under exactly the row-id mutation (§8.5 target 2) it exists to catch. It is therefore a **test-local frozen
+transcription of FSPEC §11's table**, carrying two self-checks: `ROW_IDS.length === 25`, and every id appearing as a
+row of FSPEC §11 (the transcription is compared to the row ids each property's expected-value table already names).
+If the TSPEC later adds a `MERGE_ROW_IDS` export for `phaseMerge`'s own use, these oracles still compare against the
+transcription — that is the point (SE Q-02).
 
 ## 2. Decision-core properties
 
