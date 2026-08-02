@@ -648,6 +648,30 @@ render, showing `rounds run 0` so the vacuity is visible rather than disguised, 
 *what a halt is* (`N-4`). The cost is one authoring dispatch on the **first** halt only; every later
 entry dispatches none (§7.4).
 
+## Business Rules
+
+The invariants that hold **across** the flows above. Each is stated once here and specified where
+the right-hand column points; none is new, and none may be weakened by a flow that does not name it.
+
+| # | Rule | Specified in |
+|---|---|---|
+| **BR-1** | **One budget, one declaration.** Exactly one hand-maintained declaration in executable code states the budget's value repo-wide; generated copies, prose and deliberately pinned non-budget literals are enumerated and classified, never uncounted | §3.2 (B-BUD-5) |
+| **BR-2** | **Every report of the budget is the effective budget.** No operator-visible surface may state a width the loop does not admit | §3.2 (B-BUD-4) |
+| **BR-3** | **The window is absolute and per document.** `BUDGET` rounds counted from `W`, for the document type under review — never per invocation, never widened, never anchored to another document's history | §4.1, §4.2 |
+| **BR-4** | **The origin wins.** The entry starts at `max(D, W)`; rounds below `W` are outside every window, so review history stays append-only | §4.1 (B-WIN-3) |
+| **BR-5** | **Only an operator resets.** `RESOLVED: yes` is human-written on every path; no agent and no script writes it | §6.1 |
+| **BR-6** | **One clearance, one answering line.** Every consumed clearance is answered by exactly one `WINDOW-START:` or `WINDOW-RESUMED:` line, so `A ≤ H` always and `A = H` means nothing is outstanding | §6.1, §6.3 |
+| **BR-7** | **The region is append-only and cumulative.** Lines are appended to the end, never inserted; document order is event order; every later halt preserves the lines before it verbatim | §6.3, §7.2 (clause 1) |
+| **BR-8** | **Region lines are read only inside the region span, outside fences.** A line quoted in prose, in `## Recommendation` or inside a fenced block moves no count and contributes no origin | §5.1 (B-REG-5) |
+| **BR-9** | **Counts move by line prefix, origins by grammar.** A malformed answering value still counts toward `A` — the clearance was spent — but contributes no origin, and `W` falls back to **1** | §5.2 (B-REG-3, B-REG-4) |
+| **BR-10** | **Fail closed, always toward the narrower window.** Unreadable post-mortem, unparseable last reason, failed validation (target state) and every unconfirmed write resolve to no window, no dispatch, or a phase refusal — never to a free window | §5.3, §5.4, §6.1 (B-CLR-3), §7.3 |
+| **BR-11** | **Writes are confirmed by content, not by return code.** The Iterations render is confirmed by equality read-back; the region update is confirmed by this halt's `HALT-REASON:` line being present *and* no unfenced `RESOLVED:` line remaining | §7.3 |
+| **BR-12** | **No halt recorded ⇒ no marker stripped.** There is no reachable state in which this halt's `HALT-REASON:` line is present and an unfenced `RESOLVED:` line survives | §7.3 |
+| **BR-13** | **A re-halt does not re-author.** A halt finding an existing post-mortem changes the region span, the unfenced `RESOLVED:` lines and the Iterations section — and nothing else; `## Recommendation` is byte-unchanged | §7.4 |
+| **BR-14** | **A halt is unchanged in kind.** It still writes the post-mortem, confirms the write, refuses the phase until a human resolves it, and writes the queue row `halted` | §7.1 (B-HALT-9) |
+| **BR-15** | **Untyped loops are untouched.** Phase CR and Phase DOD create no region, read none, and take no origin from `W`; Phase CR's narrowing to three rounds is per-invocation and in kind unchanged | §3.1, §7.1 (B-HALT-8) |
+| **BR-16** | **Boundary strings come from the catalogue.** Every operator-visible string is a catalogue id rendered from live values, not a restated literal; the S-16 enum stays closed at three, and an IO fault of the loop mints no region reason | §1, §6.3 (B-CLR-7), §8 |
+
 ## 10. Edge cases and error scenarios
 
 | # | Scenario | Behaviour | Branch |
