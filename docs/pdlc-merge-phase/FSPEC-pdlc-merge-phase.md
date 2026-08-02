@@ -294,9 +294,8 @@ the `merged` path is evidenced through tests that drive the observation points d
 
 CI evidence is established **at merge time** by re-reading the rollup through `O2` (AC-4.0). Phase
 PUB's `ciStatus` is a snapshot taken before Phase DOD remediation and before any base movement; it is
-carried in the report but is **not** the merge evidence. Re-reading is what gives `pending` and
-`failed` a reachable domain at merge time — checks re-run when the base moves, and a check green at
-Phase PUB can fail on a re-run.
+carried in the report but is **not** the merge evidence. Re-reading gives `pending` and `failed` a
+reachable domain — checks re-run when the base moves, and a check green at Phase PUB can fail then.
 
 | `O2` re-read | `mergeRequiresCi: true` (default) | `mergeRequiresCi: false` |
 |---|---|---|
@@ -307,13 +306,11 @@ Phase PUB can fail on a re-run.
 | `unknown` (unretrievable/unparseable) | **refused** | **refused** |
 
 `mergeRequiresCi` relaxes exactly one cell. It does not make `pending`, `failed` or `unknown`
-acceptable: a repository with no CI is a supported configuration, a repository whose CI is red is not.
-Phase PUB legitimately treats `no-checks` as a pass for *raising* a PR; that is not a pass for
-*merging* one.
+acceptable: a repository with no CI is a supported configuration, one whose CI is red is not. Phase
+PUB legitimately treats `no-checks` as a pass for *raising* a PR; that is not a pass for *merging*.
 
-The `no-checks` refusal escalates (AC-4.2, line in §9.3). `pending`, `failed` and `unknown` are
-reported as `refused` with a reason line (§9.2) and do not escalate — they are ordinary,
-self-explanatory states an operator can read off the PR.
+Only the `no-checks` refusal escalates (AC-4.2, line in §9.3). `pending`, `failed` and `unknown` are
+`refused` with a reason line (§9.2) — ordinary states an operator reads off the PR.
 
 ## 6. FSPEC-MERGE-05 — Merge execution and method policy
 
@@ -330,18 +327,17 @@ attempted-and-failed — for methods the repository forbids (AC-2.5):
 | 2 | merge commit | `gh pr merge {prUrl} --merge` | `mergeCommitAllowed` is `true` |
 | — | squash | never issued | never — see below |
 
-**Squash is not in the chain.** `allowSquashMerge` ships `false` and is not part of any fallback:
+**Squash is not in the chain.** `allowSquashMerge` ships `false` and is in no fallback:
 `se-implement` produces a TDD commit sequence, Phase DOD produces versioned remediation commits, and
-harvest and any post-mortem read that history. Squash destroys it. Setting `allowSquashMerge: true`
-appends squash as a third and last candidate, gated additionally on `squashMergeAllowed`; nothing
-else changes.
+harvest and any post-mortem read that history — squash destroys it. `allowSquashMerge: true` appends
+squash as a third and last candidate, gated additionally on `squashMergeAllowed`; nothing else
+changes.
 
 If `O4` is `unknown`, no chain is built and the phase is `refused` (AC-2.5a). If the chain is empty —
-every method this phase may use is forbidden by the repository, e.g. a squash-only repo with
-`allowSquashMerge` false — no attempt is made and the phase is `deferred` with the reason **"no
-permitted merge method"**, which is a different reason line from §6.3's exhaustion (AC-2.5b). The
-value is the same; the reason is what tells the operator whether to change a repository setting or
-investigate a failure.
+every method this phase may use is forbidden, e.g. a squash-only repo with `allowSquashMerge` false —
+nothing is attempted and the phase is `deferred` with the reason **"no permitted merge method"**, a
+different reason line from §6.3's exhaustion (AC-2.5b). Same value; the reason is what tells the
+operator whether to change a repository setting or investigate a failure.
 
 ### 6.2 A successful attempt
 
@@ -639,11 +635,11 @@ sees the queue's state without inferring it:
 Merge deferred for {feature}: {reason}. The queue row is unchanged; merge the PR to advance it.
 ```
 
-The note does not name a status. On the queue-driven path Phase MERGE runs *inside* the pipeline —
-before the driver writes `awaiting-merge` — so the row is `in-progress` at that moment on exactly the
-path this feature exists for, and a note hard-coding `awaiting-merge` would pin a false statement.
-The note is emitted for `deferred` and `refused` only: `skipped` and `merged` runs do not emit it,
-including §2.2 row 5, whose write-back did advance the row.
+The note does not name a status. On the queue-driven path Phase MERGE runs *inside* the pipeline,
+before the driver writes `awaiting-merge`, so the row is `in-progress` at that moment on exactly the
+path this feature exists for — a note hard-coding `awaiting-merge` would pin a false statement. It is
+emitted for `deferred` and `refused` only; `skipped` and `merged` runs do not emit it, including
+§2.2 row 5, whose write-back did advance the row.
 
 ### 9.5 Queue-driver pass-through (AC-6.3)
 
@@ -652,11 +648,9 @@ including §2.2 row 5, whose write-back did advance the row.
 queue run without opening the pipeline's report. The driver adds only its own status transition
 (§7.5).
 
-The end-to-end effect AC-6.3 asserts, in both halves: given a queue whose only unblocked dependent
-lists this feature as its sole dependency, after a run reporting `mergeStatus: merged` that
-dependent's row is selected by the **next** `orchestrate-queue` invocation with no human turn; and
-given the same queue with this feature's row left `awaiting-merge`, that dependent is **not**
-selected. The first asserts the gate opens; the second asserts it was this gate holding it shut.
+AC-6.3's end-to-end effect — the dependent selected after `merged`, not selected when the row is left
+`awaiting-merge` — is stated as an acceptance test in §12 (AT-M5), with the drift-gate precondition
+both halves need to be determinate.
 
 ## 10. FSPEC-MERGE-09 — Configuration
 
