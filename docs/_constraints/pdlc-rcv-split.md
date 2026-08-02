@@ -166,6 +166,20 @@ check reads the same count, so it is stated here once rather than at either end.
 
 **The two Iterations-section legs** (`REQ-RCV-01` AC-1.3/AC-1.4; relocated from that REQ's O-10, same date and round). (i) The section asserted as an **equality on the declared render** (baseline §3), both integers — not a substring match, which any rendering satisfies — on **three named fixtures**: the **creating** halt, the **re-halt** on a post-mortem whose section reads `rounds run {k}`, `k > 0` (asserted to read `rounds run 0` after), and a **re-halt on a post-mortem carrying no Iterations section at all**, asserted to gain exactly one, appended per `REQ-RCV-01` AC-1.4 clause 3's not-found disposition. The equality is honest on all three because the render is the **loop's** output on every halt in scope, not an authoring agent's; a fixture whose expected string a test double was told to write would prove nothing. The second fixture is the point of the leg: it is the case AC-1.3 exists for. (ii) The **re-halt leg**: **0** authoring dispatches, and only what AC-1.4's three clauses mandate changed — stated as **byte-equality against the expected file, the prior bytes with clauses 1, 2 and 3's edits applied**, plus the dispatch count, since a body an agent rewrites identically satisfies neither alone. *"A byte comparison with the region span excised"* would be unsatisfiable on every reachable fixture: a re-halt is reachable only through a post-mortem the operator resolved (M-7a), so every such fixture carries an unfenced `RESOLVED: yes` **outside** the region which clause 2 removes. (iii) A leg for the **lost `HALT-REASON:` append**: the confirmation read fails ⇒ the entry refuses the phase, no answering line, `H` and `A` unmoved, exactly one notice.
 
+**`REQ-RCV-01` O-10's property-based obligation** (relocated from that REQ's §8, 2026-08-01, round 2 of the
+reset window; nothing changed meaning in the move). **One property-based obligation, not only the enumerated points**, since the origin-and-counts resolution is a parser over an ordered line sequence and the interleaving of the three prefixes is what enumerated fixtures cannot cover. Over **generated** sequences (arbitrary order, well-formed and malformed values, arbitrary `RESOLVED:` state) assert: `W` is always a decimal integer ≥ 1; `W` never exceeds the greatest well-formed `WINDOW-START:` present, **or is `1` when none is present** — total over the declared domain, where a bare *max* would be over the empty set; no absent or malformed value ever **widens** the window; at most one answering line per entry. The fail-closed direction is the property.
+
+**The four legs `REQ-RCV-01` O-10 keeps** (relocated from that REQ's §8, 2026-08-01, round 2 of the
+reset window; nothing changed meaning in the move). **Four legs this REQ keeps, not defers** — fixtures, dispositions and rationale all at split **§5.4**. (1) **The 0-call contract leg:** on leg 1 the interim composition consults the *region validates* predicate **exactly 0 times**, asserted as a count. (2) **Legs 1 and 2** — the granting region, and no region at all — each with **≥ 1** dispatch asserted positively. (3) **The interim-only malformed-value leg** (leg 3): a malformed `WINDOW-START:` still counts toward `A` but contributes no origin, so `W` = 1 and no non-numeric value reaches the window arithmetic; decidable from §6's grammar alone, so it is this REQ's, and **it inverts at row 18**. (4) **The derived start below `W`** (AC-1.5(2)) — a granting leg and its discriminating control, both stated by the **highest existing round**.
+
+**The three legs `REQ-RCV-01` AC-1.3, AC-1.4 and AC-1.5(4) add to O-10** (relocated from that REQ's §8,
+2026-08-01, round 2 of the reset window; leg (iii) widened in the same revision to cover both halt-path
+writes, nothing else changed meaning in the move). **Three legs AC-1.3, AC-1.4 and AC-1.5(4) add**, fixtures at split **§5.4**: (i) the Iterations section as an **equality on §6's declared render** — honest because AC-1.4 clause 3 makes the render the **loop's** output on every halt in scope — on the creating halt, the re-halt, and a post-mortem carrying **no** Iterations section; (ii) the **re-halt leg**, **0** authoring dispatches plus byte-equality against the expected file; (iii) **either halt-path write left unconfirmed** — a lost `HALT-REASON:` append, and a failed Iterations write — each refusing the phase with both counts unmoved, **no `RESOLVED:` line stripped**, and the ❌ row asserted as catalogue §4's generalised render.
+
+**`REQ-RCV-01` O-10's enumerated points** (relocated from that REQ's §8, 2026-08-01, round 2 of the reset
+window; nothing changed meaning in the move — the REQ keeps the obligation, its owner and its routing).
+**Region maintenance (AC-1.4):** the first halt creating `## Reset Region` with exactly one `HALT-REASON:` line, and the operator's first clearance then granting a window; a later halt preserving the region and stripping the spent marker, so the phase reads unresolved again; a **fenced** `RESOLVED: yes` surviving the strip while an unfenced one is removed; region lines **appended, not prepended**; a **Phase CR halt creating no `## Reset Region`** (N-7), non-vacuous via **M-7f**. **The window (AC-1.1–AC-1.3, AC-1.5(1)–(3)):** budget and reported iterations asserted **over the constant, never a literal**; **row C** cell by cell with **zero dispatches asserted positively** — a dispatch count of `0` alongside the absence of any new cross-review file, since a double that writes nothing satisfies absence either way; a **forced** phase on an exhausted document halting, not re-reviewing, and a second force refused as unresolved (M-7a), on the fixture **no prior post-mortem → force → zero-round halt → force again** (why that fixture: split §5.4). **The gate (AC-1.5(4)–(5)):** one clearance granting **exactly one** window (`A < H` grants, `A = H` nothing); an S-11 clearance writing `WINDOW-RESUMED:`, `W` unchanged, a later convergence halt **not** auto-cleared.
+
 ### 5.5 Why the answering line is recorded before dispatch, and why every clearance is answered
 
 Relocated from `REQ-RCV-01` AC-1.5(4) and (5) (2026-08-01, v2.7) so both ends cite one copy of the
@@ -216,6 +230,21 @@ reads the region those rules maintain. This states the reasons.
 - **Why the creating halt is stated too.** Scoped only to a halt finding an existing post-mortem, the
   first halt would be governed by nothing: no region ⇒ `H = 0` ⇒ the gate `A < H` is false ⇒ the
   operator's **first** clearance is silently swallowed.
+
+
+### 5.7 The three site classes AC-1.2's quantifier excludes
+
+Relocated wholesale from `REQ-RCV-01` AC-1.2 (2026-08-01, round 2 of the reset window) so the REQ
+keeps the criterion and this file keeps its reasons; **nothing changed meaning in the move**. The
+count itself, the exclusion by name and the decidable observable stay in AC-1.2; `REQ-RCV-01` O-13(b)
+owns the enumeration these classes sort a site into.
+
+**Three kinds of site sit outside that quantifier, and all three are accounted for**, since a repo-wide grep for the literal cannot by itself tell a violation from a sanctioned occurrence:
+
+- **A generated copy**, as above — outside the count, inside O-13(b)'s enumeration, and **kept honest by O-11's rebuild plus CI's freshness gate rather than by this criterion**.
+
+- **Prose that states the number.** Documentation cannot read a declaration — `CLAUDE.md`'s *Review loop mechanics* paragraph states the budget today, and unamended would report 5 while the pipeline runs 3, the same defect in the repo's highest-traffic reader. Not a violation of this criterion, but it **must be updated in the same commit**; O-13(b) names every such site.
+- **A deliberately pinned literal that is not the budget** — an expectation whose value happens to equal today's width but whose meaning is a fixed round count. It stays a literal and **says so at its site**.
 
 ## 6. The catalogue delegation, stated once
 

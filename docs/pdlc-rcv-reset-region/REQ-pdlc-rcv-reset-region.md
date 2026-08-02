@@ -372,7 +372,7 @@ runs those rounds. Writing the line last would instead lose the record of a wind
 and re-grant it.
 
 **AC-7.6 — Row B is one row in two variants, and the operator is always told why the invocation did
-nothing.** *Who:* the operator. *Given:* an entry that refuses under AC-7.1 step 4 or AC-7.5.
+nothing.** *Who:* the operator. *Given:* an entry that refuses under AC-7.1 step 4, under AC-7.5, or under `REQ-RCV-01` AC-1.4's unconfirmed halt-path write (added in that REQ's v3.0, this same revision — a third **source**, not a third variant: it reports the *unconfirmable-append* variant, whose ❌ text catalogue §4 generalises to *region line*).
 *When:* the run report is emitted. *Then:* the entry opens no round and dispatches nobody, but still
 produces **exactly one** row of catalogue §3's schema — row B — with these cells:
 
@@ -381,7 +381,7 @@ produces **exactly one** row of catalogue §3's schema — row B — with these 
 | `round` | **one past the highest round of this document type on the branch**, from the listing (`deriveRoundWindow`, M-1d) — **never** from `W` | same rule; `W` is unchanged on this path and is likewise not this cell |
 | `panel-shape`, `blocking`, `growth-bytes`, `classification` | **empty** — nothing dispatched, nothing measured | **empty**, same reason |
 | `notice` | **S-16 alone**, with **no S-4 reason**, no halt having been taken | **empty**, with no S-16 and no S-4 (catalogue §3) |
-| ❌ phase-row text | `Refused — reset region corrupt at {path} ({reason})`, §6 | `Refused — answering line unconfirmed at {path}`, **catalogue §4** |
+| ❌ phase-row text | `Refused — reset region corrupt at {path} ({reason})`, §6 | `Refused — region line unconfirmed at {path}`, **catalogue §4** |
 | Recovery text | names *that reason's* sanctioned repair (AC-7.4), §6 | the **two acts in order**, **catalogue §4** |
 | `postmortemStatus` | **`written`** (AC-7.2) | **`written`**, same mechanism |
 
