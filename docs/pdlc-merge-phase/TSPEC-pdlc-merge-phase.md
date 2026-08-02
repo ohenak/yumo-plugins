@@ -61,6 +61,113 @@ fixed-command/exact-reply adapter discipline (`rtGit`, `runtime-adapter.js:927`)
 
 ## 2. Module architecture and function inventory
 
+### 2.1 Layering
+
+Four layers, with the dependency arrow pointing one way only:
+
+```
+main()  ──►  phaseMerge()  ──►  decideMerge()          [pure, total, no IO]
+                   │        ──►  observations O1…O6     [{ execFn } transport]
+                   │        ──►  post-merge effects M2…M5 (_git, _recordQueueRow)
+                   └──► returns one MergeOutcome record
+```
+
+`decideMerge` never performs IO and never receives a seam; `phaseMerge` performs no parsing and takes
+no decision beyond "which observation the core just demanded". That split is what makes §11's
+23-row table a pure-function suite (§13.2) rather than an integration suite.
+
+### 2.2 New constants — `orchestrate-dev.js`, alongside the existing phase flags (`:19`–`:35`)
+
+| Name | Value | Note |
+|---|---|---|
+| `PHASE_MERGE_ENABLED` | `true` | FSPEC §2.4 row 1; same shape as `PHASE_DOD_ENABLED` (`:22`) |
+| `MERGE_CONFIG_PATH` | `".claude/pdlc.config.json"` | §3 |
+| `MERGE_GUARD_DEFAULTS` | `Object.freeze(["pdlc/workflows/", "pdlc/skills/", "pdlc/hooks/", ".claude/workflows/"])` | FSPEC §4.3; frozen so no code path can remove a default |
+| `MERGE_DEFAULTS` | `Object.freeze({ mergeMode: "off", mergeRequiresCi: true, allowSquashMerge: false, deleteBranchOnPdlcMerge: true, mergeableRetries: 3, mergeableRetryDelaySeconds: 10, guardPaths: [] })` | FSPEC §10.1 |
+| `MERGE_MODES` | `Object.freeze(["off", "gated", "on"])` | closed catalogue (DC-01) |
+| `MERGE_STATUSES` | `Object.freeze(["merged", "deferred", "refused", "skipped"])` | FSPEC §9.1 |
+| `MERGE_FILES_PAGE_LIMIT` | `100` | §4.6 — GitHub's `files` page size |
+| `MERGE_THREAD_PAGE_LIMIT` | `100` | §4.4 |
+| `MERGE_MAX_THREAD_PAGES` | `10` | §4.4 — bounded, fail-closed |
+| `MERGE_MAX_DECISION_STEPS` | `24` | §5.2 — termination bound on the demand loop |
+
+### 2.3 Function inventory — `orchestrate-dev.js`
+
+`export` here means "exported from the ES module so jest can import it"; §11.2 says which names the
+bundle additionally publishes. Every function is total and never throws unless the column says so.
+
+| Function | Signature | Purity |
+|---|---|---|
+| `parseMergeConfig` | `(text: string \| null) => { config: MergeConfig, sectionMalformed: boolean }` | pure |
+| `readMergeConfigSafely` | `async (readFileFn, path) => string \| null` | IO, never throws |
+| `effectiveGuardPaths` | `(configured: unknown) => string[]` | pure |
+| `parsePrRef` | `(prUrl: string) => { owner, repo, number } \| null` | pure |
+| `classifyPrState` | `(raw: string \| null) => O1Observation` | pure |
+| `classifyReviewThreads` | `(raw: string \| null) => O3Observation` | pure |
+| `classifyRepoCaps` | `(raw: string \| null) => O4Observation` | pure |
+| `classifyChangedFiles` | `(primaryRaw, fallbackRaw, opts) => O5Observation` | pure |
+| `classifyMergeResult` | `(mergeRaw, readbackRaw) => O6Observation` | pure |
+| `observePrState` | `async (prUrl, { execFn }) => O1Observation` | IO |
+| `observeCi` | `async (prUrl, { execFn, _checkCi }) => CiStatus` | IO — delegates to `checkPrCi` |
+| `observeReviewThreads` | `async (ref, { execFn }) => O3Observation` | IO |
+| `observeRepoCaps` | `async ({ execFn }) => O4Observation` | IO |
+| `observeChangedFiles` | `async (prUrl, ref, { execFn }) => O5Observation` | IO |
+| `executeMerge` | `async (prUrl, method, { execFn }) => O6Observation` | IO, mutating |
+| `defaultMergeObservations` | `Object.freeze({ prState, ci, reviewThreads, repoCaps, changedFiles, merge })` | the six-key seam value |
+| `guardVerdict` | `(changed: O5Observation, guardPaths: string[]) => { fired, kind, matched }` | pure |
+| `mergeCandidates` | `(caps: O4Observation, config) => Array<"rebase" \| "merge" \| "squash">` | pure |
+| `decideMerge` | `(record: ObservationRecord, config) => Demand \| Resolution` | pure, total |
+| `deleteRemoteBranch` | `async ({ feature, _git }) => { ok, reason }` | IO |
+| `updateDefaultBranch` | `async ({ defaultBranch, mergeSha, _git }) => { ok, branch, reason }` | IO |
+| `evidenceCellFor` | `(mergeSha: string \| null, prNumber: number) => string` | pure |
+| `phaseMerge` | `async ({ feature, prUrl, config?, _observations, _git, _readFile, _recordQueueRow, _log, _now, _sleep, _configPath }) => MergeOutcome` | orchestrator |
+
+### 2.4 The two record types
+
+```
+ObservationRecord = {
+  prUrl: string | null,
+  o1: O1Observation | null,        // last observation; o1Count counts them (FSPEC §3.3)
+  o1Count: number,
+  ci: CiStatus | null,
+  o3: O3Observation | null,
+  o4: O4Observation | null,
+  o5: O5Observation | null,
+  attempts: Array<{ method, ok, detail }>,   // one row per O6 attempt, in order
+}
+
+MergeOutcome = {
+  mergeStatus: "merged" | "deferred" | "refused" | "skipped",
+  mergeSha: string | null,
+  mergeMethod: "rebase" | "merge" | "squash" | "unknown" | null,
+  row: number | string,            // the §11 row that resolved — reported, and asserted by tests
+  reason: string | null,           // FSPEC §9.2, one line
+  escalations: string[],           // each already prefixed "MERGE ESCALATION: "
+  notes: string[],                 // plain, non-escalating notices
+  queueRow: "recorded" | "recorded (uncommitted)" | "none" | "error" | null,
+}
+```
+
+Every observation type is a discriminated union `{ ok: true, … } | { ok: false, reason }` where
+`ok: false` **is** FSPEC §3.2's `unknown`. One shape for all six (DC-11: sibling oracles share an
+error contract), so the core's fail-closed branches are written once, not six times.
+
+### 2.5 Function inventory — `orchestrate-queue.js`
+
+| Function | Change |
+|---|---|
+| `ensureEvidenceColumn(markdown) => { markdown, migrated }` | **new**, exported, pure — FSPEC §7.3's three structural changes |
+| `mergeEvidenceCell(prev, next) => string` | **new**, exported, pure — FSPEC §7.2's no-downgrade rule |
+| `updateQueueStatus(markdown, feature, newStatus, evidence = null)` | **4th parameter**; `evidence == null` takes today's code path unchanged (§8.4) |
+| `rewriteStatus(queuePath, feature, status, readFileFn, writeFileFn, gitFn, evidence = null)` | **7th parameter**, appended |
+| `commitQueueRow` / `uncommitted` | return `"recorded"` / `"recorded (uncommitted)"` (§8.2) |
+| `runPicked` | `mergeStatus: "merged"` ⇒ `done` + suppressed operator message (§9) |
+| `QUEUE_ROW_DISPOSITIONS` | **new**, exported frozen catalogue (DC-01) |
+
+`orchestrate-queue.js` learns nothing about merging: it gains an evidence *string* it does not
+interpret. The queue's table grammar stays entirely on its side of the seam, unchanged from the
+dependency direction `rewriteStatus`'s docblock states (`orchestrate-queue.js:865`–`875`).
+
 ## 3. Configuration reader (O-M5)
 
 ## 4. Observation points O1–O6 (O-M2, O-M3, O-M4, O-M7)
