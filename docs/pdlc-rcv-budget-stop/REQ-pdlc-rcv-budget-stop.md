@@ -190,18 +190,41 @@ round history the loop derives from the branch (M-1d). *When:* the phase is (re-
 
    **The zero-round budget halt has a report row, and it is row C** — the **third** dispatch-less row,
    stated cell by cell here as the catalogue requires of the REQ owning the condition, because the
-   per-round table would otherwise be empty for the commonest new halt. `round` = **one past the
-   highest round of this document type on the branch** (from the listing); `panel-shape`, `blocking`,
-   `growth-bytes`, `classification` **empty**, nothing dispatched or measured; `notice` = this halt's
-   **S-4** reason, `; `-joined with any co-occurring reason in catalogue §3 precedence order;
+   per-round table would otherwise be empty for the commonest new halt. `round` = **the start clause 2
+   resolves** — one past the highest round of this document type on the branch, or `W` when that is
+   higher; `panel-shape`, `blocking`, `growth-bytes`, `classification` **empty**, nothing dispatched or
+   measured; `notice` = this halt's **S-4** reason, `; `-joined with any co-occurring reason in
+   catalogue §3 precedence order. **On row C that join is vacuous, and deliberately so**: no round is
+   dispatched, so no S-3, S-5 or S-6 can be raised, and catalogue §3 makes rows B and C mutually
+   exclusive so no S-16 appears either. A test may assert the cell is **exactly** the S-4 render, with
+   no separator. The join is written into the cell rather than dropped so that the rule is one rule at
+   every row, and so a future halt reason that *can* co-occur needs no amendment here;
 
    **`forcePhases` does not grant a window; the clearance is the only route past the cap.**
    `forcePhases` overrides a **recorded approval** and nothing else (`CLAUDE.md`, *Entry (single
    feature)*), so a forced Phase R on a document already at round 3 is admitted **no rounds**: it halts
-   on the budget path, writes the post-mortem and row C, and writes the queue row `halted` — and a
-   second force changes nothing, because at `A = H` a marker grants nothing. A deliberate change to a
-   documented operator entry point, stated so it has an oracle;
-2. the window's **start** is unchanged — one past the highest existing round (M-1d), so review history stays append-only and no existing file is ever overwritten;
+   on the budget path, maintains the post-mortem's region and row C, and writes the queue row
+   `halted`. **A second force then changes nothing, and the mechanism that stops it is the shipped
+   step-G refusal, not the counts.** Trace it: the first forced entry's halt leaves `H = 1` and, by
+   AC-1.4 clause 2, **strips** the `RESOLVED:` line — so the region stands at `H = 1, A = 0`, which is
+   `A < H`, a clearance *outstanding*, not `A = H`. What refuses the second force is that the
+   post-mortem is now unresolved, and an unresolved post-mortem refuses the phase (M-7a) — a refusal
+   `forcePhases` does not override, as stated two lines above, because it overrides a recorded
+   approval only. The counts are not the gate here; they are what the operator's *next*
+   `RESOLVED: yes` will spend. A deliberate change to a documented operator entry point, stated so it
+   has an oracle;
+2. the window's **start** is unchanged — one past the highest existing round (M-1d), so review history stays append-only and no existing file is ever overwritten. **When that derived start falls
+   *below* the origin `W`, the origin wins: the entry starts at `W`.** The start is therefore the
+   later of the two, always inside the window `{W … W+2}` and never below it, which is what clause 4's
+   *"rounds below `W` are outside the window"* asserts. The case is reachable by a documented operator
+   act and not by any loop path — deleting cross-review files after a window was granted, while the
+   post-mortem carrying the region survives (this branch's own `e9f3264` did exactly that). Both
+   properties this REQ turns on survive the choice: **append-only** holds, because a start above
+   `highest + 1` collides with no existing file; and **no window is widened**, because the window is
+   still the three rounds from `W` — the entry simply finds some of them unspent again. The
+   alternative reading (start below `W`) would place a round outside every window, which no clause can
+   then count, and the deleted-file case would silently hand back rounds *below* the origin the
+   operator's clearance moved past;
 3. the **one** reset is an operator's: a `POSTMORTEM-{phase}-{feature}.md` carrying a human-written `RESOLVED: yes` outside any fenced block clears the halt, and the rounds recorded
    *before* that marker do not count against the budget of the window opened after it. This is the existing operator escape hatch, stated here because it is what makes an absolute cap
    operable rather than a dead end: an operator who has addressed the finding gets a fresh window; an unattended re-invocation does not. **No agent and no script ever writes `RESOLVED:
