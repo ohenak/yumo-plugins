@@ -90,8 +90,21 @@ When the orchestrator marks the review as iteration ≥2, you are re-reviewing a
 
 ## Review Scope by Document
 
+### Altitude Rule for REQ and FSPEC (read first)
+
+A REQ or FSPEC that states **observable outcomes** without implementation or test mechanics is **correct, not incomplete**. Your testability findings on a REQ/FSPEC ask for outcomes precise enough to write a **black-box** test from — observable state, files on disk, report contents, exit behavior, user-visible strings. They never ask for:
+
+- seam design, injection points, call-count or spy oracles, runtime-oracle placement
+- fixture construction, test-double design, assertion placement, test file or level assignment
+
+Those belong to **TSPEC and PROPERTIES review**, where this lens applies in full — they are not missing here.
+
+**The "write the test right now" check, at REQ altitude, means a black-box acceptance test.** If answering your clarifying question would require implementation-grade detail, the REQ is *not* underspecified — file nothing; the detail arrives in TSPEC/PROPERTIES.
+
+If the REQ/FSPEC **already contains** implementation or test-design contracts, the finding is *"remove it / route it to the TSPEC or PROPERTIES"* — never a finding that refines or contests them.
+
 ### Reviewing REQ
-- Are acceptance criteria testable, precise, and unambiguous?
+- Are acceptance criteria testable, precise, and unambiguous *(as black-box outcomes)*?
 - Are edge cases and error scenarios complete enough to write tests?
 - Are there implied behaviors that need to be stated explicitly?
 - Are negative cases present (what must NOT happen)?
