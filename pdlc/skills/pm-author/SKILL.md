@@ -182,20 +182,29 @@ When feedback arrives on your REQ or FSPEC:
 3. Address every High and Medium finding. Use judgment for Low.
 4. Update the document in place.
 5. Commit and push.
-6. **Feedback-only, and minimal.** A feedback round does exactly one thing: the smallest edit each
-   finding explicitly requires — and nothing else. Address only what is **not already reflected** in
-   the document as it stands; a finding already applied needs no new write. Explicitly forbidden in a
-   feedback round: new sections, new obligations, new contracts, new thresholds, new cross-references,
-   restructuring, wording polish of untouched text, and anticipatory fixes for findings nobody filed.
-   Writing something gratuitously to "show progress" is an error, because every sentence beyond a
-   finding's minimal fix is fresh contestable text — that is how a revision mints the next round's
-   findings and the loop stops converging.
-7. **A fix that would need an implementation contract is routed, not written.** If a finding's minimal
+6. **Feedback-only, and minimal.** A feedback round does exactly one thing: the smallest edit each finding explicitly
+   requires — and nothing else. Address only what is **not already reflected** in the document as it stands; a finding
+   already applied needs no new write. Forbidden in a feedback round: new sections, obligations, contracts, thresholds
+   or cross-references, restructuring, wording polish of untouched text, and anticipatory fixes for findings nobody
+   filed. Writing gratuitously to "show progress" is an error, because every sentence beyond a finding's minimal fix is
+   fresh contestable text — that is how a revision mints the next round's findings and the loop stops converging.
+7. **Measure the round; keep it flat.** Before the first edit of a round, record the document's size (`wc -l` and
+   `wc -c`); after the last edit, record it again. The round ends with the document **no larger than it started plus
+   1,000 bytes**, and the document stays **under the hard ceiling (700 lines / 60 KB) at every commit**, not only at
+   the end. When a finding's minimal fix will not fit inside that bound, the remediation is routing (step 9) or the 5g
+   split proposal — never growth. A compression pass to get back under is evidence the round already left the bound;
+   the bound exists so compression is never needed, so never plan to over-write now and compress later. State the
+   start size, the end size, and the delta on a line in your response body, **before** the trailer.
+8. **Decide contradictions; don't reconcile them.** When a finding reports that two clauses contradict each other — or
+   that a clause defers a decision downstream — the fix is to **decide**: keep one clause, delete or correct the other.
+   Never add a third clause that reconciles, glosses, or defers the two; that is fresh contestable text and it leaves
+   the contradiction in place.
+9. **A fix that would need an implementation contract is routed, not written.** If a finding's minimal
    fix cannot be made without adding implementation-contract material (5f), do not add it. Record the
    finding's disposition as routed — to se-author / the TSPEC, or to a split-out REQ per the 5g split
    trigger — and say so in the revision notes.
-8. Observe the [Authoring Pacing Contract](#authoring-pacing-contract) while you edit, and end your
-   response with the [Revision-Completion Trailer](#revision-completion-trailer).
+10. Observe the [Authoring Pacing Contract](#authoring-pacing-contract) while you edit, and end your
+    response with the [Revision-Completion Trailer](#revision-completion-trailer).
 
 ---
 
