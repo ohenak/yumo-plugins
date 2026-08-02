@@ -24,6 +24,38 @@ HEAD of `feat-pdlc-rcv-budget-stop`, against `docs/_constraints/pdlc-rcv-baselin
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Row C's `notice` cell is "this halt's **S-4** reason, `; `-joined with any co-occurring reason in catalogue §3 precedence order". On a zero-round entry no round is dispatched, so no S-3/S-5/S-6 can be raised, and catalogue §3 makes C and B mutually exclusive so S-16 cannot appear either. Is the join clause therefore vacuous on row C — i.e. may a test assert the cell is **exactly** the S-4 render, with no separator — or is there a reachable co-occurrence I have not found? |
+| Q-02 | AC-1.4's scope is "every halt that writes `POSTMORTEM-{phase}-{feature}.md` for a document-typed review-loop phase", and O-10 owes a leg asserting "a **Phase CR halt creating no `## Reset Region`**". That leg presumes a Phase CR halt *does* write a post-mortem at HEAD (otherwise the assertion is vacuous — absence satisfied by the phase writing no file at all). Which measured fact establishes that? M-7e is stated over `reviewLoop`'s halt path without saying whether the untyped phases reach it. |
+
 ## Positive Observations
 
+- **Row C's zero-dispatch leg is stated with a positive conjunct**, not absence alone: O-10 requires "a dispatch count of `0` alongside the absence of any new cross-review file, since a test double that writes nothing satisfies absence either way". That is DC-07's builder-not-wired oracle discipline applied correctly and unprompted, and it is the single most commonly missed shape in this repo.
+- **Assertions are required over the constant, never the literal `3`** (AC-1.3, O-10), which makes the budget legs survive a later re-tuning of `MAX_REVIEW_ROUNDS` instead of silently pinning today's value.
+- **Every fail path has a stated disposition and the dispositions are total.** §4.1's "if absent" column, AC-1.5(5)'s three-row table with its explicit unreachability argument for the fourth row, and the empty region being *valid rather than corrupt* are each decidable from the document alone — a reviewer can construct the fixture without asking a question.
+- **AC-1.4 clause 2's fenced/unfenced scoping gives the strip a falsifiable pair** (a fenced `RESOLVED: yes` surviving, an unfenced one removed), and O-10 owes exactly that pair rather than one direction.
+- **The `H`/`A` counting rule is stated by line prefix, whatever the value**, which makes the malformed-value case decidable without reference to the deferred validation layer — the one place where an interim leg can be written today and inverted cleanly at row 18.
+- The ordering requirement in AC-1.5(4) — the answering line must durably exist *before* any round of that entry is dispatched, with the rationale for that order stated — is the correct fail-closed direction and is directly assertable as a sequencing oracle.
+
 ## Recommendation
+
+**Needs revision.**
+
+Exactly what must change:
+
+1. **F-01** — restore the material `REQ-RCV-07` X-07/O-10/O-12 and `pdlc-rcv-split.md` §5.4 cite: O-10 must owe the **0-call contract leg** (asserted on split §5.4's leg 1) and name the three interim legs it keeps, and O-12 must fix the seam's arity-2 contract *or* both ends must be revised in the same revision to put it somewhere that exists. Leaving the citation circular is not an option — no document currently fixes it.
+2. **F-02** — state which rule wins when the derived start is below `W`, or name it a non-goal with a stated disposition, and give O-10 a leg for it.
+3. **F-03** — reconcile AC-1.3 with §6: either declare the rounds-run render (baseline §3 row or catalogue §2 id) or drop the "mints no operator string" claim and say where the render is fixed.
+4. **F-04** — add a property-based obligation to O-10 over generated region line sequences.
+5. **F-05** — route DC-03 (`FALSIFICATION-LEDGER.md` plus the mutation cycle) from O-10/O-11, with DC-10's lifecycle disposition for the ledger.
+6. **F-06** — paste DC-09's stopping conditions into the document.
+
+F-07 is a Low carry and may be routed to `REQ-RCV-07`'s catalogue edit rather than fixed here.
+
+## Verdict
+
+VERDICT: Needs revision
+
+{"high": 2, "medium": 4, "low": 1}
+
