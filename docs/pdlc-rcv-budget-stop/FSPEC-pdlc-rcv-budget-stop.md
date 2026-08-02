@@ -65,7 +65,11 @@ belong to `REQ-RCV-07` O-10. Where a branch is unmarked it is in force now.
 **grammars** (S-13, S-14) — a value outside the grammar contributes no origin while still counting
 toward `A` — and both halt-path **confirmation** obligations with their refusals (§7).
 
-## 2. Criterion and obligation map
+## 2. Linked Requirements
+
+*The criterion and obligation map.* Every REQ-RCV-01 acceptance criterion this FSPEC is answerable
+for appears in the left column; every flow below appears in the middle one. A criterion absent from
+this table is not specified here, and §1.1 names its owner.
 
 | REQ criterion | FSPEC flow | Named branches |
 |---|---|---|
