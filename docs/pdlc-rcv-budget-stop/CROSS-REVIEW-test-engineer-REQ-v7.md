@@ -45,6 +45,50 @@ it; I restate it once, compressed, and will not carry it a third time.
 
 ## Positive Observations
 
+- **The revision refused my proposed fix and was right to.** I asked for a controllable seam
+  *"defaulting to invalid in the production composition"*. X-06 adopts the seam and rejects the
+  default, with an argument that is checkable rather than asserted: AC-1.5(4)'s false disposition
+  refuses the **entry**, and nothing scopes that refusal to entries carrying a clearance, so a
+  constant *invalid* refuses every document-typed phase on every feature — including the phases that
+  would deliver `REQ-RCV-07`. *"**Fail-closed here is a shape, not a constant**"* is the right
+  distinction and it is the first time in seven rounds this document has pushed back on a reviewer's
+  proposed remedy on the merits. The shape it chose is the shipped predicate **restricted** to the
+  one region it can decide — AC-1.5(4) already declares the empty region valid — so the interim is a
+  sub-relation of the final semantics, never a competing one. That is exactly the property that makes
+  the eventual swap to AC-7.1 a strict extension, and it means no test written against the interim
+  legs has to be deleted when the successor lands.
+- **The seam/default split is expressed the way a test can consume it, and it dodges the DC-07 trap
+  rather than walking into it.** O-10 now separates the two populations cleanly: the granting legs
+  *"drive the *validate* seam explicitly to **true** and never read its production default"*, while
+  the interim legs run *"at the production default with no seam override"*. That is the shape DC-07
+  asks for — the composed production default has its own oracle, so a test double can never be the
+  only thing proving the wired behaviour. The sentence *"never read its production default"* is worth
+  singling out: it forecloses the leg that would otherwise pass for the wrong reason once the
+  successor ships and the default starts returning *true* on its own.
+- **R-14 was rewritten rather than patched.** The v6 finding was a wording defect — *"immediately
+  behind"* versus `QUEUE.md` — and the minimum fix was two words. Instead the disposition's whole
+  logic changed: *"**Mitigated by fixing the interim *shape*, not by sequencing.** Sequencing is too
+  weak at that distance."* A risk register whose mitigation column is falsified by a cited file and
+  responds by strengthening the mitigation is doing its job. §3.1 and R-14 now agree with each other
+  and with `QUEUE.md`, which I checked directly.
+- **The new `O-*`/`R-*`/`X-*` id-collision rule is a real hazard caught early, and I verified the
+  collisions it claims.** §7 now states that those namespaces are **not** per-REQ and do collide
+  across the split — *"`O-10`, `O-12`, `R-10` and `R-14` differ between this REQ and `REQ-RCV-07`"*.
+  All four ids exist in `docs/pdlc-rcv-reset-region/REQ-pdlc-rcv-reset-region.md` (§8 and §9), so the
+  claim is true, and the consequent rule — *"**every cross-document citation of one must name the
+  owning REQ**"* — holds throughout this document: every reference I followed says *"`REQ-RCV-07`
+  O-10"* or *"that REQ's AC-7.1"*, never a bare id. This is the failure mode that silently
+  mis-routes a property between two documents' PROPERTIES phases, and it was written down before it
+  bit anyone.
+- **§4's widened delegation rule is stated over references rather than a phrase, and it reaches the
+  catalogue §3 clauses that were outside the old rule.** *"The rule is over the references, not one
+  phrase, because the four rows word them differently"* is the correct generalisation, and both §3
+  pointers are now named individually with their destinations. I re-read `pdlc-rcv-catalogue.md:59`,
+  `:61`, `:63`, `:118` and `:124` and every reference the rule quantifies over exists as quoted, so
+  the rule is stated over real text rather than a remembered version of it. Deferring the shared-file
+  edit to the REQ that will own the clauses is also right — the catalogue is read by three REQs and
+  should change once, when the change becomes true.
+
 ## Recommendation
 
 ## Verdict
