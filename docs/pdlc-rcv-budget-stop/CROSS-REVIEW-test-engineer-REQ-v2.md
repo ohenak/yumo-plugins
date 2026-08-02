@@ -42,4 +42,17 @@
 
 ## Recommendation
 
+**Needs revision**
+
+All five v1 findings are closed, and the round added no new prose to sections I had already approved. Two things must change, both small and both consequences of the F-04 fix rather than of anything that was already there:
+
+1. **F-01 (High)** — give the lost-`HALT-REASON:` refusal a declared report surface. Either say it emits `REQ-RCV-07` AC-7.6's **unconfirmable-append** variant (in which case split §5.4 leg (iii)'s *"exactly one notice"* must become `notice` **empty**, and §10's *"v2.9 carries no change to that edge"* must be corrected), or declare a third row-B variant here and carry it into AC-7.6 **within this revision**, as the paired-edge rule requires. As written the leg cannot be implemented without contradicting the paired document, and AC-1.5(1)'s row B / row C complementarity no longer covers every refusing entry.
+2. **F-02 (Medium)** — give AC-1.4 clause 3's section write the same confirmation obligation and fail-closed disposition clause 1 now has, and give O-10 the matching leg. Clause 3's promise (*"the operator always reads this halt's two integers"*) is categorical and currently has no failure branch; on a re-halt its failure is the exact conflation AC-1.3 exists to prohibit, and NB-6 leans on that render as one of the two things the operator's decision needs.
+
+**Explicitly not blocking, per §9's stopping rule.** F-03 is routed to **O-14** (which should drop its *"does not vary the outcome"* carve-out for this one point) and Q-01/Q-02 are answerable in a sentence each or left as known. Neither contests user need, scope, priority or phasing. Nor do I re-raise anything about the algorithm behind *region validates*, the fixed-point test, `DOC-BYTES:`, or what a torn write leaves behind — NB-1, NB-2, NB-3 and NB-5 receive those correctly and by construction.
+
+**Trajectory note for the operator (R-1).** Blocking count 4 → 2, with every prior finding closed and both new findings traceable to the same one-clause fix rather than to churn elsewhere. That is convergence, not a plateau. I pre-commit: if round 3 closes F-01 and F-02 without opening a new blocking finding in the same clauses, I approve; if it opens another, I will treat the AC-1.4 clause 1/clause 3 pair as a fixed point and say so rather than filing a third round of the same shape.
+
 ## Verdict
+
+VERDICT: Needs revision
