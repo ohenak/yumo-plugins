@@ -162,3 +162,30 @@ Durable signal from this round, for `docs/_constraints/DOMAIN-CONSTRAINTS.md`:
   must agree on were written down in a shared file.
 
 ## Verdict
+
+The v7 High and both Mediums are closed, at the root rather than at the symptom. v2.2 does not choose
+a safer interim decision procedure — it ships none: AC-1.5(4)'s third conjunct is **not wired at this
+REQ's ship**, the call site exists as an injected seam the interim composition does not consult, and
+every branch keeps HEAD's behaviour — no refusal and no S-16, region or none. That dissolves the
+bricking chain rather than mitigating it, and it dissolves its dependants with it: O-10 no longer
+demands an S-16 notice no member of the closed three-reason enum is true of (v7 F-02), and R-14 can
+answer the co-release question *no* because a consumer installing between rows 10 and 18 gets an
+interim that behaves as HEAD does (v7 Q-02). I read `REQ-pdlc-rcv-reset-region.md` at HEAD: X-07 and
+R-16 now carry the same decision in the same words, including the explicit retraction of *"a stub
+returning **invalid** [is] safe by construction"*, and both ends agree on wiring, on `Order 18` /
+net pickup 10 → 12 → 18, and on what an interim procedure would have cost (v7 F-03). The size finding
+closed by relocation, not compression: `docs/_constraints/pdlc-rcv-split.md` is tracked, both halves
+cite it, its §1–§4 and §5 resolve as cited, the collision rule survived the move, and headroom under
+the soft threshold went from 9 bytes to 171 (v7 F-04).
+
+Four Low findings remain, each a one-sentence fix and none behavioural: AC-1.5(4) and §4.1's
+clearance row still state the conjunct unconditionally with no back-pointer to X-06 (three guards,
+including O-10's executable interim legs, stand between that and a wrong implementation); X-06's
+*any interim procedure* trichotomy over-claims against a procedure deciding only what this REQ
+specifies, whose real objection is narrower; the deliberately-unconsulted seam is the shape
+`dod-verify` flags as unwired and should be declared in O-11 or NB-3; and O-10 leg 1's `{N}` is bound
+twice in one sentence. Per the approval rule — Low findings only, no High and no Medium — the
+document is approved with minor changes; take the four in the next authoring pass, and relocate
+§4.1's durability table or §6's threshold rows first so the edits fit under the size soft threshold.
+
+VERDICT: Approved with minor changes
