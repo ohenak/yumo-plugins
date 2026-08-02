@@ -257,24 +257,90 @@ workflow sources, skill prompts, hook scripts, and the consumer's runtime copy o
 ### REQ-MERGE-06 — Reporting
 
 - **AC-6.1** — Given the pipeline completes, Then the final report carries `mergeStatus` ∈
-  {`merged`, `deferred`, `refused`, `skipped`}, and for `merged` also the merge SHA and method used.
-- **AC-6.2** — Given `deferred` or `refused`, Then the report names the precondition or guard that
-  produced it, in one line.
-- **AC-6.3** — Given `orchestrate-queue` receives a pipeline report with `mergeStatus: merged`,
-  Then it reports the feature as complete and the next invocation may pick up a dependent feature
-  without a human turn.
+  {`merged`, `deferred`, `refused`, `skipped`}, and for `merged` also the merge SHA and the method
+  used — reported as `unknown` when the merge was not performed by this run (AC-1.6 row 3), since a
+  pipeline that did not merge cannot know how someone else did.
+- **AC-6.1a** — Given any run of Phase MERGE, Then exactly one `mergeStatus` value applies, assigned
+  by this table. `refused` means a **safety rule said no** — the fail-closed class. `deferred` means
+  an ordinary **not-ready** condition that a later re-invocation could satisfy.
+
+  | Condition | `mergeStatus` |
+  |---|---|
+  | Merge performed and succeeded | `merged` |
+  | PR already `MERGED` on entry (AC-1.6 row 3) | `merged` |
+  | Merge succeeded, branch deletion failed (AC-2.6a) | `merged` |
+  | Merge succeeded, queue write failed (AC-5.2) | `merged` + escalation |
+  | Merge succeeded, working tree not updated (AC-5.7) | `merged` + escalation |
+  | `PHASE_MERGE_ENABLED = false` (AC-1.4) | `skipped` |
+  | `mergeMode: "off"` (AC-1.5) | `skipped` |
+  | Self-modification guard fired (AC-3.1) | `refused` |
+  | Changed-file list unretrievable (AC-3.4) | `refused` |
+  | CI evidence rule not met — `no-checks` with `mergeRequiresCi`, `failed`, `pending` (AC-4.2, AC-4.4) | `refused` |
+  | Any precondition's evidence unretrievable or unparseable, including the capability query (AC-1.2b, AC-2.5a) | `refused` |
+  | No `prUrl` from Phase PUB | `deferred` |
+  | PR not open | `deferred` |
+  | PR not mergeable / conflicts (AC-1.2) | `deferred` |
+  | `mergeable` still `UNKNOWN` after the bounded re-reads (AC-1.2a) | `deferred` |
+  | Unresolved review threads (AC-1.2) | `deferred` |
+  | No permitted merge method remains (AC-2.5b) | `deferred` |
+  | Every permitted method attempted and failed (AC-2.3) | `deferred` |
+
+- **AC-6.2** — Given `deferred` or `refused`, Then the report names, in one line, the condition from
+  AC-6.1a's table that produced it, and the pipeline outcome is `success` per AC-1.3 in both cases.
+- **AC-6.2a** — Given an escalation is required (AC-3.2, AC-4.2, AC-5.2, AC-5.7), Then it appears as
+  one or more lines in the final report's existing operator-facing notices channel, each beginning
+  with the stable prefix `MERGE ESCALATION: `, followed by the condition and its detail — for a guard
+  refusal, the PR link and every matched path. The prefix is the whole contract: an escalation is
+  something a reader (or a test) can find by string, not a tone of voice in a log line. Escalation
+  never implies a pipeline halt; every escalating condition above keeps outcome `success`.
+- **AC-6.3** — Given a `QUEUE.md` in which the only unblocked dependent lists this feature as its sole
+  dependency, Then after a run reporting `mergeStatus: merged` that dependent's row is selected by the
+  next `orchestrate-queue` invocation with no human turn; and given the same queue with this feature's
+  row left at `awaiting-merge`, that dependent is **not** selected. Both halves are determinate: the
+  first asserts the gate opens, the second asserts it was the gate that was holding it shut.
+
+### REQ-MERGE-07 — Configuration inventory
+
+- **AC-7.1** — Given the settings this feature introduces, Then each ships with the stated home,
+  default and owner:
+
+  | Setting | Home | Default | Owner |
+  |---|---|---|---|
+  | `PHASE_MERGE_ENABLED` | workflow-script constant, alongside the existing phase-enable constants | `true` | pdlc maintainer; changed by editing the pipeline |
+  | `mergeMode` | `.claude/pdlc.config.json`, under a `merge` section | `off` | consuming repo's operator |
+  | `mergeRequiresCi` | same | `true` | consuming repo's operator |
+  | `allowSquashMerge` | same | `false` | consuming repo's operator |
+  | `deleteBranchOnPdlcMerge` | same | `true` | consuming repo's operator |
+  | guard paths (additive; AC-3.3) | same | the four of AC-3.1 | consuming repo's operator, additive only |
+  | `mergeableRetries` / `mergeableRetryDelay` | same | `3` / `10 s` | consuming repo's operator |
+
+- **AC-7.2** — Given `mergeMode` ships `off`, Then a repository that installs this feature does not
+  begin auto-merging until its operator opts in. Shipping `gated` by default would turn a plugin
+  update into a behaviour change on someone else's repository; the flag exists so that decision is
+  theirs and dated.
+- **AC-7.3** — Given a setting is absent, unreadable or holds an unrecognised value, Then its default
+  applies, and for `mergeMode` specifically the default is `off` — a malformed configuration never
+  enables merging.
 
 ## 4. Non-functional requirements
 
-- **NFR-1** — Every precondition is evaluated deterministically from `gh` output. No LLM
-  participates in the decision to merge.
-- **NFR-2** — Merging is irreversible in practice. Every refusal path must be cheaper than every
-  merge path: when in doubt, the phase refuses.
+- **NFR-1** — **No LLM judgment participates in the merge decision.** Observations may be *transported*
+  by an IO agent — that is how the shipped runtime reaches `gh` and `git` at all — but every decision
+  is made by tested script code parsing that transported output, and any transcript that does not
+  parse into one of the stated values fails closed per AC-1.2b. The property is "no judgment", not "no
+  agent"; stated as "no agent" it would be false on the only execution path that ships.
+- **NFR-2** — Merging is irreversible in practice, so the phase's order of operations is fixed: **no
+  state-mutating call is issued before every precondition has been evaluated**, and no merge is
+  attempted while any precondition is unknown. When in doubt, the phase refuses.
 - **NFR-3** — The self-modification guard has no override flag of any kind. Not a config value,
   not an environment variable, not a CLI argument.
-- **NFR-4** — Phase MERGE adds no new agent dispatch; it is workflow-script logic calling `gh`.
-- **NFR-5** — The phase is idempotent: invoked against an already-merged PR it reports `merged`
-  and performs no action.
+- **NFR-4** — Phase MERGE adds **no new reasoning dispatch**: no agent is asked to decide, judge, or
+  summarise anything. The only agent involvement is the runtime's existing mechanical transport of
+  `gh`/`git` output, and every value it carries is parsed and decided by script code (NFR-1).
+- **NFR-5** — The phase is idempotent: invoked against an already-merged PR it reports `merged`,
+  attempts zero merges, and re-attempts only the queue write-back, idempotently (AC-1.6 row 3,
+  AC-5.8). "Already merged" is read from the PR's own state, and a PR merged by a human counts —
+  with `method` reported as `unknown` (AC-6.1).
 
 ## 5. Scope
 
