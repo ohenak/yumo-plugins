@@ -68,6 +68,13 @@ pins that refusal as a required test rather than flagging it as the cost of ship
 
 ## 4. Questions
 
+| ID | Question |
+|---|---|
+| Q-01 | F-01 offers three ways out and option (a) — **do not wire the third conjunct at row 10** — is the one I would take, because it is the only one whose interim behaviour is *today's behaviour* rather than a new one. It costs exactly R-10's fail-open on a hand-edited region for one queue interval. Was it rejected, and if so on what grounds? v2.1 chose the opposite branch of my v6 Q-01 without stating why; the reason belongs in X-06's cell next to the choice. |
+| Q-02 | Re-asked from v6: does anything require the two halves to land in the same **release** of the plugin, as opposed to the same queue sweep? Distribution is per-commit (`pdlc/workflows/dist/` rebuilt in the same commit, O-11), so a consumer who installs between row 10 and row 18 gets the interim default whatever the queue does — and under F-01 that consumer's first halt in any phase is terminal. If co-release is required, that is a line in `pdlc/RELEASE-CHECKLIST.md`, and it is currently stated nowhere. |
+| Q-03 | O-10 says the granting legs *"drive the *validate* seam explicitly to **true** and never read its production default"*. Does anything then exercise the **production wiring** of the seam on a granting path — i.e. that the default is what production actually receives, rather than a test-only injection that happens to be correct? A seam driven to `true` in every granting test and to `false` in every refusing one is compatible with production never calling the default at all. If option (c) is taken this matters more, not less. |
+| Q-04 | Carried, `REQ-RCV-07`'s: is `W` guaranteed absent from every operator- and downstream-visible surface on a refusing entry? Recorded so the trail is unbroken for harvest; **not** a finding against this document. |
+
 ## 5. Positive Observations
 
 ## 6. Recommendation
