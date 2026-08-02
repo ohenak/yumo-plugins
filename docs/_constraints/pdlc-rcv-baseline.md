@@ -260,6 +260,23 @@ contradict one.
 | `## Measurement Required` | that exact heading | the three review SKILLs | RCV-05 | S-7. Follows the existing `## Verdict` convention: an exactly-named top-level section the loop extracts. Deliberately **not** part of the completeness criterion. |
 | Symbol-proximity window | **±25 lines**, FSPEC may tune | the new `pdlc/workflows/lib/` module | RCV-06 | The *shape* (presence within a window, not exact-line match) and the *direction* are fixed — wide enough that the motivating two-line drift passes, narrow enough that a symbol in a different function fails. ±25 lines satisfies both bounds against this module's function sizes. FSPEC may change the number, not the direction. |
 
+### 3.1 `REQ-RCV-01`'s notes on the rows it owns
+
+Relocated from `REQ-RCV-01` §6 (2026-08-01, round 9) so each row is stated once, next to the row it
+qualifies; nothing changed meaning in the move. These are that REQ's *local* notes — the defaults,
+owners and derivations above are unchanged and remain authoritative.
+
+| Row | `REQ-RCV-01`'s note |
+|---|---|
+| `MAX_REVIEW_ROUNDS` | The one constant AC-1.2 changes. AC-1.1 makes it **absolute per document**, not per invocation. |
+| `## Reset Region` (S-12) | Created by the first halt of a phase, preserved by every later one (AC-1.4 clause 1). |
+| `HALT-REASON: {value}` (S-15) | `H` is exactly the number of halts taken. `{value}` is the `; `-joined render in the **catalogue §3 precedence order**. |
+| `WINDOW-START: {N}` (S-13) | Written by the loop, **never authored by a human**; the prohibition is scoped to *authoring*, which exempts `REQ-RCV-07` AC-7.4's sanctioned repairs and AC-7.5's act 1. **Deleting a single answering line is forbidden at every `H − A`**, because it lowers `A` alone (AC-7.4). |
+| `WINDOW-RESUMED: {W}` (S-14) | Answers a clearance without moving the origin. |
+| `reset-region-corrupt: …` (S-16) | One notice per entry whatever the fault count. `REQ-RCV-01` AC-1.5(4) fixes *when* it is emitted; its **sole emitter and its `{reason}` selection are `REQ-RCV-07` AC-7.1 step 4's**. Its render is catalogue §2's, character for character, and **not repeated elsewhere**. |
+| `budget-exhausted: …` (S-4) | Outside this table's scope deliberately: a render fixed by catalogue §2. Rendered from `W` and the constant — a clause that hard-codes `rounds 1..3 of 3` is a defect. |
+| `no-revision: …` / `fixed-point: …` | **Read only** by `REQ-RCV-01`: AC-1.5(5) reads the **leading** reason of the last `HALT-REASON:` line; that REQ emits neither and may not change their grammar. |
+
 ## 4. Shared non-goals
 
 Stated so a reviewer does not file a blocking finding against an absence that is intentional. Each
