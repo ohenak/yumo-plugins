@@ -222,6 +222,58 @@ merge.**
 
 ## 5. Queue write-back properties
 
+**PROP-M-12 — Evidence-null identity. `updateQueueStatus(md, f, s, null)` is byte-identical to the
+3-parameter call, for every input.**
+*(Data Integrity · **P** · `enum(4 statuses × 6 queue shapes = 24)` against goldens · B2 — `mergeQueueWriteback.test.js`)*
+- **Domain:** the six queue shapes F1 captures (5-column canonical, already-`Evidence`-migrated,
+  padded/aligned cells, one data row, feature absent, no table at all) × every `QUEUE_STATUSES`
+  member, applied to the target feature.
+- **Oracle:** a **three-way** equality — the 4-parameter `null` call, the 3-parameter call, and the
+  **committed golden captured from `updateQueueStatus` at HEAD before the change** (PLAN F1) — all
+  byte-identical, including the `matched` and `written` fields. TSPEC §13.5's TE F-11 point applies:
+  comparing the new code against itself proves nothing, so the golden is the only non-circular arm and
+  is the one that must be able to fail. Positive-presence conjunct: each golden is asserted to
+  *contain* the target feature's row and to *differ* from the other three statuses' goldens, so a
+  suite whose goldens were captured empty cannot pass.
+
+**PROP-M-13 — Write-back idempotence. Applying the `done` write twice equals applying it once, byte
+for byte, and never downgrades evidence.**
+*(Idempotency · **P** · `enum(6 shapes × 3 evidence forms = 18)` + `rand(200)` cell pairs · B1/B2 — `mergeQueueWriteback.test.js`)*
+- **Domain:** each canonical queue × evidence ∈ `{"abc1234 #42", "merged #42", "abc1234 #7"}`, applied
+  twice; and `mergeEvidenceCell(prev, next)` over 200 seeded `(prev, next)` pairs drawn from
+  `{"", sha-form, merged-form, arbitrary string}`.
+- **Oracle:** `md2 === md1` exactly (second application is a fixed point); `ensureEvidenceColumn`
+  reports `migrated: false` on the second pass; the Status cell holds the single token `done` with no
+  surrounding decoration on both passes. For the cell helper: whenever `prev` is a non-empty string
+  and `next` matches `/^merged #/`, the result **is `prev`**; otherwise it **is `next`** — asserted as
+  an equality against an independent reference, so no-downgrade cannot degenerate into never-update.
+
+**PROP-M-14 — Structural containment. Only the target row's Status and Evidence cells ever change
+value; every other cell is preserved.**
+*(Data Integrity · **P** · `enum(6 shapes × 8 target positions)` · B1/B2 — `mergeQueueWriteback.test.js`)*
+- **Domain:** generated queues of 1–8 data rows (seeded feature names, statuses drawn from
+  `QUEUE_STATUSES`, mixed `Depends-On` cells, interleaved prose paragraphs and a trailing history
+  table), with each row in turn the write target.
+- **Oracle:** after the write, for every **non-target** data row the first five cells are string-equal
+  to their pre-write values and the sixth is `""`; the header gains exactly the cell `Evidence`; the
+  separator row gains exactly one dash cell; **every row has the same cell count**; every non-table
+  line (prose, blanks, the trailing table) is byte-identical. Positive conjunct: the target row's
+  Status changed *from* the fixture's known prior value *to* `done`, and its Evidence cell holds the
+  expected string — so "changed nothing at all" fails.
+
+**PROP-M-15 — Round-trip. A written `done` row re-parses as `done`, and its dependents unblock.**
+*(Integration · **I** · `enum(6 shapes × 3 dependency graphs)` · B2/B3 — `mergeQueueWriteback.test.js`, `mergeQueueDriver.test.js`)*
+- **Domain:** each written queue from PROP-M-14 fed back through the *shipped, unmodified*
+  `parseQueue`, `selectNextPending` and `precheckDependencies`, over three graphs: a dependent whose
+  sole dependency is the target, a dependent with two dependencies one of which is still `pending`,
+  and no dependent at all.
+- **Oracle:** `parseQueue` resolves the same five columns as before migration (the sixth is ignored by
+  `colIndex` — asserted by comparing the parsed row objects to the pre-migration parse, field by
+  field); the target row's `status` is **exactly** the string `done`; the first graph's dependent is
+  **selected** by `selectNextPending`; the second is **not** (and the reason names the still-pending
+  dependency); the third selects nothing. Both halves of AC-6.3 are asserted, so the gate is proven to
+  have been what was holding the dependent shut.
+
 ## 6. Phase-level integration properties
 
 ## 7. Coverage matrix
