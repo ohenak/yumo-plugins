@@ -50,6 +50,12 @@ the new home actually carries it.
 
 ## 2. Disposition of the v5 questions
 
+| v5 id | Status | Note |
+|---|---|---|
+| **Q-01** (does this REQ intend to change the shipped *one recovery act per halt* invariant into *one per halt class*?) | ✅ answered, and by the split | The question is no longer this document's: the suppression seam is `REQ-RCV-07` O-6's, and it answers exactly what I asked — *"on the two row-B variants the refusal's own recovery text stands in its place, and **every other halt class keeps that line unchanged**"*, with that REQ's R-14 naming the widened-seam regression and its O-10 testing both sides. The generalisation is stated once, in the document that owns the seam, rather than as a per-row exception in a §6 table. |
+| **Q-02** (is `W` guaranteed absent from every operator- and downstream-visible surface on a refusing entry?) | ⚠️ still open, but the evidence is back and the question is now **`REQ-RCV-07`'s** | The §3.1 clause that names why the successor depends on this REQ (*"both its tests are stated over `W`"*) was restored (F-03 closed). The refusing entry itself is now AC-7.2/AC-7.6 material, so the question belongs with row B's cells. Carried, **not re-filed here** — filing it against this document would ask it to specify a surface it deliberately no longer owns (NB-3). |
+| **Q-03** (was a single in-entry retry of the confirmation read considered and rejected?) | ✅ no longer this document's | The byte confirmation is `REQ-RCV-07` AC-7.5. Carried there. |
+
 ## 3. Findings
 
 ## 4. Questions
