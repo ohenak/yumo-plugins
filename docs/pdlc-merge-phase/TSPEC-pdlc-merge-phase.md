@@ -1178,3 +1178,49 @@ be edited away:
 | NFR-5 | row 5 / §11 row 3 (§5.5) | `mergeDecision`, `mergeQueueWriteback` |
 
 ## 15. Obligations discharged, risks, and the DECISIONS verdict
+
+### 15.1 Obligations
+
+| ID | Discharge |
+|---|---|
+| O-M1 | §8.2 — catalogue migrated to `recorded` / `recorded (uncommitted)` / `none` / `error`; every producer and reader named; the seam **is** renamed to `_recordQueueRow`, with the `runtimeBundle.test.js:1038` vacuity trap named and closed |
+| O-M2 | §4 (six observation names, signatures, `{ execFn }` injection, the `_mergeObservations` seam) and §8.1/§8.3/§8.4 (the four touch points + the row transform, with the evidence-free byte-identity property pinned as a differential test) |
+| O-M3 | §4.4 — the GraphQL query text, `-F`/`-f` typing, cursor pagination bounded at 10 pages fail-closed, `parsePrRef` plus the `O1.number` cross-check; `reviewDecision` appears nowhere |
+| O-M4 | §4.6 — the four-verdict completeness procedure, the `< 100` completeness criterion, the `--paginate --slurp` fallback, and empty-list ≠ unretrievable |
+| O-M5 | §3.3 — read once at the top of `phaseMerge`, after the enable check by construction; local `const`, **no module-level cache**, with the in-process queue→dev call as the reason |
+| O-M6 | PLAN-owned; §13.4 states the exact re-expression and the sibling case so the PLAN task has a specification to reference |
+| O-M7 | §4.3 — `_sleep`/`_now` defaulted **in `phaseMerge`'s own parameter list**, the `raisePrAndVerifyCi:3899` pattern; wait is `mergeableRetryDelaySeconds × 1000` |
+| O-M8 | §7.4 — the seven-step argv sequence, `--empty=drop` as the already-upstream detection, exit-status-only failure detection, and the ancestry confirmation |
+| SE-v3 advisory / TE-v3 N-02 | §5.5 — row 5 observes `O4` for the branch name only; an unknown `O4` there does not refuse, it produces row 22 |
+| TE-v3 N-01 | §4.6 + §13.3 — resolved as a stated fixture constraint on the row-11a and row-5 cases, asserted rather than documented |
+
+### 15.2 Risks and costs, named
+
+| Risk | Assessment |
+|---|---|
+| **Six new `gh` command shapes cross the adapter** (§11.3) | The largest new surface. Each is a fixed command with an exact-reply contract and one parser; but every one is agent-transported, so a transport that mangles a *value* inside its recognised set is undetectable — the same residual `validateDriftRecord` records (`orchestrate-queue.js:1163` block comment). Mitigated by fail-closed parsing everywhere and by the fact that only `O6` mutates |
+| **`git rebase --empty=drop` needs git ≥ 2.26** (§7.4) | The one new platform assumption. Per DC-02 it must be **measured** on both CI runners (`git --version` on ubuntu-latest and macos-latest) during implementation, not inferred; if either is older, fall back to a plain `rebase` and record the change |
+| **The `_recordHalt` rename touches four files and one vacuous test** (§8.2) | Mechanical but wide. The mitigation is the added negative assertion, without which the rename can silently disable a guard test |
+| **Permanent `refused` in this repo** (FSPEC §4.5, BL-04) | Accepted and unavoidable: every PR this repo's queue raises touches `pdlc/workflows/` or `pdlc/skills/`. The `merged` path is therefore evidenced entirely through tests driving the observation points. Stated here so the first operator to see `refused` in `yumo-plugins` reads it as designed behaviour, not a defect |
+| **`decideMerge`'s demand loop is an unusual shape** for this codebase | No precedent in `pdlc/workflows/` — the cost is one reviewer's unfamiliarity. The benefit is that purity and short-circuiting stop competing; §5.1 states the alternative that was rejected and why |
+
+### 15.3 Feasibility
+
+No infeasible requirement was found. Every capability this design needs already exists in the
+codebase and is cited: `{ execFn }` observation, `defaultGit`'s argv seam, the `_recordHalt` channel,
+the notices array, the phase-flag pattern, and the adapter's fixed-command discipline. The one
+genuinely new capability — a `gh` command catalogue in the adapter — is an extension of
+`rtMakeCheckCi`, not a new mechanism. Nothing here is routed back to the product side.
+
+### 15.4 DECISIONS verdict
+
+**Not warranted.** The FSPEC pinned every load-bearing product alternative before this document
+started: the positional tie-break (Q-01), the `Evidence` migration timing (Q-02), squash's exclusion,
+`mergeMode`'s three values with no bypass, the M1–M5 ordering, and the AC-2.7a supersession are all
+decided there with their rejected alternatives recorded. What this TSPEC decided is engineering
+shape — demand-driven core (§5.1), appended positional parameters (§8.3), seam rename (§8.2), row 5
+observing `O4` (§5.5) — and each of those states its rejected alternative **in place**, next to the
+design it explains, which is where a future reader will be standing when the question arises. A
+separate DECISIONS document would duplicate those paragraphs without adding a decision.
+
+`DECISIONS_WARRANTED: no`
