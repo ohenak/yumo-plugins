@@ -415,6 +415,146 @@ which remains the **budget** (M-1c, AC-1.3, B-RPT-3).
 
 ## 5. Protocols — the seams and their contracts
 
+Every service boundary is a **named injected parameter with a module-scope default**, the shape
+this module already uses (`_readFile = defaultReadFile`, `_checkFile = checkFileNonEmpty`, …). Two
+seams are reused unchanged, one is threaded further, one is new, and one is declared-but-unwired.
+
+### 5.1 Reused unchanged
+
+| Seam | Contract | Used by |
+|---|---|---|
+| `_readFile(path) → Promise<string\|null>` | the file's text, or `null` for absent **or unreadable** — the two are not distinguished, which is precisely why the presence probe is a separate seam (§5.2) | `readRegionState`, both confirmations |
+| `_checkFile(path) → Promise<{ok:true}\|{ok:false, reason:"file_missing"\|"file_empty"}>` | `checkFileNonEmpty`'s shipped contract (`:361`); swallows every throw into `{ok:false}` | the shipped post-mortem write confirmation (`:1998`), unchanged |
+| `_agent(skill, prompt, opts) → Promise<string>` | shipped | the post-mortem authoring dispatch, unchanged in kind |
+| `_listFiles(dir)` | shipped | `refreshReviewState` → `deriveRoundWindow` |
+
+### 5.2 New — `_statFile`, the presence probe
+
+```js
+/**
+ * @callback StatFile
+ * @param {string} path
+ * @returns {Promise<{exists: true}|{exists: false}|{unevaluable: true}>}
+ */
+_statFile = defaultStatFile
+```
+
+**Why a new seam rather than `_checkFile` or `_readFile`.** FSPEC §7.2's discriminator between a
+*creating* and an *existing* halt is **file presence**, and §7.4 fixes the safe rule: *when the
+discriminator cannot be evaluated, the halt takes the **existing** path.* Neither shipped seam can
+express that:
+
+- `_readFile` returns `null` for absent **and** for unreadable, so an unreadable post-mortem would
+  read as absent and be **re-authored over** — erasing a live region and the operator's
+  `## Recommendation`. This is the harm §7.2 exists to prevent;
+- `_checkFile` collapses an IO fault into `{ok:false, reason:"file_missing"}` (`:377`–`:379`),
+  the same value it returns for a genuinely absent file — the same conflation by a different name.
+
+`_statFile` is the seam whose failure mode is *unevaluable*-rather-than-*absent*, which FSPEC §7.2
+routes to TSPEC by name (F-N-4). Its default:
+
+```js
+export function defaultStatFile(path, { fsMod = fs } = {}) {
+  if (!path || String(path).trim() === "") return { exists: false };
+  try {
+    fsMod.statSync(path);
+    return { exists: true };
+  } catch (err) {
+    if (err && err.code === "ENOENT") return { exists: false };
+    return { unevaluable: true };            // EACCES, EIO, ELOOP, anything else
+  }
+}
+```
+
+`ENOENT` is the **only** errno that answers *absent*; every other outcome is `unevaluable`. The
+runtime adapter's implementation follows `rtCheckFile`'s shape (`runtime-adapter.js:817`) with a
+three-way command — `test -e` distinguishing `PRESENT` / `ABSENT`, and any unparseable reply
+mapping to `{unevaluable: true}`, never to `{exists: false}`.
+
+**Scope of the guarantee, stated because FSPEC §7.2 scopes it:** only the probe that *cannot be
+evaluated* is handled here. A probe that **answers `absent` for a file that is present** would
+take the creating path and cause the harm; that false-negative is **out of scope for this feature**
+(FSPEC §7.2, F-N-1), and `defaultStatFile` bounds it as far as a syscall can — it answers `absent`
+on exactly one errno.
+
+### 5.3 Threaded further — `_writeFile`
+
+`_writeFile(path, contents) → Promise<"ok"|…>` already exists on `main` (`:4318`,
+`defaultWriteFile` at `:4219`; the adapter's `rtWriteFile` at `runtime-adapter.js:994`), but is
+**not** in `wrapperSeams` (`:4516`–`:4526`), so `reviewLoop` cannot write today. It is added to
+`wrapperSeams` and to `reviewLoop`'s parameter list.
+
+**Its return value is never trusted.** Every write this feature performs is followed by a
+**content read-back** (BR-11) — the adapter's `rtWriteFile` answers `"ok"` when it *believes* it
+wrote, and the shipped comment at `:1994`–`:1996` records that this belief has been wrong. The
+confirmation contracts are §6.4's, not this seam's.
+
+**`_appendFile` is deliberately not used for region lines.** It exists (`:4235`) and is used by
+`appendApprovalAnchors` (`:2252`), but an append cannot express clause 2's strip, and clauses 1 and
+2 must be **one update of one file** (AC-1.4; split §5.8). A read-modify-whole-file-write is the
+only shape in which "no reachable state has this halt's line present and an unfenced `RESOLVED:`
+line surviving" is true by construction rather than by ordering luck.
+
+### 5.4 Declared, unwired — `_validateRegion` (X-06)
+
+```js
+/**
+ * The *region validates* predicate. Arity 2, per `REQ-RCV-07` O-12, which fixes
+ * this contract in exactly one place; it is ADOPTED here and not restated.
+ *
+ * @callback ValidateRegion
+ * @param {RegionState} region
+ * @param {string[]} basenames        - the branch listing the range check reads
+ * @returns {{valid: true}|{valid: false, reason: "invalid-window-start"
+ *          |"invalid-window-resumed"|"counts-mismatch", line?: string}}
+ */
+_validateRegion = NO_VALIDATOR
+```
+
+`NO_VALIDATOR = null`, named rather than spelled `null` at the site, exactly as `NO_PROBE`
+(`:2778`) is — so a composition-root oracle can resolve the default to a module-level non-function
+value and tell *"needs no runtime wiring"* from *"someone forgot to wire it"*.
+
+**The seam takes no report sink** (`REQ-RCV-07` O-12): the S-16 notice is emitted by the caller's
+run-report builder, so row 18 wires the third conjunct without changing this contract.
+
+**At this ship the seam is declared and never called.** §6.3 states the composition and the two
+observables that make *"deliberately not consulted"* falsifiable rather than vacuous.
+
+### 5.5 Closed value sets
+
+Declared as frozen module-scope arrays beside the existing `POSTMORTEM_STATUSES` (`:2852`) and
+`VALID_VERDICTS` (`:525`), so a value outside the set is a defect the suite names rather than a
+string that flows on:
+
+```js
+/** Catalogue §4's `{which}` token — exactly three literals, closed (BR-16). */
+const REFUSAL_WHICH = Object.freeze(["answering line", "halt line", "iterations section"]);
+
+/** Catalogue §2's S-16 reasons. Declared, EMITTED BY NOTHING at this ship (X-06). */
+const REGION_CORRUPT_REASONS =
+  Object.freeze(["invalid-window-start", "invalid-window-resumed", "counts-mismatch"]);
+```
+
+`REGION_CORRUPT_REASONS` is declared now, with a comment naming X-06, so `REQ-RCV-07` wires an
+existing closed set rather than minting one — and so §9.3's *no S-16 is emitted at this ship* leg
+has a symbol to assert emptiness against.
+
+### 5.6 The seam table, gathered
+
+| Seam | Default | New? | Consumers |
+|---|---|---|---|
+| `_readFile` | `defaultReadFile` | no | `readRegionState`, both confirmations |
+| `_writeFile` | `defaultWriteFile` | threaded into `reviewLoop` | `resolveClearance`, `maintainRegionOnHalt` |
+| `_statFile` | `defaultStatFile` | **yes** | `maintainRegionOnHalt`'s creating/existing discriminator |
+| `_checkFile` | `checkFileNonEmpty` | no | shipped post-mortem write confirmation |
+| `_listFiles` | `defaultListFiles` | no | `refreshReviewState` |
+| `_agent` | `agent` | no | post-mortem authoring |
+| `_validateRegion` | `NO_VALIDATOR` (`null`) | **yes, unwired** | nothing at this ship (§6.3) |
+
+Per C-4, **every one of these is `await`ed at every call site**, including `_statFile`, whose Node
+default is synchronous — the adapter's is not, and the module may not depend on which it got.
+
 ## 6. Algorithms
 
 ## 7. Error handling
