@@ -62,7 +62,7 @@ This REQ is the **head of the family at requirements altitude** — nothing it n
 | # | Direction | What crosses | Behaviour until it ships |
 |---|---|---|---|
 | **X-05** | **read from** `pdlc-rcv-fixed-point-stop` AC-2.8 — the S-11 reason `no-revision: …` | AC-1.5(5)'s first row, which resumes rather than resets the window on an S-11 halt | Until that REQ ships no halt path emits S-11, so the row is **unreachable**, every halt is a convergence halt, and AC-1.5(5) reduces to its second row. Stated over both from the start, so nothing is re-specified when the successor lands. |
-| **X-06** | **read from** `REQ-RCV-07` AC-7.1 — the ordered validation algorithm behind AC-1.5(4)'s *region validates* predicate, and AC-7.2/AC-7.5's refusal | AC-1.5(4)'s third gate conjunct, and everything following a failure of it | A **forward** edge, not a `depends-on`: the predicate's *meaning* and fail-closed disposition are fixed below, so nothing here is under-determined; its **decision procedure** is `REQ-RCV-07` AC-7.1's, and the conjunct is **not in force until that REQ ships**. Until then AC-1.5(4)'s gate evaluates its **two decidable conjuncts** — a readable `RESOLVED: yes`, and `A < H` — and every branch behaves as at HEAD: **no refusal, no S-16**, region or none. **Not deferred:** §6's S-13/S-14 **grammar** is in force at this ship; only the analysis layer (ordering, highest round, `H − A ∈ {0, 1}`) is AC-7.1's. The rationale and the cost are stated once for both ends at `pdlc-rcv-split.md` **§5.1** (see R-14). |
+| **X-06** | **read from** `REQ-RCV-07` AC-7.1 — the ordered validation algorithm behind AC-1.5(4)'s *region validates* predicate, and AC-7.2/AC-7.5's refusal | AC-1.5(4)'s third gate conjunct, and everything following a failure of it | A **forward** edge, not a `depends-on`: the predicate's *meaning* and fail-closed disposition are fixed below; its **decision procedure** is AC-7.1's, and the conjunct is **not in force until that REQ ships**. Until then the gate evaluates its **two decidable conjuncts** — a readable `RESOLVED: yes`, and `A < H` — and every branch behaves as at HEAD: **no refusal, no S-16**. **Not deferred:** §6's S-13/S-14 **grammar** is in force at this ship; only the analysis layer (ordering, highest round, `H − A ∈ {0, 1}`) is AC-7.1's. Rationale and cost once for both ends at `pdlc-rcv-split.md` **§5.1** (see R-14). |
 
 **Consequence for sequencing.** This REQ is deliverable alone as a **requirement**: its window, budget, halt path and clearance accounting are determined without any successor. `pdlc-rcv-reset-region` is queued at **`Order 18`**, and the net pickup order after this row is **12 → 13 → 17 → 18** — the driver picks the lowest `Order` among `pending` rows and defers a dependency **absent from the table** to the readiness triage, so row 13 is pickable and row **17** precedes row 18. QUEUE.md's gloss *"10 → 12 → 18, with 18 ahead of 17"* inverts that comparison and is superseded here; the table is corrected with the row it describes. **R-14 states the two consequences** — a three-feature interim, and row 17's machine-written `WINDOW-RESUMED:` lines landing in unvalidated regions — and both are why X-06's interim must not be able to refuse.
 
@@ -96,10 +96,10 @@ The loop *re-derives its state from the branch on every invocation* (M-1d, M-2f)
 | Quantity | Read by | Durable home | If absent |
 |---|---|---|---|
 | **First round of the current window** `W` | AC-1.1, AC-1.5(4); `pdlc-rcv-fixed-point-stop` AC-2.1, AC-2.8 | The `WINDOW-START: {N}` lines in the **reset region** of `POSTMORTEM-{phase}-{feature}.md` — the **greatest** value present, and only if the region **validates** (AC-1.5(4)). Appended, so document order is event order — and because AC-1.5(4) writes the **resolved** start, the values never descend, so *greatest* and *last well-formed* name the same line | **1** — no reset in effect, the cap applies from round 1. Fail-closed: no absent or malformed value ever widens the window. **§6's grammar is in force at this ship**, so a value that is not a decimal integer ≥ 1 contributes no origin; only the **consistency** half is target state (`REQ-RCV-07` AC-7.1, X-06). Survives a second halt, since AC-1.4 preserves the region |
-| **Rounds this entry ran** (AC-1.3) | AC-1.3 only | Not durable and not required to be — a property of the **entry**, computed inside the invocation that reports it; no criterion reads it later. Listed so the *"no in-process-only row"* invariant is read correctly: that invariant is over quantities the **criteria** read across a boundary | n/a — an entry knows what it dispatched; `0` on the zero-round halt |
+| **Rounds this entry ran** (AC-1.3) | AC-1.3 only | Not durable and not required to be — a property of the **entry**, computed inside the invocation that reports it; no criterion reads it later. Listed so the *"no in-process-only row"* invariant is read as being over quantities the **criteria** read across a boundary | n/a — an entry knows what it dispatched; `0` on the zero-round halt |
 | **Whether a clearance is still unanswered** (the reset is one-shot) | AC-1.5(4), AC-1.5(5) | The **counts**, in that same region, of `H` = `HALT-REASON:` lines and `A` = `WINDOW-START:` **plus** `WINDOW-RESUMED:` lines — **by line prefix, not by value** (AC-1.5(4) clause 4). A clearance is unconsumed exactly when a `RESOLVED: yes` is readable, `A < H`, **and the region validates** | `A = H` ⇒ every halt answered; nothing written, nothing granted. A region that does not validate ⇒ the refusal AC-1.5(4) fixes, which moves neither count — **target state; that conjunct is not in force until `REQ-RCV-07` (X-06)** |
 
-**The durable home has one documented deleter.** `harvest-learnings` deletes `POSTMORTEM-*` once `LEARNINGS-{feature}.md` exists (`CLAUDE.md`, *Artifact convention*). Benign within a feature — Phase H runs after every review phase, so no window outlives its post-mortem. The one consequence: a **post-harvest `forcePhases` re-entry** finds no region, so `W = 1`, `H = A = 0`, no S-16, no refusal — the same default as a feature that never halted, granting nothing the operator did not ask for by forcing (NB-5).
+**The durable home has one documented deleter.** `harvest-learnings` deletes `POSTMORTEM-*` once `LEARNINGS-{feature}.md` exists (`CLAUDE.md`). Benign within a feature — Phase H runs after every review phase, so no window outlives its post-mortem. One consequence: a **post-harvest `forcePhases` re-entry** finds no region, so `W = 1`, `H = A = 0`, no S-16, no refusal — the default of a feature that never halted, granting nothing the operator did not ask for by forcing (NB-5).
 
 
 ## 5. Acceptance criteria
@@ -297,30 +297,29 @@ All five clauses' durable observables are §4.1's, already read by the loop. Not
 
 ## 6. Declared thresholds
 
-The shared table is `docs/_constraints/pdlc-rcv-baseline.md` §3, and this REQ's per-row notes are
-**baseline §3.1** (relocated there at round 9). This REQ **owns** six of its rows and reads two more;
-it changes none of the others, and a threshold used here and absent there is a defect. **The three
-refusal-render rows v1.6 carried here are `REQ-RCV-07` §6's and catalogue §4's** — this REQ mints no
-**refusal** string. It mints exactly **one** operator string, added at v2.7: AC-1.3's Iterations
-render. Two grammars are restated below because §4.1 and AC-1.5(4) depend on their being **in force at
-this ship** rather than deferred with the consistency checks (X-06).
+The shared table is `docs/_constraints/pdlc-rcv-baseline.md` §3, with this REQ's per-row notes at
+**baseline §3.1**. This REQ **owns** six rows and reads two more; a threshold used here and absent
+there is a defect. **The three refusal-render rows v1.6 carried here are `REQ-RCV-07` §6's and
+catalogue §4's** — this REQ mints no **refusal** string, and exactly **one** operator string: AC-1.3's
+Iterations render. Two grammars are restated below because §4.1 and AC-1.5(4) depend on their being
+**in force at this ship** rather than deferred with the consistency checks (X-06).
 
 | Row | Owned / read | Default and note |
 |---|---|---|
 | `MAX_REVIEW_ROUNDS` | owned | **3** (was 5); baseline §3 for the derivation, §3.1 for this REQ's note. **Exactly one *executable* declaration repo-wide** (AC-1.2), test code included; prose sites and pinned non-budget literals are outside that count but inside O-13(b)'s enumeration, which is the criterion's decidable observable |
-| **`Iterations (budget {MAX_REVIEW_ROUNDS}, rounds run {k})`** | owned | **That exact render**, two decimal integers ≥ 0, in the post-mortem's Iterations section. **New at v2.7**, restated here because AC-1.3 needs a fixed string rather than a shape. It **replaces** the baseline literal, whose single number and *"limit reached"* phrase are false on the zero-round halt (M-1c). `{k}` is the rounds the halting **entry** dispatched. Baseline §3 carries the row; O-14 produces it, O-10 asserts it |
+| **`Iterations (budget {MAX_REVIEW_ROUNDS}, rounds run {k})`** | owned | **That exact render**, two decimal integers ≥ 0, in the post-mortem's Iterations section — restated here because AC-1.3 needs a fixed string, not a shape. It **replaces** the baseline literal, whose single number and *"limit reached"* phrase are false on the zero-round halt (M-1c). `{k}` is the rounds the halting **entry** dispatched, so it is rewritten on a re-halt too (AC-1.4 clause 3). Baseline §3 carries the row; O-14 produces it, O-10 asserts it |
 | `## Reset Region` (S-12), `HALT-REASON:` (S-15), `reset-region-corrupt:` (S-16), `budget-exhausted:` (S-4) | owned | **Stated once in baseline §3, local notes at baseline §3.1.** **S-4 excepted: outside baseline §3 deliberately, its render fixed by catalogue §2** |
-| **`WINDOW-START: {N}` (S-13)** | owned | **`{N}` a decimal integer ≥ 1** — restated because it is **in force at this ship** and §4.1's `W` row depends on it: a line whose value is not one contributes **no value to `W`**, while still counting toward `A` (AC-1.5(4) clause 4). **Well-formed values are non-descending** across the region, since AC-1.5(4) writes the resolved start. Baseline §3.1 for the authoring prohibition and the deletion rule |
+| **`WINDOW-START: {N}` (S-13)** | owned | **`{N}` a decimal integer ≥ 1** — restated because it is **in force at this ship** and §4.1's `W` row depends on it: a value that is not one contributes **no value to `W`** while still counting toward `A` (AC-1.5(4) clause 4). **Well-formed values are non-descending** across the region, since AC-1.5(4) writes the resolved start. Baseline §3.1 for the authoring prohibition and the deletion rule |
 | **`WINDOW-RESUMED: {W}` (S-14)** | owned | **`{W}` a decimal integer ≥ 1** equal to the origin then in effect — same grammar, same in-force status as S-13 |
 | `no-revision: …` (S-11) / `fixed-point: …` (S-3) | **read** | As the catalogue fixes them; emitted by `pdlc-rcv-fixed-point-stop` (X-05). Baseline §3.1 for how AC-1.5(5) reads them |
 
 ## 7. Non-goals and out of scope
 
 The shared list is baseline §4 (**N-1 … N-10 only**): `N-1, N-2, N-3, N-4, N-7, N-9, N-10` apply
-unchanged and are not restated; `N-5`, `N-6`, `N-8` are **inapplicable, not overlooked**. **Ids above
-`N-10` are not shared** — the family minted colliding `N-1x` ids — so this document's own non-goals
-use the per-REQ namespace `NB-*`. `O-*`, `R-*` and `X-*` are **not** namespaced, so split §5's rule
-applies: every cross-document citation names the owning REQ. The rows worth pointing at:
+unchanged; `N-5`, `N-6`, `N-8` are **inapplicable, not overlooked**. **Ids above `N-10` are not
+shared** — the family minted colliding `N-1x` ids — so this document's own non-goals use the per-REQ
+namespace `NB-*`. `O-*`, `R-*` and `X-*` are **not** namespaced, so split §5's rule applies: every
+cross-document citation names the owning REQ. The rows worth pointing at:
 
 | # | Not in scope | Why |
 |---|---|---|
