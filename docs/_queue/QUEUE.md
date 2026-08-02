@@ -52,8 +52,10 @@ outcome. The new REQ is 505 lines / 52,627 bytes. Both now sit under the **90 % 
 meaning, and the catalogue stays closed at seventeen, so existing cross-references resolve.
 
 **Row 10's Status is left `halted`,** deliberately: the split addresses the postmortem's findings but
-does not clear it. Only a human writes `RESOLVED: yes` into the POSTMORTEM, and the phase stays
-refused until one does.
+does not clear it. An operator or an agent that has verified the findings addressed writes
+`RESOLVED: yes` into the POSTMORTEM (per CLAUDE.md's post-mortem lifecycle; the workflow scripts
+never do), and the phase stays refused until one does. (Historical note: this row's marker was
+operator-set on 2026-08-01, when the rule was still human-only.)
 
 **Why `Order 18`, and why no existing row's `Depends-On` changed.** `Order` values are allocated and
 never reused; 18 is the next free. Row 18 depends on row 10 alone — its criteria are stated over that
