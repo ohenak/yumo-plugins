@@ -324,30 +324,37 @@ are PLAN §12's; every file already exists in PLAN §4's ownership manifest.
 
 | Property | Category | Kind | Domain | Task → file | Traces to |
 |---|---|---|---|---|---|
-| PROP-M-01 | Contract | P | `enum(≈4 800)` | A4 → `mergeDecision.test.js` | AC-1.6, AC-6.1a; TSPEC §5.2, §5.3 |
-| PROP-M-02 | Functional | P | `enum(≈4 800)` | A4 → `mergeDecision.test.js` | NFR-1, NFR-4; TSPEC §5.1 |
-| PROP-M-03 | Security | P | `enum(≈3 000)` | A4 → `mergeDecision.test.js` | AC-1.2b, AC-3.4, AC-4.4, AC-2.5a; TSPEC §5.3, §5.5 |
-| PROP-M-04 | Functional | P | `enum(≈4 800)` | A4 → `mergeDecision.test.js` | AC-1.5 |
-| PROP-M-05 | Performance | P | `enum(≈4 800)` | A4 → `mergeDecision.test.js` | AC-1.6, NFR-2; TSPEC §5.1 |
-| PROP-M-06 | Security | I | `enum(360)` | A3/A7 → `mergeGuard`, `mergePhase` | AC-3.1, AC-3.2, AC-3.5; FSPEC §11 row 4 |
+| PROP-M-01 | Contract | P | `enum(419)` | A4 → `mergeDecision.test.js` | AC-1.2a, AC-1.6, AC-6.1a; TSPEC §5.2, §5.3 |
+| PROP-M-02 | Functional | P | `enum(419)` ×2 | A4 → `mergeDecision.test.js` | NFR-1, NFR-4; TSPEC §5.1 |
+| PROP-M-03 | Security | P | `enum(602)` | A4 → `mergeDecision.test.js` | AC-1.2b, AC-3.4, AC-4.4, AC-2.5a; TSPEC §5.3, §5.5 |
+| PROP-M-04 | Functional | P | `enum(209)` ×2 | A4 → `mergeDecision.test.js` | AC-1.5 |
+| PROP-M-05 | Performance | P | shares M-01's 419 | A4 → `mergeDecision.test.js` | AC-1.6, NFR-2; TSPEC §5.1 |
+| PROP-M-21 | Security | P | `enum(10)` | A4 → `mergeDecision.test.js` | AC-4.1, AC-4.2, AC-4.3, AC-4.4; FSPEC §5; TSPEC §5.4 |
+| PROP-M-06 | Security | I | `enum(1 080)` | A3/A7 → `mergeGuard`, `mergePhase` | AC-3.1, AC-3.2, AC-3.5; FSPEC §11 row 4 |
 | PROP-M-07 | Security | P | `rand(500)` + `enum(12)` | A3 → `mergeGuard.test.js` | AC-3.3, AC-3.7, NFR-3; TSPEC §6.1 |
 | PROP-M-08 | Data Integrity | P | `rand(1 000)` + `enum(7)` | A3 → `mergeGuard.test.js` | AC-3.6; FSPEC §4.2 |
-| PROP-M-09 | Contract | P | `enum(40)` + `rand(500)` | A1 → `mergeConfig.test.js` | AC-7.1, AC-7.3; TSPEC §3.1, E1–E5 |
+| PROP-M-09 | Contract | P | `enum(40)` + `rand(500)` | A1 → `mergeConfig.test.js` | AC-7.1, AC-7.2, AC-7.3; TSPEC §3.1, E1–E5 |
 | PROP-M-10 | Error Handling | P | `enum(28)` | A1 → `mergeConfig.test.js` | AC-7.3; FSPEC §10.3 |
-| PROP-M-11 | Security | P + I | `enum(40)` + `enum(25)` | A4/A7 → `mergeDecision`, `mergePhase` | AC-2.4; TSPEC §5.6 |
+| PROP-M-11 | Security | P + I | `enum(40)` + `enum(25)` | A4/A7 → `mergeDecision`, `mergePhase` | AC-2.1, AC-2.2, AC-2.4; TSPEC §5.6 |
 | PROP-M-12 | Data Integrity | P | `enum(24)` vs goldens | B2 → `mergeQueueWriteback.test.js` | AC-5.3; FSPEC §7.4; TSPEC §8.4, §13.5 |
 | PROP-M-13 | Idempotency | P | `enum(18)` + `rand(200)` | B1/B2 → `mergeQueueWriteback.test.js` | AC-5.8, NFR-5; AT-M2; FSPEC §7.2 |
-| PROP-M-14 | Data Integrity | P | `enum(48)` | B1/B2 → `mergeQueueWriteback.test.js` | AC-5.3, AC-5.5; AT-M1; TSPEC §8.5 |
-| PROP-M-15 | Integration | I | `enum(18)` | B2/B3 → `mergeQueueWriteback`, `mergeQueueDriver` | AC-5.5, AC-6.3; AT-M5; TSPEC §9.4 |
-| PROP-M-16 | Error Handling | I | `enum(32)` | A7 → `mergePhase.test.js` | AC-2.6a, AC-5.2, AC-5.7; AT-M6; FSPEC §11 rows 19–22 |
+| PROP-M-14 | Data Integrity | P | `enum(48)` | B1/B2 → `mergeQueueWriteback.test.js` | AC-5.1, AC-5.3, AC-5.5; AT-M1; TSPEC §8.5 |
+| PROP-M-15 | Integration | I | `enum(18)` | B2/B3 → `mergeQueueWriteback`, `mergeQueueDriver` | AC-5.1, AC-5.5, AC-6.3; AT-M5; TSPEC §9.4 |
+| PROP-M-16 | Error Handling | I | `enum(34)` | A7 → `mergePhase.test.js` | AC-2.6a, AC-5.2, AC-5.7; AT-M6; FSPEC §11 rows 18–22 |
 | PROP-M-17 | Contract | I | `enum(29)` | A8 → `mergePhase`, `pipelineWiring`, `reportTemplates` | AC-1.3, AC-1.4, AC-6.1, AC-6.2; TSPEC §10.1 |
 | PROP-M-18 | Security | I | `enum(25)` + `rand(200)` | A7 → `mergePhase.test.js` | NFR-2; TSPEC §4.7, §5.2 |
-| PROP-M-19 | Observability | I | `enum(57)` | A7 → `mergePhase.test.js` | AC-6.2a; TSPEC §10.2 |
+| PROP-M-19 | Observability | I | `enum(65)` | A7 → `mergePhase.test.js` | AC-6.2a; TSPEC §10.2 |
 | PROP-M-20 | Error Handling | I | `enum(≈56)` | A7 → `mergePhase.test.js` | AC-1.3, NFR-2; TSPEC §5.2, §12 E21 |
 
-**Requirements without a property, and why that is correct:** AC-1.2a (bounded re-reads) and AC-2.3/AC-2.5b (method
-exhaustion) are *counting* behaviours whose whole content is an exact number and an exact reason string, which TSPEC
-§13.2's example cases pin better than a quantifier would; AC-5.4/AC-5.6 are single-branch, covered by AT-M4 and E17.
+**Requirements without a property, and why (PM F-03, PM F-06).** AC-2.3/AC-2.5b are *counting* behaviours whose whole
+content is an exact number and an exact reason string, which TSPEC §13.2's cases pin better than a quantifier would
+(AC-1.2a is no longer here — PROP-M-01 now sweeps `0…10`). AC-5.4/AC-5.6 are single-branch, covered by AT-M4 and E17.
+**AC-4.0** — CI read at merge time, never inherited from Phase PUB — is carried *structurally* by **PROP-M-02**:
+`decideMerge` is a function of `(record, config)` alone, and `record.ci` can only come from `O2`, so no report field
+can reach the decision. **AC-1.1** (placement after Phase PUB) and **AC-1.2** (the composite precondition list) are
+structural: the former is TSPEC §10.4's call site, asserted by `pipelineWiring`; the latter is the *union* of the
+guards PROP-M-01/-03/-21 already quantify, with no separate content. **AC-2.5** (a forbidden method is skipped, not
+attempted) is inside PROP-M-11's candidate-chain oracle — the chain is built from `caps` before any attempt.
 
 ## 8. Gaps, residuals, and what this document does not prove
 
