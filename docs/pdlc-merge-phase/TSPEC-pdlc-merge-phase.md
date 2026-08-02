@@ -608,13 +608,29 @@ Three properties make this safe rather than a widening of row 5:
    permanently, which the reviewer judged "probably not the intent". Recorded here because it is the
    one place this TSPEC extends the FSPEC's control flow rather than transcribing it.
 
+> **FSPEC erratum E-3 (requested).** FSPEC §2.2 row 5's "Nothing later runs, including … remaining
+> preconditions" and §2.5's wording now over-state the contract. The corrected sentence is: *"row 5
+> takes `O4` as an observation, never as a precondition — an unretrievable `O4` there does not refuse,
+> it leaves the default-branch name unavailable and produces §11 row 22."* Raised because a future
+> reader will read the FSPEC, not this section (PM F-05). It is the FSPEC author's accepted resolution
+> of the SE-v3 advisory and TE-v3 N-02 riders, recorded in writing rather than left implicit.
+
 ### 5.6 Merge candidates
 
 `mergeCandidates(caps, config)` is pure and builds the chain **before any attempt** (FSPEC §6.1):
 `rebase` if `caps.rebase`, then `merge` if `caps.mergeCommit`, then — only when
 `config.allowSquashMerge === true` — `squash` if `caps.squash`. Squash is otherwise **absent from the
 array**, not skipped at attempt time, so no code path can issue `gh pr merge --squash` with the
-shipped configuration. An empty chain is row 16 (`deferred`, "no permitted merge method"), textually
+shipped configuration.
+
+**The reported member (PM F-04).** A successful squash reports `mergeMethod: "squash"`, which FSPEC
+§9.1's enumeration (`rebase` | `merge` | `unknown` | `null`) does not contain. The widening follows
+from FSPEC §6.1's opt-in and is almost certainly an FSPEC omission rather than a TSPEC invention — but
+`mergeMethod` is a reported field consumers may switch on, so it is **not** shipped silently: §2.4 and
+§10.1 declare the member as reachable only under `allowSquashMerge: true`, and §15.2 raises it as
+FSPEC erratum **E-1**. If the erratum is refused, the fix is one line — drop `squash` from
+`mergeCandidates` and the config key becomes inert — and §13.2's squash case becomes the negative
+assertion that it is. An empty chain is row 16 (`deferred`, "no permitted merge method"), textually
 distinct from row 17's exhaustion reason.
 
 ## 6. The self-modification guard
