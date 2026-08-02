@@ -382,10 +382,9 @@ N-9, N-10` apply unchanged and are not restated, and `N-5`, `N-6` and `N-8` are 
 this REQ, not overlooked**. **Ids above `N-10` are not shared** — the family has minted colliding
 `N-1x` ids (`N-13` differs between `pdlc-rcv-fixed-point-stop` §7 and `pdlc-rcv-finding-quality` §7)
 — so this document's own non-goals use a **per-REQ namespace, `NB-*`**; restated shared rows keep
-their shared ids. `O-*`, `R-*` and `X-*` are **not** namespaced and collide across the v2.0
-split, so **every cross-document citation of one must name the owning REQ**, as each here does
-(`pdlc-rcv-split.md` §5). Four non-goals are
-worth pointing at:
+their shared ids. `O-*`, `R-*` and `X-*` are **not** namespaced and collide across the split, so
+`pdlc-rcv-split.md` §5's rule applies — every cross-document citation names the owning REQ, as each
+here does. Four non-goals are worth pointing at:
 
 | # | Not in scope | Why |
 |---|---|---|
@@ -393,7 +392,7 @@ worth pointing at:
 | **N-7** (shared) | Applying these mechanisms to Phase CR or Phase DOD. | Restated here because AC-1.1 now says so explicitly: `docType: null` loops keep a per-invocation budget, take the new value of the shared constant, and get no reset region. |
 | **NB-1** | Specifying the fixed-point test, the zero-delta test, or how a round's blocking count is read. | They are `pdlc-rcv-fixed-point-stop`'s. This REQ states only the window they are evaluated inside and the halt path they halt on. A finding that this document never says *when* the loop compares two rounds is **correct and known** — file it there. |
 | **NB-2** | Specifying the verifier panel, the growth measurement or the anchor writer. | They are `pdlc-rcv-panel-topology`'s. A finding that this document does not define `DOC-BYTES:` is **correct and known** — file it as Low. |
-| **NB-3** | Specifying **how** the reset region is validated, what a partially-written answering line leaves behind, which operator strings a refusing entry emits, or the sanctioned repair per S-16 reason. | They are `pdlc-rcv-reset-region`'s (`REQ-RCV-07`, X-06). AC-1.5(4) names the *region validates* predicate and fixes its meaning and its fail-closed disposition; the decision procedure, the refusal's semantics, the repair taxonomy and the row-B renders are AC-7.1–AC-7.6 and catalogue §4. A finding that this document does not state the algorithm, does not pin a shipped string, or does not say which line a torn write leaves behind is **correct and known by construction** — file it there. |
+| **NB-3** | Specifying **how** the reset region is validated, what a partially-written answering line leaves behind, which operator strings a refusing entry emits, or the sanctioned repair per S-16 reason. | They are `pdlc-rcv-reset-region`'s (`REQ-RCV-07`, X-06). AC-1.5(4) names the *region validates* predicate and fixes its meaning and its fail-closed disposition; the decision procedure, the refusal's semantics, the repair taxonomy and the row-B renders are AC-7.1–AC-7.6 and catalogue §4. A finding that this document does not state the algorithm, does not pin a shipped string, or does not say which line a torn write leaves behind is **correct and known by construction** — file it there. So is the *validate* seam being **present and unconsulted in production** at this ship (X-06): a DoD finding that it is an unwired integration is correct and known by construction, `REQ-RCV-07` wires it with AC-7.1, and it is **not** to be remediated by wiring it here. |
 | **NB-4** | Asserting anything about `pdlc/workflows/orchestrate-dev.js`'s control flow that is not a measured fact. | Per the predecessor post-mortem's root cause 1, this document cites shipped behaviour **only by `M-*` id** and carries no line citation. A claim about a guard, an emit or a branch belongs in `docs/_constraints/pdlc-rcv-baseline.md`, and a criterion that needs one belongs in `REQ-RCV-07`. |
 
 ## 8. Downstream obligations
@@ -447,12 +446,10 @@ answering line's byte confirmation, §6's refusal renders and the matching O-10 
 `REQ-RCV-07`; the window stayed; **no requirement, AC, `S-*` id, threshold or user story changed
 meaning**, and no `S-*` id was minted.
 
-**Paired edges must be revised together**, and that obligation is this document's because it owns the
-split. `REQ-RCV-01` X-06/R-14 and `REQ-RCV-07` X-07/R-16 are the **same edge described from both
-ends**: an implementer who reads only the successor's end gets whatever the successor still says. Any
-revision to X-06 or R-14 is carried to X-07 and R-16 **in the same commit, in the same words** —
-including v2.2's, which replaced an interim decision procedure with none. The edge table, and the
-`O-*`/`R-*`/`X-*` collision rule it depends on (§7), are in `pdlc-rcv-split.md` §5.
+**Paired edges must be revised together.** `REQ-RCV-01` X-06/R-14 and `REQ-RCV-07` X-07/R-16 are the
+**same edge described from both ends**, so any revision to X-06 or R-14 is carried to X-07 and R-16
+**in the same commit, in the same words** — v2.2's and v2.3's were. The edge table, the three facts
+both ends must agree on, and the `O-*`/`R-*`/`X-*` collision rule are in `pdlc-rcv-split.md` §5.
 
 **Round-by-round history is deliberately not restated here:** `harvest-learnings` deletes
 `CROSS-REVIEW-*` once LEARNINGS is written, so citing round files would be structurally wrong. This
