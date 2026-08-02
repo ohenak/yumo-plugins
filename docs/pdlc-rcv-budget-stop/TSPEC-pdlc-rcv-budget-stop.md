@@ -870,6 +870,85 @@ an agent to write a string the loop immediately overwrites (B-PMT-3).
 
 ## 7. Error handling
 
+Every failure scenario, its detection, and its exact disposition. **The direction is uniform:
+toward the narrower window, never toward a free one** (BR-10).
+
+### 7.1 The failure matrix
+
+| # | Scenario | Detected by | Disposition | Branch |
+|---|---|---|---|---|
+| **F-1** | no post-mortem for the phase | `_readFile` → `null` | empty reading: `H=A=0`, `W=1`; window opens at 1 | B-REG-1 |
+| **F-2** | post-mortem present, no `## Reset Region` | `parseResetRegion` step 2 | as F-1, `present:false` | B-REG-1 |
+| **F-3** | region present, no lines | step 4 finds none | as F-1, `present:true`; **no notice, no refusal — empty is valid** | B-REG-2 |
+| **F-4** | post-mortem present but **unreadable** | `_readFile` → `null` **at the gate**; `_statFile` → `{exists:true}` **at the entry** | gate: empty reading, nothing honoured. Entry: *existing* path, **no authoring dispatch**, clause 3 attempts **no write**, phase refusal, **whole file** byte-unchanged | B-REG-6, B-HALT-4a |
+| **F-5** | `_statFile` cannot be evaluated (EACCES, EIO) | `{unevaluable:true}` | treated as **existing** — the safe rule (FSPEC §7.4). Costs at most one refused entry the operator re-runs; the opposite error erases a live region | B-HALT-2 |
+| **F-6** | malformed `WINDOW-START:` value | step 5's grammar test fails | counts toward `A`, contributes no origin; `W` falls back to the greatest well-formed value, else **1**. **No `NaN` ever reaches `windowEnd` or `Math.max`** (RS-2) | B-REG-4 |
+| **F-7** | last `HALT-REASON:` unparseable or absent-valued | `gateBranch`'s default arm | treated as a convergence halt — the clearance is **consumed**, a window the operator can re-grant. Never a free window | B-CLR-3 |
+| **F-8** | answering-line write unconfirmed | §6.3 step 6's content read-back | **phase refusal**, `which = "answering line"`; no window, **zero dispatches**, both counts unmoved, `notice` empty | B-CLR-7 |
+| **F-9** | clause-3 write unconfirmed | §6.4 step 3's equality read-back | **phase refusal**, `which = "iterations section"`; region byte-unchanged, no halt recorded, nothing stripped | B-HALT-4 |
+| **F-10** | clause 1-and-2 update unconfirmed | §6.4 step 4's two conjuncts | **phase refusal**, `which = "halt line"`; nothing stripped, this entry's Iterations render present, counts unmoved | B-HALT-5 |
+| **F-11** | `RESOLVED:` absent / `no` / unparseable / duplicated | `parseResolvedMarker` (shipped, M-7a) | the **shipped step-G refusal**, unchanged; **no row B of any variant** is emitted | B-CLR-5 |
+| **F-12** | directory listing unreadable | `refreshReviewState`'s `{ok:false}` | the shipped halt, unchanged — decided before any origin is relevant | §2.5 |
+| **F-13** | post-mortem **authoring agent** fails or writes nothing | shipped `postmortemFailed` / `_checkFile` (`:1985`–`:2000`) | shipped warning and `postmortemWritten:false`, unchanged. Clause 3 then finds no readable file and refuses (F-4's shape) | — |
+| **F-14** | region **hand-edited** so the counts lie | nothing, at this ship | **accepted, time-boxed**: operator-caused, operator-visible, **no wider than HEAD's**, where the fail-open is unconditional. Closed at target state by the third conjunct | B-REG-7, E-13 |
+| **F-15** | a **torn** (partially landed) region or answering line | not analysed here | `REQ-RCV-07` AC-7.5's (**T-N-1**). Correct and known by construction | — |
+| **F-16** | queue-row commit refused (hook, identity, index lock) | shipped | the shipped `halted (uncommitted)` outcome, unchanged; the halt is never downgraded | E-11 |
+
+### 7.2 The phase refusal, as one code shape
+
+F-8, F-9 and F-10 produce the **same** shape, which is step G's (§2.6) with a different text:
+
+```
+recordPhase(phaseId, label, "❌", `Refused — ${which} unconfirmed at ${path}`);
+reviewRows.push({ round, panelShape:"", blocking:"", growthBytes:"",
+                  classification:"", notice: "" });          // row B, §4.4
+throw haltError(`Phase ${phaseId} refused: ${which} unconfirmed at ${path}. …`);
+       //  ^ NO second argument — the error carries NO `postmortemStatus` field
+```
+
+Four properties, each load-bearing and each falsifiable:
+
+1. **The ❌ text is catalogue §4's, character for character**, with `{which}` one of §5.5's three
+   literals and `{path}` the post-mortem's repo-root-relative path. The three texts are
+   **pairwise distinct** and are the *only* discriminator between the three sources — the `notice`
+   cell is empty on all three (B-RPT-6, AT-RPT-06).
+2. **`notice` is empty, so no S-16 and no eighteenth catalogue id.** An IO fault of the loop is not
+   a state of the region (BR-16). `REGION_CORRUPT_REASONS` (§5.5) is emitted by nothing here.
+3. **`postmortemStatus` resolves to `"written"`**, not by assertion but by mechanism: the throw
+   attaches no fields, so by `M-8g` the chain falls through to `main`'s branch 3 existence probe
+   (`:4890`–`:4901`), which finds the file the refusal is *about* — it exists by the path's
+   premise. Never `none` (which would print `No POSTMORTEM was written.` beside a ❌ row naming the
+   post-mortem, M-8c), never `unresolved`.
+4. **The invocation terminates on the shipped path** — the ❌ row is recorded *before* the throw,
+   `main`'s single catch (`:4861`, M-8a) runs, and the feature's `docs/_queue/QUEUE.md` row is
+   written `halted` (M-7b). *A refusal is not a halt*: the `RESOLVED:` marker is left in place,
+   both counts are unmoved, and the rest of the entry does not run.
+
+**Where the refusal is raised from.** F-8 is raised inside `phaseGate`, which already owns
+`recordPhase` and step G's shape, so it throws directly. F-9 and F-10 are raised inside
+`reviewLoop`, which has **no** `recordPhase`; `maintainRegionOnHalt` therefore returns
+`{refusal: {which, path, round}}`, `reviewLoop` carries it on `LoopResult` (§4.5), and
+`checkConverged` gains a branch — placed **above** its `halted === true` branch (`:1770`) and
+shaped like it — that records the ❌ row and throws. This keeps `recordPhase` ownership exactly
+where the module already puts it and adds no second reporting path.
+
+**Suppression of the shipped generic queue-reset line is NOT this feature's.** `M-8d`'s unguarded
+`emit` at `:4927` fires on every halt class reaching the catch, and the seam that suppresses it for
+a refusal is `REQ-RCV-07` **O-6** (catalogue §4's Recovery-text row; the dangling *"budget-stop
+O-6"* citation is corrected at split §6). This feature **leaves it firing** and states so, rather
+than building a suppression seam one notch too wide — `REQ-RCV-07` R-14 records the regression that
+would be.
+
+### 7.3 What is deliberately not defended against
+
+| # | Not defended | Why |
+|---|---|---|
+| **ND-1** | A `_statFile` that answers **`absent` for a present file** | out of scope per FSPEC §7.2. `defaultStatFile` answers `absent` on exactly one errno; a lying syscall is not a failure mode this feature can observe |
+| **ND-2** | A **torn** write | `REQ-RCV-07` AC-7.5 (T-N-1) |
+| **ND-3** | An agent that edits the region despite O-9's clause | the region is the **loop's** guarantee: clause 1 rebuilds it from `RegionState.lines` and clause 3 overwrites the heading, so every guarantee holds whether or not the agent complies. O-9 is belt-and-braces (B-PMT-*, FSPEC §9.1) |
+| **ND-4** | A second `Iterations`-prefixed heading below the located one | left byte-unchanged; making the render unique would delete content this feature does not own (FSPEC §12(e)) |
+| **ND-5** | The window surviving Phase H's post-mortem deletion | `NB-5` — a post-harvest re-entry reads the default of a document that never halted |
+
 ## 8. O-13 — the budget-width blast radius
 
 ## 9. Test strategy
