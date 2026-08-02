@@ -17,7 +17,7 @@ feature: pdlc-rcv-budget-stop
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude + operator | 1.3 | 2026-08-02 |
+| pdlc | approved | Claude + operator | 1.3 | 2026-08-02 |
 
 **v1.3 — feedback round 3** (`CROSS-REVIEW-software-engineer-FSPEC-v3.md`,
 `CROSS-REVIEW-test-engineer-FSPEC-v3.md`). te F-10 (Medium): §7.2 adds **B-HALT-4a** — on an
@@ -1015,14 +1015,15 @@ It fixes the **outcome**, not the fixture: which verdict sequence produces conve
 
 ## 12. Open questions
 
-Each carries a **stated default**, so none of them blocks TSPEC authoring: absent operator
-direction, the default is the specified behaviour and the question closes.
+Each carried a **stated default**, so none of them blocked TSPEC authoring. **All three are now
+closed on their stated defaults — operator-confirmed 2026-08-02** (OQ-01 and OQ-03 directly;
+OQ-02's delegation to `REQ-RCV-07` O-6 confirmed as the correct owner, its default standing).
 
-| # | Question | Stated default | Owner |
+| # | Question | Stated default | Disposition |
 |---|---|---|---|
-| **OQ-01** | Does `{k}` — *rounds run* — count a round this entry **dispatched** but whose reviewers returned nothing readable? | **Yes.** `{k}` counts rounds this entry **dispatched**, whatever their outcome. The quantity exists to expose the vacuity of a zero-round halt, not to grade a round's quality; counting only "successful" rounds would make `rounds run 0` ambiguous between *nothing was dispatched* and *nothing came back* | operator, before TSPEC |
-| **OQ-02** | On **row C** — a real, recorded halt — does the shipped generic queue-reset recovery line still fire? | **Yes.** Its suppression is scoped to row B's refusal recovery, which is `REQ-RCV-07` O-6's; a genuine halt keeps the shipped line and the operator's ordinary recovery is unchanged | `REQ-RCV-07` O-6 |
-| **OQ-03** | An operator deletes the whole post-mortem by hand, outside Phase H, after a window was granted | **No special case.** The region is gone, so the document reads as one that never halted (B-REG-1): `W = 1`, `H = A = 0`. Recorded so no downstream phase invents a recovery for it | operator, before TSPEC |
+| **OQ-01** | Does `{k}` — *rounds run* — count a round this entry **dispatched** but whose reviewers returned nothing readable? | **Yes.** `{k}` counts rounds this entry **dispatched**, whatever their outcome. The quantity exists to expose the vacuity of a zero-round halt, not to grade a round's quality; counting only "successful" rounds would make `rounds run 0` ambiguous between *nothing was dispatched* and *nothing came back* | **Closed — operator confirmed the default, 2026-08-02** |
+| **OQ-02** | On **row C** — a real, recorded halt — does the shipped generic queue-reset recovery line still fire? | **Yes.** Its suppression is scoped to row B's refusal recovery, which is `REQ-RCV-07` O-6's; a genuine halt keeps the shipped line and the operator's ordinary recovery is unchanged | **Closed — default stands; owned by `REQ-RCV-07` O-6** |
+| **OQ-03** | An operator deletes the whole post-mortem by hand, outside Phase H, after a window was granted | **No special case.** The region is gone, so the document reads as one that never halted (B-REG-1): `W = 1`, `H = A = 0`. Recorded so no downstream phase invents a recovery for it | **Closed — operator confirmed the default, 2026-08-02** |
 
 **Answered here so they are not re-asked.** (a) **A granting entry can never immediately re-halt on
 the budget — on every branch, and the reason differs by branch.** On the two `WINDOW-START:`

@@ -20,7 +20,7 @@ depends-on: []
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude + operator | 3.1 | 2026-08-01 |
+| pdlc | approved | Claude + operator | 3.1 | 2026-08-01 |
 
 **v3.1** (current) adds no requirement: it closes the halt path's last fail-open by fixing clauses 1 and 2 as **one update** — no state in which this halt's line is recorded and the spent `RESOLVED:` marker survives — states clause 3's confirmation as an **equality read-back**, and re-discriminates the refusal's ❌ text by a `{which}` token so catalogue §4's act 1 has a decidable subject and is conditioned on a count, not on inspection (paired edits at catalogue §3/§4 and `REQ-RCV-07` AC-7.6, **this revision**, §10). **On size:** the hard ceiling binds, so every revision pays for its additions by compressing prose or relocating to a shared file; round-by-round history is deliberately not carried here — harvest deletes the round files.
 
