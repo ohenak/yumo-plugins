@@ -362,8 +362,10 @@ investigate a failure.
 
 The first candidate that succeeds ends the chain. Success is confirmed by reading back `O6`: `state`
 is `MERGED` and `mergeCommit.oid` is present. The phase records `mergeStatus: merged`, `mergeSha` =
-the merge commit SHA (full oid; the short form is what §7.3 records as evidence), and `mergeMethod` =
-the candidate that succeeded (`rebase` or `merge`).
+the merge commit SHA (the **full** oid), and `mergeMethod` = the candidate that succeeded (`rebase`
+or `merge`). **`shortSha`, used only in the Evidence cell (§7.2), is the first 7 characters of that
+full oid** — a fixed-width truncation, not `git`'s variable-length abbreviation, so the written cell
+is a pure function of the observed value and an assertion on it cannot flake on repository size.
 
 A command that exits zero but whose read-back does not confirm `MERGED` is treated as a **failed**
 attempt and the chain continues — the phase never reports a merge it did not observe.
@@ -410,11 +412,18 @@ Every reader that selects pending work or checks a dependency compares the lower
 exact string, so an evidence-decorated cell such as `done (abc1234)` would block every dependent
 permanently, which is exactly the outcome US-05 exists to prevent.
 
-The merge evidence goes in a sixth **`Evidence`** cell on the same row:
+The merge evidence goes in a sixth **`Evidence`** cell on the same row, in one of exactly two forms:
 
-```
-{shortSha} #{prNumber}          e.g.   abc1234 #42
-```
+| When | Cell content | Example |
+|---|---|---|
+| a merge SHA is known — this run merged (§6.2), or §2.2 row 5 read `O1.mergeCommit.oid` | `{shortSha} #{prNumber}` | `abc1234 #42` |
+| the PR was already merged and `mergeCommit.oid` is absent or unparseable | `merged #{prNumber}` | `merged #42` |
+
+The second form exists because `O1.mergeCommit` is the only SHA source on the already-merged path and
+GitHub does not always populate it. `merged` is a literal token, never a SHA-shaped placeholder, so a
+reader can never mistake it for a truncated commit. A cell already holding the first form is **not**
+downgraded to the second by a later re-entry that cannot resolve the oid: an existing non-empty
+`Evidence` cell is left byte-identical whenever the new value would be the `merged #{prNumber}` form.
 
 `Evidence` is safe as a column name against the queue's header lookup, which resolves columns by
 *substring* over `order`/`#`, `status`, `feature`, `req path`/`req`/`path`, and
@@ -445,26 +454,48 @@ sixth cell and leaves every other row byte-identical.
 
 ### 7.4 Recording channel, idempotence, and the missing cases
 
-The write-back reaches `QUEUE.md` through **the same injected recording channel that records a
-`halted` row today**, invoked with status `done` and with the merge evidence. The channel already
-takes the status as an argument, so `done` needs no second, divergent path — this is deliberate:
-AC-5.6 requires a direct `orchestrate-dev` invocation and a queue-driven one to leave the same
-durable result, and one channel is how that is guaranteed. Its behaviour, unchanged:
+The write-back reaches `QUEUE.md` through **the one recording channel that records the `halted` row
+today**, extended — not duplicated. One channel is not an optimisation: AC-5.6 requires a direct
+`orchestrate-dev` invocation and a queue-driven one to leave the same durable result, and a second
+path is how the two would silently diverge.
 
-| Situation | Behaviour |
-|---|---|
-| No `QUEUE.md` at all (direct invocation) | no write, no git; the merge still proceeds and the write-back is skipped without error (AC-5.4). Reported row disposition `none` |
-| `QUEUE.md` present, no row for this feature | nothing written, git untouched; reported row disposition `error` with a detail naming the missing row |
-| Row present | file written, then `git add -- {queuePath}` and `git commit -m "chore(queue): {feature} → done" -- {queuePath}` — pathspec-scoped, never `-a`, never pushed |
-| Row already `done` with the same evidence | the file is byte-identical; `git` reports nothing to commit and that is **not** a fault — no warning, no notice (AC-5.8) |
-| `git` refuses (hook, missing identity, index lock) | the row is correct on disk; reported as written-but-uncommitted with a detail telling the operator to commit it manually. Never downgrades `mergeStatus` |
+**This is a change, and the FSPEC states it as one.** The shipped channel already carries the status,
+but it carries *only* the status: there is no evidence argument, and its row transform replaces a
+single `Status` cell and can neither append a sixth cell nor perform §7.3's header/separator/all-rows
+migration. So the extension touches four places — the two entrypoint closures that bind the channel,
+the channel's default implementation, its per-run seam, and the shared row transform — and that last
+one is also used by the halt path and by the driver's `in-progress` / `awaiting-merge` / `halted`
+writes. Those writes must be unaffected: a call carrying no evidence must produce exactly today's
+bytes. §13 O-M2 carries the enumeration; the invariance is a required property, not an assumption.
 
-**Row-disposition vocabulary (obligation).** The channel today reports a successful recorded write
-with the literal token `halted`, because a halt was the only status it ever wrote. A `done` write
-reported as `halted` is actively misleading in the final report. The disposition vocabulary must
-become status-neutral (or gain `done` / `done (uncommitted)` members) so the reported row disposition
-describes the row that was written. This is a required change, not a preference; §13 carries it as a
-TSPEC obligation.
+| Situation | Disposition | Behaviour | §11 row | Escalates |
+|---|---|---|---|---|
+| No `QUEUE.md` at all (direct invocation) | `none` | no write, no git; the merge proceeds and the write-back is skipped **without error** (AC-5.4) | 18 | no |
+| `QUEUE.md` present, no row for this feature | `error` | nothing written, git untouched; detail names the missing row | 20 | **yes** |
+| Row present, written and committed | `recorded` | `git add -- {queuePath}` then `git commit -m "chore(queue): {feature} → done" -- {queuePath}` — pathspec-scoped, never `-a`, never pushed | 18 | no |
+| Row present, already `done` with the same evidence | `recorded` | no semantic change; `git` reports nothing to commit, which is **not** a fault — no warning, no notice (AC-5.8) | 18 | no |
+| Row present, written; `git` refuses (hook, missing identity, index lock) | `recorded (uncommitted)` | the row is correct on disk; detail tells the operator to commit it manually | 19 | no — a plain note |
+| Row present in a status §2.5 does not overwrite | `recorded` | file unchanged; plain note naming the status found | 18 | no |
+
+**Why a git refusal does not escalate.** AC-5.2's escalation exists because "merged, queue not
+updated" *blocks the serial queue*. An uncommitted row is correct on disk, and the next queue pass
+reads the file, not the commit — so nothing is blocked, and it takes the same shape as §6.4's branch
+deletion: a real remaining action, reported as a note, never downgrading `merged`. A missing row
+(`error`) does block, and escalates.
+
+**Row-disposition vocabulary (required change).** The shipped catalogue is
+`"halted" | "halted (uncommitted)" | "none" | "error"` — the write's *disposition* named after the
+only status it ever wrote. A `done` write reported as `halted` is actively misleading in the final
+report. The catalogue becomes **`"recorded" | "recorded (uncommitted)" | "none" | "error"`**: same
+four members, same meanings, the two status-bearing ones renamed status-neutral, so one vocabulary
+describes a halt row and a done row alike. Existing readers that compare against `halted` change with
+it; §13 O-M1 carries the enumeration.
+
+**Idempotence caveat (F-07).** "Byte-identical" holds for rows already in the canonical
+`| a | b |` form, which is what the row transform emits and what this repo's `QUEUE.md` uses. A
+consumer queue with column-aligned padding is re-emitted canonically on the first write to that row,
+producing a real commit. The guarantee is therefore stated as **no semantic change**, and only rows
+already canonical are byte-identical.
 
 ### 7.5 The driver's post-pipeline write, and F-13
 
