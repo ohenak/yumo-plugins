@@ -115,8 +115,15 @@ This REQ **owns** six catalogue ids and **reads** two:
 **One delegation, stated once.** Catalogue §2's S-12, S-13, S-14 and S-16 rows describe their receive
 side as *"AC-1.5(4)'s ordered algorithm"*. That algorithm is **`REQ-RCV-07` AC-7.1**, which this
 REQ's AC-1.5(4) names as its predicate's decision procedure (X-06). **Ownership of the ids is
-unchanged and the catalogue is untouched**: read *AC-1.5(4)'s ordered algorithm* as *AC-7.1*
-wherever the catalogue says it.
+unchanged and the catalogue is untouched**: read **every catalogue reference to AC-1.5(4)'s
+algorithm, to its numbered steps, or to the refusal renders it produces** as `REQ-RCV-07` AC-7.1
+(and, for renders, that REQ's §6 and catalogue §4). The rule is stated over the references, not over
+one phrase, because the four rows word them differently — S-12 and S-13 say *"AC-1.5(4)'s ordered
+algorithm"*, S-14 says *"AC-1.5(4)'s validation"*, S-16 says *"AC-1.5(4) step 4"* — and it reaches
+catalogue **§3**'s row-schema clauses on the same terms: its *"AC-1.5(4)'s step-4 path"* is AC-7.1
+step 4's, and its *"the validation-failure variant's is fixed by `pdlc-rcv-budget-stop` §6"* is
+`REQ-RCV-07` §6's, since this REQ now mints no operator string of its own (§6). The catalogue may be
+corrected to say so directly when `REQ-RCV-07` ships; until then this rule is the reading.
 
 ### 4.1 Durability: what survives an invocation boundary
 
