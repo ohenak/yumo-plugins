@@ -642,6 +642,48 @@ known by construction**.
 
 ## 11. Acceptance tests
 
+**Every `B-*` branch named in this document has at least one row below** (DC-05). Rows marked
+**[target state]** assert behaviour that is **not in force at this ship** and are `REQ-RCV-07`
+O-10's to carry; they are stated here so nothing is re-specified when that feature lands.
+
+Every assertion over the budget is **over the constant, never the literal `3`**; where a row quotes
+a rendered string containing `3`, the quotation is the *expected render for `BUDGET = 3`* and the
+test composes it from the constant.
+
+### 11.1 FSPEC-BUD-01 — *Who:* the pipeline, and a maintainer
+
+| AT | Branch | Given | When | Then |
+|---|---|---|---|---|
+| **AT-BUD-01** | B-BUD-1 | a document-typed phase whose document has no cross-review file and no post-mortem | the phase is entered | rounds 1…3 are admitted; a later entry finding round 3 present admits none |
+| **AT-BUD-02** | B-BUD-2 | Phase CR, which names no document type | the loop runs to exhaustion in one invocation | exactly `BUDGET` rounds run in that invocation, and the post-mortem it writes contains **no** `## Reset Region` |
+| **AT-BUD-03** | B-BUD-3 | Phase DOD | the budget changes from 5 to 3 | Phase DOD's admitted round count is **unchanged** — it takes no value from this constant |
+| **AT-BUD-04** | B-BUD-4 | a document-typed phase that halts on the budget | the operator reads the run report and the post-mortem | the phase record, the returned `iterations` field and the Iterations heading all state the **effective budget**, each asserted over the constant |
+| **AT-BUD-05** | B-BUD-5 | the repo at the ship commit | the classified enumeration of width occurrences is compared **by machine** against a repo scan | every occurrence appears in the enumeration under one of the five classes, and **exactly one** hand-maintained executable declaration states the value |
+
+### 11.2 FSPEC-WIN-01 — *Who:* the review loop
+
+| AT | Branch | Given | When | Then |
+|---|---|---|---|---|
+| **AT-WIN-01** | B-WIN-1 | `W = 1`, highest existing round **1** | the phase is entered | rounds 2…3 are admitted and **≥ 1** reviewer is dispatched |
+| **AT-WIN-02** | B-WIN-2 | `W = 1`, highest existing round **3**, no post-mortem | the phase is entered | **zero** rounds admitted, **zero** dispatches, no new cross-review file, and a halt whose S-4 reason renders `rounds 1..3 of 3` |
+| **AT-WIN-03** | B-WIN-3 | `W = 4` in effect with the clearance already spent (`A = H`), and **every** cross-review file of that document type deleted | the phase is entered | the entry starts at round **4**, dispatches, and overwrites no file |
+| **AT-WIN-04** | B-WIN-4 | no reset in effect, highest existing round **2** | the phase is entered | **round 3 only** is admitted |
+| **AT-WIN-05** | B-WIN-5 | `W = 4`, highest existing round **6** | the phase is entered | zero rounds admitted and the S-4 reason renders `rounds 4..6 of 3` |
+| **AT-WIN-06** | B-WIN-6 | **no prior post-mortem**, a document already at round 3 | Phase R is run with `forcePhases` naming it | a zero-round budget halt: no re-review, region created, row C emitted, queue row written `halted` |
+| **AT-WIN-07** | B-WIN-7 | the state AT-WIN-06 leaves (`H = 1`, `A = 0`, unresolved) | the phase is forced a **second** time | the shipped `Refused — unresolved POSTMORTEM at {path}`; no new halt, no dispatch, counts unmoved |
+
+### 11.3 FSPEC-REG-01 — *Who:* the review loop
+
+| AT | Branch | Given | When | Then |
+|---|---|---|---|---|
+| **AT-REG-01** | B-REG-1 | no post-mortem for the phase | the region is read | `H = A = 0`, `W = 1`; the window opens at round 1 |
+| **AT-REG-02** | B-REG-2 | a post-mortem carrying `## Reset Region` with no lines under it | the region is read | as AT-REG-01, and **no** notice and **no** refusal — empty is valid, not corrupt |
+| **AT-REG-03** | B-REG-3 | a region with two `HALT-REASON:` lines and one `WINDOW-START:` whose value is malformed | the counts are taken | `H = 2`, `A = 1` — counted by line prefix, whatever the value |
+| **AT-REG-04** | B-REG-4 | a region with one `HALT-REASON:`, one `WINDOW-START: abc`, a readable `RESOLVED: yes`, and highest existing round below the window end | the phase is entered | `W = 1` (never a non-numeric value in the arithmetic), `A = H = 1` so **no** clearance is observed, the ordinary window 1…3 opens with **≥ 1** dispatch, and **no** answering line is written |
+| **AT-REG-05** | B-REG-5 | a post-mortem with one real region line, one `HALT-REASON:` quoted in `## Recommendation`, and one inside a fenced block | the counts are taken | `H = 1` |
+| **AT-REG-06** | B-REG-6 | a post-mortem that is present but unreadable | the phase is entered | `H = A = 0`, `W = 1`, no halt in force, nothing written |
+| **AT-REG-07** | B-REG-7 | the granting region of AT-CLR-01 — the one fixture that defeats **both** decidable conjuncts | the phase is entered | the *region validates* predicate is consulted **exactly 0 times** (a count, not an absence), the entry grants, and **no** `reset-region-corrupt` notice is emitted anywhere |
+
 ## 12. Open questions
 
 ## 13. Traceability
