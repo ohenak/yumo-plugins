@@ -302,3 +302,24 @@ exact reason string — TSPEC §13.2's example cases pin them better than a quan
 AC-5.4 and AC-5.6 are single-branch behaviours covered by AT-M4 and E17. Every other AC appears above.
 
 ## 8. Gaps, residuals, and what this document does not prove
+
+1. **The `merged` path is never observed live in this repo** (BL-04, PLAN K-5): every PR this queue
+   raises touches a guard path, so PROP-M-06 is the *shipped* behaviour here and PROP-M-11/-16/-18's
+   merged arms are evidenced entirely through doubles. Stated so a future reader does not read
+   "never merged in `yumo-plugins`" as "never worked".
+2. **Transport fidelity is out of reach.** Every observation arrives through an agent-mediated
+   `_ghRun`; a transport that mangles a *value* inside its recognised set is undetectable from here
+   (TSPEC §15.3). The properties quantify over what the classifier receives, not over what `gh` sent.
+3. **`git rebase --empty=drop` (git ≥ 2.26) is a measured platform fact, not a property** — DC-02
+   routes it to PLAN K-1's two-runner CI reading, and no property here asserts it.
+4. **Negative properties, named as a set:** PROP-M-03 (degradation never merges), PROP-M-08's
+   non-firing arms, PROP-M-11 (squash never issued), PROP-M-18 (no mutation before resolution) and
+   PROP-M-19's catalogue closure. Each carries a positive control in the same suite, so none of them
+   can pass by the system doing nothing at all.
+5. **Mutation targets these properties are expected to kill** (TSPEC §13.5): the guard's `startsWith`
+   (PROP-M-08), §5.3's row order and row ids (PROP-M-01/-03), the CI rule's single relaxed cell
+   (PROP-M-03), `evidenceCellFor`'s 7-character truncation (PROP-M-13/-14) and the `recorded`-only
+   gate on the §8.2 notice (PROP-M-16). A surviving mutant in any of these is a defect in the
+   property, not an acceptable residual.
+6. **Routed to the PLAN author, not papered over:** F1's scope widens to hold the seeded generators
+   (§1.2). No new file and no new batch — but PLAN §4's manifest should say so.
