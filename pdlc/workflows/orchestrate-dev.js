@@ -1198,7 +1198,283 @@ export const MERGE_NOTES = Object.freeze({
   aheadOfRemote: (defaultBranch, feature) =>
     `Local ${defaultBranch} is ahead of its remote by the queue-row commit for ${feature}; ` +
     `pdlc does not push it — it reaches the remote with the next feature's PR.`,
+
+  // FSPEC §9.4 — emitted once for every `deferred`/`refused` run, never for
+  // `skipped`/`merged`. Exact text.
+  mergeDeferred: (feature, reason) =>
+    `Merge deferred for ${feature}: ${reason}. The queue row is unchanged; merge the PR to advance it.`,
+
+  // TSPEC §3.3/§10.3 — the `merge` config section was present but not an
+  // object; every setting fell back to its own default independently.
+  sectionMalformed: () =>
+    `.claude/pdlc.config.json's "merge" section is present but not an object; every merge setting is using its default.`,
+
+  // TSPEC §7.5 — no PR number could be resolved from either `prUrl` or O1,
+  // so the queue row is left untouched: no write, never "#null".
+  noPrNumber: (feature, prUrl) =>
+    `Queue row for ${feature} was not updated: no PR number could be resolved from ${prUrl}.`,
+
+  // TSPEC §7.5/E19 — the queue write was made but not committed; `detail`
+  // is `_recordQueueRow`'s own explanation, already a complete sentence.
+  recordedUncommitted: (feature, detail) => `Queue row for ${feature}: ${detail}`,
+
+  // FSPEC §2.5 — the queue row's current status is not one of the three
+  // overwritable statuses, so nothing was written; `detail` names the
+  // status found and is already a complete sentence.
+  nonOverwrite: (feature, detail) => `Queue row for ${feature}: ${detail}`,
+
+  // TSPEC §7.2/FSPEC §6.4 (M2) — best-effort remote branch deletion failed;
+  // never an escalation, never changes mergeStatus.
+  branchDeleteFailed: (feature, reason) =>
+    `Remote branch deletion failed for ${feature}: ${reason}`,
 });
+
+// FSPEC §9.3 — the closed, 4-member escalation-text catalogue (DC-01):
+// guard / CI / queue-not-updated / tree-not-updated. `decideMerge` (A4)
+// already renders the guard-match, guard-unretrievable and CI-absent lines
+// inline (it is pure and cannot import this catalogue's call site, since it
+// predates it) — `guard` and `ci` below render byte-identical text from the
+// same parameters so PROP-M-19's closure holds without `decideMerge` itself
+// depending on this object. `queue`/`tree` are this phase's own (M3/M4)
+// escalations and have no other renderer. Every member takes one object
+// argument (TSPEC §7.1's own call shape for `tree`), never positional args.
+export const MERGE_ESCALATIONS = Object.freeze({
+  guard: ({ prUrl, tail }) => `MERGE ESCALATION: self-modification guard fired for ${prUrl} — ${tail}`,
+  ci: ({ prUrl }) =>
+    `MERGE ESCALATION: CI evidence absent for ${prUrl} — no checks reported and mergeRequiresCi is true`,
+  queue: ({ prUrl, shortSha, feature, detail }) =>
+    `MERGE ESCALATION: merged ${prUrl} (${shortSha}) but the queue row for ${feature} was not updated — ${detail}`,
+  tree: ({ prUrl, reason, branch }) =>
+    `MERGE ESCALATION: working tree not updated after merging ${prUrl} — ${reason}; tree is on ${branch}`,
+});
+
+/**
+ * `phaseMerge` — PLAN A7 (TSPEC §7, §10.4). The orchestrator: reads config
+ * once (O-M5, §3.3), drives `decideMerge`'s demand/resolution loop (§5.2)
+ * through the six `observe*`/`executeMerge` seams, then — only when the
+ * core resolves `merged` — runs the M2–M4 post-merge sequence (§7.1) in
+ * order: remote branch delete, default-branch update, queue write-back.
+ * Never throws to the caller (FSPEC §2.1): the whole body past the enable
+ * check is wrapped in `try/catch`, mapping any throw to
+ * `{ mergeStatus: "refused", row: "internal" }`.
+ *
+ * `_enabled` and `_configPath` are the only two seams defaulted from a
+ * module constant; every other seam is required so a test cannot
+ * accidentally exercise production IO by omission (TE F-05).
+ *
+ * @param {{
+ *   feature: string,
+ *   prUrl: string|null,
+ *   config?: object,
+ *   _enabled?: boolean,
+ *   _ghRun?: function,
+ *   _git: function,
+ *   _readFile: function,
+ *   _recordQueueRow: function,
+ *   _log?: function,
+ *   _now?: function,
+ *   _sleep?: function,
+ *   _configPath?: string,
+ * }} args
+ * @returns {Promise<object>} MergeOutcome (TSPEC §2.4)
+ */
+export async function phaseMerge({
+  feature,
+  prUrl,
+  config: configOverride,
+  _enabled = PHASE_MERGE_ENABLED,
+  _ghRun = defaultGhRun,
+  _git,
+  _readFile,
+  _recordQueueRow,
+  _log,
+  _now = () => Date.now(),
+  _sleep = sleep,
+  _configPath = MERGE_CONFIG_PATH,
+}) {
+  const skippedOutcome = (row, reason, notes = []) => ({
+    mergeStatus: "skipped",
+    mergeSha: null,
+    mergeMethod: null,
+    row: String(row),
+    reason,
+    escalations: [],
+    notes,
+    queueRow: null,
+  });
+
+  // FSPEC §2.2 row 1 — structural, not a checked precondition: no code path
+  // below this line runs when the phase is disabled, so no read of the
+  // config file happens either (§3.3).
+  if (!_enabled) return skippedOutcome(1, "Phase MERGE disabled");
+
+  try {
+    const notes = [];
+
+    let config = configOverride;
+    if (!config) {
+      // Exactly one read per run (O-M5, §3.3), skipped entirely when a test
+      // (or a future caller) supplies `config` directly.
+      const raw = await readMergeConfigSafely(_readFile, _configPath);
+      const parsed = parseMergeConfig(raw);
+      config = parsed.config;
+      if (parsed.sectionMalformed) notes.push(MERGE_NOTES.sectionMalformed());
+    }
+    if (config.mergeMode === "off") return skippedOutcome(2, "mergeMode is off", notes);
+
+    const record = {
+      prUrl: prUrl ?? null,
+      o1: null,
+      o1Count: 0,
+      ci: null,
+      o3: null,
+      o4: null,
+      o5: null,
+      attempts: [],
+    };
+    const ref = prUrl ? parsePrRef(prUrl) : null;
+
+    const observe = {
+      O1: () => observePrState(prUrl, { _ghRun }),
+      O2: () => observeCi(prUrl, { _ghRun }),
+      O3: () => observeReviewThreads(ref, { _ghRun }),
+      O4: () => observeRepoCaps({ _ghRun }),
+      O5: () => observeChangedFiles(prUrl, ref, { _ghRun }),
+    };
+    const slotFor = { O1: "o1", O2: "ci", O3: "o3", O4: "o4", O5: "o5" };
+
+    // The demand-driven loop (§5.2). `decideMerge` is pure and total; every
+    // IO call below is this orchestrator's own response to its demand.
+    let d;
+    let step = 0;
+    for (; step < MERGE_MAX_DECISION_STEPS; step++) {
+      d = decideMerge(record, config);
+      if (d.kind === "resolved") break;
+      if (d.kind === "act") {
+        const result = await executeMerge(prUrl, d.method, { _ghRun });
+        record.attempts.push({ method: d.method, ...result });
+        continue;
+      }
+      if (d.waitMs) await _sleep(d.waitMs);
+      record[slotFor[d.observation]] = await observe[d.observation]();
+      if (d.observation === "O1") record.o1Count += 1;
+    }
+    if (!d || d.kind !== "resolved") {
+      throw new Error("unreachable: decideMerge did not resolve");
+    }
+
+    const escalations = [...d.escalations];
+
+    if (d.mergeStatus !== "merged") {
+      // FSPEC §9.4 — one plain note for every deferred/refused run.
+      notes.push(MERGE_NOTES.mergeDeferred(feature, d.reason));
+      return {
+        mergeStatus: d.mergeStatus,
+        mergeSha: d.mergeSha,
+        mergeMethod: d.mergeMethod,
+        row: d.row,
+        reason: d.reason,
+        escalations,
+        notes,
+        queueRow: null,
+      };
+    }
+
+    // ── merged — M2, M3, M4 (TSPEC §7.1) ──────────────────────────────────
+    //
+    // Row 3 (already MERGED) carries its own `defaultBranch` field (§5.5);
+    // every other merged row reaches here only after guard 20 confirmed
+    // `record.o4.ok`, so `record.o4.defaultBranch` is always readable then.
+    const defaultBranch = Object.prototype.hasOwnProperty.call(d, "defaultBranch")
+      ? d.defaultBranch
+      : record.o4 && record.o4.ok
+        ? record.o4.defaultBranch
+        : null;
+
+    // M2 — best-effort remote branch deletion; a plain note, never an
+    // escalation, never changes mergeStatus.
+    if (config.deleteBranchOnPdlcMerge) {
+      const del = await deleteRemoteBranch({ feature, _git });
+      if (!del.ok) notes.push(MERGE_NOTES.branchDeleteFailed(feature, del.reason));
+    }
+
+    // M3 — the default-branch update. Its escalation (if any) is pushed
+    // after M4's below, so `escalations` ends up in FSPEC §9.3's table
+    // order (guard, CI, queue-write, tree-update) regardless of which IO
+    // step actually ran first.
+    const tree = await updateDefaultBranch({ defaultBranch, mergeSha: d.mergeSha, _git });
+
+    // M4 — the queue write-back (TSPEC §7.5). `prNumber`'s primary source
+    // is the URL Phase PUB produced; `record.o1.number` is the fallback for
+    // a `prUrl` shape `parsePrRef` cannot read. Absent both, the write is
+    // skipped with a plain note rather than writing "#null".
+    const prNumber = parsePrRef(prUrl)?.number ?? record.o1?.number ?? null;
+    let queueRow = null;
+    if (prNumber === null) {
+      notes.push(MERGE_NOTES.noPrNumber(feature, prUrl));
+    } else {
+      const evidence = evidenceCellFor(d.mergeSha, prNumber);
+      const rec = await _recordQueueRow({ feature, status: "done", evidence });
+      queueRow = rec && rec.queueRow ? rec.queueRow : null;
+      if (queueRow === "error") {
+        const shortSha =
+          typeof d.mergeSha === "string" && d.mergeSha.length >= 7
+            ? d.mergeSha.slice(0, 7)
+            : "sha unknown";
+        escalations.push(
+          MERGE_ESCALATIONS.queue({
+            prUrl,
+            shortSha,
+            feature,
+            detail: (rec && rec.detail) || "queue row not found",
+          }),
+        );
+      } else if (queueRow === "recorded (uncommitted)") {
+        notes.push(
+          MERGE_NOTES.recordedUncommitted(
+            feature,
+            (rec && rec.detail) || "queue row recorded but not committed",
+          ),
+        );
+      } else if (queueRow === "recorded") {
+        // FSPEC §8.2 — emitted whenever M4's disposition is `recorded`,
+        // including row 3's already-merged re-entry (§7.1's Q-01 answer).
+        notes.push(MERGE_NOTES.aheadOfRemote(defaultBranch, feature));
+        if (rec && rec.detail) notes.push(MERGE_NOTES.nonOverwrite(feature, rec.detail));
+      }
+    }
+
+    if (!tree.ok) {
+      escalations.push(
+        MERGE_ESCALATIONS.tree({ prUrl, reason: tree.reason, branch: tree.branch ?? "unknown" }),
+      );
+    }
+
+    return {
+      mergeStatus: "merged",
+      mergeSha: d.mergeSha,
+      mergeMethod: d.mergeMethod,
+      row: d.row,
+      reason: d.reason,
+      escalations,
+      notes,
+      queueRow,
+    };
+  } catch (err) {
+    // FSPEC §2.1 — Phase MERGE never throws to the pipeline. E30/E21 (§12):
+    // the outer catch is the single enforcement point for that guarantee.
+    return {
+      mergeStatus: "refused",
+      mergeSha: null,
+      mergeMethod: null,
+      row: "internal",
+      reason: err && err.message ? err.message : "phaseMerge failed unexpectedly",
+      escalations: [],
+      notes: [],
+      queueRow: null,
+    };
+  }
+}
 
 // MODEL-01: per-phase model selection. Every phase runs on Opus for reasoning
 // depth EXCEPT the Phase I implementation batches, which run on Sonnet for
