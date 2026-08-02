@@ -5764,6 +5764,7 @@ async function main({
   _checkCi: checkCiFn = checkPrCi,
   _phaseDodEnabled: phaseDodEnabled = PHASE_DOD_ENABLED,
   _phasePubEnabled: phasePubEnabled = PHASE_PUB_ENABLED,
+  _phaseMergeEnabled: phaseMergeEnabled = PHASE_MERGE_ENABLED,
   _now,
   _sleep,
   _listFiles: listFilesFn = defaultListFiles,
@@ -5771,6 +5772,7 @@ async function main({
   _appendFile: appendFileFn = defaultAppendFile,
   _git: gitFn = defaultGit,
   _recordQueueRow: recordQueueRowFn = defaultRecordQueueRow,
+  _ghRun: ghRunFn = defaultGhRun,
   // The three optional probe seams. `null` is the shipped state: a runtime that
   // supplies none of them runs every read below exactly as it did before they
   // existed (see the probe-seam section above `probeDocument`).
@@ -6078,6 +6080,13 @@ async function main({
   let harvestStatus = "Not run";
   let prUrl;
   let ciStatus;
+  // TSPEC §10.1/§10.4: set only inside Phase MERGE, itself reachable only past
+  // Phase PUB — a run that halts earlier never assigns this, so the success
+  // path below always has a real MergeOutcome to read (Phase MERGE never
+  // throws, FSPEC §2.1) and the halt path never reads it at all, relying
+  // instead on `buildFinalReport`'s own `mergeStatus: "skipped"` default
+  // (§11 row 23).
+  let mergeOutcome;
 
   try {
     // The branch guard, once, BEFORE any phase runs: every artifact this run
@@ -6566,6 +6575,43 @@ async function main({
             : `PR ${prUrl} — no GHA checks detected within timeout (assumed none configured)`;
         recordPhase("PUB", "Raise PR & Verify CI", "✅", ciDetail);
       }
+
+      // ─── Phase MERGE: Merge & Advance Queue ──────────────────────────────
+      // TSPEC §10.4: placed immediately after Phase PUB, inside the same
+      // guarded `pipelineFn` body — Phase MERGE's own internal try/catch
+      // (§5.2) is what keeps this call from ever reaching the halt path below.
+      phaseFn("Phase MERGE: Merge & Advance Queue");
+      mergeOutcome = await phaseMerge({
+        feature: featureName,
+        prUrl,
+        _ghRun: ghRunFn,
+        _git: gitFn,
+        _readFile: readFileFn,
+        _recordQueueRow: recordQueueRowFn,
+        _log: emit,
+        _now,
+        _sleep,
+        _enabled: phaseMergeEnabled,
+      });
+      for (const line of mergeOutcome.escalations) notices.push(line);
+      for (const note of mergeOutcome.notes) notices.push(note);
+      // §10.3: the glyph is never ❌ — the halt path derives the failed phase
+      // from a recorded "❌" row, and Phase MERGE never halts the pipeline.
+      const mergeGlyph =
+        mergeOutcome.mergeStatus === "merged"
+          ? "✅"
+          : mergeOutcome.mergeStatus === "skipped"
+            ? "⏭"
+            : "⚠️";
+      const mergeDetail =
+        mergeOutcome.mergeStatus === "merged"
+          ? `Merged ${prUrl} (${mergeOutcome.mergeMethod}, ${
+              typeof mergeOutcome.mergeSha === "string"
+                ? mergeOutcome.mergeSha.slice(0, 7)
+                : "sha unknown"
+            })`
+          : mergeOutcome.reason;
+      recordPhase("MERGE", "Merge PR", mergeGlyph, mergeDetail);
     });
   } catch (err) {
     haltReason = err.message;
@@ -6659,10 +6705,16 @@ async function main({
     feature: featureName,
     outcome: "success",
     notices,
-    // §4.7: `queueRow` rides on every report. A successful run writes no status
-    // (`orchestrate-dev` owns no status write but the halt one — AC-2.7a), so the
-    // value is the same `"none"` the default `_recordQueueRow` reports.
-    queueRow: "none",
+    // §4.7 / TSPEC §10.1: `queueRow` rides on every report. A run that never
+    // reaches Phase MERGE — or reaches it without merging — writes no status
+    // of its own (`orchestrate-dev` owns no other status write but the halt
+    // one — AC-2.7a), so the value is the same `"none"` the default
+    // `_recordQueueRow` reports; a `merged` run instead carries the §7.4
+    // disposition `phaseMerge` itself produced.
+    queueRow: mergeOutcome.queueRow ?? "none",
+    mergeStatus: mergeOutcome.mergeStatus,
+    mergeSha: mergeOutcome.mergeSha,
+    mergeMethod: mergeOutcome.mergeMethod,
     // §4.7: a phase skipped over an unresolved POSTMORTEM still reports it.
     postmortemStatus: skipPostmortem ? "unresolved" : "none",
     postmortemPath: skipPostmortem ? skipPostmortem.path : null,
@@ -6744,6 +6796,13 @@ function buildFinalReport({
   postmortemStatus = "none",
   postmortemPath = null,
   queueRow = null,
+  // TSPEC §10.1: present, unconditionally, on EVERY report — including the
+  // halt path, which never assigns these and so reports exactly this default
+  // (FSPEC §11 row 23: a run that halted before Phase MERGE considered no
+  // merge at all).
+  mergeStatus = "skipped",
+  mergeSha = null,
+  mergeMethod = null,
   notices = [],
 }) {
   return {
@@ -6763,6 +6822,9 @@ function buildFinalReport({
     postmortemStatus,
     postmortemPath,
     queueRow,
+    mergeStatus,
+    mergeSha,
+    mergeMethod,
     ...(prUrl ? { prUrl } : {}),
     ...(ciStatus ? { ciStatus } : {}),
     ...(haltReason ? { haltReason } : {}),

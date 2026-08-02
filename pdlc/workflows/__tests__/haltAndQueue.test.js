@@ -49,6 +49,13 @@ import {
   fakeListFiles,
   recordingRecordQueueRow,
 } from "./helpers/seams.js";
+import {
+  fakeGhRun,
+  passingGh,
+  fakeGit as fakeMergeGit,
+  fakeSleep as fakeMergeSleep,
+  fakeNow as fakeMergeNow,
+} from "./helpers/mergeDoubles.js";
 
 // ─── Fixture vocabulary ──────────────────────────────────────────────────────
 
@@ -363,6 +370,19 @@ describe("RLH-25: the terminal exit and the queue row", () => {
     });
 
     expect(result.outcome).toBe("halted");
+
+    // PROP-M-17 (PLAN A8) — the halted-before-Phase-MERGE quarter of the
+    // report-totality domain: this run never reaches `phaseMerge` at all
+    // (it halts in Phase R), so the report carries `buildFinalReport`'s bare
+    // defaults (TSPEC §10.1, FSPEC §11 row 23) rather than a real
+    // `MergeOutcome` — present, via `Object.hasOwn`, and exactly `"skipped"`
+    // / `null` / `null`.
+    expect(Object.hasOwn(result, "mergeStatus")).toBe(true);
+    expect(Object.hasOwn(result, "mergeSha")).toBe(true);
+    expect(Object.hasOwn(result, "mergeMethod")).toBe(true);
+    expect(result.mergeStatus).toBe("skipped");
+    expect(result.mergeSha).toBeNull();
+    expect(result.mergeMethod).toBeNull();
 
     // The row reads `halted` on disk …
     expect(queueFs.writes).toHaveLength(1);
@@ -818,6 +838,63 @@ describe("RLH-25: which halting exit reaches the committing status write", () =>
     expect(recordQueueRow.statuses).not.toContain("pending");
     expect(recordQueueRow.statuses).not.toContain("done");
     expect(result.queueRow).toBe("none");
+  });
+
+  it("RLH-AT-32-orch-merged: a successful run that MERGES DOES write a status, superseding the premise above (PLAN A8)", async () => {
+    // TSPEC §10.4 / FSPEC §11 row 3. The sibling of RLH-AT-32-orch: that test's
+    // "success never writes" premise holds only when Phase MERGE resolves to
+    // `skipped`/`deferred`/`refused` (`mergeOutcome.queueRow` is `null`, and
+    // `queueRow: mergeOutcome.queueRow ?? "none"` falls back to `"none"`). A
+    // run whose PR is already `MERGED` (row 3) reaches Phase MERGE's own
+    // queue write-back (M4) and DOES record a status — `"done"` — which
+    // `result.queueRow` then carries verbatim as the `"recorded"` disposition
+    // the double returns, not `"none"`.
+    const MERGED_OID = "abc1234567890abcdef";
+    const files = {
+      ...baseTree(),
+      ".claude/pdlc.config.json": JSON.stringify({ merge: { mergeMode: "gated" } }),
+    };
+    const ghRun = fakeGhRun(
+      passingGh({
+        prState: {
+          stdout: JSON.stringify({
+            state: "MERGED",
+            mergeable: "MERGEABLE",
+            mergeStateStatus: "CLEAN",
+            number: 42,
+            mergeCommit: { oid: MERGED_OID },
+          }),
+        },
+      })
+    );
+    // `_git` also feeds `ensureFeatureBranch`'s branch guard (any injected,
+    // non-default `_git` activates it, TSPEC-independent — orchestrate-dev.js's
+    // own `branchGuardTransport`), so `rev-parse` must report the tree is
+    // already on `feat-foo`, not just answer Phase MERGE's own subcommands.
+    const mergeGit = fakeMergeGit({
+      "rev-parse": { ok: true, stdout: "feat-foo\n", stderr: "" },
+    });
+
+    const { result, recordQueueRow } = await run({
+      files,
+      recordQueueRowResult: { queueRow: "recorded" },
+      extraArgs: {
+        _ghRun: ghRun._ghRun,
+        _git: mergeGit._git,
+        _now: fakeMergeNow,
+        _sleep: fakeMergeSleep,
+        _raisePrAndVerifyCi: async () => ({
+          prUrl: "https://github.com/acme/foo/pull/42",
+          ciStatus: "passed",
+        }),
+      },
+    });
+
+    expect(result.outcome).toBe("success");
+    expect(result.mergeStatus).toBe("merged");
+    expect(result.mergeSha).toBe(MERGED_OID);
+    expect(recordQueueRow.statuses).toContain("done");
+    expect(result.queueRow).toBe("recorded");
   });
 
   it("RLH-AT-33-orch: a failed commit is non-fatal, surfaced, and subordinate", async () => {

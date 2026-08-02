@@ -202,15 +202,17 @@ function maskLiterals(src) {
   return out.join("");
 }
 
-// FSPEC AT-19's closed thirteen-name set, restated once in TSPEC §8.5 and cited
-// here. NOT derived from main()'s parameter list: `_now` is a clock called
-// synchronously at four sites in raisePrAndVerifyCi and `_phaseDodEnabled` /
-// `_phasePubEnabled` are booleans never called, so a derived set reds on
-// shipped, correct source (TSPEC §8.5, PLAN §9.2).
+// FSPEC AT-19's closed fourteen-name set, restated once in TSPEC §8.5 and
+// cited here. NOT derived from main()'s parameter list: `_now` is a clock
+// called synchronously at four sites in raisePrAndVerifyCi and
+// `_phaseDodEnabled` / `_phasePubEnabled` / `_phaseMergeEnabled` are booleans
+// never called, so a derived set reds on shipped, correct source (TSPEC
+// §8.5, PLAN §9.2). `_ghRun` (PLAN A8) is Phase MERGE's single `gh` transport
+// seam — every call site is awaited, same discipline as the rest of the set.
 const AT19_SEAM_NAMES = Object.freeze([
   "_agent", "_readFile", "_writeFile", "_appendFile", "_checkFile", "_listFiles",
   "_git", "_checkCi", "_mergeWorktree", "_recordQueueRow", "_rebaseOntoDefault",
-  "_dodVerifyLoop", "_raisePrAndVerifyCi",
+  "_dodVerifyLoop", "_raisePrAndVerifyCi", "_ghRun",
 ]);
 
 // §8.5: the discriminant is the PROPERTY "awaits every element of the array",
@@ -825,24 +827,41 @@ const isAbsenceDefault = (text) => /^(?:null|undefined)$/.test(text.trim().repla
  */
 function classifyExemption(masked, param) {
   // E-2 — pass-through: no `=` initialiser at all, AND forwarded in main()'s
-  // body to exactly one callee resolving to a module-local function that
-  // declares the same name with a default. Resolution follows the alias hop.
+  // body to at least one callee, EVERY one of which resolves (one alias hop
+  // through main()'s own destructuring pattern, never a chain) to a
+  // module-local function that declares the same name with a default. Zero
+  // callees is still unresolved (nothing to point at); PLAN A8 added a
+  // second, independent forward (`phaseMerge`, alongside the pre-existing
+  // `raisePrAndVerifyCiFn` hop) for `_now`/`_sleep` — requiring EVERY
+  // resolved callee to declare the default, rather than exactly one callee
+  // to exist, is what keeps that a resolved E-2 instead of manufacturing a
+  // false unresolved.
   if (param.init === null) {
     const callees = e2ForwardCallees(masked, param.name);
-    if (callees.length !== 1) {
+    if (callees.length === 0) {
       return { form: "E-2", resolved: false, why: `forwarded to ${callees.length} callees, not exactly 1` };
     }
-    const target = resolveOneHop(masked, callees[0]);
-    const params = target ? moduleFunctionParams(masked, target) : null;
-    const declaresWithDefault =
-      params !== null &&
-      new RegExp(`(?<![A-Za-z0-9_$])${param.name}(?![A-Za-z0-9_$])\\s*=`).test(params);
-    return declaresWithDefault
-      ? { form: "E-2", resolved: true, why: `forwarded to ${callees[0]} → ${target}` }
+    const resolutions = callees.map((callee) => {
+      const target = resolveOneHop(masked, callee);
+      const params = target ? moduleFunctionParams(masked, target) : null;
+      const declaresWithDefault =
+        params !== null &&
+        new RegExp(`(?<![A-Za-z0-9_$])${param.name}(?![A-Za-z0-9_$])\\s*=`).test(params);
+      return { callee, target, declaresWithDefault };
+    });
+    const bad = resolutions.filter((r) => !r.declaresWithDefault);
+    return bad.length === 0
+      ? {
+          form: "E-2",
+          resolved: true,
+          why: resolutions.map((r) => `forwarded to ${r.callee} → ${r.target}`).join("; "),
+        }
       : {
           form: "E-2",
           resolved: false,
-          why: `${callees[0]} → ${target ?? "unresolved"} does not declare ${param.name} with a default`,
+          why: bad
+            .map((r) => `${r.callee} → ${r.target ?? "unresolved"} does not declare ${param.name} with a default`)
+            .join("; "),
         };
   }
 
@@ -1071,9 +1090,12 @@ describe("RLH-AT-64: orchestrate-dev's composition root wires every seam", () =>
   });
 
   it("RLH-AT-64: the E-2 alias hop is one hop, through main()'s own destructuring pattern", () => {
-    // main()'s only forward of _now/_sleep goes through the destructured local
-    // raisePrAndVerifyCiFn, not a module declaration, so without the hop both
-    // fall in no class and AT-64 reds on shipped, correct source. A chain is
+    // main() forwards _now/_sleep to two independent callees: the destructured
+    // local raisePrAndVerifyCiFn (which needs the one-hop alias resolution
+    // below) and phaseMerge (called directly, so resolveOneHop's no-match
+    // fallback resolves it too — that's the second assertion here doing double
+    // duty as the "someUnknownCallee" no-hop case). Without the hop, the first
+    // falls in no class and AT-64 reds on shipped, correct source. A chain is
     // not authorised: resolveOneHop returns the callee unchanged when it is not
     // a main()-pattern binding.
     expect(resolveOneHop(devMasked, "raisePrAndVerifyCiFn")).toBe("raisePrAndVerifyCi");

@@ -389,6 +389,129 @@ describe("phaseMerge — FSPEC §11 row table (AT-M2, AT-M2a's row-3 sibling)", 
   // Row 23 documented, not executed — see module docblock.
 });
 
+// ─── PROP-M-17 — report totality (PLAN A8) ─────────────────────────────────
+//
+// PROPERTIES §7's full domain is the 25 §11 rows through `phaseMerge` PLUS
+// three halted-before-Phase-MERGE cases (R, I, DOD) plus one
+// `PHASE_MERGE_ENABLED: false` case = 29. The halted-before-Phase-MERGE
+// quarter of that domain never calls `phaseMerge` at all (row 23's own note,
+// module docblock above) — it is `buildFinalReport`'s defaulted parameters
+// alone, asserted directly against `orchestrate-dev.js`'s source in
+// `pipelineWiring.test.js`'s RLH-WIRE-01 addition and exercised end to end by
+// every halting fixture in `haltAndQueue.test.js` (none of which overrides
+// `mergeStatus`/`mergeSha`/`mergeMethod`, so each halted result carries
+// exactly `buildFinalReport`'s literal defaults). What is scoped here is the
+// other three quarters — every shape `phaseMerge` itself can hand back —
+// driven through a representative case per `mergeStatus` value plus row 3's
+// "unknown" carve-out, rather than re-running all 25 rows (the row table
+// above already exercises every row; this block asserts the field-totality
+// PROPERTY on a representative cross-section of it, not new behaviour).
+describe("phaseMerge — PROP-M-17 (report totality: mergeStatus/mergeSha/mergeMethod on every path)", () => {
+  const REASON_NOTE = (reason) => MERGE_NOTES.mergeDeferred(FEATURE, reason);
+
+  async function totalityCheck(outcome) {
+    // "present, even when null" — Object.hasOwn, never a truthiness check.
+    expect(Object.hasOwn(outcome, "mergeStatus")).toBe(true);
+    expect(Object.hasOwn(outcome, "mergeSha")).toBe(true);
+    expect(Object.hasOwn(outcome, "mergeMethod")).toBe(true);
+    expect(MERGE_STATUSES).toContain(outcome.mergeStatus);
+
+    if (outcome.mergeStatus === "deferred" || outcome.mergeStatus === "refused") {
+      expect(typeof outcome.reason).toBe("string");
+      expect(outcome.reason.length).toBeGreaterThan(0);
+      expect(outcome.notes).toContain(REASON_NOTE(outcome.reason));
+      expect(outcome.mergeSha).toBeNull();
+      expect(outcome.mergeMethod).toBeNull();
+    } else {
+      expect(outcome.notes.some((n) => n.startsWith(`Merge deferred for ${FEATURE}:`))).toBe(false);
+    }
+
+    if (outcome.mergeStatus === "merged") {
+      expect(typeof outcome.mergeSha).toBe("string");
+      expect(outcome.mergeSha.length).toBeGreaterThan(0);
+      expect(["rebase", "merge", "squash", "unknown"]).toContain(outcome.mergeMethod);
+    }
+
+    if (outcome.mergeStatus === "skipped") {
+      expect(outcome.mergeSha).toBeNull();
+      expect(outcome.mergeMethod).toBeNull();
+    }
+  }
+
+  test("row 1 — disabled: skipped, mergeSha/mergeMethod both null", async () => {
+    const ghRun = fakeGhRun({});
+    const gitDouble = fakeGit();
+    const queueRow = queueRowSeam();
+    const outcome = await phaseMerge({
+      feature: FEATURE,
+      prUrl: PR_URL,
+      _enabled: false,
+      _ghRun: ghRun._ghRun,
+      _git: gitDouble._git,
+      _readFile: async () => null,
+      _recordQueueRow: queueRow._recordQueueRow,
+      _sleep: fakeSleep,
+      _now: fakeNow,
+    });
+    await totalityCheck(outcome);
+    expect(outcome.mergeStatus).toBe("skipped");
+  });
+
+  test("row 2 — mergeMode off: skipped, mergeSha/mergeMethod both null", async () => {
+    const { outcome } = await run({ config: { mergeMode: "off" } });
+    await totalityCheck(outcome);
+    expect(outcome.mergeStatus).toBe("skipped");
+  });
+
+  test('row 3 — already MERGED: merged, mergeMethod exactly "unknown"', async () => {
+    const { outcome } = await run({
+      gh: {
+        prState: {
+          stdout: JSON.stringify({
+            state: "MERGED",
+            mergeable: "MERGEABLE",
+            mergeStateStatus: "CLEAN",
+            number: 42,
+            mergeCommit: { oid: MERGED_OID },
+          }),
+        },
+      },
+    });
+    await totalityCheck(outcome);
+    expect(outcome.mergeStatus).toBe("merged");
+    expect(outcome.mergeMethod).toBe("unknown");
+  });
+
+  test("row 4 — guard refused: refused, reason non-empty, §9.4 note present", async () => {
+    const { outcome } = await run({
+      gh: { changedFiles: { stdout: JSON.stringify({ files: [{ path: "pdlc/skills/x.md" }] }) } },
+    });
+    await totalityCheck(outcome);
+    expect(outcome.mergeStatus).toBe("refused");
+  });
+
+  test("row 6 — no prUrl: deferred, reason non-empty, §9.4 note present", async () => {
+    const { outcome } = await run({ prUrl: null });
+    await totalityCheck(outcome);
+    expect(outcome.mergeStatus).toBe("deferred");
+  });
+
+  test("row 7 — PR CLOSED: deferred, reason non-empty, §9.4 note present", async () => {
+    const { outcome } = await run({
+      gh: { prState: { stdout: JSON.stringify({ state: "CLOSED", mergeable: "MERGEABLE", mergeStateStatus: "CLEAN", number: 42, mergeCommit: null }) } },
+    });
+    await totalityCheck(outcome);
+    expect(outcome.mergeStatus).toBe("deferred");
+  });
+
+  test('row 18 — full merge success: merged, mergeMethod "rebase", no §9.4 note', async () => {
+    const { outcome } = await run({});
+    await totalityCheck(outcome);
+    expect(outcome.mergeStatus).toBe("merged");
+    expect(outcome.mergeMethod).toBe("rebase");
+  });
+});
+
 // ─── AT-M2a — the recovery integration arm ─────────────────────────────────
 
 describe("phaseMerge — AT-M2a (recovery: awaiting-merge against an already-merged PR)", () => {
