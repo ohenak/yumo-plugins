@@ -360,8 +360,8 @@ their being **in force at this ship** rather than deferred with the consistency 
 | Row | Owned / read | Default and note |
 |---|---|---|
 | `MAX_REVIEW_ROUNDS` | owned | **3** (was 5); baseline §3 for the derivation, §3.1 for this REQ's note |
-| `## Reset Region` (S-12), `HALT-REASON: {value}` (S-15), `reset-region-corrupt: …` (S-16), `budget-exhausted: …` (S-4) | owned | **Stated once in baseline §3, with this REQ's local notes at baseline §3.1** — relocated there at round 9, nothing changed meaning in the move |
-| **`WINDOW-START: {N}` (S-13)** | owned | **`{N}` a decimal integer ≥ 1** — the grammar, restated here because it is **in force at this ship** and §4.1's `W` row depends on it: a line whose value is not one is not a `WINDOW-START: {N}` line and contributes no value. Baseline §3.1 for the authoring prohibition and the deletion rule |
+| `## Reset Region` (S-12), `HALT-REASON: {value}` (S-15), `reset-region-corrupt: …` (S-16), `budget-exhausted: …` (S-4) | owned | **Stated once in baseline §3, with this REQ's local notes at baseline §3.1** — relocated there at round 9, nothing changed meaning in the move. **S-4 excepted: outside baseline §3 deliberately, its render fixed by catalogue §2 (baseline §3.1)** |
+| **`WINDOW-START: {N}` (S-13)** | owned | **`{N}` a decimal integer ≥ 1** — the grammar, restated here because it is **in force at this ship** and §4.1's `W` row depends on it: a line whose value is not one contributes **no value to `W`** — it is still a `WINDOW-START:` line for the `A` count (AC-1.5(4) clause 4). Baseline §3.1 for the authoring prohibition and the deletion rule |
 | **`WINDOW-RESUMED: {W}` (S-14)** | owned | **`{W}` a decimal integer ≥ 1** equal to the origin then in effect — same grammar, same in-force status |
 | `no-revision: …` (S-11) / `fixed-point: …` (S-3) | **read only** | As the catalogue fixes them; emitted by `pdlc-rcv-fixed-point-stop` (X-05). Baseline §3.1 for how AC-1.5(5) reads them |
 
