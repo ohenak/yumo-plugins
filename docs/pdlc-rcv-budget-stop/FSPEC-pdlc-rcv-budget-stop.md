@@ -352,8 +352,16 @@ reaches a halt (B-WIN-2) — a **writing** path. The rule that keeps this fail-c
 post-mortem, so nothing is re-authored over it, and the halt-path's first confirmation (clause 3's
 equality read-back) cannot succeed on a file that cannot be read, so the entry takes B-HALT-4's
 **phase refusal** — region byte-unchanged, no halt recorded, no marker stripped, both counts
-unmoved. **Nothing is written that survives the entry, on either the read side or the write side.**
+unmoved. **Nothing is written at all, on either the read side or the write side** — clause 3
+attempts no write on an unreadable file (§7.2, **B-HALT-4a**), so the whole file is byte-unchanged.
 Read the two together: this branch fixes the *reading*; §7.2 fixes the *entry*.
+
+***Unreadable* is one behavioural class here, deliberately.** Two realisations exist — a file that is
+**undecodable but writable**, and one **denied in both directions** — and they differ only in what a
+write *would* have done. Because clause 3 attempts no write on either, both take the same path with
+the same observable, so this flow specifies **one** class. PROPERTIES may still realise it with both
+fixtures (O-10) — the pair is then evidence that the no-write rule holds, not two branches — and this
+FSPEC requires neither.
 
 ### 5.4 Validation — the named predicate, and what it does at this ship
 
@@ -542,16 +550,41 @@ statement about a marker, not about the file. Stated as an outcome: **a halt tha
 post-mortem it cannot read takes the *existing* path.** No authoring dispatch fires, so nothing is
 written over the prior region's lines or over the operator's `## Recommendation`.
 
-**And such a halt records nothing, because its first confirmation cannot succeed.** Both
-confirmations are content reads (§7.3, BR-11), and a file that cannot be read yields neither. Clause
-3 runs first, so the entry takes **B-HALT-4**'s phase refusal: the region is byte-unchanged, no halt
-is recorded, no `RESOLVED:` line is stripped, both counts are unmoved, and the operator reads row B's
+**And such a halt records nothing — and writes nothing — because its first confirmation cannot
+succeed.** Both confirmations are content reads (§7.3, BR-11), and a file that cannot be read yields
+neither. Clause 3 runs first, so the entry takes **B-HALT-4**'s phase refusal: the region is
+byte-unchanged, no halt is recorded, no `RESOLVED:` line is stripped, both counts are unmoved, and
+the operator reads row B's
 *unconfirmable-append* variant with `{which}` = **`iterations section`**. **No fourth `{which}`
 literal is minted and the catalogue is unchanged** (BR-16): an unreadable file is an unconfirmable
 write of exactly the kind §7.3 already dispositions, reached one step earlier. This is the branch
 that keeps BR-7 and BR-13 true against a **read** failure, which is otherwise the one way to reach
 `H − A > 1` without a torn write or a hand-edit: a region whose earlier lines were erased by a
 re-author. That state is unreachable on every specified path.
+
+**B-HALT-4a — on an unreadable post-mortem clause 3 attempts *no write*, and the refusal is
+immediate.** Clause 3 is a **read-then-write** step, in that order: it must first **locate** the
+`Iterations` heading in the file's text to know what to overwrite and where. §8.1's **B-HALT-3**
+insert — *"the loop inserts one rather than failing"* — is the disposition of a **readable** file
+that carries no such heading; it is **not** reached when the file's text cannot be obtained at all,
+because *heading absent* and *file unreadable* are different observations and only the first admits
+an insert position. So an unreadable post-mortem yields **no located heading and no insert**, no
+bytes are offered to the file, and the entry refuses at once on B-HALT-4. The consequence worth
+stating in full: **the whole file is byte-unchanged, not merely the region span** — every section,
+the `## Recommendation`, and any `RESOLVED:` line included. Whole-file byte equality is therefore a
+**total, deterministic** oracle for this path, whichever way *unreadable* is realised — an
+undecodable file that would have been writable is refused before any write is attempted, exactly as a
+file that is unreadable and unwritable is.
+
+**The discriminator is a presence probe, and only one direction of its failure is in scope.** §7.4's
+safe rule covers the probe that **cannot be evaluated**. A probe that *answers*, and answers **absent
+for a file that is present**, would take the *creating* path and cause exactly the harm this clause
+exists to prevent; that false-negative is **out of scope for this feature**, alongside the torn write
+at `REQ-RCV-07` AC-7.5 (**F-N-1**). TSPEC owns choosing a probe whose failure mode is
+*unevaluable*-rather-than-*absent* (**F-N-4**). Presence is nonetheless the strongest predicate
+available at this altitude — a content read cannot distinguish *absent* from *unreadable*, which is
+what disqualified both the region read and the shipped status — so the boundary is stated, not
+worked around.
 
 **Clause 2 — every unfenced `RESOLVED:` line in the file is stripped**, wherever it sits. The
 post-mortem is therefore **unresolved after the halt**, and the operator must clear *this* halt
@@ -602,7 +635,11 @@ would ever grant.
 **B-HALT-4 — clause 3 unconfirmed.** The entry ends there: clause 1 and clause 2 do not run, so the
 region is **byte-unchanged**, **no halt is recorded**, and **no `RESOLVED:` line is stripped**. The
 entry takes a **phase refusal** and the operator reads row B's *unconfirmable-append* variant with
-`{which}` = **`iterations section`**.
+`{which}` = **`iterations section`**. Two sub-cases reach this branch and they differ in what was
+attempted: a **readable** file whose clause-3 write landed wrong or not at all (the read-back
+disagrees), and an **unreadable** file, where **B-HALT-4a** applies and clause 3 attempted no write
+at all. The disposition is identical; only the second guarantees the **whole file** — not just the
+region — is byte-unchanged.
 
 **B-HALT-5 — the clause 1-and-2 update unconfirmed.** No halt is recorded, nothing is stripped, and
 this entry's Iterations render is present (clause 3 already landed). The entry takes a **phase
@@ -881,7 +918,7 @@ test composes it from the constant.
 | **AT-REG-03** | B-REG-3 | a region with two `HALT-REASON:` lines and one `WINDOW-START:` whose value is malformed | the counts are taken | `H = 2`, `A = 1` — counted by line prefix, whatever the value |
 | **AT-REG-04** | B-REG-4 | a region with one `HALT-REASON:`, one `WINDOW-START: abc`, a readable `RESOLVED: yes`, and highest existing round below the window end | the phase is entered | `W = 1` (never a non-numeric value in the arithmetic), `A = H = 1` so **no** clearance is observed, the ordinary window 1…3 opens with **≥ 1** dispatch, and **no** answering line is written |
 | **AT-REG-05** | B-REG-5 | a post-mortem with one real region line, one `HALT-REASON:` quoted in `## Recommendation`, and one inside a fenced block | the counts are taken | `H = 1` |
-| **AT-REG-06** | B-REG-6, B-HALT-2, B-HALT-4 | a post-mortem that is present but unreadable, on a document whose highest existing round is **3** (so `S > E` and the entry reaches a halt) | the phase is entered **and run to its end** — the row asserts the whole entry, not the read alone | `H = A = 0`, `W = 1`, no halt in force, no answering line; **zero authoring dispatches** (the file is present, so §7.2's discriminator takes the *existing* path); a **phase refusal** at clause 3 with ❌ row `Refused — iterations section unconfirmed at {path}` and `notice` empty; the post-mortem's bytes are **unchanged**, no `HALT-REASON:` line is appended and no `RESOLVED:` line is stripped. The dispatch-count and byte-equality conjuncts are the ones that fail if the entry re-authors |
+| **AT-REG-06** | B-REG-6, B-HALT-2, B-HALT-4 | a post-mortem that is present but unreadable, on a document whose highest existing round is **3** (so `S > E` and the entry reaches a halt) | the phase is entered **and run to its end** — the row asserts the whole entry, not the read alone | `H = A = 0`, `W = 1`, no halt in force, no answering line; **zero authoring dispatches** (the file is present, so §7.2's discriminator takes the *existing* path); a **phase refusal** at clause 3 with ❌ row `Refused — iterations section unconfirmed at {path}` and `notice` empty; the post-mortem's **whole-file bytes are unchanged** — clause 3 attempts no write on an unreadable file (**B-HALT-4a**), so this is a total oracle for either realisation of *unreadable* (undecodable-but-writable, denied-in-both-directions) and not only for the region span — no `HALT-REASON:` line is appended and no `RESOLVED:` line is stripped. The dispatch-count and byte-equality conjuncts are the ones that fail if the entry re-authors |
 | **AT-REG-07** | B-REG-7 | a **family** of granting regions that would fail validation at target state — at minimum an answering value inconsistent with the highest round on the branch, a descending answering value, and `H − A ∉ {0, 1}` — each paired with an **equivalent well-formed** region — equivalent over the **gate-relevant state** (§5.4): same truth of `A < H`, same resolved `W`, same highest existing round hence same `D`, therefore the same resolved `N`. **Not** *same counts*: the `H − A ∉ {0, 1}` member is a malformation of the counts, so a same-counts pair does not exist for it; under this relation `H = 3, A = 1` pairs with `H = 2, A = 1` and all three members are constructible | each pair is entered | **positively:** each malformed member takes the **same branch** as its well-formed pair — grants, dispatches **≥ 1** round, and writes the **same** answering line with the same value. **Structurally:** the enumeration of *region validates* consultation sites is **empty**. **And:** no `reset-region-corrupt` notice and no region-reason refusal anywhere. The first two conjuncts are what fail on an ad-hoc inline interim procedure; the third alone would not |
 
 ### 11.4 FSPEC-CLR-01 — *Who:* the review loop
