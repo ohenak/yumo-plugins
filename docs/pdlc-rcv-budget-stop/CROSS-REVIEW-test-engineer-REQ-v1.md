@@ -18,12 +18,34 @@
 
 ## Questions
 
-_(filled below)_
+| ID | Question |
+|----|---------|
+| Q-01 | On the creating halt, is the Iterations section intended to be the loop's output or the authoring agent's? F-01 assumes the REQ meant the loop (that is the only reading under which AC-1.3's *"asserted over the constant"* and O-10's equality leg are simultaneously satisfiable), but AC-1.4 clause 3's word *"authored"* says the opposite. |
+| Q-02 | O-10 leg (4)'s granting fixture has `W = 4` with every cross-review file of that document type removed. Is the fixture's post-mortem region `[WINDOW-START: 4, HALT-REASON: …]` with `A = H`, i.e. is the leg asserting `W` read from a **durable** region rather than granted on that entry? The text says *"clearance already spent (`A = H`, so this entry grants nothing and `W` is durable)"* — stating the region's exact line sequence would remove the last ambiguity for whoever builds it. |
 
 ## Positive Observations
 
-_(filled below)_
+- **The zero-dispatch conjunct is stated positively.** O-10 requires row C be asserted with *"a dispatch count of `0` alongside the absence of any new cross-review file, since a double that writes nothing satisfies absence either way"* — an absence-only oracle caught and closed at REQ altitude, which is where it is cheapest.
+- **The re-halt oracle is stated as byte-equality against a constructed expected file, and the weaker alternative is refuted in writing** (*"a byte comparison with the region span excised" would be unsatisfiable on every reachable fixture*). Modulo F-02's missing anchor, that is the right shape.
+- **The control in O-10 leg (4) discriminates.** `highest = 6` is chosen over `highest = 5` with the reason given — round 6 is the window's last slot, so a `5` control would dispatch and prove nothing. Re-derived: `W = 4` ⇒ window `{4,5,6}`; `highest = 6` ⇒ derived start 7 > 6 ⇒ halt, no dispatch. Correct.
+- **The property obligation is total on the empty draw.** *"`W` never exceeds the greatest well-formed `WINDOW-START:` present, **or is `1` when none is present**"* closes the max-over-empty-set hole that would otherwise make the property vacuous on exactly the malformed-region draws it exists to cover.
+- **The Phase CR leg is explicitly defended as non-vacuous** via M-7f (untyped phases reach the same halt path and do write a post-mortem), so the leg asserts a file that exists lacks the section rather than passing on a file that is not there.
+- **DC-03 routing is named per assertion**, with the residual case (*"any assertion with no nameable mutation filed as a Residual"*) handled rather than assumed away.
+- Citations spot-checked against their sources: M-1a–M-1e and M-7a–M-7f resolve in `pdlc-rcv-baseline.md` §2; S-4/S-15's renders resolve in `pdlc-rcv-catalogue.md` §2; split §§5.1–5.6 and §6 all exist; `REQ-RCV-07` AC-7.1–AC-7.6 and O-6/O-12 exist. `MAX_REVIEW_ROUNDS = 5` is at `pdlc/workflows/orchestrate-dev.js:52` with duplicate declarations in the test suite, exactly as O-13(a) reports.
 
 ## Recommendation
 
-_(filled below)_
+**Needs revision**
+
+Three things must change, all at outcome altitude and all small:
+
+1. **F-01** — decide, in AC-1.3/AC-1.4, that the loop writes the Iterations section on **every** halt in scope (creating and re-halt alike). Without it O-10's named leg (i) has no honest implementation, and AC-1.3's guarantee to the operator rests on an authoring agent's compliance with a prompt.
+2. **F-02** — state how the Iterations section is located, and the fail-closed disposition when it is absent, so O-10 leg (ii)'s expected file is constructible on the migration fixture and on a post-mortem that never carried the section.
+3. **F-03** — qualify AC-1.1's `Then` by the origin `W`, or state that AC-1.5(1) supersedes it, so the two criteria do not give different halt rounds for the same fixture.
+4. **F-04** — give AC-1.4 clause 1's region append the same confirmation obligation and fail-closed disposition AC-1.5(4) gives the answering line, and name what the operator does when it fails. As written the failure is silent and terminal.
+
+F-05 is Low and closable by routing to O-13.
+
+## Verdict
+
+VERDICT: Needs revision
