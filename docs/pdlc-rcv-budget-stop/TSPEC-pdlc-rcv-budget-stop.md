@@ -170,6 +170,102 @@ so a drifted line number is a mechanical re-baseline rather than a finding — t
 
 ## 3. Architecture — module map, placement and data flow
 
+### 3.1 Where the new code lives, and the alternative that was rejected
+
+**Everything the pipeline executes lives in `pdlc/workflows/orchestrate-dev.js`** (C-1). The new
+symbols form three clusters, each a contiguous block with its own section banner in the module's
+existing style:
+
+| Cluster | New symbols | Placed | Character |
+|---|---|---|---|
+| **Region read model** | `RESET_REGION_HEADING`, `HALT_REASON_PREFIX`, `WINDOW_START_PREFIX`, `WINDOW_RESUMED_PREFIX`, `parseResetRegion`, `resolveOrigin` | immediately **above** `checkPostmortem` (`:2738`), beside the other post-mortem readers | **pure**, synchronous, total, no seam |
+| **Region write model** | `renderIterationsHeading`, `applyIterationsSection`, `applyHaltUpdate`, `haltReasonValue` | immediately **below** the read model | **pure** string→string transforms; the IO is the caller's |
+| **Composition** | `readRegionState`, `resolveClearance`, `maintainRegionOnHalt`, `phaseWindow` (extended), `reviewLoop` (extended), `checkConverged` (extended), `buildFinalReport` (extended) | at their existing sites | `async`, seam-taking |
+
+**Rejected: a `pdlc/workflows/lib/reset-region.mjs` module.** It is the shape this repo already
+uses for pure logic (`lib/document-oracles.mjs`), it would be unit-testable without touching the
+1 800-line module, and it is what a reader coming from `document-oracles.mjs` will propose. It is
+**not viable**: `build-runtime.mjs` inlines three named sources (`:83`–`:85`) and `import` does not
+exist in the runtime (C-1, C-2), so a `lib/` module is invisible to the shipped pipeline — the
+runtime would throw on the first call. Adding a fourth inlined source is a change to the
+distribution mechanism, owned by the `pdlc-workflow-distribution` line of work, and would have to
+carry its own manifest row, freshness gate and sync semantics. The pure/impure separation the
+`lib/` split would have bought is instead bought **inside** the module by the read/write model
+clusters above, which take no seam and are exported for direct test import.
+
+**The one thing that does go to `lib/`:** §8's width-site enumeration oracle. It is a *repo
+scanner*, never loaded by the runtime, and it is exactly the shape `document-oracles.mjs` already
+serves — a pure function of a `root` path. It lands as `pdlc/workflows/lib/budget-sites.mjs`.
+
+### 3.2 The dependency graph
+
+```
+                      ┌─────────────────────────────────────────┐
+  seams (§5) ────────▶│ readRegionState   (async, composes)     │
+                      │   ├─ _readFile ─▶ post-mortem text      │
+                      │   └─ parseResetRegion  (pure)           │
+                      └───────────────┬─────────────────────────┘
+                                      │ RegionState {H, A, W, present}
+                      ┌───────────────▼─────────────────────────┐
+  deriveRoundWindow ─▶│ resolveClearance  (async, composes)     │
+   (D, pure)          │   ├─ checkPostmortem status  (shipped)  │
+                      │   ├─ validationConjunct  (§6.3, X-06)   │
+                      │   └─ appendAnsweringLine ─▶ _writeFile  │
+                      └───────────────┬─────────────────────────┘
+                                      │ W (possibly moved)
+                      ┌───────────────▼─────────────────────────┐
+                      │ phaseWindow → {derivedStart, startIndex,│
+                      │                endIndex, origin}        │
+                      └───────────────┬─────────────────────────┘
+                                      │
+                      ┌───────────────▼─────────────────────────┐
+                      │ reviewLoop  (shipped, extended)         │
+                      │   iteration > endIndex ─▶ halt path     │
+                      │        └─ maintainRegionOnHalt (§6.4)   │
+                      └───────────────┬─────────────────────────┘
+                                      │ LoopResult (+refusal fields)
+                      ┌───────────────▼─────────────────────────┐
+                      │ checkConverged ─▶ recordPhase / halt    │
+                      │ buildFinalReport ─▶ reviewRows (§4.4)   │
+                      └─────────────────────────────────────────┘
+```
+
+The arrow from `deriveRoundWindow` into `resolveClearance` is FSPEC §4.4's normative ordering
+made structural: `D` is a **parameter** of the gate, and the gate's output `W` is a **parameter**
+of the window arithmetic. There is no cycle because `deriveRoundWindow` is called once, with
+`origin = 1`, purely to obtain `derivedStart`; the admission arithmetic is evaluated afterwards
+from `(derivedStart, W)` without re-listing the directory (§6.1).
+
+### 3.3 The two entry points, and what each owns
+
+| Entry | Symbol | Owns |
+|---|---|---|
+| **Phase entry** | `phaseGate` (`:4403`) | steps 1–4 (shipped), step G (shipped), **then** the region read, the clearance gate and the window arithmetic (§6.1–§6.3) |
+| **Halt** | `reviewLoop`'s `iteration > endIndex` branch (`:1960`) | the authoring decision, clause 3, the clause 1-and-2 update, the two confirmations, the refusal (§6.4) |
+
+Nothing else in the pipeline reads or writes the region. `orchestrate-queue.js` is **untouched**:
+the queue forwards no `forcePhases` and takes no window state, and the `halted` row it reads is
+written by the shipped `_recordHalt` path, unchanged by this feature.
+
+### 3.4 Data flow across one entry, end to end
+
+FSPEC's Behavioral Flow, with the owning symbol against each step:
+
+| Step | FSPEC | Symbol | Seams used |
+|---|---|---|---|
+| 0 | loop discrimination | `phaseGate`'s caller — a phase's `docType` argument; Phase CR passes `docType: null` (`:4985`, M-7f) | — |
+| 1 | read the region | `readRegionState` | `_readFile` |
+| 2 | clearance gate | `resolveClearance` | `_readFile` (marker, via `resolvePostmortem`), `_writeFile` |
+| 3 | window arithmetic | `phaseWindow` → `deriveRoundWindow` + `windowEnd` | `_listFiles` (via `refreshReviewState`) |
+| 4a/4b | dispatch or zero-round halt | `reviewLoop` | `_agent`, `_parallel` |
+| 5 | halt-path maintenance | `maintainRegionOnHalt` | `_statFile`, `_readFile`, `_writeFile`, `_checkFile` |
+| 6 | reporting | `checkConverged`, `buildFinalReport` | — |
+| 7 | post-mortem authoring | `reviewLoop`'s halt branch | `_agent` |
+
+**Where a step refuses, the following steps do not run** — structurally, because steps 2 and 5
+refuse by `throw`ing a `haltError` after recording their ❌ row (§7.2), and every one of them sits
+inside `main`'s single `try` (`:4373`, M-8a).
+
 ## 4. Types and data model
 
 ## 5. Protocols — the seams and their contracts
