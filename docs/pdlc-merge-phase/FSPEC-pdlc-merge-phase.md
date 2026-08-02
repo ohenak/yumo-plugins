@@ -132,9 +132,180 @@ counts. This is the recovery path for AC-5.2's "merged, queue not updated".
 
 ## 3. FSPEC-MERGE-02 — GitHub observations
 
+**Links:** REQ-MERGE-01 (AC-1.2, AC-1.2a, AC-1.2b), AC-2.5, AC-3.4, NFR-1, NFR-4.
+
+### 3.1 One substitutable observation point per surface
+
+Phase MERGE reads six external surfaces. Each is an **observation point** — a single place where the
+external command is issued and its output turned into one of a closed set of values. Each must be
+independently substitutable, so a test can drive the phase with a constructed answer for one surface
+while leaving the others alone; that is what makes §11's table testable without a live repository.
+
+Every observation runs through the runtime's existing mechanical transport (the shipped runtime
+reaches `gh` and `git` through IO agents). NFR-1/NFR-4 hold because the transport carries **raw
+output only** and every decision below is taken by parsing that output against the stated value sets —
+no agent is asked to judge, summarise, or decide, and no new reasoning dispatch is added.
+
+| ID | Surface | Command | Fields consumed |
+|---|---|---|---|
+| `O1` | PR state | `gh pr view {prUrl} --json state,mergeable,mergeStateStatus,number` | `state`, `mergeable`, `mergeStateStatus`, `number` |
+| `O2` | CI rollup | `gh pr view {prUrl} --json statusCheckRollup` | `statusCheckRollup` |
+| `O3` | Review threads | `gh api graphql` query returning each review thread's `isResolved` for the PR | `isResolved` per thread |
+| `O4` | Repo merge capabilities | `gh repo view --json rebaseMergeAllowed,mergeCommitAllowed,squashMergeAllowed,deleteBranchOnMerge` | the four booleans |
+| `O5` | Changed files | `gh pr view {prUrl} --json files` (`files[].path`), falling back to `gh api repos/{owner}/{repo}/pulls/{number}/files` when the list is paginated or the field is absent | `files[].path` (and `previous_filename` where the API supplies it) |
+| `O6` | Merge execution | `gh pr merge {prUrl} --rebase` / `gh pr merge {prUrl} --merge`, plus `gh pr view {prUrl} --json mergeCommit,state` to read back the result | `mergeCommit.oid`, `state` |
+
+`O2` is the same rollup classification Phase PUB already uses, reused rather than re-derived, so
+`passed` / `pending` / `failed` / `none` / `unknown` mean exactly what they mean there. Reuse is a
+requirement, not an optimisation: two classifications of the same rollup that disagree is the defect
+AC-4.0 exists to prevent.
+
+### 3.2 Fail-closed parse rule — one rule, applied per surface
+
+For every observation: **if the command cannot be run, its output cannot be parsed as JSON, the
+expected field is absent, or the field's value is not a member of that row's recognised set, the
+observation yields `unknown`, and `unknown` is a failed precondition.** This is AC-1.2b, and it is
+the only rule; no surface has a permissive variant.
+
+| ID | Recognised values | Passes when | `unknown` resolves to |
+|---|---|---|---|
+| `O1` `state` | `OPEN`, `CLOSED`, `MERGED` | `OPEN` (`MERGED` resolves at §2.2 row 3) | `refused` (AC-1.2b) |
+| `O1` `mergeable` | `MERGEABLE`, `CONFLICTING`, `UNKNOWN` | `MERGEABLE` | `refused` — except the literal `UNKNOWN`, which is a recognised value handled by §3.3 |
+| `O1` `mergeStateStatus` | `CLEAN`, `UNSTABLE`, `BEHIND`, `BLOCKED`, `DIRTY`, `DRAFT`, `HAS_HOOKS`, `UNKNOWN` | any value other than `DIRTY` and `BLOCKED` | `refused` |
+| `O2` | `passed`, `pending`, `failed`, `none`, `unknown` | per §5 | `refused` |
+| `O3` | a list of booleans | every thread `isResolved: true`, or the list is empty | `refused` |
+| `O4` | four booleans | all four parse as booleans | `refused` (AC-2.5a — never assume a method is permitted) |
+| `O5` | a list of repo-relative path strings | the list parses and is complete | `refused` (AC-3.4 — the guard fires) |
+| `O6` | see §6 | see §6 | the attempt counts as failed (§6.3) |
+
+Two notes the TSPEC must carry: a `mergeable` of literal `UNKNOWN` is a *recognised* value, so §3.3
+handles it and it must not be swallowed by the general rule; and `O5` returning an empty list is a
+**valid** observation (a PR with no changed files) that passes the guard, distinct from an
+unretrievable list.
+
+### 3.3 Bounded re-read of `mergeable: UNKNOWN` (AC-1.2a)
+
+GitHub computes mergeability asynchronously, and the window right after Phase DOD's push and Phase
+PUB is when `UNKNOWN` is most likely. On `UNKNOWN`, `O1` is re-observed up to `mergeableRetries`
+additional times (default 3), each after waiting `mergeableRetryDelay` (default 10 s). The first
+re-read yielding `MERGEABLE` or `CONFLICTING` ends the loop and is the answer. Still `UNKNOWN` after
+the last re-read is a **deferral** (`mergeStatus: deferred`, reason "mergeability still UNKNOWN after
+N re-reads"), never a merge and never a `refused`.
+
+A re-read that fails to parse follows §3.2 and ends the loop with `refused` — a transport failure is
+not a retry-worthy `UNKNOWN`.
+
 ## 4. FSPEC-MERGE-03 — Self-modification guard
 
+**Links:** REQ-MERGE-03, US-03, NFR-3.
+
+### 4.1 Decision
+
+The guard is evaluated at §2.2 row 4 — after the two off switches and after the already-`MERGED`
+check, before every other precondition. It takes `O5`'s changed-file list and the effective guard
+path set (§4.3), and fires when **any** reported path matches **any** guard path. Firing resolves the
+phase to `refused` and produces an escalation (§4.5). The guard has no override of any kind — no
+configuration value, no environment variable, no argument, no force flag (NFR-3).
+
+### 4.2 Prefix-match semantics (AC-3.6)
+
+Matching is a **case-sensitive, `/`-delimited directory-prefix** test on repo-relative paths. A path
+`p` matches guard path `g` (which always ends in `/`) when `p` begins with the exact characters of
+`g`. No globbing, no normalisation, no case folding, no substring search.
+
+| Changed path | vs `pdlc/workflows/` | Why |
+|---|---|---|
+| `pdlc/workflows/x.js` | **match** | exact prefix |
+| `pdlc/workflows/dist/y.js` | **match** | prefix, any depth |
+| `pdlc/workflows-notes/x` | no match | `-` is not `/`; the prefix `pdlc/workflows/` is absent |
+| `docs/pdlc/workflows/x.md` | no match | prefix must start at position 0 |
+| `PDLC/Workflows/x.js` | no match | case-sensitive |
+
+Every path the changed-file list reports is matched, including **deletions** and, for a rename,
+**both** the old and the new path. Where the surface reports a rename with a previous path, both are
+tested; where it reports only the new path, that is the list as observed and the phase does not
+synthesise the other.
+
+Falsifiability (AC-3.5): the guard's decision is a pure function of (changed-file list, guard path
+set), so two lists differing only in the presence of one guard path produce opposite outcomes. A
+weakened or removed guard is observably different from an intact one.
+
+### 4.3 Additive configuration (AC-3.3)
+
+Shipped defaults, which cannot be removed:
+
+```
+pdlc/workflows/   pdlc/skills/   pdlc/hooks/   .claude/workflows/
+```
+
+The effective set is `defaults ∪ configured`. A configuration listing fewer paths, listing none, or
+explicitly attempting to remove a default is **silently unioned** with the defaults — no warning, no
+error, no report line; the defaults simply hold. A configuration value that is absent, not a list, or
+whose members are not strings contributes nothing and the defaults hold (§10.3). Configured paths not
+ending in `/` are treated as directory prefixes with a `/` appended, so `src/pipeline` and
+`src/pipeline/` behave identically and neither matches `src/pipeline-notes/`.
+
+The four defaults are this repo's own layout. A consuming repo where pdlc arrives as an installed
+plugin is expected to add the paths carrying its own pipeline-affecting code; `.claude/workflows/` is
+a default because it is the one such path that exists in every consumer (AC-3.7).
+
+### 4.4 Fail closed on an unretrievable list (AC-3.4)
+
+If `O5` yields `unknown` under §3.2 — command failure, unparseable output, absent `files` field, a
+truncated or paginated list the phase cannot complete — the guard **fires**. An unknown diff is
+treated as pipeline-affecting. The escalation names the retrieval failure rather than a matched path,
+so the operator can tell "the pipeline touched itself" from "I could not find out".
+
+### 4.5 Escalation notice format (AC-3.2, AC-6.2a)
+
+The guard's escalation is emitted onto the final report's existing operator-facing notices channel,
+one line per notice, each beginning with the stable prefix `MERGE ESCALATION: `. The prefix is the
+whole contract — an escalation is something a reader or a test finds by string.
+
+```
+MERGE ESCALATION: self-modification guard fired for {prUrl} — matched paths: {path}, {path}, …
+MERGE ESCALATION: self-modification guard fired for {prUrl} — changed-file list could not be retrieved
+```
+
+Every matched path appears, so the operator's review has its scope delimited before they open the PR.
+An escalation never implies a halt: outcome stays `success` (AC-1.3).
+
+**Consequence accepted in this repo (AC-3.7, BL-04).** Every PR this repo's own queue raises touches
+`pdlc/workflows/` or `pdlc/skills/`, so Phase MERGE here is expected to report `refused`
+permanently. The `merged` path is evidenced through tests that drive the observation points
+directly, not through a live merge here.
+
 ## 5. FSPEC-MERGE-04 — CI evidence rule
+
+**Links:** REQ-MERGE-04, US-04.
+
+CI evidence is established **at merge time** by re-reading the rollup through `O2` (AC-4.0). Phase
+PUB's `ciStatus` is a snapshot taken before Phase DOD remediation and before any base movement; it is
+carried in the report but is **not** the merge evidence. Re-reading is what gives `pending` and
+`failed` a reachable domain at merge time — checks re-run when the base moves, and a check green at
+Phase PUB can fail on a re-run.
+
+| `O2` re-read | `mergeRequiresCi: true` (default) | `mergeRequiresCi: false` |
+|---|---|---|
+| `passed` | precondition satisfied | precondition satisfied |
+| `none` (no checks) | **refused** + escalation (AC-4.2) | precondition satisfied (AC-4.3) |
+| `pending` | **refused** | **refused** |
+| `failed` | **refused** | **refused** |
+| `unknown` (unretrievable/unparseable) | **refused** | **refused** |
+
+`mergeRequiresCi` relaxes exactly one cell. It does not make `pending`, `failed` or `unknown`
+acceptable: a repository with no CI is a supported configuration, a repository whose CI is red is not.
+Phase PUB legitimately treats `no-checks` as a pass for *raising* a PR; that is not a pass for
+*merging* one.
+
+The `no-checks` refusal escalates (AC-4.2):
+
+```
+MERGE ESCALATION: CI evidence absent for {prUrl} — no checks reported and mergeRequiresCi is true
+```
+
+`pending`, `failed` and `unknown` are reported as `refused` with a reason line (§9.2) and do not
+escalate — they are ordinary, self-explanatory states an operator can read off the PR.
 
 ## 6. FSPEC-MERGE-05 — Merge execution and method policy
 
