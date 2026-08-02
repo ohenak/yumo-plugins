@@ -86,8 +86,57 @@ record. No question from any earlier round is still open.
 
 ## Recommendation
 
-_pending_
+**Needs revision**
+
+All four v8 findings are closed at the sites I named, in the forms I proposed, and F-38's by the
+subtraction rather than by more prose. **No High.** Nothing about the design is contested: the
+conjunct staying unwired is correct and I verified its argument on all four horns at
+`pdlc-rcv-split.md` §5.1; the handover of the non-validating legs is correct and I verified
+`REQ-RCV-07` actually received them (`3105033`); leg 1 is now concrete and I re-derived every cell of
+it; both relocations are faithful and I read both destinations. This is a strong revision and it is
+one clause away from approval.
+
+1. **F-41 (Medium)** — the single seam property this REQ kept does not name its fixture. O-10 says
+   the interim composition calls the seam *"exactly 0 times"* and that this *"falsifies an accidental
+   early wiring"*. That is true on **leg 1's** fixture (`RESOLVED: yes`, `A = 0 < H = 1` ⇒ both
+   earlier conjuncts hold, the gate reaches the third, a wired implementation calls the seam ≥ 1) and
+   **false on leg 2's** (`H = A = 0` ⇒ `A < H` is false, so a wired gate short-circuits and never
+   reaches the seam either — 0 calls under every wiring, an oracle that cannot fail). The sentence
+   sits between the handover and the two legs, so *attach it to those legs* is the natural reading
+   and half of that reading is vacuous. Repair, ~25 bytes net, after *"calling it **exactly 0
+   times**"*: *"— asserted on **leg 1's** fixture, the only one that defeats the two earlier
+   conjuncts and therefore the only one a wired implementation would answer differently."* Naming
+   leg 1 also settles the ordering half of the finding, since on that fixture every conjunct is
+   reached under any evaluation order.
+
+2. **F-42 (Low, Process)** — 58 bytes under the soft byte threshold (55,238 / 55,296), 455/630
+   lines, the fifth consecutive round to finish within a few hundred bytes of a size gate and the
+   first in which the file **grew** while shedding 2.9 KB. Filed for the recurrence, not the
+   instance: every insertion this round was a finding's repair, and the relocations were faithful.
+   The structural point is that a REQ owning a live forward edge accretes prose *at that edge* every
+   round, faster than relocation can clear it, until the sibling ships.
+
+**On room.** F-41's repair is roughly net-neutral and fits in 58 bytes. If a later round needs more,
+relocate rather than compress: AC-1.5(4)'s *validation is a conjunct of the gate, not merely a
+constraint on `W`* argument (`:316`–`:323`, ~800 bytes) is arithmetic both halves depend on and
+neither restates — it belongs beside `pdlc-rcv-split.md` §5.1, leaving the claim plus a pointer. Do
+not shorten a conjunct into an adjective to make budget; that is the failure mode F-40 and F-42 exist
+to prevent, and the *no answering line, counts unmoved* conjuncts of leg 2 are exactly the kind of
+text a compression pass mistakes for redundancy.
+
+Explicitly **not** filed, and not to be reopened: the decision to leave the conjunct unwired and the
+four-horn argument behind it, verified at `pdlc-rcv-split.md` §5.1; the target-state framing at
+AC-1.5(4) and §4.1, including the `W` row's *absent* / *invalid* split; the handover of the
+non-validating legs and their receipt at `REQ-RCV-07` O-10; leg 1's and leg 2's cells and their
+swap-stability after row 18, which I re-derived; the absence of any interim S-16; NB-3's DoD
+declaration; both relocations and their pointers; the §4, §4.1, §7 and §10 compressions, which lose
+nothing test-derivable; and everything in §1, §2, §3.1 beyond X-06's summary, §4.1's unaffected rows,
+AC-1.1–AC-1.4, AC-1.5(1)–(3) and (5), §6, §7, §8 beyond O-10 and §9 — approved across eight rounds
+and unchanged or only compressed here. Nothing here contests user need, priority, phasing, the budget
+of three, the split, or shipping this REQ ahead of its successor.
 
 ## Verdict
 
-_pending_
+VERDICT: Needs revision
+
+{"high": 0, "medium": 1, "low": 1}
