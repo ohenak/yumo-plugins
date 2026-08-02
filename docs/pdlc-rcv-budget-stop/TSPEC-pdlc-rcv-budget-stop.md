@@ -268,6 +268,151 @@ inside `main`'s single `try` (`:4373`, M-8a).
 
 ## 4. Types and data model
 
+The module is JavaScript with JSDoc types (`orchestrate-dev.js` throughout); "interface" below
+means a JSDoc `@typedef` plus the structural contract every producer and consumer honours. Every
+type is **closed** — an ill-shaped value is not coerced, it takes the fail-closed branch §7 names.
+
+### 4.1 `RegionState` — the read model
+
+```js
+/**
+ * @typedef {object} RegionState
+ * @property {boolean} present   - a `## Reset Region` heading exists outside fences
+ * @property {number}  H         - count of `HALT-REASON:` lines in the region span
+ * @property {number}  A         - count of `WINDOW-START:` PLUS `WINDOW-RESUMED:` lines
+ * @property {number}  W         - the origin: the greatest well-formed `WINDOW-START:` value, else 1
+ * @property {string|null} lastHaltReason - the last `HALT-REASON:` line's value, or null
+ * @property {string[]} lines    - the region's S-13/S-14/S-15 lines, verbatim, in document order
+ */
+```
+
+Invariants the producer guarantees on **every** input, including an unreadable file:
+
+| # | Invariant | Why it is here |
+|---|---|---|
+| **RS-1** | `H ≥ 0`, `A ≥ 0`, both counted **by line prefix, whatever the value** | split §5.4's counting rule; B-REG-3. A malformed value still answers a halt |
+| **RS-2** | `W` is a **decimal integer ≥ 1**, never `NaN`, never a string, never a non-numeric value | B-REG-4. `W` flows into `windowEnd` and `Math.max`; a `NaN` there silently produces a window that admits nothing and reports nothing |
+| **RS-3** | `W === 1` when no well-formed `WINDOW-START:` value is present — total over the empty set, where a bare `Math.max` would yield `-Infinity` | split §5.4's property; baseline §3.2's fail-closed direction |
+| **RS-4** | `present === false` ⇒ `H === A === 0`, `W === 1`, `lines` empty, `lastHaltReason === null` | B-REG-1, B-REG-2, B-REG-6 read identically |
+| **RS-5** | `lines` contains only lines **inside the region span and outside fenced blocks** | B-REG-5, BR-8. The span is heading→next top-level heading→EOF |
+
+`lines` is carried rather than derived on demand because AC-1.4 clause 1 requires every prior line
+**preserved verbatim in document order**, and the writer (§4.3) rebuilds the region from it.
+
+### 4.2 `WindowState` — what `phaseWindow` returns
+
+`deriveRoundWindow`'s shipped return grows two fields and changes the meaning of one:
+
+```js
+/**
+ * @typedef {object} WindowState
+ * @property {true}   ok
+ * @property {number} origin       - W, the window origin (1 when no reset is in effect)   [NEW]
+ * @property {number} derivedStart - D: one past the highest existing round of this docType [NEW]
+ * @property {number} startIndex   - S = max(derivedStart, origin)                    [MEANING CHANGED]
+ * @property {number} endIndex     - E = windowEnd(origin) = origin + BUDGET - 1      [MEANING CHANGED]
+ * @property {Map<string, number[]>} present
+ * @property {Array<{basename: string, reason: string}>} skipped
+ */
+```
+
+- `derivedStart` is exactly today's `startIndex` — `max(existing rounds) + 1`, or 1 when the doc
+  type has no cross-review file. Named so the origin-wins rule (B-WIN-3) has two distinguishable
+  quantities rather than one overwritten one.
+- `startIndex` becomes `max(derivedStart, origin)` (BR-4). **`startIndex > endIndex` is a legal,
+  expected value** — it is FSPEC's B-WIN-2, and `reviewLoop`'s shipped loop-top guard consumes it
+  without a new branch (§2.3).
+- `endIndex` is counted from the **origin**, never from the start (AC-1.1; B-WIN-4/B-WIN-5).
+
+**Compatibility note for the PLAN:** `roundDerivation.test.js:389` asserts the returned key set is
+exactly `["endIndex", "ok", "present", "skipped", "startIndex"]`. That assertion is **updated, not
+deleted** — it is the oracle that a future field is added deliberately, and it grows to include
+`derivedStart` and `origin`.
+
+The `{ok: false, reason: "malformed_round_one_duplicate", role}` arm is **unchanged**: it is a
+listing fault, decided before any origin is relevant, and it still halts (`refreshReviewState`,
+`:2656`).
+
+### 4.3 `HaltUpdate` — the write model's one-shot transform
+
+Clause 1 and clause 2 are **one update of one file** (AC-1.4's ordering; split §5.8), so they are
+one pure function producing one string:
+
+```js
+/**
+ * @typedef {object} HaltUpdateResult
+ * @property {string} text        - the post-mortem's full new text
+ * @property {string} haltLine    - the exact `HALT-REASON: {value}` line appended
+ * @property {number} strippedCount - how many unfenced `RESOLVED:` lines were removed
+ */
+```
+
+`applyHaltUpdate(text, haltReasonValue) → HaltUpdateResult` is **total over every input string**,
+including `""`:
+
+| Input shape | Result |
+|---|---|
+| no `## Reset Region` outside fences | the region is **created** at the end of the file, carrying exactly one line — this halt's (B-HALT-1) |
+| region present | every existing line preserved in document order, this halt's line **appended after the last of them**, nothing above or between (B-HALT-2, BR-7) |
+| any unfenced `RESOLVED:` line, anywhere in the file, inside or outside the region span | removed (clause 2). A **fenced** `RESOLVED:` survives byte-identically (B-HALT-6) |
+
+The two rules quantify over **disjoint** line sets — a `RESOLVED:` line is never a region line
+(catalogue §1 reads three prefixes only) — so they compose without an ordering question, which is
+what lets them be one transform rather than two ordered writes.
+
+### 4.4 `ReviewRow` — the run report's per-round row
+
+Catalogue §3's schema, carried on the final report as a **new field `reviewRows`**:
+
+```js
+/**
+ * @typedef {object} ReviewRow
+ * @property {number|""} round
+ * @property {string} panelShape      - "" at this ship (pdlc-rcv-fixed-point-stop's)
+ * @property {string} blocking        - "" at this ship (pdlc-rcv-fixed-point-stop's)
+ * @property {string} growthBytes     - "" at this ship (pdlc-rcv-panel-topology's)
+ * @property {string} classification  - "" at this ship (pdlc-rcv-panel-topology's)
+ * @property {string} notice          - the `; `-joined notice list, "" when empty
+ */
+```
+
+**Why a new field and not a phase-row `detail` string.** `notices` (`:4380`) already carries
+report lines the operator reads, but existing oracles pin phase-row `detail` values verbatim
+(`:4384`'s comment states exactly this), and catalogue §3 requires a **table with fixed columns**
+that three REQs populate cell by cell. A string channel cannot carry a schema two later features
+must extend without re-parsing prose. `reviewRows` is `[]` on every run that produces neither row
+B nor row C, so no existing report shape changes.
+
+**This feature populates exactly two row kinds** and no other:
+
+| Row | Produced by | Cells |
+|---|---|---|
+| **row C** — zero-round budget halt | `reviewLoop`'s halt branch, when `roundsRun === 0` (B-RPT-4) | `round` = the resolved start `S`; four cells `""`; `notice` = **exactly** this halt's S-4 render, no separator |
+| **row B** — refusing entry, *unconfirmable-append* variant | `resolveClearance` (B-CLR-7) and `maintainRegionOnHalt` (B-HALT-4, B-HALT-5) | `round` = the round the entry would have opened; four cells `""`; `notice` = **`""`** — an IO fault of the loop is not a state of the region, so no S-16 (BR-16) |
+
+Row B's *validation-failure* variant, and every other row kind, are **not produced here**
+(T-N-1, T-N-2, T-N-3). Rows B and C are mutually exclusive by construction: row C is written on
+the path that **records** a halt, row B on the paths that record none (catalogue §3's *records*,
+not *takes*), and no code path emits both.
+
+### 4.5 `LoopResult` — the two fields `reviewLoop` gains
+
+```js
+ // existing: {converged, iterations, lastResults, postmortemWritten, postmortemPath, trailerReason}
+ // existing: {converged, iterations, halted, haltDetail, trailerReason, …}
+ /** @property {number} roundsRun  - rounds THIS entry dispatched; 0 on a zero-round halt (O-14) */
+ /** @property {{which: string, path: string, round: number}|null} refusal - §7.2's phase refusal */
+```
+
+`roundsRun` is the `{k}` of §6's Iterations render. It counts rounds this **entry dispatched**,
+whatever their outcome — FSPEC OQ-01's stated default — and is therefore incremented at the
+dispatch site, not at a verdict site. It is deliberately **not** derivable from `iterations`,
+which remains the **budget** (M-1c, AC-1.3, B-RPT-3).
+
+`refusal.which` is one of the three catalogue §4 literals — `"answering line"`, `"halt line"`,
+`"iterations section"` — and nothing else. It is a **closed set**, declared as a frozen array
+(§5.5), because catalogue §4 fixes exactly three and BR-16 forbids a fourth.
+
 ## 5. Protocols — the seams and their contracts
 
 ## 6. Algorithms
