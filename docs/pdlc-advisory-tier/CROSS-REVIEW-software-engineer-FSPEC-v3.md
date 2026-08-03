@@ -129,3 +129,5 @@ deliberately and correctly contradict with the rollup-wait carve-out.
 
 VERDICT: Approved with minor changes
 {"high": 0, "medium": 0, "low": 5}
+APPROVAL-HASH: sha256:add0010006f28fe715ea861cb150ee2bda4a54cdd63c32fab011eb56a7d3d8f6
+REVIEWED-COMMIT: 502c070f77c65d033c7a300ca53fdfd3a1f2cce5
