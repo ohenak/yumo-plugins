@@ -116,57 +116,57 @@ function wholeFileFieldCount(text) {
 // ─────────────── the six spec-class required-heading tables (TSPEC §5.9) ───────────────
 //
 // Transcribed from §5.9's table, one row per spec class. `title` is the **canonical** name —
-// the form §5.9 lists first, and the form this suite asserts `missing` carries. `alt` is
-// §5.9's parenthesised alternative, which the matching rules accept as equivalent; `null`
-// where the row states none.
+// the form §5.9 lists first, and the form this suite asserts `missing` carries. `alts` is the
+// curated alias list §5.9's matcher accepts as equivalent under normalised, word-boundary
+// containment (numbered/descriptive headings are honored); `[]` where the row admits none.
 //
 // This table is what makes `PROP-COMPLETE-01` an oracle over the required set itself: it
 // derives both its expectation and its non-vacuity floors from these rows, so a heading
 // quietly dropped from the subject's own table reds the property (PROPERTIES §5.2 4th row).
 const REQUIRED_HEADINGS = Object.freeze({
   REQ: Object.freeze([
-    { title: "Problem / Context", alt: null },
-    { title: "Goals", alt: null },
-    { title: "Non-Goals", alt: "Scope" },
-    { title: "Constraints", alt: null },
-    { title: "Acceptance Criteria", alt: null },
-    { title: "Risks", alt: null },
-    { title: "Obligations", alt: "Open Questions" },
+    { title: "Problem / Context", alts: ["Context", "Problem", "Background"] },
+    { title: "Goals", alts: ["Objectives"] },
+    { title: "Non-Goals", alts: ["Scope", "Out of scope"] },
+    { title: "Constraints", alts: [] },
+    { title: "Acceptance Criteria", alts: ["Acceptance"] },
+    { title: "Risks", alts: [] },
+    { title: "Obligations", alts: ["Open Questions", "Assumptions"] },
   ]),
   FSPEC: Object.freeze([
-    { title: "Overview", alt: "Scope" },
-    { title: "Linked Requirements", alt: null },
-    { title: "Behavioral Flow", alt: null },
-    { title: "Business Rules", alt: null },
-    { title: "Edge Cases and Error Scenarios", alt: null },
-    { title: "Acceptance Tests", alt: null },
-    { title: "Open Questions", alt: null },
+    { title: "Overview", alts: ["Scope", "Summary", "Context"] },
+    { title: "Linked Requirements", alts: [] },
+    { title: "Behavioral Flow", alts: [] },
+    { title: "Business Rules", alts: [] },
+    { title: "Edge Cases and Error Scenarios", alts: [] },
+    { title: "Acceptance Tests", alts: [] },
+    { title: "Open Questions", alts: ["Obligations", "Assumptions"] },
   ]),
   TSPEC: Object.freeze([
-    { title: "Overview", alt: null },
-    { title: "Architecture", alt: "Design" },
-    { title: "Interfaces", alt: null },
-    { title: "Data Model", alt: "State" },
-    { title: "Test Strategy", alt: null },
-    { title: "Open Questions", alt: null },
+    { title: "Overview", alts: ["Scope", "Summary", "Context", "Introduction"] },
+    { title: "Architecture", alts: ["Design"] },
+    { title: "Interfaces", alts: ["Interface", "Protocol", "Protocols", "Seams", "APIs", "API"] },
+    { title: "Data Model", alts: ["Types", "State", "Schema", "Data structures"] },
+    { title: "Test Strategy", alts: ["Testing", "Test plan", "Verification"] },
+    { title: "Open Questions", alts: ["Obligations", "Assumptions", "Risks", "Decisions"] },
   ]),
   PLAN: Object.freeze([
-    { title: "Overview", alt: null },
-    { title: "Batches", alt: "Tasks" },
-    { title: "Dependencies", alt: null },
-    { title: "Verification", alt: null },
+    { title: "Overview", alts: ["Scope", "Summary"] },
+    { title: "Batches", alts: ["Tasks", "Work breakdown"] },
+    { title: "Dependencies", alts: ["Ordering"] },
+    { title: "Verification", alts: ["Testing", "Validation"] },
   ]),
   PROPERTIES: Object.freeze([
-    { title: "Overview", alt: null },
-    { title: "Properties", alt: null },
-    { title: "Oracles", alt: null },
-    { title: "Fixtures", alt: null },
+    { title: "Overview", alts: ["Scope", "Summary"] },
+    { title: "Properties", alts: ["Invariants"] },
+    { title: "Oracles", alts: ["Checks"] },
+    { title: "Fixtures", alts: ["Generators", "Test data"] },
   ]),
   DECISIONS: Object.freeze([
-    { title: "Context", alt: null },
-    { title: "Options Considered", alt: null },
-    { title: "Decision", alt: null },
-    { title: "Consequences", alt: null },
+    { title: "Context", alts: ["Background"] },
+    { title: "Options Considered", alts: ["Options", "Alternatives"] },
+    { title: "Decision", alts: ["Chosen", "Resolution"] },
+    { title: "Consequences", alts: ["Tradeoffs", "Implications"] },
   ]),
 });
 
@@ -320,6 +320,133 @@ describe("structural completeness — the spec classes (TSPEC §5.9, FSPEC §16.
   });
 });
 
+// ══ RLH-AT-63 — the spec gate matches required CONCEPTS by containment + aliases ══
+//
+// The regression this feature exists for: a live `pdlc-advisory-tier` run HALTED at
+// Phase T with "no progress across 3 consecutive attempts (16 of 16 sections
+// complete)" over a TSPEC that WAS complete — 16 numbered, concern-organized
+// sections, none carrying a canonical `## Overview` / `## Interfaces` / … heading.
+// The old exact/prefix matcher reported every required row missing forever, so the
+// author's honest "already complete" was overruled to the budget.
+//
+// The matcher is now word-boundary containment against the canonical title OR a
+// curated alias (§5.9). Falsifiable in BOTH directions and asserted as exact
+// set-equality of `missing`, never mere containment.
+describe("RLH-AT-63 — concern-organized specs match by containment (TSPEC §5.9)", () => {
+  test("RLH-AT-63: a numbered/descriptive TSPEC covering every concept is complete", () => {
+    const doc = readFixture("tspec-numbered-complete.md");
+
+    // Non-vacuity, the whole point: NONE of the six required TSPEC headings appears
+    // verbatim. If any did, this fixture would pass under the very matcher the bug
+    // lived in and prove nothing.
+    for (const title of requiredSet("TSPEC")) expect(doc).not.toContain(`## ${title}\n`);
+    // …yet the concern-organized headings that carry the concepts really are there.
+    expect(doc).toContain("## 4. The advisory core — types, SeamOps protocol, invocation lifecycle\n");
+    expect(doc).toContain("## 13. Test strategy and test doubles\n");
+
+    const result = devModule.isComplete(CLASS_SPEC, "TSPEC", doc);
+    expect(result.complete).toBe(true);
+    expect(missingSet(result)).toEqual(new Set());
+    // Richer-than-minimum is not incomplete: the extra numbered sections are counted
+    // in `T`, never subtract, and every measured section carries a body.
+    expect(result.T).toBeGreaterThan(requiredSet("TSPEC").length);
+    expect(result.S).toBe(result.T);
+  });
+
+  test("RLH-AT-63: a numbered TSPEC that omits a test strategy still reports it missing", () => {
+    const doc = readFixture("tspec-numbered-missing-teststrategy.md");
+
+    // Non-vacuity: no test-strategy synonym appears as a heading, so the concept is
+    // genuinely absent — containment must not fabricate it.
+    for (const term of ["Test Strategy", "Testing", "Test plan", "Verification"]) {
+      expect(doc).not.toContain(`## ${term}`);
+    }
+
+    const result = devModule.isComplete(CLASS_SPEC, "TSPEC", doc);
+    expect(result.complete).toBe(false);
+    // Exactly one shortfall, named — the other five concepts ARE covered by their
+    // descriptive headings, so a matcher that recognised nothing would red here too.
+    expect(missingSet(result)).toEqual(new Set(["Test Strategy"]));
+  });
+
+  test("RLH-AT-63: a plural extra never satisfies its singular row (word boundary)", () => {
+    // The guard EXTRA_TITLES used to carry inline: `## Decisions` must NOT satisfy
+    // DECISIONS' required `Decision` row. Word-boundary containment refuses the
+    // trailing `s`, so the shortfall is not hidden behind the near-miss extra.
+    const doc = [
+      "# DECISIONS — f",
+      "",
+      "## Context",
+      "",
+      "Why this decision was needed.",
+      "",
+      "## Options Considered",
+      "",
+      "The alternatives weighed.",
+      "",
+      "## Decisions", // the near-miss extra, NOT the required `Decision`
+      "",
+      "A log of choices, plural.",
+      "",
+      "## Consequences",
+      "",
+      "What follows from the choice.",
+      "",
+    ].join("\n");
+
+    const result = devModule.isComplete(CLASS_SPEC, "DECISIONS", doc);
+    expect(result.complete).toBe(false);
+    expect(missingSet(result)).toEqual(new Set(["Decision"]));
+  });
+
+  test("RLH-AT-63: aliases are honored but do not collapse distinct rows (Goals vs Non-Goals)", () => {
+    // A REQ whose `Goals` is dropped but `Non-Goals` present: `non-goals` must not
+    // leak its tail and satisfy `Goals` — the hyphen is a word char.
+    const req = [
+      "# REQ — f",
+      "",
+      "## 1. Problem / Context",
+      "",
+      "The problem.",
+      "",
+      "## 2. Non-Goals",
+      "",
+      "Explicitly out of scope.",
+      "",
+      "## 3. Constraints",
+      "",
+      "The bounds.",
+      "",
+      "## 4. Acceptance Criteria",
+      "",
+      "How we know.",
+      "",
+      "## 5. Risks",
+      "",
+      "What could go wrong.",
+      "",
+      "## 6. Obligations",
+      "",
+      "What we still owe.",
+      "",
+    ].join("\n");
+
+    const result = devModule.isComplete(CLASS_SPEC, "REQ", req);
+    expect(result.complete).toBe(false);
+    expect(missingSet(result)).toEqual(new Set(["Goals"]));
+
+    // …and the same REQ with a real `Goals` section IS complete — the alias plumbing
+    // recognises the descriptive form via containment.
+    const withGoals = req.replace(
+      "## 3. Constraints",
+      "## 2b. Goals and objectives\n\nWhat good looks like.\n\n## 3. Constraints",
+    );
+    const okay = devModule.isComplete(CLASS_SPEC, "REQ", withGoals);
+    expect(okay.complete).toBe(true);
+    expect(missingSet(okay)).toEqual(new Set());
+  });
+});
+
 // ══════════ D4 — heading sets (PROPERTIES §3.2 / §5.2), file-local and unexported ══════════
 //
 // Built over `driftGenerators.js`'s primitives only (`int` / `pick` / `shuffle`). PLAN §7.2:
@@ -346,10 +473,14 @@ const PLACEHOLDER_BODIES = Object.freeze(["TBD", "TODO", "_TBD_", "<!-- to be wr
  */
 const FENCED_TBD_BODY = "```text\nTBD\n```";
 
-/** Non-required heading titles — the extras of conjunct (iii). `Decisions` sits deliberately
- *  one character from `DECISIONS`' required `Decision`, so a matcher that normalises too
- *  aggressively cannot hide a genuine shortfall behind an extra. */
-const EXTRA_TITLES = Object.freeze(["Decisions", "Learnings", "Appendix", "Foo"]);
+/** Non-required heading titles — the extras of conjunct (iii). Every one is INERT: under the
+ *  word-boundary containment matcher (§5.9) none of them contains any required title or curated
+ *  alias, across every spec doc type, so an extra can never satisfy a required row and the
+ *  "extras never subtract" differential stays honest. (`Decisions` is deliberately NOT an extra
+ *  here: it IS a curated alias of TSPEC's `Open Questions`, so it is a legitimate satisfier, not
+ *  an inert extra. The plural-does-not-satisfy-singular guard it used to carry — `Decisions` not
+ *  satisfying `DECISIONS`' `Decision` — is now pinned directly by RLH-AT-63 below.) */
+const EXTRA_TITLES = Object.freeze(["Appendix", "Glossary", "Changelog", "References", "Miscellany"]);
 
 const SPEC_DOC_TYPES = Object.freeze(Object.keys(REQUIRED_HEADINGS));
 
@@ -375,16 +506,18 @@ function renderHeading(rng, heading, variant) {
     case "numParen":
       return `## ${rng.int(1, 9)}) ${t}`;
     case "alt":
-      return `## ${heading.alt}`;
+      return `## ${rng.pick(heading.alts)}`;
     default:
       return `## ${t}`;
   }
 }
 
-/** The rendering variants available for a heading — `alt` only where §5.9 states one. */
+/** The rendering variants available for a heading — `alt` only where §5.9 curates
+ *  at least one alias. When present, `renderHeading` draws a RANDOM alias, so the
+ *  whole `alts` array is exercised over the run, not just its first element. */
 function variantsFor(heading, nonIdentity) {
   const base = ["lower", "upper", "spaced", "numDot", "numParen"];
-  if (heading.alt) base.push("alt");
+  if (heading.alts && heading.alts.length) base.push("alt");
   return nonIdentity ? base : ["identity"];
 }
 
