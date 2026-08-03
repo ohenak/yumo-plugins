@@ -882,7 +882,12 @@ dispatch → an `implConfig` with `testCommand: null` → and asserts the pipeli
 rebase-conflict `haltError` (`dev:8283-8287`) with the seam's terminal `outcome === "escalated"` and
 reason on the report, as opposed to `verifyGate` reporting `{passed:false}` in isolation. It uses the
 `_runAdvisorySeam` phase-integration fake (§13.2) for the seam and a real `parseImplementationConfig`
-result to prove the `testCommand: null` default (`dev:158-161`) routes to escalation end-to-end.
+result. Scope: because the `testCommand: null → revert+escalate` decision lives inside the real
+`verifyGate`, which is *inside* the faked seam here, T-06-8 asserts the **phase wiring** — that a
+scripted `escalated` disposition threads through the Phase DOD body to the report and the pre-existing
+`haltError` — not the routing branch itself. That routing is proven at the **Seam-unit** level (§13.2:
+each real `SeamOps` against fake `_git`/`_ghRun`/`_readFile`; E-24 → §7.4), where the real `verifyGate`
+sees `testCommand: null` and reverts+escalates; the two tests together cover the branch and its wiring.
 
 **"Tests pass but the tree is dirty" (§8.3)** is caught by the step-5 produced-change check re-running
 after `verifyGate`'s rebase completes: `producedPaths` is re-read post-gate and any path outside the
