@@ -303,7 +303,7 @@ Exactly four permitted actions, each with a rule an engineer can decide without 
 
 | # | Permitted | Decidable rule | Seam |
 |---|---|---|---|
-| E-1 | re-run a check that failed flakily | the check failed and the re-run is on the identical commit sha, with no push in between; bounded by `advisory.attemptBudget` | A5 |
+| E-1 | re-run a check that failed flakily | the check failed and the re-run is on the identical commit sha, with no push in between; bounded by `advisory.attemptBudget`. E-1 does **not** attempt to decide flakiness — nothing observable at the seam distinguishes a flaky failure from a deterministic one, so a deterministic failure re-run under E-1 simply exhausts the budget and escalates | A5 |
 | E-2 | fix a lint, format or type error the branch introduced | the same check passes at **both** the merge-base commit and the default-branch tip, and fails at the branch head. §9's default-branch comparison is evaluated first | A5 |
 | E-3 | resolve a rebase conflict in a file the branch created | *branch-created* = absent from the merge-base tree **and** absent from the default-branch tip | A4 |
 | E-4 | re-ground a stale REQ's citations | every drifted citation's symbol still exists, at a new location | A2 |
@@ -316,7 +316,7 @@ because they are the exclusions someone would otherwise argue about:
 | X-a | any change to a test file or test configuration — editing an assertion, deleting a test file or case, renaming a test out of the collected set, adding a skip/xfail/only marker, narrowing a parametrised case list, or lowering a coverage or mutation threshold |
 | X-b | any change to a Definition-of-Done criterion or threshold |
 | X-c | any rebase conflict outside E-3's branch-created files |
-| X-d | any change outside the feature's declared scope — the files the PLAN names, plus the files the branch had already touched as of its head when the seam dispatched (at A4, the pre-rebase head) |
+| X-d | any change outside the feature's declared scope — the files the PLAN names, plus the files the branch had already touched as of its head when the seam dispatched (at A4, the pre-rebase head). At A1/A2 no pipeline has started for the candidate, so there is no PLAN and no feature branch: declared scope there is exactly the candidate's own REQ file (A2-5) |
 | X-e | anything under the merge phase's self-modification guard paths |
 
 **X-a is the dangerous one and gets its own handling.** A produced diff touching anything in X-a is
@@ -325,8 +325,11 @@ Fixing a red test by editing the test is the failure mode this whole feature mus
 
 ### 5.3 The refusal ladder
 
-Every refusal carries **exactly one** reason. Triggers can co-occur, so the set is ordered and the
-first match wins:
+Every refusal carries **exactly one** reason. A trigger is evaluated against the condition on which
+the invocation **terminates**, not against every condition met somewhere inside it — an invocation
+whose earlier attempts were malformed but which ends because the budget ran out reports
+`budget-exhausted`, not `malformed-verdict`. Among triggers that co-occur *at termination* the set is
+ordered and the first match wins:
 
 | # | Reason | Trigger |
 |---|---|---|
@@ -358,7 +361,7 @@ After any applied resolution, a gate re-runs and reaches its own verdict:
 
 | Seam | Gate that re-runs | State it must reach |
 |---|---|---|
-| A1 | the queue's dependency pre-check only — Phase-0 triage is itself an agent verdict and is **not** re-run | the pre-check reports not-blocked |
+| A1 | **none.** The dependency pre-check already ran *before* the seam could fire (B-2, and a blocked pre-check skips the candidate without reaching triage), and A1 changes no file (A1-4), so a re-run is a pure function of unchanged inputs and can only repeat its own result. A1 has no independent post-action gate; its safety rests on A1-3's escalate-when-unsettled rule | — |
 | A2 | the pre-check plus triage, on the re-grounded REQ, in the **next** queue invocation | triage reaches a verdict of its own |
 | A3 | Phase DOD's verify step | no findings remaining |
 | A4 | the rebase completes, then the branch's test command | rebase clean and tests green |
@@ -375,6 +378,9 @@ After any applied resolution, a gate re-runs and reaches its own verdict:
 | T-03-5 | **Who** maintainer · **Given** the shipped refusal-reason set · **When** it is compared with §5.3 · **Then** the two are equal as sets — an invented or deleted reason fails. |
 | T-03-6 | **Who** operator · **Given** each prohibition P-1…P-4 and each gate row of §5.4 · **When** an advisory invocation attempts the prohibited thing · **Then** it does not happen **and** the §4 V-8 triple holds on the same path — a negative assertion alone is satisfied by accident. |
 | T-03-7 | **Who** operator · **Given** an applied in-envelope resolution whose seam gate then fails · **When** the gate reports · **Then** the resolution is reverted, the reason is `post-action-verification-failed`, and the seam escalates. |
+| T-03-8 | **Who** maintainer · **Given** the shipped permitted-action set and the shipped exclusion set · **When** each is compared with §5.2 · **Then** the first equals {E-1, E-2, E-3, E-4} and the second equals {X-a, X-b, X-c, X-d, X-e} as sets — a fifth permitted action, or a deleted exclusion, fails. Where a capability the seam depends on is absent the action is still a member and is refused per §9.2 A5-2, so the comparison is not capability-parameterised. |
+| T-03-9 | **Who** operator · **Given** an in-envelope proposal whose produced diff also touches a file outside the feature's declared scope (X-d) · **When** the change is checked · **Then** the whole change is reverted, the reason is `out-of-envelope`, and the out-of-scope file is byte-identical to its pre-invocation state. |
+| T-03-10 | **Who** operator · **Given** a proposal whose produced diff touches a merge-phase self-modification guard path (X-e) · **When** the change is checked · **Then** the whole change is reverted, the reason is `out-of-envelope`, and the guarded file is byte-identical to its pre-invocation state. |
 
 ## 6. FSPEC-ADV-04 — Seams A1 and A2: queue triage and re-grounding
 
