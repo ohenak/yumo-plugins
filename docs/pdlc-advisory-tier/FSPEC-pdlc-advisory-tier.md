@@ -427,6 +427,58 @@ The advisory agent reviews the triage evidence and returns one of three verdicts
 
 ## 7. FSPEC-ADV-05 — Seam A3: DoD exhaustion
 
+**Requirements:** REQ-ADV-06 (AC-6.1 … AC-6.4).
+
+### 7.1 Trigger and flow
+
+The seam fires when Phase DOD's verify → remediate loop has used all three iterations and findings
+remain (B-4), at the point where the pipeline halts today (B-5).
+
+```
+DoD loop exhausted, findings remain
+  │
+  ▼
+advisory agent classifies EVERY remaining finding, with evidence
+  │
+  ├─ any finding is `real-defect`         ──► halt, as today, with the classification attached
+  ├─ any finding is `mis-scoped-criterion`──► escalate (a criterion may not be adjusted — P-1)
+  └─ every finding is `deferral-candidate`──► propose deferral rows, each bound to a named
+                                              successor, and ESCALATE — never enact
+```
+
+### 7.2 Business rules
+
+| # | Rule |
+|---|---|
+| A3-1 | Every remaining finding is classified. A partial classification is malformed (§4 V-4) — the operator's turn depends on the whole picture. |
+| A3-2 | Classes are exactly three: `real-defect`, `mis-scoped-criterion`, `deferral-candidate`. Each classification carries evidence. |
+| A3-3 | `real-defect` present ⇒ the pipeline halts exactly as it does today. The only difference is that the halt now carries a diagnosis, so the operator starts from an analysis rather than from a scan. |
+| A3-4 | The advisory tier **never enacts a deferral**: a deferral is a scope decision. It may propose deferral rows and it must bind each to a named successor, but the proposal escalates for a human. |
+| A3-5 | `mis-scoped-criterion` escalates. Adjusting a DoD criterion is prohibited (P-1), and this class exists precisely to name the situation where the criterion, not the code, is wrong. |
+| A3-6 | A3 changes **no** production file, no test file, and no DoD criterion. Its whole product is a classification, a record, an escalation entry, and — where applicable — a deferral proposal. |
+| A3-7 | Class precedence when a run mixes classes: `real-defect` (halt) outranks `mis-scoped-criterion`, which outranks `deferral-candidate`. The reported outcome names the governing class. |
+
+### 7.3 Edge cases and error scenarios
+
+| Case | Behaviour |
+|---|---|
+| The DoD loop's own verifier produced no readable status | The seam fires as if findings remain — the existing conservative treatment (B-4/B-5) is not weakened, and the classification names the unreadable status as its evidence. |
+| Findings remain but the advisory agent classifies none of them | Malformed (A3-1): consumes an attempt; on budget exhaustion the pipeline halts as today. |
+| Every finding is a `deferral-candidate` but one has no plausible successor | The proposal is incomplete; the invocation escalates and names the unbound finding. An unbound deferral is never proposed as complete. |
+| The advisory agent proposes a code fix instead of a classification | Out of envelope (A3 has no permitted action in §5.2) — refused with `out-of-envelope`; nothing is applied. |
+| Phase DOD is disabled for the run | The seam cannot fire; the advisory summary reports zero A3 invocations. |
+
+### 7.4 Acceptance tests
+
+| # | Who / Given / When / Then |
+|---|---|
+| T-05-1 | **Who** operator · **Given** the DoD loop exhausts its iterations with findings remaining · **When** the advisory tier is enabled · **Then** every remaining finding carries a class and evidence in the advisory record. |
+| T-05-2 | **Who** operator · **Given** at least one finding classified `real-defect` · **When** the phase completes · **Then** the pipeline halts exactly as it does with the tier disabled, and the halt carries the classification. |
+| T-05-3 | **Who** operator · **Given** every finding classified `deferral-candidate` · **When** the phase completes · **Then** no deferral was enacted, no queue row changed, and the escalation entry carries the proposed rows with their named successors. |
+| T-05-4 | **Who** operator · **Given** a finding classified `mis-scoped-criterion` · **When** the phase completes · **Then** no DoD criterion or threshold changed and the seam escalated. |
+| T-05-5 | **Who** operator · **Given** any A3 invocation · **When** it completes · **Then** the working tree is byte-identical to its state when the seam fired. |
+| T-05-6 | **Who** operator · **Given** a mix of `real-defect` and `deferral-candidate` findings · **When** the phase completes · **Then** the outcome is the halt of T-05-2, not the escalation of T-05-3. |
+
 ## 8. FSPEC-ADV-06 — Seam A4: rebase conflict
 
 ## 9. FSPEC-ADV-07 — Seam A5: CI failure
