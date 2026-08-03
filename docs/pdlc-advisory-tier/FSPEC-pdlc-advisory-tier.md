@@ -39,7 +39,8 @@ For a reader deciding where to start: §1 gives the section map and what is deli
 §2 pins the observed baseline every later section cites by id, §3–§5 specify the tier's mechanics once
 (rung, lifecycle, envelope), and §6–§9 apply them seam by seam. §10–§11 cover what the run leaves
 behind for the operator; §12 covers the off case; §13 lists what is still open; §14 is the requirement→section→test
-traceability.
+traceability. §15–§18 are consolidations across those sections — the run-level flow, the rule
+register, the case index, and the test index — each citing the section that owns what it lists.
 
 ## 1. Scope and reading order
 
@@ -64,6 +65,10 @@ once, and a disabled mode that must be byte-for-byte inert.
 | FSPEC-ADV-08 | REQ-ADV-09 | advisory record, its harvest, the delete guard |
 | FSPEC-ADV-09 | REQ-ADV-10 | escalation log and report notices |
 | FSPEC-ADV-10 | AC-1.6, NFR-3 | disabled-tier equivalence |
+
+§15–§18 add no behaviour: they consolidate what §3–§12 already specify — the cross-seam flow, the
+business-rule register, the edge-case index, and the acceptance-test index — so each is readable as
+a whole without re-reading ten sections.
 
 **Not specified here** (owned downstream by TSPEC / PLAN): module and constant placement, seam and
 function signatures, the literal advisory model alias, prompt text, file formats at the byte level,
