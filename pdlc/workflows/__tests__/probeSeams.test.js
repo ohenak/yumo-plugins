@@ -337,6 +337,63 @@ describe("`_probeDoc` answers the wrapper's before/after observations", () => {
   });
 });
 
+// ─── Fix (2): the no-progress halt names the still-missing rows ─────────────────
+//
+// The `pdlc-advisory-tier` halt read "no progress across 3 consecutive attempts
+// (16 of 16 sections complete)" and said nothing about WHY the gate was unhappy —
+// the operator had to re-read a 1414-line TSPEC to discover the completeness probe
+// still reported six required rows missing on a document that covered all of them.
+// When the probe's `missing` is non-empty at a no-progress halt, the message now
+// names those rows and flags the likely cause (a heading-naming mismatch, not a
+// content gap). The 3-attempt CONDITION is unchanged.
+describe("the no-progress halt is self-explaining when the gate still reports a shortfall", () => {
+  /** A stalled probe (fixed digest ⇒ no progress) whose `missing` is scripted. */
+  const stalledProbeWithMissing = (missing) =>
+    scriptedProbe(() => ({
+      ok: true,
+      exists: true,
+      empty: false,
+      hash: `sha256:${"a".repeat(64)}`,
+      artifactClass: "spec",
+      complete: false,
+      missing,
+      T: 16,
+      S: 16,
+      firstUnwritten: "the closing pass over the whole document",
+      anchors: [],
+    }));
+
+  test("a non-empty missing-set is named, with the heading-mismatch hint", async () => {
+    const run = await runLoop({
+      probes: { _probeDoc: stalledProbeWithMissing(["Overview", "Data Model"]) },
+      agent: async (skill) => (REVIEWERS.includes(skill) ? APPROVE : ""),
+    });
+
+    expect(run.result.halted).toBe(true);
+    // Base sentence unchanged — the section count still reads through.
+    expect(run.result.haltDetail).toMatch(/made no progress across 3 consecutive attempts/);
+    expect(run.result.haltDetail).toContain("(16 of 16 sections complete)");
+    // …and the new clause names the exact rows and the likely cause.
+    expect(run.result.haltDetail).toContain("gate still requires: [Overview, Data Model]");
+    expect(run.result.haltDetail).toContain(
+      "heading-naming mismatch against isComplete's required headings, not a content gap"
+    );
+  });
+
+  test("an empty missing-set adds NO gate clause — a genuinely-stalled author still halts plainly", async () => {
+    const run = await runLoop({
+      probes: { _probeDoc: stalledProbeWithMissing([]) },
+      agent: async (skill) => (REVIEWERS.includes(skill) ? APPROVE : ""),
+    });
+
+    expect(run.result.halted).toBe(true);
+    expect(run.result.haltDetail).toMatch(/made no progress across 3 consecutive attempts/);
+    // The clause is conditional on a non-empty probe shortfall — absent here.
+    expect(run.result.haltDetail).not.toContain("gate still requires");
+    expect(run.result.haltDetail).not.toContain("heading-naming mismatch");
+  });
+});
+
 describe("`_probeDoc` falls back rather than failing", () => {
   /** The same fixture with no probe at all — the behaviour every fallback must match. */
   const baseline = () => runLoop({});

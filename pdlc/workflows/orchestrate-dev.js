@@ -3158,54 +3158,59 @@ export function isStaleByHash(recordedHash, documentHash) {
  * The six spec classes' required top-level headings (TSPEC §5.9 = FSPEC §16.2).
  *
  * `title` is the **canonical** name — the form §5.9 lists first, and the form
- * `missing` carries even when the document rendered `alt` or a case/spacing/
- * numeric-prefix variant. `alt` is §5.9's parenthesised alternative, accepted as
- * equivalent; `null` where the row states none.
+ * `missing` carries even when the document rendered an alias or a case/spacing/
+ * numeric-prefix variant. `alts` is the **curated alias list** §5.9's rows accept
+ * as equivalent, matched (like the whole table now) by normalised, word-boundary
+ * containment rather than exact equality: a concern-organized spec whose author
+ * numbered and described its sections (`## 4. The advisory core — types, SeamOps
+ * protocol, …`) satisfies the required concepts (`Interfaces`, `Data Model`)
+ * without carrying their canonical headings verbatim. `[]` where the row admits no
+ * alias. See `isComplete`'s `shortfall` for the matcher and its boundary rules.
  */
 const REQUIRED_HEADINGS = Object.freeze({
   REQ: Object.freeze([
-    { title: "Problem / Context", alt: null },
-    { title: "Goals", alt: null },
-    { title: "Non-Goals", alt: "Scope" },
-    { title: "Constraints", alt: null },
-    { title: "Acceptance Criteria", alt: null },
-    { title: "Risks", alt: null },
-    { title: "Obligations", alt: "Open Questions" },
+    { title: "Problem / Context", alts: ["Context", "Problem", "Background"] },
+    { title: "Goals", alts: ["Objectives"] },
+    { title: "Non-Goals", alts: ["Scope", "Out of scope"] },
+    { title: "Constraints", alts: [] },
+    { title: "Acceptance Criteria", alts: ["Acceptance"] },
+    { title: "Risks", alts: [] },
+    { title: "Obligations", alts: ["Open Questions", "Assumptions"] },
   ]),
   FSPEC: Object.freeze([
-    { title: "Overview", alt: "Scope" },
-    { title: "Linked Requirements", alt: null },
-    { title: "Behavioral Flow", alt: null },
-    { title: "Business Rules", alt: null },
-    { title: "Edge Cases and Error Scenarios", alt: null },
-    { title: "Acceptance Tests", alt: null },
-    { title: "Open Questions", alt: null },
+    { title: "Overview", alts: ["Scope", "Summary", "Context"] },
+    { title: "Linked Requirements", alts: [] },
+    { title: "Behavioral Flow", alts: [] },
+    { title: "Business Rules", alts: [] },
+    { title: "Edge Cases and Error Scenarios", alts: [] },
+    { title: "Acceptance Tests", alts: [] },
+    { title: "Open Questions", alts: ["Obligations", "Assumptions"] },
   ]),
   TSPEC: Object.freeze([
-    { title: "Overview", alt: null },
-    { title: "Architecture", alt: "Design" },
-    { title: "Interfaces", alt: null },
-    { title: "Data Model", alt: "State" },
-    { title: "Test Strategy", alt: null },
-    { title: "Open Questions", alt: null },
+    { title: "Overview", alts: ["Scope", "Summary", "Context", "Introduction"] },
+    { title: "Architecture", alts: ["Design"] },
+    { title: "Interfaces", alts: ["Interface", "Protocol", "Protocols", "Seams", "APIs", "API"] },
+    { title: "Data Model", alts: ["Types", "State", "Schema", "Data structures"] },
+    { title: "Test Strategy", alts: ["Testing", "Test plan", "Verification"] },
+    { title: "Open Questions", alts: ["Obligations", "Assumptions", "Risks", "Decisions"] },
   ]),
   PLAN: Object.freeze([
-    { title: "Overview", alt: null },
-    { title: "Batches", alt: "Tasks" },
-    { title: "Dependencies", alt: null },
-    { title: "Verification", alt: null },
+    { title: "Overview", alts: ["Scope", "Summary"] },
+    { title: "Batches", alts: ["Tasks", "Work breakdown"] },
+    { title: "Dependencies", alts: ["Ordering"] },
+    { title: "Verification", alts: ["Testing", "Validation"] },
   ]),
   PROPERTIES: Object.freeze([
-    { title: "Overview", alt: null },
-    { title: "Properties", alt: null },
-    { title: "Oracles", alt: null },
-    { title: "Fixtures", alt: null },
+    { title: "Overview", alts: ["Scope", "Summary"] },
+    { title: "Properties", alts: ["Invariants"] },
+    { title: "Oracles", alts: ["Checks"] },
+    { title: "Fixtures", alts: ["Generators", "Test data"] },
   ]),
   DECISIONS: Object.freeze([
-    { title: "Context", alt: null },
-    { title: "Options Considered", alt: null },
-    { title: "Decision", alt: null },
-    { title: "Consequences", alt: null },
+    { title: "Context", alts: ["Background"] },
+    { title: "Options Considered", alts: ["Options", "Alternatives"] },
+    { title: "Decision", alts: ["Chosen", "Resolution"] },
+    { title: "Consequences", alts: ["Tradeoffs", "Implications"] },
   ]),
 });
 
@@ -3277,6 +3282,35 @@ function normaliseHeadingTitle(raw) {
     .trim()
     .replace(/\s+/g, " ")
     .toLowerCase();
+}
+
+/**
+ * Word-boundary-aware substring containment — the spec gate's matcher (see
+ * `isComplete`'s `shortfall`). `term` matches inside `hay` when it occurs
+ * delimited on both sides by anything that is NOT a word char, or by a string
+ * edge. A word char is `[a-z0-9-]` (hyphen included), which is the whole point:
+ *
+ *   - `hay="non-goals"`, `term="goals"` → NO match (the `-` before `goals` is a
+ *     word char), so `Non-Goals` never satisfies `Goals`;
+ *   - `hay="decisions"`, `term="decision"` → NO match (the trailing `s` is a word
+ *     char), so a `## Decisions` extra never hides a missing `Decision` row;
+ *   - `hay="scope, baseline pin, and what this decides"`, `term="scope"` → match
+ *     (comma is a boundary), so a numbered/descriptive heading exposes its concept.
+ *
+ * Both `hay` and `term` are already normalised (lower-cased, enumerator-stripped,
+ * whitespace-collapsed) by the callers.
+ */
+function headingContains(hay, term) {
+  if (!term) return false;
+  const isWordChar = (c) => c !== "" && /[a-z0-9-]/.test(c);
+  for (let from = 0; ; ) {
+    const at = hay.indexOf(term, from);
+    if (at === -1) return false;
+    const before = at === 0 ? "" : hay[at - 1];
+    const after = at + term.length >= hay.length ? "" : hay[at + term.length];
+    if (!isWordChar(before) && !isWordChar(after)) return true;
+    from = at + 1;
+  }
 }
 
 /**
@@ -3387,19 +3421,36 @@ export function isComplete(artifactClass, docType, fileText) {
   const S = sections.filter((s) => !isEmptyBody(s.body)).length;
   const done = (complete, missing) => ({ complete, missing, T, S });
 
-  // A required row is satisfied when SOME section matches its canonical title or
-  // its alternative AND that section's body is non-empty. Extra headings are
-  // permitted, counted in `T`, and never subtract — a document richer than the
-  // minimum is not incomplete. Order is not required.
+  // A required row is satisfied when SOME non-empty-bodied section's normalised
+  // title CONTAINS the row's canonical title, or one of its curated aliases, as a
+  // WORD-BOUNDED substring (the `code-review` gate's `.includes("findings")` idiom,
+  // tightened at the edges). This is the greenfield-spec fix: an author who
+  // organises the spec by concern — `## 1. Scope, baseline pin, and what this
+  // TSPEC decides`, `## 4. The advisory core — types, SeamOps protocol, …` —
+  // satisfies the required *concepts* without carrying their canonical headings
+  // verbatim, where the old exact/prefix equality false-halted a complete document.
+  //
+  // "Word-bounded" is not decorative: a word char is `[a-z0-9-]`, so a hyphenated
+  // compound does not leak its tail (`non-goals` does NOT satisfy `Goals`) and a
+  // plural does not satisfy its singular row (`## Decisions` does NOT satisfy
+  // `Decision`). Everything else — spaces, commas, slashes, em dashes — is a
+  // boundary, so a numbered, descriptive heading still exposes the short concept it
+  // contains. Extra headings are permitted, counted in `T`, and never subtract — a
+  // document richer than the minimum is not incomplete. Order is not required.
+  const rowTerms = (row) => {
+    const terms = [normaliseHeadingTitle(row.title)];
+    for (const a of row.alts || (row.alt ? [row.alt] : [])) terms.push(normaliseHeadingTitle(a));
+    return terms.filter(Boolean);
+  };
   const shortfall = (rows) => {
     const satisfied = new Set();
     for (const s of sections) {
+      if (isEmptyBody(s.body)) continue;
       for (const row of rows) {
         const matches = row.prefix
           ? s.normalised.startsWith(normaliseHeadingTitle(row.title))
-          : s.normalised === normaliseHeadingTitle(row.title) ||
-            (row.alt && s.normalised === normaliseHeadingTitle(row.alt));
-        if (matches && !isEmptyBody(s.body)) satisfied.add(row.title);
+          : rowTerms(row).some((t) => headingContains(s.normalised, t));
+        if (matches) satisfied.add(row.title);
       }
     }
     return rows.map((r) => r.title).filter((t) => !satisfied.has(t));
@@ -5387,10 +5438,19 @@ async function dispatchAndVerify({
     consecutiveNoProgress = progressed ? 0 : consecutiveNoProgress + 1;
     const sections = `(${measured.S} of ${measured.T} sections complete)`;
     const trailerNote = lastTrailerReason ? `; last trailer outcome: ${lastTrailerReason}` : "";
+    // Self-explaining no-progress halt: when the gate still names a shortfall, say
+    // which rows and flag the most common cause — a heading-naming mismatch on a
+    // document that DOES cover the concept — so a stall like the one that halted a
+    // complete `pdlc-advisory-tier` TSPEC is legible without re-reading the file.
+    // The 3-attempt CONDITION is unchanged; only the message grows.
+    const stillMissing = Array.isArray(measured.missing) ? measured.missing : [];
+    const gateNote = stillMissing.length
+      ? `; gate still requires: [${stillMissing.join(", ")}]; if the document substantively covers these, this is a heading-naming mismatch against isComplete's required headings, not a content gap`
+      : "";
 
     if (consecutiveNoProgress >= MAX_AUTHORING_ATTEMPTS) {
       throw authoringHaltError(
-        `Phase ${phaseId}: ${skill} made no progress across ${MAX_AUTHORING_ATTEMPTS} consecutive attempts on ${targetPath} ${sections}${trailerNote}.`,
+        `Phase ${phaseId}: ${skill} made no progress across ${MAX_AUTHORING_ATTEMPTS} consecutive attempts on ${targetPath} ${sections}${gateNote}${trailerNote}.`,
         lastTrailerReason
       );
     }
