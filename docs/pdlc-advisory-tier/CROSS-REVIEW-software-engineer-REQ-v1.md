@@ -92,3 +92,35 @@ plan both resolve.
   expensive failure mode, and it is worth the extra `gh` capability F-08 asks you to declare.
 
 ## Recommendation
+
+**Needs revision**
+
+The design is sound and the control model is the right one; the revisions below are about grounding
+and attainability, not about direction. To close this round:
+
+1. **Re-ground against `main` (F-01).** The branch is 37 commits behind and `pdlc-merge-phase` has
+   landed. Re-check every §1 "Today" claim and §6 blocker against `main`, and retire BL-02.
+2. **Reconcile with the shipped escalation channel (F-02).** Extend `MERGE_ESCALATIONS`, or state
+   the outcome that requires a separate durable file and what becomes of the existing notices.
+3. **Fix the two phase-ordering contradictions (F-03, F-04).** Phase PUB runs after Phase H. Restate
+   AC-8.3 as an outcome about DoD-passed reporting, and give AC-9.3 a harvest point that A5 records
+   can actually reach.
+4. **Declare the four thresholds (F-05)** — name, default, owning section of
+   `.claude/pdlc.config.json`.
+5. **Restate AC-3.5 as an attainable outcome (F-06)** — revert-and-escalate on a test-assertion
+   touch, asserted by test, per the AC-7.4 template.
+6. **Resolve the five Mediums (F-07–F-11):** what stays deterministic at A1/A2 and what the advisory
+   verdict may override; the default-branch-history capability; a distinguishable A2 signal; the
+   `ready` overload; and the observable definition of "cannot be resolved".
+
+The Lows (F-12–F-15) are worth folding into the same revision but would not, alone, block.
+
+No upstream defects found: the `REQ-MERGE-03` citation resolves
+(`docs/pdlc-merge-phase/REQ-pdlc-merge-phase.md:106`) and the master-plan row is real
+(`docs/design/MASTER-PLAN-engineering-loop.md:243`). F-01's stale queue row is an operator note
+about `docs/_queue/QUEUE.md`, not a defect of an upstream pdlc document.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 6, "medium": 5, "low": 4}
