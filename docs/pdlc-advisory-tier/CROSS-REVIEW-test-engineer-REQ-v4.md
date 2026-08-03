@@ -51,7 +51,30 @@ or Medium. Numbering continues from v3.
 
 ## Questions
 
+Q-10 from v3 stays open and TSPEC-answerable. One new question from the AC-9.1 change; neither blocks
+a REQ-level acceptance test.
+
+| ID | Question |
+|----|---------|
+| Q-11 | AC-9.1 now ends a `hold`/`escalate` advisory record's life at "that feature's next run … at Phase PUB". For a candidate that is held repeatedly — or held and never picked again — that next run may never occur, so the record persists and each subsequent queue invocation appends to the same `ADVISORY-{feature}.md`. Is unbounded append the intended behavior (records are append-only evidence, so growth is fine), or should a re-adjudication of the same candidate be expected to find and extend the prior record? The answer decides whether the A1/A2 acceptance test asserts *one* record per adjudication with no upper bound, or a merge/idempotence property across invocations. |
+
 ## Positive Observations
+
+- **Item 2 is the right kind of fix.** The v1.3 A1 row named a real function and a real state, and
+  was still untestable; deleting the gate rather than inventing a plausible one is the answer that
+  leaves the test author with an oracle that can go red (AC-5.1's routing) instead of one that
+  cannot. AC-5.1 was changed in the same edit, so the two do not drift.
+- **NFR-4 states its own arithmetic.** "(without that carve-out the CI completion window, which
+  exceeds the default, ends every A5 invocation inside attempt 1 and `advisory.attemptBudget` never
+  binds)" is the reason the exclusion exists, written into the requirement. The next reviewer does
+  not have to re-derive it, and a future edit that drops the carve-out has to argue with it.
+- **AC-8.2's generalisation preserves the discriminator.** Widening one attempt to *act→re-poll*
+  could have blurred E-1 and E-2; instead both decidable rules still pivot on whether a push
+  occurred, so the two branches remain separately fixturable and the attempt counter is one shared,
+  determinate integer.
+- **Five of the six items were closed by changing text in two or more places.** §1↔AC-5.5,
+  AC-1.7↔NFR-4, AC-1.7↔AC-8.2↔E-1 — each pair was updated together rather than leaving a stale
+  sibling. That is what kept this round's regression surface as small as it is.
 
 ## Recommendation
 
