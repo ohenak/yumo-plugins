@@ -454,6 +454,134 @@ The last two rows are the asymmetry FSPEC calls out: the record is a preconditio
 
 ## 5. Envelope enforcement, refusal ladder, prohibitions (FSPEC-ADV-03, ADV-04)
 
+### 5.1 `classifyEnvelope` — one pure function, evaluated twice
+
+```js
+/**
+ * @param {{ action: string, paths: string[] }} candidate  proposal (step 3) or produced diff (step 5)
+ * @param {{ seam: string, permittedActions: string[], declaredScope: string[],
+ *           guardPaths: string[], capabilities: object }} ctx
+ * @returns {{ inside: boolean, reason: string|null, matched: string[] }}
+ *          reason ∈ {"prohibited-action","revert-on-test-touch","out-of-envelope"} | null
+ */
+export function classifyEnvelope(candidate, ctx)
+```
+
+Pure and total — no IO, no clock, no agent. E-R3/NFR-1 are satisfied structurally: the only caller is
+`runAdvisorySeam` steps 3 and 5, and no prompt text participates in the decision. E-R2/BR-3 are
+satisfied by **calling the same function twice with different `candidate`s** rather than by two
+code paths that could drift.
+
+Evaluation order inside `classifyEnvelope` — deliberately the §5.3 order, so a candidate that
+satisfies two exclusions yields the earlier reason without the caller re-deriving it:
+
+| # | Check | Implementation |
+|---|---|---|
+| 1 | P-1…P-4 prohibitions | `isProhibited(candidate, ctx)` — §5.4 |
+| 2 | X-a test artifacts | `touchesTestArtifact(paths, action)` — §5.2 |
+| 3 | X-e self-modification guard paths | **`guardVerdict(changed, ctx.guardPaths)` reused verbatim** (`dev:731`), with `ctx.guardPaths = effectiveGuardPaths(mergeConfig.guardPaths)` (`dev:708`) |
+| 4 | X-d declared scope | every path ∈ `ctx.declaredScope` |
+| 5 | X-b DoD criteria / thresholds | path-and-content predicate, §5.2 |
+| 6 | X-c / membership | `candidate.action ∈ ctx.permittedActions` and the action's decidable rule holds |
+
+**Row 3 is a cite-and-reuse, not a new mechanism.** Phase MERGE already ships the exact predicate
+X-e needs — an anchored, `/`-delimited, non-globbing `startsWith` match over a frozen default set
+plus additive config (`dev:716-737`, `dev:47-53`) — including the fail-closed `ok !== true` branch
+that makes an unretrievable file list a guard *hit*. Building a second matcher for X-e would let the
+two disagree about, say, `pdlc/workflowsX/`; reusing it makes T-03-10 and Phase MERGE's own guard
+tests describe one behaviour. The advisory tier passes a synthesised `{ ok: true, files }`, so it
+takes the same matcher without inheriting the `gh`-observation shape.
+
+### 5.2 The two predicates this feature does own
+
+```js
+export const TEST_PATH_RE = /(^|\/)(tests?|__tests__|spec)\//i;
+export const TEST_FILE_RE = /\.(test|spec)\.[jt]sx?$|^conftest\.py$|_test\.py$|^test_.*\.py$/i;
+export const TEST_CONFIG_RE = /(^|\/)(jest\.config|pytest\.ini|\.coveragerc|setup\.cfg|vitest\.config|mutmut\.ini)/i;
+
+export function touchesTestArtifact(paths, action)   // X-a — path OR operation
+export function touchesDodCriterion(paths, action)   // X-b
+```
+
+X-a is **path-based *and* operation-based**, because AC-3.5 enumerates operations ("narrowing a
+parametrised case list", "adding a skip/xfail/only marker", "lowering a coverage threshold") that a
+path test alone cannot catch — a threshold lives in `package.json` or `pyproject.toml`, neither of
+which matches a test path. `action` therefore carries the seam's structured description of the edit,
+and each of T-03-3's seven enumerated operations maps to one clause. **This is the hardest-enforced
+rule in the feature and the one the PLAN gives its own batch**: the seven operations are seven named
+tests, and a dropped clause fails the suite by construction (§13.4).
+
+`declaredScope` (X-d) is computed per seam, never inferred by an agent:
+
+| Seam | `declaredScope` | Source |
+|---|---|---|
+| A1 | `[]` — A1 changes no file (A1-4) | constant |
+| A2 | `[reqPath]` exactly (A2-5) | the candidate's own REQ path from the queue row (`queue:116` `parseQueue`) |
+| A3 | `[]` — A3 changes no file (A3-6) | constant |
+| A4 | PLAN-named files ∪ `git diff --name-only {mergeBase}..{preRebaseHead}` | `parsePlanTasks` (`dev:1130`) + `_git` (`dev:6707`) |
+| A5 | PLAN-named files ∪ `git diff --name-only {mergeBase}..HEAD` | same |
+
+### 5.3 The refusal ladder as a frozen, ordered catalogue
+
+```js
+export const ADVISORY_REFUSAL_REASONS = Object.freeze([
+  "prohibited-action",
+  "revert-on-test-touch",
+  "out-of-envelope",
+  "post-action-verification-failed",
+  "record-write-failed",
+  "malformed-verdict",
+  "low-confidence",
+  "budget-exhausted",
+]);
+
+/** @param {Object<string,boolean>} signals  the conditions true AT TERMINATION
+ *  @returns {string} the first matching reason, in catalogue order */
+export function refusalReasonFor(signals)
+```
+
+Frozen exactly as `MERGE_MODES` / `MERGE_STATUSES` / `LIST_FAILURES` are (`dev:54-55`, `dev:1600`) —
+the shipped convention for a closed set, and what makes T-03-5's set-equality assertion a one-liner
+against the exported constant rather than a scrape of the source. `refusalReasonFor` returning the
+**first** match is the whole of "the first matching trigger wins"; T-03-4 is a direct unit test over
+it with two signals set.
+
+`signals` is built once, at termination, from the terminating condition — never accumulated (§4.5).
+
+### 5.4 Prohibitions — structural, not asserted
+
+| # | Prohibition | How code makes it unreachable |
+|---|---|---|
+| P-1 | never mark a DoD criterion satisfied / weaken one / reduce the iteration count | `DOD_MAX_ITERATIONS` (`dev:25`) and `dodVerifyLoop`'s `maxIterations` (`dev:6158-6160`) are never passed anything advisory-derived; A3's `permittedActions` is `[]`; X-b refuses any diff touching a criterion |
+| P-2 | never set `ready: true` on a REQ | A2's `apply` rewrites **citation lines only**; the frontmatter block that `parseReqFrontmatter` reads (`queue:232`) is excluded from the rewritable region, and a produced diff touching it fails X-d (scope is the REQ but the *action* is not E-4) |
+| P-3 | never declare CI passed | `ciStatus` continues to come only from `checkPrCi` (`dev:5812`) via `raisePrAndVerifyCi` (`dev:6250-6254`); no advisory value is ever assigned to it. §8.4 |
+| P-4 | never merge a PR, never alter a queue `Status` cell | no advisory path calls `executeMerge` (`dev:6747`), `phaseMerge` (`dev:6850`), `rewriteStatus` (`queue:1086`) or `updateQueueStatus` (`queue:358`); the queue-side `SeamOps` are constructed without `_writeFile` bound to `queuePath` |
+
+Each row is also a **negative-and-positive** test per AC-4.6 / T-03-6: the prohibited thing does not
+happen **and** the §4.3 V-8 triple holds on the same path. A test asserting only the negative would
+pass against a build where the seam never fired at all, which is the accident AC-4.6 names.
+
+NFR-5 (no new credentials) is structural too: the advisory tier's only outward-facing capabilities
+are `_ghRun` (`dev:581`) and `_git` (`dev:6707`), both already held and both already injected — it
+introduces no new transport. What it *does* newly require of those existing transports is §8.3's two
+capability probes.
+
+### 5.5 The gate that re-runs, per seam
+
+`SeamOps.verifyGate` (§4.3) is the only place a gate is named, and every implementation delegates to
+an existing gate rather than reimplementing one:
+
+| Seam | `verifyGate` implementation | Existing symbol reused |
+|---|---|---|
+| A1 | `async () => ({ passed: true })` — A1 has no post-action gate (§5.4's "—" row); its safety is A1-3's escalate-when-unsettled, and `permittedActions: []` means the gate is unreachable anyway | — |
+| A2 | commit the REQ + record, then confirm the branch head carries them | `commitPaths` (`dev:6790`), pathspec-scoped |
+| A3 | unreachable (`permittedActions: []`) | — |
+| A4 | complete the rebase, then run the branch's test command | `rebaseOntoDefault` (`dev:6139`), `_runCommand` (`dev:6897`) |
+| A5 | push, then re-read the rollup | `_git`, `checkPrCi` (`dev:5812`) |
+
+BR-6 ("a gate, not an agent, ends a seam") is therefore not a rule the code must remember: the
+driver's only route to `resolved` runs through `verifyGate`, and no `verifyGate` consults an agent.
+
 ## 6. Seams A1 and A2 — the queue module (FSPEC-ADV-04)
 
 ## 7. Seams A3 and A4 — Phase DOD (FSPEC-ADV-05, ADV-06)
