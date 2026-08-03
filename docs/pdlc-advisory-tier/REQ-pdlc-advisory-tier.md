@@ -165,7 +165,7 @@ halt currently conflates: *diagnosing* the problem, and *authorizing* the resolu
 
   | Seam | Gate that re-runs | State it must reach |
   |---|---|---|
-  | A1 | the deterministic dependency-presence pre-check only; Phase-0 triage is itself an agent verdict and is **not** re-run | every declared dependency present in base |
+  | A1 | the queue's dependency pre-check only; Phase-0 triage is itself an agent verdict and is **not** re-run | the pre-check returns not-blocked (AC-5.1) |
   | A2 | the same pre-check plus triage, on the re-grounded REQ, in the **next** queue invocation — applying a proposal does not pick a candidate, so AC-5.4's one-pick guarantee is preserved | triage reaches a verdict of its own |
   | A3 | Phase DOD's verify step | no findings remaining |
   | A4 | the rebase completes, then the branch's test command (AC-7.4) | rebase clean and tests green |
@@ -180,8 +180,11 @@ halt currently conflates: *diagnosing* the problem, and *authorizing* the resolu
 - **AC-5.1** — Given a triage stop routed to A1, Then an advisory agent reviews the triage evidence
   and returns `run-candidate`, `hold`, or `escalate`. Only a `needs-human` **abstention** is
   adjudicable: the advisory verdict may never overturn a triage verdict of `blocked`, and may never
-  return `run-candidate` for a REQ whose declared dependency is absent from base — that remains a
-  deterministic check and it is the gate AC-4.5 re-runs.
+  return `run-candidate` for a candidate the queue's dependency pre-check reports blocked — that
+  pre-check runs before any advisory agent and is the gate AC-4.5 re-runs. The pre-check is
+  one-sided: it establishes only that no declared dependency has a not-`done` queue row, never that
+  a dependency is present in base. Where presence in base is therefore unsettled, the advisory
+  verdict is `escalate` — no advisory agent adjudicates presence in base.
 - **AC-5.2** — Given the stale-REQ re-grounding gate fires, Then the advisory agent re-diffs the
   REQ's load-bearing citations against HEAD and produces a **re-grounding proposal** listing each
   drifted citation with its corrected location.
