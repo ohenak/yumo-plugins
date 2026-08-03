@@ -947,11 +947,13 @@ read the advisory config ONCE (§3.1 C-3)
   └─ advisory rung, or the declared fallback with its warning (§3.2 M-2)
   │
   │   ┌──────────────────────────────────────────────────────────────┐
-  │   │ §4.1 lifecycle: DIAGNOSE → VALIDATE → GATE → ACT → CHECK →   │
-  │   │                 VERIFY → RECORD                              │
+  │   │ §4.1 lifecycle: DIAGNOSE → VALIDATE → GATE → RE-CHECK → ACT  │
+  │   │                 → CHECK → VERIFY → RECORD                    │
   │   │   resolved  ──► the pipeline continues from the gate's verdict│
   │   │   escalated ──► §11 log entry + report notice, then the       │
   │   │                 pre-advisory outcome above, unchanged         │
+  │   │   no-action ──► the re-check found the condition gone; nothing│
+  │   │                 applied, nothing refused, no log entry (V-7)  │
   │   └──────────────────────────────────────────────────────────────┘
   │
   ▼
