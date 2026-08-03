@@ -142,13 +142,24 @@ halt currently conflates: *diagnosing* the problem, and *authorizing* the resolu
   the AC-7.4 template applied to test tampering. Each operation enumerated in AC-3.4(a) is asserted
   by its own test: fixing a red test by editing the test is the pipeline's most dangerous failure
   mode, so a dropped case must fail the suite.
-- **AC-3.6** — Given any refusal — out-of-envelope proposal, a REQ-ADV-04 prohibition, a reverted
-  diff, low confidence, exhausted budget, or a malformed verdict — Then the observable outcome is
-  the same triple: the seam's outcome is `escalated`; the advisory record (AC-9.1) and the
-  escalation entry (AC-10.1) both carry a refusal reason from the closed set `out-of-envelope`,
-  `prohibited-action`, `revert-on-test-touch`, `low-confidence`, `budget-exhausted`,
-  `malformed-verdict`, `record-write-failed`; and the pipeline's pre-advisory behavior for that
-  seam — skip at A1/A2, halt at A3/A4/A5 — proceeds unchanged.
+- **AC-3.6** — Given any refusal, Then the observable outcome is the same triple: the seam's outcome
+  is `escalated`; the advisory record (AC-9.1) and the escalation entry (AC-10.1) both carry one
+  refusal reason; and the pipeline's pre-advisory behavior for that seam — skip at A1/A2, halt at
+  A3/A4/A5 — proceeds unchanged. The reasons are a closed, **ordered** set and the first matching
+  trigger wins, so a refusal satisfying two triggers still has one reason:
+
+  | # | Reason | Trigger |
+  |---|---|---|
+  | 1 | `prohibited-action` | a REQ-ADV-04 prohibition |
+  | 2 | `revert-on-test-touch` | the proposed or produced diff touches AC-3.4(a) |
+  | 3 | `out-of-envelope` | any other out-of-envelope proposal or reverted diff (AC-3.2) |
+  | 4 | `post-action-verification-failed` | an in-envelope action was applied and the AC-4.5 gate or the AC-7.4 test re-run then failed |
+  | 5 | `record-write-failed` | the AC-9.2 record write failed |
+  | 6 | `malformed-verdict` | AC-2.3 |
+  | 7 | `low-confidence` | `confidence != high` (AC-2.2) |
+  | 8 | `budget-exhausted` | AC-2.4 / NFR-4 |
+
+  The enumeration is asserted by set-equality, so a deleted or invented reason fails the suite.
 
 ### REQ-ADV-04 — What the advisory tier may never do
 
