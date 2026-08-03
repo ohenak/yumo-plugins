@@ -727,6 +727,115 @@ why T-04-6 asserts a *subsequent* invocation sees it.
 
 ## 7. Seams A3 and A4 — Phase DOD (FSPEC-ADV-05, ADV-06)
 
+### 7.1 Wiring into `orchestrate-dev.js`
+
+`main` (`dev:6861-6903`) gains `_runAdvisorySeam` and `_readAdvisoryConfig`; the config is read once,
+before the phase loop, and the resolution memo `{ resolved: null }` is created beside it (§3.5). The
+Phase DOD body (`dev:8151-8190`) gains two insertion points, both **immediately before an existing
+`throw haltError(...)`**, which is what makes L-3 ("escalation never changes control flow") a
+structural property: on every path the original `haltError` still executes.
+
+```js
+// dev:8166 — A4, before the rebase-conflict halt
+if (rebaseStatus === "conflict") {
+  const a4 = await runAdvisorySeamFn({ seam: "A4", … });
+  advisory.record(a4);
+  if (a4.outcome !== "resolved") {
+    recordPhase("DOD", …, "❌", "Rebase onto default branch conflicted — resolve manually");
+    throw haltError(…);                      // dev:8168-8172, byte-identical
+  }
+  // resolved ⇒ the branch is rebased and green; fall through to the DoD loop
+}
+
+// dev:8179 — A3, before the DoD not-passed halt
+if (!dodResult.passed) {
+  const a3 = await runAdvisorySeamFn({ seam: "A3", … });
+  advisory.record(a3);
+  recordPhase("DOD", …, "❌", `Failed after ${dodResult.iterations} iterations — ${detail}`);
+  throw haltError(`${…} ${a3.classificationSummary ?? ""}`);   // dev:8185-8187 + AC-6.3's diagnosis
+}
+```
+
+A3 **cannot** resolve — `permittedActions: []` — so its branch has no `if (resolved)` at all; the
+halt is unconditional, which is A3-3 ("halts exactly as it does today") written as code rather than
+as a rule to remember. The only difference is the appended classification, per AC-6.3.
+
+### 7.2 A3 — `SeamOps` for DoD exhaustion
+
+| Member | Implementation |
+|---|---|
+| `gatherEvidence` | `dodResult.lastStatus` (`dev:6191`, the `parseDodStatus` shape at `dev:5944`) plus the text of `CODE_REVIEW-{feature}-v{DOD_MAX_ITERATIONS}.md` read through `_readFile` |
+| `prompt` | classify **every** remaining finding as `real-defect` / `mis-scoped-criterion` / `deferral-candidate`, each with evidence, and bind every `deferral-candidate` to a named successor |
+| `conditionHolds` | `async () => true` |
+| `permittedActions` | `[]` (A3-6) |
+| `declaredScope` | `[]` |
+| `verifyGate` | unreachable |
+
+`parseA3Classification(raw)` is a pure function returning `{ classes: Array<{finding, class, evidence, successor?}>, complete: boolean }`:
+
+- **A3-1** — `complete` is false when the classified-finding count is below the finding count in the
+  evidence; an incomplete classification is malformed (V-4), so it consumes an attempt and, on budget
+  exhaustion, the pipeline halts as today.
+- **A3-2** — the three classes are a frozen exported array, set-equality tested like §5.3's reasons.
+- **A3-7** — `governingClass(classes)` is pure and ordered: `real-defect` > `mis-scoped-criterion` >
+  `deferral-candidate`. T-05-6 (a mixed run halts rather than escalating) is a unit test over it.
+- **A3-4** — a `deferral-candidate` with no `successor` makes the proposal incomplete; the invocation
+  escalates naming the unbound finding, and **no path writes a deferral row anywhere**. The tier holds
+  no reference to `QUEUE.md` on the dev side, so "never enacts a deferral" is structural (P-4, §5.4).
+- **§7.3's unreadable-verifier row** — `parseDodStatus` already returns `status: "unknown"` and the
+  loop already treats that as failed (`dev:6178-6180`); A3 fires on the same not-passed branch and
+  names the unreadable status as its evidence. The conservative baseline is not weakened.
+
+**T-05-5 (the working tree is byte-identical after any A3 invocation)** is the assertion that catches
+an A3 that quietly acquired a capability: it is a tree comparison, not a claim about `permittedActions`.
+
+### 7.3 A4 — `SeamOps` for rebase conflict
+
+| Member | Implementation |
+|---|---|
+| `gatherEvidence` | the conflicting-file list and, per file, the E-3 determination computed **by the pipeline**: `git cat-file -e {mergeBase}:{path}` and `git cat-file -e {defaultTip}:{path}` through `_git` |
+| `prompt` | resolve each conflict in a branch-created file, reporting per file which side was taken and why (A4-5) |
+| `conditionHolds` | re-read the rebase state; an empty conflict set ⇒ `no-action` (§8.3's first row) |
+| `permittedActions` | `["E-3"]` |
+| `declaredScope` | PLAN files ∪ `git diff --name-only {mergeBase}..{preRebaseHead}` — the **pre-rebase** head (A4-3), captured before `rebaseOntoDefault` is called |
+| `apply` | write the resolutions into the conflicted working tree |
+| `producedPaths` | `git diff --name-only`; must be a subset of the conflict set |
+| `revert` | `git rebase --abort`, restoring the pre-seam head exactly as the halt would have left it (B-6) |
+| `verifyGate` | `git rebase --continue`, then the branch's test command; §7.4 |
+
+**A4-1 (*branch-created* is a property of the file, not of who edited it)** is computed by two
+`git cat-file -e` probes, never by the agent — `branchCreated(path, mergeBase, defaultTip, _git)` is a
+small exported function so E-3's rule is one testable predicate shared with `classifyEnvelope`.
+
+**A4-2 / §8.3's mixed-set row.** A conflict set containing any non-branch-created file escalates
+*before* anything is applied: the check is a precondition inside `gatherEvidence`'s determination, and
+`classifyEnvelope` refuses the proposal. Partial resolution is therefore not merely discouraged — the
+seam never reaches `apply` with a mixed set, which is what A4-6's "no third tree state" requires.
+
+**X-a outranks E-3 (§8.3's branch-created-test-file row)** without a special case: `classifyEnvelope`
+evaluates X-a at position 2 and E-3 membership at position 6 (§5.1), so a branch-created test file
+resolves to `revert-on-test-touch`, not to a permitted E-3 action.
+
+### 7.4 A4's verification, and the repo that has no test command
+
+`verifyGate` runs `_runCommand(implConfig.testCommand)` — the **same** seam and the same config key
+Phase I's script-owned wave gate already uses (`dev:7946`, `dev:7998`, `dev:8104`), read by
+`parseImplementationConfig` (`dev:181`) with `testCommand: null` as its shipped default
+(`dev:158-161`). Reusing it means a repo configures its suite once and both gates obey it.
+
+Where `testCommand` is `null` or `_runCommand` is not a function — the same two-part check Phase I
+makes at `dev:7946` — the resolution **cannot be verified**, so per FSPEC §8.3 the seam reverts and
+escalates. An unverified resolution is never reported as resolved. Note the asymmetry with Phase I,
+which *degrades* to a self-report scan in that case: degradation is acceptable for a gate over an
+agent's own claim, and unacceptable for a gate that would otherwise let an unverified advisory
+resolution stand.
+
+**"Tests pass but the tree is dirty" (§8.3)** is caught by the step-5 produced-change check re-running
+after `verifyGate`'s rebase completes: `producedPaths` is re-read post-gate and any path outside the
+conflict set fails E-R2, reverting whole. This is the one place the driver evaluates membership a
+third time, and it is why `classifyEnvelope` takes the candidate as an argument rather than reading
+state.
+
 ## 8. Seam A5 — Phase PUB (FSPEC-ADV-07)
 
 ## 9. Advisory record, harvest, delete guard, run-report summary (FSPEC-ADV-08)
