@@ -140,3 +140,5 @@ sha. That is a stronger foundation than most REQs carry into TSPEC.
 
 VERDICT: Approved with minor changes
 {"high": 0, "medium": 0, "low": 3}
+APPROVAL-HASH: sha256:5b5fa9e2bfc7ef52bccba2b33ef789bbeb9375fa35149a712e5a564cba6de053
+REVIEWED-COMMIT: b81d7d4c7bad4b5c2ef24754cdc6c63bce642487
