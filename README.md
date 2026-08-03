@@ -31,15 +31,16 @@ Runs a full pipeline from an approved requirements doc through to a reviewed, te
         ▼  Phase DOD— Definition of Done (rebase, then dod-verify ⇄ se-implement, max 3 rounds)
         ▼  Phase H  — Harvest (cross-reviews + code reviews → LEARNINGS, then deleted)
         ▼  Phase PUB— Raise/reuse the PR (ship-pr), then poll GitHub checks
+        ▼  Phase MERGE— Merge & advance queue (guarded decision ladder, no agent)
         │
-   PR open, checks green — never auto-merged
+   PR open, checks green — merged if mergeMode opts in, else a human merges it
 ```
 
 Each review loop runs reviewers **in parallel** as evaluators and the document owner as optimizer, repeating until all reviewers approve (max 5 iterations; non-convergence writes a POSTMORTEM).
 
 Round indices are derived from the `CROSS-REVIEW-{role}-{doc}-v{N}` files actually on disk, and the loop refuses to overwrite one — review history is append-only. A POSTMORTEM refuses its phase on any later run until a human adds `RESOLVED: yes` to it; no agent ever writes that marker.
 
-The PR is raised but **never merged** by the pipeline: `awaiting-merge` → `done` is a human step.
+The PR can be merged by the pipeline itself in Phase MERGE, but `mergeMode` ships **`off`**, so today's default is still a human step: `awaiting-merge` → `done` after you merge it. A self-modification guard also means Phase MERGE never merges a PR that touches the pipeline's own workflow/skill surfaces, whatever `mergeMode` is set to (this repo's own queue rows are always in that category — see the Bootstrapping note in `docs/_queue/QUEUE.md`).
 
 ### Running a whole queue
 

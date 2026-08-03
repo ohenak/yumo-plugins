@@ -2,9 +2,11 @@
 
 Serial, dependency-respecting feature queue driven by `/pdlc:orchestrate-queue`.
 The driver picks the next **ready** entry (lowest `Order` first) whose dependencies are
-merged into the base, sets it `in-progress`, runs `orchestrate-dev`, then leaves it
-`awaiting-merge`. A human sets `done` after merging the PR. `ready: true` in the REQ
-frontmatter is the pickup gate; the `Status` cell tracks lifecycle.
+merged into the base, sets it `in-progress`, and runs `orchestrate-dev`, which now ends in
+Phase MERGE: if it merges the PR the row goes straight to `done`, otherwise it leaves the row
+`awaiting-merge` for a human to set `done` after merging (this queue's rows always take the
+human path — see §Bootstrapping). `ready: true` in the REQ frontmatter is the pickup gate; the
+`Status` cell tracks lifecycle.
 
 > **This queue is the pipeline's own queue.** Every feature here modifies the pipeline that
 > executes it. See §Bootstrapping below — this queue has one constraint no consumer queue has.
