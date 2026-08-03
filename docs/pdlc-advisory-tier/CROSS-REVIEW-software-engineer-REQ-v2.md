@@ -71,7 +71,34 @@ unchanged is re-litigated.
 
 ## Questions
 
+v1's Q-02, Q-03, Q-04 and Q-05 are answered by the revision (AC-8.3; E-3's merge-base **and**
+default-branch-tip rule; AC-1.6/NFR-3's "no advisory summary" when disabled; AC-2.2's "the envelope
+is the control, confidence only lets the agent decline"). Q-01 remains open and one new question.
+
+| ID | Question |
+|----|---------|
+| Q-01 | (carried) Phase MERGE now runs *after* Phase PUB (`main:orchestrate-dev.js:8272`) and resolves `deferred`/`refused` on four named conditions, leaving the queue row `awaiting-merge` — structurally the same "operator arrives at an unexplained stop" §1 describes. §5 puts merging out of scope, which I read as *the tier never merges* rather than *the tier never diagnoses a refused merge*. If the second reading is intended, is that a deferral worth an entry in §7? |
+| Q-06 | AC-9.3 protects the record from being deleted while a later phase can still append. Phase MERGE runs after Phase PUB and can itself escalate. If the tier never touches MERGE (Q-01), the last possible appender is A5 in PUB — is that the intended definition of "later phase", or does the protection need to extend to the end of the run regardless of which phases can append? |
+
 ## Positive Observations
+
+- The revision is a genuine re-grounding, not a patch: BL-02's reversal, the §1 A2/A5 row rewrites,
+  and AC-8.3/AC-9.3's restatement all follow from the same corrected base, and every §1 row I
+  re-checked against `main` still holds.
+- AC-1.7 is exactly the right resolution of F-05 — one table, one owning config section, real
+  defaults, and the A5 fix-cycle budget explicitly folded into `attemptBudget` rather than left as a
+  second implicit counter.
+- AC-3.3's four decidable rules are the strongest part of the document. E-3's "absent from the
+  merge-base tree **and** absent from the default-branch tip" is precisely the shared-file case Q-03
+  worried about, closed with a rule an implementer can evaluate without judgment.
+- AC-3.4(a) enumerating the tamper operations (assertion edit, file/case deletion, rename out of
+  collection, skip/xfail marker, narrowed parametrisation, lowered threshold) with a per-operation
+  test obligation in AC-3.5 is the right shape: a closed set, each member independently falsifiable.
+- AC-4.6's requirement that each prohibition test assert the AC-3.6 positive triple on the same path
+  is the absence-only-oracle trap named and closed in the REQ itself. That is unusual and welcome.
+- AC-8.6 turning the silent no-checks pass into a *named* outcome converts today's genuinely
+  invisible state (`orchestrate-dev.js:6275-6285`) into something the summary reports, at zero
+  behavioural cost.
 
 ## Recommendation
 
