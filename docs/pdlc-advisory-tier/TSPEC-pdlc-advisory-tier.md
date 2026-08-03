@@ -167,7 +167,7 @@ parseAdvisoryConfig(text)          classifyEnvelope(proposal|diff, ctx)   parseA
 ```
 
 Every leaf above the driver is a **pure function of its arguments**, testable with no doubles at all —
-the same discipline `parseMergeConfig` (`dev:101`), `decideMerge` (`dev:1197`) and `classifyPrState`
+the same discipline `parseMergeConfig` (`dev:101`), `decideMerge` (`dev:835`) and `classifyPrState`
 (`dev:380`) already follow, and the reason Phase MERGE's decision ladder is unit-testable without a
 GitHub double.
 
@@ -180,14 +180,14 @@ GitHub double.
 | I-3 | `queue:302` | `parseTriageVerdict` | returns `{ verdict, reason, seamToken }` |
 | I-4 | `queue:912-921` | the `needs-human` skip branch | routes to A1/A2 when the tier is on |
 | I-5 | `queue:758-767` | `main` parameter list | gains the advisory injection seams |
-| I-6 | `dev:8161-8173` | Phase DOD step-0 rebase conflict halt | A4 fires before `haltError` |
-| I-7 | `dev:8179-8188` | DoD not-passed halt | A3 fires before `haltError` |
-| I-8 | `dev:6222-6287` | `raisePrAndVerifyCi` | A5 fires on the `status === "failed"` branch (`dev:6256-6258`) |
-| I-9 | `dev:8480` | `buildFinalReport` | gains `advisory` (summary rows + rung) |
+| I-6 | `dev:8276-8290` | Phase DOD step-0 rebase conflict halt | A4 fires before `haltError` |
+| I-7 | `dev:8294-8305` | DoD not-passed halt | A3 fires before `haltError` |
+| I-8 | `dev:6337-6403` | `raisePrAndVerifyCi` | A5 fires on the `status === "failed"` branch (`dev:6371-6373`) |
+| I-9 | `dev:8595` | `buildFinalReport` | gains `advisory` (summary rows + rung) |
 | I-10 | `dev:1321-1328` | `MERGE_ESCALATIONS` | **untouched** (N-1); a sibling `ADVISORY_ESCALATIONS` is added |
-| I-11 | `dev:8203-8246` | Phase H harvest + guard-block detection | untouched; the advisory distil is a new post-PUB step (§9.3) |
+| I-11 | `dev:8316-8360` | Phase H harvest + guard-block detection | untouched; the advisory distil is a new post-PUB step (§9.3) |
 | I-12 | `pdlc/hooks/scripts/guard-harvest-before-delete.sh:35,43,52-59` | the delete guard | token set gains `ADVISORY`; message gains the class (§9.4) |
-| I-13 | `dev:6861-6903` | `main` parameter list | gains `_advisory*` seams |
+| I-13 | `dev:6976-7015` | `main` parameter list | gains `_advisory*` seams |
 | I-14 | `build:87`, `build:96-103` | bundle composition | §2.3 |
 
 ## 3. Configuration and model-rung resolution (FSPEC-ADV-01)
@@ -321,8 +321,11 @@ a test passes one `_state` object through two seams and asserts one dispatch-cla
 The workflow modules are ES modules with **JSDoc typedefs**, not TypeScript — there is no compiler in
 this pipeline, and the bundle's `stripModuleSyntax` (`build:45`) removes nothing but `import`/`export`
 lines, so a `.d.ts` would be dead weight. Every service boundary below is therefore expressed as a
-JSDoc `@typedef`, which is the shipped convention (`dev:6155-6157`, `dev:98-99`, `dev:626-629`) and
-is what `parsePlanTasks`, `decideMerge` and `dodVerifyLoop` already document their contracts with.
+JSDoc `@typedef` — a JSDoc form the runtime's `stripModuleSyntax` leaves untouched. It extends the
+shipped documentation convention, JSDoc `@param`/`@returns` contract annotations, which
+`parsePlanTasks` (`dev:2039`), `decideMerge` (`dev:835`) and `dodVerifyLoop` (`dev:6273`) already
+carry (see e.g. `dev:98-99`, `dev:626-629`, `dev:6271-6273`); the module carries no `@typedef` block
+today, so these are the feature's own, for its richer data types.
 The boundaries are real regardless of the notation: `SeamOps` below is injected, has one
 implementation per seam, and is faked wholesale in tests.
 
@@ -354,7 +357,7 @@ implementation per seam, and is faked wholesale in tests.
 every well-formedness rule of §4.4 in one place — wrong seam, empty `evidence`, empty `diagnosis`,
 absent/`"nothing"`-only handling, an out-of-enum `confidence` — so V-4's five error rows are five
 unit cases over one function, not five integration fixtures. It follows `parseDodStatus`
-(`dev:5944`) and `parseVerdict` (`dev:2390`): parse the agent's trailer, never trust its shape.
+(`dev:6059`) and `parseVerdict` (`dev:2445`): parse the agent's trailer, never trust its shape.
 
 ### 4.3 The `SeamOps` protocol — one implementation per seam
 
@@ -434,15 +437,15 @@ wall-clock comparison is `elapsedMs - waitMs >= seamBudgetMinutes * 60_000` (NFR
 - **Preemption (V-5, T-02-5).** The bound must end an in-flight attempt, so the driver races the
   dispatch against a deadline rather than checking between attempts:
   `await Promise.race([dispatch, deadline(_now, _sleep, remainingMs)])`. `_now`/`_sleep` are already
-  injected seams on both `main()`s (`dev:6880-6881`, and `raisePrAndVerifyCi` threads them at
-  `dev:6262-6263`), so no new capability is introduced and tests drive a fake clock.
+  injected seams on both `main()`s (`dev:6995-6996`, and `raisePrAndVerifyCi` threads them at
+  `dev:6342-6343`), so no new capability is introduced and tests drive a fake clock.
 - **Termination-condition ordering (§5.3's opening clause).** The reason is computed **once, at
   termination**, from the condition that ended the invocation — never accumulated across attempts.
   `refusalReasonFor(signals)` (§5.3) takes the terminating signal set and returns the first match in
   the ordered catalogue; that is why "malformed on every attempt, budget then exhausted" reports
   `budget-exhausted` (§4.4 row 1) with no special-casing.
 - **Sequencing (V-6, F-2).** `runAdvisorySeam` is `await`ed at each seam's call site inside the
-  already-sequential phase body; nothing wraps it in `parallel` (`dev:6567`). One invocation per seam
+  already-sequential phase body; nothing wraps it in `parallel` (`dev:7359`). One invocation per seam
   condition per run (F-3) follows from each call site being reached at most once per run.
 
 ### 4.6 Error handling inside the lifecycle
@@ -525,7 +528,7 @@ tests, and a dropped clause fails the suite by construction (§13.4).
 | A1 | `[]` — A1 changes no file (A1-4) | constant |
 | A2 | `[reqPath]` exactly (A2-5) | the candidate's own REQ path from the queue row (`queue:116` `parseQueue`) |
 | A3 | `[]` — A3 changes no file (A3-6) | constant |
-| A4 | PLAN-named files ∪ `git diff --name-only {mergeBase}..{preRebaseHead}` | `parsePlanTasks` (`dev:1130`) + `_git` (`dev:6707`) |
+| A4 | PLAN-named files ∪ `git diff --name-only {mergeBase}..{preRebaseHead}` | `parsePlanTasks` (`dev:2039`) + `_git` (`dev:6822`) |
 | A5 | PLAN-named files ∪ `git diff --name-only {mergeBase}..HEAD` | same |
 
 ### 5.3 The refusal ladder as a frozen, ordered catalogue
@@ -559,17 +562,17 @@ it with two signals set.
 
 | # | Prohibition | How code makes it unreachable |
 |---|---|---|
-| P-1 | never mark a DoD criterion satisfied / weaken one / reduce the iteration count | `DOD_MAX_ITERATIONS` (`dev:25`) and `dodVerifyLoop`'s `maxIterations` (`dev:6158-6160`) are never passed anything advisory-derived; A3's `permittedActions` is `[]`; X-b refuses any diff touching a criterion |
+| P-1 | never mark a DoD criterion satisfied / weaken one / reduce the iteration count | `DOD_MAX_ITERATIONS` (`dev:25`) and `dodVerifyLoop`'s `maxIterations` (`dev:6273-6275`) are never passed anything advisory-derived; A3's `permittedActions` is `[]`; X-b refuses any diff touching a criterion |
 | P-2 | never set `ready: true` on a REQ | A2's `apply` rewrites **citation lines only**; the frontmatter block that `parseReqFrontmatter` reads (`queue:232`) is excluded from the rewritable region, and a produced diff touching it fails X-d (scope is the REQ but the *action* is not E-4) |
-| P-3 | never declare CI passed | `ciStatus` continues to come only from `checkPrCi` (`dev:5812`) via `raisePrAndVerifyCi` (`dev:6250-6254`); no advisory value is ever assigned to it. §8.4 |
-| P-4 | never merge a PR, never alter a queue `Status` cell | no advisory path calls `executeMerge` (`dev:6747`), `phaseMerge` (`dev:6850`), `rewriteStatus` (`queue:1086`) or `updateQueueStatus` (`queue:358`); the queue-side `SeamOps` are constructed without `_writeFile` bound to `queuePath` |
+| P-3 | never declare CI passed | `ciStatus` continues to come only from `checkPrCi` (`dev:5927`) via `raisePrAndVerifyCi` (`dev:6337-6369`); no advisory value is ever assigned to it. §8.4 |
+| P-4 | never merge a PR, never alter a queue `Status` cell | no advisory path calls `executeMerge` (`dev:1130`), `phaseMerge` (`dev:1361`), `rewriteStatus` (`queue:1086`) or `updateQueueStatus` (`queue:358`); the queue-side `SeamOps` are constructed without `_writeFile` bound to `queuePath` |
 
 Each row is also a **negative-and-positive** test per AC-4.6 / T-03-6: the prohibited thing does not
 happen **and** the §4.3 V-8 triple holds on the same path. A test asserting only the negative would
 pass against a build where the seam never fired at all, which is the accident AC-4.6 names.
 
 NFR-5 (no new credentials) is structural too: the advisory tier's only outward-facing capabilities
-are `_ghRun` (`dev:581`) and `_git` (`dev:6707`), both already held and both already injected — it
+are `_ghRun` (`dev:581`) and `_git` (`dev:6822`), both already held and both already injected — it
 introduces no new transport. What it *does* newly require of those existing transports is §8.3's two
 capability probes.
 
@@ -581,10 +584,10 @@ an existing gate rather than reimplementing one:
 | Seam | `verifyGate` implementation | Existing symbol reused |
 |---|---|---|
 | A1 | `async () => ({ passed: true })` — A1 has no post-action gate (§5.4's "—" row); its safety is A1-3's escalate-when-unsettled, and `permittedActions: []` means the gate is unreachable anyway | — |
-| A2 | commit the REQ + record, then confirm the branch head carries them | `commitPaths` (`dev:6790`), pathspec-scoped |
+| A2 | commit the REQ + record, then confirm the branch head carries them | `commitPaths` (`dev:6905`), pathspec-scoped |
 | A3 | unreachable (`permittedActions: []`) | — |
-| A4 | complete the rebase, then run the branch's test command | `rebaseOntoDefault` (`dev:6139`), `_runCommand` (`dev:6897`) |
-| A5 | push, then re-read the rollup | `_git`, `checkPrCi` (`dev:5812`) |
+| A4 | complete the rebase, then run the branch's test command | `rebaseOntoDefault` (`dev:6254`), `_runCommand` (`dev:7012`) |
+| A5 | push, then re-read the rollup | `_git`, `checkPrCi` (`dev:5927`) |
 
 BR-6 ("a gate, not an agent, ends a seam") is therefore not a rule the code must remember: the
 driver's only route to `resolved` runs through `verifyGate`, and no `verifyGate` consults an agent.
@@ -608,7 +611,7 @@ export default async function main({
 } = {}) {
 ```
 
-`_appendFile` is new to the queue module; `defaultAppendFile` already exists in dev (`dev:6690`) and
+`_appendFile` is new to the queue module; `defaultAppendFile` already exists in dev (`dev:6805`) and
 crosses on the same prelude as the rest of §2.3, so the queue gains no new Node capability.
 
 **The advisory dispatch does not go through the queue's `agentFn` wrapper** (`queue:773-774`), which
@@ -710,8 +713,8 @@ without the tier ever needing to rewrite history.
 
 Both A2-6 and H-2b demand durability, and both are satisfied by the **same commit**: the re-grounded
 REQ and the advisory record land together, pathspec-scoped and unpushed, exactly as `commitQueueRow`
-(`queue:1162`) already commits `QUEUE.md` alone. `commitPaths` (`dev:6790`) is reused verbatim,
-including its `gitWithLockRetry` behaviour (`dev:6769`) — index-lock contention during a queue run is
+(`queue:1162`) already commits `QUEUE.md` alone. `commitPaths` (`dev:6905`) is reused verbatim,
+including its `gitWithLockRetry` behaviour (`dev:6862`) — index-lock contention during a queue run is
 a real condition this seam inherits a solution for rather than rediscovers.
 
 **A2-4 (applying does not pick the candidate)** is a `continue`, not a `return`: after a resolved A2
@@ -736,30 +739,30 @@ why T-04-6 asserts a *subsequent* invocation sees it.
 
 ### 7.1 Wiring into `orchestrate-dev.js`
 
-`main` (`dev:6861-6903`) gains `_runAdvisorySeam` and `_readAdvisoryConfig`; the config is read once,
+`main` (`dev:6976-7015`) gains `_runAdvisorySeam` and `_readAdvisoryConfig`; the config is read once,
 before the phase loop, and the resolution memo `{ resolved: null }` is created beside it (§3.5). The
-Phase DOD body (`dev:8151-8190`) gains two insertion points, both **immediately before an existing
+Phase DOD body (`dev:8276-8305`) gains two insertion points, both **immediately before an existing
 `throw haltError(...)`**, which is what makes L-3 ("escalation never changes control flow") a
 structural property: on every path the original `haltError` still executes.
 
 ```js
-// dev:8166 — A4, before the rebase-conflict halt
+// dev:8281 — A4, before the rebase-conflict halt
 if (rebaseStatus === "conflict") {
   const a4 = await runAdvisorySeamFn({ seam: "A4", … });
   advisory.record(a4);
   if (a4.outcome !== "resolved") {
     recordPhase("DOD", …, "❌", "Rebase onto default branch conflicted — resolve manually");
-    throw haltError(…);                      // dev:8168-8172, byte-identical
+    throw haltError(…);                      // dev:8283-8287, byte-identical
   }
   // resolved ⇒ the branch is rebased and green; fall through to the DoD loop
 }
 
-// dev:8179 — A3, before the DoD not-passed halt
+// dev:8294 — A3, before the DoD not-passed halt
 if (!dodResult.passed) {
   const a3 = await runAdvisorySeamFn({ seam: "A3", … });
   advisory.record(a3);
   recordPhase("DOD", …, "❌", `Failed after ${dodResult.iterations} iterations — ${detail}`);
-  throw haltError(`${…} ${a3.classificationSummary ?? ""}`);   // dev:8185-8187 + AC-6.3's diagnosis
+  throw haltError(`${…} ${a3.classificationSummary ?? ""}`);   // dev:8300-8303 + AC-6.3's diagnosis
 }
 ```
 
@@ -771,7 +774,7 @@ as a rule to remember. The only difference is the appended classification, per A
 
 | Member | Implementation |
 |---|---|
-| `gatherEvidence` | `dodResult.lastStatus` (`dev:6191`, the `parseDodStatus` shape at `dev:5944`) plus the text of `CODE_REVIEW-{feature}-v{DOD_MAX_ITERATIONS}.md` read through `_readFile` |
+| `gatherEvidence` | `dodResult.lastStatus` (`dev:6306`, the `parseDodStatus` shape at `dev:6059`) plus the text of `CODE_REVIEW-{feature}-v{DOD_MAX_ITERATIONS}.md` read through `_readFile` |
 | `prompt` | classify **every** remaining finding as `real-defect` / `mis-scoped-criterion` / `deferral-candidate`, each with evidence, and bind every `deferral-candidate` to a named successor |
 | `conditionHolds` | `async () => true` |
 | `permittedActions` | `[]` (A3-6) |
@@ -790,7 +793,7 @@ as a rule to remember. The only difference is the appended classification, per A
   escalates naming the unbound finding, and **no path writes a deferral row anywhere**. The tier holds
   no reference to `QUEUE.md` on the dev side, so "never enacts a deferral" is structural (P-4, §5.4).
 - **§7.3's unreadable-verifier row** — `parseDodStatus` already returns `status: "unknown"` and the
-  loop already treats that as failed (`dev:6178-6180`); A3 fires on the same not-passed branch and
+  loop already treats that as failed (`dev:6304-6306`); A3 fires on the same not-passed branch and
   names the unreadable status as its evidence. The conservative baseline is not weakened.
 
 **T-05-5 (the working tree is byte-identical after any A3 invocation)** is the assertion that catches
@@ -826,12 +829,12 @@ resolves to `revert-on-test-touch`, not to a permitted E-3 action.
 ### 7.4 A4's verification, and the repo that has no test command
 
 `verifyGate` runs `_runCommand(implConfig.testCommand)` — the **same** seam and the same config key
-Phase I's script-owned wave gate already uses (`dev:7946`, `dev:7998`, `dev:8104`), read by
+Phase I's script-owned wave gate already uses (`dev:8061`, `dev:8101`, `dev:8113`), read by
 `parseImplementationConfig` (`dev:181`) with `testCommand: null` as its shipped default
 (`dev:158-161`). Reusing it means a repo configures its suite once and both gates obey it.
 
 Where `testCommand` is `null` or `_runCommand` is not a function — the same two-part check Phase I
-makes at `dev:7946` — the resolution **cannot be verified**, so per FSPEC §8.3 the seam reverts and
+makes at `dev:8061` — the resolution **cannot be verified**, so per FSPEC §8.3 the seam reverts and
 escalates. An unverified resolution is never reported as resolved. Note the asymmetry with Phase I,
 which *degrades* to a self-report scan in that case: degradation is acceptable for a gate over an
 agent's own claim, and unacceptable for a gate that would otherwise let an unverified advisory
@@ -847,10 +850,10 @@ state.
 
 ### 8.1 Wiring into `raisePrAndVerifyCi`
 
-The seam fires on exactly one branch — `status === "failed"` (`dev:6256-6258`) — and nowhere else:
+The seam fires on exactly one branch — `status === "failed"` (`dev:6371-6373`) — and nowhere else:
 
 ```js
-// dev:6256, inside the poll loop
+// dev:6371, inside the poll loop
 if (status === "failed") {
   const a5 = await _runAdvisorySeam({ seam: "A5", … });
   _advisoryRecord(a5);
@@ -863,9 +866,9 @@ Three baseline paths are deliberately **untouched**, each a named FSPEC rule:
 
 | Path | Baseline | Rule |
 |---|---|---|
-| `status === "none"` past the no-checks window → `{ ciStatus: "no-checks" }` (`dev:6274-6282`) | pass | A5-6 — the seam does not fire; the summary names the outcome |
-| completion cap → `haltError` (`dev:6268-6272`) | halt | A5-9 — no failing check to diagnose; the summary names the outcome |
-| `status === "passed"` (`dev:6252-6254`) | success | — |
+| `status === "none"` past the no-checks window → `{ ciStatus: "no-checks" }` (`dev:6389-6397`) | pass | A5-6 — the seam does not fire; the summary names the outcome |
+| completion cap → `haltError` (`dev:6383-6388`) | halt | A5-9 — no failing check to diagnose; the summary names the outcome |
+| `status === "passed"` (`dev:6367-6369`) | success | — |
 
 `raisePrAndVerifyCi` gains two parameters, `_runAdvisorySeam` and `_advisoryRecord`, both defaulting
 to no-ops, so every existing test of the function is unchanged and T-07-9/T-07-10 assert the
@@ -888,8 +891,8 @@ untouched paths directly.
 **A5-5 (no log ⇒ escalate)** is a `gatherEvidence` precondition: an unretrievable log short-circuits
 to `escalated` before any dispatch, so no diagnosis is ever produced from a guess.
 
-**A5-4 / P-3.** `ciStatus` is assigned only from `checkPrCi`'s return (`dev:6254`, `dev:6282`), which
-reads GitHub's own `statusCheckRollup` (`dev:5818`). No advisory value reaches it, and T-07-7's "no
+**A5-4 / P-3.** `ciStatus` is assigned only from `checkPrCi`'s return (`dev:6369`, `dev:6397`), which
+reads GitHub's own `statusCheckRollup` (`dev:5933`). No advisory value reaches it, and T-07-7's "no
 path exists by which an agent verdict sets it" is a grep-shaped assertion over the assignment sites.
 
 **A5-8 — "revert" after a push.** The record write (step 7) and the produced-change check (step 5)
@@ -942,13 +945,13 @@ re-runs the DoD gate nor halts on the divergence.
 
 | Alternative | Rejected because |
 |---|---|
-| Re-verify DoD inside Phase PUB | Phase H runs **before** PUB (B-15) and harvest deletes the `CODE_REVIEW-*` files `dodVerifyLoop` writes and reads (`dev:6183`). A DoD re-run in PUB would author a fresh `CODE_REVIEW-{feature}-v1` **after** the harvest that was supposed to consume it, leaving an un-harvestable artifact and a `LEARNINGS` file that no longer describes the branch. It also puts an evaluator→optimizer loop with its own 3-iteration budget inside a phase already bounded by a CI clock. |
+| Re-verify DoD inside Phase PUB | Phase H runs **before** PUB (B-15) and harvest deletes the `CODE_REVIEW-*` files `dodVerifyLoop` writes and reads (`dev:6298`). A DoD re-run in PUB would author a fresh `CODE_REVIEW-{feature}-v1` **after** the harvest that was supposed to consume it, leaving an un-harvestable artifact and a `LEARNINGS` file that no longer describes the branch. It also puts an evaluator→optimizer loop with its own 3-iteration budget inside a phase already bounded by a CI clock. |
 | Halt on the divergence | Negates A5 entirely: every successful A5 resolution would end in a halt, so the seam could never produce the outcome it exists for (US-01). |
 | Report-only (**chosen**) | Satisfies AC-8.3 exactly as written — "the report's DoD status names the verified commit, and a branch head beyond it is reported unverified" — costs one report field, and leaves the decision with the operator, who is the only party who can weigh whether a lint fix needs a fresh DoD pass. |
 
 Implementation: `recordPhase("DOD", …)` already carries a detail string; the DoD row gains the
 verified commit sha (`git rev-parse HEAD` at the moment `dodResult.passed` becomes true), and
-`buildFinalReport` (`dev:8480`) gains `dodVerifiedCommit` plus a derived `dodHeadUnverified` boolean.
+`buildFinalReport` (`dev:8595`) gains `dodVerifiedCommit` plus a derived `dodHeadUnverified` boolean.
 Phase MERGE reads neither — it applies its own preconditions to whatever head it finds (H-2).
 
 ### 8.5 Error handling, A5
@@ -988,7 +991,7 @@ matching §10.1's table one-for-one so T-08-1 is a field-presence assertion:
 ```
 
 `renderAdvisoryEntry(disposition, { now })` is **pure** — it takes the timestamp rather than reading a
-clock, so the rendered bytes are testable exactly. Written via `_appendFile` (`dev:6690`), which is
+clock, so the rendered bytes are testable exactly. Written via `_appendFile` (`dev:6805`), which is
 already the append transport and already creates nothing implicitly: a missing feature directory
 makes the append throw, which is §10.5's row and R-2's refusal path (T-08-2), not a silent `mkdir`.
 
@@ -1009,11 +1012,11 @@ escalation-only.
 ### 9.3 Harvest: a post-PUB distil step, and the guard extension
 
 **H-1's placement.** A new step runs after Phase PUB and before Phase MERGE — i.e. between
-`dev:8272` and `dev:8274`. Phase H (`dev:8192-8246`) is **untouched**: it neither distils nor deletes
+`dev:8386` and `dev:8389`. Phase H (`dev:8307-8360`) is **untouched**: it neither distils nor deletes
 `ADVISORY-*`, because at that point A5 has not run yet (B-15).
 
 ```js
-// dev:8273 — Phase H2: distil the advisory record (dev-side only)
+// dev:8388 — Phase H2: distil the advisory record (dev-side only)
 if (advisory.enabled && advisory.recordExists) {
   await agentFn("harvest-learnings", advisoryDistilPrompt(featureName));   // appends to LEARNINGS
   const del = await gitFn(["rm", "--", advisoryPath]);                      // through the guard
@@ -1023,7 +1026,7 @@ if (advisory.enabled && advisory.recordExists) {
 ```
 
 The delete goes through the **guard-covered channel** (`git rm`, matched by the guard's
-`\bgit\s+rm\b` alternative at `guard-harvest-before-delete.sh:38`) rather than around it — H-3's
+`\bgit\s+rm\b` alternative at `guard-harvest-before-delete.sh:37`) rather than around it — H-3's
 "the guard is the control, not a courtesy".
 
 **The guard-script edit, and the coupling it must not break.** Three lines change:
@@ -1034,8 +1037,8 @@ The delete goes through the **guard-covered channel** (`git rm`, matched by the 
 | `:43` | `re.findall(r'\S*(?:CROSS-REVIEW\|CODE_REVIEW\|ADVISORY)-[\w.\-]*', cmd)` |
 | `:57-59` | the refusal message gains the artifact class that actually matched |
 
-> ⚠️ **`orchestrate-dev.js` parses that message.** `dev:8226-8228` tests for the literal
-> `"pdlc guard: refusing to delete CROSS-REVIEW files"` and `dev:8232-8234` extracts the blocked path
+> ⚠️ **`orchestrate-dev.js` parses that message.** `dev:8342-8344` tests for the literal
+> `"pdlc guard: refusing to delete CROSS-REVIEW files"` and `dev:8348-8350` extracts the blocked path
 > with `/pdlc guard: refusing to delete CROSS-REVIEW files in \[([^\]]+)\]/`. A naive rewrite to
 > "refusing to delete ADVISORY files in […]" makes Phase H stop recognising a guard block — it would
 > proceed as if the delete succeeded. The message is therefore extended, not rewritten:
@@ -1045,7 +1048,7 @@ The delete goes through the **guard-covered channel** (`git rm`, matched by the 
 > … (unchanged) … This guard also covers CODE_REVIEW-* and ADVISORY-* files. [class: ADVISORY]
 > ```
 >
-> The prefix and the bracketed directory keep their exact bytes, so both `dev:8226` and `dev:8232`
+> The prefix and the bracketed directory keep their exact bytes, so both `dev:8342` and `dev:8348`
 > keep matching; the class is a **suffix token** the new distil step reads. This coupling is a named
 > integration risk (§15) and gets its own regression test asserting the existing detection still fires.
 
@@ -1054,7 +1057,7 @@ the record's durability is the §6.4.1 commit. H-2's absence observable is scope
 (T-08-8), and no dev-side run can reach A1/A2, so the two never contend.
 
 **H-4.** A run that halts before the distil step leaves the record on disk complete up to the halt —
-free, because the halt throws before `dev:8273` is reached.
+free, because the halt throws before `dev:8388` is reached.
 
 ### 9.4 The advisory summary on the final report
 
@@ -1066,9 +1069,9 @@ export function advisorySummaryRows(dispositions)   // pure
 - **S-1.** `ADVISORY_SEAMS` (§3.1) drives the row list, so five rows always appear and a seam that
   never fired is visibly zero. The per-row and total identity `invocations === resolved + escalated +
   noAction` is asserted by the function itself and re-asserted by T-08-10's literal six-row table.
-- **On every report, including a halt's.** `buildFinalReport` (`dev:8480`) is called on both the halt
-  path (`dev:8390-8396`) and the success path (`dev:8399-8407`); `advisory` rides the same way
-  `notices` and `queueRow` already do (`dev:8395`, `dev:8402`). T-08-9 follows directly.
+- **On every report, including a halt's.** `buildFinalReport` (`dev:8595`) is called on both the halt
+  path (`dev:8490-8496`) and the success path (`dev:8514-8520`); `advisory` rides the same way
+  `notices` and `queueRow` already do (`dev:8494`, `dev:8517`). T-08-9 follows directly.
 - **S-2.** the row carries `model` and `fallback` from the rung state (§3.4).
 - **S-3.** `noChecks` and `completionCap` booleans are threaded from `raisePrAndVerifyCi` (§8.1) and
   named on the summary — A5-6 and A5-9.
@@ -1102,7 +1105,7 @@ given it also fails on the default branch.
 *Pipeline state* is the phase id and that phase's outcome — both already on hand at every call site,
 since the seam fires inside the phase body.
 
-`appendEscalationEntry` uses `_appendFile` (`dev:6690`) and creates `docs/_queue/` when absent
+`appendEscalationEntry` uses `_appendFile` (`dev:6805`) and creates `docs/_queue/` when absent
 (§11.3's last row): `mkdirSync(dirname(path), { recursive: true })` inside `defaultAppendFile`'s
 existing try, which is a strictly-additive change to a function whose contract is already
 "throws on failure". A consumer repo with no queue still gets its escalations.
@@ -1132,7 +1135,7 @@ export const ADVISORY_ESCALATIONS = Object.freeze({
 | N-1 — the merge catalogue is left exactly as it is | `MERGE_ESCALATIONS` (`dev:1321-1328`) is not edited. T-09-5 compares it before and after — a frozen object's own-property snapshot |
 | N-2 — a distinct advisory prefix naming the seam and pointing at the log | the literal above; `ADVISORY ESCALATION:` |
 | N-3 — one grep finds both | both prefixes contain the substring `ESCALATION:` |
-| N-4 — the notice channel is unchanged | notices are pushed onto the same `notices` array the merge phase uses (`dev:8291-8292`) and ride the same report field (`dev:8395`, `dev:8402`) |
+| N-4 — the notice channel is unchanged | notices are pushed onto the same `notices` array the merge phase uses (`dev:8406-8407`) and ride the same report field (`dev:8494`, `dev:8517`) |
 
 **L-3 / F-5 (escalation never changes control flow)** is structural, not asserted: at every seam the
 advisory call sits immediately before the pre-existing `throw haltError(...)` or `continue`, and only
@@ -1236,11 +1239,11 @@ Jest, ESM, `node --experimental-vm-modules` — `cd pdlc/workflows && npm test`.
 | **Pure-function unit** | `parseAdvisoryConfig`, `parseAdvisoryVerdict`, `classifyEnvelope`, `refusalReasonFor`, `touchesTestArtifact`, `touchesDodCriterion`, `branchCreated`, `budgetExceeded`, `governingClass`, `honourA1Verdict`, `isModelResolutionError`, `advisorySummaryRows`, `renderAdvisoryEntry`, `renderEscalationEntry` | **none** |
 | **Driver unit** | `runAdvisorySeam` against a fake `SeamOps` and fake IO | `SeamOps` fake + `_agent`/`_appendFile`/`_now` fakes |
 | **Seam unit** | each real `SeamOps` against fake `_git` / `_ghRun` / `_readFile` | transport fakes |
-| **Phase integration** | the wiring at `dev:8166`, `dev:8179`, `dev:6256`, `queue:912` — that the halt/skip still happens | `_runAdvisorySeam` fake returning a scripted disposition |
+| **Phase integration** | the wiring at `dev:8281`, `dev:8294`, `dev:6371`, `queue:912` — that the halt/skip still happens | `_runAdvisorySeam` fake returning a scripted disposition |
 | **Set-equality / catalogue** | `ADVISORY_REFUSAL_REASONS`, `ENVELOPE_DEFAULTS`, the exclusion set, `ADVISORY_SEAMS`, `MERGE_ESCALATIONS` unchanged | none — compare exported frozen objects |
 
 The proportion is deliberate: §2.4's dependency graph puts every decision in a pure leaf and leaves
-exactly one impure component. `decideMerge` (`dev:1197`) is the precedent — Phase MERGE's entire
+exactly one impure component. `decideMerge` (`dev:835`) is the precedent — Phase MERGE's entire
 ladder is unit-tested with no GitHub double, and the same shape applies here.
 
 ### 13.3 Test doubles
@@ -1254,7 +1257,7 @@ DOD are tested through; the advisory tests take the same fakes with additional s
 | `_agent` | returns a scripted trailer string per call, with an optional throw whose message drives `isModelResolutionError` |
 | `_git` / `_ghRun` | command-string → scripted result map, the shipped shape |
 | `_appendFile` / `_writeFile` | in-memory map; a `throwOn` set drives E-13 and T-08-2 |
-| `_now` / `_sleep` | fake clock, already injected on both `main()`s (`dev:6880-6881`) — required for V-5 preemption and the A5 wait carve-out |
+| `_now` / `_sleep` | fake clock, already injected on both `main()`s (`dev:6995-6996`) — required for V-5 preemption and the A5 wait carve-out |
 | `SeamOps` | a hand-rolled object literal per case; **this is the double that makes the driver testable without any seam** |
 | queue-side free identifiers | `_runAdvisorySeam` etc. **must** be injected — they are unbound under jest (§2.3), which is a feature: a queue test that forgets to inject fails loudly rather than silently exercising a stale default |
 
@@ -1273,7 +1276,7 @@ Beyond one-per-acceptance-test coverage of FSPEC §18.1's 81 cases, five obligat
    where no individual path changed.
 4. **The disabled-run created-file set is a transcribed literal** (T-10-3, §11.2), never re-derived.
 5. **The guard-message coupling has its own regression test** (§9.3): after the guard edit,
-   `dev:8226`'s literal test and `dev:8232`'s regex both still fire on a `CROSS-REVIEW` refusal.
+   `dev:8342`'s literal test and `dev:8348`'s regex both still fire on a `CROSS-REVIEW` refusal.
 
 ### 13.5 Property-based candidates
 
@@ -1346,7 +1349,7 @@ Named here because a surfaced risk is a shared decision.
 | # | Risk | Assessment | Mitigation |
 |---|---|---|---|
 | R-1 | **`orchestrate-dev.js` grows to ~9,300 lines.** It is already 8,527 (`26c3f1c`) and is the single largest file in the repo. | Real, and worsened by §2.2's decision to keep the core there. | The alternative (a fourth build source) was weighed and rejected in §16.1 on artifact-composition grounds. The mitigation is structural, not cosmetic: everything but `runAdvisorySeam` is a pure exported leaf, so the file's *testable surface* grows in unit-shaped pieces rather than in the phase body. |
-| R-2 | **The guard-message coupling** (`dev:8226`, `dev:8232`) breaks silently if the message is rewritten rather than extended. | High impact, low likelihood once named. | §9.3's extend-don't-rewrite rule plus §13.4(5)'s regression test. |
+| R-2 | **The guard-message coupling** (`dev:8342`, `dev:8348`) breaks silently if the message is rewritten rather than extended. | High impact, low likelihood once named. | §9.3's extend-don't-rewrite rule plus §13.4(5)'s regression test. |
 | R-3 | **BL-01 is unresolved and unresolvable from this repo.** | Non-fatal by construction, but it means the fallback path ships as the likely production path. | §3.3 treats the fallback as a tested path, not an error path; §13.6's manual step records which branch fires. |
 | R-4 | **BL-05/BL-06 are per-repo facts** that decide whether E-1/E-2 are ever usable. | A consuming repo without them gets an A5 that only ever escalates — still an improvement on today's bare halt, but less than the REQ implies. | §8.3's probes make the degradation observable and tested rather than surprising. |
 | R-5 | **This branch is based on a pre-`26c3f1c` tree** (§1.1). | Would cause every implementation batch to patch code that is not there. | The PLAN's first task is the rebase; §13.6 states it. |
