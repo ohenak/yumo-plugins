@@ -838,6 +838,123 @@ state.
 
 ## 8. Seam A5 — Phase PUB (FSPEC-ADV-07)
 
+### 8.1 Wiring into `raisePrAndVerifyCi`
+
+The seam fires on exactly one branch — `status === "failed"` (`dev:6256-6258`) — and nowhere else:
+
+```js
+// dev:6256, inside the poll loop
+if (status === "failed") {
+  const a5 = await _runAdvisorySeam({ seam: "A5", … });
+  _advisoryRecord(a5);
+  if (a5.outcome === "resolved") continue;      // the re-poll already returned green
+  throw haltError(`Error: Phase PUB — GHA checks failed for PR ${prUrl}`);   // byte-identical
+}
+```
+
+Three baseline paths are deliberately **untouched**, each a named FSPEC rule:
+
+| Path | Baseline | Rule |
+|---|---|---|
+| `status === "none"` past the no-checks window → `{ ciStatus: "no-checks" }` (`dev:6274-6282`) | pass | A5-6 — the seam does not fire; the summary names the outcome |
+| completion cap → `haltError` (`dev:6268-6272`) | halt | A5-9 — no failing check to diagnose; the summary names the outcome |
+| `status === "passed"` (`dev:6252-6254`) | success | — |
+
+`raisePrAndVerifyCi` gains two parameters, `_runAdvisorySeam` and `_advisoryRecord`, both defaulting
+to no-ops, so every existing test of the function is unchanged and T-07-9/T-07-10 assert the
+untouched paths directly.
+
+### 8.2 A5 — `SeamOps`
+
+| Member | Implementation |
+|---|---|
+| `gatherEvidence` | the failing job's log via `gh run view --log-failed` through `_ghRun` (`dev:581`); **plus** the two §8.3 capability determinations and the default-branch comparison, all computed before the agent is dispatched |
+| `prompt` | name the failing step and the cause; classify as E-1 (flaky, re-run) / E-2 (branch-introduced lint/format/type) / neither |
+| `conditionHolds` | re-read `checkPrCi(prUrl)`; anything other than `"failed"` ⇒ `no-action` (CI turned green on its own) |
+| `permittedActions` | computed per invocation from §8.3's probes — `["E-1","E-2"]`, a subset, or `[]` |
+| `declaredScope` | PLAN files ∪ `git diff --name-only {mergeBase}..HEAD` |
+| `apply` | E-2: write the minimal fix and `git commit` locally. E-1: no-op (nothing to write) |
+| `producedPaths` | `git diff --name-only {preSeamHead}..HEAD` |
+| `revert` | `git reset --hard {preSeamHead}` — **pre-push only**; see A5-8 below |
+| `verifyGate` | E-2: `git push`, then re-poll. E-1: `gh run rerun --failed`, then re-poll. Either way the verdict is the rollup's |
+
+**A5-5 (no log ⇒ escalate)** is a `gatherEvidence` precondition: an unretrievable log short-circuits
+to `escalated` before any dispatch, so no diagnosis is ever produced from a guess.
+
+**A5-4 / P-3.** `ciStatus` is assigned only from `checkPrCi`'s return (`dev:6254`, `dev:6282`), which
+reads GitHub's own `statusCheckRollup` (`dev:5818`). No advisory value reaches it, and T-07-7's "no
+path exists by which an agent verdict sets it" is a grep-shaped assertion over the assignment sites.
+
+**A5-8 — "revert" after a push.** The record write (step 7) and the produced-change check (step 5)
+both complete **before** `verifyGate` pushes (§4.4). A red re-poll therefore escalates with the fix
+commit still on the branch: nothing is force-pushed, no history is rewritten, and BR-5's invariant is
+asserted on the pre-push tree. The escalation entry and the report both name the pushed commit, which
+is what makes the operator's inherited state legible.
+
+**A5-3 — attempts and the wait carve-out.** One attempt is one act → re-poll cycle, including E-1's
+push-free re-run. The re-poll accumulates `waitMs`, which `budgetExceeded` (§4.5) subtracts from the
+wall-clock bound, so the 10-minute default cannot end the invocation inside its first CI wait
+(T-07-12). A re-poll that reaches Phase PUB's own completion cap **returns** rather than throwing when
+called from inside the seam — `verifyGate` catches the cap and reports `{passed:false}` — so it
+consumes an attempt instead of escalating separately (T-07-11).
+
+### 8.3 Capability probes for BL-05 and BL-06
+
+Both are per-repo runtime facts (§1.3), probed once per A5 invocation through the existing `_ghRun`
+seam — no new credential, no new transport (NFR-5):
+
+```js
+export async function probeDefaultBranchChecks(defaultBranch, { _ghRun })  // BL-05
+export async function probeWorkflowRerun(runId, { _ghRun })                // BL-06
+```
+
+| Probe | Command | Absent ⇒ |
+|---|---|---|
+| BL-05 | `gh run list --branch {defaultBranch} --json conclusion,workflowName,headSha` | A5-2: the comparison is undone, `permittedActions` loses **both** E-1 and E-2 (E-2's *introduced* rule needs the default-branch tip), and the seam escalates attempting no fix |
+| BL-06 | `gh run rerun --failed {runId} --dry-run`, or the absence of the `actions: write` scope in `gh auth status` | E-1 drops out of `permittedActions`; E-2 may remain |
+
+**These are reads that classify a failure, not new capabilities that can act.** BL-06's probe is the
+exception — a `--dry-run` against a *write* surface — and it is the only place the tier touches an
+Actions write; the write itself happens only inside `verifyGate` under E-1.
+
+**T-03-8's set-equality is not capability-parameterised.** `ENVELOPE_DEFAULTS` always contains
+`{E-1, E-2, E-3, E-4}`; a probe's absence removes the action from *this invocation's*
+`ctx.permittedActions`, never from the shipped set. That separation is why the shipped envelope can be
+compared as a literal while a capability-poor repo still refuses correctly.
+
+**A5-1 — ordering.** The default-branch comparison runs **before** E-2's *introduced* test, inside
+`gatherEvidence`, and its verdict is authoritative on the reading it gets: a check observed failing at
+the default-branch tip escalates as pre-existing. Ordering the two is not a preference; running them
+in the other order lets a flaky default-branch signal be re-classified as branch-introduced and fixed.
+
+### 8.4 OQ-3 resolved: report the verified commit, do not re-verify and do not halt
+
+FSPEC A5-7 leaves the restoration path to this document. **Chosen: report-only.** The final report
+names the DoD-verified commit and marks any branch head beyond it `unverified`; Phase PUB neither
+re-runs the DoD gate nor halts on the divergence.
+
+| Alternative | Rejected because |
+|---|---|
+| Re-verify DoD inside Phase PUB | Phase H runs **before** PUB (B-15) and harvest deletes the `CODE_REVIEW-*` files `dodVerifyLoop` writes and reads (`dev:6183`). A DoD re-run in PUB would author a fresh `CODE_REVIEW-{feature}-v1` **after** the harvest that was supposed to consume it, leaving an un-harvestable artifact and a `LEARNINGS` file that no longer describes the branch. It also puts an evaluator→optimizer loop with its own 3-iteration budget inside a phase already bounded by a CI clock. |
+| Halt on the divergence | Negates A5 entirely: every successful A5 resolution would end in a halt, so the seam could never produce the outcome it exists for (US-01). |
+| Report-only (**chosen**) | Satisfies AC-8.3 exactly as written — "the report's DoD status names the verified commit, and a branch head beyond it is reported unverified" — costs one report field, and leaves the decision with the operator, who is the only party who can weigh whether a lint fix needs a fresh DoD pass. |
+
+Implementation: `recordPhase("DOD", …)` already carries a detail string; the DoD row gains the
+verified commit sha (`git rev-parse HEAD` at the moment `dodResult.passed` becomes true), and
+`buildFinalReport` (`dev:8480`) gains `dodVerifiedCommit` plus a derived `dodHeadUnverified` boolean.
+Phase MERGE reads neither — it applies its own preconditions to whatever head it finds (H-2).
+
+### 8.5 Error handling, A5
+
+| Case | Behaviour |
+|---|---|
+| several checks fail | in-envelope only if **every** failing check is; a mixed set escalates — `classifyEnvelope` is called once over the union |
+| a re-run surfaces a *different* failure | a new diagnosis inside the same invocation, drawing on the same attempt budget |
+| the push is rejected (branch moved) | `verifyGate` fails ⇒ revert to `preSeamHead`, retry or escalate on budget; the fix is never left half-applied |
+| CI turns green mid-diagnosis | `conditionHolds` false ⇒ `no-action`; the phase continues from its own rollup read |
+| the proposed fix touches a test file | X-a ⇒ reverted whole, `revert-on-test-touch`. Asserted directly (T-03-3, §9.3's row) — this is the single most likely way an agent "fixes" red CI |
+| the repo has no CI | the no-checks path; the seam never fires |
+
 ## 9. Advisory record, harvest, delete guard, run-report summary (FSPEC-ADV-08)
 
 ## 10. Escalation log and report notices (FSPEC-ADV-09)
