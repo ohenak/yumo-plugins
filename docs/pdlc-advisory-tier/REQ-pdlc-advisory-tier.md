@@ -177,7 +177,7 @@ halt currently conflates: *diagnosing* the problem, and *authorizing* the resolu
 
   | Seam | Gate that re-runs | State it must reach |
   |---|---|---|
-  | A1 | the queue's dependency pre-check only; Phase-0 triage is itself an agent verdict and is **not** re-run | the pre-check returns not-blocked (AC-5.1) |
+  | A1 | **none** — A1 changes no file, so no gate's inputs change and no re-run could reach a different state. The dependency pre-check still runs **before** the adjudication (AC-5.1) and a candidate it reports blocked is never adjudicable | n/a — the pre-condition is pre-action, not a post-action gate |
   | A2 | the same pre-check plus triage, on the re-grounded REQ, in the **next** queue invocation — applying a proposal does not pick a candidate, so AC-5.4's one-pick guarantee is preserved | triage reaches a verdict of its own |
   | A3 | Phase DOD's verify step | no findings remaining |
   | A4 | the rebase completes, then the branch's test command (AC-7.4) | rebase clean and tests green |
@@ -193,7 +193,8 @@ halt currently conflates: *diagnosing* the problem, and *authorizing* the resolu
   and returns `run-candidate`, `hold`, or `escalate`. Only a `needs-human` **abstention** is
   adjudicable: the advisory verdict may never overturn a triage verdict of `blocked`, and may never
   return `run-candidate` for a candidate the queue's dependency pre-check reports blocked — that
-  pre-check runs before any advisory agent and is the gate AC-4.5 re-runs. The pre-check is
+  pre-check runs before any advisory agent as a pre-condition, not as an AC-4.5 post-action gate.
+  The pre-check is
   one-sided: it establishes only that no declared dependency has a not-`done` queue row, never that
   a dependency is present in base. Where presence in base is therefore unsettled, the advisory
   verdict is `escalate` — no advisory agent adjudicates presence in base.
@@ -208,9 +209,9 @@ halt currently conflates: *diagnosing* the problem, and *authorizing* the resolu
   order and at most one is picked per invocation, preserving the serial guarantee.
 - **AC-5.5** — Given a Phase-0 triage stop, Then its outcome names **which** gate produced it: the
   `needs-human` result carries a machine-readable seam token, and a `needs-human` result with no
-  recognised token routes to the A1 adjudicator. Today the two stops are one free-text signal, so
-  without this the workflow cannot route a stop to the right envelope (E-4 applies to A2 only) and
-  AC-5.2/AC-5.3 have no testable precondition.
+  recognised token routes to the A1 adjudicator. Today's stop is a single free-text signal and A2's
+  gate does not exist at all, so without this the workflow cannot route a stop to the right envelope
+  (E-4 applies to A2 only) and AC-5.2/AC-5.3 have no testable precondition.
 
 ### REQ-ADV-06 — Seam A3: DoD exhaustion
 
