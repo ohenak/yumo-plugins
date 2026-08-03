@@ -10,12 +10,12 @@ depends-on: [pdlc-merge-phase]
 |---|---|
 | Upstream | `docs/design/MASTER-PLAN-engineering-loop.md` (Break 4, §3, order 3) |
 | Downstream | `pdlc-consolidation-agent`, `pdlc-engineering-loop` |
-| Cross-Reviews | `CROSS-REVIEW-software-engineer-REQ-v1.md`, `CROSS-REVIEW-test-engineer-REQ-v1.md` |
+| Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-REQ-v{1,2}.md` |
 | LEARNINGS | — |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.2 | 2026-08-03 |
+| pdlc | draft | Claude | 1.3 | 2026-08-03 |
 
 > **Scope in one line.** A third model rung — the Fable 5 advisory tier (Opus as declared
 > fallback) — that takes the five
