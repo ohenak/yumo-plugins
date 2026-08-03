@@ -1293,6 +1293,122 @@ invariant that quantifies over inputs rather than enumerating them:
 
 ## 14. Requirement → component traceability
 
+### 14.1 FSPEC section → TSPEC section → component
+
+| FSPEC | Requirement | TSPEC | Primary components |
+|---|---|---|---|
+| ADV-01 | REQ-ADV-01 | §3 | `MODEL_ADVISORY`, `MODEL_ADVISORY_FALLBACK`, `ADVISORY_DEFAULTS`, `parseAdvisoryConfig`, `readAdvisoryConfigSafely`, `resolveAdvisoryRung`, `isModelResolutionError` |
+| ADV-02 | REQ-ADV-02 | §4 | `AdvisoryVerdict`, `AdvisoryDisposition`, `parseAdvisoryVerdict`, `SeamOps`, `runAdvisorySeam`, `budgetExceeded` |
+| ADV-03 | REQ-ADV-03 | §5 | `classifyEnvelope`, `ENVELOPE_DEFAULTS`, `touchesTestArtifact`, `touchesDodCriterion`, `guardVerdict` (reused), `ADVISORY_REFUSAL_REASONS`, `refusalReasonFor` |
+| ADV-03 | REQ-ADV-04 | §5.4, §5.5 | structural non-calls + `SeamOps.verifyGate` |
+| ADV-04 | REQ-ADV-05 | §6 | `triagePrompt`, `parseTriageVerdict`, `honourA1Verdict`, A1/A2 `SeamOps`, `commitPaths` (reused) |
+| ADV-05 | REQ-ADV-06 | §7.2 | A3 `SeamOps`, `parseA3Classification`, `governingClass` |
+| ADV-06 | REQ-ADV-07 | §7.3, §7.4 | A4 `SeamOps`, `branchCreated`, `rebaseOntoDefault` (reused), `_runCommand` (reused) |
+| ADV-07 | REQ-ADV-08 | §8 | A5 `SeamOps`, `probeDefaultBranchChecks`, `probeWorkflowRerun`, `checkPrCi` (reused) |
+| ADV-08 | REQ-ADV-09 | §9 | `renderAdvisoryEntry`, `appendAdvisoryEntry`, the post-PUB distil step, the guard-script edit, `advisorySummaryRows` |
+| ADV-09 | REQ-ADV-10 | §10 | `renderEscalationEntry`, `appendEscalationEntry`, `ADVISORY_ESCALATIONS` |
+| ADV-10 | AC-1.6, NFR-3 | §11 | the single `enabled` early return, the D-6 fixture |
+
+### 14.2 Non-functional
+
+| NFR | Where discharged | Nature of the discharge |
+|---|---|---|
+| NFR-1 — envelope in the workflow, not a prompt | §5.1 | `classifyEnvelope` is pure and has exactly two callers, both in the driver; no prompt participates |
+| NFR-2 — every prohibition has a failing test | §5.4, §13.4(2) | four rows, each with a positive-triple test |
+| NFR-3 — additive when disabled | §11 | one early return + a transcribed literal |
+| NFR-4 — per-seam wall-clock bound | §4.5 | `budgetExceeded` with the rollup-wait carve-out; preemption via `Promise.race` on injected `_now`/`_sleep` |
+| NFR-5 — no new credentials, never merges | §5.4 P-4, §8.3 | only `_ghRun` and `_git`, both pre-existing; no call to `executeMerge`/`phaseMerge` |
+
+### 14.3 New and modified files
+
+| File | Change |
+|---|---|
+| `pdlc/workflows/orchestrate-dev.js` | constants, advisory core, `SeamOps` for A3/A4/A5, Phase DOD and Phase PUB wiring, the post-PUB distil step, report fields |
+| `pdlc/workflows/orchestrate-queue.js` | injection seams, config read, seam-token routing, `SeamOps` for A1/A2, queue-report summary |
+| `pdlc/workflows/build-runtime.mjs` | §2.3's export-list and prelude edit |
+| `pdlc/hooks/scripts/guard-harvest-before-delete.sh` | §9.3's three-line extension |
+| `pdlc/workflows/dist/*` | **generated** — rebuilt in the same commit, never hand-edited |
+| `pdlc/workflows/__tests__/advisory*.test.js` | new |
+| `pdlc/workflows/__tests__/fixtures/created-files-26c3f1c.json` | new (§11.2) |
+| `docs/_queue/ESCALATIONS.md` | new at runtime, in consuming repos — not tracked here |
+
 ## 15. Feasibility, cost, and risks
 
+Named here because a surfaced risk is a shared decision.
+
+| # | Risk | Assessment | Mitigation |
+|---|---|---|---|
+| R-1 | **`orchestrate-dev.js` grows to ~9,300 lines.** It is already 8,527 (`26c3f1c`) and is the single largest file in the repo. | Real, and worsened by §2.2's decision to keep the core there. | The alternative (a fourth build source) was weighed and rejected in §16.1 on artifact-composition grounds. The mitigation is structural, not cosmetic: everything but `runAdvisorySeam` is a pure exported leaf, so the file's *testable surface* grows in unit-shaped pieces rather than in the phase body. |
+| R-2 | **The guard-message coupling** (`dev:8226`, `dev:8232`) breaks silently if the message is rewritten rather than extended. | High impact, low likelihood once named. | §9.3's extend-don't-rewrite rule plus §13.4(5)'s regression test. |
+| R-3 | **BL-01 is unresolved and unresolvable from this repo.** | Non-fatal by construction, but it means the fallback path ships as the likely production path. | §3.3 treats the fallback as a tested path, not an error path; §13.6's manual step records which branch fires. |
+| R-4 | **BL-05/BL-06 are per-repo facts** that decide whether E-1/E-2 are ever usable. | A consuming repo without them gets an A5 that only ever escalates — still an improvement on today's bare halt, but less than the REQ implies. | §8.3's probes make the degradation observable and tested rather than surprising. |
+| R-5 | **This branch is based on a pre-`26c3f1c` tree** (§1.1). | Would cause every implementation batch to patch code that is not there. | The PLAN's first task is the rebase; §13.6 states it. |
+| R-6 | **A5's push moves the branch head past the DoD-verified commit.** | Inherent to fixing CI after harvest; not removable. | §8.4's report-only resolution, with the divergence named on the report. |
+| R-7 | **Phase MERGE will decline more often** on runs where a seam fired (H-2's extra post-PUB commit). | A deliberate trade — a truthful record against an automatic merge. | Visible as a deferral on the report, never silent; out of scope for this feature's tests. |
+| R-8 | **Cost.** Every seam invocation is one or more Opus/Fable dispatches on top of an already-expensive pipeline. | Bounded by `attemptBudget` (3) and `seamBudgetMinutes` (10) per seam, at most five seams per run, and only on runs that would otherwise have *halted* — i.e. the spend replaces an operator's turn, not a successful run's. | The budgets are config, not constants; the summary makes the spend legible per run. |
+
+**Feasibility verdict.** No new platform capability is required: every transport (`_agent`, `_git`,
+`_ghRun`, `_readFile`, `_writeFile`, `_appendFile`, `_runCommand`, `_now`, `_sleep`) already exists
+and is already injected. The only genuinely new capabilities are two `gh` **reads** and one `gh`
+**write** (§8.3), each behind a probe whose absence is a first-class outcome. The expensive parts are
+the X-a operation matrix (§13.4(1)) and the D-6 fixture (§11.2), both of which are one-time authoring
+costs rather than ongoing complexity.
+
 ## 16. Decisions warranting a DECISIONS record
+
+Six load-bearing choices where a real alternative was weighed and rejected. A future agent will
+otherwise reconsider each of them confidently.
+
+### 16.1 Advisory core in `orchestrate-dev.js`, reached from the queue by prelude binding
+
+**Rejected:** a fourth build source `pdlc/workflows/advisory.js`. Feasible, and it would keep
+`orchestrate-dev.js` ~800 lines smaller — but it changes the artifact-composition rule that
+`runtimeBundle.test.js` and `distribution-manifest.json` are written against, for a benefit no
+requirement asks for. **Rejected:** duplicating the constants in both modules — that is exactly what
+M-5 forbids. Reversibility: **easy** (extracting to a fourth source later is mechanical).
+
+### 16.2 One `runAdvisorySeam` driver behind an injected `SeamOps`, not five per-seam functions
+
+**Rejected:** a function per seam. It would put the budget arithmetic, the envelope gate, the refusal
+ladder, the record write and the escalation in five places, and V-8's "every escalation produces the
+same observable triple" would become five things to keep in step rather than one. The cost is the
+`apply`/`verifyGate` split (§4.4), which is less obvious than a per-seam branch.
+
+### 16.3 The irreversible act lives in `verifyGate`, so RECORD precedes it
+
+**Rejected:** the literal FSPEC §4.1 order with an A5 special case in the driver. That leaves A2's
+commit/record ordering undefined (the erratum in §16.4) and would eventually require undoing a commit
+to satisfy R-2. **Rejected:** writing the record *before* the action — the record carries the
+disposition, which is not known until the action's outcome is. Reversibility: **hard** — it shapes
+the `SeamOps` contract.
+
+### 16.4 Errata raised against FSPEC (not fixed here)
+
+Two upstream defects were found while grounding this document. Both are routed as errata, not folded
+into this TSPEC's own verdict, and both have a TSPEC-side resolution recorded above so implementation
+is unblocked either way:
+
+1. **A2-6 / R-2 ordering gap** — A2-6 requires an applied re-grounding to be *committed* before the
+   invocation ends; R-2 requires a failed record write to un-take the action. FSPEC never reconciles
+   them, and the literal reading demands undoing a commit, which BR-5 does not sanction. Resolved
+   here by §4.4/§6.4.1's `apply`/`verifyGate` split.
+2. **C-2 / D-5 conflict** — C-2 unconditionally reports a degraded key on the run report; D-5, S-4
+   and T-10-4 require a *disabled* run to carry no advisory content. A malformed `advisory.enabled`
+   satisfies both, contradictorily. Resolved here by §3.2's emit-side suppression.
+
+### 16.5 Report-only for the post-A5 DoD divergence (OQ-3)
+
+**Rejected:** re-verifying DoD inside Phase PUB — harvest has already deleted the `CODE_REVIEW-*`
+inputs (B-15), so a re-run would author an un-harvestable artifact after its harvest.
+**Rejected:** halting on the divergence — it would negate every successful A5 resolution.
+Reversibility: **easy** (report-only is a strict subset of either alternative).
+Re-evaluation trigger: if Phase H ever moves after Phase PUB, re-verification becomes cheap.
+
+### 16.6 Reuse `guardVerdict`/`effectiveGuardPaths` for X-e; own only two new predicates
+
+**Rejected:** a purpose-built X-e matcher. Phase MERGE's shipped matcher already has the exact
+semantics — anchored, `/`-delimited, non-globbing, fail-closed on an unretrievable list — and a second
+one would eventually disagree with it about a path like `pdlc/workflowsX/`. The two predicates this
+feature does own (`touchesTestArtifact`, `touchesDodCriterion`) have no shipped precedent, which is
+why they are owned rather than reused.
+
