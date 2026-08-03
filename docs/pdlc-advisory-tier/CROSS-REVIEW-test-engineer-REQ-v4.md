@@ -40,6 +40,15 @@ and two of my v3 Lows (F-22, F-23) were out of scope for this erratum and remain
 
 ## Findings
 
+One new Low, introduced by the item-2 fix; two carried Lows the erratum did not scope. Nothing High
+or Medium. Numbering continues from v3.
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-24 | Low | Local | **AC-4.5's lead sentence is now falsified by its own A1 row, and AC-4.6 turns that into a test that cannot be written.** The lead reads "Given a resolution is applied, Then a gate **re-runs** and reaches its own verdict" — universally quantified over seams — while the A1 row now reads `**none**`. AC-4.6 then requires that "each of AC-4.1 through AC-4.5 has a failing test proving the prohibition holds, and each such test asserts the AC-3.6 positive triple on the same path". For AC-4.5 at A1 there is no gate to prove re-runs and no refusal triple to assert, so the AC-4.6 obligation for that cell has no realisable fixture — the same vacuity F-21 removed, displaced one sentence upward. **Resolution:** one clause on the lead — "Given a resolution is applied **that changes state**, Then a gate re-runs …; A1 applies no state change and is excepted, its safety resting on AC-5.1's routing" — so AC-4.6's per-seam obligation reads over the four seams that have gates. | AC-4.5 (lead sentence + A1 row), AC-4.6 |
+| F-22 | Low | Local | **Carried unchanged from v3 — AC-3.6 does not say what the triggers are matched against, and on A5's main path rows 4 and 8 both match with opposite expected values.** The AC-8.2 rewording does not touch it: an *act→re-poll* cycle that exhausts `attemptBudget` still matches row 4 over the invocation's history and row 8 over its terminating condition, leaving the reason cell of the most-exercised A5 test under-determined. **Resolution** (unchanged): one sentence above the table — "a trigger is matched against the condition on which the invocation terminates, not against conditions encountered earlier in it". | AC-3.6 (rows 4, 8), AC-8.2, AC-2.4 |
+| F-23 | Low | Local | **Carried from v3, and the delta widens it slightly — AC-9.3's terminal observable is still stated unconditionally but is false on the halt path.** v1.4 adds "the merged branch carries the LEARNINGS content, not the record", which is a second completion-path-only claim: a run that escalates at A3/A4/A5 halts before Phase H, so no LEARNINGS is written, no delete occurs (correctly — the extended guard refuses it), and no PR is merged. A test author writing the escalation-path acceptance test from this sentence asserts absence and gets a red for the right behavior. **Resolution** (unchanged): qualify with "at the end of a run that reaches completion; a run that halts leaves the record in place, which the extended guard enforces anyway since no `LEARNINGS-{feature}.md` exists yet." Note AC-9.1's new sentence supplies exactly this qualifier for the A1/A2 `hold`/`escalate` case — AC-9.3 needs the A3/A4/A5 halt equivalent. | AC-9.3, AC-9.1 |
+
 ## Questions
 
 ## Positive Observations
