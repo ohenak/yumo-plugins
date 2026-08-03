@@ -36,11 +36,13 @@ source citations, not on every docs commit.
 **This citation pin is deliberately distinct from REQ BL-02 / FSPEC §2's `26c3f1c`.** That commit is
 REQ's *behavioral* baseline — the tree whose observable "Today" pipeline behavior the REQ rows were
 measured against — and it is an **ancestor of this HEAD** (`git merge-base --is-ancestor 26c3f1c HEAD`
-⇒ true), so the behavioral baseline still holds. But `26c3f1c` **predates Phase PUB's
-`raisePrAndVerifyCi`** (introduced by `4d5e4dc`, on the branch tree but not at `26c3f1c`), so §7/§8's
-*source-line* citations cannot resolve there. The two pins serve two purposes: REQ pins behavior at
-`26c3f1c`; this TSPEC pins source lines at the branch HEAD that actually carries the code being
-extended. Both are true simultaneously.
+⇒ true), so the behavioral baseline still holds. `26c3f1c` already carries every symbol this TSPEC
+cites — Phase PUB's `raisePrAndVerifyCi` included (`4d5e4dc`, "Add Phase PUB…", is an **ancestor** of
+`26c3f1c`: `git merge-base --is-ancestor 4d5e4dc 26c3f1c` ⇒ true, and
+`git grep -c 'raisePrAndVerifyCi' 26c3f1c -- pdlc/workflows/orchestrate-dev.js` ⇒ 4). The two pins are
+distinct only because the source files **churn** between `26c3f1c` and HEAD, so §7/§8's *line numbers*
+were read at branch HEAD to stay navigable; every named symbol resolves at both commits. REQ pins
+behavior at `26c3f1c`; this TSPEC pins source lines at the branch HEAD. Both are true simultaneously.
 
 Implementation still rebases `feat-pdlc-advisory-tier` onto the latest default branch before Phase I
 — Phase DOD step-0 does exactly this (`ship-pr`, CLAUDE.md) — but that is release hygiene, not a
