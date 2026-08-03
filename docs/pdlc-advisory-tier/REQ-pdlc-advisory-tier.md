@@ -94,7 +94,7 @@ halt currently conflates: *diagnosing* the problem, and *authorizing* the resolu
   | Threshold | Default | Meaning |
   |---|---|---|
   | `advisory.enabled` | `false` | master switch (AC-1.6) |
-  | `advisory.attemptBudget` | `3` | advisory attempts per seam invocation (AC-2.4); A5's fix→re-poll cycles (AC-8.2) draw on this same budget |
+  | `advisory.attemptBudget` | `3` | advisory attempts per seam invocation (AC-2.4); A5's act→re-poll cycles (AC-8.2) draw on this same budget |
   | `advisory.seamBudgetMinutes` | `10` | advisory working time per seam invocation, **excluding** time spent waiting on GitHub's check rollup (NFR-4); an overrun escalates |
   | `advisory.envelope` | the AC-3.3 allow-list | the per-seam allow-list (AC-3.1) |
 
@@ -245,8 +245,10 @@ halt currently conflates: *diagnosing* the problem, and *authorizing* the resolu
   failing job's log and produces a diagnosis naming the failing step and the cause.
 - **AC-8.2** — Given the cause is within the envelope (AC-3.3), Then a minimal fix is committed and
   pushed, CI is re-polled, and the cycle repeats up to `advisory.attemptBudget` (AC-1.7) attempts
-  before escalating. One attempt is one fix→push→re-poll cycle; a re-poll that hits Phase PUB's own
-  completion timeout consumes an attempt rather than escalating separately.
+  before escalating. One attempt is one **act→re-poll** cycle, where the act is either a pushed fix
+  (E-2) or a re-run of the failing check on the unchanged commit (E-1, which pushes nothing) — so
+  E-1's re-run-only cycle counts as one attempt on the same budget. A re-poll that hits Phase PUB's
+  own completion timeout consumes an attempt rather than escalating separately.
 - **AC-8.3** — Given a fix is pushed during Phase PUB, Then the run is never reported DoD-passed on
   bytes the DoD gate did not verify: the report's DoD status names the verified commit, and a
   branch head beyond it is reported unverified. Phase PUB runs after Phase H, so what restores a
