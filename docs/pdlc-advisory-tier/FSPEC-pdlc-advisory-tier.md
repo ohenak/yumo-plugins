@@ -15,6 +15,31 @@ feature: pdlc-advisory-tier
 |---|---|---|---|---|
 | pdlc | draft | Claude | 1.0 | 2026-08-03 |
 
+## 0. Overview
+
+Today the PDLC pipeline stops at five points where a judgment is needed and no rung of the system is
+authorised to make one: queue triage abstains (B-1), a stale REQ is never re-grounded (B-3), DoD
+exhaustion halts (B-5), a rebase conflict halts (B-6), and a CI failure halts (B-7). Each stop is
+correct — the pipeline refuses to guess — but each also parks an unattended run until an operator
+returns to it.
+
+The **advisory tier** adds one bounded capability at each of those five seams (A1…A5): a single
+advisory invocation that may diagnose the situation and, if a resolution falls inside a declared
+envelope, apply and verify it; otherwise it escalates and the seam behaves exactly as it does today.
+Two properties make this safe to enable:
+
+1. **Escalation is the shipped-behaviour path.** An invocation that does not resolve leaves the
+   pipeline's pre-advisory outcome intact (§5's refusal ladder, §11's escalation output). The tier can
+   only add outcomes an operator would otherwise have produced by hand; it can never remove one.
+2. **Disabled is inert, and disabled is the default.** With no `advisory` config section — the normal
+   state of a repo that never opts in (B-11, B-12) — no advisory agent is dispatched, no model is
+   resolved, no file is written, and the report carries no advisory content (§12).
+
+For a reader deciding where to start: §1 gives the section map and what is deliberately left to TSPEC,
+§2 pins the observed baseline every later section cites by id, §3–§5 specify the tier's mechanics once
+(rung, lifecycle, envelope), and §6–§9 apply them seam by seam. §10–§11 cover what the run leaves
+behind for the operator; §12 covers the off case; §13 lists what is still open.
+
 ## 1. Scope and reading order
 
 This FSPEC specifies the **observable behaviour** of the advisory tier described by
