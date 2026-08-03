@@ -125,7 +125,7 @@ halt currently conflates: *diagnosing* the problem, and *authorizing* the resolu
   | # | Permitted | Decidable rule | Seam |
   |---|---|---|---|
   | E-1 | re-running a flaky check | *flaky* = the check failed and the re-run is on the identical commit sha with no push between them; capped by `advisory.attemptBudget` | A5 |
-  | E-2 | fixing a lint, format or type error introduced by the branch | *introduced* = the same check passes at the merge-base commit and fails at the branch head | A5 |
+  | E-2 | fixing a lint, format or type error introduced by the branch | *introduced* = the same check passes at **both** the merge-base commit and the default-branch tip, and fails at the branch head; AC-8.4's default-branch comparison is evaluated first | A5 |
   | E-3 | resolving a rebase conflict in branch-created files | *branch-created* = absent from the merge-base tree **and** absent from the default-branch tip | A4 |
   | E-4 | re-grounding a stale REQ's `file:line` citations | the cited symbol still exists, at a new location | A2 |
 
@@ -250,7 +250,8 @@ halt currently conflates: *diagnosing* the problem, and *authorizing* the resolu
   branch head beyond it is reported unverified. Phase PUB runs after Phase H, so what restores a
   verified state — re-verification inside PUB, or a halt for the operator — is TSPEC's to choose.
 - **AC-8.4** — Given the failing check is a pre-existing failure also present on the default
-  branch, Then the advisory agent identifies it as such and escalates without attempting a fix —
+  branch's tip, Then — this comparison being evaluated before E-2's *introduced* test — the
+  advisory agent identifies it as such and escalates without attempting a fix —
   the feature did not cause it and must not silently own it. Drawing that comparison needs the
   default branch's own check history (BL-05); given that capability is unavailable, Then the seam
   escalates with the comparison undone and attempts no fix.
