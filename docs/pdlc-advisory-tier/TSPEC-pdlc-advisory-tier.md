@@ -957,6 +957,118 @@ Phase MERGE reads neither — it applies its own preconditions to whatever head 
 
 ## 9. Advisory record, harvest, delete guard, run-report summary (FSPEC-ADV-08)
 
+### 9.1 File format — `docs/{feature}/ADVISORY-{feature}.md`
+
+Append-only Markdown; one `##` entry per invocation, in occurrence order (R-3). Seven fields,
+matching §10.1's table one-for-one so T-08-1 is a field-presence assertion:
+
+```markdown
+## 2026-08-03T14:21:07Z — A5 — escalated
+
+| Field | Value |
+|---|---|
+| Seam | A5 |
+| Confidence | high |
+| Envelope | out — no permitted action matched (E-2 requires the default-branch tip) |
+| Disposition | escalated — budget-exhausted |
+| Model | opus (fallback for "fable") |
+
+**Diagnosis.** …one paragraph…
+
+**Evidence.**
+- `.github/workflows/pr-tests.yml:31` — the failing step
+- run 1892…, job "Unit tests (ubuntu-latest, node 20)"
+```
+
+`renderAdvisoryEntry(disposition, { now })` is **pure** — it takes the timestamp rather than reading a
+clock, so the rendered bytes are testable exactly. Written via `_appendFile` (`dev:6690`), which is
+already the append transport and already creates nothing implicitly: a missing feature directory
+makes the append throw, which is §10.5's row and R-2's refusal path (T-08-2), not a silent `mkdir`.
+
+The `Model` row carries M-2's declaration, which is why T-08-7 can read it off the record as well as
+off the summary.
+
+### 9.2 `appendAdvisoryEntry` — the step-7 primitive
+
+```js
+export async function appendAdvisoryEntry({ feature, disposition, _appendFile, _now })
+```
+
+Throws on write failure; the driver's step 7 catches and refuses `record-write-failed` (§4.4).
+**R-4** — invocations that took no action are recorded too — needs no code: the driver calls step 7
+on every terminal disposition including `no-action`, and only the *escalation log* (§10) is
+escalation-only.
+
+### 9.3 Harvest: a post-PUB distil step, and the guard extension
+
+**H-1's placement.** A new step runs after Phase PUB and before Phase MERGE — i.e. between
+`dev:8272` and `dev:8274`. Phase H (`dev:8192-8246`) is **untouched**: it neither distils nor deletes
+`ADVISORY-*`, because at that point A5 has not run yet (B-15).
+
+```js
+// dev:8273 — Phase H2: distil the advisory record (dev-side only)
+if (advisory.enabled && advisory.recordExists) {
+  await agentFn("harvest-learnings", advisoryDistilPrompt(featureName));   // appends to LEARNINGS
+  const del = await gitFn(["rm", "--", advisoryPath]);                      // through the guard
+  if (guardRefused(del)) { notices.push(`ADVISORY record retained: ${firstLine(del)}`); }
+  else { await commitPaths({ paths: [learningsPath, advisoryPath], … }); await gitFn(["push", …]); }
+}
+```
+
+The delete goes through the **guard-covered channel** (`git rm`, matched by the guard's
+`\bgit\s+rm\b` alternative at `guard-harvest-before-delete.sh:38`) rather than around it — H-3's
+"the guard is the control, not a courtesy".
+
+**The guard-script edit, and the coupling it must not break.** Three lines change:
+
+| Line | Change |
+|---|---|
+| `:35` | `if "CROSS-REVIEW" not in cmd and "CODE_REVIEW" not in cmd and "ADVISORY" not in cmd:` |
+| `:43` | `re.findall(r'\S*(?:CROSS-REVIEW\|CODE_REVIEW\|ADVISORY)-[\w.\-]*', cmd)` |
+| `:57-59` | the refusal message gains the artifact class that actually matched |
+
+> ⚠️ **`orchestrate-dev.js` parses that message.** `dev:8226-8228` tests for the literal
+> `"pdlc guard: refusing to delete CROSS-REVIEW files"` and `dev:8232-8234` extracts the blocked path
+> with `/pdlc guard: refusing to delete CROSS-REVIEW files in \[([^\]]+)\]/`. A naive rewrite to
+> "refusing to delete ADVISORY files in […]" makes Phase H stop recognising a guard block — it would
+> proceed as if the delete succeeded. The message is therefore extended, not rewritten:
+>
+> ```
+> pdlc guard: refusing to delete CROSS-REVIEW files in [docs/x] — no LEARNINGS-*.md exists there yet.
+> … (unchanged) … This guard also covers CODE_REVIEW-* and ADVISORY-* files. [class: ADVISORY]
+> ```
+>
+> The prefix and the bracketed directory keep their exact bytes, so both `dev:8226` and `dev:8232`
+> keep matching; the class is a **suffix token** the new distil step reads. This coupling is a named
+> integration risk (§15) and gets its own regression test asserting the existing detection still fires.
+
+**H-2b (queue-side records persist).** No queue-side code path deletes or distils an advisory record;
+the record's durability is the §6.4.1 commit. H-2's absence observable is scoped to dev-side runs
+(T-08-8), and no dev-side run can reach A1/A2, so the two never contend.
+
+**H-4.** A run that halts before the distil step leaves the record on disk complete up to the halt —
+free, because the halt throws before `dev:8273` is reached.
+
+### 9.4 The advisory summary on the final report
+
+```js
+export function advisorySummaryRows(dispositions)   // pure
+// → { rows: [{seam, invocations, resolved, escalated, noAction}, …five…], total: {…} }
+```
+
+- **S-1.** `ADVISORY_SEAMS` (§3.1) drives the row list, so five rows always appear and a seam that
+  never fired is visibly zero. The per-row and total identity `invocations === resolved + escalated +
+  noAction` is asserted by the function itself and re-asserted by T-08-10's literal six-row table.
+- **On every report, including a halt's.** `buildFinalReport` (`dev:8480`) is called on both the halt
+  path (`dev:8390-8396`) and the success path (`dev:8399-8407`); `advisory` rides the same way
+  `notices` and `queueRow` already do (`dev:8395`, `dev:8402`). T-08-9 follows directly.
+- **S-2.** the row carries `model` and `fallback` from the rung state (§3.4).
+- **S-3.** `noChecks` and `completionCap` booleans are threaded from `raisePrAndVerifyCi` (§8.1) and
+  named on the summary — A5-6 and A5-9.
+- **S-4.** with the tier disabled, `buildFinalReport` receives `advisory: null` and emits nothing.
+- **S-5.** `buildQueueReport` (`queue:1221`) gains the same summary for A1/A2. A dev-side report's
+  A1/A2 rows are structurally zero, because no dev-side call site constructs those seams.
+
 ## 10. Escalation log and report notices (FSPEC-ADV-09)
 
 ## 11. Disabled-tier equivalence (FSPEC-ADV-10)
