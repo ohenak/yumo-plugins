@@ -342,8 +342,10 @@ record, escalation output, tests.
   substitution declared, while AC-1.4 keeps a wholly unresolvable configuration a loud failure.
 - **BL-02** — **Satisfied.** `pdlc-merge-phase` has landed on the default branch: Phase MERGE, its
   mode catalogue, its self-modification guard and the `.claude/pdlc.config.json` reader are all
-  shipped there. This REQ is written against that base, not against this branch's older tree; every
-  §1 "Today" row was re-checked against it and all five still hold. (The queue row for
+  shipped there. This REQ is written against that base, **pinned for re-verification at
+  default-branch commit `26c3f1c`**, not against this branch's older tree; every §1 "Today" row was
+  re-checked there row by row and all five hold, A4's `REBASE_STATUS: conflict` → halt included. A
+  later default-branch commit is a fresh check, not an inherited one. (The queue row for
   `pdlc-merge-phase` still reads `pending` — an operator note about `docs/_queue/QUEUE.md`, not a
   dependency of this REQ.)
 - **BL-03** — `gh` can retrieve failing job logs (`gh run view --log-failed`) in the consuming repo.
@@ -351,7 +353,12 @@ record, escalation output, tests.
   AC-10.4) and consumed by `pdlc-engineering-loop`.
 - **BL-05** — `gh` can read the **default branch's own** check history, which is a different surface
   from BL-03 and from the PR-rollup read the pipeline performs today. AC-8.4's pre-existing-failure
-  comparison depends on it; where it is unavailable the seam escalates with the comparison undone.
+  comparison **and E-2's *introduced* test** both depend on it; where it is unavailable the seam
+  escalates with the comparison undone and attempts no fix.
+- **BL-06** — `gh` can **re-run** a workflow run — a *write* against Actions, unlike every CI
+  surface the pipeline uses today, all of which are reads, and requiring the corresponding token
+  scope. E-1 depends on it; where it is unavailable E-1 is out of envelope and the seam escalates
+  under the same clause as BL-05.
 
 ## 7. Deferrals
 
