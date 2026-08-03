@@ -72,7 +72,21 @@ continues from v1 so cross-references stay unambiguous.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-06 | *(carries over from v1 Q-03, now sharper.)* AC-3.4(e) excludes REQ-MERGE-03's self-modification paths — `pdlc/workflows/`, `pdlc/skills/`, `pdlc/hooks/`, `.claude/workflows/` at the base (`main:pdlc/workflows/orchestrate-dev.js:60`ff, `:908`). In **this** repo essentially every feature diff lands under those paths, so A4 and A5 have no reachable in-envelope case here and their acceptance tests can only ever exercise the escalation branch. Is that intended (the tier is for consuming repos)? If so, saying it in §5 would tell the test author that the A4/A5 in-envelope tests need a synthetic fixture repo rather than a self-hosted run. |
+| Q-07 | AC-8.3 says the report's DoD status "names the verified commit, and a branch head beyond it is reported unverified", and leaves the restoration mechanism to TSPEC. For the acceptance test: is *"DoD status reports `unverified` after an A5 fix push"* the terminal, passing outcome of a successful A5 resolution, or an intermediate state that some later step must clear before the run is reported complete? The two give opposite expected values for the same run. |
+| Q-08 | AC-1.7 makes `advisory.envelope` operator-configurable while AC-3.1 says the envelope is "not inferable, extendable, or negotiable by **any agent** at runtime". Does an operator-widened envelope still have to be a subset of AC-3.3's four entries, or may it add entries? The answer decides whether the envelope test is a set-equality over exactly E-1…E-4 (which would fail on any operator addition) or a subset check. |
+| Q-09 | AC-5.5 requires the `needs-human` result to carry a machine-readable seam token. Is that token expected to be added to the existing `TRIAGE:` trailer grammar (`main:pdlc/workflows/orchestrate-queue.js:314`, regex `^TRIAGE:\s*(ready|blocked|needs-human)\b\s*(.*)$` — the trailing group is currently free text), or emitted on a separate line? Existing parser tests pin that regex, so the answer decides whether this feature changes a pinned contract. |
+
 ## Positive Observations
+
+- **Every v1 finding is genuinely closed, and closed at the right altitude.** The revision resisted the common failure of answering a testability finding with implementation detail: AC-1.1 hands the alias literal to TSPEC rather than guessing it, AC-1.4 and AC-8.3 both say "the detection point / what restores it is TSPEC's to choose" while still naming the observable. That is exactly the REQ/TSPEC split.
+- **AC-3.6 is the strongest addition.** Collapsing six distinct refusal causes into one observable triple — fixed outcome, closed reason set, unchanged pre-advisory behavior — turns what were six absence-only oracles into six positive assertions that differ only in one cell. It also makes AC-4.6's "each such test asserts the AC-3.6 positive triple on the same path" a mechanical instruction rather than an aspiration.
+- **AC-3.3's rule column and AC-3.4(a)'s enumeration are both written so a deleted case fails.** E-3 in particular gets the baseline question right by requiring *both* the merge-base tree and the default-branch tip — the discipline F-16 asks E-2 to adopt.
+- **The document verifies well.** Fifteen of the seventeen new existing-behavior claims checked out against `main` line-for-line, including the two easy ones to get wrong: the config path Phase MERGE actually uses (`:43`) and the 10-minute no-checks window (`:33`). The two that did not (F-14, F-15) are both drift against a base that moved, not invention.
+- **AC-9.3's "no advisory record is deleted while a later phase can still append to it"** identifies a real ordering hazard that the existing harvest design would have hit silently — Phase PUB genuinely runs after Phase H. Naming it in the REQ is the right call even though F-17 asks for one more sentence.
+- **AC-2.1's justification for collapsing the enum** ("two-valued because nothing in this REQ reads any third value") is the right way to close a testability finding: it removes the untestable distinction rather than inventing an observable for it.
 
 ## Recommendation
 
