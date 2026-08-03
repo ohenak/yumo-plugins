@@ -135,7 +135,8 @@ halt currently conflates: *diagnosing* the problem, and *authorizing* the resolu
   parametrised case list, or lowering a coverage or mutation threshold; (b) any change to a DoD
   criterion or threshold; (c) any rebase conflict outside E-3's branch-created files; (d) any change
   outside the feature's **declared scope** — the files named in the feature's PLAN plus the files
-  the branch had already touched when the seam fired; (e) anything under REQ-MERGE-03's
+  the branch had already touched as of its head at the seam's dispatch (at A4, the pre-rebase
+  head); (e) anything under REQ-MERGE-03's
   self-modification paths.
 - **AC-3.5** — Given an advisory-produced diff touches anything in AC-3.4(a), Then the diff is
   reverted whole, the seam escalates, and no run in which that happened is reported as resolved —
@@ -298,9 +299,12 @@ phase needs work.
   escalation under its own heading; a later invocation escalating the same feature and seam appends
   a further entry rather than updating one in place, so `pdlc-engineering-loop` can consume it as a
   log rather than a state file.
-- **AC-10.5** — Given the pipeline already emits in-process `ESCALATION:` notices on the final
-  report, Then those notices are left exactly as they are and each advisory escalation additionally
-  emits one, naming the seam and pointing at its `ESCALATIONS.md` entry. The durable file is
+- **AC-10.5** — Given the pipeline already emits in-process escalation notices on the final report
+  — today only Phase MERGE's, under its own frozen, merge-specific prefix — Then that catalogue is
+  left exactly as it is, not widened, and each advisory escalation emits a notice under a distinct
+  advisory prefix of its own (the literal is TSPEC's), naming the seam and pointing at its
+  `ESCALATIONS.md` entry. Both prefixes carry the shared `ESCALATION:` token, so one grep over the
+  report still finds every notice of either kind. The durable file is
   required because the operator's turn begins after the process has exited and a report notice does
   not survive it; the notice channel stays the single place the operator watches.
 
