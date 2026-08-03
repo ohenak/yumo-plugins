@@ -17,21 +17,28 @@ feature: pdlc-advisory-tier
 
 ## 1. Scope, baseline pin, and what this TSPEC decides
 
-### 1.1 Baseline pin — and a warning about this branch's tree
+### 1.1 Citation pin — the feature-branch tree at HEAD, not the REQ behavioral pin
 
-Every `file:line` in this document is read at **default-branch commit `26c3f1c`**, the commit REQ
-BL-02 pins and FSPEC §2 cites by baseline id. That pin is load-bearing here in a way it is not in
-most features:
+Every `file:line` in this document is read at the **feature-branch working tree, HEAD `5d66c48`**
+(`git rev-parse HEAD` on `feat-pdlc-advisory-tier`), where `pdlc/workflows/orchestrate-dev.js` is
+**8,642** lines and `pdlc/workflows/orchestrate-queue.js` is **1,587** lines. Every symbol this TSPEC
+names resolves at that HEAD; a reader should verify each citation by **symbol name** (`grep -n`),
+treating the line number as a navigation hint against a ~8,600-line file that churns.
 
-> `feat-pdlc-advisory-tier` is branched from a **pre-`26c3f1c`** default branch. At this branch's
-> head, `pdlc/workflows/orchestrate-dev.js` is 2,139 lines and `pdlc/workflows/orchestrate-queue.js`
-> is 735 lines; at `26c3f1c` they are **8,527** and **1,587** lines respectively. Every symbol this
-> TSPEC names exists at `26c3f1c` and many do not exist on this branch's current tree.
+**This citation pin is deliberately distinct from REQ BL-02 / FSPEC §2's `26c3f1c`.** That commit is
+REQ's *behavioral* baseline — the tree whose observable "Today" pipeline behavior the REQ rows were
+measured against — and it is an **ancestor of this HEAD** (`git merge-base --is-ancestor 26c3f1c HEAD`
+⇒ true), so the behavioral baseline still holds. But `26c3f1c` **predates Phase PUB's
+`raisePrAndVerifyCi`** (introduced by `4d5e4dc`, on the branch tree but not at `26c3f1c`), so §7/§8's
+*source-line* citations cannot resolve there. The two pins serve two purposes: REQ pins behavior at
+`26c3f1c`; this TSPEC pins source lines at the branch HEAD that actually carries the code being
+extended. Both are true simultaneously.
 
-Implementation therefore begins with a rebase onto `26c3f1c`-or-later, before any task in the PLAN
-runs. This is not a nicety: `computeWaves`, `parseImplementationConfig`, `phaseMerge`,
-`MERGE_ESCALATIONS` and `defaultAppendFile` — all integration points below — postdate this branch's
-base. PLAN owns that as its first gate (§13.6).
+Implementation still rebases `feat-pdlc-advisory-tier` onto the latest default branch before Phase I
+— Phase DOD step-0 does exactly this (`ship-pr`, CLAUDE.md) — but that is release hygiene, not a
+precondition for these citations to resolve: the branch tree already carries `computeWaves`,
+`parseImplementationConfig`, `phaseMerge`, `MERGE_ESCALATIONS`, `raisePrAndVerifyCi` and
+`defaultAppendFile`, all cited below.
 
 ### 1.2 What FSPEC left to this document
 
@@ -59,7 +66,7 @@ probes whose *absence* is a first-class, tested outcome; it does not assume eith
 
 `dev` = `pdlc/workflows/orchestrate-dev.js`, `queue` = `pdlc/workflows/orchestrate-queue.js`,
 `adapter` = `pdlc/workflows/runtime-adapter.js`, `build` = `pdlc/workflows/build-runtime.mjs`, all at
-`26c3f1c`. FSPEC rule ids (`V-5`, `A5-3`, `X-a`, …) are used verbatim; this document never restates
+the feature-branch HEAD pinned in §1.1. FSPEC rule ids (`V-5`, `A5-3`, `X-a`, …) are used verbatim; this document never restates
 a rule it is only implementing.
 
 ## 2. Architecture — where the code lives, and the bundle constraint
