@@ -1023,3 +1023,59 @@ never resolves, never partially applies, and never converts a blocking outcome i
 (§4.3 V-7). That direction is why the error tables can be finite — an omission costs an escalation
 an operator would have handled anyway, not an unsafe action.
 
+## 18. Acceptance Tests
+
+Every acceptance test of this FSPEC is written in Who / Given / When / Then form in the section that
+owns the behaviour, so a test engineer reads a test beside the rule it pins. This section is the
+index — the whole set, its shape, and the three assertions that span sections.
+
+### 18.1 The set
+
+| Series | Section | Count | Range |
+|---|---|---|---|
+| T-01 | §3.4 rung and configuration | 6 | T-01-1 … T-01-6 |
+| T-02 | §4.5 invocation lifecycle | 6 | T-02-1 … T-02-6 |
+| T-03 | §5.5 envelope, prohibitions, refusal ladder | 7 | T-03-1 … T-03-7 |
+| T-04 | §6.6 seams A1 and A2 | 9 | T-04-1 … T-04-9 |
+| T-05 | §7.4 seam A3 | 6 | T-05-1 … T-05-6 |
+| T-06 | §8.4 seam A4 | 6 | T-06-1 … T-06-6 |
+| T-07 | §9.4 seam A5 | 9 | T-07-1 … T-07-9 |
+| T-08 | §10.6 advisory record and harvest | 7 | T-08-1 … T-08-7 |
+| T-09 | §11.4 escalation output | 7 | T-09-1 … T-09-7 |
+| T-10 | §12.3 disabled-tier equivalence | 5 | T-10-1 … T-10-5 |
+| **Total** | | **68** | |
+
+The series number matches the FSPEC-ADV id it discharges — T-04-* covers FSPEC-ADV-04, and so on —
+so §14.1's requirement → section → tests chain reads in either direction without a lookup.
+
+### 18.2 The three cross-section assertions
+
+Three tests are deliberately written as *for-each* assertions rather than as single cases, because
+each pins a closed set that a later change could quietly widen.
+
+| Test | Quantified over | What widening it catches |
+|---|---|---|
+| T-02-6 | every refusal reason in §5.3 | a reason whose escalation path skips part of the §4.3 V-8 triple |
+| T-03-3 | every operation enumerated in X-a | a test-artifact edit that slips past the revert because it takes an unlisted form |
+| T-03-6 | every prohibition P-1…P-4 and every gate row of §5.4 | a prohibition that holds only by accident, with no gate re-run behind it |
+
+T-03-5 is the set-equality companion: the shipped refusal-reason set compared with §5.3 as a set, so
+an invented or deleted reason fails even where no individual path changed.
+
+### 18.3 What the suite is required to pin
+
+| # | Obligation | Tests |
+|---|---|---|
+| AT-1 | The disabled tier is inert on named artifacts and phase outcomes — not merely "looks the same". | T-01-1, T-10-1 … T-10-5 |
+| AT-2 | Every escalation, whatever its cause, produces the same observable triple. | T-02-6, and each seam's escalating case |
+| AT-3 | Nothing the tier does converts a blocking outcome into a passing one. | T-03-6, T-05-2, T-07-7, T-09-3, T-09-4 |
+| AT-4 | After any invocation the tree is in one of exactly two states. | T-03-1, T-03-2, T-05-5, T-06-3, T-06-6, T-08-2 |
+| AT-5 | A resolution is always a gate's verdict, never an agent's. | T-02-1, T-03-7, T-06-1, T-07-1, T-07-7 |
+| AT-6 | The run leaves a durable, honest account behind — record, log, summary. | T-08-1 … T-08-7, T-09-1, T-09-2, T-09-6 |
+
+### 18.4 Out of scope for this document
+
+The suite's *form* — framework, fixtures, doubles for the runtime seams, and which of these are
+property-based rather than example-based — is a testing decision owned by PROPERTIES and TSPEC.
+This FSPEC fixes only what must be true, and for which inputs.
+
