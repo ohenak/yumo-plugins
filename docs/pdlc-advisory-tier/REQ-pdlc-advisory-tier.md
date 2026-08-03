@@ -30,7 +30,7 @@ Every judgment call in the pipeline is a full stop with no attempt at resolution
 | Seam | Location | Today |
 |---|---|---|
 | A1 | `orchestrate-queue` Phase-0 triage returns `needs-human` | skip the candidate, try next |
-| A2 | Stale-REQ re-grounding obligation inside that same triage prompt | `needs-human`, skip — today indistinguishable from A1 |
+| A2 | Stale-REQ re-grounding — **no such gate exists today**; the Phase-0 triage prompt carries no re-grounding obligation, so this feature introduces A2's trigger rather than routing an existing signal | nothing fires; a stale REQ runs unnoticed |
 | A3 | Phase DOD verify→remediate exhausts 3 iterations | pipeline halts |
 | A4 | `ship-pr` rebase produces conflicts | pipeline halts, branch unchanged |
 | A5 | Phase PUB CI is red, or no check ever registers | red halts; no-checks passes silently |
