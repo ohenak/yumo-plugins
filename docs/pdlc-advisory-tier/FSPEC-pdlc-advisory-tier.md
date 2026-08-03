@@ -934,3 +934,53 @@ the report carries the advisory summary: five seam rows, zero counts included (�
 | F-5 | An escalation at a halting seam still halts; an escalation at a skipping seam still skips. Escalation adds information, never control flow. | §11.1 L-3 |
 | F-6 | A seam that never fires produces no invocation, no record entry, and no escalation — and still appears as a zero row in the summary. | §10.3 S-1 |
 
+## 16. Business Rules
+
+Every business rule of this FSPEC is stated once, in the section that owns it. This section is the
+**register** of those rules — the prefix each family uses, where it lives, and what it governs — plus
+the six cross-cutting rules that no single seam section owns.
+
+### 16.1 Rule register
+
+| Prefix | Family | Owning section | Governs |
+|---|---|---|---|
+| C-1 … C-4 | configuration | §3.1 | how the `advisory` config section is read and degraded |
+| M-1 … M-5 | model rung | §3.2 | rung resolution, the declared fallback, the unresolvable case |
+| V-1 … V-8 | verdict and lifecycle | §4.3 | what a verdict is, what licenses action, the disposition triple |
+| E-R1 … E-R4 | envelope, structural | §5.1 | that the envelope is a control, evaluated twice, held in configuration |
+| E-1 … E-4 | envelope, permitted | §5.2 | the four permitted actions and each one's decidable rule |
+| X-a … X-e | envelope, excluded | §5.2 | the closed exclusion set, of which X-a (test artifacts) is enforced hardest |
+| P-1 … P-4 | prohibitions | §5.4 | the four things the tier may never do, whatever the envelope says |
+| A1-1 … A1-5 | seam A1 | §6.3 | adjudicating a triage abstention |
+| A2-1 … A2-5 | seam A2 | §6.4 | re-grounding a stale REQ |
+| A3-1 … A3-7 | seam A3 | §7.2 | classifying remaining DoD findings |
+| A4-1 … A4-6 | seam A4 | §8.2 | resolving a rebase conflict in branch-created files |
+| A5-1 … A5-7 | seam A5 | §9.2 | diagnosing a CI failure, and what "green" is allowed to mean |
+| R-1 … R-4 | advisory record | §10.1 | that the record is a precondition of acting, and append-only |
+| H-1 … H-4 | record harvest | §10.2 | when the record is distilled, and the delete guard over it |
+| S-1 … S-4 | report summary | §10.3 | the five-seam summary and what it names |
+| L-1 … L-4, N-1 … N-4 | escalation output | §11.1, §11.2 | the append-only log, and the report notice beside the existing catalogue |
+| D-1 … D-6 | disabled equivalence | §12.1 | what "inert" means, artifact by artifact |
+| F-1 … F-6 | flow invariants | §15.3 | ordering and one-invocation-per-seam across a whole run |
+
+### 16.2 Cross-cutting rules
+
+These hold at every seam and are not restated per seam.
+
+| # | Rule | Derived from |
+|---|---|---|
+| BR-1 | **The pipeline decides membership; the agent only proposes.** No agent output — confidence, a `withinEnvelope` claim, or an argument in prose — widens what may be applied. | §5.1 E-R1, §4.3 V-2, V-3 |
+| BR-2 | **Two gates, both mandatory.** In-envelope **and** `confidence == high` are jointly necessary before anything is applied; either failing escalates. | §4.3 V-1 |
+| BR-3 | **Checked before and after.** Membership is evaluated on the proposal and again on the produced change; a change that reaches outside is reverted whole, never trimmed. | §5.1 E-R2 |
+| BR-4 | **Test artifacts are never the fix.** A proposed or produced diff touching anything in X-a is reverted whole and refused as `revert-on-test-touch`, ahead of every other reason but `prohibited-action`. | §5.2 X-a, §5.3 |
+| BR-5 | **Two tree states, never three.** After any invocation the working tree is either the verified post-resolution state or byte-identical to its pre-invocation state. | §8.2 A4-6, §5.1 E-R2 |
+| BR-6 | **A gate, not an agent, ends a seam.** Every applied resolution is followed by the seam's own gate re-running and reaching its own verdict; an agent never supplies the verdict a gate exists to produce. | §5.4 gate table, §9.2 A5-4 |
+
+### 16.3 Where a rule is enforced
+
+Enforcement location is itself a rule, because NFR-1 turns on it: the envelope, the refusal ladder,
+the prohibitions and the budgets are evaluated in the pipeline's own control flow. Prompt text may
+*describe* them so an agent proposes usefully, but no rule in §16.1 is satisfied by an instruction in
+a prompt — which is why §5.5 T-03-1/T-03-2/T-03-5 assert against the pipeline's behaviour with an
+agent that proposes the forbidden thing, rather than against what the prompt says.
+
