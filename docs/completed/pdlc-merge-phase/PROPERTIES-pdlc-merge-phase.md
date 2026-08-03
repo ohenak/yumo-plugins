@@ -5,7 +5,7 @@
 | Upstream | REQ → FSPEC → TSPEC → PLAN → **PROPERTIES** |
 | Downstream | IMPL tests (`pdlc/workflows/__tests__/**`) |
 | Cross-Reviews | `CROSS-REVIEW-product-manager-PROPERTIES-v1.md`, `CROSS-REVIEW-software-engineer-PROPERTIES-v1.md` |
-| LEARNINGS | `docs/pdlc-merge-phase/LEARNINGS-pdlc-merge-phase.md` |
+| LEARNINGS | `docs/completed/pdlc-merge-phase/LEARNINGS-pdlc-merge-phase.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|

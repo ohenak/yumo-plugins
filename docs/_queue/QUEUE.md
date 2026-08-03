@@ -23,9 +23,16 @@ human path — see §Bootstrapping). `ready: true` in the REQ frontmatter is the
 > "row 0" to mean the retired feature. `Order` is the pickup key, not a stable identity — the
 > feature name is.
 
+> **Row 13 (`pdlc-merge-phase`) was removed from this table on 2026-08-02.** Merged as
+> `b5d68c2` (#30, 2026-08-02) and its per-feature docs moved to
+> `docs/completed/pdlc-merge-phase/`, LEARNINGS included. This is the feature that added Phase
+> MERGE itself. Its dependents (rows 14 and 16) resolve through the readiness triage — a
+> dependency absent from the table is checked against the base branch, exactly as rows 6/7/15/16
+> already do for `pdlc-workflow-distribution`. Prose below that says "rows 13, 14 and 16" is
+> historical record and keeps its meaning: the feature name, not the row, is the identity.
+
 | Order | Status | Feature | REQ Path | Depends-On |
 |-------|--------|---------|----------|------------|
-| 13 | awaiting-merge | pdlc-merge-phase | docs/pdlc-merge-phase/REQ-pdlc-merge-phase.md | pdlc-workflow-distribution |
 | 14 | pending | pdlc-advisory-tier | docs/pdlc-advisory-tier/REQ-pdlc-advisory-tier.md | pdlc-merge-phase |
 | 15 | pending | pdlc-consolidation-agent | docs/pdlc-consolidation-agent/REQ-pdlc-consolidation-agent.md | pdlc-workflow-distribution, pdlc-advisory-tier |
 | 16 | pending | pdlc-engineering-loop | docs/pdlc-engineering-loop/REQ-pdlc-engineering-loop.md | pdlc-workflow-distribution, pdlc-merge-phase, pdlc-advisory-tier, pdlc-consolidation-agent |

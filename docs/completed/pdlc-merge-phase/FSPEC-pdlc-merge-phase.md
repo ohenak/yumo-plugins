@@ -5,7 +5,7 @@
 | Upstream | REQ → **FSPEC** |
 | Downstream | TSPEC, PLAN, PROPERTIES |
 | Cross-Reviews | `CROSS-REVIEW-software-engineer-REQ-v1.md`, `-v2.md`, `CROSS-REVIEW-test-engineer-REQ-v1.md`, `-v2.md` |
-| LEARNINGS | `docs/pdlc-merge-phase/LEARNINGS-pdlc-merge-phase.md` |
+| LEARNINGS | `docs/completed/pdlc-merge-phase/LEARNINGS-pdlc-merge-phase.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|

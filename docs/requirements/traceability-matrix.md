@@ -77,8 +77,8 @@ Authoritative per-criterion mapping lives in §13.1 of the FSPEC; this is the ro
 
 ## pdlc-merge-phase
 
-Upstream: `docs/pdlc-merge-phase/REQ-pdlc-merge-phase.md` (v1.1). Downstream:
-`docs/pdlc-merge-phase/FSPEC-pdlc-merge-phase.md` (v1.0). Authoritative section mapping lives in §14
+Upstream: `docs/completed/pdlc-merge-phase/REQ-pdlc-merge-phase.md` (v1.1). Downstream:
+`docs/completed/pdlc-merge-phase/FSPEC-pdlc-merge-phase.md` (v1.0). Authoritative section mapping lives in §14
 of the FSPEC; roll-up below.
 
 | User Story | Requirement | FSPEC sections |
