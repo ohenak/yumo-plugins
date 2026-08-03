@@ -748,4 +748,53 @@ under a frozen merge-specific prefix; all of them share the `ESCALATION:` token 
 
 ## 12. FSPEC-ADV-10 — Disabled-tier equivalence
 
+**Requirements:** AC-1.6, NFR-3. Shipped default: `advisory.enabled` is `false`, and an absent
+`advisory` section means the same thing (§3.1 C-1) — so a repo that never edits its config is a
+repo in which nothing changes.
+
+### 12.1 The equivalence
+
+Given identical inputs and `advisory.enabled` false, a run is observably identical to a run of the
+pipeline without this feature:
+
+| # | Rule |
+|---|---|
+| D-1 | Every seam reverts exactly to its pre-advisory behaviour — skip at A1/A2, halt at A3/A4/A5. |
+| D-2 | No advisory agent is dispatched, and **no model resolution is attempted** — so a missing advisory alias cannot break a run with the tier off. |
+| D-3 | The report's phase table and every phase outcome are identical to today's. |
+| D-4 | No `ADVISORY-*` file is created, and no `ESCALATIONS.md` entry is written. |
+| D-5 | The report carries no advisory summary and emits no advisory notice. |
+| D-6 | No file this feature introduces is created merely by running with the tier off. |
+
+The equivalence is stated on **named artifacts and phase outcomes**, not on report text, because
+report text legitimately varies by timestamp and iteration count.
+
+### 12.2 Edge cases
+
+| Case | Behaviour |
+|---|---|
+| `advisory.enabled` false but other advisory keys set | The other keys are inert; the master switch governs. |
+| `advisory.enabled` true in a repo where no seam condition arises | The tier is active but unexercised: no artifacts, and a summary of five zero rows (§10.3 S-1). This is *not* the disabled case — the summary's presence distinguishes them. |
+| The config file is absent entirely | Disabled (C-1). |
+| The config file is present but malformed JSON | Disabled (C-1) — a broken config never enables the tier. |
+
+### 12.3 Acceptance tests
+
+| # | Who / Given / When / Then |
+|---|---|
+| T-10-1 | **Who** operator · **Given** `advisory.enabled` false and a seam condition at each of A1…A5 in turn · **When** the run completes · **Then** each seam produced its pre-advisory outcome and no advisory agent was dispatched. |
+| T-10-2 | **Who** operator · **Given** the tier disabled and an advisory rung that does not resolve · **When** a seam condition arises · **Then** the run is unaffected and no model resolution was attempted. |
+| T-10-3 | **Who** operator · **Given** the tier disabled · **When** the run ends · **Then** no `ADVISORY-*` file exists, `ESCALATIONS.md` gained no entry, and the report carries no advisory summary. |
+| T-10-4 | **Who** operator · **Given** no `advisory` section, and separately a malformed config file · **When** each run completes · **Then** both behave as T-10-3. |
+| T-10-5 | **Who** operator · **Given** the tier enabled and no seam condition arising · **When** the report is read · **Then** an advisory summary is present with five zero rows — distinguishing it from T-10-3. |
+
 ## 13. Open questions
+
+| # | Question | Why it matters | Proposed default while unanswered |
+|---|---|---|---|
+| OQ-1 | The advisory rung's literal alias for the workflow runtime is still unverified (REQ BL-01). | It decides whether a run uses the intended rung or the declared fallback. | Ship on the fallback with the substitution declared (§3.2 M-2); this is non-fatal by construction. |
+| OQ-2 | A2's re-grounding gate does not exist at the pinned baseline (B-3), so this feature introduces its trigger rather than routing an existing one. | Changes the shape of the work at A2 from routing to authoring, and gives AC-5.2/AC-5.3 a testable precondition they otherwise lack. | Specified as new in §6.1; raised upstream as an erratum against the REQ's §1 seam table. |
+| OQ-3 | A5's fix pushes bytes past the DoD-verified commit (A5-7). Whether Phase PUB re-verifies, or halts for the operator, is left to TSPEC. | Either choice is defensible; both satisfy "never report DoD-passed on unverified bytes". | Report the verified commit and mark the head unverified; TSPEC chooses the restoration path. |
+| OQ-4 | Whether the default-branch check history and the workflow re-run capability (REQ BL-05, BL-06) are available in a given consuming repo is a per-repo fact. | E-1 and E-2 both depend on them; where absent the seam escalates rather than guessing. | §9.2 A5-2 — escalate with the comparison undone, attempt no fix. |
+| OQ-5 | Whether the branch's test command exists is a per-repo fact that A4's verification depends on. | An unverifiable resolution must not be reported as resolved. | §8.3 — revert and escalate. |
+
