@@ -686,6 +686,66 @@ upstream of the seam — needs work. A tier that recorded only its successes wou
 
 ## 11. FSPEC-ADV-09 — Escalation output
 
+**Requirements:** REQ-ADV-10 (AC-10.1 … AC-10.5).
+
+### 11.1 The escalation log
+
+Every escalation appends an entry to `docs/_queue/ESCALATIONS.md` — a new artifact (B-16), sibling
+to the queue and consumed later by the loop driver.
+
+| Field | Content |
+|---|---|
+| *(first line, under the entry's heading)* | **what the operator must decide, in one sentence** |
+| feature | which feature's run |
+| seam | A1…A5 |
+| refusal reason | exactly one, from §5.3 |
+| diagnosis | the agent's conclusion |
+| proposed action | what it would have done |
+| evidence | citations |
+| pipeline state | the phase id and that phase's outcome |
+
+| # | Rule |
+|---|---|
+| L-1 | The file is **append-only and newest-last**, one entry per escalation under its own heading. A later invocation escalating the same feature and the same seam appends a further entry rather than updating one in place — the loop driver consumes it as a log, not as a state file. |
+| L-2 | The decision sentence is first, before any detail. An operator scanning the file must be able to read only the first line of each entry and know what is being asked. |
+| L-3 | Escalation adds information; it never changes control flow. The pipeline's existing halt or skip for that seam happens exactly as it would with the tier disabled. |
+| L-4 | The durable file is required because the operator's turn begins after the process has exited, and a report notice does not survive it. |
+
+### 11.2 The report notice
+
+The report already has one escalation-notice channel, whose only members today are the merge phase's,
+under a frozen merge-specific prefix; all of them share the `ESCALATION:` token (B-13).
+
+| # | Rule |
+|---|---|
+| N-1 | That catalogue is left exactly as it is — not widened, not re-worded, not re-prefixed. |
+| N-2 | Each advisory escalation emits a notice under a **distinct advisory prefix of its own**, naming the seam and pointing at its `ESCALATIONS.md` entry. |
+| N-3 | Both prefixes carry the shared `ESCALATION:` token, so a single scan of the report still finds every notice of either kind. |
+| N-4 | The notice channel stays the single place the operator watches during a run; the log file is where the operator picks the run back up afterwards. |
+
+### 11.3 Edge cases and error scenarios
+
+| Case | Behaviour |
+|---|---|
+| `docs/_queue/ESCALATIONS.md` does not exist | It is created with the first entry. A missing log is the normal first-run state, not an error. |
+| Two escalations in one run | Two entries, in occurrence order, newest last. |
+| The same feature and seam escalate on consecutive runs | Two entries; neither is edited or removed. |
+| The escalation write fails | The escalation stands — an escalation is the pipeline doing *less*, so a failed log write can never turn it into a resolution. The failure is reported on the run report, and the pre-advisory behaviour still happens. |
+| A halting seam escalates | Both the entry and the notice are produced, then the halt proceeds unchanged (L-3). |
+| `docs/_queue/` does not exist (a consumer repo with no queue) | The directory is created alongside the log; the absence of a queue does not suppress escalations. |
+
+### 11.4 Acceptance tests
+
+| # | Who / Given / When / Then |
+|---|---|
+| T-09-1 | **Who** operator · **Given** any escalating invocation · **When** it completes · **Then** an entry exists carrying all eight §11.1 fields, with the decision sentence first. |
+| T-09-2 | **Who** operator · **Given** two escalations for the same feature and seam in successive runs · **When** the log is read · **Then** two entries exist, newest last, and the first is unmodified. |
+| T-09-3 | **Who** operator · **Given** an escalation at a halting seam · **When** the run ends · **Then** the halt happened exactly as it does with the tier disabled. |
+| T-09-4 | **Who** operator · **Given** an escalation at a skipping seam · **When** the queue invocation ends · **Then** the skip happened exactly as it does with the tier disabled. |
+| T-09-5 | **Who** maintainer · **Given** the merge phase's notice catalogue · **When** compared before and after this feature · **Then** it is unchanged. |
+| T-09-6 | **Who** operator · **Given** a run with one merge escalation and one advisory escalation · **When** the report is scanned for `ESCALATION:` · **Then** both notices are found, under distinct prefixes, and the advisory one names its seam and points at its log entry. |
+| T-09-7 | **Who** operator · **Given** no `ESCALATIONS.md` and no `docs/_queue/` directory · **When** an escalation occurs · **Then** both are created and the entry is written. |
+
 ## 12. FSPEC-ADV-10 — Disabled-tier equivalence
 
 ## 13. Open questions
