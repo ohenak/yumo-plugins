@@ -216,13 +216,17 @@ seam condition reached (A1…A5)
   1. DIAGNOSE   the advisory agent reads the seam's evidence and returns a verdict
   2. VALIDATE   the verdict is well-formed?          no ──► refuse: malformed-verdict
   3. GATE       within envelope AND confidence high? no ──► refuse (out-of-envelope | low-confidence)
+  3b. RE-CHECK  does the seam condition still hold?   gone ──► no-action (nothing applied,
+  │                                                            nothing refused; consumes no attempt)
   4. ACT        apply the proposed action
   5. CHECK      does the produced change stay inside the envelope?  no ──► revert, refuse
   6. VERIFY     the seam's own gate re-runs (§5.4)   fails ──► revert, refuse
   7. RECORD     write the advisory record            fails ──► revert, refuse: record-write-failed
   │
   ├─ all of 1..7 succeed ─────────────────► RESOLVED: the pipeline continues from the gate's verdict
-  └─ any refusal, or budget exhausted ────► ESCALATED: §11 entry + pre-advisory behaviour, unchanged
+  ├─ any refusal, or budget exhausted ────► ESCALATED: §11 entry + pre-advisory behaviour, unchanged
+  └─ step 3b finds the condition gone ────► NO-ACTION: nothing applied, nothing refused; no §11
+                                            entry, and the pipeline continues from its own re-read
 ```
 
 Step 7 comes last because the record carries the disposition, which is not known earlier; §10.1 R-2
