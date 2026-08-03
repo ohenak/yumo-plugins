@@ -108,4 +108,49 @@ attempt" plus the `no-action` counter. One new question.
 
 ## Recommendation
 
+**Needs revision**
+
+One High and three Medium are open, so the bar mandates it — but the distance to approval is much
+shorter than the count suggests. All twelve v1 findings are resolved; every finding below is new,
+each is confined to a section this revision touched, and none of them contests a behaviour. Three of
+the four are "the revision added a rule and did not add the test that can falsify it", which is a
+one-row-per-finding fix in the acceptance tables.
+
+What must change:
+
+1. **F-01 (High)** — T-10-3 compares a tier-off run's created-file set against "a tier-off baseline
+   run", i.e. against itself. Transcribe D-6's pre-feature created-file set as a literal in §12.1
+   and assert equality against that literal, naming the red direction. An expected value produced by
+   the system under test is not an expected value.
+2. **F-02** — give V-5's rollup-wait exclusion a test whose re-poll waits exceed
+   `seamBudgetMinutes` (asserting the invocation reaches its full `attemptBudget` and does *not*
+   escalate on the first cycle), and cite it in §14.2's NFR-4 row. Today that row describes the
+   carve-out and points at T-02-5, which passes with or without it.
+3. **F-03** — add the in-invocation completion-cap test (T-07-11 in my sketch). `dev:6267-6272`
+   throws a halt from inside the poll loop today, so "consumes an attempt" is a change to control
+   flow, and every current §9.4 test is green under the unchanged behaviour.
+4. **F-04** — re-Given T-08-4 on the distil step in a completed run. The guard fires only on a Bash
+   `rm`/`unlink`/`git rm` (`guard-harvest-before-delete.sh:36`), which is precisely why H-3's new
+   channel clause needs a production-path oracle rather than a direct-delete one.
+
+The three Lows (F-05…F-07) are one clause each and should close in the same pass: name the seams in
+T-08-10's Given, re-Given T-04-3b on the verdict handler rather than the adjudicator, and settle
+whether H-2's Phase MERGE consequence is tested here or declared out of scope.
+
+Close those and I expect to approve on the next pass. The document is, on the evidence of this
+delta, converging in the right direction: the revision did not weaken a single claim to close a
+finding, and §18's index still reconciles exactly.
+
+One upstream item is routed as an erratum rather than counted here, and it is the same one I raised
+in v1, still open in the REQ: AC-8.2 defines one attempt as a *fix → push → re-poll* cycle, which
+does not describe E-1's re-run-only cycle. A5-3 has now diverged from that wording deliberately
+("act → push → re-poll … under E-1 the act is a re-run with no fix and no push"), so the FSPEC and
+its REQ now disagree in text. A second erratum is new: REQ NFR-4 defines the seam budget as
+unqualified wall-clock "measured from dispatch to verdict", which V-5's rollup-wait exclusion
+contradicts — the FSPEC's reasoning for the exclusion is sound and the REQ is the document that
+should carry it.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 3, "low": 3}
