@@ -62,6 +62,33 @@ plan both resolve.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | With Phase MERGE now on `main`, is there a sixth seam? Phase MERGE resolves to `deferred` / `refused` on four named conditions (`main:pdlc/workflows/orchestrate-dev.js:1321-1328`) and leaves the queue row `awaiting-merge` for a human — structurally the same "operator arrives at an unexplained stop" §1 describes. §5 puts "merging" out of scope, which I read as *the tier never merges* (AC-4.4, NFR-5) rather than *the tier never diagnoses a refused merge*. Which is intended? |
+| Q-02 | AC-8.2 pushes a fix to the feature branch during Phase PUB. What is the intended interaction with the PR's review threads and with Phase MERGE's `mergeableState` precondition — does a PUB-time push invalidate an approval that was already recorded? |
+| Q-03 | AC-3.3 permits "resolving a rebase conflict confined to files the feature branch itself created". Is "created" evaluated against the merge base or against the default branch tip? A file created on the feature branch *and* independently created on the default branch conflicts and satisfies a naive reading of "the feature branch created it" — which is exactly the shared-code case AC-7.3 wants escalated. |
+| Q-04 | NFR-3 promises byte-identical behaviour with `ADVISORY_ENABLED = false`. Does that extend to the final report — i.e. is the AC-9.4 advisory summary absent entirely when disabled, or present with zero counts? The two are not byte-identical and the report is a parsed surface. |
+| Q-05 | AC-2.2 requires `confidence == high` for autonomous action, but confidence is self-reported by the same agent proposing the action. What, observably, prevents an agent from labelling every proposal `high`? If the answer is "the envelope check is the real control and confidence is advisory", say so — it changes what AC-2.2 is buying. |
+
 ## Positive Observations
+
+- The separation of *diagnosing* from *authorizing* (§1, closing paragraph) is the right cut, and it
+  is what makes the rest of the REQ reviewable rather than alarming. The prohibitions in REQ-ADV-04
+  are stated as outcomes, are individually checkable, and AC-4.6 pairs each with a required test —
+  that is the correct shape for a control.
+- AC-1.2/AC-1.3's treatment of the fallback as a *declared, first-class outcome* rather than a
+  silent downgrade is genuinely good engineering, and it de-risks BL-01 without hiding it. The
+  three-way split across AC-1.2 / AC-1.3 / AC-1.4 leaves no unhandled model-resolution state.
+- AC-1.5's one-line-change goal is achievable against the real module layout:
+  `main:pdlc/workflows/orchestrate-queue.js:40` already imports `orchestrate-dev.js`, so a single
+  exported constant is genuinely reachable from both the queue seams and the dev seams.
+- A config home for the envelope already exists and needs no invention:
+  `.claude/pdlc.config.json` (`main:pdlc/workflows/orchestrate-dev.js:43`) with the
+  `parseMergeConfig` / frozen-defaults pattern (`main:101`, `main:60`) and a precedent for a
+  per-repo opt-out (`distribution.checkEnabled`). Adopting that shape resolves F-05 cheaply.
+- AC-7.4 (apply → re-run tests → revert on failure → escalate) is the right template for every
+  advisory action, and generalising it is the concrete path out of F-06.
+- AC-8.4 is the finding I would most have expected a spec to miss. It is correct, it is the
+  expensive failure mode, and it is worth the extra `gh` capability F-08 asks you to declare.
 
 ## Recommendation
