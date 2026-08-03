@@ -31,6 +31,15 @@ contradicted.
 
 ## Disposition of v2 findings
 
+All four are closed.
+
+| v2 | Severity | Status | Evidence in the revision |
+|---|---|---|---|
+| F-16 | Medium | **Resolved** | AC-4.5's A1 row no longer claims a state the pre-check cannot observe: it now reads "the pre-check returns not-blocked (AC-5.1)". AC-5.1 states the one-sidedness in the REQ's own words ("establishes only that no declared dependency has a not-`done` queue row, never that a dependency is present in base") and answers "who establishes presence in base" honestly — **nobody**: where presence is unsettled the advisory verdict is `escalate`, and "no advisory agent adjudicates presence in base". That matches `orchestrate-queue.js:630-648` exactly. A residual wording point about the re-run's falsifiability is filed as F-20, Low. |
+| F-17 | Medium | **Resolved** | AC-3.6 is now an **ordered** eight-row trigger→reason table with first-match-wins, which makes the mapping injective by construction: the v2 collision between `revert-on-test-touch` and `out-of-envelope` is resolved by rank (2 before 3), and the missing case is added as `post-action-verification-failed` (rank 4), explicitly citing the AC-4.5 gate and the AC-7.4 re-run — both of the events I named. The closing sentence commits to set-equality over the full enumeration, which is the completeness oracle I asked for rather than a containment check. One residual, non-blocking totality gap is filed as F-21, Low. |
+| F-18 | Low | **Resolved** | Both halves are declared. **BL-06** is new and names the E-1 capability precisely as a *write* against Actions requiring the token scope, distinguishing it from every read the pipeline performs today, and carries the same unavailable-behaviour clause ("E-1 is out of envelope and the seam escalates under the same clause as BL-05"). **BL-05** is widened to cover "AC-8.4's comparison **and** E-2's *introduced* test", which is the shared merge-base/default-branch check-history surface E-2 now depends on. |
+| F-19 | Low | **Resolved** | AC-10.5 stops asserting a literal it does not own. It now describes the shipped channel as "Phase MERGE's, under its own frozen, merge-specific prefix" — accurate against the frozen `MERGE_ESCALATIONS` catalogue (`orchestrate-dev.js:1321-1328`) — states that catalogue is "left exactly as it is, **not widened**", and gives the advisory tier a distinct sibling prefix whose literal is TSPEC's. The added invariant that both prefixes carry the shared `ESCALATION:` token is true of the shipped side: every one of the five emission sites begins `MERGE ESCALATION: `, which contains `ESCALATION:`. |
+
 ## Findings
 
 ## Questions
