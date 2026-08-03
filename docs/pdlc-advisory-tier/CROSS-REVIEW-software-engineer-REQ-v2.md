@@ -37,6 +37,26 @@ contradicted.
 
 ## Disposition of v1 findings
 
+All fifteen are closed. Notes only where the resolution differs from what I asked for.
+
+| v1 | Severity | Status | Evidence in the revision |
+|---|---|---|---|
+| F-01 | High | **Resolved** | BL-02 now reads "Satisfied", states the REQ is written against `main`, and records the stale queue row as an operator note. §1 rows re-checked and all five hold (see review base). |
+| F-02 | High | **Resolved** | AC-10.5 reconciles the two channels: shipped notices unchanged, an advisory escalation additionally emits one pointing at its `ESCALATIONS.md` entry, and the durability rationale (the operator's turn begins after the process exits) is stated. Naming nit only — see F-19. |
+| F-03 | High | **Resolved** | AC-8.3 is now an outcome about DoD-passed reporting ("names the verified commit; a branch head beyond it is reported unverified") with the restoration mechanism left to TSPEC. Correct altitude. |
+| F-04 | High | **Resolved** | AC-9.3 states the ordering constraint as an outcome (no record deleted while a later phase can still append) and names the guard extension explicitly, which the guard script's two-prefix match (`guard-harvest-before-delete.sh:35`) does require. |
+| F-05 | High | **Resolved** | AC-1.7 declares four knobs with names, defaults and one owning `advisory` section of `.claude/pdlc.config.json` — the config home Phase MERGE and the drift gate already use. The A5 fix-cycle budget is explicitly bound to the same `attemptBudget`, which closes the double-counting question AC-8.2 would otherwise have raised. |
+| F-06 | High | **Resolved** | AC-3.2 is now post-hoc refusal ("one already written is reverted"), AC-3.5 is the AC-7.4 revert-and-escalate template, and AC-3.4(a) enumerates the tamper operations with a per-operation test obligation. Attainable at the `agent()` seam the runtime actually provides. |
+| F-07 | Medium | **Partly** | AC-4.5 now names a gate per seam and AC-5.1 limits adjudication to abstentions and forbids overturning `blocked` — the right shape. The A1 row's factual premise is wrong; refiled as F-16. |
+| F-08 | Medium | **Resolved** | BL-05 added as its own blocker, distinguished from BL-03 and from the PR rollup, and AC-8.4 states the unavailable-capability behaviour (escalate with the comparison undone, no fix attempted). |
+| F-09 | Medium | **Resolved** | AC-5.5 requires a machine-readable seam token on the `needs-human` result with a default route to A1. Implementable: the reason is free text after the verdict token (`orchestrate-queue.js:314`), so a token can ride there. |
+| F-10 | Medium | **Resolved** | A1 verdicts renamed `run-candidate` / `hold` / `escalate`; AC-4.2 carries the disambiguating note. No collision with the `ready: true` frontmatter flag remains. |
+| F-11 | Medium | **Resolved** | AC-1.2 defines non-resolution observably (runtime rejects the dispatch with a model/alias error before output; any other failure is not non-resolution) and AC-1.4 hands the detection point to TSPEC. |
+| F-12 | Low | **Resolved** | AC-1.5 now says "both the dev and the queue module (seams A1/A2 live in the queue module)". |
+| F-13 | Low | **Resolved** | §1's A5 row covers both outcomes and AC-8.6 defines the no-checks case: seam does not fire, existing pass stands, outcome named in the summary. |
+| F-14 | Low | **Resolved** | D-ADV-02/04 marked "Closed, not deferred — no successor"; D-ADV-05 bound to `pdlc-consolidation-agent`. Nothing left for the DoD boundary check to flag. |
+| F-15 | Low | **Resolved** | The uncited anecdote is gone; AC-8.4's rationale now rests on BL-05. |
+
 ## Findings
 
 ## Questions
