@@ -123,3 +123,6 @@ raised then are re-emitted unchanged in my final message, with AC-1.7's narrowed
 the FSPEC's new V-5 wording now creates.
 
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 0, "medium": 3, "low": 4}
