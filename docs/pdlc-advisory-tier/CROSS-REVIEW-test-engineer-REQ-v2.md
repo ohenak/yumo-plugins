@@ -29,6 +29,32 @@ All thirteen v1 findings are closed. Each row names the change that closes it.
 
 ## Verification Log
 
+Every **new or changed** existing-behavior claim, checked against code. **BL-02 declares the base to
+be the default branch (`main`), not this feature branch's tree**, so every row below is verified
+against `main` — currently `26c3f1c` — and the branch tree is cited only where the two differ.
+`feat-pdlc-advisory-tier` is **21 commits behind `main`** (`git log --oneline HEAD..main`;
+merge-base `7cdfbb0`), and `main` has since landed Slices A/B/C of the orchestrate-dev rewrite
+(`91c5421`, `f6518de`, `26c3f1c`) — `pdlc/workflows/orchestrate-dev.js` is **8527 lines on `main`
+vs 2139 on this branch**. That gap is the subject of F-15.
+
+| REQ claim (new/changed in v1.2) | Verified at | Result |
+|---|---|---|
+| AC-1.7: `.claude/pdlc.config.json` is the per-repo config home Phase MERGE already uses | `main:pdlc/workflows/orchestrate-dev.js:43` (`MERGE_CONFIG_PATH = ".claude/pdlc.config.json"`), `:60` (`mergeMode: "off"`), `:122-124` | Confirmed |
+| AC-1.7: …and the distribution gate uses it too | `main:pdlc/workflows/orchestrate-queue.js:1308`, `:1484-1488` (`record.checkEnabled` opt-out) | Confirmed |
+| AC-1.1: `MODEL_DEFAULT` / `MODEL_IMPLEMENTATION` / `MODEL_QUEUE` are the existing constants | `main:pdlc/workflows/orchestrate-dev.js:1578`, `:1621`; `main:pdlc/workflows/orchestrate-queue.js:69` | Confirmed |
+| §1 A1: Phase-0 triage `needs-human` → skip the candidate | `main:pdlc/workflows/orchestrate-queue.js:314` (`/^TRIAGE:\s*(ready\|blocked\|needs-human)\b/`), `:305` (defaults to `needs-human`) | Confirmed |
+| AC-5.1: `blocked` is a real triage verdict distinct from `needs-human` | same regex, `main:pdlc/workflows/orchestrate-queue.js:314`; prompt catalogue `:664-666` | Confirmed |
+| AC-4.5 A1 / AC-5.1: dependency presence in base is a **deterministic check** | `main:pdlc/workflows/orchestrate-queue.js:630` (`precheckDependencies`); branch copy `pdlc/workflows/orchestrate-queue.js:401-419` | **False.** The pre-check is one-sided — it returns `blocked` only when a declared dependency has a **non-`done` row in QUEUE.md**, and its own docstring says a dependency that is `done` *or absent from the queue* is "inconclusive here; defer to triage" (branch `:394-396`, `:416`). Presence-in-base is judged by the **agent** (`triagePrompt`, branch `:429`: "must already be merged into the base branch"). See F-14 |
+| §1 A3 / AC-6.1: Phase DOD verify→remediate is capped at 3 iterations | `main:pdlc/workflows/orchestrate-dev.js:25` (`DOD_MAX_ITERATIONS = 3`), flag `:22` | Confirmed |
+| §1 A4 / AC-7.1: `ship-pr` reports `REBASE_STATUS: conflict` and the pipeline reads it | `main:pdlc/workflows/orchestrate-dev.js` — **no `REBASE_STATUS` token anywhere; no `ship-pr` dispatch anywhere** (only `TSPEC-SHIP-01/02` flag comments at `:27`, `:30`). The trailer still exists on the branch tree (`pdlc/workflows/orchestrate-dev.js:852-853`, `:974-990`) and in the skill (`main:pdlc/skills/ship-pr/SKILL.md:41`, `:54-55`) | **Not verifiable at the declared base.** See F-15 |
+| §1 A5 / AC-8.6: Phase PUB has a 10-minute no-checks window and passes when none registers | `main:pdlc/workflows/orchestrate-dev.js:33` (`CI_NO_CHECKS_TIMEOUT_MS = 10 * 60 * 1000`) | Confirmed |
+| AC-4.3 / AC-4.5 A5: `ciStatus` derives from the GHA rollup, no agent in the loop | `main:pdlc/workflows/orchestrate-dev.js:323` (`gh pr view … --json statusCheckRollup`) | Confirmed |
+| AC-9.3: the LEARNINGS-precedes-delete protection today covers only `CROSS-REVIEW-*` / `CODE_REVIEW-*` | `main:pdlc/hooks/scripts/guard-harvest-before-delete.sh:35`, `:43` (token regex `(?:CROSS-REVIEW\|CODE_REVIEW)-[\w.\-]*`) | Confirmed — the REQ's "without that extension 'exactly like' would be untrue" is accurate |
+| AC-9.3: Phase PUB runs after Phase H, so A5 entries land after harvest | phase catalogue `main:pdlc/workflows/orchestrate-dev.js:1648-1745` (R, F, T, D, P, PR, CR, DOD) + Phase H/PUB/MERGE ordering per `CLAUDE.md` | Confirmed |
+| AC-10.5: the pipeline already emits in-process `ESCALATION:` notices on the final report | `main:pdlc/workflows/orchestrate-dev.js:908`, `:950`, `:1324` — the literal token is **`MERGE ESCALATION:`**, emitted only by Phase MERGE for its closed set of conditions. Absent entirely from this branch's tree | Confirmed in substance; the prefix is not the bare `ESCALATION:` — see F-18 |
+| BL-02: `pdlc-merge-phase` has landed on the default branch | `b5d68c2` is on `main` (and `300af4f` archives it); Phase MERGE code present at `main:pdlc/workflows/orchestrate-dev.js:43-124`, `:836-950` | Confirmed |
+| BL-04: `docs/_queue/ESCALATIONS.md` does not exist yet | `docs/_queue/` contains only `QUEUE.md` | Confirmed |
+
 ## Findings
 
 ## Questions
