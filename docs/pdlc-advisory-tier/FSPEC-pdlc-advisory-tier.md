@@ -429,7 +429,7 @@ The advisory agent reviews the triage evidence and returns one of three verdicts
 | # | Rule |
 |---|---|
 | A1-1 | Only a `needs-human` **abstention** is adjudicable. An advisory verdict may never overturn a triage verdict of `blocked`. |
-| A1-2 | `run-candidate` may never be returned for a candidate the dependency pre-check reports blocked. The pre-check runs before any advisory agent and is the gate that re-runs (§5.4). |
+| A1-2 | `run-candidate` may never be honoured for a candidate the dependency pre-check reports blocked. On the production path this state is unreachable — a blocked pre-check skips the candidate before triage runs, so the seam never fires (B-2) — so this rule is **defence in depth** over the adjudicator, not a reachable flow branch, and §5.4 gives A1 no post-action gate. |
 | A1-3 | The pre-check is one-sided (B-2): it establishes only that no declared dependency has a not-`done` queue row, never that a dependency's implementation is present in the base. Where presence in base is therefore unsettled, the verdict is `escalate`. **No advisory agent adjudicates presence in base.** |
 | A1-4 | A1 adjudication changes no file. Its entire product is a verdict, an advisory record, and — on `escalate` — an escalation entry. |
 | A1-5 | Candidates are adjudicated in queue order and **at most one candidate is picked per queue invocation**, preserving the serial guarantee. Adjudicating a second candidate after a `hold` is permitted; picking a second is not. |
@@ -443,13 +443,14 @@ The advisory agent reviews the triage evidence and returns one of three verdicts
 | A2-3 | A proposal containing any citation whose symbol no longer exists, or any change to the REQ's requirements — an acceptance criterion, a threshold, a scope statement, a dependency — escalates. A REQ whose premise has evaporated needs a human, not a patch. |
 | A2-4 | Applying a re-grounding proposal does **not** pick the candidate. Triage re-runs on the re-grounded REQ in the **next** queue invocation, which preserves A1-5's one-pick guarantee. |
 | A2-5 | A re-grounding that touches any file other than the REQ it re-grounds is out of envelope. |
+| A2-6 | An applied re-grounding is **durable before the invocation ends**: it is committed on the branch the queue invocation is running on, scoped to that one REQ file, and not pushed. The observable is that the REQ at that branch's head carries the corrected citations, so the next invocation — a fresh process — reads them. A re-grounding that cannot be committed is a failed action: reverted, refused as `post-action-verification-failed`. |
 
 ### 6.5 Edge cases and error scenarios
 
 | Case | Behaviour |
 |---|---|
 | Triage returns `needs-human` with an unrecognised seam token | Routed to A1 (§6.2). E-4 is unavailable there, so no file is changed. |
-| Triage returns `needs-human` with an A2 token but the REQ has no citations | The proposal is empty; nothing is applied and the invocation records "no drift found", which is an invocation with no action, not a resolution. |
+| Triage returns `needs-human` with an A2 token but the REQ has no citations | The proposal is empty; nothing is applied and the invocation records "no drift found" with disposition `no-action` (§4.3 V-7), not a resolution. |
 | Every drifted citation resolves, but two of them now point into the same symbol | Still in E-4 — E-4's rule is per citation, and merging targets is not a requirements change. |
 | The REQ file is not writable, or the write fails | §5.3 reason `record-write-failed` applies to the advisory record; a failed REQ write is a failed action, reverted, refused as `post-action-verification-failed`. |
 | Both A1 and A2 tokens appear on one stop | Malformed (§4 V-4): a stop names exactly one gate. |
@@ -461,10 +462,11 @@ The advisory agent reviews the triage evidence and returns one of three verdicts
 |---|---|
 | T-04-1 | **Who** operator · **Given** triage returns `blocked` · **When** the queue processes it · **Then** no advisory invocation happens and the candidate is skipped exactly as today. |
 | T-04-2 | **Who** operator · **Given** triage returns `needs-human` with no recognised token · **When** the queue processes it · **Then** the A1 adjudicator runs and no file in the repository changes. |
-| T-04-3 | **Who** operator · **Given** the dependency pre-check reports a candidate blocked · **When** an A1 verdict of `run-candidate` is returned for it · **Then** the candidate is not run and the seam escalates. |
+| T-04-3 | **Who** operator · **Given** the dependency pre-check reports a candidate blocked · **When** the queue processes it · **Then** the candidate is skipped, **no advisory invocation happens at all**, and the summary reports zero A1 invocations. *(Integration-level; this is the reachable assertion.)* |
+| T-04-3b | **Who** maintainer · **Given** the A1 adjudicator alone, fed a candidate whose pre-check result is blocked · **When** it returns `run-candidate` · **Then** the verdict is not honoured and the seam escalates. *(Unit-scoped defence in depth over A1-2, asserting a state the pipeline cannot reach — see T-04-3 for the reachable path.)* |
 | T-04-4 | **Who** operator · **Given** a declared dependency absent from the queue, so presence in base is unsettled · **When** A1 adjudicates · **Then** the verdict is `escalate` and no agent decided presence in base. |
 | T-04-5 | **Who** operator · **Given** three `needs-human` candidates, the first adjudicated `hold` and the second `run-candidate` · **When** the invocation completes · **Then** exactly one candidate has been picked. |
-| T-04-6 | **Who** operator · **Given** an A2 proposal of pure location corrections · **When** it is applied · **Then** only the REQ file changed, triage did **not** run again in this invocation, and the next queue invocation re-runs the pre-check and triage on the re-grounded REQ. |
+| T-04-6 | **Who** operator · **Given** an A2 proposal of pure location corrections · **When** it is applied · **Then** only the REQ file changed, the change is committed on the queue's branch scoped to that file (A2-6), triage did **not** run again in this invocation, and a subsequent invocation reading that branch's head re-runs the pre-check and triage on the corrected citations. |
 | T-04-7 | **Who** operator · **Given** an A2 proposal containing a citation whose symbol no longer exists · **When** the invocation completes · **Then** nothing is applied and the seam escalates. |
 | T-04-8 | **Who** operator · **Given** an A2 proposal that also edits an acceptance criterion · **When** the invocation completes · **Then** the change is reverted whole and the reason is `out-of-envelope`. |
 | T-04-9 | **Who** operator · **Given** a triage stop · **When** its result is read · **Then** it names which gate produced it, and an A2 token routes to A2 while an A1 token routes to A1. |
