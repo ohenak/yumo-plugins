@@ -481,6 +481,60 @@ advisory agent classifies EVERY remaining finding, with evidence
 
 ## 8. FSPEC-ADV-06 — Seam A4: rebase conflict
 
+**Requirements:** REQ-ADV-07 (AC-7.1 … AC-7.4).
+
+### 8.1 Trigger and flow
+
+The seam fires at Phase DOD step 0, when the rebase onto the default branch reports a conflict —
+the point at which the pipeline halts today with the branch left unchanged (B-6).
+
+```
+rebase reports conflict
+  │
+  ▼
+advisory agent inspects every conflicting file
+  │
+  ├─ any conflicting file is NOT branch-created ──► escalate, hunks summarised; halt as today
+  └─ every conflicting file IS branch-created (E-3) and confidence high
+        │
+        ▼  resolve the conflicts, complete the rebase
+        ├─ rebase completes and the branch's tests pass ──► RESOLVED; Phase DOD continues
+        └─ rebase fails, or tests fail ──► revert the resolution, escalate; halt as today
+```
+
+### 8.2 Business rules
+
+| # | Rule |
+|---|---|
+| A4-1 | *Branch-created* is decided by E-3's rule — absent from the merge-base tree **and** absent from the default-branch tip. It is a property of the file, not of who last edited it. |
+| A4-2 | A conflict touching a file the branch did not create escalates with the conflicting hunks summarised. A conflict in shared code means two features disagreed about that code, which is a design question, not a merge chore. |
+| A4-3 | The declared-scope exclusion X-d is evaluated against the **pre-rebase** branch head, since the rebase has not completed. |
+| A4-4 | After the resolution is applied and the rebase completes, the branch's test command re-runs. A failure reverts the resolution — returning the branch to its pre-seam state, as the halt would have left it — and escalates with `post-action-verification-failed`. |
+| A4-5 | The resolution is recorded file by file: which file, which side of the conflict was taken, and why. A resolution recorded only as "resolved" is not usable evidence for the operator who inherits the branch. |
+| A4-6 | The advisory tier never abandons the conflict half-resolved. Either the branch ends rebased with green tests, or it ends in the state the halt would have left it in. There is no third tree state. |
+
+### 8.3 Edge cases and error scenarios
+
+| Case | Behaviour |
+|---|---|
+| The conflict set is empty by the time the agent looks (a concurrent process resolved it) | No action; the invocation records "condition gone" and Phase DOD re-reads the rebase state (§4.4). |
+| A file is branch-created but a **test** file | X-a outranks E-3: reverted whole, reason `revert-on-test-touch`. |
+| Resolution succeeds but the branch has no test command configured | Verification cannot be performed, so the resolution is not verifiable: it is reverted and the seam escalates. An unverified resolution is never reported as resolved. |
+| The tests pass but leave the working tree dirty | Out of envelope on the produced-change check (E-R2): reverted whole, escalate. |
+| Conflicts span both branch-created and shared files | A4-2 governs: escalate. Partial resolution of the branch-created subset is not permitted, because it leaves the tree in the third state A4-6 forbids. |
+| The rebase conflicts again on a second attempt within the same invocation | Consumes an attempt; on budget exhaustion, escalate with `budget-exhausted` and the pre-seam tree. |
+
+### 8.4 Acceptance tests
+
+| # | Who / Given / When / Then |
+|---|---|
+| T-06-1 | **Who** operator · **Given** a rebase conflict confined to files the branch created, and high confidence · **When** the seam completes · **Then** the branch is rebased, the tests are green, Phase DOD proceeds, and the record names each resolved file with the side taken. |
+| T-06-2 | **Who** operator · **Given** a rebase conflict in a file present at the merge base · **When** the seam completes · **Then** nothing was resolved, the escalation entry summarises the conflicting hunks, and the pipeline halts exactly as it does with the tier disabled. |
+| T-06-3 | **Who** operator · **Given** a resolution applied to branch-created files whose test run then fails · **When** the seam completes · **Then** the branch is byte-identical to its pre-seam state and the reason is `post-action-verification-failed`. |
+| T-06-4 | **Who** operator · **Given** a conflict set mixing branch-created and shared files · **When** the seam completes · **Then** no file was resolved and the seam escalated. |
+| T-06-5 | **Who** operator · **Given** a conflicting file that is branch-created and is a test file · **When** the seam completes · **Then** the reason is `revert-on-test-touch` and the branch is unchanged. |
+| T-06-6 | **Who** operator · **Given** any A4 outcome · **When** the branch is inspected afterwards · **Then** it is in exactly one of two states — rebased with green tests, or unchanged from the pre-seam head. |
+
 ## 9. FSPEC-ADV-07 — Seam A5: CI failure
 
 ## 10. FSPEC-ADV-08 — Advisory record and its harvest
