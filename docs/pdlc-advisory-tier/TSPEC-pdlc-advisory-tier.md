@@ -1452,3 +1452,53 @@ one would eventually disagree with it about a path like `pdlc/workflowsX/`. The 
 feature does own (`touchesTestArtifact`, `touchesDodCriterion`) have no shipped precedent, which is
 why they are owned rather than reused.
 
+## 17. Tier-wide invariants and the terminal disposition
+
+Three load-bearing invariants are cross-referenced from §10 and §12 as the contracts certain tests are
+written against. They are collected here so each is stated in exactly one place a test can cite.
+
+### 17.1 The disposition set is closed and total
+
+Every `runAdvisorySeam` invocation ends in exactly one `AdvisoryDisposition.outcome` ∈
+`{resolved, escalated, no-action}` (§4.2, V-7), or the phase body's own pre-existing `throw haltError`
+runs unchanged (§7.1, §8.1). There is no fourth terminal value and no path that returns `undefined`:
+the driver's structure — a bounded attempt loop whose every exit assigns an `outcome`, wrapped in the
+terminal `catch` of §17.3 — makes totality structural rather than asserted. This is what lets §12's
+error index be a *closed* table (E-01…E-32): every row maps to one of these four terminal facts.
+
+### 17.2 The escalation log has no reader
+
+Nothing in the advisory tier ever reads `docs/_queue/ESCALATIONS.md`. The file is written by
+`appendEscalationEntry` (§10.1) and consumed only downstream by a human operator or by
+`pdlc-engineering-loop` — never by this tier's own control flow, and never to reconstruct a prior
+invocation's state. No seam consults its own or another seam's prior escalations; each invocation
+decides from its live evidence alone.
+
+Two contracts depend on this and cite §17.2:
+
+- **L-1 / T-09-2 ("append-only, newest-last; the first entry is unmodified").** The first entry's
+  immutability is guaranteed by the *absence of a reader*, not by an update-and-preserve rule — there
+  is no code path that could rewrite an earlier entry, because there is no code path that opens the file
+  for anything but `_appendFile` (§10.1). A test asserts this structurally: grep the tier for reads of
+  the escalation path and expect zero, paired with the positive assertion that a second escalation
+  leaves the first entry's bytes intact.
+- **T-09-8's asymmetry.** Because the log is never read back, a failed log *write* can never feed back
+  into a decision; it is caught outside the action's try/catch (§4.6, §10.1) and downgraded to a report
+  notice while the `escalated` disposition stands.
+
+### 17.3 The terminal catch — the unenumerated case escalates
+
+`runAdvisorySeam` wraps its lifecycle in a terminal `try/catch`. Any throw that is **not** already
+mapped to a named disposition by §4.4–§4.6 (a model-resolution error → §3.4; an `apply` failure →
+step 4; a record-write failure → step 7; a `revert` throw → an explicit halt, §4.6) is caught here and
+mapped to `escalated`, carrying the **last computed refusal reason** (or `budget-exhausted` when none
+was computed). It is **never** mapped to `resolved`: the catch has no path to the success outcome, so
+an unclassified failure can only ever do strictly less, never silently claim a resolution.
+
+This is the owner of §12's **E-32** row ("anything not enumerated above ⇒ escalated") and of §12's
+intro sentence ("the unenumerated case escalates"). It is what makes §12 a total index: a failure the
+table forgot to enumerate still has a defined, conservative disposition. `escalatesOnUnclassified` — a
+driver-level test injecting a `SeamOps` whose `apply` throws an error matching none of §4.6's rows —
+asserts the terminal outcome is `escalated` with a non-null reason and a byte-identical tree
+(the `revert` ran), never `resolved`.
+
