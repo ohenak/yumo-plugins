@@ -69,7 +69,47 @@ Two things I checked and did **not** file:
 
 ## Questions
 
+v2's Q-01 is answered on the half that mattered to me. It asked, of A2-6's unpushed commit, whether
+"a subsequent invocation reading that branch's head" meant the same working tree or a fresh clone —
+two different fixtures, only one constructible. T-08-8's new wording settles it: "a second process
+reading that branch's head finds it", i.e. the same clone, which is constructible. The remaining half
+(whether an unpushed commit on a protected default branch is the intended durable state) is a product
+question, not a testability one, and I leave it to the PM lens. No new questions.
+
+| ID | Question |
+|----|---------|
+| — | none |
+
 ## Positive Observations
+
+- **The revision closed all four High/Medium findings by adding falsifiability, and closed none of
+  them by weakening a claim.** Three new tests (T-07-11, T-07-12, T-08-4b) and three re-Givens
+  (T-04-3b, T-08-4, T-08-8) — the count went 78 → 81, and every added row exists because a reviewer
+  said a rule could not go red. Across two deltas now, nineteen findings have been closed without a
+  single claim being softened to close one.
+- **D-6's golden-master formulation is the right resolution of the tautology, and it says why.**
+  "Observed once and transcribed into the test, never re-derived by running the code under test",
+  with the general rule stated inline ("a comparison whose expected value is produced by the system
+  under test cannot fail"), pinned to a sha §2 already establishes. That is a reusable statement of
+  the anti-echo rule, not just a local fix, and T-10-3 names the red direction rather than leaving it
+  implicit.
+- **T-08-10 is now a full transcription, six rows deep.** Naming which seam produced each invocation
+  turned an unwritable Given into five literal seam rows plus a literal total, with the identity
+  checkable on each. This is the shape every enumerated-contract assertion in the document should
+  take: set-equality over the full enumeration, zero rows included, so a deleted seam fails.
+- **T-08-4 / T-08-4b repeats the T-04-3 / T-04-3b pattern deliberately, and labels it.** The
+  production-path assertion carries the three positives; the unit-scoped guard test carries an inline
+  label saying what it is and which row is the reachable one. Two independent findings, one at §6.6
+  and one at §10.6, have now been resolved into the same documented shape — that consistency is worth
+  more than either fix alone.
+- **H-2's correction went the harder way.** It would have been easy to leave "defers or refuses with
+  its existing notice" and add a test; instead the rule was corrected to the code (`ciRule` at
+  `dev:759-784` — a non-escalating refusal, no `MERGE ESCALATION:` notice) *and* the Phase MERGE
+  outcome was explicitly declared out of scope with T-08-3 named as the tested boundary. A stated
+  scope boundary is a better artifact than a test that pretends to cover a neighbouring phase.
+- **§18.1's arithmetic still reconciles.** 7 + 6 + 10 + 10 + 6 + 6 + 12 + 11 + 8 + 5 = 81, every
+  §14.1 range matches its §18.1 row (T-07-1 … T-07-12; T-08-1 … T-08-10 plus T-08-4b), and §16.1's
+  register was updated to `S-1 … S-5` in the same pass. Three separate index surfaces moved together.
 
 ## Recommendation
 
