@@ -345,11 +345,24 @@ describe("PROP-IMPL-01: batch plan log precedes first agent() dispatch (recordin
       return "Success.";
     };
 
+    // The PLAN Phase P's self-parse gate (PROPOSAL §3.3) reads, and the same
+    // table Phase I batches over: the two tasks `mockTasks` describes, spelled as
+    // the markdown the parser actually consumes. Scoped to the `/PLAN-` path — a
+    // blanket answer would also satisfy the POSTMORTEM probes the phase gate
+    // makes, refusing the phase for an unrelated reason.
+    const twoBatchPlan = [
+      "| Task ID | Description | Batch | Dependencies |",
+      "|---|---|---|---|",
+      "| T1 | First task | 1 | - |",
+      "| T2 | Second task | 2 | T1 |",
+    ].join("\n");
+
     await main({
       reqPath: "docs/test-feat/REQ-test-feat.md",
       _agent: spyAgent,
       _parallel: (promises) => Promise.all(promises),
       _checkFile: () => ({ ok: true }),
+      _readFile: (path) => (String(path).includes("/PLAN-") ? twoBatchPlan : null),
       _checkCi: async () => "passed",
       _log: spyLog,
       _phase: () => {},
@@ -523,8 +536,28 @@ describe("Phase I DAG parsing: parse-first, agent fallback on Haiku", () => {
 
   it("falls back to the extraction agent on Haiku when the table is not parseable", async () => {
     const record = [];
-    // _readFile returns null → parsePlanTasks null → agent fallback.
-    const result = await main(baseArgs(record, { _readFile: () => null }));
+    // Phase P's self-parse gate (PROPOSAL §3.3) now refuses a PLAN it cannot
+    // parse, so a globally-null `_readFile` would halt at Phase P and never
+    // reach the fallback. The fallback is still live — Phase P can be SKIPPED on
+    // a recorded approval, and the PLAN on the branch can change after it was
+    // approved — so the double reproduces exactly that: the PLAN reads as a
+    // parseable table while Phase P is looking at it, and as an unparseable one
+    // by the time Phase I reads it. The `_phase` seam is the switch.
+    let inPhaseI = false;
+    const plan = [
+      "| Task ID | Description | Batch | Dependencies |",
+      "|---|---|---|---|",
+      "| T1 | first | 1 | - |",
+    ].join("\n");
+    const result = await main(
+      baseArgs(record, {
+        _phase: (label) => {
+          if (String(label).startsWith("Phase I:")) inPhaseI = true;
+        },
+        _readFile: (path) =>
+          String(path).includes("/PLAN-") && !inPhaseI ? plan : null,
+      })
+    );
     expect(result.outcome).toBe("success");
 
     const dagAgentCalls = record.filter((c) =>
@@ -587,6 +620,12 @@ describe("RLH-REPORT-01-impl", () => {
   const args = () => ({
     reqPath: "docs/test-feat/REQ-test-feat.md",
     _agent: successAgent,
+    // Phase P's self-parse gate (PROPOSAL §3.3) refuses a PLAN it cannot parse,
+    // and this suite drives main() all the way to a success report.
+    _readFile: (path) =>
+      String(path).includes("/PLAN-")
+        ? "| Task ID | Description | Batch | Dependencies |\n|---|---|---|---|\n| T1 | x | 1 | - |"
+        : null,
     _parallel: (p) => Promise.all(p),
     _checkFile: () => ({ ok: true }),
     _checkCi: async () => "passed",

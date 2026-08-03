@@ -9,6 +9,21 @@ import { fileURLToPath } from "url";
 import main from "../orchestrate-dev.js";
 import { QUEUE_ROW_DISPOSITIONS } from "../orchestrate-queue.js";
 
+/**
+ * Phase P's self-parse gate (PROPOSAL §3.3) refuses a PLAN whose task table the
+ * mechanical parser cannot read, so every fixture in this file that must reach
+ * Phase I answers the `/PLAN-` read with a parseable one. Scoped to that path
+ * deliberately: a blanket answer would also satisfy the
+ * `POSTMORTEM-{phase}-{feature}.md` probes the phase gate makes, and a
+ * POSTMORTEM with no `RESOLVED: yes` marker refuses the phase for a reason that
+ * has nothing to do with the property under test.
+ */
+const readParseablePlan = (path) =>
+  String(path).includes("/PLAN-")
+    ? "| Task ID | Description | Batch | Dependencies |\n|---|---|---|---|\n| T1 | first | 1 | - |"
+    : null;
+
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
@@ -181,6 +196,7 @@ describe("RLH-REPORT-01-harvest", () => {
 
   const args = () => ({
     reqPath: "docs/test-feat/REQ-test-feat.md",
+    _readFile: readParseablePlan,
     _agent: successAgent,
     _parallel: (p) => Promise.all(p),
     _checkFile: () => ({ ok: true }),

@@ -138,8 +138,25 @@ function specDoc(sections) {
  */
 function completeDoc(docType, body = "Substantive prose that is not a placeholder.") {
   const headings = REQUIRED_HEADINGS[docType] ?? REQUIRED_HEADINGS.FSPEC;
-  return specDoc(headings.map((h) => [h, `${body} (${h})`]));
+  return specDoc(
+    headings.map((h) => [
+      h,
+      // Phase P's self-parse gate (PROPOSAL §3.3) refuses a PLAN whose task
+      // table the mechanical parser cannot read, so a complete PLAN carries a
+      // parseable one under its `Batches` heading.
+      docType === "PLAN" && h === "Batches"
+        ? `${body} (${h})\n\n${PARSEABLE_TASK_TABLE}`
+        : `${body} (${h})`,
+    ])
+  );
 }
+
+/** The smallest task table `parsePlanTasks` accepts (PROPOSAL §3.3). */
+const PARSEABLE_TASK_TABLE = [
+  "| Task ID | Description | Batch | Dependencies |",
+  "|---|---|---|---|",
+  "| T1 | first | 1 | - |",
+].join("\n");
 
 /**
  * A **partial** document: the first `filled` required headings carry bodies, and

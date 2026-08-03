@@ -167,7 +167,12 @@ function baseTree() {
     [REQ_PATH]: REQ_TEXT,
     [`${DOCS}/FSPEC-${FEATURE}.md`]: "# FSPEC\n",
     [`${DOCS}/TSPEC-${FEATURE}.md`]: "# TSPEC\n",
-    [`${DOCS}/PLAN-${FEATURE}.md`]: "# PLAN\n",
+    [`${DOCS}/PLAN-${FEATURE}.md`]:
+      // Phase P's self-parse gate (PROPOSAL §3.3) refuses a PLAN whose task table
+      // the mechanical parser cannot read. The table is added WITHOUT a new `##`
+      // heading: the pacing wrapper scores this document's sections, and a new
+      // heading would change the completeness score these fixtures depend on.
+      `# PLAN\n\n| Task ID | Description | Batch | Dependencies |\n|---|---|---|---|\n| T1 | first | 1 | - |\n`,
     [`${DOCS}/PROPERTIES-${FEATURE}.md`]: "# PROPERTIES\n",
   };
 }
@@ -626,7 +631,7 @@ describe("RLH-25: the POSTMORTEM gate", () => {
       [REQ_B]: REQ_TEXT,
       [`${DOCS_B}/FSPEC-${FEATURE_B}.md`]: "# FSPEC\n",
       [`${DOCS_B}/TSPEC-${FEATURE_B}.md`]: "# TSPEC\n",
-      [`${DOCS_B}/PLAN-${FEATURE_B}.md`]: "# PLAN\n",
+      [`${DOCS_B}/PLAN-${FEATURE_B}.md`]: `# PLAN\n\n| Task ID | Description | Batch | Dependencies |\n|---|---|---|---|\n| T1 | first | 1 | - |\n`,
       [`${DOCS_B}/PROPERTIES-${FEATURE_B}.md`]: "# PROPERTIES\n",
       [`${DOCS_B}/LEARNINGS-${FEATURE_B}.md`]:
         "# Learnings\n\n## 1. What worked\n\nNothing here predates §9's approval record.\n",
