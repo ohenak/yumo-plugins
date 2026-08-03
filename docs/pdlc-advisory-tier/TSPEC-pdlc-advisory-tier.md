@@ -581,7 +581,7 @@ it with two signals set.
 | # | Prohibition | How code makes it unreachable |
 |---|---|---|
 | P-1 | never mark a DoD criterion satisfied / weaken one / reduce the iteration count | `DOD_MAX_ITERATIONS` (`dev:25`) and `dodVerifyLoop`'s `maxIterations` (`dev:6273-6275`) are never passed anything advisory-derived; A3's `permittedActions` is `[]`; X-b refuses any diff touching a criterion |
-| P-2 | never set `ready: true` on a REQ | A2's `apply` rewrites **citation lines only**; the frontmatter block that `parseReqFrontmatter` reads (`queue:232`) is excluded from the rewritable region, and a produced diff touching it fails X-d (scope is the REQ but the *action* is not E-4) |
+| P-2 | never set `ready: true` on a REQ | A2's `apply` rewrites **citation lines only**; the frontmatter block that `parseReqFrontmatter` reads (`queue:232`) is excluded from the rewritable region, and a produced diff touching it fails at **membership (§5.1 position 6)** — the edit is *within* `reqPath` so it passes X-d, but rewriting frontmatter is not the E-4 "rewrite a drifted citation location" action, so it is not in `permittedActions`. The observable refusal reason is `out-of-envelope` either way; the P-2 falsifying fixture is a frontmatter edit *inside* the REQ, not a scope-violating path |
 | P-3 | never declare CI passed | `ciStatus` continues to come only from `checkPrCi` (`dev:5927`) via `raisePrAndVerifyCi` (`dev:6337-6369`); no advisory value is ever assigned to it. §8.4 |
 | P-4 | never merge a PR, never alter a queue `Status` cell | no advisory path calls `executeMerge` (`dev:1130`), `phaseMerge` (`dev:1361`), `rewriteStatus` (`queue:1086`) or `updateQueueStatus` (`queue:358`); the queue-side `SeamOps` are constructed without `_writeFile` bound to `queuePath` |
 
@@ -631,6 +631,13 @@ export default async function main({
 
 `_appendFile` is new to the queue module; `defaultAppendFile` already exists in dev (`dev:6805`) and
 crosses on the same prelude as the rest of §2.3, so the queue gains no new Node capability.
+
+**The `feature` threaded to A1/A2 is the candidate being triaged, not the queue.** Both A1 and A2 pass
+`feature = <the candidate's feature name>` — derived from the candidate's own REQ path on the queue row
+(`queue:116` `parseQueue`, per §5.2's `declaredScope` source) — into `runAdvisorySeam`, which threads it
+to `appendAdvisoryEntry({ feature, … })` (§9.2). So the A1/A2 advisory record lands at
+`docs/{candidate-feature}/ADVISORY-{candidate-feature}.md` — **under the candidate feature's directory**,
+exactly as AC-9.1 requires, stated here rather than inferred across §5.2/§6.3/§9.1.
 
 **The advisory dispatch does not go through the queue's `agentFn` wrapper** (`queue:773-774`), which
 pins `MODEL_QUEUE = "sonnet"`. `runAdvisorySeam` receives `rawAgentFn` and applies the advisory rung
@@ -1298,14 +1305,19 @@ Beyond one-per-acceptance-test coverage of FSPEC §18.1's 81 cases, five obligat
 
 ### 13.5 Property-based candidates
 
-PROPERTIES owns the final call; three functions are the natural candidates because each has an
-invariant that quantifies over inputs rather than enumerating them:
+PROPERTIES owns the final call; five functions are the natural candidates because each has an
+invariant that quantifies over inputs rather than enumerating them. `parseAdvisoryConfig` and
+`parseAdvisoryVerdict` are the two parameterisable parsers whose behaviour is defined by a rule over
+*any* input rather than a fixed case list (independent per-key fallback; five malformedness rules),
+so each carries **≥1 mandatory property**, not merely the example unit cases §4.2/§13.4 enumerate:
 
 | Function | Property |
 |---|---|
 | `refusalReasonFor` | for any signal set, the result is a member of `ADVISORY_REFUSAL_REASONS` and is the first member whose signal is true |
 | `advisorySummaryRows` | for any disposition list, `invocations === resolved + escalated + noAction` on every row and on the total |
 | `classifyEnvelope` | for any candidate whose paths include a guard path or a test artifact, `inside === false` — the exclusions are absorbing |
+| `parseAdvisoryConfig` | for any JSON text, the returned `config` carries **exactly** the four known keys, each value is either the parsed-valid value or that key's default (never a third thing), and `invalidKeys` equals **exactly** the set of keys whose supplied value was out of range — no key is both defaulted and absent from `invalidKeys`, and none is reported without being defaulted |
+| `parseAdvisoryVerdict` | for any object that violates exactly one required field (wrong seam, empty `evidence`, empty `diagnosis`, absent handling, out-of-enum `confidence`), `malformed === true` and `why` names **that** field; for any fully well-formed object, `malformed === false` and the returned `verdict` is field-equal to the input |
 
 ### 13.6 Build and PLAN obligations
 
