@@ -43,6 +43,22 @@ change that closes it and the evidence I checked it against.
 
 ## Verification Log
 
+Every existing-behavior claim **new or changed in v1.3**, checked against the base the REQ now pins:
+default-branch commit **`26c3f1c`** (`feat(pdlc): Slice C — converge() primitive…`). Line numbers
+below are at that sha.
+
+| REQ claim (new/changed in v1.3) | Verified at | Result |
+|---|---|---|
+| BL-02: the base is pinned at `26c3f1c` and that sha is on the default branch | `git rev-parse main` → `26c3f1c5d68f9d6aa0fa98fb36c7b116aa1e6456` | Confirmed — the pin is live, not aspirational |
+| BL-02 / §1 A4 / AC-7.1: `ship-pr` reports `REBASE_STATUS: conflict` and the pipeline reads it and halts | `26c3f1c:pdlc/workflows/orchestrate-dev.js:5791-5792` (both trailer values in the rebase prompt), `:5913-5927` (`parseRebaseStatus`), `:6141` (`await _agent("ship-pr", rebasePrompt(feature))`), `:8160-8172` (`if (rebaseStatus === "conflict") … throw haltError`) | **Confirmed** — reverses my v2 F-15 claim; see the correction above |
+| AC-4.5 A1 / AC-5.1: the queue's dependency pre-check is one-sided and establishes only "no not-`done` queue row" | `26c3f1c:pdlc/workflows/orchestrate-queue.js:630-649` — returns `{blocked:true}` only for `match && match.status !== "done"`; the abstain comment at `:645` reads *"Dependency done, or not in the queue at all → inconclusive here; defer to triage"*; docstring `:621-624` | Confirmed — the REQ's restatement now matches the function exactly |
+| AC-5.1: "that pre-check runs before any advisory agent" | `26c3f1c:pdlc/workflows/orchestrate-queue.js:890-898` — `precheckDependencies` is called, and a blocked result `continue`s **before** the `agentFn("se-author", triagePrompt(…))` dispatch at `:900-903` | Confirmed — and strictly stronger than the AC needs; see F-21 |
+| AC-10.5: today's notices are Phase MERGE's only, under a merge-specific prefix, and that prefix carries the token `ESCALATION:` | `26c3f1c:pdlc/workflows/orchestrate-dev.js:908`, `:920`, `:950`, `:1322`, `:1324` — every occurrence is the literal `MERGE ESCALATION:`; 7 occurrences of `ESCALATION:` in the file, all merge-scoped | Confirmed, including the substring property the one-grep claim rests on |
+| BL-05: reading the **default branch's own** check history is a different surface from the PR-rollup read the pipeline performs today | `26c3f1c:pdlc/workflows/orchestrate-dev.js:323` (`gh pr view ${prUrl} --json statusCheckRollup`), `:5818`, `:5833` — the only CI read is PR-scoped | Confirmed |
+| BL-06: `gh` re-running a workflow run is a **write** against Actions, unlike every CI surface the pipeline uses today, "all of which are reads" | `26c3f1c` — no `gh run rerun` / `gh run view` / `gh workflow` anywhere under `pdlc/workflows/`; the CI surfaces are `gh pr view … statusCheckRollup` (`:323`), `gh api --paginate --slurp …/files` (`:329`), `gh api graphql … reviewThreads` (`:342`) — all reads | Confirmed. The one existing `gh` **write**, `gh pr merge` (`:331`, `:1112`), is a merge surface, not a CI surface, so it does not falsify the claim as scoped |
+| AC-9.3: harvest-then-delete is what Phase H does today, and the guard is the LEARNINGS precondition | `26c3f1c:pdlc/hooks/scripts/guard-harvest-before-delete.sh` (token regex still `(?:CROSS-REVIEW\|CODE_REVIEW)-[\w.\-]*`) — unchanged from v2's check | Confirmed — the `ADVISORY-*` extension is genuinely new work, not already present |
+| AC-9.3: "no seam fires at Phase MERGE" | §1's seam table declares A1–A5 only; Phase MERGE has no advisory seam in this REQ | Confirmed as internally consistent |
+
 ## Findings
 
 ## Questions
