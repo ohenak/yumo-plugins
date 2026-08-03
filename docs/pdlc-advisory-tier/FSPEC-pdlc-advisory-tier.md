@@ -169,6 +169,79 @@ dispatch on the advisory rung
 
 ## 4. FSPEC-ADV-02 — Advisory invocation lifecycle
 
+**Requirements:** REQ-ADV-02 (AC-2.1 … AC-2.4), and the AC-3.6 disposition triple it feeds.
+
+### 4.1 The flow
+
+One invocation, at one seam, in one run:
+
+```
+seam condition reached (A1…A5)
+  │
+  ├─ tier disabled ────────────────────────► pre-advisory behaviour, unchanged (§12)
+  │
+  ▼ attempt 1..attemptBudget, within seamBudgetMinutes
+  1. DIAGNOSE   the advisory agent reads the seam's evidence and returns a verdict
+  2. VALIDATE   the verdict is well-formed?          no ──► refuse: malformed-verdict
+  3. GATE       within envelope AND confidence high? no ──► refuse (out-of-envelope | low-confidence)
+  4. ACT        apply the proposed action
+  5. CHECK      does the produced change stay inside the envelope?  no ──► revert, refuse
+  6. VERIFY     the seam's own gate re-runs (§5.4)   fails ──► revert, refuse
+  7. RECORD     write the advisory record            fails ──► revert, refuse: record-write-failed
+  │
+  ├─ all of 1..7 succeed ─────────────────► RESOLVED: the pipeline continues from the gate's verdict
+  └─ any refusal, or budget exhausted ────► ESCALATED: §11 entry + pre-advisory behaviour, unchanged
+```
+
+### 4.2 The verdict the advisory agent returns
+
+The verdict is the agent's product; it is data the pipeline reads, not an instruction the pipeline
+obeys. It carries:
+
+| Field | Meaning | Rules |
+|---|---|---|
+| `seam` | which of A1…A5 this verdict answers | must match the seam that dispatched it; a mismatch is malformed |
+| `diagnosis` | what is wrong, in the agent's words | non-empty |
+| `proposedAction` | what the agent would do about it | non-empty; may be an explicit "nothing" |
+| `confidence` | `high` or `low` | exactly two values, because nothing in this feature reads a third |
+| `withinEnvelope` | the agent's own reading of §5 | advisory only — never the control (V-3) |
+| `evidence` | the concrete citations the diagnosis rests on | non-empty; the operator's turn starts here |
+
+### 4.3 Business rules
+
+| # | Rule |
+|---|---|
+| V-1 | Autonomous action requires **both** in-envelope and `confidence == high`. Either failing means the action is not taken and the invocation escalates. |
+| V-2 | The envelope is the control; confidence is only the agent's licence to decline within it. An agent may never widen the envelope by declaring high confidence. |
+| V-3 | The verdict's own `withinEnvelope` field is read as *evidence about the agent's reasoning*, never as the membership decision. Membership is decided by the pipeline against configuration (§5.1). A verdict claiming `withinEnvelope: true` for an action the pipeline finds out of envelope is refused, and the disagreement is recorded. |
+| V-4 | A malformed or unparseable verdict is treated as an escalation, never as a pass, and it consumes one attempt. |
+| V-5 | An invocation that exceeds `advisory.attemptBudget` attempts, or `advisory.seamBudgetMinutes` of wall-clock measured from first dispatch to final verdict, escalates rather than retrying. Whichever bound is reached first ends the invocation. |
+| V-6 | Attempts within one invocation are sequential; an invocation is never concurrent with itself, and no two seams are advised concurrently within one run. |
+| V-7 | Every terminal disposition is exactly one of `resolved` or `escalated`. There is no third outcome, and in particular no outcome that converts a blocking verdict into a passing one. |
+| V-8 | Every escalation — from whatever cause — produces the same observable triple: the seam's outcome is `escalated`; the advisory record and the escalation entry each carry exactly one refusal reason; and the pipeline's pre-advisory behaviour for that seam proceeds unchanged. |
+
+### 4.4 Error scenarios
+
+| Scenario | Behaviour |
+|---|---|
+| The agent returns nothing at all | Malformed (V-4): consumes an attempt; if the budget remains, retry, else escalate with `malformed-verdict`. |
+| The agent returns a verdict for a different seam | Malformed (V-4). |
+| The agent's `evidence` is empty | Malformed (V-4) — a diagnosis with no evidence is not usable by the operator, which is the point of the escalation. |
+| The agent proposes "nothing" with high confidence | Not a resolution: nothing is applied, and the invocation escalates carrying the diagnosis. This is the "the agent understood the problem and it needs a human" case, and it is the good outcome for US-02. |
+| The seam condition disappears between dispatch and verdict (e.g. CI turns green on its own) | The invocation ends without applying anything; it is recorded as an invocation with no action, and the pipeline continues from the gate's own re-read. |
+| An attempt applies a change and then the run is interrupted | Not recoverable inside this feature; the branch state is whatever the last completed step left. §10's record is written per completed attempt so the operator can see how far it got. |
+
+### 4.5 Acceptance tests
+
+| # | Who / Given / When / Then |
+|---|---|
+| T-02-1 | **Who** operator · **Given** a seam fires and the verdict is in-envelope with `confidence: high` · **When** the action is applied and the seam's gate re-runs green · **Then** the seam reports `resolved` and the pipeline continues past the seam. |
+| T-02-2 | **Who** operator · **Given** a verdict with `confidence: low` that is otherwise in-envelope · **When** the invocation completes · **Then** nothing is applied, the seam reports `escalated` with reason `low-confidence`, and the pre-advisory behaviour for that seam happens. |
+| T-02-3 | **Who** operator · **Given** a verdict claiming `withinEnvelope: true` for an action the configured envelope excludes · **When** the invocation completes · **Then** it is refused as out of envelope and the disagreement appears in the record. |
+| T-02-4 | **Who** operator · **Given** an unparseable agent response on every attempt · **When** the attempt budget is exhausted · **Then** exactly `attemptBudget` attempts were made and the seam escalates. |
+| T-02-5 | **Who** operator · **Given** an invocation whose elapsed time passes `advisory.seamBudgetMinutes` mid-attempt · **When** the bound is reached · **Then** the invocation escalates with reason `budget-exhausted` without starting a further attempt. |
+| T-02-6 | **Who** operator · **Given** any escalating invocation, for each refusal reason in §5.3 · **When** it completes · **Then** the §4.3 V-8 triple holds — outcome `escalated`, one reason in both the record and the escalation entry, and the unchanged pre-advisory behaviour. |
+
 ## 5. FSPEC-ADV-03 — Envelope, prohibitions, and the refusal ladder
 
 ## 6. FSPEC-ADV-04 — Seams A1 and A2: queue triage and re-grounding
