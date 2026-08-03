@@ -90,4 +90,36 @@ continues from v1 so cross-references stay unambiguous.
 
 ## Recommendation
 
+**Needs revision**
+
+This is a strong revision: all thirteen v1 findings are closed, and the four v1 Highs are closed
+well. The bar is unchanged, though, and two open High findings remain — both introduced by the
+revision itself, and both about a named gate that is not there.
+
+1. **F-14** — AC-4.5's A1 row and AC-5.1 name a "deterministic dependency-presence pre-check". The
+   pre-check that exists is one-sided: it can prove *blocked*, never *present*, and abstains on
+   exactly the case A1 handles (`main:pdlc/workflows/orchestrate-queue.js:630`). Either restate the
+   A1 row against what that function can decide, or put the strengthening of it in scope and say
+   what "present in base" is decided against. The A1 row of the re-run matrix currently has no
+   assertable post-state.
+2. **F-15** — BL-02 claims all five §1 "Today" rows were re-checked against the default branch. A4's
+   was not: `REBASE_STATUS` and the `ship-pr` dispatch are absent from `main`'s
+   `orchestrate-dev.js` entirely. The branch is 21 commits behind a base that has grown 2139 → 8527
+   lines. Re-ground §1's A4 row and AC-7.1 against `main`, and pin BL-02's claim to a sha so it
+   stays re-verifiable.
+
+Two Mediums must also close:
+
+3. **F-16** — give E-2 and AC-8.4 one baseline and a stated precedence, so the A5 oracle cannot
+   pass by evaluation order.
+4. **F-17** — name where the advisory record is deleted, and give the extended harvest guard its
+   positive refusal observable.
+
+The three Lows (F-18, F-19, F-20) are each a single clarifying sentence and should close in the
+same pass.
+
+Everything else in the document is ready to carry a test suite. The seam table, the envelope rules,
+the closed test-tamper set, the refusal triple and the config table together give this REQ a
+mechanical acceptance matrix — which is more than most REQs reach at round two.
+
 ## Verdict
