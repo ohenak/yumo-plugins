@@ -72,6 +72,24 @@ function makeParallel() {
   return (promises) => Promise.all(promises);
 }
 
+/**
+ * A PLAN whose task table the mechanical parser reads (PROPOSAL §3.3): exact
+ * `Task ID` and `Dependencies` header cells, one row per task.
+ *
+ * Phase P now refuses to pass a PLAN it cannot parse, so every fixture that must
+ * reach Phase I supplies one. Scoped to the `/PLAN-` path deliberately — a
+ * blanket answer would also satisfy the `POSTMORTEM-{phase}-{feature}.md` probes
+ * the phase gate makes, and a POSTMORTEM with no `RESOLVED: yes` marker refuses
+ * the phase for a reason that has nothing to do with the property under test.
+ */
+const PARSEABLE_PLAN = [
+  "| Task ID | Description | Batch | Dependencies |",
+  "|---|---|---|---|",
+  "| TASK-01 | First task | 1 | - |",
+].join("\n");
+
+const readPlanOnly = (path) => (String(path).includes("/PLAN-") ? PARSEABLE_PLAN : null);
+
 // No-op mergeWorktree for unit tests — the runtime handles worktree merge-back;
 // real git is not available in the test environment.
 const noopMergeWorktree = async () => ({ ok: true });
@@ -90,6 +108,7 @@ describe("PROP-PIPELINE-01: Valid path and guard ok → proceeds to Phase R", ()
       _agent: makeSuccessAgent("test-feat"),
       _parallel: makeParallel(),
       _checkFile: okGuard,
+      _readFile: readPlanOnly,
       _phase: mockPhase,
       _pipeline: mockPipeline,
       _mergeWorktree: noopMergeWorktree,
@@ -353,6 +372,7 @@ describe("PROP-PIPELINE-03: phase() called with correct labels in order", () => 
       _agent: makeSuccessAgent(),
       _parallel: makeParallel(),
       _checkFile: okGuard,
+      _readFile: readPlanOnly,
       _phase: mockPhase,
       _pipeline: async (l, fn) => fn(),
       _mergeWorktree: noopMergeWorktree,

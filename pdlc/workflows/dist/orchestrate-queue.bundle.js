@@ -2637,6 +2637,11 @@ const PHASE_DISPATCH = {
     creatorOutputPath: null,
     reviewers: ["se-review", "te-review"],
     optimizer: "pm-author",
+    // §3.4 grounding manifest — see `groundingClause`.
+    grounding: [
+      "Every code path or file the REQ names — confirm it exists and matches the described behavior.",
+      "Every existing-behavior claim in the REQ — verify against current code, not assumption.",
+    ],
   },
   F: {
     phase: "F",
@@ -2646,6 +2651,10 @@ const PHASE_DISPATCH = {
     creatorOutputPath: "docs/{feature}/FSPEC-{feature}.md",
     reviewers: ["se-review", "te-review"],
     optimizer: "pm-author",
+    grounding: [
+      "The REQ this FSPEC derives from — every claim must trace to it.",
+      "Every repo path the FSPEC names — confirm it exists and behaves as described.",
+    ],
   },
   T: {
     phase: "T",
@@ -2655,6 +2664,10 @@ const PHASE_DISPATCH = {
     creatorOutputPath: "docs/{feature}/TSPEC-{feature}.md",
     reviewers: ["pm-review", "te-review"],
     optimizer: "se-author",
+    grounding: [
+      "Every production file and symbol the TSPEC cites — confirm each one exists in the repo.",
+      "Every claim about current behavior — verify against the cited code, not the TSPEC's prose.",
+    ],
   },
   D: {
     phase: "D",
@@ -2664,6 +2677,10 @@ const PHASE_DISPATCH = {
     creatorOutputPath: "docs/{feature}/DECISIONS-{feature}.md",
     reviewers: ["pm-review", "te-review"],
     optimizer: "se-author",
+    grounding: [
+      "Each alternative's claimed code cost — verify against the actual files it would touch.",
+      "Any claim that an alternative is simpler or cheaper — confirm against the existing code, not intuition.",
+    ],
   },
   P: {
     phase: "P",
@@ -2674,6 +2691,10 @@ const PHASE_DISPATCH = {
     creatorOutputPath: "docs/{feature}/PLAN-{feature}.md",
     reviewers: ["pm-review", "te-review"],
     optimizer: "se-author",
+    grounding: [
+      "Every file the task table names — confirm it exists, or that the task explicitly declares it new.",
+      "The task table's coverage claims — verify against the current test suite layout.",
+    ],
   },
   PR: {
     phase: "PR",
@@ -2683,6 +2704,10 @@ const PHASE_DISPATCH = {
     creatorOutputPath: "docs/{feature}/PROPERTIES-{feature}.md",
     reviewers: ["pm-review", "se-review"],
     optimizer: "te-author",
+    grounding: [
+      "Every task the PLAN's table lists — confirm the PROPERTIES trace to it.",
+      "Every named test file and test level — confirm it exists or is explicitly planned as new.",
+    ],
   },
   CR: {
     phase: "CR",
@@ -2692,6 +2717,10 @@ const PHASE_DISPATCH = {
     creatorOutputPath: null,
     reviewers: ["pm-review", "te-review"],
     optimizer: "se-author",
+    grounding: [
+      "The feature's full diff against the default branch — every finding must cite the actual changed lines.",
+      "The documents under docs/{feature}/ — confirm the shipped code matches what they specify.",
+    ],
   },
   DOD: {
     phase: "DOD",
@@ -2916,21 +2945,33 @@ function checkFileNonEmpty(path, { fsMod = fs } = {}) {
  * so the caller can fall back to the agent path. The dependencies cell is a
  * comma/space separated list of ids, with "-"/"—"/"none"/"" meaning none.
  *
+ * ## Why the header grammar is EXACT-CELL, and why the scan is per-table
+ *
+ * The first version matched header cells by substring (`cell.includes("id")`,
+ * `cell.includes("depend")`) over a FLAT list of every pipe row in the document.
+ * Both halves were wrong, and they compounded: ordinary data tables (risk
+ * registers, disposition tables) matched the header test, and — because the row
+ * list was flattened — the first match then swallowed every later pipe row in the
+ * document as another "task". Measured against this repo's own PLANs, the flat
+ * loose parse read `PLAN-pdlc-review-loop-hardening.md` (31 tasks) as 289 and
+ * `PLAN-pdlc-workflow-distribution.md` (61 tasks) as 247.
+ *
+ * So: a header row qualifies only if one of its cells is EXACTLY an id name and
+ * another is EXACTLY a dependency name (`PLAN_ID_HEADER_CELLS` /
+ * `PLAN_DEPS_HEADER_CELLS`), and the document is scanned as contiguous BLOCKS of
+ * pipe rows — one markdown table each. Every qualifying block contributes its
+ * rows (a PLAN may split its tasks over one table per batch); a non-qualifying
+ * block contributes nothing and, crucially, terminates the table before it.
+ *
  * @param {string | null | undefined} markdown - Raw PLAN.md contents
  * @returns {{ tasks: Array<{ id: string, description: string, dependencies: string[], planBatch: number|undefined }> } | null}
  */
 function parsePlanTasks(markdown) {
   if (markdown == null || typeof markdown !== "string") return null;
 
-  const rows = markdown
-    .split("\n")
-    .map((l) => l.trim())
-    .filter((l) => l.startsWith("|"));
-  if (rows.length === 0) return null;
-
-  const isIdCell = (c) => c === "#" || c.includes("id");
-  const isDepsCell = (c) =>
-    c.includes("depend") || c.includes("deps") || c.includes("prereq");
+  // The description and batch columns stay LOOSE — they are cosmetic, a wrong
+  // guess costs a label rather than a task — but they may never claim the id or
+  // dependencies column, which are the two that carry the DAG.
   const isDescCell = (c) =>
     c.includes("desc") ||
     c.includes("task") ||
@@ -2940,60 +2981,86 @@ function parsePlanTasks(markdown) {
   const isBatchCell = (c) =>
     c.includes("batch") || c.includes("phase") || c.includes("wave");
 
-  // Locate the header row: the first pipe row that carries both an id-like and a
-  // dependencies-like column. Without an explicit dependency column the DAG can't
-  // be derived from the table alone — return null and let the agent path read it.
-  let cols = null;
-  let headerIdx = -1;
-  for (let i = 0; i < rows.length; i++) {
-    const cells = splitPipeRow(rows[i]).map((c) => c.toLowerCase());
-    if (cells.some(isIdCell) && cells.some(isDepsCell)) {
-      cols = cells;
-      headerIdx = i;
-      break;
+  // Segment the document into contiguous runs of pipe rows: one markdown table
+  // per run. Any non-pipe line ends the run.
+  const blocks = [];
+  let block = null;
+  for (const line of markdown.split("\n")) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith("|")) {
+      if (!block) {
+        block = [];
+        blocks.push(block);
+      }
+      block.push(trimmed);
+    } else {
+      block = null;
     }
   }
-  if (!cols) return null;
-
-  const findCol = (pred, exclude = -1) => {
-    for (let i = 0; i < cols.length; i++) {
-      if (i === exclude) continue;
-      if (pred(cols[i])) return i;
-    }
-    return -1;
-  };
-
-  const idIdx = findCol(isIdCell);
-  const depsIdx = findCol(isDepsCell);
-  const descIdx = findCol(isDescCell, idIdx);
-  const batchIdx = findCol(isBatchCell);
-  if (idIdx < 0 || depsIdx < 0) return null;
+  if (blocks.length === 0) return null;
 
   const tasks = [];
-  for (let i = headerIdx + 1; i < rows.length; i++) {
-    const cells = splitPipeRow(rows[i]);
-    // Skip the markdown separator row (|---|---|).
-    if (cells.every((c) => /^:?-{2,}:?$/.test(c) || c === "")) continue;
+  for (const rows of blocks) {
+    const cols = splitPipeRow(rows[0]).map((c) => c.toLowerCase());
+    const idIdx = cols.findIndex((c) => PLAN_ID_HEADER_CELLS.has(c));
+    const depsIdx = cols.findIndex((c) => PLAN_DEPS_HEADER_CELLS.has(c));
+    // Not a task table. Without an explicit dependency column the DAG can't be
+    // derived from the table alone, so this block is simply not one of ours.
+    if (idIdx < 0 || depsIdx < 0) continue;
 
-    const id = (cells[idIdx] || "").trim();
-    if (!id) continue;
+    const findCol = (pred) => {
+      for (let i = 0; i < cols.length; i++) {
+        if (i === idIdx || i === depsIdx) continue;
+        if (pred(cols[i])) return i;
+      }
+      return -1;
+    };
+    const descIdx = findCol(isDescCell);
+    const batchIdx = findCol(isBatchCell);
 
-    const description = descIdx >= 0 ? (cells[descIdx] || "").trim() : "";
-    const dependencies = parsePlanDepsCell(cells[depsIdx]);
+    for (let i = 1; i < rows.length; i++) {
+      const cells = splitPipeRow(rows[i]);
+      // Skip the markdown separator row (|---|---|).
+      if (cells.every((c) => /^:?-{2,}:?$/.test(c) || c === "")) continue;
 
-    let planBatch;
-    if (batchIdx >= 0) {
-      const raw = (cells[batchIdx] || "").trim();
-      const m = raw.match(/\d+/);
-      if (m) planBatch = parseInt(m[0], 10);
+      const id = (cells[idIdx] || "").trim();
+      if (!id) continue;
+
+      const description = descIdx >= 0 ? (cells[descIdx] || "").trim() : "";
+      const dependencies = parsePlanDepsCell(cells[depsIdx]);
+
+      let planBatch;
+      if (batchIdx >= 0) {
+        const raw = (cells[batchIdx] || "").trim();
+        const m = raw.match(/\d+/);
+        if (m) planBatch = parseInt(m[0], 10);
+      }
+
+      tasks.push({ id, description, dependencies, planBatch });
     }
-
-    tasks.push({ id, description, dependencies, planBatch });
   }
 
   if (tasks.length === 0) return null;
   return { tasks };
 }
+
+/**
+ * The closed set of header cells that name a PLAN task table's id column, and
+ * the closed set that names its dependencies column. Matched on the LOWERCASED,
+ * TRIMMED cell, in full — never as a substring. Extending either set is the one
+ * sanctioned way to admit a new spelling.
+ */
+const PLAN_ID_HEADER_CELLS = new Set(["task id", "task-id", "task_id", "id", "#"]);
+const PLAN_DEPS_HEADER_CELLS = new Set([
+  "dependencies",
+  "dependency",
+  "depends on",
+  "depends-on",
+  "depends_on",
+  "deps",
+  "prerequisites",
+  "prereqs",
+]);
 
 /** Split a markdown table row on pipes, trimming leading/trailing pipe + cells. */
 function splitPipeRow(row) {
@@ -4346,6 +4413,100 @@ function checkConverged(
   });
 }
 
+// ─── The optional session transport — `_sessionAgent` ────────────────────────
+//
+// PROPOSAL-orchestrate-dev-optimization M-2: the manual run kept ONE author
+// session per document and re-invoked each reviewer inside its own round-1
+// context. Revisions stopped re-litigating settled decisions, and reviewers
+// converged in 2–3 rounds against a budget of 5.
+//
+// `_sessionAgent(sessionKey, skill, prompt, opts) => Promise<string|null>` is
+// that capability, expressed as a seam. The implementation — never this module —
+// owns create-vs-resume: this module's whole contribution is a STABLE key per
+// (feature, document, role), so the same reviewer and the same author are
+// addressed by the same key on every round.
+//
+// It carries the probe seams' invariant verbatim: **a session is an
+// optimisation, never a correctness dependency.** Absent, `null`, `undefined` or
+// throwing, every dispatch falls back to the fresh `_agent` call it replaced,
+// which runs unchanged. The workflow runtime cannot resume an agent today (its
+// host globals are `agent` / `parallel` / `pipeline` / `phase` / `log` /
+// `workflow` / `args` / `budget` — see `runtime-adapter.js`), so ABSENT is the
+// shipped state and the fallback path is the shipped behaviour. §5 decision 1 of
+// the proposal accepts exactly that: where the runtime cannot resume, M-1's
+// delta-scoped prompts over fresh dispatches carry most of the win on their own,
+// and those prompts are unconditional (see `reviewerPrompt` / `optimizerPrompt`).
+
+/** The absent session transport — `_sessionAgent`'s shipped default. */
+const NO_SESSION_AGENT = null;
+
+/**
+ * The session-key scope for one phase's dispatches: the document type when there
+ * is one, and the phase id otherwise (Phase CR reviews a directory and has no
+ * doc type). Keeping the fallback here rather than at each call site is what
+ * makes the reviewer and author keys of the same phase share a scope.
+ */
+function sessionScope(docType, phase) {
+  return String(docType || phase);
+}
+
+/** `{feature}/{scope}/reviewer/{role}` — one session per reviewer per document. */
+function reviewerSessionKey(feature, docType, phase, skill) {
+  return `${feature}/${sessionScope(docType, phase)}/reviewer/${reviewerRoleSlug(skill) || skill}`;
+}
+
+/**
+ * `{feature}/{scope}/author` — ONE session per document, shared by the creator
+ * (main()'s `wrappedDispatch`) and the optimizer (`reviewLoop`). That sharing is
+ * M-2's point: the agent that revises the document is the agent that wrote it,
+ * so it remembers what it decided and catches its own cross-round inconsistencies.
+ */
+function authorSessionKey(feature, docType, phase) {
+  return `${feature}/${sessionScope(docType, phase)}/author`;
+}
+
+/**
+ * The `_agent`-shaped closure one dispatch is issued through, bound to
+ * `sessionKey`. With no transport installed this returns `_agent` ITSELF — not a
+ * wrapper around it — so the absent case is byte-identical to the pre-seam code
+ * path rather than merely equivalent to it.
+ *
+ * Fail-open, in both directions the transport can fail:
+ * - it THROWS  → one log line, then the fresh `_agent` dispatch;
+ * - it answers `null`/`undefined` (the transport declining this dispatch, e.g.
+ *   because the session is gone) → one log line, then the fresh dispatch.
+ *
+ * `opts` — including `model`, which is how MODEL-01's pinning reaches the
+ * dispatch — is forwarded verbatim on both arms.
+ *
+ * @param {{_sessionAgent?: function|null, sessionKey: string, _agent: function,
+ *          _log?: function}} arg
+ * @returns {function} an `(skill, prompt, opts)` agent function
+ */
+function sessionBoundAgent({ _sessionAgent = NO_SESSION_AGENT, sessionKey, _agent, _log }) {
+  if (typeof _sessionAgent !== "function") return _agent;
+  const emit = typeof _log === "function" ? _log : () => {};
+  return async (skill, prompt, opts) => {
+    let reply;
+    try {
+      reply = await _sessionAgent(sessionKey, skill, prompt, opts);
+    } catch (err) {
+      emit(
+        `Session transport failed for ${sessionKey} (${skill}) — falling back to a fresh dispatch: ` +
+          `${(err && err.message) || err}.`
+      );
+      return _agent(skill, prompt, opts);
+    }
+    if (reply == null) {
+      emit(
+        `Session transport declined ${sessionKey} (${skill}) — falling back to a fresh dispatch.`
+      );
+      return _agent(skill, prompt, opts);
+    }
+    return reply;
+  };
+}
+
 // ─── TSPEC-LOOP-01 through TSPEC-LOOP-08: reviewLoop ─────────────────────────
 
 /**
@@ -4359,6 +4520,7 @@ function checkConverged(
  * @param {function} [params._agent] - Injected agent function (for testing)
  * @param {function} [params._parallel] - Injected parallel function (for testing)
  * @param {function} [params._checkFile] - Injected file-existence check (for testing)
+ * @param {function} [params._sessionAgent] - Optional session transport (see `sessionBoundAgent`); absent by default
  * @returns {Promise<{converged: boolean, iterations: number, lastOptimizerResult?: string|null}>}
  */
 async function reviewLoop({
@@ -4383,6 +4545,9 @@ async function reviewLoop({
   // is the shipped state, and every site that consults one falls back.
   _probeDoc = NO_PROBE,
   _probeReviewState = NO_PROBE,
+  // The optional session transport (see `sessionBoundAgent`). `null` is the
+  // shipped state and every dispatch below falls back to `_agent`.
+  _sessionAgent = NO_SESSION_AGENT,
   _log,
   _git,
 }) {
@@ -4393,8 +4558,15 @@ async function reviewLoop({
   const reviewFileType = roundDocType || "REVIEW";
   const emit = typeof _log === "function" ? _log : log;
 
-  /** Wrap one dispatch of this loop in the §3.8 pacing wrapper. */
-  const wrapped = (skill, basePrompt, targetPath, dispatchKind) =>
+  /**
+   * Wrap one dispatch of this loop in the §3.8 pacing wrapper.
+   *
+   * `sessionKey` binds the dispatch to a session when `_sessionAgent` is
+   * installed. `dispatchAndVerify`'s signature and logic are untouched: the
+   * binding is expressed entirely as the `_agent` closure handed to it, which is
+   * `_agent` itself when no transport is installed.
+   */
+  const wrapped = (skill, basePrompt, targetPath, dispatchKind, sessionKey) =>
     dispatchAndVerify({
       skill,
       basePrompt,
@@ -4403,7 +4575,7 @@ async function reviewLoop({
       feature,
       dispatchKind,
       phaseId: phase,
-      _agent,
+      _agent: sessionBoundAgent({ _sessionAgent, sessionKey, _agent, _log: emit }),
       _readFile,
       _listFiles,
       _probeDoc,
@@ -4417,10 +4589,10 @@ async function reviewLoop({
   // failed phase does, and `RLH-AT-61-loop` reads the trailer reason off this
   // return. `halted` is the discriminator; `haltDetail` is the operator's text.
   let haltedReturn = null;
-  const runWrapped = async (skill, basePrompt, targetPath, dispatchKind) => {
+  const runWrapped = async (skill, basePrompt, targetPath, dispatchKind, sessionKey) => {
     if (haltedReturn) return null;
     try {
-      const episode = await wrapped(skill, basePrompt, targetPath, dispatchKind);
+      const episode = await wrapped(skill, basePrompt, targetPath, dispatchKind, sessionKey);
       if (episode && episode.trailerReason !== undefined) {
         lastTrailerReason = episode.trailerReason;
       }
@@ -4573,9 +4745,24 @@ async function reviewLoop({
     const reviewerPrompt1 = reviewerPrompt(doc, phase, feature, iteration, reviewers[0], reviewFileType);
     const reviewerPrompt2 = reviewerPrompt(doc, phase, feature, iteration, reviewers[1], reviewFileType);
 
+    // Each reviewer keeps ONE key across every round of this phase (M-1): a
+    // transport that can resume therefore hands round N's reviewer its own
+    // round N-1 context, which is exactly what the delta prompt asks it to read.
     const [r1, r2] = await _parallel([
-      runWrapped(reviewers[0], reviewerPrompt1, reviewTargetPath(reviewers[0], iteration), "review"),
-      runWrapped(reviewers[1], reviewerPrompt2, reviewTargetPath(reviewers[1], iteration), "review"),
+      runWrapped(
+        reviewers[0],
+        reviewerPrompt1,
+        reviewTargetPath(reviewers[0], iteration),
+        "review",
+        reviewerSessionKey(feature, roundDocType, phase, reviewers[0])
+      ),
+      runWrapped(
+        reviewers[1],
+        reviewerPrompt2,
+        reviewTargetPath(reviewers[1], iteration),
+        "review",
+        reviewerSessionKey(feature, roundDocType, phase, reviewers[1])
+      ),
     ]);
     if (haltedReturn) return haltedReturn;
     result1 = r1 && r1.response;
@@ -4634,7 +4821,15 @@ async function reviewLoop({
 
     // (g) Invoke optimizer (FAIL path)
     const optPrompt = optimizerPrompt(doc, phase, feature, iteration, reviewers, reviewFileType);
-    const optEpisode = await runWrapped(optimizer, optPrompt, doc, "authoring");
+    // The optimizer shares the AUTHOR session with the phase's creator (M-2):
+    // the agent revising the document is the agent that wrote it.
+    const optEpisode = await runWrapped(
+      optimizer,
+      optPrompt,
+      doc,
+      "authoring",
+      authorSessionKey(feature, roundDocType, phase)
+    );
     if (haltedReturn) return haltedReturn;
     const optimizerResult = optEpisode && optEpisode.response;
     lastOptimizerResult = optimizerResult;
@@ -5816,11 +6011,91 @@ async function advisoryPacingCheck({ wroteBytes, targetPath, _git, emit }) {
  * @param {string} [reviewer] - reviewer skill id (for the prior-cross-review path)
  * @returns {string}
  */
+/**
+ * M-1's convergence framing, added to every re-review (iteration ≥2).
+ *
+ * The measured failure it exists to prevent is the `pdlc-rcv` family's 9-round
+ * non-convergence, where each round filed NEW findings against the very text
+ * that answered the old ones. A reviewer re-reading a revised document from
+ * scratch has no reason not to; one told that convergence is the goal, and that
+ * its job is its own blocking findings plus regressions, does. The approval bar
+ * itself is deliberately untouched — the clause scopes the reviewer's ATTENTION,
+ * never its standard, and step 4 below still refuses any open High or Medium.
+ */
+/**
+ * §3.4's grounding manifest, rendered into prompt text. Every `PHASE_DISPATCH`
+ * entry that carries a review loop (R, F, T, D, P, PR, CR) declares a `grounding`
+ * array — repo paths/symbols the creator and reviewers must verify claims
+ * against (§3.4). Rendered as a header demanding code-grounded, file:line-cited
+ * claims, followed by the phase's own entries as list lines.
+ *
+ * Returns `""` for a phase with no `grounding` field (Phase DOD, or an unknown
+ * phase id) — the header is never emitted with nothing under it.
+ * @param {string} phaseId
+ * @returns {string}
+ */
+function groundingClause(phaseId) {
+  const dispatch = PHASE_DISPATCH[phaseId];
+  const entries = dispatch && Array.isArray(dispatch.grounding) ? dispatch.grounding : [];
+  if (entries.length === 0) return "";
+  return (
+    `Ground every claim in code, not only in documents: verify claims against the actual ` +
+    `repository state, and cite file:line for every claim you make about existing behavior.\n` +
+    entries.map((entry) => `- ${entry}`).join("\n")
+  );
+}
+
+/**
+ * §3.5's three standing oracle-quality rules, appended to EVERY reviewer prompt
+ * (all phases, all iterations) — never the optimizer prompt, since these are
+ * instructions about what the reviewer must demand of the acceptance
+ * tests/properties/tests under review, not about authoring them.
+ */
+const ORACLE_QUALITY_CLAUSE = [
+  "When you review acceptance tests, properties, or unit tests, demand:",
+  "- No implementation echoes: an expectation must never import or derive its expected value " +
+    "from the code under test; expected values are literal transcriptions from the spec.",
+  "- No absence-only oracles: every negative assertion (X does not happen) must be paired with " +
+    "a positive assertion on the same path (what DOES happen instead).",
+  "- Completeness by set-equality, not containment: enumerated contracts (row tables, " +
+    "catalogues) need a set-equality check over the full enumeration, so a deleted case fails.",
+].join("\n");
+
+const REVIEW_CONVERGENCE_CLAUSE =
+  "Convergence is the goal: judge only whether your own blocking findings are resolved and " +
+  "whether the revision broke anything. The approval bar is unchanged — this is a narrower " +
+  "scope of attention, not a lower standard.";
+
+/**
+ * M-2's continuing-author framing, added to EVERY optimizer dispatch.
+ *
+ * When the runtime can resume sessions this restates what the session already
+ * makes true; when it cannot — today — it is the whole of M-2 that survives, and
+ * it is the half the manual run showed matters most: revisions that did not
+ * re-litigate settled decisions, and an author that caught its own cross-round
+ * inconsistencies because it was asked to look for them.
+ */
+const CONTINUING_AUTHOR_CLAUSE =
+  "You are the continuing author of this document, not a fresh reader of it. " +
+  "Decisions approved in earlier rounds are settled — do not re-litigate them, and do not " +
+  "rewrite approved sections beyond what the findings actually require. " +
+  "Address every High and Medium finding, use judgment on Low, and expand scope beyond them for " +
+  "nothing else. " +
+  "Before you finish, re-read your revision for cross-round inconsistencies it may have " +
+  "introduced with decisions taken in earlier rounds, and fix any you find.";
+
 function reviewerPrompt(doc, phase, feature, iteration, reviewer, docType) {
   const base =
     `Review the document at ${doc} for phase ${phase} of feature ${feature}. This is iteration ${iteration}.\n` +
     branchPinClause(feature);
-  if (iteration < 2) return base;
+  // §3.4 grounding, placed right after the branch pin; §3.5 oracle-quality
+  // clauses are appended last so they read as the closing standing instruction
+  // on every reviewer dispatch regardless of iteration.
+  const grounding = groundingClause(phase);
+  const groundingPart = grounding ? `\n${grounding}` : "";
+  const oraclePart = `\n${ORACLE_QUALITY_CLAUSE}`;
+
+  if (iteration < 2) return `${base}${groundingPart}${oraclePart}`;
 
   const prev = iteration - 1;
   const role = reviewerRoleSlug(reviewer);
@@ -5833,14 +6108,16 @@ function reviewerPrompt(doc, phase, feature, iteration, reviewer, docType) {
     : `your own previous cross-review file for this document (docs/${feature}/CROSS-REVIEW-*-${type}-v${prev}.md — find your reviewer role's file for iteration v${prev})`;
 
   return (
-    `${base}\n` +
+    `${base}${groundingPart}\n` +
+    `${REVIEW_CONVERGENCE_CLAUSE}\n` +
     `This is a re-review — follow the delta re-review protocol:\n` +
     `1. First read your own previous cross-review file: ${priorFile}.\n` +
     `2. Run \`git diff\` on ${doc} against the commit you last reviewed to see exactly what changed.\n` +
     `3. Verify each of your previous findings is resolved; scan ONLY the changed sections for new issues. ` +
     `Do not re-review unchanged sections you already approved.\n` +
     `4. The approval bar is unchanged: any open High or Medium finding anywhere in the document — old or new — means Needs revision.\n` +
-    `Write your new cross-review as v${iteration} and end with the standard VERDICT trailer.`
+    `Write your new cross-review as v${iteration} and end with the standard VERDICT trailer.` +
+    oraclePart
   );
 }
 
@@ -5865,13 +6142,26 @@ function optimizerPrompt(doc, phase, feature, iteration, reviewers = [], docType
       `Address every High and Medium finding in them.`;
   }
 
+  // §3.4 grounding, appended after the feedback paths and BEFORE the
+  // continuing-author clause (pinned ordering — see groundingPrompts.test.js).
+  // Deliberately no §3.5 oracle-quality clause here: those are review-prompt
+  // clauses, about what a REVIEWER must demand, not what an author does.
+  const grounding = groundingClause(phase);
+  const groundingPart = grounding ? `\n${grounding}` : "";
+
   // Phase T: fold the DECISIONS_WARRANTED signal into the convergence loop so no
   // separate post-PASS agent session is needed. The last optimizer result carries
   // the trailer; if the loop converges on iteration 1 the creator result carries it.
+  // M-2, applied at EVERY iteration: the optimizer is the document's continuing
+  // author. Appended after the grounding clause so the clause qualifies the work
+  // the paths just named, and before Phase T's trailer requirement, which must
+  // stay the last instruction in the prompt.
+  const continuing = `\n${CONTINUING_AUTHOR_CLAUSE}`;
+
   if (phase === "T") {
-    return `${base}${feedback}\n${decisionsWarrantedTrailerRequirement()}`;
+    return `${base}${feedback}${groundingPart}${continuing}\n${decisionsWarrantedTrailerRequirement()}`;
   }
-  return `${base}${feedback}`;
+  return `${base}${feedback}${groundingPart}${continuing}`;
 }
 
 /**
@@ -5916,10 +6206,12 @@ function decisionsWarrantedTrailerRequirement() {
 
 function creatorPrompt(phase, featureName, inputs) {
   const dispatch = PHASE_DISPATCH[phase];
+  const grounding = groundingClause(phase);
   return (
     `Create ${dispatch.creatorOutputPath.replace(/\{feature\}/g, featureName)} for feature ${featureName}. ` +
     `Input documents: ${inputs.join(", ")}. Commit and push.\n` +
-    branchPinClause(featureName)
+    branchPinClause(featureName) +
+    (grounding ? `\n${grounding}` : "")
   );
 }
 
@@ -6814,7 +7106,7 @@ async function defaultRecordQueueRow(/* { feature, status } */) {
 
 /**
  * Main pipeline function — runs the full PDLC pipeline from REQ to harvest.
- * @param {{ reqPath: string, _agent?: function, _parallel?: function, _log?: function, _checkFile?: function, _readFile?: function, _hashFile?: function, _phase?: function, _pipeline?: function, _probeDoc?: function, _probeReviewState?: function, _probePostmortem?: function }} params
+ * @param {{ reqPath: string, _agent?: function, _parallel?: function, _log?: function, _checkFile?: function, _readFile?: function, _hashFile?: function, _phase?: function, _pipeline?: function, _probeDoc?: function, _probeReviewState?: function, _probePostmortem?: function, _sessionAgent?: function }} params
  * @returns {Promise<FinalReport>}
  */
 async function main({
@@ -6850,6 +7142,11 @@ async function main({
   _probeDoc: probeDocFn = NO_PROBE,
   _probeReviewState: probeReviewStateFn = NO_PROBE,
   _probePostmortem: probePostmortemFn = NO_PROBE,
+  // The optional session transport. Declared WITHOUT a default on purpose: this
+  // function does not own the policy, `sessionBoundAgent` does (it defaults the
+  // parameter to `NO_SESSION_AGENT`), and every consumer here reaches the
+  // transport through that one function. main() is a pass-through for it.
+  _sessionAgent,
 } = {}) {
   // Override module-level log for injection
   const emit = logFn;
@@ -7050,6 +7347,7 @@ async function main({
     _appendFile: appendFileFn,
     _probeDoc: probeDocFn,
     _probeReviewState: probeReviewStateFn,
+    _sessionAgent,
     _log: emit,
     _git: gitFn,
   };
@@ -7065,6 +7363,17 @@ async function main({
       dispatchKind,
       phaseId,
       ...wrapperSeams,
+      // M-2: the creator runs in the SAME author session the phase's optimizer
+      // will resume, so the revision rounds are continuations of the writing
+      // rather than fresh readings of it. Placed after the spread so it wins over
+      // `wrapperSeams._agent`; with no transport installed `sessionBoundAgent`
+      // returns that very function, so this is a no-op on the shipped path.
+      _agent: sessionBoundAgent({
+        _sessionAgent,
+        sessionKey: authorSessionKey(featureName, docType, phaseId),
+        _agent: agentFn,
+        _log: emit,
+      }),
     });
     return episode.response;
   }
@@ -7362,7 +7671,56 @@ async function main({
         ...wrapperSeams,
       });
       checkConverged(pLoop, "P", PHASE_DISPATCH.P.label, recordPhase, featureName, pWindow.startIndex, pWindow.endIndex);
-      recordPhase("P", PHASE_DISPATCH.P.label, "✅", forcedDetail(`Approved (${pLoop.iterations} iterations)`, pGate.forced), pLoop.iterations);
+
+      // ─── PROPOSAL §3.3 — the PLAN self-parse gate ─────────────────────────
+      //
+      // The mechanical parser, not Phase I, is the authority on whether this PLAN
+      // can be executed. A PLAN whose task table `parsePlanTasks` cannot read is
+      // rejected HERE, while the author's session and the reviewers are still on
+      // the phase — rather than discovered several phases later, at Phase I, where
+      // the only recourse was an LLM re-extraction of a table that a human had
+      // already approved. The gate runs only when the phase actually ran: a
+      // SKIPPED Phase P is a recorded approval over unchanged bytes, and Phase I
+      // remains the single gate on that path, exactly as before.
+      const pPlanText = await readFileFn(planPath);
+      const pParsed = parsePlanTasks(pPlanText);
+      if (!pParsed || !Array.isArray(pParsed.tasks) || pParsed.tasks.length === 0) {
+        const detail =
+          `Error: Phase P — the task table in ${planPath} could not be parsed by the ` +
+          `mechanical parser, so the implementation phase would have no task graph. ` +
+          `Reshape the PLAN's task table: its header row must carry an exact 'Task ID' ` +
+          `cell (or 'ID' / '#') and an exact 'Dependencies' cell (or 'Deps' / ` +
+          `'Depends On'), one markdown table row per task, and every dependency cell ` +
+          `must list task ids ('-' for none). Rejecting at Phase P rather than ` +
+          `discovering it at Phase I.`;
+        recordPhase("P", PHASE_DISPATCH.P.label, "❌", detail);
+        throw haltError(detail);
+      }
+      let pBatches;
+      try {
+        pBatches = computeTopologicalBatches(pParsed.tasks);
+      } catch (cycleErr) {
+        const detail =
+          `Error: Phase P — the task graph in ${planPath} cannot be executed. ` +
+          `${(cycleErr && cycleErr.message) || String(cycleErr)} ` +
+          `Fix the PLAN's Dependencies column (every id it names must be another ` +
+          `task's id, and the edges must form a DAG). Rejecting at Phase P rather ` +
+          `than discovering it at Phase I.`;
+        recordPhase("P", PHASE_DISPATCH.P.label, "❌", detail);
+        throw haltError(detail);
+      }
+
+      recordPhase(
+        "P",
+        PHASE_DISPATCH.P.label,
+        "✅",
+        forcedDetail(
+          `Approved (${pLoop.iterations} iterations); PLAN parses to ` +
+            `${pParsed.tasks.length} tasks in ${pBatches.length} batches`,
+          pGate.forced
+        ),
+        pLoop.iterations
+      );
       }
 
       // ─── Phase PR: PROPERTIES Creation + Review ──────────────────────────

@@ -250,7 +250,10 @@ function baseFiles() {
     [REQ_PATH]: `# REQ — ${FEATURE}\n\nready: true\n`,
     [FSPEC_PATH]: FSPEC_BODY,
     [TSPEC_PATH]: `# TSPEC — ${FEATURE}\n`,
-    [PLAN_PATH]: `# PLAN — ${FEATURE}\n`,
+    // Phase P's self-parse gate (PROPOSAL §3.3) refuses a PLAN whose task table
+    // the mechanical parser cannot read, so the seeded PLAN carries one. No new
+    // `##` heading: the pacing wrapper scores this document's sections.
+    [PLAN_PATH]: `# PLAN — ${FEATURE}\n\n| Task ID | Description | Batch | Dependencies |\n|---|---|---|---|\n| T1 | first | 1 | - |\n`,
     [PROPERTIES_PATH]: `# PROPERTIES — ${FEATURE}\n`,
   };
 }
