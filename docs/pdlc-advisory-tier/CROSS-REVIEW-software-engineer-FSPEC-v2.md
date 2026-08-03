@@ -49,6 +49,15 @@ so they never collide with v1's.
 
 ## Questions
 
+v1's Q-01 (probe cost) is answered by the move to lazy resolution and needs no reply. Q-02 … Q-06
+are not re-asked here; none of them blocks approval and the revision did not change the text they
+concern. Two new ones, both about the changed text:
+
+| ID | Question |
+|----|---------|
+| Q-07 | H-2's post-PUB push means the branch head moves after the checks Phase PUB polled went green, so a repo with `mergeMode` on will re-run CI and, per the shipped ladder, defer. Is a `MERGE ESCALATION:` notice expected on those runs, or only the plain deferral note? §11.2 and T-09-5 go to some trouble to keep the merge notice catalogue unchanged and distinguishable from advisory notices, so it would be worth one sentence saying which of the two an operator should expect to see, and that it is not an anomaly. |
+| Q-08 | **Branch-state observation, not a finding.** The FSPEC pins its citations to `26c3f1c`, which I re-verified — but that commit is *not* an ancestor of `feat-pdlc-advisory-tier`. The branch forks at `7cdfbb0`, where `pdlc/workflows/orchestrate-dev.js` is 2,139 lines; at the pin it is 8,527. Every §2 line citation therefore points into a file the implementation tree does not contain. Phase DOD's step-0 rebase would close the gap, but implementation happens first. Is the intent to rebase onto the default branch before implementation begins? Nothing in the document needs to change either way — the pin is correctly declared — but the answer decides whether the seams are findable when someone starts building. |
+
 ## Positive Observations
 
 ## Recommendation
