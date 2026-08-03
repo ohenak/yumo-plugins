@@ -66,7 +66,38 @@ document is otherwise unusually good at avoiding.
 
 ## Positive Observations
 
-_pending_
+- **The baseline section is the best thing in this document, and it is a testing artifact even though
+  it reads as prose.** Sixteen numbered observations, each with a `file:line` at a pinned sha, cited
+  everywhere else **by id** so a re-pin touches one section. I re-checked all sixteen and every one
+  holds line-for-line. That is what let this review spend its time on oracles instead of on whether
+  the document describes the code.
+- **§2's "Consequences that shape this spec" turns baseline facts into design pressure, and gets B-15
+  right.** Noticing that harvest runs *before* Phase PUB (`dev:8192` before `dev:8248`) and therefore
+  that the advisory record cannot be harvested at Phase H is exactly the kind of ordering defect that
+  is normally found in implementation, at the cost of a re-spec.
+- **REQ finding F-23 is closed, and closed correctly.** §10.2 H-2 qualifies the observable to "a
+  completed run" and H-4 states the halt path explicitly ("leaves the record on disk, complete up to
+  the halt"). The escalation path — the path this feature exists for — now has an assertable expected
+  value instead of one that would go red for the right behaviour.
+- **The for-each tests are the right instrument in the right three places, and §18.2 says why.**
+  T-02-6 over the refusal reasons, T-03-3 over X-a's seven operations, T-03-6 over P-1…P-4 and the
+  gate rows, with T-03-5 as the set-equality companion so a *deleted* member fails too. Naming which
+  widening each catches is a discipline most FSPECs skip; F-02 is asking for more of exactly this,
+  not for something new.
+- **Negatives are paired with positives nearly everywhere.** T-03-1/T-03-2 pair "nothing was applied"
+  with "the working tree is byte-identical to its pre-invocation state"; T-06-3 pairs the revert with
+  the reason literal; T-03-6 states the pairing rule itself ("a negative assertion alone is satisfied
+  by accident"). §16.2 BR-5's two-tree-states rule gives every seam a single, checkable post-state.
+- **§10.1 R-2 makes the record a precondition of acting rather than a side effect** — "the record is a
+  precondition of acting, not a by-product of having acted" — and R-4 records no-action invocations
+  too, with the reason given (§10.4: a tier that recorded only its successes would be unimprovable).
+  That is the correct instinct about what makes a log falsifiable.
+- **§17.3 gives the suite a default direction for unenumerated cases** — the unenumerated case
+  escalates — which is what makes the finite error tables defensible rather than optimistic.
+- **§12's equivalence is stated on named artifacts and phase outcomes, not on report text**, with the
+  reason (timestamps and iteration counts vary). T-10-5 then distinguishes enabled-but-unexercised
+  from disabled by the *presence* of a five-zero summary, which is a positive discriminator rather
+  than an absence assertion.
 
 ## Recommendation
 
