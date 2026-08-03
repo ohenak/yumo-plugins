@@ -45,6 +45,28 @@ All seven are **resolved**, each in the way the finding asked for. Detail:
 
 ## Findings
 
+Two, both new, both Low, both in sections this revision changed, and neither contests a behaviour or
+blocks approval. No High, no Medium — the four High/Medium of v2 are closed and the revision
+introduced none.
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Low | Local | **T-07-12's third conjunct is not transcribable from its Given, so one of its three assertions cannot be written as a literal.** The Then closes with "its terminal disposition is the one its last re-poll earned". The Given fixes the *timing* of the re-polls (their waits exceed `seamBudgetMinutes`, the act work does not) but never says whether the last re-poll comes back green or red — so the expected disposition is whatever the fixture happens to choose, and the test author has to derive it rather than transcribe it. The two conjuncts that carry the finding's weight are fine and do discriminate (an implementation that counted rollup wait ends after one cycle and fails "reached its full `attemptBudget` cycles"), so the carve-out is now falsifiable; this is only the third clause. **Resolution:** fix the last re-poll's outcome in the Given and state the disposition as a literal — e.g. "…and every cycle's re-poll returns red · **Then** … and the terminal disposition is `escalated` with reason `budget-exhausted`, reached on the **last** cycle rather than the first". Either polarity works; what matters is that the row stops asking the implementer to compute the expected value. | §9.4 T-07-12 |
+| F-02 | Low | Local | **§18.3's AT-2 enumeration now includes T-09-8, which is the one escalation where V-8's triple demonstrably does *not* hold in full.** The recount commit (`d1160cd`) completed AT-2's list with `T-03-7, T-07-11, T-09-8`. T-03-7 and T-07-11 are correct additions — both are ordinary escalations carrying a reason. T-09-8 is not: its Given is "an escalating invocation whose `ESCALATIONS.md` write fails", and V-8's triple requires that "the advisory record **and the escalation entry** each carry exactly one refusal reason". In T-09-8 there is no entry — that is the entire point of the test, and §11.3/T-09-8 handle it as the deliberate asymmetry with R-2. Citing it as evidence *for* AT-2 mislabels the exception as an instance; a reader auditing AT-2 by walking its list finds one row that cannot discharge the obligation. AT-2 is amply covered without it (thirteen other tests), so nothing is uncovered — this is a traceability cell, not a coverage gap, hence Low. **Resolution:** either drop T-09-8 from AT-2's list, or keep it with an inline qualifier naming it the documented exception (e.g. "T-09-8 *(the entry-write-failure exception: the outcome and the pre-advisory behaviour hold; the entry conjunct cannot)*"), so the enumeration stays readable as a set. | §18.3 AT-2 |
+
+Two things I checked and did **not** file:
+
+- **§4.1's new step 3b (RE-CHECK → `no-action`) adds no untested claim.** Both of its parenthetical
+  assertions already existed and were accepted in v1.1 — "consumes no attempt" is §4.4's re-read row,
+  and "no §11 entry" follows from V-7 plus §11.1's entry being written on escalation. The diagram
+  change is a depiction of accepted text, and §15.2's diagram moved with it. Counters for the
+  disposition are pinned by literal in T-08-10.
+- **S-5's second clause is tested by a positive literal, not by an absence.** "An `orchestrate-dev`
+  report's A1/A2 rows are therefore always zero" is discharged by T-08-10's `A1 0/0/0/0, A2 0/0/0/0`
+  on a dev-side run — a transcribed zero row, which is exactly the shape S-1 demands ("visibly zero,
+  not absent"). The queue-side half is T-08-8. I looked for an absence-only oracle here and did not
+  find one.
+
 ## Questions
 
 ## Positive Observations
