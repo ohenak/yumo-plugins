@@ -58,6 +58,39 @@ One new one:
 
 ## Positive Observations
 
+- **H-2's new sentence is a verified claim about shipped code, not a plausible one.** The revision
+  could have closed my Q-07 by saying "Phase MERGE reports its own outcome" and leaving it there.
+  Instead it names the specific path — pending CI is a plain non-escalating refusal, not a
+  merge-escalation notice — and that is exactly what the ladder does (`ciRule` at
+  `orchestrate-dev.js@26c3f1c:772-774`, guard 11 at `:938-953`, the escalating CI condition being
+  the *absent*-checks one at `:950`). It also draws the scope line explicitly ("Phase MERGE's own
+  outcome is out of scope for this FSPEC's tests: this rule is tested only up to the pushed commit
+  and the PR"), which is the honest way to stop a rule from growing tests it cannot own. L-07 is one
+  word inside an otherwise exemplary paragraph.
+- **M-03 was closed by reusing a shipped mechanism rather than inventing one.** H-2b's durability
+  clause is A2-6's clause, which is `commitQueueRow`'s discipline — pathspec-scoped, never `-a`,
+  never pushed (`orchestrate-queue.js@26c3f1c:84-87, 337-346`). The document did not design a new
+  persistence story for advisory records; it pointed at the one the queue already has. That is the
+  right instinct and it is the reason T-08-8 is buildable.
+- **T-08-10 is now the best test in the document.** Five literal seam rows plus a literal total,
+  with the identity asserted on each of the six — a deleted seam row, a miscounted disposition and a
+  broken identity each fail it independently, and none of the expected values can be derived from
+  the code under test. This is the shape §18.2's completeness-by-enumeration standard is asking for
+  everywhere else.
+- **T-08-4's split moved the assertion onto the production path.** I asked for the refusal text to
+  be tightened; the revision instead re-Given the test on the distil step itself and added a
+  unit-scoped T-08-4b over the guard. The production-path test is the one that would have caught a
+  distil step that deleted around the guard rather than through it — which is what H-3 actually
+  requires and what a `rm` in a workflow script would quietly do.
+- **T-07-12 exists at all.** A carve-out from a wall-clock budget is the kind of rule that normally
+  ships with a description and no discriminating test; NFR-4's row now carries a test whose fixture
+  makes the rollup waits, and only the rollup waits, exceed the budget. That is the run in which a
+  correct and an incorrect implementation observably differ.
+- **S-5 answered a harder question than I asked.** I asked which report carries the summary for a
+  queue-only invocation. S-5 answers with a rule about ownership — each pipeline's summary covers
+  the seams it owns — from which the dev report's always-zero A1/A2 rows follow as a consequence
+  rather than a stipulation, and §12.2's discriminator becomes decidable for both pipelines at once.
+
 ## Recommendation
 
 ## Verdict
