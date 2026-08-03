@@ -52,6 +52,37 @@ questions the design, and neither blocks FSPEC authoring.
 
 ## Questions
 
+Q-06 is answered: AC-9.3 now names the last appender explicitly — Phase PUB, seam A5, "no seam
+fires at Phase MERGE, merging being out of scope" — and gives the observable ("`ADVISORY-{feature}.md`
+is absent at end of run and its content is in LEARNINGS"). Q-01 is answered in substance by the
+same clause and downgraded to a note.
+
+| ID | Question |
+|----|---------|
+| Q-07 | AC-9.3 requires distil-and-delete **after** Phase PUB, but harvest runs at Phase H, which precedes PUB. The REQ states this as an outcome and leaves the mechanism to TSPEC, which is the right altitude — I raise it only so the TSPEC author knows it is a real structural change (a second, post-PUB distil pass, or moving the advisory record's delete out of `harvest-learnings`), not a parameter tweak. Is the intent that `harvest-learnings` itself gains a post-PUB invocation, or that the advisory record is harvested by a separate step the H-phase guard simply never sees? |
+| Q-08 | (note, not blocking) §7 still carries no entry for "the tier never diagnoses a `deferred`/`refused` Phase MERGE outcome". AC-9.3's parenthetical settles that no *seam* fires there, which answers v2's Q-01 as scoping. Worth a one-line D-ADV row so a later reader sees it was decided rather than overlooked? |
+
 ## Positive Observations
+
+- The pin in BL-02 is the single best change in this round. "Written against `main`" was a claim
+  that decays; "pinned for re-verification at default-branch commit `26c3f1c`" is one an approver
+  can check years later, and the added sentence "a later default-branch commit is a fresh check,
+  not an inherited one" states the decay rule instead of leaving it to be re-litigated.
+- AC-3.6's move from an unordered closed set to an **ordered** table with first-match-wins is the
+  right structural answer to injectivity: it makes a multi-trigger refusal decidable without
+  enumerating pairs, and it survives adding a ninth member later.
+- AC-5.1's resolution of F-16 is more honest than what I asked for. I asked which non-advisory
+  actor establishes presence in base; the answer "none, and where it is unsettled the verdict is
+  `escalate`" is a better fit to US-05 than inventing a checker would have been.
+- The E-2 / AC-8.4 precedence sentence makes two rules that were independently stated into one
+  ordered evaluation, and it costs nothing at runtime — the two predicates are mutually exclusive
+  by construction (E-2 needs the check *passing* at the tip, AC-8.4 fires when it *fails* there),
+  so declaring an order removes an ambiguity that could never actually bite. Cheap and correct.
+- AC-3.4(d) pinning the scope baseline to "its head at the seam's dispatch (at A4, the pre-rebase
+  head)" closes the one place where the envelope could have widened itself: without it, a rebase
+  that pulls in files would have enlarged "files the branch had already touched" mid-seam.
+- AC-9.3's new observable — refusal message plus the file surviving — is exactly what the guard
+  does (`guard-harvest-before-delete.sh:52-60`, stderr then `sys.exit(2)`), so the extension to
+  `ADVISORY-*` is a one-token change to a mechanism that already behaves as described.
 
 ## Recommendation
