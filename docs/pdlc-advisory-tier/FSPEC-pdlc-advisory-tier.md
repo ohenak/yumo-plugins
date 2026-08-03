@@ -868,3 +868,69 @@ the intended failure signal.
 Traceability beyond this document — user story → requirement → FSPEC — is held in
 `docs/requirements/traceability-matrix.md`, not restated here.
 
+## 15. Behavioral Flow
+
+§4.1 gives the flow *inside* one invocation and §6.2/§7.1/§8.1/§9.1 give each seam's own trigger.
+This section gives the flow those five sit in: where in a run a seam can fire, in what order, and
+what the run looks like end to end. It states no new rule — every row cites the section that owns it.
+
+### 15.1 Where each seam lives
+
+Two pipelines, because A1 and A2 are queue-side and A3–A5 are dev-side (§3.2 M-5).
+
+| Seam | Pipeline | Fires at | Pre-advisory outcome it may not remove |
+|---|---|---|---|
+| A1 | `orchestrate-queue` | after the dependency pre-check, on a Phase-0 `needs-human` result (§6.2) | skip the candidate (B-1) |
+| A2 | `orchestrate-queue` | same stop, when the stop's seam token names A2 (§6.2) | skip the candidate (B-1, B-3) |
+| A3 | `orchestrate-dev` | Phase DOD, verify→remediate loop exhausted with findings remaining (§7.1) | halt (B-5) |
+| A4 | `orchestrate-dev` | Phase DOD step 0, rebase reports conflict (§8.1) | halt, branch unchanged (B-6) |
+| A5 | `orchestrate-dev` | Phase PUB, rollup reports a failing check (§9.1) | halt (B-7) |
+
+A4 precedes A3 in a run: Phase DOD's step 0 rebase runs before its verify→remediate loop (B-6, B-4).
+A5 follows both, because Phase PUB runs after Phase DOD (B-15). No seam fires at Phase MERGE (§10.2
+H-1).
+
+### 15.2 The run, end to end
+
+```
+run starts
+  │
+  ▼
+read the advisory config ONCE (§3.1 C-3)
+  ├─ tier disabled ──► the entire rest of this diagram is skipped (§12 D-1…D-6)
+  │ enabled
+  ▼
+resolve the advisory rung ONCE (§3.2)
+  ├─ neither rung resolves ──► the run fails loudly; no advisory agent ever runs (§3.2 M-3)
+  └─ advisory rung, or the declared fallback with its warning (§3.2 M-2)
+  │
+  ▼
+  … pipeline proceeds; at each seam condition it reaches, exactly one invocation:
+  │
+  │   ┌──────────────────────────────────────────────────────────────┐
+  │   │ §4.1 lifecycle: DIAGNOSE → VALIDATE → GATE → ACT → CHECK →   │
+  │   │                 VERIFY → RECORD                              │
+  │   │   resolved  ──► the pipeline continues from the gate's verdict│
+  │   │   escalated ──► §11 log entry + report notice, then the       │
+  │   │                 pre-advisory outcome above, unchanged         │
+  │   └──────────────────────────────────────────────────────────────┘
+  │
+  ▼
+after the last phase that can append to the record — Phase PUB — the record is
+distilled into LEARNINGS and deleted (§10.2 H-1)
+  │
+  ▼
+the report carries the advisory summary: five seam rows, zero counts included (§10.3 S-1)
+```
+
+### 15.3 Flow invariants across seams
+
+| # | Invariant | Owner |
+|---|---|---|
+| F-1 | Config and rung are resolved once per run and apply to every seam in it. | §3.1 C-3, §3.2 M-4 |
+| F-2 | Seams are advised one at a time; no two invocations overlap, and no invocation is concurrent with itself. | §4.3 V-6 |
+| F-3 | Each seam condition yields **at most one** invocation per run — the budgets in §4.3 V-5 bound the attempts inside it, not the number of invocations. | §4.3 V-5, V-6 |
+| F-4 | Every invocation terminates in exactly one of `resolved` or `escalated`, and an escalation leaves the pre-advisory outcome intact. | §4.3 V-7, V-8 |
+| F-5 | An escalation at a halting seam still halts; an escalation at a skipping seam still skips. Escalation adds information, never control flow. | §11.1 L-3 |
+| F-6 | A seam that never fires produces no invocation, no record entry, and no escalation — and still appears as a zero row in the summary. | §10.3 S-1 |
+
