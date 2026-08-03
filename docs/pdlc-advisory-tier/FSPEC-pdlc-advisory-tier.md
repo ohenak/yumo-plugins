@@ -1001,7 +1001,7 @@ the six cross-cutting rules that no single seam section owns.
 | A5-1 … A5-9 | seam A5 | §9.2 | diagnosing a CI failure, what "green" is allowed to mean, and what "revert" means after a push |
 | R-1 … R-4 | advisory record | §10.1 | that the record is a precondition of acting, and append-only |
 | H-1 … H-4 (incl. H-2b) | record harvest | §10.2 | when the record is distilled — dev-side and queue-side — and the delete guard over it |
-| S-1 … S-4 | report summary | §10.3 | the five-seam summary and what it names |
+| S-1 … S-5 | report summary | §10.3 | the five-seam summary, what it names, and which report carries it |
 | L-1 … L-4, N-1 … N-4 | escalation output | §11.1, §11.2 | the append-only log, and the report notice beside the existing catalogue |
 | D-1 … D-6 | disabled equivalence | §12.1 | what "inert" means, artifact by artifact |
 | F-1 … F-6 | flow invariants | §15.3 | ordering and one-invocation-per-seam across a whole run |
@@ -1082,11 +1082,11 @@ index — the whole set, its shape, and the three assertions that span sections.
 | T-04 | §6.6 seams A1 and A2 | 10 | T-04-1 … T-04-9, plus T-04-3b |
 | T-05 | §7.4 seam A3 | 6 | T-05-1 … T-05-6 |
 | T-06 | §8.4 seam A4 | 6 | T-06-1 … T-06-6 |
-| T-07 | §9.4 seam A5 | 10 | T-07-1 … T-07-10 |
-| T-08 | §10.6 advisory record and harvest | 10 | T-08-1 … T-08-10 |
+| T-07 | §9.4 seam A5 | 12 | T-07-1 … T-07-12 |
+| T-08 | §10.6 advisory record and harvest | 11 | T-08-1 … T-08-10, plus T-08-4b |
 | T-09 | §11.4 escalation output | 8 | T-09-1 … T-09-8 |
 | T-10 | §12.3 disabled-tier equivalence | 5 | T-10-1 … T-10-5 |
-| **Total** | | **78** | |
+| **Total** | | **81** | |
 
 The series number matches the FSPEC-ADV id it discharges — T-04-* covers FSPEC-ADV-04, and so on —
 so §14.1's requirement → section → tests chain reads in either direction without a lookup.
@@ -1111,7 +1111,7 @@ even where no individual path changed.
 | # | Obligation | Tests |
 |---|---|---|
 | AT-1 | The disabled tier is inert on named artifacts and phase outcomes — not merely "looks the same". | T-01-1, T-10-1 … T-10-5 |
-| AT-2 | Every escalation, whatever its cause, produces the same observable triple. | T-02-6, T-04-3b, T-04-7, T-04-8, T-05-3, T-05-4, T-06-2 … T-06-5, T-07-2 … T-07-6, T-08-2 |
+| AT-2 | Every escalation, whatever its cause, produces the same observable triple. | T-02-6, T-03-7, T-04-3b, T-04-7, T-04-8, T-05-3, T-05-4, T-06-2 … T-06-5, T-07-2 … T-07-6, T-07-11, T-08-2, T-09-8 |
 | AT-3 | Nothing the tier does converts a blocking outcome into a passing one. | T-03-6, T-05-2, T-07-7, T-09-3, T-09-4 |
 | AT-4 | After any invocation the tree is in one of exactly two states — at A5, the pre-push tree (A5-8). | T-03-1, T-03-2, T-03-9, T-03-10, T-05-5, T-06-3, T-06-6, T-08-2 |
 | AT-5 | A resolution is always a gate's verdict, never an agent's. | T-02-1, T-03-7, T-06-1, T-07-1, T-07-7 |
