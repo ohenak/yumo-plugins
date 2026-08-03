@@ -984,3 +984,42 @@ the prohibitions and the budgets are evaluated in the pipeline's own control flo
 a prompt — which is why §5.5 T-03-1/T-03-2/T-03-5 assert against the pipeline's behaviour with an
 agent that proposes the forbidden thing, rather than against what the prompt says.
 
+## 17. Edge Cases and Error Scenarios
+
+Each seam's own cases live with that seam. This section is the index of those tables, plus the cases
+that belong to no single seam because they arise from a run as a whole.
+
+### 17.1 Index of the per-section tables
+
+| Section | Table | Cases it covers |
+|---|---|---|
+| §3.3 | rung edge cases | tier off with no rung at all; tier on but no seam fires; a later failure after a fallback was taken |
+| §4.4 | lifecycle error scenarios | empty, wrong-seam and evidence-less verdicts; "propose nothing"; the seam condition disappearing; interruption mid-attempt |
+| §6.5 | A1/A2 | unrecognised or doubled seam tokens; a REQ with no citations; an unwritable REQ; the queue's drift gate blocking first |
+| §7.3 | A3 | an unreadable verifier status; no finding classified; a deferral with no successor; a code fix proposed instead of a classification; Phase DOD disabled |
+| §8.3 | A4 | the conflict resolving itself; a branch-created **test** file; no test command; a dirty tree after green tests; mixed conflict sets; a second conflict inside one invocation |
+| §9.3 | A5 | several checks failing; a re-run surfacing a different failure; a rejected push; CI turning green mid-diagnosis; no retrievable log; no CI at all; checks that never complete; a fix that would touch a test file |
+| §10.5 | record | two seams in one run; a missing feature directory; a halt before the distil step; a distil with no LEARNINGS file; a run with no seam at all |
+| §11.3 | escalation output | a missing log file or `docs/_queue/` directory; two escalations in one run; repeats across runs; a failed log write; an escalation at a halting seam |
+| §12.2 | disabled tier | other keys set while disabled; enabled but unexercised; an absent config file; malformed JSON |
+
+### 17.2 Run-level cases
+
+| Case | Behaviour | Owner |
+|---|---|---|
+| Two different seams fire in the same run | Both are advised, sequentially, never concurrently; both append to the one record file in occurrence order. | §15.3 F-2, §10.5 |
+| A4 resolves and A3 then exhausts in the same Phase DOD | Two invocations, two dispositions, two record entries; A4's resolution is not re-litigated by A3, whose product is a classification only. | §7.2 A3-6, §15.1 |
+| A run halts at A3 or A4, so Phase PUB never runs | A5 cannot fire; the record survives on disk un-distilled, and the summary is not produced because the run did not complete. | §10.2 H-4, §15.2 |
+| The same feature escalates on two successive runs | Two log entries, newest last, neither edited. Nothing in the tier reads its own prior escalations as state. | §11.1 L-1 |
+| The fallback rung is taken and a later seam's dispatch fails outright | An ordinary invocation failure under §4, not a second rung resolution — the ladder ran once, in §15.2's prologue. | §3.3, §3.2 M-4 |
+| An advisory action succeeds but the record write fails | The action does not survive: it is reverted and the seam escalates with `record-write-failed`. Acting without a record is the one success the tier refuses to keep. | §10.1 R-2 |
+| The escalation log write fails while a seam is escalating | The escalation still stands — it is the pipeline doing less — and the failed write is reported. A failed write can never upgrade an escalation to a resolution. | §11.3 |
+| The run is interrupted mid-attempt | Not recoverable inside this feature. The record holds every completed attempt, so the operator can see how far the run got. | §4.4 |
+
+### 17.3 The direction every unhandled case falls
+
+Where a case is not enumerated above, one rule decides it: **the unenumerated case escalates.** It
+never resolves, never partially applies, and never converts a blocking outcome into a passing one
+(§4.3 V-7). That direction is why the error tables can be finite — an omission costs an escalation
+an operator would have handled anyway, not an unsafe action.
+
