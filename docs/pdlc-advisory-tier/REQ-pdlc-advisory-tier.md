@@ -270,10 +270,12 @@ halt currently conflates: *diagnosing* the problem, and *authorizing* the resolu
   not taken — or is reverted, per AC-3.2 — and the seam takes the AC-3.6 refusal path with reason
   `record-write-failed`.
 - **AC-9.3** — Given the advisory record, Then it is a harvested process artifact — distilled into
-  LEARNINGS and deleted — and **no advisory record is deleted while a later phase can still append
-  to it**, so seam A5's entries (written in Phase PUB, which runs after Phase H) reach LEARNINGS
-  too. The LEARNINGS-precedes-delete protection that today covers `CROSS-REVIEW-*` and
-  `CODE_REVIEW-*` extends to `ADVISORY-*`; without that extension "exactly like" would be untrue.
+  LEARNINGS and deleted — but **not at Phase H**: the distil-and-delete happens after the last
+  phase that can append to it, which is Phase PUB (seam A5; no seam fires at Phase MERGE, merging
+  being out of scope). Observably, `ADVISORY-{feature}.md` is absent at end of run and its content
+  is in LEARNINGS. The LEARNINGS-precedes-delete protection that today covers `CROSS-REVIEW-*` and
+  `CODE_REVIEW-*` extends to `ADVISORY-*`: a delete attempted with no sibling
+  `LEARNINGS-{feature}.md` is refused with the guard's refusal message and the file survives.
 - **AC-9.4** — Given the final pipeline report, Then it carries an advisory summary: count of
   invocations, count resolved, count escalated, listed for **all five seams A1–A5, zero counts
   included**, plus the **advisory model actually used** and whether it was the configured rung or
