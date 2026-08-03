@@ -101,33 +101,55 @@ halt currently conflates: *diagnosing* the problem, and *authorizing* the resolu
 ### REQ-ADV-02 — The advisory contract
 
 - **AC-2.1** — Given any advisory invocation, Then it returns an `AdvisoryVerdict` carrying
-  `seam`, `diagnosis`, `proposedAction`, `confidence` ∈ {`high`, `medium`, `low`},
+  `seam`, `diagnosis`, `proposedAction`, `confidence` ∈ {`high`, `low`},
   `withinEnvelope: bool`, and `evidence` (the concrete file/line/log citations the diagnosis rests
-  on).
+  on). The enum is two-valued because nothing in this REQ reads any third value.
 - **AC-2.2** — Given `withinEnvelope == false` **or** `confidence != high`, Then the action is not
-  taken and the verdict is escalated. Both conditions are required for autonomous action.
+  taken and the verdict is escalated. Both conditions are required for autonomous action. The
+  envelope is the control; confidence only lets the agent decline within it.
 - **AC-2.3** — Given an advisory agent returns a malformed or unparseable verdict, Then it is
-  treated as an escalation, not as a pass.
-- **AC-2.4** — Given an advisory invocation exceeds its configured attempt budget, Then it
-  escalates rather than retrying indefinitely.
+  treated as an escalation, not as a pass, and it consumes one attempt.
+- **AC-2.4** — Given an advisory invocation exceeds `advisory.attemptBudget` or
+  `advisory.seamBudgetMinutes` (AC-1.7), Then it escalates rather than retrying indefinitely.
 
 ### REQ-ADV-03 — The envelope (what may be resolved unattended)
 
 - **AC-3.1** — Given the envelope, Then it is declared in configuration as an explicit per-seam
   allow-list, and is **not** inferable, extendable, or negotiable by any agent at runtime.
-- **AC-3.2** — Given an advisory agent proposes an action not in the envelope, Then the action is
-  refused by the workflow script — enforcement is in code, not in the agent's prompt.
-- **AC-3.3** — Given the shipped default envelope, Then it permits: re-running a flaky check (A5);
-  fixing a lint, format, or type error introduced by the feature branch (A5); resolving a rebase
-  conflict confined to files the feature branch itself created (A4); re-grounding a stale REQ's
-  `file:line` citations where the cited symbol still exists at a new location (A2).
-- **AC-3.4** — Given the shipped default envelope, Then it **excludes**: any change to a test
-  assertion (A3, A5); any change to a DoD criterion or threshold; any rebase conflict touching a
-  file the feature branch did not create; any change outside the feature's declared scope; and
-  anything under REQ-MERGE-03's self-modification paths.
-- **AC-3.5** — Given the envelope excludes a change to a test assertion, Then this is asserted by
-  a test. The single most dangerous failure mode of an autonomous pipeline is fixing a red test by
-  editing the test, and it must be structurally impossible rather than discouraged.
+- **AC-3.2** — Given an advisory agent proposes or produces a change outside the envelope, Then the
+  workflow script refuses it — inspecting the produced diff and reverting it, since the dispatch
+  seam offers no write sandbox — and the seam takes the AC-3.6 refusal path. Enforcement is in
+  code, not in the agent's prompt.
+- **AC-3.3** — Given the shipped default envelope, Then it permits exactly these four, each with a
+  decidable rule:
+
+  | # | Permitted | Decidable rule | Seam |
+  |---|---|---|---|
+  | E-1 | re-running a flaky check | *flaky* = the check failed and the re-run is on the identical commit sha with no push between them; capped by `advisory.attemptBudget` | A5 |
+  | E-2 | fixing a lint, format or type error introduced by the branch | *introduced* = the same check passes at the merge-base commit and fails at the branch head | A5 |
+  | E-3 | resolving a rebase conflict in branch-created files | *branch-created* = absent from the merge-base tree **and** absent from the default-branch tip | A4 |
+  | E-4 | re-grounding a stale REQ's `file:line` citations | the cited symbol still exists, at a new location | A2 |
+
+- **AC-3.4** — Given the shipped default envelope, Then it **excludes**, as a closed set: (a) any
+  change to a test file or test configuration — editing an assertion, deleting a test file or case,
+  renaming a test out of the collected set, adding a skip/xfail/only marker, narrowing a
+  parametrised case list, or lowering a coverage or mutation threshold; (b) any change to a DoD
+  criterion or threshold; (c) any rebase conflict outside E-3's branch-created files; (d) any change
+  outside the feature's **declared scope** — the files named in the feature's PLAN plus the files
+  the branch had already touched when the seam fired; (e) anything under REQ-MERGE-03's
+  self-modification paths.
+- **AC-3.5** — Given an advisory-produced diff touches anything in AC-3.4(a), Then the diff is
+  reverted whole, the seam escalates, and no run in which that happened is reported as resolved —
+  the AC-7.4 template applied to test tampering. Each operation enumerated in AC-3.4(a) is asserted
+  by its own test: fixing a red test by editing the test is the pipeline's most dangerous failure
+  mode, so a dropped case must fail the suite.
+- **AC-3.6** — Given any refusal — out-of-envelope proposal, a REQ-ADV-04 prohibition, a reverted
+  diff, low confidence, exhausted budget, or a malformed verdict — Then the observable outcome is
+  the same triple: the seam's outcome is `escalated`; the advisory record (AC-9.1) and the
+  escalation entry (AC-10.1) both carry a refusal reason from the closed set `out-of-envelope`,
+  `prohibited-action`, `revert-on-test-touch`, `low-confidence`, `budget-exhausted`,
+  `malformed-verdict`, `record-write-failed`; and the pipeline's pre-advisory behavior for that
+  seam — skip at A1/A2, halt at A3/A4/A5 — proceeds unchanged.
 
 ### REQ-ADV-04 — What the advisory tier may never do
 
