@@ -93,4 +93,33 @@ concern. Two new ones, both about the changed text:
 
 ## Recommendation
 
+**Needs revision**
+
+Zero High, three Medium, four Low. This is a large step: all six High and all four Medium findings
+from v1 are closed, and closed by decision rather than deferral. The document is now, in my
+judgement, one editing pass from approval — nothing below requires re-thinking a design, and no
+finding asks for material that belongs to TSPEC.
+
+To reach approval, v1.2 must close the three Mediums:
+
+1. **M-01** — give §4.1's flow diagram (and §15.2's) the third terminal that V-7 now defines. Without
+   it the only home for a `no-action` invocation is ESCALATED, which writes an escalation entry for a
+   seam that refused nothing and breaks the identity S-1 and T-08-10 exist to pin. One line of ASCII
+   plus a note on which step produces it.
+2. **M-02** — say which report carries the advisory summary for a queue-side invocation that produces
+   no `orchestrate-dev` run, and what a dev report's A1/A2 rows mean. H-2b makes that case explicit
+   for the record; S-1 needs the same split, and §10.6 needs a case for it.
+3. **M-03** — state for the queue-side record what A2-6 states for the re-grounded REQ: committed on
+   which branch, scoped to which path, pushed or not. "Persists" is currently satisfied by an
+   untracked file, which is neither durable nor inert in this repo.
+
+The four Lows (L-01 … L-04) are single-row edits — an S-rule for A5-9's summary line, T-08-4's
+refusal text, T-08-10's per-seam qualifier, and two ids missing from AT-2's new enumeration. They are
+worth doing in the same pass but would not on their own gate approval.
+
+Upstream defects are not folded into this verdict. The REQ has not been revised since my v1
+(`git log` shows no commit touching `REQ-pdlc-advisory-tier.md` in this round), so the three errata I
+raised then are re-emitted unchanged in my final message, with AC-1.7's narrowed to the divergence
+the FSPEC's new V-5 wording now creates.
+
 ## Verdict
