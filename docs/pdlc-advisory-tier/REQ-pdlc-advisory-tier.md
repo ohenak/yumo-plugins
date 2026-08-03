@@ -95,7 +95,7 @@ halt currently conflates: *diagnosing* the problem, and *authorizing* the resolu
   |---|---|---|
   | `advisory.enabled` | `false` | master switch (AC-1.6) |
   | `advisory.attemptBudget` | `3` | advisory attempts per seam invocation (AC-2.4); A5's fix→re-poll cycles (AC-8.2) draw on this same budget |
-  | `advisory.seamBudgetMinutes` | `10` | wall-clock per seam invocation (NFR-4); an overrun escalates |
+  | `advisory.seamBudgetMinutes` | `10` | advisory working time per seam invocation, **excluding** time spent waiting on GitHub's check rollup (NFR-4); an overrun escalates |
   | `advisory.envelope` | the AC-3.3 allow-list | the per-seam allow-list (AC-3.1) |
 
 ### REQ-ADV-02 — The advisory contract
@@ -317,8 +317,11 @@ phase needs work.
   report's phase table and every phase outcome are identical to today's, no `ADVISORY-*` file or
   `ESCALATIONS.md` entry is created, and the report carries no advisory summary. (Stated as an
   equality on named artifacts, since report text varies by timestamp and iteration count.)
-- **NFR-4** — No advisory seam invocation may exceed `advisory.seamBudgetMinutes` (default 10) of
-  wall-clock, measured from dispatch to verdict; an overrun escalates via AC-3.6 with reason
+- **NFR-4** — No advisory seam invocation may exceed `advisory.seamBudgetMinutes` (default 10),
+  measured from dispatch to verdict **less** any time spent waiting on GitHub's check rollup. The
+  carve-out is load-bearing: the pipeline's own CI completion window exceeds the 10-minute default,
+  so an unqualified wall-clock bound would end every A5 invocation inside its first attempt and
+  `advisory.attemptBudget` could never bind. An overrun escalates via AC-3.6 with reason
   `budget-exhausted`.
 - **NFR-5** — The advisory tier never has credentials beyond those the pipeline already holds, and
   never merges (REQ-MERGE-03 and AC-4.4 both hold).
