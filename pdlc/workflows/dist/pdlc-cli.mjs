@@ -3973,7 +3973,7 @@ function parseErrata(text, onIgnored) {
       if (typeof onIgnored === "function") onIgnored(docType, item);
       return;
     }
-    const key = `${docType} ${item}`;
+    const key = `${docType} ${item}`;
     if (seen.has(key)) return;
     seen.add(key);
     found.push({ docType, item });

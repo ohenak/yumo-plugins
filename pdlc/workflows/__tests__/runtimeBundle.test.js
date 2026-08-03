@@ -1476,3 +1476,45 @@ describe("D2: both entrypoints thread evidence through _recordQueueRow (TSPEC §
     }
   );
 });
+
+// ---------------------------------------------------------------------------
+// RLH-AT-65: no C0 control bytes in workflow source or built artifacts.
+//
+// A stray NUL (0x00) once sat in orchestrate-dev.js as the erratum dedup-key
+// separator (`${docType}\x00${item}`, a mistyped space). It passed every
+// behavioural test — a NUL separates Map keys as well as a space — yet it made
+// the file "binary" to grep and, worse, was inlined verbatim into the shipped
+// bundle, where the Workflow launcher's permission dialog rejects control
+// characters and refuses to run the pipeline at all. This oracle is byte-level
+// and covers both the tested source and the artifacts the runtime actually
+// loads, so the class cannot regress silently.
+describe("RLH-AT-65: no C0 control bytes in workflow source or artifacts", () => {
+  // 0x09 tab, 0x0A LF, 0x0D CR are the only C0 bytes text may carry.
+  const forbidden = (buf) => {
+    const hits = [];
+    for (let i = 0; i < buf.length; i++) {
+      const b = buf[i];
+      if (b <= 0x1f && b !== 0x09 && b !== 0x0a && b !== 0x0d) {
+        hits.push({ offset: i, byte: "0x" + b.toString(16).padStart(2, "0") });
+      }
+    }
+    return hits;
+  };
+
+  const SOURCES = [
+    "orchestrate-dev.js",
+    "cli.mjs",
+    "build-runtime.mjs",
+    "runtime-adapter.js",
+  ];
+  it.each(SOURCES)("source %s carries no C0 control byte", (name) => {
+    const hits = forbidden(readFileSync(resolve(WORKFLOWS, name)));
+    expect(hits).toEqual([]);
+  });
+
+  const ARTIFACTS = [...BUNDLES, "pdlc-cli.mjs"];
+  it.each(ARTIFACTS)("built artifact %s carries no C0 control byte", (name) => {
+    const hits = forbidden(readFileSync(resolve(DIST, name)));
+    expect(hits).toEqual([]);
+  });
+});
