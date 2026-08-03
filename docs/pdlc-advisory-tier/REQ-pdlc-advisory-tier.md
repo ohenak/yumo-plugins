@@ -17,10 +17,7 @@ depends-on: [pdlc-merge-phase]
 |---|---|---|---|---|
 | pdlc | draft | Claude | 1.4 | 2026-08-03 |
 
-> **v1.4 (erratum).** Targeted corrections only: §1 A2 row (gate is new, not existing);
-> AC-1.7 / NFR-4 (seam budget excludes check-rollup wait); AC-4.5 / AC-5.1 / AC-5.5 (A1 has no
-> post-action gate); AC-8.2 (attempt = act→re-poll, covering E-1); AC-9.1 (A1/A2 record lifecycle);
-> AC-9.3 (delete precedes Phase MERGE). Nothing else changed.
+> **v1.4 erratum:** §1 A2 row; AC-1.7/NFR-4; AC-4.5/5.1/5.5; AC-8.2; AC-9.1/9.3.
 
 > **Scope in one line.** A third model rung — the Fable 5 advisory tier (Opus as declared
 > fallback) — that takes the five
@@ -35,7 +32,7 @@ Every judgment call in the pipeline is a full stop with no attempt at resolution
 | Seam | Location | Today |
 |---|---|---|
 | A1 | `orchestrate-queue` Phase-0 triage returns `needs-human` | skip the candidate, try next |
-| A2 | Stale-REQ re-grounding — **no such gate exists today**; the Phase-0 triage prompt carries no re-grounding obligation, so this feature introduces A2's trigger rather than routing an existing signal | nothing fires; a stale REQ runs unnoticed |
+| A2 | Stale-REQ re-grounding — **no such gate exists today**; this feature introduces A2's trigger | nothing fires; a stale REQ runs unnoticed |
 | A3 | Phase DOD verify→remediate exhausts 3 iterations | pipeline halts |
 | A4 | `ship-pr` rebase produces conflicts | pipeline halts, branch unchanged |
 | A5 | Phase PUB CI is red, or no check ever registers | red halts; no-checks passes silently |
@@ -100,7 +97,7 @@ halt currently conflates: *diagnosing* the problem, and *authorizing* the resolu
   |---|---|---|
   | `advisory.enabled` | `false` | master switch (AC-1.6) |
   | `advisory.attemptBudget` | `3` | advisory attempts per seam invocation (AC-2.4); A5's act→re-poll cycles (AC-8.2) draw on this same budget |
-  | `advisory.seamBudgetMinutes` | `10` | advisory working time per seam invocation, **excluding** time spent waiting on GitHub's check rollup (NFR-4); an overrun escalates |
+  | `advisory.seamBudgetMinutes` | `10` | advisory working time per seam invocation, **excluding** check-rollup wait (NFR-4); an overrun escalates |
   | `advisory.envelope` | the AC-3.3 allow-list | the per-seam allow-list (AC-3.1) |
 
 ### REQ-ADV-02 — The advisory contract
@@ -182,7 +179,7 @@ halt currently conflates: *diagnosing* the problem, and *authorizing* the resolu
 
   | Seam | Gate that re-runs | State it must reach |
   |---|---|---|
-  | A1 | **none** — A1 changes no file, so no gate's inputs change and no re-run could reach a different state. The dependency pre-check still runs **before** the adjudication (AC-5.1) and a candidate it reports blocked is never adjudicable | n/a — the pre-condition is pre-action, not a post-action gate |
+  | A1 | **none** — A1 changes no file, so no gate's inputs change and no re-run could differ; the dependency pre-check runs **before** the adjudication (AC-5.1) | n/a — pre-condition, not post-action gate |
   | A2 | the same pre-check plus triage, on the re-grounded REQ, in the **next** queue invocation — applying a proposal does not pick a candidate, so AC-5.4's one-pick guarantee is preserved | triage reaches a verdict of its own |
   | A3 | Phase DOD's verify step | no findings remaining |
   | A4 | the rebase completes, then the branch's test command (AC-7.4) | rebase clean and tests green |
@@ -214,9 +211,9 @@ halt currently conflates: *diagnosing* the problem, and *authorizing* the resolu
   order and at most one is picked per invocation, preserving the serial guarantee.
 - **AC-5.5** — Given a Phase-0 triage stop, Then its outcome names **which** gate produced it: the
   `needs-human` result carries a machine-readable seam token, and a `needs-human` result with no
-  recognised token routes to the A1 adjudicator. Today's stop is a single free-text signal and A2's
-  gate does not exist at all, so without this the workflow cannot route a stop to the right envelope
-  (E-4 applies to A2 only) and AC-5.2/AC-5.3 have no testable precondition.
+  recognised token routes to the A1 adjudicator. Today's stop is one free-text signal and A2's gate
+  does not exist, so without this the workflow cannot route a stop to the right envelope (E-4
+  applies to A2 only) and AC-5.2/AC-5.3 have no testable precondition.
 
 ### REQ-ADV-06 — Seam A3: DoD exhaustion
 
@@ -250,10 +247,10 @@ halt currently conflates: *diagnosing* the problem, and *authorizing* the resolu
   failing job's log and produces a diagnosis naming the failing step and the cause.
 - **AC-8.2** — Given the cause is within the envelope (AC-3.3), Then a minimal fix is committed and
   pushed, CI is re-polled, and the cycle repeats up to `advisory.attemptBudget` (AC-1.7) attempts
-  before escalating. One attempt is one **act→re-poll** cycle, where the act is either a pushed fix
-  (E-2) or a re-run of the failing check on the unchanged commit (E-1, which pushes nothing) — so
-  E-1's re-run-only cycle counts as one attempt on the same budget. A re-poll that hits Phase PUB's
-  own completion timeout consumes an attempt rather than escalating separately.
+  before escalating. One attempt is one **act→re-poll** cycle, the act being either a pushed fix
+  (E-2) or a re-run on the unchanged commit (E-1, which pushes nothing) — so E-1's re-run-only cycle
+  counts as one attempt on the same budget. A re-poll that hits Phase PUB's own completion timeout
+  consumes an attempt rather than escalating separately.
 - **AC-8.3** — Given a fix is pushed during Phase PUB, Then the run is never reported DoD-passed on
   bytes the DoD gate did not verify: the report's DoD status names the verified commit, and a
   branch head beyond it is reported unverified. Phase PUB runs after Phase H, so what restores a
@@ -273,11 +270,9 @@ halt currently conflates: *diagnosing* the problem, and *authorizing* the resolu
 
 - **AC-9.1** — Given any advisory invocation, Then a record is appended to
   `docs/{feature}/ADVISORY-{feature}.md` carrying timestamp, seam, diagnosis, confidence,
-  envelope determination, action taken or escalated, and evidence citations. For the queue-side
-  seams A1/A2 the record is written under the **candidate feature's** directory, so an adjudication
-  of `hold` or `escalate` — after which no pipeline runs for that feature — leaves the record in
-  place, to be harvested by the next run of that feature that does reach Phase PUB (AC-9.3). It is
-  never orphaned and never deleted without harvest.
+  envelope determination, action taken or escalated, and evidence citations. The A1/A2 record is
+  written under the **candidate feature's** directory, so a `hold`/`escalate` adjudication — after
+  which no pipeline runs — leaves it for that feature's next run to harvest at Phase PUB (AC-9.3).
 - **AC-9.2** — Given an advisory action is taken without a record being written, Then this is a
   defect and is asserted against by test. Given the record write itself fails, Then the action is
   not taken — or is reverted, per AC-3.2 — and the seam takes the AC-3.6 refusal path with reason
@@ -285,10 +280,9 @@ halt currently conflates: *diagnosing* the problem, and *authorizing* the resolu
 - **AC-9.3** — Given the advisory record, Then it is a harvested process artifact — distilled into
   LEARNINGS and deleted — but **not at Phase H**: the distil-and-delete happens after the last
   phase that can append to it, which is Phase PUB (seam A5; no seam fires at Phase MERGE, merging
-  being out of scope). Because Phase MERGE runs after Phase PUB and merges the PR raised there, the
-  distil-and-delete is committed and pushed to the feature branch **before** Phase MERGE evaluates
-  the PR — so the merged branch carries the LEARNINGS content and not the advisory record.
-  Observably, `ADVISORY-{feature}.md` is absent at end of run and its content is in LEARNINGS. The LEARNINGS-precedes-delete protection that today covers `CROSS-REVIEW-*` and
+  being out of scope). MERGE runs after PUB and merges the PR raised there, so the distil-and-delete
+  is pushed **before** MERGE evaluates the PR: the merged branch carries the LEARNINGS content, not
+  the record. Observably, `ADVISORY-{feature}.md` is absent at end of run and its content is in LEARNINGS. The LEARNINGS-precedes-delete protection that today covers `CROSS-REVIEW-*` and
   `CODE_REVIEW-*` extends to `ADVISORY-*`: a delete attempted with no sibling
   `LEARNINGS-{feature}.md` is refused with the guard's refusal message and the file survives.
 - **AC-9.4** — Given the final pipeline report, Then it carries an advisory summary: count of
@@ -332,11 +326,9 @@ phase needs work.
   `ESCALATIONS.md` entry is created, and the report carries no advisory summary. (Stated as an
   equality on named artifacts, since report text varies by timestamp and iteration count.)
 - **NFR-4** — No advisory seam invocation may exceed `advisory.seamBudgetMinutes` (default 10),
-  measured from dispatch to verdict **less** any time spent waiting on GitHub's check rollup. The
-  carve-out is load-bearing: the pipeline's own CI completion window exceeds the 10-minute default,
-  so an unqualified wall-clock bound would end every A5 invocation inside its first attempt and
-  `advisory.attemptBudget` could never bind. An overrun escalates via AC-3.6 with reason
-  `budget-exhausted`.
+  measured from dispatch to verdict **less** check-rollup wait (without that carve-out the CI
+  completion window, which exceeds the default, ends every A5 invocation inside attempt 1 and
+  `advisory.attemptBudget` never binds). An overrun escalates via AC-3.6 as `budget-exhausted`.
 - **NFR-5** — The advisory tier never has credentials beyond those the pipeline already holds, and
   never merges (REQ-MERGE-03 and AC-4.4 both hold).
 
