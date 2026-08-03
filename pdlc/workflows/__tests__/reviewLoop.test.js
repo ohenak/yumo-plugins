@@ -1068,18 +1068,30 @@ describe("RLH-LOOP-01: reviewLoop's startIndex/endIndex sibling fields, new seam
     });
   });
 
-  test("RLH-LOOP-01d: all seven reviewLoop call sites pass iteration", () => {
+  test("RLH-LOOP-01d: every reviewLoop call site passes iteration, and all seven phases reach one", () => {
     // TSPEC §3.9: "all seven existing call sites now pass the branch-derived
     // startIndex". An un-overridden `iteration = 1` default aims a round-4 write
     // back at round 1 and destroys the existing -v1 cross-review (H-1).
+    //
+    // PROPOSAL §3.1 collapsed R, F, T, D, P and PR into one `converge()` body, so
+    // the seven phases now reach reviewLoop through TWO call sites: converge's,
+    // and Phase CR's (which has no phaseGate and stays open-coded). The invariant
+    // is unchanged and the coverage claim is now asserted directly — every phase
+    // that runs a review loop is named at a converge() call site or has its own.
     const source = devSourceLines().join("\n");
     const sites = [
       ...source.matchAll(/(?<!function )\breviewLoop\(\{([\s\S]*?)\n\s*\}\)/g),
     ].map((m) => m[1]);
 
-    expect(sites).toHaveLength(7); // R, F, T, D, P, PR, CR
+    expect(sites).toHaveLength(2); // converge() (R, F, T, D, P, PR) + CR
     const withoutIteration = sites.filter((args) => !/\biteration\s*:/.test(args));
     expect(withoutIteration).toEqual([]);
+
+    const convergedPhases = [
+      ...source.matchAll(/(?<!function )\bconverge\(\{[\s\S]*?phaseId:\s*"([A-Z]+)"/g),
+    ].map((m) => m[1]);
+    expect(new Set(convergedPhases)).toEqual(new Set(["R", "F", "T", "D", "P", "PR"]));
+    expect(/phase:\s*"CR"/.test(sites[1])).toBe(true);
   });
 
   test("RLH-LOOP-01e: reviewLoop gains docType, _listFiles and _readFile, and takes no seed maps", () => {

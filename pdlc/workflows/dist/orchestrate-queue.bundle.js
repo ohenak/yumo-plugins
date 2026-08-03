@@ -4879,6 +4879,109 @@ function sessionBoundAgent({ _sessionAgent = NO_SESSION_AGENT, sessionKey, _agen
   };
 }
 
+// ─── PROPOSAL §3.1 step 4 / §5 decision 2 — the erratum protocol ─────────────
+//
+// M-4: a downstream document that found a defect in an UPSTREAM one had no
+// channel for it. The reviewer either folded the finding into a verdict about
+// the wrong document, or the upstream document's approval silently went stale.
+// The manual run's protocol — the downstream dispatch LISTS errata, the upstream
+// author applies a targeted versioned edit, and the upstream document's own
+// APPROVERS confirm the delta rather than re-reviewing it — absorbed four errata
+// in one targeted round each, with no approval invalidated and no full re-review
+// paid.
+//
+// The grammar is one line of ordinary response text, so any dispatch can emit it
+// without a structured channel:
+//
+//     ERRATUM: {DOCTYPE}: {one-line item}
+//
+// Everything about the parse is FAIL-OPEN. An erratum is additional signal: it
+// never touches a verdict, a convergence decision or a round budget, so an
+// unparseable or unknown one degrades to "no erratum" rather than corrupting the
+// verdict it shares a response with.
+
+/** The upstream documents an erratum may name, in pipeline order (§3.1). */
+const ERRATUM_DOC_TYPES = Object.freeze([
+  "REQ",
+  "FSPEC",
+  "TSPEC",
+  "DECISIONS",
+  "PLAN",
+  "PROPERTIES",
+]);
+
+/**
+ * Which phase OWNS each document — i.e. whose `PHASE_DISPATCH` entry names the
+ * author that may edit it and the approvers that must confirm the delta. The
+ * routing reads the dispatch table through this map rather than hard-coding a
+ * second copy of "who writes FSPEC".
+ */
+const ERRATUM_PHASE_BY_DOC_TYPE = Object.freeze({
+  REQ: "R",
+  FSPEC: "F",
+  TSPEC: "T",
+  DECISIONS: "D",
+  PLAN: "P",
+  PROPERTIES: "PR",
+});
+
+/**
+ * §5 decision 2, verbatim: "One erratum round per upstream doc per phase;
+ * exceeding it halts to POSTMORTEM. **Not config** — a knob here is a knob that
+ * gets turned mid-run." So this is a shipped module constant, in the same
+ * category as `MAX_REVIEW_ROUNDS`, and it is deliberately not exported: tests
+ * reach it through the halt it produces.
+ */
+const MAX_ERRATUM_ROUNDS_PER_DOC = 1;
+
+/**
+ * One erratum line. A leading list marker is tolerated (agents write bullets),
+ * the doc type is the text up to the FIRST colon so an item may itself contain
+ * colons (`ERRATUM: FSPEC: §3.1: the table is wrong`), and the item must be
+ * non-empty.
+ */
+const ERRATUM_LINE_RE = /^\s*(?:[-*]\s+)?ERRATUM:\s*([^:]+?)\s*:\s*(\S.*?)\s*$/;
+
+/**
+ * Every erratum line in one agent response, in order, deduplicated by
+ * (docType, item).
+ *
+ * Fenced regions are skipped by `scanLines` — the same rule every other
+ * mechanical scan in this module obeys — so a response that QUOTES the erratum
+ * grammar (e.g. echoing the standing prompt clause inside a code fence) cannot
+ * fabricate an erratum.
+ *
+ * A line whose doc type is outside `ERRATUM_DOC_TYPES` is IGNORED, not an error:
+ * `onIgnored(docType, item)` is offered so the caller can raise a notice, and the
+ * line contributes nothing else. That is the fail-open half of §3.1 step 4 — an
+ * unparseable erratum must never corrupt a verdict.
+ *
+ * Pure, synchronous, total; takes no seam.
+ *
+ * @param {string} text
+ * @param {function(string, string): void} [onIgnored]
+ * @returns {Array<{docType: string, item: string}>}
+ */
+function parseErrata(text, onIgnored) {
+  const found = [];
+  const seen = new Set();
+  scanLines(String(text ?? ""), (line) => {
+    const m = ERRATUM_LINE_RE.exec(line);
+    if (!m) return;
+    const docType = m[1];
+    const item = m[2];
+    if (!ERRATUM_DOC_TYPES.includes(docType)) {
+      if (typeof onIgnored === "function") onIgnored(docType, item);
+      return;
+    }
+    const key = `${docType} ${item}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    found.push({ docType, item });
+  });
+  return found;
+}
+
 // ─── TSPEC-LOOP-01 through TSPEC-LOOP-08: reviewLoop ─────────────────────────
 
 /**
@@ -4930,6 +5033,30 @@ async function reviewLoop({
   const reviewFileType = roundDocType || "REVIEW";
   const emit = typeof _log === "function" ? _log : log;
 
+  // PROPOSAL §3.1 step 4 — the loop's erratum collection.
+  //
+  // Every reviewer response and every optimizer response of EVERY iteration is
+  // scanned, and the union rides out on this invocation's return. Deliberately
+  // inert here: nothing below branches on `errata`, so the verdict parse, the
+  // convergence gate and the round budget behave exactly as they did before the
+  // protocol existed. Routing is the caller's job (`converge`).
+  const errata = [];
+  const erratumSeen = new Set();
+  const collectErrata = (text, source) => {
+    const parsed = parseErrata(text, (badType) =>
+      emit(
+        `Erratum ignored (${source}, phase ${phase}): "${badType}" is not one of ` +
+          `${ERRATUM_DOC_TYPES.join(", ")}.`
+      )
+    );
+    for (const entry of parsed) {
+      const key = `${entry.docType} ${entry.item} ${source}`;
+      if (erratumSeen.has(key)) continue;
+      erratumSeen.add(key);
+      errata.push({ docType: entry.docType, item: entry.item, source });
+    }
+  };
+
   /**
    * Wrap one dispatch of this loop in the §3.8 pacing wrapper.
    *
@@ -4979,6 +5106,7 @@ async function reviewLoop({
           trailerReason: err.trailerReason ?? null,
           postmortemWritten: false,
           lastResults: [],
+          errata: errata.slice(),
         };
         return null;
       }
@@ -5080,6 +5208,7 @@ async function reviewLoop({
         postmortemWritten,
         postmortemPath,
         trailerReason: null,
+        errata: errata.slice(),
       };
     }
 
@@ -5140,6 +5269,12 @@ async function reviewLoop({
     result1 = r1 && r1.response;
     result2 = r2 && r2.response;
 
+    // §3.1 step 4: both reviewers, every iteration. Placed BEFORE the verdict
+    // parse to make the independence explicit — the same response text feeds
+    // both, and the erratum read cannot alter the verdict read.
+    collectErrata(result1, reviewers[0]);
+    collectErrata(result2, reviewers[1]);
+
     // (d) Parse verdicts. A missing/malformed VERDICT trailer sets malformed:true —
     // make one cheap Haiku recovery attempt to re-emit the trailer from the reviewer's
     // own output before paying for a full optimizer + re-review round.
@@ -5188,6 +5323,7 @@ async function reviewLoop({
         iterations: iteration,
         lastOptimizerResult,
         trailerReason: lastTrailerReason,
+        errata: errata.slice(),
       };
     }
 
@@ -5205,6 +5341,9 @@ async function reviewLoop({
     if (haltedReturn) return haltedReturn;
     const optimizerResult = optEpisode && optEpisode.response;
     lastOptimizerResult = optimizerResult;
+    // §3.1 step 4: the optimizer is an author, and an author reading reviewer
+    // findings is exactly where an upstream defect surfaces.
+    collectErrata(optimizerResult, optimizer);
 
     if (
       optimizerResult == null ||
@@ -6468,6 +6607,26 @@ const CONTINUING_AUTHOR_CLAUSE =
   "Before you finish, re-read your revision for cross-round inconsistencies it may have " +
   "introduced with decisions taken in earlier rounds, and fix any you find.";
 
+/**
+ * PROPOSAL §3.1 step 4 / M-4 — the standing erratum clause, on EVERY creator,
+ * optimizer and reviewer prompt.
+ *
+ * It exists to stop two failure modes the manual run named. A reviewer that
+ * silently edits an upstream document invalidates that document's recorded
+ * approval; a reviewer that folds an upstream defect into THIS document's verdict
+ * blocks a document that is not at fault and cannot converge. The third option —
+ * emit a line, let the orchestrator route it — is the one this clause asks for,
+ * and the grammar is `parseErrata`'s.
+ */
+const ERRATUM_PROTOCOL_CLAUSE =
+  "If you find a defect in an UPSTREAM document — one this document derives from — do not edit " +
+  "that document yourself, and do not fold the defect into your verdict as if it were a defect of " +
+  "the document in front of you. Emit one line per item in your final message, in exactly this form:\n" +
+  "ERRATUM: {DOCTYPE}: {one-line item}\n" +
+  `where {DOCTYPE} is one of ${ERRATUM_DOC_TYPES.join(", ")} (uppercase). The orchestrator routes ` +
+  "each item to that document's author for a targeted versioned edit and to its approvers for a " +
+  "delta confirmation.";
+
 function reviewerPrompt(doc, phase, feature, iteration, reviewer, docType) {
   const base =
     `Review the document at ${doc} for phase ${phase} of feature ${feature}. This is iteration ${iteration}.\n` +
@@ -6477,7 +6636,10 @@ function reviewerPrompt(doc, phase, feature, iteration, reviewer, docType) {
   // on every reviewer dispatch regardless of iteration.
   const grounding = groundingClause(phase);
   const groundingPart = grounding ? `\n${grounding}` : "";
-  const oraclePart = `\n${ORACLE_QUALITY_CLAUSE}`;
+  // §3.1 step 4's standing clause and §3.5's oracle-quality clauses are BOTH
+  // unconditional on iteration: an upstream defect is as likely to surface in a
+  // delta re-review as in the first pass.
+  const oraclePart = `\n${ORACLE_QUALITY_CLAUSE}\n${ERRATUM_PROTOCOL_CLAUSE}`;
 
   if (iteration < 2) return `${base}${groundingPart}${oraclePart}`;
 
@@ -6541,11 +6703,14 @@ function optimizerPrompt(doc, phase, feature, iteration, reviewers = [], docType
   // the paths just named, and before Phase T's trailer requirement, which must
   // stay the last instruction in the prompt.
   const continuing = `\n${CONTINUING_AUTHOR_CLAUSE}`;
+  // §3.1 step 4. Placed after the continuing-author clause and BEFORE Phase T's
+  // trailer requirement, which stays the last instruction in the prompt.
+  const erratum = `\n${ERRATUM_PROTOCOL_CLAUSE}`;
 
   if (phase === "T") {
-    return `${base}${feedback}${groundingPart}${continuing}\n${decisionsWarrantedTrailerRequirement()}`;
+    return `${base}${feedback}${groundingPart}${continuing}${erratum}\n${decisionsWarrantedTrailerRequirement()}`;
   }
-  return `${base}${feedback}${groundingPart}${continuing}`;
+  return `${base}${feedback}${groundingPart}${continuing}${erratum}`;
 }
 
 /**
@@ -6595,7 +6760,54 @@ function creatorPrompt(phase, featureName, inputs) {
     `Create ${dispatch.creatorOutputPath.replace(/\{feature\}/g, featureName)} for feature ${featureName}. ` +
     `Input documents: ${inputs.join(", ")}. Commit and push.\n` +
     branchPinClause(featureName) +
-    (grounding ? `\n${grounding}` : "")
+    (grounding ? `\n${grounding}` : "") +
+    // §3.1 step 4: the creator reads every upstream document this phase derives
+    // from, which makes it the first dispatch positioned to spot a defect in one.
+    `\n${ERRATUM_PROTOCOL_CLAUSE}`
+  );
+}
+
+/**
+ * §3.1 step 4a — the upstream author's ERRATUM prompt.
+ *
+ * The whole value of M-4 is in what this prompt REFUSES to ask for: not a
+ * re-authoring, not a re-read of the downstream document, not a fresh pass over
+ * the upstream one. A targeted, versioned edit that addresses exactly the listed
+ * items and changes nothing else is what made three FSPEC errata cost one round.
+ */
+function erratumAuthorPrompt({ feature, docType, docPath, itemLines, raisedIn }) {
+  return (
+    `ERRATUM ROUND for ${docPath} (feature ${feature}).\n` +
+    `Phase ${raisedIn} raised the following errata against this ${docType}:\n` +
+    `${itemLines}\n` +
+    `This is an erratum round, NOT a rewrite. Apply a targeted, versioned edit that addresses ` +
+    `exactly the items listed above and changes nothing else — do not restructure, do not ` +
+    `re-litigate approved decisions, do not expand scope. If the document carries a version or ` +
+    `changelog, bump it and record this erratum edit there. Commit.\n` +
+    branchPinClause(feature)
+  );
+}
+
+/**
+ * §3.1 step 4c — the delta-confirmation prompt for the upstream document's own
+ * approvers.
+ *
+ * They are not re-reviewing: they are answering one question about a diff they
+ * are named on. That is what keeps their earlier approval from going stale —
+ * the confirmation file is the round the fresh approval anchors are appended to.
+ */
+function erratumConfirmPrompt({ feature, docType, docPath, itemLines, round, reviewFile }) {
+  return (
+    `DELTA CONFIRMATION for ${docPath} (feature ${feature}).\n` +
+    `You previously approved this ${docType}. It has just received a targeted erratum edit ` +
+    `addressing these items:\n` +
+    `${itemLines}\n` +
+    `Do not re-review the whole document. Read the items above and \`git diff\` the erratum edit ` +
+    `to ${docPath}, then answer one question: does the delta resolve those items without breaking ` +
+    `anything you previously approved?\n` +
+    `Write your confirmation as the next cross-review round for this document type — ` +
+    `${reviewFile} (round v${round}) — and end it with the standard VERDICT trailer.\n` +
+    branchPinClause(feature)
   );
 }
 
@@ -8011,7 +8223,7 @@ async function main({
   };
 
   /** Wrap one main()-level dispatch (a creator, or harvest) in §3.8's episode. */
-  async function wrappedDispatch({ skill, basePrompt, targetPath, docType, dispatchKind, phaseId }) {
+  async function wrappedDispatch({ skill, basePrompt, targetPath, docType, dispatchKind, phaseId, sessionKey }) {
     const episode = await dispatchAndVerify({
       skill,
       basePrompt,
@@ -8028,12 +8240,392 @@ async function main({
       // returns that very function, so this is a no-op on the shipped path.
       _agent: sessionBoundAgent({
         _sessionAgent,
-        sessionKey: authorSessionKey(featureName, docType, phaseId),
+        // A caller may name the session itself — a phase that authors two
+        // documents in one author session (PROPOSAL §3.2's T+D fold) needs both
+        // dispatches to land in the same one. Absent an override this is
+        // exactly the key `reviewLoop`'s optimizer derives for the same phase.
+        sessionKey: sessionKey ?? authorSessionKey(featureName, docType, phaseId),
         _agent: agentFn,
         _log: emit,
       }),
     });
     return episode.response;
+  }
+
+  // ─── PROPOSAL §3.1 step 4 / §5 decision 2 — erratum routing ──────────────
+  //
+  // The collection half lives in `reviewLoop` (see `parseErrata`); this is the
+  // routing half, and it runs inside `converge` between `checkConverged` and
+  // `afterConverged`. The placement is the contract: a phase routes errata only
+  // once its OWN document has converged, so the upstream edit is never made on
+  // behalf of a finding the phase itself was about to withdraw.
+
+  /**
+   * The erratum protocol's halt. It reuses the review loop's POSTMORTEM
+   * lifecycle rather than inventing a second one: the CURRENT phase's
+   * POSTMORTEM is written, confirmed by `_checkFile` rather than by the agent's
+   * own claim (§6.3 step 2), the phase is recorded ❌, and the halt carries the
+   * `haltPhase` / `postmortemPath` / `postmortemStatus` fields §4.7 reports.
+   * The phase then refuses to run again until an operator sets `RESOLVED: yes`,
+   * exactly as a non-convergence halt does.
+   */
+  async function erratumPostmortemHalt({ phaseId, label, reason }) {
+    const postmortemPath = `docs/${featureName}/POSTMORTEM-${phaseId}-${featureName}.md`;
+    const prompt = [
+      `Write ${postmortemPath}.`,
+      `Include the required sections: Phase, Iterations, Reviewers, Pattern of Disagreement, Best-Guess Root Cause, Recommendation.`,
+      `The failure is an ERRATUM-PROTOCOL failure: ${reason}`,
+      `Commit and push.`,
+    ].join(" ");
+
+    let written = false;
+    try {
+      const result = await agentFn(PHASE_DISPATCH[phaseId].optimizer, prompt, {
+        model: MODEL_DEFAULT,
+      });
+      if (result != null && String(result).trim() !== "") {
+        const confirmation = await checkFileFn(postmortemPath);
+        written = !!(confirmation && confirmation.ok);
+      }
+    } catch {
+      written = false;
+    }
+
+    recordPhase(phaseId, label, "❌", reason);
+    throw haltError(
+      written
+        ? `${reason} Post-mortem written at ${postmortemPath}. ` +
+            `Recover: resolve it per AC-2.4, then set the feature's row back to pending.`
+        : `${reason} Post-mortem write FAILED — no artifact at ${postmortemPath}.`,
+      {
+        haltPhase: phaseId,
+        postmortemPath,
+        postmortemStatus: written ? "written" : "write_failed",
+      }
+    );
+  }
+
+  /**
+   * One erratum round for one upstream document: the targeted versioned edit
+   * (step 4b) and the delta confirmation by that document's own approvers
+   * (step 4c). Returns the responses so the caller can read any FURTHER errata
+   * out of them — which is how a second batch for the same document becomes
+   * observable, and therefore how the §5 decision 2 bound gets to fire.
+   */
+  async function erratumRound({ phaseId, label, target, items }) {
+    const upstreamPhase = ERRATUM_PHASE_BY_DOC_TYPE[target];
+    const upstream = PHASE_DISPATCH[upstreamPhase];
+    const upstreamPath = `docs/${featureName}/${target}-${featureName}.md`;
+    const itemLines = items.map((e) => `- ${e.item} (raised by ${e.source})`).join("\n");
+    const itemText = items.map((e) => e.item).join("; ");
+
+    // Step 4b. The upstream document's author skill — `creator` where the phase
+    // has one, and its `optimizer` where it does not (Phase R's REQ arrives
+    // authored, so `pm-author` is its only writer).
+    const authorSkill = upstream.creator ?? upstream.optimizer;
+    const authorResponse = await wrappedDispatch({
+      skill: authorSkill,
+      basePrompt: erratumAuthorPrompt({
+        feature: featureName,
+        docType: target,
+        docPath: upstreamPath,
+        itemLines,
+        raisedIn: phaseId,
+      }),
+      targetPath: upstreamPath,
+      docType: target,
+      dispatchKind: "authoring",
+      phaseId: upstreamPhase,
+      // The upstream document's OWN author session (M-2), not this phase's:
+      // the agent that applies the erratum is the agent that wrote the document.
+      sessionKey: authorSessionKey(featureName, target, upstreamPhase),
+    });
+
+    // Step 4c. The confirmation is the next round of the upstream document's own
+    // append-only window — derived, never assumed (§3.6's pinned invariant).
+    const window = await phaseWindow(target);
+    const round = window.startIndex;
+    const reviewers = upstream.reviewers;
+    const confirmPaths = reviewers.map(
+      (skill) =>
+        `docs/${featureName}/CROSS-REVIEW-${reviewerRoleSlug(skill) || skill}-${target}-v${round}.md`
+    );
+
+    // The anchor pair is captured over the document as it stands AFTER the
+    // erratum edit and BEFORE the confirmations are read — the same t0–t2 order
+    // `reviewLoop` uses, so what is pinned is the bytes the approvers confirmed.
+    const probe = await probeDocument(probeDocFn, upstreamPath, target);
+    const anchorHash = (probe ? probe.hash : await hashFileFn(upstreamPath)) ?? null;
+    const anchorCommit = await headCommitSha(gitFn);
+
+    const responses = await parallelFn(
+      reviewers.map((skill, i) =>
+        wrappedDispatch({
+          skill,
+          basePrompt: erratumConfirmPrompt({
+            feature: featureName,
+            docType: target,
+            docPath: upstreamPath,
+            itemLines,
+            round,
+            reviewFile: confirmPaths[i],
+          }),
+          targetPath: confirmPaths[i],
+          docType: target,
+          dispatchKind: "review",
+          phaseId: upstreamPhase,
+          sessionKey: reviewerSessionKey(featureName, target, upstreamPhase, skill),
+        })
+      )
+    );
+
+    const verdicts = reviewers.map((skill, i) => parseVerdict(responses[i], skill));
+    const nonApproving = reviewers.filter((_, i) => !isPass(verdicts[i].verdict));
+    if (nonApproving.length > 0) {
+      await erratumPostmortemHalt({
+        phaseId,
+        label,
+        reason:
+          `Phase ${phaseId} halted: the delta confirmation of the ${target} erratum round did not ` +
+          `pass — non-approving: [${nonApproving.join(", ")}]. Erratum items against ` +
+          `${upstreamPath}: ${itemText}.`,
+      });
+    }
+
+    // Both PASS ⇒ the confirmations carry the approval, anchored to the bytes
+    // that were just confirmed. This is M-4's "no approval silently invalidated":
+    // the upstream document's recorded approval now points at the edited file, so
+    // the staleness gate does not re-open a phase the approvers just re-confirmed.
+    await appendApprovalAnchors({
+      paths: confirmPaths,
+      hash: anchorHash,
+      commit: anchorCommit,
+      _readFile: readFileFn,
+      _probeDoc: probeDocFn,
+      _appendFile: appendFileFn,
+      _git: gitFn,
+      emit,
+    });
+
+    notices.push(
+      `Phase ${phaseId}: erratum round for ${target} — ${items.length} item${items.length === 1 ? "" : "s"}, ` +
+        `confirmed at round v${round} by ${reviewers.join(", ")}.`
+    );
+
+    return [
+      { text: authorResponse, source: authorSkill },
+      ...reviewers.map((skill, i) => ({ text: responses[i], source: skill })),
+    ];
+  }
+
+  /**
+   * Route every erratum this phase collected (§3.1 step 4).
+   *
+   * @returns {Promise<string>} a suffix for the phase's ✅ detail — `""` when the
+   *   phase raised no erratum, which is the overwhelmingly common case and must
+   *   leave every existing report string byte-identical.
+   */
+  async function routeErrata({ phaseId, docType, label, loop, creatorResult }) {
+    const seen = new Set();
+    const admit = (entries) => {
+      const kept = [];
+      for (const entry of entries) {
+        // An erratum naming the phase's OWN document is not an erratum at all —
+        // it is an ordinary finding, and the loop that just converged is where
+        // it belonged. Dropped silently, not routed.
+        if (!entry || entry.docType === docType) continue;
+        const key = `${entry.docType} ${entry.item}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        kept.push(entry);
+      }
+      return kept;
+    };
+
+    const creatorSkill = PHASE_DISPATCH[phaseId].creator ?? PHASE_DISPATCH[phaseId].optimizer;
+    let pending = admit([
+      ...(Array.isArray(loop && loop.errata) ? loop.errata : []),
+      // §3.1 step 2's last clause: `converge` additionally collects the creator's.
+      ...parseErrata(creatorResult ?? "", (badType) =>
+        notices.push(
+          `Phase ${phaseId}: erratum line ignored — "${badType}" is not one of ` +
+            `${ERRATUM_DOC_TYPES.join(", ")}.`
+        )
+      ).map((entry) => ({ ...entry, source: creatorSkill })),
+    ]);
+    if (pending.length === 0) return "";
+
+    /** Erratum rounds spent, per upstream doc, for THIS phase and invocation. */
+    const spent = new Map();
+    const routed = [];
+
+    while (pending.length > 0) {
+      const followOn = [];
+      // Pipeline order, so a run that raises errata against two documents edits
+      // them in the order the pipeline authored them.
+      for (const target of ERRATUM_DOC_TYPES) {
+        const items = pending.filter((entry) => entry.docType === target);
+        if (items.length === 0) continue;
+
+        const already = spent.get(target) ?? 0;
+        if (already >= MAX_ERRATUM_ROUNDS_PER_DOC) {
+          await erratumPostmortemHalt({
+            phaseId,
+            label,
+            reason:
+              `Phase ${phaseId} halted: further errata were raised against ` +
+              `docs/${featureName}/${target}-${featureName}.md after its erratum round was already ` +
+              `spent — the erratum bound of ${MAX_ERRATUM_ROUNDS_PER_DOC} round per upstream doc ` +
+              `per phase is exhausted. Unaddressed items: ${items.map((e) => e.item).join("; ")}.`,
+          });
+        }
+        spent.set(target, already + 1);
+
+        // Step 4a. An erratum against a document that does not exist on this
+        // branch is noise, not a halt: the phase says so and carries on.
+        const upstreamPath = `docs/${featureName}/${target}-${featureName}.md`;
+        const exists = await checkFileFn(upstreamPath);
+        if (!exists || !exists.ok) {
+          notices.push(
+            `Phase ${phaseId}: erratum round for ${target} skipped — no document at ${upstreamPath} ` +
+              `(${items.length} item${items.length === 1 ? "" : "s"}).`
+          );
+          continue;
+        }
+
+        const responses = await erratumRound({ phaseId, label, target, items });
+        routed.push(target);
+        for (const reply of responses) {
+          followOn.push(
+            ...parseErrata(reply.text ?? "").map((entry) => ({
+              ...entry,
+              source: reply.source,
+            }))
+          );
+        }
+      }
+      pending = admit(followOn);
+    }
+
+    return routed.length > 0 ? ` — erratum rounds: ${routed.join(", ")}` : "";
+  }
+
+  // ─── PROPOSAL §3.1 — the convergence primitive ───────────────────────────
+  //
+  // R, F, T, D, P and PR were six copies of one ~40-line body: announce the
+  // phase, run the gate, dispatch the creator, run the review loop, check
+  // convergence, record the row. `converge` IS that body; the six call sites
+  // below are the differences between them, stated as data. Nothing about the
+  // order of operations changes — in particular the artifact path is still
+  // pushed between the gate and the skip branch, so a skipped phase still
+  // reports its document as an artifact of the run.
+  //
+  // The parameter surface is deliberately a little wider than today's six call
+  // sites need: `afterConverged` is where a phase's own post-convergence gate
+  // lives (Phase P's self-parse gate is the first tenant, the erratum protocol
+  // will be the next), and `sessionKey` lets a phase that authors two documents
+  // in one session name that session (PROPOSAL §3.2's T+D fold).
+  //
+  // @param {{
+  //   phaseId: string,
+  //   docType: string,
+  //   docPath: string,
+  //   inputs?: string[],              // defaults to PHASE_DISPATCH[phaseId].creatorInputs
+  //   creatorPromptExtra?: string,    // appended to the creator prompt on its own line
+  //   phaseLabelOverride?: string,    // the `phaseFn` banner; defaults to `Phase {id}: {label}`
+  //   pushArtifact?: boolean,         // default true; false where docPath is already recorded
+  //   pluralizeIterations?: boolean,  // default false — Phase R's "1 iteration" wording
+  //   sessionKey?: string,            // overrides the creator's author session key
+  //   afterConverged?: function,      // ({loop, creatorResult}) => string|undefined detail suffix
+  // }} spec
+  // @returns {Promise<{skipped: true} | {skipped: false, loop: object, creatorResult: string|null}>}
+  async function converge({
+    phaseId,
+    docType,
+    docPath,
+    inputs,
+    creatorPromptExtra,
+    phaseLabelOverride,
+    pushArtifact = true,
+    pluralizeIterations = false,
+    sessionKey,
+    afterConverged,
+  }) {
+    const dispatch = PHASE_DISPATCH[phaseId];
+    phaseFn(phaseLabelOverride ?? `Phase ${phaseId}: ${dispatch.label}`);
+
+    const gate = await phaseGate({ phaseId, docType, docPath });
+    if (pushArtifact) artifactPaths.push(docPath);
+    if (gate.skip) return { skipped: true };
+
+    // The creator. `creator: null` (Phase R) reviews a document this pipeline
+    // did not write, so there is nothing to dispatch.
+    let creatorResult = null;
+    if (dispatch.creator) {
+      const basePrompt = creatorPrompt(phaseId, featureName, inputs ?? dispatch.creatorInputs);
+      creatorResult = await wrappedDispatch({
+        skill: dispatch.creator,
+        basePrompt: creatorPromptExtra ? `${basePrompt}\n${creatorPromptExtra}` : basePrompt,
+        targetPath: docPath,
+        docType,
+        dispatchKind: "authoring",
+        phaseId,
+        sessionKey,
+      });
+      if (!creatorResult || creatorResult.trim() === "") {
+        throw haltError(
+          `Error: creator agent ${dispatch.creator} failed to produce ${docPath} for phase ${phaseId}`
+        );
+      }
+    }
+
+    const window = gate.window;
+    const loop = await reviewLoop({
+      doc: docPath,
+      phase: phaseId,
+      docType,
+      reviewers: dispatch.reviewers,
+      optimizer: dispatch.optimizer,
+      feature: featureName,
+      iteration: window.startIndex,
+      startIndex: window.startIndex,
+      endIndex: window.endIndex,
+      _parallel: parallelFn,
+      _checkFile: checkFileFn,
+      ...wrapperSeams,
+    });
+    checkConverged(
+      loop,
+      phaseId,
+      dispatch.label,
+      recordPhase,
+      featureName,
+      window.startIndex,
+      window.endIndex
+    );
+
+    // §3.1 step 4 — the erratum protocol, between `checkConverged` and
+    // `afterConverged`. Nothing here can change what this phase decided; it
+    // routes signal this phase produced ABOUT ANOTHER document, and it may halt.
+    const erratumSuffix = await routeErrata({
+      phaseId,
+      docType,
+      label: dispatch.label,
+      loop,
+      creatorResult,
+    });
+
+    // The phase's own gate, past convergence. It may halt (Phase P does), and
+    // it may contribute a suffix to the ✅ row's detail.
+    const suffix = afterConverged ? await afterConverged({ loop, creatorResult }) : undefined;
+
+    const iterationWord = pluralizeIterations
+      ? `iteration${loop.iterations !== 1 ? "s" : ""}`
+      : "iterations";
+    const detail = `Approved (${loop.iterations} ${iterationWord})${erratumSuffix}${suffix ?? ""}`;
+    recordPhase(phaseId, dispatch.label, "✅", forcedDetail(detail, gate.forced), loop.iterations);
+
+    return { skipped: false, loop, creatorResult };
   }
 
   // ─── TSPEC-ENTRY-01: REQ path validation ─────────────────────────────────
@@ -8135,108 +8727,57 @@ async function main({
 
     await pipelineFn("PDLC Pipeline", async () => {
       // ─── Phase R: REQ Cross-Review ───────────────────────────────────────
-      phaseFn("Phase R: REQ Cross-Review");
-      const rGate = await phaseGate({ phaseId: "R", docType: "REQ", docPath: reqPath });
-      if (!rGate.skip) {
-      const rWindow = rGate.window;
-      const rLoop = await reviewLoop({
-        doc: reqPath,
-        phase: "R",
+      // No creator (`PHASE_DISPATCH.R.creator` is null — the REQ arrives
+      // authored) and no artifact push (`reqPath` is already artifactPaths[0]).
+      // The only phase whose ✅ detail pluralises "iteration".
+      await converge({
+        phaseId: "R",
         docType: "REQ",
-        reviewers: PHASE_DISPATCH.R.reviewers,
-        optimizer: PHASE_DISPATCH.R.optimizer,
-        feature: featureName,
-        iteration: rWindow.startIndex,
-        startIndex: rWindow.startIndex,
-        endIndex: rWindow.endIndex,
-        _parallel: parallelFn,
-        _checkFile: checkFileFn,
-        ...wrapperSeams,
+        docPath: reqPath,
+        pushArtifact: false,
+        pluralizeIterations: true,
       });
-      checkConverged(rLoop, "R", PHASE_DISPATCH.R.label, recordPhase, featureName, rWindow.startIndex, rWindow.endIndex);
-      recordPhase("R", PHASE_DISPATCH.R.label, "✅", forcedDetail(`Approved (${rLoop.iterations} iteration${rLoop.iterations !== 1 ? "s" : ""})`, rGate.forced), rLoop.iterations);
-      }
 
       // ─── Phase F: FSPEC Creation + Review ───────────────────────────────
-      phaseFn("Phase F: FSPEC Creation + Review");
       const fspecPath = `docs/${featureName}/FSPEC-${featureName}.md`;
-      const fGate = await phaseGate({ phaseId: "F", docType: "FSPEC", docPath: fspecPath });
-      artifactPaths.push(fspecPath);
-      if (!fGate.skip) {
-      const fCreatorResult = await wrappedDispatch({
-        skill: PHASE_DISPATCH.F.creator,
-        basePrompt: creatorPrompt("F", featureName, PHASE_DISPATCH.F.creatorInputs),
-        targetPath: fspecPath,
-        docType: "FSPEC",
-        dispatchKind: "authoring",
-        phaseId: "F",
-      });
-      if (!fCreatorResult || fCreatorResult.trim() === "") {
-        throw haltError(
-          `Error: creator agent ${PHASE_DISPATCH.F.creator} failed to produce ${fspecPath} for phase F`
-        );
-      }
-      const fWindow = fGate.window;
-      const fLoop = await reviewLoop({
-        doc: fspecPath,
-        phase: "F",
-        docType: "FSPEC",
-        reviewers: PHASE_DISPATCH.F.reviewers,
-        optimizer: PHASE_DISPATCH.F.optimizer,
-        feature: featureName,
-        iteration: fWindow.startIndex,
-        startIndex: fWindow.startIndex,
-        endIndex: fWindow.endIndex,
-        _parallel: parallelFn,
-        _checkFile: checkFileFn,
-        ...wrapperSeams,
-      });
-      checkConverged(fLoop, "F", PHASE_DISPATCH.F.label, recordPhase, featureName, fWindow.startIndex, fWindow.endIndex);
-      recordPhase("F", PHASE_DISPATCH.F.label, "✅", forcedDetail(`Approved (${fLoop.iterations} iterations)`, fGate.forced), fLoop.iterations);
-      }
+      await converge({ phaseId: "F", docType: "FSPEC", docPath: fspecPath });
 
-      // ─── Phase T: TSPEC Creation + Review ───────────────────────────────
-      phaseFn("Phase T: TSPEC Creation + Review");
+      // ─── Phase T: TSPEC (+ DECISIONS) Creation + Review ──────────────────
+      //
+      // PROPOSAL §3.2 row 1 — "T absorbs D". D is no longer a top-level phase
+      // body: the TSPEC and, when the trailer warrants it, the DECISIONS
+      // document are authored and reviewed as ONE flow, by one author session,
+      // with one reviewer set.
+      //
+      // ── The one deliberate deviation from §3.2's ideal, and why ────────────
+      // §3.2 says DECISIONS is "reviewed in the same window" as the TSPEC. It
+      // cannot literally be: §3.6 pins `deriveRoundWindow`'s per-docType,
+      // content-addressed round derivation, and one `reviewLoop` reviews one
+      // document — merging the two windows would make the round index of a
+      // `CROSS-REVIEW-{role}-DECISIONS-v{N}` file depend on how many TSPEC
+      // rounds happened to precede it, which is exactly the derivation that
+      // invariant forbids. So the sanctioned reading, implemented here, is:
+      //
+      //   the D phase BODY disappears as a separate top-level section;
+      //   DECISIONS is authored and reviewed INSIDE this section, immediately
+      //   after the TSPEC converges, by the SAME author session (M-2) and the
+      //   same reviewer set — while keeping its own docType round window, its
+      //   own append-only cross-review files, its own phase-D POSTMORTEM
+      //   lifecycle and gate, its own `D` forcePhases token, and its own `D`
+      //   report row.
+      //
+      // What is compressed is the phase GRAPH, not the review bookkeeping.
       const tspecPath = `docs/${featureName}/TSPEC-${featureName}.md`;
-      const tGate = await phaseGate({ phaseId: "T", docType: "TSPEC", docPath: tspecPath });
-      artifactPaths.push(tspecPath);
-      // Declared outside the gate's branch: Phase D's `DECISIONS_WARRANTED` read
-      // is downstream of Phase T and must survive a skipped Phase T, where the
-      // trailer was never re-emitted and the conservative answer is "no".
-      let tCreatorResult = null;
-      let tLoop = null;
-      if (!tGate.skip) {
-      tCreatorResult = await wrappedDispatch({
-        skill: PHASE_DISPATCH.T.creator,
-        basePrompt: `${creatorPrompt("T", featureName, PHASE_DISPATCH.T.creatorInputs)}\n${decisionsWarrantedTrailerRequirement()}`,
-        targetPath: tspecPath,
-        docType: "TSPEC",
-        dispatchKind: "authoring",
+      // The result is read below whether or not the phase ran: the
+      // `DECISIONS_WARRANTED` read is downstream of the TSPEC's convergence and
+      // must survive a skipped Phase T, where the trailer was never re-emitted
+      // and the conservative answer is "no".
+      const tResult = await converge({
         phaseId: "T",
-      });
-      if (!tCreatorResult || tCreatorResult.trim() === "") {
-        throw haltError(
-          `Error: creator agent ${PHASE_DISPATCH.T.creator} failed to produce ${tspecPath} for phase T`
-        );
-      }
-      const tWindow = tGate.window;
-      tLoop = await reviewLoop({
-        doc: tspecPath,
-        phase: "T",
         docType: "TSPEC",
-        reviewers: PHASE_DISPATCH.T.reviewers,
-        optimizer: PHASE_DISPATCH.T.optimizer,
-        feature: featureName,
-        iteration: tWindow.startIndex,
-        startIndex: tWindow.startIndex,
-        endIndex: tWindow.endIndex,
-        _parallel: parallelFn,
-        _checkFile: checkFileFn,
-        ...wrapperSeams,
+        docPath: tspecPath,
+        creatorPromptExtra: decisionsWarrantedTrailerRequirement(),
       });
-      checkConverged(tLoop, "T", PHASE_DISPATCH.T.label, recordPhase, featureName, tWindow.startIndex, tWindow.endIndex);
-      recordPhase("T", PHASE_DISPATCH.T.label, "✅", forcedDetail(`Approved (${tLoop.iterations} iterations)`, tGate.forced), tLoop.iterations);
-      }
 
       // ─── TSPEC-DECISIONS-01: DECISIONS_WARRANTED read from Phase T ─────────
       // The trailer requirement is appended to the Phase T creator and optimizer
@@ -8244,216 +8785,130 @@ async function main({
       // post-PASS agent session. The last optimizer result carries it; if the loop
       // converged on iteration 1 (no optimizer run) the creator result does.
       const decisionsWarranted = parseDecisionsWarranted(
-        (tLoop && tLoop.lastOptimizerResult) ?? tCreatorResult
+        (tResult.loop && tResult.loop.lastOptimizerResult) ?? tResult.creatorResult ?? null
       );
 
-      // ─── Phase D: DECISIONS (conditional) ───────────────────────────────
+      // ─── DECISIONS (conditional), inside Phase T ─────────────────────────
+      // The `Phase D:` banners and the `D` report row are preserved verbatim:
+      // the report and pipeline oracles pin them, and an operator reading a run
+      // log should still see the decision the trailer made, named as such.
       let decisionsPath = null;
       if (!decisionsWarranted) {
         phaseFn("Phase D: ⏭ Skipped");
         emit("Phase D skipped — no load-bearing alternatives");
         recordPhase("D", PHASE_DISPATCH.D.label, "⏭", "Skipped — no load-bearing alternatives");
       } else {
-        phaseFn("Phase D: DECISIONS Creation + Review");
         decisionsPath = `docs/${featureName}/DECISIONS-${featureName}.md`;
-        const dGate = await phaseGate({ phaseId: "D", docType: "DECISIONS", docPath: decisionsPath });
-        artifactPaths.push(decisionsPath);
-        if (!dGate.skip) {
-        const dCreatorResult = await wrappedDispatch({
-          skill: PHASE_DISPATCH.D.creator,
-          basePrompt: creatorPrompt("D", featureName, PHASE_DISPATCH.D.creatorInputs),
-          targetPath: decisionsPath,
-          docType: "DECISIONS",
-          dispatchKind: "authoring",
+        await converge({
           phaseId: "D",
-        });
-        if (!dCreatorResult || dCreatorResult.trim() === "") {
-          throw haltError(
-            `Error: creator agent ${PHASE_DISPATCH.D.creator} failed to produce ${decisionsPath} for phase D`
-          );
-        }
-        const dWindow = dGate.window;
-        const dLoop = await reviewLoop({
-          doc: decisionsPath,
-          phase: "D",
           docType: "DECISIONS",
-          reviewers: PHASE_DISPATCH.D.reviewers,
-          optimizer: PHASE_DISPATCH.D.optimizer,
-          feature: featureName,
-          iteration: dWindow.startIndex,
-          startIndex: dWindow.startIndex,
-          endIndex: dWindow.endIndex,
-          _parallel: parallelFn,
-          _checkFile: checkFileFn,
-          ...wrapperSeams,
+          docPath: decisionsPath,
+          // M-2, and the whole point of the fold: the session that just wrote
+          // the TSPEC writes the DECISIONS document, so the alternatives it
+          // weighed while writing are still in context rather than re-derived
+          // from the file. The disk record remains the durable fallback — with
+          // no session transport installed `sessionBoundAgent` returns the
+          // plain `_agent` and this is a fresh dispatch that re-reads the TSPEC,
+          // exactly as before.
+          sessionKey: authorSessionKey(featureName, "TSPEC", "T"),
         });
-        checkConverged(dLoop, "D", PHASE_DISPATCH.D.label, recordPhase, featureName, dWindow.startIndex, dWindow.endIndex);
-        recordPhase("D", PHASE_DISPATCH.D.label, "✅", forcedDetail(`Approved (${dLoop.iterations} iterations)`, dGate.forced), dLoop.iterations);
-        }
       }
 
       // ─── Phase P: PLAN Creation + Review ────────────────────────────────
-      phaseFn("Phase P: PLAN Creation + Review");
       const planPath = `docs/${featureName}/PLAN-${featureName}.md`;
       const pInputs = [...PHASE_DISPATCH.P.creatorInputs.filter(i => i !== "DECISIONS?")];
       if (decisionsPath) pInputs.push("DECISIONS");
-      const pGate = await phaseGate({ phaseId: "P", docType: "PLAN", docPath: planPath });
-      artifactPaths.push(planPath);
-      if (!pGate.skip) {
-      const pCreatorResult = await wrappedDispatch({
-        skill: PHASE_DISPATCH.P.creator,
-        basePrompt: creatorPrompt("P", featureName, pInputs),
-        targetPath: planPath,
-        docType: "PLAN",
-        dispatchKind: "authoring",
+      await converge({
         phaseId: "P",
-      });
-      if (!pCreatorResult || pCreatorResult.trim() === "") {
-        throw haltError(
-          `Error: creator agent ${PHASE_DISPATCH.P.creator} failed to produce ${planPath} for phase P`
-        );
-      }
-      const pWindow = pGate.window;
-      const pLoop = await reviewLoop({
-        doc: planPath,
-        phase: "P",
         docType: "PLAN",
-        reviewers: PHASE_DISPATCH.P.reviewers,
-        optimizer: PHASE_DISPATCH.P.optimizer,
-        feature: featureName,
-        iteration: pWindow.startIndex,
-        startIndex: pWindow.startIndex,
-        endIndex: pWindow.endIndex,
-        _parallel: parallelFn,
-        _checkFile: checkFileFn,
-        ...wrapperSeams,
+        docPath: planPath,
+        inputs: pInputs,
+        afterConverged: async () => {
+          // ─── PROPOSAL §3.3 — the PLAN self-parse gate ─────────────────────────
+          //
+          // The mechanical parser, not Phase I, is the authority on whether this PLAN
+          // can be executed. A PLAN whose task table `parsePlanTasks` cannot read is
+          // rejected HERE, while the author's session and the reviewers are still on
+          // the phase — rather than discovered several phases later, at Phase I, where
+          // the only recourse was an LLM re-extraction of a table that a human had
+          // already approved. The gate runs only when the phase actually ran: a
+          // SKIPPED Phase P is a recorded approval over unchanged bytes, and Phase I
+          // remains the single gate on that path, exactly as before.
+          const pPlanText = await readFileFn(planPath);
+          const pParsed = parsePlanTasks(pPlanText);
+          if (!pParsed || !Array.isArray(pParsed.tasks) || pParsed.tasks.length === 0) {
+            const detail =
+              `Error: Phase P — the task table in ${planPath} could not be parsed by the ` +
+              `mechanical parser, so the implementation phase would have no task graph. ` +
+              `Reshape the PLAN's task table: its header row must carry an exact 'Task ID' ` +
+              `cell (or 'ID' / '#') and an exact 'Dependencies' cell (or 'Deps' / ` +
+              `'Depends On'), one markdown table row per task, and every dependency cell ` +
+              `must list task ids ('-' for none). Rejecting at Phase P rather than ` +
+              `discovering it at Phase I.`;
+            recordPhase("P", PHASE_DISPATCH.P.label, "❌", detail);
+            throw haltError(detail);
+          }
+          let pBatches;
+          try {
+            pBatches = computeTopologicalBatches(pParsed.tasks);
+          } catch (cycleErr) {
+            const detail =
+              `Error: Phase P — the task graph in ${planPath} cannot be executed. ` +
+              `${(cycleErr && cycleErr.message) || String(cycleErr)} ` +
+              `Fix the PLAN's Dependencies column (every id it names must be another ` +
+              `task's id, and the edges must form a DAG). Rejecting at Phase P rather ` +
+              `than discovering it at Phase I.`;
+            recordPhase("P", PHASE_DISPATCH.P.label, "❌", detail);
+            throw haltError(detail);
+          }
+
+          // ─── PROPOSAL §3.3 — the file-ownership manifest half of the same gate ─
+          //
+          // M-5: the manual run executed twelve same-tree waves with zero merge
+          // conflicts because no two tasks in a wave touched the same file. That is a
+          // property of the PLAN, and a PLAN that does not state file ownership cannot
+          // be checked for it. So the manifest is required HERE — where the author's
+          // session and the reviewers are still on the phase — rather than discovered
+          // at Phase I, which would have no recourse but to fall back to worktrees.
+          const pOwnershipParsed = parsePlanOwnership(pPlanText);
+          if (pOwnershipParsed == null) {
+            const detail =
+              `Error: Phase P — ${planPath} carries no file-ownership manifest, so the ` +
+              `implementation phase cannot derive same-tree waves and cannot know which ` +
+              `files each task may write. Add a markdown table whose header row carries an ` +
+              `exact 'Task' cell (or 'Task ID' / 'ID' / 'Owning Task') and an exact 'Files' ` +
+              `cell (or 'Owned Files' / 'Files Created or Appended'), one row per task, ` +
+              `each row listing that task's owned paths in backticks — se-author's ` +
+              `batch-safety rule 2. Rejecting at Phase P rather than discovering it at ` +
+              `Phase I.`;
+            recordPhase("P", PHASE_DISPATCH.P.label, "❌", detail);
+            throw haltError(detail);
+          }
+          const pContract = validatePlanContract(pParsed.tasks, pOwnershipParsed.ownership);
+          if (!pContract.ok) {
+            const detail =
+              `Error: Phase P — the task table and the file-ownership manifest in ` +
+              `${planPath} disagree: ${pContract.problems.join("; ")}. Every task in the ` +
+              `task table needs exactly one manifest row, and every manifest row needs a ` +
+              `task — se-author's batch-safety rule 2. Rejecting at Phase P rather than ` +
+              `discovering it at Phase I.`;
+            recordPhase("P", PHASE_DISPATCH.P.label, "❌", detail);
+            throw haltError(detail);
+          }
+          const pWaves = computeWaves(pParsed.tasks, pOwnershipParsed.ownership);
+
+          // The gate's own contribution to the ✅ row: what the mechanical parser
+          // read out of the approved PLAN. `converge` appends it to the detail.
+          return (
+            `; PLAN parses to ${pParsed.tasks.length} tasks in ` +
+            `${pBatches.length} batches, ${pWaves.length} waves`
+          );
+        },
       });
-      checkConverged(pLoop, "P", PHASE_DISPATCH.P.label, recordPhase, featureName, pWindow.startIndex, pWindow.endIndex);
-
-      // ─── PROPOSAL §3.3 — the PLAN self-parse gate ─────────────────────────
-      //
-      // The mechanical parser, not Phase I, is the authority on whether this PLAN
-      // can be executed. A PLAN whose task table `parsePlanTasks` cannot read is
-      // rejected HERE, while the author's session and the reviewers are still on
-      // the phase — rather than discovered several phases later, at Phase I, where
-      // the only recourse was an LLM re-extraction of a table that a human had
-      // already approved. The gate runs only when the phase actually ran: a
-      // SKIPPED Phase P is a recorded approval over unchanged bytes, and Phase I
-      // remains the single gate on that path, exactly as before.
-      const pPlanText = await readFileFn(planPath);
-      const pParsed = parsePlanTasks(pPlanText);
-      if (!pParsed || !Array.isArray(pParsed.tasks) || pParsed.tasks.length === 0) {
-        const detail =
-          `Error: Phase P — the task table in ${planPath} could not be parsed by the ` +
-          `mechanical parser, so the implementation phase would have no task graph. ` +
-          `Reshape the PLAN's task table: its header row must carry an exact 'Task ID' ` +
-          `cell (or 'ID' / '#') and an exact 'Dependencies' cell (or 'Deps' / ` +
-          `'Depends On'), one markdown table row per task, and every dependency cell ` +
-          `must list task ids ('-' for none). Rejecting at Phase P rather than ` +
-          `discovering it at Phase I.`;
-        recordPhase("P", PHASE_DISPATCH.P.label, "❌", detail);
-        throw haltError(detail);
-      }
-      let pBatches;
-      try {
-        pBatches = computeTopologicalBatches(pParsed.tasks);
-      } catch (cycleErr) {
-        const detail =
-          `Error: Phase P — the task graph in ${planPath} cannot be executed. ` +
-          `${(cycleErr && cycleErr.message) || String(cycleErr)} ` +
-          `Fix the PLAN's Dependencies column (every id it names must be another ` +
-          `task's id, and the edges must form a DAG). Rejecting at Phase P rather ` +
-          `than discovering it at Phase I.`;
-        recordPhase("P", PHASE_DISPATCH.P.label, "❌", detail);
-        throw haltError(detail);
-      }
-
-      // ─── PROPOSAL §3.3 — the file-ownership manifest half of the same gate ─
-      //
-      // M-5: the manual run executed twelve same-tree waves with zero merge
-      // conflicts because no two tasks in a wave touched the same file. That is a
-      // property of the PLAN, and a PLAN that does not state file ownership cannot
-      // be checked for it. So the manifest is required HERE — where the author's
-      // session and the reviewers are still on the phase — rather than discovered
-      // at Phase I, which would have no recourse but to fall back to worktrees.
-      const pOwnershipParsed = parsePlanOwnership(pPlanText);
-      if (pOwnershipParsed == null) {
-        const detail =
-          `Error: Phase P — ${planPath} carries no file-ownership manifest, so the ` +
-          `implementation phase cannot derive same-tree waves and cannot know which ` +
-          `files each task may write. Add a markdown table whose header row carries an ` +
-          `exact 'Task' cell (or 'Task ID' / 'ID' / 'Owning Task') and an exact 'Files' ` +
-          `cell (or 'Owned Files' / 'Files Created or Appended'), one row per task, ` +
-          `each row listing that task's owned paths in backticks — se-author's ` +
-          `batch-safety rule 2. Rejecting at Phase P rather than discovering it at ` +
-          `Phase I.`;
-        recordPhase("P", PHASE_DISPATCH.P.label, "❌", detail);
-        throw haltError(detail);
-      }
-      const pContract = validatePlanContract(pParsed.tasks, pOwnershipParsed.ownership);
-      if (!pContract.ok) {
-        const detail =
-          `Error: Phase P — the task table and the file-ownership manifest in ` +
-          `${planPath} disagree: ${pContract.problems.join("; ")}. Every task in the ` +
-          `task table needs exactly one manifest row, and every manifest row needs a ` +
-          `task — se-author's batch-safety rule 2. Rejecting at Phase P rather than ` +
-          `discovering it at Phase I.`;
-        recordPhase("P", PHASE_DISPATCH.P.label, "❌", detail);
-        throw haltError(detail);
-      }
-      const pWaves = computeWaves(pParsed.tasks, pOwnershipParsed.ownership);
-
-      recordPhase(
-        "P",
-        PHASE_DISPATCH.P.label,
-        "✅",
-        forcedDetail(
-          `Approved (${pLoop.iterations} iterations); PLAN parses to ` +
-            `${pParsed.tasks.length} tasks in ${pBatches.length} batches, ` +
-            `${pWaves.length} waves`,
-          pGate.forced
-        ),
-        pLoop.iterations
-      );
-      }
 
       // ─── Phase PR: PROPERTIES Creation + Review ──────────────────────────
-      phaseFn("Phase PR: PROPERTIES Creation + Review");
       const propertiesPath = `docs/${featureName}/PROPERTIES-${featureName}.md`;
-      const prGate = await phaseGate({ phaseId: "PR", docType: "PROPERTIES", docPath: propertiesPath });
-      artifactPaths.push(propertiesPath);
-      if (!prGate.skip) {
-      const prCreatorResult = await wrappedDispatch({
-        skill: PHASE_DISPATCH.PR.creator,
-        basePrompt: creatorPrompt("PR", featureName, PHASE_DISPATCH.PR.creatorInputs),
-        targetPath: propertiesPath,
-        docType: "PROPERTIES",
-        dispatchKind: "authoring",
-        phaseId: "PR",
-      });
-      if (!prCreatorResult || prCreatorResult.trim() === "") {
-        throw haltError(
-          `Error: creator agent ${PHASE_DISPATCH.PR.creator} failed to produce ${propertiesPath} for phase PR`
-        );
-      }
-      const prWindow = prGate.window;
-      const prLoop = await reviewLoop({
-        doc: propertiesPath,
-        phase: "PR",
-        docType: "PROPERTIES",
-        reviewers: PHASE_DISPATCH.PR.reviewers,
-        optimizer: PHASE_DISPATCH.PR.optimizer,
-        feature: featureName,
-        iteration: prWindow.startIndex,
-        startIndex: prWindow.startIndex,
-        endIndex: prWindow.endIndex,
-        _parallel: parallelFn,
-        _checkFile: checkFileFn,
-        ...wrapperSeams,
-      });
-      checkConverged(prLoop, "PR", PHASE_DISPATCH.PR.label, recordPhase, featureName, prWindow.startIndex, prWindow.endIndex);
-      recordPhase("PR", PHASE_DISPATCH.PR.label, "✅", forcedDetail(`Approved (${prLoop.iterations} iterations)`, prGate.forced), prLoop.iterations);
-      }
+      await converge({ phaseId: "PR", docType: "PROPERTIES", docPath: propertiesPath });
 
       // ─── Phase I: Implementation ─────────────────────────────────────────
       phaseFn("Phase I: Implementation");
@@ -8562,6 +9017,24 @@ async function main({
         }
 
         recordPhase("I", "Implementation", "✅", "All batches complete");
+
+        // ─── PROPERTIES tests, legacy path (PROPOSAL §3.2 row 2) ───────────
+        //
+        // The worktree exception path keeps yesterday's Phase PT byte for byte —
+        // one Opus `se-implement` dispatch, gated by `evaluateSingleAgentGate`
+        // on the agent's own report. A PLAN that reached this branch was
+        // approved under those rules (Phase P skipped on a recorded approval,
+        // no ownership manifest), so it is executed under them: there is no
+        // wave to append a V-wave to, and no script-owned gate to verify with.
+        phaseFn("Phase PT: PROPERTIES Tests");
+        const ptResult = await agentFn(
+          "se-implement",
+          propertiesTestPrompt(featureName)
+        );
+        const ptGate = evaluateSingleAgentGate(ptResult, "PT");
+        if (!ptGate.passed) {
+          throw haltError(ptGate.reason);
+        }
       } else {
       // ─── Wave mode (M-5 + M-6) ────────────────────────────────────────────
       const waves = computeWaves(tasks, iOwnership);
@@ -8708,18 +9181,67 @@ async function main({
         `All ${waves.length} waves complete (wave mode, ` +
           `${scriptGate ? "script-owned gate" : "self-report gate"})`
       );
+
+      // ─── PROPOSAL §3.2 row 2 — Phase PT becomes Phase I's final V-wave ────
+      //
+      // Phase PT was one more agent dispatch and one more gate with no distinct
+      // review of its own; the PLAN's V1 task already models it as the last
+      // implementation task. So in wave mode it IS the last wave — wave
+      // `waves.length + 1`, run after the last implementation wave has been
+      // gated and committed, with the PROPERTIES suite as its subject.
+      //
+      // ── Commit discipline for the V-wave, and why it differs from a wave ──
+      // Every other wave member is dispatched with "do NOT commit" and the
+      // script commits its work pathspec-scoped, because the manifest says
+      // exactly which files that task owns. The V-wave has NO manifest row: the
+      // set of test files it creates is a property of the PROPERTIES document
+      // and of the repo's test layout, not something this script can derive —
+      // and the alternative, `git add -- .`, is precisely the add-all this
+      // pipeline never does. So the V-wave is the one wave-mode dispatch that
+      // still commits its OWN work (legacy discipline: `propertiesTestPrompt`
+      // carries the branch pin and instructs a commit only once the full suite
+      // is green), and the script runs the SAME script-owned gate AFTERWARDS as
+      // verification rather than as permission. A red gate therefore halts over
+      // work that is already committed — which is recoverable and named as
+      // such: the halt quotes the command and the output tail, and the commit
+      // is on the feature branch where the next run, or a human, can fix it.
+      phaseFn("Phase PT: PROPERTIES Tests (Phase I V-wave)");
+      const vWaveNum = waves.length + 1;
+      const vResult = await agentFn(
+        "se-implement",
+        propertiesTestPrompt(featureName),
+        { model: MODEL_IMPLEMENTATION }
+      );
+
+      // Dispatch-level failures halt whatever the gate is, exactly as for every
+      // other wave (rules 1 and 3).
+      evaluateWaveDispatch([vResult], waves.length, [{ id: "PROPERTIES tests" }]);
+
+      if (scriptGate) {
+        const vGate = await runCommandFn(implConfig.testCommand);
+        if (!vGate || vGate.ok !== true) {
+          throw haltError(
+            `Error: V-wave ${vWaveNum} PROPERTIES test gate failed — ` +
+              `\`${implConfig.testCommand}\` did not pass. The V-wave's work is ` +
+              `already committed on feat-${featureName}, so this is recoverable. ` +
+              `Output tail:\n${outputTail(vGate && vGate.output)}`
+          );
+        }
+        emit(`V-wave ${vWaveNum} gate: \`${implConfig.testCommand}\` passed`);
+      } else {
+        // No script-owned gate on this run: the agent's self-report is the only
+        // evidence there is, so PT's own gate is what reads it.
+        const vSelfGate = evaluateSingleAgentGate(vResult, "PT");
+        if (!vSelfGate.passed) {
+          throw haltError(vSelfGate.reason);
+        }
+      }
       }
 
-      // ─── Phase PT: PROPERTIES Tests ─────────────────────────────────────
-      phaseFn("Phase PT: PROPERTIES Tests");
-      const ptResult = await agentFn(
-        "se-implement",
-        propertiesTestPrompt(featureName)
-      );
-      const ptGate = evaluateSingleAgentGate(ptResult, "PT");
-      if (!ptGate.passed) {
-        throw haltError(ptGate.reason);
-      }
+      // The PT row is unchanged on purpose: §3.2's compression is
+      // execution-structural, not report-shape. Both the V-wave and the legacy
+      // dispatch above land here, so a report reader and every report oracle see
+      // the same row they always did.
       testSummary = "All tests passing";
       recordPhase("PT", "PROPERTIES Tests", "✅", "All properties tests passing");
 

@@ -457,21 +457,32 @@ describe("RLH reviewLoop call sites (TSPEC §5.2 step 4, §3.9)", () => {
     return calls;
   }
 
-  test("RLH-AT-07: all seven reviewLoop call sites pass the branch-derived startIndex", () => {
+  test("RLH-AT-07: every reviewLoop call site passes the branch-derived startIndex, for all seven phases", () => {
     // TSPEC §5.2 step 4: "Today `reviewLoop`'s `iteration = 1` default is never overridden by
     // any of its seven call sites, so round 2 writes `-v1` again and destroys round 1. After
     // this change, every call site passes `startIndex`." That is the guard which keeps the
     // round-4 dispatch of AT-01/AT-07 from clobbering an existing `-v4` cross-review: an
     // un-overridden default aims every write back at round 1.
+    //
+    // PROPOSAL §3.1 collapsed R, F, T, D, P and PR into one `converge()` body, so
+    // those six phases share ONE call site and Phase CR (no phaseGate, still
+    // open-coded) keeps its own. Two sites, both deriving `iteration` from
+    // `startIndex` — and the six phases are pinned by set equality at their
+    // converge() call sites, so deleting a phase still reds this test.
     const source = readFileSync(DEV_SOURCE_PATH, "utf8");
     const calls = reviewLoopCallArguments(source);
 
-    expect(calls).toHaveLength(7); // R, F, T, D, P, PR, CR
+    expect(calls).toHaveLength(2); // converge() (R, F, T, D, P, PR) + CR
 
     const withoutDerivedIteration = calls.filter(
       (args) => !/\biteration\s*:\s*[^,}]*\bstartIndex\b/.test(args),
     );
     expect(withoutDerivedIteration).toEqual([]);
+
+    const convergedPhases = [
+      ...source.matchAll(/(?<!function )\bconverge\(\{[\s\S]*?phaseId:\s*"([A-Z]+)"/g),
+    ].map((m) => m[1]);
+    expect(new Set(convergedPhases)).toEqual(new Set(["R", "F", "T", "D", "P", "PR"]));
   });
 });
 
