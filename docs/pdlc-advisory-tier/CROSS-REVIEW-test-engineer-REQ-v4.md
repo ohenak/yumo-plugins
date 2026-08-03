@@ -22,6 +22,22 @@ raised it). All six are closed. Each row names the changed text and the oracle i
 
 ## Regression Check
 
+Does the delta break anything I approved at v1.3? I checked each touched anchor against what my v1–v3
+approvals rested on.
+
+| Approved property | Effect of the v1.4 delta |
+|---|---|
+| **F-14 resolution (one-sided pre-check, `escalate` when presence-in-base is unsettled)** — AC-5.1 | Intact. The one-sidedness sentence and the `escalate` routing are byte-identical; only the pre-check's *role* label changed (gate → pre-condition). The AC-5.1 acceptance test is unaffected. |
+| **F-16 resolution (E-2's two-baseline `introduced` test, AC-8.4 evaluated first)** — E-2, AC-8.4 | Untouched by the delta. AC-8.2's generalisation to *act→re-poll* does not weaken E-2's rule; E-2 still requires a push, E-1 still requires "identical commit sha with no push between them" (`:129`), so the two envelope entries remain mutually exclusive and a fixture can still target exactly one. |
+| **F-17 resolution (single deletion oracle for AC-9.3)** — AC-9.3 | Strengthened, not replaced: one terminal observable, now with an explicit ordering relative to Phase MERGE. The guard sentence (refusal message + file survives) is unchanged. |
+| **F-19 resolution (ordered refusal table)** — AC-3.6 | Unchanged. Row 4 (`post-action-verification-failed`) still names "the AC-4.5 gate or the AC-7.4 test re-run"; with A1 now having no gate, row 4 is simply unreachable at A1 — consistent, not contradictory, and the set-equality test is over the reason catalogue, not per-seam reachability. |
+| **AC-4.4 (never alters a queue `Status` cell)** | Reinforced — it is the premise the new A1 row reasons from ("A1 changes no file"). |
+| **NFR-4 measurability** | Changed but still black-box assertable: an A5 invocation whose rollup wait exceeds the default while its working time does not must *not* escalate as `budget-exhausted`. That is a falsifiable oracle at REQ altitude; how working time is instrumented is TSPEC's. |
+| **Round size / structure** | The erratum is +21/−13 lines with a v1.4 lineage line at `:20`; no section was removed and no AC renumbered, so every prior traceability reference still resolves. |
+
+No approved property is broken. One new inconsistency was introduced by item 2's fix (F-24 below),
+and two of my v3 Lows (F-22, F-23) were out of scope for this erratum and remain open.
+
 ## Findings
 
 ## Questions
