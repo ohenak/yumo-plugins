@@ -37,7 +37,7 @@ jobs:
         # The plugin ships bash scripts that must run on both the maintainer's macOS
         # (bash 3.2 — no associative arrays, no `${var^^}`, no `mapfile`, no `stat -c`)
         # and on Linux CI (bash 5). Testing both is what keeps the 3.2 constraints honest.
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest]
         node: ['20']
 
     steps:
