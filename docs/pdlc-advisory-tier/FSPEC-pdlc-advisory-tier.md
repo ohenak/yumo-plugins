@@ -244,6 +244,100 @@ obeys. It carries:
 
 ## 5. FSPEC-ADV-03 — Envelope, prohibitions, and the refusal ladder
 
+**Requirements:** REQ-ADV-03 (AC-3.1 … AC-3.6), REQ-ADV-04 (AC-4.1 … AC-4.6), NFR-1, NFR-5.
+
+### 5.1 What the envelope is
+
+The envelope is a **declared, per-seam allow-list held in configuration** (§3.1). It answers one
+question — *may this proposed action be applied without a human?* — and it answers it in the
+pipeline, never in an agent's reasoning.
+
+| # | Rule |
+|---|---|
+| E-R1 | The envelope is not inferable, extendable, or negotiable by any agent at runtime. An agent's argument that an action *should* be permitted has no effect on whether it is. |
+| E-R2 | Membership is evaluated twice: on the **proposal**, before anything is applied, and on the **produced change**, after. A change that turns out to reach outside the envelope is reverted whole; no such change survives the seam. |
+| E-R3 | Envelope enforcement is in the pipeline's own control flow, not in prompt text. A prompt instruction is not a control (NFR-1). |
+| E-R4 | The advisory tier holds no credential the pipeline does not already hold (NFR-5). |
+
+### 5.2 The shipped default envelope
+
+Exactly four permitted actions, each with a rule an engineer can decide without judgment:
+
+| # | Permitted | Decidable rule | Seam |
+|---|---|---|---|
+| E-1 | re-run a check that failed flakily | the check failed and the re-run is on the identical commit sha, with no push in between; bounded by `advisory.attemptBudget` | A5 |
+| E-2 | fix a lint, format or type error the branch introduced | the same check passes at **both** the merge-base commit and the default-branch tip, and fails at the branch head. §9's default-branch comparison is evaluated first | A5 |
+| E-3 | resolve a rebase conflict in a file the branch created | *branch-created* = absent from the merge-base tree **and** absent from the default-branch tip | A4 |
+| E-4 | re-ground a stale REQ's citations | every drifted citation's symbol still exists, at a new location | A2 |
+
+**Excluded, as a closed set** — nothing outside E-1…E-4 is permitted, and these are called out
+because they are the exclusions someone would otherwise argue about:
+
+| # | Excluded |
+|---|---|
+| X-a | any change to a test file or test configuration — editing an assertion, deleting a test file or case, renaming a test out of the collected set, adding a skip/xfail/only marker, narrowing a parametrised case list, or lowering a coverage or mutation threshold |
+| X-b | any change to a Definition-of-Done criterion or threshold |
+| X-c | any rebase conflict outside E-3's branch-created files |
+| X-d | any change outside the feature's declared scope — the files the PLAN names, plus the files the branch had already touched as of its head when the seam dispatched (at A4, the pre-rebase head) |
+| X-e | anything under the merge phase's self-modification guard paths |
+
+**X-a is the dangerous one and gets its own handling.** A produced diff touching anything in X-a is
+reverted whole, the seam escalates, and no run in which that happened is reported as resolved.
+Fixing a red test by editing the test is the failure mode this whole feature must not introduce.
+
+### 5.3 The refusal ladder
+
+Every refusal carries **exactly one** reason. Triggers can co-occur, so the set is ordered and the
+first match wins:
+
+| # | Reason | Trigger |
+|---|---|---|
+| 1 | `prohibited-action` | the proposal is one of §5.4's prohibitions |
+| 2 | `revert-on-test-touch` | the proposed or produced diff touches X-a |
+| 3 | `out-of-envelope` | any other out-of-envelope proposal, or a produced diff reverted under E-R2 |
+| 4 | `post-action-verification-failed` | an in-envelope action was applied and the seam's gate (§5.4) or the A4 test re-run then failed |
+| 5 | `record-write-failed` | the advisory record could not be written (§10) |
+| 6 | `malformed-verdict` | §4 V-4 |
+| 7 | `low-confidence` | `confidence != high` |
+| 8 | `budget-exhausted` | attempt or wall-clock budget reached |
+
+The set is closed: a reason that is neither in this list nor absent from it is a defect. Ordering
+matters observably — a low-confidence proposal that also touches a test file is refused as
+`revert-on-test-touch`, not as `low-confidence`, because that is the reason the operator needs to see.
+
+### 5.4 Prohibitions, and the gate that decides instead
+
+The advisory tier fixes **causes**; gates decide **outcomes**. It may never:
+
+| # | Prohibition |
+|---|---|
+| P-1 | mark a Definition-of-Done criterion satisfied, weaken a criterion, or reduce the DoD iteration requirement |
+| P-2 | set a REQ's `ready: true` frontmatter flag |
+| P-3 | declare CI passed, or cause the reported CI status to derive from anything but GitHub's own check rollup (B-9) |
+| P-4 | merge a PR, or alter a queue `Status` cell |
+
+After any applied resolution, a gate re-runs and reaches its own verdict:
+
+| Seam | Gate that re-runs | State it must reach |
+|---|---|---|
+| A1 | the queue's dependency pre-check only — Phase-0 triage is itself an agent verdict and is **not** re-run | the pre-check reports not-blocked |
+| A2 | the pre-check plus triage, on the re-grounded REQ, in the **next** queue invocation | triage reaches a verdict of its own |
+| A3 | Phase DOD's verify step | no findings remaining |
+| A4 | the rebase completes, then the branch's test command | rebase clean and tests green |
+| A5 | the check-rollup read (B-9) | all checks passed |
+
+### 5.5 Acceptance tests
+
+| # | Who / Given / When / Then |
+|---|---|
+| T-03-1 | **Who** operator · **Given** a proposal outside the configured envelope · **When** the invocation completes · **Then** nothing was applied, the reason is `out-of-envelope`, and the working tree is byte-identical to its pre-invocation state. |
+| T-03-2 | **Who** operator · **Given** an in-envelope proposal whose produced diff reaches outside the envelope · **When** the change is checked · **Then** the whole change is reverted, the tree is byte-identical to its pre-invocation state, and the seam escalates. |
+| T-03-3 | **Who** operator · **Given** one test per operation enumerated in X-a — assertion edit, test-file delete, test-case delete, rename out of the collected set, skip/xfail/only marker, parametrised-list narrowing, coverage or mutation threshold lowered · **When** an advisory diff performs that operation · **Then** the diff is reverted whole, the reason is `revert-on-test-touch`, and the run is not reported as resolved. |
+| T-03-4 | **Who** operator · **Given** a refusal that satisfies two triggers at once · **When** the reason is recorded · **Then** exactly one reason appears, and it is the earlier of the two in §5.3's order. |
+| T-03-5 | **Who** maintainer · **Given** the shipped refusal-reason set · **When** it is compared with §5.3 · **Then** the two are equal as sets — an invented or deleted reason fails. |
+| T-03-6 | **Who** operator · **Given** each prohibition P-1…P-4 and each gate row of §5.4 · **When** an advisory invocation attempts the prohibited thing · **Then** it does not happen **and** the §4 V-8 triple holds on the same path — a negative assertion alone is satisfied by accident. |
+| T-03-7 | **Who** operator · **Given** an applied in-envelope resolution whose seam gate then fails · **When** the gate reports · **Then** the resolution is reverted, the reason is `post-action-verification-failed`, and the seam escalates. |
+
 ## 6. FSPEC-ADV-04 — Seams A1 and A2: queue triage and re-grounding
 
 ## 7. FSPEC-ADV-05 — Seam A3: DoD exhaustion
