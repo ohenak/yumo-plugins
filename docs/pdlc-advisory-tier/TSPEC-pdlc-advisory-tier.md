@@ -1071,9 +1071,146 @@ export function advisorySummaryRows(dispositions)   // pure
 
 ## 10. Escalation log and report notices (FSPEC-ADV-09)
 
+### 10.1 `docs/_queue/ESCALATIONS.md`
+
+New artifact (B-16). Append-only, newest-last, one `##` entry per escalation, eight fields with the
+decision sentence **first** (L-2):
+
+```markdown
+## 2026-08-03T14:21:07Z — pdlc-advisory-tier — A5
+
+**Decide:** whether the lint failure on `pdlc/workflows/orchestrate-dev.js` is the feature's to fix,
+given it also fails on the default branch.
+
+| Field | Value |
+|---|---|
+| Feature | pdlc-advisory-tier |
+| Seam | A5 |
+| Refusal reason | out-of-envelope |
+| Pipeline state | PUB — halted |
+…Diagnosis / Proposed action / Evidence sections…
+```
+
+`renderEscalationEntry(disposition, ctx, { now })` is pure, mirroring `renderAdvisoryEntry` (§9.1).
+*Pipeline state* is the phase id and that phase's outcome — both already on hand at every call site,
+since the seam fires inside the phase body.
+
+`appendEscalationEntry` uses `_appendFile` (`dev:6690`) and creates `docs/_queue/` when absent
+(§11.3's last row): `mkdirSync(dirname(path), { recursive: true })` inside `defaultAppendFile`'s
+existing try, which is a strictly-additive change to a function whose contract is already
+"throws on failure". A consumer repo with no queue still gets its escalations.
+
+**L-1 (append-only, newest-last).** No code path reads `ESCALATIONS.md`, and nothing rewrites it —
+the file is a log for `pdlc-engineering-loop`, never state for this tier (§17.2's "nothing in the tier
+reads its own prior escalations"). T-09-2's "the first entry is unmodified" is therefore guaranteed by
+the absence of a reader, not by an update rule.
+
+**T-09-8's asymmetry.** `appendEscalationEntry` is called **outside** the try/catch that governs the
+action (§4.6): a throw is caught, pushed onto `notices`, and the disposition stays `escalated`. A
+failed log write can never upgrade an escalation to a resolution, because by then nothing is left to
+apply.
+
+### 10.2 Report notices — a sibling catalogue, not a widened one
+
+```js
+// dev:1330 — immediately after MERGE_ESCALATIONS, deliberately adjacent so the two read together
+export const ADVISORY_ESCALATIONS = Object.freeze({
+  seam: ({ seam, feature, reason }) =>
+    `ADVISORY ESCALATION: seam ${seam} for ${feature} — ${reason}; see docs/_queue/ESCALATIONS.md`,
+});
+```
+
+| Rule | Implementation |
+|---|---|
+| N-1 — the merge catalogue is left exactly as it is | `MERGE_ESCALATIONS` (`dev:1321-1328`) is not edited. T-09-5 compares it before and after — a frozen object's own-property snapshot |
+| N-2 — a distinct advisory prefix naming the seam and pointing at the log | the literal above; `ADVISORY ESCALATION:` |
+| N-3 — one grep finds both | both prefixes contain the substring `ESCALATION:` |
+| N-4 — the notice channel is unchanged | notices are pushed onto the same `notices` array the merge phase uses (`dev:8291-8292`) and ride the same report field (`dev:8395`, `dev:8402`) |
+
+**L-3 / F-5 (escalation never changes control flow)** is structural, not asserted: at every seam the
+advisory call sits immediately before the pre-existing `throw haltError(...)` or `continue`, and only
+an `outcome === "resolved"` branch bypasses it (§7.1, §8.1). A6/A3 have no such branch at all.
+
 ## 11. Disabled-tier equivalence (FSPEC-ADV-10)
 
+### 11.1 One check, at one place, per pipeline
+
+D-1/D-2 hold because `config.enabled === false` returns from `runAdvisorySeam` **before**
+`resolveAdvisoryRung` is called and before any dispatch (§4.4's entry row). That single early return
+is the only `enabled` test on the dispatch path; the two others in the codebase are (a) the config
+notice suppression (§3.2) and (b) the §9.3 distil-step guard, neither of which can dispatch or
+resolve. A grep for `advisory.enabled` returning exactly three sites is itself a maintainable
+assertion.
+
+D-2's stronger claim — *no model resolution is attempted* — is why resolution is lazy (§3.4): even
+with the tier **on**, a run in which no seam fires resolves nothing (T-01-7). Disabled is then the
+trivially stronger case.
+
+### 11.2 D-6's literal expected set
+
+D-6 requires the created-file set of a disabled run to equal a **transcribed literal** — the
+created-file set of a pre-feature run at `26c3f1c` — never a value re-derived by the code under test.
+Implementation: a checked-in fixture `__tests__/fixtures/created-files-26c3f1c.json`, produced once by
+instrumenting the `_writeFile`/`_appendFile`/`_git` seams of a baseline run and **hand-reviewed into
+the repo**. The test compares the disabled run's observed set against that JSON by value.
+
+This is the one place in the feature where a fixture is authored rather than computed, and the reason
+is stated in D-6 itself: a comparison whose expected value is produced by the system under test cannot
+fail. The fixture's provenance (the commit, the command, the date) is recorded in its own header so a
+later reader can regenerate it deliberately rather than refresh it reflexively.
+
+### 11.3 Disabled-mode edge cases
+
+| Case | Behaviour | Implementation |
+|---|---|---|
+| other advisory keys set while disabled | inert | the master switch is tested first, before any other key is read |
+| enabled but no seam fires | five zero rows on the summary — *not* the disabled case | S-1 always emits five rows when `advisory != null` |
+| config file absent | disabled | C-1's `text == null` early return |
+| config file malformed JSON | disabled | C-1's `JSON.parse` catch |
+| `enabled` itself malformed | disabled, **and no substitution notice** | §3.2's deliberate C-2 deviation |
+
 ## 12. Error handling — every failure scenario
+
+This section is the index; each row cites the section that owns the behaviour, so no rule is stated
+twice. Every row is a **closed** disposition — one of `resolved` / `escalated` / `no-action` / an
+explicit halt — because §17.3's rule ("the unenumerated case escalates") is implemented as the
+driver's terminal `catch`, which maps any unclassified throw to `escalated` with the last computed
+reason, never to `resolved`.
+
+| # | Failure | Disposition | Owner |
+|---|---|---|---|
+| E-01 | config file absent / unreadable / malformed | tier disabled, run unaffected | §3.2 C-1 |
+| E-02 | one config key out of range | that key defaults; reported iff enabled | §3.2 C-2 |
+| E-03 | advisory rung rejected as a model/alias error | fallback rung, declared | §3.4 |
+| E-04 | fallback rung also rejected | run fails loudly (`haltError`) | §3.4 M-3 |
+| E-05 | dispatch fails mid-flight (not a model error) | ordinary invocation failure; attempt consumed | §4.6 |
+| E-06 | verdict absent / wrong seam / no evidence | malformed; attempt consumed | §4.2, §4.6 |
+| E-07 | agent proposes "nothing" at high confidence | escalated with the diagnosis — the good US-02 outcome | §4.6 |
+| E-08 | proposal outside the envelope | `out-of-envelope`, nothing applied | §5.1 |
+| E-09 | produced diff reaches outside the envelope | reverted whole, escalated | §5.1 E-R2 |
+| E-10 | produced diff touches a test artifact | reverted whole, `revert-on-test-touch` | §5.2 |
+| E-11 | produced diff touches a guard path | reverted whole, `out-of-envelope` | §5.1 row 3 |
+| E-12 | seam gate fails after an applied action | reverted, `post-action-verification-failed` | §4.4 step 6 |
+| E-13 | record write fails | action does not survive; `record-write-failed` | §4.4 step 7, §9.2 |
+| E-14 | `revert` itself throws | halt — an unrevertable tree is not a permitted state | §4.6 |
+| E-15 | escalation-log write fails | escalation stands; failure on the report | §10.1 |
+| E-16 | attempt or wall-clock budget reached | `budget-exhausted`; in-flight attempt preempted | §4.5 |
+| E-17 | seam condition gone at re-check | `no-action`; no attempt, no log entry | §4.4 step 3b |
+| E-18 | run interrupted mid-attempt | not recoverable here; the record holds every completed attempt | §9.2 R-3 |
+| E-19 | queue drift gate blocks the invocation | no seam fires | §6.1 |
+| E-20 | both/unrecognised seam tokens on a triage stop | malformed / routed to A1 | §6.2 |
+| E-21 | A2 commit refused (hook, identity, index lock) | reverted, escalated | §6.4.1 |
+| E-22 | A3 classifies no finding / leaves a deferral unbound | malformed / escalated naming the finding | §7.2 |
+| E-23 | A4 conflict set mixes branch-created and shared files | escalated before `apply` | §7.3 A4-2 |
+| E-24 | A4 repo has no `testCommand` | reverted, escalated — unverifiable ≠ resolved | §7.4 |
+| E-25 | A5 failing job's log unretrievable | escalated without a cause diagnosis | §8.2 A5-5 |
+| E-26 | A5 default-branch check history unreadable (BL-05) | escalated, comparison undone, no fix | §8.3 |
+| E-27 | A5 workflow re-run unavailable (BL-06) | E-1 out of envelope this invocation | §8.3 |
+| E-28 | A5 push rejected (branch moved) | reverted to pre-seam head; retry or escalate | §8.5 |
+| E-29 | A5 re-poll hits Phase PUB's completion cap | consumes an attempt, does not halt separately | §8.2 A5-3 |
+| E-30 | distil-step delete refused by the guard | record survives; refusal on the report | §9.3 H-3 |
+| E-31 | feature directory missing at first record write | append throws ⇒ E-13 | §9.1 |
+| E-32 | anything not enumerated above | escalated | §17.3, driver terminal catch |
 
 ## 13. Test strategy and test doubles
 
