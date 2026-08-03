@@ -30,10 +30,10 @@ Every judgment call in the pipeline is a full stop with no attempt at resolution
 | Seam | Location | Today |
 |---|---|---|
 | A1 | `orchestrate-queue` Phase-0 triage returns `needs-human` | skip the candidate, try next |
-| A2 | Stale-REQ re-grounding gate fires | `needs-human`, skip |
+| A2 | Stale-REQ re-grounding obligation inside that same triage prompt | `needs-human`, skip — today indistinguishable from A1 |
 | A3 | Phase DOD verify→remediate exhausts 3 iterations | pipeline halts |
 | A4 | `ship-pr` rebase produces conflicts | pipeline halts, branch unchanged |
-| A5 | Phase PUB CI is red | pipeline halts |
+| A5 | Phase PUB CI is red, or no check ever registers | red halts; no-checks passes silently |
 
 In each case the operator arrives at an unexplained stop and reconstructs the situation from
 scratch: which check failed, why, whether it is the feature's fault, what the minimal fix is. The
