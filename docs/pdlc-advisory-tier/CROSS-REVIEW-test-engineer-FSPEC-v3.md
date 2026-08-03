@@ -113,4 +113,38 @@ question, not a testability one, and I leave it to the PM lens. No new questions
 
 ## Recommendation
 
+**Approved with minor changes**
+
+All seven v2 findings — one High, three Medium, three Low — are resolved, each in the way the finding
+asked for. The two findings above are Low, both are single clauses in rows this revision added, and
+neither blocks: F-01 asks that T-07-12's Given fix the last re-poll's outcome so its third conjunct
+becomes a literal, and F-02 asks that §18.3's AT-2 list either drop T-09-8 or qualify it as the
+documented exception. Both are one-line edits and neither changes a behaviour, a rule, or a count.
+
+From the testing lens the document is now in the state I want a FSPEC to reach before TSPEC: every
+business rule in §3–§12 has at least one acceptance test that can go red for it, the enumerated
+contracts (refusal reasons §5.3/T-03-5, permitted actions and exclusions §5.2/T-03-8, the five-seam
+summary §10.3/T-08-10, the disabled-run created-file set §12.1/T-10-3) are all asserted by
+set-equality over the full enumeration rather than by containment, the negative assertions I checked
+are each paired with a positive on the same path, and the one place where an expected value was being
+produced by the system under test has been replaced by a transcribed golden master pinned to a named
+sha. The unreachable-but-guarded cases are labelled as such and paired with their reachable
+integration siblings rather than being dressed up as end-to-end proofs.
+
+Two upstream items are routed as errata rather than counted here. Both are the same ones I raised in
+v2 and both are still open in `REQ-pdlc-advisory-tier.md` at HEAD:
+
+1. **AC-8.2** (`REQ:245-248`) defines one attempt as a *fix → push → re-poll* cycle. §9.2 A5-3 has
+   deliberately generalised this to *act → push → re-poll*, "under E-1 the act is a re-run with no
+   fix and no push". The FSPEC's generalisation is the correct one — E-1's re-run-only cycle has no
+   fix and no push to speak of — and the REQ is the document that should carry it.
+2. **NFR-4** (`REQ:320-322`) defines the seam budget as unqualified wall-clock "measured from
+   dispatch to verdict". §4.3 V-5 and §9.2 A5-3 now exclude rollup wait from it, with a rationale I
+   verified is arithmetically live (`dev:34`: the CI completion window is 30 minutes against a
+   shipped 10-minute seam budget, so an unqualified bound would end every A5 invocation inside its
+   first attempt and `attemptBudget` would never bind). The exclusion belongs in the REQ.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 2}
