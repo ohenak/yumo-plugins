@@ -13,7 +13,7 @@ feature: pdlc-advisory-tier
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.0 | 2026-08-03 |
+| pdlc | draft | Claude | 1.1 | 2026-08-03 |
 
 ## 0. Overview
 
@@ -864,22 +864,22 @@ requirement, with that section's acceptance-test table as the coverage evidence.
 
 | Requirement | Acceptance criteria | FSPEC section | Acceptance tests |
 |---|---|---|---|
-| REQ-ADV-01 — Model rung and configuration | AC-1.1 … AC-1.7 | §3 FSPEC-ADV-01 | T-01-1 … T-01-6 |
+| REQ-ADV-01 — Model rung and configuration | AC-1.1 … AC-1.7 | §3 FSPEC-ADV-01 | T-01-1 … T-01-7 |
 | REQ-ADV-02 — The advisory contract | AC-2.1 … AC-2.4 | §4 FSPEC-ADV-02 | T-02-1 … T-02-6 |
-| REQ-ADV-03 — The envelope | AC-3.1 … AC-3.6 | §5 FSPEC-ADV-03 | T-03-1 … T-03-7 |
+| REQ-ADV-03 — The envelope | AC-3.1 … AC-3.6 | §5 FSPEC-ADV-03 | T-03-1 … T-03-10 |
 | REQ-ADV-04 — Prohibitions | AC-4.1 … AC-4.6 | §5 FSPEC-ADV-03 (P-1…P-4, gate rows) | T-03-6 |
-| REQ-ADV-05 — Seams A1/A2 | AC-5.1 … AC-5.5 | §6 FSPEC-ADV-04 | T-04-1 … T-04-9 |
+| REQ-ADV-05 — Seams A1/A2 | AC-5.1 … AC-5.5 | §6 FSPEC-ADV-04 | T-04-1 … T-04-9, T-04-3b |
 | REQ-ADV-06 — Seam A3 (DoD exhaustion) | AC-6.1 … AC-6.4 | §7 FSPEC-ADV-05 | T-05-1 … T-05-6 |
 | REQ-ADV-07 — Seam A4 (rebase conflict) | AC-7.1 … AC-7.4 | §8 FSPEC-ADV-06 | T-06-1 … T-06-6 |
-| REQ-ADV-08 — Seam A5 (CI failure) | AC-8.1 … AC-8.6 | §9 FSPEC-ADV-07 | T-07-1 … T-07-9 |
-| REQ-ADV-09 — Advisory record | AC-9.1 … AC-9.4 | §10 FSPEC-ADV-08 | T-08-1 … T-08-7 |
-| REQ-ADV-10 — Escalation output | AC-10.1 … AC-10.5 | §11 FSPEC-ADV-09 | T-09-1 … T-09-7 |
+| REQ-ADV-08 — Seam A5 (CI failure) | AC-8.1 … AC-8.6 | §9 FSPEC-ADV-07 | T-07-1 … T-07-10 |
+| REQ-ADV-09 — Advisory record | AC-9.1 … AC-9.4 | §10 FSPEC-ADV-08 | T-08-1 … T-08-10 |
+| REQ-ADV-10 — Escalation output | AC-10.1 … AC-10.5 | §11 FSPEC-ADV-09 | T-09-1 … T-09-8 |
 
 ### 14.2 Non-functional and cross-cutting
 
 | Requirement | Where it is specified | Acceptance tests |
 |---|---|---|
-| NFR-1 — envelope enforced in the workflow, not in a prompt | §5 (refusal ladder; the envelope is a control, not an instruction) | T-03-1, T-03-2, T-03-5 |
+| NFR-1 — envelope enforced in the workflow, not in a prompt | §5 (refusal ladder; the envelope is a control, not an instruction) | T-03-1, T-03-2, T-03-5, T-03-8 |
 | NFR-2 — every prohibition has an explicit failing test | §5.4 gate rows | T-03-6 |
 | NFR-3 — the tier is additive when disabled | §12 FSPEC-ADV-10 (D-1 … D-6) | T-10-1 … T-10-5 |
 | NFR-4 — per-seam wall-clock bound | §4 lifecycle (V-5: preempts an in-flight attempt; rollup wait excluded) | T-02-5 |
