@@ -61,27 +61,42 @@ halt currently conflates: *diagnosing* the problem, and *authorizing* the resolu
 
 ### REQ-ADV-01 — Model rung and configuration
 
-- **AC-1.1** — Given the workflow configuration, Then a constant `MODEL_ADVISORY` selects the
-  advisory model, alongside the existing `MODEL_DEFAULT`, `MODEL_IMPLEMENTATION` and `MODEL_QUEUE`.
-  Its shipped default is **Fable 5** (`claude-fable-5`) — Fable is the strongly recommended rung
-  for advisory work, because every seam is a judgment-under-evidence task rather than a
-  code-production task.
-- **AC-1.2** — Given a constant `MODEL_ADVISORY_FALLBACK` defaulting to Opus (`claude-opus-5`),
-  Then it is used **only** when `MODEL_ADVISORY` cannot be resolved by the runtime, and using it
-  is a declared, first-class outcome — never an implicit downgrade.
+- **AC-1.1** — Given the workflow configuration, Then a single constant `MODEL_ADVISORY` names the
+  advisory rung — the **Fable 5** rung, resolvable by the runtime — alongside the existing
+  `MODEL_DEFAULT`, `MODEL_IMPLEMENTATION` and `MODEL_QUEUE`. Fable is the intended rung because
+  every seam is judgment-under-evidence rather than code production. The literal alias string is
+  pinned by TSPEC once BL-01 resolves, not by this REQ.
+- **AC-1.2** — Given a constant `MODEL_ADVISORY_FALLBACK` naming the Opus rung, Then it is used
+  **only** when `MODEL_ADVISORY` does not resolve, and using it is a declared, first-class outcome
+  — never an implicit downgrade. **Non-resolution is observable as** a dispatch on `MODEL_ADVISORY`
+  that the runtime rejects with a model/alias error before the agent produces output; any other
+  dispatch failure is not non-resolution.
 - **AC-1.3** — Given the fallback is taken, Then the pipeline (a) emits an explicit
   `ADVISORY_MODEL_FALLBACK` warning naming the unresolvable value and the substitute, (b) records
   the substitution in the advisory record (REQ-ADV-09) and in the final report's advisory summary,
   and (c) proceeds. A run on the fallback rung is therefore always distinguishable from a run on
   the intended rung, which is what AC-1.2's "never implicit" is protecting.
-- **AC-1.4** — Given **neither** `MODEL_ADVISORY` nor `MODEL_ADVISORY_FALLBACK` resolves, Then the
-  pipeline **fails at startup** with an explicit model-resolution error and dispatches no advisory
-  agent. There is no third fallback and no silent revert to `MODEL_DEFAULT`.
-- **AC-1.5** — Given the model values, Then both are single configuration constants referenced by
-  every advisory dispatch site, so changing the rung is a one-line change rather than a search.
-- **AC-1.6** — Given `ADVISORY_ENABLED = false`, Then every seam reverts exactly to today's
-  behavior — skip or halt — no advisory agent is dispatched, and no model resolution is attempted
-  (so a missing Fable alias cannot break a run with the tier switched off).
+- **AC-1.4** — Given **neither** rung resolves, Then no advisory agent ever runs on an unresolved
+  model, and the run fails loudly with a model-resolution error. There is no third fallback and no
+  silent revert to `MODEL_DEFAULT`. The detection point is TSPEC's to choose.
+- **AC-1.5** — Given the model values, Then each is one constant referenced by every advisory
+  dispatch site in **both** the dev and the queue module (seams A1/A2 live in the queue module), so
+  changing the rung is a one-line change rather than a search.
+- **AC-1.6** — Given `advisory.enabled` is false, Then every seam reverts exactly to today's
+  behavior — skip or halt — no advisory agent is dispatched and no model resolution is attempted
+  (so a missing Fable alias cannot break a run with the tier off). Observably: the run completes
+  with the same phase outcomes, the report carries no advisory summary, and no `ADVISORY-*` file
+  and no `ESCALATIONS.md` entry is created.
+- **AC-1.7** — Given the advisory knobs, Then all of them are declared in one `advisory` section of
+  `.claude/pdlc.config.json` — the per-repo config home Phase MERGE and the distribution gate
+  already use — owned by the repo operator:
+
+  | Threshold | Default | Meaning |
+  |---|---|---|
+  | `advisory.enabled` | `false` | master switch (AC-1.6) |
+  | `advisory.attemptBudget` | `3` | advisory attempts per seam invocation (AC-2.4); A5's fix→re-poll cycles (AC-8.2) draw on this same budget |
+  | `advisory.seamBudgetMinutes` | `10` | wall-clock per seam invocation (NFR-4); an overrun escalates |
+  | `advisory.envelope` | the AC-3.3 allow-list | the per-seam allow-list (AC-3.1) |
 
 ### REQ-ADV-02 — The advisory contract
 
