@@ -828,7 +828,7 @@ pipeline without this feature:
 | D-3 | The report's phase table and every phase outcome are identical to today's. |
 | D-4 | No `ADVISORY-*` file is created, and no `ESCALATIONS.md` entry is written. |
 | D-5 | The report carries no advisory summary and emits no advisory notice. |
-| D-6 | The set of files a disabled run creates is **equal** to the set a run of the pipeline without this feature creates — not merely free of the two artifacts D-4 names. A third artifact this feature adds later is caught by the same comparison (T-10-3). |
+| D-6 | The set of files a disabled run creates is **equal** to the set a run of the pipeline without this feature creates — not merely free of the two artifacts D-4 names. The right-hand side is a **literal**: the created-file set of a run of the pipeline at the pre-feature baseline commit §2 pins (`26c3f1c`), observed once and transcribed into the test, never re-derived by running the code under test. A comparison whose expected value is produced by the system under test cannot fail; this one fails the moment a file outside the transcribed set appears (T-10-3). |
 
 The equivalence is stated on **named artifacts and phase outcomes**, not on report text, because
 report text legitimately varies by timestamp and iteration count.
@@ -848,7 +848,7 @@ report text legitimately varies by timestamp and iteration count.
 |---|---|
 | T-10-1 | **Who** operator · **Given** `advisory.enabled` false and a seam condition at each of A1…A5 in turn · **When** the run completes · **Then** each seam produced its pre-advisory outcome and no advisory agent was dispatched. |
 | T-10-2 | **Who** operator · **Given** the tier disabled and an advisory rung that does not resolve · **When** a seam condition arises · **Then** the run is unaffected and no model resolution was attempted. |
-| T-10-3 | **Who** operator · **Given** the tier disabled · **When** the run ends · **Then** no `ADVISORY-*` file exists, `ESCALATIONS.md` gained no entry, the report carries no advisory summary, and the set of files the run created equals the set a tier-off baseline run creates (D-6) — no file outside that set appears. |
+| T-10-3 | **Who** operator · **Given** the tier disabled · **When** the run ends · **Then** no `ADVISORY-*` file exists, `ESCALATIONS.md` gained no entry, the report carries no advisory summary, and the set of files the run created equals, element for element, the transcribed literal set of D-6 — the created-file set of a pre-feature run at `26c3f1c`. The red direction is named: any file created outside that literal set fails the test, whether or not this feature named it. |
 | T-10-4 | **Who** operator · **Given** no `advisory` section, and separately a malformed config file · **When** each run completes · **Then** both behave as T-10-3. |
 | T-10-5 | **Who** operator · **Given** the tier enabled and no seam condition arising · **When** the report is read · **Then** an advisory summary is present with five zero rows — distinguishing it from T-10-3. |
 
