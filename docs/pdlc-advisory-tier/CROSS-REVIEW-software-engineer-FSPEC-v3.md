@@ -93,4 +93,36 @@ One new one:
 
 ## Recommendation
 
+**Approved with minor changes**
+
+Zero High, zero Medium, five Low. All three Mediums and all four Lows from v2 are closed, and the
+three that gated approval were closed by naming a rule rather than deferring one: S-5 decides
+summary ownership for both pipelines, H-2b defines persistence as durability on the queue's own
+shipped commit discipline, and §4.1 places the step that produces the third disposition instead of
+merely admitting it exists. I verified every claim this revision makes about existing behaviour
+against the pin — the ladder's pending-CI path, the queue's report object, the queue's row-commit
+discipline, the harvest guard's message — and all of them hold except the one word L-07 names.
+
+From the engineering lens this FSPEC is implementable as written. No finding below asks for material
+that belongs to the TSPEC, none requires re-thinking a design, and none blocks starting work:
+
+- **L-05 / L-06** are two lines of the §4.1 diagram — a second inbound arm for V-7's empty-proposal
+  cause, and whose attempt "consumes no attempt" refers to.
+- **L-07** is one word in H-2's closing sentence: `refused`, not "deferral".
+- **L-08** is AT-2's membership criterion plus the three T-02 ids it implies.
+- **L-09** is fixing T-07-12's final re-poll colour in the Given and transcribing the disposition.
+
+I would take all five in the same editing pass as the other reviewers' remaining items, but none of
+them justifies another authoring round on its own.
+
+Upstream defects are not folded into this verdict. The REQ has not been revised since my v1 — its
+last commit (`b81d7d4`, 09:11) predates my v2 (`5bd141a`, 10:37) — so the three errata are
+re-emitted unchanged in my final message, all three re-verified at the pin: the §1 seam-table claim
+that A2's re-grounding obligation already lives in the triage prompt is still contradicted by the
+prompt's own text (`orchestrate-queue.js@26c3f1c:655-668` verifies dependency presence and flags
+missing subsystems, says "Do NOT modify any files", and names no re-grounding obligation); AC-4.5's
+A1 gate row is still a pure re-evaluation of unchanged inputs; and NFR-4 still defines the bound as
+unqualified wall-clock "measured from dispatch to verdict", which the FSPEC's V-5 and A5-3 now
+deliberately and correctly contradict with the rollup-wait carve-out.
+
 ## Verdict
