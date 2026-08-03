@@ -178,10 +178,11 @@ halt currently conflates: *diagnosing* the problem, and *authorizing* the resolu
 
 ### REQ-ADV-05 — Seam A1/A2: queue triage and re-grounding
 
-- **AC-5.1** — Given Phase-0 triage returns `needs-human`, Then an advisory agent reviews the
-  triage evidence and returns a verdict of `ready`, `blocked`, or `escalate` — it may not return
-  `ready` for a REQ whose declared dependency is genuinely absent from base, which remains a
-  deterministic check.
+- **AC-5.1** — Given a triage stop routed to A1, Then an advisory agent reviews the triage evidence
+  and returns `run-candidate`, `hold`, or `escalate`. Only a `needs-human` **abstention** is
+  adjudicable: the advisory verdict may never overturn a triage verdict of `blocked`, and may never
+  return `run-candidate` for a REQ whose declared dependency is absent from base — that remains a
+  deterministic check and it is the gate AC-4.5 re-runs.
 - **AC-5.2** — Given the stale-REQ re-grounding gate fires, Then the advisory agent re-diffs the
   REQ's load-bearing citations against HEAD and produces a **re-grounding proposal** listing each
   drifted citation with its corrected location.
@@ -191,6 +192,11 @@ halt currently conflates: *diagnosing* the problem, and *authorizing* the resolu
   escalates — a REQ whose premise has evaporated needs a human, not a patch.
 - **AC-5.4** — Given the queue driver, Then `needs-human` candidates are adjudicated in queue
   order and at most one is picked per invocation, preserving the serial guarantee.
+- **AC-5.5** — Given a Phase-0 triage stop, Then its outcome names **which** gate produced it: the
+  `needs-human` result carries a machine-readable seam token, and a `needs-human` result with no
+  recognised token routes to the A1 adjudicator. Today the two stops are one free-text signal, so
+  without this the workflow cannot route a stop to the right envelope (E-4 applies to A2 only) and
+  AC-5.2/AC-5.3 have no testable precondition.
 
 ### REQ-ADV-06 — Seam A3: DoD exhaustion
 
