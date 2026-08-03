@@ -309,6 +309,149 @@ a test passes one `_state` object through two seams and asserts one dispatch-cla
 
 ## 4. The advisory core — types, protocols, invocation lifecycle (FSPEC-ADV-02)
 
+### 4.1 A note on "interfaces" in this codebase
+
+The workflow modules are ES modules with **JSDoc typedefs**, not TypeScript — there is no compiler in
+this pipeline, and the bundle's `stripModuleSyntax` (`build:45`) removes nothing but `import`/`export`
+lines, so a `.d.ts` would be dead weight. Every service boundary below is therefore expressed as a
+JSDoc `@typedef`, which is the shipped convention (`dev:6155-6157`, `dev:98-99`, `dev:626-629`) and
+is what `parsePlanTasks`, `decideMerge` and `dodVerifyLoop` already document their contracts with.
+The boundaries are real regardless of the notation: `SeamOps` below is injected, has one
+implementation per seam, and is faked wholesale in tests.
+
+### 4.2 Data types
+
+```js
+/**
+ * @typedef {Object} AdvisoryVerdict          AC-2.1 / FSPEC §4.2. The agent's product.
+ * @property {"A1"|"A2"|"A3"|"A4"|"A5"} seam
+ * @property {string}   diagnosis             non-empty
+ * @property {string}   proposedAction        non-empty; may be the literal "nothing"
+ * @property {"high"|"low"} confidence
+ * @property {boolean}  withinEnvelope        ADVISORY ONLY — never the membership decision (V-3)
+ * @property {string[]} evidence              non-empty; file:line / log citations
+ */
+
+/**
+ * @typedef {Object} AdvisoryDisposition      V-7. Exactly three terminal values.
+ * @property {"resolved"|"escalated"|"no-action"} outcome
+ * @property {string|null} reason             one §5.3 reason iff outcome === "escalated"
+ * @property {AdvisoryVerdict|null} verdict   last well-formed verdict, if any
+ * @property {number}  attempts               attempts consumed
+ * @property {string}  model                  the rung actually used (§3.4)
+ * @property {boolean} fallback
+ */
+```
+
+`parseAdvisoryVerdict(raw)` is pure and total, returning `{ verdict, malformed, why }`. It enforces
+every well-formedness rule of §4.4 in one place — wrong seam, empty `evidence`, empty `diagnosis`,
+absent/`"nothing"`-only handling, an out-of-enum `confidence` — so V-4's five error rows are five
+unit cases over one function, not five integration fixtures. It follows `parseDodStatus`
+(`dev:5944`) and `parseVerdict` (`dev:2390`): parse the agent's trailer, never trust its shape.
+
+### 4.3 The `SeamOps` protocol — one implementation per seam
+
+`runAdvisorySeam` owns the lifecycle, the budgets, the envelope gate, the refusal ladder, the record
+and the escalation. It knows **nothing** seam-specific. Everything seam-specific is behind this
+injected protocol, which is why A1/A2 can live in `orchestrate-queue.js` while the driver lives in
+`orchestrate-dev.js` (§2.2).
+
+```js
+/**
+ * @typedef {Object} SeamOps
+ * @property {() => Promise<string>}            gatherEvidence   seam evidence for the prompt
+ * @property {(evidence: string) => string}     prompt           the dispatch prompt
+ * @property {() => Promise<boolean>}           conditionHolds   step 3b RE-CHECK (V-7 no-action)
+ * @property {(v: AdvisoryVerdict) => Promise<{ok: boolean, why?: string}>} apply
+ * @property {() => Promise<string[]>}          producedPaths    paths the apply touched (E-R2)
+ * @property {() => Promise<void>}              revert           restore the pre-invocation state
+ * @property {() => Promise<{passed: boolean, detail?: string}>} verifyGate  §5.4's gate row
+ * @property {string[]}                         declaredScope    X-d's file set
+ * @property {string[]}                         permittedActions subset of {E-1..E-4} for this seam
+ */
+```
+
+Per-seam bindings: A1 §6.3, A2 §6.4, A3 §7.2, A4 §7.3, A5 §8.2. A seam with no permitted action
+(A1, A3) supplies `permittedActions: []` and an `apply` that is never reached — the §5.1 gate refuses
+first — which is how A1-4 and A3-6 ("changes no file") become structural rather than aspirational.
+
+### 4.4 `runAdvisorySeam` — the one impure component
+
+```js
+export async function runAdvisorySeam({
+  seam, feature, seamOps, config, rungState,
+  _agent, _appendFile, _writeFile, _readFile, _git, _log, _now,
+}) { … }   // → Promise<AdvisoryDisposition>
+```
+
+The loop, mapped to FSPEC §4.1's numbered steps:
+
+| Step | Implementation note |
+|---|---|
+| entry | `config.enabled === false` ⇒ returns **before** any dispatch and before `resolveAdvisoryRung` (D-1, D-2). §11 asserts this is the only enabled-check in the path. |
+| 1 DIAGNOSE | `_agent("se-review", seamOps.prompt(await seamOps.gatherEvidence()), { model: rung.model })`. `se-review` is the skill: every seam is judgment-under-evidence, which is that skill's declared lens. |
+| 2 VALIDATE | `parseAdvisoryVerdict` (§4.2). Malformed ⇒ consume an attempt, loop or terminate. |
+| 3 GATE | `classifyEnvelope` (§5.1) **and** `verdict.confidence === "high"` — both required (V-1, BR-2). |
+| 3b RE-CHECK | `await seamOps.conditionHolds()`; false ⇒ `no-action`, consuming no attempt (§4.4 last row). |
+| 4 ACT | `seamOps.apply(verdict)`. |
+| 5 CHECK | `classifyEnvelope` again over `await seamOps.producedPaths()` (E-R2, BR-3). Outside ⇒ `revert`, refuse. |
+| 6 VERIFY | `seamOps.verifyGate()`. Fails ⇒ `revert`, refuse `post-action-verification-failed`. |
+| 7 RECORD | `appendAdvisoryEntry` (§9.2). Throws ⇒ `revert`, refuse `record-write-failed` (R-2). |
+
+**The A5 and A2 step re-orderings are a `SeamOps` concern, not a driver branch.** FSPEC §4.1 says
+that at A5 steps 5 and 7 complete *before* the push and step 6 (the re-poll) follows it. Rather than
+special-casing A5 inside the driver, `apply` is defined as *"do everything up to but not including
+the irreversible act"* and `verifyGate` as *"perform the irreversible act, then run the gate"*. At
+A5 that means `apply` = write the fix locally, `verifyGate` = push + re-poll. At A2 it means
+`apply` = rewrite the REQ, `verifyGate` = commit the REQ **and** the advisory record in one
+pathspec-scoped commit, then confirm the branch head carries both. The driver's step order is then
+uniform across all five seams, and BR-5's two-tree-states invariant is asserted against the
+pre-`verifyGate` tree everywhere.
+
+**This resolves an FSPEC gap** (erratum, §16.4): FSPEC A2-6 requires an applied re-grounding to be
+*committed* before the invocation ends, while R-2 requires a failed record write to un-take the
+action — an ordering FSPEC never reconciles, and which naively demands undoing a commit. Under the
+split above, at A2 the record is written at step 7 and **the commit does not exist yet**: step 7's
+failure reverts a working-tree edit only. §6.4 gives the exact call order.
+
+### 4.5 Budgets
+
+```js
+export function budgetExceeded({ attempts, attemptBudget, elapsedMs, waitMs, seamBudgetMinutes })
+```
+
+Pure, so V-5's arithmetic — including the rollup-wait carve-out — is unit-tested without a clock.
+`waitMs` is the accumulated check-rollup wait the seam reports (A5 only; zero elsewhere), and the
+wall-clock comparison is `elapsedMs - waitMs >= seamBudgetMinutes * 60_000` (NFR-4).
+
+- **Preemption (V-5, T-02-5).** The bound must end an in-flight attempt, so the driver races the
+  dispatch against a deadline rather than checking between attempts:
+  `await Promise.race([dispatch, deadline(_now, _sleep, remainingMs)])`. `_now`/`_sleep` are already
+  injected seams on both `main()`s (`dev:6880-6881`, and `raisePrAndVerifyCi` threads them at
+  `dev:6262-6263`), so no new capability is introduced and tests drive a fake clock.
+- **Termination-condition ordering (§5.3's opening clause).** The reason is computed **once, at
+  termination**, from the condition that ended the invocation — never accumulated across attempts.
+  `refusalReasonFor(signals)` (§5.3) takes the terminating signal set and returns the first match in
+  the ordered catalogue; that is why "malformed on every attempt, budget then exhausted" reports
+  `budget-exhausted` (§4.4 row 1) with no special-casing.
+- **Sequencing (V-6, F-2).** `runAdvisorySeam` is `await`ed at each seam's call site inside the
+  already-sequential phase body; nothing wraps it in `parallel` (`dev:6567`). One invocation per seam
+  condition per run (F-3) follows from each call site being reached at most once per run.
+
+### 4.6 Error handling inside the lifecycle
+
+| Scenario | Behaviour | Where enforced |
+|---|---|---|
+| dispatch throws, not a model error | ordinary invocation failure: consumes an attempt, loops or terminates `escalated` | `runAdvisorySeam` try/catch; `isModelResolutionError` false (§3.4) |
+| `parseAdvisoryVerdict` malformed | consume attempt; reason `malformed-verdict` **only if it terminates the invocation** | §4.5 termination-condition rule |
+| `seamOps.apply` returns `{ok: false}` | `revert`, refuse `post-action-verification-failed` | driver step 4 |
+| `seamOps.revert` itself throws | rethrown as a halt — an unrevertable tree is not a state this feature may leave silently; BR-5 admits exactly two states | driver |
+| `_appendFile` throws (step 7) | `revert`, refuse `record-write-failed` | driver step 7 |
+| escalation-log write throws (§10) | escalation **stands**; the failure is a report notice | outside the try that governs the action (§10.2) — the deliberate asymmetry of T-09-8 |
+
+The last two rows are the asymmetry FSPEC calls out: the record is a precondition of an action
+*surviving*, the escalation log is not, because an escalation is the pipeline doing strictly less.
+
 ## 5. Envelope enforcement, refusal ladder, prohibitions (FSPEC-ADV-03, ADV-04)
 
 ## 6. Seams A1 and A2 — the queue module (FSPEC-ADV-04)
