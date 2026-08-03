@@ -102,4 +102,28 @@ is the control, confidence only lets the agent decline"). Q-01 remains open and 
 
 ## Recommendation
 
+**Needs revision**
+
+All six v1 Highs and all five v1 Mediums are closed, and the document is materially better grounded
+than v1. Two Mediums remain, both narrow and both textual — neither questions the design:
+
+1. **F-16 — fix the A1 backstop.** `precheckDependencies` proves *blocked*, never *present in base*
+   (`main:pdlc/workflows/orchestrate-queue.js:618-648`). Restate AC-4.5's A1 state as what that
+   pre-check can observe, and name what establishes dependency presence and who — not the advisory
+   agent — makes that call.
+2. **F-17 — make AC-3.6's reason set total and injective.** Add a member for a verification failure
+   after an in-envelope action (AC-7.4, AC-4.5's A3/A4/A5 rows), and give the section a
+   trigger→reason table so "a reverted diff" stops mapping to two tokens.
+
+The two Lows (F-18 `gh run rerun` / merge-base check history in §6; F-19 the `MERGE ESCALATION:`
+literal) are worth folding into the same revision but would not, alone, block.
+
+No upstream defects found this round: the `REQ-MERGE-03` citation resolves to a real requirement
+whose AC-3.1/AC-3.3 say what AC-3.4(e) claims, and the master-plan row is unchanged. The stale
+`docs/_queue/QUEUE.md:15` row remains an operator note, correctly recorded in BL-02 rather than
+folded into this REQ.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 0, "medium": 2, "low": 2}
