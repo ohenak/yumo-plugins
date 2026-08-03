@@ -10,12 +10,12 @@ depends-on: [pdlc-merge-phase]
 |---|---|
 | Upstream | `docs/design/MASTER-PLAN-engineering-loop.md` (Break 4, §3, order 3) |
 | Downstream | `pdlc-consolidation-agent`, `pdlc-engineering-loop` |
-| Cross-Reviews | — |
+| Cross-Reviews | `CROSS-REVIEW-software-engineer-REQ-v1.md`, `CROSS-REVIEW-test-engineer-REQ-v1.md` |
 | LEARNINGS | — |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.1 | 2026-07-27 |
+| pdlc | draft | Claude | 1.2 | 2026-08-03 |
 
 > **Scope in one line.** A third model rung — the Fable 5 advisory tier (Opus as declared
 > fallback) — that takes the five
@@ -305,7 +305,7 @@ phase needs work.
 
 ## 5. Scope
 
-**In scope:** the `MODEL_ADVISORY` rung (Fable 5 default) with startup validation and the declared
+**In scope:** the `MODEL_ADVISORY` rung (the Fable 5 rung) with the declared
 `MODEL_ADVISORY_FALLBACK` (Opus) substitution path, the advisory verdict contract, the
 configured envelope with in-code enforcement, the five seams A1–A5, the prohibitions, the advisory
 record, escalation output, tests.
