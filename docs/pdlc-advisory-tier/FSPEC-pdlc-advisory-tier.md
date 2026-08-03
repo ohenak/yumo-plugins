@@ -563,7 +563,7 @@ advisory agent inspects every conflicting file
 
 | Case | Behaviour |
 |---|---|
-| The conflict set is empty by the time the agent looks (a concurrent process resolved it) | No action; the invocation records "condition gone" and Phase DOD re-reads the rebase state (§4.4). |
+| The conflict set is empty by the time the agent looks (a concurrent process resolved it) | Disposition `no-action` (§4.3 V-7); the invocation records "condition gone" and Phase DOD re-reads the rebase state (§4.4). |
 | A file is branch-created but a **test** file | X-a outranks E-3: reverted whole, reason `revert-on-test-touch`. |
 | Resolution succeeds but the branch has no test command configured | Verification cannot be performed, so the resolution is not verifiable: it is reverted and the seam escalates. An unverified resolution is never reported as resolved. |
 | The tests pass but leave the working tree dirty | Out of envelope on the produced-change check (E-R2): reverted whole, escalate. |
@@ -617,13 +617,15 @@ compare against the DEFAULT BRANCH's own check history      ← evaluated FIRST
 
 | # | Rule |
 |---|---|
-| A5-1 | The default-branch comparison is evaluated **before** E-2's *introduced* test, because a pre-existing failure is not a branch-introduced one and the two tests would otherwise disagree. |
+| A5-1 | The default-branch comparison is evaluated **before** E-2's *introduced* test, because a pre-existing failure is not a branch-introduced one and the two tests would otherwise disagree. Its input may itself be noisy — a check that is flaky on the branch is flaky on the default branch too — and the comparison is nonetheless **authoritative on the reading it gets**: a check observed failing at the default-branch tip is escalated as pre-existing, deliberately, in preference to attempting a fix the feature may not own. |
 | A5-2 | Where the default branch's own check history cannot be read, the seam escalates with the comparison undone and attempts no fix. E-1 likewise requires the ability to re-run a workflow run; where that is unavailable, E-1 is out of envelope and the seam escalates under the same clause. |
-| A5-3 | One **attempt** is one fix → push → re-poll cycle, drawn from `advisory.attemptBudget`. A re-poll that reaches Phase PUB's own completion timeout consumes an attempt rather than escalating separately. |
+| A5-3 | One **attempt** is one act → push → re-poll cycle, drawn from `advisory.attemptBudget`; under E-1 the act is a re-run with no fix and no push, and the cycle is re-run → re-poll. A re-poll that reaches Phase PUB's own completion timeout consumes an attempt rather than escalating separately. Because a re-poll waits on the pipeline's own CI cadence, **time spent waiting on the rollup does not count against `advisory.seamBudgetMinutes`** (§4.3 V-5) — otherwise the shipped 10-minute default would end every A5 invocation inside its first attempt and `attemptBudget` would never bind. |
 | A5-4 | The advisory tier may never declare CI passed, and the reported CI status is always derived from GitHub's own rollup (P-3, B-9). A resolution at A5 means *the rollup subsequently reported green*, never *the agent judged the failure benign*. |
 | A5-5 | Where the log cannot be retrieved, the seam escalates. A diagnosis without the log is a guess, and a guess is exactly what this feature exists to avoid shipping. |
 | A5-6 | The no-checks path is untouched: the seam does not fire, the phase's existing pass stands, and the outcome is **named in the advisory summary** so a repo with no CI is distinguishable from a repo whose checks never registered. (B-8: the phase row already says so; the summary makes it visible where the operator reads the tier's own account of the run.) |
 | A5-7 | Phase PUB runs after harvest (B-15), so a fix pushed here moves the branch head beyond the commit Phase DOD verified. The report therefore names the **DoD-verified commit**, and a branch head beyond it is reported **unverified**. What restores a verified state — re-verification inside Phase PUB, or a halt for the operator — is a technical choice left to TSPEC; either way the report never claims DoD-passed for bytes the DoD gate did not see. |
+| A5-8 | A5 is the one seam whose action leaves the local tree, so "revert" is defined on the branch's **content**, not on its history. The produced-change check and the record write both complete **before** the push (§4.1); after a push nothing is force-pushed and no history is rewritten. A re-poll that stays red therefore does **not** undo the pushed commit: the invocation escalates, the fix commit remains on the branch and in the PR, the escalation entry and the report name it, and the pipeline halts exactly as it does today. §16.2 BR-5's two-tree-states invariant is asserted at A5 on the **pre-push** tree; on the branch the operator observes one additional commit per attempt and no rewritten history. |
+| A5-9 | A5 does **not** fire on Phase PUB's completion-cap halt — checks that register and never complete leave no failing check to diagnose, and re-polling is what already timed out. That outcome is **named in the advisory summary** the way A5-6 names no-checks, so it is distinguishable there from a diagnosed failure, and the halt proceeds unchanged. |
 
 ### 9.3 Edge cases and error scenarios
 
@@ -632,10 +634,11 @@ compare against the DEFAULT BRANCH's own check history      ← evaluated FIRST
 | Several checks fail at once | Each is diagnosed; the invocation is in-envelope only if **every** failing check is in-envelope. A mixed set escalates. |
 | A check fails, the agent re-runs it under E-1, and a *different* check then fails | The new failure is a new diagnosis within the same invocation, drawing on the same attempt budget. |
 | The push during an attempt is rejected (branch moved) | The attempt fails; the fix is not left half-applied, and the invocation retries or escalates on budget. |
-| CI turns green between the failure and the agent's diagnosis | No action; the invocation records "condition gone" and the phase continues from its own rollup read. |
+| CI turns green between the failure and the agent's diagnosis | Disposition `no-action` (§4.3 V-7); the invocation records "condition gone" and the phase continues from its own rollup read. |
 | The failing check has no retrievable log because the job never started | A5-5: escalate. |
 | The repo has no CI at all | The no-checks path (A5-6); the seam never fires. |
-| Checks register and then never complete | The existing completion cap governs; per A5-3 a re-poll that hits it consumes an attempt. |
+| Checks register and then never complete **before any seam fired** | The existing completion cap governs and the phase halts; A5-9 — the seam does not fire, and the summary names the outcome. |
+| A re-poll **inside** an A5 invocation hits the completion cap | A5-3: it consumes an attempt; on budget exhaustion the seam escalates with `budget-exhausted`. |
 | The proposed fix would touch a test file | X-a: reverted whole, reason `revert-on-test-touch`. This is the single most likely way an agent "fixes" red CI, so it is asserted directly. |
 
 ### 9.4 Acceptance tests
@@ -647,10 +650,11 @@ compare against the DEFAULT BRANCH's own check history      ← evaluated FIRST
 | T-07-3 | **Who** operator · **Given** the default branch's check history cannot be read · **When** the seam completes · **Then** no fix was attempted and the escalation says the comparison was not done. |
 | T-07-4 | **Who** operator · **Given** the ability to re-run a workflow run is unavailable · **When** a flaky failure is diagnosed · **Then** E-1 is out of envelope and the seam escalates. |
 | T-07-5 | **Who** operator · **Given** the failing job's log cannot be retrieved · **When** the seam completes · **Then** the seam escalates without a diagnosis of the cause. |
-| T-07-6 | **Who** operator · **Given** `advisory.attemptBudget` fix → push → re-poll cycles all ending red · **When** the budget is spent · **Then** exactly that many cycles occurred and the pipeline halts as it does today. |
+| T-07-6 | **Who** operator · **Given** `advisory.attemptBudget` act → push → re-poll cycles all ending red · **When** the budget is spent · **Then** exactly that many cycles occurred, the reason is `budget-exhausted` (§5.3 — the terminating condition), the pushed fix commits remain on the branch (A5-8), and the pipeline halts as it does today. |
 | T-07-7 | **Who** operator · **Given** any A5 resolution · **When** the report is read · **Then** the CI status derives from the rollup, and no path exists by which an agent verdict sets it. |
 | T-07-8 | **Who** operator · **Given** a fix pushed during Phase PUB · **When** the report is read · **Then** it names the DoD-verified commit and reports the branch head beyond it as unverified. |
 | T-07-9 | **Who** operator · **Given** no check registers within the existing no-checks window · **When** the phase completes · **Then** the seam did not fire, the phase passes exactly as today, and the advisory summary names the no-checks outcome. |
+| T-07-10 | **Who** operator · **Given** checks that register and never complete, so Phase PUB reaches its completion cap · **When** the phase ends · **Then** no A5 invocation occurred, the halt happened exactly as with the tier disabled, and the advisory summary names the outcome (A5-9). |
 
 ## 10. FSPEC-ADV-08 — Advisory record and its harvest
 
