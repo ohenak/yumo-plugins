@@ -117,9 +117,8 @@ halt currently conflates: *diagnosing* the problem, and *authorizing* the resolu
 - **AC-3.1** — Given the envelope, Then it is declared in configuration as an explicit per-seam
   allow-list, and is **not** inferable, extendable, or negotiable by any agent at runtime.
 - **AC-3.2** — Given an advisory agent proposes or produces a change outside the envelope, Then the
-  workflow script refuses it — inspecting the produced diff and reverting it, since the dispatch
-  seam offers no write sandbox — and the seam takes the AC-3.6 refusal path. Enforcement is in
-  code, not in the agent's prompt.
+  workflow script refuses it: no such change survives the seam — one already written is reverted —
+  and the seam takes the AC-3.6 refusal path. Enforcement is in code, not in the agent's prompt.
 - **AC-3.3** — Given the shipped default envelope, Then it permits exactly these four, each with a
   decidable rule:
 
