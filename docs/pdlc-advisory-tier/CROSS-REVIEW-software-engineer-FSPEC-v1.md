@@ -71,8 +71,53 @@ carry:
 
 ## Positive Observations
 
-<!-- filled next -->
+- **The §2 baseline is the best-evidenced spec section I have reviewed in this repo.** Sixteen
+  observations, each pinned to a commit and to a line range, and **all sixteen verified accurate**
+  against `26c3f1c`. The "cite by baseline id, not by line number" convention in §1 means a re-pin
+  touches one section — that is the right design and it should be copied by later specs.
+- **The document is honest about what does not exist yet.** §2's consequence 1 and OQ-2 both say
+  plainly that A2's gate has to be *authored*, not routed, and §2's B-3 evidence backs it. That is a
+  scope discovery an FSPEC usually hides.
+- **The refusal ladder is a genuinely good control design.** Ordered, closed, one reason per refusal,
+  with T-03-4 pinning the ordering observably and T-03-5 pinning the set by equality. The set matches
+  REQ AC-3.6 exactly, in the same order — I checked all eight rows.
+- **Enforcement location is treated as a first-class rule** (§16.3), and the tests are written against
+  an agent that *proposes the forbidden thing* rather than against prompt text. That is the correct
+  reading of NFR-1 and it is unusual to see it stated.
+- **The negative assertions are paired.** T-03-6 explicitly requires the V-8 positive triple on the
+  same path, and §4.3 V-8 makes the triple the shared shape of every escalation. §18.2 then names the
+  three for-each assertions and why each exists. This is the right answer to absence-only oracles.
+- **Test count arithmetic checks out.** §18.1's per-series counts sum to the stated 68, and every
+  series range matches the owning section's table.
+- **§17.3's "the unenumerated case escalates"** is exactly the right closure rule for a feature whose
+  failure mode is over-confidence, and it is what makes the finite error tables defensible.
 
 ## Recommendation
 
-<!-- filled next -->
+**Needs revision**
+
+Six High and four Medium findings. The document is well-built and unusually well-evidenced; every
+finding below is a gap in the *observable* behaviour, not a request for contract detail that belongs
+to TSPEC. To reach approval, the next version must:
+
+1. **F-01** — say, as an observable, what the post-PUB distil step does to the PR raised at Phase PUB
+   and to the branch Phase MERGE evaluates. Right now the operator's outcome is undetermined.
+2. **F-02** — define "revert" for A5, where the action is a *push*. `BR-5`, T-03-2 and T-08-2 are
+   currently unsatisfiable there.
+3. **F-03** — reconcile `seamBudgetMinutes = 10` with the pipeline's own 30-minute CI completion cap
+   (`orchestrate-dev.js:35`), or A5's `attemptBudget` never binds and T-07-6 cannot pass.
+4. **F-04** — say when a queue-side (A1/A2) advisory record is harvested; H-2 is currently false for
+   every held or escalated candidate.
+5. **F-05** — restore the advisory summary on halted runs; §17.2 currently deletes it from exactly the
+   runs REQ AC-9.4 exists for, and the halt path does build a report (`orchestrate-dev.js:8390-8396`).
+6. **F-06** — choose lazy or eager rung resolution and make §3.2, §3.3, §12.2 and §15.2 agree.
+7. **F-11 … F-14** — name the delete channel the guard covers; reconcile R-2's "precondition of
+   acting" with §4.1's step order; make T-04-3's precondition reachable (or re-frame it as
+   defence-in-depth); and say whether A5 fires on Phase PUB's completion-cap halt.
+
+The three Low findings (F-15 … F-17) are clarifications and need not gate approval on their own.
+
+Three things I deliberately did **not** file as findings of this document, because they originate
+upstream and are emitted as errata to the REQ's author instead: the REQ §1 seam table's claim that
+A2's re-grounding obligation already lives in the triage prompt (contradicted by `queue:662`); the
+vacuity of AC-4.5's A1 gate row; and AC-1.7's `seamBudgetMinutes` default, which is the root of F-03.
