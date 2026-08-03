@@ -38,7 +38,8 @@ Two properties make this safe to enable:
 For a reader deciding where to start: §1 gives the section map and what is deliberately left to TSPEC,
 §2 pins the observed baseline every later section cites by id, §3–§5 specify the tier's mechanics once
 (rung, lifecycle, envelope), and §6–§9 apply them seam by seam. §10–§11 cover what the run leaves
-behind for the operator; §12 covers the off case; §13 lists what is still open.
+behind for the operator; §12 covers the off case; §13 lists what is still open; §14 is the requirement→section→test
+traceability.
 
 ## 1. Scope and reading order
 
@@ -822,4 +823,48 @@ report text legitimately varies by timestamp and iteration count.
 | OQ-3 | A5's fix pushes bytes past the DoD-verified commit (A5-7). Whether Phase PUB re-verifies, or halts for the operator, is left to TSPEC. | Either choice is defensible; both satisfy "never report DoD-passed on unverified bytes". | Report the verified commit and mark the head unverified; TSPEC chooses the restoration path. |
 | OQ-4 | Whether the default-branch check history and the workflow re-run capability (REQ BL-05, BL-06) are available in a given consuming repo is a per-repo fact. | E-1 and E-2 both depend on them; where absent the seam escalates rather than guessing. | §9.2 A5-2 — escalate with the comparison undone, attempt no fix. |
 | OQ-5 | Whether the branch's test command exists is a per-repo fact that A4's verification depends on. | An unverifiable resolution must not be reported as resolved. | §8.3 — revert and escalate. |
+
+## 14. Linked Requirements
+
+This FSPEC covers **every** requirement of `REQ-pdlc-advisory-tier.md` — the ten `REQ-ADV-*`
+requirements (§3 of the REQ) and the five `NFR-*` (§4). The mapping is one FSPEC section per
+requirement, with that section's acceptance-test table as the coverage evidence.
+
+### 14.1 Requirement → section → tests
+
+| Requirement | Acceptance criteria | FSPEC section | Acceptance tests |
+|---|---|---|---|
+| REQ-ADV-01 — Model rung and configuration | AC-1.1 … AC-1.7 | §3 FSPEC-ADV-01 | T-01-1 … T-01-6 |
+| REQ-ADV-02 — The advisory contract | AC-2.1 … AC-2.4 | §4 FSPEC-ADV-02 | T-02-1 … T-02-6 |
+| REQ-ADV-03 — The envelope | AC-3.1 … AC-3.6 | §5 FSPEC-ADV-03 | T-03-1 … T-03-7 |
+| REQ-ADV-04 — Prohibitions | AC-4.1 … AC-4.6 | §5 FSPEC-ADV-03 (P-1…P-4, gate rows) | T-03-6 |
+| REQ-ADV-05 — Seams A1/A2 | AC-5.1 … AC-5.5 | §6 FSPEC-ADV-04 | T-04-1 … T-04-9 |
+| REQ-ADV-06 — Seam A3 (DoD exhaustion) | AC-6.1 … AC-6.4 | §7 FSPEC-ADV-05 | T-05-1 … T-05-6 |
+| REQ-ADV-07 — Seam A4 (rebase conflict) | AC-7.1 … AC-7.4 | §8 FSPEC-ADV-06 | T-06-1 … T-06-6 |
+| REQ-ADV-08 — Seam A5 (CI failure) | AC-8.1 … AC-8.6 | §9 FSPEC-ADV-07 | T-07-1 … T-07-9 |
+| REQ-ADV-09 — Advisory record | AC-9.1 … AC-9.4 | §10 FSPEC-ADV-08 | T-08-1 … T-08-7 |
+| REQ-ADV-10 — Escalation output | AC-10.1 … AC-10.5 | §11 FSPEC-ADV-09 | T-09-1 … T-09-7 |
+
+### 14.2 Non-functional and cross-cutting
+
+| Requirement | Where it is specified | Acceptance tests |
+|---|---|---|
+| NFR-1 — envelope enforced in the workflow, not in a prompt | §5 (refusal ladder; the envelope is a control, not an instruction) | T-03-1, T-03-2, T-03-5 |
+| NFR-2 — every prohibition has an explicit failing test | §5.4 gate rows | T-03-6 |
+| NFR-3 — the tier is additive when disabled | §12 FSPEC-ADV-10 (D-1 … D-6) | T-10-1 … T-10-5 |
+| NFR-4 — per-seam wall-clock bound | §4 lifecycle (budget exhaustion → escalation) | T-02-5 |
+| NFR-5 — no new credentials, never merges | §5 (P-series prohibitions) | T-03-6 |
+| AC-1.6 — disabled means inert | §12 FSPEC-ADV-10 | T-01-1, T-10-1 … T-10-4 |
+| AC-3.6 — every escalation carries a reason from the closed set | §4.3 (disposition triple), §5.3 (reason set) | T-02-6, T-03-4, T-03-5 |
+
+### 14.3 Coverage direction
+
+Read the other way: every FSPEC section §3–§12 opens with a **Requirements:** line naming the REQ
+items it discharges, so no section exists without an upstream requirement, and §14.1 shows no
+requirement without a section. The two lists are the same set — an FSPEC section added without a
+requirement, or a requirement added without a section, breaks one of the two tables above and is
+the intended failure signal.
+
+Traceability beyond this document — user story → requirement → FSPEC — is held in
+`docs/requirements/traceability-matrix.md`, not restated here.
 
