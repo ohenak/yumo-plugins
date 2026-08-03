@@ -46,6 +46,16 @@ single-line edits. Ids continue v2's `L-` sequence so they never collide.
 
 ## Questions
 
+Q-07 is answered by H-2's rewrite and needs no reply. Q-08 (the citation pin `26c3f1c` is not an
+ancestor of `feat-pdlc-advisory-tier`; the branch forks at `7cdfbb0`, where
+`pdlc/workflows/orchestrate-dev.js` is 2,139 lines against 8,527 at the pin) is unchanged and still
+worth an answer before implementation starts — nothing in the document needs to change either way.
+One new one:
+
+| ID | Question |
+|---|---|
+| Q-09 | H-2b and A2-6 both commit to *"the branch the queue invocation is running on"*, unpushed. In this repo the queue is normally driven from the default branch, so a queue invocation that re-grounds a REQ or records an A1 hold leaves a local, unpushed commit on `main` — after which `git pull --ff-only` fails until the operator resolves the divergence. That is a consequence of A2-6, which I accepted in v2 and am not re-opening; the question is whether the TSPEC should name where those commits are expected to land (a dedicated branch? the candidate's future `feat-` branch?), because H-2b now doubles the number of files that ride that commit and the record is meant to survive *"until that feature's own pipeline later reaches Phase PUB"* — potentially many pulls later. |
+
 ## Positive Observations
 
 ## Recommendation
