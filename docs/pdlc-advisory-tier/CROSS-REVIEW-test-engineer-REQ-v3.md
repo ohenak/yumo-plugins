@@ -110,3 +110,33 @@ test; I am not re-filing them. One new question, also non-blocking.
   contains the `ESCALATION:` substring the one-grep claim depends on.
 
 ## Recommendation
+
+**Approved with minor changes**
+
+All seven v2 findings are closed — both Highs and both Mediums — and I verified each closure against
+code at the base the REQ now pins, not against the document's own account of itself. No High or
+Medium finding remains open, old or new, so the bar is met.
+
+Three Lows remain, each one sentence:
+
+1. **F-21** — say that A1 has no independent post-action gate, rather than naming a re-run that
+   cannot fail. (Residual of the resolution I myself prescribed.)
+2. **F-22** — say that AC-3.6's triggers match the invocation's *terminating* condition, so an
+   exhausted A5 cycle reports `budget-exhausted` rather than `post-action-verification-failed`.
+3. **F-23** — qualify AC-9.3's "absent at end of run" to a run that reaches completion.
+
+None of the three blocks writing the acceptance suite: a test author who hits F-22 or F-23 will
+notice the ambiguity at the moment of writing the expected value, and the answer is derivable from
+the surrounding ACs in both cases. They should close in the same pass as any SE findings, and they
+are the kind of detail TSPEC would otherwise have to invent.
+
+This REQ is now testable end to end. The seam table, the four-entry envelope with decidable rules,
+the closed test-tamper enumeration, the ordered refusal-reason table, the per-seam re-run matrix and
+the config table together give it a mechanical acceptance matrix — enumerations that fail on
+deletion, negatives paired with positives, and every existing-behavior claim anchored to a pinned
+sha. That is a stronger foundation than most REQs carry into TSPEC.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 3}
