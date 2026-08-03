@@ -178,6 +178,143 @@ describe("verifyFeatureBranch — the read-only re-check", () => {
   });
 });
 
+// ─── The retryable transport fault: an ok-but-empty rev-parse ─────────────────
+//
+// Measured, run wf_d74b18e0-ecb (2026-08-03): at Phase F's reviewLoop entry the
+// injected `_git(["rev-parse","--abbrev-ref","HEAD"])` returned
+// `{"ok":true,"stdout":"","stderr":""}` while the tree was on the feature branch
+// the whole time — the next rev-parse, seconds later, read it fine. Fail-closed
+// was right; the SINGLE-SHOT observation was the defect. An ok-but-empty read is
+// therefore re-observed; an `ok: false` read is a real git failure and is not.
+
+/** An `ok` read that reported no branch at all — the transport-fault signature. */
+const emptyRead = { ok: true, stdout: "" };
+/** Whitespace-only is the same fault: `parseAbbrevRef` trims to "". */
+const blankRead = { ok: true, stdout: "  \n" };
+
+/**
+ * The literal note a halt carries when every re-observation came back empty.
+ * Written out here rather than imported: an oracle that imports the string it
+ * checks agrees with the production text by construction.
+ */
+const TRANSPORT_FAULT_NOTE = "(3 observations, all empty — transport fault suspected)";
+
+/** Today's `verifyFeatureBranch` halt for a genuinely failing rev-parse, verbatim. */
+const GENUINE_FAILURE_HALT =
+  `Error: branch guard — the working tree is on "an unreadable branch", not ${BRANCH}. ` +
+  `Refusing to continue: this round's commits would land there. ` +
+  `Check out ${BRANCH} yourself (git checkout -B ${BRANCH}) and re-invoke; nothing was committed.`;
+
+describe("branch guard — an ok-but-empty rev-parse is re-observed, not believed", () => {
+  it("verifyFeatureBranch: one empty read then the branch — no halt, exactly two identical probes", async () => {
+    const git = scriptedGit([emptyRead, onBranch]);
+
+    const result = await verifyFeatureBranch({ feature: FEATURE, _git: git, _log: silent });
+
+    expect(result).toEqual({ ok: true, branch: BRANCH, verified: true });
+    expect(git.commands).toEqual([REV_PARSE, REV_PARSE]);
+  });
+
+  it("verifyFeatureBranch: three empty reads halt, naming both the unreadable branch and the count", async () => {
+    const git = scriptedGit([emptyRead, blankRead, emptyRead]);
+
+    const error = await verifyFeatureBranch({
+      feature: FEATURE,
+      _git: git,
+      _log: silent,
+    }).catch((e) => e);
+
+    expect(error.isHalt).toBe(true);
+    expect(error.message).toContain('"an unreadable branch"');
+    expect(error.message).toContain(TRANSPORT_FAULT_NOTE);
+    // Two retries and no more: the budget is spent, not unbounded.
+    expect(git.commands).toEqual([REV_PARSE, REV_PARSE, REV_PARSE]);
+  });
+
+  it("verifyFeatureBranch: an ok:false read is a real git failure — one probe, today's message", async () => {
+    const git = scriptedGit([{ ok: false, stderr: "fatal: not a git repository" }]);
+
+    const error = await verifyFeatureBranch({
+      feature: FEATURE,
+      _git: git,
+      _log: silent,
+    }).catch((e) => e);
+
+    expect(error.isHalt).toBe(true);
+    expect(error.message).toBe(GENUINE_FAILURE_HALT);
+    // The positive above pins the whole string; this pairs it with the absence
+    // that matters — a genuine failure never claims a transport fault.
+    expect(error.message).not.toContain("observations");
+    expect(git.commands).toEqual([REV_PARSE]);
+  });
+
+  it("ensureFeatureBranch: an empty initial read is re-observed, and the checkout still happens", async () => {
+    const git = fakeGit((argv, i) => {
+      if (i === 0) return emptyRead;
+      if (i === 1) return onMain;
+      if (argv.join(" ") === `checkout ${BRANCH}`) return { ok: true };
+      return onBranch;
+    });
+
+    const result = await ensureFeatureBranch({ feature: FEATURE, _git: git, _log: silent });
+
+    expect(result).toEqual({ ok: true, branch: BRANCH, action: "checked-out" });
+    expect(git.commands).toEqual([REV_PARSE, REV_PARSE, `checkout ${BRANCH}`, REV_PARSE]);
+  });
+
+  it("ensureFeatureBranch: an empty post-checkout confirmation is re-observed, not a halt", async () => {
+    const git = fakeGit((argv, i) => {
+      if (i === 0) return onMain;
+      if (argv.join(" ") === `checkout ${BRANCH}`) return { ok: true };
+      return i === 2 ? emptyRead : onBranch;
+    });
+
+    const result = await ensureFeatureBranch({ feature: FEATURE, _git: git, _log: silent });
+
+    expect(result).toEqual({ ok: true, branch: BRANCH, action: "checked-out" });
+    expect(git.commands).toEqual([REV_PARSE, `checkout ${BRANCH}`, REV_PARSE, REV_PARSE]);
+  });
+
+  it("ensureFeatureBranch: three empty confirmations halt, carrying the count", async () => {
+    const git = fakeGit((argv, i) => {
+      if (i === 0) return onMain;
+      if (argv.join(" ") === `checkout ${BRANCH}`) return { ok: true };
+      return emptyRead;
+    });
+
+    const error = await ensureFeatureBranch({
+      feature: FEATURE,
+      _git: git,
+      _log: silent,
+    }).catch((e) => e);
+
+    expect(error.isHalt).toBe(true);
+    expect(error.message).toMatch(/still on "an unreadable branch"/);
+    expect(error.message).toContain(TRANSPORT_FAULT_NOTE);
+    expect(git.commands).toEqual([
+      REV_PARSE,
+      `checkout ${BRANCH}`,
+      REV_PARSE,
+      REV_PARSE,
+      REV_PARSE,
+    ]);
+  });
+
+  it("costs a fault-free run nothing: the happy-path probe counts are unchanged", async () => {
+    const ensure = scriptedGit([onMain, { ok: true }, onBranch]);
+    await ensureFeatureBranch({ feature: FEATURE, _git: ensure, _log: silent });
+    expect(ensure.commands).toEqual([REV_PARSE, `checkout ${BRANCH}`, REV_PARSE]);
+
+    const alreadyOn = scriptedGit([onBranch]);
+    await ensureFeatureBranch({ feature: FEATURE, _git: alreadyOn, _log: silent });
+    expect(alreadyOn.commands).toEqual([REV_PARSE]);
+
+    const verify = scriptedGit([onBranch]);
+    await verifyFeatureBranch({ feature: FEATURE, _git: verify, _log: silent });
+    expect(verify.commands).toEqual([REV_PARSE]);
+  });
+});
+
 describe("reviewLoop — a tree that drifted between phases halts before it reviews", () => {
   const baseParams = {
     doc: `docs/${FEATURE}/TSPEC-${FEATURE}.md`,
