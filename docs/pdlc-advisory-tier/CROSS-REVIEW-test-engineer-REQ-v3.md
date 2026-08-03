@@ -72,6 +72,41 @@ Numbering continues from v2.
 
 ## Questions
 
+Q-06…Q-09 from v2 remain open but are all TSPEC-answerable and none blocks a REQ-level acceptance
+test; I am not re-filing them. One new question, also non-blocking.
+
+| ID | Question |
+|----|---------|
+| Q-10 | BL-06 makes E-1 (re-running a flaky check) depend on an Actions **write** scope, and says that where the capability is unavailable "E-1 is out of envelope and the seam escalates". Is capability availability probed **per run** (so the same repo can have E-1 in envelope on Monday and out on Tuesday, and the envelope set-equality test must be parameterised by capability), or resolved **once at configuration time** (so the test asserts a fixed four-entry envelope)? AC-3.1 says the envelope is "declared in configuration as an explicit per-seam allow-list", which reads like the second; BL-05/BL-06's "given that capability is unavailable" reads like the first. The answer decides whether AC-3.3's enumeration test is a fixed set-equality or a capability-conditioned one. |
+
 ## Positive Observations
+
+- **Every v2 finding is closed, and F-14 in particular is closed by choosing the honest option.** The
+  revision could have closed F-14 by promising a strengthened pre-check; instead it restated the A1
+  row against what `precheckDependencies` can actually decide and added the `escalate`-when-unsettled
+  rule. That is the harder and better answer: it shrinks the claim to the evidence rather than
+  growing the scope to fit the claim.
+- **BL-02's pin is the durable fix, not just the local one.** "Pinned for re-verification at
+  default-branch commit `26c3f1c` … a later default-branch commit is a fresh check, not an inherited
+  one" makes the whole §1 "Today" table re-verifiable by anyone, mechanically, at any later date.
+  Given that the base grew 2139 → 8527 lines mid-review, this is the sentence that keeps the next
+  round's verification cheap. It is also what let me find my own error in one command.
+- **AC-3.6's ordered table is a genuine upgrade over what F-19 asked for.** I asked for a precedence
+  list; the revision supplied one *and* discovered a missing reason while writing it — row 4,
+  `post-action-verification-failed`, covers the in-envelope-action-then-gate-failed case that had no
+  reason at all in v1.2. Ordering the set turned an under-specified oracle into a total function from
+  refusal condition to reason cell, which is exactly the property a set-equality test needs.
+- **AC-9.3 now yields one oracle where it yielded two contradictory ones**, and the guard extension
+  gets a positive refusal assertion ("refused with the guard's refusal message and the file
+  survives") rather than the absence-shaped "the file still exists". That is the paired-positive
+  discipline applied without being asked twice.
+- **E-2's fix mirrors E-3's discipline, in both directions.** Requiring *both* baselines and stating
+  the precedence in *both* AC-3.3 and AC-8.4 means a reader arriving from either end gets the same
+  ordering — the failure mode where a precedence is stated once, in the section nobody reads, is
+  avoided.
+- **The document verifies cleanly at its pinned base.** Nine of nine new or changed existing-behavior
+  claims checked out line-for-line at `26c3f1c`, including the two subtle ones: that
+  `precheckDependencies` runs strictly before the triage dispatch, and that `MERGE ESCALATION:`
+  contains the `ESCALATION:` substring the one-grep claim depends on.
 
 ## Recommendation
