@@ -185,6 +185,128 @@ GitHub double.
 
 ## 3. Configuration and model-rung resolution (FSPEC-ADV-01)
 
+### 3.1 Constants
+
+```js
+// Placement: orchestrate-dev.js, immediately after MODEL_IMPLEMENTATION (dev:1621),
+// so all four rungs read as one block (AC-1.5).
+const MODEL_ADVISORY = "fable";          // BL-01 — see §3.3
+const MODEL_ADVISORY_FALLBACK = "opus";  // === MODEL_DEFAULT's literal, deliberately a separate constant
+
+export const ADVISORY_CONFIG_PATH = MERGE_CONFIG_PATH;  // ".claude/pdlc.config.json" (dev:43)
+
+export const ADVISORY_DEFAULTS = Object.freeze({
+  enabled: false,
+  attemptBudget: 3,
+  seamBudgetMinutes: 10,
+  envelope: ENVELOPE_DEFAULTS,   // §5.2
+});
+
+export const ADVISORY_SEAMS = Object.freeze(["A1", "A2", "A3", "A4", "A5"]);
+```
+
+`MODEL_ADVISORY_FALLBACK` is a **separate constant** whose literal happens to equal
+`MODEL_DEFAULT`'s. Aliasing them would make AC-1.3's "always distinguishable" claim depend on an
+accident: if a future change repoints `MODEL_DEFAULT`, an aliased fallback would move with it and the
+declared substitution would silently name a different rung.
+
+### 3.2 `parseAdvisoryConfig(text)` — pure, total, never throws
+
+Modelled on `parseImplementationConfig` (`dev:181-231`) rather than `parseMergeConfig`
+(`dev:101-151`), because that is the shipped precedent for the exact contract FSPEC C-2 asks for:
+independent per-key fallback **plus** an `invalidKeys` list the caller reports.
+
+```js
+/**
+ * @param {string|null} text  raw file contents, or null (absent/unreadable)
+ * @returns {{ config: object, sectionMalformed: boolean, invalidKeys: string[] }}
+ */
+export function parseAdvisoryConfig(text) { … }
+```
+
+| FSPEC rule | Implementation |
+|---|---|
+| C-1 — absent section / absent file / unreadable JSON ⇒ defaults, never a run failure | the three early returns of `parseImplementationConfig` (`dev:188-197`), verbatim shape |
+| C-2 — one bad key falls back alone, substitution reported | each key validated independently; the key's name is pushed to `invalidKeys` |
+| C-3 — read once per run, before the first seam can fire | `readAdvisoryConfigSafely` is called once in each `main()` (§6.1, §7.1) and the result threaded, never re-read |
+| C-4 — no agent may write the file, no agent output may change a value | the config object is frozen after parse; no code path passes it to `_writeFile`, and §5 reads only from it |
+
+**One deliberate deviation from C-2, resolving an FSPEC conflict (see the erratum in §16.4).**
+When `advisory.enabled` degrades to its `false` default, the run is a *disabled* run, and D-5/S-4/T-10-4
+require a disabled run to carry **no** advisory content on the report. The reporting half of C-2 is
+therefore suppressed exactly when the effective `enabled` is `false`:
+
+```js
+// caller, in main()
+if (advisory.config.enabled && advisory.invalidKeys.length) {
+  emit(`Advisory config: using defaults for ${advisory.invalidKeys.join(", ")}`);
+}
+```
+
+The parse itself still records every degraded key — the suppression is at the *emit*, so
+`parseAdvisoryConfig` stays pure and its `invalidKeys` contract stays uniform and unit-testable.
+
+### 3.3 The advisory alias, and why the fallback is the shipped path
+
+REQ BL-01 / FSPEC OQ-1 leave the literal to this document. Two facts bound the choice:
+
+1. Every rung the runtime resolves today is a **bare alias** — `"opus"`, `"sonnet"` (`dev:1578`,
+   `dev:1621`, `queue:69`) — passed straight through by the adapter to `RT.agent(..., { model })`
+   (`runtime-adapter.js:56-62`). The runtime, not this repo, owns the alias table.
+2. The Fable rung exists as an API model (`claude-fable-5`). **Whether the workflow runtime resolves
+   the bare alias `"fable"` is not verifiable from this repo** — the alias table is runtime-side and
+   there is no local probe for it.
+
+So: **`MODEL_ADVISORY = "fable"`**, pinned here, and the AC-1.2/AC-1.3 fallback path is treated as a
+**shipped, tested path — not an error path**. The PLAN carries a one-line manual verification step
+(dispatch one trivial advisory agent on `"fable"` in a real runtime and record which branch fired);
+the tier ships correctly either way, which is what "non-fatal by construction" means.
+
+### 3.4 `resolveAdvisoryRung` — lazy, once per run
+
+```js
+/**
+ * Resolve the advisory rung at the FIRST advisory dispatch of a run (§15.2 — lazy).
+ * @param {{ _agent, _log, _state }} deps
+ * @returns {Promise<{ model: string, fallback: boolean }>}
+ * @throws  haltError when neither rung resolves (M-3)
+ */
+export async function resolveAdvisoryRung({ _agent, _log, _state }) { … }
+```
+
+- `_state` is the per-run memo (`{ resolved: null }`). A non-null memo returns immediately — that is
+  M-4 ("decided once per run") and F-1, and it is why a run in which no seam fires resolves nothing
+  at all (T-01-7).
+- **Non-resolution is detected by classifying the rejection, not by a probe dispatch.** M-1 defines it
+  as "the runtime rejected the dispatch with a model/alias error **before the agent produced any
+  output**". The implementation therefore wraps the *real* first dispatch:
+
+```js
+const MODEL_ERROR_RE = /\b(unknown|unrecognis|unrecogniz|invalid|unsupported)\b[^\n]*\b(model|alias)\b/i;
+
+export function isModelResolutionError(err) {
+  return MODEL_ERROR_RE.test(String(err?.message ?? err ?? ""));
+}
+```
+
+`isModelResolutionError` is a **pure, exported, separately-tested predicate** — it is the single
+place M-1's definition lives, so T-01-5 (a dispatch that starts and then fails mid-flight) is a unit
+test over it rather than an integration fixture. A rejection it does not match is an ordinary
+invocation failure and goes to §4's lifecycle, never to the ladder.
+
+- On a matched rejection: emit `ADVISORY_MODEL_FALLBACK: "fable" did not resolve — substituting "opus"`,
+  set `{ model: MODEL_ADVISORY_FALLBACK, fallback: true }`, and **re-dispatch the same prompt**.
+- If the fallback dispatch is *also* rejected as a model error: `throw haltError(...)` (`dev:1755`).
+  There is no third rung (M-3), and no advisory agent has run.
+
+### 3.5 Why the resolution memo is a parameter, not module state
+
+`_state` is threaded from `main()` rather than held in a module-level `let`. The bundle inlines
+`devModule` into **both** artifacts (`build:281`, `build:288`), and jest runs every test against one
+imported module instance — a module-level memo would leak resolution across tests and across a
+queue invocation's delegated `orchestrate-dev` run. Threading it also makes M-4 assertable directly:
+a test passes one `_state` object through two seams and asserts one dispatch-classification occurred.
+
 ## 4. The advisory core — types, protocols, invocation lifecycle (FSPEC-ADV-02)
 
 ## 5. Envelope enforcement, refusal ladder, prohibitions (FSPEC-ADV-03, ADV-04)
