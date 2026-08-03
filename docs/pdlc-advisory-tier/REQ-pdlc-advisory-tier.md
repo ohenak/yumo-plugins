@@ -228,21 +228,23 @@ halt currently conflates: *diagnosing* the problem, and *authorizing* the resolu
 
 - **AC-8.1** — Given Phase PUB observes a failing check, Then an advisory agent retrieves the
   failing job's log and produces a diagnosis naming the failing step and the cause.
-- **AC-8.2** — Given the cause is within the envelope (AC-3.3), Then a minimal fix is committed
-  and pushed, CI is re-polled, and the cycle repeats up to a configured maximum of 3 attempts
-  before escalating.
-- **AC-8.3** — Given a fix is pushed after Phase DOD already passed, Then Phase DOD **re-verifies**
-  the branch rather than inheriting its earlier pass. A branch that changed after the gate has not
-  been through the gate.
+- **AC-8.2** — Given the cause is within the envelope (AC-3.3), Then a minimal fix is committed and
+  pushed, CI is re-polled, and the cycle repeats up to `advisory.attemptBudget` (AC-1.7) attempts
+  before escalating. One attempt is one fix→push→re-poll cycle; a re-poll that hits Phase PUB's own
+  completion timeout consumes an attempt rather than escalating separately.
+- **AC-8.3** — Given a fix is pushed during Phase PUB, Then the run is never reported DoD-passed on
+  bytes the DoD gate did not verify: the report's DoD status names the verified commit, and a
+  branch head beyond it is reported unverified. Phase PUB runs after Phase H, so what restores a
+  verified state — re-verification inside PUB, or a halt for the operator — is TSPEC's to choose.
 - **AC-8.4** — Given the failing check is a pre-existing failure also present on the default
   branch, Then the advisory agent identifies it as such and escalates without attempting a fix —
-  the feature did not cause it and must not silently own it.
+  the feature did not cause it and must not silently own it. Drawing that comparison needs the
+  default branch's own check history (BL-05); given that capability is unavailable, Then the seam
+  escalates with the comparison undone and attempts no fix.
 - **AC-8.5** — Given the log cannot be retrieved, Then it escalates.
-
-AC-8.4 is drawn from a recorded real occurrence: a consuming repo carried a long-standing test
-failure on its default branch, unrelated to any in-flight feature. An advisory tier that "fixed" such a
-failure inside a feature branch would attribute unrelated work to that feature and hide the real
-defect.
+- **AC-8.6** — Given no check registers within Phase PUB's existing no-checks window, Then the seam
+  does not fire, the phase's existing pass stands unchanged, and the no-checks outcome is named in
+  the advisory summary rather than being silently indistinguishable from a repo with no CI.
 
 ### REQ-ADV-09 — Advisory record
 
