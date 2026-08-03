@@ -184,7 +184,7 @@ dispatch on the advisory rung
 | Case | Behaviour |
 |---|---|
 | Tier disabled and the advisory rung does not exist in the runtime at all | No resolution is attempted; the run is unaffected. A missing alias cannot break a run with the tier off. |
-| Tier enabled but no seam fires during the run | No dispatch happens, so no resolution happens; the advisory summary reports zero invocations for all five seams and names the rung as *not exercised*. |
+| Tier enabled but no seam fires during the run | No dispatch happens, so no resolution happens; the advisory summary reports zero invocations for all five seams and names the rung as *not exercised*. This holds **whether or not either rung would have resolved**: resolution is lazy, so an unresolvable rung cannot fail a run in which nothing was ever dispatched (T-01-7). |
 | Fallback taken, then a later seam's dispatch on the fallback rung fails | Handled as an ordinary invocation failure (§4), not as a second fallback. |
 
 ### 3.4 Acceptance tests
@@ -197,6 +197,7 @@ dispatch on the advisory rung
 | T-01-4 | **Who** operator · **Given** neither rung resolves · **When** a seam fires · **Then** the run fails with a model-resolution error and no advisory agent has run. |
 | T-01-5 | **Who** operator · **Given** an advisory dispatch that starts and then fails mid-flight · **When** it fails · **Then** no fallback ladder is entered and the failure is dispositioned as an ordinary invocation failure. |
 | T-01-6 | **Who** operator · **Given** `advisory.attemptBudget` set to an out-of-range value and `advisory.seamBudgetMinutes` set validly · **When** a seam fires · **Then** the attempt budget uses its default, the seam budget uses the configured value, and the substitution is reported. |
+| T-01-7 | **Who** operator · **Given** `advisory.enabled` true and neither rung resolvable · **When** the run completes with **no** seam condition arising · **Then** the run completes normally, no model resolution was attempted, and the summary carries five zero rows — this is the run that distinguishes lazy resolution (§3.2) from eager. |
 
 ## 4. FSPEC-ADV-02 — Advisory invocation lifecycle
 
