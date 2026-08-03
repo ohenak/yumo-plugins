@@ -60,6 +60,37 @@ concern. Two new ones, both about the changed text:
 
 ## Positive Observations
 
+- **Every one of the six High findings was answered by choosing, not by hedging.** F-03 and F-06 in
+  particular could have been closed with "the TSPEC will decide"; instead V-5/A5-3 name which bound
+  excludes the rollup wait and *why*, and §15.2 was rewritten to lazy with T-01-7 added as the run
+  that observably distinguishes the two. That is the expensive way to close a finding and the right
+  one.
+- **A5-8 is a better answer than the one I asked for.** I offered two options — define revert for a
+  pushed commit, or move the push after RECORD. The revision took a third: define revert on the
+  branch's *content*, assert BR-5 on the pre-push tree, and state plainly that the fix commit stays
+  on the branch and is named in the escalation. It is honest about the residue instead of pretending
+  the tree is restorable, and T-07-6 now asserts the residue rather than the fiction.
+- **F-13's fix models something worth copying.** Splitting T-04-3 into a reachable integration
+  assertion and a unit-scoped T-04-3b, each labelled with *why* it exists, is exactly how a
+  defence-in-depth rule should be tested — and A1-2's rewrite ("may never be **honoured**", not "may
+  never be returned") fixes the vacuity at its root rather than at the test.
+- **The `no-action` disposition is a real improvement, not a bookkeeping change.** V-7 previously
+  forced "the condition disappeared" into `resolved` or `escalated`, both of which would have lied.
+  The new third value plus S-1's `invocations == resolved + escalated + no-action` identity, pinned
+  by literal values in T-08-10, makes the summary arithmetic falsifiable. M-01 is the one place the
+  change did not reach.
+- **The new set-equality tests are the right ones.** T-03-8 pins the permitted-action and exclusion
+  sets, and its clause about capability-absent actions still being members (refused per A5-2) closes
+  the loophole where a capability-parameterised comparison would silently shrink the set. D-6's
+  rewrite from "no file this feature introduces" to set-equality against a baseline run is the same
+  move, and it catches the third artifact nobody has thought of yet.
+- **NFR-5's split is intellectually honest.** Saying that "no new credentials" has *no* observable at
+  a seam, and routing it to TSPEC as a design constraint, is better than inventing a test that would
+  pass vacuously. Most specs would have pointed it at T-03-6 and moved on.
+- **§10.2 H-2 now states the cost it imposes rather than hiding it** — an operator with merges enabled
+  should expect a deferral on runs where a seam fired, and the document says so in the same breath as
+  the trade it is making. That sentence is what turns F-01 from a gap into a decision.
+
 ## Recommendation
 
 ## Verdict
