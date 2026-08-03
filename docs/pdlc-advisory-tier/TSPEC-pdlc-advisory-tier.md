@@ -202,11 +202,17 @@ const MODEL_ADVISORY_FALLBACK = "opus";  // === MODEL_DEFAULT's literal, deliber
 
 export const ADVISORY_CONFIG_PATH = MERGE_CONFIG_PATH;  // ".claude/pdlc.config.json" (dev:43)
 
+// The permitted-action set — the whole envelope, shipped. A seam's own
+// `permittedActions` is a SUBSET of this (§4.3, §8.3); this frozen literal is the
+// operand T-03-8 transcribes for its set-equality assertion. Frozen exactly as
+// ADVISORY_REFUSAL_REASONS (§5.3) is; the members are FSPEC E-1…E-4 verbatim.
+export const ENVELOPE_DEFAULTS = Object.freeze(["E-1", "E-2", "E-3", "E-4"]);
+
 export const ADVISORY_DEFAULTS = Object.freeze({
   enabled: false,
   attemptBudget: 3,
   seamBudgetMinutes: 10,
-  envelope: ENVELOPE_DEFAULTS,   // §5.2
+  envelope: ENVELOPE_DEFAULTS,   // the four-member literal above
 });
 
 export const ADVISORY_SEAMS = Object.freeze(["A1", "A2", "A3", "A4", "A5"]);
@@ -545,10 +551,22 @@ export const ADVISORY_REFUSAL_REASONS = Object.freeze([
   "budget-exhausted",
 ]);
 
+// The exclusion set — the second operand of T-03-8's set-equality, frozen and
+// exported exactly as the reasons above are, so the test transcribes a literal
+// rather than scraping §5.1's prose table. The members are FSPEC X-a…X-e verbatim;
+// the ARRAY ORDER is §5.1's evaluation order (X-a test artifacts, X-e guard paths,
+// X-d declared scope, X-b DoD criteria, X-c/membership), so a single frozen constant
+// pins both "which exclusions exist" (set identity) and "in what order they fire".
+export const ADVISORY_EXCLUSIONS = Object.freeze(["X-a", "X-e", "X-d", "X-b", "X-c"]);
+
 /** @param {Object<string,boolean>} signals  the conditions true AT TERMINATION
  *  @returns {string} the first matching reason, in catalogue order */
 export function refusalReasonFor(signals)
 ```
+
+`classifyEnvelope`'s §5.1 evaluation loop iterates `ADVISORY_EXCLUSIONS` in order
+(after the P-1…P-4 prohibition check), so the table in §5.1 and this constant cannot
+drift: the table documents what the constant drives.
 
 Frozen exactly as `MERGE_MODES` / `MERGE_STATUSES` / `LIST_FAILURES` are (`dev:54-55`, `dev:1600`) —
 the shipped convention for a closed set, and what makes T-03-5's set-equality assertion a one-liner
@@ -1240,7 +1258,7 @@ Jest, ESM, `node --experimental-vm-modules` — `cd pdlc/workflows && npm test`.
 | **Driver unit** | `runAdvisorySeam` against a fake `SeamOps` and fake IO | `SeamOps` fake + `_agent`/`_appendFile`/`_now` fakes |
 | **Seam unit** | each real `SeamOps` against fake `_git` / `_ghRun` / `_readFile` | transport fakes |
 | **Phase integration** | the wiring at `dev:8281`, `dev:8294`, `dev:6371`, `queue:912` — that the halt/skip still happens | `_runAdvisorySeam` fake returning a scripted disposition |
-| **Set-equality / catalogue** | `ADVISORY_REFUSAL_REASONS`, `ENVELOPE_DEFAULTS`, the exclusion set, `ADVISORY_SEAMS`, `MERGE_ESCALATIONS` unchanged | none — compare exported frozen objects |
+| **Set-equality / catalogue** | `ADVISORY_REFUSAL_REASONS`, `ENVELOPE_DEFAULTS`, `ADVISORY_EXCLUSIONS`, `ADVISORY_SEAMS`, `MERGE_ESCALATIONS` unchanged | none — compare exported frozen objects |
 
 The proportion is deliberate: §2.4's dependency graph puts every decision in a pure leaf and leaves
 exactly one impure component. `decideMerge` (`dev:835`) is the precedent — Phase MERGE's entire
@@ -1309,7 +1327,7 @@ invariant that quantifies over inputs rather than enumerating them:
 |---|---|---|---|
 | ADV-01 | REQ-ADV-01 | §3 | `MODEL_ADVISORY`, `MODEL_ADVISORY_FALLBACK`, `ADVISORY_DEFAULTS`, `parseAdvisoryConfig`, `readAdvisoryConfigSafely`, `resolveAdvisoryRung`, `isModelResolutionError` |
 | ADV-02 | REQ-ADV-02 | §4 | `AdvisoryVerdict`, `AdvisoryDisposition`, `parseAdvisoryVerdict`, `SeamOps`, `runAdvisorySeam`, `budgetExceeded` |
-| ADV-03 | REQ-ADV-03 | §5 | `classifyEnvelope`, `ENVELOPE_DEFAULTS`, `touchesTestArtifact`, `touchesDodCriterion`, `guardVerdict` (reused), `ADVISORY_REFUSAL_REASONS`, `refusalReasonFor` |
+| ADV-03 | REQ-ADV-03 | §5 | `classifyEnvelope`, `ENVELOPE_DEFAULTS`, `ADVISORY_EXCLUSIONS`, `touchesTestArtifact`, `touchesDodCriterion`, `guardVerdict` (reused), `ADVISORY_REFUSAL_REASONS`, `refusalReasonFor` |
 | ADV-03 | REQ-ADV-04 | §5.4, §5.5 | structural non-calls + `SeamOps.verifyGate` |
 | ADV-04 | REQ-ADV-05 | §6 | `triagePrompt`, `parseTriageVerdict`, `honourA1Verdict`, A1/A2 `SeamOps`, `commitPaths` (reused) |
 | ADV-05 | REQ-ADV-06 | §7.2 | A3 `SeamOps`, `parseA3Classification`, `governingClass` |
