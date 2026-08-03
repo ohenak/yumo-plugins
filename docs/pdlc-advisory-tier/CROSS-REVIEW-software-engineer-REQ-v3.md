@@ -86,3 +86,26 @@ same clause and downgraded to a note.
   `ADVISORY-*` is a one-token change to a mechanism that already behaves as described.
 
 ## Recommendation
+
+**Approved with minor changes**
+
+Both v2 Mediums are closed and both v2 Lows are closed. Every existing-behaviour claim in the
+changed text checks out against the pinned base `26c3f1c` — including the two the revision newly
+leans on: the pre-check's one-sidedness (`orchestrate-queue.js:630-648`, call site `:890-899`) and
+the guard's deny-and-survive behaviour (`guard-harvest-before-delete.sh:52-60`). Nothing unchanged
+regressed; the three cumulative High-severity concerns from v1 and the two from v2 all remain
+closed.
+
+The two remaining findings are Low and textual, and I would fold them into the FSPEC-authoring
+handoff rather than spend a fourth REQ round on them:
+
+1. **F-20** — say in AC-4.5's A1 row that A1 has no falsifiable post-check, so the TE does not try
+   to write AC-4.6's failing test against a state that cannot be reached.
+2. **F-21** — one sentence making a no-proposal advisory `escalate` land on an existing AC-3.6 row
+   (or a ninth member if a distinct token is wanted), so the promised set-equality assertion is
+   over a genuinely total set.
+
+No upstream defects found this round. The `REQ-MERGE-03` citation and the master-plan row are
+unchanged from v2, where both were verified; the pinned commit resolves and is on the default
+branch; the stale `docs/_queue/QUEUE.md` row for `pdlc-merge-phase` remains correctly recorded in
+BL-02 as an operator note rather than folded into this REQ.
