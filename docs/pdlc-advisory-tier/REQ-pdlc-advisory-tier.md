@@ -15,7 +15,12 @@ depends-on: [pdlc-merge-phase]
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.3 | 2026-08-03 |
+| pdlc | draft | Claude | 1.4 | 2026-08-03 |
+
+> **v1.4 (erratum).** Targeted corrections only: §1 A2 row (gate is new, not existing);
+> AC-1.7 / NFR-4 (seam budget excludes check-rollup wait); AC-4.5 / AC-5.1 / AC-5.5 (A1 has no
+> post-action gate); AC-8.2 (attempt = act→re-poll, covering E-1); AC-9.1 (A1/A2 record lifecycle);
+> AC-9.3 (delete precedes Phase MERGE). Nothing else changed.
 
 > **Scope in one line.** A third model rung — the Fable 5 advisory tier (Opus as declared
 > fallback) — that takes the five
@@ -268,7 +273,11 @@ halt currently conflates: *diagnosing* the problem, and *authorizing* the resolu
 
 - **AC-9.1** — Given any advisory invocation, Then a record is appended to
   `docs/{feature}/ADVISORY-{feature}.md` carrying timestamp, seam, diagnosis, confidence,
-  envelope determination, action taken or escalated, and evidence citations.
+  envelope determination, action taken or escalated, and evidence citations. For the queue-side
+  seams A1/A2 the record is written under the **candidate feature's** directory, so an adjudication
+  of `hold` or `escalate` — after which no pipeline runs for that feature — leaves the record in
+  place, to be harvested by the next run of that feature that does reach Phase PUB (AC-9.3). It is
+  never orphaned and never deleted without harvest.
 - **AC-9.2** — Given an advisory action is taken without a record being written, Then this is a
   defect and is asserted against by test. Given the record write itself fails, Then the action is
   not taken — or is reverted, per AC-3.2 — and the seam takes the AC-3.6 refusal path with reason
@@ -276,8 +285,10 @@ halt currently conflates: *diagnosing* the problem, and *authorizing* the resolu
 - **AC-9.3** — Given the advisory record, Then it is a harvested process artifact — distilled into
   LEARNINGS and deleted — but **not at Phase H**: the distil-and-delete happens after the last
   phase that can append to it, which is Phase PUB (seam A5; no seam fires at Phase MERGE, merging
-  being out of scope). Observably, `ADVISORY-{feature}.md` is absent at end of run and its content
-  is in LEARNINGS. The LEARNINGS-precedes-delete protection that today covers `CROSS-REVIEW-*` and
+  being out of scope). Because Phase MERGE runs after Phase PUB and merges the PR raised there, the
+  distil-and-delete is committed and pushed to the feature branch **before** Phase MERGE evaluates
+  the PR — so the merged branch carries the LEARNINGS content and not the advisory record.
+  Observably, `ADVISORY-{feature}.md` is absent at end of run and its content is in LEARNINGS. The LEARNINGS-precedes-delete protection that today covers `CROSS-REVIEW-*` and
   `CODE_REVIEW-*` extends to `ADVISORY-*`: a delete attempted with no sibling
   `LEARNINGS-{feature}.md` is refused with the guard's refusal message and the file survives.
 - **AC-9.4** — Given the final pipeline report, Then it carries an advisory summary: count of
