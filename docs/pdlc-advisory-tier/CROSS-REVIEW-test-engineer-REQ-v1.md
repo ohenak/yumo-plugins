@@ -45,6 +45,33 @@ Every existing-behavior claim in the REQ, checked against HEAD (not against the 
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | AC-8.3 says a post-DOD push makes Phase DOD **re-verify**. Does re-verification restart the 3-iteration `DOD_MAX_ITERATIONS` budget (`pdlc/workflows/orchestrate-dev.js:24`) or continue the earlier count? The answer decides whether an A5 fix loop can, in the worst case, run 3 CI attempts × 3 DoD iterations, and it is the precondition for any test of AC-8.3. |
+| Q-02 | AC-5.3 permits applying a re-grounding proposal to a REQ. Who commits that edit, on which branch, and does the amended REQ then re-enter triage in the *same* invocation or the next one (AC-5.4 says at most one candidate is picked per invocation)? The observable difference matters for the queue's serial guarantee. |
+| Q-03 | AC-3.4 excludes "anything under REQ-MERGE-03's self-modification paths" — verified as `pdlc/workflows/` and `pdlc/skills/` (`docs/pdlc-merge-phase/REQ-pdlc-merge-phase.md:106`). In *this* repo essentially every feature's diff is under those paths, so the advisory tier is excluded from acting on almost every self-hosted run. Is that intended (the tier is for consuming repos), and if so should the REQ say so, since otherwise the A4/A5 seams have no reachable in-envelope case here and their acceptance tests would only ever exercise the escalation branch? |
+| Q-04 | AC-2.3 treats a malformed verdict as an escalation. Does a malformed verdict consume an AC-2.4 attempt, or escalate immediately? A parser test needs the answer to assert attempt counts. |
+| Q-05 | AC-7.4 reverts the resolution when the branch's tests fail. Which command defines "the branch's tests", and what is the observable post-revert state (rebase aborted, branch at pre-rebase SHA, `ADVISORY-*` and `ESCALATIONS.md` both written)? |
+
 ## Positive Observations
 
+- The seam table in §1 is the strongest part of the document for testing purposes: five named seams, each with a stated *current* behavior. Every one of those current behaviors checked out against HEAD (see Verification Log) — that is unusually good grounding for a REQ, and it means the "before" half of every regression test is already writable.
+- AC-4.5 ("the advisory tier fixes causes; gates decide outcomes") is the right invariant and is stated as an invariant rather than a procedure. Once F-06 gives it a per-seam gate table, it becomes a small, mechanical test matrix.
+- AC-8.4 is grounded in a recorded real occurrence and names the failure mode precisely (attributing a pre-existing default-branch failure to a feature). That is exactly the kind of edge case that is usually discovered in production.
+- AC-1.3's requirement that a fallback run be *distinguishable* from an intended-rung run, and AC-9.4's requirement that the report name the model actually used, together give the fallback path a positive oracle rather than an absence-only one — the pattern F-02 asks for elsewhere in the document.
+- AC-3.5's insistence that test-assertion editing be "structurally impossible rather than discouraged", and NFR-1's "a prompt instruction is not a control", place enforcement in the workflow script where it can be tested. This is the correct altitude for a REQ to take a position on.
+- The deferral table (D-ADV-01…05) binds each deferral to a named successor or explicitly to none, so nothing is silently dropped.
+
 ## Recommendation
+
+**Needs revision**
+
+Four High findings must be closed before this REQ can carry a test suite:
+
+1. **F-01** — give seams A1 and A2 an observable discriminator, or merge them into one seam with one behavior. As written, AC-5.2/AC-5.3 have no testable precondition.
+2. **F-02** — give every prohibition in REQ-ADV-04 (and the AC-3.2 refusal path) a positive outcome: exact end state, named refusal reason, and the record written. AC-4.6/NFR-2 currently mandate tests that can only be absence-only oracles.
+3. **F-03** — give each envelope entry in AC-3.3/AC-3.4 a decidable rule ("branch-created", "introduced by the feature branch", "declared scope", "flaky"). These four terms are the whole control surface; undefined, they cannot be enforced in code as NFR-1 requires.
+4. **F-04** — restate AC-1.1 as an observable property rather than the literal `claude-fable-5`, which BL-01 already flags as unverified. As written the AC forces its own test into an implementation echo.
+
+The six Medium findings (F-05…F-10) are each a missing value or a missing enumeration rather than a design change, and should be closable in the same revision.
+
