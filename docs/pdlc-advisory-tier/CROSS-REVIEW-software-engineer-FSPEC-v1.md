@@ -121,3 +121,8 @@ Three things I deliberately did **not** file as findings of this document, becau
 upstream and are emitted as errata to the REQ's author instead: the REQ §1 seam table's claim that
 A2's re-grounding obligation already lives in the triage prompt (contradicted by `queue:662`); the
 vacuity of AC-4.5's A1 gate row; and AC-1.7's `seamBudgetMinutes` default, which is the root of F-03.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 6, "medium": 4, "low": 3}
