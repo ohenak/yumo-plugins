@@ -573,7 +573,7 @@ function gateFiles() {
     // Phase P's self-parse gate (PROPOSAL §3.3) refuses a PLAN whose task table
     // the mechanical parser cannot read, so the seeded PLAN carries one. No new
     // `##` heading: the pacing wrapper scores this document's sections.
-    [`${GATE_DIR}/PLAN-${GATE_FEATURE}.md`]: `# PLAN — ${GATE_FEATURE}\n\n| Task ID | Description | Batch | Dependencies |\n|---|---|---|---|\n| T1 | first | 1 | - |\n`,
+    [`${GATE_DIR}/PLAN-${GATE_FEATURE}.md`]: `# PLAN — ${GATE_FEATURE}\n\n| Task ID | Description | Batch | Dependencies |\n|---|---|---|---|\n| T1 | first | 1 | - |\n\n| Task | Files |\n|---|---|\n| T1 | \`src/one.js\` |\n`,
     [`${GATE_DIR}/PROPERTIES-${GATE_FEATURE}.md`]: `# PROPERTIES — ${GATE_FEATURE}\n`,
   };
 }

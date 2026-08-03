@@ -1,0 +1,789 @@
+/**
+ * Slice B, second half (PROPOSAL §3.3, step 4) — wave-based Phase I with
+ * script-owned gates.
+ *
+ * Three mechanisms are under test here, and each is anchored on a literal an
+ * operator would actually read:
+ *   1. Phase P's manifest half of the self-parse gate (M-5) — a PLAN with no
+ *      ownership manifest, or one whose manifest disagrees with its task table,
+ *      is rejected AT PHASE P.
+ *   2. Phase I's wave mode (M-5) — same tree, no worktree isolation, ownership
+ *      in the prompt, no agent commits.
+ *   3. The script-owned gate and the script-owned commits (M-6) — the
+ *      orchestrator runs the suite and commits verified work; an agent's
+ *      self-report is load-bearing only when the transport is absent.
+ *
+ * Oracle rules in force (PROPOSAL §3.5): literal anchors, no implementation
+ * echoes, every absence assertion paired with a positive, set-equality for
+ * enumerations.
+ */
+
+import main, {
+  GIT_LOCK_RETRIES,
+  GIT_LOCK_RETRY_DELAY_MS,
+  IMPLEMENTATION_DEFAULTS,
+  evaluateWaveDispatch,
+  parseImplementationConfig,
+} from "../orchestrate-dev.js";
+
+const FEATURE = "test-feat";
+const REQ_PATH = `docs/${FEATURE}/REQ-${FEATURE}.md`;
+const PLAN_PATH = `docs/${FEATURE}/PLAN-${FEATURE}.md`;
+const CONFIG_PATH = ".claude/pdlc.config.json";
+const BRANCH = `feat-${FEATURE}`;
+
+// ─── Fixtures ─────────────────────────────────────────────────────────────────
+
+/**
+ * A PLAN the mechanical parser reads AND whose file-ownership manifest satisfies
+ * `validatePlanContract`. T1 and T2 have no dependencies (one topological layer)
+ * and own disjoint files, so `computeWaves` packs them into ONE wave of two.
+ */
+// Deliberately heading-free, like every other main()-driven PLAN fixture in this
+// suite: the authoring wrapper's "unmeasurable target" escape (§5.6.2) is what
+// lets these fixtures reach a later phase at all, and a `##` heading would take
+// the fixture off that path and halt Phase P for a reason unrelated to the
+// property under test.
+const PLAN_WITH_MANIFEST = [
+  "| Task ID | Description | Batch | Dependencies |",
+  "|---|---|---|---|",
+  "| T1 | First task | 1 | - |",
+  "| T2 | Second task | 1 | - |",
+  "",
+  "| Task | Files |",
+  "|---|---|",
+  "| T1 | `src/one.js` |",
+  "| T2 | `src/two.js` |",
+].join("\n");
+
+/** The same task table with no manifest at all — the legacy/worktree shape. */
+const PLAN_NO_MANIFEST = [
+  "| Task ID | Description | Batch | Dependencies |",
+  "|---|---|---|---|",
+  "| T1 | First task | 1 | - |",
+].join("\n");
+
+/** A manifest that names a task the task table does not carry. */
+const PLAN_STALE_MANIFEST_ROW = [
+  "| Task ID | Description | Batch | Dependencies |",
+  "|---|---|---|---|",
+  "| T1 | First task | 1 | - |",
+  "",
+  "| Task | Files |",
+  "|---|---|",
+  "| T1 | `src/one.js` |",
+  "| T9 | `src/nine.js` |",
+].join("\n");
+
+function makeAgent(record) {
+  return async (skill, prompt, opts) => {
+    record.push({ skill, prompt: String(prompt), opts });
+    if (["se-review", "te-review", "pm-review"].includes(skill)) {
+      return `Review.\nVERDICT: Approved\n{"high": 0, "medium": 0, "low": 0}\n`;
+    }
+    if (["pm-author", "se-author", "te-author"].includes(skill)) {
+      if (String(prompt).includes("DECISIONS_WARRANTED")) {
+        return "Finalized.\nDECISIONS_WARRANTED: false";
+      }
+      if (String(prompt).includes("Return a JSON object")) {
+        return JSON.stringify({
+          tasks: [{ id: "T1", description: "x", dependencies: [], planBatch: 1 }],
+        });
+      }
+      return "Document created.";
+    }
+    if (skill === "se-implement") return "Implemented. Tests: 3 passed, 0 failed.";
+    if (skill === "harvest-learnings") return "Harvest complete.";
+    if (skill === "dod-verify") return "Clean.\nDOD_STATUS: passed";
+    if (skill === "ship-pr") {
+      if (String(prompt).includes("Raise a pull request")) {
+        return "PR opened.\nPR_URL: https://github.com/a/b/pull/1";
+      }
+      return "Rebased.\nREBASE_STATUS: clean";
+    }
+    return "Success.";
+  };
+}
+
+/**
+ * A `_git` double: answers the branch guard truthfully, records every argv, and
+ * lets a test script per-call outcomes by argv shape.
+ */
+function makeGit(calls, { fail } = {}) {
+  return async (argv) => {
+    calls.push(argv);
+    const joined = argv.join(" ");
+    if (joined === "rev-parse --abbrev-ref HEAD") {
+      return { ok: true, stdout: `${BRANCH}\n`, stderr: "" };
+    }
+    if (argv[0] === "diff") {
+      // Everything the orchestrator staged shows up as staged, so a commit follows.
+      return { ok: true, stdout: `${argv.slice(4).join("\n")}\n`, stderr: "" };
+    }
+    const scripted = fail && fail(argv, calls);
+    if (scripted) return scripted;
+    return { ok: true, stdout: "", stderr: "" };
+  };
+}
+
+const CONFIG_WITH_TEST_COMMAND = JSON.stringify({
+  implementation: { testCommand: "npm test" },
+});
+
+function makeArgs({
+  plan = PLAN_WITH_MANIFEST,
+  config = null,
+  record = [],
+  git,
+  runCommand,
+  sleep,
+  logs,
+  phases,
+  extra = {},
+} = {}) {
+  return {
+    reqPath: REQ_PATH,
+    _agent: makeAgent(record),
+    _parallel: (p) => Promise.all(p),
+    _checkFile: () => ({ ok: true }),
+    _checkCi: async () => "passed",
+    _phase: phases ? (label) => phases.push(String(label)) : () => {},
+    _pipeline: async (l, fn) => fn(),
+    _log: logs ? (m) => logs.push(String(m)) : () => {},
+    _mergeWorktree: async () => ({ ok: true }),
+    _readFile: (path) => {
+      const p = String(path);
+      if (p === CONFIG_PATH) return config;
+      if (p.includes("/PLAN-")) return plan;
+      return null;
+    },
+    ...(git ? { _git: git } : {}),
+    ...(runCommand ? { _runCommand: runCommand } : {}),
+    ...(sleep ? { _sleep: sleep } : {}),
+    ...extra,
+  };
+}
+
+const phaseRecord = (result, id) => result.phases.find((p) => p.phase === id) || {};
+const phaseDetail = (result, id) => phaseRecord(result, id).detail || "";
+
+// ─── parseImplementationConfig ────────────────────────────────────────────────
+
+describe("parseImplementationConfig — the `implementation` config section", () => {
+  it("an absent file yields the defaults and is not a malformed section", () => {
+    const r = parseImplementationConfig(null);
+    expect(r.config).toEqual({
+      testCommand: null,
+      postWaveCommand: null,
+      postWavePathspecs: [],
+    });
+    expect(r.sectionMalformed).toBe(false);
+    expect(r.invalidKeys).toEqual([]);
+  });
+
+  it("unparseable JSON yields the defaults and is not a malformed section", () => {
+    const r = parseImplementationConfig("{ not json");
+    expect(r.config.testCommand).toBeNull();
+    expect(r.sectionMalformed).toBe(false);
+  });
+
+  it("a non-object `implementation` value is a malformed section", () => {
+    const r = parseImplementationConfig(JSON.stringify({ implementation: "npm test" }));
+    expect(r.sectionMalformed).toBe(true);
+    expect(r.config).toEqual(IMPLEMENTATION_DEFAULTS);
+  });
+
+  it("reads all three keys when every one is well formed", () => {
+    const r = parseImplementationConfig(
+      JSON.stringify({
+        implementation: {
+          testCommand: "npm test",
+          postWaveCommand: "node build.mjs",
+          postWavePathspecs: ["dist/"],
+        },
+      })
+    );
+    expect(r.config).toEqual({
+      testCommand: "npm test",
+      postWaveCommand: "node build.mjs",
+      postWavePathspecs: ["dist/"],
+    });
+    expect(r.invalidKeys).toEqual([]);
+  });
+
+  it("each key degrades INDEPENDENTLY, and the degraded key is named", () => {
+    const r = parseImplementationConfig(
+      JSON.stringify({
+        implementation: {
+          testCommand: 17,
+          postWaveCommand: "node build.mjs",
+          postWavePathspecs: "dist/",
+        },
+      })
+    );
+    // The one good key survives (the positive half) …
+    expect(r.config.postWaveCommand).toBe("node build.mjs");
+    // … and only the bad ones fall back, each reported by name.
+    expect(r.config.testCommand).toBeNull();
+    expect(r.config.postWavePathspecs).toEqual([]);
+    expect(new Set(r.invalidKeys)).toEqual(new Set(["testCommand", "postWavePathspecs"]));
+  });
+
+  it("an array with a non-string member degrades the whole pathspec list", () => {
+    const r = parseImplementationConfig(
+      JSON.stringify({ implementation: { postWavePathspecs: ["dist/", 3] } })
+    );
+    expect(r.config.postWavePathspecs).toEqual([]);
+    expect(r.invalidKeys).toEqual(["postWavePathspecs"]);
+  });
+
+  it("a file with a `merge` section but no `implementation` section is not malformed", () => {
+    const r = parseImplementationConfig(JSON.stringify({ merge: { mergeMode: "on" } }));
+    expect(r.sectionMalformed).toBe(false);
+    expect(r.config).toEqual(IMPLEMENTATION_DEFAULTS);
+  });
+});
+
+// ─── evaluateWaveDispatch ─────────────────────────────────────────────────────
+
+describe("evaluateWaveDispatch — rules 1 and 3 only (M-6)", () => {
+  const wave = [{ id: "T1" }, { id: "T2" }];
+
+  it("an empty result halts, naming the wave (1-indexed)", () => {
+    expect(() => evaluateWaveDispatch(["", "ok"], 2, wave)).toThrow(
+      "Error: Wave 3 agent returned empty result — treating as failure"
+    );
+  });
+
+  it("a null result halts the same way", () => {
+    expect(() => evaluateWaveDispatch([null], 0, wave)).toThrow(
+      "Error: Wave 1 agent returned empty result"
+    );
+  });
+
+  it("a non-zero exit halts, naming the wave and the task", () => {
+    expect(() => evaluateWaveDispatch(["fine", "NON-ZERO EXIT 1"], 0, wave)).toThrow(
+      "Error: Wave 1 task T2 failed — non-zero exit detected"
+    );
+  });
+
+  it("rule 2 is deliberately absent: a self-reported test failure does NOT halt", () => {
+    // Absence, paired with the positive that the same input DOES halt the
+    // legacy batch gate — so this asserts a difference, not merely a silence.
+    expect(() =>
+      evaluateWaveDispatch(["Tests: 2 failed, 3 passed"], 0, wave)
+    ).not.toThrow();
+  });
+});
+
+// ─── Phase P: the manifest half of the self-parse gate ────────────────────────
+
+describe("Phase P — the file-ownership manifest gate (PROPOSAL §3.3, M-5)", () => {
+  it("halts at Phase P when the PLAN carries no manifest", async () => {
+    const record = [];
+    const result = await main(makeArgs({ plan: PLAN_NO_MANIFEST, record }));
+
+    expect(result.outcome).toBe("halted");
+    expect(result.haltReason).toContain("carries no file-ownership manifest");
+    expect(result.haltReason).toContain(PLAN_PATH);
+    expect(result.haltReason).toContain(
+      "Rejecting at Phase P rather than discovering it at Phase I."
+    );
+    // The phase is recorded failed, and it is P.
+    expect(phaseRecord(result, "P").status).toBe("❌");
+
+    // The POSITIVE half: the gate fires AFTER the phase actually ran, not
+    // instead of it — the PLAN reviewers were dispatched.
+    const planReviews = record.filter(
+      (c) => c.skill.endsWith("-review") && c.prompt.includes("PLAN-")
+    );
+    expect(planReviews.length).toBeGreaterThan(0);
+
+    // And Phase I never started.
+    expect(record.some((c) => c.skill === "se-implement")).toBe(false);
+  });
+
+  it("halts at Phase P when the manifest and the task table disagree, quoting the problem", async () => {
+    const result = await main(makeArgs({ plan: PLAN_STALE_MANIFEST_ROW }));
+
+    expect(result.outcome).toBe("halted");
+    expect(result.haltReason).toContain(
+      "File-ownership manifest row T9 names a task id that is not in the PLAN task table"
+    );
+    expect(result.haltReason).toContain(
+      "Rejecting at Phase P rather than discovering it at Phase I."
+    );
+  });
+
+  it("a valid manifest passes, and Phase P's detail carries tasks, batches AND waves", async () => {
+    const result = await main(makeArgs({}));
+    expect(result.outcome).toBe("success");
+    // 2 tasks, no dependencies → one batch, one wave (disjoint ownership).
+    expect(phaseDetail(result, "P")).toContain(
+      "PLAN parses to 2 tasks in 1 batches, 1 waves"
+    );
+  });
+});
+
+// ─── Phase I: wave mode ───────────────────────────────────────────────────────
+
+describe("Phase I wave mode — same tree, ownership-scoped, no agent commits", () => {
+  it("dispatches the wave WITHOUT worktree isolation and ON sonnet", async () => {
+    const record = [];
+    const result = await main(makeArgs({ record }));
+    expect(result.outcome).toBe("success");
+
+    const impl = record.filter(
+      (c) => c.skill === "se-implement" && c.prompt.includes("Implement task ")
+    );
+    expect(impl.map((c) => c.prompt.match(/Implement task (\S+):/)[1])).toEqual([
+      "T1",
+      "T2",
+    ]);
+    for (const call of impl) {
+      // Absence — no isolation key at all — paired with the positive that the
+      // model IS pinned, so an opts object that vanished entirely reds.
+      expect(call.opts.isolation).toBeUndefined();
+      expect(call.opts.model).toBe("sonnet");
+    }
+  });
+
+  it("the wave prompt carries the ownership list and the no-commit instruction", async () => {
+    const record = [];
+    await main(makeArgs({ record }));
+    const t1 = record.find(
+      (c) => c.skill === "se-implement" && c.prompt.includes("Implement task T1:")
+    );
+
+    expect(t1.prompt).toContain("You own EXACTLY these files: src/one.js.");
+    expect(t1.prompt).toContain("Do not create or modify any other file.");
+    expect(t1.prompt).toContain(
+      "Do NOT run git add or git commit — the orchestrator verifies your work and commits it."
+    );
+    expect(t1.prompt).toContain(
+      "Run only your task's targeted tests — do not run the full suite; the orchestrator runs it."
+    );
+    // branchPinClause is kept.
+    expect(t1.prompt).toContain(`All commits for this task must land on branch ${BRANCH}.`);
+    // T1's prompt names T1's files and not T2's (absence + positive).
+    expect(t1.prompt).not.toContain("src/two.js");
+  });
+
+  it("never merges a worktree in wave mode — but DOES in legacy mode", async () => {
+    // Negative arm.
+    const waveMerges = [];
+    const waveResult = await main(
+      makeArgs({
+        extra: {
+          _mergeWorktree: async (...a) => {
+            waveMerges.push(a);
+            return { ok: true };
+          },
+        },
+      })
+    );
+    expect(waveResult.outcome).toBe("success");
+    expect(waveMerges).toEqual([]);
+
+    // Paired POSITIVE arm, same file, same double: a PLAN whose manifest is gone
+    // by the time Phase I reads it (Phase P skipped on a recorded approval) takes
+    // the worktree exception path, and the merge-back runs.
+    const legacyMerges = [];
+    let inPhaseI = false;
+    const legacyResult = await main(
+      makeArgs({
+        extra: {
+          _phase: (label) => {
+            if (String(label).startsWith("Phase I")) inPhaseI = true;
+          },
+          _readFile: (path) => {
+            const p = String(path);
+            if (p === CONFIG_PATH) return null;
+            if (p.includes("/PLAN-")) {
+              return inPhaseI ? PLAN_NO_MANIFEST : PLAN_WITH_MANIFEST;
+            }
+            return null;
+          },
+          _mergeWorktree: async (...a) => {
+            legacyMerges.push(a);
+            return { ok: true };
+          },
+        },
+      })
+    );
+    expect(legacyResult.outcome).toBe("success");
+    expect(legacyMerges.length).toBeGreaterThan(0);
+    expect(phaseDetail(legacyResult, "I")).toBe("All batches complete");
+  });
+
+  it("legacy mode still dispatches with worktree isolation and applies the batch gate", async () => {
+    const record = [];
+    let inPhaseI = false;
+    const result = await main(
+      makeArgs({
+        record,
+        extra: {
+          _phase: (label) => {
+            if (String(label).startsWith("Phase I")) inPhaseI = true;
+          },
+          _readFile: (path) => {
+            const p = String(path);
+            if (p === CONFIG_PATH) return null;
+            if (p.includes("/PLAN-")) {
+              return inPhaseI ? PLAN_NO_MANIFEST : PLAN_WITH_MANIFEST;
+            }
+            return null;
+          },
+        },
+      })
+    );
+    expect(result.outcome).toBe("success");
+    const impl = record.filter((c) => c.skill === "se-implement" && c.opts);
+    expect(impl.some((c) => c.opts.isolation === "worktree")).toBe(true);
+  });
+});
+
+// ─── Phase I: the script-owned gate (M-6) ─────────────────────────────────────
+
+describe("Phase I — the script-owned test gate", () => {
+  it("runs the configured command and commits each task's owned files on green", async () => {
+    const gitCalls = [];
+    const ran = [];
+    const result = await main(
+      makeArgs({
+        config: CONFIG_WITH_TEST_COMMAND,
+        git: makeGit(gitCalls),
+        runCommand: async (cmd) => {
+          ran.push(cmd);
+          return { ok: true, output: "Tests: 40 passed\n" };
+        },
+      })
+    );
+
+    expect(result.outcome).toBe("success");
+    expect(ran).toEqual(["npm test"]);
+    expect(phaseDetail(result, "I")).toBe(
+      "All 1 waves complete (wave mode, script-owned gate)"
+    );
+
+    // Commits: pathspec-scoped adds, plain commits, one per task, in wave order.
+    const adds = gitCalls.filter((a) => a[0] === "add");
+    expect(adds).toEqual([
+      ["add", "--", "src/one.js"],
+      ["add", "--", "src/two.js"],
+    ]);
+    const commits = gitCalls.filter((a) => a[0] === "commit");
+    expect(commits).toEqual([
+      ["commit", "-m", "feat(test-feat): T1 — First task"],
+      ["commit", "-m", "feat(test-feat): T2 — Second task"],
+    ]);
+    // Never `-a`, anywhere.
+    expect(gitCalls.some((a) => a.includes("-a"))).toBe(false);
+  });
+
+  it("halts on a red gate, naming the wave, the command and the output tail — and commits nothing", async () => {
+    const gitCalls = [];
+    const result = await main(
+      makeArgs({
+        config: CONFIG_WITH_TEST_COMMAND,
+        git: makeGit(gitCalls),
+        runCommand: async () => ({
+          ok: false,
+          output: "FAIL src/one.test.js\nTests: 1 failed, 39 passed\n",
+        }),
+      })
+    );
+
+    expect(result.outcome).toBe("halted");
+    expect(result.haltReason).toContain("Error: Wave 1 test gate failed");
+    expect(result.haltReason).toContain("npm test");
+    // The tail is carried verbatim (the positive half of "no commits").
+    expect(result.haltReason).toContain("Tests: 1 failed, 39 passed");
+
+    expect(gitCalls.filter((a) => a[0] === "commit")).toEqual([]);
+    expect(gitCalls.filter((a) => a[0] === "add")).toEqual([]);
+  });
+
+  it("falls back to the legacy self-report gate when testCommand is absent, and says so once", async () => {
+    const logs = [];
+    const result = await main(
+      makeArgs({ config: null, logs, runCommand: async () => ({ ok: true, output: "" }) })
+    );
+    expect(result.outcome).toBe("success");
+
+    const notices = logs.filter((m) =>
+      m.includes("Notice: the script-owned test gate is unavailable")
+    );
+    expect(notices.length).toBe(1);
+    expect(notices[0]).toContain(`implementation.testCommand in ${CONFIG_PATH}`);
+    expect(phaseDetail(result, "I")).toBe(
+      "All 1 waves complete (wave mode, self-report gate)"
+    );
+  });
+
+  it("names the transport when THAT is the missing half", async () => {
+    const logs = [];
+    // testCommand IS configured; no `_runCommand` is injected.
+    await main(makeArgs({ config: CONFIG_WITH_TEST_COMMAND, logs }));
+    const notice = logs.find((m) =>
+      m.includes("Notice: the script-owned test gate is unavailable")
+    );
+    expect(notice).toContain("the _runCommand transport");
+    expect(notice).not.toContain("implementation.testCommand");
+  });
+
+  it("the legacy fallback gate still halts on a self-reported test failure", async () => {
+    const record = [];
+    const result = await main(
+      makeArgs({
+        config: null,
+        record,
+        extra: {
+          _agent: async (skill, prompt, opts) => {
+            record.push({ skill, prompt: String(prompt), opts });
+            if (skill === "se-implement") return "Tests: 2 failed, 1 passed";
+            return makeAgent([])(skill, prompt, opts);
+          },
+        },
+      })
+    );
+    expect(result.outcome).toBe("halted");
+    expect(result.haltReason).toContain("Tests: 2 failed");
+  });
+});
+
+// ─── Phase I: postWaveCommand and postWavePathspecs ───────────────────────────
+
+describe("Phase I — the post-wave command and its build-output commit", () => {
+  const CONFIG_WITH_POST_WAVE = JSON.stringify({
+    implementation: {
+      testCommand: "npm test",
+      postWaveCommand: "node build.mjs",
+      postWavePathspecs: ["dist/"],
+    },
+  });
+
+  it("runs the post-wave command AFTER the gate and commits the pathspecs", async () => {
+    const gitCalls = [];
+    const ran = [];
+    const result = await main(
+      makeArgs({
+        config: CONFIG_WITH_POST_WAVE,
+        git: makeGit(gitCalls),
+        runCommand: async (cmd) => {
+          ran.push(cmd);
+          return { ok: true, output: "ok" };
+        },
+      })
+    );
+    expect(result.outcome).toBe("success");
+    expect(ran).toEqual(["npm test", "node build.mjs"]);
+
+    const commits = gitCalls.filter((a) => a[0] === "commit").map((a) => a[2]);
+    expect(commits).toEqual([
+      "feat(test-feat): T1 — First task",
+      "feat(test-feat): T2 — Second task",
+      "chore(test-feat): wave 1 build outputs",
+    ]);
+    expect(gitCalls).toContainEqual(["add", "--", "dist/"]);
+  });
+
+  it("a failing post-wave command halts the wave", async () => {
+    const gitCalls = [];
+    const result = await main(
+      makeArgs({
+        config: CONFIG_WITH_POST_WAVE,
+        git: makeGit(gitCalls),
+        runCommand: async (cmd) =>
+          cmd === "npm test"
+            ? { ok: true, output: "green" }
+            : { ok: false, output: "SyntaxError: unexpected token" },
+      })
+    );
+    expect(result.outcome).toBe("halted");
+    expect(result.haltReason).toContain("Error: Wave 1 post-wave command failed");
+    expect(result.haltReason).toContain("node build.mjs");
+    expect(result.haltReason).toContain("SyntaxError: unexpected token");
+    expect(gitCalls.filter((a) => a[0] === "commit")).toEqual([]);
+  });
+
+  it("skips the build-output commit when the pathspecs stage nothing", async () => {
+    const gitCalls = [];
+    const logs = [];
+    const git = async (argv) => {
+      gitCalls.push(argv);
+      if (argv.join(" ") === "rev-parse --abbrev-ref HEAD") {
+        return { ok: true, stdout: `${BRANCH}\n`, stderr: "" };
+      }
+      if (argv[0] === "diff") {
+        // `dist/` staged nothing; the task files did.
+        const staged = argv.includes("dist/") ? "" : argv.slice(4).join("\n");
+        return { ok: true, stdout: `${staged}\n`, stderr: "" };
+      }
+      return { ok: true, stdout: "", stderr: "" };
+    };
+    const result = await main(
+      makeArgs({
+        config: CONFIG_WITH_POST_WAVE,
+        git,
+        logs,
+        runCommand: async () => ({ ok: true, output: "ok" }),
+      })
+    );
+    expect(result.outcome).toBe("success");
+
+    const commits = gitCalls.filter((a) => a[0] === "commit").map((a) => a[2]);
+    // Absence of the build-output commit, paired with the positive that the two
+    // task commits DID happen through the same code path.
+    expect(commits).toEqual([
+      "feat(test-feat): T1 — First task",
+      "feat(test-feat): T2 — Second task",
+    ]);
+    expect(
+      logs.some((m) => m === "Wave 1 build outputs: nothing staged — no changes to commit")
+    ).toBe(true);
+  });
+});
+
+// ─── Phase I: git failures ────────────────────────────────────────────────────
+
+describe("Phase I — index.lock retry and non-transient git failures", () => {
+  it("retries a lock-blocked commit and succeeds, sleeping the fixed delay each time", async () => {
+    const gitCalls = [];
+    const slept = [];
+    let blocked = 0;
+    const git = makeGit(gitCalls, {
+      fail: (argv) => {
+        if (argv[0] === "commit" && blocked < 2) {
+          blocked += 1;
+          return {
+            ok: false,
+            stdout: "",
+            stderr: "fatal: Unable to create '/repo/.git/index.lock': File exists.",
+          };
+        }
+        return null;
+      },
+    });
+
+    const result = await main(
+      makeArgs({
+        config: CONFIG_WITH_TEST_COMMAND,
+        git,
+        runCommand: async () => ({ ok: true, output: "green" }),
+        sleep: async (ms) => {
+          slept.push(ms);
+        },
+      })
+    );
+
+    expect(result.outcome).toBe("success");
+    expect(slept).toEqual([GIT_LOCK_RETRY_DELAY_MS, GIT_LOCK_RETRY_DELAY_MS]);
+    expect(GIT_LOCK_RETRY_DELAY_MS).toBe(5000);
+    // T1's commit was attempted three times, T2's once.
+    expect(gitCalls.filter((a) => a[0] === "commit").length).toBe(4);
+  });
+
+  it("gives up after the fixed number of retries and halts", async () => {
+    const gitCalls = [];
+    const slept = [];
+    const git = makeGit(gitCalls, {
+      fail: (argv) =>
+        argv[0] === "commit"
+          ? { ok: false, stdout: "", stderr: "Unable to create index.lock: File exists." }
+          : null,
+    });
+    const result = await main(
+      makeArgs({
+        config: CONFIG_WITH_TEST_COMMAND,
+        git,
+        runCommand: async () => ({ ok: true, output: "green" }),
+        sleep: async (ms) => slept.push(ms),
+      })
+    );
+    expect(result.outcome).toBe("halted");
+    expect(slept.length).toBe(GIT_LOCK_RETRIES);
+    expect(gitCalls.filter((a) => a[0] === "commit").length).toBe(GIT_LOCK_RETRIES + 1);
+  });
+
+  it("a non-lock git failure halts at once, and says the verified work is recoverable", async () => {
+    const gitCalls = [];
+    const slept = [];
+    const git = makeGit(gitCalls, {
+      fail: (argv) =>
+        argv[0] === "commit"
+          ? { ok: false, stdout: "", stderr: "error: pre-commit hook refused the commit" }
+          : null,
+    });
+    const result = await main(
+      makeArgs({
+        config: CONFIG_WITH_TEST_COMMAND,
+        git,
+        runCommand: async () => ({ ok: true, output: "green" }),
+        sleep: async (ms) => slept.push(ms),
+      })
+    );
+
+    expect(result.outcome).toBe("halted");
+    expect(result.haltReason).toContain("Wave 1 task T1 — `git commit` failed");
+    expect(result.haltReason).toContain("pre-commit hook refused the commit");
+    expect(result.haltReason).toContain(
+      "The wave's work is verified (the orchestrator's own test gate passed) and is present in the working tree, but UNCOMMITTED."
+    );
+    // Not retried (absence), and the failure was reached (positive).
+    expect(slept).toEqual([]);
+    expect(gitCalls.filter((a) => a[0] === "commit").length).toBe(1);
+  });
+
+  it("a failing `git add` halts with the same recoverable-work remedy", async () => {
+    const gitCalls = [];
+    const git = makeGit(gitCalls, {
+      fail: (argv) =>
+        argv[0] === "add"
+          ? { ok: false, stdout: "", stderr: "fatal: pathspec 'src/one.js' did not match" }
+          : null,
+    });
+    const result = await main(
+      makeArgs({
+        config: CONFIG_WITH_TEST_COMMAND,
+        git,
+        runCommand: async () => ({ ok: true, output: "green" }),
+      })
+    );
+    expect(result.outcome).toBe("halted");
+    expect(result.haltReason).toContain("`git add -- src/one.js` failed");
+    expect(result.haltReason).toContain("but UNCOMMITTED");
+    expect(gitCalls.filter((a) => a[0] === "commit")).toEqual([]);
+  });
+
+  it("a task whose add stages nothing is skipped with a notice, not committed", async () => {
+    const gitCalls = [];
+    const logs = [];
+    const git = async (argv) => {
+      gitCalls.push(argv);
+      if (argv.join(" ") === "rev-parse --abbrev-ref HEAD") {
+        return { ok: true, stdout: `${BRANCH}\n`, stderr: "" };
+      }
+      if (argv[0] === "diff") {
+        const staged = argv.includes("src/one.js") ? "" : argv.slice(4).join("\n");
+        return { ok: true, stdout: `${staged}\n`, stderr: "" };
+      }
+      return { ok: true, stdout: "", stderr: "" };
+    };
+    const result = await main(
+      makeArgs({
+        config: CONFIG_WITH_TEST_COMMAND,
+        git,
+        logs,
+        runCommand: async () => ({ ok: true, output: "green" }),
+      })
+    );
+    expect(result.outcome).toBe("success");
+    expect(gitCalls.filter((a) => a[0] === "commit").map((a) => a[2])).toEqual([
+      "feat(test-feat): T2 — Second task",
+    ]);
+    expect(
+      logs.some((m) => m === "Wave 1 task T1: nothing staged — no changes to commit")
+    ).toBe(true);
+  });
+});

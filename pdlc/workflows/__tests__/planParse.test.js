@@ -265,6 +265,14 @@ const PARSEABLE_TASK_TABLE = [
   "| G-1 | lay the foundation | 1 | - |",
   "| G-2 | build on it | 2 | G-1 |",
   "| G-3 | and again | 3 | G-2 |",
+  "",
+  // Phase P gates on the file-ownership manifest too (PROPOSAL §3.3, M-5), so a
+  // fixture that must PASS the gate carries one that agrees with the task table.
+  "| Task | Files |",
+  "|---|---|",
+  "| G-1 | `src/one.js` |",
+  "| G-2 | `src/two.js` |",
+  "| G-3 | `src/three.js` |",
 ].join("\n");
 
 const UNPARSEABLE_TASK_TABLE = [
@@ -417,7 +425,12 @@ describe("PLAN-PARSE-03: Phase P refuses a PLAN whose task table the parser cann
     const p = phaseRow(result, "P");
     expect(p).toBeDefined();
     expect(p.status).toBe("✅");
-    expect(p.detail).toBe("Approved (1 iterations); PLAN parses to 3 tasks in 3 batches");
+    // The wave count joined this detail with PROPOSAL §3.3 step 4: Phase P now
+    // also derives the same-tree waves Phase I will execute, so the gate reports
+    // all three derivations it made — tasks, batches, waves.
+    expect(p.detail).toBe(
+      "Approved (1 iterations); PLAN parses to 3 tasks in 3 batches, 3 waves"
+    );
 
     // Positive: the run went past Phase P into Phase PR — the PROPERTIES creator
     // was dispatched, and the run's only complaint is that creator's empty reply

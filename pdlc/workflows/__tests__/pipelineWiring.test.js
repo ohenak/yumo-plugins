@@ -86,6 +86,12 @@ const PARSEABLE_PLAN = [
   "| Task ID | Description | Batch | Dependencies |",
   "|---|---|---|---|",
   "| TASK-01 | First task | 1 | - |",
+  "",
+  // Phase P also gates on the file-ownership manifest (PROPOSAL §3.3, M-5), and
+  // Phase I derives its same-tree waves from it.
+  "| Task | Files |",
+  "|---|---|",
+  "| TASK-01 | `src/one.js` |",
 ].join("\n");
 
 const readPlanOnly = (path) => (String(path).includes("/PLAN-") ? PARSEABLE_PLAN : null);

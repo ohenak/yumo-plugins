@@ -160,6 +160,86 @@ function parseMergeConfig(text) {
   return { config, sectionMalformed: false };
 }
 
+// ─── PROPOSAL §3.3 / M-6 — the `implementation` config section ────────────────
+//
+// Phase I's script-owned gate is the one place the pipeline stops believing an
+// agent's self-reported green (M-6). It needs to know WHICH command constitutes
+// "the suite" in this repo, which is per-repo knowledge the script cannot guess —
+// so `testCommand` has NO default. Its absence is not an error: it degrades the
+// wave gate to the legacy self-report scan, announced once per run.
+const IMPLEMENTATION_DEFAULTS = Object.freeze({
+  testCommand: null,
+  postWaveCommand: null,
+  postWavePathspecs: Object.freeze([]),
+});
+
+/**
+ * Parse the repo's `implementation` config section out of the SAME
+ * `.claude/pdlc.config.json` `parseMergeConfig` reads. Pure and total: never
+ * throws, never reads anything, and every key falls back INDEPENDENTLY — the
+ * merge section's contract, verbatim, for the same reason (one bad key must not
+ * silently retune the other two).
+ *
+ * The one addition over `parseMergeConfig`'s return shape is `invalidKeys`: a
+ * merge key that degrades is a policy value the operator can see in the decision
+ * ladder, whereas an `implementation` key that degrades changes whether the gate
+ * runs at all. The caller emits a notice naming each degraded key.
+ *
+ * @param {string|null} text - raw file contents, or null (file absent/unreadable)
+ * @returns {{ config: object, sectionMalformed: boolean, invalidKeys: string[] }}
+ */
+function parseImplementationConfig(text) {
+  const degraded = (sectionMalformed) => ({
+    config: IMPLEMENTATION_DEFAULTS,
+    sectionMalformed,
+    invalidKeys: [],
+  });
+
+  if (text == null) return degraded(false);
+
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return degraded(false);
+  }
+
+  if (!isPlainObject(parsed) || !("implementation" in parsed)) return degraded(false);
+
+  const section = parsed.implementation;
+  if (!isPlainObject(section)) return degraded(true);
+
+  const invalidKeys = [];
+
+  const nonEmptyString = (key) => {
+    if (!(key in section)) return IMPLEMENTATION_DEFAULTS[key];
+    const v = section[key];
+    if (typeof v === "string" && v.trim() !== "") return v;
+    invalidKeys.push(key);
+    return IMPLEMENTATION_DEFAULTS[key];
+  };
+
+  let postWavePathspecs = IMPLEMENTATION_DEFAULTS.postWavePathspecs;
+  if ("postWavePathspecs" in section) {
+    const v = section.postWavePathspecs;
+    if (Array.isArray(v) && v.every((p) => typeof p === "string" && p.trim() !== "")) {
+      postWavePathspecs = v;
+    } else {
+      invalidKeys.push("postWavePathspecs");
+    }
+  }
+
+  return {
+    config: {
+      testCommand: nonEmptyString("testCommand"),
+      postWaveCommand: nonEmptyString("postWaveCommand"),
+      postWavePathspecs,
+    },
+    sectionMalformed: false,
+    invalidKeys,
+  };
+}
+
 function isPlainObject(v) {
   return (
     typeof v === "object" &&
@@ -2040,6 +2120,246 @@ function parsePlanDepsCell(cell) {
         d !== "–" &&
         d.toLowerCase() !== "none"
     );
+}
+
+// ─── PROPOSAL §3.3 (M-5): the file-ownership manifest as a parsed contract ─────
+
+/**
+ * The closed set of header cells that name a manifest's OWNING TASK column, and
+ * the closed set that names its FILES column. Matched on the LOWERCASED, TRIMMED
+ * cell, in full — never as a substring, for exactly the reason `parsePlanTasks`
+ * documents: a substring test lets a risk register or a "Writers" table qualify,
+ * and a qualifying non-manifest table poisons the contract check downstream.
+ * Extending either set is the one sanctioned way to admit a new spelling.
+ */
+const PLAN_OWNER_HEADER_CELLS = new Set([
+  "task",
+  "task id",
+  "task-id",
+  "task_id",
+  "owning task",
+  "id",
+]);
+const PLAN_FILES_HEADER_CELLS = new Set([
+  "files created or appended",
+  "files",
+  "owned files",
+  "files owned",
+  "file ownership",
+  "files created/appended",
+]);
+
+/** Strip surrounding markdown emphasis / code ticks from a table cell value. */
+function stripCellEmphasis(cell) {
+  return String(cell == null ? "" : cell)
+    .trim()
+    .replace(/^[*_`~]+/, "")
+    .replace(/[*_`~]+$/, "")
+    .trim();
+}
+
+/**
+ * Is a bare (un-backticked) cell value plausibly a single path?
+ *
+ * The manifest's convention is backticked paths, but PLAN authors sometimes drop
+ * the ticks for a lone path. Accepting the bare cell is useful; accepting prose
+ * is not — a cell reading `*(none)*` or `to be decided later` must contribute
+ * nothing rather than an imaginary file that would then collide with nothing and
+ * silently widen a wave. So: no whitespace, path-ish characters only, and not one
+ * of the "nothing here" markers.
+ */
+function isPlausiblePath(value) {
+  if (!value) return false;
+  if (/\s/.test(value)) return false;
+  const lowered = value.toLowerCase();
+  if (
+    lowered === "-" ||
+    lowered === "—" ||
+    lowered === "–" ||
+    lowered === "none" ||
+    lowered === "n/a" ||
+    lowered === "tbd"
+  ) {
+    return false;
+  }
+  return /^[A-Za-z0-9._\-/*+@]+$/.test(value);
+}
+
+/**
+ * Parse a PLAN's file-ownership manifest table(s) into `{ taskId, files }` rows.
+ *
+ * Grammar, deliberately the same shape as `parsePlanTasks`:
+ * - The document is segmented into contiguous BLOCKS of pipe rows (one markdown
+ *   table each); a non-pipe line terminates the block.
+ * - A block qualifies only if its header row carries one cell that is EXACTLY a
+ *   member of `PLAN_OWNER_HEADER_CELLS` and another that is EXACTLY a member of
+ *   `PLAN_FILES_HEADER_CELLS`. A batch/wave/phase column may be present and is
+ *   ignored — waves are DERIVED from ownership and dependencies, never read off
+ *   the PLAN's own batch labels.
+ * - Every qualifying block contributes its rows, so a PLAN that writes one
+ *   manifest per batch parses as well as one that writes a single table.
+ *
+ * Cell reading: the task cell is stripped of markdown emphasis (`**A1**` → `A1`);
+ * the files cell yields every backtick-quoted span, verbatim (a trailing `/`
+ * marks a directory and is KEPT — the collision rule needs it). A files cell with
+ * no backticked span contributes the whole cell as one path only when that cell
+ * is plausibly a path (see `isPlausiblePath`), and otherwise contributes nothing.
+ * Paths are de-duplicated per task; the same task id in several rows unions.
+ *
+ * @param {string | null | undefined} markdown - Raw PLAN.md contents
+ * @returns {{ ownership: Array<{ taskId: string, files: string[] }> } | null}
+ */
+function parsePlanOwnership(markdown) {
+  if (markdown == null || typeof markdown !== "string") return null;
+
+  const blocks = [];
+  let block = null;
+  for (const line of markdown.split("\n")) {
+    const trimmed = line.trim();
+    if (trimmed.startsWith("|")) {
+      if (!block) {
+        block = [];
+        blocks.push(block);
+      }
+      block.push(trimmed);
+    } else {
+      block = null;
+    }
+  }
+  if (blocks.length === 0) return null;
+
+  let sawQualifyingTable = false;
+  const order = [];
+  const byTask = new Map();
+
+  for (const rows of blocks) {
+    const cols = splitPipeRow(rows[0]).map((c) => c.toLowerCase());
+    const taskIdx = cols.findIndex((c) => PLAN_OWNER_HEADER_CELLS.has(c));
+    const filesIdx = cols.findIndex(
+      (c, i) => i !== taskIdx && PLAN_FILES_HEADER_CELLS.has(c)
+    );
+    if (taskIdx < 0 || filesIdx < 0) continue;
+    sawQualifyingTable = true;
+
+    for (let i = 1; i < rows.length; i++) {
+      const cells = splitPipeRow(rows[i]);
+      // Skip the markdown separator row (|---|---|).
+      if (cells.every((c) => /^:?-{2,}:?$/.test(c) || c === "")) continue;
+
+      const taskId = stripCellEmphasis(cells[taskIdx]);
+      if (!taskId) continue;
+
+      const raw = (cells[filesIdx] || "").trim();
+      const found = [];
+      const ticked = raw.match(/`[^`]+`/g);
+      if (ticked && ticked.length > 0) {
+        for (const span of ticked) {
+          const path = span.slice(1, -1).trim();
+          if (path) found.push(path);
+        }
+      } else {
+        const bare = stripCellEmphasis(raw);
+        if (isPlausiblePath(bare)) found.push(bare);
+      }
+
+      if (!byTask.has(taskId)) {
+        byTask.set(taskId, []);
+        order.push(taskId);
+      }
+      const files = byTask.get(taskId);
+      for (const path of found) {
+        if (!files.includes(path)) files.push(path);
+      }
+    }
+  }
+
+  if (!sawQualifyingTable) return null;
+  return { ownership: order.map((taskId) => ({ taskId, files: byTask.get(taskId) })) };
+}
+
+/**
+ * Check a parsed task table against a parsed file-ownership manifest.
+ *
+ * Exactly two problem classes, and deliberately no third:
+ *   (a) a task in the task table with no manifest row — the wave deriver would
+ *       have nothing to separate it by;
+ *   (b) a manifest row whose task id is not in the task table — a stale row that
+ *       claims ownership no task will ever exercise.
+ *
+ * File OVERLAP between rows is NOT a problem. Overlap is the normal case in a
+ * real PLAN (the merge-phase PLAN has ten multiply-written files); waves are what
+ * separate the writers, and rejecting overlap here would reject correct PLANs.
+ *
+ * Pure: no IO, no clock, no ambient state.
+ *
+ * @param {Array<{id: string}>} tasks - as returned by `parsePlanTasks`
+ * @param {Array<{taskId: string}>} ownership - as returned by `parsePlanOwnership`
+ * @returns {{ ok: true } | { ok: false, problems: string[] }}
+ */
+function validatePlanContract(tasks, ownership) {
+  const taskList = Array.isArray(tasks) ? tasks : [];
+  const ownershipList = Array.isArray(ownership) ? ownership : [];
+  const owned = new Set(ownershipList.map((o) => o.taskId));
+  const known = new Set(taskList.map((t) => t.id));
+
+  const problems = [];
+  for (const t of taskList) {
+    if (!owned.has(t.id)) {
+      problems.push(
+        `Task ${t.id} is in the PLAN task table but has no file-ownership manifest row`
+      );
+    }
+  }
+  for (const o of ownershipList) {
+    if (!known.has(o.taskId)) {
+      problems.push(
+        `File-ownership manifest row ${o.taskId} names a task id that is not in the PLAN task table`
+      );
+    }
+  }
+
+  return problems.length === 0 ? { ok: true } : { ok: false, problems };
+}
+
+/**
+ * Do two owned paths collide?
+ *
+ * Equal paths collide. A DIRECTORY entry (one written with a trailing `/`)
+ * collides with everything beneath it: `a/b/` collides with `a/b/c.js` but not
+ * with the sibling `a/bc.js`, because the trailing slash is part of the compared
+ * prefix.
+ */
+function pathsCollide(a, b) {
+  if (a === b) return true;
+  if (a.endsWith("/") && b.startsWith(a)) return true;
+  if (b.endsWith("/") && a.startsWith(b)) return true;
+  return false;
+}
+
+/**
+ * A one-line, human-readable summary of the PLAN contract state — offered for the
+ * Phase P gate's detail string so the gate itself stays a two-liner. Pure.
+ *
+ * @param {Array} tasks
+ * @param {Array|null} ownership
+ * @param {{ok: boolean, problems?: string[]}|null} validation
+ * @param {Array<Array>|null} waves
+ * @returns {string}
+ */
+function planContractGateDetail(tasks, ownership, validation, waves) {
+  const taskCount = Array.isArray(tasks) ? tasks.length : 0;
+  if (ownership == null) {
+    return `${taskCount} tasks, no file-ownership manifest (worktree exception path)`;
+  }
+  if (validation && validation.ok === false) {
+    const problems = validation.problems || [];
+    return (
+      `${taskCount} tasks, ${ownership.length} manifest rows, ` +
+      `${problems.length} contract problem(s): ${problems.join("; ")}`
+    );
+  }
+  const waveCount = Array.isArray(waves) ? waves.length : 0;
+  return `${taskCount} tasks, ${ownership.length} manifest rows, ${waveCount} waves`;
 }
 
 // ─── TSPEC-PARSE-01: parseVerdict ─────────────────────────────────────────────
@@ -4441,6 +4761,18 @@ async function checkPostmortem({ phase, feature, _readFile }) {
 const NO_PROBE = null;
 
 /**
+ * The absent command runner — `_runCommand`'s shipped module default, spelled the
+ * same way and for the same reason as `NO_PROBE` above.
+ *
+ * `_runCommand(command) => Promise<{ ok: boolean, output: string }>` runs one
+ * command string at the repo root. It is the transport M-6 needs: the thing that
+ * lets the ORCHESTRATOR observe the suite rather than read an agent's claim about
+ * it. The adapter wires it (`rtRunCommand`); a unit test that injects none gets
+ * `null`, and Phase I's gate falls back to the legacy self-report scan and says so.
+ */
+const NO_RUN_COMMAND = null;
+
+/**
  * `_probeDoc(path, docType)` — one document's state, without its bytes:
  * `{ok, exists, empty, hash, artifactClass, complete, missing, T, S,
  *   firstUnwritten, anchors}`, semantically identical to reading the document and
@@ -5172,6 +5504,39 @@ function implementPrompt(task, featureName) {
   );
 }
 
+/**
+ * The WAVE dispatch prompt (PROPOSAL §3.3, M-5/M-6).
+ *
+ * Three things differ from `implementPrompt`, and each is load-bearing:
+ *   1. **Ownership.** The wave's members run in ONE shared tree, so the manifest's
+ *      file list is the only thing keeping them off each other's edits. It is
+ *      stated as an exact set, not as guidance.
+ *   2. **Targeted tests only.** M-6: the orchestrator runs the suite between
+ *      waves. An agent that also runs it pays for it twice and — measured on the
+ *      manual run — is the dispatch that stalls behind its own backgrounded test
+ *      run.
+ *   3. **No commits.** The orchestrator verifies, then commits. This is what made
+ *      two agent deaths cost nothing on the manual run: the work was already in
+ *      the tree, verified, and committable by whichever agent survived.
+ */
+function waveImplementPrompt(task, featureName) {
+  const owned = Array.isArray(task.files) ? task.files : [];
+  const ownedList = owned.length > 0 ? owned.join(", ") : "(none listed)";
+  return (
+    `Implement task ${task.id}: ${task.description}\n` +
+    `Feature: ${featureName}\n` +
+    `TSPEC: docs/${featureName}/TSPEC-${featureName}.md\n` +
+    `PROPERTIES: docs/${featureName}/PROPERTIES-${featureName}.md\n` +
+    `Dependencies completed: ${task.dependencies.join(", ") || "none"}\n` +
+    `Follow TDD: write the failing test first, then the minimum implementation.\n` +
+    `Run only your task's targeted tests — do not run the full suite; the orchestrator runs it.\n` +
+    `You own EXACTLY these files: ${ownedList}. Do not create or modify any other file.\n` +
+    `Do NOT run git add or git commit — the orchestrator verifies your work and commits it.\n` +
+    `Report a short summary of what you changed.\n` +
+    branchPinClause(featureName)
+  );
+}
+
 function propertiesTestPrompt(featureName) {
   return (
     `Implement PROPERTIES tests for feature ${featureName}.\n` +
@@ -5761,6 +6126,49 @@ function evaluateBatchGate(results, batchIndex, batch) {
 }
 
 /**
+ * The subset of `evaluateBatchGate` that survives M-6: rules 1 and 3 ONLY.
+ *
+ * Rule 2 — the `Tests: N failed` scan of an agent's own prose — is deliberately
+ * absent. In wave mode the orchestrator runs the suite itself, so an agent's
+ * self-report is no longer load-bearing evidence about the tree; a wave member
+ * that MENTIONS a failing test it then fixed must not halt the pipeline. What
+ * still halts here is evidence about the DISPATCH rather than about the tests:
+ * an agent that returned nothing (rule 1 — the runtime killed it) and one that
+ * reports a non-zero exit (rule 3 — its own tooling refused).
+ *
+ * @param {Array<string|null>} results
+ * @param {number} waveIndex - zero-based
+ * @param {Array<{id: string}>} wave
+ * @throws {Error} halt error naming the wave and the task
+ */
+function evaluateWaveDispatch(results, waveIndex, wave) {
+  const waveNum = waveIndex + 1;
+  for (let i = 0; i < results.length; i++) {
+    const result = results[i];
+    const task = wave[i] || { id: "(unknown)" };
+
+    if (result == null || (typeof result === "string" && result.trim() === "")) {
+      throw haltError(
+        `Error: Wave ${waveNum} agent returned empty result — treating as failure`
+      );
+    }
+
+    if (String(result).toLowerCase().includes("non-zero exit")) {
+      throw haltError(
+        `Error: Wave ${waveNum} task ${task.id} failed — non-zero exit detected`
+      );
+    }
+  }
+}
+
+/** The last `n` lines of a command's output, for a halt message. */
+function outputTail(output, n = 30) {
+  const text = String(output == null ? "" : output).replace(/\s+$/, "");
+  if (text === "") return "(no output)";
+  return text.split("\n").slice(-n).join("\n");
+}
+
+/**
  * Evaluates whether a single-agent phase passed its tests.
  * @param {string|null} agentResult - The agent result string
  * @param {string} phaseName - Phase name for error messages (e.g. "PT")
@@ -5806,8 +6214,31 @@ function evaluateSingleAgentGate(agentResult, phaseName) {
  * @returns {Array<Array<{id: string, dependencies: string[], planBatch: number}>>}
  */
 function computeTopologicalBatches(tasks) {
-  const completed = new Set();
   const batches = [];
+  for (const ready of topologicalReadySets(tasks)) {
+    // Split into sub-batches of at most 5
+    for (let i = 0; i < ready.length; i += 5) {
+      batches.push(ready.slice(i, i + 5));
+    }
+  }
+  return batches;
+}
+
+/**
+ * The topological layers of the task DAG, in document order, BEFORE any size cap
+ * and before any ownership partitioning.
+ *
+ * Lifted out of `computeTopologicalBatches` so `computeWaves` shares one graph
+ * traversal rather than a hand-copied second one — the cycle halt, the batch-label
+ * warning and the document-order sort must be identical in both, and the only way
+ * to guarantee that is for there to be one of each.
+ *
+ * @param {Array<{id: string, dependencies: string[], planBatch: number}>} tasks
+ * @returns {Array<Array<object>>} one array per topological layer
+ */
+function topologicalReadySets(tasks) {
+  const completed = new Set();
+  const layers = [];
   let maxCompletedBatch = -1;
 
   while (completed.size < tasks.length) {
@@ -5841,10 +6272,7 @@ function computeTopologicalBatches(tasks) {
         tasks.findIndex((t) => t.id === b.id)
     );
 
-    // Split into sub-batches of at most 5
-    for (let i = 0; i < ready.length; i += 5) {
-      batches.push(ready.slice(i, i + 5));
-    }
+    layers.push(ready);
 
     for (const t of ready) {
       completed.add(t.id);
@@ -5854,7 +6282,72 @@ function computeTopologicalBatches(tasks) {
     }
   }
 
-  return batches;
+  return layers;
+}
+
+/**
+ * Derive implementation WAVES: topological order ∩ ownership disjointness
+ * (PROPOSAL §3.3, M-5).
+ *
+ * The manual pdlc-merge-phase run executed 12 waves in ONE tree with zero merge
+ * conflicts, because no two tasks in a wave touched the same file. This function
+ * makes that protocol mechanical: within each topological layer, tasks are walked
+ * in document order and packed greedily into maximal groups whose members' owned
+ * file sets are pairwise disjoint; a task whose files collide with the group being
+ * built opens the next group. The existing ≤5 size cap is then applied INSIDE each
+ * group, so a wave is never both larger than five and never internally colliding.
+ *
+ * Every returned task is a shallow copy carrying its owned `files`. A task with no
+ * manifest row gets `files: null` — that is the worktree exception path, and it is
+ * only reachable when the manifest is absent or the contract check was skipped.
+ *
+ * When `ownership` is null the result is exactly `computeTopologicalBatches`'
+ * shape with `files: null` on every task, so callers that predate the manifest
+ * keep their behaviour unchanged.
+ *
+ * @param {Array<{id: string, dependencies: string[], planBatch: number}>} tasks
+ * @param {Array<{taskId: string, files: string[]}> | null} ownership
+ * @returns {Array<Array<object>>} waves, each task annotated with `files`
+ */
+function computeWaves(tasks, ownership) {
+  if (ownership == null) {
+    return computeTopologicalBatches(tasks).map((batch) =>
+      batch.map((t) => ({ ...t, files: null }))
+    );
+  }
+
+  const filesById = new Map();
+  for (const row of ownership) filesById.set(row.taskId, row.files || []);
+
+  const waves = [];
+  for (const ready of topologicalReadySets(tasks)) {
+    const groups = [];
+    let group = null;
+    let groupFiles = [];
+
+    for (const t of ready) {
+      const files = filesById.has(t.id) ? filesById.get(t.id) : null;
+      const owned = files || [];
+      const collides =
+        group !== null &&
+        owned.some((f) => groupFiles.some((g) => pathsCollide(f, g)));
+
+      if (group === null || collides) {
+        group = [];
+        groupFiles = [];
+        groups.push(group);
+      }
+      group.push({ ...t, files });
+      for (const f of owned) groupFiles.push(f);
+    }
+
+    // The ≤5 cap applies within each disjoint group.
+    for (const g of groups) {
+      for (let i = 0; i < g.length; i += 5) waves.push(g.slice(i, i + 5));
+    }
+  }
+
+  return waves;
 }
 
 // ─── Runtime API stubs (replaced by real runtime in production) ───────────────
@@ -6029,6 +6522,115 @@ async function defaultGit(argv, { execFn } = {}) {
   }
 }
 
+// ─── PROPOSAL §3.3 — Phase I's script-owned commits ───────────────────────────
+
+/** How many extra attempts a git call gets when `.git/index.lock` is held. */
+const GIT_LOCK_RETRIES = 5;
+/** The wait between those attempts, in ms. */
+const GIT_LOCK_RETRY_DELAY_MS = 5000;
+
+/**
+ * `.git/index.lock` is the one git failure that is expected, transient and
+ * NOT a reason to halt: a wave's agents run in one shared tree, and the tail of
+ * an agent's own tooling (a formatter, a watcher, a `git status` from a
+ * language server) can still hold the index for a second or two after the
+ * dispatch returned. Every other git failure is a real one and reaches the
+ * caller unretried — retrying a rejected commit hook five times just delays the
+ * halt by 25 seconds.
+ *
+ * @param {string[]} argv
+ * @param {{ _git: function, _sleep: function, emit: function, label: string }} seams
+ * @returns {Promise<{ ok: boolean, stdout: string, stderr: string }>} the LAST attempt's result
+ */
+async function gitWithLockRetry(argv, { _git, _sleep, emit, label }) {
+  let result = null;
+  for (let attempt = 0; attempt <= GIT_LOCK_RETRIES; attempt++) {
+    result = await _git(argv);
+    if (result && result.ok === true) return result;
+    const stderr = String((result && result.stderr) || "");
+    if (!stderr.includes("index.lock") || attempt === GIT_LOCK_RETRIES) return result;
+    emit(
+      `${label}: .git/index.lock is held — retrying in ${GIT_LOCK_RETRY_DELAY_MS}ms ` +
+        `(attempt ${attempt + 1} of ${GIT_LOCK_RETRIES})`
+    );
+    await _sleep(GIT_LOCK_RETRY_DELAY_MS);
+  }
+  return result;
+}
+
+/**
+ * The sentence every wave-commit halt ends with. The distinction it draws is the
+ * one an operator needs: the WORK is fine — it was gated by the orchestrator's own
+ * suite run before this commit was attempted — and only the recording of it
+ * failed, so the recovery is a commit, never a re-run of the wave.
+ */
+function uncommittedWorkRemedy(paths) {
+  return (
+    `The wave's work is verified (the orchestrator's own test gate passed) and is ` +
+    `present in the working tree, but UNCOMMITTED. Nothing is lost: commit it ` +
+    `yourself (\`git add -- ${paths.join(" ")}\` then \`git commit\`) and re-invoke, ` +
+    `or fix the git condition and re-invoke.`
+  );
+}
+
+/**
+ * Stage `paths` and commit them under `message`, pathspec-scoped and NEVER `-a`.
+ *
+ * `git add -- <paths>` then a PLAIN `git commit -m` (no pathspec): the add is what
+ * scopes the change set, and a second pathspec on the commit would silently
+ * re-narrow it against the set that was actually verified. Between the two, the
+ * staged set is READ BACK — an add that staged nothing means the task made no
+ * change, which is a notice, not a commit and not a halt.
+ *
+ * @returns {Promise<"committed"|"nothing-staged">}
+ * @throws {Error} halt error on any non-transient git failure
+ */
+async function commitPaths({ paths, message, what, _git, _sleep, emit }) {
+  const add = await gitWithLockRetry(["add", "--", ...paths], {
+    _git,
+    _sleep,
+    emit,
+    label: `${what}: git add`,
+  });
+  if (!add || add.ok !== true) {
+    throw haltError(
+      `Error: ${what} — \`git add -- ${paths.join(" ")}\` failed: ` +
+        `${String((add && add.stderr) || "no output").trim()}. ` +
+        uncommittedWorkRemedy(paths)
+    );
+  }
+
+  const staged = await _git(["diff", "--cached", "--name-only", "--", ...paths]);
+  if (staged && staged.ok === true && String(staged.stdout || "").trim() === "") {
+    emit(`${what}: nothing staged — no changes to commit`);
+    return "nothing-staged";
+  }
+
+  const commit = await gitWithLockRetry(["commit", "-m", message], {
+    _git,
+    _sleep,
+    emit,
+    label: `${what}: git commit`,
+  });
+  if (!commit || commit.ok !== true) {
+    throw haltError(
+      `Error: ${what} — \`git commit\` failed: ` +
+        `${String((commit && commit.stderr) || "no output").trim()}. ` +
+        uncommittedWorkRemedy(paths)
+    );
+  }
+  emit(`${what}: committed — ${message}`);
+  return "committed";
+}
+
+/** The one-line commit subject for a wave task. */
+function waveCommitMessage(featureName, task) {
+  const description = String(task.description || "").trim();
+  const short =
+    description.length > 60 ? `${description.slice(0, 57)}...` : description;
+  return `feat(${featureName}): ${task.id}${short ? ` — ${short}` : ""}`;
+}
+
 // ─── TSPEC §3.5 — the queue-row seam's Node default ───────────────────────────
 
 /**
@@ -6087,6 +6689,10 @@ async function main({
   _probeDoc: probeDocFn = NO_PROBE,
   _probeReviewState: probeReviewStateFn = NO_PROBE,
   _probePostmortem: probePostmortemFn = NO_PROBE,
+  // PROPOSAL §3.3 / M-6 — the command transport Phase I's script-owned gate runs
+  // the suite through. `null` is the shipped module default (see NO_RUN_COMMAND);
+  // the adapter wires it.
+  _runCommand: runCommandFn = NO_RUN_COMMAND,
   // The optional session transport. Declared WITHOUT a default on purpose: this
   // function does not own the policy, `sessionBoundAgent` does (it defaults the
   // parameter to `NO_SESSION_AGENT`), and every consumer here reaches the
@@ -6655,13 +7261,49 @@ async function main({
         throw haltError(detail);
       }
 
+      // ─── PROPOSAL §3.3 — the file-ownership manifest half of the same gate ─
+      //
+      // M-5: the manual run executed twelve same-tree waves with zero merge
+      // conflicts because no two tasks in a wave touched the same file. That is a
+      // property of the PLAN, and a PLAN that does not state file ownership cannot
+      // be checked for it. So the manifest is required HERE — where the author's
+      // session and the reviewers are still on the phase — rather than discovered
+      // at Phase I, which would have no recourse but to fall back to worktrees.
+      const pOwnershipParsed = parsePlanOwnership(pPlanText);
+      if (pOwnershipParsed == null) {
+        const detail =
+          `Error: Phase P — ${planPath} carries no file-ownership manifest, so the ` +
+          `implementation phase cannot derive same-tree waves and cannot know which ` +
+          `files each task may write. Add a markdown table whose header row carries an ` +
+          `exact 'Task' cell (or 'Task ID' / 'ID' / 'Owning Task') and an exact 'Files' ` +
+          `cell (or 'Owned Files' / 'Files Created or Appended'), one row per task, ` +
+          `each row listing that task's owned paths in backticks — se-author's ` +
+          `batch-safety rule 2. Rejecting at Phase P rather than discovering it at ` +
+          `Phase I.`;
+        recordPhase("P", PHASE_DISPATCH.P.label, "❌", detail);
+        throw haltError(detail);
+      }
+      const pContract = validatePlanContract(pParsed.tasks, pOwnershipParsed.ownership);
+      if (!pContract.ok) {
+        const detail =
+          `Error: Phase P — the task table and the file-ownership manifest in ` +
+          `${planPath} disagree: ${pContract.problems.join("; ")}. Every task in the ` +
+          `task table needs exactly one manifest row, and every manifest row needs a ` +
+          `task — se-author's batch-safety rule 2. Rejecting at Phase P rather than ` +
+          `discovering it at Phase I.`;
+        recordPhase("P", PHASE_DISPATCH.P.label, "❌", detail);
+        throw haltError(detail);
+      }
+      const pWaves = computeWaves(pParsed.tasks, pOwnershipParsed.ownership);
+
       recordPhase(
         "P",
         PHASE_DISPATCH.P.label,
         "✅",
         forcedDetail(
           `Approved (${pLoop.iterations} iterations); PLAN parses to ` +
-            `${pParsed.tasks.length} tasks in ${pBatches.length} batches`,
+            `${pParsed.tasks.length} tasks in ${pBatches.length} batches, ` +
+            `${pWaves.length} waves`,
           pGate.forced
         ),
         pLoop.iterations
@@ -6714,7 +7356,8 @@ async function main({
       // (e.g. dependencies live in prose) fall back to the extraction agent, which
       // runs on Haiku since this is mechanical extraction, not reasoning.
       let tasks;
-      const planParsed = parsePlanTasks(await readFileFn(planPath));
+      const iPlanText = await readFileFn(planPath);
+      const planParsed = parsePlanTasks(iPlanText);
       if (planParsed && Array.isArray(planParsed.tasks) && planParsed.tasks.length > 0) {
         tasks = planParsed.tasks;
       } else {
@@ -6739,60 +7382,226 @@ async function main({
         }
       }
 
-      // TSPEC-IMPL-02: Topological batching
-      const batches = computeTopologicalBatches(tasks);
+      // ─── PROPOSAL §3.3 — wave mode vs the worktree exception path ─────────
+      //
+      // Phase P rejects a PLAN with no valid ownership manifest, so on the normal
+      // route this is always wave mode. LEGACY mode is still reachable, and by
+      // exactly one route: Phase P was SKIPPED on a recorded approval, and the
+      // approved PLAN predates the manifest requirement. That PLAN gets today's
+      // behaviour byte for byte — worktree isolation, merge-back, the full
+      // self-report batch gate — because it was approved under those rules.
+      const iOwnershipParsed = parsePlanOwnership(iPlanText);
+      const iOwnership = iOwnershipParsed ? iOwnershipParsed.ownership : null;
+      const iContract = iOwnership ? validatePlanContract(tasks, iOwnership) : null;
+      const waveMode = Boolean(iOwnership) && iContract !== null && iContract.ok === true;
 
-      // TSPEC-IMPL-03: Batch plan logging — must precede first agent() call
-      emit("Implementation batch plan:");
-      for (let i = 0; i < batches.length; i++) {
-        const deps = batches[i].some((t) => t.dependencies.length > 0)
-          ? `  (depends on: Batch ${i})`
-          : "";
+      if (!waveMode) {
         emit(
-          `  Batch ${i + 1}: [${batches[i].map((t) => t.id).join(", ")}]${deps}`
+          "Implementation: no valid file-ownership manifest on this PLAN — running the " +
+            "worktree exception path (isolated batches, merge-back, self-report gate)."
+        );
+
+        // TSPEC-IMPL-02: Topological batching
+        const batches = computeTopologicalBatches(tasks);
+
+        // TSPEC-IMPL-03: Batch plan logging — must precede first agent() call
+        emit("Implementation batch plan:");
+        for (let i = 0; i < batches.length; i++) {
+          const deps = batches[i].some((t) => t.dependencies.length > 0)
+            ? `  (depends on: Batch ${i})`
+            : "";
+          emit(
+            `  Batch ${i + 1}: [${batches[i].map((t) => t.id).join(", ")}]${deps}`
+          );
+        }
+        emit(`  Total: ${tasks.length} tasks in ${batches.length} batches`);
+
+        // TSPEC-IMPL-04: Per-batch se-implement dispatch
+        for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+          const batch = batches[batchIndex];
+          phaseFn(
+            `Phase I: Batch ${batchIndex + 1}/${batches.length}`
+          );
+
+          const batchResults = await parallelFn(
+            batch.map((task) =>
+              agentFn(
+                "se-implement",
+                implementPrompt(task, featureName),
+                { isolation: "worktree", model: MODEL_IMPLEMENTATION }
+              )
+            )
+          );
+
+          // TSPEC-IMPL-05: Worktree merge-back
+          // The Claude Code runtime handles worktree isolation and merge-back automatically
+          // when agents are called with { isolation: "worktree" } (Assumption A2).
+          // mergeWorktree() is the testable implementation for environments where the
+          // runtime does not handle this transparently.
+          for (let i = 0; i < batch.length; i++) {
+            const task = batch[i];
+            const worktreeBranch = `feat-${featureName}-${task.id}-worktree`;
+            const mergeResult = await mergeWorktreeFn(".", worktreeBranch, `feat-${featureName}`);
+            if (mergeResult && mergeResult.ok === false) {
+              const fileList = (mergeResult.conflictingFiles || []).join(", ") || "(unknown)";
+              throw haltError(
+                `Error: merge conflict merging worktree for task ${task.id} into feat-${featureName} — conflicting files: ${fileList}. Pipeline halted.`
+              );
+            }
+          }
+
+          // TSPEC-IMPL-06: Per-batch test gate
+          evaluateBatchGate(batchResults, batchIndex, batch);
+        }
+
+        recordPhase("I", "Implementation", "✅", "All batches complete");
+      } else {
+      // ─── Wave mode (M-5 + M-6) ────────────────────────────────────────────
+      const waves = computeWaves(tasks, iOwnership);
+
+      const implRaw = await readMergeConfigSafely(readFileFn, MERGE_CONFIG_PATH);
+      const implParsed = parseImplementationConfig(implRaw);
+      const implConfig = implParsed.config;
+      if (implParsed.sectionMalformed) {
+        emit(
+          `Notice: the "implementation" section of ${MERGE_CONFIG_PATH} is not an object — ` +
+            `using defaults for every implementation key.`
         );
       }
-      emit(`  Total: ${tasks.length} tasks in ${batches.length} batches`);
-
-      // TSPEC-IMPL-04: Per-batch se-implement dispatch
-      for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
-        const batch = batches[batchIndex];
-        phaseFn(
-          `Phase I: Batch ${batchIndex + 1}/${batches.length}`
+      for (const key of implParsed.invalidKeys) {
+        emit(
+          `Notice: implementation.${key} in ${MERGE_CONFIG_PATH} is not a valid value — ` +
+            `using the default.`
         );
+      }
 
-        const batchResults = await parallelFn(
-          batch.map((task) =>
-            agentFn(
-              "se-implement",
-              implementPrompt(task, featureName),
-              { isolation: "worktree", model: MODEL_IMPLEMENTATION }
-            )
+      // M-6: the orchestrator owns the gate. It can only own it when it has BOTH
+      // halves — a command that constitutes the suite in this repo, and a
+      // transport to run it through. Missing either, the gate degrades to the
+      // legacy self-report scan and says which half is missing, once.
+      const scriptGate =
+        Boolean(implConfig.testCommand) && typeof runCommandFn === "function";
+      if (!scriptGate) {
+        const missing = [];
+        if (!implConfig.testCommand) missing.push(`implementation.testCommand in ${MERGE_CONFIG_PATH}`);
+        if (typeof runCommandFn !== "function") missing.push("the _runCommand transport");
+        emit(
+          `Notice: the script-owned test gate is unavailable — ${missing.join(" and ")} ` +
+            `${missing.length > 1 ? "are" : "is"} absent. Falling back to the agents' ` +
+            `self-reported test results for every wave of this run.`
+        );
+      }
+
+      // The git transport, resolved the way the branch guard resolves it: a unit
+      // test that injects none keeps `defaultGit`, and must not have real commits
+      // made underneath it.
+      const waveGit = branchGuardTransport(gitFn);
+      if (!waveGit) {
+        emit(
+          "Notice: no git transport is injected — wave work will be verified but NOT " +
+            "committed by the orchestrator."
+        );
+      }
+      const waveSleep = typeof _sleep === "function" ? _sleep : sleep;
+
+      emit("Implementation wave plan:");
+      for (let i = 0; i < waves.length; i++) {
+        emit(`  Wave ${i + 1}: [${waves[i].map((t) => t.id).join(", ")}]`);
+      }
+      emit(
+        `  Total: ${tasks.length} tasks in ${waves.length} waves ` +
+          `(same tree, file-ownership disjoint)`
+      );
+
+      for (let waveIndex = 0; waveIndex < waves.length; waveIndex++) {
+        const wave = waves[waveIndex];
+        const waveNum = waveIndex + 1;
+        phaseFn(`Phase I: Wave ${waveNum}/${waves.length}`);
+
+        // SAME TREE, in parallel: no `isolation: "worktree"`. Disjoint ownership
+        // is what replaces isolation, and it is the PLAN's claim, gated at Phase P.
+        const waveResults = await parallelFn(
+          wave.map((task) =>
+            agentFn("se-implement", waveImplementPrompt(task, featureName), {
+              model: MODEL_IMPLEMENTATION,
+            })
           )
         );
 
-        // TSPEC-IMPL-05: Worktree merge-back
-        // The Claude Code runtime handles worktree isolation and merge-back automatically
-        // when agents are called with { isolation: "worktree" } (Assumption A2).
-        // mergeWorktree() is the testable implementation for environments where the
-        // runtime does not handle this transparently.
-        for (let i = 0; i < batch.length; i++) {
-          const task = batch[i];
-          const worktreeBranch = `feat-${featureName}-${task.id}-worktree`;
-          const mergeResult = await mergeWorktreeFn(".", worktreeBranch, `feat-${featureName}`);
-          if (mergeResult && mergeResult.ok === false) {
-            const fileList = (mergeResult.conflictingFiles || []).join(", ") || "(unknown)";
+        // Dispatch-level failures halt whatever the gate is (rules 1 and 3).
+        evaluateWaveDispatch(waveResults, waveIndex, wave);
+
+        if (scriptGate) {
+          const gate = await runCommandFn(implConfig.testCommand);
+          if (!gate || gate.ok !== true) {
             throw haltError(
-              `Error: merge conflict merging worktree for task ${task.id} into feat-${featureName} — conflicting files: ${fileList}. Pipeline halted.`
+              `Error: Wave ${waveNum} test gate failed — \`${implConfig.testCommand}\` ` +
+                `did not pass. Output tail:\n${outputTail(gate && gate.output)}`
             );
           }
+          emit(`Wave ${waveNum} gate: \`${implConfig.testCommand}\` passed`);
+        } else {
+          evaluateBatchGate(waveResults, waveIndex, wave);
         }
 
-        // TSPEC-IMPL-06: Per-batch test gate
-        evaluateBatchGate(batchResults, batchIndex, batch);
+        // A build that fails is a red wave: the suite can pass against sources
+        // whose generated artifacts no longer match them (this repo's own
+        // build-runtime is exactly that shape).
+        let postWaveRan = false;
+        if (implConfig.postWaveCommand && typeof runCommandFn === "function") {
+          const post = await runCommandFn(implConfig.postWaveCommand);
+          if (!post || post.ok !== true) {
+            throw haltError(
+              `Error: Wave ${waveNum} post-wave command failed — ` +
+                `\`${implConfig.postWaveCommand}\` did not pass. ` +
+                `Output tail:\n${outputTail(post && post.output)}`
+            );
+          }
+          postWaveRan = true;
+          emit(`Wave ${waveNum} post-wave: \`${implConfig.postWaveCommand}\` passed`);
+        }
+
+        // Only now — verified — does anything get committed (M-6).
+        if (waveGit) {
+          for (const task of wave) {
+            const paths = Array.isArray(task.files) ? task.files : [];
+            if (paths.length === 0) {
+              emit(
+                `Wave ${waveNum} task ${task.id}: no owned paths in the manifest — nothing to commit`
+              );
+              continue;
+            }
+            await commitPaths({
+              paths,
+              message: waveCommitMessage(featureName, task),
+              what: `Wave ${waveNum} task ${task.id}`,
+              _git: waveGit,
+              _sleep: waveSleep,
+              emit,
+            });
+          }
+
+          if (postWaveRan && implConfig.postWavePathspecs.length > 0) {
+            await commitPaths({
+              paths: implConfig.postWavePathspecs,
+              message: `chore(${featureName}): wave ${waveNum} build outputs`,
+              what: `Wave ${waveNum} build outputs`,
+              _git: waveGit,
+              _sleep: waveSleep,
+              emit,
+            });
+          }
+        }
       }
 
-      recordPhase("I", "Implementation", "✅", "All batches complete");
+      recordPhase(
+        "I",
+        "Implementation",
+        "✅",
+        `All ${waves.length} waves complete (wave mode, ` +
+          `${scriptGate ? "script-owned gate" : "self-report gate"})`
+      );
+      }
 
       // ─── Phase PT: PROPERTIES Tests ─────────────────────────────────────
       phaseFn("Phase PT: PROPERTIES Tests");
