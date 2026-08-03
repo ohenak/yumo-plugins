@@ -213,6 +213,10 @@ const AT19_SEAM_NAMES = Object.freeze([
   "_agent", "_readFile", "_writeFile", "_appendFile", "_checkFile", "_listFiles",
   "_git", "_checkCi", "_mergeWorktree", "_recordQueueRow", "_rebaseOntoDefault",
   "_dodVerifyLoop", "_raisePrAndVerifyCi", "_ghRun",
+  // PROPOSAL §3.3 / M-6 — Phase I's command transport. Admitted on the same
+  // judgement as `_ghRun`: an async IO seam the adapter implements with an
+  // agent dispatch, whose every call site must be awaited.
+  "_runCommand",
 ]);
 
 // §8.5: the discriminant is the PROPERTY "awaits every element of the array",

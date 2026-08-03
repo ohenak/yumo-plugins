@@ -151,11 +151,19 @@ function completeDoc(docType, body = "Substantive prose that is not a placeholde
   );
 }
 
-/** The smallest task table `parsePlanTasks` accepts (PROPOSAL §3.3). */
+/**
+ * The smallest task table `parsePlanTasks` accepts, plus the smallest
+ * file-ownership manifest `parsePlanOwnership` accepts (PROPOSAL §3.3). Phase P
+ * gates on BOTH, so a "complete PLAN" fixture must carry both.
+ */
 const PARSEABLE_TASK_TABLE = [
   "| Task ID | Description | Batch | Dependencies |",
   "|---|---|---|---|",
   "| T1 | first | 1 | - |",
+  "",
+  "| Task | Files |",
+  "|---|---|",
+  "| T1 | `src/one.js` |",
 ].join("\n");
 
 /**

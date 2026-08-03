@@ -292,9 +292,16 @@ describe("PROP-IMPL-08: mergeWorktree detects merge conflict and returns { ok: f
   );
 });
 
-// ─── PROP-IMPL-01: Batch plan logged before first agent() call (recording proxy) ──
-describe("PROP-IMPL-01: batch plan log precedes first agent() dispatch (recording proxy)", () => {
-  it("log('Implementation batch plan:') for each batch occurs before the first agent() call for that batch", async () => {
+// ─── PROP-IMPL-01: Wave plan logged before first agent() call (recording proxy) ──
+//
+// DELIBERATE ANCHOR UPDATE (PROPOSAL §3.3, step 4). The property is unchanged —
+// the whole execution plan is logged before any implementation agent is
+// dispatched — but the default execution unit is now the WAVE, so the anchors are
+// "Implementation wave plan:" / "Wave N:" rather than the batch wording. The
+// batch wording is still asserted, on the worktree exception path, in
+// waveExecution.test.js's legacy-mode case.
+describe("PROP-IMPL-01: wave plan log precedes first agent() dispatch (recording proxy)", () => {
+  it("log('Implementation wave plan:') for each wave occurs before the first agent() call for that wave", async () => {
     // Build a two-batch PLAN: T1 (batch 1) → T2 (batch 2)
     const mockTasks = [
       { id: "T1", description: "First task", dependencies: [], planBatch: 1 },
@@ -355,6 +362,11 @@ describe("PROP-IMPL-01: batch plan log precedes first agent() dispatch (recordin
       "|---|---|---|---|",
       "| T1 | First task | 1 | - |",
       "| T2 | Second task | 2 | T1 |",
+      "",
+      "| Task | Files |",
+      "|---|---|",
+      "| T1 | `src/one.js` |",
+      "| T2 | `src/two.js` |",
     ].join("\n");
 
     await main({
@@ -370,30 +382,30 @@ describe("PROP-IMPL-01: batch plan log precedes first agent() dispatch (recordin
       _mergeWorktree: async () => ({ ok: true }),
     });
 
-    // Find the index of "Implementation batch plan:" log entry
+    // Find the index of the "Implementation wave plan:" log entry
     const batchPlanLogIdx = callSequence.findIndex(
-      (e) => e.type === "log" && e.value === "Implementation batch plan:"
+      (e) => e.type === "log" && e.value === "Implementation wave plan:"
     );
     expect(batchPlanLogIdx).toBeGreaterThan(-1);
 
-    // Find the index of the first se-implement agent call (Batch 1, task T1)
+    // Find the index of the first se-implement agent call (Wave 1, task T1)
     const firstBatch1AgentIdx = callSequence.findIndex(
       (e) => e.type === "agent" && e.skill === "se-implement"
     );
     expect(firstBatch1AgentIdx).toBeGreaterThan(-1);
 
-    // The batch plan log must come BEFORE the first se-implement agent call
+    // The wave plan log must come BEFORE the first se-implement agent call
     expect(batchPlanLogIdx).toBeLessThan(firstBatch1AgentIdx);
 
-    // Also verify the batch plan log entries appear for both batches
+    // Also verify the wave plan log entries appear for both waves
     const batchLogs = callSequence.filter(
       (e) =>
         e.type === "log" &&
-        (e.value.includes("Batch 1:") || e.value.includes("Batch 2:"))
+        (e.value.includes("Wave 1:") || e.value.includes("Wave 2:"))
     );
-    expect(batchLogs.length).toBe(2); // one entry per batch
+    expect(batchLogs.length).toBe(2); // one entry per wave
 
-    // Both batch log entries must come before the first se-implement dispatch
+    // Both wave log entries must come before the first se-implement dispatch
     for (const batchLog of batchLogs) {
       const batchLogIdx = callSequence.indexOf(batchLog);
       expect(batchLogIdx).toBeLessThan(firstBatch1AgentIdx);
@@ -516,6 +528,11 @@ describe("Phase I DAG parsing: parse-first, agent fallback on Haiku", () => {
       "|---|------|--------------|-------|",
       "| T1 | first | - | 1 |",
       "| T2 | second | T1 | 2 |",
+      "",
+      "| Owning Task | Files |",
+      "|---|---|",
+      "| T1 | `src/one.js` |",
+      "| T2 | `src/two.js` |",
     ].join("\n");
 
     const record = [];
@@ -548,6 +565,10 @@ describe("Phase I DAG parsing: parse-first, agent fallback on Haiku", () => {
       "| Task ID | Description | Batch | Dependencies |",
       "|---|---|---|---|",
       "| T1 | first | 1 | - |",
+      "",
+      "| Task | Files |",
+      "|---|---|",
+      "| T1 | `src/one.js` |",
     ].join("\n");
     const result = await main(
       baseArgs(record, {
@@ -624,7 +645,7 @@ describe("RLH-REPORT-01-impl", () => {
     // and this suite drives main() all the way to a success report.
     _readFile: (path) =>
       String(path).includes("/PLAN-")
-        ? "| Task ID | Description | Batch | Dependencies |\n|---|---|---|---|\n| T1 | x | 1 | - |"
+        ? "| Task ID | Description | Batch | Dependencies |\n|---|---|---|---|\n| T1 | x | 1 | - |\n\n| Task | Files |\n|---|---|\n| T1 | `src/one.js` |"
         : null,
     _parallel: (p) => Promise.all(p),
     _checkFile: () => ({ ok: true }),

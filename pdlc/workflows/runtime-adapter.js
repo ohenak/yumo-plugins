@@ -979,6 +979,53 @@ async function rtGhRun(command) {
   }
 }
 
+// ─── PROPOSAL §3.3 / M-6 — the command transport Phase I gates through ────────
+//
+// The trailer token and its two legal values. A trailer rather than JSON: the
+// reply carries a raw output tail, and a test runner's output is exactly the
+// text that breaks hand-written JSON escaping (quotes, backslashes, ANSI, CRs).
+const RT_CMD_TRAILER = "COMMAND_EXIT";
+const RT_CMD_TRAILER_RE = /^COMMAND_EXIT:[ \t]*(0|nonzero)[ \t]*\r?$/gm;
+
+/**
+ * `_runCommand(command) => { ok, output }`. Runs ONE command string at the repo
+ * root and classifies its exit status.
+ *
+ * Model: `RT_IO_MODEL_HARD` ("sonnet"), not the `RT_IO_MODEL` ("haiku") every
+ * other transport here uses. Deliberate, and the one place in this file where
+ * the cheap model is the wrong choice: this reply is the ONLY evidence the
+ * pipeline has that a wave is green (M-6 — no agent's self-reported green is
+ * load-bearing), and producing it means running a long command, waiting for it,
+ * and transcribing a tail of its output verbatim beneath an exact trailer. That
+ * is the same long-output transcription task `rtReadChunk` escalates to sonnet
+ * for, with a worse failure mode: a mis-parse here green-lights a red wave.
+ *
+ * FAIL-CLOSED, in both directions: no trailer, or MORE than one trailer (an
+ * output tail that happens to contain the token), yields `ok: false`. The
+ * caller halts, which is the safe outcome for an unreadable gate.
+ */
+async function rtRunCommand(command) {
+  const out = await RT.agent(
+    `Run exactly this command from the repository root, and nothing else:\n` +
+      `  ${command}\n` +
+      `Wait for it to finish. Do not run it in the background, do not retry it, ` +
+      `do not repair anything it reports, and do not run any other command.\n` +
+      `Then reply with EXACTLY this, and nothing else:\n` +
+      `- FIRST line: "${RT_CMD_TRAILER}: 0" if it exited 0, or "${RT_CMD_TRAILER}: nonzero" ` +
+      `if it exited non-zero.\n` +
+      `- Then the last 30 lines of its combined output, verbatim, one per line.\n` +
+      `No commentary, no summary, no code fences. Emit the "${RT_CMD_TRAILER}:" token ` +
+      `exactly once — if the output tail itself contains that token, drop those lines.`,
+    { label: `run:${String(command).slice(0, 40)}`, model: RT_IO_MODEL_HARD }
+  );
+
+  const text = String(out == null ? "" : out);
+  RT_CMD_TRAILER_RE.lastIndex = 0;
+  const matches = text.match(RT_CMD_TRAILER_RE) || [];
+  if (matches.length !== 1) return { ok: false, output: text };
+  return { ok: /:[ \t]*0[ \t]*\r?$/.test(matches[0]), output: text };
+}
+
 /**
  * Merge a worktree branch. Contract mirrors mergeWorktree():
  * { ok: true } | { ok: false, conflictingFiles: string[] }
@@ -1028,6 +1075,11 @@ function rtDevInjections(devModule) {
     _listFiles: rtListFiles,
     _git: rtGit,
     _ghRun: rtGhRun,
+    // PROPOSAL §3.3 / M-6. Module-side default is `null` (NO_RUN_COMMAND) —
+    // "no command transport installed" — so wiring it here is what turns Phase
+    // I's script-owned test gate on. Both bundles get it: DEV_ENTRY and
+    // QUEUE_ENTRY both spread this one object.
+    _runCommand: rtRunCommand,
     // The three probe seams. Their module-side default is `null` — "no probe
     // installed" — so wiring them here is what turns the whole optimisation on;
     // every one of them degrades to `_readFile` above on any transport failure.

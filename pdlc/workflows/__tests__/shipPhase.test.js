@@ -25,7 +25,7 @@ import { fileURLToPath } from "url";
  */
 const readParseablePlan = (path) =>
   String(path).includes("/PLAN-")
-    ? "| Task ID | Description | Batch | Dependencies |\n|---|---|---|---|\n| T1 | first | 1 | - |"
+    ? "| Task ID | Description | Batch | Dependencies |\n|---|---|---|---|\n| T1 | first | 1 | - |\n\n| Task | Files |\n|---|---|\n| T1 | \`src/one.js\` |\n"
     : null;
 
 

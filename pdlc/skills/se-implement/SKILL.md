@@ -36,6 +36,7 @@ Load the supplement that matches the language of the assigned phase **before** w
 2. **Immediately before every commit:** re-run `git rev-parse --abbrev-ref HEAD`. If it prints anything other than `feat-{feature-name}` — especially `main` — STOP and report the mismatch; never commit to the default branch.
 3. **After each task:** commit the test and implementation together as one logical unit.
 4. **After all tasks:** push the branch to remote. Verify the push succeeds.
+5. **Exception — orchestrator-owned commits.** When the dispatch prompt states that the orchestrator verifies and commits (wave-mode implementation dispatches do), rules 3–4 are suspended: write code and run your targeted tests, but do not run `git add`, `git commit`, or `git push`, and touch only the files the prompt names as yours. The orchestrator runs the full gate and commits your verified work pathspec-scoped.
 
 ---
 
