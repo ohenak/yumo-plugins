@@ -659,6 +659,8 @@ compare against the DEFAULT BRANCH's own check history      ← evaluated FIRST
 | T-07-8 | **Who** operator · **Given** a fix pushed during Phase PUB · **When** the report is read · **Then** it names the DoD-verified commit and reports the branch head beyond it as unverified. |
 | T-07-9 | **Who** operator · **Given** no check registers within the existing no-checks window · **When** the phase completes · **Then** the seam did not fire, the phase passes exactly as today, and the advisory summary names the no-checks outcome. |
 | T-07-10 | **Who** operator · **Given** checks that register and never complete, so Phase PUB reaches its completion cap · **When** the phase ends · **Then** no A5 invocation occurred, the halt happened exactly as with the tier disabled, and the advisory summary names the outcome (A5-9). |
+| T-07-11 | **Who** operator · **Given** an A5 invocation whose **first** re-poll reaches Phase PUB's completion cap and whose second cycle then completes red, with `advisory.attemptBudget` of 2 · **When** the invocation ends · **Then** the run did **not** halt at the cap, exactly two attempts were consumed (the capped re-poll consumed one, A5-3), and the disposition is `escalated` with reason `budget-exhausted`. |
+| T-07-12 | **Who** operator · **Given** an A5 invocation whose re-poll waits alone exceed `advisory.seamBudgetMinutes` while the act work between them does not · **When** the invocation ends · **Then** it reached its full `attemptBudget` cycles, it did **not** escalate `budget-exhausted` on the first cycle, and its terminal disposition is the one its last re-poll earned — the rollup wait is excluded from the wall-clock bound (V-5, A5-3). |
 
 ## 10. FSPEC-ADV-08 — Advisory record and its harvest
 
