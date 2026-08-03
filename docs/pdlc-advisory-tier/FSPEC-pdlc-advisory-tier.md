@@ -91,6 +91,82 @@ Observed at default-branch commit `26c3f1c`. Paths are repo-relative; `dev` =
 
 ## 3. FSPEC-ADV-01 — Advisory rung resolution and declared fallback
 
+**Requirements:** REQ-ADV-01 (AC-1.1 … AC-1.7).
+
+### 3.1 Configuration
+
+All advisory knobs live in one `advisory` section of `.claude/pdlc.config.json` — the same file and
+the same "named section, independently parsed" convention already in use (B-11), owned by the repo
+operator.
+
+| Key | Type | Default | Meaning |
+|---|---|---|---|
+| `advisory.enabled` | boolean | `false` | master switch |
+| `advisory.attemptBudget` | integer ≥ 1 | `3` | attempts per invocation |
+| `advisory.seamBudgetMinutes` | number > 0 | `10` | wall-clock per invocation |
+| `advisory.envelope` | per-seam allow-list | the §5.2 default | what may be resolved unattended |
+
+**Business rules.**
+
+| # | Rule |
+|---|---|
+| C-1 | An absent `advisory` section, an absent file, or unreadable JSON all yield the defaults above — i.e. the tier off. Consistent with B-11/B-12, a configuration problem never fails a run by itself. |
+| C-2 | A present section with an unrecognised or out-of-range value for one key falls back to that key's default and reports the substitution on the run report; the other keys still take effect. One bad key never discards the section. |
+| C-3 | Configuration is read once per pipeline run, before the first seam can fire, so every seam in a run sees the same settings. |
+| C-4 | No agent may write this file, and no agent's output may change any value in it during a run. |
+
+### 3.2 Rung resolution
+
+Two rungs are named: the **advisory rung** (the Fable 5 rung) and the **advisory fallback rung**
+(the Opus rung, the same rung the pipeline's non-implementation phases already use — B-10).
+
+Behavioural flow, evaluated at the first advisory dispatch of a run:
+
+```
+enabled == false ─────────────────────────────────► no resolution attempted at all (§12)
+        │ true
+        ▼
+dispatch on the advisory rung
+        │
+        ├── runtime rejects it with a model/alias error, before any agent output
+        │        │
+        │        ▼
+        │   dispatch on the fallback rung
+        │        ├── accepted ──► FALLBACK STATE: warn, record, proceed
+        │        └── rejected ──► UNRESOLVABLE: run fails loudly, no advisory agent ever ran
+        │
+        └── accepted ──────────► NORMAL STATE: proceed on the advisory rung
+```
+
+**Business rules.**
+
+| # | Rule |
+|---|---|
+| M-1 | *Non-resolution* means exactly one thing: the runtime rejected the dispatch with a model/alias error **before the agent produced any output**. A dispatch that starts and then fails for any other reason is an ordinary invocation failure and is handled by §4, never by this ladder. |
+| M-2 | Taking the fallback is a first-class, declared outcome. It emits an `ADVISORY_MODEL_FALLBACK` warning naming both the unresolvable value and the substitute, is recorded in the advisory record (§10), and is named in the report's advisory summary. |
+| M-3 | There is no third rung. Neither rung resolving fails the run with a model-resolution error; there is no silent revert to the pipeline's default rung, and no advisory agent runs on an unresolved model. |
+| M-4 | Resolution is decided once per run and applies to every seam in that run. A run never mixes rungs across seams. |
+| M-5 | Each rung is named once and referenced from every advisory dispatch site in **both** the dev and the queue pipeline — seams A1/A2 live in the queue pipeline. Changing the rung is a single edit. |
+
+### 3.3 Edge cases
+
+| Case | Behaviour |
+|---|---|
+| Tier disabled and the advisory rung does not exist in the runtime at all | No resolution is attempted; the run is unaffected. A missing alias cannot break a run with the tier off. |
+| Tier enabled but no seam fires during the run | No dispatch happens, so no resolution happens; the advisory summary reports zero invocations for all five seams and names the rung as *not exercised*. |
+| Fallback taken, then a later seam's dispatch on the fallback rung fails | Handled as an ordinary invocation failure (§4), not as a second fallback. |
+
+### 3.4 Acceptance tests
+
+| # | Who / Given / When / Then |
+|---|---|
+| T-01-1 | **Who** operator · **Given** no `advisory` section in the config · **When** a run executes with a seam condition present · **Then** the pipeline behaves exactly as §12 requires and no advisory artifact is produced. |
+| T-01-2 | **Who** operator · **Given** `advisory.enabled` true and the advisory rung resolvable · **When** a seam fires · **Then** the run's advisory summary names the advisory rung and reports no fallback. |
+| T-01-3 | **Who** operator · **Given** `advisory.enabled` true and the advisory rung rejected with a model/alias error before output · **When** a seam fires · **Then** an `ADVISORY_MODEL_FALLBACK` warning is emitted naming the unresolvable value and the substitute, the advisory record and the summary both show the fallback, and the seam proceeds. |
+| T-01-4 | **Who** operator · **Given** neither rung resolves · **When** a seam fires · **Then** the run fails with a model-resolution error and no advisory agent has run. |
+| T-01-5 | **Who** operator · **Given** an advisory dispatch that starts and then fails mid-flight · **When** it fails · **Then** no fallback ladder is entered and the failure is dispositioned as an ordinary invocation failure. |
+| T-01-6 | **Who** operator · **Given** `advisory.attemptBudget` set to an out-of-range value and `advisory.seamBudgetMinutes` set validly · **When** a seam fires · **Then** the attempt budget uses its default, the seam budget uses the configured value, and the substitution is reported. |
+
 ## 4. FSPEC-ADV-02 — Advisory invocation lifecycle
 
 ## 5. FSPEC-ADV-03 — Envelope, prohibitions, and the refusal ladder
