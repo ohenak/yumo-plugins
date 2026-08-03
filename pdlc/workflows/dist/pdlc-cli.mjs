@@ -1814,6 +1814,55 @@ function parseAbbrevRef(result) {
   return name === "" ? null : name;
 }
 
+// How many EXTRA observations an ok-but-empty HEAD read is worth before the
+// guard believes it. Measured (run wf_d74b18e0-ecb, 2026-08-03): at a reviewLoop
+// entry the injected `_git(["rev-parse","--abbrev-ref","HEAD"])` returned
+// `{ok: true, stdout: "", stderr: ""}` while the tree was on the feature branch
+// the whole time — the next rev-parse, seconds later, read it fine. The seam is
+// agent-transcribed, so an empty stdout from an OK command is a transport fault,
+// not a fact about the tree. Fail-closed stays; the single-shot observation goes.
+// Policy, like MAX_AUTHORING_ATTEMPTS: not exported, pinned through call counts.
+const GIT_READ_RETRIES = 2;
+
+/**
+ * Read HEAD's branch name, re-observing an ok-but-empty answer.
+ *
+ * An `ok !== true` result is returned on the FIRST observation: that is a real
+ * git failure, its stderr is diagnostic, and the existing halt paths already
+ * carry it. Only the empty/whitespace-stdout arm — the transport-fault signature
+ * — is retried, up to `GIT_READ_RETRIES` more times.
+ *
+ * @param {function} git - the injected `_git(argv)` transport
+ * @returns {Promise<{branch: string|null, observations: number, result: object,
+ *                    transportFault: boolean}>}
+ */
+async function readHeadBranch(git) {
+  let result = null;
+  let observations = 0;
+  while (observations < GIT_READ_RETRIES + 1) {
+    result = await git(["rev-parse", "--abbrev-ref", "HEAD"]);
+    observations += 1;
+    const branch = parseAbbrevRef(result);
+    if (branch !== null) return { branch, observations, result, transportFault: false };
+    // A genuine failure is not a transport fault and is never re-observed.
+    if (!result || result.ok !== true) {
+      return { branch: null, observations, result, transportFault: false };
+    }
+  }
+  return { branch: null, observations, result, transportFault: true };
+}
+
+/**
+ * The parenthetical a halt carries when every re-observation came back empty —
+ * so an operator reading the halt knows the guard looked more than once and that
+ * the tree's branch was never actually reported.
+ */
+function transportFaultNote(head) {
+  return head && head.transportFault
+    ? ` (${head.observations} observations, all empty — transport fault suspected)`
+    : "";
+}
+
 /** The one-line operator instruction every branch-guard halt ends with. */
 function branchGuardRemedy(branch) {
   return `Check out ${branch} yourself (git checkout -B ${branch}) and re-invoke; nothing was committed.`;
@@ -1847,12 +1896,14 @@ async function ensureFeatureBranch({ feature, _git, _log } = {}) {
     return { ok: true, branch, action: "skipped" };
   }
 
-  const head = await git(["rev-parse", "--abbrev-ref", "HEAD"]);
-  const current = parseAbbrevRef(head);
+  const head = await readHeadBranch(git);
+  const current = head.branch;
   if (current === null) {
     throw haltError(
       `Error: branch guard — could not read the current branch ` +
-        `(git rev-parse --abbrev-ref HEAD failed: ${String((head && head.stderr) || "no output").trim()}). ` +
+        `(git rev-parse --abbrev-ref HEAD failed: ` +
+        `${String((head.result && head.result.stderr) || "no output").trim()})` +
+        `${transportFaultNote(head)}. ` +
         `Refusing to run the pipeline without knowing that commits will land on ${branch}. ` +
         branchGuardRemedy(branch)
     );
@@ -1878,11 +1929,13 @@ async function ensureFeatureBranch({ feature, _git, _log } = {}) {
     action = "created";
   }
 
-  const after = parseAbbrevRef(await git(["rev-parse", "--abbrev-ref", "HEAD"]));
+  const confirmation = await readHeadBranch(git);
+  const after = confirmation.branch;
   if (after !== branch) {
     throw haltError(
       `Error: branch guard — after checking out ${branch} the working tree is still on ` +
-        `"${after ?? "an unreadable branch"}". Refusing to run: every commit of this run would ` +
+        `"${after ?? "an unreadable branch"}"${transportFaultNote(confirmation)}. ` +
+        `Refusing to run: every commit of this run would ` +
         `land there. ` +
         branchGuardRemedy(branch)
     );
@@ -1912,12 +1965,14 @@ async function verifyFeatureBranch({ feature, context, _git, _log } = {}) {
   if (!git) return { ok: true, branch, verified: false };
 
   const where = context ? ` before ${context}` : "";
-  const current = parseAbbrevRef(await git(["rev-parse", "--abbrev-ref", "HEAD"]));
+  const head = await readHeadBranch(git);
+  const current = head.branch;
   if (current === branch) return { ok: true, branch, verified: true };
 
   throw haltError(
     `Error: branch guard${where} — the working tree is on ` +
-      `"${current ?? "an unreadable branch"}", not ${branch}. Refusing to continue: ` +
+      `"${current ?? "an unreadable branch"}"${transportFaultNote(head)}, ` +
+      `not ${branch}. Refusing to continue: ` +
       `this round's commits would land there. ` +
       branchGuardRemedy(branch)
   );
