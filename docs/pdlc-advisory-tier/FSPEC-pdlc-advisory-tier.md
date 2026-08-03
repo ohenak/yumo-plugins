@@ -931,12 +931,12 @@ read the advisory config ONCE (§3.1 C-3)
   ├─ tier disabled ──► the entire rest of this diagram is skipped (§12 D-1…D-6)
   │ enabled
   ▼
-resolve the advisory rung ONCE (§3.2)
+  … pipeline proceeds; at each seam condition it reaches, exactly one invocation.
+  At the FIRST such invocation, and only then, the rung is resolved ONCE for the whole
+  run (§3.2 — resolution is lazy; a run in which no seam fires resolves no rung and
+  cannot fail on one, §3.3, T-01-7):
   ├─ neither rung resolves ──► the run fails loudly; no advisory agent ever runs (§3.2 M-3)
   └─ advisory rung, or the declared fallback with its warning (§3.2 M-2)
-  │
-  ▼
-  … pipeline proceeds; at each seam condition it reaches, exactly one invocation:
   │
   │   ┌──────────────────────────────────────────────────────────────┐
   │   │ §4.1 lifecycle: DIAGNOSE → VALIDATE → GATE → ACT → CHECK →   │
@@ -947,11 +947,13 @@ resolve the advisory rung ONCE (§3.2)
   │   └──────────────────────────────────────────────────────────────┘
   │
   ▼
-after the last phase that can append to the record — Phase PUB — the record is
-distilled into LEARNINGS and deleted (§10.2 H-1)
+after the last phase that can append to the record — Phase PUB — and before Phase MERGE,
+a dev-side run distils the record into LEARNINGS, deletes it, and commits and pushes both
+(§10.2 H-1/H-2). A queue-side record is not distilled here (§10.2 H-2b).
   │
   ▼
-the report carries the advisory summary: five seam rows, zero counts included (§10.3 S-1)
+the report carries the advisory summary: five seam rows, zero counts included, on every
+report the run produces — including a halt's (§10.3 S-1)
 ```
 
 ### 15.3 Flow invariants across seams
@@ -961,7 +963,7 @@ the report carries the advisory summary: five seam rows, zero counts included (�
 | F-1 | Config and rung are resolved once per run and apply to every seam in it. | §3.1 C-3, §3.2 M-4 |
 | F-2 | Seams are advised one at a time; no two invocations overlap, and no invocation is concurrent with itself. | §4.3 V-6 |
 | F-3 | Each seam condition yields **at most one** invocation per run — the budgets in §4.3 V-5 bound the attempts inside it, not the number of invocations. | §4.3 V-5, V-6 |
-| F-4 | Every invocation terminates in exactly one of `resolved` or `escalated`, and an escalation leaves the pre-advisory outcome intact. | §4.3 V-7, V-8 |
+| F-4 | Every invocation terminates in exactly one of `resolved`, `escalated` or `no-action`, and neither an escalation nor a `no-action` changes the pre-advisory outcome. | §4.3 V-7, V-8 |
 | F-5 | An escalation at a halting seam still halts; an escalation at a skipping seam still skips. Escalation adds information, never control flow. | §11.1 L-3 |
 | F-6 | A seam that never fires produces no invocation, no record entry, and no escalation — and still appears as a zero row in the summary. | §10.3 S-1 |
 
@@ -983,12 +985,12 @@ the six cross-cutting rules that no single seam section owns.
 | X-a … X-e | envelope, excluded | §5.2 | the closed exclusion set, of which X-a (test artifacts) is enforced hardest |
 | P-1 … P-4 | prohibitions | §5.4 | the four things the tier may never do, whatever the envelope says |
 | A1-1 … A1-5 | seam A1 | §6.3 | adjudicating a triage abstention |
-| A2-1 … A2-5 | seam A2 | §6.4 | re-grounding a stale REQ |
+| A2-1 … A2-6 | seam A2 | §6.4 | re-grounding a stale REQ, and what makes an applied one durable |
 | A3-1 … A3-7 | seam A3 | §7.2 | classifying remaining DoD findings |
 | A4-1 … A4-6 | seam A4 | §8.2 | resolving a rebase conflict in branch-created files |
-| A5-1 … A5-7 | seam A5 | §9.2 | diagnosing a CI failure, and what "green" is allowed to mean |
+| A5-1 … A5-9 | seam A5 | §9.2 | diagnosing a CI failure, what "green" is allowed to mean, and what "revert" means after a push |
 | R-1 … R-4 | advisory record | §10.1 | that the record is a precondition of acting, and append-only |
-| H-1 … H-4 | record harvest | §10.2 | when the record is distilled, and the delete guard over it |
+| H-1 … H-4 (incl. H-2b) | record harvest | §10.2 | when the record is distilled — dev-side and queue-side — and the delete guard over it |
 | S-1 … S-4 | report summary | §10.3 | the five-seam summary and what it names |
 | L-1 … L-4, N-1 … N-4 | escalation output | §11.1, §11.2 | the append-only log, and the report notice beside the existing catalogue |
 | D-1 … D-6 | disabled equivalence | §12.1 | what "inert" means, artifact by artifact |
@@ -1004,7 +1006,7 @@ These hold at every seam and are not restated per seam.
 | BR-2 | **Two gates, both mandatory.** In-envelope **and** `confidence == high` are jointly necessary before anything is applied; either failing escalates. | §4.3 V-1 |
 | BR-3 | **Checked before and after.** Membership is evaluated on the proposal and again on the produced change; a change that reaches outside is reverted whole, never trimmed. | §5.1 E-R2 |
 | BR-4 | **Test artifacts are never the fix.** A proposed or produced diff touching anything in X-a is reverted whole and refused as `revert-on-test-touch`, ahead of every other reason but `prohibited-action`. | §5.2 X-a, §5.3 |
-| BR-5 | **Two tree states, never three.** After any invocation the working tree is either the verified post-resolution state or byte-identical to its pre-invocation state. | §8.2 A4-6, §5.1 E-R2 |
+| BR-5 | **Two tree states, never three.** After any invocation the working tree is either the verified post-resolution state or byte-identical to its pre-invocation state. At A5, where the action leaves the local tree, the invariant is asserted on the **pre-push** tree and the branch's published history is never rewritten (A5-8). | §8.2 A4-6, §5.1 E-R2, §9.2 A5-8 |
 | BR-6 | **A gate, not an agent, ends a seam.** Every applied resolution is followed by the seam's own gate re-running and reaching its own verdict; an agent never supplies the verdict a gate exists to produce. | §5.4 gate table, §9.2 A5-4 |
 
 ### 16.3 Where a rule is enforced
@@ -1040,9 +1042,9 @@ that belong to no single seam because they arise from a run as a whole.
 |---|---|---|
 | Two different seams fire in the same run | Both are advised, sequentially, never concurrently; both append to the one record file in occurrence order. | §15.3 F-2, §10.5 |
 | A4 resolves and A3 then exhausts in the same Phase DOD | Two invocations, two dispositions, two record entries; A4's resolution is not re-litigated by A3, whose product is a classification only. | §7.2 A3-6, §15.1 |
-| A run halts at A3 or A4, so Phase PUB never runs | A5 cannot fire; the record survives on disk un-distilled, and the summary is not produced because the run did not complete. | §10.2 H-4, §15.2 |
+| A run halts at A3 or A4, so Phase PUB never runs | A5 cannot fire and the record survives on disk un-distilled. The halt report — which the pipeline still produces — **carries the advisory summary** for the seams reached so far; a halt is where the operator needs it most (§10.3 S-1, T-08-9). | §10.2 H-4, §10.3 S-1 |
 | The same feature escalates on two successive runs | Two log entries, newest last, neither edited. Nothing in the tier reads its own prior escalations as state. | §11.1 L-1 |
-| The fallback rung is taken and a later seam's dispatch fails outright | An ordinary invocation failure under §4, not a second rung resolution — the ladder ran once, in §15.2's prologue. | §3.3, §3.2 M-4 |
+| The fallback rung is taken and a later seam's dispatch fails outright | An ordinary invocation failure under §4, not a second rung resolution — the ladder ran once, at the run's first advisory dispatch. | §3.3, §3.2 M-4 |
 | An advisory action succeeds but the record write fails | The action does not survive: it is reverted and the seam escalates with `record-write-failed`. Acting without a record is the one success the tier refuses to keep. | §10.1 R-2 |
 | The escalation log write fails while a seam is escalating | The escalation still stands — it is the pipeline doing less — and the failed write is reported. A failed write can never upgrade an escalation to a resolution. | §11.3 |
 | The run is interrupted mid-attempt | Not recoverable inside this feature. The record holds every completed attempt, so the operator can see how far the run got. | §4.4 |
@@ -1064,17 +1066,17 @@ index — the whole set, its shape, and the three assertions that span sections.
 
 | Series | Section | Count | Range |
 |---|---|---|---|
-| T-01 | §3.4 rung and configuration | 6 | T-01-1 … T-01-6 |
+| T-01 | §3.4 rung and configuration | 7 | T-01-1 … T-01-7 |
 | T-02 | §4.5 invocation lifecycle | 6 | T-02-1 … T-02-6 |
-| T-03 | §5.5 envelope, prohibitions, refusal ladder | 7 | T-03-1 … T-03-7 |
-| T-04 | §6.6 seams A1 and A2 | 9 | T-04-1 … T-04-9 |
+| T-03 | §5.5 envelope, prohibitions, refusal ladder | 10 | T-03-1 … T-03-10 |
+| T-04 | §6.6 seams A1 and A2 | 10 | T-04-1 … T-04-9, plus T-04-3b |
 | T-05 | §7.4 seam A3 | 6 | T-05-1 … T-05-6 |
 | T-06 | §8.4 seam A4 | 6 | T-06-1 … T-06-6 |
-| T-07 | §9.4 seam A5 | 9 | T-07-1 … T-07-9 |
-| T-08 | §10.6 advisory record and harvest | 7 | T-08-1 … T-08-7 |
-| T-09 | §11.4 escalation output | 7 | T-09-1 … T-09-7 |
+| T-07 | §9.4 seam A5 | 10 | T-07-1 … T-07-10 |
+| T-08 | §10.6 advisory record and harvest | 10 | T-08-1 … T-08-10 |
+| T-09 | §11.4 escalation output | 8 | T-09-1 … T-09-8 |
 | T-10 | §12.3 disabled-tier equivalence | 5 | T-10-1 … T-10-5 |
-| **Total** | | **68** | |
+| **Total** | | **78** | |
 
 The series number matches the FSPEC-ADV id it discharges — T-04-* covers FSPEC-ADV-04, and so on —
 so §14.1's requirement → section → tests chain reads in either direction without a lookup.
@@ -1090,19 +1092,20 @@ each pins a closed set that a later change could quietly widen.
 | T-03-3 | every operation enumerated in X-a | a test-artifact edit that slips past the revert because it takes an unlisted form |
 | T-03-6 | every prohibition P-1…P-4 and every gate row of §5.4 | a prohibition that holds only by accident, with no gate re-run behind it |
 
-T-03-5 is the set-equality companion: the shipped refusal-reason set compared with §5.3 as a set, so
-an invented or deleted reason fails even where no individual path changed.
+T-03-5 and T-03-8 are the set-equality companions — the shipped refusal-reason set against §5.3, and
+the shipped permitted-action and exclusion sets against §5.2 — so an invented or deleted member fails
+even where no individual path changed.
 
 ### 18.3 What the suite is required to pin
 
 | # | Obligation | Tests |
 |---|---|---|
 | AT-1 | The disabled tier is inert on named artifacts and phase outcomes — not merely "looks the same". | T-01-1, T-10-1 … T-10-5 |
-| AT-2 | Every escalation, whatever its cause, produces the same observable triple. | T-02-6, and each seam's escalating case |
+| AT-2 | Every escalation, whatever its cause, produces the same observable triple. | T-02-6, T-04-3b, T-04-7, T-04-8, T-05-3, T-05-4, T-06-2 … T-06-5, T-07-2 … T-07-6, T-08-2 |
 | AT-3 | Nothing the tier does converts a blocking outcome into a passing one. | T-03-6, T-05-2, T-07-7, T-09-3, T-09-4 |
-| AT-4 | After any invocation the tree is in one of exactly two states. | T-03-1, T-03-2, T-05-5, T-06-3, T-06-6, T-08-2 |
+| AT-4 | After any invocation the tree is in one of exactly two states — at A5, the pre-push tree (A5-8). | T-03-1, T-03-2, T-03-9, T-03-10, T-05-5, T-06-3, T-06-6, T-08-2 |
 | AT-5 | A resolution is always a gate's verdict, never an agent's. | T-02-1, T-03-7, T-06-1, T-07-1, T-07-7 |
-| AT-6 | The run leaves a durable, honest account behind — record, log, summary. | T-08-1 … T-08-7, T-09-1, T-09-2, T-09-6 |
+| AT-6 | The run leaves a durable, honest account behind — record, log, summary — including on a run that halted. | T-08-1 … T-08-10, T-09-1, T-09-2, T-09-6, T-09-8 |
 
 ### 18.4 Out of scope for this document
 
