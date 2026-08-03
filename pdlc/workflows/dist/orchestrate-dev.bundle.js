@@ -2403,9 +2403,13 @@ async function phaseMerge({
   // config file happens either (§3.3).
   if (!_enabled) return skippedOutcome(1, "Phase MERGE disabled");
 
-  try {
-    const notes = [];
+  // Hoisted above the try (CR product-manager finding 3): a note pushed
+  // before a later step throws (e.g. M2's branch-delete note ahead of an
+  // M3 throw) must still reach the caller on the row-internal outcome —
+  // the catch below returns this same array rather than a fresh `[]`.
+  const notes = [];
 
+  try {
     let config = configOverride;
     if (!config) {
       // Exactly one read per run (O-M5, §3.3), skipped entirely when a test
@@ -2533,8 +2537,17 @@ async function phaseMerge({
         );
       } else if (queueRow === "recorded") {
         // FSPEC §8.2 — emitted whenever M4's disposition is `recorded`,
-        // including row 3's already-merged re-entry (§7.1's Q-01 answer).
-        notes.push(MERGE_NOTES.aheadOfRemote(defaultBranch, feature));
+        // including row 3's already-merged re-entry (§7.1's Q-01 answer) —
+        // but only when the sentence it emits is actually true (CR
+        // product-manager finding 1): `tree.ok` establishes the commit
+        // really reached `defaultBranch` (M3 succeeded), `defaultBranch`
+        // rules out interpolating `null` when O4 never resolved a name, and
+        // `!(rec && rec.detail)` rules out the §2.5 non-overwrite case,
+        // where the row was left unchanged and no queue-row commit exists
+        // to be "ahead" of anything.
+        if (tree.ok && defaultBranch && !(rec && rec.detail)) {
+          notes.push(MERGE_NOTES.aheadOfRemote(defaultBranch, feature));
+        }
         if (rec && rec.detail) notes.push(MERGE_NOTES.nonOverwrite(feature, rec.detail));
       }
     }
@@ -2558,6 +2571,9 @@ async function phaseMerge({
   } catch (err) {
     // FSPEC §2.1 — Phase MERGE never throws to the pipeline. E30/E21 (§12):
     // the outer catch is the single enforcement point for that guarantee.
+    // `notes` is the hoisted array above — whatever accumulated before the
+    // throw (e.g. M2's branch-delete note) is returned, not dropped (CR
+    // product-manager finding 3).
     return {
       mergeStatus: "refused",
       mergeSha: null,
@@ -2565,7 +2581,7 @@ async function phaseMerge({
       row: "internal",
       reason: err && err.message ? err.message : "phaseMerge failed unexpectedly",
       escalations: [],
-      notes: [],
+      notes,
       queueRow: null,
     };
   }

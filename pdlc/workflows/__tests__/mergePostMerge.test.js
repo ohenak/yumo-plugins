@@ -19,6 +19,7 @@ import {
   classifyMergeResult,
   OBSERVATION_REASONS,
   MERGE_NOTES,
+  MERGE_ESCALATIONS,
   featureBranchName,
 } from "../orchestrate-dev.js";
 import { fakeGhRun, fakeGit } from "./helpers/mergeDoubles.js";
@@ -416,5 +417,80 @@ describe("MERGE_NOTES.aheadOfRemote", () => {
 
   test("MERGE_NOTES is frozen (DC-01)", () => {
     expect(Object.isFrozen(MERGE_NOTES)).toBe(true);
+  });
+});
+
+// ─── MERGE_ESCALATIONS.tree/.queue — literal FSPEC §9.3 anchors (CR
+// test-engineer finding 2). mergePhase.test.js's escalation assertions all
+// build their expected value by calling this same catalogue — an
+// implementation echo that cannot catch a reworded template. These two
+// tests transcribe FSPEC §9.3's wording by hand, mirroring the guard
+// escalation's literal anchor at mergePhase.test.js:552 and
+// MERGE_NOTES.aheadOfRemote's literal anchor immediately above. ──────────
+
+describe("MERGE_ESCALATIONS.tree / .queue — literal text (FSPEC §9.3)", () => {
+  test("MERGE_ESCALATIONS.tree — the exact FSPEC §9.3 sentence", () => {
+    expect(
+      MERGE_ESCALATIONS.tree({ prUrl: "https://github.com/o/r/pull/42", reason: "working tree is dirty", branch: "unknown" }),
+    ).toBe(
+      "MERGE ESCALATION: working tree not updated after merging https://github.com/o/r/pull/42 — working tree is dirty; tree is on unknown",
+    );
+  });
+
+  test("MERGE_ESCALATIONS.queue — the exact FSPEC §9.3 sentence", () => {
+    expect(
+      MERGE_ESCALATIONS.queue({
+        prUrl: "https://github.com/o/r/pull/42",
+        shortSha: "abc1234",
+        feature: "widget",
+        detail: "queue row not found",
+      }),
+    ).toBe(
+      "MERGE ESCALATION: merged https://github.com/o/r/pull/42 (abc1234) but the queue row for widget was not updated — queue row not found",
+    );
+  });
+});
+
+// ─── MERGE_NOTES — literal text for the remaining six catalogue members (CR
+// test-engineer finding 3). `aheadOfRemote` was already anchored above;
+// everywhere else `mergePhase.test.js` asserts these six against
+// `MERGE_NOTES.*(…)` itself — an implementation echo. One literal anchor
+// per member, same remedy as finding 2. ─────────────────────────────────
+
+describe("MERGE_NOTES — literal text (remaining catalogue members)", () => {
+  test("mergeDeferred — the exact FSPEC §9.4 sentence", () => {
+    expect(MERGE_NOTES.mergeDeferred("widget", "no permitted merge method")).toBe(
+      "Merge deferred for widget: no permitted merge method. The queue row is unchanged; merge the PR to advance it.",
+    );
+  });
+
+  test("sectionMalformed — the exact TSPEC §3.3/§10.3 sentence", () => {
+    expect(MERGE_NOTES.sectionMalformed()).toBe(
+      '.claude/pdlc.config.json\'s "merge" section is present but not an object; every merge setting is using its default.',
+    );
+  });
+
+  test("noPrNumber — the exact TSPEC §7.5/E19 sentence", () => {
+    expect(MERGE_NOTES.noPrNumber("widget", "https://github.com/o/r/pull/42")).toBe(
+      "Queue row for widget was not updated: no PR number could be resolved from https://github.com/o/r/pull/42.",
+    );
+  });
+
+  test("recordedUncommitted — the exact TSPEC §7.5 sentence", () => {
+    expect(MERGE_NOTES.recordedUncommitted("widget", "queue row recorded but not committed")).toBe(
+      "Queue row for widget: queue row recorded but not committed",
+    );
+  });
+
+  test("nonOverwrite — the exact FSPEC §2.5 sentence", () => {
+    expect(MERGE_NOTES.nonOverwrite("widget", 'row left unchanged: found status "blocked"')).toBe(
+      'Queue row for widget: row left unchanged: found status "blocked"',
+    );
+  });
+
+  test("branchDeleteFailed — the exact TSPEC §7.2/FSPEC §6.4 sentence", () => {
+    expect(MERGE_NOTES.branchDeleteFailed("widget", "no such remote branch")).toBe(
+      "Remote branch deletion failed for widget: no such remote branch",
+    );
   });
 });

@@ -128,9 +128,31 @@ function mergeCommandCalls(ghCalls) {
 }
 
 // ─── FSPEC §11's 25-row table, driven through phaseMerge ───────────────────
+//
+// TSPEC §13.3 — the suite must self-assert its own row-case count so a
+// dropped row is a *failure*, not a silent absence. `ROW_TABLE_IDS` is the
+// 24 ids this file can reach through `phaseMerge` directly (rows 1-22 plus
+// 11a/13a); row 23 is exempted by cross-reference — it is not reachable
+// through `phaseMerge` (module docblock above) and is exercised instead by
+// `haltAndQueue.test.js`'s own PROP-M-17 row-23 self-count. `rowTest` wraps
+// `test` and reads the row id straight out of each case's own name — the
+// literal name every case already carries — rather than a second,
+// independently-typed id per case that could itself drift from the name.
+const ROW_TABLE_IDS = Object.freeze([
+  "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
+  "11", "11a", "12", "13", "13a", "14", "15", "16", "17", "18",
+  "19", "20", "21", "22",
+]);
+const COVERED_ROWS = [];
+function rowTest(name, fn) {
+  const m = /^row (\d+a?)\b/.exec(name);
+  if (!m) throw new Error(`rowTest name must start with "row N": ${name}`);
+  COVERED_ROWS.push(m[1]);
+  test(name, fn);
+}
 
 describe("phaseMerge — FSPEC §11 row table (AT-M2, AT-M2a's row-3 sibling)", () => {
-  test("row 1 — Phase MERGE disabled: skipped, no _readFile, no _ghRun", async () => {
+  rowTest("row 1 — Phase MERGE disabled: skipped, no _readFile, no _ghRun", async () => {
     const ghRun = fakeGhRun({});
     const gitDouble = fakeGit();
     const queueRow = queueRowSeam();
@@ -155,14 +177,14 @@ describe("phaseMerge — FSPEC §11 row table (AT-M2, AT-M2a's row-3 sibling)", 
     expect(ghRun.calls).toHaveLength(0);
   });
 
-  test("row 2 — mergeMode off: skipped, zero gh calls", async () => {
+  rowTest("row 2 — mergeMode off: skipped, zero gh calls", async () => {
     const { outcome, ghCalls } = await run({ config: { mergeMode: "off" } });
     expect(outcome.mergeStatus).toBe("skipped");
     expect(outcome.row).toBe("2");
     expect(ghCalls).toHaveLength(0);
   });
 
-  test("row 3 — PR already MERGED: merged, method unknown, no merge command issued", async () => {
+  rowTest("row 3 — PR already MERGED: merged, method unknown, no merge command issued", async () => {
     const { outcome, ghCalls, queueCalls } = await run({
       gh: { prState: { stdout: JSON.stringify({ state: "MERGED", mergeable: "MERGEABLE", mergeStateStatus: "CLEAN", number: 42, mergeCommit: { oid: MERGED_OID } }) } },
     });
@@ -174,7 +196,7 @@ describe("phaseMerge — FSPEC §11 row table (AT-M2, AT-M2a's row-3 sibling)", 
     expect(queueCalls).toHaveLength(1);
   });
 
-  test("row 4 — guard fired, a changed path matched: refused + escalation", async () => {
+  rowTest("row 4 — guard fired, a changed path matched: refused + escalation", async () => {
     const { outcome, ghCalls } = await run({
       gh: { changedFiles: { stdout: JSON.stringify({ files: [{ path: "pdlc/skills/x.md" }] }) } },
     });
@@ -186,7 +208,7 @@ describe("phaseMerge — FSPEC §11 row table (AT-M2, AT-M2a's row-3 sibling)", 
     expect(mergeCommandCalls(ghCalls)).toHaveLength(0);
   });
 
-  test("row 5 — guard fired, changed-file list unretrievable: refused + escalation", async () => {
+  rowTest("row 5 — guard fired, changed-file list unretrievable: refused + escalation", async () => {
     const { outcome } = await run({
       gh: { changedFiles: { ok: false, stdout: "", stderr: "boom" } },
     });
@@ -197,7 +219,7 @@ describe("phaseMerge — FSPEC §11 row table (AT-M2, AT-M2a's row-3 sibling)", 
     ]);
   });
 
-  test("row 6 — no prUrl: deferred, zero gh calls", async () => {
+  rowTest("row 6 — no prUrl: deferred, zero gh calls", async () => {
     const { outcome, ghCalls } = await run({ prUrl: null });
     expect(outcome.mergeStatus).toBe("deferred");
     expect(outcome.row).toBe("6");
@@ -205,27 +227,27 @@ describe("phaseMerge — FSPEC §11 row table (AT-M2, AT-M2a's row-3 sibling)", 
     expect(ghCalls).toHaveLength(0);
   });
 
-  test("row 7 — PR CLOSED: deferred", async () => {
+  rowTest("row 7 — PR CLOSED: deferred", async () => {
     const { outcome } = await run({ gh: { prState: { stdout: JSON.stringify({ state: "CLOSED", mergeable: "MERGEABLE", mergeStateStatus: "CLEAN", number: 42, mergeCommit: null }) } } });
     expect(outcome.mergeStatus).toBe("deferred");
     expect(outcome.row).toBe("7");
   });
 
-  test("row 8 — O1 unreadable: refused, no escalation", async () => {
+  rowTest("row 8 — O1 unreadable: refused, no escalation", async () => {
     const { outcome } = await run({ gh: { prState: { ok: false, stdout: "", stderr: "boom" } } });
     expect(outcome.mergeStatus).toBe("refused");
     expect(outcome.row).toBe("8");
     expect(escalationLines(outcome)).toEqual([]);
   });
 
-  test("row 9 — CI none + mergeRequiresCi true: refused + escalation", async () => {
+  rowTest("row 9 — CI none + mergeRequiresCi true: refused + escalation", async () => {
     const { outcome } = await run({ gh: { ci: { stdout: JSON.stringify({ statusCheckRollup: [] }) } } });
     expect(outcome.mergeStatus).toBe("refused");
     expect(outcome.row).toBe("9");
     expect(escalationLines(outcome)).toEqual([MERGE_ESCALATIONS.ci({ prUrl: PR_URL })]);
   });
 
-  test("row 10 — CI pending: refused, no escalation", async () => {
+  rowTest("row 10 — CI pending: refused, no escalation", async () => {
     const { outcome } = await run({
       gh: { ci: { stdout: JSON.stringify({ statusCheckRollup: [{ name: "build", state: "PENDING" }] }) } },
     });
@@ -234,7 +256,7 @@ describe("phaseMerge — FSPEC §11 row table (AT-M2, AT-M2a's row-3 sibling)", 
     expect(escalationLines(outcome)).toEqual([]);
   });
 
-  test("row 10 (failed variant) — CI failed: refused, no escalation", async () => {
+  rowTest("row 10 (failed variant) — CI failed: refused, no escalation", async () => {
     const { outcome } = await run({
       gh: { ci: { stdout: JSON.stringify({ statusCheckRollup: [{ name: "build", state: "FAILURE" }] }) } },
     });
@@ -242,7 +264,7 @@ describe("phaseMerge — FSPEC §11 row table (AT-M2, AT-M2a's row-3 sibling)", 
     expect(outcome.row).toBe("10");
   });
 
-  test("row 11 — CI unknown: refused", async () => {
+  rowTest("row 11 — CI unknown: refused", async () => {
     const { outcome } = await run({
       gh: { ci: { stdout: JSON.stringify({ statusCheckRollup: [{ name: "x", state: "WEIRD" }] }) } },
     });
@@ -250,7 +272,7 @@ describe("phaseMerge — FSPEC §11 row table (AT-M2, AT-M2a's row-3 sibling)", 
     expect(outcome.row).toBe("11");
   });
 
-  test("row 11a — mergeable/mergeStateStatus/number unreadable: refused", async () => {
+  rowTest("row 11a — mergeable/mergeStateStatus/number unreadable: refused", async () => {
     const { outcome } = await run({
       gh: { prState: { stdout: JSON.stringify({ state: "OPEN", mergeable: "BOGUS", mergeStateStatus: "CLEAN", number: 42, mergeCommit: null }) } },
     });
@@ -259,7 +281,7 @@ describe("phaseMerge — FSPEC §11 row table (AT-M2, AT-M2a's row-3 sibling)", 
     expect(escalationLines(outcome)).toEqual([]);
   });
 
-  test("row 12 — mergeable CONFLICTING: deferred", async () => {
+  rowTest("row 12 — mergeable CONFLICTING: deferred", async () => {
     const { outcome } = await run({
       gh: { prState: { stdout: JSON.stringify({ state: "OPEN", mergeable: "CONFLICTING", mergeStateStatus: "CLEAN", number: 42, mergeCommit: null }) } },
     });
@@ -267,7 +289,7 @@ describe("phaseMerge — FSPEC §11 row table (AT-M2, AT-M2a's row-3 sibling)", 
     expect(outcome.row).toBe("12");
   });
 
-  test("row 13 — mergeable UNKNOWN after bounded re-reads: deferred, o1Count in the reason", async () => {
+  rowTest("row 13 — mergeable UNKNOWN after bounded re-reads: deferred, o1Count in the reason", async () => {
     const { outcome, ghCalls } = await run({
       config: { mergeableRetries: 1 },
       gh: { prState: { stdout: JSON.stringify({ state: "OPEN", mergeable: "UNKNOWN", mergeStateStatus: "CLEAN", number: 42, mergeCommit: null }) } },
@@ -278,14 +300,14 @@ describe("phaseMerge — FSPEC §11 row table (AT-M2, AT-M2a's row-3 sibling)", 
     expect(ghCalls.filter((c) => /--json state,mergeable/.test(String(c)))).toHaveLength(2);
   });
 
-  test("row 13a — review-thread list unretrievable: refused", async () => {
+  rowTest("row 13a — review-thread list unretrievable: refused", async () => {
     const { outcome } = await run({ gh: { reviewThreads: { ok: false, stdout: "", stderr: "boom" } } });
     expect(outcome.mergeStatus).toBe("refused");
     expect(outcome.row).toBe("13a");
     expect(escalationLines(outcome)).toEqual([]);
   });
 
-  test("row 14 — unresolved review thread(s): deferred", async () => {
+  rowTest("row 14 — unresolved review thread(s): deferred", async () => {
     const { outcome } = await run({
       gh: {
         reviewThreads: {
@@ -306,13 +328,13 @@ describe("phaseMerge — FSPEC §11 row table (AT-M2, AT-M2a's row-3 sibling)", 
     expect(outcome.reason).toBe("1 unresolved review thread(s)");
   });
 
-  test("row 15 — capability query unretrievable: refused", async () => {
+  rowTest("row 15 — capability query unretrievable: refused", async () => {
     const { outcome } = await run({ gh: { repoCaps: { ok: false, stdout: "", stderr: "boom" } } });
     expect(outcome.mergeStatus).toBe("refused");
     expect(outcome.row).toBe("15");
   });
 
-  test("row 16 — no permitted merge method: deferred", async () => {
+  rowTest("row 16 — no permitted merge method: deferred", async () => {
     const { outcome } = await run({
       gh: {
         repoCaps: {
@@ -331,7 +353,7 @@ describe("phaseMerge — FSPEC §11 row table (AT-M2, AT-M2a's row-3 sibling)", 
     expect(outcome.reason).toBe("no permitted merge method");
   });
 
-  test("row 17 — every candidate attempted and failed: deferred, reason names each attempt", async () => {
+  rowTest("row 17 — every candidate attempted and failed: deferred, reason names each attempt", async () => {
     const { outcome, ghCalls } = await run({
       gh: { merge: { ok: true, stdout: "", stderr: "dirty tree" } },
       readback: { ok: true, stdout: JSON.stringify({ state: "OPEN" }), stderr: "" },
@@ -342,7 +364,7 @@ describe("phaseMerge — FSPEC §11 row table (AT-M2, AT-M2a's row-3 sibling)", 
     expect(mergeCommandCalls(ghCalls)).toHaveLength(2);
   });
 
-  test("row 18 — merge performed and succeeded: merged, sha and method reported", async () => {
+  rowTest("row 18 — merge performed and succeeded: merged, sha and method reported", async () => {
     const { outcome, ghCalls, queueCalls } = await run({});
     expect(outcome.mergeStatus).toBe("merged");
     expect(outcome.row).toBe("18");
@@ -353,7 +375,7 @@ describe("phaseMerge — FSPEC §11 row table (AT-M2, AT-M2a's row-3 sibling)", 
     expect(escalationLines(outcome)).toEqual([]);
   });
 
-  test("row 19 — remote branch deletion failed: merged, plain note, mergeStatus unaffected", async () => {
+  rowTest("row 19 — remote branch deletion failed: merged, plain note, mergeStatus unaffected", async () => {
     const { outcome } = await run({ git: { push: { ok: false, stdout: "", stderr: "no such remote branch" } } });
     expect(outcome.mergeStatus).toBe("merged");
     expect(outcome.row).toBe("18");
@@ -361,7 +383,7 @@ describe("phaseMerge — FSPEC §11 row table (AT-M2, AT-M2a's row-3 sibling)", 
     expect(escalationLines(outcome)).toEqual([]);
   });
 
-  test("row 20 — queue row absent (disposition error): merged + escalation", async () => {
+  rowTest("row 20 — queue row absent (disposition error): merged + escalation", async () => {
     const { outcome } = await run({ recordDisposition: "error" });
     expect(outcome.mergeStatus).toBe("merged");
     expect(outcome.queueRow).toBe("error");
@@ -370,7 +392,7 @@ describe("phaseMerge — FSPEC §11 row table (AT-M2, AT-M2a's row-3 sibling)", 
     ]);
   });
 
-  test("row 21 — queue row written but not committed: merged + plain note, no escalation", async () => {
+  rowTest("row 21 — queue row written but not committed: merged + plain note, no escalation", async () => {
     const { outcome } = await run({ recordDisposition: "recorded (uncommitted)" });
     expect(outcome.mergeStatus).toBe("merged");
     expect(outcome.queueRow).toBe("recorded (uncommitted)");
@@ -378,15 +400,69 @@ describe("phaseMerge — FSPEC §11 row table (AT-M2, AT-M2a's row-3 sibling)", 
     expect(outcome.notes.some((n) => n.startsWith(`Queue row for ${FEATURE}:`))).toBe(true);
   });
 
-  test("row 22 — working tree not updated: merged + escalation", async () => {
+  rowTest("row 22 — working tree not updated: merged + escalation", async () => {
     const { outcome } = await run({ git: { status: { ok: true, stdout: "M some/file.txt\n", stderr: "" } } });
     expect(outcome.mergeStatus).toBe("merged");
     expect(escalationLines(outcome)).toEqual([
       MERGE_ESCALATIONS.tree({ prUrl: PR_URL, reason: "working tree is dirty", branch: "unknown" }),
     ]);
+    // CR product-manager finding 1 — M3 failed (tree not updated), so the
+    // commit never reached the default branch; the ahead-of-remote sentence
+    // would be false on this path and must not fire.
+    expect(outcome.notes).not.toContain(MERGE_NOTES.aheadOfRemote("main", FEATURE));
+    expect(outcome.notes.some((n) => n.startsWith("Local "))).toBe(false);
   });
 
   // Row 23 documented, not executed — see module docblock.
+
+  test("row completeness (TSPEC §13.3): every row this file can drive through phaseMerge was actually exercised", () => {
+    // Deleting any rowTest(...) case above drops its id from COVERED_ROWS,
+    // so the set comparison reds — an anti-rot device, not a list restatement.
+    // Row 23 is exempted by cross-reference: haltAndQueue.test.js exercises
+    // it under its own PROP-M-17 row-23 self-count (see module docblock).
+    expect(new Set(COVERED_ROWS)).toEqual(new Set(ROW_TABLE_IDS));
+  });
+});
+
+// ── CR product-manager finding 1 — the two remaining false-firing paths for
+// FSPEC §8.2's ahead-of-remote note, beyond row 22 above ────────────────────
+
+describe("phaseMerge — MERGE_NOTES.aheadOfRemote gating (CR product-manager finding 1)", () => {
+  test("§2.5 non-overwrite (queue row left unchanged): no ahead-of-remote note, nonOverwrite note present", async () => {
+    const detail = 'row for widget-feature left unchanged: found status "blocked"';
+    const queueRow = queueRowSeam("recorded", detail);
+    const outcome = await phaseMerge({
+      feature: FEATURE,
+      prUrl: PR_URL,
+      config: { ...BASE_CONFIG },
+      _ghRun: fakeGhRun(ghFixture({}))._ghRun,
+      _git: fakeGit({})._git,
+      _readFile: async () => {
+        throw new Error("_readFile should not be called when config is supplied directly");
+      },
+      _recordQueueRow: queueRow._recordQueueRow,
+      _sleep: fakeSleep,
+      _now: fakeNow,
+    });
+    expect(outcome.mergeStatus).toBe("merged");
+    // The two notes would otherwise contradict each other in the same
+    // report — the write path is correct, only the notice was wrong.
+    expect(outcome.notes).not.toContain(MERGE_NOTES.aheadOfRemote("main", FEATURE));
+    expect(outcome.notes).toContain(MERGE_NOTES.nonOverwrite(FEATURE, detail));
+  });
+
+  test("row 3 with O4 unknown (default branch unavailable): no note interpolates null", async () => {
+    const { outcome } = await run({
+      gh: {
+        prState: { stdout: JSON.stringify({ state: "MERGED", mergeable: "MERGEABLE", mergeStateStatus: "CLEAN", number: 42, mergeCommit: { oid: MERGED_OID } }) },
+        repoCaps: { ok: false, stdout: "", stderr: "boom" },
+      },
+    });
+    expect(outcome.mergeStatus).toBe("merged");
+    expect(outcome.row).toBe("3");
+    expect(outcome.notes.some((n) => n.includes("null"))).toBe(false);
+    expect(outcome.notes.some((n) => n.startsWith("Local "))).toBe(false);
+  });
 });
 
 // ─── PROP-M-17 — report totality (PLAN A8) ─────────────────────────────────
@@ -606,6 +682,33 @@ describe("phaseMerge — never throws to the pipeline (FSPEC §2.1, TSPEC §5.2)
     expect(outcome.row).toBe("internal");
     expect(typeof outcome.reason).toBe("string");
     expect(outcome.reason.length).toBeGreaterThan(0);
+  });
+
+  test("CR product-manager finding 3 — a note accumulated before an internal throw survives on the row-internal outcome", async () => {
+    // M2 (branch delete) runs first and fails — pushing a note. M3 (the
+    // default-branch update) then throws instead of returning a result
+    // shape; the outer catch must still hand back the note M2 already
+    // accumulated, not discard it along with the caught error.
+    const _git = async (argv) => {
+      if (argv[0] === "push") return { ok: false, stdout: "", stderr: "no such remote branch" };
+      if (argv[0] === "status") throw new Error("git status exploded");
+      return { ok: true, stdout: "", stderr: "" };
+    };
+    const queueRow = queueRowSeam();
+    const outcome = await phaseMerge({
+      feature: FEATURE,
+      prUrl: PR_URL,
+      config: { ...BASE_CONFIG, deleteBranchOnPdlcMerge: true },
+      _ghRun: fakeGhRun(ghFixture({}))._ghRun,
+      _git,
+      _readFile: async () => null,
+      _recordQueueRow: queueRow._recordQueueRow,
+      _sleep: fakeSleep,
+      _now: fakeNow,
+    });
+    expect(outcome.mergeStatus).toBe("refused");
+    expect(outcome.row).toBe("internal");
+    expect(outcome.notes).toContain(MERGE_NOTES.branchDeleteFailed(FEATURE, "no such remote branch"));
   });
 });
 
