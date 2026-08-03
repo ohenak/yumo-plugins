@@ -252,26 +252,41 @@ halt currently conflates: *diagnosing* the problem, and *authorizing* the resolu
   `docs/{feature}/ADVISORY-{feature}.md` carrying timestamp, seam, diagnosis, confidence,
   envelope determination, action taken or escalated, and evidence citations.
 - **AC-9.2** — Given an advisory action is taken without a record being written, Then this is a
-  defect and is asserted against by test.
-- **AC-9.3** — Given Phase H (harvest), Then `ADVISORY-{feature}.md` is a harvested process
-  artifact — distilled into LEARNINGS and deleted — exactly like `CROSS-REVIEW-*` and
-  `CODE_REVIEW-*`.
+  defect and is asserted against by test. Given the record write itself fails, Then the action is
+  not taken — or is reverted, per AC-3.2 — and the seam takes the AC-3.6 refusal path with reason
+  `record-write-failed`.
+- **AC-9.3** — Given the advisory record, Then it is a harvested process artifact — distilled into
+  LEARNINGS and deleted — and **no advisory record is deleted while a later phase can still append
+  to it**, so seam A5's entries (written in Phase PUB, which runs after Phase H) reach LEARNINGS
+  too. The LEARNINGS-precedes-delete protection that today covers `CROSS-REVIEW-*` and
+  `CODE_REVIEW-*` extends to `ADVISORY-*`; without that extension "exactly like" would be untrue.
 - **AC-9.4** — Given the final pipeline report, Then it carries an advisory summary: count of
-  invocations, count resolved, count escalated, by seam, plus the **advisory model actually used**
-  and whether it was the configured rung or the AC-1.2 fallback.
+  invocations, count resolved, count escalated, listed for **all five seams A1–A5, zero counts
+  included**, plus the **advisory model actually used** and whether it was the configured rung or
+  the AC-1.2 fallback.
 
-AC-9.3 and AC-9.4 together are what make the advisory tier improvable: the consolidation agent
-reads the harvested record and can see which seams escalate most, which is the signal for where
-the envelope or the upstream phase needs work.
+AC-9.3 and AC-9.4 make the advisory tier improvable: the consolidation agent reads the harvested
+record and sees which seams escalate most — the signal for where the envelope or the upstream
+phase needs work.
 
 ### REQ-ADV-10 — Escalation output
 
 - **AC-10.1** — Given any escalation, Then an entry is appended to `docs/_queue/ESCALATIONS.md`
-  carrying feature, seam, diagnosis, proposed action, evidence, and the pipeline state at the time.
+  carrying feature, seam, the AC-3.6 refusal reason, diagnosis, proposed action, evidence, and the
+  pipeline state at the time — where *pipeline state* is the phase id and that phase's outcome.
 - **AC-10.2** — Given an escalation entry, Then it states what the operator must decide, in one
   sentence, at the top.
 - **AC-10.3** — Given an escalation, Then the pipeline's existing halt or skip behavior is
   unchanged. Escalation adds information; it never changes control flow.
+- **AC-10.4** — Given the escalation file, Then it is append-only and newest-last, one entry per
+  escalation under its own heading; a later invocation escalating the same feature and seam appends
+  a further entry rather than updating one in place, so `pdlc-engineering-loop` can consume it as a
+  log rather than a state file.
+- **AC-10.5** — Given the pipeline already emits in-process `ESCALATION:` notices on the final
+  report, Then those notices are left exactly as they are and each advisory escalation additionally
+  emits one, naming the seam and pointing at its `ESCALATIONS.md` entry. The durable file is
+  required because the operator's turn begins after the process has exited and a report notice does
+  not survive it; the notice channel stays the single place the operator watches.
 
 ## 4. Non-functional requirements
 
