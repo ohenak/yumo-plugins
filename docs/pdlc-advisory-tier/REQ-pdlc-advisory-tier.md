@@ -293,10 +293,13 @@ phase needs work.
 - **NFR-1** — The envelope is enforced in the workflow script, never only in an agent prompt. A
   prompt instruction is not a control.
 - **NFR-2** — Every prohibition in REQ-ADV-04 has an explicit failing test proving it holds.
-- **NFR-3** — The advisory tier is additive: with `ADVISORY_ENABLED = false` the pipeline's
-  behavior is byte-identical to today's.
-- **NFR-4** — No advisory seam may extend total pipeline wall-clock by more than its configured
-  budget; exceeding it escalates.
+- **NFR-3** — The advisory tier is additive: with `advisory.enabled` false and the same inputs, the
+  report's phase table and every phase outcome are identical to today's, no `ADVISORY-*` file or
+  `ESCALATIONS.md` entry is created, and the report carries no advisory summary. (Stated as an
+  equality on named artifacts, since report text varies by timestamp and iteration count.)
+- **NFR-4** — No advisory seam invocation may exceed `advisory.seamBudgetMinutes` (default 10) of
+  wall-clock, measured from dispatch to verdict; an overrun escalates via AC-3.6 with reason
+  `budget-exhausted`.
 - **NFR-5** — The advisory tier never has credentials beyond those the pipeline already holds, and
   never merges (REQ-MERGE-03 and AC-4.4 both hold).
 
@@ -313,24 +316,29 @@ record, escalation output, tests.
 ## 6. Dependencies
 
 - **BL-01** — **The Fable 5 model alias for the workflow runtime's `agent()` `model` option is
-  unverified** (master plan OQ-E1). Existing constants use bare aliases (`"opus"`, `"sonnet"`,
-  `"haiku"`), so `MODEL_ADVISORY` may need `"fable"` rather than `"claude-fable-5"`. Confirming
-  the alias is the first task of implementation. This blocker is **non-fatal by construction**:
-  AC-1.2/AC-1.3 let the tier ship and run on the Opus fallback with the substitution declared,
-  while AC-1.4 keeps a wholly unresolvable configuration a loud startup failure. Fable remains the
-  intended rung; the fallback is a bridge, not the target state.
-- **BL-02** — `pdlc-merge-phase` delivered; seam A5's fix-and-re-poll loop and the merge phase's
-  preconditions interact and must be built in that order.
+  unverified** (master plan OQ-E1). The existing constants use bare aliases (`"opus"`, `"sonnet"`),
+  so the advisory alias may likewise be a bare one; TSPEC pins the literal (AC-1.1). This blocker is
+  **non-fatal by construction**: AC-1.2/AC-1.3 let the tier ship on the Opus fallback with the
+  substitution declared, while AC-1.4 keeps a wholly unresolvable configuration a loud failure.
+- **BL-02** — **Satisfied.** `pdlc-merge-phase` has landed on the default branch: Phase MERGE, its
+  mode catalogue, its self-modification guard and the `.claude/pdlc.config.json` reader are all
+  shipped there. This REQ is written against that base, not against this branch's older tree; every
+  §1 "Today" row was re-checked against it and all five still hold. (The queue row for
+  `pdlc-merge-phase` still reads `pending` — an operator note about `docs/_queue/QUEUE.md`, not a
+  dependency of this REQ.)
 - **BL-03** — `gh` can retrieve failing job logs (`gh run view --log-failed`) in the consuming repo.
-- **BL-04** — `docs/_queue/ESCALATIONS.md` is a new artifact; its format is defined here and
-  consumed by `pdlc-engineering-loop`.
+- **BL-04** — `docs/_queue/ESCALATIONS.md` is a new artifact; its format is defined here (AC-10.1,
+  AC-10.4) and consumed by `pdlc-engineering-loop`.
+- **BL-05** — `gh` can read the **default branch's own** check history, which is a different surface
+  from BL-03 and from the PR-rollup read the pipeline performs today. AC-8.4's pre-existing-failure
+  comparison depends on it; where it is unavailable the seam escalates with the comparison undone.
 
 ## 7. Deferrals
 
 | ID | Deferred | Rationale | Binds to |
 |---|---|---|---|
 | D-ADV-01 | Widening the envelope beyond AC-3.3 | Requires operational evidence from the advisory record about which escalations were routinely rubber-stamped | `pdlc-consolidation-agent` |
-| D-ADV-02 | Advisory participation in spec authoring phases | Those phases already run on Opus and do not halt; no seam exists | — |
+| D-ADV-02 | Advisory participation in spec authoring phases | Those phases already run on Opus and do not halt; no seam exists | **Closed, not deferred** — no successor |
 | D-ADV-03 | Learned confidence calibration from escalation outcomes | Needs a corpus of escalations with recorded operator decisions | `pdlc-consolidation-agent` |
-| D-ADV-04 | Advisory resolution of review-thread comments | Comment substance is a design conversation, not a mechanical seam | — |
-| D-ADV-05 | Per-seam model selection (different rungs per seam) | One advisory rung until evidence shows a seam is over- or under-served | — |
+| D-ADV-04 | Advisory resolution of review-thread comments | Comment substance is a design conversation, not a mechanical seam | **Closed, not deferred** — no successor |
+| D-ADV-05 | Per-seam model selection (different rungs per seam) | One advisory rung until evidence shows a seam is over- or under-served | `pdlc-consolidation-agent` — the same evidence stream as D-ADV-01 |
