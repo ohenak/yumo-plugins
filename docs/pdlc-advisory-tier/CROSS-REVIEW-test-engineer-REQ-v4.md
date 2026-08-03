@@ -78,4 +78,14 @@ a REQ-level acceptance test.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+The delta resolves all six routed items and breaks nothing I approved at v1.3. Three Low findings
+remain — F-24 (new, one clause on AC-4.5's lead sentence), and F-22 / F-23 carried from v3 — none of
+which blocks a black-box acceptance test from being written, and all three of which are one-sentence
+edits. The v1.3 approval stands, extended to v1.4.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 3}
