@@ -1214,6 +1214,83 @@ reason, never to `resolved`.
 
 ## 13. Test strategy and test doubles
 
+### 13.1 The runner, and the one way to invoke it
+
+Jest, ESM, `node --experimental-vm-modules` — `cd pdlc/workflows && npm test`. Filters go **after
+`--`** (`npm test -- advisory`); a bare `npx jest` misses the ESM flag and the
+`globalSetup`/`globalTeardown` this suite depends on. One file per concern under
+`pdlc/workflows/__tests__/`, matching the shipped naming (`mergeGuard.test.js`, `dodPhase.test.js`,
+`queueDriftGate.test.js`).
+
+### 13.2 Test categories, and why most of this feature is a unit test
+
+| Category | What it covers | Doubles needed |
+|---|---|---|
+| **Pure-function unit** | `parseAdvisoryConfig`, `parseAdvisoryVerdict`, `classifyEnvelope`, `refusalReasonFor`, `touchesTestArtifact`, `touchesDodCriterion`, `branchCreated`, `budgetExceeded`, `governingClass`, `honourA1Verdict`, `isModelResolutionError`, `advisorySummaryRows`, `renderAdvisoryEntry`, `renderEscalationEntry` | **none** |
+| **Driver unit** | `runAdvisorySeam` against a fake `SeamOps` and fake IO | `SeamOps` fake + `_agent`/`_appendFile`/`_now` fakes |
+| **Seam unit** | each real `SeamOps` against fake `_git` / `_ghRun` / `_readFile` | transport fakes |
+| **Phase integration** | the wiring at `dev:8166`, `dev:8179`, `dev:6256`, `queue:912` — that the halt/skip still happens | `_runAdvisorySeam` fake returning a scripted disposition |
+| **Set-equality / catalogue** | `ADVISORY_REFUSAL_REASONS`, `ENVELOPE_DEFAULTS`, the exclusion set, `ADVISORY_SEAMS`, `MERGE_ESCALATIONS` unchanged | none — compare exported frozen objects |
+
+The proportion is deliberate: §2.4's dependency graph puts every decision in a pure leaf and leaves
+exactly one impure component. `decideMerge` (`dev:1197`) is the precedent — Phase MERGE's entire
+ladder is unit-tested with no GitHub double, and the same shape applies here.
+
+### 13.3 Test doubles
+
+**Reuse the shipped doubles rather than authoring parallel ones.** `__tests__/mergeDoubles.test.js`
+and `__tests__/helpers/` already carry the `_ghRun`, `_git` and `_agent` fakes Phase MERGE and Phase
+DOD are tested through; the advisory tests take the same fakes with additional scripted responses.
+
+| Seam | Double |
+|---|---|
+| `_agent` | returns a scripted trailer string per call, with an optional throw whose message drives `isModelResolutionError` |
+| `_git` / `_ghRun` | command-string → scripted result map, the shipped shape |
+| `_appendFile` / `_writeFile` | in-memory map; a `throwOn` set drives E-13 and T-08-2 |
+| `_now` / `_sleep` | fake clock, already injected on both `main()`s (`dev:6880-6881`) — required for V-5 preemption and the A5 wait carve-out |
+| `SeamOps` | a hand-rolled object literal per case; **this is the double that makes the driver testable without any seam** |
+| queue-side free identifiers | `_runAdvisorySeam` etc. **must** be injected — they are unbound under jest (§2.3), which is a feature: a queue test that forgets to inject fails loudly rather than silently exercising a stale default |
+
+### 13.4 What the suite is required to pin
+
+Beyond one-per-acceptance-test coverage of FSPEC §18.1's 81 cases, five obligations shape the suite:
+
+1. **X-a's seven operations are seven named tests** (T-03-3). Assertion edit, test-file delete,
+   test-case delete, rename out of the collected set, skip/xfail/only marker, parametrised-list
+   narrowing, coverage/mutation threshold lowered — each with its own fixture diff. A single
+   "touches a test file" test would pass while five of the seven slipped through.
+2. **Every prohibition asserts the positive triple too** (T-03-6, AC-4.6). `expect(criterionUnchanged)`
+   alone is satisfied by a build where the seam never fired; the test must also assert
+   `outcome === "escalated"`, exactly one reason, and the unchanged pre-advisory behaviour.
+3. **The closed sets are compared as sets** (T-03-5, T-03-8). An invented or deleted member fails even
+   where no individual path changed.
+4. **The disabled-run created-file set is a transcribed literal** (T-10-3, §11.2), never re-derived.
+5. **The guard-message coupling has its own regression test** (§9.3): after the guard edit,
+   `dev:8226`'s literal test and `dev:8232`'s regex both still fire on a `CROSS-REVIEW` refusal.
+
+### 13.5 Property-based candidates
+
+PROPERTIES owns the final call; three functions are the natural candidates because each has an
+invariant that quantifies over inputs rather than enumerating them:
+
+| Function | Property |
+|---|---|
+| `refusalReasonFor` | for any signal set, the result is a member of `ADVISORY_REFUSAL_REASONS` and is the first member whose signal is true |
+| `advisorySummaryRows` | for any disposition list, `invocations === resolved + escalated + noAction` on every row and on the total |
+| `classifyEnvelope` | for any candidate whose paths include a guard path or a test artifact, `inside === false` — the exclusions are absorbing |
+
+### 13.6 Build and PLAN obligations
+
+- `pdlc/workflows/dist/` must be rebuilt (`node pdlc/workflows/build-runtime.mjs`) **in the same
+  commit** as any source edit; `--check` and `runtimeBundle.test.js` both fail otherwise.
+- `runtimeBundle.test.js` additionally asserts the runtime's structural constraints — `export const
+  meta` first, no other `export`, no `import` — which the §2.3 prelude edit must not break.
+- **The PLAN's first task is the §1.1 rebase onto `26c3f1c`-or-later.** Every symbol this document
+  cites postdates this branch's base; a batch that runs before the rebase edits a file that does not
+  contain the code it is patching.
+- One additional manual step (§3.3): dispatch one trivial advisory agent on `"fable"` in a real
+  runtime and record which branch of §3.4's ladder fired.
+
 ## 14. Requirement → component traceability
 
 ## 15. Feasibility, cost, and risks
