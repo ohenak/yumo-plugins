@@ -101,4 +101,47 @@ document is otherwise unusually good at avoiding.
 
 ## Recommendation
 
-_pending_
+**Needs revision**
+
+Three High and five Medium findings are open, so the bar mandates it. None of the eight is a
+disagreement about what the tier should do — the behaviour model is sound and §2 verifies cleanly at
+its pinned sha. All eight are places where the acceptance matrix, as written, cannot go red.
+
+What must change before this is approvable:
+
+1. **F-01** — T-04-3 asserts a state the production path cannot reach (`queue:890-897` `continue`s
+   before the triage dispatch at `:900-903`). Say that A1 has no independent post-action gate, and
+   split T-04-3 into a reachable integration assertion plus an explicitly unit-scoped guard test.
+2. **F-02** — add set-equality over the permitted-action set {E-1…E-4} and the exclusion set
+   {X-a…X-e}, and give X-d and X-e a behavioural test each. Today a fifth permitted action, or a
+   deleted exclusion, passes all 68 tests.
+3. **F-03** — V-7 says two dispositions; five edge-case rows describe a third. Name it, give it a
+   summary counter, and pin the counters' arithmetic with a test.
+4. **F-04** — resolve rung resolution as lazy (§3.2/§3.3) or eager (§15.2) and test the run that
+   distinguishes them: tier enabled, rung unresolvable, no seam fires.
+5. **F-05** — state that a refusal trigger matches the invocation's *terminating* condition, make
+   §4.4's malformed row consistent with it, and put the reason literal into T-07-6.
+6. **F-06** — say whether the wall-clock bound preempts an in-flight attempt, and add the
+   single-attempt-overrun test that NFR-4 currently has no way to fail on.
+7. **F-07** — state the durable outcome of an applied A2 re-grounding, so T-04-6's next-invocation
+   Then has an observable.
+8. **F-08** — add the escalation-log-write-failure test; it is the one write whose failure must
+   *not* revert, and the asymmetry with R-2 is currently unpinned.
+
+The four Lows (F-09…F-12) are one sentence each and should close in the same pass.
+
+The rest of the document is in good shape for the PROPERTIES author. The seam-by-seam structure,
+§16's rule register, §17's edge-case index and §18's test index give a genuine acceptance matrix
+rather than a list of intentions, and the pinned-baseline discipline means the next reviewer can
+re-verify every existing-behaviour claim with one command. Close the eight and this is a document a
+test engineer can write the suite from without asking a question.
+
+One upstream item is routed as an erratum rather than counted here: REQ AC-8.2 defines one attempt
+as a fix → push → re-poll cycle, which does not describe E-1's re-run-only cycle (no fix, no push),
+leaving E-1's attempt accounting — and T-07-4/T-07-6's counting oracle — without a definition. §9.2
+A5-3 inherits the wording verbatim, so the fix belongs upstream.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 3, "medium": 5, "low": 4}
