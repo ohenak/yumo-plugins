@@ -54,8 +54,46 @@ still resolve to the AC-1.7 table from AC-2.4, AC-8.2 and NFR-4.
 
 ## Questions
 
+Q-07 (v3) is answered by the AC-9.3 erratum: the distil-and-delete is a distinct post-PUB step, not
+a re-parameterised Phase H. Q-08 (the `deferred`/`refused` MERGE outcome) is now partly answered by
+the same clause and is folded into F-22.
+
+| ID | Question |
+|----|---------|
+| Q-09 | AC-9.1 leaves a `hold`/`escalate` candidate's advisory record for "that feature's next run" to harvest. For a candidate that is held indefinitely — or whose REQ is withdrawn — that run never happens and the record persists as a tracked file with no reaper. I do not think it needs one (it is small, tracked, human-readable, and sits beside the REQ it describes), but is that the intent, and should §7 carry a one-line decision row saying so rather than leaving a later reader to wonder whether the gap was overlooked? |
+| Q-10 | Does an advisory-enabled repo want the advisory record's *existence* to affect Phase MERGE at all (F-22)? If the answer is "no — merge should proceed on the CI evidence PUB already collected", that is a change to `pdlc-merge-phase`'s observation model, not to this REQ, and it should be named as an out-of-scope dependency rather than assumed away. |
+
 ## Positive Observations
+
+- The §1 A2 correction is the most valuable of the six, because it changes what the feature *is*:
+  routing an existing signal and authoring a new obligation are different pieces of work, and the
+  row now says which one this is. The correction was carried into AC-5.5 rather than left as a
+  local edit, which is what makes it trustworthy.
+- NFR-4 now carries its own justification inline ("without that carve-out the CI completion window,
+  which exceeds the default, ends every A5 invocation inside attempt 1 and `advisory.attemptBudget`
+  never binds"). A threshold that explains why it is qualified survives future edits far better
+  than one that merely is qualified — the next person to "simplify" it back to wall-clock will read
+  the reason first.
+- AC-4.5's A1 row answers a vacuous-gate finding by writing **none** rather than by inventing a
+  gate. Saying "no post-action gate exists here, and here is why" is the harder and better answer;
+  it also removes an AC-4.6 test obligation that could not have been discharged.
+- REQ and FSPEC were reconciled in the same pass rather than left to diverge with a note. AC-8.2 and
+  FSPEC A5-3 now describe one budget rule, and AC-1.7's threshold table was updated alongside — a
+  divergence between a threshold's definition and its use is exactly the class of drift that costs a
+  round later.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+The erratum resolves all six items it targets, and does so without breaking anything approved at
+v3 — the cross-references from AC-2.4, AC-3.6, AC-4.6 and NFR-4 into the changed text all still
+resolve, and no fact the erratum introduces contradicts the pinned base `26c3f1c`. Three Low
+findings remain (F-21 carried forward, F-22 and F-23 new), none of which blocks FSPEC or TSPEC
+work: F-22 and Q-10 are worth settling before the TSPEC commits to where the advisory harvest
+runs, and F-23 is a one-sentence rewording.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 3}
