@@ -69,7 +69,42 @@ that landed without one, plus one rewritten oracle that can no longer fail.
 
 ## Questions
 
+v1's Q-01, Q-02 and Q-03 are all answered in the document and are not carried forward: Q-01 by
+T-03-8's capability sentence, Q-02 by H-2b and T-08-8, Q-03 by §4.4's "the re-read consumes no
+attempt" plus the `no-action` counter. One new question.
+
+| ID | Question |
+|----|---------|
+| Q-01 | A2-6 commits the re-grounded REQ on "the branch the queue invocation is running on" and does **not** push. A queue invocation normally runs on the default branch, which this repo protects (and `orchestrate-dev`'s own queue-row commit is deliberately pathspec-scoped and unpushed for the same reason). Is an unpushed commit on the default branch the intended durable state, and does T-04-6's "a subsequent invocation reading that branch's head" mean the same working tree, or a fresh clone? The two readings need different fixtures, and only the first is constructible. |
+
 ## Positive Observations
+
+- **Every one of the twelve v1 findings is closed, and closed by adding falsifiability rather than
+  by removing the claim.** The count went 68 → 78 tests; nine of the ten new tests exist because a
+  reviewer said a rule could not go red. F-01's resolution in particular did the harder of the two
+  available things — it accepted that the flow branch was unreachable, said so in §5.4 and A1-2, and
+  kept a labelled unit-scoped guard rather than deleting the assertion.
+- **T-04-3 / T-04-3b is now the reference pattern for "unreachable but worth guarding".** The
+  integration test asserts the reachable positive (`zero A1 invocations` — a counter, not an
+  absence), the unit test carries an inline label saying which state it covers and why the pipeline
+  cannot reach it, and §18.1 counts it explicitly rather than hiding it in a range. Any future
+  defence-in-depth assertion in this document should copy this shape.
+- **The `no-action` disposition was propagated completely, not just declared.** V-7, F-4, S-1, §4.4,
+  §6.5, §8.3, §9.3 and §10.6 all moved together, and S-1 states the arithmetic identity
+  (`invocations == resolved + escalated + no-action`) that turns four counters into one checkable
+  invariant. Adding a third enum value usually leaves two or three sites stale; I found none.
+- **A5-8 is an honest answer to a question the document could have ducked.** Rather than pretending
+  BR-5's two-tree-states invariant survives a push unchanged, it says where the invariant is
+  asserted (the pre-push tree), what the operator observes instead (one commit per attempt, no
+  rewritten history), and reorders §4.1's steps 5–7 at A5 so the record write precedes the push.
+  BR-5, R-2, AT-4 and T-07-6 were all updated to match.
+- **§14.2's NFR-5 split is the right call and the rare one.** Splitting a requirement into a tested
+  half and an explicitly untestable half, with the reason written down ("nothing observable at a
+  seam distinguishes a tier that holds a credential it never uses"), is more useful than the
+  alternative of pointing at a test that cannot fail for it. F-02 asks for the same honesty at the
+  NFR-4 row.
+- **§18.1's arithmetic is right.** 7 + 6 + 10 + 10 + 6 + 6 + 10 + 10 + 8 + 5 = 78, and every range
+  in §14.1 matches its §18.1 row. The recount commit (`a19e7ac`) did the tedious part properly.
 
 ## Recommendation
 
