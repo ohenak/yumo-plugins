@@ -106,7 +106,7 @@ reviewing it. This is what prevents an incomplete REQ from being picked up accid
 The skill transitions a feature's `Status` cell automatically:
 
 ```
-pending ──pick──▶ in-progress ──pipeline success──▶ awaiting-merge ──(human merges PR)──▶ done
+pending ──pick──▶ in-progress ──pipeline success──▶ awaiting-merge ──Phase MERGE merges, or a human merges the PR──▶ done
                        │
                        └──pipeline halts / throws──▶ halted
 ```
@@ -115,7 +115,9 @@ pending ──pick──▶ in-progress ──pipeline success──▶ awaiting
   marker. While any entry is `in-progress`, the skill refuses to pick up new work (serial
   guarantee) until a human resolves it.
 - **`awaiting-merge`** — success, but the work is on a `feat-{feature}` branch / PR, **not
-  yet in the base**. The skill never sets `done`.
+  yet in the base**. The pipeline's own Phase MERGE writes `done` automatically when it merges
+  the PR; `mergeMode` ships `off`, so today's default is still the human-merge path below, and
+  the skill itself never writes `done` for that path.
 - **`halted`** — the pipeline stopped, and the `halted` row is **committed** to git as soon
   as it is written, so the halt survives the process that recorded it rather than living only
   in an unsaved working tree. This is true of **every** status write, not just this one:
@@ -126,9 +128,11 @@ pending ──pick──▶ in-progress ──pipeline success──▶ awaiting
   the dirty tree is neither an error nor cleaned. Nothing is pushed. If the commit itself
   fails the halt is **not** downgraded — the run still halts for its original reason and the
   report carries the commit failure.
-- **`done`** is set by a **human** after merging the PR. This is deliberate: a dependent's
-  readiness check looks for the dependency's code in the base, and only a real merge puts
-  it there. Marking `done` is the human's acknowledgement that the merge happened.
+- **`done`** is set automatically by Phase MERGE when it merges the PR (`mergeMode` ships
+  `off`, so this path is opt-in), or by a **human** after merging the PR themselves otherwise.
+  This is deliberate: a dependent's readiness check looks for the dependency's code in the
+  base, and only a real merge puts it there. Marking `done` — automatically or by hand — is
+  the acknowledgement that the merge happened.
 
 ---
 

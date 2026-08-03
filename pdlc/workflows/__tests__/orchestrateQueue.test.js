@@ -595,7 +595,8 @@ describe("main()", () => {
 //   TSPEC §3.6  `rewriteStatus` is **exported**, gains a `_git` parameter,
 //               and commits after the write
 //   TSPEC §3.5  its return is `{ queueRow, detail? }`, `queueRow` drawn from
-//               `"halted" | "halted (uncommitted)" | "none" | "error"`
+//               `QUEUE_ROW_DISPOSITIONS` — "recorded" | "recorded (uncommitted)" |
+//               "none" | "error"
 //   TSPEC §6.5  exactly two `_git` invocations, `add` then `commit`, both
 //               pathspec-scoped to the queue path
 //   FSPEC §13.4/§13.5  the three failure dispositions
@@ -717,13 +718,13 @@ describe("RLH-19: queue-row write and commit mechanism", () => {
     expect(git.calls.some((argv) => argv.includes("-a"))).toBe(false);
     expect(git.calls.some((argv) => argv[0] === "push")).toBe(false);
 
-    expect(result).toEqual({ queueRow: "halted" });
+    expect(result).toEqual({ queueRow: "recorded" });
   });
 
   it("RLH-AT-33-module: a commit failure is non-fatal and surfaced", async () => {
     // FSPEC §13.4 — `git commit` fails (hook rejection, no identity, index
     // lock): the row is correct on disk, the mechanism does not throw, and the
-    // result is `"halted (uncommitted)"` carrying the stderr first line plus
+    // result is `"recorded (uncommitted)"` carrying the stderr first line plus
     // the manual-commit instruction. That the *original halt reason* is still
     // reported first is `RLH-AT-33-orch`'s.
     const rewriteStatus = rewriteStatusOf();
@@ -741,7 +742,7 @@ describe("RLH-19: queue-row write and commit mechanism", () => {
       git
     );
 
-    expect(result.queueRow).toBe("halted (uncommitted)");
+    expect(result.queueRow).toBe("recorded (uncommitted)");
     expect(typeof result.detail).toBe("string");
     expect(result.detail).toContain("pre-commit hook rejected the commit");
     expect(result.detail).not.toContain("see .git/hooks/pre-commit"); // first line only
@@ -771,7 +772,7 @@ describe("RLH-19: queue-row write and commit mechanism", () => {
       git
     );
 
-    expect(result.queueRow).toBe("halted (uncommitted)");
+    expect(result.queueRow).toBe("recorded (uncommitted)");
     expect(result.detail).toContain("fatal: not a git repository");
     expect(
       parseQueue(fs.files[QUEUE_PATH]).find((e) => e.feature === "notification-v2").status
@@ -781,7 +782,7 @@ describe("RLH-19: queue-row write and commit mechanism", () => {
   it("RLH-AT-34-module: 'nothing to commit' is success, silently", async () => {
     // FSPEC §13.4 / E-39 — the row already read the target status and was
     // already committed, the common case on a re-entry. Idempotence, not an
-    // error: `queueRow: "halted"`, and **no** warning detail.
+    // error: `queueRow: "recorded"`, and **no** warning detail.
     const rewriteStatus = rewriteStatusOf();
     expect(typeof rewriteStatus).toBe("function");
 
@@ -803,10 +804,97 @@ describe("RLH-19: queue-row write and commit mechanism", () => {
       git
     );
 
-    expect(result.queueRow).toBe("halted");
+    expect(result.queueRow).toBe("recorded");
     expect(result.detail ?? null).toBeNull();
     expect(
       parseQueue(fs.files[QUEUE_PATH]).find((e) => e.feature === "notification-v2").status
     ).toBe("halted");
+  });
+});
+
+// ─── B2 — `rewriteStatus`'s 7th (evidence) parameter (TSPEC §8.3, §13.4) ────
+//
+// The positional-arity assertions live here, per the wave-3 file-ownership
+// manifest; the AT-M1/AT-M2/AT-M2a scenarios and the §2.5 non-overwrite
+// conjuncts are `mergeQueueWriteback.test.js`'s.
+describe("RLH-19 continued — B2: the 7-argument evidence call vs. the 6-argument call", () => {
+  const QUEUE_PATH = DEFAULT_QUEUE_PATH;
+  const EVIDENCE_QUEUE = `# PDLC Queue
+
+| Order | Status | Feature | REQ Path | Depends-On |
+|-------|--------|---------|----------|------------|
+| 1 | awaiting-merge | notification-v2 | docs/notification-v2/REQ-notification-v2.md | auth-refresh |
+| 2 | done | auth-refresh | docs/auth-refresh/REQ-auth-refresh.md | — |
+`;
+
+  it("the 7-argument call migrates the Evidence column and writes the sha-form cell", async () => {
+    const rewriteStatus = queueModule.rewriteStatus;
+    expect(typeof rewriteStatus).toBe("function");
+
+    const fs = fakeFs({ [QUEUE_PATH]: EVIDENCE_QUEUE });
+    const git = fakeGit();
+
+    const result = await rewriteStatus(
+      QUEUE_PATH,
+      "notification-v2",
+      "done",
+      fs.readFile,
+      fs.writeFile,
+      git,
+      "abc1234 #42"
+    );
+
+    expect(result).toEqual({ queueRow: "recorded" });
+    expect(git.commands).toEqual([
+      `add -- ${QUEUE_PATH}`,
+      `commit -m chore(queue): notification-v2 → done -- ${QUEUE_PATH}`,
+    ]);
+
+    const written = fs.files[QUEUE_PATH];
+    expect(written).toContain("| Evidence |");
+    const row = written.split("\n").find((l) => l.includes("notification-v2"));
+    expect(row.trim().endsWith("| abc1234 #42 |")).toBe(true);
+    expect(parseQueue(written).find((e) => e.feature === "notification-v2").status).toBe("done");
+  });
+
+  it("the 6-argument call (no evidence) is byte-for-byte what it was before this feature", async () => {
+    const rewriteStatus = queueModule.rewriteStatus;
+    const fs = fakeFs({ [QUEUE_PATH]: EVIDENCE_QUEUE });
+    const git = fakeGit();
+
+    const result = await rewriteStatus(
+      QUEUE_PATH,
+      "notification-v2",
+      "done",
+      fs.readFile,
+      fs.writeFile,
+      git
+    );
+
+    expect(result).toEqual({ queueRow: "recorded" });
+    const written = fs.files[QUEUE_PATH];
+    expect(written).not.toContain("Evidence"); // no migration when no evidence is carried
+    expect(parseQueue(written).find((e) => e.feature === "notification-v2").status).toBe("done");
+  });
+
+  it("a non-overwritable row (pending/blocked/halted) with evidence is left untouched, no git call", async () => {
+    const rewriteStatus = queueModule.rewriteStatus;
+    const fs = fakeFs({ [QUEUE_PATH]: SAMPLE_QUEUE }); // "notification-v2" is "pending"
+    const git = fakeGit();
+
+    const result = await rewriteStatus(
+      QUEUE_PATH,
+      "notification-v2",
+      "done",
+      fs.readFile,
+      fs.writeFile,
+      git,
+      "abc1234 #42"
+    );
+
+    expect(result.queueRow).toBe("recorded");
+    expect(result.detail).toContain("pending");
+    expect(git.callCount).toBe(0);
+    expect(fs.files[QUEUE_PATH]).toBe(SAMPLE_QUEUE);
   });
 });

@@ -202,15 +202,17 @@ function maskLiterals(src) {
   return out.join("");
 }
 
-// FSPEC AT-19's closed thirteen-name set, restated once in TSPEC §8.5 and cited
-// here. NOT derived from main()'s parameter list: `_now` is a clock called
-// synchronously at four sites in raisePrAndVerifyCi and `_phaseDodEnabled` /
-// `_phasePubEnabled` are booleans never called, so a derived set reds on
-// shipped, correct source (TSPEC §8.5, PLAN §9.2).
+// FSPEC AT-19's closed fourteen-name set, restated once in TSPEC §8.5 and
+// cited here. NOT derived from main()'s parameter list: `_now` is a clock
+// called synchronously at four sites in raisePrAndVerifyCi and
+// `_phaseDodEnabled` / `_phasePubEnabled` / `_phaseMergeEnabled` are booleans
+// never called, so a derived set reds on shipped, correct source (TSPEC
+// §8.5, PLAN §9.2). `_ghRun` (PLAN A8) is Phase MERGE's single `gh` transport
+// seam — every call site is awaited, same discipline as the rest of the set.
 const AT19_SEAM_NAMES = Object.freeze([
   "_agent", "_readFile", "_writeFile", "_appendFile", "_checkFile", "_listFiles",
-  "_git", "_checkCi", "_mergeWorktree", "_recordHalt", "_rebaseOntoDefault",
-  "_dodVerifyLoop", "_raisePrAndVerifyCi",
+  "_git", "_checkCi", "_mergeWorktree", "_recordQueueRow", "_rebaseOntoDefault",
+  "_dodVerifyLoop", "_raisePrAndVerifyCi", "_ghRun",
 ]);
 
 // §8.5: the discriminant is the PROPERTY "awaits every element of the array",
@@ -757,10 +759,49 @@ function rtDevInjectionKeys(adapterSource) {
 }
 
 /**
+ * D2 (TSPEC §11.2): the `_recordQueueRow` closure's own value text — the
+ * arrow function assigned to that key inside a `.main({ … })` call in the
+ * given entrypoint template (`DEV_ENTRY` / `QUEUE_ENTRY`), read from
+ * build-runtime.mjs. Boundaries are found on the MASKED copy (so a comma or
+ * brace inside a string/comment cannot mislead the walk), but the returned
+ * text is sliced from the ORIGINAL body so it evaluates as real JS.
+ */
+function recordQueueRowClosureText(builderSource, entryName) {
+  const decl = new RegExp(`const\\s+${entryName}\\s*=\\s*\``).exec(builderSource);
+  expect(decl).not.toBeNull();
+  const tplStart = builderSource.indexOf("`", decl.index) + 1;
+  const tplEnd = builderSource.indexOf("`", tplStart);
+  const body = builderSource.slice(tplStart, tplEnd);
+  const masked = maskLiterals(body);
+  const key = /_recordQueueRow\s*:/.exec(masked);
+  expect(key).not.toBeNull();
+  const valueStart = key.index + key[0].length;
+  let depth = 0;
+  let end = -1;
+  for (let i = valueStart; i < masked.length; i++) {
+    const c = masked[i];
+    if (OPENERS[c]) {
+      depth += 1;
+    } else if (CLOSERS[c]) {
+      if (depth === 0) {
+        end = i;
+        break;
+      }
+      depth -= 1;
+    } else if (c === "," && depth === 0) {
+      end = i;
+      break;
+    }
+  }
+  expect(end).toBeGreaterThan(valueStart);
+  return body.slice(valueStart, end).trim();
+}
+
+/**
  * Every `_`-prefixed key supplied by a bundle entrypoint's injection object,
  * read from build-runtime.mjs's DEV_ENTRY / QUEUE_ENTRY template literals.
  * Every `.main({…})` argument object counts, including the one nested inside
- * QUEUE_ENTRY's `_runPipeline` closure — the only place `_recordHalt` is
+ * QUEUE_ENTRY's `_runPipeline` closure — the only place `_recordQueueRow` is
  * supplied on the queue path (TSPEC §8.5, §7.2 edit 2b).
  */
 function entrypointInjectionKeys(builderSource) {
@@ -825,24 +866,41 @@ const isAbsenceDefault = (text) => /^(?:null|undefined)$/.test(text.trim().repla
  */
 function classifyExemption(masked, param) {
   // E-2 — pass-through: no `=` initialiser at all, AND forwarded in main()'s
-  // body to exactly one callee resolving to a module-local function that
-  // declares the same name with a default. Resolution follows the alias hop.
+  // body to at least one callee, EVERY one of which resolves (one alias hop
+  // through main()'s own destructuring pattern, never a chain) to a
+  // module-local function that declares the same name with a default. Zero
+  // callees is still unresolved (nothing to point at); PLAN A8 added a
+  // second, independent forward (`phaseMerge`, alongside the pre-existing
+  // `raisePrAndVerifyCiFn` hop) for `_now`/`_sleep` — requiring EVERY
+  // resolved callee to declare the default, rather than exactly one callee
+  // to exist, is what keeps that a resolved E-2 instead of manufacturing a
+  // false unresolved.
   if (param.init === null) {
     const callees = e2ForwardCallees(masked, param.name);
-    if (callees.length !== 1) {
+    if (callees.length === 0) {
       return { form: "E-2", resolved: false, why: `forwarded to ${callees.length} callees, not exactly 1` };
     }
-    const target = resolveOneHop(masked, callees[0]);
-    const params = target ? moduleFunctionParams(masked, target) : null;
-    const declaresWithDefault =
-      params !== null &&
-      new RegExp(`(?<![A-Za-z0-9_$])${param.name}(?![A-Za-z0-9_$])\\s*=`).test(params);
-    return declaresWithDefault
-      ? { form: "E-2", resolved: true, why: `forwarded to ${callees[0]} → ${target}` }
+    const resolutions = callees.map((callee) => {
+      const target = resolveOneHop(masked, callee);
+      const params = target ? moduleFunctionParams(masked, target) : null;
+      const declaresWithDefault =
+        params !== null &&
+        new RegExp(`(?<![A-Za-z0-9_$])${param.name}(?![A-Za-z0-9_$])\\s*=`).test(params);
+      return { callee, target, declaresWithDefault };
+    });
+    const bad = resolutions.filter((r) => !r.declaresWithDefault);
+    return bad.length === 0
+      ? {
+          form: "E-2",
+          resolved: true,
+          why: resolutions.map((r) => `forwarded to ${r.callee} → ${r.target}`).join("; "),
+        }
       : {
           form: "E-2",
           resolved: false,
-          why: `${callees[0]} → ${target ?? "unresolved"} does not declare ${param.name} with a default`,
+          why: bad
+            .map((r) => `${r.callee} → ${r.target ?? "unresolved"} does not declare ${param.name} with a default`)
+            .join("; "),
         };
   }
 
@@ -1035,34 +1093,48 @@ describe("RLH-AT-64: orchestrate-dev's composition root wires every seam", () =>
     ).toEqual([]);
   });
 
-  it("RLH-AT-64: _recordHalt is wired, not exempt, whenever main() declares it", () => {
+  it("RLH-AT-64: _recordQueueRow is wired, not exempt, whenever main() declares it", () => {
     // Deliberately absent from rtDevInjections because its implementation
     // differs by caller; satisfied by QUEUE_ENTRY's _runPipeline closure and by
     // DEV_ENTRY. If either is dropped, this reds — which is the whole point.
-    const recordHalt = classified.find((c) => c.name === "_recordHalt");
-    if (!recordHalt) return; // not yet declared on main() — RLH-18 adds it
+    const recordQueueRow = classified.find((c) => c.name === "_recordQueueRow");
+    if (!recordQueueRow) return; // not yet declared on main() — RLH-18 adds it
     // The claim is TSPEC §8.5's and PLAN §9.3 item 1's, in their words: "wired,
     // NOT exempt" — asserted as the two derived fields, with `report` carrying
     // the derivation into the failure message.
     //
     // Not `exemption=none`. TSPEC §3.1 mandates the declaration
-    // `_recordHalt: recordHaltFn = defaultRecordHalt`, and §8.5 says of that very
-    // default: "`defaultRecordHalt` — a deliberate no-op — declares no `_agent`
-    // either, so it stays on the wired side". An identifier default that names a
-    // module function makes E-3 a CANDIDATE form by construction; what §8.5 asks
-    // is that it not RESOLVE, i.e. `exempt === false`. Demanding the rendered
-    // string be `exemption=none` would instead demand main() drop the default
-    // §3.1 prescribes — the test dictating the composition root, backwards.
-    expect(report(recordHalt)).toContain("wired=true");
-    expect({ name: recordHalt.name, exempt: recordHalt.exempt, why: report(recordHalt) }).toMatchObject({
+    // `_recordQueueRow: recordQueueRowFn = defaultRecordQueueRow`, and §8.5 says
+    // of that very default: "`defaultRecordQueueRow` — a deliberate no-op —
+    // declares no `_agent` either, so it stays on the wired side". An identifier
+    // default that names a module function makes E-3 a CANDIDATE form by
+    // construction; what §8.5 asks is that it not RESOLVE, i.e. `exempt ===
+    // false`. Demanding the rendered string be `exemption=none` would instead
+    // demand main() drop the default §3.1 prescribes — the test dictating the
+    // composition root, backwards.
+    expect(report(recordQueueRow)).toContain("wired=true");
+    expect({ name: recordQueueRow.name, exempt: recordQueueRow.exempt, why: report(recordQueueRow) }).toMatchObject({
       exempt: false,
     });
   });
 
+  it("RLH-AT-64 vacuity guard: no seam named _recordHalt remains anywhere in the repo", () => {
+    // R1's negative assertion (PLAN §12, K-3): a rename that is not also
+    // followed through here would leave the test above silently vacuous
+    // (`if (!recordHalt) return;`) instead of red. Scanning the classified seam
+    // list — derived from main()'s own parameter list — closes the trap: the
+    // renamed seam must be present, and the retired name must not.
+    expect(classified.some((c) => c.name === "_recordQueueRow")).toBe(true);
+    expect(classified.some((c) => c.name === "_recordHalt")).toBe(false);
+  });
+
   it("RLH-AT-64: the E-2 alias hop is one hop, through main()'s own destructuring pattern", () => {
-    // main()'s only forward of _now/_sleep goes through the destructured local
-    // raisePrAndVerifyCiFn, not a module declaration, so without the hop both
-    // fall in no class and AT-64 reds on shipped, correct source. A chain is
+    // main() forwards _now/_sleep to two independent callees: the destructured
+    // local raisePrAndVerifyCiFn (which needs the one-hop alias resolution
+    // below) and phaseMerge (called directly, so resolveOneHop's no-match
+    // fallback resolves it too — that's the second assertion here doing double
+    // duty as the "someUnknownCallee" no-hop case). Without the hop, the first
+    // falls in no class and AT-64 reds on shipped, correct source. A chain is
     // not authorised: resolveOneHop returns the callee unchanged when it is not
     // a main()-pattern binding.
     expect(resolveOneHop(devMasked, "raisePrAndVerifyCiFn")).toBe("raisePrAndVerifyCi");
@@ -1313,4 +1385,90 @@ describe("RLH-CR-F1: the shipped dev bundle declares and honours its inputs", ()
       __forcePhases: null,
     });
   });
+
+  it("D2 (TSPEC §11.2): DEV_META.phases gains a trailing Phase MERGE row", () => {
+    const meta = shippedMeta(DEV_BUNDLE);
+    expect(Array.isArray(meta.phases)).toBe(true);
+    const mergeRow = meta.phases.find((p) => p.title === "Phase MERGE");
+    expect(mergeRow).toBeDefined();
+    expect(mergeRow.detail).toBe("merge the PR + advance the queue row");
+    // §10.4: Phase MERGE runs immediately after Phase PUB — the only place the
+    // operator-visible phase list can show that ordering is as the last row.
+    expect(meta.phases[meta.phases.length - 1].title).toBe("Phase MERGE");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// D2 (TSPEC §11.2, §7.2 edit 3+4) — both entrypoint closures thread a merged
+// run's evidence through to `rewriteStatus`'s 7th argument, so the queue row
+// an operator reads after a merge carries the `{shortSha} #{n}` / `merged
+// #{n}` cell §8.3/§8.4 compute rather than an empty one.
+// ---------------------------------------------------------------------------
+
+describe("D2: both entrypoints thread evidence through _recordQueueRow (TSPEC §11.2)", () => {
+  const builderSource = readFileSync(resolve(WORKFLOWS, "build-runtime.mjs"), "utf8");
+
+  it.each(["QUEUE_ENTRY", "DEV_ENTRY"])(
+    "%s's _recordQueueRow closure forwards evidence as rewriteStatus's 7th argument",
+    async (entryName) => {
+      const closureText = recordQueueRowClosureText(builderSource, entryName);
+      const calls = [];
+      const stubQueue = {
+        DEFAULT_QUEUE_PATH: "docs/_queue/QUEUE.md",
+        rewriteStatus: (...args) => {
+          calls.push(args);
+          return { queueRow: "recorded" };
+        },
+      };
+      // eslint-disable-next-line no-new-func
+      const closure = Function(
+        "__queue",
+        "__queuePath",
+        "rtReadFile",
+        "rtWriteFile",
+        "rtGit",
+        `"use strict"; return (${closureText});`
+      )(stubQueue, "docs/_queue/QUEUE.md", "READ", "WRITE", "GIT");
+
+      await closure({ feature: "f", status: "done", evidence: "abc1234 #45" });
+
+      expect(calls).toHaveLength(1);
+      // rewriteStatus's signature is (queuePath, feature, status, readFileFn,
+      // writeFileFn, gitFn, evidence) — 7 positional arguments, evidence last.
+      expect(calls[0]).toHaveLength(7);
+      expect(calls[0][1]).toBe("f");
+      expect(calls[0][2]).toBe("done");
+      expect(calls[0][6]).toBe("abc1234 #45");
+    }
+  );
+
+  it.each(["QUEUE_ENTRY", "DEV_ENTRY"])(
+    "%s's _recordQueueRow closure still forwards a null/absent evidence unchanged",
+    async (entryName) => {
+      const closureText = recordQueueRowClosureText(builderSource, entryName);
+      const calls = [];
+      const stubQueue = {
+        DEFAULT_QUEUE_PATH: "docs/_queue/QUEUE.md",
+        rewriteStatus: (...args) => {
+          calls.push(args);
+          return { queueRow: "none" };
+        },
+      };
+      // eslint-disable-next-line no-new-func
+      const closure = Function(
+        "__queue",
+        "__queuePath",
+        "rtReadFile",
+        "rtWriteFile",
+        "rtGit",
+        `"use strict"; return (${closureText});`
+      )(stubQueue, "docs/_queue/QUEUE.md", "READ", "WRITE", "GIT");
+
+      await closure({ feature: "f", status: "halted" });
+
+      expect(calls).toHaveLength(1);
+      expect(calls[0]).toHaveLength(7);
+      expect(calls[0][6]).toBeUndefined();
+    }
+  );
 });

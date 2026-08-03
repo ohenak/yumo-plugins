@@ -80,6 +80,19 @@ export const QUEUE_STATUSES = [
   "halted",
 ];
 
+// TSPEC §8.2 — the closed *row disposition* catalogue `rewriteStatus` /
+// `commitQueueRow` / `uncommitted` report through `_recordQueueRow`. This is
+// vocabulary about the queue-row *write*, never about the queue *status*
+// column (`QUEUE_STATUSES` above): a disposition of `"recorded"` can be
+// reported whatever `status` was written, including `"halted"`. Exported and
+// frozen (DC-01) so a test enumerates membership rather than pinning prose.
+export const QUEUE_ROW_DISPOSITIONS = Object.freeze([
+  "recorded",
+  "recorded (uncommitted)",
+  "none",
+  "error",
+]);
+
 // ─── Halt helper (same shape as orchestrate-dev) ─────────────────────────────
 function haltError(message) {
   const err = new Error(message);
@@ -320,15 +333,29 @@ export function parseTriageVerdict(result) {
  * indistinguishable, to the caller, from a successful update whose replacement
  * happened to be a no-op — so a status write against a row that had been deleted
  * mid-run looked exactly like a write that landed. `matched` makes the
- * difference observable, which is what `_recordHalt` needs in order to report
- * `queueRow: "error"` (FSPEC §13.5) rather than claiming a write it never made.
+ * difference observable, which is what `_recordQueueRow` needs in order to
+ * report `queueRow: "error"` (FSPEC §13.5) rather than claiming a write it
+ * never made.
+ *
+ * `evidence` (TSPEC §8.4) is the 4th, defaulted, parameter. `evidence == null`
+ * is exactly today's code path, character for character: column resolution,
+ * row match, `newCells[statusCol] = newStatus`, re-emit — no migration, no
+ * sixth cell, no re-emission of any other row (FSPEC §7.4's required
+ * evidence-free identity property, PROP-M-12). `evidence != null` first
+ * applies the §2.5 non-overwrite rule (only `in-progress` / `awaiting-merge`
+ * / `done` rows are overwritten; any other status is reported back,
+ * untouched, as `{ matched: true, written: false, foundStatus }`) and, when
+ * overwritable, migrates the `Evidence` column via `ensureEvidenceColumn`
+ * (once — never twice) before setting the status cell and merging the
+ * evidence cell through `mergeEvidenceCell`'s no-downgrade rule.
  *
  * @param {string} markdown
  * @param {string} feature
  * @param {string} newStatus
- * @returns {{ markdown: string, matched: boolean }}
+ * @param {string|null} [evidence]
+ * @returns {{ markdown: string, matched: boolean, written?: boolean, foundStatus?: string }}
  */
-export function updateQueueStatus(markdown, feature, newStatus) {
+export function updateQueueStatus(markdown, feature, newStatus, evidence = null) {
   if (typeof markdown !== "string" || !feature) {
     return { markdown, matched: false };
   }
@@ -357,14 +384,188 @@ export function updateQueueStatus(markdown, feature, newStatus) {
     if (cells.every((c) => /^:?-{2,}:?$/.test(c) || c === "")) continue;
     if ((cells[featureCol] || "").trim() !== feature) continue;
 
-    // Replace the status cell, preserving the original pipe layout.
-    const newCells = cells.slice();
-    newCells[statusCol] = newStatus;
-    lines[i] = `| ${newCells.join(" | ")} |`;
-    return { markdown: lines.join("\n"), matched: true };
+    // evidence == null: exactly today's code path, byte for byte (§8.4.1).
+    if (evidence == null) {
+      const newCells = cells.slice();
+      newCells[statusCol] = newStatus;
+      lines[i] = `| ${newCells.join(" | ")} |`;
+      return { markdown: lines.join("\n"), matched: true };
+    }
+
+    // evidence != null: §2.5's non-overwrite rule first — the file is
+    // returned byte-unchanged whenever the row's current status is not
+    // one the write-back is permitted to overwrite.
+    const foundStatus = (cells[statusCol] || "").trim();
+    if (!EVIDENCE_OVERWRITABLE_STATUSES.includes(foundStatus)) {
+      return { markdown, matched: true, written: false, foundStatus };
+    }
+
+    // Overwritable: migrate the Evidence column (once), re-locate the row in
+    // the migrated table, set the status and evidence cells, and re-emit.
+    return writeEvidenceCarryingRow(markdown, feature, newStatus, evidence, {
+      statusCol,
+      featureCol,
+    });
   }
 
   return { markdown, matched: false }; // feature row not found
+}
+
+// TSPEC §8.4c / FSPEC §2.5 — the only statuses the evidence-carrying write is
+// permitted to overwrite. Any other status (`pending`, `blocked`, `halted`)
+// is left untouched: it describes work this run did not drive to completion.
+const EVIDENCE_OVERWRITABLE_STATUSES = ["in-progress", "awaiting-merge", "done"];
+
+/**
+ * The evidence-carrying write itself (TSPEC §8.4, steps a/d/e), split out so
+ * `updateQueueStatus`'s non-overwrite early-return never touches
+ * `ensureEvidenceColumn` — the file it returns on that path is the pristine
+ * input, not a discarded migration.
+ *
+ * @param {string} markdown
+ * @param {string} feature
+ * @param {string} newStatus
+ * @param {string} evidence
+ * @param {{statusCol: number, featureCol: number}} hint - column indices
+ *   resolved from the pre-migration header (unaffected by the appended
+ *   Evidence column, which lands after them).
+ * @returns {{ markdown: string, matched: boolean, written?: boolean }}
+ */
+function writeEvidenceCarryingRow(markdown, feature, newStatus, evidence, hint) {
+  const { markdown: migrated } = ensureEvidenceColumn(markdown);
+  const lines = migrated.split("\n");
+
+  let statusCol = hint.statusCol;
+  let featureCol = hint.featureCol;
+  let evidenceCol = -1;
+  for (const line of lines) {
+    if (!line.trim().startsWith("|")) continue;
+    const cells = splitRow(line.trim()).map((c) => c.toLowerCase());
+    if (cells.includes("status") && cells.some((c) => c.includes("feature"))) {
+      const s = cells.findIndex((c) => c.includes("status"));
+      const f = cells.findIndex((c) => c.includes("feature"));
+      const e = cells.findIndex((c) => c.includes("evidence"));
+      if (s >= 0) statusCol = s;
+      if (f >= 0) featureCol = f;
+      if (e >= 0) evidenceCol = e;
+      break;
+    }
+  }
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line.trim().startsWith("|")) continue;
+    const cells = splitRow(line.trim());
+    if (cells.every((c) => /^:?-{2,}:?$/.test(c) || c === "")) continue;
+    if ((cells[featureCol] || "").trim() !== feature) continue;
+
+    const newCells = cells.slice();
+    newCells[statusCol] = newStatus;
+    if (evidenceCol >= 0) {
+      const prevEvidence = (newCells[evidenceCol] || "").trim();
+      newCells[evidenceCol] = mergeEvidenceCell(prevEvidence, evidence);
+    }
+    lines[i] = `| ${newCells.join(" | ")} |`;
+    return { markdown: lines.join("\n"), matched: true, written: true };
+  }
+
+  // Unreachable in practice — the caller already located this exact row
+  // before migrating — but stay defensive rather than throw.
+  return { markdown, matched: false };
+}
+
+// ─── QUEUE-WRITE-02: ensureEvidenceColumn / mergeEvidenceCell ────────────────
+// TSPEC §8.5, FSPEC §7.3 (Q-02) and §7.2. Pure helpers behind the `Evidence`
+// column Phase MERGE's queue write-back needs; `updateQueueStatus` (B2)
+// drives them, they do not drive it.
+
+/**
+ * Migrate a QUEUE.md table to carry a sixth `Evidence` column, once.
+ *
+ * Exactly three structural changes, and no fourth (FSPEC §7.3): `Evidence`
+ * appended to the header row (the row whose cells include "status" and one
+ * containing "feature" — the same predicate `parseQueue`/`updateQueueStatus`
+ * use); one `---` cell appended to the separator row immediately below it,
+ * recognised by "every cell is a dash run or empty"; and one empty cell
+ * appended to every other data row, so cell counts stay uniform. Rows that
+ * are not part of the table (prose, blank lines, anything not starting with
+ * `|`) are untouched, and no other cell of any row is rewritten — the
+ * append is a string splice after the row's trailing `|`, never a
+ * split/rejoin of the row's existing cells. A queue already carrying an
+ * `Evidence` column is returned unchanged (`migrated: false`) — never
+ * migrated twice. A queue with no recognisable header is also returned
+ * unchanged.
+ *
+ * @param {string} markdown
+ * @returns {{ markdown: string, migrated: boolean }}
+ */
+export function ensureEvidenceColumn(markdown) {
+  if (typeof markdown !== "string") return { markdown, migrated: false };
+
+  const lines = markdown.split("\n");
+  const isSeparatorRow = (cells) => cells.every((c) => /^:?-{2,}:?$/.test(c) || c === "");
+  const appendCell = (line, cellText) => `${line.replace(/\|\s*$/, "")}| ${cellText} |`;
+
+  // Locate the header row exactly as parseQueue/updateQueueStatus do.
+  let headerIdx = -1;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line.trim().startsWith("|")) continue;
+    const cells = splitRow(line.trim()).map((c) => c.toLowerCase());
+    if (cells.includes("status") && cells.some((c) => c.includes("feature"))) {
+      headerIdx = i;
+      break;
+    }
+  }
+  if (headerIdx === -1) return { markdown, migrated: false }; // no table found
+
+  const headerCells = splitRow(lines[headerIdx].trim()).map((c) => c.toLowerCase());
+  if (headerCells.some((c) => c.includes("evidence"))) {
+    return { markdown, migrated: false }; // already migrated — never twice
+  }
+
+  lines[headerIdx] = appendCell(lines[headerIdx].trim(), "Evidence");
+
+  // The separator row is the very next `|`-starting line, if it is
+  // separator-shaped; appending an empty-shaped dash cell keeps the
+  // rendered table well-formed over a six-column header.
+  const sepIdx = headerIdx + 1;
+  if (sepIdx < lines.length && lines[sepIdx].trim().startsWith("|")) {
+    const sepLine = lines[sepIdx].trim();
+    if (isSeparatorRow(splitRow(sepLine))) {
+      lines[sepIdx] = appendCell(sepLine, "---");
+    }
+  }
+
+  // Every other `|`-starting row is a data row: append one empty cell.
+  for (let i = sepIdx + 1; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line.trim().startsWith("|")) continue;
+    const trimmed = line.trim();
+    if (isSeparatorRow(splitRow(trimmed))) continue; // a stray separator-shaped row
+    lines[i] = appendCell(trimmed, "");
+  }
+
+  return { markdown: lines.join("\n"), migrated: true };
+}
+
+/**
+ * FSPEC §7.2's no-downgrade rule for the `Evidence` cell: a cell already
+ * holding a non-empty value is never downgraded to the `merged #{prNumber}`
+ * placeholder form by a later re-entry that could not resolve the oid — a
+ * real SHA always wins over a placeholder. Everything else takes the new
+ * value, including a `merged #{n}` cell being overwritten by a later
+ * `{shortSha} #{n}` once the oid resolves.
+ *
+ * @param {string} prev - the cell's current content (e.g. "" for a freshly migrated row).
+ * @param {string} next - the value this write would set absent the rule.
+ * @returns {string}
+ */
+export function mergeEvidenceCell(prev, next) {
+  if (typeof prev === "string" && prev !== "" && /^merged #/.test(next)) {
+    return prev;
+  }
+  return next;
 }
 
 // ─── selectNextPending ───────────────────────────────────────────────────────
@@ -816,7 +1017,14 @@ async function runPicked({
   }
 
   const succeeded = report && report.outcome === "success";
-  const newStatus = succeeded ? "awaiting-merge" : "halted";
+  // TSPEC §9.1 — `mergeStatus` rides the pipeline report Phase MERGE (A7/A8)
+  // populates. Read defensively: a report without the field (an older bundle,
+  // a throw-path stub) is `undefined`, which is not `"merged"`, so a missing
+  // field falls back to today's `awaiting-merge` behaviour rather than a
+  // wrongly-recorded `done` (fail-safe direction, FSPEC §7.5). `merged` can
+  // only be true when `succeeded` is also true — Q-02's mutual exclusion.
+  const merged = succeeded && report.mergeStatus === "merged";
+  const newStatus = merged ? "done" : succeeded ? "awaiting-merge" : "halted";
   await rewriteStatus(
     queuePath,
     entry.feature,
@@ -827,7 +1035,9 @@ async function runPicked({
   );
 
   emit(
-    succeeded
+    merged
+      ? `"${entry.feature}" complete and merged (${report.mergeSha ?? "sha unknown"}) — status set to done.`
+      : succeeded
       ? `"${entry.feature}" complete — status set to awaiting-merge. Merge the PR, then set it to done to unblock dependents.`
       : `"${entry.feature}" halted: ${report && report.haltReason}. Status set to halted.`
   );
@@ -851,8 +1061,8 @@ async function runPicked({
  * **Exported deliberately, and load-bearing** (TSPEC §3.6): the bundle can only
  * publish names the module exports (`stripModuleSyntax` rewrites `export
  * function` to `function`; `wrapModule` re-publishes only the names in its
- * `exportedNames` list), and `build-runtime.mjs`'s `_recordHalt` closure has to
- * reach this function through `__queue`.
+ * `exportedNames` list), and `build-runtime.mjs`'s `_recordQueueRow` closure
+ * has to reach this function through `__queue`.
  *
  * The re-read is not defensive padding: the pipeline that just ran may itself
  * have rewritten the queue, so a snapshot taken before the run is stale by
@@ -868,10 +1078,10 @@ async function runPicked({
  * @param {function} writeFileFn - async (path, contents) => void
  * @param {function} [gitFn]     - async (argv) => {ok, stdout, stderr}
  * @returns {Promise<{ queueRow: string, detail?: string }>}
- *   `queueRow` is drawn from TSPEC §4.7's closed catalogue
- *   `"halted" | "halted (uncommitted)" | "none" | "error"`. The catalogue
- *   describes the *row disposition*, not the status written, so a recorded
- *   write reports `"halted"` whatever `status` was.
+ *   `queueRow` is drawn from `QUEUE_ROW_DISPOSITIONS`, TSPEC §4.7's / §8.2's
+ *   closed catalogue: `"recorded" | "recorded (uncommitted)" | "none" |
+ *   "error"`. The catalogue describes the *row disposition*, not the status
+ *   written, so a recorded write reports `"recorded"` whatever `status` was.
  */
 export async function rewriteStatus(
   queuePath,
@@ -879,7 +1089,8 @@ export async function rewriteStatus(
   status,
   readFileFn,
   writeFileFn,
-  gitFn = defaultGit
+  gitFn = defaultGit,
+  evidence = null
 ) {
   const current = await readFileFn(queuePath);
 
@@ -890,7 +1101,12 @@ export async function rewriteStatus(
     return { queueRow: "none" };
   }
 
-  const { markdown, matched } = updateQueueStatus(current, feature, status);
+  const { markdown, matched, written, foundStatus } = updateQueueStatus(
+    current,
+    feature,
+    status,
+    evidence
+  );
 
   // FSPEC §13.5 — document present, row expected, row absent. Distinct from
   // "none": something removed the row mid-run, which the operator must see.
@@ -902,6 +1118,17 @@ export async function rewriteStatus(
       detail:
         `no row for ${feature} in ${queuePath}; ` +
         `status "${status}" was not recorded`,
+    };
+  }
+
+  // §2.5 / TSPEC §8.4c — evidence supplied, but the row's current status is
+  // not one this write is allowed to overwrite. `updateQueueStatus` already
+  // returned the file byte-unchanged; skip the write and the git commit
+  // entirely, and name the status that blocked it.
+  if (written === false) {
+    return {
+      queueRow: "recorded",
+      detail: `row for ${feature} left unchanged: found status "${foundStatus}", not overwritable`,
     };
   }
 
@@ -943,7 +1170,7 @@ async function commitQueueRow(queuePath, feature, status, gitFn) {
     "--",
     queuePath,
   ]);
-  if (committed.ok) return { queueRow: "halted" };
+  if (committed.ok) return { queueRow: "recorded" };
 
   // E-39 — the row already read the target status and was already committed
   // (the common case on a re-entry). Idempotence, not a fault: no warning, and
@@ -953,7 +1180,7 @@ async function commitQueueRow(queuePath, feature, status, gitFn) {
     NOTHING_TO_COMMIT_RE.test(committed.stdout ?? "") ||
     NOTHING_TO_COMMIT_RE.test(committed.stderr ?? "")
   ) {
-    return { queueRow: "halted" };
+    return { queueRow: "recorded" };
   }
 
   return uncommitted(committed, queuePath);
@@ -967,7 +1194,7 @@ async function commitQueueRow(queuePath, feature, status, gitFn) {
 function uncommitted(result, queuePath) {
   const reason = firstLine(result && result.stderr);
   return {
-    queueRow: "halted (uncommitted)",
+    queueRow: "recorded (uncommitted)",
     detail:
       `queue row written but not committed` +
       (reason ? `: ${reason}` : "") +

@@ -56,7 +56,7 @@
  */
 
 import * as devModule from "../orchestrate-dev.js";
-import { fakeFs, fakeGit, fakeListFiles, recordingRecordHalt } from "./helpers/seams.js";
+import { fakeFs, fakeGit, fakeListFiles, recordingRecordQueueRow } from "./helpers/seams.js";
 import { resolveSeed, seeded, shrink } from "./helpers/driftGenerators.js";
 
 const main = devModule.default;
@@ -358,7 +358,7 @@ async function runPipeline(opts = {}) {
       ? { ok: true, stdout: `20000\t0\t${FSPEC_PATH}\n` }
       : { ok: true };
   });
-  const recordHalt = recordingRecordHalt({ queueRow: "halted" });
+  const recordQueueRow = recordingRecordQueueRow({ queueRow: "recorded" });
   const dispatches = [];
   const logs = [];
   const episodes = new Map();
@@ -454,7 +454,7 @@ async function runPipeline(opts = {}) {
     _log: (message) => logs.push(String(message)),
     _listFiles: listFiles,
     _git: git,
-    _recordHalt: recordHalt,
+    _recordQueueRow: recordQueueRow,
     ...fs.injections(),
     _mergeWorktree: async () => ({ ok: true }),
     _rebaseOntoDefault: async () => "clean",
@@ -466,7 +466,7 @@ async function runPipeline(opts = {}) {
   });
 
   return {
-    result, dispatches, fs, listFiles, git, recordHalt, logs,
+    result, dispatches, fs, listFiles, git, recordQueueRow, logs,
     /**
      * Everything an operator can read back from one run: the structured report
      * plus the emitted report lines. §4.7 makes some of this feature's carriers
@@ -1058,8 +1058,8 @@ describe("RLH-AT-46 — authoring-budget exhaustion writes no POSTMORTEM (FSPEC 
     expect(run.result.postmortemPath).toBeNull();
 
     // (iii) The `halted` row IS committed (§6.5: every halt class, this one included).
-    expect(run.recordHalt.statuses).toContain("halted");
-    expect(run.result.queueRow).toBe("halted");
+    expect(run.recordQueueRow.statuses).toContain("halted");
+    expect(run.result.queueRow).toBe("recorded");
 
     // (iv) The report states both halves, and offers exactly one recovery act — the
     // queue-row reset. A direct re-invocation is deliberately not offered (§14.4).

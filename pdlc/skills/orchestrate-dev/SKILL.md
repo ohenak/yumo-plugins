@@ -31,7 +31,7 @@ This skill delegates to a workflow script. It does not run the pipeline itself.
 
 Phase sequence (not a runbook — see workflow script for mechanics):
 
-`REQ review → FSPEC → TSPEC → DECISIONS (conditional) → PLAN → PROPERTIES → Implementation batches → PROPERTIES tests → Final codebase review → Definition of Done verification → Harvest → Raise PR & Verify CI`
+`REQ review → FSPEC → TSPEC → DECISIONS (conditional) → PLAN → PROPERTIES → Implementation batches → PROPERTIES tests → Final codebase review → Definition of Done verification → Harvest → Raise PR & Verify CI → Merge & Advance Queue (Phase MERGE)`
 
 ---
 
@@ -43,12 +43,7 @@ A review loop that exhausts its rounds writes `POSTMORTEM-{phase}-{feature}.md` 
 
 ## Model Selection
 
-The workflow pins a model per phase via the runtime `agent()` `model` option:
-
-- **Phase I (Implementation batches — `se-implement`) runs on Sonnet.** The PLAN and PROPERTIES already constrain this TDD work, so it is optimized for throughput/cost.
-- **Every other phase runs on Opus** — REQ/FSPEC/TSPEC/PLAN/PROPERTIES reviews and authoring, PROPERTIES tests, final codebase review, Definition of Done, Harvest, and PR/CI. These are reasoning-heavy.
-
-Model constants live at the top of `pdlc/workflows/orchestrate-dev.js` (`MODEL_DEFAULT = "opus"`, `MODEL_IMPLEMENTATION = "sonnet"`). Agent calls default to Opus; the Phase I dispatch site overrides to Sonnet.
+The workflow pins a model per phase via the runtime `agent()` `model` option: Phase I (Implementation batches — `se-implement`) runs on **Sonnet**, optimized for throughput/cost since the PLAN and PROPERTIES already constrain the TDD work; every other, more reasoning-heavy phase runs on **Opus**. Constants live at the top of `pdlc/workflows/orchestrate-dev.js` (`MODEL_DEFAULT = "opus"`, `MODEL_IMPLEMENTATION = "sonnet"`).
 
 ---
 
@@ -67,6 +62,10 @@ The loop alternates verify → remediate up to 3 times; if findings persist, the
 ## Auto-PR & CI Verification (Phase PUB)
 
 After Harvest, the workflow automatically raises a pull request for `feat-{feature}` (reusing an open PR if one exists) and then verifies CI. The branch was already rebased onto the latest default branch in Phase DOD, so `ship-pr` does **not** rebase here — it just opens/reuses the PR. The PR runs **last** so it captures the complete branch, including harvested `LEARNINGS`. PR creation and CI reporting are delegated to the `ship-pr` skill; the **poll-timing logic lives in the workflow script**, not the agent. CI verification rule: the script polls the PR's GitHub Actions checks. Checks usually register within ~5 minutes. If **no** checks appear within **10 minutes**, the script concludes the repo has no PR checks configured and treats the phase as a pass (`ciStatus: no-checks`). Once checks appear, the script waits for completion: all-pass ⇒ ✅; any failure ⇒ the pipeline halts with the failing PR identified. The final report carries `prUrl` and `ciStatus`. Set `PHASE_PUB_ENABLED = false` in the workflow script to skip this phase.
+
+---
+## Merge & Advance Queue (Phase MERGE)
+The last phase; a fixed decision ladder, no agent involved. A merge requires every precondition to hold — a self-modification guard (never merges a PR touching `pdlc/workflows/` or `.claude/workflows/`), repo capabilities, PR mergeable state, unresolved review threads, CI status, `mergeMode`, and idempotence against an already-merged PR. `mergeMode` ships `off` (resolves `skipped` by default; opt in via `.claude/pdlc.config.json`). On `merged`, it writes the queue row `done` itself (superseding the human-merge step above); otherwise it reports `deferred`/`refused` with a one-line reason (a closed set of four conditions additionally raise a `MERGE ESCALATION:` notice), never a halt, and the row stays `awaiting-merge`. Set `PHASE_MERGE_ENABLED = false` to skip.
 
 ---
 

@@ -47,8 +47,15 @@ import {
   fakeFs,
   fakeGit,
   fakeListFiles,
-  recordingRecordHalt,
+  recordingRecordQueueRow,
 } from "./helpers/seams.js";
+import {
+  fakeGhRun,
+  passingGh,
+  fakeGit as fakeMergeGit,
+  fakeSleep as fakeMergeSleep,
+  fakeNow as fakeMergeNow,
+} from "./helpers/mergeDoubles.js";
 
 // ─── Fixture vocabulary ──────────────────────────────────────────────────────
 
@@ -209,7 +216,7 @@ function basenamesUnder(files, dirPath) {
  *   files?: Record<string,string>,
  *   verdictFor?: (skill: string, prompt: string) => string,
  *   postmortem?: "write"|"throw",
- *   recordHaltResult?: any,
+ *   recordQueueRowResult?: any,
  *   extraArgs?: object,
  * }} [opts]
  */
@@ -218,14 +225,14 @@ async function run({
   files = baseTree(),
   verdictFor = () => APPROVING_REVIEW,
   postmortem = "write",
-  recordHaltResult = undefined,
+  recordQueueRowResult = undefined,
   extraArgs = {},
 } = {}) {
   const fs = fakeFs(files);
   const listFiles = fakeListFiles((dirPath) =>
     basenamesUnder(fs.files, dirPath)
   );
-  const recordHalt = recordingRecordHalt(recordHaltResult);
+  const recordQueueRow = recordingRecordQueueRow(recordQueueRowResult);
   const logs = [];
   const dispatches = [];
 
@@ -299,7 +306,7 @@ async function run({
     _writeFile: fs.writeFile,
     _appendFile: fs.appendFile,
     _listFiles: listFiles,
-    _recordHalt: recordHalt,
+    _recordQueueRow: recordQueueRow,
     _mergeWorktree: async () => ({ ok: true }),
     _raisePrAndVerifyCi: async () => ({
       prUrl: "https://x/pull/1",
@@ -312,7 +319,7 @@ async function run({
     result,
     fs,
     listFiles,
-    recordHalt,
+    recordQueueRow,
     logs,
     dispatches,
     phaseOf: (id) => (result.phases || []).find((p) => p.phase === id),
@@ -347,7 +354,7 @@ describe("RLH-25: the terminal exit and the queue row", () => {
     const rewriteStatus = queueModule.rewriteStatus;
     expect(typeof rewriteStatus).toBe("function");
 
-    const queueBackedRecordHalt = async ({ feature, status }) =>
+    const queueBackedRecordQueueRow = async ({ feature, status }) =>
       rewriteStatus(
         DEFAULT_QUEUE_PATH,
         feature,
@@ -359,10 +366,23 @@ describe("RLH-25: the terminal exit and the queue row", () => {
 
     const { result } = await run({
       verdictFor: nonConvergingAtR,
-      extraArgs: { _recordHalt: queueBackedRecordHalt },
+      extraArgs: { _recordQueueRow: queueBackedRecordQueueRow },
     });
 
     expect(result.outcome).toBe("halted");
+
+    // PROP-M-17 (PLAN A8) — the halted-before-Phase-MERGE quarter of the
+    // report-totality domain: this run never reaches `phaseMerge` at all
+    // (it halts in Phase R), so the report carries `buildFinalReport`'s bare
+    // defaults (TSPEC §10.1, FSPEC §11 row 23) rather than a real
+    // `MergeOutcome` — present, via `Object.hasOwn`, and exactly `"skipped"`
+    // / `null` / `null`.
+    expect(Object.hasOwn(result, "mergeStatus")).toBe(true);
+    expect(Object.hasOwn(result, "mergeSha")).toBe(true);
+    expect(Object.hasOwn(result, "mergeMethod")).toBe(true);
+    expect(result.mergeStatus).toBe("skipped");
+    expect(result.mergeSha).toBeNull();
+    expect(result.mergeMethod).toBeNull();
 
     // The row reads `halted` on disk …
     expect(queueFs.writes).toHaveLength(1);
@@ -380,7 +400,7 @@ describe("RLH-25: the terminal exit and the queue row", () => {
       `add -- ${DEFAULT_QUEUE_PATH}`,
       `commit -m chore(queue): foo → halted -- ${DEFAULT_QUEUE_PATH}`,
     ]);
-    expect(result.queueRow).toBe("halted");
+    expect(result.queueRow).toBe("recorded");
   });
 
   it("RLH-AT-22: the halt never claims a POSTMORTEM that was not written", async () => {
@@ -425,7 +445,7 @@ describe("RLH-25: the terminal exit and the queue row", () => {
     expect(result.postmortemPath).toBe(POSTMORTEM_R);
     expect(result.postmortemPath).not.toContain("{feature}");
     expect(result.postmortemStatus).toBe("written");
-    expect(["halted", "halted (uncommitted)", "none", "error"]).toContain(
+    expect(Object.values(queueModule.QUEUE_ROW_DISPOSITIONS)).toContain(
       result.queueRow
     );
 
@@ -751,11 +771,11 @@ describe("RLH-25: which halting exit reaches the committing status write", () =>
     // exactly once, with `status: "halted"` and the resolved feature name.
     const seen = [];
     for (const { exit, opts } of HALTING_EXITS) {
-      const { result, recordHalt } = await run(opts);
+      const { result, recordQueueRow } = await run(opts);
       seen.push({
         exit,
         outcome: result.outcome,
-        recorded: recordHalt.records,
+        recorded: recordQueueRow.records,
       });
     }
     // Every exit halts …
@@ -776,7 +796,7 @@ describe("RLH-25: which halting exit reaches the committing status write", () =>
     const detail = `no row for ${FEATURE} in ${DEFAULT_QUEUE_PATH}`;
     const { result } = await run({
       verdictFor: nonConvergingAtR,
-      recordHaltResult: { queueRow: "error", detail },
+      recordQueueRowResult: { queueRow: "error", detail },
     });
 
     expect(result.queueRow).toBe("error");
@@ -788,11 +808,11 @@ describe("RLH-25: which halting exit reaches the committing status write", () =>
   });
 
   it("RLH-AT-31-orch: a direct invocation with no queue reports one failure, not two", async () => {
-    // AC-2.6a / E-41. `_recordHalt`'s default is a no-op reporting "none"
+    // AC-2.6a / E-41. `_recordQueueRow`'s default is a no-op reporting "none"
     // (§3.5): a repo with no queue must not turn one halt into two.
     const { result } = await run({
       verdictFor: nonConvergingAtR,
-      recordHaltResult: { queueRow: "none" },
+      recordQueueRowResult: { queueRow: "none" },
     });
 
     expect(result.outcome).toBe("halted");
@@ -806,18 +826,86 @@ describe("RLH-25: which halting exit reaches the committing status write", () =>
     expect(text).not.toContain("uncommitted");
   });
 
-  it("RLH-AT-32-orch: a successful bypass run never writes a status", async () => {
-    // AC-2.7a / E-42. A direct invocation that succeeds does not recover a
-    // `halted` row — `orchestrate-dev` owns no status write but the halt one,
-    // so the row survives the bypass and the next `/loop` iteration is `idle`.
-    // (That the row itself stays put is `RLH-AT-32-module`'s.)
-    const { result, recordHalt } = await run();
+  it("RLH-AT-32-orch: a successful run whose Phase MERGE did NOT merge never writes a status", async () => {
+    // AC-2.7a / E-42; PLAN A9 (TSPEC §13.4, FSPEC §7.5 row F-13) re-expresses
+    // this case against A8's `mergeOutcome.queueRow ?? "none"` fallback: the
+    // "success never writes" premise holds only while Phase MERGE resolves to
+    // a NON-merged `mergeStatus` — `skipped`, `deferred`, or `refused` — or is
+    // disabled outright, so `mergeOutcome.queueRow` is `null` and the `?? "none"`
+    // fallback is the one that fires. This double supplies no merge config
+    // (`MERGE_DEFAULTS.mergeMode` is `"off"`), so Phase MERGE's own guard 1
+    // (`orchestrate-dev.js` §2.2) resolves `mergeStatus: "skipped"` before any
+    // status write is attempted — `orchestrate-dev` owns no status write but
+    // the halt one, so the row survives the bypass and the next `/loop`
+    // iteration is `idle`. (That the row itself stays put is
+    // `RLH-AT-32-module`'s.) The merged half of the old contract — a run whose
+    // Phase MERGE DOES merge, which DOES write a status — is the sibling
+    // `RLH-AT-32-orch-merged` immediately below (PLAN A8).
+    const { result, recordQueueRow } = await run();
 
     expect(result.outcome).toBe("success");
-    expect(recordHalt.statuses).not.toContain("halted");
-    expect(recordHalt.statuses).not.toContain("pending");
-    expect(recordHalt.statuses).not.toContain("done");
+    expect(result.mergeStatus).toBe("skipped");
+    expect(recordQueueRow.statuses).not.toContain("halted");
+    expect(recordQueueRow.statuses).not.toContain("pending");
+    expect(recordQueueRow.statuses).not.toContain("done");
     expect(result.queueRow).toBe("none");
+  });
+
+  it("RLH-AT-32-orch-merged: a successful run that MERGES DOES write a status, superseding the premise above (PLAN A8)", async () => {
+    // TSPEC §10.4 / FSPEC §11 row 3. The sibling of RLH-AT-32-orch: that test's
+    // "success never writes" premise holds only when Phase MERGE resolves to
+    // `skipped`/`deferred`/`refused` (`mergeOutcome.queueRow` is `null`, and
+    // `queueRow: mergeOutcome.queueRow ?? "none"` falls back to `"none"`). A
+    // run whose PR is already `MERGED` (row 3) reaches Phase MERGE's own
+    // queue write-back (M4) and DOES record a status — `"done"` — which
+    // `result.queueRow` then carries verbatim as the `"recorded"` disposition
+    // the double returns, not `"none"`.
+    const MERGED_OID = "abc1234567890abcdef";
+    const files = {
+      ...baseTree(),
+      ".claude/pdlc.config.json": JSON.stringify({ merge: { mergeMode: "gated" } }),
+    };
+    const ghRun = fakeGhRun(
+      passingGh({
+        prState: {
+          stdout: JSON.stringify({
+            state: "MERGED",
+            mergeable: "MERGEABLE",
+            mergeStateStatus: "CLEAN",
+            number: 42,
+            mergeCommit: { oid: MERGED_OID },
+          }),
+        },
+      })
+    );
+    // `_git` also feeds `ensureFeatureBranch`'s branch guard (any injected,
+    // non-default `_git` activates it, TSPEC-independent — orchestrate-dev.js's
+    // own `branchGuardTransport`), so `rev-parse` must report the tree is
+    // already on `feat-foo`, not just answer Phase MERGE's own subcommands.
+    const mergeGit = fakeMergeGit({
+      "rev-parse": { ok: true, stdout: "feat-foo\n", stderr: "" },
+    });
+
+    const { result, recordQueueRow } = await run({
+      files,
+      recordQueueRowResult: { queueRow: "recorded" },
+      extraArgs: {
+        _ghRun: ghRun._ghRun,
+        _git: mergeGit._git,
+        _now: fakeMergeNow,
+        _sleep: fakeMergeSleep,
+        _raisePrAndVerifyCi: async () => ({
+          prUrl: "https://github.com/acme/foo/pull/42",
+          ciStatus: "passed",
+        }),
+      },
+    });
+
+    expect(result.outcome).toBe("success");
+    expect(result.mergeStatus).toBe("merged");
+    expect(result.mergeSha).toBe(MERGED_OID);
+    expect(recordQueueRow.statuses).toContain("done");
+    expect(result.queueRow).toBe("recorded");
   });
 
   it("RLH-AT-33-orch: a failed commit is non-fatal, surfaced, and subordinate", async () => {
@@ -827,14 +915,14 @@ describe("RLH-25: which halting exit reaches the committing status write", () =>
     const manual = `git commit -m "chore(queue): ${FEATURE} → halted" -- ${DEFAULT_QUEUE_PATH}`;
     const { result } = await run({
       verdictFor: nonConvergingAtR,
-      recordHaltResult: {
-        queueRow: "halted (uncommitted)",
+      recordQueueRowResult: {
+        queueRow: "recorded (uncommitted)",
         detail: `queue row written but not committed; run: ${manual}`,
       },
     });
 
     expect(result.outcome).toBe("halted");
-    expect(result.queueRow).toBe("halted (uncommitted)");
+    expect(result.queueRow).toBe("recorded (uncommitted)");
     // The manual-commit instruction reaches the operator …
     //
     // Compared against the JSON-ESCAPED form: `manual` carries the double quotes
@@ -854,10 +942,10 @@ describe("RLH-25: which halting exit reaches the committing status write", () =>
     // status write is a no-op. A no-op is not a fault and must not be narrated.
     const { result, logs } = await run({
       verdictFor: nonConvergingAtR,
-      recordHaltResult: { queueRow: "halted" },
+      recordQueueRowResult: { queueRow: "recorded" },
     });
 
-    expect(result.queueRow).toBe("halted");
+    expect(result.queueRow).toBe("recorded");
 
     const noise = /nothing to commit|queue row|uncommitted|WARNING: .*queue/i;
     expect(logs.filter((line) => noise.test(line))).toEqual([]);

@@ -34,6 +34,11 @@ export const meta = {
     { title: "Phase DOD", detail: "definition-of-done verify + remediate" },
     { title: "Phase H", detail: "harvest learnings" },
     { title: "Phase PUB", detail: "raise PR + verify CI" },
+    // TSPEC §11.2 — Phase MERGE runs immediately after Phase PUB. The
+    // module's own meta.phases is dead in this artifact (same reason
+    // meta.inputs is, above), so this hand-written copy is the only place
+    // the operator-visible phase list can carry the new row.
+    { title: "Phase MERGE", detail: "merge the PR + advance the queue row" },
   ],
 };
 
@@ -995,6 +1000,38 @@ async function rtGit(argv) {
 }
 
 /**
+ * Transport seam for `gh` (TSPEC §11.3). `command` is a fully-built shell
+ * command string the module already assembled from `mergeCommandFor` — this
+ * function holds no `gh` knowledge and interpolates only what it was handed.
+ * Returns { ok, stdout, stderr } and never throws; the caller interprets.
+ * The reply shape is rtGit's, verbatim: same three fields, same escaping
+ * instruction, same unparseable-reply fallback, plus the at-most-once
+ * mutation sentence since some `gh` commands mutate.
+ */
+async function rtGhRun(command) {
+  const out = await RT.agent(
+    `Run exactly this command from the repository root, and nothing else:\n` +
+      `  ${command}\n` +
+      `If it exits 0, return exactly: {"ok":true,"stdout":"<its stdout>","stderr":""}\n` +
+      `If it exits non-zero, return exactly: {"ok":false,"stdout":"","stderr":"<its stderr>"}\n` +
+      `Return ONLY that JSON object, correctly escaped — no commentary, no code fences.\n` +
+      `This command may change repository state. Issue it AT MOST ONCE. ` +
+      `Do not retry, do not repair, and do not run any other command.`,
+    { label: `gh:${command.slice(0, 40)}`, model: RT_IO_MODEL }
+  );
+  try {
+    const parsed = JSON.parse(String(out).trim());
+    return {
+      ok: parsed && parsed.ok === true,
+      stdout: typeof (parsed && parsed.stdout) === "string" ? parsed.stdout : "",
+      stderr: typeof (parsed && parsed.stderr) === "string" ? parsed.stderr : "",
+    };
+  } catch {
+    return { ok: false, stdout: "", stderr: "unparseable adapter response" };
+  }
+}
+
+/**
  * Merge a worktree branch. Contract mirrors mergeWorktree():
  * { ok: true } | { ok: false, conflictingFiles: string[] }
  */
@@ -1042,15 +1079,16 @@ function rtDevInjections(devModule) {
     _appendFile: rtAppendFile,
     _listFiles: rtListFiles,
     _git: rtGit,
+    _ghRun: rtGhRun,
     // The three probe seams. Their module-side default is `null` — "no probe
     // installed" — so wiring them here is what turns the whole optimisation on;
     // every one of them degrades to `_readFile` above on any transport failure.
     _probeDoc: rtProbeDoc,
     _probeReviewState: rtProbeReviewState,
     _probePostmortem: rtProbePostmortem,
-    // `_recordHalt` is deliberately ABSENT: its implementation differs by caller,
-    // which a caller-independent adapter bundle cannot express. It is supplied
-    // per entrypoint by build-runtime.mjs (§3.10, §7.2 edit 2b).
+    // `_recordQueueRow` is deliberately ABSENT: its implementation differs by
+    // caller, which a caller-independent adapter bundle cannot express. It is
+    // supplied per entrypoint by build-runtime.mjs (§3.10, §7.2 edit 2b).
   };
 }
 
@@ -1090,6 +1128,1464 @@ const PHASE_PUB_ENABLED = true; // Set to false to skip auto-PR + CI verificatio
 const CI_NO_CHECKS_TIMEOUT_MS = 10 * 60 * 1000; // 10 min — no checks ⇒ assume none configured
 const CI_POLL_INTERVAL_MS = 30 * 1000; // 30 s between status polls
 const CI_COMPLETION_TIMEOUT_MS = 30 * 60 * 1000; // 30 min — overall cap once checks are running
+
+// TSPEC §2.2: compile-time flag for the merge phase (Phase MERGE), the last phase
+// of the pipeline. Same shape as PHASE_DOD_ENABLED above.
+const PHASE_MERGE_ENABLED = true; // Set to false to skip Phase MERGE
+
+// TSPEC §3 — where the per-repo `merge` config section lives, read once per
+// phaseMerge invocation (§3.3). Same convention as the drift-state path.
+const MERGE_CONFIG_PATH = ".claude/pdlc.config.json";
+
+// TSPEC §2.2 — Phase MERGE's closed catalogues and defaults (DC-01). Frozen so
+// no code path can mutate a shipped default or widen a closed set silently.
+const MERGE_GUARD_DEFAULTS = Object.freeze([
+  "pdlc/workflows/",
+  "pdlc/skills/",
+  "pdlc/hooks/",
+  ".claude/workflows/",
+]);
+
+const MERGE_MODES = Object.freeze(["off", "gated", "on"]);
+const MERGE_STATUSES = Object.freeze(["merged", "deferred", "refused", "skipped"]);
+
+// `mergeableRetryDelay` is in SECONDS (TSPEC §2.2 note; REQ §7 / FSPEC §10.1 key
+// name) — the unit is documented here rather than encoded into the key name.
+const MERGE_DEFAULTS = Object.freeze({
+  mergeMode: "off",
+  mergeRequiresCi: true,
+  allowSquashMerge: false,
+  deleteBranchOnPdlcMerge: true,
+  mergeableRetries: 3,
+  mergeableRetryDelay: 10,
+  guardPaths: [],
+});
+
+const MERGE_FILES_PAGE_LIMIT = 100; // TSPEC §4.6 — GitHub's `files` page size
+const MERGE_THREAD_PAGE_LIMIT = 100; // TSPEC §4.4
+const MERGE_MAX_THREAD_PAGES = 10; // TSPEC §4.4 — bounded, fail-closed
+
+// TSPEC §3.1 — the accepted upper bound on `mergeableRetries`; a config value
+// above it is out of domain and takes the default (TE F-02).
+const MERGE_MAX_RETRIES = 10;
+
+// TSPEC §5.2 — a COMPUTED EXPRESSION, not a literal: raising MERGE_MAX_RETRIES
+// re-derives the decision-step bound automatically (TE N-04). Term-by-term:
+// 1 (O1 count is 1+retries, so this is the "+1" over MERGE_MAX_RETRIES) +
+// MERGE_MAX_RETRIES (additional O1 re-observations) + 4 (O2, O3, O4, O5, each
+// demanded at most once) + 3 (the longest merge-candidate chain) + 1 (the
+// resolving step) + 5 (slack).
+const MERGE_MAX_DECISION_STEPS = 1 + MERGE_MAX_RETRIES + 4 + 3 + 1 + 5;
+
+// ─── TSPEC §3 — Phase MERGE: configuration reader (O-M5) ──────────────────────
+
+/**
+ * Parse the repo's `merge` config section. Pure and total: never throws, never
+ * reads anything. TSPEC §3.1's four steps:
+ *   1. `text` is `null`/unparseable JSON → defaults, section not malformed (an
+ *      absent or unparseable FILE is not a malformed SECTION).
+ *   2. Parsed value isn't a plain object, or `merge` is absent → defaults, not
+ *      malformed.
+ *   3. `merge` present but not a plain object → defaults, `sectionMalformed: true`.
+ *   4. Otherwise every key is validated and falls back INDEPENDENTLY (FSPEC
+ *      §10.3) — one bad key defaults only itself.
+ *
+ * @param {string|null} text - raw file contents, or null (file absent/unreadable)
+ * @returns {{ config: object, sectionMalformed: boolean }}
+ */
+function parseMergeConfig(text) {
+  let parsed;
+  if (text == null) {
+    return { config: MERGE_DEFAULTS, sectionMalformed: false };
+  }
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return { config: MERGE_DEFAULTS, sectionMalformed: false };
+  }
+
+  if (!isPlainObject(parsed) || !("merge" in parsed)) {
+    return { config: MERGE_DEFAULTS, sectionMalformed: false };
+  }
+
+  const section = parsed.merge;
+  if (!isPlainObject(section)) {
+    return { config: MERGE_DEFAULTS, sectionMalformed: true };
+  }
+
+  const config = {
+    mergeMode: MERGE_MODES.includes(section.mergeMode)
+      ? section.mergeMode
+      : MERGE_DEFAULTS.mergeMode,
+    mergeRequiresCi:
+      typeof section.mergeRequiresCi === "boolean"
+        ? section.mergeRequiresCi
+        : MERGE_DEFAULTS.mergeRequiresCi,
+    allowSquashMerge:
+      typeof section.allowSquashMerge === "boolean"
+        ? section.allowSquashMerge
+        : MERGE_DEFAULTS.allowSquashMerge,
+    deleteBranchOnPdlcMerge:
+      typeof section.deleteBranchOnPdlcMerge === "boolean"
+        ? section.deleteBranchOnPdlcMerge
+        : MERGE_DEFAULTS.deleteBranchOnPdlcMerge,
+    mergeableRetries: isValidRetryCount(section.mergeableRetries)
+      ? section.mergeableRetries
+      : MERGE_DEFAULTS.mergeableRetries,
+    mergeableRetryDelay: isValidRetryDelay(section.mergeableRetryDelay)
+      ? section.mergeableRetryDelay
+      : MERGE_DEFAULTS.mergeableRetryDelay,
+    guardPaths: Array.isArray(section.guardPaths)
+      ? section.guardPaths.filter(
+          (p) => typeof p === "string" && p.length > 0,
+        )
+      : MERGE_DEFAULTS.guardPaths,
+  };
+
+  return { config, sectionMalformed: false };
+}
+
+function isPlainObject(v) {
+  return (
+    typeof v === "object" &&
+    v !== null &&
+    !Array.isArray(v)
+  );
+}
+
+function isValidRetryCount(v) {
+  return Number.isInteger(v) && v >= 0 && v <= MERGE_MAX_RETRIES;
+}
+
+function isValidRetryDelay(v) {
+  return Number.isInteger(v) && v >= 0;
+}
+
+/**
+ * Read the merge config file, never throwing. Byte-for-byte the shape of
+ * `readDriftStateSafely` (orchestrate-queue.js) and adopted for the same
+ * reason: the injected read is agent-mediated in production and returns
+ * `null` for a missing file rather than throwing — but a throw from some
+ * future read implementation must not abort the pipeline. AWAITED at its one
+ * call site (phaseMerge, TSPEC §3.3).
+ *
+ * @param {function} readFileFn - async (path) => string|null (or throws)
+ * @param {string} path - MERGE_CONFIG_PATH
+ * @returns {Promise<string|null>}
+ */
+async function readMergeConfigSafely(readFileFn, path) {
+  try {
+    return await readFileFn(path);
+  } catch {
+    return null;
+  }
+}
+
+// ─── TSPEC §4 — Phase MERGE: observation points, pure classifiers (O-M2) ───
+//
+// PLAN §12 A2. The PURE half of the six observation points (§4.1–§4.7):
+// `mergeCommandFor` — the single place every literal `gh` command string is
+// built (TSPEC §2.3/§4.1) — `parsePrRef`, and the six `classify*` functions.
+// Every classifier is total and shares one fail-closed shape, DC-11:
+// `{ ok: true, ... } | { ok: false, reason }`, `reason` drawn from the one
+// shared, frozen `OBSERVATION_REASONS` catalogue (DC-01). None of these
+// functions perform IO — the `raw` string(s) they read are handed in by
+// A5's `observe*` wrappers, which own the `_ghRun` transport seam.
+
+// The closed reason catalogue every classify* function draws from (DC-01).
+// `not-confirmed` is `classifyMergeResult`'s own addition (TSPEC §4.7); §7
+// records that A6 extends this catalogue's *usage*, not its membership —
+// the value already needs to exist here for `classifyMergeResult` (an
+// A2-owned function) to be correct on its own.
+const OBSERVATION_REASONS = Object.freeze([
+  "command-failed",
+  "unparseable",
+  "field-absent",
+  "unrecognised-value",
+  "incomplete",
+  "not-confirmed",
+]);
+
+const PR_STATE_VALUES = ["OPEN", "CLOSED", "MERGED"];
+const MERGEABLE_VALUES = ["MERGEABLE", "CONFLICTING", "UNKNOWN"];
+const MERGE_STATE_STATUS_VALUES = [
+  "CLEAN",
+  "UNSTABLE",
+  "BEHIND",
+  "BLOCKED",
+  "DIRTY",
+  "DRAFT",
+  "HAS_HOOKS",
+  "UNKNOWN",
+];
+const UNRECOGNISED_SENTINEL = "__unrecognised__";
+
+/**
+ * `mergeCommandFor` — TSPEC §4.1: the SOLE place every `gh` command string
+ * used by Phase MERGE is built, so a single audit of this function's body
+ * accounts for every literal command the phase can run.
+ *
+ * @param {string} surface - one of prState, ci, repoCaps, changedFiles,
+ *   changedFilesFallback, merge, mergeReadback, reviewThreads
+ * @param {object} params - surface-specific parameters (see call sites)
+ * @returns {string}
+ */
+function mergeCommandFor(surface, params = {}) {
+  switch (surface) {
+    case "prState":
+      return `gh pr view ${params.prUrl} --json state,mergeable,mergeStateStatus,number,mergeCommit`;
+    case "ci":
+      return `gh pr view ${params.prUrl} --json statusCheckRollup`;
+    case "repoCaps":
+      return "gh repo view --json rebaseMergeAllowed,mergeCommitAllowed,squashMergeAllowed,deleteBranchOnMerge,defaultBranchRef";
+    case "changedFiles":
+      return `gh pr view ${params.prUrl} --json files`;
+    case "changedFilesFallback":
+      return `gh api --paginate --slurp repos/${params.owner}/${params.repo}/pulls/${params.number}/files`;
+    case "merge":
+      return `gh pr merge ${params.prUrl} --${params.method}`;
+    case "mergeReadback":
+      return `gh pr view ${params.prUrl} --json mergeCommit,state`;
+    case "reviewThreads": {
+      const { owner, repo, number, cursor } = params;
+      const query =
+        "\n" +
+        "query($owner:String!,$repo:String!,$number:Int!,$cursor:String){\n" +
+        "  repository(owner:$owner,name:$repo){ pullRequest(number:$number){\n" +
+        `    reviewThreads(first:${MERGE_THREAD_PAGE_LIMIT}, after:$cursor){\n` +
+        "      pageInfo{ hasNextPage endCursor } nodes{ isResolved } } } } }";
+      let cmd = `gh api graphql -f owner=${owner} -f repo=${repo} -F number=${number} -f query='${query}'`;
+      if (cursor !== undefined && cursor !== null) {
+        cmd += ` -f cursor=${cursor}`;
+      }
+      return cmd;
+    }
+    default:
+      throw new Error(`mergeCommandFor: unrecognised surface "${surface}"`);
+  }
+}
+
+/**
+ * `parsePrRef` — TSPEC §4.4: pure parse of a PR URL into
+ * `{ owner, repo, number }`, or `null` for anything malformed. Tolerates
+ * trailing path segments and query strings; the host is never validated
+ * (GitHub Enterprise, etc.).
+ *
+ * @param {*} input
+ * @returns {{owner: string, repo: string, number: number}|null}
+ */
+function parsePrRef(input) {
+  if (typeof input !== "string") return null;
+  const match = input.match(/^https?:\/\/[^/]+\/([^/]+)\/([^/]+)\/pull\/(\d+)(?:[/?].*)?$/);
+  if (!match) return null;
+  const number = parseInt(match[3], 10);
+  if (!Number.isInteger(number) || number <= 0) return null;
+  return { owner: match[1], repo: match[2], number };
+}
+
+/**
+ * `classifyPrState` — O1 (TSPEC §4.2). Whole-observation failure only for
+ * `state`; `mergeable` and `mergeStateStatus` each fail closed to a
+ * per-field sentinel instead, since the decision function can act on
+ * "unrecognised" without the whole observation being unusable.
+ *
+ * @param {string|null} raw
+ * @returns {{ok: true, state, mergeable, mergeStateStatus, number, mergeCommitOid}|{ok: false, reason}}
+ */
+function classifyPrState(raw) {
+  if (raw === null) return { ok: false, reason: "command-failed" };
+  let obj;
+  try {
+    obj = JSON.parse(raw);
+  } catch {
+    return { ok: false, reason: "unparseable" };
+  }
+  if (obj?.state === undefined) return { ok: false, reason: "field-absent" };
+  if (!PR_STATE_VALUES.includes(obj.state)) return { ok: false, reason: "unrecognised-value" };
+
+  const mergeable = MERGEABLE_VALUES.includes(obj.mergeable) ? obj.mergeable : UNRECOGNISED_SENTINEL;
+  const mergeStateStatus = MERGE_STATE_STATUS_VALUES.includes(obj.mergeStateStatus)
+    ? obj.mergeStateStatus
+    : UNRECOGNISED_SENTINEL;
+  const number = Number.isInteger(obj.number) && obj.number > 0 ? obj.number : null;
+  const mergeCommitOid =
+    obj.mergeCommit && typeof obj.mergeCommit.oid === "string" ? obj.mergeCommit.oid : null;
+
+  return { ok: true, state: obj.state, mergeable, mergeStateStatus, number, mergeCommitOid };
+}
+
+/**
+ * `classifyReviewThreads` — O3 (TSPEC §4.4), one GraphQL page at a time.
+ * Cross-page aggregation and cursor advancement are A5's `observeReviewThreads`.
+ *
+ * @param {string|null} raw
+ * @returns {{ok: true, hasNextPage: boolean, endCursor: string|null, unresolved: number}|{ok: false, reason}}
+ */
+function classifyReviewThreads(raw) {
+  if (raw === null) return { ok: false, reason: "command-failed" };
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return { ok: false, reason: "unparseable" };
+  }
+  const rt = parsed?.data?.repository?.pullRequest?.reviewThreads;
+  if (!rt || typeof rt !== "object") return { ok: false, reason: "field-absent" };
+  const { nodes, pageInfo } = rt;
+  if (!Array.isArray(nodes) || !pageInfo || typeof pageInfo !== "object") {
+    return { ok: false, reason: "field-absent" };
+  }
+  if (typeof pageInfo.hasNextPage !== "boolean") return { ok: false, reason: "field-absent" };
+
+  let unresolved = 0;
+  for (const node of nodes) {
+    if (typeof node?.isResolved !== "boolean") return { ok: false, reason: "unrecognised-value" };
+    if (!node.isResolved) unresolved += 1;
+  }
+  return {
+    ok: true,
+    hasNextPage: pageInfo.hasNextPage,
+    endCursor: pageInfo.endCursor ?? null,
+    unresolved,
+  };
+}
+
+/**
+ * `classifyRepoCaps` — O4 (TSPEC §4.5). Every capability flag and the
+ * default branch name are required; any absent or wrongly-typed field
+ * fails the whole observation closed.
+ *
+ * @param {string|null} raw
+ * @returns {{ok: true, rebase, mergeCommit, squash, deleteBranchOnMerge, defaultBranch}|{ok: false, reason}}
+ */
+function classifyRepoCaps(raw) {
+  if (raw === null) return { ok: false, reason: "command-failed" };
+  let obj;
+  try {
+    obj = JSON.parse(raw);
+  } catch {
+    return { ok: false, reason: "unparseable" };
+  }
+
+  const boolFields = [
+    "rebaseMergeAllowed",
+    "mergeCommitAllowed",
+    "squashMergeAllowed",
+    "deleteBranchOnMerge",
+  ];
+  for (const field of boolFields) {
+    if (!obj || !(field in obj)) return { ok: false, reason: "field-absent" };
+    if (typeof obj[field] !== "boolean") return { ok: false, reason: "unrecognised-value" };
+  }
+  if (!obj.defaultBranchRef || typeof obj.defaultBranchRef !== "object") {
+    return { ok: false, reason: "field-absent" };
+  }
+  if (typeof obj.defaultBranchRef.name !== "string" || obj.defaultBranchRef.name.length === 0) {
+    return { ok: false, reason: "field-absent" };
+  }
+
+  return {
+    ok: true,
+    rebase: obj.rebaseMergeAllowed,
+    mergeCommit: obj.mergeCommitAllowed,
+    squash: obj.squashMergeAllowed,
+    deleteBranchOnMerge: obj.deleteBranchOnMerge,
+    defaultBranch: obj.defaultBranchRef.name,
+  };
+}
+
+/**
+ * `classifyChangedFiles` — O5 (TSPEC §4.6). Step 1 (`gh pr view --json
+ * files`) is complete on its own whenever it returns fewer than
+ * `pageLimit` well-formed entries — GitHub's own page size is the only
+ * signal that step 1 might be truncated. A well-formed-but-full step 1, or
+ * a step 1 that came back some other, non-array shape, escalates to the
+ * step 2 fallback (`gh api --paginate --slurp .../files`); a step 1 whose
+ * entries are individually malformed fails closed immediately, without
+ * ever trying the fallback.
+ *
+ * @param {string|null} primaryRaw
+ * @param {string|null} fallbackRaw
+ * @param {{pageLimit?: number}} [opts]
+ * @returns {{ok: true, files: string[]}|{ok: false, reason}}
+ */
+function classifyChangedFiles(primaryRaw, fallbackRaw, opts = {}) {
+  const pageLimit = opts.pageLimit ?? MERGE_FILES_PAGE_LIMIT;
+
+  if (primaryRaw !== null) {
+    let obj;
+    try {
+      obj = JSON.parse(primaryRaw);
+    } catch {
+      return { ok: false, reason: "unparseable" };
+    }
+    const arr = obj?.files;
+    if (Array.isArray(arr)) {
+      const paths = [];
+      for (const entry of arr) {
+        if (!entry || typeof entry.path !== "string") {
+          return { ok: false, reason: "unparseable" };
+        }
+        paths.push(entry.path);
+      }
+      if (paths.length < pageLimit) {
+        return { ok: true, files: paths };
+      }
+      // Full page: possibly incomplete, fall through to the fallback below.
+    }
+    // A non-array `files` shape is treated the same way: not a hard
+    // failure, just a signal that the fallback is needed.
+  }
+
+  if (fallbackRaw === null) return { ok: false, reason: "incomplete" };
+  let pages;
+  try {
+    pages = JSON.parse(fallbackRaw);
+  } catch {
+    return { ok: false, reason: "incomplete" };
+  }
+  if (!Array.isArray(pages)) return { ok: false, reason: "incomplete" };
+
+  const files = [];
+  for (const page of pages) {
+    if (!Array.isArray(page)) return { ok: false, reason: "incomplete" };
+    for (const entry of page) {
+      if (!entry || typeof entry.filename !== "string") {
+        return { ok: false, reason: "incomplete" };
+      }
+      files.push(entry.filename);
+      if (typeof entry.previous_filename === "string") {
+        files.push(entry.previous_filename);
+      }
+    }
+  }
+  return { ok: true, files };
+}
+
+/**
+ * `classifyMergeResult` — O6 (TSPEC §4.7). `gh pr merge` exiting zero is not
+ * itself confirmation; the read-back (`gh pr view --json mergeCommit,state`)
+ * must independently show `state: "MERGED"` with a string commit oid, or the
+ * result is `not-confirmed` (TSPEC §7) rather than assumed successful.
+ *
+ * @param {string|null} mergeRaw - the merge command's own stdout, or null if it didn't run
+ * @param {string|null} readbackRaw - the read-back command's stdout, or null if it didn't run
+ * @returns {{ok: true, oid: string}|{ok: false, reason}}
+ */
+function classifyMergeResult(mergeRaw, readbackRaw) {
+  if (mergeRaw === null) return { ok: false, reason: "command-failed" };
+  if (readbackRaw === null) return { ok: false, reason: "command-failed" };
+  let obj;
+  try {
+    obj = JSON.parse(readbackRaw);
+  } catch {
+    return { ok: false, reason: "unparseable" };
+  }
+  if (obj?.state === "MERGED" && obj?.mergeCommit && typeof obj.mergeCommit.oid === "string") {
+    return { ok: true, oid: obj.mergeCommit.oid };
+  }
+  return { ok: false, reason: "not-confirmed" };
+}
+
+// ─── TSPEC §4.1 — the `_ghRun` transport seam's Node default ──────────────
+//
+// PLAN §12 A5. Mirrors `defaultGit`'s exact three-field contract and its
+// exact `catch` shape (`err.stderr || err.message`), never throws. `gh`
+// commands are single shell strings (unlike `git`'s argv array), so this
+// uses `execSync`, matching `checkPrCi`'s existing default exactly.
+async function defaultGhRun(command, { execFn } = {}) {
+  const { execSync: realExecSync } = await import("child_process");
+  const exec = execFn ?? ((cmd, opts) => realExecSync(cmd, opts));
+
+  try {
+    const stdout = exec(command, { stdio: "pipe", encoding: "utf8" });
+    return { ok: true, stdout: String(stdout ?? ""), stderr: "" };
+  } catch (err) {
+    return {
+      ok: false,
+      stdout: "",
+      stderr: String((err && (err.stderr || err.message)) ?? ""),
+    };
+  }
+}
+
+/**
+ * `observePrState` — O1 (TSPEC §4.2). One `_ghRun` call, classified by
+ * `classifyPrState`. Re-observation on `mergeable: UNKNOWN` is the caller's
+ * (`decideMerge`/`phaseMerge`) responsibility, counted via `o1Count` — this
+ * function itself is stateless.
+ */
+async function observePrState(prUrl, { _ghRun }) {
+  const r = await _ghRun(mergeCommandFor("prState", { prUrl }));
+  const raw = r && r.ok === true ? r.stdout : null;
+  return classifyPrState(raw);
+}
+
+/**
+ * `observeCi` — O2 (TSPEC §4.4). Reuses `checkPrCi` verbatim rather than
+ * re-deriving CI classification: the raw rollup text is handed through via
+ * an injected `execFn`, so `checkPrCi`'s own parsing/aggregation is never
+ * duplicated. `defaultGhRun`'s failure contract always yields `stdout: ""`
+ * (never `null`), which naturally fails `checkPrCi`'s internal `JSON.parse`
+ * and yields `"unknown"` — no separate error branch is needed here.
+ */
+async function observeCi(prUrl, { _ghRun, _checkCi = checkPrCi }) {
+  const r = await _ghRun(mergeCommandFor("ci", { prUrl }));
+  const raw = r && r.ok === true ? r.stdout : "";
+  return _checkCi(prUrl, { execFn: () => raw });
+}
+
+/**
+ * `observeReviewThreads` — O3 (TSPEC §4.4). Bounded cursor pagination over
+ * `classifyReviewThreads`, aggregating `unresolved` across pages. Exceeding
+ * `MERGE_MAX_THREAD_PAGES` fails closed as `incomplete` rather than looping
+ * forever or guessing partial state.
+ */
+async function observeReviewThreads(ref, { _ghRun }) {
+  if (!ref) return { ok: false, reason: "unparseable" };
+
+  let cursor;
+  let unresolved = 0;
+  for (let page = 0; page < MERGE_MAX_THREAD_PAGES; page++) {
+    const r = await _ghRun(
+      mergeCommandFor("reviewThreads", { owner: ref.owner, repo: ref.repo, number: ref.number, cursor }),
+    );
+    const raw = r && r.ok === true ? r.stdout : null;
+    const parsed = classifyReviewThreads(raw);
+    if (!parsed.ok) return parsed;
+    unresolved += parsed.unresolved;
+    if (!parsed.hasNextPage) return { ok: true, unresolved };
+    cursor = parsed.endCursor;
+  }
+  return { ok: false, reason: "incomplete" };
+}
+
+/**
+ * `observeRepoCaps` — O4 (TSPEC §4.5). One `_ghRun` call, no PR URL
+ * involved — repo-level capabilities only.
+ */
+async function observeRepoCaps({ _ghRun }) {
+  const r = await _ghRun(mergeCommandFor("repoCaps", {}));
+  const raw = r && r.ok === true ? r.stdout : null;
+  return classifyRepoCaps(raw);
+}
+
+/**
+ * `observeChangedFiles` — O5 (TSPEC §4.6). Reuses `classifyChangedFiles`
+ * itself to decide whether the fallback is needed at all, rather than
+ * duplicating its completeness logic: a first pass with `fallbackRaw: null`
+ * either resolves outright (short list, or a malformed entry failing
+ * closed as `unparseable` without ever trying the fallback) or reports
+ * `incomplete`, which is this function's own signal to fetch and re-run
+ * classification with the fallback page attached. A missing `ref` when the
+ * fallback would be needed fails closed as `incomplete` rather than
+ * building an unparsable fallback command (TE-v3 N-01).
+ */
+async function observeChangedFiles(prUrl, ref, { _ghRun }) {
+  const primary = await _ghRun(mergeCommandFor("changedFiles", { prUrl }));
+  const primaryRaw = primary && primary.ok === true ? primary.stdout : null;
+
+  const attempt = classifyChangedFiles(primaryRaw, null);
+  if (attempt.ok === true) return attempt;
+  if (attempt.reason === "unparseable") return attempt;
+
+  if (!ref) return { ok: false, reason: "incomplete" };
+  const fallback = await _ghRun(
+    mergeCommandFor("changedFilesFallback", { owner: ref.owner, repo: ref.repo, number: ref.number }),
+  );
+  const fallbackRaw = fallback && fallback.ok === true ? fallback.stdout : null;
+  return classifyChangedFiles(primaryRaw, fallbackRaw);
+}
+
+// ─── TSPEC §6 — Phase MERGE: the self-modification guard (O-M7) ────────────
+//
+// PLAN §12 A3. Implements FSPEC §4 / NFR-3. Two pure functions only — no IO,
+// no clock, no config/env/argv read anywhere in either body (§6.3's no-
+// override boundary, asserted by mergeGuard.test.js's source scan).
+
+function isNonEmptyString(v) {
+  return typeof v === "string" && v.length > 0;
+}
+
+/**
+ * The effective guard-path set: `MERGE_GUARD_DEFAULTS` unioned with whatever
+ * the caller configured, additively and unconditionally (TSPEC §6.1, FSPEC
+ * §4.3). Defaults are never filtered, subtracted or re-ordered — a
+ * configuration that lists fewer paths, none, or one shaped like a removal
+ * (a `"!"`-prefixed string, say) is simply unioned in: it becomes a guard
+ * path that matches nothing, silently, with no warning and no report line.
+ * Non-string members are dropped; every configured string gains a trailing
+ * `/` so a bare form and its slash-terminated twin are the same guard path.
+ *
+ * @param {*} configured - the config's `guardPaths` value, any shape
+ * @returns {string[]} the de-duplicated effective guard-path set
+ */
+function effectiveGuardPaths(configured) {
+  const extra = Array.isArray(configured) ? configured : [];
+  const norm = (p) => (p.endsWith("/") ? p : `${p}/`);
+  return [
+    ...new Set([...MERGE_GUARD_DEFAULTS, ...extra.filter(isNonEmptyString).map(norm)]),
+  ];
+}
+
+/**
+ * The pure guard decision (TSPEC §6.2, FSPEC §4.2/§4.4). `changed` is O5's
+ * classified changed-file observation, `{ ok: true, files: string[] }` or a
+ * failure shape; anything not exactly `{ ok: true, ... }` fails CLOSED —
+ * command failure, unparseable output, an absent `files` field and an
+ * incomplete list all resolve as `ok !== true` one layer up (O5), so this
+ * function's single check covers every one of them. Matching is
+ * `String.prototype.startsWith`: case-sensitive, `/`-delimited (every guard
+ * path ends in `/`), position-0 anchored — no globbing, no regex, no case
+ * folding, no substring search.
+ *
+ * @param {{ok:boolean, files?: string[]}|null|undefined} changed - O5's observation
+ * @param {string[]} guardPaths - the effective guard-path set
+ * @returns {{fired:boolean, kind:"match"|"clear"|"unretrievable", matched:string[]}}
+ */
+function guardVerdict(changed, guardPaths) {
+  if (!changed || changed.ok !== true) {
+    return { fired: true, kind: "unretrievable", matched: [] }; // FSPEC §4.4
+  }
+  const matched = changed.files.filter((p) => guardPaths.some((g) => p.startsWith(g)));
+  return { fired: matched.length > 0, kind: matched.length ? "match" : "clear", matched };
+}
+
+// ─── TSPEC §5 — Phase MERGE: the pure decision core ────────────────────────
+//
+// PLAN §12 A4. `decideMerge` is pure, total and demand-driven (TSPEC §5.1):
+// one call in, one of three shapes out — `need` (the next observation to
+// take), `act` (the next merge method to attempt) or `resolved` (a §11 row).
+// It never loops, never calls IO/clock seams, and never mutates its
+// arguments; the orchestrating step loop (the `for` loop that re-drives this
+// function until it resolves, and the try/catch around the whole thing that
+// maps a thrown/exhausted loop to `row: "internal"`, TSPEC §12 E21) is
+// `phaseMerge`'s (A7), not this function's.
+
+/**
+ * FSPEC §5 / TSPEC §5.4 — the CI evidence rule, as a single lookup:
+ * `mergeRequiresCi` relaxes exactly the `"none"` cell. `pending`, `failed`
+ * and `unknown` refuse under both settings; `passed` always passes.
+ *
+ * @param {"passed"|"none"|"pending"|"failed"|"unknown"} ci
+ * @param {boolean} requiresCi
+ * @returns {{result:"pass"}|{result:"refused", row:string, reason:string, escalate:boolean}}
+ */
+function ciRule(ci, requiresCi) {
+  if (ci === "passed") return { result: "pass" };
+  if (ci === "none") {
+    if (requiresCi) {
+      return {
+        result: "refused",
+        row: "9",
+        reason: "no CI checks reported and mergeRequiresCi is true",
+        escalate: true,
+      };
+    }
+    return { result: "pass" };
+  }
+  if (ci === "pending") {
+    return { result: "refused", row: "10", reason: "CI is pending", escalate: false };
+  }
+  if (ci === "failed") {
+    return { result: "refused", row: "10", reason: "CI failed", escalate: false };
+  }
+  // "unknown" — CI rollup could not be classified.
+  return {
+    result: "refused",
+    row: "11",
+    reason: "CI status could not be determined",
+    escalate: false,
+  };
+}
+
+function o1FieldUnreadable(o1) {
+  return (
+    o1.mergeable === UNRECOGNISED_SENTINEL ||
+    o1.mergeStateStatus === UNRECOGNISED_SENTINEL ||
+    o1.number === null
+  );
+}
+
+/**
+ * `mergeCandidates` — TSPEC §5.6 / FSPEC §6.1. Pure: builds the merge-method
+ * candidate chain, in the fixed order rebase, merge, squash. Squash is
+ * included only when BOTH the repository capability (`caps.squash`) and the
+ * configuration (`config.allowSquashMerge === true`, strict equality) allow
+ * it — under the shipped default (`allowSquashMerge: false`) squash is
+ * absent from the returned array entirely, never merely skipped at attempt
+ * time (PROP-M-11).
+ *
+ * @param {{rebase:boolean, mergeCommit:boolean, squash:boolean}} caps - O4's classified capabilities
+ * @param {{allowSquashMerge:boolean}} config
+ * @returns {Array<"rebase"|"merge"|"squash">}
+ */
+function mergeCandidates(caps, config) {
+  const chain = [];
+  if (caps && caps.rebase) chain.push("rebase");
+  if (caps && caps.mergeCommit) chain.push("merge");
+  if (config && config.allowSquashMerge === true && caps && caps.squash) chain.push("squash");
+  return chain;
+}
+
+/**
+ * `decideMerge(record, config)` — TSPEC §5.1–§5.3. See module docblock
+ * above; guards are numbered and ordered exactly as TSPEC §5.3's table,
+ * evaluated top to bottom, first match wins.
+ *
+ * `record` is the ObservationRecord (TSPEC §2.4): `{ prUrl, o1, o1Count, ci,
+ * o3, o4, o5, attempts }`. `config` is a parsed merge config
+ * (`MERGE_DEFAULTS`-shaped, TSPEC §3).
+ *
+ * @param {object} record
+ * @param {object} config
+ * @returns {
+ *   {kind:"need", observation:string, waitMs?:number} |
+ *   {kind:"act", method:"rebase"|"merge"|"squash"} |
+ *   {kind:"resolved", row:string, mergeStatus:string, reason:string|null,
+ *    escalations:string[], mergeSha:string|null, mergeMethod:string|null,
+ *    defaultBranch?:string|null}
+ * }
+ */
+function decideMerge(record, config) {
+  // Guard 1 (§2.2 r2): mergeMode is "off".
+  if (config.mergeMode === "off") {
+    return {
+      kind: "resolved",
+      row: "2",
+      mergeStatus: "skipped",
+      reason: "mergeMode is off",
+      escalations: [],
+      mergeSha: null,
+      mergeMethod: null,
+    };
+  }
+  // Guard 2 (§2.2 r3): no PR URL from Phase PUB.
+  if (!record.prUrl) {
+    return {
+      kind: "resolved",
+      row: "6",
+      mergeStatus: "deferred",
+      reason: "no PR URL from Phase PUB",
+      escalations: [],
+      mergeSha: null,
+      mergeMethod: null,
+    };
+  }
+  // Guard 3 (§2.2 r4): O1 not yet observed.
+  if (record.o1 === null) {
+    return { kind: "need", observation: "O1" };
+  }
+  // Guard 4 (§2.2 r4): O1 whole-observation failure.
+  if (!record.o1.ok) {
+    return {
+      kind: "resolved",
+      row: "8",
+      mergeStatus: "refused",
+      reason: "PR state could not be determined",
+      escalations: [],
+      mergeSha: null,
+      mergeMethod: null,
+    };
+  }
+  // Guard 5 (§2.2 r5, §5.5): PR already MERGED. O4 is an OBSERVATION here,
+  // never a precondition — only its default-branch name is consulted, and
+  // its absence/failure never turns an already-merged PR into a refusal.
+  if (record.o1.state === "MERGED") {
+    if (record.o4 === null) {
+      return { kind: "need", observation: "O4" };
+    }
+    return {
+      kind: "resolved",
+      row: "3",
+      mergeStatus: "merged",
+      reason: null,
+      escalations: [],
+      mergeSha: record.o1.mergeCommitOid ?? null,
+      mergeMethod: "unknown",
+      defaultBranch: record.o4.ok ? record.o4.defaultBranch : null,
+    };
+  }
+  // Guard 6 (§2.2 r6): O5 not yet observed.
+  if (record.o5 === null) {
+    return { kind: "need", observation: "O5" };
+  }
+  const guardPaths = effectiveGuardPaths(config.guardPaths);
+  const verdict = guardVerdict(record.o5, guardPaths);
+  // Guard 7 (§2.2 r6): self-modification guard fired — a path matched.
+  if (verdict.kind === "match") {
+    const reason = `self-modification guard fired — matched paths: ${verdict.matched.join(", ")}`;
+    return {
+      kind: "resolved",
+      row: "4",
+      mergeStatus: "refused",
+      reason,
+      escalations: [`MERGE ESCALATION: self-modification guard fired for ${record.prUrl} — matched paths: ${verdict.matched.join(", ")}`],
+      mergeSha: null,
+      mergeMethod: null,
+    };
+  }
+  // Guard 8 (§2.2 r6): self-modification guard fail-closed, O5 unretrievable.
+  if (verdict.kind === "unretrievable") {
+    return {
+      kind: "resolved",
+      row: "5",
+      mergeStatus: "refused",
+      reason: "changed-file list could not be retrieved",
+      escalations: [`MERGE ESCALATION: self-modification guard fired for ${record.prUrl} — changed-file list could not be retrieved`],
+      mergeSha: null,
+      mergeMethod: null,
+    };
+  }
+  // Guard 9 (§2.3 7a): PR is CLOSED.
+  if (record.o1.state === "CLOSED") {
+    return {
+      kind: "resolved",
+      row: "7",
+      mergeStatus: "deferred",
+      reason: "PR is CLOSED",
+      escalations: [],
+      mergeSha: null,
+      mergeMethod: null,
+    };
+  }
+  // Guard 10 (§2.3 7b): O2 (CI) not yet observed.
+  if (record.ci === null) {
+    return { kind: "need", observation: "O2" };
+  }
+  // Guard 11 (§2.3 7b, §5.4): the CI rule.
+  const ci = ciRule(record.ci, config.mergeRequiresCi);
+  if (ci.result === "refused") {
+    return {
+      kind: "resolved",
+      row: ci.row,
+      mergeStatus: "refused",
+      reason: ci.reason,
+      escalations: ci.escalate
+        ? [`MERGE ESCALATION: CI evidence absent for ${record.prUrl} — no checks reported and mergeRequiresCi is true`]
+        : [],
+      mergeSha: null,
+      mergeMethod: null,
+    };
+  }
+  // Guard 12 (§2.3 7c): mergeable / mergeStateStatus / number unparseable.
+  if (o1FieldUnreadable(record.o1)) {
+    return {
+      kind: "resolved",
+      row: "11a",
+      mergeStatus: "refused",
+      reason: "PR mergeability could not be determined",
+      escalations: [],
+      mergeSha: null,
+      mergeMethod: null,
+    };
+  }
+  // Guard 13 (§2.3 7c, §3.3): mergeable still UNKNOWN, bounded re-reads remain.
+  if (record.o1.mergeable === "UNKNOWN" && record.o1Count <= config.mergeableRetries) {
+    return { kind: "need", observation: "O1", waitMs: config.mergeableRetryDelay * 1000 };
+  }
+  // Guard 14 (§2.3 7c, §3.3): mergeable still UNKNOWN, retries exhausted.
+  if (record.o1.mergeable === "UNKNOWN") {
+    return {
+      kind: "resolved",
+      row: "13",
+      mergeStatus: "deferred",
+      reason: `mergeability still UNKNOWN after ${record.o1Count} observations`,
+      escalations: [],
+      mergeSha: null,
+      mergeMethod: null,
+    };
+  }
+  // Guard 15 (§2.3 7c): CONFLICTING / DIRTY / BLOCKED.
+  if (
+    record.o1.mergeable === "CONFLICTING" ||
+    record.o1.mergeStateStatus === "DIRTY" ||
+    record.o1.mergeStateStatus === "BLOCKED"
+  ) {
+    return {
+      kind: "resolved",
+      row: "12",
+      mergeStatus: "deferred",
+      reason: `PR not mergeable (${record.o1.mergeable}/${record.o1.mergeStateStatus})`,
+      escalations: [],
+      mergeSha: null,
+      mergeMethod: null,
+    };
+  }
+  // Guard 16 (§2.3 7d): O3 (review threads) not yet observed.
+  if (record.o3 === null) {
+    return { kind: "need", observation: "O3" };
+  }
+  // Guard 17 (§2.3 7d): O3 unretrievable/unparseable.
+  if (!record.o3.ok) {
+    return {
+      kind: "resolved",
+      row: "13a",
+      mergeStatus: "refused",
+      reason: "review-thread list could not be determined",
+      escalations: [],
+      mergeSha: null,
+      mergeMethod: null,
+    };
+  }
+  // Guard 18 (§2.3 7d): unresolved review threads remain.
+  if (record.o3.unresolved > 0) {
+    return {
+      kind: "resolved",
+      row: "14",
+      mergeStatus: "deferred",
+      reason: `${record.o3.unresolved} unresolved review thread(s)`,
+      escalations: [],
+      mergeSha: null,
+      mergeMethod: null,
+    };
+  }
+  // Guard 19 (§2.3 7e): O4 (capabilities) not yet observed.
+  if (record.o4 === null) {
+    return { kind: "need", observation: "O4" };
+  }
+  // Guard 20 (§2.3 7e): O4 unretrievable/unparseable.
+  if (!record.o4.ok) {
+    return {
+      kind: "resolved",
+      row: "15",
+      mergeStatus: "refused",
+      reason: "merge-method capability could not be determined",
+      escalations: [],
+      mergeSha: null,
+      mergeMethod: null,
+    };
+  }
+  const candidates = mergeCandidates(record.o4, config);
+  // Guard 21 (r8): no permitted merge method.
+  if (candidates.length === 0) {
+    return {
+      kind: "resolved",
+      row: "16",
+      mergeStatus: "deferred",
+      reason: "no permitted merge method",
+      escalations: [],
+      mergeSha: null,
+      mergeMethod: null,
+    };
+  }
+  // Guards 22-24 (r8) drive the candidate chain. TSPEC §5.3 lists "an
+  // untried candidate remains" (22) ahead of "the last attempt succeeded"
+  // (23), but the only reading under which those two do not race is to
+  // check success FIRST: once an attempt has succeeded the chain must stop
+  // (NFR-2 — no more of the repo's merge surface is touched than the
+  // decision needs), so an untried candidate remaining after a success must
+  // never trigger another attempt.
+  const attemptedMethods = record.attempts.map((a) => a.method);
+  const lastAttempt = record.attempts[record.attempts.length - 1];
+  if (lastAttempt && lastAttempt.ok) {
+    return {
+      kind: "resolved",
+      row: "18",
+      mergeStatus: "merged",
+      reason: null,
+      escalations: [],
+      mergeSha: lastAttempt.oid ?? null,
+      mergeMethod: lastAttempt.method,
+    };
+  }
+  const nextCandidate = candidates.find((c) => !attemptedMethods.includes(c));
+  if (nextCandidate) {
+    return { kind: "act", method: nextCandidate };
+  }
+  // Guard 24: every candidate attempted, none succeeded.
+  const reason = record.attempts.map((a) => `${a.method} failed (${a.detail})`).join("; ");
+  return {
+    kind: "resolved",
+    row: "17",
+    mergeStatus: "deferred",
+    reason,
+    escalations: [],
+    mergeSha: null,
+    mergeMethod: null,
+  };
+}
+
+// ─── PLAN §12 A6 — merge execution and the post-merge helpers (TSPEC §7) ──
+//
+// `executeMerge` is O6 (§4.7): the phase's one mutating observation. The
+// post-merge helpers — `deleteRemoteBranch` (M2, §7.2), `updateDefaultBranch`
+// (M3, §7.4) and `evidenceCellFor` (§7.3) — run only once `decideMerge` has
+// already resolved `merged`; none of them decide anything, they only report
+// what they observed. All IO goes through the injected `_git` seam
+// (`defaultGit`, `:5229`) — the same three-field `{ ok, stdout, stderr }`
+// contract `_ghRun` uses, so every step below is a plain `if (!r.ok)`.
+
+/** First line only — mirrors orchestrate-queue.js's `firstLine` exactly
+ * (TSPEC §4.1); not imported across files because the runtime bundle forbids
+ * cross-module `import` (build-runtime.mjs inlines each module standalone). */
+function firstLine(text) {
+  return String(text ?? "").split("\n")[0].trim();
+}
+
+/**
+ * `executeMerge` — O6 (TSPEC §4.7). Issues exactly one `gh pr merge` variant
+ * for `method`, then — only when that command itself exited zero —
+ * independently reads back `gh pr view --json mergeCommit,state` and
+ * classifies the pair via `classifyMergeResult`. A zero-exit merge command is
+ * never itself confirmation; only the read-back is (FSPEC §6.2).
+ *
+ * `reason` is a two-member closed set, `"command-failed" | "not-confirmed"`
+ * (§4.7): `classifyMergeResult`'s own third possibility, `"unparseable"`
+ * (an unreadable read-back), is folded into `"not-confirmed"` here — the
+ * read-back ran and simply did not establish `MERGED`, whatever shape its
+ * output took. `detail` is always populated: the transport's first `stderr`
+ * line when non-empty, else the fixed token `"merge not confirmed"`.
+ *
+ * @param {string} prUrl
+ * @param {"rebase"|"merge"|"squash"} method
+ * @param {{ _ghRun: function }} seams
+ * @returns {Promise<{ok: true, oid: string}|{ok: false, reason: string, detail: string}>}
+ */
+async function executeMerge(prUrl, method, { _ghRun }) {
+  const mergeResult = await _ghRun(mergeCommandFor("merge", { prUrl, method }));
+  const mergeStderr = (mergeResult && mergeResult.stderr) || "";
+  const detailFor = (stderr) => firstLine(stderr) || "merge not confirmed";
+
+  if (!mergeResult || mergeResult.ok !== true) {
+    return { ok: false, reason: "command-failed", detail: detailFor(mergeStderr) };
+  }
+
+  const readback = await _ghRun(mergeCommandFor("mergeReadback", { prUrl }));
+  const readbackRaw = readback && readback.ok === true ? readback.stdout : null;
+  const classified = classifyMergeResult(mergeResult.stdout, readbackRaw);
+  if (classified.ok) return classified;
+
+  const reason = classified.reason === "command-failed" ? "command-failed" : "not-confirmed";
+  return { ok: false, reason, detail: detailFor(mergeStderr) };
+}
+
+/**
+ * `evidenceCellFor` — TSPEC §7.3. A fixed 7-character truncation of the full
+ * oid, never `git rev-parse --short` — the cell is then a pure function of
+ * the observed value. `merged` is a literal token, never a SHA-shaped
+ * placeholder.
+ *
+ * @param {string|null} mergeSha
+ * @param {number} prNumber
+ * @returns {string}
+ */
+function evidenceCellFor(mergeSha, prNumber) {
+  return typeof mergeSha === "string" && mergeSha.length >= 7
+    ? `${mergeSha.slice(0, 7)} #${prNumber}`
+    : `merged #${prNumber}`;
+}
+
+/**
+ * `deleteRemoteBranch` — M2 (TSPEC §7.2, FSPEC §6.4). One command through the
+ * existing git seam: `git push origin --delete feat-{feature}`. The local
+ * branch is never touched. A failure is reported plainly — it never becomes
+ * an escalation and never changes `mergeStatus` (that decision belongs to
+ * the caller, `phaseMerge`, A7).
+ *
+ * @param {{ feature: string, _git: function }} args
+ * @returns {Promise<{ok: true}|{ok: false, reason: string}>}
+ */
+async function deleteRemoteBranch({ feature, _git }) {
+  const branch = featureBranchName(feature);
+  const result = await _git(["push", "origin", "--delete", branch]);
+  if (result && result.ok === true) return { ok: true };
+  const reason = firstLine(result && result.stderr) || "git push --delete failed";
+  return { ok: false, reason };
+}
+
+/**
+ * `updateDefaultBranch` — M3 (TSPEC §7.4, FSPEC §8.3). Every command goes
+ * through the injected `_git(argv)` seam, whose contract never throws, so
+ * this function contains no `try/catch` — each step is a plain `if (!r.ok)`.
+ * `argv` arrays only, never command strings (a branch name is untrusted
+ * input at the seam boundary).
+ *
+ * On any failure past step 0, an additional `rev-parse --abbrev-ref HEAD`
+ * reports where the tree actually is (falling back to `"unknown"`) — the
+ * escalation names the branch the operator must deal with, not the branch
+ * the step intended to reach.
+ *
+ * @param {{ defaultBranch: string|null, mergeSha: string|null, _git: function }} args
+ * @returns {Promise<{ok: true, branch: string}|{ok: false, reason: string, branch?: string}>}
+ */
+async function updateDefaultBranch({ defaultBranch, mergeSha, _git }) {
+  if (defaultBranch == null) {
+    return { ok: false, reason: "default branch name unavailable" };
+  }
+
+  const fail = async (reason) => {
+    const abbrev = await _git(["rev-parse", "--abbrev-ref", "HEAD"]);
+    const reported =
+      abbrev && abbrev.ok === true ? String(abbrev.stdout ?? "").trim() : "";
+    return { ok: false, reason, branch: reported || "unknown" };
+  };
+
+  // Step 1 — the tree must be clean before anything is checked out over it.
+  const status = await _git(["status", "--porcelain"]);
+  if (!status || status.ok !== true || String(status.stdout ?? "").trim() !== "") {
+    return await fail("working tree is dirty");
+  }
+
+  // Step 2 — fetch the remote default branch, named by O4's own observation.
+  const fetch = await _git(["fetch", "origin", defaultBranch]);
+  if (!fetch || fetch.ok !== true) {
+    return await fail(`git fetch failed: ${firstLine(fetch && fetch.stderr)}`);
+  }
+
+  // Step 3 — does the local branch exist yet? `!ok` is not itself a failure.
+  const revParse = await _git([
+    "rev-parse",
+    "--verify",
+    "--quiet",
+    `refs/heads/${defaultBranch}`,
+  ]);
+  const branchExists = !!(revParse && revParse.ok === true);
+
+  // Steps 4a/4b — check it out, creating it from FETCH_HEAD if it is new.
+  const checkout = branchExists
+    ? await _git(["checkout", defaultBranch])
+    : await _git(["checkout", "-B", defaultBranch, "FETCH_HEAD"]);
+  if (!checkout || checkout.ok !== true) {
+    return await fail(`checkout failed: ${firstLine(checkout && checkout.stderr)}`);
+  }
+
+  // Step 5 — only when the branch already existed: replay any local
+  // queue-row commits onto the fetched tip. One `rebase` covers both the
+  // fast-forward case and the replay case (§7.4) — already-upstream commits
+  // drop out as empty via `--empty=drop`, explicit so behaviour never
+  // depends on the operator's rebase backend default.
+  if (branchExists) {
+    const rebase = await _git(["rebase", "--empty=drop", "FETCH_HEAD"]);
+    if (!rebase || rebase.ok !== true) {
+      await _git(["rebase", "--abort"]); // best-effort; result ignored
+      return await fail(
+        `replay of local queue-row commits onto ${defaultBranch} conflicted: ` +
+          firstLine(rebase && rebase.stderr),
+      );
+    }
+  }
+
+  // Step 6 — the positive confirmation: the merge commit must be an
+  // ancestor of HEAD after the update, turning a silently-wrong checkout
+  // into a reported one. Exit-status only; no stdout is parsed for meaning.
+  const ancestor = await _git(["merge-base", "--is-ancestor", mergeSha ?? "FETCH_HEAD", "HEAD"]);
+  if (!ancestor || ancestor.ok !== true) {
+    return await fail("merge commit is not an ancestor of HEAD after update");
+  }
+
+  return { ok: true, branch: defaultBranch };
+}
+
+// TSPEC §7.1/§10.2 — the plain (non-escalating) notice catalogue this phase
+// emits (DC-01). A6 lands the constant here, closest to the M-helpers that
+// produce most of its members, and resolves PROPERTIES §8's SE F-04 naming
+// drift in the same commit: TSPEC §7.1's snippet writes the ahead-of-remote
+// notice as a standalone `AHEAD_OF_REMOTE_NOTE(...)` while §10.2 names the
+// frozen `MERGE_NOTES` catalogue — one symbol, `MERGE_NOTES.aheadOfRemote`,
+// not two. The catalogue's remaining six members and every `notes.push(...)`
+// call site belong to `phaseMerge` (A7), which extends this object literal
+// rather than re-declaring it.
+const MERGE_NOTES = Object.freeze({
+  // FSPEC §8.2 — emitted once per merged run whose M4 disposition is
+  // `recorded`; `defaultBranch` is always O4's own `defaultBranchRef.name`,
+  // the same value M3 fetched, so the two cannot disagree.
+  aheadOfRemote: (defaultBranch, feature) =>
+    `Local ${defaultBranch} is ahead of its remote by the queue-row commit for ${feature}; ` +
+    `pdlc does not push it — it reaches the remote with the next feature's PR.`,
+
+  // FSPEC §9.4 — emitted once for every `deferred`/`refused` run, never for
+  // `skipped`/`merged`. Exact text.
+  mergeDeferred: (feature, reason) =>
+    `Merge deferred for ${feature}: ${reason}. The queue row is unchanged; merge the PR to advance it.`,
+
+  // TSPEC §3.3/§10.3 — the `merge` config section was present but not an
+  // object; every setting fell back to its own default independently.
+  sectionMalformed: () =>
+    `.claude/pdlc.config.json's "merge" section is present but not an object; every merge setting is using its default.`,
+
+  // TSPEC §7.5 — no PR number could be resolved from either `prUrl` or O1,
+  // so the queue row is left untouched: no write, never "#null".
+  noPrNumber: (feature, prUrl) =>
+    `Queue row for ${feature} was not updated: no PR number could be resolved from ${prUrl}.`,
+
+  // TSPEC §7.5/E19 — the queue write was made but not committed; `detail`
+  // is `_recordQueueRow`'s own explanation, already a complete sentence.
+  recordedUncommitted: (feature, detail) => `Queue row for ${feature}: ${detail}`,
+
+  // FSPEC §2.5 — the queue row's current status is not one of the three
+  // overwritable statuses, so nothing was written; `detail` names the
+  // status found and is already a complete sentence.
+  nonOverwrite: (feature, detail) => `Queue row for ${feature}: ${detail}`,
+
+  // TSPEC §7.2/FSPEC §6.4 (M2) — best-effort remote branch deletion failed;
+  // never an escalation, never changes mergeStatus.
+  branchDeleteFailed: (feature, reason) =>
+    `Remote branch deletion failed for ${feature}: ${reason}`,
+});
+
+// FSPEC §9.3 — the closed, 4-member escalation-text catalogue (DC-01):
+// guard / CI / queue-not-updated / tree-not-updated. `decideMerge` (A4)
+// already renders the guard-match, guard-unretrievable and CI-absent lines
+// inline (it is pure and cannot import this catalogue's call site, since it
+// predates it) — `guard` and `ci` below render byte-identical text from the
+// same parameters so PROP-M-19's closure holds without `decideMerge` itself
+// depending on this object. `queue`/`tree` are this phase's own (M3/M4)
+// escalations and have no other renderer. Every member takes one object
+// argument (TSPEC §7.1's own call shape for `tree`), never positional args.
+const MERGE_ESCALATIONS = Object.freeze({
+  guard: ({ prUrl, tail }) => `MERGE ESCALATION: self-modification guard fired for ${prUrl} — ${tail}`,
+  ci: ({ prUrl }) =>
+    `MERGE ESCALATION: CI evidence absent for ${prUrl} — no checks reported and mergeRequiresCi is true`,
+  queue: ({ prUrl, shortSha, feature, detail }) =>
+    `MERGE ESCALATION: merged ${prUrl} (${shortSha}) but the queue row for ${feature} was not updated — ${detail}`,
+  tree: ({ prUrl, reason, branch }) =>
+    `MERGE ESCALATION: working tree not updated after merging ${prUrl} — ${reason}; tree is on ${branch}`,
+});
+
+/**
+ * `phaseMerge` — PLAN A7 (TSPEC §7, §10.4). The orchestrator: reads config
+ * once (O-M5, §3.3), drives `decideMerge`'s demand/resolution loop (§5.2)
+ * through the six `observe*`/`executeMerge` seams, then — only when the
+ * core resolves `merged` — runs the M2–M4 post-merge sequence (§7.1) in
+ * order: remote branch delete, default-branch update, queue write-back.
+ * Never throws to the caller (FSPEC §2.1): the whole body past the enable
+ * check is wrapped in `try/catch`, mapping any throw to
+ * `{ mergeStatus: "refused", row: "internal" }`.
+ *
+ * `_enabled` and `_configPath` are the only two seams defaulted from a
+ * module constant; every other seam is required so a test cannot
+ * accidentally exercise production IO by omission (TE F-05).
+ *
+ * @param {{
+ *   feature: string,
+ *   prUrl: string|null,
+ *   config?: object,
+ *   _enabled?: boolean,
+ *   _ghRun?: function,
+ *   _git: function,
+ *   _readFile: function,
+ *   _recordQueueRow: function,
+ *   _log?: function,
+ *   _now?: function,
+ *   _sleep?: function,
+ *   _configPath?: string,
+ * }} args
+ * @returns {Promise<object>} MergeOutcome (TSPEC §2.4)
+ */
+async function phaseMerge({
+  feature,
+  prUrl,
+  config: configOverride,
+  _enabled = PHASE_MERGE_ENABLED,
+  _ghRun = defaultGhRun,
+  _git,
+  _readFile,
+  _recordQueueRow,
+  _log,
+  _now = () => Date.now(),
+  _sleep = sleep,
+  _configPath = MERGE_CONFIG_PATH,
+}) {
+  const skippedOutcome = (row, reason, notes = []) => ({
+    mergeStatus: "skipped",
+    mergeSha: null,
+    mergeMethod: null,
+    row: String(row),
+    reason,
+    escalations: [],
+    notes,
+    queueRow: null,
+  });
+
+  // FSPEC §2.2 row 1 — structural, not a checked precondition: no code path
+  // below this line runs when the phase is disabled, so no read of the
+  // config file happens either (§3.3).
+  if (!_enabled) return skippedOutcome(1, "Phase MERGE disabled");
+
+  // Hoisted above the try (CR product-manager finding 3): a note pushed
+  // before a later step throws (e.g. M2's branch-delete note ahead of an
+  // M3 throw) must still reach the caller on the row-internal outcome —
+  // the catch below returns this same array rather than a fresh `[]`.
+  const notes = [];
+
+  try {
+    let config = configOverride;
+    if (!config) {
+      // Exactly one read per run (O-M5, §3.3), skipped entirely when a test
+      // (or a future caller) supplies `config` directly.
+      const raw = await readMergeConfigSafely(_readFile, _configPath);
+      const parsed = parseMergeConfig(raw);
+      config = parsed.config;
+      if (parsed.sectionMalformed) notes.push(MERGE_NOTES.sectionMalformed());
+    }
+    if (config.mergeMode === "off") return skippedOutcome(2, "mergeMode is off", notes);
+
+    const record = {
+      prUrl: prUrl ?? null,
+      o1: null,
+      o1Count: 0,
+      ci: null,
+      o3: null,
+      o4: null,
+      o5: null,
+      attempts: [],
+    };
+    const ref = prUrl ? parsePrRef(prUrl) : null;
+
+    const observe = {
+      O1: () => observePrState(prUrl, { _ghRun }),
+      O2: () => observeCi(prUrl, { _ghRun }),
+      O3: () => observeReviewThreads(ref, { _ghRun }),
+      O4: () => observeRepoCaps({ _ghRun }),
+      O5: () => observeChangedFiles(prUrl, ref, { _ghRun }),
+    };
+    const slotFor = { O1: "o1", O2: "ci", O3: "o3", O4: "o4", O5: "o5" };
+
+    // The demand-driven loop (§5.2). `decideMerge` is pure and total; every
+    // IO call below is this orchestrator's own response to its demand.
+    let d;
+    let step = 0;
+    for (; step < MERGE_MAX_DECISION_STEPS; step++) {
+      d = decideMerge(record, config);
+      if (d.kind === "resolved") break;
+      if (d.kind === "act") {
+        const result = await executeMerge(prUrl, d.method, { _ghRun });
+        record.attempts.push({ method: d.method, ...result });
+        continue;
+      }
+      if (d.waitMs) await _sleep(d.waitMs);
+      record[slotFor[d.observation]] = await observe[d.observation]();
+      if (d.observation === "O1") record.o1Count += 1;
+    }
+    if (!d || d.kind !== "resolved") {
+      throw new Error("unreachable: decideMerge did not resolve");
+    }
+
+    const escalations = [...d.escalations];
+
+    if (d.mergeStatus !== "merged") {
+      // FSPEC §9.4 — one plain note for every deferred/refused run.
+      notes.push(MERGE_NOTES.mergeDeferred(feature, d.reason));
+      return {
+        mergeStatus: d.mergeStatus,
+        mergeSha: d.mergeSha,
+        mergeMethod: d.mergeMethod,
+        row: d.row,
+        reason: d.reason,
+        escalations,
+        notes,
+        queueRow: null,
+      };
+    }
+
+    // ── merged — M2, M3, M4 (TSPEC §7.1) ──────────────────────────────────
+    //
+    // Row 3 (already MERGED) carries its own `defaultBranch` field (§5.5);
+    // every other merged row reaches here only after guard 20 confirmed
+    // `record.o4.ok`, so `record.o4.defaultBranch` is always readable then.
+    const defaultBranch = Object.prototype.hasOwnProperty.call(d, "defaultBranch")
+      ? d.defaultBranch
+      : record.o4 && record.o4.ok
+        ? record.o4.defaultBranch
+        : null;
+
+    // M2 — best-effort remote branch deletion; a plain note, never an
+    // escalation, never changes mergeStatus.
+    if (config.deleteBranchOnPdlcMerge) {
+      const del = await deleteRemoteBranch({ feature, _git });
+      if (!del.ok) notes.push(MERGE_NOTES.branchDeleteFailed(feature, del.reason));
+    }
+
+    // M3 — the default-branch update. Its escalation (if any) is pushed
+    // after M4's below, so `escalations` ends up in FSPEC §9.3's table
+    // order (guard, CI, queue-write, tree-update) regardless of which IO
+    // step actually ran first.
+    const tree = await updateDefaultBranch({ defaultBranch, mergeSha: d.mergeSha, _git });
+
+    // M4 — the queue write-back (TSPEC §7.5). `prNumber`'s primary source
+    // is the URL Phase PUB produced; `record.o1.number` is the fallback for
+    // a `prUrl` shape `parsePrRef` cannot read. Absent both, the write is
+    // skipped with a plain note rather than writing "#null".
+    const prNumber = parsePrRef(prUrl)?.number ?? record.o1?.number ?? null;
+    let queueRow = null;
+    if (prNumber === null) {
+      notes.push(MERGE_NOTES.noPrNumber(feature, prUrl));
+    } else {
+      const evidence = evidenceCellFor(d.mergeSha, prNumber);
+      const rec = await _recordQueueRow({ feature, status: "done", evidence });
+      queueRow = rec && rec.queueRow ? rec.queueRow : null;
+      if (queueRow === "error") {
+        const shortSha =
+          typeof d.mergeSha === "string" && d.mergeSha.length >= 7
+            ? d.mergeSha.slice(0, 7)
+            : "sha unknown";
+        escalations.push(
+          MERGE_ESCALATIONS.queue({
+            prUrl,
+            shortSha,
+            feature,
+            detail: (rec && rec.detail) || "queue row not found",
+          }),
+        );
+      } else if (queueRow === "recorded (uncommitted)") {
+        notes.push(
+          MERGE_NOTES.recordedUncommitted(
+            feature,
+            (rec && rec.detail) || "queue row recorded but not committed",
+          ),
+        );
+      } else if (queueRow === "recorded") {
+        // FSPEC §8.2 — emitted whenever M4's disposition is `recorded`,
+        // including row 3's already-merged re-entry (§7.1's Q-01 answer) —
+        // but only when the sentence it emits is actually true (CR
+        // product-manager finding 1): `tree.ok` establishes the commit
+        // really reached `defaultBranch` (M3 succeeded), `defaultBranch`
+        // rules out interpolating `null` when O4 never resolved a name, and
+        // `!(rec && rec.detail)` rules out the §2.5 non-overwrite case,
+        // where the row was left unchanged and no queue-row commit exists
+        // to be "ahead" of anything.
+        if (tree.ok && defaultBranch && !(rec && rec.detail)) {
+          notes.push(MERGE_NOTES.aheadOfRemote(defaultBranch, feature));
+        }
+        if (rec && rec.detail) notes.push(MERGE_NOTES.nonOverwrite(feature, rec.detail));
+      }
+    }
+
+    if (!tree.ok) {
+      escalations.push(
+        MERGE_ESCALATIONS.tree({ prUrl, reason: tree.reason, branch: tree.branch ?? "unknown" }),
+      );
+    }
+
+    return {
+      mergeStatus: "merged",
+      mergeSha: d.mergeSha,
+      mergeMethod: d.mergeMethod,
+      row: d.row,
+      reason: d.reason,
+      escalations,
+      notes,
+      queueRow,
+    };
+  } catch (err) {
+    // FSPEC §2.1 — Phase MERGE never throws to the pipeline. E30/E21 (§12):
+    // the outer catch is the single enforcement point for that guarantee.
+    // `notes` is the hoisted array above — whatever accumulated before the
+    // throw (e.g. M2's branch-delete note) is returned, not dropped (CR
+    // product-manager finding 3).
+    return {
+      mergeStatus: "refused",
+      mergeSha: null,
+      mergeMethod: null,
+      row: "internal",
+      reason: err && err.message ? err.message : "phaseMerge failed unexpectedly",
+      escalations: [],
+      notes,
+      queueRow: null,
+    };
+  }
+}
 
 // MODEL-01: per-phase model selection. Every phase runs on Opus for reasoning
 // depth EXCEPT the Phase I implementation batches, which run on Sonnet for
@@ -5340,7 +6836,7 @@ async function defaultGit(argv, { execFn } = {}) {
  *
  * @returns {Promise<{ queueRow: string, detail?: string }>}
  */
-async function defaultRecordHalt(/* { feature, status } */) {
+async function defaultRecordQueueRow(/* { feature, status } */) {
   return { queueRow: "none" };
 }
 
@@ -5369,13 +6865,15 @@ async function main({
   _checkCi: checkCiFn = checkPrCi,
   _phaseDodEnabled: phaseDodEnabled = PHASE_DOD_ENABLED,
   _phasePubEnabled: phasePubEnabled = PHASE_PUB_ENABLED,
+  _phaseMergeEnabled: phaseMergeEnabled = PHASE_MERGE_ENABLED,
   _now,
   _sleep,
   _listFiles: listFilesFn = defaultListFiles,
   _writeFile: writeFileFn = defaultWriteFile,
   _appendFile: appendFileFn = defaultAppendFile,
   _git: gitFn = defaultGit,
-  _recordHalt: recordHaltFn = defaultRecordHalt,
+  _recordQueueRow: recordQueueRowFn = defaultRecordQueueRow,
+  _ghRun: ghRunFn = defaultGhRun,
   // The three optional probe seams. `null` is the shipped state: a runtime that
   // supplies none of them runs every read below exactly as it did before they
   // existed (see the probe-seam section above `probeDocument`).
@@ -5683,6 +7181,13 @@ async function main({
   let harvestStatus = "Not run";
   let prUrl;
   let ciStatus;
+  // TSPEC §10.1/§10.4: set only inside Phase MERGE, itself reachable only past
+  // Phase PUB — a run that halts earlier never assigns this, so the success
+  // path below always has a real MergeOutcome to read (Phase MERGE never
+  // throws, FSPEC §2.1) and the halt path never reads it at all, relying
+  // instead on `buildFinalReport`'s own `mergeStatus: "skipped"` default
+  // (§11 row 23).
+  let mergeOutcome;
 
   try {
     // The branch guard, once, BEFORE any phase runs: every artifact this run
@@ -6171,6 +7676,43 @@ async function main({
             : `PR ${prUrl} — no GHA checks detected within timeout (assumed none configured)`;
         recordPhase("PUB", "Raise PR & Verify CI", "✅", ciDetail);
       }
+
+      // ─── Phase MERGE: Merge & Advance Queue ──────────────────────────────
+      // TSPEC §10.4: placed immediately after Phase PUB, inside the same
+      // guarded `pipelineFn` body — Phase MERGE's own internal try/catch
+      // (§5.2) is what keeps this call from ever reaching the halt path below.
+      phaseFn("Phase MERGE: Merge & Advance Queue");
+      mergeOutcome = await phaseMerge({
+        feature: featureName,
+        prUrl,
+        _ghRun: ghRunFn,
+        _git: gitFn,
+        _readFile: readFileFn,
+        _recordQueueRow: recordQueueRowFn,
+        _log: emit,
+        _now,
+        _sleep,
+        _enabled: phaseMergeEnabled,
+      });
+      for (const line of mergeOutcome.escalations) notices.push(line);
+      for (const note of mergeOutcome.notes) notices.push(note);
+      // §10.3: the glyph is never ❌ — the halt path derives the failed phase
+      // from a recorded "❌" row, and Phase MERGE never halts the pipeline.
+      const mergeGlyph =
+        mergeOutcome.mergeStatus === "merged"
+          ? "✅"
+          : mergeOutcome.mergeStatus === "skipped"
+            ? "⏭"
+            : "⚠️";
+      const mergeDetail =
+        mergeOutcome.mergeStatus === "merged"
+          ? `Merged ${prUrl} (${mergeOutcome.mergeMethod}, ${
+              typeof mergeOutcome.mergeSha === "string"
+                ? mergeOutcome.mergeSha.slice(0, 7)
+                : "sha unknown"
+            })`
+          : mergeOutcome.reason;
+      recordPhase("MERGE", "Merge PR", mergeGlyph, mergeDetail);
     });
   } catch (err) {
     haltReason = err.message;
@@ -6218,7 +7760,7 @@ async function main({
     // §6.5: EVERY halt class commits the queue row — exactly once per invocation.
     let queueRow = null;
     try {
-      const recorded = await recordHaltFn({ feature: featureName, status: "halted" });
+      const recorded = await recordQueueRowFn({ feature: featureName, status: "halted" });
       queueRow = recorded && recorded.queueRow ? recorded.queueRow : null;
       // §6.5 / E-38, E-40: a row write that failed or found nothing leaves the
       // operator a REMAINING ACTION, and that action reaches them as its own
@@ -6264,10 +7806,16 @@ async function main({
     feature: featureName,
     outcome: "success",
     notices,
-    // §4.7: `queueRow` rides on every report. A successful run writes no status
-    // (`orchestrate-dev` owns no status write but the halt one — AC-2.7a), so the
-    // value is the same `"none"` the default `_recordHalt` reports.
-    queueRow: "none",
+    // §4.7 / TSPEC §10.1: `queueRow` rides on every report. A run that never
+    // reaches Phase MERGE — or reaches it without merging — writes no status
+    // of its own (`orchestrate-dev` owns no other status write but the halt
+    // one — AC-2.7a), so the value is the same `"none"` the default
+    // `_recordQueueRow` reports; a `merged` run instead carries the §7.4
+    // disposition `phaseMerge` itself produced.
+    queueRow: mergeOutcome.queueRow ?? "none",
+    mergeStatus: mergeOutcome.mergeStatus,
+    mergeSha: mergeOutcome.mergeSha,
+    mergeMethod: mergeOutcome.mergeMethod,
     // §4.7: a phase skipped over an unresolved POSTMORTEM still reports it.
     postmortemStatus: skipPostmortem ? "unresolved" : "none",
     postmortemPath: skipPostmortem ? skipPostmortem.path : null,
@@ -6349,6 +7897,13 @@ function buildFinalReport({
   postmortemStatus = "none",
   postmortemPath = null,
   queueRow = null,
+  // TSPEC §10.1: present, unconditionally, on EVERY report — including the
+  // halt path, which never assigns these and so reports exactly this default
+  // (FSPEC §11 row 23: a run that halted before Phase MERGE considered no
+  // merge at all).
+  mergeStatus = "skipped",
+  mergeSha = null,
+  mergeMethod = null,
   notices = [],
 }) {
   return {
@@ -6368,6 +7923,9 @@ function buildFinalReport({
     postmortemStatus,
     postmortemPath,
     queueRow,
+    mergeStatus,
+    mergeSha,
+    mergeMethod,
     ...(prUrl ? { prUrl } : {}),
     ...(ciStatus ? { ciStatus } : {}),
     ...(haltReason ? { haltReason } : {}),
@@ -6459,6 +8017,19 @@ const QUEUE_STATUSES = [
   "blocked",
   "halted",
 ];
+
+// TSPEC §8.2 — the closed *row disposition* catalogue `rewriteStatus` /
+// `commitQueueRow` / `uncommitted` report through `_recordQueueRow`. This is
+// vocabulary about the queue-row *write*, never about the queue *status*
+// column (`QUEUE_STATUSES` above): a disposition of `"recorded"` can be
+// reported whatever `status` was written, including `"halted"`. Exported and
+// frozen (DC-01) so a test enumerates membership rather than pinning prose.
+const QUEUE_ROW_DISPOSITIONS = Object.freeze([
+  "recorded",
+  "recorded (uncommitted)",
+  "none",
+  "error",
+]);
 
 // ─── Halt helper (same shape as orchestrate-dev) ─────────────────────────────
 function haltError(message) {
@@ -6700,15 +8271,29 @@ function parseTriageVerdict(result) {
  * indistinguishable, to the caller, from a successful update whose replacement
  * happened to be a no-op — so a status write against a row that had been deleted
  * mid-run looked exactly like a write that landed. `matched` makes the
- * difference observable, which is what `_recordHalt` needs in order to report
- * `queueRow: "error"` (FSPEC §13.5) rather than claiming a write it never made.
+ * difference observable, which is what `_recordQueueRow` needs in order to
+ * report `queueRow: "error"` (FSPEC §13.5) rather than claiming a write it
+ * never made.
+ *
+ * `evidence` (TSPEC §8.4) is the 4th, defaulted, parameter. `evidence == null`
+ * is exactly today's code path, character for character: column resolution,
+ * row match, `newCells[statusCol] = newStatus`, re-emit — no migration, no
+ * sixth cell, no re-emission of any other row (FSPEC §7.4's required
+ * evidence-free identity property, PROP-M-12). `evidence != null` first
+ * applies the §2.5 non-overwrite rule (only `in-progress` / `awaiting-merge`
+ * / `done` rows are overwritten; any other status is reported back,
+ * untouched, as `{ matched: true, written: false, foundStatus }`) and, when
+ * overwritable, migrates the `Evidence` column via `ensureEvidenceColumn`
+ * (once — never twice) before setting the status cell and merging the
+ * evidence cell through `mergeEvidenceCell`'s no-downgrade rule.
  *
  * @param {string} markdown
  * @param {string} feature
  * @param {string} newStatus
- * @returns {{ markdown: string, matched: boolean }}
+ * @param {string|null} [evidence]
+ * @returns {{ markdown: string, matched: boolean, written?: boolean, foundStatus?: string }}
  */
-function updateQueueStatus(markdown, feature, newStatus) {
+function updateQueueStatus(markdown, feature, newStatus, evidence = null) {
   if (typeof markdown !== "string" || !feature) {
     return { markdown, matched: false };
   }
@@ -6737,14 +8322,188 @@ function updateQueueStatus(markdown, feature, newStatus) {
     if (cells.every((c) => /^:?-{2,}:?$/.test(c) || c === "")) continue;
     if ((cells[featureCol] || "").trim() !== feature) continue;
 
-    // Replace the status cell, preserving the original pipe layout.
-    const newCells = cells.slice();
-    newCells[statusCol] = newStatus;
-    lines[i] = `| ${newCells.join(" | ")} |`;
-    return { markdown: lines.join("\n"), matched: true };
+    // evidence == null: exactly today's code path, byte for byte (§8.4.1).
+    if (evidence == null) {
+      const newCells = cells.slice();
+      newCells[statusCol] = newStatus;
+      lines[i] = `| ${newCells.join(" | ")} |`;
+      return { markdown: lines.join("\n"), matched: true };
+    }
+
+    // evidence != null: §2.5's non-overwrite rule first — the file is
+    // returned byte-unchanged whenever the row's current status is not
+    // one the write-back is permitted to overwrite.
+    const foundStatus = (cells[statusCol] || "").trim();
+    if (!EVIDENCE_OVERWRITABLE_STATUSES.includes(foundStatus)) {
+      return { markdown, matched: true, written: false, foundStatus };
+    }
+
+    // Overwritable: migrate the Evidence column (once), re-locate the row in
+    // the migrated table, set the status and evidence cells, and re-emit.
+    return writeEvidenceCarryingRow(markdown, feature, newStatus, evidence, {
+      statusCol,
+      featureCol,
+    });
   }
 
   return { markdown, matched: false }; // feature row not found
+}
+
+// TSPEC §8.4c / FSPEC §2.5 — the only statuses the evidence-carrying write is
+// permitted to overwrite. Any other status (`pending`, `blocked`, `halted`)
+// is left untouched: it describes work this run did not drive to completion.
+const EVIDENCE_OVERWRITABLE_STATUSES = ["in-progress", "awaiting-merge", "done"];
+
+/**
+ * The evidence-carrying write itself (TSPEC §8.4, steps a/d/e), split out so
+ * `updateQueueStatus`'s non-overwrite early-return never touches
+ * `ensureEvidenceColumn` — the file it returns on that path is the pristine
+ * input, not a discarded migration.
+ *
+ * @param {string} markdown
+ * @param {string} feature
+ * @param {string} newStatus
+ * @param {string} evidence
+ * @param {{statusCol: number, featureCol: number}} hint - column indices
+ *   resolved from the pre-migration header (unaffected by the appended
+ *   Evidence column, which lands after them).
+ * @returns {{ markdown: string, matched: boolean, written?: boolean }}
+ */
+function writeEvidenceCarryingRow(markdown, feature, newStatus, evidence, hint) {
+  const { markdown: migrated } = ensureEvidenceColumn(markdown);
+  const lines = migrated.split("\n");
+
+  let statusCol = hint.statusCol;
+  let featureCol = hint.featureCol;
+  let evidenceCol = -1;
+  for (const line of lines) {
+    if (!line.trim().startsWith("|")) continue;
+    const cells = splitRow(line.trim()).map((c) => c.toLowerCase());
+    if (cells.includes("status") && cells.some((c) => c.includes("feature"))) {
+      const s = cells.findIndex((c) => c.includes("status"));
+      const f = cells.findIndex((c) => c.includes("feature"));
+      const e = cells.findIndex((c) => c.includes("evidence"));
+      if (s >= 0) statusCol = s;
+      if (f >= 0) featureCol = f;
+      if (e >= 0) evidenceCol = e;
+      break;
+    }
+  }
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line.trim().startsWith("|")) continue;
+    const cells = splitRow(line.trim());
+    if (cells.every((c) => /^:?-{2,}:?$/.test(c) || c === "")) continue;
+    if ((cells[featureCol] || "").trim() !== feature) continue;
+
+    const newCells = cells.slice();
+    newCells[statusCol] = newStatus;
+    if (evidenceCol >= 0) {
+      const prevEvidence = (newCells[evidenceCol] || "").trim();
+      newCells[evidenceCol] = mergeEvidenceCell(prevEvidence, evidence);
+    }
+    lines[i] = `| ${newCells.join(" | ")} |`;
+    return { markdown: lines.join("\n"), matched: true, written: true };
+  }
+
+  // Unreachable in practice — the caller already located this exact row
+  // before migrating — but stay defensive rather than throw.
+  return { markdown, matched: false };
+}
+
+// ─── QUEUE-WRITE-02: ensureEvidenceColumn / mergeEvidenceCell ────────────────
+// TSPEC §8.5, FSPEC §7.3 (Q-02) and §7.2. Pure helpers behind the `Evidence`
+// column Phase MERGE's queue write-back needs; `updateQueueStatus` (B2)
+// drives them, they do not drive it.
+
+/**
+ * Migrate a QUEUE.md table to carry a sixth `Evidence` column, once.
+ *
+ * Exactly three structural changes, and no fourth (FSPEC §7.3): `Evidence`
+ * appended to the header row (the row whose cells include "status" and one
+ * containing "feature" — the same predicate `parseQueue`/`updateQueueStatus`
+ * use); one `---` cell appended to the separator row immediately below it,
+ * recognised by "every cell is a dash run or empty"; and one empty cell
+ * appended to every other data row, so cell counts stay uniform. Rows that
+ * are not part of the table (prose, blank lines, anything not starting with
+ * `|`) are untouched, and no other cell of any row is rewritten — the
+ * append is a string splice after the row's trailing `|`, never a
+ * split/rejoin of the row's existing cells. A queue already carrying an
+ * `Evidence` column is returned unchanged (`migrated: false`) — never
+ * migrated twice. A queue with no recognisable header is also returned
+ * unchanged.
+ *
+ * @param {string} markdown
+ * @returns {{ markdown: string, migrated: boolean }}
+ */
+function ensureEvidenceColumn(markdown) {
+  if (typeof markdown !== "string") return { markdown, migrated: false };
+
+  const lines = markdown.split("\n");
+  const isSeparatorRow = (cells) => cells.every((c) => /^:?-{2,}:?$/.test(c) || c === "");
+  const appendCell = (line, cellText) => `${line.replace(/\|\s*$/, "")}| ${cellText} |`;
+
+  // Locate the header row exactly as parseQueue/updateQueueStatus do.
+  let headerIdx = -1;
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line.trim().startsWith("|")) continue;
+    const cells = splitRow(line.trim()).map((c) => c.toLowerCase());
+    if (cells.includes("status") && cells.some((c) => c.includes("feature"))) {
+      headerIdx = i;
+      break;
+    }
+  }
+  if (headerIdx === -1) return { markdown, migrated: false }; // no table found
+
+  const headerCells = splitRow(lines[headerIdx].trim()).map((c) => c.toLowerCase());
+  if (headerCells.some((c) => c.includes("evidence"))) {
+    return { markdown, migrated: false }; // already migrated — never twice
+  }
+
+  lines[headerIdx] = appendCell(lines[headerIdx].trim(), "Evidence");
+
+  // The separator row is the very next `|`-starting line, if it is
+  // separator-shaped; appending an empty-shaped dash cell keeps the
+  // rendered table well-formed over a six-column header.
+  const sepIdx = headerIdx + 1;
+  if (sepIdx < lines.length && lines[sepIdx].trim().startsWith("|")) {
+    const sepLine = lines[sepIdx].trim();
+    if (isSeparatorRow(splitRow(sepLine))) {
+      lines[sepIdx] = appendCell(sepLine, "---");
+    }
+  }
+
+  // Every other `|`-starting row is a data row: append one empty cell.
+  for (let i = sepIdx + 1; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line.trim().startsWith("|")) continue;
+    const trimmed = line.trim();
+    if (isSeparatorRow(splitRow(trimmed))) continue; // a stray separator-shaped row
+    lines[i] = appendCell(trimmed, "");
+  }
+
+  return { markdown: lines.join("\n"), migrated: true };
+}
+
+/**
+ * FSPEC §7.2's no-downgrade rule for the `Evidence` cell: a cell already
+ * holding a non-empty value is never downgraded to the `merged #{prNumber}`
+ * placeholder form by a later re-entry that could not resolve the oid — a
+ * real SHA always wins over a placeholder. Everything else takes the new
+ * value, including a `merged #{n}` cell being overwritten by a later
+ * `{shortSha} #{n}` once the oid resolves.
+ *
+ * @param {string} prev - the cell's current content (e.g. "" for a freshly migrated row).
+ * @param {string} next - the value this write would set absent the rule.
+ * @returns {string}
+ */
+function mergeEvidenceCell(prev, next) {
+  if (typeof prev === "string" && prev !== "" && /^merged #/.test(next)) {
+    return prev;
+  }
+  return next;
 }
 
 // ─── selectNextPending ───────────────────────────────────────────────────────
@@ -7196,7 +8955,14 @@ async function runPicked({
   }
 
   const succeeded = report && report.outcome === "success";
-  const newStatus = succeeded ? "awaiting-merge" : "halted";
+  // TSPEC §9.1 — `mergeStatus` rides the pipeline report Phase MERGE (A7/A8)
+  // populates. Read defensively: a report without the field (an older bundle,
+  // a throw-path stub) is `undefined`, which is not `"merged"`, so a missing
+  // field falls back to today's `awaiting-merge` behaviour rather than a
+  // wrongly-recorded `done` (fail-safe direction, FSPEC §7.5). `merged` can
+  // only be true when `succeeded` is also true — Q-02's mutual exclusion.
+  const merged = succeeded && report.mergeStatus === "merged";
+  const newStatus = merged ? "done" : succeeded ? "awaiting-merge" : "halted";
   await rewriteStatus(
     queuePath,
     entry.feature,
@@ -7207,7 +8973,9 @@ async function runPicked({
   );
 
   emit(
-    succeeded
+    merged
+      ? `"${entry.feature}" complete and merged (${report.mergeSha ?? "sha unknown"}) — status set to done.`
+      : succeeded
       ? `"${entry.feature}" complete — status set to awaiting-merge. Merge the PR, then set it to done to unblock dependents.`
       : `"${entry.feature}" halted: ${report && report.haltReason}. Status set to halted.`
   );
@@ -7231,8 +8999,8 @@ async function runPicked({
  * **Exported deliberately, and load-bearing** (TSPEC §3.6): the bundle can only
  * publish names the module exports (`stripModuleSyntax` rewrites `export
  * function` to `function`; `wrapModule` re-publishes only the names in its
- * `exportedNames` list), and `build-runtime.mjs`'s `_recordHalt` closure has to
- * reach this function through `__queue`.
+ * `exportedNames` list), and `build-runtime.mjs`'s `_recordQueueRow` closure
+ * has to reach this function through `__queue`.
  *
  * The re-read is not defensive padding: the pipeline that just ran may itself
  * have rewritten the queue, so a snapshot taken before the run is stale by
@@ -7248,10 +9016,10 @@ async function runPicked({
  * @param {function} writeFileFn - async (path, contents) => void
  * @param {function} [gitFn]     - async (argv) => {ok, stdout, stderr}
  * @returns {Promise<{ queueRow: string, detail?: string }>}
- *   `queueRow` is drawn from TSPEC §4.7's closed catalogue
- *   `"halted" | "halted (uncommitted)" | "none" | "error"`. The catalogue
- *   describes the *row disposition*, not the status written, so a recorded
- *   write reports `"halted"` whatever `status` was.
+ *   `queueRow` is drawn from `QUEUE_ROW_DISPOSITIONS`, TSPEC §4.7's / §8.2's
+ *   closed catalogue: `"recorded" | "recorded (uncommitted)" | "none" |
+ *   "error"`. The catalogue describes the *row disposition*, not the status
+ *   written, so a recorded write reports `"recorded"` whatever `status` was.
  */
 async function rewriteStatus(
   queuePath,
@@ -7259,7 +9027,8 @@ async function rewriteStatus(
   status,
   readFileFn,
   writeFileFn,
-  gitFn = defaultGit
+  gitFn = defaultGit,
+  evidence = null
 ) {
   const current = await readFileFn(queuePath);
 
@@ -7270,7 +9039,12 @@ async function rewriteStatus(
     return { queueRow: "none" };
   }
 
-  const { markdown, matched } = updateQueueStatus(current, feature, status);
+  const { markdown, matched, written, foundStatus } = updateQueueStatus(
+    current,
+    feature,
+    status,
+    evidence
+  );
 
   // FSPEC §13.5 — document present, row expected, row absent. Distinct from
   // "none": something removed the row mid-run, which the operator must see.
@@ -7282,6 +9056,17 @@ async function rewriteStatus(
       detail:
         `no row for ${feature} in ${queuePath}; ` +
         `status "${status}" was not recorded`,
+    };
+  }
+
+  // §2.5 / TSPEC §8.4c — evidence supplied, but the row's current status is
+  // not one this write is allowed to overwrite. `updateQueueStatus` already
+  // returned the file byte-unchanged; skip the write and the git commit
+  // entirely, and name the status that blocked it.
+  if (written === false) {
+    return {
+      queueRow: "recorded",
+      detail: `row for ${feature} left unchanged: found status "${foundStatus}", not overwritable`,
     };
   }
 
@@ -7323,7 +9108,7 @@ async function commitQueueRow(queuePath, feature, status, gitFn) {
     "--",
     queuePath,
   ]);
-  if (committed.ok) return { queueRow: "halted" };
+  if (committed.ok) return { queueRow: "recorded" };
 
   // E-39 — the row already read the target status and was already committed
   // (the common case on a re-entry). Idempotence, not a fault: no warning, and
@@ -7333,7 +9118,7 @@ async function commitQueueRow(queuePath, feature, status, gitFn) {
     NOTHING_TO_COMMIT_RE.test(committed.stdout ?? "") ||
     NOTHING_TO_COMMIT_RE.test(committed.stderr ?? "")
   ) {
-    return { queueRow: "halted" };
+    return { queueRow: "recorded" };
   }
 
   return uncommitted(committed, queuePath);
@@ -7347,7 +9132,7 @@ async function commitQueueRow(queuePath, feature, status, gitFn) {
 function uncommitted(result, queuePath) {
   const reason = firstLine(result && result.stderr);
   return {
-    queueRow: "halted (uncommitted)",
+    queueRow: "recorded (uncommitted)",
     detail:
       `queue row written but not committed` +
       (reason ? `: ${reason}` : "") +
@@ -7765,14 +9550,18 @@ return await __dev.main({
   ...rtDevInjections(__dev),
   // §7.2 edits 3 + 4 — a direct dev invocation still owns its queue row, so it
   // closes over __queue's row helpers at the default queue path. Absent this,
-  // the seam falls back to defaultRecordHalt's queueRow "none" no-op.
-  _recordHalt: async ({ feature, status }) =>
+  // the seam falls back to defaultRecordQueueRow's queueRow "none" no-op.
+  // TSPEC §11.2 — same evidence thread as QUEUE_ENTRY's closure (§7.2 edits
+  // 3 + 4): a direct run's own queue-row write also carries the merged
+  // Evidence cell when Phase MERGE produced one.
+  _recordQueueRow: async ({ feature, status, evidence }) =>
     __queue.rewriteStatus(
       __queue.DEFAULT_QUEUE_PATH,
       feature,
       status,
       rtReadFile,
       rtWriteFile,
-      rtGit
+      rtGit,
+      evidence
     ),
 });

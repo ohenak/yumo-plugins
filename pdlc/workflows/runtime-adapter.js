@@ -948,6 +948,38 @@ async function rtGit(argv) {
 }
 
 /**
+ * Transport seam for `gh` (TSPEC §11.3). `command` is a fully-built shell
+ * command string the module already assembled from `mergeCommandFor` — this
+ * function holds no `gh` knowledge and interpolates only what it was handed.
+ * Returns { ok, stdout, stderr } and never throws; the caller interprets.
+ * The reply shape is rtGit's, verbatim: same three fields, same escaping
+ * instruction, same unparseable-reply fallback, plus the at-most-once
+ * mutation sentence since some `gh` commands mutate.
+ */
+async function rtGhRun(command) {
+  const out = await RT.agent(
+    `Run exactly this command from the repository root, and nothing else:\n` +
+      `  ${command}\n` +
+      `If it exits 0, return exactly: {"ok":true,"stdout":"<its stdout>","stderr":""}\n` +
+      `If it exits non-zero, return exactly: {"ok":false,"stdout":"","stderr":"<its stderr>"}\n` +
+      `Return ONLY that JSON object, correctly escaped — no commentary, no code fences.\n` +
+      `This command may change repository state. Issue it AT MOST ONCE. ` +
+      `Do not retry, do not repair, and do not run any other command.`,
+    { label: `gh:${command.slice(0, 40)}`, model: RT_IO_MODEL }
+  );
+  try {
+    const parsed = JSON.parse(String(out).trim());
+    return {
+      ok: parsed && parsed.ok === true,
+      stdout: typeof (parsed && parsed.stdout) === "string" ? parsed.stdout : "",
+      stderr: typeof (parsed && parsed.stderr) === "string" ? parsed.stderr : "",
+    };
+  } catch {
+    return { ok: false, stdout: "", stderr: "unparseable adapter response" };
+  }
+}
+
+/**
  * Merge a worktree branch. Contract mirrors mergeWorktree():
  * { ok: true } | { ok: false, conflictingFiles: string[] }
  */
@@ -995,14 +1027,15 @@ function rtDevInjections(devModule) {
     _appendFile: rtAppendFile,
     _listFiles: rtListFiles,
     _git: rtGit,
+    _ghRun: rtGhRun,
     // The three probe seams. Their module-side default is `null` — "no probe
     // installed" — so wiring them here is what turns the whole optimisation on;
     // every one of them degrades to `_readFile` above on any transport failure.
     _probeDoc: rtProbeDoc,
     _probeReviewState: rtProbeReviewState,
     _probePostmortem: rtProbePostmortem,
-    // `_recordHalt` is deliberately ABSENT: its implementation differs by caller,
-    // which a caller-independent adapter bundle cannot express. It is supplied
-    // per entrypoint by build-runtime.mjs (§3.10, §7.2 edit 2b).
+    // `_recordQueueRow` is deliberately ABSENT: its implementation differs by
+    // caller, which a caller-independent adapter bundle cannot express. It is
+    // supplied per entrypoint by build-runtime.mjs (§3.10, §7.2 edit 2b).
   };
 }

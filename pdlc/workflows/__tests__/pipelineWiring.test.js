@@ -443,7 +443,7 @@ describe("RLH-WIRE-01: main() composition root carries the new parameters", () =
     "_writeFile",
     "_appendFile",
     "_git",
-    "_recordHalt",
+    "_recordQueueRow",
   ];
 
   it("RLH-WIRE-01: parameter list carries the five new seams plus forcePhases, and meta.inputs declares forcePhases", () => {
@@ -476,6 +476,15 @@ describe("RLH-WIRE-01: main() composition root carries the new parameters", () =
     const inputNames = meta.inputs.map((input) => input.name);
     expect(inputNames).toContain("reqPath");
     expect(inputNames).toContain("forcePhases");
+  });
+
+  it("RLH-WIRE-01 / PLAN A8: main() carries _phaseMergeEnabled and _ghRun (TSPEC §2.3, §10.4)", () => {
+    // Phase MERGE's own pair, added alongside the existing sixteen and five
+    // above — not restated into either frozen list (both are closed sets
+    // owned by earlier tasks), asserted here on their own terms instead.
+    const names = mainParameterNames();
+    expect(names).toContain("_phaseMergeEnabled");
+    expect(names).toContain("_ghRun");
 
     const forceInput = meta.inputs.find((i) => i.name === "forcePhases");
     expect(forceInput.type).toBe("string");

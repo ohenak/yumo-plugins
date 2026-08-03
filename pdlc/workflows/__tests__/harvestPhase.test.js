@@ -7,6 +7,7 @@ import { readFileSync, existsSync } from "fs";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
 import main from "../orchestrate-dev.js";
+import { QUEUE_ROW_DISPOSITIONS } from "../orchestrate-queue.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -148,7 +149,9 @@ describe("RLH-REPORT-01-harvest", () => {
     "unresolved",
     "none",
   ];
-  const QUEUE_ROW_DOMAIN = ["halted", "halted (uncommitted)", "none", "error"];
+  // Real catalogue (orchestrate-queue.js QUEUE_ROW_DISPOSITIONS), not a local
+  // transcription — an import keeps this assertion falsifiable across renames.
+  const QUEUE_ROW_DOMAIN = QUEUE_ROW_DISPOSITIONS;
 
   const successAgent = async (skill, prompt) => {
     if (["se-review", "te-review", "pm-review"].includes(skill)) {
