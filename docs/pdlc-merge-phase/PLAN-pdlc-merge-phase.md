@@ -272,23 +272,68 @@ production code.
 it traces every REQ/FSPEC criterion to real implementation and tests and writes
 `CODE_REVIEW-pdlc-merge-phase-v{N}.md`. V1 is not a substitute for it (PM advisory 5).
 
-- [ ] All 17 tasks ✅, each committed on `feat-pdlc-merge-phase` with its tests written first
-- [ ] Every task's own test file green via `npm test -- <file>`, and the whole suite green
-- [ ] FSPEC §11's 25 rows each have a passing case, and the suite asserts its own case count is 25
-- [ ] AT-M1, AT-M2, AT-M2a, AT-M3 (both arms), AT-M4, AT-M5, AT-M6 all present and passing
-- [ ] `RLH-AT-32-orch` re-expressed **and** its merged sibling passing (A9)
-- [ ] No seam named `_recordHalt` remains anywhere; `QUEUE_ROW_DISPOSITIONS` is the only catalogue
-- [ ] RLH-AT-64 green with `_ghRun` **wired and not exempt**, and RLH-SCAN-01 green — every injected IO
+- [x] All 17 tasks ✅, each committed on `feat-pdlc-merge-phase` with its tests written first
+- [x] Every task's own test file green via `npm test -- <file>`, and the whole suite green
+- [x] FSPEC §11's 25 rows each have a passing case, and the suite asserts its own case count is 25
+- [x] AT-M1, AT-M2, AT-M2a, AT-M3 (both arms), AT-M4, AT-M5, AT-M6 all present and passing
+- [x] `RLH-AT-32-orch` re-expressed **and** its merged sibling passing (A9)
+- [x] No seam named `_recordHalt` remains anywhere; `QUEUE_ROW_DISPOSITIONS` is the only catalogue
+- [x] RLH-AT-64 green with `_ghRun` **wired and not exempt**, and RLH-SCAN-01 green — every injected IO
       call awaited
-- [ ] `build-runtime.mjs --check` exits 0 with `dist/` committed in D2's commit
-- [ ] The `not-confirmed` reason is a member of §4.1's single frozen catalogue (§7)
-- [ ] Local `git --version` recorded by V1; the two-runner reading taken at the first CI run and read
+- [x] `build-runtime.mjs --check` exits 0 with `dist/` committed in D2's commit
+- [x] The `not-confirmed` reason is a member of §4.1's single frozen catalogue (§7)
+- [x] Local `git --version` recorded by V1; the two-runner reading taken at the first CI run and read
       in Phase DOD/PUB, with the plain-`rebase` fallback pre-approved (K-1)
-- [ ] `AT19_SEAM_NAMES` contains `_ghRun` and no longer contains `_recordHalt`; `NEW_SEAMS` names
+- [x] `AT19_SEAM_NAMES` contains `_ghRun` and no longer contains `_recordHalt`; `NEW_SEAMS` names
       `_recordQueueRow`; `RLH-WIRE-01` green in every wave (§5)
-- [ ] No new agent dispatch anywhere in the diff (NFR-4), and no override of the guard (NFR-3)
-- [ ] This PLAN still parses to exactly 17 tasks / 12 waves via `parsePlanTasks` +
+- [x] No new agent dispatch anywhere in the diff (NFR-4), and no override of the guard (NFR-3)
+- [x] This PLAN still parses to exactly 17 tasks / 12 waves via `parsePlanTasks` +
       `computeTopologicalBatches` (§3), if any section above §12 was edited
+
+### V1 record (2026-08-02)
+
+- All 17 tasks ✅: `git log --oneline main..feat-pdlc-merge-phase` shows a commit for each of
+  F1, R1, A1, B1, A2, B2, A3, B3, A4, A5, A6, D1, A7, A8, A9, D2 (V1 itself in progress); all 14
+  task-owned test files exist under `pdlc/workflows/__tests__/`. (Note: this table's own Status
+  column above was left stale during implementation — ⬚ except A5's ✅ — the git history and green
+  suite are the load-bearing evidence, not the glyph column.)
+- Whole suite: `cd pdlc/workflows && npm test` = 61/62 suites green; sole red is `documentOracles`
+  AT-22 from the untracked `.tokensave/tokensave.db`, the CLAUDE.md-documented environmental false
+  positive (green in CI).
+- 25-row count: `grep -n "toBe(25)" __tests__/mergeDecision.test.js` → `:48` `ROW_IDS.length` and
+  `:51` `new Set(ROW_IDS).size`, both `toBe(25)`; `mergePhase.test.js` drives rows 1–22 (incl. 11a,
+  13a) through `phaseMerge`, row 23 documented (not executed, per its own docblock) and covered by
+  `haltAndQueue.test.js`/`pipelineWiring.test.js`.
+- AT-M*: `grep -rln "AT-M1"/"AT-M2"/"AT-M2a"/"AT-M3"/"AT-M4"/"AT-M5"/"AT-M6"` each hit ≥1 test file
+  (`mergeQueueWriteback.test.js`, `orchestrateQueue.test.js`, `mergePhase.test.js`, `mergeGuard.test.js`,
+  `mergeQueueDriver.test.js`); AT-M3's two arms confirmed at `mergeGuard.test.js:187` (arm A) and
+  `:196` (arm B), plus an integration-level pair in `mergePhase.test.js:535`.
+- RLH-AT-32-orch: `haltAndQueue.test.js:829` (re-expressed, non-merged premise) and `:854`
+  (`RLH-AT-32-orch-merged`, the sibling) both present.
+- `_recordHalt`: `grep -rn "_recordHalt" pdlc/workflows --include="*.js" | grep -v /dist/` hits only
+  `runtimeBundle.test.js:1121`/`:1128`'s own negative-assertion test; `grep` over `pdlc/workflows/dist`
+  is empty. `QUEUE_ROW_DISPOSITIONS`: sole export at `orchestrate-queue.js:89`, frozen, asserted the
+  closed 4-member catalogue in `mergeQueueWriteback.test.js:187`–`:195`.
+- RLH-AT-64 / RLH-SCAN-01: both `describe` blocks present and green in the full run
+  (`runtimeBundle.test.js:1044`, `:579`); `_ghRun` is in `AT19_SEAM_NAMES` (`:215`) and appears in no
+  exemption list, so RLH-AT-64's generic "every seam wired or exempt" case forces it wired.
+- `build-runtime.mjs --check`: exit 0 (orchestrator pre-check); `git show --stat 8b84e28` (D2) shows
+  `dist/distribution-manifest.json`, `dist/orchestrate-dev.bundle.js`, `dist/orchestrate-queue.bundle.js`
+  committed in the same commit as the source change.
+- `not-confirmed`: `orchestrate-dev.js:211` — member of the single frozen `OBSERVATION_REASONS`
+  catalogue (comment at `:201` names it as `classifyMergeResult`'s own addition to that one catalogue).
+- Local `git --version`: `2.50.1 (Apple Git-155)` — ≥ 2.26, `rebase --empty=drop` supported locally.
+  Two-runner CI reading deferred to the first CI run per the box's own text, to be read in Phase
+  DOD/PUB.
+- `AT19_SEAM_NAMES` / `NEW_SEAMS`: `runtimeBundle.test.js:212`–`:215` includes `_ghRun`, excludes
+  `_recordHalt`; `pipelineWiring.test.js:441`–`:447` `NEW_SEAMS` names `_recordQueueRow`;
+  `RLH-WIRE-01` `describe`/`it` blocks present at `:415`, `:449`, `:481`, all in the green suite.
+- NFR-4/NFR-3: `git diff main...HEAD -- pdlc/workflows/orchestrate-dev.js | grep "agentFn\|_agent("`
+  — no output, no new agent dispatch; `guardVerdict`/`effectiveGuardPaths` arity checked at
+  `mergeGuard.test.js` ("arity: neither function accepts a third parameter"), no override surface.
+- `parsePlanTasks` + `computeTopologicalBatches` re-parse (Node, native ESM, per §3's method):
+  `parsePlanTasks(md).tasks` → 17 ids (`F1,R1,A1,B1,A2,B2,A3,B3,A4,A5,A6,D1,A7,A8,A9,D2,V1`);
+  `computeTopologicalBatches(tasks).batches` → 12 batches.
 
 ## 12. Task table (machine-parsed — the last table in this document)
 
