@@ -584,6 +584,147 @@ driver's only route to `resolved` runs through `verifyGate`, and no `verifyGate`
 
 ## 6. Seams A1 and A2 — the queue module (FSPEC-ADV-04)
 
+### 6.1 Wiring into `orchestrate-queue.js`
+
+`main` (`queue:758-767`) gains the injection seams and one config read, placed **after** the drift
+gate (`queue:786-799`) and **before** `QUEUE.md` is read — so §6.5's "drift gate blocks first" row is
+structural, and C-3's once-per-run read holds:
+
+```js
+export default async function main({
+  queuePath = DEFAULT_QUEUE_PATH,
+  _agent: rawAgentFn = agent,
+  … existing seams …
+  _appendFile: appendFileFn = defaultAppendFile,      // NEW — the advisory record
+  _runAdvisorySeam: runAdvisorySeamFn = runAdvisorySeam,          // free ident, §2.3
+  _readAdvisoryConfig: readAdvisoryConfigFn = readAdvisoryConfigSafely,
+} = {}) {
+```
+
+`_appendFile` is new to the queue module; `defaultAppendFile` already exists in dev (`dev:6690`) and
+crosses on the same prelude as the rest of §2.3, so the queue gains no new Node capability.
+
+**The advisory dispatch does not go through the queue's `agentFn` wrapper** (`queue:773-774`), which
+pins `MODEL_QUEUE = "sonnet"`. `runAdvisorySeam` receives `rawAgentFn` and applies the advisory rung
+itself (§3.4) — otherwise `{ model: MODEL_QUEUE, ...opts }`'s spread would be overridden but the
+intent would be invisible at the call site, and M-5's "one edit changes the rung" would be false for
+the queue.
+
+### 6.2 Routing: the seam token (AC-5.5)
+
+Two edits, both small and both required before A2 has a testable precondition:
+
+**`triagePrompt` (`queue:653-668`)** gains a token on each verdict line. The existing three-verdict
+grammar is preserved exactly; the token is appended, so an agent that omits it still parses:
+
+```
+TRIAGE: needs-human [SEAM:A1] <one-line reason>   — ambiguous; a human must decide
+TRIAGE: needs-human [SEAM:A2] <one-line reason>   — the REQ's file:line citations have drifted
+```
+
+The prompt also gains A2's obligation, which the baseline does **not** contain (B-3): *"Check whether
+the REQ's `file:line` citations still resolve at HEAD. If some have drifted but every cited symbol
+still exists, return `needs-human [SEAM:A2]`."* This is the "introduced, not routed" work OQ-2 names.
+
+**`parseTriageVerdict` (`queue:302-323`)** gains a third return field. Its shape is preserved —
+same last-line-wins scan, same fail-closed `needs-human` fallback (`queue:303-306`), which already
+gives an absent token the A1 default FSPEC §6.2 requires:
+
+```js
+const m = /^TRIAGE:\s*(ready|blocked|needs-human)\b\s*(?:\[SEAM:(A1|A2)\]\s*)?(.*)$/i.exec(trimmed);
+return { verdict: m[1].toLowerCase(), seamToken: (m[2] || "").toUpperCase() || null, reason: … };
+```
+
+`seamToken` is `null` for an absent **or** unrecognised token — an unrecognised one simply fails the
+alternation and falls into `reason`, which is exactly §6.5's "routed to A1" row with no extra branch.
+"Both tokens on one stop" (§6.5) fails the anchored single-group match and yields `seamToken: null`
+plus a reason beginning `[SEAM:` — the driver treats a reason with a leading unconsumed `[SEAM:` as
+malformed (V-4), which is one predicate, `hasResidualSeamToken(reason)`.
+
+### 6.3 A1 — `SeamOps` for triage adjudication
+
+| Member | Implementation |
+|---|---|
+| `gatherEvidence` | the triage reason, the candidate's `dependsOn` union, and `precheckDependencies(dependsOn, entries)`'s result (`queue:630-649`) — a **pre-condition already computed**, passed as evidence, never re-derived by the agent |
+| `prompt` | asks for `run-candidate` / `hold` / `escalate`, mapped onto `AdvisoryVerdict.proposedAction`; the `AdvisoryVerdict` shape is unchanged (one contract, five seams) |
+| `conditionHolds` | `async () => true` — a triage stop cannot evaporate mid-invocation |
+| `permittedActions` | `[]` — A1-4. Any proposal is `out-of-envelope`; the seam's whole product is a verdict, a record, and possibly an escalation |
+| `declaredScope` | `[]` |
+| `apply` / `producedPaths` / `revert` | unreachable; implemented as throwing stubs so a future change that made them reachable fails loudly rather than silently acting |
+| `verifyGate` | `async () => ({ passed: true })` — §5.5 |
+
+**A1-2 as defence in depth.** `run-candidate` is honoured by `honourA1Verdict(verdict, precheck)`, a
+**pure exported function** that refuses when `precheck.blocked` is true. On the production path that
+state is unreachable — `queue:890-898` skips a blocked candidate before triage runs — so T-04-3b is a
+unit test over `honourA1Verdict` and T-04-3 is the reachable integration assertion. Splitting them is
+why an unreachable rule can still be tested without faking an impossible pipeline state.
+
+**A1-3 (presence in base is unsettled ⇒ escalate)** is enforced in the same function: a dependency
+absent from `entries` yields `escalate` regardless of the agent's verdict, because
+`precheckDependencies` is one-sided by construction (`queue:621-624`, `queue:645`). No agent
+adjudicates presence in base — the pipeline decides, from the queue rows.
+
+**A1-5 (one pick per invocation)** needs no new mechanism: `runPicked` (`queue:961`) `return`s out of
+the candidate loop (`queue:924`). A `hold` verdict `continue`s the existing loop; a `run-candidate`
+verdict falls into the existing `return runPicked(...)`. The serial guarantee is the loop's, not the
+advisory tier's.
+
+### 6.4 A2 — `SeamOps` for stale-REQ re-grounding
+
+| Member | Implementation |
+|---|---|
+| `gatherEvidence` | the REQ text and, per load-bearing citation, whether the cited symbol resolves at HEAD (`_git grep -n` through the existing `_git` seam) |
+| `prompt` | asks for a re-grounding proposal: one row per drifted citation, `{ oldLocation, newLocation, symbol, symbolStillExists }` |
+| `conditionHolds` | re-reads the REQ; `false` if it changed under us |
+| `permittedActions` | `["E-4"]`, and E-4's decidable rule — *every* drifted citation's symbol still exists — is checked in `classifyEnvelope`, not in the prompt (A2-3) |
+| `declaredScope` | `[reqPath]` only (A2-5) |
+| `apply` | rewrite **citation location text only** in the working tree; the frontmatter region and every requirements sentence are outside the rewritable span (P-2, A2-3) |
+| `producedPaths` | `git diff --name-only` — must equal `[reqPath]`, else E-R2 reverts whole |
+| `revert` | `git checkout -- {reqPath}` — a working-tree restore, because nothing is committed yet |
+| `verifyGate` | §6.4.1 |
+
+#### 6.4.1 The A2 durability order — resolving FSPEC's A2-6 / R-2 gap
+
+Per §4.4, the irreversible act belongs in `verifyGate`, after the record write. The exact order:
+
+```
+4  apply         rewrite the REQ in the working tree
+5  CHECK         producedPaths === [reqPath]           → else revert (checkout), refuse
+7  RECORD        append docs/{feature}/ADVISORY-{feature}.md   → else revert, refuse record-write-failed
+6  verifyGate    commitPaths({ paths: [reqPath, recordPath], … })   ← ONE commit, both files
+                 then re-read the branch head and confirm both are present
+                 → else revert (git reset --hard the commit if it landed; checkout otherwise), escalate
+```
+
+Step 7 precedes step 6 **only at the seams whose act is irreversible** (A2, A5); §4.4 states the rule
+once and both seams inherit it. The consequence is the one FSPEC leaves undefined: a failed record
+write at A2 reverts a *working-tree edit*, never a commit, so BR-5's two-tree-states invariant holds
+without the tier ever needing to rewrite history.
+
+Both A2-6 and H-2b demand durability, and both are satisfied by the **same commit**: the re-grounded
+REQ and the advisory record land together, pathspec-scoped and unpushed, exactly as `commitQueueRow`
+(`queue:1162`) already commits `QUEUE.md` alone. `commitPaths` (`dev:6790`) is reused verbatim,
+including its `gitWithLockRetry` behaviour (`dev:6769`) — index-lock contention during a queue run is
+a real condition this seam inherits a solution for rather than rediscovers.
+
+**A2-4 (applying does not pick the candidate)** is a `continue`, not a `return`: after a resolved A2
+the loop moves to the next queue entry. Triage re-runs on the corrected REQ in the **next** invocation,
+which is a fresh process reading the branch head — which is precisely why the commit is required and
+why T-04-6 asserts a *subsequent* invocation sees it.
+
+### 6.5 Error handling, queue-side
+
+| Case | Behaviour | Enforced by |
+|---|---|---|
+| drift gate blocks the invocation | no seam fires; `blocked` outcome stands | config read placed after the gate (§6.1) |
+| triage returns `blocked` | never adjudicable; existing skip (`queue:907-911`) untouched | routing runs only on the `needs-human` branch |
+| unrecognised seam token | `seamToken: null` ⇒ A1 | the regex alternation (§6.2) |
+| both tokens on one stop | malformed (V-4) | `hasResidualSeamToken` |
+| REQ has no citations | empty proposal ⇒ `no-action`, recorded, not resolved | `parseAdvisoryVerdict` treats an empty proposal row set as `proposedAction: "nothing"`; §4.4 row 4 |
+| two drifted citations now point at one symbol | still inside E-4 — the rule is per citation | `classifyEnvelope` iterates rows, never targets |
+| REQ not writable / write fails | `apply` returns `{ok:false}` ⇒ revert, `post-action-verification-failed` | driver step 4 |
+| the commit fails (hook, identity, lock) | `verifyGate` fails ⇒ revert, escalate | `commitPaths`'s existing failure shape |
+
 ## 7. Seams A3 and A4 — Phase DOD (FSPEC-ADV-05, ADV-06)
 
 ## 8. Seam A5 — Phase PUB (FSPEC-ADV-07)
