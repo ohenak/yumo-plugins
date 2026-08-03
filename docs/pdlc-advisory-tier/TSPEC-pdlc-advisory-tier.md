@@ -1205,30 +1205,22 @@ trivially stronger case.
 D-6 requires the created-file set of a disabled run to equal a **transcribed literal** — a pre-feature
 created-file set — never a value re-derived by the code under test.
 
-**The baseline commit is the pre-feature branch tip, not REQ's behavioral pin `26c3f1c`.** A disabled
-run executes the whole pipeline as it stands at branch HEAD, including `raisePrAndVerifyCi` (Phase PUB)
-and every other file-creating path — code that `26c3f1c` **predates** (§1.1: `raisePrAndVerifyCi` was
-introduced by `4d5e4dc`, after `26c3f1c`). Comparing the disabled run's set against a set captured at
-`26c3f1c` would red/green-fail T-10-3 for files the advisory tier never touches. So the fixture is
-captured at **the commit immediately preceding this feature's first implementation commit** — the
-pre-feature branch tip — which already carries `raisePrAndVerifyCi` and every other file-creating path
-the disabled run at HEAD runs. Because the disabled advisory tier is a strict no-op (§11.1: one early
-return before any dispatch or write) and the feature's own commits are the *only* diff between that tip
-and HEAD, the two created-file sets are equal by construction, and the comparison isolates exactly the
-additivity D-6 asserts.
+**The baseline commit is REQ's behavioral pin `26c3f1c`, exactly as FSPEC D-6 / T-10-3 fix it.** That
+commit already carries every file-creating pipeline path a disabled run at HEAD exercises —
+`raisePrAndVerifyCi` (Phase PUB) included: `4d5e4dc` ("Add Phase PUB…") is an **ancestor** of `26c3f1c`
+(`git merge-base --is-ancestor 4d5e4dc 26c3f1c` ⇒ true) and `raisePrAndVerifyCi` is defined at
+`26c3f1c:6222`. So a set captured at `26c3f1c` is a faithful pre-feature baseline: the disabled advisory
+tier is a strict no-op (§11.1: one early return before any dispatch or write), and the feature's own
+commits are the only pipeline-behavior diff between `26c3f1c` and HEAD, so the two created-file sets are
+equal by construction and the comparison isolates exactly the additivity D-6 asserts.
 
-Implementation: a checked-in fixture `__tests__/fixtures/created-files-prefeature.json`, produced once
-by instrumenting the `_writeFile`/`_appendFile`/`_git` seams of a run at that pre-feature tip and
-**hand-reviewed into the repo**. The test compares the disabled run's observed set against that JSON by
-value. This is the one place in the feature where a fixture is authored rather than computed, and the
-reason is stated in D-6 itself: a comparison whose expected value is produced by the system under test
-cannot fail. The fixture's provenance (the exact commit sha, the command, the date) is recorded in its
-own header so a later reader can regenerate it deliberately rather than refresh it reflexively.
-
-> **Upstream note (routed as an erratum).** FSPEC D-6 pins the baseline to commit `26c3f1c`, which
-> predates file-creating pipeline code the disabled run exercises; the correct baseline is the
-> pre-feature branch tip. Resolved TSPEC-side above; the FSPEC commit pin is flagged as an erratum
-> rather than silently reinterpreted.
+Implementation: a checked-in fixture `__tests__/fixtures/created-files-26c3f1c.json`, produced once by
+instrumenting the `_writeFile`/`_appendFile`/`_git` seams of a run at `26c3f1c` and **hand-reviewed into
+the repo**. The test compares the disabled run's observed set against that JSON by value. This is the one
+place in the feature where a fixture is authored rather than computed, and the reason is stated in D-6
+itself: a comparison whose expected value is produced by the system under test cannot fail. The fixture's
+provenance (the exact commit sha `26c3f1c`, the command, the date) is recorded in its own header so a
+later reader can regenerate it deliberately rather than refresh it reflexively.
 
 ### 11.3 Disabled-mode edge cases
 
@@ -1405,7 +1397,7 @@ so each carries **≥1 mandatory property**, not merely the example unit cases �
 | `pdlc/hooks/scripts/guard-harvest-before-delete.sh` | §9.3's three-line extension |
 | `pdlc/workflows/dist/*` | **generated** — rebuilt in the same commit, never hand-edited |
 | `pdlc/workflows/__tests__/advisory*.test.js` | new |
-| `pdlc/workflows/__tests__/fixtures/created-files-prefeature.json` | new (§11.2) — captured at the pre-feature branch tip |
+| `pdlc/workflows/__tests__/fixtures/created-files-26c3f1c.json` | new (§11.2) — captured at REQ behavioral pin `26c3f1c` |
 | `docs/_queue/ESCALATIONS.md` | new at runtime, in consuming repos — not tracked here |
 
 ## 15. Feasibility, cost, and risks
