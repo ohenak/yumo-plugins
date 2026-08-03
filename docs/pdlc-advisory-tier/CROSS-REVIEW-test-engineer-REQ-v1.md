@@ -75,3 +75,8 @@ Four High findings must be closed before this REQ can carry a test suite:
 
 The six Medium findings (F-05…F-10) are each a missing value or a missing enumeration rather than a design change, and should be closable in the same revision.
 
+## Verdict
+
+VERDICT: Needs revision
+{"high": 4, "medium": 6, "low": 3}
+
