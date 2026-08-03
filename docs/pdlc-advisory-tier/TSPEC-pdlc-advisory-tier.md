@@ -25,6 +25,14 @@ Every `file:line` in this document is read at the **feature-branch working tree,
 names resolves at that HEAD; a reader should verify each citation by **symbol name** (`grep -n`),
 treating the line number as a navigation hint against a ~8,600-line file that churns.
 
+**Pin vs. live HEAD.** `5d66c48` is the pin these line numbers were read at; the live branch HEAD has
+since advanced by **docs-only** commits (this TSPEC and its cross-reviews), which do not touch
+`orchestrate-dev.js`/`orchestrate-queue.js` and so leave every source line count and citation intact —
+`5d66c48` remains an ancestor of HEAD (`git merge-base --is-ancestor 5d66c48 HEAD` ⇒ true). A reader
+running the document's own `git rev-parse HEAD` cross-check will therefore see a later sha than the pin;
+that drift is expected and source-inert. The pin is refreshed only when a commit actually re-reads the
+source citations, not on every docs commit.
+
 **This citation pin is deliberately distinct from REQ BL-02 / FSPEC §2's `26c3f1c`.** That commit is
 REQ's *behavioral* baseline — the tree whose observable "Today" pipeline behavior the REQ rows were
 measured against — and it is an **ancestor of this HEAD** (`git merge-base --is-ancestor 26c3f1c HEAD`
@@ -865,6 +873,15 @@ which *degrades* to a self-report scan in that case: degradation is acceptable f
 agent's own claim, and unacceptable for a gate that would otherwise let an unverified advisory
 resolution stand.
 
+**This no-`testCommand` escalation carries a workflow-level integration test, not only a `verifyGate`
+unit test.** The execution-routing-branch rule (§13.2's "Phase integration" row) wants ≥1 test on the
+*full* path: **T-06-8** drives the real Phase DOD body at `dev:8281` — a scripted rebase conflict → A4
+dispatch → an `implConfig` with `testCommand: null` → and asserts the pipeline reaches the pre-existing
+rebase-conflict `haltError` (`dev:8283-8287`) with the seam's terminal `outcome === "escalated"` and
+reason on the report, as opposed to `verifyGate` reporting `{passed:false}` in isolation. It uses the
+`_runAdvisorySeam` phase-integration fake (§13.2) for the seam and a real `parseImplementationConfig`
+result to prove the `testCommand: null` default (`dev:158-161`) routes to escalation end-to-end.
+
 **"Tests pass but the tree is dirty" (§8.3)** is caught by the step-5 produced-change check re-running
 after `verifyGate`'s rebase completes: `producedPaths` is re-read post-gate and any path outside the
 conflict set fails E-R2, reverting whole. This is the one place the driver evaluates membership a
@@ -1183,16 +1200,33 @@ trivially stronger case.
 
 ### 11.2 D-6's literal expected set
 
-D-6 requires the created-file set of a disabled run to equal a **transcribed literal** — the
-created-file set of a pre-feature run at `26c3f1c` — never a value re-derived by the code under test.
-Implementation: a checked-in fixture `__tests__/fixtures/created-files-26c3f1c.json`, produced once by
-instrumenting the `_writeFile`/`_appendFile`/`_git` seams of a baseline run and **hand-reviewed into
-the repo**. The test compares the disabled run's observed set against that JSON by value.
+D-6 requires the created-file set of a disabled run to equal a **transcribed literal** — a pre-feature
+created-file set — never a value re-derived by the code under test.
 
-This is the one place in the feature where a fixture is authored rather than computed, and the reason
-is stated in D-6 itself: a comparison whose expected value is produced by the system under test cannot
-fail. The fixture's provenance (the commit, the command, the date) is recorded in its own header so a
-later reader can regenerate it deliberately rather than refresh it reflexively.
+**The baseline commit is the pre-feature branch tip, not REQ's behavioral pin `26c3f1c`.** A disabled
+run executes the whole pipeline as it stands at branch HEAD, including `raisePrAndVerifyCi` (Phase PUB)
+and every other file-creating path — code that `26c3f1c` **predates** (§1.1: `raisePrAndVerifyCi` was
+introduced by `4d5e4dc`, after `26c3f1c`). Comparing the disabled run's set against a set captured at
+`26c3f1c` would red/green-fail T-10-3 for files the advisory tier never touches. So the fixture is
+captured at **the commit immediately preceding this feature's first implementation commit** — the
+pre-feature branch tip — which already carries `raisePrAndVerifyCi` and every other file-creating path
+the disabled run at HEAD runs. Because the disabled advisory tier is a strict no-op (§11.1: one early
+return before any dispatch or write) and the feature's own commits are the *only* diff between that tip
+and HEAD, the two created-file sets are equal by construction, and the comparison isolates exactly the
+additivity D-6 asserts.
+
+Implementation: a checked-in fixture `__tests__/fixtures/created-files-prefeature.json`, produced once
+by instrumenting the `_writeFile`/`_appendFile`/`_git` seams of a run at that pre-feature tip and
+**hand-reviewed into the repo**. The test compares the disabled run's observed set against that JSON by
+value. This is the one place in the feature where a fixture is authored rather than computed, and the
+reason is stated in D-6 itself: a comparison whose expected value is produced by the system under test
+cannot fail. The fixture's provenance (the exact commit sha, the command, the date) is recorded in its
+own header so a later reader can regenerate it deliberately rather than refresh it reflexively.
+
+> **Upstream note (routed as an erratum).** FSPEC D-6 pins the baseline to commit `26c3f1c`, which
+> predates file-creating pipeline code the disabled run exercises; the correct baseline is the
+> pre-feature branch tip. Resolved TSPEC-side above; the FSPEC commit pin is flagged as an erratum
+> rather than silently reinterpreted.
 
 ### 11.3 Disabled-mode edge cases
 
@@ -1369,7 +1403,7 @@ so each carries **≥1 mandatory property**, not merely the example unit cases �
 | `pdlc/hooks/scripts/guard-harvest-before-delete.sh` | §9.3's three-line extension |
 | `pdlc/workflows/dist/*` | **generated** — rebuilt in the same commit, never hand-edited |
 | `pdlc/workflows/__tests__/advisory*.test.js` | new |
-| `pdlc/workflows/__tests__/fixtures/created-files-26c3f1c.json` | new (§11.2) |
+| `pdlc/workflows/__tests__/fixtures/created-files-prefeature.json` | new (§11.2) — captured at the pre-feature branch tip |
 | `docs/_queue/ESCALATIONS.md` | new at runtime, in consuming repos — not tracked here |
 
 ## 15. Feasibility, cost, and risks
