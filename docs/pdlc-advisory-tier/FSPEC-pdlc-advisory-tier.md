@@ -800,6 +800,7 @@ under a frozen merge-specific prefix; all of them share the `ESCALATION:` token 
 | T-09-5 | **Who** maintainer · **Given** the merge phase's notice catalogue · **When** compared before and after this feature · **Then** it is unchanged. |
 | T-09-6 | **Who** operator · **Given** a run with one merge escalation and one advisory escalation · **When** the report is scanned for `ESCALATION:` · **Then** both notices are found, under distinct prefixes, and the advisory one names its seam and points at its log entry. |
 | T-09-7 | **Who** operator · **Given** no `ESCALATIONS.md` and no `docs/_queue/` directory · **When** an escalation occurs · **Then** both are created and the entry is written. |
+| T-09-8 | **Who** operator · **Given** an escalating invocation whose `ESCALATIONS.md` write fails · **When** it completes · **Then** the seam still reports `escalated`, the disposition is **not** `resolved`, nothing was applied, the pre-advisory halt or skip still happened, and the failed write is named on the run report — the asymmetry with §10.1 R-2, where a failed record write reverts the action. |
 
 ## 12. FSPEC-ADV-10 — Disabled-tier equivalence
 
@@ -819,7 +820,7 @@ pipeline without this feature:
 | D-3 | The report's phase table and every phase outcome are identical to today's. |
 | D-4 | No `ADVISORY-*` file is created, and no `ESCALATIONS.md` entry is written. |
 | D-5 | The report carries no advisory summary and emits no advisory notice. |
-| D-6 | No file this feature introduces is created merely by running with the tier off. |
+| D-6 | The set of files a disabled run creates is **equal** to the set a run of the pipeline without this feature creates — not merely free of the two artifacts D-4 names. A third artifact this feature adds later is caught by the same comparison (T-10-3). |
 
 The equivalence is stated on **named artifacts and phase outcomes**, not on report text, because
 report text legitimately varies by timestamp and iteration count.
@@ -839,7 +840,7 @@ report text legitimately varies by timestamp and iteration count.
 |---|---|
 | T-10-1 | **Who** operator · **Given** `advisory.enabled` false and a seam condition at each of A1…A5 in turn · **When** the run completes · **Then** each seam produced its pre-advisory outcome and no advisory agent was dispatched. |
 | T-10-2 | **Who** operator · **Given** the tier disabled and an advisory rung that does not resolve · **When** a seam condition arises · **Then** the run is unaffected and no model resolution was attempted. |
-| T-10-3 | **Who** operator · **Given** the tier disabled · **When** the run ends · **Then** no `ADVISORY-*` file exists, `ESCALATIONS.md` gained no entry, and the report carries no advisory summary. |
+| T-10-3 | **Who** operator · **Given** the tier disabled · **When** the run ends · **Then** no `ADVISORY-*` file exists, `ESCALATIONS.md` gained no entry, the report carries no advisory summary, and the set of files the run created equals the set a tier-off baseline run creates (D-6) — no file outside that set appears. |
 | T-10-4 | **Who** operator · **Given** no `advisory` section, and separately a malformed config file · **When** each run completes · **Then** both behave as T-10-3. |
 | T-10-5 | **Who** operator · **Given** the tier enabled and no seam condition arising · **When** the report is read · **Then** an advisory summary is present with five zero rows — distinguishing it from T-10-3. |
 
@@ -881,8 +882,9 @@ requirement, with that section's acceptance-test table as the coverage evidence.
 | NFR-1 — envelope enforced in the workflow, not in a prompt | §5 (refusal ladder; the envelope is a control, not an instruction) | T-03-1, T-03-2, T-03-5 |
 | NFR-2 — every prohibition has an explicit failing test | §5.4 gate rows | T-03-6 |
 | NFR-3 — the tier is additive when disabled | §12 FSPEC-ADV-10 (D-1 … D-6) | T-10-1 … T-10-5 |
-| NFR-4 — per-seam wall-clock bound | §4 lifecycle (budget exhaustion → escalation) | T-02-5 |
-| NFR-5 — no new credentials, never merges | §5 (P-series prohibitions) | T-03-6 |
+| NFR-4 — per-seam wall-clock bound | §4 lifecycle (V-5: preempts an in-flight attempt; rollup wait excluded) | T-02-5 |
+| NFR-5 — never merges | §5 (P-4) | T-03-6 |
+| NFR-5 — no new credentials (§5.1 E-R4) | a design constraint on the implementation, carried by TSPEC | *none at FSPEC level* — nothing observable at a seam distinguishes a tier that holds a credential it never uses |
 | AC-1.6 — disabled means inert | §12 FSPEC-ADV-10 | T-01-1, T-10-1 … T-10-4 |
 | AC-3.6 — every escalation carries a reason from the closed set | §4.3 (disposition triple), §5.3 (reason set) | T-02-6, T-03-4, T-03-5 |
 
