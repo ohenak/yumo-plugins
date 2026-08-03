@@ -461,7 +461,12 @@ describe("Phase I — the script-owned test gate", () => {
     );
 
     expect(result.outcome).toBe("success");
-    expect(ran).toEqual(["npm test"]);
+    // Two runs of the command, not one: the implementation wave's gate, then the
+    // V-wave's verification of the PROPERTIES tests (PROPOSAL §3.2 row 2 —
+    // Phase PT is now Phase I's final wave, and it is gated by the same
+    // script-owned command). The ORDER of the two is pinned in
+    // "the V-wave runs after the last implementation wave" below.
+    expect(ran).toEqual(["npm test", "npm test"]);
     expect(phaseDetail(result, "I")).toBe(
       "All 1 waves complete (wave mode, script-owned gate)"
     );
@@ -577,7 +582,10 @@ describe("Phase I — the post-wave command and its build-output commit", () => 
       })
     );
     expect(result.outcome).toBe("success");
-    expect(ran).toEqual(["npm test", "node build.mjs"]);
+    // …then the V-wave's verification run of the test command (§3.2 row 2). The
+    // post-wave BUILD command belongs to the implementation waves and is not
+    // repeated for the V-wave, which is exactly what this ordering shows.
+    expect(ran).toEqual(["npm test", "node build.mjs", "npm test"]);
 
     const commits = gitCalls.filter((a) => a[0] === "commit").map((a) => a[2]);
     expect(commits).toEqual([
@@ -785,5 +793,192 @@ describe("Phase I — index.lock retry and non-transient git failures", () => {
     expect(
       logs.some((m) => m === "Wave 1 task T1: nothing staged — no changes to commit")
     ).toBe(true);
+  });
+});
+
+// ─── Phase I's final V-wave — PROPOSAL §3.2 row 2 (Phase PT absorbed) ─────────
+//
+// Phase PT is no longer a top-level phase body. In WAVE mode it is the run's
+// last wave (the "V-wave"): dispatched after the last implementation wave has
+// been gated and committed, and verified by the SAME script-owned test command.
+// In LEGACY mode it is yesterday's dispatch, byte for byte, relocated inside
+// Phase I. Both paths still record the `PT` row, because the compression is
+// execution-structural and not report-shape.
+//
+// Every literal below is spelled out here rather than imported from the subject
+// (PROPOSAL §3.5, "no implementation echoes").
+
+const V_WAVE_PROMPT_ANCHOR = `Implement PROPERTIES tests for feature ${FEATURE}.`;
+const V_WAVE_COMMIT_CLAUSE =
+  "Run the full test suite. All tests must pass before committing. Commit and push.";
+
+/** A `main()` argument set whose git, agent and command doubles share one clock. */
+function makeOrderedArgs({ events, config = CONFIG_WITH_TEST_COMMAND, runCommand, extra = {} }) {
+  const record = [];
+  const inner = makeAgent(record);
+  return makeArgs({
+    config,
+    extra: {
+      _agent: async (skill, prompt, opts) => {
+        events.push({ kind: "agent", skill, prompt: String(prompt), opts });
+        return inner(skill, prompt, opts);
+      },
+      ...extra,
+    },
+    git: async (argv) => {
+      events.push({ kind: "git", argv });
+      const joined = argv.join(" ");
+      if (joined === "rev-parse --abbrev-ref HEAD") {
+        return { ok: true, stdout: `${BRANCH}\n`, stderr: "" };
+      }
+      if (argv[0] === "diff") return { ok: true, stdout: `${argv.slice(4).join("\n")}\n`, stderr: "" };
+      return { ok: true, stdout: "", stderr: "" };
+    },
+    runCommand:
+      runCommand ||
+      (async (cmd) => {
+        events.push({ kind: "cmd", cmd });
+        return { ok: true, output: "Tests: 40 passed\n" };
+      }),
+  });
+}
+
+describe("Phase I's V-wave — PROPERTIES tests as the last wave (§3.2 row 2)", () => {
+  it("runs the V-wave AFTER the last implementation wave commits, and gates it with testCommand", async () => {
+    const events = [];
+    const result = await main(makeOrderedArgs({ events }));
+    expect(result.outcome).toBe("success");
+
+    const vWaveIdx = events.findIndex(
+      (e) => e.kind === "agent" && e.prompt.includes(V_WAVE_PROMPT_ANCHOR)
+    );
+    expect(vWaveIdx).toBeGreaterThan(-1);
+
+    // The last implementation-wave commit precedes the V-wave dispatch …
+    const commitIdxs = events
+      .map((e, i) => (e.kind === "git" && e.argv[0] === "commit" ? i : -1))
+      .filter((i) => i >= 0);
+    expect(commitIdxs.length).toBe(2); // T1 and T2 — the whole implementation wave
+    expect(Math.max(...commitIdxs)).toBeLessThan(vWaveIdx);
+
+    // … and the script's verification run follows it.
+    const cmdIdxs = events.map((e, i) => (e.kind === "cmd" ? i : -1)).filter((i) => i >= 0);
+    expect(cmdIdxs.length).toBe(2); // the wave gate, then the V-wave gate
+    expect(cmdIdxs[0]).toBeLessThan(Math.min(...commitIdxs));
+    expect(cmdIdxs[1]).toBeGreaterThan(vWaveIdx);
+    expect(events[cmdIdxs[1]].cmd).toBe("npm test");
+
+    // The V-wave dispatch itself: se-implement, on the implementation model, and
+    // carrying PT's own prompt — including the clause that makes it the one
+    // wave-mode dispatch that commits its own work.
+    const vWave = events[vWaveIdx];
+    expect(vWave.skill).toBe("se-implement");
+    expect(vWave.opts.model).toBe("sonnet");
+    expect(vWave.opts.isolation).toBeUndefined();
+    expect(vWave.prompt).toContain(V_WAVE_COMMIT_CLAUSE);
+    expect(vWave.prompt).toContain(`All commits for this task must land on branch ${BRANCH}.`);
+
+    // The report row is unchanged by the compression.
+    expect(phaseRecord(result, "PT")).toMatchObject({
+      phase: "PT",
+      label: "PROPERTIES Tests",
+      status: "✅",
+      detail: "All properties tests passing",
+    });
+    expect(result.testSummary).toBe("All tests passing");
+  });
+
+  it("halts when the V-wave gate is red, naming the command and carrying the output tail", async () => {
+    const events = [];
+    let runs = 0;
+    const result = await main(
+      makeOrderedArgs({
+        events,
+        runCommand: async (cmd) => {
+          events.push({ kind: "cmd", cmd });
+          runs += 1;
+          // Green for the implementation wave, red for the V-wave.
+          return runs === 1
+            ? { ok: true, output: "Tests: 40 passed\n" }
+            : { ok: false, output: "FAIL properties.test.js\nTests: 2 failed, 38 passed\n" };
+        },
+      })
+    );
+
+    expect(result.outcome).toBe("halted");
+    expect(result.haltReason).toContain("V-wave 2 PROPERTIES test gate failed");
+    expect(result.haltReason).toContain("npm test");
+    // The tail is carried verbatim, and the halt says the work is recoverable —
+    // the V-wave committed itself before the script verified it.
+    expect(result.haltReason).toContain("Tests: 2 failed, 38 passed");
+    expect(result.haltReason).toContain(`already committed on ${BRANCH}`);
+
+    // Paired positive: the run really did reach the V-wave and the earlier
+    // implementation wave really did commit.
+    expect(
+      events.some((e) => e.kind === "agent" && e.prompt.includes(V_WAVE_PROMPT_ANCHOR))
+    ).toBe(true);
+    expect(events.filter((e) => e.kind === "git" && e.argv[0] === "commit").length).toBe(2);
+    // No PT row: the phase did not pass.
+    expect(result.phases.map((p) => p.phase)).not.toContain("PT");
+  });
+
+  it("legacy mode keeps yesterday's PT dispatch and its single-agent gate", async () => {
+    const record = [];
+    // One fresh latch per run: the manifest disappears from the PLAN once Phase
+    // I is entered, which is the single route to legacy mode (Phase P skipped on
+    // a recorded approval over a pre-manifest PLAN).
+    const makeLegacyExtra = () => {
+      let inPhaseI = false;
+      return {
+        _phase: (label) => {
+          if (String(label).startsWith("Phase I")) inPhaseI = true;
+        },
+        _readFile: (path) => {
+          const p = String(path);
+          if (p === CONFIG_PATH) return null;
+          if (p.includes("/PLAN-")) return inPhaseI ? PLAN_NO_MANIFEST : PLAN_WITH_MANIFEST;
+          return null;
+        },
+      };
+    };
+
+    const result = await main(makeArgs({ record, extra: makeLegacyExtra() }));
+    expect(result.outcome).toBe("success");
+
+    const pt = record.filter(
+      (c) => c.skill === "se-implement" && c.prompt.includes(V_WAVE_PROMPT_ANCHOR)
+    );
+    expect(pt.length).toBe(1);
+    // No model override on the legacy path — Phase PT ran on the pipeline's
+    // default model before this change and still does, which is what makes this
+    // path "yesterday's dispatch". (The wave-mode V-wave pins `sonnet` instead;
+    // see the first case in this block.)
+    expect(pt[0].opts.model).toBe("opus");
+    expect(pt[0].prompt).toContain(V_WAVE_COMMIT_CLAUSE);
+    expect(phaseDetail(result, "I")).toBe("All batches complete");
+    expect(phaseRecord(result, "PT")).toMatchObject({
+      status: "✅",
+      detail: "All properties tests passing",
+    });
+
+    // And the gate is still `evaluateSingleAgentGate` reading the agent's own
+    // report: a self-reported failure from the PROPERTIES dispatch alone halts.
+    const inner = makeAgent([]);
+    const failing = await main(
+      makeArgs({
+        extra: {
+          ...makeLegacyExtra(),
+          _agent: async (skill, prompt, opts) => {
+            if (skill === "se-implement" && String(prompt).includes(V_WAVE_PROMPT_ANCHOR)) {
+              return "Wrote the tests. Tests: 2 failed, 9 passed.";
+            }
+            return inner(skill, prompt, opts);
+          },
+        },
+      })
+    );
+    expect(failing.outcome).toBe("halted");
+    expect(failing.haltReason).toBe("Error: Phase PT failed — Tests: 2 failed");
   });
 });

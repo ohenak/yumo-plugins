@@ -395,7 +395,12 @@ describe("PROP-PIPELINE-03: phase() called with correct labels in order", () => 
     expect(phaseLabels).toMatch(/Phase P/);
     expect(phaseLabels).toMatch(/Phase PR/);
     expect(phaseLabels).toMatch(/Phase I/);
-    expect(phaseLabels).toMatch(/Phase PT/);
+    // PROPOSAL §3.2 row 2: the PROPERTIES tests are now Phase I's final wave, so
+    // this fixture (wave mode — its PLAN carries an ownership manifest) banners
+    // them as such. The `Phase PT` prefix is deliberately kept: the row, the
+    // banner prefix and the operator's mental model are unchanged; only where
+    // the work runs moved.
+    expect(phaseCalls).toContain("Phase PT: PROPERTIES Tests (Phase I V-wave)");
     expect(phaseLabels).toMatch(/Phase CR/);
     expect(phaseLabels).toMatch(/Phase DOD/);
     expect(phaseLabels).toMatch(/Phase H/);
@@ -575,5 +580,170 @@ describe("RLH-CR-F7: DEV_META and the module's meta declare the same inputs", ()
     // Anchored so a copy that loses `forcePhases` entirely — the pre-F-1 state —
     // cannot satisfy this suite by both copies being equally wrong.
     expect(meta.inputs.map((i) => i.name).sort()).toEqual(["forcePhases", "reqPath"]);
+  });
+});
+
+// ─── PROPOSAL §3.2 — the compressed phase graph ───────────────────────────────
+//
+// Two phase BODIES were removed in §3.2: D is now authored and reviewed inside
+// Phase T's section, and PT is Phase I's final wave. Neither removal changes the
+// report: `D` and `PT` are still rows, and the ORDER of the rows is the pipeline
+// an operator reads. These cases pin that order as a whole array (PROPOSAL §3.5,
+// "completeness counts, not containment": deleting a phase reds this suite) and
+// pin the three things the fold could plausibly have broken — the DECISIONS
+// author session, the D skip row, and `decisionsPath` reaching Phase P's inputs.
+//
+// Every literal here is spelled out, never imported from the subject.
+
+const COMPRESSED_FEATURE = "test-feat";
+const COMPRESSED_REQ = `docs/${COMPRESSED_FEATURE}/REQ-${COMPRESSED_FEATURE}.md`;
+
+/** The author session key Phase T's TSPEC dispatches run on. */
+const TSPEC_AUTHOR_KEY = "test-feat/TSPEC/author";
+/** The key a SEPARATE Phase D author session would have used — must not appear. */
+const DECISIONS_OWN_AUTHOR_KEY = "test-feat/DECISIONS/author";
+
+/**
+ * `makeSuccessAgent`, but the TSPEC trailer answers the question this fixture is
+ * about. `warranted: true` is the path where Phase D actually runs.
+ */
+function makeAgentWithWarrant(warranted) {
+  const base = makeSuccessAgent(COMPRESSED_FEATURE);
+  return async (skill, prompt, opts) => {
+    const text = String(prompt ?? "");
+    if (
+      (skill === "se-author" || skill === "pm-author" || skill === "te-author") &&
+      text.includes("DECISIONS_WARRANTED")
+    ) {
+      return `Finalized TSPEC.\nDECISIONS_WARRANTED: ${warranted}`;
+    }
+    return base(skill, prompt, opts);
+  };
+}
+
+function compressedArgs(overrides = {}) {
+  return {
+    reqPath: COMPRESSED_REQ,
+    _agent: makeAgentWithWarrant(false),
+    _parallel: makeParallel(),
+    _checkFile: okGuard,
+    _readFile: readPlanOnly,
+    _phase: () => {},
+    _pipeline: async (l, fn) => fn(),
+    _mergeWorktree: noopMergeWorktree,
+    _checkCi: async () => "passed",
+    ...overrides,
+  };
+}
+
+describe("PROPOSAL §3.2: the compressed phase graph", () => {
+  it("a successful run records exactly this ordered sequence of phases", async () => {
+    const result = await main(compressedArgs({ _agent: makeAgentWithWarrant(true) }));
+    expect(result.outcome).toBe("success");
+
+    // The order is the pipeline: R → F → T(+D) → P → PR → I(+PT) → CR → DOD →
+    // H → PUB → MERGE. D still follows T and PT still follows I — what changed
+    // is where their bodies live, not what the run reports.
+    expect(result.phases.map((p) => p.phase)).toEqual([
+      "R",
+      "F",
+      "T",
+      "D",
+      "P",
+      "PR",
+      "I",
+      "PT",
+      "CR",
+      "DOD",
+      "H",
+      "PUB",
+      "MERGE",
+    ]);
+  });
+
+  it("DECISIONS is authored on Phase T's author session, never on one of its own", async () => {
+    const sessionCalls = [];
+    const inner = makeAgentWithWarrant(true);
+    const result = await main(
+      compressedArgs({
+        _agent: inner,
+        _sessionAgent: async (sessionKey, skill, prompt, opts) => {
+          sessionCalls.push({ sessionKey, skill, prompt: String(prompt ?? "") });
+          return inner(skill, prompt, opts);
+        },
+      })
+    );
+    expect(result.outcome).toBe("success");
+
+    const decisionsCreator = sessionCalls.filter((c) =>
+      c.prompt.startsWith(
+        `Create docs/${COMPRESSED_FEATURE}/DECISIONS-${COMPRESSED_FEATURE}.md`
+      )
+    );
+    expect(decisionsCreator.length).toBe(1);
+    expect(decisionsCreator[0].sessionKey).toBe(TSPEC_AUTHOR_KEY);
+
+    // Positive conjunct for the absence below: the TSPEC's own author dispatches
+    // ran on that same key, which is what "the same session wrote both" means.
+    const tspecAuthor = sessionCalls.filter((c) => c.sessionKey === TSPEC_AUTHOR_KEY);
+    expect(tspecAuthor.length).toBeGreaterThan(1);
+    expect(sessionCalls.filter((c) => c.sessionKey === DECISIONS_OWN_AUTHOR_KEY)).toEqual([]);
+  });
+
+  it("DECISIONS reaches Phase P's creator inputs when it was warranted", async () => {
+    const prompts = [];
+    const inner = makeAgentWithWarrant(true);
+    const result = await main(
+      compressedArgs({
+        _agent: async (skill, prompt, opts) => {
+          prompts.push(String(prompt ?? ""));
+          return inner(skill, prompt, opts);
+        },
+      })
+    );
+    expect(result.outcome).toBe("success");
+
+    const planCreator = prompts.filter((p) =>
+      p.startsWith(`Create docs/${COMPRESSED_FEATURE}/PLAN-${COMPRESSED_FEATURE}.md`)
+    );
+    expect(planCreator.length).toBe(1);
+    expect(planCreator[0]).toContain(
+      "Input documents: REQ, FSPEC, TSPEC, DECISIONS. Commit and push."
+    );
+  });
+
+  it("an unwarranted DECISIONS still records the skip row, and Phase P's inputs drop it", async () => {
+    const prompts = [];
+    const banners = [];
+    const inner = makeAgentWithWarrant(false);
+    const result = await main(
+      compressedArgs({
+        _phase: (label) => banners.push(String(label)),
+        _agent: async (skill, prompt, opts) => {
+          prompts.push(String(prompt ?? ""));
+          return inner(skill, prompt, opts);
+        },
+      })
+    );
+    expect(result.outcome).toBe("success");
+
+    const d = result.phases.find((p) => p.phase === "D");
+    expect(d).toEqual({
+      phase: "D",
+      label: "DECISIONS Creation + Review",
+      status: "⏭",
+      detail: "Skipped — no load-bearing alternatives",
+    });
+    expect(banners).toContain("Phase D: ⏭ Skipped");
+
+    const planCreator = prompts.filter((p) =>
+      p.startsWith(`Create docs/${COMPRESSED_FEATURE}/PLAN-${COMPRESSED_FEATURE}.md`)
+    );
+    expect(planCreator.length).toBe(1);
+    expect(planCreator[0]).toContain("Input documents: REQ, FSPEC, TSPEC. Commit and push.");
+    // No DECISIONS document was authored at all (paired with the positive above).
+    expect(
+      prompts.filter((p) => p.includes(`DECISIONS-${COMPRESSED_FEATURE}.md`))
+    ).toEqual([]);
   });
 });
