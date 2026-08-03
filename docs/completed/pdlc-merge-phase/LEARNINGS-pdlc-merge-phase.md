@@ -3,7 +3,7 @@
 | Field | Detail |
 |---|---|
 | Feature | pdlc-merge-phase |
-| REQ | docs/pdlc-merge-phase/REQ-pdlc-merge-phase.md |
+| REQ | docs/completed/pdlc-merge-phase/REQ-pdlc-merge-phase.md |
 | Date Completed | 2026-08-02 |
 | Total Iterations | REQ: 2, FSPEC: 3, TSPEC: 3, PLAN: 2, PROPERTIES: 2, CODE (final review): 2, IMPL: 1 (17 tasks / 12 waves, no re-plan) |
 | Upstream | REQ → FSPEC → TSPEC → PLAN → PROPERTIES → IMPL (DECISIONS: not warranted, TSPEC §15.4 `DECISIONS_WARRANTED: no`) |
