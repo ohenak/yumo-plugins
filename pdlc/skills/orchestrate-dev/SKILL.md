@@ -65,7 +65,7 @@ After Harvest, the workflow automatically raises a pull request for `feat-{featu
 
 ---
 ## Merge & Advance Queue (Phase MERGE)
-The last phase; a fixed decision ladder, no agent involved. Six preconditions gate a merge — a self-modification guard (never merges a PR touching `pdlc/workflows/` or `.claude/workflows/`), repo capabilities, PR mergeable state, CI status, `mergeMode`, and idempotence against an already-merged PR. `mergeMode` ships `off` (resolves `skipped` by default; opt in via `.claude/pdlc.config.json`). On `merged`, it writes the queue row `done` itself (superseding the human-merge step above); otherwise it reports `deferred`/`refused` as a `MERGE ESCALATION:` notice, never a halt, and the row stays `awaiting-merge`. Set `PHASE_MERGE_ENABLED = false` to skip.
+The last phase; a fixed decision ladder, no agent involved. A merge requires every precondition to hold — a self-modification guard (never merges a PR touching `pdlc/workflows/` or `.claude/workflows/`), repo capabilities, PR mergeable state, unresolved review threads, CI status, `mergeMode`, and idempotence against an already-merged PR. `mergeMode` ships `off` (resolves `skipped` by default; opt in via `.claude/pdlc.config.json`). On `merged`, it writes the queue row `done` itself (superseding the human-merge step above); otherwise it reports `deferred`/`refused` with a one-line reason (a closed set of four conditions additionally raise a `MERGE ESCALATION:` notice), never a halt, and the row stays `awaiting-merge`. Set `PHASE_MERGE_ENABLED = false` to skip.
 
 ---
 
