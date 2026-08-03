@@ -677,7 +677,7 @@ Every advisory invocation appends an entry to `docs/{feature}/ADVISORY-{feature}
 | # | Rule |
 |---|---|
 | R-1 | An advisory **action** taken without a record being written is a defect, asserted against by test. |
-| R-2 | Where the record write itself fails, the action is not taken — or is reverted — and the seam takes the refusal path with reason `record-write-failed`. The record is a precondition of acting, not a by-product of having acted. |
+| R-2 | Where the record write itself fails, the action is not taken — or is reverted — and the seam takes the refusal path with reason `record-write-failed`. The record is a precondition of an action **surviving**, not a by-product of having acted: the record carries the disposition, so it is written at §4.1 step 7 — but no action outlives a failed record write. At A5 the write completes before the push (A5-8), so nothing has left the local tree when this rule is decided. |
 | R-3 | The record is append-only within a run: an entry is never rewritten or removed by a later invocation. |
 | R-4 | Invocations that took no action are recorded too. Escalations are the tier's most valuable output (§10.4), and a record that only showed successes would measure the wrong thing. |
 
@@ -692,16 +692,17 @@ written. So:
 
 | # | Rule |
 |---|---|
-| H-1 | The advisory record's distil-and-delete happens **after the last phase that can append to it**, which is Phase PUB. No seam fires at Phase MERGE — merging is out of scope for this feature. |
-| H-2 | Observably: at the end of a completed run, `ADVISORY-{feature}.md` is absent and its content is in `LEARNINGS-{feature}.md`. |
-| H-3 | The harvest-then-delete protection that today covers `CROSS-REVIEW-*` and `CODE_REVIEW-*` (B-14) extends to `ADVISORY-*`: a delete attempted with no sibling `LEARNINGS-{feature}.md` is refused with the guard's refusal message, and the file survives. |
+| H-1 | The advisory record's distil-and-delete happens **after the last phase that can append to it**, which is Phase PUB, and **before Phase MERGE**. No seam fires at Phase MERGE — merging is out of scope for this feature. |
+| H-2 | Observably, for a completed **dev-side** run: `ADVISORY-{feature}.md` is absent, its content is in `LEARNINGS-{feature}.md`, and both facts are committed to the feature branch and pushed, so the PR raised at Phase PUB shows them. This is a commit made after the checks Phase PUB polled went green, so the branch head Phase MERGE evaluates is one commit beyond the checked head. Phase MERGE evaluates that head under its own existing preconditions and reports its own outcome; where its CI evidence is not satisfied it defers or refuses with its existing notice, and **nothing in the advisory tier merges, overrides, or re-reports CI** (P-3, P-4). An operator running with merges enabled should expect a deferral on runs where a seam fired — the trade is a truthful record against an automatic merge, and the deferral is visible on the report rather than silent. |
+| H-2b | A **queue-side** record (A1/A2) is not harvested by the queue: no `orchestrate-dev` run, and therefore no Phase PUB, happens for a candidate that was held, escalated, or only re-grounded. Its `docs/{feature}/ADVISORY-{feature}.md` deliberately persists as the operator's standing account of why the candidate was not picked, and is distilled by that feature's own pipeline run when it later reaches Phase PUB. H-2's absence observable is scoped to dev-side runs (T-08-8). |
+| H-3 | The harvest-then-delete protection that today covers `CROSS-REVIEW-*` and `CODE_REVIEW-*` (B-14) extends to `ADVISORY-*`, and the distil step's delete goes through the channel the guard covers rather than around it — the guard is the control, not a courtesy. A delete attempted with no sibling `LEARNINGS-{feature}.md` is refused, the refusal names the artifact class it refused, and the file survives. |
 | H-4 | A run that halts before the distil step leaves the record on disk, complete up to the halt. That is the correct outcome — the operator is about to read it. |
 
 ### 10.3 The advisory summary on the final report
 
 | # | Rule |
 |---|---|
-| S-1 | The report carries an advisory summary: invocations, resolved, escalated — listed for **all five seams A1–A5, zero counts included**. A seam that never fired must be visibly zero, not absent. |
+| S-1 | The report carries an advisory summary: invocations, resolved, escalated, no-action — listed for **all five seams A1–A5, zero counts included**, and satisfying `invocations == resolved + escalated + no-action` per seam and in total (§4.3 V-7). A seam that never fired must be visibly zero, not absent. The summary is carried on **every** report the run produces, including the report of a run that halted: it then covers the seams reached so far. A halt is the tier's primary escalation path, so the summary is exactly what the operator needs there. |
 | S-2 | The summary names the **advisory model actually used**, and whether it was the configured rung or the declared fallback (§3.2 M-2). |
 | S-3 | The summary names the Phase PUB no-checks outcome when it occurred (A5-6). |
 | S-4 | With the tier disabled the report carries **no** advisory summary at all (§12). |
@@ -718,7 +719,8 @@ upstream of the seam — needs work. A tier that recorded only its successes wou
 |---|---|
 | Two seams fire in one run | Both append to the same file, in the order they occurred. |
 | The feature directory does not exist when the first record is written | The write fails; R-2 governs — nothing is applied and the seam escalates. |
-| A run halts at seam A3 | The record survives on disk with the A3 entry (H-4); no distil happens. |
+| A run halts at seam A3 | The record survives on disk with the A3 entry (H-4); no distil happens, and the halt report still carries the advisory summary for the seams reached (S-1). |
+| A queue invocation adjudicates A1 or A2 and picks nothing | No dev run follows, so no distil happens; the record persists (H-2b). |
 | The distil step runs but `LEARNINGS-{feature}.md` does not exist | The delete is refused by the guard (H-3), the record survives, and the run reports the refusal rather than losing the file. |
 | A run in which no seam ever fired | No record file is created, so nothing is distilled and nothing is deleted; the summary reports five zero rows (S-1). |
 
@@ -728,11 +730,14 @@ upstream of the seam — needs work. A tier that recorded only its successes wou
 |---|---|
 | T-08-1 | **Who** operator · **Given** any advisory invocation, resolving or escalating · **When** it completes · **Then** an entry exists carrying all seven §10.1 fields. |
 | T-08-2 | **Who** operator · **Given** the record write fails · **When** the invocation completes · **Then** no action survives, the reason is `record-write-failed`, and the working tree is byte-identical to its pre-invocation state. |
-| T-08-3 | **Who** operator · **Given** a completed run in which seams fired · **When** the run ends · **Then** `ADVISORY-{feature}.md` is absent and its content is present in `LEARNINGS-{feature}.md`. |
+| T-08-3 | **Who** operator · **Given** a completed **dev-side** run in which seams fired · **When** the run ends · **Then** `ADVISORY-{feature}.md` is absent, its content is present in `LEARNINGS-{feature}.md`, both are committed and pushed on the feature branch, and the PR shows the commit (H-2). |
 | T-08-4 | **Who** operator · **Given** an attempt to delete `ADVISORY-{feature}.md` with no sibling `LEARNINGS-{feature}.md` · **When** the delete is attempted · **Then** it is refused with the guard's message and the file still exists. |
 | T-08-5 | **Who** operator · **Given** a run where seam A5 fired · **When** the distil step runs · **Then** it runs after Phase PUB and the A5 entry is included in what was distilled. |
 | T-08-6 | **Who** operator · **Given** a run where only seam A4 fired · **When** the report is read · **Then** all five seams appear in the summary, four of them with zero counts. |
 | T-08-7 | **Who** operator · **Given** a run on the declared fallback rung · **When** the report is read · **Then** the summary names the model used and marks it as the fallback. |
+| T-08-8 | **Who** operator · **Given** a queue invocation that adjudicated A1 (or applied A2) and picked no candidate · **When** the invocation ends · **Then** `ADVISORY-{feature}.md` exists with that entry, no distil ran, and no `LEARNINGS-{feature}.md` was required (H-2b). |
+| T-08-9 | **Who** operator · **Given** a run that halts at A3 or A4 · **When** the halt report is read · **Then** it carries the advisory summary for the seams reached so far, and the record is still on disk un-distilled (S-1, H-4). |
+| T-08-10 | **Who** operator · **Given** a run with one `no-action` invocation, one resolution and one escalation · **When** the summary is read · **Then** the four counters are 3 / 1 / 1 / 1 by literal value and `invocations == resolved + escalated + no-action` holds per seam and in total. |
 
 ## 11. FSPEC-ADV-09 — Escalation output
 
