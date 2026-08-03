@@ -123,3 +123,6 @@ the closed test-tamper set, the refusal triple and the config table together giv
 mechanical acceptance matrix — which is more than most REQs reach at round two.
 
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 2, "medium": 2, "low": 3}
