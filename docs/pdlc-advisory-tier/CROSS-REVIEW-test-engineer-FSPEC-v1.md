@@ -58,7 +58,11 @@ document is otherwise unusually good at avoiding.
 
 ## Questions
 
-_pending_
+| ID | Question |
+|----|---------|
+| Q-01 | Is a capability (BL-05's default-branch check history, BL-06's workflow re-run) probed **per run** or resolved **once at configuration time**? §5.2 states four permitted actions unconditionally, while §9.2 A5-2 makes E-1 "out of envelope" when the re-run capability is unavailable — i.e. an envelope of three on that repo. F-02's set-equality test is a fixed four-entry comparison under the second reading and a capability-parameterised one under the first. (Carried from REQ Q-10, still open.) |
+| Q-02 | At A1/A2 the queue is running before any `feat-*` branch exists for the candidate. Where does `docs/{feature}/ADVISORY-{feature}.md` live for an A1/A2 invocation, and is it distilled at all — §10.2 H-1 ties the distil step to Phase PUB, which a queue invocation that only adjudicated an abstention never reaches? A run that adjudicates A1 and picks nothing produces a record with no harvest path. |
+| Q-03 | §4.4's "the seam condition disappears between dispatch and verdict" says the pipeline "continues from the gate's own re-read". At A5 that re-read is the rollup; at A4 it is the rebase state (§8.3). Does the re-read consume an attempt, and is the invocation counted in the summary's `invocations` counter? This is the same hole F-03 names, seen from the counting side. |
 
 ## Positive Observations
 
