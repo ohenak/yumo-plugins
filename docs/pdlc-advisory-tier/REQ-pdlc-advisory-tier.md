@@ -155,15 +155,26 @@ halt currently conflates: *diagnosing* the problem, and *authorizing* the resolu
 
 - **AC-4.1** — Given any seam, Then the advisory tier may never mark a Definition-of-Done
   criterion satisfied, weaken a criterion, or reduce the DoD iteration requirement.
-- **AC-4.2** — Given any seam, Then it may never set `ready: true` on a REQ.
+- **AC-4.2** — Given any seam, Then it may never set the `ready: true` frontmatter flag on a REQ.
+  (Distinct from the A1 adjudication verdicts of AC-5.1, which name no frontmatter flag.)
 - **AC-4.3** — Given any seam, Then it may never declare CI passed, and may never cause
   `ciStatus` to be derived from anything but the actual GitHub Actions rollup.
 - **AC-4.4** — Given any seam, Then it may never merge a PR, and may never alter a queue `Status`
   cell.
-- **AC-4.5** — Given a resolution is applied, Then the original deterministic gate **re-runs** and
-  reaches its own verdict. The advisory tier fixes causes; gates decide outcomes.
+- **AC-4.5** — Given a resolution is applied, Then a gate **re-runs** and reaches its own verdict —
+  the advisory tier fixes causes; gates decide outcomes. Which gate, per seam:
+
+  | Seam | Gate that re-runs | State it must reach |
+  |---|---|---|
+  | A1 | the deterministic dependency-presence pre-check only; Phase-0 triage is itself an agent verdict and is **not** re-run | every declared dependency present in base |
+  | A2 | the same pre-check plus triage, on the re-grounded REQ, in the **next** queue invocation — applying a proposal does not pick a candidate, so AC-5.4's one-pick guarantee is preserved | triage reaches a verdict of its own |
+  | A3 | Phase DOD's verify step | no findings remaining |
+  | A4 | the rebase completes, then the branch's test command (AC-7.4) | rebase clean and tests green |
+  | A5 | the GHA rollup read (AC-4.3) | all checks passed |
+
 - **AC-4.6** — Given AC-4.1 through AC-4.5, Then each has a failing test proving the prohibition
-  holds.
+  holds, and each such test asserts the AC-3.6 positive triple on the same path — a negative
+  assertion alone is satisfied by accident.
 
 ### REQ-ADV-05 — Seam A1/A2: queue triage and re-grounding
 
