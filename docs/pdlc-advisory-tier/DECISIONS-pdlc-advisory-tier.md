@@ -407,8 +407,14 @@ memo `_state` is a parameter threaded from `main()` into `resolveAdvisoryRung` (
   into **both** shipped bundles (`build:281`, `build:288`), and under jest every test imports one
   module instance. A module-level memo would therefore leak resolution (a) across tests in a file, and
   (b) across a queue invocation and the `orchestrate-dev` run it delegates to via `realMain`
-  (`build:102`, `queue:764`) — the two would share one memo inside a single process. Threading it also
-  makes M-4 *directly* assertable: pass one `_state` through two seams, assert one classification.
+  (`build:102`, `queue:764`) — the two would share one memo inside a single process. This rejection
+  rests on the same bundling fact as DEC-ADV-01 and is protected by the **same detector**: the
+  bundle-composition assertion named there (every prelude `__dev.<name>` present in that bundle's
+  `devModule` export list; `devModule` before `queueModule`). Threading also makes M-4 *directly*
+  assertable, and the assertion is a **call-count oracle, not a value comparison**: pass one `_state`
+  through two seams and assert the injected dispatch was asked to resolve **exactly once**. Asserting
+  only that both seams saw the same rung value passes a memo that re-resolves and happens to agree,
+  which is precisely the failure M-4 forbids.
 - **Eager resolution at pipeline start — rejected.** It contradicts D-2: a disabled run must resolve
   nothing, and the stronger form of the same property is that even an **enabled** run in which no seam
   fires resolves nothing (T-01-7). Laziness gives both from one mechanism; an eager resolve would need
@@ -472,8 +478,10 @@ that diverging later re-opens the disagreement this entry exists to prevent.
 **Re-evaluation triggers.**
 1. X-e needing semantics Phase MERGE's guard does not have (globs, per-seam guard sets) — at that
    point extend `guardVerdict` for **both** consumers, never fork it.
-2. `MERGE_GUARD_DEFAULTS` gaining a path that should not bind advisory changes, which would be the
-   first real evidence the two concepts are not one.
+2. **Any** change to the frozen `MERGE_GUARD_DEFAULTS` (`dev:47-52`) — stated as the observable
+   event, because "a path that *should not* bind advisory changes" is a judgement no test or monitor
+   can make. The event re-opens this entry for a one-line judgement; the differential X-e / Phase
+   MERGE oracle (standing obligation 5) surfaces it automatically.
 
 ## DEC-ADV-07: The post-A5 DoD divergence is reported, not re-verified and not halted (OQ-3)
 
@@ -486,11 +494,26 @@ the moment `dodResult.passed` becomes true) and marks any branch head beyond it 
 `buildFinalReport` (`dev:8595`) gains `dodVerifiedCommit` and a derived `dodHeadUnverified`. Phase PUB
 neither re-runs the DoD gate nor halts on the divergence (TSPEC §8.4).
 
+**The restoration path chosen is: none.** AC-8.3 and FSPEC OQ-3 offer two — re-verification inside
+PUB, or a halt for the operator — and this entry rejects **both** (below), leaving the divergence
+*visible* and the judgement with the operator. That is a deliberate answer to the open question, not
+an answer by omission: report-only satisfies AC-8.3's testable clause exactly ("the report's DoD
+status names the verified commit, and a branch head beyond it is reported unverified") and leaves
+the downstream consequence to re-evaluation trigger 3 (Phase MERGE gaining a precondition on
+`dodVerifiedCommit`), which is where a restoration path would first pay for itself.
+
+**Both derivation branches are positively asserted**, not just the divergent one. The common case —
+A5 never fires — needs its own oracle: `dodHeadUnverified === false` **and**
+`dodVerifiedCommit === <the head>`, not silence. Asserting only `dodHeadUnverified === true` after an
+A5 push leaves the derivation half-covered and green on a field that is never populated.
+
 **Alternatives considered.**
 
 - **Re-verify DoD inside Phase PUB — rejected on a verified phase-ordering fact.** Phase H runs
   **before** Phase PUB in `main()`: harvest is at `dev:8307-8360`, Phase PUB at `dev:8363` onward. Harvest
-  deletes the `CODE_REVIEW-*` files that `dodVerifyLoop` writes and reads (`dev:6298`). A DoD re-run in
+  deletes the `CODE_REVIEW-{feature}-v{N}` files the DoD loop's verifier produces (`dodVerifyLoop` at
+  `dev:6273`; the file is named in its log at `dev:6297`, and it is the `dod-verify` agent, not the
+  loop, that writes it). A DoD re-run in
   PUB would therefore author a fresh `CODE_REVIEW-{feature}-v1` **after** the harvest that was supposed
   to consume it — an un-harvestable artifact and a `LEARNINGS` file that no longer describes the
   branch. It would also nest an evaluator→optimizer loop with its own `DOD_MAX_ITERATIONS = 3` budget
