@@ -147,7 +147,33 @@ claim the prose made plausible.
 
 ## Best-Guess Root Cause
 
-<!-- body -->
+**Root cause 1 (primary) — a factually false erratum was routed and acted on.** The D-6 erratum
+asserted a git-history fact ("`26c3f1c` predates `raisePrAndVerifyCi`") that is false and was
+falsifiable by a single `git grep`. The originating author had, in the *same feature*, already run that
+exact grep and recorded the opposite in TSPEC §1.1. The erratum was therefore an internal
+contradiction, not new information: the author held both "`26c3f1c` carries `raisePrAndVerifyCi`"
+(TSPEC) and "`26c3f1c` predates `raisePrAndVerifyCi`" (erratum) simultaneously. The proximate failure is
+that the erratum was emitted, and then implemented in commit `3bbf934`, without re-grounding its factual
+premise against the object — a grounding lapse of exactly the kind the reviewer-side grounding clause
+exists to backstop. It did backstop it: te-review is the safety net closing.
+
+**Root cause 2 (why it halted rather than silently regressing) — the erratum protocol is bounded and
+confirmation-gated, and it worked as designed.** The protocol grants exactly one erratum round per
+upstream doc per phase and requires the upstream doc's *own approvers* to confirm the edit as an
+append-only review round before the upstream approval is allowed to stand. Both properties fired
+correctly: te-review — an original FSPEC approver — was asked to confirm, applied its grounding duty,
+refused, and the "one round" bound turned that refusal into a halt instead of an unbounded
+re-edit/re-confirm spiral. Nothing here is a harness defect. The halt is the mechanism preventing a
+false-premise edit from silently re-baselining D-6/T-10-3 and weakening the disabled-run oracle.
+
+**Root cause 3 (contributing) — "route it as an erratum" is cheaper than "verify it's a defect," so an
+unverified suspicion can enter the channel.** The erratum channel is designed to be low-friction so real
+upstream defects are not swallowed or mis-filed. The cost is that the *emitter* carries the burden of
+having grounded the claim, and nothing mechanical enforces that a routed erratum's factual premises were
+checked before routing. When the emitter's own upstream artifact already contains the disproof, the
+contradiction is only caught downstream, at confirmation, by whichever approver re-runs the check. Here
+that was one of two approvers; had the FSPEC's approvers both taken the rationale at face value, the
+regression would have landed. The grounding clause held, but it held on a one-reviewer margin.
 
 ## Recommendation
 
