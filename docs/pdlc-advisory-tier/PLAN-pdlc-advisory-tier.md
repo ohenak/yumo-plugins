@@ -338,8 +338,8 @@ reports failures that are artefacts of the invocation. The document oracles are 
 gate because `coveredViolations` walks the entire tree and an untracked local file can fail it for
 reasons unrelated to the diff — they are re-run in full by CI and by §9's Definition of Done.
 
-**The configured command is defective at HEAD, and A-00 fixes it before any wave runs.**
-`.claude/pdlc.config.json` currently holds
+**The configured command is defective at HEAD, and the §2.4 operator pre-flight step repairs it
+before Phase I is invoked — no task in this PLAN can.** `.claude/pdlc.config.json` currently holds
 
 ```
 cd pdlc/workflows && npm test -- --testPathIgnorePatterns=documentOracles
@@ -366,12 +366,17 @@ cd pdlc/workflows && npm test -- --testPathIgnorePatterns '/node_modules/' '/__t
 
 This matters directly to this feature and is not incidental repo tidying: A-02 creates
 `__tests__/helpers/advisoryDoubles.js` and A-15 creates a module-free fixture under
-`__tests__/fixtures/`, so the very first advisory batch would trip the defect. A-00 is the batch-1 task
-that repairs the config. It carries no `Deps` and owns a file no other task touches
-(`.claude/pdlc.config.json`), so it sits in batch 1 beside A-01 without renumbering anything
-downstream. Because the wave runner may have read `implementation.testCommand` before the wave began,
-**batch 1's gate is re-run by hand once after A-00 lands** — that single manual re-run is the price of
-fixing the gate with the gate.
+`__tests__/fixtures/`, so the very first advisory batch would trip the defect.
+
+**Why the repair is a pre-flight step and not a task.** `implConfig` is parsed once, above the wave
+loop — `readMergeConfigSafely` → `parseImplementationConfig` at
+`pdlc/workflows/orchestrate-dev.js:8040-8042`, while the loop opens at `:8094` and every wave's gate
+reads that one cached `implConfig.testCommand` at `:8113`. A batch-1 task editing the file on disk
+therefore could not affect any gate in the run that contains it, and the gate does not warn but
+halts (`:8113-8118`). §2.4 carries the operator instruction, the verified reproduction and the
+restated command; **A-01 pins the result** so it cannot silently regress. If Phase I is invoked
+against the unrepaired command anyway, wave 1 halts; the recovery is to land §2.4's repair and
+re-invoke Phase I, whose second invocation reads the repaired command.
 
 ### 5.2 Per-batch gate wording
 
@@ -380,19 +385,29 @@ fixing the gate with the gate.
 `computeTopologicalBatches` (`pdlc/workflows/orchestrate-dev.js:6533`) splits each topological layer
 into sub-batches of at most five (`for (let i = 0; i < ready.length; i += 5)`), and `computeWaves`
 then partitions each by ownership. Run against this PLAN at HEAD `ca55bb6`, that yields **20 executor
-batches**, transcribed below. Both numberings are correct for their purpose, and the labels are
-consistent: no layer contains a task whose §3 label is ≤ the highest already completed, so
+batches**, transcribed below (A-00's removal empties nothing: layer 1 is now the single task A-01,
+still one sub-batch, so the executor count is unchanged). Both numberings are correct for their
+purpose, and the labels are consistent: no layer contains a task whose §3 label is ≤ the highest already completed, so
 `topologicalReadySets`' "PLAN batch labels inconsistent with dependency edges" warning
 (`:6578`) does not fire.
 
+**No wave in this PLAN is RED-terminal — and that is a property of the executor, not a style
+choice.** The script-owned gate runs the whole configured suite after every wave and throws
+`haltError` on failure (`pdlc/workflows/orchestrate-dev.js:8113-8118`), and `testCommand` is one
+string with no per-task or per-file filter, so a wave that ends with genuinely failing new tests ends
+the *run*. Every 🔴 task therefore lands its cases inside `describe.skip(...)` blocks — one block per
+green owner, named for that owner — which jest reports as skipped, not failed. Each gate below is
+consequently a **full-suite-green** gate; the red evidence lives inside the 🟢 task's own red→green
+commit pair (§3 preamble, §9.2), not at a batch boundary.
+
 | Executor batch | §3 labels | Tasks | Gate |
 |---|---|---|---|
-| 1 | 1 | A-00, A-01 | **Config repair + RED-terminal, re-run by hand.** A-00 and A-01 own disjoint files. Run the gate with the *restated* command above regardless of what the runner cached, then confirm `.claude/pdlc.config.json` holds it. A-01's assertions must **pass** (they describe HEAD, not new work); no other test may regress. A failing assertion here is blocking work, not a red-to-green step. |
+| 1 | 1 | A-01 | **Green.** The §2.4 pre-flight repair has already landed (verify with `--listTests` ⇒ 68 files before invoking Phase I). A-01's assertions must **pass** — they describe HEAD, not new work, including the transcribed-literal pin on `implementation.testCommand` — and no other test may regress. A failing assertion here is blocking work, not a red-to-green step. |
 | 2 | 2 | A-02 | Full suite green. The doubles helper is not itself under test and is excluded from collection by `testPathIgnorePatterns`' `/__tests__/helpers/` entry; it must not break the modules that import it. |
-| 3–5 | 3 | A-03 … A-15 | **RED-terminal.** One layer, split by the size cap into `A-03…A-07`, `A-08…A-12`, `A-13…A-15`. The new tests must fail **for the specified reason** — an unresolved import or an undefined export of the symbol the task names — and every pre-existing test must stay green. A new test that fails for any other reason, or that passes, is a defective red. |
-| 6 | 4 | A-16, A-17, A-28 | **Split gate.** A-16 is RED-terminal (fails on the missing advisory surface); A-17 and A-28 are green — `advisoryConfig.test.js` and the `advisoryHarvest.test.js` guard-coupling cases must pass, and the pre-existing suite must stay green. |
-| 7–17 | 5–15 | A-18 … A-32 | **Green.** The task's own named test file passes in full, and the whole suite is green. From executor batch 6 onward every wave also runs `postWaveCommand` (`node pdlc/workflows/build-runtime.mjs`) and commits `pdlc/workflows/dist/`, so `runtimeBundle.test.js` is part of "the whole suite is green" at every step. |
-| 18 | 16 | A-33 | **Green + the D-6 comparison.** `advisoryDisabled.test.js` passes against the transcribed literal, with the fixture's scenario header re-asserted first. |
+| 3–5 | 3 | A-03 … A-15 | **Green (skipped-red).** One layer, split by the size cap into `A-03…A-07`, `A-08…A-12`, `A-13…A-15`. Every new case is authored inside a `describe.skip` block named for its green owner, so the suite is green and every new case is *reported as skipped* — the gate asserts both: the whole suite passes, **and** the newly added files contribute zero passing and zero failing cases. A new case that passes here is a defective red (it asserts nothing the surface cannot already satisfy); a case that fails here halts the run. A-15 adds a fixture only. |
+| 6 | 4 | A-16, A-17, A-28 | **Green.** A-16's cases land skipped (their un-skipper is A-33); A-17 and A-28 un-skip their own blocks in `advisoryConfig.test.js` and `advisoryHarvest.test.js` and those blocks must pass, as must the pre-existing suite. |
+| 7–17 | 5–15 | A-18 … A-32 | **Green.** Each task un-skips exactly its own `describe.skip` block in its named test file, that block passes in full, every still-skipped block is still skipped, and the whole suite is green. From executor batch 6 onward every wave also runs `postWaveCommand` (`node pdlc/workflows/build-runtime.mjs`) and commits `pdlc/workflows/dist/`, so `runtimeBundle.test.js` is part of "the whole suite is green" at every step. |
+| 18 | 16 | A-33 | **Green + the D-6 comparison + zero remaining skips.** `advisoryDisabled.test.js` is un-skipped and passes against the transcribed literal, with the fixture's scenario header re-asserted first. This is the last un-skipper, so the gate also asserts that **no `describe.skip` block remains** in any `advisory*.test.js` file — a case left skipped is a case that never ran. |
 | 19–20 | 17–18 | A-34 … A-36 | **Green + full oracles.** `npm test` with **no** ignore-pattern override at all — i.e. including `documentOracles.test.js` — on a clean working tree. |
 
 ### 5.3 Why the dependency edges are what they are
