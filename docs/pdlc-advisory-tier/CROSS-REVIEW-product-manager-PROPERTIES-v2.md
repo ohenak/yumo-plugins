@@ -33,6 +33,17 @@ v1 were not re-litigated.
 
 ## Questions
 
+My v1 Q-01 is **answered** and needs no further response: §12.4 is exactly the fourth audit direction
+I asked whether was deliberately delegated, and it answers the delegation question head-on —
+"Delegating case coverage to PLAN §8.1 is **not** sufficient: PLAN §8.1 says which file a case lives
+in, never what its oracle asserts." Q-02 and Q-03 were confirmations rather than requests and stand
+answered by the revision leaving both readings intact.
+
+| ID | Question |
+|----|---------|
+| Q-01 | Carried forward from v1 Q-04, and narrowed by this revision rather than closed. PROP-DIS-06 now scopes its scan to a **named file set** (`orchestrate-dev.js` and `orchestrate-queue.js`, never `dist/*.bundle.js`) and pre-empts the most likely fourth site by ruling the report field out of the count — good, and the `dist/` exclusion is a real trap avoided, since the bundle inlines both modules (`pdlc/workflows/dist/` per CLAUDE.md). The count of **exactly three** is still a snapshot of TSPEC §11.1. If Phase I finds a legitimate fourth read, is the intended resolution "the property fails and TSPEC §11.1 is amended", or "the property fails and the fourth read is refactored away"? Stating which of the two the operator is buying would settle at authoring time what would otherwise be argued at implementation time. Not blocking — the property is falsifiable and correctly scoped either way. |
+| Q-02 | `PROP-A5-20` is levelled `Unit` but its three fixtures probe `_git` / `_ghRun` at the merge base, the default-branch tip and the branch head, and its home `advisoryPubSeam.test.js` is one of the two real-tree files PLAN §6.2 designates. If it in fact needs the real-tree fixture, it belongs in the 47-property Integration cost I checked in §12.3, and the levelled totals shift by one. This is a test-engineering call and I raise it as a question rather than a finding — but the level totals are now a stated budget, so the answer has a number attached to it. |
+
 ## Positive Observations
 
 ## Recommendation
