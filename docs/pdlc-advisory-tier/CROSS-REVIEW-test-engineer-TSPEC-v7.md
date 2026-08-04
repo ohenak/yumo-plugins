@@ -55,11 +55,32 @@ matcher is what this erratum was for, and it is closed.
 
 ## Findings
 
-_(filled below)_
+None. No High, Medium, or Low finding arises from this delta.
+
+**Regression check against what I approved at v6.** The delta touches §4.3, §4.5, §5.5, §6.3, §7.2,
+§8.2, §11.1, the header version row, and §18's changelog — nothing else. I re-read every changed
+region plus the two unchanged regions the changes could falsify:
+
+- **§5.4's step table** (unchanged) still lists step 6 as `seamOps.verifyGate()`. A nullable member
+  would be a latent `TypeError` if the driver could reach step 6 with `verifyGate: null` — §4.3 closes
+  that explicitly ("the driver reaches `verifyGate` only on a seam whose `permittedActions` is
+  non-empty, so the nullable member is never invoked as `null`"), and step 3's `classifyEnvelope`
+  refusal is the mechanism. No driver branch on `verifyGate == null` is introduced, so §4.4's uniform
+  seven-step order — pinned by PROP-LIFE-02's exact eight-element call log — is untouched.
+- **§5.5's closing BR-6 sentence** (unchanged) still reads "the driver's only route to `resolved`
+  runs through `verifyGate`". With A1/A3 having no gate and no route to `resolved` at all, the
+  sentence remains true (vacuously at those two seams) and BR-6's oracle is unweakened. See Q-01.
+- **PROPERTIES coupling.** PROP-BUD-03, PROP-DIS-06, PROP-SUM-06 and the PLAN A-31 gate-exclusivity
+  case all now agree with the TSPEC text; the delta closes three cross-document divergences and opens
+  none. §18's v1.3 row names each edit and its rationale.
+
+No test obligation was removed, no oracle weakened, no seam count or lifecycle step changed.
 
 ## Questions
 
-_(filled below)_
+| ID | Question |
+|----|---------|
+| Q-01 | §5.5's BR-6 sentence ("the driver's only route to `resolved` runs through `verifyGate`") is now true in two different ways: through the gate at A2/A4/A5, and vacuously at A1/A3 where `resolved` is unreachable. It reads fine, but a half-sentence — "…and at A1/A3 there is no route to `resolved` at all" — would make the quantifier explicit for whoever writes T-03-6(b)'s per-seam case. Editorial, not a condition of this approval. |
 
 ## Positive Observations
 
