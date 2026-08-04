@@ -149,3 +149,6 @@ No new errata from me. The six items §13.1 routes are the author's to emit; I r
 
 VERDICT: Approved with minor changes
 {"high": 0, "medium": 0, "low": 1}
+
+APPROVAL-HASH: sha256:839ec022a3220a12f9ec91df9a02543b55c8b267a76c6731ee971f776cd65428
+REVIEWED-COMMIT: fd4bcedb787783039189cef0c4b7d36376ba9a57
