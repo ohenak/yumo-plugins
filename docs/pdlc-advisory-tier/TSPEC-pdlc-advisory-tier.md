@@ -1260,8 +1260,27 @@ D-1/D-2 hold because `config.enabled === false` returns from `runAdvisorySeam` *
 `resolveAdvisoryRung` is called and before any dispatch (§4.4's entry row). That single early return
 is the only `enabled` test on the dispatch path; the two others in the codebase are (a) the config
 notice suppression (§3.2) and (b) the §9.3 distil-step guard, neither of which can dispatch or
-resolve. A grep for `advisory.enabled` returning exactly three sites is itself a maintainable
-assertion.
+resolve.
+
+**The maintainable assertion, stated with its matcher.** The three sites do not share a literal
+spelling — the driver reads `config.enabled === false` (§4.4's entry row), the notice gate reads
+`advisory.config.enabled` (§3.2), the distil guard reads `advisory.enabled` (§9.3) — so a grep for
+the token `advisory.enabled` finds one site, not three. The assertion is a **source-text scan for
+`/\.enabled\b/`**, over the named file set `pdlc/workflows/orchestrate-dev.js` and
+`pdlc/workflows/orchestrate-queue.js` only (never `pdlc/workflows/dist/*.bundle.js`, which inlines
+both modules and would double every hit), and it must return **exactly three** matches:
+
+1. the driver's early return,
+2. the config-notice emit gate,
+3. the distil-step guard.
+
+**`parseAdvisoryConfig`'s body is excluded from the counted set.** The parser reads the key, not a
+resolved config field, and how it reads it (destructuring vs. `section.enabled`) is an
+implementation choice that must not change the expected total — so the scan slices out the
+`parseAdvisoryConfig` declaration before counting. A fourth match outside that body is a defect, and
+the report's disabled/enabled-but-quiet distinction is deliberately **not** one: it is derived from
+the advisory `_state` (`null` when the driver never armed), never from a fourth `enabled` read.
+PROPERTIES transcribes this matcher and counted set verbatim as PROP-DIS-06.
 
 D-2's stronger claim — *no model resolution is attempted* — is why resolution is lazy (§3.4): even
 with the tier **on**, a run in which no seam fires resolves nothing (T-01-7). Disabled is then the
