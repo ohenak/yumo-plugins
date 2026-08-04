@@ -69,6 +69,13 @@ Only findings that survived that check appear below.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | §5.1 says batch 1's gate is "re-run by hand once after A-00 lands" because the wave runner may have cached `implementation.testCommand` before the wave began. In an unattended queue run there is no hand. Does A-00 need to be landed by an operator *before* the pipeline is invoked, rather than as batch-1 task — and if so, should it be lifted out of the task table into a pre-flight instruction alongside §2.1? |
+| Q-02 | §6.3 lists `MANUAL-VERIFICATION-pdlc-advisory-tier.md` as "harvested into LEARNINGS at Phase H, then deleted", and notes the harvest guard does not watch that pattern. Given F-03, is the LEARNINGS entry required to carry the verification verbatim — including an `unverified` outcome — so the one durable fact survives the delete? |
+| Q-03 | §8.1 assigns T-08-6 ("all five seams appear in the summary, four with zero counts") to `advisoryHarvest.test.js` while the sibling summary case T-08-10 goes to `advisoryRecord.test.js`. Both are AC-9.4 assertions about the same six-row table. Is the split deliberate (harvest owns T-08-3…T-08-6 as a contiguous range), or would AC-9.4's obligation be easier to audit with both summary cases in one file? |
+| Q-04 | §10.1 item 4 accepts that Phase MERGE will defer more often because of the extra post-PUB commit, "visible as a deferral with a reason on the report, never silent". Is the *reason string* an operator can act on already covered by an existing MERGE reason, or does that reason need to name the advisory distil commit specifically to be actionable? |
+
 ## Positive Observations
 
 ## Recommendation
