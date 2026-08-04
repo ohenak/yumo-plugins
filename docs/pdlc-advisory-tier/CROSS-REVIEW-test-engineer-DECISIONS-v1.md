@@ -265,4 +265,36 @@ against a commit that is no longer HEAD. Either name the commit as a floor ("rea
 
 ## Recommendation
 
+**Needs revision**
+
+Two High and two Medium findings. This is a strong document — the grounding is exemplary and every
+decision is a real decision — and none of the four findings asks for a different decision. All four ask
+for the same class of change: make the reasoning survive contact with a test.
+
+Exactly what must change:
+
+1. **F-01** — Rewrite DEC-ADV-08's Context against FSPEC at HEAD: C-2 (`FSPEC:145`) already specifies
+   report-only-when-enabled, so the entry records *where* the suppression lives, not a deviation.
+   Remove the FSPEC erratum routing and the C-2/D-5 half of the "two upstream defects" paragraph.
+   Ripple: TSPEC §11.3's "deliberate C-2 deviation" wording is routed as an erratum below.
+2. **F-02** — Name a mechanical detector for the both-modules-in-both-bundles fact in DEC-ADV-01
+   (a bundle-composition assertion, mutation-checked by deleting `devModule` from the queue bundle's
+   `contents` array), so trigger 3 is observable and the "easy" reversibility grade is defensible.
+   DEC-ADV-05 should cite the same detector, since its rejection of a module-level memo rests on it.
+3. **F-03** — Give standing obligations 3, 4 and 5 the detectors sketched above: a literal `26c3f1c`
+   provenance assertion, a set-equality seam scan over the escalation path, and a differential
+   X-e/Phase-MERGE oracle over a shared corpus. Obligations 1 and 2 already have theirs.
+4. **F-04** — Restate DEC-ADV-04's rejection of the aliased fallback on AC-1.3's actual wording (the
+   warning must name the substitute, so an aliased constant lets the declared substitution drift), and
+   record that AC-1.4's branch is unreachable end-to-end and is a unit-level obligation.
+
+F-05 and F-06 are Low and can ride along with the above.
+
+Nothing here blocks the PLAN's shape. The decisions themselves — the seam layer over a new skill, one
+driver over five, RECORD before the irreversible act, the hand-reviewed D-6 fixture — are the right
+calls and are argued from verified facts.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 2, "medium": 2, "low": 2}
