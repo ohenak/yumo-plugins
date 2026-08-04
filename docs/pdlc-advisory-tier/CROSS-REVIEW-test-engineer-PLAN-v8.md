@@ -63,4 +63,16 @@ this delta; v7 raised none.
 
 ## Recommendation
 
-*(filled below)*
+**Approved.**
+
+The one open item from v7 — the `TSPEC §5.4` → `FSPEC §5.4` label slip in §8.2's T-03-6 item column
+— is resolved at `PLAN:869` in the form I recommended, with every citation in the replacement clause
+verified against the upstream bytes (`FSPEC:361-380`, `FSPEC:1111`, `TSPEC:630`, `TSPEC:648-660`).
+Nothing else in the document changed, and the PLAN contract re-derives mechanically unchanged: 36
+tasks, 36 ownership rows, `validatePlanContract ⇒ {"ok":true}`, 20 topological batches. No High,
+Medium or Low findings remain open from the testing lens.
+
+## Verdict
+
+VERDICT: Approved
+{"high": 0, "medium": 0, "low": 0}
