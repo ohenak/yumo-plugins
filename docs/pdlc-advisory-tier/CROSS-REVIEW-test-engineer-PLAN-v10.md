@@ -125,3 +125,27 @@ round's only movement is upstream.
   v10 under the shipped parsers, so the Phase P gate has nothing new to reject.
 
 ## Recommendation
+
+**Approved with minor changes.**
+
+The PLAN is byte-identical to the version I approved at v9 (`git diff 06040a4..HEAD` on the file is
+empty), so nothing in it was revised and nothing in it broke. The one thing that moved is upstream:
+PROPERTIES §6.5 was restructured in this window, which left `PLAN:258`'s `PROPERTIES:570-572` pointer
+aimed at the A2/A4/A5 conjunct instead of the A1/A3 rationale it means to cite (F-01, Low). Repoint it
+to `PROPERTIES:619-626` — or better, to **PROPERTIES §6.5** by section, since a line anchor into a
+still-moving document has now drifted once and will drift again.
+
+Everything the testing lens cares about re-verifies green against the new upstream bytes: the four
+`describe.skip` block names in `PLAN:258` match PROPERTIES' `Home` fields (`PROPERTIES:580-586`); the
+two-directional mutation rule agrees word-for-word in effect with `PROPERTIES:619-621` and is now
+cross-cited from both sides; the gateless cases keep four conjuncts with a positive termination
+assertion beside the negative, so neither is absence-only; the single set-equality case over the
+in-file registry is untouched, so a sixth seam fails the suite and a deleted case is not expressible
+without deleting the row that case checks. The mechanical contract re-derives unchanged under the
+shipped parsers — 36 tasks, 36 ownership rows, `validatePlanContract ⇒ {"ok":true}`, 20 topological
+batches. No High or Medium finding is open; one Low.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 1}
