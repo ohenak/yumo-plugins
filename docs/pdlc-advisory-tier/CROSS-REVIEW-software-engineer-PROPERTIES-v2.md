@@ -43,7 +43,24 @@ Four, all in text added by this revision. Nothing in the unchanged sections is r
 
 ## Questions
 
+v1's Q-02 is answered by PROP-DIS-06's new file set. Q-01, Q-03, Q-04 and Q-05 were not addressed in
+the diff; they were questions rather than findings and I am not re-raising them. Two new ones, both
+about text added this round:
+
+| ID | Question |
+|----|---------|
+| Q-06 | PROP-INFRA-01 is homed in `advisoryPreflight.test.js` (A-01) and asserts that every import of `makeSeamOps` / `makeAgentDouble` / … resolves to `helpers/advisoryDoubles.js` — a module A-02 creates, one batch later. At batch 1 the scan therefore runs over a set that contains only its own file. Is the property's obligation that it must *stay* green as files arrive (a regression tripwire, correct as homed), or is there an intended point at which its scanned set is asserted non-empty? Without the latter, a run in which the glob silently matches nothing passes. |
+| Q-07 | PROP-RUNG-09 asserts "`fallback: false` and the summary's model cell byte-equal to `MODEL_ADVISORY`". TSPEC §3.4 declares that return shape (`{ model: string, fallback: boolean }`, `TSPEC:316`, `:390`) and §11's S-2 says the report row carries `model` and `fallback` — so the surface exists. But TSPEC §3.3 and R-3 (`TSPEC:1483`) say the **fallback** rung is the likely production path because BL-01 is unresolved. Is PROP-RUNG-09 understood to be exercised entirely through the injected agent double (in which case it is fine as levelled), or is any part of it expected to observe a real resolution — which would make it the one property whose green depends on an unresolved blocker? |
+
 ## Positive Observations
+
+- **Every v1 finding is closed on the substance, not on the wording.** F-01 was answered by recomputing rather than by softening the claim, and the recount is correct to the row — I re-derived 195 / 148 / 40 / 7 independently and got the document's numbers. F-04 was answered by *deleting* the clause and citing the decision that forbids it, which is the harder and better answer than trying to rescue it.
+- **The revision states the budget as a shape rather than a number.** "Unit ≥ 70%, Integration ≤ 30%, E2E = 0" plus a measured count against it is a contract that survives the next twenty properties; "78 Unit, 21 Integration" was a fact that expired the moment a property was added. That is the right lesson to have drawn from F-01.
+- **PROP-A5-20 is the strongest addition.** E-2's three-conjunct rule was the sole AC-3.3 member with no property asserting its decidable rule, and the new property does not merely assert the rule — it drops each conjunct in turn with a named expected outcome, and pairs all three with the same positive in-envelope control so no case can pass by refusing everything. The prose beneath it correctly identifies why this matters most at E-2 (the only envelope member that lets the tier commit and push unattended). This is what a falsifiable enumeration looks like.
+- **PROP-ENV-13 closes a genuinely invisible hole.** The observation that every other envelope property is written against `ENVELOPE_DEFAULTS`, so a build ignoring the parsed `config.envelope` entirely would satisfy all of them and silently kill AC-3.1's operator lever, is exactly the kind of gap a coverage matrix cannot see. Both conjuncts are load-bearing and the document says why.
+- **§12.4 is a new audit direction that earns its place.** The argument for it — §12.1 passes with a whole FSPEC case family uncovered, §12.2 passes because PLAN §8.1 homes every case whether or not a property states its oracle, §12.3 audits only file existence — is correct, and it is stated as set equality in both directions with its one sanctioned exception declared. I re-ran the comparison and it holds.
+- **O-6 and PROP-GATE were upgraded from an absence oracle to a positive one, with the reason cited.** Replacing "the disposition is never `resolved`" with "the disposition is `escalated` with reason `post-action-verification-failed`" — and citing `REQ:159` row 4 for that exact reason, which I verified — is the AC-4.6 rule applied to the document's own text. F-01 above is a scoping slip in that upgrade, not a defect in the upgrade.
+- **§13.1 item 4 routes the `waitMs` surface upstream instead of absorbing it**, and PROP-BUD-03 is stated at the one surface that exists under either resolution, so the property is implementable today and stays correct whichever way the TSPEC author settles it. That is the right shape for a blocked-upstream property.
 
 ## Recommendation
 
