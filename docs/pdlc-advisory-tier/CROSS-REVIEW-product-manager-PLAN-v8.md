@@ -41,6 +41,34 @@ delta fixed one cell over, left standing in the row an implementer reads first.
 
 ## Positive Observations
 
+- **The A3 fix went upstream first, which is what v6 F-02 asked for and the harder path to take.**
+  The erratum could have been closed by editing this PLAN to agree with TSPEC. Instead FSPEC §5.4's
+  gate table — the approved product contract AC-4.5 quantifies over — was itself changed to "A3:
+  **none**", with `DEC-ADV-11` recording *why* and the FSPEC row citing the decision inline. The
+  product contract and the engineering contract now say the same thing for the same stated reason,
+  rather than the plan quietly conforming to code-side reasoning.
+- **The registry gained a `gate` column, and that closes v6 Q-02 better than the question asked.**
+  §8.2 now specifies that the generated case branches on the registry's own `gate` column
+  (`gate: null` for A1 and A3), "never on inspecting the shipped `SeamOps` at test time, so a seam
+  that silently *lost* its gate cannot drift into the gateless branch and pass". Branching on the
+  code under test would have made the oracle derive its expectation from the implementation; this
+  keeps the expected value a literal transcription of the FSPEC row. That is the difference between
+  a mutation control and a mirror.
+- **Set-equality survived the generalisation.** Adding a second gateless seam is exactly the edit
+  that tempts an author to special-case two rows out of the enumeration. Instead both stay inside
+  the one iterated registry, and §8.2 states the closure in both directions — a deleted case means a
+  deleted registry row (caught by PROP-GATE-06's set-equality against `ADVISORY_SEAMS`), and a sixth
+  `ADVISORY_SEAMS` member with no row fails the same case. No enumerated contract was weakened to
+  containment.
+- **v6 Q-01 was answered, not deflected.** §8.2 now records why A1's and A3's identical case bodies
+  live in different blocks (§3's un-skipper rule follows the last symbol a block's cases exercise),
+  pre-empting a future reader deleting one as a duplicate.
+- **Scope discipline held, again.** The whole delta is prose inside one §8.2 cell plus two changelog
+  rows and the version stamp. 36 task rows and 36 ownership rows are still present and paired
+  (72 `| A-NN` rows in the document), no dependency edge, batch label, phase boundary, requirement
+  or acceptance criterion moved, and §10's 1.7 and 1.8 rows each state that explicitly rather than
+  leaving the reader to diff for it.
+
 ## Recommendation
 
 ## Verdict
