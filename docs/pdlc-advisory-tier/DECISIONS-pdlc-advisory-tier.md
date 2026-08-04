@@ -457,4 +457,52 @@ rather than signal.
 
 ## DEC-ADV-10: D-6's expected set is a hand-reviewed fixture captured at `26c3f1c`, not a re-derived value
 
+**Context.** D-6 is the feature's central safety claim: a run with the tier disabled creates exactly the
+files a pre-feature run creates. A comparison whose expected value is produced by the system under test
+cannot fail, so the expected set must come from outside that system.
+
+**Decision.** A checked-in fixture, `pdlc/workflows/__tests__/fixtures/created-files-26c3f1c.json`,
+produced once by instrumenting the `_writeFile` / `_appendFile` / `_git` seams of a run at REQ's
+behavioral pin `26c3f1c`, **hand-reviewed into the repo**, and compared by value. Its header records
+provenance — the commit sha, the command, the date — so a later reader regenerates it deliberately
+rather than refreshing it reflexively (TSPEC §11.2).
+
+**Why `26c3f1c` is the right pin, verified.** It is an **ancestor of the branch HEAD**
+(`git merge-base --is-ancestor 26c3f1c HEAD` ⇒ true) and it already carries every file-creating
+pipeline path a disabled run at HEAD exercises — Phase PUB included: `4d5e4dc` ("Add Phase PUB…") is an
+ancestor of it (`git merge-base --is-ancestor 4d5e4dc 26c3f1c` ⇒ true) and `raisePrAndVerifyCi` is
+defined at `26c3f1c:6222` (`git grep -c raisePrAndVerifyCi 26c3f1c -- pdlc/workflows/orchestrate-dev.js`
+⇒ 4). So a set captured there is a faithful pre-feature baseline, and the comparison isolates exactly
+the additivity D-6 asserts. (`orchestrate-dev.js` is 8,527 lines at `26c3f1c` and 8,642 at HEAD; the
+delta is this feature's own docs-and-spec churn, not pipeline behavior.)
+
+**Alternatives considered.**
+
+- **Compute the expected set by running the pipeline with the feature code absent — rejected.** That is
+  the tautology D-6 exists to forbid: the expected value would be produced by the same code under the
+  same doubles as the observed value, and any shared defect cancels out.
+- **Assert only a *subset* relation (no new files) — rejected.** It is one-sided: it would pass a build
+  where the disabled tier suppressed a file the baseline creates. D-6 is an equality claim in both
+  directions, so the oracle must be too.
+- **Regenerate the fixture on each run and diff against the previous — rejected.** It makes the oracle
+  self-refreshing, so a real regression is "fixed" by the next regeneration; and it reintroduces the
+  system under test as the source of truth.
+- **Pin the fixture at the branch HEAD instead — rejected.** HEAD already contains this feature's
+  branch; a baseline captured there is not a *pre-feature* baseline. The distinction between REQ's
+  behavioral pin (`26c3f1c`) and TSPEC's citation pin (branch HEAD) is deliberate, and D-6 belongs to
+  the behavioral one.
+
+**Constraints that forced this shape.** DC-03 (a load-bearing assertion is falsified before it is
+trusted); DC-04 (an oracle is a pure function of an injected root — the fixture is that root's expected
+image); D-6's own wording, which fixes the baseline commit.
+
+**Reversibility: easy** mechanically (regenerate at a new pin), **one-way in spirit**: once the fixture
+is refreshed against a tree that contains the feature, the property it protects is gone and cannot be
+recovered from the repo alone. Regeneration is therefore a reviewed act with a recorded reason, never
+a routine one.
+
+**Re-evaluation triggers.** A change to a **pre-feature** file-creating path (a new pipeline artifact
+unrelated to this feature) — then the fixture must be re-pinned at the commit that introduced it, with
+the provenance header updated and the reason stated in the commit that changes it.
+
 ## Decisions deliberately NOT taken here
