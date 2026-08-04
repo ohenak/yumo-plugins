@@ -13,7 +13,9 @@ feature: pdlc-advisory-tier
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | approved | Claude | 1.0 | 2026-08-03 |
+| pdlc | approved | Claude | 1.1 | 2026-08-03 |
+
+Revision history is in §18.
 
 ## 1. Scope, baseline pin, and what this TSPEC decides
 
@@ -1488,8 +1490,10 @@ otherwise reconsider each of them confidently.
 
 **Rejected:** a fourth build source `pdlc/workflows/advisory.js`. Feasible, and it would keep
 `orchestrate-dev.js` ~800 lines smaller — but it changes the artifact-composition rule that
-`runtimeBundle.test.js` and `distribution-manifest.json` are written against, for a benefit no
-requirement asks for. **Rejected:** duplicating the constants in both modules — that is exactly what
+`runtimeBundle.test.js` is written against, for a benefit no requirement asks for. (It would *not*
+change what `distribution-manifest.json` is written against: rows are emitted per artifact from the
+three-entry `bundles` array, `build-runtime.mjs:277-296`, so a fourth source inlined into the same
+three artifacts adds no row and moves only `pluginSha1`.) **Rejected:** duplicating the constants in both modules — that is exactly what
 M-5 forbids. Reversibility: **easy** (extracting to a fourth source later is mechanical).
 
 ### 16.2 One `runAdvisorySeam` driver behind an injected `SeamOps`, not five per-seam functions
@@ -1501,25 +1505,31 @@ same observable triple" would become five things to keep in step rather than one
 
 ### 16.3 The irreversible act lives in `verifyGate`, so RECORD precedes it
 
-**Rejected:** the literal FSPEC §4.1 order with an A5 special case in the driver. That leaves A2's
-commit/record ordering undefined (the erratum in §16.4) and would eventually require undoing a commit
-to satisfy R-2. **Rejected:** writing the record *before* the action — the record carries the
+**Rejected:** the literal FSPEC §4.1 step numbering with an A5 special case in the driver. It would
+express FSPEC's own "steps 5 and 7 before the durable git operation" rule (`FSPEC:232-237`, §16.4) at
+A5 only, leaving A2's commit to be special-cased separately and eventually requiring a commit to be
+undone to satisfy R-2. **Rejected:** writing the record *before* the action — the record carries the
 disposition, which is not known until the action's outcome is. Reversibility: **hard** — it shapes
 the `SeamOps` contract.
 
-### 16.4 Errata raised against FSPEC (not fixed here)
+### 16.4 Two settled FSPEC rules, and the TSPEC mechanism that expresses each
 
-Two upstream defects were found while grounding this document. Both are routed as errata, not folded
-into this TSPEC's own verdict, and both have a TSPEC-side resolution recorded above so implementation
-is unblocked either way:
+Earlier drafts of this document raised the two items below as errata against FSPEC. **They are not
+upstream defects.** FSPEC v1.3 settles both; what remains is a TSPEC-side choice of mechanism, which
+is what the sections cited here own. No erratum is outstanding against FSPEC from this document.
 
-1. **A2-6 / R-2 ordering gap** — A2-6 requires an applied re-grounding to be *committed* before the
-   invocation ends; R-2 requires a failed record write to un-take the action. FSPEC never reconciles
-   them, and the literal reading demands undoing a commit, which BR-5 does not sanction. Resolved
-   here by §4.4/§6.4.1's `apply`/`verifyGate` split.
-2. **C-2 / D-5 conflict** — C-2 unconditionally reports a degraded key on the run report; D-5, S-4
-   and T-10-4 require a *disabled* run to carry no advisory content. A malformed `advisory.enabled`
-   satisfies both, contradictorily. Resolved here by §3.2's emit-side suppression.
+1. **A2-6 / R-2 durability ordering — settled at `FSPEC:232-237`, `:635`, `:690`.** R-2 makes the
+   record a precondition of an action *surviving* rather than of having acted, and FSPEC states that
+   at both seams whose act is durable through git — A2 by commit, A5 by push — steps 5 and 7 complete
+   **before** that durable operation. The TSPEC-side expression is §4.4/§6.4.1's `apply`/`verifyGate`
+   split, which realises that ordering uniformly across all five seams instead of special-casing A5
+   in the driver (§16.3). Nothing about the rule is being decided here; only how it is implemented.
+2. **C-2's report-only-when-enabled scoping — settled at `FSPEC:145`.** C-2 already limits its
+   substitution notice to the case where the resolved configuration leaves the tier enabled, and says
+   a bad value that resolves the tier disabled produces a disabled run carrying no advisory content
+   on the report at all — consistent with D-5, S-4 and T-10-4, not in conflict with them. The
+   TSPEC-side expression is §3.2's emit gate on the effective `enabled`, which keeps
+   `parseAdvisoryConfig` pure and its `invalidKeys` contract uniform.
 
 ### 16.5 Report-only for the post-A5 DoD divergence (OQ-3)
 
@@ -1587,3 +1597,9 @@ driver-level test injecting a `SeamOps` whose `apply` throws an error matching n
 asserts the terminal outcome is `escalated` with a non-null reason and a byte-identical tree
 (the `revert` ran), never `resolved`.
 
+## 18. Changelog
+
+| Version | Date | Change |
+|---|---|---|
+| 1.0 | 2026-08-03 | Initial TSPEC, converged through cross-review rounds v1–v3. |
+| 1.1 | 2026-08-03 | **Phase D erratum round** — targeted edits only, no scope change. (1) §2.2 and §16.1 no longer claim a fourth build source changes what `distribution-manifest.json` is written against; manifest rows are per artifact from the three-entry `bundles` array (`build-runtime.mjs:277-296`), so a fourth source inlined into the same artifacts adds no row and moves only `pluginSha1`. The `runtimeBundle.test.js` half of the claim is unchanged. (2) §2.3 adds `commitPaths` to the dev export list and the queue prelude and states that `orchestrate-dev.js` gains one `export` keyword on it, so §6.4.1's A2 `verifyGate` has a reachable mechanism; §6.4.1 gains a Reachability paragraph noting `gitWithLockRetry` stays private. (3) §3.2, §11.3 and §16.4 restate C-2's report-only-when-enabled behaviour as **conformance** with `FSPEC:145`, not a deliberate deviation. (4) §4.4, §6.4.1, §16.3 and §16.4 restate the A2-6 / R-2 durability ordering as a **settled FSPEC rule** (`FSPEC:232-237`, `:635`, `:690`) whose mechanism this TSPEC chooses, not an upstream defect; §16.4 is retitled accordingly and records that no erratum is outstanding against FSPEC from this document. (5) §11.2 pins the D-6 fixture to a **run scenario** (`reqPath`, `forcePhases`, `agentDoubles`, `config`, `phasesReached`, `seamsInstrumented`) re-asserted before the created-file comparison, so the baseline and the disabled run are comparable by construction and a scenario mismatch fails as fixture staleness rather than as a created-file diff. |
