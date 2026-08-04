@@ -13,7 +13,19 @@ feature: pdlc-advisory-tier
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.3 | 2026-08-04 |
+| pdlc | draft | Claude | 1.4 | 2026-08-04 |
+
+> **v1.4 (POSTMORTEM-PR R-4):** one Medium and five Low, all text, no design change. §6.5 and §3's O-6
+> now give the two gateless seams (A1, A3) their own mutation control — a structural
+> `seamOps.verifyGate === null` assertion, since with `permittedActions: []` a passing-stub gate is
+> behaviourally invisible and only a structural oracle can catch it — and scope the replace-the-gate
+> conjunct to A2/A4/A5 (SE F-01); §6.5's three TSPEC citations re-ground on TSPEC v1.3 (SE F-02).
+> §2.1 cites `pdlc/workflows/package.json:18-22` for the jest exclusion instead of the deleted `A-00`
+> (PM F-02, SE F-04) and states `scanFixtures.js`'s A-01 ownership as closed (SE F-03). §13.1's items
+> 1, 3, 4 and 6 become closure records — all four were fixed upstream in the TSPEC v1.3 / PLAN v1.6
+> erratum round — so **no `ERRATUM:` line is emitted from this document** (PM F-01, SE F-05); §5.2's
+> PROP-BUD-03 rationale follows item 4's closure. **No property was added, removed or re-levelled**:
+> 183 property rows, and §1's and §12.3's 195 / 148 / 40 / 7 / 0 stand unrecomputed.
 
 > **v1.3 (POSTMORTEM-PR R-3):** the `scanFixtures.js` open erratum is closed — PLAN v1.6 carries the
 > A-01 ownership row this document asked for. §12.3's owner cell and §13.1 item 5 record the closure;
@@ -328,12 +340,16 @@ each such property names the earlier outcomes its fixture must defeat:
 
 ### O-6 — A `resolved` outcome is reachable only through a gate
 
-FSPEC BR-6. For every member of `ADVISORY_SEAMS`, a property asserts that with the seam's
-`verifyGate` stubbed to fail the disposition is **`escalated` with reason
-`post-action-verification-failed`, satisfying O-1 in full** — the positive outcome AC-4.6 requires,
-not the absence check "never `resolved`" — and that **replacing the gate with
-`async () => ({ passed: true })` makes the case fail**, so a silently-removed or stubbed gate cannot
-pass. See §6.5 for the two conjuncts stated in full, and §13 item 1 for the one seam where the upstream documents disagree about what A1's gate is.
+FSPEC BR-6. For every member of `ADVISORY_SEAMS`, a property asserts a positive outcome plus a
+mutation control, and the mutation runs in opposite directions at the two seam families. **At the
+three seams that declare a gate (A2, A4, A5):** with the seam's `verifyGate` stubbed to fail the
+disposition is **`escalated` with reason `post-action-verification-failed`, satisfying O-1 in full**
+— the positive outcome AC-4.6 requires, not the absence check "never `resolved`" — and **replacing
+the gate with `async () => ({ passed: true })` makes the case fail**, so a silently-removed or stubbed
+gate cannot pass. **At the two gateless seams (A1, A3, whose `permittedActions` is `[]`):** `resolved`
+is unreachable on every path with each path's own O-1 triple, and the mutation control is structural —
+`seamOps.verifyGate === null` asserted directly, so *installing* the passing stub fails the case. See
+§6.5 for both forms stated in full.
 
 ## 4. Properties — configuration and model rung
 
@@ -425,13 +441,13 @@ A-22 🟢). PLAN §8.1 places all six FSPEC T-02 cases in the driver file.
 
 **Why PROP-BUD-03 does not assert against `SeamOps`.** TSPEC §4.3's `SeamOps` typedef declares nine
 members — `gatherEvidence`, `prompt`, `conditionHolds`, `apply`, `producedPaths`, `revert`,
-`verifyGate`, `declaredScope`, `permittedActions` — and **no** `waitMs` member or accessor, while
-TSPEC §4.5 (`TSPEC:474`) describes `waitMs` as "the accumulated check-rollup wait the seam reports".
-There is therefore nothing on the seam object to assert against. Whether that reporting surface
-becomes a tenth `SeamOps` member or stays a driver-side accumulator is the TSPEC author's to settle
-and is routed upstream as an erratum; PROP-BUD-03 above is stated at the one surface that exists
-either way — the argument the driver hands `budgetExceeded` — so it is implementable today and stays
-correct under either resolution.
+`verifyGate`, `declaredScope`, `permittedActions` — and **no** `waitMs` member or accessor. There is
+therefore nothing on the seam object to assert against. TSPEC v1.3 settled the question this document
+routed at v1.1 (§13.1 item 4): `SeamOps` stays at "Nine members, **`waitMs` deliberately not tenth**"
+(`TSPEC:424`), and the reporting surface is "the `waitMs` argument the driver passes `budgetExceeded`,
+not a `SeamOps` accessor" (`TSPEC:428`), with `runAdvisorySeam` owning the counter (`TSPEC:489`).
+PROP-BUD-03 above is stated at exactly that argument, which is now the normative surface rather than
+merely the one that existed under either resolution.
 
 ### 5.3 The invocation lifecycle (`runAdvisorySeam`) — driver surface
 
@@ -1129,52 +1145,62 @@ report actually carries.
 
 ### 13.1 Upstream defects — routed, not absorbed
 
-Six items found while deriving these properties belong to upstream documents. **Five are emitted as
-`ERRATUM:` lines** to their owning author; the remaining one (item 2) was resolved upstream before the
-v1.1 revision and is listed only so a reviewer does not re-raise it. This document does not edit those
-documents and does not treat any of these defects as its own.
+Six items found while deriving these properties belong to upstream documents. **None is still open —
+all six are now closed upstream, and none is emitted as an `ERRATUM:` line.** Every item is kept as a
+closure record: it states the resolution and cites the upstream line that carries it, so a later
+reviewer does not re-raise a defect that no longer exists. This document does not edit those documents
+and does not treat any of these defects as its own.
 
-1. **A1's `verifyGate` — PLAN §8.2 contradicts TSPEC.** PLAN §8.2 (and its §3 A-31 row) says "A1
-   declares **no** gate, so its case asserts `verifyGate == null`". TSPEC §5.5 and §6.3 both declare
-   A1's `verifyGate` as `async () => ({ passed: true })` — which is exactly the stub PLAN's own
-   T-03-6(b) says must make the gate-exclusivity case **fail**. As written, A1's shipped `SeamOps`
-   fails PLAN's own case. The substantive rule is agreed and is what PROP-GATE-01…05 assert: A1 has
-   **no post-action gate**, its `permittedActions` is `[]`, and `resolved` is unreachable at A1 at
-   all. Which of the two representations ships — a null member, or a trivially-passing stub that is
-   unreachable — is the PLAN author's to settle; PROP-GATE's A1 row asserts the unreachability, which
-   holds either way, and defers the representation.
+1. **Closed — A1's and A3's `verifyGate` have one representation across TSPEC and PLAN: `null`.** The
+   item was that PLAN §8.2 asserted `verifyGate == null` at A1 while TSPEC declared the trivially-
+   passing stub, which is the same stub PLAN's own T-03-6(b) treats as the falsifying mutation. TSPEC
+   v1.3 settled it in favour of `null`: A1's §5.5 row now reads "**`null`** — A1 declares no
+   post-action gate … Deliberately **not** `async () => ({ passed: true })`" (`TSPEC:655`), A3's is
+   "**`null`** — same shape as A1" (`TSPEC:657`), and §4.3 makes it a type-level commitment —
+   `{null | (() => Promise<…>)} verifyGate` (`TSPEC:416`), "Those two seams also supply
+   **`verifyGate: null`**" (`TSPEC:434`). PLAN v1.6 records the same resolution "in favour of `null`"
+   (`PLAN:1024`) and §8.2's T-03-6 row states the mutation in both directions (`PLAN:869`). §6.5 now
+   asserts the representation directly — `seamOps.verifyGate === null`, per gateless seam — rather
+   than deferring it. Nothing left to route.
 2. **`governingClass([])` — resolved upstream, recorded here.** TSPEC §7.2 now states that the empty
    input is unreachable by construction (A3-1 rejects as malformed any classification whose classified
    count is below the finding count) and deliberately names no return value. P-9 and PROP-A3-04 are
    scoped to non-empty multisets accordingly. **No erratum** — this is a closed item, listed so a
    reviewer does not re-raise it.
-3. **P-4's closure conjunct is weaker than the declared return type.** PLAN §6.5 states P-4's closure
-   as `result.reason ∈ ADVISORY_REFUSAL_REASONS ∪ {null}` — eight reasons. TSPEC §5.1's JSDoc declares
-   `classifyEnvelope`'s return as `reason ∈ {"prohibited-action","revert-on-test-touch","out-of-envelope"} | null`
-   — three. An implementation returning `low-confidence` or `budget-exhausted` from the classifier
-   would satisfy PLAN's P-4 while violating TSPEC's contract, so the property as stated cannot
-   falsify a real defect class. §11 states the stronger, three-member form.
-4. **`waitMs` has no declared reporting surface on `SeamOps`.** TSPEC §4.5 (`TSPEC:474`) describes
-   `waitMs` as "the accumulated check-rollup wait **the seam reports** (A5 only; zero elsewhere)",
-   but TSPEC §4.3's `SeamOps` typedef declares nine members — `gatherEvidence`, `prompt`,
-   `conditionHolds`, `apply`, `producedPaths`, `revert`, `verifyGate`, `declaredScope`,
-   `permittedActions` — and no `waitMs` member or accessor. A property "asserted against the seam's
-   own `SeamOps`" would therefore name a surface that does not exist. Whether the resolution is a
-   tenth `SeamOps` member or an explicit statement that the driver accumulates it is the TSPEC
-   author's to settle; PROP-BUD-03 (§5.2) is restated against the argument the driver hands
-   `budgetExceeded`, which exists under either resolution, so nothing here blocks on it.
+3. **Closed — P-4's closure is now stated over the three-member return type.** The item was that PLAN
+   §6.5 stated P-4's closure as `result.reason ∈ ADVISORY_REFUSAL_REASONS ∪ {null}` — the ladder's
+   eight-member set — while TSPEC §5.1's JSDoc declares `classifyEnvelope`'s return over three, so a
+   classifier returning `low-confidence` or `budget-exhausted` would satisfy P-4 while violating
+   TSPEC. PLAN's P-4 row now states the closure as
+   `result.reason ∈ {"prohibited-action","revert-on-test-touch","out-of-envelope"} ∪ {null}`,
+   transcribed from `classifyEnvelope`'s declared return type and explicitly **not**
+   `ADVISORY_REFUSAL_REASONS` (`PLAN:779`), and PLAN §3's A-06 row was aligned to match (`PLAN:257`).
+   §11 states the same three-member form; the closed-set assertion over the full eight-member
+   constant stays where it belongs, in T-03-8's set-equality case. Nothing left to route.
+4. **Closed — `waitMs`'s reporting surface is named, and `SeamOps` is held at nine members.** The
+   item was that TSPEC §4.5 described `waitMs` as the wait "the seam reports" while §4.3's `SeamOps`
+   typedef declared no such member or accessor. TSPEC v1.3 resolved it in the direction this document
+   had already assumed: §4.3 now reads "Nine members, **`waitMs` deliberately not tenth**"
+   (`TSPEC:424`) and names the surface as "the `waitMs` argument the driver passes `budgetExceeded`,
+   not a `SeamOps` accessor" (`TSPEC:428`), with the driver's `runAdvisorySeam` owning the counter
+   (`TSPEC:489`). PROP-BUD-03 (§5.2) is already stated against exactly that argument, so no property
+   changes. Nothing left to route.
 5. **Closed — `fixtures/scanFixtures.js` now has its PLAN ownership row.** PLAN v1.6 assigned the
    module to **A-01** in §4's file-ownership manifest, exactly as this item proposed, and
    `validatePlanContract` passes over the amended manifest (36 tasks, 36 rows, `{"ok":true}`). Kept
    only as a closure record so no later reviewer re-raises it; there is nothing left to route.
-6. **TSPEC §11.1 states an assertion its own code shape falsifies.** `TSPEC:1245` reads "A grep for
-   `advisory.enabled` returning exactly three sites is itself a maintainable assertion", one paragraph
-   after declaring the driver's test as `config.enabled === false` (`TSPEC:1241`) and four sections
-   after writing the notice gate as `advisory.config.enabled` (`TSPEC:286`). Only the §9.3 distil guard
-   is written `advisory.enabled` (`TSPEC:1113`), so the stated grep finds **one** site, not three.
-   PROPERTIES inherited the wording faithfully at v1.1 and has now restated PROP-DIS-06 against the
-   transcribed matcher `/\.enabled\b/` with an explicit counted set (§10.1); TSPEC §11.1's own sentence
-   still needs the same correction, and the choice of matcher there should match.
+6. **Closed — TSPEC §11.1 now carries the same matcher and the same counted set.** The item was that
+   §11.1 asserted "a grep for `advisory.enabled` returning exactly three sites", while the three reads
+   do not share a literal spelling — the driver's is `config.enabled === false`, the notice gate's is
+   `advisory.config.enabled`, only the §9.3 distil guard is written `advisory.enabled` — so the stated
+   grep finds **one** site, not three. TSPEC v1.3 made exactly that correction and chose the matcher
+   this document had already transcribed: §11.1 now reads "the three sites do not share a literal
+   spelling … so a grep for the token `advisory.enabled` finds one site, not three. The assertion is a
+   **source-text scan for `/\.enabled\b/`**", over `pdlc/workflows/orchestrate-dev.js` and
+   `pdlc/workflows/orchestrate-queue.js` only — never `pdlc/workflows/dist/*.bundle.js`, which inlines
+   both modules and would double every hit — "and it must return **exactly three** matches"
+   (`TSPEC:1265-1271`), enumerating the same three sites PROP-DIS-06 counts (§10.1). Both documents now
+   state one matcher and one count. Nothing left to route.
 
 ### 13.2 Deliberate negative space — what has no property, and why
 
