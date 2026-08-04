@@ -124,6 +124,48 @@ No High and no Medium findings. One new Low, carried forward alongside the five 
 
 ## Positive Observations
 
+- **The withdrawal is surgical and complete.** Three hunks, two of them the paired D-6/T-10-3 rows
+  and one the version stamp. No collateral edit, no residue of the withdrawn wording, and the two
+  erratum items that *were* correct (A2/R-2 ordering, C-2 gating) were left alone rather than
+  re-opened. Withdrawing a bad edit without disturbing the good ones in the same batch is the hard
+  part, and it was done cleanly.
+- **D-6 survived the round trip with its oracle quality intact.** The transcribed-literal
+  requirement and the "a comparison whose expected value is produced by the system under test cannot
+  fail" rationale are back verbatim, and T-10-3 still names the red direction explicitly. An edit and
+  its withdrawal are a common way for a carefully-worded oracle to lose a clause; this one lost none.
+- **The FSPEC and the TSPEC agree again.** `TSPEC:1213-1227` was already implementing the `26c3f1c`
+  baseline and citing `26c3f1c:6222` for `raisePrAndVerifyCi`; the erratum had left the FSPEC
+  asserting the opposite of its own downstream document. The withdrawal restores that agreement
+  without needing a TSPEC edit.
+- **The premise was checked against git, not against prose.** `POSTMORTEM-T:119-131` disproves the
+  erratum with the two commands anyone can re-run, and names the contradiction the author was holding
+  simultaneously. That is the right shape of evidence for a withdrawal, and it let me confirm it in
+  one pass.
+
 ## Recommendation
 
+**Approved with minor changes**
+
+The v1.3 → v1.4 delta withdraws an erratum that rested on a false git-history premise and restores
+D-6 / T-10-3 to the `26c3f1c` baseline. I verified the premise directly rather than by reading the
+argument: `raisePrAndVerifyCi` is defined at `26c3f1c:6222` and appears four times in that tree, so
+Phase PUB's file-creating path is on both sides of D-6's equality; and `26c3f1c` is an ancestor of
+this branch's fork point `6a4548d`, separated from it by three commits that touch no file-creating
+path. The restored baseline is therefore both complete (carries every merged pipeline change) and
+clean (carries none of this feature's), which is what D-6 needs and what the withdrawn version did
+not reliably give.
+
+I also retract the ancestry claim I made in v3 (Q-08/Q-09) and repeated in v4 — that `26c3f1c` is not
+an ancestor of this branch and that the branch forks at `7cdfbb0`. Both are false; the fork point is
+`6a4548d` and the pin precedes it. My v4 confirmation endorsed the erratum partly on that claim, so
+this v5 corrects my own record as well as the document's.
+
+No section that carried an approval-gating finding regressed, the two correct erratum items are
+untouched, and the oracle keeps its transcribed-literal and set-equality properties. One new Low
+(L-10: state the pin's behavioural role in §2, where the pin is introduced) plus the five open v3
+Lows — all non-blocking. **My approval stands.**
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 6}
