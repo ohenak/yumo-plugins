@@ -375,6 +375,35 @@ value transcribed, never derived.
 
 ## 7. Integration points
 
+Each row was re-read on the working tree at HEAD `ca55bb6`; line numbers are navigation hints against
+files that churn, so verify by symbol name (`grep -n`) before editing.
+
+| # | Site | What is there at HEAD | Change | Task |
+|---|---|---|---|---|
+| I-1 | `orchestrate-dev.js:1621` | `const MODEL_IMPLEMENTATION = "sonnet";` | the four advisory constants placed immediately after, so all rungs read as one block | A-17 |
+| I-2 | `orchestrate-dev.js:181` | `parseImplementationConfig` | `parseAdvisoryConfig` modelled on its independent-per-key + `invalidKeys` shape; its `testCommand` is also A4's gate command | A-17, A-23 |
+| I-3 | `orchestrate-dev.js:6905` | `async function commitPaths(...)` — **module-private** | gains the `export` keyword; reused verbatim by A2's `verifyGate`, including its `gitWithLockRetry` (`:6862`) retry, which stays private | A-17, A-31 |
+| I-4 | `orchestrate-dev.js:708`, `:731` | `effectiveGuardPaths`, `guardVerdict` | reused verbatim for X-e; no second matcher is written | A-20 |
+| I-5 | `orchestrate-dev.js:1321` | `export const MERGE_ESCALATIONS = Object.freeze({` | **not edited**; `ADVISORY_ESCALATIONS` added as an adjacent sibling | A-21 |
+| I-6 | `orchestrate-dev.js:6805` | `defaultAppendFile` | the append transport for both the record and the escalation log; gains a recursive `mkdirSync` of the parent inside its existing try, so `docs/_queue/` is created when absent | A-21 |
+| I-7 | `orchestrate-dev.js:8282-8288` | the rebase-conflict `recordPhase` + `throw haltError(...)` | A4 fires immediately **before** the halt; the halt itself is byte-identical | A-25 |
+| I-8 | `orchestrate-dev.js:8294-8302` | the DoD-not-passed `recordPhase` + `throw haltError(...)` | A3 fires immediately before; the halt is unconditional (A3 cannot resolve) and gains only the classification summary | A-25 |
+| I-9 | `orchestrate-dev.js:6337` / `:6371-6373` | `raisePrAndVerifyCi`; `if (status === "failed") { throw haltError(...) }` | two no-op-defaulted parameters; A5 fires on this one branch. `status === "passed"` (`:6369`), the no-checks path and the completion cap are untouched | A-26 |
+| I-10 | `orchestrate-dev.js:5927` | `checkPrCi` reading `statusCheckRollup` | the sole source of `ciStatus`, before and after (P-3); A5's re-poll calls it, never assigns around it | A-24, A-26 |
+| I-11 | `orchestrate-dev.js:8388` / `:8391` | end of Phase PUB `recordPhase`; start of Phase MERGE | the new Phase-H2 distil step lands between them. Phase H (`:8307`+) is untouched | A-27 |
+| I-12 | `orchestrate-dev.js:8342`, `:8348` | the literal guard-block test and the `/pdlc guard: refusing to delete CROSS-REVIEW files in \[([^\]]+)\]/` extraction | **must keep matching.** A-28 extends the hook's message; A-13's regression test pins both sites | A-13, A-28 |
+| I-13 | `orchestrate-dev.js:8595` | `function buildFinalReport({` — module-private | gains `advisory`, `dodVerifiedCommit`, `dodHeadUnverified`; ridden on both the halt and success report paths, exactly as `notices` and `queueRow` already are | A-26, A-27 |
+| I-14 | `orchestrate-dev.js:2039` | `parsePlanTasks` | supplies the PLAN-named files half of `declaredScope` at A4 and A5 | A-23, A-24 |
+| I-15 | `orchestrate-queue.js:302` | `parseTriageVerdict` | returns a third field, `seamToken`; the last-line-wins scan and fail-closed `needs-human` fallback are preserved | A-29 |
+| I-16 | `orchestrate-queue.js:653` | `triagePrompt` | the three-verdict grammar is preserved and a `[SEAM:A1]`/`[SEAM:A2]` token appended; the prompt gains A2's citation-drift obligation | A-29 |
+| I-17 | `orchestrate-queue.js:890-897` | `precheckDependencies` → `if (precheck.blocked) { … continue; }` | **unchanged.** A blocked candidate is skipped before triage, which is why A1-2 is unreachable on the production path and is unit-tested over `honourA1Verdict` instead | A-30 |
+| I-18 | `orchestrate-queue.js:912-920` | the `needs-human` skip branch | routes to A1/A2 when the tier is on; the skip still happens on every non-resolved outcome | A-30, A-31 |
+| I-19 | `orchestrate-queue.js:758-767` | `main`'s parameter list | gains `_appendFile`, `_runAdvisorySeam`, `_readAdvisoryConfig`; the config read is placed after the drift gate and before `QUEUE.md` is read | A-30 |
+| I-20 | `orchestrate-queue.js:1221` | `buildQueueReport` | gains the advisory summary (S-5); a dev-side report's A1/A2 rows stay structurally zero | A-31 |
+| I-21 | `build-runtime.mjs:87`, `:96-103` | the dev export array and the queue prelude string | additive names only; three sources, three artifacts, no new `wrapModule` call, no new manifest row | A-32 |
+| I-22 | `guard-harvest-before-delete.sh:35`, `:43`, `:57-59` | the `CROSS-REVIEW`/`CODE_REVIEW` early-exit test, token regex and refusal message | gains the `ADVISORY` class; the message is **extended** with a `[class: …]` suffix, never rewritten (see I-12) | A-28 |
+| I-23 | `.claude/pdlc.config.json` | `implementation.testCommand` / `postWaveCommand` / `postWavePathspecs` | **not edited by any task.** It is the wave gate's command and the mechanism by which `pdlc/workflows/dist/` is rebuilt and committed per wave | — |
+
 ## 8. Acceptance-test coverage map
 
 ## 9. Definition of Done
