@@ -610,6 +610,17 @@ real-tree comparisons live (`__tests__/fixtures/tmpGitFixture.js`), per PLAN §6
 | PROP-A5-17 | CI turning green mid-diagnosis must yield `no-action` via `conditionHolds`, with the phase continuing from its own rollup read. | Functional | Unit | V-7, TSPEC §8.5 | `advisoryPubSeam.test.js` |
 | PROP-A5-18 | A proposed CI fix that touches a test file must be reverted whole with reason `revert-on-test-touch` — the single most likely way an agent "fixes" red CI, and therefore asserted at the seam as well as in §6.2. | Security | Unit | AC-3.5, T-03-3 | `advisoryPubSeam.test.js` |
 | PROP-A5-19 | The A5 wiring must fire **only** on `raisePrAndVerifyCi`'s `status === "failed"` branch (`orchestrate-dev.js:6337`): the `passed` path, the no-checks path and the completion cap must be untouched, and every pre-existing `raisePrAndVerifyCi` test must pass without modification (the two new parameters default to no-ops). | Integration | Integration | AC-10.3, TSPEC §8.1 | `advisoryPubSeam.test.js` |
+| PROP-A5-20 | **E-2's decidable rule, all three conjuncts.** A failing check is *introduced* — and therefore an E-2 member — iff the same check **passes at the merge-base commit**, **passes at the default-branch tip**, and **fails at the branch head** (`REQ:130`). All three must be probed by the pipeline through `_git` / `_ghRun`, never taken from the agent's claim, and each must be independently falsifiable: one fixture per dropped conjunct — (i) the check failing at the **merge base** ⇒ `inside: false`, reason `out-of-envelope`, O-1 in full; (ii) the check failing at the **default-branch tip** ⇒ the pre-existing escalation of PROP-A5-03, which is evaluated first; (iii) the check **passing at the branch head** ⇒ `conditionHolds()` false ⇒ `no-action`, nothing applied. Each of the three is paired with the **same positive in-envelope control** — the all-conjuncts-hold fixture that classifies `inside: true` with `permittedActions` containing `E-2` — so no case can pass by refusing everything. | Security | Unit | AC-3.3 (E-2), AC-8.4, A5-1, T-07-2 | `advisoryPubSeam.test.js` (A-11 🔴 / A-24 🟢) |
+
+**Why E-2 gets its own three-conjunct property.** AC-3.3 gives each permitted action a decidable
+rule, and three of the four are already proved here: E-3 by PROP-ENV-11 (absent from the merge-base
+tree **and** from the default-branch tip), E-4 by PROP-A2-02/03 (the cited symbol still exists), E-1
+by O-3's counted oracle (a re-run on a sha byte-equal to the pre-seam head) plus PROP-A5-07's
+push-free accounting. Before PROP-A5-20, E-2's rule was asserted nowhere: PROP-A5-03 asserts only the
+**ordering** of the default-branch probe, PROP-A5-04 the BL-05-absent path. An implementation that
+probed only the default-branch tip and dropped the merge-base conjunct satisfied every property in
+this section. That matters most at E-2 because it is the sole envelope member that lets the tier
+commit and push to the branch unattended.
 
 ## 9. Properties — advisory record, escalation log, summary, harvest
 
