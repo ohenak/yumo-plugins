@@ -490,7 +490,7 @@ Every Integration-level property PROPERTIES defines needs a named runnable harne
 | Property class | Harness | Owner |
 |---|---|---|
 | Phase-integration (the halt still happens at `dev`'s DOD/PUB bodies, the skip still happens at the queue's `needs-human` branch) | drive the real phase body with `_runAdvisorySeam` returning a **scripted disposition** — not a real seam — plus `makeFileDouble` and `makeFakeClock` | A-10, A-11, A-12 |
-| Tree-state invariants ("byte-identical to its pre-invocation state", "exactly one of two states") | `fixtures/tmpGitFixture.js` — a real temporary git repo; compare `git status --porcelain` and `git rev-parse HEAD` before and after | A-07, A-10, A-11 |
+| Tree-state invariants ("byte-identical to its pre-invocation state", "exactly one of two states") | `fixtures/tmpGitFixture.js` — a real temporary git repo; compare `git status --porcelain` and `git rev-parse HEAD` before and after | **A-10, A-11 only.** A-07 is deliberately excluded: it drives the driver against a *fake* `SeamOps`, so no real tree is touched and a git comparison there would assert nothing. A-07's revert-on-`{ok:false}` case asserts the *call*, `revert` invoked exactly once before the disposition is returned; A-10/A-11 assert the tree. |
 | Disabled-run created-file set (D-6) | instrument `_writeFile`/`_appendFile`/`_git` through `makeFileDouble`, compare against `fixtures/created-files-26c3f1c.json` after re-asserting its `scenario` header | A-15, A-16 |
 
 **PROPERTIES goes into the implementing agent's context in full**, not only this task table. Three of
@@ -504,32 +504,66 @@ disposition or it sits in the tree forever:
 
 | Artifact | Created by | Disposition |
 |---|---|---|
-| `docs/{feature}/ADVISORY-{feature}.md` | the record write, at runtime in consuming repos | **Harvested and deleted** by the new post-PUB distil step (A-27), through the guard-covered `git rm`. Retained with a report notice when the guard refuses. Queue-side records persist by design — no queue-side path distils them. |
+| `docs/{feature}/ADVISORY-{feature}.md` | the record write, at runtime in consuming repos | **Harvested and deleted** by the new post-PUB distil step (A-27), through the guard-covered `git rm`. Retained with a report notice when the guard refuses. Queue-side records persist by design — no queue-side path distils them — the candidate feature's own next dev-side run picks the record up at its post-PUB distil step (AC-9.1), so persistence is **deferral, not retention**, and AC-9.3's "absent at end of run" holds of that later run. |
 | `docs/_queue/ESCALATIONS.md` | escalation writes, at runtime | **Deliberately retained.** Append-only, never read by this tier, consumed downstream by an operator or by `pdlc-engineering-loop`. It is the feature's durable output, not scaffolding. |
 | `pdlc/workflows/__tests__/fixtures/created-files-26c3f1c.json` | A-15 | **Retained, tracked.** Regenerated only deliberately, by re-stating the scenario header. Its provenance block is the instruction for doing so. |
 | `pdlc/workflows/__tests__/helpers/advisoryDoubles.js` | A-02 | **Retained, tracked** — permanent test infrastructure. |
-| `docs/pdlc-advisory-tier/MANUAL-VERIFICATION-pdlc-advisory-tier.md` | A-34 | **Harvested into LEARNINGS at Phase H, then deleted.** It records one runtime fact (which model-rung branch fired); once that fact is in LEARNINGS the file is spent. Named here because the harvest guard does not watch this pattern and will not stop its deletion. |
+| `docs/pdlc-advisory-tier/MANUAL-VERIFICATION-pdlc-advisory-tier.md` | A-34 | **Harvested into LEARNINGS at Phase H, then deleted.** It records one runtime fact (which model-rung branch fired); once that fact is in LEARNINGS the file is spent. The LEARNINGS entry must carry the recorded `RESULT:` line **verbatim**, including an `unverified` outcome — that is the one durable fact, and it must survive the delete. Named here because the harvest guard does not watch this pattern and will not stop its deletion. |
 
 ### 6.4 Coverage floor, and the exemptions taken knowingly
 
-Floor: **90% statements / 85% branches** over the advisory surface (every symbol TSPEC §14.1 names).
+Floor: **90% statements / 85% branches** over the **advisory surface enumerated below** — not over
+`orchestrate-dev.js`, whose 8,600 pre-existing lines would dominate the number in either direction,
+and not over TSPEC §14.1 by reference (§14.1's rows include prose entries such as "the guard-script
+edit" and five `(reused)` pre-existing symbols this feature does not own and must not be held to).
 
-**How it is measured — there is no configured coverage gate to inherit.** `pdlc/workflows/package.json`
-carries a `jest` block with `testEnvironment`, `transform`, `globalSetup`, `globalTeardown` and
-`testPathIgnorePatterns` and **no** `collectCoverage`, `coverageThreshold` or `coverageProvider` key,
-so nothing in the repo measures coverage today. The floor is therefore checked by an explicit run,
-not by a threshold the suite enforces:
+**The advisory surface — the exact function names the floor is computed over** (enumerated here so a
+reviewer never has to interpret a reference):
+
+| Module | Functions in scope |
+|---|---|
+| `pdlc/workflows/orchestrate-dev.js` | `parseAdvisoryConfig`, `readAdvisoryConfigSafely`, `isModelResolutionError`, `resolveAdvisoryRung`, `parseAdvisoryVerdict`, `budgetExceeded`, `refusalReasonFor`, `classifyEnvelope`, `touchesTestArtifact`, `touchesDodCriterion`, `branchCreated`, `runAdvisorySeam`, `parseA3Classification`, `governingClass`, `probeDefaultBranchChecks`, `probeWorkflowRerun`, `renderAdvisoryEntry`, `appendAdvisoryEntry`, `renderEscalationEntry`, `appendEscalationEntry`, `advisorySummaryRows`, `distilAdvisoryRecord` |
+| `pdlc/workflows/orchestrate-queue.js` | `hasResidualSeamToken`, `honourA1Verdict`, plus the advisory branches added inside `parseTriageVerdict` and `triagePrompt` (the pre-existing bodies are excluded — see below) |
+
+Explicitly **out** of the denominator: every `(reused)` symbol of TSPEC §14.1 —
+`guardVerdict`, `checkPrCi`, `commitPaths`, `rebaseOntoDefault`, `_runCommand` — which this feature
+calls but does not own.
+
+**The mechanical procedure.** `pdlc/workflows/package.json`'s `jest` block carries
+`testEnvironment`, `transform`, `globalSetup`, `globalTeardown` and `testPathIgnorePatterns` and
+**no** `collectCoverage`, `coverageThreshold` or `coverageProvider` key, so there is no gate to
+inherit and no task here adds one (a repo-wide `coverageThreshold` would fail on pre-existing files
+this feature does not touch — out of scope). The floor is computed by two commands, in order:
 
 ```
-cd pdlc/workflows && npm test -- --coverage \
+cd pdlc/workflows && npm test -- --coverage --coverageReporters=json \
   --collectCoverageFrom='orchestrate-dev.js' --collectCoverageFrom='orchestrate-queue.js' \
   --testPathIgnorePatterns '/node_modules/' '/__tests__/helpers/' '/__tests__/fixtures/'
+
+node -e "const c=require('./coverage/coverage-final.json'),N=new Set(process.argv.slice(1));\
+let s=0,st=0,b=0,bt=0;for(const f of Object.values(c)){const keep=new Set();\
+for(const [k,fn] of Object.entries(f.fnMap)) if(N.has(fn.name)) keep.add(fn.decl.start.line+':'+(fn.loc.end.line));\
+const inRange=l=>[...keep].some(r=>{const[a,z]=r.split(':').map(Number);return l>=a&&l<=z;});\
+for(const [k,m] of Object.entries(f.statementMap)) if(inRange(m.start.line)){st++;if(f.s[k]>0)s++;}\
+for(const [k,m] of Object.entries(f.branchMap)) if(inRange(m.loc.start.line)){for(const n of f.b[k]){bt++;if(n>0)b++;}}}\
+console.log('statements',(100*s/st).toFixed(1),'branches',(100*b/bt).toFixed(1));" \
+  parseAdvisoryConfig readAdvisoryConfigSafely isModelResolutionError resolveAdvisoryRung \
+  parseAdvisoryVerdict budgetExceeded refusalReasonFor classifyEnvelope touchesTestArtifact \
+  touchesDodCriterion branchCreated runAdvisorySeam parseA3Classification governingClass \
+  probeDefaultBranchChecks probeWorkflowRerun renderAdvisoryEntry appendAdvisoryEntry \
+  renderEscalationEntry appendEscalationEntry advisorySummaryRows distilAdvisoryRecord \
+  hasResidualSeamToken honourA1Verdict
 ```
 
-The number is read against the §14.1 symbol set by a human or by the DoD reviewer (§9.1). No task in
-this PLAN adds a `coverageThreshold`: turning coverage into a suite-failing gate is a repo-wide policy
-change that would fail on pre-existing files this feature does not touch, and is out of scope. Two
-exemptions are recorded rather than re-litigated each round:
+The second command reads istanbul's per-function `fnMap` declaration ranges out of
+`coverage-final.json` and sums only the statements and branches that fall inside the enumerated
+functions' line ranges. It prints two numbers, both comparable against the floor without judgement,
+which is what makes the §9.1 checkbox mechanical: **statements ≥ 90.0, branches ≥ 85.0.** A function
+name absent from `fnMap` (renamed, inlined, never shipped) contributes nothing and is itself a
+finding — the reviewer checks that all 24 names resolve before reading the percentages. The command
+adds no file to the repo and no dependency; `coverage/` is not committed.
+
+Two exemptions are recorded rather than re-litigated each round:
 
 | Exempt | Why | Evidence instead |
 |---|---|---|
