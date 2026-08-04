@@ -275,6 +275,49 @@ fallback count against a *positive* ordinary-failure disposition (O-3's symmetry
 
 ## 5. Properties — verdict contract, invocation lifecycle, budgets
 
+Two homes, and the split is load-bearing: the **unit** surface of `parseAdvisoryVerdict` and
+`budgetExceeded` lives in `advisoryVerdict.test.js` (A-05 🔴 / A-19 🟢); every property provable only
+against the driver lives in `advisoryDriver.test.js`, block `A-22 — driver lifecycle` (A-07 🔴 /
+A-22 🟢). PLAN §8.1 places all six FSPEC T-02 cases in the driver file.
+
+### 5.1 The verdict contract (`parseAdvisoryVerdict`) — unit surface
+
+| # | Property | Category | Level | Traces | Home |
+|---|---|---|---|---|---|
+| PROP-VER-01 | `parseAdvisoryVerdict(raw)` must be pure and total, returning `{ verdict, malformed, why }` for **any** string — empty, whitespace, prose with no trailer, truncated JSON, a trailer repeated twice — and must never throw. | Error Handling | Unit | V-4, TSPEC §4.2 | `advisoryVerdict.test.js` |
+| PROP-VER-02 | A well-formed verdict must carry exactly the six declared fields — `seam` ∈ `ADVISORY_SEAMS`, non-empty `diagnosis`, non-empty `proposedAction`, `confidence` ∈ {`high`,`low`}, boolean `withinEnvelope`, non-empty `evidence[]` — and a parse must reject any input missing or mistyping one. | Contract | Unit | AC-2.1, FSPEC §4.2 | `advisoryVerdict.test.js` |
+| PROP-VER-03 | The five malformedness rules must each be falsifiable in isolation: (a) `seam` ≠ the dispatched seam, (b) empty `evidence`, (c) empty `diagnosis`, (d) absent `proposedAction`, (e) `confidence` outside the two-value enum. Each must set `malformed: true` with a `why` naming that rule. | Error Handling | Unit | V-4, FSPEC §4.4, AC-2.3 | `advisoryVerdict.test.js` |
+| PROP-VER-04 | `confidence` must be exactly two-valued: a third value (`"medium"`, `"HIGH"`, `1`) must be malformed, never coerced to `high`. | Contract | Unit | AC-2.1 | `advisoryVerdict.test.js` |
+| PROP-VER-05 | A verdict's `withinEnvelope` field must never be read as the membership decision: a parse must preserve it as data, and the driver must reach the same disposition whether it is `true` or `false` when the pipeline's own classification is unchanged. | Security | Unit | AC-2.1, V-3, BR-1 | `advisoryVerdict.test.js` (field) + `advisoryDriver.test.js` (behaviour, T-02-3) |
+
+### 5.2 Budgets (`budgetExceeded`) — unit surface
+
+| # | Property | Category | Level | Traces | Home |
+|---|---|---|---|---|---|
+| PROP-BUD-01 | `budgetExceeded({attempts, attemptBudget, elapsedMs, waitMs, seamBudgetMinutes})` must be pure — no clock, no IO — and must return `true` iff `attempts >= attemptBudget` **or** `elapsedMs - waitMs >= seamBudgetMinutes * 60_000`. | Functional | Unit | AC-2.4, NFR-4, V-5 | `advisoryVerdict.test.js` |
+| PROP-BUD-02 | The wall-clock comparison must **exclude** accumulated check-rollup wait: adding any `waitMs` must never flip a `false` result to `true`, for any fixed `elapsedMs`. | Data Integrity | Unit | NFR-4, A5-3, T-07-12 | `advisoryVerdict.test.js` |
+| PROP-BUD-03 | `waitMs` must be zero for every seam but A5 — a non-zero `waitMs` at A1–A4 is a defect and must be asserted against at the seam's own `SeamOps`. | Contract | Unit | NFR-4, TSPEC §4.5 | `advisoryVerdict.test.js` |
+| PROP-BUD-04 | Whichever bound is reached first must end the invocation, and the reason must be computed **once at termination** from the terminating condition — never accumulated across attempts. A run whose earlier attempts were malformed and which ends on the attempt bound must report `budget-exhausted`, not `malformed-verdict`. | Functional | Unit | V-5, FSPEC §5.3 opening clause, T-02-4 | `advisoryVerdict.test.js` (arithmetic) + `advisoryDriver.test.js` (the terminating reason) |
+
+### 5.3 The invocation lifecycle (`runAdvisorySeam`) — driver surface
+
+| # | Property | Category | Level | Traces | Home (block) |
+|---|---|---|---|---|---|
+| PROP-LIFE-01 | With `config.enabled === false` the driver must return **before** any dispatch and before `resolveAdvisoryRung`: agent-dispatch and rung-resolution spies must both read zero, and the returned disposition must be the seam's declared pre-advisory no-op. | Integration | Unit | D-1, D-2, AC-1.6, TSPEC §4.4 entry row | `A-22 — driver lifecycle` |
+| PROP-LIFE-02 | The seven steps must execute in TSPEC §4.4's order — DIAGNOSE, VALIDATE, GATE, RE-CHECK, ACT, CHECK, VERIFY, RECORD — with `apply` never called before both gates pass and `verifyGate` never called before `producedPaths` has been re-classified. Asserted by an ordered call log over a fake `SeamOps`. | Contract | Unit | V-1, BR-2, BR-3, TSPEC §4.4 | `A-22 — driver lifecycle` |
+| PROP-LIFE-03 | Autonomous action must require **both** in-envelope **and** `confidence === "high"`: with either false, `apply` must never be called and the disposition must satisfy O-1 with reason `out-of-envelope` / `low-confidence` respectively. | Functional | Unit | AC-2.2, V-1, BR-2, T-02-1, T-02-2 | `A-22 — driver lifecycle` |
+| PROP-LIFE-04 | A verdict claiming `withinEnvelope: true` for an action the configured envelope excludes must be refused, and the **disagreement** must appear in the advisory record as a positive field (the recorded envelope determination naming both the agent's claim and the pipeline's finding) — not merely as the absence of an action. | Data Integrity | Unit | AC-2.2, V-3, T-02-3 | `A-22 — driver lifecycle` |
+| PROP-LIFE-05 | Step 3b RE-CHECK: when `conditionHolds()` returns false the disposition must be `no-action`, **no attempt must be consumed** (`attempts` unchanged), nothing must be applied, and the record must still carry an entry. | Functional | Unit | V-7, R-4, T-02-6 | `A-22 — driver lifecycle` |
+| PROP-LIFE-06 | `seamOps.apply` returning `{ok:false}` must trigger `revert` exactly once (O-3) before the disposition is returned, and the disposition must satisfy O-1 with reason `post-action-verification-failed`. | Error Handling | Unit | TSPEC §4.6, T-03-7 | `A-22 — driver lifecycle` |
+| PROP-LIFE-07 | A step-7 record-write failure must revert the action and satisfy O-1 with reason `record-write-failed`; the action must not survive. | Error Handling | Unit | AC-9.2, R-2, T-08-2 | `A-22 — driver lifecycle` |
+| PROP-LIFE-08 | `seamOps.revert` itself throwing must be rethrown as a halt — an unrevertable tree must never be left silently, because BR-5 admits exactly two states. | Error Handling | Unit | BR-5, TSPEC §4.6 | `A-22 — driver lifecycle` |
+| PROP-LIFE-09 | Exactly `attemptBudget` attempts must be made when every response is unparseable — asserted as a dispatch **call count equal to** `attemptBudget` (never "at most"), followed by an escalation. | Functional | Unit | AC-2.4, V-5, T-02-4 | `A-22 — driver lifecycle` |
+| PROP-LIFE-10 | An invocation whose elapsed time passes `seamBudgetMinutes` **during its first and only attempt** must have that in-flight attempt preempted on the injected clock, must escalate with reason `budget-exhausted`, must start no further attempt, and must report `attempts === 1`. | Functional | Unit | NFR-4, V-5, T-02-5 | `A-22 — driver lifecycle` (fake clock, `makeFakeClock`) |
+| PROP-LIFE-11 | The terminal disposition set must be closed and total: every path must return exactly one of `resolved` / `escalated` / `no-action`, and an **unclassified throw** anywhere in the lifecycle must map to `escalated`, never to `resolved`. | Error Handling | Unit | V-7, TSPEC §17.1, §17.3 | `A-22 — driver lifecycle` |
+| PROP-LIFE-12 | For **every** member of `ADVISORY_REFUSAL_REASONS`, an escalating invocation must satisfy O-1 in full. Parameterised off the exported constant, so a newly-added reason fails the suite until it has a case. | Contract | Unit | AC-3.6, V-8, T-02-6, FSPEC §18.2 | `A-22 — driver lifecycle` |
+| PROP-LIFE-13 | Attempts within one invocation must be sequential and no invocation must be concurrent with itself or with another seam: the driver must be `await`ed at each call site and must never be wrapped in `parallel`. Asserted by an overlap detector over the dispatch spy's start/end timestamps on the fake clock. | Contract | Unit | V-6, F-2 | `A-22 — driver lifecycle` |
+| PROP-LIFE-14 | Each seam condition must yield **at most one** invocation per run — the budgets bound attempts inside an invocation, not the number of invocations. | Idempotency | Integration | F-3, V-5 | phase-integration harness (A-10, A-11, A-12) |
+
 ## 6. Properties — envelope, refusal ladder, prohibitions
 
 ## 7. Properties — seams A1 and A2 (queue module)
