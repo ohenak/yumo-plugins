@@ -413,15 +413,30 @@ injected protocol, which is why A1/A2 can live in `orchestrate-queue.js` while t
  * @property {(v: AdvisoryVerdict) => Promise<{ok: boolean, why?: string}>} apply
  * @property {() => Promise<string[]>}          producedPaths    paths the apply touched (E-R2)
  * @property {() => Promise<void>}              revert           restore the pre-invocation state
- * @property {() => Promise<{passed: boolean, detail?: string}>} verifyGate  §5.4's gate row
+ * @property {null | (() => Promise<{passed: boolean, detail?: string}>)} verifyGate  §5.4's gate
+ *                                                                       row; **`null`** for a seam
+ *                                                                       that declares no gate
  * @property {string[]}                         declaredScope    X-d's file set
  * @property {string[]}                         permittedActions subset of {E-1..E-4} for this seam
  */
 ```
 
+Nine members, and **`waitMs` is deliberately not a tenth.** The rollup-wait carve-out of §4.5 is
+accumulated by `runAdvisorySeam` itself: the driver owns the counter and passes a `recordWait(ms)`
+sink into the seam's construction, which only A5 calls (around its `checkPrCi` re-poll, §8.2). The
+driver then reads its own accumulator when it calls `budgetExceeded`. The asserted surface is
+therefore the `waitMs` argument the driver passes to `budgetExceeded`, not a `SeamOps` accessor —
+which is what PROP-BUD-03 pins.
+
 Per-seam bindings: A1 §6.3, A2 §6.4, A3 §7.2, A4 §7.3, A5 §8.2. A seam with no permitted action
 (A1, A3) supplies `permittedActions: []` and an `apply` that is never reached — the §5.1 gate refuses
 first — which is how A1-4 and A3-6 ("changes no file") become structural rather than aspirational.
+Those two seams also supply **`verifyGate: null`**: with `permittedActions: []` the driver never
+reaches step 6, `resolved` is unreachable at that seam, and no trivially-passing
+`async () => ({ passed: true })` stub exists to be mistaken for a gate — which is what FSPEC
+T-03-6(b)'s gate-exclusivity criterion treats as a falsifying mutation everywhere else. The driver
+reaches `verifyGate` only on a seam whose `permittedActions` is non-empty, so the nullable member is
+never invoked as `null`.
 
 ### 4.4 `runAdvisorySeam` — the one impure component
 
