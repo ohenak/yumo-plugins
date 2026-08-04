@@ -50,7 +50,44 @@ are wording or citation precision on mechanisms I verified to be correct in subs
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | §5.2 now says a task's read of *its own* files is safe whatever siblings are doing. Agreed. But a task's targeted run also *collects* its wave-mates' files, and in wave 3 five agents are creating theirs concurrently: a snapshot taken while a sibling's brand-new suite is half-written yields a failing or runtime-error suite in the same JSON and a **non-zero exit for the running agent's own command**. §5.2 already says the right thing structurally ("the gate's *pass/fail* remains the script-owned aggregate run (`:8113-8118`); the targeted `--json` run is the agent's evidence for the per-file claims it reports"), and the batch 1–2 clause is the only place an exit code is treated as meaningful — so I read this as already answered. One clause would make it unambiguous for an implementer who meets it live: "the targeted run's own exit code is not an oracle; only the entries for this task's owned paths are." |
+
 ## Positive Observations
+
+- **F-01 was fixed at the level of the mechanism, not the assertion.** The obvious patch would have
+  been "the wave's tasks must coordinate on one file". Instead the artifact was made per task, which
+  deletes the race rather than managing it, and the cross-wave retention rule went with it — the 🟢
+  delta is now two documents one agent produced, with no ordering premise at all. Removing a premise
+  is worth more than defending one.
+- **The existence conjunct is stated as a set obligation over a *declared* set.** "`perFile` must
+  contain a key for **each** of this task's owned `advisory*.test.js` paths. A missing key **fails**
+  the gate" — quantified over §4's manifest row, not over what jest returned. That is completeness by
+  set-equality rather than containment, applied to the PLAN's own evidence procedure, and it is the
+  difference between a defective-red detector and a detector-shaped sentence. The batch 3–5 row
+  restates it inline as conjunct (1) rather than delegating to the preamble, so the row is complete
+  where an implementer reads it.
+- **The union-over-tasks framing makes the wave-level claim complete by construction.** "The wave's
+  claim is the union over its tasks' summaries, which is why this survives wave 3's five concurrent
+  agents" — no file can fall between two agents' scopes, because every file has exactly one owner in
+  the manifest and every owner asserts over its own set. I re-executed the manifest to confirm the
+  partition rather than take it: wave 3's five agents own five distinct suites, and each of waves
+  12/13/14 pairs a two-test-file owner with a wave-mate owning neither.
+- **The jest transcription is now a literal I could diff against the runner byte for byte.** v1.4 had
+  `numPassingTests` / `numFailingTests`; v1.5 corrects the spellings, states that *no* per-file
+  counters exist rather than listing four absent ones, and asserts `testFilePath` appears nowhere at
+  any level. All three re-executed true on jest 29.7.0. Correcting a transcription by re-transcribing
+  it is the right move — the previous list was right about the consequence and wrong about the facts.
+- **The batch 1–2 exemption answers Q-01 with the failure mode named.** Not "the run is not required
+  there" but "the pattern matches nothing and jest exits non-zero on 'no tests found' … no agent
+  should perform it defensively" — the reason an agent would otherwise get it wrong is stated, which
+  is what stops the clause being deleted by a future editor who cannot see why it exists. It is also
+  true: exit 1, `0 matches`, verified.
+- **Batch 18's unscoped read is now justified rather than excepted.** "Wave 18 is `A-33` alone, so
+  this one reading is legitimately unscoped — it is the only assertion in §5.2 quantified over files
+  the running task does not own, and it is safe for exactly that reason." Naming the single exception
+  to a rule, and why it is the only one, is stronger than a rule with unstated edges.
 
 ## Recommendation
 
