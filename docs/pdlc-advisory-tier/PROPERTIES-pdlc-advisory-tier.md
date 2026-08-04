@@ -277,12 +277,20 @@ Home for all of these: `advisoryConfig.test.js` (A-03 🔴 / A-17 🟢) and `adv
 | PROP-CFG-02 | Given no `advisory` section, an absent file (`text === null`), or unparseable JSON, `config` must deep-equal `ADVISORY_DEFAULTS` — `{enabled:false, attemptBudget:3, seamBudgetMinutes:10, envelope:["E-1","E-2","E-3","E-4"]}` — transcribed as a literal, and `invalidKeys` must be `[]`. | Functional | Unit | AC-1.7, C-1, T-10-4 | `advisoryConfig.test.js` |
 | PROP-CFG-03 | Given exactly one out-of-range key *k*, the returned config must carry `ADVISORY_DEFAULTS[k]` for *k*, the **configured** value for every key ≠ *k*, and `invalidKeys` must equal `[k]` exactly. Per-key fallback is independent; one bad key must not reset the section. | Data Integrity | Unit | AC-1.7, C-2, T-01-6 | `advisoryConfig.test.js` |
 | PROP-CFG-04 | The degraded-key notice must be emitted **iff** the effective `enabled` resolves `true`; with `enabled` false (or itself malformed) `invalidKeys` must still be populated by the parser while **no** notice is emitted. The suppression must live at the emit site, not in the parser. | Observability | Unit | C-2, DEC-ADV-08, TSPEC §3.2 | `advisoryConfig.test.js` (mechanism only; the disabled-run artifact claim is T-10-4's, whose single home is `advisoryDisabled.test.js`) |
-| PROP-CFG-05 | `readAdvisoryConfigSafely` must be called **exactly once per run**, before the first seam can fire, and its result threaded thereafter — a second read must not occur even when five seams fire. Asserted by an `_readFile` call-count spy scoped to `ADVISORY_CONFIG_PATH` (O-3). | Contract | Integration | C-3, F-1, AC-1.7 | `advisoryConfig.test.js` + the phase-integration harness |
+| PROP-CFG-05 | `readAdvisoryConfigSafely` must be called **exactly once per run**, before the first seam can fire, and its result threaded thereafter — a second read must not occur even when five seams fire. Asserted by a call-count spy on **`readAdvisoryConfigSafely` itself** — or on the `_readAdvisoryConfig` seam it is injected through — never on `_readFile` scoped to `ADVISORY_CONFIG_PATH` (O-3). | Contract | Integration | C-3, F-1, AC-1.7 | `advisoryConfig.test.js` + the phase-integration harness |
 | PROP-CFG-06 | No advisory code path must write `ADVISORY_CONFIG_PATH`, and no agent output must change any resolved config value: the config object must be frozen after parse and must never be passed to `_writeFile`. | Security | Unit | C-4, AC-3.1, NFR-1 | `advisoryConfig.test.js` |
 | PROP-CFG-07 | `advisory.envelope` must be read as the per-seam allow-list and must **not** be widenable at runtime: a verdict, prompt or agent text proposing an unlisted action must leave `config.envelope` deep-equal to its parsed value. | Security | Unit | AC-3.1, E-R1, BR-1 | `advisoryConfig.test.js` |
 
 `ADVISORY_CONFIG_PATH` is `.claude/pdlc.config.json` — the same per-repo config home Phase MERGE and
 the distribution gate already use (`orchestrate-dev.js:43`, aliased at TSPEC §3.1).
+
+**Why PROP-CFG-05 counts the reader and not the path.** That path is already read twice more on a
+full run, by code this feature does not touch: `readMergeConfigSafely(readFileFn, MERGE_CONFIG_PATH)`
+in the Phase I wiring (`orchestrate-dev.js:8040`) and `phaseMerge`'s `_configPath = MERGE_CONFIG_PATH`
+default (`:1373`), both resolving to the same `.claude/pdlc.config.json` literal (`:43`). A spy scoped
+to the *path* can therefore never read 1 against a correct build — it would fail as a defect on a
+build with no defect in it. The count is over the advisory reader, which is the surface the property
+is actually about.
 
 ### 4.2 Model rung (`isModelResolutionError`, `resolveAdvisoryRung`)
 
@@ -296,6 +304,13 @@ the distribution gate already use (`orchestrate-dev.js:43`, aliased at TSPEC §3
 | PROP-RUNG-06 | Given **both** rungs are rejected as model errors, the run must fail with a model-resolution halt, no advisory agent must have produced output, and there must be no third fallback and no revert to `MODEL_DEFAULT` — asserted positively by the halt's message naming both attempted rungs, plus a dispatch-count spy showing exactly two dispatches. | Error Handling | Unit | AC-1.4, M-3, T-01-4 | `advisoryRung.test.js` |
 | PROP-RUNG-07 | Rung resolution must be **lazy and memoised per run**: with the tier enabled and no seam condition arising, the classification dispatch count must be zero and the report must still carry five zero rows; with two seams firing, one `_state` object must yield exactly one resolution. | Idempotency | Integration | M-4, F-1, T-01-7, T-10-5 | `advisoryRung.test.js` |
 | PROP-RUNG-08 | The resolution memo must be a **threaded parameter**, never module state: two `runAdvisorySeam` invocations given two distinct `_state` objects must each resolve independently, and no resolution must leak between them. | Contract | Unit | DEC-ADV-05, TSPEC §3.5 | `advisoryRung.test.js` |
+| PROP-RUNG-09 | **The no-fallback positive control.** Given `advisory.enabled` true and `MODEL_ADVISORY` resolving on the first dispatch, a run in which a seam fires must produce a summary that names `MODEL_ADVISORY` as the model used **and** reports the substitution absent — asserted as the exact rendered value (`fallback: false` and the summary's model cell byte-equal to `MODEL_ADVISORY`), never as the absence of a fallback string — while the fallback-dispatch spy reads zero and the record's `Model` row carries the same value. Driven at the workflow level so the summary is the one the report actually carries. | Observability | Integration | AC-1.1, AC-1.3, M-2, T-01-2 | `advisoryRung.test.js` (A-04 🔴 / A-18 🟢) |
+
+PROP-RUNG-09 is what makes PROP-RUNG-04's fallback assertion falsifiable: without a run that
+demonstrably does **not** substitute, a build that reported the fallback unconditionally would pass
+PROP-RUNG-04 and be caught by nothing. It is stated as two positive conjuncts (exact model value,
+`fallback: false`) rather than as "no fallback text appears", per O-1's rule against absence-only
+oracles.
 
 **Negative properties in this domain.** PROP-RUNG-05 and PROP-RUNG-06 are the two paths where a
 weaker oracle would silently pass: a test asserting only "the run failed" is satisfied by any throw,
