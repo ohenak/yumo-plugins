@@ -334,6 +334,48 @@ that diverging later re-opens the disagreement this entry exists to prevent.
 
 ## DEC-ADV-07: The post-A5 DoD divergence is reported, not re-verified and not halted (OQ-3)
 
+**Context.** A5 fixes red CI in Phase PUB by pushing a commit. That moves the branch head **past** the
+commit Phase DOD verified, so the run ends with a head no DoD gate has seen. FSPEC A5-7 leaves the
+restoration path to engineering (OQ-3).
+
+**Decision.** **Report-only.** The final report names the DoD-verified commit (`git rev-parse HEAD` at
+the moment `dodResult.passed` becomes true) and marks any branch head beyond it `unverified`;
+`buildFinalReport` (`dev:8595`) gains `dodVerifiedCommit` and a derived `dodHeadUnverified`. Phase PUB
+neither re-runs the DoD gate nor halts on the divergence (TSPEC §8.4).
+
+**Alternatives considered.**
+
+- **Re-verify DoD inside Phase PUB — rejected on a verified phase-ordering fact.** Phase H runs
+  **before** Phase PUB in `main()`: harvest is at `dev:8307-8360`, Phase PUB at `dev:8363` onward. Harvest
+  deletes the `CODE_REVIEW-*` files that `dodVerifyLoop` writes and reads (`dev:6298`). A DoD re-run in
+  PUB would therefore author a fresh `CODE_REVIEW-{feature}-v1` **after** the harvest that was supposed
+  to consume it — an un-harvestable artifact and a `LEARNINGS` file that no longer describes the
+  branch. It would also nest an evaluator→optimizer loop with its own `DOD_MAX_ITERATIONS = 3` budget
+  (`dev:25`, `dev:6275`) inside a phase already bounded by a CI clock.
+- **Halt on the divergence — rejected.** It negates A5 entirely: *every* successful A5 resolution would
+  end in a halt, so the seam could never produce the outcome it exists for (US-01). A feature whose
+  success path always ends in failure is not a feature.
+- **Re-order the pipeline so Phase H follows Phase PUB — rejected as out of scope.** It is the change
+  that would make re-verification cheap, and it is exactly this entry's re-evaluation trigger; but it
+  re-times harvest for every run, including runs with no advisory tier at all, which is far more than
+  this feature is entitled to change.
+- **Force-push or amend so the verified commit stays the head — rejected.** It rewrites history on a
+  branch with an open PR, and BR-5's two-tree-states invariant does not sanction it.
+
+**Constraints that forced this shape.** B-15's phase order (harvest before PUB), verified above; the
+CI clock bounding Phase PUB; AC-8.3's wording, which report-only satisfies exactly ("the report's DoD
+status names the verified commit, and a branch head beyond it is reported unverified"); and the fact
+that only an operator can weigh whether a lint fix warrants a fresh DoD pass.
+
+**Reversibility: easy.** Report-only is a strict subset of either rejected alternative — the report
+field remains correct if re-verification is added later.
+
+**Re-evaluation triggers.**
+1. Phase H moving after Phase PUB — re-verification becomes cheap and the first alternative should win.
+2. A5 being permitted a class of fix large enough that "unverified head" stops being a formality.
+3. Phase MERGE ever gaining a precondition on `dodVerifiedCommit` — today it reads neither field and
+   applies its own preconditions to whatever head it finds (H-2).
+
 ## DEC-ADV-08: A disabled run suppresses the degraded-key notice at the emit, not in the parser
 
 ## DEC-ADV-09: The escalation log has no reader inside this tier
