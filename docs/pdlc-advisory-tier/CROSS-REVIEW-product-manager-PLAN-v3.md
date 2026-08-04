@@ -129,3 +129,22 @@ revision changed — §5.2's new evidence paragraph and §10's changelog.
   of concluding the two documents disagree.
 
 ## Recommendation
+
+**Needs revision.**
+
+Both v2 findings are resolved, and the revision is convergent: the High was fixed at its root, the
+fix was verified by execution rather than asserted, and I re-executed the verification myself and got
+the same numbers. Nothing I approved in earlier rounds was broken by these edits. The document is one
+sentence away from approval.
+
+1. **F-10** (Medium) — scope §5.2's `--json` evidence run to the `advisory*.test.js` paths, so it is a
+   *targeted* run the wave prompt permits (`orchestrate-dev.js:5849` reserves full-suite runs to the
+   script). Every per-file assertion in §5.2 is already stated over those paths only, so the change
+   costs nothing and restores the corroboration behind §9.2's first checkbox.
+2. **F-11** (Low) — delete the blank line at `:907` so the 1.2 and 1.3 changelog rows render inside
+   the table.
+
+No erratum is raised by this review. TSPEC's unspecified `governingClass([])` is already raised as an
+erratum by the PLAN itself (§10.1 item 6) and needs nothing further from this document; TSPEC §7.4's
+`T-06-8`, outside FSPEC §18.1's catalogue, remains flagged in §8.3 note 2 and was raised against TSPEC
+in round 1.
