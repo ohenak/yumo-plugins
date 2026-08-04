@@ -31,7 +31,33 @@ touched — neither changes scope, task count, dependency edges, or any acceptan
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | PROPERTIES §13.1 item 5 and its §10 table row still record `fixtures/scanFixtures.js` as "A-01 proposed — **no PLAN ownership row yet**". E-3 closed that gap in this PLAN (A-01 owns it, §4 row present), so the PROPERTIES open item is now stale. It is a PROPERTIES-side bookkeeping correction, not a PLAN one, and PROPERTIES is still in its own review loop — flagging it here only so it is not carried into harvest as an open item. |
+| Q-02 | On F-02: is A3's gate a product decision either document may make? FSPEC §5.4 states A3's gate as "Phase DOD's verify step / no findings remaining", which is an outcome an operator can observe; TSPEC's `null` reasons from `permittedActions: []`. If TSPEC's reading is the correct one, the change belongs in FSPEC's gate table first (A3 row → "none", with A3's safety resting on its classification-only product, as A1's rests on A1-3) — not in TSPEC alone, because AC-4.5's five-row table is the approved contract this PLAN's T-03-6(b) quantifies over. |
+
 ## Positive Observations
+
+- **The A1 fix was made in the one place that makes it stick, and in both directions.** The delta did
+  not simply flip PLAN's assertion to match TSPEC; it named the asymmetry — replace-the-gate for a
+  seam that declares one, install-the-stub for a seam that does not — so `async () => ({ passed: true })`
+  now has exactly one meaning across TSPEC and PLAN: the mutant. That is the shape of fix that stops
+  the same contradiction from re-forming at the next seam.
+- **E-2's resolution kept the strong assertion and moved it, rather than dropping it.** Narrowing P-4
+  to `classifyEnvelope`'s three-member enum could have quietly lost the closed-set check over the
+  eight-member `ADVISORY_REFUSAL_REASONS`; §6.5 explicitly re-homes it in T-03-8's set-equality case
+  and says why the two sets differ. Nothing testable was traded away to close the erratum.
+- **E-3 was closed with the mechanism named, not just the row added.** The A-01 row states *why* the
+  file needs an owner (wave commit stages only `task.files`; `validatePlanContract` checks the
+  bijection before Phase I) and *why A-01* (batch-safety rule 4, batch 1, consumers downstream via
+  A-02). The next reader does not have to reconstruct the reasoning.
+- **E-4 was closed as a closure, not by deletion.** §8.3 note 2 now records that the discrepancy was
+  raised, that TSPEC answered it, and what the obligation is tagged by instead — so the audit trail
+  survives while the stale claim does not.
+- **Scope discipline held.** 36 tasks, 36 manifest rows, unchanged dependency edges and batch labels;
+  the manifest gained one file on an existing row. §10's v1.6 entry states exactly that and records
+  the re-parse (36/36, ok, 20 batches). Nothing in the delta touches a requirement, an acceptance
+  criterion, or a phase boundary.
 
 ## Recommendation
 
