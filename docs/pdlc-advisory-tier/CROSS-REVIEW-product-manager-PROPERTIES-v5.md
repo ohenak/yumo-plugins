@@ -19,6 +19,20 @@ against the revision's own account of itself.
 
 ## Findings
 
+Scope of this pass: the changed sections only (`git diff 08925cf..6bcd258` on the document — 147
+insertions, 71 deletions across the v1.4 header block, §2.1, §3's O-6, §5.2, §6.5, §12.3's A-34 row
+and §13.1). No property was added, removed or re-levelled: `grep -c '^| PROP-'` still returns **183**,
+so §1's and §12.3's 195 / 148 / 40 / 7 / 0 stand without recomputation and the changelog's own claim
+(`PROPERTIES:28`) is true as written. §12.1's AC→property matrix is untouched; AC-4.6's row
+(`PROPERTIES:1004`) still names PROP-PROH-01…04 and PROP-GATE-01…05 and remains accurate under the
+revised A1/A3 form, because that form keeps a positive per-path assertion rather than substituting a
+structural one for it.
+
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | Low | Local | **§13.1's heading now contradicts its own contents.** The heading reads "Upstream defects — **routed**, not absorbed" (`PROPERTIES:1160`) while the section body directly beneath it states that nothing is routed: "None is still open — all six are now closed upstream, and none is emitted as an `ERRATUM:` line" (`:1162-1163`). The section is the routing contract a downstream reader consults to know what this document handed upstream, so a heading that still promises routing is the one line most likely to be read on its own. Substance is unaffected — no erratum is emitted anywhere in the file (`grep -n ERRATUM` returns only `:26` and `:1163`, both negations). **Fix:** "### 13.1 Upstream defects — closed upstream, not absorbed", or "…— routed and now closed", whichever reads better against §13.2's and §13.3's headings. | §13.1 routing contract |
+| F-02 | Low | Local | **Two quotations of `TSPEC:424` are paraphrases inside quotation marks.** §5.2 says `SeamOps` stays at "Nine members, **`waitMs` deliberately not tenth**" (`PROPERTIES:446`) and §13.1 item 4 repeats it (`:1197`); `TSPEC:424` actually reads "Nine members, and **`waitMs` is deliberately not a tenth.**" The same sentence's second quotation is faithful — "the `waitMs` argument the driver passes `budgetExceeded`" vs TSPEC's "…passes **to** `budgetExceeded`" (`TSPEC:428`) — so this is close-paraphrase, not misattribution, and the asserted contract is identical either way. It is worth a line only because this document's own standard is literal transcription from the spec (that standard is why PROP-BUD-03 survived the erratum round unchanged), and a quoted string that does not match its cited line is the one thing a later reviewer cannot verify by grep. **Fix:** transcribe `TSPEC:424` exactly in both places, or drop the quotation marks and state it as a paraphrase. | Transcription discipline (§5.2, §13.1 item 4) |
+
 ## Questions
 
 ## Positive Observations
