@@ -91,6 +91,22 @@ FSPEC and the TSPEC now agree again — the erratum had put them in conflict.
 
 ## 4. Non-regression check
 
+- **No residue of the withdrawn wording.** `grep -n "fork point\|pre-feature base" FSPEC` returns
+  only lines 835 and 855, and only via the surviving phrase "pre-feature baseline commit / pre-feature
+  run". No dangling reference to a fork-point baseline survives anywhere in the document, so the
+  withdrawal is complete rather than partial.
+- **§2's citation pin is untouched.** Line 84 still reads "Every `file:line` in §2 is read at
+  default-branch commit `26c3f1c`", and line 90 still stamps the baseline table with the same commit.
+  The withdrawal did not have to disturb §2 because the pin was always correct.
+- **Erratum items 2 and 3 are intact.** §4.1's step-7 paragraph still generalises the
+  revert-before-durable-git rule to `{A2, A5}`, and §5 C-2 still gates its substitution notice on the
+  tier resolving to enabled. Neither appears in the diff. My v4 confirmation of those two stands
+  unchanged.
+- **No test-count or traceability drift.** T-10-3 was edited in place; no test was added or removed,
+  so §14's ranges and §18's count of 81 need no recount and none was made.
+- **My five v3 Lows (L-05 … L-09) are untouched** and remain open and non-blocking, exactly as at v4.
+  None of them sits in §12.1 or the T-10 table.
+
 ## Findings
 
 ## Questions
