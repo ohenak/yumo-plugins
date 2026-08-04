@@ -48,7 +48,12 @@ Only findings that survived that check appear below.
 
 ## Prior findings — disposition
 
-_(pending)_
+| v3 ID | Severity | Status | Evidence in v1.4 |
+|---|---|---|---|
+| F-10 | Medium | **Resolved, and resolved better than I asked.** | §5.2's evidence run is now `npm test -- --json --outputFile=/tmp/adv-gate-w{n}.json 'advisory.*\.test\.js'`, explicitly labelled "**targeted**, not full-suite", with the reason cited to `orchestrate-dev.js:5849` — the line that reserves full-suite runs to the script. The narrowing is verified rather than assumed: I re-ran the analogous `'guard.*\.test\.js'` invocation at HEAD and it collected exactly the three matching suites. Beyond the fix I asked for, the revision discovered that the fields the v1.3 procedure read (`testFilePath`, `numPassingTests`, `numFailingTests`, `numPendingTests`) **do not exist per-file** in jest 29.7.0's `--json` document at all, and replaced them with one transcribed `perFile` reducer over `testResults[].name` + `assertionResults[].status`, quoted identically by the batch 3–5, 7–17 and 18 gate rows and by §9.1. I ran that reducer verbatim and got the document's own figures. The procedure went from *forbidden* to *permitted* and from *unimplementable* to *executed*. |
+| F-11 | Low | **Resolved** | The blank line between the `1.1` and `1.2` rows is deleted (diff hunk at `@@ -904,9 +962,9 @@`), so all five version rows now sit under the one `\| Version \| Date \| Change \|` header. |
+| Q-08 | — | **Answered, and the answer closed the loop** | §8.2 now states that the five per-seam gate cases are *generated* by iterating the in-file registry (`for (const [seam, block] of Object.entries(REGISTRY)) it(…)`), never hand-written, "so deleting a case means deleting its registry row, which the set-equality case then fails; and adding a sixth `ADVISORY_SEAMS` member with no registry row fails the same case. A registry row that survives while its case is deleted is therefore not expressible." That is exactly the both-directions answer the question asked for. |
+| Q-09 | — | **Answered by removing the need for the number** | Because `ancestorTitles[0]` is the top-level `describe` title and §3 names every block for its green owner, `perFile` partitions by block; *k* is read from the block's own wave-(n−1) entry, so "no expected case count has to be recorded anywhere". A number nobody records is no longer a number anybody has to compare against — the better answer. |
 
 ## Findings
 
