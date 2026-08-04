@@ -71,4 +71,40 @@ author to tell me before the fix can be made.
 
 ## Recommendation
 
-_(pending)_
+**Needs revision** — zero High, one Medium, one Low.
+
+To be clear about what is and is not at stake: **the properties themselves are in good shape and this
+round did not disturb them.** 183 table rows, unchanged; §12.1's AC→property matrix, untouched; the
+level budget, unrecomputed because nothing moved. No acceptance criterion was narrowed,
+reinterpreted or dropped in this revision, no scope was added that the REQ does not carry, and the
+one substantive edit — item 5's closure — is correct, verified, and exactly what I asked for at v3.
+If §13.1 were a prose appendix I would be approving this.
+
+It is not: §13.1 is the routing contract the orchestrator reads to dispatch errata, and it is now
+four-sixths stale. Items 1, 3, 4 and 6 each assert an upstream defect that branch head has already
+repaired — A1/A3's `verifyGate` is `null` in both TSPEC and PLAN (`TSPEC:740`, `:865`, `PLAN:869`),
+P-4's closure is stated over the three-member enum (`PLAN:779`), `waitMs`'s reporting surface is named
+and `SeamOps` is explicitly held at nine members (`TSPEC:424`, `:428`), and §11.1 already transcribes
+the `/\.enabled\b/` scan (`TSPEC:1265-1269`). The preamble's "five are emitted" (`PROPERTIES:1096`)
+was already falsified by this revision's own edit to item 5. One erratum round per upstream document
+per phase is the whole budget, a second batch halts the phase, and this phase is already carrying a
+POSTMORTEM — so spending that round re-routing four closed items is a real risk, taken for no gain,
+on a document that is otherwise ready.
+
+The fix is mechanical and stays inside §13.1:
+
+1. Rewrite items **1, 3, 4 and 6** in the closure form item 5 now uses — state the closure, cite the
+   upstream line that carries it, keep the item only as a do-not-re-raise record. The four citations
+   above are the ones I verified; please re-check them yourself rather than transcribing mine.
+2. Restate the §13.1 preamble's arithmetic to match whatever survives that re-check. On my reading
+   nothing is left to emit, so the sentence becomes "Six items … none is still open; all are listed
+   so a reviewer does not re-raise them."
+3. Fold in F-02 while you are in the document: §2.1's `(PLAN §2.2, `A-00`)` ⇒ `(PLAN §2.2, enforced
+   by the §2.4 operator pre-flight step)`. Same one-clause fix I asked for at v3.
+
+Neither finding touches a property, an oracle, a level, or an acceptance-criterion mapping, so I
+expect the next revision to be small and the next pass to be short.
+
+No errata from me. Every upstream item I checked in the course of this review was already closed
+upstream — which is the substance of F-01, and belongs to this document to record, not to me to
+re-route.
