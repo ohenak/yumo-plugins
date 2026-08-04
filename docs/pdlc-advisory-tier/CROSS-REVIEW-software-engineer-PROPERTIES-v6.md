@@ -93,7 +93,36 @@ one-round test:
 
 ## Questions
 
+Q-08 is carried for a third round and still blocks nothing. I am not re-asking it in stronger terms:
+the answer costs two documents an edit, the count it concerns is pinned identically in both, and if
+the answer turns out to be "four" the failing assertion will say so loudly in the RED batch of the
+owning task rather than shipping silently. That is an acceptable place to discover it.
+
+| ID | Question |
+|----|---------|
+| Q-08 (carried, v4 → v5 → v6) | PROP-DIS-06 counts `/\.enabled\b/` over both modules and expects three, while TSPEC §3.2's C-3 row says `readAdvisoryConfigSafely` is "called once in each `main()`". If the queue's run report is ever expected to carry the C-2 substitution notice, its emit gate is a fourth read and the expected total becomes four. Is the queue's silence on the substitution notice a deliberate D-5 consequence, or the gap that produces the "legitimate fourth read" §10.1 tells Phase I how to handle? `TSPEC:1271` pins the same count, so an answer either way costs two documents an edit rather than one. |
+
 ## Positive Observations
+
+- **A no-change round is the right outcome here, and the document earns it.** Iteration 6 opened on a
+  document that iteration 5 had already approved, with no upstream movement to force a revision. The
+  honest response is a review that says so and re-verifies rather than one that manufactures a
+  finding to justify its own existence. §6.5 — the section that consumed rounds 4 and 5 — reads
+  correctly at HEAD: two conjuncts per family, the mutation direction stated in both directions, and
+  the transposition hazard named out loud at `PROPERTIES:619-623`.
+- **The one carried Low survives contact with a second reading, and shrank.** Re-reading `:562` at
+  HEAD showed my own v5 quote was truncated: the line already carries "which runs the mutation in the
+  opposite direction", so half of what I filed was never a defect. The remaining half is a single
+  stale comparative. A finding that gets *smaller* under re-examination rather than metastasising is
+  a sign the underlying text is sound.
+- **Stability across an anchor-recording commit is worth noting.** HEAD (`4df1f7b`) appends approval
+  anchors to review files. The PROPERTIES document, the PLAN and the TSPEC are all untouched by it —
+  exactly the property the anchor mechanism needs in order to mean anything, since an anchor that
+  pinned bytes which then moved would be worse than no anchor.
+- **The Home cells still point at real PLAN blocks and a real file on disk.**
+  `pdlc/workflows/__tests__/advisoryPreflight.test.js` exists on the branch and is owned by `A-01`
+  (`PLAN:308`); every other named home is a new file created by its owning task. No home is
+  orphaned, and none silently assumes a file that neither exists nor is planned.
 
 ## Recommendation
 
