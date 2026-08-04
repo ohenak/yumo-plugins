@@ -26,6 +26,21 @@ v7 recorded no findings (`{"high": 0, "medium": 0, "low": 0}`), as did v6 and v5
 
 ## Re-grounding: repo-path claims at HEAD
 
+Re-ran in one pass, as the cross-cutting existing-code claim check requires, over every repo path the FSPEC names:
+
+| Path named by the FSPEC | State at HEAD | Assessment |
+|---|---|---|
+| `pdlc/workflows/orchestrate-dev.js` | present | Consistent — the pipeline the A1…A5 advisory seams attach to |
+| `pdlc/workflows/orchestrate-queue.js` | present | Consistent — the queue driver that consumes the escalation log |
+| `pdlc/hooks/scripts/guard-harvest-before-delete.sh` | present | Consistent — the harvest guard the `ADVISORY-*` lifecycle reasons about |
+| `.claude/pdlc.config.json` | present | Consistent — the config home for `advisory.enabled` and the tier's other declared settings |
+| `docs/_queue/` | present | Consistent |
+| `docs/_queue/ESCALATIONS.md` | **absent** | Correct, not a defect — asserted absent, not asserted present (see below) |
+
+The one absent path is the one the FSPEC declares this feature *creates*: `FSPEC:764` calls it "a new artifact (B-16)", `FSPEC:801` pins "A missing log is the normal first-run state, not an error", and acceptance rows `T-09-7` (`FSPEC:818`) and `T-09-8` (`FSPEC:819`) test the create-on-first-entry and failed-write paths respectively. Its absence at HEAD is exactly the precondition those rows assume. No path the FSPEC asserts as *existing* behaviour is missing.
+
+The acceptance rows I called out in v7 are unchanged and still read as they did: `T-09-8` (`FSPEC:819`) pairs its negative ("nothing was applied", disposition **not** `resolved`) with positive assertions on the same path (seam still reports `escalated`, the pre-advisory halt or skip still happened, the failed write named on the report) — no absence-only oracle. `T-10-3` (`FSPEC:859`) states disabled-tier completeness as set-equality ("equals, element for element") against a literal file set transcribed from a pre-feature run at `26c3f1c`, and names the red direction, so a file created outside that set fails whether or not this feature named it — completeness by set-equality, and an expected value transcribed from a fixed commit rather than derived from the code under test.
+
 ## Findings
 
 ## Questions
