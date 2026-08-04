@@ -237,7 +237,11 @@ red; it ends the run. So no wave in this PLAN is RED-terminal. Instead:
    is no red→green commit *pair* to be had. Instead: `se-implement` un-skips first, runs its own
    block, **captures the verbatim failure output and reports it in its task summary** before writing
    any production code; the red evidence is that transcript plus the wave's single script-owned
-   commit, which contains both the un-skip and the production change. §9.2 states the same rule.
+   commit, which contains both the un-skip and the production change. The transcript is the
+   human-readable half only — what §9.2 **gates** on is the mechanical half a reviewer can recompute:
+   the block carries `.skip` in the commit's parent and not in the commit, and its cases move
+   `pending` → `passed` between the two retained per-wave `--json` runs (§5.2). §9.2 states both
+   conjuncts in full.
 
 Rows whose symbols are parameterisable leaves also carry §6.5's named property for that leaf; the
 property is part of the row's obligation, not an optional extra.
@@ -866,8 +870,9 @@ no task can satisfy its own row while leaving the obligation open:
 - [ ] No `describe.skip` block remains in any `advisory*.test.js` file — every case authored by a 🔴
       task has been un-skipped by its 🟢 owner (§3 preamble). Checked twice, per §5.2's batch-18 row:
       by the shipped source-text case in `advisoryDisabled.test.js` (matching `.skip` and `x`-prefixed
-      forms, not just the literal `describe.skip`), and by `numPendingTests === 0` for every
-      `advisory*.test.js` path in a `--json` run.
+      forms, not just the literal `describe.skip`), and by `perFile` reporting `pending === 0` for
+      every block of every `advisory*.test.js` path in the final wave's targeted `--json` run
+      (§5.2's transcribed reducer — jest 29.7.0 emits no per-file `numPendingTests`).
 
 ### 9.2 Behavioural — the claims that a green suite alone does not establish
 
@@ -878,7 +883,17 @@ no task can satisfy its own row while leaving the obligation open:
       cannot produce: agents are told `Do NOT run git add or git commit`
       (`orchestrate-dev.js:5851`) and the script commits once per task
       (`:8143-8159`). A green task whose summary contains no captured failure output does not
-      satisfy this row.
+      satisfy this row. **The transcript is the readable half; this row gates on a second,
+      mechanical conjunct** — a reviewer can tell that *some* text is present but not that it is a
+      genuine transcript, so the falsifiable half is recomputed from git and from the two retained
+      `--json` runs, for every 🟢 task and every block it un-skips:
+      (i) `git show {commit}^:{testFile}` contains the block **with** `.skip` and
+      `git show {commit}:{testFile}` contains it **without** — where `{commit}` is that task's own
+      script-owned commit (`:8143-8159` commits one per task, pathspec-scoped, so the commit and its
+      parent are both on the branch); and (ii) that block's cases move `pending` → `passed` between
+      `/tmp/adv-gate-w{n-1}.json` and `/tmp/adv-gate-w{n}.json` under §5.2's `perFile` reducer, with
+      the same *k* on both sides. Both conjuncts fail closed: a task that un-skips nothing fails (i),
+      and a case that was already passing fails (ii).
 - [ ] The seven X-a operations are **seven named tests**, not one "touches a test file" test.
 - [ ] T-03-6 is carried at FSPEC §18.2's full quantification (§8.2): each of P-1…P-4 has a test
       asserting the negative **and** the V-8 positive triple on the same path, **and** every gate row
