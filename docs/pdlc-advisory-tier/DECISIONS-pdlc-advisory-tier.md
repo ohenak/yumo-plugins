@@ -645,6 +645,14 @@ behavioral pin `26c3f1c`, **hand-reviewed into the repo**, and compared by value
 provenance — the commit sha, the command, the date — so a later reader regenerates it deliberately
 rather than refreshing it reflexively (TSPEC §11.2).
 
+**Scenario identity is part of what makes the comparison valid**, and the pin alone does not supply
+it. Two created-file sets are comparable only if the runs that produced them had the same inputs — the
+same REQ path, the same agent doubles, the same config, the same phases reached. The provenance header
+therefore records the **scenario** alongside the commit, and the disabled-run comparison replays that
+same scenario; otherwise the oracle goes false-red on scenario drift, or vacuously green if the
+scenario is narrowed to phases that create nothing. TSPEC §11.2 owns the header's fields, and the
+scenario row is routed there as an erratum.
+
 **Why `26c3f1c` is the right pin, verified.** It is an **ancestor of the branch HEAD**
 (`git merge-base --is-ancestor 26c3f1c HEAD` ⇒ true) and it already carries every file-creating
 pipeline path a disabled run at HEAD exercises — Phase PUB included: `4d5e4dc` ("Add Phase PUB…") is an
@@ -706,7 +714,7 @@ checked against the files the option would actually touch.
   through the middle of the feature.
 - **Implement the tier in the `pdlc-cli` bundle instead of the workflow bundles — rejected on a
   verified reachability fact.** `pdlc-cli.mjs` is a real third artifact (`build:289-295`), so the
-  option is not imaginary; but it reaches `orchestrate-dev.js` through an explicit eleven-name
+  option is not imaginary; but it reaches `orchestrate-dev.js` through an explicit ten-name
   allow-list, `CLI_DEV_EXPORTS` (`build:243-254`), and it runs **out of band** as a Node CLI, not
   inside a pipeline run. A seam has to fire *during* Phase DOD or Phase PUB, with the run's
   `_state`, its config and its seams in hand. The CLI has none of those, and giving it them means
