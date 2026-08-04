@@ -251,6 +251,39 @@ record which branch fired); it is a **record**, not a gate.
 
 ## DEC-ADV-05: Rung resolution is lazy and its memo is a threaded parameter, never module state
 
+**Context.** M-4 requires the rung to be decided **once per run**; D-2 requires a **disabled** run to
+attempt no model resolution at all. Both need a memo. The obvious home for a per-run memo is a
+module-level `let`.
+
+**Decision.** Resolution happens at the **first advisory dispatch of a run** (not at start-up), and the
+memo `_state` is a parameter threaded from `main()` into `resolveAdvisoryRung` (TSPEC §3.4, §3.5).
+
+**Alternatives considered.**
+
+- **A module-level `let resolvedRung` — rejected on a verified bundling fact.** `devModule` is inlined
+  into **both** shipped bundles (`build:281`, `build:288`), and under jest every test imports one
+  module instance. A module-level memo would therefore leak resolution (a) across tests in a file, and
+  (b) across a queue invocation and the `orchestrate-dev` run it delegates to via `realMain`
+  (`build:102`, `queue:764`) — the two would share one memo inside a single process. Threading it also
+  makes M-4 *directly* assertable: pass one `_state` through two seams, assert one classification.
+- **Eager resolution at pipeline start — rejected.** It contradicts D-2: a disabled run must resolve
+  nothing, and the stronger form of the same property is that even an **enabled** run in which no seam
+  fires resolves nothing (T-01-7). Laziness gives both from one mechanism; an eager resolve would need
+  its own `enabled` check, adding a second `enabled` test on the dispatch path and weakening the
+  single-early-return structure that makes D-1/D-2 grep-checkable (TSPEC §11.1).
+- **A resolution cache keyed by run id — rejected as unnecessary machinery**: there is exactly one run
+  per process, so the parameter *is* the key.
+
+**Constraints that forced this shape.** The both-modules-in-both-bundles composition; jest's
+single-module-instance semantics; D-1/D-2's "a disabled tier is a no-op" equivalence claim; DC-04's
+preference for state passed in over ambient state.
+
+**Reversibility: easy.** The memo is one parameter with a default.
+
+**Re-evaluation triggers.** A runtime that hosts more than one pipeline run per process (the memo would
+then need explicit scoping rather than implicit per-call threading), or a change that stops inlining
+`devModule` into the queue bundle.
+
 ## DEC-ADV-06: X-e reuses Phase MERGE's shipped guard matcher; only two new predicates are owned
 
 ## DEC-ADV-07: The post-A5 DoD divergence is reported, not re-verified and not halted (OQ-3)
