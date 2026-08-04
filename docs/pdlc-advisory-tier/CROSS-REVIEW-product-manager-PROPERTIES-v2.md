@@ -22,6 +22,15 @@ revision makes a claim about the repository, against the repository at branch he
 
 ## Findings
 
+Scope of this pass: the changed sections only (`git diff 44ad8fa..91439f6` on the document —
+236 insertions, 65 deletions across §1, §2.1, §2.2, §2.4, §3 (O-6), §4.1, §4.2, §5.2, §5.3, §6.1,
+§6.5, §8.3, §9.1, §9.2, §9.3, §10.1, §10.3, §11, §12.1–§12.4, §13.1). Unchanged sections approved at
+v1 were not re-litigated.
+
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | Low | Local | **A stale cross-reference is now visibly inconsistent with the section it points at.** PROP-A4-09 (§8.1, `PROPERTIES:605`) ends "…no `T-06-7` invented for it (§13 item 3)". §13.1 item 3 is the P-4 closure-conjunct erratum, not the `implementation.testCommand` degradation; the fact PROP-A4-09 is pointing at lives in §13.2's negative-space table, which is unnumbered. This mis-pointer predates the revision, but this revision made it *visible*: the new §12.4 states the same fact and cites **§13.2** correctly ("which is a TSPEC/PLAN-level obligation (§13.2)"), so the two now disagree in print, and §13.1 gained a fourth item in this pass — exactly the kind of edit that makes a reader trust the numbered pointer. It costs an operator nothing but a wasted lookup, hence Low. **Fix:** change PROP-A4-09's parenthetical to `(§13.2)`, matching §12.4. | §12.4 / §13.2 self-consistency |
+
 ## Questions
 
 ## Positive Observations
