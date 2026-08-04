@@ -177,4 +177,57 @@ regression would have landed. The grounding clause held, but it held on a one-re
 
 ## Recommendation
 
-<!-- body -->
+The findings are small, bounded, and already diagnosed by the confirming reviewer. Clearing this halt is
+a targeted edit plus a re-confirmation, not a re-run of Phase T.
+
+**R-1 — Withdraw both D-6 errata; restore D-6 / T-10-3 to `26c3f1c`.** This is te-review F-01's own
+remedy. Revert only the D-6/T-10-3 region of commit `3bbf934` so §12.1 D-6 (`FSPEC:835`) and §12.2
+T-10-3 (`FSPEC:855`) pin the disabled-run created-file baseline back to `26c3f1c`, dropping the
+"pre-feature base / fork point" substitution and its reversed "may sit ahead" rationale. The original
+baseline is correct: `git grep -c 'raisePrAndVerifyCi' 26c3f1c -- pdlc/workflows/orchestrate-dev.js` ⇒ 4,
+`26c3f1c` is an ancestor of the default branch carrying every merged pipeline change, so its created-file
+set equals a disabled branch-HEAD run's — precisely D-6's requirement.
+
+**R-2 — Keep the two sound erratum edits.** Items 3 (A2-6/R-2 ordering, §4.1 step-7 paragraph) and 4
+(C-2 report gating, §5 `FSPEC:145`) are confirmed by *both* reviewers and must survive the R-1 revert.
+Scope the revert to the D-6/T-10-3 hunks only; do not revert `3bbf934` wholesale.
+
+**R-3 — Re-confirm as the next append-only round, one reviewer, delta-scoped.** After R-1/R-2 land as a
+new FSPEC version (v1.4), dispatch **only te-review** to write `CROSS-REVIEW-test-engineer-FSPEC-v5.md`
+confirming that D-6/T-10-3 are back on `26c3f1c` and that items 3–4 are untouched. se-review already
+approved the whole edit at `-v4` (`VERDICT: Approved minor changes`, an accepted approval token per
+`orchestrate-dev.js:3513`); its approval covers the surviving items 3–4 and the *removal* of the D-6
+change strictly reduces what it approved, so it need not be re-run. Re-append approval anchors on PASS so
+the FSPEC approval does not go stale.
+
+**R-4 — This is the erratum protocol's *second* round for this doc, so it must clear by verification, not
+by re-opening the channel.** The bound is one erratum round per upstream doc per phase and it is spent.
+The correct clearance is the operator-directed / author-verified path this POSTMORTEM's lifecycle
+defines: address R-1–R-3 on the branch, then flip this file's `RESOLVED:` marker to `yes` in a commit
+that names D-6/T-10-3 restored to `26c3f1c` and the te-review re-confirmation sha — after which Phase T
+re-invocation proceeds (the TSPEC loop already converged at v3; only the FSPEC erratum gate is
+outstanding). Do **not** route a fresh erratum to re-argue D-6.
+
+**R-5 (process, non-blocking) — an emitted erratum should carry its grounding.** The root cause was an
+ungrounded factual premise entering the channel while the emitter's own upstream artifact held the
+disproof. Consider requiring every `ERRATUM: {DOC}: …` line that asserts a git-object fact ("predates",
+"does not exist at C", "signature is X") to cite the command and result that establishes it — the same
+discipline se-review/te-review already apply on the confirmation side, moved one step earlier to the
+emitter. This is a candidate LEARNING for `LEARNINGS-pdlc-advisory-tier.md`, not a blocker for this
+feature.
+
+---
+
+<!-- RESOLVED marker: an operator or agent flips this to `yes` only after R-1–R-3 are on the branch and
+this document's ## Recommendation findings are each addressed, in a commit that names what addressed
+each. The workflow scripts never write `yes`. -->
+
+RESOLVED: no
+
+## Recommendation — addressal ledger (for the resolving commit)
+
+| Finding | Addressed by (fill on resolve) |
+|---|---|
+| te-review F-01 (High) — D-6/T-10-3 baseline rests on disproved "predates" premise | D-6/T-10-3 restored to `26c3f1c` (R-1) |
+| Preserve confirmed items 3–4 | A2-6/R-2 §4.1 and C-2 §5 kept (R-2) |
+| Re-confirmation of the corrected FSPEC | `CROSS-REVIEW-test-engineer-FSPEC-v5.md` PASS (R-3) |
