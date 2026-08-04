@@ -30,6 +30,18 @@ Also in the delta: front-matter version 1.2 → 1.3 and a §18 row describing al
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| — | — | — | No findings. All three distinct defects are resolved at the site each was raised against, and nothing I approved at v5/v6 moved. | — |
+
+**Nothing previously approved was broken.** The delta is additive prose plus one type-level widening and one sentence replacement:
+
+- **No requirement mapping changed.** §17's traceability row `ADV-03 | REQ-ADV-04 | §5.4, §5.5 | structural non-calls + SeamOps.verifyGate` (`TSPEC:1480`) still resolves: §5.5 still names a `verifyGate` disposition for all five seams, and A1/A3's disposition is now the one REQ AC-4.5's own table describes. AC-4.5's "Given a resolution is applied" antecedent is unaffected — A1 and A3 apply nothing by construction (A1-4, A3-6).
+- **No prohibition weakened.** P-1's reliance on "A3's `permittedActions` is `[]`" (`TSPEC:634`) is untouched, and the A1/A3 edits *strengthen* the same argument by removing the one shipped artefact that could have been mistaken for a passing gate.
+- **No budget, enum, error-handling row, or acceptance criterion moved.** §4.5's arithmetic is character-for-character the same relation (`elapsedMs - waitMs >= seamBudgetMinutes * 60_000`, NFR-4); only the provenance sentence for `waitMs` changed. `SeamOps`' member count is explicitly held at nine, so no seam implementer inherits a new obligation.
+- **§11.1's claim is narrowed to what is true, not weakened.** The old sentence asserted three sites and named a token matching one — an assertion that would have passed as written only by not being run. The new one is stricter (a named file set, an explicit exclusion of the `dist/` copies, an explicit exclusion of the parser body, an exact count) and is now mechanically checkable. D-1/D-2's product claim — one enabled-check on the dispatch path, no model resolution when disabled — is unchanged; only its proof is now executable.
+- **The §18 changelog stays an honest audit trail.** The 1.3 row describes all three edits at enough detail to reconstruct them without `git log`, and is candid that the A1 stub was wrong rather than glossing it as a refactor.
+
 ## Questions
 
 ## Positive Observations
