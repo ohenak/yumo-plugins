@@ -320,6 +320,97 @@ A-22 🟢). PLAN §8.1 places all six FSPEC T-02 cases in the driver file.
 
 ## 6. Properties — envelope, refusal ladder, prohibitions
 
+Home: `advisoryEnvelope.test.js` (A-06 🔴 / A-20 🟢) for the pure classifier and the ladder;
+`advisoryDriver.test.js` for the prohibitions and gate exclusivity (blocks per PLAN §8.2). This is
+the hardest-enforced part of the feature: it is what makes REQ US-03's "un-widenable boundary" a
+control rather than a promise.
+
+### 6.1 The classifier (`classifyEnvelope`) — enforcement in code, not in a prompt
+
+| # | Property | Category | Level | Traces | Home |
+|---|---|---|---|---|---|
+| PROP-ENV-01 | `classifyEnvelope(candidate, ctx)` must be pure and total — no IO, no clock, no agent — and must return `{ inside, reason, matched }` for every generated input. | Contract | Unit | E-R3, NFR-1, TSPEC §5.1 | `advisoryEnvelope.test.js` |
+| PROP-ENV-02 | No prompt text must participate in the membership decision: a `candidate` whose `action` string argues for permission (e.g. `"this is clearly in scope"`) must classify identically to the same candidate with an empty argument. | Security | Unit | E-R1, NFR-1, BR-1, V-2 | `advisoryEnvelope.test.js` |
+| PROP-ENV-03 | Membership must be evaluated **twice** — on the proposal (step 3) and on the produced diff (step 5) — by **the same function**, not by two code paths. Asserted by a call-count spy showing two `classifyEnvelope` calls per applied invocation with different `candidate`s and identical `ctx`. | Contract | Unit | E-R2, BR-3, AC-3.2 | `advisoryEnvelope.test.js` + `A-22 — driver lifecycle` |
+| PROP-ENV-04 | The evaluation order must be exactly TSPEC §5.1's six checks — prohibitions, X-a, X-e, X-d, X-b, X-c/membership — and must iterate `ADVISORY_EXCLUSIONS` (`["X-a","X-e","X-d","X-b","X-c"]`) in its declared array order, so the constant drives the table rather than documenting it. | Functional | Unit | AC-3.6, TSPEC §5.1/§5.3 | `advisoryEnvelope.test.js` |
+| PROP-ENV-05 | A produced change reaching outside the envelope must be reverted **whole**, never trimmed: after the revert the tree must satisfy O-2 (positive-presence pre-condition plus byte-identity), and no partial application must survive. | Data Integrity | Unit + Integration | AC-3.2, E-R2, BR-3, T-03-2 | `advisoryEnvelope.test.js` (classification) + `advisoryDodSeams.test.js` / `advisoryPubSeam.test.js` (tree, per PLAN §6.2) |
+| PROP-ENV-06 | An out-of-envelope **proposal** must leave the tree byte-identical to its pre-invocation state and `apply` uncalled — the refusal must happen before anything is written. | Data Integrity | Integration | AC-3.2, T-03-1 | `advisoryDodSeams.test.js` (O-2 on `tmpGitFixture.js`) |
+| PROP-ENV-07 | X-d (declared scope) must be computed per seam from a non-agent source and must never be inferred by an agent: A1 `[]`, A2 `[reqPath]`, A3 `[]`, A4 PLAN-named files ∪ `merge-base..preRebaseHead`, A5 PLAN-named files ∪ `merge-base..HEAD` — PLAN names coming from `parsePlanTasks` (`orchestrate-dev.js:2039`). | Security | Unit | AC-3.4(d), TSPEC §5.2, T-03-9 | `advisoryEnvelope.test.js` |
+| PROP-ENV-08 | X-e must **reuse** the shipped `guardVerdict` (`orchestrate-dev.js:731`) with `guardPaths = effectiveGuardPaths(...)` (`:708`); no second matcher must exist. A diff touching a guard path must be reverted whole with reason `out-of-envelope` and the guarded file must be byte-identical afterwards (O-2). | Security | Unit + Integration | AC-3.4(e), REQ-MERGE-03, T-03-10, DEC-ADV-06 | `advisoryEnvelope.test.js` |
+| PROP-ENV-09 | X-b (`touchesDodCriterion`) must refuse any diff touching a Definition-of-Done criterion or threshold, by path **and** by operation — a threshold lowered inside `package.json` or `pyproject.toml` matches no test path and must still be caught. | Security | Unit | AC-3.4(b), AC-4.1, P-1 | `advisoryEnvelope.test.js` |
+| PROP-ENV-10 | X-c: a rebase conflict outside E-3's branch-created files must be out of envelope, for every conflict set containing at least one non-branch-created member. | Functional | Unit | AC-3.4(c), T-06-4 | `advisoryEnvelope.test.js` |
+| PROP-ENV-11 | `branchCreated(path)` must be true iff the path is absent from the merge-base tree **and** absent from the default-branch tip — both conjuncts required, so a file added on the default branch since the merge base is not "branch-created". | Data Integrity | Unit | AC-3.3 E-3 | `advisoryEnvelope.test.js` |
+| PROP-ENV-12 | `ENVELOPE_DEFAULTS` must equal `{E-1,E-2,E-3,E-4}` and `ADVISORY_EXCLUSIONS` must equal `{X-a,X-b,X-c,X-d,X-e}` **as sets**, against transcribed literals, and the comparison must **not** be parameterised by capability probes: where BL-05/BL-06 are unavailable the action stays a member and is refused at membership. | Contract | Unit | AC-3.3, AC-3.4, T-03-8 | `advisoryEnvelope.test.js` |
+
+### 6.2 X-a — the seven operations, each its own named property
+
+X-a is the feature's most dangerous exclusion: fixing a red test by editing the test. AC-3.5 requires
+each enumerated operation to be asserted by its own test, so a dropped clause fails the suite rather
+than degrading silently into "we check test paths".
+
+| # | Property (each: an advisory diff performing this operation must be reverted whole, reason `revert-on-test-touch`, run not reported resolved) | Level | Traces |
+|---|---|---|---|
+| PROP-XA-01 | editing an assertion inside an existing test | Unit | AC-3.4(a), T-03-3 |
+| PROP-XA-02 | deleting a test **file** | Unit | AC-3.4(a), T-03-3 |
+| PROP-XA-03 | deleting a test **case** within a retained file | Unit | AC-3.4(a), T-03-3 |
+| PROP-XA-04 | renaming a test out of the collected set (a name or path that `testPathIgnorePatterns` / the collection pattern no longer matches) | Unit | AC-3.4(a), T-03-3 |
+| PROP-XA-05 | adding a skip / xfail / only marker | Unit | AC-3.4(a), T-03-3 |
+| PROP-XA-06 | narrowing a parametrised case list | Unit | AC-3.4(a), T-03-3 |
+| PROP-XA-07 | lowering a coverage or mutation threshold | Unit | AC-3.4(a), T-03-3 |
+
+All seven live in `advisoryEnvelope.test.js` (A-06 🔴 / A-20 🟢). Each is **both** path-based and
+operation-based: `touchesTestArtifact(paths, action)` receives the seam's structured description of
+the edit, because PROP-XA-06 and PROP-XA-07 touch files that match no test-path regex. Each property
+asserts the positive triple (O-1) as well as the revert, so it cannot pass against a build where the
+seam never fired.
+
+**PROP-XA-08** — The seven clauses must be enumerable: a source-level assertion that
+`touchesTestArtifact` recognises exactly the seven declared operations, compared as a set, so a
+deleted clause fails.
+*Category: Contract · Level: Unit · Traces: FSPEC §18.2 T-03-3, PLAN §8.2.*
+
+### 6.3 The refusal ladder (`refusalReasonFor`)
+
+| # | Property | Category | Level | Traces | Home |
+|---|---|---|---|---|---|
+| PROP-REF-01 | `ADVISORY_REFUSAL_REASONS` must equal, **as an ordered list**, the eight reasons of REQ AC-3.6 / TSPEC §5.3: `prohibited-action`, `revert-on-test-touch`, `out-of-envelope`, `post-action-verification-failed`, `record-write-failed`, `malformed-verdict`, `low-confidence`, `budget-exhausted`. Set-equality catches an invented or deleted member; order is asserted separately because it is observable. | Contract | Unit | AC-3.6, T-03-5 | `advisoryEnvelope.test.js` |
+| PROP-REF-02 | Every refusal must carry **exactly one** reason — never zero, never two — in the disposition, the record and the escalation entry. | Contract | Unit | AC-3.6, V-8 | `advisoryEnvelope.test.js` |
+| PROP-REF-03 | Given a refusal satisfying two triggers at termination, the reported reason must be the **earlier** in catalogue order. The fixture must genuinely satisfy both (O-5): a low-confidence verdict whose diff also touches a test artifact must report `revert-on-test-touch`, not `low-confidence`. | Functional | Unit | AC-3.6, T-03-4 | `advisoryEnvelope.test.js` |
+| PROP-REF-04 | `refusalReasonFor(signals)` must be total (a reason for every non-empty signal set) and **first-match stable**: permuting the non-matching signals must never change the result, so the ordering claim is about the catalogue's own order and nothing else. | Functional | Unit | AC-3.6, PLAN P-5 | `advisoryEnvelope.test.js` |
+| PROP-REF-05 | The signal set must be built **once at termination** from the terminating condition, never accumulated across attempts. | Data Integrity | Unit | FSPEC §5.3, TSPEC §4.5 | `advisoryVerdict.test.js` + `A-22 — driver lifecycle` |
+
+### 6.4 Prohibitions — negative **and** positive on the same path
+
+AC-4.6 is explicit that a negative assertion alone is satisfied by accident (it passes against a build
+where the seam never fired). Each of the four properties below therefore asserts the prohibited thing
+did not happen **and** O-1 holds on the same execution.
+
+| # | Property | Category | Level | Traces | Home (block) |
+|---|---|---|---|---|---|
+| PROP-PROH-01 | The tier must never mark a DoD criterion satisfied, weaken one, or reduce the iteration requirement: `DOD_MAX_ITERATIONS` (`orchestrate-dev.js:25`) and `dodVerifyLoop`'s `maxIterations` (`:6273-6275`) must never receive an advisory-derived value, A3's `permittedActions` must be `[]`, and X-b must refuse any criterion-touching diff — plus O-1. | Security | Unit | AC-4.1, P-1, T-03-6 | `A-22 — driver lifecycle` |
+| PROP-PROH-02 | The tier must never set `ready: true` on a REQ: an A2 diff touching the frontmatter block `parseReqFrontmatter` reads (`orchestrate-queue.js:232`) must fail at **membership** — the edit is inside `reqPath` so it passes X-d, but rewriting frontmatter is not the E-4 action — observably `out-of-envelope`, plus O-1. The falsifying fixture must be a frontmatter edit *inside* the REQ, not a scope-violating path (O-5). | Security | Unit | AC-4.2, P-2, T-03-6 | `A-22 — driver lifecycle` |
+| PROP-PROH-03 | The tier must never declare CI passed: `ciStatus` must derive only from `checkPrCi` (`orchestrate-dev.js:5927`) via `raisePrAndVerifyCi` (`:6337`), and no advisory value must ever be assigned to it — asserted **behaviourally** per O-3 (spy call-count plus last-return-value identity), with the source grep kept only as a cheap secondary. Plus O-1. | Security | Unit + Integration | AC-4.3, P-3, T-03-6, T-07-7 | `A-22 — driver lifecycle` + `advisoryPubSeam.test.js` |
+| PROP-PROH-04 | The tier must never merge a PR and never alter a queue `Status` cell: no advisory path may call `executeMerge`, `phaseMerge` (`orchestrate-dev.js:1361`), `rewriteStatus` (`orchestrate-queue.js:1086`) or `updateQueueStatus` (`:358`), and the queue-side `SeamOps` must be constructed without `_writeFile` bound to `queuePath`. Plus O-1. | Security | Unit | AC-4.4, NFR-5, P-4, T-03-6 | `A-22 — driver lifecycle` |
+| PROP-PROH-05 | The tier must hold **no** credential the pipeline does not already hold: its only outward-facing capabilities must be the already-injected `_ghRun` and `_git`, and no new transport may appear. Asserted as a set-equality over the seams the advisory code paths receive. | Security | Unit | NFR-5, E-R4 | `advisoryEnvelope.test.js` |
+
+### 6.5 Gate exclusivity — one property per seam (O-6)
+
+**PROP-GATE-01 … PROP-GATE-05** — For each member of `ADVISORY_SEAMS`, a `resolved` outcome must be
+reachable **only** through that seam's declared `verifyGate`: with the gate stubbed to fail the
+disposition must never be `resolved`, and replacing the gate with `async () => ({ passed: true })`
+must make the case fail.
+*Category: Functional · Level: Unit · Traces: AC-4.5, BR-6, T-03-6(b), TSPEC §5.5 · Home: all five in
+`advisoryDriver.test.js`, generated by iterating one in-file registry, split across blocks
+`A-23 — A3/A4 gate exclusivity`, `A-24 — A5 gate exclusivity`, `A-31 — A1/A2 gate exclusivity`
+(PLAN §8.2).*
+
+**PROP-GATE-06** — The registry's key set must equal `ADVISORY_SEAMS` by set equality, in one place,
+so a sixth seam fails the suite until it has a case and a deleted case means a deleted registry row.
+*Category: Contract · Level: Unit · Traces: FSPEC §18.2, PLAN §8.1 · Home: `A-22 — driver lifecycle`.*
+
+The A1 row of PROP-GATE-01…05 is the one place the upstream documents disagree on what is being
+asserted — see §13 item 1.
+
 ## 7. Properties — seams A1 and A2 (queue module)
 
 ## 8. Properties — seams A3, A4 and A5 (dev module)
