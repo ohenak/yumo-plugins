@@ -799,15 +799,32 @@ These outlive the entries that produced them, so they are stated here rather tha
 3. **The disabled-run equivalence is a permanent test obligation, not a one-off.** Because the
    fixture is pinned at `26c3f1c` (DEC-ADV-10), any *future* change that adds a pre-feature
    file-creating path forces a deliberate re-pin with a stated reason — a refresh without one
-   silently destroys the property D-6 asserts.
+   silently destroys the property D-6 asserts. **Detector:** a one-line literal oracle asserting the
+   fixture's provenance-header commit equals the literal string `26c3f1c`. The expectation is a
+   **literal transcription**, never read from the fixture it checks. Any regeneration then fails a
+   test and must be accompanied by a deliberate edit to that literal — which is the "reviewed act
+   with a recorded reason" DEC-ADV-10 asks for, made mechanical.
 4. **The escalation log stays writer-only.** L-1's immutability and T-09-8's downgrade-a-failed-log
    asymmetry are guaranteed by the absence of a reader (DEC-ADV-09); the first `readFile` against
    `docs/_queue/ESCALATIONS.md` converts both from structural facts into behaviour that can be
-   wrong.
+   wrong. **Detector:** an absence guaranteed by nothing is not falsifiable, so the guarantee gets a
+   positive mechanism — a source scan over both modules, in the `AWAIT_SCAN_SOURCES` shape
+   (`bundleTest:997`), asserting the set of seams applied to the escalation path is **exactly**
+   `{_appendFile}`. Set-equality, not "does not contain `_readFile`", so a seam nobody anticipated
+   fails too.
 5. **X-e and Phase MERGE share one matcher, permanently.** If X-e ever needs semantics
    `guardVerdict` (`dev:731`) lacks, extend it for **both** consumers — a fork re-opens the
    possibility of the advisory tier permitting a change Phase MERGE then refuses to merge
-   (DEC-ADV-06).
+   (DEC-ADV-06). **Detector:** this is a *differential* property and is tested as one — over a shared
+   changed-file corpus including the adversarial cases DEC-ADV-06 names (`pdlc/workflowsX/`, a
+   case-shifted `PDLC/workflows/`, a non-`ok` observation), assert X-e's refusal decision and Phase
+   MERGE's guard decision agree **on every input**, rather than checking each against its own
+   expectation table. Two independent tables drift together with the implementations; a differential
+   oracle cannot.
+
+Obligations 1 and 2 already have their detectors shipped; 3, 4 and 5 acquire theirs in this
+feature's PLAN. The general rule they instance: **a standing obligation with no detector is
+documentation, not an obligation.**
 
 **Costs accepted, stated plainly.** The uniform driver makes the `apply` / `verifyGate` split less
 obvious at a reading than a per-seam branch would be (DEC-ADV-02, DEC-ADV-03). The advisory rung's
