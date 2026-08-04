@@ -75,4 +75,26 @@ them as new findings — they are the same two defects with the same fixes, and 
 
 ## Recommendation
 
+**Approved with minor changes** — zero High, zero Medium, two Low.
+
+The document is byte-identical to the one I approved at v5: `git diff 6bcd258..HEAD` on it is empty,
+and the only additions on the branch in that range are six cross-review files. There is therefore no
+changed section to scan for new issues, and nothing in this range could have broken what I approved —
+a claim I did not take on trust: 183 property rows, §12.1's AC→property matrix untouched, and zero
+`ERRATUM:` lines emitted, all re-derived at `4df1f7b`.
+
+No acceptance criterion is narrowed, reinterpreted or dropped, and no scope is present that the REQ
+does not carry — the same conclusion as v5, for the same document.
+
+The two findings are the v5 Lows carried forward, both cosmetic and neither blocking: §13.1's heading
+still says "routed" over a section that routes nothing, and two quotations of `TSPEC:424` paraphrase
+inside quotation marks. Fold them into the next revision of this file if one happens for another
+reason; neither justifies a round on its own.
+
+No errata from me. Every upstream item this document records was already closed upstream, and each
+closure still cites the line that carries it at head.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 2}
