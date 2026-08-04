@@ -155,6 +155,86 @@ un-skipped is caught by PLAN §9.1's zero-skips-remaining check.
 
 ## 3. Oracles — the falsifiability rules every property below obeys
 
+Five oracles recur throughout this feature. Each is defined once here and referenced by name, so no
+property below has to re-derive it and no implementer can satisfy a weakened form of it.
+
+### O-1 — The escalation triple (never an absence check)
+
+REQ AC-3.6 and FSPEC V-8 say every escalation produces "the same observable triple". Asserting
+`outcome != "resolved"` alone is unfalsifiable — `no-action`, a thrown error or an unset field would
+all pass. **O-1 is three positive conjuncts, asserted together on one path:**
+
+1. `disposition.outcome === "escalated"` (exact value, not a negation);
+2. `disposition.reason` is **one** member of `ADVISORY_REFUSAL_REASONS`, and the *same* string
+   appears in the `ADVISORY-{feature}.md` entry's `Disposition` row **and** in the
+   `ESCALATIONS.md` entry's `Refusal reason` row — one reason, three places, byte-equal;
+3. the seam's pre-advisory behaviour happened: at A1/A2 the candidate was skipped (the queue's
+   `needs-human` branch still `continue`s), at A3/A4/A5 the pre-existing `throw haltError(...)` still
+   fired with a byte-identical message.
+
+Conjunct 3 is what makes O-1 falsifiable against a build where the seam silently swallowed the halt.
+
+### O-2 — Two tree states, never three (byte-identity with a positive-presence conjunct)
+
+FSPEC BR-5 admits exactly two post-invocation tree states. A bare "output == input" comparison is
+vacuous on a fixture that never contained the content in the first place, so **O-2 is two conjuncts**:
+
+1. a *positive-presence* pre-condition — the fixture demonstrably contains the content whose survival
+   is being asserted (the conflicted hunk, the REQ citation line, the guarded file's bytes), asserted
+   before the seam runs;
+2. the state comparison itself — `git status --porcelain` and `git rev-parse HEAD` taken before and
+   after over a real temporary repo (`__tests__/fixtures/tmpGitFixture.js`), equal on the revert
+   branch, and on the resolved branch equal to the verified post-resolution state and to nothing else.
+
+O-2 is asserted **on a real tree** only where a real tree exists: PLAN §6.2 restricts it to A-10 and
+A-11. `advisoryDriver.test.js` (A-07) drives a *fake* `SeamOps`, so its revert obligation is the
+behavioural one — `revert` invoked exactly once, before the disposition is returned (O-3), not a git
+comparison that would assert nothing.
+
+### O-3 — Identical-envelope behaviours are counted, not shaped
+
+`revert`, a re-poll, a re-run and a retry can all leave a result envelope that looks the same whether
+or not they happened. Every such property's oracle is a **spy call-count**, and symmetrically for
+every member of the family:
+
+| Behaviour | Counted oracle |
+|---|---|
+| revert on out-of-envelope produced diff, on gate failure, on record-write failure | `seamOps.revert` called exactly once, and `seamOps.apply` called before it |
+| A5 re-poll after `apply` | `checkPrCi` (`orchestrate-dev.js:5927`) spy called ≥ 1 time **after** `apply`, and the reported `ciStatus` byte-equal to the spy's **last return value** |
+| E-1 flaky re-run | the workflow-rerun transport called exactly once per attempt, on a commit sha byte-equal to the pre-seam head |
+| attempt budget | dispatch spy called exactly `attemptBudget` times — never "at most" |
+| disabled tier | dispatch spy and rung-resolution spy called **zero** times (the one place a zero count is the assertion, and it is paired with a positive: the pre-advisory outcome occurred) |
+
+### O-4 — Routing branches get a workflow-level property, not only a guard unit test
+
+Four routing decisions in this feature are coverage-mode gates in the FSPEC sense — the seam-token
+router (A1 vs A2), the `enabled` master switch, the `status === "failed"` branch inside
+`raisePrAndVerifyCi` (`orchestrate-dev.js:6337`), and the capability probes (BL-05 / BL-06). For each,
+**at least one Integration-level property drives the real phase body end to end and asserts the
+terminal disposition and the phase outcome** — a guard-only unit test cannot see the routing path.
+These are PROP-A12-01, PROP-DIS-01, PROP-A5-09 and PROP-A5-04/05.
+
+### O-5 — Precedence-defeating fixtures
+
+Several properties assert a *new* blocking cause behind an existing precedence chain. A fixture in
+which an earlier branch preempts the new cause would pass even if the feature were unimplemented, so
+each such property names the earlier outcomes its fixture must defeat:
+
+| Property | Earlier branch that must not fire |
+|---|---|
+| `revert-on-test-touch` ahead of `out-of-envelope` (T-03-4) | the fixture must satisfy **both** triggers, and the assertion is on the *earlier* reason |
+| A5's pre-existing-failure escalation (T-07-2) | the E-2 "introduced" test must not have been reached — assert the default-branch probe ran **first** |
+| A4's mixed conflict set (T-06-4) | the branch-created check must not have resolved the branch-created subset first — assert `apply` was never called |
+| A1 refusing a blocked pre-check (T-04-3b) | the reachable production path skips before triage, so the unit-scoped property drives `honourA1Verdict` directly |
+| A2's durable commit observed by a *subsequent* invocation (T-04-6) | assert across a **reload** of the branch head, not from an in-memory prior |
+
+### O-6 — A `resolved` outcome is reachable only through a gate
+
+FSPEC BR-6. For every member of `ADVISORY_SEAMS`, a property asserts that with the seam's
+`verifyGate` stubbed to fail the disposition is never `resolved`, and that **replacing the gate with
+`async () => ({ passed: true })` makes the case fail** — so a silently-removed or stubbed gate cannot
+pass. See §13 item 1 for the one seam where the upstream documents disagree about what A1's gate is.
+
 ## 4. Properties — configuration and model rung
 
 ## 5. Properties — verdict contract, invocation lifecycle, budgets
