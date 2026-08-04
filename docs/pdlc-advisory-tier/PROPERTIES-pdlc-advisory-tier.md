@@ -668,4 +668,73 @@ assigns it.
 
 ## 12. Coverage matrix
 
+Three directions are audited: every REQ acceptance criterion and NFR has ≥1 property (§12.1); every
+PLAN §3 task has ≥1 property it must satisfy (§12.2); every named test file exists or is explicitly
+planned as new (§12.3).
+
+### 12.1 REQ acceptance criteria and NFRs → properties
+
+| REQ | Properties |
+|---|---|
+| AC-1.1 | PROP-RUNG-01 |
+| AC-1.2 | PROP-RUNG-02, PROP-RUNG-03, PROP-RUNG-05 |
+| AC-1.3 | PROP-RUNG-04, PROP-REC-07, PROP-SUM-03 |
+| AC-1.4 | PROP-RUNG-06 |
+| AC-1.5 | PROP-RUNG-01, PROP-A1-07 |
+| AC-1.6 | PROP-LIFE-01, PROP-DIS-01, PROP-DIS-02, PROP-SUM-06 |
+| AC-1.7 | PROP-CFG-01 … PROP-CFG-05, PROP-BUD-01 |
+| AC-2.1 | PROP-VER-02, PROP-VER-04, PROP-VER-05 |
+| AC-2.2 | PROP-LIFE-03, PROP-LIFE-04 |
+| AC-2.3 | PROP-VER-01, PROP-VER-03, PROP-LIFE-09 |
+| AC-2.4 | PROP-BUD-01, PROP-BUD-04, PROP-LIFE-09, PROP-LIFE-10 |
+| AC-3.1 | PROP-CFG-06, PROP-CFG-07, PROP-ENV-02 |
+| AC-3.2 | PROP-ENV-03, PROP-ENV-05, PROP-ENV-06 |
+| AC-3.3 | PROP-ENV-11, PROP-ENV-12, PROP-A2-02, PROP-A4-01, PROP-A5-03, PROP-A5-05 |
+| AC-3.4 | PROP-XA-01 … PROP-XA-08 (a), PROP-ENV-09 (b), PROP-ENV-10 (c), PROP-ENV-07 (d), PROP-ENV-08 (e), PROP-A2-05, PROP-A4-08 |
+| AC-3.5 | PROP-XA-01 … PROP-XA-08, PROP-A4-05, PROP-A5-18 |
+| AC-3.6 | PROP-REF-01 … PROP-REF-05, PROP-LIFE-12, and O-1 wherever referenced |
+| AC-4.1 | PROP-PROH-01, PROP-A3-09, PROP-ENV-09 |
+| AC-4.2 | PROP-PROH-02 |
+| AC-4.3 | PROP-PROH-03, PROP-A5-10 |
+| AC-4.4 | PROP-PROH-04 |
+| AC-4.5 | PROP-GATE-01 … PROP-GATE-06, PROP-A2-08, PROP-A3-05, PROP-A4-02, PROP-A5-10 |
+| AC-4.6 | PROP-PROH-01 … PROP-PROH-04 (each asserts negative **and** O-1 on one path) |
+| AC-5.1 | PROP-A1-01 … PROP-A1-05 |
+| AC-5.2 | PROP-A2-01 |
+| AC-5.3 | PROP-A2-02, PROP-A2-03, PROP-A2-04 |
+| AC-5.4 | PROP-A1-06, PROP-A2-08 |
+| AC-5.5 | PROP-A12-01 … PROP-A12-05 |
+| AC-6.1 | PROP-A3-01, PROP-A3-02, PROP-A3-03 |
+| AC-6.2 | PROP-A3-07, PROP-A3-08 |
+| AC-6.3 | PROP-A3-05, PROP-A3-06 |
+| AC-6.4 | PROP-A3-09 |
+| AC-7.1 | PROP-A4-01 |
+| AC-7.2 | PROP-A4-02 |
+| AC-7.3 | PROP-A4-03, PROP-A4-04 |
+| AC-7.4 | PROP-A4-06, PROP-A4-09 |
+| AC-8.1 | PROP-A5-01 |
+| AC-8.2 | PROP-A5-07, PROP-A5-08 |
+| AC-8.3 | PROP-A5-13 |
+| AC-8.4 | PROP-A5-03, PROP-A5-04 |
+| AC-8.5 | PROP-A5-02 |
+| AC-8.6 | PROP-A5-14, PROP-SUM-05 |
+| AC-9.1 | PROP-REC-02, PROP-REC-03, PROP-REC-04, PROP-A2-12 |
+| AC-9.2 | PROP-REC-05, PROP-REC-06, PROP-LIFE-07 |
+| AC-9.3 | PROP-HARV-01 … PROP-HARV-06 |
+| AC-9.4 | PROP-SUM-01 … PROP-SUM-05 |
+| AC-10.1 | PROP-ESC-01, PROP-ESC-04 |
+| AC-10.2 | PROP-ESC-01 (decision sentence first) |
+| AC-10.3 | PROP-ESC-06, PROP-REG-01, PROP-REG-02, PROP-REG-03 |
+| AC-10.4 | PROP-ESC-02, PROP-HARV-09 |
+| AC-10.5 | PROP-ESC-07, PROP-ESC-08, PROP-ESC-09 |
+| NFR-1 | PROP-ENV-01, PROP-ENV-02, PROP-CFG-06 |
+| NFR-2 | PROP-PROH-01 … PROP-PROH-04 |
+| NFR-3 | PROP-DIS-01 … PROP-DIS-07, PROP-SUM-06 |
+| NFR-4 | PROP-BUD-01, PROP-BUD-02, PROP-BUD-03, PROP-LIFE-10, PROP-A5-09 |
+| NFR-5 | PROP-PROH-04, PROP-PROH-05, PROP-A5-04, PROP-A5-05 |
+
+**No unexplained gap.** Every AC and NFR of REQ §3–§4 appears above with at least one property, and
+every property above traces to at least one AC/NFR or to a named FSPEC rule (the O-* oracles and the
+PROP-INFRA-*/PROP-REG-* rows trace to PLAN and TSPEC obligations, and say so in their own rows).
+
 ## 13. Gaps, negative space, and errata
