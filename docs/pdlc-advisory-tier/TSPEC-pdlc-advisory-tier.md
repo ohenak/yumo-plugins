@@ -113,8 +113,11 @@ new build source, no new inlining order, and no change to `build.mjs`'s three-so
 Rejected alternatives are recorded in §16; the one worth naming here is a fourth build source
 (`pdlc/workflows/advisory.js`). It is *possible* — `build.mjs` would gain a `readFileSync`, a
 `wrapModule` call and two array insertions — but it changes the artifact composition rule that
-`__tests__/runtimeBundle.test.js` and `distribution-manifest.json` are written against, for a
-benefit (`orchestrate-dev.js` staying at 8,527 lines instead of ~9,300) that no requirement asks for.
+`__tests__/runtimeBundle.test.js` is written against, for a benefit (`orchestrate-dev.js` staying at
+8,527 lines instead of ~9,300) that no requirement asks for. It does **not** change
+`distribution-manifest.json`'s composition: manifest rows are emitted one per *artifact* from the
+three-entry `bundles` array (`pdlc/workflows/build-runtime.mjs:277-296`), so a fourth **source**
+inlined into those same three artifacts adds no row — only the `pluginSha1` values move.
 
 ### 2.3 The prelude edit
 
@@ -127,6 +130,8 @@ const devModule = wrapModule("__dev", stripModuleSyntax(devSource), [
   // advisory tier — consumed by queueModule's prelude below
   "runAdvisorySeam", "parseAdvisoryConfig", "readAdvisoryConfigSafely",
   "resolveAdvisoryRung", "advisorySummaryRows", "ADVISORY_DEFAULTS",
+  // §6.4.1 — A2's verifyGate reuses the dev module's commit helper verbatim
+  "commitPaths",
 ]);
 
 // build:96-103 — the queue module's prelude gains the same names
@@ -138,9 +143,21 @@ const queueModule = wrapModule("__queue", stripModuleSyntax(queueSource),
   "const readAdvisoryConfigSafely = __dev.readAdvisoryConfigSafely;\n" +
   "const resolveAdvisoryRung = __dev.resolveAdvisoryRung;\n" +
   "const advisorySummaryRows = __dev.advisorySummaryRows;\n" +
-  "const ADVISORY_DEFAULTS = __dev.ADVISORY_DEFAULTS;"
+  "const ADVISORY_DEFAULTS = __dev.ADVISORY_DEFAULTS;\n" +
+  "const commitPaths = __dev.commitPaths;"
 );
 ```
+
+**Two module-private symbols become module exports.** `commitPaths`
+(`pdlc/workflows/orchestrate-dev.js:6905`) and its lock-retry helper `gitWithLockRetry` (`:6862`) are
+today declared without `export`, so neither is reachable from the queue module as shipped. §6.4.1's
+A2 `verifyGate` depends on `commitPaths`, so the implementation makes exactly one of them exported:
+`commitPaths` gains an `export` keyword in `orchestrate-dev.js` and the name above in
+`build-runtime.mjs`'s dev export list and the queue prelude. `gitWithLockRetry` stays private — it is
+reached only through `commitPaths`, which closes over it inside the same module scope, so the bundle
+carries it without it having to be named. Adding `commitPaths` to the export list is additive: it
+does not change the bundle's artifact composition (§2.2), and `__tests__/runtimeBundle.test.js`'s
+structural constraints are unaffected by a longer export array.
 
 In `orchestrate-queue.js` these are **free identifiers with injection-seam defaults**, exactly as
 `realMain` is at `queue:764`:
