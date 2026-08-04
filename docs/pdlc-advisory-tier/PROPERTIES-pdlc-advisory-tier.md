@@ -643,7 +643,7 @@ from. All nine reuse `__tests__/helpers/driftGenerators.js` through `advisoryDou
 | P-1 | `parseAdvisoryConfig` | **Total** over arbitrary JSON values (never throws); every returned key is a member of `ADVISORY_DEFAULTS`' key set; **per-key independence** — corrupting key *k* leaves every key ≠ *k* equal to the value parsed from the uncorrupted input, and puts exactly *k* into `invalidKeys`. | `configObject` | A-03 / A-17 | `advisoryConfig.test.js` |
 | P-2 | `parseAdvisoryVerdict` | **Total** over arbitrary strings; the five malformedness rules **partition** the input space — every generated input matches exactly one rule or parses cleanly, never two, never none. | `verdictText` | A-05 / A-19 | `advisoryVerdict.test.js` |
 | P-3 | `budgetExceeded` | **Monotone in elapsed time** (true at *t* ⇒ true at every *t′ > t*, same budget) and **invariant under the A5 rollup carve-out** (adding `waitMs` never flips `false` → `true`). | bounded numeric draws | A-05 / A-19 | `advisoryVerdict.test.js` |
-| P-4 | `classifyEnvelope` | Three conjuncts over the real signature `classifyEnvelope(candidate, ctx) ⇒ {inside, reason, matched}`: **determinism and purity** (two calls deep-equal; neither argument mutated — a real falsifier for a classifier that memoises into `ctx`); **closure** (`reason ∈ ADVISORY_REFUSAL_REASONS ∪ {null}`); **coherence** (`inside === (reason === null)`). No claim is made about `matched`'s contents — the upstream documents declare its type and nothing more. | `envelopeCtx` | A-06 / A-20 | `advisoryEnvelope.test.js` |
+| P-4 | `classifyEnvelope` | Three conjuncts over the real signature `classifyEnvelope(candidate, ctx) ⇒ {inside, reason, matched}`: **determinism and purity** (two calls deep-equal; neither argument mutated — a real falsifier for a classifier that memoises into `ctx`); **closure** — `reason ∈ {"prohibited-action","revert-on-test-touch","out-of-envelope"} ∪ {null}`, the three-member enum TSPEC declares for this function's return, **not** the full eight-member `ADVISORY_REFUSAL_REASONS` (§13 item 3); **coherence** (`inside === (reason === null)`). No claim is made about `matched`'s contents — the upstream documents declare its type and nothing more. | `envelopeCtx` | A-06 / A-20 | `advisoryEnvelope.test.js` |
 | P-5 | `refusalReasonFor` | **Total**; **first-match stable** — permuting the non-matching signals never changes the returned reason, so the ordering claim is about `ADVISORY_EXCLUSIONS`' / the catalogue's own order and nothing else. | signal sets | A-06 / A-20 | `advisoryEnvelope.test.js` |
 | P-6 | `renderAdvisoryEntry` | **Total** over the generated verdict × disposition space; always emits exactly the seven fields in the declared order; **no field body contains an unescaped newline** (which would corrupt the record's line grammar). | `entryFields` | A-08 / A-21 | `advisoryRecord.test.js` |
 | P-7 | `renderEscalationEntry` | **Total** over reason × seam × disposition; the decision sentence is always first; **append-safe** — rendering N entries and concatenating equals appending them one at a time, so newest-last is a property of the renderer, not of the caller. | `entryFields` | A-09 / A-21 | `advisoryEscalationLog.test.js` |
@@ -815,3 +815,62 @@ manifest. The two shipped helper modules the new files compose with — `helpers
 phase body.
 
 ## 13. Gaps, negative space, and errata
+
+### 13.1 Upstream defects — routed, not absorbed
+
+Three defects found while deriving these properties belong to upstream documents. They are named
+here and emitted as `ERRATUM:` lines to their owning author; this document does not edit those
+documents and does not treat the defects as its own.
+
+1. **A1's `verifyGate` — PLAN §8.2 contradicts TSPEC.** PLAN §8.2 (and its §3 A-31 row) says "A1
+   declares **no** gate, so its case asserts `verifyGate == null`". TSPEC §5.5 and §6.3 both declare
+   A1's `verifyGate` as `async () => ({ passed: true })` — which is exactly the stub PLAN's own
+   T-03-6(b) says must make the gate-exclusivity case **fail**. As written, A1's shipped `SeamOps`
+   fails PLAN's own case. The substantive rule is agreed and is what PROP-GATE-01…05 assert: A1 has
+   **no post-action gate**, its `permittedActions` is `[]`, and `resolved` is unreachable at A1 at
+   all. Which of the two representations ships — a null member, or a trivially-passing stub that is
+   unreachable — is the PLAN author's to settle; PROP-GATE's A1 row asserts the unreachability, which
+   holds either way, and defers the representation.
+2. **`governingClass([])` — resolved upstream, recorded here.** TSPEC §7.2 now states that the empty
+   input is unreachable by construction (A3-1 rejects as malformed any classification whose classified
+   count is below the finding count) and deliberately names no return value. P-9 and PROP-A3-04 are
+   scoped to non-empty multisets accordingly. **No erratum** — this is a closed item, listed so a
+   reviewer does not re-raise it.
+3. **P-4's closure conjunct is weaker than the declared return type.** PLAN §6.5 states P-4's closure
+   as `result.reason ∈ ADVISORY_REFUSAL_REASONS ∪ {null}` — eight reasons. TSPEC §5.1's JSDoc declares
+   `classifyEnvelope`'s return as `reason ∈ {"prohibited-action","revert-on-test-touch","out-of-envelope"} | null`
+   — three. An implementation returning `low-confidence` or `budget-exhausted` from the classifier
+   would satisfy PLAN's P-4 while violating TSPEC's contract, so the property as stated cannot
+   falsify a real defect class. §11 states the stronger, three-member form.
+
+### 13.2 Deliberate negative space — what has no property, and why
+
+| Area | Why no property |
+|---|---|
+| The `advisory` prompt texts | Prompt wording is not a control (NFR-1); every rule it describes is asserted against the pipeline's behaviour with an agent that proposes the forbidden thing. Only PROP-A12-05 pins prompt *structure*, because the triage grammar is parsed. |
+| Widening the envelope beyond E-1…E-4 | Deferred (D-ADV-01) pending advisory-record evidence. Asserting a future member would enshrine a decision no document has made. |
+| Per-seam model selection | Deferred (D-ADV-05). PROP-RUNG-01 asserts a *single* rung constant, which is the shipped decision. |
+| Phase MERGE behaviour after an advisory run | Out of scope (REQ §5). PLAN open item 4 accepts that MERGE will defer more often with a generic reason; widening MERGE's reason catalogue is explicitly not this feature's (AC-10.5, PROP-ESC-07). |
+| `advisory.enabled` true on a repo with no `gh` at all | Reduces to PROP-A5-02/04/05 — every capability absence is already a first-class tested outcome, so a repo with none of them gets an A5 that only escalates. |
+| A re-run surfacing a *different* CI failure | Not a separate property: TSPEC §8.5 makes it a new diagnosis **inside the same invocation**, drawing on the same budget, which is exactly what PROP-A5-07's attempt accounting asserts. |
+| A-34's manual runtime verification | Not a suite member — a recorded runtime fact in one of two admissible forms. The honest `RESULT: unverified — no runtime available` is a **pass**, and an inferred result is mock data (PLAN §9.4). No property can substitute for a real runtime dispatch, and inventing one would be the exact defect that rule exists to prevent. |
+
+### 13.3 Risks this property set knowingly carries
+
+1. **BL-01 is open.** `MODEL_ADVISORY = "fable"` may not resolve in the shipped runtime. The property
+   set is written so the fallback rung is a **tested path, not an error path** (PROP-RUNG-04), so the
+   suite is green on either branch; what stays unproven until A-34 runs is which branch production
+   takes.
+2. **The record and escalation grammars are pinned byte-exact** (PROP-REC-02, PROP-ESC-01). That is
+   deliberate — the operator and `pdlc-engineering-loop` read these files — but it means a cosmetic
+   format change is a test change. The transcribed literals are the contract; changing them is a
+   decision, not a refactor.
+3. **O-2's real-tree properties are the slowest in the suite.** They are confined to
+   `advisoryDodSeams.test.js` and `advisoryPubSeam.test.js` (PLAN §6.2) precisely to keep the cost
+   bounded; pushing them into the driver file, where the `SeamOps` is fake, would make them assert
+   nothing at all.
+4. **`orchestrate-dev.js` grows past 9,000 lines** with this feature (PLAN open item 3). No property
+   here constrains file size; the coverage floor is computed over an enumerated 24-function surface
+   (PLAN §6.4) rather than over the file, so a later extraction into a fourth build source does not
+   invalidate any property above.
+
