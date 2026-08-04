@@ -41,7 +41,48 @@ Every claim below was executed or grepped against the working tree at HEAD `e7ff
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | A-15 must "capture the created-file set of a run at `26c3f1c`", but no task says how a tree at `26c3f1c` is obtained inside Phase I — checkout is not available to a wave agent (the orchestrator owns the branch), and §2.3 explicitly forbids `git checkout -- .`. Is the intent a `git worktree` at the pin, a `git stash`-free detached read, or an operator pre-step like F-02's? The `scenario` header records the `command` after the fact; the PLAN needs to state it before. |
+| Q-02 | §6.2 assigns "Tree-state invariants … `fixtures/tmpGitFixture.js` — compare `git status --porcelain` and `git rev-parse HEAD` before and after" to A-07, A-10, A-11. A-07 is the driver unit test against a *fake* `SeamOps`; no real git tree is touched on that path. Is A-07 in that row deliberately (the `revert`-on-`{ok:false}` case), or should the row list A-10/A-11 only? |
+| Q-03 | A-01 asserts the guard script's tokens "by reading the hook" at HEAD, and A-28 (batch 4) then extends that hook's refusal message. If A-01's assertion is byte-exact on the message it goes red at batch 4 — the first casualty of F-01's gate problem. Can A-01's guard assertions be pinned to the *stable* substrings (`CROSS-REVIEW`, the bracketed-directory shape) that A-28 promises not to change, and can that promise be stated in A-01's row rather than only in §5.4(3)? |
+| Q-04 | §9.2 requires every one of the 81 cases to be "failing before its green task and passing after". Under any resolution of F-01 that folds red into green, that per-case red evidence is no longer a batch boundary the executor records. What artifact carries it — a per-task commit pair, or an entry in the DoD `CODE_REVIEW`? |
+
 ## Positive Observations
 
+- **The batch column is mechanically correct.** All 37 rows re-derive to `max(dep batch) + 1` from the declared `Deps`; the graph is acyclic, ids unique, every dependency resolves. `computeTopologicalBatches` reproduces §5.2's 20-row transcription exactly, including the size-cap splits `A-03…A-07 / A-08…A-12 / A-13…A-15`. This is the first PLAN I have reviewed here where the executor numbering was actually run rather than asserted.
+- **§4's file-ownership manifest is genuinely disjoint per batch**, and §4.1 does the harder check — disjointness in the *executor's* batches, not just §3's labels. The "only the 🔴 row owns the test file; the 🟢 row repeats it but does not own it" convention (§3 preamble) is exactly the rule that stops last-writer-wins coverage loss.
+- **§5.1's gate defect is a real, reproduced defect**, found by the author rather than by review, with the reproduction transcript in the document. It fails at HEAD as described (23 suites), and the restated command collects exactly the 68 files claimed. F-02 is about *where* the repair lands, not whether it is right.
+- **§6.1's canonical-doubles module with named export signatures, plus AC-INFRA-1 prohibiting per-test ad-hoc equivalents**, is the correct answer to driver-vs-seam contract drift, and it correctly composes with the shipped `mergeDoubles.js` / `seams.js` / `guardFixtures.js` / `tmpGitFixture.js` rather than re-authoring them — all four verified present.
+- **§6.4's final paragraph names the four obligations no percentage can express** — seven X-a operations as seven named tests, the positive V-8 triple alongside every prohibition, closed sets compared as sets, and the D-6 expected value transcribed rather than derived. §8.2 then expands each into a task. That is the anti-absence-only, anti-implementation-echo discipline stated at PLAN altitude, which is where it is cheapest to enforce.
+- **§5.3's "A-15 gates A-16, not the reverse"** is precisely the right reasoning: a test that generates its own expected value is incapable of failing. Naming that as a dependency-edge justification is better than leaving it as a convention.
+- **§8.3 note 1** correctly refuses to let the phase-integration test subsume the seam-unit test for the no-`testCommand` path, and says why neither subsumes the other. That is the distinction most PLANs collapse.
+- **§6.3's per-artifact lifecycle table** closes the gap where Phase H deletes only `CROSS-REVIEW-*`/`CODE_REVIEW-*` — including the observation that the manual-verification file's pattern is *not* guard-watched, so its deletion will not be stopped.
+
 ## Recommendation
+
+**Needs revision**
+
+Three High findings block approval, and the first two are the same class of problem: the PLAN's
+verification story is stated in prose the executor never reads.
+
+1. **F-01** — reconcile §5.2's gate wording with `orchestrate-dev.js:8111-8118`. RED-terminal waves
+   cannot exist under a full-suite gate that halts on failure. Fold 🔴 into 🟢, or ship the red cases
+   skipped and un-skip them in the green task.
+2. **F-02** — move the `.claude/pdlc.config.json` repair out of batch 1. `implConfig` is read at
+   `:8040-8042`, before the wave loop at `:8094`; A-00 cannot affect its own run's gate, and wave 1
+   halts unconditionally as things stand.
+3. **F-03** — correct the T-02-1/2/3 assignment so A-05's row and §8.1 agree, and so those three
+   lifecycle cases land in the file whose green owner (A-22) can satisfy them.
+
+Then the five Mediums: name the property strategies (F-04, with `driftGenerators.js` as the in-repo
+precedent), add T-08-4b to A-13 (F-05), make the coverage floor measurable or move it out of the
+mechanical list (F-06), pair the `ciStatus` grep with a `checkPrCi` call-count + value-identity oracle
+(F-07), and give A-34 an executable procedure or an explicit operator carve-out (F-08).
+
+The Lows (F-09, F-10, F-11) are counts and a cheap regression pin; fold them into the same revision.
+
+Nothing in the analysis, the dependency graph or the ownership manifest needs rework — the DAG is
+correct and the doubles strategy is right. The revision is about making the gates and the case
+assignments say what the machine will actually do.
 
