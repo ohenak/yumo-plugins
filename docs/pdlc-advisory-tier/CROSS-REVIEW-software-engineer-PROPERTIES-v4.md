@@ -41,7 +41,40 @@ the class a delta re-review exists to catch. Nothing else in the changed text is
 
 ## Questions
 
+v3's Q-08 was not touched by this revision, which is reasonable — it asked about a *future* fourth
+`.enabled` read on the queue side, and §10.1 already states the procedure for handling one if it
+appears. I carry it forward unanswered rather than re-file it, and it blocks nothing. One new
+question, from the erratum round rather than from this revision.
+
+| ID | Question |
+|----|---------|
+| Q-08 (carried) | PROP-DIS-06 counts `/\.enabled\b/` over both modules and expects three, while TSPEC §3.2's C-3 row says `readAdvisoryConfigSafely` is "called once in each `main()`". If the queue's run report is ever expected to carry the C-2 substitution notice, its emit gate is a fourth read and the expected total becomes four. Is the queue's silence on the substitution notice a deliberate D-5 consequence, or the gap that produces the "legitimate fourth read" §10.1 tells Phase I how to handle? |
+| Q-09 | TSPEC §4.3 now types `verifyGate` as `null \| (() => Promise<{passed: boolean, detail?: string}>)` (`TSPEC:416`) and asserts "the driver reaches `verifyGate` only on a seam whose `permittedActions` is non-empty, so the nullable member is never invoked as `null`" (`TSPEC:438-439`). That is a driver invariant, not a `SeamOps` one, and today only A1/A3 exercise it. Does the property set want one case pinning it directly — a seam constructed with `verifyGate: null` **and** a non-empty `permittedActions` must not throw a TypeError at step 6 but take a defined path — or is it deliberately left to F-01's structural `verifyGate === null` assertion plus PROP-LIFE-*'s step ordering? Either answer is fine; I ask because the invariant is the one thing standing between `null` and a crash if a later seam is added with a permitted action and no gate. |
+
 ## Positive Observations
+
+- **The closure was recorded, not deleted.** The easy edit was to strike §13.1 item 5 now that the
+  PLAN row exists. Instead the item was rewritten in place as "Closed — … Kept only as a closure
+  record so no later reviewer re-raises it", which is the version that pays off: the next reviewer
+  reads one sentence instead of re-deriving whether a fixture module needs an owner. That is the
+  pattern F-05 asks item 6 to follow, so the document has already demonstrated the fix it needs.
+- **The claim carries its own verification, and the verification holds.** "`validatePlanContract`
+  passes over the amended manifest (36 tasks, 36 rows, `{"ok":true}`)" is a statement I could check
+  mechanically rather than by reading, and I did — `parsePlanTasks`/`parsePlanOwnership`/
+  `validatePlanContract` executed over `PLAN-pdlc-advisory-tier.md` return exactly those three
+  values, with `scanFixtures.js` on A-01's row. It is also the *right* claim to make now: it no
+  longer offers `validatePlanContract` as the thing that enforces the **file**, which was v3 F-03.
+- **The erratum was routed and then closed by the upstream author, end to end.** §13.1 item 5 asked
+  for an A-01 assignment without making it; PLAN v1.6 made exactly that assignment, with the batch-1
+  shared-prerequisite justification (batch-safety rule 4) and both real mechanisms cited —
+  `orchestrate-dev.js:8143-8159` for the file, `validatePlanContract` for the row (`PLAN:252`). The
+  round-trip is the erratum channel working as designed, and it is worth naming as a positive
+  precedent for the remaining open items.
+- **The revision changed nothing it did not have to.** The header note says "no property, oracle, or
+  count changed", and the diff bears that out: three hunks, none touching a property statement, and
+  §12.3's level totals line (148 Unit / 40 Integration / 7 both / 0 E2E) is byte-identical. A
+  closure edit that silently re-levels a property or perturbs a count is how a converged document
+  un-converges; this one did not.
 
 ## Recommendation
 
