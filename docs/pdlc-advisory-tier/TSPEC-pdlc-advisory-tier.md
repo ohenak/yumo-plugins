@@ -13,7 +13,7 @@ feature: pdlc-advisory-tier
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.0 | 2026-08-03 |
+| pdlc | approved | Claude | 1.0 | 2026-08-03 |
 
 ## 1. Scope, baseline pin, and what this TSPEC decides
 
