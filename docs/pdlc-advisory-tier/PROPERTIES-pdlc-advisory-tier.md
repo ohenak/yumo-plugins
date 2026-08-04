@@ -64,12 +64,29 @@ coverage floor, or PLAN §9's Definition of Done; those are execution mechanics 
 does not choose the framework (jest 29.7.0, pinned in `pdlc/workflows/package.json`) or invent a
 generator (`__tests__/helpers/driftGenerators.js` already ships one — §2).
 
-**Test-pyramid budget for this feature.** 78 of the properties below are Unit, 21 Integration, and
-**zero E2E** — deliberately. The feature has no UI and no deployable surface; its "end to end" is a
-whole-pipeline run of the workflow module against injected seams, which is exactly what the
-Integration level already means here (PLAN §6.2's three harnesses). Anything that would be an E2E
-test is instead PLAN A-34's *manual* runtime verification, which is a recorded fact, not a suite
-member.
+**Test-pyramid budget for this feature.** The budget is stated as a **shape**, and the count below is
+the count against it — not an estimate. This document defines **195 distinct `PROP-*` ids** (183 in
+tables, 12 stated in prose: `PROP-INFRA-01…04`, `PROP-XA-08`, `PROP-GATE-01…06`, `PROP-REG-08`),
+levelled as:
+
+| Level | Count | Share |
+|---|---|---|
+| Unit | 148 | 76% |
+| Integration | 40 | 21% |
+| Unit **and** Integration (one property, asserted at both levels) | 7 | 3% |
+| E2E | **0** | 0% |
+
+The budget those numbers are measured against is: **Unit ≥ 70%, Integration ≤ 30%, E2E = 0.** The
+count satisfies it. The share that needs an Integration harness is the union of the last two rows —
+**47 properties**, against PLAN §6.2's three harnesses (`advisoryDodSeams.test.js` and
+`advisoryPubSeam.test.js` for the real-tree fixtures, plus the phase-integration harness). That is a
+real cost signal for A-10 / A-11 / A-12 sizing, and §13.3 item 3 names it as the suite's slowest
+part; it is not a budget breach.
+
+**Zero E2E is deliberate, not an omission.** The feature has no UI and no deployable surface; its
+"end to end" is a whole-pipeline run of the workflow module against injected seams, which is exactly
+what the Integration level already means here. Anything that would be an E2E test is instead PLAN
+A-34's *manual* runtime verification, which is a recorded fact, not a suite member.
 
 ## 2. Fixtures, generators, and test doubles
 
@@ -753,7 +770,7 @@ from. All nine reuse `__tests__/helpers/driftGenerators.js` through `advisoryDou
 | P-4 | `classifyEnvelope` | Three conjuncts over the real signature `classifyEnvelope(candidate, ctx) ⇒ {inside, reason, matched}`: **determinism and purity** (two calls deep-equal; neither argument mutated — a real falsifier for a classifier that memoises into `ctx`); **closure** — `reason ∈ {"prohibited-action","revert-on-test-touch","out-of-envelope"} ∪ {null}`, the three-member enum TSPEC declares for this function's return, **not** the full eight-member `ADVISORY_REFUSAL_REASONS` (§13 item 3); **coherence** (`inside === (reason === null)`). No claim is made about `matched`'s contents — the upstream documents declare its type and nothing more. | `envelopeCtx` | A-06 / A-20 | `advisoryEnvelope.test.js` |
 | P-5 | `refusalReasonFor` | **Total**; **first-match stable** — permuting the non-matching signals never changes the returned reason, so the ordering claim is about `ADVISORY_EXCLUSIONS`' / the catalogue's own order and nothing else. | signal sets | A-06 / A-20 | `advisoryEnvelope.test.js` |
 | P-6 | `renderAdvisoryEntry` | **Total** over the generated verdict × disposition space; always emits exactly the seven fields in the declared order; **no field body contains an unescaped newline** (which would corrupt the record's line grammar). | `entryFields` | A-08 / A-21 | `advisoryRecord.test.js` |
-| P-7 | `renderEscalationEntry` | **Total** over reason × seam × disposition; the decision sentence is always first; **append-safe** — rendering N entries and concatenating equals appending them one at a time, so newest-last is a property of the renderer, not of the caller. | `entryFields` | A-09 / A-21 | `advisoryEscalationLog.test.js` |
+| P-7 | `renderEscalationEntry` | **Total** over reason × seam × disposition; always emits **exactly** the eight declared fields (set equality, so an invented ninth fails on some draw) in the declared order, the decision sentence always first; **append-safe** — rendering N entries and concatenating equals appending them one at a time, so newest-last is a property of the renderer, not of the caller. | `entryFields` | A-09 / A-21 | `advisoryEscalationLog.test.js` |
 | P-8 | `parseA3Classification` | **Total** over arbitrary agent text; the returned class is always a member of the declared closed set; unparseable text yields the fail-closed class, never `undefined`. | `classText` | A-10 / A-23 | `advisoryDodSeams.test.js` |
 | P-9 | `governingClass` | A **total order** over the generated class set — antisymmetric and transitive, ordering `real-defect > mis-scoped-criterion > deferral-candidate` — so "highest class wins" is well-defined for every **non-empty** multiset, ties included. The empty input is deliberately out of the property (§13 item 2). | `classText` | A-10 / A-23 | `advisoryDodSeams.test.js` |
 
@@ -775,28 +792,30 @@ assigns it.
 
 ## 12. Coverage matrix
 
-Three directions are audited: every REQ acceptance criterion and NFR has ≥1 property (§12.1); every
-PLAN §3 task has ≥1 property it must satisfy (§12.2); every named test file exists or is explicitly
-planned as new (§12.3).
+**Four** directions are audited: every REQ acceptance criterion and NFR has ≥1 property (§12.1);
+every PLAN §3 task has ≥1 property it must satisfy (§12.2); every named test file exists or is
+explicitly planned as new (§12.3); and every FSPEC §18.1 acceptance case is cited by ≥1 property
+(§12.4). The fourth direction is the one that catches a case with a home in PLAN §8.1 but no property
+stating what its oracle asserts — a gap the other three are structurally unable to see.
 
 ### 12.1 REQ acceptance criteria and NFRs → properties
 
 | REQ | Properties |
 |---|---|
-| AC-1.1 | PROP-RUNG-01 |
+| AC-1.1 | PROP-RUNG-01, PROP-RUNG-09 |
 | AC-1.2 | PROP-RUNG-02, PROP-RUNG-03, PROP-RUNG-05 |
-| AC-1.3 | PROP-RUNG-04, PROP-REC-07, PROP-SUM-03 |
+| AC-1.3 | PROP-RUNG-04, PROP-RUNG-09, PROP-REC-07, PROP-SUM-03 |
 | AC-1.4 | PROP-RUNG-06 |
 | AC-1.5 | PROP-RUNG-01, PROP-A1-07 |
 | AC-1.6 | PROP-LIFE-01, PROP-DIS-01, PROP-DIS-02, PROP-SUM-06 |
-| AC-1.7 | PROP-CFG-01 … PROP-CFG-05, PROP-BUD-01 |
+| AC-1.7 | PROP-CFG-01 … PROP-CFG-05, PROP-BUD-01, PROP-ENV-13 (the operator's `envelope` knob is exercised, not only defaulted) |
 | AC-2.1 | PROP-VER-02, PROP-VER-04, PROP-VER-05 |
 | AC-2.2 | PROP-LIFE-03, PROP-LIFE-04 |
 | AC-2.3 | PROP-VER-01, PROP-VER-03, PROP-LIFE-09 |
 | AC-2.4 | PROP-BUD-01, PROP-BUD-04, PROP-LIFE-09, PROP-LIFE-10 |
-| AC-3.1 | PROP-CFG-06, PROP-CFG-07, PROP-ENV-02 |
+| AC-3.1 | PROP-CFG-06, PROP-CFG-07, PROP-ENV-02, PROP-ENV-13 |
 | AC-3.2 | PROP-ENV-03, PROP-ENV-05, PROP-ENV-06 |
-| AC-3.3 | PROP-ENV-11, PROP-ENV-12, PROP-A2-02, PROP-A4-01, PROP-A5-03, PROP-A5-05 |
+| AC-3.3 | PROP-ENV-11 (E-3), PROP-ENV-12, PROP-A2-02 (E-4), PROP-A4-01, PROP-A5-03, PROP-A5-05, PROP-A5-07 (E-1), PROP-A5-20 (E-2) |
 | AC-3.4 | PROP-XA-01 … PROP-XA-08 (a), PROP-ENV-09 (b), PROP-ENV-10 (c), PROP-ENV-07 (d), PROP-ENV-08 (e), PROP-A2-05, PROP-A4-08 |
 | AC-3.5 | PROP-XA-01 … PROP-XA-08, PROP-A4-05, PROP-A5-18 |
 | AC-3.6 | PROP-REF-01 … PROP-REF-05, PROP-LIFE-12, and O-1 wherever referenced |
@@ -805,7 +824,7 @@ planned as new (§12.3).
 | AC-4.3 | PROP-PROH-03, PROP-A5-10 |
 | AC-4.4 | PROP-PROH-04 |
 | AC-4.5 | PROP-GATE-01 … PROP-GATE-06, PROP-A2-08, PROP-A3-05, PROP-A4-02, PROP-A5-10 |
-| AC-4.6 | PROP-PROH-01 … PROP-PROH-04 (each asserts negative **and** O-1 on one path) |
+| AC-4.6 | PROP-PROH-01 … PROP-PROH-04 and PROP-GATE-01 … PROP-GATE-05 (each asserts the negative **and** the AC-3.6 positive triple on one path — AC-4.6 quantifies over AC-4.1 through AC-4.5, so AC-4.5's gate properties are members of this row) |
 | AC-5.1 | PROP-A1-01 … PROP-A1-05 |
 | AC-5.2 | PROP-A2-01 |
 | AC-5.3 | PROP-A2-02, PROP-A2-03, PROP-A2-04 |
@@ -834,8 +853,8 @@ planned as new (§12.3).
 | AC-10.3 | PROP-ESC-06, PROP-REG-01, PROP-REG-02, PROP-REG-03 |
 | AC-10.4 | PROP-ESC-02, PROP-HARV-09 |
 | AC-10.5 | PROP-ESC-07, PROP-ESC-08, PROP-ESC-09 |
-| NFR-1 | PROP-ENV-01, PROP-ENV-02, PROP-CFG-06 |
-| NFR-2 | PROP-PROH-01 … PROP-PROH-04 |
+| NFR-1 | PROP-ENV-01, PROP-ENV-02, PROP-ENV-13, PROP-CFG-06 |
+| NFR-2 | PROP-PROH-01 … PROP-PROH-04, PROP-GATE-01 … PROP-GATE-05 |
 | NFR-3 | PROP-DIS-01 … PROP-DIS-07, PROP-SUM-06 |
 | NFR-4 | PROP-BUD-01, PROP-BUD-02, PROP-BUD-03, PROP-LIFE-10, PROP-A5-09 |
 | NFR-5 | PROP-PROH-04, PROP-PROH-05, PROP-A5-04, PROP-A5-05 |
@@ -850,30 +869,30 @@ All 36 tasks of PLAN §3's table are listed; none is without a property obligati
 
 | Task | Properties it must satisfy |
 |---|---|
-| A-01 | PROP-REG-06 (baseline symbols; plus the `implementation.testCommand` pin, which is a PLAN §2.4 operator concern, not a property here) |
-| A-02 | PROP-INFRA-01, PROP-INFRA-02 (the doubles and the generator re-export) |
+| A-01 | PROP-REG-06 (baseline symbols), PROP-INFRA-01 (the doubles-hygiene source scan, homed here so it runs from the first batch; plus the `implementation.testCommand` pin, which is a PLAN §2.4 operator concern, not a property here) |
+| A-02 | PROP-INFRA-02 (the generator seeding discipline); the doubles module it ships is what PROP-INFRA-01 asserts every advisory file resolves to |
 | A-03 🔴 | PROP-CFG-01 … PROP-CFG-07, P-1 |
-| A-04 🔴 | PROP-RUNG-01 … PROP-RUNG-08 |
+| A-04 🔴 | PROP-RUNG-01 … PROP-RUNG-09 |
 | A-05 🔴 | PROP-VER-01 … PROP-VER-05, PROP-BUD-01 … PROP-BUD-04, P-2, P-3 |
-| A-06 🔴 | PROP-ENV-01 … PROP-ENV-12, PROP-XA-01 … PROP-XA-08, PROP-REF-01 … PROP-REF-05, PROP-PROH-05, PROP-INFRA-04, P-4, P-5 |
+| A-06 🔴 | PROP-ENV-01 … PROP-ENV-13, PROP-XA-01 … PROP-XA-08, PROP-REF-01 … PROP-REF-05, PROP-PROH-05, PROP-INFRA-04, P-4, P-5 |
 | A-07 🔴 | PROP-LIFE-01 … PROP-LIFE-13, PROP-PROH-01 … PROP-PROH-04, PROP-GATE-01 … PROP-GATE-06 (authored across the four blocks) |
 | A-08 🔴 | PROP-REC-01 … PROP-REC-08, PROP-SUM-01 … PROP-SUM-03, P-6 |
 | A-09 🔴 | PROP-ESC-01 … PROP-ESC-09, P-7 |
 | A-10 🔴 | PROP-A3-01 … PROP-A3-11, PROP-A4-01 … PROP-A4-11, PROP-ENV-05/06 (tree half), P-8, P-9 |
-| A-11 🔴 | PROP-A5-01 … PROP-A5-19, PROP-PROH-03 (behavioural half) |
+| A-11 🔴 | PROP-A5-01 … PROP-A5-20, PROP-PROH-03 (behavioural half) |
 | A-12 🔴 | PROP-A12-01 … PROP-A12-06, PROP-A1-01 … PROP-A1-07, PROP-A2-01 … PROP-A2-13 |
 | A-13 🔴 | PROP-HARV-01 … PROP-HARV-09, PROP-SUM-04 |
 | A-14 🔴 | PROP-REG-04, PROP-REG-05 |
 | A-15 | PROP-INFRA-03 (the authored fixture and its `scenario` header) |
 | A-16 🔴 | PROP-DIS-01 … PROP-DIS-07, PROP-REG-08 |
 | A-17 🟢 | PROP-CFG-01 … PROP-CFG-07, P-1, and `commitPaths`' one `export` (PROP-REG-04/05 depend on it) |
-| A-18 🟢 | PROP-RUNG-01 … PROP-RUNG-08 |
+| A-18 🟢 | PROP-RUNG-01 … PROP-RUNG-09 |
 | A-19 🟢 | PROP-VER-01 … PROP-VER-05, PROP-BUD-01 … PROP-BUD-04, P-2, P-3 |
-| A-20 🟢 | PROP-ENV-01 … PROP-ENV-12, PROP-XA-01 … PROP-XA-08, PROP-REF-01 … PROP-REF-05, P-4, P-5 |
+| A-20 🟢 | PROP-ENV-01 … PROP-ENV-13, PROP-XA-01 … PROP-XA-08, PROP-REF-01 … PROP-REF-05, P-4, P-5 |
 | A-21 🟢 | PROP-REC-01 … PROP-REC-08, PROP-ESC-01 … PROP-ESC-09, PROP-SUM-01 … PROP-SUM-03, P-6, P-7 |
 | A-22 🟢 | PROP-LIFE-01 … PROP-LIFE-13, PROP-PROH-01 … PROP-PROH-04, PROP-GATE-06 |
 | A-23 🟢 | PROP-A3-01 … PROP-A3-11, PROP-A4-01 … PROP-A4-11, PROP-GATE (A3, A4 rows), P-8, P-9 |
-| A-24 🟢 | PROP-A5-01 … PROP-A5-12, PROP-A5-16 … PROP-A5-18, PROP-GATE (A5 row) |
+| A-24 🟢 | PROP-A5-01 … PROP-A5-12, PROP-A5-16 … PROP-A5-18, PROP-A5-20, PROP-GATE (A5 row) |
 | A-25 🟢 | PROP-A3-05, PROP-A3-07, PROP-A4-03, PROP-A4-09 (integration half), PROP-REG-01, PROP-ESC-06 |
 | A-26 🟢 | PROP-A5-13, PROP-A5-14, PROP-A5-15, PROP-A5-19, PROP-SUM-05, PROP-REG-02 |
 | A-27 🟢 | PROP-HARV-01 … PROP-HARV-04, PROP-HARV-07 … PROP-HARV-09, PROP-SUM-04, PROP-SUM-06 |
@@ -900,10 +919,10 @@ manifest. The two shipped helper modules the new files compose with — `helpers
 
 | Test file (all new) | Creating task | Level mix | Property families |
 |---|---|---|---|
-| `advisoryPreflight.test.js` | A-01 | Unit | PROP-REG-06 |
+| `advisoryPreflight.test.js` | A-01 | Unit | PROP-REG-06, PROP-INFRA-01 |
 | `helpers/advisoryDoubles.js` (helper, not collected) | A-02 | — | PROP-INFRA-01, -02 |
 | `advisoryConfig.test.js` | A-03 | Unit + 1 Integration | PROP-CFG-*, P-1 |
-| `advisoryRung.test.js` | A-04 | Unit + 1 Integration | PROP-RUNG-* |
+| `advisoryRung.test.js` | A-04 | Unit + Integration | PROP-RUNG-* |
 | `advisoryVerdict.test.js` | A-05 | Unit | PROP-VER-*, PROP-BUD-*, P-2, P-3 |
 | `advisoryEnvelope.test.js` | A-06 | Unit | PROP-ENV-*, PROP-XA-*, PROP-REF-*, P-4, P-5 |
 | `advisoryDriver.test.js` | A-07 | Unit | PROP-LIFE-*, PROP-PROH-*, PROP-GATE-* |
@@ -915,11 +934,40 @@ manifest. The two shipped helper modules the new files compose with — `helpers
 | `advisoryHarvest.test.js` | A-13 | Unit + Integration | PROP-HARV-*, PROP-SUM-04 |
 | `advisoryBundle.test.js` | A-14 | Unit | PROP-REG-04, -05 |
 | `fixtures/created-files-26c3f1c.json` (fixture) | A-15 | — | PROP-INFRA-03 |
-| `advisoryDisabled.test.js` | A-16 | Integration | PROP-DIS-*, PROP-REG-08 |
+| `advisoryDisabled.test.js` | A-16 | Unit + Integration | PROP-DIS-*, PROP-SUM-06, PROP-REG-08 |
 
-**Level totals.** 78 Unit properties, 21 Integration, 0 E2E — inside the pyramid budget stated in
-§1, and the Integration share is concentrated exactly where O-2 and O-4 require a real tree or a real
-phase body.
+**Level totals.** 195 distinct properties: **148 Unit, 40 Integration, 7 asserted at both levels, 0
+E2E** — the count restated from §1's budget table, computed over the property tables and the twelve
+prose-stated ids, not estimated. It satisfies §1's budget shape (Unit ≥ 70%, Integration ≤ 30%,
+E2E = 0), and the 47 properties needing an Integration harness are concentrated exactly where O-2 and
+O-4 require a real tree or a real phase body: `advisoryDodSeams.test.js`, `advisoryPubSeam.test.js`,
+`advisoryQueueSeams.test.js`, `advisoryHarvest.test.js` and `advisoryDisabled.test.js`.
+
+### 12.4 FSPEC acceptance cases → properties
+
+FSPEC §18.1 declares **81** acceptance cases, `T-01-1` … `T-10-5`. The audit is a set comparison, run
+mechanically over this document: every one of the 81 ids must appear in at least one property's
+`Traces` cell or in a property's prose. **All 81 are cited.** The audit is stated as set equality in
+both directions — an FSPEC case cited by no property is a coverage gap, and a `T-nn-n` cited here
+that FSPEC §18.1 does not declare is an invented case.
+
+This direction exists because the other three cannot see this class of gap. §12.1 audits REQ→property
+and would pass with a whole FSPEC case family uncovered, since the AC above it has other properties.
+§12.2 audits PLAN task→property and would pass because PLAN §8.1 homes every case in a file whether or
+not a property states its oracle. §12.3 audits only file existence. Delegating case coverage to PLAN
+§8.1 is **not** sufficient: PLAN §8.1 says which file a case lives in, never what its oracle asserts.
+
+One case was uncovered at v1 and is closed here:
+
+| Case | FSPEC text | Home (PLAN §8.1) | Property |
+|---|---|---|---|
+| T-01-2 | "`advisory.enabled` true and the advisory rung resolvable · when a seam fires · then the run's advisory summary names the advisory rung and **reports no fallback**" (`FSPEC:195`) | `advisoryRung.test.js`, A-04 🔴 / A-18 🟢 | **PROP-RUNG-09** (§4.2) |
+
+T-01-2 is not cosmetic: it is the positive control that makes PROP-RUNG-04's fallback assertion
+falsifiable. Without a run that demonstrably does not substitute the rung, a build reporting the
+fallback unconditionally passes PROP-RUNG-04 and nothing catches it. PROP-RUNG-09 is homed in the file
+PLAN §8.1 assigns the case, and is levelled Integration because the summary it asserts is the one the
+report actually carries.
 
 ## 13. Gaps, negative space, and errata
 
