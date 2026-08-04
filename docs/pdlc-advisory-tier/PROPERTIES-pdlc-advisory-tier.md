@@ -237,6 +237,42 @@ pass. See §13 item 1 for the one seam where the upstream documents disagree abo
 
 ## 4. Properties — configuration and model rung
 
+Home for all of these: `advisoryConfig.test.js` (A-03 🔴 / A-17 🟢) and `advisoryRung.test.js`
+(A-04 🔴 / A-18 🟢), per PLAN §8.1.
+
+### 4.1 Configuration (`parseAdvisoryConfig`, `readAdvisoryConfigSafely`)
+
+| # | Property | Category | Level | Traces | Home |
+|---|---|---|---|---|---|
+| PROP-CFG-01 | `parseAdvisoryConfig(text)` must return `{ config, sectionMalformed, invalidKeys }` and must never throw, for **any** input including `null`, `""`, non-JSON bytes, JSON that is not an object, and an object with no `advisory` key. | Error Handling | Unit | AC-1.7, C-1, T-01-1 | `advisoryConfig.test.js` |
+| PROP-CFG-02 | Given no `advisory` section, an absent file (`text === null`), or unparseable JSON, `config` must deep-equal `ADVISORY_DEFAULTS` — `{enabled:false, attemptBudget:3, seamBudgetMinutes:10, envelope:["E-1","E-2","E-3","E-4"]}` — transcribed as a literal, and `invalidKeys` must be `[]`. | Functional | Unit | AC-1.7, C-1, T-10-4 | `advisoryConfig.test.js` |
+| PROP-CFG-03 | Given exactly one out-of-range key *k*, the returned config must carry `ADVISORY_DEFAULTS[k]` for *k*, the **configured** value for every key ≠ *k*, and `invalidKeys` must equal `[k]` exactly. Per-key fallback is independent; one bad key must not reset the section. | Data Integrity | Unit | AC-1.7, C-2, T-01-6 | `advisoryConfig.test.js` |
+| PROP-CFG-04 | The degraded-key notice must be emitted **iff** the effective `enabled` resolves `true`; with `enabled` false (or itself malformed) `invalidKeys` must still be populated by the parser while **no** notice is emitted. The suppression must live at the emit site, not in the parser. | Observability | Unit | C-2, DEC-ADV-08, TSPEC §3.2 | `advisoryConfig.test.js` (mechanism only; the disabled-run artifact claim is T-10-4's, whose single home is `advisoryDisabled.test.js`) |
+| PROP-CFG-05 | `readAdvisoryConfigSafely` must be called **exactly once per run**, before the first seam can fire, and its result threaded thereafter — a second read must not occur even when five seams fire. Asserted by an `_readFile` call-count spy scoped to `ADVISORY_CONFIG_PATH` (O-3). | Contract | Integration | C-3, F-1, AC-1.7 | `advisoryConfig.test.js` + the phase-integration harness |
+| PROP-CFG-06 | No advisory code path must write `ADVISORY_CONFIG_PATH`, and no agent output must change any resolved config value: the config object must be frozen after parse and must never be passed to `_writeFile`. | Security | Unit | C-4, AC-3.1, NFR-1 | `advisoryConfig.test.js` |
+| PROP-CFG-07 | `advisory.envelope` must be read as the per-seam allow-list and must **not** be widenable at runtime: a verdict, prompt or agent text proposing an unlisted action must leave `config.envelope` deep-equal to its parsed value. | Security | Unit | AC-3.1, E-R1, BR-1 | `advisoryConfig.test.js` |
+
+`ADVISORY_CONFIG_PATH` is `.claude/pdlc.config.json` — the same per-repo config home Phase MERGE and
+the distribution gate already use (`orchestrate-dev.js:43`, aliased at TSPEC §3.1).
+
+### 4.2 Model rung (`isModelResolutionError`, `resolveAdvisoryRung`)
+
+| # | Property | Category | Level | Traces | Home |
+|---|---|---|---|---|---|
+| PROP-RUNG-01 | Exactly one constant must name each rung — `MODEL_ADVISORY` (`"fable"`) and `MODEL_ADVISORY_FALLBACK` (`"opus"`) — placed with `MODEL_DEFAULT` (`orchestrate-dev.js:1578`) and `MODEL_IMPLEMENTATION` (`:1621`), and every advisory dispatch site in **both** modules must reference those constants rather than a literal. Asserted by a source scan for a bare `"fable"`/advisory-model literal outside the constant declarations. | Contract | Unit | AC-1.1, AC-1.5 | `advisoryRung.test.js` |
+| PROP-RUNG-02 | `MODEL_ADVISORY_FALLBACK` must be a **separate** constant, not an alias of `MODEL_DEFAULT`: repointing `MODEL_DEFAULT` in the fixture must not move the fallback rung. | Data Integrity | Unit | AC-1.2, TSPEC §3.1 | `advisoryRung.test.js` |
+| PROP-RUNG-03 | `isModelResolutionError(err)` must return `true` for a rejection naming an unknown/unrecognised/invalid/unsupported **model or alias**, and `false` for every other rejection — including a mid-flight failure of a dispatch that had already produced output. | Error Handling | Unit | AC-1.2, M-1, T-01-5 | `advisoryRung.test.js` |
+| PROP-RUNG-04 | Given `MODEL_ADVISORY` is rejected as a model error, `resolveAdvisoryRung` must (a) emit an `ADVISORY_MODEL_FALLBACK` notice naming **both** the unresolvable value and the substitute, (b) return `{ model: MODEL_ADVISORY_FALLBACK, fallback: true }`, (c) re-dispatch the same prompt exactly once, and (d) proceed. The record's `Model` row and the report summary must both show the substitution. | Functional | Unit | AC-1.3, M-2, T-01-3, T-08-7 | `advisoryRung.test.js` |
+| PROP-RUNG-05 | Given a rejection `isModelResolutionError` does **not** match, no fallback ladder must be entered: the fallback dispatch spy must be called zero times, `fallback` must stay `false`, and the failure must be dispositioned as an ordinary invocation failure consuming one attempt. | Error Handling | Unit | M-1, T-01-5 | `advisoryRung.test.js` |
+| PROP-RUNG-06 | Given **both** rungs are rejected as model errors, the run must fail with a model-resolution halt, no advisory agent must have produced output, and there must be no third fallback and no revert to `MODEL_DEFAULT` — asserted positively by the halt's message naming both attempted rungs, plus a dispatch-count spy showing exactly two dispatches. | Error Handling | Unit | AC-1.4, M-3, T-01-4 | `advisoryRung.test.js` |
+| PROP-RUNG-07 | Rung resolution must be **lazy and memoised per run**: with the tier enabled and no seam condition arising, the classification dispatch count must be zero and the report must still carry five zero rows; with two seams firing, one `_state` object must yield exactly one resolution. | Idempotency | Integration | M-4, F-1, T-01-7, T-10-5 | `advisoryRung.test.js` |
+| PROP-RUNG-08 | The resolution memo must be a **threaded parameter**, never module state: two `runAdvisorySeam` invocations given two distinct `_state` objects must each resolve independently, and no resolution must leak between them. | Contract | Unit | DEC-ADV-05, TSPEC §3.5 | `advisoryRung.test.js` |
+
+**Negative properties in this domain.** PROP-RUNG-05 and PROP-RUNG-06 are the two paths where a
+weaker oracle would silently pass: a test asserting only "the run failed" is satisfied by any throw,
+so PROP-RUNG-06 pins the message content and the dispatch count, and PROP-RUNG-05 pins a *zero*
+fallback count against a *positive* ordinary-failure disposition (O-3's symmetry rule).
+
 ## 5. Properties — verdict contract, invocation lifecycle, budgets
 
 ## 6. Properties — envelope, refusal ladder, prohibitions
