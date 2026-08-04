@@ -50,6 +50,36 @@ No prior finding regressed, and no unchanged section was disturbed by the delta.
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-07 | Low | Local | The new AC-1.4 paragraph points at the wrong re-evaluation trigger: it says the unreachability "evaporates the moment `MODEL_ADVISORY_FALLBACK` is re-pinned away from `MODEL_DEFAULT`, which is trigger 3 below" — but trigger 3 fires on `MODEL_DEFAULT` changing, which is only one of the two ways the equality can break. Re-pinning the fallback itself fires nothing, so the newly-declared unit-level test obligation would silently become a whole-pipeline one with no signal. | DEC-ADV-04, "Non-fatal by construction covers the fallback branch…" ¶ + triggers |
+
+### F-07 (Low) — the AC-1.4 unreachability paragraph names a trigger that only covers half its own condition
+
+The paragraph added at DEC-ADV-04 is exactly what I asked for in v1-F-04 and it is correct on the
+substance: with `MODEL_ADVISORY_FALLBACK = "opus"` and `MODEL_DEFAULT = "opus"` (`dev:1578`, re-verified
+at HEAD), AC-1.4's branch is unreachable end-to-end and is a unit-level obligation. The paragraph then
+closes with:
+
+> that unreachability is a property of today's literals, not of the design: it evaporates the moment
+> `MODEL_ADVISORY_FALLBACK` is re-pinned away from `MODEL_DEFAULT`, which is **trigger 3 below**.
+
+Trigger 3 reads: *"`MODEL_DEFAULT` changing — the separate-constant rationale becomes load-bearing at
+that moment."* Those are two different events. The equality that makes AC-1.4 unreachable breaks if
+**either** literal moves; trigger 3 observes only the `MODEL_DEFAULT` side. A future change that
+re-pins `MODEL_ADVISORY_FALLBACK` to, say, `"sonnet"` makes AC-1.4 reachable through a run — the
+paragraph's own condition for the test obligation changing shape — and no trigger in this entry fires.
+
+This is the same shape as v1-F-05, which the revision fixed well: a trigger whose condition is narrower
+than the fact it is supposed to guard. It is Low because the decision is unaffected, the AC-1.4
+classification is right today, and the fix is one clause — restate trigger 3 as *"either
+`MODEL_DEFAULT` or `MODEL_ADVISORY_FALLBACK` changing, so that the two literals are no longer equal"*,
+which covers both halves and keeps the existing rationale intact. A mechanical form is available if
+wanted, in the shape this document now favours elsewhere: a literal-transcription assertion that the
+two constants are equal, which goes red on either re-pin and forces the reader back to this entry —
+note that such a test asserts a *property of today's literals* deliberately, and its red is a prompt to
+re-read AC-1.4's coverage, not a defect signal.
+
 ## Questions
 
 ## Positive Observations
