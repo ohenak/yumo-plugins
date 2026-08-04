@@ -20,6 +20,12 @@ Each row was checked against the cited code/FSPEC line at HEAD, not against the 
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Low | Local | §11.2's new `scenario` re-assertion is a second, independently-falsifiable oracle on the D-6 test (fixture staleness vs. created-file diff), but §13.4's five suite obligations still describe only obligation 4, "the disabled-run created-file set is transcribed as a literal … never re-derived". Adding "…and the scenario object is asserted field-by-field before the set comparison, failing distinctly" to that row would keep §13.4 the single place an implementer reads for the D-6 suite shape. Not blocking: §11.2 already states the obligation in a form an implementer can execute. | §11.2, §13.4 obligation 4 |
+
+Nothing previously approved is broken by this delta. Specifically re-checked, because the edit touched them: §3.2's emit-gate code block and its `invalidKeys` contract are unchanged (only the surrounding rationale was restated), §4.4/§6.4.1's `apply`/`verifyGate` split and step order are unchanged (only the justification moved from "resolves an FSPEC gap" to "expresses a settled FSPEC rule"), §11.3's five-row table keeps all five rows with unchanged behaviour cells, and §16.1/§16.3's rejections stand with the same conclusions. The only behavioural additions in the round are the `commitPaths` export (E-2) and the fixture `scenario` object (E-5) — both strictly additive.
+
 ## Questions
 
 ## Positive Observations
