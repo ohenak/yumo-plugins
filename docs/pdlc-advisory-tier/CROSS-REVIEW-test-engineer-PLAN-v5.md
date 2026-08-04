@@ -91,4 +91,39 @@ are wording or citation precision on mechanisms I verified to be correct in subs
 
 ## Recommendation
 
+**Approved with minor changes**
+
+Both v4 findings and the v4 question are resolved, and the High is resolved on every consequence I
+raised — the artifact is per task so there is one writer per file, the batch 3–5 detector is
+quantified over a declared set with a missing key failing closed, and each agent's assertions are
+scoped to files no wave-mate can touch. I re-executed rather than re-read: the jest field
+transcription is exact on 29.7.0 (including "no per-file counters at all" and `testFilePath` absent
+at every level), the `perFile` reducer reproduces on the new path, the batch 1–2 "no tests found"
+exit is real, the eight multi-task waves are exactly the eight §5.2 enumerates, the manifest
+partition inside waves 3/12/13/14 is disjoint as claimed, the batch column re-derives with zero
+desync, and the PLAN still self-parses at 36 tasks / 36 ownership rows / `{"ok":true}` / 20 batches /
+20 waves with no cycle.
+
+Nothing blocking remains. Four Low items, each a clause:
+
+1. **F-01** — §5.2 retains each task's pair "until its wave's gate has passed", but §9.2 reads those
+   pairs at Definition of Done, after every wave. Either widen the window to the run ("kept until
+   §9.2 has been checked") or name the git-side recomputation as the standing fallback, which needs
+   no retained artifact.
+2. **F-02** — the concurrency citation `:8095-8102` stops at `wave.map`; the `agentFn("se-implement",
+   …)` it quotes is at `:8103` and the call closes at `:8107`. Cite `:8101-8107`.
+3. **F-03** — §9.2 (i)'s parenthetical justifies the baseline with `pathsCollide`, which does not
+   cover it: `{commit}^` is a wave-mate's commit only for the second and later tasks in a wave, and
+   an earlier wave's commit *did* touch `advisoryDriver.test.js` (A-23, A-24, A-31 across waves
+   12–14). The conjunct is sound because it is **block**-scoped and §3 gives each block one
+   un-skipper — say that instead.
+4. **F-04** — the fence comment says the post run is for "every task"; the paragraph below excludes
+   batches 1–2. Qualify the comment.
+
+None of the four changes a task, a dependency edge, a manifest row, a batch label, or any assertion's
+oracle, so none needs a re-parse or a re-derivation to land.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 4}
