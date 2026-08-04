@@ -286,6 +286,52 @@ then need explicit scoping rather than implicit per-call threading), or a change
 
 ## DEC-ADV-06: X-e reuses Phase MERGE's shipped guard matcher; only two new predicates are owned
 
+**Context.** Envelope exclusion X-e refuses any advisory change touching a self-modification guard
+path. Phase MERGE already refuses to merge a PR touching the same paths, so the repo has two consumers
+of one concept.
+
+**Decision.** X-e calls `guardVerdict(changed, ctx.guardPaths)` (`dev:731`) with
+`ctx.guardPaths = effectiveGuardPaths(mergeConfig.guardPaths)` (`dev:708`), **verbatim**, passing a
+synthesised `{ ok: true, files }` observation. The tier owns only the two predicates with no shipped
+precedent: `touchesTestArtifact` (X-a) and `touchesDodCriterion` (X-b) (TSPEC §5.1 row 3, §5.2).
+
+**Why reuse, verified rather than assumed.** `guardVerdict`'s documented and implemented semantics are
+exactly what X-e needs and are non-obvious in four independent ways (`dev:716-737`): matching is
+`String.prototype.startsWith`, case-sensitive, position-0 anchored, `/`-delimited (every guard path is
+normalised to a trailing `/` by `effectiveGuardPaths`, `dev:710-713`), with **no globbing, regex or
+substring search**; and anything that is not exactly `{ ok: true, … }` fails **closed** as
+`kind: "unretrievable"` (`dev:732-734`). The default set is the frozen `MERGE_GUARD_DEFAULTS`
+(`dev:47-52`) plus additive config.
+
+**Alternatives considered.**
+
+- **A purpose-built X-e matcher — rejected.** A second implementation would eventually disagree with
+  the first on a path like `pdlc/workflowsX/` (which the anchored, `/`-delimited rule excludes but a
+  naive `startsWith("pdlc/workflows")` includes), or on the fail-closed branch. Two matchers for one
+  concept means the advisory tier could permit a change Phase MERGE would then refuse to merge — the
+  pipeline contradicting itself, discovered at the last phase.
+- **Reusing the whole Phase MERGE guard *step* rather than the pure predicate — rejected.** That step
+  is built around O5's `gh`-derived changed-file observation; the advisory tier's file list comes from
+  `git diff --name-only` inside a seam. Taking the pure predicate and synthesising the observation
+  shape gets the semantics without inheriting the transport.
+- **Reusing something for X-a / X-b too — rejected after looking.** No shipped predicate matches a test
+  artifact by path *or* by operation, and none matches a DoD criterion; X-a in particular must catch
+  operations a path test cannot see (lowering a coverage threshold in `package.json`, adding a
+  skip/xfail marker), per AC-3.5. These are genuinely new and are therefore owned, tested per
+  enumerated operation, rather than approximated by a reused matcher.
+
+**Constraints that forced this shape.** The se-author cite-and-reuse rule for cross-cutting
+obligations; the fact that a guard disagreement between two phases is silent until it bites.
+
+**Reversibility: easy** for the reuse direction (a wrapper could be introduced), **hard** in the sense
+that diverging later re-opens the disagreement this entry exists to prevent.
+
+**Re-evaluation triggers.**
+1. X-e needing semantics Phase MERGE's guard does not have (globs, per-seam guard sets) — at that
+   point extend `guardVerdict` for **both** consumers, never fork it.
+2. `MERGE_GUARD_DEFAULTS` gaining a path that should not bind advisory changes, which would be the
+   first real evidence the two concepts are not one.
+
 ## DEC-ADV-07: The post-A5 DoD divergence is reported, not re-verified and not halted (OQ-3)
 
 ## DEC-ADV-08: A disabled run suppresses the degraded-key notice at the emit, not in the parser
