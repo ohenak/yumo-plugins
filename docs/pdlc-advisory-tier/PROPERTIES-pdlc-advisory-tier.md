@@ -587,6 +587,50 @@ Homes: `advisoryRecord.test.js` (A-08 🔴 / A-21 🟢), `advisoryEscalationLog.
 
 ## 10. Properties — disabled-tier equivalence and regression
 
+Homes: `advisoryDisabled.test.js` (A-16 🔴 / A-33 🟢) and `advisoryBundle.test.js`
+(A-14 🔴 / A-32 🟢), plus the pre-existing suites that must pass unmodified.
+
+### 10.1 Disabled-tier equivalence — inertness stated on named artifacts
+
+NFR-3 deliberately states equivalence as an equality on **named artifacts**, not on report text
+(which varies by timestamp and iteration count). Every property here pairs its zero-count conjunct
+with a positive one, per O-3's disabled-tier rule.
+
+| # | Property | Category | Level | Traces | Home |
+|---|---|---|---|---|---|
+| PROP-DIS-01 | With `advisory.enabled` false and a seam condition present at **each** of A1…A5 in turn, every seam must produce its pre-advisory outcome (skip at A1/A2, halt at A3/A4/A5) and **no** advisory agent must be dispatched. Asserted per seam, driving the real phase/queue body (O-4). | Integration | Integration | AC-1.6, NFR-3, D-1, T-10-1 | `advisoryDisabled.test.js` |
+| PROP-DIS-02 | With the tier disabled and an advisory rung that does not resolve, the run must be unaffected and **no model resolution** must be attempted — so a missing Fable alias cannot break a run with the tier off. | Integration | Integration | AC-1.6, D-2, T-10-2 | `advisoryDisabled.test.js` |
+| PROP-DIS-03 | With the tier disabled, no `ADVISORY-*` file must exist, `ESCALATIONS.md` must have gained no entry, the report must carry no advisory summary, and the set of files the run created must equal — element for element — the transcribed literal of `created-files-26c3f1c.json`, with its `scenario` header re-asserted first (PROP-INFRA-03). **The red direction is named:** any file created outside that literal set fails, whether or not this feature named it. | Data Integrity | Integration | NFR-3, D-6, T-10-3 | `advisoryDisabled.test.js` |
+| PROP-DIS-04 | An absent `advisory` section and a malformed config file must each behave exactly as PROP-DIS-03 — including no substitution notice when the malformed key is `enabled` itself. This is T-10-4's single home. | Error Handling | Integration | C-1, C-2, T-10-4 | `advisoryDisabled.test.js` |
+| PROP-DIS-05 | With the tier **enabled** and no seam condition arising, the report must carry an advisory summary with **five zero rows** — distinguishing an enabled-but-quiet run from a disabled one. | Observability | Integration | S-1, D-5, T-10-5, T-01-7 | `advisoryDisabled.test.js` |
+| PROP-DIS-06 | A grep for `advisory.enabled` on the dispatch path must find **exactly three** sites: the driver's early return, the config-notice emit gate, and the distil-step guard. A fourth site is a defect. | Contract | Unit | D-1, TSPEC §11.1 | `advisoryDisabled.test.js` |
+| PROP-DIS-07 | Other advisory keys set while disabled must be inert: the master switch must be tested **first**, before any other key is read. | Functional | Unit | TSPEC §11.3 | `advisoryDisabled.test.js` |
+
+### 10.2 Regression — what must still be true of the pipeline that existed before
+
+| # | Property | Category | Level | Traces | Home |
+|---|---|---|---|---|---|
+| PROP-REG-01 | The Phase DOD rebase-conflict halt and DoD-not-passed halt must still fire with **byte-identical messages** on every non-resolved outcome, and the advisory call must sit immediately **before** each pre-existing `throw haltError(...)` rather than replacing it. | Integration | Integration | AC-10.3, PLAN §5.4(1) | `advisoryDodSeams.test.js` |
+| PROP-REG-02 | Phase PUB's `passed`, no-checks and completion-cap paths must be unchanged, and every pre-existing `raisePrAndVerifyCi` test must pass **without modification**. | Integration | Integration | AC-10.3 | `advisoryPubSeam.test.js` |
+| PROP-REG-03 | The queue's blocked-pre-check skip (`orchestrate-queue.js:890-897`) and its `blocked`-verdict skip must be unchanged, and a `needs-human` candidate with the tier off must be skipped exactly as today. | Integration | Integration | AC-10.3, T-04-1 | `advisoryQueueSeams.test.js` |
+| PROP-REG-04 | The dev export list must carry the advisory names **and** `commitPaths`, the queue prelude must bind each, and both shipped bundle artifacts must still satisfy the runtime's structural constraints — `export const meta` first, no other `export`, no `import` — with the artifact count still **three** and no manifest row added. | Contract | Unit | TSPEC §2.3, §13.6 | `advisoryBundle.test.js` |
+| PROP-REG-05 | Adding `commitPaths` to the export list must not change `gitWithLockRetry`'s privacy: it stays module-private and is reached through the shared module scope inside the bundle. | Contract | Unit | TSPEC §6.4.1 | `advisoryBundle.test.js` |
+| PROP-REG-06 | The pre-flight baseline must hold at HEAD: every `BL-PREREQ` symbol of PLAN §2.2 must exist — exported symbols by import, `commitPaths` / `buildFinalReport` / `gitWithLockRetry` by source-text presence, guard-script tokens by reading the hook. Existence only; never the shape a later task creates. | Contract | Unit | PLAN §2.2, A-01 | `advisoryPreflight.test.js` |
+| PROP-REG-07 | `bash -n` must pass over `guard-harvest-before-delete.sh` and its index mode must remain `100755` after the guard edit — the shipped CI job asserts both, and the hook must stay executable by bare path. | Contract | Unit | PLAN §9.1 | CI `Shell scripts parse` job + `advisoryHarvest.test.js` |
+
+### 10.3 One property about the suite itself
+
+**PROP-REG-08** — No `describe.skip` block may remain in any `advisory*.test.js` file at the end of
+implementation. Checked two ways, because neither alone suffices: (a) a shipped source-text case that
+reads every `advisory*.test.js` **including its own file** and asserts no match for
+`/\b(describe|it|test)\s*\.\s*skip\b/`, `/\bx(describe|it|test)\b/`, or a binding assigned from any of
+those; and (b) the direct behavioural observation that every block of every advisory path reports
+`pending === 0`. A bare grep for the literal `describe.skip` is sufficient for neither — (a) catches
+an alias by shape, (b) catches one by behaviour.
+*Category: Contract · Level: Unit · Traces: PLAN §5.2 batch 18, §9.1 · Home: `advisoryDisabled.test.js`
+(A-16 🔴 / A-33 🟢).* A case left skipped is a case that never ran, and this feature's whole red
+discipline depends on that not happening silently.
+
 ## 11. Generator-driven properties (P-1 … P-9)
 
 ## 12. Coverage matrix
