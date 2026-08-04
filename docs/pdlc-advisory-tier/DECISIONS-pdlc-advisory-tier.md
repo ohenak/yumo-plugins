@@ -378,6 +378,44 @@ field remains correct if re-verification is added later.
 
 ## DEC-ADV-08: A disabled run suppresses the degraded-key notice at the emit, not in the parser
 
+**Context.** FSPEC C-2 says a malformed config key falls back alone **and the substitution is reported**
+on the run report. FSPEC D-5 / S-4 / T-10-4 say a **disabled** run carries **no** advisory content on
+the report. A malformed `advisory.enabled` satisfies both antecedents at once: it degrades to
+`enabled: false`, which is a disabled run that owes a report line it may not print. FSPEC never
+reconciles the two.
+
+**Decision.** `parseAdvisoryConfig` stays pure, total and uniform — it records **every** degraded key in
+`invalidKeys` regardless of the effective `enabled` — and the suppression happens at the **caller's
+emit**: the notice is printed only when `advisory.config.enabled` is true (TSPEC §3.2). The conflict is
+routed upstream as an erratum against FSPEC; this is the TSPEC-side resolution that unblocks
+implementation either way.
+
+**Alternatives considered.**
+
+- **Suppress inside the parser (return an empty `invalidKeys` when disabled) — rejected.** It makes the
+  parser's contract conditional on one of its own outputs, so `invalidKeys` would mean different things
+  in different runs and every unit test over it would need the `enabled` case duplicated. The parser is
+  modelled on `parseImplementationConfig` (`dev:181`), whose value is precisely that its
+  per-key-fallback-plus-`invalidKeys` contract is unconditional.
+- **Report the degraded key anyway and let D-5 lose — rejected.** D-6's equivalence claim (a disabled
+  run is byte-for-byte the pre-feature run) is the feature's central safety property; a report line is
+  a cheap thing to give up, and an equivalence claim with an exception is not an equivalence claim.
+- **Fail the run on a malformed `enabled` — rejected.** C-1 is explicit that no config defect may fail
+  a run, and failing closed here would make the tier *more* dangerous disabled than enabled.
+- **Emit the notice only for keys other than `enabled` — rejected.** It splits the rule by key name,
+  which is a special case with no principle behind it; the effective-`enabled` test is one condition
+  and covers every key.
+
+**Constraints that forced this shape.** C-1 (a config defect never fails a run); D-5/S-4/T-10-4; D-6's
+byte-equivalence claim; DC-01 (a closed, total contract for `parseAdvisoryConfig`).
+
+**Reversibility: easy.** One `if` at one call site; the parser is untouched either way — which is the
+point of putting the choice there.
+
+**Re-evaluation triggers.** FSPEC resolving the C-2 / D-5 conflict differently via the erratum channel;
+or a decision to give disabled runs a diagnostic channel that is not the run report (a log line, say),
+which would let both rules hold literally.
+
 ## DEC-ADV-09: The escalation log has no reader inside this tier
 
 ## DEC-ADV-10: D-6's expected set is a hand-reviewed fixture captured at `26c3f1c`, not a re-derived value
