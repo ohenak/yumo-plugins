@@ -706,23 +706,36 @@ no task can satisfy its own row while leaving the obligation open:
 - [ ] `bash -n` passes over `pdlc/hooks/scripts/guard-harvest-before-delete.sh`, and its index mode is
       still `100755`.
 - [ ] `parsePlanTasks` + `computeTopologicalBatches` + `parsePlanOwnership` + `validatePlanContract`
-      all succeed against this PLAN. Executed at authoring time against
-      `pdlc/workflows/orchestrate-dev.js` at HEAD: **37 tasks, 37 ownership rows,
-      `validatePlanContract` ⇒ `{"ok":true}`, `computeTopologicalBatches` ⇒ 20 batches, no cycle, no
-      batch-label warning.**
-- [ ] Coverage over the TSPEC §14.1 symbol set meets §6.4's floor, or the shortfall is one of §6.4's
-      two recorded exemptions.
+      all succeed against this PLAN. Re-executed after the v1.2 revision (A-00 removed to §2.4's
+      operator pre-flight) against `pdlc/workflows/orchestrate-dev.js` at HEAD: **36 tasks, 36
+      ownership rows, `validatePlanContract` ⇒ `{"ok":true}`, `computeTopologicalBatches` ⇒ 20
+      batches, no cycle, no batch-label warning.**
+- [ ] §6.4's two-command procedure runs to completion, all 24 enumerated function names resolve in
+      `coverage-final.json`'s `fnMap`, and the printed pair meets the floor — **statements ≥ 90.0,
+      branches ≥ 85.0** — or the shortfall is one of §6.4's two recorded exemptions. (Mechanical: the
+      procedure prints two comparable numbers over an enumerated symbol set, not a whole-file
+      percentage.)
 - [ ] `pdlc/workflows/dist/` matches its sources and `pdlc/.claude-plugin/plugin.json` carries the
       bumped version (A-36).
 - [ ] No task's diff touches a file outside its §4 manifest row.
+- [ ] `.claude/pdlc.config.json` → `implementation.testCommand` carries §2.4's repaired form (the
+      pre-flight step landed), `--listTests` collects exactly 68 files, and A-01's transcribed-literal
+      pin passes.
+- [ ] No `describe.skip` block remains in any `advisory*.test.js` file — every case authored by a 🔴
+      task has been un-skipped by its 🟢 owner (§3 preamble).
 
 ### 9.2 Behavioural — the claims that a green suite alone does not establish
 
 - [ ] All 81 FSPEC §18.1 cases exist, each in the file §8.1 assigns it, each failing before its green
-      task and passing after.
+      task and passing after. **The red evidence is the 🟢 task's own commit pair** (§3 preamble
+      step 3): the un-skip + captured failure commit, then the production-code commit that turns it
+      green. A green task with a single commit has no red evidence and does not satisfy this row.
 - [ ] The seven X-a operations are **seven named tests**, not one "touches a test file" test.
-- [ ] Each of P-1…P-4 has a test asserting the negative **and** the V-8 positive triple on the same
-      path.
+- [ ] T-03-6 is carried at FSPEC §18.2's full quantification (§8.2): each of P-1…P-4 has a test
+      asserting the negative **and** the V-8 positive triple on the same path, **and** every gate row
+      of TSPEC §5.4 has a parameterised case — one per `ADVISORY_SEAMS` member — asserting that the
+      seam's `resolved` outcome is reachable only through its declared `verifyGate` (AC-4.5). A seam
+      whose gate is removed or stubbed to `() => ({ passed: true })` must fail that case.
 - [ ] `ADVISORY_REFUSAL_REASONS`, `ENVELOPE_DEFAULTS`, `ADVISORY_EXCLUSIONS` and `ADVISORY_SEAMS` are
       compared as **sets** against transcribed literals.
 - [ ] The disabled-run created-file set is compared against `created-files-26c3f1c.json`, whose
@@ -732,6 +745,9 @@ no task can satisfy its own row while leaving the obligation open:
       names — the driver's early return, the config-notice gate, the distil-step guard.
 - [ ] With the tier disabled, no `ADVISORY-*` file exists, `ESCALATIONS.md` gained no entry, and the
       report carries no advisory section.
+- [ ] All nine §6.5 properties (P-1…P-9) exist in their owning files, are generator-driven through
+      `driftGenerators.js`' `seeded`/`resolveSeed` (no test declares its own PRNG), and report the
+      seed on failure.
 
 ### 9.3 Regression — what must still be true of the pipeline that existed before
 
@@ -745,7 +761,11 @@ no task can satisfy its own row while leaving the obligation open:
       constant, and one grep for `ESCALATION:` finds both.
 - [ ] The queue's blocked-pre-check skip (`orchestrate-queue.js:890-897`) and `blocked`-verdict skip
       are unchanged, and a `needs-human` candidate with the tier off is skipped exactly as today.
-- [ ] `ciStatus` is still assigned only from `checkPrCi`'s return; no advisory value reaches it.
+- [ ] `ciStatus` provenance is asserted **behaviourally, not only by grep**: with a call-count spy on
+      `checkPrCi`, a run that drives A5 to `resolved` shows the spy called at least once after `apply`
+      and the reported `ciStatus` byte-equal to the spy's last return value. The source grep
+      ("assigned only from `checkPrCi`'s return") is kept as a cheap secondary — on its own it passes
+      against a path that assigns around `checkPrCi` through a variable, a spread or a helper.
 - [ ] The three shipped artifacts under `pdlc/workflows/dist/` still satisfy the runtime's structural
       constraints — `export const meta` first, no other `export`, no `import` — and the manifest still
       has three rows.
@@ -757,10 +777,16 @@ no task can satisfy its own row while leaving the obligation open:
 - [ ] `pdlc/RELEASE-CHECKLIST.md` carries the two commitments CI cannot check — the D-6 fixture's
       scenario is still accurate for the current pipeline, and the guard-message coupling regression
       still passes (A-35).
-- [ ] The §3.3 manual verification is recorded: which branch of the model-rung ladder fired for
-      `"fable"` in a real runtime, with date and runtime version (A-34).
+- [ ] The §3.3 manual verification is recorded in one of A-34's **two admissible forms**: either
+      `RESULT: verified` with the runtime's own output pasted verbatim beneath it (naming which
+      model-rung branch fired, with date and runtime version), or
+      `RESULT: unverified — no runtime available`, naming what would settle it and recording that
+      BL-01 stays open. The second form satisfies this checkbox in full. A recorded branch with no
+      pasted runtime output, or a result inferred from reading the code, is **mock data and a
+      Definition-of-Done violation** — `dod-verify`'s mock-data scan binds to this rule.
 - [ ] Every artifact §6.3 lists has its stated disposition, and the manual-verification file is
-      harvested into LEARNINGS at Phase H and then deleted.
+      harvested into LEARNINGS at Phase H — with its `RESULT:` line copied **verbatim**, including an
+      `unverified` outcome — and then deleted.
 
 ## 10. Changelog
 
