@@ -49,6 +49,20 @@ The eleven routed items collapse to five distinct defects (four of the five were
 
 ## Positive Observations
 
+- **Every correction is grounded at the line it cites, and each citation checks out.** I verified all five load-bearing claims against source rather than accepting them (`build-runtime.mjs:277-296`, `orchestrate-dev.js:6862`/`:6905`, `FSPEC:145`, `FSPEC:232-237`/`:635`/`:690`). Not one is approximate. An erratum round that fixes a mis-grounded claim by introducing a differently mis-grounded one is the standing hazard here; this round avoided it entirely.
+- **The manifest correction is more precise than the erratum demanded.** The items asked only that `distribution-manifest.json` be dropped from the composition claim. The edit instead states what a fourth source *would* change — "only the `pluginSha1` values move" — which preserves the real decision content of §16.1's rejection rather than blunting it. A reader can now re-evaluate the rejected alternative on accurate grounds.
+- **§11.2's scenario pin turns a recorded fact into a checked precondition.** Recording `reqPath`/`agentDoubles`/`config`/`phasesReached` would have satisfied the item; re-asserting them before comparison, with a *fixture-staleness* failure distinct from a created-file diff, is what actually makes D-6's set-equality oracle unable to go quietly vacuous. The per-row "why it is load-bearing" column also documents the reasoning for whoever regenerates the fixture in a year — the exact reader D-6 exists for.
+- **The reframing is honest about its own history.** §16.4 does not quietly delete the errata; it records that earlier drafts raised them, that FSPEC v1.3 settled both, and that "no erratum is outstanding against FSPEC from this document." That leaves the audit trail intact while removing the false claim — and the new §18 changelog makes the whole round legible in one place, which answers my v4 Q-01 about telling which FSPEC revision an approval was against.
+- **The reachability fix is complete rather than nominal.** It would have been easy to add `commitPaths` to the export list and stop. Instead §2.3 names the export site in `orchestrate-dev.js`, the build export array, the queue prelude, *and* the reason `gitWithLockRetry` needs no export — a closure-scope argument that is correct against the actual code — plus the assurance that a longer export array does not disturb §2.2's composition or `runtimeBundle.test.js`. That is the difference between a spec an implementer can execute and one they must re-derive.
+
 ## Recommendation
 
+**Approved**
+
+The delta resolves all five distinct defects behind the eleven routed items, at every site where each defect appeared, with citations that hold up against source. It breaks nothing I previously approved: no requirement mapping, seam contract, budget, error-handling row, interface, or acceptance criterion moved, and the two behaviours whose *framing* changed (C-2's emit gate, A2's record-before-commit order) are specified identically to the version I approved at v4 — they are now correctly attributed to FSPEC rather than mis-attributed to a TSPEC deviation. My one prior open finding (v4 F-01, Low) is closed. The single new commitment, exporting `commitPaths`, is additive, grounded, and reflected in the change manifest. Both questions above are optional legibility polish with no product consequence.
+
 ## Verdict
+
+VERDICT: Approved
+{"high": 0, "medium": 0, "low": 0}
+
