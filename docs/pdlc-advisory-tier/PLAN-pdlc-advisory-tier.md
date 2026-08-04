@@ -271,9 +271,20 @@ property is part of the row's obligation, not an optional extra.
 
 ## 4. File-ownership manifest
 
-Every file any task **creates or appends** appears here exactly once, against its single owning task.
-A green task that names a test file in §3's Test File column does **not** own it — it reads it and
-makes it pass; the 🔴 task that authored it stays its only writer for the life of the PLAN.
+Every file any task **creates, appends or edits** appears here against every task that writes it.
+The 🔴 task that authors a test file remains its only writer of **case bodies** — no green task may
+add, delete or reword a case (§3 preamble step 3) — but each 🟢 task also carries that file in its
+row, because its one legal edit is to delete `.skip` from its own block and the wave runner will
+neither permit nor commit an edit to a file outside the row (`orchestrate-dev.js:5849`, `:8143-8159`).
+Rows therefore **overlap by design**: `validatePlanContract` (`:2344-2367`) checks only the task↔row
+bijection and states explicitly that overlap is the normal case (`:2334-2336`); it is
+`computeWaves`/`pathsCollide` (`:2377`) that keeps two writers of one file out of one wave — which is
+now a *mechanical* guarantee of the "exactly one un-skipper at a time" discipline §3 previously only
+argued for.
+
+(The header cell below stays the literal `Files Created or Appended`: `PLAN_FILES_HEADER_CELLS`
+(`orchestrate-dev.js:2188-2195`) is an exact-cell set, so re-wording it would make the manifest
+unparseable. Read it as "files written".)
 
 | Task | Files Created or Appended |
 |---|---|
@@ -293,23 +304,23 @@ makes it pass; the 🔴 task that authored it stays its only writer for the life
 | A-14 | `pdlc/workflows/__tests__/advisoryBundle.test.js` |
 | A-15 | `pdlc/workflows/__tests__/fixtures/created-files-26c3f1c.json` |
 | A-16 | `pdlc/workflows/__tests__/advisoryDisabled.test.js` |
-| A-17 | `pdlc/workflows/orchestrate-dev.js` |
-| A-18 | `pdlc/workflows/orchestrate-dev.js` |
-| A-19 | `pdlc/workflows/orchestrate-dev.js` |
-| A-20 | `pdlc/workflows/orchestrate-dev.js` |
-| A-21 | `pdlc/workflows/orchestrate-dev.js` |
-| A-22 | `pdlc/workflows/orchestrate-dev.js` |
-| A-23 | `pdlc/workflows/orchestrate-dev.js` |
-| A-24 | `pdlc/workflows/orchestrate-dev.js` |
-| A-25 | `pdlc/workflows/orchestrate-dev.js` |
-| A-26 | `pdlc/workflows/orchestrate-dev.js` |
-| A-27 | `pdlc/workflows/orchestrate-dev.js` |
-| A-28 | `pdlc/hooks/scripts/guard-harvest-before-delete.sh` |
-| A-29 | `pdlc/workflows/orchestrate-queue.js` |
-| A-30 | `pdlc/workflows/orchestrate-queue.js` |
-| A-31 | `pdlc/workflows/orchestrate-queue.js` |
-| A-32 | `pdlc/workflows/build-runtime.mjs` |
-| A-33 | `pdlc/workflows/orchestrate-dev.js`, `pdlc/workflows/orchestrate-queue.js` |
+| A-17 | `pdlc/workflows/orchestrate-dev.js`, `pdlc/workflows/__tests__/advisoryConfig.test.js` |
+| A-18 | `pdlc/workflows/orchestrate-dev.js`, `pdlc/workflows/__tests__/advisoryRung.test.js` |
+| A-19 | `pdlc/workflows/orchestrate-dev.js`, `pdlc/workflows/__tests__/advisoryVerdict.test.js` |
+| A-20 | `pdlc/workflows/orchestrate-dev.js`, `pdlc/workflows/__tests__/advisoryEnvelope.test.js` |
+| A-21 | `pdlc/workflows/orchestrate-dev.js`, `pdlc/workflows/__tests__/advisoryRecord.test.js`, `pdlc/workflows/__tests__/advisoryEscalationLog.test.js` |
+| A-22 | `pdlc/workflows/orchestrate-dev.js`, `pdlc/workflows/__tests__/advisoryDriver.test.js` |
+| A-23 | `pdlc/workflows/orchestrate-dev.js`, `pdlc/workflows/__tests__/advisoryDodSeams.test.js`, `pdlc/workflows/__tests__/advisoryDriver.test.js` |
+| A-24 | `pdlc/workflows/orchestrate-dev.js`, `pdlc/workflows/__tests__/advisoryPubSeam.test.js`, `pdlc/workflows/__tests__/advisoryDriver.test.js` |
+| A-25 | `pdlc/workflows/orchestrate-dev.js`, `pdlc/workflows/__tests__/advisoryDodSeams.test.js` |
+| A-26 | `pdlc/workflows/orchestrate-dev.js`, `pdlc/workflows/__tests__/advisoryPubSeam.test.js` |
+| A-27 | `pdlc/workflows/orchestrate-dev.js`, `pdlc/workflows/__tests__/advisoryHarvest.test.js` |
+| A-28 | `pdlc/hooks/scripts/guard-harvest-before-delete.sh`, `pdlc/workflows/__tests__/advisoryHarvest.test.js` |
+| A-29 | `pdlc/workflows/orchestrate-queue.js`, `pdlc/workflows/__tests__/advisoryQueueSeams.test.js` |
+| A-30 | `pdlc/workflows/orchestrate-queue.js`, `pdlc/workflows/__tests__/advisoryQueueSeams.test.js` |
+| A-31 | `pdlc/workflows/orchestrate-queue.js`, `pdlc/workflows/__tests__/advisoryQueueSeams.test.js`, `pdlc/workflows/__tests__/advisoryDriver.test.js` |
+| A-32 | `pdlc/workflows/build-runtime.mjs`, `pdlc/workflows/__tests__/advisoryBundle.test.js` |
+| A-33 | `pdlc/workflows/orchestrate-dev.js`, `pdlc/workflows/orchestrate-queue.js`, `pdlc/workflows/__tests__/advisoryDisabled.test.js` |
 | A-34 | `docs/pdlc-advisory-tier/MANUAL-VERIFICATION-pdlc-advisory-tier.md` |
 | A-35 | `CLAUDE.md`, `pdlc/RELEASE-CHECKLIST.md` |
 | A-36 | `pdlc/.claude-plugin/plugin.json` |
