@@ -13,7 +13,7 @@ feature: pdlc-advisory-tier
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | approved | Claude | 1.1 | 2026-08-03 |
+| pdlc | approved | Claude | 1.2 | 2026-08-04 |
 
 Revision history is in §18.
 
@@ -917,13 +917,17 @@ resolution stand.
 
 **This no-`testCommand` escalation carries a workflow-level integration test, not only a `verifyGate`
 unit test.** The execution-routing-branch rule (§13.2's "Phase integration" row) wants ≥1 test on the
-*full* path: **T-06-8** drives the real Phase DOD body at `dev:8281` — a scripted rebase conflict → A4
+*full* path. **This test carries no FSPEC case id.** FSPEC §18.1's T-06 catalogue is exactly
+T-06-1 … T-06-6, and this TSPEC does not extend it: the obligation is a TSPEC-level test obligation,
+carried in the PLAN under task A-10 (and landed with A-25), and no downstream document invents a
+`T-06-7`/`T-06-8` for it. Referred to below as **the A4 no-`testCommand` phase-integration test**, it
+drives the real Phase DOD body at `dev:8281` — a scripted rebase conflict → A4
 dispatch → an `implConfig` with `testCommand: null` → and asserts the pipeline reaches the pre-existing
 rebase-conflict `haltError` (`dev:8283-8287`) with the seam's terminal `outcome === "escalated"` and
 reason on the report, as opposed to `verifyGate` reporting `{passed:false}` in isolation. It uses the
 `_runAdvisorySeam` phase-integration fake (§13.2) for the seam and a real `parseImplementationConfig`
 result. Scope: because the `testCommand: null → revert+escalate` decision lives inside the real
-`verifyGate`, which is *inside* the faked seam here, T-06-8 asserts the **phase wiring** — that a
+`verifyGate`, which is *inside* the faked seam here, that test asserts the **phase wiring** — that a
 scripted `escalated` disposition threads through the Phase DOD body to the report and the pre-existing
 `haltError` — not the routing branch itself. That routing is proven at the **Seam-unit** level (§13.2:
 each real `SeamOps` against fake `_git`/`_ghRun`/`_readFile`; E-24 → §7.4), where the real `verifyGate`
@@ -1612,3 +1616,4 @@ asserts the terminal outcome is `escalated` with a non-null reason and a byte-id
 |---|---|---|
 | 1.0 | 2026-08-03 | Initial TSPEC, converged through cross-review rounds v1–v3. |
 | 1.1 | 2026-08-03 | **Phase D erratum round** — targeted edits only, no scope change. (1) §2.2 and §16.1 no longer claim a fourth build source changes what `distribution-manifest.json` is written against; manifest rows are per artifact from the three-entry `bundles` array (`build-runtime.mjs:277-296`), so a fourth source inlined into the same artifacts adds no row and moves only `pluginSha1`. The `runtimeBundle.test.js` half of the claim is unchanged. (2) §2.3 adds `commitPaths` to the dev export list and the queue prelude and states that `orchestrate-dev.js` gains one `export` keyword on it, so §6.4.1's A2 `verifyGate` has a reachable mechanism; §6.4.1 gains a Reachability paragraph noting `gitWithLockRetry` stays private. (3) §3.2, §11.3 and §16.4 restate C-2's report-only-when-enabled behaviour as **conformance** with `FSPEC:145`, not a deliberate deviation. (4) §4.4, §6.4.1, §16.3 and §16.4 restate the A2-6 / R-2 durability ordering as a **settled FSPEC rule** (`FSPEC:232-237`, `:635`, `:690`) whose mechanism this TSPEC chooses, not an upstream defect; §16.4 is retitled accordingly and records that no erratum is outstanding against FSPEC from this document. (5) §11.2 pins the D-6 fixture to a **run scenario** (`reqPath`, `forcePhases`, `agentDoubles`, `config`, `phasesReached`, `seamsInstrumented`) re-asserted before the created-file comparison, so the baseline and the disabled run are comparable by construction and a scenario mismatch fails as fixture staleness rather than as a created-file diff. |
+| 1.2 | 2026-08-04 | **Phase P erratum round** — two targeted edits, no scope change. (1) §7.2 A3-7 now states `governingClass`'s contract over **non-empty input only** and records that `governingClass([])` is **unreachable by construction** (A3-1 rejects a classification whose classified-finding count is below the evidence's finding count, and A3 only fires with findings outstanding), so no return value is named for an input no seam path can produce; PLAN §6.5's P-9 stays correctly scoped to non-empty multisets. (2) §7.4 no longer names the invented case id `T-06-8`: FSPEC §18.1's T-06 catalogue is exactly T-06-1 … T-06-6, and the A4 no-`testCommand` phase-integration test is referred to by name as a TSPEC-level obligation carried in the PLAN under A-10 (landed with A-25), with no `T-06-7`/`T-06-8` invented downstream. |
