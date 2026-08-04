@@ -90,4 +90,34 @@ All three are new, all Low, all confined to text the revision added. No prior fi
 
 ## Recommendation
 
+**Approved with minor changes**
+
+Both v1 High findings and the v1 Medium are resolved at the premise rather than the wording, and I
+re-verified each against the FSPEC and the code rather than against the commit messages. The document
+no longer asserts an FSPEC self-contradiction that does not exist, no longer aims an erratum round at
+a document that would reject it, and now carries the paragraph that stops the stale reading being
+re-derived from git history. The four v1 Lows are each closed by the specific edit requested.
+
+The three remaining findings are all Low and none touches a decision:
+
+1. **F-08** — extend the upstream-routing paragraph (`:762-763`) to name TSPEC §16.4's two items and
+   `TSPEC:257`, not only §11.3's table cell. I am emitting both as errata from this review, so the
+   routing itself is covered; the edit keeps the document's own record accurate.
+2. **F-09** — "One live upstream defect" now heads a list of three; make it four and add DEC-ADV-10's
+   §11.2 scenario row.
+3. **F-10** — qualify "reverts a working-tree edit only" so it does not silently claim A4, whose
+   revert FSPEC A4-4 defines as a restore of the pre-seam branch state.
+
+Nothing here blocks Phase P. The product lens is satisfied: every entry still traces to a real
+product, scope or business constraint; no rejected alternative is required by a P0/P1 requirement
+(AC-1.4's loud-failure requirement is now explicitly preserved rather than implied, and AC-8.3's
+restoration choice is stated rather than left to inference); no acceptance criterion is narrowed or
+reinterpreted; no scope creep was introduced by the revision; and the re-evaluation triggers are
+still conditions an operator would recognise — the two that were softened (DEC-ADV-01 trigger 3,
+DEC-ADV-06 trigger 2) were changed in the direction of being *observable events* rather than
+judgements, which is an improvement.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 3}
