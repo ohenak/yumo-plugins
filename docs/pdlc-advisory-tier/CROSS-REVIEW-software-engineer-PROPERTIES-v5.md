@@ -80,4 +80,36 @@ blocks nothing.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+> Low findings only → Approved with minor changes. 0 High, 0 Medium, 1 Low.
+
+Every v4 finding is closed on the substance, and I verified each one against the primary source
+rather than against the document's account of it: the four PLAN lines (`:252`, `:258`, `:274`,
+`:308`, plus `:779`, `:869`, `:1024`), the nine TSPEC lines (`:416`, `:424`, `:428`, `:432-433`,
+`:434`, `:438-439`, `:489`, `:655`, `:657`, `:1265-1271`), and `pdlc/workflows/package.json:18-22`
+all resolve and carry the text quoted from them. The Medium that forced v4 — A1 and A3 having no
+mutation control once TSPEC v1.3 made their `verifyGate` a normative `null` — is discharged by a
+structural conjunct that asserts `seamOps.verifyGate === null` per gateless seam, with the two
+mutation directions stated explicitly and the transposition hazard named.
+
+Against the three oracle-quality bars this round's changed text is clean. **No implementation
+echoes:** conjunct 2's expected value is the literal `null` transcribed from `TSPEC:655`/`:657`, not
+derived from the seam module. **No absence-only oracles:** the A1/A3 behavioural conjunct explicitly
+pairs "`resolved` is unreachable on every path" with the positive O-1 triple per path and says so in
+as many words (`PROPERTIES:607-611`). **Completeness by set-equality:** PROP-GATE-06's registry
+key-set equality against `ADVISORY_SEAMS` is unchanged and still makes a deleted case fail.
+
+F-01 is one sentence in each of two adjacent parentheticals and can be taken or left without any
+consequence downstream — it changes no assertion, no level, and no count. I would merge this
+document as it stands.
+
+**No errata are emitted this round.** Both errata I routed in earlier rounds are fixed upstream and
+verified here, the four items this revision converted to closure records each check out against the
+upstream line they cite, and the single finding above is a defect of this document rather than of one
+it derives from.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 1}
