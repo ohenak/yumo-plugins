@@ -789,10 +789,11 @@ no task can satisfy its own row while leaving the obligation open:
 - [ ] `bash -n` passes over `pdlc/hooks/scripts/guard-harvest-before-delete.sh`, and its index mode is
       still `100755`.
 - [ ] `parsePlanTasks` + `computeTopologicalBatches` + `parsePlanOwnership` + `validatePlanContract`
-      all succeed against this PLAN. Re-executed after the v1.2 revision (A-00 removed to §2.4's
-      operator pre-flight) against `pdlc/workflows/orchestrate-dev.js` at HEAD: **36 tasks, 36
+      all succeed against this PLAN. Re-executed after the v1.3 revision (test files added to the
+      green tasks' manifest rows) against `pdlc/workflows/orchestrate-dev.js` at HEAD: **36 tasks, 36
       ownership rows, `validatePlanContract` ⇒ `{"ok":true}`, `computeTopologicalBatches` ⇒ 20
-      batches, no cycle, no batch-label warning.**
+      batches, `computeWaves` ⇒ 20 waves identical to §5.2's transcription, no cycle, no batch-label
+      warning.**
 - [ ] §6.4's two-command procedure runs to completion, all 24 enumerated function names resolve in
       `coverage-final.json`'s `fnMap`, and the printed pair meets the floor — **statements ≥ 90.0,
       branches ≥ 85.0** — or the shortfall is one of §6.4's two recorded exemptions. (Mechanical: the
@@ -803,22 +804,36 @@ no task can satisfy its own row while leaving the obligation open:
 - [ ] No task's diff touches a file outside its §4 manifest row.
 - [ ] `.claude/pdlc.config.json` on disk carries §2.4's repaired `implementation.testCommand` (the
       pre-flight step landed — the file is untracked at HEAD, so this is a disk check, not a git
-      check), `--listTests` collects exactly 68 files, and A-01's transcribed-literal pin passes.
+      check) and `--listTests` collects exactly 68 files. **A-01's pin passes in both worlds**: on a
+      developer machine where the file is present it takes the transcribed-literal set branch; on a
+      CI fresh clone where it is absent (`pr-tests.yml:75` runs bare `npm test`) it takes the
+      documented-degradation branch. Neither branch is a silent skip, and this checkbox is the disk
+      half only.
 - [ ] No `describe.skip` block remains in any `advisory*.test.js` file — every case authored by a 🔴
-      task has been un-skipped by its 🟢 owner (§3 preamble).
+      task has been un-skipped by its 🟢 owner (§3 preamble). Checked twice, per §5.2's batch-18 row:
+      by the shipped source-text case in `advisoryDisabled.test.js` (matching `.skip` and `x`-prefixed
+      forms, not just the literal `describe.skip`), and by `numPendingTests === 0` for every
+      `advisory*.test.js` path in a `--json` run.
 
 ### 9.2 Behavioural — the claims that a green suite alone does not establish
 
 - [ ] All 81 FSPEC §18.1 cases exist, each in the file §8.1 assigns it, each failing before its green
-      task and passing after. **The red evidence is the 🟢 task's own commit pair** (§3 preamble
-      step 3): the un-skip + captured failure commit, then the production-code commit that turns it
-      green. A green task with a single commit has no red evidence and does not satisfy this row.
+      task and passing after. **The red evidence is the un-skipping task's reported verbatim failure
+      output** (§3 preamble step 4), captured after the un-skip and before any production code, and
+      carried in the wave's single script-owned commit — *not* a two-commit pair, which the runner
+      cannot produce: agents are told `Do NOT run git add or git commit`
+      (`orchestrate-dev.js:5851`) and the script commits once per task
+      (`:8143-8159`). A green task whose summary contains no captured failure output does not
+      satisfy this row.
 - [ ] The seven X-a operations are **seven named tests**, not one "touches a test file" test.
 - [ ] T-03-6 is carried at FSPEC §18.2's full quantification (§8.2): each of P-1…P-4 has a test
       asserting the negative **and** the V-8 positive triple on the same path, **and** every gate row
       of TSPEC §5.4 has a parameterised case — one per `ADVISORY_SEAMS` member — asserting that the
       seam's `resolved` outcome is reachable only through its declared `verifyGate` (AC-4.5). A seam
-      whose gate is removed or stubbed to `() => ({ passed: true })` must fail that case.
+      whose gate is removed or stubbed to `() => ({ passed: true })` must fail that case. All five
+      cases live in `advisoryDriver.test.js`, generated from one in-file registry whose key set is
+      compared to `ADVISORY_SEAMS`; the registry's owner column matches §8.2 (A3/A4 ⇒ A-23, A5 ⇒
+      A-24, A1/A2 ⇒ A-31).
 - [ ] `ADVISORY_REFUSAL_REASONS`, `ENVELOPE_DEFAULTS`, `ADVISORY_EXCLUSIONS` and `ADVISORY_SEAMS` are
       compared as **sets** against transcribed literals.
 - [ ] The disabled-run created-file set is compared against `created-files-26c3f1c.json`, whose
