@@ -13,7 +13,15 @@ feature: pdlc-advisory-tier
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.1 | 2026-08-04 |
+| pdlc | draft | Claude | 1.2 | 2026-08-04 |
+
+**v1.2 (round 2).** Five findings addressed, none touching the design: §6.5's post-action-gate
+conjunct is scoped to A2/A4/A5 with A3 joining A1's stronger unreachability form (SE F-01); PROP-DIS-06
+carries a transcribed matcher and an explicit counted set (SE F-02); the two source-scan properties
+take their falsification controls from a fixture module outside the scanned glob (SE F-03); two
+matrix/cross-reference slips corrected (SE F-04, PM F-01). Four questions are answered in place
+(SE Q-06/Q-07, PM Q-01/Q-02). §13.1 gains two routed upstream items (5, 6). No property was added,
+removed or re-levelled, so §1's and §12.3's level totals are unchanged.
 
 ## 1. Overview — scope, sources, and how to read this document
 
