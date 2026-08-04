@@ -254,7 +254,6 @@ makes it pass; the 🔴 task that authored it stays its only writer for the life
 
 | Task | Files Created or Appended |
 |---|---|
-| A-00 | `.claude/pdlc.config.json` |
 | A-01 | `pdlc/workflows/__tests__/advisoryPreflight.test.js` |
 | A-02 | `pdlc/workflows/__tests__/helpers/advisoryDoubles.js` |
 | A-03 | `pdlc/workflows/__tests__/advisoryConfig.test.js` |
@@ -294,7 +293,7 @@ makes it pass; the 🔴 task that authored it stays its only writer for the life
 
 ### 4.1 Disjointness audit — the three contended files
 
-Nine tasks own `orchestrate-dev.js`, four own `orchestrate-queue.js`. Their `Batch` numbers, read off
+Twelve tasks own `orchestrate-dev.js`, four own `orchestrate-queue.js`. Their `Batch` numbers, read off
 §3, are all distinct within each chain, so no batch ever contains two writers of the same file:
 
 | File | Owning tasks (batch) | Distinct batches? |
@@ -302,7 +301,7 @@ Nine tasks own `orchestrate-dev.js`, four own `orchestrate-queue.js`. Their `Bat
 | `pdlc/workflows/orchestrate-dev.js` | A-17 (4), A-18 (5), A-19 (6), A-20 (7), A-21 (8), A-22 (9), A-23 (10), A-24 (11), A-25 (12), A-26 (13), A-27 (14), A-33 (16) | yes |
 | `pdlc/workflows/orchestrate-queue.js` | A-29 (10), A-30 (11), A-31 (12), A-33 (16) | yes |
 | `pdlc/workflows/build-runtime.mjs` | A-32 (15) | single owner |
-| `.claude/pdlc.config.json` | A-00 (1) | single owner — and I-23 records that no other task edits it |
+| `.claude/pdlc.config.json` | **no task** — repaired by the §2.4 operator pre-flight step before Phase I is invoked | not owned here; I-23 records that no task edits it |
 | every test/fixture/doc file above | one task each | single owner |
 
 Disjointness must hold in the **executor's** batches, not only in §3's labels, because the size cap in
