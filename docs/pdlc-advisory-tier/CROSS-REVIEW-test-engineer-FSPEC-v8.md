@@ -39,6 +39,25 @@ remote are identical — I am reviewing the newest bytes, not a stale base.
 
 ## Grounding re-check
 
+An empty document delta does not by itself prove the document's *claims about the repository* still
+hold — the repo can move under a frozen spec. I therefore re-ran the path-existence sweep rather
+than inheriting it:
+
+```
+grep -oE '(pdlc|docs|\.claude|\.github)/[A-Za-z0-9_./-]+' FSPEC-pdlc-advisory-tier.md | sort -u
+```
+
+Every repo path the FSPEC names resolves at HEAD except two, and both are *outputs* the pipeline is
+specified to create, not preconditions it asserts:
+
+| Unresolved path | Why it is not a finding |
+|---|---|
+| `docs/_queue/ESCALATIONS.md` | The escalation ledger this feature itself introduces — the FSPEC describes it as a file the advisory tier writes, so its absence before implementation is the expected pre-state, and its creation is exactly what the acceptance tests falsify. |
+| `docs/pdlc-advisory-tier/LEARNINGS-pdlc-advisory-tier.md` | Written at Phase H (harvest), after implementation; absent by construction at spec time. |
+
+Both were assessed the same way at v6 and neither changed status. No path the FSPEC relies on as an
+existing behaviour has disappeared or moved.
+
 ## Findings
 
 ## Questions
