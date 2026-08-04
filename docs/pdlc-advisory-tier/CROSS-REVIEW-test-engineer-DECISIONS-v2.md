@@ -120,4 +120,29 @@ re-read AC-1.4's coverage, not a defect signal.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+All four blocking findings from v1 (F-01, F-02 High; F-03, F-04 Medium) are resolved, both Low findings
+are resolved, and all four questions are answered inside the document rather than in a reply. No prior
+finding regressed and no unchanged section was disturbed. One new Low finding (F-07) is a
+half-covered re-evaluation trigger in a paragraph the revision added; it does not change any decision
+and is a one-clause fix.
+
+From the testing lens the document now does what a DECISIONS record has to do: every re-evaluation
+trigger names an observable event, every standing obligation names a detector, and the three oracles
+most likely to have been written wrong — the C-2 conformance test, the AC-1.3 fallback test, and the
+M-4 memo test — are specified positively **and** paired with the wrong form they would otherwise take.
+Nothing here forecloses an approach PROPERTIES will need.
+
+Optional, may ride along with any later edit:
+
+1. **F-07** — restate DEC-ADV-04 trigger 3 as "either `MODEL_DEFAULT` or `MODEL_ADVISORY_FALLBACK`
+   changing, so the two literals are no longer equal", so the AC-1.4 unreachability paragraph's own
+   condition is fully observed.
+2. **Q-05** — one clause in DEC-ADV-03 saying whether the `apply` assertion is a source scan or an
+   injection-set assertion, so the PLAN does not pick the weaker one.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 1}
