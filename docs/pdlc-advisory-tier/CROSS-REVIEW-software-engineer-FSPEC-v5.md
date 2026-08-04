@@ -24,6 +24,33 @@ and remain exactly as approved. So this is a single-issue delta: **is the withdr
 
 ## 2. Correction of my own prior finding
 
+This section exists because the withdrawn erratum cited *my* v3 questions as corroboration, and my v4
+confirmation endorsed it on the strength of a git-history claim I made and did not verify. I am
+retracting that claim.
+
+**What I wrote (v4, disposition table, row 1):** "the pin is not an ancestor of
+`feat-pdlc-advisory-tier` (the branch forks at `7cdfbb0`)."
+
+**What is actually true at HEAD:**
+
+```
+git merge-base --is-ancestor 26c3f1c HEAD          ⇒ true
+git merge-base HEAD main                           ⇒ 6a4548d
+git merge-base --is-ancestor 26c3f1c 6a4548d       ⇒ true
+git log --oneline 26c3f1c..6a4548d | wc -l         ⇒ 3
+```
+
+`26c3f1c` is an ancestor of this branch **and** of its fork point from the default branch. The fork
+point is `6a4548d`, not `7cdfbb0`. The three commits between the pin and the fork point are
+`dd13490` (branch-guard rev-parse re-observation), `d186bfa` (spec completeness gate by containment)
+and `6a4548d` (distribution-manifest version stamp) — none of them adds, removes, or reroutes a
+file-creating path in the pipeline, so the created-file set is identical at both commits.
+
+My v3 Q-08/Q-09 and my v4 endorsement were therefore wrong on the fact, and the erratum built on
+them was wrong on the same fact. `POSTMORTEM-T-pdlc-advisory-tier.md:119-131` reaches the same
+conclusion independently and by the same commands. The withdrawal is a correction of my error as
+much as of the author's.
+
 ## 3. Verification of the restored baseline
 
 ## 4. Non-regression check
