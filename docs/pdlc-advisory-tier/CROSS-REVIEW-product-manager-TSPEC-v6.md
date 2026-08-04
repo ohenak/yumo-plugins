@@ -27,11 +27,23 @@ Also in the delta: the front-matter version moves 1.1 → 1.2 (date 2026-08-04) 
 
 ## Findings
 
-_(pending)_
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| — | — | — | No findings. Both defects are resolved at the site each was raised against, and nothing I approved at v5 moved. | — |
+
+**Nothing previously approved was broken.** The delta is additive prose plus one deletion of an id:
+
+- No requirement mapping changed. §7.4's traceability to REQ-ADV-07 / AC-7.1…AC-7.4 runs through FSPEC-ADV-06 and the T-06-1…T-06-6 catalogue (`FSPEC:885`), none of which the edit touches — the removed `T-06-8` was never in that chain, which is precisely why it should not have been there.
+- No seam contract, budget, enum, error-handling row, or acceptance criterion moved. `governingClass`'s ordering (`real-defect` > `mis-scoped-criterion` > `deferral-candidate`) is stated identically; the edit only bounds its domain.
+- The A4 no-`testCommand` escalation test itself is **not weakened**. Its content, its target (`dev:8281`, `haltError` at `dev:8283-8287`), its fake (`_runAdvisorySeam`), and its scope caveat ("asserts the phase wiring, not the routing branch") all survive verbatim. Only the label changed. A reader can still find and build the test — the PLAN A-10 pointer is a stronger locator than an id that matched nothing.
+- The changelog row is accurate about its own edits, which keeps §18 usable as the audit trail it was approved as at v5.
 
 ## Questions
 
-_(pending)_
+| ID | Question |
+|----|---------|
+| Q-01 | `PLAN:1031` §10.1 open item 6 still reads "Raised as erratum against TSPEC; if the TSPEC names an answer, P-9 widens to include it." The TSPEC has now answered — with "no value, unreachable" rather than a value — so P-9 correctly does *not* widen and the item is settled. Should the PLAN's open-item row be closed out in its own erratum pass so no future reader treats it as still outstanding? Nothing in the TSPEC is wrong either way; this is PLAN hygiene, outside this document's scope. |
+| Q-02 | The new §7.4 wording instructs downstream documents not to invent a `T-06-7`/`T-06-8`. That is the right guard, but the general rule — *TSPEC-level test obligations with no FSPEC case are named in prose and carried by a PLAN task id* — is worth stating once in the pipeline's conventions rather than per-occurrence, since the same collision can arise for any T-NN group. Flagged as a possible `Process` observation for harvest, not a change request against this document. |
 
 ## Positive Observations
 
