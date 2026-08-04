@@ -96,4 +96,36 @@ and four smaller precision gaps.
 
 ## Recommendation
 
+**Needs revision**
+
+The ten decisions are, as decisions, sound: each traces to a real product or scope constraint, none
+narrows or reinterprets an acceptance criterion, no rejected alternative is required by a REQ
+requirement, and the re-evaluation triggers are conditions an operator would recognise (file size,
+a second consumer, a rung that will not resolve, Phase H moving, an escalation-log consumer). No
+scope creep: no entry adds behaviour the REQ does not ask for, and "Make `advisory.enabled` default
+to true — rejected" correctly keeps the shipped default off, matching `MERGE_DEFAULTS`
+(`orchestrate-dev.js:60`).
+
+What blocks approval is not a decision — it is that **two of ten entries are argued from an upstream
+conflict that the FSPEC on this branch already resolved**, and both propose to raise an erratum
+against it. Merged as written, the document tells every future reader that FSPEC contradicts itself
+where it does not, and it aims two erratum rounds at a document that would reject them. That matters
+beyond tidiness here: an erratum round is bounded at one per upstream document per phase, and a
+rejected confirmation halts the phase to a POSTMORTEM.
+
+Exactly what must change:
+
+1. **F-01** — rewrite DEC-ADV-08's Context against `FSPEC:145`'s current text; delete the erratum
+   routing; keep the emit-side decision.
+2. **F-02** — rewrite DEC-ADV-03's Context against FSPEC's §10.1 R-2 preamble and `FSPEC:635`
+   (A5-8); delete the erratum routing; keep both the decision and the real `commitPaths` finding.
+3. **F-03** — rewrite the closing "Two upstream defects" paragraph to name the one live upstream
+   defect (TSPEC's `commitPaths` export gap), and update DEC-ADV-08's first re-evaluation trigger.
+4. **F-04 – F-07** — four one-line precision fixes: the ten-name `CLI_DEV_EXPORTS` count; an
+   explicit "restoration path: none" sentence in DEC-ADV-07; an AC-1.4 clause in DEC-ADV-04; a
+   citation swap for `dev:6298`.
+
+None of these requires re-deciding anything. The revision is a rewrite of three Context paragraphs
+plus four sentences.
+
 ## Verdict
