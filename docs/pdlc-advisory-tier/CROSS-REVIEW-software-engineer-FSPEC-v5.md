@@ -53,6 +53,42 @@ much as of the author's.
 
 ## 3. Verification of the restored baseline
 
+The erratum's load-bearing premise was that `26c3f1c` *predates* Phase PUB's file-creating path
+`raisePrAndVerifyCi`, so a disabled branch-HEAD run would create files the baseline run does not.
+I checked the pinned tree directly rather than reasoning from commit subjects:
+
+```
+git show 26c3f1c:pdlc/workflows/orchestrate-dev.js | grep -n raisePrAndVerifyCi
+  6222: export async function raisePrAndVerifyCi({
+  6875:   _raisePrAndVerifyCi: raisePrAndVerifyCiFn = raisePrAndVerifyCi,
+  8250:   // … The poll-timing logic lives in raisePrAndVerifyCi.
+  8257:   const pubResult = await raisePrAndVerifyCiFn({
+```
+
+Four occurrences, the definition among them — the premise is false. At HEAD the same symbol sits at
+`pdlc/workflows/orchestrate-dev.js:6337` (definition), `:6990`, `:8365`, `:8372`: the same four
+sites, moved by intervening churn, not added since. So Phase PUB's file-creating path is on **both**
+sides of D-6's equality at `26c3f1c`, which is precisely the condition the erratum claimed was
+violated.
+
+Combined with §2's ancestry finding — `26c3f1c` is an ancestor of the fork point, and the three
+commits between them touch no file-creating path — the restored baseline is sound on both counts:
+
+| Requirement of a valid D-6 right-hand side | At `26c3f1c` |
+|---|---|
+| Carries every pipeline change already merged to the default branch that creates files | yes — `raisePrAndVerifyCi` defined at `26c3f1c:6222`; `26c3f1c` is an ancestor of `main` |
+| Carries none of this feature's changes | yes — it is an ancestor of this branch's fork point `6a4548d`, so no branch commit is in it |
+| Is not produced by running the system under test | yes — D-6 still says "observed once and transcribed into the test, never re-derived by running the code under test" |
+
+The restored text also keeps the two properties I care about most in this oracle, unchanged from the
+version I approved at v3: the expected value is a **transcribed literal**, not a re-derivation (no
+implementation echo), and T-10-3 asserts **set equality** — "equals, element for element … any file
+created outside that literal set fails the test, whether or not this feature named it" — not
+containment, so a file the feature adds silently, or a baseline file it drops, both go red.
+`TSPEC:1213-1227` independently reaches and implements the same baseline (fixture
+`__tests__/fixtures/created-files-26c3f1c.json`, hand-reviewed, provenance in its header), so the
+FSPEC and the TSPEC now agree again — the erratum had put them in conflict.
+
 ## 4. Non-regression check
 
 ## Findings
