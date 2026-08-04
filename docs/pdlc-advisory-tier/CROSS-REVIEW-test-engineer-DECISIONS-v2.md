@@ -82,7 +82,41 @@ re-read AC-1.4's coverage, not a defect signal.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-05 | DEC-ADV-03's new assertion is described as "set-equality over the seams `apply` is passed, per the `AWAIT_SCAN_SOURCES` scan idiom". Those are two different oracles: `AWAIT_SCAN_SOURCES` (`bundleTest:997`) is a **source-text** scan, while "the seams `apply` is passed" is a **runtime injection set**. Both are defensible — a source scan catches a git seam reached from any `apply` body, an injection-set assertion catches only what the driver hands over — but only the source scan falsifies an `apply` that reaches `_git` through a helper it closes over. Which one does the PLAN owe? No answer is needed for this document to converge; PLAN review will settle it, and I raise it here only so the PLAN author does not read "set-equality" as licence to assert the injected map alone. |
+
 ## Positive Observations
+
+- **The revision fixed the framing, not just the sentences.** F-01 could have been closed by deleting
+  one clause. Instead the shared Context, the tier-level statement ("or the TSPEC-side *expression* of
+  an upstream rule"), DEC-ADV-03, DEC-ADV-08 and the closing paragraphs were all re-cut on the same
+  distinction — settled-upstream rule vs. live conflict — and the closing paragraph now warns the next
+  reader off re-raising the phantom erratum, naming the cost ("an erratum round is bounded at one per
+  upstream document per phase, and a confirmation that fails halts the phase"). That is the durable fix.
+- **Every detector added is falsifiable, and each one names its own mutation or its own failure mode.**
+  The bundle-composition detector carries the delete-`devModule`-from-`contents` mutation check *and*
+  rejects the substring form that would false-green it. Obligation 4 is set-equality with the
+  containment form explicitly rejected. Obligation 3 forbids reading the expectation from the fixture
+  it checks. Obligation 5 explains why two independent expectation tables cannot substitute for a
+  differential oracle. These are the exact anti-patterns the findings named, closed by name rather than
+  paraphrased away.
+- **Two oracle answers are strictly stronger than what I asked for.** Q-04's answer specifies a
+  call-count oracle *and* states the failure a value comparison admits ("a memo that re-resolves and
+  happens to agree"). DEC-ADV-04 goes further than restating the rationale — it writes the forbidden
+  oracle out in code and explains that it is structurally incapable of falsifying AC-1.3. A decision
+  record that names the wrong test explicitly is worth more to PROPERTIES than one that only names the
+  right one.
+- **The one live upstream defect got narrower, not vaguer.** The closing paragraph went from "two
+  upstream defects" to one, correctly identified TSPEC as the owner (not FSPEC), and bundled the two
+  TSPEC wording defects (§16.1's manifest claim, §11.3's "deviation") with it. I re-verified the live
+  one at HEAD: `commitPaths` (`dev:6905`) and `gitWithLockRetry` (`dev:6862`) still carry no `export`,
+  so the erratum is still real and still owed.
+- **Citation hygiene improved under revision rather than degrading.** Two citations were *corrected*
+  in the delta — `CLI_DEV_EXPORTS` from "eleven-name" to "ten-name" (it is ten, verified) and the DoD
+  loop's `CODE_REVIEW` reference from `dev:6298` to the loop at `dev:6273` plus its log at `dev:6297`,
+  with the authorship correctly attributed to the `dod-verify` agent rather than the loop. Revisions
+  usually add citation drift; this one removed some.
 
 ## Recommendation
 
