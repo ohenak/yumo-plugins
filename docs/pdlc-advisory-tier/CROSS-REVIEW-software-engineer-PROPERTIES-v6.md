@@ -41,6 +41,14 @@ the protocol working as designed, not an abbreviated review.
 
 ## Disposition of v5 findings
 
+| v5 | Sev | Status | Evidence |
+|----|-----|--------|----------|
+| F-01 | Low | **Still open — and narrower than I wrote it** | The finding had two halves. The half that stands: `PROPERTIES:566` still reads "(at the three seams that can apply an action — A2, A4, A5; A1 and A3 take **the stronger form** stated below)", while `PROPERTIES:593` describes the same two seams as taking "**a different form**, and for the same reason". "Stronger" is the word the v1.3 text used when A1/A3 carried one conjunct and A2/A4/A5 carried two; both families now carry two, so it is a stale comparative. The half I should not have filed: I quoted `:562-563` as ending at "take the two-conjunct form stated below", but the line actually continues "…, **which runs the mutation in the opposite direction**" — the distinguishing information I asked for is already there, and my quote was truncated. I withdraw that half rather than carry it. The residue is a single stale adjective at one line. |
+
+I am recording the withdrawal explicitly rather than silently dropping it: a reviewer who mis-quotes
+a line and then files against the mis-quote costs the author a round, and the correction belongs in
+the same ledger the finding was raised in.
+
 ## Findings
 
 ## Questions
