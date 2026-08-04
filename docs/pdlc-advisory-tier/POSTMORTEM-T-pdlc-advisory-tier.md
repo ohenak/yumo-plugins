@@ -41,7 +41,35 @@ This is developed in Root Cause 1.
 
 ## Iterations
 
-<!-- body -->
+The erratum channel ran its **one** permitted round: one FSPEC edit, one dual delta-confirmation.
+
+| Step | Actor | Commit | Result |
+|---|---|---|---|
+| Errata emitted | se-author (Phase T) | — | 4 items routed against FSPEC: two D-6 (created-file baseline), one A2-6/R-2 (ordering), one C-2 (degraded-key report) |
+| Targeted edit | se-author (FSPEC owner) | `3bbf934` — "erratum round — decouple D-6 baseline citation pin, decide A2 record/commit order, gate C-2 report on enabled" (v1.2 → v1.3) | 3 regions touched: §3.2/§5 C-2, §4.1 step-order, §12.1 D-6 / §12.2 T-10-3 |
+| Confirmation — se-review | se-review (`-v4`) | `f3b9a94`/`90bb82f`/`f1e9b8f` | **Approved minor changes** — `{high:0, medium:0, low:0}` |
+| Confirmation — te-review | te-review (`-v4`) | `ae55f25` | **Needs revision** — `{high:1, medium:0, low:0}`, F-01 High |
+
+The routed erratum items, verbatim, and their fate in the confirmation:
+
+| # | Item (as routed) | Confirmation verdict |
+|---|---|---|
+| 1 | D-6 pins the disabled-run created-file baseline to `26c3f1c`, which "predates" `raisePrAndVerifyCi`/Phase PUB, so a branch-HEAD disabled run is compared against a stale literal; baseline should be the pre-feature branch tip | **Premise disproved** — not a defect |
+| 2 | D-6 (se-author variant of the same claim) | **Premise disproved** — same false "predates" claim |
+| 3 | A2-6 (re-grounding durable before invocation end) vs R-2 (failed record write un-takes the action) — FSPEC never reconciles the ordering | **Resolved** (both reviewers) |
+| 4 | C-2 unconditionally reports a degraded config key, contradicting D-5/S-4/T-10-4's "a disabled run carries no advisory content" | **Resolved** (both reviewers) |
+
+So the round is **2-of-4 sound, 2-of-4 false-premise**. The two sound errata (items 3, 4) were applied
+correctly and both reviewers confirm them. The two D-6 errata (items 1, 2) share one false factual
+premise; the edit that acted on them replaced a *correct* baseline (`26c3f1c`) with a fork-point
+baseline on a reversed, unverified rationale, and te-review's grounding check caught it.
+
+**A note on the halt roster.** The dispatching orchestrator recorded non-approving `[se-review,
+te-review]`. On disk only **te-review** blocks: its `VERDICT: Needs revision` carries the lone High.
+se-review's `-v4` verdict is `VERDICT: Approved minor changes`, which is an **accepted approval token**
+(`orchestrate-dev.js:3513` — `verdict === "Approved" || verdict === "Approved minor changes"`), so the
+confirmation is non-unanimous, not doubly-refused. The distinction matters for the Recommendation: only
+the D-6 half needs another turn; se-review's approval of the whole edit stands and need not be re-run.
 
 ## Reviewers
 
