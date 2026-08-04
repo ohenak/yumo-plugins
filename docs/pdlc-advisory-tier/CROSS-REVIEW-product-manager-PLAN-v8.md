@@ -71,4 +71,40 @@ delta fixed one cell over, left standing in the row an implementer reads first.
 
 ## Recommendation
 
+**Needs revision** — one Medium (F-01), and the fix is a single cell.
+
+The delta breaks nothing. No task, dependency edge, ownership row, batch label, phase boundary,
+requirement or acceptance criterion changed; the task↔manifest bijection still holds at 36/36; every
+citation the two commits introduced verifies against the file and line it names. v6 F-01 is fully
+resolved, and v6 F-02's upstream half is resolved better than requested — via FSPEC and DEC-ADV-11
+rather than by conforming the PLAN to TSPEC.
+
+What blocks approval is the half of v6 F-02 that was named explicitly and only half-applied. That
+finding asked for **§3's A-07 row *and* §8.2**; only §8.2 was edited. `PLAN:258` still asserts that
+every per-seam gate case "need[s] that seam's `verifyGate` to exist" and still names A1 as the sole
+gateless exception, which after DEC-ADV-11 is a false statement about A3 and directly contradicts
+`PLAN:869`. This is not duplicated prose drifting harmlessly: §3's task table is what the RED task
+A-07 is dispatched with, and `PROPERTIES:570-572` states that authoring A3's case in the
+gate-stubbing form "would fail against a correct build, in the RED batch (A-07) that authors it, and
+not be diagnosed until A-23" — a wasted red batch and a misdiagnosed failure ten batches later.
+Severity is Medium rather than Low precisely because upstream is now settled: at v6 the ambiguity
+was genuine and unresolvable here, so it was correctly Low and routed as an erratum; today the
+answer exists in three approved documents and this one row still contradicts it.
+
+Exactly what must change to reach Approved:
+
+1. **§3's A-07 row (`PLAN:258`), clause (b) only.** Replace "each need that seam's `verifyGate` to
+   exist" with a formulation that covers both representations, and extend the A1-only parenthetical
+   to **A1 and A3** — asserting `verifyGate === null`, `resolved` unreachable on every path,
+   termination in `escalated`/`no-action` with the seam's own O-1 triple, and that *installing*
+   `async () => ({ passed: true })` fails the case. Cite FSPEC §5.4, `TSPEC:657` and DEC-ADV-11, and
+   keep the block assignment (A3+A4 ⇒ `A-23`) exactly as it stands.
+2. Nothing else. Q-01 and Q-02 are informational; neither needs a round.
+
+No erratum is emitted this round: the upstream divergence this reviewer routed at v6 is closed in
+FSPEC, TSPEC and DECISIONS, and the residue is local to this document.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 0, "medium": 1, "low": 0}
