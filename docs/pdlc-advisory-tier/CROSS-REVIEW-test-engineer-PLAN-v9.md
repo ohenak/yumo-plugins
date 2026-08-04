@@ -95,9 +95,47 @@ by A-07's row and its §4 manifest entry (`PLAN:329` gives A-22 the same file); 
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| — | — | — | **None.** No finding was carried out of v8, and the v1.9 delta — one clause plus one parenthetical in §3's A-07 cell — is correct on every anchor I checked and introduces no new testability gap. | — |
+
+One item I inspected and deliberately did **not** file, recorded so the next reviewer does not
+re-derive it: the new clause cites `PROPERTIES:570-572` for the "would fail against a correct build …
+undiagnosed until A-23" rationale, whose sentence actually runs to `PROPERTIES:574`. The cited range
+opens the paragraph and contains the start of that very sentence, so a reader following the anchor
+lands on the right text; a two-line undershoot at the tail of a paragraph pointer is not a defect of
+the PLAN and does not warrant a Low.
+
 ## Questions
 
+None. v6's two questions were answered in the document at v1.7 and are untouched by this delta; v7
+and v8 raised none, and the v1.9 edit answers rather than opens.
+
 ## Positive Observations
+
+- **This edit closes a real RED-batch trap, not a wording inconsistency.** A-07 authors the case;
+  §8.2 had been right since v1.7 but §3 was the cell an implementer of A-07 reads first. Had the
+  stale clause shipped, A3's case would have been written in the replace-the-gate form and failed
+  against a *correct* build inside a batch that expects failures — the one place a false red is
+  invisible. Fixing the authoring instruction rather than only the specification table is the right
+  half of the pair to fix.
+- **The gateless cases keep a positive oracle, so neither is an absence-only assertion.** "`resolved`
+  is unreachable on every path" is paired on the same path with "terminates in `escalated` or
+  `no-action` with its own O-1 triple" — the negative and the what-happens-instead are both required
+  conjuncts, and the mutation conjunct makes the pair falsifiable rather than vacuous.
+- **The mutation semantics stay single-valued across three documents.** `TSPEC:655`/`:657` give A1 and
+  A3 `verifyGate: null` and reserve `async () => ({ passed: true })` for the mutant; `FSPEC:378` gives
+  A3 "none"; `PLAN:258` and `PLAN:869` now both state the install-the-stub direction. There is one
+  representation of a gateless gate and one meaning for the passing stub — which is exactly what makes
+  the T-03-6(b) mutation check able to fail.
+- **The set-equality driver over `ADVISORY_SEAMS` is untouched and still written over the in-file
+  registry, not over case results.** That is the property that makes the enumeration complete by
+  set-equality rather than containment: a sixth seam fails the suite until it has a case, and a
+  deleted case is not expressible without deleting its registry row.
+- **The delta is contained and the contract proves it.** 36 tasks / 36 ownership rows /
+  `validatePlanContract ⇒ {"ok":true}` / 20 topological batches re-derive unchanged from v6 through
+  v9, so a cell edit this large in prose perturbed neither the task-table nor the ownership-manifest
+  grammar the Phase P gate parses.
 
 ## Recommendation
 
