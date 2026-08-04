@@ -102,7 +102,48 @@ it to check.
 
 ## Pattern of Disagreement
 
-<!-- body -->
+**1. Three of four errata converged; the halt is entirely the D-6 pair.** This is not a loop that
+churned. Two routed items were genuine FSPEC defects (the A2-6/R-2 ordering gap and the C-2 report
+contradiction), both were fixed cleanly in one edit, and both reviewers confirm them. If the D-6 items
+had never been routed, this erratum round would have passed on the first confirmation. The failure is
+localized to one factual claim, not diffuse across the document.
+
+**2. The blocking finding is a self-withdrawn erratum.** te-review's F-01 (High) does not ask the
+author to add or change anything the author got wrong — it retracts the reviewer's *own* erratum.
+te-review states it plainly: "This is my error to withdraw, not the author's to carry." The D-6 erratum
+was co-raised by te-review and se-author; on grounding it against the object, te-review found the shared
+"predates" premise false and blocked the confirmation to prevent the edit that implemented it. The
+disagreement is between the v1.3 edit and the git history, not between people.
+
+**3. The false premise is disproved by one command, and the TSPEC already carried the disproof.**
+The D-6 errata assert `26c3f1c` predates `raisePrAndVerifyCi`/Phase PUB. The check:
+
+```
+git grep -c 'raisePrAndVerifyCi' 26c3f1c -- pdlc/workflows/orchestrate-dev.js   ⇒ 4
+```
+
+`26c3f1c` already carries the symbol (te-review also cites its appearances across the test suite at
+that commit — `__tests__/dodPhase.test.js`, `forcePhases.test.js`, `haltAndQueue.test.js` — and the
+tracked PLAN row for it). `26c3f1c` is an ancestor of the default branch and carries every merged
+pipeline change including Phase PUB's file-creating path, so its created-file set **equals** a disabled
+branch-HEAD run's — exactly what D-6 requires. Strikingly, the *TSPEC itself* had already established
+this: §1.1 (`TSPEC:38-50`) states "`26c3f1c` already carries every symbol this TSPEC cites — Phase PUB's
+`raisePrAndVerifyCi` included … `git grep -c … 26c3f1c …` ⇒ 4." The erratum contradicted a fact the
+same author had verified one document over.
+
+**4. The edit degraded a correct baseline.** Because the premise was false, the v1.3 edit did harm, not
+good: it swapped D-6/T-10-3's correct `26c3f1c` baseline for a "fork point / pre-feature base" baseline
+justified by the reversed, unverified claim that `26c3f1c` "may sit ahead of the branch's pre-feature
+base." te-review's remedy is therefore not "revise the new text" but "**withdraw both D-6 errata and
+restore D-6/T-10-3 to `26c3f1c`**," keeping items 3 and 4. The approval bar (any open High ⇒ Needs
+revision) then correctly refuses the confirmation.
+
+**5. se-review and te-review do not contradict each other — one checked and one did not.** se-review's
+approval is not wrong about items 3 and 4, and its acceptance of the D-6 edit is the predictable result
+of taking the edit's stated rationale at face value: as an FSPEC-altitude clarification it reads fine.
+Only the git-object check falsifies it, and only te-review's skill compels that check. This is the
+review loop's grounding clause doing exactly its job — one reviewer's mandated verification catching a
+claim the prose made plausible.
 
 ## Best-Guess Root Cause
 
