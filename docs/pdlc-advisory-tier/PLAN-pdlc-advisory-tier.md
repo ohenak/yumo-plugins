@@ -225,7 +225,7 @@ red; it ends the run. So no wave in this PLAN is RED-terminal. Instead:
 3. The matching 🟢 task's **only** edit to the test file is mechanical: delete `.skip` from its own
    block. It may not add, delete or reword a case body — that is still the 🔴 row's exclusive right
    (§4). **That edit is legal because §4's manifest gives the 🟢 task the test file too**: the wave
-   prompt tells each agent `You own EXACTLY these files: …` (`pdlc/workflows/orchestrate-dev.js:5849`)
+   prompt tells each agent `You own EXACTLY these files: …` (`pdlc/workflows/orchestrate-dev.js:5850`)
    and the script commits pathspec-scoped to exactly those paths (`:8143-8159`), so a file absent from
    the row would make the un-skip an instructed-against edit that is never committed. Two writers of
    one test file are never in one wave: `computeWaves`/`pathsCollide` (`:2377`) partitions a batch by
@@ -461,13 +461,55 @@ verbatim pre-implementation failure**, carried into the wave's single script-own
 
 **How the per-file assertions in the gates below are read.** Jest's default reporter prints one
 aggregate summary for all 68 suites, which cannot answer "did *these* files contribute zero passing
-cases". Every per-file assertion below is therefore made against a `--json` run filtered by
-`testFilePath` — the wave agent runs
-`npm test -- --json --outputFile=/tmp/adv-gate.json --testPathIgnorePatterns '/node_modules/' '/__tests__/helpers/' '/__tests__/fixtures/' 'documentOracles'`
-and reads `testResults[].{testFilePath,numPassingTests,numFailingTests,numPendingTests}` for the
-`advisory*.test.js` paths. That file is written under `/tmp`, never in the repo, so no document oracle
-walks it. The gate's *pass/fail* remains the script-owned aggregate run (`:8113-8118`); the `--json`
-run is the agent's evidence for the per-file claims it reports.
+cases". Every per-file assertion below is therefore made against a **targeted** `--json` run over the
+advisory paths only. The wave agent runs, from `pdlc/workflows/`:
+
+```
+npm test -- --json --outputFile=/tmp/adv-gate-w{n}.json 'advisory.*\.test\.js'
+```
+
+where `{n}` is the executor batch number. The run is deliberately **targeted, not full-suite**: the
+wave prompt tells every agent `Run only your task's targeted tests — do not run the full suite; the
+orchestrator runs it.` (`pdlc/workflows/orchestrate-dev.js:5849`), so a full-suite `--json` run would
+be an instructed-against action. A trailing positional argument is jest's test-path pattern, and every
+assertion below is stated over `advisory*.test.js` paths only, so nothing is given up by the
+narrowing. (Verified at HEAD on jest 29.7.0: `npm test -- --json --outputFile=… 'guard.*\.test\.js'`
+collects exactly the three matching suites.)
+
+**The fields that run actually emits — transcribed literal.** On the pinned jest (`pdlc/workflows/package.json`
+pins `"jest": "^29.7.0"`; `npx jest --version` ⇒ 29.7.0) a `testResults[]` entry carries
+`{assertionResults, endTime, message, name, startTime, status, summary}` and **no** `testFilePath`,
+`numPassingTests`, `numFailingTests` or `numPendingTests` — those four counters exist only at the top
+level of the document, i.e. the aggregate this section says it cannot use. The per-file triple is
+therefore derived from the two fields that do exist: `testResults[].name` (the absolute file path) and
+`assertionResults[].status` (`passed` | `failed` | `pending` | `todo`). One expression, quoted
+identically by every gate row below and by §9.1:
+
+```js
+// perFile: { "<abs path>": { "<top-level describe block>": { passed, failed, pending } } }
+const perFile = Object.fromEntries(
+  require('/tmp/adv-gate-w{n}.json').testResults
+    .filter(r => /advisory.*\.test\.js$/.test(r.name))
+    .map(r => [r.name, r.assertionResults.reduce((acc, a) => {
+      const b = (acc[a.ancestorTitles[0] ?? ''] ||= { passed: 0, failed: 0, pending: 0 });
+      b[a.status] = (b[a.status] ?? 0) + 1;
+      return acc;
+    }, {})]));
+```
+
+`ancestorTitles[0]` is the top-level `describe` title, and §3 names every block for its green owner,
+so this partitions each file **by un-skip block** as well as by file — which is what the batch 7–17
+delta row needs. A file's totals are the sum over its blocks. (Verified at HEAD against
+`guardMatrix.test.js`, a shipped skip-carrying suite: the reducer yields `{"passed":75,"pending":70}`,
+matching the top-level `numPendingTests` ⇒ 70.)
+
+**Retention.** Each wave writes its own `/tmp/adv-gate-w{n}.json` and **the previous wave's file is
+kept**, so a delta assertion ("this block's cases moved `pending` → `passed`") is a comparison of two
+recorded documents rather than a reconstruction. No expected case count has to be recorded anywhere:
+the count comes from the block's own entry in the wave-(n−1) file. Those files are written under
+`/tmp`, never in the repo, so no document oracle walks them. The gate's *pass/fail* remains the
+script-owned aggregate run (`:8113-8118`); the targeted `--json` run is the agent's evidence for the
+per-file claims it reports.
 
 | Executor batch | §3 labels | Tasks | Gate |
 |---|---|---|---|
