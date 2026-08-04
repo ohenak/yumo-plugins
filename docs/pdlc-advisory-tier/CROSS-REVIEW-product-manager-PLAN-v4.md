@@ -115,4 +115,28 @@ sections this revision changed — §5.2's rewritten evidence procedure and §6.
 
 ## Recommendation
 
-_(pending)_
+**Needs revision.**
+
+Both v3 findings are resolved, and the revision is convergent in the strongest sense: the Medium was
+fixed *below* the level I reported it at, and the fix was established by execution — which I
+reproduced independently, down to `{"passed":75,"pending":70}` and the 20-wave partition. Nothing I
+approved in earlier rounds was broken by these edits, and every citation the revision touched is now
+correct.
+
+The one remaining Medium is a consequence of the fix, not a regression: the new evidence procedure is
+correct for a one-agent wave and under-specified for the eight waves that have more than one, because
+`orchestrate-dev.js:8095-8102` dispatches them concurrently in a shared tree.
+
+1. **F-12** (Medium) — make the snapshot **per task**, not per wave: each task runs the targeted
+   `--json` over the test files in its own §4 manifest row, to `/tmp/adv-gate-w{n}-{taskId}.json`, and
+   reports its own numbers. Ownership disjointness (`pathsCollide`, `:2377`) already guarantees no
+   wave-mate touches that file, so every §5.2 assertion survives verbatim and the race, the unnamed
+   producer and the mid-wave snapshot all disappear together. Point §9.2 (ii) at the block-owning
+   task's pair of snapshots.
+2. **F-13** (Low) — correct the top-level field names in §5.2's transcription paragraph
+   (`numPassedTests` / `numFailedTests`; `testFilePath` appears nowhere).
+3. **F-14** (Low) — cite the ladder as `TSPEC:525-535`, so the range includes check 6.
+
+No erratum is raised by this review. TSPEC's unspecified `governingClass([])` remains carried by the
+PLAN itself (§10.1 item 6) and needs nothing further; TSPEC §7.4's `T-06-8`, outside FSPEC §18.1's
+catalogue, remains flagged in §8.3 note 2 and was raised against TSPEC in round 1.
