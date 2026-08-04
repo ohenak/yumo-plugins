@@ -1055,9 +1055,9 @@ report actually carries.
 
 ### 13.1 Upstream defects — routed, not absorbed
 
-Four items found while deriving these properties belong to upstream documents. **Three are emitted as
-`ERRATUM:` lines** to their owning author; the fourth (item 2) was resolved upstream before this
-revision and is listed only so a reviewer does not re-raise it. This document does not edit those
+Six items found while deriving these properties belong to upstream documents. **Five are emitted as
+`ERRATUM:` lines** to their owning author; the remaining one (item 2) was resolved upstream before the
+v1.1 revision and is listed only so a reviewer does not re-raise it. This document does not edit those
 documents and does not treat any of these defects as its own.
 
 1. **A1's `verifyGate` — PLAN §8.2 contradicts TSPEC.** PLAN §8.2 (and its §3 A-31 row) says "A1
@@ -1089,6 +1089,23 @@ documents and does not treat any of these defects as its own.
    tenth `SeamOps` member or an explicit statement that the driver accumulates it is the TSPEC
    author's to settle; PROP-BUD-03 (§5.2) is restated against the argument the driver hands
    `budgetExceeded`, which exists under either resolution, so nothing here blocks on it.
+5. **`fixtures/scanFixtures.js` has no PLAN ownership row.** Resolving the self-inclusive-scan
+   collision (§2.1) requires the forbidden-shape control strings for PROP-INFRA-01 and PROP-REG-08 to
+   live outside the `advisory*.test.js` glob, in a new module
+   `pdlc/workflows/__tests__/fixtures/scanFixtures.js`. PLAN §4's file-ownership manifest names one
+   fixture file (`fixtures/created-files-26c3f1c.json`, A-15) and no second one, and PLAN's contract
+   requires every task to own the files it creates. The module is a leaf with no production dependency
+   and its natural owner is **A-01**, which authors `advisoryPreflight.test.js` and ships un-skipped
+   from batch 1 — but the assignment is the PLAN author's to make, and the manifest row must exist
+   before Phase I, since `validatePlanContract` is what enforces it.
+6. **TSPEC §11.1 states an assertion its own code shape falsifies.** `TSPEC:1245` reads "A grep for
+   `advisory.enabled` returning exactly three sites is itself a maintainable assertion", one paragraph
+   after declaring the driver's test as `config.enabled === false` (`TSPEC:1241`) and four sections
+   after writing the notice gate as `advisory.config.enabled` (`TSPEC:286`). Only the §9.3 distil guard
+   is written `advisory.enabled` (`TSPEC:1113`), so the stated grep finds **one** site, not three.
+   PROPERTIES inherited the wording faithfully at v1.1 and has now restated PROP-DIS-06 against the
+   transcribed matcher `/\.enabled\b/` with an explicit counted set (§10.1); TSPEC §11.1's own sentence
+   still needs the same correction, and the choice of matcher there should match.
 
 ### 13.2 Deliberate negative space — what has no property, and why
 
