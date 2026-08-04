@@ -152,3 +152,8 @@ PLAN itself flags it in §8.3 note 2, and I confirmed it is still open — TSPEC
 `T-06-8`, outside FSPEC §18.1's T-06-1…T-06-6 catalogue. The PLAN's handling (carry the obligation
 under A-10, raise the id discrepancy upstream, invent nothing) is correct and needs no change here.
 
+## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 2, "low": 4}
+
