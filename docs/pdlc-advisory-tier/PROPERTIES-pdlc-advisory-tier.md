@@ -530,6 +530,61 @@ real-tree comparisons live (`__tests__/fixtures/tmpGitFixture.js`), per PLAN §6
 
 ## 9. Properties — advisory record, escalation log, summary, harvest
 
+Homes: `advisoryRecord.test.js` (A-08 🔴 / A-21 🟢), `advisoryEscalationLog.test.js`
+(A-09 🔴 / A-21 🟢), `advisoryHarvest.test.js` (A-13 🔴 / A-27, A-28 🟢).
+
+### 9.1 The advisory record — `docs/{feature}/ADVISORY-{feature}.md`
+
+| # | Property | Category | Level | Traces | Home |
+|---|---|---|---|---|---|
+| PROP-REC-01 | `renderAdvisoryEntry(disposition, { now })` must be **pure** — it takes the timestamp rather than reading a clock — so the rendered bytes are testable exactly against a transcribed literal. | Contract | Unit | TSPEC §9.1 | `advisoryRecord.test.js` |
+| PROP-REC-02 | Every entry must carry the seven declared fields, in the declared order: timestamp, seam, diagnosis, confidence, envelope determination, action taken or escalated, evidence citations. Field-presence asserted against the transcribed literal of TSPEC §9.1. | Contract | Unit | AC-9.1, T-08-1 | `advisoryRecord.test.js` |
+| PROP-REC-03 | The record must be **append-only** and in occurrence order: N invocations must produce N entries, newest last, and no earlier entry's bytes may change. | Data Integrity | Unit | R-3, AC-9.1 | `advisoryRecord.test.js` |
+| PROP-REC-04 | An entry must be written for **every** terminal disposition, including `no-action` — the record is not escalation-only. | Observability | Unit | R-4, AC-9.1 | `advisoryRecord.test.js` |
+| PROP-REC-05 | An advisory **action** taken with no record written must be a defect, asserted directly: with `_appendFile` scripted to throw, `appendAdvisoryEntry` must throw, the driver must revert, and the disposition must satisfy O-1 with reason `record-write-failed`. | Error Handling | Unit | AC-9.2, R-2, T-08-2 | `advisoryRecord.test.js` |
+| PROP-REC-06 | A missing feature directory must make the append **throw** (`defaultAppendFile`, `orchestrate-dev.js:6805`, creates nothing implicitly for this path), taking the R-2 refusal path — never a silent `mkdir`. | Error Handling | Unit | TSPEC §9.1, T-08-2 | `advisoryRecord.test.js` |
+| PROP-REC-07 | The `Model` row must carry the rung actually used and, on a fallback run, mark it as the substitution — so the fallback is readable off the record as well as off the summary. | Observability | Unit | AC-1.3, M-2, T-08-7 | `advisoryRecord.test.js` |
+| PROP-REC-08 | No field body may contain an unescaped newline, which would corrupt the append-only record's line grammar. | Data Integrity | Unit | PLAN P-6 | `advisoryRecord.test.js` |
+
+### 9.2 The escalation log — `docs/_queue/ESCALATIONS.md`
+
+| # | Property | Category | Level | Traces | Home |
+|---|---|---|---|---|---|
+| PROP-ESC-01 | `renderEscalationEntry(disposition, ctx, { now })` must be pure and must emit the eight declared fields — feature, seam, refusal reason, diagnosis, proposed action, evidence, pipeline state (phase id **and** that phase's outcome) — with the one-sentence decision statement **first**. | Contract | Unit | AC-10.1, AC-10.2, L-2, T-09-1 | `advisoryEscalationLog.test.js` |
+| PROP-ESC-02 | The log must be append-only and newest-last: two escalations for the same feature **and** seam must produce two entries under their own headings, and the first must be byte-unmodified — never an in-place update. | Data Integrity | Unit | AC-10.4, L-1, T-09-2 | `advisoryEscalationLog.test.js` |
+| PROP-ESC-03 | Nothing in this tier may **read** `ESCALATIONS.md`: the append-only guarantee must follow from the absence of a reader, asserted as a source-level property that no advisory path opens the file for reading. | Contract | Unit | L-1, DEC-ADV-09, TSPEC §17.2 | `advisoryEscalationLog.test.js` |
+| PROP-ESC-04 | Given neither `ESCALATIONS.md` nor `docs/_queue/` exists, both must be created and the entry written — the recursive `mkdirSync` living inside `defaultAppendFile`'s existing try. | Functional | Unit | AC-10.1, T-09-7 | `advisoryEscalationLog.test.js` |
+| PROP-ESC-05 | A **failed** escalation-log write must be asymmetric with a failed record write: the seam must still report `escalated`, the disposition must **not** be `resolved`, nothing must be applied, the pre-advisory halt or skip must still happen, and the failed write must be named on the run report. Asserted positively on all five conjuncts. | Error Handling | Unit | T-09-8, R-2 asymmetry | `advisoryEscalationLog.test.js` |
+| PROP-ESC-06 | Escalation must never change control flow: at a halting seam the halt must still happen; at a skipping seam the skip must still happen; both byte-identical to the tier-disabled run. | Integration | Integration | AC-10.3, F-5, L-3, T-09-3, T-09-4 | `advisoryDodSeams.test.js`, `advisoryQueueSeams.test.js` |
+| PROP-ESC-07 | `MERGE_ESCALATIONS` (`orchestrate-dev.js:1321`) must be **byte-identical** to its pre-feature value — asserted as a frozen object's own-property snapshot, so widening the merge catalogue instead of adding a sibling fails. | Contract | Unit | AC-10.5, N-1, T-09-5 | `advisoryEscalationLog.test.js` |
+| PROP-ESC-08 | The advisory notice must use its own distinct prefix, name the seam and point at its `ESCALATIONS.md` entry; and **one grep for `ESCALATION:` must find both** the merge notice and the advisory notice. Asserted with one merge escalation and one advisory escalation present on the same report. | Observability | Unit | AC-10.5, N-2, N-3, T-09-6 | `advisoryEscalationLog.test.js` |
+| PROP-ESC-09 | Advisory notices must ride the **existing** notice channel — the same `notices` array and the same report field the merge phase already uses — so the operator watches one place. | Contract | Unit | AC-10.5, N-4 | `advisoryEscalationLog.test.js` |
+
+### 9.3 The advisory summary on the final report
+
+| # | Property | Category | Level | Traces | Home |
+|---|---|---|---|---|---|
+| PROP-SUM-01 | `advisorySummaryRows(dispositions)` must be pure and must always emit **five** rows — one per `ADVISORY_SEAMS` member, zero counts included — driven off the exported constant. | Observability | Unit | AC-9.4, S-1, T-08-6 | `advisoryRecord.test.js` |
+| PROP-SUM-02 | `invocations === resolved + escalated + noAction` must hold on **every** row and on the total row; the literal six-row table of T-08-10 (A1 0/0/0/0, A2 0/0/0/0, A3 1/0/0/1, A4 1/1/0/0, A5 1/0/1/0, total 3/1/1/1) must match by value. | Data Integrity | Unit | AC-9.4, V-7, S-1, T-08-10 | `advisoryRecord.test.js` |
+| PROP-SUM-03 | The summary must name the **advisory model actually used** and whether it was the configured rung or the declared fallback. | Observability | Unit | AC-9.4, S-2, T-08-7 | `advisoryRecord.test.js` |
+| PROP-SUM-04 | The summary must appear on **every** report, including a halted run's: a run halting at A3 or A4 must carry the summary for the seams reached so far, and the record must still be on disk un-distilled. | Observability | Integration | AC-9.4, S-1, H-4, T-08-9 | `advisoryHarvest.test.js` |
+| PROP-SUM-05 | `noChecks` and `completionCap` must be threaded from `raisePrAndVerifyCi` and **named** on the summary, so a repo with no CI and a repo whose checks never completed are distinguishable. | Observability | Integration | AC-8.6, S-3, A5-6, A5-9 | `advisoryPubSeam.test.js` |
+| PROP-SUM-06 | With the tier disabled, `buildFinalReport` (`orchestrate-dev.js:8595`) must receive `advisory: null` and the report must carry **no** advisory section at all. | Observability | Unit | S-4, NFR-3, AC-1.6 | `advisoryDisabled.test.js` |
+
+### 9.4 Harvest of the record, and the delete guard
+
+| # | Property | Category | Level | Traces | Home |
+|---|---|---|---|---|---|
+| PROP-HARV-01 | The distil-and-delete step must run **after Phase PUB and before Phase MERGE** — not at Phase H, because at Phase H seam A5 has not run yet. Phase H itself must be untouched. Asserted on the step's position in the phase sequence and on the A5 entry being included in what was distilled. | Integration | Integration | AC-9.3, H-1, T-08-5 | `advisoryHarvest.test.js` |
+| PROP-HARV-02 | On a completed dev-side run in which seams fired, `ADVISORY-{feature}.md` must be **absent** at end of run, its content must be present in `LEARNINGS-{feature}.md`, both must be committed and pushed on the feature branch, and the PR must show the commit. | Data Integrity | Integration | AC-9.3, H-2, T-08-3 | `advisoryHarvest.test.js` |
+| PROP-HARV-03 | The delete must go through the **guard-covered channel** (`git rm`, matched by the guard's `\bgit\s+rm\b` alternative), never around it. | Security | Unit | H-3, AC-9.3 | `advisoryHarvest.test.js` |
+| PROP-HARV-04 | Reaching the distil step with **no** `LEARNINGS-{feature}.md` must produce a refusal that **names the artifact class it refused**, must leave `ADVISORY-{feature}.md` on disk with its entries intact, and must name the refusal on the run report. | Security | Integration | AC-9.3, H-3, T-08-4 | `advisoryHarvest.test.js` |
+| PROP-HARV-05 | A **direct** delete of `ADVISORY-{feature}.md` with no sibling `LEARNINGS-{feature}.md` must be refused by the hook itself, the refusal must name the artifact class, and the file must still exist — unit-scoped over the guard, distinct from and not subsumed by PROP-HARV-04's production-path assertion. | Security | Unit | AC-9.3, T-08-4b | `advisoryHarvest.test.js` |
+| PROP-HARV-06 | The guard-message coupling must not break: after the hook's message is extended, `orchestrate-dev.js:8342`'s literal test and `:8348`'s extraction regex must **both still fire** on a `CROSS-REVIEW` refusal. The message must be extended with a trailing `[class: …]` token while the `CROSS-REVIEW` prefix and the bracketed directory keep their exact bytes. This is the feature's highest-consequence regression — a silent break makes Phase H proceed as if a refused delete had succeeded. | Contract | Unit | AC-9.3, TSPEC §9.3, PLAN §5.4(3) | `advisoryHarvest.test.js` |
+| PROP-HARV-07 | Queue-side records must persist by design: no queue-side path distils or deletes them, a `hold`/`escalate` adjudication must leave the record committed on the queue's branch and **not pushed**, a second process reading that branch head must find it, no `LEARNINGS` must be required, and no distil must have run. | Data Integrity | Integration | AC-9.1, H-2b, T-08-8 | `advisoryHarvest.test.js` |
+| PROP-HARV-08 | A run that halts before the distil step must leave the record on disk, complete up to the halt. | Data Integrity | Integration | H-4, T-08-9 | `advisoryHarvest.test.js` |
+| PROP-HARV-09 | `docs/_queue/ESCALATIONS.md` must **not** be harvested or deleted — it is the feature's durable output, retained for `pdlc-engineering-loop`. Asserted as the negative complement of PROP-HARV-02 on the same run. | Data Integrity | Integration | AC-10.4, PLAN §6.3 | `advisoryHarvest.test.js` |
+
 ## 10. Properties — disabled-tier equivalence and regression
 
 ## 11. Generator-driven properties (P-1 … P-9)
