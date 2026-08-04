@@ -116,4 +116,33 @@ I have no new questions.
 
 ## Recommendation
 
+**Approved with minor changes** — zero High, zero Medium, one Low.
+
+My single v2 Low is resolved, and resolved beyond the correction it asked for: the `T-06-7` exception
+to §12.4's set-equality audit is now pinned to one declaration site with a stated occurrence count, and
+I reproduced that count (exactly 2, at `PROPERTIES:661` and `:1062`) rather than taking it.
+
+Nothing in this round touches the product surface. No property was added, removed or re-levelled — I
+re-counted the 183 table rows myself — so no acceptance criterion gained or lost an obligation, and
+§1's and §12.3's level budget is unchanged and still internally consistent. The one oracle change that
+*could* have narrowed an acceptance criterion — moving A3 out of PROP-GATE conjunct 1 — replaces it
+with the strictly stronger unreachability form asserted positively, keeps AC-4.5 and AC-4.6's full
+`PROP-GATE-01 … PROP-GATE-05` ranges in §12.1, and grounds the change in four upstream citations I
+verified verbatim (`TSPEC:423`, `:638`, `:640`, `PLAN:274`). No scope was added that the REQ does not
+carry, no criterion was reinterpreted, and no settled decision was re-opened.
+
+The two new upstream items were routed rather than absorbed, which is the behaviour I want to keep
+seeing: item 5 names the missing `fixtures/scanFixtures.js` ownership row and the gate that will
+enforce it, and item 6 names TSPEC §11.1's grep token as falsified by TSPEC's own code shapes. Both are
+true as stated — I confirmed item 5 against PLAN §4's manifest and item 6 against all four TSPEC lines
+— and in both cases the property was restated at a surface that is correct under either resolution, so
+neither blocks Phase I.
+
+F-01 is a one-clause citation correction in §2.1 (`PLAN §2.2, A-00` ⇒ `PLAN §2.2, enforced by the §2.4
+operator pre-flight step`, since PLAN v1.2 deleted A-00) and does not gate approval. Please fold it
+into the next touch of §2.1.
+
+No new errata from me. The six items §13.1 routes are the author's to emit; I re-confirmed items 5 and
+6 against the PLAN and TSPEC at branch head and have nothing to add to them.
+
 ## Verdict
