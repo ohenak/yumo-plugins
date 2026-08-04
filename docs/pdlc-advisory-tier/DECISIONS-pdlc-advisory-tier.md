@@ -40,6 +40,52 @@ runtime's limits are binding), DEC-DIST-02 (tested source → built artifact →
 DC-01 (a boundary-crossing contract is closed and total), DC-04 (an oracle is a pure function of an
 injected root). Several entries below are direct applications of those; none contradicts one.
 
+## Context
+
+The context shared by every entry below, stated once so no entry has to restate it.
+
+**What the feature changes.** Today every judgment call in the pipeline is a full stop with no
+attempt at resolution (REQ §1). That is not rhetoric — it is countable in the shipped code:
+`orchestrate-dev.js` returns `outcome: "halted"` at five distinct sites (`dev:7635`, `dev:7650`,
+`dev:7673`, `dev:7695`, `dev:8498`), and `orchestrate-queue.js` adds one halt (`queue:1012`) plus
+two pre-`QUEUE.md` `outcome: "blocked"` returns (`queue:794`, `queue:847`). At each of those the
+operator arrives at an unexplained stop and reconstructs the situation from scratch. The advisory
+tier does not remove a single one of those gates; it inserts a diagnose-and-either-resolve-or-
+escalate step *before* the stop, at five named seams (A1…A5), and leaves the gate itself intact.
+REQ US-05 is the load-bearing constraint on the whole design: **the tier can never declare a gate
+passed.**
+
+**Four properties of the ground the design has to stand on**, each verified rather than assumed,
+each responsible for more than one entry below:
+
+1. **The workflow runtime has no `import`.** `stripModuleSyntax` deletes every `import …;` line
+   before bundling (`build:45-52`) and `wrapModule` wraps each module in an IIFE publishing only an
+   explicitly listed export set (`build:55-66`). Cross-module reuse is therefore a *build*
+   question, not a language question — which is what DEC-ADV-01 and DEC-ADV-05 turn on.
+2. **Model rungs are bare aliases pinned in code, one per phase class.** `MODEL_DEFAULT = "opus"`
+   (`dev:1578`), `MODEL_IMPLEMENTATION = "sonnet"` (`dev:1621`), `MODEL_QUEUE = "sonnet"`
+   (`queue:69`). There is no local table mapping an alias to a model and no probe for one; the
+   runtime owns resolution. DEC-ADV-04 is the direct consequence.
+3. **Config parsing already has a shipped shape, and it is per-key fallback plus a defect list.**
+   `parseMergeConfig` (`dev:101`) and `parseImplementationConfig` (`dev:181`) are pure, total, and
+   never fail a run on a bad key. `advisory.*` is modelled on them (DEC-ADV-08), which is also why
+   REQ AC-1.6's "disabled ⇒ exactly today's behavior" is expressible at all.
+4. **Composition in these modules is pure-function-plus-injected-seam, uniformly.** `parseMergeConfig`
+   (`dev:101`), `classifyPrState` (`dev:380`), `effectiveGuardPaths` (`dev:708`), `guardVerdict`
+   (`dev:731`), `decideMerge` (`dev:835`) are pure; `phaseMerge` (`dev:1361`), `commitPaths`
+   (`dev:6905`) and `gitWithLockRetry` (`dev:6862`) take their IO as parameters. There is no class
+   hierarchy in either module. DEC-ADV-02 adopts that idiom rather than introducing a second one.
+
+**What makes these decisions worth recording rather than obvious.** Three of the five seams act on
+the git tree or the remote, so an ordering mistake is not recoverable by re-running (DEC-ADV-03).
+Two FSPEC rule pairs contradict each other on the paths this feature must implement — A2-6 versus
+R-2, and C-2 versus D-5/S-4 — so the TSPEC had to *choose*, and a future reader who does not know a
+choice was made will read the chosen shape as an oversight (DEC-ADV-03, DEC-ADV-08). And the
+feature's central safety claim, D-6, is an equivalence between a disabled run and a pre-feature
+run, which is falsifiable only against evidence captured outside the system under test
+(DEC-ADV-10). Every entry below exists because a real alternative was weighed, was defensible, and
+would be re-proposed by a competent agent who had not seen the reason it lost.
+
 ## DEC-ADV-01: The advisory core lives in `orchestrate-dev.js`, reached from the queue by prelude binding
 
 **Context.** FSPEC M-5 requires each model rung to be named **once** and referenced from every advisory
