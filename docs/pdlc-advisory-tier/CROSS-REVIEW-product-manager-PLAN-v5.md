@@ -119,4 +119,37 @@ behaviour; both are grounding citations in text that presents itself as verified
 
 ## Recommendation
 
-_(pending)_
+**Approved with minor changes.**
+
+The v4 Medium (F-12) is resolved, both v4 Lows are resolved, and both open questions are answered.
+I re-executed every mechanical claim the revision newly makes and each one held: the eight multi-task
+waves are exactly the eight `computeWaves` produces, the jest field transcription now matches a real
+`--json` document to the spelling, the batch-1/2 non-zero exit reproduces, the three two-task 🟢 waves
+are pairwise ownership-disjoint, and the PLAN still parses at 36 tasks / 36 ownership rows /
+`{"ok":true}` / 20 batches / 20 waves with the partition §5.2 transcribes. Nothing I approved in an
+earlier round was broken by these edits.
+
+Product-side, the PLAN continues to cover every P0 and P1 obligation this feature carries, with no
+scope added and none narrowed by this revision: no task, dependency edge, file-ownership row or batch
+label changed, only the evidence procedure under them.
+
+The two remaining findings are both Low and both are citation precision inside the one new paragraph:
+
+1. **F-15** (Low) — cite the concurrent dispatch as `orchestrate-dev.js:8101-8107`, not `:8095-8102`,
+   in §5.2 and in §10's 1.5 row. The current range starts at the wave-loop body and stops before the
+   `agentFn("se-implement", …)` lines the quote depends on.
+2. **F-16** (Low) — say that the post-wave sequence is **three** script-owned steps, not two: gate
+   (`:8112-8123`), post-wave build (`:8129-8140`), per-task commits (`:8143-8160`). As written, the
+   new paragraph contradicts §5.2's own batch 7–17 row, which requires `postWaveCommand` from
+   executor batch 6 onward.
+
+Q-12 and Q-13 are offered for the author's judgement and neither gates approval.
+
+No erratum is raised by this review. TSPEC's unspecified `governingClass([])` remains carried by the
+PLAN itself (§10.1 item 6); TSPEC §7.4's `T-06-8`, outside FSPEC §18.1's catalogue, remains flagged in
+§8.3 note 2 and was raised against TSPEC in round 1.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 2}
