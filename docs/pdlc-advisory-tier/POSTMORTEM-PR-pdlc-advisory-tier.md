@@ -170,6 +170,51 @@ would otherwise be preserved by harvest as durable signal.
 
 ## Best-Guess Root Cause
 
+**Root cause 1 (primary) — an erratum fix was scoped to the erratum's wording, not to the extent of the
+upstream change it reconciles with.** The routed line named A1, because A1 is where the two
+representations visibly collided. The TSPEC edit that settled it covers A1 **and A3** — they are one
+sentence in TSPEC v1.3's changelog and one shared statement at `TSPEC:434` ("Those two seams also
+supply `verifyGate: null`"). The PLAN author applied the reconciliation to the named seam and did not
+ask *what else does the document I am now agreeing with say*. This is a general hazard of the erratum
+channel: an erratum line is a **pointer to a symptom**, and a fix that treats it as the full
+specification of the defect will under-apply whenever the upstream correction is broader than the
+sentence that surfaced it. Nothing mechanical checks fix extent against change extent.
+
+**Root cause 2 (contributing, and the deeper one) — the errata were routed to the PLAN when the
+unresolved conflict lives between FSPEC and TSPEC.** A3's gate is described one way in an approved
+FSPEC §5.4 row and the opposite way in TSPEC v1.3 §5.5/§7.2, and neither document acknowledges the
+other. The PLAN cannot be simultaneously consistent with both, so *any* PLAN text about A3's gate is
+defensible-or-defective depending on which parent you read — which is precisely the split between pm
+F-02 and te F-01. Routing an erratum to the **child** of a conflict cannot resolve the conflict; it can
+only relocate it. The correct target for the A3 half is the FSPEC/TSPEC pair, and the PLAN edit follows
+from whichever way that lands.
+
+**Root cause 3 (why it halted rather than shipping a red-against-correct test) — the erratum protocol
+is bounded and confirmation-gated, and it worked as designed.** The protocol requires the upstream
+document's own approvers to confirm the edit as an append-only round before the upstream approval is
+allowed to stand, and grants exactly one such round per doc per phase. Both properties fired: te-review
+— an original PLAN approver — was asked to confirm, applied its testability duty, refused, and the
+one-round bound converted that refusal into a halt instead of an unbounded re-edit/re-confirm spiral.
+The concrete regression it prevented is specific and expensive: A-07 authoring an A3 gate-exclusivity
+case that fails against a correct build (a red RED batch, misdiagnosed for four batches until A-23) or,
+worse, is written vacuous and silently drops AC-4.6's mutation control at one of five seams. Nothing
+here is a harness defect.
+
+**Root cause 4 (contributing) — the downstream document already held the answer, and the channel is
+one-way.** PROPERTIES §6 states the correct gateless form for both A1 and A3, and `PROPERTIES:568`
+names the exact failure mode that would follow from getting A3 wrong. That analysis existed *before*
+the PLAN edit was made and was not consulted while making it. Errata flow child → parent as findings;
+there is no reciprocal convention for a parent's fix to be checked against the child text that
+motivated it. Consulting `PROPERTIES:559-568` while editing `PLAN:869` would have produced the correct
+both-seams sentence on the first attempt.
+
+**A note on what is *not* a root cause.** Unlike the Phase T halt (`POSTMORTEM-T`), no routed premise
+here was false, no reviewer withdrew a finding of their own, and no edit degraded something correct.
+The four fixes are all improvements — item 1's is stronger than the erratum asked for (it turns a
+naming reconciliation into a testability rule stated in both mutation directions), and item 2's
+preserves the eight-member set-equality assertion rather than trading it away. The defect is one of
+**reach**, not of judgement.
+
 ## Recommendation
 
 ---
