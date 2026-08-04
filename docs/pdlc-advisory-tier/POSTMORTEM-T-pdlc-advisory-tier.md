@@ -73,7 +73,32 @@ the D-6 half needs another turn; se-review's approval of the whole edit stands a
 
 ## Reviewers
 
-<!-- body -->
+| Role | Skill | Lens in the delta-confirmation | `-v4` verdict |
+|---|---|---|---|
+| Software Engineer | `pdlc:se-review` | Does the delta resolve the four routed items at FSPEC altitude without pulling an implementation contract up, and without regressing anything approved at v3? | **Approved minor changes** (`{0,0,0}`) |
+| Test Engineer | `pdlc:te-review` | Same delta question, plus the skill's standing obligation: **every "X does / does not exist at commit C" claim is verified against the git object, not the prose** | **Needs revision** (`{1,0,0}`) |
+
+Both reviewers scoped strictly to the erratum delta (`git diff 502c070 HEAD -- FSPEC…`, the single
+commit `3bbf934`), did not re-litigate sections the edit did not touch, and both opened with a
+disposition table for the four routed items — the round-2+ delta discipline the review loop mandates.
+
+They **agree** on three of the four items:
+
+- Item 3 (A2-6/R-2 ordering) — **both resolved.** §4.1's step-7 paragraph now names A2 alongside A5 as
+  a seam whose action is made durable through git, so R-2 governs A2 on the same revert-before-durable
+  terms it governs A5; consistent with §6.4 A2-6 (`FSPEC:454`) and R-2 (`FSPEC:690`). The apply/verifyGate
+  split that the routed item flagged as unreconciled lives TSPEC-side (§4.4, `TSPEC:404`/`TSPEC:430`) and
+  was correctly *not* pulled up into the FSPEC.
+- Item 4 (C-2 vs D-5/S-4/T-10-4) — **both resolved.** §5 C-2 (`FSPEC:145`) now gates the substitution
+  notice on the resolved config leaving the tier *enabled*; a malformed `advisory.enabled` resolves the
+  tier disabled and carries no advisory content, matching D-5 (`FSPEC:834`), S-4 (`FSPEC:718`) and
+  T-10-4 (`FSPEC:856`). The emit-side suppression the routed item pointed at (TSPEC §3.2) is honoured.
+
+They **diverge** only on the D-6 pair — and the divergence is not between the two reviewers over a
+judgement call. se-review accepted the D-6 edit as a plausible FSPEC-altitude clarification without
+re-running the underlying `git grep`; te-review ran it, found the premise false, and blocked. The
+disagreement is between the edit and the repository, surfaced by the one reviewer whose skill requires
+it to check.
 
 ## Pattern of Disagreement
 
