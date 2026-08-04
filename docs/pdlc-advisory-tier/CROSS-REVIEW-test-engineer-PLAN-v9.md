@@ -139,4 +139,23 @@ and v8 raised none, and the v1.9 edit answers rather than opens.
 
 ## Recommendation
 
+**Approved.**
+
+I carried no open finding out of v8, and the v1.9 delta is one clause plus one parenthetical in §3's
+A-07 cell (`PLAN:258`) applying pm `-v8` F-01. Every anchor in the replacement text verifies against
+the upstream bytes — `DECISIONS:698` (DEC-ADV-11), `FSPEC:378` (A3 gate row: **none**), `TSPEC:657`
+(A3 `verifyGate` = `null`, "same shape as A1"), `PROPERTIES:570-574` (both-rows assertion form and
+the mutation-direction rationale) — and the corrected clause makes §3 agree with `PLAN:869` instead
+of contradicting it. From the testing lens the edit strictly improves the RED task's instruction: it
+prevents A3's gate-exclusivity case being authored in the replace-the-gate form, which would have
+failed against a correct build inside its own RED batch. The oracle shape is intact — four conjuncts
+per gateless seam with a positive termination assertion beside the negative, a two-directional
+mutation check, and an unchanged set-equality case over `ADVISORY_SEAMS` written against the in-file
+registry. Nothing else in the document moved, and the PLAN contract re-derives mechanically
+unchanged: 36 tasks, 36 ownership rows, `validatePlanContract ⇒ {"ok":true}`, 20 topological batches.
+No High, Medium or Low findings are open.
+
 ## Verdict
+
+VERDICT: Approved
+{"high": 0, "medium": 0, "low": 0}
