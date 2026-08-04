@@ -775,7 +775,7 @@ is falsifiable against a wrong implementation, not merely against a throw:
 | P-1 | `parseAdvisoryConfig` | Total over arbitrary JSON values (never throws); every returned key is a member of `ADVISORY_DEFAULTS`' key set; **per-key independence** — corrupting key *k* leaves every key ≠ *k* equal to the value parsed from the uncorrupted input, and puts exactly *k* into `invalidKeys`. | A-03 / A-17 |
 | P-2 | `parseAdvisoryVerdict` | Total over arbitrary strings; the five malformedness rules **partition** the input space — every generated input matches exactly one rule or parses cleanly, never two, never none. | A-05 / A-19 |
 | P-3 | `budgetExceeded` | Monotone in elapsed time (if it is `true` at *t* it is `true` at every *t' > t*, same budget) and invariant under the A5 rollup `waitMs` carve-out (adding wait time to an A5 seam never flips `false` → `true`). | A-05 / A-19 |
-| P-4 | `classifyEnvelope` | Stated over the real signature — `classifyEnvelope(candidate, ctx)` ⇒ `{ inside, reason, matched }` (TSPEC:517), which returns no `ctx`, so no composition law is available. Three conjuncts: **determinism and purity** — for any generated `(candidate, ctx)`, two calls return deep-equal results and neither argument is mutated (a real falsifier for a classifier that memoises into `ctx`); **closure** — `result.reason ∈ ADVISORY_REFUSAL_REASONS ∪ {null}`, never an unlisted string; **coherence** — `result.inside === (result.reason === null)` — the invariant a wrong implementation actually breaks. That third conjunct is **derived, not quoted**: TSPEC:514-515 states only the return type and the reason enum, and the coherence law follows from those together with §5.1's exhaustive six-check ladder (`TSPEC:525-534`), every branch of which maps onto one of the three enum reasons, so no path returns `inside:false` with `reason:null`. (`TSPEC:1405` states the related absorbing property in the same direction.) (No claim is made about `matched`'s contents: TSPEC declares its type and nothing more, and P-9's lesson is that a property must not pin a choice no upstream document made.) | A-06 / A-20 |
+| P-4 | `classifyEnvelope` | Stated over the real signature — `classifyEnvelope(candidate, ctx)` ⇒ `{ inside, reason, matched }` (TSPEC:517), which returns no `ctx`, so no composition law is available. Three conjuncts: **determinism and purity** — for any generated `(candidate, ctx)`, two calls return deep-equal results and neither argument is mutated (a real falsifier for a classifier that memoises into `ctx`); **closure** — `result.reason ∈ ADVISORY_REFUSAL_REASONS ∪ {null}`, never an unlisted string; **coherence** — `result.inside === (result.reason === null)` — the invariant a wrong implementation actually breaks. That third conjunct is **derived, not quoted**: TSPEC:514-515 states only the return type and the reason enum, and the coherence law follows from those together with §5.1's exhaustive six-check ladder (`TSPEC:525-535` — the six rows themselves at `:530-535`, so check 6, `X-c / membership`, is inside the range), every branch of which maps onto one of the three enum reasons, so no path returns `inside:false` with `reason:null`. (`TSPEC:1405` states the related absorbing property in the same direction.) (No claim is made about `matched`'s contents: TSPEC declares its type and nothing more, and P-9's lesson is that a property must not pin a choice no upstream document made.) | A-06 / A-20 |
 | P-5 | `refusalReasonFor` | Total; **first-match stable** — permuting the non-matching exclusions in the generated context never changes the returned reason, so the ordering claim is about `ADVISORY_EXCLUSIONS`' own order and nothing else. | A-06 / A-20 |
 | P-6 | `renderAdvisoryEntry` | Total over the generated verdict × disposition space; always emits exactly seven fields in the declared order; no field body contains an unescaped newline (which would corrupt the append-only record's line grammar). | A-08 / A-21 |
 | P-7 | `renderEscalationEntry` | Total over reason × seam × disposition; the decision sentence is always first; **append-safe** — rendering N entries and concatenating equals appending them one at a time, so the newest-last invariant is a property of the renderer, not of the caller. | A-09 / A-21 |
@@ -917,8 +917,10 @@ no task can satisfy its own row while leaving the obligation open:
       task has been un-skipped by its 🟢 owner (§3 preamble). Checked twice, per §5.2's batch-18 row:
       by the shipped source-text case in `advisoryDisabled.test.js` (matching `.skip` and `x`-prefixed
       forms, not just the literal `describe.skip`), and by `perFile` reporting `pending === 0` for
-      every block of every `advisory*.test.js` path in the final wave's targeted `--json` run
-      (§5.2's transcribed reducer — jest 29.7.0 emits no per-file `numPendingTests`).
+      every block of every `advisory*.test.js` path in A-33's own `/tmp/adv-gate-A-33-post.json`
+      (§5.2's transcribed reducer — jest 29.7.0 emits no per-file counters at all; the aggregate
+      `numPendingTests` exists only at the top level). Wave 18 is a single-task wave, so that reading
+      has one writer and one reader.
 
 ### 9.2 Behavioural — the claims that a green suite alone does not establish
 
@@ -936,9 +938,12 @@ no task can satisfy its own row while leaving the obligation open:
       (i) `git show {commit}^:{testFile}` contains the block **with** `.skip` and
       `git show {commit}:{testFile}` contains it **without** — where `{commit}` is that task's own
       script-owned commit (`:8143-8159` commits one per task, pathspec-scoped, so the commit and its
-      parent are both on the branch); and (ii) that block's cases move `pending` → `passed` between
-      `/tmp/adv-gate-w{n-1}.json` and `/tmp/adv-gate-w{n}.json` under §5.2's `perFile` reducer, with
-      the same *k* on both sides. Both conjuncts fail closed: a task that un-skips nothing fails (i),
+      parent are both on the branch; inside a multi-task wave `{commit}^` is a wave-mate's commit,
+      which is the right baseline here precisely because `pathsCollide` (`:2377`) guarantees no
+      wave-mate touched `{testFile}`); and (ii) that block's cases move `pending` → `passed` between
+      the **block-owning task's own** `/tmp/adv-gate-{taskId}-pre.json` and
+      `-post.json` — not a wave-global pair — under §5.2's `perFile` reducer, with the same *k* on
+      both sides, and with §5.2's existence conjunct satisfied for that file in both documents. Both conjuncts fail closed: a task that un-skips nothing fails (i),
       and a case that was already passing fails (ii).
 - [ ] The seven X-a operations are **seven named tests**, not one "touches a test file" test.
 - [ ] T-03-6 is carried at FSPEC §18.2's full quantification (§8.2): each of P-1…P-4 has a test
