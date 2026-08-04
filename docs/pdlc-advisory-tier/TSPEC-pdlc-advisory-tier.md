@@ -652,9 +652,9 @@ an existing gate rather than reimplementing one:
 
 | Seam | `verifyGate` implementation | Existing symbol reused |
 |---|---|---|
-| A1 | `async () => ({ passed: true })` — A1 has no post-action gate (§5.4's "—" row); its safety is A1-3's escalate-when-unsettled, and `permittedActions: []` means the gate is unreachable anyway | — |
+| A1 | **`null`** — A1 declares no post-action gate (§5.4's "—" row). With `permittedActions: []` the driver never reaches step 6 and `resolved` is unreachable at A1; A1's safety is A1-3's escalate-when-unsettled. Deliberately **not** `async () => ({ passed: true })`: that is the trivially-passing stub FSPEC T-03-6(b) treats as a falsifying mutation, so it must not appear as a shipped implementation | — |
 | A2 | commit the REQ + record, then confirm the branch head carries them | `commitPaths` (`dev:6905`), pathspec-scoped |
-| A3 | unreachable (`permittedActions: []`) | — |
+| A3 | **`null`** — same shape as A1: `permittedActions: []`, step 6 unreachable, `resolved` never reached | — |
 | A4 | complete the rebase, then run the branch's test command | `rebaseOntoDefault` (`dev:6254`), `_runCommand` (`dev:7012`) |
 | A5 | push, then re-read the rollup | `_git`, `checkPrCi` (`dev:5927`) |
 
@@ -737,7 +737,7 @@ malformed (V-4), which is one predicate, `hasResidualSeamToken(reason)`.
 | `permittedActions` | `[]` — A1-4. Any proposal is `out-of-envelope`; the seam's whole product is a verdict, a record, and possibly an escalation |
 | `declaredScope` | `[]` |
 | `apply` / `producedPaths` / `revert` | unreachable; implemented as throwing stubs so a future change that made them reachable fails loudly rather than silently acting |
-| `verifyGate` | `async () => ({ passed: true })` — §5.5 |
+| `verifyGate` | `null` — A1 declares no gate; with `permittedActions: []` step 6 is unreachable and `resolved` is never reached at A1. Not a passing stub (§5.5) |
 
 **A1-2 as defence in depth.** `run-candidate` is honoured by `honourA1Verdict(verdict, precheck)`, a
 **pure exported function** that refuses when `precheck.blocked` is true. On the production path that
@@ -862,7 +862,7 @@ as a rule to remember. The only difference is the appended classification, per A
 | `conditionHolds` | `async () => true` |
 | `permittedActions` | `[]` (A3-6) |
 | `declaredScope` | `[]` |
-| `verifyGate` | unreachable |
+| `verifyGate` | `null` — no gate declared; with `permittedActions: []` step 6 is unreachable and `resolved` is never reached at A3 (§5.5) |
 
 `parseA3Classification(raw)` is a pure function returning `{ classes: Array<{finding, class, evidence, successor?}>, complete: boolean }`:
 
