@@ -108,3 +108,8 @@ expect the next revision to be small and the next pass to be short.
 No errata from me. Every upstream item I checked in the course of this review was already closed
 upstream — which is the substance of F-01, and belongs to this document to record, not to me to
 re-route.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 0, "medium": 1, "low": 1}
