@@ -106,3 +106,6 @@ Nothing here is a scope, batch or dependency change: the fix is confined to pros
 table cell, and the re-parse result will be unchanged.
 
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 0, "low": 2}
