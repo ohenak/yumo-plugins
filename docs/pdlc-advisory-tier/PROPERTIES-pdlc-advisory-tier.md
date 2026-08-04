@@ -13,7 +13,7 @@ feature: pdlc-advisory-tier
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.0 | 2026-08-04 |
+| pdlc | draft | Claude | 1.1 | 2026-08-04 |
 
 ## 1. Overview — scope, sources, and how to read this document
 
@@ -116,7 +116,9 @@ are composed with, not duplicated.
 double, clock or PRNG; every double must resolve to `advisoryDoubles.js` (or through it to
 `mergeDoubles.js` / `driftGenerators.js`).
 *Category: Contract · Level: Unit · Traces: PLAN AC-INFRA-1, TSPEC §16.2 · Home:
-`advisoryPreflight.test.js` (A-01 🔴 / A-17 🟢), asserted mechanically — see the oracle below.*
+`advisoryPreflight.test.js` (A-01, the same file PROP-REG-06 lives in — it needs no production symbol,
+so it ships un-skipped from the first batch and re-runs on every later wave), asserted mechanically —
+see the oracle below.*
 A second `SeamOps` fake is precisely how the driver's contract and the seams' contract drift apart.
 
 **Its oracle is a source-text scan, not a review checklist** (DC-03: a load-bearing assertion that
@@ -973,9 +975,10 @@ report actually carries.
 
 ### 13.1 Upstream defects — routed, not absorbed
 
-Three defects found while deriving these properties belong to upstream documents. They are named
-here and emitted as `ERRATUM:` lines to their owning author; this document does not edit those
-documents and does not treat the defects as its own.
+Four items found while deriving these properties belong to upstream documents. **Three are emitted as
+`ERRATUM:` lines** to their owning author; the fourth (item 2) was resolved upstream before this
+revision and is listed only so a reviewer does not re-raise it. This document does not edit those
+documents and does not treat any of these defects as its own.
 
 1. **A1's `verifyGate` — PLAN §8.2 contradicts TSPEC.** PLAN §8.2 (and its §3 A-31 row) says "A1
    declares **no** gate, so its case asserts `verifyGate == null`". TSPEC §5.5 and §6.3 both declare
@@ -997,6 +1000,15 @@ documents and does not treat the defects as its own.
    — three. An implementation returning `low-confidence` or `budget-exhausted` from the classifier
    would satisfy PLAN's P-4 while violating TSPEC's contract, so the property as stated cannot
    falsify a real defect class. §11 states the stronger, three-member form.
+4. **`waitMs` has no declared reporting surface on `SeamOps`.** TSPEC §4.5 (`TSPEC:474`) describes
+   `waitMs` as "the accumulated check-rollup wait **the seam reports** (A5 only; zero elsewhere)",
+   but TSPEC §4.3's `SeamOps` typedef declares nine members — `gatherEvidence`, `prompt`,
+   `conditionHolds`, `apply`, `producedPaths`, `revert`, `verifyGate`, `declaredScope`,
+   `permittedActions` — and no `waitMs` member or accessor. A property "asserted against the seam's
+   own `SeamOps`" would therefore name a surface that does not exist. Whether the resolution is a
+   tenth `SeamOps` member or an explicit statement that the driver accumulates it is the TSPEC
+   author's to settle; PROP-BUD-03 (§5.2) is restated against the argument the driver hands
+   `budgetExceeded`, which exists under either resolution, so nothing here blocks on it.
 
 ### 13.2 Deliberate negative space — what has no property, and why
 
