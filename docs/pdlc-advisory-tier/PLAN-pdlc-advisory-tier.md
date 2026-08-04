@@ -237,7 +237,7 @@ edit therefore ships its rebuilt artifacts in the same wave, which is what
 `.claude/workflows/` is untracked and is refreshed by `pdlc/hooks/scripts/sync-workflows.sh`, never
 by a task here.
 
-## 5. Batch gates and dependency notes
+## 5. Dependencies — batch gates and ordering
 
 ### 5.1 The test command, and the one way to invoke it
 
@@ -255,15 +255,19 @@ by §9's Definition of Done.
 
 ### 5.2 Per-batch gate wording
 
+Batch numbers here are read off §3's `Batch` column, which is itself derived as
+`max(batch of Deps) + 1`; the ranges below are groupings of those numbers, never an independent
+numbering. If the two ever disagree, §3 governs and this table is the defect.
+
 | Batch | Tasks | Gate |
 |---|---|---|
 | 1 | A-01 | **RED-terminal.** A-01's assertions must **pass** (they describe HEAD, not new work); no other test may regress. A failing assertion here is blocking work, not a red-to-green step. |
 | 2 | A-02 | Full suite green. The doubles helper is not itself under test; it must not break collection. |
-| 3–5 | A-03 … A-15 | **RED-terminal.** The new tests must fail **for the specified reason** — an unresolved import or an undefined export of the symbol the task names — and every pre-existing test must stay green. A new test that fails for any other reason, or that passes, is a defective red. |
-| 6 | A-16, A-17, A-28 | **Split gate.** A-16 is RED-terminal (fails on the missing advisory surface); A-17 and A-28 are green — `advisoryConfig.test.js` and the `advisoryHarvest.test.js` guard-coupling cases must pass, and the pre-existing suite must stay green. |
-| 7–17 | A-18 … A-32 | **Green.** The task's own named test file passes in full, and the whole suite is green. From batch 6 onward every wave also runs `postWaveCommand` (`node pdlc/workflows/build-runtime.mjs`) and commits `pdlc/workflows/dist/`, so `runtimeBundle.test.js` is part of "the whole suite is green" at every step. |
-| 18 | A-33 | **Green + the D-6 comparison.** `advisoryDisabled.test.js` passes against the transcribed literal, with the fixture's scenario header re-asserted first. |
-| 19–20 | A-34 … A-36 | **Green + full oracles.** `npm test` with no ignore pattern, i.e. including `documentOracles.test.js`, on a clean working tree. |
+| 3 | A-03 … A-15 | **RED-terminal.** The new tests must fail **for the specified reason** — an unresolved import or an undefined export of the symbol the task names — and every pre-existing test must stay green. A new test that fails for any other reason, or that passes, is a defective red. |
+| 4 | A-16, A-17, A-28 | **Split gate.** A-16 is RED-terminal (fails on the missing advisory surface); A-17 and A-28 are green — `advisoryConfig.test.js` and the `advisoryHarvest.test.js` guard-coupling cases must pass, and the pre-existing suite must stay green. |
+| 5–15 | A-18 … A-32 | **Green.** The task's own named test file passes in full, and the whole suite is green. From batch 4 onward every wave also runs `postWaveCommand` (`node pdlc/workflows/build-runtime.mjs`) and commits `pdlc/workflows/dist/`, so `runtimeBundle.test.js` is part of "the whole suite is green" at every step. |
+| 16 | A-33 | **Green + the D-6 comparison.** `advisoryDisabled.test.js` passes against the transcribed literal, with the fixture's scenario header re-asserted first. |
+| 17–18 | A-34 … A-36 | **Green + full oracles.** `npm test` with no ignore pattern, i.e. including `documentOracles.test.js`, on a clean working tree. |
 
 ### 5.3 Why the dependency edges are what they are
 
