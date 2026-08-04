@@ -44,6 +44,11 @@ Also in the delta: front-matter version 1.2 → 1.3 and a §18 row describing al
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | §5.5's A1 row justifies `null` by pointing at "§5.4's '—' row", which is right for A1. A3's §5.4 row is *not* a dash — it names "Phase DOD's verify step" reaching "no findings remaining" — yet §5.5 now describes A3 as "no gate declared". Both are true at different levels (the DOD verify step is Phase DOD's own next iteration, outside the seam; the seam declares no *post-action* gate because it takes no action), and this reading was already implicit in the v5-approved "unreachable" wording, so nothing is wrong. Would a half-sentence on the A3 row — "the §5.4 re-run is Phase DOD's own next verify iteration, outside the seam" — save the next reader the reconciliation? Legibility only; no product consequence, and not a change I am asking for in this round. |
+| Q-02 | §5.5 and §18 cite "FSPEC T-03-6(b)". FSPEC `:387` / `:1107` state T-03-6 without an (a)/(b) split — the split is a PLAN/PROPERTIES construct (`PLAN:258`, `:869`) that the routed erratum items also used. The cited criterion genuinely covers the case ("every gate row of §5.4 … a negative assertion alone is satisfied by accident"), so the citation resolves in substance. Is the `(a)`/`(b)` sub-label worth adding to FSPEC §18.2 so the shorthand three documents now use has an upstream referent? Flagging as possible `Process`/FSPEC hygiene for harvest, not an erratum against this document. |
+
 ## Positive Observations
 
 ## Recommendation
