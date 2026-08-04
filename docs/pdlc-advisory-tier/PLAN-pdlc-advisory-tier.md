@@ -235,6 +235,74 @@ by a task here.
 
 ## 5. Batch gates and dependency notes
 
+### 5.1 The test command, and the one way to invoke it
+
+Every gate below runs `.claude/pdlc.config.json` → `implementation.testCommand`, which in this repo is
+
+```
+cd pdlc/workflows && npm test -- --testPathIgnorePatterns=documentOracles
+```
+
+Filters go **after `--`**; a bare `npx jest` misses the ESM flag and the suite's
+`globalSetup`/`globalTeardown` and reports failures that are artefacts of the invocation. The document
+oracles are excluded from the wave gate because `coveredViolations` walks the entire tree and an
+untracked local file can fail it for reasons unrelated to the diff — they are re-run in full by CI and
+by §9's Definition of Done.
+
+### 5.2 Per-batch gate wording
+
+| Batch | Tasks | Gate |
+|---|---|---|
+| 1 | A-01 | **RED-terminal.** A-01's assertions must **pass** (they describe HEAD, not new work); no other test may regress. A failing assertion here is blocking work, not a red-to-green step. |
+| 2 | A-02 | Full suite green. The doubles helper is not itself under test; it must not break collection. |
+| 3–5 | A-03 … A-15 | **RED-terminal.** The new tests must fail **for the specified reason** — an unresolved import or an undefined export of the symbol the task names — and every pre-existing test must stay green. A new test that fails for any other reason, or that passes, is a defective red. |
+| 6 | A-16, A-17, A-28 | **Split gate.** A-16 is RED-terminal (fails on the missing advisory surface); A-17 and A-28 are green — `advisoryConfig.test.js` and the `advisoryHarvest.test.js` guard-coupling cases must pass, and the pre-existing suite must stay green. |
+| 7–17 | A-18 … A-32 | **Green.** The task's own named test file passes in full, and the whole suite is green. From batch 6 onward every wave also runs `postWaveCommand` (`node pdlc/workflows/build-runtime.mjs`) and commits `pdlc/workflows/dist/`, so `runtimeBundle.test.js` is part of "the whole suite is green" at every step. |
+| 18 | A-33 | **Green + the D-6 comparison.** `advisoryDisabled.test.js` passes against the transcribed literal, with the fixture's scenario header re-asserted first. |
+| 19–20 | A-34 … A-36 | **Green + full oracles.** `npm test` with no ignore pattern, i.e. including `documentOracles.test.js`, on a clean working tree. |
+
+### 5.3 Why the dependency edges are what they are
+
+- **A-02 gates every red task.** The doubles helper is the shared prerequisite of batch-safety rule 4:
+  one owning task, in an early batch, with an explicit edge from every consumer. No test may author a
+  local equivalent of `makeSeamOps` / `makeAgentDouble` — a second `SeamOps` fake is exactly how the
+  driver's contract and the seams' contract drift apart.
+- **The dev-side chain (A-17 → … → A-27) is dependency-ordered, not merely serialized.** Each task
+  consumes the previous one's exports: the rung ladder needs the constants, the driver needs the
+  envelope and the record, the seams need the driver, the phase wiring needs the seams. The file
+  contention makes the order mandatory; the dependency graph makes it *correct*.
+- **A-25 depends on A-24 even though Phase DOD does not call A5.** The two tasks edit adjacent regions
+  of `orchestrate-dev.js` and the edge is what keeps them out of one batch. It is a real ordering
+  claim, not a lane label: A-25's `main` seam list is the one A-26 then threads into
+  `raisePrAndVerifyCi`.
+- **A-29 depends on A-22 (the driver), not on A-30.** Queue-side seams call `runAdvisorySeam` through a
+  free identifier bound by the bundle prelude; under jest that identifier is unbound, so every
+  queue-side test injects `_runAdvisorySeam`. The edge exists because the *production* path needs the
+  driver to exist, and because A-32's prelude edit must have something to bind.
+- **A-32 (the bundle) depends on both chains finishing.** The dev export array and the queue prelude
+  name symbols that must already exist; adding a name for a symbol that is not yet exported produces a
+  bundle that throws at load, which `runtimeBundle.test.js` catches only after the fact.
+- **A-33 is last among the code tasks by design.** Disabled-tier equivalence is a claim about the
+  finished feature. Asserting it before the seams are wired would pass vacuously.
+- **A-15 gates A-16, not the reverse.** The fixture is authored (captured at `26c3f1c` and
+  hand-reviewed); the test transcribes it. A test that generated its own expected value would be
+  incapable of failing, which is precisely what D-6 forbids.
+
+### 5.4 What must not be reordered
+
+1. **The two Phase DOD insertion points go immediately before the existing `throw haltError(...)`,
+   and those halts are left byte-identical.** If a task rewrites the halt instead of preceding it,
+   "escalation never changes control flow" stops being structural and becomes a rule to remember.
+2. **A5's record (step 7) and produced-change check (step 5) complete before `verifyGate` pushes.**
+   The same ordering holds at A2, where `verifyGate` performs the commit. A task that moves the record
+   after the durable act makes a failed record write require undoing a commit.
+3. **The guard message is extended, never rewritten.** A-28 keeps the `CROSS-REVIEW` prefix and the
+   bracketed directory byte-identical and appends a `[class: …]` suffix. A-13's regression test exists
+   to fail loudly if this is violated; the failure mode it prevents — Phase H silently proceeding as
+   if a refused delete had succeeded — is invisible at runtime.
+4. **`MERGE_ESCALATIONS` is not edited.** `ADVISORY_ESCALATIONS` is a sibling constant placed next to
+   it; A-09's own-property snapshot fails if the merge catalogue is widened instead.
+
 ## 6. Test infrastructure, artifact lifecycle, and coverage floor
 
 ## 7. Integration points
