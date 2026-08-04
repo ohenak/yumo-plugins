@@ -457,4 +457,80 @@ no task can satisfy its own row while leaving the obligation open:
 
 ## 9. Definition of Done
 
+### 9.1 Mechanical — a machine can decide each of these
+
+- [ ] `cd pdlc/workflows && npm test` is green **with no ignore pattern** — including
+      `documentOracles.test.js` — on a clean working tree.
+- [ ] `node pdlc/workflows/build-runtime.mjs --check` exits 0, and a fresh rebuild produces no diff.
+- [ ] `pdlc/hooks/scripts/sync-workflows.sh --check` exits 0.
+- [ ] `bash -n` passes over `pdlc/hooks/scripts/guard-harvest-before-delete.sh`, and its index mode is
+      still `100755`.
+- [ ] `parsePlanTasks` + `computeTopologicalBatches` + `parsePlanOwnership` + `validatePlanContract`
+      all succeed against this PLAN (they do at authoring time: 36 tasks, 36 manifest rows,
+      `{ ok: true }`, no cycle).
+- [ ] Coverage over the TSPEC §14.1 symbol set meets §6.4's floor, or the shortfall is one of §6.4's
+      two recorded exemptions.
+- [ ] `pdlc/workflows/dist/` matches its sources and `pdlc/.claude-plugin/plugin.json` carries the
+      bumped version (A-36).
+- [ ] No task's diff touches a file outside its §4 manifest row.
+
+### 9.2 Behavioural — the claims that a green suite alone does not establish
+
+- [ ] All 81 FSPEC §18.1 cases exist, each in the file §8.1 assigns it, each failing before its green
+      task and passing after.
+- [ ] The seven X-a operations are **seven named tests**, not one "touches a test file" test.
+- [ ] Each of P-1…P-4 has a test asserting the negative **and** the V-8 positive triple on the same
+      path.
+- [ ] `ADVISORY_REFUSAL_REASONS`, `ENVELOPE_DEFAULTS`, `ADVISORY_EXCLUSIONS` and `ADVISORY_SEAMS` are
+      compared as **sets** against transcribed literals.
+- [ ] The disabled-run created-file set is compared against `created-files-26c3f1c.json`, whose
+      `scenario` header is re-asserted first, and whose value was never produced by the code under
+      test.
+- [ ] A grep for `advisory.enabled` on the dispatch path finds exactly the three sites TSPEC §11.1
+      names — the driver's early return, the config-notice gate, the distil-step guard.
+- [ ] With the tier disabled, no `ADVISORY-*` file exists, `ESCALATIONS.md` gained no entry, and the
+      report carries no advisory section.
+
+### 9.3 Regression — what must still be true of the pipeline that existed before
+
+- [ ] The Phase DOD rebase-conflict halt and DoD-not-passed halt still fire, with byte-identical
+      messages, on every non-resolved outcome.
+- [ ] Phase PUB's `passed`, no-checks and completion-cap paths are unchanged, and every pre-existing
+      `raisePrAndVerifyCi` test passes without modification (the two new parameters default to no-ops).
+- [ ] `orchestrate-dev.js:8342`'s literal test and `:8348`'s extraction regex both still fire on a
+      `CROSS-REVIEW` guard refusal after the hook message is extended.
+- [ ] `MERGE_ESCALATIONS` is byte-identical to its HEAD value; the advisory notice is a sibling
+      constant, and one grep for `ESCALATION:` finds both.
+- [ ] The queue's blocked-pre-check skip (`orchestrate-queue.js:890-897`) and `blocked`-verdict skip
+      are unchanged, and a `needs-human` candidate with the tier off is skipped exactly as today.
+- [ ] `ciStatus` is still assigned only from `checkPrCi`'s return; no advisory value reaches it.
+- [ ] The three shipped artifacts under `pdlc/workflows/dist/` still satisfy the runtime's structural
+      constraints — `export const meta` first, no other `export`, no `import` — and the manifest still
+      has three rows.
+
+### 9.4 Documentation and handover
+
+- [ ] `CLAUDE.md` describes the advisory tier: the five seams, the config keys and their defaults,
+      off-by-default, and the lifecycle of `ADVISORY-*` and `ESCALATIONS.md` (A-35).
+- [ ] `pdlc/RELEASE-CHECKLIST.md` carries the two commitments CI cannot check — the D-6 fixture's
+      scenario is still accurate for the current pipeline, and the guard-message coupling regression
+      still passes (A-35).
+- [ ] The §3.3 manual verification is recorded: which branch of the model-rung ladder fired for
+      `"fable"` in a real runtime, with date and runtime version (A-34).
+- [ ] Every artifact §6.3 lists has its stated disposition, and the manual-verification file is
+      harvested into LEARNINGS at Phase H and then deleted.
+
 ## 10. Changelog
+
+| Version | Date | Change |
+|---|---|---|
+| 1.0 | 2026-08-03 | Initial PLAN. 36 tasks in 18 declared batches; task table, dependency graph and file-ownership manifest parse-verified against `parsePlanTasks` / `computeTopologicalBatches` / `parsePlanOwnership` / `validatePlanContract` at HEAD `ca55bb6` (36 tasks, 36 manifest rows, `{ ok: true }`, no cycle, ownership-disjoint waves). TSPEC §13.6's rebase task is replaced by the A-01 pre-flight gate, because `26c3f1c` and `5d66c48` are already ancestors of the branch head. One erratum raised against TSPEC (§8.3 note 2). |
+
+### 10.1 Open items carried out of this PLAN
+
+| # | Item | Disposition |
+|---|---|---|
+| 1 | **BL-01 — whether the runtime resolves the bare alias `"fable"`** | Unresolvable from this repo (TSPEC §3.3). The tier ships correctly on either branch of the ladder; A-34 records which branch actually fires. Not a blocker for any batch. |
+| 2 | **BL-05 / BL-06 — per-repo `gh` capabilities** | Not decided here. A-24's probes make each absence a first-class, tested outcome; a capability-poor repo gets an A5 that only escalates. |
+| 3 | **`orchestrate-dev.js` grows to roughly 9,300 lines** | Accepted (TSPEC R-1 / §16.1). Extracting a fourth build source stays mechanical and reversible; nothing in this PLAN forecloses it. |
+| 4 | **Phase MERGE will defer more often** when a seam fired, because of the extra post-PUB commit | Accepted and out of scope for this feature's tests (TSPEC R-7). Visible as a deferral with a reason on the report, never silent. |
