@@ -13,7 +13,10 @@ feature: pdlc-advisory-tier
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.0 | 2026-08-03 |
+| pdlc | draft | Claude | 1.1 | 2026-08-04 |
+
+> **v1.1 (POSTMORTEM-PR R-1):** adds DEC-ADV-11 — A3 has no post-action gate; the FSPEC §5.4 ⟷
+> TSPEC §5.5 divergence is resolved in TSPEC's favour. Record only; no prior entry changed.
 
 ## Scope, grounding pin, and how to read this document
 
@@ -691,6 +694,45 @@ a routine one.
 **Re-evaluation triggers.** A change to a **pre-feature** file-creating path (a new pipeline artifact
 unrelated to this feature) — then the fixture must be re-pinned at the commit that introduced it, with
 the provenance header updated and the reason stated in the commit that changes it.
+
+## DEC-ADV-11: A3 has no post-action gate — the FSPEC ⟷ TSPEC divergence resolved in TSPEC's favour
+
+**Context.** FSPEC §5.4's gate table originally gave A3 a gate ("Phase DOD's verify step → no findings
+remaining") while TSPEC §5.5/§7.2 declared A3's `verifyGate` as `null`. The divergence surfaced twice —
+once in the Phase T erratum round (which reconciled A1) and again at the Phase PR erratum
+delta-confirmation, where te-review's F-01 High showed the PLAN's A1-only fix left A3's gate-exclusivity
+case asserting a gate A3 does not declare (POSTMORTEM-PR, R-1).
+
+**Decision.** **A3 declares no post-action gate.** Its `permittedActions` is `[]` (FSPEC §7.2 A3-6,
+TSPEC §4.3), so the driver never reaches the apply step, no resolution is ever applied, and there is
+nothing for a gate to verify. This is the same argument FSPEC already accepts for A1. The gate as
+originally written was also unsatisfiable: A3 fires *because* DoD exhausted its rounds with findings
+open and is forbidden from touching any file or criterion, so a verify-step re-run must repeat the same
+findings — every correct A3 invocation would fail its own gate. A3's safety rests on its class rules
+(halt on `real-defect`, escalate on `mis-scoped-criterion`, never enact a deferral), and its output
+validity is checked by the malformedness rule (A3-1, §4 V-4), which consumes an attempt. Phase DOD's
+verify step remains the *next invocation's* input, not this seam's gate. FSPEC §5.4's A3 row was
+restated in A1's form (FSPEC v1.5); TSPEC v1.3 needed no edit.
+
+**Alternatives considered.**
+
+- **A3 keeps a gate, TSPEC reverts — rejected.** No correct execution could pass "no findings
+  remaining", so the row either always fails or gets weakened until it passes vacuously; both destroy
+  the gate's meaning. The row's shape was copied from A4/A5, which *do* enact actions.
+- **A gate that verifies classification validity instead — rejected.** That check already exists as
+  A3-1/V-4 (whole-picture classification or malformed), and calling it a "gate" would break the gate
+  concept's meaning everywhere else: gates independently verify an *enacted* change of world state.
+
+**Constraints that forced this shape.** AC-4.5 is conditional ("Given a resolution applied …"), so a
+seam that never applies is outside its quantification; FSPEC's own A1 row already establishes the
+gateless form; PROPERTIES §6 (PROP-GATE-01…05) asserts the both-seams gateless form and predicted the
+failure mode at `PROPERTIES:568`.
+
+**Reversibility: moderate.** Re-introducing an A3 gate would require giving A3 a non-empty
+`permittedActions` first — a scope change to the seam, not a table edit.
+
+**Re-evaluation triggers.** Any future change that lets A3 enact anything (e.g. auto-applying a
+deferral) — then a real post-action gate becomes both possible and mandatory, per BR-6.
 
 ## Options Considered
 

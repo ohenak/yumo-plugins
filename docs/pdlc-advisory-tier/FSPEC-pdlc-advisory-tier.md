@@ -13,7 +13,11 @@ feature: pdlc-advisory-tier
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.4 | 2026-08-03 |
+| pdlc | draft | Claude | 1.5 | 2026-08-04 |
+
+> **v1.5 (POSTMORTEM-PR R-1):** §5.4's A3 gate row restated in A1's form — A3 has no post-action
+> gate (`permittedActions: []`, nothing applied, nothing to verify), resolving the FSPEC ⟷ TSPEC
+> divergence in TSPEC's favour. One row; no test id, seam rule, or prohibition changed.
 
 ## 0. Overview
 
@@ -371,7 +375,7 @@ After any applied resolution, a gate re-runs and reaches its own verdict:
 |---|---|---|
 | A1 | **none.** The dependency pre-check already ran *before* the seam could fire (B-2, and a blocked pre-check skips the candidate without reaching triage), and A1 changes no file (A1-4), so a re-run is a pure function of unchanged inputs and can only repeat its own result. A1 has no independent post-action gate; its safety rests on A1-3's escalate-when-unsettled rule | — |
 | A2 | the pre-check plus triage, on the re-grounded REQ, in the **next** queue invocation | triage reaches a verdict of its own |
-| A3 | Phase DOD's verify step | no findings remaining |
+| A3 | **none.** A3's product is a classification only: its `permittedActions` is `[]` (A3-6, §7.2), so the driver never applies a resolution and there is nothing for a gate to verify — a re-run of Phase DOD's verify step would read a tree A3 never changed and could only repeat the findings the classification is *about*. A3 has no independent post-action gate; its safety rests on A3-3's halt-on-`real-defect` and A3-4/A3-5's escalate rules, and Phase DOD's verify step is the *next invocation's* input, not this seam's gate. *(Decided at the Phase PR erratum round — see DEC-ADV-11; TSPEC §5.5/§7.2 already state this form.)* | — |
 | A4 | the rebase completes, then the branch's test command | rebase clean and tests green |
 | A5 | the check-rollup read (B-9) | all checks passed |
 
