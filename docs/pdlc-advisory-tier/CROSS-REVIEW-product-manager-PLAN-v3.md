@@ -74,6 +74,11 @@ revision changed — §5.2's new evidence paragraph and §10's changelog.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-08 | §8.2 puts the `ADVISORY_SEAMS` set-equality case in A-22's block at wave 11, written "over an in-file registry of names, not over case results", while the five per-seam cases are un-skipped later (waves 12–14). That is the right call for the *sixth-seam* failure mode. But the registry is hand-maintained: does anything fail if a registry entry exists and its per-seam case is deleted or never authored? If the five cases are generated *from* the registry (as §8.2's "the five per-seam cases are generated from that registry" suggests), the answer is yes and the loop is closed — worth stating in one clause so a reviewer does not have to infer it. |
+| Q-09 | §5.2 batch 7–17 asserts `numPendingTests` "falls by exactly that block's case count and by no more". Where does the executor get the expected per-block case count from — the 🔴 task's summary, a count written into the block name, or a re-read of the file? A number nobody records is a number nobody can compare against. One clause naming its source would make the assertion mechanical rather than nominal. |
+
 ## Positive Observations
 
 ## Recommendation
