@@ -75,7 +75,10 @@ behaviour; both are grounding citations in text that presents itself as verified
 
 ## Questions
 
-_(pending)_
+| ID | Question |
+|----|---------|
+| Q-12 | §5.2's new paragraph closes with "The single-task waves (7–11, 15–18, 20) are unchanged by all of this" — but **wave 19 (`A-34, A-35`) is one of the eight multi-task waves the same paragraph enumerates**, and the batch 19–20 row asks for "`npm test` with **no** ignore-pattern override at all — i.e. including `documentOracles.test.js` — on a clean working tree" without naming who runs it. Strictly there is no contradiction: that row makes no per-file `--json` assertion, so the per-task scoping rule has nothing to scope. But it is the one gate row left whose producer is unnamed inside a concurrent wave, and it asks for two things a wave-mate can falsify — a *clean working tree* (A-35 is editing `CLAUDE.md` and `RELEASE-CHECKLIST.md` at the same moment A-34 writes its verification record) and a *full-suite* run, which `:5849` tells every agent not to perform. Neither A-34 nor A-35 owns a test file, so nothing here can go wrong silently; the script-owned gate still runs `implConfig.testCommand` after the wave. Would the PLAN rather attribute this row to **A-36** (wave 20, single-task, and the only task after both of them), whose own row already turns on a whole-tree oracle — `advertisedVersionViolation` against HEAD? That would put the full-oracle run in a wave with one agent and a settled tree, at no cost to the DAG. I am raising this as a question rather than a finding because the row is unchanged text I approved in earlier rounds, and because nothing in it is wrong — only unattributed. |
+| Q-13 | §5.2's existence conjunct fails the gate when `perFile` carries no key for an owned `advisory*.test.js` path. Inside a five-agent wave, a wave-mate mid-write on *its* file can make jest report that suite as a runtime error — the run still writes `--outputFile`, and the owning task's own entries are still present, so the conjunct behaves correctly. Is that reasoning worth one clause? It is the one way a reader might fear the new conjunct produces a false red, and the answer ("a sibling's failed suite costs that suite's entry, never yours") is short and makes the conjunct obviously safe to run mid-wave. |
 
 ## Positive Observations
 
