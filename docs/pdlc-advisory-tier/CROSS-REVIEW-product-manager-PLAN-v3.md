@@ -54,6 +54,14 @@ Only findings that survived that check appear below.
 
 ## Prior findings — disposition
 
+| v2 ID | Severity | Status | Evidence in v1.3 |
+|---|---|---|---|
+| F-08 | High | **Resolved, in all three parts.** | (1) §4's manifest gives every 🟢 task the test file it un-skips (A-17…A-33 rows), and §4's opening is restated as "the 🔴 task … remains its only writer of **case bodies**", which is the invariant that matters. (2) §3 step 3 now explains *why* the edit is legal against the runner, and step 4 replaces the two-commit pair with "captures the verbatim failure output and reports it in its task summary … the red evidence is that transcript plus the wave's single script-owned commit"; §9.2's first checkbox is restated identically, including "A green task whose summary contains no captured failure output does not satisfy this row" — so the DoD row is still falsifiable, just against something the runner can produce. (3) The gate was re-run and §4.1 re-transcribed; I re-executed it independently and got the same 36/36/`{"ok":true}`/20 batches/20 waves, with the wave partition unchanged. §9.1's "No task's diff touches a file outside its §4 manifest row" is now satisfiable by construction. |
+| F-09 | Low | **Resolved** | §6.4's queue row now reads "`hasResidualSeamToken` and `honourA1Verdict` — **and nothing else**", and the exclusion paragraph explains the mechanical reason (the reducer selects by `fnMap` name match, so a partial function cannot be expressed) and names the behavioural evidence that replaces it (T-04-1, T-04-2, T-04-3, T-04-3b plus the A2 citation-drift obligation, owned by A-12 🔴 / A-29 🟢). The declared surface and the measured surface are the same 24 names. |
+| Q-05 | — | **Answered, and the answer became §5.2's new paragraph** | The per-file assertions are now read off a `--json` run rather than the aggregate summary, with the exact fields named (`numPassingTests`/`numFailingTests`/`numPendingTests` per `testFilePath`) and the pass/fail authority left with the script-owned aggregate. The mechanism is right; F-10 below is only about which command produces it. |
+| Q-06 | — | **Answered by execution, not by assertion** | §4.1 re-ran `computeWaves` and reports 20 waves identical to §5.2. I re-ran it too and confirm it. |
+| Q-07 | — | **Answered and recorded** | §2.4 gains an explicit "*The residual risk the operator accepts by leaving it untracked*" paragraph, and §10.1 item 7 carries it with the failure mode named ("no signal until wave 1 halts") and the recovery. It is now a recorded deferral rather than an implied one. |
+
 ## Findings
 
 ## Questions
