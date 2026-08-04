@@ -48,6 +48,25 @@ finding, and it introduces no new contradiction:
 
 ## Findings
 
+No new findings. The erratum resolves all four routed items and introduces no High or Medium issue.
+The five Low findings from v3 (L-05 … L-09) remain open and remain non-blocking; this confirmation
+neither re-opens nor extends them, per the delta-scope of an erratum round.
+
 ## Recommendation
 
+**Approved with minor changes**
+
+The erratum resolves all four routed items cleanly and at the correct altitude. D-6's baseline is now
+the branch's own pre-feature fork point rather than §2's citation pin, so the disabled-run
+created-file oracle compares like against like and `raisePrAndVerifyCi`'s outputs no longer force a
+spurious diff — closing the te-review/se-author baseline defect and my own v3 Q-08/Q-09 in one edit.
+R-2 now governs A2's commit on the same revert-before-durable-git terms as A5's push, reconciling the
+A2-6/R-2 ordering as an observable rule. C-2's substitution notice is gated on the tier resolving to
+enabled, removing the contradiction with D-5/S-4/T-10-4. Every new cross-reference resolves to a real
+anchor, no approval-gating section regressed, and my five prior Lows are untouched and stay
+non-blocking. My v3 approval stands.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 0}
