@@ -36,7 +36,47 @@ the diff, which touches no property row and no count line.
 
 ## Questions
 
+Q-09 was answered in the document itself (`PROPERTIES:628-640`), and the answer is one I accept: the
+invariant is a *driver* property rather than a `SeamOps` one, no shipped seam constructs the
+combination the hypothetical case would need, and conjunct 2 plus PROP-LIFE-*'s step ordering cover
+the failure mode that matters today — with an explicit trigger recorded for promoting it if a sixth
+seam ever arrives with a permitted action and no gate. I close it. Q-08 stays carried and still
+blocks nothing.
+
+| ID | Question |
+|----|---------|
+| Q-08 (carried) | PROP-DIS-06 counts `/\.enabled\b/` over both modules and expects three, while TSPEC §3.2's C-3 row says `readAdvisoryConfigSafely` is "called once in each `main()`". If the queue's run report is ever expected to carry the C-2 substitution notice, its emit gate is a fourth read and the expected total becomes four. Is the queue's silence on the substitution notice a deliberate D-5 consequence, or the gap that produces the "legitimate fourth read" §10.1 tells Phase I how to handle? Now that TSPEC §11.1 pins the same count at `TSPEC:1271`, an answer either way costs two documents an edit rather than one — worth settling before Phase I rather than after. |
+
 ## Positive Observations
+
+- **The Medium was closed by adding an oracle, not by softening the claim.** The cheap way to make
+  v4 F-01 go away was to delete the "must fail" language for A1/A3 and leave the behavioural
+  conjunct alone. Instead §6.5 added the structural conjunct that actually discharges it and stated
+  *why* it is the only one available at those two seams — "with `permittedActions: []` the driver
+  never reaches step 6 (`TSPEC:434-439`), so a build that shipped `verifyGate: async () => ({ passed:
+  true })` at A1 or A3 would be behaviourally indistinguishable from the correct build and **no**
+  behavioural oracle could catch it". That is the reasoning a test author needs to not silently
+  weaken the case later.
+- **The transposition risk is named before anyone can hit it.** Lines 619-623 do not just state the
+  two mutation directions; they say out loud that this is "the one thing an implementer must not
+  transpose" and cite the two PLAN lines that agree. A mutation control that reads backwards at two
+  of five seams is precisely the defect that would pass review and fail in the RED batch, and the
+  document now spends three lines making it hard to get wrong.
+- **Four errata were closed as records rather than deleted.** §13.1 items 1, 3, 4 and 6 each state
+  the original defect, the resolution, and the upstream line that carries it. I re-checked all four
+  and every citation resolves — including `PLAN:779`'s three-member closure and `TSPEC:1265-1271`'s
+  matcher and count. The section now reads as a settled ledger instead of a to-do list, which is
+  what makes "no `ERRATUM:` line is emitted from this document" a checkable claim rather than an
+  assertion.
+- **The primary source is now cited before the derived one.** §2.1's jest-exclusion citation leads
+  with `pdlc/workflows/package.json:18-22` and keeps `PLAN:138-141` as the secondary *with the
+  reason it still matters* — the wave gate's `--testPathIgnorePatterns` replaces rather than extends
+  the configured list. That is the right ordering for a citation that has already gone stale once
+  under a PLAN revision, and it generalises.
+- **Nothing drifted while the text moved.** Four commits, seven regions, and the property inventory
+  is untouched: no row added, removed or re-levelled, and §12.3's 148 / 40 / 7 / 0 split is
+  byte-identical. The A-34 cross-reference repoint (`§13 item 4` → `§13.2`'s row and `§13.3` risk 1)
+  is a consequence of item 4 becoming a closure record, and both targets exist.
 
 ## Recommendation
 
