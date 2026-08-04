@@ -311,7 +311,11 @@ numbering. If the two ever disagree, §3 governs and this table is the defect.
 4. **`MERGE_ESCALATIONS` is not edited.** `ADVISORY_ESCALATIONS` is a sibling constant placed next to
    it; A-09's own-property snapshot fails if the merge catalogue is widened instead.
 
-## 6. Test infrastructure, artifact lifecycle, and coverage floor
+## 6. Verification — test infrastructure, artifact lifecycle, and coverage floor
+
+How each batch is verified is §5.2's gate table; **what** the verification is built out of — the
+canonical doubles, the integration harnesses, the artifact dispositions and the coverage floor — is
+this section. §9's Definition of Done is the terminal instance of the same criteria.
 
 ### 6.1 The canonical doubles — one module, named signatures
 
@@ -367,9 +371,24 @@ disposition or it sits in the tree forever:
 
 ### 6.4 Coverage floor, and the exemptions taken knowingly
 
-Floor: **90% statements / 85% branches** over the advisory surface (every symbol TSPEC §14.1 names),
-measured by the existing jest coverage configuration. Two exemptions are recorded rather than
-re-litigated each round:
+Floor: **90% statements / 85% branches** over the advisory surface (every symbol TSPEC §14.1 names).
+
+**How it is measured — there is no configured coverage gate to inherit.** `pdlc/workflows/package.json`
+carries a `jest` block with `testEnvironment`, `transform`, `globalSetup`, `globalTeardown` and
+`testPathIgnorePatterns` and **no** `collectCoverage`, `coverageThreshold` or `coverageProvider` key,
+so nothing in the repo measures coverage today. The floor is therefore checked by an explicit run,
+not by a threshold the suite enforces:
+
+```
+cd pdlc/workflows && npm test -- --coverage \
+  --collectCoverageFrom='orchestrate-dev.js' --collectCoverageFrom='orchestrate-queue.js' \
+  --testPathIgnorePatterns '/node_modules/' '/__tests__/helpers/' '/__tests__/fixtures/'
+```
+
+The number is read against the §14.1 symbol set by a human or by the DoD reviewer (§9.1). No task in
+this PLAN adds a `coverageThreshold`: turning coverage into a suite-failing gate is a repo-wide policy
+change that would fail on pre-existing files this feature does not touch, and is out of scope. Two
+exemptions are recorded rather than re-litigated each round:
 
 | Exempt | Why | Evidence instead |
 |---|---|---|
