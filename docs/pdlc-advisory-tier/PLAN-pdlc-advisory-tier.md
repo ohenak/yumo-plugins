@@ -877,10 +877,13 @@ no task can satisfy its own row while leaving the obligation open:
    to the report and the pre-existing rebase-conflict `haltError` — is a phase-integration test
    (A-10 → A-25). Neither subsumes the other: the integration test fakes the seam, so it cannot see
    the routing branch; the unit test does not touch the phase body.
-2. **T-06's group carries no seventh or eighth case.** TSPEC §7.4 refers to a case id outside FSPEC's
-   T-06-1…T-06-6 catalogue for that second test; the obligation is covered by the two rows above and
-   is carried in this PLAN under A-10, and the id discrepancy is raised as an erratum against TSPEC
-   rather than silently invented here.
+2. **T-06's group carries no seventh or eighth case, and no id is invented for one.** The erratum this
+   note previously raised is **closed**: TSPEC §7.4 (`TSPEC:937-938`) now states that the A4
+   no-`testCommand` integration test **carries no FSPEC case id** — FSPEC §18.1's T-06 catalogue is
+   exactly T-06-1 … T-06-6 and TSPEC does not extend it — so there is no longer a discrepancy to
+   raise. The obligation is a TSPEC-level test obligation, covered by the two rows above and carried
+   in this PLAN under A-10 (unit, → A-23) and A-10 → A-25 (phase integration), tagged by those task
+   ids rather than by a manufactured `T-06-7`/`T-06-8`.
 
 ## 9. Definition of Done
 
