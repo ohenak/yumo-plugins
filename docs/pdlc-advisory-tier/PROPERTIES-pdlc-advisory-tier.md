@@ -737,4 +737,81 @@ planned as new (§12.3).
 every property above traces to at least one AC/NFR or to a named FSPEC rule (the O-* oracles and the
 PROP-INFRA-*/PROP-REG-* rows trace to PLAN and TSPEC obligations, and say so in their own rows).
 
+### 12.2 PLAN §3 tasks → properties
+
+All 36 tasks of PLAN §3's table are listed; none is without a property obligation.
+
+| Task | Properties it must satisfy |
+|---|---|
+| A-01 | PROP-REG-06 (baseline symbols; plus the `implementation.testCommand` pin, which is a PLAN §2.4 operator concern, not a property here) |
+| A-02 | PROP-INFRA-01, PROP-INFRA-02 (the doubles and the generator re-export) |
+| A-03 🔴 | PROP-CFG-01 … PROP-CFG-07, P-1 |
+| A-04 🔴 | PROP-RUNG-01 … PROP-RUNG-08 |
+| A-05 🔴 | PROP-VER-01 … PROP-VER-05, PROP-BUD-01 … PROP-BUD-04, P-2, P-3 |
+| A-06 🔴 | PROP-ENV-01 … PROP-ENV-12, PROP-XA-01 … PROP-XA-08, PROP-REF-01 … PROP-REF-05, PROP-PROH-05, PROP-INFRA-04, P-4, P-5 |
+| A-07 🔴 | PROP-LIFE-01 … PROP-LIFE-13, PROP-PROH-01 … PROP-PROH-04, PROP-GATE-01 … PROP-GATE-06 (authored across the four blocks) |
+| A-08 🔴 | PROP-REC-01 … PROP-REC-08, PROP-SUM-01 … PROP-SUM-03, P-6 |
+| A-09 🔴 | PROP-ESC-01 … PROP-ESC-09, P-7 |
+| A-10 🔴 | PROP-A3-01 … PROP-A3-11, PROP-A4-01 … PROP-A4-11, PROP-ENV-05/06 (tree half), P-8, P-9 |
+| A-11 🔴 | PROP-A5-01 … PROP-A5-19, PROP-PROH-03 (behavioural half) |
+| A-12 🔴 | PROP-A12-01 … PROP-A12-06, PROP-A1-01 … PROP-A1-07, PROP-A2-01 … PROP-A2-13 |
+| A-13 🔴 | PROP-HARV-01 … PROP-HARV-09, PROP-SUM-04 |
+| A-14 🔴 | PROP-REG-04, PROP-REG-05 |
+| A-15 | PROP-INFRA-03 (the authored fixture and its `scenario` header) |
+| A-16 🔴 | PROP-DIS-01 … PROP-DIS-07, PROP-REG-08 |
+| A-17 🟢 | PROP-CFG-01 … PROP-CFG-07, P-1, and `commitPaths`' one `export` (PROP-REG-04/05 depend on it) |
+| A-18 🟢 | PROP-RUNG-01 … PROP-RUNG-08 |
+| A-19 🟢 | PROP-VER-01 … PROP-VER-05, PROP-BUD-01 … PROP-BUD-04, P-2, P-3 |
+| A-20 🟢 | PROP-ENV-01 … PROP-ENV-12, PROP-XA-01 … PROP-XA-08, PROP-REF-01 … PROP-REF-05, P-4, P-5 |
+| A-21 🟢 | PROP-REC-01 … PROP-REC-08, PROP-ESC-01 … PROP-ESC-09, PROP-SUM-01 … PROP-SUM-03, P-6, P-7 |
+| A-22 🟢 | PROP-LIFE-01 … PROP-LIFE-13, PROP-PROH-01 … PROP-PROH-04, PROP-GATE-06 |
+| A-23 🟢 | PROP-A3-01 … PROP-A3-11, PROP-A4-01 … PROP-A4-11, PROP-GATE (A3, A4 rows), P-8, P-9 |
+| A-24 🟢 | PROP-A5-01 … PROP-A5-12, PROP-A5-16 … PROP-A5-18, PROP-GATE (A5 row) |
+| A-25 🟢 | PROP-A3-05, PROP-A3-07, PROP-A4-03, PROP-A4-09 (integration half), PROP-REG-01, PROP-ESC-06 |
+| A-26 🟢 | PROP-A5-13, PROP-A5-14, PROP-A5-15, PROP-A5-19, PROP-SUM-05, PROP-REG-02 |
+| A-27 🟢 | PROP-HARV-01 … PROP-HARV-04, PROP-HARV-07 … PROP-HARV-09, PROP-SUM-04, PROP-SUM-06 |
+| A-28 🟢 | PROP-HARV-03, PROP-HARV-05, PROP-HARV-06, PROP-REG-07 |
+| A-29 🟢 | PROP-A12-01 … PROP-A12-05 |
+| A-30 🟢 | PROP-A12-06, PROP-A1-01 … PROP-A1-07, PROP-REG-03 |
+| A-31 🟢 | PROP-A2-01 … PROP-A2-13, PROP-GATE (A1, A2 rows) |
+| A-32 🟢 | PROP-REG-04, PROP-REG-05 |
+| A-33 🟢 | PROP-DIS-01 … PROP-DIS-07, PROP-REG-08 |
+| A-34 | No suite property — its output is a recorded runtime fact in one of two admissible forms; an inferred result is mock data (PLAN §9.4). The only assertion this document makes about it is §13 item 4. |
+| A-35 | No suite property — documentation. The two `RELEASE-CHECKLIST.md` commitments it adds correspond to PROP-INFRA-03 (fixture scenario still accurate) and PROP-HARV-06 (guard-message coupling). |
+| A-36 | No suite property — the version bump is asserted by the shipped `advertisedVersionViolation` oracle (`pdlc/workflows/lib/document-oracles.mjs`), not by this feature's suite. |
+
+Three tasks (A-34, A-35, A-36) carry no property by design, and each row says why rather than
+leaving the reader to infer it.
+
+### 12.3 Test files — every one exists or is explicitly new
+
+Verified against the working tree while authoring: `pdlc/workflows/__tests__/` contains **no**
+`advisory*` file today, so all fourteen below are **new**, created by the 🔴 task named in PLAN §4's
+manifest. The two shipped helper modules the new files compose with — `helpers/mergeDoubles.js`,
+`helpers/driftGenerators.js` — and `fixtures/tmpGitFixture.js`, `helpers/seams.js`,
+`helpers/guardFixtures.js` all **exist today** and are reused, not re-authored.
+
+| Test file (all new) | Creating task | Level mix | Property families |
+|---|---|---|---|
+| `advisoryPreflight.test.js` | A-01 | Unit | PROP-REG-06 |
+| `helpers/advisoryDoubles.js` (helper, not collected) | A-02 | — | PROP-INFRA-01, -02 |
+| `advisoryConfig.test.js` | A-03 | Unit + 1 Integration | PROP-CFG-*, P-1 |
+| `advisoryRung.test.js` | A-04 | Unit + 1 Integration | PROP-RUNG-* |
+| `advisoryVerdict.test.js` | A-05 | Unit | PROP-VER-*, PROP-BUD-*, P-2, P-3 |
+| `advisoryEnvelope.test.js` | A-06 | Unit | PROP-ENV-*, PROP-XA-*, PROP-REF-*, P-4, P-5 |
+| `advisoryDriver.test.js` | A-07 | Unit | PROP-LIFE-*, PROP-PROH-*, PROP-GATE-* |
+| `advisoryRecord.test.js` | A-08 | Unit | PROP-REC-*, PROP-SUM-01…03, P-6 |
+| `advisoryEscalationLog.test.js` | A-09 | Unit | PROP-ESC-*, P-7 |
+| `advisoryDodSeams.test.js` | A-10 | Unit + Integration (real tree) | PROP-A3-*, PROP-A4-*, P-8, P-9 |
+| `advisoryPubSeam.test.js` | A-11 | Unit + Integration (real tree) | PROP-A5-* |
+| `advisoryQueueSeams.test.js` | A-12 | Unit + Integration | PROP-A12-*, PROP-A1-*, PROP-A2-* |
+| `advisoryHarvest.test.js` | A-13 | Unit + Integration | PROP-HARV-*, PROP-SUM-04 |
+| `advisoryBundle.test.js` | A-14 | Unit | PROP-REG-04, -05 |
+| `fixtures/created-files-26c3f1c.json` (fixture) | A-15 | — | PROP-INFRA-03 |
+| `advisoryDisabled.test.js` | A-16 | Integration | PROP-DIS-*, PROP-REG-08 |
+
+**Level totals.** 78 Unit properties, 21 Integration, 0 E2E — inside the pyramid budget stated in
+§1, and the Integration share is concentrated exactly where O-2 and O-4 require a real tree or a real
+phase body.
+
 ## 13. Gaps, negative space, and errata
