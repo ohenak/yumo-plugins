@@ -102,3 +102,33 @@ is not a file any task row claims as pre-existing, so no row is falsified by it.
   one-for-one by ownership rows, with the one file the last-changed row names correctly declared new.
 
 ## Recommendation
+
+**Approved with minor changes.**
+
+No High, no Medium — nothing blocks. Zero prior findings were open coming in, and the document itself
+did not change: `git diff 06040a4 HEAD -- docs/pdlc-advisory-tier/PLAN-pdlc-advisory-tier.md` is
+empty. The single Low is a pointer that went stale because the document it points *into* was rewritten
+around it, not because anything in this PLAN regressed.
+
+From the product lens the question tracked since v6 — *does the PLAN state A3's gate contract the way
+the approved product contract states it* — remains answered consistently, and this round it was
+answered against a **re-authored** PROPERTIES rather than the one that was current when the PLAN cell
+was written: FSPEC §5.4 (`FSPEC:378`, "none"), DEC-ADV-11 (`DECISIONS:698`), TSPEC §5.5
+(`TSPEC:657`, `null`), PROPERTIES §6 (`PROPERTIES:605-623`, the two-conjunct form and the
+replace-vs-install direction), and both PLAN sites (`PLAN:258`, `PLAN:869`) all say the same thing.
+AC-4.5's five-row gate table is quantified over in full by set-equality against `ADVISORY_SEAMS`, and
+`async () => ({ passed: true })` carries exactly one meaning — the mutant — across the whole set.
+
+What to change before Phase I, and it is a two-cell edit that need not gate anything:
+
+1. **F-01** — at `PLAN:258` and `PLAN:1027`, replace `PROPERTIES:570-572` with **PROPERTIES §6
+   (PROP-GATE-01…05)**, the anchor the same clause already uses, so the pointer stops depending on a
+   document that is still in loop.
+
+No erratum is emitted this round: the PROPERTIES revision that caused F-01 is an improvement to the
+upstream document, not a defect in it, and the stale pointer lives in this PLAN.
+
+## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 1}
