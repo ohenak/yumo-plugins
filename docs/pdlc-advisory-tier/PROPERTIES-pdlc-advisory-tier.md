@@ -360,6 +360,15 @@ PROP-RUNG-04 and be caught by nothing. It is stated as two positive conjuncts (e
 `fallback: false`) rather than as "no fallback text appears", per O-1's rule against absence-only
 oracles.
 
+**It observes no real model resolution** (SE Q-07). The "resolving on first dispatch" leg is supplied
+entirely by the injected agent double: `makeAgentDouble` returns on the first call, so
+`resolveAdvisoryRung` reports `{ model: MODEL_ADVISORY, fallback: false }` (TSPEC §3.4, `TSPEC:316`,
+`:390`) without any alias existing. PROP-RUNG-09 therefore asserts the *reporting* of a non-substituted
+rung, not that `MODEL_ADVISORY` resolves in production — the unresolved BL-01 that makes the fallback
+rung the likely production path (TSPEC §3.3, R-3 at `TSPEC:1483`) leaves this property green either
+way. No property in this document has a green that depends on BL-01; PROP-RUNG-04 owns the
+substitution direction with the double throwing `isModelResolutionError` instead.
+
 **Negative properties in this domain.** PROP-RUNG-05 and PROP-RUNG-06 are the two paths where a
 weaker oracle would silently pass: a test asserting only "the run failed" is satisfied by any throw,
 so PROP-RUNG-06 pins the message content and the dispatch count, and PROP-RUNG-05 pins a *zero*
@@ -679,6 +688,18 @@ push-free accounting. Before PROP-A5-20, E-2's rule was asserted nowhere: PROP-A
 probed only the default-branch tip and dropped the merge-base conjunct satisfied every property in
 this section. That matters most at E-2 because it is the sole envelope member that lets the tier
 commit and push to the branch unattended.
+
+**Why it is levelled Unit, and the level totals do not move** (PM Q-02). All three probes are made
+through the injected `_git` / `_ghRun` seams, and the fixtures are the doubles §2.1 re-exports from
+`helpers/mergeDoubles.js` — `fakeGit` (`:189`) scripted to answer the merge-base and branch-head
+queries, `fakeGhRun` (`:75`) scripted to answer the check-rollup at each of the three revisions. What
+the property asserts is the classifier's decision over those three answers, which needs no real tree:
+the seam never runs a rebase, never pushes, and the E-2 in-envelope control terminates at
+`classifyEnvelope`'s return. `advisoryPubSeam.test.js` is a mixed file — PLAN §6.2 designates it as
+one of the two that *may* build a real tree (`fixtures/tmpGitFixture.js`), and PROP-ENV-05's tree half
+is levelled `Unit + Integration` for exactly that reason — but membership in that file is not what
+levels a property; what the property's own oracle has to observe is.
+PROP-A5-20 stays Unit and §1's and §12.3's 148 / 40 / 7 / 0 stand unchanged.
 
 ## 9. Properties — advisory record, escalation log, summary, harvest
 
