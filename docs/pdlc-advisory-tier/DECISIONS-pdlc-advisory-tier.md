@@ -204,6 +204,51 @@ driver test encodes this split.
 
 ## DEC-ADV-04: The advisory rung is a literal alias with a separate fallback constant, and the fallback is a shipped path
 
+**Context.** REQ BL-01 / FSPEC OQ-1 leave the literal advisory model alias to engineering. Two facts
+bound it, both verified: every rung this repo pins today is a **bare alias** — `MODEL_DEFAULT = "opus"`
+(`dev:1578`), `MODEL_IMPLEMENTATION = "sonnet"` (`dev:1621`), `MODEL_QUEUE = "sonnet"` (`queue:69`) —
+and the adapter passes it straight through untouched (`const { model, … } = opts`,
+`...(model ? { model } : {})`, `runtime-adapter.js:58-61`). The alias table is owned by the workflow
+runtime, not by this repo, and **there is no local probe for it**.
+
+**Decision.** `MODEL_ADVISORY = "fable"`, with `MODEL_ADVISORY_FALLBACK = "opus"` as a **separate
+constant whose literal merely happens to equal `MODEL_DEFAULT`'s**. Non-resolution is detected by
+classifying the rejection of the *real* first dispatch (`isModelResolutionError`, TSPEC §3.4), never by
+a probe dispatch, and the fallback path is treated as a **shipped, tested path — not an error path**
+(TSPEC §3.3).
+
+**Alternatives considered.**
+
+- **Alias the fallback to `MODEL_DEFAULT` — rejected.** AC-1.3 requires the advisory rung to be
+  "always distinguishable" from the pipeline default. Aliasing makes that claim depend on an accident:
+  a future change repointing `MODEL_DEFAULT` would silently move the declared substitution to a
+  different rung, and no test would notice, because the two would still be equal.
+- **Pin `MODEL_ADVISORY = "opus"` and skip the fallback machinery entirely — rejected.** It makes the
+  advisory tier indistinguishable from every other phase, which defeats M-2's declaration requirement
+  and AC-1.3; and the fallback machinery is needed anyway for the case where a *future* rung name is
+  pinned.
+- **A dedicated pre-flight probe dispatch to test the alias — rejected.** It costs a dispatch on every
+  run that fires a seam, and it cannot be made to mean what M-1 means: M-1 defines non-resolution as
+  "the runtime rejected the dispatch with a model/alias error **before** the agent produced any
+  output", which is a property of the real dispatch. Classifying the real rejection is both cheaper
+  and strictly more faithful.
+- **Resolve the alias from a config key — rejected.** C-4 forbids agent-writable model selection, and
+  a per-repo rung would make M-5's "one edit changes the rung" false across repos.
+
+**Constraints that forced this shape.** BL-01 is **unresolvable from this repo** — the alias table is
+runtime-side. The design's response is to make either outcome correct rather than to guess: the tier
+ships working whichever branch fires, which is what "non-fatal by construction" means. The PLAN carries
+a one-line manual verification (dispatch one trivial advisory agent on `"fable"` in a real runtime and
+record which branch fired); it is a **record**, not a gate.
+
+**Reversibility: easy.** One constant, referenced once (M-5).
+
+**Re-evaluation triggers.**
+1. The manual verification recording that `"fable"` does not resolve — then the alias is a known-dead
+   literal kept only for the day the runtime learns it, and that trade should be re-argued.
+2. The runtime gaining a queryable alias table, which would make a cheap real probe possible.
+3. `MODEL_DEFAULT` changing — the separate-constant rationale becomes load-bearing at that moment.
+
 ## DEC-ADV-05: Rung resolution is lazy and its memo is a threaded parameter, never module state
 
 ## DEC-ADV-06: X-e reuses Phase MERGE's shipped guard matcher; only two new predicates are owned
