@@ -36,7 +36,16 @@ The eleven routed items collapse to five distinct defects (four of the five were
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| — | — | — | No open findings. My v4 F-01 (Low) — §16.4 and its four forward references describing two settled FSPEC rules as open upstream defects — is resolved by items 3 and 4 above. The delta introduced no new product-lens finding. | — |
+
 ## Questions
+
+| ID | Question |
+|----|---------|
+| Q-01 | §14.3's `pdlc/workflows/orchestrate-dev.js` row summarises the change as "constants, advisory core, `SeamOps` … report fields" and does not name the one-keyword `export` on `commitPaths` that §2.3 now commits to. §2.3 and §6.4.1 both state it explicitly and §14.3's `build-runtime.mjs` row does point at "§2.3's export-list and prelude edit", so nothing is lost to an implementer reading in order — but if §14.3 is meant to be self-sufficient as a change manifest, appending "one `export` on `commitPaths` (§2.3)" to that row would make it so. Not a finding: no requirement depends on it and the mechanism is unambiguous where it is specified. |
+| Q-02 | §6.4.1's Reachability paragraph says queue-side unit tests "inject a `_commitPaths` double rather than relying on the free identifier (§13.3)", and §13.3's last row covers this generically ("queue-side free identifiers — `_runAdvisorySeam` **etc.** must be injected"). That is adequate, but `_commitPaths` is the only such identifier that is a *git-mutating* seam, so a test that forgets to inject it fails differently from one that forgets `_runAdvisorySeam`. Worth naming it explicitly in §13.3's row at authoring time? Purely a legibility question for the author. |
 
 ## Positive Observations
 
