@@ -28,6 +28,22 @@ Diffed `e7ffd1d..HEAD` (11 revision commits) over the PLAN. Every v1 finding is 
 
 ## Verification performed
 
+Everything below was executed or grepped against the working tree at HEAD, not read off the document.
+
+| Check | Result |
+|---|---|
+| Skip discipline actually works under the gate | **Executed.** A throwaway `__tests__/zzSkipProbe.test.js` containing one `describe.skip` block whose only test imports a nonexistent export: `Test Suites: 1 skipped, 0 of 1 total`, `Tests: 1 skipped, 1 total`, **exit 0**. Jest does not raise "must contain at least one test" for a `describe.skip`-only file. F-01's resolution is mechanically sound. Probe removed. |
+| Skip discipline vs the repo's skip gate | `__tests__/helpers/skipSink.js:17-21` states the comparator's domain is `describeOrSkip`/`itOrSkip` only and that direct `describe.skip` "never reach these helpers, so they never reach the sink and are not checked here". No conflict. |
+| PLAN self-parse (§9.1's claim) | **Executed.** `parsePlanTasks` ⇒ **36 tasks**, `parsePlanOwnership` ⇒ **36 ownership rows**, `validatePlanContract` ⇒ `{"ok":true}`, `computeTopologicalBatches` ⇒ **20 batches**, no cycle. Exactly as §9.1 claims. |
+| Batch-DAG re-derivation after A-00's removal | **Re-derived all 36 rows** from the `dependencies` column: every `planBatch` equals `max(dep batch) + 1`, ids unique (36/36), every dependency resolves, max label batch 18. No desync. |
+| §6.4 coverage procedure | **Both commands executed.** `coverage/coverage-final.json` is produced and its `fnMap` carries 334 named entries with real identifiers; the `node -e` reducer parses `fnMap`/`statementMap`/`branchMap`/`s`/`b` without error and prints `statements X branches Y`. Runnable as written. |
+| §6.5's generator reuse | `helpers/driftGenerators.js` exports `seeded:76`, `resolveSeed:134`, `enumerateLeaves:158`. Non-helper suites importing it: `approvalHash`, `completeness`, `driftBackups`, `driftBaseline`, `driftFault`, `driftHook`, `driftOrdering`, `driftRepoRoot`, `forcePhases`, `pacingWrapper`, `queueDriftGate`, `roundDerivation`, `scanLines` = **13**. The count is exact. |
+| §2.4's untracked-config claim | **Confirmed and consequential.** `git ls-files .claude` ⇒ 0 rows; `.gitignore` ignores only `.claude/settings.local.json`, `.claude/.headroom_wrap_marker.json` and `/.claude/workflows/`. `.claude/pdlc.config.json` exists on disk and holds the defective `--testPathIgnorePatterns=documentOracles` form. See F-02. |
+| Green-owner assignment per test file | Read off §3's Test File column: `advisoryDodSeams` ⇒ A-23 (b10) + A-25 (b12); `advisoryPubSeam` ⇒ A-24 (b11) + A-26 (b13); `advisoryHarvest` ⇒ A-28 (b4) + A-27 (b14); **`advisoryDriver` ⇒ A-22 (b9) only**. Multiple green owners per file is the PLAN's own norm — which is why the driver file's single owner is a defect, not a convention. See F-01. |
+| `classifyEnvelope`'s contract vs §6.5 P-4 | TSPEC §5.1 (`TSPEC:517`): `classifyEnvelope(candidate, ctx)` ⇒ `{ inside, reason, matched }`. No `ctx` on the return. See F-03. |
+| `governingClass` contract | TSPEC `:856` A3-7: `governingClass(classes)` over an array, ordered `real-defect > mis-scoped-criterion > …`. The empty-array case is not specified. See F-06. |
+| CI gate composition | `.github/workflows/pr-tests.yml:75` runs bare `npm test` (no ignore-pattern override) on both matrix legs; CLAUDE.md's CI table confirms Phase PUB halts on any failure. Relevant to F-02. |
+
 ## Findings
 
 ## Questions
