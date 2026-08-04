@@ -914,13 +914,22 @@ function rtMakeCheckCi(devModule) {
  */
 async function rtAppendFile(path, text) {
   rtCacheInvalidate(path);
+  // Dispatched as an exact shell command — the same "run this exact command"
+  // shape rtCheckFile/rtListFiles/rtCheckCi use — rather than a "write these
+  // bytes" instruction. The command IS the whole intent, visible and mechanical:
+  // a quoted heredoc that adds `text` after the file's existing bytes and touches
+  // nothing already there (so this is NOT rtWriteFile(existing + text), which
+  // would re-emit and could silently rewrite the reviewer's prose). `text`
+  // carries its own trailing newline; the heredoc re-supplies exactly one, so a
+  // single trailing newline is stripped before the body to keep the bytes exact.
+  const body = text.endsWith("\n") ? text.slice(0, -1) : text;
   await RT.agent(
-    `APPEND the following content to the END of "${path}", relative to the repository root.\n` +
-      `Do not read, rewrite, reformat, re-wrap, summarise, or alter any existing content — ` +
-      `the file's current bytes must be preserved exactly, byte for byte, and the content below ` +
-      `must be added after them verbatim. If the file does not exist, create it containing ` +
-      `exactly the content below. Reply with "ok" when appended.\n\n` +
-      `<<<PDLC_CONTENT_BEGIN\n${text}\nPDLC_CONTENT_END`,
+    `Run this exact command from the repository root and report the result. It ` +
+      `records the review's approval provenance — the content hash and reviewed ` +
+      `commit — by appending these lines to the end of "${path}"; a quoted heredoc, ` +
+      `so it changes nothing already in the file.\n` +
+      `  cat >> "${path}" <<'PDLC_ANCHOR_EOF'\n${body}\nPDLC_ANCHOR_EOF\n` +
+      `Reply with "ok" when the command has run.`,
     { label: `append:${path}`, model: RT_IO_MODEL }
   );
 }

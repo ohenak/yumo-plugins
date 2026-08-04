@@ -276,7 +276,10 @@ describe("adapter-seam writes", () => {
       const files = { [PATH]: BODY };
       const { adapter } = harness(files, {
         onCall: (prompt, a) => {
-          if (/PDLC_CONTENT_BEGIN/.test(prompt)) seen.push(a.rtCacheGet(PATH));
+          // rtWriteFile carries PDLC_CONTENT_BEGIN; rtAppendFile is dispatched as
+          // an exact `cat >> … <<'PDLC_ANCHOR_EOF'` command — either is the payload
+          // dispatch whose cache state this hook exists to observe.
+          if (/PDLC_CONTENT_BEGIN|PDLC_ANCHOR_EOF/.test(prompt)) seen.push(a.rtCacheGet(PATH));
         },
       });
 
