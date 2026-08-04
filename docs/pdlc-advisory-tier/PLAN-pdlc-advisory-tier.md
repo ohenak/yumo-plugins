@@ -519,9 +519,11 @@ collects exactly the three matching suites.)
 
 **The fields that run actually emits — transcribed literal.** On the pinned jest (`pdlc/workflows/package.json`
 pins `"jest": "^29.7.0"`; `npx jest --version` ⇒ 29.7.0) a `testResults[]` entry carries
-`{assertionResults, endTime, message, name, startTime, status, summary}` and **no** `testFilePath`,
-`numPassingTests`, `numFailingTests` or `numPendingTests` — those four counters exist only at the top
-level of the document, i.e. the aggregate this section says it cannot use. The per-file triple is
+`{assertionResults, endTime, message, name, startTime, status, summary}` — and **no per-file
+counters at all**. The aggregate counters that do exist are `numPassedTests` / `numFailedTests` /
+`numPendingTests` (note the spellings — not `numPassingTests` / `numFailingTests`), at the **top level
+only**, i.e. the aggregate this section says it cannot use; `testFilePath` appears nowhere in the
+document at any level, so the file path must come from `testResults[].name`. The per-file triple is
 therefore derived from the two fields that do exist: `testResults[].name` (the absolute file path) and
 `assertionResults[].status` (`passed` | `failed` | `pending` | `todo`). One expression, quoted
 identically by every gate row below and by §9.1:
@@ -529,7 +531,7 @@ identically by every gate row below and by §9.1:
 ```js
 // perFile: { "<abs path>": { "<top-level describe block>": { passed, failed, pending } } }
 const perFile = Object.fromEntries(
-  require('/tmp/adv-gate-w{n}.json').testResults
+  require('/tmp/adv-gate-{taskId}-post.json').testResults   // or -pre.json, for the 🟢 delta's left side
     .filter(r => /advisory.*\.test\.js$/.test(r.name))
     .map(r => [r.name, r.assertionResults.reduce((acc, a) => {
       const b = (acc[a.ancestorTitles[0] ?? ''] ||= { passed: 0, failed: 0, pending: 0 });
@@ -544,10 +546,16 @@ delta row needs. A file's totals are the sum over its blocks. (Verified at HEAD 
 `guardMatrix.test.js`, a shipped skip-carrying suite: the reducer yields `{"passed":75,"pending":70}`,
 matching the top-level `numPendingTests` ⇒ 70.)
 
-**Retention.** Each wave writes its own `/tmp/adv-gate-w{n}.json` and **the previous wave's file is
-kept**, so a delta assertion ("this block's cases moved `pending` → `passed`") is a comparison of two
-recorded documents rather than a reconstruction. No expected case count has to be recorded anywhere:
-the count comes from the block's own entry in the wave-(n−1) file. Those files are written under
+**Retention.** Each task keeps **its own pair**, `/tmp/adv-gate-{taskId}-pre.json` and
+`-post.json`, until its wave's gate has passed, so a delta assertion ("this block's cases moved
+`pending` → `passed`") is a comparison of two recorded documents rather than a reconstruction — and
+both documents were produced by the same agent, so neither the wave's concurrency nor the order in
+which waves ran participates in the claim. No expected case count has to be recorded anywhere: *k* is
+the block's own `pending` count in that task's **pre** document. Because both readings are of a file
+only this task owns, the block population of that file cannot change between them (no wave-mate writes
+it; the task itself adds no `describe.skip` block, it only removes `.skip`), which is what makes "and
+every other block in the file is unchanged in all three counters" a checkable invariant rather than an
+assumption about wave ordering. Those files are written under
 `/tmp`, never in the repo, so no document oracle walks them. The gate's *pass/fail* remains the
 script-owned aggregate run (`:8113-8118`); the targeted `--json` run is the agent's evidence for the
 per-file claims it reports.
