@@ -25,6 +25,13 @@ checked against the repository, not against the changelog's claim about itself.
 
 ## Findings
 
+One Medium, no High, no Low. The Medium is the unfixed half of v6 F-02 — the same defect class the
+delta fixed one cell over, left standing in the row an implementer reads first.
+
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | Medium | Local | **§3's A-07 row still states A3's gate case on the premise that A3 has a gate — the exact premise §8.2 just retired, and the exact mistake PROPERTIES warns costs a wasted RED batch.** `PLAN:258` reads: "(b) The per-seam gate-exclusivity cases … **each need that seam's `verifyGate` to exist**, so A3+A4 sit in **A-23's block**, A5 in **A-24's block**, and A1+A2 in **A-31's block** (**A1** declares no gate — `verifyGate: null` per TSPEC §5.5/§6.3 — so its case asserts `verifyGate === null` … and that *installing* `async () => ({ passed: true })` makes the case fail…)". After DEC-ADV-11 (`DECISIONS:698`), FSPEC §5.4's A3 row ("**none.**", `FSPEC:361-380`) and `TSPEC:657` (`verifyGate` = **`null`**, "same shape as A1"), the clause "each need that seam's `verifyGate` to exist" is false for A3, and the parenthetical exception names only A1 — so §3 tells the authoring task that A3 takes the *replace-the-gate* form while §8.2 (`PLAN:869`) now tells it A3 takes the *install-the-stub* form. Two statements about one test case in one document, and the changelog's v1.7 row asserts this contradiction was removed. This is not a cosmetic duplication: **A-07 is the RED task that authors the case**, and `PROPERTIES:570-572` states the consequence in as many words — "Asserting conjunct 1 at A3 would require stubbing a gate A3 never reaches and observing a disposition A3 cannot produce — it would fail against a correct build, **in the RED batch (A-07) that authors it**, and not be diagnosed until A-23." **Fix (one cell, no structural change):** in §3's A-07 row change "each need that seam's `verifyGate` to exist" to "each need that seam's gate *representation* to exist — its `verifyGate` for A2/A4/A5, its `verifyGate: null` for A1 and A3", and extend the parenthetical to "**A1 and A3** declare no gate — `verifyGate: null` per FSPEC §5.4, TSPEC §5.5 (`TSPEC:657`) and DEC-ADV-11 — so each case asserts `verifyGate === null`, that `resolved` is unreachable on every path, that the seam terminates in `escalated` or `no-action` with its own O-1 triple, and that *installing* `async () => ({ passed: true })` makes the case fail; §8.2 states the mutation in both directions". Block assignment (A3+A4 ⇒ A-23) is correct and must not change. | AC-4.5 (FSPEC §5.4 gate table), AC-4.6 / BR-6, DEC-ADV-11 |
+
 ## Questions
 
 ## Positive Observations
