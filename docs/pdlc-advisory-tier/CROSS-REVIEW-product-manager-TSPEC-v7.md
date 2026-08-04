@@ -60,4 +60,11 @@ Also in the delta: front-matter version 1.2 → 1.3 and a §18 row describing al
 
 ## Recommendation
 
+**Approved**
+
+The delta resolves all six routed items — three distinct defects — at the site each was raised against, and each resolution checks out against the REQ, the FSPEC, the PLAN, PROPERTIES, and this document's own §4.4/§6.3. The A1/A3 `verifyGate: null` change is the faithful expression of REQ AC-4.5's own A1 row and the form PLAN A-31 and PROPERTIES had already converged on; the `waitMs` answer gives PROP-BUD-03 a real surface without adding a member to an interface four seams could not implement; §11.1's assertion is now executable and transcribed verbatim by PROP-DIS-06. Nothing I approved at v5 or re-confirmed at v6 moved: no requirement mapping, prohibition, budget relation, enum, error-handling row, or acceptance criterion changed. Both questions are legibility and upstream-hygiene observations with no product consequence and require no change to this document.
+
 ## Verdict
+
+VERDICT: Approved
+{"high": 0, "medium": 0, "low": 0}
