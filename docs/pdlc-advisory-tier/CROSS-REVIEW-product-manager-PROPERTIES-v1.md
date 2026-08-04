@@ -18,6 +18,13 @@
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | §12.1 audits REQ→property, §12.2 PLAN task→property, §12.3 test file→existence. There is no direction auditing **FSPEC case → property**, and §11 closes with "the 81 cases stay, each in the file PLAN §8.1 assigns it". Is FSPEC-case coverage deliberately delegated to PLAN §8.1 in full? If so, a one-line statement to that effect in §12's preamble would stop a reader inferring a missing fourth audit; if not, an FSPEC case with no property is exactly the gap §12 exists to catch. |
+| Q-02 | PROP-A2-05 fixes A2's `declaredScope` to `[reqPath]`, but AC-3.4(d) defines declared scope as "the files named in the feature's PLAN plus the files the branch had already touched". A queue-side seam has no PLAN in hand, so the narrowing looks right — is it recorded anywhere as a deliberate per-seam specialisation of AC-3.4(d) rather than a reading of it? PROP-ENV-07 states the five per-seam values but does not say which are narrowings. |
+| Q-03 | AC-9.4 asks the summary for "count of invocations, count resolved, count escalated"; PROP-SUM-02 adds a fourth column `noAction` and asserts `invocations === resolved + escalated + noAction`. The addition is well-motivated by V-7's three-valued disposition set and I read it as a faithful strengthening, not scope creep — confirming that reading is intended, so the operator-facing summary shape is settled here and not re-opened at implementation. |
+| Q-04 | PROP-DIS-06 fixes the number of `advisory.enabled` read sites at exactly three. If a later task legitimately needs a fourth (say, a queue-side report gate), the property fails as a defect by construction. Is three a contract the operator benefits from, or a snapshot of TSPEC §11.1 that will need editing during Phase I? |
+
 ## Positive Observations
 
 ## Recommendation
