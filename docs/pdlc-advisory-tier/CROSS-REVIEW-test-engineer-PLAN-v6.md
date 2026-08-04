@@ -75,4 +75,34 @@ seam over. See F-01.
 
 ## Recommendation
 
+**Needs revision** — on one finding, with a one-sentence fix.
+
+**The routed items are all resolved.** All four distinct defects behind the five routed items are
+closed at the site each was raised against, each resolution is grounded against the document it had to
+agree with, and I re-verified the PLAN contract mechanically (36 tasks, `validatePlanContract` ⇒
+`{"ok":true}`, 20 batches). Nothing I approved in v5 was weakened.
+
+**What must change before this can be approved:** F-01. The A1 reconciliation is correct and is the
+stronger form — but the *same* TSPEC erratum round gave **A3** `verifyGate: null` for the same reason
+(`TSPEC:434`, `:657`, `:865`), and §8.2 was updated for A1 only. As it stands, `PLAN:869` instructs
+A-07 to author an A3 gate-exclusivity case that stubs a gate A3 does not have and observes a
+disposition A3 cannot produce — a case that fails against a correct build, or is written vacuous and
+loses AC-4.6's mutation control at one of five seams. PROPERTIES §6 already states the correct
+gateless form for both seams (`PROPERTIES:559-568`); transcribe it into `PLAN:869`:
+
+1. Say A1 **and A3** declare no gate — for both, the mutation is to *install*
+   `async () => ({ passed: true })`, and the case must fail when it is installed; both assert
+   `verifyGate === null` plus `resolved` unreachable on every path, terminating in `escalated` or
+   `no-action` with its own O-1 triple.
+2. Replace "A1 is the direction that runs backwards" with "A1 and A3 run backwards".
+3. Correct "A-23 lands both gates" to name A4's gate and A3's gateless seam — `PLAN:274` already
+   describes A-23 that way.
+4. While rewriting that clause, repoint the §5.4 citation to **§5.5** (F-02).
+
+F-03 needs nothing from this document; it is recorded so a closed erratum is not re-raised against
+PROPERTIES or preserved by harvest as live signal.
+
+Nothing here is a scope, batch or dependency change: the fix is confined to prose inside one §8.2
+table cell, and the re-parse result will be unchanged.
+
 ## Verdict
