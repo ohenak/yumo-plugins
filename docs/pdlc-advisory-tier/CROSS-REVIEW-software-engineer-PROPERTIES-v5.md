@@ -25,6 +25,15 @@ document's own account of it.
 
 ## Findings
 
+One Low, and it is a wording residue inside the section this round rewrote — no property, oracle,
+level or count is contested. I scanned only the seven changed regions; the header's arithmetic claim
+("183 property rows, and §1's and §12.3's 195 / 148 / 40 / 7 / 0 stand unrecomputed") is borne out by
+the diff, which touches no property row and no count line.
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Low | Local | **§6.5 still calls the A1/A3 form "stronger" in one place after the revision renamed it "different" everywhere else, and the new preamble's parenthetical no longer distinguishes the two families.** The revision deliberately stopped describing A1/A3 as a *stronger* form — line 593 now reads "**A1 and A3 take a different form, and for the same reason**", which is the accurate description now that both families carry exactly two conjuncts. But conjunct 1's parenthetical at `PROPERTIES:565-566` was not updated with it: it still reads "(at the three seams that can apply an action — A2, A4, A5; A1 and A3 take **the stronger form** stated below)". Related, and in the text this round added: the opener's parenthetical at `PROPERTIES:562-563` says A1 and A3 "take the **two-conjunct** form stated below", which was a distinguishing description when A2/A4/A5 had two conjuncts and A1/A3 had one, and is no longer — both are two-conjunct forms now, so the phrase carries no information and a fast reader can take it as saying the two families assert the same thing. The one real distinction is the mutation direction, which lines 619-623 state precisely. Nothing is wrong on the substance and no test author is misled about *what* to assert, which is why this is Low. **Fix:** at `:566` replace "the stronger form" with "the A1/A3 form"; at `:562-563` replace "take the two-conjunct form stated below" with "take the A1/A3 form stated below, whose conjunct 2 runs the mutation in the opposite direction". | §6.5, PROP-GATE-01 … PROP-GATE-05 |
+
 ## Questions
 
 ## Positive Observations
