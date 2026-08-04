@@ -114,7 +114,11 @@ node pdlc/workflows/build-runtime.mjs    # regenerate dist/ from the restored so
 ```
 
 
-## 3. Task table
+## 3. Batches — the task table
+
+The `Batch` column below **is** the batch decomposition: batch *N* is the set of rows carrying *N*, and
+the 36 tasks fall into 18 batches. Nothing else in this document declares batches; §5 explains the
+gates and the edges that produce these numbers.
 
 Status key: ⬚ Not Started | 🔴 Red | 🟢 Green | 🔵 Refactored | ✅ Done
 
