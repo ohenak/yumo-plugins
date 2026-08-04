@@ -68,11 +68,50 @@ sections this revision changed — §5.2's rewritten evidence procedure and §6.
 
 ## Questions
 
-_(pending)_
+| ID | Question |
+|----|---------|
+| Q-10 | §5.2's retention rule keeps the previous wave's `/tmp/adv-gate-w{n}.json` so a delta is a comparison of two recorded documents. Waves 3–6 land in batch order but batch 6 is the last wave that adds new skipped blocks (A-16), so from batch 7 onward the block population is closed and "every other block in the file is unchanged in all three counters" is a clean invariant. Is that reasoning something the PLAN wants to state? It is the premise that makes batch 7–17's *and by no more* half falsifiable, and today a reviewer has to re-derive it from §3's task ordering. One clause in the batch 7–17 row ("no 🔴 task runs after batch 6, so no new block can appear between two snapshots") would make the conjunct self-evidently checkable. |
+| Q-11 | §9.2 (i) recomputes red evidence as "`git show {commit}^:{testFile}` contains the block **with** `.skip` and `git show {commit}:{testFile}` contains it **without**". Within a wave the script commits one task at a time (`:8143-8159`), so a task's commit parent is a wave-mate's commit — which is fine here, since `pathsCollide` guarantees no wave-mate touched that test file. Worth one parenthetical? The rule as written is correct for exactly that reason, and a reviewer applying it to a two-task wave (12, 13, 14) will otherwise wonder whether `{commit}^` is the right baseline. |
 
 ## Positive Observations
 
-_(pending)_
+- **The revision found a defect underneath the one I reported, and fixed the deeper one.** F-10 said
+  the `--json` run was forbidden by the wave prompt. The author fixed that *and* discovered that the
+  four fields the procedure read do not exist per-file in jest 29.7.0's `--json` document at all — so
+  the v1.3 procedure was not merely instructed-against, it was unimplementable. Replacing it with one
+  reducer over `testResults[].name` + `assertionResults[].status`, verified against a shipped
+  skip-carrying suite, is the difference between a plan that reads plausible and a plan that runs. I
+  executed both verifications independently and got the document's own numbers to the digit.
+- **`ancestorTitles[0]` was recognised as a partition, not just a label.** The single most valuable
+  line in this revision is the observation that because §3 names every `describe.skip` block for its
+  green owner, bucketing by `ancestorTitles[0]` partitions each file **by un-skip block** — which
+  simultaneously answers Q-09 (the expected case count is the block's own wave-(n−1) `pending`, so
+  nothing has to be recorded), makes batch 7–17's *and by no more* conjunct mechanical, and gives
+  §9.2's new conjunct (ii) something to compare. One existing naming convention was turned into a
+  measuring instrument at zero cost.
+- **§9.2's red-evidence row now gates on something a reviewer can recompute.** "The transcript is the
+  readable half; this row gates on a second, mechanical conjunct" is the right diagnosis — a reviewer
+  can tell that *some* text is present but not that it is a genuine transcript. Pinning the row to
+  `.skip` present in the commit's parent and absent in the commit, plus `pending → passed` across two
+  retained snapshots, with both failure directions named ("a task that un-skips nothing fails (i),
+  and a case that was already passing fails (ii)"), converts an honour-system checkbox into a
+  falsifiable one without discarding the human-readable half.
+- **P-4's coherence conjunct was re-labelled rather than defended.** The easy response to "this isn't
+  where TSPEC says that" is to find a nearby line and re-cite it. Instead the row now says plainly
+  that the conjunct is **derived** — from the return type and enum at `TSPEC:514-515` plus §5.1's
+  ladder — and shows the derivation. A property that declares which of its conjuncts are quoted and
+  which are inferred is one a later reader can audit; F-14 is a range typo on top of a correct
+  argument.
+- **Q-08's answer closed the loop in the direction I could not see.** Stating that the five per-seam
+  cases are *generated* by iterating the registry makes "a registry row that survives while its case
+  is deleted" **not expressible** — a stronger guarantee than the set-equality check alone, and the
+  precise both-directions completeness the review standard asks for.
+- **The re-parse was re-run for the right reason.** §9.1 does not just repeat the numbers; it names
+  *why* the numbers could have changed ("adds a fenced JS block to §5.2 — its `||=` pipes are inside
+  a code fence") and then reports the re-execution. I re-ran it: 36 / 36 / `{"ok":true}` / 20 batches
+  / 20 waves, wave-for-wave identical to §5.2. Re-verifying the parse gate after adding pipe
+  characters to a document the parser reads line-wise is the kind of care that prevents a Phase P
+  halt nobody would have predicted.
 
 ## Recommendation
 
