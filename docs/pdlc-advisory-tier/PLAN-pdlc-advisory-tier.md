@@ -727,8 +727,8 @@ aspirational.
 | Group | Cases | Count | Test file | 🔴 owner | 🟢 owner(s) |
 |---|---|---|---|---|---|
 | T-01 | T-01-1 … T-01-7 | 7 | `advisoryConfig.test.js` (T-01-1, T-01-6), `advisoryRung.test.js` (T-01-2 … T-01-5, T-01-7) | A-03, A-04 | A-17, A-18 |
-| T-02 | T-02-1 … T-02-6 | 6 | `advisoryVerdict.test.js` (T-02-4, T-02-5), `advisoryDriver.test.js` (T-02-1, T-02-2, T-02-3, T-02-6) | A-05, A-07 | A-19, A-22 |
-| T-03 | T-03-1 … T-03-10 | 10 | `advisoryEnvelope.test.js` (T-03-1 … T-03-5, T-03-8, T-03-9, T-03-10), `advisoryDriver.test.js` (T-03-6, T-03-7) | A-06, A-07 | A-20, A-22 |
+| T-02 | T-02-1 … T-02-6 | 6 | `advisoryDriver.test.js` — **all six**. T-02-4 and T-02-5 moved here from `advisoryVerdict.test.js`: FSPEC:287-288 defines them over the driver's attempt loop (exactly `attemptBudget` attempts; an in-flight attempt preempted at the bound), which A-22 lands at batch 9, so under §3's un-skipper rule a file un-skipped by A-19 at batch 6 cannot host them | A-07 | A-22 |
+| T-03 | T-03-1 … T-03-10 | 10 | `advisoryEnvelope.test.js` (T-03-1 … T-03-5, T-03-8, T-03-9, T-03-10), `advisoryDriver.test.js` (T-03-6, T-03-7) | A-06, A-07 | A-20, A-22 (T-03-7 and T-03-6(a)); A-23, A-24, A-31 (T-03-6(b)'s per-seam blocks — §8.2) |
 | T-04 | T-04-1 … T-04-9, T-04-3b | 10 | `advisoryQueueSeams.test.js` | A-12 | A-29, A-30, A-31 |
 | T-05 | T-05-1 … T-05-6 | 6 | `advisoryDodSeams.test.js` | A-10 | A-23, A-25 |
 | T-06 | T-06-1 … T-06-6 | 6 | `advisoryDodSeams.test.js` | A-10 | A-23, A-25 |
@@ -736,11 +736,22 @@ aspirational.
 | T-08 | T-08-1 … T-08-10, T-08-4b | 11 | `advisoryRecord.test.js` (T-08-1, T-08-2, T-08-7, T-08-10), `advisoryHarvest.test.js` (T-08-3 … T-08-6, T-08-4b, T-08-8, T-08-9) | A-08, A-13 | A-21, A-27, A-28 |
 | T-09 | T-09-1 … T-09-8 | 8 | `advisoryEscalationLog.test.js` | A-09 | A-21 |
 | T-10 | T-10-1 … T-10-5 | 5 | `advisoryDisabled.test.js` | A-16 | A-33 |
-| — | **Total** | **81** | **14 files** (the 12 distinct files above — `advisoryConfig`, `advisoryRung`, `advisoryVerdict`, `advisoryDriver`, `advisoryEnvelope`, `advisoryQueueSeams`, `advisoryDodSeams`, `advisoryPubSeam`, `advisoryRecord`, `advisoryHarvest`, `advisoryEscalationLog`, `advisoryDisabled` — plus `advisoryPreflight.test.js` and `advisoryBundle.test.js`), matching §4's manifest row-for-row | — | — |
+| — | **Total** | **81** | **14 files** — the **eleven** that carry an FSPEC case (`advisoryConfig`, `advisoryRung`, `advisoryDriver`, `advisoryEnvelope`, `advisoryQueueSeams`, `advisoryDodSeams`, `advisoryPubSeam`, `advisoryRecord`, `advisoryHarvest`, `advisoryEscalationLog`, `advisoryDisabled`) plus the **three** that carry PLAN-level obligations only (`advisoryVerdict.test.js`, `advisoryPreflight.test.js`, `advisoryBundle.test.js`), matching §4's manifest row-for-row | — | — |
 
-`advisoryPreflight.test.js` (A-01) and `advisoryBundle.test.js` (A-14) carry no FSPEC acceptance case:
-the first asserts the baseline this PLAN depends on, the second the bundle-composition obligation
-TSPEC §13.6 states. Both are PLAN-level obligations, deliberately not smuggled into an AT id.
+`advisoryPreflight.test.js` (A-01), `advisoryBundle.test.js` (A-14) and — after T-02-4/T-02-5 moved to
+the driver — `advisoryVerdict.test.js` (A-05) carry no FSPEC acceptance case: the first asserts the
+baseline this PLAN depends on, the second the bundle-composition obligation TSPEC §13.6 states, the
+third the **unit** surface of `parseAdvisoryVerdict` and `budgetExceeded` plus properties P-2 and P-3.
+All three are PLAN-level obligations, deliberately not smuggled into an AT id.
+
+**"Exactly one home" still holds after F-01's resolution, and it is a claim about files.** T-03-6's
+per-seam gate cases stay in one file, `advisoryDriver.test.js` — what F-01 split is which
+`describe.skip` **block** inside it, and therefore which task un-skips each. So the set-equality
+driver still has one enumeration site: a single case in A-22's block asserts that the file's in-file
+gate-case registry (`{A1, A2, A3, A4, A5} → owning task`) equals `ADVISORY_SEAMS` as a set, and the
+five per-seam cases are generated from that registry. A sixth seam therefore fails the suite at
+batch 9 — before any of the per-seam blocks is un-skipped — rather than passing silently for want of
+a case.
 
 ### 8.2 The four scope-level tests that no single case implies
 
@@ -751,7 +762,7 @@ no task can satisfy its own row while leaving the obligation open:
 |---|---|---|
 | T-02-6 — the V-8 triple for **every** refusal reason | one parameterised case per member of `ADVISORY_REFUSAL_REASONS`, driven off the exported constant so a new reason fails the suite until it has a case | A-07 |
 | T-03-3 — **every** X-a operation | seven named tests: assertion edit, test-file delete, test-case delete, rename out of the collected set, skip/xfail/only marker, parametrised-list narrowing, coverage/mutation threshold lowered | A-06 |
-| T-03-6 — **every** prohibition P-1…P-4 **and every gate row of TSPEC §5.4** (FSPEC §18.2's full quantification) | Two parts, both required. (a) Four prohibition cases, each asserting the negative *and* the V-8 positive triple on the same path. (b) **One parameterised case per `ADVISORY_SEAMS` member** — driven off the exported constant, so a new seam fails the suite until it has a case — asserting that the seam's `resolved` outcome is reachable **only** through its declared `verifyGate`: with that seam's gate stubbed to fail the disposition is never `resolved`, and with the gate replaced by `() => ({ passed: true })` the case fails, so the gate cannot be silently removed or stubbed. That is AC-4.5's five-row gate table (A1 none / A2 next-invocation triage / A3 DOD verify / A4 rebase+tests / A5 rollup read; TSPEC §5.4's five `verifyGate` rows) given a named case of its own — the per-seam T-05/T-06/T-07 cases exercise `verifyGate` only incidentally. | A-07 (🔴); A-23, A-24 (🟢 owners of the seams' gates) |
+| T-03-6 — **every** prohibition P-1…P-4 **and every gate row of TSPEC §5.4** (FSPEC §18.2's full quantification) | Two parts, both required. (a) Four prohibition cases, each asserting the negative *and* the V-8 positive triple on the same path. (b) **One parameterised case per `ADVISORY_SEAMS` member** — driven off the exported constant, so a new seam fails the suite until it has a case — asserting that the seam's `resolved` outcome is reachable **only** through its declared `verifyGate`: with that seam's gate stubbed to fail the disposition is never `resolved`, and with the gate replaced by `() => ({ passed: true })` the case fails, so the gate cannot be silently removed or stubbed. That is AC-4.5's five-row gate table (A1 none / A2 next-invocation triage / A3 DOD verify / A4 rebase+tests / A5 rollup read; TSPEC §5.4's five `verifyGate` rows) given a named case of its own — the per-seam T-05/T-06/T-07 cases exercise `verifyGate` only incidentally. **All of it lives in `advisoryDriver.test.js`; what differs is which `describe.skip` block, and therefore which task un-skips it** (§3's rule: the un-skipper is the task landing the last symbol the block's cases exercise). Registry: A3 and A4 ⇒ block `A-23 — A3/A4 gate exclusivity` (A-23 lands both gates, batch 10); A5 ⇒ block `A-24 — A5 gate exclusivity` (batch 11); A1 and A2 ⇒ block `A-31 — A1/A2 gate exclusivity` (A2's `verifyGate` is the last symbol, batch 12; A1 declares **no** gate, so its case asserts `verifyGate == null` and that `resolved` is unreachable at A1 at all, matching AC-4.5's first row). Part (a)'s four prohibition cases need only the driver and ride in `A-22 — driver lifecycle` (batch 9), together with the single set-equality case over the registry. | A-07 (🔴); A-22 (a) + A-23, A-24, A-31 (b) |
 | T-03-8 — the shipped closed sets | set-equality against `ENVELOPE_DEFAULTS` and `ADVISORY_EXCLUSIONS` as exported literals; explicitly **not** parameterised by capability probes | A-06 |
 
 ### 8.3 Two coverage notes for the reviewer
