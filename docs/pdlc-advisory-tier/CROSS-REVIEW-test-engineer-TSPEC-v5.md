@@ -28,8 +28,25 @@ Nothing previously approved is broken by this delta. Specifically re-checked, be
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | §6.4.1's Reachability paragraph says "Queue-side unit tests inject a `_commitPaths` double rather than relying on the free identifier (§13.3)", but §13.3's table names the class generically ("queue-side free identifiers — `_runAdvisorySeam` etc."). I read `_commitPaths` as covered by that row and filed no finding; confirm that reading is intended rather than a missing table row. |
+
 ## Positive Observations
+
+- **E-5 is the edit that mattered most for testability.** A commit-pinned-but-scenario-unpinned fixture is exactly the shape that goes false-red under harmless drift and vacuously green under a narrowed scenario — the classic unfalsifiable-oracle failure mode. The fix does the right thing twice over: it makes the two runs comparable *by construction* (same `reqPath`, `forcePhases`, `agentDoubles`, `config`) rather than by assertion, and it gives the staleness condition its own distinct failure mode instead of letting it masquerade as a created-file diff. A reader of a red build now learns which of the two things broke.
+- **E-2 was fixed at the mechanism level, not the wording level.** The document could have satisfied the erratum by naming a different mechanism; instead it exported the one symbol actually needed, said so in both §2.3 and §6.4.1, and explicitly reasoned about why `gitWithLockRetry` does *not* need exporting. That reasoning is checkable and correct — `commitPaths` closes over it in the same module scope, which survives `stripModuleSyntax`.
+- **E-1's correction is narrower than the erratum demanded, and correctly so.** The `runtimeBundle.test.js` half of the claim was true and was kept; only the manifest half was dropped, with the per-artifact rule and its line cite stated positively so a future reader cannot re-introduce the error.
+- **E-3/E-4 removed a real test hazard, not just a mis-attribution.** "Deliberate deviation from C-2" would have produced tests pinned to a deviation that does not exist, i.e. tests asserting divergence from FSPEC. Restating it as conformance means the tests now pin `FSPEC:145` itself, which is the durable oracle.
+- The §18 changelog enumerates all five edits with their cites, so the next reviewer can verify this round without re-deriving the diff.
 
 ## Recommendation
 
+**Approved**
+
+The delta resolves every erratum item routed to this document, each cite lands on the code or FSPEC line it names, and nothing previously approved is weakened. F-01 is a Low documentation-placement note that does not gate implementation.
+
 ## Verdict
+
+VERDICT: Approved
+{"high": 0, "medium": 0, "low": 1}
