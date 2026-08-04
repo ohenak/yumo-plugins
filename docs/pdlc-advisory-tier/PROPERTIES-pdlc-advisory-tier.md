@@ -388,7 +388,7 @@ A-22 🟢). PLAN §8.1 places all six FSPEC T-02 cases in the driver file.
 |---|---|---|---|---|---|
 | PROP-BUD-01 | `budgetExceeded({attempts, attemptBudget, elapsedMs, waitMs, seamBudgetMinutes})` must be pure — no clock, no IO — and must return `true` iff `attempts >= attemptBudget` **or** `elapsedMs - waitMs >= seamBudgetMinutes * 60_000`. | Functional | Unit | AC-2.4, NFR-4, V-5 | `advisoryVerdict.test.js` |
 | PROP-BUD-02 | The wall-clock comparison must **exclude** accumulated check-rollup wait: adding any `waitMs` must never flip a `false` result to `true`, for any fixed `elapsedMs`. | Data Integrity | Unit | NFR-4, A5-3, T-07-12 | `advisoryVerdict.test.js` |
-| PROP-BUD-03 | `waitMs` must be zero for every seam but A5. Asserted against a surface that exists: the **driver's accumulated `waitMs`**, captured at the argument the driver passes into `budgetExceeded` (spy on `budgetExceeded`, read `arg.waitMs`), must be `0` on every call of an A1, A2, A3 or A4 invocation — including one whose seam performed IO — and must be `> 0` on an A5 invocation that re-polled at least once. The A5 conjunct is the positive control: without it the property passes against a build that never accumulates wait anywhere. | Contract | Unit | NFR-4, TSPEC §4.5 | `advisoryVerdict.test.js` (arithmetic) + `A-22 — driver lifecycle` (the accumulated value) |
+| PROP-BUD-03 | `waitMs` must be zero for every seam but A5. Asserted against a surface that exists: the **driver's accumulated `waitMs`**, captured at the argument the driver passes into `budgetExceeded` (spy on `budgetExceeded`, read `arg.waitMs`), must be `0` on every call of an A1, A2, A3 or A4 invocation — including one whose seam performed IO — and must be `> 0` on an A5 invocation that re-polled at least once. The A5 conjunct is the positive control: without it the property passes against a build that never accumulates wait anywhere. | Contract | Unit | NFR-4, TSPEC §4.5 | `advisoryVerdict.test.js` (arithmetic) + `advisoryDriver.test.js`, block `A-22 — driver lifecycle` (the accumulated value) |
 | PROP-BUD-04 | Whichever bound is reached first must end the invocation, and the reason must be computed **once at termination** from the terminating condition — never accumulated across attempts. A run whose earlier attempts were malformed and which ends on the attempt bound must report `budget-exhausted`, not `malformed-verdict`. | Functional | Unit | V-5, FSPEC §5.3 opening clause, T-02-4 | `advisoryVerdict.test.js` (arithmetic) + `advisoryDriver.test.js` (the terminating reason) |
 
 **Why PROP-BUD-03 does not assert against `SeamOps`.** TSPEC §4.3's `SeamOps` typedef declares nine
@@ -641,7 +641,7 @@ real-tree comparisons live (`__tests__/fixtures/tmpGitFixture.js`), per PLAN §6
 | PROP-A4-06 | A resolution whose test run then fails must revert to the **pre-seam head** (`git rebase --abort`) with reason `post-action-verification-failed`, and the branch must be byte-identical to its pre-seam state (O-2). | Error Handling | Unit | AC-7.4, T-06-3 | `advisoryDodSeams.test.js` |
 | PROP-A4-07 | After **any** A4 outcome the branch must be in exactly one of two states — rebased with green tests, or unchanged from the pre-seam head. No third state (partially resolved, rebase in progress, dirty tree) is admissible. | Data Integrity | Integration | BR-5, A4-6, T-06-6 | `advisoryDodSeams.test.js` (`tmpGitFixture.js`) |
 | PROP-A4-08 | `declaredScope` at A4 must be PLAN-named files ∪ `git diff --name-only {mergeBase}..{preRebaseHead}` — the **pre-rebase** head, captured before `rebaseOntoDefault` (`orchestrate-dev.js:6254`) is called. | Data Integrity | Unit | AC-3.4(d), A4-3 | `advisoryDodSeams.test.js` |
-| PROP-A4-09 | Where `implementation.testCommand` is `null` or `_runCommand` is not a function (the same two-part check Phase I makes), the resolution **cannot be verified**, so the seam must revert and escalate — never degrade to a self-report as Phase I does. Covered twice, deliberately: the routing decision as a Seam-unit property over the real `verifyGate`, and the phase wiring as an Integration property driving the real Phase DOD body to the pre-existing rebase-conflict `haltError`. **Neither carries an FSPEC case id** — this is a TSPEC/PLAN-level obligation and no `T-06-7` is invented for it (§13 item 3). | Error Handling | Unit + Integration | TSPEC §7.4, PLAN §8.3 note 1 | `advisoryDodSeams.test.js` (A-10 🔴 → A-23 unit, A-25 integration) |
+| PROP-A4-09 | Where `implementation.testCommand` is `null` or `_runCommand` is not a function (the same two-part check Phase I makes), the resolution **cannot be verified**, so the seam must revert and escalate — never degrade to a self-report as Phase I does. Covered twice, deliberately: the routing decision as a Seam-unit property over the real `verifyGate`, and the phase wiring as an Integration property driving the real Phase DOD body to the pre-existing rebase-conflict `haltError`. **Neither carries an FSPEC case id** — this is a TSPEC/PLAN-level obligation and no `T-06-7` is invented for it (§13.2). | Error Handling | Unit + Integration | TSPEC §7.4, PLAN §8.3 note 1 | `advisoryDodSeams.test.js` (A-10 🔴 → A-23 unit, A-25 integration) |
 | PROP-A4-10 | "Tests pass but the tree is dirty" must be caught: `producedPaths` must be re-read **after** `verifyGate`'s rebase completes and any path outside the conflict set must fail E-R2 and revert whole. | Data Integrity | Unit | TSPEC §7.4, E-R2 | `advisoryDodSeams.test.js` |
 | PROP-A4-11 | An empty conflict set at `conditionHolds` must yield `no-action` — recorded, counted, and leaving the phase to continue from its own re-read. | Functional | Unit | V-7, TSPEC §7.3 | `advisoryDodSeams.test.js` |
 
@@ -953,7 +953,7 @@ All 36 tasks of PLAN §3's table are listed; none is without a property obligati
 | A-04 🔴 | PROP-RUNG-01 … PROP-RUNG-09 |
 | A-05 🔴 | PROP-VER-01 … PROP-VER-05, PROP-BUD-01 … PROP-BUD-04, P-2, P-3 |
 | A-06 🔴 | PROP-ENV-01 … PROP-ENV-13, PROP-XA-01 … PROP-XA-08, PROP-REF-01 … PROP-REF-05, PROP-PROH-05, PROP-INFRA-04, P-4, P-5 |
-| A-07 🔴 | PROP-LIFE-01 … PROP-LIFE-13, PROP-PROH-01 … PROP-PROH-04, PROP-GATE-01 … PROP-GATE-06 (authored across the four blocks) |
+| A-07 🔴 | PROP-LIFE-01 … PROP-LIFE-13, PROP-PROH-01 … PROP-PROH-04, PROP-GATE-01 … PROP-GATE-06 (authored across the four blocks), **PROP-BUD-03's driver half** (the accumulated `waitMs` handed to `budgetExceeded`, in block `A-22 — driver lifecycle`; the arithmetic half is A-05's) |
 | A-08 🔴 | PROP-REC-01 … PROP-REC-08, PROP-SUM-01 … PROP-SUM-03, P-6 |
 | A-09 🔴 | PROP-ESC-01 … PROP-ESC-09, P-7 |
 | A-10 🔴 | PROP-A3-01 … PROP-A3-11, PROP-A4-01 … PROP-A4-11, PROP-ENV-05/06 (tree half), P-8, P-9 |
@@ -968,7 +968,7 @@ All 36 tasks of PLAN §3's table are listed; none is without a property obligati
 | A-19 🟢 | PROP-VER-01 … PROP-VER-05, PROP-BUD-01 … PROP-BUD-04, P-2, P-3 |
 | A-20 🟢 | PROP-ENV-01 … PROP-ENV-13, PROP-XA-01 … PROP-XA-08, PROP-REF-01 … PROP-REF-05, P-4, P-5 |
 | A-21 🟢 | PROP-REC-01 … PROP-REC-08, PROP-ESC-01 … PROP-ESC-09, PROP-SUM-01 … PROP-SUM-03, P-6, P-7 |
-| A-22 🟢 | PROP-LIFE-01 … PROP-LIFE-13, PROP-PROH-01 … PROP-PROH-04, PROP-GATE-06 |
+| A-22 🟢 | PROP-LIFE-01 … PROP-LIFE-13, PROP-PROH-01 … PROP-PROH-04, PROP-GATE-06, PROP-BUD-03's driver half |
 | A-23 🟢 | PROP-A3-01 … PROP-A3-11, PROP-A4-01 … PROP-A4-11, PROP-GATE (A3, A4 rows), P-8, P-9 |
 | A-24 🟢 | PROP-A5-01 … PROP-A5-12, PROP-A5-16 … PROP-A5-18, PROP-A5-20, PROP-GATE (A5 row) |
 | A-25 🟢 | PROP-A3-05, PROP-A3-07, PROP-A4-03, PROP-A4-09 (integration half), PROP-REG-01, PROP-ESC-06 |
@@ -990,8 +990,9 @@ leaving the reader to infer it.
 ### 12.3 Test files — every one exists or is explicitly new
 
 Verified against the working tree while authoring: `pdlc/workflows/__tests__/` contains **no**
-`advisory*` file today, so all fourteen below are **new**, created by the 🔴 task named in PLAN §4's
-manifest. The two shipped helper modules the new files compose with — `helpers/mergeDoubles.js`,
+`advisory*` file today, so all **fourteen** `*.test.js` files below are new, created by the 🔴 task
+named in PLAN §4's manifest — as are the three non-collected rows beneath them (one helper module, two
+fixtures). The two shipped helper modules the new files compose with — `helpers/mergeDoubles.js`,
 `helpers/driftGenerators.js` — and `fixtures/tmpGitFixture.js`, `helpers/seams.js`,
 `helpers/guardFixtures.js` all **exist today** and are reused, not re-authored.
 
@@ -1003,7 +1004,7 @@ manifest. The two shipped helper modules the new files compose with — `helpers
 | `advisoryRung.test.js` | A-04 | Unit + Integration | PROP-RUNG-* |
 | `advisoryVerdict.test.js` | A-05 | Unit | PROP-VER-*, PROP-BUD-*, P-2, P-3 |
 | `advisoryEnvelope.test.js` | A-06 | Unit | PROP-ENV-*, PROP-XA-*, PROP-REF-*, P-4, P-5 |
-| `advisoryDriver.test.js` | A-07 | Unit | PROP-LIFE-*, PROP-PROH-*, PROP-GATE-* |
+| `advisoryDriver.test.js` | A-07 | Unit | PROP-LIFE-*, PROP-PROH-*, PROP-GATE-*, PROP-BUD-03 (driver half), PROP-BUD-04 (terminating reason) |
 | `advisoryRecord.test.js` | A-08 | Unit | PROP-REC-*, PROP-SUM-01…03, P-6 |
 | `advisoryEscalationLog.test.js` | A-09 | Unit | PROP-ESC-*, P-7 |
 | `advisoryDodSeams.test.js` | A-10 | Unit + Integration (real tree) | PROP-A3-*, PROP-A4-*, P-8, P-9 |
@@ -1012,6 +1013,7 @@ manifest. The two shipped helper modules the new files compose with — `helpers
 | `advisoryHarvest.test.js` | A-13 | Unit + Integration | PROP-HARV-*, PROP-SUM-04 |
 | `advisoryBundle.test.js` | A-14 | Unit | PROP-REG-04, -05 |
 | `fixtures/created-files-26c3f1c.json` (fixture) | A-15 | — | PROP-INFRA-03 |
+| `fixtures/scanFixtures.js` (fixture module, not collected) | A-01 proposed — **no PLAN ownership row yet** (§13.1 item 5) | — | PROP-INFRA-01, PROP-REG-08 |
 | `advisoryDisabled.test.js` | A-16 | Unit + Integration | PROP-DIS-*, PROP-SUM-06, PROP-REG-08 |
 
 **Level totals.** 195 distinct properties: **148 Unit, 40 Integration, 7 asserted at both levels, 0
@@ -1028,10 +1030,13 @@ mechanically over this document: every one of the 81 ids must appear in at least
 `Traces` cell or in a property's prose. **All 81 are cited.** The audit is stated as set equality in
 both directions — an FSPEC case cited by no property is a coverage gap, and a `T-nn-n` cited here
 that FSPEC §18.1 does not declare is an invented case. The audit has exactly one sanctioned exception:
-`T-06-7` appears once, in PROP-A4-09, **as a negation** — the property states in as many words that
-no such case is invented for the `implementation.testCommand` degradation path, which is a
-TSPEC/PLAN-level obligation (§13.2). A scan implementing this audit must read that mention as the
-declaration of absence it is, not as a citation.
+`T-06-7` is cited by no property — it appears in **PROP-A4-09 (§8.1) as a negation**, the property
+stating in as many words that no such case is invented for the `implementation.testCommand`
+degradation path, which is a TSPEC/PLAN-level obligation (§13.2). A scan implementing this audit must
+read that one mention as the declaration of absence it is, not as a citation. **The declaration lives
+in PROP-A4-09 and nowhere else**; the id also occurs in this paragraph, which is the audit's own
+description of the exception and not a second declaration — a scan finding two occurrences has found
+the declaration plus this sentence, and a scan finding a third has found a real invented case.
 
 This direction exists because the other three cannot see this class of gap. §12.1 audits REQ→property
 and would pass with a whole FSPEC case family uncovered, since the AC above it has other properties.
