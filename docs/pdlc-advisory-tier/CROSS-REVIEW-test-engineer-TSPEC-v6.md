@@ -47,6 +47,31 @@ dropping coverage — which was the whole risk in this finding.
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| — | — | — | No findings. Both erratum items are resolved, and nothing in the delta regresses a section approved at v5. | — |
+
+**Regression check (what the delta could have broken, and did not):**
+
+- **§7.2 A3-7's ordering statement is byte-unchanged.** The edit is purely additive — nine lines
+  appended after the existing ordering sentence and the T-05-6 pointer. The property PLAN P-9
+  transcribes (`real-defect > mis-scoped-criterion > deferral-candidate`) still reads identically at
+  `TSPEC:856`, so the PLAN's line citation and every test derived from it stay valid.
+- **A3-1's own contract is untouched.** The new paragraph *cites* A3-1's completeness rule rather than
+  restating or widening it, so no second, drifting copy of the V-4 malformed condition was created.
+- **§7.4's substance is unchanged.** The diff replaces the id token with a descriptive name in the two
+  places it appeared and adds the "carries no FSPEC case id" clause. The test's oracle set — real
+  Phase DOD body at `dev:8281`, scripted rebase conflict → A4 dispatch → `testCommand: null`
+  `implConfig`, pre-existing `haltError` at `dev:8283-8287`, seam `outcome === "escalated"` with reason
+  on the report, `_runAdvisorySeam` fake plus a real `parseImplementationConfig` result — survives
+  verbatim, as does the explicit scope note that this proves phase wiring and the Seam-unit level
+  proves the routing branch. That two-level split was the reason I approved §7.4 at v5 and it is intact.
+- **Traceability is not weakened by dropping the id.** The test remains addressable — by PLAN task
+  (A-10 red, A-25 green) and by name — so the DoD trace still has a handle. FSPEC's AT-2/AT-4 mappings
+  (`FSPEC:1118`, `:1120`), which never referenced a T-06-7/8, are unaffected.
+- **Version discipline held.** The header row moved to `1.2 / 2026-08-04` and §18 gained a matching
+  changelog row describing both edits — so the erratum round is auditable from the document itself.
+
 ## Questions
 
 ## Positive Observations
