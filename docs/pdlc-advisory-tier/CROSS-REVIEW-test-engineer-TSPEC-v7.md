@@ -84,12 +84,32 @@ No test obligation was removed, no oracle weakened, no seam count or lifecycle s
 
 ## Positive Observations
 
-_(filled below)_
+- All three items are resolved at the level a testing lens cares about — the **oracle**, not the
+  prose. E-1 deletes a shipped implementation that collided with a mutation oracle; E-2 names the
+  surface an assertion can read; E-3 replaces a matcher that matched one site with a matcher, a file
+  set, and an exclusion rule. In each case the document now says something a test can be written
+  from without a clarifying question.
+- E-1 is fixed in all four places the stub appeared rather than the one the finding cited, and the
+  typedef was widened to match. A partial fix here would have left §4.3 declaring a non-nullable
+  member while §5.5 assigned `null` — the kind of divergence that surfaces as a type error at
+  implementation time, not review time.
+- E-3's fix pre-empts the obvious follow-on defect: it says *why* `parseAdvisoryConfig` is excluded
+  (so a legitimate refactor of the parser cannot move the expected total) and *why* the report site
+  is not a fourth read (it derives from `_state`). That is the difference between a count that stays
+  green for the right reason and one that gets loosened the first time someone touches the parser.
+- The three edits are narrowly scoped and additive, and §18's v1.3 row records each with its
+  rationale. Nothing settled at v1.1/v1.2 was reopened, and the delta is legible without re-reading
+  the document.
 
 ## Recommendation
 
-_(filled below)_
+**Approved**
+
+All three erratum items are resolved on their merits, and the delta breaks nothing I approved at v6.
+My prior approval of TSPEC-pdlc-advisory-tier stands and extends to v1.3. Q-01 is editorial, carries
+no severity, and is not a condition of this approval.
 
 ## Verdict
 
-_(filled last)_
+VERDICT: Approved
+{"high": 0, "medium": 0, "low": 0}
