@@ -44,6 +44,14 @@ Low only — no High, no Medium, so the approval bar is met.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | The TSPEC metadata now reads `approved` at version `1.0` while the FSPEC it derives from has advanced to `1.4`. Should the TSPEC's own version increment when it is re-synchronised to a new FSPEC version, so a later reader can tell which FSPEC revision the approval was against? Not a finding — the approval anchors (`APPROVAL-HASH` / `REVIEWED-COMMIT`) already pin the bytes — but a version bump alongside the F-01 edit would make the pairing legible without git archaeology. |
+
 ## Positive Observations
+
+- **The upstream converged on this TSPEC's answers, not the other way round.** Both errata this document raised against FSPEC v1.2 were adopted upstream verbatim in substance — C-2's report is now gated on the tier resolving enabled, and the A2 record-before-commit order is now FSPEC's own rule. That is the erratum channel working as designed: the TSPEC named a genuine upstream contradiction, recorded an unblocking resolution, and the FSPEC ratified it. The only residue is the stale framing in F-01.
+- **Fidelity survived an upstream revision untouched.** The TSPEC needed **zero** substantive edits to remain faithful to FSPEC v1.4 — every amended rule (C-2, §4.1/A2-6, D-6's `26c3f1c` baseline) already matched. That is the strongest available evidence that the v2/v3 corrections were made at the root rather than papered over.
+- **The D-6 baseline story is now fully closed on both sides.** REQ BL-02, FSPEC §2/D-6/T-10-3 and TSPEC §1.1/§11.2/§14.2 all name `26c3f1c`, the fixture name matches (`created-files-26c3f1c.json`), and the literal-transcription discipline the AC demands (expected set transcribed, never re-derived by running the code under test) is stated in both documents — no implementation echo.
 
 ## Recommendation
