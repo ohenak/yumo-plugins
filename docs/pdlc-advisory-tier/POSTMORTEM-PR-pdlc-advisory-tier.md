@@ -217,6 +217,84 @@ preserves the eight-member set-equality assertion rather than trading it away. T
 
 ## Recommendation
 
+The findings are small, bounded and already diagnosed by the confirming reviewer, who supplied the fix
+text. Clearing this halt is one decision plus a prose edit and a re-confirmation — **not** a re-run of
+Phase PR, and not a scope, batch or dependency change. te-review states it explicitly: "the fix is
+confined to prose inside one §8.2 table cell, and the re-parse result will be unchanged."
+
+**R-1 — Decide A3's gate once, at the level where the conflict lives (FSPEC ⟷ TSPEC).** This is the
+only judgement call in the list; everything else follows from it. The evidence favours **A3 has no
+post-action gate**: A3's `permittedActions` is `[]` (`TSPEC:863`, FSPEC §7.2 A3-6), so the driver never
+reaches step 6, no resolution is ever applied, and there is nothing for a gate to verify — the same
+argument FSPEC already accepts for A1 ("**none.** … A1 has no independent post-action gate; safety
+rests on A1-3's escalate-when-unsettled rule"). If that is the resolution, **FSPEC §5.4's A3 row is
+what changes**: restate it in A1's form (no independent post-action gate; A3's product is a
+classification only; Phase DOD's verify step is the *next invocation's* input, not this seam's gate),
+and TSPEC v1.3 needs no further edit. If instead A3 genuinely retains a gate, TSPEC §5.5/§7.2 revert to
+that and the PLAN's A1-only edit was correct as written. **Record the decision explicitly** — in
+`DECISIONS-pdlc-advisory-tier.md` or the amended §5.4 row itself — so the next reader does not re-open
+it. Do not resolve this by editing the PLAN.
+
+**R-2 — Apply te F-01's fix to `PLAN:869` (four clauses, one sentence each).** Under the R-1 = "no
+gate" resolution, transcribe PROPERTIES §6's form (`PROPERTIES:559-568`) verbatim rather than
+paraphrasing it:
+
+1. Say **A1 and A3** declare no gate: for both, the mutation is to *install*
+   `async () => ({ passed: true })` and the case must **fail** when it is installed; both assert
+   `verifyGate === null`, that `resolved` is unreachable on every path, and that the seam terminates in
+   `escalated` or `no-action` with its own O-1 triple.
+2. Replace "A1 is the direction that runs backwards" with "**A1 and A3 run backwards**".
+3. Correct "A-23 lands both gates" to "A-23 lands **A4's gate and A3's gateless seam**" — `PLAN:274`
+   already describes A-23 that way, so this removes a self-contradiction inside the PLAN.
+4. Repoint the citation in the same clause from TSPEC §5.4 to **TSPEC §5.5** (te F-02 = pm F-01; both
+   reviewers raised it). pm F-01 prefers the fuller form: "FSPEC §5.4's gate table; TSPEC §5.5's five
+   `verifyGate` rows" — adopt that, since the five-row *content* does come from FSPEC §5.4.
+
+**R-3 — Close te F-03 in PROPERTIES on its next touch (no round of its own).** Strike the "A-01
+proposed — no PLAN ownership row yet" note at `PROPERTIES:1045` and the open-erratum item 5 at
+`PROPERTIES:1126-1129`: `PLAN:252`/`:308` now carry the row and `validatePlanContract` passes. te-review
+deliberately did not route this as a new erratum; it must not be re-raised by a later reviewer, and
+harvest must not preserve a closed erratum as durable signal.
+
+**R-4 — Re-confirm as the next append-only round, one reviewer, delta-scoped.** After R-1/R-2 land as
+PLAN v1.7 (plus whichever of FSPEC/TSPEC R-1 touches), dispatch **te-review** to write
+`CROSS-REVIEW-test-engineer-PLAN-v7.md` confirming only that (a) §8.2 now states the gateless form for
+A1 **and** A3, (b) the A-23 description and the §5.5 citation are corrected, and (c) nothing else
+moved. pm-review already approved this delta at `-v6` (`VERDICT: Approved`, `{0,0,2}`) and its two Lows
+are both addressed by R-2's clauses 3–4, so it need not be re-run for the PLAN; if R-1 amends FSPEC,
+that document's own approvers confirm that edit separately. Re-append approval anchors on PASS so the
+PLAN approval does not go stale, and re-run the contract gate (`parsePlanTasks` / `validatePlanContract`
+/ `computeTopologicalBatches`) — the expected result is unchanged at 36 tasks, `{"ok":true}`,
+20 batches.
+
+**R-5 — Answer te-review's two open questions while editing §8.2; the second is a real oracle hole.**
+Q-02 asks whether the generated per-seam case branches on gate-declared vs gateless by reading an
+explicit registry column or by inspecting the shipped `SeamOps` at test time. Keying it off the shipped
+object makes the test agree with whatever the implementation does — a seam that silently *lost* its
+gate would take the gateless branch and pass, which is precisely the mutation T-03-6(b) exists to
+catch. Name the explicit registry column (e.g. `gate: null`) in §8.2 before A-07 authors it. Q-01 asks
+for a half-sentence recording *why* A1's and A3's now-identical case bodies live in different blocks
+(`A-31` and `A-23`) — the un-skipper rule follows the last symbol the block's cases exercise, which for
+A1 is A2's `verifyGate`. Cheap, and it stops a future reader deleting one as a duplicate.
+
+**R-6 — This is the erratum protocol's one round for this document, so it must clear by verification,
+not by re-opening the channel.** The bound is one erratum round per upstream doc per phase and it is
+spent. The clearance path is the one this POSTMORTEM's lifecycle defines: land R-1–R-4 on the branch,
+then flip this file's `RESOLVED:` marker to `yes` in a commit that names what addressed each finding —
+the A3 gate decision and where it is recorded, the `PLAN:869` edit sha, and the te-review
+re-confirmation sha. Do **not** route a fresh erratum to re-argue A3.
+
+**R-7 (process, non-blocking) — two candidate LEARNINGS.** (a) *An erratum fix should be scoped to the
+upstream change, not to the erratum's wording.* When a routed item is resolved by pointing at another
+document's edit, read that edit's full extent — here, one sentence covering two seams — before writing
+the fix. (b) *Read the child document that raised the erratum while writing the parent's fix.*
+PROPERTIES §6 already stated the correct both-seams form and had predicted this exact failure at
+`PROPERTIES:568`; consulting it would have produced the right sentence first time. Both belong in
+`LEARNINGS-pdlc-advisory-tier.md`, alongside `POSTMORTEM-T`'s R-5 (errata should carry their
+grounding at emission) — the three are the same theme from three angles: **the erratum channel is
+low-friction by design, and every one of its failure modes so far has been a missing check at the
+emission or application step, never at confirmation.**
+
 ---
 
 RESOLVED: no
