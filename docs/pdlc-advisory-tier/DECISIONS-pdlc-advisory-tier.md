@@ -108,6 +108,48 @@ except through injected seams.
 
 ## DEC-ADV-02: One `runAdvisorySeam` driver behind an injected `SeamOps`, not five per-seam functions
 
+**Context.** Five seams (A1…A5) share one lifecycle — diagnose, validate, gate, act, check, verify,
+record — plus one attempt/wall-clock budget, one refusal ladder, one record format and one escalation
+format. They differ only in evidence, prompt, what "act" means, and what gate ends them.
+
+**Decision.** One driver, `runAdvisorySeam`, owns the whole lifecycle and knows nothing seam-specific;
+everything seam-specific is behind the injected `SeamOps` protocol (TSPEC §4.3, §4.4). This is also
+what lets A1/A2's `SeamOps` live in `orchestrate-queue.js` while the driver lives in
+`orchestrate-dev.js` (DEC-ADV-01).
+
+**Alternatives considered.**
+
+- **A function per seam — rejected.** It would place the budget arithmetic, the envelope gate, the
+  refusal ladder, the record write and the escalation write in five places. FSPEC V-8 ("every
+  escalation produces the same observable triple") would then be five things to keep in step instead
+  of one structural fact, and the same is true of V-7's three-value disposition set and R-4's
+  record-even-on-no-action rule.
+- **A shared base with per-seam overrides (template method) — rejected.** These modules are plain ES
+  modules with no class hierarchy anywhere: the shipped composition idiom throughout is a pure
+  function plus injected function-valued parameters — `parseMergeConfig` (`dev:101`), `decideMerge`
+  (`dev:835`), `classifyPrState` (`dev:380`), `phaseMerge`'s injected seams (`dev:1361`). An
+  injected record of closures is the same idiom; a class hierarchy would be the only one in the file.
+- **Branching on `seam` inside one driver — rejected.** It reintroduces per-seam divergence without
+  the type separation, and makes A5's and A2's step re-ordering a driver `if`, which DEC-ADV-03
+  deliberately avoids.
+
+**The cost, stated plainly.** The uniform driver forces the `apply` / `verifyGate` split
+(DEC-ADV-03), which is less obvious at a reading than an explicit per-seam branch would be. That cost
+is accepted because it buys a single place where every FSPEC tier-wide invariant is enforced.
+
+**Constraints that forced this shape.** FSPEC V-7/V-8's tier-wide invariants; DC-01 (a
+boundary-crossing contract is closed and total) — `SeamOps` and `AdvisoryDisposition` are exactly such
+contracts; the two-module split imposed by DEC-ADV-01.
+
+**Reversibility: hard.** `SeamOps` is the contract every seam, every test double and every unit test
+is written against; unwinding it means rewriting all five seams and their suites.
+
+**Re-evaluation triggers.**
+1. A sixth seam whose lifecycle genuinely differs at more than `apply`/`verifyGate` — at that point
+   the uniform driver is being bent rather than used.
+2. Two or more seams needing a driver-level `if (seam === …)`; the first such branch is the signal
+   the abstraction stopped paying.
+
 ## DEC-ADV-03: The irreversible act lives in `verifyGate`, so RECORD precedes it
 
 ## DEC-ADV-04: The advisory rung is a literal alias with a separate fallback constant, and the fallback is a shipped path
