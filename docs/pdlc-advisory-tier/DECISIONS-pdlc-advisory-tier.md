@@ -152,6 +152,56 @@ is written against; unwinding it means rewriting all five seams and their suites
 
 ## DEC-ADV-03: The irreversible act lives in `verifyGate`, so RECORD precedes it
 
+**Context.** FSPEC §4.1 numbers the lifecycle 1…7 with RECORD last, but two of its own rules pull the
+other way: A2-6 requires an applied re-grounding to be **committed** before the invocation ends, and
+R-2 requires a failed record write to **un-take** the action. Read literally, a failed record write
+after an A2 commit demands undoing a commit — which BR-5's two-tree-states invariant does not
+sanction. A5 has the same shape with a push instead of a commit.
+
+**Decision.** `SeamOps.apply` is defined as *"do everything up to but not including the irreversible
+act"*, and `SeamOps.verifyGate` as *"perform the irreversible act, then run the gate"*. RECORD (step 7)
+therefore runs **before** the commit/push at exactly the seams whose act is irreversible (A2, A5), and
+a step-7 failure reverts a **working-tree edit only** (TSPEC §4.4, §6.4.1). The driver's step order
+stays uniform across all five seams.
+
+**Alternatives considered.**
+
+- **The literal FSPEC §4.1 order with an A5 special case in the driver — rejected.** It leaves A2's
+  commit/record ordering undefined (the same defect, unfixed), reintroduces the per-seam branch
+  DEC-ADV-02 exists to avoid, and eventually forces a `git reset` of a landed commit to satisfy R-2.
+- **Writing the record *before* the action — rejected on a hard fact, not a preference.** The record
+  carries the `Disposition` field (TSPEC §9.1's `| Disposition | escalated — budget-exhausted |` row),
+  and the disposition is not known until the action's outcome is. A record written first would have to
+  be rewritten, which contradicts the append-only rule R-3.
+- **Making the record write non-fatal (best-effort, like the escalation log) — rejected.** The
+  asymmetry is deliberate and directional: the record is a precondition of an action *surviving*, the
+  escalation log is not, because an escalation is the pipeline doing strictly less (TSPEC §4.6,
+  §17.2). Downgrading the record would let a resolution exist with no evidence that it happened.
+
+**Verified cost of the chosen shape — and one thing the TSPEC assumes that is not true today.**
+A2's `verifyGate` is specified as reusing `commitPaths` "verbatim, including its `gitWithLockRetry`
+behaviour" (TSPEC §6.4.1). Both are **module-private** in `orchestrate-dev.js`: `commitPaths` at
+`dev:6905` and `gitWithLockRetry` at `dev:6862` carry no `export` keyword, and neither appears in
+TSPEC §2.3's proposed prelude/export list. Since A2's `SeamOps` lives in `orchestrate-queue.js`
+(DEC-ADV-01), the reuse requires exporting `commitPaths` and adding it to the dev export list and the
+queue prelude — a real, small, additive edit that the PLAN must carry. The queue's own
+`commitQueueRow` (`queue:1162`) is **not** a substitute: it is a fixed two-invocation add/commit for
+one path with no lock retry. This is routed as an erratum against TSPEC; it does not change the
+decision, only its task list.
+
+**Constraints that forced this shape.** BR-5 (a seam leaves exactly one of two tree states); R-2
+(a failed record un-takes the action); R-3 (append-only record); A2-6 / A5-8 (durability of an applied
+fix); DC-01.
+
+**Reversibility: hard.** It shapes the `SeamOps` contract itself — every seam implementation and every
+driver test encodes this split.
+
+**Re-evaluation triggers.**
+1. FSPEC reconciling A2-6 and R-2 explicitly in some other way — the erratum may land a different
+   resolution, in which case this entry is superseded, not silently kept.
+2. A future seam whose irreversible act cannot be expressed as "one call at the end of `verifyGate`"
+   (e.g. one requiring two commits with a gate between them).
+
 ## DEC-ADV-04: The advisory rung is a literal alias with a separate fallback constant, and the fallback is a shipped path
 
 ## DEC-ADV-05: Rung resolution is lazy and its memo is a threaded parameter, never module state
