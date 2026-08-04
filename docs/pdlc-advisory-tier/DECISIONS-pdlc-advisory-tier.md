@@ -544,17 +544,27 @@ field remains correct if re-verification is added later.
 
 ## DEC-ADV-08: A disabled run suppresses the degraded-key notice at the emit, not in the parser
 
-**Context.** FSPEC C-2 says a malformed config key falls back alone **and the substitution is reported**
-on the run report. FSPEC D-5 / S-4 / T-10-4 say a **disabled** run carries **no** advisory content on
-the report. A malformed `advisory.enabled` satisfies both antecedents at once: it degrades to
-`enabled: false`, which is a disabled run that owes a report line it may not print. FSPEC never
-reconciles the two.
+**Context.** A malformed `advisory.enabled` sits under two rules at once: C-2 (a bad key falls back
+alone and the substitution is reported) and D-5 / S-4 / T-10-4 (a **disabled** run carries no advisory
+content on the report). **FSPEC C-2 already reconciles them**, and in exactly one direction —
+`FSPEC:145`: "The substitution is reported on the run report **only when the resolved configuration
+leaves the tier enabled** — a bad value that resolves the tier to disabled (e.g. a malformed
+`advisory.enabled`) produces a disabled run, which carries **no** advisory content on its report at
+all (§12 D-5, §10.3 S-4), this substitution notice included." So the *observable* is settled upstream.
+What FSPEC does not fix — and what a naive reading would get wrong — is **where** the suppression
+lives: in the parser, or at the caller that emits the report.
 
 **Decision.** `parseAdvisoryConfig` stays pure, total and uniform — it records **every** degraded key in
 `invalidKeys` regardless of the effective `enabled` — and the suppression happens at the **caller's
-emit**: the notice is printed only when `advisory.config.enabled` is true (TSPEC §3.2). The conflict is
-routed upstream as an erratum against FSPEC; this is the TSPEC-side resolution that unblocks
-implementation either way.
+emit**: the notice is printed only when `advisory.config.enabled` is true (TSPEC §3.2). This is a
+**conformance** choice, not a deviation and not a conflict resolution: it implements C-2 as written,
+and no erratum against FSPEC is owed or raised.
+
+**The oracle this implies is a straight test of C-2**, with two conjuncts, not a test of a deviation:
+given a malformed `advisory.enabled`, assert (a) `parseAdvisoryConfig(...).invalidKeys` contains
+`enabled` — the parser stays unconditional — **and** (b) the emitted report carries no substitution
+notice and no other advisory content. Conjunct (a) is what makes (b) falsifiable rather than
+absence-only: without it, "no notice" also passes for a parser that silently dropped the key.
 
 **Alternatives considered.**
 
@@ -563,7 +573,8 @@ implementation either way.
   in different runs and every unit test over it would need the `enabled` case duplicated. The parser is
   modelled on `parseImplementationConfig` (`dev:181`), whose value is precisely that its
   per-key-fallback-plus-`invalidKeys` contract is unconditional.
-- **Report the degraded key anyway and let D-5 lose — rejected.** D-6's equivalence claim (a disabled
+- **Report the degraded key anyway and let D-5 lose — rejected**, and since C-2's own text now names
+  this case it would contradict C-2 as well. D-6's equivalence claim (a disabled
   run is byte-for-byte the pre-feature run) is the feature's central safety property; a report line is
   a cheap thing to give up, and an equivalence claim with an exception is not an equivalence claim.
 - **Fail the run on a malformed `enabled` — rejected.** C-1 is explicit that no config defect may fail
@@ -578,9 +589,10 @@ byte-equivalence claim; DC-01 (a closed, total contract for `parseAdvisoryConfig
 **Reversibility: easy.** One `if` at one call site; the parser is untouched either way — which is the
 point of putting the choice there.
 
-**Re-evaluation triggers.** FSPEC resolving the C-2 / D-5 conflict differently via the erratum channel;
-or a decision to give disabled runs a diagnostic channel that is not the run report (a log line, say),
-which would let both rules hold literally.
+**Re-evaluation triggers.** C-2's report-only-when-enabled clause (`FSPEC:145`) being restated so that
+a disabled run *does* owe a substitution line — the placement question would then be reopened with the
+opposite answer; or a decision to give disabled runs a diagnostic channel that is not the run report
+(a log line, say), which would let both rules hold literally without touching the parser.
 
 ## DEC-ADV-09: The escalation log has no reader inside this tier
 
