@@ -95,7 +95,8 @@ would be re-proposed by a competent agent who had not seen the reason it lost.
 **The tier-level decision, stated once.** The advisory tier is built as a **seam layer inside the
 two existing workflow modules** — one driver plus five injected `SeamOps`, reached from the phase
 bodies that already own each halt — and not as a new skill, a new plugin, or a new build source.
-Every entry below is a consequence of that one choice or a resolution of a conflict it exposes.
+Every entry below is a consequence of that one choice, or the TSPEC-side expression of an upstream
+rule that choice forces the design to express somewhere specific.
 
 Two verified facts settle it, and both are about where the halt *lives*. First, each of the five
 seams sits at a site that is already inside these modules: A1 at the queue's Phase-0 triage
@@ -113,7 +114,7 @@ constraints and re-evaluation triggers.
 
 | ID | What was decided | Reversibility |
 |---|---|---|
-| DEC-ADV-01 | The advisory core lives in `orchestrate-dev.js`; the queue reaches it by prelude binding, not a fourth build source | easy |
+| DEC-ADV-01 | The advisory core lives in `orchestrate-dev.js`; the queue reaches it by prelude binding, not a fourth build source | easy, once the bundle-composition detector ships |
 | DEC-ADV-02 | One `runAdvisorySeam` driver behind an injected `SeamOps`, not five per-seam functions | hard |
 | DEC-ADV-03 | The irreversible act lives in `verifyGate`, so RECORD precedes it | hard |
 | DEC-ADV-04 | `MODEL_ADVISORY` is a literal alias; `MODEL_ADVISORY_FALLBACK` is a *separate* constant and its path is shipped, not an error path | easy |
