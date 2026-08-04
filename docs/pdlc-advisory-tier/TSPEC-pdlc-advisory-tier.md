@@ -13,7 +13,7 @@ feature: pdlc-advisory-tier
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | approved | Claude | 1.2 | 2026-08-04 |
+| pdlc | approved | Claude | 1.3 | 2026-08-04 |
 
 Revision history is in §18.
 
