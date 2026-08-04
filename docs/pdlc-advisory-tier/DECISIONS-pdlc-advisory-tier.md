@@ -341,10 +341,19 @@ a probe dispatch, and the fallback path is treated as a **shipped, tested path �
 
 **Alternatives considered.**
 
-- **Alias the fallback to `MODEL_DEFAULT` — rejected.** AC-1.3 requires the advisory rung to be
-  "always distinguishable" from the pipeline default. Aliasing makes that claim depend on an accident:
-  a future change repointing `MODEL_DEFAULT` would silently move the declared substitution to a
-  different rung, and no test would notice, because the two would still be equal.
+- **Alias the fallback to `MODEL_DEFAULT` — rejected.** The reason is AC-1.3's actual wording, not a
+  constants comparison. AC-1.3 (`REQ:76-80`) requires, on the fallback path, that the pipeline (a)
+  emits an `ADVISORY_MODEL_FALLBACK` warning **naming the unresolvable value and the substitute**,
+  (b) records the substitution in the advisory record and the report's advisory summary, and (c)
+  proceeds — the distinguishability it then claims is between **a run on the fallback rung and a run
+  on the intended rung**, carried by those three observables. It is *not* a claim that the fallback
+  literal differs from `MODEL_DEFAULT`. A separate constant is required because conjunct (a) names a
+  substitute: aliased, that warning would name whatever `MODEL_DEFAULT` later becomes, so a future
+  change repointing `MODEL_DEFAULT` would silently move the *declared* substitution to a different
+  rung with no test noticing. **The oracle this entry implies is therefore the three positive
+  conjuncts on the fallback path, never `expect(MODEL_ADVISORY_FALLBACK).not.toBe(MODEL_DEFAULT)`** —
+  the two literals are equal today (`"opus"`, `dev:1578`), and a constants comparison is structurally
+  incapable of falsifying anything AC-1.3 requires.
 - **Pin `MODEL_ADVISORY = "opus"` and skip the fallback machinery entirely — rejected.** It makes the
   advisory tier indistinguishable from every other phase, which defeats M-2's declaration requirement
   and AC-1.3; and the fallback machinery is needed anyway for the case where a *future* rung name is
@@ -362,6 +371,18 @@ runtime-side. The design's response is to make either outcome correct rather tha
 ships working whichever branch fires, which is what "non-fatal by construction" means. The PLAN carries
 a one-line manual verification (dispatch one trivial advisory agent on `"fable"` in a real runtime and
 record which branch fired); it is a **record**, not a gate.
+
+**"Non-fatal by construction" covers the fallback branch, not the no-rung branch.** Where *neither*
+rung resolves, REQ AC-1.4 applies unchanged: no advisory agent runs on an unresolved model and the run
+fails loudly with a model-resolution error — there is no third fallback and no silent revert to
+`MODEL_DEFAULT`. Two consequences worth stating so nobody files them as gaps. First, with
+`MODEL_ADVISORY_FALLBACK = "opus"` equal to `MODEL_DEFAULT` (`dev:1578`), **AC-1.4's branch is
+unreachable end-to-end**: if `"opus"` does not resolve, no phase of the pipeline runs at all, so no
+seam is ever reached to fail loudly. AC-1.4 is therefore a **unit-level obligation** on the
+classifier/driver with an injected dispatch double, never a whole-pipeline test — attempting the
+latter is building a test that cannot exist. Second, that unreachability is a property of today's
+literals, not of the design: it evaporates the moment `MODEL_ADVISORY_FALLBACK` is re-pinned away from
+`MODEL_DEFAULT`, which is trigger 3 below.
 
 **Reversibility: easy.** One constant, referenced once (M-5).
 
