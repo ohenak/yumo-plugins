@@ -664,7 +664,7 @@ aspirational.
 | T-08 | T-08-1 … T-08-10, T-08-4b | 11 | `advisoryRecord.test.js` (T-08-1, T-08-2, T-08-7, T-08-10), `advisoryHarvest.test.js` (T-08-3 … T-08-6, T-08-4b, T-08-8, T-08-9) | A-08, A-13 | A-21, A-27, A-28 |
 | T-09 | T-09-1 … T-09-8 | 8 | `advisoryEscalationLog.test.js` | A-09 | A-21 |
 | T-10 | T-10-1 … T-10-5 | 5 | `advisoryDisabled.test.js` | A-16 | A-33 |
-| — | **Total** | **81** | 13 files (11 above + `advisoryPreflight.test.js`, `advisoryBundle.test.js`) | — | — |
+| — | **Total** | **81** | **14 files** (the 12 distinct files above — `advisoryConfig`, `advisoryRung`, `advisoryVerdict`, `advisoryDriver`, `advisoryEnvelope`, `advisoryQueueSeams`, `advisoryDodSeams`, `advisoryPubSeam`, `advisoryRecord`, `advisoryHarvest`, `advisoryEscalationLog`, `advisoryDisabled` — plus `advisoryPreflight.test.js` and `advisoryBundle.test.js`), matching §4's manifest row-for-row | — | — |
 
 `advisoryPreflight.test.js` (A-01) and `advisoryBundle.test.js` (A-14) carry no FSPEC acceptance case:
 the first asserts the baseline this PLAN depends on, the second the bundle-composition obligation
@@ -679,7 +679,7 @@ no task can satisfy its own row while leaving the obligation open:
 |---|---|---|
 | T-02-6 — the V-8 triple for **every** refusal reason | one parameterised case per member of `ADVISORY_REFUSAL_REASONS`, driven off the exported constant so a new reason fails the suite until it has a case | A-07 |
 | T-03-3 — **every** X-a operation | seven named tests: assertion edit, test-file delete, test-case delete, rename out of the collected set, skip/xfail/only marker, parametrised-list narrowing, coverage/mutation threshold lowered | A-06 |
-| T-03-6 — **every** prohibition P-1…P-4 | four cases, each asserting the negative *and* the positive triple on the same path | A-07 |
+| T-03-6 — **every** prohibition P-1…P-4 **and every gate row of TSPEC §5.4** (FSPEC §18.2's full quantification) | Two parts, both required. (a) Four prohibition cases, each asserting the negative *and* the V-8 positive triple on the same path. (b) **One parameterised case per `ADVISORY_SEAMS` member** — driven off the exported constant, so a new seam fails the suite until it has a case — asserting that the seam's `resolved` outcome is reachable **only** through its declared `verifyGate`: with that seam's gate stubbed to fail the disposition is never `resolved`, and with the gate replaced by `() => ({ passed: true })` the case fails, so the gate cannot be silently removed or stubbed. That is AC-4.5's five-row gate table (A1 none / A2 next-invocation triage / A3 DOD verify / A4 rebase+tests / A5 rollup read; TSPEC §5.4's five `verifyGate` rows) given a named case of its own — the per-seam T-05/T-06/T-07 cases exercise `verifyGate` only incidentally. | A-07 (🔴); A-23, A-24 (🟢 owners of the seams' gates) |
 | T-03-8 — the shipped closed sets | set-equality against `ENVELOPE_DEFAULTS` and `ADVISORY_EXCLUSIONS` as exported literals; explicitly **not** parameterised by capability probes | A-06 |
 
 ### 8.3 Two coverage notes for the reviewer
