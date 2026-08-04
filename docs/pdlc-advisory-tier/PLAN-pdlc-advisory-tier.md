@@ -847,8 +847,9 @@ no task can satisfy its own row while leaving the obligation open:
 - [ ] `bash -n` passes over `pdlc/hooks/scripts/guard-harvest-before-delete.sh`, and its index mode is
       still `100755`.
 - [ ] `parsePlanTasks` + `computeTopologicalBatches` + `parsePlanOwnership` + `validatePlanContract`
-      all succeed against this PLAN. Re-executed after the v1.3 revision (test files added to the
-      green tasks' manifest rows) against `pdlc/workflows/orchestrate-dev.js` at HEAD: **36 tasks, 36
+      all succeed against this PLAN. Re-executed after the v1.4 revision (which adds a fenced JS
+      block to §5.2 — its `||=` pipes are inside a code fence and change nothing the parsers see)
+      against `pdlc/workflows/orchestrate-dev.js` at HEAD: **36 tasks, 36
       ownership rows, `validatePlanContract` ⇒ `{"ok":true}`, `computeTopologicalBatches` ⇒ 20
       batches, `computeWaves` ⇒ 20 waves identical to §5.2's transcription, no cycle, no batch-label
       warning.**
