@@ -78,4 +78,45 @@ question, from the erratum round rather than from this revision.
 
 ## Recommendation
 
+**Needs revision**
+
+> Any High or Medium finding → Needs revision. 0 High, 1 Medium, 4 Low.
+
+The v1.3 edit itself is correct and I would have approved it on its own: both v3 findings it set out
+to close are closed on the substance, the one number it asserts is one I re-executed rather than
+read, and it perturbed no property, oracle or count. What forces revision is not this edit but what
+moved underneath the document while it was being made — TSPEC v1.3's five erratum commits landed
+inside the same delta window and turned A1's and A3's `verifyGate` into a normative `null` with the
+passing stub explicitly named as a shape that must not ship. §6.5 was written against the previous
+TSPEC and has not been re-read since.
+
+Four things close this round, and none of them is a design change:
+
+1. **F-01 (Medium) — give A1/A3 a mutation control.** With `permittedActions: []`, a passing-stub
+   `verifyGate` at A1 is behaviourally invisible (`TSPEC:438-439`), so only a structural assertion
+   can catch it. Assert `seamOps.verifyGate === null` per gateless seam, state that installing
+   `async () => ({ passed: true })` must fail the case, and scope the "Two conjuncts, both required"
+   opener to A2/A4/A5. PLAN §8.2's T-03-6 row and `PLAN:258` already specify this and cite
+   `PROPERTIES:570-572` for the rationale; the oracle just has to exist where the test author looks
+   for it. This also subsumes v3 F-01, so it is one edit, not two.
+2. **F-02 (Low) — re-quote §6.5's three TSPEC citations** at `TSPEC:432-433`, `:655`, `:657`. Two of
+   the three quoted strings no longer exist in TSPEC at any line. `PLAN:274` still resolves exactly
+   and needs no change.
+3. **F-03 / F-04 (Low) — two sentences in §2.1.** Strike the "no PLAN ownership row … not absorbed"
+   clause (closed at `PLAN:308`), and repoint the jest-exclusion citation from the deleted `A-00` to
+   `pdlc/workflows/package.json:18-22`, which is the primary source and cannot go stale.
+4. **F-05 (Low) — close §13.1 item 6** the way item 5 was closed: TSPEC §11.1 now carries the
+   `/\.enabled\b/` matcher and the counted set of three (`TSPEC:1263-1270`), so the item records a
+   closure rather than an open defect, and its four other TSPEC line numbers get re-grounded in the
+   same pass.
+
+All four are text edits to two sections; no property statement, level, count or traceability row
+moves. I expect this to converge in the optimizer pass. **No errata are emitted this round** — the
+two I routed in v3 (TSPEC §11.1's grep assertion, PLAN §4's missing `scanFixtures.js` ownership row)
+have both been fixed upstream and verified here, and every finding above is a defect of this document
+rather than of one it derives from.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 0, "medium": 1, "low": 4}
