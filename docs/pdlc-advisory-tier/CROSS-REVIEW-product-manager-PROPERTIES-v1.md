@@ -39,4 +39,40 @@
 
 ## Recommendation
 
+**Needs revision** — three High findings, one Medium.
+
+This is a strong first version. The AC/NFR matrix is complete, the grounding citations are accurate,
+the prohibitions and the refusal ladder are proved the way AC-4.6 and AC-3.6 ask for, and §13's
+negative space is what let me distinguish deliberate omissions from real gaps. The three High
+findings are all of one kind: a control the REQ places in the **operator's** hands, or a rule the REQ
+makes **decidable**, that no property would falsify if it were dropped.
+
+To reach approval, exactly this must change:
+
+1. **F-01** — add a property that varies `advisory.envelope` away from `ENVELOPE_DEFAULTS` (e.g.
+   `["E-1"]`) and asserts the classification changes accordingly: the excluded action classifies
+   `inside: false` / `out-of-envelope` with O-1, while a still-listed action classifies inside on the
+   same fixture. Register it in §12.1 under AC-3.1 and AC-1.7, and in §12.2 under A-06 / A-20.
+2. **F-02** — add a property asserting E-2's three-conjunct decidable rule (passes at the merge-base
+   **and** at the default-branch tip, fails at the branch head), one fixture per dropped conjunct,
+   each paired with a positive in-envelope control. Register it in §12.1 under AC-3.3 and in §12.2
+   under A-11 / A-24.
+3. **F-03** — restate PROP-GATE-01…05 so the gate-failure path asserts the **positive** disposition
+   (`escalated`, reason `post-action-verification-failed`, O-1 in full) alongside the existing
+   mutation clause, and add PROP-GATE-01…05 to §12.1's AC-4.6 and NFR-2 rows so AC-4.5's membership
+   in AC-4.6's range is visible in the matrix.
+4. **F-04** — recount and restate the level totals in §1 and §12.3, or restate the budget as a
+   per-family cap with the count shown against it. The zero-E2E claim and its justification stand.
+
+F-05 is a one-word correction and does not gate approval on its own.
+
+Nothing here asks for new scope, and nothing here re-opens a settled decision: F-01 and F-02 ask for
+properties over rules the REQ already wrote, and F-03 asks for the positive half of an oracle AC-4.6
+already requires. Three upstream defects are routed as errata rather than folded into this verdict —
+two of them the document itself identified in §13.1, and I confirmed both against the upstream
+sources.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 3, "medium": 1, "low": 1}
