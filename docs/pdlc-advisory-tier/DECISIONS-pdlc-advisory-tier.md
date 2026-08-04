@@ -182,9 +182,28 @@ build source and no change to bundle composition**.
 (DEC-DIST-01); `wrapModule`'s explicit export set; the existing both-modules-in-both-bundles
 composition.
 
-**Reversibility: easy.** Extracting the core to a fourth source later is mechanical — the code is
-already a set of pure exported leaves plus one driver, with no `orchestrate-dev.js` internals reached
-except through injected seams.
+**The detector this decision needs, and does not have today.** The load-bearing fact —
+`devModule` and `queueModule` are both inlined into both bundles, `devModule` first — is asserted by
+**nothing**. `bundleTest` names the bundle files at `bundleTest:23` but never loads, evaluates or
+scans one for unresolved free identifiers: there is no `new Function`, no `eval`, and no assertion
+that the queue prelude's `__dev.<name>` references resolve against `devModule`'s published export
+list (`grep -n realMain pdlc/workflows/__tests__/runtimeBundle.test.js` returns only `:446`, a
+`stripModuleSyntax` unit case on an unrelated string). Today's single prelude binding
+(`const realMain = __dev.main;`) is a *shipped* binding, so a composition change breaks it at
+runtime, in a queue run, in the consumer's untracked copy — and after this feature the prelude
+carries the whole advisory core, so the blast radius is the seam layer. The PLAN therefore carries a
+bundle-composition assertion in the shape `bundleTest` already uses: for each bundle, **every
+`__dev.<name>` referenced by that bundle's prelude appears in that bundle's `devModule` export
+list**, and `devModule` precedes `queueModule` in the `contents` array (`build:281`, `build:288`).
+Mutation check for whoever writes it: delete `devModule` from the queue bundle's `contents` array and
+confirm the test goes **red**. A substring assertion (“the bundle text contains `__dev`”) is not
+sufficient — it passes on a bundle where the binding is present and the definition is not.
+
+**Reversibility: easy** — *conditional on that detector existing*. Extracting the core to a fourth
+source later is mechanical: the code is already a set of pure exported leaves plus one driver, with
+no `orchestrate-dev.js` internals reached except through injected seams. Until the composition
+assertion above ships, the premise can be deleted silently, and a decision whose premise can vanish
+without a red test is easy to *break*, not easy to reverse.
 
 **Re-evaluation triggers.**
 1. `orchestrate-dev.js` passing ~10,000 lines, or a second feature wanting the same cross-module
@@ -192,7 +211,9 @@ except through injected seams.
 2. `build.mjs` gaining a mechanism that derives `AWAIT_SCAN_SOURCES` (or any per-source test list)
    from the sources it reads, which removes this entry's main objection.
 3. Any change that stops inlining `devModule` into the queue bundle — that would delete the mechanism
-   this decision rests on and force a re-decision immediately.
+   this decision rests on and force a re-decision immediately. **Observable via** the
+   bundle-composition assertion above: that test going red *is* this trigger firing. Without it the
+   trigger has no detector and the first symptom is an undefined identifier during a queue run.
 
 ## DEC-ADV-02: One `runAdvisorySeam` driver behind an injected `SeamOps`, not five per-seam functions
 
