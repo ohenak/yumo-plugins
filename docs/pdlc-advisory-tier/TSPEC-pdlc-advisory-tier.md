@@ -1253,8 +1253,31 @@ instrumenting the `_writeFile`/`_appendFile`/`_git` seams of a run at `26c3f1c` 
 the repo**. The test compares the disabled run's observed set against that JSON by value. This is the one
 place in the feature where a fixture is authored rather than computed, and the reason is stated in D-6
 itself: a comparison whose expected value is produced by the system under test cannot fail. The fixture's
-provenance (the exact commit sha `26c3f1c`, the command, the date) is recorded in its own header so a
-later reader can regenerate it deliberately rather than refresh it reflexively.
+provenance is recorded in its own header so a later reader can regenerate it deliberately rather than
+refresh it reflexively.
+
+**The fixture pins a scenario, not just a commit.** A commit sha alone does not make the baseline and
+the disabled run comparable — the same code creates different files under different inputs — so the
+oracle would be free to go false-red on scenario drift, or vacuously green if the scenario were
+narrowed. The fixture header therefore records a **`scenario` object** that the test re-asserts before
+comparing, and a mismatch on any field fails the test as a *fixture-staleness* failure distinct from a
+created-file diff:
+
+| Field | Content | Why it is load-bearing |
+|---|---|---|
+| `baselineCommit` | `26c3f1c` | the pre-feature tree the set was captured at |
+| `reqPath` | the exact input REQ path used for both runs | different REQs create different `docs/{feature}/` artifacts |
+| `forcePhases` | the `forcePhases` value (or `null`) | forcing changes which phases author documents |
+| `agentDoubles` | the named script of scripted `_agent` responses (verdicts per phase, review outcomes) driving both runs | the deciding input for which phases converge and therefore which files are created |
+| `config` | the `.claude/pdlc.config.json` content in force — including `implementation`, `distribution`, `mergeMode`, and the absent/disabled `advisory` section | gates Phase I's wave path, the drift gate and Phase MERGE, each of which creates files |
+| `phasesReached` | the ordered list of phases the run actually completed | the set-equality claim is only meaningful over the same phase span |
+| `seamsInstrumented` | `_writeFile`, `_appendFile`, `_git` | names what "created file" means for this set |
+| `command` / `date` | the capture invocation and when it ran | regeneration instructions |
+
+The disabled run under test is constructed from the **same** `reqPath`, `forcePhases`, `agentDoubles`
+and `config` (with the advisory section absent or `enabled: false`), so the two created-file sets are
+comparable by construction. Regenerating the fixture is therefore a deliberate act: it requires
+re-stating the scenario, not just re-running a capture command.
 
 ### 11.3 Disabled-mode edge cases
 
@@ -1264,7 +1287,7 @@ later reader can regenerate it deliberately rather than refresh it reflexively.
 | enabled but no seam fires | five zero rows on the summary — *not* the disabled case | S-1 always emits five rows when `advisory != null` |
 | config file absent | disabled | C-1's `text == null` early return |
 | config file malformed JSON | disabled | C-1's `JSON.parse` catch |
-| `enabled` itself malformed | disabled, **and no substitution notice** | §3.2's deliberate C-2 deviation |
+| `enabled` itself malformed | disabled, **and no substitution notice** | §3.2's emit gate — C-2's own report-only-when-enabled clause (`FSPEC:145`) |
 
 ## 12. Error handling — every failure scenario
 
