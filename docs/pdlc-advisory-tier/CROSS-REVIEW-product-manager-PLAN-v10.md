@@ -71,6 +71,34 @@ is not a file any task row claims as pre-existing, so no row is falsified by it.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Carried from v8/v9, unchanged and still purely informational. §8.2's registry names "A3's `SeamOps`" as A-23's un-skipper while §3's A-23 row (`PLAN:274`) lands both A3's `SeamOps` and A4's `verifyGate` in that one task. One task lands both symbols, so the block assignment is unambiguous either way; the note is only that a *future* split of A-23 would move the un-skip point under §3's stated rule without any text needing to change. No edit requested. |
+| Q-02 | **Closed this round.** v8 and v9 both recorded that `PROPERTIES` framed A1's gate row as "the one place the upstream documents disagree" and cited stale `TSPEC:638`/`:640` offsets. The PROPERTIES revision in this window resolved both: §6 now states the settled two-conjunct contract (`PROPERTIES:605-618`) and cites `TSPEC:434-439` for step-6 unreachability, with the disagreement framing gone. Recorded here so harvest reads it as closed rather than open. |
+| Q-03 | New, and not a blocker — a process observation for the operator rather than a request to the author. The PLAN is byte-identical to v1.9 yet has now consumed a tenth review round, because iteration 10 was dispatched against an unchanged document. Everything this round could find had to come from *other* documents moving underneath it (F-01 is exactly that). If the phase is converging on an unchanged artifact, the cheaper signal is the empty `git diff` itself. |
+
 ## Positive Observations
+
+- **The document held still while its neighbours moved.** Between v9 and v10 the branch took 26
+  commits, including a 218-line rewrite of PROPERTIES §6, and the PLAN absorbed none of it. Nothing
+  was opportunistically re-touched, no citation was "refreshed" speculatively, no task, edge,
+  ownership row or batch label drifted. A plan that stays still while the reviews around it churn is
+  the state you want going into Phase I.
+- **The contract survived an upstream rewrite unchanged — which is the real test of it.** PROPERTIES
+  §6 was substantially re-authored this window, and the rule it now states
+  (`PROPERTIES:620-623`: replace at A2/A4/A5, install at A1/A3) is the same rule `PLAN:258` and
+  `PLAN:869` have carried since v1.7 and v1.9. When two documents are re-derived independently and
+  land on the same sentence, the contract is settled rather than merely copied.
+- **The reciprocal citation is the durable one.** `PROPERTIES:623` pins its rationale to
+  `PLAN:869`, `PLAN:258` — both still exact at HEAD — while the PLAN's pin into PROPERTIES drifted
+  (F-01). The asymmetry is instructive: the PLAN's line numbers are stable because the PLAN is
+  frozen; PROPERTIES' are not because it is still in loop. Citing the stable document by line and the
+  in-flight one by section is the pattern worth keeping.
+- **A1 and A3 are still named symmetrically, over the full enumeration.** "its `verifyGate` for
+  A2/A4/A5, its `verifyGate: null` for A1 **and A3**" covers all five seams rather than a rule plus
+  an exception list, so a sixth seam cannot quietly fall outside it — and the set-equality driver
+  against `ADVISORY_SEAMS` is what makes that structural rather than aspirational.
+- **36/36 still holds, verified not assumed.** Task IDs A-01…A-36, no gap, no duplicate, matched
+  one-for-one by ownership rows, with the one file the last-changed row names correctly declared new.
 
 ## Recommendation
