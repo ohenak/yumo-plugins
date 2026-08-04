@@ -297,4 +297,20 @@ emission or application step, never at confirmation.**
 
 ---
 
+<!-- RESOLVED marker: an operator or agent flips this to `yes` only after R-1–R-4 are on the branch and
+this document's ## Recommendation findings are each addressed, in a commit that names what addressed
+each. The workflow scripts never write `yes`. -->
+
 RESOLVED: no
+
+## Recommendation — addressal ledger (for the resolving commit)
+
+| Finding | Addressed by (fill on resolve) |
+|---|---|
+| te F-01 (High) — §8.2 tells A-07 to stub a gate A3 does not declare | |
+| R-1 — A3's gate decided once at FSPEC ⟷ TSPEC, and recorded | |
+| te F-02 / pm F-01 (Low) — `PLAN:869` cites TSPEC §5.4 instead of §5.5 | |
+| te F-03 (Low) — PROPERTIES §12.3 / §13.1 item 5 still route a closed erratum | |
+| pm F-02 (Low, routed as `ERRATUM: TSPEC`) — A3 gate representation | |
+| Q-02 — registry column, not shipped-object inspection, keys the gateless branch | |
+| Re-confirmation of the corrected PLAN | |
