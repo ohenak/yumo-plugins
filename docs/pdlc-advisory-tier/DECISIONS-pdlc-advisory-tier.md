@@ -611,7 +611,7 @@ checked against the files the option would actually touch.
   Meanwhile the seams still live in `pdlc/workflows/`, so the plugin boundary would run straight
   through the middle of the feature.
 - **Implement the tier in the `pdlc-cli` bundle instead of the workflow bundles — rejected on a
-  verified reachability fact.** `pdlc-cli.mjs` is a real third artifact (`build:288-296`), so the
+  verified reachability fact.** `pdlc-cli.mjs` is a real third artifact (`build:289-295`), so the
   option is not imaginary; but it reaches `orchestrate-dev.js` through an explicit eleven-name
   allow-list, `CLI_DEV_EXPORTS` (`build:243-254`), and it runs **out of band** as a Node CLI, not
   inside a pipeline run. A seam has to fire *during* Phase DOD or Phase PUB, with the run's
@@ -657,3 +657,50 @@ C-2 / D-5 conflict are FSPEC defects; DEC-ADV-03 and DEC-ADV-08 record the TSPEC
 unblock implementation, and the defects themselves are routed through the erratum channel to FSPEC's
 author. If FSPEC resolves either differently, the corresponding entry above is **superseded by a new
 entry**, not edited into agreement.
+
+## Consequences
+
+What these ten decisions oblige the implementation — and every later change to it — to keep doing.
+These outlive the entries that produced them, so they are stated here rather than buried in one.
+
+**Structural consequences.**
+
+| Consequence | Follows from | Verified anchor |
+|---|---|---|
+| `orchestrate-dev.js` (8,642 lines) absorbs the constants, the pure core and `runAdvisorySeam`, and its published export set grows | DEC-ADV-01 | `wrapModule`'s export list is explicit and per-call (`build:55-65`, `build:87-93`) |
+| `orchestrate-queue.js`'s prelude grows past the shipped `"const realMain = __dev.main;"` line | DEC-ADV-01 | `build:102`, consumed at `queue:764` |
+| Both shipped bundles' bytes change; **the manifest stays at three rows** | DEC-ADV-01 | rows are per artifact from the `bundles` array (`build:278-296`) — `orchestrate-queue.bundle.js`, `orchestrate-dev.bundle.js`, `pdlc-cli.mjs` |
+| `commitPaths` (`dev:6905`) must gain `export` and enter the dev export list and queue prelude | DEC-ADV-03 | it is module-private today; routed as a TSPEC erratum |
+| One new tracked test fixture, hand-reviewed, with a provenance header | DEC-ADV-10 | `pdlc/workflows/__tests__/fixtures/created-files-26c3f1c.json` |
+| No new build source, no new plugin, no new skill directory | Options Considered | fifteen skills under `pdlc/skills/`, three bundles at `build:278-296` |
+
+**Standing obligations on anyone who touches this code later.**
+
+1. **Every injected IO call in the advisory core must be `await`ed.** The await-discipline scan runs
+   over a hand-written source list, `AWAIT_SCAN_SOURCES = ["orchestrate-dev.js",
+   "orchestrate-queue.js"]` (`bundleTest:997`, driven at `bundleTest:1011`). Keeping the core inside
+   those two files is precisely what keeps it in scope (DEC-ADV-01); moving it out silently removes
+   the check.
+2. **Any commit that changes `pdlc/workflows/dist/` must bump the plugin version.** The oracle is
+   `advertisedVersionViolation` (`pdlc/workflows/lib/document-oracles.mjs:575`), and the manifest
+   stamps the version those bytes were built at; `pdlc/.claude-plugin/plugin.json` is at `0.20.2`
+   today. Every wave of this feature that rebuilds the bundles inherits that rule.
+3. **The disabled-run equivalence is a permanent test obligation, not a one-off.** Because the
+   fixture is pinned at `26c3f1c` (DEC-ADV-10), any *future* change that adds a pre-feature
+   file-creating path forces a deliberate re-pin with a stated reason — a refresh without one
+   silently destroys the property D-6 asserts.
+4. **The escalation log stays writer-only.** L-1's immutability and T-09-8's downgrade-a-failed-log
+   asymmetry are guaranteed by the absence of a reader (DEC-ADV-09); the first `readFile` against
+   `docs/_queue/ESCALATIONS.md` converts both from structural facts into behaviour that can be
+   wrong.
+5. **X-e and Phase MERGE share one matcher, permanently.** If X-e ever needs semantics
+   `guardVerdict` (`dev:731`) lacks, extend it for **both** consumers — a fork re-opens the
+   possibility of the advisory tier permitting a change Phase MERGE then refuses to merge
+   (DEC-ADV-06).
+
+**Costs accepted, stated plainly.** The uniform driver makes the `apply` / `verifyGate` split less
+obvious at a reading than a per-seam branch would be (DEC-ADV-02, DEC-ADV-03). The advisory rung's
+literal is unverifiable from this repo, so one PLAN task is a *recorded manual observation* rather
+than a gate (DEC-ADV-04). A successful A5 leaves the branch head past the DoD-verified commit, and
+the design's answer is a report field, not a re-verification (DEC-ADV-07). Each is a shared
+decision with a named re-evaluation trigger above, not an oversight.
