@@ -48,7 +48,18 @@ Both findings are new, in the section v1.4 rewrote. No v3 finding remains open.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Batches 1 and 2 land no `advisory*.test.js` file, so a targeted run with that pattern collects nothing and jest exits non-zero on "no tests found". No gate row asks for the run at those batches, so this is almost certainly a non-issue — but if an agent runs it defensively as "the evidence step", it will read a failure that is not one. One clause in §5.2 ("the targeted run applies from executor batch 3 onward, the first batch that creates an `advisory*.test.js` file") would remove the ambiguity. |
+
 ## Positive Observations
+
+- **F-01 was answered by transcribing reality, not by patching the row that was wrong.** §5.2 now records the absent fields *and* the present ones as a literal, states the reducer once, and has the three gate rows plus §9.1 quote that one expression. The negative ("no `testFilePath`, no `numPendingTests`") is paired with the positive that replaces it — the shape this PLAN demands of its own test oracles, now applied to its own evidence procedure.
+- **The `ancestorTitles[0]` insight does more work than the finding asked for.** Partitioning by top-level `describe` title turns the batch 7–17 delta from "the file's pending count falls by the block's case count" into a per-block statement, and it means *k* is read from the previous run rather than written into the PLAN. An expected-count constant in a document is a thing that drifts; a count derived from the artifact cannot. I verified the partition survives a whole-block `describe.skip` — the case the repo's own suites do not exercise, and the only one that matters here.
+- **§9.2's red evidence is now genuinely falsifiable, and it says which half is which.** "The transcript is the readable half; this row gates on a second, mechanical conjunct" is the right division, and both conjuncts fail closed for a named reason ("a task that un-skips nothing fails (i), and a case that was already passing fails (ii)"). Naming the failure mode is what distinguishes a gate from a checklist item.
+- **§8.2 closed the set-equality loop in both directions.** Stating that the five per-seam cases are *generated* by iterating the registry — rather than merely that a registry exists — makes "a registry row that survives while its case is deleted" inexpressible. That is a stronger guarantee than the review asked for, and it is stated as a construction rule an implementer cannot quietly drop.
+- **P-4's re-attribution generalises rather than patches.** "Derived, not quoted", followed by what TSPEC *does* state, the derivation, and a pointer to the related absorbing property at `TSPEC:1405`, is the lesson of P-9's empty-input note applied to a second row. Only the line range slipped.
+- **The v1.4 changelog row is the most useful one in §10.** It records what jest actually emits, why the run is targeted (`:5849` reserves full-suite runs to the script), and which reviewer item each edit answers. A future reader who wonders why the evidence command looks the way it does will find the answer without re-running jest.
 
 ## Recommendation
 
