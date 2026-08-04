@@ -112,6 +112,62 @@ cite disagree with each other — see Pattern of Disagreement 3.
 
 ## Pattern of Disagreement
 
+**1. Every routed item converged; the halt is a defect the fix itself introduced.** This is not a loop
+that churned over disputed content. All four distinct defects were genuine, all four were fixed at the
+site they were raised against, and both reviewers confirm all four. Had fix 1 covered the second seam
+its own motivating TSPEC change covers, this confirmation would have passed unanimously on the first
+round. The failure is localized to one clause of one table cell (`PLAN:869`).
+
+**2. The blocking finding is the same defect class the round just closed, one seam over.** The routed
+item said: *A1's gate has two representations across TSPEC and PLAN; pick one.* The TSPEC erratum round
+picked one — and picked it for **A1 and A3 together** (`TSPEC` v1.3 changelog: "A1 and A3 declare
+**`verifyGate: null`**"). The PLAN edit reconciled A1 and stopped. `PLAN:869` now asserts three things
+that are false for A3: that the per-seam mutation is to *replace* that seam's gate (A3 has none to
+replace); that "**A1 is the direction that runs backwards**" (A1 *and* A3 are); and that "A-23 lands
+both gates" (A-23 lands A4's gate and A3's gateless seam — the PLAN's own §3 row at `PLAN:274` already
+describes it that way). The fix was scoped to the *words of the erratum line* rather than to the
+*extent of the change it reconciles with*.
+
+**3. Underneath the reviewer split is a real, unreconciled FSPEC ↔ TSPEC divergence about A3.** This is
+the part that must not be papered over:
+
+- **FSPEC §5.4** (approved, unchanged) gate table: `| A3 | Phase DOD's verify step | no findings remaining |`
+- **TSPEC v1.3** `:657`: `| A3 | **null** — same shape as A1: permittedActions: [], step 6 unreachable, resolved never reached | — |`
+
+Both are defensible. FSPEC describes what re-runs *after* an A3 resolution; TSPEC observes that A3
+has `permittedActions: []` (`TSPEC:863`, A3-6), so the driver never reaches step 6 and there is no
+applied resolution for a gate to follow — A3's product is a classification only (FSPEC §7.2 A3-6,
+`FSPEC:1058`). If TSPEC is right, FSPEC's A3 row describes an unreachable state and should say so as
+A1's row does ("**none.** … A1 has no independent post-action gate"). If FSPEC is right, TSPEC v1.3
+silently weakened an approved product contract during an erratum round. **Nothing in the three
+documents currently reconciles them**, which is exactly why the two reviewers reached opposite
+severities from the same observation.
+
+**4. The two reviewers do not contradict each other — they resolve a document conflict in opposite
+directions, and each is right about its own lens.** pm-review's lens is the product contract: a PLAN
+that follows an approved FSPEC row is not a PLAN defect, and it correctly refuses to block on it,
+routing the divergence upstream as an `ERRATUM: TSPEC` line. te-review's lens is testability: whichever
+document wins, `PLAN:869` as it stands instructs A-07 to author a case that cannot both exist and pass
+against a correct build, and that is blocking *under either resolution*. Note the asymmetry — pm's
+reading makes the PLAN correct-but-pending-upstream; te's makes it wrong today. te's is the safer
+reading because the PLAN text is inconsistent with itself: `PLAN:274` (A3 = `permittedActions: []`,
+throwing `apply`/`revert` stubs, no gate) and `PLAN:869` ("A-23 lands both gates") cannot both be true.
+
+**5. PROPERTIES predicted this exact failure mode before it happened.** `PROPERTIES:568` states:
+"Asserting conjunct 1 at A3 would require stubbing a gate A3 never reaches and observing a disposition
+A3 cannot produce — it would fail against a correct build, in the RED batch (A-07) that authors it,
+and not be diagnosed until A-23." PROPERTIES §6 (PROP-GATE-01…05, `PROPERTIES:559-568`) already states
+the correct gateless form for both seams verbatim. The remedy is a transcription, not a design
+decision — the downstream document had already done the thinking, and the erratum channel did not
+carry it up.
+
+**6. One further piece of drift, recorded rather than routed.** te F-03 notes that `PROPERTIES:1045`
+and §13.1 item 5 (`PROPERTIES:1126-1129`) still list `fixtures/scanFixtures.js` as "A-01 proposed — no
+PLAN ownership row yet" and still route it as an open erratum — a note that item 3 above has already
+closed. te-review deliberately did **not** emit a fresh `ERRATUM: PROPERTIES:` line for it. That is the
+right call under a one-round bound, but it means a closed erratum is still live text in PROPERTIES and
+would otherwise be preserved by harvest as durable signal.
+
 ## Best-Guess Root Cause
 
 ## Recommendation
