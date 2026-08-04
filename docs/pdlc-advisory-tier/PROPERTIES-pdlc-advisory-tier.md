@@ -625,6 +625,20 @@ instead require stubbing a gate they never reach and observing a disposition the
 would fail against a correct build, in the RED batch (A-07) that authors it, and not be diagnosed
 until A-23.
 
+**On the nullable member never being invoked as `null` (SE Q-09, answered here).** TSPEC §4.3 states
+it as a *driver* invariant — "the driver reaches `verifyGate` only on a seam whose `permittedActions`
+is non-empty, so the nullable member is never invoked as `null`" (`TSPEC:438-439`) — and this document
+deliberately does **not** add a sixth PROP-GATE row pinning it directly. Two reasons. It is not a
+`SeamOps` property, so it does not belong in a per-seam registry keyed on `ADVISORY_SEAMS`; and no
+shipped seam exercises the combination (`verifyGate: null` with a non-empty `permittedActions`) that
+the hypothetical case would have to construct, so the case would assert against a seam the feature
+does not have. The obligation is met instead by conjunct 2 above — every gateless seam is pinned
+`verifyGate === null`, so a later seam that acquired a permitted action while keeping `null` changes a
+line this property already covers — plus PROP-LIFE-*'s step ordering, which asserts step 6 is reached
+only after a permitted action was applied. If a sixth seam is ever added with a permitted action and
+no gate, that is the trigger to promote the driver invariant to its own property; §13.2 records the
+same rule for widening the envelope.
+
 ## 7. Properties — seams A1 and A2 (queue module)
 
 Home: `advisoryQueueSeams.test.js` (A-12 🔴 / A-29, A-30, A-31 🟢). These seams live in
@@ -1065,7 +1079,7 @@ All 36 tasks of PLAN §3's table are listed; none is without a property obligati
 | A-31 🟢 | PROP-A2-01 … PROP-A2-13, PROP-GATE (A1, A2 rows) |
 | A-32 🟢 | PROP-REG-04, PROP-REG-05 |
 | A-33 🟢 | PROP-DIS-01 … PROP-DIS-07, PROP-REG-08 |
-| A-34 | No suite property — its output is a recorded runtime fact in one of two admissible forms; an inferred result is mock data (PLAN §9.4). The only assertion this document makes about it is §13 item 4. |
+| A-34 | No suite property — its output is a recorded runtime fact in one of two admissible forms; an inferred result is mock data (PLAN §9.4). The only statements this document makes about it are §13.2's `A-34's manual runtime verification` row and §13.3's risk 1. |
 | A-35 | No suite property — documentation. The two `RELEASE-CHECKLIST.md` commitments it adds correspond to PROP-INFRA-03 (fixture scenario still accurate) and PROP-HARV-06 (guard-message coupling). |
 | A-36 | No suite property — the version bump is asserted by the shipped `advertisedVersionViolation` oracle (`pdlc/workflows/lib/document-oracles.mjs`), not by this feature's suite. |
 
