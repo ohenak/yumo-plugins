@@ -83,4 +83,17 @@ existing behaviour has disappeared or moved.
 
 ## Recommendation
 
+**Approved**
+
+Nothing changed since the revision I approved at v6 and re-confirmed at v7; the approved bytes are
+still the bytes on disk (hash-verified against the v6 anchor); no upstream document moved beneath
+them; and every repo path the FSPEC names still resolves at HEAD apart from two files the feature
+is specified to create. The prior approval carries forward unchanged.
+
+The bar is not lowered by the empty delta — it is simply not exercised: v6 and v7 both closed with
+zero High and zero Medium findings, and a delta with no bytes in it cannot open one.
+
 ## Verdict
+
+VERDICT: Approved
+{"high": 0, "medium": 0, "low": 0}
