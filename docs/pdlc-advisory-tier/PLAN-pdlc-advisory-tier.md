@@ -575,6 +575,44 @@ directly (TSPEC §13.4): the seven X-a operations as seven named tests; every pr
 positive V-8 triple as well as the negative; the closed sets compared as sets; and the D-6 expected
 value transcribed, never derived.
 
+### 6.5 Named properties per parameterisable leaf — and the generator they reuse
+
+The feature is mostly parsers, classifiers and validators, and the repo already ships a seeded,
+dependency-free property-generation library: `pdlc/workflows/__tests__/helpers/driftGenerators.js`
+(xorshift32 `seeded(seed)`, `resolveSeed` honouring `PDLC_PROP_SEED`, exhaustive
+`enumerateLeaves()`), consumed today by thirteen shipped suites including `approvalHash.test.js`,
+`completeness.test.js`, `driftOrdering.test.js` and `forcePhases.test.js`. **A-02 reuses it rather
+than re-authoring a generator**: `advisoryDoubles.js` re-exports `seeded` and `resolveSeed` from
+`driftGenerators.js` and adds the advisory input-space generators below. No advisory test file
+declares its own PRNG, and no task edits `driftGenerators.js` (its single writer is a prior PLAN's
+T-40) — the reuse is an import edge, not an ownership edge, so §4's manifest is unchanged. A-02's
+export block (§6.1) gains one line:
+
+```js
+export function makeAdvisoryGenerators(seed)  // → { verdictText, configObject, envelopeCtx, classText, entryFields }
+```
+
+Each property below is **named in its owning 🔴 row (§3) as part of that row's obligation**, and each
+is falsifiable against a wrong implementation, not merely against a throw:
+
+| Property | Leaf | Statement | Owner (🔴 / 🟢) |
+|---|---|---|---|
+| P-1 | `parseAdvisoryConfig` | Total over arbitrary JSON values (never throws); every returned key is a member of `ADVISORY_DEFAULTS`' key set; **per-key independence** — corrupting key *k* leaves every key ≠ *k* equal to the value parsed from the uncorrupted input, and puts exactly *k* into `invalidKeys`. | A-03 / A-17 |
+| P-2 | `parseAdvisoryVerdict` | Total over arbitrary strings; the five malformedness rules **partition** the input space — every generated input matches exactly one rule or parses cleanly, never two, never none. | A-05 / A-19 |
+| P-3 | `budgetExceeded` | Monotone in elapsed time (if it is `true` at *t* it is `true` at every *t' > t*, same budget) and invariant under the A5 rollup `waitMs` carve-out (adding wait time to an A5 seam never flips `false` → `true`). | A-05 / A-19 |
+| P-4 | `classifyEnvelope` | Idempotent (`classify(classify(x).ctx) === classify(x)`), and its result is always a member of `ADVISORY_REFUSAL_REASONS ∪ {null}` — no generated context yields an unlisted reason. | A-06 / A-20 |
+| P-5 | `refusalReasonFor` | Total; **first-match stable** — permuting the non-matching exclusions in the generated context never changes the returned reason, so the ordering claim is about `ADVISORY_EXCLUSIONS`' own order and nothing else. | A-06 / A-20 |
+| P-6 | `renderAdvisoryEntry` | Total over the generated verdict × disposition space; always emits exactly seven fields in the declared order; no field body contains an unescaped newline (which would corrupt the append-only record's line grammar). | A-08 / A-21 |
+| P-7 | `renderEscalationEntry` | Total over reason × seam × disposition; the decision sentence is always first; **append-safe** — rendering N entries and concatenating equals appending them one at a time, so the newest-last invariant is a property of the renderer, not of the caller. | A-09 / A-21 |
+| P-8 | `parseA3Classification` | Total over arbitrary agent text; the returned class is always a member of the declared closed set; unparseable text yields the fail-closed class, never `undefined`. | A-10 / A-23 |
+| P-9 | `governingClass` | A total order over the generated class set — antisymmetric and transitive — so "highest class wins" is well-defined for every multiset of findings, including ties and the empty set. | A-10 / A-23 |
+
+**Seeding discipline** (inherited, not invented): each file carries a literal seed, `resolveSeed`
+lets `PDLC_PROP_SEED` override every literal in one run, and a failing case is reported with its
+seed so it is reproducible. Properties are additional to — never a replacement for — the named
+example cases the FSPEC §18.1 catalogue enumerates: a property that subsumed a case would hide which
+case failed.
+
 ## 7. Integration points
 
 Each row was re-read on the working tree at HEAD `ca55bb6`; line numbers are navigation hints against
