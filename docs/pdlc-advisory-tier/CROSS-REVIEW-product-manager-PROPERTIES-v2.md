@@ -46,6 +46,75 @@ answered by the revision leaving both readings intact.
 
 ## Positive Observations
 
+- **Every one of the three High findings was closed by adding the missing falsifier, not by adding
+  prose that explains why one is unnecessary.** That distinction is the whole difference between a
+  revision and a rebuttal, and this revision is unambiguously the former: PROP-ENV-13 and PROP-A5-20
+  are new, executable obligations, and PROP-GATE-01…05's rewrite replaces an absence with a named
+  positive outcome. Each also carries a short paragraph naming *what would have passed before* —
+  "an implementation that read `ENVELOPE_DEFAULTS` and ignored the parsed `config.envelope` entirely
+  would satisfy all of them", "an implementation that probed only the default-branch tip and dropped
+  the merge-base conjunct satisfied every property in this section". A future reader can now tell
+  these properties are load-bearing without reconstructing the argument.
+
+- **§12.4 is a better answer than the one my question asked for.** I asked whether FSPEC-case
+  coverage was deliberately delegated to PLAN §8.1; the revision built the fourth audit direction
+  instead, stated it as **set equality in both directions** (an uncovered case is a gap; an invented
+  `T-nn-n` is a defect), and declared its single sanctioned exception explicitly — `T-06-7` appears
+  once, in PROP-A4-09, *as a negation*, and a scan implementing the audit "must read that mention as
+  the declaration of absence it is". I ran that audit mechanically: FSPEC §18.1's summary table totals
+  **81** cases, the 79 plain `T-nn-n` ids plus `T-04-3b` and `T-08-4b` (both cited in PROPERTIES —
+  three and one mention respectively), and the set difference in the citing direction is exactly
+  `{T-06-7}`, the one declared exception. The claim is true as stated, and it found a real gap:
+  **T-01-2** was uncovered at v1, and PROP-RUNG-09 now closes it in the file PLAN §8.1 assigns
+  (`FSPEC:195` verified verbatim).
+
+- **PROP-RUNG-09 is the right shape for a positive control, and the document says why in one
+  sentence.** "Without a run that demonstrably does **not** substitute, a build that reported the
+  fallback unconditionally would pass PROP-RUNG-04 and be caught by nothing." It is then stated as two
+  *positive* conjuncts — the summary's model cell byte-equal to `MODEL_ADVISORY`, and `fallback: false`
+  as the exact rendered value — explicitly "never as the absence of a fallback string". That is O-1's
+  rule applied to a case nobody was forcing the author to add.
+
+- **PROP-CFG-05's re-scoping is grounded in the code, and the grounding is the finding.** The new
+  paragraph explains that `.claude/pdlc.config.json` is already read twice more on a full run by code
+  this feature does not touch, so a path-scoped spy "would fail as a defect on a build with no defect
+  in it". I verified all three citations at branch head: `MERGE_CONFIG_PATH = ".claude/pdlc.config.json"`
+  (`orchestrate-dev.js:43`), `readMergeConfigSafely(readFileFn, MERGE_CONFIG_PATH)` in the Phase I
+  wiring (`:8040`), and `_configPath = MERGE_CONFIG_PATH` as `phaseMerge`'s default (`:1373`). A
+  false-red that would have been debugged during Phase I was removed at authoring time instead.
+
+- **The two operator-facing grammars were promoted from presence to set equality without being
+  asked twice.** PROP-REC-02 and PROP-ESC-01 now assert set equality of the emitted field-name set
+  against the transcribed literal — "an invented eighth field fails and a deleted one fails" — **plus**
+  a separate order assertion, and §2.4 gained a paragraph stating the bar applies to grammars and not
+  only to closed sets. P-7 was updated to match in the generator-driven section. AC-9.1's seven fields
+  and AC-10.1/10.2's eight are the bytes an operator and `pdlc-engineering-loop` actually read, and
+  §13.3(2) already declared them a byte-exact contract; the oracle now matches the declaration.
+
+- **The `waitMs` problem was routed upstream rather than papered over, and the property was restated
+  at a surface that exists either way.** §13.1 item 4 is correct: `TSPEC:474` reads "`waitMs` is the
+  accumulated check-rollup wait the seam reports (A5 only; zero elsewhere)" while TSPEC §4.3's
+  `SeamOps` typedef declares nine members and no `waitMs`. PROP-BUD-03 is now asserted at the argument
+  the driver hands `budgetExceeded`, which is stable under either resolution, **and** it gained the A5
+  positive control ("must be `> 0` on an A5 invocation that re-polled at least once") without which
+  the property passes against a build that never accumulates wait anywhere. Blocked on nothing,
+  correct under both futures — that is how an unresolved upstream ambiguity should be absorbed.
+
+- **PROP-REG-08 dropping its second clause is a strengthening, not a retreat, and it cites the
+  decision that says so.** `docs/_decisions/DECISIONS-test-oracle-mechanics.md` DEC-ORACLE-01 exists
+  and settles exactly this case; the revision replaces the unfalsifiable `pending === 0` clause with an
+  in-file falsification of the surviving source scan (three bad-shape fixtures must all be reported, a
+  clean fixture must report none) and notes that the run-wide obligation lives in PLAN §9.1, where a
+  run-wide claim legitimately can. PROP-INFRA-01 received the same treatment in §2.1 — it was
+  "reviewer-enforced" at v1 and is now a shipped, mechanically-falsifiable case homed in
+  `advisoryPreflight.test.js`, which PLAN A-01 does own (`PLAN:252`, `PLAN:308`) so the home is real.
+
+- **The level recount is auditable, not asserted.** §1 names the twelve prose-stated ids by name so a
+  reader can reproduce the 195, states the budget as a shape with the count measured against it, and
+  §12.3 restates the identical totals rather than a second, drifting set. I reproduced every figure
+  independently and all four matched. That is the difference between a number an operator can size a
+  feature with and one they have to trust.
+
 ## Recommendation
 
 ## Verdict
