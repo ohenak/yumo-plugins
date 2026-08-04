@@ -223,7 +223,45 @@ against a commit that is no longer HEAD. Either name the commit as a floor ("rea
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | DEC-ADV-10 pins the D-6 fixture to a **commit** but never to a **run scenario**. Two created-file sets are only comparable if the runs that produced them had the same inputs — the same REQ path, the same agent doubles, the same config, the same phases reached. What pins those? If the baseline capture and the disabled-run comparison differ in scenario, the oracle goes false-red on scenario drift, or vacuously green if the scenario is narrowed to the phases that create nothing. I have routed this as a TSPEC erratum against §11.2 since that section owns the fixture's provenance header, but DEC-ADV-10 should say that scenario identity is part of what makes the comparison valid — it is the entry that argues the oracle is sound. |
+| Q-02 | DEC-ADV-03 defines `apply` as "everything up to but not including the irreversible act" and `verifyGate` as "perform the irreversible act, then run the gate". For the three seams whose act is **not** irreversible (A1, A3, A4), what does `verifyGate` do — and is there a test that the split is honoured rather than merely documented? Concretely: is there an assertion that no `_git` commit/push seam is invoked from any `apply`? Without it, the R-2 revert guarantee ("a step-7 failure reverts a working-tree edit only") is a convention, and the first seam that commits inside `apply` breaks it silently. |
+| Q-03 | DEC-ADV-07 says `dodVerifiedCommit` is captured by `git rev-parse HEAD` "at the moment `dodResult.passed` becomes true". When A5 never fires — the common case — `dodHeadUnverified` is derived as false. Is there a positive oracle for that case, or only for the divergent one? A test suite that asserts `dodHeadUnverified === true` after an A5 push and asserts nothing on the non-divergent path leaves the derivation half-covered; the equal-heads case needs its own positive assertion (`dodHeadUnverified === false` **and** `dodVerifiedCommit === <the head>`), not silence. |
+| Q-04 | DEC-ADV-05 threads the memo as a parameter partly so that M-4 is *"directly assertable: pass one `_state` through two seams, assert one classification."* Does "one classification" mean one *resolution attempt* (a call-count oracle on the injected dispatch) or one *resulting value*? Only the first falsifies a memo that re-resolves and happens to get the same answer. Please state which, since the entry offers this assertability as part of the justification. |
+
 ## Positive Observations
+
+- **The grounding discipline is the best I have reviewed in this feature.** Every one of ~40 `file:line`
+  citations resolves, including the four `git` facts behind the D-6 pin, which I re-ran independently.
+  The instruction to *"verify a citation by symbol name; the line number is a navigation hint"* is the
+  right contract for files that churn, and it held.
+- **Cost claims are re-derived, not asserted.** DEC-ADV-01's fourth-source analysis explicitly walks
+  back its own case — *"the fourth source is feasible and modest in `build.mjs`"*, *"Rejected on that
+  balance, not on an inflated cost"* — and correctly identifies that the real price is a **test-coverage**
+  seam (`AWAIT_SCAN_SOURCES`), not line count. A decision record that argues down its own rejection is
+  far more trustworthy than one that piles on reasons, and this is exactly the class of claim I was
+  asked to check hardest.
+- **DEC-ADV-10 is a model oracle-design decision.** It rejects the tautological baseline, rejects the
+  one-sided subset relation (*"D-6 is an equality claim in both directions, so the oracle must be too"*),
+  rejects the self-refreshing fixture, and rejects pinning at a HEAD that already contains the feature.
+  Those are the four ways this oracle could have been false-green, and all four are named and closed.
+  The "easy mechanically, one-way in spirit" reversibility split is an honest and useful distinction.
+- **DEC-ADV-09 correctly identifies that an absence can be stronger than a check** — L-1 and T-09-8 are
+  structural facts precisely because there is no reader. F-03 asks for a detector for that absence; it
+  does not dispute the reasoning, which is right.
+- **DEC-ADV-03 surfaces a defect against its own plan.** The entry discovers, mid-decision, that
+  `commitPaths` is module-private and that TSPEC §6.4.1's "reuse verbatim" is therefore not yet true —
+  and says so plainly under a heading that names it (*"one thing the TSPEC assumes that is not true
+  today"*), rather than quietly assuming the PLAN will notice. I verified the claim: neither
+  `commitPaths` (`dev:6905`) nor `gitWithLockRetry` (`dev:6862`) carries `export`.
+- **The "Decisions deliberately NOT taken here" table is genuinely useful** and correctly separates
+  runtime facts (BL-05/BL-06, the `"fable"` alias) from choices. Naming the capability probes and their
+  degradations as the design's obligation — rather than assuming the capability — is the right response
+  to an unresolvable blocker.
+- **Reversibility grades are mostly consistent with testability.** The "easy / hard-in-consequence"
+  formulation on DEC-ADV-06 and DEC-ADV-09 captures something real: mechanically reversible, but
+  reversal re-opens an invariant. That distinction is what F-03's detectors would make enforceable.
 
 ## Recommendation
 
