@@ -146,3 +146,6 @@ No new errata from me. The six items §13.1 routes are the author's to emit; I r
 6 against the PLAN and TSPEC at branch head and have nothing to add to them.
 
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 1}
