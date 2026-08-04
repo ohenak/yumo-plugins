@@ -29,6 +29,25 @@ property was added, removed or re-levelled in this round — I confirmed the tab
 
 ## Questions
 
+Both of my v2 questions are **answered in place**, and neither needs a further response.
+
+- **v2 Q-01** (what happens if Phase I finds a legitimate fourth read of `enabled`) is answered in
+  §10.1 with the decision I asked for, stated as a decision rather than an option: "**the fourth read
+  is refactored away, not blessed** … Amending TSPEC §11.1's count is the escape hatch of last resort
+  and requires an erratum against D-1, not a bumped number." That settles at authoring time what would
+  otherwise have been argued at implementation time, and it is the right way round for the product —
+  D-1 is a claim about the disabled tier being genuinely inert, so a fourth read is evidence against
+  D-1 before it is evidence against the property.
+- **v2 Q-02** (whether PROP-A5-20 really belongs at Unit level, since its three probes and its home
+  file both smell Integration) is answered in §8.3 with a rule I had not seen stated anywhere:
+  "membership in that file is not what levels a property; what the property's own oracle has to observe
+  is." The specific grounding checks out — the three probes go through the injected `_git` / `_ghRun`
+  seams and are answered by `fakeGit` (`helpers/mergeDoubles.js:189`) and `fakeGhRun` (`:75`), both of
+  which exist at branch head at exactly those lines. The level stays Unit and the 148 / 40 / 7 / 0
+  totals stand — the number that was attached to the answer did not move.
+
+I have no new questions.
+
 ## Positive Observations
 
 ## Recommendation
