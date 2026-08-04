@@ -506,3 +506,19 @@ unrelated to this feature) — then the fixture must be re-pinned at the commit 
 the provenance header updated and the reason stated in the commit that changes it.
 
 ## Decisions deliberately NOT taken here
+
+Four things a reader may expect to find in this document, and where they actually live. Recording them
+here stops a future agent from concluding the question was overlooked.
+
+| Question | Why it is not a decision | Where it is settled |
+|---|---|---|
+| Whether a consuming repo can read the default branch's check history (BL-05) or re-run a workflow run (BL-06) | A per-repo **runtime fact**, not a choice this design gets to make. The design's obligation is to make the absence a first-class, tested outcome rather than an assumption | TSPEC §1.3, §8.3 — two capability probes through the existing `_ghRun` seam (`dev:581`), each with a defined degradation |
+| Whether the runtime resolves the bare alias `"fable"` | Same class of fact, and unresolvable from this repo at all — the alias table is runtime-side | DEC-ADV-04; the PLAN's one-line manual verification records which branch fired |
+| Code order — which constant, function and wiring edit lands in which batch | Sequencing, not architecture; deciding it here would duplicate the PLAN and go stale the first time a batch is split | FSPEC §1 item 6 → PLAN |
+| Whether Phase MERGE should tolerate the extra post-PUB commit an advisory run produces | A Phase MERGE policy question, owned by that feature's decision record; this tier only makes the deferral **visible** on the report, never silent | TSPEC §15 R-7; Phase MERGE's own preconditions (`dev:1361`) are unchanged by this feature |
+
+**Two upstream defects are recorded but not decided here.** The A2-6 / R-2 ordering gap and the
+C-2 / D-5 conflict are FSPEC defects; DEC-ADV-03 and DEC-ADV-08 record the TSPEC-side resolutions that
+unblock implementation, and the defects themselves are routed through the erratum channel to FSPEC's
+author. If FSPEC resolves either differently, the corresponding entry above is **superseded by a new
+entry**, not edited into agreement.
