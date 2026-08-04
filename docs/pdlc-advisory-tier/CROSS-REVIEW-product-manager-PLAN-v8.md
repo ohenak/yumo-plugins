@@ -34,6 +34,11 @@ delta fixed one cell over, left standing in the row an implementer reads first.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | §8.2 now says the un-skipper for `A-23 — A3/A4 gate exclusivity` is "A3's `SeamOps`", while §3's A-23 row (`PLAN:274`) lands **both** A3's `SeamOps` and A4's `verifyGate` in that one task. Since one task lands both symbols the block assignment is unambiguous either way, so this is bookkeeping rather than a defect — but if a later revision splits A-23, the un-skipper rule (§3: "the un-skipper is the task landing the *last* symbol the block's cases exercise") would resolve to A4's `verifyGate`, not A3's `SeamOps`. Worth stating the rule's answer rather than a symbol name, so a future split cannot silently move the un-skip point. |
+| Q-02 | Not a PLAN matter, flagged so it is not carried into harvest as a live disagreement: `PROPERTIES:559-561` still reads "The A1 row of PROP-GATE-01…05 is the one place the upstream documents disagree on what is being asserted — see §13 item 1", two lines above `PROPERTIES:563` which now states the settled A1-and-A3 form. DEC-ADV-11 closed that disagreement. Relatedly, `PROPERTIES:565-568` cites TSPEC §5.5's A1/A3 gate rows as `TSPEC:638` / `TSPEC:640`; at HEAD §5.5 begins at `TSPEC:648` and the A3 row is `TSPEC:657`. Both are PROPERTIES-side bookkeeping, and PROPERTIES is in its own loop. |
+
 ## Positive Observations
 
 ## Recommendation
