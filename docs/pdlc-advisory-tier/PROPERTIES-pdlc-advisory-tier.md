@@ -413,6 +413,59 @@ asserted — see §13 item 1.
 
 ## 7. Properties — seams A1 and A2 (queue module)
 
+Home: `advisoryQueueSeams.test.js` (A-12 🔴 / A-29, A-30, A-31 🟢). These seams live in
+`orchestrate-queue.js` and reach the driver through the bundle prelude, so every queue-side property
+injects `_runAdvisorySeam` rather than relying on a free identifier.
+
+### 7.1 Routing — the seam token (the gate that gives A2 a precondition)
+
+Today's stop is one free-text signal (`parseTriageVerdict`, `orchestrate-queue.js:302`;
+`triagePrompt`, `:653`) and no A2 gate exists at all, so routing is introduced work, not rewiring.
+
+| # | Property | Category | Level | Traces | Home |
+|---|---|---|---|---|---|
+| PROP-A12-01 | A `needs-human` triage result must carry a machine-readable seam token, and the queue must route `[SEAM:A1]` to the A1 adjudicator and `[SEAM:A2]` to the re-grounding seam — asserted at the **workflow level** by driving the real `needs-human` branch to a terminal disposition (O-4), not only by unit-testing the regex. | Integration | Integration | AC-5.5, T-04-9 | `advisoryQueueSeams.test.js` |
+| PROP-A12-02 | `parseTriageVerdict` must preserve its existing contract while gaining `seamToken`: same last-line-wins scan, same fail-closed `needs-human` fallback, same `verdict`/`reason` values for every input that parsed before. Asserted against the shipped cases unmodified. | Contract | Unit | AC-5.5, TSPEC §6.2 | `advisoryQueueSeams.test.js` |
+| PROP-A12-03 | An **absent** token must yield `seamToken: null` and route to A1; an **unrecognised** token must do the same by failing the alternation rather than by a special branch. Each alternation branch needs its own positive control — a fixture that actually produces `A1`, one that produces `A2`, and one that produces `null` — so the regex cannot pass by never matching. | Error Handling | Unit | AC-5.5, T-04-2, TSPEC §6.5 | `advisoryQueueSeams.test.js` |
+| PROP-A12-04 | **Both** tokens on one stop must be malformed (V-4): the anchored single-group match must yield `seamToken: null` with a `reason` beginning `[SEAM:`, and `hasResidualSeamToken(reason)` must return `true`, escalating rather than routing. | Error Handling | Unit | AC-5.5, T-04-3b family, TSPEC §6.5 | `advisoryQueueSeams.test.js` |
+| PROP-A12-05 | `triagePrompt` must preserve the three-verdict grammar byte-for-byte and **append** the token plus A2's citation-drift obligation — a prompt rewrite that changed the grammar must fail. | Contract | Unit | AC-5.5, TSPEC §6.2 | `advisoryQueueSeams.test.js` |
+| PROP-A12-06 | The advisory config read must be placed **after** the drift gate and **before** `QUEUE.md` is read: when the drift gate blocks, no seam must fire, no config read must occur, and the `blocked` outcome must stand unchanged. | Integration | Integration | TSPEC §6.1/§6.5, AC-1.6 | `advisoryQueueSeams.test.js` |
+
+### 7.2 Seam A1 — adjudicating a triage abstention
+
+| # | Property | Category | Level | Traces | Home |
+|---|---|---|---|---|---|
+| PROP-A1-01 | Only a `needs-human` **abstention** must be adjudicable: a triage verdict of `blocked` must produce no advisory invocation at all, the candidate must be skipped exactly as today (`orchestrate-queue.js:890-897` unchanged), and the summary must report zero A1 invocations. | Functional | Integration | AC-5.1, T-04-1, T-04-3 | `advisoryQueueSeams.test.js` |
+| PROP-A1-02 | The advisory verdict set at A1 must be exactly `{run-candidate, hold, escalate}`, compared as a set — a fourth value must fail. | Contract | Unit | AC-5.1 | `advisoryQueueSeams.test.js` |
+| PROP-A1-03 | `honourA1Verdict(verdict, precheck)` must refuse `run-candidate` whenever `precheck.blocked` is true, and the seam must escalate. Because the production path skips a blocked candidate before triage, this is asserted **unit-scoped over the function** (O-5), with T-04-3 carrying the reachable integration assertion. | Security | Unit | AC-5.1, A1-2, T-04-3b | `advisoryQueueSeams.test.js` |
+| PROP-A1-04 | Where presence-in-base is unsettled — a declared dependency absent from the queue entries — the verdict must be `escalate` **regardless of the agent's verdict**, and no agent must have adjudicated presence in base. The pre-check is one-sided by construction; the pipeline decides from the queue rows. | Security | Unit | AC-5.1, A1-3, T-04-4 | `advisoryQueueSeams.test.js` |
+| PROP-A1-05 | A1 must change **no file**: `permittedActions` must be `[]`, `declaredScope` must be `[]`, `apply`/`producedPaths`/`revert` must be throwing stubs, and after any A1 invocation the repository must satisfy O-2 (no file created, modified or deleted). | Data Integrity | Integration | AC-5.1, A1-4, T-04-2 | `advisoryQueueSeams.test.js` |
+| PROP-A1-06 | `needs-human` candidates must be adjudicated **in queue order** and **at most one** candidate picked per invocation: given three such candidates adjudicated `hold`, `run-candidate`, `run-candidate`, exactly one pick must occur and it must be the second candidate. | Functional | Integration | AC-5.4, A1-5, T-04-5 | `advisoryQueueSeams.test.js` |
+| PROP-A1-07 | The A1 dispatch must go through the raw agent seam with the advisory rung, **not** through the `MODEL_QUEUE` wrapper — asserted on the `model` option the dispatch spy observes. | Contract | Unit | AC-1.5, PLAN A-30 | `advisoryQueueSeams.test.js` |
+
+### 7.3 Seam A2 — re-grounding a stale REQ
+
+| # | Property | Category | Level | Traces | Home |
+|---|---|---|---|---|---|
+| PROP-A2-01 | Given the re-grounding gate fires, the seam must produce a proposal listing **each drifted citation** with its corrected location and whether the cited symbol still resolves at HEAD — evidence gathered through the existing `_git` seam, never asserted by the agent alone. | Functional | Unit | AC-5.2, T-04-6 | `advisoryQueueSeams.test.js` |
+| PROP-A2-02 | A proposal containing **only** location corrections where every cited symbol still exists must be inside the envelope (`permittedActions: ["E-4"]`), and E-4's decidable rule must be checked in `classifyEnvelope`, never in the prompt. | Functional | Unit | AC-5.3, A2-3 | `advisoryQueueSeams.test.js` |
+| PROP-A2-03 | A proposal containing **any** citation whose symbol no longer exists must escalate with nothing applied — a REQ whose premise evaporated needs a human, not a patch. The fixture must contain at least one still-resolving citation too, so the property falsifies a blanket refusal. | Error Handling | Unit | AC-5.3, T-04-7 | `advisoryQueueSeams.test.js` |
+| PROP-A2-04 | A proposal that also edits an acceptance criterion — or any requirements sentence — must be reverted **whole** with reason `out-of-envelope`, and the REQ must satisfy O-2 afterwards. | Security | Unit | AC-5.3, T-04-8 | `advisoryQueueSeams.test.js` |
+| PROP-A2-05 | `declaredScope` must be exactly `[reqPath]` and `producedPaths` must equal `[reqPath]`; a diff touching any second file must revert whole under E-R2. | Data Integrity | Unit | AC-3.4(d), A2-5, T-04-8 | `advisoryQueueSeams.test.js` |
+| PROP-A2-06 | The A2 step order must be `apply → CHECK → RECORD → verifyGate`: the record must be written **before** the commit, so a failed record write reverts a working-tree edit and never undoes a commit. Asserted by an ordered call log. | Data Integrity | Unit | AC-9.2, R-2, A2-6, DEC-ADV-03 | `advisoryQueueSeams.test.js` |
+| PROP-A2-07 | `verifyGate` must make **one** pathspec-scoped commit over `[reqPath, recordPath]` via the reused `commitPaths` (`orchestrate-dev.js:6905`, including its `gitWithLockRetry` at `:6862`), never `-a` and never pushed, then confirm the branch head carries both. | Contract | Unit | A2-6, H-2b, T-04-6 | `advisoryQueueSeams.test.js` |
+| PROP-A2-08 | Applying a re-grounding must **not** pick the candidate: triage must not re-run in the same invocation, the loop must `continue`, and a **subsequent** invocation reading the branch head must re-run the pre-check and triage on the corrected citations. Asserted across a reload of the branch head, never from an in-memory prior (O-5). | Idempotency | Integration | AC-4.5 (A2 row), AC-5.4, A2-4, T-04-6 | `advisoryQueueSeams.test.js` |
+| PROP-A2-09 | A REQ with no citations must yield `no-action` — recorded, counted in `invocations`, and in neither `resolved` nor `escalated`. | Functional | Unit | V-7, TSPEC §6.5 | `advisoryQueueSeams.test.js` |
+| PROP-A2-10 | Two drifted citations resolving to one symbol must stay inside E-4 — the rule is per citation, so the classifier must iterate rows, never targets. | Functional | Unit | TSPEC §6.5 | `advisoryQueueSeams.test.js` |
+| PROP-A2-11 | A failed commit (hook, missing identity, index lock) must make `verifyGate` fail, revert, and escalate — never leave a half-committed state. | Error Handling | Unit | TSPEC §6.5, BR-5 | `advisoryQueueSeams.test.js` |
+| PROP-A2-12 | The A1/A2 advisory record must be written under the **candidate feature's** directory, and a `hold`/`escalate` adjudication after which no pipeline runs must leave it on disk for that feature's next run to harvest. | Data Integrity | Integration | AC-9.1, H-2b, T-08-8 | `advisoryQueueSeams.test.js` |
+| PROP-A2-13 | The queue's own run report must carry the advisory summary for A1/A2, and a dev-side report's A1/A2 rows must be structurally zero. | Observability | Integration | AC-9.4, S-5, T-08-8 | `advisoryQueueSeams.test.js` |
+
+**Negative property for this domain.** PROP-A1-01 and PROP-A12-06 are the two places where the tier
+must do *nothing*; both pair the zero dispatch count with a positive assertion that the pre-advisory
+skip actually occurred (O-3's disabled-tier rule), so neither passes against a build where the queue
+never reached the candidate at all.
+
 ## 8. Properties — seams A3, A4 and A5 (dev module)
 
 ## 9. Properties — advisory record, escalation log, summary, harvest
