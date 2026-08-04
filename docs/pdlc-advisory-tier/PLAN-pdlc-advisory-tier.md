@@ -443,17 +443,28 @@ choice.** The script-owned gate runs the whole configured suite after every wave
 string with no per-task or per-file filter, so a wave that ends with genuinely failing new tests ends
 the *run*. Every 🔴 task therefore lands its cases inside `describe.skip(...)` blocks — one block per
 green owner, named for that owner — which jest reports as skipped, not failed. Each gate below is
-consequently a **full-suite-green** gate; the red evidence lives inside the 🟢 task's own red→green
-commit pair (§3 preamble, §9.2), not at a batch boundary.
+consequently a **full-suite-green** gate; the red evidence is the un-skipping task's **reported
+verbatim pre-implementation failure**, carried into the wave's single script-owned commit
+(§3 preamble step 4, §9.2), not a batch boundary and not a commit pair the runner cannot produce.
+
+**How the per-file assertions in the gates below are read.** Jest's default reporter prints one
+aggregate summary for all 68 suites, which cannot answer "did *these* files contribute zero passing
+cases". Every per-file assertion below is therefore made against a `--json` run filtered by
+`testFilePath` — the wave agent runs
+`npm test -- --json --outputFile=/tmp/adv-gate.json --testPathIgnorePatterns '/node_modules/' '/__tests__/helpers/' '/__tests__/fixtures/' 'documentOracles'`
+and reads `testResults[].{testFilePath,numPassingTests,numFailingTests,numPendingTests}` for the
+`advisory*.test.js` paths. That file is written under `/tmp`, never in the repo, so no document oracle
+walks it. The gate's *pass/fail* remains the script-owned aggregate run (`:8113-8118`); the `--json`
+run is the agent's evidence for the per-file claims it reports.
 
 | Executor batch | §3 labels | Tasks | Gate |
 |---|---|---|---|
 | 1 | 1 | A-01 | **Green.** The §2.4 pre-flight repair has already landed (verify with `--listTests` ⇒ 68 files before invoking Phase I). A-01's assertions must **pass** — they describe HEAD, not new work, including the transcribed-literal pin on `implementation.testCommand` — and no other test may regress. A failing assertion here is blocking work, not a red-to-green step. |
 | 2 | 2 | A-02 | Full suite green. The doubles helper is not itself under test and is excluded from collection by `testPathIgnorePatterns`' `/__tests__/helpers/` entry; it must not break the modules that import it. |
-| 3–5 | 3 | A-03 … A-15 | **Green (skipped-red).** One layer, split by the size cap into `A-03…A-07`, `A-08…A-12`, `A-13…A-15`. Every new case is authored inside a `describe.skip` block named for its green owner, so the suite is green and every new case is *reported as skipped* — the gate asserts both: the whole suite passes, **and** the newly added files contribute zero passing and zero failing cases. A new case that passes here is a defective red (it asserts nothing the surface cannot already satisfy); a case that fails here halts the run. A-15 adds a fixture only. |
+| 3–5 | 3 | A-03 … A-15 | **Green (skipped-red).** One layer, split by the size cap into `A-03…A-07`, `A-08…A-12`, `A-13…A-15`. Every new case is authored inside a `describe.skip` block named for its green owner, so the suite is green and every new case is *reported as skipped* — the gate asserts both: the whole suite passes, **and** the newly added files contribute zero passing and zero failing cases — read off the `--json` run above (`numPassingTests === 0 && numFailingTests === 0 && numPendingTests > 0` for each new `advisory*.test.js` path), not off the aggregate summary. A new case that passes here is a defective red (it asserts nothing the surface cannot already satisfy); a case that fails here halts the run. A-15 adds a fixture only. |
 | 6 | 4 | A-16, A-17, A-28 | **Green.** A-16's cases land skipped (their un-skipper is A-33); A-17 and A-28 un-skip their own blocks in `advisoryConfig.test.js` and `advisoryHarvest.test.js` and those blocks must pass, as must the pre-existing suite. |
-| 7–17 | 5–15 | A-18 … A-32 | **Green.** Each task un-skips exactly its own `describe.skip` block in its named test file, that block passes in full, every still-skipped block is still skipped, and the whole suite is green. From executor batch 6 onward every wave also runs `postWaveCommand` (`node pdlc/workflows/build-runtime.mjs`) and commits `pdlc/workflows/dist/`, so `runtimeBundle.test.js` is part of "the whole suite is green" at every step. |
-| 18 | 16 | A-33 | **Green + the D-6 comparison + zero remaining skips.** `advisoryDisabled.test.js` is un-skipped and passes against the transcribed literal, with the fixture's scenario header re-asserted first. This is the last un-skipper, so the gate also asserts that **no `describe.skip` block remains** in any `advisory*.test.js` file — a case left skipped is a case that never ran. |
+| 7–17 | 5–15 | A-18 … A-32 | **Green.** Each task un-skips exactly the block(s) §3 names for it — A-23, A-24 and A-31 each un-skip **two**, one in their own seam file and one in `advisoryDriver.test.js` (§8.2) — every un-skipped block passes in full, every still-skipped block is still skipped (`numPendingTests` for the file falls by exactly that block's case count and by no more), and the whole suite is green. From executor batch 6 onward every wave also runs `postWaveCommand` (`node pdlc/workflows/build-runtime.mjs`) and commits `pdlc/workflows/dist/`, so `runtimeBundle.test.js` is part of "the whole suite is green" at every step. |
+| 18 | 16 | A-33 | **Green + the D-6 comparison + zero remaining skips.** `advisoryDisabled.test.js` is un-skipped and passes against the transcribed literal, with the fixture's scenario header re-asserted first. This is the last un-skipper, so the gate also asserts that **no `describe.skip` block remains** in any `advisory*.test.js` file — a case left skipped is a case that never ran. **Where that check lives, and why it is two checks:** (a) a **case** in `advisoryDisabled.test.js` (A-16 🔴 / A-33 🟢) that reads every sibling `advisory*.test.js` **as text** — no jest-in-jest — and asserts no match for `/\b(describe|it|test)\s*\.\s*skip\b/`, `/\bx(describe|it|test)\b/`, or a binding assigned from any of those; and (b) the wave agent's own reading of the `--json` run, where `numPendingTests === 0` for every `advisory*.test.js` path. (a) is the durable regression that ships; (b) is the direct behavioural observation and catches an alias (a) could not name. A bare grep for the literal `describe.skip` is sufficient for neither. |
 | 19–20 | 17–18 | A-34 … A-36 | **Green + full oracles.** `npm test` with **no** ignore-pattern override at all — i.e. including `documentOracles.test.js` — on a clean working tree. |
 
 ### 5.3 Why the dependency edges are what they are
