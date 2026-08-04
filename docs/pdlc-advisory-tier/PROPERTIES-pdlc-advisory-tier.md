@@ -87,22 +87,44 @@ export function makeAdvisoryConfig(overrides)          // → a parsed config at
 export function makeAdvisoryGenerators(seed)           // → { verdictText, configObject, envelopeCtx, classText, entryFields }
 ```
 
-`_git` and `_ghRun` are **re-exported from the shipped `__tests__/helpers/mergeDoubles.js`**, not
-re-authored (TSPEC §13.3). `helpers/seams.js`, `helpers/guardFixtures.js` and
-`fixtures/tmpGitFixture.js` are shipped today and are composed with, not duplicated.
+The doubles backing the `_git` and `_ghRun` seams are **re-exported from the shipped
+`__tests__/helpers/mergeDoubles.js`**, not re-authored (TSPEC §13.3). The shipped export names are
+`fakeGhRun` (`pdlc/workflows/__tests__/helpers/mergeDoubles.js:75`) and `fakeGit` (`:189`) —
+`mergeDoubles.js` exports no `_git` / `_ghRun` symbol, so A-02 re-exports those two names under
+whatever advisory-facing aliases it declares and imports nothing that does not exist.
+`helpers/seams.js`, `helpers/guardFixtures.js` and `fixtures/tmpGitFixture.js` are shipped today and
+are composed with, not duplicated.
 
 **PROP-INFRA-01** — No advisory test file must define its own `SeamOps` literal, agent double, file
 double, clock or PRNG; every double must resolve to `advisoryDoubles.js` (or through it to
 `mergeDoubles.js` / `driftGenerators.js`).
-*Category: Contract · Level: Unit · Traces: PLAN AC-INFRA-1, TSPEC §16.2 · Home: reviewer-enforced
-across `advisory*.test.js`; a locally-defined equivalent is a High finding.* A second `SeamOps` fake
-is precisely how the driver's contract and the seams' contract drift apart.
+*Category: Contract · Level: Unit · Traces: PLAN AC-INFRA-1, TSPEC §16.2 · Home:
+`advisoryPreflight.test.js` (A-01 🔴 / A-17 🟢), asserted mechanically — see the oracle below.*
+A second `SeamOps` fake is precisely how the driver's contract and the seams' contract drift apart.
+
+**Its oracle is a source-text scan, not a review checklist** (DC-03: a load-bearing assertion that
+cannot be falsified is not trusted). The property is a shipped case that reads **every**
+`pdlc/workflows/__tests__/advisory*.test.js`, its own file included, and asserts for each:
+
+1. no object literal carrying two or more `SeamOps` member names
+   (`gatherEvidence`, `prompt`, `conditionHolds`, `apply`, `producedPaths`, `revert`, `verifyGate`,
+   `declaredScope`, `permittedActions`) as keys — that shape is a locally-built `SeamOps`;
+2. no `jest.fn()` / `jest.mock` binding named as an agent, file, clock or PRNG double
+   (`/\b(agent|_agent|_readFile|_writeFile|_appendFile|_now|_sleep|rand|prng|seeded)\b\s*[:=]\s*jest\s*\.\s*fn\b/`);
+3. every `import` naming any of `makeAgentDouble`, `makeSeamOps`, `makeFileDouble`, `makeFakeClock`,
+   `makeAdvisoryConfig`, `makeAdvisoryGenerators` resolves to `helpers/advisoryDoubles.js` and to no
+   other module.
+
+Falsifiability is proved the same way PROP-REG-08(a) proves its own: the case is run once against a
+fixture string containing each of the three shapes and must report all three, so a scan that matches
+nothing cannot pass vacuously. Positive control included — a fixture importing correctly from
+`advisoryDoubles.js` must report clean.
 
 ### 2.2 The generator, and the seeding discipline
 
 `pdlc/workflows/__tests__/helpers/driftGenerators.js` ships `seeded(seed)` (xorshift32, `:76`),
 `resolveSeed(literalSeed)` honouring `PDLC_PROP_SEED` (`:134`) and `enumerateLeaves()` (`:158`), and
-is already consumed by thirteen suites. §11's properties reuse it through `advisoryDoubles.js`; no
+is already consumed by sixteen suites under `pdlc/workflows/__tests__/`. §11's properties reuse it through `advisoryDoubles.js`; no
 advisory file declares a PRNG and no task edits `driftGenerators.js`.
 
 **PROP-INFRA-02** — Every generator-driven property must carry a literal seed, must honour
@@ -127,8 +149,8 @@ scenario drift or vacuously green on a narrowed scenario.
 
 ### 2.4 Fixture strings are transcribed literals, never derived
 
-Four closed sets and one record grammar are compared against **transcribed literals**, not against
-values read back out of the implementation:
+Four closed sets and **two record grammars** are compared against **transcribed literals**, not
+against values read back out of the implementation:
 
 | Literal | Normative source | Where transcribed |
 |---|---|---|
@@ -143,6 +165,13 @@ values read back out of the implementation:
 transcribed literal, so both an invented and a deleted member fail.
 *Category: Contract · Level: Unit · Traces: T-03-5, T-03-8, FSPEC §18.2 · Home:
 `advisoryEnvelope.test.js` (A-06 🔴 / A-20 🟢).*
+
+**The same bar applies to the two grammars, not a weaker one.** Field *presence* is satisfied by an
+entry carrying a ninth invented field, and §13.3(2) makes these grammars a byte-exact operator /
+`pdlc-engineering-loop` contract. PROP-REC-02 and PROP-ESC-01 therefore assert **set equality** over
+the emitted field-name set against the transcribed literal — an added field and a deleted field each
+fail — **plus** the declared order as a separate assertion, because order is observable in the
+rendered bytes.
 
 ### 2.5 One constraint the suite's *shape* must respect
 
