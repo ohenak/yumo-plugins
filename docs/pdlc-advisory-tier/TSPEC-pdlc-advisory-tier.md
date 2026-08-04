@@ -486,7 +486,9 @@ export function budgetExceeded({ attempts, attemptBudget, elapsedMs, waitMs, sea
 ```
 
 Pure, so V-5's arithmetic — including the rollup-wait carve-out — is unit-tested without a clock.
-`waitMs` is the accumulated check-rollup wait the seam reports (A5 only; zero elsewhere), and the
+`waitMs` is the check-rollup wait **the driver accumulates** — `runAdvisorySeam` owns the counter and
+passes a `recordWait(ms)` sink into the seam's construction, which only A5 calls (§4.3, §8.2), so the
+value is zero at A1–A4 — and the
 wall-clock comparison is `elapsedMs - waitMs >= seamBudgetMinutes * 60_000` (NFR-4).
 
 - **Preemption (V-5, T-02-5).** The bound must end an in-flight attempt, so the driver races the
@@ -1010,7 +1012,8 @@ asserted on the pre-push tree. The escalation entry and the report both name the
 is what makes the operator's inherited state legible.
 
 **A5-3 — attempts and the wait carve-out.** One attempt is one act → re-poll cycle, including E-1's
-push-free re-run. The re-poll accumulates `waitMs`, which `budgetExceeded` (§4.5) subtracts from the
+push-free re-run. The re-poll reports its wall-clock wait through the driver's `recordWait(ms)` sink
+(§4.3) — A5 is the only seam that calls it — and the resulting accumulated `waitMs`, which `budgetExceeded` (§4.5) subtracts from the
 wall-clock bound, so the 10-minute default cannot end the invocation inside its first CI wait
 (T-07-12). A re-poll that reaches Phase PUB's own completion cap **returns** rather than throwing when
 called from inside the seam — `verifyGate` catches the cap and reports `{passed:false}` — so it
