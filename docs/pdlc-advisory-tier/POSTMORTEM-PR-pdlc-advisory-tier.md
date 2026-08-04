@@ -76,6 +76,40 @@ the TSPEC change it reconciles with covers two.
 
 ## Reviewers
 
+The PLAN has two approvers, and both were dispatched for the delta confirmation.
+
+| Role | Skill | Lens in the delta-confirmation | `-v6` verdict |
+|---|---|---|---|
+| Product Manager | `pdlc:pm-review` | Does the erratum edit resolve the routed items without changing a requirement, acceptance criterion, task, dependency edge, batch label or phase boundary — and does the task↔manifest bijection still hold? | **Approved** (`{0,0,2}`) |
+| Test Engineer | `pdlc:te-review` | Same delta question, plus the standing testability obligation: does every case §8.2 instructs A-07 to author actually **fail against a wrong build and pass against a correct one**? | **Needs revision** (`{1,0,2}`) |
+
+Both scoped strictly to `bc6dccf..7097b57`, opened with a disposition table for the routed items, and
+did not re-litigate sections the edit did not touch — the round-2+ delta discipline the loop mandates.
+Neither found any regression in what v5 approved.
+
+They **agree** on far more than they differ on:
+
+- All four distinct defects are resolved. pm-review confirms no product-contract element moved;
+  te-review re-derived the batch DAG and the ownership bijection mechanically and agrees.
+- **Both** flag the same Low citation slip: `PLAN:869` cites "TSPEC §5.4's five `verifyGate` rows", but
+  §5.4 is *Prohibitions — structural, not asserted* (`TSPEC:630`); the five-row gate table is **§5.5**
+  (`TSPEC:650-660`), which `PLAN:258` and `:282` already cite correctly. pm F-01 and te F-02 are the
+  same finding, independently found.
+- **Both** noticed the A3 seam. This is the crux: it is not that one reviewer saw a problem the other
+  missed.
+
+They **diverge** on one thing only — **which document is wrong about A3's gate**, and therefore what
+severity the A3 observation carries:
+
+| | te-review F-01 (**High**, blocking) | pm-review F-02 (**Low**, non-blocking, routed onward) |
+|---|---|---|
+| Authority taken as settled | **TSPEC v1.3** — `TSPEC:434`, `:657`, `:865` give A3 `verifyGate: null`, "same shape as A1" | **FSPEC §5.4** — the approved product contract, whose gate table gives A3 "Phase DOD's verify step / no findings remaining" |
+| Therefore the defect is | in the **PLAN**: §8.2 was updated for A1 only and still tells A-07 to stub a gate A3 does not have | in the **TSPEC**: v1.3 diverged from an approved FSPEC row; emitted as an `ERRATUM: TSPEC` line, not as a PLAN blocker |
+| Consequence if unfixed | A3's gate-exclusivity case is authored **red against a correct build** in batch A-07, undiagnosed until A-23 — or silently written vacuous, losing AC-4.6's mutation control at one of five seams | A PLAN that faithfully follows FSPEC is not itself defective; if A3 genuinely has no gate, that is an **FSPEC** change first |
+
+Both readings are internally coherent. They are irreconcilable only because the documents they each
+cite disagree with each other — see Pattern of Disagreement 3.
+
 ## Pattern of Disagreement
 
 ## Best-Guess Root Cause
