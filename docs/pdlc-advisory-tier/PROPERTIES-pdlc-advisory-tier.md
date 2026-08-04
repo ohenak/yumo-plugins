@@ -13,7 +13,11 @@ feature: pdlc-advisory-tier
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.2 | 2026-08-04 |
+| pdlc | draft | Claude | 1.3 | 2026-08-04 |
+
+> **v1.3 (POSTMORTEM-PR R-3):** the `scanFixtures.js` open erratum is closed — PLAN v1.6 carries the
+> A-01 ownership row this document asked for. §12.3's owner cell and §13.1 item 5 record the closure;
+> no property, oracle, or count changed.
 
 **v1.2 (round 2).** Five findings addressed, none touching the design: §6.5's post-action-gate
 conjunct is scoped to A2/A4/A5 with A3 joining A1's stronger unreachability form (SE F-01); PROP-DIS-06
@@ -1042,7 +1046,7 @@ fixtures). The two shipped helper modules the new files compose with — `helper
 | `advisoryHarvest.test.js` | A-13 | Unit + Integration | PROP-HARV-*, PROP-SUM-04 |
 | `advisoryBundle.test.js` | A-14 | Unit | PROP-REG-04, -05 |
 | `fixtures/created-files-26c3f1c.json` (fixture) | A-15 | — | PROP-INFRA-03 |
-| `fixtures/scanFixtures.js` (fixture module, not collected) | A-01 proposed — **no PLAN ownership row yet** (§13.1 item 5) | — | PROP-INFRA-01, PROP-REG-08 |
+| `fixtures/scanFixtures.js` (fixture module, not collected) | A-01 (PLAN §4 manifest row, since PLAN v1.6) | — | PROP-INFRA-01, PROP-REG-08 |
 | `advisoryDisabled.test.js` | A-16 | Unit + Integration | PROP-DIS-*, PROP-SUM-06, PROP-REG-08 |
 
 **Level totals.** 195 distinct properties: **148 Unit, 40 Integration, 7 asserted at both levels, 0
@@ -1123,15 +1127,10 @@ documents and does not treat any of these defects as its own.
    tenth `SeamOps` member or an explicit statement that the driver accumulates it is the TSPEC
    author's to settle; PROP-BUD-03 (§5.2) is restated against the argument the driver hands
    `budgetExceeded`, which exists under either resolution, so nothing here blocks on it.
-5. **`fixtures/scanFixtures.js` has no PLAN ownership row.** Resolving the self-inclusive-scan
-   collision (§2.1) requires the forbidden-shape control strings for PROP-INFRA-01 and PROP-REG-08 to
-   live outside the `advisory*.test.js` glob, in a new module
-   `pdlc/workflows/__tests__/fixtures/scanFixtures.js`. PLAN §4's file-ownership manifest names one
-   fixture file (`fixtures/created-files-26c3f1c.json`, A-15) and no second one, and PLAN's contract
-   requires every task to own the files it creates. The module is a leaf with no production dependency
-   and its natural owner is **A-01**, which authors `advisoryPreflight.test.js` and ships un-skipped
-   from batch 1 — but the assignment is the PLAN author's to make, and the manifest row must exist
-   before Phase I, since `validatePlanContract` is what enforces it.
+5. **Closed — `fixtures/scanFixtures.js` now has its PLAN ownership row.** PLAN v1.6 assigned the
+   module to **A-01** in §4's file-ownership manifest, exactly as this item proposed, and
+   `validatePlanContract` passes over the amended manifest (36 tasks, 36 rows, `{"ok":true}`). Kept
+   only as a closure record so no later reviewer re-raises it; there is nothing left to route.
 6. **TSPEC §11.1 states an assertion its own code shape falsifies.** `TSPEC:1245` reads "A grep for
    `advisory.enabled` returning exactly three sites is itself a maintainable assertion", one paragraph
    after declaring the driver's test as `config.enabled === false` (`TSPEC:1241`) and four sections
