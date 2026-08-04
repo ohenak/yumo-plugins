@@ -97,4 +97,13 @@ dropping coverage — which was the whole risk in this finding.
 
 ## Recommendation
 
+**Approved**
+
+Both erratum items are resolved on their merits, and the delta breaks nothing I approved at v5. My
+prior approval of TSPEC-pdlc-advisory-tier v1.1 stands, and extends to v1.2. Q-01 is a PLAN-side
+staleness note, carries no severity, and is not a condition of this approval.
+
 ## Verdict
+
+VERDICT: Approved
+{"high": 0, "medium": 0, "low": 0}
