@@ -63,7 +63,15 @@ Only findings that survived that check appear below.
 
 ## Findings
 
-_(pending)_
+All three v4 findings are resolved and both questions are answered. The two findings below are
+**new**, both Low, and both live inside the one paragraph this revision added to §5.2 (and its echo in
+§10's 1.5 changelog row). Neither changes any assertion, any task, any gate outcome or any product
+behaviour; both are grounding citations in text that presents itself as verified.
+
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-15 | Low | Local | **The new paragraph's central code citation is a range that both starts six lines early and stops before the quoted code ends.** §5.2 (and the §10 1.5 row) writes: "the runner dispatches them **concurrently in the shared tree** (`await parallelFn(wave.map((task) => agentFn("se-implement", …)))`, `pdlc/workflows/orchestrate-dev.js:8095-8102`)". Verified at HEAD: the quoted expression is at **`:8101-8107`** — `8101` `const waveResults = await parallelFn(`, `8102` `wave.map((task) =>`, `8103-8105` `agentFn("se-implement", waveImplementPrompt(task, featureName), { model: MODEL_IMPLEMENTATION })`, `8106-8107` the closers. `8095` is `const wave = waves[waveIndex];` — the wave-loop body, not the dispatch — and the cited range ends at `8102`, i.e. **excludes the `agentFn("se-implement", …)` lines**, which are the half of the quote that establishes "concurrently, one agent per task". (I carried this range forward from my own v4 grounding without re-deriving it; the error is mine as much as the document's, which is why I am reporting it now rather than treating it as settled.) **Fix:** cite `orchestrate-dev.js:8101-8107` in both places. The claim itself is correct as stated. | §5.2, §10 (1.5) |
+| F-16 | Low | Local | **"The only post-wave steps are the gate and the commits" omits the script-owned post-wave build, which this PLAN's own batch 7–17 row requires.** §5.2's new paragraph reads "…with no post-wave agent hook: the only post-wave steps are the script-owned gate (`:8113-8118`) and the per-task commits (`:8143-8159`)". Verified at HEAD, the post-wave sequence is three script-owned steps, not two: the gate (`:8112-8123`), then `postWaveCommand` (`:8129-8140` — `await runCommandFn(implConfig.postWaveCommand)`, halting the wave on failure), then the per-task commits (`:8143-8160`) and the `postWavePathspecs` chore commit (`:8162-8172`). The load-bearing claim — *no post-wave agent hook* — survives intact, since every one of those steps is script-owned. But §5.2's batch 7–17 row itself says "From executor batch 6 onward every wave also runs `postWaveCommand` (`node pdlc/workflows/build-runtime.mjs`) and commits `pdlc/workflows/dist/`", so as written the two paragraphs of the same section contradict each other, and a reader who trusts the newer one will not expect the build to run between the gate and the commits. **Fix:** one clause — "…the only post-wave steps are the script-owned gate (`:8112-8123`), the script-owned post-wave build (`:8129-8140`) and the per-task commits (`:8143-8160`) — all three script-owned, none of them an agent." | §5.2 |
 
 ## Questions
 
