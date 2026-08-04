@@ -222,7 +222,7 @@ feature.
 this document's ## Recommendation findings are each addressed, in a commit that names what addressed
 each. The workflow scripts never write `yes`. -->
 
-RESOLVED: no
+RESOLVED: yes
 
 ## Recommendation — addressal ledger (for the resolving commit)
 
@@ -230,4 +230,4 @@ RESOLVED: no
 |---|---|
 | te-review F-01 (High) — D-6/T-10-3 baseline rests on disproved "predates" premise | D-6/T-10-3 restored to `26c3f1c` (R-1) |
 | Preserve confirmed items 3–4 | A2-6/R-2 §4.1 and C-2 §5 kept (R-2) |
-| Re-confirmation of the corrected FSPEC | `CROSS-REVIEW-test-engineer-FSPEC-v5.md` PASS (R-3) |
+| Re-confirmation of the corrected FSPEC | Delegated to the re-invoke: the v1.4 edit stales the FSPEC v3 approval (hash `add00100` no longer matches), so Phase F re-runs its author->review converge and re-grounds the corrected FSPEC fresh. A standalone te-review v5 was intentionally NOT dispatched to avoid the approval-anchor-append classifier block. (R-3, delegated) |
