@@ -589,6 +589,57 @@ a routine one.
 unrelated to this feature) — then the fixture must be re-pinned at the commit that introduced it, with
 the provenance header updated and the reason stated in the commit that changes it.
 
+## Options Considered
+
+Each entry above carries its own alternatives. This section holds the options weighed at the
+**tier level** — shapes for the whole feature that no single entry owns, and that a future agent is
+most likely to re-propose because they sound cheaper than they are. Every cost claim below was
+checked against the files the option would actually touch.
+
+- **A sixteenth skill, `pdlc:advise`, dispatched at each halt — rejected.** Cheap where it is
+  visible, expensive where it is not. A skill is a prompt file under `pdlc/skills/*/SKILL.md`
+  (fifteen today); adding one costs a directory and a `SKILL.md`. But the seam's obligations are
+  not prompt-shaped: the envelope exclusions are predicates over a changed-file list, X-e is a
+  verbatim reuse of `guardVerdict` (`dev:731`) which no prompt can call, the attempt/wall-clock
+  budget is arithmetic the caller must own, and the record write is a precondition of the action
+  surviving (DEC-ADV-03). Those all stay in the module regardless. The skill would carry only the
+  analysis text — which is what the advisory *dispatch* already is. Net effect: one more file to
+  keep in step, no obligation removed.
+- **A separate plugin under a new top-level directory — rejected as strictly worse than the
+  skill option.** It inherits every objection above and adds a second `.claude-plugin/plugin.json`
+  version to bump, its own `hooks.json`, and a second row class in the distribution manifest.
+  Meanwhile the seams still live in `pdlc/workflows/`, so the plugin boundary would run straight
+  through the middle of the feature.
+- **Implement the tier in the `pdlc-cli` bundle instead of the workflow bundles — rejected on a
+  verified reachability fact.** `pdlc-cli.mjs` is a real third artifact (`build:288-296`), so the
+  option is not imaginary; but it reaches `orchestrate-dev.js` through an explicit eleven-name
+  allow-list, `CLI_DEV_EXPORTS` (`build:243-254`), and it runs **out of band** as a Node CLI, not
+  inside a pipeline run. A seam has to fire *during* Phase DOD or Phase PUB, with the run's
+  `_state`, its config and its seams in hand. The CLI has none of those, and giving it them means
+  re-entering the pipeline — which is the thing it exists not to do.
+- **Widen the authority of the agents already dispatched (let `se-implement` fix red CI, let
+  `dod-verify` clear its own findings) — rejected on REQ US-05.** This is the naive fix REQ §1
+  names explicitly: the model would be deciding the very gates that exist to catch it. The design's
+  whole structure — a separate rung, a declared envelope, a refusal ladder, a record — exists to
+  keep *diagnosis* and *authorization* apart. Reusing the existing agents merges them again and
+  deletes the feature's reason to exist.
+- **Prompt the operator for approval at each seam instead of shipping an envelope — rejected on
+  US-01.** The seams fire in `orchestrate-queue` runs driven by `/loop`, which are unattended by
+  construction; a run that blocks on a prompt is a halt with extra steps. The envelope is what
+  makes unattended resolution safe, and US-02 covers the case where a human is genuinely needed —
+  an escalation with the analysis already done, not a modal question.
+- **Ship one seam first (A5 only) and add the rest later — rejected as sequencing, not
+  architecture, and rejected anyway on the shared cost.** The driver, `SeamOps`, the envelope, the
+  budget, the record and the escalation log are built once and are ~all of the work (DEC-ADV-02);
+  a single seam pays that whole cost for one fifth of the value, and the four deferred seams would
+  each need their own re-entry into a design already frozen around one caller. Batch ordering
+  within the PLAN remains free to land them in any order — see the table below.
+- **Make `advisory.enabled` default to true — rejected.** Shipping off is what makes D-6 (a
+  disabled run is byte-for-byte a pre-feature run) the *default* experience for every consuming
+  repo rather than an opt-out, and it matches the shipped precedent for a phase that acts on the
+  remote: `mergeMode` ships `off` in `MERGE_DEFAULTS` (`dev:60`) and Phase MERGE returns a skipped
+  outcome on it (`dev:1407`) until an operator opts in per repo.
+
 ## Decisions deliberately NOT taken here
 
 Four things a reader may expect to find in this document, and where they actually live. Recording them
