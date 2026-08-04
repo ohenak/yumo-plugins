@@ -855,6 +855,15 @@ as a rule to remember. The only difference is the appended classification, per A
 - **A3-2** — the three classes are a frozen exported array, set-equality tested like §5.3's reasons.
 - **A3-7** — `governingClass(classes)` is pure and ordered: `real-defect` > `mis-scoped-criterion` >
   `deferral-candidate`. T-05-6 (a mixed run halts rather than escalating) is a unit test over it.
+  **Its contract is defined over non-empty input only, and the empty input is unreachable by
+  construction**: `governingClass` is called on the `classes` array of a `parseA3Classification`
+  result that A3-1 has already accepted, and A3-1 rejects as malformed (V-4) any classification whose
+  classified-finding count is below the finding count in the evidence — an empty `classes` against a
+  non-empty finding set never survives that check, and A3 is only invoked when the DoD loop has
+  findings left. No caller therefore reaches `governingClass([])`, and this TSPEC deliberately names
+  no return value for it: pinning one would specify behaviour no seam path can observe. A test suite
+  should hold the ordering property over non-empty inputs and leave the empty case out (PLAN §6.5's
+  P-9 is scoped accordingly).
 - **A3-4** — a `deferral-candidate` with no `successor` makes the proposal incomplete; the invocation
   escalates naming the unbound finding, and **no path writes a deferral row anywhere**. The tier holds
   no reference to `QUEUE.md` on the dev side, so "never enacts a deferral" is structural (P-4, §5.4).
