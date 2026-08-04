@@ -34,6 +34,20 @@ Nothing in the unchanged sections is re-litigated.
 
 ## Questions
 
+v2's Q-06 and Q-07 are both answered in place, correctly and at the right altitude — Q-06 by the
+non-empty-set assertion plus the "it stays green as files arrive" statement in §2.1, Q-07 by the new
+§4.2 paragraph. I verified Q-07's answer end to end: `resolveAdvisoryRung`'s return shape is declared
+at `TSPEC:316` (`@returns {Promise<{ model: string, fallback: boolean }>}`) with `fallback` on the
+disposition typedef at `TSPEC:390`, R-3's "the fallback path ships as the likely production path" is
+at `TSPEC:1483`, and `isModelResolutionError` is a real exported predicate (`TSPEC:332`, listed in
+§12.1's pure-function unit row at `TSPEC:1364`) — so PROP-RUNG-04 does own the substitution direction
+through the double, and no property's green depends on BL-01. One new question, and it is a question
+rather than a finding because §10.1 already states the resolution procedure for it:
+
+| ID | Question |
+|----|---------|
+| Q-08 | PROP-DIS-06 counts `/\.enabled\b/` over **both** modules and expects three, but TSPEC §3.2's C-3 row says `readAdvisoryConfigSafely` is "called once in each `main()`" — the queue's read is wired at TSPEC §6.1 (`TSPEC:651-663`). If the queue's run report is ever expected to carry the C-2 substitution notice, its emit gate is a fourth `.enabled` read and the expected total becomes four. TSPEC §6.1 does not mention a queue-side notice and §3.2's snippet is captioned "caller, in `main()`" (singular), so today three is right — is the queue's silence on the substitution notice a deliberate D-5 consequence, or the gap that produces the "legitimate fourth read" §10.1 now tells Phase I how to handle? |
+
 ## Positive Observations
 
 ## Recommendation
