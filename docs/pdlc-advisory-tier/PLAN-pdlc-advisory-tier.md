@@ -642,7 +642,7 @@ files that churn, so verify by symbol name (`grep -n`) before editing.
 | I-20 | `orchestrate-queue.js:1221` | `buildQueueReport` | gains the advisory summary (S-5); a dev-side report's A1/A2 rows stay structurally zero | A-31 |
 | I-21 | `build-runtime.mjs:87`, `:96-103` | the dev export array and the queue prelude string | additive names only; three sources, three artifacts, no new `wrapModule` call, no new manifest row | A-32 |
 | I-22 | `guard-harvest-before-delete.sh:35`, `:43`, `:57-59` | the `CROSS-REVIEW`/`CODE_REVIEW` early-exit test, token regex and refusal message | gains the `ADVISORY` class; the message is **extended** with a `[class: …]` suffix, never rewritten (see I-12) | A-28 |
-| I-23 | `.claude/pdlc.config.json` | `implementation.testCommand` / `postWaveCommand` / `postWavePathspecs` | `testCommand` is repaired by A-00 (§5.1: the shipped form replaces jest's ignore list instead of extending it). `postWaveCommand` and `postWavePathspecs` are **not edited** — they are the mechanism by which `pdlc/workflows/dist/` is rebuilt and committed per wave | A-00 |
+| I-23 | `.claude/pdlc.config.json` | `implementation.testCommand` / `postWaveCommand` / `postWavePathspecs` | `testCommand` is repaired by the **§2.4 operator pre-flight step**, before Phase I is invoked — the shipped form replaces jest's ignore list instead of extending it, and `implConfig` is read once above the wave loop (`orchestrate-dev.js:8040-8042` vs `:8094`) so no task could repair it in time. A-01 pins the repaired value. `postWaveCommand` and `postWavePathspecs` are **not edited** — they are the mechanism by which `pdlc/workflows/dist/` is rebuilt and committed per wave | none (pre-flight); pinned by A-01 |
 
 ## 8. Acceptance-test coverage map
 
