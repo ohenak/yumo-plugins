@@ -86,3 +86,8 @@ Nothing in the analysis, the dependency graph or the ownership manifest needs re
 correct and the doubles strategy is right. The revision is about making the gates and the case
 assignments say what the machine will actually do.
 
+## Verdict
+
+VERDICT: Needs revision
+{"high": 3, "medium": 5, "low": 3}
+
