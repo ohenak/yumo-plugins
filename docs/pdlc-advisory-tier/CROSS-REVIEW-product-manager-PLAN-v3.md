@@ -148,3 +148,8 @@ No erratum is raised by this review. TSPEC's unspecified `governingClass([])` is
 erratum by the PLAN itself (§10.1 item 6) and needs nothing further from this document; TSPEC §7.4's
 `T-06-8`, outside FSPEC §18.1's catalogue, remains flagged in §8.3 note 2 and was raised against TSPEC
 in round 1.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 0, "medium": 1, "low": 1}
