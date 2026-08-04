@@ -202,14 +202,30 @@ red; it ends the run. So no wave in this PLAN is RED-terminal. Instead:
 1. A 🔴 task authors **every** case body in full, wrapped in one `describe.skip(...)` block **per
    green owner** of that file, each block named for the owner (`describe.skip("A-22 — driver
    lifecycle", …)`). Skipped cases are reported, not failed, so the wave gate is green and truthful.
-2. The matching 🟢 task's **only** edit to the test file is mechanical: delete `.skip` from its own
+2. **Which task un-skips a block is not a choice — it is determined by the block's contents.** The
+   rule, stated once and applied throughout §3, §4 and §8: *a `describe.skip` block's un-skipper is
+   the task that lands the **last** symbol the block's cases exercise.* A block un-skipped earlier
+   than that fails inside a wave and `orchestrate-dev.js:8113-8118` halts the run; a block un-skipped
+   later leaves cases that never ran. This is why `advisoryDriver.test.js` carries four blocks with
+   four different green owners (A-22, A-23, A-24, A-31 — §8.2), and why T-02-4/T-02-5 sit in the
+   driver file rather than in `advisoryVerdict.test.js`: they are the driver's attempt loop
+   (FSPEC:287-288), which A-22 lands at batch 9, not A-19 at batch 6.
+3. The matching 🟢 task's **only** edit to the test file is mechanical: delete `.skip` from its own
    block. It may not add, delete or reword a case body — that is still the 🔴 row's exclusive right
-   (§4). Because every 🔴/🟢 pair is separated by a `Deps` edge, the two writers are never in one
-   batch, and each block has exactly one un-skipper.
-3. **Red evidence is recorded inside the 🟢 task, not at a batch boundary.** `se-implement` un-skips
-   first, runs the file, captures the failure, and commits that as its red commit before writing any
-   production code — so the "failing before, passing after" claim of §9.2 is carried by the task's
-   own red→green commit pair, which is what a DoD reviewer reads.
+   (§4). **That edit is legal because §4's manifest gives the 🟢 task the test file too**: the wave
+   prompt tells each agent `You own EXACTLY these files: …` (`pdlc/workflows/orchestrate-dev.js:5849`)
+   and the script commits pathspec-scoped to exactly those paths (`:8143-8159`), so a file absent from
+   the row would make the un-skip an instructed-against edit that is never committed. Two writers of
+   one test file are never in one wave: `computeWaves`/`pathsCollide` (`:2377`) partitions a batch by
+   ownership, and `validatePlanContract` (`:2344-2367`) checks only the task↔row bijection, never
+   path uniqueness — overlap is explicitly the normal case (`:2334-2336`).
+4. **Red evidence is what the runner can actually produce.** A wave agent is told
+   `Do NOT run git add or git commit — the orchestrator verifies your work and commits it.`
+   (`orchestrate-dev.js:5851`) and the script makes **one** commit per task (`:8143-8159`), so there
+   is no red→green commit *pair* to be had. Instead: `se-implement` un-skips first, runs its own
+   block, **captures the verbatim failure output and reports it in its task summary** before writing
+   any production code; the red evidence is that transcript plus the wave's single script-owned
+   commit, which contains both the un-skip and the production change. §9.2 states the same rule.
 
 Rows whose symbols are parameterisable leaves also carry §6.5's named property for that leaf; the
 property is part of the row's obligation, not an optional extra.
