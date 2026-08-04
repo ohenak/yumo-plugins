@@ -22,8 +22,9 @@ This document records the **"didn't do, and why"** for pdlc-advisory-tier. The "
 already carries. Each entry exists because a real alternative was weighed and rejected, and a future
 agent would otherwise reconsider it confidently and at cost.
 
-**Grounding pin.** Every `file:line` below was read at `feat-pdlc-advisory-tier` HEAD
-`22b310e`, where `pdlc/workflows/orchestrate-dev.js` is 8,642 lines,
+**Grounding pin.** Every `file:line` below was read at or after `feat-pdlc-advisory-tier` commit
+`22b310e` — a **floor**, not a fixed HEAD; the citations were re-confirmed at `4db9b4a`, of which
+`22b310e` is an ancestor. At that floor `pdlc/workflows/orchestrate-dev.js` is 8,642 lines,
 `pdlc/workflows/orchestrate-queue.js` is 1,587 lines and `pdlc/workflows/build-runtime.mjs` is 383
 lines. Verify a citation by **symbol name** (`grep -n`); the line number is a navigation hint against
 files that churn. Where an entry claims an alternative is cheaper or more expensive, the claim was
@@ -78,9 +79,12 @@ each responsible for more than one entry below:
 
 **What makes these decisions worth recording rather than obvious.** Three of the five seams act on
 the git tree or the remote, so an ordering mistake is not recoverable by re-running (DEC-ADV-03).
-Two FSPEC rule pairs contradict each other on the paths this feature must implement — A2-6 versus
-R-2, and C-2 versus D-5/S-4 — so the TSPEC had to *choose*, and a future reader who does not know a
-choice was made will read the chosen shape as an oversight (DEC-ADV-03, DEC-ADV-08). And the
+Two FSPEC rules that *look* like they pull against each other on the paths this feature must
+implement — A2-6 versus R-2, and C-2 versus D-5/S-4 — are in fact already reconciled by FSPEC itself
+(§10.1's preamble at `FSPEC:232-237` and A5-8 at `FSPEC:635`; C-2 at `FSPEC:145`), and the entries
+below record the **TSPEC-side expression** of those settled rules rather than a resolution of a live
+conflict — a distinction that matters, because a future reader who reads either entry as a deviation
+will write a test pinned to a deviation that does not exist (DEC-ADV-03, DEC-ADV-08). And the
 feature's central safety claim, D-6, is an equivalence between a disabled run and a pre-feature
 run, which is falsifiable only against evidence captured outside the system under test
 (DEC-ADV-10). Every entry below exists because a real alternative was weighed, was defensible, and
