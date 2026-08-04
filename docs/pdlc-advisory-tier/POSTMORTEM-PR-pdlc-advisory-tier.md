@@ -301,16 +301,16 @@ emission or application step, never at confirmation.**
 this document's ## Recommendation findings are each addressed, in a commit that names what addressed
 each. The workflow scripts never write `yes`. -->
 
-RESOLVED: no
+RESOLVED: yes
 
 ## Recommendation — addressal ledger (for the resolving commit)
 
 | Finding | Addressed by (fill on resolve) |
 |---|---|
-| te F-01 (High) — §8.2 tells A-07 to stub a gate A3 does not declare | |
-| R-1 — A3's gate decided once at FSPEC ⟷ TSPEC, and recorded | |
-| te F-02 / pm F-01 (Low) — `PLAN:869` cites TSPEC §5.4 instead of §5.5 | |
-| te F-03 (Low) — PROPERTIES §12.3 / §13.1 item 5 still route a closed erratum | |
-| pm F-02 (Low, routed as `ERRATUM: TSPEC`) — A3 gate representation | |
-| Q-02 — registry column, not shipped-object inspection, keys the gateless branch | |
-| Re-confirmation of the corrected PLAN | |
+| te F-01 (High) — §8.2 tells A-07 to stub a gate A3 does not declare | PLAN v1.7 (`584b791`): §8.2's T-03-6 row generalised to the gateless form for A1 **and** A3 — install-the-stub mutation, `verifyGate === null`, `resolved` unreachable, `escalated`/`no-action` with the O-1 triple, transcribed from PROPERTIES §6. Confirmed by te `-v7` (`0aa1d65`) |
+| R-1 — A3's gate decided once at FSPEC ⟷ TSPEC, and recorded | Decided **no gate**, in TSPEC's favour: FSPEC v1.5 §5.4 A3 row restated in A1's form + DEC-ADV-11 (`c7dc98f`); TSPEC v1.3 unchanged. Confirmed by se+te FSPEC `-v6` (`0a9a9e2`, `908e44c`) and pm+te DECISIONS `-v3` (`b6fd6d3`, `b896347`), all Approved 0/0/0 |
+| te F-02 / pm F-01 (Low) — `PLAN:869` cites TSPEC §5.4 instead of §5.5 | PLAN v1.7 (`584b791`): citation repointed to FSPEC §5.4's gate table / TSPEC §5.5's `verifyGate` rows; "A-23 lands both gates" corrected to A4's gate + A3's gateless seam |
+| te F-03 (Low) — PROPERTIES §12.3 / §13.1 item 5 still route a closed erratum | PROPERTIES v1.3 (`08925cf`): §12.3's owner cell and §13.1 item 5 record the closure (A-01 row landed in PLAN v1.6) |
+| pm F-02 (Low, routed as `ERRATUM: TSPEC`) — A3 gate representation | Superseded by R-1's resolution: TSPEC's `null` representation is now authoritative (DEC-ADV-11); no TSPEC edit needed |
+| Q-02 — registry column, not shipped-object inspection, keys the gateless branch | PLAN v1.7 (`584b791`): §8.2 names the explicit registry `gate` column (`gate: null` for A1/A3) as what the generated case branches on; Q-01's different-blocks rationale recorded in the same cell |
+| Re-confirmation of the corrected PLAN | `CROSS-REVIEW-test-engineer-PLAN-v7.md` (`0aa1d65`): VERDICT Approved minor changes, {0,0,1}; contract gate re-run at 36 tasks / 36 ownership rows / `{"ok":true}` / 20 batches; approval anchors re-appended at `6f32699` (REVIEWED-COMMIT `08925cf`) |
