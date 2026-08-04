@@ -57,6 +57,43 @@ and four smaller precision gaps.
 
 ## Positive Observations
 
+- **The cost claims are honest in the direction that costs the author something.** The review brief
+  asks me to confirm every "this alternative is simpler/cheaper" claim against real files. DEC-ADV-01
+  does the opposite of the usual failure: it *raises* its own estimate of the rejected alternative
+  ("Roughly a dozen lines, not two"), then explicitly declines to inflate it — "the fourth source is
+  **feasible and modest in `build.mjs`** … Rejected on that balance, not on an inflated cost." I
+  checked the enumerated touch-points and each is real (`build-runtime.mjs:256` precedent, `:87-94`
+  and `:96-103` prelude edits, `:281`/`:288` array insertions, the `:285-287` ordering hazard). Keep
+  this shape.
+- **It corrects an upstream over-claim rather than inheriting it.** TSPEC asserts twice
+  (`TSPEC:115`, `TSPEC:1439`) that a fourth build source "changes the artifact-composition rule that
+  `runtimeBundle.test.js` **and `distribution-manifest.json`** are written against". DEC-ADV-01
+  checks and finds the manifest half false — rows are per artifact, three today, and a fourth
+  *source* inlined into existing bundles adds none. I reproduced that at `build-runtime.mjs:277-296`.
+  This is exactly what the erratum channel is for, and I have raised it.
+- **It identifies the one genuinely unfixed upstream defect.** `commitPaths` is module-private
+  (`orchestrate-dev.js:6905`, no `export`) and absent from TSPEC §2.3's export list, while §6.4.1
+  requires the queue-side A2 seam to call it. Finding that required reading both documents against
+  the code rather than trusting either.
+- **DEC-ADV-10 is the strongest entry in the document.** D-6 is the feature's central safety claim
+  (a disabled run creates exactly the files a pre-feature run creates), and the entry's four
+  supporting facts all reproduce exactly: `26c3f1c` is an ancestor of HEAD; `4d5e4dc` ("Add Phase
+  PUB…") is an ancestor of `26c3f1c`; `raisePrAndVerifyCi` is defined at `26c3f1c:…:6222` with four
+  occurrences; 8,527 lines at the pin. The rejected alternatives are the right four, and "**one-way
+  in spirit**" is the correct reversibility reading — refreshing the fixture against a tree that
+  contains the feature destroys the property and cannot be recovered from the repo alone. This
+  entry also aligns with the branch's own recent history, which restored the disabled-run baseline
+  to `26c3f1c`.
+- **US-05 is preserved everywhere it could have leaked.** No entry lets the tier declare a gate
+  passed: DEC-ADV-03 makes the record a precondition of an action surviving, DEC-ADV-06 reuses the
+  shipped guard matcher rather than a looser one, and DEC-ADV-07 reports an unverified head instead
+  of asserting a verified one. The "widen the authority of the agents already dispatched" option is
+  rejected on US-05 by name, which is the correct trace.
+- **"Decisions deliberately NOT taken here" is a genuinely useful section** — recording where a
+  question is settled (a runtime fact, the PLAN, another feature's decision record) is what stops a
+  future agent concluding it was overlooked. Its content needs the F-03 correction, but the section
+  should stay.
+
 ## Recommendation
 
 ## Verdict
