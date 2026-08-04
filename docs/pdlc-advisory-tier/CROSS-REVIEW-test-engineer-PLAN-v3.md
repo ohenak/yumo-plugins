@@ -74,4 +74,36 @@ All three findings are new, in sections the v1.3 revision changed. No v2 finding
 
 ## Recommendation
 
+**Needs revision**
+
+All six v2 findings and all three v2 questions are resolved, several of them better than asked, and
+the two mechanisms I was most worried about — the un-skipper discipline and the ownership manifest —
+are now enforced by code I re-executed rather than by prose. The DAG, the wave partition, the coverage
+procedure, the property catalogue and the case arithmetic all hold under direct execution.
+
+One High remains, and it is a defect *in* the answer to my own Q-01 rather than anywhere else:
+
+1. **F-01** — §5.2's `--json` evidence command runs, but `testResults[].{testFilePath,
+   numPassingTests, numFailingTests, numPendingTests}` do not exist on jest 29.7.0, the pinned
+   version. I ran it twice to be sure. Read `testResults[].name` and count
+   `assertionResults[].status` instead; state the expression once, as a literal, so the three §5.2
+   gate rows and §9.1's checkbox all quote the same runnable thing. Without it, batches 3–5 have no
+   defective-red detector at all, and the batch-18 zero-skips check loses its behavioural half.
+
+Then **F-02**: §9.2's red evidence is currently a self-reported transcript with nothing to falsify
+it. Add the git-observable conjunct — the block carries `.skip` in the commit's parent and does not
+in the commit, and its cases move `pending → passed` between the two wave `--json` runs — and gate on
+that, keeping the transcript as the readable half. F-01's reducer supplies the counts already.
+
+**F-03** is one clause: P-4's coherence conjunct is derived from TSPEC:514-515 plus §5.1's exhaustive
+ladder, not stated directly at TSPEC:512-515. Re-attribute it.
+
+Nothing else in the changed sections needs rework. §4's manifest widening, §4.1's re-executed
+disjointness audit, A-01's two-branch pin, the T-02 relocation, the registry-based set-equality
+driver, §6.4's denominator narrowing and P-9's scoping were each verified against code or execution,
+and each holds.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 1, "low": 1}
