@@ -406,6 +406,55 @@ files that churn, so verify by symbol name (`grep -n`) before editing.
 
 ## 8. Acceptance-test coverage map
 
+### 8.1 FSPEC §18.1's 81 cases → test file → owning task
+
+Every case has exactly one home. The counts are FSPEC §18.1's own; the file assignments are this
+PLAN's, and they are what makes "one test file per concern" (TSPEC §13.1) auditable rather than
+aspirational.
+
+| Group | Cases | Count | Test file | 🔴 owner | 🟢 owner(s) |
+|---|---|---|---|---|---|
+| T-01 | T-01-1 … T-01-7 | 7 | `advisoryConfig.test.js` (T-01-1, T-01-6), `advisoryRung.test.js` (T-01-2 … T-01-5, T-01-7) | A-03, A-04 | A-17, A-18 |
+| T-02 | T-02-1 … T-02-6 | 6 | `advisoryVerdict.test.js` (T-02-4, T-02-5), `advisoryDriver.test.js` (T-02-1, T-02-2, T-02-3, T-02-6) | A-05, A-07 | A-19, A-22 |
+| T-03 | T-03-1 … T-03-10 | 10 | `advisoryEnvelope.test.js` (T-03-1 … T-03-5, T-03-8, T-03-9, T-03-10), `advisoryDriver.test.js` (T-03-6, T-03-7) | A-06, A-07 | A-20, A-22 |
+| T-04 | T-04-1 … T-04-9, T-04-3b | 10 | `advisoryQueueSeams.test.js` | A-12 | A-29, A-30, A-31 |
+| T-05 | T-05-1 … T-05-6 | 6 | `advisoryDodSeams.test.js` | A-10 | A-23, A-25 |
+| T-06 | T-06-1 … T-06-6 | 6 | `advisoryDodSeams.test.js` | A-10 | A-23, A-25 |
+| T-07 | T-07-1 … T-07-12 | 12 | `advisoryPubSeam.test.js` | A-11 | A-24, A-26 |
+| T-08 | T-08-1 … T-08-10, T-08-4b | 11 | `advisoryRecord.test.js` (T-08-1, T-08-2, T-08-7, T-08-10), `advisoryHarvest.test.js` (T-08-3 … T-08-6, T-08-4b, T-08-8, T-08-9) | A-08, A-13 | A-21, A-27, A-28 |
+| T-09 | T-09-1 … T-09-8 | 8 | `advisoryEscalationLog.test.js` | A-09 | A-21 |
+| T-10 | T-10-1 … T-10-5 | 5 | `advisoryDisabled.test.js` | A-16 | A-33 |
+| — | **Total** | **81** | 13 files (11 above + `advisoryPreflight.test.js`, `advisoryBundle.test.js`) | — | — |
+
+`advisoryPreflight.test.js` (A-01) and `advisoryBundle.test.js` (A-14) carry no FSPEC acceptance case:
+the first asserts the baseline this PLAN depends on, the second the bundle-composition obligation
+TSPEC §13.6 states. Both are PLAN-level obligations, deliberately not smuggled into an AT id.
+
+### 8.2 The four scope-level tests that no single case implies
+
+FSPEC §18.2's scope-level rows expand into obligations that live across cases; each is named here so
+no task can satisfy its own row while leaving the obligation open:
+
+| Obligation | Expansion | Task |
+|---|---|---|
+| T-02-6 — the V-8 triple for **every** refusal reason | one parameterised case per member of `ADVISORY_REFUSAL_REASONS`, driven off the exported constant so a new reason fails the suite until it has a case | A-07 |
+| T-03-3 — **every** X-a operation | seven named tests: assertion edit, test-file delete, test-case delete, rename out of the collected set, skip/xfail/only marker, parametrised-list narrowing, coverage/mutation threshold lowered | A-06 |
+| T-03-6 — **every** prohibition P-1…P-4 | four cases, each asserting the negative *and* the positive triple on the same path | A-07 |
+| T-03-8 — the shipped closed sets | set-equality against `ENVELOPE_DEFAULTS` and `ADVISORY_EXCLUSIONS` as exported literals; explicitly **not** parameterised by capability probes | A-06 |
+
+### 8.3 Two coverage notes for the reviewer
+
+1. **The no-`testCommand` path at A4 is covered twice, deliberately.** The routing decision
+   (`testCommand: null` ⇒ revert + escalate) is a Seam-unit test over the real `verifyGate` (A-10 →
+   A-23); the wiring — that a scripted `escalated` disposition threads through the real Phase DOD body
+   to the report and the pre-existing rebase-conflict `haltError` — is a phase-integration test
+   (A-10 → A-25). Neither subsumes the other: the integration test fakes the seam, so it cannot see
+   the routing branch; the unit test does not touch the phase body.
+2. **T-06's group carries no seventh or eighth case.** TSPEC §7.4 refers to a case id outside FSPEC's
+   T-06-1…T-06-6 catalogue for that second test; the obligation is covered by the two rows above and
+   is carried in this PLAN under A-10, and the id discrepancy is raised as an erratum against TSPEC
+   rather than silently invented here.
+
 ## 9. Definition of Done
 
 ## 10. Changelog
