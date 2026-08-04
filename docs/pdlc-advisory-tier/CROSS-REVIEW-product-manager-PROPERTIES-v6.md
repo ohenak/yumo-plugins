@@ -51,7 +51,27 @@ them as new findings — they are the same two defects with the same fixes, and 
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Process, not product, and it needs no answer from the author: this is the second consecutive pass in which I return "Approved with minor changes" over the same two Low findings, and the document was not revised between them because — correctly — nothing obliged it to be. If the loop is still open only because some other reviewer's findings are open, the two Lows here are free to fold into whatever revision closes those. If the loop is open with nothing outstanding anywhere, then this document has converged from the product lens and the two Lows should be carried to the next touch of the file rather than spending a round. |
+
 ## Positive Observations
+
+- **An unchanged document is the right response to two non-blocking Lows.** v5 approved with minor
+  changes; neither finding was a blocker, and neither is a product-surface defect. Revising a
+  1,200-line document to repunctuate two quotations would have risked more than it fixed. The author
+  choosing not to churn is a correct reading of the approval bar, and I want that noted rather than
+  penalised.
+
+- **Everything I approved at v5 is verifiably still true at head.** I re-derived the three invariants a
+  product reviewer would care about — 183 property rows, the untouched §12.1 AC→property matrix, and
+  zero emitted errata — rather than assuming they held because the diff was empty. All three hold at
+  `4df1f7b`.
+
+- **The routing contract is still clean.** All six §13.1 items remain closure records citing the
+  upstream line that carries each resolution, and the phase's one remaining erratum round is still
+  unspent. That was the substance of my v4 Medium, and it has now survived two passes without
+  regressing.
 
 ## Recommendation
 
