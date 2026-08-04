@@ -134,10 +134,37 @@ cannot be falsified is not trusted). The property is a shipped case that reads *
    `makeAdvisoryConfig`, `makeAdvisoryGenerators` resolves to `helpers/advisoryDoubles.js` and to no
    other module.
 
-Falsifiability is proved the same way PROP-REG-08(a) proves its own: the case is run once against a
-fixture string containing each of the three shapes and must report all three, so a scan that matches
-nothing cannot pass vacuously. Positive control included — a fixture importing correctly from
-`advisoryDoubles.js` must report clean.
+Falsifiability is proved the same way PROP-REG-08 proves its own, and by the same mechanism: the
+matchers are run once against fixture strings containing each of the three shapes and must report all
+three, so a scan that matches nothing cannot pass vacuously. Positive control included — a fixture
+string importing correctly from `advisoryDoubles.js` must report clean. The scanned set must also be
+asserted **non-empty** before any per-file assertion (SE Q-06): a glob that silently matches nothing
+satisfies a universally-quantified claim vacuously. At batch 1 the set is exactly one file — this
+property's own — and grows as A-03…A-16 land; the obligation is that it stays green as files arrive,
+which is why the property is homed in the first authored file and re-runs on every later wave.
+
+**Where the fixture strings live — and why not in this file.** The scan is self-inclusive, so a
+forbidden literal written inside `advisoryPreflight.test.js` is indistinguishable from a violation and
+would make the property falsify itself. The three bad-shape strings and the one clean string therefore
+live in **`pdlc/workflows/__tests__/fixtures/scanFixtures.js`**, imported by the case:
+
+- The path is outside **both** scanned globs by construction — the scans read
+  `pdlc/workflows/__tests__/advisory*.test.js`, and this module is in a different directory, carries
+  no `advisory` prefix and no `.test.js` suffix. No naming discipline has to be remembered for it to
+  stay outside.
+- `__tests__/fixtures/` is already excluded from jest's collection (PLAN §2.2, `A-00`), so the module
+  is never itself collected as a suite.
+- The module exports named string constants (`SEAM_OPS_LITERAL_SHAPE`, `DOUBLE_BINDING_SHAPE`,
+  `FOREIGN_IMPORT_SHAPE`, `SKIP_SHAPES`, `CLEAN_SHAPE`); it is a fixture module, not a test.
+- One file, shared by PROP-INFRA-01 and PROP-REG-08, so there is one place a future source-scan oracle
+  puts its controls rather than two conventions.
+
+Assembling the forbidden literals at runtime from concatenated fragments would also work, but is
+rejected: it hides the shapes from a reader, and a scan hardened against fragment assembly (which a
+real evasion would use) would then match the control itself. Keeping the fixtures out of the scanned
+glob is the resolution both properties adopt. **`fixtures/scanFixtures.js` is a new file this feature
+must create, and it has no PLAN ownership row — routed upstream as an erratum (§13.1 item 5), not
+absorbed.**
 
 ### 2.2 The generator, and the seeding discipline
 
@@ -782,9 +809,14 @@ implementation. The oracle is **one** check, not two: a shipped source-text case
 `pdlc/workflows/__tests__/advisory*.test.js` **including its own file** and asserts no match for
 `/\b(describe|it|test)\s*\.\s*skip\b/`, `/\bx(describe|it|test)\b/`, or a binding assigned from any of
 those. A bare grep for the literal `describe.skip` does not suffice — the scan catches an alias by
-shape, which is the evasion that actually happens. Falsification is proved in-file: the same matcher
-run against a fixture string containing each of the three shapes must report all three, and against a
-clean fixture must report none, so a scan that has stopped matching cannot pass vacuously.
+shape, which is the evasion that actually happens. Falsification is proved against the **shared
+fixture module** `pdlc/workflows/__tests__/fixtures/scanFixtures.js` (§2.1), never against a literal
+written into a scanned file: the same matchers run against `SKIP_SHAPES` — one string per shape — must
+report all three, and against `CLEAN_SHAPE` must report none, so a scan that has stopped matching
+cannot pass vacuously. Writing those controls inline would put each forbidden shape inside a file this
+property scans, making the control indistinguishable from the violation it proves detectable; the
+fixture module is outside the `advisory*.test.js` glob by construction. The scanned set is asserted
+non-empty before the per-file assertion, for the same reason PROP-INFRA-01 asserts it.
 *Category: Contract · Level: Unit · Traces: PLAN §5.2 batch 18, §9.1 · Home: `advisoryDisabled.test.js`
 (A-16 🔴 / A-33 🟢).* A case left skipped is a case that never ran, and this feature's whole red
 discipline depends on that not happening silently.
