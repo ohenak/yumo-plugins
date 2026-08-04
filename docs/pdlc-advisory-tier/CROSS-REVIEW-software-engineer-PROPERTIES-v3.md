@@ -50,6 +50,39 @@ rather than a finding because §10.1 already states the resolution procedure for
 
 ## Positive Observations
 
+- **F-02 was answered by finding the harder problem underneath it.** I asked for a transcribed
+  matcher. The revision supplied one *and* noticed that the matcher alone is not enough: whether the
+  parser's own read is counted depends on an access shape no upstream document pins, so the expected
+  total would have been unstable whichever regex was chosen. Excluding `parseAdvisoryConfig`'s body —
+  with a control that proves the exclusion removed a non-empty slice containing `invalidKeys` — makes
+  the count a fact about this feature's call sites rather than about a stylistic choice. That is a
+  better property than the one I asked for, and the `parseImplementationConfig` precedent it reasons
+  from (`orchestrate-dev.js:203-209`) is cited correctly.
+- **F-03's resolution picked the structural option over the clever one, and said why.** Runtime
+  assembly of the forbidden literals would have worked today and failed the first time someone
+  hardened the scan against fragment assembly. Putting the controls in
+  `fixtures/scanFixtures.js` — outside both globs by directory, prefix **and** suffix, so no naming
+  discipline has to be remembered — is the version that survives a future maintainer. Sharing one
+  fixture module between PROP-INFRA-01 and PROP-REG-08 also means the next source-scan oracle in this
+  repo has one convention to follow rather than two.
+- **The new file was routed upstream instead of quietly assumed.** The easy move was to write
+  `scanFixtures.js` into §12.3 with A-01 beside it and let Phase I discover the missing manifest row.
+  Instead §12.3's cell says "**no PLAN ownership row yet**", §13.1 gains item 5, and the document
+  proposes an owner without assigning one. The justification sentence is wrong (F-03) but the
+  discipline is exactly right.
+- **§4.2's answer to Q-07 closes the question in the direction that removes risk.** It does not
+  merely assert that the property is double-driven; it names the mechanism (`makeAgentDouble` returns
+  on the first call, so the reported rung is `MODEL_ADVISORY` with `fallback: false` without any alias
+  existing), and then makes the stronger claim that **no** property's green depends on BL-01, with
+  PROP-RUNG-04 named as the owner of the other direction. That is the claim a reader actually needs,
+  and it is checkable — I checked it.
+- **The revision resisted moving the level totals.** §8.3's new paragraph could have re-levelled
+  PROP-A5-20 to Integration on the grounds that it lives in a file that may build a real tree, and
+  §1/§12.3's 148/40/7/0 would have needed re-deriving. It instead states the rule that decides the
+  level — "membership in that file is not what levels a property; what the property's own oracle has
+  to observe is" — and shows the three probes terminate at `classifyEnvelope`'s return. The rule is
+  reusable; the total is unchanged and still correct.
+
 ## Recommendation
 
 ## Verdict
