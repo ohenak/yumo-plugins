@@ -61,4 +61,27 @@ touched — neither changes scope, task count, dependency edges, or any acceptan
 
 ## Recommendation
 
+**Approved**
+
+The delta resolves all four distinct erratum defects (E-1 … E-4), each verified against the upstream
+document it cites rather than against the erratum text alone, and it breaks nothing this reviewer
+approved at v5: no requirement, acceptance criterion, task, dependency edge, batch label, or phase
+boundary changed, and the task↔manifest bijection still holds at 36/36.
+
+Two Low findings stand (F-01 pointer, F-02 A3 gate representation). Per the approval rules, Low-only
+⇒ this would be "Approved with minor changes"; the delta-confirmation contract asks whether the
+erratum edit resolves the items without regression, and it does, so this round is recorded as
+**Approved** with F-01 and F-02 carried forward:
+
+- **F-01** is a one-line citation correction; fold it into the next PLAN touch, no round of its own.
+- **F-02** is not a PLAN defect. It is emitted as an erratum against TSPEC — see the `ERRATUM: TSPEC`
+  line in this reviewer's response. The PLAN follows FSPEC §5.4's gate table, which is the approved
+  product contract; TSPEC v1.3's A3 `verifyGate: null` is what diverged from it. If the resolution
+  goes the other way (A3 genuinely has no gate), that is a **FSPEC** change first — see Q-02 — and
+  the PLAN's §3 A-07 and §8.2 A3 wording then needs the same both-directions treatment E-1 just gave
+  A1. Neither path blocks this PLAN today.
+
 ## Verdict
+
+VERDICT: Approved
+{"high": 0, "medium": 0, "low": 2}
