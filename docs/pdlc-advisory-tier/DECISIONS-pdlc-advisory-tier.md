@@ -418,6 +418,43 @@ which would let both rules hold literally.
 
 ## DEC-ADV-09: The escalation log has no reader inside this tier
 
+**Context.** `docs/_queue/ESCALATIONS.md` is a new append-only artifact. The tempting next step is to
+read it back — to avoid re-escalating something a previous run already escalated, or to let a seam see
+its own history.
+
+**Decision.** **Nothing in the advisory tier ever reads it.** It is written by `appendEscalationEntry`
+through `_appendFile` (`dev:6805`) and consumed only downstream, by a human operator or by
+`pdlc-engineering-loop`. No seam consults its own or another seam's prior escalations; every invocation
+decides from live evidence alone (TSPEC §17.2, §10.1).
+
+**Alternatives considered.**
+
+- **Deduplicate escalations by reading prior entries — rejected.** It converts a log into state. Two
+  contracts then become code that can be wrong rather than facts that cannot: L-1 / T-09-2 ("append-only,
+  newest-last; the first entry is unmodified") is guaranteed **by the absence of a reader** — there is
+  no code path that opens the file for anything but append — and T-09-8's asymmetry (a failed log write
+  is downgraded to a report notice while the `escalated` disposition stands) is only safe **because**
+  a failed write can never feed back into a decision. With a reader, a partially-written or unreadable
+  log becomes an input to a decision, and a write failure becomes consequential.
+- **Suppress a repeat escalation using in-memory state — rejected as unnecessary.** F-3 already bounds
+  invocations to one per seam condition per run, so within a run there is nothing to deduplicate; across
+  runs, a repeat escalation is *information* (the condition persisted), not noise.
+- **Make the log machine-parsed with a strict schema so it can be read later — rejected for now.** The
+  entry format is stable and documented (TSPEC §10.1), so a future reader is not blocked; committing to
+  a parse contract today would add a data contract with no consumer, which DC-08 treats as the wrong
+  shape for deferred work — the named successor surface is `pdlc-engineering-loop`.
+
+**Constraints that forced this shape.** L-1's immutability requirement; T-09-8's deliberate asymmetry
+between the record (a precondition of an action surviving) and the log (not one); the fact that an
+escalation is the pipeline doing strictly less, so a log failure must never upgrade it.
+
+**Reversibility: easy** to add a reader mechanically, **hard** in consequence — the moment one exists,
+L-1 and T-09-8 stop being structural and must be re-argued as behaviour.
+
+**Re-evaluation triggers.** `pdlc-engineering-loop` (or any consumer) needing the tier itself to react
+to escalation history; or operator evidence that repeat escalations across runs are actually noise
+rather than signal.
+
 ## DEC-ADV-10: D-6's expected set is a hand-reviewed fixture captured at `26c3f1c`, not a re-derived value
 
 ## Decisions deliberately NOT taken here
