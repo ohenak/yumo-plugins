@@ -36,6 +36,12 @@ So on substance the TSPEC is in fidelity with FSPEC v1.4 on all three amended po
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Requirement ref |
+|----|----------|-------|---------|----------------|
+| F-01 | Low | Local | **§16.4's erratum record, and the two forward references to it, now describe an upstream state that no longer exists.** §16.4 (`1458-1470`) says "Two upstream defects were found … Both are routed as errata, **not fixed here**", listing (1) the A2-6/R-2 ordering gap "FSPEC never reconciles" and (2) the "C-2 / D-5 conflict — C-2 **unconditionally** reports a degraded key". Both were fixed upstream after my v3 review: FSPEC v1.3/v1.4 amended C-2 (`FSPEC:145`) to gate the report on the tier resolving enabled, and §4.1 (`FSPEC:233-240`) to fix the A2 record-before-commit order. Consequently §3.2's header "One deliberate **deviation** from C-2, resolving an FSPEC conflict" (`257`), §4.4's "**This resolves an FSPEC gap** (erratum, §16.4)" (`437`), §6.4.1's heading "resolving FSPEC's A2-6 / R-2 gap" (`731`) and §16.3's "the erratum in §16.4" (`1453`) all now assert a divergence from an approved upstream that is in fact **agreement** with it. The technical content is right; only the traceability framing is stale. Fix: retitle these as conformance to FSPEC v1.4 C-2 / §4.1 rather than deviations, and rewrite §16.4 as a closed record ("raised against FSPEC v1.2, **adopted upstream in v1.3/v1.4** — this TSPEC's resolution is now the FSPEC's rule"), citing the amended FSPEC lines. Why it matters from the product lens: a reader who trusts §16.4 as written will believe the approved FSPEC still carries two open contradictions and may re-route a settled erratum, spending a bounded erratum round on a question the FSPEC already answers. | FSPEC C-2, A2-6, R-2; REQ-ADV-07 traceability |
+
+Low only — no High, no Medium, so the approval bar is met.
+
 ## Questions
 
 ## Positive Observations
