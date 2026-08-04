@@ -129,3 +129,6 @@ None of these requires re-deciding anything. The revision is a rewrite of three 
 plus four sentences.
 
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 2, "medium": 1, "low": 4}
