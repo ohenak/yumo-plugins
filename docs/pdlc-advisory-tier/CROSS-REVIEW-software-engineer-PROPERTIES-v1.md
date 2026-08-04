@@ -48,4 +48,41 @@
 
 ## Recommendation
 
-_(filled in below)_
+**Needs revision**
+
+> Any High or Medium finding → Needs revision (mandatory).
+
+This is a strong document — the oracle system in §3, the precedence-defeating fixture discipline in
+§5, and the set-equality treatment of every enumerated contract are better than the bar this phase
+usually clears, and the grounding table verified clean on the first pass. The revision is bounded and
+none of it touches the design.
+
+Four things must change before this is implementable:
+
+1. **F-01** — recompute §1's and §12.3's level totals from the tables (189 properties; 134 Unit / 39
+   Integration / 7 Unit + Integration over the 187 levelled rows), and either re-state the pyramid
+   budget at the real numbers or re-level properties to meet the stated one. ~46 Integration
+   properties against PLAN §6.2's three harnesses is a cost signal the PLAN author needs.
+2. **F-02** — re-scope PROP-CFG-05's call-count spy from the *path* to the advisory reader.
+   `.claude/pdlc.config.json` is already read at `orchestrate-dev.js:8040` and `:1373`, so the
+   property as written fails against a correct build.
+3. **F-03** — reconcile PROP-DIS-06's "exactly three `advisory.enabled` sites" with PROP-DIS-05 and
+   PROP-SUM-06 (which together require a fourth decision point at the report), and give the grep a
+   defined file set.
+4. **F-04** — re-home PROP-REG-08 clause (b) to `globalTeardown` or a reporter, or drop it, per
+   `DECISIONS-test-oracle-mechanics.md` DEC-ORACLE-01. Clause (a) stands on its own.
+
+The five Mediums (F-05 … F-09) are each a one-paragraph edit: cover T-01-2 and add the FSPEC-case
+audit direction to §12, give PROP-BUD-03 a surface that exists, fix PROP-LIFE-02's arity, upgrade the
+two record grammars from containment to set-equality, and give PROP-INFRA-01 a mechanical oracle. The
+four Lows are wording.
+
+Three upstream defects are routed as errata rather than folded into this verdict: the `waitMs`
+reporting surface missing from TSPEC §4.3's `SeamOps`, and the two the document itself identified in
+§13.1 (A1's `verifyGate` representation, and P-4's closure conjunct) — both of which I confirmed
+independently against the cited sections.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 4, "medium": 5, "low": 4}
