@@ -49,6 +49,12 @@ and four smaller precision gaps.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | **The working tree has diverged from `origin/feat-pdlc-advisory-tier`.** Local HEAD is `6703b20` (2026-08-03 20:48); the remote tip is `eaa1f74` (11:36); their merge-base is `7cdfbb0` (2026-07-27). The remote tip predates the FSPEC v1.3 erratum round (`3bbf934`, 17:03) and the TSPEC revisions, so it is the stale side — I reviewed the local tree, which is what the orchestrator placed and what this document was authored against. Per the reviewer git protocol I did not pull or push in the shared tree. Confirm before the next push that the remote is intended to be overwritten rather than merged. |
+| Q-02 | DEC-ADV-03 identifies a real, unfixed TSPEC gap: `commitPaths` (`orchestrate-dev.js:6905`) is module-private, is absent from TSPEC §2.3's proposed dev export list and queue prelude, yet TSPEC §6.4.1's A2 `verifyGate` calls it from the queue module. The entry says "the PLAN must carry" the export edit. Since the PLAN does not exist yet, does the Phase P author inherit this obligation from the DECISIONS Consequences table alone, or should it also be recorded against TSPEC §2.3 so the PLAN's file-ownership manifest picks up `pdlc/workflows/build-runtime.mjs`? (I have raised the TSPEC side as an erratum.) |
+| Q-03 | `advisory.envelope` is an operator-editable config key (AC-1.7) whose default is the AC-3.3 allow-list, while US-03 asks for a boundary "un-widenable by the agent". No entry records why an operator-widenable envelope is acceptable where an agent-widenable one is not. That is arguably a decision worth its own entry — was it weighed and judged obvious, or not weighed? |
+
 ## Positive Observations
 
 ## Recommendation
