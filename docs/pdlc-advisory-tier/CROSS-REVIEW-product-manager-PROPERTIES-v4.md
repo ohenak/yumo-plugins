@@ -33,11 +33,41 @@ item 5). No property was added, removed or re-levelled: `grep -c '^| PROP-'` sti
 
 ## Questions
 
-_(pending)_
+I had no open questions at v3 and have none now. F-01 is stated as a finding rather than a question
+because I checked each of the four items against branch head myself; there is nothing I need the
+author to tell me before the fix can be made.
 
 ## Positive Observations
 
-_(pending)_
+- **The item-5 closure is accurate, and it was verified rather than asserted.** §12.3's owner cell
+  now reads "`A-01` (PLAN §4 manifest row, since PLAN v1.6)" (`PROPERTIES:1049`) and §13.1 item 5
+  records the closure with the contract check that proves it. Both halves check out at branch head:
+  PLAN §4's manifest row for A-01 lists `pdlc/workflows/__tests__/advisoryPreflight.test.js`,
+  `pdlc/workflows/__tests__/fixtures/scanFixtures.js` (`PLAN:308`), the §3 task row carries the same
+  two files (`PLAN:252`), and PLAN v1.6's changelog names the assignment and its reason — "a batch-1
+  shared test prerequisite per batch-safety rule 4, required because the Phase I wave commit stages
+  only `task.files`" (`PLAN:1024`). I re-derived the bijection the item quotes instead of taking it:
+  the PLAN carries **36** `| A-NN |` task rows and **36** manifest rows, so `validatePlanContract`'s
+  task↔row check has nothing left to fail on. The gap I called out at v3 — a file no task owned, which
+  the wave gate would have declined to commit — is genuinely closed, at the exact owner this document
+  proposed.
+
+- **The routing worked end to end, and that is worth recording separately from F-01.** At v3 this was
+  an item the PROPERTIES author found, declined to fix in someone else's document, and handed
+  upstream with the owner named and the decision left with the PLAN author. The PLAN author made
+  exactly that assignment one version later. This is the erratum channel doing its job — a
+  Phase-I-time "no task owns this file" failure converted into an authoring-time edit — and the
+  behaviour to keep is the author writing the closure back into their own document rather than
+  leaving the reader to discover it. F-01 asks for *more* of this, not less: four sibling items
+  deserve the same treatment item 5 just received.
+
+- **The revision is honestly scoped and says so.** The v1.3 changelog block claims "no property,
+  oracle, or count changed" (`PROPERTIES:17-19`), and the diff bears that out — 10 insertions, 11
+  deletions, none of them inside a property statement. I re-counted the property table rows (**183**,
+  unchanged from v3) so §1's and §12.3's 195 / 148 / 40 / 7 / 0 level budget needs no recomputation.
+  No acceptance criterion gained or lost an obligation in this round, and §12.1's AC→property matrix
+  is untouched. A revision whose changelog understates nothing is a revision a reviewer can
+  delta-scope safely.
 
 ## Recommendation
 
