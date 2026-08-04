@@ -43,10 +43,29 @@ The acceptance rows I called out in v7 are unchanged and still read as they did:
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| — | — | — | No findings. The document is byte-identical to the version approved at v6 and re-confirmed at v7, no upstream counterparty has moved, and every repo path it names resolves as the document describes | — |
+
 ## Questions
+
+| ID | Question |
+|----|---------|
+| — | None. |
 
 ## Positive Observations
 
+- Four consecutive rounds with no drift in the FSPEC bytes while PROPERTIES iterated underneath it. The erratum channel made its one targeted edit at `c7dc98f` and has left the document alone since — the bounded one-erratum-round-per-doc rule producing exactly the stability it is designed for.
+- The disabled-tier contract (`§T-10`) remains the strongest part of the acceptance set: `T-10-5` (an enabled run with five zero rows) exists specifically so `T-10-3`'s "no advisory summary" cannot pass vacuously, which is the paired-positive discipline applied at the level of the row *set*, not just within a row.
+- Every existing-code claim the FSPEC makes is a path-existence claim, and each one is independently checkable in a single sweep. That is cheap to re-ground each round, which is why this re-review costs a few commands rather than a re-read.
+
 ## Recommendation
 
+**Approved**
+
+No delta in the document, no movement in REQ, TSPEC or DECISIONS beneath it, no prior finding outstanding at any version, and every existing-code claim re-verified at HEAD. The v6/v7 approval carries forward unchanged.
+
 ## Verdict
+
+VERDICT: Approved
+{"high": 0, "medium": 0, "low": 0}
