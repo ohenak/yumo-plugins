@@ -140,4 +140,33 @@ the revision changed — §3's new skip discipline and §6.4's new coverage proc
 
 ## Recommendation
 
+**Needs revision.**
+
+All seven v1 findings are resolved, and the revision is convergent: every change I checked went the
+right way, several went further than the finding asked, and no earlier section I approved was broken
+by the edits. The document is close.
+
+One new High blocks approval, and it is a consequence of the revision rather than of the original
+document — the skip discipline introduced to satisfy TE F-01 is a sound idea implemented against a
+runner that forbids two of its three steps:
+
+1. **F-08** — reconcile §3's skip discipline with the wave runner. Add each 🟢 task's un-skipped test
+   file to its §4 manifest row (`validatePlanContract` permits it; `computeWaves` will then enforce
+   the separation §3 currently only argues for), restate §4's opening so the 🔴 task remains the only
+   writer of **case bodies** rather than of the file, and restate §3 step 3 and §9.2's red-evidence
+   row as "captured failure reported by the task, committed by the script" rather than as a
+   two-commit pair the agent is instructed not to create (`orchestrate-dev.js:5849`, `:5851`,
+   `:8143-8159`). Then re-run the PLAN gate and re-transcribe §5.2.
+
+**F-09** (Low) is a two-symbol contradiction between §6.4's declared surface and the command that
+measures it; fixing it in the same revision costs one sentence and makes §9.1's checkbox honest, but
+it would not on its own hold up approval.
+
+No new erratum is raised. The one open upstream item — TSPEC §7.4's `T-06-8`, outside FSPEC §18.1's
+T-06-1…T-06-6 catalogue — was raised against TSPEC in v1, is still flagged by the PLAN in §8.3
+note 2, and needs nothing further from this document.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 0, "low": 1}
