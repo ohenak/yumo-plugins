@@ -85,4 +85,38 @@ rather than a finding because §10.1 already states the resolution procedure for
 
 ## Recommendation
 
+**Approved with minor changes**
+
+> Any High or Medium finding → Needs revision. There are none: 0 High, 0 Medium, 3 Low.
+
+All four v2 findings are closed on the substance and verified against the tree, not against the
+revision's account of itself — the four §6.5 citations resolve to the lines given, the PROP-DIS-06
+grounding grep returns 0/0 as claimed, and the jest `testPathIgnorePatterns` entry that makes the
+fixture module non-collected is in `pdlc/workflows/package.json` where §2.1 says it is. Two of the
+three repairs came back stronger than the finding asked for (the parser-exclusion control in
+PROP-DIS-06, the structural rather than clever fix in §2.1), and both v2 questions are answered in
+place with checkable mechanisms.
+
+The three remaining findings are Low and none of them touches a property's oracle:
+
+1. **F-01** — extend §6.5's A1/A3 carve-out to conjunct 2 as well as conjunct 1. At A1 the mutation
+   control replaces the gate with itself (`TSPEC:638`); at A3 there is no gate. One clause on the
+   "Two conjuncts, both required" line settles it.
+2. **F-02** — `PLAN §2.2, A-00` no longer resolves (A-00 deleted in PLAN v1.2, `PLAN:1017`); the fact
+   lives at `PLAN:138-141`, and `package.json` is the primary source. §12.3's "created by the 🔴 task
+   named in PLAN §4's manifest" needs the `scanFixtures.js` qualifier.
+3. **F-03** — §13.1 item 5 should cite the pathspec-scoped wave commit
+   (`orchestrate-dev.js:8143-8159`), not `validatePlanContract` (`:2344-2367`), which passes without
+   the row. The ask is right; the reason given is the one thing that would let a PLAN author dismiss
+   it.
+
+These can be taken in the optimizer pass without a further review round. Two upstream defects are
+routed as errata rather than folded into this verdict: TSPEC §11.1's grep assertion (which this
+document has now diagnosed correctly at §13.1 item 6 and which I independently confirmed at
+`TSPEC:1245` against `:1241`, `:286`, `:1113`), and PLAN §4's missing ownership row for
+`fixtures/scanFixtures.js`.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 3}
