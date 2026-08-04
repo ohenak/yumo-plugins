@@ -454,11 +454,13 @@ pathspec-scoped commit, then confirm the branch head carries both. The driver's 
 uniform across all five seams, and BR-5's two-tree-states invariant is asserted against the
 pre-`verifyGate` tree everywhere.
 
-**This resolves an FSPEC gap** (erratum, §16.4): FSPEC A2-6 requires an applied re-grounding to be
-*committed* before the invocation ends, while R-2 requires a failed record write to un-take the
-action — an ordering FSPEC never reconciles, and which naively demands undoing a commit. Under the
-split above, at A2 the record is written at step 7 and **the commit does not exist yet**: step 7's
-failure reverts a working-tree edit only. §6.4 gives the exact call order.
+**This is the mechanism for a settled FSPEC rule, not a fix to an FSPEC gap** (§16.4). FSPEC already
+reconciles A2-6 with R-2: R-2 makes the record a precondition of an action *surviving*, and states
+that both seams whose act is durable through git — A2 by commit, A5 by push — complete steps 5 and 7
+**before** that durable operation (`FSPEC-pdlc-advisory-tier.md:232-237`, `:635`, `:690`). The
+`apply`/`verifyGate` split is this TSPEC's uniform expression of that rule: at A2 the record is
+written at step 7 and **the commit does not exist yet**, so step 7's failure reverts a working-tree
+edit only, and no commit is ever undone. §6.4 gives the exact call order.
 
 ### 4.5 Budgets
 
@@ -748,7 +750,7 @@ advisory tier's.
 | `revert` | `git checkout -- {reqPath}` — a working-tree restore, because nothing is committed yet |
 | `verifyGate` | §6.4.1 |
 
-#### 6.4.1 The A2 durability order — resolving FSPEC's A2-6 / R-2 gap
+#### 6.4.1 The A2 durability order — expressing FSPEC's settled A2-6 / R-2 rule
 
 Per §4.4, the irreversible act belongs in `verifyGate`, after the record write. The exact order:
 
@@ -762,7 +764,8 @@ Per §4.4, the irreversible act belongs in `verifyGate`, after the record write.
 ```
 
 Step 7 precedes step 6 **only at the seams whose act is irreversible** (A2, A5); §4.4 states the rule
-once and both seams inherit it. The consequence is the one FSPEC leaves undefined: a failed record
+once and both seams inherit it, which is exactly FSPEC's own "steps 5 and 7 complete before the
+durable git operation" for both seams (`FSPEC:232-237`). The consequence is concrete: a failed record
 write at A2 reverts a *working-tree edit*, never a commit, so BR-5's two-tree-states invariant holds
 without the tier ever needing to rewrite history.
 
@@ -771,6 +774,12 @@ REQ and the advisory record land together, pathspec-scoped and unpushed, exactly
 (`queue:1162`) already commits `QUEUE.md` alone. `commitPaths` (`dev:6905`) is reused verbatim,
 including its `gitWithLockRetry` behaviour (`dev:6862`) — index-lock contention during a queue run is
 a real condition this seam inherits a solution for rather than rediscovers.
+
+**Reachability.** Both symbols are module-private at HEAD. Per §2.3 the implementation exports
+`commitPaths` from `orchestrate-dev.js` and adds it to `build-runtime.mjs`'s dev export list and the
+queue prelude; `gitWithLockRetry` needs no export because `commitPaths` reaches it through the shared
+module scope inside the bundle. Queue-side unit tests inject a `_commitPaths` double rather than
+relying on the free identifier (§13.3), so the export is required only by the bundled runtime.
 
 **A2-4 (applying does not pick the candidate)** is a `continue`, not a `return`: after a resolved A2
 the loop moves to the next queue entry. Triage re-runs on the corrected REQ in the **next** invocation,
