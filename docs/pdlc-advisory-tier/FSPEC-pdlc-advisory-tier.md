@@ -13,7 +13,7 @@ feature: pdlc-advisory-tier
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.2 | 2026-08-03 |
+| pdlc | draft | Claude | 1.3 | 2026-08-03 |
 
 ## 0. Overview
 
@@ -142,7 +142,7 @@ operator.
 | # | Rule |
 |---|---|
 | C-1 | An absent `advisory` section, an absent file, or unreadable JSON all yield the defaults above — i.e. the tier off. Consistent with B-11/B-12, a configuration problem never fails a run by itself. |
-| C-2 | A present section with an unrecognised or out-of-range value for one key falls back to that key's default and reports the substitution on the run report; the other keys still take effect. One bad key never discards the section. |
+| C-2 | A present section with an unrecognised or out-of-range value for one key falls back to that key's default; the other keys still take effect, and one bad key never discards the section. The substitution is reported on the run report **only when the resolved configuration leaves the tier enabled** — a bad value that resolves the tier to disabled (e.g. a malformed `advisory.enabled`) produces a disabled run, which carries **no** advisory content on its report at all (§12 D-5, §10.3 S-4), this substitution notice included. |
 | C-3 | Configuration is read once per pipeline run, before the first seam can fire, so every seam in a run sees the same settings. |
 | C-4 | No agent may write this file, and no agent's output may change any value in it during a run. |
 
@@ -230,10 +230,14 @@ seam condition reached (A1…A5)
 ```
 
 Step 7 comes last because the record carries the disposition, which is not known earlier; §10.1 R-2
-therefore makes the record a precondition of an action **surviving**, not of taking one. Seam A5 is
-the one seam where the action leaves the local tree — its push is not undone by restoring a working
-tree — so at A5 steps 5 and 7 both complete **before** the push, and step 6 (the re-poll) follows it.
-§9.2 A5-8 states what the operator observes there.
+therefore makes the record a precondition of an action **surviving**, not of taking one. Two seams
+make their action durable through git rather than the working tree alone — A5 by a push, A2 by a
+commit (§6.4 A2-6) — and at **both**, steps 5 and 7 complete **before** that durable git operation,
+so a failed produced-change check or a failed record write reverts the action before it becomes
+durable and R-2 governs unambiguously: an A2 re-grounding whose record cannot be written is reverted
+before it is committed, and an A5 fix whose record cannot be written is reverted before it is pushed.
+§9.2 A5-8 states what the operator observes at A5, where the push follows the record and step 6 (the
+re-poll) follows the push.
 
 ### 4.2 The verdict the advisory agent returns
 
@@ -828,7 +832,7 @@ pipeline without this feature:
 | D-3 | The report's phase table and every phase outcome are identical to today's. |
 | D-4 | No `ADVISORY-*` file is created, and no `ESCALATIONS.md` entry is written. |
 | D-5 | The report carries no advisory summary and emits no advisory notice. |
-| D-6 | The set of files a disabled run creates is **equal** to the set a run of the pipeline without this feature creates — not merely free of the two artifacts D-4 names. The right-hand side is a **literal**: the created-file set of a run of the pipeline at the pre-feature baseline commit §2 pins (`26c3f1c`), observed once and transcribed into the test, never re-derived by running the code under test. A comparison whose expected value is produced by the system under test cannot fail; this one fails the moment a file outside the transcribed set appears (T-10-3). |
+| D-6 | The set of files a disabled run creates is **equal** to the set a run of the pipeline without this feature creates — not merely free of the two artifacts D-4 names. The right-hand side is a **literal**: the created-file set of a run of the pipeline built at the feature branch's **pre-feature base** — its fork point from the default branch, which carries every pipeline change already merged there (including Phase PUB's file-creating path, e.g. `raisePrAndVerifyCi`) but not this feature's — observed once and transcribed into the test, never re-derived by running the code under test. This base is deliberately **not** §2's citation pin `26c3f1c`: that pin fixes only where the seam `file:line` citations were read, and it may sit ahead of the branch's pre-feature base, so a run built there would create files a disabled branch-HEAD run does not — comparing against it would spuriously differ. A comparison whose expected value is produced by the system under test cannot fail; this one fails the moment a file outside the transcribed set appears (T-10-3). |
 
 The equivalence is stated on **named artifacts and phase outcomes**, not on report text, because
 report text legitimately varies by timestamp and iteration count.
@@ -848,7 +852,7 @@ report text legitimately varies by timestamp and iteration count.
 |---|---|
 | T-10-1 | **Who** operator · **Given** `advisory.enabled` false and a seam condition at each of A1…A5 in turn · **When** the run completes · **Then** each seam produced its pre-advisory outcome and no advisory agent was dispatched. |
 | T-10-2 | **Who** operator · **Given** the tier disabled and an advisory rung that does not resolve · **When** a seam condition arises · **Then** the run is unaffected and no model resolution was attempted. |
-| T-10-3 | **Who** operator · **Given** the tier disabled · **When** the run ends · **Then** no `ADVISORY-*` file exists, `ESCALATIONS.md` gained no entry, the report carries no advisory summary, and the set of files the run created equals, element for element, the transcribed literal set of D-6 — the created-file set of a pre-feature run at `26c3f1c`. The red direction is named: any file created outside that literal set fails the test, whether or not this feature named it. |
+| T-10-3 | **Who** operator · **Given** the tier disabled · **When** the run ends · **Then** no `ADVISORY-*` file exists, `ESCALATIONS.md` gained no entry, the report carries no advisory summary, and the set of files the run created equals, element for element, the transcribed literal set of D-6 — the created-file set of a pre-feature run built at the feature branch's pre-feature base (§12.1 D-6), not §2's citation pin. The red direction is named: any file created outside that literal set fails the test, whether or not this feature named it. |
 | T-10-4 | **Who** operator · **Given** no `advisory` section, and separately a malformed config file · **When** each run completes · **Then** both behave as T-10-3. |
 | T-10-5 | **Who** operator · **Given** the tier enabled and no seam condition arising · **When** the report is read · **Then** an advisory summary is present with five zero rows — distinguishing it from T-10-3. |
 
