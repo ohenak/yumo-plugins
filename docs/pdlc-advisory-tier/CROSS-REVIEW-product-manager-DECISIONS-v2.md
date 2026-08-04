@@ -33,6 +33,12 @@ All three are new, all Low, all confined to text the revision added. No prior fi
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-04 | v1's Q-01 stands unchanged: local HEAD (`67aceb2`) is still ahead of `origin/feat-pdlc-advisory-tier` (`eaa1f74`, merge-base `7cdfbb0`), and the remote tip predates the FSPEC v1.3 erratum round. I reviewed the local tree, and per the reviewer git protocol I neither pulled nor pushed in the shared tree. Confirm before the next push that the remote is intended to be overwritten rather than merged. |
+| Q-05 | DEC-ADV-07 now answers OQ-3 with "restoration path: none", which is outside the two options AC-8.3 and FSPEC OQ-3 offered ("re-verification inside PUB, or a halt for the operator"). AC-8.3's testable clause is satisfied and F-05 is closed on that basis — but should FSPEC's OQ-3 row be updated to record "none" as the chosen resolution, so the FSPEC's open-questions table does not read as still open after this phase? That is a documentation call for the FSPEC author, not a defect of this document, so I have not raised it as an erratum. |
+| Q-06 | v1's Q-03 is unanswered and I am not re-raising it as a finding: `advisory.envelope` is operator-editable (AC-1.7) while US-03 asks for a boundary "un-widenable by the agent". No entry records why operator-widenable is acceptable where agent-widenable is not. Was it weighed and judged obvious? If so, one sentence in DEC-ADV-06 would close it permanently. |
+
 ## Positive Observations
 
 ## Recommendation
