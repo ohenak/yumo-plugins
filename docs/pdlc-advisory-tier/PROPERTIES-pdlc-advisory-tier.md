@@ -485,8 +485,9 @@ did not happen **and** O-1 holds on the same execution.
 **PROP-GATE-01 … PROP-GATE-05** — For each member of `ADVISORY_SEAMS`, a `resolved` outcome must be
 reachable **only** through that seam's declared `verifyGate`. Two conjuncts, both required:
 
-1. **The positive outcome, not the absence of one.** With the gate stubbed to fail, the disposition
-   must be `escalated` with reason `post-action-verification-failed` — the exact reason REQ AC-3.6
+1. **The positive outcome, not the absence of one** (at the three seams that can apply an action —
+   A2, A4, A5; A1 and A3 take the stronger form stated below). With the gate stubbed to fail, the
+   disposition must be `escalated` with reason `post-action-verification-failed` — the exact reason REQ AC-3.6
    row 4 assigns to an in-envelope action whose AC-4.5 gate then failed (`REQ:159`) — satisfying
    **O-1 in full**: the exact outcome value, that one reason byte-equal in the disposition, the
    `ADVISORY-{feature}.md` `Disposition` row and the `ESCALATIONS.md` `Refusal reason` row, and the
@@ -509,9 +510,20 @@ so a sixth seam fails the suite until it has a case and a deleted case means a d
 
 The A1 row of PROP-GATE-01…05 is the one place the upstream documents disagree on what is being
 asserted — see §13 item 1. Conjunct 1's `post-action-verification-failed` disposition is asserted at
-the four seams that can apply an action (A2…A5); at A1, whose `permittedActions` is `[]` and which
-therefore never reaches step 4, the row asserts the stronger positive — `resolved` is unreachable on
-**every** path, and each A1 path terminates in `escalated` or `no-action` with its own O-1 triple.
+the **three** seams that can apply an action: **A2, A4 and A5**.
+
+**A1 and A3 take the stronger form, and for the same reason.** Both supply `permittedActions: []`, so
+neither ever reaches step 4 and neither has a post-action gate to stub: TSPEC §4.3 says "(A1, A3)
+supplies `permittedActions: []` and an `apply` that is never reached — the §5.1 gate refuses first"
+(`TSPEC:423`), and TSPEC §5.5's per-seam gate table gives A1's `verifyGate` as "`permittedActions: []`
+means the gate is unreachable anyway" (`TSPEC:638`) beside A3's literal "unreachable
+(`permittedActions: []`)" (`TSPEC:640`). PLAN A-23 specifies the implementation to match — "A3's
+`permittedActions: []` with throwing `apply`/`revert` stubs" (`PLAN:274`) — and PROP-A3-05's terminal
+behaviour is a pipeline halt with the classification attached, never an applied action. For **both**
+rows the assertion is therefore: `resolved` is unreachable on **every** path, and each path terminates
+in `escalated` or `no-action` with its own O-1 triple. Asserting conjunct 1 at A3 would require
+stubbing a gate A3 never reaches and observing a disposition A3 cannot produce — it would fail against
+a correct build, in the RED batch (A-07) that authors it, and not be diagnosed until A-23.
 
 ## 7. Properties — seams A1 and A2 (queue module)
 
