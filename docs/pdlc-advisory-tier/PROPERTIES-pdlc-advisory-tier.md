@@ -951,7 +951,11 @@ FSPEC §18.1 declares **81** acceptance cases, `T-01-1` … `T-10-5`. The audit 
 mechanically over this document: every one of the 81 ids must appear in at least one property's
 `Traces` cell or in a property's prose. **All 81 are cited.** The audit is stated as set equality in
 both directions — an FSPEC case cited by no property is a coverage gap, and a `T-nn-n` cited here
-that FSPEC §18.1 does not declare is an invented case.
+that FSPEC §18.1 does not declare is an invented case. The audit has exactly one sanctioned exception:
+`T-06-7` appears once, in PROP-A4-09, **as a negation** — the property states in as many words that
+no such case is invented for the `implementation.testCommand` degradation path, which is a
+TSPEC/PLAN-level obligation (§13.2). A scan implementing this audit must read that mention as the
+declaration of absence it is, not as a citation.
 
 This direction exists because the other three cannot see this class of gap. §12.1 audits REQ→property
 and would pass with a whole FSPEC case family uncovered, since the AC above it has other properties.
