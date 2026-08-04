@@ -86,6 +86,44 @@ run, which is falsifiable only against evidence captured outside the system unde
 (DEC-ADV-10). Every entry below exists because a real alternative was weighed, was defensible, and
 would be re-proposed by a competent agent who had not seen the reason it lost.
 
+## Decision
+
+**The tier-level decision, stated once.** The advisory tier is built as a **seam layer inside the
+two existing workflow modules** — one driver plus five injected `SeamOps`, reached from the phase
+bodies that already own each halt — and not as a new skill, a new plugin, or a new build source.
+Every entry below is a consequence of that one choice or a resolution of a conflict it exposes.
+
+Two verified facts settle it, and both are about where the halt *lives*. First, each of the five
+seams sits at a site that is already inside these modules: A1 at the queue's Phase-0 triage
+(`queue:794`, `queue:847` are its sibling pre-gate returns and `queue:1012` its halt), A3 in
+`dodVerifyLoop`'s iteration budget (`DOD_MAX_ITERATIONS = 3`, `dev:25`, used at `dev:6275`), A4 in
+the Phase DOD rebase, A5 in Phase PUB's CI poll — sites reachable only from module-internal
+control flow, not from a skill prompt. Second, a skill is a prompt file loaded by name
+(`pdlc/skills/*/SKILL.md`, fifteen today), with no ability to observe a return value, thread a
+per-run memo, or refuse an action; the tier's whole point is the envelope and the refusal ladder,
+which are code, not prose. Adding a sixteenth skill would move the *analysis* out of the module but
+leave the gate, the budget and the record behind — the expensive half stays put.
+
+**The register.** Ten load-bearing decisions, each detailed below with its own alternatives,
+constraints and re-evaluation triggers.
+
+| ID | What was decided | Reversibility |
+|---|---|---|
+| DEC-ADV-01 | The advisory core lives in `orchestrate-dev.js`; the queue reaches it by prelude binding, not a fourth build source | easy |
+| DEC-ADV-02 | One `runAdvisorySeam` driver behind an injected `SeamOps`, not five per-seam functions | hard |
+| DEC-ADV-03 | The irreversible act lives in `verifyGate`, so RECORD precedes it | hard |
+| DEC-ADV-04 | `MODEL_ADVISORY` is a literal alias; `MODEL_ADVISORY_FALLBACK` is a *separate* constant and its path is shipped, not an error path | easy |
+| DEC-ADV-05 | Rung resolution is lazy; its memo is a threaded parameter, never module state | easy |
+| DEC-ADV-06 | X-e reuses Phase MERGE's `guardVerdict`; only `touchesTestArtifact` and `touchesDodCriterion` are newly owned | easy / hard-in-consequence |
+| DEC-ADV-07 | The post-A5 DoD divergence is reported, not re-verified and not halted | easy |
+| DEC-ADV-08 | A disabled run suppresses the degraded-key notice at the emit, not in the parser | easy |
+| DEC-ADV-09 | The escalation log has no reader inside this tier | easy / hard-in-consequence |
+| DEC-ADV-10 | D-6's expected set is a hand-reviewed fixture captured at `26c3f1c`, not a re-derived value | one-way in spirit |
+
+Three of these (02, 03, 06) shape a contract other code is written against, so their reversibility
+is "hard" in the sense that unwinding them means rewriting the seams and their suites — not that
+they are wrong to revisit. The other seven are single constants, single `if`s, or single fields.
+
 ## DEC-ADV-01: The advisory core lives in `orchestrate-dev.js`, reached from the queue by prelude binding
 
 **Context.** FSPEC M-5 requires each model rung to be named **once** and referenced from every advisory
