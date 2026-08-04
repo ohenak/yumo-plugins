@@ -267,14 +267,17 @@ export function parseAdvisoryConfig(text) { … }
 | FSPEC rule | Implementation |
 |---|---|
 | C-1 — absent section / absent file / unreadable JSON ⇒ defaults, never a run failure | the three early returns of `parseImplementationConfig` (`dev:188-197`), verbatim shape |
-| C-2 — one bad key falls back alone, substitution reported | each key validated independently; the key's name is pushed to `invalidKeys` |
+| C-2 — one bad key falls back alone, substitution reported **iff the resolved configuration leaves the tier enabled** | each key validated independently; the key's name is pushed to `invalidKeys`; the emit is gated on the effective `enabled` (below) |
 | C-3 — read once per run, before the first seam can fire | `readAdvisoryConfigSafely` is called once in each `main()` (§6.1, §7.1) and the result threaded, never re-read |
 | C-4 — no agent may write the file, no agent output may change a value | the config object is frozen after parse; no code path passes it to `_writeFile`, and §5 reads only from it |
 
-**One deliberate deviation from C-2, resolving an FSPEC conflict (see the erratum in §16.4).**
-When `advisory.enabled` degrades to its `false` default, the run is a *disabled* run, and D-5/S-4/T-10-4
-require a disabled run to carry **no** advisory content on the report. The reporting half of C-2 is
-therefore suppressed exactly when the effective `enabled` is `false`:
+**Where C-2's reporting half applies — conformance, not deviation (see §16.4).** C-2 already scopes
+its substitution notice to the enabled case: the notice appears on the run report *"only if the
+resolved configuration leaves the tier enabled"*, and a bad value that resolves the tier disabled
+(e.g. a malformed `advisory.enabled`) "produces a disabled run, which carries **no** advisory content
+on the report at all" (`FSPEC-pdlc-advisory-tier.md:145`) — consistent with D-5/S-4/T-10-4. This
+TSPEC implements that scoping literally: the reporting half of C-2 is emitted exactly when the
+effective `enabled` is `true` and suppressed when it is `false`.
 
 ```js
 // caller, in main()
