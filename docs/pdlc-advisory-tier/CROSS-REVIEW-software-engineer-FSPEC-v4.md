@@ -26,6 +26,26 @@ a real anchor in the document.
 
 ## Non-regression check
 
+The edit is confined to three loci — §5 C-2, the §4.1 step-7 prose paragraph, and §12.1 D-6 with its
+paired T-10-3 (plus the version-stamp bump). It touches no section that carried an approval-gating
+finding, and it introduces no new contradiction:
+
+- **T-10-4 is now satisfied, not broken.** T-10-4 requires that a malformed config file behave as
+  T-10-3 (no advisory content). Under the old C-2, a malformed `advisory.enabled` would have emitted
+  a substitution notice — the very contradiction the item names. The new C-2 excludes that notice on
+  a disabled run, so C-2 and T-10-4 now agree. The enabled-run behaviour of C-2 (a bad non-enabling
+  key still reports its substitution) is unchanged, so no enabled-run test loses its expected notice.
+- **A5's ordering is preserved.** The §4.1 rewrite generalises the step-5/step-7-before-durable-git
+  rule from A5-only to {A2, A5}; A5's own sequence (steps 5 and 7 before the push, step 6 re-poll
+  after it) is restated verbatim, and §9.2 A5-8 is still cited for what the operator observes there.
+  A2 correctly gains no re-poll — it is not a CI-poll seam.
+- **My five open v3 Lows are untouched and remain non-blocking.** L-05/L-06 (the §4.1 flow-diagram
+  terminal and its "consumes no attempt" phrasing), L-07 (H-2's "deferral" wording), L-08 (AT-2's
+  membership criterion), and L-09 (T-07-12's final re-poll colour) all sit outside this edit's three
+  loci — the erratum changed the §4.1 prose paragraph, not the flow ```code``` block the diagram
+  findings reference. They were "Approved with minor changes" in v3 and stay exactly that. This
+  delta-confirmation does not re-open them and does not add to them.
+
 ## Findings
 
 ## Recommendation
