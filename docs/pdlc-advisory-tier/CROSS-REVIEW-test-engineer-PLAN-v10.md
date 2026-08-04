@@ -89,6 +89,10 @@ through v9, as byte-identical input requires.
 
 ## Findings
 
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| F-01 | Low | Local | **Stale upstream anchor: `PLAN:258` cites `PROPERTIES:570-572` for the "would fail against a correct build … undiagnosed until A-23" rationale, but PROPERTIES §6.5 has been restructured and that sentence now lives at `PROPERTIES:619-626`.** Lines 570-572 today are conjunct 1 of the **A2/A4/A5** form (`post-action-verification-failed`, the O-1 triple), i.e. the other half of exactly the A1/A3 vs A2/A4/A5 split the citation exists to disambiguate — an implementer who follows the pointer to check *why* A3 takes the install-the-stub form lands on the text describing the form it must **not** take. Only the pointer is wrong: `PLAN:258`'s own cell states the correct authoring form in full, and `PROPERTIES:619-623` cites `PLAN:258` back, so the two documents agree on substance. Low, not Medium, because no oracle, block assignment, batch, ownership row or file claim is affected. **Fix:** repoint to `PROPERTIES:619-626`, or — since PROPERTIES is still being revised and line anchors into it have now drifted once — cite **PROPERTIES §6.5** by section, which survives the next reflow. | §3, A-07 row (`PLAN:258`) |
+
 ## Questions
 
 ## Positive Observations
