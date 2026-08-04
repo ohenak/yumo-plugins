@@ -164,8 +164,15 @@ live in **`pdlc/workflows/__tests__/fixtures/scanFixtures.js`**, imported by the
   `pdlc/workflows/__tests__/advisory*.test.js`, and this module is in a different directory, carries
   no `advisory` prefix and no `.test.js` suffix. No naming discipline has to be remembered for it to
   stay outside.
-- `__tests__/fixtures/` is already excluded from jest's collection (PLAN §2.2, `A-00`), so the module
-  is never itself collected as a suite.
+- `__tests__/fixtures/` is already excluded from jest's collection — the primary source is
+  `pdlc/workflows/package.json:18-22`, whose `jest.testPathIgnorePatterns` is
+  `["/node_modules/", "/__tests__/helpers/", "/__tests__/fixtures/"]` — so the module is never itself
+  collected as a suite. (Secondary, and the reason this must stay true through Phase I: PLAN §2.4
+  `PLAN:138-141` — `--testPathIgnorePatterns` on the wave gate's command **replaces** that configured
+  list rather than adding to it, which would re-collect this module as an empty suite; the §2.4
+  operator pre-flight step is what keeps the gate command from doing so. The citation deliberately
+  names the `package.json` block first: it cannot go stale under a PLAN revision, and the earlier
+  pointer to task `A-00` did — `A-00` was deleted in PLAN v1.2, `PLAN:1020`.)
 - The module exports named string constants (`SEAM_OPS_LITERAL_SHAPE`, `DOUBLE_BINDING_SHAPE`,
   `FOREIGN_IMPORT_SHAPE`, `SKIP_SHAPES`, `CLEAN_SHAPE`); it is a fixture module, not a test.
 - One file, shared by PROP-INFRA-01 and PROP-REG-08, so there is one place a future source-scan oracle
@@ -175,8 +182,12 @@ Assembling the forbidden literals at runtime from concatenated fragments would a
 rejected: it hides the shapes from a reader, and a scan hardened against fragment assembly (which a
 real evasion would use) would then match the control itself. Keeping the fixtures out of the scanned
 glob is the resolution both properties adopt. **`fixtures/scanFixtures.js` is a new file this feature
-must create, and it has no PLAN ownership row — routed upstream as an erratum (§13.1 item 5), not
-absorbed.**
+must create, and it is owned by task `A-01`** — PLAN §4's file-ownership manifest row for A-01 lists
+both `pdlc/workflows/__tests__/advisoryPreflight.test.js` and
+`pdlc/workflows/__tests__/fixtures/scanFixtures.js` (`PLAN:308`), and PLAN §3's A-01 task row carries
+the same two files (`PLAN:252`). That assignment closed the erratum this document routed at v1.1
+(§13.1 item 5); the Phase I wave commit stages only `task.files`, so the ownership row is what makes
+the module survive the wave.
 
 ### 2.2 The generator, and the seeding discipline
 
