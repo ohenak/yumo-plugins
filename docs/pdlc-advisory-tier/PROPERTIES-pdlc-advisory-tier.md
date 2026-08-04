@@ -260,9 +260,11 @@ each such property names the earlier outcomes its fixture must defeat:
 ### O-6 — A `resolved` outcome is reachable only through a gate
 
 FSPEC BR-6. For every member of `ADVISORY_SEAMS`, a property asserts that with the seam's
-`verifyGate` stubbed to fail the disposition is never `resolved`, and that **replacing the gate with
-`async () => ({ passed: true })` makes the case fail** — so a silently-removed or stubbed gate cannot
-pass. See §13 item 1 for the one seam where the upstream documents disagree about what A1's gate is.
+`verifyGate` stubbed to fail the disposition is **`escalated` with reason
+`post-action-verification-failed`, satisfying O-1 in full** — the positive outcome AC-4.6 requires,
+not the absence check "never `resolved`" — and that **replacing the gate with
+`async () => ({ passed: true })` makes the case fail**, so a silently-removed or stubbed gate cannot
+pass. See §6.5 for the two conjuncts stated in full, and §13 item 1 for the one seam where the upstream documents disagree about what A1's gate is.
 
 ## 4. Properties — configuration and model rung
 
@@ -395,6 +397,18 @@ control rather than a promise.
 | PROP-ENV-10 | X-c: a rebase conflict outside E-3's branch-created files must be out of envelope, for every conflict set containing at least one non-branch-created member. | Functional | Unit | AC-3.4(c), T-06-4 | `advisoryEnvelope.test.js` |
 | PROP-ENV-11 | `branchCreated(path)` must be true iff the path is absent from the merge-base tree **and** absent from the default-branch tip — both conjuncts required, so a file added on the default branch since the merge base is not "branch-created". | Data Integrity | Unit | AC-3.3 E-3 | `advisoryEnvelope.test.js` |
 | PROP-ENV-12 | `ENVELOPE_DEFAULTS` must equal `{E-1,E-2,E-3,E-4}` and `ADVISORY_EXCLUSIONS` must equal `{X-a,X-b,X-c,X-d,X-e}` **as sets**, against transcribed literals, and the comparison must **not** be parameterised by capability probes: where BL-05/BL-06 are unavailable the action stays a member and is refused at membership. | Contract | Unit | AC-3.3, AC-3.4, T-03-8 | `advisoryEnvelope.test.js` |
+| PROP-ENV-13 | **The operator's narrowing lever must be live.** With `advisory.envelope` parsed as the narrowed literal `["E-1"]` — not `ENVELOPE_DEFAULTS` — an otherwise-decidable **E-2** candidate must classify `inside: false` with reason `out-of-envelope`, and the invocation carrying it must satisfy O-1 in full; **and on the same fixture with the same `ctx`, an E-1 candidate must still classify `inside: true`**. | Security | Unit | AC-3.1, AC-1.7, US-03, E-R1, BR-1 | `advisoryEnvelope.test.js` |
+
+**PROP-ENV-13 is the property that makes `advisory.envelope` a control rather than a comment.** Every
+other envelope property here is written against the **default** set: PROP-ENV-12 pins
+`ENVELOPE_DEFAULTS` against a transcribed literal, PROP-CFG-07 asserts only that `config.envelope` is
+not *mutated* at runtime, PROP-LIFE-04 refuses a false `withinEnvelope: true` claim without ever
+varying the configuration, and PROP-A5-04/05/06 vary `ctx.permittedActions` by **capability probe**,
+explicitly not by config. An implementation that read `ENVELOPE_DEFAULTS` and ignored the parsed
+`config.envelope` entirely would satisfy all of them, and the operator's only narrowing lever — the
+whole of US-03's "hard, declared boundary" (AC-3.1) — would be silently dead. Both of PROP-ENV-13's
+conjuncts are load-bearing: the first falsifies that build, the second stops the property passing
+against one that refuses everything.
 
 ### 6.2 X-a — the seven operations, each its own named property
 
@@ -450,10 +464,22 @@ did not happen **and** O-1 holds on the same execution.
 ### 6.5 Gate exclusivity — one property per seam (O-6)
 
 **PROP-GATE-01 … PROP-GATE-05** — For each member of `ADVISORY_SEAMS`, a `resolved` outcome must be
-reachable **only** through that seam's declared `verifyGate`: with the gate stubbed to fail the
-disposition must never be `resolved`, and replacing the gate with `async () => ({ passed: true })`
-must make the case fail.
-*Category: Functional · Level: Unit · Traces: AC-4.5, BR-6, T-03-6(b), TSPEC §5.5 · Home: all five in
+reachable **only** through that seam's declared `verifyGate`. Two conjuncts, both required:
+
+1. **The positive outcome, not the absence of one.** With the gate stubbed to fail, the disposition
+   must be `escalated` with reason `post-action-verification-failed` — the exact reason REQ AC-3.6
+   row 4 assigns to an in-envelope action whose AC-4.5 gate then failed (`REQ:159`) — satisfying
+   **O-1 in full**: the exact outcome value, that one reason byte-equal in the disposition, the
+   `ADVISORY-{feature}.md` `Disposition` row and the `ESCALATIONS.md` `Refusal reason` row, and the
+   seam's pre-advisory behaviour still having happened. "Never `resolved`" alone is satisfied by a
+   thrown error, by `no-action`, or by an unset field, and AC-4.6 says in as many words that a
+   negative assertion alone is satisfied by accident.
+2. **The gate is genuinely consulted.** Replacing the gate with `async () => ({ passed: true })` must
+   make the case fail — so a silently-removed or stubbed gate cannot pass.
+
+Conjunct 1 is the AC-4.6 positive triple on the same path; conjunct 2 is the mutation control. Neither
+substitutes for the other: 2 proves the gate is read, 1 proves what happens when it says no.
+*Category: Functional · Level: Unit · Traces: AC-4.5, AC-4.6, NFR-2, AC-3.6, BR-6, T-03-6(b), TSPEC §5.5 · Home: all five in
 `advisoryDriver.test.js`, generated by iterating one in-file registry, split across blocks
 `A-23 — A3/A4 gate exclusivity`, `A-24 — A5 gate exclusivity`, `A-31 — A1/A2 gate exclusivity`
 (PLAN §8.2).*
@@ -463,7 +489,10 @@ so a sixth seam fails the suite until it has a case and a deleted case means a d
 *Category: Contract · Level: Unit · Traces: FSPEC §18.2, PLAN §8.1 · Home: `A-22 — driver lifecycle`.*
 
 The A1 row of PROP-GATE-01…05 is the one place the upstream documents disagree on what is being
-asserted — see §13 item 1.
+asserted — see §13 item 1. Conjunct 1's `post-action-verification-failed` disposition is asserted at
+the four seams that can apply an action (A2…A5); at A1, whose `permittedActions` is `[]` and which
+therefore never reaches step 4, the row asserts the stronger positive — `resolved` is unreachable on
+**every** path, and each A1 path terminates in `escalated` or `no-action` with its own O-1 triple.
 
 ## 7. Properties — seams A1 and A2 (queue module)
 
