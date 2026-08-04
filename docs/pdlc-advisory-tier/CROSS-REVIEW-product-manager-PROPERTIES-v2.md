@@ -117,4 +117,37 @@ answered by the revision leaving both readings intact.
 
 ## Recommendation
 
+**Approved with minor changes** — zero High, zero Medium, one Low.
+
+All three v1 High findings and the v1 Medium are resolved, and resolved in the way I asked: by adding
+the falsifier that was missing, not by arguing it was unnecessary. The two controls the REQ places in
+the operator's hands or makes decidable — `advisory.envelope` as a live narrowing lever (AC-3.1,
+AC-1.7, US-03) and E-2's three-conjunct rule (AC-3.3) — now each have a property that fails if the
+control is dropped, and each is paired with a positive in-envelope control so it cannot pass by
+refusing everything. The AC-4.5 gate path asserts the positive disposition AC-4.6 requires
+(`escalated` / `post-action-verification-failed`, `REQ:159`) alongside its mutation control, and the
+matrix now carries AC-4.5's membership in AC-4.6's range at both the `AC-4.6` and `NFR-2` rows. The
+level totals are recounted and I reproduced all four figures independently (195 = 183 table rows + 12
+prose ids; 148 / 40 / 7 / 0).
+
+The revision also went past what the findings asked for in one place that matters to me: §12.4 answers
+my Q-01 by *building* the fourth audit direction rather than justifying its absence, states it as set
+equality in both directions with one declared exception, and used it to find and close a real
+uncovered case (T-01-2 ⇒ PROP-RUNG-09). That is the audit most coverage matrices are missing.
+
+Nothing in the revision introduces scope the REQ does not carry, narrows an acceptance criterion, or
+re-opens a settled decision. The new properties are all obligations over rules the REQ already wrote,
+and the one upstream ambiguity encountered (`waitMs`'s reporting surface) was routed as an erratum
+with the property restated at a surface valid under either resolution — not absorbed and not
+guessed at.
+
+F-01 is a one-token cross-reference correction (`(§13 item 3)` ⇒ `(§13.2)` in PROP-A4-09) and does not
+gate approval. Please fold it into the next touch of §8.1.
+
+No new errata. The four upstream items the document routes in §13.1 are the author's to emit; I
+confirmed items 3 and 4 against `TSPEC:474` and TSPEC §4.3 and have nothing to add to them.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 1}
