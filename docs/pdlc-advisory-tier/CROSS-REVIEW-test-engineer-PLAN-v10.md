@@ -95,6 +95,33 @@ through v9, as byte-identical input requires.
 
 ## Questions
 
+None. v6's two questions were answered in the document at v1.7; v7, v8 and v9 raised none, and this
+round's only movement is upstream.
+
 ## Positive Observations
+
+- **The PLAN survived an upstream rewrite with one cosmetic casualty.** PROPERTIES §6.5 was
+  substantially restructured (+218/−71 across the document) and the only thing it broke in the PLAN is
+  a line-number pointer. Every load-bearing coupling — the four `describe.skip` block names, the
+  seam⇒block registry, the two-directional mutation rule, the one-place set-equality case — still
+  matches `PROPERTIES:580-586` and `PROPERTIES:605-626` exactly. That is what a well-factored
+  dependency between two documents looks like.
+- **The two documents now cite each other on the mutation direction.** `PROPERTIES:622-623` names
+  `PLAN:869` and `PLAN:258` as the place the rule is stated in both directions, and both PLAN cells
+  state it. A rule an implementer can get wrong in exactly one way (transposing replace-the-stub and
+  install-the-stub) is now written down twice, in two documents, pointing at each other.
+- **The gateless cases remain a paired oracle, and the pairing survived the rewrite.**
+  `PROPERTIES:607-611` still requires the positive termination assertion (`escalated`/`no-action` with
+  the O-1 triple) on the same path as the negative (`resolved` unreachable), and
+  `PROPERTIES:612-617` now spells out *why* the structural `verifyGate === null` conjunct is the only
+  mutation control available at a seam that never reaches step 6. The PLAN's cells already carried
+  both conjuncts, so no PLAN edit was needed to keep up.
+- **Set-equality is still enforced by construction, not by discipline.** One case, over an in-file
+  registry, un-skipped at batch 9 before any per-seam block — so a sixth `ADVISORY_SEAMS` member fails
+  the suite until it has a registry row, and a deleted case is only expressible by deleting the row
+  the same case checks. Containment would not have this property; set-equality does.
+- **The contract is byte-stable across five review rounds.** 36 tasks / 36 ownership rows /
+  `validatePlanContract ⇒ {"ok":true}` / 20 topological batches re-derive identically from v6 through
+  v10 under the shipped parsers, so the Phase P gate has nothing new to reject.
 
 ## Recommendation
