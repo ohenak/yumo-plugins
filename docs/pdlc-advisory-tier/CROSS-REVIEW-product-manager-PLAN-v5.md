@@ -153,3 +153,6 @@ PLAN itself (§10.1 item 6); TSPEC §7.4's `T-06-8`, outside FSPEC §18.1's cata
 
 VERDICT: Approved with minor changes
 {"high": 0, "medium": 0, "low": 2}
+
+APPROVAL-HASH: sha256:8e777d90dd54b450b7c9c423a5ecb4dd6ca88ce4401eb7ee7214d53454c09e5d
+REVIEWED-COMMIT: bc6dccf99a7d5d1b0c2eaf0dd138e3de3f5eed71
