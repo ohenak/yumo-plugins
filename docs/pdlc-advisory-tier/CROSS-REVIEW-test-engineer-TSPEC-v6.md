@@ -74,7 +74,26 @@ dropping coverage — which was the whole risk in this finding.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Not a TSPEC finding, but worth a PLAN-side sweep in its own erratum pass: PLAN still describes both items as *open against TSPEC* — §6.5 P-9 (`PLAN:784`) says "raised as an erratum against TSPEC; if TSPEC names an answer, P-9 widens to include it", §10.1 open item 6 (`PLAN:1031`) repeats it, and `PLAN:882` says "the id discrepancy is raised as an erratum against TSPEC". TSPEC v1.2 has now answered both — the answer being *no value is specified, because the input is unreachable*, so P-9 does **not** widen and A-10's naming is already correct. The PLAN text is not wrong about behaviour, only stale about status. Closing those three spots (and moving open item 6 to resolved) would prevent a later reader re-raising the same erratum. |
+
 ## Positive Observations
+
+- The empty-input answer is the right *kind* of answer for a spec: instead of inventing a return value
+  that a test would then enshrine as if it were a requirement, §7.2 states the reachability argument
+  and explicitly declines to name one, with the reason spelled out. That keeps the PROPERTIES layer
+  honest — P-9 asserts only what an upstream document actually says.
+- The reachability claim is grounded in citable lines of the same document (A3-1's completeness rule at
+  `TSPEC:852-853`), so a reviewer can falsify it rather than take it on trust. If A3-1's completeness
+  rule is ever relaxed, this paragraph is exactly where the unreachability argument breaks — a good
+  place for the tripwire to sit.
+- §7.4 fixed the id by *removing* the invention rather than by adding `T-06-7`/`T-06-8` to FSPEC. That
+  is the correct direction: the FSPEC catalogue stays the single authority for case ids, and a
+  TSPEC-level test obligation is carried where TSPEC-level obligations belong — in the PLAN task table.
+- Both edits are additive/substitutive and narrowly scoped, with a §18 changelog row that names each
+  change and its rationale. This is exactly what an erratum round should look like: nothing re-opened,
+  nothing re-litigated, and the delta legible without re-reading the document.
 
 ## Recommendation
 
