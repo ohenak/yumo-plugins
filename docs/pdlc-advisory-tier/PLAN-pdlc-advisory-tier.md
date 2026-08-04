@@ -336,7 +336,10 @@ Twelve tasks own `orchestrate-dev.js`, four own `orchestrate-queue.js`. Their `B
 | `pdlc/workflows/orchestrate-queue.js` | A-29 (10), A-30 (11), A-31 (12), A-33 (16) | yes |
 | `pdlc/workflows/build-runtime.mjs` | A-32 (15) | single owner |
 | `.claude/pdlc.config.json` | **no task** — repaired by the §2.4 operator pre-flight step before Phase I is invoked | not owned here; I-23 records that no task edits it |
-| every test/fixture/doc file above | one task each | single owner |
+| `pdlc/workflows/__tests__/advisoryDriver.test.js` | A-07 (3, 🔴 author), A-22 (9), A-23 (10), A-24 (11), A-31 (12) | yes — one block, one un-skipper, one batch each (§8.2) |
+| `advisoryDodSeams.test.js` / `advisoryPubSeam.test.js` | A-10 (3) + A-23 (10), A-25 (12) / A-11 (3) + A-24 (11), A-26 (13) | yes |
+| `advisoryQueueSeams.test.js` / `advisoryHarvest.test.js` | A-12 (3) + A-29 (10), A-30 (11), A-31 (12) / A-13 (3) + A-28 (4), A-27 (14) | yes |
+| every other test/fixture/doc file above | its 🔴 author plus its single 🟢 un-skipper, in different batches | yes |
 
 Disjointness must hold in the **executor's** batches, not only in §3's labels, because the size cap in
 `computeTopologicalBatches` (`orchestrate-dev.js:6533`) regroups them. Re-checked against the 20
@@ -346,10 +349,19 @@ executor batches §5.2 transcribes: `orchestrate-dev.js` is owned in executor ba
 18, and in each the dev-side and queue-side tasks touch different files (A-33, alone in 18, owns
 both).
 
-§3 batch 4 (executor batch 6) holds A-16 (a test file), A-17 (`orchestrate-dev.js`) and A-28 (the hook
-script) — three disjoint paths. §3 batches 10–12 (executor 12–14) each pair one dev-side task with one
-queue-side task, again disjoint. §3 batch 17 (executor 19) holds A-34 and A-35, disjoint. Nothing in
-this PLAN owns `pdlc/workflows/dist/`.
+§3 batch 4 (executor batch 6) holds A-16 (a test file), A-17 (`orchestrate-dev.js` +
+`advisoryConfig.test.js`) and A-28 (the hook script + `advisoryHarvest.test.js`) — three disjoint path
+sets. §3 batches 10–12 (executor 12–14) each pair one dev-side task with one queue-side task; with the
+test files now in the rows the pairs are still disjoint — A-23+A-29 (`advisoryDriver`/`advisoryDodSeams`
+vs `advisoryQueueSeams`), A-24+A-30 (`advisoryDriver`/`advisoryPubSeam` vs `advisoryQueueSeams`),
+A-25+A-31 (`advisoryDodSeams` vs `advisoryQueueSeams`/`advisoryDriver`). §3 batch 17 (executor 19)
+holds A-34 and A-35, disjoint. Nothing in this PLAN owns `pdlc/workflows/dist/`.
+
+**Re-executed after the v1.3 manifest edit**, because added ownership rows can change the wave
+partition even when the batch count does not: `parsePlanTasks` ⇒ 36 tasks, `parsePlanOwnership` ⇒ 36
+rows, `validatePlanContract` ⇒ `{"ok":true}`, `computeTopologicalBatches` ⇒ 20 batches,
+`computeWaves` ⇒ **20 waves, identical to §5.2's transcription** — no batch had to be split by
+`pathsCollide`, which is the mechanical confirmation that no two un-skippers of one file share a wave.
 
 ### 4.2 The generated tree, and who commits it
 
