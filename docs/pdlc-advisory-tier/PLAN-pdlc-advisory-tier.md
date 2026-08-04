@@ -580,11 +580,19 @@ reviewer never has to interpret a reference):
 | Module | Functions in scope |
 |---|---|
 | `pdlc/workflows/orchestrate-dev.js` | `parseAdvisoryConfig`, `readAdvisoryConfigSafely`, `isModelResolutionError`, `resolveAdvisoryRung`, `parseAdvisoryVerdict`, `budgetExceeded`, `refusalReasonFor`, `classifyEnvelope`, `touchesTestArtifact`, `touchesDodCriterion`, `branchCreated`, `runAdvisorySeam`, `parseA3Classification`, `governingClass`, `probeDefaultBranchChecks`, `probeWorkflowRerun`, `renderAdvisoryEntry`, `appendAdvisoryEntry`, `renderEscalationEntry`, `appendEscalationEntry`, `advisorySummaryRows`, `distilAdvisoryRecord` |
-| `pdlc/workflows/orchestrate-queue.js` | `hasResidualSeamToken`, `honourA1Verdict`, plus the advisory branches added inside `parseTriageVerdict` and `triagePrompt` (the pre-existing bodies are excluded — see below) |
+| `pdlc/workflows/orchestrate-queue.js` | `hasResidualSeamToken` and `honourA1Verdict` — **and nothing else** |
 
 Explicitly **out** of the denominator: every `(reused)` symbol of TSPEC §14.1 —
 `guardVerdict`, `checkPrCi`, `commitPaths`, `rebaseOntoDefault`, `_runCommand` — which this feature
-calls but does not own.
+calls but does not own; **and the advisory branches A-29 adds inside the two pre-existing queue
+functions `parseTriageVerdict` and `triagePrompt`.** Those two are stated as excluded rather than
+included-minus-their-bodies because the reducer below selects statements purely by `fnMap` name match:
+naming them would pull their whole pre-existing bodies into the denominator, and *not* naming them
+excludes their advisory branches entirely. The percentage cannot express "part of a function". Their
+evidence is behavioural instead, and is not weaker for it: T-04-1, T-04-2, T-04-3, T-04-3b (seam-token
+grammar, absent/unrecognised ⇒ A1, both tokens ⇒ malformed) and the A2 citation-drift obligation in
+the prompt are named cases owned by A-12 🔴 / A-29 🟢 (§8.1), each of which fails if the branch is
+absent.
 
 **The mechanical procedure.** `pdlc/workflows/package.json`'s `jest` block carries
 `testEnvironment`, `transform`, `globalSetup`, `globalTeardown` and `testPathIgnorePatterns` and
@@ -595,7 +603,7 @@ this feature does not touch — out of scope). The floor is computed by two comm
 ```
 cd pdlc/workflows && npm test -- --coverage --coverageReporters=json \
   --collectCoverageFrom='orchestrate-dev.js' --collectCoverageFrom='orchestrate-queue.js' \
-  --testPathIgnorePatterns '/node_modules/' '/__tests__/helpers/' '/__tests__/fixtures/'
+  --testPathIgnorePatterns '/node_modules/' '/__tests__/helpers/' '/__tests__/fixtures/' 'documentOracles'
 
 node -e "const c=require('./coverage/coverage-final.json'),N=new Set(process.argv.slice(1));\
 let s=0,st=0,b=0,bt=0;for(const f of Object.values(c)){const keep=new Set();\
@@ -619,6 +627,13 @@ which is what makes the §9.1 checkbox mechanical: **statements ≥ 90.0, branch
 name absent from `fnMap` (renamed, inlined, never shipped) contributes nothing and is itself a
 finding — the reviewer checks that all 24 names resolve before reading the percentages. The command
 adds no file to the repo and no dependency; `coverage/` is not committed.
+
+The first command carries the same four ignore patterns as §2.4's repaired `testCommand`, including
+`documentOracles`, for the reason §5.1 gives: `coveredViolations` walks the whole tree, so an
+untracked local file can turn that suite red for reasons unrelated to the diff, and an operator
+measuring coverage would then have to distinguish that noise from a real regression. Excluding it does
+not weaken the measurement — `documentOracles.test.js` exercises none of the 24 enumerated functions —
+and §9.1's first checkbox still runs the full suite *including* the oracles on a clean tree.
 
 Two exemptions are recorded rather than re-litigated each round:
 
