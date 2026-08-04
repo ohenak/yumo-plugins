@@ -50,3 +50,6 @@ The delta resolves every erratum item routed to this document, each cite lands o
 
 VERDICT: Approved
 {"high": 0, "medium": 0, "low": 1}
+
+APPROVAL-HASH: sha256:1bfae603bb947d36fc8bda73a5d94e310643413075bdf59ad06885c1bbe260a0
+REVIEWED-COMMIT: b198f1aa8b5a08b6e4eae6adcbe8bd749da7b2ae
