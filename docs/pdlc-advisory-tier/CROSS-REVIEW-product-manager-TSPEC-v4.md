@@ -24,6 +24,16 @@ No prior finding is reopened by this delta.
 
 ## Changed-section scan
 
+**TSPEC diff (`e067f5e`).** `Status: draft → approved` (TSPEC `16`). Metadata only — it changes no requirement mapping, no acceptance criterion, and no product-visible behaviour. Nothing to review beyond confirming it is the whole diff, which it is.
+
+**Upstream-fidelity re-check against FSPEC v1.4** (the substance of this pass). The two FSPEC amendments both land on TSPEC sections I approved in v2/v3, so I re-checked each for agreement rather than assuming it:
+
+- **C-2 (report the substitution only when the tier resolves enabled).** FSPEC v1.4 C-2 (`FSPEC:145`) now reads: the substitution "is reported on the run report **only when the resolved configuration leaves the tier enabled** — a bad value that resolves the tier to disabled … produces a disabled run, which carries **no** advisory content on its report at all". TSPEC §3.2 (`257-267`) suppresses the emit exactly when the effective `enabled` is `false` (`if (advisory.config.enabled && advisory.invalidKeys.length)`), while the parse still records every degraded key. **Behaviourally identical to the amended rule** — the TSPEC's resolution is what the FSPEC adopted.
+- **A2 durability order (record before the commit).** FSPEC v1.4 §4.1 (`FSPEC:233-240`) now states that at both A5 and A2 "steps 5 and 7 complete **before** that durable git operation … an A2 re-grounding whose record cannot be written is reverted before it is committed". TSPEC §6.4.1 (`731-753`) specifies precisely that order (`4 apply → 5 CHECK → 7 RECORD → 6 verifyGate/commitPaths`, one commit carrying both `reqPath` and `recordPath`), satisfying A2-6 (`FSPEC:454`) and H-2b. **Agrees exactly.**
+- **D-6 baseline.** Covered in the disposition table above — agrees exactly.
+
+So on substance the TSPEC is in fidelity with FSPEC v1.4 on all three amended points; no acceptance criterion is narrowed, broadened, or dropped. What has gone stale is the TSPEC's *description of its own relationship to the FSPEC*, which is the single finding below.
+
 ## Findings
 
 ## Questions
