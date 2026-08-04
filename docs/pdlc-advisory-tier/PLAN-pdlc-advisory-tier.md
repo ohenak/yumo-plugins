@@ -466,13 +466,50 @@ verbatim pre-implementation failure**, carried into the wave's single script-own
 **How the per-file assertions in the gates below are read.** Jest's default reporter prints one
 aggregate summary for all 68 suites, which cannot answer "did *these* files contribute zero passing
 cases". Every per-file assertion below is therefore made against a **targeted** `--json` run over the
-advisory paths only. The wave agent runs, from `pdlc/workflows/`:
+advisory paths only.
+
+**The producer is the task, not the wave — and there is exactly one writer per artifact.** A wave is
+not one agent: `computeWaves` partitions this PLAN into 20 waves of which **eight carry more than one
+task** — 3 (`A-03…A-07`, five agents), 4 (`A-08…A-12`), 5 (`A-13…A-15`), 6 (`A-16, A-17, A-28`), 12
+(`A-23, A-29`), 13 (`A-24, A-30`), 14 (`A-25, A-31`) and 19 (`A-34, A-35`) — and the runner dispatches
+them **concurrently in the shared tree** (`await parallelFn(wave.map((task) => agentFn("se-implement",
+…)))`, `pdlc/workflows/orchestrate-dev.js:8095-8102`), with no post-wave agent hook: the only
+post-wave steps are the script-owned gate (`:8113-8118`) and the per-task commits (`:8143-8159`). A
+single per-wave `--outputFile` path would therefore have up to five concurrent writers, and the
+retained document would be whichever agent finished last. So **each task** runs the command itself,
+from `pdlc/workflows/`, to a **task-scoped** path:
 
 ```
-npm test -- --json --outputFile=/tmp/adv-gate-w{n}.json 'advisory.*\.test\.js'
+npm test -- --json --outputFile=/tmp/adv-gate-{taskId}-pre.json  'advisory.*\.test\.js'   # 🟢 tasks only, before un-skipping
+npm test -- --json --outputFile=/tmp/adv-gate-{taskId}-post.json 'advisory.*\.test\.js'   # every task, as its last action
 ```
 
-where `{n}` is the executor batch number. The run is deliberately **targeted, not full-suite**: the
+where `{taskId}` is the §3 task id (`A-23`, …). One writer per file, so no race. A 🔴 task runs the
+**post** form only — it creates its file, and there is no pre-state of it to record. A 🟢 task runs
+**both**, and its delta is a comparison of two documents *it* produced, inside one agent, with no
+cross-wave ordering assumption at all. The **retention rule of v1.4 is retired**: nothing needs the
+previous wave's artifact.
+
+**The targeted run applies from executor batch 3 onward** — the first batch that creates an
+`advisory*.test.js` file. At batches 1 and 2 the pattern matches nothing and jest exits non-zero on
+"no tests found"; no gate row there asks for the run, and no agent should perform it defensively.
+
+**Every assertion below is scoped to the running task's own §4 manifest rows, and quantified as a
+set.** Ownership is disjoint within a wave (`pathsCollide`, `orchestrate-dev.js:2377`), so no
+wave-mate creates or edits a file this task owns — a mid-flight read of *its own* files is already
+final, whatever siblings are still doing to theirs. Two conjuncts, both fail-closed:
+
+1. **Existence (set-equality, not containment).** `perFile` must contain a key for **each** of this
+   task's owned `advisory*.test.js` paths. A missing key **fails** the gate. Without this conjunct an
+   assertion quantified over the keys `perFile` happens to carry is trivially satisfied by a file that
+   was not collected — which is precisely how a defective red would slip through batch 3–5.
+2. **The per-file numbers themselves**, as each gate row states them, read only from the entries for
+   those owned paths.
+
+The single-task waves (7–11, 15–18, 20) are unchanged by all of this; batch 18's whole-suite sweep is
+`A-33` alone, so it keeps the unscoped, all-advisory-files form.
+
+The run is deliberately **targeted, not full-suite**: the
 wave prompt tells every agent `Run only your task's targeted tests — do not run the full suite; the
 orchestrator runs it.` (`pdlc/workflows/orchestrate-dev.js:5849`), so a full-suite `--json` run would
 be an instructed-against action. A trailing positional argument is jest's test-path pattern, and every
