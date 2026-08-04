@@ -77,3 +77,36 @@ All findings are new, in sections the v1.2 revision changed. No v1 finding remai
 - **§8.2's T-03-6 expansion is the right test, and the mutation check is the right proof.** "With the gate replaced by `() => ({ passed: true })` the case fails" is a mutation oracle stated at PLAN altitude — it is only its *ownership* I am flagging in F-01, never its content.
 
 ## Recommendation
+
+**Needs revision**
+
+This is a strong revision: all eleven v1 findings and all four questions are resolved, several of them
+better than asked. The two remaining Highs are both consequences of the new mechanisms rather than
+defects in them, and both are small edits.
+
+1. **F-01** — the skip discipline needs one stated rule ("a block's un-skipper is the task that lands
+   the last symbol its cases exercise") and two consequential edits: `advisoryDriver.test.js` has one
+   declared green owner (A-22, batch 9) but §8.2 assigns T-03-6(b)'s gate cases to A-23/A-24
+   (batches 10/11), and T-02-4/T-02-5 sit in a file un-skipped at batch 6 while §3's own A-22 row
+   claims their mechanism at batch 9. Either way an un-skip goes red inside a wave, and
+   `orchestrate-dev.js:8113-8118` halts the run — the exact outcome the discipline was introduced to
+   prevent.
+2. **F-02** — decide the tracking question for `.claude/pdlc.config.json` rather than deferring it.
+   The file is untracked and not gitignored; CI runs bare `npm test` on a fresh clone
+   (`pr-tests.yml:75`), so A-01's unguarded read of it is red on both matrix legs and Phase PUB halts.
+   Commit the file, or guard the case with a positive assertion on the absent-config path.
+
+Then F-03: restate P-4 over `classifyEnvelope`'s real signature (`{inside, reason, matched}` from
+`TSPEC:517`) — determinism plus `reason ∈ ADVISORY_REFUSAL_REASONS ∪ {null}` and
+`inside === (reason === null)` are the invariants a wrong implementation actually breaks.
+
+The three Lows are a prose/procedure mismatch in §6.4's denominator, a `documentOracles` noise source
+in the coverage command, and P-9's unspecified empty-input case. Fold them into the same revision.
+
+Nothing about the DAG, the ownership manifest, the doubles strategy, the coverage procedure or the
+property catalogue needs rework — all four were verified by execution and all four hold.
+
+## Verdict
+
+VERDICT: Needs revision
+{"high": 2, "medium": 1, "low": 3}
