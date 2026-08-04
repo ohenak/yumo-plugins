@@ -164,8 +164,14 @@ cd pdlc/workflows && npm test -- --testPathIgnorePatterns '/node_modules/' '/__t
 Verified to collect exactly **68** test files (`--listTests`) and none from `helpers/`, `fixtures/`
 or `documentOracles`.
 
-*Discharge and regression pin.* Land this edit on the branch before invoking Phase I, in its own
-commit, and confirm with `--listTests`. **A-01 then pins it**: one case in `advisoryPreflight.test.js`
+*Discharge and regression pin.* Make this edit before invoking Phase I and confirm with
+`--listTests`. **One caveat the operator must decide, not this PLAN:** `.claude/pdlc.config.json` is
+**untracked** at HEAD (`git ls-files .claude` returns nothing; the file is not `.gitignore`d either —
+only `.claude/settings.local.json`, `.claude/.headroom_wrap_marker.json` and `.claude/workflows/`
+are). The wave runner reads the file from **disk**, so the requirement is only that the repaired
+command is on disk before Phase I is invoked; committing it would newly *track* a file this repo has
+so far kept local, which is a repo-policy call for the operator and is not required for the repair to
+take effect. A-01's pin likewise reads the file from disk, not from git. **A-01 then pins it**: one case in `advisoryPreflight.test.js`
 reads `.claude/pdlc.config.json` and asserts `implementation.testCommand`'s ignore-pattern arguments
 equal, **as a set** against a transcribed literal, the four patterns above — so a later edit cannot
 silently reintroduce the 23-failing-suite state. If Phase I is nonetheless invoked against the
@@ -719,9 +725,9 @@ no task can satisfy its own row while leaving the obligation open:
 - [ ] `pdlc/workflows/dist/` matches its sources and `pdlc/.claude-plugin/plugin.json` carries the
       bumped version (A-36).
 - [ ] No task's diff touches a file outside its §4 manifest row.
-- [ ] `.claude/pdlc.config.json` → `implementation.testCommand` carries §2.4's repaired form (the
-      pre-flight step landed), `--listTests` collects exactly 68 files, and A-01's transcribed-literal
-      pin passes.
+- [ ] `.claude/pdlc.config.json` on disk carries §2.4's repaired `implementation.testCommand` (the
+      pre-flight step landed — the file is untracked at HEAD, so this is a disk check, not a git
+      check), `--listTests` collects exactly 68 files, and A-01's transcribed-literal pin passes.
 - [ ] No `describe.skip` block remains in any `advisory*.test.js` file — every case authored by a 🔴
       task has been un-skipped by its 🟢 owner (§3 preamble).
 
