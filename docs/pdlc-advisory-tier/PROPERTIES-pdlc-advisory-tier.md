@@ -663,7 +663,7 @@ Homes: `advisoryRecord.test.js` (A-08 🔴 / A-21 🟢), `advisoryEscalationLog.
 | PROP-SUM-03 | The summary must name the **advisory model actually used** and whether it was the configured rung or the declared fallback. | Observability | Unit | AC-9.4, S-2, T-08-7 | `advisoryRecord.test.js` |
 | PROP-SUM-04 | The summary must appear on **every** report, including a halted run's: a run halting at A3 or A4 must carry the summary for the seams reached so far, and the record must still be on disk un-distilled. | Observability | Integration | AC-9.4, S-1, H-4, T-08-9 | `advisoryHarvest.test.js` |
 | PROP-SUM-05 | `noChecks` and `completionCap` must be threaded from `raisePrAndVerifyCi` and **named** on the summary, so a repo with no CI and a repo whose checks never completed are distinguishable. | Observability | Integration | AC-8.6, S-3, A5-6, A5-9 | `advisoryPubSeam.test.js` |
-| PROP-SUM-06 | With the tier disabled, `buildFinalReport` (`orchestrate-dev.js:8595`) must receive `advisory: null` and the report must carry **no** advisory section at all. | Observability | Unit | S-4, NFR-3, AC-1.6 | `advisoryDisabled.test.js` |
+| PROP-SUM-06 | With the tier disabled, `buildFinalReport` (`orchestrate-dev.js:8595`) must receive `advisory: null` and the report must carry **no** advisory section at all. The `null` must be **derived from the advisory `_state` never having been armed**, not from a fourth read of `advisory.enabled` at the report site (PROP-DIS-06) — asserted positively: with the tier enabled and no seam firing, the same code path must produce the five zero rows of PROP-DIS-05 without any additional `enabled` read. | Observability | Unit | S-4, NFR-3, AC-1.6, TSPEC §11.1 | `advisoryDisabled.test.js` |
 
 ### 9.4 Harvest of the record, and the delete guard
 
@@ -697,7 +697,7 @@ with a positive one, per O-3's disabled-tier rule.
 | PROP-DIS-03 | With the tier disabled, no `ADVISORY-*` file must exist, `ESCALATIONS.md` must have gained no entry, the report must carry no advisory summary, and the set of files the run created must equal — element for element — the transcribed literal of `created-files-26c3f1c.json`, with its `scenario` header re-asserted first (PROP-INFRA-03). **The red direction is named:** any file created outside that literal set fails, whether or not this feature named it. | Data Integrity | Integration | NFR-3, D-6, T-10-3 | `advisoryDisabled.test.js` |
 | PROP-DIS-04 | An absent `advisory` section and a malformed config file must each behave exactly as PROP-DIS-03 — including no substitution notice when the malformed key is `enabled` itself. This is T-10-4's single home. | Error Handling | Integration | C-1, C-2, T-10-4 | `advisoryDisabled.test.js` |
 | PROP-DIS-05 | With the tier **enabled** and no seam condition arising, the report must carry an advisory summary with **five zero rows** — distinguishing an enabled-but-quiet run from a disabled one. | Observability | Integration | S-1, D-5, T-10-5, T-01-7 | `advisoryDisabled.test.js` |
-| PROP-DIS-06 | A grep for `advisory.enabled` on the dispatch path must find **exactly three** sites: the driver's early return, the config-notice emit gate, and the distil-step guard. A fourth site is a defect. | Contract | Unit | D-1, TSPEC §11.1 | `advisoryDisabled.test.js` |
+| PROP-DIS-06 | A source-text scan for a read of `advisory.enabled` must find **exactly three** sites, over a **named file set**: `pdlc/workflows/orchestrate-dev.js` and `pdlc/workflows/orchestrate-queue.js` only — never `pdlc/workflows/dist/*.bundle.js`, which inlines both modules and would double every hit. The three are: (1) the driver's early return, (2) the config-notice emit gate, (3) the distil-step guard. A fourth read is a defect. The report field of PROP-SUM-06 is **not** a fourth read and must not become one: the disabled/enabled-but-quiet distinction is made from the advisory `_state`, which is `null` when the driver never armed and a five-row zero summary when it armed and no seam fired — so `buildFinalReport` decides from `_state`, never by re-reading `enabled`. | Contract | Unit | D-1, TSPEC §11.1, DEC-ADV-05 | `advisoryDisabled.test.js` |
 | PROP-DIS-07 | Other advisory keys set while disabled must be inert: the master switch must be tested **first**, before any other key is read. | Functional | Unit | TSPEC §11.3 | `advisoryDisabled.test.js` |
 
 ### 10.2 Regression — what must still be true of the pipeline that existed before
@@ -715,15 +715,28 @@ with a positive one, per O-3's disabled-tier rule.
 ### 10.3 One property about the suite itself
 
 **PROP-REG-08** — No `describe.skip` block may remain in any `advisory*.test.js` file at the end of
-implementation. Checked two ways, because neither alone suffices: (a) a shipped source-text case that
-reads every `advisory*.test.js` **including its own file** and asserts no match for
+implementation. The oracle is **one** check, not two: a shipped source-text case that reads every
+`pdlc/workflows/__tests__/advisory*.test.js` **including its own file** and asserts no match for
 `/\b(describe|it|test)\s*\.\s*skip\b/`, `/\bx(describe|it|test)\b/`, or a binding assigned from any of
-those; and (b) the direct behavioural observation that every block of every advisory path reports
-`pending === 0`. A bare grep for the literal `describe.skip` is sufficient for neither — (a) catches
-an alias by shape, (b) catches one by behaviour.
+those. A bare grep for the literal `describe.skip` does not suffice — the scan catches an alias by
+shape, which is the evasion that actually happens. Falsification is proved in-file: the same matcher
+run against a fixture string containing each of the three shapes must report all three, and against a
+clean fixture must report none, so a scan that has stopped matching cannot pass vacuously.
 *Category: Contract · Level: Unit · Traces: PLAN §5.2 batch 18, §9.1 · Home: `advisoryDisabled.test.js`
 (A-16 🔴 / A-33 🟢).* A case left skipped is a case that never ran, and this feature's whole red
 discipline depends on that not happening silently.
+
+**Why there is no second, behavioural clause.** The obvious companion — "every block of every
+advisory path reports `pending === 0`" — cannot be asserted from inside a test file.
+`docs/_decisions/DECISIONS-test-oracle-mechanics.md` **DEC-ORACLE-01** settles exactly this case: jest
+gives every test *file* its own module registry and may fork workers, so a whole-run observation made
+from inside one file "can only ever hold that file's own contributions … trivially true forever —
+vacuous by construction, not by oversight", and it names the `pdlc-workflow-distribution` skip
+comparator as the precedent that shipped that way. A run-wide pending count belongs in a
+`globalTeardown` or a custom reporter, and per the same decision that transport would itself need
+falsifying — a cost this feature does not buy, because the source scan above catches the same defect
+earlier and deterministically. The zero-skips-remaining obligation is additionally enforced outside
+the suite by PLAN §9.1's own check, which is where a run-wide claim can legitimately live.
 
 ## 11. Generator-driven properties (P-1 … P-9)
 
