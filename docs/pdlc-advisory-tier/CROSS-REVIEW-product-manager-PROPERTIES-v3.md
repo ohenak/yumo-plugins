@@ -50,6 +50,70 @@ I have no new questions.
 
 ## Positive Observations
 
+- **The A3 carve-out in §6.5 is a narrowing of an oracle that does not narrow an acceptance
+  criterion — and the document proves the distinction rather than asserting it.** Conjunct 1 of
+  PROP-GATE-01…05 (the stubbed-gate ⇒ `escalated` / `post-action-verification-failed` disposition) now
+  applies at A2, A4, A5, with A1 **and** A3 taking the stronger unreachability form. My concern on
+  reading the diff was that a seam had quietly lost its AC-4.5/AC-4.6 obligation. It has not: for both
+  rows the assertion is that `resolved` is unreachable on *every* path and each path terminates in
+  `escalated` or `no-action` **with its own O-1 triple** — a stronger claim than the one it replaces,
+  and still a positive one, so it is not an absence-only escape. Every citation holds at branch head:
+  TSPEC §4.3's "(A1, A3) supplies `permittedActions: []` and an `apply` that is never reached — the
+  §5.1 gate refuses first" (`TSPEC:423`), the §5.5 gate table's A1 row (`TSPEC:638`) and its A3 row's
+  literal "unreachable (`permittedActions: []`)" (`TSPEC:640`), and PLAN A-23's matching implementation
+  spec (`PLAN:274`). The §12.1 `AC-4.5` and `AC-4.6` rows still carry the full `PROP-GATE-01 …
+  PROP-GATE-05` range, so no AC lost a property; only the shape of two of the five changed.
+
+- **§10.1's PROP-DIS-06 rewrite found a real upstream defect by transcribing instead of paraphrasing,
+  and I could reproduce the whole argument mechanically.** TSPEC §11.1 asserts "a grep for
+  `advisory.enabled` returning exactly three sites" (`TSPEC:1245`) — but that literal token appears at
+  exactly one of the three sites it counts, because the driver's test is written `config.enabled ===
+  false` (`TSPEC:1241`), the notice gate `advisory.config.enabled` (`TSPEC:286`), and only the §9.3
+  distil guard `advisory.enabled` (`TSPEC:1113`). I verified all four line citations verbatim. The
+  property now transcribes the matcher it will actually run (`/\.enabled\b/`), enumerates the counted
+  set, excludes `parseAdvisoryConfig` **with its own non-empty-slice control** so the exclusion cannot
+  silently swallow the whole file, and grounds the baseline: `grep -c '\.enabled\b'` over
+  `orchestrate-dev.js` and `orchestrate-queue.js` at branch head returns **0** and **0**, which I ran
+  and confirmed, so the expected count is determined entirely by this feature's own sites. That is a
+  count an operator can trust because nothing pre-existing can perturb it.
+
+- **The self-inclusive-scan collision was solved by moving the fixtures, and the rejected alternative
+  is written down.** PROP-INFRA-01 and PROP-REG-08 both scan files they themselves live in, so a
+  forbidden literal written inline is indistinguishable from the violation it proves detectable. §2.1
+  moves the control strings into `fixtures/scanFixtures.js`, argues the path is outside **both** globs
+  *by construction* rather than by convention ("no naming discipline has to be remembered for it to
+  stay outside"), and explicitly rejects the runtime-fragment-assembly alternative with the reason a
+  reader would otherwise have to discover — a scan hardened against fragment assembly would match the
+  control itself. §10.3 was updated to consume the same module. One convention, two properties, and
+  the reasoning survives for the next source-scan oracle someone writes.
+
+- **The new file's missing ownership row was routed upstream instead of being absorbed — and the
+  routing is accurate.** §13.1 item 5 states that `fixtures/scanFixtures.js` has no PLAN ownership row
+  and names the consequence precisely: `validatePlanContract` is what enforces it and the row must
+  exist **before Phase I**. I checked: `grep -n "scanFixtures" PLAN-pdlc-advisory-tier.md` returns
+  nothing, PLAN §4's manifest names `fixtures/created-files-26c3f1c.json` (A-15) as its only fixture
+  row (`PLAN:322`), and A-01's manifest row lists `advisoryPreflight.test.js` alone (`PLAN:308`). This
+  is the failure mode that would otherwise be discovered as a file the wave gate declines to commit
+  because no task owns it — caught at authoring time and handed to the PLAN author, with the proposed
+  owner named but the decision left where it belongs. §12.3's table carries the same status honestly in
+  the row's own Creating-task cell ("**no PLAN ownership row yet**"), so the gap is visible from the
+  file inventory too, not only from §13.1.
+
+- **§12.3's inventory arithmetic was re-derived, not restated, and it is right.** The revision changes
+  "all fourteen below are new" to "all **fourteen** `*.test.js` files below are new … as are the three
+  non-collected rows beneath them (one helper module, two fixtures)". I counted the table: fourteen
+  `*.test.js` rows, plus `helpers/advisoryDoubles.js`, `fixtures/created-files-26c3f1c.json` and
+  `fixtures/scanFixtures.js` — one helper module and two fixtures, exactly as stated. Adding a row to
+  an inventory table whose count is quoted in the prose above it is precisely where a document usually
+  drifts; this one did the recount.
+
+- **The two matrix repairs close the audit's last blind spot in the direction that matters.**
+  PROP-BUD-03's driver half is now named in the §12.1 `A-07` and `A-22` rows and in `advisoryDriver.
+  test.js`'s §12.3 Property-families cell, with the arithmetic half left where it was (A-05). The block
+  name matches PLAN A-22's own text, which un-skips "`A-22 — driver lifecycle` only" (`PLAN:274`). A
+  property split across two files was previously auditable from one of them; it is now auditable from
+  both.
+
 ## Recommendation
 
 ## Verdict
