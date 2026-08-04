@@ -633,6 +633,39 @@ discipline depends on that not happening silently.
 
 ## 11. Generator-driven properties (P-1 … P-9)
 
+PLAN §6.5 names nine properties over the feature's parameterisable leaves and binds each to a 🔴/🟢
+task pair. They are restated here in the form the implementer tests, with the generator each draws
+from. All nine reuse `__tests__/helpers/driftGenerators.js` through `advisoryDoubles.js`'
+`makeAdvisoryGenerators(seed)`; none declares its own PRNG (PROP-INFRA-01, PROP-INFRA-02).
+
+| # | Leaf | Statement (as tested) | Generator | Owner (🔴 / 🟢) | Home |
+|---|---|---|---|---|---|
+| P-1 | `parseAdvisoryConfig` | **Total** over arbitrary JSON values (never throws); every returned key is a member of `ADVISORY_DEFAULTS`' key set; **per-key independence** — corrupting key *k* leaves every key ≠ *k* equal to the value parsed from the uncorrupted input, and puts exactly *k* into `invalidKeys`. | `configObject` | A-03 / A-17 | `advisoryConfig.test.js` |
+| P-2 | `parseAdvisoryVerdict` | **Total** over arbitrary strings; the five malformedness rules **partition** the input space — every generated input matches exactly one rule or parses cleanly, never two, never none. | `verdictText` | A-05 / A-19 | `advisoryVerdict.test.js` |
+| P-3 | `budgetExceeded` | **Monotone in elapsed time** (true at *t* ⇒ true at every *t′ > t*, same budget) and **invariant under the A5 rollup carve-out** (adding `waitMs` never flips `false` → `true`). | bounded numeric draws | A-05 / A-19 | `advisoryVerdict.test.js` |
+| P-4 | `classifyEnvelope` | Three conjuncts over the real signature `classifyEnvelope(candidate, ctx) ⇒ {inside, reason, matched}`: **determinism and purity** (two calls deep-equal; neither argument mutated — a real falsifier for a classifier that memoises into `ctx`); **closure** (`reason ∈ ADVISORY_REFUSAL_REASONS ∪ {null}`); **coherence** (`inside === (reason === null)`). No claim is made about `matched`'s contents — the upstream documents declare its type and nothing more. | `envelopeCtx` | A-06 / A-20 | `advisoryEnvelope.test.js` |
+| P-5 | `refusalReasonFor` | **Total**; **first-match stable** — permuting the non-matching signals never changes the returned reason, so the ordering claim is about `ADVISORY_EXCLUSIONS`' / the catalogue's own order and nothing else. | signal sets | A-06 / A-20 | `advisoryEnvelope.test.js` |
+| P-6 | `renderAdvisoryEntry` | **Total** over the generated verdict × disposition space; always emits exactly the seven fields in the declared order; **no field body contains an unescaped newline** (which would corrupt the record's line grammar). | `entryFields` | A-08 / A-21 | `advisoryRecord.test.js` |
+| P-7 | `renderEscalationEntry` | **Total** over reason × seam × disposition; the decision sentence is always first; **append-safe** — rendering N entries and concatenating equals appending them one at a time, so newest-last is a property of the renderer, not of the caller. | `entryFields` | A-09 / A-21 | `advisoryEscalationLog.test.js` |
+| P-8 | `parseA3Classification` | **Total** over arbitrary agent text; the returned class is always a member of the declared closed set; unparseable text yields the fail-closed class, never `undefined`. | `classText` | A-10 / A-23 | `advisoryDodSeams.test.js` |
+| P-9 | `governingClass` | A **total order** over the generated class set — antisymmetric and transitive, ordering `real-defect > mis-scoped-criterion > deferral-candidate` — so "highest class wins" is well-defined for every **non-empty** multiset, ties included. The empty input is deliberately out of the property (§13 item 2). | `classText` | A-10 / A-23 | `advisoryDodSeams.test.js` |
+
+**Hypothesis-style hygiene, applied to the seeded generator.** Three of these draw numbers or
+compute magnitudes and must be bounded so the property tests behaviour rather than overflow:
+
+- **P-3** bounds `elapsedMs`, `waitMs` and `seamBudgetMinutes` to finite, non-negative ranges and
+  rejects any draw where `seamBudgetMinutes * 60_000` is not finite; boundary-adjacent draws are
+  constructed by a **relative** offset from the bound (`bound * (1 ± ε)`), never by an absolute
+  delta, so the property cannot accidentally land inside a tolerance band.
+- **P-1** bounds generated JSON depth and key count, so a pathological draw does not turn a totality
+  property into a timeout.
+- **P-6 / P-7** bound generated field lengths, and generate newline-bearing bodies deliberately (the
+  falsifying class) rather than by chance.
+
+**Properties are additional to, never a replacement for, the named example cases.** A property that
+subsumed an FSPEC case would hide which case failed — the 81 cases stay, each in the file PLAN §8.1
+assigns it.
+
 ## 12. Coverage matrix
 
 ## 13. Gaps, negative space, and errata
