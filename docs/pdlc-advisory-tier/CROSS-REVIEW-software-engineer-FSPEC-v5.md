@@ -109,7 +109,18 @@ FSPEC and the TSPEC now agree again — the erratum had put them in conflict.
 
 ## Findings
 
+No High and no Medium findings. One new Low, carried forward alongside the five open v3 Lows.
+
+| ID | Severity | Scope | Finding | Section ref |
+|----|----------|-------|---------|------------|
+| L-10 | Low | Local | §2 introduces `26c3f1c` under the heading "**Citation pin.**" and describes only its citation role — "Every `file:line` in §2 is read at default-branch commit `26c3f1c`" (line 84). D-6 now calls that same commit "the pre-feature **baseline** commit §2 pins" (line 835) and T-10-3 calls a run there a "pre-feature run" (line 855) — a *behavioural* role §2 never claims. Both readings are true and both trace to REQ BL-02, which pins the commit for behavioural re-verification ("every §1 'Today' row was re-checked there row by row", `REQ:352-359`) — but a reader of the FSPEC alone sees only the citation role, and that gap is exactly what made the withdrawn erratum's "§2's pin is only a citation pin, so it is the wrong baseline" argument look plausible. Suggested fix: one clause in §2 — "this commit is also REQ BL-02's **behavioural** baseline, the tree §1's 'Today' rows and §12.1 D-6's created-file literal are both measured at" — so the dual role is stated where the pin is introduced rather than inferred at D-6. | §2 (line 84) ↔ §12.1 D-6 (line 835), T-10-3 (line 855) |
+| L-05 … L-09 | Low | Local | Carried over from v3, unchanged and untouched by this delta: §4.1 flow-diagram terminal (L-05), its "consumes no attempt" phrasing (L-06), H-2's "deferral" wording (L-07), AT-2's membership criterion (L-08), T-07-12's final re-poll colour (L-09). | §4.1, §11 H-2, §13 AT-2, §9.4 T-07-12 |
+
 ## Questions
+
+| ID | Question |
+|----|---------|
+| Q-10 | D-6's literal is captured at `26c3f1c`, which is three commits behind this branch's fork point `6a4548d`. I verified none of those three touches a file-creating path, so the sets agree **today**. If the branch is rebased forward before implementation (TSPEC §1.1 / `TSPEC:1361` make the rebase the PLAN's first task), does the FSPEC intend the literal to stay pinned at `26c3f1c`, or to be re-captured at the new fork point? My reading is "stays pinned, because REQ BL-02 pins it and a re-pin is an explicit REQ decision" — a sentence in §12.1 saying so would make the next rebase a non-event rather than a fresh argument. This is a clarification request, not a finding: the current text is not wrong. |
 
 ## Positive Observations
 
