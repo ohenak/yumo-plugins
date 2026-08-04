@@ -754,11 +754,20 @@ here stops a future agent from concluding the question was overlooked.
 | Code order — which constant, function and wiring edit lands in which batch | Sequencing, not architecture; deciding it here would duplicate the PLAN and go stale the first time a batch is split | FSPEC §1 item 6 → PLAN |
 | Whether Phase MERGE should tolerate the extra post-PUB commit an advisory run produces | A Phase MERGE policy question, owned by that feature's decision record; this tier only makes the deferral **visible** on the report, never silent | TSPEC §15 R-7; Phase MERGE's own preconditions (`dev:1361`) are unchanged by this feature |
 
-**Two upstream defects are recorded but not decided here.** The A2-6 / R-2 ordering gap and the
-C-2 / D-5 conflict are FSPEC defects; DEC-ADV-03 and DEC-ADV-08 record the TSPEC-side resolutions that
-unblock implementation, and the defects themselves are routed through the erratum channel to FSPEC's
-author. If FSPEC resolves either differently, the corresponding entry above is **superseded by a new
-entry**, not edited into agreement.
+**One live upstream defect is recorded but not decided here: TSPEC's `commitPaths` export gap.**
+TSPEC §6.4.1 has A2's `verifyGate` reuse `commitPaths` "verbatim", but `commitPaths` (`dev:6905`) and
+`gitWithLockRetry` (`dev:6862`) are module-private and appear in neither TSPEC §2.3's dev export list
+nor its queue prelude (DEC-ADV-03). That is routed through the erratum channel to TSPEC's author,
+together with §16.1's overstated manifest claim (DEC-ADV-01) and §11.3's "deliberate C-2 deviation"
+wording, which describes as a deviation what is in fact conformance with C-2 (DEC-ADV-08).
+
+**Two things that look like upstream defects and are not.** The A2-6 / R-2 ordering question and the
+C-2 versus D-5/S-4 question are both **already settled in FSPEC** — at `FSPEC:232-237` / `FSPEC:635` /
+`FSPEC:690` and at `FSPEC:145` respectively. DEC-ADV-03 and DEC-ADV-08 record the TSPEC-side
+*expression* of those settled rules, not resolutions of open conflicts, and **no FSPEC erratum is
+owed or raised for either**. Anyone re-reading those entries as deviations should re-read the FSPEC
+text they cite first: an erratum round is bounded at one per upstream document per phase, and a
+confirmation that fails halts the phase.
 
 ## Consequences
 
