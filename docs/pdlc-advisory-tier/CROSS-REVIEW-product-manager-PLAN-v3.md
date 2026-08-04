@@ -81,4 +81,51 @@ revision changed — §5.2's new evidence paragraph and §10's changelog.
 
 ## Positive Observations
 
+- **F-08 was resolved by making the discipline mechanical instead of merely argued.** The v1.2 PLAN
+  claimed "each block has exactly one un-skipper" and asked the reader to trust the batch labels.
+  v1.3 puts the test files in the manifest rows so `computeWaves`/`pathsCollide` (`:2377`) *enforces*
+  it, and then proves the enforcement cost nothing by re-running the partition. I re-executed it
+  independently — 20 waves, identical to §5.2 — and every writer of every shared test file lands in
+  a distinct wave. Turning a promise into an invariant the tooling checks is the strongest form this
+  fix could have taken.
+- **§3's new un-skipper rule is the general law the special cases were instances of.** "A
+  `describe.skip` block's un-skipper is the task that lands the **last** symbol the block's cases
+  exercise", with both failure directions named (un-skipped early ⇒ the wave gate halts at
+  `:8113-8118`; un-skipped late ⇒ cases that never ran), converts a per-row judgement call into
+  something a reviewer can check row by row. It immediately paid for itself: it is what moved
+  T-02-4/T-02-5 to the driver file (FSPEC:287-288 — the attempt loop needs `runAdvisorySeam`, which
+  A-22 lands at wave 11, not A-19 at wave 8) and what splits T-03-6(b) into three further blocks by
+  gate owner. Rules that produce their own corollaries are worth more than the corollaries.
+- **A-01's config pin now asserts a positive in both worlds, and the CI branch is the one that was
+  most likely to be a silent skip.** Branching on presence and asserting
+  `parseImplementationConfig(null)` ⇒ `{ config: IMPLEMENTATION_DEFAULTS, sectionMalformed: false,
+  invalidKeys: [] }` with `testCommand === null` — verified at `:182-188` and `:160-164` — means the
+  fresh-clone leg (`pr-tests.yml:75` runs bare `npm test`) tests the *documented degradation* rather
+  than skipping. That is the no-absence-only-oracles rule applied to a test-environment branch, which
+  is exactly where it usually gets dropped, and it also makes the operator's tracking decision
+  (§10.1 item 7) genuinely free rather than nominally free.
+- **P-9 declined to invent a spec, and said so where it can be acted on.** Scoping the property to
+  non-empty multisets, transcribing the order from `TSPEC:856` rather than deriving it, stating
+  plainly that "pinning a value here would make the test assert the implementer's pick rather than
+  the spec", and then carrying `governingClass([])` as §10.1 item 6 *and* an erratum — that is the
+  correct handling of an upstream gap. The closing note that no seam path reaches it with an empty
+  list (A3-1 already treats an under-classified finding set as malformed) is what makes it a
+  non-blocker rather than a deferral of unknown size.
+- **P-4 was rewritten against the real signature instead of the imagined one.** Replacing the
+  idempotence law — which `classifyEnvelope(candidate, ctx) ⇒ { inside, reason, matched }`
+  (TSPEC:517) cannot support, since it returns no `ctx` — with determinism + purity, closure over
+  `ADVISORY_REFUSAL_REASONS ∪ {null}`, and the coherence conjunct `inside === (reason === null)` is a
+  strictly better property: the third is the invariant a wrong implementation actually breaks, and
+  the explicit refusal to pin `matched`'s contents applies P-9's lesson in the same edit.
+- **§6.4's exclusion is argued from the instrument's limits, not asserted.** "The percentage cannot
+  express 'part of a function'" is the honest reason, and pairing it with the named behavioural cases
+  that do cover the branches (T-04-1…T-04-3b, the A2 citation-drift obligation) means the surface is
+  still covered — just not by that number. Adding `documentOracles` to the coverage invocation for
+  the reason §5.1 already gives (`coveredViolations` walks the whole tree, so an untracked local file
+  reddens it) while keeping §9.1's full-oracle run on a clean tree is the right split.
+- **The changelog marks its own superseded clause rather than quietly rewriting history.** The 1.2
+  row now carries "(**superseded in 1.3** — the runner commits once per task)" inline. A reader who
+  finds the old red→green-pair language in a downstream document can now trace why it changed instead
+  of concluding the two documents disagree.
+
 ## Recommendation
