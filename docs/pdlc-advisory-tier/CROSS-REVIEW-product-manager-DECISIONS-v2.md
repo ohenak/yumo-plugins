@@ -41,6 +41,53 @@ All three are new, all Low, all confined to text the revision added. No prior fi
 
 ## Positive Observations
 
+- **The two High findings were fixed at the premise, not at the sentence.** The cheap way to close
+  F-01 and F-02 was to delete the word "erratum" and leave the framing intact. The revision instead
+  rewrote both Contexts to state what FSPEC actually settles, quoted the settling text, and — most
+  usefully — replaced DEC-ADV-03's rejected alternative, because once the conflict is gone "the
+  literal FSPEC order" is no longer the thing that lost. What lost is a per-seam driver branch, and
+  that is now what the entry rejects (`:289-293`). The rejection reason (a rule enforceable only by
+  inspection, so a sixth seam that forgets the arm commits before it records) is stronger than the
+  one it replaced.
+- **It added the paragraph that stops the fix from being re-broken.** "Two things that look like
+  upstream defects and are not" (`:765-771`) is the durable half: it names both questions, pins each
+  to the FSPEC lines that settle it, and tells the next reader to re-read that text before concluding
+  a deviation exists. Given that the previous version of this document argued the opposite, a future
+  agent reading the git history alone could easily have re-derived the stale claim. This paragraph
+  is what prevents that, and it should survive to LEARNINGS.
+- **The register row was updated with the entry, not left behind.** DEC-ADV-01's reversibility cell
+  now reads "easy, once the bundle-composition detector ships" (`:117`), matching the body's
+  "**Reversibility: easy** — *conditional on that detector existing*" (`:203-207`). A summary table
+  that silently keeps the old value is the most common way a revised decision record becomes
+  self-contradictory, and this one did not.
+- **The new detectors are specified as oracles a test engineer can act on, with the failure mode
+  named.** Each of the three added detectors says what it asserts *and* what would false-green
+  without it: the bundle-composition assertion carries an explicit mutation check ("delete
+  `devModule` from the queue bundle's `contents` array and confirm the test goes **red**") and
+  rejects the substring shortcut (`:186-201`); the escalation-log detector is set-equality over the
+  seams applied to that path, "not 'does not contain `_readFile`'" (`:808-815`); the X-e / Phase
+  MERGE detector is differential rather than two expectation tables that "drift together with the
+  implementations" (`:816-824`). The generalisation it closes on — "a standing obligation with no
+  detector is documentation, not an obligation" (`:826-828`) — is `Cross-Feature` signal worth
+  promoting at harvest.
+- **DEC-ADV-04's rewrite corrects an oracle that would have been written wrong.** The old text
+  argued the fallback constant must differ from `MODEL_DEFAULT`; the revision points out that the two
+  literals are equal today (`"opus"`, verified at `orchestrate-dev.js:1578`) and that AC-1.3's actual
+  requirement is three positive conjuncts on the fallback path (`REQ:76-80`, transcribed accurately).
+  Naming `expect(MODEL_ADVISORY_FALLBACK).not.toBe(MODEL_DEFAULT)` as the oracle *not* to write is
+  the kind of pre-emption that saves a review round downstream.
+- **The unreachability admission is the harder, more honest option.** Stating that AC-1.4's branch is
+  unreachable end-to-end while `MODEL_ADVISORY_FALLBACK === MODEL_DEFAULT`, and that it therefore
+  becomes a unit-level obligation, invites the question "so is AC-1.4 being skipped?" — and the
+  paragraph answers it in advance (AC-1.4 applies unchanged; the unreachability is a property of
+  today's literals and evaporates at trigger 3). REQ AC-1.4 grants the detection point to TSPEC, so
+  this stays inside the requirement rather than narrowing it.
+- **DEC-ADV-07 now asserts both branches of the derivation, not only the interesting one**
+  (`:506-509`): `dodHeadUnverified === false` **and** `dodVerifiedCommit === <the head>` in the
+  common case. Half-covered derivations that are green on a never-populated field are exactly the
+  defect that reaches production, and catching it in a decision record rather than in PROPERTIES is
+  early.
+
 ## Recommendation
 
 ## Verdict
