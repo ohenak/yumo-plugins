@@ -73,6 +73,86 @@ member.
 
 ## 2. Fixtures, generators, and test doubles
 
+### 2.1 The canonical doubles — one module, no local equivalents
+
+Every double comes from `pdlc/workflows/__tests__/helpers/advisoryDoubles.js` (PLAN A-02, §6.1),
+whose export signatures are fixed there:
+
+```js
+export function makeAgentDouble({ script, throwOn })   // → (skill, prompt, opts) => Promise<string>
+export function makeSeamOps(overrides)                 // → SeamOps, every member a spy with a default
+export function makeFileDouble({ seed, throwOn })      // → { _readFile, _writeFile, _appendFile, files }
+export function makeFakeClock({ start, autoAdvanceMs })// → { _now, _sleep, advance }
+export function makeAdvisoryConfig(overrides)          // → a parsed config at ADVISORY_DEFAULTS
+export function makeAdvisoryGenerators(seed)           // → { verdictText, configObject, envelopeCtx, classText, entryFields }
+```
+
+`_git` and `_ghRun` are **re-exported from the shipped `__tests__/helpers/mergeDoubles.js`**, not
+re-authored (TSPEC §13.3). `helpers/seams.js`, `helpers/guardFixtures.js` and
+`fixtures/tmpGitFixture.js` are shipped today and are composed with, not duplicated.
+
+**PROP-INFRA-01** — No advisory test file must define its own `SeamOps` literal, agent double, file
+double, clock or PRNG; every double must resolve to `advisoryDoubles.js` (or through it to
+`mergeDoubles.js` / `driftGenerators.js`).
+*Category: Contract · Level: Unit · Traces: PLAN AC-INFRA-1, TSPEC §16.2 · Home: reviewer-enforced
+across `advisory*.test.js`; a locally-defined equivalent is a High finding.* A second `SeamOps` fake
+is precisely how the driver's contract and the seams' contract drift apart.
+
+### 2.2 The generator, and the seeding discipline
+
+`pdlc/workflows/__tests__/helpers/driftGenerators.js` ships `seeded(seed)` (xorshift32, `:76`),
+`resolveSeed(literalSeed)` honouring `PDLC_PROP_SEED` (`:134`) and `enumerateLeaves()` (`:158`), and
+is already consumed by thirteen suites. §11's properties reuse it through `advisoryDoubles.js`; no
+advisory file declares a PRNG and no task edits `driftGenerators.js`.
+
+**PROP-INFRA-02** — Every generator-driven property must carry a literal seed, must honour
+`PDLC_PROP_SEED` through `resolveSeed`, and must report the failing seed in its assertion message.
+*Category: Observability · Level: Unit · Traces: PLAN §6.5 seeding discipline · Home: each §11
+property's own file.* A property that fails without naming its seed is unreproducible and therefore
+un-actionable.
+
+### 2.3 The authored fixture — D-6's expected set
+
+`pdlc/workflows/__tests__/fixtures/created-files-26c3f1c.json` (PLAN A-15) is the one fixture in
+this feature that is **authored, never computed by the system under test** (DEC-ADV-10, TSPEC §11.2).
+It carries a `scenario` header with nine fields — `baselineCommit` (`26c3f1c`), `reqPath`,
+`forcePhases`, `agentDoubles`, `config`, `phasesReached`, `seamsInstrumented`, `command`, `date`.
+
+**PROP-INFRA-03** — The disabled-run comparison must re-assert the fixture's `scenario` header
+field-for-field **before** comparing created-file sets, and a header mismatch must fail as a
+*fixture-staleness* failure distinct in message from a created-file diff.
+*Category: Data Integrity · Level: Integration · Traces: FSPEC D-6 / T-10-3, TSPEC §11.2 · Home:
+`advisoryDisabled.test.js` (A-16 🔴 / A-33 🟢).* Without the header the oracle can go false-red on
+scenario drift or vacuously green on a narrowed scenario.
+
+### 2.4 Fixture strings are transcribed literals, never derived
+
+Four closed sets and one record grammar are compared against **transcribed literals**, not against
+values read back out of the implementation:
+
+| Literal | Normative source | Where transcribed |
+|---|---|---|
+| `ADVISORY_REFUSAL_REASONS` — the eight reasons in order | TSPEC §5.3 / REQ AC-3.6 | `advisoryEnvelope.test.js` |
+| `ADVISORY_EXCLUSIONS` = `["X-a","X-e","X-d","X-b","X-c"]` | TSPEC §5.3 | `advisoryEnvelope.test.js` |
+| `ENVELOPE_DEFAULTS` = {E-1, E-2, E-3, E-4} | FSPEC §5.2 / REQ AC-3.3 | `advisoryEnvelope.test.js` |
+| `ADVISORY_SEAMS` = {A1, A2, A3, A4, A5} | TSPEC §3.1 | `advisoryEnvelope.test.js`, driver registry |
+| the seven `ADVISORY-*` record fields and their order | TSPEC §9.1 | `advisoryRecord.test.js` |
+| the eight `ESCALATIONS.md` fields, decision sentence first | TSPEC §10.1 | `advisoryEscalationLog.test.js` |
+
+**PROP-INFRA-04** — Each of the four closed sets must be compared by **set equality** against its
+transcribed literal, so both an invented and a deleted member fail.
+*Category: Contract · Level: Unit · Traces: T-03-5, T-03-8, FSPEC §18.2 · Home:
+`advisoryEnvelope.test.js` (A-06 🔴 / A-20 🟢).*
+
+### 2.5 One constraint the suite's *shape* must respect
+
+Phase I's script-owned gate runs the whole configured suite after every wave and throws on failure
+(`orchestrate-dev.js:8113`), so a genuinely-failing new case ends the run rather than colouring a
+batch red. Every property below is therefore authored inside a `describe.skip(...)` block named for
+the 🟢 task that lands the last symbol its cases exercise, and un-skipped by exactly that task
+(PLAN §3 steps 1–3). This is a *packaging* rule, not a weakening: a skipped case that is never
+un-skipped is caught by PLAN §9.1's zero-skips-remaining check.
+
 ## 3. Oracles — the falsifiability rules every property below obeys
 
 ## 4. Properties — configuration and model rung
