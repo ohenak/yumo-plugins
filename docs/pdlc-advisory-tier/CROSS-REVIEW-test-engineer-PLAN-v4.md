@@ -63,4 +63,38 @@ Both findings are new, in the section v1.4 rewrote. No v3 finding remains open.
 
 ## Recommendation
 
+**Needs revision**
+
+All three v3 findings and both v3 questions are resolved, and the two I cared most about are resolved
+better than asked: the `--json` procedure is now a transcribed literal I re-executed line for line
+(including the whole-block `describe.skip` case no shipped suite covers), and §9.2's red evidence has
+a git-observable, recomputable conjunct with both fail-closed directions named. The DAG, the wave
+partition, the manifest bijection, the batch column, the runner citations and P-4's TSPEC anchors all
+re-verified clean by execution.
+
+One High remains, and — as last round — it is a defect *in* the new mechanism rather than anywhere
+else in the document:
+
+1. **F-01** — `/tmp/adv-gate-w{n}.json` has one path and up to five concurrent writers. Wave 3 is
+   five agents each creating a different `advisory*.test.js`; waves 12/13/14/19 are two, and wave
+   12's pair both own files matching the run's pattern. The retained artifact is therefore
+   last-writer-wins, and worse, the batch 3–5 assertion is quantified over the entries `perFile`
+   happens to contain: a sibling file that did not exist when the snapshot was taken has **no key**,
+   so the defective-red detector — the only thing separating an authored red from a case that
+   asserts nothing — passes vacuously for it. Fix by making the artifact per task
+   (`/tmp/adv-gate-{taskId}-{pre,post}.json`), scoping each agent's assertions to its own manifest
+   rows, and adding the set-equality conjunct: every owned `advisory*.test.js` path must have a key,
+   a missing key fails. That also retires the cross-wave retention rule — the 🟢 delta becomes two
+   runs inside one agent, with no ordering assumption at all.
+
+Then **F-02**, one clause: P-4's "exhaustive six-check ladder (`TSPEC:525-534`)" stops at check 5;
+check 6 is line 535. Cite `TSPEC:528-535`.
+
+Nothing else in the changed sections needs rework. §5.2's reducer, its `:5849` justification for the
+targeted run, §8.2's registry generation rule, §9.1's re-parse claim, §9.2's conjunct (i) and §10's
+1.4 row were each verified against code or execution, and each holds.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 0, "low": 1}
