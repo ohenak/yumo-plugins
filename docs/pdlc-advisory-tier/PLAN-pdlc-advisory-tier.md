@@ -305,6 +305,74 @@ by §9's Definition of Done.
 
 ## 6. Test infrastructure, artifact lifecycle, and coverage floor
 
+### 6.1 The canonical doubles — one module, named signatures
+
+DC-10 requires the PLAN to name the file path and export signature of every canonical double, and to
+carry an acceptance criterion prohibiting per-test ad-hoc equivalents. A-02 owns
+`pdlc/workflows/__tests__/helpers/advisoryDoubles.js`:
+
+```js
+export function makeAgentDouble({ script, throwOn })      // → (skill, prompt, opts) => Promise<string>
+export function makeSeamOps(overrides)                    // → SeamOps, every member a spy with a default
+export function makeFileDouble({ seed, throwOn })          // → { _readFile, _writeFile, _appendFile, files }
+export function makeFakeClock({ start, autoAdvanceMs })    // → { _now, _sleep, advance }
+export function makeAdvisoryConfig(overrides)              // → a parsed-config object at ADVISORY_DEFAULTS
+```
+
+`_git` and `_ghRun` are **not** re-authored: A-02 re-exports the command-string→result map fakes
+already shipped in `pdlc/workflows/__tests__/helpers/mergeDoubles.js`, adding advisory-specific
+scripted responses. Existing shipped helpers this feature composes with rather than duplicates:
+`helpers/seams.js`, `helpers/guardFixtures.js`, `fixtures/tmpGitFixture.js`.
+
+**AC-INFRA-1 (blocking).** No advisory test file may define its own `SeamOps` literal, agent double,
+file double or clock. Every double comes from `advisoryDoubles.js` (or, for `_git`/`_ghRun`, from
+`mergeDoubles.js` through it). A reviewer finding a locally-defined equivalent should treat it as a
+High finding: the driver-vs-seam contract drift TSPEC §16.2 rejects is exactly what parallel fakes
+reintroduce.
+
+### 6.2 Integration-level property harnesses
+
+Every Integration-level property PROPERTIES defines needs a named runnable harness. Three exist here:
+
+| Property class | Harness | Owner |
+|---|---|---|
+| Phase-integration (the halt still happens at `dev`'s DOD/PUB bodies, the skip still happens at the queue's `needs-human` branch) | drive the real phase body with `_runAdvisorySeam` returning a **scripted disposition** — not a real seam — plus `makeFileDouble` and `makeFakeClock` | A-10, A-11, A-12 |
+| Tree-state invariants ("byte-identical to its pre-invocation state", "exactly one of two states") | `fixtures/tmpGitFixture.js` — a real temporary git repo; compare `git status --porcelain` and `git rev-parse HEAD` before and after | A-07, A-10, A-11 |
+| Disabled-run created-file set (D-6) | instrument `_writeFile`/`_appendFile`/`_git` through `makeFileDouble`, compare against `fixtures/created-files-26c3f1c.json` after re-asserting its `scenario` header | A-15, A-16 |
+
+**PROPERTIES goes into the implementing agent's context in full**, not only this task table. Three of
+the obligations above (tree-state comparison, the scenario re-assertion, the seven X-a operations) are
+stated as properties and are routinely dropped when an agent sees only a one-line task row.
+
+### 6.3 Lifecycle disposition for every artifact this feature introduces
+
+Phase H deletes only `CROSS-REVIEW-*` and `CODE_REVIEW-*`, so anything else needs an explicit
+disposition or it sits in the tree forever:
+
+| Artifact | Created by | Disposition |
+|---|---|---|
+| `docs/{feature}/ADVISORY-{feature}.md` | the record write, at runtime in consuming repos | **Harvested and deleted** by the new post-PUB distil step (A-27), through the guard-covered `git rm`. Retained with a report notice when the guard refuses. Queue-side records persist by design — no queue-side path distils them. |
+| `docs/_queue/ESCALATIONS.md` | escalation writes, at runtime | **Deliberately retained.** Append-only, never read by this tier, consumed downstream by an operator or by `pdlc-engineering-loop`. It is the feature's durable output, not scaffolding. |
+| `pdlc/workflows/__tests__/fixtures/created-files-26c3f1c.json` | A-15 | **Retained, tracked.** Regenerated only deliberately, by re-stating the scenario header. Its provenance block is the instruction for doing so. |
+| `pdlc/workflows/__tests__/helpers/advisoryDoubles.js` | A-02 | **Retained, tracked** — permanent test infrastructure. |
+| `docs/pdlc-advisory-tier/MANUAL-VERIFICATION-pdlc-advisory-tier.md` | A-34 | **Harvested into LEARNINGS at Phase H, then deleted.** It records one runtime fact (which model-rung branch fired); once that fact is in LEARNINGS the file is spent. Named here because the harvest guard does not watch this pattern and will not stop its deletion. |
+
+### 6.4 Coverage floor, and the exemptions taken knowingly
+
+Floor: **90% statements / 85% branches** over the advisory surface (every symbol TSPEC §14.1 names),
+measured by the existing jest coverage configuration. Two exemptions are recorded rather than
+re-litigated each round:
+
+| Exempt | Why | Evidence instead |
+|---|---|---|
+| `pdlc/hooks/scripts/guard-harvest-before-delete.sh` (A-28) | It is a bash + inline-python hook executed as a subprocess; istanbul cannot attribute a child process, so its lines never appear in the JS coverage report at all. | Behavioural: A-13's guard cases exercise the refusal path and the extended message end to end, plus the `bash -n` parse job and the index-mode assertions already in CI. |
+| The `_runAdvisorySeam` phase-integration fakes' own error branches | Fixture-construction paths in test helpers, never in scope for the feature's coverage claim. | None needed — they are test code, not production code. |
+
+Beyond line coverage, four obligations are **not** satisfiable by a percentage and are asserted
+directly (TSPEC §13.4): the seven X-a operations as seven named tests; every prohibition asserting the
+positive V-8 triple as well as the negative; the closed sets compared as sets; and the D-6 expected
+value transcribed, never derived.
+
 ## 7. Integration points
 
 ## 8. Acceptance-test coverage map
