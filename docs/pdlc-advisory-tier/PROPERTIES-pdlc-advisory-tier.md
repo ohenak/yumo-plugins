@@ -728,8 +728,40 @@ with a positive one, per O-3's disabled-tier rule.
 | PROP-DIS-03 | With the tier disabled, no `ADVISORY-*` file must exist, `ESCALATIONS.md` must have gained no entry, the report must carry no advisory summary, and the set of files the run created must equal — element for element — the transcribed literal of `created-files-26c3f1c.json`, with its `scenario` header re-asserted first (PROP-INFRA-03). **The red direction is named:** any file created outside that literal set fails, whether or not this feature named it. | Data Integrity | Integration | NFR-3, D-6, T-10-3 | `advisoryDisabled.test.js` |
 | PROP-DIS-04 | An absent `advisory` section and a malformed config file must each behave exactly as PROP-DIS-03 — including no substitution notice when the malformed key is `enabled` itself. This is T-10-4's single home. | Error Handling | Integration | C-1, C-2, T-10-4 | `advisoryDisabled.test.js` |
 | PROP-DIS-05 | With the tier **enabled** and no seam condition arising, the report must carry an advisory summary with **five zero rows** — distinguishing an enabled-but-quiet run from a disabled one. | Observability | Integration | S-1, D-5, T-10-5, T-01-7 | `advisoryDisabled.test.js` |
-| PROP-DIS-06 | A source-text scan for a read of `advisory.enabled` must find **exactly three** sites, over a **named file set**: `pdlc/workflows/orchestrate-dev.js` and `pdlc/workflows/orchestrate-queue.js` only — never `pdlc/workflows/dist/*.bundle.js`, which inlines both modules and would double every hit. The three are: (1) the driver's early return, (2) the config-notice emit gate, (3) the distil-step guard. A fourth read is a defect. The report field of PROP-SUM-06 is **not** a fourth read and must not become one: the disabled/enabled-but-quiet distinction is made from the advisory `_state`, which is `null` when the driver never armed and a five-row zero summary when it armed and no seam fired — so `buildFinalReport` decides from `_state`, never by re-reading `enabled`. | Contract | Unit | D-1, TSPEC §11.1, DEC-ADV-05 | `advisoryDisabled.test.js` |
+| PROP-DIS-06 | A source-text scan must find **exactly three** reads of the resolved config's `enabled` field outside `parseAdvisoryConfig`, over a **named file set**: `pdlc/workflows/orchestrate-dev.js` and `pdlc/workflows/orchestrate-queue.js` only — never `pdlc/workflows/dist/*.bundle.js`, which inlines both modules and would double every hit. **Matcher, transcribed:** `/\.enabled\b/`. The three are: (1) the driver's early return, (2) the config-notice emit gate, (3) the distil-step guard. A fourth read is a defect. The report field of PROP-SUM-06 is **not** a fourth read and must not become one: the disabled/enabled-but-quiet distinction is made from the advisory `_state`, which is `null` when the driver never armed and a five-row zero summary when it armed and no seam fired — so `buildFinalReport` decides from `_state`, never by re-reading `enabled`. | Contract | Unit | D-1, TSPEC §11.1, DEC-ADV-05 | `advisoryDisabled.test.js` |
 | PROP-DIS-07 | Other advisory keys set while disabled must be inert: the master switch must be tested **first**, before any other key is read. | Functional | Unit | TSPEC §11.3 | `advisoryDisabled.test.js` |
+
+**PROP-DIS-06's matcher, and why it is not the token `advisory.enabled`.** TSPEC §11.1 states the
+assertion as "a grep for `advisory.enabled` returning exactly three sites" (`TSPEC:1245`), but that
+literal token does not appear at all three of the sites it counts: the driver's early return is
+`config.enabled === false` (`TSPEC:1241`, §4.4's entry row at `TSPEC:439`), the notice gate is
+`advisory.config.enabled` (`TSPEC:286`), and only the distil guard is written `advisory.enabled`
+(`TSPEC:1113`). Grepping the literal token finds one of the three; the property therefore transcribes
+`/\.enabled\b/` — a read off a parsed object, whatever the object is named — and pins the counted set
+explicitly:
+
+- **In the counted set:** every `/\.enabled\b/` match in the two named modules that lies **outside**
+  `parseAdvisoryConfig`'s function body. Expected count: **exactly three**, the sites enumerated above.
+- **Outside the counted set:** matches inside `parseAdvisoryConfig`. The parser reads the key it is
+  resolving, and TSPEC §3.2 does not pin the access shape — the `parseImplementationConfig` precedent
+  it is modelled on reads its keys through a computed `section[key]` helper
+  (`orchestrate-dev.js:203-209`), which produces no `.enabled` match at all, while a direct
+  `section.enabled` produces one. Counting the parser would make the expected total depend on a choice
+  no document makes, so the scan excludes it.
+- **The exclusion needs its own control**, because a slice that removed zero bytes would silently
+  restore the parser's matches, and one that removed the whole file would make the count trivially
+  zero. The case slices from the `export function parseAdvisoryConfig` declaration to the next
+  top-level `export ` at column 0, and asserts the removed slice is non-empty **and** contains
+  `invalidKeys` — the parser's own contract token (TSPEC §3.2) — before counting anything.
+- **Grounding:** `grep -c '\.enabled\b'` over both modules at branch head returns **0** and **0**, so
+  the count is determined entirely by this feature's own sites; no pre-existing code contributes.
+
+**If Phase I finds a legitimate fourth read** (PM Q-01), the intended resolution is stated here rather
+than argued at implementation time: **the fourth read is refactored away, not blessed.** D-1's claim is
+that one early return is the only enabled-test on the dispatch path; a fourth read that can dispatch or
+resolve falsifies D-1 itself, and a fourth that cannot belongs behind the `_state` the summary already
+reads (PROP-SUM-06). Amending TSPEC §11.1's count is the escape hatch of last resort and requires an
+erratum against D-1, not a bumped number.
 
 ### 10.2 Regression — what must still be true of the pipeline that existed before
 
