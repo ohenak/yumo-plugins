@@ -64,4 +64,37 @@ about text added this round:
 
 ## Recommendation
 
+**Needs revision**
+
+> Any High or Medium finding → Needs revision (mandatory).
+
+The document converged on everything I raised at v1: all four Highs, all five Mediums and all four
+Lows are closed on the substance, and the two headline repairs — the recomputed level budget and the
+PROP-DIS-06 / PROP-SUM-06 reconciliation — are correct to the row when re-derived independently. The
+three additions the revision made on its own initiative (PROP-A5-20, PROP-ENV-13, §12.4) each close a
+gap the coverage matrix could not have seen, which is more than the round asked for.
+
+Three things must change, all of them inside text this revision added, and none of them touching the
+design:
+
+1. **F-01** — extend §6.5's A1 carve-out to A3. A3's `permittedActions` is `[]` (`TSPEC:423`, the §5.5
+   gate table, `PLAN:274`), so PROP-GATE-03 as written asserts a disposition A3 cannot reach and fails
+   against a correct build. Conjunct 1 applies to A2, A4 and A5; A3 takes A1's stronger form.
+2. **F-02** — give PROP-DIS-06 a transcribed matcher. The three sites it enumerates read
+   `config.enabled`, not `advisory.enabled`, so the literal token finds one site and `/\.enabled\b/`
+   finds four. Say which regex, and whether the parser's raw read is counted.
+3. **F-03** — resolve the collision between the new in-file falsification fixtures and the
+   self-inclusive source scans in PROP-INFRA-01 and PROP-REG-08. Either the fixtures live outside the
+   scanned glob or the forbidden literals are assembled at runtime.
+
+F-04 is two lines of bookkeeping.
+
+One upstream defect is routed as an erratum rather than folded into this verdict: TSPEC §11.1 states
+the same "grep for `advisory.enabled` returning exactly three sites" assertion that F-02 is about,
+one paragraph after declaring the driver's test as `config.enabled === false` — the token and the
+code shape disagree at the source, and PROPERTIES inherited it faithfully.
+
 ## Verdict
+
+VERDICT: Needs revision
+{"high": 1, "medium": 2, "low": 1}
