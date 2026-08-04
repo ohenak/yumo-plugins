@@ -78,5 +78,77 @@ Only findings that survived that check appear below.
 
 ## Positive Observations
 
+- **Requirement coverage is complete, and I checked it requirement by requirement.** All ten
+  REQ-ADV requirements and all five NFRs have named tasks: ADV-01 → A-03/A-04/A-17/A-18; ADV-02 →
+  A-05/A-07/A-19/A-22; ADV-03 → A-06/A-20; ADV-04 → A-07 plus the per-seam gates in A-23/A-24;
+  ADV-05 → A-12/A-29/A-30/A-31; ADV-06 and ADV-07 → A-10/A-23/A-25; ADV-08 → A-11/A-24/A-26;
+  ADV-09 → A-08/A-13/A-21/A-27/A-28; ADV-10 → A-09/A-21; NFR-3 → A-15/A-16/A-33. Nothing in the REQ
+  is silently dropped, and nothing outside REQ §5's scope statement is implemented (the one
+  boundary case, A-00, is F-07 and is a documentation fix, not a scope reversal). AC-9.4's easiest
+  clause to lose — "the advisory model actually used and whether it was the fallback" — is
+  explicitly carried as T-08-7 in A-08's row, not left to the rung tests.
+- **The deferrals stay deferred.** D-ADV-01 (widening the envelope), D-ADV-03 (learned confidence)
+  and D-ADV-05 (per-seam rungs) are all bound to `pdlc-consolidation-agent` in the REQ, and no task
+  here reaches for any of them; §8.2's T-03-8 row goes out of its way to say the shipped closed sets
+  are asserted as exported literals and "explicitly **not** parameterised by capability probes",
+  which is the exact line that would otherwise let E-1/E-2 quietly become dynamic. Keep that clause.
+- **The pre-flight gate is the right shape.** §2.1 replaces TSPEC §13.6's rebase task with an
+  assertion because the rebase is already satisfied — and then makes the fact machine-checked
+  (A-01) rather than remembered. Asserting baseline-symbol *existence* only, never the shape a
+  dependent task creates, is precisely the distinction that keeps a pre-flight gate from turning
+  into a duplicate of the work it gates.
+- **A-15/A-16's ordering rationale is the strongest paragraph in the document.** §5.3's last bullet
+  — "A test that generated its own expected value would be incapable of failing, which is precisely
+  what D-6 forbids" — is the no-implementation-echoes rule stated as a dependency edge rather than
+  as an exhortation, and §6.2's third row makes it operational (re-assert the fixture's `scenario`
+  header first, so staleness fails distinctly from a created-file diff). Keep both verbatim.
+- **The negative-assertion discipline is carried through the whole document.** §6.4's closing
+  paragraph names the four obligations "not satisfiable by a percentage" — seven named X-a tests,
+  every prohibition asserting the positive triple as well as the negative, closed sets compared as
+  sets, the D-6 value transcribed — and §9.2 restates each as a DoD checkbox. F-01 is a gap in one
+  of those four, not an absence of the principle.
+- **AC-INFRA-1 is a real control, not a preference.** Naming the canonical doubles module, its five
+  export signatures, and a blocking prohibition on per-test ad-hoc equivalents (§6.1) is what keeps
+  the driver's contract and the seams' contract from drifting — and re-exporting `mergeDoubles.js`'s
+  `_git`/`_ghRun` rather than re-authoring them is the right call for the same reason.
+- **The additive-by-construction promise is made structural.** §5.4's four "must not be reordered"
+  items — halts preceded, never rewritten and left byte-identical; record before the durable act;
+  the guard message extended, never rewritten; `MERGE_ESCALATIONS` untouched — turn AC-10.3
+  ("escalation adds information; it never changes control flow") and AC-10.5 (the merge notice
+  catalogue not widened) from rules an implementer must remember into edges the batch structure
+  enforces. §9.3's regression checklist then re-asserts each one.
+- **A-00 was found by running the gate, not by reading it.** §5.1 carries a reproduction command and
+  its verbatim failure output. Discovering that the shipped `testCommand` replaces jest's ignore
+  list — and that this feature's own `helpers/` and `fixtures/` additions are what would trip it —
+  before the first wave rather than during it is exactly the kind of work that makes a PLAN
+  executable. F-07 asks only that it be *declared*, not that it be dropped.
+- **The v1.1 changelog corrects rather than defends.** Withdrawing "the existing jest coverage
+  configuration" once §6.4's premise turned out to be false, and transcribing both the rule-1 labels
+  and the twenty executor batches after actually running `computeTopologicalBatches`, is honest
+  revision. The parse-verification line (37 tasks, 37 ownership rows, `{"ok":true}`, 20 batches, no
+  cycle) is the claim Phase P's own gate will re-check, and it holds.
+
 ## Recommendation
+
+**Needs revision.**
+
+One High and two Medium findings are open, so the mandatory approval rule applies. This is a strong
+PLAN — requirement coverage is complete, the dependency graph is dependency-ordered rather than
+merely serialized, and every load-bearing claim I spot-checked against the tree held. What must
+change before approval:
+
+1. **F-01** — restate §8.2's T-03-6 row and §9.2's third checkbox to carry FSPEC §18.2's full
+   quantification, so AC-4.5's five gate rows each have a named case.
+2. **F-02** — give T-10-4 exactly one home; remove the token from A-03's row.
+3. **F-03** — give A-34 an explicit discharge rule covering the no-real-runtime case, and say in
+   §9.4 that an inferred result is a DoD violation.
+
+The four Low findings (F-04 through F-07) are corrections to counts and declarations; addressing
+them in the same revision is cheap and makes §8.1, §4.1 and §6.3 audit-ready, but none of them alone
+would hold up approval.
+
+One upstream defect is raised as an erratum against TSPEC rather than folded into this verdict: the
+PLAN itself flags it in §8.3 note 2, and I confirmed it is still open — TSPEC §7.4 names a test case
+`T-06-8`, outside FSPEC §18.1's T-06-1…T-06-6 catalogue. The PLAN's handling (carry the obligation
+under A-10, raise the id discrepancy upstream, invent nothing) is correct and needs no change here.
 
