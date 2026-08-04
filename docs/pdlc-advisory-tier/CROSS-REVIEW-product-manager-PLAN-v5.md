@@ -82,7 +82,40 @@ behaviour; both are grounding citations in text that presents itself as verified
 
 ## Positive Observations
 
-_(pending)_
+- **The fix was made at the level the defect lived at, not at the level it was reported.** F-12
+  described a symptom (an unnamed producer racing on a shared path). The revision changed the *unit of
+  evidence* — from the wave to the task — and every downstream consequence fell out of that one move:
+  the race disappears because there is one writer per artifact, the mid-wave snapshot disappears
+  because both readings are of files only the reader owns, and the cross-wave retention rule
+  disappears because the delta no longer spans waves. Retiring a mechanism as part of a fix is a
+  better outcome than adding one.
+- **The existence conjunct is the strongest thing in this revision, and it was not asked for.** I
+  asked for the snapshot to be scoped per task. The author additionally noticed that an assertion
+  quantified over "the keys `perFile` happens to carry" is **vacuously true for a file jest did not
+  collect** — which is precisely the hole in batch 3–5's defective-red detector, the one oracle in
+  §5.2 that catches a test that asserts nothing. Requiring set-equality over the task's owned paths
+  ("a missing key **fails** the gate") converts a containment check into a completeness check. That is
+  the review standard's completeness-by-set-equality rule applied to an oracle nobody flagged.
+- **Q-10 was answered by deleting its premise.** I proposed adding a clause stating that no new
+  `describe.skip` block can appear between two snapshots. The revision instead made the property
+  structural: because both reads are of a file only the running task owns, and that task only removes
+  `.skip`, the block population *cannot* change. The clause I asked for would have been a claim a
+  reviewer has to re-derive from §3's ordering; what shipped is an invariant that holds without §3.
+- **The batch-1/2 carve-out is a defect found by running the procedure rather than reading it.**
+  Nothing in my review or TE's asked about batches 1–2. The revision noticed that the targeted pattern
+  matches nothing before batch 3 and that jest exits **non-zero** on "no tests found" — I reproduced
+  exit 1 at HEAD — and pre-emptively told agents not to run it defensively there. That is a red wave
+  that would have been indistinguishable from a real failure, prevented before it existed.
+- **Batch 18's unscoped reading is defended rather than exempted.** The one assertion that quantifies
+  over files the running task does not own now says so explicitly, and says why it is safe ("wave 18
+  is `A-33` alone… it is the only assertion in §5.2 quantified over files the running task does not
+  own, and it is safe for exactly that reason"). A stated exception with its own justification is
+  auditable; a silent one is not. I verified `computeWaves` — wave 18 is indeed `[A-33]`.
+- **The changelog row is a usable record, not a summary.** §10's 1.5 row names the eight multi-task
+  waves, the two artifact paths, the retired retention rule, the existence conjunct, the batch-3-onward
+  carve-out, and closes with "No task, dependency edge, manifest row or batch label changed" — a claim
+  I re-executed and confirmed (36/36/`{"ok":true}`/20/20, wave partition identical). A revision that
+  states what it did *not* change, and is right, is one a later reader can trust without re-parsing.
 
 ## Recommendation
 
