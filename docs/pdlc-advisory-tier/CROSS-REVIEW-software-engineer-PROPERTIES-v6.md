@@ -126,4 +126,27 @@ owning task rather than shipping silently. That is an acceptable place to discov
 
 ## Recommendation
 
+**Approved with minor changes**
+
+> Low findings only → Approved with minor changes. 0 High, 0 Medium, 1 Low.
+
+The document is unchanged since the version I approved in v5, and nothing upstream of it moved
+either: PLAN and TSPEC are both byte-identical over the same window, so no citation could have gone
+stale and no property could have been orphaned. I re-grounded the two citations most sensitive to an
+upstream edit (`TSPEC:655`, `TSPEC:657` — the normative `verifyGate: null` rows for A1 and A3) and
+both still carry the text quoted from them.
+
+The single Low is one stale adjective at `PROPERTIES:566` ("the stronger form", where the surrounding
+text now says "a different form"). It changes no assertion, no test level, no trace and no count, and
+the correct reading is stated unambiguously at `PROPERTIES:619-623`. It can be taken or left. I would
+merge this document as it stands, and I would not hold Phase I for it.
+
+**No errata are emitted this round.** There is no new text in this document to find an upstream
+defect in, the four items §13.1 converted to closure records in v1.4 each still check out against the
+upstream line they cite, and the one finding above is a defect of this document rather than of one it
+derives from.
+
 ## Verdict
+
+VERDICT: Approved with minor changes
+{"high": 0, "medium": 0, "low": 1}
