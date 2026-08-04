@@ -47,8 +47,14 @@ Also in the delta: the front-matter version moves 1.1 → 1.2 (date 2026-08-04) 
 
 ## Positive Observations
 
-_(pending)_
+- **"Unreachable, and here is why" beats a made-up return value.** The easy way to close item 1 was to write `governingClass([]) === null` and move on. That would have manufactured a product decision nobody made and pinned a test to an implementer's coin-flip — the exact drift PLAN §6.5 exists to prevent. Instead the edit proves unreachability from a rule already in the document (A3-1's completeness check) and says outright that "pinning one would specify behaviour no seam path can observe." That is the right answer to an under-specification question, and it is stated in a form a reviewer can falsify.
+- **The resolution is stated where the test author will read it.** The paragraph ends by telling a suite author what to do — hold the ordering property over non-empty inputs, leave the empty case out, and it names PLAN §6.5's P-9 as already scoped that way. Three of the four routed items came from people writing or reviewing that property; all three are answered in one place, and the TSPEC and PLAN now agree without either having to change its scope.
+- **The `T-06-8` fix removes the id *and* the incentive to re-create it.** Deleting the string would have satisfied the letter of the item and left the next author to re-invent a number for a test that plainly needs a handle. §7.4 instead states the catalogue bound, gives the test a stable prose name, points at the PLAN task that owns it, and forbids the re-invention explicitly. The obligation is preserved at full strength while the false traceability claim is gone — which is what the item actually wanted.
+- **Both citations hold under check.** `FSPEC:1088`/`:585-590` really do bound T-06 at six cases, and `TSPEC:852-853` really does contain the A3-1 rule the new paragraph leans on. An erratum round that fixes one mis-grounded claim by introducing another is the standing hazard in this phase; as at v5, this round avoided it.
+- **The changelog keeps the round legible.** §18's 1.2 row describes both edits in enough detail that a future reader can reconstruct what changed and why without a `git log`, and is honest that item 2 was an invented id rather than glossing it as a rename.
 
 ## Recommendation
 
-_(pending)_
+**Approved**
+
+The delta resolves all four routed items — two distinct defects — at the site each was raised against, with citations that check out against FSPEC, the PLAN, and this document's own §7.2. It breaks nothing I approved at v5: no requirement mapping, seam contract, budget, enum, or acceptance criterion moved, and the A4 no-`testCommand` phase-integration test retains its full content, target, and scope caveat under a name that resolves instead of an id that did not. Item 2 remains correctly recorded as an obligation carried by PLAN A-10 rather than closed by invention. Both questions above are hygiene and process observations with no product consequence and require no change to this document.
