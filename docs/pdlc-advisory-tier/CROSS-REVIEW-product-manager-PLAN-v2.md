@@ -73,7 +73,70 @@ the revision changed — §3's new skip discipline and §6.4's new coverage proc
 | F-09 | Low | Local | **§6.4's declared advisory surface and the command that measures it disagree by two symbols, so part of the surface is scoped in but never counted.** The new module table puts in scope, for `orchestrate-queue.js`, "`hasResidualSeamToken`, `honourA1Verdict`, **plus the advisory branches added inside `parseTriageVerdict` and `triagePrompt`**" — but the `node -e` command's name list ends `… hasResidualSeamToken honourA1Verdict`, 24 names, and the filter is `if (N.has(fn.name))`, so every statement and branch inside `parseTriageVerdict` and `triagePrompt` contributes **nothing** to the printed pair. §9.1's checkbox then reads "all 24 enumerated function names resolve", cementing the smaller set. The advisory branch inside `parseTriageVerdict` is the A1/A2 seam-token routing (REQ-ADV-05), so a measurable floor that silently excludes it under-reports exactly the surface AC-5.x depends on. This is a Low, not a Medium, because the floor is a supporting instrument and T-04's ten named cases carry the real obligation — but the contradiction should not survive into an audit. **Fix:** pick one and say so. Either drop the "plus the advisory branches…" clause and state that those two pre-existing functions are out of the denominator (with T-04-1…T-04-9 named as the evidence instead), or add both names to the command's argument list and to §9.1's count, noting that their pre-existing bodies inflate the denominator and by roughly how much. | REQ-ADV-05; §6.4, §9.1 |
 
 
+## Questions
+
+| ID | Question |
+|----|---------|
+| Q-05 | §5.2's batch 3–5 gate asserts "the newly added files contribute **zero passing and zero failing** cases". That is a genuinely good oracle — but is it mechanically readable from the configured `testCommand`, whose output is one aggregate summary for 68+ suites? If the intended check is per-file, the gate wording may need to name the command that produces it (e.g. a `--json` run filtered to the new paths), otherwise the executor will read the aggregate and the "zero passing" half will go unchecked. |
+| Q-06 | Resolving F-08 by adding test files to green tasks' manifest rows moves A-21 into ownership of two test files it did not previously own (`advisoryRecord`, `advisoryEscalationLog`) and A-33 into `advisoryDisabled.test.js`. Does the re-run of `computeWaves` then change the wave partition, and does §5.2's transcription still hold? I checked the §3 batch labels and found no colliding pair (A-23/A-25 at 10/12, A-24/A-26 at 11/13, A-29/A-30/A-31 at 10/11/12, A-27/A-28 at 14/4), but the executor's own partition is the authority, not the labels. |
+| Q-07 | §2.4 records that `.claude/pdlc.config.json` is untracked and leaves "commit it or not" to the operator. If it stays untracked, the repaired `testCommand` exists on exactly one machine — so a second operator, or a fresh clone, re-enters the 23-failing-suite state with no signal until wave 1 halts. Should §10.1 item 5 name that as the residual risk it accepts, so the deferral is recorded rather than implied? |
+
 ## Positive Observations
+
+- **Every one of my seven findings was addressed at its root rather than at its symptom, and one was
+  addressed by finding a better problem.** F-07 asked only that the `testCommand` repair be
+  *declared*; the revision went looking for whether it could work at all, found `implConfig` cached
+  at `orchestrate-dev.js:8040-8042` above the loop at `:8094`, and deleted A-00 rather than
+  documenting a task that would have halted wave 1 unconditionally. That is the difference between
+  answering a review and using it.
+- **A-34's discharge rule is the best kind of anti-mock-data control: it removes the incentive, not
+  just the permission.** By observing that a wave agent has no synced `.claude/workflows/` copy and
+  therefore that `RESULT: unverified — no runtime available` is the *expected* outcome — and by
+  making that form satisfy §9.4 in full while an unsupported branch claim is a named DoD violation —
+  the row makes honesty the path of least resistance. "A-36's edge to this task is satisfied by
+  either form, so the DAG never blocks on an unavailable runtime" closes the last escape hatch. Keep
+  all of it verbatim.
+- **§8.2's rewritten T-03-6 row is now falsifiable in both directions on the same path.** "With that
+  seam's gate stubbed to fail the disposition is never `resolved`, **and** with the gate replaced by
+  `() => ({ passed: true })` the case fails" is a negative assertion paired with the positive that
+  proves the negative was not vacuous — and driving the parameterisation off the exported
+  `ADVISORY_SEAMS` constant means a sixth seam fails the suite until it has a case. AC-4.5's five
+  gate rows went from incidentally exercised to individually named.
+- **§6.4 replaced a floor a human had to interpret with two numbers a checkbox can compare.**
+  Enumerating the function names, excluding the five `(reused)` symbols by name, and computing the
+  percentage over `fnMap` declaration ranges rather than over an 8,600-line file is the right shape:
+  the number now means "the advisory surface", and §9.1's "all 24 names resolve before reading the
+  percentages" turns a renamed-or-never-shipped function into a finding instead of a silent zero.
+  F-09 is a two-symbol inconsistency inside a mechanism that is otherwise a clear improvement.
+- **§6.5 buys nine properties for the cost of an import.** Reusing the shipped `driftGenerators.js`
+  — verified present, `seeded`/`resolveSeed`/`enumerateLeaves` at `:76`/`:134`/`:158`, 13 existing
+  consumers — rather than authoring a generator keeps the seeding discipline (`PDLC_PROP_SEED`, seed
+  reported on failure) uniform across the repo, and the closing sentence, "a property that subsumed
+  a case would hide which case failed", is the correct relationship between P-1…P-9 and FSPEC
+  §18.1's 81 named cases. P-1's per-key independence and P-5's first-match stability are both
+  statements a wrong implementation fails, not just a throwing one.
+- **§6.2's A-07 correction is a narrowing that makes the test stronger, not cheaper.** Removing A-07
+  from the tree-state harness because "it drives the driver against a *fake* `SeamOps`, so … a git
+  comparison there would assert nothing", and replacing it with a call-level assertion (`revert`
+  invoked exactly once before the disposition is returned) while leaving A-10/A-11 to assert the
+  tree, is exactly the right split.
+- **The `ciStatus` provenance oracle now says out loud why a grep is not enough** — "a grep passes
+  against a runtime path that assigns around `checkPrCi` through a variable, a spread or a helper" —
+  and replaces it with a call-count spy on `checkPrCi` (`orchestrate-dev.js:5927`) plus byte
+  equality against its last return value, keeping the grep only as a secondary. AC-10's
+  no-advisory-value-reaches-`ciStatus` promise is now checked behaviourally.
+- **§6.3 and §9.4 now protect the one durable fact through the delete.** Requiring the LEARNINGS
+  entry to carry A-34's `RESULT:` line verbatim, *including* an `unverified` outcome, means the
+  Phase H deletion of `MANUAL-VERIFICATION-*.md` — which the harvest guard does not watch — can no
+  longer quietly take BL-01's status with it.
+- **The v1.2 changelog reports its own re-parse rather than asserting it, and the numbers are
+  real.** I re-ran the gate against this document: 36 tasks, 36 ownership rows, `{"ok":true}`,
+  20 batches, no cycle. The claim that removing A-00 leaves the executor count unchanged (layer 1 is
+  now A-01 alone, still one sub-batch) also holds.
+- **§10.1 item 4 answers Q-04 by declining to widen a catalogue.** Stating that the MERGE deferral
+  reason stays generic because naming the advisory distil commit would require a new reason, and
+  recording that as deliberately deferred rather than silently adding one, keeps AC-10.5 intact. The
+  honest, slightly less convenient answer was the correct one.
 
 ## Recommendation
 
