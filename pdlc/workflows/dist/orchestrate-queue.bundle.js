@@ -721,6 +721,7 @@ function rtDevInjections(devModule) {
 
     _runCommand: rtRunCommand,
 
+    _readAdvisoryConfig: devModule.readAdvisoryConfigSafely,
     _probeDoc: rtProbeDoc,
     _probeReviewState: rtProbeReviewState,
     _probePostmortem: rtProbePostmortem,
@@ -2609,8 +2610,8 @@ async function runAdvisorySeam({
   _readFile,
   _git,
   _log,
-  _now,
-  _sleep,
+  _now = () => Date.now(),
+  _sleep = sleep,
 }) {
   const log = typeof _log === "function" ? _log : () => {};
 
@@ -6245,6 +6246,56 @@ async function defaultRecordQueueRow() {
   return { queueRow: "none" };
 }
 
+async function gatherA4Context({ feature, preRebaseHead, _git, _readFile }) {
+  let defaultRef = null;
+  try {
+    const symRef = await _git(["symbolic-ref", "refs/remotes/origin/HEAD"]);
+    const match =
+      symRef && symRef.ok
+        ? /^refs\/remotes\/origin\/(.+)$/.exec(String(symRef.stdout || "").trim())
+        : null;
+    if (match) defaultRef = `origin/${match[1]}`;
+  } catch {
+    defaultRef = null;
+  }
+
+  let mergeBase = null;
+  let defaultTip = null;
+  if (defaultRef) {
+    try {
+      const mergeBaseResult = await _git(["merge-base", "HEAD", defaultRef]);
+      mergeBase = mergeBaseResult && mergeBaseResult.ok ? String(mergeBaseResult.stdout || "").trim() : null;
+    } catch {
+      mergeBase = null;
+    }
+    try {
+      const defaultTipResult = await _git(["rev-parse", defaultRef]);
+      defaultTip = defaultTipResult && defaultTipResult.ok ? String(defaultTipResult.stdout || "").trim() : null;
+    } catch {
+      defaultTip = null;
+    }
+  }
+
+  let planFiles = [];
+  try {
+    const planRaw = await _readFile(`docs/${feature}/PLAN-${feature}.md`);
+    const ownership = typeof planRaw === "string" ? parsePlanOwnership(planRaw) : null;
+    if (ownership) planFiles = [...new Set(ownership.ownership.flatMap((row) => row.files))];
+  } catch {
+    planFiles = [];
+  }
+
+  let implConfig = IMPLEMENTATION_DEFAULTS;
+  try {
+    const implRaw = await readMergeConfigSafely(_readFile, MERGE_CONFIG_PATH);
+    implConfig = parseImplementationConfig(implRaw).config;
+  } catch {
+    implConfig = IMPLEMENTATION_DEFAULTS;
+  }
+
+  return { mergeBase, preRebaseHead, defaultTip, planFiles, implConfig };
+}
+
 async function main({
   reqPath,
   forcePhases = null,
@@ -6259,6 +6310,9 @@ async function main({
   _mergeWorktree: mergeWorktreeFn = mergeWorktree,
   _rebaseOntoDefault: rebaseOntoDefaultFn = rebaseOntoDefault,
   _dodVerifyLoop: dodVerifyLoopFn = dodVerifyLoop,
+
+  _runAdvisorySeam: runAdvisorySeamFn = runAdvisorySeam,
+  _readAdvisoryConfig: readAdvisoryConfigFn = readAdvisoryConfigSafely,
   _raisePrAndVerifyCi: raisePrAndVerifyCiFn = raisePrAndVerifyCi,
   _checkCi: checkCiFn = checkPrCi,
   _phaseDodEnabled: phaseDodEnabled = PHASE_DOD_ENABLED,
@@ -6799,6 +6853,13 @@ async function main({
 
   let mergeOutcome;
 
+  const advisoryConfigRaw = await readAdvisoryConfigFn(readFileFn, ADVISORY_CONFIG_PATH);
+  const advisoryConfigResult = parseAdvisoryConfig(advisoryConfigRaw);
+  if (advisoryConfigResult.config.enabled && advisoryConfigResult.invalidKeys.length) {
+    emit(`Advisory config: using defaults for ${advisoryConfigResult.invalidKeys.join(", ")}`);
+  }
+  const advisoryRungState = { resolved: null };
+
   try {
 
     await ensureFeatureBranch({ feature: featureName, _git: gitFn, _log: emit });
@@ -7207,18 +7268,47 @@ async function main({
       } else {
         phaseFn("Phase DOD: Definition of Done Verification");
 
+        const preRebaseHeadResult = await gitFn(["rev-parse", "HEAD"]);
+        const preRebaseHead =
+          preRebaseHeadResult && preRebaseHeadResult.ok ? String(preRebaseHeadResult.stdout || "").trim() : null;
+
         const rebaseStatus = await rebaseOntoDefaultFn({
           feature: featureName,
           _agent: agentFn,
           _log: emit,
         });
         if (rebaseStatus === "conflict") {
-          recordPhase("DOD", PHASE_DISPATCH.DOD.label, "❌", "Rebase onto default branch conflicted — resolve manually");
-          throw haltError(
-            `Phase DOD — rebase conflict for feature ${featureName}. ` +
-            `The feature branch cannot be cleanly rebased onto the default branch. ` +
-            `Resolve conflicts manually and re-run.`
-          );
+
+          const a4Context = await gatherA4Context({
+            feature: featureName,
+            preRebaseHead,
+            _git: gitFn,
+            _readFile: readFileFn,
+          });
+          const a4 = await runAdvisorySeamFn({
+            seam: "A4",
+            feature: featureName,
+            seamOps: buildA4SeamOps({ ...a4Context, _git: gitFn, _runCommand: runCommandFn }),
+            config: advisoryConfigResult.config,
+            rungState: advisoryRungState,
+            _agent: agentFn,
+            _appendFile: appendFileFn,
+            _writeFile: writeFileFn,
+            _readFile: readFileFn,
+            _git: gitFn,
+            _log: emit,
+            _now,
+            _sleep,
+          });
+          if (a4.outcome !== "resolved") {
+            recordPhase("DOD", PHASE_DISPATCH.DOD.label, "❌", "Rebase onto default branch conflicted — resolve manually");
+            throw haltError(
+              `Phase DOD — rebase conflict for feature ${featureName}. ` +
+              `The feature branch cannot be cleanly rebased onto the default branch. ` +
+              `Resolve conflicts manually and re-run.`
+            );
+          }
+
         }
         const dodResult = await dodVerifyLoopFn({
           feature: featureName,
@@ -7230,9 +7320,36 @@ async function main({
             dodResult.lastStatus
               ? `stubs=${dodResult.lastStatus.stubs}, mock_data=${dodResult.lastStatus.mock_data}, unwired=${dodResult.lastStatus.unwired_integrations}, coverage_gap=${dodResult.lastStatus.coverage_below_threshold}, req_gaps=${dodResult.lastStatus.req_gaps}`
               : "verification failed";
+
+          const codeReviewPath = `docs/${featureName}/CODE_REVIEW-${featureName}-v${dodResult.iterations}.md`;
+          let codeReviewText = "";
+          try {
+            const text = await readFileFn(codeReviewPath);
+            codeReviewText = typeof text === "string" ? text : "";
+          } catch {
+            codeReviewText = "";
+          }
+          const a3 = await runAdvisorySeamFn({
+            seam: "A3",
+            feature: featureName,
+            seamOps: buildA3SeamOps({ dodResult, codeReviewText, _readFile: readFileFn }),
+            config: advisoryConfigResult.config,
+            rungState: advisoryRungState,
+            _agent: agentFn,
+            _appendFile: appendFileFn,
+            _writeFile: writeFileFn,
+            _readFile: readFileFn,
+            _git: gitFn,
+            _log: emit,
+            _now,
+            _sleep,
+          });
+
+          const classificationSummary =
+            (a3 && a3.classificationSummary) ?? "";
           recordPhase("DOD", PHASE_DISPATCH.DOD.label, "❌", `Failed after ${dodResult.iterations} iterations — ${detail}`, dodResult.iterations);
           throw haltError(
-            `Phase DOD failed after ${dodResult.iterations} iterations — Definition of Done not met. ${detail}`
+            `Phase DOD failed after ${dodResult.iterations} iterations — Definition of Done not met. ${detail} ${classificationSummary}`.trimEnd()
           );
         }
         recordPhase("DOD", PHASE_DISPATCH.DOD.label, "✅", `Passed (${dodResult.iterations} iteration${dodResult.iterations !== 1 ? "s" : ""})`, dodResult.iterations);
@@ -7990,18 +8107,123 @@ function buildA1SeamOps({ feature, reqPath, dependsOn, triageReason, precheck })
   };
 }
 
-function buildA2SeamOpsPlaceholder({ feature, reqPath }) {
-  const notYetImplemented = (member) => async () => {
-    throw new Error(`A2 SeamOps.${member} is not yet implemented (PLAN A-31) for "${feature}"`);
-  };
+const CITATION_RE = /([\w./-]+\.[A-Za-z0-9]+):(\d+)/g;
+
+function extractCitations(reqText) {
+  const citations = [];
+  const re = new RegExp(CITATION_RE.source, "g");
+  let m;
+  while ((m = re.exec(reqText || "")) !== null) {
+    citations.push({ location: `${m[1]}:${m[2]}`, file: m[1], line: Number(m[2]) });
+  }
+  return citations;
+}
+
+function buildA2SeamOps({
+  feature,
+  reqPath,
+  originalReqText,
+  _readFile,
+  _writeFile,
+  _git,
+  _appendFile,
+  _commitPaths,
+}) {
+  const recordPath = `docs/${feature}/ADVISORY-${feature}.md`;
+  let capturedRows = null;
+
   return {
-    gatherEvidence: notYetImplemented("gatherEvidence"),
-    prompt: notYetImplemented("prompt"),
-    conditionHolds: notYetImplemented("conditionHolds"),
-    apply: notYetImplemented("apply"),
-    producedPaths: notYetImplemented("producedPaths"),
-    revert: notYetImplemented("revert"),
-    verifyGate: notYetImplemented("verifyGate"),
+    gatherEvidence: async () => {
+      const citations = extractCitations(originalReqText);
+      const lines = [
+        `Feature: ${feature}`,
+        `REQ: ${reqPath}`,
+        `Citations found: ${citations.length}`,
+      ];
+      for (const citation of citations) {
+        let resolves = "unknown";
+        try {
+          const grep = await _git(["grep", "-n", "-F", citation.location, "--", citation.file]);
+          resolves = grep && grep.ok && String(grep.stdout || "").trim() ? "resolves" : "drifted";
+        } catch {
+          resolves = "drifted";
+        }
+        lines.push(`  ${citation.location}: ${resolves}`);
+      }
+      lines.push("", originalReqText);
+      return lines.join("\n");
+    },
+    prompt: (evidence) =>
+      `A2 stale-REQ re-grounding for "${feature}".\n\n${evidence}\n\n` +
+      `For each drifted citation, propose { oldLocation, newLocation, symbol, symbolStillExists }. ` +
+      `Reply with your verdict trailer whose proposedAction is exactly ` +
+      `JSON.stringify([{ oldLocation, newLocation, symbol, symbolStillExists }, …]). ` +
+      `Rewrite citation location text ONLY — never the frontmatter region or any requirements ` +
+      `sentence (P-2, A2-3).`,
+    conditionHolds: async () => (await _readFile(reqPath)) === originalReqText,
+    apply: async (verdict) => {
+      let rows;
+      try {
+        rows = JSON.parse(verdict && verdict.proposedAction);
+      } catch {
+        return { ok: false, why: "proposedAction was not valid JSON (expected an array of re-grounding rows)" };
+      }
+      if (!Array.isArray(rows)) {
+        return { ok: false, why: "proposedAction did not parse to an array of re-grounding rows" };
+      }
+      capturedRows = rows;
+      let text = originalReqText;
+      for (const row of rows) {
+        if (row && typeof row.oldLocation === "string" && typeof row.newLocation === "string") {
+          text = text.split(row.oldLocation).join(row.newLocation);
+        }
+      }
+      await _writeFile(reqPath, text);
+      return { ok: true };
+    },
+    producedPaths: async () => {
+      const diff = await _git(["diff", "--name-only"]);
+      return diff && diff.ok && diff.stdout
+        ? String(diff.stdout)
+            .split("\n")
+            .map((s) => s.trim())
+            .filter(Boolean)
+        : [];
+    },
+    revert: async () => {
+      await _git(["checkout", "--", reqPath]);
+    },
+    verifyGate: async () => {
+      const entry =
+        `\n## ${new Date().toISOString()} — A2 — re-grounded\n\n` +
+        `Feature: ${feature}\nREQ: ${reqPath}\n` +
+        `Rows: ${JSON.stringify(capturedRows || [])}\n`;
+      try {
+        await _appendFile(recordPath, entry);
+      } catch (err) {
+        return { passed: false, detail: `record write failed: ${err && err.message}` };
+      }
+
+      let commitResult;
+      try {
+        commitResult = await _commitPaths({
+          paths: [reqPath, recordPath],
+          message: `chore(advisory): A2 re-grounded citations for ${feature}`,
+          what: `A2 re-grounding for ${feature}`,
+          _git,
+          emit: () => {},
+        });
+      } catch (err) {
+        return { passed: false, detail: `commit failed: ${err && err.message}` };
+      }
+
+      const reqAtHead = await _git(["show", `HEAD:${reqPath}`]);
+      const recordAtHead = await _git(["show", `HEAD:${recordPath}`]);
+      const confirmed = Boolean(reqAtHead && reqAtHead.ok && recordAtHead && recordAtHead.ok);
+      return confirmed
+        ? { passed: true, detail: `${commitResult}` }
+        : { passed: false, detail: "branch head does not carry both the REQ and the advisory record" };
+    },
     declaredScope: [reqPath],
     permittedActions: ["E-4"],
   };
@@ -8090,6 +8312,7 @@ async function main({
   _runPipeline: runPipelineFn = realMain,
   _runAdvisorySeam: runAdvisorySeamFn = runAdvisorySeam,
   _readAdvisoryConfig: readAdvisoryConfigFn = defaultReadAdvisoryConfig,
+  _commitPaths: commitPathsFn = commitPaths,
   _log: logFn = log,
   _phase: phaseFn = phase,
 } = {}) {
@@ -8119,7 +8342,17 @@ async function main({
       `Drift gate proceeding (row ${driftGate.row}): ${driftGate.reasons.join("; ")}`
     );
   }
-  const finish = (fields) => buildQueueReport({ ...fields, driftReport: driftNotice });
+
+  const advisoryDispositions = [];
+  const finish = (fields) =>
+    buildQueueReport({
+      ...fields,
+      driftReport: driftNotice,
+      advisory:
+        advisoryConfig && advisoryConfig.config && advisoryConfig.config.enabled
+          ? advisorySummaryRows(advisoryDispositions)
+          : undefined,
+    });
 
   const advisoryConfig = await readAdvisoryConfigFn(readFileFn, ADVISORY_CONFIG_PATH);
   const rungState = { resolved: null };
@@ -8216,7 +8449,16 @@ async function main({
       const seam = triage.seamToken === "A2" ? "A2" : "A1";
       const seamOps =
         seam === "A2"
-          ? buildA2SeamOpsPlaceholder({ feature: entry.feature, reqPath: entry.reqPath })
+          ? buildA2SeamOps({
+              feature: entry.feature,
+              reqPath: entry.reqPath,
+              originalReqText: reqText,
+              _readFile: readFileFn,
+              _writeFile: writeFileFn,
+              _git: gitFn,
+              _appendFile: appendFileFn,
+              _commitPaths: commitPathsFn,
+            })
           : buildA1SeamOps({
               feature: entry.feature,
               reqPath: entry.reqPath,
@@ -8238,6 +8480,8 @@ async function main({
         _git: gitFn,
         _log: emit,
       });
+
+      advisoryDispositions.push({ ...advisoryDisposition, seam });
 
       if (seam === "A1") {
 
@@ -8489,6 +8733,7 @@ function buildQueueReport({
   pipelineReport,
   skipped,
   driftReport,
+  advisory,
 }) {
   return {
     outcome,
@@ -8499,6 +8744,7 @@ function buildQueueReport({
     ...(pipelineReport ? { pipelineReport } : {}),
     ...(skipped && skipped.length ? { skipped } : {}),
     ...(driftReport ? { driftReport } : {}),
+    ...(advisory ? { advisory } : {}),
   };
 }
 

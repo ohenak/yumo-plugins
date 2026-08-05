@@ -2798,8 +2798,8 @@ async function runAdvisorySeam({
   _readFile,
   _git,
   _log,
-  _now,
-  _sleep,
+  _now = () => Date.now(),
+  _sleep = sleep,
 }) {
   const log = typeof _log === "function" ? _log : () => {};
 
@@ -8486,6 +8486,70 @@ async function defaultRecordQueueRow(/* { feature, status } */) {
   return { queueRow: "none" };
 }
 
+// ─── TSPEC §7.1 — A4's Phase DOD context (PLAN A-25) ───────────────────────
+//
+// `buildA4SeamOps` needs `mergeBase`, `preRebaseHead`, `defaultTip`, `planFiles` and `implConfig`
+// (`dev:2288`) but computes none of them itself. This gathers all five, entirely through `_git` and
+// `_readFile` — A4's own declared capability surface is `_git` alone (TSPEC §7.3's member table
+// names no `_ghRun`), so the default branch is resolved via `git symbolic-ref
+// refs/remotes/origin/HEAD` rather than a `gh repo view` probe. Every git/read failure degrades to
+// `null`/`[]` rather than throwing: `buildA4SeamOps`'s own `verifyGate` already treats a
+// missing/failed probe as unverifiable (§7.4), so a degraded context here still routes to the
+// conservative (escalate) outcome instead of crashing the phase.
+//
+// @param {{feature: string, preRebaseHead: string|null, _git: Function, _readFile: Function}} args
+// @returns {Promise<{mergeBase: string|null, preRebaseHead: string|null, defaultTip: string|null,
+//          planFiles: string[], implConfig: object}>}
+async function gatherA4Context({ feature, preRebaseHead, _git, _readFile }) {
+  let defaultRef = null;
+  try {
+    const symRef = await _git(["symbolic-ref", "refs/remotes/origin/HEAD"]);
+    const match =
+      symRef && symRef.ok
+        ? /^refs\/remotes\/origin\/(.+)$/.exec(String(symRef.stdout || "").trim())
+        : null;
+    if (match) defaultRef = `origin/${match[1]}`;
+  } catch {
+    defaultRef = null;
+  }
+
+  let mergeBase = null;
+  let defaultTip = null;
+  if (defaultRef) {
+    try {
+      const mergeBaseResult = await _git(["merge-base", "HEAD", defaultRef]);
+      mergeBase = mergeBaseResult && mergeBaseResult.ok ? String(mergeBaseResult.stdout || "").trim() : null;
+    } catch {
+      mergeBase = null;
+    }
+    try {
+      const defaultTipResult = await _git(["rev-parse", defaultRef]);
+      defaultTip = defaultTipResult && defaultTipResult.ok ? String(defaultTipResult.stdout || "").trim() : null;
+    } catch {
+      defaultTip = null;
+    }
+  }
+
+  let planFiles = [];
+  try {
+    const planRaw = await _readFile(`docs/${feature}/PLAN-${feature}.md`);
+    const ownership = typeof planRaw === "string" ? parsePlanOwnership(planRaw) : null;
+    if (ownership) planFiles = [...new Set(ownership.ownership.flatMap((row) => row.files))];
+  } catch {
+    planFiles = [];
+  }
+
+  let implConfig = IMPLEMENTATION_DEFAULTS;
+  try {
+    const implRaw = await readMergeConfigSafely(_readFile, MERGE_CONFIG_PATH);
+    implConfig = parseImplementationConfig(implRaw).config;
+  } catch {
+    implConfig = IMPLEMENTATION_DEFAULTS;
+  }
+
+  return { mergeBase, preRebaseHead, defaultTip, planFiles, implConfig };
+}
+
 // ─── TSPEC-SCRIPT-04: main() ──────────────────────────────────────────────────
 
 /**
@@ -8507,6 +8571,11 @@ async function main({
   _mergeWorktree: mergeWorktreeFn = mergeWorktree,
   _rebaseOntoDefault: rebaseOntoDefaultFn = rebaseOntoDefault,
   _dodVerifyLoop: dodVerifyLoopFn = dodVerifyLoop,
+  // TSPEC §7.1 (PLAN A-25) — Phase DOD's advisory seams. Free idents by default
+  // (§2.3): a runtime that supplies neither runs the real driver against the
+  // real config file, exactly as a repo with the tier configured would see.
+  _runAdvisorySeam: runAdvisorySeamFn = runAdvisorySeam,
+  _readAdvisoryConfig: readAdvisoryConfigFn = readAdvisoryConfigSafely,
   _raisePrAndVerifyCi: raisePrAndVerifyCiFn = raisePrAndVerifyCi,
   _checkCi: checkCiFn = checkPrCi,
   _phaseDodEnabled: phaseDodEnabled = PHASE_DOD_ENABLED,
@@ -9236,6 +9305,16 @@ async function main({
   // (§11 row 23).
   let mergeOutcome;
 
+  // ─── TSPEC §7.1 (PLAN A-25) — advisory config, read once per run, before the
+  // phase loop (C-3). `advisoryRungState` is the resolution memo `runAdvisorySeam`
+  // threads across every seam it dispatches this run (§3.4's "lazy, once per run").
+  const advisoryConfigRaw = await readAdvisoryConfigFn(readFileFn, ADVISORY_CONFIG_PATH);
+  const advisoryConfigResult = parseAdvisoryConfig(advisoryConfigRaw);
+  if (advisoryConfigResult.config.enabled && advisoryConfigResult.invalidKeys.length) {
+    emit(`Advisory config: using defaults for ${advisoryConfigResult.invalidKeys.join(", ")}`);
+  }
+  const advisoryRungState = { resolved: null };
+
   try {
     // The branch guard, once, BEFORE any phase runs: every artifact this run
     // writes — cross-reviews, spec revisions, implementation commits, the queue
@@ -9796,18 +9875,53 @@ async function main({
         // DOD step 0: rebase onto the latest default branch so the scan — and the PR
         // raised later in Phase PUB — reflects the real merge state. Moved here from
         // ship-pr so DoD evaluates the post-rebase tree.
+        //
+        // TSPEC §7.1/A4-3 (PLAN A-25) — preRebaseHead is captured BEFORE rebaseOntoDefaultFn
+        // mutates the tree, so a subsequent A4 dispatch's declaredScope diff is against the
+        // branch's own pre-rebase state, not whatever the rebase (or its conflict) left behind.
+        const preRebaseHeadResult = await gitFn(["rev-parse", "HEAD"]);
+        const preRebaseHead =
+          preRebaseHeadResult && preRebaseHeadResult.ok ? String(preRebaseHeadResult.stdout || "").trim() : null;
+
         const rebaseStatus = await rebaseOntoDefaultFn({
           feature: featureName,
           _agent: agentFn,
           _log: emit,
         });
         if (rebaseStatus === "conflict") {
-          recordPhase("DOD", PHASE_DISPATCH.DOD.label, "❌", "Rebase onto default branch conflicted — resolve manually");
-          throw haltError(
-            `Phase DOD — rebase conflict for feature ${featureName}. ` +
-            `The feature branch cannot be cleanly rebased onto the default branch. ` +
-            `Resolve conflicts manually and re-run.`
-          );
+          // TSPEC §7.1 (PLAN A-25) — A4 fires immediately before the pre-existing halt
+          // (PROP-REG-01). Both `haltError` calls below are byte-identical to the
+          // tier-disabled/unresolved run; only a `resolved` outcome changes control flow.
+          const a4Context = await gatherA4Context({
+            feature: featureName,
+            preRebaseHead,
+            _git: gitFn,
+            _readFile: readFileFn,
+          });
+          const a4 = await runAdvisorySeamFn({
+            seam: "A4",
+            feature: featureName,
+            seamOps: buildA4SeamOps({ ...a4Context, _git: gitFn, _runCommand: runCommandFn }),
+            config: advisoryConfigResult.config,
+            rungState: advisoryRungState,
+            _agent: agentFn,
+            _appendFile: appendFileFn,
+            _writeFile: writeFileFn,
+            _readFile: readFileFn,
+            _git: gitFn,
+            _log: emit,
+            _now,
+            _sleep,
+          });
+          if (a4.outcome !== "resolved") {
+            recordPhase("DOD", PHASE_DISPATCH.DOD.label, "❌", "Rebase onto default branch conflicted — resolve manually");
+            throw haltError(
+              `Phase DOD — rebase conflict for feature ${featureName}. ` +
+              `The feature branch cannot be cleanly rebased onto the default branch. ` +
+              `Resolve conflicts manually and re-run.`
+            );
+          }
+          // resolved ⇒ the branch is rebased and green; fall through to the DoD loop.
         }
         const dodResult = await dodVerifyLoopFn({
           feature: featureName,
@@ -9819,9 +9933,41 @@ async function main({
             dodResult.lastStatus
               ? `stubs=${dodResult.lastStatus.stubs}, mock_data=${dodResult.lastStatus.mock_data}, unwired=${dodResult.lastStatus.unwired_integrations}, coverage_gap=${dodResult.lastStatus.coverage_below_threshold}, req_gaps=${dodResult.lastStatus.req_gaps}`
               : "verification failed";
+
+          // TSPEC §7.1 (PLAN A-25) — A3 fires immediately before the pre-existing halt. A3 can
+          // NEVER resolve (`permittedActions: []`, A3-6), so this branch is unconditional — no
+          // `if (resolved)` — and the halt below always fires; only the appended classification
+          // (AC-6.3) differs from the tier-disabled/unresolved run.
+          const codeReviewPath = `docs/${featureName}/CODE_REVIEW-${featureName}-v${dodResult.iterations}.md`;
+          let codeReviewText = "";
+          try {
+            const text = await readFileFn(codeReviewPath);
+            codeReviewText = typeof text === "string" ? text : "";
+          } catch {
+            codeReviewText = "";
+          }
+          const a3 = await runAdvisorySeamFn({
+            seam: "A3",
+            feature: featureName,
+            seamOps: buildA3SeamOps({ dodResult, codeReviewText, _readFile: readFileFn }),
+            config: advisoryConfigResult.config,
+            rungState: advisoryRungState,
+            _agent: agentFn,
+            _appendFile: appendFileFn,
+            _writeFile: writeFileFn,
+            _readFile: readFileFn,
+            _git: gitFn,
+            _log: emit,
+            _now,
+            _sleep,
+          });
+          // AC-6.3's diagnosis: the classification carried on the disposition (when present) is
+          // appended to the byte-identical halt below, never replaces it.
+          const classificationSummary =
+            (a3 && a3.classificationSummary) ?? "";
           recordPhase("DOD", PHASE_DISPATCH.DOD.label, "❌", `Failed after ${dodResult.iterations} iterations — ${detail}`, dodResult.iterations);
           throw haltError(
-            `Phase DOD failed after ${dodResult.iterations} iterations — Definition of Done not met. ${detail}`
+            `Phase DOD failed after ${dodResult.iterations} iterations — Definition of Done not met. ${detail} ${classificationSummary}`.trimEnd()
           );
         }
         recordPhase("DOD", PHASE_DISPATCH.DOD.label, "✅", `Passed (${dodResult.iterations} iteration${dodResult.iterations !== 1 ? "s" : ""})`, dodResult.iterations);

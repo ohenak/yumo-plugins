@@ -1106,6 +1106,10 @@ function rtDevInjections(devModule) {
     // The three probe seams. Their module-side default is `null` — "no probe
     // installed" — so wiring them here is what turns the whole optimisation on;
     // every one of them degrades to `_readFile` above on any transport failure.
+    // TSPEC §7.1 (PLAN A-25) — the advisory tier's once-per-run config read,
+    // composed on the module's own reader; main() hands it the injected
+    // `_readFile`, so the transport is the adapter's in either case.
+    _readAdvisoryConfig: devModule.readAdvisoryConfigSafely,
     _probeDoc: rtProbeDoc,
     _probeReviewState: rtProbeReviewState,
     _probePostmortem: rtProbePostmortem,
