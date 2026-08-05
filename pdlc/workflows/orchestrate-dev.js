@@ -1958,6 +1958,160 @@ export function budgetExceeded({ attempts, attemptBudget, elapsedMs, waitMs, sea
   return attempts >= attemptBudget || elapsedMs - waitMs >= seamBudgetMinutes * 60_000;
 }
 
+// ─── TSPEC §5 — envelope enforcement, refusal ladder (PLAN A-20) ───────────
+//
+// The frozen, ordered eight-reason catalogue (TSPEC §5.3). Order matters: `refusalReasonFor`
+// returns the FIRST member of this array whose `signals` key is true, so the array's own order
+// pins §5.1's evaluation precedence (T-03-5).
+export const ADVISORY_REFUSAL_REASONS = Object.freeze([
+  "prohibited-action",
+  "revert-on-test-touch",
+  "out-of-envelope",
+  "post-action-verification-failed",
+  "record-write-failed",
+  "malformed-verdict",
+  "low-confidence",
+  "budget-exhausted",
+]);
+
+// The exclusion set — §5.1's evaluation order (X-a test artifacts, X-e guard paths, X-d declared
+// scope, X-b DoD criteria, X-c/membership). `classifyEnvelope` iterates this array in order
+// (T-03-8, PROP-ENV-04).
+export const ADVISORY_EXCLUSIONS = Object.freeze(["X-a", "X-e", "X-d", "X-b", "X-c"]);
+
+/**
+ * The first matching reason, in `ADVISORY_REFUSAL_REASONS` catalogue order (TSPEC §5.3). `signals`
+ * is built once, at termination, from the terminating condition — never accumulated (§4.5).
+ *
+ * @param {Object<string,boolean>} signals - the conditions true AT TERMINATION
+ * @returns {string} the first matching reason
+ */
+export function refusalReasonFor(signals) {
+  for (const reason of ADVISORY_REFUSAL_REASONS) {
+    if (signals && signals[reason]) return reason;
+  }
+  return undefined;
+}
+
+// The two X-a regexes plus the shared test-config regex (TSPEC §5.2) — path-based detection.
+export const TEST_PATH_RE = /(^|\/)(tests?|__tests__|spec)\//i;
+export const TEST_FILE_RE = /\.(test|spec)\.[jt]sx?$|^conftest\.py$|_test\.py$|^test_.*\.py$/i;
+export const TEST_CONFIG_RE = /(^|\/)(jest\.config|pytest\.ini|\.coveragerc|setup\.cfg|vitest\.config|mutmut\.ini)/i;
+
+// X-a's seven named operations (TSPEC §5.2, FSPEC AC-3.5) — the closed set `touchesTestArtifact`'s
+// operation-based branch recognises. Any other `action.op` value is not, by itself, an X-a touch.
+const TEST_TOUCH_OPERATIONS = new Set([
+  "edit-assertion",
+  "delete-test-file",
+  "delete-test-case",
+  "rename-out-of-collection",
+  "add-skip-marker",
+  "narrow-parametrised-cases",
+  "lower-threshold",
+]);
+
+/**
+ * X-a — path-based AND operation-based (TSPEC §5.2). A path matching any of the three test-artifact
+ * regexes is caught regardless of `action`; separately, one of the seven named operations is a touch
+ * regardless of path (a coverage/mutation threshold can live in `package.json`/`pyproject.toml`,
+ * neither of which matches a test path).
+ *
+ * @param {string[]} paths
+ * @param {{op?: string}} action
+ * @returns {boolean}
+ */
+export function touchesTestArtifact(paths, action) {
+  const list = Array.isArray(paths) ? paths : [];
+  if (list.some((p) => TEST_PATH_RE.test(p) || TEST_FILE_RE.test(p) || TEST_CONFIG_RE.test(p))) {
+    return true;
+  }
+  return Boolean(action && TEST_TOUCH_OPERATIONS.has(action.op));
+}
+
+// X-b's DoD-criterion-content path fragments (TSPEC §5.2) — a threshold change in either manifest
+// is a DoD-criterion touch regardless of the operation named.
+const DOD_CRITERION_PATH_RE = /(^|\/)(package\.json|pyproject\.toml)$/i;
+
+/**
+ * X-b — DoD criteria / thresholds (TSPEC §5.2, §5.4 P-1). A path-and-content predicate: either the
+ * path is one of the manifests a coverage/mutation threshold lives in, or the operation itself names
+ * marking a DoD finding satisfied.
+ *
+ * @param {string[]} paths
+ * @param {{op?: string}} action
+ * @returns {boolean}
+ */
+export function touchesDodCriterion(paths, action) {
+  const list = Array.isArray(paths) ? paths : [];
+  if (list.some((p) => DOD_CRITERION_PATH_RE.test(p))) return true;
+  return Boolean(action && action.op === "mark-criterion-satisfied");
+}
+
+/**
+ * A4-1 — *branch-created* is a property of the file, not of who edited it (TSPEC §7.3): true iff
+ * `path` is absent from BOTH the merge-base tree and the default-branch tip tree, via two
+ * `git cat-file -e {ref}:{path}` probes. Both conjuncts are required — a file added on the default
+ * branch since the merge base (absent at merge-base, present at default-tip) is NOT branch-created.
+ *
+ * @param {string} path
+ * @param {string} mergeBase
+ * @param {string} defaultTip
+ * @param {(argv: string[]) => Promise<{ok: boolean}>} _git
+ * @returns {Promise<boolean>}
+ */
+export async function branchCreated(path, mergeBase, defaultTip, _git) {
+  const atMergeBase = await _git(["cat-file", "-e", `${mergeBase}:${path}`]);
+  const atDefaultTip = await _git(["cat-file", "-e", `${defaultTip}:${path}`]);
+  return atMergeBase.ok !== true && atDefaultTip.ok !== true;
+}
+
+/**
+ * `classifyEnvelope` — one pure function, evaluated twice (TSPEC §5.1): once over the proposal
+ * (step 3), once over the produced diff (step 5, E-R2/BR-3). Iterates `ADVISORY_EXCLUSIONS` in
+ * order so a candidate satisfying two exclusions yields the earlier reason. Row 3 (X-e) is a
+ * cite-and-reuse of Phase MERGE's `guardVerdict`/`effectiveGuardPaths` (`dev:731`, `dev:708`) —
+ * no second matcher.
+ *
+ * @param {{action: string, paths: string[]}} candidate
+ * @param {{seam: string, permittedActions: string[], declaredScope: string[], guardPaths: string[],
+ *          capabilities: object}} ctx
+ * @returns {{inside: boolean, reason: string|null, matched: string[]}}
+ */
+export function classifyEnvelope(candidate, ctx) {
+  const paths = Array.isArray(candidate && candidate.paths) ? candidate.paths : [];
+  const action = candidate && candidate.action;
+
+  for (const exclusion of ADVISORY_EXCLUSIONS) {
+    if (exclusion === "X-a") {
+      if (touchesTestArtifact(paths, { op: action })) {
+        return { inside: false, reason: "revert-on-test-touch", matched: [...paths] };
+      }
+    } else if (exclusion === "X-e") {
+      const verdict = guardVerdict({ ok: true, files: paths }, ctx.guardPaths || []);
+      if (verdict.fired) {
+        return { inside: false, reason: "out-of-envelope", matched: verdict.matched };
+      }
+    } else if (exclusion === "X-d") {
+      const scope = Array.isArray(ctx.declaredScope) ? ctx.declaredScope : [];
+      const outside = paths.filter((p) => !scope.includes(p));
+      if (outside.length > 0) {
+        return { inside: false, reason: "out-of-envelope", matched: outside };
+      }
+    } else if (exclusion === "X-b") {
+      if (touchesDodCriterion(paths, { op: action })) {
+        return { inside: false, reason: "out-of-envelope", matched: [...paths] };
+      }
+    } else if (exclusion === "X-c") {
+      const permitted = Array.isArray(ctx.permittedActions) ? ctx.permittedActions : [];
+      if (!permitted.includes(action)) {
+        return { inside: false, reason: "out-of-envelope", matched: [...paths] };
+      }
+    }
+  }
+
+  return { inside: true, reason: null, matched: [...paths] };
+}
+
 // TSPEC-SCRIPT-03: Exported meta object
 export const meta = {
   name: "orchestrate-dev",

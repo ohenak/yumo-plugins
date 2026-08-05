@@ -77,7 +77,7 @@ function baseCtx(permittedActionsArg, declaredScopeArg, guardPathsArg) {
 // PROP-ENV-06's, homed in `advisoryDodSeams.test.js`.)
 // ---------------------------------------------------------------------------
 
-describe.skip("T-03-1 — a proposal outside the configured envelope classifies out-of-envelope", () => {
+describe("T-03-1 — a proposal outside the configured envelope classifies out-of-envelope", () => {
   test("an action not in ctx.permittedActions is refused, in-envelope action is not", () => {
     const ctx = baseCtx(["rewrite-citation"]);
     const proposal = { action: "delete-req", paths: ["docs/some-feature/REQ-some-feature.md"] };
@@ -104,7 +104,7 @@ describe.skip("T-03-1 — a proposal outside the configured envelope classifies 
 // function, called twice with different candidates (E-R2/BR-3), classifies the diff out.
 // ---------------------------------------------------------------------------
 
-describe.skip("T-03-2 — an in-envelope proposal whose produced diff reaches outside the envelope", () => {
+describe("T-03-2 — an in-envelope proposal whose produced diff reaches outside the envelope", () => {
   test("the proposal classifies inside; the wider produced diff classifies out-of-envelope", () => {
     const ctx = baseCtx(["rewrite-citation"], ["docs/some-feature/REQ-some-feature.md"]);
     const proposal = { action: "rewrite-citation", paths: ["docs/some-feature/REQ-some-feature.md"] };
@@ -140,7 +140,7 @@ const X_A_OPERATIONS = Object.freeze([
   "lower-threshold",
 ]);
 
-describe.skip("T-03-3 — every X-a operation reverts whole, reason revert-on-test-touch (seven named tests)", () => {
+describe("T-03-3 — every X-a operation reverts whole, reason revert-on-test-touch (seven named tests)", () => {
   test("PROP-XA-01 — editing an assertion inside an existing test", () => {
     expect(
       devModule.touchesTestArtifact(["pdlc/workflows/__tests__/foo.test.js"], { op: "edit-assertion" })
@@ -222,7 +222,7 @@ describe.skip("T-03-3 — every X-a operation reverts whole, reason revert-on-te
 // (O-5: the fixture must genuinely satisfy both).
 // ---------------------------------------------------------------------------
 
-describe.skip("T-03-4 — two triggers at once report the earlier reason (§5.3 order)", () => {
+describe("T-03-4 — two triggers at once report the earlier reason (§5.3 order)", () => {
   test("a low-confidence verdict whose diff also touches a test artifact reports revert-on-test-touch, not low-confidence", () => {
     const signals = { "low-confidence": true, "revert-on-test-touch": true };
     expect(devModule.refusalReasonFor(signals)).toBe("revert-on-test-touch");
@@ -255,7 +255,7 @@ describe.skip("T-03-4 — two triggers at once report the earlier reason (§5.3 
 // literal (an invented or deleted reason fails; order asserted separately because it is observable).
 // ---------------------------------------------------------------------------
 
-describe.skip("T-03-5 — ADVISORY_REFUSAL_REASONS equals the eight-reason catalogue, in order", () => {
+describe("T-03-5 — ADVISORY_REFUSAL_REASONS equals the eight-reason catalogue, in order", () => {
   test("deep-equals the ordered literal", () => {
     expect(devModule.ADVISORY_REFUSAL_REASONS).toEqual([
       "prohibited-action",
@@ -279,7 +279,7 @@ describe.skip("T-03-5 — ADVISORY_REFUSAL_REASONS equals the eight-reason catal
 // capability probes (PROP-ENV-12).
 // ---------------------------------------------------------------------------
 
-describe.skip("T-03-8 — ENVELOPE_DEFAULTS / ADVISORY_EXCLUSIONS set-equality against transcribed literals", () => {
+describe("T-03-8 — ENVELOPE_DEFAULTS / ADVISORY_EXCLUSIONS set-equality against transcribed literals", () => {
   test("ENVELOPE_DEFAULTS equals {E-1, E-2, E-3, E-4} as a set", () => {
     expect([...devModule.ENVELOPE_DEFAULTS].sort()).toEqual(["E-1", "E-2", "E-3", "E-4"]);
   });
@@ -312,7 +312,7 @@ describe.skip("T-03-8 — ENVELOPE_DEFAULTS / ADVISORY_EXCLUSIONS set-equality a
 // the three above.
 // ---------------------------------------------------------------------------
 
-describe.skip("ADVISORY_SEAMS equals {A1, A2, A3, A4, A5}", () => {
+describe("ADVISORY_SEAMS equals {A1, A2, A3, A4, A5}", () => {
   test("deep-equals the five-seam literal and is frozen", () => {
     expect(devModule.ADVISORY_SEAMS).toEqual(["A1", "A2", "A3", "A4", "A5"]);
     expect(Object.isFrozen(devModule.ADVISORY_SEAMS)).toBe(true);
@@ -323,7 +323,7 @@ describe.skip("ADVISORY_SEAMS equals {A1, A2, A3, A4, A5}", () => {
 // T-03-9 — X-d: a produced diff touching a path outside the seam's declared scope.
 // ---------------------------------------------------------------------------
 
-describe.skip("T-03-9 — a produced diff touching a file outside declared scope is out-of-envelope", () => {
+describe("T-03-9 — a produced diff touching a file outside declared scope is out-of-envelope", () => {
   test("a path outside ctx.declaredScope refuses the whole candidate, reason out-of-envelope", () => {
     const ctx = baseCtx(["rewrite-citation"], ["docs/some-feature/REQ-some-feature.md"]);
     const candidate = {
@@ -352,7 +352,7 @@ describe.skip("T-03-9 — a produced diff touching a file outside declared scope
 // it does not re-test `guardVerdict` itself, which already has its own suite.
 // ---------------------------------------------------------------------------
 
-describe.skip("T-03-10 — a produced diff touching a self-modification guard path is out-of-envelope", () => {
+describe("T-03-10 — a produced diff touching a self-modification guard path is out-of-envelope", () => {
   test("a path under a default guard prefix refuses the whole candidate, reason out-of-envelope", () => {
     const ctx = baseCtx(["rewrite-citation"], [], devModule.effectiveGuardPaths(undefined));
     const candidate = { action: "rewrite-citation", paths: ["pdlc/workflows/orchestrate-dev.js"] };
@@ -383,7 +383,7 @@ describe.skip("T-03-10 — a produced diff touching a self-modification guard pa
 // package.json or pyproject.toml matches no test path and must still be caught.
 // ---------------------------------------------------------------------------
 
-describe.skip("touchesDodCriterion — X-b, path and operation", () => {
+describe("touchesDodCriterion — X-b, path and operation", () => {
   test("a coverage threshold lowered inside package.json is a DoD-criterion touch", () => {
     expect(
       devModule.touchesDodCriterion(["package.json"], { op: "lower-coverage-threshold" })
@@ -437,7 +437,7 @@ function makeCatFileGit({ existsAtMergeBase, existsAtDefaultTip }) {
   return { calls, _git };
 }
 
-describe.skip("branchCreated — a file is branch-created iff absent from both trees (§7.3)", () => {
+describe("branchCreated — a file is branch-created iff absent from both trees (§7.3)", () => {
   test("absent from both the merge-base tree and the default-tip tree ⇒ true", async () => {
     const { _git } = makeCatFileGit({ existsAtMergeBase: false, existsAtDefaultTip: false });
     await expect(devModule.branchCreated(PROBE_PATH, MERGE_BASE, DEFAULT_TIP, _git)).resolves.toBe(true);
@@ -473,7 +473,7 @@ describe.skip("branchCreated — a file is branch-created iff absent from both t
 // refusalReasonFor — total, first-match (unit surface; the generator-driven property is P-5 below).
 // ---------------------------------------------------------------------------
 
-describe.skip("refusalReasonFor — the first matching reason in catalogue order", () => {
+describe("refusalReasonFor — the first matching reason in catalogue order", () => {
   test("a single true signal returns that reason", () => {
     expect(devModule.refusalReasonFor({ "budget-exhausted": true })).toBe("budget-exhausted");
   });
@@ -496,7 +496,7 @@ describe.skip("refusalReasonFor — the first matching reason in catalogue order
 // — no locally-declared PRNG (PROP-INFRA-02).
 // ---------------------------------------------------------------------------
 
-describe.skip("P-4 — classifyEnvelope: determinism/purity, three-member closure, inside/reason coherence", () => {
+describe("P-4 — classifyEnvelope: determinism/purity, three-member closure, inside/reason coherence", () => {
   const DRAWS = 200;
 
   test(`is deterministic and mutates neither argument, over ${DRAWS} generated (candidate, ctx) pairs`, () => {
@@ -560,7 +560,7 @@ describe.skip("P-4 — classifyEnvelope: determinism/purity, three-member closur
 // the non-matching signals (PROPERTIES §11, PLAN §6.5).
 // ---------------------------------------------------------------------------
 
-describe.skip("P-5 — refusalReasonFor: totality and first-match stability under re-ordering", () => {
+describe("P-5 — refusalReasonFor: totality and first-match stability under re-ordering", () => {
   const DRAWS = 200;
 
   test(`returns a member of ADVISORY_REFUSAL_REASONS for every non-empty signal set, over ${DRAWS} draws`, () => {
