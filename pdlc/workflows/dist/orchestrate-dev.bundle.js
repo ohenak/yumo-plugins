@@ -2334,6 +2334,153 @@ function buildA4SeamOps({ mergeBase, preRebaseHead, defaultTip, planFiles, implC
   };
 }
 
+async function probeDefaultBranchChecks(defaultBranch, { _ghRun } = {}) {
+  const reply = await _ghRun(
+    `gh run list --branch ${defaultBranch} --json conclusion,workflowName,headSha`
+  );
+  if (!reply || reply.ok !== true) return { available: false, runs: [] };
+  try {
+    const parsed = JSON.parse(String(reply.stdout || "").trim());
+    return Array.isArray(parsed)
+      ? { available: true, runs: parsed }
+      : { available: false, runs: [] };
+  } catch {
+    return { available: false, runs: [] };
+  }
+}
+
+async function probeWorkflowRerun(runId, { _ghRun } = {}) {
+  const idPart = runId ? ` ${runId}` : "";
+  const dryRun = await _ghRun(`gh run rerun --failed${idPart} --dry-run`);
+  if (dryRun && dryRun.ok === true) return { available: true };
+  const auth = await _ghRun("gh auth status");
+  const scoped =
+    auth && auth.ok === true && /actions:\s*write|actions:write/.test(String(auth.stdout || ""));
+  return { available: Boolean(scoped) };
+}
+
+async function buildA5SeamOps({
+  feature,
+  prUrl,
+  preSeamHead,
+  defaultBranch,
+  mergeBase,
+  recordWait,
+  _git,
+  _ghRun,
+  _checkCi,
+} = {}) {
+  const bl05 = await probeDefaultBranchChecks(defaultBranch, { _ghRun });
+  const bl06 = await probeWorkflowRerun(undefined, { _ghRun });
+
+  const tipRun = bl05.runs.length > 0 ? bl05.runs[0] : null;
+  const preExisting = Boolean(tipRun && tipRun.conclusion !== "success");
+
+  const e2Uncertified = Boolean(
+    tipRun && tipRun.conclusion === "success" && tipRun.headSha === mergeBase
+  );
+
+  const permittedActions = [];
+  if (bl05.available) {
+    if (bl06.available) permittedActions.push("E-1");
+    if (!e2Uncertified) permittedActions.push("E-2");
+  }
+
+  const declaredScope = await readGitFileList(
+    ["diff", "--name-only", `${mergeBase}..HEAD`],
+    _git
+  );
+
+  let pushed = false;
+  let lastAction = null;
+
+  function nowSafe() {
+    try {
+      return Date.now();
+    } catch {
+      return 0;
+    }
+  }
+
+  async function rePoll() {
+    let status;
+    const t0 = nowSafe();
+    try {
+      status = await _checkCi(prUrl);
+    } catch {
+
+      if (typeof recordWait === "function") recordWait(nowSafe() - t0);
+      return { passed: false, consumesAttempt: true, detail: "completion cap reached" };
+    }
+    if (typeof recordWait === "function") recordWait(nowSafe() - t0);
+    return { passed: status === "passed", consumesAttempt: true, detail: `re-poll: ${status}` };
+  }
+
+  return {
+    gatherEvidence: async () => {
+
+      const log = await _ghRun("gh run view --log-failed");
+      if (!log || log.ok !== true) {
+        return { __preDispatch: { outcome: "escalated", reason: "out-of-envelope" } };
+      }
+
+      if (!bl05.available) {
+        return { __preDispatch: { outcome: "escalated", reason: "out-of-envelope" } };
+      }
+
+      if (preExisting) {
+        return { __preDispatch: { outcome: "escalated", reason: "out-of-envelope" } };
+      }
+      return { log: String(log.stdout || "") };
+    },
+    prompt: (evidence) =>
+      [
+        `CI for ${feature} (${prUrl}) is red. Name the failing step and its cause, and classify:`,
+        `E-1 (flaky — a re-run should pass), E-2 (branch-introduced lint/format/type fix), or neither.`,
+        `Failing job log:`,
+        evidence && evidence.log ? evidence.log : "",
+      ].join("\n"),
+    conditionHolds: async () => (await _checkCi(prUrl)) === "failed",
+    apply: async (verdict) => {
+      lastAction = verdict ? verdict.proposedAction : null;
+      if (lastAction === "E-1") return { ok: true }; 
+      const commit = await _git([
+        "commit",
+        "-m",
+        `advisory(A5): ${feature} — branch-introduced CI fix`,
+      ]);
+      return { ok: Boolean(commit && commit.ok === true) };
+    },
+    producedPaths: async () =>
+      readGitFileList(["diff", "--name-only", `${preSeamHead}..HEAD`], _git),
+    revert: async () => {
+      if (pushed) return; 
+      await _git(["reset", "--hard", preSeamHead]);
+    },
+    verifyGate: async () => {
+      if (lastAction === "E-1") {
+        const rerun = await _ghRun("gh run rerun --failed");
+        if (!rerun || rerun.ok !== true) {
+          return { passed: false, consumesAttempt: true, detail: "re-run refused" };
+        }
+        return rePoll();
+      }
+      const push = await _git(["push"]);
+      if (!push || push.ok !== true) {
+        return {
+          passed: false,
+          consumesAttempt: true,
+          detail: `push rejected: ${String((push && push.stderr) || "").trim()}`,
+        };
+      }
+      pushed = true;
+      return rePoll();
+    },
+    declaredScope,
+    permittedActions,
+  };
+}
+
 function advisoryEntrySingleLine(value) {
   return String(value).replace(/\r?\n/g, " ");
 }
@@ -2581,6 +2728,18 @@ async function runAdvisorySeam({
     while (true) {
       log("DIAGNOSE");
       const evidence = await seamOps.gatherEvidence();
+
+      if (evidence && typeof evidence === "object" && evidence.__preDispatch) {
+        const pre = evidence.__preDispatch;
+        return await terminate({
+          outcome: pre.outcome,
+          reason: pre.reason ?? null,
+          verdict: null,
+          attempts,
+          appliedSuccessfully: false,
+        });
+      }
+
       const promptText = seamOps.prompt(evidence);
 
       const dispatched = dispatchViaRungLadder(promptText); 
@@ -2629,7 +2788,11 @@ async function runAdvisorySeam({
       }
 
       verdict = parsed.verdict;
-      break;
+
+    log("RE-CHECK");
+    const holds = await seamOps.conditionHolds();
+    if (!holds) {
+      return await terminate({ outcome: "no-action", reason: null, verdict, attempts, appliedSuccessfully: false });
     }
 
     log("GATE");
@@ -2654,12 +2817,6 @@ async function runAdvisorySeam({
       return await terminate({ outcome: "escalated", reason: "low-confidence", verdict, attempts, appliedSuccessfully: false });
     }
 
-    log("RE-CHECK");
-    const holds = await seamOps.conditionHolds();
-    if (!holds) {
-      return await terminate({ outcome: "no-action", reason: null, verdict, attempts, appliedSuccessfully: false });
-    }
-
     log("ACT");
     const applyResult = await seamOps.apply(verdict);
     if (!applyResult || applyResult.ok !== true) {
@@ -2681,11 +2838,28 @@ async function runAdvisorySeam({
       const gateOutcome = await seamOps.verifyGate();
       if (!gateOutcome || gateOutcome.passed !== true) {
         await doRevert();
+
+        if (gateOutcome && gateOutcome.consumesAttempt === true) {
+          attempts += 1;
+          if (
+            budgetExceeded({
+              attempts,
+              attemptBudget: config.attemptBudget,
+              elapsedMs: 0,
+              waitMs,
+              seamBudgetMinutes: config.seamBudgetMinutes,
+            })
+          ) {
+            return await terminate({ outcome: "escalated", reason: "budget-exhausted", verdict, attempts, appliedSuccessfully: false });
+          }
+          continue;
+        }
         return await terminate({ outcome: "escalated", reason: "post-action-verification-failed", verdict, attempts, appliedSuccessfully: false });
       }
     }
 
     return await terminate({ outcome: "resolved", reason: null, verdict, attempts, appliedSuccessfully: true });
+    }
   } catch (err) {
     if (err && err.__isRevertFailure) throw err; 
     if (err && err.isHalt) throw err; 
@@ -7362,11 +7536,16 @@ function buildFinalReport({
   };
 }
 
-return { main, meta, checkPrCi, mergeWorktree, checkFileNonEmpty, parsePlanTasks };
+return { main, meta, checkPrCi, mergeWorktree, checkFileNonEmpty, parsePlanTasks, runAdvisorySeam, readAdvisoryConfigSafely, parseAdvisoryConfig, defaultAppendFile, ADVISORY_CONFIG_PATH };
 })();
 
 const __queue = (function () {
 const realMain = __dev.main;
+const runAdvisorySeam = __dev.runAdvisorySeam;
+const readAdvisoryConfigSafely = __dev.readAdvisoryConfigSafely;
+const parseAdvisoryConfig = __dev.parseAdvisoryConfig;
+const defaultAppendFile = __dev.defaultAppendFile;
+const ADVISORY_CONFIG_PATH = __dev.ADVISORY_CONFIG_PATH;
 
 const meta = {
   name: "orchestrate-queue",
@@ -7795,6 +7974,63 @@ function precheckDependencies(dependsOn, entries) {
   return { blocked: false };
 }
 
+function honourA1Verdict(verdict, precheck) {
+  const p = precheck || {};
+  if (p.blocked) {
+    return "escalate";
+  }
+  const dependsOn = Array.isArray(p.dependsOn) ? p.dependsOn : [];
+  const entries = Array.isArray(p.entries) ? p.entries : [];
+  const unsettled = dependsOn.some((dep) => !entries.some((e) => e.feature === dep));
+  if (unsettled) {
+    return "escalate";
+  }
+  return verdict;
+}
+
+function buildA1SeamOps({ feature, reqPath, dependsOn, triageReason, precheck }) {
+  const unreachable = (member) => async () => {
+    throw new Error(
+      `A1 SeamOps.${member} is unreachable: permittedActions is empty (TSPEC §6.3, A1-4)`
+    );
+  };
+  return {
+    gatherEvidence: async () =>
+      `Feature: ${feature}\nREQ: ${reqPath}\n` +
+      `Phase-0 triage abstained: ${triageReason}\n` +
+      `Declared dependencies: ${dependsOn.length ? dependsOn.join(", ") : "(none)"}\n` +
+      `Pre-check: ${JSON.stringify(precheck)}`,
+    prompt: (evidence) =>
+      `A1 triage-abstention adjudication for "${feature}".\n${evidence}\n\n` +
+      `Decide whether the pipeline should run for this candidate now. Reply with your verdict ` +
+      `trailer; proposedAction must be exactly one of "run-candidate", "hold", or "escalate".`,
+    conditionHolds: async () => true,
+    apply: unreachable("apply"),
+    producedPaths: unreachable("producedPaths"),
+    revert: unreachable("revert"),
+    verifyGate: null,
+    declaredScope: [],
+    permittedActions: [],
+  };
+}
+
+function buildA2SeamOpsPlaceholder({ feature, reqPath }) {
+  const notYetImplemented = (member) => async () => {
+    throw new Error(`A2 SeamOps.${member} is not yet implemented (PLAN A-31) for "${feature}"`);
+  };
+  return {
+    gatherEvidence: notYetImplemented("gatherEvidence"),
+    prompt: notYetImplemented("prompt"),
+    conditionHolds: notYetImplemented("conditionHolds"),
+    apply: notYetImplemented("apply"),
+    producedPaths: notYetImplemented("producedPaths"),
+    revert: notYetImplemented("revert"),
+    verifyGate: notYetImplemented("verifyGate"),
+    declaredScope: [reqPath],
+    permittedActions: ["E-4"],
+  };
+}
+
 function triagePrompt(feature, reqPath, dependsOn) {
   const depList = dependsOn.length ? dependsOn.join(", ") : "(none declared)";
   return (
@@ -7863,13 +8099,21 @@ async function defaultGit(argv, { execFn } = {}) {
   }
 }
 
+async function defaultReadAdvisoryConfig(readFileFn, path) {
+  const raw = await readAdvisoryConfigSafely(readFileFn, path);
+  return parseAdvisoryConfig(raw);
+}
+
 async function main({
   queuePath = DEFAULT_QUEUE_PATH,
   _agent: rawAgentFn = agent,
   _readFile: readFileFn = defaultReadFile,
   _writeFile: writeFileFn = defaultWriteFile,
+  _appendFile: appendFileFn = defaultAppendFile,
   _git: gitFn = defaultGit,
   _runPipeline: runPipelineFn = realMain,
+  _runAdvisorySeam: runAdvisorySeamFn = runAdvisorySeam,
+  _readAdvisoryConfig: readAdvisoryConfigFn = defaultReadAdvisoryConfig,
   _log: logFn = log,
   _phase: phaseFn = phase,
 } = {}) {
@@ -7900,6 +8144,9 @@ async function main({
     );
   }
   const finish = (fields) => buildQueueReport({ ...fields, driftReport: driftNotice });
+
+  const advisoryConfig = await readAdvisoryConfigFn(readFileFn, ADVISORY_CONFIG_PATH);
+  const rungState = { resolved: null };
 
   phaseFn("Queue: Load");
   const queueText = await readFileFn(queuePath);
@@ -7944,7 +8191,12 @@ async function main({
 
   for (const entry of selection.candidates) {
 
-    const reqText = await readFileFn(entry.reqPath);
+    let reqText;
+    try {
+      reqText = await readFileFn(entry.reqPath);
+    } catch {
+      reqText = null;
+    }
     if (reqText == null) {
       emit(`Skip "${entry.feature}": REQ not found at ${entry.reqPath}.`);
       skipped.push({ feature: entry.feature, reason: "REQ file missing" });
@@ -7984,12 +8236,75 @@ async function main({
       continue;
     }
     if (triage.verdict === "needs-human") {
-      emit(
-        `Skip "${entry.feature}": needs human decision — ${triage.reason}.`
-      );
+
+      const seam = triage.seamToken === "A2" ? "A2" : "A1";
+      const seamOps =
+        seam === "A2"
+          ? buildA2SeamOpsPlaceholder({ feature: entry.feature, reqPath: entry.reqPath })
+          : buildA1SeamOps({
+              feature: entry.feature,
+              reqPath: entry.reqPath,
+              dependsOn,
+              triageReason: triage.reason,
+              precheck,
+            });
+
+      const advisoryDisposition = await runAdvisorySeamFn({
+        seam,
+        feature: entry.feature,
+        seamOps,
+        config: advisoryConfig.config,
+        rungState,
+        _agent: rawAgentFn,
+        _appendFile: appendFileFn,
+        _writeFile: writeFileFn,
+        _readFile: readFileFn,
+        _git: gitFn,
+        _log: emit,
+      });
+
+      if (seam === "A1") {
+
+        const action =
+          advisoryDisposition.reason === "out-of-envelope" && advisoryDisposition.verdict
+            ? honourA1Verdict(advisoryDisposition.verdict.proposedAction, {
+                blocked: precheck.blocked,
+                dependsOn,
+                entries,
+              })
+            : "escalate";
+
+        if (action === "run-candidate") {
+          return runPicked({
+            entry,
+            dependsOn,
+            triageReason: triage.reason,
+            queuePath,
+            queueText,
+            remainingPending,
+            skipped,
+            runPipelineFn,
+            writeFileFn,
+            readFileFn,
+            gitFn,
+            phaseFn,
+            emit,
+            finish,
+          });
+        }
+
+        emit(`Skip "${entry.feature}": A1 adjudicated ${action} — ${triage.reason}.`);
+        skipped.push({
+          feature: entry.feature,
+          reason: `needs-human (A1 ${action}): ${triage.reason}`,
+        });
+        continue;
+      }
+
+      emit(`Skip "${entry.feature}": needs human decision (A2) — ${triage.reason}.`);
       skipped.push({
         feature: entry.feature,
-        reason: `needs-human: ${triage.reason}`,
+        reason: `needs-human (A2): ${triage.reason}`,
       });
       continue;
     }

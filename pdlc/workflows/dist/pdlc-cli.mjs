@@ -2351,6 +2351,182 @@ function buildA4SeamOps({ mergeBase, preRebaseHead, defaultTip, planFiles, implC
   };
 }
 
+// ─── TSPEC §8.3 — A5's capability probes (PLAN A-24) ───────────────────────
+//
+// Both are per-repo runtime facts, probed once per A5 invocation through the
+// existing `_ghRun` seam — no new credential, no new transport (NFR-5). These
+// are reads that classify a failure, not new capabilities that can act; BL-06's
+// `--dry-run` is the one probe against a write surface, and the write itself
+// happens only inside `verifyGate` under E-1.
+
+/** BL-05 — can the default branch's check runs be read for the comparison? */
+async function probeDefaultBranchChecks(defaultBranch, { _ghRun } = {}) {
+  const reply = await _ghRun(
+    `gh run list --branch ${defaultBranch} --json conclusion,workflowName,headSha`
+  );
+  if (!reply || reply.ok !== true) return { available: false, runs: [] };
+  try {
+    const parsed = JSON.parse(String(reply.stdout || "").trim());
+    return Array.isArray(parsed)
+      ? { available: true, runs: parsed }
+      : { available: false, runs: [] };
+  } catch {
+    return { available: false, runs: [] };
+  }
+}
+
+/** BL-06 — can a failed workflow run be re-run? Dry-run first; on refusal the
+ *  `actions:write` scope in `gh auth status` is the fallback determination. */
+async function probeWorkflowRerun(runId, { _ghRun } = {}) {
+  const idPart = runId ? ` ${runId}` : "";
+  const dryRun = await _ghRun(`gh run rerun --failed${idPart} --dry-run`);
+  if (dryRun && dryRun.ok === true) return { available: true };
+  const auth = await _ghRun("gh auth status");
+  const scoped =
+    auth && auth.ok === true && /actions:\s*write|actions:write/.test(String(auth.stdout || ""));
+  return { available: Boolean(scoped) };
+}
+
+// ─── TSPEC §8.2 — A5's SeamOps (PLAN A-24) ─────────────────────────────────
+//
+// Async because BL-05/BL-06 probing is IO (§8.3): both capability
+// determinations and the default-branch comparison are computed before the
+// agent is ever dispatched, and A5-1's ordering (comparison before E-2's
+// *introduced* test) is why the comparison lives here rather than in the gate.
+// `recordWait` is §4.3's sink — A5 is the only seam that calls it, once per
+// re-poll, so the CI wait is carved out of the wall-clock budget (A5-3).
+async function buildA5SeamOps({
+  feature,
+  prUrl,
+  preSeamHead,
+  defaultBranch,
+  mergeBase,
+  recordWait,
+  _git,
+  _ghRun,
+  _checkCi,
+} = {}) {
+  const bl05 = await probeDefaultBranchChecks(defaultBranch, { _ghRun });
+  const bl06 = await probeWorkflowRerun(undefined, { _ghRun });
+
+  // A5-1 — the default-branch comparison, authoritative on the reading it gets.
+  const tipRun = bl05.runs.length > 0 ? bl05.runs[0] : null;
+  const preExisting = Boolean(tipRun && tipRun.conclusion !== "success");
+  // E-2's conjunct (i) needs a default-branch reading BEYOND the merge base: a
+  // latest reading AT the merge base cannot certify that the branch introduced
+  // the failure, so E-2 drops from this invocation's permitted set.
+  const e2Uncertified = Boolean(
+    tipRun && tipRun.conclusion === "success" && tipRun.headSha === mergeBase
+  );
+
+  const permittedActions = [];
+  if (bl05.available) {
+    if (bl06.available) permittedActions.push("E-1");
+    if (!e2Uncertified) permittedActions.push("E-2");
+  }
+
+  const declaredScope = await readGitFileList(
+    ["diff", "--name-only", `${mergeBase}..HEAD`],
+    _git
+  );
+
+  // A5-8 — revert is PRE-PUSH only: once `verifyGate` has pushed, nothing is
+  // force-pushed and no history is rewritten; the escalation inherits the
+  // pushed fix commit legibly instead.
+  let pushed = false;
+  let lastAction = null;
+
+  // The workflow runtime forbids an ambient clock; the sink still gets called
+  // once per re-poll with the best duration available (0 where no clock is).
+  function nowSafe() {
+    try {
+      return Date.now();
+    } catch {
+      return 0;
+    }
+  }
+
+  async function rePoll() {
+    let status;
+    const t0 = nowSafe();
+    try {
+      status = await _checkCi(prUrl);
+    } catch {
+      // §8.2 — Phase PUB's completion cap signals by throwing; the seam
+      // consumes the attempt instead of escalating separately (T-07-11).
+      if (typeof recordWait === "function") recordWait(nowSafe() - t0);
+      return { passed: false, consumesAttempt: true, detail: "completion cap reached" };
+    }
+    if (typeof recordWait === "function") recordWait(nowSafe() - t0);
+    return { passed: status === "passed", consumesAttempt: true, detail: `re-poll: ${status}` };
+  }
+
+  return {
+    gatherEvidence: async () => {
+      // A5-5 — an unretrievable log short-circuits before any dispatch: no
+      // diagnosis is ever produced from a guess.
+      const log = await _ghRun("gh run view --log-failed");
+      if (!log || log.ok !== true) {
+        return { __preDispatch: { outcome: "escalated", reason: "out-of-envelope" } };
+      }
+      // A5-2 — BL-05 absent: the comparison is undone; escalate attempting no fix.
+      if (!bl05.available) {
+        return { __preDispatch: { outcome: "escalated", reason: "out-of-envelope" } };
+      }
+      // A5-1 — observed failing at the default-branch tip: pre-existing.
+      if (preExisting) {
+        return { __preDispatch: { outcome: "escalated", reason: "out-of-envelope" } };
+      }
+      return { log: String(log.stdout || "") };
+    },
+    prompt: (evidence) =>
+      [
+        `CI for ${feature} (${prUrl}) is red. Name the failing step and its cause, and classify:`,
+        `E-1 (flaky — a re-run should pass), E-2 (branch-introduced lint/format/type fix), or neither.`,
+        `Failing job log:`,
+        evidence && evidence.log ? evidence.log : "",
+      ].join("\n"),
+    conditionHolds: async () => (await _checkCi(prUrl)) === "failed",
+    apply: async (verdict) => {
+      lastAction = verdict ? verdict.proposedAction : null;
+      if (lastAction === "E-1") return { ok: true }; // nothing to write — the act is the re-run
+      const commit = await _git([
+        "commit",
+        "-m",
+        `advisory(A5): ${feature} — branch-introduced CI fix`,
+      ]);
+      return { ok: Boolean(commit && commit.ok === true) };
+    },
+    producedPaths: async () =>
+      readGitFileList(["diff", "--name-only", `${preSeamHead}..HEAD`], _git),
+    revert: async () => {
+      if (pushed) return; // A5-8 — post-push, the record and report carry the state instead
+      await _git(["reset", "--hard", preSeamHead]);
+    },
+    verifyGate: async () => {
+      if (lastAction === "E-1") {
+        const rerun = await _ghRun("gh run rerun --failed");
+        if (!rerun || rerun.ok !== true) {
+          return { passed: false, consumesAttempt: true, detail: "re-run refused" };
+        }
+        return rePoll();
+      }
+      const push = await _git(["push"]);
+      if (!push || push.ok !== true) {
+        return {
+          passed: false,
+          consumesAttempt: true,
+          detail: `push rejected: ${String((push && push.stderr) || "").trim()}`,
+        };
+      }
+      pushed = true;
+      return rePoll();
+    },
+    declaredScope,
+    permittedActions,
+  };
+}
+
 // ─── TSPEC §9 — the advisory record (PLAN A-21) ────────────────────────────
 //
 // `docs/{feature}/ADVISORY-{feature}.md` — append-only, one `##` entry per invocation, in
@@ -2752,9 +2928,30 @@ async function runAdvisorySeam({
     let verdict = null;
 
     // ── DIAGNOSE + VALIDATE — the attempt loop ──────────────────────────
+    // The loop encloses steps 1–6, not only DIAGNOSE/VALIDATE: A5-3 defines
+    // one attempt as one act → re-poll cycle, so a `verifyGate` failure that
+    // declares `consumesAttempt: true` re-enters here (see VERIFY below).
+    // Every other step's failure path returns, so for the seams whose gates
+    // never set that flag the loop still executes each step at most once.
     while (true) {
       log("DIAGNOSE");
       const evidence = await seamOps.gatherEvidence();
+
+      // A seam may decide, from evidence alone, that no dispatch can be
+      // justified (A5-5's unretrievable log, A5-2's undone comparison, A5-1's
+      // pre-existing failure): `{ __preDispatch: { outcome, reason } }`
+      // terminates with no agent call and no verdict.
+      if (evidence && typeof evidence === "object" && evidence.__preDispatch) {
+        const pre = evidence.__preDispatch;
+        return await terminate({
+          outcome: pre.outcome,
+          reason: pre.reason ?? null,
+          verdict: null,
+          attempts,
+          appliedSuccessfully: false,
+        });
+      }
+
       const promptText = seamOps.prompt(evidence);
 
       // `dispatched` is constructed BEFORE `deadline` on every iteration — see the comment above.
@@ -2804,7 +3001,16 @@ async function runAdvisorySeam({
       }
 
       verdict = parsed.verdict;
-      break;
+
+    // ── step 3b RE-CHECK — the seam condition may already be gone (V-7, R-4) ────────────────
+    // Runs BEFORE the gate: a condition that has resolved itself is `no-action`
+    // whatever the envelope would have said about the proposal — the world's
+    // state outranks a judgment about a fix the world no longer needs
+    // (T-07-2's conjunct-iii pins this against conjunct-i's gate refusal).
+    log("RE-CHECK");
+    const holds = await seamOps.conditionHolds();
+    if (!holds) {
+      return await terminate({ outcome: "no-action", reason: null, verdict, attempts, appliedSuccessfully: false });
     }
 
     // ── step 3 GATE — prohibitions, classifyEnvelope, confidence (V-1, BR-2) ────────────────
@@ -2828,13 +3034,6 @@ async function runAdvisorySeam({
     }
     if (verdict.confidence !== "high") {
       return await terminate({ outcome: "escalated", reason: "low-confidence", verdict, attempts, appliedSuccessfully: false });
-    }
-
-    // ── step 3b RE-CHECK — the seam condition may already be gone (V-7, R-4) ────────────────
-    log("RE-CHECK");
-    const holds = await seamOps.conditionHolds();
-    if (!holds) {
-      return await terminate({ outcome: "no-action", reason: null, verdict, attempts, appliedSuccessfully: false });
     }
 
     // ── step 4 ACT ───────────────────────────────────────────────────────────────────────────
@@ -2861,12 +3060,33 @@ async function runAdvisorySeam({
       const gateOutcome = await seamOps.verifyGate();
       if (!gateOutcome || gateOutcome.passed !== true) {
         await doRevert();
+        // A5-3 — a gate that declares its red outcome an act → re-poll cycle
+        // (`consumesAttempt: true`, e.g. a red CI re-poll or the completion
+        // cap) consumes an attempt and re-enters the loop; exhaustion is
+        // `budget-exhausted`. A plain `{passed:false}` stays what it always
+        // was: terminal `post-action-verification-failed`.
+        if (gateOutcome && gateOutcome.consumesAttempt === true) {
+          attempts += 1;
+          if (
+            budgetExceeded({
+              attempts,
+              attemptBudget: config.attemptBudget,
+              elapsedMs: 0,
+              waitMs,
+              seamBudgetMinutes: config.seamBudgetMinutes,
+            })
+          ) {
+            return await terminate({ outcome: "escalated", reason: "budget-exhausted", verdict, attempts, appliedSuccessfully: false });
+          }
+          continue;
+        }
         return await terminate({ outcome: "escalated", reason: "post-action-verification-failed", verdict, attempts, appliedSuccessfully: false });
       }
     }
 
     // ── resolved ─────────────────────────────────────────────────────────────────────────────
     return await terminate({ outcome: "resolved", reason: null, verdict, attempts, appliedSuccessfully: true });
+    }
   } catch (err) {
     if (err && err.__isRevertFailure) throw err; // BR-5 — never silently swallow an unrevertable tree
     if (err && err.isHalt) throw err; // M-3 — no rung resolved; propagate, never mapped to an escalation

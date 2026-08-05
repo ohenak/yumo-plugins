@@ -91,6 +91,13 @@ const devModule = wrapModule("__dev", stripModuleSyntax(devSource), [
   "mergeWorktree",
   "checkFileNonEmpty",
   "parsePlanTasks",
+  // The queue module's advisory imports (PLAN A-30) — republished so the
+  // queue IIFE's prelude can re-bind them as free identifiers.
+  "runAdvisorySeam",
+  "readAdvisoryConfigSafely",
+  "parseAdvisoryConfig",
+  "defaultAppendFile",
+  "ADVISORY_CONFIG_PATH",
 ]);
 
 const queueModule = wrapModule(
@@ -99,7 +106,12 @@ const queueModule = wrapModule(
   // §7.2 edit 3 — `rewriteStatus` / `updateQueueStatus` are what an entrypoint's
   // `_recordQueueRow` closure calls; without them on `__queue` it has nothing to call.
   ["main", "meta", "DEFAULT_QUEUE_PATH", "rewriteStatus", "updateQueueStatus"],
-  "const realMain = __dev.main;"
+  ["const realMain = __dev.main;",
+   "const runAdvisorySeam = __dev.runAdvisorySeam;",
+   "const readAdvisoryConfigSafely = __dev.readAdvisoryConfigSafely;",
+   "const parseAdvisoryConfig = __dev.parseAdvisoryConfig;",
+   "const defaultAppendFile = __dev.defaultAppendFile;",
+   "const ADVISORY_CONFIG_PATH = __dev.ADVISORY_CONFIG_PATH;"].join("\n")
 );
 
 // `meta` must be a pure literal and the first statement, so each bundle carries
