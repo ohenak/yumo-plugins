@@ -148,3 +148,33 @@ describe("rtGit — the command is valid shell AS WRITTEN (quoting is not the ex
     expect(rtShellQuote("plain-safe_word.js")).toBe("'plain-safe_word.js'");
   });
 });
+
+describe("rtParseTransportReply — fenced or noisy replies still parse (observed: six consecutive fenced Haiku replies)", () => {
+  it("extracts the JSON object from a code-fenced reply", async () => {
+    const agent = scriptedAgent([
+      '```json\n{"ok":false,"stdout":"","stderr":"nothing added to commit but untracked files present"}\n```',
+    ]);
+    const { rtGit } = load(agent);
+    expect(await rtGit(["commit", "-m", "msg"])).toEqual({
+      ok: false,
+      stdout: "",
+      stderr: "nothing added to commit but untracked files present",
+    });
+  });
+
+  it("tolerates commentary around the object", async () => {
+    const agent = scriptedAgent(['Here is the result: {"ok":true,"stdout":"done","stderr":""} as requested.']);
+    const { rtGit } = load(agent);
+    expect(await rtGit(["add", "--", "a.js"])).toEqual({ ok: true, stdout: "done", stderr: "" });
+  });
+
+  it("still maps a brace-free reply to the fixed unparseable failure", async () => {
+    const agent = scriptedAgent(["not json at all"]);
+    const { rtGit } = load(agent);
+    expect(await rtGit(["status"])).toEqual({
+      ok: false,
+      stdout: "",
+      stderr: "unparseable adapter response",
+    });
+  });
+});

@@ -944,21 +944,39 @@ async function rtGit(argv) {
     `Run exactly this command from the repository root, and nothing else:\n` +
       `  git ${args.map(rtShellQuote).join(" ")}\n` +
       `If it exits 0, return exactly: {"ok":true,"stdout":"<its stdout>","stderr":""}\n` +
-      `If it exits non-zero, return exactly: {"ok":false,"stdout":"","stderr":"<its stderr>"}\n` +
+      `If it exits non-zero, return exactly: {"ok":false,"stdout":"","stderr":"<the LAST 300 characters of its combined output>"}\n` +
       `Return ONLY that JSON object, correctly escaped — no commentary, no code fences. ` +
       `Do not retry, do not repair, and do not run any other command.`,
     { label: `git:${args[0] || ""}`, model: RT_IO_MODEL }
   );
-  try {
-    const parsed = JSON.parse(String(out).trim());
-    return {
-      ok: parsed && parsed.ok === true,
-      stdout: typeof (parsed && parsed.stdout) === "string" ? parsed.stdout : "",
-      stderr: typeof (parsed && parsed.stderr) === "string" ? parsed.stderr : "",
-    };
-  } catch {
-    return { ok: false, stdout: "", stderr: "unparseable adapter response" };
+  return rtParseTransportReply(out);
+}
+
+/**
+ * Map a transport agent's reply text to the { ok, stdout, stderr } contract.
+ * The prompt forbids fences and commentary, but the transcribing model
+ * sometimes adds them anyway — six consecutive fenced replies halted a run —
+ * so the parser extracts the outermost `{...}` span before parsing rather
+ * than demanding a bare object. Anything without a parseable object span is
+ * still the fixed "unparseable adapter response" failure.
+ */
+function rtParseTransportReply(out) {
+  const text = String(out ?? "");
+  const start = text.indexOf("{");
+  const end = text.lastIndexOf("}");
+  if (start !== -1 && end > start) {
+    try {
+      const parsed = JSON.parse(text.slice(start, end + 1));
+      return {
+        ok: parsed && parsed.ok === true,
+        stdout: typeof (parsed && parsed.stdout) === "string" ? parsed.stdout : "",
+        stderr: typeof (parsed && parsed.stderr) === "string" ? parsed.stderr : "",
+      };
+    } catch {
+      // fall through to the fixed failure below
+    }
   }
+  return { ok: false, stdout: "", stderr: "unparseable adapter response" };
 }
 
 /**
@@ -975,22 +993,13 @@ async function rtGhRun(command) {
     `Run exactly this command from the repository root, and nothing else:\n` +
       `  ${command}\n` +
       `If it exits 0, return exactly: {"ok":true,"stdout":"<its stdout>","stderr":""}\n` +
-      `If it exits non-zero, return exactly: {"ok":false,"stdout":"","stderr":"<its stderr>"}\n` +
+      `If it exits non-zero, return exactly: {"ok":false,"stdout":"","stderr":"<the LAST 300 characters of its stderr>"}\n` +
       `Return ONLY that JSON object, correctly escaped — no commentary, no code fences.\n` +
       `This command may change repository state. Issue it AT MOST ONCE. ` +
       `Do not retry, do not repair, and do not run any other command.`,
     { label: `gh:${command.slice(0, 40)}`, model: RT_IO_MODEL }
   );
-  try {
-    const parsed = JSON.parse(String(out).trim());
-    return {
-      ok: parsed && parsed.ok === true,
-      stdout: typeof (parsed && parsed.stdout) === "string" ? parsed.stdout : "",
-      stderr: typeof (parsed && parsed.stderr) === "string" ? parsed.stderr : "",
-    };
-  } catch {
-    return { ok: false, stdout: "", stderr: "unparseable adapter response" };
-  }
+  return rtParseTransportReply(out);
 }
 
 // ─── PROPOSAL §3.3 / M-6 — the command transport Phase I gates through ────────
