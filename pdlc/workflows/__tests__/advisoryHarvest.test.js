@@ -220,7 +220,7 @@ function buildDevAgent({ onDistil } = {}) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
-describe.skip("A-28 — delete-guard extension", () => {
+describe("A-28 — delete-guard extension", () => {
   // ─── T-08-4b — unit-scoped guard case over the guard script itself ─────────────────────────────
   // FSPEC:750: "Who maintainer · Given a direct delete of ADVISORY-{feature}.md with no sibling
   // LEARNINGS-{feature}.md · When the delete is attempted · Then it is refused, the refusal names
