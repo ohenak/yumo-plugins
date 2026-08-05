@@ -2181,6 +2181,159 @@ function classifyEnvelope(candidate, ctx) {
   return { inside: true, reason: null, matched: [...paths] };
 }
 
+const ADVISORY_A3_CLASSES = Object.freeze(["real-defect", "mis-scoped-criterion", "deferral-candidate"]);
+
+const A3_CLASS_RANK = Object.freeze({ "real-defect": 3, "mis-scoped-criterion": 2, "deferral-candidate": 1 });
+
+const A3_FIELD_RE = {
+  finding: /^FINDING:\s*(.*)$/m,
+  classification: /^CLASSIFICATION:\s*(.*)$/m,
+  evidence: /^EVIDENCE:\s*(.*)$/m,
+  successor: /^SUCCESSOR:\s*(.*)$/m,
+};
+
+function parseA3Classification(raw) {
+  const text = String(raw ?? "");
+  const findingCount = (text.match(/^FINDING:/gm) || []).length;
+  const closedSet = new Set(ADVISORY_A3_CLASSES);
+  const classes = [];
+
+  for (const block of text.split(/\n---\n/)) {
+    const findingMatch = A3_FIELD_RE.finding.exec(block);
+    const classMatch = A3_FIELD_RE.classification.exec(block);
+    if (!findingMatch || !classMatch) continue;
+
+    const cls = classMatch[1].trim();
+    if (!closedSet.has(cls)) continue;
+
+    const successorMatch = A3_FIELD_RE.successor.exec(block);
+    if (cls === "deferral-candidate" && !successorMatch) continue;
+
+    const evidenceMatch = A3_FIELD_RE.evidence.exec(block);
+    const entry = {
+      finding: findingMatch[1].trim(),
+      class: cls,
+      evidence: evidenceMatch ? evidenceMatch[1].trim() : "",
+    };
+    if (successorMatch) entry.successor = successorMatch[1].trim();
+    classes.push(entry);
+  }
+
+  return { classes, complete: classes.length === findingCount };
+}
+
+function governingClass(classes) {
+  const list = Array.isArray(classes) ? classes : [];
+  let winner = null;
+  let winnerRank = -Infinity;
+  for (const entry of list) {
+    const rank = A3_CLASS_RANK[entry && entry.class];
+    if (rank !== undefined && rank > winnerRank) {
+      winnerRank = rank;
+      winner = entry.class;
+    }
+  }
+  return winner;
+}
+
+function buildA3SeamOps({ dodResult, codeReviewText, _readFile } = {}) {
+  async function gatherEvidence() {
+    const lastStatus = dodResult && dodResult.lastStatus;
+    let text = codeReviewText;
+    if (text === undefined && typeof _readFile === "function") {
+      try {
+        text = await _readFile();
+      } catch {
+        text = "";
+      }
+    }
+    return `DOD_STATUS: ${lastStatus}\n${text || ""}`;
+  }
+
+  return {
+    gatherEvidence,
+    prompt: (evidence) =>
+      "Classify every remaining finding as real-defect / mis-scoped-criterion / deferral-candidate, " +
+      `each with evidence, and bind every deferral-candidate to a named successor.\n${evidence}`,
+    conditionHolds: async () => true,
+    apply: async () => {
+      throw new Error("A3 seam: apply is unreachable — permittedActions is empty (A3-6)");
+    },
+    producedPaths: async () => [],
+    revert: async () => {
+      throw new Error("A3 seam: revert is unreachable — permittedActions is empty (A3-6)");
+    },
+    verifyGate: null,
+    declaredScope: [],
+    permittedActions: [],
+  };
+}
+
+async function readGitFileList(argv, _git) {
+  const result = await _git(argv);
+  const stdout = result && typeof result.stdout === "string" ? result.stdout : "";
+  return stdout
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+}
+
+function buildA4SeamOps({ mergeBase, preRebaseHead, defaultTip, planFiles, implConfig, _git, _runCommand } = {}) {
+  const ownPlanFiles = Array.isArray(planFiles) ? planFiles : [];
+  const declaredScope = [...ownPlanFiles];
+  const permittedActions = ["E-3"];
+
+  async function gatherEvidence() {
+    const conflictFiles = await readGitFileList(["diff", "--name-only", "--diff-filter=U"], _git);
+    const determinations = [];
+    let mixed = false;
+    for (const path of conflictFiles) {
+      const created = await branchCreated(path, mergeBase, defaultTip, _git);
+      if (!created) mixed = true;
+      determinations.push({ path, branchCreated: created });
+    }
+    const preRebaseDiff = await readGitFileList(["diff", "--name-only", `${mergeBase}..${preRebaseHead}`], _git);
+    const nonTestConflictFiles = conflictFiles.filter((p) => !touchesTestArtifact([p], {}));
+
+    declaredScope.length = 0;
+    declaredScope.push(...new Set([...ownPlanFiles, ...preRebaseDiff, ...nonTestConflictFiles]));
+
+    permittedActions.length = 0;
+    if (!(conflictFiles.length > 0 && mixed)) permittedActions.push("E-3");
+
+    return determinations.map((d) => `${d.path}: ${d.branchCreated ? "branch-created" : "shared"}`).join("\n");
+  }
+
+  return {
+    gatherEvidence,
+    prompt: (evidence) => `Resolve each conflict in a branch-created file, reporting per file which side was taken and why.\n${evidence}`,
+    conditionHolds: async () => {
+      const current = await readGitFileList(["diff", "--name-only", "--diff-filter=U"], _git);
+      return current.length > 0;
+    },
+    apply: async () => ({ ok: true }),
+    producedPaths: async () => readGitFileList(["diff", "--name-only"], _git),
+    revert: async () => {
+      await _git(["rebase", "--abort"]);
+    },
+    verifyGate: async () => {
+      const testCommand = implConfig && implConfig.testCommand;
+      const hasTestCommand = typeof testCommand === "string" && testCommand.length > 0;
+      if (!hasTestCommand || typeof _runCommand !== "function") {
+        return { passed: false }; 
+      }
+      const continueResult = await _git(["rebase", "--continue"]);
+      if (!continueResult || continueResult.ok !== true) {
+        return { passed: false, detail: continueResult && continueResult.stderr };
+      }
+      const testResult = await _runCommand(testCommand);
+      return { passed: Boolean(testResult && testResult.ok === true) };
+    },
+    declaredScope,
+    permittedActions,
+  };
+}
+
 function advisoryEntrySingleLine(value) {
   return String(value).replace(/\r?\n/g, " ");
 }
@@ -7410,6 +7563,7 @@ function parseTriageVerdict(result) {
   const fallback = {
     verdict: "needs-human",
     reason: "triage agent returned no TRIAGE verdict — treating as needs-human",
+    seamToken: null,
   };
   if (result == null || (typeof result === "string" && result.trim() === "")) {
     return fallback;
@@ -7420,13 +7574,34 @@ function parseTriageVerdict(result) {
     const trimmed = lines[i].trim();
     const m = /^TRIAGE:\s*(ready|blocked|needs-human)\b\s*(.*)$/i.exec(trimmed);
     if (m) {
+      const verdict = m[1].toLowerCase();
+      const rest = m[2].trim();
+
+      let seamToken = null;
+      let reason = rest;
+      const tokenMatch = /^\[SEAM:(A1|A2)\]\s*(.*)$/i.exec(rest);
+      if (tokenMatch) {
+        if (/^\[SEAM:/i.test(tokenMatch[2].trim())) {
+          seamToken = null;
+          reason = rest;
+        } else {
+          seamToken = tokenMatch[1].toUpperCase();
+          reason = tokenMatch[2].trim();
+        }
+      }
+
       return {
-        verdict: m[1].toLowerCase(),
-        reason: m[2].trim() || "(no reason given)",
+        verdict,
+        seamToken,
+        reason: reason || "(no reason given)",
       };
     }
   }
   return fallback;
+}
+
+function hasResidualSeamToken(reason) {
+  return typeof reason === "string" && /^\[SEAM:/i.test(reason.trim());
 }
 
 function updateQueueStatus(markdown, feature, newStatus, evidence = null) {
@@ -7630,10 +7805,13 @@ function triagePrompt(feature, reqPath, dependsOn) {
     `given the current state of the codebase. Specifically verify, using git history and the ` +
     `working tree, that every declared dependency's implementation is present in the base. ` +
     `Also flag if the REQ references subsystems that do not yet exist.\n\n` +
+    `Also check whether the REQ's file:line citations still resolve at HEAD. If some have drifted ` +
+    `but every cited symbol still exists, return needs-human [SEAM:A2].\n\n` +
     `Do NOT modify any files. End your final message with exactly one line:\n` +
     `TRIAGE: ready        <one-line reason>   — dependencies satisfied, safe to run\n` +
     `TRIAGE: blocked      <one-line reason>   — a dependency is not yet in the base; skip for now\n` +
-    `TRIAGE: needs-human  <one-line reason>   — ambiguous; a human must decide`
+    `TRIAGE: needs-human [SEAM:A1] <one-line reason>   — ambiguous; a human must decide\n` +
+    `TRIAGE: needs-human [SEAM:A2] <one-line reason>   — the REQ's file:line citations have drifted`
   );
 }
 
