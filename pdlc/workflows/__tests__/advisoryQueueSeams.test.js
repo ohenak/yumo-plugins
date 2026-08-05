@@ -223,7 +223,7 @@ describe("A-29 — seam-token routing (§6.2, PROP-A12-01/03/04)", () => {
 // A-30 — queue wiring + A1: `main`'s routing, `honourA1Verdict`, A1's `SeamOps`.
 // ---------------------------------------------------------------------------------------------
 
-describe.skip("A-30 — queue wiring + A1 (§6.2, §6.3, PROP-A1-01…06)", () => {
+describe("A-30 — queue wiring + A1 (§6.2, §6.3, PROP-A1-01…06)", () => {
   // ─── T-04-3b / PROP-A1-03 — honourA1Verdict as defence in depth ────────────────────────────
   test("T-04-3b — honourA1Verdict refuses run-candidate when precheck.blocked is true", () => {
     const precheck = { blocked: true, dependsOn: [], entries: [] };

@@ -37,7 +37,8 @@
  * does not replace it, it drives it.
  */
 
-import realMain from "./orchestrate-dev.js";
+// Single-line on purpose: stripModuleSyntax recognises imports line-wise.
+import realMain, { runAdvisorySeam, readAdvisoryConfigSafely, parseAdvisoryConfig, defaultAppendFile, ADVISORY_CONFIG_PATH } from "./orchestrate-dev.js";
 
 // ─── Exported meta object (mirrors orchestrate-dev) ──────────────────────────
 export const meta = {
@@ -689,6 +690,99 @@ export function precheckDependencies(dependsOn, entries) {
   return { blocked: false };
 }
 
+/**
+ * A1's queue-level decision surface (TSPEC §6.3, A1-2/A1-3). `precheck` is a superset of
+ * `precheckDependencies`'s own return — `{ blocked, dependsOn, entries }` — carrying the same
+ * `dependsOn`/`entries` the pre-check already had in scope, so this function can enforce A1-3
+ * (presence-in-base unsettled ⇒ escalate) without a second query surface.
+ *
+ * A1-2 (defence in depth): a `blocked` precheck always escalates, regardless of `verdict` — the
+ * candidate must never run, even if A1's own recommendation was `run-candidate`.
+ * A1-3: a declared dependency with no matching row in `entries` is "unsettled" and forces
+ * `escalate` regardless of `verdict` — it cannot be judged safe from the queue alone.
+ * Otherwise, `verdict` passes through unchanged.
+ *
+ * @param {"run-candidate"|"hold"|"escalate"} verdict
+ * @param {{ blocked: boolean, dependsOn: string[], entries: Array<{feature: string, status: string}> }} precheck
+ * @returns {"run-candidate"|"hold"|"escalate"}
+ */
+export function honourA1Verdict(verdict, precheck) {
+  const p = precheck || {};
+  if (p.blocked) {
+    return "escalate";
+  }
+  const dependsOn = Array.isArray(p.dependsOn) ? p.dependsOn : [];
+  const entries = Array.isArray(p.entries) ? p.entries : [];
+  const unsettled = dependsOn.some((dep) => !entries.some((e) => e.feature === dep));
+  if (unsettled) {
+    return "escalate";
+  }
+  return verdict;
+}
+
+// ─── Advisory SeamOps builders (TSPEC §6.3/§6.4) ──────────────────────────────
+
+/**
+ * A1's `SeamOps` (TSPEC §6.3): triage-abstention adjudication. A1-4 — no file-changing
+ * capability at all: `declaredScope`/`permittedActions` are both empty, `verifyGate` is null,
+ * and `apply`/`producedPaths`/`revert` are unreachable (the generic driver never calls them when
+ * `permittedActions` is empty) but throw descriptively rather than silently no-op if it ever did.
+ *
+ * @param {{ feature: string, reqPath: string, dependsOn: string[], triageReason: string, precheck: object }} args
+ * @returns {import("./orchestrate-dev.js").SeamOps}
+ */
+function buildA1SeamOps({ feature, reqPath, dependsOn, triageReason, precheck }) {
+  const unreachable = (member) => async () => {
+    throw new Error(
+      `A1 SeamOps.${member} is unreachable: permittedActions is empty (TSPEC §6.3, A1-4)`
+    );
+  };
+  return {
+    gatherEvidence: async () =>
+      `Feature: ${feature}\nREQ: ${reqPath}\n` +
+      `Phase-0 triage abstained: ${triageReason}\n` +
+      `Declared dependencies: ${dependsOn.length ? dependsOn.join(", ") : "(none)"}\n` +
+      `Pre-check: ${JSON.stringify(precheck)}`,
+    prompt: (evidence) =>
+      `A1 triage-abstention adjudication for "${feature}".\n${evidence}\n\n` +
+      `Decide whether the pipeline should run for this candidate now. Reply with your verdict ` +
+      `trailer; proposedAction must be exactly one of "run-candidate", "hold", or "escalate".`,
+    conditionHolds: async () => true,
+    apply: unreachable("apply"),
+    producedPaths: unreachable("producedPaths"),
+    revert: unreachable("revert"),
+    verifyGate: null,
+    declaredScope: [],
+    permittedActions: [],
+  };
+}
+
+/**
+ * A2's `SeamOps` placeholder (TSPEC §6.4). PLAN A-31 lands A2's real re-grounding semantics
+ * (gatherEvidence/prompt/apply/verifyGate); this task (A-30) only wires routing to A2 by seam
+ * token, so this stub carries A2's structural declaredScope/permittedActions and throws on the
+ * members A-31 has not landed yet, rather than silently no-op.
+ *
+ * @param {{ feature: string, reqPath: string }} args
+ * @returns {import("./orchestrate-dev.js").SeamOps}
+ */
+function buildA2SeamOpsPlaceholder({ feature, reqPath }) {
+  const notYetImplemented = (member) => async () => {
+    throw new Error(`A2 SeamOps.${member} is not yet implemented (PLAN A-31) for "${feature}"`);
+  };
+  return {
+    gatherEvidence: notYetImplemented("gatherEvidence"),
+    prompt: notYetImplemented("prompt"),
+    conditionHolds: notYetImplemented("conditionHolds"),
+    apply: notYetImplemented("apply"),
+    producedPaths: notYetImplemented("producedPaths"),
+    revert: notYetImplemented("revert"),
+    verifyGate: notYetImplemented("verifyGate"),
+    declaredScope: [reqPath],
+    permittedActions: ["E-4"],
+  };
+}
+
 // ─── Prompt helper ───────────────────────────────────────────────────────────
 
 export function triagePrompt(feature, reqPath, dependsOn) {
@@ -781,6 +875,23 @@ async function defaultGit(argv, { execFn } = {}) {
   }
 }
 
+/**
+ * Default for `_readAdvisoryConfig` (TSPEC §6.1). Composes the raw-text read seam
+ * (`readAdvisoryConfigSafely`, never throws — a missing/unreadable file maps to `null`) with the
+ * pure parse (`parseAdvisoryConfig`), mirroring the read+parse composition orchestrate-dev's own
+ * `main` uses for merge config (dev.js:1412-1413: `raw = await readMergeConfigSafely(...); parsed
+ * = parseMergeConfig(raw);`). Callers receive the fully parsed `{config, sectionMalformed,
+ * invalidKeys}` shape and never see raw JSON text.
+ *
+ * @param {function} readFileFn - async (path) => string|null
+ * @param {string} path
+ * @returns {Promise<{config: object, sectionMalformed: boolean, invalidKeys: string[]}>}
+ */
+async function defaultReadAdvisoryConfig(readFileFn, path) {
+  const raw = await readAdvisoryConfigSafely(readFileFn, path);
+  return parseAdvisoryConfig(raw);
+}
+
 // ─── main() ───────────────────────────────────────────────────────────────────
 
 /**
@@ -804,8 +915,11 @@ export default async function main({
   _agent: rawAgentFn = agent,
   _readFile: readFileFn = defaultReadFile,
   _writeFile: writeFileFn = defaultWriteFile,
+  _appendFile: appendFileFn = defaultAppendFile,
   _git: gitFn = defaultGit,
   _runPipeline: runPipelineFn = realMain,
+  _runAdvisorySeam: runAdvisorySeamFn = runAdvisorySeam,
+  _readAdvisoryConfig: readAdvisoryConfigFn = defaultReadAdvisoryConfig,
   _log: logFn = log,
   _phase: phaseFn = phase,
 } = {}) {
@@ -864,6 +978,13 @@ export default async function main({
   }
   const finish = (fields) => buildQueueReport({ ...fields, driftReport: driftNotice });
 
+  // ─── Advisory-tier config (TSPEC §6.1) ───────────────────────────────────
+  // Read once per run: after the drift gate (a blocked gate costs no advisory work) and before
+  // QUEUE.md is read, so every candidate walked below shares one config read and one rung-state
+  // memo (TSPEC §3.4/§3.5 — model-rung resolution happens once per run, not once per seam call).
+  const advisoryConfig = await readAdvisoryConfigFn(readFileFn, ADVISORY_CONFIG_PATH);
+  const rungState = { resolved: null };
+
   // ─── Load queue ─────────────────────────────────────────────────────────
   phaseFn("Queue: Load");
   const queueText = await readFileFn(queuePath);
@@ -909,8 +1030,16 @@ export default async function main({
   const skipped = [];
 
   for (const entry of selection.candidates) {
-    // REQ-gate: frontmatter must mark ready:true and contributes extra deps.
-    const reqText = await readFileFn(entry.reqPath);
+    // REQ-gate: frontmatter must mark ready:true and contributes extra deps. `readFileFn`'s
+    // documented contract is `async (path) => string|null` (never throws), but a queue may walk
+    // past entries whose REQ was never seeded for this candidate's scenario — tolerate an
+    // injected double that throws (e.g. an ENOENT-shaped error) the same as a documented `null`.
+    let reqText;
+    try {
+      reqText = await readFileFn(entry.reqPath);
+    } catch {
+      reqText = null;
+    }
     if (reqText == null) {
       emit(`Skip "${entry.feature}": REQ not found at ${entry.reqPath}.`);
       skipped.push({ feature: entry.feature, reason: "REQ file missing" });
@@ -954,12 +1083,84 @@ export default async function main({
       continue;
     }
     if (triage.verdict === "needs-human") {
-      emit(
-        `Skip "${entry.feature}": needs human decision — ${triage.reason}.`
-      );
+      // TSPEC §6.1/§6.2 — the seam token on the triage verdict names the route; default to A1
+      // (triage-abstention adjudication) when no recognised token is present.
+      const seam = triage.seamToken === "A2" ? "A2" : "A1";
+      const seamOps =
+        seam === "A2"
+          ? buildA2SeamOpsPlaceholder({ feature: entry.feature, reqPath: entry.reqPath })
+          : buildA1SeamOps({
+              feature: entry.feature,
+              reqPath: entry.reqPath,
+              dependsOn,
+              triageReason: triage.reason,
+              precheck,
+            });
+
+      // A1/A2 dispatch through the raw agent, NOT the MODEL_QUEUE-pinned `agentFn` wrapper
+      // (TSPEC §6.1) — the advisory driver resolves its own model rung.
+      const advisoryDisposition = await runAdvisorySeamFn({
+        seam,
+        feature: entry.feature,
+        seamOps,
+        config: advisoryConfig.config,
+        rungState,
+        _agent: rawAgentFn,
+        _appendFile: appendFileFn,
+        _writeFile: writeFileFn,
+        _readFile: readFileFn,
+        _git: gitFn,
+        _log: emit,
+      });
+
+      if (seam === "A1") {
+        // Decision #3 (this file's own header / advisoryQueueSeams.test.js): A1 declares
+        // permittedActions: [], so the generic driver always classifies A1's real recommendation
+        // as out-of-envelope — that is A1's normal completion, not a driver failure. Read
+        // `disposition.verdict.proposedAction` through `honourA1Verdict` only in that case; any
+        // other escalation reason is an unconditional escalate regardless of proposedAction.
+        const action =
+          advisoryDisposition.reason === "out-of-envelope" && advisoryDisposition.verdict
+            ? honourA1Verdict(advisoryDisposition.verdict.proposedAction, {
+                blocked: precheck.blocked,
+                dependsOn,
+                entries,
+              })
+            : "escalate";
+
+        if (action === "run-candidate") {
+          return runPicked({
+            entry,
+            dependsOn,
+            triageReason: triage.reason,
+            queuePath,
+            queueText,
+            remainingPending,
+            skipped,
+            runPipelineFn,
+            writeFileFn,
+            readFileFn,
+            gitFn,
+            phaseFn,
+            emit,
+            finish,
+          });
+        }
+
+        emit(`Skip "${entry.feature}": A1 adjudicated ${action} — ${triage.reason}.`);
+        skipped.push({
+          feature: entry.feature,
+          reason: `needs-human (A1 ${action}): ${triage.reason}`,
+        });
+        continue;
+      }
+
+      // A2 (PLAN A-31 lands its real apply/verifyGate handling) — for this task's scope, an A2
+      // route never picks the candidate; it is skipped exactly like any other needs-human stop.
+      emit(`Skip "${entry.feature}": needs human decision (A2) — ${triage.reason}.`);
       skipped.push({
         feature: entry.feature,
-        reason: `needs-human: ${triage.reason}`,
+        reason: `needs-human (A2): ${triage.reason}`,
       });
       continue;
     }
