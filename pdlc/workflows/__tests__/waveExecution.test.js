@@ -568,7 +568,7 @@ describe("Phase I — the post-wave command and its build-output commit", () => 
     },
   });
 
-  it("runs the post-wave command AFTER the gate and commits the pathspecs", async () => {
+  it("runs the post-wave command BEFORE the gate and commits the pathspecs", async () => {
     const gitCalls = [];
     const ran = [];
     const result = await main(
@@ -582,10 +582,11 @@ describe("Phase I — the post-wave command and its build-output commit", () => 
       })
     );
     expect(result.outcome).toBe("success");
-    // …then the V-wave's verification run of the test command (§3.2 row 2). The
-    // post-wave BUILD command belongs to the implementation waves and is not
-    // repeated for the V-wave, which is exactly what this ordering shows.
-    expect(ran).toEqual(["npm test", "node build.mjs", "npm test"]);
+    // The BUILD precedes the wave's gate: the suite asserts generated-artifact
+    // freshness, so a source-editing wave must be built before it is judged.
+    // Then the V-wave's verification run of the test command (§3.2 row 2) —
+    // the build belongs to the implementation waves and is not repeated there.
+    expect(ran).toEqual(["node build.mjs", "npm test", "npm test"]);
 
     const commits = gitCalls.filter((a) => a[0] === "commit").map((a) => a[2]);
     expect(commits).toEqual([

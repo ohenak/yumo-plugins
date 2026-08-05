@@ -10319,22 +10319,12 @@ async function main({
         // Dispatch-level failures halt whatever the gate is (rules 1 and 3).
         evaluateWaveDispatch(waveResults, waveIndex, wave);
 
-        if (scriptGate) {
-          const gate = await runCommandFn(implConfig.testCommand);
-          if (!gate || gate.ok !== true) {
-            throw haltError(
-              `Error: Wave ${waveNum} test gate failed — \`${implConfig.testCommand}\` ` +
-                `did not pass. Output tail:\n${outputTail(gate && gate.output)}`
-            );
-          }
-          emit(`Wave ${waveNum} gate: \`${implConfig.testCommand}\` passed`);
-        } else {
-          evaluateBatchGate(waveResults, waveIndex, wave);
-        }
-
-        // A build that fails is a red wave: the suite can pass against sources
-        // whose generated artifacts no longer match them (this repo's own
-        // build-runtime is exactly that shape).
+        // The build runs BEFORE the test gate: a wave that edits workflow
+        // sources leaves the generated artifacts stale, and the suite itself
+        // asserts their freshness (runtimeBundle.test.js) — gating first would
+        // red every source-editing wave for its own unbuilt outputs. A build
+        // that fails is still a red wave in its own right: the suite can pass
+        // against sources whose generated artifacts no longer match them.
         let postWaveRan = false;
         if (implConfig.postWaveCommand && typeof runCommandFn === "function") {
           const post = await runCommandFn(implConfig.postWaveCommand);
@@ -10347,6 +10337,19 @@ async function main({
           }
           postWaveRan = true;
           emit(`Wave ${waveNum} post-wave: \`${implConfig.postWaveCommand}\` passed`);
+        }
+
+        if (scriptGate) {
+          const gate = await runCommandFn(implConfig.testCommand);
+          if (!gate || gate.ok !== true) {
+            throw haltError(
+              `Error: Wave ${waveNum} test gate failed — \`${implConfig.testCommand}\` ` +
+                `did not pass. Output tail:\n${outputTail(gate && gate.output)}`
+            );
+          }
+          emit(`Wave ${waveNum} gate: \`${implConfig.testCommand}\` passed`);
+        } else {
+          evaluateBatchGate(waveResults, waveIndex, wave);
         }
 
         // Only now — verified — does anything get committed (M-6).
