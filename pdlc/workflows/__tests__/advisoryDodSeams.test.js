@@ -707,3 +707,259 @@ describe("A-23 — A3/A4 seams", () => {
     });
   });
 });
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+// A-25 — Phase DOD wiring (batch 12)
+// ═══════════════════════════════════════════════════════════════════════════════════════════════
+//
+// The phase-integration halves of PROP-A3-05/PROP-A3-07/PROP-A4-03/PROP-A4-09 (PLAN §8.3 note 1)
+// plus this task's own PLAN row: `main`'s `_runAdvisorySeam`/`_readAdvisoryConfig` seams, the
+// once-per-run config read plus the `{ resolved: null }` memo, and the two insertion points
+// immediately before the pre-existing rebase-conflict and DoD-not-passed `haltError`s — both
+// original halts left byte-identical, A3's branch unconditional (TSPEC §7.1, PLAN I-7/I-8).
+//
+// Per this file's header decision 3, `parseA3Classification`'s wiring into a disposition's
+// `classificationSummary` is real-driver surface owned elsewhere; this block fakes
+// `_runAdvisorySeam` for every case except the "tier disabled end-to-end" one, which drives the
+// real `runAdvisorySeam` to confirm the pre-existing (tier-off) behaviour is untouched by the
+// wiring. It reproduces the minimal "drive `main()` through Phase DOD" fixture
+// `dodPhase.test.js`'s "Phase DOD wiring in main()" describe block already establishes, rather than
+// importing across test files.
+describe("A-25 — Phase DOD wiring", () => {
+  const readParseablePlan = (path) =>
+    String(path).includes("/PLAN-")
+      ? "| Task ID | Description | Batch | Dependencies |\n|---|---|---|---|\n| T1 | first | 1 | - |\n\n| Task | Files |\n|---|---|\n| T1 | `src/one.js` |\n"
+      : null;
+
+  function makeSuccessAgent() {
+    return async (skill, prompt) => {
+      if (skill === "guard") return { ok: true };
+      if (["se-review", "te-review", "pm-review"].includes(skill)) {
+        return 'Review.\nVERDICT: Approved\n{"high": 0, "medium": 0, "low": 0}\n';
+      }
+      if (["pm-author", "se-author", "te-author"].includes(skill)) {
+        if (typeof prompt === "string" && prompt.includes("DECISIONS_WARRANTED")) {
+          return "Finalized.\nDECISIONS_WARRANTED: false";
+        }
+        if (typeof prompt === "string" && prompt.includes("Return a JSON object")) {
+          return JSON.stringify({ tasks: [{ id: "T1", description: "x", dependencies: [], planBatch: 1 }] });
+        }
+        return "Document created.";
+      }
+      if (skill === "se-implement") return "Tests: 3 passed, 0 failed.";
+      if (skill === "harvest-learnings") return "Harvest complete.";
+      if (skill === "dod-verify") return "Clean.\nDOD_STATUS: passed";
+      if (skill === "ship-pr") {
+        if (prompt.includes("Rebase the feature branch")) return "Rebased.\nREBASE_STATUS: clean";
+        if (prompt.includes("Raise a pull request")) return "PR opened.\nPR_URL: https://github.com/acme/repo/pull/42";
+        return "Checks.\nCI_STATUS: passed";
+      }
+      return "Success.";
+    };
+  }
+
+  function baseArgs(overrides = {}) {
+    return {
+      reqPath: "docs/test-feat/REQ-test-feat.md",
+      _readFile: readParseablePlan,
+      _agent: makeSuccessAgent(),
+      _parallel: (p) => Promise.all(p),
+      _checkFile: () => ({ ok: true }),
+      _phase: () => {},
+      _pipeline: async (l, fn) => fn(),
+      _mergeWorktree: async () => ({ ok: true }),
+      _raisePrAndVerifyCi: async () => ({ prUrl: "https://x/pull/1", ciStatus: "passed" }),
+      // Enabled by default so a test that overrides only `_dodVerifyLoop`/`_rebaseOntoDefault`
+      // still exercises the wiring; `_runAdvisorySeam` defaults to a no-op fake so the tier being
+      // "on" carries no behavioural effect unless a case overrides the seam fake itself.
+      _readAdvisoryConfig: async () => JSON.stringify({ advisory: { enabled: true } }),
+      _runAdvisorySeam: async () => ({ outcome: "no-action", reason: null, verdict: null, attempts: 0 }),
+      ...overrides,
+    };
+  }
+
+  test("reads the advisory config exactly once per run, before the phase loop", async () => {
+    let calls = 0;
+    const result = await dev.default(
+      baseArgs({
+        _readAdvisoryConfig: async () => {
+          calls += 1;
+          return JSON.stringify({ advisory: { enabled: true } });
+        },
+      })
+    );
+    expect(result.outcome).toBe("success");
+    expect(calls).toBe(1);
+  });
+
+  test("threads one { resolved: null } rungState memo across every advisory seam dispatch in the run", async () => {
+    const seenRungStates = [];
+    const result = await dev.default(
+      baseArgs({
+        _rebaseOntoDefault: async () => "conflict",
+        _dodVerifyLoop: async () => ({
+          passed: false,
+          iterations: 3,
+          lastStatus: { stubs: 1, mock_data: 0, unwired_integrations: 0, coverage_below_threshold: false, req_gaps: 0 },
+        }),
+        _runAdvisorySeam: async ({ seam, rungState, config }) => {
+          seenRungStates.push(rungState);
+          expect(config.enabled).toBe(true);
+          if (seam === "A4") {
+            expect(rungState).toEqual({ resolved: null });
+            rungState.__marker = "set-by-A4";
+            return { outcome: "resolved", reason: null, verdict: null, attempts: 1 };
+          }
+          expect(seam).toBe("A3");
+          return { outcome: "escalated", reason: "prohibited-action", verdict: null, attempts: 1, classificationSummary: "" };
+        },
+      })
+    );
+    expect(result.outcome).toBe("halted");
+    expect(seenRungStates).toHaveLength(2);
+    expect(seenRungStates[0]).toBe(seenRungStates[1]); // same object reference, not a structural copy
+    expect(seenRungStates[1].__marker).toBe("set-by-A4");
+  });
+
+  test("A4 escalated leaves the rebase-conflict halt byte-identical and the DoD loop never runs", async () => {
+    let dodCalled = false;
+    const result = await dev.default(
+      baseArgs({
+        _rebaseOntoDefault: async () => "conflict",
+        _dodVerifyLoop: async () => {
+          dodCalled = true;
+          return { passed: true, iterations: 1 };
+        },
+        _runAdvisorySeam: async ({ seam }) => {
+          expect(seam).toBe("A4");
+          return { outcome: "escalated", reason: "out-of-envelope", verdict: null, attempts: 1 };
+        },
+      })
+    );
+    expect(dodCalled).toBe(false);
+    expect(result.outcome).toBe("halted");
+    expect(result.haltReason).toBe(
+      "Phase DOD — rebase conflict for feature test-feat. " +
+        "The feature branch cannot be cleanly rebased onto the default branch. " +
+        "Resolve conflicts manually and re-run."
+    );
+  });
+
+  test("A4 no-action also leaves the rebase-conflict halt byte-identical (only resolved bypasses it)", async () => {
+    const result = await dev.default(
+      baseArgs({
+        _rebaseOntoDefault: async () => "conflict",
+        _runAdvisorySeam: async () => ({ outcome: "no-action", reason: null, verdict: null, attempts: 0 }),
+      })
+    );
+    expect(result.outcome).toBe("halted");
+    expect(result.haltReason).toBe(
+      "Phase DOD — rebase conflict for feature test-feat. " +
+        "The feature branch cannot be cleanly rebased onto the default branch. " +
+        "Resolve conflicts manually and re-run."
+    );
+  });
+
+  test("A4 resolved falls through to the DoD verification loop instead of halting on rebase conflict", async () => {
+    let dodCalled = false;
+    const result = await dev.default(
+      baseArgs({
+        _rebaseOntoDefault: async () => "conflict",
+        _dodVerifyLoop: async () => {
+          dodCalled = true;
+          return { passed: true, iterations: 1 };
+        },
+        _runAdvisorySeam: async ({ seam }) => {
+          expect(seam).toBe("A4");
+          return { outcome: "resolved", reason: null, verdict: null, attempts: 1 };
+        },
+      })
+    );
+    expect(dodCalled).toBe(true);
+    expect(result.outcome).toBe("success");
+    const dod = result.phases.find((p) => p.phase === "DOD");
+    expect(dod.status).toBe("✅");
+  });
+
+  test("A3's branch is unconditional: the DoD-not-passed halt fires even when the fake seam reports resolved", async () => {
+    let a3Calls = 0;
+    const result = await dev.default(
+      baseArgs({
+        _dodVerifyLoop: async () => ({
+          passed: false,
+          iterations: 3,
+          lastStatus: { stubs: 2, mock_data: 0, unwired_integrations: 1, coverage_below_threshold: true, req_gaps: 3 },
+        }),
+        _runAdvisorySeam: async ({ seam }) => {
+          a3Calls += 1;
+          expect(seam).toBe("A3");
+          return { outcome: "resolved", reason: null, verdict: null, attempts: 1, classificationSummary: "irrelevant" };
+        },
+      })
+    );
+    expect(a3Calls).toBe(1);
+    expect(result.outcome).toBe("halted");
+    expect(result.haltReason).toMatch(/Definition of Done not met/);
+  });
+
+  test("appends the A3 disposition's classificationSummary to the DoD-not-passed halt", async () => {
+    const result = await dev.default(
+      baseArgs({
+        _dodVerifyLoop: async () => ({
+          passed: false,
+          iterations: 3,
+          lastStatus: { stubs: 2, mock_data: 0, unwired_integrations: 1, coverage_below_threshold: true, req_gaps: 3 },
+        }),
+        _runAdvisorySeam: async ({ seam }) => ({
+          seam,
+          outcome: "escalated",
+          reason: "prohibited-action",
+          verdict: null,
+          attempts: 1,
+          classificationSummary: "real-defect: coverage below threshold (evidence: file.js:10)",
+        }),
+      })
+    );
+    expect(result.outcome).toBe("halted");
+    expect(result.haltReason).toBe(
+      "Phase DOD failed after 3 iterations — Definition of Done not met. " +
+        "stubs=2, mock_data=0, unwired=1, coverage_gap=true, req_gaps=3 " +
+        "real-defect: coverage below threshold (evidence: file.js:10)"
+    );
+  });
+
+  test("byte-identical DoD-not-passed halt when the seam disposition carries no classificationSummary", async () => {
+    const result = await dev.default(
+      baseArgs({
+        _dodVerifyLoop: async () => ({
+          passed: false,
+          iterations: 3,
+          lastStatus: { stubs: 2, mock_data: 0, unwired_integrations: 1, coverage_below_threshold: true, req_gaps: 3 },
+        }),
+        _runAdvisorySeam: async () => ({ outcome: "escalated", reason: "prohibited-action", verdict: null, attempts: 1 }),
+      })
+    );
+    expect(result.outcome).toBe("halted");
+    expect(result.haltReason).toBe(
+      "Phase DOD failed after 3 iterations — Definition of Done not met. stubs=2, mock_data=0, unwired=1, coverage_gap=true, req_gaps=3"
+    );
+  });
+
+  test("tier disabled end-to-end: the real runAdvisorySeam no-actions and both halts remain exactly as pre-existing", async () => {
+    const result = await dev.default(
+      baseArgs({
+        _runAdvisorySeam: dev.runAdvisorySeam,
+        _readAdvisoryConfig: async () => null, // no config file ⇒ ADVISORY_DEFAULTS.enabled === false
+        _dodVerifyLoop: async () => ({
+          passed: false,
+          iterations: 3,
+          lastStatus: { stubs: 2, mock_data: 0, unwired_integrations: 1, coverage_below_threshold: true, req_gaps: 3 },
+        }),
+      })
+    );
+    expect(result.outcome).toBe("halted");
+    expect(result.haltReason).toBe(
+      "Phase DOD failed after 3 iterations — Definition of Done not met. stubs=2, mock_data=0, unwired=1, coverage_gap=true, req_gaps=3"
+    );
+  });
+});
