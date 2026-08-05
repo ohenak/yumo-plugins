@@ -7336,9 +7336,9 @@ function waveImplementPrompt(task, featureName) {
     // six retries composing a single large edit. The clause below is the wave
     // sibling of PACING_CONTRACT_CLAUSE: small writes, frequent tool calls.
     `PACING (hard runtime constraint): you are killed after 180 seconds without a tool call. ` +
-    `Never compose one large write — create each file as a skeleton first, then extend it in ` +
-    `increments of at most 8,000 bytes per Write/Edit, interleaving verification commands. ` +
-    `If a single edit would be long, split it into several smaller edits.\n` +
+    `Never compose one large write — start each file small and extend it in increments of at ` +
+    `most 8,000 bytes per Write/Edit, interleaving verification commands. If a single edit ` +
+    `would be long, split it into several smaller edits.\n` +
     `Report a short summary of what you changed.\n` +
     branchPinClause(featureName)
   );

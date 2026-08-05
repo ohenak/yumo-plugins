@@ -5423,9 +5423,9 @@ function waveImplementPrompt(task, featureName) {
     `Do NOT run git add or git commit — the orchestrator verifies your work and commits it.\n` +
 
     `PACING (hard runtime constraint): you are killed after 180 seconds without a tool call. ` +
-    `Never compose one large write — create each file as a skeleton first, then extend it in ` +
-    `increments of at most 8,000 bytes per Write/Edit, interleaving verification commands. ` +
-    `If a single edit would be long, split it into several smaller edits.\n` +
+    `Never compose one large write — start each file small and extend it in increments of at ` +
+    `most 8,000 bytes per Write/Edit, interleaving verification commands. If a single edit ` +
+    `would be long, split it into several smaller edits.\n` +
     `Report a short summary of what you changed.\n` +
     branchPinClause(featureName)
   );
