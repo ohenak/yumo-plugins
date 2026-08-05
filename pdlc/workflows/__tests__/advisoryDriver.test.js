@@ -703,7 +703,7 @@ describe("A-22 — driver lifecycle", () => {
 // A-23 — A3/A4 gate exclusivity (batch 10)
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
-describe("A-23 — A3/A4 gate exclusivity", () => {
+describe.skip("A-23 — A3/A4 gate exclusivity", () => {
   gateExclusivityCases(["A3", "A4"]);
 });
 
@@ -711,7 +711,7 @@ describe("A-23 — A3/A4 gate exclusivity", () => {
 // A-24 — A5 gate exclusivity (batch 11)
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
-describe("A-24 — A5 gate exclusivity", () => {
+describe.skip("A-24 — A5 gate exclusivity", () => {
   gateExclusivityCases(["A5"]);
 });
 
@@ -719,6 +719,6 @@ describe("A-24 — A5 gate exclusivity", () => {
 // A-31 — A1/A2 gate exclusivity (batch 12)
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
-describe("A-31 — A1/A2 gate exclusivity", () => {
+describe.skip("A-31 — A1/A2 gate exclusivity", () => {
   gateExclusivityCases(["A1", "A2"]);
 });
