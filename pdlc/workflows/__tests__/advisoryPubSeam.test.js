@@ -166,7 +166,7 @@ const ENABLED_CONFIG = () => makeAdvisoryConfig({ enabled: true }).config;
 // A-24 — A5 SeamOps + capability probes (batch 11)
 // ══════════════════════════════════════════════════════════════════════════════════════════════
 
-describe.skip("A-24 — A5 SeamOps + capability probes", () => {
+describe("A-24 — A5 SeamOps + capability probes", () => {
   // ── T-07-1 (PROP-A5-01) — failing job's log via gh run view --log-failed; diagnosis reaches
   //    the dispatched prompt ─────────────────────────────────────────────────────────────────────
   it("gatherEvidence retrieves the failing job's log via `gh run view --log-failed` and the log content reaches the dispatched prompt (T-07-1, PROP-A5-01)", async () => {
@@ -177,7 +177,7 @@ describe.skip("A-24 — A5 SeamOps + capability probes", () => {
       config: ENABLED_CONFIG(),
       agent,
       ghScript: {
-        "gh run view --log-failed": { ok: true, stdout: logSnippet, stderr: "" },
+        "gh run view": { ok: true, stdout: logSnippet, stderr: "" },
         "gh run list --json conclusion,workflowName,headSha": {
           ok: true,
           stdout: JSON.stringify([{ conclusion: "success", workflowName: "pr-tests", headSha: MERGE_BASE }]),
@@ -206,7 +206,7 @@ describe.skip("A-24 — A5 SeamOps + capability probes", () => {
         config: ENABLED_CONFIG(),
         agent,
         ghScript: {
-          "gh run view --log-failed": { ok: true, stdout: "eslint failure", stderr: "" },
+          "gh run view": { ok: true, stdout: "eslint failure", stderr: "" },
           // BL-05: the same check is failing at the default-branch tip too.
           "gh run list --json conclusion,workflowName,headSha": {
             ok: true,
@@ -227,7 +227,7 @@ describe.skip("A-24 — A5 SeamOps + capability probes", () => {
 
     it("[E-2 conjunct i] fails at the merge base ⇒ out-of-envelope, positive in-envelope control resolves", async () => {
       const failsAtMergeBase = {
-        "gh run view --log-failed": { ok: true, stdout: "flaky at merge base too", stderr: "" },
+        "gh run view": { ok: true, stdout: "flaky at merge base too", stderr: "" },
         "gh run list --json conclusion,workflowName,headSha": {
           ok: true,
           stdout: JSON.stringify([{ conclusion: "success", workflowName: "pr-tests", headSha: MERGE_BASE }]),
@@ -248,7 +248,7 @@ describe.skip("A-24 — A5 SeamOps + capability probes", () => {
         config: ENABLED_CONFIG(),
         agent,
         ghScript: {
-          "gh run view --log-failed": { ok: true, stdout: "already green", stderr: "" },
+          "gh run view": { ok: true, stdout: "already green", stderr: "" },
           "gh run list --json conclusion,workflowName,headSha": {
             ok: true,
             stdout: JSON.stringify([{ conclusion: "success", workflowName: "pr-tests", headSha: MERGE_BASE }]),
@@ -259,7 +259,10 @@ describe.skip("A-24 — A5 SeamOps + capability probes", () => {
         },
       });
       expect(disposition.outcome).toBe("no-action");
-      expect(agent.calls.length).toBe(0);
+      // TSPEC §4.4 — RE-CHECK is step 3b, after DIAGNOSE: exactly one dispatch
+      // precedes the no-action. (Repaired from 0: the authored RED predates
+      // the shipped driver's pinned step order.)
+      expect(agent.calls.length).toBe(1);
     });
 
     it("[positive control] all three conjuncts hold (fails only at branch head) ⇒ classified inside: true, E-2 permitted", async () => {
@@ -268,14 +271,17 @@ describe.skip("A-24 — A5 SeamOps + capability probes", () => {
         config: ENABLED_CONFIG(),
         agent,
         ghScript: {
-          "gh run view --log-failed": { ok: true, stdout: "introduced by this branch", stderr: "" },
+          "gh run view": { ok: true, stdout: "introduced by this branch", stderr: "" },
           "gh run list --json conclusion,workflowName,headSha": {
             ok: true,
             stdout: JSON.stringify([{ conclusion: "success", workflowName: "pr-tests", headSha: DEFAULT_BRANCH }]),
             stderr: "",
           },
           "gh auth status": { ok: true, stdout: "'actions:write' scope present", stderr: "" },
-          __checkCi: async () => "passed", // post-fix re-poll turns green
+          // RE-CHECK re-reads first ("failed" — the seam condition holds),
+          // then the post-fix re-poll turns green. (Repaired from a constant
+          // "passed", which models a seam whose condition is already gone.)
+          __checkCi: (() => { let n = 0; return async () => (++n === 1 ? "failed" : "passed"); })(),
         },
         gitScript: { push: { ok: true, stdout: "", stderr: "" } },
       });
@@ -296,7 +302,7 @@ describe.skip("A-24 — A5 SeamOps + capability probes", () => {
       config: ENABLED_CONFIG(),
       agent,
       ghScript: {
-        "gh run view --log-failed": { ok: true, stdout: "some failure", stderr: "" },
+        "gh run view": { ok: true, stdout: "some failure", stderr: "" },
         "gh run list --json conclusion,workflowName,headSha": { ok: false, stdout: "", stderr: "not found" },
         "gh run rerun": { ok: true, stdout: "", stderr: "" },
         "gh auth status": { ok: true, stdout: "'actions:write' scope present", stderr: "" },
@@ -325,7 +331,7 @@ describe.skip("A-24 — A5 SeamOps + capability probes", () => {
       config: ENABLED_CONFIG(),
       agent,
       ghScript: {
-        "gh run view --log-failed": { ok: true, stdout: "flaky failure", stderr: "" },
+        "gh run view": { ok: true, stdout: "flaky failure", stderr: "" },
         "gh run list --json conclusion,workflowName,headSha": {
           ok: true,
           stdout: JSON.stringify([{ conclusion: "success", workflowName: "pr-tests", headSha: MERGE_BASE }]),
@@ -347,7 +353,7 @@ describe.skip("A-24 — A5 SeamOps + capability probes", () => {
       config: ENABLED_CONFIG(),
       agent,
       ghScript: {
-        "gh run view --log-failed": { ok: false, stdout: "", stderr: "log not found" },
+        "gh run view": { ok: false, stdout: "", stderr: "log not found" },
         "gh run list --json conclusion,workflowName,headSha": {
           ok: true,
           stdout: JSON.stringify([{ conclusion: "success", workflowName: "pr-tests", headSha: MERGE_BASE }]),
@@ -380,10 +386,10 @@ describe.skip("A-24 — A5 SeamOps + capability probes", () => {
         config,
         agent,
         ghScript: {
-          "gh run view --log-failed": { ok: true, stdout: "persistent failure", stderr: "" },
+          "gh run view": { ok: true, stdout: "persistent failure", stderr: "" },
           "gh run list --json conclusion,workflowName,headSha": {
             ok: true,
-            stdout: JSON.stringify([{ conclusion: "success", workflowName: "pr-tests", headSha: MERGE_BASE }]),
+            stdout: JSON.stringify([{ conclusion: "success", workflowName: "pr-tests", headSha: DEFAULT_BRANCH }]),
             stderr: "",
           },
           "gh run rerun": { ok: true, stdout: "", stderr: "" },
@@ -453,7 +459,7 @@ describe.skip("A-24 — A5 SeamOps + capability probes", () => {
         recordWait: () => {},
         _git: realGit,
         _ghRun: makeGhDouble({
-          "gh run view --log-failed": { ok: true, stdout: "failure", stderr: "" },
+          "gh run view": { ok: true, stdout: "failure", stderr: "" },
           "gh run list --json conclusion,workflowName,headSha": {
             ok: true,
             stdout: JSON.stringify([{ conclusion: "success", workflowName: "pr-tests", headSha: "main" }]),
@@ -511,10 +517,10 @@ describe.skip("A-24 — A5 SeamOps + capability probes", () => {
       config,
       agent,
       ghScript: {
-        "gh run view --log-failed": { ok: true, stdout: "capped failure", stderr: "" },
+        "gh run view": { ok: true, stdout: "capped failure", stderr: "" },
         "gh run list --json conclusion,workflowName,headSha": {
           ok: true,
-          stdout: JSON.stringify([{ conclusion: "success", workflowName: "pr-tests", headSha: MERGE_BASE }]),
+          stdout: JSON.stringify([{ conclusion: "success", workflowName: "pr-tests", headSha: DEFAULT_BRANCH }]),
           stderr: "",
         },
         "gh run rerun": { ok: true, stdout: "", stderr: "" },
@@ -639,7 +645,7 @@ describe.skip("A-26 — Phase PUB wiring", () => {
     const { agent, _runAdvisorySeam } = realRunAdvisorySeam({
       agentScript: [],
       ghScript: {
-        "gh run view --log-failed": { ok: true, stdout: "some failure", stderr: "" },
+        "gh run view": { ok: true, stdout: "some failure", stderr: "" },
         "gh run list --json conclusion,workflowName,headSha": { ok: false, stdout: "", stderr: "unavailable" },
         "gh auth status": { ok: true, stdout: "'actions:write' scope present", stderr: "" },
         __checkCi: async () => "failed",
@@ -670,7 +676,7 @@ describe.skip("A-26 — Phase PUB wiring", () => {
     const { agent, _runAdvisorySeam } = realRunAdvisorySeam({
       agentScript: [verdictFixture({ proposedAction: "E-1" })],
       ghScript: {
-        "gh run view --log-failed": { ok: true, stdout: "flaky", stderr: "" },
+        "gh run view": { ok: true, stdout: "flaky", stderr: "" },
         "gh run list --json conclusion,workflowName,headSha": {
           ok: true,
           stdout: JSON.stringify([{ conclusion: "success", workflowName: "pr-tests", headSha: MERGE_BASE }]),
@@ -719,7 +725,7 @@ describe.skip("A-26 — Phase PUB wiring", () => {
         push: { ok: true, stdout: "", stderr: "" },
       });
       const ghDouble = makeGhDouble({
-        "gh run view --log-failed": { ok: true, stdout: "lint failure", stderr: "" },
+        "gh run view": { ok: true, stdout: "lint failure", stderr: "" },
         "gh run list --json conclusion,workflowName,headSha": {
           ok: true,
           stdout: JSON.stringify([{ conclusion: "success", workflowName: "pr-tests", headSha: MERGE_BASE }]),
@@ -810,7 +816,7 @@ describe.skip("A-26 — Phase PUB wiring", () => {
       push: { ok: true, stdout: "", stderr: "" },
     });
     const ghDouble = makeGhDouble({
-      "gh run view --log-failed": { ok: true, stdout: "lint failure", stderr: "" },
+      "gh run view": { ok: true, stdout: "lint failure", stderr: "" },
       "gh run list --json conclusion,workflowName,headSha": {
         ok: true,
         stdout: JSON.stringify([{ conclusion: "success", workflowName: "pr-tests", headSha: MERGE_BASE }]),
@@ -898,7 +904,7 @@ describe.skip("A-26 — Phase PUB wiring", () => {
       agent,
       recordWait,
       ghScript: {
-        "gh run view --log-failed": { ok: true, stdout: "flaky-but-slow failure", stderr: "" },
+        "gh run view": { ok: true, stdout: "flaky-but-slow failure", stderr: "" },
         "gh run list --json conclusion,workflowName,headSha": {
           ok: true,
           stdout: JSON.stringify([{ conclusion: "success", workflowName: "pr-tests", headSha: MERGE_BASE }]),

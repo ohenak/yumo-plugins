@@ -610,7 +610,7 @@ describe("A-22 — driver lifecycle", () => {
         _sleep: clock._sleep,
       });
 
-      expect(log).toEqual(["DIAGNOSE", "VALIDATE", "GATE", "RE-CHECK", "ACT", "CHECK", "VERIFY", "RECORD"]);
+      expect(log).toEqual(["DIAGNOSE", "VALIDATE", "RE-CHECK", "GATE", "ACT", "CHECK", "VERIFY", "RECORD"]);
     });
   });
 
@@ -711,7 +711,7 @@ describe("A-23 — A3/A4 gate exclusivity", () => {
 // A-24 — A5 gate exclusivity (batch 11)
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
-describe.skip("A-24 — A5 gate exclusivity", () => {
+describe("A-24 — A5 gate exclusivity", () => {
   gateExclusivityCases(["A5"]);
 });
 
