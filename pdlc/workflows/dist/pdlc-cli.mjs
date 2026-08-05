@@ -1,4 +1,5 @@
 import * as fs from "fs";
+import { dirname } from "path";
 
 // ⚠️  GENERATED FILE — DO NOT EDIT.
 // Built by `node pdlc/workflows/build-runtime.mjs` from:
@@ -1338,6 +1339,15 @@ const MERGE_ESCALATIONS = Object.freeze({
     `MERGE ESCALATION: working tree not updated after merging ${prUrl} — ${reason}; tree is on ${branch}`,
 });
 
+// TSPEC §10.2 — a sibling catalogue, deliberately adjacent to MERGE_ESCALATIONS so the two read
+// together, and deliberately NOT merged onto it (N-1 — MERGE_ESCALATIONS is untouched). Both
+// prefixes contain the substring `ESCALATION:`, so one grep finds both (N-3); the advisory
+// prefix is its own, distinct text (N-2).
+const ADVISORY_ESCALATIONS = Object.freeze({
+  seam: ({ seam, feature, reason }) =>
+    `ADVISORY ESCALATION: seam ${seam} for ${feature} — ${reason}; see docs/_queue/ESCALATIONS.md`,
+});
+
 /**
  * `phaseMerge` — PLAN A7 (TSPEC §7, §10.4). The orchestrator: reads config
  * once (O-M5, §3.3), drives `decideMerge`'s demand/resolution loop (§5.2)
@@ -2120,6 +2130,194 @@ function classifyEnvelope(candidate, ctx) {
   }
 
   return { inside: true, reason: null, matched: [...paths] };
+}
+
+// ─── TSPEC §9 — the advisory record (PLAN A-21) ────────────────────────────
+//
+// `docs/{feature}/ADVISORY-{feature}.md` — append-only, one `##` entry per invocation, in
+// occurrence order (R-3). Seven declared fields, matching §10.1's escalation-log table
+// one-for-one (TSPEC §9.1): Seam, Confidence, Envelope, Disposition, Model — a `| Field | Value
+// |` table — plus **Diagnosis.** and **Evidence.** prose sections.
+
+// A single line never carries an embedded raw newline into the record's line grammar
+// (PROP-REC-08/P-6) — every field body is passed through this before being interpolated.
+function advisoryEntrySingleLine(value) {
+  return String(value).replace(/\r?\n/g, " ");
+}
+
+/**
+ * `renderAdvisoryEntry(disposition, { now })` — pure (TSPEC §9.1, PROP-REC-01): takes the
+ * timestamp rather than reading a clock, so the rendered bytes are testable exactly. When
+ * `disposition.verdict` is `null` (an escalation that never reached a well-formed verdict),
+ * Confidence/Envelope fall back to `"n/a"`, Diagnosis to `"no verdict was produced"`, and
+ * Evidence to `"(none)"` — the totality claim (P-6) requires the renderer never throw on this
+ * case. The Model field carries the literal suffix `" (fallback)"` when `disposition.fallback`
+ * is true (PROP-REC-07) — the fallback readable off the record as well as off the summary (M-2).
+ *
+ * @param {{seam: string, outcome: string, reason: string|null, verdict: object|null,
+ *          attempts: number, model: string, fallback: boolean}} disposition
+ * @param {{now: string}} opts - `now` is an already-formatted timestamp string
+ * @returns {string}
+ */
+function renderAdvisoryEntry(disposition, { now }) {
+  const { seam, outcome, reason, verdict, model, fallback } = disposition;
+
+  const dispositionValue =
+    outcome === "escalated" && reason ? `${outcome} — ${reason}` : outcome;
+  const confidence = verdict ? verdict.confidence : "n/a";
+  const envelope = verdict ? (verdict.withinEnvelope ? "in" : "out") : "n/a";
+  const diagnosis = verdict ? verdict.diagnosis : "no verdict was produced";
+  const evidence =
+    verdict && Array.isArray(verdict.evidence) && verdict.evidence.length > 0
+      ? verdict.evidence
+      : ["(none)"];
+  const modelValue = fallback ? `${model} (fallback)` : model;
+
+  const lines = [
+    `## ${now} — ${seam} — ${outcome}`,
+    "",
+    "| Field | Value |",
+    "|---|---|",
+    `| Seam | ${seam} |`,
+    `| Confidence | ${advisoryEntrySingleLine(confidence)} |`,
+    `| Envelope | ${envelope} |`,
+    `| Disposition | ${advisoryEntrySingleLine(dispositionValue)} |`,
+    `| Model | ${advisoryEntrySingleLine(modelValue)} |`,
+    "",
+    `**Diagnosis.** ${advisoryEntrySingleLine(diagnosis)}`,
+    "",
+    "**Evidence.**",
+    ...evidence.map((e) => `- ${advisoryEntrySingleLine(e)}`),
+    "",
+  ];
+  return lines.join("\n");
+}
+
+/**
+ * `appendAdvisoryEntry` — the step-7 primitive (TSPEC §9.2). Throws on write failure; the
+ * driver's step 7 catches and refuses `record-write-failed` (§4.4). Written for EVERY terminal
+ * disposition including `no-action` (R-4) — the record is not escalation-only, unlike §10's log.
+ *
+ * @param {{feature: string, disposition: object, _appendFile: function, _now: function}} args
+ * @returns {Promise<void>}
+ */
+async function appendAdvisoryEntry({ feature, disposition, _appendFile, _now }) {
+  const now = _now();
+  const entry = renderAdvisoryEntry(disposition, { now });
+  const path = `docs/${feature}/ADVISORY-${feature}.md`;
+  await _appendFile(path, entry);
+}
+
+/**
+ * `advisorySummaryRows(dispositions)` — pure (TSPEC §9.4). `ADVISORY_SEAMS` drives the row list
+ * (S-1), so five rows always appear and a seam that never fired is visibly zero. The per-row and
+ * total identity `invocations === resolved + escalated + noAction` holds by construction. Each
+ * row also carries the `model`/`fallback` of its LAST invocation (S-2) — undefined/falsy when the
+ * seam never fired.
+ *
+ * @param {Array<{seam: string, outcome: string, model?: string, fallback?: boolean}>} dispositions
+ * @returns {{rows: Array<object>, total: object}}
+ */
+function advisorySummaryRows(dispositions) {
+  const list = Array.isArray(dispositions) ? dispositions : [];
+
+  const rows = ADVISORY_SEAMS.map((seam) => {
+    const forSeam = list.filter((d) => d && d.seam === seam);
+    const resolved = forSeam.filter((d) => d.outcome === "resolved").length;
+    const escalated = forSeam.filter((d) => d.outcome === "escalated").length;
+    const noAction = forSeam.filter((d) => d.outcome === "no-action").length;
+    const last = forSeam.length > 0 ? forSeam[forSeam.length - 1] : null;
+    return {
+      seam,
+      invocations: forSeam.length,
+      resolved,
+      escalated,
+      noAction,
+      model: last ? last.model : undefined,
+      fallback: last ? last.fallback : undefined,
+    };
+  });
+
+  const total = rows.reduce(
+    (acc, row) => ({
+      invocations: acc.invocations + row.invocations,
+      resolved: acc.resolved + row.resolved,
+      escalated: acc.escalated + row.escalated,
+      noAction: acc.noAction + row.noAction,
+    }),
+    { invocations: 0, resolved: 0, escalated: 0, noAction: 0 }
+  );
+
+  return { rows, total };
+}
+
+// ─── TSPEC §10 — the escalation log and report notices (PLAN A-21) ────────
+//
+// `docs/_queue/ESCALATIONS.md` — a single, non-feature-scoped, append-only log (TSPEC §10.1),
+// newest-last (L-1). Eight declared fields, the one-sentence decision statement first (L-2).
+const ESCALATIONS_PATH = "docs/_queue/ESCALATIONS.md";
+
+/**
+ * `renderEscalationEntry(disposition, ctx, { now })` — pure, mirroring `renderAdvisoryEntry`
+ * (TSPEC §10.1). Unlike the advisory record's `now`, this `now` is a millisecond epoch value
+ * (matching `_now()`'s existing convention elsewhere in this module) and is rendered via
+ * `new Date(now).toISOString()`.
+ *
+ * @param {{reason: string|null, verdict: object|null}} disposition
+ * @param {{feature: string, seam: string, phase: string, phaseOutcome: string, decision: string}} ctx
+ * @param {{now: number}} opts
+ * @returns {string}
+ */
+function renderEscalationEntry(disposition, ctx, { now }) {
+  const { reason, verdict } = disposition;
+  const { feature, seam, phase, phaseOutcome, decision } = ctx;
+  const iso = new Date(now).toISOString();
+
+  const diagnosis = verdict ? verdict.diagnosis : "no verdict was produced";
+  const proposedAction = verdict ? verdict.proposedAction : "(none)";
+  const evidence =
+    verdict && Array.isArray(verdict.evidence) && verdict.evidence.length > 0
+      ? verdict.evidence
+      : ["(none)"];
+
+  const lines = [
+    `## ${iso} — ${feature} — ${seam}`,
+    "",
+    `**Decide:** ${advisoryEntrySingleLine(decision)}`,
+    "",
+    "| Field | Value |",
+    "|---|---|",
+    `| Feature | ${feature} |`,
+    `| Seam | ${seam} |`,
+    `| Refusal reason | ${advisoryEntrySingleLine(reason ?? "n/a")} |`,
+    "",
+    `**Diagnosis.** ${advisoryEntrySingleLine(diagnosis)}`,
+    "",
+    `**Proposed action.** ${advisoryEntrySingleLine(proposedAction)}`,
+    "",
+    "**Evidence.**",
+    ...evidence.map((e) => `- ${advisoryEntrySingleLine(e)}`),
+    "",
+    `**Pipeline state.** ${phase} — ${phaseOutcome}`,
+    "",
+  ];
+  return lines.join("\n");
+}
+
+/**
+ * `appendEscalationEntry` — TSPEC §10.1. Uses `_appendFile` (`defaultAppendFile`, which now
+ * creates `docs/_queue/` when absent). Called OUTSIDE the try/catch that governs the seam's
+ * action (T-09-8): a throw here is caught by the CALLER, pushed onto `notices`, and the
+ * disposition is never upgraded to `resolved` on account of it — the asymmetry with a failed
+ * record write (§9.2, R-2), which does revert.
+ *
+ * @param {{disposition: object, ctx: object, _appendFile: function, _now: function}} args
+ * @returns {Promise<void>}
+ */
+async function appendEscalationEntry({ disposition, ctx, _appendFile, _now }) {
+  const now = _now();
+  const entry = renderEscalationEntry(disposition, ctx, { now });
+  await _appendFile(ESCALATIONS_PATH, entry);
 }
 
 // TSPEC-SCRIPT-03: Exported meta object
@@ -7305,6 +7503,11 @@ function defaultWriteFile(path, contents, { fsMod = fs } = {}) {
  * @returns {void}
  */
 function defaultAppendFile(path, text, { fsMod = fs } = {}) {
+  // TSPEC §10.1 — creates the parent directory (e.g. `docs/_queue/`) when absent, so a
+  // consumer repo with no queue directory yet still gets its escalation log written. Strictly
+  // additive: `appendFileSync` below already throws on failure, and `mkdirSync` does too — the
+  // function's "throws on failure" contract is unchanged.
+  fsMod.mkdirSync(dirname(path), { recursive: true });
   fsMod.appendFileSync(path, text, "utf8");
 }
 
