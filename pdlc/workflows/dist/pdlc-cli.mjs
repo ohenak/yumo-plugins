@@ -7331,6 +7331,14 @@ function waveImplementPrompt(task, featureName) {
     `Run only your task's targeted tests — do not run the full suite; the orchestrator runs it.\n` +
     `You own EXACTLY these files: ${ownedList}. Do not create or modify any other file.\n` +
     `Do NOT run git add or git commit — the orchestrator verifies your work and commits it.\n` +
+    // The runtime kills any dispatch that makes no visible progress for 180
+    // seconds (hardcoded, not configurable) — one A-24-sized task died on all
+    // six retries composing a single large edit. The clause below is the wave
+    // sibling of PACING_CONTRACT_CLAUSE: small writes, frequent tool calls.
+    `PACING (hard runtime constraint): you are killed after 180 seconds without a tool call. ` +
+    `Never compose one large write — create each file as a skeleton first, then extend it in ` +
+    `increments of at most 8,000 bytes per Write/Edit, interleaving verification commands. ` +
+    `If a single edit would be long, split it into several smaller edits.\n` +
     `Report a short summary of what you changed.\n` +
     branchPinClause(featureName)
   );
