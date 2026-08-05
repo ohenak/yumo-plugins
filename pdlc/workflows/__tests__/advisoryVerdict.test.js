@@ -73,7 +73,7 @@ function verdictFixtureMissingKey(key) {
   return full.filter((line) => !line.startsWith(`${prefix}:`)).join("\n");
 }
 
-describe.skip("A-19 — verdict + budgets", () => {
+describe("A-19 — verdict + budgets", () => {
   describe("parseAdvisoryVerdict — PROP-VER-01/02/04/05, five malformedness rules (PROP-VER-03)", () => {
     // ─── PROP-VER-01 — pure, total, never throws ──────────────────────────
     test.each([
