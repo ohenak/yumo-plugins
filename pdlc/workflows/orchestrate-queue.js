@@ -38,7 +38,7 @@
  */
 
 // Single-line on purpose: stripModuleSyntax recognises imports line-wise.
-import realMain, { runAdvisorySeam, readAdvisoryConfigSafely, parseAdvisoryConfig, defaultAppendFile, ADVISORY_CONFIG_PATH } from "./orchestrate-dev.js";
+import realMain, { runAdvisorySeam, readAdvisoryConfigSafely, parseAdvisoryConfig, defaultAppendFile, ADVISORY_CONFIG_PATH, advisorySummaryRows, commitPaths } from "./orchestrate-dev.js";
 
 // ─── Exported meta object (mirrors orchestrate-dev) ──────────────────────────
 export const meta = {
@@ -757,27 +757,147 @@ function buildA1SeamOps({ feature, reqPath, dependsOn, triageReason, precheck })
   };
 }
 
+// A citation is a `path/to/file.ext:123` token, the project-wide file:line convention (also
+// matched by the drift-gate prose above and by `triagePrompt`'s own "file:line citations").
+const CITATION_RE = /([\w./-]+\.[A-Za-z0-9]+):(\d+)/g;
+
 /**
- * A2's `SeamOps` placeholder (TSPEC §6.4). PLAN A-31 lands A2's real re-grounding semantics
- * (gatherEvidence/prompt/apply/verifyGate); this task (A-30) only wires routing to A2 by seam
- * token, so this stub carries A2's structural declaredScope/permittedActions and throws on the
- * members A-31 has not landed yet, rather than silently no-op.
+ * Extract load-bearing file:line citations from REQ text (TSPEC §6.4 `gatherEvidence`).
+ * Pure, total — never throws on REQ text with no citations at all (returns `[]`).
  *
- * @param {{ feature: string, reqPath: string }} args
+ * @param {string} reqText
+ * @returns {Array<{location: string, file: string, line: number}>}
+ */
+function extractCitations(reqText) {
+  const citations = [];
+  const re = new RegExp(CITATION_RE.source, "g");
+  let m;
+  while ((m = re.exec(reqText || "")) !== null) {
+    citations.push({ location: `${m[1]}:${m[2]}`, file: m[1], line: Number(m[2]) });
+  }
+  return citations;
+}
+
+/**
+ * A2's `SeamOps` (TSPEC §6.4): stale-REQ re-grounding. `gatherEvidence` produces
+ * citation-resolution evidence through the existing `_git` seam (PROP-A2-01 — never asserted by
+ * the agent alone); `apply` rewrites citation **location text only** — the frontmatter region and
+ * every requirements sentence are outside the rewritable span (P-2, A2-3); `verifyGate` performs
+ * the irreversible act per §6.4.1's durability order: RECORD (append the advisory entry) precedes
+ * the ONE pathspec-scoped `commitPaths` over `[reqPath, recordPath]`, then a branch-head
+ * confirmation (A2-6 / H-2b / DEC-ADV-03).
+ *
+ * @param {{ feature: string, reqPath: string, originalReqText: string, _readFile: function,
+ *   _writeFile: function, _git: function, _appendFile: function, _commitPaths: function }} args
  * @returns {import("./orchestrate-dev.js").SeamOps}
  */
-function buildA2SeamOpsPlaceholder({ feature, reqPath }) {
-  const notYetImplemented = (member) => async () => {
-    throw new Error(`A2 SeamOps.${member} is not yet implemented (PLAN A-31) for "${feature}"`);
-  };
+function buildA2SeamOps({
+  feature,
+  reqPath,
+  originalReqText,
+  _readFile,
+  _writeFile,
+  _git,
+  _appendFile,
+  _commitPaths,
+}) {
+  const recordPath = `docs/${feature}/ADVISORY-${feature}.md`;
+  let capturedRows = null;
+
   return {
-    gatherEvidence: notYetImplemented("gatherEvidence"),
-    prompt: notYetImplemented("prompt"),
-    conditionHolds: notYetImplemented("conditionHolds"),
-    apply: notYetImplemented("apply"),
-    producedPaths: notYetImplemented("producedPaths"),
-    revert: notYetImplemented("revert"),
-    verifyGate: notYetImplemented("verifyGate"),
+    gatherEvidence: async () => {
+      const citations = extractCitations(originalReqText);
+      const lines = [
+        `Feature: ${feature}`,
+        `REQ: ${reqPath}`,
+        `Citations found: ${citations.length}`,
+      ];
+      for (const citation of citations) {
+        let resolves = "unknown";
+        try {
+          const grep = await _git(["grep", "-n", "-F", citation.location, "--", citation.file]);
+          resolves = grep && grep.ok && String(grep.stdout || "").trim() ? "resolves" : "drifted";
+        } catch {
+          resolves = "drifted";
+        }
+        lines.push(`  ${citation.location}: ${resolves}`);
+      }
+      lines.push("", originalReqText);
+      return lines.join("\n");
+    },
+    prompt: (evidence) =>
+      `A2 stale-REQ re-grounding for "${feature}".\n\n${evidence}\n\n` +
+      `For each drifted citation, propose { oldLocation, newLocation, symbol, symbolStillExists }. ` +
+      `Reply with your verdict trailer whose proposedAction is exactly ` +
+      `JSON.stringify([{ oldLocation, newLocation, symbol, symbolStillExists }, …]). ` +
+      `Rewrite citation location text ONLY — never the frontmatter region or any requirements ` +
+      `sentence (P-2, A2-3).`,
+    conditionHolds: async () => (await _readFile(reqPath)) === originalReqText,
+    apply: async (verdict) => {
+      let rows;
+      try {
+        rows = JSON.parse(verdict && verdict.proposedAction);
+      } catch {
+        return { ok: false, why: "proposedAction was not valid JSON (expected an array of re-grounding rows)" };
+      }
+      if (!Array.isArray(rows)) {
+        return { ok: false, why: "proposedAction did not parse to an array of re-grounding rows" };
+      }
+      capturedRows = rows;
+      let text = originalReqText;
+      for (const row of rows) {
+        if (row && typeof row.oldLocation === "string" && typeof row.newLocation === "string") {
+          text = text.split(row.oldLocation).join(row.newLocation);
+        }
+      }
+      await _writeFile(reqPath, text);
+      return { ok: true };
+    },
+    producedPaths: async () => {
+      const diff = await _git(["diff", "--name-only"]);
+      return diff && diff.ok && diff.stdout
+        ? String(diff.stdout)
+            .split("\n")
+            .map((s) => s.trim())
+            .filter(Boolean)
+        : [];
+    },
+    revert: async () => {
+      await _git(["checkout", "--", reqPath]);
+    },
+    verifyGate: async () => {
+      const entry =
+        `\n## ${new Date().toISOString()} — A2 — re-grounded\n\n` +
+        `Feature: ${feature}\nREQ: ${reqPath}\n` +
+        `Rows: ${JSON.stringify(capturedRows || [])}\n`;
+      try {
+        await _appendFile(recordPath, entry);
+      } catch (err) {
+        return { passed: false, detail: `record write failed: ${err && err.message}` };
+      }
+
+      let commitResult;
+      try {
+        commitResult = await _commitPaths({
+          paths: [reqPath, recordPath],
+          message: `chore(advisory): A2 re-grounded citations for ${feature}`,
+          what: `A2 re-grounding for ${feature}`,
+          _git,
+          emit: () => {},
+        });
+      } catch (err) {
+        return { passed: false, detail: `commit failed: ${err && err.message}` };
+      }
+
+      // Branch-head confirmation (A2-6 / H-2b): re-read the branch head and confirm both files
+      // landed, rather than trusting the commit call alone.
+      const reqAtHead = await _git(["show", `HEAD:${reqPath}`]);
+      const recordAtHead = await _git(["show", `HEAD:${recordPath}`]);
+      const confirmed = Boolean(reqAtHead && reqAtHead.ok && recordAtHead && recordAtHead.ok);
+      return confirmed
+        ? { passed: true, detail: `${commitResult}` }
+        : { passed: false, detail: "branch head does not carry both the REQ and the advisory record" };
+    },
     declaredScope: [reqPath],
     permittedActions: ["E-4"],
   };
@@ -920,6 +1040,7 @@ export default async function main({
   _runPipeline: runPipelineFn = realMain,
   _runAdvisorySeam: runAdvisorySeamFn = runAdvisorySeam,
   _readAdvisoryConfig: readAdvisoryConfigFn = defaultReadAdvisoryConfig,
+  _commitPaths: commitPathsFn = commitPaths,
   _log: logFn = log,
   _phase: phaseFn = phase,
 } = {}) {
@@ -976,7 +1097,20 @@ export default async function main({
       `Drift gate proceeding (row ${driftGate.row}): ${driftGate.reasons.join("; ")}`
     );
   }
-  const finish = (fields) => buildQueueReport({ ...fields, driftReport: driftNotice });
+  // Accumulates one entry per seam invocation this pass — `{...disposition, seam}` — so the
+  // queue's own report can carry the same advisory summary the dev-side final report does
+  // (TSPEC §9.4 S-5). Declared before `finish` is invoked (never before it is CLOSED OVER, which
+  // is fine); `advisorySummaryRows` guarantees five rows, a seam that never fired visibly zero.
+  const advisoryDispositions = [];
+  const finish = (fields) =>
+    buildQueueReport({
+      ...fields,
+      driftReport: driftNotice,
+      advisory:
+        advisoryConfig && advisoryConfig.config && advisoryConfig.config.enabled
+          ? advisorySummaryRows(advisoryDispositions)
+          : undefined,
+    });
 
   // ─── Advisory-tier config (TSPEC §6.1) ───────────────────────────────────
   // Read once per run: after the drift gate (a blocked gate costs no advisory work) and before
@@ -1088,7 +1222,16 @@ export default async function main({
       const seam = triage.seamToken === "A2" ? "A2" : "A1";
       const seamOps =
         seam === "A2"
-          ? buildA2SeamOpsPlaceholder({ feature: entry.feature, reqPath: entry.reqPath })
+          ? buildA2SeamOps({
+              feature: entry.feature,
+              reqPath: entry.reqPath,
+              originalReqText: reqText,
+              _readFile: readFileFn,
+              _writeFile: writeFileFn,
+              _git: gitFn,
+              _appendFile: appendFileFn,
+              _commitPaths: commitPathsFn,
+            })
           : buildA1SeamOps({
               feature: entry.feature,
               reqPath: entry.reqPath,
@@ -1112,6 +1255,10 @@ export default async function main({
         _git: gitFn,
         _log: emit,
       });
+      // Recorded for `buildQueueReport`'s advisory summary (TSPEC §9.4 S-5) — the scripted test
+      // double's dispositions do not carry `seam` themselves, so it is attached here from the
+      // routing decision that is already known.
+      advisoryDispositions.push({ ...advisoryDisposition, seam });
 
       if (seam === "A1") {
         // Decision #3 (this file's own header / advisoryQueueSeams.test.js): A1 declares
@@ -1472,6 +1619,7 @@ function buildQueueReport({
   pipelineReport,
   skipped,
   driftReport,
+  advisory,
 }) {
   return {
     outcome,
@@ -1482,6 +1630,7 @@ function buildQueueReport({
     ...(pipelineReport ? { pipelineReport } : {}),
     ...(skipped && skipped.length ? { skipped } : {}),
     ...(driftReport ? { driftReport } : {}),
+    ...(advisory ? { advisory } : {}),
   };
 }
 

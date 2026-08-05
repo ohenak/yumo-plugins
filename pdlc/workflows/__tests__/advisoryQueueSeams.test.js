@@ -427,7 +427,7 @@ describe("A-30 — queue wiring + A1 (§6.2, §6.3, PROP-A1-01…06)", () => {
 // A-31 — A2 seam + queue report summary.
 // ---------------------------------------------------------------------------------------------
 
-describe.skip("A-31 — A2 re-grounding + queue report summary (§6.4, PROP-A2-01…08)", () => {
+describe("A-31 — A2 re-grounding + queue report summary (§6.4, PROP-A2-01…08)", () => {
   // ─── T-04-6 / PROP-A2-01,05,06,07 — pure location corrections applied and committed ────────
   test("T-04-6 — an in-envelope A2 proposal is applied, does not pick the candidate, and commits reqPath+record", async () => {
     const reqPath = "docs/feat-i/REQ-feat-i.md";
