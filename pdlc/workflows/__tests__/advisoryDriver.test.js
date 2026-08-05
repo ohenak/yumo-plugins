@@ -711,7 +711,7 @@ describe("A-23 — A3/A4 gate exclusivity", () => {
 // A-24 — A5 gate exclusivity (batch 11)
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
-describe.skip("A-24 — A5 gate exclusivity", () => {
+describe("A-24 — A5 gate exclusivity", () => {
   gateExclusivityCases(["A5"]);
 });
 
