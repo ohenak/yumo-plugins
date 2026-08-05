@@ -3449,6 +3449,349 @@ async function appendEscalationEntry({ disposition, ctx, _appendFile, _now }) {
   await _appendFile(ESCALATIONS_PATH, entry);
 }
 
+// ─── TSPEC §4.4 — runAdvisorySeam, the one impure component (PLAN A-22) ────
+//
+// TSPEC §5.4 ("Prohibitions — structural, not asserted") makes P-1…P-4 unreachable through the
+// EXISTING mechanisms `classifyEnvelope` already owns (X-b, X-d/membership, and simply never
+// wiring a capability) rather than a dedicated matcher, and `advisoryEnvelope.test.js` (A-06)
+// says so explicitly: that file's `classifyEnvelope` never emits `"prohibited-action"` as its own
+// `reason`, and disclaims P-1…P-4 as living here instead. This driver therefore carries a small,
+// independent, PROSE-based recognizer, `isProhibitedAction`, run at step 3 GATE ahead of
+// `classifyEnvelope` — a defense-in-depth check of the verdict's own claim that does not trust
+// `seamOps.permittedActions` to have refused it (PLAN A-22's `advisoryDriver.test.js` REASON_FIXTURES
+// "prohibited-action" fixture deliberately declares the prohibited sentence as *permitted* on the
+// fake seam, to prove the driver refuses it anyway).
+const PROHIBITED_ACTION_PATTERNS = [
+  // P-1 — mark/weaken/reduce a DoD criterion or the iteration count.
+  /\b(mark|weaken|reduce)\b[\s\S]*\b(dod|definition of done)\b/i,
+  /\bdefinition of done\b[\s\S]*\b(satisfied|weaken|reduce)/i,
+  // P-2 — set ready: true on a REQ.
+  /\bready\s*:\s*true\b/i,
+  // P-3 — declare CI passed.
+  /\bdeclare\b[\s\S]*\bci\b[\s\S]*\bpassed\b/i,
+  // P-4 — merge a PR, or alter a queue Status cell.
+  /\bmerge\b[\s\S]*\b(pr|pull request)\b/i,
+  /\balter\b[\s\S]*\bqueue\b[\s\S]*\bstatus\b/i,
+];
+
+/**
+ * @param {string} proposedAction
+ * @returns {boolean}
+ */
+function isProhibitedAction(proposedAction) {
+  const text = String(proposedAction || "");
+  return PROHIBITED_ACTION_PATTERNS.some((re) => re.test(text));
+}
+
+/**
+ * @typedef {Object} SeamOps                  TSPEC §4.3. One implementation per seam.
+ * @property {() => Promise<string>}            gatherEvidence
+ * @property {(evidence: string) => string}     prompt
+ * @property {() => Promise<boolean>}           conditionHolds
+ * @property {(v: AdvisoryVerdict) => Promise<{ok: boolean, why?: string}>} apply
+ * @property {() => Promise<string[]>}          producedPaths
+ * @property {() => Promise<void>}              revert
+ * @property {null | (() => Promise<{passed: boolean, detail?: string}>)} verifyGate
+ * @property {string[]}                         declaredScope
+ * @property {string[]}                         permittedActions
+ */
+
+/**
+ * `runAdvisorySeam` — TSPEC §4.4, the tier's one impure component. Runs the seven-step lifecycle
+ * (DIAGNOSE, VALIDATE, GATE, RE-CHECK, ACT, CHECK, VERIFY, RECORD — eight `_log` tokens; GATE
+ * covers both the prohibition check and `classifyEnvelope` + confidence, one `_log("GATE")` call)
+ * against an injected `SeamOps`. `config.enabled === false` returns before any dispatch or rung
+ * resolution (D-1, D-2). The attempt loop (DIAGNOSE+VALIDATE) races each dispatch against a
+ * wall-clock deadline (`_sleep`) so a preemption can end an in-flight attempt (V-5); `attempts`
+ * counts only DIAGNOSE/VALIDATE cycles that did NOT yield a well-formed verdict — a verdict
+ * obtained on the first try leaves `attempts === 0` (RE-CHECK's "no attempt consumed" reading,
+ * TSPEC §4.4 last row). A single-attempt budget whose one response is malformed reports
+ * `malformed-verdict` (this file's header interpretive decision 2); every other budget exhaustion
+ * — multiple malformed attempts, or a wall-clock preemption — reports `budget-exhausted`.
+ *
+ * `seamOps.revert()` throwing is never absorbed by the terminal catch (BR-5: an unrevertable tree
+ * halts rather than silently resolving as an ordinary escalation) — every revert call is routed
+ * through `doRevert`, which tags a thrown error before rethrowing, and the terminal catch rethrows
+ * anything so tagged instead of mapping it to `escalated`.
+ *
+ * @param {{seam: string, feature: string, seamOps: SeamOps, config: object, rungState: object,
+ *          _agent: Function, _appendFile: Function, _writeFile: Function, _readFile: Function,
+ *          _git: Function, _log: Function, _now: Function, _sleep: Function}} args
+ * @returns {Promise<{outcome: string, reason: string|null, verdict: object|null, attempts: number,
+ *          model: string|undefined, fallback: boolean, seam: string}>}
+ */
+async function runAdvisorySeam({
+  seam,
+  feature,
+  seamOps,
+  config,
+  rungState,
+  _agent,
+  _appendFile,
+  _writeFile,
+  _readFile,
+  _git,
+  _log,
+  _now,
+  _sleep,
+}) {
+  const log = typeof _log === "function" ? _log : () => {};
+
+  if (!config || config.enabled === false) {
+    return { outcome: "no-action", reason: null, verdict: null, attempts: 0, model: undefined, fallback: false, seam };
+  }
+
+  // Rung resolution (TSPEC §3.4/§4.4 entry row: resolved before any dispatch, once per run) is
+  // deliberately NOT a discrete probe dispatch here — TSPEC §3.4's own header says non-resolution
+  // is detected "by classifying the rejection of the real dispatch... never a separate probe".
+  // `dispatchViaRungLadder` below IS that real dispatch: attempt 1 of the DIAGNOSE loop carries the
+  // M-1/M-2 fallback ladder inline (so it consumes exactly one `_agent` call on the happy path, not
+  // two), and every later attempt in the same seam invocation reuses the now-cached
+  // `rungState.resolved` rung directly. `rungState` is the caller's memo, so a whole PT-phase run
+  // resolves the rung once across every seam it dispatches, per §3.4's "lazy, once per run".
+  // Returns `{kind:"response",raw}` / `{kind:"dispatch-error",err}` directly (never a bare
+  // response the caller must re-wrap) — deliberately built with `.then(onFulfilled, onRejected)`
+  // chaining, not `async`/`await`, so the settled-`kind` promise is exactly ONE microtask hop past
+  // the underlying `_agent` call on the common (cached-rung) path — the same depth as `deadline`'s
+  // `_sleep(...).then(...)` below. An extra `await`-induced hop here would let a same-tick-resolving
+  // `deadline` win `Promise.race` on hop-count alone with the doubles' synchronous `_agent`/`_sleep`,
+  // not on actual elapsed time (see the `dispatched` comment below).
+  function dispatchViaRungLadder(promptText) {
+    // `dispatchAt` exists for §8.5's returned-promise ruling: `return
+    // _agent(…);` is a classified seam call, while a `.then`-chained one is
+    // not — and the chaining below is load-bearing (see the hop-count comment
+    // above), so the seam call moves into a body the ruling covers and the
+    // chain hangs off the returned promise, adding no microtask hop.
+    function dispatchAt(model) {
+      return _agent("se-review", promptText, { model });
+    }
+    if (rungState.resolved != null) {
+      return dispatchAt(rungState.resolved.model).then(
+        (raw) => ({ kind: "response", raw }),
+        (err) => ({ kind: "dispatch-error", err })
+      );
+    }
+    return dispatchAt(MODEL_ADVISORY).then(
+      (raw) => {
+        rungState.resolved = { model: MODEL_ADVISORY, fallback: false };
+        return { kind: "response", raw };
+      },
+      (err) => {
+        if (!isModelResolutionError(err)) return { kind: "dispatch-error", err };
+        log(`ADVISORY_MODEL_FALLBACK: "${MODEL_ADVISORY}" did not resolve — substituting "${MODEL_ADVISORY_FALLBACK}"`);
+        return dispatchAt(MODEL_ADVISORY_FALLBACK).then(
+          (raw) => {
+            rungState.resolved = { model: MODEL_ADVISORY_FALLBACK, fallback: true };
+            return { kind: "response", raw };
+          },
+          (fallbackErr) => {
+            if (!isModelResolutionError(fallbackErr)) return { kind: "dispatch-error", err: fallbackErr };
+            throw haltError(
+              `Advisory model rung resolution failed: neither "${MODEL_ADVISORY}" nor ` +
+                `"${MODEL_ADVISORY_FALLBACK}" resolved. No advisory agent output was produced.`
+            );
+          }
+        );
+      }
+    );
+  }
+
+  // Every `seamOps.revert()` call goes through here so a thrown revert failure can be
+  // distinguished, downstream, from an ordinary unclassified throw (BR-5).
+  async function doRevert() {
+    try {
+      await seamOps.revert();
+    } catch (err) {
+      if (err && typeof err === "object") err.__isRevertFailure = true;
+      throw err;
+    }
+  }
+
+  // Step 7 RECORD, for every terminal disposition (R-4) — including `no-action` and every
+  // escalation, not only `resolved`. A write failure reverts (when the action had already been
+  // applied) and overrides the outcome/reason to `escalated` / `record-write-failed` (§4.6).
+  async function terminate({ outcome, reason, verdict, attempts, appliedSuccessfully }) {
+    let finalOutcome = outcome;
+    let finalReason = reason;
+    log("RECORD");
+    const disposition = {
+      seam,
+      outcome: finalOutcome,
+      reason: finalReason,
+      verdict,
+      attempts,
+      model: rungState.resolved ? rungState.resolved.model : undefined,
+      fallback: rungState.resolved ? rungState.resolved.fallback : false,
+    };
+    try {
+      await appendAdvisoryEntry({ feature, disposition, _appendFile, _now });
+    } catch {
+      if (appliedSuccessfully) await doRevert();
+      finalOutcome = "escalated";
+      finalReason = "record-write-failed";
+    }
+    return {
+      seam,
+      outcome: finalOutcome,
+      reason: finalReason,
+      verdict,
+      attempts,
+      model: rungState.resolved ? rungState.resolved.model : undefined,
+      fallback: rungState.resolved ? rungState.resolved.fallback : false,
+    };
+  }
+
+  const totalBudgetMs = config.seamBudgetMinutes * 60_000;
+  const waitMs = 0; // the A5-only rollup-wait carve-out sink is out of this task's scope (§4.3, §4.5)
+
+  // The wall-clock deadline (V-5) is constructed FRESH on every attempt, and — critically — only
+  // AFTER `dispatched` has already been constructed for that same attempt. `Promise.race` breaks
+  // ties between two promises that settle at the same microtask hop-depth in FAVOUR of whichever
+  // one's underlying async work was *invoked* first (its settlement microtask lands earlier in the
+  // FIFO queue): with the doubles' `_agent`/`_sleep` both settling synchronously (no real
+  // wall-clock wait) at the same hop depth, constructing `dispatched` first is what lets an
+  // ordinary attempt win the race on every call — constructing the deadline first (or once,
+  // up-front, reused across attempts) would either spuriously preempt every attempt, or — once
+  // reused past its own settlement — spuriously preempt every attempt after the first. Only a
+  // dispatch that genuinely never settles (T-02-5's `neverResolves`) lets the deadline win.
+  // `budgetExceeded`'s own `elapsedMs` argument is therefore 0 for every attempt-loop call below
+  // (see its call sites) — wall-clock exhaustion is enforced solely by this per-attempt race,
+  // `attemptBudget` exhaustion by the loop's own attempt counter.
+  try {
+    let attempts = 0;
+    let verdict = null;
+
+    // ── DIAGNOSE + VALIDATE — the attempt loop ──────────────────────────
+    while (true) {
+      log("DIAGNOSE");
+      const evidence = await seamOps.gatherEvidence();
+      const promptText = seamOps.prompt(evidence);
+
+      // `dispatched` is constructed BEFORE `deadline` on every iteration — see the comment above.
+      const dispatched = dispatchViaRungLadder(promptText); // already {kind:...}-shaped or a halt rejection
+      const deadline = _sleep(totalBudgetMs).then(() => ({ kind: "preempted" }));
+      const raced = await Promise.race([dispatched, deadline]);
+
+      if (raced.kind === "preempted") {
+        attempts += 1; // the in-flight attempt counts as consumed by the preemption (T-02-5)
+        return await terminate({ outcome: "escalated", reason: "budget-exhausted", verdict: null, attempts, appliedSuccessfully: false });
+      }
+
+      log("VALIDATE");
+
+      if (raced.kind === "dispatch-error") {
+        attempts += 1;
+        if (
+          budgetExceeded({
+            attempts,
+            attemptBudget: config.attemptBudget,
+            elapsedMs: 0,
+            waitMs,
+            seamBudgetMinutes: config.seamBudgetMinutes,
+          })
+        ) {
+          return await terminate({ outcome: "escalated", reason: "budget-exhausted", verdict: null, attempts, appliedSuccessfully: false });
+        }
+        continue;
+      }
+
+      const parsed = parseAdvisoryVerdict(raced.raw, seam);
+      if (parsed.malformed) {
+        attempts += 1;
+        if (
+          budgetExceeded({
+            attempts,
+            attemptBudget: config.attemptBudget,
+            elapsedMs: 0,
+            waitMs,
+            seamBudgetMinutes: config.seamBudgetMinutes,
+          })
+        ) {
+          const reason = attempts === 1 ? "malformed-verdict" : "budget-exhausted";
+          return await terminate({ outcome: "escalated", reason, verdict: null, attempts, appliedSuccessfully: false });
+        }
+        continue;
+      }
+
+      verdict = parsed.verdict;
+      break;
+    }
+
+    // ── step 3 GATE — prohibitions, classifyEnvelope, confidence (V-1, BR-2) ────────────────
+    log("GATE");
+
+    if (isProhibitedAction(verdict.proposedAction)) {
+      return await terminate({ outcome: "escalated", reason: "prohibited-action", verdict, attempts, appliedSuccessfully: false });
+    }
+
+    const gateCtx = {
+      seam,
+      permittedActions: seamOps.permittedActions,
+      declaredScope: seamOps.declaredScope,
+      guardPaths: effectiveGuardPaths(undefined),
+      capabilities: {},
+    };
+    const proposalCandidate = { action: verdict.proposedAction, paths: seamOps.declaredScope };
+    const gateResult = classifyEnvelope(proposalCandidate, gateCtx);
+    if (!gateResult.inside) {
+      return await terminate({ outcome: "escalated", reason: gateResult.reason, verdict, attempts, appliedSuccessfully: false });
+    }
+    if (verdict.confidence !== "high") {
+      return await terminate({ outcome: "escalated", reason: "low-confidence", verdict, attempts, appliedSuccessfully: false });
+    }
+
+    // ── step 3b RE-CHECK — the seam condition may already be gone (V-7, R-4) ────────────────
+    log("RE-CHECK");
+    const holds = await seamOps.conditionHolds();
+    if (!holds) {
+      return await terminate({ outcome: "no-action", reason: null, verdict, attempts, appliedSuccessfully: false });
+    }
+
+    // ── step 4 ACT ───────────────────────────────────────────────────────────────────────────
+    log("ACT");
+    const applyResult = await seamOps.apply(verdict);
+    if (!applyResult || applyResult.ok !== true) {
+      await doRevert();
+      return await terminate({ outcome: "escalated", reason: "post-action-verification-failed", verdict, attempts, appliedSuccessfully: false });
+    }
+
+    // ── step 5 CHECK — classifyEnvelope again, over the produced diff (E-R2, BR-3) ──────────
+    log("CHECK");
+    const producedPaths = await seamOps.producedPaths();
+    const checkCandidate = { action: verdict.proposedAction, paths: Array.isArray(producedPaths) ? producedPaths : [] };
+    const checkResult = classifyEnvelope(checkCandidate, gateCtx);
+    if (!checkResult.inside) {
+      await doRevert();
+      return await terminate({ outcome: "escalated", reason: checkResult.reason, verdict, attempts, appliedSuccessfully: false });
+    }
+
+    // ── step 6 VERIFY ────────────────────────────────────────────────────────────────────────
+    log("VERIFY");
+    if (seamOps.verifyGate !== null) {
+      const gateOutcome = await seamOps.verifyGate();
+      if (!gateOutcome || gateOutcome.passed !== true) {
+        await doRevert();
+        return await terminate({ outcome: "escalated", reason: "post-action-verification-failed", verdict, attempts, appliedSuccessfully: false });
+      }
+    }
+
+    // ── resolved ─────────────────────────────────────────────────────────────────────────────
+    return await terminate({ outcome: "resolved", reason: null, verdict, attempts, appliedSuccessfully: true });
+  } catch (err) {
+    if (err && err.__isRevertFailure) throw err; // BR-5 — never silently swallow an unrevertable tree
+    if (err && err.isHalt) throw err; // M-3 — no rung resolved; propagate, never mapped to an escalation
+    return {
+      seam,
+      outcome: "escalated",
+      reason: "unclassified-error",
+      verdict: null,
+      attempts: 0,
+      model: rungState.resolved ? rungState.resolved.model : undefined,
+      fallback: rungState.resolved ? rungState.resolved.fallback : false,
+    };
+  }
+}
+
 // TSPEC-SCRIPT-03: Exported meta object
 const meta = {
   name: "orchestrate-dev",
