@@ -10,12 +10,15 @@
  */
 
 import { execFileSync } from "child_process";
+import { createRequire } from "module";
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "fs";
 import { tmpdir } from "os";
 import { dirname, join, resolve } from "path";
 import { fileURLToPath } from "url";
 
 import { stripModuleSyntax } from "../build-runtime.mjs";
+
+const requireHere = createRequire(import.meta.url);
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const WORKFLOWS = resolve(HERE, "..");
@@ -1268,6 +1271,32 @@ describe("DOD-03 — build-runtime.mjs --check detects staleness", () => {
       execFileSync("node", ["--check", distFile(root, "pdlc-cli.mjs")], { stdio: "pipe" })
     ).not.toThrow();
   });
+
+  it.each(["orchestrate-dev.bundle.js", "orchestrate-queue.bundle.js"])(
+    "the stripped %s parses as the runtime will parse it (comment stripping is a red suite, not a corrupt artifact)",
+    (file) => {
+      const root = makeBuildTree();
+      const code = readFileSync(distFile(root, file), "utf8");
+      // The builder's dependency-free stripper is verified here with the test
+      // environment's real parser — the builder itself may not require it
+      // (fresh-clone bootstrap runs before npm install).
+      const babel = requireHere("@babel/core");
+      expect(() =>
+        babel.parseSync(code, {
+          configFile: false,
+          babelrc: false,
+          parserOpts: {
+            sourceType: "module",
+            allowAwaitOutsideFunction: true,
+            allowReturnOutsideFunction: true,
+          },
+        })
+      ).not.toThrow();
+      // And the stripper actually earned its keep: under the runtime's script
+      // size ceiling, which is what forced stripping in the first place.
+      expect(code.length).toBeLessThan(524288);
+    }
+  );
 
   it("--check writes nothing: a stale tree stays stale after the check", () => {
     const root = makeBuildTree();

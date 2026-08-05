@@ -275,17 +275,146 @@ const cliArtifact = [
   cliBody,
 ].join("\n\n");
 
+// The workflow runtime rejects a script over 512 KiB, and the comment-dense
+// sources pushed the concatenated dev bundle past it. The two runtime bundles
+// are therefore emitted with comments stripped. The stripper is hand-rolled
+// and dependency-free ON PURPOSE: this builder runs on a fresh clone before
+// any `npm install` (the bootstrap contract, pinned by DOD-03's temp-tree
+// checks), so it may not require npm packages. `runtimeBundle.test.js`
+// re-parses the stripped bundles with the test environment's real parser, so
+// a stripper bug is a red suite, not a silently corrupt artifact. The banner
+// is re-prepended below because it must outlive stripping: it is the
+// "generated — never edit" warning an operator reads. pdlc-cli.mjs is plain
+// Node with no size ceiling and keeps its comments.
+const REGEX_PREFIX_WORDS = new Set([
+  "return", "typeof", "instanceof", "in", "of", "new", "delete", "void",
+  "throw", "case", "do", "else", "yield", "await",
+]);
+
+function stripJsComments(code) {
+  let out = "";
+  let i = 0;
+  const n = code.length;
+  // Mode stack: "code" (with its ${}-depth) nests inside "template" and back.
+  const stack = [{ mode: "code", braces: 0 }];
+  let prevCh = ""; // last significant char emitted in code mode
+  let prevWord = ""; // last identifier-ish word emitted in code mode
+
+  const top = () => stack[stack.length - 1];
+
+  while (i < n) {
+    const s = top();
+    const c = code[i];
+    const d = i + 1 < n ? code[i + 1] : "";
+
+    if (s.mode === "code") {
+      if (c === "/" && d === "/") {
+        while (i < n && code[i] !== "\n") i++;
+        continue; // the \n itself is emitted on the next pass
+      }
+      if (c === "/" && d === "*") {
+        const hadNewline = () => code.slice(start, i).includes("\n");
+        const start = i;
+        i += 2;
+        while (i < n && !(code[i] === "*" && code[i + 1] === "/")) i++;
+        i = Math.min(n, i + 2);
+        // Preserve line structure so a stripper bug stays diffable to a line.
+        if (hadNewline()) out += "\n";
+        continue;
+      }
+      if (c === "'" || c === '"') {
+        stack.push({ mode: "string", quote: c });
+        out += c; i++; prevCh = c; prevWord = "";
+        continue;
+      }
+      if (c === "`") {
+        stack.push({ mode: "template" });
+        out += c; i++; prevCh = c; prevWord = "";
+        continue;
+      }
+      if (c === "/") {
+        // Regex literal vs division, by what precedes it.
+        const regexish =
+          prevCh === "" || "(,=:[!&|?{};+-*%~^<>".includes(prevCh) ||
+          REGEX_PREFIX_WORDS.has(prevWord);
+        if (regexish) {
+          stack.push({ mode: "regex", inClass: false });
+        }
+        out += c; i++; prevCh = c; prevWord = "";
+        continue;
+      }
+      if (c === "{") { s.braces++; }
+      if (c === "}") {
+        if (s.braces === 0 && stack.length > 1) {
+          // End of a template's ${ … } hole.
+          stack.pop();
+          out += c; i++;
+          continue;
+        }
+        s.braces--;
+      }
+      out += c; i++;
+      if (!/\s/.test(c)) {
+        prevCh = c;
+        if (/[A-Za-z0-9_$]/.test(c)) prevWord += c;
+        else prevWord = "";
+      }
+      continue;
+    }
+
+    if (s.mode === "string") {
+      out += c;
+      if (c === "\\") { out += d; i += 2; continue; }
+      i++;
+      if (c === s.quote) stack.pop();
+      continue;
+    }
+
+    if (s.mode === "template") {
+      if (c === "\\") { out += c + d; i += 2; continue; }
+      if (c === "$" && d === "{") {
+        stack.push({ mode: "code", braces: 0 });
+        out += "${"; i += 2;
+        continue;
+      }
+      out += c; i++;
+      if (c === "`") stack.pop();
+      continue;
+    }
+
+    // regex
+    out += c;
+    if (c === "\\") { out += d; i += 2; continue; }
+    i++;
+    if (c === "[") s.inClass = true;
+    else if (c === "]") s.inClass = false;
+    else if (c === "/" && !s.inClass) { stack.pop(); prevCh = "/"; }
+    else if (c === "\n") stack.pop(); // never a real regex — bail conservatively
+  }
+  // Collapse the blank lines stripping leaves behind, but never touch content:
+  // only fully-empty (whitespace-only) line runs shrink.
+  return out.replace(/\n(?:[ \t]*\n)+/g, "\n\n");
+}
+
+function stripCommentsForRuntime(code) {
+  return `${BANNER}\n${stripJsComments(code)}`;
+}
+
 const bundles = [
   {
     file: "orchestrate-queue.bundle.js",
-    contents: [QUEUE_META, BANNER, adapter, devModule, queueModule, QUEUE_ENTRY].join("\n\n"),
+    contents: stripCommentsForRuntime(
+      [QUEUE_META, BANNER, adapter, devModule, queueModule, QUEUE_ENTRY].join("\n\n")
+    ),
   },
   {
     file: "orchestrate-dev.bundle.js",
     // §7.2 edit 4 — `queueModule` joins the dev bundle so DEV_ENTRY's
     // `_recordQueueRow` closure can reach the queue's row helpers. ORDERING HAZARD:
     // queueModule's prelude references `__dev.main`, so devModule must precede it.
-    contents: [DEV_META, BANNER, adapter, devModule, queueModule, DEV_ENTRY].join("\n\n"),
+    contents: stripCommentsForRuntime(
+      [DEV_META, BANNER, adapter, devModule, queueModule, DEV_ENTRY].join("\n\n")
+    ),
   },
   {
     file: "pdlc-cli.mjs",
