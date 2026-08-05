@@ -123,7 +123,7 @@ function extractFieldNames(rendered) {
 // §9.1 fields (FSPEC:746).
 // ---------------------------------------------------------------------------
 
-describe.skip("T-08-1 — an advisory entry carries all seven declared fields", () => {
+describe("T-08-1 — an advisory entry carries all seven declared fields", () => {
   test("a resolving invocation's entry carries Seam, Confidence, Envelope, Disposition, Model, Diagnosis, Evidence", () => {
     const d = disposition();
     const entry = devModule.renderAdvisoryEntry(d, { now: NOW });
@@ -160,7 +160,7 @@ describe.skip("T-08-1 — an advisory entry carries all seven declared fields", 
 // rendered bytes are testable exactly against a transcribed literal.
 // ---------------------------------------------------------------------------
 
-describe.skip("PROP-REC-01 — renderAdvisoryEntry is pure over an injected timestamp", () => {
+describe("PROP-REC-01 — renderAdvisoryEntry is pure over an injected timestamp", () => {
   test("rendered bytes match a transcribed literal exactly, and are stable across repeated calls", () => {
     const d = disposition();
 
@@ -210,7 +210,7 @@ describe.skip("PROP-REC-01 — renderAdvisoryEntry is pure over an injected time
 // the declared order; a ninth invented field or a deleted one both fail.
 // ---------------------------------------------------------------------------
 
-describe.skip("PROP-REC-02 — renderAdvisoryEntry emits exactly the seven declared field names, in order", () => {
+describe("PROP-REC-02 — renderAdvisoryEntry emits exactly the seven declared field names, in order", () => {
   test("a resolved entry's field-name set equals the transcribed literal, in the declared order", () => {
     const entry = devModule.renderAdvisoryEntry(disposition(), { now: NOW });
     const names = extractFieldNames(entry);
@@ -234,7 +234,7 @@ describe.skip("PROP-REC-02 — renderAdvisoryEntry emits exactly the seven decla
 // earlier entry's bytes change.
 // ---------------------------------------------------------------------------
 
-describe.skip("PROP-REC-03 — appendAdvisoryEntry is append-only, newest-last", () => {
+describe("PROP-REC-03 — appendAdvisoryEntry is append-only, newest-last", () => {
   test("three invocations against the same feature produce three entries in occurrence order, none mutated", async () => {
     const path = "docs/some-feature/ADVISORY-some-feature.md";
     const file = makeFileDouble({ seed: { [path]: "" } });
@@ -288,7 +288,7 @@ describe.skip("PROP-REC-03 — appendAdvisoryEntry is append-only, newest-last",
 // record is not escalation-only (R-4).
 // ---------------------------------------------------------------------------
 
-describe.skip("PROP-REC-04 — an entry is written for every terminal disposition, including no-action", () => {
+describe("PROP-REC-04 — an entry is written for every terminal disposition, including no-action", () => {
   test.each(["resolved", "escalated", "no-action"])("outcome %s appends exactly one entry", async (outcome) => {
     const path = "docs/some-feature/ADVISORY-some-feature.md";
     const file = makeFileDouble({ seed: { [path]: "" } });
@@ -314,7 +314,7 @@ describe.skip("PROP-REC-04 — an entry is written for every terminal dispositio
 // (`orchestrate-dev.js:6805`) and `appendAdvisoryEntry` (TSPEC:1112-1121) actually own.
 // ---------------------------------------------------------------------------
 
-describe.skip("T-08-2 / PROP-REC-05 / PROP-REC-06 — appendAdvisoryEntry throws on write failure", () => {
+describe("T-08-2 / PROP-REC-05 / PROP-REC-06 — appendAdvisoryEntry throws on write failure", () => {
   test("a scripted append failure propagates as a throw, not a swallowed rejection", async () => {
     const path = "docs/some-feature/ADVISORY-some-feature.md";
     const file = makeFileDouble({ seed: { [path]: "" }, throwOn: new Set([path]) });
@@ -358,7 +358,7 @@ describe.skip("T-08-2 / PROP-REC-05 / PROP-REC-06 — appendAdvisoryEntry throws
 // marks it as the substitution — readable off the record as well as off the summary (M-2).
 // ---------------------------------------------------------------------------
 
-describe.skip("T-08-7 / PROP-REC-07 — the Model field names the rung used and marks a fallback", () => {
+describe("T-08-7 / PROP-REC-07 — the Model field names the rung used and marks a fallback", () => {
   test("a non-fallback run's Model field names the rung with no fallback marker", () => {
     const entry = devModule.renderAdvisoryEntry(disposition({ model: "opus", fallback: false }), { now: NOW });
     expect(entry).toContain("| Model | opus |");
@@ -415,7 +415,7 @@ function toDisposition(fields, { injectNewline = false } = {}) {
   };
 }
 
-describe.skip("PROP-REC-08 — no field body contains an unescaped newline", () => {
+describe("PROP-REC-08 — no field body contains an unescaped newline", () => {
   const DRAWS = 100;
 
   test(`renders every generated draw with no embedded literal newline inside a table field, over ${DRAWS} draws`, () => {
@@ -443,7 +443,7 @@ describe.skip("PROP-REC-08 — no field body contains an unescaped newline", () 
   });
 });
 
-describe.skip("P-6 — renderAdvisoryEntry is total over the generated verdict × disposition space", () => {
+describe("P-6 — renderAdvisoryEntry is total over the generated verdict × disposition space", () => {
   const DRAWS = 200;
 
   /** Reproduction on failure: the seed and the draw index are printed with every failure. */
@@ -489,7 +489,7 @@ describe.skip("P-6 — renderAdvisoryEntry is total over the generated verdict �
 // ADVISORY_SEAMS member, zero counts included, driven off the exported constant (S-1).
 // ---------------------------------------------------------------------------
 
-describe.skip("PROP-SUM-01 — advisorySummaryRows always emits five rows, zero counts included", () => {
+describe("PROP-SUM-01 — advisorySummaryRows always emits five rows, zero counts included", () => {
   test("an empty disposition list still produces all five seams with zero counts", () => {
     const { rows, total } = devModule.advisorySummaryRows([]);
 
@@ -518,7 +518,7 @@ describe.skip("PROP-SUM-01 — advisorySummaryRows always emits five rows, zero 
 // noAction` on every row and on the total (FSPEC:756, V-7, S-1).
 // ---------------------------------------------------------------------------
 
-describe.skip("T-08-10 / PROP-SUM-02 — the literal six-row summary table and the invocation identity", () => {
+describe("T-08-10 / PROP-SUM-02 — the literal six-row summary table and the invocation identity", () => {
   test("A3 no-action, A4 resolved, A5 escalated produce the literal six-row table by value", () => {
     const dispositions = [
       { seam: "A3", outcome: "no-action" },
@@ -565,7 +565,7 @@ describe.skip("T-08-10 / PROP-SUM-02 — the literal six-row summary table and t
 // configured rung or the declared fallback.
 // ---------------------------------------------------------------------------
 
-describe.skip("PROP-SUM-03 — the summary names the model actually used and marks a fallback", () => {
+describe("PROP-SUM-03 — the summary names the model actually used and marks a fallback", () => {
   test("a seam's row surfaces the model and fallback flag carried by its invocation", () => {
     const dispositions = [{ seam: "A5", outcome: "escalated", model: "opus", fallback: true }];
     const { rows } = devModule.advisorySummaryRows(dispositions);

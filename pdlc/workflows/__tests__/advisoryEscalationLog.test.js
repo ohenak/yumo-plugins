@@ -144,7 +144,7 @@ function buildCtx(overrides = {}) {
 // sentence first (T-09-1, AC-10.1, AC-10.2, L-2).
 // ---------------------------------------------------------------------------
 
-describe.skip("PROP-ESC-01 — renderEscalationEntry: exactly eight fields, decision sentence first", () => {
+describe("PROP-ESC-01 — renderEscalationEntry: exactly eight fields, decision sentence first", () => {
   test("emitted field-name set equals the TSPEC §10.1 literal — no invented, no missing field", () => {
     const entry = devModule.renderEscalationEntry(buildDisposition(), buildCtx(), { now: FIXED_NOW_MS });
     const labels = extractFieldLabels(entry);
@@ -216,7 +216,7 @@ describe.skip("PROP-ESC-01 — renderEscalationEntry: exactly eight fields, deci
 // PROP-ESC-02 — append-only, newest-last; the first entry is byte-unmodified (T-09-2, AC-10.4, L-1).
 // ---------------------------------------------------------------------------
 
-describe.skip("PROP-ESC-02 — append-only, newest-last; the first entry is unmodified (T-09-2)", () => {
+describe("PROP-ESC-02 — append-only, newest-last; the first entry is unmodified (T-09-2)", () => {
   test("two escalations for the same feature and seam produce two entries, newest last", async () => {
     const file = makeFileDouble();
     const disposition = buildDisposition();
@@ -284,7 +284,7 @@ describe("PROP-ESC-03 — nothing in the tier reads docs/_queue/ESCALATIONS.md",
 // PROP-ESC-04 — docs/_queue/ and ESCALATIONS.md are created when absent (T-09-7).
 // ---------------------------------------------------------------------------
 
-describe.skip("PROP-ESC-04 — docs/_queue/ is created when absent (T-09-7)", () => {
+describe("PROP-ESC-04 — docs/_queue/ is created when absent (T-09-7)", () => {
   let scratch;
 
   beforeEach(() => {
@@ -325,7 +325,7 @@ describe.skip("PROP-ESC-04 — docs/_queue/ is created when absent (T-09-7)", ()
 // PROP-ESC-05 — the write-failure asymmetry with a failed record write (T-09-8, R-2).
 // ---------------------------------------------------------------------------
 
-describe.skip("PROP-ESC-05 — a failed escalation-log write is asymmetric with a failed record write (T-09-8)", () => {
+describe("PROP-ESC-05 — a failed escalation-log write is asymmetric with a failed record write (T-09-8)", () => {
   // Transcribed call-site mechanism (TSPEC §10.1 / §4.6): `appendEscalationEntry` is invoked
   // OUTSIDE the try/catch that governs the seam's action, so its own throw can only ever be
   // downgraded to a report notice — it never has the chance to veto or revert an already-decided
@@ -409,7 +409,7 @@ describe("PROP-ESC-07 — MERGE_ESCALATIONS is untouched; a frozen own-property 
   });
 });
 
-describe.skip("PROP-ESC-07 — ADVISORY_ESCALATIONS is a sibling catalogue, not a widening of MERGE_ESCALATIONS", () => {
+describe("PROP-ESC-07 — ADVISORY_ESCALATIONS is a sibling catalogue, not a widening of MERGE_ESCALATIONS", () => {
   test("MERGE_ESCALATIONS' own-property set does not gain the advisory member", () => {
     expect(Object.keys(devModule.MERGE_ESCALATIONS)).not.toContain("seam");
   });
@@ -427,7 +427,7 @@ describe.skip("PROP-ESC-07 — ADVISORY_ESCALATIONS is a sibling catalogue, not 
 // finds both catalogues (T-09-6, N-2, N-3, AC-10.5).
 // ---------------------------------------------------------------------------
 
-describe.skip("PROP-ESC-08 — a distinct advisory prefix; one grep finds both notice kinds (T-09-6)", () => {
+describe("PROP-ESC-08 — a distinct advisory prefix; one grep finds both notice kinds (T-09-6)", () => {
   test("the advisory notice names the seam and points at ESCALATIONS.md", () => {
     const notice = devModule.ADVISORY_ESCALATIONS.seam({ seam: "A5", feature: FEATURE, reason: "budget-exhausted" });
     expect(notice).toContain("A5");
@@ -455,7 +455,7 @@ describe.skip("PROP-ESC-08 — a distinct advisory prefix; one grep finds both n
 // PROP-ESC-09 — advisory notices ride the existing notices channel (N-4, AC-10.5).
 // ---------------------------------------------------------------------------
 
-describe.skip("PROP-ESC-09 — advisory notices ride the existing notices array, not a new channel", () => {
+describe("PROP-ESC-09 — advisory notices ride the existing notices array, not a new channel", () => {
   test("a merge notice and an advisory notice can share one plain notices array", () => {
     const notices = [];
     notices.push(devModule.MERGE_ESCALATIONS.tree({ prUrl: "https://x/pr/1", reason: "dirty", branch: "feat-x" }));
@@ -470,7 +470,7 @@ describe.skip("PROP-ESC-09 — advisory notices ride the existing notices array,
 // leads with the decision sentence, and is append-safe (PROPERTIES §11).
 // ---------------------------------------------------------------------------
 
-describe.skip("P-7 — renderEscalationEntry: totality + decision-first + append-safety over generated inputs", () => {
+describe("P-7 — renderEscalationEntry: totality + decision-first + append-safety over generated inputs", () => {
   const DRAWS = 40; // bounded per §11's Hypothesis-style hygiene note for P-6/P-7.
 
   function fromDraw(draw, i) {
