@@ -1630,6 +1630,128 @@ const TRAILER_FAILURES = Object.freeze([
 
 const MODEL_IMPLEMENTATION = "sonnet"; // Phase I se-implement batches only
 
+// ─── TSPEC §3.1 — advisory-tier constants ──────────────────────────────────
+//
+// Placed immediately after MODEL_IMPLEMENTATION so all four model rungs (opus/sonnet default,
+// implementation, advisory, advisory fallback) read as one block (AC-1.5).
+const MODEL_ADVISORY = "fable"; // BL-01 — see TSPEC §3.3
+const MODEL_ADVISORY_FALLBACK = "opus"; // === MODEL_DEFAULT's literal, deliberately a separate constant
+
+const ADVISORY_CONFIG_PATH = MERGE_CONFIG_PATH; // ".claude/pdlc.config.json" (dev:43)
+
+// The permitted-action set — the whole envelope, shipped. A seam's own `permittedActions` is a
+// SUBSET of this (TSPEC §4.3, §8.3); this frozen literal is the operand T-03-8 transcribes for
+// its set-equality assertion. The members are FSPEC E-1…E-4 verbatim.
+const ENVELOPE_DEFAULTS = Object.freeze(["E-1", "E-2", "E-3", "E-4"]);
+
+const ADVISORY_DEFAULTS = Object.freeze({
+  enabled: false,
+  attemptBudget: 3,
+  seamBudgetMinutes: 10,
+  envelope: ENVELOPE_DEFAULTS, // the four-member literal above
+});
+
+const ADVISORY_SEAMS = Object.freeze(["A1", "A2", "A3", "A4", "A5"]);
+
+/**
+ * Parse the repo's `advisory` config section out of the SAME `.claude/pdlc.config.json`
+ * `parseMergeConfig`/`parseImplementationConfig` read. Pure and total: never throws, never
+ * reads anything, and every key falls back INDEPENDENTLY — one bad key must not silently retune
+ * the others (FSPEC C-2). Modelled on `parseImplementationConfig` (dev:181-231) rather than
+ * `parseMergeConfig`, per TSPEC §3.2: independent per-key fallback plus an `invalidKeys` list the
+ * caller reports.
+ *
+ * @param {string|null} text - raw file contents, or null (file absent/unreadable)
+ * @returns {{ config: object, sectionMalformed: boolean, invalidKeys: string[] }}
+ */
+function parseAdvisoryConfig(text) {
+  const degraded = (sectionMalformed) => ({
+    config: ADVISORY_DEFAULTS,
+    sectionMalformed,
+    invalidKeys: [],
+  });
+
+  if (text == null) return degraded(false);
+
+  let parsed;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return degraded(false);
+  }
+
+  if (!isPlainObject(parsed) || !("advisory" in parsed)) return degraded(false);
+
+  const section = parsed.advisory;
+  if (!isPlainObject(section)) return degraded(true);
+
+  const invalidKeys = [];
+
+  const boolField = (key) => {
+    if (!(key in section)) return ADVISORY_DEFAULTS[key];
+    const v = section[key];
+    if (typeof v === "boolean") return v;
+    invalidKeys.push(key);
+    return ADVISORY_DEFAULTS[key];
+  };
+
+  const positiveInt = (key) => {
+    if (!(key in section)) return ADVISORY_DEFAULTS[key];
+    const v = section[key];
+    if (Number.isInteger(v) && v >= 1) return v;
+    invalidKeys.push(key);
+    return ADVISORY_DEFAULTS[key];
+  };
+
+  const positiveNumber = (key) => {
+    if (!(key in section)) return ADVISORY_DEFAULTS[key];
+    const v = section[key];
+    if (typeof v === "number" && Number.isFinite(v) && v > 0) return v;
+    invalidKeys.push(key);
+    return ADVISORY_DEFAULTS[key];
+  };
+
+  let envelope = ADVISORY_DEFAULTS.envelope;
+  if ("envelope" in section) {
+    const v = section.envelope;
+    if (Array.isArray(v) && v.every((p) => typeof p === "string" && p.trim() !== "")) {
+      envelope = Object.freeze([...v]);
+    } else {
+      invalidKeys.push("envelope");
+    }
+  }
+
+  return {
+    config: Object.freeze({
+      enabled: boolField("enabled"),
+      attemptBudget: positiveInt("attemptBudget"),
+      seamBudgetMinutes: positiveNumber("seamBudgetMinutes"),
+      envelope,
+    }),
+    sectionMalformed: false,
+    invalidKeys,
+  };
+}
+
+/**
+ * Read the advisory config file, never throwing. Byte-for-byte the shape of
+ * `readMergeConfigSafely` (dev:261-267) and adopted for the same reason: the injected read is
+ * agent-mediated in production and returns `null` for a missing file rather than throwing — but a
+ * throw from some future read implementation must not abort the pipeline. Read once per run (C-3)
+ * and the result threaded, never re-read.
+ *
+ * @param {function} readFileFn - async (path) => string|null (or throws)
+ * @param {string} path - ADVISORY_CONFIG_PATH
+ * @returns {Promise<string|null>}
+ */
+async function readAdvisoryConfigSafely(readFileFn, path) {
+  try {
+    return await readFileFn(path);
+  } catch {
+    return null;
+  }
+}
+
 // TSPEC-SCRIPT-03: Exported meta object
 const meta = {
   name: "orchestrate-dev",
