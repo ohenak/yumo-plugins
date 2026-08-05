@@ -2122,6 +2122,225 @@ export function classifyEnvelope(candidate, ctx) {
   return { inside: true, reason: null, matched: [...paths] };
 }
 
+// ─── TSPEC §7.2 — A3's SeamOps for DoD exhaustion (PLAN A-23) ──────────────
+//
+// `ADVISORY_A3_CLASSES` — the frozen, set-equality-tested closed set TSPEC §7.2 A3-2 names but does
+// not itself name (this file's naming decision, mirroring `ADVISORY_REFUSAL_REASONS` /
+// `ADVISORY_SEAMS`).
+export const ADVISORY_A3_CLASSES = Object.freeze(["real-defect", "mis-scoped-criterion", "deferral-candidate"]);
+
+const A3_CLASS_RANK = Object.freeze({ "real-defect": 3, "mis-scoped-criterion": 2, "deferral-candidate": 1 });
+
+const A3_FIELD_RE = {
+  finding: /^FINDING:\s*(.*)$/m,
+  classification: /^CLASSIFICATION:\s*(.*)$/m,
+  evidence: /^EVIDENCE:\s*(.*)$/m,
+  successor: /^SUCCESSOR:\s*(.*)$/m,
+};
+
+/**
+ * `parseA3Classification(raw)` — TSPEC §7.2, A3-1/A3-2/A3-4. Pure and total over arbitrary agent
+ * text (P-8): `raw` is repeated `FINDING:`/`CLASSIFICATION:`/`EVIDENCE:` blocks (optionally
+ * `SUCCESSOR:`), one per finding, separated by a line containing exactly `---`. A block whose
+ * `CLASSIFICATION` is not a member of `ADVISORY_A3_CLASSES`, or whose classification is
+ * `deferral-candidate` with no `SUCCESSOR`, is dropped rather than counted — this is what keeps
+ * every emitted `class` a closed-set member without a fourth, undeclared class. `complete` is
+ * `classes.length === ` the number of `FINDING:` lines found in `raw` (A3-1): fewer classified
+ * blocks than findings is exactly the incompleteness signal.
+ *
+ * @param {string} raw
+ * @returns {{classes: Array<{finding: string, class: string, evidence: string, successor?: string}>, complete: boolean}}
+ */
+export function parseA3Classification(raw) {
+  const text = String(raw ?? "");
+  const findingCount = (text.match(/^FINDING:/gm) || []).length;
+  const closedSet = new Set(ADVISORY_A3_CLASSES);
+  const classes = [];
+
+  for (const block of text.split(/\n---\n/)) {
+    const findingMatch = A3_FIELD_RE.finding.exec(block);
+    const classMatch = A3_FIELD_RE.classification.exec(block);
+    if (!findingMatch || !classMatch) continue;
+
+    const cls = classMatch[1].trim();
+    if (!closedSet.has(cls)) continue;
+
+    const successorMatch = A3_FIELD_RE.successor.exec(block);
+    if (cls === "deferral-candidate" && !successorMatch) continue;
+
+    const evidenceMatch = A3_FIELD_RE.evidence.exec(block);
+    const entry = {
+      finding: findingMatch[1].trim(),
+      class: cls,
+      evidence: evidenceMatch ? evidenceMatch[1].trim() : "",
+    };
+    if (successorMatch) entry.successor = successorMatch[1].trim();
+    classes.push(entry);
+  }
+
+  return { classes, complete: classes.length === findingCount };
+}
+
+/**
+ * `governingClass(classes)` — TSPEC §7.2 A3-7. A pure total order over a **non-empty** multiset of
+ * `{class}` entries: `real-defect` > `mis-scoped-criterion` > `deferral-candidate`. The empty input
+ * is unreachable by construction (A3-1 rejects as malformed any classification whose classified
+ * count is below the finding count, and A3 only fires when findings are outstanding), so this
+ * function names no return value for it (TSPEC §7.2, PLAN §6.5 P-9's scope).
+ *
+ * @param {Array<{class: string}>} classes
+ * @returns {string}
+ */
+export function governingClass(classes) {
+  const list = Array.isArray(classes) ? classes : [];
+  let winner = null;
+  let winnerRank = -Infinity;
+  for (const entry of list) {
+    const rank = A3_CLASS_RANK[entry && entry.class];
+    if (rank !== undefined && rank > winnerRank) {
+      winnerRank = rank;
+      winner = entry.class;
+    }
+  }
+  return winner;
+}
+
+/**
+ * `buildA3SeamOps({dodResult, codeReviewText, _readFile})` — TSPEC §7.2. `permittedActions: []`
+ * (A3-6, "A3 changes no file") makes `apply`/`revert` structurally unreachable through
+ * `runAdvisorySeam`'s step 6 gate (`verifyGate: null`, §5.5); both are throwing stubs so a driver
+ * that mistakenly reached either fails loudly (a rejected promise) rather than silently mutating
+ * the working tree (T-05-5).
+ *
+ * @param {{dodResult: {lastStatus: string}, codeReviewText: string, _readFile: Function}} args
+ * @returns {SeamOps}
+ */
+export function buildA3SeamOps({ dodResult, codeReviewText, _readFile } = {}) {
+  async function gatherEvidence() {
+    const lastStatus = dodResult && dodResult.lastStatus;
+    let text = codeReviewText;
+    if (text === undefined && typeof _readFile === "function") {
+      try {
+        text = await _readFile();
+      } catch {
+        text = "";
+      }
+    }
+    return `DOD_STATUS: ${lastStatus}\n${text || ""}`;
+  }
+
+  return {
+    gatherEvidence,
+    prompt: (evidence) =>
+      "Classify every remaining finding as real-defect / mis-scoped-criterion / deferral-candidate, " +
+      `each with evidence, and bind every deferral-candidate to a named successor.\n${evidence}`,
+    conditionHolds: async () => true,
+    apply: async () => {
+      throw new Error("A3 seam: apply is unreachable — permittedActions is empty (A3-6)");
+    },
+    producedPaths: async () => [],
+    revert: async () => {
+      throw new Error("A3 seam: revert is unreachable — permittedActions is empty (A3-6)");
+    },
+    verifyGate: null,
+    declaredScope: [],
+    permittedActions: [],
+  };
+}
+
+// ─── TSPEC §7.3/§7.4 — A4's SeamOps for a rebase conflict (PLAN A-23) ──────
+//
+// `readGitFileList(argv, _git)` — the shared `git … --name-only`-shaped stdout parser every A4
+// member below uses: split on newline, trim, drop blanks.
+async function readGitFileList(argv, _git) {
+  const result = await _git(argv);
+  const stdout = result && typeof result.stdout === "string" ? result.stdout : "";
+  return stdout
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+}
+
+/**
+ * `buildA4SeamOps({mergeBase, preRebaseHead, defaultTip, planFiles, implConfig, _git, _runCommand})`
+ * — TSPEC §7.3/§7.4. The conflict set and each file's A4-1 branch-created determination
+ * (`branchCreated`, two `git cat-file -e` probes) are computed by `gatherEvidence`, never the
+ * agent, and drive the same invocation's later `declaredScope`/`permittedActions` reads (both run
+ * after `gatherEvidence` in `runAdvisorySeam`'s DIAGNOSE → GATE order). Both members are exposed as
+ * the SAME mutable array `gatherEvidence` fills in place (`.length = 0` then `.push(...)`, never a
+ * property reassignment) — `advisoryDriver.test.js`'s gate-exclusivity fixtures build their spy
+ * wrapper via `{ ...rawSeamOps }`, a shallow copy that keeps the array *reference* but freezes any
+ * plain-property or getter *value* at spread time; only a shared, in-place-mutated array reference
+ * stays live through that copy. A4-2: a conflict set containing any non-branch-created file (a
+ * "mixed" set) empties `permittedActions` for that invocation, so `classifyEnvelope`'s X-c refuses
+ * the proposal at GATE, before `apply` is ever reached — the seam never produces a third tree state
+ * (A4-6). `declaredScope` unions the PLAN files, the pre-rebase branch diff, and the conflict set's
+ * non-test-artifact paths — a branch-created **test** file is deliberately excluded here (X-a
+ * always outranks a permitted E-3 action, §7.3) so it is `apply`'s post-hoc `producedPaths` — not
+ * `declaredScope` — that lets `classifyEnvelope`'s step-5 CHECK catch it and revert (T-06-5):
+ * declaring it in scope up front would let GATE refuse it before `apply`, which would never revert
+ * anything, at odds with the revert-on-test-touch contract.
+ *
+ * @param {{mergeBase: string, preRebaseHead: string, defaultTip: string, planFiles: string[],
+ *          implConfig: {testCommand: string|null}, _git: Function, _runCommand: Function}} args
+ * @returns {SeamOps}
+ */
+export function buildA4SeamOps({ mergeBase, preRebaseHead, defaultTip, planFiles, implConfig, _git, _runCommand } = {}) {
+  const ownPlanFiles = Array.isArray(planFiles) ? planFiles : [];
+  const declaredScope = [...ownPlanFiles];
+  const permittedActions = ["E-3"];
+
+  async function gatherEvidence() {
+    const conflictFiles = await readGitFileList(["diff", "--name-only", "--diff-filter=U"], _git);
+    const determinations = [];
+    let mixed = false;
+    for (const path of conflictFiles) {
+      const created = await branchCreated(path, mergeBase, defaultTip, _git);
+      if (!created) mixed = true;
+      determinations.push({ path, branchCreated: created });
+    }
+    const preRebaseDiff = await readGitFileList(["diff", "--name-only", `${mergeBase}..${preRebaseHead}`], _git);
+    const nonTestConflictFiles = conflictFiles.filter((p) => !touchesTestArtifact([p], {}));
+
+    declaredScope.length = 0;
+    declaredScope.push(...new Set([...ownPlanFiles, ...preRebaseDiff, ...nonTestConflictFiles]));
+
+    permittedActions.length = 0;
+    if (!(conflictFiles.length > 0 && mixed)) permittedActions.push("E-3");
+
+    return determinations.map((d) => `${d.path}: ${d.branchCreated ? "branch-created" : "shared"}`).join("\n");
+  }
+
+  return {
+    gatherEvidence,
+    prompt: (evidence) => `Resolve each conflict in a branch-created file, reporting per file which side was taken and why.\n${evidence}`,
+    conditionHolds: async () => {
+      const current = await readGitFileList(["diff", "--name-only", "--diff-filter=U"], _git);
+      return current.length > 0;
+    },
+    apply: async () => ({ ok: true }),
+    producedPaths: async () => readGitFileList(["diff", "--name-only"], _git),
+    revert: async () => {
+      await _git(["rebase", "--abort"]);
+    },
+    verifyGate: async () => {
+      const testCommand = implConfig && implConfig.testCommand;
+      const hasTestCommand = typeof testCommand === "string" && testCommand.length > 0;
+      if (!hasTestCommand || typeof _runCommand !== "function") {
+        return { passed: false }; // TSPEC §7.4 — unverifiable ≠ resolved
+      }
+      const continueResult = await _git(["rebase", "--continue"]);
+      if (!continueResult || continueResult.ok !== true) {
+        return { passed: false, detail: continueResult && continueResult.stderr };
+      }
+      const testResult = await _runCommand(testCommand);
+      return { passed: Boolean(testResult && testResult.ok === true) };
+    },
+    declaredScope,
+    permittedActions,
+  };
+}
+
 // ─── TSPEC §9 — the advisory record (PLAN A-21) ────────────────────────────
 //
 // `docs/{feature}/ADVISORY-{feature}.md` — append-only, one `##` entry per invocation, in

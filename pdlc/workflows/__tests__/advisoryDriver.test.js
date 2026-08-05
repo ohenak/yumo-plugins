@@ -703,7 +703,7 @@ describe("A-22 — driver lifecycle", () => {
 // A-23 — A3/A4 gate exclusivity (batch 10)
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
-describe.skip("A-23 — A3/A4 gate exclusivity", () => {
+describe("A-23 — A3/A4 gate exclusivity", () => {
   gateExclusivityCases(["A3", "A4"]);
 });
 
