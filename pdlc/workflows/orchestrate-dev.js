@@ -1742,6 +1742,86 @@ export async function readAdvisoryConfigSafely(readFileFn, path) {
   }
 }
 
+// ─── TSPEC §3.4 — model-rung resolution ─────────────────────────────────────
+//
+// `MODEL_ERROR_RE` classifies a dispatch rejection as a model/alias resolution failure (M-1)
+// rather than an ordinary invocation failure. NOTE: TSPEC §3.4's inline literal
+// (`\b(unrecognis|unrecogniz)\b`) puts a word boundary immediately after the truncated stem,
+// which never matches the full words "unrecognised"/"unrecognized" — the trailing letters are
+// still word characters, so no boundary exists there. This is the same predicate TSPEC §3.4
+// describes and T-01-2..T-01-5 exercise; `\w*` after each stem is the fix that makes the
+// boundary land where the word actually ends, matching both the British and American spellings
+// the test suite scripts.
+const MODEL_ERROR_RE =
+  /\b(unknown|unrecognis\w*|unrecogniz\w*|invalid|unsupported)\b[^\n]*\b(model|alias)\b/i;
+
+/**
+ * Classifies a dispatch rejection as a model/alias resolution failure (TSPEC §3.4, M-1) rather
+ * than an ordinary invocation failure. Pure, total, never throws — accepts an `Error`, a
+ * plain object carrying `.message`, or any other rejection value.
+ *
+ * @param {unknown} err
+ * @returns {boolean}
+ */
+export function isModelResolutionError(err) {
+  return MODEL_ERROR_RE.test(String(err?.message ?? err ?? ""));
+}
+
+// The dispatch resolveAdvisoryRung makes to determine which rung resolves. Its own output is
+// never consumed — only whether the runtime accepts (or rejects) the model — so the skill and
+// prompt are fixed, not seam-specific (TSPEC §3.4/§4.4: the seam's own DIAGNOSE dispatch is a
+// separate, later call that reuses the resolved `rung.model`).
+const ADVISORY_RUNG_SKILL = "se-review";
+const ADVISORY_RUNG_PROMPT =
+  "Advisory-tier model-rung resolution (TSPEC §3.4). Reply with any well-formed trailer — this " +
+  "dispatch exists only to determine whether the runtime resolves the requested model.";
+
+/**
+ * Resolve the advisory rung at the FIRST advisory dispatch of a run (TSPEC §3.4 — lazy, once per
+ * run). `_state` is the per-run memo (`{ resolved: null }`), threaded from the caller rather than
+ * held in module state (§3.5): the bundle inlines this module into both shipped artifacts and
+ * jest runs every test against one imported module instance, so a module-level memo would leak
+ * resolution across tests and across a queue invocation's delegated `orchestrate-dev` run.
+ *
+ * Non-resolution is detected by classifying the rejection of the real dispatch
+ * (`isModelResolutionError`, M-1), never by a separate probe. A matched rejection emits
+ * `ADVISORY_MODEL_FALLBACK`, substitutes `MODEL_ADVISORY_FALLBACK`, and re-dispatches the SAME
+ * prompt once (M-2). A rejection that also matches on the fallback rung halts (M-3) — there is no
+ * third rung, and no advisory agent output is ever produced. A rejection that does not match is an
+ * ordinary invocation failure and is propagated unchanged, without entering the ladder (T-01-5).
+ *
+ * @param {{ _agent: Function, _log: Function, _state: { resolved: {model: string, fallback: boolean}|null } }} deps
+ * @returns {Promise<{ model: string, fallback: boolean }>}
+ * @throws  haltError when neither rung resolves (M-3)
+ */
+export async function resolveAdvisoryRung({ _agent, _log, _state }) {
+  if (_state.resolved != null) return _state.resolved;
+
+  try {
+    await _agent(ADVISORY_RUNG_SKILL, ADVISORY_RUNG_PROMPT, { model: MODEL_ADVISORY });
+    _state.resolved = { model: MODEL_ADVISORY, fallback: false };
+    return _state.resolved;
+  } catch (err) {
+    if (!isModelResolutionError(err)) throw err;
+
+    _log(
+      `ADVISORY_MODEL_FALLBACK: "${MODEL_ADVISORY}" did not resolve — substituting "${MODEL_ADVISORY_FALLBACK}"`
+    );
+
+    try {
+      await _agent(ADVISORY_RUNG_SKILL, ADVISORY_RUNG_PROMPT, { model: MODEL_ADVISORY_FALLBACK });
+      _state.resolved = { model: MODEL_ADVISORY_FALLBACK, fallback: true };
+      return _state.resolved;
+    } catch (fallbackErr) {
+      if (!isModelResolutionError(fallbackErr)) throw fallbackErr;
+      throw haltError(
+        `Advisory model rung resolution failed: neither "${MODEL_ADVISORY}" nor ` +
+          `"${MODEL_ADVISORY_FALLBACK}" resolved. No advisory agent output was produced.`
+      );
+    }
+  }
+}
+
 // TSPEC-SCRIPT-03: Exported meta object
 export const meta = {
   name: "orchestrate-dev",

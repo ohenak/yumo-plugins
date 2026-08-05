@@ -43,7 +43,7 @@ function makeLogs() {
   return { logs, _log };
 }
 
-describe.skip("A-18 — model rung resolution (isModelResolutionError, resolveAdvisoryRung)", () => {
+describe("A-18 — model rung resolution (isModelResolutionError, resolveAdvisoryRung)", () => {
   // ─── isModelResolutionError — pure predicate (TSPEC §3.4) ─────────────────
   describe("isModelResolutionError — classification", () => {
     test.each([
