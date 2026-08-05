@@ -8086,6 +8086,19 @@ async function commitPaths({ paths, message, what, _git, _sleep, emit }) {
     label: `${what}: git commit`,
   });
   if (!commit || commit.ok !== true) {
+    // The staged read-back above travels the same agent-transcribed channel as
+    // every other adapter read, so a garbled "non-empty" answer can send a
+    // no-change task into `git commit` anyway. Git then refuses with its
+    // "nothing to commit" family of messages — which is the read-back's own
+    // verdict arriving late, not a failure to record verified work. Honour it
+    // as the notice it would have been; every other refusal still halts.
+    const refusal = `${String((commit && commit.stdout) || "")}\n${String(
+      (commit && commit.stderr) || ""
+    )}`;
+    if (/nothing (added )?to commit|no changes added to commit/.test(refusal)) {
+      emit(`${what}: nothing staged — no changes to commit`);
+      return "nothing-staged";
+    }
     throw haltError(
       `Error: ${what} — \`git commit\` failed: ` +
         `${String((commit && commit.stderr) || "no output").trim()}. ` +

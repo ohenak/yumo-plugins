@@ -743,6 +743,40 @@ describe("Phase I — index.lock retry and non-transient git failures", () => {
     expect(gitCalls.filter((a) => a[0] === "commit").length).toBe(1);
   });
 
+  it("a commit refused as 'nothing to commit' is the read-back's late verdict — a notice, not a halt", async () => {
+    // The staged read-back travels the agent-transcribed channel, so a garbled
+    // non-empty answer can push a no-change task into `git commit` anyway. Git's
+    // own refusal must land as the nothing-staged notice, never as a halt.
+    const gitCalls = [];
+    const logs = [];
+    const slept = [];
+    const git = makeGit(gitCalls, {
+      fail: (argv) =>
+        argv[0] === "commit"
+          ? {
+              ok: false,
+              stdout:
+                "On branch feat-test-feat\nnothing added to commit but untracked files present (use \"git add\" to track)",
+              stderr: "",
+            }
+          : null,
+    });
+    const result = await main(
+      makeArgs({
+        config: CONFIG_WITH_TEST_COMMAND,
+        git,
+        logs,
+        runCommand: async () => ({ ok: true, output: "green" }),
+        sleep: async (ms) => slept.push(ms),
+      })
+    );
+    expect(result.outcome).toBe("success");
+    expect(slept).toEqual([]);
+    expect(
+      logs.some((m) => m === "Wave 1 task T1: nothing staged — no changes to commit")
+    ).toBe(true);
+  });
+
   it("a failing `git add` halts with the same recoverable-work remedy", async () => {
     const gitCalls = [];
     const git = makeGit(gitCalls, {
