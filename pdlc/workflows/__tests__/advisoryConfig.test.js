@@ -63,7 +63,7 @@ function isGeneratorCorruptValue(value) {
 // PROP-CFG-01 — totality: never throws, for any input.
 // ---------------------------------------------------------------------------
 
-describe.skip("PROP-CFG-01 — parseAdvisoryConfig is total and never throws", () => {
+describe("PROP-CFG-01 — parseAdvisoryConfig is total and never throws", () => {
   test.each([
     ["null", null],
     ["empty string", ""],
@@ -90,7 +90,7 @@ describe.skip("PROP-CFG-01 — parseAdvisoryConfig is total and never throws", (
 // half of that claim is that the section-absent parse yields defaults with no invalidKeys).
 // ---------------------------------------------------------------------------
 
-describe.skip("PROP-CFG-02 — absent/unreadable/malformed input yields ADVISORY_DEFAULTS (T-01-1)", () => {
+describe("PROP-CFG-02 — absent/unreadable/malformed input yields ADVISORY_DEFAULTS (T-01-1)", () => {
   test.each([
     ["file absent (text === null)", null],
     ["no advisory section", JSON.stringify({ other: 1 })],
@@ -116,7 +116,7 @@ describe.skip("PROP-CFG-02 — absent/unreadable/malformed input yields ADVISORY
 // PROP-CFG-03 — per-key independent fallback (T-01-6).
 // ---------------------------------------------------------------------------
 
-describe.skip("PROP-CFG-03 — one out-of-range key falls back alone (T-01-6)", () => {
+describe("PROP-CFG-03 — one out-of-range key falls back alone (T-01-6)", () => {
   test("attemptBudget out of range, seamBudgetMinutes valid ⇒ attemptBudget defaults, seamBudgetMinutes keeps its configured value, invalidKeys names only attemptBudget", () => {
     const raw = JSON.stringify({
       advisory: { attemptBudget: -1, seamBudgetMinutes: 42 },
@@ -154,7 +154,7 @@ describe.skip("PROP-CFG-03 — one out-of-range key falls back alone (T-01-6)", 
 // artifact claim, whose single home is advisoryDisabled.test.js).
 // ---------------------------------------------------------------------------
 
-describe.skip("PROP-CFG-04 — degraded-key notice is gated on effective enabled (mechanism, not T-10-4)", () => {
+describe("PROP-CFG-04 — degraded-key notice is gated on effective enabled (mechanism, not T-10-4)", () => {
   // TSPEC §3.2's caller-side gate, transcribed verbatim as the mechanism under test:
   //   if (advisory.config.enabled && advisory.invalidKeys.length) { emit(...) }
   // This is a pure re-statement of that one-line gate over `parseAdvisoryConfig`'s own output —
@@ -202,7 +202,7 @@ describe.skip("PROP-CFG-04 — degraded-key notice is gated on effective enabled
 // without a second read (C-3). Unit half plus one Integration-level harness.
 // ---------------------------------------------------------------------------
 
-describe.skip("PROP-CFG-05 — readAdvisoryConfigSafely reads once and threads safely (C-3, F-1)", () => {
+describe("PROP-CFG-05 — readAdvisoryConfigSafely reads once and threads safely (C-3, F-1)", () => {
   test("returns the file contents on a successful read, calling readFileFn exactly once with ADVISORY_CONFIG_PATH", async () => {
     const file = makeFileDouble({ seed: { [ADVISORY_CONFIG_PATH]: JSON.stringify({ advisory: { enabled: true } }) } });
     const text = await devModule.readAdvisoryConfigSafely(file._readFile, ADVISORY_CONFIG_PATH);
@@ -240,7 +240,7 @@ describe.skip("PROP-CFG-05 — readAdvisoryConfigSafely reads once and threads s
 // PROP-CFG-06 — no advisory code path writes ADVISORY_CONFIG_PATH; the parsed config is frozen.
 // ---------------------------------------------------------------------------
 
-describe.skip("PROP-CFG-06 — parsed config is frozen and never written back (C-4)", () => {
+describe("PROP-CFG-06 — parsed config is frozen and never written back (C-4)", () => {
   test("the returned config object is frozen", () => {
     const { config } = devModule.parseAdvisoryConfig(JSON.stringify({ advisory: { enabled: true } }));
     expect(Object.isFrozen(config)).toBe(true);
@@ -269,7 +269,7 @@ describe.skip("PROP-CFG-06 — parsed config is frozen and never written back (C
 // PROP-CFG-07 — config.envelope is not widenable at runtime.
 // ---------------------------------------------------------------------------
 
-describe.skip("PROP-CFG-07 — config.envelope cannot be widened at runtime (E-R1, BR-1)", () => {
+describe("PROP-CFG-07 — config.envelope cannot be widened at runtime (E-R1, BR-1)", () => {
   test("the parsed envelope array is frozen", () => {
     const { config } = devModule.parseAdvisoryConfig(JSON.stringify({ advisory: { envelope: ["E-1", "E-2"] } }));
     expect(Object.isFrozen(config.envelope)).toBe(true);
@@ -300,7 +300,7 @@ describe.skip("PROP-CFG-07 — config.envelope cannot be widened at runtime (E-R
 // `makeAdvisoryGenerators(seed).configObject()` — no locally-declared PRNG (PROP-INFRA-02).
 // ---------------------------------------------------------------------------
 
-describe.skip("P-1 — parseAdvisoryConfig: totality + per-key independence over generated configs", () => {
+describe("P-1 — parseAdvisoryConfig: totality + per-key independence over generated configs", () => {
   const DRAWS = 40; // bounded per §11's Hypothesis-style hygiene note for P-1.
 
   test(`holds over ${DRAWS} generated configs`, () => {
