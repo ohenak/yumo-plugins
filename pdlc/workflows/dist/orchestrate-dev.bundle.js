@@ -8118,9 +8118,18 @@ async function commitPaths({ paths, message, what, _git, _sleep, emit }) {
   return "committed";
 }
 
-/** The one-line commit subject for a wave task. */
+/**
+ * The one-line commit subject for a wave task. The PLAN description travels
+ * into a `git commit -m` executed by the adapter's agent-transcribed shell,
+ * whose quoting is not under this script's control — a double-quoted zsh still
+ * interprets backticks, `$`, `\` and `"`, and a PLAN description legitimately
+ * carries backticks (`` `describe.skip` ``). Those four characters are
+ * stripped so the subject is inert under any quoting the transport picks.
+ */
 function waveCommitMessage(featureName, task) {
-  const description = String(task.description || "").trim();
+  const description = String(task.description || "")
+    .replace(/[`"$\\]/g, "")
+    .trim();
   const short =
     description.length > 60 ? `${description.slice(0, 57)}...` : description;
   return `feat(${featureName}): ${task.id}${short ? ` — ${short}` : ""}`;

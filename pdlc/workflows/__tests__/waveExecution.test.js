@@ -743,6 +743,35 @@ describe("Phase I — index.lock retry and non-transient git failures", () => {
     expect(gitCalls.filter((a) => a[0] === "commit").length).toBe(1);
   });
 
+  it("the commit subject is shell-inert: backticks, $, backslash and double-quote are stripped", async () => {
+    // The subject travels into a `git commit -m` run by the agent-transcribed
+    // shell, whose quoting the script does not control — a double-quoted zsh
+    // executes backticks, and PLAN descriptions legitimately carry them.
+    const plan = [
+      "| Task ID | Description | Batch | Dependencies |",
+      "|---|---|---|---|",
+      '| T1 | RED (`describe.skip`) "cost $5" \\slash | 1 | - |',
+      "",
+      "| Task | Files |",
+      "|---|---|",
+      "| T1 | `src/one.js` |",
+    ].join("\n");
+    const gitCalls = [];
+    const result = await main(
+      makeArgs({
+        plan,
+        config: CONFIG_WITH_TEST_COMMAND,
+        git: makeGit(gitCalls),
+        runCommand: async () => ({ ok: true, output: "green" }),
+      })
+    );
+    expect(result.outcome).toBe("success");
+    const commits = gitCalls.filter((a) => a[0] === "commit");
+    expect(commits).toEqual([
+      ["commit", "-m", "feat(test-feat): T1 — RED (describe.skip) cost 5 slash"],
+    ]);
+  });
+
   it("an 'unparseable adapter response' is transient — retried like index.lock, not a halt", async () => {
     // The `_git` seam is agent-transcribed, so the commit may have succeeded
     // with only the report garbled. One failed transcription must cost a
