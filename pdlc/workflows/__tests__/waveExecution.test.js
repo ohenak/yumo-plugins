@@ -743,6 +743,32 @@ describe("Phase I — index.lock retry and non-transient git failures", () => {
     expect(gitCalls.filter((a) => a[0] === "commit").length).toBe(1);
   });
 
+  it("an 'unparseable adapter response' is transient — retried like index.lock, not a halt", async () => {
+    // The `_git` seam is agent-transcribed, so the commit may have succeeded
+    // with only the report garbled. One failed transcription must cost a
+    // retry, never the wave.
+    const gitCalls = [];
+    const slept = [];
+    let commitAttempts = 0;
+    const git = makeGit(gitCalls, {
+      fail: (argv) =>
+        argv[0] === "commit" && ++commitAttempts === 1
+          ? { ok: false, stdout: "", stderr: "unparseable adapter response" }
+          : null,
+    });
+    const result = await main(
+      makeArgs({
+        config: CONFIG_WITH_TEST_COMMAND,
+        git,
+        runCommand: async () => ({ ok: true, output: "green" }),
+        sleep: async (ms) => slept.push(ms),
+      })
+    );
+    expect(result.outcome).toBe("success");
+    expect(slept).toEqual([GIT_LOCK_RETRY_DELAY_MS]);
+    expect(commitAttempts).toBeGreaterThan(1);
+  });
+
   it("a commit refused as 'nothing to commit' is the read-back's late verdict — a notice, not a halt", async () => {
     // The staged read-back travels the agent-transcribed channel, so a garbled
     // non-empty answer can push a no-change task into `git commit` anyway. Git's

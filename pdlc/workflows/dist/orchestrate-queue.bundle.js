@@ -7973,13 +7973,17 @@ const GIT_LOCK_RETRIES = 5;
 const GIT_LOCK_RETRY_DELAY_MS = 5000;
 
 /**
- * `.git/index.lock` is the one git failure that is expected, transient and
- * NOT a reason to halt: a wave's agents run in one shared tree, and the tail of
+ * Two git failures are expected, transient and NOT a reason to halt.
+ * `.git/index.lock`: a wave's agents run in one shared tree, and the tail of
  * an agent's own tooling (a formatter, a watcher, a `git status` from a
  * language server) can still hold the index for a second or two after the
- * dispatch returned. Every other git failure is a real one and reaches the
- * caller unretried — retrying a rejected commit hook five times just delays the
- * halt by 25 seconds.
+ * dispatch returned. `unparseable adapter response`: the runtime `_git` seam is
+ * agent-transcribed, so the git call may well have SUCCEEDED and only the
+ * report of it been garbled — a retry is safe on every argv this helper serves,
+ * because `add` is idempotent and a re-`commit` of already-recorded work lands
+ * in `commitPaths`' nothing-staged arm rather than double-committing. Every
+ * other git failure is a real one and reaches the caller unretried — retrying a
+ * rejected commit hook five times just delays the halt by 25 seconds.
  *
  * @param {string[]} argv
  * @param {{ _git: function, _sleep: function, emit: function, label: string }} seams
@@ -7991,9 +7995,14 @@ async function gitWithLockRetry(argv, { _git, _sleep, emit, label }) {
     result = await _git(argv);
     if (result && result.ok === true) return result;
     const stderr = String((result && result.stderr) || "");
-    if (!stderr.includes("index.lock") || attempt === GIT_LOCK_RETRIES) return result;
+    const transient = stderr.includes("index.lock")
+      ? ".git/index.lock is held"
+      : stderr.includes("unparseable adapter response")
+        ? "adapter response was unparseable"
+        : null;
+    if (transient === null || attempt === GIT_LOCK_RETRIES) return result;
     emit(
-      `${label}: .git/index.lock is held — retrying in ${GIT_LOCK_RETRY_DELAY_MS}ms ` +
+      `${label}: ${transient} — retrying in ${GIT_LOCK_RETRY_DELAY_MS}ms ` +
         `(attempt ${attempt + 1} of ${GIT_LOCK_RETRIES})`
     );
     await _sleep(GIT_LOCK_RETRY_DELAY_MS);
