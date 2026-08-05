@@ -117,3 +117,32 @@ describe("rtGhRun", () => {
     });
   });
 });
+
+describe("rtGit — the command is valid shell AS WRITTEN (quoting is not the executing agent's job)", () => {
+  it("single-quotes argv elements that carry shell-active characters", async () => {
+    const agent = scriptedAgent(['{"ok":true,"stdout":"","stderr":""}']);
+    const { rtGit } = load(agent);
+
+    await rtGit(["commit", "-m", "feat(pdlc-advisory-tier): A-03 — RED `describe.skip`"]);
+
+    expect(agent.calls).toHaveLength(1);
+    expect(agent.calls[0].prompt).toContain(
+      "  git commit -m 'feat(pdlc-advisory-tier): A-03 — RED `describe.skip`'\n"
+    );
+  });
+
+  it("passes bare-safe argv elements through unquoted", async () => {
+    const agent = scriptedAgent(['{"ok":true,"stdout":"","stderr":""}']);
+    const { rtGit } = load(agent);
+
+    await rtGit(["diff", "--cached", "--name-only", "--", "src/one.js"]);
+
+    expect(agent.calls[0].prompt).toContain("  git diff --cached --name-only -- src/one.js\n");
+  });
+
+  it("escapes embedded single quotes so the written command still parses", () => {
+    const { rtShellQuote } = loadAdapter();
+    expect(rtShellQuote("it's")).toBe("'it'\\''s'");
+    expect(rtShellQuote("plain-safe_word.js")).toBe("plain-safe_word.js");
+  });
+});

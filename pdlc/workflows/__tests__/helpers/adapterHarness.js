@@ -60,6 +60,9 @@ const EXPOSED = [
   "rtDevInjections",
   // The `gh` transport (TSPEC §11.3).
   "rtGhRun",
+  // The git transport and its shell-quoting (TSPEC §3.4).
+  "rtGit",
+  "rtShellQuote",
   // The command transport Phase I's script-owned gate runs through
   // (PROPOSAL §3.3 / M-6).
   "rtRunCommand",

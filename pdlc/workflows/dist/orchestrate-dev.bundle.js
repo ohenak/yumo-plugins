@@ -981,6 +981,20 @@ async function rtListFiles(dirPath) {
 }
 
 /**
+ * Single-quote one argv element for POSIX shells. Bare-safe words pass
+ * through; anything else is wrapped, with embedded single quotes escaped as
+ * '\''. The command the prompt writes must be valid shell AS WRITTEN: the
+ * executing agent sometimes runs it verbatim and sometimes re-quotes it, so
+ * an unquoted commit message (spaces, parens, backticks) is a coin flip
+ * between a clean run, a zsh glob error and command substitution.
+ */
+function rtShellQuote(arg) {
+  const s = String(arg);
+  if (/^[A-Za-z0-9_.\/:=,@%^+-]+$/.test(s)) return s;
+  return `'${s.replace(/'/g, `'\\''`)}'`;
+}
+
+/**
  * Transport seam for git (TSPEC §3.4). `argv` excludes the leading "git".
  * Returns { ok, stdout, stderr } and never throws; the caller interprets.
  * Modelled on rtMergeWorktree's fixed-command + exact-JSON-reply discipline.
@@ -989,7 +1003,7 @@ async function rtGit(argv) {
   const args = Array.isArray(argv) ? argv : [];
   const out = await RT.agent(
     `Run exactly this command from the repository root, and nothing else:\n` +
-      `  git ${args.join(" ")}\n` +
+      `  git ${args.map(rtShellQuote).join(" ")}\n` +
       `If it exits 0, return exactly: {"ok":true,"stdout":"<its stdout>","stderr":""}\n` +
       `If it exits non-zero, return exactly: {"ok":false,"stdout":"","stderr":"<its stderr>"}\n` +
       `Return ONLY that JSON object, correctly escaped — no commentary, no code fences. ` +
@@ -8029,7 +8043,9 @@ async function gitWithLockRetry(argv, { _git, _sleep, emit, label }) {
       ? ".git/index.lock is held"
       : stderr.includes("unparseable adapter response")
         ? "adapter response was unparseable"
-        : null;
+        : /no matches found|command not found/.test(stderr)
+          ? "the transport shell mangled the command"
+          : null;
     if (transient === null || attempt === GIT_LOCK_RETRIES) return result;
     emit(
       `${label}: ${transient} — retrying in ${GIT_LOCK_RETRY_DELAY_MS}ms ` +
