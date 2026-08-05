@@ -127,22 +127,24 @@ describe("rtGit — the command is valid shell AS WRITTEN (quoting is not the ex
 
     expect(agent.calls).toHaveLength(1);
     expect(agent.calls[0].prompt).toContain(
-      "  git commit -m 'feat(pdlc-advisory-tier): A-03 — RED `describe.skip`'\n"
+      "  git 'commit' '-m' 'feat(pdlc-advisory-tier): A-03 — RED `describe.skip`'\n"
     );
   });
 
-  it("passes bare-safe argv elements through unquoted", async () => {
+  it("quotes every argv element — the shared rtShellQuote is total", async () => {
     const agent = scriptedAgent(['{"ok":true,"stdout":"","stderr":""}']);
     const { rtGit } = load(agent);
 
     await rtGit(["diff", "--cached", "--name-only", "--", "src/one.js"]);
 
-    expect(agent.calls[0].prompt).toContain("  git diff --cached --name-only -- src/one.js\n");
+    expect(agent.calls[0].prompt).toContain(
+      "  git 'diff' '--cached' '--name-only' '--' 'src/one.js'\n"
+    );
   });
 
   it("escapes embedded single quotes so the written command still parses", () => {
     const { rtShellQuote } = loadAdapter();
     expect(rtShellQuote("it's")).toBe("'it'\\''s'");
-    expect(rtShellQuote("plain-safe_word.js")).toBe("plain-safe_word.js");
+    expect(rtShellQuote("plain-safe_word.js")).toBe("'plain-safe_word.js'");
   });
 });

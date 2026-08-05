@@ -929,23 +929,14 @@ async function rtListFiles(dirPath) {
 }
 
 /**
- * Single-quote one argv element for POSIX shells. Bare-safe words pass
- * through; anything else is wrapped, with embedded single quotes escaped as
- * '\''. The command the prompt writes must be valid shell AS WRITTEN: the
- * executing agent sometimes runs it verbatim and sometimes re-quotes it, so
- * an unquoted commit message (spaces, parens, backticks) is a coin flip
- * between a clean run, a zsh glob error and command substitution.
- */
-function rtShellQuote(arg) {
-  const s = String(arg);
-  if (/^[A-Za-z0-9_.\/:=,@%^+-]+$/.test(s)) return s;
-  return `'${s.replace(/'/g, `'\\''`)}'`;
-}
-
-/**
  * Transport seam for git (TSPEC §3.4). `argv` excludes the leading "git".
  * Returns { ok, stdout, stderr } and never throws; the caller interprets.
  * Modelled on rtMergeWorktree's fixed-command + exact-JSON-reply discipline.
+ * Each argv element rides through `rtShellQuote`: the command the prompt
+ * writes must be valid shell AS WRITTEN, because the executing agent
+ * sometimes runs it verbatim and sometimes re-quotes it — an unquoted commit
+ * message (spaces, parens, backticks) is a coin flip between a clean run, a
+ * zsh glob error and command substitution.
  */
 async function rtGit(argv) {
   const args = Array.isArray(argv) ? argv : [];
