@@ -366,7 +366,7 @@ const REASON_FIXTURES = {
 // A-22 — driver lifecycle (batch 9)
 // ═══════════════════════════════════════════════════════════════════════════════════════════════
 
-describe.skip("A-22 — driver lifecycle", () => {
+describe("A-22 — driver lifecycle", () => {
   describe("entry — config.enabled === false (PROP-LIFE-01, D-1, D-2, TSPEC §4.4 entry row)", () => {
     it("returns before any dispatch or rung resolution, with the seam's declared pre-advisory no-op", async () => {
       const disabledConfig = makeAdvisoryConfig().config; // enabled: false by default
