@@ -293,16 +293,21 @@ export function parseReqFrontmatter(text) {
 
 /**
  * Extract the Phase-0 triage verdict from an se-author result.
- * Looks for the last line of form `TRIAGE: ready|blocked|needs-human`.
+ * Looks for the last line of form `TRIAGE: ready|blocked|needs-human [SEAM:A1|A2]? <reason>`.
  * Defaults to "needs-human" (the safe, no-auto-run option) when absent/malformed.
  *
+ * `seamToken` is `null` for an absent or unrecognised token — the anchored single-group
+ * alternation only matches `A1`/`A2`; anything else (including a malformed "both tokens on one
+ * stop" stop) falls through into `reason` unconsumed. TSPEC §6.2/§6.5.
+ *
  * @param {string | null | undefined} result
- * @returns {{ verdict: "ready"|"blocked"|"needs-human", reason: string }}
+ * @returns {{ verdict: "ready"|"blocked"|"needs-human", reason: string, seamToken: "A1"|"A2"|null }}
  */
 export function parseTriageVerdict(result) {
   const fallback = {
     verdict: "needs-human",
     reason: "triage agent returned no TRIAGE verdict — treating as needs-human",
+    seamToken: null,
   };
   if (result == null || (typeof result === "string" && result.trim() === "")) {
     return fallback;
@@ -313,13 +318,49 @@ export function parseTriageVerdict(result) {
     const trimmed = lines[i].trim();
     const m = /^TRIAGE:\s*(ready|blocked|needs-human)\b\s*(.*)$/i.exec(trimmed);
     if (m) {
+      const verdict = m[1].toLowerCase();
+      const rest = m[2].trim();
+
+      // Consume at most one leading [SEAM:A1|A2] token. A second one immediately following
+      // (the "both tokens on one stop" malformed case, V-4) is left unconsumed — seamToken
+      // stays null and `reason` carries the residual "[SEAM:" prefix, which is exactly what
+      // `hasResidualSeamToken` is the one predicate for.
+      let seamToken = null;
+      let reason = rest;
+      const tokenMatch = /^\[SEAM:(A1|A2)\]\s*(.*)$/i.exec(rest);
+      if (tokenMatch) {
+        if (/^\[SEAM:/i.test(tokenMatch[2].trim())) {
+          seamToken = null;
+          reason = rest;
+        } else {
+          seamToken = tokenMatch[1].toUpperCase();
+          reason = tokenMatch[2].trim();
+        }
+      }
+
       return {
-        verdict: m[1].toLowerCase(),
-        reason: m[2].trim() || "(no reason given)",
+        verdict,
+        seamToken,
+        reason: reason || "(no reason given)",
       };
     }
   }
   return fallback;
+}
+
+// ─── QUEUE-PARSE-04: hasResidualSeamToken ────────────────────────────────────
+
+/**
+ * True when `reason` (as returned by `parseTriageVerdict`) still carries an unconsumed
+ * `[SEAM:` prefix — the "both tokens on one stop" malformed case (TSPEC §6.2/§6.5, V-4): the
+ * anchored single-group match in `parseTriageVerdict` consumes at most one token, so a second
+ * one lands, unconsumed, at the front of `reason`.
+ *
+ * @param {string | null | undefined} reason
+ * @returns {boolean}
+ */
+export function hasResidualSeamToken(reason) {
+  return typeof reason === "string" && /^\[SEAM:/i.test(reason.trim());
 }
 
 // ─── QUEUE-WRITE-01: updateQueueStatus ───────────────────────────────────────
@@ -660,10 +701,13 @@ export function triagePrompt(feature, reqPath, dependsOn) {
     `given the current state of the codebase. Specifically verify, using git history and the ` +
     `working tree, that every declared dependency's implementation is present in the base. ` +
     `Also flag if the REQ references subsystems that do not yet exist.\n\n` +
+    `Also check whether the REQ's file:line citations still resolve at HEAD. If some have drifted ` +
+    `but every cited symbol still exists, return needs-human [SEAM:A2].\n\n` +
     `Do NOT modify any files. End your final message with exactly one line:\n` +
     `TRIAGE: ready        <one-line reason>   — dependencies satisfied, safe to run\n` +
     `TRIAGE: blocked      <one-line reason>   — a dependency is not yet in the base; skip for now\n` +
-    `TRIAGE: needs-human  <one-line reason>   — ambiguous; a human must decide`
+    `TRIAGE: needs-human [SEAM:A1] <one-line reason>   — ambiguous; a human must decide\n` +
+    `TRIAGE: needs-human [SEAM:A2] <one-line reason>   — the REQ's file:line citations have drifted`
   );
 }
 

@@ -168,7 +168,7 @@ function a2Verdict(rows) {
 // A-29 — seam-token routing: `triagePrompt`, `parseTriageVerdict`, `hasResidualSeamToken`.
 // ---------------------------------------------------------------------------------------------
 
-describe.skip("A-29 — seam-token routing (§6.2, PROP-A12-01/03/04)", () => {
+describe("A-29 — seam-token routing (§6.2, PROP-A12-01/03/04)", () => {
   test("triagePrompt carries both seam-token lines and A2's citation-drift obligation", () => {
     const prompt = queueModule.triagePrompt("some-feature", "docs/some-feature/REQ-some-feature.md", []);
     expect(prompt).toMatch(/\[SEAM:A1\]/);
