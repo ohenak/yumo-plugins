@@ -2992,6 +2992,142 @@ async function resolveAdvisoryRung({ _agent, _log, _state }) {
   }
 }
 
+/**
+ * @typedef {Object} AdvisoryVerdict          AC-2.1 / FSPEC §4.2. The agent's product.
+ * @property {"A1"|"A2"|"A3"|"A4"|"A5"} seam
+ * @property {string}   diagnosis             non-empty
+ * @property {string}   proposedAction        non-empty; may be the literal "nothing"
+ * @property {"high"|"low"} confidence
+ * @property {boolean}  withinEnvelope        ADVISORY ONLY — never the membership decision (V-3)
+ * @property {string[]} evidence              non-empty; file:line / log citations
+ */
+
+/**
+ * @typedef {Object} AdvisoryDisposition      V-7. Exactly three terminal values.
+ * @property {"resolved"|"escalated"|"no-action"} outcome
+ * @property {string|null} reason             one §5.3 reason iff outcome === "escalated"
+ * @property {AdvisoryVerdict|null} verdict   last well-formed verdict, if any
+ * @property {number}  attempts               attempts consumed
+ * @property {string}  model                  the rung actually used (§3.4)
+ * @property {boolean} fallback
+ */
+
+/**
+ * Parse the raw agent trailer produced at TSPEC §4.4 step 1 into an {@link AdvisoryVerdict},
+ * enforcing every well-formedness rule of TSPEC §4.4/PROPERTIES PROP-VER-03 in one place — pure
+ * and total: never throws, and returns `{ verdict: null, malformed: true, why }` for any input
+ * that does not parse cleanly (TSPEC §4.2, following `parseDodStatus` / `parseVerdict`: parse the
+ * agent's trailer, never trust its shape).
+ *
+ * The five malformedness rules, checked in order — each independently falsifiable:
+ *   (a) `seam` does not match `dispatchedSeam` (skipped when `dispatchedSeam` is `undefined` —
+ *       there is no "dispatched seam" concept to compare against)
+ *   (b) `evidence` is empty
+ *   (c) `diagnosis` is empty
+ *   (d) `proposedAction` is absent (the literal `"nothing"` is a valid, well-formed value —
+ *       FSPEC §4.4 row 4 — distinct from an absent trailer line)
+ *   (e) `confidence` is outside the `"high"|"low"` enum
+ *
+ * `withinEnvelope` is preserved data only ("yes"/"no" → true/false) — it never blocks or forces a
+ * clean parse by itself (V-3).
+ *
+ * @param {string} raw               the agent's raw trailer text
+ * @param {string} [dispatchedSeam]  the seam `runAdvisorySeam` actually dispatched; omit to skip
+ *                                   the wrong-seam rule
+ * @returns {{ verdict: AdvisoryVerdict|null, malformed: boolean, why: string|null }}
+ */
+function parseAdvisoryVerdict(raw, dispatchedSeam) {
+  const fail = (why) => ({ verdict: null, malformed: true, why });
+
+  if (typeof raw !== "string" || raw.trim() === "") {
+    return fail("empty");
+  }
+
+  const lines = raw.split("\n");
+  const extract = (prefix) => {
+    let value;
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (trimmed.startsWith(prefix)) {
+        value = trimmed.slice(prefix.length).trim();
+      }
+    }
+    return value;
+  };
+
+  const seam = extract("SEAM:");
+  const diagnosis = extract("DIAGNOSIS:");
+  const proposedAction = extract("PROPOSED-ACTION:");
+  const confidence = extract("CONFIDENCE:");
+  const withinEnvelopeRaw = extract("WITHIN-ENVELOPE:");
+  const evidenceRaw = extract("EVIDENCE:");
+
+  const nothingParsed =
+    seam === undefined &&
+    diagnosis === undefined &&
+    proposedAction === undefined &&
+    confidence === undefined &&
+    withinEnvelopeRaw === undefined &&
+    evidenceRaw === undefined;
+  if (nothingParsed) {
+    return fail("unparseable");
+  }
+
+  if (dispatchedSeam !== undefined && seam !== dispatchedSeam) {
+    return fail("seam");
+  }
+
+  const evidence =
+    evidenceRaw === undefined || evidenceRaw.trim() === ""
+      ? []
+      : evidenceRaw
+          .split(",")
+          .map((entry) => entry.trim())
+          .filter((entry) => entry.length > 0);
+  if (evidence.length === 0) {
+    return fail("evidence");
+  }
+
+  if (diagnosis === undefined || diagnosis.trim() === "") {
+    return fail("diagnosis");
+  }
+
+  if (proposedAction === undefined || proposedAction.trim() === "") {
+    return fail("proposedAction");
+  }
+
+  if (confidence !== "high" && confidence !== "low") {
+    return fail("confidence");
+  }
+
+  return {
+    verdict: {
+      seam,
+      diagnosis,
+      proposedAction,
+      confidence,
+      withinEnvelope: withinEnvelopeRaw === "yes",
+      evidence,
+    },
+    malformed: false,
+    why: null,
+  };
+}
+
+/**
+ * Pure budget arithmetic (TSPEC §4.5, PROP-BUD-01): `true` iff either the attempt bound or the
+ * wall-clock bound has been reached. `waitMs` is the check-rollup wait the driver accumulates
+ * (`runAdvisorySeam` owns the counter, only A5 ever calls the `recordWait` sink) — zero at every
+ * other seam — and is subtracted from `elapsedMs` before the wall-clock comparison (NFR-4's
+ * rollup-wait carve-out, PROP-BUD-03).
+ *
+ * @param {{ attempts: number, attemptBudget: number, elapsedMs: number, waitMs: number, seamBudgetMinutes: number }} args
+ * @returns {boolean}
+ */
+function budgetExceeded({ attempts, attemptBudget, elapsedMs, waitMs, seamBudgetMinutes }) {
+  return attempts >= attemptBudget || elapsedMs - waitMs >= seamBudgetMinutes * 60_000;
+}
+
 // TSPEC-SCRIPT-03: Exported meta object
 const meta = {
   name: "orchestrate-dev",
