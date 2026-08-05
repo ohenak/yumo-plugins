@@ -6172,7 +6172,9 @@ async function gitWithLockRetry(argv, { _git, _sleep, emit, label }) {
         ? "adapter response was unparseable"
         : /no matches found|command not found/.test(stderr)
           ? "the transport shell mangled the command"
-          : null;
+          : /did not match any files/.test(stderr)
+            ? "the transport ran git outside the repository root"
+            : null;
     if (transient === null || attempt === GIT_LOCK_RETRIES) return result;
     emit(
       `${label}: ${transient} — retrying in ${GIT_LOCK_RETRY_DELAY_MS}ms ` +

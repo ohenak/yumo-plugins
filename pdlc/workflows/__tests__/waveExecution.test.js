@@ -799,6 +799,32 @@ describe("Phase I — index.lock retry and non-transient git failures", () => {
     expect(commitAttempts).toBeGreaterThan(1);
   });
 
+  it("a pathspec that 'did not match any files' is transient — the transport ran git from the wrong cwd", async () => {
+    // The tracked file exists at the repo root; only an agent that ignored the
+    // prompt's "from the repository root" can see this error. A retry is a new
+    // agent, and `git add` is idempotent.
+    const gitCalls = [];
+    const slept = [];
+    let addAttempts = 0;
+    const git = makeGit(gitCalls, {
+      fail: (argv) =>
+        argv[0] === "add" && ++addAttempts === 1
+          ? { ok: false, stdout: "", stderr: "fatal: pathspec 'src/one.js' did not match any files" }
+          : null,
+    });
+    const result = await main(
+      makeArgs({
+        config: CONFIG_WITH_TEST_COMMAND,
+        git,
+        runCommand: async () => ({ ok: true, output: "green" }),
+        sleep: async (ms) => slept.push(ms),
+      })
+    );
+    expect(result.outcome).toBe("success");
+    expect(slept).toEqual([GIT_LOCK_RETRY_DELAY_MS]);
+    expect(addAttempts).toBeGreaterThan(1);
+  });
+
   it("a commit refused as 'nothing to commit' is the read-back's late verdict — a notice, not a halt", async () => {
     // The staged read-back travels the agent-transcribed channel, so a garbled
     // non-empty answer can push a no-change task into `git commit` anyway. Git's
