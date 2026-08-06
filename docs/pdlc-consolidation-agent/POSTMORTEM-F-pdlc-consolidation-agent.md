@@ -21,6 +21,33 @@ RESOLVED: no
 
 ## Phase
 
+**Phase F — FSPEC authoring and cross-review convergence. Rounds 6–10, the second full
+`MAX_REVIEW_ROUNDS = 5` window on this document.**
+
+| | |
+|---|---|
+| Document | `docs/pdlc-consolidation-agent/FSPEC-pdlc-consolidation-agent.md` |
+| Version at HEAD | **11.0** (2026-08-06) — v10.0 was the version round 10 reviewed |
+| Size at HEAD | 2,634 lines / 277,525 bytes (4.5× its upstream REQ: 637 lines / 61,109 bytes) |
+| Branch | `feat-pdlc-consolidation-agent` |
+| Window | rounds 6–10; first reviews 2026-08-06 14:54, last reviews 15:48 — **54 minutes** wall clock |
+| Countermeasures in force | mechanism freeze (Appendix A, Recommendation step 2) and `DEC-LAYER-01` (`docs/_decisions/DECISIONS-spec-layer-boundary.md`), both landed in resolution commit `87a6cb7` **before** round 6 opened |
+| Terminal state | round 10 reviewed FSPEC v10.0; both reviewers returned `VERDICT: Needs revision`; the round window was exhausted, so no round 11 could be opened |
+
+As in the first window, the halt is **not** a stalled author. Every finding of every round was
+closed as filed, and the round-10 findings were closed too — commits `ee742a3`…`04e172e`
+(15:51–15:54) close SE F-01/F-02/F-03 and TE M-01/L-01/L-02 and bump the document to **v11.0**,
+three minutes after the last review landed. What the loop ran out of was rounds in which a
+reviewer could confirm that.
+
+**What makes this window different from Appendix A's, and what makes it diagnostic:** the first
+window's postmortem named a primary root cause (FSPEC settling decisions that belong a layer down)
+and shipped two countermeasures for it. Both worked *on the thing they targeted* — the
+mechanism-class Medium is gone, the document stopped acquiring tie-break algorithms and reader
+indices, and `DEC-LAYER-01` is cited by name in the reviews as the reason a finding was scored Low
+instead of Medium. The window still exhausted. That is a result, not a repetition: it localises the
+remaining cause to something neither countermeasure touched.
+
 ## Iterations (5 — limit reached)
 
 ## Reviewers
