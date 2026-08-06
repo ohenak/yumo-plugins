@@ -1188,6 +1188,33 @@ the table row stays exact. Reading the table is the receive-side total parse (DC
 The count is `escalations[seam][feature]`, and the two derived quantities §9.3 uses are: a seam's
 **total** across all features, and its **distinct feature count**.
 
+**The population is the whole file, and "the consumed window" is not a population here.** Every count
+in §9.4 and §9.5 ranges over **every entry in `ESCALATIONS.md`**, with no filter on `Feature`, no
+filter on date, and no relation to this pass's consumed set. Stated as a rule so the two tests cannot
+diverge:
+
+| Quantity | Ranges over |
+|---|---|
+| a seam's total (§9.4 dominance) | all entries in the file |
+| a seam's distinct feature count (§9.4 pattern bar) | all entries in the file |
+| "at least one other seam escalated" (§9.5 conjunct 1) | all entries in the file |
+| "this seam has escalations from no feature" (§9.5 conjunct 2) | all entries in the file |
+
+Three reasons this is the whole file rather than the consumed set. First, `ESCALATIONS.md` is
+**non-feature-scoped and never distilled or deleted** (CLAUDE.md, advisory tier), so it is already the
+cumulative record — intersecting it with a consumed set would discard the older evidence that makes a
+pattern a pattern. Second, the consumed set is a set of *LEARNINGS files*, and an escalation entry's
+`Feature` need not correspond to any LEARNINGS in it; the intersection would be silently lossy in a
+way no operator could see. Third, §9.5's silence conjunct is only meaningful against everything
+known: a seam silent across the whole record is a signal, a seam silent across five recent features
+is a sampling artefact.
+
+Wherever this document previously said "across the consumed window" in §9.5, read **across the whole
+file**; the phrase is corrected there. AT-A6 (§13.8) pins the population by construction: its fixture
+carries entries whose `Feature` values are *disjoint* from the pass's consumed set, and the §9.5
+verdict must be identical to the verdict on the same entries with matching `Feature` values — a test
+an implementation that filtered on the consumed set would fail.
+
 ### 9.3 The three corpus states (AC-6.1)
 
 Shipping state first. Every state is decidable and none is an error:
@@ -1214,6 +1241,8 @@ not a tier whose seams worked — which is why row 1 suppresses both proposal ki
 | Pattern bar | the seam's escalations span **at least two distinct features** — the AC-2.3 bar applied to this corpus |
 | Dominance | the seam's total **exceeds** every other seam's total |
 
+Both quantities range over the whole of `ESCALATIONS.md` (§9.2), the same population §9.5 uses.
+
 Both required. When they hold, the pass surfaces that seam as a candidate for **envelope revision or
 upstream-phase repair**, bound to the relevant deferral. It is surfaced, not enacted — like every
 other guard-set change it reaches the operator through §6 or §5.3.
@@ -1225,8 +1254,8 @@ not a signal, and the pass reports the tie in its §10 report rather than pickin
 
 | Conjunct | Condition |
 |---|---|
-| Corpus non-empty | at least one **other** seam escalated across the consumed window (row 3 of §9.3) |
-| Silence | this seam has escalations from **no** feature across that same window |
+| Corpus non-empty | at least one **other** seam escalated somewhere in `ESCALATIONS.md` (row 3 of §9.3) — the population is the whole file, per §9.2 |
+| Silence | this seam has escalations from **no** feature anywhere in that same file |
 
 Both required, and the first is what stops a first pass on a stock repo from proposing a widening for
 all five `ADVISORY_SEAMS` (`orchestrate-dev.js:1669`) on the strength of a corpus no run could have
