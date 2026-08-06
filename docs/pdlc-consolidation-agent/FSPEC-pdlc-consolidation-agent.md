@@ -1599,3 +1599,62 @@ constraints DC-01, DC-05 and DC-09 (`docs/_constraints/DOMAIN-CONSTRAINTS.md`) b
 form rather than its behaviour: DC-09 keeps oracle mechanics out (§1 Altitude), DC-05 obliges an
 acceptance test per named branch (§13), DC-01 obliges an absent/malformed/truncated arm per parsed
 input (§3.4, §9.3, §10.4, §11).
+
+## 17. Behavioral Flow
+
+One invocation is one pass through the fixed 16-step sequence of §2.2. This section states that
+sequence as a flow with its decision points made explicit — every branch that can end the pass early,
+what each branch has already written when it ends, and where the detailed specification of the step
+lives. Nothing here adds behaviour; §2.2 is the normative ordering and this is its decision view.
+
+### 17.1 The main flow and its decision points
+
+| Step | Decision asked | Branch taken when the answer is "no" / the exceptional arm | Detail |
+|---|---|---|---|
+| 1 | — (resolve configuration) | none — every key falls back independently, a degraded key is reported, never fatal | §11 |
+| 2 | — (enumerate corpus basenames, compute the un-consolidated set) | none | §3.1, §3.2 |
+| 3 | Does `\|un-consolidated\| >= volumeThreshold`? | fall through to step 4 | §2.3 |
+| 4 | Has `cadenceHours` elapsed since the datum (empty datum set counts as elapsed)? | **terminate `skipped-cadence`** — no log row, no marker, no git call | §2.3, §2.4 |
+| 5 | — (mint `passId` from the log) | none — an unparseable row contributes no `m` and is skipped | §2.5 |
+| 6 | Is the marker free, or held-and-stale? | **terminate `refused`** (`consolidation-in-progress`) when held and fresh — writes its row, no consumed pair, no commit | §4.2, §4.4 |
+| 7 | — (append the consumed pair, complete and in one append, even when empty) | none — unconditional for every marker-holding pass | §3.3 |
+| 8 | Does either model rung resolve? | **terminate `failed`** (`advisory-model-unresolved`) — consumed pair already written at step 7, marker released, row appended | §2.6 |
+| 9 | — (read consumed bodies, cluster, apply the AC-2.3 bar) | none — a cluster below the bar simply produces no proposal | §5.2 |
+| 10 | Is `ESCALATIONS.md` present, and does it carry entries? | absent ⇒ `no-advisory-corpus`; present-but-empty ⇒ `advisory-corpus-empty`; both compose with the run's own status rather than terminating | §9.3 |
+| 11 | — (compute the effectiveness table over prior passes) | none — emitted even by a `no-op` pass | §8.3 |
+| 12 | Is a proposal a duplicate of an open-or-merged proposal for the same `(id, action)`? | duplicate ⇒ suppressed, `suppressed-by:` populated, no PR opened and no fallback fired | §6.4 |
+| 13 | Does the proposal's target path fall in the guard set? | in-guard-set ⇒ the PR route (§6); otherwise the direct consuming-repo write (§5.4) | §5.1 |
+| 13a | Can the PR be opened? | cannot ⇒ degrade to the proposal file with its failure class recorded in both the file and the row | §6.3, §5.3 |
+| 14 | — (write consuming-repo artifacts, append the terminal row) | terminal status resolved here: `promoted` / `promoted-degraded` / `no-op` / `failed` | §10.2, §10.3 |
+| 15 | Does git accept the AC-3.8b pathspec commit? | refusal ⇒ reason code `writes-uncommitted` added; the status itself is **unchanged**, writes stay in the working tree | §5.4, §12.1 S-12 |
+| 16 | — (release the marker) | none — every marker-holding terminal arm releases, `failed` included | §4.3 |
+
+### 17.2 The three shapes a pass can have
+
+Read down the table above and exactly three shapes exist, distinguished by how far the pass got:
+
+1. **Evaluated but not run** — steps 1–4 only. Terminates `skipped-cadence`. Writes nothing at all:
+   no `passId`, no marker, no log row, no git call (§2.4). This is the common shape under `/loop`.
+2. **Marker refused** — steps 1–6. Terminates `refused`, writes one log row (so the refusal is
+   evidence, AC-7.2) and nothing else — no consumed pair, no commit (§4.4, §12.1 S-09).
+3. **Marker held** — steps 1–16, terminating at step 14 with one of `promoted`,
+   `promoted-degraded`, `no-op`, `failed`. Always: exactly one consumed pair (step 7), exactly one
+   terminal log row, one release, and one commit attempt whose refusal degrades the record but not
+   the status.
+
+The shape determines what a later pass can observe, which is why it — not the status alone — is what
+§12.1's table is organised around.
+
+### 17.3 Where the flow does *not* branch
+
+Four points where a branch might be expected and deliberately does not exist, each an invariant §12.4
+restates:
+
+- **No branch on the invoking tree's git state.** The pass never checks out, creates, or switches a
+  branch in the invoking tree (AC-3.8, §6.1); there is therefore no "dirty tree" arm.
+- **No branch that merges.** No step calls a merge API, under any status or configuration (§6.5).
+- **No branch that re-reads a consumed file.** Step 7's pair is written once and is final for the
+  corpus it names; there is no re-consumption arm (§3.3, and the loss this forces is raised as O-C1
+  in §14, not routed around here).
+- **No branch that skips the effectiveness table.** A `no-op` pass emits every standing verdict and
+  state unchanged (AC-1.4, §12.3) — reporting is not conditional on having promoted anything.
