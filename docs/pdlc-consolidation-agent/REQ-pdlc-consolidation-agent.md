@@ -196,15 +196,18 @@ unreachable until someone runs a manual pass — the never-fires failure this da
   | `promoted-degraded` | yes | yes | yes |
   | `no-op` | yes | yes | yes — the log row and consumed block are still writes |
   | `failed` | yes | yes | **yes** — under AC-7.2 a completed `failed` pass always wrote its row |
-  | `refused` | **no** — the marker belongs to the pass that holds it | **no** — the loser never unlocks the winner | **yes** — its AC-7.2 row, and that row only |
+  | `refused` | **no** — the marker belongs to the pass that holds it | **no** — the loser never unlocks the winner | **no** — it writes its AC-7.2 row but commits nothing |
   | `skipped-cadence` | **no** — the tick terminates before the marker is written | **no** | **no** — it writes no log row (AC-7.2) |
 
-  **A `refused` pass writes its AC-7.2 row, and that row is the whole of its disk effect.** It is the only evidence a tick was refused, and
-  REQ-CONS-01's cadence rule already presupposes it ("a `refused` row is not a datum"); AC-7.2's exemption set therefore stays a single member,
-  `skipped-cadence`. The row carries a trigger (NFR-3a — the refused tick fired one of `cadence` / `volume` / `manual`; that is how it reached the
-  marker check) and `credential: absent` (AC-4.2), and is committed pathspec-scoped like any other consuming-repo write (AC-3.8b). It writes **no**
-  consumed block: it never took the marker, and only marker-holding passes emit the block (REQ-CONS-01), so a `refused` pass never touches the
-  legacy-region boundary.
+  **A `refused` pass writes its AC-7.2 row and commits nothing.** The row is the only evidence a tick was refused, and REQ-CONS-01's cadence rule
+  already presupposes it ("a `refused` row is not a datum"); AC-7.2's exemption set therefore stays a single member, `skipped-cadence`. The row carries
+  a trigger (NFR-3a — the refused tick fired one of `cadence` / `volume` / `manual`; that is how it reached the marker check) and `credential: absent`
+  (AC-4.2). It is **written, never committed**, decided rather than omitted: a pathspec stages a whole file, so a refused commit would necessarily
+  capture the winner's live `IN-PROGRESS:` line — falsifying AC-3.8b's "the marker is never committed" — and would capture the winner's log at an
+  arbitrary mid-pass instant. The winner's own AC-3.8b commit covers the same path and sweeps the row up; if the winner dies first the row stays in the
+  working tree, which is all its evidentiary purpose needs. So the two passes' concurrent writes need no lock, the refused row is an **append of one
+  whole record at end of file** — never an edit inside the winner's `<!-- pdlc:consumed -->` block or any other region. It writes **no** consumed
+  block: it never took the marker, and only marker-holding passes emit the block (REQ-CONS-01), so it never touches the legacy-region boundary.
 
   Given the marker is older than `consolidation.staleLockMinutes` (default 60), Then the pass
   reclaims it, records `reclaimed-stale-lock` with the abandoned pass id, and proceeds — a pass that
