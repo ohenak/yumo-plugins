@@ -115,6 +115,17 @@ governance text, not about the codebase.
 
 ## Questions
 
+Q-02 and Q-03 are carried unanswered; Q-04 is now answered by events and closed. Q-05 is the only
+new one, and it is about the round rather than about the document.
+
+| ID | Question |
+|----|---------|
+| Q-01 | Not blocking; it bounds F-03's fix. The REQ is **61,109 bytes** against the 61,440-byte hard ceiling (`pdlc/hooks/scripts/check-req-size.sh:41-42`) — **331 bytes** of headroom, unchanged because the document is unchanged. F-03's fix is ~60 bytes and F-02's preferred fix is byte-neutral in the REQ (it edits the baseline file), so neither forces a relocation. |
+| Q-02 | Carried, still open. Is the version-pin/defect clause meant to bind the commit that *introduces* it? I read it as prospective — a rule cannot govern its own genesis — which is why F-02 is Low and why I prefer narrowing the wording to a retroactive bump. The clause sits in two shared files `pdlc-engineering-loop` will read and may copy, so whichever reading is intended is worth stating once, in the vocabularies' wording. |
+| Q-03 | `Process`, carried — and materially stronger this round. At v12 two project-level decisions bound reviewer scoring (DEC-SEV-01, DEC-LAYER-01); there are now **four**, all recorded by phase-POSTMORTEM resolutions rather than by either reviewer, none cited by either reviewer's skill prompt. DEC-CONV-01 in particular changes the *verdict rule* itself, not merely a severity: a reviewer who does not read `docs/_decisions/` will discard a standing approval and reproduce exactly the anti-phase exhaustion it was recorded to stop. Should harvest promote them into `DOMAIN-CONSTRAINTS.md` next to DC-13, which reviewers already consult? Not a REQ question and not blocking, but the cost of a miss has gone up. |
+| Q-04 | **Closed.** v12 asked whether Phase R's re-entry on an unmoved document meant the author had declined the two Low fixes or had never seen the round. The interval answers it: all 112 commits are Phase F work, the queue row went `halted` → `pending` → `in-progress` (`2c0f346`, `98beb97`, `9b68519`), and no optimizer pass was dispatched against the REQ. The document was not declined; it was never handed to an author this round. |
+| Q-05 | New, `Process`, not blocking, and asked once so it need not be asked again. This is the third consecutive Phase R round on byte-identical input, and the third to reach the same verdict from the same two Lows. DEC-CONV-01 now says an approval stands into later rounds — so a round whose only input is "the document did not change" has, by that decision's own logic, no work in it: the standing approval was never re-openable, because re-opening requires an intervening diff. Is there a cheap precondition — an empty-diff check before dispatching the review — that would let the orchestrator re-issue a standing approval without spending a round? I raise it as a workflow question, not a REQ one; the two Low fixes remain available to any optimizer pass at ~60 bytes plus a two-word edit in the baseline. |
+
 ## Positive Observations
 
 ## Recommendation
