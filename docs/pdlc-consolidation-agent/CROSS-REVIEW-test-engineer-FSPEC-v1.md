@@ -35,6 +35,65 @@ _(Low)_
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | §14.4 states this FSPEC records no erratum against the vocabularies file at `Version` 1.4. But §10.3's terminal row carries a `rung:` field and §15.1 routes AC-1.5 to "AT-L5 (the `rung:` field)", while `docs/_constraints/pdlc-consolidation-vocabularies.md` §1 — verified at HEAD, `Version` 1.4 (`:7`) — has rows for `pr:`, `suppressed-by:` (`:63`) and `credential:` (`:64`) and **none** for `rung:`. AT-L5 as written is therefore red on a correct implementation. §15.3 says this feature *owns* that file, so is the fix a row addition inside this feature's scope (in which case §14.4 stands and §15.2 needs the row), or an erratum against the REQ §4b pin? An erratum is filed below on the conservative reading; say which. |
+| Q-02 | AT-C3's Then includes "no `passId` minted" and "no git call made". Both are absence assertions on a path whose only positive observable is that nothing happened at all — the terminal `skipped-cadence` status is not written anywhere (S-01: no log row). What **is** the positive artefact a test reads to know the tick ran and chose this branch rather than crashing before the decision? If it is the returned report body, say so in §10.1; if a `skipped-cadence` tick returns nothing, the AT needs a call-count oracle over the git/IO seams plus a positive assertion on the returned value. |
+| Q-03 | §12.1 S-03's status cell is "`promoted` / `no-op` per outcome" and AT-C1's Then asserts trigger `cadence` and reason `no-cadence-datum` but no status. For a bootstrap tick on an empty corpus (E-08 ∧ E-01 together — the true first-run state), which of the two is it? The two edge rows are individually specified but their conjunction is the state every consuming repo starts in. |
+| Q-04 | §8.3's effectiveness table is "one row per distinct `failure-mode-id`" over *all prior* promotions, so it grows without bound across passes. AT-F5 fixes N and asserts exactly one row per distinct id. Is there an upper bound, a retirement rule that removes retired ids from the table, or is unbounded growth accepted? A test for the retirement case cannot be written without the answer. |
+
 ## Positive Observations
 
+- **§12 → §13 is a genuine coverage contract, not a formality.** §12.1 enumerates fourteen terminal
+  scenarios with the marker/log-row/consumed-pair/commit columns filled per row, §12.4 states seven
+  cross-row invariants, and §13 is organised to range over them. Most of the findings above were
+  findable *because* the document made its own coverage claim checkable — that is the right failure
+  mode for a spec to have.
+- **The oracle discipline in §13 is unusually strong for a first draft.** AT-R1 and AT-Q2 and AT-L5
+  demand **set-equality** rather than containment in so many words; AT-K4 explicitly refuses to
+  collapse two fields; AT-F14 asserts a field is "**absent**, not empty-valued"; AT-R5 asserts "no
+  failure **and** no `writes-uncommitted`" rather than a bare non-failure. These are the shapes that
+  survive a deleted case.
+- **DC-01's three arms are actually enumerated per input, not asserted in the abstract.** §19.1's
+  E-01…E-15 give the log, the marker, `ESCALATIONS.md` and the config an absent, malformed and
+  truncated row each, and E-04's "a partially flushed pair never *loses* consumption" states the
+  fail-direction rather than leaving it to the implementer.
+- **The accepted losses are stated as losses.** §14.2 O-C1…O-C5 and §19.3 E-32/E-33 name what is
+  given up, why the repair would breach an upstream obligation, and where the deferral lives. A spec
+  that says "accepted, not repaired" is testable; one that omits the case is not.
+- **§15.1's both-directions claim held under audit.** Every REQ criterion `AC-1.1`…`AC-7.2`,
+  `NFR-1`…`NFR-5` and `NFR-3a` appears exactly once, and no row names a criterion the REQ does not
+  carry. The defects found (F-08, F-09) are in what the cited ATs *assert*, never in the mapping's
+  completeness — the coarser property is sound.
+
 ## Recommendation
+
+**Needs revision**
+
+Seven High and seven Medium findings are open, so the Challenger bar forbids approval. The document is
+substantively strong — the coverage architecture of §12/§13/§15/§19 is better than most TSPECs — and
+the revision is bounded. What must change:
+
+1. **F-01** — restate AT-C1 over a constructed corpus fixture parameterised on (n files, k in the
+   legacy region, threshold). As written it is falsified by this feature's own Phase H output.
+2. **F-02** — name what step 8 dispatches, or restate the ordering claim over the first advisory
+   dispatch. AT-M4's fixture is unbuildable until then, and O-C1's loss argument depends on it.
+3. **F-03, F-10** — give the fallback-resolves branch (§2.6 row 2) and the `promoted-degraded`
+   terminal status their own ATs with positive oracles.
+4. **F-04** — make §8.5's row-3/row-4 predicate decidable, or drop §8.3's determinism claim; then
+   give rows 3 and 4 ATs.
+5. **F-05** — replace AT-Q7's source-inspection oracle with a runtime seam spy asserting the observed
+   call verb-set is set-equal to the expected open-PR set, plus a positive `open` state assertion.
+   Same for AT-M5's second conjunct.
+6. **F-06, Q-01** — state AT-L5's exact domain (enumerated fields in, free-form fields out) and
+   resolve the missing `rung:` row.
+7. **F-07** — reorder AT-C5's fixture so the `refused` row is *after* the `promoted` row, and fix the
+   self-contradictory Given.
+8. **F-08, F-09, F-11, F-12** — add the missing ATs (AC-2.2's `DECISIONS-{topic}.md` write with its
+   `{topic}` derivation; NFR-3's comparative bar; the unreadable-log, dangling-closer and
+   `api-failure` arms) and repair the two §19 rows whose cited AT asserts nothing about the row.
+9. **F-13** — add a §14.1 obligation requiring ≥1 property strategy per parameterisable component, so
+   the four parsers cannot reach implementation on examples alone.
+10. **F-14** — disambiguate `credential: absent` on a `refused` row, in §10.3 and in an AT.
+
+F-15 and F-16 are Low and may be folded into the same revision or deferred to TSPEC.
