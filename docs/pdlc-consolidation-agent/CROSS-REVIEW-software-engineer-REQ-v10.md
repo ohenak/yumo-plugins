@@ -114,4 +114,51 @@ is the behaviour the question asked about. No prior question is left open.
 
 ## Recommendation
 
+**Needs revision.** 0 High, 1 Medium, 0 Low. All three v9 findings closed, no v9 fix regressed, the
+second consecutive relocation verified lossless, and no defect row in the code-claim table for the
+fourth consecutive round.
+
+The trajectory: v1→v2 closed 8H, v2→v3 2H+5M, v3→v4 2H+2M+3L, v4→v5 2 of 3, v5→v6 4 of 4, v6→v7 5 of
+5, v7→v8 5 of 5 including the High, v8→v9 3 of 3, v9→v10 **3 of 3**. Five consecutive clean sweeps,
+and the count fell 1M+2L → 1M. Applying this repo's own harvested convergence heuristic — findings
+about *states* versus findings about *strings*
+(`docs/discarded/pdlc-review-convergence/LEARNINGS-pdlc-review-convergence.md:32`) — this is the
+second consecutive round with zero state defects, and the remaining finding is neither: it is about
+the **scope of an obligation**, and it exists only because the round that stated the scope also
+created two new sections for it to range over. That is a composition artefact of a single round's
+edits, not a gap in the document's argument.
+
+I want to be explicit that I am not manufacturing a finding to avoid approving. The test I applied:
+if I imagine this REQ handed to an FSPEC author today, is there a decision they cannot make? Yes,
+exactly one — a PROPERTIES author writing the set-equality oracle for §4's trailer table has no
+stated range, because §4b's range names §1 and §2 and §4 is neither. That is a decision the REQ owns
+(what an enumeration's oracle ranges over is the contract, not a mechanism), and it is the same
+decision I raised at Medium in v9 and the author agreed was Medium. Applying the bar consistently
+across rounds means it is Medium here too, even though the fix is three token substitutions.
+
+### The stopping rule, applied against itself
+
+§5a routes "cannot be tested as written" and "needs an oracle" findings downstream. F-01 is the
+opposite shape — it is *about* an oracle's range, which the REQ has already chosen to state at the
+REQ layer (§4b) rather than defer. An FSPEC resolving it would be re-scoping a REQ-level obligation.
+It belongs here.
+
+### What must change for approval
+
+1. **F-01** — extend the owned range from two sections to four, in the three places it is stated:
+   - §4b `:559-562`: "owns every row of that file's **§1–§4**" (and the interleaving clause likewise);
+   - §4b `:565-566`: "set-equality over the rows this REQ owns — **§1–§4 entire** at Version 1.3";
+   - §5 `:584-585`: "(§4b's owned rows)" reads correctly once §4b covers all four, so this cell needs
+     no separate edit — but check it, because as written today it scopes the deliverable to §1/§2;
+   - and the mirror paragraph in `pdlc-consolidation-vocabularies.md:17-19`.
+
+   If the answer to Q-02 is that §3 and §4 are narrative rather than enumerated, then instead say so
+   in one clause — "§3 and §4 are owned by this REQ but are not enumerations under the set-equality
+   oracle" — which closes the ownership half and makes the oracle half a decision.
+
+This is byte-neutral, so Q-01's 344-byte headroom does not bind it, and no reason needs to be
+deleted to pay for it.
+
 ## Verdict
+
+VERDICT: Needs revision
