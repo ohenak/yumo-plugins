@@ -116,9 +116,13 @@ predicate is therefore stated over two regions, and is total over any log:
 > marker (a log with no block at all is legacy region entire).
 
 The legacy region is the shipped substring test (`nudge-consolidation.sh:41`) applied to exactly the text predating this feature, so nothing already
-consolidated is re-consumed and no transcription or parse of Pass 1's prose is required. It is frozen by construction: the first pass appends its
-`<!-- pdlc:consumed -->` block **before** any other record it writes, so every record this feature introduces lands after the boundary and none can be
-read as legacy consumption. `nudge-consolidation.sh:41` is updated to the same two-region rule, keeping hook and pass on one predicate. **On this repo
+consolidated is re-consumed and no transcription or parse of Pass 1's prose is required. It is frozen by construction, in two clauses: **(a)** every pass
+that takes the AC-1.3 marker appends a `<!-- pdlc:consumed {passId} --> … <!-- /pdlc:consumed -->` pair **before any other record it writes, even when
+its consumed set is empty** (the pair is then empty, which satisfies NFR-5's "exactly the consumed set"), so the boundary is frozen unconditionally by
+the first pass rather than only by one whose consumed set happens to be non-empty; **(b)** the AC-1.3 in-progress marker is the one **exempt** record —
+it is written before the block, but it carries a passId and an ISO-8601 timestamp, never a basename, is never committed, and is removed by the pass
+that wrote it, so it cannot be read as legacy consumption. Every other record this feature introduces lands after the boundary.
+`nudge-consolidation.sh:41` is updated to the same two-region rule, keeping hook and pass on one predicate. **On this repo
 today** (the state a first-run test asserts against) step 1's enumeration matches 5 files; `LEARNINGS-orchestrate-dev-workflow.md` and
 `LEARNINGS-pdlc-workflow-distribution.md` are named in the legacy region and consolidated; the other 3 (`…-pdlc-advisory-tier`, `…-pdlc-merge-phase`,
 `…-pdlc-review-loop-hardening`) are un-consolidated — below the default `volumeThreshold` of 5, so the first tick reaches the cadence test.
@@ -566,8 +570,9 @@ resolution-rate input needs the advisory summary persisted, which is D-CONS-06.
 - **NFR-5** — The pass never modifies a LEARNINGS file it consumed; and on the same path, it
   positively records consumption by appending the consumed basenames to the delimited
   `<!-- pdlc:consumed {passId} -->` block of `docs/_decisions/.consolidation-log.md` (REQ-CONS-01,
-  AC-2.4; that block is appended before any other record the pass writes, which is what freezes the
-  legacy-region boundary) — which is exactly what makes those files "consolidated" for the AC-1.1 predicate
+  AC-2.4; that block is appended before any other record the pass writes — and is emitted **even
+  when the consumed set is empty**, as an empty pair — which is what freezes the legacy-region
+  boundary unconditionally) — which is exactly what makes those files "consolidated" for the AC-1.1 predicate
   (`pdlc/hooks/scripts/nudge-consolidation.sh:41`, scoped to that block by this feature). Those
   blocks must name **exactly** the consumed set — neither more nor fewer — and no other record type
   may be written inside one, so a basename appearing elsewhere in the log (a PR title, a failure
