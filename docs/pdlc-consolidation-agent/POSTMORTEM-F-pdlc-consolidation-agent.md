@@ -83,3 +83,101 @@ prior finding was addressed rather than argued with."*
 **Five Medium findings, of which two pairs are the same defect found twice** (SE F-03 ≡ TE M-01;
 SE F-04 ≡ TE L-01). The distinct open Medium set is four: the subject tie-break, the unbuildable
 fixture, the untested reader-side rule, and the under-fixtured precedence order.
+
+### What happened after the limit
+
+| Commit | Time | Closes |
+|---|---|---|
+| `561dd89` | 13:57 | SE F-04/F-05/F-06, TE L-01, TE Q-02 — §6.5 citation at its seam call, equality absolute qualified, commit Given un-widened, read set declared closed |
+| `1f98b77` | 13:57 | SE F-01 — §8.2/§8.1 subject tie-break, lexicographic and input-pure, governing `artifact` and kind-3 `target` |
+| `6690799` | 13:58 | SE F-02, TE M-02 — AT-R6b rebuilt as five buildable fixtures spanning the tie-break literal and all three kind pairs; BR-33b names them |
+| `df3feef` | 13:59 | SE F-03, TE M-01, SE Q-02 — §8.1 per-field reader table, AT-F21 falsifier, E-12b error row |
+| `9edbecc` | 14:00 | SE Q-01/Q-03, TE Q-01/Q-03 — AT-F19 asserts the literal count, ER-5 spells its on-landing delta, §8.2 bounds the merged `symptom` |
+| `657b59a` | 14:01 | version bump to **6.0**; O-C8 prices the tie-break's loss |
+
+Every round-5 finding and question has a claimed closure at HEAD. **None has been confirmed by a
+reviewer** — that is precisely what the exhausted window forbids, and it is the whole of what this
+halt is holding open.
+
+## Reviewers
+
+| Role | Skill | Lens | Rounds |
+|---|---|---|---|
+| software-engineer | `pdlc:se-review` | feasibility, implementability, contract totality, citation accuracy against HEAD | 1–5 |
+| test-engineer | `pdlc:te-review` | testability, oracle strength, fixture buildability, completeness by set-equality | 1–5 |
+
+Both reviewers worked to the shipped protocol and there is no procedural fault to record on either:
+
+- **Rounds 2–5 were delta-scoped as designed.** Each review names its baseline commit and its diff
+  range (round 5: `d0ee225..HEAD`, "+122/−33 lines across 6 commits") and states that unchanged
+  sections were not re-litigated. Both held that line — no round re-opened a settled decision.
+- **Repository claims were verified, not asserted.** Round 5 alone re-checks `parseAbbrevRef`
+  (`orchestrate-dev.js:3491-3496`), `readHeadBranch`'s seam call (`:3524`), `gitWithLockRetry`
+  (`:8617`), `commitPaths` (`:8669`), `MERGE_GUARD_DEFAULTS` (`:48-53`),
+  `build-runtime.mjs:448/:464-471`, and the upstream quotation at
+  `docs/_constraints/pdlc-consolidation-vocabularies.md:63`. The only citation defect found was the
+  author's, and both reviewers found it.
+- **Both applied the approval bar as written** — any open High or Medium ⇒ Needs revision — and
+  neither inflated severity to hold the document. TE's round-4 review filed a single Medium and
+  nothing else; SE's round-5 review states "No High finding remains, and none has since v3."
+- **The erratum channel was used rather than bypassed.** SE round-4 F-02 found an upstream defect
+  in the REQ-owned vocabularies file; it was routed as ER-5 rather than edited in place, and SE
+  round 5 confirms it: "No erratum is emitted with this review … already in the orchestrator's
+  hands."
+
+## Pattern of Disagreement
+
+**There is no disagreement between the reviewers, and none between the reviewers and the author.**
+That is the finding. Five distinct patterns describe the window.
+
+### 1. The reviewers converge; they do not split
+
+Round 5's two reviews overlap on two of their three Medium/Low pairs — SE F-03 ≡ TE M-01 (the
+reader-side rule with no falsifier) and SE F-04 ≡ TE L-01 (the `:3585` citation) — each filed
+independently, with independently-derived evidence. Round 3 shows the same convergence one level
+in: SE F-04 and TE H-04 are the same AT-Q7 pooled-set defect. Where they differ it is by *lens*,
+not by verdict: SE files contract totality (an undetermined `target`), TE files fixture coverage
+(an enumeration sampled at one member). Neither ever contradicted the other's severity, and no
+finding in five rounds was rebutted by the sibling reviewer.
+
+### 2. The author never argued a finding
+
+Four consecutive rounds at 100 % closed-as-filed (table above). There is no rejected finding, no
+"won't fix", no deferred-with-reason row anywhere in the window. The failure mode this loop is
+designed to catch — an author and a reviewer deadlocked over a judgement call — did not occur.
+
+### 3. The disagreement is with the *loop*, not with a person: repairs generate defects at a roughly constant rate
+
+Every round's Mediums are consequences of the previous round's repairs. SE says it in round 5's own
+words — *"the three Mediums are all consequences of this round's own repairs — none touches the
+document's scope, structure, or any settled decision"* — and in round 5's disposition table:
+*"As in each of the last three rounds, the repairs create new checkable defects in the sections
+they rewrote."* TE frames the same observation as a shape: *"both of the same shape the last two
+rounds have had: a new mechanism arriving one step ahead of the artefact that pins it."*
+
+The arithmetic follows: Highs are retired monotonically (12 → 6 → 2 → 0 → 0) because they were
+defects in the *original* draft and are consumed by repair, while Mediums stay at four or five
+because they are *manufactured* by repair. Five rounds is enough to exhaust the first population
+and cannot, by construction, exhaust the second.
+
+### 4. Findings migrate one axis over rather than recurring
+
+The same defect *shape* reappears displaced by one level, which is why it never reads as a repeat
+and never triggers a "we have been here" response:
+
+| Thread | v1 | v2 | v3 | v4 | v5 |
+|---|---|---|---|---|---|
+| §6.5 / AT-Q7 seam oracle | F-10: absence-only oracle | F-02: set-equality on the wrong domain | F-04 / H-04: sets pooled across trees | F-01: per-tree sets narrower than the obligations | F-05/F-06: residual absolute + widened Given |
+| §8 merge rule | — | — | — | F-03: `target` undetermined across §5.2 *kinds* | F-01: `target` undetermined across *subjects*; M-02: order fixtured at one pair |
+| receive-side rules | F-08: "consumed window" undefined | F-04: carrier reads a field the record lacks | H-02: `passId` outside the field grammar | H-06: open-list computation untested | F-03/M-01: short-record rule untested |
+
+TE named the mechanism in round 3, H-04: *"the failure mode G-01 raised, one level in."*
+
+### 5. Every round's repair enlarges the document
+
+The FSPEC ended the window at 2,513 lines / 247,750 bytes — 4.1× its REQ — and each round's
+convergence work adds normative surface (round 5 alone: a precedence table, a tie-break, a
+reader-side rule, BR-33a/b/c, AT-F19/F20, O-C8, §10.4 items 4 and 10, ER-5). Each new rule obliges
+matching edits at four to six coupled sites (a BR row, an AT row, an `E-` row, a §15 traceability
+row, a report-body item, a §14.2 cost entry). A site missed is a legitimate Medium. The document's
+own coupling is what sets the manufacture rate in pattern 3.
