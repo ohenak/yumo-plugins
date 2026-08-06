@@ -1152,8 +1152,9 @@ names the record. AT-F21 asserts that on one path, and E-12b is its edge-case ro
 `target`, `passId`, `action` and `route` are bookkeeping, not identity: the *promotion* is keyed on
 the id alone (§8.2), and none of the four participates in the derivation below. They are in the
 record because four contracts read them off it — §5.1 routes on `target`, NFR-4's consuming-repo
-carrier reads `action` and `route` (§6.4), §8.4 step 1's open-promotion list reads `action` and
-`route`, and §8.6 routes a remediation on `target`.
+carrier reads `action` and `route` — and `passId`, to spell its `suppressed-by:` evidence (§6.4,
+§10.3) — §8.4 step 1's open-promotion list reads `action` and `route`, and §8.6 routes a remediation
+on `target`.
 
 **The derivation** (delegated to this layer by AC-5.1), a pure function of two file-text inputs —
 `phase` and the **subject** `artifact`, never `target`:
