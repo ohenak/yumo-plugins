@@ -103,4 +103,51 @@ enumeration.
 
 ## Recommendation
 
+**Needs revision**
+
+Both v8 findings are closed as filed and all three v8 questions are answered — the eighth consecutive
+round in which every prior item was addressed rather than argued with, and this round's §14.5 answered
+one of them past what was asked. **No High finding remains, and none has since v3.** One **Medium** is
+open, and it is open on text this round added:
+
+1. **F-01 — the new cell-level set-equality claim (`:1158-1162`) is falsified by this document, and
+   the field it misses has no arm.** §8.3's `prevented` rule indexes the record's **recorded `phase`**
+   (`:1371`) while §8.3's reader row names only `failure-mode-id` and `artifact` (`:1171`); the §8.4
+   harvest-side lookup indexes `symptom`, `artifact` and `phase` off the log rows (`:1419-1421`) and
+   is not one of the seven readers. The blocking half is not the enumeration — it is that **a record
+   short of `phase` has no stated observable**: emit the §8.3 row at `insufficient-evidence`, or skip
+   it? The row's own argument says dropping it "would read as `insufficient-evidence` and silently
+   move a verdict", so the two arms are distinguishable and neither is chosen. DEC-LAYER-01
+   (`:35-39`) keeps "fails to state the observable" blocking at this layer, and BR-33a (`:2512`) now
+   advertises the table as an exhaustive arm enumeration, so the gap propagates into the coverage
+   claim two other sections rely on.
+
+2. **F-02 (Low) — anchor AT-R6b's deferral site at §14.5 LD-2** (`:2041`), matching the three sites
+   anchored this round, so a reader arriving from §13 reaches the register that carries the
+   >2-candidate clause rather than only §8.2's note.
+
+The Medium is cheap to close and I have stated both acceptable directions in the finding: add `phase`
+to §8.3's cell with its arm (Q-01 proposes the arm I would expect, and it is already the direction
+`:1383-1384` fixes for an undecidable phase), plus a row or an explicit exclusion for the §8.4 harvest
+lookup — or scope the closure to pass-side predicate readers and stop claiming the universal. What is
+not available is leaving it as written, because BR-33a and E-12b now cite the table as complete.
+
+Everything else this round is an improvement I would keep verbatim: the §14.5 register with its own
+set-equality obligation and its defective-implementation column, the short-`passId` arm derived from
+NFR-4's key rather than asserted, the degraded spelling classified as a rendering of the second form
+so the two-member `{evidence}` grammar survives untouched, and AT-F21 declaring the arm it does not
+exercise.
+
+**No erratum is emitted with this review.** The only upstream defect in scope remains the
+`suppressed-by:` value grammar at `docs/_constraints/pdlc-consolidation-vocabularies.md:63`, already
+routed as §14.4 ER-5 and re-verified verbatim at HEAD this round. REQ NFR-4 still keys suppression on
+the `(failure-mode-id, action)` pair, which is exactly what §6.4's new `passId` argument leans on, so
+the round's central change is a reading of the REQ and not a divergence from it.
+
 ## Verdict
+
+One Medium finding (F-01) and one Low (F-02) are open, both against text added this round; no High
+finding remains. Per the approval rule — any High or Medium finding ⇒ Needs revision — this iteration
+does **not** approve `FSPEC-pdlc-consolidation-agent.md` at version 9.0.
+
+VERDICT: Needs revision
