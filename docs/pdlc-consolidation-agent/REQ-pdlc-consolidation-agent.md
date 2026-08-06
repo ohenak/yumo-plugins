@@ -18,9 +18,9 @@ depends-on: [pdlc-workflow-distribution, pdlc-advisory-tier]
 | pdlc | draft | Claude | 1.1 | 2026-08-05 |
 
 > **Scope in one line.** Run consolidation on a cadence with the advisory model, and carry
-> pipeline-level promotions across the repository boundary as pull requests against
-> `yumo-plugins` — with every promotion recording the failure mode it targets and the next pass
-> reporting whether that failure mode recurred.
+> pipeline-level promotions to `yumo-plugins` as pull requests — the same repository today
+> (AC-3.8), a separate one when configured — with every promotion recording the failure mode it
+> targets and the next pass reporting, by a deterministic rule, whether that failure mode recurred.
 
 ## 1. Problem
 
@@ -61,7 +61,8 @@ process that cannot be wrong cannot be trusted to be right.
   request with the actual diff, not as a table I must transcribe.
 - **US-02** — As the operator, I want to approve every pipeline change, and I want no automated
   identity to hold the ability to merge one.
-- **US-03** — As the operator, I want consolidation to run on a cadence without my starting it.
+- **US-03** — As the operator, I want consolidation to run on a cadence without my starting each
+  pass, and without it running more often than the evidence justifies.
 - **US-04** — As the operator, I want each pass to tell me whether the *previous* pass's
   promotions actually prevented the failures they targeted.
 - **US-05** — As the operator, I want to see which promotions are dead weight, so prompts can be
@@ -141,7 +142,7 @@ mechanism — and updates `consolidate-learnings/SKILL.md:35` to match. Every AC
   consumed files (by basename, exactly the set the AC-1.1 predicate selected), promoted items, and
   deferred items, as today (`pdlc/skills/consolidate-learnings/SKILL.md:43`).
 
-### REQ-CONS-03 — Cross-repo promotion as a pull request
+### REQ-CONS-03 — Pipeline-file promotion as a pull request
 
 **Pass identity and artifact naming.** Every pass has a `passId` of the form `{YYYY-MM-DD}-{n}`,
 where `n` is the 1-based ordinal of that pass on that calendar date — so the two same-day passes
@@ -210,8 +211,10 @@ These are the identity keys NFR-4 is stated against.
 
 ### REQ-CONS-04 — Credential scope
 
-- **AC-4.1** — Given the cross-repo credential, Then it grants `contents:write` and
-  `pull_requests:write` on the configured plugin repository only, and grants **no merge rights**.
+- **AC-4.1** — Given a credential is used at all, Then it grants `contents:write` and
+  `pull_requests:write` on the repository named by `consolidation.pluginRepository` only, and grants
+  **no merge rights**. This holds in the same-repo configuration too: AC-3.8 does not license a
+  broader credential.
 - **AC-4.2** — Given the credential, Then it is read at runtime from the environment variable named
   by `consolidation.credentialEnv` (default `PDLC_PLUGIN_REPO_TOKEN`) and is never logged, never
   written into a PR body, and never persisted into any artifact. **Positive conjunct on the same
@@ -223,8 +226,10 @@ These are the identity keys NFR-4 is stated against.
   `credential: absent` per AC-4.2, and surfaces the affected promotion in the AC-7.1 report under a
   `degraded` route with its reason code. It does not halt the whole pass, and it does not silently
   skip the promotion.
-- **AC-4.4** — Given the pass runs locally under the operator's own `gh` authentication, Then that
-  is a supported configuration; the scoped credential is required only for unattended execution.
+- **AC-4.4** — Given the pass runs under the operator's own `gh` authentication, Then that is a
+  supported configuration and records `credential: local-gh` (AC-4.2). It is the **shipping**
+  configuration for the same-repo case (AC-3.8); the scoped credential of AC-4.1 is required only
+  when `consolidation.pluginRepository` names a different repository (BL-03).
 
 AC-4.1 states a general principle rather than a local convenience: an automated identity that
 proposes changes to the rules governing it must not also be able to enact them. Separating
@@ -322,7 +327,8 @@ summary to be persisted, which is D-CONS-06.
 
 ## 4. Non-functional requirements
 
-- **NFR-1** — No promotion is ever applied to a skill or workflow file by this agent. Pull request
+- **NFR-1** — No promotion is ever applied by this agent to any path in the AC-3.1 guard set
+  (`MERGE_GUARD_DEFAULTS`, `pdlc/workflows/orchestrate-dev.js:48-53`). Pull request
   only, operator approves, always (DEC-E2).
 - **NFR-2** — The credential never appears in a log, PR body, artifact, or notification; and on the
   same path, the log row carries the AC-4.2 `credential:` field from its closed three-value set, so
