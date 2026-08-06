@@ -10,12 +10,12 @@ depends-on: [pdlc-workflow-distribution, pdlc-advisory-tier]
 |---|---|
 | Upstream | `docs/design/MASTER-PLAN-engineering-loop.md` (Break 2, DEC-E4/E5, order 4) |
 | Downstream | `pdlc-engineering-loop` |
-| Cross-Reviews | `CROSS-REVIEW-software-engineer-REQ-v1.md`, `CROSS-REVIEW-test-engineer-REQ-v1.md`, `CROSS-REVIEW-software-engineer-REQ-v2.md`, `CROSS-REVIEW-test-engineer-REQ-v2.md` |
+| Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-REQ-v{1,2,3}.md` (6 files) |
 | LEARNINGS | `docs/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.2 | 2026-08-05 |
+| pdlc | draft | Claude | 1.3 | 2026-08-05 |
 
 > **Scope in one line.** Run consolidation on a cadence with the advisory model, and carry
 > pipeline-level promotions to `yumo-plugins` as pull requests — the same repository today
@@ -585,11 +585,15 @@ summary to be persisted, which is D-CONS-06.
   that finds an **open** PR carrying an identical sources trailer opens nothing, records
   `duplicate-suppressed` with that PR's URL (AC-3.5), and never extends or supersedes it — an
   interrupted pass's partial PR is left for the operator to merge or close, not silently amended.
-  Idempotence is well-defined precisely because AC-5.2's verdicts are deterministic.
+  Idempotence is well-defined precisely because AC-5.2's verdicts are deterministic. Its limit is
+  stated: `failure-mode-id` cannot key a LEARNINGS predating that convention (AC-5.2), so duplicate
+  suppression would not protect a re-consumed pre-convention corpus — which is why the REQ-CONS-01
+  legacy region prevents that re-consumption instead of relying on NFR-4 to absorb it.
 - **NFR-5** — The pass never modifies a LEARNINGS file it consumed; and on the same path, it
   positively records consumption by appending the consumed basenames to the delimited
   `<!-- pdlc:consumed {passId} -->` block of `docs/_decisions/.consolidation-log.md` (REQ-CONS-01,
-  AC-2.4) — which is exactly what makes those files "consolidated" for the AC-1.1 predicate
+  AC-2.4; that block is appended before any other record the pass writes, which is what freezes the
+  legacy-region boundary) — which is exactly what makes those files "consolidated" for the AC-1.1 predicate
   (`pdlc/hooks/scripts/nudge-consolidation.sh:41`, scoped to that block by this feature). Those
   blocks must name **exactly** the consumed set — neither more nor fewer — and no other record type
   may be written inside one, so a basename appearing elsewhere in the log (a PR title, a failure
@@ -668,9 +672,10 @@ else, and `skipped-cadence` carries no code at all — it writes no log row (AC-
 ## 5. Scope
 
 **In scope:** the `/loop`-driven cadence trigger and the volume trigger evaluated by the pass, in the
-stated tick order; the single un-consolidated predicate scoped to the delimited consumed block —
-including the matching edits to `pdlc/skills/consolidate-learnings/SKILL.md:35` and to
-`pdlc/hooks/scripts/nudge-consolidation.sh:41`; reuse of the shipped two-rung advisory ladder
+stated tick order, including the empty-datum bootstrap; the single un-consolidated predicate over
+the delimited consumed block plus the legacy region — including the matching edits to
+`pdlc/skills/consolidate-learnings/SKILL.md:35`, to `pdlc/hooks/scripts/nudge-consolidation.sh:41`
+(predicate) and to `:28` (the corpus glob widened to `docs/completed/*/`); reuse of the shipped two-rung advisory ladder
 (`resolveAdvisoryRung`, `orchestrate-dev.js:1833`) with reported fallback; PR promotion with scoped
 credential, in both the same-repo (AC-3.8) and two-repo configurations, plus the pathspec-scoped
 commit of the consuming-repo writes (AC-3.8b); the effectiveness/falsifiability loop, including the
