@@ -39,6 +39,12 @@ it ranges over.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | Direct input to F-01. Is the intended reading of §14.5's paragraph "the *spelling* of every observable this document states as **unavailable** is T-10's", with the id arm simply swept in by a list written faster than it was checked? If so the repair is the one-word one in the finding. The alternative reading — that an id-less record's §8.3 output is an unavailable-id *cell* whose literal TSPEC picks — contradicts `:1182` ("the record contributes **no** row") and would need §8.3's set-equality obligation ("ranges over the **distinct ids the log carries**") reopened, which I do not think is intended and would not recommend. |
+| Q-02 | On F-02: is §8.4 step 1's cell deliberately one arm because its three fields are interchangeable for the open-list computation — miss any one and the id cannot be closed, so it stays open — with `failure-mode-id` the accidental exception the field's own semantics create? If that is the reasoning, stating it in the cell costs a clause and makes the row self-contained; leaving it implicit means the only statement of the id case lives in a different reader's row, which is the pattern §8.1's own "no reader is left to infer its own arm" sentence (`:1165-1166`) exists to prevent. |
+| Q-03 | Not a finding, because §8.1's arm is decidable as written and I could not construct a case where it moves an outcome: the §8.4 steps 2–3 row says a record short of `symptom`, `artifact` or `phase` is "**still put to the harvest agent**, on the fields the record does carry, with the missing half stated as unavailable" (`:1180`). Since the question at step 2 is a conjunction of three clauses, is an agent answering a question with one clause rendered "unavailable" expected to answer **no** more often — and is that the intended direction, given §8.4 exists to keep `recurred` reachable? I read the arm as deliberately accepting a weaker question over no question (the row says so: dropping it "would make `recurred` unreachable"), and the observable is stated either way, so nothing is owed at this layer. Flagging it only so the PROPERTIES author writing LD-5's `symptom` row knows the arm's *value* is a judgment the FSPEC has not pinned and should not be asserted as one. |
+
 ## Positive Observations
 
 ## Recommendation
