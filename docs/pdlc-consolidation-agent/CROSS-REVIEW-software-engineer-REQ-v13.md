@@ -35,6 +35,49 @@ line or two wide. I re-derived every number here from the files at HEAD rather t
 
 ## Standing-Decision Check
 
+Two project-level decisions are new since v12 and two are carried. All four are read against the
+document before scoring, not after.
+
+**`DEC-CONV-01`** (`docs/_decisions/DECISIONS-review-convergence.md`, new at `4fbb696`) makes an
+approval **stand** into later rounds of the same phase, re-openable only by the reviewer who issued
+it, and only when the intervening diff touches a section that approval's `Scope` named or the
+reviewer scores a new Medium-or-higher against that diff. It is directly on point here, and it is
+what this round *is*: I hold a standing `Approved with minor changes` from v11 and v12, the
+intervening diff on this document is empty, and I have no new finding of any severity against it.
+The decision's own words for that case — "A reviewer whose approval stands and who finds nothing
+Medium-or-higher in the delta **re-issues its approval**" — describe this review exactly. I note that
+the decision does not let me shortcut the checks: it governs the *verdict*, not the diligence, and
+the sections below are the same sweeps I ran at v11 and v12.
+
+**`DEC-SEV-02`** (`DECISIONS-review-severity-bars.md:38-58`, new at the same commit) scores a
+falsified **bookkeeping-completeness** assertion as Low rather than Medium, where no observable,
+rule, arm or downstream artefact is wrong and the repair is deleting or narrowing the assertion. I
+checked whether it reaches either open finding and it reaches **F-03** — squarely. F-03 is a
+universal a document asserts over its own governed files ("§1–§4 entire in both … §1, §2 and §4 are
+enumerations") that is falsified by one of those files; no observable, no arm, no downstream artefact
+is wrong; and the repair I proposed is precisely to narrow the assertion's subject. It was already
+Low under DEC-SEV-01, so the new decision does not move it — but it now has two independent grounds
+for that score, which matters because it removes the only reading under which a third unaddressed
+round could be argued into a Medium. F-02 is not of this class (it is a governance-clause scope
+finding, not a falsified universal) and stays Low under DEC-SEV-01.
+
+**`DEC-LAYER-01`** (`DECISIONS-spec-layer-boundary.md`, carried) binds at the FSPEC layer; the check
+I ran at v12 is unchanged because the document is unchanged. §5a still disclaims the governed
+territory in the REQ's own words — "fixture construction and oracle mechanics belong to FSPEC, TSPEC
+and PROPERTIES" (`:602-603`) — naming all three downstream layers rather than the next hop.
+
+**`DEC-SEV-01`** (carried) scores a REQ-layer finding about the scope of a governance rule over a
+shared normative file as Low when the governed file carries a version-pin obligation whose breach is
+itself a defect. Both governed files still carry that obligation
+(`pdlc-consolidation-vocabularies.md:27-28`, `pdlc-advisory-corpus-baseline.md:19-20`), so both
+findings stay Low. A Low finding surviving a round unaddressed is not grounds to escalate it: the bar
+keys on detectability, and neither became less detectable by not being fixed.
+
+I found no violation of `docs/_constraints/DOMAIN-CONSTRAINTS.md`. DC-09 (REQ altitude, `:245`) is
+satisfied for the reason just given; DC-13 (accurate Scope tags, `:356`) is why F-02 remains
+`Cross-Feature` — the version-pin/defect clause is stated in two shared files `pdlc-engineering-loop`
+will read, so the asymmetry between their wordings is a fact about the mechanism, not about this REQ.
+
 ## Findings
 
 ## Existing-Code Claim Verification (changed sections)
