@@ -149,6 +149,35 @@ The workflow scripts pin a model per phase via the runtime `agent()` `model` opt
 - `orchestrate-dev`: **Phase I (Implementation) waves run on Sonnet**; every other phase (spec authoring/reviews, PROPERTIES tests, final codebase review, DoD, Harvest, PR/CI) runs on **Opus**. Constants: `MODEL_DEFAULT = "opus"`, `MODEL_IMPLEMENTATION = "sonnet"` at the top of `pdlc/workflows/orchestrate-dev.js`; agent calls default to Opus, the Phase I dispatch overrides to Sonnet.
 - `orchestrate-queue`: the **Phase-0 readiness triage runs on Sonnet** (`MODEL_QUEUE`); the delegated `orchestrate-dev` pipeline is invoked without an agent override, so it applies its own pinning above (i.e. **Opus** except its Phase I).
 
+### Advisory tier (off by default)
+
+An **advisory tier** lets the pipeline attempt one bounded, reversible remediation at five
+named seams before escalating to a human. It ships **disabled**: `.claude/pdlc.config.json` →
+`advisory.enabled` defaults to `false`, and with it false (or the section absent/malformed)
+the tier is provably inert — no dispatch, no model resolution, and the created-file set of a
+run is byte-identical to the pre-advisory baseline (`advisoryDisabled.test.js`, PROP-DIS-*).
+
+- **Seams:** `A1` queue triage adjudication (needs-human; capability-free — it never edits),
+  `A2` queue stale-REQ re-grounding (rewrites citation *location text only*, then commits
+  REQ + record pathspec-scoped in its own `verifyGate`), `A3`/`A4` Phase DOD verify/remediate
+  assists, `A5` Phase PUB CI-red diagnosis (acts only inside a decidable envelope; a
+  non-`escalated` outcome re-polls, `escalated` falls through to the byte-identical halt).
+- **Config keys** (`parseAdvisoryConfig` — per-key independent fallback, one bad key never
+  retunes the rest): `enabled` (false), `attemptBudget` (3), `seamBudgetMinutes` (10),
+  `envelope` (four-member literal). The master switch is tested first.
+- **Two artifacts, one lifecycle rule.** Per-feature `docs/{feature}/ADVISORY-{feature}.md` —
+  an append-only disposition record, committed pathspec-scoped at the seam that wrote it
+  (H-2b durability; the queue commits it itself when an adjudication picks nothing). After
+  Phase PUB, the H2 distil step folds it into `LEARNINGS` and deletes it through the
+  guard-covered channel (`guard-harvest-before-delete` covers `ADVISORY-*` exactly as
+  `CROSS-REVIEW-*`/`CODE_REVIEW-*`; a refusal is a notice, never a halt). Non-feature-scoped
+  `docs/_queue/ESCALATIONS.md` — a single append-only escalation log, never distilled and
+  never deleted.
+- **Reporting:** the final report's `advisory` field carries five per-seam rows on both the
+  success and halt paths (all-zero rows when enabled-but-quiet, `null` when disabled), and
+  `ciStatus` provenance is always a real `checkPrCi` observation, never an advisory verdict
+  field.
+
 ### Hooks
 
 | Hook | Trigger | Script | What it does |

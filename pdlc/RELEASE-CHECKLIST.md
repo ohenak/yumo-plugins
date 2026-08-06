@@ -155,6 +155,34 @@ Record, in this document, at the next release:
 
 ---
 
+## 4. Advisory tier — the two commitments CI cannot check (PLAN A-35)
+
+**4a. The D-6 baseline fixture's `scenario` header is still accurate.** The disabled-tier
+equivalence proof (`advisoryDisabled.test.js`, PROP-DIS-03) compares a disabled run's
+created-file set against the hand-reviewed literal in
+`pdlc/workflows/__tests__/fixtures/created-files-26c3f1c.json`. The fixture's `scenario`
+header (baselineCommit, reqPath, forcePhases, agentDoubles, config, phasesReached,
+seamsInstrumented, command, date) is a **claim about how the baseline was captured**, and no
+test can verify a historical capture procedure. At each release, re-read the header and
+confirm the scenario it describes is still the scenario the comparison needs — in particular
+that `baselineCommit` still names the intended pre-advisory tree. If the pipeline's phase
+graph has since changed shape (a phase added, removed, or reordered), the fixture may need
+recapturing by the same detached-worktree procedure the header records.
+
+- [ ] The `scenario` header was re-read at this release and is still accurate.
+
+**4b. The guard-message coupling regression still passes.** A-28 extended the
+`guard-harvest-before-delete` hook's refusal message to name the `ADVISORY-*` class while
+keeping the exact `CROSS-REVIEW` prefix and directory-extraction shape orchestrate-dev's
+recovery path parses (`advisoryHarvest.test.js` §13.4(5): the literal `.includes` check and
+the extraction regex both still fire on a refusal). This is a coupling between a shipped bash
+script and a JS parser — easy to break by an innocent-looking rewording of either side.
+
+- [ ] `cd pdlc/workflows && npm test -- __tests__/advisoryHarvest.test.js` is green on the
+      release tree (bash present, so the guard-integration cases actually ran — 0 skipped).
+
+---
+
 ## A note for anyone editing this file
 
 This document lives under `pdlc/`, which none of the document-drift scan's exemptions covers, so
