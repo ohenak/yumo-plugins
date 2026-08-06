@@ -38,6 +38,11 @@ cell. No High and no Medium.
 
 ## Questions
 
+| ID | Question |
+|----|---------|
+| Q-01 | LD-5's `Observable stated at` column (`:2243`) now anchors three rows of §8.1's reader table (§8.3, §8.4 step 1, §8.4 steps 2–3) plus §8.3's totality rule — but the `action` arm's other observable lives in **§6.4** ("§6.4's predicate is undecidable, so that contract skips and the promotion is re-proposed"), and §6.4 is named only inside the obligation prose, not in the column that tells a PROPERTIES author where to read the observable. LD-4 does cite §6.4 in that column for its own arm, so the pattern exists one row up. Is the omission deliberate (the obligation text carries the pointer, and the column lists reader-table rows only), or is it a fourth anchor worth adding? I am not filing it — the pointer is present and unambiguous, and under the register freeze a column edit is the kind of change that manufactures the next round. |
+| Q-02 | The v11.1 deletions removed four completeness universals. Three of them were about *registers* and cost a downstream author nothing (I verified each). The fourth — E-12b's "per that table's cell-level set-equality" — was a **pointer** to a surviving rule (`:1169-1172`), not a universal of its own, and its removal is what makes L-01 above a silent gap rather than a self-detecting one: with the pointer in place, an author transcribing E-12b's index is told which rule the index must satisfy. Would restoring that six-word pointer (not the universal, just the citation) sit inside the freeze, or is the freeze deliberately strict enough to exclude re-citations too? Either answer is fine by me; I am asking because the freeze's stated rule is "no new coverage universals; delete rather than repair", and a citation of an existing rule is arguably neither. |
+
 ## Positive Observations
 
 ## Recommendation
