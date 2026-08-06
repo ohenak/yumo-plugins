@@ -2149,6 +2149,7 @@ invented downstream).
 | T-07 | The `.gitignore` pattern's exact text | §4.1: root-relative, contains a separator, never slash-free or `**/`-prefixed |
 | T-08 | Whether the corpus enumeration is shared code with `nudge-consolidation.sh` or two implementations held equal by test | §3.1 requires one corpus and one predicate; it does not require one implementation. Whichever is chosen, AT-P7 is the differential form and stands |
 | T-09 | **At least one property strategy per parameterisable component**, over and above §13's examples — the mechanism (generator shape, shrinking, library) is TSPEC's and PROPERTIES', the obligation is not | §13 covers all four components with hand-picked examples only, and an example set cannot range over an input space. The four components and the invariant each must be tested against are named below; TSPEC may not discharge T-09 by citing the existing ATs |
+| T-10 | **The spellings of the "unavailable" observables**, collected here so a downstream author finds them in one place rather than only at the point each arises: §8.3's unavailable **path** cell and, from §8.1's reader row, its unavailable **`phase`** rendering; §10.3's `suppressed-by:` unavailable-`passId` rendering (a rendering of the second spelling, not a third form) and §6.4's statement of the same; and §6.5's seam permitted-set widening. In every case **this layer fixes the observable and defers only the literal** | DEC-LAYER-01: the spelling of a value this document does not pin is TSPEC's, and §15.2's lexicon owns no such value. §14.5's register is PROPERTIES-owned *fixtures*; these are TSPEC-owned *literals*, and the two sets are disjoint |
 
 The four components T-09 ranges over, with the invariant each property asserts:
 
@@ -2213,7 +2214,13 @@ point it arises, it is also discoverable only from that point — so every such 
 here, once, in the form the downstream author needs: what is owed, where its observable is stated,
 and what a defective implementation does. This register is **set-equal** to the deferrals this
 document names; a deferral added later is a row added here, and a section that names one without a
-row is a defect of this table.
+row is a defect of this table. **The scope is PROPERTIES-owned deferrals only, and deliberately so**
+(TE v9 Q-01): the *spellings* this document defers to TSPEC under the same `DEC-LAYER-01` — §8.3's
+unavailable-path cell and §8.1's unavailable-`phase`/id arms, §10.3's `suppressed-by:` unavailable
+rendering, §6.4's — and §6.5's seam permitted-set widening are **§14.1's, collected there as T-10**,
+not this table's: they are deferrals of a *literal* to the layer that pins literals, not of a fixture
+to the layer that writes fixtures. Between the two registers, every deferral this document makes has
+exactly one home.
 
 | # | Obligation deferred to PROPERTIES | Observable stated at | A defective implementation |
 |---|---|---|---|
@@ -2221,6 +2228,7 @@ row is a defect of this table.
 | LD-2 | BR-33b's `target`-follows clause: a colliding-subject merge of two **process learnings**, where precedence returns kind 3 and the surviving `target` follows the surviving `artifact` | §8.2's third note; BR-33b's AT cell | keeps one proposal's `artifact` and the other's `target`, so the merged record's write touches a file the record is not about. **The >2-candidate case belongs to this row too** (SE v8 Q-02): §8.2 consequence 1 contemplates three failure modes under one key, so the elided set §10.4 item 4 must name can have more than one member, and AT-R6b fixture 2 pins only the two-candidate case — a report that names one elided path and stops is the defect |
 | LD-3 | The two-action-one-subject pass: a `promote` and a `revise` over one subject at one phase are two keys, so no merge fires and **both** writes happen, the guard-set one as a PR | §8.2 (the paragraph naming it) | folds the two actions into one key and makes one write, or suppresses the guard-set write as if §8.2's consequence 2 bound it |
 | LD-4 | §6.4's **`passId` arm**: a record short of `passId` still suppresses on the pair, and only the evidence spelling degrades to an explicit unavailable statement | §6.4 (the short-`passId` paragraph); §8.1's §6.4 reader row; BR-33a, E-12b | skips the contract and re-appends a constraint that already landed (an NFR-4 duplicate produced by a field outside the suppression key), or writes `pass:undefined`, or drops the `suppressed-by:` entry so the suppression is unevidenced |
+| LD-5 | The four remaining short-record arms of §8.1's reader rule, each stated in the table and none carrying a §13 fixture: **`phase`** (§8.3 emits the row, verdict `insufficient-evidence`), **`failure-mode-id`** (§8.3 emits no row, since a row cannot be keyed on an absent id, and §8.4 asks no question), **`action`** (§6.4's predicate is undecidable, so that contract skips and the promotion is re-proposed; §8.4 step 1 leaves the id open), **`symptom`** (§8.4's harvest question is still asked on the fields present) | §8.1's reader table (§8.3 and §8.4 steps 2–3 rows), §8.3's totality rule; BR-33a, E-12b | guesses `prevented` on a record with no `phase`, or drops the §8.3 row for it (both silently move a verdict); or mints or re-slugs an id for a record that carries none; or drops an id-less record's parse notice so the record vanishes without report |
 
 Each row is a deferral of the **fixture**, never of the rule: the rule and its observable are stated
 at this layer, which is what `DEC-LAYER-01` requires of an FSPEC before it may name a downstream
