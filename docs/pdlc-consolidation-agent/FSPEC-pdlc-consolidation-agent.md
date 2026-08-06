@@ -1094,6 +1094,19 @@ Three consequences, each of which would be a defect under a single conflated fie
    (`DOMAIN-CONSTRAINTS.md`) but has its own `artifact`, so each mints its own id and NFR-4's
    `enacted` rule (§6.4) suppresses only a genuine re-proposal — not every invariant after the first.
 
+**The table is normative for writers, and this paragraph settles the same question for readers.**
+Every field above is written on every record, on every promotion kind and on the `degraded` route —
+AT-F20 asserts that as a set-equality, so a record short of a field is a defect at the writer, not a
+shape a reader must tolerate. A reader nevertheless meets records it did not write: §6.4's
+consuming-repo carrier and §8.4 step 1 both index into records appended by *earlier* passes, and
+§10.2's append-only grammar guarantees those are never rewritten, so a record written before a future
+field is added stays as written. The rule is the receive-side discipline this document applies
+everywhere else (§3.4, §9.3, AT-F16): **a record missing a field the reader indexes is reported as a
+parse notice and skipped for that contract — never a halt, never a guessed default, and never an
+in-place repair.** Skipping is the safe direction for both readers: §6.4 fails to suppress and the
+promotion is re-proposed (which NFR-4 already sanctions), and §8.4 step 1 leaves the id open (one
+extra harvest question, the failure direction O-C7 accepts).
+
 `target`, `passId`, `action` and `route` are bookkeeping, not identity: the *promotion* is keyed on
 the id alone (§8.2), and none of the four participates in the derivation below. They are in the
 record because four contracts read them off it — §5.1 routes on `target`, NFR-4's consuming-repo
@@ -1677,7 +1690,12 @@ The returned body carries everything AC-7.1 requires, in a form a `/loop` tick p
    evidence — the PR on the PR route, the enacting `passId` on the consuming-repo route (§10.3),
 7. the §9 advisory notes: the corpus state, any §9.4 / §9.5 candidate, and any operator action,
 8. what it deferred for human judgment,
-9. the branch the §5.4 commit landed on, or `writes-uncommitted`.
+9. the branch the §5.4 commit landed on, or `writes-uncommitted`,
+10. the **number** of open promotions in the list §8.4 step 1 hands to the harvest prompt. O-C7
+    accepts that this list grows monotonically and refuses a silent cap; reporting its length is what
+    makes the growth observable **before** it becomes a prompt truncation, and it is the only number
+    here that no other item carries. It is a count, not the list — the list itself belongs to the
+    harvest prompt.
 
 Receive-side totality (DC-01): a section with nothing to say is rendered as an explicit empty
 statement, never omitted. A reader must be able to distinguish "no promotions" from "the promotions
@@ -1941,6 +1959,8 @@ PROPERTIES' (DC-09).
 | AT-F16 | operator | a LEARNINGS carrying a `failure-mode-id` that matches **no** record in the log | a pass consumes it | it is reported as a parse notice and contributes to **no** verdict; no promotion is invented for it and the pass does not abort |
 | AT-F17 | operator | an `ineffective` promotion with no spent alternative, whose **subject** `artifact` **exists** at the pass's HEAD (§8.5 row 3) | the remediation is chosen | `revision` is proposed and the report field names `revision`. Run twice over one fixture, the choice is identical — the predicate is a file-existence test, so it carries no free-text match |
 | AT-F18 | operator | an `ineffective` promotion with no spent alternative, whose **subject** `artifact` has been **deleted** since the promotion landed (§8.5 row 4) | the remediation is chosen | `retirement` is proposed — there is nothing left to revise — and the report field names `retirement` |
+| AT-F19 | operator | a **constructed** `.consolidation-log.md` fixture spanning **all four arms** of §8.4 step 1's predicate in one run: id `A` with a `retire` record at `route: constraints` (a landed retirement), id `B` with a `retire` record at `route: degraded` (proposal only), id `C` with `promote` records only, and id `D` with a `revise` record only | the pass computes the open-promotion list it hands to the harvest prompt (§8.4 step 1) | the computed list is **set-equal** to `{B, C, D}` — both directions, and set-equality rather than containment is the whole point of the row: an implementation returning every id ever recorded satisfies containment, and that degenerate list is the *limit* O-C7 accepts, never the implementation. `A` absent is what pins the `route != degraded` conjunct an implementation drops by closing an id on any `retire`; `B` present is what pins that a `degraded` retirement does not close one — the arm whose loss shrinks the list silently and produces the missed recurrence and false `prevented` §8.4 and O-C7 both refuse. The list's **length** is asserted present in the report body (§10.4 item 10). This is a pass-side arithmetic test over a file fixture with no agent in it, which is what §8.4 step 1 means by "testable at this layer" |
+| AT-F20 | operator | one pass writing failure-mode records on **each** of the three §5.2 kinds — a process learning, an AC-2.2 decision and an AC-2.1 domain invariant — plus one `degraded` record (§6.3 fallback) | the appended records are read | each record's **field-name set** is **set-equal** to §8.1's eight names (`failure-mode-id`, `phase`, `symptom`, `artifact`, `target`, `passId`, `action`, `route`) — no field missing on any kind and no ninth field invented. Both directions are load-bearing: a dropped `target` or `route` on one path is otherwise invisible until §6.4's consuming-repo carrier misreads it two passes later, and an extra field would be a record shape §8.1 is said to be normative for. This asserts the record's **shape**; its serialisation is TSPEC's (§14.1 T-01) |
 
 ### 13.8 Advisory corpus (§9)
 
@@ -2007,7 +2027,7 @@ The four components T-09 ranges over, with the invariant each property asserts:
 | O-C4 | A promotion whose invoking branch is abandoned loses its effectiveness record and re-enters the table as if first made. | **Accepted loss**, stated in the REQ and restated here rather than closed. | §5.5 |
 | O-C5 | `ESCALATIONS.md` cannot distinguish a seam that never escalates because it never runs from one that never escalates because it always succeeds. | **Honest limit**, which is why §9.5's output is a candidate for human judgment. Resolution rates are D-CONS-06. | §9.6 |
 | O-C6 | `recurred` depends on a harvest agent recognising a recurrence and copying an id (§8.4 step 2). A harvest that should have attached an id and did not is invisible to the pass. | **Accepted recall limit.** The miss direction is toward `prevented` / `insufficient-evidence` — "we cannot show it worked" — never toward a false `recurred`, so the loop degrades safe. Closing it needs a producing-side check the pass cannot perform, since only the harvest sees the feature's own failures. | §8.4 |
-| O-C7 | §8.4 step 1's open-promotion filter closes an id only on a **landed** `retire`, and a `retire` of a guard-set promotion lands only when an operator merges its PR — so on this repo the filter closes little, and the harvest question list grows monotonically with every promotion ever made. | **Accepted, unbounded, and recorded rather than capped.** No recency window and no cap ship: both would drop a promotion from the list silently, turning §8.4's safe failure direction (one extra question) into the unsafe one (a missed recurrence, and with it a false `prevented`). The cost is a longer harvest prompt, which is bounded by the promotion rate, not by pass count. If it becomes a real burden the repair is a **reported** cap — one that names what it elided — and that is a successor's decision, not a silent default here. | §8.4 |
+| O-C7 | §8.4 step 1's open-promotion filter closes an id only on a **landed** `retire`, and a `retire` of a guard-set promotion lands only when an operator merges its PR — so on this repo the filter closes little, and the harvest question list grows monotonically with every promotion ever made. | **Accepted, unbounded, and recorded rather than capped.** No recency window and no cap ship: both would drop a promotion from the list silently, turning §8.4's safe failure direction (one extra question) into the unsafe one (a missed recurrence, and with it a false `prevented`). The cost is a longer harvest prompt, which is bounded by the promotion rate, not by pass count. If it becomes a real burden the repair is a **reported** cap — one that names what it elided — and that is a successor's decision, not a silent default here. **What ships now is the observation that would justify it:** §10.4 item 10 reports the list's length on every pass, so the growth is visible before it becomes a prompt truncation rather than after. AT-F19 asserts the list's contents; item 10 asserts its size is legible. | §8.4, §10.4 |
 | O-C8 | An intra-pass merge of two proposals of **different** §5.2 kinds keeps one `target` by §8.2's precedence rule, so the lower-precedence kind's write never happens — a process learning merged with a domain invariant edits no skill prompt that pass. | **Accepted and reported, not repaired.** The alternative — two records sharing one `(failure-mode-id, action)` in one pass — would break the uniqueness rule NFR-4's suppression key rests on, so the choice is between losing a write and losing the key. The loss is bounded by the same rate §8.1 prices the collision at (two failure modes, one phase, one file), the content survives in the merged `symptom`, and §10.4 item 4 names the elided kind so an operator can re-propose it by hand. Precedence runs widest-reach-first so the surviving write is never the narrower one. | §8.2 |
 
 None of the eight is a blocking gap: each names what is observed, what is accepted, and — where one
@@ -2074,8 +2094,8 @@ row names a criterion the REQ does not carry.
 | AC-4.2 | §7.2, §7.4, §10.3 | AT-K1, AT-K4, AT-K5, AT-K6 (all six row shapes across §10.3's three readings of `credential: absent`) |
 | AC-4.3 | §7.3, §6.3 | AT-K2, AT-K3, AT-K7 |
 | AC-4.4 | §7.2 | AT-K1 |
-| AC-5.1 | §8.1, §8.2 | AT-F1, AT-F2, AT-F3, AT-F4, AT-R6b (the subject/target split: a guard-set **subject** with a `docs/_decisions/` **target**, and the intra-pass merge) |
-| AC-5.2 | §8.3, §8.4 | AT-F5, AT-F6, AT-F7, AT-F8, AT-F15, AT-F16 |
+| AC-5.1 | §8.1, §8.2 | AT-F1, AT-F2, AT-F3, AT-F4, AT-F20 (the record's eight-field shape, set-equal on every kind), AT-R6b (the subject/target split: a guard-set **subject** with a `docs/_decisions/` **target**, the intra-pass merge, and the mixed-kind precedence rule) |
+| AC-5.2 | §8.3, §8.4 | AT-F5, AT-F6, AT-F7, AT-F8, AT-F15, AT-F16, AT-F19 (§8.4 step 1's open-promotion list, set-equal over all four arms) |
 | AC-5.3 | §8.5 | AT-F9, AT-F10, AT-F11, AT-F12, AT-F14, AT-F17, AT-F18 |
 | AC-5.4 | §8.6, §5.3 | AT-F10, AT-Q5 |
 | AC-5.5 | §8.7 | AT-F13 |
@@ -2331,7 +2351,10 @@ falsifies it; none of them is new here.
 
 | # | Rule | Section | AT |
 |---|---|---|---|
-| BR-33 | Every promotion carries one `failure-mode-id`, derived deterministically from `phase` and its **subject** `artifact`, one **`target`** path decided by its kind (§5.2) and never folded into the id, and one `action` ∈ {`promote`, `revise`, `retire`}; one promotion is one authored subject file. | §8.1, §8.2, §5.2 | AT-F1, AT-F2, AT-F3, AT-R6b |
+| BR-33 | Every promotion carries one `failure-mode-id`, derived deterministically from `phase` and its **subject** `artifact`, one **`target`** path decided by its kind (§5.2) and never folded into the id, and one `action` ∈ {`promote`, `revise`, `retire`}; one promotion is one authored subject file. | §8.1, §8.2, §5.2 | AT-F1, AT-F2, AT-F3, AT-F20, AT-R6b |
+| BR-33a | Every failure-mode record carries **exactly** §8.1's eight fields — none missing, none added — on every promotion kind and on the `degraded` route. A reader that finds a record missing a field it indexes reports a parse notice and skips that record for that contract; it never halts the pass and never rewrites the record (§8.1). | §8.1, §6.4, §8.4 | AT-F20, AT-F16 |
+| BR-33b | An intra-pass merge of proposals of different §5.2 kinds keeps the **highest-precedence** kind's `target` and `route` (constraints > decisions > subject file), states both failure modes in the one `symptom`, and names the elided kind in the report body. | §8.2, §10.4 | AT-R6b |
+| BR-33c | The open-promotion list handed to the harvest prompt is computed **by the pass** from `.consolidation-log.md` alone: an id is open when no record for it carries `action: retire` with a `route` other than `degraded`. The computed list is exactly that set — not a superset. | §8.4 | AT-F19 |
 | BR-34 | Every prior promotion gets a verdict on every reporting pass: `prevented` / `recurred` / `insufficient-evidence` — a `no-op` pass restates them unchanged (AC-1.4). | §8.3, §12.3 | AT-F5, AT-F6, AT-F7, AT-F8 |
 | BR-35 | `recurred` on two consecutive counted passes ⇒ state `ineffective`, and a `revision` or `retirement` proposal is emitted. | §8.5 | AT-F9, AT-F10 |
 | BR-35a | Which alternative is proposed is decided by spent-alternative rows first, then by **one file-existence test** on the promotion's **subject** `artifact` (never its `target`) — never by a match on `symptom`, which is non-keying free text the recurrence evidence does not carry. | §8.5, §8.1 | AT-F17, AT-F18 |
