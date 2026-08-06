@@ -15,7 +15,7 @@ depends-on: [pdlc-workflow-distribution, pdlc-advisory-tier]
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.7 | 2026-08-06 |
+| pdlc | draft | Claude | 1.8 | 2026-08-06 |
 
 > **Scope in one line.** Run consolidation on a cadence with the advisory model, and carry pipeline-level promotions to `yumo-plugins` as pull requests
 > (the same repository today, AC-3.8), with every promotion recording the failure mode it targets and the next pass reporting, by a deterministic rule,
@@ -104,10 +104,10 @@ two regions, and is total over any log:
 > marker (a log with no block at all is legacy region entire).
 
 The legacy region is the shipped substring test (`nudge-consolidation.sh:41`) applied to exactly the text predating this feature, so nothing already
-consolidated is re-consumed and no transcription or parse of Pass 1's prose is required. It is frozen by construction, in two clauses: **(a)** every pass
-that takes the AC-1.3 marker appends a `<!-- pdlc:consumed {passId} --> … <!-- /pdlc:consumed -->` pair **before any other record it writes, even when
-its consumed set is empty** (the pair is then empty, which satisfies NFR-5's "exactly the consumed set"), so the boundary is frozen unconditionally by
-the first pass rather than only by one whose consumed set happens to be non-empty; **(b)** exactly **one** record is exempt — it may precede the first
+consolidated is re-consumed and no parse of Pass 1's prose is required. It is frozen by construction, in two clauses: **(a)** every pass that takes the
+AC-1.3 marker appends a `<!-- pdlc:consumed {passId} --> … <!-- /pdlc:consumed -->` pair **before any other record it writes, even when its consumed set
+is empty** (the pair is then empty, satisfying NFR-5's "exactly the consumed set"), so the boundary is frozen unconditionally by the first pass rather
+than only by one whose consumed set happens to be non-empty; **(b)** exactly **one** record is exempt — it may precede the first
 block, and it is not readable as legacy consumption because **no field it carries is ever a basename**: a `refused` pass's AC-7.2 row — status, trigger,
 `credential:`, reason code, and the held marker's passId and ISO-8601 timestamp, which AC-1.3 requires it to name, and only those — appended by a tick
 that loses the race between the winner's marker and its block. A passId is `{YYYY-MM-DD}-{n}` and a timestamp is neither a `LEARNINGS-*.md` basename. The AC-1.3 marker is **not** a second
@@ -137,16 +137,16 @@ reads a LEARNINGS **body**:
 A direct `/pdlc:consolidate-learnings` invocation skips steps 2–4 entirely and runs with trigger
 `manual`.
 
-**The cadence datum, named.** The interval of step 3 is measured from the timestamp of the most recent log row whose status is in the set `promoted` /
-`promoted-degraded` / `no-op` / `failed` — the last pass that took the AC-1.3 marker and did work. A `refused` row is not a datum (that pass did no
-work), and a `skipped-cadence` tick **writes no log row at all** (AC-7.2), so ticking cannot advance the datum; without this, every tick's own row would
-become "the last logged pass" and `cadenceHours` could never elapse.
+**The cadence datum, named.** Step 3's interval is measured from the timestamp of the most recent log row whose status is in the set `promoted` /
+`promoted-degraded` / `no-op` / `failed` — the last pass that took the AC-1.3 marker and did work. A `refused` row is not a datum, and a
+`skipped-cadence` tick **writes no log row at all** (AC-7.2), so ticking cannot advance the datum; otherwise every tick's own row would become "the last
+logged pass" and `cadenceHours` could never elapse.
 
 **The empty-datum case, decided.** The datum set is empty in two states — no log file (a fresh repo) and a log with no row carrying one of those four
-statuses (the state at HEAD: Pass 1 predates the status convention). **An empty datum set counts as elapsed**: the cadence test fires, the pass runs, its
-trigger is `cadence` (NFR-3a needs no new member) and its row additionally carries reason code `no-cadence-datum`, so a bootstrap tick is
-distinguishable from an ordinary one. That row then becomes the datum. Empty-means-not-elapsed is rejected: it makes cadence unreachable until someone
-runs a manual pass — the never-fires failure this datum prevents.
+statuses (the state at HEAD: Pass 1 predates the status convention). **An empty datum set counts as elapsed**: the cadence test fires, the pass runs,
+trigger `cadence` (NFR-3a needs no new member), and its row additionally carries reason code `no-cadence-datum`, so a bootstrap tick is distinguishable
+from an ordinary one. That row then becomes the datum. Empty-means-not-elapsed is rejected: it makes cadence unreachable until someone runs a manual
+pass — the never-fires failure this datum prevents.
 
 - **AC-1.1** — Given a `/loop` tick and `consolidation.cadenceHours` elapsed since the cadence datum
   defined above, Then a consolidation pass runs with no per-pass operator invocation. Given **no** log
@@ -374,26 +374,24 @@ procedural — it holds even if every other control failed.
   **Why those inputs.** Determinism of the derivation is not stability of its inputs. `phase` (closed 13-member catalogue) and `artifact` (a repository
   path) are *file* text — the property AC-5.2's determinism argument rests on. `symptom` is a line the pass's own model writes under no vocabulary, so
   two passes recognising one failure mode from different corpora would word it differently and slug differently — exactly the case NFR-4 must survive
-  (AC-3.8b's abandonment: a later pass with a *larger* consumed set). The glob form is forbidden for the same reason in the other direction: two passes
-  free to name `pdlc/workflows/orchestrate-dev.js`, `pdlc/workflows/*.js` or `pdlc/workflows/` for one failure mode would slug three ways and NFR-4 would
-  miss. One canonical path closes the split direction as `phase` closes the merge direction, which is what makes "a later pass re-deriving the same
-  failure mode yields the same id" true rather than hoped for.
+  (AC-3.8b's abandonment: a later pass with a *larger* consumed set). The glob form is forbidden for the same reason in the other direction: passes free
+  to name `pdlc/workflows/orchestrate-dev.js`, `pdlc/workflows/*.js` or `pdlc/workflows/` for one mode would slug three ways and NFR-4 would miss. One
+  canonical path closes the split direction as `phase` closes the merge direction, which makes "a later pass re-deriving the same failure mode yields
+  the same id" true rather than hoped for.
 
   **Uniqueness, scoped.** Within **one pass** the pair `(failure-mode-id, action)` is unique: two proposals deriving one id under one `action` name the
   same `phase` and `artifact`, are one failure mode, and are recorded once — the pass never mints a suffixed variant, which would break derivation
   purity and with it NFR-4. Two distinct failure modes in one `phase` touching one file therefore merge into one promotion carrying one `symptom`; that
   is the accepted cost of a path-level key, and a finer key is D-CONS-08. **Across passes** the id deliberately repeats: NFR-4 sanctions re-proposing a
-  promotion whose PR the operator closed unmerged, and that re-proposal writes its own record. Log **records** are therefore keyed
-  `(failure-mode-id, passId, action)`; a **promotion** — the unit whose *effectiveness* is measured — is keyed on the id alone, and every effectiveness
-  contract counts promotions, not records and not actions: AC-5.2 emits one row per id, AC-5.3 counts one streak per id over all its records, AC-5.4
-  retires an id. So a repeated id is never an ambiguous referent.
+  promotion whose PR the operator closed unmerged. Log **records** are keyed `(failure-mode-id, passId, action)`; a **promotion** — the unit whose
+  *effectiveness* is measured — is keyed on the id alone, and every effectiveness contract counts promotions, not records and not actions: AC-5.2 emits
+  one row per id, AC-5.3 counts one streak per id over all its records, AC-5.4 retires an id. So a repeated id is never an ambiguous referent.
 
-  **Action, and what it discriminates.** Every proposal a pass makes about a failure mode carries an `action` over the closed set
-  `promote` / `revise` / `retire` (§4b): `promote` for an edit that targets the mode, `revise` and `retire` for the two AC-5.3 remediations. NFR-4's
-  duplicate-suppression key is the **pair** `(failure-mode-id, action)`, never the id alone. The consequence must be visible: a merged `promote` PR bars
-  a second `promote` for that `(phase, artifact)` pair forever, and bars **nothing else** — the `revise` and `retire` proposals AC-5.3 obliges the pass
-  to make are different keys, are never suppressed by the promotion they remediate, and reach the AC-3.1 route unimpeded. `action` is recorded beside
-  the id, never folded into its derivation.
+  **Action, and what it discriminates.** Every proposal carries an `action` over the closed set `promote` / `revise` / `retire` (§4b): `promote` for an
+  edit targeting the mode, `revise` and `retire` for the two AC-5.3 remediations. NFR-4's suppression key is the **pair**, never the id alone, and the
+  consequence must be visible: a merged `promote` PR bars a second `promote` for that `(phase, artifact)` pair forever and bars **nothing else** — the
+  AC-5.3 remediations are different keys, are never suppressed by the promotion they remediate, and reach the AC-3.1 route unimpeded. `action` is
+  recorded beside the id, never folded into its derivation.
 - **AC-5.2** — Given a consolidation pass, Then it reports, for **every** promotion recorded in
   prior passes, a verdict over the closed set `prevented` / `recurred` / `insufficient-evidence`,
   decided by a deterministic rule with no model judgment — so two runs over the same inputs cannot
@@ -614,15 +612,11 @@ pass whose **every** promotion was `duplicate-suppressed` promoted nothing new a
 suppressed one duplicate and landed another is `promoted` — or `promoted-degraded` if it also degraded a third, which is why `duplicate-suppressed`
 permits all three.
 
-A pass may carry more than one reason code, and each row's permitted set is derived **by
-composition, not by the status the code was first introduced under**: a code is legal with every
-terminal status still reachable after the point in the pass at which the code is recorded. That is
-why the two AC-6.1 corpus codes permit `failed` (the corpus is read before AC-3.5's or AC-1.6's
-failure is decidable), and why `no-cadence-datum` permits `refused`: it is decided at step 3 of the
-tick order, and the marker check that yields `refused` comes after (AC-1.3 — the marker is written
-"after the trigger decision of steps 1–4"), so a tick with an empty datum set that then loses the
-race carries both. `writes-uncommitted` does **not** permit `refused`, because a refused pass commits
-nothing (AC-1.3). `skipped-cadence` carries no code at all: it writes no log row (AC-7.2).
+A pass may carry more than one reason code, and each row's permitted set is derived **by composition, not by the status the code was first introduced
+under**: a code is legal with every terminal status still reachable after the point at which it is recorded. Hence the two AC-6.1 corpus codes permit
+`failed` (the corpus is read before AC-3.5's or AC-1.6's failure is decidable), and `no-cadence-datum` permits `refused` (decided at step 3, before the
+marker check that yields `refused` — AC-1.3). `writes-uncommitted` does **not** permit `refused`: a refused pass commits nothing. `skipped-cadence`
+carries no code at all — it writes no log row (AC-7.2).
 
 ## 5. Scope
 
@@ -686,3 +680,4 @@ fault-injection vocabularies, coverage floors, fixture construction and oracle m
 | D-CONS-05 | A/B measuring a promotion against a control | No control population exists in a serial single-pipeline setup | — |
 | D-CONS-06 | Persisting the advisory per-seam summary (`advisorySummaryRows`, `orchestrate-dev.js:2708`) in a defined LEARNINGS section, so resolution *rates* — not only escalations — are consumable | Adding a schema to `advisoryDistilPrompt` is an `orchestrate-dev` change, not a consolidation change (REQ-CONS-06 preamble) | `pdlc-engineering-loop` |
 | D-CONS-07 | Session-free execution and a notification channel that survives without a Claude Code session | Same vehicle as D-CONS-04; AC-7.2 names the in-session report until then | `pdlc-engineering-loop` |
+| D-CONS-08 | A `failure-mode-id` key finer than `(phase, canonical path)` — discriminating two failure modes in one phase touching one file | AC-5.1 states that merge as an accepted cost; a finer key needs a stable sub-file location identity LEARNINGS does not carry today | `pdlc-engineering-loop` |
