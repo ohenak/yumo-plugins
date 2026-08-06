@@ -48,7 +48,57 @@ which is what makes them blocking rather than cosmetic.
 
 ## Questions
 
+v4's Q-10 is answered in full (see §Prior findings). One new question, non-blocking.
+
+| ID | Question |
+|---|---|
+| Q-11 | NFR-4 now keys duplicate suppression on a sources trailer carried by a PR in state **open or merged**, and states the exclusion positively ("a **closed-unmerged** PR is *not* a key — the operator rejected that promotion, and a later pass re-proposing it is intended behaviour"). That is the right call and it is testable as three fixtures. The one it does not name is **closed-then-reopened**: `gh pr list --state open` returns it, so it suppresses — which I read as correct and consistent — but a reopened PR is also the one case where "the operator rejected it" and "the key is live" are both true of the same PR at different times. Is the intended rule simply "current state at read time", with no memory of prior states? If so, one clause saying so would make the three-state set closed under transitions, and would tell a fixture author that the oracle reads state at poll time rather than deriving it from history. |
+
 ## Positive Observations
+
+- F-29's fix is better than either option I offered. I proposed moving `CR` or stating a precedence
+  rule; the revision found the actual defect underneath both — that the split was never a property
+  of the *catalogue* at all, but of **one file's `Harvested from` row** — and re-stated it at that
+  granularity. The result is total without being disjoint, and it closes the class rather than the
+  instance: a future phase id that starts halting cannot re-open this, because nothing enumerates
+  the decidable half in advance any more. The added `:10603` citation (the halt path builds
+  `POSTMORTEM-${haltPhase}-…` from *whatever* phase halted) is the evidence that makes "any halting
+  phase, not only a converge phase" a verified claim rather than an inference from CR alone.
+- The closing sentence of that paragraph — "a set-equality test transcribed from this paragraph must
+  be written per file" — is the sentence a test author needs, and it is unusual to find it in a REQ.
+  It names the *quantifier* the oracle has to carry. Without it the natural transcription is a
+  single global set-equality assertion, which is precisely the test that was passing for the wrong
+  reason in v4's reading.
+- F-30 was decided in the direction the rest of the document already assumed, and the decision is
+  argued from evidence rather than convenience: the `refused` row "is the only evidence a tick was
+  refused", and REQ-CONS-01's cadence rule "already presupposes it". The three ripples that follow
+  (AC-7.2's Given clause, AC-4.2's value for that row, §4b's `writes-uncommitted` row) were carried
+  in the same revision rather than left for a reviewer to chase. Two more were missed (F-33, F-34) —
+  but three of five carried, unprompted, is the pattern that keeps a document converging.
+- AC-4.2's `absent` definition is the right shape for a closed-set oracle: rather than adding a
+  fourth "not reached" member, it widens the *meaning* of an existing member and says so ("no
+  credential was in hand when the row was written — which covers both a pass that looked and found
+  none (AC-4.3) and a pass that terminated before reading one"), then states the negative
+  explicitly: "The set needs no fourth member". A three-value set-equality test still holds and now
+  covers a fifth status. Growing the set would have silently invalidated every existing fixture.
+- NFR-4's `open or merged` key is a genuine correctness fix, not a tidy-up, and the revision says
+  *why* merged is in the set: "it is what survives when the invoking branch carrying the log record
+  is abandoned". That ties NFR-4 to AC-3.8b's newly-separated PR-route abandonment paragraph, and
+  the accepted loss is named rather than glossed ("what is *not* recovered is the effectiveness
+  record — that promotion re-enters the AC-5.2 table as if first made — and that loss is accepted
+  here, not closed"). A stated non-closure is worth more to a test author than a closure that is not
+  real: it tells them not to write the oracle.
+- Clause (a)'s unconditional consumed block (empty pair allowed) removes a conditional from the one
+  invariant everything else in REQ-CONS-01 rests on. The boundary is now frozen by the first
+  marker-holding pass, full stop — no case analysis on whether that pass consumed anything. That is
+  the difference between an invariant a property test can assert over all passes and one that needs
+  a guard clause in the test itself.
+- Compression again cost nothing checkable. ~100 lines were reflowed to hold the 700-line / 60 KB
+  budget (697 lines, 60,246 bytes at HEAD — inside both), and I re-verified every `file:line` in the
+  changed text: `:5429`, `:6423`, `:7911`, `:10255`, `:10603`, `:3337`/`:3431`/`:3437`, and the five
+  `recordPhase` literals. Two are imprecise by one line (F-35, F-36) and neither changes a claim;
+  the two citations this round *replaced* (`:10349` → `:7911`, and the range truncating `DOD`) are
+  both strictly better than what they replaced.
 
 ## Recommendation
 
