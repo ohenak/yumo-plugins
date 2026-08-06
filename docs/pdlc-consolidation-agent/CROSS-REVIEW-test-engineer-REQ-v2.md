@@ -98,4 +98,49 @@ the NFR-3a trigger field, and the single AC-7.2 channel). Two new ones, neither 
 
 ## Recommendation
 
+**Needs revision** — 4 High, 3 Medium, 2 Low. All thirteen v1 findings are resolved; every
+finding below is new, and all four Highs sit in text this round introduced.
+
+I want to be explicit about §5a, because the revision earned that argument. The stopping rule
+says a round whose blocking findings are *all* of the form "this cannot be tested as written"
+or "this needs an oracle" means the REQ has met its bar and should be approved with the findings
+routed downstream. That is not this round. F-14, F-15 and F-18 are **pairs of ACs that no
+implementation can satisfy at the same time** — the defect is that the document contradicts
+itself, and no FSPEC can resolve a contradiction it inherits without silently picking a winner.
+F-17 is an **under-stated claim about code at HEAD**, which §5a names as belonging here in so
+many words. F-16 is the one closest to the line, and it lands on this side of it: the REQ itself
+asserts a property ("a deterministic rule with no model judgment — so two runs over the same
+inputs cannot disagree, which is what makes NFR-4 true") that the stated rule does not have, so
+the finding contests the truth of a claim, not the availability of a fixture.
+
+What must change:
+
+1. **F-14** — state the tick's evaluation order so AC-1.1's "without reading LEARNINGS" and
+   AC-1.2's per-tick volume count stop contradicting each other. Enumerate first, then apply
+   `cadence OR volume`.
+2. **F-15** — name the cadence datum precisely. As composed, AC-7.2's every-path log row makes
+   AC-1.1's "since the last logged pass" always the previous tick, so `cadenceHours` never
+   elapses. Either restrict the datum to a stated status subset or stop logging skipped ticks.
+3. **F-16** — ground the `prevented` / `insufficient-evidence` split in a named observable, the
+   way `recurred` is already grounded by the new `failure-mode-id` convention, or collapse the
+   tri-state to the branches that are decidable. AC-5.3 and AC-5.5 both inherit this.
+4. **F-17** — state that `docs/_queue/ESCALATIONS.md` exists only when `advisory.enabled` is
+   true (it is `false` by default and the file is absent at HEAD), state the behavior for
+   absent / empty / populated, and gate AC-6.3's widening proposal on a non-empty corpus.
+   Silence from a tier that never ran must not read as evidence.
+5. **F-18/F-19** — make AC-1.3's release set set-equal to AC-7.1's status set with one stated
+   outcome per status, and gather the reason codes into one table (code → category → the
+   statuses it may accompany) so completeness is checkable by set-equality.
+6. **F-20** — either require reuse of the shipped advisory ladder via the injection precedent
+   `orchestrate-queue.js:1245-1251` already sets, or name the observable that fails when the
+   restated copy drifts.
+
+F-21 and F-22 are corrections, not blockers.
+
+No upstream defects were found this round either. Every `MASTER-PLAN`, `pdlc-merge-phase`,
+`DOMAIN-CONSTRAINTS` and `orchestrate-dev.js` citation resolves to a real authority saying what
+the REQ attributes to it. No ERRATUM lines are emitted.
+
 ## Verdict
+
+VERDICT: Needs revision
