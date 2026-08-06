@@ -49,6 +49,42 @@ no round 11 exists in which a reviewer could observe that tree.
 
 ## Iterations
 
+**5 — limit reached** (`MAX_REVIEW_ROUNDS = 5`, second window: rounds 6–10).
+
+| Round | SE verdict | SE findings | TE verdict | TE findings | Prior-round closure |
+|---|---|---|---|---|---|
+| v6 | Needs revision | 0 H, 3 M, 2 L | Needs revision | 0 H, 2 M, 2 L | 4/4 and 5/5 of v5 |
+| v7 | Needs revision | **1 H**, 2 M, 2 L | **Approved w/ minor changes** | 0 H, 0 M, 3 L | 5/5 and 5/5 of v6 |
+| v8 | Needs revision | 0 H, 2 M, 1 L | Needs revision | 0 H, 2 M, 1 L | 5/5 of v7 **incl. the High** |
+| v9 | Needs revision | 0 H, 1 M, 2 L | **Approved w/ minor changes** | 0 H, 0 M, 4 L | 3/3 and 3/3 of v8 |
+| v10 | Needs revision | 0 H, **1 M**, 0 L | **Approved w/ minor changes** | 0 H, 0 M, 2 L | 3/3 and 4/4 of v9 |
+
+Cumulative across both windows the phase has run **ten** rounds and twenty cross-review files.
+
+Three properties of this window matter more than the counts:
+
+1. **Closure is total and has been for five consecutive rounds.** Every disposition table in
+   v6–v10 records 100% of the preceding round's findings resolved — v5→v6 4/4 and 5/5, v6→v7 5/5
+   and 5/5, v7→v8 5/5 (including the only High of the window), v8→v9 3/3 and 3/3, v9→v10 3/3 and
+   4/4. **No finding has ever been re-raised as unresolved, in either window.** Nor was any fix
+   found to have regressed: SE checked explicitly for regression in each of the five rounds and
+   found none.
+2. **Severity is at the floor and stays there.** One High in five rounds (SE v7 F-01: the
+   `(phase, artifact)` id derivation made AC-5.3's revision route unreachable), raised and closed
+   inside one round. Rounds 8, 9, 10: zero High from both reviewers. SE's Medium count fell
+   3 → 2 → 2 → 1 → 1; TE's fell 2 → 0 → 2 → 0 → 0. SE's total finding count fell 5 → 5 → 3 → 3 → 1.
+3. **The code-claim audits are clean and have been for four rounds.** SE verified 7 changed
+   `file:line` claims at HEAD in v10, and records "no claim added or changed this round is
+   factually wrong about the codebase — the **fourth** consecutive round with no defect row". TE
+   independently re-derived the same class of claims (the four tracked `pdlc/workflows/dist/`
+   outputs, `build-runtime.mjs:465`, `nudge-consolidation.sh:28`/`:36-37`/`:41`, the 5/2/3 first-run
+   corpus against the actual filesystem and the actual log) and all resolve.
+
+**Zero `ERRATUM:` lines were emitted in any of the ten rounds.** No upstream document —
+`MASTER-PLAN-engineering-loop.md`, `pdlc-advisory-tier`, `pdlc-merge-phase`, `DOMAIN-CONSTRAINTS`,
+or either `docs/_constraints/` file this feature authored — was found defective by either reviewer
+at any point.
+
 ## Reviewers
 
 ## Pattern of Disagreement
