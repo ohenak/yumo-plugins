@@ -999,31 +999,57 @@ The status text recorded is the API's, never the request.
 
 ### 8.1 The failure-mode record and the id derivation
 
-Every promotion records a **seven-field** structured record, not prose. **This table is normative for
-the record's shape** — every other section that reads a field off a failure-mode record (§6.4's
-consuming-repo carrier, §8.4 step 1, §10.2 order 2) reads it from here, and §8.2's keying tuple
-`(failure-mode-id, passId, action)` is a *key over* these fields, never a second field list:
+Every promotion records an **eight-field** structured record, not prose. **This table is normative for
+the record's shape** — every other section that reads a field off a failure-mode record (§5.1's
+routing predicate, §6.4's consuming-repo carrier, §8.4 step 1, §10.2 order 2) reads it from here, and
+§8.2's keying tuple `(failure-mode-id, passId, action)` is a *key over* these fields, never a second
+field list:
 
 | Field | Value | Keys the id? |
 |---|---|---|
 | `failure-mode-id` | the derived slug below | — |
 | `phase` | a member of the closed 13-member catalogue `R / F / T / D / P / PR / I / PT / CR / DOD / H / PUB / MERGE` (vocabularies §1, sourced from `PHASE_DISPATCH`, `orchestrate-dev.js:3337-3437`, and the `recordPhase` literals for I `:10020`, PT `:10250`, H `:10407`, PUB `:10462`, MERGE `:10568`) | **yes** |
 | `symptom` | one line, human-readable, explicitly **non-keying** | **no** |
-| `artifact` | **exactly one canonical repository path** — the single file the edit touches; never a glob, never a directory; root-relative, no `./`, no symlink alias | **yes** |
+| `artifact` | the failure mode's **subject**: **exactly one canonical repository path** — the single *authored* file the failure mode was observed on and which the promotion is about; never a glob, never a directory, never a generated path (§8.2); root-relative, no `./`, no symlink alias | **yes** |
+| `target` | the **one canonical repository path this promotion's write touches**, decided by the promotion's kind (§5.2's table) and normalised identically. It is the only field §5.1 routes on | **no** |
 | `passId` | the `passId` (§2.5) of the pass that wrote this record — the record's own identity half (§8.2) | **no** |
 | `action` | `promote` / `revise` / `retire` (§8.2), the second half of NFR-4's suppression key | **no** — never folded into the derivation |
 | `route` | the route the promotion actually took, over the vocabularies §1 route set `constraints` / `decisions` / `PR` / `degraded` — the same four values `promotions:` carries (§10.3). `degraded` means it reached **nothing but** the §5.3 proposal file | **no** |
 
-`passId`, `action` and `route` are bookkeeping, not identity: the *promotion* is keyed on the id
-alone (§8.2), and none of the three participates in the derivation below. They are in the record
-because two contracts read them off it — NFR-4's consuming-repo carrier reads `action` and `route`
-(§6.4), and §8.4 step 1's open-promotion list reads `action` and `route`.
+**`artifact` and `target` are two fields, not two readings of one, and the separation is what makes
+the derivation well-founded.** They coincide on exactly one promotion kind and differ on the other
+two:
 
-**The derivation** (delegated to this layer by AC-5.1), a pure function of two file-text inputs:
+| Promotion kind (§5.2) | `artifact` (subject, keys the id) | `target` (routed on) |
+|---|---|---|
+| Process learning about a skill prompt, checklist or workflow phase | the file the failure was observed on — e.g. `pdlc/skills/se-author/SKILL.md` | **the same path** — the promotion edits the file it is about |
+| Architectural decision now project-level (AC-2.2) | the same subject file | `docs/_decisions/DECISIONS-{failure-mode-id}.md` (§5.2) |
+| Domain invariant future REQs must respect (AC-2.1) | the same subject file | `docs/_constraints/DOMAIN-CONSTRAINTS.md` |
+
+Three consequences, each of which would be a defect under a single conflated field:
+
+1. **The derivation terminates.** `{topic} = failure-mode-id` (§5.2) is a function of `phase` and
+   `artifact`; the AC-2.2 `target` is a function of the id. Keying the id on `target` instead would
+   define `{topic}` in terms of itself.
+2. **An AC-2.2 promotion never routes to the PR route**, even when its subject is a guard-set path:
+   §5.1 reads `target`, which is under `docs/_decisions/`. §5.2's fourth property row and AT-R6 /
+   AT-R6b are assertions about `target`.
+3. **AC-2.1 promotions stay distinct.** Every domain invariant in one phase shares one `target`
+   (`DOMAIN-CONSTRAINTS.md`) but has its own `artifact`, so each mints its own id and NFR-4's
+   `enacted` rule (§6.4) suppresses only a genuine re-proposal — not every invariant after the first.
+
+`target`, `passId`, `action` and `route` are bookkeeping, not identity: the *promotion* is keyed on
+the id alone (§8.2), and none of the four participates in the derivation below. They are in the
+record because four contracts read them off it — §5.1 routes on `target`, NFR-4's consuming-repo
+carrier reads `action` and `route` (§6.4), §8.4 step 1's open-promotion list reads `action` and
+`route`, and §8.6 routes a remediation on `target`.
+
+**The derivation** (delegated to this layer by AC-5.1), a pure function of two file-text inputs —
+`phase` and the **subject** `artifact`, never `target`:
 
 > `failure-mode-id = "{phase-lowercased}-{artifact-slug}"`, where `artifact-slug` is the normalised
-> path with `/` and `.` each replaced by `-`, lowercased, with any run of non-`[a-z0-9-]` characters
-> collapsed to a single `-` and leading/trailing `-` stripped.
+> subject path with `/` and `.` each replaced by `-`, lowercased, with any run of non-`[a-z0-9-]`
+> characters collapsed to a single `-` and leading/trailing `-` stripped.
 
 Worked: `phase = DOD`, `artifact = pdlc/skills/dod-verify/SKILL.md` ⇒
 `dod-pdlc-skills-dod-verify-skill-md`. It is **total** (every path yields a slug), **deterministic**
@@ -1037,8 +1063,9 @@ substitution maps both `/` and `.` to `-` and then collapses runs, so it is many
 
 | Consequence | Bound |
 |---|---|
-| NFR-4 suppresses a promotion targeting one of the colliding files because a *different* one is already on a PR or in a §6.4 log record | the two files are in the same directory tree and differ only by separator-vs-dot in one path component; the suppression is reported (`duplicate-suppressed` names the pair **and** the PR or `passId`), so an operator reading the row sees which promotion was withheld |
-| §8.3 emits one effectiveness row for two failure modes | the row's `artifact` field carries the **unslugged** canonical path of the promotion that made it, so the row is never ambiguous about which file it measured |
+| **Within one pass**, two proposals over colliding subjects are **one** promotion: §8.2's uniqueness rule merges them into one record carrying one `symptom`, one `target` and one write | nothing is withheld, so there is nothing to suppress and nothing to report — the merge is **silent by construction**, and its observable is the *absence* of a second record rather than a reason code. AT-R6b's second fixture asserts exactly that. `duplicate-suppressed` is **not** emitted here: §6.4 defines it only over a *prior pass's* record or an open/merged PR |
+| **Across passes**, NFR-4 suppresses a promotion whose subject collides with a *different* one already on a PR or in a §6.4 log record | the two files are in the same directory tree and differ only by separator-vs-dot in one path component; this suppression **is** reported (`duplicate-suppressed` names the pair **and** the PR or `passId`), so an operator reading the row sees which promotion was withheld. This is the cross-pass cost, and it is the only one the reason code covers |
+| §8.3 emits one effectiveness row for two failure modes | the row's `artifact` field carries the **unslugged** canonical subject path of the promotion that made it, so the row is never ambiguous about which file it measured |
 | §8.5 retires or revises one and appears to have retired both | same — the proposal carries the canonical path, not the slug |
 
 The repair — a lossless encoding, e.g. percent-escaping the separators — is available and is
@@ -1057,7 +1084,9 @@ for the same reason in the other direction: passes free to name `pdlc/workflows/
 
 ### 8.2 One promotion is one authored file
 
-"The single file the edit touches" is a requirement, not an assumption.
+"Exactly one authored subject file" is a requirement, not an assumption. The rule is stated over
+`artifact` (the subject) throughout this section; `target` is decided separately by §5.2 and is never
+what splits or merges a promotion.
 
 | Shape | Proposals | Consequence |
 |---|---|---|
@@ -1078,6 +1107,14 @@ recorded once. The pass never mints a suffixed variant — that would break deri
 it NFR-4. Two distinct failure modes in one phase touching one file therefore merge into one
 promotion carrying one `symptom`; that is the accepted cost of a path-level key (D-CONS-08).
 
+**The intra-pass merge is silent, and that is stated rather than left to inference.** Its observables
+are exactly: one failure-mode record for the id, one `symptom`, one `target`, one write. No
+`duplicate-suppressed` entry is recorded and no `suppressed-by:` entry is populated — those are §6.4's
+vocabulary for a proposal *withheld* because a prior pass's record or an open PR already carries it,
+and an intra-pass merge withholds nothing (there is no second promotion, and no PR or enacting
+`passId` to name). AT-R6b's second fixture asserts the merge in this form; §8.1's collision table
+prices the cross-pass case separately.
+
 **Across passes the id deliberately repeats** — NFR-4 sanctions re-proposing a promotion whose PR the
 operator closed unmerged. Log **records** are keyed `(failure-mode-id, passId, action)`; a
 **promotion**, the unit whose effectiveness is measured, is keyed on the id alone. Every
@@ -1089,9 +1126,13 @@ into its derivation**.
 
 ### 8.3 The effectiveness table (AC-5.2)
 
-Every pass that emits a report emits this table over **every** promotion recorded in prior passes.
-Each row's verdict is decided by a rule with **no model judgment**, so two runs over the same inputs
-cannot disagree:
+Every pass that **reaches step 11** — the step that computes it — emits this table over **every**
+promotion recorded in prior passes. That condition is §10.2 order 3's, verbatim and not a second one:
+a pass that terminated earlier has no table and appends none (`refused` at step 6, and a step-8
+`failed` — §12.1 S-09, S-11, S-11b), and it still emits its report and its terminal row without one.
+Every pass that reaches step 11 emits the table in full, whatever its terminal status (S-11c
+included). Each row's verdict is decided by a rule with **no model judgment**, so two runs over the
+same inputs cannot disagree:
 
 | Verdict | Condition |
 |---|---|
@@ -1144,8 +1185,8 @@ the open-promotion list**, and is stated in the skill in these terms:
 
 | # | Harvest-side step | Detail |
 |---|---|---|
-| 1 | Read the open-promotion list | `docs/_decisions/.consolidation-log.md` — the same tracked file the pass writes (§5.4). Each promotion record carries the seven fields of §8.1. **Open** is computed from the log and nothing else: an id is open when **no** record for that id carries `action: retire` with a `route` other than `degraded`. Equivalently — a landed retirement closes an id; a `retire` that reached only a proposal file does not. |
-| 2 | For each §5 Open Item being written, ask one question per open promotion | "Does this open item report the failure this promotion's `symptom` describes, on this promotion's `artifact`, in this promotion's `phase`?" |
+| 1 | Read the open-promotion list | `docs/_decisions/.consolidation-log.md` — the same tracked file the pass writes (§5.4). Each promotion record carries the eight fields of §8.1. **Open** is computed from the log and nothing else: an id is open when **no** record for that id carries `action: retire` with a `route` other than `degraded`. Equivalently — a landed retirement closes an id; a `retire` that reached only a proposal file does not. |
+| 2 | For each §5 Open Item being written, ask one question per open promotion | "Does this open item report the failure this promotion's `symptom` describes, on this promotion's **subject** `artifact` (§8.1 — the file the mode was observed on, never the `target` the promotion wrote), in this promotion's `phase`?" |
 | 3 | On a yes, copy the id **verbatim** | append `failure-mode-id: {id}` to that open item, character-for-character from the log row. Never re-slug, never abbreviate, never mint a new id. |
 | 4 | On no matches, write no line | the absence is meaningful: `recurred` does not fire and the phase observable still yields `prevented` or `insufficient-evidence` on its own evidence (table above). |
 
@@ -1208,8 +1249,8 @@ by this rule, evaluated top-down; the first matching row decides:
 |---|---|---|
 | 1 | a `retire` proposal for this id is already on a PR in state open or merged | **nothing** — the ladder has ended; record `duplicate-suppressed` against that PR and report the field as `retirement` |
 | 2 | a `revise` proposal for this id is already on a PR in state open or merged | `retirement` |
-| 3 | the promotion's `artifact` exists at the pass's HEAD | `revision` — the edit reached a file that is still there, so it under-reached rather than mis-aimed |
-| 4 | otherwise — the `artifact` no longer exists at HEAD, so there is nothing left to revise | `retirement` |
+| 3 | the promotion's **subject** `artifact` (§8.1) exists at the pass's HEAD | `revision` — the failure mode's subject is still there, so the promotion under-reached rather than mis-aimed |
+| 4 | otherwise — the subject `artifact` no longer exists at HEAD, so there is nothing left to revise | `retirement` |
 
 **Row 3's predicate is a file-existence test and nothing else.** An earlier draft conditioned it on
 "the recurrence names the same `symptom` the promotion targeted". That is withdrawn: §8.1 declares
@@ -1220,8 +1261,10 @@ supply the input in any case (a LEARNINGS carries a `failure-mode-id` line, §8.
 The recurrence's *identity* is already established before rows 3–4 are reached — the flag exists
 only because two counted passes returned `recurred`, which by §8.3 means a consumed LEARNINGS named
 this exact id. What remains to decide is therefore only whether a target survives, and that is
-decidable by one filesystem check on the canonical path (§8.1's `artifact`, root-relative, exactly
-one file). Both rows are deterministic functions of (the log, the pass's HEAD tree); no model runs.
+decidable by one filesystem check on the canonical subject path (§8.1's `artifact`, root-relative,
+exactly one file — never the `target`, whose existence says nothing about whether the failure mode's
+subject survives). Both rows are deterministic functions of (the log, the pass's HEAD tree); no model
+runs.
 
 Rows 1–2 are the **spent-alternative** clause: NFR-4 suppresses on the pair, so each action fires at
 most once per id, and without this clause AC-5.3's promise would be merely achievable rather than
@@ -1238,7 +1281,8 @@ is re-judged on two fresh `recurred` counted passes rather than re-flagged on th
 ### 8.6 Routing a remediation (AC-5.4)
 
 Retiring or revising follows the **same propose-only path as making** the promotion — the route is
-decided by the promotion's own `artifact`, exactly as §5.1 decides any target:
+decided by the promotion's own `target` (§8.1), exactly as §5.1 decides any target, and never by its
+subject `artifact`:
 
 | The promotion landed in… | Its remediation |
 |---|---|
