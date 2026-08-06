@@ -1080,9 +1080,11 @@ The status text recorded is the API's, never the request.
 
 Every promotion records an **eight-field** structured record, not prose. **This table is normative for
 the record's shape** — every other section that reads a field off a failure-mode record (§5.1's
-routing predicate, §6.4's consuming-repo carrier, §8.4 step 1, §10.2 order 2) reads it from here, and
+routing predicate, §6.4's consuming-repo carrier, §8.4 step 1, §10.2 order 2 — e.g., not the whole
+set) reads it from here, and
 §8.2's keying tuple `(failure-mode-id, passId, action)` is a *key over* these fields, never a second
-field list:
+field list. The seven readers are enumerated once, below, in the reader table — the parenthetical
+here is illustrative, not the enumeration:
 
 | Field | Value | Keys the id? |
 |---|---|---|
@@ -1132,15 +1134,15 @@ extra harvest question, the failure direction O-C7 accepts).
 
 **"For that contract" is per field, per reader — the enumeration, so no reader is left to infer its
 own arm.** A record is skipped only by the contracts that index the field it is missing. The table is
-set-equal to the readers this document names — the four in the paragraph below (§5.1, §6.4, §8.4
-step 1, §8.6) plus §10.2 order 2, §8.3 and §8.5 — and a reader added later is a change to this table,
-made here:
+set-equal to the readers this document names — §5.1, §8.6, §6.4, §8.4 step 1, §10.2 order 2, §8.3 and
+§8.5, seven, one row each, and no reader of a failure-mode record anywhere in this document outside
+that set — and a reader added later is a change to this table, made here:
 
 | Reader | Fields it indexes | A record short of one of them |
 |---|---|---|
 | §5.1 routing | `target` | not routed; the promotion is re-proposed on a later pass |
 | §8.6 remediation routing | `target` | **not §5.1's arm, and it is spelled because the state differs**: here a remediation has already been *chosen* (§8.5) and has nowhere to go. It is **not routed on a guessed path** — neither the PR route nor the proposal file is picked by default — the promotion keeps the state it had for that pass, and the notice is the report. The remediation is re-proposed on a later pass, exactly as §8.5's arm re-proposes nothing rather than guessing a `retirement` |
-| §6.4 consuming-repo carrier | `failure-mode-id`, `action`, `route` | reads `absent`, so the promotion is re-proposed |
+| §6.4 consuming-repo carrier | `failure-mode-id`, `action`, `route`, **`passId`** | reads `absent`, so the promotion is re-proposed. `passId` is indexed because the carrier does not only decide `enacted` — it spells the evidence, and §10.3 pins that evidence as `pass:{passId}` of *the enacting record* (`:1712`). A record short of `passId` therefore leaves a suppression the carrier could decide but cannot spell, and the general rule above applies unchanged: parse notice, skip that contract, no suppression, re-proposed. `pass:undefined` is the guessed default this section forbids |
 | §8.4 step 1 open list | `failure-mode-id`, `action`, `route` | the id stays **open** |
 | §10.2 order 2 | the record as written | appended unchanged; nothing is repaired |
 | §8.3 effectiveness table | `failure-mode-id`, and `artifact` for the row's canonical path | the row is still emitted, keyed on the id; a missing `artifact` is reported as the notice and the path cell carries **no path** and is rendered as an explicit unavailable statement rather than as an empty cell or a guessed path (§10.4's receive-side totality, DC-01). "Unavailable" is the **observable**, not a literal this document pins — the spelling of that cell is TSPEC's, per DEC-LAYER-01, and §15.2's lexicon owns no such value. The row is never dropped, which would read as `insufficient-evidence` and silently move a verdict |
