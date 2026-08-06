@@ -44,7 +44,46 @@ re-litigated, and I re-read every changed section listed in the ten commits.
 
 ## Positive Observations
 
-<!-- filled below -->
+- **H-04's repair went past what the finding asked for, and the extra step is the one that matters
+  for testability.** I asked for the git seam split by tree with each verb marked obliged or
+  permitted. The revision did that and then changed the *universal* assertion from set-equality to
+  **containment**, with obligation asserted only on a Given that obliges it — because a conforming
+  pass with no guard-set proposal observes `∅` on two of the three domains. That is a class of
+  false-red I had not identified, and AT-Q7c exists specifically to pin it ("an implementation of
+  AT-Q7's oracle that asserted set-equality universally is red here on correct behaviour"). A test
+  written for a rule whose universal form is wrong is worse than no test; this now cannot happen.
+- **The subject/target split is the structural change of this revision and it removed a whole class
+  of oracle ambiguity.** Before it, `artifact` was doing two jobs — keying the id and deciding the
+  route — and half of §13's rows had to be read twice to know which. §8.1 now carries both fields,
+  a three-row table showing where they coincide and where they differ, and three consequences each
+  stated as "a defect under a single conflated field" (the derivation terminates; an AC-2.2
+  promotion never takes the PR route; AC-2.1 promotions stay distinct). Every downstream row that
+  reads the field — §8.5 rows 3–4, §8.6, AT-F17, AT-F18, AT-R6b, BR-18, BR-33, BR-35a, §8.4 step 2 —
+  was updated to say **which**. That is the difference between a spec a test author can transcribe
+  and one they have to interpret.
+- **H-01 was answered by making the merge's silence a stated observable rather than by weakening the
+  assertion.** The easy fix was to delete AT-R6b's second fixture. Instead §8.2 states the merge's
+  exact observable set, §8.1's collision table separates the intra-pass and cross-pass costs into two
+  rows, and AT-R6b asserts the positive set (one record, one `symptom`, one `target`, one file)
+  **paired with** the two negatives (no reason code, no `suppressed-by:`) and gives the reason the
+  negative half exists: "an implementation that reported the merge as a suppression would be
+  indistinguishable, in the log, from one that dropped a promotion". Positive and negative on one
+  path, which is the standard I would have applied had it been argued at me.
+- **§10.3's third credential reading is a named loss rather than an asserted-away one.** The honest
+  move here was available and taken: rather than pretend the `failed` row is decidable, the document
+  adds a third row reading "**undecidable from the row's fields alone**", names the report body as
+  the discriminator, routes ER-4 for the vocabulary gap that causes it, and states outright that
+  recording the code anyway "is **not** an option — it would breach REQ §4b's set-equality and turn
+  AT-L5 red". AT-K6 then grows from five rows to six with the (iv)/(v) pair — attempted-and-resolved-
+  nothing versus never-attempted, both `failed`, both carrying no reason code — named as "the pair
+  this row exists for". That is a fixture set designed to falsify the tempting wrong implementation,
+  not to demonstrate the right one.
+- **AT-M6/AT-M6b are a properly paired negative.** AT-M6 now asserts the absent effectiveness table
+  on the same path as its positive report-body assertion, and says why in its own row: "without it,
+  an implementation that emitted a table on every pass regardless of where it terminated passes both
+  rows." AT-M6b adds the `refused` arm that no other row asserted. §10.2 order 3 and E-16 both name
+  which row asserts which arm, so the negative is traceable from the rule rather than only from the
+  test.
 
 ## Recommendation
 
