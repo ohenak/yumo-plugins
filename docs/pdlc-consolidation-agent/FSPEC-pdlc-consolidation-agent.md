@@ -1152,8 +1152,12 @@ re-proposed (which NFR-4 already sanctions), and §8.4 step 1 leaves the id open
 question, the failure direction O-C7 accepts). **It is not the safe direction for a field a reader
 indexes only to *spell* an outcome its predicate already decided** — there, skipping would discard a
 decision the record does support. Exactly one such field exists in the table below (§6.4's `passId`),
-and its arm is spelled in the row rather than left to this rule; every other cell takes this rule as
-written.
+and its arm is spelled in the row rather than left to this rule. Nor is skipping the safe direction
+where dropping the reader's **output** would itself be read as a decision: §8.3 emits its row on a
+record short of `artifact` or of `phase`, and §8.4 still asks its question on the fields present,
+because a missing row and an unasked question both move a verdict silently. **Where a cell states an
+arm, the cell is normative and this rule is its default, not its override**; every cell that states
+none takes this rule as written.
 
 **"For that contract" is per field, per reader — the enumeration, so no reader is left to infer its
 own arm.** A record is skipped only by the contracts that index the field it is missing. The table is
