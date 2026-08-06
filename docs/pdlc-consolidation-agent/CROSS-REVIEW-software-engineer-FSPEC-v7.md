@@ -107,4 +107,42 @@ finding.
 
 ## Recommendation
 
+**Approved with minor changes**
+
+All five v6 findings and all three v6 questions are closed as filed — the sixth consecutive round in
+which every prior item was addressed rather than argued with. **No High finding remains, and none has
+since v3. No Medium finding remains either**, which is the first time in this window. What is open is
+five Lows, every one of them a correction of record inside text this round added or made checkable,
+none of them blocking a downstream author from deciding anything today:
+
+1. **F-01 — add `passId` to the §6.4 row's field list** in §8.1's reader table. The carrier writes
+   `pass:{passId}` evidence (§10.3 `:1710`, AT-Q10 `:2020`), so it indexes a field the table does not
+   list. The observable is already decided by the section's general rule; this is the per-field index
+   DEC-LAYER-01 assigns to TSPEC.
+2. **F-02 — give AT-F21's `F` and its well-formed record an `action`** (and the latter a `route`), so
+   the new set-equality conjunct has a literal expected set the way AT-F19's `{B, C, D}` does.
+   Fixture construction is PROPERTIES-owned per DEC-LAYER-01; the oracle *form* is correctly stated.
+3. **F-03 — reconcile §8.1's four-reader parenthetical (`:1082`) with the seven-reader table**
+   (`:1139-1147`). One word ("e.g.") or three added references.
+4. **F-04 — propagate the two coverage narrowings into §18.** BR-33a and BR-33b still cite AT-F21 and
+   AT-R6b unqualified for rules whose `artifact` and `target`-follows halves the document has just
+   named PROPERTIES-owned; mirror E-12b's split.
+5. **F-05 — drop "made here"** from §6.5's closing sentence. The clause that follows already says the
+   widening is a recorded TSPEC decision, which is DEC-LAYER-01's answer and is the operative content.
+
+None of the five changes an oracle, a rule's meaning, or a settled decision. I would take all five,
+but I do not need to see them before approving: each is a one-clause edit whose direction is stated
+above, and a TSPEC author who hit any of them today would reach the same answer from the text already
+present.
+
+**No erratum is emitted with this review.** The only upstream defect in scope remains the
+`suppressed-by:` value grammar at `docs/_constraints/pdlc-consolidation-vocabularies.md:63`, already
+routed as §14.4 ER-5 and re-verified verbatim at HEAD this round; nothing new was found upstream.
+
 ## Verdict
+
+No High and no Medium finding is open. Five Low findings (F-01 … F-05) remain, each a one-clause
+correction of record. Per the approval rule — Low findings only ⇒ Approved with minor changes — this
+iteration **approves** `FSPEC-pdlc-consolidation-agent.md` at version 7.0.
+
+VERDICT: Approved with minor changes
