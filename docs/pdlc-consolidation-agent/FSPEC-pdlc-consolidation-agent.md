@@ -519,8 +519,10 @@ cannot fire.
 
 ### 5.1 The routing decision — one predicate over the target path
 
-Every proposal has exactly one target path (AC-5.1: one canonical repository path, never a glob,
-never a directory). That path decides the route, and nothing else does:
+Every proposal has exactly one **target path** — §8.1's `target` field: one canonical repository
+path, never a glob, never a directory, normalised as AC-5.1 normalises a path. The promotion's *kind*
+decides that target (§5.2's table); the target then decides the route, and nothing else does — not
+the promotion's subject `artifact`, which keys the id and is a different field (§8.1):
 
 | Target path | Route | Section |
 |---|---|---|
@@ -540,6 +542,12 @@ how the constant's members are written (each is a directory prefix ending in `/`
 AC-5.1's: root-relative, no `./`, no symlink alias — so the same file cannot route two ways depending
 on how a proposal spelled it.
 
+**A guard-set subject does not imply the PR route.** An AC-2.2 promotion *about*
+`pdlc/skills/se-author/SKILL.md` has that path as its subject `artifact` and
+`docs/_decisions/DECISIONS-{failure-mode-id}.md` as its `target`, so it takes the consuming-repo
+route — and NFR-1 is untouched, because the pass writes only the target. Only a **process-learning**
+promotion has a guard-set path as its target, and that is the kind §5.2 routes to §6 or §5.3.
+
 **This is a routing predicate, not an inherited control.** The pass does **not** call `guardVerdict`
 (`pdlc/workflows/orchestrate-dev.js:732`) or `effectiveGuardPaths` (`:709`): both are reachable only
 from Phase MERGE's ladder and the advisory-envelope check, and both decide about *that run's own* PR
@@ -552,39 +560,46 @@ guard-set path in any tree.** The guard-set edit exists only as a commit in the 
 
 ### 5.2 The unchanged promotion behaviour (REQ-CONS-02)
 
-| Promotion kind | Destination | Shape |
+This table is what decides a promotion's §8.1 `target` from its kind; §5.1 then routes on that
+target. The subject `artifact` is the same field in all three rows and is never the destination:
+
+| Promotion kind | Destination (the `target`) | Shape |
 |---|---|---|
 | Domain invariant future REQs must respect | append to `docs/_constraints/DOMAIN-CONSTRAINTS.md` | as today (`pdlc/skills/consolidate-learnings/SKILL.md:40`) |
 | Architectural decision now project-level | `docs/_decisions/DECISIONS-{topic}.md` | the path shape is today's (`pdlc/skills/consolidate-learnings/SKILL.md:41`); **`{topic}`'s derivation is new and this feature changes the convention** — see below |
-| Process learning about a skill prompt, checklist or workflow phase | **propose, never apply** | §6 (PR) or §5.3 (proposal file) |
+| Process learning about a skill prompt, checklist or workflow phase | the subject `artifact` itself — the file the learning is about | **propose, never apply**: §6 (PR) or §5.3 (proposal file) |
 
 **`{topic}` is derived, not chosen** (AC-2.2 states the destination; the derivation is this layer's).
-It is the promotion's **`failure-mode-id`, verbatim and entire** (§8.1):
+It is the promotion's **`failure-mode-id`, verbatim and entire** (§8.1) — which is a function of
+`phase` and the **subject** `artifact`, so the derivation reads no field it is defining:
 
 > `{topic} = failure-mode-id`
 
-Worked: `phase = P`, `artifact = pdlc/skills/se-author/SKILL.md` ⇒
-`docs/_decisions/DECISIONS-p-pdlc-skills-se-author-skill-md.md`.
+Worked: `phase = P`, subject `artifact = pdlc/skills/se-author/SKILL.md` ⇒ `failure-mode-id =
+p-pdlc-skills-se-author-skill-md` ⇒ `target =
+docs/_decisions/DECISIONS-p-pdlc-skills-se-author-skill-md.md`. The subject is a guard-set path and
+the target is not, which is why §5.1 sends this promotion to the consuming-repo route (AT-R6).
 
 **An earlier draft dropped the artifact's directory segments** (`{topic} = p-skill-md`). That is
-**withdrawn**, because dropping them is exactly what destroys discrimination: with `phase = P`, every
-`SKILL.md` in the repository collapses to one file — `pdlc/skills/se-author/SKILL.md`,
-`pdlc/skills/dod-verify/SKILL.md` and `pdlc/skills/te-review/SKILL.md` — fifteen skill directories at
-HEAD — are one file named for a phase letter and an extension. Using the whole slug
-keeps the derivation total and deterministic while narrowing collisions to **exactly** the bounded
-case §8.1 already prices — two authored paths differing only by separator-vs-dot — which §8.1
-reports wherever it fires (`duplicate-suppressed` naming the pair) and which is inherited here
-unchanged rather than restated. There is no collision class in `{topic}` that is not a collision
-class in `failure-mode-id`.
+**withdrawn**, because dropping them is exactly what destroys discrimination. Under it, with
+`phase = P`, every `SKILL.md` in the repository collapses to one topic: `pdlc/skills/se-author/SKILL.md`,
+`pdlc/skills/dod-verify/SKILL.md` and `pdlc/skills/te-review/SKILL.md` — three of the fifteen skill
+directories at HEAD — would share one decision file named for nothing but a phase letter and a file
+extension. Using the whole slug keeps the derivation total and deterministic while narrowing
+collisions to **exactly** the bounded case §8.1 already prices — two authored subject paths differing
+only by separator-vs-dot. §8.1 states that cost in two arms, inherited here unchanged rather than
+restated: within one pass the two are **merged** into one promotion and one file, silently (§8.2);
+across passes NFR-4 **suppresses** the second and reports it (`duplicate-suppressed` naming the pair).
+There is no collision class in `{topic}` that is not a collision class in `failure-mode-id`.
 
 Four properties follow, and each is why the derivation is stated rather than left to the model:
 
 | Property | Consequence |
 |---|---|
 | A pure function of the two keying fields (§8.1), never of `symptom` or of the consumed set | two passes recognising one decision write the **same** path, so the same decision accumulates in one file across passes instead of scattering — this is a *readability* property of the record, not an idempotence mechanism: §6.4 keys suppression on `(failure-mode-id, action)` and never on the destination path, so path stability buys the carrier nothing and is not claimed to |
-| Discriminating on the full `artifact`, not on its basename | two decisions about two different files never share a file; the only collisions are §8.1's separator-vs-dot pairs, reported there |
+| Discriminating on the full subject `artifact`, not on its basename | two decisions about two different files never share a file; the only collisions are §8.1's separator-vs-dot pairs, priced there |
 | An existing file at that path is **appended to**, never replaced or re-created | the file is an append-only decision record like `DOMAIN-CONSTRAINTS.md`; §10.2's write granularity applies to it |
-| The path is always inside `docs/_decisions/` and never inside a guard-set prefix | so an AC-2.2 promotion is always the §5.1 consuming-repo route, never the PR route |
+| The **`target`** is always inside `docs/_decisions/` and never inside a guard-set prefix — whatever the subject is | so an AC-2.2 promotion is always the §5.1 consuming-repo route, never the PR route, even when its subject is a guard-set file |
 
 **This changes the `{topic}` convention, and the change is listed rather than implied.** The three
 decision files at HEAD — `DECISIONS-plugin-distribution.md`, `DECISIONS-review-severity-bars.md`,
