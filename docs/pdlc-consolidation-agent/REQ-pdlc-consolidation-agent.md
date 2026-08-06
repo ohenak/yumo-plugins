@@ -10,12 +10,12 @@ depends-on: [pdlc-workflow-distribution, pdlc-advisory-tier]
 |---|---|
 | Upstream | `docs/design/MASTER-PLAN-engineering-loop.md` (Break 2, DEC-E4/E5, order 4) |
 | Downstream | `pdlc-engineering-loop` |
-| Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-REQ-v{1..6}.md` (12 files) |
+| Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-REQ-v{1..7}.md` (14 files) |
 | LEARNINGS | `docs/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.6 | 2026-08-06 |
+| pdlc | draft | Claude | 1.7 | 2026-08-06 |
 
 > **Scope in one line.** Run consolidation on a cadence with the advisory model, and carry pipeline-level promotions to `yumo-plugins` as pull requests
 > (the same repository today, AC-3.8), with every promotion recording the failure mode it targets and the next pass reporting, by a deterministic rule,
@@ -361,22 +361,34 @@ procedural — it holds even if every other control failed.
 - **AC-5.1** — Given any promotion, Then it records the failure mode it targets as a **structured
   record with four named fields**, not prose: `failure-mode-id` (a slug derived deterministically from the promotion's `phase` and its target
   `artifact`, and from **nothing else** — not from the pass, not from its consumed set, and **not** from `symptom`), `phase` (a member of the pipeline's
-  phase catalogue, §4b), `symptom` (one line, human-readable and explicitly **non-keying**), and `artifact` (a path or glob the symptom appears in). The
-  record is written into `docs/_decisions/.consolidation-log.md` alongside the promotion, and the same `failure-mode-id` is carried by the
+  phase catalogue, §4b), `symptom` (one line, human-readable and explicitly **non-keying**), and `artifact` — **exactly one canonical repository path,
+  never a glob and never a directory**: the single file the edit touches, path-normalised (repository-root-relative, no `./`, no symlink alias). The
+  record is written into `docs/_decisions/.consolidation-log.md` alongside the promotion, and the same id is carried, under its `action` below, by the
   `PDLC-PROMOTION-ID` trailer of AC-3.3.
 
   **Why those inputs.** Determinism of the derivation is not stability of its inputs. `phase` (closed 13-member catalogue) and `artifact` (a repository
   path) are *file* text — the property AC-5.2's determinism argument rests on. `symptom` is a line the pass's own model writes under no vocabulary, so
   two passes recognising one failure mode from different corpora would word it differently and slug differently — exactly the case NFR-4 must survive
-  (AC-3.8b's abandonment: a later pass with a *larger* consumed set). Keying on `phase` + `artifact` makes "a later pass re-deriving the same failure
-  mode yields the same id" true rather than hoped for.
+  (AC-3.8b's abandonment: a later pass with a *larger* consumed set). The glob form is forbidden for the same reason in the other direction: two passes
+  free to name `pdlc/workflows/orchestrate-dev.js`, `pdlc/workflows/*.js` or `pdlc/workflows/` for one failure mode would slug three ways and NFR-4 would
+  miss. One canonical path closes the split direction as `phase` closes the merge direction, which is what makes "a later pass re-deriving the same
+  failure mode yields the same id" true rather than hoped for.
 
-  **Uniqueness, scoped.** Within **one pass** the id is unique: two promotions deriving the same id name the same `phase` and `artifact`, are one failure
-  mode, and are recorded once — the pass never mints a suffixed variant, which would break derivation purity and with it NFR-4. That merge is the
-  accepted cost of keying on `artifact` rather than prose. **Across passes** the id deliberately repeats: NFR-4 sanctions re-proposing a promotion whose
-  PR the operator closed unmerged, and that re-proposal writes its own record. Log **records** are therefore keyed `(failure-mode-id, passId)`; a
-  **promotion** is keyed on the id alone, and every downstream contract counts promotions, not records — AC-5.2 emits one row per id, AC-5.3 counts one
-  streak per id over all its records, AC-5.4 retires an id — so a repeated id is never an ambiguous referent.
+  **Uniqueness, scoped.** Within **one pass** the pair `(failure-mode-id, action)` is unique: two proposals deriving one id under one `action` name the
+  same `phase` and `artifact`, are one failure mode, and are recorded once — the pass never mints a suffixed variant, which would break derivation
+  purity and with it NFR-4. Two distinct failure modes in one `phase` touching one file therefore merge into one promotion carrying one `symptom`; that
+  is the accepted cost of a path-level key, and a finer key is D-CONS-08. **Across passes** the id deliberately repeats: NFR-4 sanctions re-proposing a
+  promotion whose PR the operator closed unmerged, and that re-proposal writes its own record. Log **records** are therefore keyed
+  `(failure-mode-id, passId, action)`; a **promotion** — the unit whose *effectiveness* is measured — is keyed on the id alone, and every effectiveness
+  contract counts promotions, not records and not actions: AC-5.2 emits one row per id, AC-5.3 counts one streak per id over all its records, AC-5.4
+  retires an id. So a repeated id is never an ambiguous referent.
+
+  **Action, and what it discriminates.** Every proposal a pass makes about a failure mode carries an `action` over the closed set
+  `promote` / `revise` / `retire` (§4b): `promote` for an edit that targets the mode, `revise` and `retire` for the two AC-5.3 remediations. NFR-4's
+  duplicate-suppression key is the **pair** `(failure-mode-id, action)`, never the id alone. The consequence must be visible: a merged `promote` PR bars
+  a second `promote` for that `(phase, artifact)` pair forever, and bars **nothing else** — the `revise` and `retire` proposals AC-5.3 obliges the pass
+  to make are different keys, are never suppressed by the promotion they remediate, and reach the AC-3.1 route unimpeded. `action` is recorded beside
+  the id, never folded into its derivation.
 - **AC-5.2** — Given a consolidation pass, Then it reports, for **every** promotion recorded in
   prior passes, a verdict over the closed set `prevented` / `recurred` / `insufficient-evidence`,
   decided by a deterministic rule with no model judgment — so two runs over the same inputs cannot
