@@ -75,6 +75,46 @@ deferred by name, which is the reviewable form.
 
 ## Positive Observations
 
+- **Five of five, and the High was closed by adopting the argument rather than the patch.** The
+  cheapest fix for v7 F-01 was a sentence exempting AC-5.3 remediations from NFR-4. Instead the key
+  itself was changed and NFR-4 now carries the *reason* — keying on the id alone "would let a merged
+  `promote` PR suppress the `revise` and `retire` proposals AC-5.3 requires, making the remediation of
+  an `ineffective` promotion unreachable and the §1 `Unfalsifiability` problem unsolved" (`:531-533`).
+  A future reader proposing to simplify the key back to the id finds the counter-argument, and the
+  failure it produces, already written down. That is the difference between a document that records
+  its decisions and one that records only their outcomes.
+
+- **One grammar, propagated to every site that carries the key.** F-02 asked for a decision about the
+  trailer's membership; the revision picked `{id}:{action}` and then used it consistently in the
+  trailer (`:246`), the commit trailer `PDLC-PROMOTION-ID: {id}:{action}` (`:261`), NFR-4's key
+  (`:527-528`), AC-3.8b's abandonment paragraph (`:202-203`), AC-5.1's record key
+  `(failure-mode-id, passId, action)` (`:386`), and two §4b rows (`:603`, `:606`). I looked for a
+  site still speaking the old vocabulary and did not find one. That consistency is what lets F-01
+  above be stated as a two-line replay instead of an interpretation.
+
+- **AC-7.2's fix took the harder of the two offered routes and closed the case I only gestured at.**
+  Reverting NFR-4's relocation would have been legal and cheaper. Scoping the biconditional to *this
+  pass's own* PR and giving suppression its own field is the version that serves a `/loop` operator,
+  and the clause "the two fields are never merged and a row may carry both" (`:509`) disposes of the
+  mixed promoted-and-suppressed case that my finding raised as an aside and did not propose a fix for.
+  Both fields then got §4b rows with permitted-status sets I could check against `duplicate-suppressed`'s
+  own row — and they agree.
+
+- **F-05 was closed with the mechanism *and* the counterfactual.** The `.gitignore` clause could have
+  been one line. It is instead a clause that states why the hazard exists (an untracked file in a
+  tracked directory is committable by anything not pathspec-scoped), transcribes the HEAD `.gitignore`
+  so the "no pattern matches it" claim is falsifiable, names the cost of omission ("a committed lock
+  reaches every fresh clone … per clone"), and adds the work to §5 so it is scoped rather than assumed
+  (`:72-76`, `:632-633`). Four things a later implementer would otherwise have to reconstruct.
+
+- **D-CONS-08 is the right response to v7's Q-04.** The question was whether a path-level `artifact`
+  key had been priced against this repo's file-size distribution. The answer — state the merge as an
+  accepted cost in AC-5.1 (`:384-385`) and defer the finer key by name, with the reason it cannot be
+  built today ("a finer key needs a stable sub-file location identity LEARNINGS does not carry",
+  `:683`) — is better than either silently narrowing the key or pretending the cost is small. It also
+  demonstrates the shape F-02 should be resolved into if the atomicity answer turns out to be
+  awkward.
+
 ## Recommendation
 
 ## Verdict
