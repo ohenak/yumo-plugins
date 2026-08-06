@@ -108,4 +108,67 @@ as F-03 rather than as a question.
 
 ## Recommendation
 
+**Needs revision.** 0 High, 3 Medium, 2 Low. Third consecutive round with no High finding, and no
+finding in this round contests user need, scope, priority, phasing, or the truth of a claim about
+existing code — all ten changed citations check out against HEAD, and the two v5 flagged as
+imprecise are fixed exactly as asked.
+
+The trajectory: v1→v2 closed 8H, v2→v3 closed 2H+5M, v3→v4 closed 2H+2M+3L, v4→v5 closed 2 of 3,
+v5→v6 closed **4 of 4**. First round in which every prior finding closed and nothing regressed.
+The count did not fall because v5 F-01's fix relocated the duplicate-suppression key onto
+`failure-mode-id`, and that id's own contract had never been examined — F-01 and F-02 are the two
+questions that relocation raises. F-03 is v5's Q-03 answered by assertion. The surface is narrowing:
+three of the five findings live in two adjacent paragraphs (AC-5.1's record definition and AC-1.3's
+concurrency sentence).
+
+### The stopping rule, applied against itself
+
+§5a names four classes that must be fixed at the REQ layer and directs everything else downstream.
+Against my own five findings:
+
+- **F-01 (Medium)** belongs here. NFR-4 now promises no duplicate PR *per promotion*, keyed on an id
+  the REQ itself derives from a free-text line. Choosing a stable derivation basis, a lookup rule, or
+  a stated residual condition is a requirements decision — FSPEC cannot invent a controlled
+  vocabulary or a second derivation for an id that AC-3.3's trailer and AC-5.2's `recurred` rule both
+  key on. It is the same finding as v5 F-01 in the sense that the promise is still unfulfilled, but
+  it is a different defect: the routing was fixed, the identity was not.
+- **F-02 (Medium)** belongs here. AC-5.1 requires the id to be unique within the log and to repeat
+  across passes, and NFR-4 sanctions the re-proposal that makes both bind at once. That is a
+  contradiction between requirements. An FSPEC cannot resolve it without overruling one AC, and three
+  downstream contracts (AC-5.2's set-equality obligation, AC-5.2's `recurred` rule, AC-5.3/5.4's
+  per-promotion counting and retirement) become undecidable while it stands.
+- **F-03 (Medium)** belongs here because the REQ decides *against* a mechanism. An under-specified
+  write is FSPEC's to specify; "the two passes' concurrent writes need no lock" forecloses that, so
+  the claim's precondition — write granularity — has to be stated at the layer that made the claim.
+  One clause closes it.
+- **F-04 (Low)** and **F-05 (Low)** would not hold the document alone. F-04 is a dangling
+  cross-reference whose underlying facts I verified true; F-05 is a table row filed under a frame the
+  per-promotion move outgrew. Both are one-sentence fixes; take them in the same pass.
+
+### What must change for approval
+
+1. **F-01** — make `failure-mode-id` stable across passes, or stop claiming NFR-4 closes the
+   abandonment case. Cheapest: derive the slug from `phase` + the promotion's target artifact (both
+   already in the AC-5.1 record) rather than `phase` + `symptom`; or state that a pass looks the id
+   up in existing PRs' `PDLC-CONSOLIDATION-PROMOTIONS` trailers and mints only on a miss. One
+   sentence in AC-5.1 either way; NFR-4 needs no change under either.
+2. **F-02** — pick one: records keyed `(failure-mode-id, passId)` with the id deliberately repeated;
+   or a re-proposal reuses the existing record; or uniqueness scoped to open promotions. Then restate
+   AC-5.2's "exactly one row per prior promotion in the log" in the same terms, since that is the
+   sentence a PROPERTIES author transcribes.
+3. **F-03** — state the write-granularity obligation that makes "need no lock" true (each write is a
+   single atomic append or whole-record replace, never a whole-file rewrite spanning the other's
+   region), or state the lock. Repair the comma splice while you are in the sentence — the conclusion
+   currently precedes its premise.
+4. **F-04** — restore the three `docs/completed/*/` directory names inline at step 1, or point at
+   BL-02. Do not point at `:128-129`; that list is the un-consolidated set and differs in one member.
+5. **F-05** — scope AC-3.5's `Given` to a promotion, or lift the `duplicate-suppressed` row out of
+   the failure-class table into NFR-4 where the per-promotion rule now lives.
+
+None of the five requires new analysis of the codebase, and four of the five are a single sentence.
+F-02 is the only one that touches more than one AC, and only because the choice it forces has to be
+echoed in AC-5.2's set-equality wording.
+
 ## Verdict
+
+VERDICT: Needs revision
