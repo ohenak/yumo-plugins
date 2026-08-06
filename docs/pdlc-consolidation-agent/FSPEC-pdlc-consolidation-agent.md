@@ -924,8 +924,10 @@ whole reason it is stated as a requirement rather than left to the other two.
 
 ### 7.2 Resolution order and the three recorded values
 
-The pass resolves a credential once, before the §6 route is attempted, and records exactly one
-`credential:` value in its log row over the closed three-member set of vocabularies §1:
+The pass resolves a credential **at its first §6 PR-route attempt, and at most once per pass** — so a
+pass that never attempts the PR route (it terminated first, or it derived no guard-set proposal)
+never runs the resolution at all. It records exactly one `credential:` value in its log row over the
+closed three-member set of vocabularies §1:
 
 | Resolution | `credential:` value | Route |
 |---|---|---|
@@ -937,7 +939,9 @@ The pass resolves a credential once, before the §6 route is attempted, and reco
 required only when `consolidation.pluginRepository` names a *different* repository (BL-03).
 
 `absent` means **no credential was in hand when the row was written**. That covers both a pass that
-looked and found none, and a pass that terminated before reading one — a `refused` tick (§4.4). The
+looked and found none, and a pass that never looked — a `refused` tick (§4.4), a `failed` pass
+(§2.6 rows 3–4), or a pass with no guard-set proposal to route. §10.3 states how a reader tells the
+two apart from the row itself. The
 set needs no fourth "not reached" member, and this FSPEC introduces none: a value with no
 vocabularies §1 row would breach REQ §4b's set-equality obligation.
 
@@ -1428,7 +1432,7 @@ appends in exactly this order:
 |---|---|---|---|
 | 1 | the `<!-- pdlc:consumed {passId} -->` pair (§3.3) | 7 | every marker-holding pass, empty pair included |
 | 2 | one failure-mode record per promotion (§8.1) | 13 | when the pass promoted anything |
-| 3 | the effectiveness table (§8.3) | 14 | every pass emitting a report other than `skipped-cadence` |
+| 3 | the effectiveness table (§8.3) | 14 | every pass that **reached step 11**, which computes it. A pass that terminated earlier has no table to append and appends none: `refused` (step 6) and a step-8 `failed` (§12.1 S-09, S-11, S-11b). A step-12/13 `failed` (S-11c) did reach step 11 and appends it in full |
 | 4 | the terminal row (§10.3) | 14 | as §10.1 |
 
 Order 1 before everything else is vocabularies §3(a)'s obligation and freezes the legacy-region
@@ -1486,19 +1490,31 @@ can never mark a file consolidated. That is precisely why the block form exists.
 **`credential: absent` is read against the row's status, and the two readings are stated here rather
 than left to the reader.** The closed set has three members (§7.2) and gains no fourth: adding a
 `not-attempted` member would be a vocabularies §1 change, and §1 is a REQ-owned enumeration this
-layer does not edit. So the disambiguation is by status, and it is total:
+layer does not edit.
 
-| Row's `status:` | Reading of `credential: absent` |
+**An earlier draft keyed the reading on the row's `status:` — `refused` ⇒ not attempted, any other
+status ⇒ attempted. That is withdrawn: it is not total.** A `failed` row (§12.1 S-11, S-11b, S-11c)
+terminates at step 8, 12 or 13 and makes no promotion, so it never reaches §7.2's resolution either;
+and a `promoted` or `no-op` pass whose proposals were all consuming-repo ones never attempts the PR
+route at all. Both fell in the old table's "any other status" row, and neither can carry
+`credential-unavailable`, which vocabularies §1 permits only with `promoted-degraded` and `no-op`.
+
+The reading is therefore keyed on the observable that actually decides it — the co-occurrence of
+`credential-unavailable` on the same row — which is a **boolean, so the split is total by
+construction** and needs no enumeration of statuses:
+
+| Row observation | Reading of `credential: absent` |
 |---|---|
-| `refused` (§12.1 S-09 — the pass terminated at step 6 holding no marker) | **not attempted.** No credential resolution ran at all. The pass reached no PR route, so there was nothing to resolve; `absent` is the row's null, not a finding |
-| any other status | **attempted and found nothing** — neither a `credentialEnv` variable nor working local `gh` auth (§7.2), the finding AT-K2 constructs |
+| the row's `reason:` **carries** `credential-unavailable` | **attempted and found nothing** — the §6 route was attempted, §7.2 resolved neither a `credentialEnv` variable nor working local `gh` auth, and the promotion degraded. The finding AT-K2 constructs |
+| the row's `reason:` does **not** carry it | **not attempted.** §7.2's resolution never ran, because the pass never reached a §6 PR-route attempt: it was `refused` at step 6 (S-09), it terminated `failed` (S-11 / S-11b / S-11c), or it derived no guard-set proposal. `absent` is the row's null, not a finding |
 
-A `refused` row therefore never carries reason `credential-unavailable` — that code is legal only
-with `promoted-degraded` and `no-op` (vocabularies §1), which is the independent observable that
-separates the two readings on the row itself: **attempted-and-found-nothing always co-occurs with
-`credential-unavailable`; not-attempted never does.** AT-K6 asserts exactly that pairing in both
-directions, so an implementation that recorded a genuine credential finding on a `refused` row, or
-omitted the reason code on a real one, fails.
+The discriminator is exact in both directions because the pairing is a **biconditional this document
+obliges**: §6.3 and §7.3 require every attempted-and-empty resolution to record
+`credential-unavailable`, and vocabularies §1's composition rule makes that code unavailable on every
+row the second arm names. `status:` corroborates the reading and never decides it — which is why no
+status is enumerated above. AT-K6 asserts the pairing over a fixture set spanning all four shapes of
+the second arm plus AT-K2's finding, so an implementation that recorded a genuine credential finding
+on a row that never resolved one, or omitted the reason code on a real one, fails.
 
 ### 10.4 The report body
 
@@ -1607,12 +1623,13 @@ in the report body** — never an internal state.
 | S-10 | Marker held and stale | as the run's own outcome | `reclaimed-stale-lock` (+ others) | reclaimed, released | one | one | yes |
 | S-11 | Neither model rung resolves | `failed` | `advisory-model-unresolved` | taken, released | one | one (already appended at step 7) | yes |
 | S-11b | The first advisory dispatch fails for a non-model reason (§2.6 row 4) | `failed` | **none** — the error message is in the report body, and §14.4 ER-2 routes the missing code | taken, released | one | one (already appended at step 7) | yes |
+| S-11c | An advisory dispatch **after** step 8 — the §8.5 remediation authoring (step 12) or the §5/§6 proposal authoring (step 13) — fails for a non-model reason (§2.6 row 4) | `failed` | **none** — as S-11b; the error message is in the report body | taken, released | one, **plus** the §8.3 effectiveness table and one failure-mode record per already-routed proposal | one (already appended at step 7) | yes — over the §5.4 pathspec, so any append a step-13 route had already made is durable |
 | S-12 | Terminal outcome reached, git refuses the commit | unchanged from the run's own outcome | + `writes-uncommitted` | taken, released | one | one | **no** — writes left in the working tree |
 | S-13 | `ESCALATIONS.md` absent | as the run's own outcome | + `no-advisory-corpus` | taken, released | one | one | yes |
 | S-14 | `ESCALATIONS.md` present, zero entries | as the run's own outcome | + `advisory-corpus-empty` | taken, released | one | one | yes |
 
 Every terminal status appears: `promoted` (S-02), `promoted-degraded` (S-07), `no-op` (S-05, S-06,
-S-08), `skipped-cadence` (S-01), `refused` (S-09), `failed` (S-11, S-11b). Each is asserted
+S-08), `skipped-cadence` (S-01), `refused` (S-09), `failed` (S-11, S-11b, S-11c). Each is asserted
 behaviourally by at least one acceptance test — `promoted-degraded` by AT-K7, which is S-07's row.
 
 S-10, S-12, S-13 and S-14 name reason codes that **compose** with another row's status rather than
@@ -1742,7 +1759,7 @@ PROPERTIES' (DC-09).
 | AT-K3 | operator | a pass that promoted nothing else and degraded its only promotion | the pass ends | terminal `no-op` — never a bare `promoted` |
 | AT-K4 | operator | a credential present but rejected by the repository | a pass runs | `credential: present (redacted)` **and** reason `credential-unavailable` — the two fields are not collapsed |
 | AT-K5 | maintainer | any pass on any path | every artifact and the report body are searched | the credential value appears in none of them, and the row carries exactly one `credential:` value from the closed set |
-| AT-K6 | operator | two rows: one from a pass `refused` at step 6 (§12.1 S-09) and one from AT-K2's genuine finding | the rows are read | **both** carry `credential: absent`, and they are told apart by reason code: the `refused` row carries **no** `credential-unavailable` (the code is illegal with `refused`) while the other carries it. Asserted in both directions, so an implementation that recorded a credential finding on a `refused` row, or dropped the code on a real one, fails |
+| AT-K6 | operator | **five** rows, spanning every shape §10.3's table admits: (i) a pass `refused` at step 6 (§12.1 S-09), (ii) a pass `failed` at step 8 (S-11), (iii) a pass `failed` at step 12 or 13 (S-11c), (iv) a `no-op`/`promoted` pass whose proposals were all consuming-repo ones so no PR route was attempted, and (v) AT-K2's genuine finding | the rows are read | **all five** carry `credential: absent`, and they are told apart by one observable and not by status: rows (i)–(iv) carry **no** `credential-unavailable` and are read "not attempted"; row (v) carries it and is read "attempted and found nothing". Asserted in both directions. Rows (ii)–(iv) are the rows that falsify the withdrawn status-keyed reading, under which all three would have been misread as attempted |
 | AT-K7 | operator | a pass with **≥ 2** promotions of which exactly one hits a §6.3 failure class | the pass ends | terminal status is verbatim **`promoted-degraded`** — neither `promoted` nor `no-op` — the landed promotions carry their observables (`pr:` populated, their ids in the log), and the failed one appears under the `degraded` route naming its failure class. This is the only test asserting the partial-success status behaviourally; AT-L5 sees the string, not the behaviour |
 
 ### 13.7 Falsifiability (§8)
@@ -2155,7 +2172,7 @@ falsifies it; none of them is new here.
 | BR-39 | Every log write is an append of one whole record; no record is ever rewritten in place. | §10.2, §12.4 | AT-L3 |
 | BR-40 | A pass that takes the marker appends exactly one terminal row; a `skipped-cadence` tick appends none. | §10.1, §10.3 | AT-C3, AT-L3 |
 | BR-41 | Every terminal row carries a trigger (NFR-3a) and a `credential:` value (AC-4.2) — a `refused` row included. | §10.3 | AT-L5, AT-M1 |
-| BR-41a | `credential: absent` on a `refused` row means **not attempted**; on any other status it means attempted-and-found-nothing. The two are separated on the row by `credential-unavailable`, which the `refused` row never carries. | §10.3, §7.2 | AT-K6 |
+| BR-41a | `credential: absent` is read by one observable, not by status: a row carrying `credential-unavailable` means attempted-and-found-nothing; a row not carrying it means **not attempted** — the pass never reached a §6 PR-route attempt (`refused`, `failed`, or no guard-set proposal). The split is a boolean and therefore total. | §10.3, §7.2 | AT-K6 |
 | BR-42 | A git refusal at step 15 adds `writes-uncommitted` and never changes the pass's status. | §5.4, §12.1 S-12 | AT-R4 |
 | BR-43 | Every **enumerated-class** value written (§10.3: status, trigger, reason codes, `credential:`, route names, per-promotion verdict / state / action / phase) is a member of vocabularies §1 at `Version` 1.4, and every §1 row is used — set equality in both directions (REQ §4b). Free-form values — a URL, a date, a branch, a `passId`, a model id — are data and are outside the compared set. | §15.2, §10.3 | AT-L5 |
 | BR-44 | A configuration fallback is report content, never a reason code — no §1 row exists for one. | §11.3 | AT-N2, AT-N3 |
