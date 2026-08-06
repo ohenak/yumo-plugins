@@ -60,6 +60,18 @@ Two consequences, stated plainly rather than inferred:
 
 ## Prior findings
 
+Each carried finding is re-checked against the file it is about, at HEAD.
+
+| ID | Sev | Disposition | Evidence at HEAD |
+|---|---|---|---|
+| F-54 | Low/Cross-Feature | **Open — unchanged** | `docs/_constraints/pdlc-advisory-corpus-baseline.md:7` still reads `\| Version \| 1.0 · 2026-08-06 \|`, while the change-control clause that makes an unbumped content change a defect is still the text at `:19` ("Consumers cite this file **at its `Version`**; a content change that is not accompanied by a version bump is itself a defect"). The three REQ citations still pin the unbumped `1.0`: AC-1.5 (`:202`), REQ-CONS-06's preamble (`:448`), the honest-limit line (`:474`). Still Low on DEC-SEV-01's test, re-derived below. |
+| F-55 | Low/Local | **Open — unchanged** | §4b still widens ownership across both governed files (`:558-559`) while the enumeration/prose classification that follows (`:560-563`) names neither, and the set-equality oracle range still resolves only through the `Version 1.4` pin (`:564-565`). That pin is still decidable: `pdlc-consolidation-vocabularies.md:7` carries `1.4`, `pdlc-advisory-corpus-baseline.md:7` carries `1.0`. §5 (`:585-586`) still describes both files in identical words. |
+| F-56 | Low/Process | **Open — measurement unchanged** | `wc -l -c` at HEAD: **637 lines / 61,109 bytes**, identical to v11 and v12, against `LINE_LIMIT=700` / `BYTE_LIMIT=61440` (`pdlc/hooks/scripts/check-req-size.sh:41-42`) and past both soft thresholds `SOFT_LINE_LIMIT=630` / `SOFT_BYTE_LIMIT=55296` (`:47-48`). Margin **331 bytes**, flat across rounds 11→13. |
+
+The dispositions are identical to v12's because the inputs are identical: the REQ did not move, and
+neither did either governed constraints file. I record that as a re-verification, not a carry-over —
+each row above was re-read at HEAD this round.
+
 ## Findings
 
 ## Questions
