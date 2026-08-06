@@ -10,12 +10,12 @@ depends-on: [pdlc-workflow-distribution, pdlc-advisory-tier]
 |---|---|
 | Upstream | `docs/design/MASTER-PLAN-engineering-loop.md` (Break 2, DEC-E4/E5, order 4) |
 | Downstream | `pdlc-engineering-loop` |
-| Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-REQ-v{1..7}.md` (14 files) |
+| Cross-Reviews | `CROSS-REVIEW-{software-engineer,test-engineer}-REQ-v{1..9}.md` (18 files) |
 | LEARNINGS | `docs/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.8 | 2026-08-06 |
+| pdlc | draft | Claude | 1.9 | 2026-08-06 |
 
 > **Scope in one line.** Run consolidation on a cadence with the advisory model, and carry pipeline-level promotions to `yumo-plugins` as pull requests
 > (the same repository today, AC-3.8), with every promotion recording the failure mode it targets and the next pass reporting, by a deterministic rule,
@@ -74,7 +74,7 @@ test** — durable against LEARNINGS date edits and already shipped — and upda
 "accumulated since the last pass" means exactly this predicate.
 
 **The predicate's corpus is a delimited region, not the whole log.** The shipped predicate is a bare
-substring test over the whole of `docs/_decisions/.consolidation-log.md` (`:41`, read at `:32`), and
+substring test over the whole of `docs/_decisions/.consolidation-log.md` (`:41`; the read is `:36-37`), and
 this feature writes further record types into that same file (AC-3.4's PR URLs, AC-5.1's failure-mode
 records — whose `artifact` field may legitimately be a LEARNINGS path — and AC-5.2's effectiveness
 table), any of which could contain a basename and falsely mark that file consolidated. So consumption
@@ -98,7 +98,7 @@ The log's shape at HEAD, and the two clauses that freeze the legacy boundary —
 before any other record it writes, even when the pair is empty (which is what satisfies NFR-5's "exactly the consumed set" unconditionally, from the
 first pass rather than only from one with a non-empty set), and **(b)** the single exempt record, a `refused` pass's AC-7.2 row, carries no field that
 is ever a `LEARNINGS-*.md` basename, while the AC-1.3 marker is not a second exemption because it lives in its own file — are stated once in
-**`docs/_constraints/pdlc-consolidation-vocabularies.md` §3** (at `Version` 1.2) and are binding here. **On this repo today** (the state a first-run test asserts against) step 1's enumeration matches 5 files; `LEARNINGS-orchestrate-dev-workflow.md` and
+**`docs/_constraints/pdlc-consolidation-vocabularies.md` §3** (at `Version` 1.3) and are binding here. **On this repo today** (the state a first-run test asserts against) step 1's enumeration matches 5 files; `LEARNINGS-orchestrate-dev-workflow.md` and
 `LEARNINGS-pdlc-workflow-distribution.md` are named in the legacy region and consolidated; the other 3 (`…-pdlc-advisory-tier`, `…-pdlc-merge-phase`,
 `…-pdlc-review-loop-hardening`) are un-consolidated — below the default `volumeThreshold` of 5, so the first tick reaches the cadence test.
 
@@ -218,17 +218,13 @@ pass — the never-fires failure this datum prevents.
 
 ### REQ-CONS-03 — Pipeline-file promotion as a pull request
 
-**Pass identity and artifact naming.** Every pass has a `passId` of the form `{YYYY-MM-DD}-{n}`,
-where `n` is the 1-based ordinal of that pass on that calendar date — so the two same-day passes
-AC-1.2 makes an expected case never collide. The proposal artifact is
-`docs/_decisions/CONSOLIDATION-PROPOSAL-{passId}.md` (superseding today's `{date}`-only name at
-`pdlc/skills/consolidate-learnings/SKILL.md:49`), the promotion branch is
-`consolidation/{passId}`, and the PR body carries three trailers: `PDLC-CONSOLIDATION-PASS: {passId}`;
-`PDLC-CONSOLIDATION-SOURCES: {sorted consumed basenames}`, which records pass provenance and is **not** a duplicate key; and
-`PDLC-CONSOLIDATION-PROMOTIONS: {sorted id:action pairs}`, one `{failure-mode-id}:{action}` pair per proposal the PR enacts — `action` over the closed
-set `promote` / `revise` / `retire` (AC-5.1, §4b) — and **set-equal** to the proposals the PR enacts: a revision or a retirement (AC-5.4) sharing the PR
-is enumerated here like any other, under its own action. The promotions trailer is the duplicate-PR key NFR-4 is stated against — it rides the PR, so
-it outlives the log record of the pass that opened it, and because the key is the pair, a merged `promote` entry never bars its own remediation.
+**Pass identity and artifact naming.** The `passId` form `{YYYY-MM-DD}-{n}` (which is what keeps the two same-day passes AC-1.2 makes an expected case
+from colliding), the derived proposal-artifact and branch names, and the three PR-body trailers plus the per-commit `PDLC-PROMOTION-ID` are stated once
+in **`docs/_constraints/pdlc-consolidation-vocabularies.md` §4** (at `Version` 1.3) and are binding here. Two obligations over that grammar are this
+REQ's own. `PDLC-CONSOLIDATION-PROMOTIONS` is **set-equal** to the proposals the PR enacts, `action` over the closed set `promote` / `revise` / `retire`
+(AC-5.1, §4b): a revision or a retirement (AC-5.4) sharing the PR is enumerated there like any other, under its own action. And that trailer — never the
+sources trailer — is the duplicate-PR key NFR-4 is stated against: it rides the PR, so it outlives the log record of the pass that opened it, and
+because the key is the pair, a merged `promote` entry never bars its own remediation.
 
 - **AC-3.1** — Given a promotion targets any path under the guard set — **exactly**
   `MERGE_GUARD_DEFAULTS` (`pdlc/workflows/orchestrate-dev.js:48-53`): `pdlc/workflows/`,
@@ -363,11 +359,12 @@ procedural — it holds even if every other control failed.
 
   **One promotion is one authored file.** "The single file the edit touches" is a requirement, not an assumption: a remedy spanning two authored files
   is **two** proposals — two ids, two AC-3.3 commits, two AC-5.2 rows, two AC-5.3 streaks — which may share one PR (AC-3.3 already permits that shape);
-  they share nothing else and are measured separately. A **generated** path is never an `artifact` and never mints an id: the tracked outputs of
-  `pdlc/workflows/build-runtime.mjs` under `pdlc/workflows/dist/`, which this repo requires to be rebuilt "in the same commit" as their source
-  (`CLAUDE.md`, "Consequence for anyone editing a workflow source"), ride the authored file's commit. So the likeliest promotion this feature will make
-  — an edit to `pdlc/workflows/orchestrate-dev.js` plus its rebuilt bundles — is **one** promotion whose `artifact` is
-  `pdlc/workflows/orchestrate-dev.js`, and the derivation stays total on every edit shape.
+  they share nothing else and are measured separately. A **generated** path is never an `artifact` and never mints an id. *Generated* is a predicate, not
+  an example, and is keyed on the **producer**, never on a path glob: a path a tracked build step of this repo writes — at HEAD exactly the four tracked
+  outputs of `pdlc/workflows/build-runtime.mjs` (`:465` mints the fourth), all under `pdlc/workflows/dist/`, which `CLAUDE.md` requires to be rebuilt
+  "in the same commit" as their source, so they ride the authored file's commit. An authored file whose path merely *contains* `dist/` — the
+  `pdlc/workflows/__tests__/fixtures/` copies — is authored and does mint an id. So an edit to `pdlc/workflows/orchestrate-dev.js` plus its rebuilt
+  bundles is **one** promotion whose `artifact` is that source file, and the derivation stays total on every edit shape.
 
   **Uniqueness, scoped.** Within **one pass** the pair `(failure-mode-id, action)` is unique: two proposals deriving one id under one `action` name the
   same `phase` and `artifact`, are one failure mode, and are recorded once — the pass never mints a suffixed variant, which would break derivation
@@ -423,7 +420,10 @@ procedural — it holds even if every other control failed.
   **A spent alternative, and the terminal remediation.** NFR-4 suppresses on the pair, so each `action` fires at most once per id — which would leave
   AC-5.3's promise merely *achievable* rather than guaranteed if the pass could choose an alternative already spent. It cannot: **when the pass's chosen
   alternative is already on a PR in state open or merged, it proposes the other one**, and `retire` is the **terminal** remediation — a retired promotion
-  is gone, so no successor is owed and the ladder cannot run out. The AC-7.1 field then names the alternative actually proposed, never the one displaced.
+  is gone, so no successor is owed. Terminal is stated over the **proposal**, since the pending case is the reachable one: once a `retire` proposal for
+  an id is on a PR in state open or merged, that id's ladder has **ended** — a later `ineffective` tick proposes nothing, records `duplicate-suppressed`
+  against that PR, and the AC-7.1 field names `retirement`. So the ladder cannot run out and the displacement clause never points back into a spent
+  pair. The AC-7.1 field otherwise names the alternative actually proposed, never the one displaced.
   And a **merged** revision resets that promotion's `ineffective` streak to zero — the reset AC-5.5 makes explicit for `unmeasurable`, made explicit here
   too — so a revision that lands is re-judged on two fresh `recurred` counted passes rather than re-flagged on the next one.
 - **AC-5.4** — Given a promotion flagged `ineffective`, Then retiring it follows the same
@@ -446,11 +446,10 @@ procedural — it holds even if every other control failed.
 ### REQ-CONS-06 — Advisory-record input
 
 **Why this requirement narrowed, and what it may rely on.** Which advisory records survive a run is stated once in
-**`docs/_constraints/pdlc-advisory-corpus-baseline.md`** and is binding here. Its three load-bearing consequences: the structured per-seam counts
-(`advisorySummaryRows`) are in memory only and the per-feature `ADVISORY-{feature}.md` is **deleted** at Phase H2's distil, so LEARNINGS advisory text
-cannot carry counts; `docs/_queue/ESCALATIONS.md` (`ESCALATIONS_PATH`, `orchestrate-dev.js:2750`) is the **one** durable per-seam record, with named
-`Feature` and `Seam` fields per entry; and it **does not exist at HEAD**, because its only writer is the advisory tier and that ships disabled
-(`enabled: false`, `:1663`). REQ-CONS-06 therefore consumes `ESCALATIONS.md`, never a destroyed artifact, and is specified **absent-first**: it ships
+**`docs/_constraints/pdlc-advisory-corpus-baseline.md`** (at `Version` 1.0) and is binding here — §1: `docs/_queue/ESCALATIONS.md` is the **one** durable
+machine-readable per-seam record, with named `Feature` and `Seam` fields per entry, the structured counts being in memory only and the per-feature
+`ADVISORY-{feature}.md` **deleted** at Phase H2's distil, so LEARNINGS advisory text cannot carry counts; §2: it **does not exist at HEAD**, its only
+writer being a tier that ships disabled. REQ-CONS-06 therefore consumes `ESCALATIONS.md`, never a destroyed artifact, and is specified **absent-first**: it ships
 and is testable with the tier off. Availability is tracked as BL-01a, not asserted as delivered.
 
 - **AC-6.1** — Given a consolidation pass, Then it reads `docs/_queue/ESCALATIONS.md` as its machine-readable per-seam input, counting escalations per
@@ -530,8 +529,8 @@ The honest limit (baseline §4): `ESCALATIONS.md` records escalations, not resol
   unconditionally) — which is exactly what makes those files "consolidated" for the AC-1.1 predicate
   (`pdlc/hooks/scripts/nudge-consolidation.sh:41`, scoped to that block by this feature). Those
   blocks must name **exactly** the consumed set — neither more nor fewer — and no other record type
-  may be written inside one, so a basename appearing elsewhere in the log (a PR title, a failure
-  mode's `artifact` field, an effectiveness row) never marks a LEARNINGS consolidated.
+  may be written inside one (vocabularies §3), so a basename appearing elsewhere in the log never
+  marks a LEARNINGS consolidated.
 
 ## 4a. Configuration
 
@@ -557,13 +556,13 @@ Every enumerated value this REQ uses — terminal statuses, reason codes, trigge
 per-promotion verdicts and states, `action`, the reported `revision`/`retirement` field, the `pr:`,
 `suppressed-by:` and `credential:` fields, and the closed 13-member phase catalogue — is stated once,
 with its category, its permitted statuses and its `file:line` definition site, in
-**`docs/_constraints/pdlc-consolidation-vocabularies.md` §1** (cited at `Version` 1.2), together with
+**`docs/_constraints/pdlc-consolidation-vocabularies.md` §1** (cited at `Version` 1.3), together with
 the two joins and the composition rule that decide which codes a status may carry.
 
 **This REQ owns every row of that file's §1 and §2**, and changes none of anyone else's; a successor
 feature's vocabulary belongs in its own section of that file or in its own file, never interleaved
 into §1 or §2. So the oracle's range is stated, not "the table": downstream completeness is checkable
-by **set-equality over the rows this REQ owns — §1 and §2 entire at Version 1.2** — and the defect
+by **set-equality over the rows this REQ owns — §1 and §2 entire at Version 1.3** — and the defect
 rule is symmetric, a value used here with no row there **and** a row there naming a value this REQ
 never uses being equally defects. The symmetry is what makes a *deleted* row a breach; the version
 pin is what gives a downstream test a fixed expected value to transcribe.

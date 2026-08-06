@@ -3,8 +3,8 @@
 | Field | Value |
 |---|---|
 | Kind | **Project-level shared reference.** Read-only input to `pdlc-consolidation-agent` and its successors; **not** a pipeline artifact, not reviewed, not queue-eligible. |
-| Cited by | `docs/pdlc-consolidation-agent/REQ-pdlc-consolidation-agent.md` (§4b, AC-1.3, AC-5.1, AC-5.2, AC-7.1, AC-7.2, NFR-4, NFR-5) |
-| Version | 1.2 · 2026-08-06 |
+| Cited by | `docs/pdlc-consolidation-agent/REQ-pdlc-consolidation-agent.md` (§4b, REQ-CONS-01, REQ-CONS-03 preamble, AC-1.3, AC-3.3, AC-5.1, AC-5.2, AC-7.1, AC-7.2, NFR-4, NFR-5) |
+| Version | 1.3 · 2026-08-06 |
 
 **Why this file exists.** The consolidation REQ's enumerated vocabularies and the phase observable
 are the largest self-contained block in that document, are read by every downstream layer, and are
@@ -149,3 +149,22 @@ appended by a tick that loses the race between the winner's marker and its block
 `{YYYY-MM-DD}-{n}` and a timestamp is neither a `LEARNINGS-*.md` basename. The in-progress marker is
 **not** a second exempt record: it lives in its own file, never in this log. Every other record
 lands after the first block.
+
+## 4. Pass identity, artifact naming, and the PR trailer grammar
+
+Every consolidation pass has a `passId` of the form `{YYYY-MM-DD}-{n}`, where `n` is the 1-based
+ordinal of that pass on that calendar date — so two same-day passes never collide. Derived names:
+
+| Thing | Name |
+|---|---|
+| Proposal artifact | `docs/_decisions/CONSOLIDATION-PROPOSAL-{passId}.md`, superseding the `{date}`-only name at `pdlc/skills/consolidate-learnings/SKILL.md:49` |
+| Promotion branch | `consolidation/{passId}` |
+
+The PR body carries exactly three trailers, and each promotion commit carries one:
+
+| Trailer | Value | Role |
+|---|---|---|
+| `PDLC-CONSOLIDATION-PASS` | `{passId}` | names the pass that opened the PR |
+| `PDLC-CONSOLIDATION-SOURCES` | sorted consumed LEARNINGS basenames | pass provenance; **not** a duplicate key |
+| `PDLC-CONSOLIDATION-PROMOTIONS` | sorted `{failure-mode-id}:{action}` pairs, one per proposal the PR enacts | the duplicate-PR key |
+| `PDLC-PROMOTION-ID` (per commit) | `{id}:{action}` | names exactly the proposal that one commit enacts |
