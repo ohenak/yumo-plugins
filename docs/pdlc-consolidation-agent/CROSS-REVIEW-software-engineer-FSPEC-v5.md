@@ -44,6 +44,50 @@ All findings below are in sections the revision changed. Nothing unchanged since
 
 ## Positive Observations
 
+- **AT-F19 and AT-F20 are the two strongest rows added to this document in any round, and both are
+  set-equalities over an enumeration rather than containment checks.** AT-F19 spans all four arms of
+  §8.4 step 1's predicate in **one** fixture (`A` retire/constraints, `B` retire/degraded, `C`
+  promote-only, `D` revise-only) and asserts the computed list is set-equal to `{B, C, D}` — and the
+  cell says *why* each direction is load-bearing: containment alone is satisfied by "every id ever
+  recorded", which is precisely the degenerate limit O-C7 accepts as a bound and refuses as an
+  implementation. I checked the fixture against the predicate as written (`no record for that id
+  carries action: retire with a route other than degraded`) and all four arms land where the row says.
+  AT-F20 does the same for §8.1's record shape across all three §5.2 kinds **plus** the `degraded`
+  route, both directions, and names the failure a one-sided check would hide (a dropped `target` is
+  invisible until §6.4 misreads it two passes later). Its eight names are set-equal to §8.1's table at
+  `:1070-1077` — I diffed them.
+- **The §6.5 repair was made on both git domains and justified, not just widened.** I asked for the
+  invoking tree; the revision added the reads to the clone as well, gave the table a fifth column so
+  the two git rows no longer share one Given, and explained why the reads are *permitted* and not
+  *obliged* — AC-3.8b obliges an observation, and TSPEC may satisfy it from commit output, a
+  `rev-parse`, or a runtime-supplied value. That is the same shape `fetch` already had, and reusing an
+  existing precedent rather than inventing a second rule is what keeps §6.5 readable. The two-sided
+  bound stated at `:941-946` (contains the obliged set, contained in the permitted set) is the right
+  formalisation and it is now stated in the section, in BR-28, and in AT-Q7c's own cell.
+- **AT-Q7c's Given was tightened without being asked.** TE's Q-03 got the row pinned to a `promoted`
+  pass, and the cell states the reason as a falsifiability argument: a pass that promotes nothing
+  observes `∅` everywhere and satisfies a containment-only reading vacuously, "leaving the row with
+  nothing to falsify". A test row that explains what would make it vacuous is rare.
+- **ER-5 is routed with the argument that closes the escape hatch, not just the observation.** The
+  hard part of F-02 was that §10.3's free-form class *looked* like it disposed of the divergence; the
+  erratum names why it does not ("the class rule exempts a value only where §1 defines no grammar for
+  it, and here §1 does define one"), keeps the field **name**'s §1 row so AT-L5 stays exact, and says
+  what changes if the widened row lands (§10.3 and BR-26 restate §1 verbatim; **no AT changes**).
+  §15.2's closing paragraph now refuses to be read "as a clean bill" — that sentence is worth keeping.
+- **Every code citation added this round is exact but one, and I re-verified all of them at HEAD.**
+  `build-runtime.mjs`'s `bundles` array opens `:448` and closes `:471`; the `pdlc-cli.mjs` entry is
+  `:464-470` with `file:` at `:465`; `parseAbbrevRef` is `:3491-3496`; `readHeadBranch` issues the
+  `rev-parse` at `:3524`; `gitWithLockRetry` `:8617`; `commitPaths` `:8669`; `MERGE_GUARD_DEFAULTS`
+  `:48-53`. The upstream quotation in ER-5 is verbatim (`pdlc-consolidation-vocabularies.md:63`), and
+  its change-control premise ("REQ-pdlc-consolidation-agent owns every section of this file", `:25-27`)
+  still holds at HEAD.
+- **O-C8 is an honest cost entry rather than a defence of the rule.** It names what is lost (a write,
+  not content), why the alternative is worse (two records sharing one `(failure-mode-id, action)`
+  would break the key NFR-4's suppression rests on), what bounds the loss, and what the operator can
+  do about it. "Precedence runs widest-reach-first so the surviving write is never the narrower one"
+  is the sentence that makes the ordering non-arbitrary — without it the table is three rows of
+  assertion.
+
 ## Recommendation
 
 ## Verdict
