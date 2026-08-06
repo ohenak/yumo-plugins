@@ -36,7 +36,11 @@ re-litigated, and I re-read every changed section listed in the ten commits.
 
 ## Questions
 
-<!-- filled below -->
+| ID | Question |
+|----|---------|
+| Q-01 | §8.1's record grew from seven fields to eight, and the table is declared "normative for the record's shape" — but no AT compares a written record's field set against it. AT-R6b asserts *one* `target` on the merge path and AT-F1…AT-F4 assert the id derivation; nothing asserts set-equality over the eight names, so a dropped `target` or `route` on some path is invisible until §6.4's carrier misbehaves two passes later. This is a pre-existing shape (the seven-field table had no such row either) and I am not filing it as a finding on that basis — but the field count just changed, which is exactly when the omission is cheapest to close. Is a field-set-equality AT wanted here, or is it TSPEC's serialisation concern? |
+| Q-02 | §10.2 order 3's negative arm is now covered by AT-M6 (step-8 dispatch error, S-11b) and AT-M6b (`refused`, S-09), and the cell names both. S-11 — neither model rung resolves — is the third early-terminal shape, and AT-M4 covers it without asserting the absent table. That is fine if step 11's unreachability is one code path shared by S-11 and S-11b; if the two terminate through different arms, S-11 has no falsifier for the absent table. Which is it? |
+| Q-03 | AT-Q7c's Given is "a pass with no guard-set proposal — every promotion routes to the consuming repo", and its Then asserts `{add, commit}` in the invoking tree. That holds only if the pass actually promoted something. Should the row pin the Given to a `promoted` pass (§12.1 S-02), so an implementation that promotes nothing and observes `∅` on all three domains cannot satisfy it? As written the invoking-tree conjunct is the only non-empty one, and it is the only thing separating AT-Q7c from a vacuous pass. |
 
 ## Positive Observations
 
