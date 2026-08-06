@@ -10,12 +10,12 @@ depends-on: [pdlc-workflow-distribution, pdlc-advisory-tier]
 |---|---|
 | Upstream | `docs/design/MASTER-PLAN-engineering-loop.md` (Break 2, DEC-E4/E5, order 4) |
 | Downstream | `pdlc-engineering-loop` |
-| Cross-Reviews | `CROSS-REVIEW-software-engineer-REQ-v1.md`, `CROSS-REVIEW-test-engineer-REQ-v1.md` |
+| Cross-Reviews | `CROSS-REVIEW-software-engineer-REQ-v1.md`, `CROSS-REVIEW-test-engineer-REQ-v1.md`, `CROSS-REVIEW-software-engineer-REQ-v2.md`, `CROSS-REVIEW-test-engineer-REQ-v2.md` |
 | LEARNINGS | `docs/pdlc-consolidation-agent/LEARNINGS-pdlc-consolidation-agent.md` |
 
 | Product | Status | Author | Version | Date |
 |---|---|---|---|---|
-| pdlc | draft | Claude | 1.1 | 2026-08-05 |
+| pdlc | draft | Claude | 1.2 | 2026-08-05 |
 
 > **Scope in one line.** Run consolidation on a cadence with the advisory model, and carry
 > pipeline-level promotions to `yumo-plugins` as pull requests — the same repository today
@@ -312,7 +312,9 @@ These are the identity keys NFR-4 is stated against.
   proposal-file fallback with reason code `credential-unavailable`, records
   `credential: absent` per AC-4.2, and surfaces the affected promotion in the AC-7.1 report under a
   `degraded` route with its reason code. It does not halt the whole pass, and it does not silently
-  skip the promotion.
+  skip the promotion. Its terminal status is `promoted-degraded` when the pass promoted anything at
+  all and `no-op` when it did not (§4b) — never a bare `promoted`, so a degraded run cannot read as
+  an unqualified success.
 - **AC-4.4** — Given the pass runs under the operator's own `gh` authentication, Then that is a
   supported configuration and records `credential: local-gh` (AC-4.2). It is the **shipping**
   configuration for the same-repo case (AC-3.8); the scoped credential of AC-4.1 is required only
@@ -489,7 +491,9 @@ summary to be persisted, which is D-CONS-06.
   lower the promotion threshold, or cadence becomes a volume machine.
 - **NFR-3a** — A cadence-triggered pass and a volume-triggered pass are distinguishable in the log:
   the pass's log row records its trigger over the closed set `cadence` / `volume` / `manual`, so
-  NFR-3's "the bar held on both" is checkable rather than asserted.
+  NFR-3's "the bar held on both" is checkable rather than asserted. The set needs no "no trigger"
+  member: a `skipped-cadence` tick fired no trigger and writes no log row (AC-7.2), and every status
+  that does write a row was reached by exactly one of these three.
 - **NFR-4** — A pass is idempotent with respect to its boundary, keyed explicitly: re-running over
   the same consumed-LEARNINGS set produces no duplicate promotion (identity: `failure-mode-id`,
   AC-5.1) and no duplicate PR (identity: the `PDLC-CONSOLIDATION-SOURCES` trailer defined in the
@@ -499,10 +503,13 @@ summary to be persisted, which is D-CONS-06.
   interrupted pass's partial PR is left for the operator to merge or close, not silently amended.
   Idempotence is well-defined precisely because AC-5.2's verdicts are deterministic.
 - **NFR-5** — The pass never modifies a LEARNINGS file it consumed; and on the same path, it
-  positively records consumption by appending the consumed basenames to
-  `docs/_decisions/.consolidation-log.md` (AC-2.4) — which is exactly what makes those files
-  "consolidated" for the AC-1.1 predicate (`pdlc/hooks/scripts/nudge-consolidation.sh:41`). The log
-  must name **exactly** the consumed set: neither more nor fewer.
+  positively records consumption by appending the consumed basenames to the delimited
+  `<!-- pdlc:consumed {passId} -->` block of `docs/_decisions/.consolidation-log.md` (REQ-CONS-01,
+  AC-2.4) — which is exactly what makes those files "consolidated" for the AC-1.1 predicate
+  (`pdlc/hooks/scripts/nudge-consolidation.sh:41`, scoped to that block by this feature). Those
+  blocks must name **exactly** the consumed set — neither more nor fewer — and no other record type
+  may be written inside one, so a basename appearing elsewhere in the log (a PR title, a failure
+  mode's `artifact` field, an effectiveness row) never marks a LEARNINGS consolidated.
 
 ## 4a. Configuration
 
@@ -565,12 +572,23 @@ reason code; each must be legal for the status it accompanies.
 
 ## 5. Scope
 
-**In scope:** the `/loop`-driven cadence trigger and the volume trigger evaluated by the pass; the
-single un-consolidated predicate (including the matching edit to
-`pdlc/skills/consolidate-learnings/SKILL.md:35`); two-rung advisory-model execution with reported
-fallback; PR promotion with scoped credential, in both the same-repo (AC-3.8) and two-repo
-configurations; the effectiveness/falsifiability loop, including the LEARNINGS `failure-mode-id`
-convention; `ESCALATIONS.md` consumption; reporting; tests.
+**In scope:** the `/loop`-driven cadence trigger and the volume trigger evaluated by the pass, in the
+stated tick order; the single un-consolidated predicate scoped to the delimited consumed block —
+including the matching edits to `pdlc/skills/consolidate-learnings/SKILL.md:35` and to
+`pdlc/hooks/scripts/nudge-consolidation.sh:41`; reuse of the shipped two-rung advisory ladder
+(`resolveAdvisoryRung`, `orchestrate-dev.js:1833`) with reported fallback; PR promotion with scoped
+credential, in both the same-repo (AC-3.8) and two-repo configurations, plus the pathspec-scoped
+commit of the consuming-repo writes (AC-3.8b); the effectiveness/falsifiability loop, including the
+two LEARNINGS convention additions this feature makes — `failure-mode-id` (AC-5.2) and
+`Phases exercised` in the harvest metadata table (`harvest-learnings/SKILL.md:70-78`);
+`ESCALATIONS.md` consumption in all three corpus states (AC-6.1); reporting against §4b's
+vocabularies; tests.
+
+The pass ships as a workflow script alongside the existing `consolidate-learnings` skill — the
+`orchestrate-queue` shape, a skill and a bundled workflow sharing a name. Its bundle is therefore a
+new tracked artifact of `pdlc/workflows/build-runtime.mjs` and a new row in
+`pdlc/workflows/dist/distribution-manifest.json`, and BL-02's distribution machinery applies to this
+feature's own output as much as to what it promotes.
 
 **Out of scope:** merging any promotion PR; changing the promotion bar; session-free (no Claude Code
 session) execution; a new notification channel; consolidating across multiple consuming repos;
