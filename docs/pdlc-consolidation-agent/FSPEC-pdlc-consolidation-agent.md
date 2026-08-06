@@ -1513,7 +1513,7 @@ appends in exactly this order:
 |---|---|---|---|
 | 1 | the `<!-- pdlc:consumed {passId} -->` pair (§3.3) | 7 | every marker-holding pass, empty pair included |
 | 2 | one failure-mode record per promotion (§8.1) | 13 | when the pass promoted anything |
-| 3 | the effectiveness table (§8.3) | 14 | every pass that **reached step 11**, which computes it. A pass that terminated earlier has no table to append and appends none: `refused` (step 6) and a step-8 `failed` (§12.1 S-09, S-11, S-11b). A step-12/13 `failed` (S-11c) did reach step 11 and appends it in full |
+| 3 | the effectiveness table (§8.3) | 14 | every pass that **reached step 11**, which computes it. A pass that terminated earlier has no table to append and appends none: `refused` (step 6) and a step-8 `failed` (§12.1 S-09, S-11, S-11b). A step-12/13 `failed` (S-11c) did reach step 11 and appends it in full. §8.3's opening sentence states the same condition and neither is the looser one; AT-M9 asserts the positive arm, AT-M6 and AT-M6b the two negative ones |
 | 4 | the terminal row (§10.3) | 14 | as §10.1 |
 
 Order 1 before everything else is vocabularies §3(a)'s obligation and freezes the legacy-region
@@ -2329,7 +2329,7 @@ E-29) and each now names its own test.
 
 | # | Scenario | Terminal effect | Section | AT |
 |---|---|---|---|---|
-| E-16 | Marker held and fresh | `refused`, reason `consolidation-in-progress`; one log row, no consumed pair, no commit | §4.2, §4.4 | AT-M1 |
+| E-16 | Marker held and fresh | `refused`, reason `consolidation-in-progress`; one log row, no consumed pair, no commit, **no effectiveness table** (§10.2 order 3) | §4.2, §4.4, §10.2 | AT-M1 (status and reason), AT-M6b (what is **not** appended) |
 | E-17 | Marker held and stale | reclaimed; `reclaimed-stale-lock` composes with the run's own status | §4.2 | AT-M2 |
 | E-18 | Two passes racing to mint the same `passId` | harmless: the loser is `refused` at step 6, and no contract keys on a refused row's id | §2.5, §4.5 | AT-C6, AT-M1 |
 | E-19 | Neither model rung resolves | `failed`, reason `advisory-model-unresolved`; no promotion; consumed pair already written at step 7; marker released | §2.6 | AT-M4 |
